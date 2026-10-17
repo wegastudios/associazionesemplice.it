@@ -1,0 +1,31 @@
+name: deps
+on:
+  workflow_dispatch:
+    inputs:
+      packages:
+        description: 'Pacchetti composer da richiedere (separati da spazio)'
+        required: true
+permissions:
+  contents: write
+jobs:
+  require:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: intl, sodium, pdo_mysql, bcmath
+          tools: composer
+      - name: composer require
+        env:
+          PACKAGES: ${{ inputs.packages }}
+        run: composer require $PACKAGES --no-interaction --no-scripts
+      - name: Push su branch deps
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git checkout -b deps-${{ github.run_id }}
+          git add composer.json composer.lock
+          git commit -m "Aggiorna dipendenze composer"
+          git push origin HEAD
