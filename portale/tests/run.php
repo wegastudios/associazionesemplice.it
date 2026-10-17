@@ -615,5 +615,32 @@ check( 'specchio: errore vero del server → bloccato', null !== throwsUser( fun
 check( 'differenze: licenze identiche', array() === Portale\WegaSync::differences( array( 'domain' => 'a.it', 'expires_at' => '2027-01-01 00:00:00', 'status' => 'active' ), array( 'domain' => 'www.a.it', 'expires_at' => '2027-01-01T00:00:00Z', 'state' => 'ACTIVE' ) ) );
 check( 'differenze: dominio, scadenza e stato diversi', 3 === count( Portale\WegaSync::differences( array( 'domain' => 'a.it', 'expires_at' => '2027-01-01 00:00:00', 'status' => 'canceled' ), array( 'domain' => 'b.it', 'expires_at' => '2027-03-01T00:00:00Z', 'state' => 'ACTIVE' ) ) ) );
 
+// --- Staff e accesso unico al supporto --------------------------------------------------------
+$tdb  = new Db( new PDO( 'sqlite::memory:' ) );
+$tdb->migrate();
+$tbil = new Billing( $tdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+Config::set( 'admins', array( 'Capo@Esempio.it' ) );
+check( 'staff: admin di config.php', 'admin' === Portale\Staff::role( $tdb, 'capo@esempio.it' ) );
+check( 'staff: sconosciuto senza ruolo', null === Portale\Staff::role( $tdb, 'altro@esempio.it' ) );
+Portale\Staff::set( $tdb, $tbil, ' Aiuto@Esempio.it ', 'support' );
+check( 'staff: solo supporto non è amministratore', 'support' === Portale\Staff::role( $tdb, 'aiuto@esempio.it' ) && ! Portale\Admin::isAdminEmail( 'aiuto@esempio.it', $tdb ) );
+check( 'staff: crea anche il cliente per poter entrare', 1 === (int) $tdb->one( 'SELECT COUNT(*) AS n FROM customers WHERE email = ?', array( 'aiuto@esempio.it' ) )['n'] );
+Portale\Staff::set( $tdb, $tbil, 'aiuto@esempio.it', 'admin' );
+check( 'staff: cambio ruolo a admin', Portale\Admin::isAdminEmail( 'aiuto@esempio.it', $tdb ) && 2 === count( Portale\Staff::all( $tdb ) ) );
+check( 'staff: ruolo non valido rifiutato', null !== throwsUser( function () use ( $tdb, $tbil ) { Portale\Staff::set( $tdb, $tbil, 'x@esempio.it', 'root' ); } ) );
+check( 'staff: admin di config.php non modificabile', null !== throwsUser( function () use ( $tdb, $tbil ) { Portale\Staff::set( $tdb, $tbil, 'capo@esempio.it', 'support' ); } ) );
+Portale\Staff::remove( $tdb, 'aiuto@esempio.it' );
+check( 'staff: rimosso', null === Portale\Staff::role( $tdb, 'aiuto@esempio.it' ) );
+Config::set( 'base_url', 'https://portale.test' );
+Config::set( 'support', array( 'url' => 'https://supporto.test/', 'sso_secret' => str_repeat( 's', 40 ) ) );
+check( 'sso: attivo con segreto lungo, indirizzo senza barra finale', Portale\SupportSso::enabled() && 'https://supporto.test' === Portale\SupportSso::supportUrl() );
+list( $p64, $sig ) = explode( '.', Portale\SupportSso::token( 'Capo@Esempio.it', 'admin', 1000 ) );
+$pl = json_decode( base64_decode( strtr( $p64, '-_', '+/' ) ), true );
+check( 'sso: contenuto del token', 'capo@esempio.it' === $pl['sub'] && 'admin' === $pl['role'] && 1060 === $pl['exp'] && 'https://supporto.test' === $pl['aud'] && 32 === strlen( $pl['jti'] ) );
+check( 'sso: firma HMAC-SHA256 verificabile', hash_equals( rtrim( strtr( base64_encode( hash_hmac( 'sha256', $p64, str_repeat( 's', 40 ), true ) ), '+/', '-_' ), '=' ), $sig ) );
+check( 'sso: chi non è staff entra come cliente', 'customer' === Portale\SupportSso::roleFor( $tdb, 'cliente@esempio.it' ) );
+Config::set( 'support', array( 'url' => 'https://supporto.test', 'sso_secret' => 'corto' ) );
+check( 'sso: segreto corto → non attivo, si va alla home del supporto', ! Portale\SupportSso::enabled() && 'https://supporto.test' === Portale\SupportSso::url( $tdb, 'capo@esempio.it' ) );
+
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );
