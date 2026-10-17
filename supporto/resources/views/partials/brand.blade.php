@@ -46,6 +46,7 @@
     .b-revoked { background:#f9d4d2; color:#7d1a17; } .b-pending { background:#d6e6fb; color:#133e73; }
     label { display:block; font-weight:500; margin:12px 0 4px; }
     input, select, textarea { width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--ink); font:inherit; }
+    input[readonly] { background:var(--surface-2); color:var(--muted); cursor:not-allowed; border-style:dashed; }
     input[type=checkbox], input[type=radio] { width:auto; margin-right:6px; }
     .row { display:grid; gap:12px; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); }
     .hint { color:var(--muted); font-size:.92rem; margin:4px 0 0; }

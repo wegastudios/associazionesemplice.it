@@ -10,8 +10,8 @@
         <div style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden" aria-hidden="true"><label for="website">Lascia vuoto questo campo</label><input id="website" name="website" type="text" tabindex="-1" autocomplete="off"></div>
         @if ($related)<input type="hidden" name="related_hub_id" value="{{ (int) $related }}"><p class="hint">Questa richiesta è collegata al ticket {{ (int) $related }}.</p>@endif
         <div class="row">
-            <div><label for="customer_name">Il tuo nome</label><input id="customer_name" name="customer_name" value="{{ ($customer["name"] ?? null) ?: old("customer_name") }}" maxlength="150" required @readonly(! empty($customer["name"]))></div>
-            <div><label for="customer_email">La tua email</label><input id="customer_email" name="customer_email" type="email" value="{{ $customer["email"] ?? old("customer_email") }}" maxlength="190" required @readonly(! empty($customer["email"]))></div>
+            <div><label for="customer_name">Il tuo nome</label><input id="customer_name" name="customer_name" value="{{ ($customer["name"] ?? null) ?: old("customer_name") }}" maxlength="150" required @readonly(! empty($customer["name"])) @if (! empty($customer["name"])) tabindex="-1" @endif></div>
+            <div><label for="customer_email">La tua email</label><input id="customer_email" name="customer_email" type="email" value="{{ $customer["email"] ?? old("customer_email") }}" maxlength="190" required @readonly(! empty($customer["email"])) @if (! empty($customer["email"])) tabindex="-1" @endif></div>
         </div>
         <div class="row">
             @if ($topics->isNotEmpty())
@@ -19,7 +19,7 @@
                     <select id="topic_id" name="topic_id"><option value="">—</option>@foreach ($topics as $t)<option value="{{ $t->id }}" @selected(old('topic_id') == $t->id)>{{ $t->name }}</option>@endforeach</select></div>
             @endif
             @if ($plans->isNotEmpty())
-                @if (! empty($customer["plan_id"]))<div><label for="plan_name">Il tuo piano</label><input id="plan_name" value="{{ $plans->firstWhere("id", $customer["plan_id"])?->name }}" readonly><input type="hidden" name="plan_id" value="{{ $customer["plan_id"] }}"></div>@else<div><label for="plan_id">Il tuo piano</label>
+                @if (! empty($customer))<div><label for="plan_name">Il tuo piano</label><input id="plan_name" value="{{ $plans->firstWhere("id", $customer["plan_id"] ?? 0)?->name ?? "Nessun piano attivo" }}" readonly tabindex="-1"><input type="hidden" name="plan_id" value="{{ $customer["plan_id"] ?? "" }}"></div>@else<div><label for="plan_id">Il tuo piano</label>
                     <select id="plan_id" name="plan_id"><option value="">—</option>@foreach ($plans as $p)<option value="{{ $p->id }}" @selected(old('plan_id') == $p->id)>{{ $p->name }}</option>@endforeach</select></div>@endif
             @endif
         </div>

@@ -18,8 +18,12 @@ use Illuminate\View\View;
 /** Modulo ticket pubblico e pagina del ticket per il cliente (link firmato). */
 class PublicTicketController extends Controller
 {
-    public function create(Request $request, HumanCheck $human): View
+    public function create(Request $request, HumanCheck $human): View|RedirectResponse
     {
+        if (! is_array($request->session()->get("customer"))) {
+            return $this->toPortalLogin();
+        }
+
         return view('site.ticket-new', [
             'formToken' => $human->issue(),
             'privacyUrl' => config('support.privacy.url'),
@@ -32,6 +36,11 @@ class PublicTicketController extends Controller
 
     public function store(Request $request, TicketService $tickets, HumanCheck $human): RedirectResponse
     {
+        // Solo chi ha fatto l'accesso dal portale puo aprire un ticket
+        if (! is_array($request->session()->get("customer"))) {
+            return $this->toPortalLogin();
+        }
+
         // Controllo anti-bot: campo trappola compilato = scarto silenzioso (il bot crede di aver inviato)
         $check = $human->verify($request);
         if ($check === HumanCheck::BOT) {
@@ -66,9 +75,7 @@ class PublicTicketController extends Controller
             if ($customer['name'] !== null) {
                 $data['customer_name'] = $customer['name'];
             }
-            if ($customer['plan_id'] !== null) {
-                $data['plan_id'] = $customer['plan_id'];
-            }
+            $data['plan_id'] = $customer['plan_id'] ?? null;
         }
 
         $ticket = $tickets->open([
@@ -83,6 +90,11 @@ class PublicTicketController extends Controller
         return $ticket->isRegistered()
             ? redirect(CustomerLink::show($ticket))->with('ok', "Richiesta ricevuta: il tuo ticket è il numero {$ticket->hub_id}. Ti abbiamo scritto una conferma per email.")
             : redirect()->route('ticket.received');
+    }
+
+    private function toPortalLogin(): RedirectResponse
+    {
+        return redirect(rtrim((string) config("support.sso.portal"), "/")."/supporto/accedi");
     }
 
     public function received(): View
