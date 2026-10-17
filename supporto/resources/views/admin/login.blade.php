@@ -2,7 +2,7 @@
 @section('title', 'Accesso')
 @section('content')
     <div class="card login">
-        <img src="{{ route('brand', 'icon.svg') }}" alt="" width="92" height="92">
+        <img src="{{ route('brand', 'logo-512.png') }}" alt="" width="92" height="92">
         <h1>Accesso amministratore</h1>
         <form method="post" action="{{ route('admin.login.attempt') }}">
             @csrf

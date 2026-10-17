@@ -8,7 +8,9 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class BrandAssetController extends Controller
 {
     private const FILES = [
-        'icon.svg' => 'image/svg+xml',
+        'logo.png' => 'image/png',
+        'logo-512.png' => 'image/png',
+        'favicon.png' => 'image/png',
     ];
 
     public function __invoke(string $file): BinaryFileResponse

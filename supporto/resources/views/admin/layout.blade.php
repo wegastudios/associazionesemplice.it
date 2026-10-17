@@ -4,14 +4,15 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
-    <meta name="color-scheme" content="light">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#21248b">
     <title>@yield('title', 'Supporto') · Associazione Semplice</title>
     @include('partials.brand')
 </head>
 <body>
 <header class="site">
     <div class="bar">
-        <a class="logo" href="{{ route('admin.home') }}" aria-label="Associazione Semplice · Supporto, vai ai ticket"><img src="{{ route('brand', 'icon.svg') }}" alt="" width="34" height="34"><span class="wordmark">Associazione Semplice</span></a>
+        <a class="logo" href="{{ route('admin.home') }}" aria-label="Associazione Semplice · Supporto, vai ai ticket"><img src="{{ route('brand', 'logo.png') }}" alt="" width="38" height="38"><span class="wordmark">Associazione Semplice</span></a>
         @auth
             <nav aria-label="Navigazione principale">
                 @if (config('support.role') === 'hub')

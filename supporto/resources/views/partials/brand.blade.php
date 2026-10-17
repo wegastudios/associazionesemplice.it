@@ -1,29 +1,37 @@
-<link rel="icon" type="image/svg+xml" href="{{ route('brand', 'icon.svg') }}">
-<link rel="apple-touch-icon" href="{{ route('brand', 'icon.svg') }}">
+<link rel="icon" type="image/png" sizes="64x64" href="{{ route('brand', 'favicon.png') }}">
+<link rel="apple-touch-icon" href="{{ route('brand', 'logo-512.png') }}">
 <style>
-    /* Identita visiva di Associazione Semplice (stessi colori del portale): verde #0f6b57, accento ambra, fondo caldo */
+    /* Identita visiva di Associazione Semplice (stessi valori del portale): indaco #21248B principale, verde salvia secondario, oro accento */
     :root {
-        color-scheme: light;
-        --bg:#f7f5ef; --card:#fff; --ink:#14211d; --muted:#5a6761; --line:#e1ddd0;
-        --teal:#0f6b57; --head:#0f6b57; --brand:#0f6b57; --brand-ink:#fff; --link:#0b5646; --focus:#14211d;
-        --yellow:#e8a33d; --yellow-soft:#fbefd5;
-        --danger:#b3261e; --ok:#1a7f4b; --code-bg:#f0ede4;
+        color-scheme: light dark;
+        --bg:#f6f8f6; --card:#fff; --ink:#14172e; --muted:#566069; --line:#dbe3de; --surface-2:#edf2ef;
+        --teal:#5f8578; --head:#fff; --brand:#21248b; --brand-2:#171a6b; --brand-ink:#fff; --link:#21248b; --focus:#14172e;
+        --yellow:#efcb5d; --yellow-soft:#fbf3d6;
+        --danger:#b3261e; --ok:#1a7f4b; --code-bg:#edf2ef; --logo-bg:transparent;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --bg:#0f1311; --card:#161c1a; --ink:#eef2f0; --muted:#9fb0a9; --line:#27322e; --surface-2:#1c2420;
+            --teal:#86ab9d; --head:#161c1a; --brand:#a6a9ff; --brand-2:#c3c5ff; --brand-ink:#0c0d2b; --link:#a6a9ff; --focus:#eef2f0;
+            --yellow:#efcb5d; --yellow-soft:#3a3214;
+            --danger:#ff8a80; --ok:#5fd397; --code-bg:#1c2420; --logo-bg:#fff;
+        }
     }
     * { box-sizing: border-box; }
     body { margin:0; background:var(--bg); color:var(--ink); font:400 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
     a { color:var(--link); }
     :focus-visible { outline:3px solid var(--focus); outline-offset:2px; border-radius:4px; }
-    header.site { background:var(--head); color:#fff; border-bottom:5px solid var(--yellow); }
+    header.site { background:var(--head); color:var(--ink); border-bottom:4px solid var(--yellow); }
     .bar { max-width:1180px; margin:0 auto; padding:10px 16px; display:flex; gap:20px; align-items:center; flex-wrap:wrap; }
-    .bar .logo { display:flex; align-items:center; gap:10px; color:#fff; text-decoration:none; }
-    .bar .logo img { display:block; height:34px; width:34px; }
-    .bar .wordmark { font-weight:700; font-size:1.1rem; letter-spacing:.01em; }
+    .bar .logo { display:flex; align-items:center; gap:10px; color:var(--ink); text-decoration:none; }
+    .bar .logo img { display:block; height:38px; width:38px; border-radius:8px; background:var(--logo-bg); }
+    .bar .wordmark { font-weight:700; font-size:1.1rem; letter-spacing:.01em; color:var(--ink); }
     .bar nav { display:flex; gap:20px; flex:1; flex-wrap:wrap; }
-    .bar a, .bar .who { color:#fff; text-decoration:none; font-weight:500; }
+    .bar a, .bar .who { color:var(--brand); text-decoration:none; font-weight:500; }
     .bar nav a:hover, .bar nav a[aria-current="page"] { text-decoration:underline; text-decoration-color:var(--yellow); text-underline-offset:8px; text-decoration-thickness:3px; }
     .bar .who { opacity:.9; font-size:.95rem; }
-    .bar button, .bar button.secondary { background:transparent; color:#fff; border:1px solid rgba(255,255,255,.85); }
-    .bar button:hover { background:rgba(255,255,255,.14); }
+    .bar button, .bar button.secondary { background:transparent; color:var(--brand); border:1px solid var(--brand); }
+    .bar button:hover { background:var(--surface-2); }
     main { max-width:1180px; margin:0 auto; padding:24px 16px 56px; }
     h1 { font-size:1.45rem; font-weight:600; text-transform:uppercase; letter-spacing:.03em; margin:0 0 16px; }
     h2 { font-size:1.15rem; font-weight:600; margin:26px 0 8px; }
@@ -58,7 +66,7 @@
     .checks { display:grid; gap:4px 18px; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); }
     .checks label { font-weight:400; margin:2px 0; }
     .login { max-width:420px; margin:28px auto; text-align:center; border-top:5px solid var(--yellow); }
-    .login img { width:92px; height:92px; }
+    .login img { width:92px; height:92px; border-radius:16px; background:var(--logo-bg); }
     .login form { text-align:left; }
     footer.site { max-width:1180px; margin:0 auto; padding:0 16px 32px; color:var(--muted); font-size:.9rem; }
     code, pre { font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:.92em; }

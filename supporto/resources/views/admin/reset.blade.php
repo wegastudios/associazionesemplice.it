@@ -2,7 +2,7 @@
 @section('title', 'Nuova password')
 @section('content')
     <div class="card login">
-        <img src="{{ route('brand', 'icon.svg') }}" alt="" width="92" height="92">
+        <img src="{{ route('brand', 'logo-512.png') }}" alt="" width="92" height="92">
         <h1>Nuova password</h1>
         <form method="post" action="{{ route('admin.password.reset.store') }}">
             @csrf
