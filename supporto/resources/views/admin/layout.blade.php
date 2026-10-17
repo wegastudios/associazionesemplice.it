@@ -27,6 +27,7 @@
                     <a href="{{ route('admin.hub.status') }}" @if (request()->routeIs('admin.hub.*')) aria-current="page" @endif>Hub</a>
                 @endif
                 <a href="{{ route('admin.mail.edit') }}" @if (request()->routeIs('admin.mail.*')) aria-current="page" @endif>Email</a>
+                <a href="{{ rtrim(config('support.sso.portal'), '/') }}/admin">Gestione licenze</a>
             </nav>
             <a class="who" href="{{ route('admin.password.edit') }}" @if (request()->routeIs('admin.password.*')) aria-current="page" @endif>{{ auth()->user()->email }}</a>
             <form method="post" action="{{ route('admin.logout') }}">@csrf <button class="secondary" type="submit">Esci</button></form>

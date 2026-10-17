@@ -47,6 +47,7 @@ class SsoController extends Controller
             'email' => $claims['sub'],
             'name' => $claims['name'],
             'plan_id' => $plan?->id,
+            'at' => time(),
         ]);
 
         return redirect()->route('ticket.mine');

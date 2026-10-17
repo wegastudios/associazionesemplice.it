@@ -3,6 +3,7 @@
 use App\Exceptions\SupportException;
 use App\Http\Middleware\CorrelationId;
 use App\Http\Middleware\EnsureAdmin;
+use App\Http\Middleware\ExpireCustomerSession;
 use App\Http\Middleware\SiteAuthenticate;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -20,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->api(prepend: [CorrelationId::class]);
+        $middleware->web(append: [ExpireCustomerSession::class]);
         $middleware->alias([
             'admin' => EnsureAdmin::class,
             'site.auth' => SiteAuthenticate::class,
