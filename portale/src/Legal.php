@@ -85,18 +85,19 @@ Il titolare del trattamento è {titolare} {indirizzo} {piva}. Per qualsiasi rich
 ## Quali dati trattiamo
 - Indirizzo email e dominio del sito che indichi quando chiedi una licenza o acquisti un piano.
 - Chiave di licenza, piano, scadenza e stato dei pagamenti.
+- Se ci scrivi dal sito di supporto: nome, indirizzo email, oggetto e testo della richiesta, eventuali allegati, le risposte che ti inviamo e il momento in cui hai accettato questa informativa.
 - Dati tecnici di navigazione necessari al funzionamento del sito (cookie tecnici).
 
 I dati della carta di credito non passano da noi: i pagamenti sono gestiti da Stripe e da PayPal.
 
 ## Perché e su quale base
-Trattiamo i dati per fornirti la licenza, gestire il tuo abbonamento, inviarti le comunicazioni legate al servizio (accesso, rinnovi, scadenze) e adempiere agli obblighi di legge e fiscali. La base giuridica è l'esecuzione del contratto e il rispetto di obblighi di legge.
+Trattiamo i dati per fornirti la licenza, gestire il tuo abbonamento, inviarti le comunicazioni legate al servizio (accesso, rinnovi, scadenze), rispondere alle richieste inviate al supporto clienti e adempiere agli obblighi di legge e fiscali. La base giuridica è l'esecuzione del contratto e il rispetto di obblighi di legge.
 
 ## A chi li comunichiamo
-Solo a fornitori che ci permettono di erogare il servizio: Stripe e PayPal per i pagamenti, il servizio di gestione delle licenze di Wega Studios, il fornitore di hosting e di posta. Non vendiamo i tuoi dati.
+Solo a fornitori che ci permettono di erogare il servizio: Stripe e PayPal per i pagamenti, il servizio di gestione delle licenze e il sistema centrale di assistenza di Wega Studios (che registra le richieste di supporto e assegna loro il numero), il fornitore di hosting e di posta. Non vendiamo i tuoi dati.
 
 ## Per quanto tempo li conserviamo
-Per tutta la durata del rapporto e, dopo, per il tempo richiesto dalla legge per le scritture contabili e fiscali (di norma 10 anni). I dati di accesso inutilizzati si cancellano su richiesta.
+Le richieste di supporto e le relative risposte si conservano per la durata del rapporto e per il tempo necessario a gestire eventuali ulteriori richieste; si cancellano su richiesta. Gli altri dati si conservano per tutta la durata del rapporto e, dopo, per il tempo richiesto dalla legge per le scritture contabili e fiscali (di norma 10 anni). I dati di accesso inutilizzati si cancellano su richiesta.
 
 ## I tuoi diritti
 Puoi chiedere accesso, rettifica, cancellazione, limitazione, portabilità e opporti al trattamento scrivendo a {email}. Hai anche il diritto di proporre reclamo al Garante per la protezione dei dati personali (garanteprivacy.it).
