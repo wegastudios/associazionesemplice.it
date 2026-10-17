@@ -39,6 +39,12 @@ return [
         'version' => env('SUPPORT_PRIVACY_VERSION', '1'),
     ],
 
+    // Accesso unico dal portale (stesso segreto in config.php del portale, almeno 32 caratteri): senza segreto l'accesso unico e spento
+    'sso' => [
+        'secret' => env('SUPPORT_SSO_SECRET'),
+        'portal' => rtrim((string) env('SUPPORT_SSO_PORTAL', 'https://associazionesemplice.it'), '/'),
+    ],
+
     // Validita del link inviato al cliente per seguire il ticket
     'customer_link_days' => (int) env('SUPPORT_CUSTOMER_LINK_DAYS', 60),
 ];

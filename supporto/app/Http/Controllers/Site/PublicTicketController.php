@@ -26,6 +26,7 @@ class PublicTicketController extends Controller
             'topics' => Topic::query()->where('is_public', true)->orderBy('sort')->orderBy('name')->get(),
             'plans' => Plan::query()->where('is_active', true)->orderBy('sort')->orderBy('name')->get(),
             'related' => $request->query('rif'),
+            'customer' => $request->session()->get('customer'),
         ]);
     }
 
@@ -58,6 +59,17 @@ class PublicTicketController extends Controller
             'privacy_accepted.accepted' => 'Per inviare la richiesta devi accettare l\'informativa sulla privacy e il trattamento dei dati.',
         ]);
         unset($data['privacy_accepted']);
+
+        // Con l'accesso unico nome, email e piano vengono dal portale e non dal modulo (non modificabili)
+        if (is_array($customer = $request->session()->get('customer'))) {
+            $data['customer_email'] = $customer['email'];
+            if ($customer['name'] !== null) {
+                $data['customer_name'] = $customer['name'];
+            }
+            if ($customer['plan_id'] !== null) {
+                $data['plan_id'] = $customer['plan_id'];
+            }
+        }
 
         $ticket = $tickets->open([
             ...$data,

@@ -15,6 +15,12 @@
         <nav aria-label="Navigazione principale">
             <a href="{{ route('help.index') }}" @if (request()->routeIs('help.*')) aria-current="page" @endif>Centro assistenza</a>
             <a href="{{ route('ticket.create') }}" @if (request()->routeIs('ticket.create')) aria-current="page" @endif>Apri una richiesta</a>
+            @if (session('customer'))
+                <a href="{{ route('ticket.mine') }}" @if (request()->routeIs('ticket.mine')) aria-current="page" @endif>I miei ticket</a>
+                <form method="post" action="{{ route('sso.logout') }}" style="margin-left:auto">@csrf<button type="submit" class="secondary">Esci</button></form>
+            @else
+                <a href="{{ rtrim(config('support.sso.portal'), '/') }}/supporto/accedi" style="margin-left:auto">Accedi</a>
+            @endif
         </nav>
     </div>
 </header>

@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\Site\TicketController as AdminTicketController;
 use App\Http\Controllers\Admin\Site\TopicController;
 use App\Http\Controllers\Site\HelpCenterController;
 use App\Http\Controllers\Site\PublicTicketController;
+use App\Http\Controllers\Site\SsoController;
 use Illuminate\Support\Facades\Route;
 
 require __DIR__.'/admin-auth.php';
@@ -17,6 +18,11 @@ Route::get('/', [HelpCenterController::class, 'index'])->name('help.index');
 Route::get('/cerca', [HelpCenterController::class, 'search'])->name('help.search');
 Route::get('/argomenti/{topic:slug}', [HelpCenterController::class, 'topic'])->name('help.topic');
 Route::get('/articoli/{article}', [HelpCenterController::class, 'article'])->whereNumber('article')->name('help.article');
+
+// Accesso unico dal portale e area del cliente connesso
+Route::get('/sso', [SsoController::class, 'login'])->middleware('throttle:20,1')->name('sso.login');
+Route::post('/esci', [SsoController::class, 'logout'])->name('sso.logout');
+Route::get('/i-miei-ticket', [SsoController::class, 'mine'])->name('ticket.mine');
 
 // Ticket del cliente: il modulo e pubblico, il seguito del ticket passa da un link firmato ricevuto per email
 Route::get('/ticket/nuovo', [PublicTicketController::class, 'create'])->name('ticket.create');
