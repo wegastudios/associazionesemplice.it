@@ -207,7 +207,7 @@ final class App {
 	private function download( string $path ): void {
 		$cid   = $this->customerId();
 		$parts = explode( '/', trim( substr( $path, 9 ), '/' ) );
-		if ( 2 !== count( $parts ) || ! isset( Releases::PRODUCTS[ $parts[0] ] ) || ! preg_match( '/^d+.d+.d+$/', $parts[1] ) ) {
+		if ( 2 !== count( $parts ) || ! isset( Releases::PRODUCTS[ $parts[0] ] ) || ! Releases::validVersion( $parts[1] ) ) {
 			throw new UserError( 'Questa versione non è disponibile.' );
 		}
 		$file = Releases::authorize( $this->db, $cid, ! empty( $_SESSION['admin'] ), $this->billing->forCustomer( $cid ), $parts[0], $parts[1] );

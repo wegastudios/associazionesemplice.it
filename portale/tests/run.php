@@ -779,5 +779,26 @@ list( $pp ) = explode( '.', Portale\SupportSso::token( 'pro@esempio.it', 'custom
 $pl2 = json_decode( base64_decode( strtr( $pp, '-_', '+/' ) ), true );
 check( 'sso: il token porta il piano e conserva gli altri claim', 'Pro' === $pl2['plan'] && 'customer' === $pl2['role'] && 'pro@esempio.it' === $pl2['sub'] && 1060 === $pl2['exp'] );
 
+// --- Versioni con due numeri (1.2) ---------------------------------------------------------------
+check( 'versioni: ammesse x.y.z e x.y, il resto no', Portale\Releases::validVersion( '1.1.14' ) && Portale\Releases::validVersion( '1.2' ) && ! Portale\Releases::validVersion( '1' ) && ! Portale\Releases::validVersion( '1.2.3.4' ) && ! Portale\Releases::validVersion( '../1.2' ) && ! Portale\Releases::validVersion( '1.2 ' ) );
+check( 'versioni: intestazione con due numeri', '1.2' === Portale\Releases::headerVersion( "<?php\n/**\n * Version:           1.2\n */" ) );
+if ( class_exists( 'ZipArchive' ) ) {
+	$vdb = new Db( new PDO( 'sqlite::memory:' ) );
+	$vdb->migrate();
+	Config::set( 'releases_dir', sys_get_temp_dir() . '/asem-rel-v-' . bin2hex( random_bytes( 4 ) ) );
+	foreach ( array( '1.1.20', '1.2', '1.1.9' ) as $vv ) {
+		$zf = tempnam( sys_get_temp_dir(), 'z' );
+		$zz = new ZipArchive();
+		$zz->open( $zf, ZipArchive::OVERWRITE );
+		$zz->addFromString( 'associazionesemplice/associazionesemplice.php', "<?php\n/**\n * Version:           $vv\n */\n" );
+		$zz->close();
+		Portale\Releases::add( $vdb, 'free', $zf, '', 'test' );
+	}
+	check( 'versioni: 1.1.20 viene prima di 1.2, che è l\'ultima', array( '1.2', '1.1.20', '1.1.9' ) === array_column( Portale\Releases::all( $vdb, 'free' ), 'version' ) );
+	$lp = json_decode( ( new Portale\LicenseProxy( $vdb, new WegaClient( 'https://license.test/api/v1', 't' ) ) )->latest( '4.4.4.4', 1700000000 )[1], true );
+	check( 'versioni: l\'avviso aggiornamenti propone 1.2', '1.2' === $lp['free']['version'] );
+	check( 'versioni: scarico della 1.2 autorizzato', is_file( Portale\Releases::authorize( $vdb, 'k', true, array(), 'free', '1.2' ) ) );
+}
+
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );
