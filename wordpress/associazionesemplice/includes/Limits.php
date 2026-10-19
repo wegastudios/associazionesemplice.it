@@ -92,6 +92,12 @@ final class Limits {
 			'Intervalli brevi appesantiscono inutilmente il portale e il tuo sito senza vantaggi: le versioni escono di rado.'
 		);
 
+		$add(
+			'donate_max_campaigns', 'comunicazioni', 'Raccolte di donazioni, al massimo', 'raccolte', 20, 1, 100,
+			'Quante raccolte di donazioni (ciascuna con il suo shortcode) si possono creare.',
+			'Troppe raccolte rendono difficile ritrovare quella giusta e appesantiscono l\'elenco; non c\'è altro rischio.',
+			'Se ne hai già più del limite restano tutte, ma non puoi crearne altre finché non ne elimini.'
+		);
 		// ---------- Accessi e sicurezza ----------
 		$add(
 			'first_access_per_ip', 'accesso', 'Richieste di «Primo accesso» per connessione, in un\'ora', 'richieste', 10, 1, 1000,
