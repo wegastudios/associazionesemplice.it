@@ -7,6 +7,8 @@
 			<input type="hidden" name="csrf" value="<?php echo e( Portale\App::csrf() ); ?>">
 			<label for="email">La tua email</label>
 			<input id="email" type="email" name="email" placeholder="segreteria@miaassociazione.it" autocomplete="email" required>
+			<label for="name">Il tuo nome <span class="muted">(facoltativo)</span></label>
+			<input id="name" type="text" name="name" autocomplete="name" maxlength="150" placeholder="Nome e cognome">
 			<label for="domain">Indirizzo del sito WordPress</label>
 			<input id="domain" type="text" name="domain" value="<?php echo e( \Portale\Domain::normalize( (string) ( $_GET['domain'] ?? '' ) ) ); ?>" placeholder="miaassociazione.it" autocapitalize="none" spellcheck="false" required>
 			<p class="hint">Basta il dominio, senza «https://». Lo potrai cambiare dall'area riservata.</p>

@@ -13,10 +13,19 @@ final class View {
 		require __DIR__ . '/../views/layout.php';
 	}
 
-	public static function headers( string $type ): void {
-		header( 'Content-Type: ' . $type );
+	/** Intestazioni di sicurezza comuni a pagine, API e scarichi (HSTS lo manda già il server web). */
+	public static function security(): void {
+		header( 'X-Content-Type-Options: nosniff' );
 		header( 'X-Frame-Options: DENY' );
 		header( 'Referrer-Policy: same-origin' );
+		header( 'Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()' );
+		// Niente plugin, niente <base> altrui, nessuna incorniciatura; gli script di monitoraggio configurati dal pannello restano ammessi.
+		header( "Content-Security-Policy: object-src 'none'; base-uri 'self'; frame-ancestors 'none'" );
+	}
+
+	public static function headers( string $type ): void {
+		header( 'Content-Type: ' . $type );
+		self::security();
 		if ( ! Config::get( 'indexable', false ) ) {
 			header( 'X-Robots-Tag: noindex, nofollow, noarchive, nosnippet' );
 		}

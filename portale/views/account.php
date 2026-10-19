@@ -1,4 +1,4 @@
-<?php /** @var array $subs @var string $email @var array $trial @var int $trial_days @var string $trial_label @var Portale\Billing $billing @var bool $is_admin @var array $releases @var bool $has_password @var bool $via_link @var string $flash */
+<?php /** @var array $subs @var string $email @var array $trial @var int $trial_days @var string $trial_label @var Portale\Billing $billing @var bool $is_admin @var array $releases @var string $name @var bool $has_password @var bool $via_link @var string $flash */
 $csrf = Portale\App::csrf();
 ?>
 <section class="page"><div class="wrap" style="max-width:860px">
@@ -11,6 +11,15 @@ $csrf = Portale\App::csrf();
 		</div>
 	</div>
 	<?php if ( ! empty( $flash ) ) : ?><div class="flash" role="status"><?php echo e( $flash ); ?></div><?php endif; ?>
+	<div class="sub">
+		<div class="sub-top"><h2>Il tuo nome</h2></div>
+		<form method="post" action="/account/nome" class="domain-form" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+			<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>">
+			<div style="flex:1;min-width:220px"><label for="acc-name" style="margin-top:0">Nome e cognome</label><input id="acc-name" type="text" name="name" value="<?php echo e( $name ?? '' ); ?>" maxlength="150" autocomplete="name" placeholder="Come vuoi essere chiamato"></div>
+			<button class="btn alt" type="submit">Salva</button>
+		</form>
+		<p class="hint">Lo useremo nelle richieste di supporto, che si aprono già con il tuo nome e la tua email.</p>
+	</div>
 	<div class="sub">
 		<div class="sub-top"><h2>Password</h2><?php if ( $has_password ) : ?><span class="badge">Impostata</span><?php else : ?><span class="badge warn">Da impostare</span><?php endif; ?></div>
 		<?php if ( ! $has_password ) : ?><p class="muted small" style="margin:0 0 6px">Scegli una password per entrare con email e password, senza aspettare il link.</p><?php endif; ?>

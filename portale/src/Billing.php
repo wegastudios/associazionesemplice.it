@@ -82,13 +82,27 @@ final class Billing {
 		return $out;
 	}
 
+	/** Nome del cliente (per precompilare il supporto): spazi ripuliti, niente caratteri di controllo, al massimo 150 caratteri. */
+	public static function cleanName( string $name ): string {
+		$name = (string) preg_replace( '/[\x00-\x1f\x7f]+/u', ' ', $name );
+		return mb_substr( trim( (string) preg_replace( '/\s+/u', ' ', $name ) ), 0, 150 );
+	}
+
+	public function setName( string $customerId, string $name ): void {
+		$this->db->run( 'UPDATE customers SET name = ? WHERE id = ?', array( '' === self::cleanName( $name ) ? null : self::cleanName( $name ), $customerId ) );
+	}
+
 	// --- Creazione ----------------------------------------------------------------------------------------------
 
 	/** Un dominio può avere un solo abbonamento attivo o in attesa, e di un solo cliente (la chiave della licenza è riservata). */
-	private function assertDomainFree( string $domain, string $customerId, ?string $exceptId = null ): void {
-		$row = $this->db->one(
-			"SELECT id FROM subscriptions WHERE domain = ? AND customer_id <> ? AND status IN ('pending','active','past_due') AND id <> ?",
-			array( $domain, $customerId, (string) $exceptId )
+	private function assertDomainFree( string $domain, string $customerId, ?string $exceptId = null, bool $paid = false ): void {
+		// Una richiesta mai completata (in attesa) tiene il dominio solo per «pending_hold_hours»: altrimenti chiunque potrebbe prenotare
+		// per sempre il dominio di un altro. Chi paga non è bloccato da una licenza gratuita o di prova altrui (non prova la proprietà del dominio).
+		$hold = gmdate( 'Y-m-d H:i:s', time() - Settings::limit( 'pending_hold_hours' ) * 3600 );
+		$row  = $this->db->one(
+			"SELECT id FROM subscriptions WHERE domain = ? AND customer_id <> ? AND id <> ? AND ( status IN ('active','past_due') OR ( status = 'pending' AND created_at >= ? ) )"
+			. ( $paid ? " AND provider NOT IN ('free','trial')" : '' ),
+			array( $domain, $customerId, (string) $exceptId, $hold )
 		);
 		if ( $row ) {
 			throw new UserError( 'Questo dominio risulta già registrato da un altro indirizzo email.' );
@@ -107,19 +121,23 @@ final class Billing {
 		return $sub;
 	}
 
-	private function create( string $email, string $domainInput, string $plan, string $period, string $provider, string $mode ): array {
+	private function create( string $email, string $domainInput, string $plan, string $period, string $provider, string $mode, ?string $name = null ): array {
 		$domain = Domain::forLicense( $domainInput );
 		if ( '' === $domain ) {
 			throw new UserError( 'Dominio non valido: scrivi per esempio «miaassociazione.it», senza http:// e senza indirizzi IP.' );
 		}
 		$cust = $this->customer( $email );
-		$this->assertDomainFree( $domain, $cust['id'] );
+		// Il nome dai moduli pubblici vale solo per un cliente nuovo (senza licenze né nome): su un indirizzo già usato lo cambia soltanto chi è entrato in /account.
+		if ( null !== $name && '' !== trim( $name ) && empty( $cust['name'] ) && ! $this->db->one( 'SELECT 1 AS x FROM subscriptions WHERE customer_id = ?', array( $cust['id'] ) ) ) {
+			$this->setName( $cust['id'], $name );
+		}
+		$this->assertDomainFree( $domain, $cust['id'], null, ! in_array( $provider, array( 'free', 'trial' ), true ) );
 		return array( 'customer' => $cust, 'sub' => $this->insertSub( $cust['id'], $plan, $period, $provider, $domain, $mode ) );
 	}
 
 	/** Licenza gratuita: si attiva solo dopo la conferma dell'email (link). @return array [customer, sub] */
-	public function startFree( string $email, string $domain ): array {
-		$r = $this->create( $email, $domain, 'free', 'free', 'free', 'once' );
+	public function startFree( string $email, string $domain, ?string $name = null ): array {
+		$r = $this->create( $email, $domain, 'free', 'free', 'free', 'once', $name );
 		return array( $r['customer'], $r['sub'] );
 	}
 
@@ -129,12 +147,12 @@ final class Billing {
 	 * @param string $mode `recurring` (rinnovo automatico) oppure `once` (pagamento singolo, nessun rinnovo)
 	 * @return string indirizzo a cui mandare il cliente per pagare
 	 */
-	public function startPaid( string $email, string $domain, string $plan, string $period, string $provider, string $mode = 'recurring' ): string {
+	public function startPaid( string $email, string $domain, string $plan, string $period, string $provider, string $mode = 'recurring', ?string $name = null ): string {
 		$price = Config::price( $plan, $period );
 		if ( 'free' === $plan || ! $price || ! in_array( array( $provider, $mode ), $this->methods( $price ), true ) ) {
 			throw new UserError( 'Questo metodo di pagamento non è disponibile per il piano scelto.' );
 		}
-		$r = $this->create( $email, $domain, $plan, $period, $provider, $mode );
+		$r = $this->create( $email, $domain, $plan, $period, $provider, $mode, $name );
 		return $this->checkoutUrl( $r['sub'], $r['customer']['email'], $price, $provider, $mode );
 	}
 
@@ -348,7 +366,7 @@ final class Billing {
 		if ( $domain === $sub['domain'] ) {
 			return;
 		}
-		$this->assertDomainFree( $domain, $customerId, $subId );
+		$this->assertDomainFree( $domain, $customerId, $subId, ! in_array( $sub['provider'], array( 'free', 'trial' ), true ) );
 		try {
 			$this->wega->changeDomain( (string) $sub['license_id'], Secrets::open( $sub['license_key_enc'] ), $domain );
 		} catch ( WegaException $e ) {

@@ -23,9 +23,12 @@ final class PluginUpdates {
 			return self::error( 429, 'RATE_LIMITED', 'Troppe richieste: riprova più tardi.', array( 'Retry-After: 3600' ) );
 		}
 		$cur = isset( $in['version'] ) && is_string( $in['version'] ) && Releases::validVersion( $in['version'] ) ? $in['version'] : '';
-		$all = Releases::all( $db, $p );
+		// Si offrono solo versioni firmate: il plugin controlla impronta e firma prima di installare.
+		$all = array_values( array_filter( Releases::all( $db, $p ), function ( $r ) {
+			return ! empty( $r['signature'] ) && ! empty( $r['kid'] );
+		} ) );
 		if ( ! $all ) {
-			return self::error( 404, 'NO_RELEASE', 'Nessuna versione pubblicata.' );
+			return self::error( 404, 'NO_RELEASE', 'Nessuna versione firmata pubblicata.' );
 		}
 		if ( 'pro' === $p ) {
 			$key = isset( $in['license_key'] ) && is_string( $in['license_key'] ) ? $in['license_key'] : '';
@@ -44,6 +47,7 @@ final class PluginUpdates {
 		$out    = array(
 			'product' => $p, 'version' => $latest, 'update' => $newer,
 			'package' => $newer ? self::packageUrl( $p, $latest, $now ) : null,
+			'sha256'  => $newer ? $all[0]['sha256'] : null, 'signature' => $newer ? $all[0]['signature'] : null, 'kid' => $newer ? $all[0]['kid'] : null,
 			'url'     => rtrim( (string) Config::get( 'base_url', 'https://associazionesemplice.it' ), '/' ) . '/accedi',
 		);
 		return array( 200, (string) json_encode( $out, JSON_UNESCAPED_SLASHES ), array( 'Cache-Control: no-store' ) );

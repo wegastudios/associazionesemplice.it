@@ -136,4 +136,22 @@ final class LicenseClientTest extends TestCase {
 		list( , $foreign )  = $this->make( $this->claims() ); // un'altra coppia di chiavi con lo stesso kid
 		$this->assertNull( C::verify_attestation( $jwt, $foreign, C::ISSUER, 'associazionesemplice', 'esempio.it', 1800000000 ) );
 	}
+
+	public function test_expired_attestation_is_accepted_only_within_the_leeway(): void {
+		list( $jwt, $jwks ) = $this->make( $this->claims( array( 'exp' => 1800000000 ) ) );
+		$this->assertNull( C::verify_attestation( $jwt, $jwks, C::ISSUER, 'associazionesemplice', 'esempio.it', 1800000100 ) );
+		$this->assertIsArray( C::verify_attestation( $jwt, $jwks, C::ISSUER, 'associazionesemplice', 'esempio.it', 1800000100, 200 ) );
+		$this->assertNull( C::verify_attestation( $jwt, $jwks, C::ISSUER, 'associazionesemplice', 'esempio.it', 1800000300, 200 ) );
+	}
+
+	public function test_signing_keys_are_pinned_in_the_plugin(): void {
+		$doc = C::jwks();
+		$this->assertNotEmpty( $doc['keys'] );
+		foreach ( $doc['keys'] as $k ) {
+			$this->assertSame( 'OKP', $k['kty'] );
+			$this->assertSame( 'Ed25519', $k['crv'] );
+			$this->assertSame( 32, strlen( base64_decode( strtr( $k['x'], '-_', '+/' ) . '=' ) ), 'chiave Ed25519 da 32 byte' );
+		}
+		$this->assertArrayHasKey( 'k20261015-4304ed', C::PINNED_KEYS );
+	}
 }
