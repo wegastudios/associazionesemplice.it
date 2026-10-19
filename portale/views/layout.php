@@ -11,7 +11,7 @@ $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 <title>Associazione Semplice · Il gestionale per le associazioni</title>
 <meta name="description" content="Soci, eventi, prima nota e privacy per la tua associazione. Plugin WordPress gratuito, con piani Pro per pagamenti online e contabilità.">
 <?php if ( $robots ) : ?><meta name="robots" content="noindex, nofollow"><?php endif; ?>
-<meta name="theme-color" content="#21248b">
+<meta name="theme-color" content="#1f218c">
 <link rel="icon" type="image/png" href="/assets/favicon.png?v=<?php echo e( $v ); ?>"><link rel="apple-touch-icon" href="/assets/logo.png?v=<?php echo e( $v ); ?>">
 <link rel="stylesheet" href="/assets/portale.css?v=<?php echo e( $v ); ?>">
 <?php echo \Portale\Tracking::slot( 'head' ); ?></head>

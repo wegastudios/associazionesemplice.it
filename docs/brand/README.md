@@ -1,14 +1,18 @@
 # Marchio Associazione Semplice
 
-Logo: `associazionesemplice_logo.jpeg` (originale). Versioni web con sfondo trasparente: `portale/public/assets/logo.png` (256), `logo-512.png`, `favicon.png` (64).
+Fonte ufficiale: **Guida al logo** (`guida-al-logo-1.png`, `guida-al-logo-2.png`; PDF originale «Guida-allo-stile_Associazione-Semplice»).
 
-Colori (letti dal logo):
+Colori ufficiali:
 
-| Nome | Esadecimale | Uso |
-|---|---|---|
-| Indaco | `#21248B` | colore principale: pulsanti, link, intestazioni di evidenza (`--brand`); tema scuro `#A6A9FF` |
-| Indaco scuro | `#171A6B` | passaggio del mouse (`--brand-2`) |
-| Verde salvia | `#5F8578` | colore secondario: dettagli, stati positivi, riquadri (`--sage`) |
-| Oro | `#EFCB5D` | accento: segnalazioni, evidenziazioni (`--accent`) |
+| Nome | Esadecimale | RGB | Uso |
+|---|---|---|---|
+| Indaco | `#1F218C` | 31 · 33 · 140 | principale: pulsanti, link, titoli (`--brand`); tema scuro `#A6A9FF` |
+| Verde salvia | `#5F8579` | 95 · 133 · 121 | secondario (`--sage`); tema scuro `#86AB9D` |
+| Giallo | `#EFCA5C` | 239 · 202 · 92 | accento (`--accent`) |
+| Sfumatura nastri | `#1F218C` → `#475F7F` | | solo nel simbolo |
 
-Sfondi chiari tendenti al salvia (`#F6F8F6`), testo `#14172E`. Le variabili sono in `portale/public/assets/portale.css`; il sito di supporto usa gli stessi valori.
+Carattere: **Montserrat** (licenza OFL, uso commerciale libero): «Associazione» Medium, «Semplice» Bold; per testi e materiali Medium / SemiBold / Bold.
+
+Versioni del logo: orizzontale a colori, verticale (formati quadrati o alti), monocromatico (nero o bianco), negativo (su fondi indaco o scuri: nastri e scritte bianchi, punti gialli), icona app (1024 px, senza angoli) e favicon. Area di rispetto: almeno il diametro di due punti gialli. Minimi: logo orizzontale 30 mm in stampa / 140 px a schermo; solo simbolo 8 mm / 24 px. Da non fare: deformare o ruotare, cambiare i colori o aggiungere effetti, riscrivere il nome con un altro carattere, usare la versione a colori su fondi che riducono il contrasto.
+
+File usati dai siti: `portale/public/assets/logo.png`, `logo-512.png`, `favicon.png` (ricavati dal logo provvisorio: da sostituire con i file ufficiali della cartella «loghi e brand» quando ci sono SVG, PNG trasparenti e icone).
