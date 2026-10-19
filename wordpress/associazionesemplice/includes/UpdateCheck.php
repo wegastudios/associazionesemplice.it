@@ -96,7 +96,10 @@ final class UpdateCheck {
 		}
 		$l   = self::latest();
 		$out = array();
-		$set = array( 'free' => array( 'Associazione Semplice', defined( 'ASEM_VERSION' ) ? (string) ASEM_VERSION : '' ) );
+		$set = array();
+		if ( class_exists( __NAMESPACE__ . '\Updater' ) && defined( 'ASEM_VERSION' ) ) { // nel pacchetto di WordPress.org gli aggiornamenti del gratuito li dà WordPress
+			$set['free'] = array( 'Associazione Semplice', (string) ASEM_VERSION );
+		}
 		if ( Edition::pro_present() && defined( 'ASEM_PRO_VERSION' ) ) {
 			$set['pro'] = array( 'Associazione Semplice Pro', (string) ASEM_PRO_VERSION );
 		}
