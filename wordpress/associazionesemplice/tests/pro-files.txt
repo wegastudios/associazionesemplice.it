@@ -41,3 +41,8 @@ Terms.php
 Languages.php
 Admin/TextsPage.php
 languages/en.json
+Resources.php
+ResourceRules.php
+Admin/ResourcesPage.php
+Admin/ResourcesActions.php
+Frontend/ResourcesFront.php

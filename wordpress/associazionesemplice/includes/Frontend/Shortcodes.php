@@ -32,6 +32,7 @@ final class Shortcodes {
 		'ospiti'          => 'I miei ospiti',
 		'profilo'         => 'Il mio profilo',
 		'area_volontari'  => 'Area volontari (le attività di cui sei referente)',
+		'risorse'         => 'Risorse prenotabili: campi, sale, posti (soci)',
 		'calendario'      => 'Calendario di corsi ed eventi (soci)',
 		'attivita'        => 'Elenco attività ed eventi (pubblico)',
 		'prossimi_eventi' => 'Prossimi eventi (pubblico)',
@@ -44,7 +45,7 @@ final class Shortcodes {
 	);
 
 	/** Vista => funzione avanzata che la rende utile: senza la funzione non si propone nei blocchi, nei widget e nell'elenco. */
-	const NEEDS = array( 'ricevute' => 'receipts', 'app' => 'pwa', 'cinquepermille' => 'fivepm' );
+	const NEEDS = array( 'ricevute' => 'receipts', 'app' => 'pwa', 'cinquepermille' => 'fivepm', 'risorse' => 'resources' );
 
 	public static function available( string $view ): bool {
 		return ! isset( self::NEEDS[ $view ] ) || \AssociazioneSemplice\Edition::has( self::NEEDS[ $view ] );
@@ -68,6 +69,8 @@ final class Shortcodes {
 				return Views::area( shortcode_atts( array( 'sezioni' => '' ), $atts ) );
 			case 'tessera':
 				return Views::card();
+			case 'risorse':
+				return Views::resources();
 			case 'calendario':
 				return Views::calendar();
 			case 'avvisi':

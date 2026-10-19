@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '37';
+	const DB_VERSION        = '38';
 
 	public static function activate(): void {
 		Legacy::run(); // installazione con il vecchio nome (APSemplice): i dati passano al nuovo
@@ -381,6 +381,7 @@ final class Install {
   person_id bigint(20) unsigned DEFAULT NULL,
   description varchar(255) NOT NULL DEFAULT '',
   session_id bigint(20) unsigned DEFAULT NULL,
+  reservation_id bigint(20) unsigned DEFAULT NULL,
   competence_month char(7) DEFAULT NULL,
   social_year varchar(12) DEFAULT NULL,
   document_ref varchar(80) DEFAULT NULL,
@@ -403,7 +404,8 @@ final class Install {
   KEY receipt_id (receipt_id),
   KEY import_batch (import_batch),
   KEY transfer_id (transfer_id),
-  KEY session_id (session_id)
+  KEY session_id (session_id),
+  KEY reservation_id (reservation_id)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}cash_counts (
@@ -451,6 +453,60 @@ final class Install {
   PRIMARY KEY  (id),
   UNIQUE KEY session_person (session_id,person_id),
   KEY person_id (person_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}resources (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  name varchar(160) NOT NULL,
+  category varchar(12) NOT NULL DEFAULT 'other',
+  mode varchar(8) NOT NULL DEFAULT 'slot',
+  parent_id bigint(20) unsigned DEFAULT NULL,
+  description text,
+  rules text,
+  open_time char(5) DEFAULT NULL,
+  close_time char(5) DEFAULT NULL,
+  slot_minutes smallint(5) unsigned NOT NULL DEFAULT 60,
+  min_slots smallint(5) unsigned NOT NULL DEFAULT 1,
+  max_slots smallint(5) unsigned NOT NULL DEFAULT 1,
+  advance_days smallint(5) unsigned NOT NULL DEFAULT 0,
+  max_per_person smallint(5) unsigned NOT NULL DEFAULT 0,
+  fee_cents bigint(20) NOT NULL DEFAULT 0,
+  guests_max smallint(5) unsigned NOT NULL DEFAULT 0,
+  guest_fee_cents bigint(20) NOT NULL DEFAULT 0,
+  cancellable tinyint(1) NOT NULL DEFAULT 0,
+  cancel_policy varchar(4) DEFAULT NULL,
+  active tinyint(1) NOT NULL DEFAULT 1,
+  created_at datetime NOT NULL,
+  deleted_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}reservations (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  resource_id bigint(20) unsigned NOT NULL,
+  person_id bigint(20) unsigned DEFAULT NULL,
+  kind varchar(8) NOT NULL DEFAULT 'slot',
+  starts_at datetime NOT NULL,
+  ends_at datetime DEFAULT NULL,
+  status varchar(12) NOT NULL DEFAULT 'booked',
+  fee_due_cents bigint(20) NOT NULL DEFAULT 0,
+  note varchar(255) DEFAULT NULL,
+  series_id bigint(20) unsigned DEFAULT NULL,
+  session_id bigint(20) unsigned DEFAULT NULL,
+  created_by bigint(20) unsigned DEFAULT NULL,
+  created_at datetime NOT NULL,
+  cancelled_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY resource_time (resource_id,starts_at),
+  KEY person_id (person_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}reservation_guests (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  reservation_id bigint(20) unsigned NOT NULL,
+  name varchar(120) NOT NULL,
+  PRIMARY KEY  (id),
+  KEY reservation_id (reservation_id)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}activity_staff (

@@ -343,7 +343,7 @@ class LedgerService {
 				if ( null !== $vat_rate && Fiscal::EXCLUDED === (string) ( $l['vat_mode'] ?? '' ) ) {
 					$cents = Fiscal::gross_from_input( $cents, $vat_rate, Fiscal::EXCLUDED ); // importo scritto IVA esclusa: si incassa con l'IVA
 				}
-				$prepared[] = array( 'vat_rate' => $vat_rate, 'cat' => $cat, 'cents' => $cents, 'discount' => $discount, 'activity_id' => $activity_id, 'session_id' => $session_id, 'social_year' => $social_year, 'free_year' => $free_year, 'person' => $person, 'line' => $l );
+				$prepared[] = array( 'vat_rate' => $vat_rate, 'cat' => $cat, 'cents' => $cents, 'discount' => $discount, 'activity_id' => $activity_id, 'session_id' => $session_id, 'reservation_id' => ! empty( $l['reservation_id'] ) ? (int) $l['reservation_id'] : null, 'social_year' => $social_year, 'free_year' => $free_year, 'person' => $person, 'line' => $l );
 		}
 
 		$receipt_id = wp_generate_uuid4();
@@ -360,6 +360,7 @@ class LedgerService {
 							'category_id'      => (int) $p['cat']['id'],
 							'activity_id'      => $p['activity_id'],
 							'session_id'       => $p['session_id'],
+							'reservation_id'   => $p['reservation_id'],
 							'person_id'        => $p['person'] ? (int) $p['person']['id'] : null,
 							'payer_person_id'  => $payer && $p['person'] && (int) $payer['id'] !== (int) $p['person']['id'] ? (int) $payer['id'] : null,
 							'description'      => mb_substr( (string) ( $p['line']['description'] ?? '' ) . ( $p['discount'] > 0 ? ' · sconto ' . Money::format( $p['discount'] ) . ( '' !== trim( (string) ( $p['line']['discount_note'] ?? '' ) ) ? ' (' . trim( (string) $p['line']['discount_note'] ) . ')' : '' ) : '' ), 0, 255 ),

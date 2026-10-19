@@ -28,6 +28,7 @@ final class Edition {
 		'wallet'     => 'Wallet.php',              // tessera in Apple e Google Wallet
 		'receipts'   => 'Receipts.php',            // ricevute PDF
 		'door_sales' => 'DoorSales.php',           // incasso sul posto
+		'resources'  => 'Resources.php',           // risorse prenotabili: campi, sale, posti auto, armadietti, posti barca
 		'texts'      => 'TextsEngine.php',         // personalizzazione dei testi, lingue, tipo di ente e termini
 	);
 
@@ -42,6 +43,7 @@ final class Edition {
 		'broadcasts' => array( 'asem-messages' ),
 		'pwa'        => array( 'asem-app' ),
 		'texts'      => array( 'asem-texts' ),
+		'resources'  => array( 'asem-resources', 'asem-resource' ),
 	);
 
 	/** @return string[] pagine di amministrazione delle funzioni che questa installazione non ha */

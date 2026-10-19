@@ -10,6 +10,9 @@ final class Front {
 		Shortcodes::register();
 		Restrict::register();
 		Actions::register();
+		if ( \AssociazioneSemplice\Edition::has( 'resources' ) ) {
+			ResourcesFront::register();
+		}
 		if ( \AssociazioneSemplice\Edition::installed( 'payments' ) ) {
 			PayReturn::register();
 		}

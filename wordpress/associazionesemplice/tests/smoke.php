@@ -5350,6 +5350,49 @@ $wpdb->delete( Db::t( 'notices' ), array( 'author_user_id' => $sx_uid ) );
 $wpdb->delete( Db::t( 'import_batches' ), array( 'source' => 'prova-anonimizzazione' ) );
 asem_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'insurance' ) . ' WHERE person_id = ' . $sx_p ) && '' === (string) $wpdb->get_var( 'SELECT email FROM ' . Db::t( 'broadcast_rcpt' ) . ' WHERE person_id = ' . $sx_p . ' LIMIT 1' ) && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'push_subs' ) . ' WHERE user_id = ' . $sx_uid ) && null === $people->get( $sx_c )['family_head_id'], 'privacy: l\'anonimizzazione toglie polizze, destinatari delle comunicazioni, dispositivi e legami familiari' );
 
+// ---------- Risorse prenotabili ----------
+wp_set_current_user( 1 );
+$rs_m1    = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Rita', 'last_name' => 'Risorsa' ) );
+$rs_m2    = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Remo', 'last_name' => 'Risorsa' ) );
+$people->set_membership( $rs_m1, $sy_label, true );
+$people->set_membership( $rs_m2, $sy_label, true );
+$rs_gst   = $people->create( array( 'type' => 'guest', 'first_name' => 'Gianni', 'last_name' => 'Ospite', 'host_person_id' => $rs_m1 ) );
+$rs_court = \AssociazioneSemplice\Resources::save( 0, array( 'name' => 'Campo 1', 'category' => 'court', 'mode' => 'slot', 'open_time' => '08:00', 'close_time' => '22:00', 'slot_minutes' => 60, 'min_slots' => 1, 'max_slots' => 2, 'fee_cents' => 1000, 'guests_max' => 1, 'guest_fee_cents' => 200, 'max_per_person' => 1, 'advance_days' => 30 ) );
+$rs_park  = \AssociazioneSemplice\Resources::save( 0, array( 'name' => 'Posto auto 7', 'category' => 'parking', 'mode' => 'assign', 'fee_cents' => 12000 ) );
+$rs_day   = gmdate( 'Y-m-d', strtotime( $today . ' +3 days' ) );
+$rs_b1    = \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m1, $rs_day, '18:00', 1, array( 'Ospite Uno' ) );
+$rs_r1    = \AssociazioneSemplice\Resources::reservation( $rs_b1 );
+asem_ok( 1200 === (int) $rs_r1['fee_due_cents'] && $rs_day . ' 18:00:00' === $rs_r1['starts_at'] && $rs_day . ' 19:00:00' === $rs_r1['ends_at'], 'risorse: la prenotazione ha il dovuto (fascia + ospite) e l\'orario giusto' );
+asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_m2, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m2, $rs_day, '18:00', 1 ); } ), 'risorse: una fascia già occupata non si prenota' );
+asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_m2, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m2, $rs_day, '17:00', 2 ); } ), 'risorse: nemmeno con una prenotazione di 2 fasce che la sfiora' );
+asem_ok( \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m2, $rs_day, '19:00', 1 ) > 0, 'risorse: la fascia subito dopo è libera' );
+asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_m1, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m1, $rs_day, '20:00', 1 ); } ), 'risorse: il limite di prenotazioni per socio vale per i soci' );
+asem_ok( \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m1, $rs_day, '20:00', 1, array(), true ) > 0, 'risorse: la segreteria può superare il limite' );
+asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_gst, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_gst, $rs_day, '10:00', 1, array(), true ); } ), 'risorse: un non socio non può avere una risorsa, nemmeno dalla segreteria' );
+asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_m2, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m2, $rs_day, '10:00', 1, array( 'A', 'B' ), true ); } ), 'risorse: gli ospiti oltre il massimo sono rifiutati' );
+$rs_a1 = \AssociazioneSemplice\Resources::assign( $rs_park, $rs_m1, $today, '' );
+asem_ok( $rs_a1 > 0 && null !== asem_throws( function () use ( $rs_park, $rs_m2, $today ) { \AssociazioneSemplice\Resources::assign( $rs_park, $rs_m2, $today, '' ); } ), 'risorse: un posto assegnato non si assegna a un altro' );
+asem_ok( null !== asem_throws( function () use ( $rs_park, $rs_m2, $rs_day, $today ) { \AssociazioneSemplice\Resources::book_slot( $rs_park, $rs_m2, $rs_day, '10:00', 1, array( 'Ospite' ), true ); } ), 'risorse: un posto auto non si prenota a fasce' );
+asem_ok( null !== asem_throws( function () use ( $rs_park, $rs_gst, $today ) { \AssociazioneSemplice\Resources::assign( $rs_park, $rs_gst, $today, '' ); } ), 'risorse: un posto auto non si dà a un non socio' );
+asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_day ) { \AssociazioneSemplice\Resources::block( $rs_court, $rs_day . ' 17:00:00', $rs_day . ' 19:00:00' ); } ), 'risorse: non si blocca un periodo con prenotazioni' );
+$rs_bl = \AssociazioneSemplice\Resources::block( $rs_court, $rs_day . ' 12:00:00', $rs_day . ' 14:00:00', 'Manutenzione' );
+asem_ok( null !== asem_throws( function () use ( $rs_court, $rs_m2, $rs_day ) { \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m2, $rs_day, '13:00', 1, array(), true ); } ), 'risorse: nel periodo bloccato non si prenota' );
+wp_set_current_user( 0 );
+asem_ok( null !== asem_throws( function () use ( $rs_b1, $rs_m1 ) { \AssociazioneSemplice\Resources::cancel( $rs_b1, false, $rs_m1 ); } ), 'risorse: una prenotazione a pagamento non cancellabile non la annulla il socio' );
+asem_ok( null !== asem_throws( function () use ( $rs_b1, $rs_m2 ) { \AssociazioneSemplice\Resources::cancel( $rs_b1, false, $rs_m2 ); } ), 'risorse: un socio non annulla la prenotazione di un altro' );
+wp_set_current_user( 1 );
+$rs_cash = Plugin::ledger()->accounts()[0];
+\AssociazioneSemplice\Resources::record_payment( $rs_b1, (int) $rs_cash['id'], 'cash', 500, $today );
+$rs_row = array_values( array_filter( \AssociazioneSemplice\Resources::for_person( $rs_m1 ), function ( $r ) use ( $rs_b1 ) { return (int) $r['id'] === $rs_b1; } ) )[0];
+asem_ok( 500 === (int) $rs_row['paid'] && 700 === (int) $rs_row['remaining'] && array( 'Ospite Uno' ) === $rs_row['guests'], 'risorse: l\'incasso si registra in prima nota e abbassa il residuo' );
+asem_render( array( Admin\ResourcesPage::class, 'render_list' ), 'Campo 1' );
+asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'Calendario del giorno', array( 'id' => $rs_court, 'd' => $rs_day ) );
+asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'Assegna a un socio', array( 'id' => $rs_park ) );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\ResourcesFront::section( $people->get( $rs_m1 ) ), 'Campo 1' ), 'risorse: il socio vede le risorse nella sua area' );
+\AssociazioneSemplice\Resources::cancel( $rs_b1, true );
+asem_ok( \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m2, $rs_day, '18:00', 1, array(), true ) > 0, 'risorse: annullata la prenotazione, la fascia torna libera' );
+asem_ok( false === \AssociazioneSemplice\Resources::delete( $rs_court ) && 0 === (int) \AssociazioneSemplice\Resources::get( $rs_court )['active'], 'risorse: con prenotazioni future la risorsa si disattiva e non si elimina' );
+
 // ---------- Copia di sicurezza e ripristino (in fondo: tocca tutte le tabelle) ----------
 
 wp_set_current_user( 1 );
