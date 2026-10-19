@@ -1,0 +1,206 @@
+<?php
+namespace AssociazioneSemplice\Frontend;
+
+use AssociazioneSemplice\Access;
+use AssociazioneSemplice\MemberType;
+use AssociazioneSemplice\Money;
+use AssociazioneSemplice\Plugin;
+use AssociazioneSemplice\Regulation;
+use AssociazioneSemplice\ResourceRules;
+use AssociazioneSemplice\Resources;
+
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * Risorse prenotabili nell'area dei soci: le mie prenotazioni e assegnazioni, la griglia del giorno per ogni risorsa a fasce, prenotazione e annullamento.
+ * Solo i soci con la tessera valida; gli ospiti sono nomi scritti sulla prenotazione, mai persone in anagrafe.
+ */
+final class ResourcesFront {
+
+	const ACTIONS = array(
+		'asem_front_res_book'   => 'do_book',
+		'asem_front_res_cancel' => 'do_cancel',
+	);
+
+	public static function register(): void {
+		foreach ( self::ACTIONS as $action => $method ) {
+			add_action(
+				'admin_post_' . $action,
+				function () use ( $action, $method ) {
+					check_admin_referer( $action );
+					$post = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification
+					$back = wp_validate_redirect( ! empty( $post['_back'] ) ? esc_url_raw( $post['_back'] ) : home_url( '/' ), home_url( '/' ) );
+					try {
+						$msg = self::$method( $post );
+						wp_safe_redirect( \AssociazioneSemplice\Flash::url( $back, 'asemf', $msg, '' ) );
+					} catch ( \InvalidArgumentException $e ) {
+						wp_safe_redirect( \AssociazioneSemplice\Flash::url( $back, 'asemf', '', $e->getMessage() ) );
+					} catch ( \Throwable $e ) {
+						wp_safe_redirect( \AssociazioneSemplice\Flash::url( $back, 'asemf', '', 'Operazione non riuscita. Riprova più tardi.' ) );
+					}
+					exit;
+				}
+			);
+			add_action(
+				'admin_post_nopriv_' . $action,
+				function () {
+					$post = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification
+					wp_safe_redirect( wp_login_url( wp_validate_redirect( ! empty( $post['_back'] ) ? esc_url_raw( $post['_back'] ) : home_url( '/' ), home_url( '/' ) ) ) );
+					exit;
+				}
+			);
+		}
+	}
+
+	/** Il socio collegato all'utente (non un ospite). @throws \InvalidArgumentException */
+	private static function actor(): array {
+		$p = Access::current_person();
+		if ( ! $p || ! MemberType::is_member( $p['type'] ) ) {
+			throw new \InvalidArgumentException( 'Serve un accesso come socio.' );
+		}
+		return $p;
+	}
+
+	public static function do_book( array $post ): string {
+		$actor = self::actor();
+		if ( Plugin::people()->profile_blocks( $actor ) ) {
+			throw new \InvalidArgumentException( 'Prima di prenotare completa i tuoi dati (indirizzo e codice fiscale) nel riquadro «Il mio profilo».' );
+		}
+		$block = Regulation::booking_block( $actor );
+		if ( '' !== $block ) {
+			throw new \InvalidArgumentException( $block ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$guests = isset( $post['guest'] ) && is_array( $post['guest'] ) ? array_map( 'strval', $post['guest'] ) : array();
+		Resources::book_slot( (int) ( $post['resource_id'] ?? 0 ), (int) $actor['id'], (string) ( $post['date'] ?? '' ), (string) ( $post['start'] ?? '' ), max( 1, (int) ( $post['slots'] ?? 1 ) ), $guests );
+		return 'Prenotazione registrata.';
+	}
+
+	public static function do_cancel( array $post ): string {
+		$actor = self::actor();
+		Resources::cancel( (int) ( $post['id'] ?? 0 ), false, (int) $actor['id'] );
+		return 'Prenotazione annullata.';
+	}
+
+	// ---------- Vista ----------
+
+	private static function form( string $action, string $fields, string $button, string $class = 'asemf-inline', bool $confirm = false ): string {
+		return '<form class="asemf-form ' . esc_attr( $class ) . '" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"' . ( $confirm ? ' onsubmit="return confirm(\'Confermi?\');"' : '' ) . '>'
+			. '<input type="hidden" name="action" value="' . esc_attr( $action ) . '"><input type="hidden" name="_back" value="' . esc_url( Restrict::current_url() ) . '">'
+			. wp_nonce_field( $action, '_wpnonce', false, false ) . $fields . '<button class="asemf-btn">' . esc_html( $button ) . '</button></form>';
+	}
+
+	private static function hidden( string $name, $value ): string {
+		return '<input type="hidden" name="' . esc_attr( $name ) . '" value="' . esc_attr( (string) $value ) . '">';
+	}
+
+	private static function fee_text( array $r ): string {
+		if ( (int) $r['fee_cents'] <= 0 ) {
+			return 'gratuita';
+		}
+		return esc_html( Money::format( (int) $r['fee_cents'] ) ) . ( ResourceRules::SLOT === $r['mode'] ? ' a fascia' : ' a periodo' );
+	}
+
+	private static function when( array $r ): string {
+		$a = (string) $r['starts_at'];
+		$b = $r['ends_at'] ? (string) $r['ends_at'] : null;
+		$d = function ( string $ymd ): string {
+			return ( new \DateTimeImmutable( $ymd ) )->format( 'd/m/Y' );
+		};
+		if ( ResourceRules::KIND_ASSIGN === $r['kind'] ) {
+			return 'dal ' . $d( substr( $a, 0, 10 ) ) . ( $b ? ' al ' . $d( gmdate( 'Y-m-d', strtotime( substr( $b, 0, 10 ) . ' -1 day' ) ) ) : '' );
+		}
+		return $d( substr( $a, 0, 10 ) ) . ' ' . substr( $a, 11, 5 ) . ( $b ? '–' . substr( $b, 11, 5 ) : '' );
+	}
+
+	public static function section( array $p ): string {
+		$pid    = (int) $p['id'];
+		$active = Plugin::people()->is_active_member( $pid );
+		$html   = '<section class="asemf-section"><h3>Risorse</h3>';
+
+		$mine = Resources::for_person( $pid );
+		if ( $mine ) {
+			$html .= '<h4>Le mie prenotazioni e assegnazioni</h4><ul class="asemf-list">';
+			foreach ( $mine as $r ) {
+				$can   = Resources::cancellation( $r );
+				$html .= '<li><div><strong>' . esc_html( $r['resource_name'] ) . '</strong> · ' . esc_html( self::when( $r ) )
+					. ( $r['guests'] ? '<div class="asemf-small">Ospiti: ' . esc_html( implode( ', ', $r['guests'] ) ) . '</div>' : '' ) . '</div><div>'
+					. ( (int) $r['fee_due_cents'] > 0 ? ( 'paid' === $r['state'] ? '<span class="asemf-badge asemf-badge-ok">pagata</span> ' : '<span class="asemf-badge">da pagare ' . esc_html( Money::format( (int) $r['remaining'] ) ) . '</span> ' ) : '' )
+					. ( $can['allowed'] ? self::form( 'asem_front_res_cancel', self::hidden( 'id', $r['id'] ), 'Annulla', 'asemf-inline', true ) : '<span class="asemf-small asemf-muted">' . esc_html( $can['message'] ) . '</span>' )
+					. '</div></li>';
+			}
+			$html .= '</ul>';
+		}
+
+		if ( ! $active ) {
+			return $html . '<div class="asemf-notice">Rinnova la tessera per prenotare le risorse.</div></section>';
+		}
+		$list = Resources::all();
+		if ( ! $list ) {
+			return $html . ( $mine ? '' : '<p class="asemf-muted">Nessuna risorsa prenotabile.</p>' ) . '</section>';
+		}
+		$sel_id  = isset( $_GET['asem_res'] ) ? (int) $_GET['asem_res'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
+		$sel_day = isset( $_GET['asem_day'] ) ? sanitize_text_field( wp_unslash( $_GET['asem_day'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+		$today   = current_time( 'Y-m-d' );
+		if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $sel_day ) || $sel_day < $today ) {
+			$sel_day = $today;
+		}
+		$html .= '<h4>Prenota</h4>';
+		foreach ( $list as $r ) {
+			$open  = (int) $r['id'] === $sel_id;
+			$html .= '<details class="asemf-card"' . ( $open ? ' open' : '' ) . '><summary><strong>' . esc_html( $r['name'] ) . '</strong> · ' . esc_html( ResourceRules::categories()[ $r['category'] ] ?? '' ) . ' · ' . self::fee_text( $r ) // phpcs:ignore WordPress.Security.EscapeOutput
+				. ( (int) $r['guests_max'] > 0 ? ' · ospiti fino a ' . (int) $r['guests_max'] : '' ) . '</summary>';
+			if ( '' !== trim( (string) $r['description'] ) ) {
+				$html .= '<p>' . esc_html( $r['description'] ) . '</p>';
+			}
+			if ( '' !== trim( (string) $r['rules'] ) ) {
+				$html .= '<p class="asemf-small asemf-muted">' . nl2br( esc_html( $r['rules'] ) ) . '</p>';
+			}
+			if ( ResourceRules::ASSIGN === $r['mode'] ) {
+				$html .= '<p class="asemf-muted">Questa risorsa viene assegnata dalla segreteria: scrivi per chiederla.</p></details>';
+				continue;
+			}
+			$html .= self::day( $r, $open ? $sel_day : $today, $today ) . '</details>';
+		}
+		return $html . '</section>';
+	}
+
+	private static function day( array $r, string $day, string $today ): string {
+		$rid  = (int) $r['id'];
+		$base = remove_query_arg( array( 'asem_res', 'asem_day' ), Restrict::current_url() );
+		$nav  = function ( string $d ) use ( $base, $rid ): string {
+			return esc_url( add_query_arg( array( 'asem_res' => $rid, 'asem_day' => $d ), $base ) );
+		};
+		$prev = gmdate( 'Y-m-d', strtotime( $day . ' -1 day' ) );
+		$next = gmdate( 'Y-m-d', strtotime( $day . ' +1 day' ) );
+		$days = (int) $r['advance_days'];
+		$html = '<p>' . ( $day > $today ? '<a class="asemf-btn" href="' . $nav( $prev ) . '">‹</a> ' : '' ) . '<strong>' . esc_html( ( new \DateTimeImmutable( $day ) )->format( 'd/m/Y' ) ) . '</strong> '
+			. ( 0 === $days || $next <= gmdate( 'Y-m-d', strtotime( $today . ' +' . $days . ' days' ) ) ? '<a class="asemf-btn" href="' . $nav( $next ) . '">›</a>' : '' ) . '</p>';
+		$now  = current_time( 'Y-m-d H:i:s' );
+		$html .= '<ul class="asemf-list">';
+		foreach ( Resources::day_grid( $r, $day ) as $s ) {
+			$html .= '<li><div>' . esc_html( $s['start'] . '–' . $s['end'] ) . '</div><div>';
+			if ( $s['reservation'] ) {
+				$html .= '<span class="asemf-small asemf-muted">occupata</span>';
+			} elseif ( $day . ' ' . $s['start'] . ':00' < $now ) {
+				$html .= '<span class="asemf-small asemf-muted">passata</span>';
+			} else {
+				$fields = self::hidden( 'resource_id', $rid ) . self::hidden( 'date', $day ) . self::hidden( 'start', $s['start'] );
+				if ( (int) $r['max_slots'] > 1 ) {
+					$opts = '';
+					for ( $n = max( 1, (int) $r['min_slots'] ); $n <= (int) $r['max_slots']; $n++ ) {
+						$opts .= '<option value="' . $n . '">' . $n . ' ' . ( 1 === $n ? 'fascia' : 'fasce' ) . '</option>';
+					}
+					$fields .= '<select name="slots">' . $opts . '</select> ';
+				} else {
+					$fields .= self::hidden( 'slots', max( 1, (int) $r['min_slots'] ) );
+				}
+				for ( $g = 1; $g <= (int) $r['guests_max']; $g++ ) {
+					$fields .= '<input type="text" name="guest[]" maxlength="120" placeholder="Ospite ' . $g . ' (nome e cognome)"> ';
+				}
+				$html .= self::form( 'asem_front_res_book', $fields, 'Prenota' );
+			}
+			$html .= '</div></li>';
+		}
+		return $html . '</ul>';
+	}
+}

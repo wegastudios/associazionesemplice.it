@@ -1034,7 +1034,7 @@ final class Views {
 	);
 
 	/** Sezioni della parte «Il mio spazio»: tutto ciò che riguarda il socio come persona. */
-	const MY_SECTIONS = array( 'regolamento', 'tessera', 'attivita', 'calendario', 'avvisi', 'pagamenti', 'ospiti', 'profilo', 'ricevute', 'app' );
+	const MY_SECTIONS = array( 'regolamento', 'tessera', 'attivita', 'risorse', 'calendario', 'avvisi', 'pagamenti', 'ospiti', 'profilo', 'ricevute', 'app' );
 
 	/** @return array<string,string> le parti che questa persona può usare (chiave => titolo), sempre con «Il mio spazio» per prima */
 	public static function panes_for( array $p ): array {
@@ -1087,7 +1087,7 @@ final class Views {
 		}
 		$html = self::section_complete( $p );
 		foreach ( self::MY_SECTIONS as $s ) {
-			$fn    = array( 'tessera' => 'section_card', 'attivita' => 'section_activities', 'calendario' => 'section_calendar', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests', 'profilo' => 'section_profile', 'regolamento' => 'section_rules', 'app' => 'section_app', 'ricevute' => 'section_receipts', 'avvisi' => 'section_notices' )[ $s ];
+			$fn    = array( 'tessera' => 'section_card', 'attivita' => 'section_activities', 'risorse' => 'section_resources', 'calendario' => 'section_calendar', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests', 'profilo' => 'section_profile', 'regolamento' => 'section_rules', 'app' => 'section_app', 'ricevute' => 'section_receipts', 'avvisi' => 'section_notices' )[ $s ];
 			$html .= self::$fn( $p );
 		}
 		return $html;
@@ -1122,7 +1122,7 @@ final class Views {
 		return self::with_person(
 			function ( $p ) use ( $sections ) {
 				$map  = array(
-					'tessera'    => 'section_card', 'attivita' => 'section_activities', 'calendario' => 'section_calendar', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests',
+					'tessera'    => 'section_card', 'attivita' => 'section_activities', 'risorse' => 'section_resources', 'calendario' => 'section_calendar', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests',
 					'profilo'    => 'section_profile', 'regolamento' => 'section_rules', 'app' => 'section_app', 'ricevute' => 'section_receipts', 'volontario' => 'section_volunteer', 'spese' => 'section_expenses', 'ingressi' => 'section_checkin', 'avvisi' => 'section_notices',
 				);
 				$html = '<div class="asemf-hello">Ciao <strong>' . esc_html( $p['first_name'] ) . '</strong></div><div class="asemf-area">';
@@ -1146,6 +1146,15 @@ final class Views {
 
 	public static function my_activities(): string {
 		return self::with_person( array( __CLASS__, 'section_activities' ) );
+	}
+
+	/** Risorse prenotabili (campi, sale, posti): vuota se la funzione non c'è in questa edizione. */
+	public static function section_resources( array $p ): string {
+		return Edition::has( 'resources' ) ? ResourcesFront::section( $p ) : '';
+	}
+
+	public static function resources(): string {
+		return Edition::has( 'resources' ) ? self::with_person( array( __CLASS__, 'section_resources' ) ) : '';
 	}
 
 	public static function guests(): string {

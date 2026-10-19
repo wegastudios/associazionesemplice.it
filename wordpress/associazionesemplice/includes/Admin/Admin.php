@@ -30,6 +30,9 @@ final class Admin {
 		}
 		RegistersActions::register();
 		TechActions::register();
+		if ( \AssociazioneSemplice\Edition::has( 'resources' ) ) {
+			ResourcesActions::register();
+		}
 		\AssociazioneSemplice\Wizard::register();
 	}
 
@@ -37,6 +40,7 @@ final class Admin {
 	const GROUPS = array(
 		'asem-people'     => array( 'Rubrica soci', array( 'asem-people' => 'Soci e ospiti', 'asem-messages' => 'Comunicazioni' ) ),
 		'asem-activities' => array( 'Corsi ed eventi', array( 'asem-activities' => 'Elenco' ) ),
+		'asem-resources'  => array( 'Risorse', array( 'asem-resources' => 'Risorse' ) ),
 		'asem-tools'      => array( 'Strumenti', array( 'asem-tools' => 'Panoramica', 'asem-import' => 'Importa da Excel/CSV', 'asem-wpai' => 'WP All Import', 'asem-exports' => 'Esporta', 'asem-calendar' => 'Calendari', 'asem-backup' => 'Copia di sicurezza', 'asem-tech' => 'Integrazioni' ) ),
 		'asem-money'      => array( 'Cassa', array( 'asem-money' => 'Cassa', 'asem-ledger' => 'Prima nota', 'asem-income' => 'Nuovo incasso', 'asem-group' => 'Cassa per più persone', 'asem-expense' => 'Nuova spesa', 'asem-transfer' => 'Giroconto', 'asem-accounts' => 'Conti e fondi' ) ),
 		'asem-accounting' => array( 'Contabilità', array( 'asem-accounting' => 'Anno solare', 'asem-years' => 'Anni solari', 'asem-reports' => 'Report', 'asem-statement' => 'Rendiconto', 'asem-fivepm' => 'Adempimenti (5x1000)' ) ),
@@ -58,7 +62,7 @@ final class Admin {
 	const ADMIN_ONLY = array( 'asem-look', 'asem-pro', 'asem-bank', 'asem-donate', 'asem-settings', 'asem-payments', 'asem-card', 'asem-comms', 'asem-texts', 'asem-backup', 'asem-audit', 'asem-wpai', 'asem-years', 'asem-tech', 'asem-roles', 'asem-acct', 'asem-app', 'asem-limits', 'asem-wizard', 'asem-entity', 'asem-activity-delete', 'asem-booking-delete', 'asem-reset' );
 
 	/** Pagine di dettaglio => voce di menu a cui appartengono. */
-	const PARENTS = array( 'asem-person' => 'asem-people', 'asem-activity' => 'asem-activities', 'asem-activity-delete' => 'asem-activities', 'asem-booking-delete' => 'asem-activities' );
+	const PARENTS = array( 'asem-person' => 'asem-people', 'asem-activity' => 'asem-activities', 'asem-activity-delete' => 'asem-activities', 'asem-booking-delete' => 'asem-activities', 'asem-resource' => 'asem-resources' );
 
 	/** Voce di menu a cui appartiene una pagina ('asem' = Bacheca). */
 	public static function menu_item_of( string $page ): string {
@@ -80,6 +84,7 @@ final class Admin {
 			array( 'asem', 'Bacheca', array( DashboardPage::class, 'render' ) ),
 			array( 'asem-people', 'Rubrica soci', array( PeoplePage::class, 'render_list' ) ),
 			array( 'asem-activities', 'Corsi ed eventi', array( ActivitiesPage::class, 'render_list' ) ),
+			array( 'asem-resources', 'Risorse', array( ResourcesPage::class, 'render_list' ) ),
 			array( 'asem-money', 'Cassa', array( MoneyPage::class, 'render' ) ),
 			array( 'asem-accounting', 'Contabilità', array( AccountingPage::class, 'render' ) ),
 			array( 'asem-book', 'Registri', array( RegistersPage::class, 'render_book' ) ),
@@ -135,6 +140,7 @@ final class Admin {
 			array( 'asem-audit', 'Registro azioni', array( AuditPage::class, 'render' ) ),
 			array( 'asem-person', 'Scheda persona', array( PeoplePage::class, 'render_edit' ) ),
 			array( 'asem-activity', 'Scheda attività', array( ActivitiesPage::class, 'render_detail' ) ),
+			array( 'asem-resource', 'Scheda risorsa', array( ResourcesPage::class, 'render_detail' ) ),
 			array( 'asem-import', 'Importa soci', array( ImportPage::class, 'render' ) ),
 			array( 'asem-wpai', 'Import con WP All Import', array( WpAiPage::class, 'render' ) ),
 		);

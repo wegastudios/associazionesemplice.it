@@ -17,7 +17,7 @@ final class Areas {
 
 	/** Area => [titolo, viste]. */
 	const GROUPS = array(
-		'soci'       => array( 'Soci', array( 'area_soci', 'tessera', 'mie_attivita', 'pagamenti', 'ricevute', 'regolamento', 'ospiti', 'profilo', 'avvisi', 'calendario', 'app' ) ),
+		'soci'       => array( 'Soci', array( 'area_soci', 'tessera', 'mie_attivita', 'risorse', 'pagamenti', 'ricevute', 'regolamento', 'ospiti', 'profilo', 'avvisi', 'calendario', 'app' ) ),
 		'segreteria' => array( 'Segreteria', array( 'segreteria' ) ),
 		'tesoriere'  => array( 'Tesoriere', array( 'tesoriere' ) ),
 		'eventi'     => array( 'Eventi', array( 'area_volontari', 'ingressi' ) ),
