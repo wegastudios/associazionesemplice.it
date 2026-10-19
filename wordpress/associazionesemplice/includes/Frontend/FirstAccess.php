@@ -130,10 +130,21 @@ final class FirstAccess {
 		if ( ! $r || 'change' !== $r['kind'] || ! $r['person_id'] ) {
 			throw new \InvalidArgumentException( 'Richiesta non trovata.' );
 		}
+		$before = Plugin::people()->get( (int) $r['person_id'] );
 		Plugin::people()->update( (int) $r['person_id'], array( 'email' => strtolower( $r['email'] ) ) );
 		Audit::log( 'person.email_changed_by_request', 'person', (int) $r['person_id'] );
 		AccessRequests::remove( $request_id );
 		self::request( $r['email'] );
+		// L'indirizzo di prima viene avvisato: se la richiesta non era del socio, se ne accorge e scrive alla segreteria.
+		$old = $before && ! empty( $before['email'] ) ? strtolower( (string) $before['email'] ) : '';
+		if ( '' !== $old && is_email( $old ) && $old !== strtolower( $r['email'] ) ) {
+			$assoc = (string) Settings::get( 'association_name' );
+			\AssociazioneSemplice\Texts::mail(
+				$old,
+				'Email di accesso cambiata' . ( '' !== $assoc ? ' — ' . $assoc : '' ),
+				'Ciao ' . $before['first_name'] . ",\n\nsu richiesta, l'email del tuo accesso" . ( '' !== $assoc ? ' a ' . $assoc : '' ) . " è stata cambiata: da questo indirizzo non entrerai più.\n\nSe non l'hai chiesta tu, scrivi subito alla segreteria."
+			);
+		}
 	}
 
 	public static function page( string $message = '', array $post = array(), string $error = '' ): string {
@@ -161,7 +172,7 @@ final class FirstAccess {
 		$post    = array();
 		if ( 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' ) && isset( $_POST['asem_first_go'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- valore verificato e ripulito da chi lo usa
 			$post   = array_map( 'sanitize_text_field', wp_unslash( $_POST ) ); // phpcs:ignore WordPress.Security.NonceVerification
-			$rl_key = 'asem_fa_' . md5( (string) ( $_SERVER['REMOTE_ADDR'] ?? '' ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- valore verificato e ripulito da chi lo usa
+			$rl_key = 'asem_fa_' . md5( \AssociazioneSemplice\ClientIp::get() ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- valore verificato e ripulito da chi lo usa
 			$tries  = (int) get_transient( $rl_key );
 			if ( $tries >= Limits::get( 'first_access_per_ip' ) ) {
 				$error = 'Troppi tentativi: riprova tra qualche minuto.';

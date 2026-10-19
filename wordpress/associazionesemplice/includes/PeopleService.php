@@ -729,7 +729,8 @@ class PeopleService {
 			if ( $linked ) {
 				throw new \InvalidArgumentException( 'L\'utente WordPress con questa email è già collegato a un altro socio.' );
 			}
-			return (int) $existing->ID; // si collega l'utente esistente senza cambiargli il ruolo
+			$this->secure_existing_user( $existing ); // si collega l'utente esistente senza cambiargli il ruolo
+			return (int) $existing->ID;
 		}
 		$uid = wp_insert_user(
 			array(
@@ -746,6 +747,19 @@ class PeopleService {
 			throw new \InvalidArgumentException( 'Impossibile creare l\'utente WordPress: ' . $uid->get_error_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		return (int) $uid;
+	}
+
+	/**
+	 * Collegare a un socio un utente WordPress già esistente con la stessa email: se l'utente ha solo ruoli da semplice visitatore (iscritto da solo al
+	 * sito, cliente del negozio) non si può sapere chi ha scelto la sua password. Si cambia con una casuale e si chiudono gli accessi aperti: il socio
+	 * entra col «Primo accesso» (il link va all'email del socio). Chi ha altri ruoli (amministratori, segreteria…) non si tocca.
+	 */
+	private function secure_existing_user( \WP_User $user ): void {
+		if ( $user->roles && ! array_diff( $user->roles, array( 'subscriber', 'customer' ) ) ) {
+			wp_set_password( wp_generate_password( 32 ), (int) $user->ID );
+			\WP_Session_Tokens::get_instance( (int) $user->ID )->destroy_all();
+			Audit::log( 'person.wp_user_secured', 'user', (int) $user->ID );
+		}
 	}
 
 	private function unique_login( string $email ): string {
