@@ -4,12 +4,12 @@ namespace AssociazioneSemplice;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Aggiornamento diretto da WordPress (Bacheca → Aggiornamenti) per i pacchetti scaricati dal portale di Associazione Semplice.
+ * Aggiornamento diretto da WordPress (Bacheca → Aggiornamenti) di Associazione Semplice Pro, che non sta su WordPress.org.
  *
- * Questo file NON fa parte del pacchetto per WordPress.org (è nell'elenco `tests/portal-files.txt`): lì gli aggiornamenti li dà WordPress.org.
+ * Questo file fa parte del Pro (`tests/pro-files.txt`) e NON del gratuito, che sta su WordPress.org e si aggiorna da lì.
  * Ogni 12 ore o più (limite `update_check_hours`) chiede al portale l'ultima versione di ciò che è installato (`POST /api/plugin/update`) e
  * la mette nell'elenco degli aggiornamenti di WordPress. Il pacchetto firmato dal portale vale pochi minuti: per questo si chiede di nuovo
- * proprio quando si preme «Aggiorna», non si conserva. Il Pro manda la chiave di licenza e il dominio; il gratuito non manda nulla di suo.
+ * proprio quando si preme «Aggiorna», non si conserva. Manda la chiave di licenza e il dominio del sito.
  * Un errore del portale non cambia niente: restano le ultime versioni note.
  */
 final class Updater {
@@ -36,9 +36,6 @@ final class Updater {
 	/** I plugin installati che si aggiornano da qui. @return array<string,array{basename:string,slug:string,name:string,version:string}> */
 	public static function products(): array {
 		$out = array();
-		if ( defined( 'ASEM_VERSION' ) && defined( 'ASEM_FILE' ) ) {
-			$out['free'] = array( 'basename' => plugin_basename( ASEM_FILE ), 'slug' => 'associazionesemplice', 'name' => 'Associazione Semplice', 'version' => (string) ASEM_VERSION );
-		}
 		if ( defined( 'ASEM_PRO_VERSION' ) && defined( 'ASEM_PRO_DIR' ) ) {
 			$out['pro'] = array( 'basename' => plugin_basename( ASEM_PRO_DIR . 'associazionesemplice-pro.php' ), 'slug' => 'associazionesemplice-pro', 'name' => 'Associazione Semplice Pro', 'version' => (string) ASEM_PRO_VERSION );
 		}
@@ -188,7 +185,7 @@ final class Updater {
 			return $reply;
 		}
 		$p = substr( $package, strlen( self::PREFIX ) );
-		$r = in_array( $p, array( 'free', 'pro' ), true ) ? self::ask( $p ) : null;
+		$r = 'pro' === $p ? self::ask( $p ) : null;
 		if ( ! $r || empty( $r['update'] ) || '' === $r['package'] || ! self::package_is_ours( $r['package'] ) ) {
 			return new \WP_Error( 'asem_update_unavailable', 'L\'aggiornamento non è disponibile adesso dal portale di Associazione Semplice (licenza non in regola, troppe richieste o portale non raggiungibile). Riprova più tardi o scaricalo dall\'area clienti.' );
 		}
