@@ -126,3 +126,7 @@ Wega è la copia di sicurezza delle licenze: ogni cambiamento del portale si rif
 ## Ritorno al supporto dopo l'accesso
 
 Se `/supporto/accedi` trova la persona non connessa, ricorda la destinazione fissa (`$_SESSION['after_login'] = '/supporto/accedi'`, mai presa dall'indirizzo: nessun redirect aperto) e la manda a `/accedi`. Dopo l'accesso (password o link per email) `startSession` la riporta lì e il token dell'accesso unico (60 secondi) si genera solo a quel punto; senza destinazione ricordata si va a `/account` o `/admin` come prima.
+
+## Gratuito unico e aggiornamento diretto solo per il Pro
+
+Dalla 1.2.3 il gratuito è **un solo pacchetto** per tutti, quello per WordPress.org (senza aggiornatore): nel portale il prodotto resta «free» e lo zip da caricare in Versioni è `associazionesemplice-wporg.zip` (`release.sh free` lo cerca prima di `-free.zip`). L'aggiornamento diretto da WordPress (`POST /api/plugin/update`) lo usa **solo il Pro**, con chiave e dominio; per il gratuito l'endpoint resta disponibile ma il plugin non lo chiama. `/api/plugin/latest` resta per gli avvisi. Ultimi caricati: gratuito 1.2.3, Pro 1.1.6.
