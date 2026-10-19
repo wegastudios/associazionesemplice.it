@@ -19,6 +19,7 @@ final class Settings {
 	'proxy_key'      => array( 20, 3, 200, 'Verifiche accettate ogni ora per la stessa chiave. Se alzi: più controlli manuali consentiti. Se abbassi: chi preme spesso «Controlla adesso» può essere respinto per un po\x27.' ),
 	'releases_keep' => array( 10, 3, 50, 'Quante versioni di ciascun plugin restano scaricabili per tornare indietro; le più vecchie si cancellano dal server a ogni nuova pubblicazione. Se alzi: più possibilità di tornare indietro ma più spazio e più vecchie versioni (con eventuali difetti) ancora in giro. Se abbassi: meno scelta se una versione nuova dà problemi.' ),
 	'download_day'  => array( 10, 1, 200, 'Scarichi dei pacchetti per cliente ogni 24 ore. Se alzi: più comodo per chi gestisce molti siti, ma un account condiviso può far circolare il plugin. Se abbassi: più protezione, ma chi aggiorna molti siti può restare bloccato fino al giorno dopo.' ),
+	'update_link_ttl' => array( 600, 60, 3600, "Per quanti secondi vale l'indirizzo di scarico firmato che il plugin riceve per aggiornarsi da WordPress. Se alzi: aggiornamenti più tolleranti su server lenti ma un indirizzo intercettato resta utile più a lungo. Se abbassi: più sicuro, ma uno scarico lento può fallire e va ripetuto." ),
 	'free_inactive_days' => array( 30, 7, 365, 'Una licenza gratuita si rinnova da sola alla scadenza solo se negli ultimi N giorni c\x27è stato un accesso (una verifica dal plugin o l\x27ingresso del cliente); altrimenti scade. Se alzi: restano attive più a lungo anche siti abbandonati. Se abbassi: chi usa il plugin ma non lo apre da tempo rischia di perdere la licenza.' ),
 	'free_renew_ahead' => array( 2, 0, 14, 'Quanti giorni prima della scadenza si rinnova la licenza gratuita. Se alzi: nessun buco ma la licenza si allunga prima del necessario. Se abbassi (0 = alla scadenza): un ritardo del lavoro giornaliero può lasciarla scadere per qualche ora.' ),
 	'password_min'  => array( 10, 8, 64, 'Lunghezza minima della password dei clienti. Se alzi: password più difficili da indovinare ma più clienti ricorrono al link per email. Se abbassi: più comodo ma più esposto a tentativi di indovinare.' ),
@@ -46,6 +47,7 @@ final class Settings {
 		self::apply( 'proxy_per_key', $g, 'proxy_key' );
 		self::apply( 'releases_keep', $g, 'releases_keep' );
 		self::apply( 'download_day', $g, 'download_day' );
+		self::apply( 'update_link_ttl', $g, 'update_link_ttl' );
 		self::apply( 'password_min', $g, 'password_min' );
 		self::apply( 'free_inactive_days', $g, 'free_inactive_days' );
 		self::apply( 'free_renew_ahead', $g, 'free_renew_ahead' );
@@ -79,7 +81,7 @@ final class Settings {
 
 	/** Valore corrente di un limite (da config o da pannello) dentro i margini consentiti. */
 	public static function limit( string $key ): int {
-		$paths = array( 'duration_month' => 'duration_days.month', 'duration_year' => 'duration_days.year', 'duration_free' => 'duration_days.free', 'renew_window' => 'renew_window_days', 'reminder_days' => 'reminder_days', 'trial_days' => 'trial_days', 'proxy_ip' => 'proxy_per_ip', 'proxy_key' => 'proxy_per_key', 'releases_keep' => 'releases_keep', 'download_day' => 'download_day', 'password_min' => 'password_min', 'login_fails' => 'login_fails', 'free_inactive_days' => 'free_inactive_days', 'free_renew_ahead' => 'free_renew_ahead' );
+		$paths = array( 'duration_month' => 'duration_days.month', 'duration_year' => 'duration_days.year', 'duration_free' => 'duration_days.free', 'renew_window' => 'renew_window_days', 'reminder_days' => 'reminder_days', 'trial_days' => 'trial_days', 'proxy_ip' => 'proxy_per_ip', 'proxy_key' => 'proxy_per_key', 'releases_keep' => 'releases_keep', 'download_day' => 'download_day', 'update_link_ttl' => 'update_link_ttl', 'password_min' => 'password_min', 'login_fails' => 'login_fails', 'free_inactive_days' => 'free_inactive_days', 'free_renew_ahead' => 'free_renew_ahead' );
 		$v     = Config::get( $paths[ $key ], null );
 		return self::clamp( $key, null === $v ? self::LIMITS[ $key ][0] : $v );
 	}
