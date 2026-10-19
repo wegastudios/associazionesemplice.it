@@ -5411,7 +5411,7 @@ $rs_m1    = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Rita'
 $rs_m2    = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Remo', 'last_name' => 'Risorsa' ) );
 $people->set_membership( $rs_m1, $sy_label, true );
 $people->set_membership( $rs_m2, $sy_label, true );
-$rs_gst   = $people->create( array( 'type' => 'guest', 'first_name' => 'Gianni', 'last_name' => 'Ospite', 'host_person_id' => $rs_m1 ) );
+$rs_gst   = $people->create( array( 'type' => 'guest', 'first_name' => 'Gianni', 'last_name' => 'Ospite', 'phone' => '347 2222222', 'host_person_id' => $rs_m1 ) );
 $rs_court = \AssociazioneSemplice\Resources::save( 0, array( 'name' => 'Campo 1', 'category' => 'court', 'mode' => 'slot', 'open_time' => '08:00', 'close_time' => '22:00', 'slot_minutes' => 60, 'min_slots' => 1, 'max_slots' => 2, 'fee_cents' => 1000, 'guests_max' => 1, 'guest_fee_cents' => 200, 'max_per_person' => 1, 'advance_days' => 30 ) );
 $rs_park  = \AssociazioneSemplice\Resources::save( 0, array( 'name' => 'Posto auto 7', 'category' => 'parking', 'mode' => 'assign', 'fee_cents' => 12000 ) );
 $rs_day   = gmdate( 'Y-m-d', strtotime( $today . ' +3 days' ) );
