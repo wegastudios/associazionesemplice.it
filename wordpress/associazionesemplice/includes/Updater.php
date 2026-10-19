@@ -18,6 +18,14 @@ final class Updater {
 	const OPT    = 'asem_portal_updates';
 	const PREFIX = 'asem-portal://';
 
+	/**
+	 * Chiavi pubbliche con cui si firmano i pacchetti (kid => Ed25519, base64url). La chiave privata non sta sul server del portale: chi lo
+	 * compromette non può far installare codice sui siti. Un kid sconosciuto o una firma sbagliata bloccano l'installazione.
+	 */
+	const PACKAGE_KEYS = array(
+		'pkg-2026-10-85dce7' => 'ld_4NilmHT-TtaH8vUw_YGq7eEt4a0e4L4YAxSzP6oI',
+	);
+
 	public static function register(): void {
 		add_filter( 'pre_set_site_transient_update_plugins', array( __CLASS__, 'inject' ) );
 		add_filter( 'plugins_api', array( __CLASS__, 'info' ), 10, 3 );
@@ -61,7 +69,30 @@ final class Updater {
 			'update'  => ! empty( $j['update'] ),
 			'package' => $https( $j['package'] ?? '' ),
 			'url'     => $https( $j['url'] ?? '' ),
+			'sha256'  => isset( $j['sha256'] ) && is_string( $j['sha256'] ) ? strtolower( trim( $j['sha256'] ) ) : '',
+			'signature' => isset( $j['signature'] ) && is_string( $j['signature'] ) ? trim( $j['signature'] ) : '',
+			'kid'     => isset( $j['kid'] ) && is_string( $j['kid'] ) ? trim( $j['kid'] ) : '',
 		);
+	}
+
+	/** base64url senza padding → byte ('' se non valido). */
+	private static function b64d( string $s ): string {
+		$r = base64_decode( strtr( $s, '-_', '+/' ) . str_repeat( '=', ( 4 - strlen( $s ) % 4 ) % 4 ), true );
+		return false === $r ? '' : $r;
+	}
+
+	/**
+	 * La firma del portale per «prodotto|versione|sha256» torna con la chiave del suo kid?
+	 *
+	 * @param array<string,string> $keys kid => chiave pubblica (base64url)
+	 */
+	public static function verify_signature( string $product, string $version, string $sha256, string $kid, string $signature, array $keys ): bool {
+		if ( ! function_exists( 'sodium_crypto_sign_verify_detached' ) || ! isset( $keys[ $kid ] ) || ! preg_match( '/^[a-f0-9]{64}$/', $sha256 ) ) {
+			return false;
+		}
+		$pub = self::b64d( $keys[ $kid ] );
+		$sig = self::b64d( $signature );
+		return 32 === strlen( $pub ) && 64 === strlen( $sig ) && sodium_crypto_sign_verify_detached( $sig, $product . '|' . $version . '|' . $sha256, $pub );
 	}
 
 	/** Il pacchetto viene davvero dal portale (stesso sito dell'indirizzo di verifica)? */
@@ -189,9 +220,24 @@ final class Updater {
 		if ( ! $r || empty( $r['update'] ) || '' === $r['package'] || ! self::package_is_ours( $r['package'] ) ) {
 			return new \WP_Error( 'asem_update_unavailable', 'L\'aggiornamento non è disponibile adesso dal portale di Associazione Semplice (licenza non in regola, troppe richieste o portale non raggiungibile). Riprova più tardi o scaricalo dall\'area clienti.' );
 		}
+		$installed = self::products()[ $p ]['version'] ?? '';
+		if ( '' === $installed || ! UpdateCheck::is_newer( $installed, $r['version'] ) ) { // niente passi indietro: una versione vecchia firmata non si reinstalla
+			return new \WP_Error( 'asem_update_not_newer', 'La versione offerta dal portale non è più recente di quella installata.' );
+		}
+		if ( ! self::verify_signature( $p, $r['version'], $r['sha256'], $r['kid'], $r['signature'], self::PACKAGE_KEYS ) ) {
+			return new \WP_Error( 'asem_update_unsigned', 'Il pacchetto offerto dal portale non ha una firma valida: non è stato installato. Scaricalo dall\'area clienti e scrivici.' );
+		}
 		if ( ! function_exists( 'download_url' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 		}
-		return download_url( $r['package'] );
+		$file = download_url( $r['package'] );
+		if ( is_wp_error( $file ) ) {
+			return $file;
+		}
+		if ( ! hash_equals( $r['sha256'], (string) hash_file( 'sha256', $file ) ) ) { // il file scaricato è proprio quello firmato
+			wp_delete_file( $file );
+			return new \WP_Error( 'asem_update_hash', 'Il file scaricato non corrisponde alla firma del portale: non è stato installato.' );
+		}
+		return $file;
 	}
 }
