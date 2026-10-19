@@ -8,9 +8,8 @@
  * Requires PHP:      7.4
  * Author:            Wega Studios
  * Author URI:        https://www.wegastudios.com
- * Domain Path:       /languages
  * License:           GPL-2.0-or-later
- * Text Domain:       associazionesemplice
+ * Text Domain:       associazione-semplice
  */
 
 defined( 'ABSPATH' ) || exit;
