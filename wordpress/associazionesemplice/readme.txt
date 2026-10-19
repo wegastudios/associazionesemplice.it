@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.21
+Stable tag: 1.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -63,7 +63,7 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 
 == Changelog ==
 
-= 1.1.21 =
+= 1.2 =
 * Donations: every collection you create gets its own shortcode (with a Copy button) and a ready PayPal button; clear notice that donations only work when PayPal is configured.
 
 = 1.1.20 =

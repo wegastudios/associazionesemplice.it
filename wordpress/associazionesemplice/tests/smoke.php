@@ -5525,7 +5525,7 @@ wp_delete_attachment( $lk_att, true );
 asem_ok( '' === \AssociazioneSemplice\Donations::clean_account( 'non una mail' ) && 'abc@example.com' === \AssociazioneSemplice\Donations::clean_account( ' ABC@Example.com ' ) && 'AB12CD34EF56G' === \AssociazioneSemplice\Donations::clean_account( 'AB12CD34EF56G' ), 'donazioni: conto PayPal valido solo se email o ID commerciante' );
 asem_ok( '5;7,50;10' === \AssociazioneSemplice\Donations::clean_amounts( '10; 5 7,50;0;abc;10' ) && '' === \AssociazioneSemplice\Donations::clean_amounts( 'niente' ), 'donazioni: gli importi si ripuliscono, ordinano e senza doppioni' );
 Settings::update( array( 'donate_enabled' => 1, 'donate_paypal' => '' ) );
-asem_ok( '' === \AssociazioneSemplice\Frontend\Views::donate(), 'donazioni: senza conto PayPal il modulo non compare' );
+asem_ok( false === strpos( \AssociazioneSemplice\Frontend\Views::donate(), '<form' ), 'donazioni: senza conto PayPal il modulo non compare' );
 $dn_save = new ReflectionMethod( Admin\Actions::class, 'save_donate' );
 $dn_save->setAccessible( true );
 asem_ok( null !== asem_throws( function () use ( $dn_save ) { $dn_save->invoke( null, array( 'donate_enabled' => '1', 'donate_paypal' => 'xx' ) ); } ), 'donazioni: non si accendono senza un conto valido' );
