@@ -55,7 +55,14 @@ final class LicenseRules {
 
 	private static function psl(): array {
 		if ( null === self::$psl ) {
-			self::$psl = require __DIR__ . '/PublicSuffixData.php';
+			self::$psl = array();
+			$text      = (string) file_get_contents( __DIR__ . '/data/public-suffix-list.txt' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- file del plugin, non un indirizzo remoto
+			foreach ( explode( "\n", $text ) as $line ) {
+				$line = trim( $line );
+				if ( '' !== $line && '#' !== $line[0] ) {
+					self::$psl[ $line ] = true;
+				}
+			}
 		}
 		return self::$psl;
 	}

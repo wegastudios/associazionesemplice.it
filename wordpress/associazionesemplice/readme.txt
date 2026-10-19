@@ -30,7 +30,7 @@ Advanced features (online payments, several accounts and funds, accounting and r
 
 == Third-party data ==
 
-The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, Mozilla Public License 2.0) to tell which domain a license covers.
+The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, Mozilla Public License 2.0, file includes/data/public-suffix-list.txt) to tell which domain a license covers.
 
 == External services ==
 
