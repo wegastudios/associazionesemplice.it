@@ -80,4 +80,27 @@ final class LicenseRulesTest extends TestCase {
 		$this->assertTrue( $r['allowed'], 'una copia locale non occupa un posto' );
 		$this->assertSame( 2, $r['used'] );
 	}
+
+	/** Gli stessi casi del portale: la Public Suffix List completa (ICANN e privati, wildcard, eccezioni, punycode). */
+	public function test_registrable_domain_uses_the_full_public_suffix_list(): void {
+		$cases = array(
+			'esempio.it' => 'esempio.it', 'staging.esempio.it' => 'esempio.it', 'a.b.c.esempio.it' => 'esempio.it',
+			'www.esempio.co.uk' => 'esempio.co.uk', 'esempio.com.au' => 'esempio.com.au',
+			'sito.altervista.org' => 'sito.altervista.org', 'staging.sito.altervista.org' => 'sito.altervista.org',
+			'utente.github.io' => 'utente.github.io', 'x.blogspot.com' => 'x.blogspot.com',
+			'foo.bar.ck' => 'foo.bar.ck', 'www.ck' => 'www.ck', 'altro.www.ck' => 'www.ck',
+			'esempio.org.it' => 'org.it', 'esempio.roma.it' => 'esempio.roma.it', 'test.associazione.roma.it' => 'associazione.roma.it',
+			'xn--bcher-kva.ch' => 'xn--bcher-kva.ch', 'esempio.xn--p1ai' => 'esempio.xn--p1ai',
+			'esempio.com.co' => 'esempio.com.co', 'x.esempio.co.kr' => 'esempio.co.kr',
+		);
+		foreach ( $cases as $in => $want ) {
+			$got = R::registrable_domain( $in );
+			$this->assertSame( $want, $got, $in );
+		}
+		$this->assertNotSame( R::registrable_domain( 'a.altervista.org' ), R::registrable_domain( 'b.altervista.org' ), 'due clienti dello stesso ospite non condividono la licenza' );
+		$this->assertFalse( R::same_domain( 'https://a.altervista.org', 'https://b.altervista.org' ) );
+		$this->assertTrue( R::same_domain( 'https://staging.sito.altervista.org', 'https://sito.altervista.org' ) );
+		$this->assertSame( '192.168.1.5', R::registrable_domain( 'http://192.168.1.5' ) );
+		$this->assertSame( 'localhost', R::registrable_domain( 'localhost' ) );
+	}
 }
