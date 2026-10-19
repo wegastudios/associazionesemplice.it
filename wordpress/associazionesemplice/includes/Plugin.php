@@ -26,6 +26,8 @@ final class Plugin {
 		Gatekeeper::register(); // i soci restano fuori da wp-admin
 		Rest\Api::register();    // associazionesemplice/v1
 		Frontend\Front::init();  // shortcode, contenuti riservati, blocchi, widget
+		add_action( 'asem_license_resync', array( License::class, 'cron' ) );
+		License::maybe_resync();
 		if ( class_exists( __NAMESPACE__ . '\\Updater' ) ) { // aggiornamento diretto dal portale: c'è solo nel pacchetto scaricato dal portale, non in quello di WordPress.org
 			Updater::register();
 		}

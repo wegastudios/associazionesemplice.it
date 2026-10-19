@@ -118,6 +118,18 @@ final class Limits {
 			'Un valore molto basso può obbligare un socio a ripetere la richiesta più tardi se non trova il primo messaggio.'
 		);
 		$add(
+			'license_offline_days', 'accesso', 'Giorni senza controllo della licenza riuscito, prima di sospendere le funzioni Pro', 'giorni', 7, 1, 60,
+			'Il portale firma la prova della licenza e questa vale circa due giorni; se il sito non riesce a rinnovarla (portale irraggiungibile, chiamate bloccate) si aspettano questi giorni in più prima di sospendere le funzioni Pro.',
+			'Chi blocca le chiamate verso il portale tiene il piano più a lungo, anche se la licenza nel frattempo è scaduta o revocata. Alzalo se il tuo hosting ha spesso problemi di rete.',
+			'Un problema di rete o del portale sospende le funzioni Pro (e l\'accesso dei soci) più in fretta.'
+		);
+		$add(
+			'license_first_check_days', 'accesso', 'Giorni consentiti prima del primo controllo della licenza', 'giorni', 7, 1, 60,
+			'Su un sito vero, finché il primo controllo della licenza non riesce, le funzioni sono tutte disponibili: questi sono i giorni di attesa prima di sospendere le funzioni Pro.',
+			'Se il controllo periodico di WordPress non gira (cron disattivato) le funzioni Pro restano disponibili senza licenza più a lungo.',
+			'Se il primo controllo tarda (sito appena installato, cron lento) le funzioni Pro si sospendono presto.'
+		);
+		$add(
 			'activation_per_ip', 'accesso', 'Tentativi di attivazione dell\'accesso per connessione, in un\'ora', 'tentativi', 15, 3, 1000,
 			'Quante volte la stessa connessione può provare a usare un link di attivazione. Rende impraticabile indovinare i dati richiesti (come il codice fiscale).',
 			'Un valore alto agevola chi prova a indovinare i dati di un socio con un link ricevuto per errore.',

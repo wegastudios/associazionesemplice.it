@@ -77,6 +77,8 @@ final class License {
 			'next_check_at' => $s['next_check_at'] ?? null,
 			'in_grace'      => ! empty( $s['in_grace'] ),
 			'error'         => (string) ( $s['error'] ?? '' ),
+			'attestation'   => (string) ( $s['attestation'] ?? '' ),
+			'product'       => (string) ( $s['product'] ?? '' ),
 		);
 	}
 
@@ -102,8 +104,52 @@ final class License {
 	}
 
 	public static function policy(): array {
-		$s = self::state();
-		return LicensePolicy::evaluate( $s['status'], $s['since'], Db::today() );
+		$s      = self::state();
+		$status = self::effective_status( $s );
+		$since  = LicensePolicy::STATUS_UNVERIFIED === $status ? ( $s['checked_at'] ? substr( (string) $s['checked_at'], 0, 10 ) : null ) : $s['since'];
+		return LicensePolicy::evaluate( $status, $since, Db::today() );
+	}
+
+	/**
+	 * Stato in uso: quello salvato, tranne due casi in cui non ci si fida più di «va tutto bene»:
+	 *  - «attiva» ma la prova firmata da Wega manca, non torna (stato modificato a mano, altro dominio) o è scaduta da più della tolleranza
+	 *    (Limiti: `license_offline_days`): chi blocca i controlli non tiene il piano per sempre;
+	 *  - «in attesa» (nessun controllo riuscito) da più di `license_first_check_days`: non basta fermare il controllo periodico per avere tutto.
+	 * Sui siti locali non cambia niente.
+	 */
+	public static function effective_status( array $s ): string {
+		if ( ! LicenseClient::enabled() ) {
+			return (string) $s['status'];
+		}
+		if ( LicensePolicy::STATUS_ACTIVE === $s['status'] ) {
+			return self::attestation_holds( $s ) ? LicensePolicy::STATUS_ACTIVE : LicensePolicy::STATUS_UNVERIFIED;
+		}
+		if ( LicensePolicy::STATUS_STANDBY === $s['status'] && time() > self::first_seen() + Limits::get( 'license_first_check_days' ) * DAY_IN_SECONDS ) {
+			return LicensePolicy::STATUS_UNVERIFIED;
+		}
+		return (string) $s['status'];
+	}
+
+	/** L'attestazione salvata è firmata da Wega, è per questo dominio e non è scaduta oltre la tolleranza? (si calcola una volta per richiesta) */
+	private static function attestation_holds( array $s ): bool {
+		static $memo = array();
+		$domain = LicenseClient::normalize_domain( home_url() );
+		$leeway = Limits::get( 'license_offline_days' ) * DAY_IN_SECONDS;
+		$key    = md5( $s['attestation'] . '|' . $s['product'] . '|' . $domain . '|' . $leeway );
+		if ( ! isset( $memo[ $key ] ) ) {
+			$memo[ $key ] = '' !== $s['attestation'] && null !== LicenseClient::verify_attestation( $s['attestation'], LicenseClient::jwks(), LicenseClient::ISSUER, $s['product'], $domain, null, $leeway );
+		}
+		return $memo[ $key ];
+	}
+
+	/** Quando questo sito ha cominciato a usare il plugin con la verifica attiva (si scrive la prima volta che serve). */
+	private static function first_seen(): int {
+		$v = (int) get_option( 'asem_license_first_seen', 0 );
+		if ( $v <= 0 ) {
+			$v = time();
+			update_option( 'asem_license_first_seen', $v, false );
+		}
+		return $v;
 	}
 
 	public static function allows( string $feature ): bool {
@@ -141,18 +187,27 @@ final class License {
 		if ( is_wp_error( $r ) ) {
 			return self::failed( $r->get_error_message() );
 		}
-		if ( ! empty( $r['valid'] ) && ! empty( $r['attestation'] ) ) {
-			// Il server firma la risposta: se la firma non torna non ci si fida (si resta allo stato precedente).
-			$jwks = LicenseClient::jwks();
-			if ( $jwks && null === LicenseClient::verify_attestation( (string) $r['attestation'], $jwks, LicenseClient::ISSUER, (string) ( $r['product_code'] ?? '' ), $domain ) ) {
-				return self::failed( 'La risposta del server delle licenze non ha una firma valida.' );
+		$claims = null;
+		$att    = '';
+		if ( ! empty( $r['valid'] ) ) {
+			// Una licenza valida deve portare l'attestazione firmata da Wega (chiavi scritte nel plugin): senza firma, o con una firma che non torna,
+			// non ci si fida e si resta allo stato precedente.
+			$att    = (string) ( $r['attestation'] ?? '' );
+			$claims = '' === $att ? null : LicenseClient::verify_attestation( $att, LicenseClient::jwks(), LicenseClient::ISSUER, (string) ( $r['product_code'] ?? '' ), $domain );
+			if ( null === $claims ) {
+				return self::failed( 'La risposta del server delle licenze non ha una firma valida: la licenza non è stata aggiornata.' );
 			}
 		}
 		$i = LicenseClient::interpret( $r );
-		self::set_state(
-			$i['status'], $i['since'], null, $i['plan'],
-			array( 'reason' => $i['reason'], 'expires_at' => $i['expires_at'], 'next_check_at' => $i['next_check_at'], 'in_grace' => $i['in_grace'] )
-		);
+		if ( $claims && ! empty( $claims['plan'] ) ) {
+			$i['plan'] = LicenseClient::plan_from_name( (string) $claims['plan'] ); // il livello lo dice la parte firmata, non quella modificabile in transito
+		}
+		$extra = array( 'reason' => $i['reason'], 'expires_at' => $i['expires_at'], 'next_check_at' => $i['next_check_at'], 'in_grace' => $i['in_grace'] );
+		if ( $claims ) {
+			$extra['attestation'] = $att;
+			$extra['product']     = (string) ( $r['product_code'] ?? '' );
+		}
+		self::set_state( $i['status'], $i['since'], null, $i['plan'], $extra );
 		$msg = LicenseClient::reason_label( $i['reason'] );
 		if ( LicensePolicy::STATUS_ACTIVE === $i['status'] ) {
 			$msg = 'Licenza ' . self::plan_label( $i['plan'] ) . ' valida' . ( $i['expires_at'] ? ' fino al ' . gmdate( 'd/m/Y', strtotime( $i['expires_at'] ) ) : '' ) . '.' . ( $i['in_grace'] ? ' ' . LicenseClient::reason_label( 'IN_GRACE' ) : '' );
@@ -166,6 +221,14 @@ final class License {
 		$s = is_array( $s ) ? $s : array();
 		update_option( self::OPT_STATE, array_merge( $s, array( 'error' => $message, 'error_at' => Db::now() ) ) );
 		return array( 'ok' => false, 'message' => $message );
+	}
+
+	/** Stato «attivo» salvato da una versione che non conservava la prova firmata: la si rinnova subito invece di aspettare il giro del giorno dopo. */
+	public static function maybe_resync(): void {
+		$s = self::state();
+		if ( LicenseClient::enabled() && LicensePolicy::STATUS_ACTIVE === $s['status'] && '' === $s['attestation'] && ! wp_next_scheduled( 'asem_license_resync' ) ) {
+			wp_schedule_single_event( time() + 30, 'asem_license_resync' );
+		}
 	}
 
 	/** Lavoro giornaliero di WP-Cron. */

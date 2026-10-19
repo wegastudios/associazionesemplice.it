@@ -25,6 +25,7 @@ use AssociazioneSemplice\MemberType;
 use AssociazioneSemplice\PeopleCsv;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Settings;
+define( 'ASEM_TESTING', true ); // abilita le scorciatoie dei test (siti «non locali», chiavi di prova): in produzione la costante non c'è
 
 $GLOBALS['asem_warnings'] = array();
 set_error_handler(
@@ -318,19 +319,38 @@ asem_ok( \AssociazioneSemplice\Edition::degraded(), 'licenza gratuita scaduta co
 delete_option( License::OPT_STATE );
 
 // verifica con il server (risposte simulate): chiave, livello, scadenze, errori di rete
+// Le attestazioni di prova sono firmate con una chiave di prova (le chiavi vere di Wega sono scritte nel plugin e non si possono cambiare dal sito).
+$lic_pair = sodium_crypto_sign_keypair();
+$lic_b64  = function ( string $s ) {
+	return rtrim( strtr( base64_encode( $s ), '+/', '-_' ), '=' );
+};
+define( 'ASEM_LICENSE_JWKS', wp_json_encode( array( 'keys' => array( array( 'kty' => 'OKP', 'crv' => 'Ed25519', 'kid' => 'ktest', 'x' => $lic_b64( sodium_crypto_sign_publickey( $lic_pair ) ) ) ) ) ) );
+$lic_sign = function ( array $claims ) use ( $lic_pair, $lic_b64 ) {
+	$head = $lic_b64( wp_json_encode( array( 'alg' => 'EdDSA', 'typ' => 'JWT', 'kid' => 'ktest' ) ) );
+	$body = $lic_b64( wp_json_encode( $claims ) );
+	return $head . '.' . $body . '.' . $lic_b64( sodium_crypto_sign_detached( $head . '.' . $body, sodium_crypto_sign_secretkey( $lic_pair ) ) );
+};
+$lic_att = function ( array $over = array() ) use ( $lic_sign ) {
+	return $lic_sign( $over + array( 'iss' => \AssociazioneSemplice\LicenseClient::ISSUER, 'aud' => 'associazionesemplice', 'exp' => time() + 172800, 'nbf' => time() - 30, 'bid' => 'prova-sito.it', 'plan' => 'lite' ) );
+};
 $lic_calls = array();
 $lic_resp  = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Lite', 'expires_at' => '2027-01-01T00:00:00Z', 'product_code' => 'associazionesemplice' );
+$lic_sign_on = true; // il server «firma» le risposte valide (false = risposta senza attestazione)
 $lic_home  = function () { return 'https://www.Prova-Sito.it'; };
-$lic_http  = function ( $pre, $args, $url ) use ( &$lic_calls, &$lic_resp ) {
+$lic_http  = function ( $pre, $args, $url ) use ( &$lic_calls, &$lic_resp, &$lic_sign_on, $lic_att ) {
 	if ( false === strpos( $url, 'associazionesemplice.it' ) ) {
 		return $pre;
 	}
 	$lic_calls[] = array( $url, json_decode( (string) ( $args['body'] ?? '' ), true ), (array) ( $args['headers'] ?? array() ) );
+	if ( is_array( $lic_resp ) && ! empty( $lic_resp['valid'] ) && $lic_sign_on && empty( $lic_resp['attestation'] ) ) {
+		$code                    = false !== stripos( (string) ( $lic_resp['plan_name'] ?? '' ), 'full' ) ? 'full' : 'lite';
+		$lic_resp['attestation'] = $lic_att( array( 'plan' => $code ) );
+	}
 	return is_array( $lic_resp )
 		? array( 'response' => array( 'code' => 200, 'message' => 'OK' ), 'body' => wp_json_encode( $lic_resp ), 'headers' => array(), 'cookies' => array(), 'filename' => null )
 		: new WP_Error( 'http_request_failed', 'senza rete' );
 };
-add_filter( 'asem_license_is_local', '__return_false' );
+\AssociazioneSemplice\LicenseClient::set_local_override( false );
 add_filter( 'home_url', $lic_home );
 add_filter( 'pre_http_request', $lic_http, 10, 3 );
 Settings::update( array( 'license_key' => '' ) );
@@ -360,9 +380,39 @@ ob_start();
 Admin\LicensePanel::render();
 $lic_panel = (string) ob_get_clean();
 asem_ok( false !== strpos( $lic_panel, 'WEGA-AAAAAAAA' ) && false !== strpos( $lic_panel, 'prova-sito.it' ) && false !== strpos( $lic_panel, 'Controlla adesso' ), 'pannello licenza: chiave, dominio e controllo immediato' );
+// firma obbligatoria, livello dalla parte firmata, prova scaduta o manomessa
+$lic_sign_on = false;
+$lic_resp    = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice' );
+$lic_plan0   = License::state()['plan'];
+$lic_r       = License::sync();
+asem_ok( ! $lic_r['ok'] && false !== strpos( $lic_r['message'], 'firma' ) && License::state()['plan'] === $lic_plan0, 'verifica: una licenza valida senza firma non viene accettata e lo stato resta com\'era' );
+$lic_sign_on = true;
+$lic_resp    = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice', 'attestation' => $lic_att( array( 'plan' => 'lite' ) ) );
+License::sync();
+asem_ok( 'lite' === License::plan(), 'verifica: il livello è quello della parte firmata, non quello modificabile in transito' );
+$lic_resp = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice', 'attestation' => $lic_att( array( 'aud' => 'altro-prodotto' ) ) );
+$lic_r    = License::sync();
+asem_ok( ! $lic_r['ok'] && 'lite' === License::plan(), 'verifica: una firma per un altro prodotto non vale' );
+$lic_att_state = function ( array $claims, string $plan = 'full' ) use ( $lic_att ) {
+	License::set_state( 'active', null, null, $plan, array( 'attestation' => $lic_att( $claims ), 'product' => 'associazionesemplice' ) );
+	return License::policy()['status'];
+};
+asem_ok( 'active' === $lic_att_state( array() ), 'licenza: la prova firmata e recente tiene il piano attivo' );
+asem_ok( 'active' === $lic_att_state( array( 'exp' => time() - 3 * DAY_IN_SECONDS, 'nbf' => time() - 5 * DAY_IN_SECONDS ) ), 'licenza: prova scaduta da pochi giorni, dentro la tolleranza: resta attiva' );
+asem_ok( 'unverified' === $lic_att_state( array( 'exp' => time() - 30 * DAY_IN_SECONDS, 'nbf' => time() - 35 * DAY_IN_SECONDS ) ) && \AssociazioneSemplice\Edition::degraded(), 'licenza: prova scaduta oltre la tolleranza, le funzioni Pro si sospendono' );
+asem_ok( 'unverified' === $lic_att_state( array( 'bid' => 'altro-dominio.it' ) ), 'licenza: la prova di un altro dominio non vale' );
+License::set_state( 'active', null, null, 'full' );
+asem_ok( 'unverified' === License::policy()['status'], 'licenza: uno stato «attivo» scritto a mano, senza la prova firmata, non vale' );
+delete_option( License::OPT_STATE );
+update_option( 'asem_license_first_seen', time() - 30 * DAY_IN_SECONDS, false );
+asem_ok( 'unverified' === License::policy()['status'], 'licenza: senza nessun controllo riuscito da troppo tempo le funzioni Pro si sospendono' );
+update_option( 'asem_license_first_seen', time() - DAY_IN_SECONDS, false );
+asem_ok( 'standby' === License::policy()['status'], 'licenza: nei primi giorni, in attesa del primo controllo, resta tutto disponibile' );
+delete_option( 'asem_license_first_seen' );
+delete_option( License::OPT_STATE );
 remove_filter( 'pre_http_request', $lic_http, 10 );
 remove_filter( 'home_url', $lic_home );
-remove_filter( 'asem_license_is_local', '__return_false' );
+\AssociazioneSemplice\LicenseClient::set_local_override( null );
 Settings::update( array( 'license_key' => '' ) );
 delete_option( License::OPT_STATE );
 asem_ok( ! License::enabled() && '' === Admin\LicenseNotice::html(), 'sito locale: la verifica torna in standby' );
@@ -2264,7 +2314,7 @@ delete_option( \AssociazioneSemplice\Donations::OPT_NEXT_ID );
 
 // aggiornamento diretto del Pro dal portale (risposte simulate; solo dove il Pro è installato)
 if ( defined( 'ASEM_PRO_VERSION' ) ) {
-	add_filter( 'asem_license_is_local', '__return_false' );
+	\AssociazioneSemplice\LicenseClient::set_local_override( false );
 	$up_calls  = array();
 	$up_update = true;
 	$up_http   = function ( $pre, $args, $url ) use ( &$up_calls, &$up_update ) {
@@ -2304,7 +2354,7 @@ if ( defined( 'ASEM_PRO_VERSION' ) ) {
 	Settings::update( array( 'limits' => array(), 'license_key' => '' ) );
 	remove_filter( 'pre_http_request', $up_http, 10 );
 	remove_filter( 'home_url', $up_home );
-	remove_filter( 'asem_license_is_local', '__return_false' );
+	\AssociazioneSemplice\LicenseClient::set_local_override( null );
 	delete_option( \AssociazioneSemplice\Updater::OPT );
 }
 
@@ -3614,7 +3664,7 @@ asem_ok( false !== strpos( $dash_links, 'https://associazionesemplice.it/account
 
 // avviso «ci sono aggiornamenti»
 if ( defined( 'ASEM_PRO_VERSION' ) ) { // l'avviso riguarda solo il Pro (il gratuito si aggiorna da WordPress.org)
-add_filter( 'asem_license_is_local', '__return_false' );
+\AssociazioneSemplice\LicenseClient::set_local_override( false );
 Settings::update( array( 'license_key' => 'ASEM-TEST-KEY' ) );
 update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'pro' => array( 'version' => '99.0.0', 'url' => 'https://associazionesemplice.it/scarica/pro/99.0.0' ) ), false );
 $upd_html = Admin\UpdateNotice::html();
@@ -3635,7 +3685,7 @@ ob_start();
 Admin\LicensePanel::render();
 asem_ok( false !== strpos( (string) ob_get_clean(), 'cerca nuove versioni' ), 'pannello licenza: «Controlla adesso» cerca anche le nuove versioni' );
 Settings::update( array( 'license_key' => '', 'limits' => array() ) );
-remove_filter( 'asem_license_is_local', '__return_false' );
+\AssociazioneSemplice\LicenseClient::set_local_override( null );
 delete_option( \AssociazioneSemplice\UpdateCheck::OPT );
 }
 
