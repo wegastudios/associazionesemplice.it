@@ -20,6 +20,7 @@ final class Settings {
 	'releases_keep' => array( 10, 3, 50, 'Quante versioni di ciascun plugin restano scaricabili per tornare indietro; le più vecchie si cancellano dal server a ogni nuova pubblicazione. Se alzi: più possibilità di tornare indietro ma più spazio e più vecchie versioni (con eventuali difetti) ancora in giro. Se abbassi: meno scelta se una versione nuova dà problemi.' ),
 	'download_day'  => array( 10, 1, 200, 'Scarichi dei pacchetti per cliente ogni 24 ore. Se alzi: più comodo per chi gestisce molti siti, ma un account condiviso può far circolare il plugin. Se abbassi: più protezione, ma chi aggiorna molti siti può restare bloccato fino al giorno dopo.' ),
 	'update_link_ttl' => array( 600, 60, 3600, "Per quanti secondi vale l'indirizzo di scarico firmato che il plugin riceve per aggiornarsi da WordPress. Se alzi: aggiornamenti più tolleranti su server lenti ma un indirizzo intercettato resta utile più a lungo. Se abbassi: più sicuro, ma uno scarico lento può fallire e va ripetuto." ),
+	'session_hours' => array( 12, 1, 168, "Dopo quante ore senza attività si chiude da sola la sessione di accesso (clienti e gestione). Se alzi: più comodo, ma un computer lasciato incustodito o una scheda dimenticata restano abilitati più a lungo. Se abbassi: più sicuro, ma bisogna rientrare più spesso." ),
 	'form_ip'       => array( 10, 3, 200, "Richieste dei moduli pubblici (licenza gratuita, acquisto, link di accesso) accettate da un singolo indirizzo IP ogni ora. Se alzi: reti condivise con molti utenti passano più facilmente, ma è più facile inviare email a indirizzi altrui o riempire il database. Se abbassi: più protezione, ma più persone dietro lo stesso indirizzo possono essere respinte." ),
 	'pending_hold_hours' => array( 48, 1, 720, "Per quante ore una richiesta di licenza o di acquisto non completata (in attesa) tiene occupato il dominio. Se alzi: un pagamento lento si completa comunque, ma chi prenota un dominio altrui lo blocca più a lungo. Se abbassi: i domini si liberano prima, ma un pagamento tardivo può trovare il dominio già preso." ),
 	'free_inactive_days' => array( 30, 7, 365, 'Una licenza gratuita si rinnova da sola alla scadenza solo se negli ultimi N giorni c\x27è stato un accesso (una verifica dal plugin o l\x27ingresso del cliente); altrimenti scade. Se alzi: restano attive più a lungo anche siti abbandonati. Se abbassi: chi usa il plugin ma non lo apre da tempo rischia di perdere la licenza.' ),
@@ -51,6 +52,7 @@ final class Settings {
 		self::apply( 'download_day', $g, 'download_day' );
 		self::apply( 'update_link_ttl', $g, 'update_link_ttl' );
 		self::apply( 'form_ip', $g, 'form_ip' );
+		self::apply( 'session_hours', $g, 'session_hours' );
 		self::apply( 'pending_hold_hours', $g, 'pending_hold_hours' );
 		self::apply( 'password_min', $g, 'password_min' );
 		self::apply( 'free_inactive_days', $g, 'free_inactive_days' );
@@ -85,7 +87,7 @@ final class Settings {
 
 	/** Valore corrente di un limite (da config o da pannello) dentro i margini consentiti. */
 	public static function limit( string $key ): int {
-		$paths = array( 'duration_month' => 'duration_days.month', 'duration_year' => 'duration_days.year', 'duration_free' => 'duration_days.free', 'renew_window' => 'renew_window_days', 'reminder_days' => 'reminder_days', 'trial_days' => 'trial_days', 'proxy_ip' => 'proxy_per_ip', 'proxy_key' => 'proxy_per_key', 'releases_keep' => 'releases_keep', 'download_day' => 'download_day', 'update_link_ttl' => 'update_link_ttl', 'form_ip' => 'form_ip', 'pending_hold_hours' => 'pending_hold_hours', 'password_min' => 'password_min', 'login_fails' => 'login_fails', 'free_inactive_days' => 'free_inactive_days', 'free_renew_ahead' => 'free_renew_ahead' );
+		$paths = array( 'duration_month' => 'duration_days.month', 'duration_year' => 'duration_days.year', 'duration_free' => 'duration_days.free', 'renew_window' => 'renew_window_days', 'reminder_days' => 'reminder_days', 'trial_days' => 'trial_days', 'proxy_ip' => 'proxy_per_ip', 'proxy_key' => 'proxy_per_key', 'releases_keep' => 'releases_keep', 'download_day' => 'download_day', 'update_link_ttl' => 'update_link_ttl', 'form_ip' => 'form_ip', 'session_hours' => 'session_hours', 'pending_hold_hours' => 'pending_hold_hours', 'password_min' => 'password_min', 'login_fails' => 'login_fails', 'free_inactive_days' => 'free_inactive_days', 'free_renew_ahead' => 'free_renew_ahead' );
 		$v     = Config::get( $paths[ $key ], null );
 		return self::clamp( $key, null === $v ? self::LIMITS[ $key ][0] : $v );
 	}

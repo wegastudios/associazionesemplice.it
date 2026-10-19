@@ -4,7 +4,7 @@ $names = array(
 	'duration_free' => 'Validità della licenza gratuita (giorni)', 'renew_window' => 'Finestra di rinnovo PayPal (giorni)',
 	'reminder_days' => 'Avviso di scadenza, giorni prima (0 = mai)', 'trial_days' => 'Durata della prova Pro (giorni)',
 	'proxy_ip' => 'Verifiche dal plugin per IP, ogni ora', 'proxy_key' => 'Verifiche dal plugin per chiave, ogni ora',
-	'releases_keep' => 'Versioni dei plugin da tenere online', 'download_day' => 'Scarichi per cliente ogni 24 ore', 'update_link_ttl' => 'Validità del link di aggiornamento (secondi)', 'form_ip' => 'Richieste dei moduli pubblici per IP, ogni ora', 'pending_hold_hours' => 'Ore di blocco del dominio per richieste non completate',
+	'releases_keep' => 'Versioni dei plugin da tenere online', 'download_day' => 'Scarichi per cliente ogni 24 ore', 'update_link_ttl' => 'Validità del link di aggiornamento (secondi)', 'form_ip' => 'Richieste dei moduli pubblici per IP, ogni ora', 'session_hours' => 'Ore di inattività prima che la sessione si chiuda', 'pending_hold_hours' => 'Ore di blocco del dominio per richieste non completate',
 	'free_inactive_days' => 'Rinnovo gratuito: giorni senza accessi dopo i quali scade', 'free_renew_ahead' => 'Rinnovo gratuito: giorni di anticipo', 'password_min' => 'Lunghezza minima della password', 'login_fails' => 'Errori di password per ora prima del blocco',
 );
 ?>
@@ -50,7 +50,7 @@ $names = array(
 		<div class="card2">
 			<h2>Accesso dei clienti</h2>
 			<p class="muted">Email e password; il link per email resta per il primo accesso e per chi dimentica la password.</p>
-			<?php foreach ( array( 'password_min', 'login_fails', 'form_ip', 'pending_hold_hours' ) as $k ) : ?>
+			<?php foreach ( array( 'password_min', 'login_fails', 'session_hours', 'form_ip', 'pending_hold_hours' ) as $k ) : ?>
 				<label for="<?php echo e( $k ); ?>"><?php echo e( $names[ $k ] ); ?></label>
 				<input id="<?php echo e( $k ); ?>" type="number" name="<?php echo e( $k ); ?>" value="<?php echo (int) $g[ $k ]; ?>" min="<?php echo (int) $limits[ $k ][1]; ?>" max="<?php echo (int) $limits[ $k ][2]; ?>">
 				<div class="risk"><?php echo e( $limits[ $k ][3] ); ?></div>
