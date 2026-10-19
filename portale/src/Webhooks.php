@@ -27,10 +27,13 @@ final class Webhooks {
 			$o = $ev['data']['object'] ?? array();
 			switch ( $ev['type'] ) {
 				case 'checkout.session.completed':
+				case 'checkout.session.async_payment_succeeded':
 					if ( empty( $o['client_reference_id'] ) ) {
 						break;
 					}
-					if ( 'subscription' === ( $o['mode'] ?? '' ) ) {
+					// Con i pagamenti non immediati (addebito SEPA e simili) la sessione si completa prima dell'incasso: la licenza si emette
+					// solo a pagamento ricevuto («paid») o senza importo da pagare («no_payment_required»); altrimenti si aspetta l'esito asincrono.
+					if ( 'subscription' === ( $o['mode'] ?? '' ) && in_array( $o['payment_status'] ?? '', array( 'paid', 'no_payment_required' ), true ) ) {
 						$this->billing->completePayment( (string) $o['client_reference_id'], (string) ( $o['subscription'] ?? '' ), (string) ( $o['customer'] ?? '' ) ?: null );
 					} elseif ( 'payment' === ( $o['mode'] ?? '' ) && 'paid' === ( $o['payment_status'] ?? '' ) ) {
 						$this->billing->completePayment( (string) $o['client_reference_id'], (string) ( $o['payment_intent'] ?? '' ) ?: null );

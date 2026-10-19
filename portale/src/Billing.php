@@ -85,10 +85,14 @@ final class Billing {
 	// --- Creazione ----------------------------------------------------------------------------------------------
 
 	/** Un dominio può avere un solo abbonamento attivo o in attesa, e di un solo cliente (la chiave della licenza è riservata). */
-	private function assertDomainFree( string $domain, string $customerId, ?string $exceptId = null ): void {
-		$row = $this->db->one(
-			"SELECT id FROM subscriptions WHERE domain = ? AND customer_id <> ? AND status IN ('pending','active','past_due') AND id <> ?",
-			array( $domain, $customerId, (string) $exceptId )
+	private function assertDomainFree( string $domain, string $customerId, ?string $exceptId = null, bool $paid = false ): void {
+		// Una richiesta mai completata (in attesa) tiene il dominio solo per «pending_hold_hours»: altrimenti chiunque potrebbe prenotare
+		// per sempre il dominio di un altro. Chi paga non è bloccato da una licenza gratuita o di prova altrui (non prova la proprietà del dominio).
+		$hold = gmdate( 'Y-m-d H:i:s', time() - Settings::limit( 'pending_hold_hours' ) * 3600 );
+		$row  = $this->db->one(
+			"SELECT id FROM subscriptions WHERE domain = ? AND customer_id <> ? AND id <> ? AND ( status IN ('active','past_due') OR ( status = 'pending' AND created_at >= ? ) )"
+			. ( $paid ? " AND provider NOT IN ('free','trial')" : '' ),
+			array( $domain, $customerId, (string) $exceptId, $hold )
 		);
 		if ( $row ) {
 			throw new UserError( 'Questo dominio risulta già registrato da un altro indirizzo email.' );
@@ -113,7 +117,7 @@ final class Billing {
 			throw new UserError( 'Dominio non valido: scrivi per esempio «miaassociazione.it», senza http:// e senza indirizzi IP.' );
 		}
 		$cust = $this->customer( $email );
-		$this->assertDomainFree( $domain, $cust['id'] );
+		$this->assertDomainFree( $domain, $cust['id'], null, ! in_array( $provider, array( 'free', 'trial' ), true ) );
 		return array( 'customer' => $cust, 'sub' => $this->insertSub( $cust['id'], $plan, $period, $provider, $domain, $mode ) );
 	}
 
@@ -348,7 +352,7 @@ final class Billing {
 		if ( $domain === $sub['domain'] ) {
 			return;
 		}
-		$this->assertDomainFree( $domain, $customerId, $subId );
+		$this->assertDomainFree( $domain, $customerId, $subId, ! in_array( $sub['provider'], array( 'free', 'trial' ), true ) );
 		try {
 			$this->wega->changeDomain( (string) $sub['license_id'], Secrets::open( $sub['license_key_enc'] ), $domain );
 		} catch ( WegaException $e ) {

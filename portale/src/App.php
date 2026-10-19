@@ -39,7 +39,7 @@ final class App {
 			error_log( '[portale] wega ' . $e->errorCode . ' ' . $e->httpStatus . ' ' . $e->getMessage() );
 			http_response_code( 502 );
 			// Alla gestione si mostra la causa vera; ai clienti un messaggio generico.
-			$detail = ! empty( $_SESSION['admin'] ) ? ' Risposta del server licenze: ' . $e->errorCode . ' (HTTP ' . $e->httpStatus . ') ' . $e->getMessage() : '';
+			$detail = ( ! empty( $_SESSION['customer'] ) && Staff::ADMIN === Staff::role( $this->db, $this->customerEmail( (string) $_SESSION['customer'] ) ) ) ?' Risposta del server licenze: ' . $e->errorCode . ' (HTTP ' . $e->httpStatus . ') ' . $e->getMessage() : '';
 			View::render( 'message', array( 'title' => 'Server licenze non disponibile', 'text' => 'Non è stato possibile completare l\'operazione con il server licenze: riprova tra qualche minuto.' . $detail ) );
 		} catch ( \Throwable $e ) {
 			error_log( '[portale] ' . $e->getMessage() );
@@ -63,6 +63,7 @@ final class App {
 		} elseif ( $get && '/free' === $path ) {
 			View::render( 'free', array() );
 		} elseif ( ! $get && '/free' === $path ) {
+			$this->formLimit();
 			list( $cust, $sub ) = $this->billing->startFree( (string) $this->in( 'email' ), (string) $this->in( 'domain' ) );
 			if ( ! $this->auth->canIssue( $cust['id'] ) ) {
 				throw new UserError( 'Hai richiesto troppi link: riprova tra un po\'.' );
@@ -81,6 +82,7 @@ final class App {
 				'methods' => $this->billing->methods( $price ), 'days' => Settings::limit( 'year' === $period ? 'duration_year' : 'duration_month' ),
 			) );
 		} elseif ( ! $get && '/acquista' === $path ) {
+			$this->formLimit();
 			list( $provider, $mode ) = array_pad( explode( ':', (string) $this->in( 'method' ), 2 ), 2, '' );
 			$url = $this->billing->startPaid( (string) $this->in( 'email' ), (string) $this->in( 'domain' ), (string) $this->in( 'plan' ), (string) $this->in( 'period' ), $provider, $mode );
 			header( 'Location: ' . $url, true, 303 );
@@ -96,6 +98,7 @@ final class App {
 				$this->startSession( $this->auth->loginWithPassword( $email, (string) $this->in( 'password' ), $this->clientIp() ), false );
 				return;
 			}
+			$this->formLimit();
 			$cust = $this->db->one( 'SELECT * FROM customers WHERE email = ?', array( $email ) );
 			// Stessa risposta se l'email non esiste: non si rivela chi è cliente.
 			if ( $cust && $this->auth->canIssue( $cust['id'] ) ) {
@@ -185,6 +188,14 @@ final class App {
 		header( 'Location: ' . $to, true, 303 );
 	}
 
+	/** Limite orario per indirizzo IP sui moduli pubblici che mandano email o creano dati (link di accesso, licenza gratuita, acquisto). */
+	private function formLimit(): void {
+		if ( ! RateLimit::hit( $this->db, 'form', $this->clientIp(), Settings::limit( 'form_ip' ) ) ) {
+			http_response_code( 429 );
+			throw new UserError( 'Troppe richieste da questo indirizzo: riprova tra un'ora.' );
+		}
+	}
+
 	private function clientIp(): string {
 		$ip = Config::get( 'trust_forwarded_for', false ) ? trim( explode( ',', (string) ( $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '' ) )[0] ) : '';
 		return '' !== $ip ? $ip : (string) ( $_SERVER['REMOTE_ADDR'] ?? '' );
@@ -210,7 +221,8 @@ final class App {
 		if ( 2 !== count( $parts ) || ! isset( Releases::PRODUCTS[ $parts[0] ] ) || ! Releases::validVersion( $parts[1] ) ) {
 			throw new UserError( 'Questa versione non è disponibile.' );
 		}
-		$file = Releases::authorize( $this->db, $cid, ! empty( $_SESSION['admin'] ), $this->billing->forCustomer( $cid ), $parts[0], $parts[1] );
+		// Il ruolo si rilegge dall'email a ogni richiesta: chi non è più amministratore non conserva i privilegi nella sessione già aperta.
+		$file = Releases::authorize( $this->db, $cid, Staff::ADMIN === Staff::role( $this->db, $this->customerEmail( $cid ) ), $this->billing->forCustomer( $cid ), $parts[0], $parts[1] );
 		Releases::stream( $file, $parts[0], $parts[1] );
 	}
 
@@ -271,6 +283,7 @@ final class App {
 		}
 		http_response_code( $res[0] );
 		header( 'Content-Type: application/json; charset=utf-8' );
+		View::security();
 		header( 'X-Robots-Tag: noindex' );
 		foreach ( $res[2] as $h ) {
 			header( $h );

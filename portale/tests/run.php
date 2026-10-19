@@ -842,5 +842,40 @@ if ( class_exists( 'ZipArchive' ) ) {
 	check( 'pacchetto: token manomesso → 403', 403 === Portale\PluginUpdates::package( $udb, substr( $tok, 0, -3 ) . 'xxx', $ut )[0] && 403 === Portale\PluginUpdates::package( $udb, 'abc', $ut )[0] );
 }
 
+// --- Revisione di sicurezza ---------------------------------------------------------------------
+$sdb2 = new Db( new PDO( 'sqlite::memory:' ) );
+$sdb2->migrate();
+$wh   = new Portale\Webhooks( $sdb2, new Billing( $sdb2, new WegaClient( 'https://license.test/api/v1', 't' ) ) );
+Config::set( 'stripe', array( 'webhook_secret' => 'whsec_test' ) );
+$stripeEvent = function ( array $ev ) use ( $wh ) {
+	$p = json_encode( $ev );
+	$t = time();
+	return $wh->stripe( $p, 't=' . $t . ',v1=' . hash_hmac( 'sha256', $t . '.' . $p, 'whsec_test' ) );
+};
+$sdb2->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'w1', 'w@esempio.it', Db::now() ) );
+$sdb2->run( 'INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, mode, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)', array( 'ws1', 'w1', 'full', 'year', 'stripe', 'pending', 'w.it', 'recurring', Db::now(), Db::now() ) );
+$wcalls = 0;
+Http::$transport = function () use ( &$wcalls ) {
+	++$wcalls;
+	return array( 200, json_encode( array( 'data' => array( 'license_id' => 'LW', 'license_key' => 'WEGA-KEY-W', 'expires_at' => '2027-01-01T00:00:00Z' ) ) ) );
+};
+$stripeEvent( array( 'id' => 'evt_a', 'type' => 'checkout.session.completed', 'data' => array( 'object' => array( 'client_reference_id' => 'ws1', 'mode' => 'subscription', 'payment_status' => 'unpaid', 'subscription' => 'sub_1', 'customer' => 'cus_1' ) ) ) );
+check( 'stripe: pagamento non ancora incassato (unpaid) → nessuna licenza', 0 === $wcalls && 'pending' === $sdb2->one( "SELECT status FROM subscriptions WHERE id = 'ws1'" )['status'] );
+$stripeEvent( array( 'id' => 'evt_b', 'type' => 'checkout.session.async_payment_succeeded', 'data' => array( 'object' => array( 'client_reference_id' => 'ws1', 'mode' => 'subscription', 'payment_status' => 'paid', 'subscription' => 'sub_1', 'customer' => 'cus_1' ) ) ) );
+check( 'stripe: incasso asincrono riuscito → licenza emessa', $wcalls >= 1 && 'active' === $sdb2->one( "SELECT status FROM subscriptions WHERE id = 'ws1'" )['status'] );
+// moduli pubblici e domini
+check( 'limite moduli: l\'undicesima richiesta dello stesso IP in un\'ora è respinta', ( function () use ( $sdb2 ) { $ok = 0; for ( $i = 0; $i < 12; $i++ ) { $ok += Portale\RateLimit::hit( $sdb2, 'form', '5.6.7.8', 10, 1700000000 ) ? 1 : 0; } return 10 === $ok; } )() && Portale\RateLimit::hit( $sdb2, 'form', '5.6.7.9', 10, 1700000000 ) && Portale\RateLimit::hit( $sdb2, 'form', '5.6.7.8', 10, 1700000000 + 7200 ) );
+$sbil2 = new Billing( $sdb2, new WegaClient( 'https://license.test/api/v1', 't' ) );
+$sdb2->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'w2', 'altro@esempio.it', Db::now() ) );
+$sdb2->run( 'INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, mode, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)', array( 'old1', 'w2', 'free', 'free', 'free', 'pending', 'occupato.it', 'once', gmdate( 'Y-m-d H:i:s', time() - 5 * 86400 ), Db::now() ) );
+check( 'dominio: una richiesta in attesa da oltre 48 ore non lo tiene più occupato', null === throwsUser( function () use ( $sbil2 ) { $sbil2->startFree( 'w@esempio.it', 'occupato.it' ); } ) );
+$sdb2->run( 'INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, mode, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)', array( 'fresh1', 'w2', 'free', 'free', 'free', 'active', 'squat.it', 'once', Db::now(), Db::now() ) );
+check( 'dominio: una licenza gratuita altrui attiva blocca un\'altra richiesta gratuita', null !== throwsUser( function () use ( $sbil2 ) { $sbil2->startFree( 'w@esempio.it', 'squat.it' ); } ) );
+$rc = new ReflectionMethod( $sbil2, 'create' );
+$rc->setAccessible( true );
+check( 'dominio: chi paga non è bloccato da una licenza gratuita altrui sullo stesso dominio', is_array( $rc->invoke( $sbil2, 'w@esempio.it', 'squat.it', 'full', 'year', 'stripe', 'recurring' ) ) );
+// intestazioni
+check( 'intestazioni: nosniff, permessi e CSP definiti', ( function () { ob_start(); $src = file_get_contents( __DIR__ . '/../src/View.php' ); ob_end_clean(); return false !== strpos( $src, 'X-Content-Type-Options: nosniff' ) && false !== strpos( $src, 'Content-Security-Policy' ) && false !== strpos( $src, 'Permissions-Policy' ); } )() );
+
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );

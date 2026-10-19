@@ -10,7 +10,13 @@ Portale\Config::load( require $file );
 
 $https = ( ! empty( $_SERVER['HTTPS'] ) && 'off' !== $_SERVER['HTTPS'] ) || 'https' === ( $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '' );
 session_set_cookie_params( array( 'lifetime' => 0, 'path' => '/', 'secure' => $https, 'httponly' => true, 'samesite' => 'Lax' ) );
-session_start();
+// Le API per i plugin, i webhook e le chiavi pubbliche non usano la sessione: niente cookie né file di sessione per ogni chiamata (chiunque può farne molte).
+$apiPath = (string) parse_url( $_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH );
+if ( 0 !== strpos( $apiPath, '/api/' ) && 0 !== strpos( $apiPath, '/webhook/' ) && 0 !== strpos( $apiPath, '/.well-known/' ) ) {
+	session_start();
+} else {
+	$_SESSION = array();
+}
 
 $db = Portale\Db::connect( (array) Portale\Config::get( 'db' ) );
 $db->migrate();
