@@ -49,7 +49,7 @@ final class UpdateCheck {
 
 	/** Il controllo è attivo: scelta fatta dall'amministratore, chiave di licenza inserita, sito non locale. */
 	public static function enabled(): bool {
-		return 1 === Limits::get( 'update_notice' ) && '' !== License::key() && ! LicenseClient::is_local();
+		return 1 === Limits::get( 'update_notice' ) && Edition::pro_present() && '' !== License::key() && ! LicenseClient::is_local();
 	}
 
 	/** Ultimo esito salvato. @return array{checked_at:?string,error:string,free?:array,pro?:array} */
@@ -96,7 +96,7 @@ final class UpdateCheck {
 		}
 		$l   = self::latest();
 		$out = array();
-		$set = array( 'free' => array( 'Associazione Semplice', defined( 'ASEM_VERSION' ) ? (string) ASEM_VERSION : '' ) );
+		$set = array();
 		if ( Edition::pro_present() && defined( 'ASEM_PRO_VERSION' ) ) {
 			$set['pro'] = array( 'Associazione Semplice Pro', (string) ASEM_PRO_VERSION );
 		}

@@ -518,7 +518,7 @@ if ( class_exists( 'ZipArchive' ) ) {
 	check( 'scarico: il giorno dopo si riparte', is_file( Portale\Releases::authorize( $rdb, 'c1', false, array( $pro ), 'pro', '1.1.4', $now + 90000 ) ) );
 	check( 'scarico: amministratore senza limiti né licenza', is_file( Portale\Releases::authorize( $rdb, 'c9', true, array(), 'pro', '1.1.4', $now ) ) );
 	check( 'pacchetti: versione letta dall\'intestazione', '1.2.3' === Portale\Releases::headerVersion( "<?php\n/**\n * Version:           1.2.3\n */" ) );
-	check( 'pacchetti: Stable tag non scambiato per Version', '' === Portale\Releases::headerVersion( "Stable tag: 1.2.3\nVersion: 1.2" ) );
+	check( 'pacchetti: Stable tag non scambiato per Version', '' === Portale\Releases::headerVersion( "Stable tag: 1.2.3\nRequires at least: 6.0" ) );
 }
 
 // --- Accesso con password -----------------------------------------------------------------
@@ -778,6 +778,69 @@ Config::set( 'support', array( 'url' => 'https://supporto.test', 'sso_secret' =>
 list( $pp ) = explode( '.', Portale\SupportSso::token( 'pro@esempio.it', 'customer', 1000, array( 'plan' => 'Pro' ) ) );
 $pl2 = json_decode( base64_decode( strtr( $pp, '-_', '+/' ) ), true );
 check( 'sso: il token porta il piano e conserva gli altri claim', 'Pro' === $pl2['plan'] && 'customer' === $pl2['role'] && 'pro@esempio.it' === $pl2['sub'] && 1060 === $pl2['exp'] );
+
+// --- Versioni con due numeri (1.2) ---------------------------------------------------------------
+check( 'versioni: ammesse x.y.z e x.y, il resto no', Portale\Releases::validVersion( '1.1.14' ) && Portale\Releases::validVersion( '1.2' ) && ! Portale\Releases::validVersion( '1' ) && ! Portale\Releases::validVersion( '1.2.3.4' ) && ! Portale\Releases::validVersion( '../1.2' ) && ! Portale\Releases::validVersion( '1.2 ' ) );
+check( 'versioni: intestazione con due numeri', '1.2' === Portale\Releases::headerVersion( "<?php\n/**\n * Version:           1.2\n */" ) );
+if ( class_exists( 'ZipArchive' ) ) {
+	$vdb = new Db( new PDO( 'sqlite::memory:' ) );
+	$vdb->migrate();
+	Config::set( 'releases_dir', sys_get_temp_dir() . '/asem-rel-v-' . bin2hex( random_bytes( 4 ) ) );
+	foreach ( array( '1.1.20', '1.2', '1.1.9' ) as $vv ) {
+		$zf = tempnam( sys_get_temp_dir(), 'z' );
+		$zz = new ZipArchive();
+		$zz->open( $zf, ZipArchive::OVERWRITE );
+		$zz->addFromString( 'associazionesemplice/associazionesemplice.php', "<?php\n/**\n * Version:           $vv\n */\n" );
+		$zz->close();
+		Portale\Releases::add( $vdb, 'free', $zf, '', 'test' );
+	}
+	check( 'versioni: 1.1.20 viene prima di 1.2, che è l\'ultima', array( '1.2', '1.1.20', '1.1.9' ) === array_column( Portale\Releases::all( $vdb, 'free' ), 'version' ) );
+	$lp = json_decode( ( new Portale\LicenseProxy( $vdb, new WegaClient( 'https://license.test/api/v1', 't' ) ) )->latest( '4.4.4.4', 1700000000 )[1], true );
+	check( 'versioni: l\'avviso aggiornamenti propone 1.2', '1.2' === $lp['free']['version'] );
+	check( 'versioni: scarico della 1.2 autorizzato', is_file( Portale\Releases::authorize( $vdb, 'k', true, array(), 'free', '1.2' ) ) );
+}
+
+// --- Aggiornamento diretto dei plugin da WordPress ------------------------------------------------
+if ( class_exists( 'ZipArchive' ) ) {
+	$udb = new Db( new PDO( 'sqlite::memory:' ) );
+	$udb->migrate();
+	Config::set( 'releases_dir', sys_get_temp_dir() . '/asem-rel-u-' . bin2hex( random_bytes( 4 ) ) );
+	foreach ( array( array( 'free', 'associazionesemplice', '1.2' ), array( 'pro', 'associazionesemplice-pro', '1.1.5' ) ) as $rel ) {
+		$zf = tempnam( sys_get_temp_dir(), 'z' );
+		$zz = new ZipArchive();
+		$zz->open( $zf, ZipArchive::OVERWRITE );
+		$zz->addFromString( $rel[1] . '/' . $rel[1] . '.php', "<?php\n/**\n * Version:           {$rel[2]}\n */\n" );
+		$zz->close();
+		Portale\Releases::add( $udb, $rel[0], $zf, '', 'test' );
+	}
+	$GLOBALS['u_valid'] = true;
+	Http::$transport = function ( $m, $url, $h, $body ) {
+		$in = json_decode( (string) $body, true );
+		return array( 200, json_encode( array( 'valid' => $GLOBALS['u_valid'], 'reason_code' => 'ACTIVE', 'plan_name' => $GLOBALS['u_plan'] ?? 'Pro Full', 'license_id' => 'LU' ) ) );
+	};
+	$upx = new Portale\LicenseProxy( $udb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+	$ut  = 1800000000;
+	$r   = Portale\PluginUpdates::check( $udb, $upx, '{"product":"free","version":"1.1.20"}', '9.1.1.1', $ut );
+	$j   = json_decode( $r[1], true );
+	check( 'aggiornamento free: versione più vecchia → c\'è l\'aggiornamento, con link firmato, senza chiave', 200 === $r[0] && '1.2' === $j['version'] && true === $j['update'] && 0 === strpos( (string) $j['package'], 'https://portale.test/api/plugin/package?t=' ) );
+	$j2 = json_decode( Portale\PluginUpdates::check( $udb, $upx, '{"product":"free","version":"1.2"}', '9.1.1.2', $ut )[1], true );
+	check( 'aggiornamento free: già all\'ultima → nessun link', false === $j2['update'] && null === $j2['package'] );
+	check( 'aggiornamento: prodotto sconosciuto rifiutato', 422 === Portale\PluginUpdates::check( $udb, $upx, '{"product":"x"}', '9.1.1.3', $ut )[0] );
+	$pro = '{"product":"pro","version":"1.1.4","license_key":"chiave-pro-di-prova","domain":"staging.esempio.it"}';
+	$GLOBALS['u_valid'] = false;
+	check( 'aggiornamento Pro: licenza non valida → 403', 403 === Portale\PluginUpdates::check( $udb, $upx, $pro, '9.1.1.4', $ut )[0] );
+	$GLOBALS['u_valid'] = true;
+	$GLOBALS['u_plan']  = 'Free';
+	check( 'aggiornamento Pro: licenza gratuita → 403', 403 === Portale\PluginUpdates::check( $udb, $upx, str_replace( 'chiave-pro-di-prova', 'chiave-gratuita-prova', $pro ), '9.1.1.5', $ut )[0] );
+	$GLOBALS['u_plan'] = 'Pro Lite';
+	$jp = json_decode( Portale\PluginUpdates::check( $udb, $upx, str_replace( 'chiave-pro-di-prova', 'chiave-lite-prova-1', $pro ), '9.1.1.6', $ut )[1], true );
+	check( 'aggiornamento Pro: licenza Pro valida → link', true === $jp['update'] && '1.1.5' === $jp['version'] && ! empty( $jp['package'] ) );
+	$tok = substr( $j['package'], strpos( $j['package'], '?t=' ) + 3 );
+	$pk  = Portale\PluginUpdates::package( $udb, $tok, $ut + 10 );
+	check( 'pacchetto: token valido → file dello zip', 200 === $pk[0] && is_file( $pk[1] ) && 'free' === $pk[2] && '1.2' === $pk[3] );
+	check( 'pacchetto: token scaduto → 410', 410 === Portale\PluginUpdates::package( $udb, $tok, $ut + 3600 )[0] );
+	check( 'pacchetto: token manomesso → 403', 403 === Portale\PluginUpdates::package( $udb, substr( $tok, 0, -3 ) . 'xxx', $ut )[0] && 403 === Portale\PluginUpdates::package( $udb, 'abc', $ut )[0] );
+}
 
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );

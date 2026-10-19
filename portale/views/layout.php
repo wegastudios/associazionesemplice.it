@@ -11,13 +11,13 @@ $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 <title>Associazione Semplice · Il gestionale per le associazioni</title>
 <meta name="description" content="Soci, eventi, prima nota e privacy per la tua associazione. Plugin WordPress gratuito, con piani Pro per pagamenti online e contabilità.">
 <?php if ( $robots ) : ?><meta name="robots" content="noindex, nofollow"><?php endif; ?>
-<meta name="theme-color" content="#21248b">
-<link rel="icon" type="image/png" href="/assets/favicon.png?v=<?php echo e( $v ); ?>"><link rel="apple-touch-icon" href="/assets/logo.png?v=<?php echo e( $v ); ?>">
+<meta name="theme-color" content="#1f218c">
+<link rel="icon" type="image/svg+xml" href="/assets/brand/favicon.svg?v=<?php echo e( $v ); ?>"><link rel="icon" type="image/png" sizes="32x32" href="/assets/brand/favicon-32.png?v=<?php echo e( $v ); ?>"><link rel="alternate icon" href="/assets/brand/favicon.ico?v=<?php echo e( $v ); ?>"><link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png?v=<?php echo e( $v ); ?>">
 <link rel="stylesheet" href="/assets/portale.css?v=<?php echo e( $v ); ?>">
 <?php echo \Portale\Tracking::slot( 'head' ); ?></head>
 <body>
 <header class="site-header"><div class="wrap">
-	<a class="logo" href="/"><span class="logo-mark"><img src="/assets/logo.png?v=<?php echo e( $v ); ?>" alt="" width="38" height="38"></span>Associazione Semplice</a>
+	<a class="logo" href="/" aria-label="Associazione Semplice"><picture class="logo-full"><source media="(prefers-color-scheme: dark)" srcset="/assets/brand/logo-orizzontale-negativo.svg?v=<?php echo e( $v ); ?>"><img src="/assets/brand/logo-orizzontale-colore.svg?v=<?php echo e( $v ); ?>" alt="Associazione Semplice" width="143" height="52"></picture><picture class="logo-sym"><source media="(prefers-color-scheme: dark)" srcset="/assets/brand/simbolo-negativo.svg?v=<?php echo e( $v ); ?>"><img src="/assets/brand/simbolo-colore.svg?v=<?php echo e( $v ); ?>" alt="Associazione Semplice" width="40" height="40"></picture></a>
 	<nav class="nav" aria-label="Principale">
 		<a href="/#funzioni">Funzioni</a><a href="/#prezzi">Prezzi</a><a href="/#domande">Domande</a><a href="<?php echo e( $support_href ); ?>">Supporto</a>
 		<?php if ( ! empty( $_SESSION['staff'] ) ) : ?><a href="/admin">Gestione</a><?php endif; ?>

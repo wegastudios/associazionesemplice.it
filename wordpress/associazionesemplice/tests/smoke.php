@@ -2261,6 +2261,59 @@ asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\Donations::sa
 Settings::update( array( 'limits' => array(), 'donate_enabled' => 0, 'donate_paypal' => '' ) );
 delete_option( \AssociazioneSemplice\Donations::OPT_CAMPAIGNS );
 delete_option( \AssociazioneSemplice\Donations::OPT_NEXT_ID );
+
+// aggiornamento diretto del Pro dal portale (risposte simulate; solo dove il Pro è installato)
+if ( defined( 'ASEM_PRO_VERSION' ) ) {
+	add_filter( 'asem_license_is_local', '__return_false' );
+	$up_calls  = array();
+	$up_update = true;
+	$up_http   = function ( $pre, $args, $url ) use ( &$up_calls, &$up_update ) {
+		if ( false === strpos( $url, '/api/plugin/update' ) ) {
+			return $pre;
+		}
+		$b          = json_decode( (string) ( $args['body'] ?? '' ), true );
+		$up_calls[] = $b;
+		return array(
+			'response' => array( 'code' => 200, 'message' => 'OK' ),
+			'body'     => wp_json_encode( array( 'product' => $b['product'], 'version' => '99.0', 'update' => $up_update, 'package' => $up_update ? 'https://associazionesemplice.it/api/plugin/package?t=abc' : null, 'url' => 'https://associazionesemplice.it/accedi' ) ),
+			'headers'  => array(), 'cookies' => array(), 'filename' => null,
+		);
+	};
+	$up_home = function () { return 'https://www.Prova-Sito.it'; };
+	add_filter( 'home_url', $up_home );
+	add_filter( 'pre_http_request', $up_http, 10, 3 );
+	delete_option( \AssociazioneSemplice\Updater::OPT );
+	Settings::update( array( 'license_key' => 'ASEM-TEST-KEY' ) );
+	$up_tr = \AssociazioneSemplice\Updater::inject( (object) array( 'response' => array() ) );
+	$up_bn = plugin_basename( ASEM_PRO_DIR . 'associazionesemplice-pro.php' );
+	asem_ok( isset( $up_tr->response[ $up_bn ] ) && '99.0' === $up_tr->response[ $up_bn ]->new_version && 'asem-portal://pro' === $up_tr->response[ $up_bn ]->package && 'associazionesemplice-pro' === $up_tr->response[ $up_bn ]->slug, 'aggiornamento diretto: la nuova versione del Pro compare tra gli aggiornamenti di WordPress' );
+	asem_ok( 1 === count( $up_calls ) && 'pro' === $up_calls[0]['product'] && 'ASEM-TEST-KEY' === $up_calls[0]['license_key'] && ASEM_PRO_VERSION === $up_calls[0]['version'] && 'prova-sito.it' === $up_calls[0]['domain'], 'aggiornamento diretto: il Pro manda versione, chiave e dominio (e solo lui)' );
+	$up_n = count( $up_calls );
+	\AssociazioneSemplice\Updater::inject( (object) array( 'response' => array() ) );
+	asem_ok( count( $up_calls ) === $up_n, 'aggiornamento diretto: dentro le 12 ore non richiede di nuovo al portale' );
+	$up_info = \AssociazioneSemplice\Updater::info( false, 'plugin_information', (object) array( 'slug' => 'associazionesemplice-pro' ) );
+	asem_ok( is_object( $up_info ) && '99.0' === $up_info->version && 'asem-portal://pro' === $up_info->download_link, 'aggiornamento diretto: scheda dei dettagli' );
+	asem_ok( false === \AssociazioneSemplice\Updater::info( false, 'plugin_information', (object) array( 'slug' => 'associazionesemplice' ) ), 'aggiornamento diretto: il gratuito non è gestito da qui' );
+	asem_ok( 'altro' === \AssociazioneSemplice\Updater::download( 'altro', 'https://example.com/a.zip' ), 'aggiornamento diretto: i pacchetti di altri non si toccano' );
+	$up_update = false;
+	asem_ok( is_wp_error( \AssociazioneSemplice\Updater::download( false, 'asem-portal://pro' ) ), 'aggiornamento diretto: se il portale non offre il pacchetto lo scarico dà un errore chiaro' );
+	$up_update = true;
+	Settings::update( array( 'limits' => array( 'portal_updates' => 0 ) ) );
+	$up_tr = \AssociazioneSemplice\Updater::inject( (object) array( 'response' => array() ) );
+	asem_ok( empty( $up_tr->response ), 'aggiornamento diretto: spento dai limiti, niente aggiornamenti' );
+	Settings::update( array( 'limits' => array(), 'license_key' => '' ) );
+	remove_filter( 'pre_http_request', $up_http, 10 );
+	remove_filter( 'home_url', $up_home );
+	remove_filter( 'asem_license_is_local', '__return_false' );
+	delete_option( \AssociazioneSemplice\Updater::OPT );
+}
+
+// marchio ufficiale: icona del menu e logo in bacheca
+$mi = new ReflectionMethod( Admin\Admin::class, 'menu_icon' );
+$mi->setAccessible( true );
+asem_ok( 0 === strpos( (string) $mi->invoke( null ), 'data:image/svg+xml;base64,' ) && file_exists( ASEM_DIR . 'assets/brand/simbolo-bianco.svg' ) && file_exists( ASEM_DIR . 'assets/brand/logo-orizzontale.png' ), 'marchio: il menu usa il simbolo ufficiale (SVG) e i file del logo ci sono' );
+$br_dash = asem_render( array( Admin\DashboardPage::class, 'render' ), 'asem-logo' );
+asem_ok( false !== strpos( $br_dash, 'assets/brand/logo-orizzontale.png' ), 'marchio: la bacheca mostra il logo ufficiale' );
 $csv_l = $mkf( 'cassa.csv', "Data;Importo;Descrizione\r\n01/06/2022;5,00;Offerta\r\n" );
 $pv    = ImportService::preview_file( $csv_l, 'cassa.csv', array( 'default_account_id' => (int) $cash['id'] ) );
 asem_ok( 'create' === $pv['ledger']['plan'][0]['action'] && 500 === $pv['ledger']['plan'][0]['data']['cents'] && ! empty( $pv['ledger']['plan'][0]['warnings'] ), 'import CSV: prima nota con il conto predefinito (voce mancante = voce generica con avviso)' );
@@ -3560,22 +3613,23 @@ $dash_links = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Area 
 asem_ok( false !== strpos( $dash_links, 'https://associazionesemplice.it/account' ) && false !== strpos( $dash_links, 'https://associazionesemplice.it/supporto/accedi' ) && false !== strpos( $dash_links, '>Supporto</a>' ), 'bacheca: collegamenti all\'area riservata e al supporto di associazionesemplice.it' );
 
 // avviso «ci sono aggiornamenti»
+if ( defined( 'ASEM_PRO_VERSION' ) ) { // l'avviso riguarda solo il Pro (il gratuito si aggiorna da WordPress.org)
 add_filter( 'asem_license_is_local', '__return_false' );
 Settings::update( array( 'license_key' => 'ASEM-TEST-KEY' ) );
-update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'free' => array( 'version' => '99.0.0', 'url' => 'https://associazionesemplice.it/scarica/free/99.0.0' ) ), false );
+update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'pro' => array( 'version' => '99.0.0', 'url' => 'https://associazionesemplice.it/scarica/pro/99.0.0' ) ), false );
 $upd_html = Admin\UpdateNotice::html();
-asem_ok( false !== strpos( $upd_html, '99.0.0' ) && false !== strpos( $upd_html, 'asem-dismissible' ) && false !== strpos( $upd_html, 'https://associazionesemplice.it/scarica/free/99.0.0' ), 'aggiornamenti: avviso chiudibile con la nuova versione e il link di scarico' );
-update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'free' => array( 'version' => ASEM_VERSION, 'url' => '' ) ), false );
+asem_ok( false !== strpos( $upd_html, '99.0.0' ) && false !== strpos( $upd_html, 'asem-dismissible' ) && false !== strpos( $upd_html, 'https://associazionesemplice.it/scarica/pro/99.0.0' ), 'aggiornamenti: avviso chiudibile con la nuova versione e il link di scarico' );
+update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'pro' => array( 'version' => ASEM_PRO_VERSION, 'url' => '' ) ), false );
 asem_ok( '' === Admin\UpdateNotice::html(), 'aggiornamenti: nessun avviso se la versione è l\'ultima' );
-update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'free' => array( 'version' => '99.0.0', 'url' => '' ) ), false );
+update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'pro' => array( 'version' => '99.0.0', 'url' => '' ) ), false );
 Settings::update( array( 'license_key' => '' ) );
 asem_ok( '' === Admin\UpdateNotice::html(), 'aggiornamenti: senza chiave di licenza nessun avviso' );
 Settings::update( array( 'license_key' => 'ASEM-TEST-KEY', 'limits' => array( 'update_notice' => 0 ) ) );
 asem_ok( '' === Admin\UpdateNotice::html(), 'aggiornamenti: spento dai limiti' );
 Settings::update( array( 'license_key' => 'ASEM-TEST-KEY', 'limits' => array() ) );
-update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'free' => array( 'version' => '99.0.0', 'url' => '' ) ), false );
-asem_ok( false !== strpos( \AssociazioneSemplice\UpdateCheck::summary(), 'disponibile Associazione Semplice 99.0.0' ), 'aggiornamenti: la frase di riepilogo indica la nuova versione' );
-update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => 'senza rete', 'free' => array( 'version' => '99.0.0', 'url' => '' ) ), false );
+update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'pro' => array( 'version' => '99.0.0', 'url' => '' ) ), false );
+asem_ok( false !== strpos( \AssociazioneSemplice\UpdateCheck::summary(), 'disponibile Associazione Semplice Pro 99.0.0' ), 'aggiornamenti: la frase di riepilogo indica la nuova versione' );
+update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => 'senza rete', 'pro' => array( 'version' => '99.0.0', 'url' => '' ) ), false );
 asem_ok( false !== strpos( \AssociazioneSemplice\UpdateCheck::summary(), 'non riuscito (senza rete)' ), 'aggiornamenti: il riepilogo mostra l\'errore dell\'ultimo controllo' );
 ob_start();
 Admin\LicensePanel::render();
@@ -3583,6 +3637,7 @@ asem_ok( false !== strpos( (string) ob_get_clean(), 'cerca nuove versioni' ), 'p
 Settings::update( array( 'license_key' => '', 'limits' => array() ) );
 remove_filter( 'asem_license_is_local', '__return_false' );
 delete_option( \AssociazioneSemplice\UpdateCheck::OPT );
+}
 
 // sospensione in blocco: scaduti da oltre 8 mesi
 $old_a = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Molto', 'last_name' => 'Scaduto', 'email' => 'molto.scaduto@example.com' ) );

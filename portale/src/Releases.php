@@ -66,9 +66,14 @@ final class Releases {
 		return $row;
 	}
 
+	/** Numero di versione ammesso: x.y.z oppure x.y (es. 1.1.14, 1.2). */
+	public static function validVersion( string $v ): bool {
+		return (bool) preg_match( '/^\d+\.\d+(\.\d+)?$/', $v );
+	}
+
 	/** Numero di versione dall'intestazione del file principale del plugin («Version: 1.2.3»). */
 	public static function headerVersion( string $source ): string {
-		return preg_match( '/^[ \t\/*#@]*Version:\s*(\d+\.\d+\.\d+)\s*$/mi', substr( $source, 0, 8192 ), $m ) ? $m[1] : '';
+		return preg_match( '/^[ \t\/*#@]*Version:\s*(\d+\.\d+(?:\.\d+)?)\s*$/mi', substr( $source, 0, 8192 ), $m ) ? $m[1] : '';
 	}
 
 	/** Versioni del prodotto, dalla più recente. */
@@ -90,7 +95,7 @@ final class Releases {
 	}
 
 	public static function remove( Db $db, string $product, string $version, string $actor ): void {
-		if ( ! preg_match( '/^\d+\.\d+\.\d+$/', $version ) || ! isset( self::PRODUCTS[ $product ] ) ) {
+		if ( ! self::validVersion( $version ) || ! isset( self::PRODUCTS[ $product ] ) ) {
 			return;
 		}
 		$db->run( 'DELETE FROM releases WHERE product = ? AND version = ?', array( $product, $version ) );

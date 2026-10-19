@@ -46,3 +46,4 @@ ResourceRules.php
 Admin/ResourcesPage.php
 Admin/ResourcesActions.php
 Frontend/ResourcesFront.php
+Updater.php

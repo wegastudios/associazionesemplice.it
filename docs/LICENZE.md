@@ -57,6 +57,10 @@ al portale `GET https://associazionesemplice.it/api/plugin/latest` (filtro `asem
 - Si spegne da Impostazioni → Tecniche → Limiti e soglie (`update_notice`, `update_check_hours`, con spiegazione dei rischi).
 - Readme: sezione «Update notice» tra i servizi esterni. Quando il gratuito sarà su WordPress.org gli aggiornamenti li dà WordPress: l'avviso resta utile solo per il Pro.
 
+## Aggiornamento diretto da WordPress
+
+`Updater` (solo nel pacchetto scaricato dal portale; elencato in `tests/portal-files.txt`, quindi **assente** nel pacchetto per WordPress.org, dove aggiorna WordPress.org): ogni 12 ore o più (`update_check_hours`) chiede al portale `POST /api/plugin/update` con `{"product":"free"|"pro","version","domain"}` (il Pro aggiunge `license_key`) e mette la nuova versione tra gli aggiornamenti di WordPress (Bacheca → Aggiornamenti, pagina Plugin, «Visualizza i dettagli»). Il pacchetto firmato dal portale vale pochi minuti: nell'elenco c'è un segnaposto (`asem-portal://free|pro`) e l'indirizzo vero si chiede di nuovo al clic su «Aggiorna» (`upgrader_pre_download`); si scarica solo da un indirizzo https dello stesso sito del portale. Errori, 403 (licenza Pro non in regola) e 429 non cambiano nulla: restano le ultime versioni note. Si spegne con il limite `portal_updates`. `build.sh` produce tre zip: gratuito del portale, gratuito per WordPress.org (senza `Updater`), Pro.
+
 ## Da fare
 
 1. (fatto) Verifica tramite il portale, senza credenziali nel plugin.

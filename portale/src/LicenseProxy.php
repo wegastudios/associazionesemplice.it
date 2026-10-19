@@ -121,6 +121,12 @@ final class LicenseProxy {
 	}
 
 	/** Conta una richiesta nella finestra oraria; false se supera il limite. */
+	/** Conta una richiesta pubblica (aggiornamenti, ecc.) per IP nella finestra oraria; false se supera il limite delle verifiche. */
+	public function hit( string $kind, string $ip, ?int $now = null ): bool {
+		$now = $now ?? time();
+		return $this->allow( $kind . ':' . hash( 'sha256', $ip ), gmdate( 'YmdH', $now ), Settings::limit( 'proxy_ip' ), $now );
+	}
+
 	private function allow( string $bucket, string $hour, int $max, int $ref ): bool {
 		$this->db->run( 'DELETE FROM rate_limits WHERE hour < ?', array( gmdate( 'YmdH', $ref - 7200 ) ) );
 		$row = $this->db->one( 'SELECT n FROM rate_limits WHERE bucket = ? AND hour = ?', array( $bucket, $hour ) );

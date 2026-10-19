@@ -26,6 +26,9 @@ final class Plugin {
 		Gatekeeper::register(); // i soci restano fuori da wp-admin
 		Rest\Api::register();    // associazionesemplice/v1
 		Frontend\Front::init();  // shortcode, contenuti riservati, blocchi, widget
+		if ( class_exists( __NAMESPACE__ . '\\Updater' ) ) { // aggiornamento diretto dal portale: c'è solo nel pacchetto scaricato dal portale, non in quello di WordPress.org
+			Updater::register();
+		}
 		if ( '' !== Edition::mismatch() ) { // Associazione Semplice Pro troppo diverso da questo Associazione Semplice: non si carica, e si dice cosa fare
 			add_action(
 				'admin_notices',

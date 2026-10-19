@@ -1,0 +1,8 @@
+Immagini per la pagina del plugin su WordPress.org (non fanno parte dello zip del plugin).
+
+Vanno caricate nella cartella /assets/ del repository SVN del plugin, dopo l'approvazione:
+  icon-128x128.png, icon-256x256.png   icona del plugin
+  banner-772x250.png, banner-1544x500.png   banner (normale e retina)
+
+Sono ricavate dai file ufficiali in "loghi e brand/" (icona app indaco, logo orizzontale negativo su fondo indaco #1F218C).
+Regole del marchio: docs/brand/README.md.

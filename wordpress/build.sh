@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Costruisce i due pacchetti installabili partendo dal codice unico:
-#   dist/associazionesemplice-free.zip  → cartella associazionesemplice/      (edizione gratuita, senza i file elencati in associazionesemplice/tests/pro-files.txt)
+#   dist/associazionesemplice-wporg.zip → cartella associazionesemplice/      (gratuito, per tutti: WordPress.org e portale; senza i file elencati in associazionesemplice/tests/pro-files.txt)
 #   dist/associazionesemplice-pro.zip   → cartella associazionesemplice-pro/  (quei file, che si aggiungono ad Associazione Semplice quando è attivo)
 # Uso: bash wordpress/build.sh [cartella-di-uscita]
 set -euo pipefail
@@ -18,7 +18,7 @@ rm -rf "$out/free/associazionesemplice/tests" "$out/free/associazionesemplice/ve
 n=0
 while IFS= read -r f; do
 	[ -z "$f" ] && continue
-	case "$f" in \#*) continue ;; esac
+	case "$f" in "#"*) continue ;; esac
 	src="associazionesemplice/includes/$f"
 	[ -f "$src" ] || { echo "File avanzato mancante: $f" >&2; exit 1; }
 	mkdir -p "$out/pro/associazionesemplice-pro/includes/$(dirname "$f")"
@@ -26,6 +26,6 @@ while IFS= read -r f; do
 	rm "$out/free/associazionesemplice/includes/$f"
 	n=$((n + 1))
 done < "$list"
-(cd "$out/free" && zip -qr ../associazionesemplice-free.zip associazionesemplice)
+(cd "$out/free" && zip -qr ../associazionesemplice-wporg.zip associazionesemplice)
 (cd "$out/pro" && zip -qr ../associazionesemplice-pro.zip associazionesemplice-pro)
-echo "Pacchetti pronti in $out/: associazionesemplice-free.zip, associazionesemplice-pro.zip ($n file avanzati)"
+echo "Pacchetti pronti in $out/: associazionesemplice-wporg.zip (gratuito), associazionesemplice-pro.zip ($n file avanzati)"
