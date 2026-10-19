@@ -142,3 +142,12 @@ Da decidere / configurare (non risolvibile solo nel codice):
 - **PayPal**: l'evento `BILLING.SUBSCRIPTION.ACTIVATED` emette la licenza; se il primo addebito dovesse fallire dopo l'approvazione il cliente avrebbe la licenza fino alla scadenza. Alternativa: emettere solo con `PAYMENT.SALE.COMPLETED`.
 - **Ruolo «solo supporto»** può rinnovare di un periodo una licenza senza pagamento (e rileggere le chiavi): scegliere se limitarlo.
 - Dashboard Stripe: abilitare solo i metodi di pagamento voluti e l'evento `checkout.session.async_payment_succeeded` sul webhook.
+
+## Pacchetti firmati (aggiornamento diretto)
+
+L'aggiornamento diretto offre **solo versioni firmate**. La firma è Ed25519 sul messaggio `prodotto|versione|sha256` (UTF-8, sha256 in esadecimale minuscolo dello zip), in base64url senza padding; il plugin verifica impronta e firma con la chiave pubblica del `kid` prima di installare (`POST /api/plugin/update` risponde con `sha256`, `signature`, `kid`).
+
+- **Chiave pubblica** (in `Releases::SIGNING_KEYS`): `pkg-2026-10-85dce7` = `ld_4NilmHT-TtaH8vUw_YGq7eEt4a0e4L4YAxSzP6oI`.
+- **Chiave privata**: solo sul computer di chi pubblica, `~/.asem/pacchetti-ed25519.pem` (identificativo in `…kid`), **mai sul server e mai nel repository**: va conservata anche in un secondo luogo sicuro (se si perde non si possono firmare nuove versioni e tocca ruotare la chiave con un rilascio del plugin).
+- `bash portale/release.sh free|pro|both` firma e carica; `bash portale/release.sh sign free|pro VERSIONE` firma una versione già pubblicata (serve lo zip in `wordpress/dist`); il pannello Versioni mostra «firmata / non firmata» e un caricamento dal pannello resta senza firma (disponibile per lo scarico dall'area riservata, ma non per l'aggiornamento diretto).
+- **Rotazione**: si aggiunge la nuova chiave pubblica a `SIGNING_KEYS` (e al plugin, che deve conoscerle entrambe) prima di firmare con la nuova.
