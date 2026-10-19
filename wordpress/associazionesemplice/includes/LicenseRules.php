@@ -24,12 +24,6 @@ final class LicenseRules {
 	const REASON_DOMAIN_MISMATCH = 'domain_mismatch';  // la licenza è di un altro dominio
 	const REASON_LIMIT_REACHED   = 'limit_reached';    // già 2 installazioni su questo dominio
 
-	/** Suffissi pubblici a più etichette più comuni. Il server userà la Public Suffix List completa. */
-	const MULTI_LABEL_SUFFIXES = array(
-		'co.uk', 'org.uk', 'ac.uk', 'gov.uk', 'me.uk', 'com.au', 'net.au', 'org.au', 'co.nz', 'co.jp', 'com.br', 'com.mx',
-		'com.ar', 'co.za', 'com.tr', 'com.cn', 'co.in', 'com.pl', 'com.es', 'org.es', 'com.pt',
-	);
-
 	/** Host in minuscolo, senza schema, porta, percorso. */
 	public static function host( string $url_or_host ): string {
 		$s = strtolower( trim( $url_or_host ) );
@@ -56,19 +50,45 @@ final class LicenseRules {
 		return false;
 	}
 
-	/** "https://staging.blog.esempio.it/x" => "esempio.it"; "https://www.esempio.co.uk" => "esempio.co.uk". */
+	/** @var array<string,bool>|null Public Suffix List (mozilla.org, MPL 2.0), la stessa copia del portale: regola => true */
+	private static $psl = null;
+
+	private static function psl(): array {
+		if ( null === self::$psl ) {
+			self::$psl = require __DIR__ . '/PublicSuffixData.php';
+		}
+		return self::$psl;
+	}
+
+	/** Quante etichette (da destra) fanno il suffisso pubblico di un host, secondo la Public Suffix List (sezioni ICANN e private, wildcard, eccezioni). */
+	public static function suffix_length( array $labels ): int {
+		$rules = self::psl();
+		$n     = count( $labels );
+		for ( $i = 0; $i < $n; $i++ ) {
+			if ( isset( $rules[ '!' . implode( '.', array_slice( $labels, $i ) ) ] ) ) {
+				return $n - $i - 1;
+			}
+		}
+		for ( $i = 0; $i < $n; $i++ ) {
+			if ( isset( $rules[ implode( '.', array_slice( $labels, $i ) ) ] ) || ( $i + 1 < $n && isset( $rules[ '*.' . implode( '.', array_slice( $labels, $i + 1 ) ) ] ) ) ) {
+				return $n - $i;
+			}
+		}
+		return 1;
+	}
+
+	/**
+	 * Dominio registrabile: suffisso pubblico più una etichetta. "https://staging.blog.esempio.it/x" => "esempio.it"; "https://www.esempio.co.uk" =>
+	 * "esempio.co.uk"; "staging.sito.altervista.org" => "sito.altervista.org". Un indirizzo IP, un nome di macchina o un suffisso restano come sono.
+	 */
 	public static function registrable_domain( string $url_or_host ): string {
 		$h = self::host( $url_or_host );
-		if ( '' === $h ) {
-			return '';
-		}
-		$labels = explode( '.', $h );
-		if ( count( $labels ) <= 2 ) {
+		if ( '' === $h || filter_var( $h, FILTER_VALIDATE_IP ) ) {
 			return $h;
 		}
-		$last_two = implode( '.', array_slice( $labels, -2 ) );
-		$take     = in_array( $last_two, self::MULTI_LABEL_SUFFIXES, true ) ? 3 : 2;
-		return implode( '.', array_slice( $labels, -$take ) );
+		$labels = explode( '.', $h );
+		$len    = self::suffix_length( $labels );
+		return $len >= count( $labels ) ? $h : implode( '.', array_slice( $labels, -( $len + 1 ) ) );
 	}
 
 	/** Due indirizzi appartengono allo stesso dominio (sottodomini compresi). */
