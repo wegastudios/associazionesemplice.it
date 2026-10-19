@@ -20,7 +20,7 @@ class PublicTicketController extends Controller
 {
     public function create(Request $request, HumanCheck $human): View|RedirectResponse
     {
-        if (! is_array($request->session()->get("customer"))) {
+        if (! is_array($request->session()->get('customer'))) {
             return $this->toPortalLogin();
         }
 
@@ -37,7 +37,7 @@ class PublicTicketController extends Controller
     public function store(Request $request, TicketService $tickets, HumanCheck $human): RedirectResponse
     {
         // Solo chi ha fatto l'accesso dal portale puo aprire un ticket
-        if (! is_array($request->session()->get("customer"))) {
+        if (! is_array($request->session()->get('customer'))) {
             return $this->toPortalLogin();
         }
 
@@ -94,7 +94,7 @@ class PublicTicketController extends Controller
 
     private function toPortalLogin(): RedirectResponse
     {
-        return redirect(rtrim((string) config("support.sso.portal"), "/")."/supporto/accedi");
+        return redirect(rtrim((string) config('support.sso.portal'), '/').'/supporto/accedi');
     }
 
     public function received(): View

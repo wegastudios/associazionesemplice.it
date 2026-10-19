@@ -19,6 +19,14 @@ use Tests\SiteTestCase;
 
 class PublicTicketTest extends SiteTestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Il ticket si apre solo da connessi: sessione del cliente come la crea l'accesso unico dal portale
+        $this->withSession(['customer' => ['email' => 'mario@example.com', 'name' => null, 'plan_id' => null, 'at' => now()->timestamp]]);
+    }
+
     /** Dati di un modulo compilato da una persona: informativa accettata, modulo aperto da piu di qualche secondo, trappola vuota. */
     private function form(array $overrides = []): array
     {
@@ -40,7 +48,10 @@ class PublicTicketTest extends SiteTestCase
         $topic = Topic::create(['name' => 'Accesso', 'slug' => 'accesso', 'is_public' => true]);
         $plan = Plan::create(['name' => 'Pro']);
 
-        $response = $this->post('/ticket', $this->form(['topic_id' => $topic->id, 'plan_id' => $plan->id]));
+        // Il piano arriva dalla sessione del portale, non dal modulo
+        $this->withSession(['customer' => ['email' => 'mario@example.com', 'name' => null, 'plan_id' => $plan->id, 'at' => now()->timestamp]]);
+
+        $response = $this->post('/ticket', $this->form(['topic_id' => $topic->id]));
 
         $ticket = SupportTicket::firstOrFail();
         $this->assertSame(94000123, $ticket->hub_id);

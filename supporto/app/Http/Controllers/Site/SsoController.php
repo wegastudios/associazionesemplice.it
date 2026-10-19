@@ -31,14 +31,19 @@ class SsoController extends Controller
         if ($claims['role'] !== 'customer') {
             $user = User::query()->where('email', $claims['sub'])->first() ?? new User(['email' => $claims['sub']]);
             if (! $user->exists) {
-                $user->forceFill(['name' => $claims['name'] ?? Str::before($claims['sub'], '@'), 'password' => Str::random(48)]);
+                // Utente creato dal portale: nessuna password locale utilizzabile, il portale decide chi e staff
+                $user->forceFill(['name' => $claims['name'] ?? Str::before($claims['sub'], '@'), 'password' => Str::random(48), 'sso_managed' => true]);
             }
             $user->forceFill(['global_role' => 'admin'])->save();
             Auth::login($user);
+            $request->session()->put('sso_staff_at', now()->timestamp);
             $audit->record('admin.login_sso', null, ['role' => $claims['role']], Actor::user($user->id));
 
             return redirect()->route('admin.home');
         }
+
+        // Chi il portale non dichiara piu staff perde subito l'accesso all'amministrazione (se l'utente e gestito dal portale)
+        User::query()->where('email', $claims['sub'])->where('sso_managed', true)->update(['global_role' => null]);
 
         $plan = $claims['plan'] !== null
             ? Plan::query()->where('is_active', true)->whereRaw('lower(name) = ?', [mb_strtolower($claims['plan'])])->first()
@@ -47,7 +52,7 @@ class SsoController extends Controller
             'email' => $claims['sub'],
             'name' => $claims['name'],
             'plan_id' => $plan?->id,
-            'at' => time(),
+            'at' => now()->timestamp,
         ]);
 
         return redirect()->route('ticket.mine');
@@ -73,7 +78,7 @@ class SsoController extends Controller
 
         return view('site.mine', [
             'customer' => $customer,
-            'tickets' => $tickets->map(fn (SupportTicket $t) => ['ticket' => $t, 'url' => CustomerLink::show($t)]),
+            'tickets' => $tickets->map(fn (SupportTicket $t) => ['ticket' => $t, 'url' => CustomerLink::show($t, 24)]),
         ]);
     }
 }

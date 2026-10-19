@@ -28,7 +28,7 @@ class ResetPasswordController extends Controller
 
         // Risposta sempre uguale: non si scopre chi ha un account. Il link parte solo per gli amministratori.
         $user = User::query()->where('email', $data['email'])->first();
-        if ($user !== null && $user->isAdmin()) {
+        if ($user !== null && $user->isAdmin() && ! $user->sso_managed) {
             app(MailSettings::class)->apply();
             PasswordBroker::sendResetLink(['email' => $user->email]);
             $audit->record('admin.password_reset_requested', $user);
@@ -56,7 +56,7 @@ class ResetPasswordController extends Controller
         ]);
 
         $status = PasswordBroker::reset($data, function (User $user, string $password) use ($audit) {
-            abort_unless($user->isAdmin(), 403);
+            abort_unless($user->isAdmin() && ! $user->sso_managed, 403);
             $user->forceFill(['password' => $password, 'remember_token' => Str::random(60)])->save();
             event(new PasswordReset($user));
             $audit->record('admin.password_reset', $user);

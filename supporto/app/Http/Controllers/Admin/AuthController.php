@@ -47,7 +47,7 @@ class AuthController extends Controller
             return $fail();
         }
 
-        if (! Auth::user()->isAdmin()) {
+        if (! Auth::user()->isAdmin() || Auth::user()->sso_managed) {
             Auth::logout();
             RateLimiter::hit($throttleKey, 300);
             $audit->record('admin.login_denied', null, ['email' => $data['email']]);

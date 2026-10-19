@@ -18,12 +18,12 @@ class ExpireCustomerSession
     {
         $customer = $request->session()->get('customer');
 
-        if (is_array($customer) && (time() - (int) ($customer['at'] ?? 0)) > self::MINUTES * 60) {
+        if (is_array($customer) && (now()->timestamp - (int) ($customer['at'] ?? 0)) > self::MINUTES * 60) {
             $request->session()->forget('customer');
         }
 
         if (is_array($request->session()->get('customer'))) {
-            $request->session()->put('customer.at', time());
+            $request->session()->put('customer.at', now()->timestamp);
         }
 
         return $next($request);

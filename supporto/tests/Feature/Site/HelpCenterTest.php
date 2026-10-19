@@ -70,6 +70,7 @@ class HelpCenterTest extends SiteTestCase
 
     public function test_ticket_form_loads_without_hub(): void
     {
-        $this->get('/ticket/nuovo')->assertOk()->assertSee('Apri una richiesta');
+        $this->withSession(['customer' => ['email' => 'mario@example.com', 'name' => null, 'plan_id' => null, 'at' => now()->timestamp]])
+            ->get('/ticket/nuovo')->assertOk()->assertSee('Apri una richiesta');
     }
 }
