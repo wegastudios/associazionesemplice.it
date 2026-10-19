@@ -2347,6 +2347,9 @@ if ( defined( 'ASEM_PRO_VERSION' ) ) {
 	asem_ok( 'altro' === \AssociazioneSemplice\Updater::download( 'altro', 'https://example.com/a.zip' ), 'aggiornamento diretto: i pacchetti di altri non si toccano' );
 	$up_update = false;
 	asem_ok( is_wp_error( \AssociazioneSemplice\Updater::download( false, 'asem-portal://pro' ) ), 'aggiornamento diretto: se il portale non offre il pacchetto lo scarico dà un errore chiaro' );
+	$up_update   = true;
+	$up_unsigned = \AssociazioneSemplice\Updater::download( false, 'asem-portal://pro' );
+	asem_ok( is_wp_error( $up_unsigned ) && 'asem_update_unsigned' === $up_unsigned->get_error_code(), 'aggiornamento diretto: un pacchetto senza firma valida non si installa' );
 	$up_update = true;
 	Settings::update( array( 'limits' => array( 'portal_updates' => 0 ) ) );
 	$up_tr = \AssociazioneSemplice\Updater::inject( (object) array( 'response' => array() ) );

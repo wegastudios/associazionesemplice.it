@@ -25,4 +25,43 @@ final class UpdaterTest extends TestCase {
 		$this->assertSame( '', $r['package'], 'solo https' );
 		$this->assertSame( '', $r['url'] );
 	}
+
+	private function b64( string $s ): string {
+		return rtrim( strtr( base64_encode( $s ), '+/', '-_' ), '=' );
+	}
+
+	/** @return array [chiavi pubbliche, firma] per «prodotto|versione|sha256» */
+	private function signed( string $msg ): array {
+		$pair = sodium_crypto_sign_keypair();
+		$sig  = sodium_crypto_sign_detached( $msg, sodium_crypto_sign_secretkey( $pair ) );
+		return array( array( 'k1' => $this->b64( sodium_crypto_sign_publickey( $pair ) ) ), $this->b64( $sig ) );
+	}
+
+	public function test_package_signature_binds_product_version_and_hash(): void {
+		$sha = hash( 'sha256', 'zip' );
+		list( $keys, $sig ) = $this->signed( 'pro|1.1.6|' . $sha );
+		$this->assertTrue( U::verify_signature( 'pro', '1.1.6', $sha, 'k1', $sig, $keys ) );
+		$this->assertFalse( U::verify_signature( 'free', '1.1.6', $sha, 'k1', $sig, $keys ), 'altro prodotto' );
+		$this->assertFalse( U::verify_signature( 'pro', '1.1.5', $sha, 'k1', $sig, $keys ), 'altra versione' );
+		$this->assertFalse( U::verify_signature( 'pro', '1.1.6', hash( 'sha256', 'altro' ), 'k1', $sig, $keys ), 'altra impronta' );
+		$this->assertFalse( U::verify_signature( 'pro', '1.1.6', $sha, 'sconosciuto', $sig, $keys ), 'kid sconosciuto' );
+		$this->assertFalse( U::verify_signature( 'pro', '1.1.6', $sha, 'k1', 'non-base64!', $keys ) );
+		$this->assertFalse( U::verify_signature( 'pro', '1.1.6', 'XYZ', 'k1', $sig, $keys ), 'impronta non valida' );
+		list( $other ) = $this->signed( 'x' );
+		$this->assertFalse( U::verify_signature( 'pro', '1.1.6', $sha, 'k1', $sig, $other ), 'chiave diversa' );
+	}
+
+	public function test_published_package_key_has_the_right_shape(): void {
+		$this->assertArrayHasKey( 'pkg-2026-10-85dce7', U::PACKAGE_KEYS );
+		foreach ( U::PACKAGE_KEYS as $x ) {
+			$this->assertSame( 32, strlen( base64_decode( strtr( $x, '-_', '+/' ) . '=' ) ) );
+		}
+	}
+
+	public function test_parse_keeps_hash_signature_and_kid(): void {
+		$r = U::parse( '{"version":"1.2","update":true,"package":"https://x.it/p","sha256":"ABC","signature":"sig","kid":"k"}' );
+		$this->assertSame( 'abc', $r['sha256'] );
+		$this->assertSame( 'sig', $r['signature'] );
+		$this->assertSame( 'k', $r['kid'] );
+	}
 }
