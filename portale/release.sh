@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Carica sul portale i pacchetti del plugin (restano online le ultime N versioni, vedi Impostazioni).
-# Uso: bash portale/release.sh free|pro|both ["nota"]   (legge wordpress/dist/associazionesemplice-{free,pro}.zip: prima `bash wordpress/build.sh`)
+# Uso: bash portale/release.sh free|pro|both ["nota"]   (legge wordpress/dist/associazionesemplice-{wporg,pro}.zip: il gratuito è il pacchetto wporg; prima `bash wordpress/build.sh`)
 set -euo pipefail
 cd "$(dirname "$0")"
 WHAT="${1:?Uso: release.sh free|pro|both [nota]}"; NOTE="${2:-}"
@@ -10,6 +10,7 @@ S=(ssh -i "$KEY" -p "$PORT" -o BatchMode=yes -o IdentitiesOnly=yes "$USER_@$HOST
 case "$WHAT" in both) LIST="free pro" ;; free|pro) LIST="$WHAT" ;; *) echo "Prodotto non valido: $WHAT" >&2; exit 2 ;; esac
 for p in $LIST; do
 	f="../wordpress/dist/associazionesemplice-$p.zip"
+	[ "$p" = free ] && [ -f ../wordpress/dist/associazionesemplice-wporg.zip ] && f="../wordpress/dist/associazionesemplice-wporg.zip" # il gratuito è unico: il pacchetto per WordPress.org
 	[ -f "$f" ] || { echo "Manca $f: lancia prima bash wordpress/build.sh" >&2; exit 1; }
 	tmp="portale/data/incoming-$p-$$.zip"
 	"${S[@]}" "cat > ~/$tmp" < "$f"
