@@ -178,7 +178,7 @@ final class Activation {
 		if ( 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' ) && isset( $_POST['asem_activate_go'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- valore verificato e ripulito da chi lo usa
 			$post    = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification
 			$parsed  = ActivationToken::parse( $param );
-			$rl_key  = 'asem_act_' . md5( (string) ( $_SERVER['REMOTE_ADDR'] ?? '' ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- valore verificato e ripulito da chi lo usa
+			$rl_key  = 'asem_act_' . md5( \AssociazioneSemplice\ClientIp::get() ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- valore verificato e ripulito da chi lo usa
 			$tries   = (int) get_transient( $rl_key );
 			if ( $tries >= Limits::get( 'activation_per_ip' ) ) {
 				$error = 'Troppi tentativi: riprova tra qualche minuto.';

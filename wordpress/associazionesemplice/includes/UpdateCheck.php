@@ -130,8 +130,11 @@ final class UpdateCheck {
 		return 'Aggiornamenti: sei all\'ultima versione. Controllato il ' . $when . '.';
 	}
 
-	/** Dove si scarica: l'indirizzo indicato dal portale (https), altrimenti l'area clienti. */
+	/** Dove si scarica: l'indirizzo indicato dal portale solo se è https e del sito del portale, altrimenti l'area clienti. */
 	public static function download_url( array $u ): string {
-		return '' !== $u['url'] ? $u['url'] : (string) apply_filters( 'asem_license_portal_url', 'https://associazionesemplice.it/accedi' );
+		$home = 'https://associazionesemplice.it/accedi';
+		$host = strtolower( (string) wp_parse_url( $u['url'], PHP_URL_HOST ) );
+		$ours = strtolower( (string) wp_parse_url( self::API, PHP_URL_HOST ) );
+		return '' !== $u['url'] && 0 === strpos( $u['url'], 'https://' ) && '' !== $host && $host === $ours ? $u['url'] : (string) apply_filters( 'asem_license_portal_url', $home );
 	}
 }

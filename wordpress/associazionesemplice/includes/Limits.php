@@ -106,6 +106,18 @@ final class Limits {
 		);
 		// ---------- Accessi e sicurezza ----------
 		$add(
+			'trust_proxy_headers', 'accesso', 'Leggere l\'indirizzo del visitatore dal proxy (Cloudflare, bilanciatore)', 'flag', 0, 0, 1,
+			'Per i limiti «per connessione» (primo accesso, attivazione dell\'accesso) il sito conta i tentativi per indirizzo. Dietro un proxy tutti i visitatori hanno lo stesso indirizzo e uno solo può bloccare gli altri: con questa scelta si legge l\'indirizzo inoltrato dal proxy.',
+			'Accendilo solo se il sito è davvero dietro un proxy che aggiunge l\'indirizzo del visitatore: altrimenti chiunque può scrivere un indirizzo finto e aggirare i limiti.',
+			'Spento (consigliato se non usi un proxy): il limite conta l\'indirizzo della connessione. Dietro un proxy un solo visitatore può esaurirlo per tutti.'
+		);
+		$add(
+			'access_requests_unknown_max', 'accesso', 'Richieste di accesso da sconosciuti conservate, al massimo', 'richieste', 50, 5, 500,
+			'Quante richieste del «Primo accesso» di persone non riconosciute si tengono in coda. Le altre (cambio email, accessi da controllare) hanno posto a parte e non vengono mai spinte fuori da queste.',
+			'Chi vuole riempire la coda di richieste false mette in difficoltà la segreteria, ma non può cancellare le richieste dei soci.',
+			'Se ricevi molte richieste vere di non soci, le più vecchie vengono scartate prima che tu le veda.'
+		);
+		$add(
 			'first_access_per_ip', 'accesso', 'Richieste di «Primo accesso» per connessione, in un\'ora', 'richieste', 10, 1, 1000,
 			'Quante volte la stessa connessione può usare il modulo di primo accesso. Impedisce di provare a scoprire chi è socio e di riempire di email le caselle dei soci.',
 			'Se il sito è dietro un servizio di protezione (CDN, proxy) tutti i visitatori possono apparire con lo stesso indirizzo: in quel caso va alzato. Un valore alto facilita tentativi in massa.',

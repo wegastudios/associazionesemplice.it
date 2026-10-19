@@ -2367,6 +2367,55 @@ $mi->setAccessible( true );
 asem_ok( 0 === strpos( (string) $mi->invoke( null ), 'data:image/svg+xml;base64,' ) && file_exists( ASEM_DIR . 'assets/brand/simbolo-bianco.svg' ) && file_exists( ASEM_DIR . 'assets/brand/logo-orizzontale.png' ), 'marchio: il menu usa il simbolo ufficiale (SVG) e i file del logo ci sono' );
 $br_dash = asem_render( array( Admin\DashboardPage::class, 'render' ), 'asem-logo' );
 asem_ok( false !== strpos( $br_dash, 'assets/brand/logo-orizzontale.png' ), 'marchio: la bacheca mostra il logo ufficiale' );
+
+// primo accesso e utenti esistenti: coda, avviso al vecchio indirizzo, accesso messo in sicurezza, link di scarico
+Settings::update( array( 'limits' => array( 'access_requests_unknown_max' => 5 ) ) );
+$ar_p = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Coda', 'last_name' => 'Cambio', 'email' => 'coda.cambio@example.com', 'phone' => '333 5550001' ) );
+$ar_id = \AssociazioneSemplice\AccessRequests::add( array( 'kind' => 'change', 'person_id' => $ar_p, 'name' => 'Coda Cambio', 'email' => 'nuova.coda@example.com', 'phone' => '333 5550001' ) );
+for ( $i = 0; $i < 30; $i++ ) {
+	\AssociazioneSemplice\AccessRequests::add( array( 'kind' => 'unknown', 'name' => 'Falso ' . $i, 'email' => 'falso' . $i . '@example.com', 'phone' => '333 55' . sprintf( '%05d', $i ) ) );
+}
+$ar_all = \AssociazioneSemplice\AccessRequests::all();
+$ar_unk = count( array_filter( $ar_all, function ( $x ) { return 'unknown' === $x['kind']; } ) );
+asem_ok( 5 === $ar_unk && isset( $ar_all[ $ar_id ] ), 'primo accesso: le richieste false non spingono fuori quelle vere (tetto per i non riconosciuti)' );
+for ( $i = 0; $i < 6; $i++ ) {
+	\AssociazioneSemplice\AccessRequests::add( array( 'kind' => 'change', 'person_id' => $ar_p, 'name' => 'Coda Cambio', 'email' => 'altra' . $i . '@example.com', 'phone' => '333 5550001' ) );
+}
+$ar_ch = count( array_filter( \AssociazioneSemplice\AccessRequests::all(), function ( $x ) use ( $ar_p ) { return 'change' === $x['kind'] && (int) $x['person_id'] === (int) $ar_p; } ) );
+asem_ok( 3 === $ar_ch, 'primo accesso: per ogni socio si tengono al massimo 3 richieste di cambio email' );
+foreach ( array_keys( \AssociazioneSemplice\AccessRequests::all() ) as $ar_k ) {
+	\AssociazioneSemplice\AccessRequests::remove( (string) $ar_k );
+}
+$ar_mails = array();
+$ar_hook  = function ( $pre, $atts ) use ( &$ar_mails ) {
+	$ar_mails[] = $atts;
+	return true;
+};
+add_filter( 'pre_wp_mail', $ar_hook, 10, 2 );
+$ar_id = \AssociazioneSemplice\AccessRequests::add( array( 'kind' => 'change', 'person_id' => $ar_p, 'name' => 'Coda Cambio', 'email' => 'nuova.coda@example.com', 'phone' => '333 5550001' ) );
+\AssociazioneSemplice\Frontend\FirstAccess::approve_change( $ar_id );
+remove_filter( 'pre_wp_mail', $ar_hook, 10 );
+$ar_to = array();
+foreach ( $ar_mails as $m ) {
+	$ar_to = array_merge( $ar_to, (array) $m['to'] );
+}
+asem_ok( in_array( 'coda.cambio@example.com', $ar_to, true ) && 'nuova.coda@example.com' === $people->get( $ar_p )['email'], 'primo accesso: approvando il cambio email, l\'indirizzo di prima viene avvisato' );
+Settings::update( array( 'limits' => array() ) );
+
+$su_sub = wp_insert_user( array( 'user_login' => 'visitatore_asem', 'user_email' => 'visitatore.asem@example.com', 'user_pass' => 'password-del-visitatore-1', 'role' => 'subscriber' ) );
+$su_adm = wp_insert_user( array( 'user_login' => 'editor_asem', 'user_email' => 'editor.asem@example.com', 'user_pass' => 'password-delleditor-1', 'role' => 'editor' ) );
+$su_h1  = get_userdata( $su_sub )->user_pass;
+$su_h2  = get_userdata( $su_adm )->user_pass;
+$people->create( array( 'type' => 'ordinary', 'first_name' => 'Gia', 'last_name' => 'Registrato', 'email' => 'visitatore.asem@example.com' ) );
+$people->create( array( 'type' => 'ordinary', 'first_name' => 'Altro', 'last_name' => 'Editore', 'email' => 'editor.asem@example.com' ) );
+clean_user_cache( $su_sub );
+clean_user_cache( $su_adm );
+asem_ok( get_userdata( $su_sub )->user_pass !== $su_h1, 'utenti esistenti: un semplice visitatore collegato a un socio perde la password che aveva scelto' );
+asem_ok( get_userdata( $su_adm )->user_pass === $su_h2, 'utenti esistenti: chi ha altri ruoli (editor, amministratori…) non si tocca' );
+
+$dl_ok = \AssociazioneSemplice\UpdateCheck::download_url( array( 'url' => 'https://associazionesemplice.it/accedi?x=1' ) );
+$dl_no = \AssociazioneSemplice\UpdateCheck::download_url( array( 'url' => 'https://truffa.example/scarica' ) );
+asem_ok( 'https://associazionesemplice.it/accedi?x=1' === $dl_ok && 'https://associazionesemplice.it/accedi' === $dl_no, 'avviso aggiornamenti: il link di scarico vale solo se è del sito del portale' );
 $csv_l = $mkf( 'cassa.csv', "Data;Importo;Descrizione\r\n01/06/2022;5,00;Offerta\r\n" );
 $pv    = ImportService::preview_file( $csv_l, 'cassa.csv', array( 'default_account_id' => (int) $cash['id'] ) );
 asem_ok( 'create' === $pv['ledger']['plan'][0]['action'] && 500 === $pv['ledger']['plan'][0]['data']['cents'] && ! empty( $pv['ledger']['plan'][0]['warnings'] ), 'import CSV: prima nota con il conto predefinito (voce mancante = voce generica con avviso)' );
