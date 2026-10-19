@@ -4,14 +4,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
-    <meta name="theme-color" content="#21248b">
+    <meta name="theme-color" content="#1f218c">
     <title>@yield('title', 'Assistenza') · {{ config('app.name') }}</title>
     @include('partials.brand')
 </head>
 <body>
 <header class="site">
     <div class="bar">
-        <a class="logo" href="{{ route('help.index') }}" aria-label="{{ config('app.name') }}, vai al centro assistenza"><img src="{{ route('brand', 'logo.png') }}" alt="" width="38" height="38"><span class="wordmark">Associazione Semplice</span></a>
+        <a class="logo" href="{{ route('help.index') }}" aria-label="{{ config('app.name') }}, vai al centro assistenza">@include("partials.logo", ["h" => 38])</a>
         <nav aria-label="Navigazione principale">
             <a href="{{ route('help.index') }}" @if (request()->routeIs('help.*')) aria-current="page" @endif>Centro assistenza</a>
             <a href="{{ route('ticket.create') }}" @if (request()->routeIs('ticket.create')) aria-current="page" @endif>Apri una richiesta</a>

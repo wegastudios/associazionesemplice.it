@@ -8,9 +8,17 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class BrandAssetController extends Controller
 {
     private const FILES = [
-        'logo.png' => 'image/png',
-        'logo-512.png' => 'image/png',
-        'favicon.png' => 'image/png',
+        'logo-orizzontale-colore.svg' => 'image/svg+xml',
+        'logo-orizzontale-negativo.svg' => 'image/svg+xml',
+        'simbolo-colore.svg' => 'image/svg+xml',
+        'simbolo-negativo.svg' => 'image/svg+xml',
+        'favicon.svg' => 'image/svg+xml',
+        'favicon.ico' => 'image/x-icon',
+        'favicon-32.png' => 'image/png',
+        'apple-touch-icon.png' => 'image/png',
+        'Montserrat-Medium.ttf' => 'font/ttf',
+        'Montserrat-SemiBold.ttf' => 'font/ttf',
+        'Montserrat-Bold.ttf' => 'font/ttf',
     ];
 
     public function __invoke(string $file): BinaryFileResponse

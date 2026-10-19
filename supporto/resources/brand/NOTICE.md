@@ -1,3 +1,3 @@
 # Asset di marchio
 
-Logo di Associazione Semplice (originale in `docs/brand/associazionesemplice_logo.jpeg` del repository): `logo.png` (256), `logo-512.png`, `favicon.png` (64), con sfondo trasparente. Colori dal logo: indaco #21248B, verde salvia #5F8578, oro #EFCB5D.
+File ufficiali di Associazione Semplice (cartella `loghi e brand/` del repository; regole in `docs/brand/README.md`): logo orizzontale a colori e negativo, simbolo, favicon e icona di sistema. Carattere Montserrat (Medium, SemiBold, Bold) con licenza OFL (`OFL.txt`), ospitato in locale. Non deformare il logo né cambiare il carattere del nome.
