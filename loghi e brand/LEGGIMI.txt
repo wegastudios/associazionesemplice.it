@@ -1,0 +1,31 @@
+ASSOCIAZIONE SEMPLICE - PACCHETTO LOGO
+=====================================
+
+Cartelle
+  01_Colore                    logo a colori (orizzontale, verticale, solo simbolo)
+  02_Monocromatico-nero        versione a un solo colore, nero
+  03_Monocromatico-bianco      versione a un solo colore, bianco (per fondi scuri o foto)
+  04_Negativo-su-sfondo-scuro  nastri e scritte bianchi, punti gialli (per fondo indaco)
+  05_Icona-app-e-favicon       icona app 1024/512/192/180 px, Android maskable, favicon (.ico, .svg, .png)
+  07_Scritte                   solo scritte (colore / nero / bianco): su due righe, su una riga,
+                               solo "Associazione", solo "Semplice" - SVG e PNG
+  08_Elementi-del-simbolo      pezzi singoli del simbolo: 3 nastri verdi, 3 tratti sfumati, 3 punti gialli
+  06_Font-Montserrat           font usati nelle scritte (licenza OFL inclusa)
+  Guida-allo-stile_...pdf      colori, regole d'uso, dimensioni minime
+
+Quale formato usare
+  .svg / .pdf   vettoriali: stampa, tipografia, ingrandimenti. Le scritte sono gia' convertite
+                in tracciati, quindi non serve avere Montserrat installato.
+  .png          per sito, social, presentazioni (trasparente oppure con sfondo)
+
+Colori
+  Indaco        #1F218C   RGB 31 33 140
+  Verde salvia  #5F8579   RGB 95 133 121
+  Giallo        #EFCA5C   RGB 239 202 92
+  Sfumatura dei nastri: #1F218C -> #475F7F
+
+Carattere: Montserrat (Medium per "Associazione", Bold per "Semplice").
+
+Nota: il simbolo e' stato ricostruito in vettoriale a partire dal PNG fornito
+(Asset_14x.png). Se ne hai l'originale vettoriale, sostituiscilo nel simbolo per la
+massima fedelta' in stampa di grande formato.

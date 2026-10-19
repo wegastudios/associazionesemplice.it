@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.1
+Stable tag: 1.2.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -62,6 +62,9 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.2.2 =
+* Official brand: new admin menu icon, logo in the dashboard and brand colours in the plugin screens.
 
 = 1.2.1 =
 * Direct updates from WordPress (Dashboard → Updates) for the package downloaded from the portal; the WordPress.org package does not contain the updater.

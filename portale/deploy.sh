@@ -13,7 +13,7 @@ set -e
 cd ~/portale && mkdir -p data
 cd ~/public_html
 printf '<?php\n// Punto d'"'"'ingresso del portale: il codice sta fuori dalla cartella pubblica (~/portale).\nrequire __DIR__ . "/../portale/public/index.php";\n' > index.php
-mkdir -p assets && cp ../portale/public/assets/* assets/
+mkdir -p assets && cp -r ../portale/public/assets/* assets/
 sed -i '/^# Sito non ancora pubblico/,$d;/^# Tutto ci/,$d' .htaccess
 { echo; cat ../portale/public/.htaccess; } >> .htaccess
 rm -f robots.txt

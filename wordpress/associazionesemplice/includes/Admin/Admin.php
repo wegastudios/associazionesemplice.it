@@ -7,6 +7,15 @@ defined( 'ABSPATH' ) || exit;
 
 final class Admin {
 
+	/** Icona del menu: il simbolo ufficiale in bianco (SVG, WordPress lo adatta ai colori dell'amministrazione); se manca, l'icona di WordPress. */
+	private static function menu_icon(): string {
+		$file = ASEM_DIR . 'assets/brand/simbolo-bianco.svg';
+		if ( ! is_readable( $file ) ) {
+			return 'dashicons-groups';
+		}
+		return 'data:image/svg+xml;base64,' . base64_encode( (string) file_get_contents( $file ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- file del plugin, non un indirizzo remoto
+	}
+
 	public static function init(): void {
 		add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
 		add_filter( 'parent_file', array( __CLASS__, 'menu_parent' ) );
@@ -66,7 +75,7 @@ final class Admin {
 
 	public static function menu(): void {
 		$cap = Plugin::CAP_OPS;
-		add_menu_page( 'Associazione Semplice', 'Associazione Semplice', $cap, 'asem', self::guard( 'asem', array( DashboardPage::class, 'render' ) ), 'dashicons-groups', 30 );
+		add_menu_page( 'Associazione Semplice', 'Associazione Semplice', $cap, 'asem', self::guard( 'asem', array( DashboardPage::class, 'render' ) ), self::menu_icon(), 30 );
 		$visible = array(
 			array( 'asem', 'Bacheca', array( DashboardPage::class, 'render' ) ),
 			array( 'asem-people', 'Rubrica soci', array( PeoplePage::class, 'render_list' ) ),
