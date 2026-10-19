@@ -192,7 +192,7 @@ final class App {
 	private function formLimit(): void {
 		if ( ! RateLimit::hit( $this->db, 'form', $this->clientIp(), Settings::limit( 'form_ip' ) ) ) {
 			http_response_code( 429 );
-			throw new UserError( 'Troppe richieste da questo indirizzo: riprova tra un'ora.' );
+			throw new UserError( 'Troppe richieste da questo indirizzo: riprova tra un\'ora.' );
 		}
 	}
 

@@ -130,3 +130,15 @@ Se `/supporto/accedi` trova la persona non connessa, ricorda la destinazione fis
 ## Gratuito unico e aggiornamento diretto solo per il Pro
 
 Dalla 1.2.3 il gratuito è **un solo pacchetto** per tutti, quello per WordPress.org (senza aggiornatore): nel portale il prodotto resta «free» e lo zip da caricare in Versioni è `associazionesemplice-wporg.zip` (`release.sh free` lo cerca prima di `-free.zip`). L'aggiornamento diretto da WordPress (`POST /api/plugin/update`) lo usa **solo il Pro**, con chiave e dominio; per il gratuito l'endpoint resta disponibile ma il plugin non lo chiama. `/api/plugin/latest` resta per gli avvisi. Ultimi caricati: gratuito 1.2.3, Pro 1.1.6.
+
+## Revisione di sicurezza (17–19 ottobre 2026)
+
+Corretto: intestazioni (`X-Content-Type-Options`, `Permissions-Policy`, CSP minima `object-src 'none'; base-uri 'self'; frame-ancestors 'none'`, oltre a HSTS e X-Frame-Options); le API, i webhook e le chiavi pubbliche non aprono più la sessione (niente cookie né file per ogni chiamata); sessioni in modalità rigida e con scadenza per inattività (`session_hours`, default 12); limite orario per IP sui moduli pubblici (licenza gratuita, acquisto, link di accesso: `form_ip`, default 10); i pagamenti Stripe non immediati (SEPA e simili) emettono la licenza solo a incasso avvenuto (`payment_status` paid o no_payment_required, evento `checkout.session.async_payment_succeeded`); una richiesta mai completata tiene occupato il dominio solo `pending_hold_hours` (48) e chi paga non è bloccato da una licenza gratuita o di prova altrui; il ruolo amministratore si rilegge dall'email anche per scarichi e dettagli degli errori (niente privilegi residui nella sessione); `deploy.sh` controlla la sintassi su una cartella d'appoggio e, se c'è un errore, non tocca il sito in funzione.
+
+Verificato senza problemi: firme dei webhook (Stripe HMAC con tolleranza, PayPal con verifica dell'API), un solo trattamento per evento, query tutte preparate, escape dell'HTML, CSRF su ogni modulo, cookie `Secure`/`HttpOnly`/`SameSite`, nessun file sensibile raggiungibile dal web, token degli scarichi firmati e a scadenza breve, percorsi dei pacchetti validati, nessuna verifica dei certificati disattivata.
+
+Da decidere / configurare (non risolvibile solo nel codice):
+- **Proprietà del dominio**: oggi chiunque può registrare una licenza gratuita per un dominio non suo (serve solo un'email). Con la modifica sopra non blocca più gli acquisti, ma può occupare il dominio per la licenza gratuita. Una verifica vera richiede un controllo (record DNS TXT o file) da scegliere.
+- **PayPal**: l'evento `BILLING.SUBSCRIPTION.ACTIVATED` emette la licenza; se il primo addebito dovesse fallire dopo l'approvazione il cliente avrebbe la licenza fino alla scadenza. Alternativa: emettere solo con `PAYMENT.SALE.COMPLETED`.
+- **Ruolo «solo supporto»** può rinnovare di un periodo una licenza senza pagamento (e rileggere le chiavi): scegliere se limitarlo.
+- Dashboard Stripe: abilitare solo i metodi di pagamento voluti e l'evento `checkout.session.async_payment_succeeded` sul webhook.
