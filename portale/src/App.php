@@ -24,7 +24,7 @@ final class App {
 				$this->webhook( $path );
 				return;
 			}
-			if ( 0 === strpos( $path, '/api/license/' ) || '/api/plugin/latest' === $path || '/.well-known/jwks.json' === $path ) {
+			if ( 0 === strpos( $path, '/api/license/' ) || 0 === strpos( $path, '/api/plugin/' ) || '/.well-known/jwks.json' === $path ) {
 				$this->licenseApi( $method, $path );
 				return;
 			}
@@ -207,7 +207,7 @@ final class App {
 	private function download( string $path ): void {
 		$cid   = $this->customerId();
 		$parts = explode( '/', trim( substr( $path, 9 ), '/' ) );
-		if ( 2 !== count( $parts ) || ! isset( Releases::PRODUCTS[ $parts[0] ] ) || ! preg_match( '/^d+.d+.d+$/', $parts[1] ) ) {
+		if ( 2 !== count( $parts ) || ! isset( Releases::PRODUCTS[ $parts[0] ] ) || ! Releases::validVersion( $parts[1] ) ) {
 			throw new UserError( 'Questa versione non è disponibile.' );
 		}
 		$file = Releases::authorize( $this->db, $cid, ! empty( $_SESSION['admin'] ), $this->billing->forCustomer( $cid ), $parts[0], $parts[1] );
@@ -254,6 +254,16 @@ final class App {
 			$res = $proxy->validate( (string) substr( (string) file_get_contents( 'php://input' ), 0, 4096 ), $this->clientIp() );
 		} elseif ( 'GET' === $method && '/api/plugin/latest' === $path ) {
 			$res = $proxy->latest( $this->clientIp() );
+		} elseif ( 'POST' === $method && '/api/plugin/update' === $path ) {
+			$res = PluginUpdates::check( $this->db, $proxy, (string) substr( (string) file_get_contents( 'php://input' ), 0, 4096 ), $this->clientIp() );
+		} elseif ( 'GET' === $method && '/api/plugin/package' === $path ) {
+			// Scarico dello zip con indirizzo firmato (nessun accesso richiesto, ma il token dura pochi minuti).
+			list( $code, $file, $prod, $ver ) = PluginUpdates::package( $this->db, (string) ( $_GET['t'] ?? '' ) );
+			if ( 200 === $code && $proxy->hit( 'package', $this->clientIp() ) ) {
+				Releases::stream( $file, $prod, $ver );
+				return;
+			}
+			$res = array( 200 === $code ? 429 : $code, (string) json_encode( array( 'error' => array( 'code' => 'PACKAGE', 'message' => 200 === $code ? 'Troppe richieste: riprova più tardi.' : $file ) ) ), array() );
 		} elseif ( 'GET' === $method && '/.well-known/jwks.json' === $path ) {
 			$res = $proxy->jwks();
 		} else {

@@ -2261,6 +2261,58 @@ asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\Donations::sa
 Settings::update( array( 'limits' => array(), 'donate_enabled' => 0, 'donate_paypal' => '' ) );
 delete_option( \AssociazioneSemplice\Donations::OPT_CAMPAIGNS );
 delete_option( \AssociazioneSemplice\Donations::OPT_NEXT_ID );
+
+// aggiornamento diretto dal portale (risposte simulate)
+add_filter( 'asem_license_is_local', '__return_false' );
+$up_calls  = array();
+$up_update = true;
+$up_http   = function ( $pre, $args, $url ) use ( &$up_calls, &$up_update ) {
+	if ( false === strpos( $url, '/api/plugin/update' ) ) {
+		return $pre;
+	}
+	$b          = json_decode( (string) ( $args['body'] ?? '' ), true );
+	$up_calls[] = $b;
+	return array(
+		'response' => array( 'code' => 200, 'message' => 'OK' ),
+		'body'     => wp_json_encode( array( 'product' => $b['product'], 'version' => '99.0', 'update' => $up_update, 'package' => $up_update ? 'https://associazionesemplice.it/api/plugin/package?t=abc' : null, 'url' => 'https://associazionesemplice.it/accedi' ) ),
+		'headers'  => array(), 'cookies' => array(), 'filename' => null,
+	);
+};
+$up_home = function () { return 'https://www.Prova-Sito.it'; };
+add_filter( 'home_url', $up_home );
+add_filter( 'pre_http_request', $up_http, 10, 3 );
+delete_option( \AssociazioneSemplice\Updater::OPT );
+Settings::update( array( 'license_key' => 'ASEM-TEST-KEY' ) );
+$up_tr = \AssociazioneSemplice\Updater::inject( (object) array( 'response' => array() ) );
+$up_bn = plugin_basename( ASEM_FILE );
+asem_ok( isset( $up_tr->response[ $up_bn ] ) && '99.0' === $up_tr->response[ $up_bn ]->new_version && 'asem-portal://free' === $up_tr->response[ $up_bn ]->package && 'associazionesemplice' === $up_tr->response[ $up_bn ]->slug, 'aggiornamento diretto: la nuova versione compare tra gli aggiornamenti di WordPress' );
+asem_ok( 'free' === $up_calls[0]['product'] && ASEM_VERSION === $up_calls[0]['version'] && ! isset( $up_calls[0]['license_key'] ), 'aggiornamento diretto: il gratuito non manda la chiave' );
+if ( defined( 'ASEM_PRO_VERSION' ) ) {
+	$pro_call = null;
+	foreach ( $up_calls as $uc ) {
+		if ( 'pro' === $uc['product'] ) {
+			$pro_call = $uc;
+		}
+	}
+	asem_ok( $pro_call && 'ASEM-TEST-KEY' === $pro_call['license_key'] && ASEM_PRO_VERSION === $pro_call['version'], 'aggiornamento diretto: il Pro manda chiave e versione' );
+}
+$up_n = count( $up_calls );
+\AssociazioneSemplice\Updater::inject( (object) array( 'response' => array() ) );
+asem_ok( count( $up_calls ) === $up_n, 'aggiornamento diretto: dentro le 12 ore non richiede di nuovo al portale' );
+$up_info = \AssociazioneSemplice\Updater::info( false, 'plugin_information', (object) array( 'slug' => 'associazionesemplice' ) );
+asem_ok( is_object( $up_info ) && '99.0' === $up_info->version && 'asem-portal://free' === $up_info->download_link, 'aggiornamento diretto: scheda dei dettagli' );
+asem_ok( 'altro' === \AssociazioneSemplice\Updater::download( 'altro', 'https://example.com/a.zip' ), 'aggiornamento diretto: i pacchetti di altri non si toccano' );
+$up_update = false;
+asem_ok( is_wp_error( \AssociazioneSemplice\Updater::download( false, 'asem-portal://free' ) ), 'aggiornamento diretto: se il portale non offre il pacchetto lo scarico dà un errore chiaro' );
+$up_update = true;
+Settings::update( array( 'limits' => array( 'portal_updates' => 0 ) ) );
+$up_tr = \AssociazioneSemplice\Updater::inject( (object) array( 'response' => array() ) );
+asem_ok( empty( $up_tr->response ), 'aggiornamento diretto: spento dai limiti, niente aggiornamenti' );
+Settings::update( array( 'limits' => array(), 'license_key' => '' ) );
+remove_filter( 'pre_http_request', $up_http, 10 );
+remove_filter( 'home_url', $up_home );
+remove_filter( 'asem_license_is_local', '__return_false' );
+delete_option( \AssociazioneSemplice\Updater::OPT );
 $csv_l = $mkf( 'cassa.csv', "Data;Importo;Descrizione\r\n01/06/2022;5,00;Offerta\r\n" );
 $pv    = ImportService::preview_file( $csv_l, 'cassa.csv', array( 'default_account_id' => (int) $cash['id'] ) );
 asem_ok( 'create' === $pv['ledger']['plan'][0]['action'] && 500 === $pv['ledger']['plan'][0]['data']['cents'] && ! empty( $pv['ledger']['plan'][0]['warnings'] ), 'import CSV: prima nota con il conto predefinito (voce mancante = voce generica con avviso)' );

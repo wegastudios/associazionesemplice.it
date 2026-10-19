@@ -148,10 +148,11 @@ jobs:
           name: associazionesemplice-packages
           path: |
             wordpress/dist/associazionesemplice-free.zip
+            wordpress/dist/associazionesemplice-wporg.zip
             wordpress/dist/associazionesemplice-pro.zip
 
   plugincheck:
-    name: WordPress.org plugin check (free package)
+    name: WordPress.org plugin check (free package for WordPress.org)
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
@@ -161,4 +162,4 @@ jobs:
       - name: Plugin check
         uses: WordPress/plugin-check-action@v1
         with:
-          build-dir: wordpress/dist/free/associazionesemplice
+          build-dir: wordpress/dist/wporg/associazionesemplice

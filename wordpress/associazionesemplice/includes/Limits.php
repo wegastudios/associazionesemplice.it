@@ -86,12 +86,20 @@ final class Limits {
 			'Se lo disattivi il plugin non contatta più il portale per le versioni e non vedrai l\'avviso: dovrai controllare a mano nell\'area clienti, con il rischio di restare su versioni vecchie, senza correzioni di sicurezza.'
 		);
 		$add(
-			'update_check_hours', 'comunicazioni', 'Ogni quante ore cercare nuove versioni', 'ore', 24, 6, 168,
+			'update_check_hours', 'comunicazioni', 'Ogni quante ore cercare nuove versioni', 'ore', 24, 12, 168,
 			'Ogni quante ore il plugin chiede al portale l\'ultima versione disponibile (solo se l\'avviso è attivo).',
 			'Con intervalli lunghi l\'avviso arriva con qualche giorno di ritardo.',
 			'Intervalli brevi appesantiscono inutilmente il portale e il tuo sito senza vantaggi: le versioni escono di rado.'
 		);
 
+		if ( is_readable( ASEM_DIR . 'includes/Updater.php' ) ) { // c'è solo nel pacchetto scaricato dal portale
+			$add(
+				'portal_updates', 'comunicazioni', 'Aggiornamenti diretti da WordPress (Bacheca → Aggiornamenti)', 'flag', 1, 0, 1,
+				'Il plugin chiede al portale di Associazione Semplice se esiste una versione più nuova (al massimo ogni 12 ore) e la offre in Bacheca → Aggiornamenti, dove si installa con un clic. Il Pro manda la chiave di licenza e il dominio; il gratuito non manda niente di suo.',
+				'Nessun rischio rilevante: una richiesta al portale ogni tanto.',
+				'Se lo disattivi gli aggiornamenti vanno scaricati dall\'area clienti e caricati a mano.'
+			);
+		}
 		$add(
 			'donate_max_campaigns', 'comunicazioni', 'Raccolte di donazioni, al massimo', 'raccolte', 20, 1, 100,
 			'Quante raccolte di donazioni (ciascuna con il suo shortcode) si possono creare.',
