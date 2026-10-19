@@ -831,9 +831,9 @@ if ( class_exists( 'ZipArchive' ) ) {
 	check( 'aggiornamento Pro: licenza non valida → 403', 403 === Portale\PluginUpdates::check( $udb, $upx, $pro, '9.1.1.4', $ut )[0] );
 	$GLOBALS['u_valid'] = true;
 	$GLOBALS['u_plan']  = 'Free';
-	check( 'aggiornamento Pro: licenza gratuita → 403', 403 === Portale\PluginUpdates::check( $udb, $upx, $pro, '9.1.1.5', $ut )[0] );
+	check( 'aggiornamento Pro: licenza gratuita → 403', 403 === Portale\PluginUpdates::check( $udb, $upx, str_replace( 'chiave-pro-di-prova', 'chiave-gratuita-prova', $pro ), '9.1.1.5', $ut )[0] );
 	$GLOBALS['u_plan'] = 'Pro Lite';
-	$jp = json_decode( Portale\PluginUpdates::check( $udb, $upx, $pro, '9.1.1.6', $ut )[1], true );
+	$jp = json_decode( Portale\PluginUpdates::check( $udb, $upx, str_replace( 'chiave-pro-di-prova', 'chiave-lite-prova-1', $pro ), '9.1.1.6', $ut )[1], true );
 	check( 'aggiornamento Pro: licenza Pro valida → link', true === $jp['update'] && '1.1.5' === $jp['version'] && ! empty( $jp['package'] ) );
 	$tok = substr( $j['package'], strpos( $j['package'], '?t=' ) + 3 );
 	$pk  = Portale\PluginUpdates::package( $udb, $tok, $ut + 10 );
