@@ -44,11 +44,16 @@ final class SupportSso {
 
 	/**
 	 * Claim facoltativi per precompilare il modulo del supporto: `plan` = «Pro» se ha una licenza a pagamento (o di prova) in regola, «Free» se ha
-	 * solo licenze gratuite in regola, assente altrimenti. Il portale non conosce il nome del cliente: `name` non si invia.
+	 * solo licenze gratuite in regola, assente altrimenti; `name` = nome del cliente se lo conosciamo (max 150 caratteri).
 	 */
 	public static function claimsFor( ?Db $db, string $email ): array {
 		if ( null === $db ) {
 			return array();
+		}
+		$out  = array();
+		$cust = $db->one( 'SELECT name FROM customers WHERE email = ?', array( strtolower( trim( $email ) ) ) );
+		if ( $cust && '' !== trim( (string) $cust['name'] ) ) {
+			$out['name'] = mb_substr( trim( (string) $cust['name'] ), 0, 150 );
 		}
 		$rows = $db->all( 'SELECT s.* FROM subscriptions s JOIN customers c ON c.id = s.customer_id WHERE c.email = ?', array( strtolower( trim( $email ) ) ) );
 		$plan = null;
@@ -57,11 +62,11 @@ final class SupportSso {
 				continue;
 			}
 			if ( 'free' !== $r['plan_code'] ) {
-				return array( 'plan' => 'Pro' );
+				return $out + array( 'plan' => 'Pro' );
 			}
 			$plan = 'Free';
 		}
-		return null === $plan ? array() : array( 'plan' => $plan );
+		return null === $plan ? $out : $out + array( 'plan' => $plan );
 	}
 
 	/** Indirizzo a cui mandare la persona: con l'accesso unico configurato porta il token, altrimenti la home del supporto. */

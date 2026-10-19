@@ -64,7 +64,7 @@ final class App {
 			View::render( 'free', array() );
 		} elseif ( ! $get && '/free' === $path ) {
 			$this->formLimit();
-			list( $cust, $sub ) = $this->billing->startFree( (string) $this->in( 'email' ), (string) $this->in( 'domain' ) );
+			list( $cust, $sub ) = $this->billing->startFree( (string) $this->in( 'email' ), (string) $this->in( 'domain' ), (string) $this->in( 'name' ) );
 			if ( ! $this->auth->canIssue( $cust['id'] ) ) {
 				throw new UserError( 'Hai richiesto troppi link: riprova tra un po\'.' );
 			}
@@ -84,7 +84,7 @@ final class App {
 		} elseif ( ! $get && '/acquista' === $path ) {
 			$this->formLimit();
 			list( $provider, $mode ) = array_pad( explode( ':', (string) $this->in( 'method' ), 2 ), 2, '' );
-			$url = $this->billing->startPaid( (string) $this->in( 'email' ), (string) $this->in( 'domain' ), (string) $this->in( 'plan' ), (string) $this->in( 'period' ), $provider, $mode );
+			$url = $this->billing->startPaid( (string) $this->in( 'email' ), (string) $this->in( 'domain' ), (string) $this->in( 'plan' ), (string) $this->in( 'period' ), $provider, $mode, (string) $this->in( 'name' ) );
 			header( 'Location: ' . $url, true, 303 );
 		} elseif ( $get && '/paypal/ritorno' === $path ) {
 			$this->paypalReturn( (string) ( $_GET['token'] ?? '' ) );
@@ -127,6 +127,10 @@ final class App {
 			header( 'Location: ' . SupportSso::url( $this->db, $this->customerEmail( $this->customerId() ) ), true, 303 );
 		} elseif ( $get && '/account' === $path ) {
 			$this->account();
+		} elseif ( ! $get && '/account/nome' === $path ) {
+			$this->billing->setName( $this->customerId(), (string) $this->in( 'name' ) );
+			$_SESSION['acc_flash'] = 'Nome salvato: lo vediamo anche nelle richieste di supporto.';
+			header( 'Location: /account', true, 303 );
 		} elseif ( ! $get && '/account/password' === $path ) {
 			$this->changePassword();
 		} elseif ( ! $get && '/account/dominio' === $path ) {
@@ -236,7 +240,7 @@ final class App {
 		$flash = (string) ( $_SESSION['acc_flash'] ?? '' );
 		unset( $_SESSION['acc_flash'] );
 		View::render( 'account', array(
-			'has_password' => $this->auth->hasPassword( $cid ), 'via_link' => ! empty( $_SESSION['via_link'] ), 'flash' => $flash,
+			'name' => (string) ( $this->db->one( 'SELECT name FROM customers WHERE id = ?', array( $cid ) )['name'] ?? '' ), 'has_password' => $this->auth->hasPassword( $cid ), 'via_link' => ! empty( $_SESSION['via_link'] ), 'flash' => $flash,
 			'subs' => $subs, 'email' => $this->customerEmail( $cid ), 'trial' => $trial, 'trial_days' => Settings::limit( 'trial_days' ),
 			'trial_label' => (string) Config::get( 'plans.' . Config::get( 'trial_plan', 'full' ) . '.label', 'Pro' ),
 			'billing' => $this->billing, 'is_admin' => ! empty( $_SESSION['staff'] ),

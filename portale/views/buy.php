@@ -20,6 +20,8 @@ $names = array(
 			<input type="hidden" name="plan" value="<?php echo e( $plan ); ?>"><input type="hidden" name="period" value="<?php echo e( $period ); ?>">
 			<label for="email">La tua email</label>
 			<input id="email" type="email" name="email" placeholder="segreteria@miaassociazione.it" autocomplete="email" required>
+			<label for="name">Il tuo nome <span class="muted">(facoltativo)</span></label>
+			<input id="name" type="text" name="name" autocomplete="name" maxlength="150" placeholder="Nome e cognome">
 			<label for="domain">Indirizzo del sito WordPress</label>
 			<input id="domain" type="text" name="domain" placeholder="miaassociazione.it" autocapitalize="none" spellcheck="false" required>
 			<p class="hint">La licenza sarà legata a questo dominio; potrai cambiarlo in seguito.</p>

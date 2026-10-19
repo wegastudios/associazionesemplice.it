@@ -82,6 +82,16 @@ final class Billing {
 		return $out;
 	}
 
+	/** Nome del cliente (per precompilare il supporto): spazi ripuliti, niente caratteri di controllo, al massimo 150 caratteri. */
+	public static function cleanName( string $name ): string {
+		$name = (string) preg_replace( '/[\x00-\x1f\x7f]+/u', ' ', $name );
+		return mb_substr( trim( (string) preg_replace( '/\s+/u', ' ', $name ) ), 0, 150 );
+	}
+
+	public function setName( string $customerId, string $name ): void {
+		$this->db->run( 'UPDATE customers SET name = ? WHERE id = ?', array( '' === self::cleanName( $name ) ? null : self::cleanName( $name ), $customerId ) );
+	}
+
 	// --- Creazione ----------------------------------------------------------------------------------------------
 
 	/** Un dominio può avere un solo abbonamento attivo o in attesa, e di un solo cliente (la chiave della licenza è riservata). */
@@ -111,19 +121,23 @@ final class Billing {
 		return $sub;
 	}
 
-	private function create( string $email, string $domainInput, string $plan, string $period, string $provider, string $mode ): array {
+	private function create( string $email, string $domainInput, string $plan, string $period, string $provider, string $mode, ?string $name = null ): array {
 		$domain = Domain::forLicense( $domainInput );
 		if ( '' === $domain ) {
 			throw new UserError( 'Dominio non valido: scrivi per esempio «miaassociazione.it», senza http:// e senza indirizzi IP.' );
 		}
 		$cust = $this->customer( $email );
+		// Il nome dai moduli pubblici vale solo per un cliente nuovo (senza licenze né nome): su un indirizzo già usato lo cambia soltanto chi è entrato in /account.
+		if ( null !== $name && '' !== trim( $name ) && empty( $cust['name'] ) && ! $this->db->one( 'SELECT 1 AS x FROM subscriptions WHERE customer_id = ?', array( $cust['id'] ) ) ) {
+			$this->setName( $cust['id'], $name );
+		}
 		$this->assertDomainFree( $domain, $cust['id'], null, ! in_array( $provider, array( 'free', 'trial' ), true ) );
 		return array( 'customer' => $cust, 'sub' => $this->insertSub( $cust['id'], $plan, $period, $provider, $domain, $mode ) );
 	}
 
 	/** Licenza gratuita: si attiva solo dopo la conferma dell'email (link). @return array [customer, sub] */
-	public function startFree( string $email, string $domain ): array {
-		$r = $this->create( $email, $domain, 'free', 'free', 'free', 'once' );
+	public function startFree( string $email, string $domain, ?string $name = null ): array {
+		$r = $this->create( $email, $domain, 'free', 'free', 'free', 'once', $name );
 		return array( $r['customer'], $r['sub'] );
 	}
 
@@ -133,12 +147,12 @@ final class Billing {
 	 * @param string $mode `recurring` (rinnovo automatico) oppure `once` (pagamento singolo, nessun rinnovo)
 	 * @return string indirizzo a cui mandare il cliente per pagare
 	 */
-	public function startPaid( string $email, string $domain, string $plan, string $period, string $provider, string $mode = 'recurring' ): string {
+	public function startPaid( string $email, string $domain, string $plan, string $period, string $provider, string $mode = 'recurring', ?string $name = null ): string {
 		$price = Config::price( $plan, $period );
 		if ( 'free' === $plan || ! $price || ! in_array( array( $provider, $mode ), $this->methods( $price ), true ) ) {
 			throw new UserError( 'Questo metodo di pagamento non è disponibile per il piano scelto.' );
 		}
-		$r = $this->create( $email, $domain, $plan, $period, $provider, $mode );
+		$r = $this->create( $email, $domain, $plan, $period, $provider, $mode, $name );
 		return $this->checkoutUrl( $r['sub'], $r['customer']['email'], $price, $provider, $mode );
 	}
 
