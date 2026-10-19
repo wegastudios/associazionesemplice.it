@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.5
+Stable tag: 1.2.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -66,6 +66,9 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.2.6 =
+* Bookable resources (courts, rooms, boat berths, parking spaces, lockers): new tables and the members' resources view; the management pages come with the Pro add-on.
 
 = 1.2.5 =
 * License domain: the complete Public Suffix List (the same copy as the portal) decides which domain a license covers, so customers sharing a host such as altervista.org no longer share a license.

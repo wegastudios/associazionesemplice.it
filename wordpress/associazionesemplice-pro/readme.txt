@@ -3,7 +3,7 @@ Contributors: wegastudios
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.7
+Stable tag: 1.1.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -14,6 +14,9 @@ Advanced features for Associazione Semplice: online payments, accounts and funds
 Associazione Semplice Pro adds to Associazione Semplice (required) the features that go beyond the basics: online payments with Stripe and PayPal, several accounts and funds, accounting and reports, insurance and attendance registers, mass emails, installable app with notifications, Apple and Google Wallet cards, receipts in PDF, several member levels, VAT and customisation of every text and language.
 
 == Changelog ==
+
+= 1.1.8 =
+* Bookable resources for the Pro Lite and Pro Full plans: management pages, bookings and guests.
 
 = 1.1.7 =
 * Security: direct updates now check the package's SHA-256 and the Ed25519 signature made by Associazione Semplice (key built into the plugin) and refuse older versions.
