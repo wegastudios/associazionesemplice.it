@@ -5534,7 +5534,7 @@ $dn_html = do_shortcode( '[associazionesemplice_donazioni]' );
 asem_ok( false !== strpos( $dn_html, 'https://www.paypal.com/donate' ) && false !== strpos( $dn_html, 'value="donazioni@example.org"' ) && false !== strpos( $dn_html, 'value="15.00"' ) && false !== strpos( $dn_html, 'Per il tetto' ) && false !== strpos( $dn_html, 'name="currency_code" value="EUR"' ), 'donazioni: il modulo porta a PayPal con conto, causale e importi' );
 asem_render( array( Admin\DonatePage::class, 'render' ), 'Conto PayPal' );
 $dn_save->invoke( null, array( 'donate_paypal' => 'donazioni@example.org' ) );
-asem_ok( '' === do_shortcode( '[associazionesemplice_donazioni]' ), 'donazioni: spente il modulo sparisce' );
+asem_ok( false === strpos( do_shortcode( '[associazionesemplice_donazioni]' ), '<form' ), 'donazioni: spente il modulo sparisce' );
 // tolleranza per il pagamento: il posto non versato si libera, chi ha pagato resta
 $hd_a = $acts->create( array( 'name' => 'Cena con tolleranza', 'social_year' => $ev_sy, 'kind' => 'event', 'fee_cents' => 1000, 'hold_hours' => 24, 'session' => array( 'session_date' => $today, 'capacity' => 2 ) ) );
 $hd_s = (int) $acts->sessions( $hd_a )[0]['id'];

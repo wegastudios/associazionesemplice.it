@@ -122,7 +122,7 @@ final class Donations {
 		if ( 0 === $id ) {
 			$max = Limits::get( 'donate_max_campaigns' );
 			if ( count( $all ) >= $max ) {
-				throw new \InvalidArgumentException( 'Hai già ' . $max . ' raccolte: eliminane una o alza il limite in Impostazioni → Tecniche → Limiti e soglie.' );
+				throw new \InvalidArgumentException( 'Hai già ' . $max . ' raccolte: eliminane una o alza il limite in Impostazioni → Tecniche → Limiti e soglie.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno con un numero
 			}
 			$id = max( (int) get_option( self::OPT_NEXT_ID, 0 ), $all ? max( array_keys( $all ) ) : 0 ) + 1;
 			update_option( self::OPT_NEXT_ID, $id, false ); // i numeri non si riusano: lo shortcode di una raccolta eliminata non ne indica un'altra

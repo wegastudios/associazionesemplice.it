@@ -53,7 +53,7 @@ final class DonatePage {
 			foreach ( $list as $c ) {
 				$state = ! $c['active'] ? 'Spenta' : ( Donations::enabled() ? '<span class="asem-ok">Attiva</span>' : '<span class="asem-warn">In attesa: PayPal non è configurato</span>' );
 				echo '<tr><td><strong>' . esc_html( $c['name'] ) . '</strong>' . ( '' !== $c['purpose'] ? '<br><span class="description">' . esc_html( $c['purpose'] ) . '</span>' : '' ) . '</td>' // phpcs:ignore WordPress.Security.EscapeOutput
-					. '<td>' . self::copy_field( Donations::shortcode( $c['id'] ) ) . '</td><td>' . $state . '</td><td>'
+					. '<td>' . self::copy_field( Donations::shortcode( $c['id'] ) ) . '</td><td>' . $state . '</td><td>'  // phpcs:ignore WordPress.Security.EscapeOutput
 					. '<a class="button button-small" href="' . esc_url( Ui::url( 'asem-donate', array( 'campaign' => $c['id'] ) ) ) . '#asem-campaign">Modifica</a> ';
 				Ui::form_open( 'asem_delete_campaign', Ui::url( 'asem-donate' ), false, 'asem-inline' );
 				echo Ui::hidden( 'id', $c['id'] ) . '<button class="button button-small" data-confirm="Eliminare la raccolta «' . esc_attr( $c['name'] ) . '»? Il suo shortcode smette di mostrare il modulo.">Elimina</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
