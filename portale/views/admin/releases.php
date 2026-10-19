@@ -18,13 +18,13 @@ $csrf = Portale\App::csrf();
 	<?php foreach ( Portale\Releases::PRODUCTS as $k => $p ) : ?>
 	<div class="card2">
 		<h2><?php echo e( $p[1] ); ?></h2>
-		<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Versione</th><th>Pubblicata (UTC)</th><th>Dimensione</th><th>Nota</th><th></th></tr></thead><tbody>
+		<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Versione</th><th>Pubblicata (UTC)</th><th>Dimensione</th><th>Firma</th><th>Nota</th><th></th></tr></thead><tbody>
 		<?php foreach ( $rows[ $k ] as $i => $r ) : ?>
-			<tr><td><b><?php echo e( $r['version'] ); ?></b><?php echo 0 === $i ? ' <span class="badge">ultima</span>' : ''; ?></td><td><?php echo e( $r['created_at'] ); ?></td><td><?php echo e( number_format( $r['size'] / 1024, 0, ',', '.' ) ); ?> KB</td><td><?php echo e( (string) $r['note'] ); ?></td>
+			<tr><td><b><?php echo e( $r['version'] ); ?></b><?php echo 0 === $i ? ' <span class="badge">ultima</span>' : ''; ?></td><td><?php echo e( $r['created_at'] ); ?></td><td><?php echo e( number_format( $r['size'] / 1024, 0, ',', '.' ) ); ?> KB</td><td><?php echo ! empty( $r['signature'] ) ? '<span class="badge" title="' . e( $r['kid'] ) . '">firmata</span>' : '<span class="badge warn" title="Senza firma il Pro non si aggiorna da WordPress">non firmata</span>'; ?></td><td><?php echo e( (string) $r['note'] ); ?></td>
 			<td style="white-space:nowrap"><a class="btn alt small" href="/scarica/<?php echo e( $k ); ?>/<?php echo e( $r['version'] ); ?>">Scarica</a>
 			<form method="post" action="/admin/versioni/elimina" style="display:inline" onsubmit="return confirm('Eliminare per sempre la versione <?php echo e( $r['version'] ); ?>?')"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="product" value="<?php echo e( $k ); ?>"><input type="hidden" name="version" value="<?php echo e( $r['version'] ); ?>"><button class="btn danger small" type="submit">Elimina</button></form></td></tr>
 		<?php endforeach; ?>
-		<?php if ( ! $rows[ $k ] ) : ?><tr><td colspan="5" class="muted">Nessuna versione caricata.</td></tr><?php endif; ?>
+		<?php if ( ! $rows[ $k ] ) : ?><tr><td colspan="6" class="muted">Nessuna versione caricata.</td></tr><?php endif; ?>
 		</tbody></table></div>
 	</div>
 	<?php endforeach; ?>

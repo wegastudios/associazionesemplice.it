@@ -81,6 +81,8 @@ final class Db {
 			'ALTER TABLE customers ADD COLUMN password_hash VARCHAR(255) NULL',
 			'ALTER TABLE subscriptions ADD COLUMN last_seen_at VARCHAR(19) NULL',
 			'ALTER TABLE customers ADD COLUMN name VARCHAR(150) NULL',
+			'ALTER TABLE releases ADD COLUMN signature VARCHAR(120) NULL',
+			'ALTER TABLE releases ADD COLUMN kid VARCHAR(40) NULL',
 			'ALTER TABLE subscriptions ADD COLUMN reminded_for VARCHAR(19) NULL',
 			'ALTER TABLE subscriptions ADD COLUMN note VARCHAR(255) NULL',
 			'ALTER TABLE subscriptions ADD COLUMN mode VARCHAR(10) NULL',

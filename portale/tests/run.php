@@ -811,7 +811,11 @@ if ( class_exists( 'ZipArchive' ) ) {
 		$zz->open( $zf, ZipArchive::OVERWRITE );
 		$zz->addFromString( $rel[1] . '/' . $rel[1] . '.php', "<?php\n/**\n * Version:           {$rel[2]}\n */\n" );
 		$zz->close();
-		Portale\Releases::add( $udb, $rel[0], $zf, '', 'test' );
+		if ( ! function_exists( 'sodium_crypto_sign_keypair' ) ) { continue; }
+		static $ukp = null;
+		if ( null === $ukp ) { $ukp = sodium_crypto_sign_keypair(); Config::set( 'package_keys', array( 'k-u' => rtrim( strtr( base64_encode( sodium_crypto_sign_publickey( $ukp ) ), '+/', '-_' ), '=' ) ) ); }
+		$usig = rtrim( strtr( base64_encode( sodium_crypto_sign_detached( Portale\Releases::signedMessage( $rel[0], $rel[2], hash_file( 'sha256', $zf ) ), sodium_crypto_sign_secretkey( $ukp ) ) ), '+/', '-_' ), '=' );
+		Portale\Releases::add( $udb,$rel[0], $zf, '', 'test', null, $usig, 'k-u' );
 	}
 	$GLOBALS['u_valid'] = true;
 	Http::$transport = function ( $m, $url, $h, $body ) {
@@ -891,6 +895,44 @@ check( 'nome: dall\'area riservata si può cambiare', 'Anna V. Verdi' === $ndb->
 check( 'sso: il token porta il nome del cliente', 'Anna V. Verdi' === Portale\SupportSso::claimsFor( $ndb, 'nuovo@esempio.it' )['name'] );
 $nbil->setName( $nc['id'], '   ' );
 check( 'sso: senza nome il claim non c\'è', ! isset( Portale\SupportSso::claimsFor( $ndb, 'nuovo@esempio.it' )['name'] ) );
+
+// --- Pacchetti firmati ---------------------------------------------------------------------------
+if ( class_exists( 'ZipArchive' ) && function_exists( 'sodium_crypto_sign_keypair' ) ) {
+	$kp   = sodium_crypto_sign_keypair();
+	$sk   = sodium_crypto_sign_secretkey( $kp );
+	$b64u = function ( $r ) { return rtrim( strtr( base64_encode( $r ), '+/', '-_' ), '=' ); };
+	Config::set( 'package_keys', array( 'k-test' => $b64u( sodium_crypto_sign_publickey( $kp ) ) ) );
+	$gdb = new Db( new PDO( 'sqlite::memory:' ) );
+	$gdb->migrate();
+	Config::set( 'releases_dir', sys_get_temp_dir() . '/asem-rel-g-' . bin2hex( random_bytes( 4 ) ) );
+	$mkz = function ( $ver ) {
+		$zf = tempnam( sys_get_temp_dir(), 'z' );
+		$zz = new ZipArchive();
+		$zz->open( $zf, ZipArchive::OVERWRITE );
+		$zz->addFromString( 'associazionesemplice-pro/associazionesemplice-pro.php', "<?php\n/**\n * Version:           $ver\n */\n" );
+		$zz->close();
+		return $zf;
+	};
+	$z1  = $mkz( '1.0.1' );
+	$sig = $b64u( sodium_crypto_sign_detached( Portale\Releases::signedMessage( 'pro', '1.0.1', hash_file( 'sha256', $z1 ) ), $sk ) );
+	$row = Portale\Releases::add( $gdb, 'pro', $z1, '', 'test', null, $sig, 'k-test' );
+	check( 'firma: pacchetto firmato accettato e registrato', $sig === $row['signature'] && 'k-test' === $row['kid'] );
+	check( 'firma: firma di un altro pacchetto rifiutata', null !== throwsUser( function () use ( $gdb, $mkz, $sig ) { Portale\Releases::add( $gdb, 'pro', $mkz( '1.0.2' ), '', 'test', null, $sig, 'k-test' ); } ) );
+	check( 'firma: chiave sconosciuta rifiutata', null !== throwsUser( function () use ( $gdb, $mkz, $sig ) { Portale\Releases::add( $gdb, 'pro', $mkz( '1.0.3' ), '', 'test', null, $sig, 'k-altra' ); } ) );
+	$z4 = $mkz( '1.0.4' );
+	Portale\Releases::add( $gdb, 'pro', $z4, '', 'test' );
+	$sig4 = $b64u( sodium_crypto_sign_detached( Portale\Releases::signedMessage( 'pro', '1.0.4', hash_file( 'sha256', $z4 ) ), $sk ) );
+	Http::$transport = function () { return array( 200, json_encode( array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Full', 'license_id' => 'LG' ) ) ); };
+	$gpx = new Portale\LicenseProxy( $gdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+	$req = '{"product":"pro","version":"1.0.0","license_key":"chiave-firma-prova","domain":"esempio.it"}';
+	$g1  = json_decode( Portale\PluginUpdates::check( $gdb, $gpx, $req, '8.8.1.1', 1800000000 )[1], true );
+	check( 'aggiornamento: l\'ultima versione NON firmata (1.0.4) non si offre, si offre la firmata (1.0.1) con impronta e firma', '1.0.1' === $g1['version'] && $sig === $g1['signature'] && 'k-test' === $g1['kid'] && 64 === strlen( (string) $g1['sha256'] ) );
+	Portale\Releases::sign( $gdb, 'pro', '1.0.4', $sig4, 'k-test', 'test' );
+	$g2 = json_decode( Portale\PluginUpdates::check( $gdb, $gpx, str_replace( 'chiave-firma-prova', 'chiave-firma-prova2', $req ), '8.8.1.2', 1800000000 )[1], true );
+	check( 'firma: dopo la firma la 1.0.4 diventa l\'aggiornamento offerto', '1.0.4' === $g2['version'] && $sig4 === $g2['signature'] );
+	check( 'firma: firma aggiunta a una versione sbagliata rifiutata', null !== throwsUser( function () use ( $gdb, $sig ) { Portale\Releases::sign( $gdb, 'pro', '1.0.4', $sig, 'k-test', 'test' ); } ) );
+	Config::set( 'package_keys', Portale\Releases::SIGNING_KEYS );
+}
 
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );
