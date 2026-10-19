@@ -25,7 +25,7 @@ final class Actions {
 	const ADMIN_ONLY = array(
 		'asem_save_license', 'asem_license_check',
 		'asem_save_settings', 'asem_save_payment_settings', 'asem_test_gateway', 'asem_save_card', 'asem_save_wallet_apple', 'asem_save_wallet_google', 'asem_wallet_clear', 'asem_regen_qr',
-		'asem_save_look', 'asem_save_donate', 'asem_create_privacy_page', 'asem_save_ical', 'asem_regen_ical', 'asem_create_pages', 'asem_save_wpai', 'asem_wpai_process', 'asem_wpai_retry', 'asem_wpai_clear', 'asem_privacy_anonymize', 'asem_save_comms',
+		'asem_save_look', 'asem_save_donate', 'asem_save_campaign', 'asem_delete_campaign', 'asem_create_privacy_page', 'asem_save_ical', 'asem_regen_ical', 'asem_create_pages', 'asem_save_wpai', 'asem_wpai_process', 'asem_wpai_retry', 'asem_wpai_clear', 'asem_privacy_anonymize', 'asem_save_comms',
 		'asem_save_terms', 'asem_save_texts', 'asem_import_texts', 'asem_reset_texts', 'asem_add_text', 'asem_create_year', 'asem_close_year', 'asem_reopen_year',
 		'asem_delete_activity', 'asem_delete_booking', 'asem_purge_enrollments', 'asem_set_treasurer', 'asem_set_secretary', 'asem_set_board_role', 'asem_backup_restore', 'asem_save_levels', 'asem_save_language', 'asem_import_language', 'asem_delete_language',
 	);
@@ -138,6 +138,8 @@ final class Actions {
 			'asem_quick_cash'         => 'quick_cash',
 			'asem_save_look'          => 'save_look',
 			'asem_save_donate'        => 'save_donate',
+			'asem_save_campaign'      => 'save_campaign',
+			'asem_delete_campaign'    => 'delete_campaign',
 			'asem_save_ical'          => 'save_ical',
 			'asem_regen_ical'         => 'regen_ical',
 			'asem_quick_enroll'       => 'quick_enroll',
@@ -1361,6 +1363,26 @@ final class Actions {
 			)
 		);
 		return array( Ui::url( 'asem-donate' ), $on ? 'Donazioni attive: inserisci [associazionesemplice_donazioni] dove vuoi il modulo.' : 'Impostazioni salvate: le donazioni sono spente.' );
+	}
+
+	private static function save_campaign( array $p ): array {
+		$id   = \AssociazioneSemplice\Donations::save_campaign(
+			(int) ( $p['id'] ?? 0 ),
+			array(
+				'name'    => $p['name'] ?? '',
+				'purpose' => $p['purpose'] ?? '',
+				'amounts' => $p['amounts'] ?? '',
+				'note'    => $p['note'] ?? '',
+				'active'  => ! empty( $p['active'] ),
+			)
+		);
+		$warn = \AssociazioneSemplice\Donations::enabled() ? '' : ' ' . \AssociazioneSemplice\Donations::disclaimer();
+		return array( Ui::url( 'asem-donate' ), 'Raccolta salvata. Shortcode: ' . \AssociazioneSemplice\Donations::shortcode( $id ) . '.' . $warn );
+	}
+
+	private static function delete_campaign( array $p ): array {
+		\AssociazioneSemplice\Donations::delete_campaign( (int) ( $p['id'] ?? 0 ) );
+		return array( Ui::url( 'asem-donate' ), 'Raccolta eliminata.' );
 	}
 
 	private static function save_card( array $p ): array {

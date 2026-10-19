@@ -1217,22 +1217,33 @@ final class Views {
 		return '<section class="asemf-section asemf-privacy-wrap">' . \AssociazioneSemplice\PrivacyNotice::html() . '</section>'; // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto da PrivacyNotice
 	}
 
-	/** Modulo di donazione: porta il donatore alla pagina di PayPal già compilata (spento finché non si imposta il conto PayPal). */
-	public static function donate(): string {
-		if ( ! \AssociazioneSemplice\Donations::enabled() ) {
-			return '';
+	/**
+	 * Modulo di donazione con il pulsante PayPal. Senza `id` è la raccolta generale; con `id` è una raccolta creata in Donazioni (titolo, importi
+	 * e testo suoi). Se PayPal non è configurato ai visitatori non compare niente; chi gestisce vede un avviso che spiega perché.
+	 */
+	public static function donate( array $atts = array() ): string {
+		$id = (int) ( $atts['id'] ?? 0 );
+		$c  = $id > 0 ? \AssociazioneSemplice\Donations::campaign( $id ) : null;
+		if ( ! \AssociazioneSemplice\Donations::enabled() || ( $id > 0 && ( ! $c || empty( $c['active'] ) ) ) ) {
+			if ( ! current_user_can( \AssociazioneSemplice\Plugin::CAP ) ) {
+				return '';
+			}
+			$why = ! \AssociazioneSemplice\Donations::enabled() ? \AssociazioneSemplice\Donations::disclaimer() : ( $c ? 'Questa raccolta è spenta.' : 'Questa raccolta non esiste più.' );
+			return '<p class="asemf-small asemf-muted"><em>Donazioni (lo vedi solo tu): ' . esc_html( $why ) . '</em></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
 		Assets::enqueue();
-		$amounts = \AssociazioneSemplice\Donations::amounts();
+		$amounts = $c ? \AssociazioneSemplice\Donations::campaign_amounts( $c ) : \AssociazioneSemplice\Donations::amounts();
+		$purpose = $c ? \AssociazioneSemplice\Donations::campaign_purpose( $c ) : \AssociazioneSemplice\Donations::purpose();
 		$select  = '<label>Importo <select name="amount">';
 		foreach ( $amounts as $a ) {
 			$select .= '<option value="' . esc_attr( \AssociazioneSemplice\Donations::paypal_amount( $a ) ) . '">' . esc_html( $a ) . ' €</option>';
 		}
 		$select .= '<option value="">Un altro importo (lo scegli su PayPal)</option></select></label>';
-		return '<section class="asemf-section asemf-donate"><h3>' . esc_html( \AssociazioneSemplice\Donations::purpose() ) . '</h3>'
+		return '<section class="asemf-section asemf-donate"><h3>' . esc_html( $purpose ) . '</h3>'
+			. ( $c && '' !== $c['note'] ? '<p>' . esc_html( $c['note'] ) . '</p>' : '' )
 			. '<form method="post" action="' . esc_url( \AssociazioneSemplice\Donations::URL ) . '" target="_blank" rel="noopener">'
 			. '<input type="hidden" name="business" value="' . esc_attr( \AssociazioneSemplice\Donations::account() ) . '">'
-			. '<input type="hidden" name="item_name" value="' . esc_attr( \AssociazioneSemplice\Donations::purpose() ) . '">'
+			. '<input type="hidden" name="item_name" value="' . esc_attr( $purpose ) . '">'
 			. '<input type="hidden" name="currency_code" value="EUR"><input type="hidden" name="no_recurring" value="1">'
 			. '<p>' . $select . '</p><p><button type="submit" class="asemf-btn wp-element-button">Dona con PayPal</button></p>'
 			. '<p class="asemf-small asemf-muted">Il pagamento avviene sul sito di PayPal: qui non passa nessun dato di pagamento.</p></form></section>'; // phpcs:ignore WordPress.Security.EscapeOutput

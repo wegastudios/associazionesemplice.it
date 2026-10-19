@@ -104,7 +104,7 @@ final class Shortcodes {
 			case 'bonifico':
 				return Views::bank_public();
 			case 'donazioni':
-				return Views::donate();
+				return Views::donate( shortcode_atts( array( 'id' => '' ), $atts ) );
 			case 'privacy':
 				return Views::privacy_notice();
 			case 'accesso':
