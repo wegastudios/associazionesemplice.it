@@ -2278,6 +2278,8 @@ $up_http   = function ( $pre, $args, $url ) use ( &$up_calls, &$up_update ) {
 		'headers'  => array(), 'cookies' => array(), 'filename' => null,
 	);
 };
+$up_home = function () { return 'https://www.Prova-Sito.it'; };
+add_filter( 'home_url', $up_home );
 add_filter( 'pre_http_request', $up_http, 10, 3 );
 delete_option( \AssociazioneSemplice\Updater::OPT );
 Settings::update( array( 'license_key' => 'ASEM-TEST-KEY' ) );
@@ -2308,6 +2310,7 @@ $up_tr = \AssociazioneSemplice\Updater::inject( (object) array( 'response' => ar
 asem_ok( empty( $up_tr->response ), 'aggiornamento diretto: spento dai limiti, niente aggiornamenti' );
 Settings::update( array( 'limits' => array(), 'license_key' => '' ) );
 remove_filter( 'pre_http_request', $up_http, 10 );
+remove_filter( 'home_url', $up_home );
 remove_filter( 'asem_license_is_local', '__return_false' );
 delete_option( \AssociazioneSemplice\Updater::OPT );
 $csv_l = $mkf( 'cassa.csv', "Data;Importo;Descrizione\r\n01/06/2022;5,00;Offerta\r\n" );
