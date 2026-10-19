@@ -41,3 +41,4 @@ Terms.php
 Languages.php
 Admin/TextsPage.php
 languages/en.json
+Updater.php

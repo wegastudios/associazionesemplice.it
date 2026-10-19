@@ -92,14 +92,12 @@ final class Limits {
 			'Intervalli brevi appesantiscono inutilmente il portale e il tuo sito senza vantaggi: le versioni escono di rado.'
 		);
 
-		if ( is_readable( ASEM_DIR . 'includes/Updater.php' ) ) { // c'è solo nel pacchetto scaricato dal portale
-			$add(
-				'portal_updates', 'comunicazioni', 'Aggiornamenti diretti da WordPress (Bacheca → Aggiornamenti)', 'flag', 1, 0, 1,
-				'Il plugin chiede al portale di Associazione Semplice se esiste una versione più nuova (al massimo ogni 12 ore) e la offre in Bacheca → Aggiornamenti, dove si installa con un clic. Il Pro manda la chiave di licenza e il dominio; il gratuito non manda niente di suo.',
-				'Nessun rischio rilevante: una richiesta al portale ogni tanto.',
-				'Se lo disattivi gli aggiornamenti vanno scaricati dall\'area clienti e caricati a mano.'
-			);
-		}
+		$add(
+			'portal_updates', 'comunicazioni', 'Aggiornamenti diretti di Associazione Semplice Pro (Bacheca → Aggiornamenti)', 'flag', 1, 0, 1,
+			'Con il Pro installato, il plugin chiede al portale di Associazione Semplice se esiste una versione più nuova (al massimo ogni 12 ore) e la offre in Bacheca → Aggiornamenti, dove si installa con un clic. Il Pro manda la chiave di licenza e il dominio; il gratuito non manda niente di suo.',
+			'Nessun rischio rilevante: una richiesta al portale ogni tanto.',
+			'Se lo disattivi gli aggiornamenti vanno scaricati dall\'area clienti e caricati a mano.'
+		);
 		$add(
 			'donate_max_campaigns', 'comunicazioni', 'Raccolte di donazioni, al massimo', 'raccolte', 20, 1, 100,
 			'Quante raccolte di donazioni (ciascuna con il suo shortcode) si possono creare.',

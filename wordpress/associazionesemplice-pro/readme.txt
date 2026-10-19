@@ -3,7 +3,7 @@ Contributors: wegastudios
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.5
+Stable tag: 1.1.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -14,6 +14,9 @@ Advanced features for Associazione Semplice: online payments, accounts and funds
 Associazione Semplice Pro adds to Associazione Semplice (required) the features that go beyond the basics: online payments with Stripe and PayPal, several accounts and funds, accounting and reports, insurance and attendance registers, mass emails, installable app with notifications, Apple and Google Wallet cards, receipts in PDF, several member levels, VAT and customisation of every text and language.
 
 == Changelog ==
+
+= 1.1.6 =
+* Direct updates from WordPress (Dashboard → Updates) for the Pro add-on, served by the Associazione Semplice portal.
 
 = 1.1.5 =
 * Includes the English language pack, previously shipped in the free plugin.

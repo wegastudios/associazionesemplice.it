@@ -136,7 +136,7 @@ jobs:
         run: npx --yes @wordpress/env run cli sh -c 'cat wp-content/debug.log 2>/dev/null | tail -50 || true'
 
   package:
-    name: Installable zips (free and Pro)
+    name: Installable zips (WordPress.org and Pro)
     needs: [unit, smoke, free, split]
     runs-on: ubuntu-latest
     steps:
@@ -147,12 +147,11 @@ jobs:
         with:
           name: associazionesemplice-packages
           path: |
-            wordpress/dist/associazionesemplice-free.zip
             wordpress/dist/associazionesemplice-wporg.zip
             wordpress/dist/associazionesemplice-pro.zip
 
   plugincheck:
-    name: WordPress.org plugin check (free package for WordPress.org)
+    name: WordPress.org plugin check (free package)
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
@@ -162,4 +161,4 @@ jobs:
       - name: Plugin check
         uses: WordPress/plugin-check-action@v1
         with:
-          build-dir: wordpress/dist/wporg/associazionesemplice
+          build-dir: wordpress/dist/free/associazionesemplice
