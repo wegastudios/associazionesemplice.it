@@ -2313,6 +2313,13 @@ remove_filter( 'pre_http_request', $up_http, 10 );
 remove_filter( 'home_url', $up_home );
 remove_filter( 'asem_license_is_local', '__return_false' );
 delete_option( \AssociazioneSemplice\Updater::OPT );
+
+// marchio ufficiale: icona del menu e logo in bacheca
+$mi = new ReflectionMethod( Admin\Admin::class, 'menu_icon' );
+$mi->setAccessible( true );
+asem_ok( 0 === strpos( (string) $mi->invoke( null ), 'data:image/svg+xml;base64,' ) && file_exists( ASEM_DIR . 'assets/brand/simbolo-bianco.svg' ) && file_exists( ASEM_DIR . 'assets/brand/logo-orizzontale.png' ), 'marchio: il menu usa il simbolo ufficiale (SVG) e i file del logo ci sono' );
+$br_dash = asem_render( array( Admin\DashboardPage::class, 'render' ), 'asem-logo' );
+asem_ok( false !== strpos( $br_dash, 'assets/brand/logo-orizzontale.png' ), 'marchio: la bacheca mostra il logo ufficiale' );
 $csv_l = $mkf( 'cassa.csv', "Data;Importo;Descrizione\r\n01/06/2022;5,00;Offerta\r\n" );
 $pv    = ImportService::preview_file( $csv_l, 'cassa.csv', array( 'default_account_id' => (int) $cash['id'] ) );
 asem_ok( 'create' === $pv['ledger']['plan'][0]['action'] && 500 === $pv['ledger']['plan'][0]['data']['cents'] && ! empty( $pv['ledger']['plan'][0]['warnings'] ), 'import CSV: prima nota con il conto predefinito (voce mancante = voce generica con avviso)' );

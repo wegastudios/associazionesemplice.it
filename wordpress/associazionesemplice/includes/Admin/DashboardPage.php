@@ -19,6 +19,7 @@ final class DashboardPage {
 		$name     = (string) Settings::get( 'association_name' );
 
 		Ui::header( 'Associazione Semplice' . ( $name ? ' — ' . $name : '' ) );
+		echo '<img class="asem-logo" src="' . esc_url( ASEM_URL . 'assets/brand/logo-orizzontale.png' ) . '" width="150" height="55" alt="Associazione Semplice">';
 		echo '<p>'
 			. '<a class="button button-primary" href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Nuovo incasso</a> '
 			. ( \AssociazioneSemplice\Edition::has( 'funds' ) ? '<a class="button" href="' . esc_url( Ui::url( 'asem-group' ) ) . '">Cassa per più persone</a> ' : '' )

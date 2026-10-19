@@ -35,3 +35,8 @@
 .asem .asem-shot { cursor: pointer; }
 .asem .asem-doc-info { margin-left: 8px; }
 .asem .asem-tabs { margin: 12px 0 16px; }
+
+/* Marchio ufficiale: indaco #1F218C, verde salvia #5F8579, giallo #EFCA5C */
+.asem { --asem-brand: #1F218C; --asem-sage: #5F8579; --asem-yellow: #EFCA5C; }
+.asem .asem-logo { float: right; margin: 0 0 8px 16px; width: 150px; height: auto; }
+.asem .asem-card > h2:first-child { border-left: 4px solid var(--asem-brand); padding-left: 10px; }
