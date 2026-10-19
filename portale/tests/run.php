@@ -934,5 +934,25 @@ if ( class_exists( 'ZipArchive' ) && function_exists( 'sodium_crypto_sign_keypai
 	Config::set( 'package_keys', Portale\Releases::SIGNING_KEYS );
 }
 
+// --- Public Suffix List completa -----------------------------------------------------------------
+$pslCases = array(
+	'esempio.it' => 'esempio.it', 'staging.esempio.it' => 'esempio.it', 'a.b.c.esempio.it' => 'esempio.it',
+	'www.esempio.co.uk' => 'esempio.co.uk', 'esempio.com.au' => 'esempio.com.au',
+	'sito.altervista.org' => 'sito.altervista.org', 'staging.sito.altervista.org' => 'sito.altervista.org',
+	'utente.github.io' => 'utente.github.io', 'x.blogspot.com' => 'x.blogspot.com',
+	'foo.bar.ck' => 'foo.bar.ck', 'www.ck' => 'www.ck', 'altro.www.ck' => 'www.ck',
+	'esempio.org.it' => 'org.it', 'esempio.roma.it' => 'esempio.roma.it', 'test.associazione.roma.it' => 'associazione.roma.it',
+	'xn--bcher-kva.ch' => 'xn--bcher-kva.ch', 'esempio.xn--p1ai' => 'esempio.xn--p1ai',
+	'co.uk' => '', 'altervista.org' => '', 'ck' => '',
+);
+$pslBad = array();
+foreach ( $pslCases as $in => $want ) {
+	if ( $want !== Domain::registrable( $in ) ) {
+		$pslBad[] = $in . ' → ' . Domain::registrable( $in ) . ' (atteso ' . $want . ')';
+	}
+}
+check( 'psl: ' . count( $pslCases ) . ' casi (suffissi ICANN e privati, wildcard, eccezioni, punycode)' . ( $pslBad ? ' — ' . implode( '; ', $pslBad ) : '' ), ! $pslBad );
+check( 'psl: due clienti dello stesso ospite (altervista.org) non condividono il dominio registrabile', Domain::registrable( 'a.altervista.org' ) !== Domain::registrable( 'b.altervista.org' ) );
+
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );

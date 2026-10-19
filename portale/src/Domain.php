@@ -26,23 +26,50 @@ final class Domain {
 		return self::ascii_ok( $d ) ? $d : '';
 	}
 
-	/** Suffissi pubblici a più etichette più comuni (come nel plugin). */
-	const MULTI_LABEL_SUFFIXES = array(
-		'co.uk', 'org.uk', 'ac.uk', 'gov.uk', 'me.uk', 'com.au', 'net.au', 'org.au', 'co.nz', 'co.jp', 'com.br', 'com.mx',
-		'com.ar', 'co.za', 'com.tr', 'com.cn', 'co.in', 'com.pl', 'com.es', 'org.es', 'com.pt',
-	);
 
-	/** Dominio registrabile: «staging.esempio.it» → «esempio.it», «www.esempio.co.uk» → «esempio.co.uk». La licenza vale per lui e per tutti i suoi sottodomini. */
+	/** @var array|null regole della Public Suffix List (ICANN e privati), caricate alla prima richiesta */
+	private static $psl = null;
+
+	private static function rules(): array {
+		if ( null === self::$psl ) {
+			self::$psl = require __DIR__ . '/PublicSuffixData.php';
+		}
+		return self::$psl;
+	}
+
+	/**
+	 * Quante etichette (da destra) formano il suffisso pubblico, con l'algoritmo della Public Suffix List: un'eccezione («!x.y») prevale su tutto,
+	 * poi vale la regola più lunga (anche con «*.»), altrimenti l'ultima etichetta.
+	 *
+	 * @param string[] $labels
+	 */
+	public static function suffixLength( array $labels ): int {
+		$rules = self::rules();
+		$n     = count( $labels );
+		for ( $i = 0; $i < $n; $i++ ) {
+			if ( isset( $rules[ '!' . implode( '.', array_slice( $labels, $i ) ) ] ) ) {
+				return $n - $i - 1;
+			}
+		}
+		for ( $i = 0; $i < $n; $i++ ) {
+			if ( isset( $rules[ implode( '.', array_slice( $labels, $i ) ) ] ) || ( $i + 1 < $n && isset( $rules[ '*.' . implode( '.', array_slice( $labels, $i + 1 ) ) ] ) ) ) {
+				return $n - $i;
+			}
+		}
+		return 1;
+	}
+
+	/**
+	 * Dominio registrabile: suffisso pubblico più una etichetta («staging.esempio.it» → «esempio.it», «www.esempio.co.uk» → «esempio.co.uk»,
+	 * «sito.altervista.org» resta sé stesso). La licenza vale per lui e per tutti i suoi sottodomini. Un dominio che è già un suffisso pubblico non è valido.
+	 */
 	public static function registrable( string $normalized ): string {
 		if ( '' === $normalized ) {
 			return '';
 		}
 		$labels = explode( '.', $normalized );
-		if ( count( $labels ) <= 2 ) {
-			return $normalized;
-		}
-		$take = in_array( implode( '.', array_slice( $labels, -2 ) ), self::MULTI_LABEL_SUFFIXES, true ) ? 3 : 2;
-		return implode( '.', array_slice( $labels, -$take ) );
+		$len    = self::suffixLength( $labels );
+		return $len >= count( $labels ) ? '' : implode( '.', array_slice( $labels, -( $len + 1 ) ) );
 	}
 
 	/** Dominio a cui si lega una licenza partendo da quello che scrive il cliente (valido, oppure stringa vuota). */
