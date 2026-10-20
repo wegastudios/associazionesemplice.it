@@ -5233,7 +5233,7 @@ Admin\TechActions::save_acct( array( 'reports_enabled' => '1' ) );
 asem_ok( false !== strpos( Admin\Admin::tabs( 'asem-accounting' ), 'page=asem-reports' ), 'contabilità: e tornano' );
 // WooCommerce
 if ( ! \AssociazioneSemplice\WooBridge::active() ) {
-	asem_ok( null !== asem_throws( function () { Admin\TechActions::save_woo( array( 'woo_enabled' => '1' ) ); } ) && ! \AssociazioneSemplice\WooBridge::enabled(), 'woocommerce: se il negozio non c\'è l\'integrazione non si accende' );
+	asem_ok( null !== asem_throws( function () { Admin\ProActions::save_woo( array( 'woo_enabled' => '1' ) ); } ) && ! \AssociazioneSemplice\WooBridge::enabled(), 'woocommerce: se il negozio non c\'è l\'integrazione non si accende' );
 } else {
 	update_option( 'woocommerce_currency', 'USD' );
 	asem_ok( ! \AssociazioneSemplice\WooBridge::currency_is_euro() && false !== strpos( (string) asem_throws( function () { \AssociazioneSemplice\WooBridge::checkout_url( array( array( 'type' => 'membership', 'person_id' => 1, 'amount_cents' => 1000, 'key' => 'q:1:2026', 'label' => 'Prova', 'person_name' => 'X' ) ), 'valuta' ); } ), 'euro' ), 'woocommerce: con un negozio che non usa l\'euro i pagamenti delle quote sono rifiutati' );
@@ -5264,7 +5264,7 @@ if ( ! \AssociazioneSemplice\WooBridge::active() ) {
 	asem_ok( $wc_q === \AssociazioneSemplice\WooLinks::product_id( 'level', $lv_ordn ) && $wc_c === \AssociazioneSemplice\WooLinks::product_id( 'activity', $at_c ) && count( \AssociazioneSemplice\WooBridge::products() ) >= 3, 'woocommerce: quote e attività collegate a prodotti' );
 	asem_ok( null !== asem_throws( function () use ( $lv_ordn ) { \AssociazioneSemplice\WooLinks::set( 'level', $lv_ordn, 999999 ); } ) && null !== asem_throws( function () use ( $lv_ordn, $wc_var ) { \AssociazioneSemplice\WooLinks::set( 'level', $lv_ordn, $wc_var ); } ) && null !== asem_throws( function () use ( $wc_q ) { \AssociazioneSemplice\WooLinks::set( 'level', 999999, $wc_q ); } ) && null !== asem_throws( function () use ( $wc_q ) { \AssociazioneSemplice\WooLinks::set( 'strano', 1, $wc_q ); } ), 'woocommerce: prodotto inesistente o variabile, livello inesistente e tipo non valido si rifiutano' );
 	asem_ok( ! \AssociazioneSemplice\WooBridge::enabled() && '' === Plugin::payments()->provider(), 'woocommerce: spento finché non lo attivi dalle impostazioni' );
-	Admin\TechActions::save_woo( array( 'woo_enabled' => '1', 'woo_default_product' => (string) $wc_def ) );
+	Admin\ProActions::save_woo( array( 'woo_enabled' => '1', 'woo_default_product' => (string) $wc_def ) );
 	asem_ok( \AssociazioneSemplice\WooBridge::enabled() && 'woocommerce' === Plugin::payments()->provider() && $wc_def === (int) Settings::get( 'woo_default_product' ), 'woocommerce: attivato dalle impostazioni, al posto di Stripe e PayPal' );
 	// configurazione guidata con WooCommerce: crea e collega i prodotti
 	$wz_r = \AssociazioneSemplice\Wizard::apply( array( 'payment_choice' => 'woocommerce', 'product_level' => array( $lv_ordn => 'new' ), 'product_default' => 'new' ) );
@@ -5370,7 +5370,7 @@ if ( ! \AssociazioneSemplice\WooBridge::active() ) {
 	Settings::update( array( 'woo_default_product' => 0 ) );
 	asem_ok( 0 === \AssociazioneSemplice\WooLinks::product_for_item( $wc_fake ) && false !== strpos( (string) asem_throws( function () use ( $wc_fake ) { \AssociazioneSemplice\WooBridge::checkout_url( array( $wc_fake ), 'prova' ); } ), 'non sono collegate' ), 'woocommerce: senza prodotto generico le voci non collegate non si pagano online' );
 	asem_render( array( Admin\TechPage::class, 'render_integrations' ), 'Quote associative' );
-	Admin\TechActions::save_woo( array() );
+	Admin\ProActions::save_woo( array() );
 	asem_ok( ! \AssociazioneSemplice\WooBridge::enabled() && '' === Plugin::payments()->provider(), 'woocommerce: si spegne dalle impostazioni' );
 }
 wp_set_current_user( 1 );
@@ -5455,17 +5455,17 @@ if ( ! \AssociazioneSemplice\WebPush::supported() ) {
 		$pw_cap[] = $url;
 		return array( 'code' => 201 );
 	};
-	$pw_t = Admin\TechActions::push_test( array() );
+	$pw_t = Admin\ProActions::push_test( array() );
 	asem_ok( false !== strpos( $pw_t[1], 'inviata a 1 dispositivo' ) && array( 'https://updates.push.services.mozilla.com/wpush/v2/prova-admin' ) === $pw_cap, 'notifiche: la notifica di prova va ai dispositivi dell\'utente collegato' );
 	\AssociazioneSemplice\Push::reset_keys();
 	asem_ok( 0 === \AssociazioneSemplice\Push::count() && 87 === strlen( \AssociazioneSemplice\Push::public_key() ) && $pw_v1 !== \AssociazioneSemplice\Push::public_key(), 'notifiche: rigenerando le chiavi i dispositivi vanno ricollegati' );
 	\AssociazioneSemplice\WebPush::$http = null;
 }
-Admin\TechActions::save_app( array( 'pwa_enabled' => '1', 'push_enabled' => '1', 'pwa_name' => 'Mia App', 'pwa_short_name' => 'MiaApp' ) );
+Admin\ProActions::save_app( array( 'pwa_enabled' => '1', 'push_enabled' => '1', 'pwa_name' => 'Mia App', 'pwa_short_name' => 'MiaApp' ) );
 asem_ok( 'Mia App' === \AssociazioneSemplice\Pwa::app_name() && 'MiaApp' === \AssociazioneSemplice\Pwa::short_name(), 'app: nome e nome breve si impostano da qui' );
 asem_render( array( Admin\AppPage::class, 'render' ), 'App installabile (PWA)' );
 asem_ok( in_array( 'asem-app', Admin\Admin::admin_only(), true ) && false !== strpos( Admin\Admin::tabs( 'asem-roles' ), 'Comunicazioni' ) && isset( Admin\SettingsPage::all_features()['pwa_enabled'], Admin\SettingsPage::all_features()['push_enabled'] ) && isset( \AssociazioneSemplice\Frontend\Shortcodes::views()['app'] ) && shortcode_exists( 'associazionesemplice_app' ), 'app: scheda riservata agli amministratori, interruttori e shortcode' );
-Admin\TechActions::save_app( array() );
+Admin\ProActions::save_app( array() );
 Settings::update( array( 'pwa_name' => '', 'pwa_short_name' => '', 'accent_color' => $pw_accent, 'association_name' => $pw_name, 'push_enabled' => 0, 'pwa_enabled' => 0 ) );
 $wpdb->query( 'DELETE FROM ' . Db::t( 'push_subs' ) );
 
