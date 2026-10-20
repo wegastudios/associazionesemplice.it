@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.9
+Stable tag: 1.2.10
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -66,6 +66,9 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.2.10 =
+* Cleaner edition split: extension points replace built-in Pro references; licence and updates now live in the Pro add-on (compatibility level 2).
 
 = 1.2.9 =
 * Bookable resources phase 2 (waiting list, rates, hold times) and prepaid credits charged live by QR in the member area; schema 39.
