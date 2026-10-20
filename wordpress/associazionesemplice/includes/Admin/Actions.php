@@ -23,28 +23,33 @@ final class Actions {
 
 	/** Azioni riservate agli amministratori: impostazioni, pagamenti online, tessera e QR, anni solari, privacy, testi, tesoriere e segreteria. */
 	const ADMIN_ONLY = array(
-		'asem_save_license', 'asem_license_check',
+
 		'asem_save_settings', 'asem_save_payment_settings', 'asem_test_gateway', 'asem_save_card', 'asem_save_wallet_apple', 'asem_save_wallet_google', 'asem_wallet_clear', 'asem_regen_qr',
 		'asem_save_look', 'asem_save_donate', 'asem_save_campaign', 'asem_delete_campaign', 'asem_create_privacy_page', 'asem_save_ical', 'asem_regen_ical', 'asem_create_pages', 'asem_save_wpai', 'asem_wpai_process', 'asem_wpai_retry', 'asem_wpai_clear', 'asem_privacy_anonymize', 'asem_save_comms',
 		'asem_save_terms', 'asem_save_texts', 'asem_import_texts', 'asem_reset_texts', 'asem_add_text', 'asem_create_year', 'asem_close_year', 'asem_reopen_year',
 		'asem_delete_activity', 'asem_delete_booking', 'asem_purge_enrollments', 'asem_set_treasurer', 'asem_set_secretary', 'asem_set_board_role', 'asem_backup_restore', 'asem_save_levels', 'asem_save_language', 'asem_import_language', 'asem_delete_language',
 	);
 
-	/** Azioni che appartengono a una funzione avanzata: senza la funzione non si registrano. */
-	const FEATURE_ACTIONS = array(
-		'payments'   => array( 'asem_save_payment_settings', 'asem_test_gateway', 'asem_check_payments', 'asem_payment_reviewed' ),
-		'funds'      => array( 'asem_save_group_cash', 'asem_save_transfer', 'asem_add_account', 'asem_update_account', 'asem_close_account', 'asem_reopen_account', 'asem_fund_create', 'asem_fund_deposit', 'asem_fund_release', 'asem_fund_settle' ),
-		'fiscal'     => array( 'asem_create_year', 'asem_close_year', 'asem_reopen_year' ),
-		'receipts'   => array( 'asem_receipt_email' ),
-		'door_sales' => array( 'asem_walk_in' ),
-		'broadcasts' => array( 'asem_broadcast_send', 'asem_broadcast_test', 'asem_broadcast_retry' ),
-		'wallet'     => array( 'asem_save_wallet_apple', 'asem_save_wallet_google', 'asem_wallet_clear' ),
-		'texts'      => array( 'asem_save_terms', 'asem_save_texts', 'asem_import_texts', 'asem_reset_texts', 'asem_add_text', 'asem_save_language', 'asem_import_language', 'asem_delete_language' ),
-	);
+	/** @var array<string,callable> azioni di amministrazione aggiunte da un'estensione */
+	private static $extra = array();
+
+	/** @var array<string,bool> di quelle aggiunte, le riservate all'amministratore */
+	private static $extra_admin = array();
+
+	/**
+	 * Un'estensione aggiunge un'azione di amministrazione (`admin-post`). Il gestore riceve i dati inviati e restituisce [indirizzo, messaggio]
+	 * oppure lancia InvalidArgumentException con il messaggio d'errore. Nonce e permessi li controlla Associazione Semplice.
+	 */
+	public static function add_handler( string $action, callable $handler, bool $admin_only = true ): void {
+		self::$extra[ $action ] = $handler;
+		if ( $admin_only ) {
+			self::$extra_admin[ $action ] = true;
+		}
+	}
 
 	/** Capability richiesta da un'azione: amministrazione completa o solo operatività (segreteria). */
 	public static function required_cap( string $action ): string {
-		return in_array( $action, self::ADMIN_ONLY, true ) ? Plugin::CAP : Plugin::CAP_OPS;
+		return in_array( $action, self::ADMIN_ONLY, true ) || isset( self::$extra_admin[ $action ] ) ? Plugin::CAP : Plugin::CAP_OPS;
 	}
 
 	public static function register(): void {
@@ -133,8 +138,6 @@ final class Actions {
 			'asem_fund_settle'        => 'fund_settle',
 			'asem_cash_count'         => 'cash_count',
 			'asem_save_settings'      => 'save_settings',
-			'asem_save_license'       => 'save_license',
-			'asem_license_check'      => 'license_check',
 			'asem_quick_cash'         => 'quick_cash',
 			'asem_save_look'          => 'save_look',
 			'asem_save_donate'        => 'save_donate',
@@ -153,7 +156,8 @@ final class Actions {
 			'asem_wpai_retry'         => 'wpai_retry',
 			'asem_wpai_clear'         => 'wpai_clear',
 		);
-		foreach ( self::FEATURE_ACTIONS as $feature => $actions ) { // le azioni delle funzioni avanzate esistono solo se la funzione c'è
+		$map = array_merge( $map, self::$extra );
+		foreach ( \AssociazioneSemplice\Edition::actions() as $feature => $actions ) { // le azioni delle funzioni aggiunte esistono solo se la funzione c'è
 			if ( ! \AssociazioneSemplice\Edition::has( $feature ) ) {
 				$map = array_diff_key( $map, array_flip( $actions ) );
 				foreach ( $actions as $blocked ) {
@@ -173,7 +177,7 @@ final class Actions {
 					$post = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification
 					$back = ! empty( $post['_back'] ) ? esc_url_raw( $post['_back'] ) : Ui::url( 'asem' );
 					try {
-						$res = self::$method( $post );
+						$res = is_string( $method ) ? self::$method( $post ) : call_user_func( $method, $post );
 						Ui::redirect( $res[0], $res[1] );
 					} catch ( \InvalidArgumentException $e ) {
 						Ui::redirect( $back, '', $e->getMessage() );
@@ -1244,23 +1248,6 @@ final class Actions {
 	}
 
 	/** Salva la chiave di licenza e la verifica subito con il server. */
-	private static function save_license( array $p ): array {
-		$key = mb_substr( sanitize_text_field( $p['license_key'] ?? '' ), 0, 120 );
-		Settings::update( array( 'license_key' => $key ) );
-		$r = License::sync();
-		return array( Ui::url( 'asem-settings' ), ( '' === $key ? 'Chiave rimossa. ' : 'Chiave salvata. ' ) . $r['message'] );
-	}
-
-	private static function license_check( array $p ): array {
-		$r   = License::sync();
-		$msg = $r['message'];
-		if ( \AssociazioneSemplice\UpdateCheck::enabled() ) {
-			\AssociazioneSemplice\UpdateCheck::fetch(); // «Controlla adesso» salta anche l'attesa tra un controllo di versione e l'altro
-			$msg .= ' ' . \AssociazioneSemplice\UpdateCheck::summary();
-		}
-		return array( Ui::url( 'asem-settings' ), $msg );
-	}
-
 	private static function check_payments( array $p ): array {
 		$r = Plugin::payments()->check_pending( true );
 		return array( Ui::url( 'asem-payments' ), 'Controllati ' . $r['checked'] . ', registrati ' . $r['registered'] . ', scaduti ' . $r['expired'] . '.' );

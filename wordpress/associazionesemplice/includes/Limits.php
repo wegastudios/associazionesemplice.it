@@ -79,25 +79,7 @@ final class Limits {
 			'Chi usa più dispositivi non riuscirà ad attivarli tutti.'
 		);
 
-		$add(
-			'update_notice', 'comunicazioni', 'Avviso «ci sono aggiornamenti» di Associazione Semplice', 'flag', 1, 0, 1,
-			'Con una chiave di licenza inserita (anche la gratuita), il plugin chiede al portale di Associazione Semplice qual è l\'ultima versione e mostra un avviso chiudibile alla segreteria e agli amministratori quando ne esiste una più recente. Non invia la chiave né dati del sito.',
-			'Il sito fa una richiesta al portale di tanto in tanto (solo per leggere l\'ultima versione, senza inviare dati) e mostra l\'avviso: rischi trascurabili.',
-			'Se lo disattivi il plugin non contatta più il portale per le versioni e non vedrai l\'avviso: dovrai controllare a mano nell\'area clienti, con il rischio di restare su versioni vecchie, senza correzioni di sicurezza.'
-		);
-		$add(
-			'update_check_hours', 'comunicazioni', 'Ogni quante ore cercare nuove versioni', 'ore', 24, 12, 168,
-			'Ogni quante ore il plugin chiede al portale l\'ultima versione disponibile (solo se l\'avviso è attivo).',
-			'Con intervalli lunghi l\'avviso arriva con qualche giorno di ritardo.',
-			'Intervalli brevi appesantiscono inutilmente il portale e il tuo sito senza vantaggi: le versioni escono di rado.'
-		);
 
-		$add(
-			'portal_updates', 'comunicazioni', 'Aggiornamenti diretti di Associazione Semplice Pro (Bacheca → Aggiornamenti)', 'flag', 1, 0, 1,
-			'Con il Pro installato, il plugin chiede al portale di Associazione Semplice se esiste una versione più nuova (al massimo ogni 12 ore) e la offre in Bacheca → Aggiornamenti, dove si installa con un clic. Il Pro manda la chiave di licenza e il dominio; il gratuito non manda niente di suo.',
-			'Nessun rischio rilevante: una richiesta al portale ogni tanto.',
-			'Se lo disattivi gli aggiornamenti vanno scaricati dall\'area clienti e caricati a mano.'
-		);
 		$add(
 			'donate_max_campaigns', 'comunicazioni', 'Raccolte di donazioni, al massimo', 'raccolte', 20, 1, 100,
 			'Quante raccolte di donazioni (ciascuna con il suo shortcode) si possono creare.',
@@ -128,18 +110,6 @@ final class Limits {
 			'Impedisce di inondare di messaggi la casella di un socio chiedendo di continuo il link per la password.',
 			'Con un valore alto chiunque può infastidire un socio con decine di email.',
 			'Un valore molto basso può obbligare un socio a ripetere la richiesta più tardi se non trova il primo messaggio.'
-		);
-		$add(
-			'license_offline_days', 'accesso', 'Giorni senza controllo della licenza riuscito, prima di sospendere le funzioni Pro', 'giorni', 7, 1, 60,
-			'Il portale firma la prova della licenza e questa vale circa due giorni; se il sito non riesce a rinnovarla (portale irraggiungibile, chiamate bloccate) si aspettano questi giorni in più prima di sospendere le funzioni Pro.',
-			'Chi blocca le chiamate verso il portale tiene il piano più a lungo, anche se la licenza nel frattempo è scaduta o revocata. Alzalo se il tuo hosting ha spesso problemi di rete.',
-			'Un problema di rete o del portale sospende le funzioni Pro (e l\'accesso dei soci) più in fretta.'
-		);
-		$add(
-			'license_first_check_days', 'accesso', 'Giorni consentiti prima del primo controllo della licenza', 'giorni', 7, 1, 60,
-			'Su un sito vero, finché il primo controllo della licenza non riesce, le funzioni sono tutte disponibili: questi sono i giorni di attesa prima di sospendere le funzioni Pro.',
-			'Se il controllo periodico di WordPress non gira (cron disattivato) le funzioni Pro restano disponibili senza licenza più a lungo.',
-			'Se il primo controllo tarda (sito appena installato, cron lento) le funzioni Pro si sospendono presto.'
 		);
 		$add(
 			'activation_per_ip', 'accesso', 'Tentativi di attivazione dell\'accesso per connessione, in un\'ora', 'tentativi', 15, 3, 1000,
@@ -269,6 +239,7 @@ final class Limits {
 			'Chi non legge subito l\'email può perdere il promemoria.'
 		);
 
+		$d = function_exists( 'apply_filters' ) ? apply_filters( 'asem_limits_defs', $d ) : $d; // un'estensione può aggiungere i suoi limiti
 		self::$defs = $d;
 		return $d;
 	}

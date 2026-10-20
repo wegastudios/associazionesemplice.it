@@ -52,3 +52,13 @@ CreditRules.php
 Admin/CreditsPage.php
 Admin/CreditsActions.php
 Frontend/CreditsFront.php
+License.php
+LicenseClient.php
+LicensePolicy.php
+LicenseRules.php
+Admin/LicenseNotice.php
+Admin/LicensePanel.php
+UpdateCheck.php
+Admin/UpdateNotice.php
+data/public-suffix-list.txt
+ProBoot.php

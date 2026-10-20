@@ -121,9 +121,9 @@ final class Restrict {
 		$reason = Visibility::denial_reason( $ctx );
 		if ( '' !== $custom_message ) {
 			$text = $custom_message;
-		} elseif ( '' !== (string) Settings::get( 'gate_message' ) && 'license' !== $reason ) {
+		} elseif ( '' !== (string) Settings::get( 'gate_message' ) && 'suspended' !== $reason ) {
 			$text = (string) Settings::get( 'gate_message' );
-		} elseif ( 'license' === $reason ) {
+		} elseif ( 'suspended' === $reason ) {
 			$text = 'Questo contenuto non è al momento disponibile.';
 		} elseif ( Visibility::ACTIVITY === $rule && $activity_ids ) {
 			$text = 'Contenuto riservato ai soci iscritti a: ' . implode( ', ', self::activity_names( $activity_ids ) ) . '.';

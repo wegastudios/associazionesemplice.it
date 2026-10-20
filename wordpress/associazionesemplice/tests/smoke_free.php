@@ -57,7 +57,7 @@ free_ok( count( $lines ) >= 1, 'elenco dei file avanzati letto' );
 foreach ( $lines as $rel ) {
 	free_ok( ! file_exists( ASEM_DIR . 'includes/' . $rel ), "assente nell'edizione gratuita: $rel" );
 }
-free_ok( Edition::has( 'license' ) && ! Edition::has( 'vat' ) && ! Edition::has( 'levels' ), 'la licenza è presente anche nel gratuito; IVA e livelli no' );
+free_ok( ! Edition::has( 'vat' ) && ! Edition::has( 'levels' ) && ! Edition::pro_present(), 'senza estensioni nessuna funzione aggiunta è presente' );
 free_ok( Edition::allows( 'export' ) && Edition::allows( 'member_area' ), 'senza licenza le funzioni presenti sono consentite' );
 
 // ---------- IVA: anche con la partita IVA accesa non compare nulla di fiscale ----------
@@ -89,7 +89,7 @@ foreach ( array( 'Bacheca', 'Soldi', 'Prima nota', 'Soci e quote' ) as $pn ) {
 		free_ok( false === strpos( $html[ $pn ], 'page=' . $slug . '"' ) && false === strpos( $html[ $pn ], 'page=' . $slug . '&' ), "pagina $pn: nessun collegamento a $slug" );
 	}
 }
-free_ok( false === strpos( $html['Soci e quote'], 'Livelli di socio' ) && false !== strpos( $html['Soci e quote'], 'Chiave di licenza' ), 'impostazioni: niente livelli; la sezione licenza è presente anche nel gratuito' );
+free_ok( false === strpos( $html['Soci e quote'], 'Livelli di socio' ) && false === strpos( $html['Soci e quote'], 'Chiave di licenza' ), 'impostazioni: niente livelli e niente sezione licenza (è del Pro)' );
 free_ok( false === strpos( $html['Dati dell\'ente'], 'Partita IVA' ), 'dati dell\'ente: niente partita IVA' );
 free_ok( false === strpos( $html['Configurazione guidata'], 'name="has_vat"' ) && false === strpos( $html['Configurazione guidata'], 'name="extra_levels"' ), 'configurazione guidata: niente IVA né tipi di socio extra' );
 free_ok( false === strpos( $html['Nuova spesa'], 'name="vat_rate"' ) && false === strpos( $html['Nuovo incasso'], 'name="vat_rate"' ), 'incasso e spesa: nessun campo IVA' );

@@ -63,7 +63,7 @@ final class VisibilityTest extends TestCase {
 		foreach ( array( V::MEMBERS, V::VOLUNTEERS, V::ACTIVITY ) as $rule ) {
 			$this->assertFalse( V::decide( $rule, $ctx ), $rule );
 		}
-		$this->assertSame( 'license', V::denial_reason( $ctx ) );
+		$this->assertSame( 'suspended', V::denial_reason( $ctx ) );
 	}
 
 	public function test_unknown_rule_is_denied_and_labels_exist(): void {

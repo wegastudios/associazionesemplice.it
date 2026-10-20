@@ -44,7 +44,7 @@ final class ToolsPage {
 		foreach ( self::sections() as $title => $items ) {
 			$rows = '';
 			foreach ( $items as $it ) {
-				if ( ( $it[3] && ! $admin ) || ( '' !== $it[4] && ! Modules::on( $it[4] ) ) || in_array( $it[0], \AssociazioneSemplice\Edition::missing_pages(), true ) ) {
+				if ( ( $it[3] && ! $admin ) || ( '' !== $it[4] && ! Modules::on( $it[4] ) ) || in_array( $it[0], Admin::absent_pages(), true ) ) {
 					continue;
 				}
 				$rows .= '<p><a href="' . esc_url( Ui::url( $it[0] ) ) . '"><strong>' . esc_html( $it[1] ) . '</strong></a><br><span class="description">' . esc_html( $it[2] ) . '</span></p>';

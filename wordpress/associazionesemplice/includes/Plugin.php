@@ -26,11 +26,6 @@ final class Plugin {
 		Gatekeeper::register(); // i soci restano fuori da wp-admin
 		Rest\Api::register();    // associazionesemplice/v1
 		Frontend\Front::init();  // shortcode, contenuti riservati, blocchi, widget
-		add_action( 'asem_license_resync', array( License::class, 'cron' ) );
-		License::maybe_resync();
-		if ( class_exists( __NAMESPACE__ . '\\Updater' ) ) { // aggiornamento diretto dal portale: c'è solo nel pacchetto scaricato dal portale, non in quello di WordPress.org
-			Updater::register();
-		}
 		if ( '' !== Edition::mismatch() ) { // Associazione Semplice Pro troppo diverso da questo Associazione Semplice: non si carica, e si dice cosa fare
 			add_action(
 				'admin_notices',
@@ -69,8 +64,6 @@ final class Plugin {
 			'asem_send_reminders'         => array( 'daily', 600, 'Reminders', 'run', '' ),
 			'asem_broadcast_batch'        => array( '', 0, 'Broadcasts', 'process_all', 'broadcasts' ),
 			'asem_purge_backups'          => array( 'hourly', 1200, 'Backup', 'purge_old', '' ),
-			'asem_license_check'          => array( 'daily', 1800, 'License', 'cron', '' ),
-			'asem_update_check'           => array( 'hourly', 2400, 'UpdateCheck', 'cron', '' ),
 			'asem_check_pending_payments' => array( 'hourly', 300, 'PaymentService', 'check_pending_job', 'payments' ),
 		);
 		foreach ( $jobs as $hook => $j ) {

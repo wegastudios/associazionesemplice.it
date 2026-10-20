@@ -60,25 +60,6 @@ jobs:
           done
           exit $fail
 
-  smoke:
-    name: Smoke test on real WordPress
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: wordpress
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Start WordPress (wp-env)
-        run: npx --yes @wordpress/env start
-      - name: Run smoke test
-        run: npx --yes @wordpress/env run cli wp eval-file wp-content/plugins/associazionesemplice/tests/smoke.php
-      - name: Debug log
-        if: failure()
-        run: npx --yes @wordpress/env run cli sh -c 'cat wp-content/debug.log 2>/dev/null | tail -50 || true'
-
   free:
     name: Free edition (without the advanced files)
     runs-on: ubuntu-latest
@@ -137,7 +118,7 @@ jobs:
 
   package:
     name: Installable zips (WordPress.org and Pro)
-    needs: [unit, smoke, free, split]
+    needs: [unit, free, split]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

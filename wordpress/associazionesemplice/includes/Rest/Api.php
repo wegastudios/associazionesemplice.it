@@ -69,7 +69,7 @@ final class Api {
 			return false;
 		}
 		if ( ! Access::is_admin_user( get_current_user_id() ) && ! Edition::allows( 'member_area' ) ) {
-			return new \WP_Error( 'asem_license_required', 'Servizio sospeso: la licenza dell\'associazione non risulta attiva.', array( 'status' => 403 ) );
+			return new \WP_Error( 'asem_suspended', 'Servizio sospeso.', array( 'status' => 403 ) );
 		}
 		return null === $ability ? true : current_user_can( $ability, $object_id );
 	}

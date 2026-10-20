@@ -4,63 +4,62 @@ namespace AssociazioneSemplice;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Quali funzioni esistono in questa installazione.
+ * Quali estensioni sono presenti in questa installazione.
  *
- * Il plugin gratuito contiene il nucleo; le funzioni avanzate stanno nel plugin Associazione Semplice Pro, che aggiunge la propria cartella con
- * {@see Edition::add_dir()}. Una funzione c'è se il suo file di riferimento si trova in una delle cartelle: niente interruttori, niente
- * chiavi, niente codice «spento». Il resto del plugin chiede `Edition::has( 'payments' )` prima di mostrare o usare una funzione avanzata.
+ * Il plugin contiene il nucleo; ciò che si aggiunge lo porta un plugin a parte, che indica la propria cartella con {@see Edition::add_dir()} e
+ * dichiara con {@see Edition::register()} quali funzioni mette a disposizione. Il resto del plugin chiede `Edition::has( 'nome' )` prima di
+ * usare una funzione aggiunta; senza estensioni il registro è vuoto e `has()` è sempre falso. Chi estende può sospendere o limitare le sue funzioni
+ * con i filtri `asem_feature_available` e `asem_features_suspended`.
  */
 final class Edition {
 
-	/** Funzione => file (dentro includes/) che la contiene. */
-	const FEATURES = array(
-		'license'    => 'License.php',             // verifica della licenza (nel gratuito: chiave gratuita e servizi collegati)
-		'vat'        => 'Admin/VatFields.php',     // IVA: campi nei moduli e impostazioni fiscali
-		'levels'     => 'Admin/LevelsEditor.php',  // più livelli di socio, ognuno con la sua quota
-		'payments'   => 'PaymentService.php',      // pagamenti online
-		'funds'      => 'Admin/AccountsPage.php',  // conti multipli, giroconti, fondi e cassa per più persone
-		'reports'    => 'Admin/ReportsPage.php',   // report di gestione (saldi, attività)
-		'fiscal'     => 'Admin/YearsPage.php',     // anni solari, contabilità e rendiconto per il commercialista
-		'fivepm'     => 'FivePerMille.php',        // 5 per mille
-		'insurance'  => 'Insurance.php',           // assicurazioni e presenze
-		'broadcasts' => 'Broadcasts.php',          // comunicazioni di massa
-		'pwa'        => 'Pwa.php',                 // app installabile e notifiche
-		'wallet'     => 'Wallet.php',              // tessera in Apple e Google Wallet
-		'receipts'   => 'Receipts.php',            // ricevute PDF
-		'door_sales' => 'DoorSales.php',           // incasso sul posto
-		'resources'  => 'Resources.php',           // risorse prenotabili: campi, sale, posti auto, armadietti, posti barca
-		'credits'    => 'Credits.php',             // crediti prepagati: acquisto, spesa nelle attività e nelle risorse, addebito dal vivo con QR
-		'texts'      => 'TextsEngine.php',         // personalizzazione dei testi, lingue, tipo di ente e termini
-	);
+	/** @var array<string,string> funzione => file (dentro includes/) che la contiene */
+	private static $features = array();
 
-	/** Pagine di amministrazione di ogni funzione avanzata: se la funzione non c'è, spariscono dal menu e dalle schede. */
-	const PAGES = array(
-		'payments'   => array( 'asem-payments' ),
-		'funds'      => array( 'asem-accounts', 'asem-transfer', 'asem-group' ),
-		'reports'    => array( 'asem-reports' ),
-		'fiscal'     => array( 'asem-accounting', 'asem-years', 'asem-statement', 'asem-acct' ),
-		'fivepm'     => array( 'asem-fivepm' ),
-		'insurance'  => array( 'asem-volunteers', 'asem-attendance' ),
-		'broadcasts' => array( 'asem-messages' ),
-		'pwa'        => array( 'asem-app' ),
-		'texts'      => array( 'asem-texts' ),
-		'resources'  => array( 'asem-resources', 'asem-resource' ),
-		'credits'    => array( 'asem-credits' ),
-	);
+	/** @var array<string,string[]> funzione => pagine di amministrazione */
+	private static $pages = array();
 
-	/** @return string[] pagine di amministrazione delle funzioni che questa installazione non ha */
+	/** @var array<string,string[]> funzione => azioni di amministrazione (`admin-post`) */
+	private static $actions = array();
+
+	/** @var array<string,bool> funzioni già cercate sul disco (si svuota quando cambiano le cartelle o il registro) */
+	private static $found = array();
+
+	/** @var string[] cartelle (con la barra finale) in cui cercare i file: la prima è quella di questo plugin */
+	private static $dirs = array();
+
+	/** @var string livello di compatibilità dell'estensione rifiutata perché diverso da quello di questo plugin ('' = nessun problema) */
+	private static $mismatch = '';
+
+	/**
+	 * L'estensione dichiara le funzioni che porta.
+	 *
+	 * @param array<string,string>   $features funzione => file (dentro includes/)
+	 * @param array<string,string[]> $pages    funzione => pagine di amministrazione (spariscono dal menu se la funzione non c'è)
+	 * @param array<string,string[]> $actions  funzione => azioni di amministrazione (senza la funzione si bloccano con una spiegazione)
+	 */
+	public static function register( array $features, array $pages = array(), array $actions = array() ): void {
+		self::$features = array_merge( self::$features, $features );
+		self::$pages    = array_merge( self::$pages, $pages );
+		self::$actions  = array_merge( self::$actions, $actions );
+		self::$found    = array();
+	}
+
+	/** @return array<string,string[]> azioni di amministrazione delle funzioni dichiarate */
+	public static function actions(): array {
+		return self::$actions;
+	}
+
+	/** @return string[] pagine di amministrazione delle funzioni dichiarate che questa installazione non può usare */
 	public static function missing_pages(): array {
 		$out = array();
-		foreach ( self::PAGES as $feature => $pages ) {
+		foreach ( self::$pages as $feature => $pages ) {
 			if ( ! self::has( $feature ) ) {
 				$out = array_merge( $out, $pages );
 			}
 		}
 		return $out;
 	}
-
-	/** @var string[] cartelle (con la barra finale) in cui cercare i file: la prima è quella di questo plugin */
-	private static $dirs = array();
 
 	/** @return string[] */
 	public static function dirs(): array {
@@ -70,23 +69,20 @@ final class Edition {
 		return self::$dirs;
 	}
 
-	/** @var string livello di compatibilità di Associazione Semplice Pro rifiutato perché diverso da quello di Associazione Semplice ('' = nessun problema) */
-	private static $mismatch = '';
-
 	/**
-	 * Associazione Semplice e Associazione Semplice Pro hanno versioni indipendenti (si aggiorna uno o l'altro, in qualunque ordine); si parlano finché hanno lo
+	 * Questo plugin e le sue estensioni hanno versioni indipendenti (si aggiorna uno o l'altro, in qualunque ordine); si parlano finché hanno lo
 	 * stesso «livello di compatibilità», un numero che cambia solo quando cambia ciò che si scambiano.
 	 */
-	public static function compatible( int $pro_api, int $free_api ): bool {
-		return $pro_api === $free_api;
+	public static function compatible( int $ext_api, int $own_api ): bool {
+		return $ext_api === $own_api;
 	}
 
-	/** Il livello di compatibilità di Associazione Semplice Pro rifiutato perché non corrisponde (vuoto se tutto a posto). */
+	/** Il livello di compatibilità dell'estensione rifiutata perché non corrisponde (vuoto se tutto a posto). */
 	public static function mismatch(): string {
 		return self::$mismatch;
 	}
 
-	/** Il plugin Pro dichiara qui la propria cartella `includes/`. Se il suo livello di compatibilità non è quello di Associazione Semplice non si carica niente. */
+	/** L'estensione indica qui la propria cartella `includes/`. Se il suo livello di compatibilità non è quello di questo plugin non si carica niente. */
 	public static function add_dir( string $dir ): void {
 		if ( defined( 'ASEM_PRO_API' ) && defined( 'ASEM_API' ) && ! self::compatible( (int) ASEM_PRO_API, (int) ASEM_API ) ) {
 			self::$mismatch = (string) ASEM_PRO_API;
@@ -109,87 +105,41 @@ final class Edition {
 		return null;
 	}
 
-	/** Il file della funzione c'è, a prescindere dalla licenza? */
+	/** La funzione è dichiarata e il suo file c'è? */
 	public static function installed( string $feature ): bool {
-		if ( ! isset( self::FEATURES[ $feature ] ) ) {
+		if ( ! isset( self::$features[ $feature ] ) ) {
 			return false;
 		}
 		if ( ! isset( self::$found[ $feature ] ) ) { // il disco si interroga una volta sola per funzione e per richiesta
-			self::$found[ $feature ] = null !== self::locate( self::FEATURES[ $feature ] );
+			self::$found[ $feature ] = null !== self::locate( self::$features[ $feature ] );
 		}
 		return self::$found[ $feature ];
 	}
 
-	/** @var array<string,bool> funzioni già cercate sul disco (si svuota quando cambiano le cartelle) */
-	private static $found = array();
-
-	/** Con Associazione Semplice Pro presente ma la licenza non in regola il plugin torna alle funzioni di base. */
-	public static function degraded(): bool {
-		return self::installed( 'license' ) && function_exists( 'get_option' ) && method_exists( License::class, 'degraded' ) && License::degraded();
-	}
-
-	/**
-	 * La funzione avanzata si può usare? C'è nella cartella e, se c'è il sistema di licenza, la licenza è in regola. Con la licenza scaduta
-	 * tutte le funzioni avanzate spariscono e resta il comportamento dell'edizione gratuita; la licenza stessa si può sempre correggere.
-	 */
-	public static function has( string $feature ): bool {
-		return self::installed( $feature ) && ( 'license' === $feature || ( ! self::degraded() && ! self::plan_blocks( $feature ) ) );
-	}
-
-	/** Funzioni fiscali: solo con la licenza Pro Full (IVA, 5 per mille, anni solari e rendiconto; più avanti la fatturazione elettronica). */
-	const FISCAL = array( 'vat', 'fivepm', 'fiscal' );
-
-	/** Funzioni di contabilità: conti e fondi, report, ricevute. Mancano nel Pro Lite; ci sono nel Pro Full e nel vecchio livello contabile. */
-	const ACCOUNTING = array( 'funds', 'reports', 'receipts' );
-
-	/** Il plugin Pro è presente (c'è almeno una sua funzione)? Solo allora una licenza non in regola sospende qualcosa. */
+	/** C'è almeno un'estensione (ha dichiarato qualche funzione)? */
 	public static function pro_present(): bool {
-		return self::installed( 'payments' );
+		return (bool) self::$features;
 	}
 
-	/**
-	 * Il livello della licenza esclude questa funzione? Pro Full: nessuna esclusione; contabile: le funzioni fiscali; Pro Lite: fiscali e di contabilità;
-	 * licenza gratuita (o nessuna chiave con la verifica attiva): tutte le funzioni Pro. Senza verifica attiva (standby) tutto è disponibile.
-	 */
-	public static function plan_blocks( string $feature ): bool {
-		if ( 'license' === $feature || ! self::installed( 'license' ) || ! function_exists( 'get_option' ) || ! method_exists( License::class, 'plan' ) ) {
-			return false;
-		}
-		switch ( License::plan() ) {
-			case License::PLAN_FREE:
-				return true;
-			case License::PLAN_LITE:
-				return in_array( $feature, self::FISCAL, true ) || in_array( $feature, self::ACCOUNTING, true );
-			case License::PLAN_ACCOUNTING:
-				return in_array( $feature, self::FISCAL, true );
-		}
-		return false;
+	/** Le funzioni aggiunte sono sospese (lo decide l'estensione con il filtro `asem_features_suspended`)? */
+	public static function degraded(): bool {
+		return function_exists( 'apply_filters' ) && (bool) apply_filters( 'asem_features_suspended', false );
 	}
 
-	/**
-	 * Le funzioni di base non dipendono più dalla licenza: tutto ciò che c'è si può usare. Resta per i controlli già scritti.
-	 */
+	/** La funzione si può usare? C'è e l'estensione non l'ha limitata (filtro `asem_feature_available`). */
+	public static function has( string $feature ): bool {
+		return self::installed( $feature ) && ( ! function_exists( 'apply_filters' ) || (bool) apply_filters( 'asem_feature_available', true, $feature ) );
+	}
+
+	/** Le funzioni di base non dipendono da altro: tutto ciò che c'è si può usare. Resta per i controlli già scritti. */
 	public static function allows( string $feature ): bool {
 		return true;
 	}
 
-	/** Perché una funzione avanzata non è disponibile (da mostrare a chi prova a usarla). */
+	/** Perché una funzione aggiunta non è disponibile (da mostrare a chi prova a usarla). */
 	public static function missing_message( string $feature = '' ): string {
-		if ( '' !== $feature && self::installed( $feature ) && ! self::degraded() && self::plan_blocks( $feature ) ) {
-			switch ( License::plan() ) {
-				case License::PLAN_FREE:
-					return LicensePolicy::STATUS_NOKEY === License::state()['status']
-						? 'Questa funzione fa parte di Associazione Semplice Pro: inserisci la chiave di licenza in Impostazioni per usarla.'
-						: 'Questa funzione fa parte di Associazione Semplice Pro (Lite o Full): la tua è la licenza gratuita.';
-				case License::PLAN_LITE:
-					return 'Questa funzione fa parte della licenza Associazione Semplice Pro Full: la tua licenza è Pro Lite, senza la parte contabile.';
-			}
-			return 'Questa funzione fa parte della licenza Associazione Semplice Pro Fiscale: la tua licenza è di livello contabile.';
-		}
-		if ( self::degraded() ) {
-			return 'La licenza di Associazione Semplice Pro non è in regola: questa funzione è sospesa. Regolarizza la licenza e torna disponibile; intanto resta tutto il resto, con i tuoi dati.';
-		}
-		return 'Questa funzione fa parte di Associazione Semplice Pro e non è inclusa in questa edizione.';
+		$default = 'Questa funzione fa parte di Associazione Semplice Pro e non è inclusa in questa edizione.';
+		return function_exists( 'apply_filters' ) ? (string) apply_filters( 'asem_feature_unavailable_message', $default, $feature ) : $default;
 	}
 
 	/** Indirizzo del sito dove si presenta e si acquista Associazione Semplice Pro (modificabile con il filtro `asem_pro_url`). */
@@ -197,22 +147,16 @@ final class Edition {
 		return (string) apply_filters( 'asem_pro_url', 'https://associazionesemplice.it' );
 	}
 
-	/** Come {@see Edition::missing_message()}, con il collegamento per regolarizzare quando la licenza è scaduta (HTML già pronto). */
+	/** Come {@see Edition::missing_message()}, con il collegamento a cosa comprende il Pro (HTML già pronto; l'estensione può sostituirlo con `asem_feature_unavailable_html`). */
 	public static function missing_html(): string {
 		$html = '<p>' . esc_html( self::missing_message() ) . '</p>';
 		if ( ! self::degraded() && function_exists( 'admin_url' ) ) {
 			$html .= '<p><a href="' . esc_url( admin_url( 'admin.php?page=asem-pro' ) ) . '">Scopri cosa comprende Associazione Semplice Pro →</a></p>';
 		}
-		if ( self::degraded() ) {
-			$url   = License::payment_url();
-			$html .= $url
-				? '<p><a class="button button-primary" href="' . esc_url( $url ) . '" target="_blank" rel="noopener">Regolarizza la licenza</a></p>'
-				: '<p>Contatta il fornitore del servizio per regolarizzare la licenza, poi inseriscila in Impostazioni → Soci e quote.</p>';
-		}
-		return $html;
+		return (string) apply_filters( 'asem_feature_unavailable_html', $html );
 	}
 
-	/** Azione di una funzione avanzata che non c'è (o è sospesa): chi ci arriva legge perché, invece di una pagina vuota. */
+	/** Azione di una funzione aggiunta che non c'è (o è sospesa): chi ci arriva legge perché, invece di una pagina vuota. */
 	public static function block_action( string $action ): void {
 		add_action(
 			'admin_post_' . $action,
