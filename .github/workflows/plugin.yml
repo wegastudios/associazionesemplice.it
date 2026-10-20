@@ -125,7 +125,7 @@ jobs:
       - name: Build the packages
         run: bash wordpress/build.sh wordpress/dist
       - name: The free package has no trace of the Pro functions
-        run: bash wordpress/check-free-clean.sh wordpress/dist/free/associazionesemplice --strict
+        run: bash wordpress/check-free-clean.sh --strict
       - uses: actions/upload-artifact@v4
         with:
           name: associazionesemplice-packages
