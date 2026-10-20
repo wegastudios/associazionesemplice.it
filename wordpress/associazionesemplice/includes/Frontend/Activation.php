@@ -25,7 +25,13 @@ final class Activation {
 		return wp_salt( 'auth' ) . '|activate';
 	}
 
-	/** Link di attivazione di un socio (valido 30 giorni da adesso). */
+	/** Per quanto vale il link, a parole: «24 ore» se la validità è di un giorno, altrimenti «N giorni». */
+	public static function validity_text(): string {
+		$d = Limits::get( 'activation_days' );
+		return 1 === $d ? '24 ore' : $d . ' giorni';
+	}
+
+	/** Link di attivazione di un socio (valido per il tempo scelto nei Limiti, 24 ore di default). */
 	public static function url( int $person_id, ?int $now = null ): string {
 		$exp = ( $now ?? time() ) + Limits::get( 'activation_days' ) * DAY_IN_SECONDS;
 		return add_query_arg( 'asem_activate', ActivationToken::param( $person_id, $exp, self::secret() ), home_url( '/' ) );
@@ -35,7 +41,7 @@ final class Activation {
 	public static function invite_text( array $person ): string {
 		$assoc = (string) Settings::get( 'association_name' );
 		return 'Ciao ' . $person['first_name'] . ', sei stato/a registrato/a come socio/a' . ( '' !== $assoc ? ' di ' . $assoc : '' ) . '. '
-			. 'Attiva il tuo accesso all\'area riservata da questo link (vale ' . Limits::get( 'activation_days' ) . ' giorni): ' . self::url( (int) $person['id'] );
+			. 'Attiva il tuo accesso all\'area riservata da questo link (vale ' . self::validity_text() . '): ' . self::url( (int) $person['id'] );
 	}
 
 	/** @return array status (ok|invalid|expired|done|suspended), person */

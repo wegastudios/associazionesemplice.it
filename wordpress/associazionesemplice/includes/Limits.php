@@ -148,10 +148,10 @@ final class Limits {
 			'Un valore basso può bloccare chi sbaglia a digitare più volte; il blocco passa da solo dopo un\'ora.'
 		);
 		$add(
-			'activation_days', 'accesso', 'Validità del link di attivazione', 'giorni', 30, 1, 180,
-			'Per quanti giorni resta valido il link di attivazione inviato (ad esempio su WhatsApp) ai soci registrati dalla segreteria.',
-			'Un link che resta valido a lungo può essere usato da altri se viene inoltrato o se il telefono è condiviso. Per attivare l\'accesso serve comunque il codice fiscale.',
-			'Più sicuro, ma la segreteria dovrà rimandare il link ai soci che non lo aprono in tempo.'
+			'activation_days', 'accesso', 'Validità del link di attivazione', 'giorni', 1, 1, 180,
+			'Per quanti giorni resta valido (1 = 24 ore) il link di attivazione inviato (ad esempio su WhatsApp) ai soci registrati dalla segreteria.',
+			'Un link che resta valido a lungo (anche i 30 giorni di prima) può essere usato da altri se viene inoltrato o se il telefono è condiviso. Per attivare l\'accesso serve comunque il codice fiscale.',
+			'Più sicuro, ma la segreteria dovrà rimandare il link ai soci che non lo aprono in tempo: con 24 ore, chi non lo apre entro il giorno dopo ne riceve uno nuovo.'
 		);
 		$add(
 			'profile_required', 'accesso', 'Indirizzo e codice fiscale obbligatori per chi attiva l\'accesso dal sito', 'flag', 1, 0, 1,

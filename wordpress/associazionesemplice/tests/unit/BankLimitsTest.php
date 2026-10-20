@@ -92,7 +92,7 @@ final class LimitsTest extends TestCase {
 		$this->assertSame( 45, Limits::default_of( 'notice_board_days' ) );
 		$this->assertSame( 10, Limits::default_of( 'first_access_per_ip' ) );
 		$this->assertSame( 15, Limits::default_of( 'activation_per_ip' ) );
-		$this->assertSame( 30, Limits::default_of( 'activation_days' ) );
+		$this->assertSame( 1, Limits::default_of( 'activation_days' ) );
 		$this->assertSame( 200, Limits::default_of( 'access_requests_max' ) );
 		$this->assertSame( 8, Limits::default_of( 'push_time_budget' ) );
 		$this->assertSame( 10, Limits::default_of( 'push_max_devices' ) );

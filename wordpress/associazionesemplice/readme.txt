@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.7
+Stable tag: 1.2.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -66,6 +66,9 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.2.8 =
+* The account activation link now lasts 24 hours by default (Limits: 'Validity of the activation link', 1 to 180 days); the message and the member card say so.
 
 = 1.2.7 =
 * Security: the first-access limits can read the visitor's address behind a proxy (new limit), requests from unknown people have their own cap and cannot push real ones out, the old email is told when a change is approved; an existing website user with a visitor-only role who is linked to a member gets a new random password; the update-notice download link must belong to the portal.

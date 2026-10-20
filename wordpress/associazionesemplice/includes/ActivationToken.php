@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class ActivationToken {
 
-	const VALID_DAYS = 30;
+	const VALID_DAYS = 1;
 
 	public static function make( int $person_id, int $expires, string $secret ): string {
 		return substr( hash_hmac( 'sha256', 'activate:' . $person_id . ':' . $expires, $secret ), 0, 24 );
