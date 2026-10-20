@@ -764,8 +764,9 @@ final class Actions {
 
 	/** Importa gli eventi di The Events Calendar. */
 	private static function tec_import( array $p ): array {
-		$r   = \AssociazioneSemplice\TribeImport::run();
-		$msg = $r['imported'] . ( 1 === $r['imported'] ? ' evento importato' : ' eventi importati' ) . ( $r['skipped'] ? ', ' . $r['skipped'] . ' già presenti' : '' ) . ( $r['failed'] ? ', ' . $r['failed'] . ' non importati (' . implode( ' ', $r['errors'] ) . ')' : '' ) . '.';
+		$r   = \AssociazioneSemplice\TribeImport::run( isset( $p['course_cats'] ) && is_array( $p['course_cats'] ) ? array_map( 'intval', $p['course_cats'] ) : array() );
+		$msg = $r['imported'] . ( 1 === $r['imported'] ? ' evento importato' : ' eventi importati' ) . ( $r['courses'] ? ', ' . $r['courses'] . ( 1 === $r['courses'] ? ' corso' : ' corsi' ) . ' (' . $r['lessons'] . ' lezioni)' : '' )
+			. ( $r['skipped'] ? ', ' . $r['skipped'] . ' già presenti' : '' ) . ( $r['failed'] ? ', ' . $r['failed'] . ' non importati (' . implode( ' ', $r['errors'] ) . ')' : '' ) . '.';
 		return array( Ui::url( 'asem-tec' ), $msg );
 	}
 
