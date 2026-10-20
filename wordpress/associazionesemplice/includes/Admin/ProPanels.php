@@ -13,6 +13,11 @@ final class ProPanels {
 		add_action( 'asem_entity_rows', array( __CLASS__, 'entity_rows' ) );
 		add_action( 'asem_entity_sections', array( __CLASS__, 'entity_sections' ) );
 		add_action( 'asem_entity_page_end', array( __CLASS__, 'entity_page_end' ) );
+		add_filter( 'asem_comms_page_title', function () {
+			return 'Promemoria, privacy, regolamento e ricevute';
+		} );
+		add_action( 'asem_comms_sections', array( __CLASS__, 'comms_sections' ) );
+		add_filter( 'asem_comms_settings', array( __CLASS__, 'comms_settings' ), 10, 2 );
 		add_action( 'asem_person_receipts', array( __CLASS__, 'person_receipts' ) );
 		add_action( 'asem_ledger_row_actions', array( __CLASS__, 'ledger_row_actions' ), 10, 2 );
 	}
@@ -89,5 +94,18 @@ final class ProPanels {
 		if ( \AssociazioneSemplice\Edition::has( 'vat' ) ) {
 			echo '<script>(function(){var c=document.getElementById("asem-has-vat"),b=document.getElementById("asem-vat-block");if(!c||!b)return;function s(){b.style.display=c.checked?"":"none";}c.addEventListener("change",s);s();})();</script>';
 		}
+	}
+
+	/** Riga in fondo alle ricevute, nella pagina di promemoria, privacy e regolamento. */
+	public static function comms_sections( array $s ): void {
+		echo '<h2>Ricevute</h2><table class="form-table"><tbody>';
+		echo '<h2>Ricevute</h2><table class="form-table"><tbody>';
+		echo '<tr><th>Riga in fondo alla ricevuta</th><td><textarea name="receipt_footer" rows="2" class="large-text" maxlength="300">' . esc_textarea( (string) $s['receipt_footer'] ) . '</textarea>'
+			. '<p class="description">Facoltativa: ad esempio il riferimento normativo che il tuo consulente ti indica per le quote associative. Le ricevute le trovi accanto a ogni incasso della Prima nota e nella scheda del socio; i soci le scaricano dalla loro area.</p></td></tr>';
+	}
+
+	public static function comms_settings( array $vals, array $p ): array {
+		$vals['receipt_footer'] = trim( (string) ( $p['receipt_footer'] ?? '' ) );
+		return $vals;
 	}
 }

@@ -8,12 +8,12 @@ use AssociazioneSemplice\Settings;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Impostazioni → Promemoria, privacy, regolamento e ricevute. */
+/** Impostazioni → Promemoria, privacy e regolamento. */
 final class CommsPage {
 
 	public static function render(): void {
 		$s = Settings::all();
-		Ui::header( 'Promemoria, privacy, regolamento e ricevute' );
+		Ui::header( (string) apply_filters( 'asem_comms_page_title', 'Promemoria, privacy e regolamento' ) );
 		Ui::form_open( 'asem_save_comms', Ui::url( 'asem-comms' ) );
 		echo '<h2>Promemoria per email</h2><p class="description">Ogni giorno il sito invia i promemoria ai soci. Sono disattivati finché non li attivi. Chi non ha un indirizzo email (un ospite) riceve il messaggio tramite il socio che lo ospita; ogni promemoria viene inviato una sola volta.</p>';
 		echo '<table class="form-table"><tbody>';
@@ -40,11 +40,7 @@ final class CommsPage {
 		echo '<tr><th>Versione</th><td><input type="text" name="rules_version" value="' . esc_attr( (string) $s['rules_version'] ) . '" maxlength="20" style="width:120px"><p class="description">Quando modifichi il regolamento cambia la versione (ad esempio 2): tutti i soci dovranno accettarlo di nuovo.</p></td></tr>';
 		echo '<tr><th>Prenotazioni</th><td><label><input type="checkbox" name="rules_block_booking" value="1"' . checked( ! empty( $s['rules_block_booking'] ), true, false ) . '> Senza accettazione il socio non può prenotare</label></td></tr>';
 		echo '</tbody></table>';
-
-		echo '<h2>Ricevute</h2><table class="form-table"><tbody>';
-		echo '<tr><th>Riga in fondo alla ricevuta</th><td><textarea name="receipt_footer" rows="2" class="large-text" maxlength="300">' . esc_textarea( (string) $s['receipt_footer'] ) . '</textarea>'
-			. '<p class="description">Facoltativa: ad esempio il riferimento normativo che il tuo consulente ti indica per le quote associative. Le ricevute le trovi accanto a ogni incasso della Prima nota e nella scheda del socio; i soci le scaricano dalla loro area.</p></td></tr>';
-		echo '</tbody></table>';
+		do_action( 'asem_comms_sections', $s ); // le estensioni aggiungono qui le loro sezioni
 		submit_button( 'Salva' );
 		Ui::form_close();
 

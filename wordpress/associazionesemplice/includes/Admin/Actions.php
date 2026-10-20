@@ -246,7 +246,7 @@ final class Actions {
 			return trim( (string) ( $p[ $k ] ?? '' ) );
 		};
 		Settings::update(
-			array(
+			(array) apply_filters( 'asem_comms_settings', array(
 				'reminders_enabled'         => ! empty( $p['reminders_enabled'] ) ? 1 : 0,
 				'reminders_membership'      => ! empty( $p['reminders_membership'] ) ? 1 : 0,
 				'reminders_membership_days' => (int) ( $p['reminders_membership_days'] ?? 30 ),
@@ -261,8 +261,7 @@ final class Actions {
 				'rules_url'                 => $txt( 'rules_url' ),
 				'rules_version'             => $txt( 'rules_version' ),
 				'rules_block_booking'       => ! empty( $p['rules_block_booking'] ) ? 1 : 0,
-				'receipt_footer'            => $txt( 'receipt_footer' ),
-			)
+			), $p )
 		);
 		return array( Ui::url( 'asem-comms' ), 'Impostazioni salvate.' );
 	}

@@ -1758,7 +1758,7 @@ $html = $as( $uq, '[associazionesemplice_pagamenti]' );
 asem_ok( false !== strpos( $html, 'asem_front_pay' ) && false !== strpos( $html, 'Paga con carta' ) && false !== strpos( $html, 'data-cents' ), 'area soci: elenco da pagare con il pulsante "Paga con carta"' );
 asem_ok( false !== strpos( $as( $uq, '[associazionesemplice_area_soci]' ), 'asemf-pay' ), 'l\'area soci completa include la sezione pagamenti' );
 wp_set_current_user( $uq );
-$redirect = \AssociazioneSemplice\Frontend\Actions::do_pay( array( 'items' => array( "q:$q:" . Settings::membership_year()->label() ) ) );
+$redirect = \AssociazioneSemplice\Frontend\ProActions::do_pay( array( 'items' => array( "q:$q:" . Settings::membership_year()->label() ) ) );
 asem_ok( 0 === strpos( $redirect, 'https://checkout.stripe.com/' ), 'azione dal sito: porta alla pagina di pagamento ospitata' );
 $open = $latest();
 
@@ -3127,7 +3127,7 @@ asem_ok( 'unknown_queued' === $FA::submit( 'Admin', $admin_mail, '339 1112222' )
 // primo accesso: chi si attiva dal sito deve completare il profilo; finché manca non prenota né paga online
 asem_ok( 1 === (int) $people->get( $q )['profile_due'] && $people->profile_blocks( $people->get( $q ) ), 'primo accesso: il socio senza indirizzo e codice fiscale risulta da completare e bloccato' );
 wp_set_current_user( $uq );
-asem_ok( false !== strpos( (string) asem_throws( function () { \AssociazioneSemplice\Frontend\Actions::do_pay( array( 'items' => array() ) ); } ), 'completa i tuoi dati' ) && false !== strpos( (string) asem_throws( function () { \AssociazioneSemplice\Frontend\Actions::do_book( array( 'session_id' => 1 ) ); } ), 'completa i tuoi dati' ), 'profilo incompleto: prenotare e pagare online sono bloccati con un messaggio chiaro' );
+asem_ok( false !== strpos( (string) asem_throws( function () { \AssociazioneSemplice\Frontend\ProActions::do_pay( array( 'items' => array() ) ); } ), 'completa i tuoi dati' ) && false !== strpos( (string) asem_throws( function () { \AssociazioneSemplice\Frontend\Actions::do_book( array( 'session_id' => 1 ) ); } ), 'completa i tuoi dati' ), 'profilo incompleto: prenotare e pagare online sono bloccati con un messaggio chiaro' );
 asem_ok( false !== strpos( $as( $uq, '[associazionesemplice_profilo]' ), 'Completa i tuoi dati' ) && false !== strpos( $as( $uq, '[associazionesemplice_profilo]' ), 'name="address"' ), 'profilo incompleto: l\'area mostra cosa manca e il modulo con l\'indirizzo' );
 asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\Frontend\Actions::do_profile( array( 'tax_code' => 'ABC', 'address' => 'Via Verdi 5', 'zip' => '00100', 'city' => 'Roma' ) ); } ), 'profilo: un codice fiscale non valido è rifiutato' );
 Settings::update( array( 'limits' => array( 'profile_gate' => 0 ) ) );
