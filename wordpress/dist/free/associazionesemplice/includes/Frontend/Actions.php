@@ -33,40 +33,58 @@ final class Actions {
 		'asem_front_expense_docs'   => 'do_expense_docs',
 		'asem_front_checkin'        => 'do_checkin',
 		'asem_front_checkin_scan'   => 'do_checkin_scan',
-		'asem_front_door'           => 'do_door',
 		'asem_front_collect'        => 'do_collect',
 		'asem_front_new_member'     => 'do_new_member',
-		'asem_front_group'          => 'do_group_collect',
-		'asem_front_door_group'     => 'do_door_group',
 		'asem_front_notice'         => 'do_notice',
 		'asem_front_bank_email'     => 'do_bank_email',
 	);
 
-	public static function register(): void {
-		// Pagamento online: la risposta è un indirizzo esterno (pagina del gateway), non un messaggio.
+	/** @var array<string,array{0:callable,1:bool}> azioni aggiunte da un'estensione: [gestore, restituisce un indirizzo] */
+	private static $extra = array();
+
+	/**
+	 * Un'estensione aggiunge un'azione dei moduli del sito. Il gestore riceve i dati inviati e restituisce un messaggio
+	 * (oppure, con `$returns_url`, l'indirizzo a cui mandare la persona) o lancia InvalidArgumentException con il motivo del rifiuto.
+	 */
+	public static function add_handler( string $action, callable $handler, bool $returns_url = false ): void {
+		self::$extra[ $action ] = array( $handler, $returns_url );
+	}
+
+	private static function bind_extra( string $action, callable $handler, bool $url ): void {
 		add_action(
-			'admin_post_asem_front_pay',
-			function () {
-				check_admin_referer( 'asem_front_pay' );
+			'admin_post_' . $action,
+			function () use ( $action, $handler, $url ) {
+				check_admin_referer( $action );
 				$post = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification
 				$back = self::back_url( $post );
 				try {
-					wp_redirect( self::do_pay( $post ) ); // phpcs:ignore WordPress.Security.SafeRedirect -- indirizzo restituito dal gateway
+					$res = call_user_func( $handler, $post );
+					if ( $url ) {
+						wp_redirect( (string) $res ); // phpcs:ignore WordPress.Security.SafeRedirect -- indirizzo restituito dall'estensione (ad esempio il gateway)
+						exit;
+					}
+					self::redirect( $back, (string) $res );
 				} catch ( \InvalidArgumentException $e ) {
 					self::redirect( $back, '', $e->getMessage() );
 				} catch ( \Throwable $e ) {
 					self::redirect( $back, '', 'Operazione non riuscita. Riprova più tardi.' );
 				}
-				exit;
 			}
 		);
 		add_action(
-			'admin_post_nopriv_asem_front_pay',
+			'admin_post_nopriv_' . $action,
 			function () {
 				wp_safe_redirect( wp_login_url( self::back_url( wp_unslash( $_POST ) ) ) ); // phpcs:ignore WordPress.Security.NonceVerification
 				exit;
 			}
 		);
+	}
+
+	public static function register(): void {
+		// Azioni di un'estensione: la risposta è un messaggio oppure un indirizzo esterno (ad esempio la pagina del gateway di pagamento).
+		foreach ( self::$extra as $action => $h ) {
+			self::bind_extra( $action, $h[0], $h[1] );
+		}
 		foreach ( self::MAP as $action => $method ) {
 			add_action(
 				'admin_post_' . $action,
@@ -94,7 +112,7 @@ final class Actions {
 		}
 	}
 
-	private static function back_url( array $post ): string {
+	public static function back_url( array $post ): string {
 		$url = ! empty( $post['_back'] ) ? esc_url_raw( $post['_back'] ) : home_url( '/' );
 		return wp_validate_redirect( $url, home_url( '/' ) );
 	}
@@ -105,7 +123,7 @@ final class Actions {
 	}
 
 	/** La persona collegata all'utente, solo se è un socio (non un ospite). */
-	private static function actor(): array {
+	public static function actor(): array {
 		$p = Access::current_person();
 		if ( ! $p || ! MemberType::is_member( $p['type'] ) ) {
 			throw new \InvalidArgumentException( 'Serve un accesso come socio.' );
@@ -120,7 +138,7 @@ final class Actions {
 		}
 	}
 
-	private static function require_cap( string $ability, int $object_id ): void {
+	public static function require_cap( string $ability, int $object_id ): void {
 		if ( ! current_user_can( $ability, $object_id ) ) {
 			throw new \InvalidArgumentException( 'Non hai il permesso di fare questa operazione.' );
 		}
@@ -250,20 +268,12 @@ final class Actions {
 	 * @return string indirizzo della pagina di pagamento del gateway
 	 */
 	/** Chi si è attivato dal sito deve prima completare indirizzo e codice fiscale (vedi Limits «profile_gate»). */
-	private static function assert_profile( array $actor ): void {
+	public static function assert_profile( array $actor ): void {
 		if ( Plugin::people()->profile_blocks( $actor ) ) {
 			throw new \InvalidArgumentException( 'Prima di prenotare o pagare completa i tuoi dati (indirizzo e codice fiscale) nel riquadro «Il mio profilo».' );
 		}
 	}
 
-	public static function do_pay( array $post ): string {
-		self::require_feature( 'payments' );
-		$actor = self::actor();
-		self::assert_profile( $actor );
-		self::require_cap( 'asem_view_payments', (int) $actor['id'] );
-		$back = remove_query_arg( array( 'asemf_ok', 'asemf_err', 'asemf_sig', 'asem_pay', 'asem_ret', 'token', 'PayerID' ), self::back_url( $post ) );
-		return Plugin::payments()->create_checkout( $actor, get_current_user_id(), (array) ( $post['items'] ?? array() ), $back, sanitize_key( (string) ( $post['provider'] ?? '' ) ) );
-	}
 
 	/** Il socio si fa mandare per email le coordinate del bonifico (con le voci da pagare e la causale): sempre e solo al suo indirizzo. */
 	public static function do_bank_email( array $post ): string {
@@ -445,7 +455,7 @@ final class Actions {
 	}
 
 	/** Importo standard di una voce (quando il tesoriere lascia l'importo vuoto). */
-	private static function standard_cents( string $kind, int $ref, ?array $person ): int {
+	public static function standard_cents( string $kind, int $ref, ?array $person ): int {
 		$type = $person ? (string) $person['type'] : MemberType::GUEST;
 		if ( 'membership' === $kind ) {
 			return \AssociazioneSemplice\Levels::fee_for( $person );
@@ -469,88 +479,7 @@ final class Actions {
 		return $a ? Plugin::activities()->fee_for( $a, $type ) : 0;
 	}
 
-	/** Cassa per più persone del tesoriere (stesse regole degli amministratori). */
-	public static function do_group_collect( array $post ): string {
-		self::require_feature( 'funds' );
-		self::require_cap( 'asem_collect', 0 );
-		$month  = Settings::social_year()->clamp( substr( current_time( 'Y-m-d' ), 0, 7 ) );
-		$people = array();
-		foreach ( (array) ( $post['rows'] ?? array() ) as $i => $r ) {
-			$r    = (array) $r;
-			$what = (string) ( $r['what'] ?? '' );
-			if ( '' === $what ) {
-				continue;
-			}
-			$pid   = (int) ( $r['person'] ?? 0 );
-			$first = trim( (string) ( $r['first'] ?? '' ) );
-			$last  = trim( (string) ( $r['last'] ?? '' ) );
-			if ( ! $pid && '' === $first && '' === $last ) {
-				throw new \InvalidArgumentException( 'Riga ' . ( (int) $i + 1 ) . ': scegli la persona oppure scrivi nome e cognome del nuovo ospite.' );
-			}
-			$person = $pid ? Plugin::people()->get( $pid ) : null;
-			if ( 'm' === $what ) {
-				$line = array( 'kind' => 'membership', 'amount' => (string) ( $r['amount'] ?? '' ) );
-				$std  = self::standard_cents( 'membership', 0, $person );
-			} elseif ( 0 === strpos( $what, 's:' ) ) {
-				$sid  = (int) substr( $what, 2 );
-				$s    = Plugin::activities()->session( $sid );
-				$line = array( 'kind' => 'event', 'session_id' => $sid, 'activity_id' => $s ? (int) $s['activity_id'] : 0, 'amount' => (string) ( $r['amount'] ?? '' ) );
-				$std  = self::standard_cents( 'event', $sid, $person );
-			} elseif ( 0 === strpos( $what, 'k:' ) ) {
-				$aid  = (int) substr( $what, 2 );
-				$line = array( 'kind' => 'course', 'activity_id' => $aid, 'month' => $month, 'amount' => (string) ( $r['amount'] ?? '' ) );
-				$std  = self::standard_cents( 'course', $aid, $person );
-			} else {
-				throw new \InvalidArgumentException( 'Voce non riconosciuta.' );
-			}
-			if ( '' === trim( $line['amount'] ) ) {
-				$line['amount'] = Money::plain( $std );
-			}
-			$key = $pid ? 'p' . $pid : 'n' . $i;
-			if ( ! isset( $people[ $key ] ) ) {
-				$people[ $key ] = $pid ? array( 'id' => $pid, 'lines' => array() ) : array( 'new' => 1, 'first' => $first, 'last' => $last, 'phone' => (string) ( $r['phone'] ?? '' ), 'lines' => array() );
-			}
-			$people[ $key ]['lines'][] = $line;
-		}
-		$s = \AssociazioneSemplice\GroupCash::record(
-			array( 'payer_id' => (int) ( $post['payer_id'] ?? 0 ), 'date' => current_time( 'Y-m-d' ), 'account_id' => (int) ( $post['account_id'] ?? 0 ), 'people' => array_values( $people ) )
-		);
-		return 'Incasso registrato: ' . $s['lines'] . ( 1 === $s['lines'] ? ' voce' : ' voci' ) . ' per ' . $s['people'] . ( 1 === $s['people'] ? ' persona' : ' persone' ) . ', totale ' . Money::format( $s['cents'] ) . '.';
-	}
 
-	/** Cassa per più soci sul posto (staff): un socio paga il biglietto per sé e per altri soci, importi calcolati dal sito. */
-	public static function do_door_group( array $post ): string {
-		self::require_feature( 'door_sales' );
-		$sid     = (int) ( $post['session_id'] ?? 0 );
-		$session = Plugin::activities()->session( $sid );
-		if ( ! $session ) {
-			throw new \InvalidArgumentException( 'Data non trovata.' );
-		}
-		$aid = (int) $session['activity_id'];
-		self::require_cap( 'asem_door_cash', $aid );
-		$people = array();
-		foreach ( (array) ( $post['rows'] ?? array() ) as $r ) {
-			$pid = (int) ( ( (array) $r )['person'] ?? 0 );
-			if ( $pid && ! isset( $people[ $pid ] ) ) {
-				$people[ $pid ] = array( 'id' => $pid, 'lines' => array( array( 'kind' => 'event', 'session_id' => $sid, 'activity_id' => $aid, 'amount' => '' ) ) );
-			}
-		}
-		if ( ! $people ) {
-			throw new \InvalidArgumentException( 'Scegli almeno un socio.' );
-		}
-		$s = \AssociazioneSemplice\GroupCash::record(
-			array( 'payer_id' => (int) ( $post['payer_id'] ?? 0 ), 'account_id' => (int) ( $post['account_id'] ?? 0 ), 'people' => array_values( $people ) ),
-			array( 'staff' => true, 'activity_ids' => array( $aid ) )
-		);
-		foreach ( array_keys( $people ) as $pid ) { // chi paga all'ingresso entra: ingresso registrato per tutti
-			try {
-				Plugin::activities()->check_in( $sid, (int) $pid, false, current_user_can( Plugin::CAP_OPS ) );
-			} catch ( \InvalidArgumentException $e ) {
-				unset( $e );
-			}
-		}
-		return 'Incasso registrato per ' . $s['people'] . ( 1 === $s['people'] ? ' socio' : ' soci' ) . ': ' . Money::format( $s['cents'] ) . ', ingressi registrati.';
-	}
 
 	/** Registra (o annulla) l'ingresso di una persona prenotata: solo per chi gestisce l'evento (referente, gestori indicati, amministratori). */
 	public static function do_checkin( array $post ): string {
@@ -565,38 +494,6 @@ final class Actions {
 		return self::checkin_message( $r, $sid, $pid );
 	}
 
-	/** Ingresso sul posto: chi non ha prenotato viene prenotato (se c'è posto), paga il biglietto in contanti o con il POS e entra. Solo soci e solo con l'incasso abilitato. */
-	public static function do_door( array $post ): string {
-		self::require_feature( 'door_sales' );
-		$sid     = (int) ( $post['session_id'] ?? 0 );
-		$session = Plugin::activities()->session( $sid );
-		if ( ! $session ) {
-			throw new \InvalidArgumentException( 'Data non trovata.' );
-		}
-		$aid = (int) $session['activity_id'];
-		self::require_cap( 'asem_door_cash', $aid );
-		if ( $session['session_date'] !== current_time( 'Y-m-d' ) && ! current_user_can( Plugin::CAP_OPS ) ) {
-			throw new \InvalidArgumentException( 'L\'ingresso sul posto si registra nel giorno dell\'evento.' );
-		}
-		$account = (int) ( $post['account_id'] ?? 0 );
-		foreach ( $account ? array() : Plugin::ledger()->accounts() as $acc ) {
-			if ( 'cash' === $acc['type'] ) {
-				$account = (int) $acc['id'];
-				break;
-			}
-		}
-		$pay = ! empty( $post['pay'] );
-		if ( $pay && ! $account ) {
-			throw new \InvalidArgumentException( 'Manca un conto di tipo "Cassa contanti": chiedi alla segreteria di crearlo.' );
-		}
-		return \AssociazioneSemplice\DoorSales::sell(
-			array(
-				'session_id' => $sid, 'activity_id' => $aid, 'person_id' => (int) ( $post['person_id'] ?? 0 ),
-				'pay' => $pay, 'account_id' => $account, 'checkin' => true,
-			),
-			true
-		);
-	}
 
 	/** Ingresso da QR scansionato: accetta l'indirizzo letto dal QR (o il solo codice). */
 	public static function do_checkin_scan( array $post ): string {

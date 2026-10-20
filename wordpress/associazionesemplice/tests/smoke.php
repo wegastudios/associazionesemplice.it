@@ -24,6 +24,7 @@ use AssociazioneSemplice\Labels;
 use AssociazioneSemplice\MemberType;
 use AssociazioneSemplice\PeopleCsv;
 use AssociazioneSemplice\Plugin;
+use AssociazioneSemplice\ProSettings;
 use AssociazioneSemplice\Settings;
 define( 'ASEM_TESTING', true ); // abilita le scorciatoie dei test (siti «non locali», chiavi di prova): in produzione la costante non c'è
 
@@ -569,7 +570,7 @@ wp_set_current_user( 1 );
 $people->set_membership( $ord, $sy_label, true );
 $people->set_membership( $vol, $sy_label, true );
 $u_f = (int) $people->get( $founder )['wp_user_id'];
-foreach ( array_keys( \AssociazioneSemplice\Frontend\Shortcodes::VIEWS ) as $slug ) {
+foreach ( array_keys( \AssociazioneSemplice\Frontend\Shortcodes::views() ) as $slug ) {
 	asem_ok( shortcode_exists( 'associazionesemplice_' . $slug ), "shortcode associazionesemplice_$slug registrato" );
 }
 asem_ok( shortcode_exists( 'associazionesemplice_riservato' ), 'shortcode associazionesemplice_riservato registrato' );
@@ -580,10 +581,10 @@ asem_ok( 'tesoriere' === \AssociazioneSemplice\Areas::area_of( 'spese' ) && 'seg
 $ar_keys = array_keys( $ar_opt );
 asem_ok( 0 === strpos( $ar_opt['tessera'], 'Soci · ' ) && 0 === strpos( $ar_opt['tesoriere'], 'Tesoriere · ' ) && array_search( 'segreteria', $ar_keys, true ) > array_search( 'area_soci', $ar_keys, true ) && array_search( 'attivita', $ar_keys, true ) > array_search( 'ingressi', $ar_keys, true ), 'aree: le viste per blocchi e widget sono nominate e ordinate per area' );
 $ar_views = array();
-foreach ( \AssociazioneSemplice\Areas::GROUPS as $ar_g ) {
+foreach ( \AssociazioneSemplice\Areas::groups() as $ar_g ) {
 	$ar_views = array_merge( $ar_views, $ar_g[1] );
 }
-asem_ok( count( $ar_views ) === count( array_unique( $ar_views ) ) && ! array_diff( array_keys( \AssociazioneSemplice\Frontend\Shortcodes::VIEWS ), array_merge( $ar_views, array_keys( \AssociazioneSemplice\Areas::ALIASES ) ) ), 'aree: nessuna vista in due aree e nessuna dimenticata' );
+asem_ok( count( $ar_views ) === count( array_unique( $ar_views ) ) && ! array_diff( array_keys( \AssociazioneSemplice\Frontend\Shortcodes::views() ), array_merge( $ar_views, array_keys( \AssociazioneSemplice\Areas::ALIASES ) ) ), 'aree: nessuna vista in due aree e nessuna dimenticata' );
 asem_ok( shortcode_exists( 'associazionesemplice_segreteria' ) && shortcode_exists( 'associazionesemplice_tesoriere' ), 'aree: shortcode della segreteria e del tesoriere registrati' );
 $ar_bl = \AssociazioneSemplice\Frontend\Blocks::class;
 asem_ok( class_exists( $ar_bl ), 'aree: blocchi presenti' );
@@ -803,7 +804,7 @@ ob_start();
 Admin\WizardPage::render();
 $wz_html = (string) ob_get_clean();
 asem_ok( false !== strpos( $wz_html, 'docs.stripe.com/keys' ) && false !== strpos( $wz_html, 'target="_blank"' ) && false !== strpos( $wz_html, 'rel="noopener noreferrer"' ) && false !== strpos( $wz_html, 'Applica la configurazione' ), 'configurazione guidata: pagina con i tutorial in una nuova finestra' );
-asem_ok( in_array( 'asem-wizard', Admin\Admin::ADMIN_ONLY, true ) && isset( Admin\TechActions::ACTIONS['asem_wizard_save'] ), 'configurazione guidata: riservata agli amministratori' );
+asem_ok( in_array( 'asem-wizard', Admin\Admin::admin_only(), true ) && isset( Admin\TechActions::ACTIONS['asem_wizard_save'] ), 'configurazione guidata: riservata agli amministratori' );
 // ... a domande: parti del gestionale, iscrizione su presentazione, altri tipi di socio
 asem_ok( ! in_array( 'asem-ledger', Admin\Admin::disabled_pages(), true ) && \AssociazioneSemplice\Modules::on( 'accounts' ), 'moduli: prima della configurazione è tutto acceso' );
 \AssociazioneSemplice\Wizard::apply( array( 'mod_present' => '1', 'mod' => array( 'activities' => '1', 'ledger' => '0', 'accounts' => '1', 'accounting' => '1', 'reports' => '1', 'book' => '0', 'messages' => '1', 'import' => '0' ) ) );
@@ -846,7 +847,7 @@ asem_ok( \AssociazioneSemplice\Fiscal::vat_applies() && '12345678903' === Settin
 asem_ok( \AssociazioneSemplice\Fiscal::vat_applies() && '12345678903' === Settings::get( 'vat_number' ), 'procedura: se il passo non c\'è, la partita IVA già impostata non si tocca' );
 \AssociazioneSemplice\Wizard::apply( array( 'has_vat' => '0', 'vat_number' => '12345678903', 'vat_membership_rate' => '22' ) );
 asem_ok( ! \AssociazioneSemplice\Fiscal::vat_applies() && '' === Settings::get( 'vat_number' ) && null === \AssociazioneSemplice\Fiscal::membership_rate(), 'procedura: senza partita IVA il numero e l\'aliquota delle quote si azzerano' );
-$wz_feat = array_intersect_key( Settings::all(), Admin\SettingsPage::FEATURES ); // l'elenco delle funzioni spegne ciò che non è spuntato: si ripristina dopo il controllo
+$wz_feat = array_intersect_key( Settings::all(), Admin\SettingsPage::all_features() ); // l'elenco delle funzioni spegne ciò che non è spuntato: si ripristina dopo il controllo
 Settings::update( array( 'fivepm_enabled' => 1 ) );
 \AssociazioneSemplice\Wizard::apply( array( 'features_present' => '1' ) );
 asem_ok( 1 === (int) Settings::get( 'fivepm_enabled' ), 'procedura: l\'elenco delle funzioni non tocca il 5x1000, che ha il suo passo' );
@@ -966,7 +967,7 @@ asem_ok( ! \AssociazioneSemplice\Fiscal::vat_applies() && '' === Settings::get( 
 ob_start();
 Admin\EntityPage::render();
 $en_html = (string) ob_get_clean();
-asem_ok( false !== strpos( $en_html, 'name="vat_number"' ) && false !== strpos( $en_html, 'Partita IVA' ) && false !== strpos( $en_html, 'name="legal_address"' ) && in_array( 'asem-entity', Admin\Admin::ADMIN_ONLY, true ) && isset( Admin\TechActions::ACTIONS['asem_save_entity'] ), 'dati ente: pagina riservata agli amministratori con sede e partita IVA' );
+asem_ok( false !== strpos( $en_html, 'name="vat_number"' ) && false !== strpos( $en_html, 'Partita IVA' ) && false !== strpos( $en_html, 'name="legal_address"' ) && in_array( 'asem-entity', Admin\Admin::admin_only(), true ) && isset( Admin\TechActions::ACTIONS['asem_save_entity'] ), 'dati ente: pagina riservata agli amministratori con sede e partita IVA' );
 // IVA su incassi, quote, attività e spese
 $vt_last = function () {
 	return Db::db()->get_row( 'SELECT * FROM ' . Db::t( 'transactions' ) . ' ORDER BY id DESC LIMIT 1', ARRAY_A );
@@ -1182,7 +1183,7 @@ Admin\DeleteBookingPage::render();
 $dp4 = (string) ob_get_clean();
 asem_ok( false !== strpos( $dp4, 'ANNULLATI' ) && false !== strpos( $dp4, 'Cancella l\'iscrizione' ) && false !== strpos( $dp4, 'Gino Sei' ), 'pagina di cancellazione iscrizione: messaggio chiaro e conferma con nome' );
 $_GET = array();
-asem_ok( 'asem-activities' === Admin\Admin::menu_item_of( 'asem-activity-delete' ) && 'asem-activities' === Admin\Admin::menu_item_of( 'asem-booking-delete' ) && in_array( 'asem_delete_activity', Admin\Actions::ADMIN_ONLY, true ) && in_array( 'asem_delete_booking', Admin\Actions::ADMIN_ONLY, true ) && in_array( 'asem-activity-delete', Admin\Admin::ADMIN_ONLY, true ), 'eliminazioni: riservate agli amministratori' );
+asem_ok( 'asem-activities' === Admin\Admin::menu_item_of( 'asem-activity-delete' ) && 'asem-activities' === Admin\Admin::menu_item_of( 'asem-booking-delete' ) && in_array( 'asem_delete_activity', Admin\Actions::ADMIN_ONLY, true ) && in_array( 'asem_delete_booking', Admin\Actions::ADMIN_ONLY, true ) && in_array( 'asem-activity-delete', Admin\Admin::admin_only(), true ), 'eliminazioni: riservate agli amministratori' );
 $ev_p8 = $ev_mk( 'Lia', 'Otto', '349 5556677' );
 $acts->book( $ev_s4, $ev_p8 );
 ob_start();
@@ -1436,13 +1437,13 @@ asem_ok( 'sk_test_51Abc1234' === Settings::secret( 'stripe_secret_key' ), 'chiav
 Settings::update( array( 'stripe_secret_key' => 'sk_test_NUOVA9876' ) );
 asem_ok( 'sk_test_NUOVA9876' === Settings::secret( 'stripe_secret_key' ), 'chiave segreta nuova: sostituisce la vecchia' );
 Settings::update( array( 'stripe_secret_key' => 'sk_test_51Abc1234' ) );
-asem_ok( array() === PaymentConfig::validate( Settings::payment_config() )['errors'], 'configurazione Stripe valida' );
+asem_ok( array() === PaymentConfig::validate( ProSettings::payment_config() )['errors'], 'configurazione Stripe valida' );
 $http_seen = null;
 $fake      = function ( $method, $url, $headers, $body ) use ( &$http_seen ) {
 	$http_seen = array( $method, $url, $headers );
 	return array( 'code' => 200, 'body' => '{"livemode":false}' );
 };
-$g = Gateways::test( 'stripe', Settings::payment_config(), $fake );
+$g = Gateways::test( 'stripe', ProSettings::payment_config(), $fake );
 asem_ok( $g['ok'] && 'Bearer sk_test_51Abc1234' === $http_seen[2]['Authorization'], 'prova Stripe: usa la chiave salvata (rete simulata)' );
 ob_start();
 Admin\PaymentsPage::render();
@@ -1453,7 +1454,7 @@ $general_html = ob_get_clean();
 asem_ok( false === strpos( $settings_html, 'sk_test_51Abc1234' ) && false !== strpos( $settings_html, '••••1234' ) && false === strpos( $settings_html, 'whsec_abc1234' ), 'impostazioni: la chiave segreta non viene mai stampata, solo la maschera' );
 asem_ok( false !== strpos( $settings_html, 'Verifica connessione Stripe' ) && false !== strpos( $settings_html, 'WooCommerce (negozio del sito)' ) && false !== strpos( $general_html, 'Termine predefinito per annullare' ) && false === strpos( $general_html, 'Verifica connessione Stripe' ), 'impostazioni: i pagamenti stanno nella loro scheda, le cancellazioni nel generale' );
 Settings::update( array( 'payment_provider' => 'paypal', 'paypal_mode' => 'sandbox', 'paypal_client_id' => str_repeat( 'A', 40 ), 'paypal_client_secret' => str_repeat( 'b', 40 ) ) );
-asem_ok( array() === PaymentConfig::validate( Settings::payment_config() )['errors'], 'configurazione PayPal valida' );
+asem_ok( array() === PaymentConfig::validate( ProSettings::payment_config() )['errors'], 'configurazione PayPal valida' );
 Settings::update( array( 'payment_provider' => 'bogus' ) );
 asem_ok( 'none' === Settings::get( 'payment_provider' ), 'gateway non valido: si torna a "nessuno"' );
 Settings::clear_secret( 'stripe_secret_key' );
@@ -1903,7 +1904,7 @@ Admin\TechActions::save_bank( array( 'bank_enabled' => '0', 'bank' => array() ) 
 asem_ok( ! \AssociazioneSemplice\Bank::enabled() && '' === \AssociazioneSemplice\Frontend\Views::bank_public() && null !== asem_throws( function () use ( $uq ) { wp_set_current_user( $uq ); \AssociazioneSemplice\Frontend\Actions::do_bank_email( array() ); } ), 'bonifico: tolti i conti, nulla è esposto e l\'invio per email non funziona' );
 wp_set_current_user( 1 );
 asem_render( array( Admin\PaymentsPage::class, 'render' ), 'Bonifico bancario' );
-asem_ok( Admin\Admin::ADMIN_ONLY && in_array( 'asem-limits', Admin\Admin::ADMIN_ONLY, true ), 'limiti: la pagina è riservata agli amministratori' );
+asem_ok( Admin\Admin::admin_only() && in_array( 'asem-limits', Admin\Admin::admin_only(), true ), 'limiti: la pagina è riservata agli amministratori' );
 
 // pagina di amministrazione e impostazioni
 wp_set_current_user( 1 );
@@ -2051,7 +2052,7 @@ $html = $as( $u_tre, '[associazionesemplice_spese]' );
 asem_ok( false !== strpos( $html, 'asem_front_expense' ) && false !== strpos( $html, 'multipart/form-data' ) && false !== strpos( $html, 'capture="environment"' ) && false !== strpos( $html, 'name="amount"' ), 'schermata spese: modulo con importo, voce, conto e fotocamera' );
 asem_ok( false === strpos( $html, 'Saldo' ) && false === strpos( $html, 'saldo' ), 'schermata spese: nessun saldo dei conti' );
 asem_ok( false !== strpos( $as( $u_tre, '[associazionesemplice_area_soci]', 'segreteria' ), 'Registra una spesa' ), 'area soci: la sezione Spese compare per il tesoriere, nella parte Segreteria' );
-asem_ok( isset( \AssociazioneSemplice\Frontend\Shortcodes::VIEWS['spese'] ) && shortcode_exists( 'associazionesemplice_spese' ), 'shortcode [associazionesemplice_spese] registrato (anche per blocco e widget)' );
+asem_ok( isset( \AssociazioneSemplice\Frontend\Shortcodes::views()['spese'] ) && shortcode_exists( 'associazionesemplice_spese' ), 'shortcode [associazionesemplice_spese] registrato (anche per blocco e widget)' );
 
 // registrazione con documenti
 wp_set_current_user( $u_tre );
@@ -4753,7 +4754,7 @@ wp_set_current_user( 1 );
 remove_all_filters( 'pre_wp_mail' );
 
 // ---------- Calendario nell'area soci ----------
-asem_ok( isset( \AssociazioneSemplice\Frontend\Shortcodes::VIEWS['calendario'] ), 'sito: esiste la vista calendario' );
+asem_ok( isset( \AssociazioneSemplice\Frontend\Shortcodes::views()['calendario'] ), 'sito: esiste la vista calendario' );
 $cal_front = $as( $u_ord, '[associazionesemplice_calendario]' );
 asem_ok( false !== strpos( $cal_front, 'asemf-calendar' ) && false !== strpos( $cal_front, 'Calendario' ), 'sito: il socio vede il calendario del mese' );
 $_GET['asemf_m'] = substr( $today, 0, 7 );
@@ -5050,7 +5051,7 @@ asem_render( array( Admin\RegistersPage::class, 'render_minutes' ), 'Approvazion
 asem_render( array( Admin\RegistersPage::class, 'render_minutes' ), 'Stampa il PDF', array( 'view' => $mn_1 ) );
 asem_render( array( Admin\RegistersPage::class, 'render_minutes' ), 'Crea il verbale', array( 'new' => '1' ) );
 // volontari e assicurazione
-asem_ok( ! Settings::insurance_volunteers() && ! Settings::insurance_association(), 'assicurazioni: spente di default' );
+asem_ok( ! ProSettings::insurance_volunteers() && ! ProSettings::insurance_association(), 'assicurazioni: spente di default' );
 asem_render( array( Admin\RegistersPage::class, 'render_volunteers' ), 'Le assicurazioni sono spente' );
 Settings::update( array( 'insurance_volunteers' => 1, 'insurance_association' => 1 ) );
 $in_day = function ( int $d ) use ( $today ) {
@@ -5075,8 +5076,8 @@ asem_ok( 'valid' === $st_of() && 3 === count( \AssociazioneSemplice\Insurance::f
 asem_ok( null !== asem_throws( function () use ( $vol, $in_day ) { \AssociazioneSemplice\Insurance::add( $vol, 'X', '', $in_day( 10 ), $in_day( 1 ), '' ); } ) && null !== asem_throws( function () use ( $vol, $in_day ) { \AssociazioneSemplice\Insurance::add( $vol, '', '', $in_day( 1 ), $in_day( 10 ), '' ); } ) && null !== asem_throws( function () use ( $guest, $in_day ) { \AssociazioneSemplice\Insurance::add( $guest, 'X', '', $in_day( 1 ), $in_day( 10 ), '' ); } ), 'assicurazione: date coerenti, compagnia obbligatoria, solo per i soci' );
 \AssociazioneSemplice\Insurance::delete( $ins_soon );
 asem_ok( 2 === count( \AssociazioneSemplice\Insurance::for_person( $vol ) ), 'assicurazione: si elimina una polizza' );
-$vl_doc = \AssociazioneSemplice\Docs::volunteers();
-asem_ok( false !== strpos( $vl_doc['body'], 'REGISTRO DEI VOLONTARI' ) && false !== strpos( \AssociazioneSemplice\Docs::volunteers( 'csv' )['body'], 'Assicurazioni Prova' ), 'assicurazione: PDF e CSV del registro' );
+$vl_doc = \AssociazioneSemplice\DocsPro::volunteers();
+asem_ok( false !== strpos( $vl_doc['body'], 'REGISTRO DEI VOLONTARI' ) && false !== strpos( \AssociazioneSemplice\DocsPro::volunteers( 'csv' )['body'], 'Assicurazioni Prova' ), 'assicurazione: PDF e CSV del registro' );
 asem_render( array( Admin\RegistersPage::class, 'render_volunteers' ), 'Registra una polizza' );
 // polizze dell'associazione
 asem_ok( 'none' === \AssociazioneSemplice\AssocPolicies::rc_status(), 'polizze associazione: senza responsabilità civile risulta scoperta' );
@@ -5093,7 +5094,7 @@ asem_ok( null !== asem_throws( function () use ( $in_day ) { \AssociazioneSempli
 \AssociazioneSemplice\AssocPolicies::delete( $pl_old );
 asem_ok( 3 === count( \AssociazioneSemplice\AssocPolicies::all() ), 'polizze associazione: si elimina una polizza' );
 asem_render( array( Admin\RegistersPage::class, 'render_volunteers' ), 'Polizze dell\'associazione' );
-asem_ok( 'Assicurazioni' === ( Admin\Admin::GROUPS['asem-book'][1]['asem-volunteers'] ?? '' ), 'assicurazioni: la scheda si chiama Assicurazioni' );
+asem_ok( 'Assicurazioni' === ( Admin\Admin::groups()['asem-book'][1]['asem-volunteers'] ?? '' ), 'assicurazioni: la scheda si chiama Assicurazioni' );
 // presenze
 $at_day = (int) gmdate( 'N', strtotime( $today ) );
 $at_c   = $acts->create( array( 'name' => 'Corso presenze', 'social_year' => $sy_label, 'instructor_person_id' => $vol, 'monthly_fee_cents' => 1000, 'lesson_slots' => array( array( 'type' => 'weekly', 'day' => $at_day, 'start' => '18:00', 'end' => '19:00', 'from' => substr( $today, 0, 8 ) . '01' ) ) ) );
@@ -5114,17 +5115,17 @@ foreach ( $at_sum['people'] as $r ) {
 	$at_by[ $r['person_id'] ] = $r['presenze'] . '/' . $r['totale'];
 }
 asem_ok( array( $today ) === $at_sum['dates'] && '1/1' === $at_by[ $at_a ] && '0/1' === $at_by[ $at_b ], 'presenze: riepilogo del periodo' );
-$at_doc = \AssociazioneSemplice\Docs::attendance( $at_c, substr( $today, 0, 4 ) . '-01-01', $today );
-asem_ok( false !== strpos( $at_doc['body'], 'REGISTRO PRESENZE' ) && false !== strpos( $at_doc['body'], 'Presenteregistro Anna' ) && false !== strpos( $at_doc['body'], 'Corso presenze' ) && false !== strpos( \AssociazioneSemplice\Docs::attendance( $at_c, substr( $today, 0, 4 ) . '-01-01', $today, 'csv' )['body'], 'Assenteregistro Bruno' ) && null !== asem_throws( function () use ( $at_c ) { \AssociazioneSemplice\Docs::attendance( $at_c, 'ieri', 'oggi' ); } ), 'presenze: PDF e CSV del registro' );
+$at_doc = \AssociazioneSemplice\DocsPro::attendance( $at_c, substr( $today, 0, 4 ) . '-01-01', $today );
+asem_ok( false !== strpos( $at_doc['body'], 'REGISTRO PRESENZE' ) && false !== strpos( $at_doc['body'], 'Presenteregistro Anna' ) && false !== strpos( $at_doc['body'], 'Corso presenze' ) && false !== strpos( \AssociazioneSemplice\DocsPro::attendance( $at_c, substr( $today, 0, 4 ) . '-01-01', $today, 'csv' )['body'], 'Assenteregistro Bruno' ) && null !== asem_throws( function () use ( $at_c ) { \AssociazioneSemplice\DocsPro::attendance( $at_c, 'ieri', 'oggi' ); } ), 'presenze: PDF e CSV del registro' );
 asem_render( array( Admin\RegistersPage::class, 'render_attendance' ), 'Registra le presenze', array( 'activity' => $at_c, 'ym' => substr( $today, 0, 7 ), 'date' => $today ) );
 // rendiconto
 $rd_y = (int) substr( $today, 0, 4 );
 $rd   = \AssociazioneSemplice\Statement::data( $rd_y );
 asem_ok( $rd['result']['cur'] === $rd['total_income']['cur'] - $rd['total_expense']['cur'] && $rd['total_income']['cur'] === array_sum( array_column( $rd['income'], 'cur' ) ) && $rd['total_expense']['cur'] === array_sum( array_column( $rd['expenses'], 'cur' ) ) && in_array( $rd_y, \AssociazioneSemplice\Statement::years(), true ), 'rendiconto: totali, avanzo e anni coerenti' );
 \AssociazioneSemplice\Statement::save_notes( $rd_y, "Anno positivo.\nNessuna criticità." );
-$rd_doc = \AssociazioneSemplice\Docs::statement( $rd_y );
+$rd_doc = \AssociazioneSemplice\DocsPro::statement( $rd_y );
 asem_ok( 0 === strpos( $rd_doc['body'], '%PDF-1.4' ) && false !== strpos( $rd_doc['body'], 'RENDICONTO PER CASSA' ) && false !== strpos( $rd_doc['body'], 'ENTRATE' ) && false !== strpos( $rd_doc['body'], 'USCITE' ) && false !== strpos( $rd_doc['body'], 'Anno positivo.' ) && false !== strpos( $rd_doc['body'], 'Il Tesoriere' ) && false !== strpos( $rd_doc['body'], 'CASSA E CONTI' ), 'rendiconto: il PDF ha entrate, uscite, cassa, relazione e firme' );
-asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\Docs::statement( 1999 ); } ) && null !== asem_throws( function () use ( $rd_y ) { \AssociazioneSemplice\Statement::save_notes( $rd_y, str_repeat( 'x', 6000 ) ); } ), 'rendiconto: anno valido e relazione di lunghezza limitata' );
+asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\DocsPro::statement( 1999 ); } ) && null !== asem_throws( function () use ( $rd_y ) { \AssociazioneSemplice\Statement::save_notes( $rd_y, str_repeat( 'x', 6000 ) ); } ), 'rendiconto: anno valido e relazione di lunghezza limitata' );
 asem_render( array( Admin\RegistersPage::class, 'render_statement' ), 'Relazione sull\'andamento della gestione', array( 'year' => $rd_y ) );
 // accessi
 $set_sec->invoke( null, array( 'id' => $sec_p, 'enabled' => '1' ) );
@@ -5136,15 +5137,15 @@ asem_ok( ( \AssociazioneSemplice\Plugin::load_for_action( 'asem_doc' ) && has_ac
 // ---------- 5x1000, guida iniziale, lingue ----------
 wp_set_current_user( 1 );
 $fp_cf = Settings::get( 'tax_code' );
-asem_ok( ! \AssociazioneSemplice\FivePerMille::enabled() && '' === \AssociazioneSemplice\Frontend\Views::five_per_mille(), '5x1000: spento di default, il messaggio non compare' );
+asem_ok( ! \AssociazioneSemplice\FivePerMille::enabled() && '' === \AssociazioneSemplice\Frontend\ProViews::five_per_mille(), '5x1000: spento di default, il messaggio non compare' );
 asem_render( array( Admin\FivePmPage::class, 'render' ), 'Il 5x1000 è spento' );
 Settings::update( array( 'fivepm_enabled' => 1, 'tax_code' => '12345678901', 'association_name' => 'Associazione Cinque' ) );
-$fp_view = \AssociazioneSemplice\Frontend\Views::five_per_mille();
+$fp_view = \AssociazioneSemplice\Frontend\ProViews::five_per_mille();
 asem_ok( false !== strpos( $fp_view, '12345678901' ) && false !== strpos( $fp_view, 'Associazione Cinque' ) && false !== strpos( do_shortcode( '[associazionesemplice_cinquepermille]' ), '12345678901' ), '5x1000: il messaggio ha il codice fiscale ed è disponibile come shortcode' );
 Settings::update( array( 'fivepm_text' => 'Firma per {associazione} con {codice_fiscale}.' ) );
 asem_ok( 'Firma per Associazione Cinque con 12345678901.' === \AssociazioneSemplice\FivePerMille::text(), '5x1000: messaggio personalizzabile con i segnaposto' );
 Settings::update( array( 'tax_code' => '' ) );
-asem_ok( '' === \AssociazioneSemplice\Frontend\Views::five_per_mille(), '5x1000: senza codice fiscale il messaggio non compare' );
+asem_ok( '' === \AssociazioneSemplice\Frontend\ProViews::five_per_mille(), '5x1000: senza codice fiscale il messaggio non compare' );
 Settings::update( array( 'tax_code' => '12345678901' ) );
 $fp_1 = \AssociazioneSemplice\FivePerMille::add( 2023, '1.234,56', 80, $in_day( -300 ) );
 $fp_2 = \AssociazioneSemplice\FivePerMille::add( 2022, '900', 60, $in_day( -400 ) );
@@ -5202,7 +5203,7 @@ $st_tabs = Admin\Admin::tabs( 'asem-settings' );
 $tc_tabs = Admin\Admin::tabs( 'asem-tech' );
 asem_ok( false !== strpos( $st_tabs, 'Ente e fiscalità' ) && false !== strpos( $st_tabs, 'Soci e identità' ) && false !== strpos( $st_tabs, 'Cassa' ) && false !== strpos( $st_tabs, 'Contabilità' ) && false !== strpos( $st_tabs, 'Sistema' ) && false !== strpos( Admin\Admin::tabs( 'asem-roles' ), 'Ruoli e accessi' ) && false !== strpos( $tc_tabs, 'Integrazioni' ) && false !== strpos( $tc_tabs, 'Copia di sicurezza' ), 'impostazioni: sezioni per ambito (ente e fiscalità, soci e identità, soldi, contabilità, comunicazioni, sistema) con le loro schede' );
 foreach ( array( 'asem-tech', 'asem-roles', 'asem-acct' ) as $pg ) {
-	asem_ok( in_array( $pg, Admin\Admin::ADMIN_ONLY, true ), 'impostazioni: ' . $pg . ' è riservata agli amministratori' );
+	asem_ok( in_array( $pg, Admin\Admin::admin_only(), true ), 'impostazioni: ' . $pg . ' è riservata agli amministratori' );
 }
 asem_render( array( Admin\SettingsPage::class, 'render' ), 'Funzioni attive' );
 asem_render( array( Admin\TechPage::class, 'render_integrations' ), 'WooCommerce' );
@@ -5221,7 +5222,7 @@ Settings::update( array( 'card_enabled' => 0 ) );
 $ft_p = $people->get( $rg_p );
 asem_ok( '' === \AssociazioneSemplice\Frontend\Views::section_card( $ft_p ), 'funzioni: la tessera digitale si spegne dalle impostazioni' );
 Settings::update( array( 'card_enabled' => 1 ) );
-asem_ok( '' !== \AssociazioneSemplice\Frontend\Views::section_card( $ft_p ) && isset( Admin\SettingsPage::FEATURES['fivepm_enabled'], Admin\SettingsPage::FEATURES['insurance_volunteers'], Admin\SettingsPage::FEATURES['card_qr_enabled'] ), 'funzioni: e si riaccende; le altre funzioni sono nello stesso elenco' );
+asem_ok( '' !== \AssociazioneSemplice\Frontend\Views::section_card( $ft_p ) && isset( Admin\SettingsPage::all_features()['fivepm_enabled'], Admin\SettingsPage::all_features()['insurance_volunteers'], Admin\SettingsPage::all_features()['card_qr_enabled'] ), 'funzioni: e si riaccende; le altre funzioni sono nello stesso elenco' );
 // contabilità: report e rendiconto
 Admin\TechActions::save_acct( array() );
 asem_ok( false === strpos( Admin\Admin::tabs( 'asem-accounting' ), 'page=asem-reports' ) && false === strpos( Admin\Admin::tabs( 'asem-accounting' ), 'page=asem-statement' ), 'contabilità: spegnendo i report le schede spariscono' );
@@ -5378,7 +5379,7 @@ wp_set_current_user( 1 );
 $pw_accent = Settings::get( 'accent_color' );
 $pw_name   = Settings::get( 'association_name' );
 asem_ok( ! \AssociazioneSemplice\Pwa::enabled() && ! \AssociazioneSemplice\Push::enabled() && 404 === \AssociazioneSemplice\Pwa::response( 'asem-manifest.webmanifest' )['status'], 'app: spenta di default, il manifest non c\'è' );
-asem_ok( false !== strpos( \AssociazioneSemplice\Pwa::response( 'asem-sw.js' )['body'], 'unregister' ) && '' === \AssociazioneSemplice\Frontend\Views::section_app( $people->get( $rg_p ) ), 'app: spenta, il service worker si toglie da solo e l\'area non mostra nulla' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Pwa::response( 'asem-sw.js' )['body'], 'unregister' ) && '' === \AssociazioneSemplice\Frontend\ProViews::section_app( $people->get( $rg_p ) ), 'app: spenta, il service worker si toglie da solo e l\'area non mostra nulla' );
 Settings::update( array( 'pwa_enabled' => 1, 'push_enabled' => 1, 'association_name' => 'Assoc App', 'accent_color' => '#336699' ) );
 $pw_man = json_decode( \AssociazioneSemplice\Pwa::response( 'asem-manifest.webmanifest' )['body'], true );
 asem_ok( 200 === \AssociazioneSemplice\Pwa::response( 'asem-manifest.webmanifest' )['status'] && 'Assoc App' === $pw_man['name'] && 'standalone' === $pw_man['display'] && '#336699' === $pw_man['theme_color'] && false !== strpos( $pw_man['start_url'], 'source=pwa' ) && ! empty( $pw_man['icons'] ) && 'image/png' === $pw_man['icons'][0]['type'] && $pw_man['scope'] === home_url( '/' ), 'app: il manifest ha nome, colore, indirizzo di partenza e icone' );
@@ -5391,10 +5392,10 @@ ob_start();
 $pw_head = ob_get_clean();
 \AssociazioneSemplice\Pwa::enqueue();
 asem_ok( false !== strpos( $pw_head, 'rel="manifest"' ) && false !== strpos( $pw_head, 'theme-color' ) && false !== strpos( $pw_head, 'apple-touch-icon' ) && wp_script_is( 'asem-pwa', 'enqueued' ), 'app: le pagine del sito collegano manifest, colore e script' );
-$pw_card = \AssociazioneSemplice\Frontend\Views::section_app( $people->get( $rg_p ) );
+$pw_card = \AssociazioneSemplice\Frontend\ProViews::section_app( $people->get( $rg_p ) );
 asem_ok( false !== strpos( $pw_card, 'data-asem-install' ) && false !== strpos( $pw_card, 'data-asem-push-on' ), 'app: nell\'area soci compaiono installazione e notifiche' );
 Settings::update( array( 'push_enabled' => 0 ) );
-asem_ok( false === strpos( \AssociazioneSemplice\Frontend\Views::section_app( $people->get( $rg_p ) ), 'data-asem-push-on' ) && ! \AssociazioneSemplice\Push::enabled(), 'app: senza notifiche resta solo l\'installazione' );
+asem_ok( false === strpos( \AssociazioneSemplice\Frontend\ProViews::section_app( $people->get( $rg_p ) ), 'data-asem-push-on' ) && ! \AssociazioneSemplice\Push::enabled(), 'app: senza notifiche resta solo l\'installazione' );
 Settings::update( array( 'push_enabled' => 1 ) );
 // notifiche
 if ( ! \AssociazioneSemplice\WebPush::supported() ) {
@@ -5462,7 +5463,7 @@ if ( ! \AssociazioneSemplice\WebPush::supported() ) {
 Admin\TechActions::save_app( array( 'pwa_enabled' => '1', 'push_enabled' => '1', 'pwa_name' => 'Mia App', 'pwa_short_name' => 'MiaApp' ) );
 asem_ok( 'Mia App' === \AssociazioneSemplice\Pwa::app_name() && 'MiaApp' === \AssociazioneSemplice\Pwa::short_name(), 'app: nome e nome breve si impostano da qui' );
 asem_render( array( Admin\AppPage::class, 'render' ), 'App installabile (PWA)' );
-asem_ok( in_array( 'asem-app', Admin\Admin::ADMIN_ONLY, true ) && false !== strpos( Admin\Admin::tabs( 'asem-roles' ), 'Comunicazioni' ) && isset( Admin\SettingsPage::FEATURES['pwa_enabled'], Admin\SettingsPage::FEATURES['push_enabled'] ) && isset( \AssociazioneSemplice\Frontend\Shortcodes::VIEWS['app'] ) && shortcode_exists( 'associazionesemplice_app' ), 'app: scheda riservata agli amministratori, interruttori e shortcode' );
+asem_ok( in_array( 'asem-app', Admin\Admin::admin_only(), true ) && false !== strpos( Admin\Admin::tabs( 'asem-roles' ), 'Comunicazioni' ) && isset( Admin\SettingsPage::all_features()['pwa_enabled'], Admin\SettingsPage::all_features()['push_enabled'] ) && isset( \AssociazioneSemplice\Frontend\Shortcodes::views()['app'] ) && shortcode_exists( 'associazionesemplice_app' ), 'app: scheda riservata agli amministratori, interruttori e shortcode' );
 Admin\TechActions::save_app( array() );
 Settings::update( array( 'pwa_name' => '', 'pwa_short_name' => '', 'accent_color' => $pw_accent, 'association_name' => $pw_name, 'push_enabled' => 0, 'pwa_enabled' => 0 ) );
 $wpdb->query( 'DELETE FROM ' . Db::t( 'push_subs' ) );
@@ -5800,7 +5801,7 @@ $rs_p2 = (string) ob_get_clean();
 $_GET = array();
 asem_ok( false !== strpos( $rs_p1, 'Operazione definitiva' ) && false !== strpos( $rs_p1, 'Ripristino di fabbrica' ) && false !== strpos( $rs_p1, 'Solo i dati' ) && false === strpos( $rs_p1, 'name="password"' ), 'azzeramento: primo passaggio con le due scelte e nessun campo di conferma' );
 asem_ok( false !== strpos( $rs_p2, 'AZZERA TUTTO' ) && false !== strpos( $rs_p2, 'name="password"' ) && false !== strpos( $rs_p2, 'name="phrase"' ) && false !== strpos( $rs_p2, 'name="confirm"' ) && false !== strpos( $rs_p2, 'tutta la prima nota' ) && false !== strpos( $rs_p2, 'copia completa' ), 'azzeramento: secondo passaggio con il messaggio chiaro, la frase, la password e la spunta' );
-asem_ok( in_array( 'asem-reset', Admin\Admin::ADMIN_ONLY, true ) && isset( Admin\TechActions::ACTIONS['asem_reset_all'] ) && 'asem-settings' === Admin\Admin::menu_item_of( 'asem-reset' ), 'azzeramento: riservato agli amministratori, tra le impostazioni di sistema' );
+asem_ok( in_array( 'asem-reset', Admin\Admin::admin_only(), true ) && isset( Admin\TechActions::ACTIONS['asem_reset_all'] ) && 'asem-settings' === Admin\Admin::menu_item_of( 'asem-reset' ), 'azzeramento: riservato agli amministratori, tra le impostazioni di sistema' );
 // avvisi chiudibili: si chiudono per qualche giorno, poi tornano
 $dm_prev = get_current_user_id();
 wp_set_current_user( 1 );

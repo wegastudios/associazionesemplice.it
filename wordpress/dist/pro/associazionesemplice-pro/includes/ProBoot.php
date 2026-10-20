@@ -77,6 +77,13 @@ final class ProBoot {
 		// Come la licenza limita le funzioni.
 		ProSchema::register(); // tabelle delle funzioni aggiuntive
 		ProData::register(); // esportazione, anonimizzazione ed eliminazioni
+		ProSettings::register();
+		DocsPro::register();
+		add_filter( 'asem_settings_defaults', array( ProSettings::class, 'defaults' ) );
+		add_filter( 'asem_settings_clean', array( ProSettings::class, 'clean' ), 10, 2 );
+		Admin\ProMenu::register(); // pagine, schede e permessi dell'amministrazione
+		Frontend\ProViews::register(); // sezioni e viste del sito
+		Frontend\ProActions::register(); // azioni dei moduli del sito
 		add_filter( 'asem_features_suspended', array( __CLASS__, 'suspended' ) );
 		add_filter( 'asem_feature_available', array( __CLASS__, 'available' ), 10, 2 );
 		add_filter( 'asem_feature_unavailable_message', array( __CLASS__, 'message' ), 10, 2 );
@@ -101,6 +108,7 @@ final class ProBoot {
 	public static function handlers(): void {
 		Admin\Actions::add_handler( 'asem_save_license', array( __CLASS__, 'save_license' ) );
 		Admin\Actions::add_handler( 'asem_license_check', array( __CLASS__, 'license_check' ) );
+		Admin\ProActions::register();
 	}
 
 	/** Dopo l'avvio di Associazione Semplice: avvisi, aggiornatore, lavori periodici. */
@@ -108,6 +116,12 @@ final class ProBoot {
 		Admin\LicenseNotice::register();
 		Admin\UpdateNotice::register();
 		Updater::register();
+		if ( Edition::has( 'pwa' ) && Settings::get( 'pwa_enabled' ) ) {
+			Pwa::register(); // app installabile e notifiche
+		}
+		if ( Edition::installed( 'payments' ) && class_exists( 'WooCommerce', false ) ) {
+			add_action( 'plugins_loaded', array( WooBridge::class, 'register' ), 20 ); // compatibilità con WooCommerce
+		}
 		License::maybe_resync();
 		if ( ! wp_next_scheduled( 'asem_license_check' ) ) {
 			wp_schedule_event( time() + 1800, 'daily', 'asem_license_check' );

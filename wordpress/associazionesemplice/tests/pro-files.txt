@@ -64,3 +64,15 @@ data/public-suffix-list.txt
 ProBoot.php
 ProSchema.php
 ProData.php
+Admin/ProActions.php
+Admin/ProMenu.php
+Admin/ProRegisters.php
+Admin/ProIntegrations.php
+Admin/ProWallet.php
+Admin/ProDashboard.php
+Admin/ProPanels.php
+ProSettings.php
+Admin/ProWizard.php
+DocsPro.php
+Frontend/ProViews.php
+Frontend/ProActions.php

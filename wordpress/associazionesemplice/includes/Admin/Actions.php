@@ -4,10 +4,8 @@ namespace AssociazioneSemplice\Admin;
 use AssociazioneSemplice\Attachments;
 use AssociazioneSemplice\Audit;
 use AssociazioneSemplice\Fiscal;
-use AssociazioneSemplice\Gateways;
 use AssociazioneSemplice\MemberType;
 use AssociazioneSemplice\Money;
-use AssociazioneSemplice\PaymentConfig;
 use AssociazioneSemplice\PeopleCsv;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Settings;
@@ -24,10 +22,10 @@ final class Actions {
 	/** Azioni riservate agli amministratori: impostazioni, pagamenti online, tessera e QR, anni solari, privacy, testi, tesoriere e segreteria. */
 	const ADMIN_ONLY = array(
 
-		'asem_save_settings', 'asem_save_payment_settings', 'asem_test_gateway', 'asem_save_card', 'asem_save_wallet_apple', 'asem_save_wallet_google', 'asem_wallet_clear', 'asem_regen_qr',
+		'asem_save_settings', 'asem_save_card', 'asem_regen_qr',
 		'asem_save_look', 'asem_save_donate', 'asem_save_campaign', 'asem_delete_campaign', 'asem_create_privacy_page', 'asem_save_ical', 'asem_regen_ical', 'asem_create_pages', 'asem_save_wpai', 'asem_wpai_process', 'asem_wpai_retry', 'asem_wpai_clear', 'asem_privacy_anonymize', 'asem_save_comms',
-		'asem_save_terms', 'asem_save_texts', 'asem_import_texts', 'asem_reset_texts', 'asem_add_text', 'asem_create_year', 'asem_close_year', 'asem_reopen_year',
-		'asem_delete_activity', 'asem_delete_booking', 'asem_purge_enrollments', 'asem_set_treasurer', 'asem_set_secretary', 'asem_set_board_role', 'asem_backup_restore', 'asem_save_levels', 'asem_save_language', 'asem_import_language', 'asem_delete_language',
+		
+		'asem_delete_activity', 'asem_delete_booking', 'asem_purge_enrollments', 'asem_set_treasurer', 'asem_set_secretary', 'asem_set_board_role', 'asem_backup_restore', 
 	);
 
 	/** @var array<string,callable> azioni di amministrazione aggiunte da un'estensione */
@@ -63,28 +61,15 @@ final class Actions {
 			'asem_delete_booking'     => 'delete_booking',
 			'asem_purge_enrollments'  => 'purge_enrollments',
 			'asem_set_secretary'      => 'set_secretary',
-			'asem_save_terms'         => 'save_terms',
-			'asem_save_texts'         => 'save_texts',
-			'asem_import_texts'       => 'import_texts',
-			'asem_reset_texts'        => 'reset_texts',
-			'asem_add_text'           => 'add_text',
 			'asem_privacy_consent'    => 'privacy_consent',
 			'asem_rules_record'       => 'rules_record',
 			'asem_privacy_anonymize'  => 'privacy_anonymize',
 			'asem_save_comms'         => 'save_comms',
 			'asem_create_privacy_page' => 'create_privacy_page',
 			'asem_reminders_run'      => 'reminders_run',
-			'asem_receipt_email'      => 'receipt_email',
 			'asem_set_board_role'     => 'set_board_role',
-			'asem_save_levels'        => 'save_levels',
-			'asem_save_language'      => 'save_language',
-			'asem_import_language'    => 'import_language',
-			'asem_delete_language'    => 'delete_language',
 			'asem_regen_qr'           => 'regen_qr',
 			'asem_save_card'          => 'save_card',
-			'asem_save_wallet_apple'  => 'save_wallet_apple',
-			'asem_save_wallet_google' => 'save_wallet_google',
-			'asem_wallet_clear'       => 'wallet_clear',
 			'asem_save_activity'      => 'save_activity',
 			'asem_enroll'             => 'enroll',
 			'asem_cancel_enrollment'  => 'cancel_enrollment',
@@ -102,40 +87,20 @@ final class Actions {
 			'asem_access_done'        => 'access_done',
 			'asem_access_approve'     => 'access_approve',
 			'asem_send_notice'        => 'send_notice',
-			'asem_walk_in'            => 'walk_in',
 			'asem_transfer_booking'   => 'transfer_booking',
-			'asem_test_gateway'       => 'test_gateway',
-			'asem_check_payments'     => 'check_payments',
-			'asem_payment_reviewed'   => 'payment_reviewed',
 			'asem_cancel_booking'     => 'cancel_booking',
 			'asem_waitlist_remove'    => 'waitlist_remove',
 			'asem_backup_restore'     => 'backup_restore',
-			'asem_broadcast_send'     => 'broadcast_send',
-			'asem_broadcast_test'     => 'broadcast_test',
-			'asem_broadcast_retry'    => 'broadcast_retry',
 			'asem_save_income'        => 'save_income',
-			'asem_save_group_cash'    => 'save_group_cash',
 			'asem_save_expense'       => 'save_expense',
 			'asem_add_attachment'     => 'add_attachment',
 			'asem_remove_attachment'  => 'remove_attachment',
-			'asem_save_transfer'      => 'save_transfer',
 			'asem_void_tx'            => 'void_tx',
-			'asem_add_account'        => 'add_account',
 			'asem_detach_email'       => 'detach_email',
 			'asem_detach_phone'       => 'detach_phone',
 			'asem_suspend_member'     => 'suspend_member',
 			'asem_suspend_expired'    => 'suspend_expired',
 			'asem_reactivate_member'  => 'reactivate_member',
-			'asem_create_year'        => 'create_year',
-			'asem_close_year'         => 'close_year',
-			'asem_reopen_year'        => 'reopen_year',
-			'asem_update_account'     => 'update_account',
-			'asem_close_account'      => 'close_account',
-			'asem_reopen_account'     => 'reopen_account',
-			'asem_fund_create'        => 'fund_create',
-			'asem_fund_deposit'       => 'fund_deposit',
-			'asem_fund_release'       => 'fund_release',
-			'asem_fund_settle'        => 'fund_settle',
 			'asem_cash_count'         => 'cash_count',
 			'asem_save_settings'      => 'save_settings',
 			'asem_quick_cash'         => 'quick_cash',
@@ -146,7 +111,6 @@ final class Actions {
 			'asem_save_ical'          => 'save_ical',
 			'asem_regen_ical'         => 'regen_ical',
 			'asem_quick_enroll'       => 'quick_enroll',
-			'asem_save_payment_settings' => 'save_payment_settings',
 			'asem_create_pages'       => 'create_pages',
 			'asem_import_preview'     => 'import_preview',
 			'asem_import_apply'       => 'import_apply',
@@ -245,69 +209,9 @@ final class Actions {
 		return array( Ui::url( 'asem-person', array( 'id' => $id ) ), '' === $role ? 'Carica tolta.' : 'Carica assegnata: ' . \AssociazioneSemplice\BoardRole::label( $role ) . '.' );
 	}
 
-	private static function save_language( array $p ): array {
-		$code = (string) ( $p['language'] ?? '' );
-		if ( ! isset( \AssociazioneSemplice\Languages::available()[ $code ] ) ) {
-			throw new \InvalidArgumentException( 'Lingua non disponibile.' );
-		}
-		Settings::update( array( 'language' => $code ) );
-		\AssociazioneSemplice\Texts::flush();
-		return array( Ui::url( 'asem-texts' ), 'Lingua impostata: ' . \AssociazioneSemplice\Languages::available()[ $code ] . '.' );
-	}
 
-	private static function import_language( array $p ): array {
-		if ( empty( $_FILES['lang_file']['tmp_name'] ) || UPLOAD_ERR_OK !== (int) $_FILES['lang_file']['error'] || ! is_uploaded_file( $_FILES['lang_file']['tmp_name'] ) ) { // phpcs:ignore WordPress.Security
-			throw new \InvalidArgumentException( 'Scegli il file della traduzione.' );
-		}
-		if ( (int) $_FILES['lang_file']['size'] > 5 * 1048576 ) { // phpcs:ignore WordPress.Security
-			throw new \InvalidArgumentException( 'Il file è troppo grande (massimo 5 MB).' );
-		}
-		$name   = (string) $_FILES['lang_file']['name']; // phpcs:ignore WordPress.Security
-		$pairs  = array();
-		if ( 'json' === strtolower( pathinfo( $name, PATHINFO_EXTENSION ) ) ) {
-			$j = json_decode( (string) file_get_contents( (string) $_FILES['lang_file']['tmp_name'] ), true ); // phpcs:ignore WordPress.Security
-			$pairs = is_array( $j ) && isset( $j['strings'] ) && is_array( $j['strings'] ) ? $j['strings'] : ( is_array( $j ) ? $j : array() );
-		} else {
-			$err = null;
-			foreach ( \AssociazioneSemplice\SheetReader::read( (string) $_FILES['lang_file']['tmp_name'], $name ) as $s ) { // phpcs:ignore WordPress.Security
-				try {
-					$pairs = \AssociazioneSemplice\Languages::pairs_from_rows( $s['rows'] );
-					break;
-				} catch ( \InvalidArgumentException $e ) {
-					$err = $e;
-				}
-			}
-			if ( ! $pairs && $err ) {
-				throw $err;
-			}
-		}
-		$code = trim( (string) ( $p['code'] ?? '' ) );
-		$n    = \AssociazioneSemplice\Languages::save_pack( $code, (string) ( $p['name'] ?? '' ), $pairs );
-		return array( Ui::url( 'asem-texts' ), 'Traduzione caricata: ' . $n . ' frasi. Ora puoi sceglierla tra le lingue.' );
-	}
 
-	private static function delete_language( array $p ): array {
-		$code = (string) ( $p['code'] ?? '' );
-		\AssociazioneSemplice\Languages::delete_pack( $code );
-		if ( Settings::get( 'language' ) === $code ) {
-			Settings::update( array( 'language' => 'it' ) );
-		}
-		return array( Ui::url( 'asem-texts' ), 'Traduzione eliminata.' );
-	}
 
-	private static function save_levels( array $p ): array {
-		if ( ! \AssociazioneSemplice\Edition::has( 'levels' ) ) {
-			throw new \InvalidArgumentException( 'Questa edizione ha un\'unica quota associativa.' );
-		}
-		$rows = array();
-		foreach ( (array) ( $p['level'] ?? array() ) as $r ) {
-			if ( is_array( $r ) ) {
-				$rows[] = $r;
-			}
-		}
-		\AssociazioneSemplice\Levels::save( $rows );
-		return array( Ui::url( 'asem-settings' ), 'Livelli di socio salvati.' );
-	}
 
 	private static function privacy_consent( array $p ): array {
 		$id   = (int) ( $p['id'] ?? 0 );
@@ -371,97 +275,11 @@ final class Actions {
 		return array( Ui::url( 'asem-comms' ), 'Promemoria inviati: ' . $r['membership'] . ' per la tessera, ' . $r['dues'] . ' per le mensilità, ' . $r['events'] . ' per gli eventi di domani.' );
 	}
 
-	private static function receipt_email( array $p ): array {
-		\AssociazioneSemplice\Receipts::email( (string) ( $p['key'] ?? '' ) );
-		return array( $p['_back'] ?? Ui::url( 'asem-ledger' ), 'Ricevuta inviata per email.' );
-	}
 
-	private static function save_terms( array $p ): array {
-		if ( ! empty( $p['preset'] ) ) { // versione base: femminile (associazione, socie) o maschile (comitato, soci)
-			$pre = \AssociazioneSemplice\Terms::PRESETS[ (string) $p['preset'] ] ?? null;
-			if ( ! $pre ) {
-				throw new \InvalidArgumentException( 'Versione non valida.' );
-			}
-			Settings::update( array( 'entity_type' => $pre[0], 'member_term' => $pre[1] ) );
-			return array( Ui::url( 'asem-texts' ), 'Versione ' . $p['preset'] . ' impostata: tutti i testi sono adattati.' );
-		}
-		$ec = (string) ( $p['entity_types_custom'] ?? '' );
-		$mc = (string) ( $p['member_terms_custom'] ?? '' );
-		$ents = \AssociazioneSemplice\Terms::entity_types( $ec );
-		$mems = \AssociazioneSemplice\Terms::member_terms( $mc );
-		$ent  = mb_strtolower( trim( (string) ( $p['entity_type'] ?? '' ) ), 'UTF-8' );
-		$mem  = mb_strtolower( trim( (string) ( $p['member_term'] ?? '' ) ), 'UTF-8' );
-		if ( ! isset( $ents[ $ent ] ) ) {
-			throw new \InvalidArgumentException( 'Scegli un tipo di ente dall\'elenco (o aggiungilo a mano: una riga «nome;m» oppure «nome;f»).' );
-		}
-		if ( ! isset( $mems[ $mem ] ) ) {
-			throw new \InvalidArgumentException( 'Scegli un termine dall\'elenco (o aggiungilo a mano: una riga «singolare;plurale;m» oppure «…;f»).' );
-		}
-		Settings::update( array( 'entity_type' => $ent, 'entity_types_custom' => $ec, 'member_term' => $mem, 'member_terms_custom' => $mc ) );
-		return array( Ui::url( 'asem-texts' ), 'Tipo di ente e termini salvati: i testi sono adattati.' );
-	}
 
-	private static function save_texts( array $p ): array {
-		$ov = \AssociazioneSemplice\TextsEngine::overrides();
-		$by = array();
-		foreach ( \AssociazioneSemplice\TextsEngine::rows() as $r ) {
-			$by[ md5( $r['text'] ) ] = $r['text'];
-		}
-		foreach ( (array) ( $p['t'] ?? array() ) as $hash => $custom ) {
-			if ( ! isset( $by[ (string) $hash ] ) ) {
-				continue; // solo testi che esistono davvero
-			}
-			$custom = trim( str_replace( "\r\n", "\n", (string) $custom ) );
-			if ( '' === $custom ) {
-				unset( $ov[ $by[ $hash ] ] );
-			} else {
-				$ov[ $by[ $hash ] ] = $custom;
-			}
-		}
-		\AssociazioneSemplice\TextsEngine::save_overrides( $ov );
-		return array( $p['_back'] ?? Ui::url( 'asem-texts' ), 'Testi salvati.' );
-	}
 
-	private static function import_texts( array $p ): array {
-		if ( empty( $_FILES['texts_file']['tmp_name'] ) || UPLOAD_ERR_OK !== (int) $_FILES['texts_file']['error'] || ! is_uploaded_file( $_FILES['texts_file']['tmp_name'] ) ) { // phpcs:ignore WordPress.Security
-			throw new \InvalidArgumentException( 'Scegli il file da importare.' );
-		}
-		if ( (int) $_FILES['texts_file']['size'] > 5 * 1048576 ) { // phpcs:ignore WordPress.Security
-			throw new \InvalidArgumentException( 'Il file è troppo grande (massimo 5 MB).' );
-		}
-		$sheets = \AssociazioneSemplice\SheetReader::read( (string) $_FILES['texts_file']['tmp_name'], (string) $_FILES['texts_file']['name'] ); // phpcs:ignore WordPress.Security
-		$res    = null;
-		$err    = null;
-		foreach ( $sheets as $s ) {
-			try {
-				$res = \AssociazioneSemplice\TextsEngine::import_rows( $s['rows'] );
-				break;
-			} catch ( \InvalidArgumentException $e ) {
-				$err = $e;
-			}
-		}
-		if ( ! $res ) {
-			throw $err ?: new \InvalidArgumentException( 'File non valido.' );
-		}
-		return array( Ui::url( 'asem-texts' ), 'Importazione completata: ' . $res['set'] . ' testi impostati, ' . $res['removed'] . ' ripristinati, ' . $res['manual'] . ' aggiunte a mano' . ( $res['ignored'] ? ', ' . $res['ignored'] . ' righe ignorate' : '' ) . '.' );
-	}
 
-	private static function reset_texts( array $p ): array {
-		\AssociazioneSemplice\TextsEngine::save_overrides( array() );
-		return array( Ui::url( 'asem-texts' ), 'Testi originali ripristinati.' );
-	}
 
-	private static function add_text( array $p ): array {
-		$o = trim( (string) ( $p['original'] ?? '' ) );
-		$c = trim( (string) ( $p['custom'] ?? '' ) );
-		if ( strlen( $o ) < \AssociazioneSemplice\TextsEngine::MIN_LEN || '' === $c ) {
-			throw new \InvalidArgumentException( 'Scrivi il testo di oggi (almeno 3 caratteri) e quello nuovo.' );
-		}
-		$ov       = \AssociazioneSemplice\TextsEngine::overrides();
-		$ov[ $o ] = $c;
-		\AssociazioneSemplice\TextsEngine::save_overrides( $ov );
-		return array( $p['_back'] ?? Ui::url( 'asem-texts' ), 'Sostituzione aggiunta.' );
-	}
 
 	private static function set_secretary( array $p ): array {
 		$person = Plugin::people()->get( (int) ( $p['id'] ?? 0 ) );
@@ -731,14 +549,7 @@ final class Actions {
 
 	/** Se il modulo dell'attività indica una risorsa la collega (o la scollega); restituisce l'avviso sulle prenotazioni già presenti, se ce ne sono. */
 	private static function link_resource( int $activity_id, array $p ): string {
-		if ( \AssociazioneSemplice\Edition::has( 'credits' ) && array_key_exists( 'credit_price', $p ) ) { // crediti previsti per l'attività (vuoto = non si paga in crediti)
-			\AssociazioneSemplice\Credits::set_activity_price( $activity_id, (int) $p['credit_price'] );
-		}
-		if ( ! \AssociazioneSemplice\Edition::has( 'resources' ) || ! array_key_exists( 'resource_id', $p ) ) {
-			return '';
-		}
-		$n = \AssociazioneSemplice\Resources::link_activity( $activity_id, ! empty( $p['resource_id'] ) ? (int) $p['resource_id'] : null );
-		return $n > 0 ? ' Attenzione: sulla risorsa ci sono già ' . $n . ( 1 === $n ? ' prenotazione' : ' prenotazioni' ) . ' negli orari di questa attività (prossimi 120 giorni): vanno annullate o spostate.' : '';
+		return implode( '', array_map( 'strval', (array) apply_filters( 'asem_activity_saved', array(), $activity_id, $p ) ) ); // le estensioni collegano i loro dati e possono aggiungere un avviso
 	}
 
 	private static function add_session( array $p ): array {
@@ -771,14 +582,6 @@ final class Actions {
 		return self::after_signup( $pid, Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Prenotazione registrata.', (int) $p['activity_id'], (int) $p['session_id'] );
 	}
 
-	/**
-	 * Chi si presenta senza aver prenotato: prenota (creando l'ospite se serve), incassa il contributo e registra l'ingresso.
-	 * Tutto insieme: se qualcosa non va (posti esauriti, conto non valido...) non resta scritto nulla.
-	 */
-	private static function walk_in( array $p ): array {
-		$msg = \AssociazioneSemplice\DoorSales::sell( $p );
-		return array( Ui::url( 'asem-activity', array( 'id' => (int) ( $p['activity_id'] ?? 0 ) ) ), $msg );
-	}
 
 	private static function send_notice( array $p ): array {
 		$aid = (int) ( $p['activity_id'] ?? 0 );
@@ -834,25 +637,8 @@ final class Actions {
 		return array( Ui::url( 'asem-backup' ), 'Ripristino completato: ' . $r['rows'] . ' record in ' . $r['tables'] . ' tabelle' . ( $r['files'] ? ', ' . $r['files'] . ' allegati' : '' ) . '. Copia di sicurezza dello stato precedente: ' . $r['safety'] . '.' );
 	}
 
-	private static function broadcast_send( array $p ): array {
-		list( $g, $ref ) = MessagesPage::parse_audience( (string) ( $p['audience'] ?? '' ) );
-		$id = \AssociazioneSemplice\Broadcasts::create( (string) ( $p['subject'] ?? '' ), (string) ( $p['body'] ?? '' ), $g, $ref );
-		$b  = \AssociazioneSemplice\Broadcasts::get( $id );
-		return array( Ui::url( 'asem-messages', array( 'view' => $id ) ), 'Comunicazione avviata: ' . (int) $b['sent'] . ' email inviate su ' . (int) $b['total'] . ( (int) $b['total'] > (int) $b['sent'] ? ', le altre continuano da sole in background.' : '.' ) );
-	}
 
-	private static function broadcast_test( array $p ): array {
-		if ( ! \AssociazioneSemplice\Broadcasts::send_test( (string) ( $p['subject'] ?? '' ), (string) ( $p['body'] ?? '' ) ) ) {
-			throw new \InvalidArgumentException( 'Invio della prova non riuscito: controlla la posta in uscita del sito.' );
-		}
-		return array( $p['_back'] ?? Ui::url( 'asem-messages' ), 'Prova inviata al tuo indirizzo email.' );
-	}
 
-	private static function broadcast_retry( array $p ): array {
-		$id = (int) ( $p['id'] ?? 0 );
-		$n  = \AssociazioneSemplice\Broadcasts::retry_failed( $id );
-		return array( Ui::url( 'asem-messages', array( 'view' => $id ) ), $n . ( 1 === $n ? ' email rimessa in coda.' : ' email rimesse in coda.' ) );
-	}
 
 	private static function waitlist_remove( array $p ): array {
 		\AssociazioneSemplice\Waitlist::leave( (int) ( $p['session_id'] ?? 0 ), (int) ( $p['person_id'] ?? 0 ) );
@@ -922,15 +708,6 @@ final class Actions {
 		return array( $p['_back'] ?? Ui::url( 'asem-ledger' ), 'Allegato tolto dall\'elenco (resta nel registro azioni).' );
 	}
 
-	/**
-	 * Cassa per più persone: chi paga salda eventi, corsi e quote per sé e per altri. Tutto in un'unica operazione (se qualcosa non va non resta scritto nulla):
-	 * crea i nuovi ospiti, prenota o iscrive chi non lo è ancora e registra un solo incasso con le voci intestate ai beneficiari.
-	 * Eccezione voluta: un evento si può pagare anche per un socio sospeso o con la tessera non in regola; per i corsi la tessera deve essere in regola.
-	 */
-	private static function save_group_cash( array $p ): array {
-		$summary = \AssociazioneSemplice\GroupCash::record( $p );
-		return array( Ui::url( 'asem-ledger' ), 'Incasso registrato: ' . $summary['lines'] . ( 1 === $summary['lines'] ? ' voce' : ' voci' ) . ' per ' . $summary['people'] . ( 1 === $summary['people'] ? ' persona' : ' persone' ) . ', totale ' . Money::format( $summary['cents'] ) . '.' );
-	}
 
 	private static function save_expense( array $p ): array {
 		$docs = Attachments::prepare( Attachments::from_request() ); // controllati PRIMA di registrare: se un file non va, non si registra nulla
@@ -951,13 +728,6 @@ final class Actions {
 		return array( Ui::url( 'asem-ledger' ), 'Spesa registrata' . ( $ids ? ' con ' . count( $ids ) . ( 1 === count( $ids ) ? ' allegato.' : ' allegati.' ) : '.' ) );
 	}
 
-	private static function save_transfer( array $p ): array {
-		Plugin::ledger()->record_transfer(
-			(string) ( $p['date'] ?? '' ), (int) ( $p['from_id'] ?? 0 ), (int) ( $p['to_id'] ?? 0 ),
-			Money::parse( $p['amount'] ?? '' ) ?? 0, (string) ( $p['method'] ?? '' ), trim( (string) ( $p['description'] ?? '' ) )
-		);
-		return array( Ui::url( 'asem-ledger' ), 'Giroconto registrato.' );
-	}
 
 	private static function void_tx( array $p ): array {
 		Plugin::ledger()->void( (int) $p['id'], (string) ( $p['reason'] ?? '' ) );
@@ -1036,64 +806,16 @@ final class Actions {
 		return array( $p['_back'] ?? Ui::url( 'asem' ), 'Socio riattivato.' );
 	}
 
-	private static function create_year( array $p ): array {
-		\AssociazioneSemplice\FiscalYears::create( (int) ( $p['year'] ?? 0 ) );
-		return array( Ui::url( 'asem-years' ), 'Anno solare creato.' );
-	}
 
-	private static function close_year( array $p ): array {
-		\AssociazioneSemplice\FiscalYears::close( (int) ( $p['year'] ?? 0 ) );
-		return array( Ui::url( 'asem-years' ), 'Anno solare chiuso: non accetta più incassi né spese.' );
-	}
 
-	private static function reopen_year( array $p ): array {
-		\AssociazioneSemplice\FiscalYears::reopen( (int) ( $p['year'] ?? 0 ) );
-		return array( Ui::url( 'asem-years' ), 'Anno solare riaperto.' );
-	}
 
-	private static function add_account( array $p ): array {
-		Plugin::ledger()->add_account( (string) ( $p['name'] ?? '' ), (string) ( $p['type'] ?? '' ), Money::parse( $p['opening'] ?? '' ) ?? 0 );
-		return array( Ui::url( 'asem-accounts' ), 'Conto aggiunto.' );
-	}
 
-	private static function update_account( array $p ): array {
-		Plugin::ledger()->update_account( (int) ( $p['id'] ?? 0 ), (string) ( $p['name'] ?? '' ), (string) ( $p['type'] ?? '' ), Money::parse( $p['opening'] ?? '' ) ?? 0 );
-		return array( Ui::url( 'asem-accounts' ), 'Conto aggiornato: i saldi sono stati ricalcolati.' );
-	}
 
-	private static function fund_create( array $p ): array {
-		Plugin::funds()->create( (string) ( $p['name'] ?? '' ), Money::parse( $p['amount'] ?? '' ) ?? 0, ! empty( $p['person_id'] ) ? (int) $p['person_id'] : null );
-		return array( Ui::url( 'asem-accounts' ), 'Fondo creato.' );
-	}
 
-	private static function fund_deposit( array $p ): array {
-		Plugin::funds()->deposit( (int) ( $p['id'] ?? 0 ), Money::parse( $p['amount'] ?? '' ) ?? 0, (string) ( $p['date'] ?? current_time( 'Y-m-d' ) ) );
-		return array( Ui::url( 'asem-accounts' ), 'Somma accantonata nel fondo.' );
-	}
 
-	private static function fund_release( array $p ): array {
-		$cents = Money::parse( $p['amount'] ?? '' );
-		if ( null === $cents ) {
-			throw new \InvalidArgumentException( 'Indica l\'importo da liberare.' );
-		}
-		Plugin::funds()->release( (int) ( $p['id'] ?? 0 ), $cents, (string) ( $p['date'] ?? current_time( 'Y-m-d' ) ) );
-		return array( Ui::url( 'asem-accounts' ), 'Quota liberata: è tornata nella disponibilità reale.' );
-	}
 
-	private static function fund_settle( array $p ): array {
-		$tx = Plugin::funds()->settle( (int) ( $p['id'] ?? 0 ), (int) ( $p['account_id'] ?? 0 ), (string) ( $p['method'] ?? '' ), (string) ( $p['date'] ?? current_time( 'Y-m-d' ) ) );
-		return array( Ui::url( 'asem-accounts' ), $tx ? 'Rimborso registrato in prima nota e fondo estinto.' : 'Fondo a zero: estinto.' );
-	}
 
-	private static function close_account( array $p ): array {
-		Plugin::ledger()->close_account( (int) ( $p['id'] ?? 0 ) );
-		return array( Ui::url( 'asem-accounts' ), 'Conto chiuso.' );
-	}
 
-	private static function reopen_account( array $p ): array {
-		Plugin::ledger()->reopen_account( (int) ( $p['id'] ?? 0 ) );
-		return array( Ui::url( 'asem-accounts' ), 'Conto riaperto.' );
-	}
 
 	private static function cash_count( array $p ): array {
 		$counted = Money::parse( $p['counted'] ?? '' );
@@ -1193,7 +915,7 @@ final class Actions {
 		);
 		if ( ! empty( $p['features_present'] ) ) { // il modulo ha l'elenco delle funzioni: le caselle non spuntate sono spente
 			$feat = array();
-			foreach ( array_keys( SettingsPage::FEATURES ) as $k ) {
+			foreach ( array_keys( SettingsPage::all_features() ) as $k ) {
 				$feat[ $k ] = ! empty( $p[ $k ] ) ? 1 : 0;
 			}
 			Settings::update( $feat );
@@ -1201,62 +923,9 @@ final class Actions {
 		return array( Ui::url( 'asem-settings' ), 'Impostazioni salvate.' );
 	}
 
-	private static function save_payment_settings( array $p ): array {
-		$txt = function ( string $k ) use ( $p ) {
-			return sanitize_text_field( $p[ $k ] ?? '' );
-		};
-		Settings::update(
-			array(
-				'payment_provider'        => $txt( 'payment_provider' ),
-				'stripe_mode'             => $txt( 'stripe_mode' ),
-				'stripe_publishable_key'  => $txt( 'stripe_publishable_key' ),
-				'stripe_secret_key'       => $txt( 'stripe_secret_key' ),     // vuoto = lascia quella salvata
-				'stripe_webhook_secret'   => $txt( 'stripe_webhook_secret' ),
-				'paypal_mode'             => $txt( 'paypal_mode' ),
-				'paypal_client_id'        => $txt( 'paypal_client_id' ),
-				'paypal_client_secret'    => $txt( 'paypal_client_secret' ),
-				'pay_label_stripe'        => $txt( 'pay_label_stripe' ),
-				'pay_note_stripe'         => $txt( 'pay_note_stripe' ),
-				'pay_label_paypal'        => $txt( 'pay_label_paypal' ),
-				'pay_note_paypal'         => $txt( 'pay_note_paypal' ),
-				'pay_label_woocommerce'   => $txt( 'pay_label_woocommerce' ),
-				'pay_note_woocommerce'    => $txt( 'pay_note_woocommerce' ),
-			)
-		);
-		foreach ( \AssociazioneSemplice\Settings::SECRET_KEYS as $k ) {
-			if ( ! empty( $p[ 'clear_' . $k ] ) ) {
-				Settings::clear_secret( $k );
-			}
-		}
-		$check = PaymentConfig::validate( Settings::payment_config() );
-		$msg   = 'Impostazioni dei pagamenti salvate.';
-		if ( $check['errors'] ) {
-			$msg .= ' Attenzione: ' . implode( ' ', $check['errors'] );
-		}
-		return array( Ui::url( 'asem-payments' ), $msg );
-	}
 
-	/** Prova la connessione a Stripe o PayPal con le chiavi salvate (solo quando l'amministratore preme il pulsante). */
-	private static function test_gateway( array $p ): array {
-		$provider = in_array( $p['provider'] ?? '', array( PaymentConfig::STRIPE, PaymentConfig::PAYPAL ), true ) ? $p['provider'] : '';
-		$res      = Gateways::test( $provider, Settings::payment_config(), array( Gateways::class, 'wp_http' ) );
-		Audit::log( 'gateway.tested', 'settings', null, array( 'provider' => $provider, 'ok' => $res['ok'] ) );
-		if ( ! $res['ok'] ) {
-			throw new \InvalidArgumentException( $res['message'] ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
-		}
-		return array( Ui::url( 'asem-payments' ), $res['message'] );
-	}
 
-	/** Salva la chiave di licenza e la verifica subito con il server. */
-	private static function check_payments( array $p ): array {
-		$r = Plugin::payments()->check_pending( true );
-		return array( Ui::url( 'asem-payments' ), 'Controllati ' . $r['checked'] . ', registrati ' . $r['registered'] . ', scaduti ' . $r['expired'] . '.' );
-	}
 
-	private static function payment_reviewed( array $p ): array {
-		Plugin::payments()->mark_reviewed( (int) $p['id'] );
-		return array( Ui::url( 'asem-payments' ), 'Pagamento segnato come controllato.' );
-	}
 
 	private static function transfer_booking( array $p ): array {
 		Plugin::activities()->transfer_booking( (int) $p['session_id'], (int) $p['person_id'], (int) ( $p['to_person_id'] ?? 0 ), false );
@@ -1385,12 +1054,12 @@ final class Actions {
 	}
 
 	private static function save_card( array $p ): array {
-		Settings::update( array( 'card_qr_enabled' => ! empty( $p['card_qr_enabled'] ) ? 1 : 0, 'ticket_qr_enabled' => ! empty( $p['ticket_qr_enabled'] ) ? 1 : 0, 'wallet_enabled' => ! empty( $p['wallet_enabled'] ) ? 1 : 0 ) );
+		Settings::update( (array) apply_filters( 'asem_card_settings', array( 'card_qr_enabled' => ! empty( $p['card_qr_enabled'] ) ? 1 : 0, 'ticket_qr_enabled' => ! empty( $p['ticket_qr_enabled'] ) ? 1 : 0 ), $p ) );
 		return array( Ui::url( 'asem-card' ), 'Impostazioni salvate.' );
 	}
 
 	/** Contenuto di un file caricato (null se non ne è stato scelto uno). */
-	private static function uploaded_bytes( string $key ): ?string {
+	public static function uploaded_bytes( string $key ): ?string {
 		if ( empty( $_FILES[ $key ]['tmp_name'] ) || UPLOAD_ERR_NO_FILE === (int) $_FILES[ $key ]['error'] ) { // phpcs:ignore WordPress.Security
 			return null;
 		}
@@ -1401,19 +1070,8 @@ final class Actions {
 		return (string) file_get_contents( $f['tmp_name'] );
 	}
 
-	private static function save_wallet_apple( array $p ): array {
-		$msg = \AssociazioneSemplice\Wallet::save_apple( array( 'password' => $p['apple_password'] ?? '', 'pass_type' => $p['pass_type'] ?? '', 'team' => $p['team'] ?? '' ), self::uploaded_bytes( 'apple_p12' ), self::uploaded_bytes( 'apple_wwdr' ) );
-		return array( Ui::url( 'asem-card' ), $msg );
-	}
 
-	private static function save_wallet_google( array $p ): array {
-		return array( Ui::url( 'asem-card' ), \AssociazioneSemplice\Wallet::save_google( array( 'issuer' => $p['issuer'] ?? '' ), self::uploaded_bytes( 'google_json' ) ) );
-	}
 
-	private static function wallet_clear( array $p ): array {
-		\AssociazioneSemplice\Wallet::clear( (string) ( $p['which'] ?? '' ) );
-		return array( Ui::url( 'asem-card' ), 'Credenziali rimosse.' );
-	}
 
 	private static function regen_qr( array $p ): array {
 		Settings::regenerate_card_salt();

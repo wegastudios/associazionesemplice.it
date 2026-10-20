@@ -94,7 +94,7 @@ final class Ui {
 	 * @param string $what       a cosa si riferisce («Contributo», «Importo»…)
 	 */
 	public static function vat_row( ?int $rate, string $mode, string $what = 'Gli importi', bool $auto = false ): string {
-		return \AssociazioneSemplice\Edition::has( 'vat' ) ? VatFields::row( $rate, $mode, $what, $auto ) : ''; // senza la funzione «IVA» i moduli non mostrano nulla di fiscale
+		return (string) apply_filters( 'asem_vat_row', '', $rate, $mode, $what, $auto ); // senza un'estensione fiscale i moduli non mostrano nulla di fiscale
 	}
 
 	/** Il modulo ha lasciato l'aliquota su «Automatica»? */
@@ -104,7 +104,7 @@ final class Ui {
 
 	/** Aliquota e modo letti da un modulo con {@see Ui::vat_row()}: [aliquota|null, 'incl'|'escl']. */
 	public static function vat_input( array $p ): array {
-		return \AssociazioneSemplice\Edition::has( 'vat' ) ? VatFields::input( $p ) : array( null, \AssociazioneSemplice\Fiscal::INCLUDED );
+		return (array) apply_filters( 'asem_vat_input', array( null, \AssociazioneSemplice\Fiscal::INCLUDED ), $p );
 	}
 
 	public static function hidden( string $name, $value ): string {

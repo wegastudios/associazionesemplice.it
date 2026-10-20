@@ -17,12 +17,11 @@ defined( 'ABSPATH' ) || exit;
 final class Shortcodes {
 
 	/** Viste disponibili: slug => etichetta. */
-	const VIEWS = array(
+	const BASE_VIEWS = array(
 		'area_soci'       => 'Area soci (tessera, attività, ospiti, profilo)',
 		'tessera'         => 'Tessera digitale',
 		'mie_attivita'    => 'Le mie attività e prenotazioni',
 		'pagamenti'       => 'Pagamenti da fare (e, se attivi, pagamento online)',
-		'ricevute'        => 'Le mie ricevute e attestazioni (PDF)',
 		'regolamento'     => 'Regolamento da accettare',
 		'segreteria'      => 'Area segreteria (richieste, soci, comunicazioni)',
 		'tesoriere'       => 'Area tesoriere (incassi, spese, iscrizioni, vendita eventi)',
@@ -32,29 +31,27 @@ final class Shortcodes {
 		'ospiti'          => 'I miei ospiti',
 		'profilo'         => 'Il mio profilo',
 		'area_volontari'  => 'Area volontari (le attività di cui sei referente)',
-		'risorse'         => 'Risorse prenotabili: campi, sale, posti (soci)',
-		'crediti'         => 'I miei crediti: saldo, ricarica e movimenti (soci)',
-		'incasso_crediti' => 'Incasso crediti dal vivo con QR (staff)',
 		'calendario'      => 'Calendario di corsi ed eventi (soci)',
 		'attivita'        => 'Elenco attività ed eventi (pubblico)',
 		'prossimi_eventi' => 'Prossimi eventi (pubblico)',
-		'app'             => 'App e notifiche (installazione e notifiche sul telefono)',
-		'cinquepermille'  => '5x1000 (messaggio pubblico con il codice fiscale)',
 		'bonifico'        => 'Coordinate per il bonifico (pubblico, se attivo)',
 		'donazioni'       => 'Donazioni con PayPal (pubblico, se attive)',
 		'privacy'         => 'Informativa privacy (pubblico, compilata con i dati dell\'ente)',
 		'accesso'         => 'Accesso / login',
 	);
 
-	/** Vista => funzione avanzata che la rende utile: senza la funzione non si propone nei blocchi, nei widget e nell'elenco. */
-	const NEEDS = array( 'ricevute' => 'receipts', 'app' => 'pwa', 'cinquepermille' => 'fivepm', 'risorse' => 'resources', 'crediti' => 'credits', 'incasso_crediti' => 'credits' );
+	/** Tutte le viste, comprese quelle di un'estensione (filtro `asem_shortcode_views`). */
+	public static function views(): array {
+		return (array) apply_filters( 'asem_shortcode_views', self::BASE_VIEWS );
+	}
 
+	/** La vista si può usare? Un'estensione può dire di no (filtro `asem_view_available`) quando la sua funzione non c'è. */
 	public static function available( string $view ): bool {
-		return ! isset( self::NEEDS[ $view ] ) || \AssociazioneSemplice\Edition::has( self::NEEDS[ $view ] );
+		return (bool) apply_filters( 'asem_view_available', true, $view );
 	}
 
 	public static function register(): void {
-		foreach ( array_keys( self::VIEWS ) as $view ) {
+		foreach ( array_keys( self::views() ) as $view ) {
 			add_shortcode(
 				'associazionesemplice_' . $view,
 				function ( $atts ) use ( $view ) {
@@ -71,12 +68,6 @@ final class Shortcodes {
 				return Views::area( shortcode_atts( array( 'sezioni' => '' ), $atts ) );
 			case 'tessera':
 				return Views::card();
-			case 'risorse':
-				return Views::resources();
-			case 'crediti':
-				return Views::credits();
-			case 'incasso_crediti':
-				return Views::credit_charge();
 			case 'calendario':
 				return Views::calendar();
 			case 'avvisi':
@@ -90,8 +81,6 @@ final class Shortcodes {
 				return Views::secretary();
 			case 'regolamento':
 				return Views::rules();
-			case 'ricevute':
-				return Views::receipts();
 			case 'pagamenti':
 				return Views::pay();
 			case 'mie_attivita':
@@ -106,10 +95,6 @@ final class Shortcodes {
 				return Views::activities( shortcode_atts( array( 'anno' => '', 'tipo' => '', 'id' => '', 'date' => '5' ), $atts ) );
 			case 'prossimi_eventi':
 				return Views::upcoming( shortcode_atts( array( 'limite' => '5', 'prenotazione' => 'si' ), $atts ) );
-			case 'app':
-				return Views::app();
-			case 'cinquepermille':
-				return Views::five_per_mille();
 			case 'bonifico':
 				return Views::bank_public();
 			case 'donazioni':
@@ -119,6 +104,6 @@ final class Shortcodes {
 			case 'accesso':
 				return is_user_logged_in() ? '' : Views::login_prompt();
 		}
-		return '';
+		return (string) apply_filters( 'asem_render_view', '', $view, $atts ); // le viste di un'estensione
 	}
 }

@@ -10,15 +10,7 @@ final class Front {
 		Shortcodes::register();
 		Restrict::register();
 		Actions::register();
-		if ( \AssociazioneSemplice\Edition::has( 'resources' ) ) {
-			ResourcesFront::register();
-		}
-		if ( \AssociazioneSemplice\Edition::has( 'credits' ) ) {
-			CreditsFront::register();
-		}
-		if ( \AssociazioneSemplice\Edition::installed( 'payments' ) ) {
-			PayReturn::register();
-		}
+		do_action( 'asem_front_init' ); // le estensioni registrano qui le loro parti del sito
 		CardVerify::register();
 		TicketVerify::register();
 		Activation::register();

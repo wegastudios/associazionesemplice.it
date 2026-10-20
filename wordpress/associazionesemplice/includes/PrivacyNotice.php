@@ -7,8 +7,8 @@ defined( 'ABSPATH' ) || exit;
  * Informativa sul trattamento dei dati personali (artt. 13 e 14 del Regolamento UE 2016/679, GDPR).
  *
  * Il modello si compila da solo con i dati dell'ente (denominazione, codice fiscale, sede, contatti), con il responsabile del trattamento
- * (il presidente o, in mancanza, il socio con il ruolo di segreteria) e con le funzioni che l'ente usa davvero (pagamenti online, Wallet,
- * notifiche). Dichiara che i dati si comunicano a terzi solo per le finalità connesse agli eventi cui si partecipa, che non sono ceduti per
+ * (il presidente o, in mancanza, il socio con il ruolo di segreteria) e con i servizi che l'ente usa davvero (bonifico, donazioni e quelli
+ * aggiunti da eventuali estensioni). Dichiara che i dati si comunicano a terzi solo per le finalità connesse agli eventi cui si partecipa, che non sono ceduti per
  * scopi commerciali e che il trattamento avviene con strumenti informatici, senza profilazione commerciale.
  *
  * Il testo è un modello: va letto e, se serve, fatto verificare dal consulente dell'ente prima di pubblicarlo.
@@ -98,15 +98,11 @@ final class PrivacyNotice {
 		return $out;
 	}
 
-	/** Funzioni dell'ente che comportano altri destinatari dei dati. @return array<string,bool> */
+	/** Funzioni dell'ente che comportano altri destinatari dei dati (un'estensione aggiunge le sue con il filtro `asem_privacy_uses`). @return array<string,bool> */
 	private static function uses(): array {
-		$pay = Edition::has( 'payments' ) && PaymentConfig::NONE !== (string) Settings::get( 'payment_provider' );
-		return array(
-			'payments' => $pay,
-			'wallet'   => Edition::has( 'wallet' ) && ! empty( Settings::get( 'wallet_enabled' ) ),
-			'push'     => Edition::has( 'pwa' ) && ! empty( Settings::get( 'push_enabled' ) ),
+		return (array) apply_filters( 'asem_privacy_uses', array(
 			'bank'     => ! empty( Settings::get( 'bank_enabled' ) ) || ! empty( Settings::get( 'donate_enabled' ) ),
-		);
+		) );
 	}
 
 	/**
@@ -129,23 +125,16 @@ final class PrivacyNotice {
 			'fornitori dei servizi informatici dell\'Associazione (hosting e manutenzione del sito, posta elettronica, copie di sicurezza);',
 			'il consulente contabile e fiscale dell\'Associazione, per gli adempimenti amministrativi e fiscali;',
 		);
-		if ( $u['payments'] ) {
-			$processors[] = 'i gestori dei servizi di pagamento online scelti dall\'Associazione (ad esempio Stripe, PayPal o il negozio del sito): i dati della carta sono trattati direttamente da loro e non passano dal sito;';
-		}
-		if ( $u['wallet'] ) {
-			$processors[] = 'Apple e Google, se si sceglie di salvare la tessera nel telefono (Apple Wallet, Google Wallet);';
-		}
-		if ( $u['push'] ) {
-			$processors[] = 'i servizi di notifica dei browser e dei sistemi operativi, se si attivano le notifiche sul telefono;';
-		}
+		$processors = (array) apply_filters( 'asem_privacy_processors', $processors, $u ); // un'estensione aggiunge i suoi fornitori
 		$processors[] = 'le amministrazioni pubbliche e le autorità, nei casi previsti dalla legge.';
 
 		$bank = $u['bank']
 			? 'Se si sceglie di pagare con bonifico o di fare una donazione, l\'istituto di credito o il servizio di pagamento scelto tratta i dati necessari all\'operazione come titolare autonomo.'
 			: '';
 
-		$transfer = ( $u['payments'] || $u['wallet'] || $u['push'] )
-			? 'Alcuni dei servizi indicati (pagamenti, Wallet, notifiche) possono comportare il trasferimento di dati verso Paesi extra UE: avviene solo verso soggetti che offrono garanzie adeguate ai sensi degli artt. 44 e seguenti del GDPR (decisioni di adeguatezza o clausole contrattuali standard).'
+		$ext_note = (string) apply_filters( 'asem_privacy_transfer_note', '', $u );
+		$transfer = '' !== $ext_note
+			? $ext_note
 			: 'I dati non sono trasferiti verso Paesi al di fuori dello Spazio economico europeo.';
 
 		$sections = array(

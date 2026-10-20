@@ -16,6 +16,27 @@ final class ProData {
 		add_filter( 'asem_activity_delete_blockers', array( __CLASS__, 'delete_blockers' ), 10, 2 );
 		add_action( 'asem_activity_deleted', array( __CLASS__, 'activity_deleted' ) );
 		add_action( 'asem_registration_deleted', array( __CLASS__, 'registration_deleted' ), 10, 2 );
+		add_filter( 'asem_activity_saved', array( __CLASS__, 'activity_saved' ), 10, 3 );
+		add_filter( 'asem_wizard_next', array( __CLASS__, 'wizard_next' ), 10, 2 );
+		add_filter( 'asem_activity_form_rows', array( __CLASS__, 'activity_form_rows' ), 10, 2 );
+		add_filter( 'asem_entity_values', array( __CLASS__, 'entity_values' ), 10, 3 );
+		add_filter( 'asem_guide_options', array( __CLASS__, 'guide_options' ) );
+		add_filter( 'asem_scheduled_jobs', array( __CLASS__, 'jobs' ) );
+		add_filter( 'asem_admin_post_classes', array( __CLASS__, 'admin_post_classes' ) );
+		add_filter( 'asem_payments_service', array( __CLASS__, 'payments_service' ) );
+		add_action( 'asem_rest_routes', array( __CLASS__, 'rest_routes' ) );
+		add_filter( 'asem_privacy_uses', array( __CLASS__, 'privacy_uses' ) );
+		add_filter( 'asem_privacy_processors', array( __CLASS__, 'privacy_processors' ), 10, 2 );
+		add_filter( 'asem_privacy_transfer_note', array( __CLASS__, 'privacy_transfer_note' ), 10, 2 );
+		add_filter( 'asem_text_plain', array( TextsEngine::class, 'plain' ), 10, 2 );
+		add_filter( 'asem_text_html', array( TextsEngine::class, 'html' ), 10, 2 );
+		add_action( 'asem_texts_flush', array( __CLASS__, 'texts_flush' ) );
+		add_action( 'asem_texts_admin_buffer', array( TextsEngine::class, 'start_admin_buffer' ) );
+		add_action( 'asem_notify_email', array( __CLASS__, 'notify_email' ), 10, 3 );
+		add_filter( 'asem_online_dues', array( __CLASS__, 'online_dues' ), 10, 2 );
+		add_filter( 'asem_reservation_active', array( __CLASS__, 'reservation_active' ), 10, 2 );
+		add_filter( 'asem_vat_row', array( __CLASS__, 'vat_row' ), 10, 5 );
+		add_filter( 'asem_vat_input', array( __CLASS__, 'vat_input' ), 10, 2 );
 	}
 
 	/** Assicurazioni e presenze della persona nell'esportazione dei suoi dati. */
@@ -96,8 +117,214 @@ final class ProData {
 		$db->delete( Db::t( 'woo_links' ), array( 'kind' => 'activity', 'ref_id' => $activity_id ) );
 	}
 
+	/** Salvata un'attività: crediti previsti e risorsa collegata (se ci sono prenotazioni già presenti sulla risorsa, un avviso). */
+	public static function activity_saved( array $notes, int $activity_id, array $p ): array {
+		if ( Edition::has( 'credits' ) && array_key_exists( 'credit_price', $p ) ) { // crediti previsti per l'attività (vuoto = non si paga in crediti)
+			Credits::set_activity_price( $activity_id, (int) $p['credit_price'] );
+		}
+		if ( Edition::has( 'resources' ) && array_key_exists( 'resource_id', $p ) ) {
+			$n = Resources::link_activity( $activity_id, ! empty( $p['resource_id'] ) ? (int) $p['resource_id'] : null );
+			if ( $n > 0 ) {
+				$notes[] = ' Attenzione: sulla risorsa ci sono già ' . $n . ( 1 === $n ? ' prenotazione' : ' prenotazioni' ) . ' negli orari di questa attività (prossimi 120 giorni): vanno annullate o spostate.';
+			}
+		}
+		return $notes;
+	}
+
+	/** Lavori periodici: risorse, comunicazioni e controllo dei pagamenti online. */
+	public static function jobs( array $jobs ): array {
+		return $jobs + array(
+			'asem_release_resources'      => array( 'hourly', 1000, 'Resources', 'release_unpaid_job', 'resources' ),
+			'asem_broadcast_batch'        => array( '', 0, 'Broadcasts', 'process_all', 'broadcasts' ),
+			'asem_check_pending_payments' => array( 'hourly', 300, 'PaymentService', 'check_pending_job', 'payments' ),
+		);
+	}
+
+	/** Azioni di admin-post gestite da classi caricate al bisogno. */
+	public static function admin_post_classes( array $map ): array {
+		return $map + array(
+			'asem_receipt'      => 'Receipts',
+			'asem_statement'    => 'Receipts',
+			'asem_export_texts' => 'TextsEngine',
+			'asem_wallet_apple' => 'Wallet',
+		);
+	}
+
+	/** Servizi in uso che comportano altri destinatari dei dati: pagamenti online, Wallet, notifiche. */
+	public static function privacy_uses( array $uses ): array {
+		return $uses + array(
+			'payments' => Edition::has( 'payments' ) && PaymentConfig::NONE !== (string) Settings::get( 'payment_provider' ),
+			'wallet'   => Edition::has( 'wallet' ) && ! empty( Settings::get( 'wallet_enabled' ) ),
+			'push'     => Edition::has( 'pwa' ) && ! empty( Settings::get( 'push_enabled' ) ),
+		);
+	}
+
+	/** Fornitori da citare nell'informativa. */
+	public static function privacy_processors( array $list, array $u ): array {
+		if ( ! empty( $u['payments'] ) ) {
+			$list[] = 'i gestori dei servizi di pagamento online scelti dall\'Associazione (ad esempio Stripe, PayPal o il negozio del sito): i dati della carta sono trattati direttamente da loro e non passano dal sito;';
+		}
+		if ( ! empty( $u['wallet'] ) ) {
+			$list[] = 'Apple e Google, se si sceglie di salvare la tessera nel telefono (Apple Wallet, Google Wallet);';
+		}
+		if ( ! empty( $u['push'] ) ) {
+			$list[] = 'i servizi di notifica dei browser e dei sistemi operativi, se si attivano le notifiche sul telefono;';
+		}
+		return $list;
+	}
+
+	/** Nota sul trasferimento dei dati fuori dall'UE. */
+	public static function privacy_transfer_note( string $note, array $u ): string {
+		if ( ! empty( $u['payments'] ) || ! empty( $u['wallet'] ) || ! empty( $u['push'] ) ) {
+			return 'Alcuni dei servizi indicati (pagamenti, Wallet, notifiche) possono comportare il trasferimento di dati verso Paesi extra UE: avviene solo verso soggetti che offrono garanzie adeguate ai sensi degli artt. 44 e seguenti del GDPR (decisioni di adeguatezza o clausole contrattuali standard).';
+		}
+		return $note;
+	}
+
+	/** Dopo un salvataggio dei testi: rilegge dal database. */
+	public static function texts_flush(): void {
+		TextsEngine::flush();
+		Terms::flush();
+	}
+
+	/** Notifica push a chi ha l'indirizzo email indicato (se ha l'app). */
+	public static function notify_email( string $email, string $title, string $body ): void {
+		if ( Edition::has( 'pwa' ) ) {
+			Push::notify_email( $email, $title, $body );
+		}
+	}
+
+	/** Quote di prenotazioni di risorse ancora da pagare online. */
+	public static function online_dues( array $items, $actor ): array {
+		return Edition::has( 'resources' ) ? array_merge( $items, Resources::online_dues( $actor ) ) : $items;
+	}
+
+	/** Una prenotazione di risorsa è ancora attiva? */
+	public static function reservation_active( $active, int $id ) {
+		return Edition::has( 'resources' ) && Resources::is_active( $id );
+	}
+
+	/** Rotte REST dei pagamenti online. */
+	public static function rest_routes( string $ns ): void {
+		if ( Edition::installed( 'payments' ) ) {
+			register_rest_route( $ns, '/webhooks/stripe', array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'stripe_webhook' ), 'permission_callback' => '__return_true' ) );
+		}
+	}
+
+	/** Webhook di Stripe: pubblico ma accettato solo con firma valida (segreto del webhook impostato nel pannello). */
+	public static function stripe_webhook( \WP_REST_Request $r ) {
+		$payload = (string) $r->get_body();
+		$secret  = Settings::secret( 'stripe_webhook_secret' );
+		if ( ! StripeWebhook::verify( $payload, (string) $r->get_header( 'stripe-signature' ), $secret, time() ) ) {
+			return new \WP_Error( 'asem_bad_signature', 'Firma non valida.', array( 'status' => 400 ) );
+		}
+		$event = json_decode( $payload, true );
+		if ( ! is_array( $event ) ) {
+			return new \WP_Error( 'asem_bad_payload', 'Contenuto non valido.', array( 'status' => 400 ) );
+		}
+		return rest_ensure_response( array( 'received' => true, 'result' => PaymentService::engine()->handle_stripe_event( $event ) ) );
+	}
+
+	/** Il servizio dei pagamenti online. */
+	public static function payments_service( $offline ) {
+		return PaymentService::engine();
+	}
+
+	/** Funzioni facoltative della guida iniziale: pagamenti online, Wallet, assicurazioni, 5x1000, lingua. */
+	public static function guide_options( array $list ): array {
+		$out = array();
+		if ( Edition::has( 'payments' ) ) {
+			$out[] = array( 'title' => 'Pagamenti online', 'on' => PaymentConfig::NONE !== (string) Settings::get( 'payment_provider' ), 'page' => 'asem-payments', 'hint' => 'Carta, PayPal e altri metodi dall\'area soci.' );
+		}
+		foreach ( $list as $o ) {
+			if ( 'asem-card' === $o['page'] && Edition::has( 'wallet' ) ) {
+				$o['title'] = 'Tessera con QR e Wallet';
+			}
+			$out[] = $o;
+			if ( 'asem-comms' === $o['page'] && 'Regolamento da accettare' === $o['title'] ) {
+				if ( Edition::has( 'insurance' ) ) {
+					$out[] = array( 'title' => 'Assicurazioni', 'on' => ProSettings::insurance_volunteers() || ProSettings::insurance_association(), 'page' => 'asem-volunteers', 'hint' => 'Polizze dell\'associazione e dei volontari, con le scadenze.' );
+				}
+				if ( Edition::has( 'fivepm' ) ) {
+					$out[] = array( 'title' => '5x1000', 'on' => FivePerMille::enabled(), 'page' => 'asem-fivepm', 'hint' => 'Messaggio con il codice fiscale e rendiconto dei contributi.' );
+				}
+				if ( Edition::has( 'texts' ) ) {
+					$out[] = array( 'title' => 'Lingua del sito', 'on' => Languages::current() !== Languages::DEFAULT_CODE, 'page' => 'asem-texts', 'hint' => 'Testi in un\'altra lingua, con i pacchetti di traduzione.' );
+				}
+			}
+		}
+		return $out;
+	}
+
+	/** Campi dell'IVA nei moduli di incasso e spesa. */
+	public static function vat_row( $html, $rate, string $mode, string $what, bool $auto ) {
+		return Edition::has( 'vat' ) ? Admin\VatFields::row( $rate, $mode, $what, $auto ) : $html;
+	}
+
+	/** Aliquota e modo letti dal modulo. */
+	public static function vat_input( array $default, array $p ): array {
+		return Edition::has( 'vat' ) ? Admin\VatFields::input( $p ) : $default;
+	}
+
+	/** Righe in più nel modulo dell'attività: risorsa collegata e prezzo in crediti. */
+	public static function activity_form_rows( array $rows, ?int $activity_id ): array {
+		if ( Edition::has( 'resources' ) ) {
+			$rows[] = Admin\ResourcesPage::activity_row( $activity_id );
+		}
+		if ( Edition::has( 'credits' ) ) {
+			$rows[] = Admin\CreditsPage::activity_row( $activity_id );
+		}
+		return $rows;
+	}
+
+	/** Dopo la configurazione guidata: con Stripe o PayPal si passa a inserire le chiavi. */
+	public static function wizard_next( array $step, array $p ): array {
+		$prov = (string) Settings::get( 'payment_provider' );
+		if ( in_array( $prov, array( PaymentConfig::STRIPE, PaymentConfig::PAYPAL, PaymentConfig::BOTH ), true ) ) {
+			return array( Admin\Ui::url( 'asem-payments' ), ' Ora inserisci le chiavi del fornitore scelto.' );
+		}
+		return $step;
+	}
+
 	/** Cancellata un'iscrizione a un corso: le sue presenze. */
 	public static function registration_deleted( int $activity_id, int $person_id ): void {
 		Db::db()->delete( Db::t( 'attendance' ), array( 'activity_id' => $activity_id, 'person_id' => $person_id ) );
+	}
+
+	/** Dati dell'ente delle funzioni aggiuntive: tipo di ente e termini, partita IVA e dati fiscali. */
+	public static function entity_values( array $vals, array $p, bool $full ): array {
+		$txt = function ( string $k ) use ( $p ): string {
+			return sanitize_text_field( (string) ( $p[ $k ] ?? '' ) );
+		};
+		$has = function ( string $k ) use ( $p, $full ): bool {
+			return $full || array_key_exists( $k, $p );
+		};
+		if ( Edition::has( 'texts' ) && ( $has( 'entity_type' ) || $has( 'member_term' ) ) ) { // tipo di ente e termini: funzione di Associazione Semplice Pro
+			$ent = mb_strtolower( trim( $txt( 'entity_type' ) ), 'UTF-8' );
+			$mem = mb_strtolower( trim( $txt( 'member_term' ) ), 'UTF-8' );
+			if ( ! isset( Terms::entity_types( (string) Settings::get( 'entity_types_custom' ) )[ $ent ] ) ) {
+				throw new \InvalidArgumentException( 'Scegli un tipo di ente dall\'elenco.' );
+			}
+			if ( ! isset( Terms::member_terms( (string) Settings::get( 'member_terms_custom' ) )[ $mem ] ) ) {
+				throw new \InvalidArgumentException( 'Scegli un termine per chi partecipa dall\'elenco.' );
+			}
+			$vals['entity_type'] = $ent;
+			$vals['member_term'] = $mem;
+		}
+		if ( $has( 'has_vat' ) ) { // la partita IVA e tutto ciò che ne dipende si legge insieme
+			$on = ! empty( $p['has_vat'] );
+			$vat = Fiscal::normalize_vat( $txt( 'vat_number' ) );
+			if ( $on && ! Fiscal::is_valid_vat( $vat ) ) {
+				throw new \InvalidArgumentException( 'La partita IVA non è valida: sono 11 cifre, l\'ultima è di controllo.' );
+			}
+			$vals['has_vat']             = $on ? 1 : 0;
+			$vals['vat_number']          = $on ? $vat : '';
+			$vals['fiscal_regime']       = $txt( 'fiscal_regime' );
+			$vals['vat_default_rate']    = (int) ( $p['vat_default_rate'] ?? 22 );
+			$vals['vat_prices_mode']     = $txt( 'vat_prices_mode' );
+			$vals['vat_membership_rate'] = $on ? ( $p['vat_membership_rate'] ?? '' ) : '';
+			$vals['sdi_code']            = $txt( 'sdi_code' );
+		}
+		return $vals;
 	}
 }

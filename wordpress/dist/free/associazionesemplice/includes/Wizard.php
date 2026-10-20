@@ -12,41 +12,14 @@ final class Wizard {
 	const OPTION    = 'asem_wizard_status';
 	const TRANSIENT = 'asem_wizard_redirect';
 
-	/** Funzioni che non stanno nell'elenco delle funzioni facoltative: app e notifiche hanno la loro scheda, il 5x1000 il suo passo (con la contabilità). */
-	const OWN_STEP = array( 'pwa_enabled', 'push_enabled', 'fivepm_enabled' );
+	/** Funzioni che hanno una loro scheda e non stanno nell'elenco delle funzioni facoltative (le indica un'estensione con il filtro `asem_wizard_own_step`). */
+	public static function own_step(): array {
+		return array_values( (array) apply_filters( 'asem_wizard_own_step', array() ) );
+	}
 
 	const DONE    = 'done';
 	const SKIPPED = 'skipped';
 
-	/** Scelte di pagamento: valore => [etichetta, descrizione]. */
-	public static function payment_choices(): array {
-		return array(
-			'none'                    => array( 'Nessun pagamento online', 'I pagamenti si registrano a mano (contanti, POS, bonifico).' ),
-			PaymentConfig::STRIPE     => array( 'Carta con Stripe', 'Il socio paga con carta direttamente dal sito.' ),
-			PaymentConfig::PAYPAL     => array( 'PayPal', 'Il socio paga con PayPal (anche a rate, se il tuo account lo prevede).' ),
-			PaymentConfig::BOTH       => array( 'Stripe e PayPal insieme', 'Il socio sceglie come pagare; le diciture dei pulsanti si personalizzano in Pagamenti online.' ),
-			PaymentConfig::WOOCOMMERCE => array( 'Checkout di WooCommerce', 'I pagamenti passano dal carrello e dal checkout del tuo negozio.' ),
-		);
-	}
-
-	/** Guide dei fornitori, da aprire in una nuova finestra. @return array<string,array<int,array{0:string,1:string}>> */
-	public static function tutorials(): array {
-		return array(
-			PaymentConfig::STRIPE      => array(
-				array( 'Creare un account Stripe', 'https://dashboard.stripe.com/register' ),
-				array( 'Dove trovare le chiavi API', 'https://docs.stripe.com/keys' ),
-				array( 'Configurare un webhook', 'https://docs.stripe.com/webhooks' ),
-			),
-			PaymentConfig::PAYPAL      => array(
-				array( 'Creare un\'app PayPal e ottenere le credenziali', 'https://developer.paypal.com/api/rest/' ),
-				array( 'Account di prova (sandbox)', 'https://developer.paypal.com/tools/sandbox/' ),
-			),
-			PaymentConfig::WOOCOMMERCE => array(
-				array( 'Primi passi con WooCommerce', 'https://woocommerce.com/document/woocommerce-getting-started/' ),
-				array( 'Metodi di pagamento di WooCommerce', 'https://woocommerce.com/document/payments/' ),
-			),
-		);
-	}
 
 	public static function status(): string {
 		$s = (string) get_option( self::OPTION, '' );
@@ -120,11 +93,6 @@ final class Wizard {
 			$vals['reports_enabled'] = ! empty( $mods['reports'] ) ? 1 : 0;
 		}
 
-		// Adempimenti (solo con la contabilità): 5x1000
-		if ( ! empty( $p['adempimenti_present'] ) ) {
-			$vals['fivepm_enabled'] = ! empty( $p['fivepm_enabled'] ) ? 1 : 0;
-		}
-
 		// Informativa privacy: si sceglie tra le pagine che esistono già su WordPress
 		if ( array_key_exists( 'privacy_page_id', $p ) ) {
 			$pid = (int) $p['privacy_page_id'];
@@ -149,9 +117,6 @@ final class Wizard {
 		if ( isset( $p['privacy_retention_years'] ) && '' !== trim( (string) $p['privacy_retention_years'] ) ) {
 			$vals['privacy_retention_years'] = max( 1, min( 30, (int) $p['privacy_retention_years'] ) );
 		}
-		if ( isset( $p['receipt_footer'] ) ) {
-			$vals['receipt_footer'] = (string) $p['receipt_footer'];
-		}
 
 		// 2. Anno sociale e quote
 		if ( isset( $p['social_year_start_month'] ) ) {
@@ -170,67 +135,27 @@ final class Wizard {
 
 		// 3. Funzioni facoltative (le app e le notifiche hanno la loro scheda)
 		if ( ! empty( $p['features_present'] ) ) {
-			foreach ( array_keys( \AssociazioneSemplice\Admin\SettingsPage::FEATURES ) as $k ) {
-				if ( in_array( $k, self::OWN_STEP, true ) ) {
+			foreach ( array_keys( \AssociazioneSemplice\Admin\SettingsPage::all_features() ) as $k ) {
+				if ( in_array( $k, self::own_step(), true ) ) {
 					continue;
 				}
 				$vals[ $k ] = ! empty( $p[ $k ] ) ? 1 : 0;
 			}
 		}
 
-		// 4. Pagamenti
-		$woo_products = array();
+		// 4. Pagamenti: il bonifico (le estensioni aggiungono le loro scelte con il filtro `asem_wizard_values`)
 		if ( isset( $p['payment_choice'] ) ) {
-			$choice  = (string) $p['payment_choice'];
-			$choices = self::payment_choices();
-			if ( ! isset( $choices[ $choice ] ) ) {
-				throw new \InvalidArgumentException( 'Scelta dei pagamenti non valida.' );
-			}
-			if ( PaymentConfig::WOOCOMMERCE === $choice ) {
-				if ( ! WooBridge::active() ) {
-					throw new \InvalidArgumentException( 'WooCommerce non è attivo su questo sito: installalo e attivalo, poi riapri la configurazione guidata.' );
-				}
-				if ( ! WooBridge::currency_is_euro() ) {
-					throw new \InvalidArgumentException( 'Il negozio WooCommerce deve usare l\'euro come valuta: le quote sono in euro.' );
-				}
-			}
-			$vals['payment_provider'] = 'none' === $choice ? PaymentConfig::NONE : $choice;
-			$vals['bank_enabled']     = ! empty( $p['bank_enabled'] ) ? 1 : 0;
-			$woo_products             = PaymentConfig::WOOCOMMERCE === $choice ? $p : array();
+			$vals['bank_enabled'] = ! empty( $p['bank_enabled'] ) ? 1 : 0;
 		}
 
-		// Altri tipi di socio: righe «Nome; quota». I livelli esistenti restano come sono.
-		$new_levels = Edition::has( 'levels' ) ? self::parse_levels( (string) ( $p['extra_levels'] ?? '' ) ) : array();
-		if ( $new_levels ) {
-			$rows  = array();
-			$known = array();
-			foreach ( Levels::all() as $lv ) {
-				$rows[]                                  = array( 'id' => (int) $lv['id'], 'name' => $lv['name'], 'base_type' => $lv['base_type'], 'fee' => null === $lv['fee_cents'] ? '' : Money::plain( (int) $lv['fee_cents'] ), 'active' => (int) $lv['active'] );
-				$known[ mb_strtolower( $lv['name'], 'UTF-8' ) ] = true;
-			}
-			$added = 0;
-			foreach ( $new_levels as $nl ) {
-				if ( isset( $known[ mb_strtolower( $nl[0], 'UTF-8' ) ] ) ) {
-					continue;
-				}
-				$rows[] = array( 'id' => 0, 'name' => $nl[0], 'base_type' => MemberType::ORDINARY, 'fee' => $nl[1], 'active' => 1 );
-				$added++;
-			}
-			if ( $added ) {
-				Levels::save( $rows );
-				$done[] = $added . ( 1 === $added ? ' tipo di socio aggiunto.' : ' tipi di socio aggiunti.' );
-			}
-		}
+		$vals = (array) apply_filters( 'asem_wizard_values', $vals, $p ); // un'estensione aggiunge e controlla le sue scelte
 
 		if ( $vals ) {
 			Settings::update( $vals );
 			$done[] = 'Impostazioni salvate.';
 		}
 
-		// 4b. Prodotti di WooCommerce da collegare o creare
-		if ( $woo_products ) {
-			$done = array_merge( $done, self::link_products( $woo_products ) );
-		}
+		$done = (array) apply_filters( 'asem_wizard_done', $done, $p ); // ... e riferisce cosa ha fatto
 
 		// 5. Pagine del sito
 		if ( ! empty( $p['pages_present'] ) ) {
@@ -244,44 +169,4 @@ final class Wizard {
 		return $done;
 	}
 
-	/** Righe «Nome; quota» (la quota è facoltativa) => [[nome, quota], …]. */
-	public static function parse_levels( string $text ): array {
-		$out = array();
-		foreach ( preg_split( '/\r\n|\r|\n/', $text ) ?: array() as $line ) {
-			$parts = array_map( 'trim', explode( ';', $line, 2 ) );
-			$name  = mb_substr( sanitize_text_field( $parts[0] ), 0, 80 );
-			if ( '' === $name ) {
-				continue;
-			}
-			$fee = $parts[1] ?? '';
-			if ( '' !== $fee && null === Money::parse( $fee ) ) {
-				throw new \InvalidArgumentException( 'La quota di «' . $name . '» non è un importo valido.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
-			}
-			$out[] = array( $name, $fee );
-		}
-		return array_slice( $out, 0, 20 );
-	}
-
-	/** Per ogni livello e per la voce generica: lascia com'è, crea un prodotto nuovo o collega uno esistente. @return string[] */
-	private static function link_products( array $p ): array {
-		$done = array();
-		$fee  = (int) Settings::get( 'membership_fee_cents' );
-		foreach ( Levels::all( true ) as $lv ) {
-			$choice = (string) ( $p['product_level'][ (int) $lv['id'] ] ?? '' );
-			if ( '' === $choice ) {
-				continue;
-			}
-			$pid = 'new' === $choice ? WooBridge::create_product( 'Quota associativa: ' . $lv['name'], null === $lv['fee_cents'] ? $fee : (int) $lv['fee_cents'] ) : (int) $choice;
-			WooLinks::set( WooLinks::LEVEL, (int) $lv['id'], $pid );
-			$done[] = 'Quota «' . $lv['name'] . '» collegata a un prodotto' . ( 'new' === $choice ? ' (creato ora)' : '' ) . '.';
-		}
-		$gen = (string) ( $p['product_default'] ?? '' );
-		if ( '' !== $gen ) {
-			$pid = 'new' === $gen ? WooBridge::create_product( 'Contributo ' . ( '' !== (string) Settings::get( 'association_name' ) ? (string) Settings::get( 'association_name' ) : 'Associazione Semplice' ), 0 ) : (int) $gen;
-			WooBridge::assert_product( $pid );
-			Settings::update( array( 'woo_default_product' => $pid ) );
-			$done[] = 'Prodotto generico per le altre voci (corsi ed eventi) impostato' . ( 'new' === $gen ? ' (creato ora)' : '' ) . '.';
-		}
-		return $done;
-	}
 }

@@ -454,26 +454,9 @@ final class PeoplePage {
 		echo '</div>';
 	}
 
-	/** Ricevute e attestazioni annuali della persona. */
+	/** Ricevute e attestazioni annuali della persona (le aggiunge un'estensione). */
 	private static function panel_receipts( array $p ): void {
-		if ( ! \AssociazioneSemplice\Edition::has( 'receipts' ) ) {
-			return;
-		}
-		$id    = (int) $p['id'];
-		$years = \AssociazioneSemplice\Receipts::years_for_payer( $id );
-		if ( ! $years ) {
-			return;
-		}
-		echo '<div class="asem-card"><h2>Ricevute e attestazioni</h2><p class="description">Le ricevute dei singoli incassi sono in Contabilità → Prima nota.</p><p>';
-		foreach ( $years as $y ) {
-			echo '<a class="button" target="_blank" href="' . esc_url( \AssociazioneSemplice\Receipts::statement_url( $id, (int) $y ) ) . '">Attestazione ' . (int) $y . '</a> ';
-		}
-		echo '</p><ul>';
-		foreach ( \AssociazioneSemplice\Receipts::list_for_payer( $id, 8 ) as $r ) {
-			echo '<li>' . Ui::date( $r['date'] ) . ' · ' . esc_html( $r['what'] ) . ' · ' . esc_html( \AssociazioneSemplice\Money::format( $r['cents'] ) ) // phpcs:ignore WordPress.Security.EscapeOutput
-				. ' <a target="_blank" href="' . esc_url( \AssociazioneSemplice\Receipts::url( $r['key'] ) ) . '">ricevuta</a></li>';
-		}
-		echo '</ul></div>';
+		do_action( 'asem_person_receipts', $p );
 	}
 
 	/** Carica nel consiglio direttivo: presidente, vicepresidente, consigliere. */

@@ -15,6 +15,17 @@ defined( 'ABSPATH' ) || exit;
  */
 class PaymentService extends OfflinePayments {
 
+	/** @var PaymentService|null */
+	private static $engine = null;
+
+	/**
+	 * Il motore dei pagamenti online per chiudere quelli già avviati (webhook, ritorno dal gateway, controllo periodico), anche se la licenza è
+	 * scaduta: i soldi in arrivo vanno registrati comunque. I nuovi pagamenti passano da {@see Plugin::payments()}.
+	 */
+	public static function engine(): PaymentService {
+		return self::$engine ?? ( self::$engine = new PaymentService() );
+	}
+
 	const PENDING_AFTER_MINUTES = 10;
 	const EXPIRE_AFTER_DAYS     = 3;
 	const STUCK_AFTER_MINUTES   = 15;
@@ -43,7 +54,7 @@ class PaymentService extends OfflinePayments {
 	 * @return string[]
 	 */
 	public function providers(): array {
-		$c = Settings::payment_config();
+		$c = ProSettings::payment_config();
 		if ( PaymentConfig::WOOCOMMERCE === $c['payment_provider'] ) {
 			return WooBridge::active() ? array( PaymentConfig::WOOCOMMERCE ) : array();
 		}
@@ -175,7 +186,7 @@ class PaymentService extends OfflinePayments {
 		$id        = (int) $this->db()->insert_id;
 		$success   = add_query_arg( array( 'asem_pay' => $public, 'asem_ret' => 'ok' ), $back_url );
 		$cancel    = add_query_arg( array( 'asem_pay' => $public, 'asem_ret' => 'cancel' ), $back_url );
-		$cfg       = Settings::payment_config();
+		$cfg       = ProSettings::payment_config();
 		$brand     = (string) Settings::get( 'association_name' );
 		try {
 			if ( PaymentConfig::STRIPE === $provider ) {
@@ -229,7 +240,7 @@ class PaymentService extends OfflinePayments {
 		if ( ! in_array( $p['status'], self::OPEN_STATUSES, true ) || empty( $p['provider_ref'] ) || PaymentConfig::WOOCOMMERCE === $p['provider'] ) {
 			return false; // WooCommerce non si interroga: è il negozio a segnalare l'ordine pagato
 		}
-		$cfg = Settings::payment_config();
+		$cfg = ProSettings::payment_config();
 		try {
 			if ( 'stripe' === $p['provider'] ) {
 				$s = StripeApi::retrieve_session( $this->http(), $cfg['stripe_secret_key'], $p['provider_ref'] );
@@ -287,7 +298,7 @@ class PaymentService extends OfflinePayments {
 
 	/** Lavoro periodico di WP-Cron (pianificato da Plugin::schedule_jobs()). */
 	public static function check_pending_job(): void {
-		Plugin::payments_engine()->check_pending();
+		PaymentService::engine()->check_pending();
 	}
 
 	/** Ricontrolla i pagamenti rimasti in sospeso (chiamato ogni ora da WP-Cron e dal pulsante in amministrazione). */

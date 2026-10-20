@@ -17,30 +17,19 @@ final class SettingsPage {
 		'card_enabled'          => 'Tessera digitale nell\'area soci',
 		'card_qr_enabled'       => 'QR sulla tessera (verifica all\'ingresso)',
 		'ticket_qr_enabled'     => 'Biglietti QR delle prenotazioni',
-		'wallet_enabled'        => 'Pulsanti Apple Wallet e Google Wallet',
 		'ical_enabled'          => 'Calendario pubblicato (Google Calendar e simili)',
 		'rules_enabled'         => 'Regolamento da accettare',
 		'reminders_enabled'     => 'Promemoria automatici per email',
-		'insurance_volunteers'  => 'Assicurazioni dei volontari',
-		'insurance_association' => 'Polizze dell\'associazione (responsabilità civile, infortuni)',
-		'fivepm_enabled'        => '5x1000',
-		'pwa_enabled'           => 'App installabile sul telefono (PWA)',
-		'push_enabled'          => 'Notifiche push ai dispositivi dei soci',
 	);
 
-	/** Interruttori che si mostrano: quelli delle funzioni avanzate solo se la funzione c'è in questa edizione. */
+	/** Tutti gli interruttori, comprese le funzioni aggiunte da un'estensione (filtro `asem_feature_switches`). */
+	public static function all_features(): array {
+		return (array) apply_filters( 'asem_feature_switches', self::FEATURES, false );
+	}
+
+	/** Interruttori che si mostrano: quelli di un'estensione solo se la funzione è disponibile. */
 	public static function visible_features(): array {
-		$need = array(
-			'wallet_enabled' => 'wallet', 'insurance_volunteers' => 'insurance', 'insurance_association' => 'insurance',
-			'fivepm_enabled' => 'fivepm', 'pwa_enabled' => 'pwa', 'push_enabled' => 'pwa',
-		);
-		$out  = array();
-		foreach ( self::FEATURES as $k => $label ) {
-			if ( ! isset( $need[ $k ] ) || Edition::has( $need[ $k ] ) ) {
-				$out[ $k ] = $label;
-			}
-		}
-		return $out;
+		return (array) apply_filters( 'asem_feature_switches', self::FEATURES, true );
 	}
 
 	/** Caselle delle funzioni, lette e salvate dal modulo «Generale». */
@@ -59,7 +48,7 @@ final class SettingsPage {
 		Ui::form_open( 'asem_save_settings', Ui::url( 'asem-settings' ) );
 		echo '<table class="form-table"><tbody>';
 		echo '<tr><th>Quota associativa proposta</th><td><input type="text" name="membership_fee" value="' . esc_attr( Money::plain( (int) $s['membership_fee_cents'] ) ) . '" inputmode="decimal"> €</td></tr>';
-		echo '<tr><th>Funzioni attive</th><td>' . self::feature_boxes( $s ) . '<p class="description">Tutte le funzioni facoltative sono spente di default: accendi solo quelle che ti servono, ciò che è spento resta invisibile a soci e gestori. I dettagli tecnici si trovano nelle pagine «Tessera, QR e Wallet» (credenziali Wallet), «Integrazioni» (WooCommerce) e «Ruoli e accessi».</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
+		echo '<tr><th>Funzioni attive</th><td>' . self::feature_boxes( $s ) . '<p class="description">Tutte le funzioni facoltative sono spente di default: accendi solo quelle che ti servono, ciò che è spento resta invisibile a soci e gestori. I dettagli tecnici si trovano nelle pagine «Tessera e QR», «Integrazioni» e «Ruoli e accessi».</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
 		echo '<tr><th>Sconto nucleo familiare</th><td><input type="number" min="0" max="100" name="family_discount_pct" value="' . (int) $s['family_discount_pct'] . '"> %<p class="description">I familiari di un capofamiglia (si sceglie nella scheda del socio) pagano la quota ridotta di questa percentuale; il capofamiglia paga la quota piena. 0 = nessuno sconto.</p></td></tr>';
 		echo '<tr><th>Ospiti</th><td><input type="hidden" name="guests_present" value="1"><label><input type="checkbox" name="guests_enabled" value="1"' . checked( ! empty( $s['guests_enabled'] ), true, false ) . '> L\'ente accetta ospiti (persone che partecipano senza essere soci)</label><p class="description">Se lo spegni non si possono registrare nuovi ospiti e la sezione «I miei ospiti» sparisce dall\'area soci; gli ospiti già registrati restano.</p></td></tr>';
 		echo '<tr><th>Eliminazione del plugin</th><td><input type="hidden" name="uninstall_present" value="1"><label><input type="checkbox" name="delete_on_uninstall" value="1"' . checked( ! empty( $s['delete_on_uninstall'] ), true, false ) . '> Cancella tutti i dati se il plugin viene eliminato da WordPress</label><p class="description">Spento (consigliato): eliminando il plugin soci, prima nota, allegati e impostazioni restano e tornano disponibili se lo reinstalli. Acceso: vengono cancellati in modo definitivo, ruoli compresi; fai prima una copia di sicurezza.</p></td></tr>';
@@ -83,15 +72,12 @@ final class SettingsPage {
 		submit_button( 'Salva' );
 		Ui::form_close();
 		do_action( 'asem_settings_page_end' ); // le estensioni aggiungono qui le loro sezioni
-		if ( Edition::has( 'levels' ) ) { // l'edizione gratuita ha un'unica quota
-			LevelsEditor::section();
-		}
 		echo '<h2>Pagine del sito e shortcode</h2><p>Soci e volontari usano il sito, non wp-admin. Le viste si inseriscono con Gutenberg (blocchi <em>Associazione Semplice</em> e <em>Contenuto riservato</em>), con Elementor (widget <em>Associazione Semplice</em> e <em>Contenuto riservato</em>) oppure con questi shortcode:</p>';
 		Ui::form_open( 'asem_create_pages', Ui::url( 'asem-settings' ) );
 		echo '<p><button class="button">Crea le pagine standard</button> <span class="description">Area soci, Area volontari (visibile solo ai volontari) e Attività ed eventi, con gli shortcode già inseriti. Puoi poi personalizzarne l\'impaginazione.</span></p>';
 		Ui::form_close();
 		echo '<table class="widefat striped" style="max-width:900px"><thead><tr><th>Shortcode</th><th>Cosa mostra</th></tr></thead><tbody>';
-		foreach ( \AssociazioneSemplice\Areas::GROUPS as $g ) { // per area: soci, segreteria, tesoriere, eventi, pubblico
+		foreach ( \AssociazioneSemplice\Areas::groups() as $g ) { // per area: soci, segreteria, tesoriere, eventi, pubblico
 			echo '<tr><td colspan="2"><strong>' . esc_html( $g[0] ) . '</strong></td></tr>';
 			foreach ( $g[1] as $slug ) {
 				echo '<tr><td><code>[associazionesemplice_' . esc_html( $slug ) . ']</code></td><td>' . esc_html( \AssociazioneSemplice\Frontend\Shortcodes::VIEWS[ $slug ] ?? '' ) . '</td></tr>';

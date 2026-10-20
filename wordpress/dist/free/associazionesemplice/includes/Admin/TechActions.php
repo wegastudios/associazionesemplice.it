@@ -2,11 +2,8 @@
 namespace AssociazioneSemplice\Admin;
 
 use AssociazioneSemplice\Audit;
-use AssociazioneSemplice\PaymentConfig;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Settings;
-use AssociazioneSemplice\WooBridge;
-use AssociazioneSemplice\WooLinks;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -14,13 +11,9 @@ defined( 'ABSPATH' ) || exit;
 final class TechActions {
 
 	const ACTIONS = array(
-		'asem_save_woo'   => 'save_woo',
 		'asem_save_roles' => 'save_roles',
 		'asem_save_acct'  => 'save_acct',
 		'asem_save_places' => 'save_places',
-		'asem_save_app'   => 'save_app',
-		'asem_push_test'  => 'push_test',
-		'asem_push_reset' => 'push_reset',
 		'asem_save_bank'  => 'save_bank',
 		'asem_save_limits' => 'save_limits',
 		'asem_reset_limits' => 'reset_limits',
@@ -32,11 +25,6 @@ final class TechActions {
 
 	public static function register(): void {
 		foreach ( self::ACTIONS as $action => $method ) {
-			if ( ( 'asem_save_woo' === $action && ! \AssociazioneSemplice\Edition::has( 'payments' ) ) // il collegamento con WooCommerce è dei pagamenti online
-				|| ( in_array( $action, array( 'asem_push_test', 'asem_push_reset', 'asem_save_app' ), true ) && ! \AssociazioneSemplice\Edition::has( 'pwa' ) ) ) { // app e notifiche
-				\AssociazioneSemplice\Edition::block_action( $action );
-				continue;
-			}
 			add_action(
 				'admin_post_' . $action,
 				function () use ( $action, $method ) {
@@ -59,30 +47,6 @@ final class TechActions {
 		}
 	}
 
-	public static function save_woo( array $p ): array {
-		$on = ! empty( $p['woo_enabled'] );
-		if ( $on && ! WooBridge::active() ) {
-			throw new \InvalidArgumentException( 'WooCommerce non è attivo su questo sito: installalo e attivalo prima.' );
-		}
-		$default = (int) ( $p['woo_default_product'] ?? 0 );
-		if ( $default > 0 ) {
-			WooBridge::assert_product( $default );
-		}
-		foreach ( (array) ( $p['link_level'] ?? array() ) as $id => $product ) {
-			WooLinks::set( WooLinks::LEVEL, (int) $id, (int) $product );
-		}
-		foreach ( (array) ( $p['link_activity'] ?? array() ) as $id => $product ) {
-			WooLinks::set( WooLinks::ACTIVITY, (int) $id, (int) $product );
-		}
-		$provider = (string) Settings::get( 'payment_provider' );
-		if ( $on ) {
-			$provider = PaymentConfig::WOOCOMMERCE;
-		} elseif ( PaymentConfig::WOOCOMMERCE === $provider ) {
-			$provider = PaymentConfig::NONE;
-		}
-		Settings::update( array( 'payment_provider' => $provider, 'woo_default_product' => $default ) );
-		return array( Ui::url( 'asem-tech' ), $on ? 'WooCommerce attivo: i pagamenti passano dal negozio.' : 'Impostazioni di WooCommerce salvate.' );
-	}
 
 	public static function save_places( array $p ): array {
 		$key = \AssociazioneSemplice\Places::clean_key( (string) ( $p['places_key'] ?? '' ) );
@@ -105,61 +69,9 @@ final class TechActions {
 		return array( Ui::url( 'asem-roles' ), 'Accessi salvati.' );
 	}
 
-	public static function save_app( array $p ): array {
-		$push = ! empty( $p['push_enabled'] );
-		$pwa  = ! empty( $p['pwa_enabled'] );
-		if ( $push && ! \AssociazioneSemplice\WebPush::supported() ) {
-			throw new \InvalidArgumentException( 'Questo server non ha le funzioni di cifratura necessarie per le notifiche (estensione openssl di PHP).' );
-		}
-		$vals = array( 'pwa_enabled' => $pwa ? 1 : 0, 'push_enabled' => ( $push && $pwa ) ? 1 : 0, 'pwa_name' => (string) ( $p['pwa_name'] ?? '' ), 'pwa_short_name' => (string) ( $p['pwa_short_name'] ?? '' ) );
-		if ( ! empty( $p['pwa_icon_remove'] ) ) {
-			$vals['pwa_icon_id'] = 0;
-		}
-		if ( ! empty( $_FILES['pwa_icon']['tmp_name'] ) && UPLOAD_ERR_OK === (int) $_FILES['pwa_icon']['error'] ) { // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotValidated -- valore verificato e ripulito da chi lo usa
-			$vals['pwa_icon_id'] = self::upload_icon( $_FILES['pwa_icon'] ); // phpcs:ignore WordPress.Security
-		}
-		Settings::update( $vals );
-		if ( $pwa ) {
-			\AssociazioneSemplice\Push::vapid(); // crea le chiavi del sito se non ci sono
-		}
-		return array( Ui::url( 'asem-app' ), $pwa ? 'App e notifiche salvate.' : 'App spenta.' );
-	}
 
-	/** Icona dell'app: PNG quadrato di almeno 192 pixel (meglio 512). @return int id dell'immagine nella libreria media */
-	private static function upload_icon( array $file ): int {
-		if ( ! is_uploaded_file( (string) $file['tmp_name'] ) || (int) $file['size'] > 2 * 1048576 ) {
-			throw new \InvalidArgumentException( 'Caricamento dell\'icona non riuscito (PNG, massimo 2 MB).' );
-		}
-		$info = @getimagesize( (string) $file['tmp_name'] );
-		if ( ! $info || IMAGETYPE_PNG !== $info[2] || $info[0] !== $info[1] || $info[0] < 192 ) {
-			throw new \InvalidArgumentException( 'L\'icona deve essere un\'immagine PNG quadrata di almeno 192 pixel (meglio 512×512).' );
-		}
-		require_once ABSPATH . 'wp-admin/includes/file.php';
-		require_once ABSPATH . 'wp-admin/includes/image.php';
-		$up = wp_handle_upload( $file, array( 'test_form' => false, 'mimes' => array( 'png' => 'image/png' ) ) );
-		if ( ! empty( $up['error'] ) ) {
-			throw new \InvalidArgumentException( 'Caricamento dell\'icona non riuscito: ' . $up['error'] ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
-		}
-		$id = wp_insert_attachment( array( 'post_mime_type' => 'image/png', 'post_title' => 'Icona dell\'app', 'post_status' => 'inherit' ), $up['file'] );
-		if ( ! $id || is_wp_error( $id ) ) {
-			throw new \InvalidArgumentException( 'Impossibile salvare l\'icona.' );
-		}
-		wp_update_attachment_metadata( (int) $id, wp_generate_attachment_metadata( (int) $id, $up['file'] ) );
-		return (int) $id;
-	}
 
-	public static function push_test( array $p ): array {
-		if ( ! \AssociazioneSemplice\Push::enabled() ) {
-			throw new \InvalidArgumentException( 'Le notifiche non sono attive: accendile e salva.' );
-		}
-		$n = \AssociazioneSemplice\Push::notify_users( array( get_current_user_id() ), 'Prova delle notifiche', 'Se leggi questo messaggio le notifiche funzionano.', \AssociazioneSemplice\Gatekeeper::area_url() );
-		return array( Ui::url( 'asem-app' ), $n > 0 ? 'Notifica di prova inviata a ' . $n . ( 1 === $n ? ' dispositivo.' : ' dispositivi.' ) : 'Nessun dispositivo collegato al tuo utente: apri l\'area soci dal telefono e attiva le notifiche.' );
-	}
 
-	public static function push_reset( array $p ): array {
-		\AssociazioneSemplice\Push::reset_keys();
-		return array( Ui::url( 'asem-app' ), 'Chiavi rigenerate: i dispositivi devono riattivare le notifiche.' );
-	}
 
 	/** Coordinate bancarie: IBAN controllati (cifra di controllo) e, se cambiano, avviso agli amministratori. */
 	public static function save_bank( array $p ): array {
@@ -241,10 +153,10 @@ final class TechActions {
 		$done = \AssociazioneSemplice\Wizard::apply( $p );
 		$next = Ui::url( 'asem' );
 		$more = '';
-		$prov = (string) Settings::get( 'payment_provider' );
-		if ( in_array( $prov, array( PaymentConfig::STRIPE, PaymentConfig::PAYPAL, PaymentConfig::BOTH ), true ) ) {
-			$next = Ui::url( 'asem-payments' );
-			$more = ' Ora inserisci le chiavi del fornitore scelto.';
+		$step = (array) apply_filters( 'asem_wizard_next', array( '', '' ), $p ); // un'estensione può chiedere un passaggio in più (indirizzo, avviso)
+		if ( '' !== (string) ( $step[0] ?? '' ) ) {
+			$next = (string) $step[0];
+			$more = (string) ( $step[1] ?? '' );
 		} elseif ( Settings::get( 'bank_enabled' ) && ! \AssociazioneSemplice\Bank::enabled() ) {
 			$next = Ui::url( 'asem-bank' );
 			$more = ' Ora aggiungi almeno un IBAN per il bonifico.';

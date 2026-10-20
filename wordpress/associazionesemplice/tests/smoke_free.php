@@ -85,7 +85,7 @@ foreach ( $pages as $name => $p ) {
 }
 // nessun collegamento a pagine che in questa edizione non ci sono
 foreach ( array( 'Bacheca', 'Soldi', 'Prima nota', 'Soci e quote' ) as $pn ) {
-	foreach ( Edition::missing_pages() as $slug ) {
+	foreach ( array( 'asem-accounts', 'asem-years', 'asem-group', 'asem-transfer', 'asem-reports', 'asem-statement', 'asem-volunteers', 'asem-attendance', 'asem-app', 'asem-acct', 'asem-fivepm', 'asem-payments', 'asem-messages', 'asem-texts', 'asem-resources', 'asem-credits', 'asem-accounting' ) as $slug ) {
 		free_ok( false === strpos( $html[ $pn ], 'page=' . $slug . '"' ) && false === strpos( $html[ $pn ], 'page=' . $slug . '&' ), "pagina $pn: nessun collegamento a $slug" );
 	}
 }

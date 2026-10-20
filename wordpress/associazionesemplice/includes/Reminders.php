@@ -82,9 +82,7 @@ final class Reminders {
 		}
 		$text  = 'Ciao ' . $to['name'] . ",\n\n" . $body . "\n\n—\n" . ( '' !== $assoc ? $assoc . "\n" : '' ) . 'Area riservata: ' . Gatekeeper::area_url() . "\nPer informazioni rivolgiti alla segreteria.";
 		$ok = (bool) \AssociazioneSemplice\Texts::mail( $to['email'], ( '' !== $assoc ? '[' . $assoc . '] ' : '' ) . $subject, $text );
-		if ( Edition::has( 'pwa' ) ) {
-			Push::notify_email( (string) $to['email'], $subject, $body );
-		}
+		do_action( 'asem_notify_email', (string) $to['email'], $subject, $body ); // notifica sul telefono, se un'estensione la gestisce
 		return $ok;
 	}
 

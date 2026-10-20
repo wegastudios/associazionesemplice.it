@@ -142,9 +142,7 @@ final class Notices {
 			if ( \AssociazioneSemplice\Texts::mail( $r['email'], ( '' !== $assoc ? '[' . $assoc . '] ' : '' ) . $a['name'] . ': ' . $subject, $text ) ) {
 				$sent++;
 			}
-			if ( Edition::has( 'pwa' ) ) { // notifica sul telefono, se l'app c'è
-				\AssociazioneSemplice\Push::notify_email( (string) $r['email'], $a['name'] . ': ' . $subject, $body );
-			}
+			do_action( 'asem_notify_email', (string) $r['email'], $a['name'] . ': ' . $subject, $body ); // notifica sul telefono, se un'estensione la gestisce
 		}
 		$db->update( Db::t( 'notices' ), array( 'emailed' => $sent ), array( 'id' => $id ) );
 		Audit::log( 'notice.sent', 'activity', $activity_id, array( 'notice' => $id, 'recipients' => count( $rcpt ), 'emailed' => $sent ) ); // senza il testo

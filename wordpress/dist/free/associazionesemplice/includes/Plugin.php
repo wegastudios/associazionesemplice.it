@@ -42,12 +42,6 @@ final class Plugin {
 		if ( defined( 'PMXI_VERSION' ) || class_exists( 'PMXI_Plugin', false ) ) {
 			WpAllImport::register(); // compatibilità con WP All Import (area di appoggio)
 		}
-		if ( Edition::has( 'pwa' ) && Settings::get( 'pwa_enabled' ) ) {
-			Pwa::register(); // app installabile e notifiche
-		}
-		if ( Edition::installed( 'payments' ) && class_exists( 'WooCommerce', false ) ) {
-			add_action( 'plugins_loaded', array( WooBridge::class, 'register' ), 20 ); // compatibilità con WooCommerce
-		}
 		if ( is_admin() ) {
 			Admin\Admin::init();
 		}
@@ -60,12 +54,10 @@ final class Plugin {
 	private static function schedule_jobs(): void {
 		$jobs = array(
 			'asem_release_holds'          => array( 'hourly', 900, 'Holds', 'release_expired', '' ),
-			'asem_release_resources'      => array( 'hourly', 1000, 'Resources', 'release_unpaid_job', 'resources' ),
 			'asem_send_reminders'         => array( 'daily', 600, 'Reminders', 'run', '' ),
-			'asem_broadcast_batch'        => array( '', 0, 'Broadcasts', 'process_all', 'broadcasts' ),
 			'asem_purge_backups'          => array( 'hourly', 1200, 'Backup', 'purge_old', '' ),
-			'asem_check_pending_payments' => array( 'hourly', 300, 'PaymentService', 'check_pending_job', 'payments' ),
 		);
+		$jobs = (array) apply_filters( 'asem_scheduled_jobs', $jobs ); // un'estensione aggiunge i suoi lavori periodici
 		foreach ( $jobs as $hook => $j ) {
 			if ( '' !== $j[4] && ! Edition::installed( $j[4] ) ) {
 				continue;
@@ -81,13 +73,14 @@ final class Plugin {
 	const ADMIN_POST = array(
 		'asem_backup'          => 'Backup',
 		'asem_backup_saved'    => 'Backup',
-		'asem_receipt'         => 'Receipts',
-		'asem_statement'       => 'Receipts',
 		'asem_privacy_export'  => 'Privacy',
-		'asem_export_texts'    => 'TextsEngine',
-		'asem_wallet_apple'    => 'Wallet',
 		'asem_doc'             => 'Docs',
 	);
+
+	/** Azioni di admin-post con la classe che le gestisce, comprese quelle di un'estensione (filtro `asem_admin_post_classes`). */
+	private static function admin_post_classes(): array {
+		return (array) apply_filters( 'asem_admin_post_classes', self::ADMIN_POST );
+	}
 
 	private static function lazy_admin_post(): void {
 		add_action(
@@ -104,10 +97,11 @@ final class Plugin {
 
 	/** Carica e registra la classe che gestisce un'azione di admin-post. @return bool true se l'azione è una di quelle gestite così */
 	public static function load_for_action( string $action ): bool {
-		if ( ! isset( self::ADMIN_POST[ $action ] ) ) {
+		$classes = self::admin_post_classes();
+		if ( ! isset( $classes[ $action ] ) ) {
 			return false;
 		}
-		$class = __NAMESPACE__ . '\\' . self::ADMIN_POST[ $action ];
+		$class = __NAMESPACE__ . '\\' . $classes[ $action ];
 		if ( ! class_exists( $class ) ) { // la funzione non è in questa edizione
 			return false;
 		}
@@ -137,17 +131,14 @@ final class Plugin {
 		return self::$services['funds'] ?? ( self::$services['funds'] = new FundService() );
 	}
 
-	/** Servizio dei pagamenti: quello online delle funzioni avanzate se c'è, altrimenti solo l'elenco di ciò che c'è da pagare. */
-	/**
-	 * Il motore dei pagamenti online per chiudere quelli già avviati (webhook, ritorno dal gateway, controllo periodico), anche se la licenza è
-	 * scaduta: i soldi in arrivo vanno registrati comunque. Nuovi pagamenti no (vedi {@see Plugin::payments()}).
-	 */
-	public static function payments_engine(): PaymentService {
-		return self::$services['payments_engine'] ?? ( self::$services['payments_engine'] = new PaymentService() );
-	}
-
+	/** Servizio dei pagamenti: quello online di un'estensione (filtro `asem_payments_service`) se c'è, altrimenti solo l'elenco di ciò che c'è da pagare. */
 	public static function payments(): OfflinePayments {
-		return Edition::has( 'payments' ) ? self::payments_engine() : ( self::$services['offline_payments'] ?? ( self::$services['offline_payments'] = new OfflinePayments() ) );
+		$offline = self::$services['offline_payments'] ?? ( self::$services['offline_payments'] = new OfflinePayments() );
+		if ( ! Edition::has( 'payments' ) ) {
+			return $offline;
+		}
+		$svc = apply_filters( 'asem_payments_service', $offline );
+		return $svc instanceof OfflinePayments ? $svc : $offline;
 	}
 
 	public static function reports(): ReportService {

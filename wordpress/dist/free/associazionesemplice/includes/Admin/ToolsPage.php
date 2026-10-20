@@ -31,7 +31,7 @@ final class ToolsPage {
 			),
 			'Copie e collegamenti' => array(
 				array( 'asem-backup', 'Copia di sicurezza', 'Scarica una copia dei dati e ripristinala.', true, '' ),
-				array( 'asem-tech', 'Integrazioni', 'WP All Import, Elementor e Gutenberg (con le funzioni avanzate anche WooCommerce, Stripe, PayPal e Wallet).', true, '' ),
+				array( 'asem-tech', 'Integrazioni', 'WP All Import, Elementor e Gutenberg, più le integrazioni aggiunte da eventuali estensioni.', true, '' ),
 			),
 		);
 	}

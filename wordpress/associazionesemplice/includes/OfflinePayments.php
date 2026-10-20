@@ -5,8 +5,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Ciò che c'è da pagare, senza pagamenti online: l'elenco delle voci dovute dal socio e dai suoi ospiti (quota, mensilità dei corsi,
- * contributi degli eventi), con gli importi sempre decisi dal server. È la base di {@see PaymentService}, il servizio dei pagamenti
- * online delle funzioni avanzate; nell'edizione gratuita {@see Plugin::payments()} restituisce questa classe così com'è:
+ * contributi degli eventi), con gli importi sempre decisi dal server. Un'estensione può costruirci sopra il servizio dei
+ * pagamenti online; senza estensioni {@see Plugin::payments()} restituisce questa classe così com'è:
  * nessun gateway attivo, nessun pagamento in archivio.
  */
 class OfflinePayments {
@@ -84,10 +84,7 @@ class OfflinePayments {
 				$items[ $i['key'] ] = $i;
 			}
 		}
-		if ( Edition::has( 'resources' ) ) { // prenotazioni di campi, sale e posti da pagare online
-			$items = array_merge( $items, Resources::online_dues( $actor ) );
-		}
-		return $items;
+		return (array) apply_filters( 'asem_online_dues', $items, $actor ); // un'estensione aggiunge altre voci da pagare
 	}
 
 	// ---------- Archivio ----------

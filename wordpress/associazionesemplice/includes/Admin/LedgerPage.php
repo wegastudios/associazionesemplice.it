@@ -79,13 +79,7 @@ final class LedgerPage {
 			if ( ! Labels::is_transfer( $r['type'] ) ) {
 				self::attachments_cell( (int) $r['id'], $att[ (int) $r['id'] ] ?? array(), $here );
 			}
-			if ( 'income' === $r['type'] && \AssociazioneSemplice\Edition::has( 'receipts' ) ) {
-				$rkey = \AssociazioneSemplice\Receipts::key_of( $r );
-				echo '<a class="button button-small" target="_blank" href="' . esc_url( \AssociazioneSemplice\Receipts::url( $rkey ) ) . '">Ricevuta PDF</a> ';
-				Ui::form_open( 'asem_receipt_email', $here, false, 'asem-inline' );
-				echo Ui::hidden( 'key', $rkey ) . '<button class="button-link" data-confirm="Mandare la ricevuta per email a chi ha pagato?">invia per email</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
-				Ui::form_close();
-			}
+			do_action( 'asem_ledger_row_actions', $r, $here ); // le estensioni aggiungono azioni alla riga
 			echo '<details><summary>Annulla</summary>';
 			Ui::form_open( 'asem_void_tx', $here, false, 'asem-confirm' );
 			echo Ui::hidden( 'id', $r['id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
