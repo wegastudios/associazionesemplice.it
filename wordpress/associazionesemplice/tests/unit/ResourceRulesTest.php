@@ -100,6 +100,62 @@ final class ResourceRulesTest extends TestCase {
 		$this->assertSame( 12000, R::fee( array( 'mode' => 'assign', 'fee_cents' => 12000 ), 5, 0 ) );
 	}
 
+	private function rated(): array {
+		return array_merge( $this->court(), array( 'rates' => json_encode( R::parse_rates( "feriali 18:00-22:00 15,00\nweekend 08:00-22:00 20" ) ) ) );
+	}
+
+	public function test_rates_are_parsed_from_the_form_text(): void {
+		$this->assertSame(
+			array( array( 'days' => 'weekdays', 'from' => '18:00', 'to' => '22:00', 'fee_cents' => 1500 ), array( 'days' => 'weekend', 'from' => '08:00', 'to' => '22:00', 'fee_cents' => 2000 ), array( 'days' => 'all', 'from' => '08:00', 'to' => '09:00', 'fee_cents' => 550 ) ),
+			R::parse_rates( "feriali 18:00-22:00 15,00\n\nweekend 08:00 - 22:00 20\ntutti 08:00-09:00 5.5 €" )
+		);
+	}
+
+	public function test_rates_text_round_trips(): void {
+		$text = "feriali 18:00-22:00 15,00\nweekend 08:00-22:00 20,00";
+		$this->assertSame( $text, R::rates_text( R::parse_rates( $text ) ) );
+	}
+
+	public function test_malformed_rates_are_refused(): void {
+		foreach ( array( 'sempre 18:00-22:00 15', 'feriali 18:00 15', 'feriali 22:00-18:00 15', 'feriali 18:00-25:00 15', 'feriali 18:00-22:00 gratis' ) as $bad ) {
+			try {
+				R::parse_rates( $bad );
+				$this->fail( $bad );
+			} catch ( InvalidArgumentException $e ) {
+				$this->assertStringContainsString( 'riga 1', $e->getMessage() );
+			}
+		}
+	}
+
+	public function test_band_fee_follows_day_and_hour(): void {
+		$res = $this->rated();
+		$this->assertSame( 1500, R::band_fee( $res, '2026-10-20 18:00:00' ), 'martedì sera' );
+		$this->assertSame( 1000, R::band_fee( $res, '2026-10-20 10:00:00' ), 'martedì mattina: tariffa base' );
+		$this->assertSame( 1000, R::band_fee( $res, '2026-10-20 22:00:00' ), 'l\'ora di fine non è compresa' );
+		$this->assertSame( 2000, R::band_fee( $res, '2026-10-24 10:00:00' ), 'sabato' );
+		$this->assertSame( 2000, R::band_fee( $res, '2026-10-25 21:00:00' ), 'domenica' );
+	}
+
+	public function test_without_bands_the_base_fee_applies(): void {
+		$this->assertSame( 1000, R::band_fee( $this->court(), '2026-10-20 18:00:00' ) );
+		$this->assertSame( 1000, R::band_fee( array_merge( $this->court(), array( 'rates' => 'non è json' ) ), '2026-10-20 18:00:00' ) );
+	}
+
+	public function test_each_slot_of_a_booking_has_its_own_rate(): void {
+		$this->assertSame( 2500, R::slot_price( $this->rated(), '2026-10-20 17:00:00', 2 ), '17–18 base, 18–19 serale' );
+		$this->assertSame( 3000, R::slot_price( $this->rated(), '2026-10-20 18:00:00', 2 ) );
+	}
+
+	public function test_fee_uses_bands_when_the_start_is_given(): void {
+		$this->assertSame( 1500 + 200, R::fee( $this->rated(), 1, 1, '2026-10-20 18:00:00' ) );
+		$this->assertSame( 1000, R::fee( $this->rated(), 1, 0 ), 'senza inizio vale la tariffa base' );
+	}
+
+	public function test_series_has_one_date_per_week(): void {
+		$this->assertSame( array( '2026-10-20', '2026-10-27', '2026-11-03' ), R::series_dates( '2026-10-20', 3 ) );
+		$this->assertSame( array( '2026-10-20' ), R::series_dates( '2026-10-20', 0 ) );
+	}
+
 	public function test_day_slots_follow_opening_hours(): void {
 		$s = R::day_slots( array( 'open_time' => '08:00', 'close_time' => '10:30', 'slot_minutes' => 60 ) );
 		$this->assertSame( array( array( 'start' => '08:00', 'end' => '09:00' ), array( 'start' => '09:00', 'end' => '10:00' ) ), $s, 'la mezz\'ora finale non fa una fascia intera' );

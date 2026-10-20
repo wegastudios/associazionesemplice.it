@@ -66,6 +66,7 @@ final class Resources {
 			'min_slots'       => 1,
 			'max_slots'       => 1,
 			'advance_days'    => 0,
+			'rates'           => null,
 		);
 		if ( ResourceRules::SLOT === $mode ) {
 			$open  = self::clean_time( $in['open_time'] ?? '' );
@@ -84,6 +85,8 @@ final class Resources {
 			$d['min_slots']    = $min;
 			$d['max_slots']    = max( $min, (int) ( $in['max_slots'] ?? $min ) );
 			$d['advance_days'] = max( 0, min( 730, (int) ( $in['advance_days'] ?? 0 ) ) );
+			$bands             = ResourceRules::parse_rates( (string) ( $in['rates_text'] ?? '' ) );
+			$d['rates']        = $bands ? wp_json_encode( $bands ) : null;
 		}
 		return $d;
 	}
@@ -123,6 +126,7 @@ final class Resources {
 			return false;
 		}
 		self::db()->update( Db::t( 'resources' ), array( 'deleted_at' => Db::now() ), array( 'id' => $id ) );
+		self::db()->update( Db::t( 'activities' ), array( 'resource_id' => null ), array( 'resource_id' => $id ) ); // i corsi collegati non occupano più niente
 		Audit::log( 'resource.deleted', 'resource', $id, array( 'name' => $res['name'] ) );
 		return true;
 	}
@@ -177,9 +181,35 @@ final class Resources {
 		return self::decorate( $rows );
 	}
 
-	/** La griglia di un giorno: per ogni fascia, libera oppure la prenotazione che la occupa. */
+	/**
+	 * Quando i corsi e gli eventi collegati alla risorsa la occupano tra due date (incluse). Un'attività senza orario occupa tutto il giorno.
+	 *
+	 * @return array[] starts, ends (Y-m-d H:i:s), title, activity_id
+	 */
+	public static function activity_busy( int $resource_id, string $from, string $to ): array {
+		$ids = array_map( 'intval', self::db()->get_col( self::db()->prepare( 'SELECT id FROM ' . Db::t( 'activities' ) . ' WHERE resource_id = %d AND deleted_at IS NULL', $resource_id ) ) ?: array() );
+		$out = array();
+		if ( ! $ids ) {
+			return $out;
+		}
+		foreach ( Calendar::occurrences( $from, $to ) as $o ) {
+			if ( ! in_array( (int) $o['activity_id'], $ids, true ) ) {
+				continue;
+			}
+			$s = $o['start'] ?: '00:00';
+			$e = $o['end'] ?: '23:59';
+			if ( $e <= $s ) {
+				$e = '23:59';
+			}
+			$out[] = array( 'starts' => $o['date'] . ' ' . $s . ':00', 'ends' => $o['date'] . ' ' . $e . ':00', 'title' => (string) $o['title'], 'activity_id' => (int) $o['activity_id'] );
+		}
+		return $out;
+	}
+
+	/** La griglia di un giorno: per ogni fascia, libera oppure la prenotazione (o l'attività) che la occupa. */
 	public static function day_grid( array $res, string $date ): array {
 		$booked = self::between( (int) $res['id'], $date . ' 00:00:00', $date . ' 23:59:59' );
+		$busy   = self::activity_busy( (int) $res['id'], $date, $date );
 		$out    = array();
 		foreach ( ResourceRules::day_slots( $res ) as $s ) {
 			$a    = $date . ' ' . $s['start'] . ':00';
@@ -189,6 +219,14 @@ final class Resources {
 				if ( ResourceRules::overlaps( $a, $b, (string) $r['starts_at'], $r['ends_at'] ? (string) $r['ends_at'] : null ) ) {
 					$used = $r;
 					break;
+				}
+			}
+			if ( ! $used ) {
+				foreach ( $busy as $x ) {
+					if ( ResourceRules::overlaps( $a, $b, $x['starts'], $x['ends'] ) ) {
+						$used = array( 'id' => 0, 'kind' => 'activity', 'status' => 'booked', 'starts_at' => $x['starts'], 'ends_at' => $x['ends'], 'first_name' => $x['title'], 'last_name' => '', 'note' => $x['title'], 'guests' => array(), 'fee_due_cents' => 0, 'paid' => 0, 'remaining' => 0, 'state' => 'free', 'active' => true );
+						break;
+					}
 				}
 			}
 			$out[] = array_merge( $s, array( 'reservation' => $used ) );
@@ -211,48 +249,82 @@ final class Resources {
 		return $person;
 	}
 
-	/** Scrive la prenotazione sotto blocco: nessuna sovrapposizione possibile nemmeno con due richieste insieme. */
+	/** Una prenotazione sola, sotto blocco: vedi {@see insert_many}. */
 	private static function insert( array $res, string $kind, ?int $person_id, string $starts, ?string $ends, int $fee, array $guests, string $note ): int {
+		return self::insert_many( $res, $kind, $person_id, array( array( $starts, $ends, $fee ) ), $guests, $note )[0];
+	}
+
+	/**
+	 * Scrive una o più prenotazioni della stessa risorsa sotto blocco, tutte o nessuna: nessuna sovrapposizione possibile nemmeno con due
+	 * richieste insieme, né con un'altra prenotazione né con un corso o un evento collegato alla risorsa. Più prenotazioni = una serie
+	 * (la prima dà il numero alla serie).
+	 *
+	 * @param array[] $ranges [starts_at, ends_at|null, dovuto]
+	 * @return int[] numeri delle prenotazioni
+	 * @throws \InvalidArgumentException
+	 */
+	private static function insert_many( array $res, string $kind, ?int $person_id, array $ranges, array $guests, string $note ): array {
 		$rid = (int) $res['id'];
-		$id  = Db::with_lock(
+		return Db::with_lock(
 			'asem_res_' . $rid,
-			function () use ( $rid, $kind, $person_id, $starts, $ends, $fee, $guests, $note ) {
-				$tbl  = Db::t( 'reservations' );
-				$sql  = "SELECT id FROM $tbl WHERE resource_id = %d AND status = 'booked' AND (ends_at IS NULL OR ends_at > %s)";
-				$args = array( $rid, $starts );
-				if ( null !== $ends ) {
-					$sql   .= ' AND starts_at < %s';
-					$args[] = $ends;
+			function () use ( $res, $rid, $kind, $person_id, $ranges, $guests, $note ) {
+				$tbl   = Db::t( 'reservations' );
+				$until = null;
+				foreach ( $ranges as $r ) {
+					$until = null === $r[1] ? '9999-12-31' : max( (string) $until, substr( (string) $r[1], 0, 10 ) );
 				}
-				if ( self::db()->get_var( self::db()->prepare( $sql . ' LIMIT 1', $args ) ) ) {
-					throw new \InvalidArgumentException( 'La risorsa è già occupata in questo periodo.' );
+				$busy = ResourceRules::SLOT === $res['mode'] ? self::activity_busy( $rid, substr( (string) $ranges[0][0], 0, 10 ), (string) $until ) : array();
+				foreach ( $ranges as $r ) {
+					list( $starts, $ends ) = $r;
+					$when = ( new \DateTimeImmutable( $starts ) )->format( 'd/m/Y \a\l\l\e H:i' );
+					$sql  = "SELECT id FROM $tbl WHERE resource_id = %d AND status = 'booked' AND (ends_at IS NULL OR ends_at > %s)";
+					$args = array( $rid, $starts );
+					if ( null !== $ends ) {
+						$sql   .= ' AND starts_at < %s';
+						$args[] = $ends;
+					}
+					if ( self::db()->get_var( self::db()->prepare( $sql . ' LIMIT 1', $args ) ) ) {
+						throw new \InvalidArgumentException( 'La risorsa è già occupata il ' . $when . '.' );
+					}
+					foreach ( $busy as $x ) {
+						if ( ResourceRules::overlaps( $starts, $ends, $x['starts'], $x['ends'] ) ) {
+							throw new \InvalidArgumentException( 'Il ' . $when . ' la risorsa è occupata da «' . $x['title'] . '».' );
+						}
+					}
 				}
-				$ok = self::db()->insert(
-					$tbl,
-					array(
-						'resource_id'   => $rid,
-						'person_id'     => $person_id,
-						'kind'          => $kind,
-						'starts_at'     => $starts,
-						'ends_at'       => $ends,
-						'status'        => 'booked',
-						'fee_due_cents' => $fee,
-						'note'          => '' === $note ? null : mb_substr( $note, 0, 255 ),
-						'created_by'    => get_current_user_id() ?: null,
-						'created_at'    => Db::now(),
-					)
-				);
-				if ( ! $ok ) {
-					throw new \InvalidArgumentException( 'Prenotazione non riuscita: riprova.' );
+				$ids = array();
+				foreach ( $ranges as $r ) {
+					$ok = self::db()->insert(
+						$tbl,
+						array(
+							'resource_id'   => $rid,
+							'person_id'     => $person_id,
+							'kind'          => $kind,
+							'starts_at'     => $r[0],
+							'ends_at'       => $r[1],
+							'status'        => 'booked',
+							'fee_due_cents' => (int) $r[2],
+							'note'          => '' === $note ? null : mb_substr( $note, 0, 255 ),
+							'series_id'     => count( $ranges ) > 1 && $ids ? $ids[0] : null,
+							'created_by'    => get_current_user_id() ?: null,
+							'created_at'    => Db::now(),
+						)
+					);
+					if ( ! $ok ) {
+						throw new \InvalidArgumentException( 'Prenotazione non riuscita: riprova.' );
+					}
+					$id    = (int) self::db()->insert_id;
+					$ids[] = $id;
+					if ( count( $ranges ) > 1 && 1 === count( $ids ) ) {
+						self::db()->update( $tbl, array( 'series_id' => $id ), array( 'id' => $id ) );
+					}
+					foreach ( $guests as $g ) {
+						self::db()->insert( Db::t( 'reservation_guests' ), array( 'reservation_id' => $id, 'name' => $g ) );
+					}
 				}
-				$id = (int) self::db()->insert_id;
-				foreach ( $guests as $g ) {
-					self::db()->insert( Db::t( 'reservation_guests' ), array( 'reservation_id' => $id, 'name' => $g ) );
-				}
-				return $id;
+				return $ids;
 			}
 		);
-		return (int) $id;
 	}
 
 	/**
@@ -273,7 +345,7 @@ final class Resources {
 		$person = self::assert_member( $person_id );
 		list( $starts, $ends ) = ResourceRules::slot_range( $res, $date, $start, $slots, Db::now(), $by_staff );
 		$guests = ResourceRules::guests( (int) $res['guests_max'], $guest_names );
-		$fee    = ResourceRules::fee( $res, $slots, count( $guests ) );
+		$fee    = ResourceRules::fee( $res, $slots, count( $guests ), $starts );
 		$max    = (int) $res['max_per_person'];
 		if ( ! $by_staff && $max > 0 ) {
 			$mine = (int) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'reservations' ) . " WHERE resource_id = %d AND person_id = %d AND status = 'booked' AND kind = 'slot' AND starts_at >= %s", $resource_id, $person_id, Db::now() ) );
@@ -310,6 +382,7 @@ final class Resources {
 		}
 		$ends = null !== $to ? gmdate( 'Y-m-d', strtotime( $to . ' +1 day' ) ) . ' 00:00:00' : null; // l'ultimo giorno è compreso
 		$id   = self::insert( $res, ResourceRules::KIND_ASSIGN, $person_id, $from . ' 00:00:00', $ends, ResourceRules::fee( $res, 1, 0 ), array(), $note );
+		self::db()->update( Db::t( 'resource_waitlist' ), array( 'status' => 'done', 'resolved_at' => Db::now() ), array( 'resource_id' => $resource_id, 'person_id' => $person_id, 'status' => 'waiting' ) ); // chi era in coda ora ha la risorsa
 		Audit::log( 'reservation.assigned', 'resource', $resource_id, array( 'reservation' => $id, 'person_id' => (int) $person['id'], 'from' => $from, 'to' => $to ) );
 		return $id;
 	}
@@ -387,6 +460,160 @@ final class Resources {
 		}
 		self::db()->update( Db::t( 'reservations' ), array( 'status' => 'cancelled', 'cancelled_at' => Db::now() ), array( 'id' => $reservation_id ) );
 		Audit::log( 'reservation.cancelled', 'resource', (int) $r['resource_id'], array( 'reservation' => $reservation_id, 'kind' => $r['kind'] ) );
+		if ( ResourceRules::KIND_ASSIGN === $r['kind'] ) {
+			self::notify_waitlist( (int) $r['resource_id'] ); // si è liberato un posto: avviso il primo della lista d'attesa
+		}
+	}
+
+	// ---------- Ripetizioni ----------
+
+	/**
+	 * Prenota la stessa fascia per più settimane di seguito («ogni martedì alle 21»), per un socio. Solo la segreteria; tutte o nessuna:
+	 * se una settimana è occupata non si prenota niente e si dice quale.
+	 *
+	 * @param string[] $guest_names ospiti, uguali a ogni data
+	 * @return int[] numeri delle prenotazioni create
+	 * @throws \InvalidArgumentException
+	 */
+	public static function book_series( int $resource_id, int $person_id, string $first_date, string $start, int $slots, int $weeks, array $guest_names = array(), string $note = '' ): array {
+		$res = self::get( $resource_id );
+		if ( ! $res ) {
+			throw new \InvalidArgumentException( 'Risorsa non trovata.' );
+		}
+		if ( ResourceRules::SLOT !== $res['mode'] ) {
+			throw new \InvalidArgumentException( 'Questa risorsa non si prenota a fasce: viene assegnata dalla segreteria.' );
+		}
+		$weeks = max( 1, min( 52, $weeks ) );
+		$person = self::assert_member( $person_id );
+		$guests = ResourceRules::guests( (int) $res['guests_max'], $guest_names );
+		$ranges = array();
+		foreach ( ResourceRules::series_dates( $first_date, $weeks ) as $day ) {
+			list( $starts, $ends ) = ResourceRules::slot_range( $res, $day, $start, $slots, Db::now(), true );
+			$ranges[]              = array( $starts, $ends, ResourceRules::fee( $res, $slots, count( $guests ), $starts ) );
+		}
+		$ids = self::insert_many( $res, ResourceRules::KIND_SLOT, $person_id, $ranges, $guests, $note );
+		Audit::log( 'reservation.series', 'resource', $resource_id, array( 'series' => $ids[0], 'person_id' => (int) $person['id'], 'count' => count( $ids ), 'first' => $ranges[0][0] ) );
+		return $ids;
+	}
+
+	/** Annulla questa prenotazione e le successive della stessa serie (la segreteria). @return int prenotazioni annullate */
+	public static function cancel_series( int $reservation_id ): int {
+		$r = self::reservation( $reservation_id );
+		if ( ! $r || 'booked' !== $r['status'] ) {
+			throw new \InvalidArgumentException( 'Prenotazione non trovata.' );
+		}
+		if ( empty( $r['series_id'] ) ) {
+			self::cancel( $reservation_id, true );
+			return 1;
+		}
+		$tbl = Db::t( 'reservations' );
+		$n   = (int) self::db()->query( self::db()->prepare( "UPDATE $tbl SET status = 'cancelled', cancelled_at = %s WHERE series_id = %d AND status = 'booked' AND starts_at >= %s", Db::now(), (int) $r['series_id'], $r['starts_at'] ) );
+		Audit::log( 'reservation.series_cancelled', 'resource', (int) $r['resource_id'], array( 'series' => (int) $r['series_id'], 'from' => $r['starts_at'], 'count' => $n ) );
+		return $n;
+	}
+
+	// ---------- Corsi ed eventi che occupano la risorsa ----------
+
+	/** La risorsa a cui è collegata un'attività (null = nessuna). */
+	public static function activity_resource( int $activity_id ): ?int {
+		$v = self::db()->get_var( self::db()->prepare( 'SELECT resource_id FROM ' . Db::t( 'activities' ) . ' WHERE id = %d', $activity_id ) );
+		return $v ? (int) $v : null;
+	}
+
+	/**
+	 * Collega un corso o un evento a una risorsa a fasce (o lo scollega con null): le sue date la occupano e nessuno la prenota negli stessi orari.
+	 *
+	 * @return int prenotazioni dei soci già presenti negli orari dell'attività nei prossimi 120 giorni (da annullare o spostare)
+	 * @throws \InvalidArgumentException
+	 */
+	public static function link_activity( int $activity_id, ?int $resource_id ): int {
+		if ( null !== $resource_id ) {
+			$res = self::get( $resource_id );
+			if ( ! $res || ResourceRules::SLOT !== $res['mode'] ) {
+				throw new \InvalidArgumentException( 'Un corso o un evento può occupare solo una risorsa a fasce orarie.' );
+			}
+		}
+		self::db()->update( Db::t( 'activities' ), array( 'resource_id' => $resource_id ), array( 'id' => $activity_id ) );
+		Audit::log( 'activity.resource', 'activity', $activity_id, array( 'resource' => $resource_id ) );
+		return null === $resource_id ? 0 : self::activity_conflicts( $activity_id, $resource_id );
+	}
+
+	/** Quante prenotazioni dei soci cadono negli orari dell'attività sulla risorsa, nei prossimi 120 giorni. */
+	public static function activity_conflicts( int $activity_id, int $resource_id ): int {
+		$today = Db::today();
+		$n     = 0;
+		foreach ( Calendar::occurrences( $today, gmdate( 'Y-m-d', strtotime( $today . ' +120 days' ) ) ) as $o ) {
+			if ( (int) $o['activity_id'] !== $activity_id ) {
+				continue;
+			}
+			$s  = $o['start'] ?: '00:00';
+			$e  = $o['end'] ?: '23:59';
+			$n += count( self::between( $resource_id, $o['date'] . ' ' . $s . ':00', $o['date'] . ' ' . ( $e > $s ? $e : '23:59' ) . ':00' ) );
+		}
+		return $n;
+	}
+
+	// ---------- Lista d'attesa delle assegnazioni ----------
+
+	/** Mette un socio in coda per una risorsa assegnata a periodo (posto auto, armadietto, posto barca). @throws \InvalidArgumentException */
+	public static function waitlist_join( int $resource_id, int $person_id ): void {
+		$res = self::get( $resource_id );
+		if ( ! $res || ! (int) $res['active'] || ResourceRules::ASSIGN !== $res['mode'] ) {
+			throw new \InvalidArgumentException( 'La lista d\'attesa c\'è solo per le risorse assegnate a periodo.' );
+		}
+		self::assert_member( $person_id );
+		foreach ( self::for_person( $person_id ) as $r ) {
+			if ( (int) $r['resource_id'] === $resource_id && ResourceRules::KIND_ASSIGN === $r['kind'] ) {
+				throw new \InvalidArgumentException( 'Hai già questa risorsa.' );
+			}
+		}
+		if ( null !== self::waitlist_position( $resource_id, $person_id ) ) {
+			throw new \InvalidArgumentException( 'Sei già in lista d\'attesa.' );
+		}
+		self::db()->insert( Db::t( 'resource_waitlist' ), array( 'resource_id' => $resource_id, 'person_id' => $person_id, 'status' => 'waiting', 'created_at' => Db::now() ) );
+		Audit::log( 'resource.waitlist_joined', 'resource', $resource_id, array( 'person_id' => $person_id ) );
+	}
+
+	public static function waitlist_leave( int $resource_id, int $person_id ): void {
+		self::db()->update( Db::t( 'resource_waitlist' ), array( 'status' => 'left', 'resolved_at' => Db::now() ), array( 'resource_id' => $resource_id, 'person_id' => $person_id, 'status' => 'waiting' ) );
+		Audit::log( 'resource.waitlist_left', 'resource', $resource_id, array( 'person_id' => $person_id ) );
+	}
+
+	/** Chi aspetta una risorsa, nell'ordine di arrivo. */
+	public static function waitlist( int $resource_id ): array {
+		return self::db()->get_results(
+			self::db()->prepare(
+				'SELECT w.*, p.first_name, p.last_name, p.email FROM ' . Db::t( 'resource_waitlist' ) . ' w JOIN ' . Db::t( 'people' ) . " p ON p.id = w.person_id WHERE w.resource_id = %d AND w.status = 'waiting' ORDER BY w.id",
+				$resource_id
+			),
+			ARRAY_A
+		) ?: array();
+	}
+
+	/** Posizione in coda (1 = il primo), oppure null se non è in lista. */
+	public static function waitlist_position( int $resource_id, int $person_id ): ?int {
+		foreach ( self::waitlist( $resource_id ) as $i => $w ) {
+			if ( (int) $w['person_id'] === $person_id ) {
+				return $i + 1;
+			}
+		}
+		return null;
+	}
+
+	/** Avvisa per email il primo della lista d'attesa che la risorsa si è liberata; l'assegnazione resta alla segreteria. */
+	private static function notify_waitlist( int $resource_id ): void {
+		$res   = self::get( $resource_id );
+		$queue = self::waitlist( $resource_id );
+		if ( ! $res || ! $queue || ! is_email( (string) $queue[0]['email'] ) ) {
+			return;
+		}
+		Texts::mail(
+			$queue[0]['email'],
+			'Si è liberato: ' . $res['name'],
+			'Ciao ' . $queue[0]['first_name'] . ",\n\nsei il primo in lista d'attesa per «" . $res['name'] . '» e la risorsa si è liberata.'
+			. "\n\nLa segreteria ti contatterà per l'assegnazione."
+		);
+		Audit::log( 'resource.waitlist_notified', 'resource', $resource_id, array( 'person_id' => (int) $queue[0]['person_id'] ) );
 	}
 
 	/** Prenotazioni e assegnazioni di un socio: quelle in corso o future per prime. */

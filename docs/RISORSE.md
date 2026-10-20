@@ -35,6 +35,7 @@ Un corso o un evento **conta posti** (quante persone ci stanno). Una risorsa è 
 | `advance_days` | solo `slot`: quanti giorni prima si può prenotare (0 = senza limite) |
 | `max_per_person` | prenotazioni future attive per socio (0 = senza limite) |
 | `fee_cents` | `slot`: per fascia; `assign`: per periodo |
+| `rates` | solo `slot`: tariffe a fasce (JSON), una per riga nel modulo: «feriali 18:00-22:00 15,00» (giorni: tutti, feriali lun–ven, weekend sab–dom). Vale la prima riga che corrisponde all'ora di inizio di ogni fascia, altrimenti la tariffa base |
 | `guests_max` | ospiti ammessi per prenotazione (0 = nessuno) |
 | `guest_fee_cents` | supplemento per ospite (0 = nessuno) |
 | `cancel_policy`, `cancellable` | stessa logica di `CancelPolicy` |
@@ -49,8 +50,8 @@ Un corso o un evento **conta posti** (quante persone ci stanno). Una risorsa è 
 | `starts_at`, `ends_at` | data e ora; `ends_at` vuoto = assegnazione senza scadenza |
 | `status` | `booked`, `cancelled` |
 | `fee_due_cents` | dovuto alla prenotazione (fascia + ospiti) |
-| `note`, `series_id` | `series_id` per le ripetizioni (Fase 2) |
-| `session_id` | prenotazione generata da una sessione di corso/evento (Fase 2) |
+| `note`, `series_id` | `series_id` = numero della prima prenotazione di una ripetizione settimanale (Fase 2) |
+| `session_id` | non usato: i corsi e gli eventi non creano prenotazioni, occupano la risorsa a calendario (vedi sotto) |
 | `created_by`, `created_at`, `cancelled_at` | |
 
 ### `asem_reservation_guests`
@@ -91,9 +92,15 @@ Un corso o un evento **conta posti** (quante persone ci stanno). Una risorsa è 
 
 ## Fasi
 
-**Fase 1 (questo rilascio)**: tabelle, servizio con conflitti e ospiti, pagina admin (elenco, scheda, calendario, prenotazione, blocchi, assegnazioni), prenotazione e annullamento dal sito, dovuto e incasso in segreteria, test.
+**Fase 1 (fatta)**: tabelle, servizio con conflitti e ospiti, pagina admin (elenco, scheda, calendario, prenotazione, blocchi, assegnazioni), prenotazione e annullamento dal sito, dovuto e incasso in segreteria, test.
 
-**Fase 2**: ripetizioni («ogni martedì alle 21»), collegamento con corsi ed eventi (la sessione occupa la risorsa), lista d'attesa per le assegnazioni, tariffe a fasce (diurno/serale, feriale/festivo), pagamento online del socio (`PaymentItems`), tolleranza di pagamento (`Holds`), promemoria, categoria contabile per risorsa.
+**Fase 2a (fatta)**:
+- **Ripetizioni**: la segreteria prenota la stessa fascia per più settimane («ogni martedì alle 21», fino a 52), tutte o nessuna; si annullano una prenotazione e le successive della serie. I soci non ripetono da soli (il limite di prenotazioni per socio lo impedirebbe).
+- **Tariffe a fasce**: feriale/weekend e diurno/serale, per risorsa (campo `rates`). Non ci sono i festivi di calendario: contano solo sabato e domenica.
+- **Corsi ed eventi**: un corso o un evento si collega a una risorsa a fasce dal suo modulo (campo `activities.resource_id`). Non crea prenotazioni: la risorsa risulta occupata nelle sue date dal calendario (`Calendar::occurrences`), quindi non c'è niente da sincronizzare se l'attività cambia. Un'attività senza orario occupa tutto il giorno. Collegando si avvisa se ci sono già prenotazioni negli stessi orari (prossimi 120 giorni).
+- **Lista d'attesa delle assegnazioni** (`asem_resource_waitlist`): il socio si mette in coda se il posto è occupato; quando la segreteria rilascia, il primo riceve un'email e l'assegnazione resta alla segreteria; assegnando, chi era in coda esce dalla lista.
+
+**Fase 2b (da fare)**: pagamento online del socio (`PaymentItems` riconosce oggi solo le prenotazioni degli eventi), tolleranza di pagamento (`Holds`), promemoria prima della prenotazione, categoria contabile per risorsa.
 
 **Fase 3**: ingresso con QR, carnet di ore, report di occupazione, assegnazioni richieste dal socio con approvazione.
 

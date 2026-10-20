@@ -701,7 +701,7 @@ final class Actions {
 		$id = (int) ( $p['id'] ?? 0 );
 		if ( $id ) {
 			Plugin::activities()->update( $id, $data );
-			return array( Ui::url( 'asem-activity', array( 'id' => $id ) ), 'Attività salvata.' );
+			return array( Ui::url( 'asem-activity', array( 'id' => $id ) ), 'Attività salvata.' . self::link_resource( $id, $p ) );
 		}
 		$when = self::when_rows( $p );
 		if ( 'event' === $data['kind'] ) {
@@ -720,9 +720,18 @@ final class Actions {
 		if ( 'recurring' === $data['kind'] && $when ) {
 			$cap = isset( $p['capacity'] ) && '' !== trim( (string) $p['capacity'] ) ? (int) $p['capacity'] : null;
 			$n   = Plugin::activities()->add_dates( $id, $when, self::opt( $p, 'location' ), $cap );
-			return array( Ui::url( 'asem-activity', array( 'id' => $id ) ), 'Attività creata con ' . $n . ( 1 === $n ? ' data.' : ' date.' ) );
+			return array( Ui::url( 'asem-activity', array( 'id' => $id ) ), 'Attività creata con ' . $n . ( 1 === $n ? ' data.' : ' date.' ) . self::link_resource( $id, $p ) );
 		}
-		return array( Ui::url( 'asem-activity', array( 'id' => $id ) ), 'Attività creata.' );
+		return array( Ui::url( 'asem-activity', array( 'id' => $id ) ), 'Attività creata.' . self::link_resource( $id, $p ) );
+	}
+
+	/** Se il modulo dell'attività indica una risorsa la collega (o la scollega); restituisce l'avviso sulle prenotazioni già presenti, se ce ne sono. */
+	private static function link_resource( int $activity_id, array $p ): string {
+		if ( ! \AssociazioneSemplice\Edition::has( 'resources' ) || ! array_key_exists( 'resource_id', $p ) ) {
+			return '';
+		}
+		$n = \AssociazioneSemplice\Resources::link_activity( $activity_id, ! empty( $p['resource_id'] ) ? (int) $p['resource_id'] : null );
+		return $n > 0 ? ' Attenzione: sulla risorsa ci sono già ' . $n . ( 1 === $n ? ' prenotazione' : ' prenotazioni' ) . ' negli orari di questa attività (prossimi 120 giorni): vanno annullate o spostate.' : '';
 	}
 
 	private static function add_session( array $p ): array {

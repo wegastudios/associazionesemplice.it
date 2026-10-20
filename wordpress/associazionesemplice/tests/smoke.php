@@ -5550,6 +5550,46 @@ asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\ResourcesFront::sectio
 asem_ok( \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m2, $rs_day, '18:00', 1, array(), true ) > 0, 'risorse: annullata la prenotazione, la fascia torna libera' );
 asem_ok( false === \AssociazioneSemplice\Resources::delete( $rs_court ) && 0 === (int) \AssociazioneSemplice\Resources::get( $rs_court )['active'], 'risorse: con prenotazioni future la risorsa si disattiva e non si elimina' );
 
+// ---------- Risorse prenotabili: tariffe a fasce, ripetizioni, attività, lista d'attesa ----------
+$RS = '\AssociazioneSemplice\Resources';
+$rs_c2  = $RS::save( 0, array( 'name' => 'Campo 2', 'category' => 'court', 'mode' => 'slot', 'open_time' => '08:00', 'close_time' => '22:00', 'slot_minutes' => 60, 'min_slots' => 1, 'max_slots' => 2, 'fee_cents' => 1000, 'rates_text' => "feriali 18:00-22:00 15,00\nweekend 08:00-22:00 20,00" ) );
+$rs_tue = gmdate( 'Y-m-d', strtotime( 'next tuesday', strtotime( $today . ' +7 days' ) ) );
+$rs_sat = gmdate( 'Y-m-d', strtotime( 'next saturday', strtotime( $today . ' +7 days' ) ) );
+$rs_p1  = $RS::book_slot( $rs_c2, $rs_m1, $rs_tue, '18:00', 1, array(), true );
+$rs_p2  = $RS::book_slot( $rs_c2, $rs_m1, $rs_tue, '17:00', 1, array(), true );
+$rs_p3  = $RS::book_slot( $rs_c2, $rs_m1, $rs_sat, '10:00', 1, array(), true );
+asem_ok( 1500 === (int) $RS::reservation( $rs_p1 )['fee_due_cents'] && 1000 === (int) $RS::reservation( $rs_p2 )['fee_due_cents'] && 2000 === (int) $RS::reservation( $rs_p3 )['fee_due_cents'], 'risorse: le tariffe a fasce (feriale serale, base, weekend) si applicano al dovuto' );
+asem_ok( null !== asem_throws( function () use ( $RS ) { $RS::save( 0, array( 'name' => 'Campo X', 'mode' => 'slot', 'open_time' => '08:00', 'close_time' => '22:00', 'rates_text' => 'quando capita 18:00-22:00 15' ) ); } ), 'risorse: una tariffa a fasce scritta male è rifiutata' );
+// ripetizioni: tutte o nessuna
+$rs_series = $RS::book_series( $rs_c2, $rs_m2, $rs_tue, '20:00', 1, 3 );
+$rs_same   = array_unique( array_map( function ( $i ) use ( $RS ) { return (int) $RS::reservation( $i )['series_id']; }, $rs_series ) );
+asem_ok( 3 === count( $rs_series ) && array( $rs_series[0] ) === array_values( $rs_same ), 'risorse: la ripetizione crea una prenotazione a settimana nella stessa serie' );
+$rs_count0 = count( $RS::upcoming( $rs_c2, 500 ) );
+asem_ok( null !== asem_throws( function () use ( $RS, $rs_c2, $rs_m2, $rs_tue ) { $RS::book_series( $rs_c2, $rs_m2, $rs_tue, '20:00', 1, 3 ); } ) && $rs_count0 === count( $RS::upcoming( $rs_c2, 500 ) ), 'risorse: una ripetizione in conflitto non crea niente' );
+$RS::book_slot( $rs_c2, $rs_m1, gmdate( 'Y-m-d', strtotime( $rs_tue . ' +7 days' ) ), '21:00', 1, array(), true );
+asem_ok( null !== asem_throws( function () use ( $RS, $rs_c2, $rs_m2, $rs_tue ) { $RS::book_series( $rs_c2, $rs_m2, $rs_tue, '21:00', 1, 3 ); } ) && $RS::book_slot( $rs_c2, $rs_m2, $rs_tue, '21:00', 1, array(), true ) > 0, 'risorse: se una settimana è occupata nessuna delle altre viene prenotata' );
+asem_ok( 2 === $RS::cancel_series( $rs_series[1] ) && 'booked' === $RS::reservation( $rs_series[0] )['status'] && 'cancelled' === $RS::reservation( $rs_series[2] )['status'], 'risorse: si annullano una prenotazione e le successive della serie' );
+// un evento collegato alla risorsa la occupa
+$rs_ev = $acts->create( array( 'name' => 'Torneo campo', 'social_year' => $sy_label, 'kind' => 'event', 'session' => array( 'session_date' => $ev_date, 'start_time' => '19:00', 'end_time' => '20:00', 'capacity' => 10 ) ) );
+asem_ok( 0 === $RS::link_activity( $rs_ev, $rs_c2 ) && $rs_c2 === $RS::activity_resource( $rs_ev ), 'risorse: un evento si collega a una risorsa a fasce' );
+$rs_msg = asem_throws( function () use ( $RS, $rs_c2, $rs_m2, $ev_date ) { $RS::book_slot( $rs_c2, $rs_m2, $ev_date, '19:00', 1, array(), true ); } );
+asem_ok( null !== $rs_msg && false !== strpos( $rs_msg, 'Torneo campo' ) && $RS::book_slot( $rs_c2, $rs_m2, $ev_date, '18:00', 1, array(), true ) > 0, 'risorse: negli orari dell\'evento la risorsa non si prenota, negli altri sì' );
+$rs_grid = array_filter( $RS::day_grid( $RS::get( $rs_c2 ), $ev_date ), function ( $s ) { return '19:00' === $s['start']; } );
+asem_ok( 'activity' === array_values( $rs_grid )[0]['reservation']['kind'], 'risorse: il calendario del giorno mostra la fascia occupata dall\'evento' );
+$RS::link_activity( $rs_ev, null );
+$rs_late = $RS::book_slot( $rs_c2, $rs_m2, $ev_date, '19:00', 1, array(), true );
+asem_ok( $RS::link_activity( $rs_ev, $rs_c2 ) >= 1 && null !== asem_throws( function () use ( $RS, $rs_ev, $rs_park ) { $RS::link_activity( $rs_ev, $rs_park ); } ), 'risorse: collegando un evento si segnalano le prenotazioni già presenti; le assegnazioni non si possono collegare' );
+asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Risorsa occupata', array( 'id' => $rs_ev ) );
+asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'Tariffe a fasce', array( 'id' => $rs_c2 ) );
+// lista d'attesa dei posti assegnati
+$RS::waitlist_join( $rs_park, $rs_m2 );
+asem_ok( 1 === $RS::waitlist_position( $rs_park, $rs_m2 ) && null !== asem_throws( function () use ( $RS, $rs_park, $rs_m2 ) { $RS::waitlist_join( $rs_park, $rs_m2 ); } ) && null !== asem_throws( function () use ( $RS, $rs_park, $rs_m1 ) { $RS::waitlist_join( $rs_park, $rs_m1 ); } ), 'risorse: si entra una volta sola in lista d\'attesa e non chi ha già il posto' );
+asem_ok( null !== asem_throws( function () use ( $RS, $rs_c2, $rs_m2 ) { $RS::waitlist_join( $rs_c2, $rs_m2 ); } ), 'risorse: la lista d\'attesa c\'è solo per le assegnazioni' );
+asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'Lista d\'attesa', array( 'id' => $rs_park ) );
+$RS::cancel( $rs_a1, true );
+$RS::assign( $rs_park, $rs_m2, $today, '' );
+asem_ok( null === $RS::waitlist_position( $rs_park, $rs_m2 ) && ! $RS::waitlist( $rs_park ), 'risorse: rilasciato il posto, chi era in coda lo riceve e esce dalla lista' );
+
 // ---------- Copia di sicurezza e ripristino (in fondo: tocca tutte le tabelle) ----------
 
 wp_set_current_user( 1 );

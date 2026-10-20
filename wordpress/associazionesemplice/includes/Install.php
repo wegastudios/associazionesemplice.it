@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '38';
+	const DB_VERSION        = '39';
 
 	public static function activate(): void {
 		Legacy::run(); // installazione con il vecchio nome (APSemplice): i dati passano al nuovo
@@ -350,6 +350,7 @@ final class Install {
   ends_on date DEFAULT NULL,
   fund_mode varchar(8) NOT NULL DEFAULT '',
   fund_value bigint(20) NOT NULL DEFAULT 0,
+  resource_id bigint(20) unsigned DEFAULT NULL,
   notes text,
   created_at datetime NOT NULL,
   deleted_at datetime DEFAULT NULL,
@@ -463,6 +464,7 @@ final class Install {
   parent_id bigint(20) unsigned DEFAULT NULL,
   description text,
   rules text,
+  rates text,
   open_time char(5) DEFAULT NULL,
   close_time char(5) DEFAULT NULL,
   slot_minutes smallint(5) unsigned NOT NULL DEFAULT 60,
@@ -498,6 +500,18 @@ final class Install {
   cancelled_at datetime DEFAULT NULL,
   PRIMARY KEY  (id),
   KEY resource_time (resource_id,starts_at),
+  KEY person_id (person_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}resource_waitlist (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  resource_id bigint(20) unsigned NOT NULL,
+  person_id bigint(20) unsigned NOT NULL,
+  status varchar(10) NOT NULL DEFAULT 'waiting',
+  created_at datetime NOT NULL,
+  resolved_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY resource_status (resource_id,status),
   KEY person_id (person_id)
 ) $c;";
 

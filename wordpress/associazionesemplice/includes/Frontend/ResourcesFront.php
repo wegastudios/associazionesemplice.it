@@ -20,6 +20,8 @@ final class ResourcesFront {
 	const ACTIONS = array(
 		'asem_front_res_book'   => 'do_book',
 		'asem_front_res_cancel' => 'do_cancel',
+		'asem_front_res_wait'   => 'do_wait',
+		'asem_front_res_unwait' => 'do_unwait',
 	);
 
 	public static function register(): void {
@@ -79,6 +81,18 @@ final class ResourcesFront {
 		$actor = self::actor();
 		Resources::cancel( (int) ( $post['id'] ?? 0 ), false, (int) $actor['id'] );
 		return 'Prenotazione annullata.';
+	}
+
+	public static function do_wait( array $post ): string {
+		$actor = self::actor();
+		Resources::waitlist_join( (int) ( $post['resource_id'] ?? 0 ), (int) $actor['id'] );
+		return 'Sei in lista d\'attesa: ti avvisiamo per email quando si libera.';
+	}
+
+	public static function do_unwait( array $post ): string {
+		$actor = self::actor();
+		Resources::waitlist_leave( (int) ( $post['resource_id'] ?? 0 ), (int) $actor['id'] );
+		return 'Sei uscito dalla lista d\'attesa.';
 	}
 
 	// ---------- Vista ----------
@@ -156,12 +170,33 @@ final class ResourcesFront {
 				$html .= '<p class="asemf-small asemf-muted">' . nl2br( esc_html( $r['rules'] ) ) . '</p>';
 			}
 			if ( ResourceRules::ASSIGN === $r['mode'] ) {
-				$html .= '<p class="asemf-muted">Questa risorsa viene assegnata dalla segreteria: scrivi per chiederla.</p></details>';
+				$html .= self::assign_info( $r, $pid ) . '</details>';
 				continue;
 			}
 			$html .= self::day( $r, $open ? $sel_day : $today, $today ) . '</details>';
 		}
 		return $html . '</section>';
+	}
+
+	/** Risorsa assegnata a periodo: la assegna la segreteria; se è occupata il socio può mettersi in coda. */
+	private static function assign_info( array $r, int $pid ): string {
+		$rid = (int) $r['id'];
+		$now = current_time( 'Y-m-d H:i:s' );
+		foreach ( Resources::for_person( $pid ) as $mine ) {
+			if ( (int) $mine['resource_id'] === $rid && ResourceRules::KIND_ASSIGN === $mine['kind'] ) {
+				return '<p class="asemf-muted">È tua: la trovi sopra, tra le tue assegnazioni.</p>';
+			}
+		}
+		$pos = Resources::waitlist_position( $rid, $pid );
+		if ( null !== $pos ) {
+			return '<p class="asemf-muted">Sei in lista d\'attesa (posizione ' . (int) $pos . ').</p>'
+				. self::form( 'asem_front_res_unwait', self::hidden( 'resource_id', $rid ), 'Esci dalla lista', 'asemf-inline', true );
+		}
+		if ( ! Resources::between( $rid, $now, gmdate( 'Y-m-d H:i:s', strtotime( $now . ' +1 second' ) ) ) ) {
+			return '<p class="asemf-muted">Al momento è libera: scrivi alla segreteria per averla.</p>';
+		}
+		return '<p class="asemf-muted">Al momento è occupata. Se si libera ti avvisiamo; l\'assegnazione la fa la segreteria.</p>'
+			. self::form( 'asem_front_res_wait', self::hidden( 'resource_id', $rid ), 'Mettiti in lista d\'attesa' );
 	}
 
 	private static function day( array $r, string $day, string $today ): string {
@@ -197,7 +232,8 @@ final class ResourcesFront {
 				for ( $g = 1; $g <= (int) $r['guests_max']; $g++ ) {
 					$fields .= '<input type="text" name="guest[]" maxlength="120" placeholder="Ospite ' . $g . ' (nome e cognome)"> ';
 				}
-				$html .= self::form( 'asem_front_res_book', $fields, 'Prenota' );
+				$price = ResourceRules::band_fee( $r, $day . ' ' . $s['start'] . ':00' );
+				$html .= ( $price > 0 && ! empty( $r['rates'] ) ? '<span class="asemf-small asemf-muted">' . esc_html( Money::format( $price ) ) . '</span> ' : '' ) . self::form( 'asem_front_res_book', $fields, 'Prenota' );
 			}
 			$html .= '</div></li>';
 		}
