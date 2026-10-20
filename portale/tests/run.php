@@ -954,5 +954,23 @@ foreach ( $pslCases as $in => $want ) {
 check( 'psl: ' . count( $pslCases ) . ' casi (suffissi ICANN e privati, wildcard, eccezioni, punycode)' . ( $pslBad ? ' — ' . implode( '; ', $pslBad ) : '' ), ! $pslBad );
 check( 'psl: due clienti dello stesso ospite (altervista.org) non condividono il dominio registrabile', Domain::registrable( 'a.altervista.org' ) !== Domain::registrable( 'b.altervista.org' ) );
 
+// --- Vault di Wega (copia di riserva cifrata) ---------------------------------------------------------
+$vh = array();
+$vb = '';
+Http::$transport = function ( $m, $url, $h, $body ) use ( &$vh, &$vb ) {
+	$vh = array( $m, $url, $h );
+	$vb = (string) $body;
+	return array( 201, json_encode( array( 'data' => array( 'id' => 'V1', 'name' => 'k.pem', 'size' => 12, 'sha256' => str_repeat( 'a', 64 ), 'stored_at' => '2026-10-20T10:00:00Z' ) ) ) );
+};
+$vr = ( new WegaClient( 'https://license.test/api/v1', 'tok' ) )->vaultStore( 'k.pem', "-----BEGIN ENCRYPTED PRIVATE KEY-----\nAAAA\n" );
+check( 'vault: richiesta multipart con file e nome, e risposta con l\'impronta', 'POST' === $vh[0] && 'https://license.test/api/v1/vault' === $vh[1] && false !== strpos( implode( '|', $vh[2] ), 'multipart/form-data; boundary=' ) && false !== strpos( $vb, 'name="file"; filename="k.pem"' ) && false !== strpos( $vb, 'ENCRYPTED PRIVATE KEY' ) && 'V1' === $vr['id'] && str_repeat( 'a', 64 ) === $vr['sha256'] );
+Http::$transport = function () { return array( 422, json_encode( array( 'error' => array( 'code' => 'VAULT_QUOTA_EXCEEDED', 'message' => 'pieno' ) ) ) ); };
+try {
+	( new WegaClient( 'https://license.test/api/v1', 'tok' ) )->vaultStore( 'k.pem', 'x' );
+	check( 'vault: errore di quota segnalato', false );
+} catch ( WegaException $e ) {
+	check( 'vault: errore di quota segnalato', 'VAULT_QUOTA_EXCEEDED' === $e->errorCode && 422 === $e->httpStatus );
+}
+
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );

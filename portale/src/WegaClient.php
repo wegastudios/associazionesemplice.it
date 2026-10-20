@@ -83,6 +83,29 @@ final class WegaClient {
 		return array( (array) ( $r['data'] ?? array() ), isset( $r['next_cursor'] ) && '' !== $r['next_cursor'] ? (string) $r['next_cursor'] : null );
 	}
 
+	/**
+	 * Custodia di un file già cifrato nel «vault» di Wega (scope vault:store; massimo 5 MB, 20 MB per portale; il contenuto non si scarica via API).
+	 * @return array dati del file custodito: id, name, size, sha256, stored_at
+	 */
+	public function vaultStore( string $name, string $content ): array {
+		$boundary = 'asem' . bin2hex( random_bytes( 12 ) );
+		$body     = "--$boundary\r\nContent-Disposition: form-data; name=\"name\"\r\n\r\n$name\r\n"
+			. "--$boundary\r\nContent-Disposition: form-data; name=\"file\"; filename=\"" . str_replace( array( '"', "\r", "\n" ), '', $name ) . "\"\r\nContent-Type: application/octet-stream\r\n\r\n$content\r\n--$boundary--\r\n";
+		$headers  = array( 'Authorization: Bearer ' . $this->token, 'Accept: application/json', 'Content-Type: multipart/form-data; boundary=' . $boundary );
+		list( $status, $raw ) = Http::send( 'POST', $this->base . '/vault', $headers, $body );
+		$data = json_decode( $raw, true );
+		if ( $status < 200 || $status >= 300 || ! is_array( $data ) ) {
+			$err = is_array( $data ) && isset( $data['error'] ) && is_array( $data['error'] ) ? $data['error'] : array();
+			throw new WegaException( (string) ( $err['message'] ?? 'Vault non raggiungibile.' ), (string) ( $err['code'] ?? ( 0 === $status ? 'NETWORK' : 'ERROR' ) ), $status );
+		}
+		return (array) ( $data['data'] ?? array() );
+	}
+
+	/** Metadati dei file custoditi (mai il contenuto). */
+	public function vaultList(): array {
+		return $this->request( 'GET', '/vault' );
+	}
+
 	/** Chiavi pubbliche di Wega (nessun token: sono pubbliche). @return array [codice HTTP, corpo] */
 	public function jwks(): array {
 		return Http::withRetry( 'GET', preg_replace( '#/api/v1/?$#', '', $this->base ) . '/.well-known/jwks.json', array( 'Accept: application/json' ), null, 2 );
