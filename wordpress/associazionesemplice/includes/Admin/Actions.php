@@ -86,6 +86,8 @@ final class Actions {
 			'asem_save_wallet_google' => 'save_wallet_google',
 			'asem_wallet_clear'       => 'wallet_clear',
 			'asem_save_activity'      => 'save_activity',
+			'asem_duplicate_activity' => 'duplicate_activity',
+			'asem_tec_import'         => 'tec_import',
 			'asem_enroll'             => 'enroll',
 			'asem_cancel_enrollment'  => 'cancel_enrollment',
 			'asem_add_session'        => 'add_session',
@@ -739,6 +741,32 @@ final class Actions {
 		}
 		$n = \AssociazioneSemplice\Resources::link_activity( $activity_id, ! empty( $p['resource_id'] ) ? (int) $p['resource_id'] : null );
 		return $n > 0 ? ' Attenzione: sulla risorsa ci sono già ' . $n . ( 1 === $n ? ' prenotazione' : ' prenotazioni' ) . ' negli orari di questa attività (prossimi 120 giorni): vanno annullate o spostate.' : '';
+	}
+
+	/** Riproporre un evento o un corso già fatto in una nuova data o in un nuovo anno sociale. */
+	private static function duplicate_activity( array $p ): array {
+		$new = \AssociazioneSemplice\ActivityCopy::duplicate(
+			(int) ( $p['id'] ?? 0 ),
+			array(
+				'name'        => $p['name'] ?? '',
+				'date'        => $p['date'] ?? '',
+				'start_time'  => '' !== trim( (string) ( $p['start_time'] ?? '' ) ) ? trim( (string) $p['start_time'] ) : null,
+				'end_time'    => '' !== trim( (string) ( $p['end_time'] ?? '' ) ) ? trim( (string) $p['end_time'] ) : null,
+				'location'    => '' !== trim( (string) ( $p['location'] ?? '' ) ) ? trim( (string) $p['location'] ) : null,
+				'capacity'    => '' !== trim( (string) ( $p['capacity'] ?? '' ) ) ? (int) $p['capacity'] : null,
+				'social_year' => $p['social_year'] ?? '',
+				'starts_on'   => $p['starts_on'] ?? '',
+				'ends_on'     => $p['ends_on'] ?? '',
+			)
+		);
+		return array( Ui::url( 'asem-activity', array( 'id' => $new ) ), 'Attività riproposta: controlla date e dati e correggi quello che serve.' );
+	}
+
+	/** Importa gli eventi di The Events Calendar. */
+	private static function tec_import( array $p ): array {
+		$r   = \AssociazioneSemplice\TribeImport::run();
+		$msg = $r['imported'] . ( 1 === $r['imported'] ? ' evento importato' : ' eventi importati' ) . ( $r['skipped'] ? ', ' . $r['skipped'] . ' già presenti' : '' ) . ( $r['failed'] ? ', ' . $r['failed'] . ' non importati (' . implode( ' ', $r['errors'] ) . ')' : '' ) . '.';
+		return array( Ui::url( 'asem-tec' ), $msg );
 	}
 
 	private static function add_session( array $p ): array {

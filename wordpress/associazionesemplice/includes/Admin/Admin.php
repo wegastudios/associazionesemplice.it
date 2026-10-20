@@ -41,7 +41,7 @@ final class Admin {
 		'asem-activities' => array( 'Corsi ed eventi', array( 'asem-activities' => 'Elenco' ) ),
 		'asem-resources'  => array( 'Risorse', array( 'asem-resources' => 'Risorse' ) ),
 		'asem-credits'    => array( 'Crediti', array( 'asem-credits' => 'Crediti' ) ),
-		'asem-tools'      => array( 'Strumenti', array( 'asem-tools' => 'Panoramica', 'asem-import' => 'Importa da Excel/CSV', 'asem-wpai' => 'WP All Import', 'asem-exports' => 'Esporta', 'asem-calendar' => 'Calendari', 'asem-backup' => 'Copia di sicurezza', 'asem-tech' => 'Integrazioni' ) ),
+		'asem-tools'      => array( 'Strumenti', array( 'asem-tools' => 'Panoramica', 'asem-import' => 'Importa da Excel/CSV', 'asem-tec' => 'Da The Events Calendar', 'asem-wpai' => 'WP All Import', 'asem-exports' => 'Esporta', 'asem-calendar' => 'Calendari', 'asem-backup' => 'Copia di sicurezza', 'asem-tech' => 'Integrazioni' ) ),
 		'asem-money'      => array( 'Cassa', array( 'asem-money' => 'Cassa', 'asem-ledger' => 'Prima nota', 'asem-income' => 'Nuovo incasso', 'asem-group' => 'Cassa per più persone', 'asem-expense' => 'Nuova spesa', 'asem-transfer' => 'Giroconto', 'asem-accounts' => 'Conti e fondi' ) ),
 		'asem-accounting' => array( 'Contabilità', array( 'asem-accounting' => 'Anno solare', 'asem-years' => 'Anni solari', 'asem-reports' => 'Report', 'asem-statement' => 'Rendiconto', 'asem-fivepm' => 'Adempimenti (5x1000)' ) ),
 		'asem-book'       => array( 'Registri', array( 'asem-book' => 'Libro soci', 'asem-minutes' => 'Verbali', 'asem-volunteers' => 'Assicurazioni', 'asem-attendance' => 'Presenze' ) ),
@@ -122,6 +122,7 @@ final class Admin {
 			array( 'asem-activity', 'Scheda attività', array( ActivitiesPage::class, 'render_detail' ) ),
 			array( 'asem-resource', 'Scheda risorsa', array( ResourcesPage::class, 'render_detail' ) ),
 			array( 'asem-import', 'Importa soci', array( ImportPage::class, 'render' ) ),
+			array( 'asem-tec', 'Importa da The Events Calendar', array( TribeImportPage::class, 'render' ) ),
 			array( 'asem-wpai', 'Import con WP All Import', array( WpAiPage::class, 'render' ) ),
 		);
 		$visible = array(
