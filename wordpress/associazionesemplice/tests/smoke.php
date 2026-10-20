@@ -5053,7 +5053,7 @@ asem_render( array( Admin\RegistersPage::class, 'render_minutes' ), 'Stampa il P
 asem_render( array( Admin\RegistersPage::class, 'render_minutes' ), 'Crea il verbale', array( 'new' => '1' ) );
 // volontari e assicurazione
 asem_ok( ! ProSettings::insurance_volunteers() && ! ProSettings::insurance_association(), 'assicurazioni: spente di default' );
-asem_render( array( Admin\RegistersPage::class, 'render_volunteers' ), 'Le assicurazioni sono spente' );
+asem_render( array( Admin\ProRegisters::class, 'render_volunteers' ), 'Le assicurazioni sono spente' );
 Settings::update( array( 'insurance_volunteers' => 1, 'insurance_association' => 1 ) );
 $in_day = function ( int $d ) use ( $today ) {
 	return gmdate( 'Y-m-d', strtotime( $today . ' ' . ( $d >= 0 ? '+' : '' ) . $d . ' days' ) );
@@ -5079,7 +5079,7 @@ asem_ok( null !== asem_throws( function () use ( $vol, $in_day ) { \Associazione
 asem_ok( 2 === count( \AssociazioneSemplice\Insurance::for_person( $vol ) ), 'assicurazione: si elimina una polizza' );
 $vl_doc = \AssociazioneSemplice\DocsPro::volunteers();
 asem_ok( false !== strpos( $vl_doc['body'], 'REGISTRO DEI VOLONTARI' ) && false !== strpos( \AssociazioneSemplice\DocsPro::volunteers( 'csv' )['body'], 'Assicurazioni Prova' ), 'assicurazione: PDF e CSV del registro' );
-asem_render( array( Admin\RegistersPage::class, 'render_volunteers' ), 'Registra una polizza' );
+asem_render( array( Admin\ProRegisters::class, 'render_volunteers' ), 'Registra una polizza' );
 // polizze dell'associazione
 asem_ok( 'none' === \AssociazioneSemplice\AssocPolicies::rc_status(), 'polizze associazione: senza responsabilità civile risulta scoperta' );
 asem_render( array( Admin\DashboardPage::class, 'render' ), 'polizza di responsabilità civile' );
@@ -5094,7 +5094,7 @@ asem_ok( 'valid' === \AssociazioneSemplice\AssocPolicies::rc_status() && 'RC-3' 
 asem_ok( null !== asem_throws( function () use ( $in_day ) { \AssociazioneSemplice\AssocPolicies::add( 'strana', 'X', '', $in_day( 1 ), $in_day( 5 ) ); } ) && null !== asem_throws( function () use ( $in_day ) { \AssociazioneSemplice\AssocPolicies::add( 'rc', '', '', $in_day( 1 ), $in_day( 5 ) ); } ) && null !== asem_throws( function () use ( $in_day ) { \AssociazioneSemplice\AssocPolicies::add( 'rc', 'X', '', $in_day( 9 ), $in_day( 5 ) ); } ) && null !== asem_throws( function () use ( $in_day ) { \AssociazioneSemplice\AssocPolicies::add( 'rc', 'X', '', $in_day( 1 ), $in_day( 5 ), 'tanto' ); } ), 'polizze associazione: tipo, compagnia, date e premio validi' );
 \AssociazioneSemplice\AssocPolicies::delete( $pl_old );
 asem_ok( 3 === count( \AssociazioneSemplice\AssocPolicies::all() ), 'polizze associazione: si elimina una polizza' );
-asem_render( array( Admin\RegistersPage::class, 'render_volunteers' ), 'Polizze dell\'associazione' );
+asem_render( array( Admin\ProRegisters::class, 'render_volunteers' ), 'Polizze dell\'associazione' );
 asem_ok( 'Assicurazioni' === ( Admin\Admin::groups()['asem-book'][1]['asem-volunteers'] ?? '' ), 'assicurazioni: la scheda si chiama Assicurazioni' );
 // presenze
 $at_day = (int) gmdate( 'N', strtotime( $today ) );
@@ -5118,7 +5118,7 @@ foreach ( $at_sum['people'] as $r ) {
 asem_ok( array( $today ) === $at_sum['dates'] && '1/1' === $at_by[ $at_a ] && '0/1' === $at_by[ $at_b ], 'presenze: riepilogo del periodo' );
 $at_doc = \AssociazioneSemplice\DocsPro::attendance( $at_c, substr( $today, 0, 4 ) . '-01-01', $today );
 asem_ok( false !== strpos( $at_doc['body'], 'REGISTRO PRESENZE' ) && false !== strpos( $at_doc['body'], 'Presenteregistro Anna' ) && false !== strpos( $at_doc['body'], 'Corso presenze' ) && false !== strpos( \AssociazioneSemplice\DocsPro::attendance( $at_c, substr( $today, 0, 4 ) . '-01-01', $today, 'csv' )['body'], 'Assenteregistro Bruno' ) && null !== asem_throws( function () use ( $at_c ) { \AssociazioneSemplice\DocsPro::attendance( $at_c, 'ieri', 'oggi' ); } ), 'presenze: PDF e CSV del registro' );
-asem_render( array( Admin\RegistersPage::class, 'render_attendance' ), 'Registra le presenze', array( 'activity' => $at_c, 'ym' => substr( $today, 0, 7 ), 'date' => $today ) );
+asem_render( array( Admin\ProRegisters::class, 'render_attendance' ), 'Registra le presenze', array( 'activity' => $at_c, 'ym' => substr( $today, 0, 7 ), 'date' => $today ) );
 // rendiconto
 $rd_y = (int) substr( $today, 0, 4 );
 $rd   = \AssociazioneSemplice\Statement::data( $rd_y );
@@ -5127,7 +5127,7 @@ asem_ok( $rd['result']['cur'] === $rd['total_income']['cur'] - $rd['total_expens
 $rd_doc = \AssociazioneSemplice\DocsPro::statement( $rd_y );
 asem_ok( 0 === strpos( $rd_doc['body'], '%PDF-1.4' ) && false !== strpos( $rd_doc['body'], 'RENDICONTO PER CASSA' ) && false !== strpos( $rd_doc['body'], 'ENTRATE' ) && false !== strpos( $rd_doc['body'], 'USCITE' ) && false !== strpos( $rd_doc['body'], 'Anno positivo.' ) && false !== strpos( $rd_doc['body'], 'Il Tesoriere' ) && false !== strpos( $rd_doc['body'], 'CASSA E CONTI' ), 'rendiconto: il PDF ha entrate, uscite, cassa, relazione e firme' );
 asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\DocsPro::statement( 1999 ); } ) && null !== asem_throws( function () use ( $rd_y ) { \AssociazioneSemplice\Statement::save_notes( $rd_y, str_repeat( 'x', 6000 ) ); } ), 'rendiconto: anno valido e relazione di lunghezza limitata' );
-asem_render( array( Admin\RegistersPage::class, 'render_statement' ), 'Relazione sull\'andamento della gestione', array( 'year' => $rd_y ) );
+asem_render( array( Admin\ProRegisters::class, 'render_statement' ), 'Relazione sull\'andamento della gestione', array( 'year' => $rd_y ) );
 // accessi
 $set_sec->invoke( null, array( 'id' => $sec_p, 'enabled' => '1' ) );
 wp_set_current_user( $sec_u );
@@ -5209,7 +5209,7 @@ foreach ( array( 'asem-tech', 'asem-roles', 'asem-acct' ) as $pg ) {
 asem_render( array( Admin\SettingsPage::class, 'render' ), 'Funzioni attive' );
 asem_render( array( Admin\TechPage::class, 'render_integrations' ), 'WooCommerce' );
 asem_render( array( Admin\TechPage::class, 'render_roles' ), 'Come la segreteria' );
-asem_render( array( Admin\TechPage::class, 'render_accounting' ), 'Report e rendiconto' );
+asem_render( array( Admin\ProRegisters::class, 'render_accounting' ), 'Report e rendiconto' );
 // ruoli
 $ro = Admin\TechPage::roles();
 asem_ok( isset( $ro['editor'] ) && ! isset( $ro['administrator'] ) && ! isset( $ro['asem_secretary'] ) && ! isset( $ro['asem_member'] ), 'ruoli: elenco dei ruoli modificabili (senza amministratore, segreteria e soci)' );
@@ -5228,7 +5228,7 @@ asem_ok( '' !== \AssociazioneSemplice\Frontend\Views::section_card( $ft_p ) && i
 Admin\TechActions::save_acct( array() );
 asem_ok( false === strpos( Admin\Admin::tabs( 'asem-accounting' ), 'page=asem-reports' ) && false === strpos( Admin\Admin::tabs( 'asem-accounting' ), 'page=asem-statement' ), 'contabilità: spegnendo i report le schede spariscono' );
 asem_render( array( Admin\ReportsPage::class, 'render' ), 'Report e rendiconto sono spenti' );
-asem_render( array( Admin\RegistersPage::class, 'render_statement' ), 'Report e rendiconto sono spenti' );
+asem_render( array( Admin\ProRegisters::class, 'render_statement' ), 'Report e rendiconto sono spenti' );
 Admin\TechActions::save_acct( array( 'reports_enabled' => '1' ) );
 asem_ok( false !== strpos( Admin\Admin::tabs( 'asem-accounting' ), 'page=asem-reports' ), 'contabilità: e tornano' );
 // WooCommerce
