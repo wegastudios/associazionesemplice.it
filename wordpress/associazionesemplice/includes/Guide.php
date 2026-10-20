@@ -43,7 +43,7 @@ final class Guide {
 			array( 'title' => 'Lingua del sito', 'on' => Edition::has( 'texts' ) && Languages::current() !== Languages::DEFAULT_CODE, 'page' => 'asem-texts', 'hint' => 'Testi in un\'altra lingua, con i pacchetti di traduzione.' ),
 		);
 		return array_values( array_filter( $list, function ( $o ) { // le funzioni che questa edizione non ha non si propongono
-			return ! in_array( $o['page'], Edition::missing_pages(), true );
+			return ! in_array( $o['page'], \AssociazioneSemplice\Admin\Admin::absent_pages(), true );
 		} ) );
 	}
 

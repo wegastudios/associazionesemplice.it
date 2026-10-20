@@ -3,7 +3,6 @@ namespace AssociazioneSemplice\Admin;
 
 use AssociazioneSemplice\CancelPolicy;
 use AssociazioneSemplice\Edition;
-use AssociazioneSemplice\License;
 use AssociazioneSemplice\Money;
 use AssociazioneSemplice\PaymentConfig;
 use AssociazioneSemplice\Secrets;
@@ -83,7 +82,7 @@ final class SettingsPage {
 		echo '</tbody></table>';
 		submit_button( 'Salva' );
 		Ui::form_close();
-		LicensePanel::render();
+		do_action( 'asem_settings_page_end' ); // le estensioni aggiungono qui le loro sezioni
 		if ( Edition::has( 'levels' ) ) { // l'edizione gratuita ha un'unica quota
 			LevelsEditor::section();
 		}

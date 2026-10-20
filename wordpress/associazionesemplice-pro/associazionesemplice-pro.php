@@ -16,7 +16,7 @@
 defined( 'ABSPATH' ) || exit;
 
 define( 'ASEM_PRO_VERSION', '1.1.9' );
-define( 'ASEM_PRO_API', 1 ); // livello di compatibilità richiesto: deve coincidere con ASEM_API di Associazione Semplice
+define( 'ASEM_PRO_API', 2 ); // livello di compatibilità richiesto: deve coincidere con ASEM_API di Associazione Semplice
 define( 'ASEM_PRO_DIR', plugin_dir_path( __FILE__ ) );
 
 /**
@@ -67,6 +67,19 @@ add_action(
 			return;
 		}
 		\AssociazioneSemplice\Edition::add_dir( ASEM_PRO_DIR . 'includes' );
+		if ( '' === \AssociazioneSemplice\Edition::mismatch() ) {
+			\AssociazioneSemplice\ProBoot::init(); // dichiara le funzioni e si aggancia ai punti di estensione
+		}
 	},
 	5 // prima che Associazione Semplice si avvii (priorità 10)
+);
+
+// Alla disattivazione si tolgono i lavori periodici della licenza e degli aggiornamenti.
+register_deactivation_hook(
+	__FILE__,
+	function () {
+		foreach ( array( 'asem_license_check', 'asem_update_check', 'asem_license_resync' ) as $hook ) {
+			wp_clear_scheduled_hook( $hook );
+		}
+	}
 );

@@ -24,10 +24,6 @@ final class Admin {
 		Exports::register();
 		IncomePage::register_ajax();
 		Dismiss::register();
-		if ( \AssociazioneSemplice\Edition::has( 'license' ) ) {
-			LicenseNotice::register();
-			UpdateNotice::register();
-		}
 		RegistersActions::register();
 		TechActions::register();
 		if ( \AssociazioneSemplice\Edition::has( 'resources' ) ) {
@@ -84,27 +80,6 @@ final class Admin {
 	public static function menu(): void {
 		$cap = Plugin::CAP_OPS;
 		add_menu_page( 'Associazione Semplice', 'Associazione Semplice', $cap, 'asem', self::guard( 'asem', array( DashboardPage::class, 'render' ) ), self::menu_icon(), 30 );
-		$visible = array(
-			array( 'asem', 'Bacheca', array( DashboardPage::class, 'render' ) ),
-			array( 'asem-people', 'Rubrica soci', array( PeoplePage::class, 'render_list' ) ),
-			array( 'asem-activities', 'Corsi ed eventi', array( ActivitiesPage::class, 'render_list' ) ),
-			array( 'asem-resources', 'Risorse', array( ResourcesPage::class, 'render_list' ) ),
-			array( 'asem-credits', 'Crediti', array( CreditsPage::class, 'render' ) ),
-			array( 'asem-money', 'Cassa', array( MoneyPage::class, 'render' ) ),
-			array( 'asem-accounting', 'Contabilità', array( AccountingPage::class, 'render' ) ),
-			array( 'asem-book', 'Registri', array( RegistersPage::class, 'render_book' ) ),
-			array( 'asem-tools', 'Strumenti', array( ToolsPage::class, 'render' ) ),
-			array( 'asem-settings', 'Impostazioni', array( SettingsPage::class, 'render' ) ),
-		);
-		if ( ProPage::needed() ) { // c'è qualcosa che questa installazione non ha: una pagina informativa, senza funzioni finte
-			$visible[] = array( 'asem-pro', 'Scopri il Pro', array( ProPage::class, 'render' ) );
-		}
-		foreach ( $visible as $s ) {
-			if ( self::group_off( $s[0] ) ) {
-				$s[1] = null; // la pagina resta raggiungibile (con l'avviso), ma non compare nel menu
-			}
-			add_submenu_page( null === $s[1] ? null : 'asem', (string) $s[1], (string) $s[1], in_array( $s[0], self::ADMIN_ONLY, true ) ? Plugin::CAP : $cap, $s[0], self::guard( $s[0], $s[2] ) );
-		}
 		// Schede e pagine di dettaglio: raggiungibili dai link e dalla barra in cima, non compaiono nel menu
 		$hidden = array(
 			array( 'asem-activity-delete', 'Elimina l\'evento', array( DeleteActivityPage::class, 'render' ) ),
@@ -149,6 +124,29 @@ final class Admin {
 			array( 'asem-import', 'Importa soci', array( ImportPage::class, 'render' ) ),
 			array( 'asem-wpai', 'Import con WP All Import', array( WpAiPage::class, 'render' ) ),
 		);
+		$visible = array(
+			array( 'asem', 'Bacheca', array( DashboardPage::class, 'render' ) ),
+			array( 'asem-people', 'Rubrica soci', array( PeoplePage::class, 'render_list' ) ),
+			array( 'asem-activities', 'Corsi ed eventi', array( ActivitiesPage::class, 'render_list' ) ),
+			array( 'asem-resources', 'Risorse', array( ResourcesPage::class, 'render_list' ) ),
+			array( 'asem-credits', 'Crediti', array( CreditsPage::class, 'render' ) ),
+			array( 'asem-money', 'Cassa', array( MoneyPage::class, 'render' ) ),
+			array( 'asem-accounting', 'Contabilità', array( AccountingPage::class, 'render' ) ),
+			array( 'asem-book', 'Registri', array( RegistersPage::class, 'render_book' ) ),
+			array( 'asem-tools', 'Strumenti', array( ToolsPage::class, 'render' ) ),
+			array( 'asem-settings', 'Impostazioni', array( SettingsPage::class, 'render' ) ),
+		);
+		if ( ProPage::needed() ) { // c'è qualcosa che questa installazione non ha: una pagina informativa, senza funzioni finte
+			$visible[] = array( 'asem-pro', 'Scopri il Pro', array( ProPage::class, 'render' ) );
+		}
+		self::note_absent( $visible );
+		self::note_absent( $hidden );
+		foreach ( $visible as $s ) {
+			if ( self::group_off( $s[0] ) ) {
+				$s[1] = null; // la pagina resta raggiungibile (con l'avviso), ma non compare nel menu
+			}
+			add_submenu_page( null === $s[1] ? null : 'asem', (string) $s[1], (string) $s[1], in_array( $s[0], self::ADMIN_ONLY, true ) ? Plugin::CAP : $cap, $s[0], self::guard( $s[0], $s[2] ) );
+		}
 		foreach ( $hidden as $s ) {
 			add_submenu_page( null, $s[1], $s[1], in_array( $s[0], self::ADMIN_ONLY, true ) ? Plugin::CAP : $cap, $s[0], self::guard( $s[0], $s[2] ) );
 		}
@@ -219,9 +217,26 @@ final class Admin {
 		return $html . '</nav>';
 	}
 
+	/** @var string[] pagine registrate il cui contenuto non c'è in questa installazione (la classe che le disegna non esiste) */
+	private static $absent = array();
+
+	/** Segna le pagine di un elenco la cui classe non c'è: spariscono dalle schede e mostrano la spiegazione. */
+	private static function note_absent( array $entries ): void {
+		foreach ( $entries as $s ) {
+			if ( is_array( $s[2] ) && ! class_exists( $s[2][0] ) && ! in_array( $s[0], self::$absent, true ) ) {
+				self::$absent[] = $s[0];
+			}
+		}
+	}
+
+	/** Pagine che questa installazione non può mostrare: quelle delle funzioni non presenti. @return string[] */
+	public static function absent_pages(): array {
+		return array_values( array_unique( array_merge( \AssociazioneSemplice\Edition::missing_pages(), self::$absent ) ) );
+	}
+
 	/** Schede spente dalle impostazioni (report e rendiconto). @return string[] */
 	public static function disabled_pages(): array {
-		return array_merge( \AssociazioneSemplice\Modules::off_pages(), \AssociazioneSemplice\Edition::missing_pages() );
+		return array_merge( \AssociazioneSemplice\Modules::off_pages(), self::absent_pages() );
 	}
 
 	/** Voce di menu da nascondere: tutte le sue pagine sono spente. */
@@ -245,7 +260,7 @@ final class Admin {
 			return $made[ $slug ];
 		}
 		return $made[ $slug ] = function () use ( $slug, $render ) {
-			if ( in_array( $slug, \AssociazioneSemplice\Edition::missing_pages(), true ) ) {
+			if ( in_array( $slug, self::absent_pages(), true ) ) {
 				Ui::header( \AssociazioneSemplice\Edition::degraded() ? 'Funzione sospesa' : 'Funzione non inclusa' );
 				echo \AssociazioneSemplice\Edition::missing_html(); // phpcs:ignore WordPress.Security.EscapeOutput
 				Ui::footer();

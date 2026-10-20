@@ -19,6 +19,9 @@ final class Settings {
 	public static function defaults(): array {
 		if ( null === self::$defaults_cache ) {
 			self::$defaults_cache = self::build_defaults();
+			if ( function_exists( 'apply_filters' ) ) {
+				self::$defaults_cache = (array) apply_filters( 'asem_settings_defaults', self::$defaults_cache ); // un'estensione aggiunge le sue impostazioni
+			}
 		}
 		return self::$defaults_cache;
 	}
@@ -66,7 +69,6 @@ final class Settings {
 			'privacy_retention_years' => 5,     // dopo quanti anni di inattività si propone l'anonimizzazione
 			'receipt_footer'          => '',    // riga in fondo alle ricevute (es. riferimento normativo): la decide l'associazione
 			'member_area_page_id'     => 0,     // pagina del sito con l'area riservata (shortcode); 0 = home
-			'license_key'             => '',    // chiave di licenza (verifica in standby, vedi License)
 			'cancel_policy_default'   => CancelPolicy::H48, // termine predefinito per annullare gli eventi cancellabili
 			'accent_color'            => '',    // colore d'accento del front-end; vuoto = quello del tema
 			'secondary_color'         => '',    // colore secondario; vuoto = quello del sito (Elementor o tema)
@@ -212,7 +214,6 @@ final class Settings {
 		$clean['rules_version']           = mb_substr( trim( (string) $clean['rules_version'] ), 0, 20 );
 		$clean['privacy_retention_years'] = max( 1, min( 30, (int) $clean['privacy_retention_years'] ) );
 		$clean['receipt_footer']          = mb_substr( trim( (string) $clean['receipt_footer'] ), 0, 300 );
-		$clean['license_key']             = mb_substr( trim( (string) $clean['license_key'] ), 0, 120 );
 		$clean['cancel_policy_default']   = CancelPolicy::is_valid( (string) $clean['cancel_policy_default'] ) ? (string) $clean['cancel_policy_default'] : CancelPolicy::H48;
 		$clean['accent_color']            = Color::normalize( (string) $clean['accent_color'] );
 		$clean['secondary_color']         = Color::normalize( (string) $clean['secondary_color'] );
@@ -273,6 +274,9 @@ final class Settings {
 		$clean['bank_accounts']           = Bank::sanitize_accounts( is_array( $clean['bank_accounts'] ) ? $clean['bank_accounts'] : array() );
 		foreach ( array( 'stripe_publishable_key', 'paypal_client_id' ) as $k ) {
 			$clean[ $k ] = mb_substr( trim( (string) $clean[ $k ] ), 0, 200 );
+		}
+		if ( function_exists( 'apply_filters' ) ) {
+			$clean = (array) apply_filters( 'asem_settings_clean', $clean, $values ); // un'estensione controlla le sue impostazioni
 		}
 		Audit::log( 'settings.updated', 'settings' ); // senza i valori: nel registro non finiscono chiavi
 		update_option( self::OPTION, $clean );

@@ -15,7 +15,7 @@
 defined( 'ABSPATH' ) || exit;
 
 define( 'ASEM_VERSION', '1.2.9' );
-define( 'ASEM_API', 1 ); // livello di compatibilità con Associazione Semplice Pro: cambia solo se cambia ciò che i due plugin si scambiano
+define( 'ASEM_API', 2 ); // livello di compatibilità con Associazione Semplice Pro: cambia solo se cambia ciò che i due plugin si scambiano
 define( 'ASEM_FILE', __FILE__ );
 define( 'ASEM_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ASEM_URL', plugin_dir_url( __FILE__ ) );
@@ -46,8 +46,5 @@ register_deactivation_hook(
 	__FILE__,
 	function () {
 		wp_clear_scheduled_hook( 'asem_check_pending_payments' );
-		wp_clear_scheduled_hook( 'asem_license_check' );
-		wp_clear_scheduled_hook( 'asem_update_check' );
-		wp_clear_scheduled_hook( 'asem_license_resync' );
 	}
 );
