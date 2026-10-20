@@ -3,7 +3,7 @@
  * Plugin Name:       Associazione Semplice
  * Description:       Gestione di soci, attività, prima nota, cassa e bilancio per associazioni di promozione sociale (APS).
  * Plugin URI:        https://associazionesemplice.it
- * Version:           1.2.10
+ * Version:           1.2.11
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Wega Studios
@@ -14,8 +14,8 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ASEM_VERSION', '1.2.10' );
-define( 'ASEM_API', 2 ); // livello di compatibilità con Associazione Semplice Pro: cambia solo se cambia ciò che i due plugin si scambiano
+define( 'ASEM_VERSION', '1.2.11' );
+define( 'ASEM_API', 3 ); // livello di compatibilità con Associazione Semplice Pro: cambia solo se cambia ciò che i due plugin si scambiano
 define( 'ASEM_FILE', __FILE__ );
 define( 'ASEM_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ASEM_URL', plugin_dir_url( __FILE__ ) );
