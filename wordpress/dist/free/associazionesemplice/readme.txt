@@ -1,0 +1,164 @@
+=== Associazione Semplice ===
+Contributors: wegastudios
+Tags: nonprofit, members, membership, association, accounting
+Requires at least: 6.0
+Tested up to: 7.1
+Requires PHP: 7.4
+Stable tag: 1.2.10
+License: GPLv2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
+
+Members, events and courses, and a cash book for small Italian non-profit associations (APS and other third-sector entities).
+
+== Description ==
+
+Associazione Semplice helps a small association keep members, activities and accounts in order directly from its own WordPress site. Optional features are off at first: a guided setup asks a few questions and turns on only what is needed.
+
+The plugin is built around Italian third-sector rules (APS, ETS, registers, tax rules), so its interface and texts are in Italian. An English text pack is included and can be selected in the settings, and further language packs can be uploaded as CSV, Excel or JSON files; the plugin does not use the WordPress translation files.
+
+* **Member register**: member records, one membership fee (with an option for founding members), QR membership cards, guests, import from CSV or Excel files, export of the register.
+* **Courses and events**: registrations, limited seats with a waiting list, a payment grace period for bank transfer and cash, participant lists, a calendar.
+* **Cash book**: income and expenses in a single cash account, bank transfer details for members, export of the cash book.
+* **Registers and privacy**: minutes book, privacy notice, consents, anonymisation, personal data download.
+* **Members' area** on the site, with notices, the rules to accept, the card and the events and courses, through shortcodes, blocks and Elementor widgets.
+* **Roles**: president, vice president, treasurer, councillors and secretary, with separate permissions.
+* **Donations with PayPal**: a form that takes the donor to PayPal's own donation page.
+* **Backup and reset**: download a full copy of the data; reset the data to start over.
+* Works with WP All Import and Elementor if you use them.
+
+Advanced features (online payments, several accounts and funds, accounting and reports, mass emails, app and wallet cards, receipts, VAT) are in the separate Associazione Semplice Pro add-on.
+
+== Third-party data ==
+
+The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, Mozilla Public License 2.0, file includes/data/public-suffix-list.txt) to tell which domain a license covers.
+
+== External services ==
+
+The plugin works fully on its own. It contacts an external service only if you enter a license key (optional, see below) and for the optional features described after it.
+
+= License service (optional) =
+If you enter a license key in Settings, once a day (and when you save the key or press "Check now") the plugin sends the key and your site's domain name to the website associazionesemplice.it (https://associazionesemplice.it/api/license/validate), which checks it with the license server of Wega Studios (license.wegastudios.com), to confirm that the key is valid for that domain, and receives the plan and its expiry date. No member data, no content and no other information is sent. The free license is free and is requested from https://associazionesemplice.it/free; without a key all the basic features keep working. The license covers the registered domain and its subdomains. The check is never done on local development sites. Terms and privacy: https://associazionesemplice.it/privacy
+
+= Update notice for the Pro add-on (optional) =
+Only if the separate Associazione Semplice Pro add-on is installed and a license key is entered, at most once every 24 hours (configurable in Settings, can be turned off) the plugin asks the website associazionesemplice.it for the latest plugin version numbers (https://associazionesemplice.it/api/plugin/latest) and shows a dismissible notice to administrators when a newer version exists. The request carries no license key, no member data and no information about your site. It is never done on local development sites. Terms and privacy: https://associazionesemplice.it/privacy
+
+= PayPal donations (optional) =
+If you turn on donations, your website shows a form whose button opens PayPal's donation page (www.paypal.com/donate) in the visitor's browser, with the PayPal account, the purpose and the chosen amount you set. Nothing is sent from your server to PayPal. Terms: https://www.paypal.com/legalhub - Privacy: https://www.paypal.com/privacy
+
+= Google Places search (optional) =
+If you turn on place search and enter your own Google Maps API key, the "Location" fields of courses and events in the administration screens load Google's script (maps.googleapis.com) and show place suggestions while you type. The text typed in the field is sent to Google from the administrator's browser; no member data is sent. Off by default. Terms: https://cloud.google.com/maps-platform/terms - Privacy: https://policies.google.com/privacy
+
+== Installation ==
+
+1. Upload the `associazionesemplice` folder to `/wp-content/plugins/`, or install the plugin from the Plugins screen.
+2. Activate it from the Plugins screen.
+3. Follow the guided setup that opens on first activation (it can be started again from the Tools menu).
+
+== Frequently Asked Questions ==
+
+= What happens to the data if I delete the plugin? =
+By default it stays. In the settings you can choose to delete it permanently when the plugin is deleted.
+
+= Can I import my existing member list? =
+Yes, from a CSV or Excel file, with a preview before confirming.
+
+= Where do the donations go? =
+Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
+
+== Changelog ==
+
+= 1.2.10 =
+* Cleaner edition split: extension points replace built-in Pro references; licence and updates now live in the Pro add-on (compatibility level 2).
+
+= 1.2.9 =
+* Bookable resources phase 2 (waiting list, rates, hold times) and prepaid credits charged live by QR in the member area; schema 39.
+
+= 1.2.8 =
+* The account activation link now lasts 24 hours by default (Limits: 'Validity of the activation link', 1 to 180 days); the message and the member card say so.
+
+= 1.2.7 =
+* Security: the first-access limits can read the visitor's address behind a proxy (new limit), requests from unknown people have their own cap and cannot push real ones out, the old email is told when a change is approved; an existing website user with a visitor-only role who is linked to a member gets a new random password; the update-notice download link must belong to the portal.
+
+= 1.2.6 =
+* Bookable resources (courts, rooms, boat berths, parking spaces, lockers): new tables and the members' resources view; the management pages come with the Pro add-on.
+
+= 1.2.5 =
+* License domain: the complete Public Suffix List (the same copy as the portal) decides which domain a license covers, so customers sharing a host such as altervista.org no longer share a license.
+
+= 1.2.4 =
+* License security: Wega's signing keys are built into the plugin and a valid license needs the signed proof; the plan level comes from the signed part; the Pro features are suspended when the proof is missing, tampered with or too old (new limits: days offline, days before the first check).
+
+= 1.2.3 =
+* One free package for everyone (WordPress.org and the portal): the direct updater and the update notice now belong to the Pro add-on; the free plugin no longer contacts the portal for versions.
+
+= 1.2.2 =
+* Official brand: new admin menu icon, logo in the dashboard and brand colours in the plugin screens.
+
+= 1.2.1 =
+* Direct updates from WordPress (Dashboard → Updates) for the package downloaded from the portal; the WordPress.org package does not contain the updater.
+
+= 1.2 =
+* Donations: every collection you create gets its own shortcode (with a Copy button) and a ready PayPal button; clear notice that donations only work when PayPal is configured.
+
+= 1.1.20 =
+* Members list: sort by card number (numeric, people without a card last), name and member type; click the column header again to reverse.
+
+= 1.1.19 =
+* Import: membership years from year columns (2024, 2025… or ANNO CORRENTE / ANNO SCORSO), 'Anno di iscrizione', 'N. Telefono'; guests get a 'Venute' counter (added to the registered participations) and notes for past events. New limits let you register guests without a mobile number or a host (for importing a history); both rules stay on by default.
+
+= 1.1.18 =
+* Member import: columns titled with a year (2023, 2024…) record the actual membership years; 'N. Telefono' is recognised as the phone column.
+
+= 1.1.17 =
+* Settings → License: 'Check now' also looks for new plugin versions (skipping the wait between checks) and shows the latest known versions and the date of the last check.
+
+= 1.1.16 =
+* Dashboard: links to your associazionesemplice.it account area and to support.
+
+= 1.1.15 =
+* License check now goes through the Associazione Semplice website (no credential in the plugin); a license covers the registered domain and all its subdomains and subfolders (staging and test sites included).
+
+= 1.1.14 =
+* Update notice: with a license key entered, the plugin asks the Associazione Semplice website for the latest versions and shows a dismissible notice when a newer one exists (can be turned off or tuned in Settings, no data is sent).
+
+= 1.1.13 =
+* Member record: Detach email and Detach phone number buttons (office and administrators only); the member keeps their history but loses the access or the number.
+
+= 1.1.12 =
+* Moved the English language pack to the Pro plugin (translations belong to text customisation, a Pro feature).
+
+= 1.1.11 =
+* License: optional free license key tied to the domain, checked daily with the license server (plan, expiry, signed response); license settings panel with a free key link; the free plugin never loses a basic feature because of a license. Pro Lite and Pro Full levels.
+
+= 1.1.10 =
+* Role names are now simply Member and Office (Socio, Segreteria); existing roles are renamed automatically.
+
+= 1.1.9 =
+* Renamed to Associazione Semplice (database prefix asem_); installations using the old name are converted automatically on first run.
+
+= 1.1.8 =
+* Privacy notice (GDPR) generated from the organisation data: responsible person (president, otherwise the secretariat member), data shared with third parties only for the events attended, no commercial transfer. Available as a site page and as a PDF.
+
+= 1.1.7 =
+* Text customisation, languages, entity type and terms are now part of Associazione Semplice Pro; the free edition shows the original texts.
+
+= 1.1.6 =
+* Card preview in Appearance: it now has the card border and colours and a real sample QR code.
+
+= 1.1.5 =
+* Card editor: the card can be saved after dragging fields (positions with decimals were rejected by the browser), and changing anything selects the custom card.
+* Event management: no misleading message for those who manage events without being their referent.
+
+= 1.1.4 =
+* Custom member card: choose the size in centimetres (landscape, portrait, square or your own), start from the card generated by the site or from your own image, and place the logo too. The preview shows the saved card. Fixed the image picker button and added a "Save card" button.
+
+= 1.1.3 =
+* Member area with a small side menu: "My space", plus Secretariat, Course management and Event management for those who have the role.
+* Printable card: no "valid card" badge (only "expired" when needed); the QR instructions are not printed.
+
+= 1.1.2 =
+* Card editor: the empty preview keeps the card proportions, so the fields no longer overlap before an image is chosen.
+* The administration menu ends with Settings again; the administrative pages are reached from the Settings tabs.
+
+= 1.1.1 =
+* First release.
