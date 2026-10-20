@@ -4,6 +4,7 @@ namespace AssociazioneSemplice\Frontend;
 use AssociazioneSemplice\ActivityKind;
 use AssociazioneSemplice\Edition;
 use AssociazioneSemplice\MemberType;
+use AssociazioneSemplice\Money;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Settings;
 

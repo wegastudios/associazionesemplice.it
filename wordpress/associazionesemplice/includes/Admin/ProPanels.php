@@ -71,15 +71,15 @@ final class ProPanels {
 			. '<p class="description">Senza partita IVA non compare nulla di fiscale: niente aliquote né importi IVA. Con la partita IVA, quote, attività, incassi e spese indicano se l\'importo è IVA compresa o esclusa e l\'aliquota. La gestione è volutamente essenziale: i quadri e le liquidazioni li completa il commercialista.</p></td></tr>';
 		echo '</tbody></table><div id="asem-vat-block"><table class="form-table"><tbody>';
 		echo '<tr><th>Partita IVA</th><td><input type="text" name="vat_number" value="' . esc_attr( (string) $s['vat_number'] ) . '" class="regular-text" maxlength="13" placeholder="11 cifre"></td></tr>';
-		echo '<tr><th>Regime</th><td><select name="fiscal_regime">' . Ui::options( AssociazioneSempliceFiscal::regimes(), (string) $s['fiscal_regime'] ) . '</select><p class="description">Nel regime forfettario l\'IVA non si applica: le voci restano senza aliquota.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<tr><th>Regime</th><td><select name="fiscal_regime">' . Ui::options( \AssociazioneSemplice\Fiscal::regimes(), (string) $s['fiscal_regime'] ) . '</select><p class="description">Nel regime forfettario l\'IVA non si applica: le voci restano senza aliquota.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		$rates = array();
-		foreach ( AssociazioneSempliceFiscal::RATES as $r ) {
+		foreach ( \AssociazioneSemplice\Fiscal::RATES as $r ) {
 			$rates[ $r ] = $r . '%';
 		}
 		echo '<tr><th>Aliquota proposta</th><td><select name="vat_default_rate">' . Ui::options( $rates, (int) $s['vat_default_rate'] ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		$mr = AssociazioneSempliceFiscal::membership_rate();
-		echo '<tr><th>IVA sulle quote associative</th><td><select name="vat_membership_rate">' . Ui::options( AssociazioneSempliceFiscal::rate_options(), null === $mr ? 'none' : (string) $mr ) . '</select><p class="description">Di norma le quote dei soci sono fuori campo IVA. Se nel tuo caso sono soggette, scegli l\'aliquota: sulle quote incassate verrà indicata l\'IVA contenuta. Le attività hanno la propria aliquota nella loro scheda.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<tr><th>Gli importi si inseriscono</th><td><select name="vat_prices_mode">' . Ui::options( array( AssociazioneSempliceFiscal::INCLUDED => 'IVA compresa', AssociazioneSempliceFiscal::EXCLUDED => 'IVA esclusa' ), (string) $s['vat_prices_mode'] ) . '</select><p class="description">Vale come scelta iniziale: su ogni quota, attività, incasso e spesa si può indicare diversamente.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		$mr = \AssociazioneSemplice\Fiscal::membership_rate();
+		echo '<tr><th>IVA sulle quote associative</th><td><select name="vat_membership_rate">' . Ui::options( \AssociazioneSemplice\Fiscal::rate_options(), null === $mr ? 'none' : (string) $mr ) . '</select><p class="description">Di norma le quote dei soci sono fuori campo IVA. Se nel tuo caso sono soggette, scegli l\'aliquota: sulle quote incassate verrà indicata l\'IVA contenuta. Le attività hanno la propria aliquota nella loro scheda.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<tr><th>Gli importi si inseriscono</th><td><select name="vat_prices_mode">' . Ui::options( array( \AssociazioneSemplice\Fiscal::INCLUDED => 'IVA compresa', \AssociazioneSemplice\Fiscal::EXCLUDED => 'IVA esclusa' ), (string) $s['vat_prices_mode'] ) . '</select><p class="description">Vale come scelta iniziale: su ogni quota, attività, incasso e spesa si può indicare diversamente.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Codice destinatario (SDI)</th><td><input type="text" name="sdi_code" value="' . esc_attr( (string) $s['sdi_code'] ) . '" size="9" maxlength="7"><p class="description">Facoltativo: serve se emetti fatture elettroniche.</p></td></tr>';
 		echo '</tbody></table></div>';
 	}

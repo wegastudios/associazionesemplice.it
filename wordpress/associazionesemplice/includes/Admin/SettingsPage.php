@@ -80,7 +80,7 @@ final class SettingsPage {
 		foreach ( \AssociazioneSemplice\Areas::groups() as $g ) { // per area: soci, segreteria, tesoriere, eventi, pubblico
 			echo '<tr><td colspan="2"><strong>' . esc_html( $g[0] ) . '</strong></td></tr>';
 			foreach ( $g[1] as $slug ) {
-				echo '<tr><td><code>[associazionesemplice_' . esc_html( $slug ) . ']</code></td><td>' . esc_html( \AssociazioneSemplice\Frontend\Shortcodes::VIEWS[ $slug ] ?? '' ) . '</td></tr>';
+				echo '<tr><td><code>[associazionesemplice_' . esc_html( $slug ) . ']</code></td><td>' . esc_html( \AssociazioneSemplice\Frontend\Shortcodes::views()[ $slug ] ?? '' ) . '</td></tr>';
 			}
 		}
 		echo '<tr><td><code>[associazionesemplice_spese]</code></td><td>Nome precedente di «Area tesoriere»: continua a funzionare</td></tr>';
