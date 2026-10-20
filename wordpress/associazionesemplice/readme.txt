@@ -69,6 +69,7 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 
 = 1.2.11 =
 * Extension points replace every built-in reference to add-on features; the free package no longer contains any add-on code or tables (compatibility level 3).
+* Run events and courses again: a new "Riproponi" box on every event and course creates a new edition in a new date or social year with the same data. Import events from The Events Calendar, courses included (Tools > From The Events Calendar).
 
 = 1.2.10 =
 * Cleaner edition split: extension points replace built-in Pro references; licence and updates now live in the Pro add-on (compatibility level 2).
