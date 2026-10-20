@@ -26,50 +26,64 @@ final class Admin {
 		Dismiss::register();
 		RegistersActions::register();
 		TechActions::register();
-		if ( \AssociazioneSemplice\Edition::has( 'resources' ) ) {
-			ResourcesActions::register();
-		}
-		if ( \AssociazioneSemplice\Edition::has( 'credits' ) ) {
-			CreditsActions::register();
-		}
+		do_action( 'asem_admin_init' ); // le estensioni registrano qui le loro azioni
 		\AssociazioneSemplice\Wizard::register();
 	}
 
 	/** Voce di menu => [titolo, schede]. Le schede sono pagine nascoste dal menu, raggiungibili dalla barra in cima. */
-	const GROUPS = array(
-		'asem-people'     => array( 'Rubrica soci', array( 'asem-people' => 'Soci e ospiti', 'asem-messages' => 'Comunicazioni' ) ),
+	const BASE_GROUPS = array(
+		'asem-people'     => array( 'Rubrica soci', array( 'asem-people' => 'Soci e ospiti' ) ),
 		'asem-activities' => array( 'Corsi ed eventi', array( 'asem-activities' => 'Elenco' ) ),
-		'asem-resources'  => array( 'Risorse', array( 'asem-resources' => 'Risorse' ) ),
-		'asem-credits'    => array( 'Crediti', array( 'asem-credits' => 'Crediti' ) ),
 		'asem-tools'      => array( 'Strumenti', array( 'asem-tools' => 'Panoramica', 'asem-import' => 'Importa da Excel/CSV', 'asem-tec' => 'Da The Events Calendar', 'asem-wpai' => 'WP All Import', 'asem-exports' => 'Esporta', 'asem-calendar' => 'Calendari', 'asem-backup' => 'Copia di sicurezza', 'asem-tech' => 'Integrazioni' ) ),
-		'asem-money'      => array( 'Cassa', array( 'asem-money' => 'Cassa', 'asem-ledger' => 'Prima nota', 'asem-income' => 'Nuovo incasso', 'asem-group' => 'Cassa per più persone', 'asem-expense' => 'Nuova spesa', 'asem-transfer' => 'Giroconto', 'asem-accounts' => 'Conti e fondi' ) ),
-		'asem-accounting' => array( 'Contabilità', array( 'asem-accounting' => 'Anno solare', 'asem-years' => 'Anni solari', 'asem-reports' => 'Report', 'asem-statement' => 'Rendiconto', 'asem-fivepm' => 'Adempimenti (5x1000)' ) ),
-		'asem-book'       => array( 'Registri', array( 'asem-book' => 'Libro soci', 'asem-minutes' => 'Verbali', 'asem-volunteers' => 'Assicurazioni', 'asem-attendance' => 'Presenze' ) ),
-		'asem-settings'   => array( 'Impostazioni', array( 'asem-entity' => 'Dati e fiscalità', 'asem-comms' => 'Privacy, regolamento e ricevute', 'asem-texts' => 'Testi e lingua', 'asem-settings' => 'Soci e quote', 'asem-card' => 'Tessera, QR e Wallet', 'asem-roles' => 'Ruoli e accessi', 'asem-payments' => 'Pagamenti online', 'asem-acct' => 'Opzioni contabili', 'asem-app' => 'App e notifiche', 'asem-limits' => 'Limiti e soglie', 'asem-audit' => 'Registro azioni', 'asem-guide' => 'Guida iniziale', 'asem-reset' => 'Azzeramento dati' ) ),
+		'asem-money'      => array( 'Cassa', array( 'asem-money' => 'Cassa', 'asem-ledger' => 'Prima nota', 'asem-income' => 'Nuovo incasso', 'asem-expense' => 'Nuova spesa' ) ),
+		'asem-book'       => array( 'Registri', array( 'asem-book' => 'Libro soci', 'asem-minutes' => 'Verbali' ) ),
+		'asem-settings'   => array( 'Impostazioni', array( 'asem-entity' => 'Dati dell\'ente', 'asem-comms' => 'Privacy e regolamento', 'asem-settings' => 'Soci e quote', 'asem-card' => 'Tessera e QR', 'asem-roles' => 'Ruoli e accessi', 'asem-limits' => 'Limiti e soglie', 'asem-audit' => 'Registro azioni', 'asem-guide' => 'Guida iniziale', 'asem-reset' => 'Azzeramento dati' ) ),
 	);
 
-	/** Le Impostazioni sono in tre sezioni: ente e funzioni, tecniche, contabilità. Titolo => pagine (la prima è quella a cui porta la scheda). */
-	const SETTINGS_SECTIONS = array(
-		'Ente e fiscalità' => array( 'asem-entity' => 'Dati e fiscalità', 'asem-comms' => 'Privacy, regolamento e ricevute', 'asem-texts' => 'Testi e lingua' ),
-		'Soci e identità'  => array( 'asem-settings' => 'Soci e quote', 'asem-look' => 'Aspetto', 'asem-card' => 'Tessera, QR e Wallet', 'asem-roles' => 'Ruoli e accessi' ),
-		'Cassa'            => array( 'asem-payments' => 'Pagamenti online', 'asem-bank' => 'Bonifico', 'asem-donate' => 'Donazioni' ),
-		'Contabilità'      => array( 'asem-acct' => 'Opzioni contabili' ),
-		'Comunicazioni'    => array( 'asem-app' => 'App e notifiche' ),
-		'Sistema'          => array( 'asem-limits' => 'Limiti e soglie', 'asem-audit' => 'Registro azioni', 'asem-guide' => 'Guida iniziale', 'asem-reset' => 'Azzeramento dati' ),
+	/** Le Impostazioni sono in sezioni. Titolo => pagine (la prima è quella a cui porta la scheda). */
+	const BASE_SECTIONS = array(
+		'Ente'            => array( 'asem-entity' => 'Dati dell\'ente', 'asem-comms' => 'Privacy e regolamento' ),
+		'Soci e identità' => array( 'asem-settings' => 'Soci e quote', 'asem-look' => 'Aspetto', 'asem-card' => 'Tessera e QR', 'asem-roles' => 'Ruoli e accessi' ),
+		'Cassa'           => array( 'asem-bank' => 'Bonifico', 'asem-donate' => 'Donazioni' ),
+		'Sistema'         => array( 'asem-limits' => 'Limiti e soglie', 'asem-audit' => 'Registro azioni', 'asem-guide' => 'Guida iniziale', 'asem-reset' => 'Azzeramento dati' ),
 	);
 
 	/** Pagine riservate agli amministratori (la segreteria non le vede). */
-	const ADMIN_ONLY = array( 'asem-look', 'asem-pro', 'asem-bank', 'asem-donate', 'asem-settings', 'asem-payments', 'asem-card', 'asem-comms', 'asem-texts', 'asem-backup', 'asem-audit', 'asem-wpai', 'asem-years', 'asem-tech', 'asem-roles', 'asem-acct', 'asem-app', 'asem-limits', 'asem-wizard', 'asem-entity', 'asem-activity-delete', 'asem-booking-delete', 'asem-reset' );
+	const BASE_ADMIN_ONLY = array( 'asem-look', 'asem-pro', 'asem-bank', 'asem-donate', 'asem-settings', 'asem-card', 'asem-comms', 'asem-backup', 'asem-audit', 'asem-wpai', 'asem-tech', 'asem-roles', 'asem-limits', 'asem-wizard', 'asem-entity', 'asem-activity-delete', 'asem-booking-delete', 'asem-reset' );
 
 	/** Pagine di dettaglio => voce di menu a cui appartengono. */
-	const PARENTS = array( 'asem-person' => 'asem-people', 'asem-activity' => 'asem-activities', 'asem-activity-delete' => 'asem-activities', 'asem-booking-delete' => 'asem-activities', 'asem-resource' => 'asem-resources' );
+	const BASE_PARENTS = array( 'asem-person' => 'asem-people', 'asem-activity' => 'asem-activities', 'asem-activity-delete' => 'asem-activities', 'asem-booking-delete' => 'asem-activities' );
+
+	/** Voci di menu e schede; un'estensione aggiunge le sue con il filtro `asem_admin_groups`. */
+	public static function groups(): array {
+		static $c = null;
+		return $c ?? ( $c = (array) apply_filters( 'asem_admin_groups', self::BASE_GROUPS ) );
+	}
+
+	/** Sezioni delle Impostazioni (filtro `asem_admin_sections`). */
+	public static function sections(): array {
+		static $c = null;
+		return $c ?? ( $c = (array) apply_filters( 'asem_admin_sections', self::BASE_SECTIONS ) );
+	}
+
+	/** Pagine riservate agli amministratori (filtro `asem_admin_only`). */
+	public static function admin_only(): array {
+		static $c = null;
+		return $c ?? ( $c = array_values( array_unique( (array) apply_filters( 'asem_admin_only', self::BASE_ADMIN_ONLY ) ) ) );
+	}
+
+	/** Pagine di dettaglio => voce di menu (filtro `asem_admin_parents`). */
+	public static function parents(): array {
+		static $c = null;
+		return $c ?? ( $c = (array) apply_filters( 'asem_admin_parents', self::BASE_PARENTS ) );
+	}
 
 	/** Voce di menu a cui appartiene una pagina ('asem' = Bacheca). */
 	public static function menu_item_of( string $page ): string {
-		if ( isset( self::PARENTS[ $page ] ) ) {
-			return self::PARENTS[ $page ];
+		if ( isset( self::parents()[ $page ] ) ) {
+			return self::parents()[ $page ];
 		}
-		foreach ( self::GROUPS as $main => $g ) {
+		foreach ( self::groups() as $main => $g ) {
 			if ( $main === $page || isset( $g[1][ $page ] ) ) {
 				return $main;
 			}
@@ -87,40 +101,25 @@ final class Admin {
 			array( 'asem-reset', 'Azzeramento dati', array( ResetPage::class, 'render' ) ),
 			array( 'asem-ledger', 'Prima nota', array( LedgerPage::class, 'render' ) ),
 			array( 'asem-calendar', 'Calendario', array( CalendarPage::class, 'render' ) ),
-			array( 'asem-years', 'Anni solari', array( YearsPage::class, 'render' ) ),
-			array( 'asem-group', 'Cassa per più persone', array( GroupCashPage::class, 'render' ) ),
 			array( 'asem-income', 'Nuovo incasso', array( IncomePage::class, 'render' ) ),
 			array( 'asem-expense', 'Nuova spesa', array( ExpensePage::class, 'render' ) ),
-			array( 'asem-transfer', 'Giroconto', array( TransferPage::class, 'render' ) ),
-			array( 'asem-accounts', 'Conti e fondi', array( AccountsPage::class, 'render' ) ),
-			array( 'asem-reports', 'Report', array( ReportsPage::class, 'render' ) ),
-			array( 'asem-statement', 'Rendiconto', array( RegistersPage::class, 'render_statement' ) ),
 			array( 'asem-minutes', 'Verbali', array( RegistersPage::class, 'render_minutes' ) ),
-			array( 'asem-volunteers', 'Assicurazioni', array( RegistersPage::class, 'render_volunteers' ) ),
 			array( 'asem-guide', 'Guida iniziale', array( GuidePage::class, 'render' ) ),
 			array( 'asem-tech', 'Integrazioni', array( TechPage::class, 'render_integrations' ) ),
-			array( 'asem-app', 'App e notifiche', array( AppPage::class, 'render' ) ),
 			array( 'asem-roles', 'Ruoli e accessi', array( TechPage::class, 'render_roles' ) ),
 			array( 'asem-limits', 'Limiti e soglie', array( LimitsPage::class, 'render' ) ),
 			array( 'asem-wizard', 'Configurazione guidata', array( WizardPage::class, 'render' ) ),
-			array( 'asem-entity', 'Dati dell\'ente e fiscalità', array( EntityPage::class, 'render' ) ),
+			array( 'asem-entity', 'Dati dell\'ente', array( EntityPage::class, 'render' ) ),
 			array( 'asem-exports', 'Esportazioni', array( ToolsPage::class, 'render_exports' ) ),
-			array( 'asem-acct', 'Opzioni contabili', array( TechPage::class, 'render_accounting' ) ),
-			array( 'asem-fivepm', '5x1000', array( FivePmPage::class, 'render' ) ),
-			array( 'asem-attendance', 'Presenze', array( RegistersPage::class, 'render_attendance' ) ),
-			array( 'asem-payments', 'Pagamenti online', array( PaymentsPage::class, 'render' ) ),
-			array( 'asem-card', 'Tessera, QR e Wallet', array( CardPage::class, 'render' ) ),
+			array( 'asem-card', 'Tessera e QR', array( CardPage::class, 'render' ) ),
 			array( 'asem-look', 'Aspetto', array( AppearancePage::class, 'render' ) ),
 			array( 'asem-bank', 'Bonifico bancario', array( BankPage::class, 'render' ) ),
 			array( 'asem-donate', 'Donazioni con PayPal', array( DonatePage::class, 'render' ) ),
-			array( 'asem-messages', 'Comunicazioni', array( MessagesPage::class, 'render' ) ),
 			array( 'asem-backup', 'Copia di sicurezza', array( BackupPage::class, 'render' ) ),
-			array( 'asem-comms', 'Promemoria, privacy, regolamento e ricevute', array( CommsPage::class, 'render' ) ),
-			array( 'asem-texts', 'Testi personalizzati', array( TextsPage::class, 'render' ) ),
+			array( 'asem-comms', 'Privacy e regolamento', array( CommsPage::class, 'render' ) ),
 			array( 'asem-audit', 'Registro azioni', array( AuditPage::class, 'render' ) ),
 			array( 'asem-person', 'Scheda persona', array( PeoplePage::class, 'render_edit' ) ),
 			array( 'asem-activity', 'Scheda attività', array( ActivitiesPage::class, 'render_detail' ) ),
-			array( 'asem-resource', 'Scheda risorsa', array( ResourcesPage::class, 'render_detail' ) ),
 			array( 'asem-import', 'Importa soci', array( ImportPage::class, 'render' ) ),
 			array( 'asem-tec', 'Importa da The Events Calendar', array( TribeImportPage::class, 'render' ) ),
 			array( 'asem-wpai', 'Import con WP All Import', array( WpAiPage::class, 'render' ) ),
@@ -129,14 +128,13 @@ final class Admin {
 			array( 'asem', 'Bacheca', array( DashboardPage::class, 'render' ) ),
 			array( 'asem-people', 'Rubrica soci', array( PeoplePage::class, 'render_list' ) ),
 			array( 'asem-activities', 'Corsi ed eventi', array( ActivitiesPage::class, 'render_list' ) ),
-			array( 'asem-resources', 'Risorse', array( ResourcesPage::class, 'render_list' ) ),
-			array( 'asem-credits', 'Crediti', array( CreditsPage::class, 'render' ) ),
 			array( 'asem-money', 'Cassa', array( MoneyPage::class, 'render' ) ),
-			array( 'asem-accounting', 'Contabilità', array( AccountingPage::class, 'render' ) ),
 			array( 'asem-book', 'Registri', array( RegistersPage::class, 'render_book' ) ),
 			array( 'asem-tools', 'Strumenti', array( ToolsPage::class, 'render' ) ),
 			array( 'asem-settings', 'Impostazioni', array( SettingsPage::class, 'render' ) ),
 		);
+		$visible = (array) apply_filters( 'asem_admin_menu_pages', $visible ); // un'estensione aggiunge voci di menu: [slug, titolo, [classe, metodo]]
+		$hidden  = (array) apply_filters( 'asem_admin_hidden_pages', $hidden ); // ... e pagine raggiungibili solo dai link
 		if ( ProPage::needed() ) { // c'è qualcosa che questa installazione non ha: una pagina informativa, senza funzioni finte
 			$visible[] = array( 'asem-pro', 'Scopri il Pro', array( ProPage::class, 'render' ) );
 		}
@@ -146,10 +144,10 @@ final class Admin {
 			if ( self::group_off( $s[0] ) ) {
 				$s[1] = null; // la pagina resta raggiungibile (con l'avviso), ma non compare nel menu
 			}
-			add_submenu_page( null === $s[1] ? null : 'asem', (string) $s[1], (string) $s[1], in_array( $s[0], self::ADMIN_ONLY, true ) ? Plugin::CAP : $cap, $s[0], self::guard( $s[0], $s[2] ) );
+			add_submenu_page( null === $s[1] ? null : 'asem', (string) $s[1], (string) $s[1], in_array( $s[0], self::admin_only(), true ) ? Plugin::CAP : $cap, $s[0], self::guard( $s[0], $s[2] ) );
 		}
 		foreach ( $hidden as $s ) {
-			add_submenu_page( null, $s[1], $s[1], in_array( $s[0], self::ADMIN_ONLY, true ) ? Plugin::CAP : $cap, $s[0], self::guard( $s[0], $s[2] ) );
+			add_submenu_page( null, $s[1], $s[1], in_array( $s[0], self::admin_only(), true ) ? Plugin::CAP : $cap, $s[0], self::guard( $s[0], $s[2] ) );
 		}
 	}
 
@@ -166,23 +164,23 @@ final class Admin {
 	/** Barra delle schede in cima alle pagine di un gruppo (Contabilità, Impostazioni, Rubrica). */
 	public static function tabs( string $page ): string {
 		$main = self::menu_item_of( $page );
-		$tabs = self::GROUPS[ $main ][1] ?? array();
-		if ( ! $tabs || isset( self::PARENTS[ $page ] ) ) {
+		$tabs = self::groups()[ $main ][1] ?? array();
+		if ( ! $tabs || isset( self::parents()[ $page ] ) ) {
 			return '';
 		}
 		$off     = self::disabled_pages();
 		$visible = function ( string $slug ) use ( $off ) {
-			return ! in_array( $slug, $off, true ) && ( ! in_array( $slug, self::ADMIN_ONLY, true ) || current_user_can( Plugin::CAP ) );
+			return ! in_array( $slug, $off, true ) && ( ! in_array( $slug, self::admin_only(), true ) || current_user_can( Plugin::CAP ) );
 		};
 		if ( 'asem-settings' === $main ) { // Impostazioni: prima la sezione, poi le schede della sezione
 			$current = null;
-			foreach ( self::SETTINGS_SECTIONS as $title => $pages ) {
+			foreach ( self::sections() as $title => $pages ) {
 				if ( isset( $pages[ $page ] ) ) {
 					$current = $title;
 				}
 			}
 			$html = '<nav class="nav-tab-wrapper asem-tabs">';
-			foreach ( self::SETTINGS_SECTIONS as $title => $pages ) {
+			foreach ( self::sections() as $title => $pages ) {
 				$first = null;
 				foreach ( array_keys( $pages ) as $slug ) {
 					if ( $visible( $slug ) ) {
@@ -197,7 +195,7 @@ final class Admin {
 			$html .= '</nav>';
 			if ( null !== $current ) {
 				$links = array();
-				foreach ( self::SETTINGS_SECTIONS[ $current ] as $slug => $label ) {
+				foreach ( self::sections()[ $current ] as $slug => $label ) {
 					if ( $visible( $slug ) ) {
 						$links[] = '<li><a' . ( $slug === $page ? ' class="current"' : '' ) . ' href="' . esc_url( Ui::url( $slug ) ) . '">' . esc_html( $label ) . '</a></li>';
 					}
@@ -246,7 +244,7 @@ final class Admin {
 		if ( ! in_array( $slug, $off, true ) ) {
 			return false;
 		}
-		foreach ( array_keys( self::GROUPS[ $slug ][1] ?? array() ) as $tab ) {
+		foreach ( array_keys( self::groups()[ $slug ][1] ?? array() ) as $tab ) {
 			if ( ! in_array( $tab, $off, true ) ) {
 				return false;
 			}
@@ -261,10 +259,6 @@ final class Admin {
 			return $made[ $slug ];
 		}
 		return $made[ $slug ] = function () use ( $slug, $render ) {
-			$needs = array( 'asem-statement' => 'Statement', 'asem-volunteers' => 'Insurance', 'asem-attendance' => 'Attendance' ); // provvisorio (fase 3): pagine presenti qui ma che usano classi di un'estensione
-			if ( isset( $needs[ $slug ] ) && ! class_exists( '\\AssociazioneSemplice\\' . $needs[ $slug ] ) && ! in_array( $slug, self::$absent, true ) ) {
-				self::$absent[] = $slug;
-			}
 			if ( is_array( $render ) && ! class_exists( $render[0] ) && ! in_array( $slug, self::$absent, true ) ) {
 				self::$absent[] = $slug;
 			}

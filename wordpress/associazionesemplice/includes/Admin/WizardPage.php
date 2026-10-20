@@ -1,17 +1,11 @@
 <?php
 namespace AssociazioneSemplice\Admin;
 
-use AssociazioneSemplice\Fiscal;
-use AssociazioneSemplice\Levels;
 use AssociazioneSemplice\Modules;
 use AssociazioneSemplice\Money;
 use AssociazioneSemplice\Pages;
-use AssociazioneSemplice\PaymentConfig;
 use AssociazioneSemplice\Settings;
-use AssociazioneSemplice\Terms;
 use AssociazioneSemplice\Wizard;
-use AssociazioneSemplice\WooBridge;
-use AssociazioneSemplice\WooLinks;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -26,29 +20,11 @@ final class WizardPage {
 		'attivita'    => 'mod[activities]=1',
 		'calendario'  => 'mod[activities]=1',
 		'bonifico'    => 'bank_enabled=1',
-		'cinquemille' => 'fivepm_enabled=1',
 		'tesoriere'   => 'mod[ledger]=1',
 		'ingressi'    => 'mod[activities]=1',
 	);
 
-	/** Collegamenti ai tutorial: si aprono in una nuova finestra. */
-	public static function tutorial_links( string $provider ): string {
-		$out = array();
-		foreach ( Wizard::tutorials()[ $provider ] ?? array() as $l ) {
-			$out[] = '<a href="' . esc_url( $l[1] ) . '" target="_blank" rel="noopener noreferrer">' . esc_html( $l[0] ) . ' ↗</a>';
-		}
-		return $out ? '<span class="description asem-wiz-links">Guide: ' . implode( ' · ', $out ) . '</span>' : '';
-	}
-
-	private static function product_select( string $name, int $current, array $products ): string {
-		$opts = array( '' => $current ? 'Lascia il collegamento attuale' : 'Non collegare adesso', 'new' => 'Crea un prodotto nuovo' );
-		foreach ( $products as $id => $label ) {
-			$opts[ (string) $id ] = $label;
-		}
-		return '<select name="' . esc_attr( $name ) . '">' . Ui::options( $opts, '' ) . '</select>'; // phpcs:ignore WordPress.Security.EscapeOutput
-	}
-
-	private static function step( string $title, string $intro, string $if = '', string $group = '' ): void {
+	public static function step( string $title, string $intro, string $if = '', string $group = '' ): void {
 		echo '<section class="asem-wiz-step"' . ( '' !== $if ? ' data-if="' . esc_attr( $if ) . '"' : '' ) . ( '' !== $group ? ' data-group="' . esc_attr( $group ) . '"' : '' ) . '><h2>' . esc_html( $title ) . '</h2>' . ( '' !== $intro ? '<p class="description">' . esc_html( $intro ) . '</p>' : '' );
 	}
 
@@ -69,22 +45,22 @@ final class WizardPage {
 		return $html . '</ol></div>';
 	}
 
-	private static function end_step(): void {
+	public static function end_step(): void {
 		echo '</section>';
 	}
 
 	/** Domanda sì/no: due pulsanti di scelta con lo stesso nome. */
-	private static function yes_no( string $name, string $question, bool $current ): string {
+	public static function yes_no( string $name, string $question, bool $current ): string {
 		return '<p class="asem-wiz-q"><strong>' . esc_html( $question ) . '</strong><br>'
 			. '<label><input type="radio" name="' . esc_attr( $name ) . '" value="1"' . checked( $current, true, false ) . '> Sì</label> &nbsp; '
 			. '<label><input type="radio" name="' . esc_attr( $name ) . '" value="0"' . checked( ! $current, true, false ) . '> No</label></p>';
 	}
 
 	private static function features_box( array $s ): string {
-		$conditional = array( 'card_qr_enabled' => 'card_enabled=1', 'wallet_enabled' => 'card_enabled=1' );
+		$conditional = (array) apply_filters( 'asem_wizard_feature_conditions', array( 'card_qr_enabled' => 'card_enabled=1' ) );
 		$html        = '<input type="hidden" name="features_present" value="1">';
 		foreach ( SettingsPage::visible_features() as $k => $label ) {
-			if ( in_array( $k, \AssociazioneSemplice\Wizard::OWN_STEP, true ) ) {
+			if ( in_array( $k, \AssociazioneSemplice\Wizard::own_step(), true ) ) {
 				continue;
 			}
 			$html .= '<div' . ( isset( $conditional[ $k ] ) ? ' data-if="' . esc_attr( $conditional[ $k ] ) . '" style="margin-left:24px"' : '' ) . '><label><input type="checkbox" name="' . esc_attr( $k ) . '" value="1"' . checked( ! empty( $s[ $k ] ), true, false ) . '> ' . esc_html( $label ) . '</label></div>';
@@ -94,25 +70,17 @@ final class WizardPage {
 
 	public static function render(): void {
 		$s    = Settings::all();
-		$woo  = \AssociazioneSemplice\Edition::has( 'payments' ) && WooBridge::active();
-		$euro = $woo && WooBridge::currency_is_euro();
 		Ui::header( 'Configurazione guidata' );
 		echo '<p style="font-size:15px"><strong>Descrivi il tuo ente e scegli in 4 sezioni veloci i servizi che vuoi gestire.</strong><br><span class="description">Le voci «Più dettagli» sono facoltative: ciò che non scegli resta spento e si accende dopo, dalle impostazioni o riaprendo questa procedura dagli Strumenti.</span></p>';
 		Ui::form_open( 'asem_wizard_save', Ui::url( 'asem-wizard' ), false, 'asem-wizard' );
 	echo self::stepper(); // phpcs:ignore WordPress.Security.EscapeOutput
 
 		// 1. Ente, ospiti e iscrizione
-		$texts = \AssociazioneSemplice\Edition::has( 'texts' ); // tipo di ente e termini adattano i testi: funzione di Associazione Semplice Pro
-		$ents  = $texts ? array_keys( Terms::entity_types( (string) $s['entity_types_custom'] ) ) : array();
-		$mems  = $texts ? array_keys( Terms::member_terms( (string) $s['member_terms_custom'] ) ) : array();
 		$jm   = (string) $s['join_mode'];
-		self::step( 'Il tuo ente', 'Poche righe per cominciare' . ( $texts ? ': tipo di ente e come chiami chi partecipa adattano da soli tutti i testi.' : '.' ), '', 'ente' );
+		self::step( 'Il tuo ente', 'Poche righe per cominciare' . (string) apply_filters( 'asem_wizard_entity_intro', '.' ), '', 'ente' );
 		echo '<table class="form-table"><tbody>';
 		echo '<tr><th>Come si chiama</th><td><input type="text" name="association_name" value="' . esc_attr( (string) $s['association_name'] ) . '" class="regular-text"></td></tr>';
-		if ( $texts ) {
-			echo '<tr><th>Di che tipo è</th><td><select name="entity_type">' . Ui::options( array_combine( $ents, $ents ), (string) $s['entity_type'] ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<tr><th>Chi partecipa si chiama</th><td><select name="member_term">' . Ui::options( array_combine( $mems, $mems ), (string) $s['member_term'] ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		}
+		do_action( 'asem_wizard_entity_rows', $s ); // le estensioni aggiungono qui le loro domande
 		echo '</tbody></table>';
 		echo self::yes_no( 'guests_enabled', 'Accettate ospiti, cioè persone che partecipano senza essere iscritte?', Settings::guests_enabled() ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<p class="asem-wiz-q"><strong>Chi può iscriversi</strong><br>'
@@ -125,26 +93,7 @@ final class WizardPage {
 		echo '</tbody></table></details>';
 		self::end_step();
 
-		if ( \AssociazioneSemplice\Edition::has( 'vat' ) ) {
-		// 2. Partita IVA
-		self::step( 'Partita IVA', 'Senza partita IVA non compare nulla di fiscale.', '', 'ente' );
-		echo self::yes_no( 'has_vat', 'L\'ente ha la partita IVA?', ! empty( $s['has_vat'] ) ); // phpcs:ignore WordPress.Security.EscapeOutput
-		$rates = array();
-		foreach ( Fiscal::RATES as $r ) {
-			$rates[ $r ] = $r . '%';
-		}
-		echo '<div data-if="has_vat=1"><table class="form-table"><tbody>';
-		echo '<tr><th>Partita IVA</th><td><input type="text" name="vat_number" value="' . esc_attr( (string) $s['vat_number'] ) . '" class="regular-text" maxlength="13" placeholder="11 cifre"></td></tr>';
-		echo '<tr><th>Regime</th><td><select name="fiscal_regime">' . Ui::options( Fiscal::regimes(), (string) $s['fiscal_regime'] ) . '</select><p class="description">Nel regime forfettario l\'IVA non si applica.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '</tbody></table><details class="asem-wiz-more"><summary>Più dettagli: aliquote e importi</summary><table class="form-table"><tbody>';
-		echo '<tr><th>Aliquota proposta</th><td><select name="vat_default_rate">' . Ui::options( $rates, (int) $s['vat_default_rate'] ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<tr><th>Gli importi si inseriscono</th><td><select name="vat_prices_mode">' . Ui::options( array( Fiscal::INCLUDED => 'IVA compresa', Fiscal::EXCLUDED => 'IVA esclusa' ), (string) $s['vat_prices_mode'] ) . '</select><p class="description">Scelta iniziale: su ogni attività, incasso e spesa si può indicare diversamente.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		$mr = Fiscal::membership_rate();
-		echo '<tr><th>IVA sulle quote associative</th><td><select name="vat_membership_rate">' . Ui::options( Fiscal::rate_options(), null === $mr ? 'none' : (string) $mr ) . '</select><p class="description">Di norma le quote dei soci sono fuori campo IVA.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<tr><th>Codice destinatario (SDI)</th><td><input type="text" name="sdi_code" value="' . esc_attr( (string) $s['sdi_code'] ) . '" size="9" maxlength="7"> <span class="description">facoltativo</span></td></tr>';
-		echo '</tbody></table></details></div>';
-		self::end_step();
-		}
+		do_action( 'asem_wizard_steps_entity', $s ); // le estensioni aggiungono qui i loro passi
 
 		// 4. Parti da usare, con le domande che dipendono dalle risposte
 		self::step( 'Cosa ti serve', 'Rispondi sì solo a ciò che usi davvero: il resto sparisce dal menu e dalle schede. Le domande in più compaiono solo se rispondi sì.', '', 'gestione' );
@@ -154,13 +103,7 @@ final class WizardPage {
 				continue; // le importazioni sono sempre disponibili (dagli Strumenti)
 			}
 			echo '<div' . ( '' !== $d['needs'] ? ' data-if="mod[' . esc_attr( $d['needs'] ) . ']=1" style="margin-left:24px"' : '' ) . '>' . self::yes_no( 'mod[' . $key . ']', $d['ask'], Modules::on( $key ) ); // phpcs:ignore WordPress.Security.EscapeOutput
-			if ( 'ledger' === $key ) {
-				echo '<p data-if="mod[ledger]=1" style="margin-left:24px"><label>Riga in fondo alle ricevute (ad esempio il riferimento normativo; facoltativa)<br><input type="text" name="receipt_footer" value="' . esc_attr( (string) $s['receipt_footer'] ) . '" class="large-text" maxlength="300"></label></p>';
-			}
-			if ( 'accounting' === $key ) {
-				echo '<div data-if="mod[accounting]=1" style="margin-left:24px"><input type="hidden" name="adempimenti_present" value="1">'
-					. self::yes_no( 'fivepm_enabled', 'Raccogli il 5x1000? Si attiva il messaggio per i soci, il promemoria e il registro dei contributi ricevuti.', ! empty( $s['fivepm_enabled'] ) ) . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput
-			}
+			do_action( 'asem_wizard_module_extra', $key, $s );
 			echo '</div>';
 		}
 		echo '<details class="asem-wiz-more"><summary>Più dettagli: altre funzioni facoltative (tutte spente)</summary>' . self::features_box( $s ) . '</details>'; // phpcs:ignore WordPress.Security.EscapeOutput
@@ -173,55 +116,23 @@ final class WizardPage {
 		echo '<tr><th>Quota associativa</th><td><input type="text" name="membership_fee" value="' . esc_attr( Money::plain( (int) $s['membership_fee_cents'] ) ) . '" inputmode="decimal"> €</td></tr>';
 		echo '</tbody></table>';
 		echo '<details class="asem-wiz-more"><summary>Più dettagli: altri tipi di socio e sconti</summary><table class="form-table"><tbody>';
-		$have = array();
-		foreach ( Levels::all( true ) as $lv ) {
-			$have[] = $lv['name'] . ( null === $lv['fee_cents'] ? '' : ' (' . Money::format( (int) $lv['fee_cents'] ) . ')' );
-		}
-		if ( \AssociazioneSemplice\Edition::has( 'levels' ) ) { // l'edizione gratuita ha un'unica quota
-		echo '<tr><th>Tipi già presenti</th><td>' . esc_html( implode( ', ', $have ) ) . '</td></tr>';
-		echo '<tr><th>Altri tipi di socio</th><td><textarea name="extra_levels" rows="3" class="large-text" placeholder="Ridotto; 15&#10;Sostenitore; 100"></textarea><p class="description">Una riga per tipo: «Nome; quota». Senza quota si usa quella proposta. Con la partita IVA le quote dei livelli sono IVA compresa. Altri livelli e quote si gestiscono in Impostazioni → Soci e quote.</p></td></tr>';
-		}
+		do_action( 'asem_wizard_levels_rows', $s );
 		echo '<tr><th>Sconto nucleo familiare</th><td><input type="number" min="0" max="100" name="family_discount_pct" value="' . (int) $s['family_discount_pct'] . '"> %<p class="description">0 = nessuno sconto.</p></td></tr>';
 		echo '</tbody></table></details>';
 		self::end_step();
 
 		// 8. Pagamenti
 		self::step( 'Pagamenti dei soci', 'Come i soci versano quote e contributi dal sito. Puoi cambiare idea in qualsiasi momento da Pagamenti online.', 'mod[ledger]=1', 'pagamenti' );
-		$current = (string) $s['payment_provider'];
-		$pay_choices = \AssociazioneSemplice\Edition::has( 'payments' ) ? Wizard::payment_choices() : array(); // senza pagamenti online resta solo il bonifico
-		if ( ! $pay_choices ) {
+		if ( has_action( 'asem_wizard_payment_choices' ) ) {
+			do_action( 'asem_wizard_payment_choices', $s );
+		} else {
 			echo '<input type="hidden" name="payment_choice" value="none">';
-		}
-		foreach ( $pay_choices as $val => $c ) {
-			$off  = PaymentConfig::WOOCOMMERCE === $val && ! $euro;
-			$note = '';
-			if ( PaymentConfig::WOOCOMMERCE === $val ) {
-				$note = ! $woo ? ' <em>WooCommerce non è stato rilevato su questo sito: installalo e attivalo per usare questa opzione.</em>' : ( ! $euro ? ' <em>WooCommerce è attivo, ma il negozio non usa l\'euro: non è utilizzabile.</em>' : ' <strong>WooCommerce è attivo su questo sito.</strong>' );
-			}
-			$links = '';
-			foreach ( PaymentConfig::BOTH === $val ? array( PaymentConfig::STRIPE, PaymentConfig::PAYPAL ) : ( in_array( $val, array( PaymentConfig::STRIPE, PaymentConfig::PAYPAL, PaymentConfig::WOOCOMMERCE ), true ) ? array( $val ) : array() ) as $pv ) {
-				$links .= ' ' . self::tutorial_links( $pv );
-			}
-			echo '<p><label><input type="radio" name="payment_choice" value="' . esc_attr( $val ) . '"' . checked( $current === $val, true, false ) . disabled( $off, true, false ) . '> <strong>' . esc_html( $c[0] ) . '</strong></label><br><span class="description">' . esc_html( $c[1] ) . '</span>' . $note . $links . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
 		echo '<p><label><input type="checkbox" name="bank_enabled" value="1"' . checked( ! empty( $s['bank_enabled'] ), true, false ) . '> Mostra anche le coordinate bancarie (bonifico)</label><br><span class="description">Gli IBAN si inseriscono subito dopo, in Pagamenti online. Il bonifico può affiancare o sostituire i pagamenti online.</span></p>';
 		self::end_step();
 
 		// 9. Prodotti WooCommerce
-		if ( $euro ) {
-			$products = WooBridge::products();
-			$map      = WooLinks::map();
-			self::step( 'Prodotti di WooCommerce', 'Ogni quota deve corrispondere a un prodotto del negozio: collegane uno esistente oppure crealo ora (prodotto virtuale, non visibile in vetrina; il prezzo applicato lo calcola il plugin).', 'payment_choice=woocommerce', 'pagamenti' );
-			echo '<table class="form-table"><tbody>';
-			foreach ( Levels::all( true ) as $lv ) {
-				$cur = (int) ( $map[ 'level:' . (int) $lv['id'] ] ?? 0 );
-				echo '<tr><th>Quota «' . esc_html( (string) $lv['name'] ) . '»</th><td>' . self::product_select( 'product_level[' . (int) $lv['id'] . ']', $cur, $products ) . ( $cur ? ' <span class="description">già collegata</span>' : '' ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
-			}
-			$def = (int) $s['woo_default_product'];
-			echo '<tr><th>Altre voci (corsi, eventi…)</th><td>' . self::product_select( 'product_default', $def, $products ) . ( $def ? ' <span class="description">già impostato</span>' : '' ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
-			echo '</tbody></table>';
-			self::end_step();
-		}
+		do_action( 'asem_wizard_steps_payments', $s );
 
 		// 10. Pagine
 		$exist = Pages::existing();
@@ -238,14 +149,15 @@ final class WizardPage {
 			array( 'name' => 'privacy_page_id', 'selected' => $priv_sel, 'show_option_none' => '— non ho ancora la pagina —', 'option_none_value' => '0', 'echo' => 0 )
 		) . '</label><br><span class="description">Chi attiva l\'accesso dal sito dovrà accettarla. Si sceglie tra le pagine che hai già su WordPress.</span></p>';
 		$titles = \AssociazioneSemplice\Areas::titles();
+		$page_if = (array) apply_filters( 'asem_wizard_page_if', self::PAGE_IF ); // condizioni di visibilità delle pagine proposte
 		foreach ( Pages::by_area() as $area => $defs ) {
-			$conds = array_unique( array_map( function ( $k ) {
-				return self::PAGE_IF[ $k ] ?? '';
+			$conds = array_unique( array_map( function ( $k ) use ( $page_if ) {
+				return $page_if[ $k ] ?? '';
 			}, array_keys( $defs ) ) );
 			$wrap  = 1 === count( $conds ) && '' !== $conds[0] ? ' data-if="' . esc_attr( $conds[0] ) . '"' : ''; // l'intera area compare solo se serve
 			echo '<div' . $wrap . '><h3 style="margin-bottom:4px">' . esc_html( $titles[ $area ] ?? $area ) . '</h3>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		foreach ( $defs as $key => $d ) {
-			$if = self::PAGE_IF[ $key ] ?? '';
+			$if = $page_if[ $key ] ?? '';
 			echo '<div' . ( '' !== $if ? ' data-if="' . esc_attr( $if ) . '"' : '' ) . '><label><input type="checkbox" name="pages[]" value="' . esc_attr( $key ) . '"' . checked( isset( $exist[ $key ] ) || ! empty( $d['default'] ), true, false ) . disabled( isset( $exist[ $key ] ), true, false ) . '> <strong>' . esc_html( $d['title'] ) . '</strong>'
 				. ( isset( $exist[ $key ] ) ? ' <em>(già creata)</em>' : '' ) . '</label><br><span class="description" style="margin-left:24px">' . esc_html( $d['hint'] ) . '</span></div>';
 		}

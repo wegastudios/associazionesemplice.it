@@ -8,8 +8,10 @@ final class Settings {
 
 	const OPTION = 'asem_settings';
 
-	/** Chiavi segrete: nel database restano cifrate e non vengono mai mostrate. */
-	const SECRET_KEYS = array( 'stripe_secret_key', 'stripe_webhook_secret', 'paypal_client_secret', 'wallet_apple_key_pem', 'wallet_google_key_pem' );
+	/** Chiavi segrete: nel database restano cifrate e non vengono mai mostrate (le estensioni aggiungono le loro con il filtro `asem_secret_keys`). */
+	public static function secret_keys(): array {
+		return function_exists( 'apply_filters' ) ? (array) apply_filters( 'asem_secret_keys', array() ) : array();
+	}
 
 	const DEFAULT_PAYMENT_HINT = 'Il pagamento si effettua in sede presso la segreteria.';
 
@@ -37,17 +39,7 @@ final class Settings {
 			'board_councillors'       => 7,     // posti da consigliere nel consiglio direttivo (più 1 presidente e 1 vicepresidente)
 			'card_enabled'            => 1,     // tessera digitale nell'area soci
 			'reports_enabled'         => 1,     // report e rendiconto
-			'pwa_enabled'             => 0,     // app installabile (PWA): spenta di default
-			'push_enabled'            => 0,     // notifiche push: spente di default
-			'pwa_name'                => '',    // nome dell'app (vuoto = denominazione)
-			'pwa_short_name'          => '',    // nome breve sotto l'icona
-			'pwa_icon_id'             => 0,     // icona dell'app (immagine PNG della libreria media)
-			'woo_default_product'     => 0,     // prodotto WooCommerce per le voci senza un prodotto proprio
 			'language'                => 'it',  // lingua dei testi (pacchetti di traduzione)
-			'fivepm_enabled'          => 0,     // 5x1000: spento di default
-			'fivepm_text'             => '',    // messaggio personalizzato (vuoto = quello standard)
-			'insurance_volunteers'    => 0,     // registro delle assicurazioni dei volontari: spento di default
-			'insurance_association'   => 0,     // polizze dell'associazione (responsabilità civile, infortuni): spente di default
 			'family_discount_pct'     => 0,    // sconto sulla quota dei familiari del capofamiglia (%)
 			'entity_type'             => 'associazione', // tipo di ente: i testi si adattano (articoli compresi)
 			'entity_types_custom'     => '',    // tipi aggiunti a mano, uno per riga: nome;m|f
@@ -67,7 +59,6 @@ final class Settings {
 			'privacy_url'             => '',    // pagina con l'informativa privacy: se c'è, chi attiva l'accesso deve accettarla
 			'privacy_email'           => '',    // indirizzo email per le richieste sulla privacy (vuoto = si usa la PEC)
 			'privacy_retention_years' => 5,     // dopo quanti anni di inattività si propone l'anonimizzazione
-			'receipt_footer'          => '',    // riga in fondo alle ricevute (es. riferimento normativo): la decide l'associazione
 			'member_area_page_id'     => 0,     // pagina del sito con l'area riservata (shortcode); 0 = home
 			'cancel_policy_default'   => CancelPolicy::H48, // termine predefinito per annullare gli eventi cancellabili
 			'accent_color'            => '',    // colore d'accento del front-end; vuoto = quello del tema
@@ -80,36 +71,14 @@ final class Settings {
 			'card_layout'             => array(), // posizione di nome, numero, scadenza e QR sull'immagine (vedi CardLayout)
 			'payment_hint'            => self::DEFAULT_PAYMENT_HINT, // testo mostrato ai soci che hanno importi da pagare
 			'gate_message'            => '',    // messaggio sui contenuti riservati; vuoto = automatico
-			'payment_provider'        => PaymentConfig::NONE,
-			'stripe_mode'             => 'test',
-			'stripe_publishable_key'  => '',
-			'stripe_secret_key'       => '',   // cifrata
-			'stripe_webhook_secret'   => '',   // cifrata
-			'paypal_mode'             => 'sandbox',
-			'paypal_client_id'        => '',
-			'paypal_client_secret'    => '',   // cifrata
 			'card_qr_enabled'         => 0,     // QR sulla tessera digitale: a scelta del gestore, spento di default
 			'ticket_qr_enabled'       => 0,     // biglietti QR delle prenotazioni (poi si scelgono per singolo evento)
-			'wallet_enabled'          => 0,     // pulsanti Apple/Google Wallet
 			'ical_enabled'            => 0,     // indirizzo del calendario per Google Calendar e simili
-			'wallet_apple_pass_type'  => '',    // Apple Wallet: identificativo del tipo di pass (dal certificato)
-			'wallet_apple_team'       => '',
-			'wallet_apple_cert_pem'   => '',    // certificato (pubblico)
-			'wallet_apple_wwdr_pem'   => '',    // certificato intermedio di Apple (pubblico)
-			'wallet_apple_key_pem'    => '',    // cifrata
-			'wallet_google_issuer'    => '',    // Google Wallet: ID dell'emittente
-			'wallet_google_email'     => '',    // account di servizio
-			'wallet_google_key_pem'   => '',    // cifrata
 			'wpai_default_type'       => 'ordinary', // import da WP All Import: tipo socio se manca la colonna
 			'wpai_default_account_id' => 0,         // ... e conto della prima nota se manca
 			'wpai_keep_balances'      => 1,         // ... non cambiare i saldi attuali dei conti
 			'wpai_mark_members'       => 0,         // ... segna i soci come iscritti all'anno sociale corrente
-			'has_vat'                 => 0,         // l'ente ha la partita IVA: spento di default, senza non compaiono aliquote e importi IVA
-			'vat_number'              => '',        // partita IVA (11 cifre)
 			'fiscal_regime'           => 'ordinario', // regime fiscale (vedi Fiscal)
-			'vat_default_rate'        => 22,        // aliquota IVA proposta (%)
-			'vat_prices_mode'         => 'incl',    // importi inseriti IVA compresa ('incl') o esclusa ('escl')
-			'vat_membership_rate'     => '',        // aliquota IVA delle quote associative: vuoto = fuori campo IVA
 			'legal_address'           => '',       // sede legale
 			'legal_zip'               => '',
 			'legal_city'              => '',
@@ -122,12 +91,6 @@ final class Settings {
 			'guests_enabled'          => 1,         // si accettano ospiti (non soci): se spento non si registrano e spariscono dall'area soci
 			'delete_on_uninstall'     => 0,         // all'eliminazione del plugin da WordPress si cancellano anche i dati (di default restano)
 			'limits'                  => array(),   // limiti e soglie personalizzati (vedi Limits): vuoto = valori predefiniti
-			'pay_label_stripe'        => '',        // diciture dei pulsanti di pagamento (vuoto = predefinita, vedi PaymentConfig)
-			'pay_note_stripe'         => '',
-			'pay_label_paypal'        => '',
-			'pay_note_paypal'         => '',
-			'pay_label_woocommerce'   => '',
-			'pay_note_woocommerce'    => '',
 			'bank_enabled'            => 0,         // coordinate bancarie (IBAN) mostrate ai soci e inviate per email: spente di default
 			'donate_enabled'          => 0,         // raccolta donazioni con PayPal: spenta di default
 			'donate_paypal'           => '',        // email PayPal o ID commerciante che riceve le donazioni
@@ -166,7 +129,7 @@ final class Settings {
 			if ( ! array_key_exists( $k, $values ) ) {
 				continue;
 			}
-			if ( in_array( $k, self::SECRET_KEYS, true ) ) {
+			if ( in_array( $k, self::secret_keys(), true ) ) {
 				$plain = trim( (string) $values[ $k ] );
 				if ( '' !== $plain ) {
 					$clean[ $k ] = Secrets::is_encrypted( $plain ) ? $plain : Secrets::encrypt( $plain, wp_salt( 'auth' ) );
@@ -182,17 +145,7 @@ final class Settings {
 		$clean['board_councillors']       = max( 0, min( 30, (int) $clean['board_councillors'] ) );
 		$clean['card_enabled']            = empty( $clean['card_enabled'] ) ? 0 : 1;
 		$clean['reports_enabled']         = empty( $clean['reports_enabled'] ) ? 0 : 1;
-		$clean['pwa_enabled']             = empty( $clean['pwa_enabled'] ) ? 0 : 1;
-		$clean['push_enabled']            = empty( $clean['push_enabled'] ) ? 0 : 1;
-		$clean['pwa_name']                = mb_substr( trim( (string) $clean['pwa_name'] ), 0, 45 );
-		$clean['pwa_short_name']          = mb_substr( trim( (string) $clean['pwa_short_name'] ), 0, 12 );
-		$clean['pwa_icon_id']             = max( 0, (int) $clean['pwa_icon_id'] );
-		$clean['woo_default_product']     = max( 0, (int) $clean['woo_default_product'] );
 		$clean['language']                = preg_match( '/^[a-z]{2,3}(_[A-Z]{2})?$/', (string) $clean['language'] ) ? (string) $clean['language'] : 'it';
-		$clean['fivepm_enabled']          = empty( $clean['fivepm_enabled'] ) ? 0 : 1;
-		$clean['fivepm_text']             = mb_substr( trim( (string) $clean['fivepm_text'] ), 0, 1000 );
-		$clean['insurance_volunteers']     = empty( $clean['insurance_volunteers'] ) ? 0 : 1;
-		$clean['insurance_association']    = empty( $clean['insurance_association'] ) ? 0 : 1;
 		$clean['family_discount_pct']      = max( 0, min( 100, (int) $clean['family_discount_pct'] ) );
 		$clean['member_area_page_id']     = max( 0, (int) $clean['member_area_page_id'] );
 		$clean['entity_type']         = mb_substr( trim( (string) $clean['entity_type'] ), 0, 60 );
@@ -213,7 +166,6 @@ final class Settings {
 		$clean['rules_url']               = esc_url_raw( trim( (string) $clean['rules_url'] ) );
 		$clean['rules_version']           = mb_substr( trim( (string) $clean['rules_version'] ), 0, 20 );
 		$clean['privacy_retention_years'] = max( 1, min( 30, (int) $clean['privacy_retention_years'] ) );
-		$clean['receipt_footer']          = mb_substr( trim( (string) $clean['receipt_footer'] ), 0, 300 );
 		$clean['cancel_policy_default']   = CancelPolicy::is_valid( (string) $clean['cancel_policy_default'] ) ? (string) $clean['cancel_policy_default'] : CancelPolicy::H48;
 		$clean['accent_color']            = Color::normalize( (string) $clean['accent_color'] );
 		$clean['secondary_color']         = Color::normalize( (string) $clean['secondary_color'] );
@@ -225,29 +177,14 @@ final class Settings {
 		$clean['card_h_cm']               = CardLayout::clean_cm( $clean['card_h_cm'], 5.4 );
 		$clean['payment_hint']            = '' === trim( (string) $clean['payment_hint'] ) ? self::DEFAULT_PAYMENT_HINT : mb_substr( trim( (string) $clean['payment_hint'] ), 0, 300 );
 		$clean['gate_message']            = mb_substr( trim( (string) $clean['gate_message'] ), 0, 200 );
-		$clean['payment_provider']        = PaymentConfig::is_valid( (string) $clean['payment_provider'] ) ? (string) $clean['payment_provider'] : PaymentConfig::NONE;
-		$clean['stripe_mode']             = 'live' === $clean['stripe_mode'] ? 'live' : 'test';
-		$clean['paypal_mode']             = 'live' === $clean['paypal_mode'] ? 'live' : 'sandbox';
 		$clean['wpai_default_type']       = MemberType::is_member( (string) $clean['wpai_default_type'] ) ? (string) $clean['wpai_default_type'] : MemberType::ORDINARY;
 		$clean['wpai_default_account_id'] = max( 0, (int) $clean['wpai_default_account_id'] );
 		$clean['wpai_keep_balances']      = empty( $clean['wpai_keep_balances'] ) ? 0 : 1;
 		$clean['card_qr_enabled']         = empty( $clean['card_qr_enabled'] ) ? 0 : 1;
 		$clean['ticket_qr_enabled']       = empty( $clean['ticket_qr_enabled'] ) ? 0 : 1;
-		$clean['wallet_enabled']          = empty( $clean['wallet_enabled'] ) ? 0 : 1;
 		$clean['ical_enabled']            = empty( $clean['ical_enabled'] ) ? 0 : 1;
-		foreach ( array( 'wallet_apple_cert_pem', 'wallet_apple_wwdr_pem' ) as $k ) {
-			$clean[ $k ] = mb_substr( trim( (string) $clean[ $k ] ), 0, 12000 );
-		}
-		foreach ( array( 'wallet_apple_pass_type', 'wallet_apple_team', 'wallet_google_issuer', 'wallet_google_email' ) as $k ) {
-			$clean[ $k ] = mb_substr( trim( (string) $clean[ $k ] ), 0, 200 );
-		}
 		$clean['wpai_mark_members']       = empty( $clean['wpai_mark_members'] ) ? 0 : 1;
-		$clean['has_vat']                 = empty( $clean['has_vat'] ) ? 0 : 1;
-		$clean['vat_number']              = mb_substr( Fiscal::normalize_vat( (string) $clean['vat_number'] ), 0, 11 );
 		$clean['fiscal_regime']           = isset( Fiscal::regimes()[ (string) $clean['fiscal_regime'] ] ) ? (string) $clean['fiscal_regime'] : Fiscal::ORDINARY;
-		$clean['vat_default_rate']        = max( 0, min( 30, (int) $clean['vat_default_rate'] ) );
-		$clean['vat_membership_rate']     = null === Fiscal::clean_rate( $clean['vat_membership_rate'] ) ? '' : Fiscal::clean_rate( $clean['vat_membership_rate'] );
-		$clean['vat_prices_mode']       = Fiscal::EXCLUDED === (string) $clean['vat_prices_mode'] ? Fiscal::EXCLUDED : Fiscal::INCLUDED;
 		foreach ( array( 'legal_address' => 160, 'legal_zip' => 10, 'legal_city' => 80, 'legal_province' => 40, 'runts_number' => 80, 'pec' => 120 ) as $k => $max ) {
 			$clean[ $k ] = mb_substr( trim( (string) $clean[ $k ] ), 0, $max );
 		}
@@ -257,10 +194,6 @@ final class Settings {
 		$clean['delete_on_uninstall']     = empty( $clean['delete_on_uninstall'] ) ? 0 : 1;
 		$clean['join_mode']             ='invite' === $clean['join_mode'] ? 'invite' : 'request';
 		$clean['limits']                  = Limits::sanitize( is_array( $clean['limits'] ) ? $clean['limits'] : array() );
-		foreach ( array( 'stripe', 'paypal', 'woocommerce' ) as $g ) {
-			$clean[ 'pay_label_' . $g ] = mb_substr( trim( (string) $clean[ 'pay_label_' . $g ] ), 0, 60 );
-			$clean[ 'pay_note_' . $g ]  = mb_substr( trim( (string) $clean[ 'pay_note_' . $g ] ), 0, 300 );
-		}
 		$clean['bank_enabled']            = empty( $clean['bank_enabled'] ) ? 0 : 1;
 		$clean['donate_enabled']          = empty( $clean['donate_enabled'] ) ? 0 : 1;
 		$clean['donate_paypal']           = Donations::clean_account( (string) $clean['donate_paypal'] );
@@ -272,9 +205,6 @@ final class Settings {
 		$clean['bank_title']              = mb_substr( trim( (string) $clean['bank_title'] ), 0, 80 );
 		$clean['bank_note']               = mb_substr( trim( (string) $clean['bank_note'] ), 0, 400 );
 		$clean['bank_accounts']           = Bank::sanitize_accounts( is_array( $clean['bank_accounts'] ) ? $clean['bank_accounts'] : array() );
-		foreach ( array( 'stripe_publishable_key', 'paypal_client_id' ) as $k ) {
-			$clean[ $k ] = mb_substr( trim( (string) $clean[ $k ] ), 0, 200 );
-		}
 		if ( function_exists( 'apply_filters' ) ) {
 			$clean = (array) apply_filters( 'asem_settings_clean', $clean, $values ); // un'estensione controlla le sue impostazioni
 		}
@@ -305,10 +235,6 @@ final class Settings {
 		return ! empty( self::get( 'ticket_qr_enabled' ) );
 	}
 
-	public static function wallet_enabled(): bool {
-		return ! empty( self::get( 'wallet_enabled' ) );
-	}
-
 	public static function card_qr_enabled(): bool {
 		return ! empty( self::get( 'card_qr_enabled' ) );
 	}
@@ -324,7 +250,7 @@ final class Settings {
 	}
 
 	public static function clear_secret( string $key ): void {
-		if ( ! in_array( $key, self::SECRET_KEYS, true ) ) {
+		if ( ! in_array( $key, self::secret_keys(), true ) ) {
 			return;
 		}
 		$all         = self::all();
@@ -354,18 +280,6 @@ final class Settings {
 		return self::has_secret( $key ) && '' === self::secret( $key );
 	}
 
-	/** Configurazione dei pagamenti con i segreti in chiaro (solo per uso interno: mai da stampare). */
-	public static function payment_config(): array {
-		$c = array( 'payment_provider' => (string) self::get( 'payment_provider' ), 'site_https' => 0 === strpos( home_url(), 'https://' ) ? 1 : 0 );
-		foreach ( array( 'stripe_mode', 'stripe_publishable_key', 'paypal_mode', 'paypal_client_id' ) as $k ) {
-			$c[ $k ] = (string) self::get( $k );
-		}
-		foreach ( self::SECRET_KEYS as $k ) {
-			$c[ $k ] = self::secret( $k );
-		}
-		return $c;
-	}
-
 	public static function payment_hint(): string {
 		return (string) self::get( 'payment_hint' );
 	}
@@ -378,17 +292,6 @@ final class Settings {
 		return SocialYear::for_date( $date ?? Db::today(), self::start_month() );
 	}
 
-	/** Registro delle assicurazioni dei volontari attivo? */
-	public static function insurance_volunteers(): bool {
-		return (bool) self::get( 'insurance_volunteers' );
-	}
-
-	/** Polizze dell'associazione attive? */
-	public static function insurance_association(): bool {
-		return (bool) self::get( 'insurance_association' );
-	}
-
-	/** Sconto (%) sulla quota dei familiari di un capofamiglia. */
 	public static function family_discount(): int {
 		return max( 0, min( 100, (int) self::get( 'family_discount_pct' ) ) );
 	}

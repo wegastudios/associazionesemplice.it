@@ -7,3 +7,5 @@ claude.pub
 *.pem
 claude.ssh
 deploy_key*
+
+/wordpress/dist/

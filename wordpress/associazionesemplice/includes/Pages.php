@@ -11,15 +11,16 @@ final class Pages {
 	/** Area di ogni pagina (vedi Areas). */
 	const AREA = array(
 		'area' => 'soci', 'calendario' => 'soci', 'volontari' => 'eventi', 'ingressi' => 'eventi', 'attivita' => 'pubblico',
-		'bonifico' => 'pubblico', 'privacy' => 'pubblico', 'cinquemille' => 'pubblico', 'segreteria' => 'segreteria', 'tesoriere' => 'tesoriere',
+		'bonifico' => 'pubblico', 'privacy' => 'pubblico', 'segreteria' => 'segreteria', 'tesoriere' => 'tesoriere',
 	);
 
 	/** @return array<string,array> area => [chiave pagina => definizione], nell'ordine delle aree */
 	public static function by_area(): array {
 		$out = array();
-		foreach ( array_keys( Areas::GROUPS ) as $area ) {
+		$areas = (array) apply_filters( 'asem_page_areas', self::AREA );
+		foreach ( array_keys( Areas::groups() ) as $area ) {
 			foreach ( self::defs() as $key => $d ) {
-				if ( ( self::AREA[ $key ] ?? '' ) === $area ) {
+				if ( ( $areas[ $key ] ?? '' ) === $area ) {
 					$out[ $area ][ $key ] = $d;
 				}
 			}
@@ -29,7 +30,7 @@ final class Pages {
 
 	/** Chiave => titolo, shortcode, accesso riservato (meta della pagina), descrizione, predefinita. */
 	public static function defs(): array {
-		return array(
+		$defs = array(
 			'area'      => array( 'title' => 'Area soci', 'content' => '[associazionesemplice_area_soci]', 'access' => '', 'hint' => 'Tessera, attività, pagamenti, ospiti e profilo dei soci: è la pagina principale.', 'default' => true ),
 			'volontari' => array( 'title' => 'Area volontari', 'content' => '[associazionesemplice_area_volontari]', 'access' => 'volunteers', 'hint' => 'Le attività di cui i volontari sono referenti (visibile solo a loro).', 'default' => true ),
 			'attivita'  => array( 'title' => 'Attività ed eventi', 'content' => '[associazionesemplice_attivita]', 'access' => '', 'hint' => 'L\'elenco pubblico di corsi ed eventi, con la prenotazione.', 'default' => true ),
@@ -39,8 +40,8 @@ final class Pages {
 			'segreteria' => array( 'title' => 'Area segreteria', 'content' => '[associazionesemplice_segreteria]', 'access' => '', 'hint' => 'Il punto d\'ingresso di chi lavora con la segreteria (anche presidente e vicepresidente): richieste di accesso e collegamenti alla gestione.', 'default' => false ),
 			'tesoriere' => array( 'title' => 'Area tesoriere', 'content' => '[associazionesemplice_tesoriere]', 'access' => '', 'hint' => 'Per il tesoriere: incassi, spese con foto dello scontrino, nuove iscrizioni e vendita degli eventi.', 'default' => false ),
 			'ingressi'  => array( 'title' => 'Ingressi agli eventi', 'content' => '[associazionesemplice_ingressi]', 'access' => '', 'hint' => 'Per responsabili e staff: prenotati, QR e registrazione degli ingressi.', 'default' => false ),
-			'cinquemille' => array( 'title' => '5x1000', 'content' => '[associazionesemplice_cinquepermille]', 'access' => '', 'hint' => 'Il messaggio con il codice fiscale per il 5x1000 (serve la funzione attiva).', 'default' => false ),
 		);
+		return (array) apply_filters( 'asem_page_defs', $defs ); // un'estensione aggiunge le sue pagine
 	}
 
 	/** @return array<string,int> pagine già create (chiave => id), solo quelle ancora esistenti */

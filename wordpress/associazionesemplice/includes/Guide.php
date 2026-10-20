@@ -31,20 +31,14 @@ final class Guide {
 		);
 	}
 
-	/** Funzioni facoltative, spente di default. @return array[] title, on, page, hint */
+	/** Funzioni facoltative, spente di default (un'estensione aggiunge le sue con il filtro `asem_guide_options`). @return array[] title, on, page, hint */
 	public static function options(): array {
 		$list = array(
-			array( 'title' => 'Pagamenti online', 'on' => PaymentConfig::NONE !== (string) Settings::get( 'payment_provider' ), 'page' => 'asem-payments', 'hint' => 'Carta, PayPal e altri metodi dall\'area soci.' ),
-			array( 'title' => 'Tessera con QR e Wallet', 'on' => Settings::card_qr_enabled(), 'page' => 'asem-card', 'hint' => 'QR della tessera e biglietti degli eventi.' ),
+			array( 'title' => 'Tessera con QR', 'on' => Settings::card_qr_enabled(), 'page' => 'asem-card', 'hint' => 'QR della tessera e biglietti degli eventi.' ),
 			array( 'title' => 'Promemoria automatici', 'on' => (bool) Settings::get( 'reminders_enabled' ), 'page' => 'asem-comms', 'hint' => 'Tessera in scadenza, mensilità dei corsi, eventi.' ),
 			array( 'title' => 'Regolamento da accettare', 'on' => (bool) Settings::get( 'rules_enabled' ), 'page' => 'asem-comms', 'hint' => 'I soci lo accettano all\'iscrizione e a ogni aggiornamento.' ),
-			array( 'title' => 'Assicurazioni', 'on' => Settings::insurance_volunteers() || Settings::insurance_association(), 'page' => 'asem-volunteers', 'hint' => 'Polizze dell\'associazione e dei volontari, con le scadenze.' ),
-			array( 'title' => '5x1000', 'on' => Edition::has( 'fivepm' ) && FivePerMille::enabled(), 'page' => 'asem-fivepm', 'hint' => 'Messaggio con il codice fiscale e rendiconto dei contributi.' ),
-			array( 'title' => 'Lingua del sito', 'on' => Edition::has( 'texts' ) && Languages::current() !== Languages::DEFAULT_CODE, 'page' => 'asem-texts', 'hint' => 'Testi in un\'altra lingua, con i pacchetti di traduzione.' ),
 		);
-		return array_values( array_filter( $list, function ( $o ) { // le funzioni che questa edizione non ha non si propongono
-			return ! in_array( $o['page'], \AssociazioneSemplice\Admin\Admin::absent_pages(), true );
-		} ) );
+		return array_values( (array) apply_filters( 'asem_guide_options', $list ) );
 	}
 
 	/** @return array{done:int,total:int} */

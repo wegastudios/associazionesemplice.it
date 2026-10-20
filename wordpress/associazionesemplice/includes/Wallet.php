@@ -27,7 +27,7 @@ final class Wallet {
 
 	/** @return array|null credenziali complete per Apple Wallet, oppure null */
 	public static function apple_config(): ?array {
-		if ( ! Settings::wallet_enabled() ) {
+		if ( ! ProSettings::wallet_enabled() ) {
 			return null;
 		}
 		$c = array(
@@ -45,7 +45,7 @@ final class Wallet {
 
 	/** @return array|null credenziali complete per Google Wallet, oppure null */
 	public static function google_config(): ?array {
-		if ( ! Settings::wallet_enabled() ) {
+		if ( ! ProSettings::wallet_enabled() ) {
 			return null;
 		}
 		$c = array( 'issuer' => (string) Settings::get( 'wallet_google_issuer' ), 'email' => (string) Settings::get( 'wallet_google_email' ), 'key' => Settings::secret( 'wallet_google_key_pem' ) );

@@ -89,7 +89,7 @@ final class Backup {
 
 	private static function settings_payload(): array {
 		$s = Settings::all();
-		foreach ( Settings::SECRET_KEYS as $k ) {
+		foreach ( Settings::secret_keys() as $k ) {
 			unset( $s[ $k ] ); // le chiavi dei gateway restano sul sito
 		}
 		$opts = array();
@@ -301,7 +301,7 @@ final class Backup {
 		$p   = $raw ? json_decode( $raw, true ) : null;
 		if ( is_array( $p ) ) {
 			$new = is_array( $p['settings'] ?? null ) ? $p['settings'] : array();
-			foreach ( Settings::SECRET_KEYS as $k ) {
+			foreach ( Settings::secret_keys() as $k ) {
 				unset( $new[ $k ] ); // le chiavi segrete restano quelle del sito (e Settings::update le lascia com'è)
 			}
 			Settings::update( $new ); // passa dai controlli delle impostazioni: una copia modificata non può inserire valori fuori regola

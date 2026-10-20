@@ -76,7 +76,7 @@ final class ActivitiesPage {
 	/** Riga del modulo: biglietto QR per le prenotazioni (solo eventi ed eventi ricorrenti, spento di default). */
 	private static function qr_row( ?array $a, string $row_class ): string {
 		if ( ! \AssociazioneSemplice\Settings::tickets_enabled() ) {
-			return ''; // i biglietti QR sono spenti: Impostazioni > Tessera, QR e Wallet
+			return ''; // i biglietti QR sono spenti: Impostazioni > Tessera e QR
 		}
 		$on = $a && ! empty( $a['booking_qr'] );
 		return '<tr class="' . esc_attr( $row_class ) . '"><th>Biglietto QR</th><td><label><input type="checkbox" name="booking_qr" value="1"' . checked( $on, true, false ) . '> Genera un QR per ogni prenotazione</label>'
@@ -155,8 +155,7 @@ final class ActivitiesPage {
 		echo Ui::vat_row( \AssociazioneSemplice\Fiscal::default_rate(), \AssociazioneSemplice\Fiscal::default_mode(), 'I contributi' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Referente</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, null, '— nessuno —', 'asem-instructor' ) // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<p class="description">Solo soci e volontari possono essere referenti di un\'attività.</p></td></tr>';
-		echo \AssociazioneSemplice\Edition::has( 'resources' ) ? ResourcesPage::activity_row( null ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo \AssociazioneSemplice\Edition::has( 'credits' ) ? CreditsPage::activity_row( null ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo implode( '', (array) apply_filters( 'asem_activity_form_rows', array(), null ) ); // phpcs:ignore WordPress.Security.EscapeOutput -- righe aggiunte da un'estensione, già protette
 		echo self::fund_row( null ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '</tbody></table>';
 		submit_button( 'Crea attività' );
@@ -358,8 +357,7 @@ final class ActivitiesPage {
 		}
 		echo Ui::vat_row( \AssociazioneSemplice\Fiscal::activity_rate( $activity ), \AssociazioneSemplice\Fiscal::INCLUDED, 'I contributi' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Referente</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, $activity['instructor_person_id'], '— nessuno —', 'asem-instructor' ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
-		echo \AssociazioneSemplice\Edition::has( 'resources' ) ? ResourcesPage::activity_row( (int) $activity['id'] ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo \AssociazioneSemplice\Edition::has( 'credits' ) ? CreditsPage::activity_row( (int) $activity['id'] ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo implode( '', (array) apply_filters( 'asem_activity_form_rows', array(), (int) $activity['id'] ) ); // phpcs:ignore WordPress.Security.EscapeOutput -- righe aggiunte da un'estensione, già protette
 		echo self::fund_row( $activity ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '</tbody></table>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		submit_button( 'Salva', 'secondary' );

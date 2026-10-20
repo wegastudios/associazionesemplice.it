@@ -6,8 +6,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Punto unico da cui passano i testi che il plugin mostra o invia (pagine, email, PDF, messaggi).
  *
- * Nell'edizione gratuita i testi sono quelli originali. La personalizzazione dei testi (sostituzioni, lingue, tipo di ente e termini) è una
- * funzione di Associazione Semplice Pro: quando c'è e la licenza è in regola il lavoro lo fa {@see TextsEngine}, altrimenti i testi passano invariati.
+ * Nell'edizione gratuita i testi sono quelli originali. Un'estensione può personalizzarli con i filtri `asem_text_plain` e `asem_text_html`.
  */
 final class Texts {
 
@@ -18,26 +17,23 @@ final class Texts {
 
 	/** Testo semplice (email, PDF, messaggi) con le personalizzazioni, se ci sono. */
 	public static function plain( string $s, ?array $map = null ): string {
-		return self::enabled() ? TextsEngine::plain( $s, $map ) : $s;
+		return self::enabled() ? (string) apply_filters( 'asem_text_plain', $s, $map ) : $s;
 	}
 
 	/** HTML con le personalizzazioni (solo il testo, mai tag, attributi tecnici o indirizzi). */
 	public static function html( string $html, ?array $map = null ): string {
-		return self::enabled() ? TextsEngine::html( $html, $map ) : $html;
+		return self::enabled() ? (string) apply_filters( 'asem_text_html', $html, $map ) : $html;
 	}
 
 	/** Dopo un salvataggio o un test: rilegge dal database. */
 	public static function flush(): void {
-		if ( Edition::installed( 'texts' ) ) {
-			TextsEngine::flush();
-			Terms::flush();
-		}
+		do_action( 'asem_texts_flush' );
 	}
 
-	/** Amministrazione: la pagina passa dalla sostituzione dei testi (solo con la funzione presente). */
+	/** Amministrazione: la pagina passa dalla sostituzione dei testi (solo con un'estensione che lo fa). */
 	public static function start_admin_buffer(): void {
 		if ( self::enabled() ) {
-			TextsEngine::start_admin_buffer();
+			do_action( 'asem_texts_admin_buffer' );
 		}
 	}
 

@@ -50,7 +50,7 @@ final class PaymentsPage {
 		echo SettingsPage::gateway_row( 'paypal_client_id', 'PayPal — Client ID', $s, 'text', array(), 'asem-pay-paypal', '' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo SettingsPage::secret_row( 'paypal_client_secret', 'PayPal — Client Secret', 'asem-pay-paypal', '' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		if ( PaymentConfig::NONE !== $s['payment_provider'] ) {
-			$check = PaymentConfig::validate( Settings::payment_config() );
+			$check = PaymentConfig::validate( \AssociazioneSemplice\ProSettings::payment_config() );
 			foreach ( $check['errors'] as $e ) {
 				echo '<tr><th></th><td class="asem-neg">⚠ ' . esc_html( $e ) . '</td></tr>';
 			}
@@ -60,7 +60,7 @@ final class PaymentsPage {
 		}
 		echo '<tr><th>Sicurezza delle chiavi</th><td><p class="description">Le chiavi segrete sono salvate <strong>cifrate</strong> nel database e non vengono mai mostrate né scritte nel registro azioni: si inseriscono qui e basta, senza toccare file. '
 			. 'La cifratura è legata a questo sito: se copi il database su un altro sito (ad esempio lo staging) le chiavi non vi sono leggibili e vanno reinserite. Questo impedisce a un sito di prova di usare per errore le chiavi reali. Usa le chiavi di prova finché non hai verificato il funzionamento.</p></td></tr>';
-		foreach ( \AssociazioneSemplice\Settings::SECRET_KEYS as $sk ) {
+		foreach ( \AssociazioneSemplice\Settings::secret_keys() as $sk ) {
 			if ( Settings::secret_unreadable( $sk ) ) {
 				echo '<tr><th></th><td class="asem-warn">⚠ Una chiave è salvata ma non è leggibile su questo sito: reinseriscila.</td></tr>';
 				break;
