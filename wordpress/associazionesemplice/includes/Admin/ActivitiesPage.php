@@ -189,6 +189,7 @@ final class ActivitiesPage {
 		self::calendar_card( $activity );
 		self::notices_card( $activity, $back );
 		self::participants_card( $activity );
+		self::copy_card( $activity );
 		self::delete_card( $activity );
 		echo '</div></div>';
 
@@ -288,6 +289,46 @@ final class ActivitiesPage {
 
 	private static function participants_card( array $activity ): void {
 		echo '<div class="asem-card"><h2>Partecipanti attesi</h2>' . self::participants_html( $activity ) . '<p class="description">Il collegamento WhatsApp compare solo per chi ha lasciato un cellulare.</p></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+	}
+
+	/** Riproporre l'attività in una nuova data (eventi) o in un nuovo anno sociale (corsi), senza rifare tutto. */
+	private static function copy_card( array $activity ): void {
+		$id   = (int) $activity['id'];
+		$kind = (string) $activity['kind'];
+		echo '<div class="asem-card"><h2>Riproponi</h2><p class="description">Crea una nuova edizione con gli stessi dati (contributi, referente, regole, note, luogo, staff). Iscrizioni, prenotazioni e incassi non si copiano: la nuova attività parte vuota.</p>';
+		Ui::form_open( 'asem_duplicate_activity', Ui::url( 'asem-activity', array( 'id' => $id ) ) );
+		echo Ui::hidden( 'id', $id ) . '<table class="form-table"><tr><th>Nome</th><td><input type="text" name="name" class="regular-text" value="' . esc_attr( (string) $activity['name'] ) . '"></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		if ( ActivityKind::COURSE === $kind ) {
+			$year = SocialYear::from_label( (string) $activity['social_year'], Settings::start_month() );
+			$opts = array();
+			$y    = $year;
+			for ( $i = 0; $i < 3; $i++ ) {
+				$opts[ $y->label() ] = $y->label() . ( 0 === $i ? ' (stesso anno)' : '' );
+				$y                   = $y->next();
+			}
+			echo '<tr><th>Anno sociale</th><td><select name="social_year">' . Ui::options( $opts, $year->next()->label() ) . '</select></td></tr>'
+				. '<tr><th>Dal / al</th><td><input type="date" name="starts_on"> <input type="date" name="ends_on"> <span class="description">vuoti = le date di prima, spostate di settimane intere (stessi giorni della settimana)</span></td></tr>';
+		} else {
+			$last = null;
+			foreach ( Plugin::activities()->sessions( $id ) as $s ) {
+				if ( empty( $s['cancelled_at'] ) ) {
+					$last = $last ?: $s; // la prima data (per i ricorrenti si sposta tutto da lì)
+					if ( ActivityKind::EVENT === $kind ) {
+						$last = $s;
+					}
+				}
+			}
+			$suggest = $last ? \AssociazioneSemplice\ActivityCopy::suggest_date( (string) $last['session_date'], current_time( 'Y-m-d' ) ) : current_time( 'Y-m-d' );
+			echo '<tr><th>' . ( ActivityKind::EVENT === $kind ? 'Nuova data' : 'Nuova prima data' ) . '</th><td><input type="date" name="date" value="' . esc_attr( $suggest ) . '" required>'
+				. ( ActivityKind::RECURRING === $kind ? ' <span class="description">le altre date si spostano dello stesso numero di giorni</span>' : '' ) . '</td></tr>';
+			if ( ActivityKind::EVENT === $kind ) {
+				echo '<tr><th>Orario</th><td>dalle <input type="time" name="start_time" value="' . esc_attr( (string) ( $last['start_time'] ?? '' ) ) . '"> alle <input type="time" name="end_time" value="' . esc_attr( (string) ( $last['end_time'] ?? '' ) ) . '"></td></tr>'
+					. '<tr><th>Luogo e posti</th><td><input type="text" name="location" class="regular-text" value="' . esc_attr( (string) ( $last['location'] ?? '' ) ) . '"> posti <input type="number" name="capacity" min="1" class="small-text" value="' . esc_attr( (string) ( $last['capacity'] ?? '' ) ) . '"></td></tr>';
+			}
+		}
+		echo '</table><p><button class="button button-primary">Riproponi</button></p>';
+		Ui::form_close();
+		echo '</div>';
 	}
 
 	/** Eliminazione completa dell'evento (solo amministratori). */

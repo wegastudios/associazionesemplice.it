@@ -5678,6 +5678,72 @@ asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\CreditsFront::section(
 asem_render( array( Admin\CreditsPage::class, 'render' ), 'Pacchetti in vendita' );
 asem_render( array( Admin\CreditsPage::class, 'render' ), 'Ultimi movimenti' );
 
+// ---------- Riproporre eventi e corsi, importare da The Events Calendar ----------
+wp_set_current_user( 1 );
+$CP     = '\AssociazioneSemplice\ActivityCopy';
+$cp_src = $acts->create( array( 'name' => 'Serata da riproporre', 'social_year' => $sy_label, 'kind' => 'event', 'fee_cents' => 700, 'guest_fee_cents' => 900, 'cancellable' => 1, 'cancel_policy' => '48h', 'notes' => 'Portare le carte', 'session' => array( 'session_date' => $ev_date, 'start_time' => '21:00', 'end_time' => '23:00', 'location' => 'Sede', 'capacity' => 12 ) ) );
+$acts->add_staff( $cp_src, $rs_m2, true );
+$cp_date = gmdate( 'Y-m-d', strtotime( $ev_date . ' +7 days' ) );
+$cp_new  = $CP::duplicate( $cp_src, array( 'date' => $cp_date ) );
+$cp_a    = $acts->get( $cp_new );
+$cp_s    = $acts->sessions( $cp_new );
+asem_ok( $cp_new !== $cp_src && 'Serata da riproporre' === $cp_a['name'] && 700 === (int) $cp_a['fee_cents'] && 900 === (int) $cp_a['guest_fee_cents'] && 1 === (int) $cp_a['cancellable'] && '48h' === $cp_a['cancel_policy'] && 'Portare le carte' === $cp_a['notes'], 'riproporre: un evento si ripete con gli stessi contributi, regole e note' );
+asem_ok( 1 === count( $cp_s ) && $cp_date === $cp_s[0]['session_date'] && '21:00' === $cp_s[0]['start_time'] && '23:00' === $cp_s[0]['end_time'] && 'Sede' === $cp_s[0]['location'] && 12 === (int) $cp_s[0]['capacity'], 'riproporre: nella nuova data ci sono l\'orario, il luogo e i posti dell\'ultima volta' );
+asem_ok( $acts->is_staff( $cp_new, $rs_m2 ) && $acts->staff_can_cash( $cp_new, $rs_m2 ) && 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) . ' b JOIN ' . Db::t( 'sessions' ) . ' s ON s.id = b.session_id WHERE s.activity_id = %d', $cp_new ) ), 'riproporre: lo staff resta, le prenotazioni no' );
+$cp_new2 = $CP::duplicate( $cp_src, array( 'date' => $cp_date, 'name' => 'Serata di primavera', 'start_time' => '20:30', 'end_time' => null, 'capacity' => null ) );
+$cp_s2   = $acts->sessions( $cp_new2 );
+asem_ok( 'Serata di primavera' === $acts->get( $cp_new2 )['name'] && '20:30' === $cp_s2[0]['start_time'] && null === $cp_s2[0]['capacity'], 'riproporre: nome, orario e posti si possono cambiare' );
+asem_ok( null !== asem_throws( function () use ( $CP, $cp_src ) { $CP::duplicate( $cp_src, array() ); } ), 'riproporre: un evento vuole la nuova data' );
+// evento ricorrente: tutte le date si spostano insieme
+$cp_rec = $acts->create( array( 'name' => 'Giovedì da riproporre', 'social_year' => $sy_label, 'kind' => 'recurring', 'fee_cents' => 300 ) );
+$acts->add_session( $cp_rec, array( 'session_date' => $ev_date, 'start_time' => '19:00', 'location' => 'Bar' ) );
+$acts->add_session( $cp_rec, array( 'session_date' => gmdate( 'Y-m-d', strtotime( $ev_date . ' +7 days' ) ), 'start_time' => '19:00', 'location' => 'Bar' ) );
+$cp_r1 = gmdate( 'Y-m-d', strtotime( $ev_date . ' +14 days' ) );
+$cp_r2 = gmdate( 'Y-m-d', strtotime( $ev_date . ' +21 days' ) );
+if ( Settings::social_year( $cp_r1 )->label() === Settings::social_year( $cp_r2 )->label() ) { // a cavallo di due anni sociali la prova non ha senso
+	$cp_rn = $CP::duplicate( $cp_rec, array( 'date' => $cp_r1 ) );
+	asem_ok( array( $cp_r1, $cp_r2 ) === array_column( $acts->sessions( $cp_rn ), 'session_date' ) && 'Bar' === $acts->sessions( $cp_rn )[0]['location'], 'riproporre: un evento ricorrente sposta tutte le sue date dello stesso numero di giorni' );
+}
+// corso: nuovo anno sociale, stessi giorni della settimana
+$cp_c  = $acts->create( array( 'name' => 'Corso da riproporre', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 2000, 'location' => 'Palestra', 'starts_on' => $sy->start()->format( 'Y-m-d' ), 'ends_on' => $sy->end()->format( 'Y-m-d' ), 'lesson_slots' => wp_json_encode( array( array( 'type' => 'weekly', 'day' => 2, 'start' => '18:00', 'end' => '19:00' ) ) ) ) );
+$cp_ny = $sy->next()->label();
+$cp_cn = $CP::duplicate( $cp_c, array( 'social_year' => $cp_ny ) );
+$cp_ca = $acts->get( $cp_cn );
+$ny_a  = $sy->next()->start()->format( 'Y-m-d' );
+$ny_b  = $sy->next()->end()->format( 'Y-m-d' );
+asem_ok( $cp_ny === $cp_ca['social_year'] && 'Palestra' === $cp_ca['location'] && 2000 === (int) $cp_ca['fee_cents'] && $cp_ca['starts_on'] >= $ny_a && $cp_ca['starts_on'] <= gmdate( 'Y-m-d', strtotime( $ny_a . ' +6 days' ) ) && $cp_ca['ends_on'] <= $ny_b, 'riproporre: un corso passa al nuovo anno sociale con le date dentro l\'anno' );
+asem_ok( ( new DateTimeImmutable( $cp_ca['starts_on'] ) )->format( 'N' ) === ( new DateTimeImmutable( $sy->start()->format( 'Y-m-d' ) ) )->format( 'N' ) && 2 === (int) \AssociazioneSemplice\ActivityService::slots( $cp_ca )[0]['day'] && '18:00' === \AssociazioneSemplice\ActivityService::slots( $cp_ca )[0]['start'] && 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'enrollments' ) . ' WHERE activity_id = %d', $cp_cn ) ), 'riproporre: stesso giorno della settimana e stesse lezioni, senza iscritti' );
+asem_ok( null !== asem_throws( function () use ( $CP, $cp_c ) { $CP::duplicate( $cp_c, array() ); } ), 'riproporre: un corso vuole il nuovo anno sociale' );
+asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Riproponi', array( 'id' => $cp_src ) );
+asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Anno sociale', array( 'id' => $cp_c ) );
+// The Events Calendar: i contenuti tribe_events si leggono dal database
+$tec_v  = wp_insert_post( array( 'post_type' => 'tribe_venue', 'post_status' => 'publish', 'post_title' => 'Sala Verde' ) );
+update_post_meta( $tec_v, '_VenueAddress', 'Via Po 3' );
+$tec_p1 = wp_insert_post( array( 'post_type' => 'tribe_events', 'post_status' => 'publish', 'post_title' => 'Festa vecchia', 'post_content' => '<p>Una <b>bella</b> festa</p>' ) );
+update_post_meta( $tec_p1, '_EventStartDate', '2024-05-18 20:00:00' );
+update_post_meta( $tec_p1, '_EventEndDate', '2024-05-18 23:00:00' );
+update_post_meta( $tec_p1, '_EventVenueID', $tec_v );
+$tec_p2 = wp_insert_post( array( 'post_type' => 'tribe_events', 'post_status' => 'future', 'post_title' => 'Festa futura' ) );
+update_post_meta( $tec_p2, '_EventStartDate', gmdate( 'Y-m-d', strtotime( $today . ' +20 days' ) ) . ' 10:00:00' );
+$tec_p3 = wp_insert_post( array( 'post_type' => 'tribe_events', 'post_status' => 'publish', 'post_title' => 'Senza data' ) );
+$tec_p4 = wp_insert_post( array( 'post_type' => 'tribe_events', 'post_status' => 'trash', 'post_title' => 'Nel cestino' ) );
+update_post_meta( $tec_p4, '_EventStartDate', '2024-01-01 10:00:00' );
+asem_ok( 3 === count( \AssociazioneSemplice\TribeImport::found() ), 'The Events Calendar: si trovano gli eventi pubblicati, programmati e in bozza, non quelli nel cestino' );
+asem_render( array( Admin\TribeImportPage::class, 'render' ), 'Festa vecchia' );
+$tec_r = \AssociazioneSemplice\TribeImport::run();
+asem_ok( 2 === $tec_r['imported'] && 1 === $tec_r['failed'] && 0 === $tec_r['skipped'] && false !== strpos( implode( ' ', $tec_r['errors'] ), 'Senza data' ), 'The Events Calendar: gli eventi con una data si importano, quello senza data no e lo dice' );
+$tec_a  = $acts->get( (int) get_post_meta( $tec_p1, '_asem_activity', true ) );
+$tec_ss = $tec_a ? $acts->sessions( (int) $tec_a['id'] ) : array();
+asem_ok( $tec_a && 'Festa vecchia' === $tec_a['name'] && 'event' === $tec_a['kind'] && 0 === (int) $tec_a['fee_cents'] && false !== strpos( (string) $tec_a['notes'], 'Una bella festa' ) && Settings::social_year( '2024-05-18' )->label() === $tec_a['social_year'], 'The Events Calendar: l\'evento passato diventa un evento del suo anno sociale, senza contributo, con la descrizione nelle note' );
+asem_ok( $tec_ss && '2024-05-18' === $tec_ss[0]['session_date'] && '20:00' === $tec_ss[0]['start_time'] && '23:00' === $tec_ss[0]['end_time'] && 'Sala Verde, Via Po 3' === $tec_ss[0]['location'], 'The Events Calendar: data, orario e luogo (con l\'indirizzo) passano nella data dell\'evento' );
+$tec_r2 = \AssociazioneSemplice\TribeImport::run();
+asem_ok( 0 === $tec_r2['imported'] && 2 === $tec_r2['skipped'] && 1 === $tec_r2['failed'], 'The Events Calendar: rilanciando non nascono doppioni' );
+$tec_re = $CP::duplicate( (int) $tec_a['id'], array( 'date' => gmdate( 'Y-m-d', strtotime( $today . ' +30 days' ) ) ) );
+asem_ok( 'Festa vecchia' === $acts->get( $tec_re )['name'] && false !== strpos( (string) $acts->get( $tec_re )['notes'], 'Una bella festa' ) && 'Sala Verde, Via Po 3' === $acts->sessions( $tec_re )[0]['location'], 'riproporre: un evento importato si ripropone in una nuova data con i vecchi contenuti' );
+foreach ( array( $tec_p1, $tec_p2, $tec_p3, $tec_p4, $tec_v ) as $tec_del ) {
+	wp_delete_post( $tec_del, true );
+}
+
 // ---------- Copia di sicurezza e ripristino (in fondo: tocca tutte le tabelle) ----------
 
 wp_set_current_user( 1 );
