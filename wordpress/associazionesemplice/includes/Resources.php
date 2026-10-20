@@ -58,6 +58,7 @@ final class Resources {
 			'guest_fee_cents' => max( 0, (int) ( $in['guest_fee_cents'] ?? 0 ) ),
 			'max_per_person'  => max( 0, (int) ( $in['max_per_person'] ?? 0 ) ),
 			'cancellable'     => ! empty( $in['cancellable'] ) ? 1 : 0,
+			'credit_cost'     => max( 0, min( CreditRules::MAX_CREDITS, (int) ( $in['credit_cost'] ?? 0 ) ) ),
 			'pay_mode'        => isset( $in['pay_mode'] ) && isset( ResourceRules::pay_modes()[ (string) $in['pay_mode'] ] ) ? (string) $in['pay_mode'] : ResourceRules::PAY_DESK,
 			'cancel_policy'   => isset( $in['cancel_policy'] ) && CancelPolicy::is_valid( (string) $in['cancel_policy'] ) ? (string) $in['cancel_policy'] : null,
 			'active'          => array_key_exists( 'active', $in ) ? ( ! empty( $in['active'] ) ? 1 : 0 ) : 1,
@@ -168,6 +169,10 @@ final class Resources {
 			$r['paid']      = $paid[ $id ] ?? 0;
 			$r['remaining'] = Pricing::remaining( (int) $r['fee_due_cents'], $r['paid'] );
 			$r['state']     = Pricing::booking_state( (int) $r['fee_due_cents'], $r['paid'] );
+			if ( (int) $r['credits_paid'] > 0 ) { // pagata in crediti: non c'è nulla da incassare
+				$r['remaining'] = 0;
+				$r['state']     = Pricing::PAID;
+			}
 			$r['active']    = 'booked' === $r['status'];
 			$r['guests']    = $guests[ $id ] ?? array();
 		}
@@ -380,6 +385,49 @@ final class Resources {
 		return array( ResourceRules::fee( $res, $slots, count( $guests ), $starts ), $res );
 	}
 
+	/** Crediti per una prenotazione di $slots fasce (0 = la risorsa non si paga in crediti, o la funzione non c'è). */
+	public static function credit_price( array $res, int $slots ): int {
+		$unit = (int) ( $res['credit_cost'] ?? 0 );
+		return Edition::has( 'credits' ) && $unit > 0 ? CreditRules::cost( $unit, $slots ) : 0;
+	}
+
+	/**
+	 * Paga una prenotazione con i crediti del socio (subito, senza gateway). Se i crediti non bastano non cambia niente.
+	 *
+	 * @return int crediti spesi
+	 * @throws \InvalidArgumentException
+	 */
+	public static function pay_with_credits( int $reservation_id, int $person_id ): int {
+		$r   = self::reservation( $reservation_id );
+		$res = $r ? self::get( (int) $r['resource_id'] ) : null;
+		if ( ! $r || ! $res || 'booked' !== $r['status'] || (int) $r['person_id'] !== $person_id ) {
+			throw new \InvalidArgumentException( 'Prenotazione non trovata.' );
+		}
+		if ( (int) $r['credits_paid'] > 0 ) {
+			throw new \InvalidArgumentException( 'Questa prenotazione è già stata pagata in crediti.' );
+		}
+		$step  = max( 1, (int) $res['slot_minutes'] );
+		$slots = ResourceRules::SLOT === $res['mode'] && $r['ends_at'] ? max( 1, (int) round( ( strtotime( (string) $r['ends_at'] . ' UTC' ) - strtotime( (string) $r['starts_at'] . ' UTC' ) ) / 60 / $step ) ) : 1;
+		$cost  = self::credit_price( $res, $slots );
+		if ( $cost < 1 ) {
+			throw new \InvalidArgumentException( 'Questa risorsa non si paga in crediti.' );
+		}
+		Credits::spend( $person_id, $cost, $res['name'] . ' — ' . substr( (string) $r['starts_at'], 0, 16 ), 'reservation', $reservation_id );
+		self::db()->update( Db::t( 'reservations' ), array( 'credits_paid' => $cost, 'hold_until' => null ), array( 'id' => $reservation_id ) );
+		Audit::log( 'reservation.paid_credits', 'resource', (int) $r['resource_id'], array( 'reservation' => $reservation_id, 'credits' => $cost ) );
+		return $cost;
+	}
+
+	/** I crediti spesi per una prenotazione tornano al socio (annullamento). */
+	private static function refund_credits( array $r ): void {
+		$credits = (int) ( $r['credits_paid'] ?? 0 );
+		if ( $credits < 1 || ! $r['person_id'] ) {
+			return;
+		}
+		Credits::refund( (int) $r['person_id'], $credits, 'Annullata la prenotazione del ' . substr( (string) $r['starts_at'], 0, 16 ), 'reservation', (int) $r['id'] );
+		self::db()->update( Db::t( 'reservations' ), array( 'credits_paid' => 0 ), array( 'id' => (int) $r['id'] ) );
+	}
+
 	/** La prenotazione è ancora valida (non annullata né liberata)? */
 	public static function is_active( int $reservation_id ): bool {
 		return (bool) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'reservations' ) . " WHERE id = %d AND status = 'booked'", $reservation_id ) );
@@ -563,6 +611,7 @@ final class Resources {
 		}
 		self::db()->update( Db::t( 'reservations' ), array( 'status' => 'cancelled', 'cancelled_at' => Db::now() ), array( 'id' => $reservation_id ) );
 		Audit::log( 'reservation.cancelled', 'resource', (int) $r['resource_id'], array( 'reservation' => $reservation_id, 'kind' => $r['kind'] ) );
+		self::refund_credits( $r ); // pagata in crediti: i crediti tornano al socio
 		if ( ResourceRules::KIND_ASSIGN === $r['kind'] ) {
 			self::notify_waitlist( (int) $r['resource_id'] ); // si è liberato un posto: avviso il primo della lista d'attesa
 		}
@@ -610,6 +659,9 @@ final class Resources {
 			return 1;
 		}
 		$tbl = Db::t( 'reservations' );
+		foreach ( self::db()->get_results( self::db()->prepare( "SELECT * FROM $tbl WHERE series_id = %d AND status = 'booked' AND starts_at >= %s", (int) $r['series_id'], $r['starts_at'] ), ARRAY_A ) ?: array() as $paid_row ) {
+			self::refund_credits( $paid_row ); // chi aveva pagato in crediti li riavrà
+		}
 		$n   = (int) self::db()->query( self::db()->prepare( "UPDATE $tbl SET status = 'cancelled', cancelled_at = %s WHERE series_id = %d AND status = 'booked' AND starts_at >= %s", Db::now(), (int) $r['series_id'], $r['starts_at'] ) );
 		Audit::log( 'reservation.series_cancelled', 'resource', (int) $r['resource_id'], array( 'series' => (int) $r['series_id'], 'from' => $r['starts_at'], 'count' => $n ) );
 		return $n;

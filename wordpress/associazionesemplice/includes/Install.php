@@ -351,6 +351,7 @@ final class Install {
   fund_mode varchar(8) NOT NULL DEFAULT '',
   fund_value bigint(20) NOT NULL DEFAULT 0,
   resource_id bigint(20) unsigned DEFAULT NULL,
+  credit_price int(11) DEFAULT NULL,
   notes text,
   created_at datetime NOT NULL,
   deleted_at datetime DEFAULT NULL,
@@ -466,6 +467,7 @@ final class Install {
   rules text,
   rates text,
   pay_mode varchar(8) NOT NULL DEFAULT 'desk',
+  credit_cost int(11) NOT NULL DEFAULT 0,
   open_time char(5) DEFAULT NULL,
   close_time char(5) DEFAULT NULL,
   slot_minutes smallint(5) unsigned NOT NULL DEFAULT 60,
@@ -496,6 +498,7 @@ final class Install {
   note varchar(255) DEFAULT NULL,
   series_id bigint(20) unsigned DEFAULT NULL,
   hold_until datetime DEFAULT NULL,
+  credits_paid int(11) NOT NULL DEFAULT 0,
   session_id bigint(20) unsigned DEFAULT NULL,
   created_by bigint(20) unsigned DEFAULT NULL,
   created_at datetime NOT NULL,
@@ -503,6 +506,38 @@ final class Install {
   PRIMARY KEY  (id),
   KEY resource_time (resource_id,starts_at),
   KEY person_id (person_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}credit_entries (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  person_id bigint(20) unsigned NOT NULL,
+  delta int(11) NOT NULL,
+  kind varchar(8) NOT NULL,
+  label varchar(190) NOT NULL DEFAULT '',
+  ref_type varchar(16) DEFAULT NULL,
+  ref_id bigint(20) unsigned DEFAULT NULL,
+  created_by bigint(20) unsigned DEFAULT NULL,
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  KEY person_id (person_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}credit_charges (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  code char(24) NOT NULL,
+  credits int(11) NOT NULL,
+  label varchar(190) NOT NULL DEFAULT '',
+  activity_id bigint(20) unsigned DEFAULT NULL,
+  staff_person_id bigint(20) unsigned NOT NULL,
+  status varchar(10) NOT NULL DEFAULT 'pending',
+  payer_person_id bigint(20) unsigned DEFAULT NULL,
+  entry_id bigint(20) unsigned DEFAULT NULL,
+  created_at datetime NOT NULL,
+  expires_at datetime NOT NULL,
+  paid_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY code (code),
+  KEY staff_person_id (staff_person_id)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}resource_waitlist (

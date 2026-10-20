@@ -727,6 +727,9 @@ final class Actions {
 
 	/** Se il modulo dell'attività indica una risorsa la collega (o la scollega); restituisce l'avviso sulle prenotazioni già presenti, se ce ne sono. */
 	private static function link_resource( int $activity_id, array $p ): string {
+		if ( \AssociazioneSemplice\Edition::has( 'credits' ) && array_key_exists( 'credit_price', $p ) ) { // crediti previsti per l'attività (vuoto = non si paga in crediti)
+			\AssociazioneSemplice\Credits::set_activity_price( $activity_id, (int) $p['credit_price'] );
+		}
 		if ( ! \AssociazioneSemplice\Edition::has( 'resources' ) || ! array_key_exists( 'resource_id', $p ) ) {
 			return '';
 		}

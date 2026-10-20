@@ -29,6 +29,7 @@ final class Edition {
 		'receipts'   => 'Receipts.php',            // ricevute PDF
 		'door_sales' => 'DoorSales.php',           // incasso sul posto
 		'resources'  => 'Resources.php',           // risorse prenotabili: campi, sale, posti auto, armadietti, posti barca
+		'credits'    => 'Credits.php',             // crediti prepagati: acquisto, spesa nelle attività e nelle risorse, addebito dal vivo con QR
 		'texts'      => 'TextsEngine.php',         // personalizzazione dei testi, lingue, tipo di ente e termini
 	);
 
@@ -44,6 +45,7 @@ final class Edition {
 		'pwa'        => array( 'asem-app' ),
 		'texts'      => array( 'asem-texts' ),
 		'resources'  => array( 'asem-resources', 'asem-resource' ),
+		'credits'    => array( 'asem-credits' ),
 	);
 
 	/** @return string[] pagine di amministrazione delle funzioni che questa installazione non ha */

@@ -87,7 +87,7 @@ final class ResourcesFront {
 		// Il costo e come si può pagare li decide il server, mai il modulo.
 		list( $fee, $res ) = Resources::quote( $rid, $date, $start, $slots, $guests );
 		$online  = Edition::has( 'payments' ) && Plugin::payments()->enabled();
-		$options = ResourceRules::pay_options( (string) $res['pay_mode'], $online, $fee );
+		$options = ResourceRules::pay_options( (string) $res['pay_mode'], $online, $fee, Resources::credit_price( $res, $slots ) );
 		if ( ! $options ) {
 			throw new \InvalidArgumentException( 'Questa risorsa si paga online in anticipo, ma i pagamenti online non sono attivi: contatta la segreteria.' );
 		}
@@ -99,6 +99,16 @@ final class ResourcesFront {
 		}
 		if ( ! in_array( $pay, $options, true ) ) {
 			throw new \InvalidArgumentException( 'Scegli come pagare: ora online o in segreteria.' );
+		}
+		if ( 'credits' === $pay ) { // pagamento immediato in crediti: se non bastano la prenotazione non resta
+			$id = Resources::book_slot( $rid, (int) $actor['id'], $date, $start, $slots, $guests );
+			try {
+				$spent = Resources::pay_with_credits( $id, (int) $actor['id'] );
+			} catch ( \Throwable $e ) {
+				Resources::cancel( $id, true );
+				throw $e;
+			}
+			return 'Prenotazione registrata, pagata con ' . $spent . ' crediti.';
 		}
 		if ( 'online' !== $pay ) {
 			Resources::book_slot( $rid, (int) $actor['id'], $date, $start, $slots, $guests );
@@ -245,11 +255,11 @@ final class ResourcesFront {
 	private static function book_form( array $r, string $fields, string $starts_at ): string {
 		$online  = Edition::has( 'payments' ) && Plugin::payments()->enabled();
 		$fee     = ResourceRules::fee( $r, max( 1, (int) $r['min_slots'] ), 0, $starts_at );
-		$options = ResourceRules::pay_options( (string) $r['pay_mode'], $online, $fee );
+		$options = ResourceRules::pay_options( (string) $r['pay_mode'], $online, $fee, Resources::credit_price( $r, 1 ) );
 		if ( ! $options ) {
 			return '<span class="asemf-small asemf-muted">Pagamento online non attivo: prenota in segreteria</span>';
 		}
-		$labels  = array( 'free' => 'Prenota', 'desk' => 'Prenota (pago in segreteria)', 'online' => 'Prenota e paga ora' );
+		$labels  = array( 'free' => 'Prenota', 'desk' => 'Prenota (pago in segreteria)', 'online' => 'Prenota e paga ora', 'credits' => 'Paga con i crediti' );
 		$buttons = '';
 		foreach ( $options as $o ) {
 			$buttons .= '<button class="asemf-btn" name="pay" value="' . esc_attr( $o ) . '">' . esc_html( $labels[ $o ] ) . '</button> ';

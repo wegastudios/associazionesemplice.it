@@ -156,6 +156,7 @@ final class ActivitiesPage {
 		echo '<tr><th>Referente</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, null, '— nessuno —', 'asem-instructor' ) // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<p class="description">Solo soci e volontari possono essere referenti di un\'attività.</p></td></tr>';
 		echo \AssociazioneSemplice\Edition::has( 'resources' ) ? ResourcesPage::activity_row( null ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo \AssociazioneSemplice\Edition::has( 'credits' ) ? CreditsPage::activity_row( null ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo self::fund_row( null ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '</tbody></table>';
 		submit_button( 'Crea attività' );
@@ -317,6 +318,7 @@ final class ActivitiesPage {
 		echo Ui::vat_row( \AssociazioneSemplice\Fiscal::activity_rate( $activity ), \AssociazioneSemplice\Fiscal::INCLUDED, 'I contributi' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Referente</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, $activity['instructor_person_id'], '— nessuno —', 'asem-instructor' ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
 		echo \AssociazioneSemplice\Edition::has( 'resources' ) ? ResourcesPage::activity_row( (int) $activity['id'] ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo \AssociazioneSemplice\Edition::has( 'credits' ) ? CreditsPage::activity_row( (int) $activity['id'] ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo self::fund_row( $activity ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '</tbody></table>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		submit_button( 'Salva', 'secondary' );

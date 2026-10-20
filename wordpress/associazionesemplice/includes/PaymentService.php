@@ -132,6 +132,9 @@ class PaymentService extends OfflinePayments {
 			throw new \InvalidArgumentException( 'Hai avviato molti pagamenti in poco tempo: aspetta un po\' prima di riprovare.' );
 		}
 		$dues  = $this->dues_for( $actor );
+		if ( Edition::has( 'credits' ) ) { // i pacchetti di crediti non sono dovuti: si scelgono e si comprano
+			$dues = array_merge( $dues, Credits::pack_items( $actor ) );
+		}
 		$items = array();
 		foreach ( array_unique( array_map( 'strval', $keys ) ) as $k ) {
 			if ( isset( $dues[ $k ] ) ) {
@@ -369,6 +372,9 @@ class PaymentService extends OfflinePayments {
 							if ( PaymentItems::RESERVATION === $i['type'] ) {
 								Resources::confirm( (int) $i['reservation_id'] ); // pagata: la fascia non è più provvisoria
 							}
+							if ( PaymentItems::CREDITS === $i['type'] ) {
+								Credits::granted_online( (int) $i['person_id'], (int) $i['credits'], (int) $p['id'] ); // pacchetto pagato: i crediti arrivano al socio
+							}
 						}
 					} catch ( \InvalidArgumentException $e ) {
 						$review       = true;
@@ -421,6 +427,8 @@ class PaymentService extends OfflinePayments {
 				return array( 'category_id' => $ledger->category_id_of_kind( 'membership' ), 'amount_cents' => (int) $i['amount_cents'], 'social_year' => $i['social_year'], 'description' => $note );
 			case PaymentItems::COURSE_MONTH:
 				return array( 'category_id' => $ledger->category_id_of_kind( 'activity_fee' ), 'amount_cents' => (int) $i['amount_cents'], 'activity_id' => (int) $i['activity_id'], 'competence_month' => $i['month'], 'description' => $note );
+			case PaymentItems::CREDITS:
+				return array( 'category_id' => $ledger->category_id_of_kind( 'other_income' ), 'amount_cents' => (int) $i['amount_cents'], 'description' => mb_substr( 'Acquisto crediti: ' . (int) $i['credits'] . ' — ' . $note, 0, 255 ) );
 			case PaymentItems::RESERVATION:
 				return array( 'category_id' => $ledger->category_id_of_kind( 'other_income' ), 'amount_cents' => (int) $i['amount_cents'], 'reservation_id' => (int) $i['reservation_id'], 'description' => mb_substr( $note . ' — ' . ( $i['label'] ?? '' ), 0, 255 ) );
 			default:

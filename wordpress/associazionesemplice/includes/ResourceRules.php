@@ -245,22 +245,27 @@ final class ResourceRules {
 
 	/**
 	 * Come può pagare il socio una prenotazione, secondo la regola della risorsa. Vuoto = non si può prenotare (pagamento in anticipo ma
-	 * senza pagamenti online attivi). Una prenotazione gratuita non ha pagamento.
+	 * senza pagamenti online né crediti). Una prenotazione gratuita non ha pagamento. Se la risorsa si può pagare in crediti, i crediti
+	 * sono sempre una via in più (e la prima: si pagano subito, senza gateway).
 	 *
-	 * @return string[] 'free', 'desk' (in segreteria) e/o 'online'
+	 * @param int $credit_cost crediti per fascia (0 = non si paga in crediti, o la funzione non c'è)
+	 * @return string[] 'free', 'credits', 'desk' (in segreteria) e/o 'online'
 	 */
-	public static function pay_options( string $mode, bool $online_available, int $fee_cents ): array {
+	public static function pay_options( string $mode, bool $online_available, int $fee_cents, int $credit_cost = 0 ): array {
 		if ( $fee_cents <= 0 ) {
 			return array( 'free' );
 		}
 		switch ( $mode ) {
 			case self::PAY_UPFRONT:
-				return $online_available ? array( 'online' ) : array();
+				$base = $online_available ? array( 'online' ) : array();
+				break;
 			case self::PAY_CHOICE:
-				return $online_available ? array( 'online', 'desk' ) : array( 'desk' );
+				$base = $online_available ? array( 'online', 'desk' ) : array( 'desk' );
+				break;
 			default:
-				return array( 'desk' );
+				$base = array( 'desk' );
 		}
+		return $credit_cost > 0 ? array_merge( array( 'credits' ), $base ) : $base;
 	}
 
 	/** Le date di una ripetizione settimanale: la prima e le altre $count - 1 a distanza di una settimana. @return string[] Y-m-d */
