@@ -77,6 +77,57 @@ final class ActivityCopyTest extends TestCase {
 		$this->assertSame( 'Sala Rossa, Via Roma 1', $m['session']['location'] );
 	}
 
+	private function lesson( string $date, ?string $start = '18:00', ?string $end = '19:00', string $notes = '', string $venue = '' ): array {
+		return array( 'date' => $date, 'start' => $start, 'end' => $end, 'name' => 'Yoga', 'notes' => $notes, 'venue' => $venue );
+	}
+
+	public function test_weekly_lessons_become_one_course(): void {
+		$c = T::map_course( array( $this->lesson( '2026-09-15' ), $this->lesson( '2026-09-22' ), $this->lesson( '2026-09-29' ), $this->lesson( '2026-10-06' ) ) );
+		$this->assertSame( 'Yoga', $c['name'] );
+		$this->assertSame( '2026-09-15', $c['starts_on'] );
+		$this->assertSame( '2026-10-06', $c['ends_on'] );
+		$this->assertSame( array( array( 'type' => 'weekly', 'day' => 2, 'start' => '18:00', 'end' => '19:00', 'from' => '2026-09-15', 'until' => '2026-10-06' ) ), $c['lessons'] );
+	}
+
+	public function test_two_weekly_times_make_two_lessons(): void {
+		$items = array();
+		foreach ( array( '2026-09-15', '2026-09-22', '2026-09-29' ) as $d ) {
+			$items[] = $this->lesson( $d, '18:00', '19:00' );
+		}
+		foreach ( array( '2026-09-17', '2026-09-24', '2026-10-01' ) as $d ) {
+			$items[] = $this->lesson( $d, '20:00', '21:00' );
+		}
+		$c = T::map_course( $items );
+		$this->assertCount( 2, $c['lessons'] );
+		$this->assertSame( array( 2, 4 ), array_column( $c['lessons'], 'day' ) );
+		$this->assertSame( '2026-10-01', $c['ends_on'] );
+	}
+
+	public function test_a_day_that_repeats_less_than_three_times_stays_a_single_date(): void {
+		$c = T::map_course( array( $this->lesson( '2026-09-15' ), $this->lesson( '2026-09-22' ), $this->lesson( '2026-09-29' ), $this->lesson( '2026-09-30', '10:00', null ) ) );
+		$this->assertCount( 2, $c['lessons'] );
+		$this->assertSame( 'single', $c['lessons'][1]['type'] );
+		$this->assertSame( '2026-09-30', $c['lessons'][1]['date'] );
+		$this->assertSame( '10:00', $c['lessons'][1]['start'] );
+		$this->assertNull( $c['lessons'][1]['end'] );
+	}
+
+	public function test_course_keeps_the_longest_description_and_the_first_venue(): void {
+		$c = T::map_course( array( $this->lesson( '2026-09-15', '18:00', '19:00', 'Breve', '' ), $this->lesson( '2026-09-22', '18:00', '19:00', 'Una descrizione più lunga', 'Palestra' ), $this->lesson( '2026-09-29', '18:00', '19:00', '', 'Altra sala' ) ) );
+		$this->assertSame( 'Una descrizione più lunga', $c['notes'] );
+		$this->assertSame( 'Palestra', $c['location'] );
+	}
+
+	public function test_lessons_given_out_of_order_are_sorted(): void {
+		$c = T::map_course( array( $this->lesson( '2026-09-29' ), $this->lesson( '2026-09-15' ), $this->lesson( '2026-09-22' ) ) );
+		$this->assertSame( '2026-09-15', $c['starts_on'] );
+		$this->assertSame( '2026-09-29', $c['ends_on'] );
+	}
+
+	public function test_no_lessons_no_course(): void {
+		$this->assertNull( T::map_course( array() ) );
+	}
+
 	public function test_an_event_without_a_valid_date_is_not_imported(): void {
 		$this->assertNull( T::map_event( array(), 'Senza data', '', '' ) );
 		$this->assertNull( T::map_event( array( '_EventStartDate' => 'ieri' ), 'Data strana', '', '' ) );

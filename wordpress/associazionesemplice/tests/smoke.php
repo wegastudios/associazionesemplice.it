@@ -5740,9 +5740,36 @@ $tec_r2 = \AssociazioneSemplice\TribeImport::run();
 asem_ok( 0 === $tec_r2['imported'] && 2 === $tec_r2['skipped'] && 1 === $tec_r2['failed'], 'The Events Calendar: rilanciando non nascono doppioni' );
 $tec_re = $CP::duplicate( (int) $tec_a['id'], array( 'date' => gmdate( 'Y-m-d', strtotime( $today . ' +30 days' ) ) ) );
 asem_ok( 'Festa vecchia' === $acts->get( $tec_re )['name'] && false !== strpos( (string) $acts->get( $tec_re )['notes'], 'Una bella festa' ) && 'Sala Verde, Via Po 3' === $acts->sessions( $tec_re )[0]['location'], 'riproporre: un evento importato si ripropone in una nuova data con i vecchi contenuti' );
-foreach ( array( $tec_p1, $tec_p2, $tec_p3, $tec_p4, $tec_v ) as $tec_del ) {
+// i corsi: eventi ripetuti con la stessa categoria diventano un solo corso con le sue lezioni
+\AssociazioneSemplice\TribeImport::categories();
+$tec_term = wp_insert_term( 'Corsi del martedì', 'tribe_events_cat' );
+$tec_tid  = (int) $tec_term['term_id'];
+$tec_cp   = array();
+foreach ( array( '2024-03-05', '2024-03-12', '2024-03-19', '2024-03-26', '2024-03-27' ) as $tec_i => $tec_d ) {
+	$tec_pp = wp_insert_post( array( 'post_type' => 'tribe_events', 'post_status' => 'publish', 'post_title' => 'Yoga TEC', 'post_content' => 0 === $tec_i ? '<p>Yoga per tutti</p>' : '' ) );
+	update_post_meta( $tec_pp, '_EventStartDate', $tec_d . ' 18:00:00' );
+	update_post_meta( $tec_pp, '_EventEndDate', $tec_d . ' 19:00:00' );
+	update_post_meta( $tec_pp, '_EventVenueID', $tec_v );
+	wp_set_object_terms( $tec_pp, array( $tec_tid ), 'tribe_events_cat' );
+	$tec_cp[] = $tec_pp;
+}
+$tec_cats = \AssociazioneSemplice\TribeImport::categories();
+asem_ok( 1 === count( $tec_cats ) && 'Corsi del martedì' === $tec_cats[0]['name'] && 5 === $tec_cats[0]['count'] && $tec_cats[0]['course'], 'The Events Calendar: le categorie si leggono anche senza il plugin e quella dei corsi è proposta' );
+$tec_cr = \AssociazioneSemplice\TribeImport::run( array( $tec_tid ) );
+asem_ok( 1 === $tec_cr['courses'] && 5 === $tec_cr['lessons'] && 0 === $tec_cr['imported'] && 1 === $tec_cr['failed'], 'The Events Calendar: i 5 eventi della categoria dei corsi diventano un solo corso' );
+$tec_c = $acts->get( (int) get_post_meta( $tec_cp[0], '_asem_activity', true ) );
+asem_ok( $tec_c && 'course' === $tec_c['kind'] && 'Yoga TEC' === $tec_c['name'] && '2024-03-05' === $tec_c['starts_on'] && '2024-03-27' === $tec_c['ends_on'] && 'Sala Verde, Via Po 3' === $tec_c['location'] && false !== strpos( (string) $tec_c['notes'], 'Yoga per tutti' ) && 0 === (int) $tec_c['fee_cents'], 'The Events Calendar: il corso ha le date della prima e dell\'ultima lezione, il luogo e la descrizione' );
+$tec_l = $tec_c ? \AssociazioneSemplice\ActivityService::lessons( $tec_c ) : array();
+asem_ok( 2 === count( $tec_l ) && 'weekly' === $tec_l[0]['type'] && 2 === (int) $tec_l[0]['day'] && '18:00' === $tec_l[0]['start'] && '19:00' === $tec_l[0]['end'] && '2024-03-05' === $tec_l[0]['from'] && '2024-03-26' === $tec_l[0]['until'] && 'single' === $tec_l[1]['type'] && '2024-03-27' === $tec_l[1]['date'], 'The Events Calendar: il martedì ripetuto diventa la lezione settimanale, il mercoledì una data singola' );
+$tec_cr2 = \AssociazioneSemplice\TribeImport::run( array( $tec_tid ) );
+asem_ok( 0 === $tec_cr2['courses'] && 0 === $tec_cr2['imported'] && 7 === $tec_cr2['skipped'], 'The Events Calendar: rilanciando i corsi non nascono doppioni' );
+$tec_cre = $CP::duplicate( (int) $tec_c['id'], array( 'social_year' => Settings::social_year( '2024-03-05' )->next()->label() ) );
+asem_ok( 'Yoga TEC' === $acts->get( $tec_cre )['name'] && 2 === count( \AssociazioneSemplice\ActivityService::lessons( $acts->get( $tec_cre ) ) ), 'riproporre: un corso importato si ripropone nell\'anno dopo con le sue lezioni' );
+asem_render( array( Admin\TribeImportPage::class, 'render' ), 'Quali categorie sono corsi?' );
+foreach ( array_merge( array( $tec_p1, $tec_p2, $tec_p3, $tec_p4, $tec_v ), $tec_cp ) as $tec_del ) {
 	wp_delete_post( $tec_del, true );
 }
+wp_delete_term( $tec_tid, 'tribe_events_cat' );
 
 // ---------- Copia di sicurezza e ripristino (in fondo: tocca tutte le tabelle) ----------
 
