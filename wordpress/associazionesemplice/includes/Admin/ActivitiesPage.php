@@ -306,7 +306,7 @@ final class ActivitiesPage {
 				$opts[ $y->label() ] = $y->label() . ( 0 === $i ? ' (stesso anno)' : '' );
 				$y                   = $y->next();
 			}
-			echo '<tr><th>Anno sociale</th><td><select name="social_year">' . Ui::options( $opts, $year->next()->label() ) . '</select></td></tr>'
+			echo '<tr><th>Anno sociale</th><td><select name="social_year">' . Ui::options( $opts, $year->next()->label() ) . '</select></td></tr>' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper
 				. '<tr><th>Dal / al</th><td><input type="date" name="starts_on"> <input type="date" name="ends_on"> <span class="description">vuoti = le date di prima, spostate di settimane intere (stessi giorni della settimana)</span></td></tr>';
 		} else {
 			$last = null;

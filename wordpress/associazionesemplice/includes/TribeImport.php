@@ -20,7 +20,8 @@ final class TribeImport {
 
 	/** Testo semplice da un contenuto HTML: senza tag né spazi doppi. */
 	public static function plain( string $html ): string {
-		$text = html_entity_decode( strip_tags( preg_replace( '#<(br|/p|/li|/h[1-6])\s*/?>#i', "\n", $html ) ?? $html ), ENT_QUOTES, 'UTF-8' );
+		$html = preg_replace( '#<(br|/p|/li|/h[1-6])\s*/?>#i', "\n", $html ) ?? $html;
+		$text = html_entity_decode( function_exists( 'wp_strip_all_tags' ) ? wp_strip_all_tags( $html ) : strip_tags( $html ), ENT_QUOTES, 'UTF-8' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.strip_tags_strip_tags -- senza WordPress (prove unitarie) manca wp_strip_all_tags
 		$text = preg_replace( "/[ \t]+/u", ' ', $text ) ?? $text;
 		$text = preg_replace( "/\n{3,}/", "\n\n", trim( $text ) ) ?? $text;
 		return trim( $text );
@@ -90,15 +91,23 @@ final class TribeImport {
 	 * @return array[] post_id, title, date, imported (id della nuova attività o 0)
 	 */
 	public static function found(): array {
-		global $wpdb;
-		$in   = "'" . implode( "','", self::statuses() ) . "'";
-		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT ID, post_title FROM {$wpdb->posts} WHERE post_type = %s AND post_status IN ($in) ORDER BY ID", self::POST_TYPE ), ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- elenco fisso di stati
-		$out  = array();
-		foreach ( $rows as $r ) {
-			$id    = (int) $r['ID'];
+		$posts = get_posts(
+			array(
+				'post_type'        => self::POST_TYPE, // vale anche con The Events Calendar disattivato: il tipo non deve essere registrato
+				'post_status'      => self::statuses(),
+				'numberposts'      => -1,
+				'orderby'          => 'ID',
+				'order'            => 'ASC',
+				'no_found_rows'    => true,
+				'suppress_filters' => true,
+			)
+		);
+		$out   = array();
+		foreach ( $posts as $post ) {
+			$id    = (int) $post->ID;
 			$out[] = array(
 				'post_id'  => $id,
-				'title'    => (string) $r['post_title'],
+				'title'    => (string) $post->post_title,
 				'date'     => substr( (string) get_post_meta( $id, '_EventStartDate', true ), 0, 10 ),
 				'imported' => (int) get_post_meta( $id, self::META_DONE, true ),
 			);
