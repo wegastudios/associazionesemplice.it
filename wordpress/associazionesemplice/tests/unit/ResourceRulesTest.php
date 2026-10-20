@@ -151,6 +151,40 @@ final class ResourceRulesTest extends TestCase {
 		$this->assertSame( 1000, R::fee( $this->rated(), 1, 0 ), 'senza inizio vale la tariffa base' );
 	}
 
+	public function test_free_bookings_have_no_payment_whatever_the_rule(): void {
+		foreach ( array( R::PAY_DESK, R::PAY_UPFRONT, R::PAY_CHOICE ) as $mode ) {
+			$this->assertSame( array( 'free' ), R::pay_options( $mode, true, 0 ), $mode );
+			$this->assertSame( array( 'free' ), R::pay_options( $mode, false, 0 ), $mode );
+		}
+	}
+
+	public function test_desk_resources_are_paid_at_the_desk_even_with_online_payments(): void {
+		$this->assertSame( array( 'desk' ), R::pay_options( R::PAY_DESK, true, 1000 ) );
+		$this->assertSame( array( 'desk' ), R::pay_options( R::PAY_DESK, false, 1000 ) );
+	}
+
+	public function test_upfront_resources_need_online_payments(): void {
+		$this->assertSame( array( 'online' ), R::pay_options( R::PAY_UPFRONT, true, 1000 ) );
+		$this->assertSame( array(), R::pay_options( R::PAY_UPFRONT, false, 1000 ), 'senza pagamenti online non si prenota' );
+	}
+
+	public function test_the_member_chooses_when_the_rule_says_so(): void {
+		$this->assertSame( array( 'online', 'desk' ), R::pay_options( R::PAY_CHOICE, true, 1000 ) );
+		$this->assertSame( array( 'desk' ), R::pay_options( R::PAY_CHOICE, false, 1000 ), 'senza pagamenti online resta la segreteria' );
+	}
+
+	public function test_unknown_rule_falls_back_to_the_desk(): void {
+		$this->assertSame( array( 'desk' ), R::pay_options( 'boh', true, 1000 ) );
+	}
+
+	public function test_reservation_payment_keys_round_trip(): void {
+		$key = \AssociazioneSemplice\PaymentItems::key( array( 'type' => 'reservation', 'reservation_id' => 42, 'person_id' => 7 ) );
+		$this->assertSame( 'r:42:7', $key );
+		$this->assertSame( array( 'type' => 'reservation', 'reservation_id' => 42, 'person_id' => 7 ), \AssociazioneSemplice\PaymentItems::parse( $key ) );
+		$this->assertNull( \AssociazioneSemplice\PaymentItems::parse( 'r:42' ) );
+		$this->assertNull( \AssociazioneSemplice\PaymentItems::parse( 'r:x:7' ) );
+	}
+
 	public function test_series_has_one_date_per_week(): void {
 		$this->assertSame( array( '2026-10-20', '2026-10-27', '2026-11-03' ), R::series_dates( '2026-10-20', 3 ) );
 		$this->assertSame( array( '2026-10-20' ), R::series_dates( '2026-10-20', 0 ) );

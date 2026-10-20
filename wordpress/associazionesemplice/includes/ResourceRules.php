@@ -228,6 +228,41 @@ final class ResourceRules {
 		return $sum;
 	}
 
+	const PAY_DESK    = 'desk';    // si paga in segreteria
+	const PAY_UPFRONT = 'upfront'; // si paga subito, online: la prenotazione vale solo se pagata
+	const PAY_CHOICE  = 'choice';  // sceglie il socio: online subito o in segreteria
+
+	/** Minuti in cui una fascia resta riservata mentre il socio completa il pagamento online (non è una tolleranza: scaduti, si libera). */
+	const HOLD_MINUTES = 15;
+
+	public static function pay_modes(): array {
+		return array(
+			self::PAY_DESK    => 'In segreteria (il socio non paga online)',
+			self::PAY_UPFRONT => 'In anticipo, online (la prenotazione vale solo se pagata)',
+			self::PAY_CHOICE  => 'A scelta del socio: online subito o in segreteria',
+		);
+	}
+
+	/**
+	 * Come può pagare il socio una prenotazione, secondo la regola della risorsa. Vuoto = non si può prenotare (pagamento in anticipo ma
+	 * senza pagamenti online attivi). Una prenotazione gratuita non ha pagamento.
+	 *
+	 * @return string[] 'free', 'desk' (in segreteria) e/o 'online'
+	 */
+	public static function pay_options( string $mode, bool $online_available, int $fee_cents ): array {
+		if ( $fee_cents <= 0 ) {
+			return array( 'free' );
+		}
+		switch ( $mode ) {
+			case self::PAY_UPFRONT:
+				return $online_available ? array( 'online' ) : array();
+			case self::PAY_CHOICE:
+				return $online_available ? array( 'online', 'desk' ) : array( 'desk' );
+			default:
+				return array( 'desk' );
+		}
+	}
+
 	/** Le date di una ripetizione settimanale: la prima e le altre $count - 1 a distanza di una settimana. @return string[] Y-m-d */
 	public static function series_dates( string $first, int $count ): array {
 		$out = array();

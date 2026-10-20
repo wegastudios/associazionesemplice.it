@@ -84,6 +84,9 @@ class OfflinePayments {
 				$items[ $i['key'] ] = $i;
 			}
 		}
+		if ( Edition::has( 'resources' ) ) { // prenotazioni di campi, sale e posti da pagare online
+			$items = array_merge( $items, Resources::online_dues( $actor ) );
+		}
 		return $items;
 	}
 

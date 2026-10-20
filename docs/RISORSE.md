@@ -75,6 +75,33 @@ Un corso o un evento **conta posti** (quante persone ci stanno). Una risorsa è 
 9. **Regolamento e tessera**: stessi controlli di `do_book` (`Regulation::booking_block`, `is_active_member`).
 10. **Audit**: ogni creazione, annullamento e blocco passa da `Audit::log`.
 
+## Pagamento
+
+Ogni risorsa ha una **regola di pagamento** (`pay_mode`), decisa dall'ente. Non ci sono tolleranze di giorni (niente `Holds` per le risorse).
+
+| regola | cosa succede |
+|---|---|
+| `desk` — in segreteria (predefinita) | il socio prenota, il dovuto resta da versare e lo incassa la segreteria |
+| `upfront` — in anticipo | si prenota solo pagando online: la fascia resta riservata 15 minuti durante il pagamento, poi si libera da sola |
+| `choice` — a scelta del socio | il socio sceglie: paga subito online (come sopra) oppure prenota e paga in segreteria |
+
+- Una prenotazione gratuita non ha pagamento, qualunque sia la regola.
+- Senza pagamenti online attivi: `upfront` non permette di prenotare (il sito lo dice), `choice` offre solo la segreteria.
+- Il costo e le vie di pagamento le decide sempre il server (`Resources::quote`), mai il modulo.
+- **Riserva provvisoria** (`reservations.hold_until`): serve solo a non tenere bloccata una fascia da un pagamento abbandonato. Scaduta, la fascia si libera quando qualcuno la chiede e ogni ora dal lavoro periodico. Non si libera mai una prenotazione con un incasso registrato né con un pagamento online ancora in corso.
+- Il pagamento online usa `PaymentItems` (voce `reservation`, chiave `r:{prenotazione}:{persona}`) e finisce in prima nota come «Altra entrata» con `reservation_id`. Se un pagamento arriva dopo che la prenotazione è stata liberata, i soldi entrano come «pagamento online non abbinato» e il pagamento è segnato «da controllare».
+- La segreteria registra sempre prenotazioni e incassi a mano, senza riserva provvisoria.
+
+## Borsellino ricaricabile (Pro, da fare)
+
+Un credito prepagato del socio, per ridurre il numero di transazioni con il gateway: una ricarica online, poi molti pagamenti dal credito. Si usa per le risorse e poi per eventi e corsi. Lo chiamiamo «borsellino» per non confonderlo con Apple/Google Wallet della tessera.
+
+- **Dati**: un registro di movimenti per socio (`ricarica`, `spesa`, `rimborso`, `rettifica`); il saldo è la somma, mai un numero memorizzato. Le spese scalano il saldo sotto blocco per socio (niente saldo negativo con due richieste insieme).
+- **Ricarica**: online con un solo pagamento (tagli e minimo/massimo configurabili) oppure in segreteria (contanti/POS).
+- **Spesa**: alla prenotazione il socio può pagare dal borsellino, se il saldo basta. Non c'è rimborso automatico: se si annulla una prenotazione pagata, la segreteria decide se riaccreditare sul borsellino o restituire i soldi.
+- **Contabilità — da decidere con il commercialista**: il credito è un debito verso il socio finché non si spende. Strada proposta: la ricarica entra in banca/gateway con un giroconto da un conto virtuale «Borsellino soci» (che resta in negativo per il totale dei crediti), e ogni spesa registra l'incasso vero (con voce e risorsa) su quel conto. Così i saldi reali sono giusti e l'entrata si riconosce quando il servizio è reso. Alternativa più semplice (principio di cassa): la ricarica è già un'entrata («Ricarica borsellino») e la spesa non registra niente, ma si perde il dettaglio per risorsa.
+- **Rimborso del credito residuo** e **scadenza del credito**: regole da fissare con l'ente (nel regolamento).
+
 ## Interfaccia
 
 ### Amministrazione (menu «Risorse»)
@@ -100,7 +127,9 @@ Un corso o un evento **conta posti** (quante persone ci stanno). Una risorsa è 
 - **Corsi ed eventi**: un corso o un evento si collega a una risorsa a fasce dal suo modulo (campo `activities.resource_id`). Non crea prenotazioni: la risorsa risulta occupata nelle sue date dal calendario (`Calendar::occurrences`), quindi non c'è niente da sincronizzare se l'attività cambia. Un'attività senza orario occupa tutto il giorno. Collegando si avvisa se ci sono già prenotazioni negli stessi orari (prossimi 120 giorni).
 - **Lista d'attesa delle assegnazioni** (`asem_resource_waitlist`): il socio si mette in coda se il posto è occupato; quando la segreteria rilascia, il primo riceve un'email e l'assegnazione resta alla segreteria; assegnando, chi era in coda esce dalla lista.
 
-**Fase 2b (da fare)**: pagamento online del socio (`PaymentItems` riconosce oggi solo le prenotazioni degli eventi), tolleranza di pagamento (`Holds`), promemoria prima della prenotazione, categoria contabile per risorsa.
+**Fase 2b (fatta)**: regola di pagamento per risorsa (in segreteria, in anticipo online, a scelta del socio), riserva provvisoria di 15 minuti durante il pagamento online, pagamento online delle prenotazioni (`PaymentItems`).
+
+**Fase 2c (da fare)**: borsellino ricaricabile (vedi sopra, dopo la decisione sulla contabilità), promemoria prima della prenotazione, categoria contabile per risorsa.
 
 **Fase 3**: ingresso con QR, carnet di ore, report di occupazione, assegnazioni richieste dal socio con approvazione.
 

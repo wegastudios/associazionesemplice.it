@@ -5590,6 +5590,28 @@ $RS::cancel( $rs_a1, true );
 $RS::assign( $rs_park, $rs_m2, $today, '' );
 asem_ok( null === $RS::waitlist_position( $rs_park, $rs_m2 ) && ! $RS::waitlist( $rs_park ), 'risorse: rilasciato il posto, chi era in coda lo riceve e esce dalla lista' );
 
+// ---------- Risorse prenotabili: regola di pagamento e riserva provvisoria ----------
+$rs_c3  = $RS::save( 0, array( 'name' => 'Campo 3', 'category' => 'court', 'mode' => 'slot', 'open_time' => '08:00', 'close_time' => '22:00', 'slot_minutes' => 60, 'fee_cents' => 1000, 'pay_mode' => 'choice' ) );
+asem_ok( 'choice' === $RS::get( $rs_c3 )['pay_mode'] && 'desk' === $RS::get( $rs_c2 )['pay_mode'], 'risorse: la regola di pagamento si salva (predefinita: in segreteria)' );
+$rs_d3  = gmdate( 'Y-m-d', strtotime( $today . ' +4 days' ) );
+$rs_h1  = $RS::book_slot( $rs_c3, $rs_m1, $rs_d3, '10:00', 1, array(), false, '', true );
+asem_ok( ! empty( $RS::reservation( $rs_h1 )['hold_until'] ) && 0 === $RS::release_unpaid( $rs_c3 ), 'risorse: il pagamento online riserva la fascia per pochi minuti e non la libera subito' );
+$rs_keys = array_keys( array_filter( Plugin::payments()->dues_for( $people->get( $rs_m1 ) ), function ( $i ) { return 'reservation' === $i['type']; } ) );
+asem_ok( array( 'r:' . $rs_h1 . ':' . $rs_m1 ) === $rs_keys && 1000 === (int) Plugin::payments()->dues_for( $people->get( $rs_m1 ) )[ $rs_keys[0] ]['amount_cents'], 'risorse: solo le prenotazioni di risorse che ammettono il pagamento online sono voci da pagare online' );
+$wpdb->update( Db::t( 'reservations' ), array( 'hold_until' => gmdate( 'Y-m-d H:i:s', time() - 60 ) ), array( 'id' => $rs_h1 ) );
+$rs_other = $RS::book_slot( $rs_c3, $rs_m2, $rs_d3, '10:00', 1 );
+asem_ok( $rs_other > 0 && 'cancelled' === $RS::reservation( $rs_h1 )['status'], 'risorse: una fascia riservata e non pagata si libera da sola quando un altro la chiede' );
+$rs_h2 = $RS::book_slot( $rs_c3, $rs_m1, $rs_d3, '12:00', 1, array(), false, '', true );
+$RS::record_payment( $rs_h2, (int) $rs_cash['id'], 'cash', 500, $today );
+$wpdb->update( Db::t( 'reservations' ), array( 'hold_until' => gmdate( 'Y-m-d H:i:s', time() - 60 ) ), array( 'id' => $rs_h2 ) );
+asem_ok( 0 === $RS::release_unpaid( $rs_c3 ) && 'booked' === $RS::reservation( $rs_h2 )['status'], 'risorse: una prenotazione con un incasso non si libera' );
+$RS::confirm( $rs_h2 );
+asem_ok( null === $RS::reservation( $rs_h2 )['hold_until'], 'risorse: pagata, la prenotazione non è più provvisoria' );
+asem_ok( null !== asem_throws( function () use ( $RS, $rs_h1, $rs_cash, $today ) { $RS::record_payment( $rs_h1, (int) $rs_cash['id'], 'cash', 1000, $today ); } ), 'risorse: un pagamento arrivato dopo il rilascio non si abbina a una prenotazione annullata' );
+$rs_s1 = $RS::book_slot( $rs_c3, $rs_m2, $rs_d3, '15:00', 1, array(), true, '', true );
+asem_ok( null === $RS::reservation( $rs_s1 )['hold_until'], 'risorse: la segreteria prenota senza riserva provvisoria' );
+asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'A scelta del socio', array( 'id' => $rs_c3 ) );
+
 // ---------- Copia di sicurezza e ripristino (in fondo: tocca tutte le tabelle) ----------
 
 wp_set_current_user( 1 );

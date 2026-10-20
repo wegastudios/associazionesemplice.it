@@ -365,6 +365,11 @@ class PaymentService extends OfflinePayments {
 					try {
 						$ledger->record_receipt( array( 'date' => $today, 'account_id' => $account, 'method' => $method, 'person_id' => (int) $person_id, 'document_ref' => $ref, 'lines' => $lines ) );
 						$allocated += PaymentItems::total( $group );
+						foreach ( $group as $i ) {
+							if ( PaymentItems::RESERVATION === $i['type'] ) {
+								Resources::confirm( (int) $i['reservation_id'] ); // pagata: la fascia non è più provvisoria
+							}
+						}
 					} catch ( \InvalidArgumentException $e ) {
 						$review       = true;
 						$error        = mb_substr( $e->getMessage(), 0, 250 );
@@ -416,6 +421,8 @@ class PaymentService extends OfflinePayments {
 				return array( 'category_id' => $ledger->category_id_of_kind( 'membership' ), 'amount_cents' => (int) $i['amount_cents'], 'social_year' => $i['social_year'], 'description' => $note );
 			case PaymentItems::COURSE_MONTH:
 				return array( 'category_id' => $ledger->category_id_of_kind( 'activity_fee' ), 'amount_cents' => (int) $i['amount_cents'], 'activity_id' => (int) $i['activity_id'], 'competence_month' => $i['month'], 'description' => $note );
+			case PaymentItems::RESERVATION:
+				return array( 'category_id' => $ledger->category_id_of_kind( 'other_income' ), 'amount_cents' => (int) $i['amount_cents'], 'reservation_id' => (int) $i['reservation_id'], 'description' => mb_substr( $note . ' — ' . ( $i['label'] ?? '' ), 0, 255 ) );
 			default:
 				return array( 'category_id' => $ledger->category_id_of_kind( 'activity_fee' ), 'amount_cents' => (int) $i['amount_cents'], 'activity_id' => (int) $i['activity_id'], 'session_id' => (int) $i['session_id'], 'description' => $note );
 		}

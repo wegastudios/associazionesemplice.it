@@ -58,6 +58,7 @@ final class Resources {
 			'guest_fee_cents' => max( 0, (int) ( $in['guest_fee_cents'] ?? 0 ) ),
 			'max_per_person'  => max( 0, (int) ( $in['max_per_person'] ?? 0 ) ),
 			'cancellable'     => ! empty( $in['cancellable'] ) ? 1 : 0,
+			'pay_mode'        => isset( $in['pay_mode'] ) && isset( ResourceRules::pay_modes()[ (string) $in['pay_mode'] ] ) ? (string) $in['pay_mode'] : ResourceRules::PAY_DESK,
 			'cancel_policy'   => isset( $in['cancel_policy'] ) && CancelPolicy::is_valid( (string) $in['cancel_policy'] ) ? (string) $in['cancel_policy'] : null,
 			'active'          => array_key_exists( 'active', $in ) ? ( ! empty( $in['active'] ) ? 1 : 0 ) : 1,
 			'open_time'       => null,
@@ -250,8 +251,8 @@ final class Resources {
 	}
 
 	/** Una prenotazione sola, sotto blocco: vedi {@see insert_many}. */
-	private static function insert( array $res, string $kind, ?int $person_id, string $starts, ?string $ends, int $fee, array $guests, string $note ): int {
-		return self::insert_many( $res, $kind, $person_id, array( array( $starts, $ends, $fee ) ), $guests, $note )[0];
+	private static function insert( array $res, string $kind, ?int $person_id, string $starts, ?string $ends, int $fee, array $guests, string $note, ?string $hold_until = null ): int {
+		return self::insert_many( $res, $kind, $person_id, array( array( $starts, $ends, $fee ) ), $guests, $note, $hold_until )[0];
 	}
 
 	/**
@@ -263,11 +264,12 @@ final class Resources {
 	 * @return int[] numeri delle prenotazioni
 	 * @throws \InvalidArgumentException
 	 */
-	private static function insert_many( array $res, string $kind, ?int $person_id, array $ranges, array $guests, string $note ): array {
+	private static function insert_many( array $res, string $kind, ?int $person_id, array $ranges, array $guests, string $note, ?string $hold_until = null ): array {
 		$rid = (int) $res['id'];
 		return Db::with_lock(
 			'asem_res_' . $rid,
-			function () use ( $res, $rid, $kind, $person_id, $ranges, $guests, $note ) {
+			function () use ( $res, $rid, $kind, $person_id, $ranges, $guests, $note, $hold_until ) {
+				self::release_unpaid( $rid ); // prima di dire «occupata» si liberano le fasce riservate per un pagamento online mai arrivato
 				$tbl   = Db::t( 'reservations' );
 				$until = null;
 				foreach ( $ranges as $r ) {
@@ -306,6 +308,7 @@ final class Resources {
 							'fee_due_cents' => (int) $r[2],
 							'note'          => '' === $note ? null : mb_substr( $note, 0, 255 ),
 							'series_id'     => count( $ranges ) > 1 && $ids ? $ids[0] : null,
+							'hold_until'    => $hold_until,
 							'created_by'    => get_current_user_id() ?: null,
 							'created_at'    => Db::now(),
 						)
@@ -334,7 +337,7 @@ final class Resources {
 	 * @param string[] $guest_names nomi degli ospiti (solo se la risorsa li ammette)
 	 * @throws \InvalidArgumentException
 	 */
-	public static function book_slot( int $resource_id, int $person_id, string $date, string $start, int $slots, array $guest_names = array(), bool $by_staff = false, string $note = '' ): int {
+	public static function book_slot( int $resource_id, int $person_id, string $date, string $start, int $slots, array $guest_names = array(), bool $by_staff = false, string $note = '', bool $hold = false ): int {
 		$res = self::get( $resource_id );
 		if ( ! $res || ( ! (int) $res['active'] && ! $by_staff ) ) {
 			throw new \InvalidArgumentException( 'Risorsa non disponibile.' );
@@ -353,9 +356,109 @@ final class Resources {
 				throw new \InvalidArgumentException( 'Hai già ' . $mine . ' ' . ( 1 === $mine ? 'prenotazione' : 'prenotazioni' ) . ' su questa risorsa (massimo ' . $max . '): annullane una per prenotarne un\'altra.' );
 			}
 		}
-		$id = self::insert( $res, ResourceRules::KIND_SLOT, $person_id, $starts, $ends, $fee, $guests, $note );
-		Audit::log( 'reservation.created', 'resource', $resource_id, array( 'reservation' => $id, 'person_id' => (int) $person['id'], 'starts' => $starts, 'fee' => $fee ) );
+		$hold_until = $hold && $fee > 0 && ! $by_staff ? gmdate( 'Y-m-d H:i:s', strtotime( Db::now() . ' +' . ResourceRules::HOLD_MINUTES . ' minutes' ) ) : null; // il pagamento online deve arrivare entro pochi minuti
+		$id         = self::insert( $res, ResourceRules::KIND_SLOT, $person_id, $starts, $ends, $fee, $guests, $note, $hold_until );
+		Audit::log( 'reservation.created', 'resource', $resource_id, array( 'reservation' => $id, 'person_id' => (int) $person['id'], 'starts' => $starts, 'fee' => $fee, 'hold' => null !== $hold_until ) );
 		return $id;
+	}
+
+	// ---------- Pagamento ----------
+
+	/**
+	 * Quanto costerebbe una prenotazione del socio, con gli stessi controlli di {@see book_slot} sulla fascia e sugli ospiti.
+	 *
+	 * @return array{0:int,1:array} [dovuto in centesimi, risorsa]
+	 * @throws \InvalidArgumentException
+	 */
+	public static function quote( int $resource_id, string $date, string $start, int $slots, array $guest_names ): array {
+		$res = self::get( $resource_id );
+		if ( ! $res || ! (int) $res['active'] || ResourceRules::SLOT !== $res['mode'] ) {
+			throw new \InvalidArgumentException( 'Risorsa non disponibile.' );
+		}
+		list( $starts ) = ResourceRules::slot_range( $res, $date, $start, $slots, Db::now(), false );
+		$guests         = ResourceRules::guests( (int) $res['guests_max'], $guest_names );
+		return array( ResourceRules::fee( $res, $slots, count( $guests ), $starts ), $res );
+	}
+
+	/** La prenotazione è ancora valida (non annullata né liberata)? */
+	public static function is_active( int $reservation_id ): bool {
+		return (bool) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'reservations' ) . " WHERE id = %d AND status = 'booked'", $reservation_id ) );
+	}
+
+	/** Pagamento arrivato: la prenotazione non è più provvisoria. */
+	public static function confirm( int $reservation_id ): void {
+		self::db()->update( Db::t( 'reservations' ), array( 'hold_until' => null ), array( 'id' => $reservation_id ) );
+	}
+
+	/** Un pagamento online di questa prenotazione è in corso (avviato da poco, non ancora concluso)? */
+	private static function online_in_progress( int $reservation_id ): bool {
+		$since = gmdate( 'Y-m-d H:i:s', time() - DAY_IN_SECONDS );
+		foreach ( self::db()->get_results( self::db()->prepare( 'SELECT items FROM ' . Db::t( 'payments' ) . " WHERE status IN ('created','pending') AND updated_at >= %s", $since ), ARRAY_A ) ?: array() as $p ) {
+			foreach ( (array) json_decode( (string) $p['items'], true ) as $it ) {
+				if ( (int) ( $it['reservation_id'] ?? 0 ) === $reservation_id ) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Libera le fasce riservate per un pagamento online che non è arrivato entro {@see ResourceRules::HOLD_MINUTES} minuti. Non è una tolleranza:
+	 * serve solo a non tenere bloccata una fascia da un pagamento abbandonato. Non libera mai una prenotazione con un incasso registrato
+	 * né con un pagamento online ancora in corso.
+	 *
+	 * @param ?int $resource_id solo questa risorsa (null = tutte)
+	 * @return int prenotazioni liberate
+	 */
+	public static function release_unpaid( ?int $resource_id = null ): int {
+		$tbl  = Db::t( 'reservations' );
+		$sql  = "SELECT id, resource_id FROM $tbl WHERE status = 'booked' AND hold_until IS NOT NULL AND hold_until < %s";
+		$args = array( Db::now() );
+		if ( $resource_id ) {
+			$sql   .= ' AND resource_id = %d';
+			$args[] = $resource_id;
+		}
+		$rows = self::db()->get_results( self::db()->prepare( $sql, $args ), ARRAY_A ) ?: array();
+		$paid = self::paid_map( array_column( $rows, 'id' ) );
+		$n    = 0;
+		foreach ( $rows as $r ) {
+			$id = (int) $r['id'];
+			if ( ( $paid[ $id ] ?? 0 ) > 0 || self::online_in_progress( $id ) ) {
+				continue;
+			}
+			self::db()->update( $tbl, array( 'status' => 'cancelled', 'cancelled_at' => Db::now() ), array( 'id' => $id ) );
+			Audit::log( 'reservation.released', 'resource', (int) $r['resource_id'], array( 'reservation' => $id ) );
+			$n++;
+		}
+		return $n;
+	}
+
+	/** Lavoro periodico di WP-Cron (pianificato da Plugin::schedule_jobs()). */
+	public static function release_unpaid_job(): void {
+		self::release_unpaid();
+	}
+
+	/**
+	 * Prenotazioni del socio che si possono pagare online: quelle con un dovuto ancora da versare su risorse che ammettono il pagamento online.
+	 *
+	 * @return array[] chiave => voce per {@see PaymentItems}
+	 */
+	public static function online_dues( array $actor ): array {
+		$out = array();
+		foreach ( self::for_person( (int) $actor['id'] ) as $r ) {
+			$res = self::get( (int) $r['resource_id'] );
+			if ( ! $res || ResourceRules::PAY_DESK === $res['pay_mode'] || ResourceRules::KIND_BLOCK === $r['kind'] || $r['remaining'] <= 0 ) {
+				continue;
+			}
+			$i        = array(
+				'type' => PaymentItems::RESERVATION, 'person_id' => (int) $actor['id'], 'person_name' => trim( $actor['first_name'] . ' ' . $actor['last_name'] ), 'reservation_id' => (int) $r['id'],
+				'amount_cents' => (int) $r['remaining'], 'label' => $r['resource_name'] . ' — ' . ( new \DateTimeImmutable( substr( (string) $r['starts_at'], 0, 10 ) ) )->format( 'd/m/Y' ) . ' ' . substr( (string) $r['starts_at'], 11, 5 ),
+			);
+			$i['key'] = PaymentItems::key( $i );
+			$out[ $i['key'] ] = $i;
+		}
+		return $out;
 	}
 
 	/**
