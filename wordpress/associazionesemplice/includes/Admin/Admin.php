@@ -33,6 +33,9 @@ final class Admin {
 		if ( \AssociazioneSemplice\Edition::has( 'resources' ) ) {
 			ResourcesActions::register();
 		}
+		if ( \AssociazioneSemplice\Edition::has( 'credits' ) ) {
+			CreditsActions::register();
+		}
 		\AssociazioneSemplice\Wizard::register();
 	}
 
@@ -41,6 +44,7 @@ final class Admin {
 		'asem-people'     => array( 'Rubrica soci', array( 'asem-people' => 'Soci e ospiti', 'asem-messages' => 'Comunicazioni' ) ),
 		'asem-activities' => array( 'Corsi ed eventi', array( 'asem-activities' => 'Elenco' ) ),
 		'asem-resources'  => array( 'Risorse', array( 'asem-resources' => 'Risorse' ) ),
+		'asem-credits'    => array( 'Crediti', array( 'asem-credits' => 'Crediti' ) ),
 		'asem-tools'      => array( 'Strumenti', array( 'asem-tools' => 'Panoramica', 'asem-import' => 'Importa da Excel/CSV', 'asem-wpai' => 'WP All Import', 'asem-exports' => 'Esporta', 'asem-calendar' => 'Calendari', 'asem-backup' => 'Copia di sicurezza', 'asem-tech' => 'Integrazioni' ) ),
 		'asem-money'      => array( 'Cassa', array( 'asem-money' => 'Cassa', 'asem-ledger' => 'Prima nota', 'asem-income' => 'Nuovo incasso', 'asem-group' => 'Cassa per più persone', 'asem-expense' => 'Nuova spesa', 'asem-transfer' => 'Giroconto', 'asem-accounts' => 'Conti e fondi' ) ),
 		'asem-accounting' => array( 'Contabilità', array( 'asem-accounting' => 'Anno solare', 'asem-years' => 'Anni solari', 'asem-reports' => 'Report', 'asem-statement' => 'Rendiconto', 'asem-fivepm' => 'Adempimenti (5x1000)' ) ),
@@ -85,6 +89,7 @@ final class Admin {
 			array( 'asem-people', 'Rubrica soci', array( PeoplePage::class, 'render_list' ) ),
 			array( 'asem-activities', 'Corsi ed eventi', array( ActivitiesPage::class, 'render_list' ) ),
 			array( 'asem-resources', 'Risorse', array( ResourcesPage::class, 'render_list' ) ),
+			array( 'asem-credits', 'Crediti', array( CreditsPage::class, 'render' ) ),
 			array( 'asem-money', 'Cassa', array( MoneyPage::class, 'render' ) ),
 			array( 'asem-accounting', 'Contabilità', array( AccountingPage::class, 'render' ) ),
 			array( 'asem-book', 'Registri', array( RegistersPage::class, 'render_book' ) ),

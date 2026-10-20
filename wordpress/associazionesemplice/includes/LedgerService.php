@@ -282,6 +282,9 @@ class LedgerService {
 			if ( ! empty( $l['competence_month'] ) && ! preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/', $l['competence_month'] ) ) {
 				throw new \InvalidArgumentException( "Voce $n: mese di competenza non valido." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
+			if ( ! empty( $l['reservation_id'] ) && ( ! Edition::has( 'resources' ) || ! Resources::is_active( (int) $l['reservation_id'] ) ) ) {
+				throw new \InvalidArgumentException( "Voce $n: la prenotazione della risorsa non è più attiva." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			}
 			$activity_id = ! empty( $l['activity_id'] ) ? (int) $l['activity_id'] : null;
 			$session_id  = ! empty( $l['session_id'] ) ? (int) $l['session_id'] : null;
 			$activity    = $activity_id ? Plugin::activities()->get( $activity_id ) : null;

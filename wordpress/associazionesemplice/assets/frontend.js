@@ -138,3 +138,18 @@
 		window.print();
 	});
 })();
+
+/* Incasso crediti: lo schermo dello staff con il QR si aggiorna da solo quando il socio paga */
+(function () {
+	var box = document.querySelector('[data-asemf-credit-poll]');
+	if (!box || !window.fetch) { return; }
+	var url = box.getAttribute('data-url'), out = box.querySelector('.asemf-credit-status');
+	function tick() {
+		fetch(url, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
+			out.textContent = d.message;
+			box.setAttribute('data-state', d.state);
+			if (d.state === 'ok') { setTimeout(tick, 2000); }
+		}).catch(function () { setTimeout(tick, 4000); });
+	}
+	if (box.getAttribute('data-state') === 'ok') { setTimeout(tick, 2000); }
+})();

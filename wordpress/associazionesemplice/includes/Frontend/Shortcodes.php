@@ -33,6 +33,8 @@ final class Shortcodes {
 		'profilo'         => 'Il mio profilo',
 		'area_volontari'  => 'Area volontari (le attività di cui sei referente)',
 		'risorse'         => 'Risorse prenotabili: campi, sale, posti (soci)',
+		'crediti'         => 'I miei crediti: saldo, ricarica e movimenti (soci)',
+		'incasso_crediti' => 'Incasso crediti dal vivo con QR (staff)',
 		'calendario'      => 'Calendario di corsi ed eventi (soci)',
 		'attivita'        => 'Elenco attività ed eventi (pubblico)',
 		'prossimi_eventi' => 'Prossimi eventi (pubblico)',
@@ -45,7 +47,7 @@ final class Shortcodes {
 	);
 
 	/** Vista => funzione avanzata che la rende utile: senza la funzione non si propone nei blocchi, nei widget e nell'elenco. */
-	const NEEDS = array( 'ricevute' => 'receipts', 'app' => 'pwa', 'cinquepermille' => 'fivepm', 'risorse' => 'resources' );
+	const NEEDS = array( 'ricevute' => 'receipts', 'app' => 'pwa', 'cinquepermille' => 'fivepm', 'risorse' => 'resources', 'crediti' => 'credits', 'incasso_crediti' => 'credits' );
 
 	public static function available( string $view ): bool {
 		return ! isset( self::NEEDS[ $view ] ) || \AssociazioneSemplice\Edition::has( self::NEEDS[ $view ] );
@@ -71,6 +73,10 @@ final class Shortcodes {
 				return Views::card();
 			case 'risorse':
 				return Views::resources();
+			case 'crediti':
+				return Views::credits();
+			case 'incasso_crediti':
+				return Views::credit_charge();
 			case 'calendario':
 				return Views::calendar();
 			case 'avvisi':

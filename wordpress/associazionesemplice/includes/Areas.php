@@ -17,10 +17,10 @@ final class Areas {
 
 	/** Area => [titolo, viste]. */
 	const GROUPS = array(
-		'soci'       => array( 'Soci', array( 'area_soci', 'tessera', 'mie_attivita', 'risorse', 'pagamenti', 'ricevute', 'regolamento', 'ospiti', 'profilo', 'avvisi', 'calendario', 'app' ) ),
+		'soci'       => array( 'Soci', array( 'area_soci', 'tessera', 'mie_attivita', 'risorse', 'crediti', 'pagamenti', 'ricevute', 'regolamento', 'ospiti', 'profilo', 'avvisi', 'calendario', 'app' ) ),
 		'segreteria' => array( 'Segreteria', array( 'segreteria' ) ),
 		'tesoriere'  => array( 'Tesoriere', array( 'tesoriere' ) ),
-		'eventi'     => array( 'Eventi', array( 'area_volontari', 'ingressi' ) ),
+		'eventi'     => array( 'Eventi', array( 'area_volontari', 'ingressi', 'incasso_crediti' ) ),
 		'pubblico'   => array( 'Pubblico', array( 'attivita', 'prossimi_eventi', 'bonifico', 'donazioni', 'privacy', 'cinquepermille', 'accesso' ) ),
 	);
 

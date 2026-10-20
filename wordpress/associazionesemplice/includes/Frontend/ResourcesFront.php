@@ -2,6 +2,8 @@
 namespace AssociazioneSemplice\Frontend;
 
 use AssociazioneSemplice\Access;
+use AssociazioneSemplice\Edition;
+use AssociazioneSemplice\PaymentItems;
 use AssociazioneSemplice\MemberType;
 use AssociazioneSemplice\Money;
 use AssociazioneSemplice\Plugin;
@@ -20,6 +22,8 @@ final class ResourcesFront {
 	const ACTIONS = array(
 		'asem_front_res_book'   => 'do_book',
 		'asem_front_res_cancel' => 'do_cancel',
+		'asem_front_res_wait'   => 'do_wait',
+		'asem_front_res_unwait' => 'do_unwait',
 	);
 
 	public static function register(): void {
@@ -32,6 +36,10 @@ final class ResourcesFront {
 					$back = wp_validate_redirect( ! empty( $post['_back'] ) ? esc_url_raw( $post['_back'] ) : home_url( '/' ), home_url( '/' ) );
 					try {
 						$msg = self::$method( $post );
+						if ( is_array( $msg ) ) { // prenotazione da pagare online: si va alla pagina del gateway
+							wp_redirect( $msg['url'] ); // phpcs:ignore WordPress.Security.SafeRedirect -- indirizzo restituito dal gateway
+							exit;
+						}
 						wp_safe_redirect( \AssociazioneSemplice\Flash::url( $back, 'asemf', $msg, '' ) );
 					} catch ( \InvalidArgumentException $e ) {
 						wp_safe_redirect( \AssociazioneSemplice\Flash::url( $back, 'asemf', '', $e->getMessage() ) );
@@ -61,7 +69,8 @@ final class ResourcesFront {
 		return $p;
 	}
 
-	public static function do_book( array $post ): string {
+	/** @return string|array messaggio, oppure ['url' => pagina del gateway] se si paga online */
+	public static function do_book( array $post ) {
 		$actor = self::actor();
 		if ( Plugin::people()->profile_blocks( $actor ) ) {
 			throw new \InvalidArgumentException( 'Prima di prenotare completa i tuoi dati (indirizzo e codice fiscale) nel riquadro «Il mio profilo».' );
@@ -71,14 +80,68 @@ final class ResourcesFront {
 			throw new \InvalidArgumentException( $block ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$guests = isset( $post['guest'] ) && is_array( $post['guest'] ) ? array_map( 'strval', $post['guest'] ) : array();
-		Resources::book_slot( (int) ( $post['resource_id'] ?? 0 ), (int) $actor['id'], (string) ( $post['date'] ?? '' ), (string) ( $post['start'] ?? '' ), max( 1, (int) ( $post['slots'] ?? 1 ) ), $guests );
-		return 'Prenotazione registrata.';
+		$rid    = (int) ( $post['resource_id'] ?? 0 );
+		$date   = (string) ( $post['date'] ?? '' );
+		$start  = (string) ( $post['start'] ?? '' );
+		$slots  = max( 1, (int) ( $post['slots'] ?? 1 ) );
+		// Il costo e come si può pagare li decide il server, mai il modulo.
+		list( $fee, $res ) = Resources::quote( $rid, $date, $start, $slots, $guests );
+		$online  = Edition::has( 'payments' ) && Plugin::payments()->enabled();
+		$options = ResourceRules::pay_options( (string) $res['pay_mode'], $online, $fee, Resources::credit_price( $res, $slots ) );
+		if ( ! $options ) {
+			throw new \InvalidArgumentException( 'Questa risorsa si paga online in anticipo, ma i pagamenti online non sono attivi: contatta la segreteria.' );
+		}
+		$pay = (string) ( $post['pay'] ?? '' );
+		if ( array( 'free' ) === $options ) {
+			$pay = 'free';
+		} elseif ( 1 === count( $options ) ) {
+			$pay = $options[0]; // una sola via: non serve scegliere
+		}
+		if ( ! in_array( $pay, $options, true ) ) {
+			throw new \InvalidArgumentException( 'Scegli come pagare: ora online o in segreteria.' );
+		}
+		if ( 'credits' === $pay ) { // pagamento immediato in crediti: se non bastano la prenotazione non resta
+			$id = Resources::book_slot( $rid, (int) $actor['id'], $date, $start, $slots, $guests );
+			try {
+				$spent = Resources::pay_with_credits( $id, (int) $actor['id'] );
+			} catch ( \Throwable $e ) {
+				Resources::cancel( $id, true );
+				throw $e;
+			}
+			return 'Prenotazione registrata, pagata con ' . $spent . ' crediti.';
+		}
+		if ( 'online' !== $pay ) {
+			Resources::book_slot( $rid, (int) $actor['id'], $date, $start, $slots, $guests );
+			return 'desk' === $pay ? 'Prenotazione registrata: il contributo si paga in segreteria.' : 'Prenotazione registrata.';
+		}
+		// Pagamento online in anticipo: la fascia resta riservata pochi minuti; se il pagamento non parte si libera subito.
+		$id   = Resources::book_slot( $rid, (int) $actor['id'], $date, $start, $slots, $guests, false, '', true );
+		$back = remove_query_arg( array( 'asemf_ok', 'asemf_err', 'asemf_sig', 'asem_pay', 'asem_ret', 'token', 'PayerID' ), wp_validate_redirect( ! empty( $post['_back'] ) ? esc_url_raw( $post['_back'] ) : home_url( '/' ), home_url( '/' ) ) );
+		try {
+			$url = Plugin::payments()->create_checkout( $actor, get_current_user_id(), array( PaymentItems::key( array( 'type' => PaymentItems::RESERVATION, 'reservation_id' => $id, 'person_id' => (int) $actor['id'] ) ) ), $back );
+		} catch ( \Throwable $e ) {
+			Resources::cancel( $id, true ); // niente pagamento: la fascia torna libera
+			throw $e;
+		}
+		return array( 'url' => $url );
 	}
 
 	public static function do_cancel( array $post ): string {
 		$actor = self::actor();
 		Resources::cancel( (int) ( $post['id'] ?? 0 ), false, (int) $actor['id'] );
 		return 'Prenotazione annullata.';
+	}
+
+	public static function do_wait( array $post ): string {
+		$actor = self::actor();
+		Resources::waitlist_join( (int) ( $post['resource_id'] ?? 0 ), (int) $actor['id'] );
+		return 'Sei in lista d\'attesa: ti avvisiamo per email quando si libera.';
+	}
+
+	public static function do_unwait( array $post ): string {
+		$actor = self::actor();
+		Resources::waitlist_leave( (int) ( $post['resource_id'] ?? 0 ), (int) $actor['id'] );
+		return 'Sei uscito dalla lista d\'attesa.';
 	}
 
 	// ---------- Vista ----------
@@ -119,12 +182,15 @@ final class ResourcesFront {
 
 		$mine = Resources::for_person( $pid );
 		if ( $mine ) {
+			$due   = Edition::has( 'payments' ) && Plugin::payments()->enabled() ? Resources::online_dues( $p ) : array(); // quelle che si possono pagare online
 			$html .= '<h4>Le mie prenotazioni e assegnazioni</h4><ul class="asemf-list">';
 			foreach ( $mine as $r ) {
 				$can   = Resources::cancellation( $r );
 				$html .= '<li><div><strong>' . esc_html( $r['resource_name'] ) . '</strong> · ' . esc_html( self::when( $r ) )
 					. ( $r['guests'] ? '<div class="asemf-small">Ospiti: ' . esc_html( implode( ', ', $r['guests'] ) ) . '</div>' : '' ) . '</div><div>'
 					. ( (int) $r['fee_due_cents'] > 0 ? ( 'paid' === $r['state'] ? '<span class="asemf-badge asemf-badge-ok">pagata</span> ' : '<span class="asemf-badge">da pagare ' . esc_html( Money::format( (int) $r['remaining'] ) ) . '</span> ' ) : '' )
+					. ( ! empty( $r['hold_until'] ) ? '<span class="asemf-small asemf-muted">riservata fino alle ' . esc_html( substr( (string) $r['hold_until'], 11, 5 ) ) . ', poi si libera se non paghi</span> ' : '' )
+					. ( isset( $due[ 'r:' . (int) $r['id'] . ':' . $pid ] ) ? self::form( 'asem_front_pay', self::hidden( 'items[]', 'r:' . (int) $r['id'] . ':' . $pid ), 'Paga ora' ) . ' ' : '' )
 					. ( $can['allowed'] ? self::form( 'asem_front_res_cancel', self::hidden( 'id', $r['id'] ), 'Annulla', 'asemf-inline', true ) : '<span class="asemf-small asemf-muted">' . esc_html( $can['message'] ) . '</span>' )
 					. '</div></li>';
 			}
@@ -156,12 +222,51 @@ final class ResourcesFront {
 				$html .= '<p class="asemf-small asemf-muted">' . nl2br( esc_html( $r['rules'] ) ) . '</p>';
 			}
 			if ( ResourceRules::ASSIGN === $r['mode'] ) {
-				$html .= '<p class="asemf-muted">Questa risorsa viene assegnata dalla segreteria: scrivi per chiederla.</p></details>';
+				$html .= self::assign_info( $r, $pid ) . '</details>';
 				continue;
 			}
 			$html .= self::day( $r, $open ? $sel_day : $today, $today ) . '</details>';
 		}
 		return $html . '</section>';
+	}
+
+	/** Risorsa assegnata a periodo: la assegna la segreteria; se è occupata il socio può mettersi in coda. */
+	private static function assign_info( array $r, int $pid ): string {
+		$rid = (int) $r['id'];
+		$now = current_time( 'Y-m-d H:i:s' );
+		foreach ( Resources::for_person( $pid ) as $mine ) {
+			if ( (int) $mine['resource_id'] === $rid && ResourceRules::KIND_ASSIGN === $mine['kind'] ) {
+				return '<p class="asemf-muted">È tua: la trovi sopra, tra le tue assegnazioni.</p>';
+			}
+		}
+		$pos = Resources::waitlist_position( $rid, $pid );
+		if ( null !== $pos ) {
+			return '<p class="asemf-muted">Sei in lista d\'attesa (posizione ' . (int) $pos . ').</p>'
+				. self::form( 'asem_front_res_unwait', self::hidden( 'resource_id', $rid ), 'Esci dalla lista', 'asemf-inline', true );
+		}
+		if ( ! Resources::between( $rid, $now, gmdate( 'Y-m-d H:i:s', strtotime( $now . ' +1 second' ) ) ) ) {
+			return '<p class="asemf-muted">Al momento è libera: scrivi alla segreteria per averla.</p>';
+		}
+		return '<p class="asemf-muted">Al momento è occupata. Se si libera ti avvisiamo; l\'assegnazione la fa la segreteria.</p>'
+			. self::form( 'asem_front_res_wait', self::hidden( 'resource_id', $rid ), 'Mettiti in lista d\'attesa' );
+	}
+
+	/** Il modulo di prenotazione di una fascia, con i pulsanti che la regola di pagamento della risorsa consente. */
+	private static function book_form( array $r, string $fields, string $starts_at ): string {
+		$online  = Edition::has( 'payments' ) && Plugin::payments()->enabled();
+		$fee     = ResourceRules::fee( $r, max( 1, (int) $r['min_slots'] ), 0, $starts_at );
+		$options = ResourceRules::pay_options( (string) $r['pay_mode'], $online, $fee, Resources::credit_price( $r, 1 ) );
+		if ( ! $options ) {
+			return '<span class="asemf-small asemf-muted">Pagamento online non attivo: prenota in segreteria</span>';
+		}
+		$labels  = array( 'free' => 'Prenota', 'desk' => 'Prenota (pago in segreteria)', 'online' => 'Prenota e paga ora', 'credits' => 'Paga con i crediti' );
+		$buttons = '';
+		foreach ( $options as $o ) {
+			$buttons .= '<button class="asemf-btn" name="pay" value="' . esc_attr( $o ) . '">' . esc_html( $labels[ $o ] ) . '</button> ';
+		}
+		return '<form class="asemf-form asemf-inline" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">'
+			. '<input type="hidden" name="action" value="asem_front_res_book"><input type="hidden" name="_back" value="' . esc_url( Restrict::current_url() ) . '">'
+			. wp_nonce_field( 'asem_front_res_book', '_wpnonce', false, false ) . $fields . $buttons . '</form>';
 	}
 
 	private static function day( array $r, string $day, string $today ): string {
@@ -197,7 +302,8 @@ final class ResourcesFront {
 				for ( $g = 1; $g <= (int) $r['guests_max']; $g++ ) {
 					$fields .= '<input type="text" name="guest[]" maxlength="120" placeholder="Ospite ' . $g . ' (nome e cognome)"> ';
 				}
-				$html .= self::form( 'asem_front_res_book', $fields, 'Prenota' );
+				$price = ResourceRules::band_fee( $r, $day . ' ' . $s['start'] . ':00' );
+				$html .= ( $price > 0 && ! empty( $r['rates'] ) ? '<span class="asemf-small asemf-muted">' . esc_html( Money::format( $price ) ) . '</span> ' : '' ) . self::book_form( $r, $fields, $day . ' ' . $s['start'] . ':00' );
 			}
 			$html .= '</div></li>';
 		}

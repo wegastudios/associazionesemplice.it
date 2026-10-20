@@ -3300,7 +3300,7 @@ asem_ok( false !== strpos( Admin\Admin::tabs( 'asem-card' ), 'Cassa' ) && false 
 $GLOBALS['submenu'] = array();
 Admin\Admin::menu();
 $visible = array_column( $GLOBALS['submenu']['asem'] ?? array(), 0 );
-asem_ok( array( 'Bacheca', 'Rubrica soci', 'Corsi ed eventi', 'Risorse', 'Cassa', 'Contabilità', 'Registri', 'Strumenti', 'Impostazioni' ) === $visible, 'menu: solo nove voci (' . implode( ', ', $visible ) . ')' );
+asem_ok( array( 'Bacheca', 'Rubrica soci', 'Corsi ed eventi', 'Risorse', 'Crediti', 'Cassa', 'Contabilità', 'Registri', 'Strumenti', 'Impostazioni' ) === $visible, 'menu: solo dieci voci (' . implode( ', ', $visible ) . ')' );
 
 // interruttori: tutto spento di default
 Settings::update( array( 'wallet_enabled' => 0, 'ticket_qr_enabled' => 0 ) );
@@ -5551,6 +5551,132 @@ asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\ResourcesFront::sectio
 \AssociazioneSemplice\Resources::cancel( $rs_b1, true );
 asem_ok( \AssociazioneSemplice\Resources::book_slot( $rs_court, $rs_m2, $rs_day, '18:00', 1, array(), true ) > 0, 'risorse: annullata la prenotazione, la fascia torna libera' );
 asem_ok( false === \AssociazioneSemplice\Resources::delete( $rs_court ) && 0 === (int) \AssociazioneSemplice\Resources::get( $rs_court )['active'], 'risorse: con prenotazioni future la risorsa si disattiva e non si elimina' );
+
+// ---------- Risorse prenotabili: tariffe a fasce, ripetizioni, attività, lista d'attesa ----------
+$RS = '\AssociazioneSemplice\Resources';
+$rs_c2  = $RS::save( 0, array( 'name' => 'Campo 2', 'category' => 'court', 'mode' => 'slot', 'open_time' => '08:00', 'close_time' => '22:00', 'slot_minutes' => 60, 'min_slots' => 1, 'max_slots' => 2, 'fee_cents' => 1000, 'rates_text' => "feriali 18:00-22:00 15,00\nweekend 08:00-22:00 20,00" ) );
+$rs_tue = gmdate( 'Y-m-d', strtotime( 'next tuesday', strtotime( $today . ' +7 days' ) ) );
+$rs_sat = gmdate( 'Y-m-d', strtotime( 'next saturday', strtotime( $today . ' +7 days' ) ) );
+$rs_p1  = $RS::book_slot( $rs_c2, $rs_m1, $rs_tue, '18:00', 1, array(), true );
+$rs_p2  = $RS::book_slot( $rs_c2, $rs_m1, $rs_tue, '17:00', 1, array(), true );
+$rs_p3  = $RS::book_slot( $rs_c2, $rs_m1, $rs_sat, '10:00', 1, array(), true );
+asem_ok( 1500 === (int) $RS::reservation( $rs_p1 )['fee_due_cents'] && 1000 === (int) $RS::reservation( $rs_p2 )['fee_due_cents'] && 2000 === (int) $RS::reservation( $rs_p3 )['fee_due_cents'], 'risorse: le tariffe a fasce (feriale serale, base, weekend) si applicano al dovuto' );
+asem_ok( null !== asem_throws( function () use ( $RS ) { $RS::save( 0, array( 'name' => 'Campo X', 'mode' => 'slot', 'open_time' => '08:00', 'close_time' => '22:00', 'rates_text' => 'quando capita 18:00-22:00 15' ) ); } ), 'risorse: una tariffa a fasce scritta male è rifiutata' );
+// ripetizioni: tutte o nessuna
+$rs_series = $RS::book_series( $rs_c2, $rs_m2, $rs_tue, '20:00', 1, 3 );
+$rs_same   = array_unique( array_map( function ( $i ) use ( $RS ) { return (int) $RS::reservation( $i )['series_id']; }, $rs_series ) );
+asem_ok( 3 === count( $rs_series ) && array( $rs_series[0] ) === array_values( $rs_same ), 'risorse: la ripetizione crea una prenotazione a settimana nella stessa serie' );
+$rs_count0 = count( $RS::upcoming( $rs_c2, 500 ) );
+asem_ok( null !== asem_throws( function () use ( $RS, $rs_c2, $rs_m2, $rs_tue ) { $RS::book_series( $rs_c2, $rs_m2, $rs_tue, '20:00', 1, 3 ); } ) && $rs_count0 === count( $RS::upcoming( $rs_c2, 500 ) ), 'risorse: una ripetizione in conflitto non crea niente' );
+$RS::book_slot( $rs_c2, $rs_m1, gmdate( 'Y-m-d', strtotime( $rs_tue . ' +7 days' ) ), '21:00', 1, array(), true );
+asem_ok( null !== asem_throws( function () use ( $RS, $rs_c2, $rs_m2, $rs_tue ) { $RS::book_series( $rs_c2, $rs_m2, $rs_tue, '21:00', 1, 3 ); } ) && $RS::book_slot( $rs_c2, $rs_m2, $rs_tue, '21:00', 1, array(), true ) > 0, 'risorse: se una settimana è occupata nessuna delle altre viene prenotata' );
+asem_ok( 2 === $RS::cancel_series( $rs_series[1] ) && 'booked' === $RS::reservation( $rs_series[0] )['status'] && 'cancelled' === $RS::reservation( $rs_series[2] )['status'], 'risorse: si annullano una prenotazione e le successive della serie' );
+// un evento collegato alla risorsa la occupa
+$rs_ev = $acts->create( array( 'name' => 'Torneo campo', 'social_year' => $sy_label, 'kind' => 'event', 'session' => array( 'session_date' => $ev_date, 'start_time' => '19:00', 'end_time' => '20:00', 'capacity' => 10 ) ) );
+asem_ok( 0 === $RS::link_activity( $rs_ev, $rs_c2 ) && $rs_c2 === $RS::activity_resource( $rs_ev ), 'risorse: un evento si collega a una risorsa a fasce' );
+$rs_msg = asem_throws( function () use ( $RS, $rs_c2, $rs_m2, $ev_date ) { $RS::book_slot( $rs_c2, $rs_m2, $ev_date, '19:00', 1, array(), true ); } );
+asem_ok( null !== $rs_msg && false !== strpos( $rs_msg, 'Torneo campo' ) && $RS::book_slot( $rs_c2, $rs_m2, $ev_date, '18:00', 1, array(), true ) > 0, 'risorse: negli orari dell\'evento la risorsa non si prenota, negli altri sì' );
+$rs_grid = array_filter( $RS::day_grid( $RS::get( $rs_c2 ), $ev_date ), function ( $s ) { return '19:00' === $s['start']; } );
+asem_ok( 'activity' === array_values( $rs_grid )[0]['reservation']['kind'], 'risorse: il calendario del giorno mostra la fascia occupata dall\'evento' );
+$RS::link_activity( $rs_ev, null );
+$rs_late = $RS::book_slot( $rs_c2, $rs_m2, $ev_date, '19:00', 1, array(), true );
+asem_ok( $RS::link_activity( $rs_ev, $rs_c2 ) >= 1 && null !== asem_throws( function () use ( $RS, $rs_ev, $rs_park ) { $RS::link_activity( $rs_ev, $rs_park ); } ), 'risorse: collegando un evento si segnalano le prenotazioni già presenti; le assegnazioni non si possono collegare' );
+asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Risorsa occupata', array( 'id' => $rs_ev ) );
+asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'Tariffe a fasce', array( 'id' => $rs_c2 ) );
+// lista d'attesa dei posti assegnati
+$RS::waitlist_join( $rs_park, $rs_m2 );
+asem_ok( 1 === $RS::waitlist_position( $rs_park, $rs_m2 ) && null !== asem_throws( function () use ( $RS, $rs_park, $rs_m2 ) { $RS::waitlist_join( $rs_park, $rs_m2 ); } ) && null !== asem_throws( function () use ( $RS, $rs_park, $rs_m1 ) { $RS::waitlist_join( $rs_park, $rs_m1 ); } ), 'risorse: si entra una volta sola in lista d\'attesa e non chi ha già il posto' );
+asem_ok( null !== asem_throws( function () use ( $RS, $rs_c2, $rs_m2 ) { $RS::waitlist_join( $rs_c2, $rs_m2 ); } ), 'risorse: la lista d\'attesa c\'è solo per le assegnazioni' );
+asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'Lista d\'attesa', array( 'id' => $rs_park ) );
+$RS::cancel( $rs_a1, true );
+$RS::assign( $rs_park, $rs_m2, $today, '' );
+asem_ok( null === $RS::waitlist_position( $rs_park, $rs_m2 ) && ! $RS::waitlist( $rs_park ), 'risorse: rilasciato il posto, chi era in coda lo riceve e esce dalla lista' );
+
+// ---------- Risorse prenotabili: regola di pagamento e riserva provvisoria ----------
+$rs_c3  = $RS::save( 0, array( 'name' => 'Campo 3', 'category' => 'court', 'mode' => 'slot', 'open_time' => '08:00', 'close_time' => '22:00', 'slot_minutes' => 60, 'fee_cents' => 1000, 'pay_mode' => 'choice' ) );
+asem_ok( 'choice' === $RS::get( $rs_c3 )['pay_mode'] && 'desk' === $RS::get( $rs_c2 )['pay_mode'], 'risorse: la regola di pagamento si salva (predefinita: in segreteria)' );
+$rs_d3  = gmdate( 'Y-m-d', strtotime( $today . ' +4 days' ) );
+$rs_h1  = $RS::book_slot( $rs_c3, $rs_m1, $rs_d3, '10:00', 1, array(), false, '', true );
+asem_ok( ! empty( $RS::reservation( $rs_h1 )['hold_until'] ) && 0 === $RS::release_unpaid( $rs_c3 ), 'risorse: il pagamento online riserva la fascia per pochi minuti e non la libera subito' );
+$rs_keys = array_keys( array_filter( Plugin::payments()->dues_for( $people->get( $rs_m1 ) ), function ( $i ) { return 'reservation' === $i['type']; } ) );
+asem_ok( array( 'r:' . $rs_h1 . ':' . $rs_m1 ) === $rs_keys && 1000 === (int) Plugin::payments()->dues_for( $people->get( $rs_m1 ) )[ $rs_keys[0] ]['amount_cents'], 'risorse: solo le prenotazioni di risorse che ammettono il pagamento online sono voci da pagare online' );
+$wpdb->update( Db::t( 'reservations' ), array( 'hold_until' => gmdate( 'Y-m-d H:i:s', time() - 60 ) ), array( 'id' => $rs_h1 ) );
+$rs_other = $RS::book_slot( $rs_c3, $rs_m2, $rs_d3, '10:00', 1 );
+asem_ok( $rs_other > 0 && 'cancelled' === $RS::reservation( $rs_h1 )['status'], 'risorse: una fascia riservata e non pagata si libera da sola quando un altro la chiede' );
+$rs_h2 = $RS::book_slot( $rs_c3, $rs_m1, $rs_d3, '12:00', 1, array(), false, '', true );
+$RS::record_payment( $rs_h2, (int) $rs_cash['id'], 'cash', 500, $today );
+$wpdb->update( Db::t( 'reservations' ), array( 'hold_until' => gmdate( 'Y-m-d H:i:s', time() - 60 ) ), array( 'id' => $rs_h2 ) );
+asem_ok( 0 === $RS::release_unpaid( $rs_c3 ) && 'booked' === $RS::reservation( $rs_h2 )['status'], 'risorse: una prenotazione con un incasso non si libera' );
+$RS::confirm( $rs_h2 );
+asem_ok( null === $RS::reservation( $rs_h2 )['hold_until'], 'risorse: pagata, la prenotazione non è più provvisoria' );
+asem_ok( null !== asem_throws( function () use ( $RS, $rs_h1, $rs_cash, $today ) { $RS::record_payment( $rs_h1, (int) $rs_cash['id'], 'cash', 1000, $today ); } ), 'risorse: un pagamento arrivato dopo il rilascio non si abbina a una prenotazione annullata' );
+$rs_s1 = $RS::book_slot( $rs_c3, $rs_m2, $rs_d3, '15:00', 1, array(), true, '', true );
+asem_ok( null === $RS::reservation( $rs_s1 )['hold_until'], 'risorse: la segreteria prenota senza riserva provvisoria' );
+asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'A scelta del socio', array( 'id' => $rs_c3 ) );
+
+// ---------- Crediti ----------
+wp_set_current_user( 1 );
+$CR = '\AssociazioneSemplice\Credits';
+$CR::save_packs( "10 = 10,00\n50 = 45,00" );
+asem_ok( 2 === count( $CR::packs() ) && 4500 === $CR::packs()[1]['price_cents'], 'crediti: i pacchetti in vendita si salvano' );
+asem_ok( null !== asem_throws( function () use ( $CR ) { $CR::save_packs( 'quanti vuoi' ); } ) && 2 === count( $CR::packs() ), 'crediti: un pacchetto scritto male è rifiutato e non cambia i pacchetti' );
+$cr_m  = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Carla', 'last_name' => 'Crediti' ) );
+$cr_m2 = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Sergio', 'last_name' => 'Staff' ) );
+$people->set_membership( $cr_m, $sy_label, true );
+$people->set_membership( $cr_m2, $sy_label, true );
+asem_ok( 0 === $CR::balance( $cr_m ), 'crediti: si parte da zero' );
+$CR::sell_at_desk( $cr_m, 50, (int) $rs_cash['id'], 'cash' );
+asem_ok( 50 === $CR::balance( $cr_m ) && 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE person_id = %d AND type = 'income' AND amount_cents = 4500 AND description LIKE %s", $cr_m, 'Acquisto crediti%' ) ), 'crediti: la vendita in segreteria dà i crediti e la vendita entra in prima nota' );
+asem_ok( null !== asem_throws( function () use ( $CR, $cr_m, $rs_cash ) { $CR::sell_at_desk( $cr_m, 7, (int) $rs_cash['id'], 'cash' ); } ) && 50 === $CR::balance( $cr_m ), 'crediti: si vendono solo i pacchetti previsti' );
+asem_ok( null !== asem_throws( function () use ( $CR, $cr_m ) { $CR::spend( $cr_m, 60, 'troppo' ); } ) && 50 === $CR::balance( $cr_m ), 'crediti: non si spende più del saldo' );
+asem_ok( null !== asem_throws( function () use ( $CR, $rs_gst ) { $CR::spend( $rs_gst, 1, 'ospite' ); } ), 'crediti: gli ospiti non hanno crediti' );
+$CR::spend( $cr_m, 20, 'prova' );
+asem_ok( 30 === $CR::balance( $cr_m ), 'crediti: la spesa scala il saldo' );
+asem_ok( null !== asem_throws( function () use ( $CR, $cr_m ) { $CR::adjust( $cr_m, -31, 'troppi' ); } ) && null !== asem_throws( function () use ( $CR, $cr_m ) { $CR::adjust( $cr_m, 5, '' ); } ) && 30 === $CR::balance( $cr_m ), 'crediti: la rettifica vuole un motivo e non porta il saldo sotto zero' );
+$CR::adjust( $cr_m, 5, 'regalo' );
+asem_ok( 35 === $CR::balance( $cr_m ) && $CR::outstanding() >= 35, 'crediti: la rettifica si somma ai crediti in circolazione' );
+asem_ok( array( 'c:' . $cr_m . ':10', 'c:' . $cr_m . ':50' ) === array_keys( $CR::pack_items( $people->get( $cr_m ) ) ), 'crediti: i pacchetti si comprano online come voci di pagamento' );
+// pagamento di una risorsa in crediti
+$cr_res = $RS::save( 0, array( 'name' => 'Campo crediti', 'category' => 'court', 'mode' => 'slot', 'open_time' => '08:00', 'close_time' => '22:00', 'slot_minutes' => 60, 'min_slots' => 1, 'max_slots' => 2, 'fee_cents' => 1000, 'credit_cost' => 4 ) );
+$cr_day = gmdate( 'Y-m-d', strtotime( $today . ' +6 days' ) );
+$cr_b   = $RS::book_slot( $cr_res, $cr_m, $cr_day, '10:00', 2 );
+$cr_b0  = $CR::balance( $cr_m );
+asem_ok( 8 === $RS::pay_with_credits( $cr_b, $cr_m ) && $cr_b0 - 8 === $CR::balance( $cr_m ), 'crediti: una prenotazione di 2 fasce a 4 crediti ne costa 8' );
+$cr_row = array_values( array_filter( $RS::for_person( $cr_m ), function ( $r ) use ( $cr_b ) { return (int) $r['id'] === $cr_b; } ) )[0];
+asem_ok( 0 === (int) $cr_row['remaining'] && 'paid' === $cr_row['state'] && null !== asem_throws( function () use ( $RS, $cr_b, $cr_m ) { $RS::pay_with_credits( $cr_b, $cr_m ); } ), 'crediti: pagata in crediti non resta nulla da incassare e non si paga due volte' );
+$RS::cancel( $cr_b, true );
+asem_ok( $cr_b0 === $CR::balance( $cr_m ) && 0 === (int) $RS::reservation( $cr_b )['credits_paid'], 'crediti: annullando la prenotazione i crediti tornano al socio' );
+$cr_b2 = $RS::book_slot( $cr_res, $cr_m2, $cr_day, '12:00', 1 );
+asem_ok( null !== asem_throws( function () use ( $RS, $cr_b2, $cr_m2 ) { $RS::pay_with_credits( $cr_b2, $cr_m2 ); } ) && 0 === (int) $RS::reservation( $cr_b2 )['credits_paid'], 'crediti: senza crediti sufficienti la prenotazione non risulta pagata' );
+// addebito dal vivo con il QR
+$cr_ch = $CR::create_charge( $cr_m2, 5, 'Ingresso serata', null );
+asem_ok( 24 === strlen( $cr_ch['code'] ) && 'ok' === $CR::charge_status( $cr_ch['id'], 1 )['state'] && $CR::can_charge( 1 ), 'crediti: lo staff crea un addebito valido con un codice casuale' );
+$cr_b1 = $CR::balance( $cr_m );
+$CR::pay_charge( $cr_ch['code'], $cr_m );
+$cr_st = $CR::charge_status( $cr_ch['id'], 1 );
+asem_ok( $cr_b1 - 5 === $CR::balance( $cr_m ) && 'paid' === $cr_st['state'] && false !== strpos( $cr_st['payer'], 'Carla' ), 'crediti: il socio conferma, i crediti si scalano e lo staff vede chi ha pagato' );
+asem_ok( null !== asem_throws( function () use ( $CR, $cr_ch, $cr_m ) { $CR::pay_charge( $cr_ch['code'], $cr_m ); } ) && $cr_b1 - 5 === $CR::balance( $cr_m ), 'crediti: un addebito si paga una volta sola' );
+$cr_old = $CR::create_charge( $cr_m2, 1, 'Scaduto', null );
+$wpdb->update( Db::t( 'credit_charges' ), array( 'expires_at' => gmdate( 'Y-m-d H:i:s', time() - 60 ) ), array( 'id' => $cr_old['id'] ) );
+$cr_msg = asem_throws( function () use ( $CR, $cr_old, $cr_m ) { $CR::pay_charge( $cr_old['code'], $cr_m ); } );
+asem_ok( null !== $cr_msg && false !== strpos( $cr_msg, 'scaduto' ), 'crediti: il QR scaduto non si paga' );
+$cr_big = $CR::create_charge( $cr_m2, 5000, 'Troppo caro', null );
+asem_ok( null !== asem_throws( function () use ( $CR, $cr_big, $cr_m ) { $CR::pay_charge( $cr_big['code'], $cr_m ); } ) && 'pending' === $CR::charge( $cr_big['id'] )['status'], 'crediti: con il saldo insufficiente l\'addebito resta pagabile' );
+$CR::cancel_charge( $cr_big['id'], 1 );
+asem_ok( null !== asem_throws( function () use ( $CR, $cr_big, $cr_m ) { $CR::pay_charge( $cr_big['code'], $cr_m ); } ) && null !== asem_throws( function () use ( $CR, $cr_ch ) { $CR::cancel_charge( $cr_ch['id'], 1 ); } ), 'crediti: un addebito annullato non si paga e uno pagato non si annulla' );
+asem_ok( null !== asem_throws( function () use ( $CR, $cr_m2, $rs_ev ) { $CR::create_charge( $cr_m2, 0, '', $rs_ev ); } ), 'crediti: un\'attività senza crediti non si addebita' );
+$CR::set_activity_price( $rs_ev, 3 );
+$cr_act = $CR::create_charge( $cr_m2, 0, '', $rs_ev );
+$cr_c3  = $CR::charge( $cr_act['id'] );
+asem_ok( 3 === (int) $cr_c3['credits'] && 'Torneo campo' === $cr_c3['label'] && in_array( $rs_ev, array_map( 'intval', array_column( $CR::chargeable_activities(), 'id' ) ), true ), 'crediti: scegliendo un\'attività l\'importo e il testo si compilano da soli' );
+asem_ok( 24 === strlen( (string) $wpdb->get_var( 'SELECT code FROM ' . Db::t( 'credit_charges' ) . ' ORDER BY id DESC LIMIT 1' ) ), 'crediti: i codici non sono prevedibili' );
+$_GET['asem_charge'] = $cr_act['id'];
+$cr_screen = \AssociazioneSemplice\Frontend\CreditsFront::staff_section( $people->get( $cr_m2 ) );
+unset( $_GET['asem_charge'] );
+asem_ok( false !== strpos( $cr_screen, 'data-asemf-credit-poll' ) && false !== strpos( $cr_screen, '<svg' ) && false !== strpos( \AssociazioneSemplice\Frontend\CreditsFront::staff_section( $people->get( $cr_m2 ) ), 'Mostra il QR' ), 'crediti: lo staff vede il QR e lo stato che si aggiorna da solo' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\CreditsFront::section( $people->get( $cr_m ) ), 'I miei crediti' ), 'crediti: il socio vede il saldo nella sua area' );
+asem_render( array( Admin\CreditsPage::class, 'render' ), 'Pacchetti in vendita' );
+asem_render( array( Admin\CreditsPage::class, 'render' ), 'Ultimi movimenti' );
 
 // ---------- Copia di sicurezza e ripristino (in fondo: tocca tutte le tabelle) ----------
 
