@@ -29,11 +29,30 @@ final class ResourcesPage {
 		if ( ResourceRules::KIND_BLOCK === $r['kind'] ) {
 			return '<em>Bloccata' . ( $r['note'] ? ': ' . esc_html( (string) $r['note'] ) : '' ) . '</em>';
 		}
+		if ( 'activity' === $r['kind'] ) { // un corso o un evento collegato alla risorsa
+			return '<em>Attività: ' . esc_html( (string) $r['first_name'] ) . '</em>';
+		}
 		$out = esc_html( trim( $r['first_name'] . ' ' . $r['last_name'] ) );
 		if ( ! empty( $r['guests'] ) ) {
 			$out .= ' + ' . esc_html( implode( ', ', $r['guests'] ) );
 		}
 		return $out;
+	}
+
+	/** Riga del modulo di un corso o di un evento: la risorsa che occupa. Vuota se non ci sono risorse a fasce. Da chiamare solo se la funzione c'è. */
+	public static function activity_row( ?int $activity_id ): string {
+		$opts = array();
+		foreach ( Resources::all() as $r ) {
+			if ( ResourceRules::SLOT === $r['mode'] ) {
+				$opts[ $r['id'] ] = $r['name'];
+			}
+		}
+		if ( ! $opts ) {
+			return '';
+		}
+		$selected = $activity_id ? Resources::activity_resource( $activity_id ) : null;
+		return '<tr><th>Risorsa occupata</th><td><select name="resource_id">' . Ui::options( $opts, $selected, '— nessuna —' ) . '</select>'
+			. '<p class="description">Se si tiene in un campo o in una sala delle <a href="' . esc_url( Ui::url( 'asem-resources' ) ) . '">Risorse</a>, la occupa nelle sue date e nessuno la prenota negli stessi orari.</p></td></tr>';
 	}
 
 	// ---------- Elenco ----------
@@ -130,7 +149,8 @@ final class ResourcesPage {
 			if ( (int) $res['guests_max'] > 0 ) {
 				echo '<tr><th>Ospiti</th><td><textarea name="guests" rows="3" cols="40" placeholder="Un nome e cognome per riga (al massimo ' . (int) $res['guests_max'] . ')"></textarea></td></tr>';
 			}
-			echo '<tr><th>Nota</th><td><input type="text" name="note" class="regular-text" maxlength="255"></td></tr></table>'
+			echo '<tr><th>Ripetizione</th><td>per <input type="number" name="weeks" min="1" max="52" value="1" style="width:60px"> settimane, alla stessa ora <span class="description">1 = una volta sola. Con più settimane si prenotano tutte le date o nessuna.</span></td></tr>'
+				. '<tr><th>Nota</th><td><input type="text" name="note" class="regular-text" maxlength="255"></td></tr></table>'
 				. '<p><button class="button button-primary">Prenota</button> <span class="description">La segreteria può registrare anche nel passato e oltre il limite di anticipo.</span></p>';
 			Ui::form_close();
 			echo '</div>';
@@ -152,6 +172,24 @@ final class ResourcesPage {
 				. '<p><button class="button button-primary">Assegna</button></p>';
 			Ui::form_close();
 			echo '</div>';
+
+			$queue = Resources::waitlist( $rid );
+			echo '<div class="asem-card"><h2>Lista d\'attesa</h2>';
+			if ( ! $queue ) {
+				echo '<p class="description">Nessuno in coda. I soci si mettono in lista dalla loro area quando la risorsa è occupata; quando si libera il primo riceve un\'email e l\'assegnazione resta alla segreteria.</p>';
+			} else {
+				echo '<table class="widefat striped" style="max-width:720px"><thead><tr><th>#</th><th>Socio</th><th>Dal</th><th></th></tr></thead><tbody>';
+				foreach ( $queue as $i => $w ) {
+					$who = trim( $w['first_name'] . ' ' . $w['last_name'] );
+					echo '<tr><td>' . (int) ( $i + 1 ) . '</td><td>' . esc_html( $who ) . '</td><td>' . esc_html( Ui::date( substr( (string) $w['created_at'], 0, 10 ) ) ) . '</td><td>'
+						. '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline"><input type="hidden" name="action" value="asem_res_assign"><input type="hidden" name="_back" value="' . esc_url( $back ) . '">'
+						. wp_nonce_field( 'asem_res_assign', '_wpnonce', true, false ) . Ui::hidden( 'resource_id', $rid ) . Ui::hidden( 'person_id', $w['person_id'] ) . Ui::hidden( 'from', current_time( 'Y-m-d' ) ) // phpcs:ignore WordPress.Security.EscapeOutput
+						. '<button class="button button-small">Assegna a ' . esc_html( (string) $w['first_name'] ) . '</button></form> '
+						. Ui::confirm_button( 'asem_res_wait_remove', $back, array( 'resource_id' => $rid, 'person_id' => $w['person_id'] ), 'Togli', 'Togliere dalla lista?' ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				}
+				echo '</tbody></table>';
+			}
+			echo '</div>';
 		}
 
 		$rows = Resources::upcoming( $rid );
@@ -169,7 +207,7 @@ final class ResourcesPage {
 		foreach ( $rows as $r ) {
 			echo '<tr><td>' . esc_html( self::when( $r ) ) . '</td><td>' . self::who( $r ) . '</td><td>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			if ( ResourceRules::KIND_BLOCK !== $r['kind'] && (int) $r['fee_due_cents'] > 0 ) {
-				echo Ui::booking_state( $r ); // phpcs:ignore WordPress.Security.EscapeOutput
+				echo Ui::booking_state( $r ) . ( ! empty( $r['hold_until'] ) ? ' <span class="description">riservata fino alle ' . esc_html( substr( (string) $r['hold_until'], 11, 5 ) ) . ' in attesa del pagamento online</span>' : '' ); // phpcs:ignore WordPress.Security.EscapeOutput
 				if ( $r['remaining'] > 0 && $amap ) {
 					echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="margin-top:4px"><input type="hidden" name="action" value="asem_res_pay"><input type="hidden" name="_back" value="' . esc_url( $back ) . '">'
 						. wp_nonce_field( 'asem_res_pay', '_wpnonce', true, false ) . Ui::hidden( 'id', $r['id'] ) // phpcs:ignore WordPress.Security.EscapeOutput
@@ -177,7 +215,8 @@ final class ResourcesPage {
 						. '<select name="account_id">' . Ui::options( $amap ) . '</select> <button class="button button-small">Incassa</button></form>';
 				}
 			}
-			echo '</td><td>' . Ui::confirm_button( 'asem_res_cancel', $back, array( 'id' => $r['id'] ), ResourceRules::KIND_ASSIGN === $r['kind'] ? 'Rilascia' : ( ResourceRules::KIND_BLOCK === $r['kind'] ? 'Togli blocco' : 'Annulla' ), 'Confermi?' ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo '</td><td>' . Ui::confirm_button( 'asem_res_cancel', $back, array( 'id' => $r['id'] ), ResourceRules::KIND_ASSIGN === $r['kind'] ? 'Rilascia' : ( ResourceRules::KIND_BLOCK === $r['kind'] ? 'Togli blocco' : 'Annulla' ), 'Confermi?' ) // phpcs:ignore WordPress.Security.EscapeOutput
+				. ( ! empty( $r['series_id'] ) ? ' ' . Ui::confirm_button( 'asem_res_cancel', $back, array( 'id' => $r['id'], 'series' => 1 ), 'Annulla anche le successive', 'Annullo questa prenotazione e tutte le successive della serie. Confermi?' ) : '' ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
 		echo '</tbody></table></div>';
 	}
@@ -196,6 +235,9 @@ final class ResourcesPage {
 			. '<tr><th>Descrizione</th><td><textarea name="description" rows="2" cols="60">' . esc_textarea( (string) $v( 'description' ) ) . '</textarea></td></tr>'
 			. '<tr><th>Regole d\'uso</th><td><textarea name="rules" rows="2" cols="60">' . esc_textarea( (string) $v( 'rules' ) ) . '</textarea><br><span class="description">Si mostrano ai soci prima di prenotare.</span></td></tr>'
 			. '<tr><th>Tariffa</th><td><input type="text" name="fee" size="8" value="' . esc_attr( Money::plain( (int) $v( 'fee_cents', 0 ) ) ) . '"> € <span class="description">per fascia (risorse a fasce) o per periodo (assegnazioni). 0 = gratuita.</span></td></tr>'
+			. '<tr><th>Tariffe a fasce</th><td><textarea name="rates_text" rows="3" cols="40" placeholder="feriali 18:00-22:00 15,00&#10;weekend 08:00-22:00 20,00">' . esc_textarea( ResourceRules::rates_text( ResourceRules::clean_rates( $v( 'rates', '' ) ) ) ) . '</textarea><br><span class="description">Facoltative, solo per le risorse a fasce: una per riga, «giorni ore importo» (giorni: <em>tutti</em>, <em>feriali</em> lun–ven, <em>weekend</em> sab–dom). Vale la prima riga che corrisponde all\'ora di inizio di ogni fascia; fuori dalle righe vale la tariffa base.</span></td></tr>'
+			. '<tr><th>Pagamento</th><td><select name="pay_mode">' . Ui::options( ResourceRules::pay_modes(), $v( 'pay_mode', ResourceRules::PAY_DESK ) ) . '</select><br><span class="description">Chi prenota online con pagamento in anticipo tiene la fascia riservata solo ' . (int) ResourceRules::HOLD_MINUTES . ' minuti: se il pagamento non arriva si libera. Non ci sono tolleranze di giorni. La segreteria registra sempre le prenotazioni e gli incassi a mano. Il pagamento online richiede i pagamenti online attivi.</span></td></tr>'
+			. ( \AssociazioneSemplice\Edition::has( 'credits' ) ? '<tr><th>Crediti</th><td><input type="number" name="credit_cost" min="0" style="width:80px" value="' . (int) $v( 'credit_cost', 0 ) . '"> crediti ' . ( ResourceRules::ASSIGN === $v( 'mode', ResourceRules::SLOT ) ? 'per periodo' : 'per fascia' ) . '<br><span class="description">0 = non si paga in crediti. Con un costo in crediti il socio può pagare subito con i suoi crediti, oltre alle vie scelte sopra; annullando la prenotazione i crediti tornano al socio. Vale anche per gli ospiti ammessi: non c\'è un supplemento in crediti.</span></td></tr>' : '' )
 			. '<tr><th>Ospiti</th><td>fino a <input type="number" name="guests_max" min="0" max="50" style="width:60px" value="' . (int) $v( 'guests_max', 0 ) . '"> per prenotazione, supplemento <input type="text" name="guest_fee" size="6" value="' . esc_attr( Money::plain( (int) $v( 'guest_fee_cents', 0 ) ) ) . '"> € ciascuno<br><span class="description">0 = nessun ospite (posti auto, armadietti, posti barca). Gli ospiti sono solo un nome: non entrano in anagrafe.</span></td></tr>'
 			. '<tr><th>Fasce orarie</th><td>aperta dalle <input type="time" name="open_time" value="' . esc_attr( (string) $v( 'open_time', '08:00' ) ) . '"> alle <input type="time" name="close_time" value="' . esc_attr( (string) $v( 'close_time', '22:00' ) ) . '"> · fascia di <input type="number" name="slot_minutes" min="5" max="720" style="width:70px" value="' . (int) $v( 'slot_minutes', 60 ) . '"> minuti<br>'
 			. 'da <input type="number" name="min_slots" min="1" style="width:60px" value="' . (int) $v( 'min_slots', 1 ) . '"> a <input type="number" name="max_slots" min="1" style="width:60px" value="' . (int) $v( 'max_slots', 1 ) . '"> fasce di seguito · si prenota al massimo <input type="number" name="advance_days" min="0" style="width:70px" value="' . (int) $v( 'advance_days', 0 ) . '"> giorni prima (0 = senza limite)<br><span class="description">Solo per le risorse a fasce.</span></td></tr>'

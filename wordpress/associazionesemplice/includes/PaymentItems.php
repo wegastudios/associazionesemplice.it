@@ -9,6 +9,8 @@ defined( 'ABSPATH' ) || exit;
  *  - membership    quota associativa dell'anno sociale           chiave  q:{persona}:{anno sociale}
  *  - course_month  mensilità (o quota) di un corso per un mese    chiave  m:{attività}:{persona}:{YYYY-MM}
  *  - booking       contributo di una prenotazione a un evento    chiave  b:{data}:{persona}
+ *  - reservation   prenotazione di una risorsa (campo, sala…)    chiave  r:{prenotazione}:{persona}
+ *  - credits       pacchetto di crediti da comprare              chiave  c:{persona}:{crediti}
  *
  * Il browser invia solo le CHIAVI scelte; importi e descrizioni si ricalcolano sempre sul server.
  */
@@ -17,6 +19,8 @@ final class PaymentItems {
 	const MEMBERSHIP   = 'membership';
 	const COURSE_MONTH = 'course_month';
 	const BOOKING      = 'booking';
+	const RESERVATION  = 'reservation';
+	const CREDITS      = 'credits';
 
 	/** Importo minimo accettato dai gateway (Stripe: 0,50 €). */
 	const MIN_TOTAL_CENTS = 50;
@@ -27,6 +31,10 @@ final class PaymentItems {
 				return 'q:' . (int) $i['person_id'] . ':' . $i['social_year'];
 			case self::COURSE_MONTH:
 				return 'm:' . (int) $i['activity_id'] . ':' . (int) $i['person_id'] . ':' . $i['month'];
+			case self::RESERVATION:
+				return 'r:' . (int) $i['reservation_id'] . ':' . (int) $i['person_id'];
+			case self::CREDITS:
+				return 'c:' . (int) $i['person_id'] . ':' . (int) $i['credits'];
 			default:
 				return 'b:' . (int) $i['session_id'] . ':' . (int) $i['person_id'];
 		}
@@ -40,6 +48,12 @@ final class PaymentItems {
 		}
 		if ( 'm' === $p[0] && 4 === count( $p ) && ctype_digit( $p[1] ) && ctype_digit( $p[2] ) && preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/', $p[3] ) ) {
 			return array( 'type' => self::COURSE_MONTH, 'activity_id' => (int) $p[1], 'person_id' => (int) $p[2], 'month' => $p[3] );
+		}
+		if ( 'c' === $p[0] && 3 === count( $p ) && ctype_digit( $p[1] ) && ctype_digit( $p[2] ) ) {
+			return array( 'type' => self::CREDITS, 'person_id' => (int) $p[1], 'credits' => (int) $p[2] );
+		}
+		if ( 'r' === $p[0] && 3 === count( $p ) && ctype_digit( $p[1] ) && ctype_digit( $p[2] ) ) {
+			return array( 'type' => self::RESERVATION, 'reservation_id' => (int) $p[1], 'person_id' => (int) $p[2] );
 		}
 		if ( 'b' === $p[0] && 3 === count( $p ) && ctype_digit( $p[1] ) && ctype_digit( $p[2] ) ) {
 			return array( 'type' => self::BOOKING, 'session_id' => (int) $p[1], 'person_id' => (int) $p[2] );

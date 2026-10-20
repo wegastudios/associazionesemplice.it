@@ -13,6 +13,9 @@ final class Front {
 		if ( \AssociazioneSemplice\Edition::has( 'resources' ) ) {
 			ResourcesFront::register();
 		}
+		if ( \AssociazioneSemplice\Edition::has( 'credits' ) ) {
+			CreditsFront::register();
+		}
 		if ( \AssociazioneSemplice\Edition::installed( 'payments' ) ) {
 			PayReturn::register();
 		}

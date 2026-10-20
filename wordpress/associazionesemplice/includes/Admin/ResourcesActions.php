@@ -18,6 +18,7 @@ final class ResourcesActions {
 		'asem_res_block'       => 'block',
 		'asem_res_cancel'      => 'cancel',
 		'asem_res_pay'         => 'pay',
+		'asem_res_wait_remove' => 'wait_remove',
 	);
 
 	public static function register(): void {
@@ -59,6 +60,7 @@ final class ResourcesActions {
 		$in['active']          = ! empty( $p['active'] ) ? 1 : 0;
 		$in['fee_cents']       = self::cents( $p, 'fee' );
 		$in['guest_fee_cents'] = self::cents( $p, 'guest_fee' );
+		$in['rates_text']      = (string) ( $p['rates_text'] ?? '' );
 		$id                    = Resources::save( $id, $in );
 		return array( self::detail( $id ), 'Risorsa salvata.' );
 	}
@@ -75,6 +77,11 @@ final class ResourcesActions {
 	public static function book( array $p ): array {
 		$rid = (int) ( $p['resource_id'] ?? 0 );
 		$day = (string) ( $p['date'] ?? '' );
+		$weeks = max( 1, (int) ( $p['weeks'] ?? 1 ) );
+		if ( $weeks > 1 ) { // «ogni settimana alla stessa ora»: tutte le date o nessuna
+			$ids = Resources::book_series( $rid, (int) ( $p['person_id'] ?? 0 ), $day, (string) ( $p['start'] ?? '' ), max( 1, (int) ( $p['slots'] ?? 1 ) ), $weeks, self::guest_lines( $p ), (string) ( $p['note'] ?? '' ) );
+			return array( self::detail( $rid, array( 'd' => $day ) ), count( $ids ) . ' prenotazioni registrate (una a settimana).' );
+		}
 		Resources::book_slot( $rid, (int) ( $p['person_id'] ?? 0 ), $day, (string) ( $p['start'] ?? '' ), max( 1, (int) ( $p['slots'] ?? 1 ) ), self::guest_lines( $p ), true, (string) ( $p['note'] ?? '' ) );
 		return array( self::detail( $rid, array( 'd' => $day ) ), 'Prenotazione registrata.' );
 	}
@@ -97,9 +104,20 @@ final class ResourcesActions {
 
 	public static function cancel( array $p ): array {
 		$r   = Resources::reservation( (int) ( $p['id'] ?? 0 ) );
-		Resources::cancel( (int) ( $p['id'] ?? 0 ), true );
 		$rid = $r ? (int) $r['resource_id'] : 0;
-		return array( $rid ? self::detail( $rid ) : Ui::url( 'asem-resources' ), 'Prenotazione annullata. Gli eventuali incassi restano in prima nota: l\'eventuale rimborso è a mano.' );
+		$to  = $rid ? self::detail( $rid ) : Ui::url( 'asem-resources' );
+		if ( ! empty( $p['series'] ) ) { // questa e le successive della serie
+			$n = Resources::cancel_series( (int) ( $p['id'] ?? 0 ) );
+			return array( $to, $n . ( 1 === $n ? ' prenotazione annullata.' : ' prenotazioni annullate (questa e le successive).' ) . ' Gli eventuali incassi restano in prima nota: l\'eventuale rimborso è a mano.' );
+		}
+		Resources::cancel( (int) ( $p['id'] ?? 0 ), true );
+		return array( $to, 'Prenotazione annullata. Gli eventuali incassi restano in prima nota: l\'eventuale rimborso è a mano.' );
+	}
+
+	public static function wait_remove( array $p ): array {
+		$rid = (int) ( $p['resource_id'] ?? 0 );
+		Resources::waitlist_leave( $rid, (int) ( $p['person_id'] ?? 0 ) );
+		return array( self::detail( $rid ), 'Tolto dalla lista d\'attesa.' );
 	}
 
 	public static function pay( array $p ): array {

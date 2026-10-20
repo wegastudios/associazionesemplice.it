@@ -127,10 +127,155 @@ final class ResourceRules {
 		return $out;
 	}
 
-	/** Dovuto: la tariffa per ogni fascia (o il canone del periodo) più il supplemento di ogni ospite. */
-	public static function fee( array $res, int $slots, int $guests ): int {
-		$units = self::ASSIGN === ( $res['mode'] ?? self::SLOT ) ? 1 : max( 1, $slots );
-		return max( 0, (int) ( $res['fee_cents'] ?? 0 ) ) * $units + max( 0, (int) ( $res['guest_fee_cents'] ?? 0 ) ) * max( 0, $guests );
+	/**
+	 * Dovuto: la tariffa per ogni fascia (o il canone del periodo) più il supplemento di ogni ospite.
+	 * Con l'inizio della prenotazione si applicano le tariffe a fasce (feriale/weekend, diurno/serale) della risorsa, se ce ne sono.
+	 */
+	public static function fee( array $res, int $slots, int $guests, ?string $starts_at = null ): int {
+		$extra = max( 0, (int) ( $res['guest_fee_cents'] ?? 0 ) ) * max( 0, $guests );
+		if ( self::ASSIGN === ( $res['mode'] ?? self::SLOT ) ) {
+			return max( 0, (int) ( $res['fee_cents'] ?? 0 ) ) + $extra;
+		}
+		if ( null !== $starts_at ) {
+			return self::slot_price( $res, $starts_at, max( 1, $slots ) ) + $extra;
+		}
+		return max( 0, (int) ( $res['fee_cents'] ?? 0 ) ) * max( 1, $slots ) + $extra;
+	}
+
+	const DAYS_ALL      = 'all';
+	const DAYS_WEEKDAYS = 'weekdays'; // lunedì–venerdì
+	const DAYS_WEEKEND  = 'weekend';  // sabato e domenica
+
+	/** Parole usate nel modulo per i giorni delle tariffe. */
+	public static function rate_words(): array {
+		return array( 'tutti' => self::DAYS_ALL, 'feriali' => self::DAYS_WEEKDAYS, 'weekend' => self::DAYS_WEEKEND );
+	}
+
+	/**
+	 * Tariffe a fasce dal testo del modulo, una per riga: «feriali 18:00-22:00 15,00», «weekend 08:00-22:00 20».
+	 * Vale la prima riga che corrisponde a giorno e ora della fascia; fuori da tutte vale la tariffa base della risorsa.
+	 *
+	 * @return array[] days, from, to, fee_cents
+	 * @throws \InvalidArgumentException
+	 */
+	public static function parse_rates( string $text ): array {
+		$out = array();
+		foreach ( preg_split( '/\R/u', $text ) ?: array() as $n => $line ) {
+			$line = trim( $line );
+			if ( '' === $line ) {
+				continue;
+			}
+			if ( ! preg_match( '/^(tutti|feriali|weekend)\s+((?:[01]\d|2[0-3]):[0-5]\d)\s*-\s*((?:[01]\d|2[0-3]):[0-5]\d)\s+(\d+(?:[.,]\d{1,2})?)\s*€?$/u', $line, $m ) ) {
+				throw new \InvalidArgumentException( 'Tariffe a fasce, riga ' . ( $n + 1 ) . ': scrivi ad esempio «feriali 18:00-22:00 15,00» (giorni: tutti, feriali, weekend).' );
+			}
+			if ( $m[2] >= $m[3] ) {
+				throw new \InvalidArgumentException( 'Tariffe a fasce, riga ' . ( $n + 1 ) . ': l\'ora di fine deve essere dopo quella di inizio.' );
+			}
+			$out[] = array( 'days' => self::rate_words()[ $m[1] ], 'from' => $m[2], 'to' => $m[3], 'fee_cents' => (int) round( (float) str_replace( ',', '.', $m[4] ) * 100 ) );
+		}
+		if ( count( $out ) > 20 ) {
+			throw new \InvalidArgumentException( 'Al massimo 20 tariffe a fasce.' );
+		}
+		return $out;
+	}
+
+	/** Le tariffe a fasce come testo del modulo (l'inverso di {@see parse_rates}). */
+	public static function rates_text( array $bands ): string {
+		$words = array_flip( self::rate_words() );
+		$lines = array();
+		foreach ( $bands as $b ) {
+			$c       = (int) $b['fee_cents'];
+			$lines[] = ( $words[ $b['days'] ] ?? 'tutti' ) . ' ' . $b['from'] . '-' . $b['to'] . ' ' . intdiv( $c, 100 ) . ',' . sprintf( '%02d', $c % 100 );
+		}
+		return implode( "\n", $lines );
+	}
+
+	/** Tariffe a fasce memorizzate (JSON) in un array sicuro; testo non valido = nessuna fascia. */
+	public static function clean_rates( $stored ): array {
+		$list = is_array( $stored ) ? $stored : json_decode( (string) $stored, true );
+		$out  = array();
+		foreach ( is_array( $list ) ? $list : array() as $b ) {
+			if ( is_array( $b ) && isset( $b['days'], $b['from'], $b['to'], $b['fee_cents'] ) && in_array( $b['days'], array( self::DAYS_ALL, self::DAYS_WEEKDAYS, self::DAYS_WEEKEND ), true )
+				&& null !== self::minutes( (string) $b['from'] ) && null !== self::minutes( (string) $b['to'] ) ) {
+				$out[] = array( 'days' => $b['days'], 'from' => (string) $b['from'], 'to' => (string) $b['to'], 'fee_cents' => max( 0, (int) $b['fee_cents'] ) );
+			}
+		}
+		return $out;
+	}
+
+	/** Prezzo di una fascia che comincia a $starts_at (Y-m-d H:i:s): la prima tariffa a fasce che corrisponde, altrimenti la base. */
+	public static function band_fee( array $res, string $starts_at ): int {
+		$d   = new \DateTimeImmutable( $starts_at );
+		$dow = (int) $d->format( 'N' );
+		$min = self::minutes( $d->format( 'H:i' ) );
+		foreach ( self::clean_rates( $res['rates'] ?? '' ) as $b ) {
+			$day_ok = self::DAYS_ALL === $b['days'] || ( self::DAYS_WEEKDAYS === $b['days'] && $dow <= 5 ) || ( self::DAYS_WEEKEND === $b['days'] && $dow >= 6 );
+			if ( $day_ok && $min >= self::minutes( $b['from'] ) && $min < self::minutes( $b['to'] ) ) {
+				return $b['fee_cents'];
+			}
+		}
+		return max( 0, (int) ( $res['fee_cents'] ?? 0 ) );
+	}
+
+	/** Prezzo di $slots fasce di seguito a partire da $starts_at, ognuna alla sua tariffa. */
+	public static function slot_price( array $res, string $starts_at, int $slots ): int {
+		$step  = max( 1, (int) ( $res['slot_minutes'] ?? 60 ) );
+		$start = new \DateTimeImmutable( $starts_at );
+		$sum   = 0;
+		for ( $i = 0; $i < $slots; $i++ ) {
+			$sum += self::band_fee( $res, $start->modify( '+' . ( $i * $step ) . ' minutes' )->format( 'Y-m-d H:i:s' ) );
+		}
+		return $sum;
+	}
+
+	const PAY_DESK    = 'desk';    // si paga in segreteria
+	const PAY_UPFRONT = 'upfront'; // si paga subito, online: la prenotazione vale solo se pagata
+	const PAY_CHOICE  = 'choice';  // sceglie il socio: online subito o in segreteria
+
+	/** Minuti in cui una fascia resta riservata mentre il socio completa il pagamento online (non è una tolleranza: scaduti, si libera). */
+	const HOLD_MINUTES = 15;
+
+	public static function pay_modes(): array {
+		return array(
+			self::PAY_DESK    => 'In segreteria (il socio non paga online)',
+			self::PAY_UPFRONT => 'In anticipo, online (la prenotazione vale solo se pagata)',
+			self::PAY_CHOICE  => 'A scelta del socio: online subito o in segreteria',
+		);
+	}
+
+	/**
+	 * Come può pagare il socio una prenotazione, secondo la regola della risorsa. Vuoto = non si può prenotare (pagamento in anticipo ma
+	 * senza pagamenti online né crediti). Una prenotazione gratuita non ha pagamento. Se la risorsa si può pagare in crediti, i crediti
+	 * sono sempre una via in più (e la prima: si pagano subito, senza gateway).
+	 *
+	 * @param int $credit_cost crediti per fascia (0 = non si paga in crediti, o la funzione non c'è)
+	 * @return string[] 'free', 'credits', 'desk' (in segreteria) e/o 'online'
+	 */
+	public static function pay_options( string $mode, bool $online_available, int $fee_cents, int $credit_cost = 0 ): array {
+		if ( $fee_cents <= 0 ) {
+			return array( 'free' );
+		}
+		switch ( $mode ) {
+			case self::PAY_UPFRONT:
+				$base = $online_available ? array( 'online' ) : array();
+				break;
+			case self::PAY_CHOICE:
+				$base = $online_available ? array( 'online', 'desk' ) : array( 'desk' );
+				break;
+			default:
+				$base = array( 'desk' );
+		}
+		return $credit_cost > 0 ? array_merge( array( 'credits' ), $base ) : $base;
+	}
+
+	/** Le date di una ripetizione settimanale: la prima e le altre $count - 1 a distanza di una settimana. @return string[] Y-m-d */
+	public static function series_dates( string $first, int $count ): array {
+		$out = array();
+		$d   = new \DateTimeImmutable( $first );
+		for ( $i = 0; $i < max( 1, $count ); $i++ ) {
+			$out[] = $d->modify( '+' . ( 7 * $i ) . ' days' )->format( 'Y-m-d' );
+		}
+		return $out;
 	}
 
 	/** Le fasce di un giorno: [ ['start'=>'18:00','end'=>'19:00'], … ]. Vuoto se gli orari non sono validi. */
