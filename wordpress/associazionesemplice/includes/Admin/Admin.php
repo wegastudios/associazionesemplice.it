@@ -260,6 +260,10 @@ final class Admin {
 			return $made[ $slug ];
 		}
 		return $made[ $slug ] = function () use ( $slug, $render ) {
+			$needs = array( 'asem-statement' => 'Statement', 'asem-volunteers' => 'Insurance', 'asem-attendance' => 'Attendance' ); // provvisorio (fase 3): pagine presenti qui ma che usano classi di un'estensione
+			if ( isset( $needs[ $slug ] ) && ! class_exists( '\\AssociazioneSemplice\\' . $needs[ $slug ] ) && ! in_array( $slug, self::$absent, true ) ) {
+				self::$absent[] = $slug;
+			}
 			if ( is_array( $render ) && ! class_exists( $render[0] ) && ! in_array( $slug, self::$absent, true ) ) {
 				self::$absent[] = $slug;
 			}
