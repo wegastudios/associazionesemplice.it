@@ -136,16 +136,7 @@ final class ActivityReset {
 				}
 			}
 		}
-		$since = gmdate( 'Y-m-d H:i:s', time() - 2 * DAY_IN_SECONDS );
-		foreach ( self::db()->get_results( self::db()->prepare( 'SELECT id, items FROM ' . Db::t( 'payments' ) . " WHERE status IN ('created','pending') AND updated_at >= %s", $since ), ARRAY_A ) ?: array() as $pay ) {
-			foreach ( (array) json_decode( (string) $pay['items'], true ) as $it ) {
-				if ( (int) ( $it['activity_id'] ?? 0 ) === $activity_id ) {
-					$out[] = 'C\'è un pagamento online in corso per questo evento: attendi che si concluda (o scada) prima di eliminarlo.';
-					break 2;
-				}
-			}
-		}
-		return $out;
+		return (array) apply_filters( 'asem_activity_delete_blockers', $out, $activity_id ); // chi incassa online segnala un pagamento in corso
 	}
 
 	/** Persone con l'email a cui avvisare dell'annullamento (prenotate o iscritte). @return array<int,array> */
@@ -251,10 +242,10 @@ final class ActivityReset {
 					$db->query( 'DELETE FROM ' . Db::t( 'bookings' ) . " WHERE session_id IN ($in)" );
 					$db->query( 'DELETE FROM ' . Db::t( 'waitlist' ) . " WHERE session_id IN ($in)" );
 				}
-				foreach ( array( 'sessions', 'enrollments', 'activity_staff', 'attendance', 'notices' ) as $table ) {
+				foreach ( array( 'sessions', 'enrollments', 'activity_staff', 'notices' ) as $table ) {
 					$db->delete( Db::t( $table ), array( 'activity_id' => $activity_id ) );
 				}
-				$db->delete( Db::t( 'woo_links' ), array( 'kind' => 'activity', 'ref_id' => $activity_id ) );
+				do_action( 'asem_activity_deleted', $activity_id ); // le estensioni tolgono i dati collegati
 				$db->delete( Db::t( 'activities' ), array( 'id' => $activity_id ) );
 				self::forget_in_pages( $activity_id );
 				Audit::log( 'activity.deleted', 'activity', $activity_id, array( 'name' => $name, 'mode' => $mode, 'income_cents' => $sum['income_cents'], 'refunds' => $sum['refunds'], 'voided' => $sum['voided'] ) );
@@ -441,7 +432,7 @@ final class ActivityReset {
 					$db->delete( Db::t( 'waitlist' ), array( 'session_id' => $sid, 'person_id' => $person_id ) );
 				} else {
 					$db->delete( Db::t( 'enrollments' ), array( 'activity_id' => $activity_id, 'person_id' => $person_id ) );
-					$db->delete( Db::t( 'attendance' ), array( 'activity_id' => $activity_id, 'person_id' => $person_id ) );
+					do_action( 'asem_registration_deleted', $activity_id, $person_id );
 				}
 				Audit::log( 'registration.deleted', 'activity', $activity_id, array( 'person' => $person_id, 'session' => $sid, 'mode' => $mode, 'income_cents' => $sum['income_cents'], 'refunds' => $sum['refunds'], 'voided' => $sum['voided'] ) );
 			}

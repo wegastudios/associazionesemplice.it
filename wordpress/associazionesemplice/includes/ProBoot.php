@@ -75,6 +75,8 @@ final class ProBoot {
 		Edition::register( self::FEATURES, self::PAGES, self::ACTIONS );
 
 		// Come la licenza limita le funzioni.
+		ProSchema::register(); // tabelle delle funzioni aggiuntive
+		ProData::register(); // esportazione, anonimizzazione ed eliminazioni
 		add_filter( 'asem_features_suspended', array( __CLASS__, 'suspended' ) );
 		add_filter( 'asem_feature_available', array( __CLASS__, 'available' ), 10, 2 );
 		add_filter( 'asem_feature_unavailable_message', array( __CLASS__, 'message' ), 10, 2 );

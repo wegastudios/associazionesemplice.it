@@ -43,6 +43,7 @@ register_activation_hook(
 		if ( '' === asem_pro_problem() ) {
 			\AssociazioneSemplice\Edition::add_dir( plugin_dir_path( __FILE__ ) . 'includes' );
 			\AssociazioneSemplice\ProBoot::init(); // le funzioni devono essere dichiarate prima di creare i loro dati di partenza
+			\AssociazioneSemplice\ProSchema::create(); // le tabelle delle funzioni aggiuntive
 			\AssociazioneSemplice\Install::seed();
 		}
 	}

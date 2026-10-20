@@ -62,3 +62,5 @@ UpdateCheck.php
 Admin/UpdateNotice.php
 data/public-suffix-list.txt
 ProBoot.php
+ProSchema.php
+ProData.php
