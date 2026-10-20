@@ -260,6 +260,9 @@ final class Admin {
 			return $made[ $slug ];
 		}
 		return $made[ $slug ] = function () use ( $slug, $render ) {
+			if ( is_array( $render ) && ! class_exists( $render[0] ) && ! in_array( $slug, self::$absent, true ) ) {
+				self::$absent[] = $slug;
+			}
 			if ( in_array( $slug, self::absent_pages(), true ) ) {
 				Ui::header( \AssociazioneSemplice\Edition::degraded() ? 'Funzione sospesa' : 'Funzione non inclusa' );
 				echo \AssociazioneSemplice\Edition::missing_html(); // phpcs:ignore WordPress.Security.EscapeOutput

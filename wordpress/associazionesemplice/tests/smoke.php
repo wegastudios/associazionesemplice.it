@@ -312,7 +312,7 @@ asem_ok( 'lite' === License::plan() && \AssociazioneSemplice\Edition::has( 'paym
 asem_ok( ! \AssociazioneSemplice\Edition::has( 'funds' ) && ! \AssociazioneSemplice\Edition::has( 'reports' ) && ! \AssociazioneSemplice\Edition::has( 'receipts' ) && ! \AssociazioneSemplice\Edition::has( 'vat' ) && ! \AssociazioneSemplice\Edition::has( 'fiscal' ) && ! \AssociazioneSemplice\Edition::has( 'fivepm' ), 'licenza Pro Lite: niente contabilità né funzioni fiscali' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Edition::missing_message( 'funds' ), 'Pro Full' ), 'licenza Pro Lite: il messaggio rimanda al Pro Full' );
 License::set_state( 'active', null, null, 'free' );
-asem_ok( 'free' === License::plan() && ! \AssociazioneSemplice\Edition::has( 'payments' ) && ! \AssociazioneSemplice\Edition::has( 'funds' ) && \AssociazioneSemplice\Edition::has( 'license' ) && ! \AssociazioneSemplice\Edition::degraded(), 'licenza gratuita con il Pro installato: le funzioni Pro restano chiuse, la licenza si può gestire' );
+asem_ok( 'free' === License::plan() && ! \AssociazioneSemplice\Edition::has( 'payments' ) && ! \AssociazioneSemplice\Edition::has( 'funds' ) && \AssociazioneSemplice\Edition::pro_present() && ! \AssociazioneSemplice\Edition::degraded(), 'licenza gratuita con il Pro installato: le funzioni Pro restano chiuse, la licenza si può gestire' );
 asem_ok( \AssociazioneSemplice\Edition::allows( 'export' ) && \AssociazioneSemplice\Edition::allows( 'member_area' ) && '' === Admin\LicenseNotice::html(), 'licenza gratuita: nessuna funzione di base viene toccata' );
 License::set_state( 'unpaid', $today, null, 'free' );
 asem_ok( \AssociazioneSemplice\Edition::degraded(), 'licenza gratuita scaduta con il Pro installato: si sospendono le funzioni Pro' );
