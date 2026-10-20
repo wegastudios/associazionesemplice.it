@@ -17,6 +17,7 @@ mkdir -p "$out/pro/associazionesemplice-pro/includes"
 rm -rf "$out/free/associazionesemplice/tests" "$out/free/associazionesemplice/vendor" "$out/free/associazionesemplice/composer.json" "$out/free/associazionesemplice/composer.lock" "$out/free/associazionesemplice/phpunit.xml.dist"
 n=0
 while IFS= read -r f; do
+	f="${f%$'\r'}" # file salvati con fine riga di Windows
 	[ -z "$f" ] && continue
 	case "$f" in "#"*) continue ;; esac
 	src="associazionesemplice/includes/$f"
