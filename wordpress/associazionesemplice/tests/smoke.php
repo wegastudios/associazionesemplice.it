@@ -1496,7 +1496,7 @@ $form = array(
 	'payment_hint' => 'Ciao', 'gate_message' => '',
 	'accent_custom' => '1', 'accent_color' => '#336699', // non più nel modulo: l'aspetto ha la sua scheda
 );
-$ps = new ReflectionMethod( Admin\Actions::class, 'save_payment_settings' );
+$ps = new ReflectionMethod( Admin\ProActions::class, 'save_payment_settings' );
 $ps->setAccessible( true );
 $pform = array( 'payment_provider' => 'stripe', 'stripe_mode' => 'test', 'stripe_publishable_key' => 'pk_test_51Zzz', 'stripe_secret_key' => 'sk_test_51Zzz', 'stripe_webhook_secret' => 'whsec_zzz' );
 $ss->invoke( null, $form );
@@ -2690,7 +2690,7 @@ asem_ok( in_array( 'checkin.recorded', $aud, true ) && in_array( 'checkin.undone
 
 // ---------- Ingresso senza prenotazione (sul posto) ----------
 wp_set_current_user( 1 );
-$walk   = new ReflectionMethod( Admin\Actions::class, 'walk_in' );
+$walk   = new ReflectionMethod( Admin\ProActions::class, 'walk_in' );
 $wi_ev  = $mkev( 'Serata sul posto', 600, 900 );
 $wi_s   = $first_session( $wi_ev );
 $income = function ( int $session, ?int $person = null ) use ( $wpdb ) {
@@ -2904,7 +2904,7 @@ $twins_now = $people->guest_overview();
 $gianni_id = (int) $wpdb->get_var( 'SELECT id FROM ' . Db::t( 'people' ) . " WHERE first_name = 'Giovanni' AND last_name = 'Altrui' AND host_person_id = $founder" );
 asem_ok( $gianni_id > 0 && ! empty( $twins_now[ $gianni_id ]['twins'] ), 'nuovo ospite: se il cellulare è di un altro ospite non si blocca, ma risulta gemello e lo si vede' );
 wp_set_current_user( 1 );
-$walk2 = new ReflectionMethod( Admin\Actions::class, 'walk_in' );
+$walk2 = new ReflectionMethod( Admin\ProActions::class, 'walk_in' );
 asem_ok( false !== strpos( (string) asem_throws( function () use ( $walk2, $e1, $gs1, $founder ) { $walk2->invoke( null, array( 'activity_id' => $e1, 'session_id' => $gs1, 'new_first_name' => 'Senza', 'new_last_name' => 'Telefono', 'host_person_id' => $founder ) ); } ), 'cellulare' ), 'sul posto: un nuovo ospite richiede il cellulare' );
 asem_ok( 1 === count( $people->find_homonyms( 'olga', 'occasionale' ) ) && array() === $people->find_homonyms( 'olga', 'occasionale', $gx ), 'ricerca omonimi: senza maiuscole e escludendo la persona stessa' );
 
@@ -3785,7 +3785,7 @@ $res_bn = $bk->invoke( null, array( 'session_id' => (string) $s_free, 'activity_
 asem_ok( false !== strpos( $res_bn[0], 'asem-income' ) && false !== strpos( $res_bn[0], 'person_id=' . $p_nocard ), 'prenotazione evento gratuito con la tessera non valida: si apre l\'incasso (la quota associativa)' );
 
 // ---------- Cassa per più persone ----------
-$grp = new ReflectionMethod( Admin\Actions::class, 'save_group_cash' );
+$grp = new ReflectionMethod( Admin\ProActions::class, 'save_group_cash' );
 $grp->setAccessible( true );
 $ev_g  = $mkev( 'Cena di gruppo', 800, 1200 );
 $s_g   = $first_session( $ev_g );
@@ -4403,16 +4403,16 @@ asem_ok( ! isset( $tx_ov2['Il mio profilo'] ) && 'Frase nuova' === $tx_ov2['Fras
 asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\TextsEngine::import_rows( array( array( 'a', 'b' ), array( '1', '2' ) ) ); } ), 'testi: un file senza le colonne giuste viene rifiutato' );
 
 // pagina e azioni dell'amministrazione
-$tx_save = new ReflectionMethod( Admin\Actions::class, 'save_texts' );
+$tx_save = new ReflectionMethod( Admin\ProActions::class, 'save_texts' );
 $tx_save->invoke( null, array( 't' => array( md5( 'Il mio profilo' ) => 'Nuova area', md5( 'testo che non esiste nel catalogo' ) => 'x' ) ) );
 asem_ok( 'Nuova area' === \AssociazioneSemplice\TextsEngine::overrides()['Il mio profilo'] && ! isset( \AssociazioneSemplice\TextsEngine::overrides()['testo che non esiste nel catalogo'] ), 'testi: salvataggio dalla pagina (solo testi veri)' );
-$tx_add = new ReflectionMethod( Admin\Actions::class, 'add_text' );
+$tx_add = new ReflectionMethod( Admin\ProActions::class, 'add_text' );
 $tx_add->invoke( null, array( 'original' => 'Pezzo mancante', 'custom' => 'Pezzo nuovo' ) );
 asem_ok( 'Pezzo nuovo' === \AssociazioneSemplice\TextsEngine::overrides()['Pezzo mancante'] && null !== asem_throws( function () use ( $tx_add ) { $tx_add->invoke( null, array( 'original' => 'ab', 'custom' => 'x' ) ); } ), 'testi: aggiunta di una sostituzione a mano' );
 $tx_html = asem_render( array( Admin\TextsPage::class, 'render' ), 'Esporta tutti i testi', array( 'page' => 'asem-texts', 'q' => 'Il mio profilo' ) );
 asem_ok( false !== strpos( $tx_html, 'Il mio profilo' ) && false !== strpos( $tx_html, 'Nuova area' ) && false !== strpos( $tx_html, 'asem_import_texts' ), 'testi: la pagina elenca originali e personalizzati e permette l\'importazione' );
 asem_render( array( Admin\TextsPage::class, 'render' ), 'Nessun testo con questi filtri', array( 'page' => 'asem-texts', 'q' => 'zzzzqqqq' ) );
-$tx_reset = new ReflectionMethod( Admin\Actions::class, 'reset_texts' );
+$tx_reset = new ReflectionMethod( Admin\ProActions::class, 'reset_texts' );
 $tx_reset->invoke( null, array() );
 asem_ok( array() === \AssociazioneSemplice\TextsEngine::overrides(), 'testi: ripristino di tutti i testi originali' );
 asem_ok( ( \AssociazioneSemplice\Plugin::load_for_action( 'asem_export_texts' ) && has_action( 'admin_post_asem_export_texts' ) ) && has_action( 'admin_post_asem_import_texts' ), 'testi: azioni registrate' );
@@ -4449,7 +4449,7 @@ asem_ok( false !== strpos( $tm_page, 'ha rinnovato la tessera del comitato' ), '
 Settings::update( array( 'entity_type' => 'associazione', 'member_term' => 'socio' ) );
 $tm_back = $as( $u_f, '[associazionesemplice_ospiti]' );
 asem_ok( false !== strpos( $tm_back, 'senza essere soci' ), 'ente e termini: tornando ai valori di serie i testi sono quelli originali' );
-$tm_save = new ReflectionMethod( Admin\Actions::class, 'save_terms' );
+$tm_save = new ReflectionMethod( Admin\ProActions::class, 'save_terms' );
 $tm_save->invoke( null, array( 'entity_type' => 'museo', 'entity_types_custom' => "museo;m\nfondazione;f", 'member_term' => 'tesserata', 'member_terms_custom' => 'tesserata;tesserate;f' ) );
 asem_ok( 'museo' === Settings::get( 'entity_type' ) && 'tesserata' === Settings::get( 'member_term' ) && 'Il museo e le tesserate' === \AssociazioneSemplice\Texts::plain( "L'associazione e i soci" ), 'ente e termini: tipo di ente e termine aggiunti a mano' );
 asem_ok( null !== asem_throws( function () use ( $tm_save ) { $tm_save->invoke( null, array( 'entity_type' => 'inesistente', 'member_term' => 'socio' ) ); } ), 'ente e termini: una scelta fuori elenco viene rifiutata' );
@@ -4742,7 +4742,7 @@ $bc_mail = array();
 \AssociazioneSemplice\Broadcasts::send_test( 'Oggetto prova', 'Testo di prova' );
 asem_ok( 1 === count( $bc_mail ) && 0 === strpos( $bc_mail[0]['subject'], '[Prova] ' ), 'comunicazioni: la prova va solo all\'utente collegato' );
 // pagine e azioni
-$bc_send = new ReflectionMethod( Admin\Actions::class, 'broadcast_send' );
+$bc_send = new ReflectionMethod( Admin\ProActions::class, 'broadcast_send' );
 $bc_res  = $bc_send->invoke( null, array( 'audience' => 'activity:' . $acq, 'subject' => 'Dalla pagina', 'body' => 'Testo dalla pagina' ) );
 asem_ok( false !== strpos( $bc_res[1], 'Comunicazione avviata' ) && array( 'activity', $acq ) === Admin\MessagesPage::parse_audience( 'activity:' . $acq ) && array( 'members_all', 0 ) === Admin\MessagesPage::parse_audience( 'members_all' ), 'comunicazioni: invio dalla pagina' );
 asem_render( array( Admin\MessagesPage::class, 'render' ), 'Storico' );

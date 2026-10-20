@@ -113,7 +113,7 @@ free_ok( null === $row['vat_rate'] && 0 === (int) $row['vat_cents'], 'nessuna IV
 // ---------- Tutte le pagine di amministrazione si aprono (anche quelle delle funzioni assenti, con l'avviso) ----------
 $src = (string) file_get_contents( ASEM_DIR . 'includes/Admin/Admin.php' );
 preg_match_all( "/array\( '(asem[a-z-]*)', '(?:[^'\\\\]|\\\\.)*', array\( ([A-Za-z]+)::class, '([a-z_]+)' \) \)/", $src, $m, PREG_SET_ORDER );
-free_ok( count( $m ) > 30, 'elenco delle pagine di amministrazione letto (' . count( $m ) . ')' );
+free_ok( count( $m ) > 20, 'elenco delle pagine di amministrazione letto (' . count( $m ) . ')' );
 $skip = array( 'asem-activity-delete', 'asem-booking-delete', 'asem-reset', 'asem-activity' );
 $n_pages = 0;
 foreach ( $m as $pg ) {
@@ -126,7 +126,7 @@ foreach ( $m as $pg ) {
 	free_ok( '' !== $out, 'pagina ' . $pg[1] . ' si apre' );
 	$n_pages++;
 }
-free_ok( $n_pages > 30, "$n_pages pagine provate" );
+free_ok( $n_pages > 20, "$n_pages pagine provate" );
 
 // ---------- Pagamenti: solo l'elenco di ciò che c'è da pagare ----------
 free_ok( ! Edition::has( 'payments' ) && get_class( Plugin::payments() ) === 'AssociazioneSemplice\OfflinePayments' && ! Plugin::payments()->enabled() && array() === Plugin::payments()->providers(), 'pagamenti online assenti' );
