@@ -3018,6 +3018,7 @@ parse_str( (string) wp_parse_url( $link, PHP_URL_QUERY ), $q_act );
 $param = (string) $q_act['asem_activate'];
 asem_ok( 'ok' === $Act::resolve( $param )['status'] && false !== strpos( $Act::page( $param ), 'Ciao Nora' ) && false !== strpos( $Act::page( $param ), 'name="password2"' ) && false !== strpos( $Act::page( $param ), '334 1234567' ), 'link di attivazione: pagina con email, cellulare (già compilato) e password' );
 asem_ok( 'expired' === $Act::resolve( $param, time() + 40 * DAY_IN_SECONDS )['status'] && 'invalid' === $Act::resolve( 'boh' )['status'] && 'invalid' === $Act::resolve( preg_replace( '/^\d+\./', ( $nm + 1 ) . '.', $param ) )['status'], 'link: scaduto dopo 30 giorni, falso o di un altro socio = non vale' );
+asem_ok( 'ok' === $Act::resolve( $param, time() + 23 * HOUR_IN_SECONDS )['status'] && 'expired' === $Act::resolve( $param, time() + 25 * HOUR_IN_SECONDS )['status'], 'link di attivazione: vale 24 ore' );
 asem_ok( false !== strpos( $Act::page( 'boh' ), 'Attivazione non disponibile' ), 'link non valido: pagina di errore' );
 
 // l'attivazione: controlli
@@ -3051,6 +3052,7 @@ asem_ok( false !== strpos( $ed2, 'https://wa.me/393357654321?text=' ), 'scheda s
 $list2 = asem_render( array( Admin\PeoplePage::class, 'render_list' ), 'Invia link', array( 'status' => 'noaccess' ) );
 asem_ok( false !== strpos( $list2, 'wa.me/393357654321' ), 'elenco soci: pulsante "Invia link" su WhatsApp accanto a chi è senza accesso' );
 $inv = $Act::invite_text( $people->get( $cm ) );
+asem_ok( false !== strpos( $inv, 'vale 24 ore' ), 'messaggio WhatsApp: dice che il link vale 24 ore' );
 asem_ok( false !== strpos( $inv, 'asem_activate=' ) && false !== strpos( $inv, 'Carlo' ), 'messaggio di invito: nome e link' );
 asem_ok( false !== strpos( asem_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Facoltativa', array( 'type' => 'ordinary' ) ), 'Facoltativa' ), 'modulo socio: l\'email non è più obbligatoria' );
 

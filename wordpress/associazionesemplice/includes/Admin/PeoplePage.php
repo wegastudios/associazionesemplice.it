@@ -307,7 +307,7 @@ final class PeoplePage {
 			return;
 		}
 		$url = \AssociazioneSemplice\Frontend\Activation::url( (int) $p['id'] );
-		echo '<p><strong class="asem-warn">Senza accesso.</strong> Il socio non ha ancora un\'email collegata: con questo link sceglie email e password e attiva il proprio accesso (vale ' . (int) \AssociazioneSemplice\Limits::get( 'activation_days' ) . ' giorni, se scade se ne genera un altro aprendo questa scheda).</p>'
+		echo '<p><strong class="asem-warn">Senza accesso.</strong> Il socio non ha ancora un\'email collegata: con questo link sceglie email e password e attiva il proprio accesso (vale ' . \AssociazioneSemplice\Frontend\Activation::validity_text() . ', se scade se ne genera un altro aprendo questa scheda).</p>'
 			. '<p><input type="text" readonly class="large-text" value="' . esc_attr( $url ) . '" onclick="this.select()"></p>';
 		$wa = \AssociazioneSemplice\Phone::whatsapp( (string) $p['phone'] );
 		if ( '' !== $wa ) {
