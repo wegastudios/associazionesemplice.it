@@ -71,6 +71,8 @@ final class Actions {
 			'asem_regen_qr'           => 'regen_qr',
 			'asem_save_card'          => 'save_card',
 			'asem_save_activity'      => 'save_activity',
+			'asem_duplicate_activity' => 'duplicate_activity',
+			'asem_tec_import'         => 'tec_import',
 			'asem_enroll'             => 'enroll',
 			'asem_cancel_enrollment'  => 'cancel_enrollment',
 			'asem_add_session'        => 'add_session',
@@ -549,6 +551,33 @@ final class Actions {
 	/** Se il modulo dell'attività indica una risorsa la collega (o la scollega); restituisce l'avviso sulle prenotazioni già presenti, se ce ne sono. */
 	private static function link_resource( int $activity_id, array $p ): string {
 		return implode( '', array_map( 'strval', (array) apply_filters( 'asem_activity_saved', array(), $activity_id, $p ) ) ); // le estensioni collegano i loro dati e possono aggiungere un avviso
+	}
+
+	/** Riproporre un evento o un corso già fatto in una nuova data o in un nuovo anno sociale. */
+	private static function duplicate_activity( array $p ): array {
+		$new = \AssociazioneSemplice\ActivityCopy::duplicate(
+			(int) ( $p['id'] ?? 0 ),
+			array(
+				'name'        => $p['name'] ?? '',
+				'date'        => $p['date'] ?? '',
+				'start_time'  => '' !== trim( (string) ( $p['start_time'] ?? '' ) ) ? trim( (string) $p['start_time'] ) : null,
+				'end_time'    => '' !== trim( (string) ( $p['end_time'] ?? '' ) ) ? trim( (string) $p['end_time'] ) : null,
+				'location'    => '' !== trim( (string) ( $p['location'] ?? '' ) ) ? trim( (string) $p['location'] ) : null,
+				'capacity'    => '' !== trim( (string) ( $p['capacity'] ?? '' ) ) ? (int) $p['capacity'] : null,
+				'social_year' => $p['social_year'] ?? '',
+				'starts_on'   => $p['starts_on'] ?? '',
+				'ends_on'     => $p['ends_on'] ?? '',
+			)
+		);
+		return array( Ui::url( 'asem-activity', array( 'id' => $new ) ), 'Attività riproposta: controlla date e dati e correggi quello che serve.' );
+	}
+
+	/** Importa gli eventi di The Events Calendar. */
+	private static function tec_import( array $p ): array {
+		$r   = \AssociazioneSemplice\TribeImport::run( isset( $p['course_cats'] ) && is_array( $p['course_cats'] ) ? array_map( 'intval', $p['course_cats'] ) : array() );
+		$msg = $r['imported'] . ( 1 === $r['imported'] ? ' evento importato' : ' eventi importati' ) . ( $r['courses'] ? ', ' . $r['courses'] . ( 1 === $r['courses'] ? ' corso' : ' corsi' ) . ' (' . $r['lessons'] . ' lezioni)' : '' )
+			. ( $r['skipped'] ? ', ' . $r['skipped'] . ' già presenti' : '' ) . ( $r['failed'] ? ', ' . $r['failed'] . ' non importati (' . implode( ' ', $r['errors'] ) . ')' : '' ) . '.';
+		return array( Ui::url( 'asem-tec' ), $msg );
 	}
 
 	private static function add_session( array $p ): array {
