@@ -193,6 +193,8 @@ final class Updater {
 				'new_version' => (string) $state[ $p ]['version'],
 				'url'         => '' !== (string) ( $state[ $p ]['url'] ?? '' ) ? (string) $state[ $p ]['url'] : 'https://associazionesemplice.it',
 				'package'     => self::PREFIX . $p, // l'indirizzo vero si chiede al momento dello scarico: vale pochi minuti
+				'icons'       => self::icons(),
+				'banners'     => self::banners(),
 			);
 		}
 		return $transient;
