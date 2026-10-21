@@ -6017,6 +6017,8 @@ wp_delete_post( $lg_post, true );
 // ---------- Tessere: PDF singolo e fogli A4 con più tessere ----------
 $cd_grid = \AssociazioneSemplice\CardLayout::sheet_grid();
 asem_ok( $cd_grid['max'] >= 1 && $cd_grid['max'] === $cd_grid['cols'] * $cd_grid['rows'], 'tessere PDF: la griglia del foglio A4 è calcolata dalle misure (' . $cd_grid['max'] . ' per foglio)' );
+$cd_new = Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Tessera', 'last_name' => 'Foglio' ) );
+Plugin::people()->set_membership( $cd_new, Settings::membership_year()->label(), true );
 $cd_people = array();
 foreach ( Plugin::people()->search() as $cd_row ) {
 	$cd_p = Plugin::people()->get( (int) $cd_row['id'] );
@@ -6036,8 +6038,6 @@ for ( $i = 0; $i < 9; $i++ ) { // 9 soci su fogli da 4: 3 fogli, l'ultimo con 3 
 }
 $cd_sheet = \AssociazioneSemplice\CardLayout::pdf_sheets( $cd_many, $cd_slots );
 asem_ok( 0 === strpos( $cd_sheet, '%PDF-1.4' ) && false !== strpos( $cd_sheet, '/Count 3' ), 'tessere PDF: 9 soci con 4 per foglio fanno 3 fogli' );
-$cd_new = Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Tessera', 'last_name' => 'Foglio' ) );
-Plugin::people()->set_membership( $cd_new, Settings::membership_year()->label(), true );
 asem_ok( false !== strpos( \AssociazioneSemplice\Docs::cards( '', 6 )['mime'], 'pdf' ), 'tessere PDF: dal libro soci si genera il foglio delle tessere' );
 Settings::update( array( 'card_enabled' => 1 ) );
 $cd_html = \AssociazioneSemplice\Frontend\Views::section_card( $cd_people[0] );
