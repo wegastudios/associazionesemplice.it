@@ -24,6 +24,9 @@ final class CardLayout {
 		'number' => 'Numero di tessera',
 		'valid'  => 'Data di scadenza',
 		'qr'     => 'QR della tessera',
+		'type'   => 'Tipo di socio',
+		'roles'  => 'Incarichi (consiglio e staff)',
+		'text'   => 'Testo libero',
 	);
 
 	/** Forme proposte: chiave => [etichetta, larghezza cm, altezza cm]. La misura propria si scrive a mano. */
@@ -44,6 +47,9 @@ final class CardLayout {
 			'number' => array( 'show' => 1, 'x' => 6, 'y' => 74, 'size' => 3.5, 'color' => '#222222' ),
 			'valid'  => array( 'show' => 1, 'x' => 6, 'y' => 84, 'size' => 3.5, 'color' => '#222222' ),
 			'qr'     => array( 'show' => 1, 'x' => 76, 'y' => 52, 'size' => 20.0, 'color' => '#000000' ),
+			'type'   => array( 'show' => 0, 'x' => 6, 'y' => 66.5, 'size' => 3.0, 'color' => '#222222' ),
+			'roles'  => array( 'show' => 0, 'x' => 6, 'y' => 91, 'size' => 2.6, 'color' => '#222222' ),
+			'text'   => array( 'show' => 0, 'x' => 40, 'y' => 12, 'size' => 3.0, 'color' => '#222222' ),
 		);
 	}
 
@@ -130,7 +136,7 @@ final class CardLayout {
 	 * @param string $valid  testo della scadenza (già pronto)
 	 * @param string $qr_svg QR come SVG già pronto ('' se non c'è)
 	 */
-	public static function html( string $name, string $number, string $valid, string $qr_svg ): string {
+	public static function html( string $name, string $number, string $valid, string $qr_svg, array $extra = array() ): string {
 		$l    = self::layout();
 		$bg   = self::bg_url();
 		$html = '<div class="asemf-memcard asemf-memcard-img' . ( '' === $bg ? ' asemf-card-plain' : '' ) . '" style="' . esc_attr( self::box_style() ) . '">'
@@ -148,6 +154,12 @@ final class CardLayout {
 		if ( $l['valid']['show'] && '' !== $valid ) {
 			$html .= '<span class="asemf-card-f" style="' . esc_attr( self::style( $l['valid'] ) ) . '">' . esc_html( $valid ) . '</span>';
 		}
+		foreach ( array( 'type', 'roles', 'text' ) as $k ) { // tipo di socio, incarichi e testo libero
+			$v = (string) ( $extra[ $k ] ?? '' );
+			if ( $l[ $k ]['show'] && '' !== $v ) {
+				$html .= '<span class="asemf-card-f" style="' . esc_attr( self::style( $l[ $k ] ) ) . '">' . esc_html( $v ) . '</span>';
+			}
+		}
 		if ( $l['qr']['show'] && '' !== $qr_svg ) {
 			$html .= '<span class="asemf-card-f asemf-card-qr" style="left:' . (float) $l['qr']['x'] . '%;top:' . (float) $l['qr']['y'] . '%;width:' . (float) $l['qr']['size'] . '%">' . $qr_svg . '</span>'; // phpcs:ignore WordPress.Security.EscapeOutput -- SVG generato dal plugin
 		}
@@ -156,6 +168,153 @@ final class CardLayout {
 
 	/** Testi di esempio per l'anteprima e per il trascinamento nell'amministrazione. */
 	public static function samples(): array {
-		return array( 'logo' => 'Logo', 'name' => 'Nome Cognome', 'number' => 'N. 123', 'valid' => 'Valida fino al 31/12/' . ( (int) current_time( 'Y' ) + 1 ), 'qr' => 'QR' );
+		$text = trim( (string) Settings::get( 'card_text' ) );
+		return array(
+			'logo'   => 'Logo',
+			'name'   => 'Nome Cognome',
+			'number' => 'N. 123',
+			'valid'  => 'Valida fino al 31/12/' . ( (int) current_time( 'Y' ) + 1 ),
+			'qr'     => 'QR',
+			'type'   => 'Socio ordinario',
+			'roles'  => 'Consigliere · Staff: Corso di yoga',
+			'text'   => '' !== $text ? $text : 'Testo libero',
+		);
+	}
+
+	/** Indirizzo da cui il socio (o la segreteria) scarica la tessera in PDF: valido per chi è collegato, con un codice di sicurezza. */
+	public static function pdf_url( int $person_id ): string {
+		return add_query_arg( array( 'asem_card_pdf' => $person_id, '_n' => wp_create_nonce( 'asem_card_pdf_' . $person_id ) ), home_url( '/' ) );
+	}
+
+	/** File di un'immagine della libreria media (null se non c'è o non si legge). */
+	private static function attachment_bytes( int $id ): ?string {
+		$file = $id > 0 ? get_attached_file( $id ) : false;
+		if ( ! $file || ! is_readable( $file ) ) {
+			return null;
+		}
+		$b = file_get_contents( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- file della libreria media, non un indirizzo remoto
+		return false === $b ? null : $b;
+	}
+
+	/**
+	 * La tessera in PDF alla misura scelta (centimetri), su un foglio A4 pronto da stampare e ritagliare: sfondo, logo, testi e QR come sulla tessera
+	 * personalizzata; con la tessera standard i dati stanno nelle posizioni predefinite.
+	 */
+	public static function pdf( array $p ): string {
+		$d     = self::dims();
+		$pt    = 72 / 2.54;
+		$w     = $d['w'] * $pt;
+		$h     = $d['h'] * $pt;
+		$x0    = max( 20.0, ( Pdf::W - $w ) / 2 );
+		$y0    = 50.0;
+		$l     = self::layout();
+		$custom = self::active();
+		$until = MemberType::GUEST === $p['type'] ? null : Plugin::people()->active_until( (int) $p['id'] );
+		$when  = MemberType::is_auto_renewed( $p['type'] ) ? 'Sempre rinnovata' : ( $until ? 'Valida fino al ' . ( new \DateTimeImmutable( $until ) )->format( 'd/m/Y' ) : '' );
+		$ex    = self::extras( $p );
+		$texts = array(
+			'name'   => trim( $p['first_name'] . ' ' . $p['last_name'] ),
+			'number' => '' !== (string) $p['card_number'] ? 'N. ' . $p['card_number'] : '',
+			'valid'  => $when,
+			'type'   => $ex['type'],
+			'roles'  => $ex['roles'],
+			'text'   => $ex['text'],
+		);
+		if ( ! $custom ) { // tessera standard: tutti i dati disponibili, nelle posizioni predefinite
+			foreach ( $l as $k => $f ) {
+				$l[ $k ]['show'] = 1;
+			}
+		}
+		$pdf = new Pdf();
+		$bg  = $custom ? Pdf::load_image( (string) self::attachment_bytes( (int) Settings::get( 'card_bg_id' ) ) ) : null;
+		if ( $bg ) {
+			$pdf->image( $bg, $x0, $y0, $w, $h );
+		}
+		// bordo sottile di taglio
+		$pdf->line( $x0, $y0, $x0 + $w, $y0, 0.4 );
+		$pdf->line( $x0 + $w, $y0, $x0 + $w, $y0 + $h, 0.4 );
+		$pdf->line( $x0 + $w, $y0 + $h, $x0, $y0 + $h, 0.4 );
+		$pdf->line( $x0, $y0 + $h, $x0, $y0, 0.4 );
+		$logo_id = (int) Settings::get( 'logo_id' );
+		$logo    = null;
+		if ( $l['logo']['show'] ) {
+			if ( $logo_id <= 0 ) {
+				$logo_id = (int) attachment_url_to_postid( Frontend\Assets::logo_url() );
+			}
+			$logo = Pdf::load_image( (string) self::attachment_bytes( $logo_id ) );
+		}
+		if ( $logo ) {
+			$lw = $l['logo']['size'] / 100 * $w;
+			$pdf->image( $logo, $x0 + $l['logo']['x'] / 100 * $w, $y0 + $l['logo']['y'] / 100 * $h, $lw, $lw * $logo['h'] / $logo['w'] );
+		}
+		foreach ( $texts as $k => $s ) {
+			if ( empty( $l[ $k ]['show'] ) || '' === $s ) {
+				continue;
+			}
+			$size = $l[ $k ]['size'] / 100 * $w;
+			$pdf->color( $l[ $k ]['color'] );
+			$pdf->text( $x0 + $l[ $k ]['x'] / 100 * $w, $y0 + $l[ $k ]['y'] / 100 * $h + $size * 0.85, $s, $size );
+		}
+		$pdf->color( '' );
+		if ( $l['qr']['show'] && Settings::card_qr_enabled() && MemberType::is_member( $p['type'] ) ) {
+			try {
+				$m = QrCode::matrix( Settings::card_url( (int) $p['id'] ) );
+			} catch ( \InvalidArgumentException $e ) {
+				$m = array();
+			}
+			$n = count( $m );
+			if ( $n ) {
+				$box = $l['qr']['size'] / 100 * $w;
+				$mod = $box / ( $n + 8 ); // zona bianca di 4 moduli intorno, come sullo schermo
+				$qx  = $x0 + $l['qr']['x'] / 100 * $w;
+				$qy  = $y0 + $l['qr']['y'] / 100 * $h;
+				$pdf->rect( $qx, $qy, $box, $box, 1.0 );
+				foreach ( $m as $r => $row ) {
+					$c = 0;
+					while ( $c < $n ) {
+						if ( empty( $row[ $c ] ) ) {
+							$c++;
+							continue;
+						}
+						$start = $c;
+						while ( $c < $n && ! empty( $row[ $c ] ) ) {
+							$c++;
+						}
+						$pdf->rect( $qx + ( 4 + $start ) * $mod, $qy + ( 4 + $r ) * $mod, ( $c - $start ) * $mod, $mod, 0.0 );
+					}
+				}
+			}
+		}
+		return $pdf->output();
+	}
+
+	/** Incarichi di una persona: carica nel consiglio e attività di cui è nello staff nell'anno sociale in corso. */
+	public static function roles_text( array $p ): string {
+		$out = array();
+		$br  = BoardRole::label( $p['board_role'] ?? null );
+		if ( '' !== (string) $br ) {
+			$out[] = $br;
+		}
+		$db   = Db::db();
+		$rows = $db->get_col(
+			$db->prepare(
+				'SELECT a.name FROM ' . Db::t( 'activity_staff' ) . ' s JOIN ' . Db::t( 'activities' ) . ' a ON a.id = s.activity_id WHERE s.person_id = %d AND a.deleted_at IS NULL AND a.social_year = %s ORDER BY a.name',
+				(int) $p['id'],
+				Settings::social_year()->label()
+			)
+		);
+		if ( $rows ) {
+			$out[] = 'Staff: ' . implode( ', ', array_map( 'strval', $rows ) );
+		}
+		return implode( ' · ', $out );
+	}
+
+	/** Tipo di socio, incarichi e testo libero di una persona, pronti per la tessera. */
+	public static function extras( array $p ): array {
+		return array(
+			'type'  => Levels::label( $p ),
+			'roles' => self::roles_text( $p ),
+			'text'  => trim( (string) Settings::get( 'card_text' ) ),
+		);
 	}
 }

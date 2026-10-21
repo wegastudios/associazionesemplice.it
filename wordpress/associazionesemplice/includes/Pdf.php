@@ -26,6 +26,12 @@ final class Pdf {
 	private $pages = array();
 	/** @var string */
 	private $cur = '';
+	/** @var string operatore di colore del testo ('' = nero) */
+	private $fill = '';
+	/** @var bool è stato scritto un colore diverso dal nero? */
+	private $dirty = false;
+	/** @var array[] immagini incorporate (vedi load_image) */
+	private $images = array();
 
 	public function __construct() {
 		$this->add_page();
@@ -80,7 +86,162 @@ final class Pdf {
 		} elseif ( 'C' === $align ) {
 			$x -= self::width( $s, $size, $bold ) / 2;
 		}
-		$this->cur .= sprintf( "BT /F%d %.2F Tf %.2F %.2F Td (%s) Tj ET\n", $bold ? 2 : 1, $size, $x, self::H - $y, self::encode( $s ) );
+		$op = '';
+		if ( '' !== $this->fill ) {
+			$op          = $this->fill . ' ';
+			$this->dirty = true;
+		} elseif ( $this->dirty ) {
+			$op          = '0 g ';
+			$this->dirty = false;
+		}
+		$this->cur .= sprintf( "BT %s/F%d %.2F Tf %.2F %.2F Td (%s) Tj ET\n", $op, $bold ? 2 : 1, $size, $x, self::H - $y, self::encode( $s ) );
+	}
+
+	/** Colore dei testi che seguono, in esadecimale (#rrggbb); vuoto = nero. */
+	public function color( string $hex = '' ): void {
+		$c = ltrim( $hex, '#' );
+		if ( 6 === strlen( $c ) && ctype_xdigit( $c ) ) {
+			$this->fill = sprintf( '%.3F %.3F %.3F rg', hexdec( substr( $c, 0, 2 ) ) / 255, hexdec( substr( $c, 2, 2 ) ) / 255, hexdec( substr( $c, 4, 2 ) ) / 255 );
+		} else {
+			$this->fill = '';
+		}
+	}
+
+	/**
+	 * Prepara un'immagine JPEG o PNG per incorporarla. Sono accettati: JPEG in grigi o RGB; PNG in grigi, RGB, a palette, anche con trasparenza
+	 * (8 bit, non interlacciati, non troppo grandi). @return array|null null se il formato non è gestito
+	 */
+	public static function load_image( string $b ): ?array {
+		if ( "\xFF\xD8" === substr( $b, 0, 2 ) ) {
+			$pos = 2;
+			$len = strlen( $b );
+			while ( $pos + 9 < $len ) {
+				if ( "\xFF" !== $b[ $pos ] ) {
+					$pos++;
+					continue;
+				}
+				$m = ord( $b[ $pos + 1 ] );
+				if ( $m >= 0xC0 && $m <= 0xCF && ! in_array( $m, array( 0xC4, 0xC8, 0xCC ), true ) ) {
+					$h = ( ord( $b[ $pos + 5 ] ) << 8 ) + ord( $b[ $pos + 6 ] );
+					$w = ( ord( $b[ $pos + 7 ] ) << 8 ) + ord( $b[ $pos + 8 ] );
+					$c = ord( $b[ $pos + 9 ] );
+					if ( ! in_array( $c, array( 1, 3 ), true ) || $w < 1 || $h < 1 ) {
+						return null;
+					}
+					return array( 'w' => $w, 'h' => $h, 'cs' => 1 === $c ? '/DeviceGray' : '/DeviceRGB', 'bpc' => 8, 'filter' => '/DCTDecode', 'parms' => '', 'data' => $b );
+				}
+				$pos += 2 + ( ( ord( $b[ $pos + 2 ] ) << 8 ) + ord( $b[ $pos + 3 ] ) );
+			}
+			return null;
+		}
+		if ( "\x89PNG\r\n\x1a\n" !== substr( $b, 0, 8 ) ) {
+			return null;
+		}
+		$pos  = 8;
+		$len  = strlen( $b );
+		$idat = '';
+		$plte = '';
+		$w    = 0;
+		$h    = 0;
+		$bd   = 0;
+		$ct   = -1;
+		$il   = 0;
+		while ( $pos + 8 <= $len ) {
+			$n    = (int) unpack( 'N', substr( $b, $pos, 4 ) )[1];
+			$type = substr( $b, $pos + 4, 4 );
+			$data = substr( $b, $pos + 8, $n );
+			$pos += 12 + $n;
+			if ( 'IHDR' === $type ) {
+				$d  = unpack( 'N2', substr( $data, 0, 8 ) );
+				$w  = (int) $d[1];
+				$h  = (int) $d[2];
+				$bd = ord( $data[8] );
+				$ct = ord( $data[9] );
+				$il = ord( $data[12] );
+			} elseif ( 'PLTE' === $type ) {
+				$plte = $data;
+			} elseif ( 'IDAT' === $type ) {
+				$idat .= $data;
+			} elseif ( 'IEND' === $type ) {
+				break;
+			}
+		}
+		if ( $w < 1 || $h < 1 || 0 !== $il || '' === $idat || $w * $h > 1500000 ) {
+			return null;
+		}
+		if ( ( 0 === $ct || 2 === $ct ) && 8 === $bd ) {
+			$c = 0 === $ct ? 1 : 3;
+			return array( 'w' => $w, 'h' => $h, 'cs' => 1 === $c ? '/DeviceGray' : '/DeviceRGB', 'bpc' => 8, 'filter' => '/FlateDecode', 'parms' => '/DecodeParms << /Predictor 15 /Colors ' . $c . ' /BitsPerComponent 8 /Columns ' . $w . ' >>', 'data' => $idat );
+		}
+		if ( 3 === $ct && in_array( $bd, array( 1, 2, 4, 8 ), true ) && '' !== $plte ) {
+			return array( 'w' => $w, 'h' => $h, 'cs' => '[/Indexed /DeviceRGB ' . ( intdiv( strlen( $plte ), 3 ) - 1 ) . ' <' . bin2hex( $plte ) . '>]', 'bpc' => $bd, 'filter' => '/FlateDecode', 'parms' => '/DecodeParms << /Predictor 15 /Colors 1 /BitsPerComponent ' . $bd . ' /Columns ' . $w . ' >>', 'data' => $idat );
+		}
+		if ( ( 4 === $ct || 6 === $ct ) && 8 === $bd && function_exists( 'gzuncompress' ) && function_exists( 'gzcompress' ) ) { // con trasparenza: colori e trasparenza vanno separati
+			$raw = @gzuncompress( $idat );
+			if ( false === $raw ) {
+				return null;
+			}
+			$bpp    = 6 === $ct ? 4 : 2;
+			$stride = $w * $bpp;
+			if ( strlen( $raw ) < $h * ( $stride + 1 ) ) {
+				return null;
+			}
+			$prev  = array_fill( 0, $stride, 0 );
+			$color = '';
+			$alpha = '';
+			$o     = 0;
+			for ( $y = 0; $y < $h; $y++ ) {
+				$f   = ord( $raw[ $o ] );
+				$row = array_values( unpack( 'C*', substr( $raw, $o + 1, $stride ) ) );
+				$o  += $stride + 1;
+				$cur = array();
+				for ( $i = 0; $i < $stride; $i++ ) {
+					$a = $i >= $bpp ? $cur[ $i - $bpp ] : 0;
+					$u = $prev[ $i ];
+					$c = $i >= $bpp ? $prev[ $i - $bpp ] : 0;
+					switch ( $f ) {
+						case 1:
+							$v = $row[ $i ] + $a;
+							break;
+						case 2:
+							$v = $row[ $i ] + $u;
+							break;
+						case 3:
+							$v = $row[ $i ] + ( ( $a + $u ) >> 1 );
+							break;
+						case 4:
+							$p  = $a + $u - $c;
+							$pa = abs( $p - $a );
+							$pb = abs( $p - $u );
+							$pc = abs( $p - $c );
+							$v  = $row[ $i ] + ( $pa <= $pb && $pa <= $pc ? $a : ( $pb <= $pc ? $u : $c ) );
+							break;
+						default:
+							$v = $row[ $i ];
+					}
+					$cur[ $i ] = $v & 255;
+				}
+				$cn = $bpp - 1;
+				for ( $x = 0; $x < $w; $x++ ) {
+					for ( $k = 0; $k < $cn; $k++ ) {
+						$color .= chr( $cur[ $x * $bpp + $k ] );
+					}
+					$alpha .= chr( $cur[ $x * $bpp + $cn ] );
+				}
+				$prev = $cur;
+			}
+			return array(
+				'w' => $w, 'h' => $h, 'cs' => 6 === $ct ? '/DeviceRGB' : '/DeviceGray', 'bpc' => 8, 'filter' => '/FlateDecode', 'parms' => '', 'data' => gzcompress( $color ),
+				'smask' => array( 'w' => $w, 'h' => $h, 'cs' => '/DeviceGray', 'bpc' => 8, 'filter' => '/FlateDecode', 'parms' => '', 'data' => gzcompress( $alpha ) ),
+			);
+		}
+		return null;
+	}
+
+	/** Disegna un'immagine preparata con {@see Pdf::load_image()} nel rettangolo indicato (punti, dall'angolo in alto a sinistra). */
+	public function image( array $img, float $x, float $y, float $w, float $h ): void {
+		$this->images[] = $img;
+		$this->cur     .= sprintf( "q %.2F 0 0 %.2F %.2F %.2F cm /Im%d Do Q\n", $w, $h, $x, self::H - $y - $h, count( $this->images ) );
 	}
 
 	/** Spezza un testo lungo in righe che stanno in $width punti. @return string[] */
@@ -126,11 +287,30 @@ final class Pdf {
 		$objs[2] = '<< /Type /Pages /Kids [' . implode( ' ', $kids ) . '] /Count ' . $n . ' >>';
 		$objs[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
 		$objs[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+		$next = 5 + $n * 2; // le immagini vengono dopo le pagine
+		$xobj = '';
+		$stream = function ( array $im, string $extra = '' ): string {
+			return '<< /Type /XObject /Subtype /Image /Width ' . (int) $im['w'] . ' /Height ' . (int) $im['h'] . ' /ColorSpace ' . $im['cs'] . ' /BitsPerComponent ' . (int) $im['bpc']
+				. ' /Filter ' . $im['filter'] . ( '' !== $im['parms'] ? ' ' . $im['parms'] : '' ) . $extra . ' /Length ' . strlen( $im['data'] ) . " >>\nstream\n" . $im['data'] . "\nendstream";
+		};
+		foreach ( $this->images as $k => $im ) {
+			$id = $next++;
+			if ( ! empty( $im['smask'] ) ) {
+				$mask_id       = $next++;
+				$objs[ $mask_id ] = $stream( $im['smask'] );
+				$objs[ $id ]      = $stream( $im, ' /SMask ' . $mask_id . ' 0 R' );
+			} else {
+				$objs[ $id ] = $stream( $im );
+			}
+			$xobj .= ' /Im' . ( $k + 1 ) . ' ' . $id . ' 0 R';
+		}
+		$res = '<< /Font << /F1 3 0 R /F2 4 0 R >>' . ( '' !== $xobj ? ' /XObject <<' . $xobj . ' >>' : '' ) . ' >>';
 		foreach ( $pages as $i => $content ) {
 			$pg          = 5 + $i * 2;
-			$objs[ $pg ] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ' . ( $pg + 1 ) . ' 0 R >>';
+			$objs[ $pg ] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources ' . $res . ' /Contents ' . ( $pg + 1 ) . ' 0 R >>';
 			$objs[ $pg + 1 ] = '<< /Length ' . strlen( $content ) . " >>\nstream\n" . $content . 'endstream';
 		}
+		ksort( $objs );
 		$out     = "%PDF-1.4\n";
 		$offsets = array();
 		foreach ( $objs as $id => $body ) {

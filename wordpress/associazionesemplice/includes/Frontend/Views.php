@@ -146,22 +146,25 @@ final class Views {
 		if ( \AssociazioneSemplice\CardLayout::active() ) { // tessera su un'immagine dell'associazione, con i dati posizionati sopra
 			$when = MemberType::is_auto_renewed( $p['type'] ) ? 'Sempre rinnovata' : ( $until ? 'Valida fino al ' . self::d( $until ) : '' );
 			return '<section class="asemf-section">'
-				. \AssociazioneSemplice\CardLayout::html( trim( $p['first_name'] . ' ' . $p['last_name'] ), '' !== (string) $p['card_number'] ? 'N. ' . $p['card_number'] : '', $when, self::card_qr_svg( $p ) )
+				. \AssociazioneSemplice\CardLayout::html( trim( $p['first_name'] . ' ' . $p['last_name'] ), '' !== (string) $p['card_number'] ? 'N. ' . $p['card_number'] : '', $when, self::card_qr_svg( $p ), \AssociazioneSemplice\CardLayout::extras( $p ) )
 				. ( $active ? '' : '<p><span class="asemf-badge asemf-badge-bad">Tessera scaduta</span></p>' ) // sulla tessera stampabile compare solo se non è in regola
 				. (string) apply_filters( 'asem_card_extra', '', $p )
-				. '<p class="asemf-print-wrap"><button type="button" class="asemf-btn asemf-print-card">Stampa la tessera</button></p></section>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				. '<p class="asemf-print-wrap"><button type="button" class="asemf-btn asemf-print-card">Stampa la tessera</button> <a class="asemf-btn" target="_blank" rel="noopener" href="' . esc_url( \AssociazioneSemplice\CardLayout::pdf_url( (int) $p['id'] ) ) . '">Scarica il PDF</a></p></section>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
+		$ex = \AssociazioneSemplice\CardLayout::extras( $p );
 		$logo = Assets::logo_url();
 		return '<section class="asemf-section"><div class="asemf-memcard">'
 			. ( '' !== $logo ? '<img class="asemf-memcard-logo" src="' . esc_url( $logo ) . '" alt="' . esc_attr( $assoc ) . '">' : '' )
 			. ( '' !== $assoc ? '<div class="asemf-memcard-assoc">' . esc_html( $assoc ) . '</div>' : '' )
 			. '<div class="asemf-memcard-name">' . esc_html( trim( $p['first_name'] . ' ' . $p['last_name'] ) ) . '</div>'
-			. '<div class="asemf-memcard-type">' . esc_html( \AssociazioneSemplice\Levels::label( $p ) ) . '</div>'
+			. '<div class="asemf-memcard-type">' . esc_html( $ex['type'] ) . '</div>'
+			. ( '' !== $ex['roles'] ? '<div class="asemf-memcard-roles">' . esc_html( $ex['roles'] ) . '</div>' : '' )
+			. ( '' !== $ex['text'] ? '<div class="asemf-memcard-text">' . esc_html( $ex['text'] ) . '</div>' : '' )
 			. '<dl class="asemf-memcard-data"><div><dt>Tessera n.</dt><dd>' . esc_html( (string) ( $p['card_number'] ?: '—' ) ) . '</dd></div>'
 			. '<div><dt>Valida fino al</dt><dd>' . $valid . '</dd></div></dl>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. ( $active ? '' : '<span class="asemf-badge asemf-badge-bad">Tessera scaduta</span>' )
 			. self::card_qr( $p ) . (string) apply_filters( 'asem_card_extra', '', $p )
-			. '</div><p class="asemf-print-wrap"><button type="button" class="asemf-btn asemf-print-card">Stampa la tessera</button></p></section>';
+			. '</div><p class="asemf-print-wrap"><button type="button" class="asemf-btn asemf-print-card">Stampa la tessera</button> <a class="asemf-btn" target="_blank" rel="noopener" href="' . esc_url( \AssociazioneSemplice\CardLayout::pdf_url( (int) $p['id'] ) ) . '">Scarica il PDF</a></p></section>';
 	}
 
 	/** Solo il disegno del QR della tessera (vuoto se il QR è spento o il socio non è un socio). */

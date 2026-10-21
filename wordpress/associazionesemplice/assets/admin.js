@@ -603,6 +603,57 @@
 	$('#asem-date').addEventListener('change', loadContext);
 	if ($('#asem-person-select').value) { loadContext(); }
 
+	/* Nuovo socio dal modulo di incasso: popup, senza lasciare la pagina né perdere le voci già inserite */
+	var newBtn = $('#asem-new-person');
+	if (newBtn) {
+		newBtn.addEventListener('click', function () {
+			var bg = el('div', { 'class': 'asem-modal-bg', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Nuovo socio' });
+			var box = el('div', { 'class': 'asem-modal' });
+			box.appendChild(el('h2', { text: 'Nuovo socio' }));
+			var err = el('p', { 'class': 'asem-neg', text: '' });
+			var fields = {};
+			[['first_name', 'Nome', true], ['last_name', 'Cognome', true], ['email', 'Email (facoltativa)', false], ['phone', 'Cellulare (facoltativo)', false]].forEach(function (f) {
+				var inp = el('input', { type: f[0] === 'email' ? 'email' : 'text', 'class': 'regular-text', autocomplete: 'off' });
+				fields[f[0]] = inp;
+				var lab = el('label', { text: f[1] + ' ' }); lab.appendChild(inp);
+				box.appendChild(el('p')).appendChild(lab);
+			});
+			var type = null;
+			if (D.guests) {
+				type = el('select');
+				type.appendChild(el('option', { value: 'ordinary', text: 'Socio' }));
+				type.appendChild(el('option', { value: 'guest', text: 'Ospite (non socio)' }));
+				var tl = el('label', { text: 'Tipo ' }); tl.appendChild(type);
+				box.appendChild(el('p')).appendChild(tl);
+			}
+			box.appendChild(err);
+			var save = el('button', { type: 'button', 'class': 'button button-primary', text: 'Aggiungi e seleziona' });
+			var cancel = el('button', { type: 'button', 'class': 'button', text: 'Annulla' });
+			var bar = el('p'); bar.appendChild(save); bar.appendChild(document.createTextNode(' ')); bar.appendChild(cancel);
+			box.appendChild(bar); bg.appendChild(box); document.body.appendChild(bg);
+			fields.first_name.focus();
+			function close() { if (bg.parentNode) { bg.parentNode.removeChild(bg); } }
+			cancel.addEventListener('click', close);
+			bg.addEventListener('keydown', function (e) { if (e.key === 'Escape') { close(); } });
+			save.addEventListener('click', function () {
+				var fd = new FormData();
+				fd.append('action', 'asem_quick_person'); fd.append('nonce', D.nonce);
+				Object.keys(fields).forEach(function (k) { fd.append(k, fields[k].value); });
+				if (type) { fd.append('type', type.value); }
+				save.disabled = true; err.textContent = '';
+				fetch(D.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: fd }).then(function (r) { return r.json(); }).then(function (res) {
+					save.disabled = false;
+					if (!res.success) { err.textContent = typeof res.data === 'string' ? res.data : 'Non è stato possibile aggiungere la persona.'; return; }
+					var sel = $('#asem-person-select');
+					sel.appendChild(el('option', { value: res.data.id, text: res.data.label }));
+					sel.value = String(res.data.id);
+					sel.dispatchEvent(new Event('change'));
+					close();
+				}, function () { save.disabled = false; err.textContent = 'Connessione non riuscita: riprova.'; });
+			});
+		});
+	}
+
 	/* Modalità di pagamento: propone il conto giusto */
 	$('#asem-account').addEventListener('change', update);	$('#asem-tendered').addEventListener('input', update);
 

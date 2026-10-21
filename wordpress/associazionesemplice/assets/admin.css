@@ -40,3 +40,9 @@
 .asem { --asem-brand: #1F218C; --asem-sage: #5F8579; --asem-yellow: #EFCA5C; }
 .asem .asem-logo { float: right; margin: 0 0 8px 16px; width: 150px; height: auto; }
 .asem .asem-card > h2:first-child { border-left: 4px solid var(--asem-brand); padding-left: 10px; }
+
+.asem-modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.asem-modal { background: #fff; border-radius: 6px; padding: 20px 24px; max-width: 460px; width: 100%; max-height: 90vh; overflow: auto; box-shadow: 0 8px 30px rgba(0,0,0,.3); }
+.asem-modal h2 { margin-top: 0; }
+.asem-modal label { display: block; }
+.asem-modal input.regular-text { width: 100%; max-width: none; }

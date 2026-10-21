@@ -1039,6 +1039,7 @@ final class Actions {
 			$upd['card_mode']   = $mode;
 			$upd['card_bg_id']  = max( 0, $bg );
 			$upd['card_layout'] = \AssociazioneSemplice\CardLayout::clean( $p['layout'] ?? array() );
+			$upd['card_text']   = sanitize_text_field( (string) ( $p['card_text'] ?? '' ) );
 		}
 		Settings::update( $upd );
 		return array( Ui::url( 'asem-look' ), 'Aspetto salvato.' );

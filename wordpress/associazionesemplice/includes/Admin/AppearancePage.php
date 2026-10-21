@@ -25,6 +25,8 @@ final class AppearancePage {
 		$sec    = Assets::secondary( $acc );
 		$logo   = Assets::logo_url();
 		echo '<h2>Tessera</h2><input type="hidden" name="card_present" value="1">';
+		echo '<p><label><strong>Testo libero sulla tessera</strong> <input type="text" name="card_text" value="' . esc_attr( (string) $s['card_text'] ) . '" maxlength="160" class="regular-text" placeholder="Es. Tessera valida con documento d\'identità"></label><br>'
+			. '<span class="description">Facoltativo, uguale per tutti i soci. Sulla tessera standard compare sotto il tipo di socio; sulla personalizzata lo posizioni tu (voce «Testo libero»). Sulla tessera compaiono anche il tipo di socio e gli incarichi (consiglio e staff) di ciascuno. Il socio la scarica in PDF dalla sua area e la segreteria dalla sua scheda.</span></p>';
 		echo '<p><label><input type="radio" name="card_mode" value="standard"' . checked( CardLayout::MODE_STANDARD === $mode, true, false ) . '> <strong>Tessera standard</strong>: bianca, con il logo e i testi nel colore principale.</label><br>'
 			. '<label><input type="radio" name="card_mode" value="image"' . checked( CardLayout::MODE_IMAGE === $mode, true, false ) . '> <strong>Tessera personalizzata</strong>: scegli le misure e trascina logo, nome, numero, scadenza e QR dove vuoi, sulla tessera generata dal sito oppure su un\'immagine tua.</label></p>';
 		echo '<div id="asem-card-image"><h3>Misure</h3><p>'
@@ -118,7 +120,7 @@ final class AppearancePage {
 				$qr = '';
 			}
 			echo '<h2>Anteprima della tessera</h2><p class="description">È la tessera salvata: ' . esc_html( (string) CardLayout::dims()['w'] ) . ' × ' . esc_html( (string) CardLayout::dims()['h'] ) . ' cm. I soci la vedono così e la stampano con queste misure.</p>'
-				. '<div style="--asemf-accent:' . esc_attr( $acc ) . ';--asemf-accent-2:' . esc_attr( $sec ) . '">' . CardLayout::html( $samples['name'], $samples['number'], $samples['valid'], $qr ) . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto da CardLayout
+				. '<div style="--asemf-accent:' . esc_attr( $acc ) . ';--asemf-accent-2:' . esc_attr( $sec ) . '">' . CardLayout::html( $samples['name'], $samples['number'], $samples['valid'], $qr, array( 'type' => $samples['type'], 'roles' => $samples['roles'], 'text' => $samples['text'] ) ) . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto da CardLayout
 		} else {
 		echo '<h2>Anteprima della tessera</h2><div style="max-width:380px;border-radius:14px;padding:20px 24px;background:#fff;color:' . esc_attr( $acc ) . ';border:2px solid ' . esc_attr( $acc ) . ';border-top:8px solid ' . esc_attr( $sec ) . '">'
 			. ( '' !== $logo ? '<img src="' . esc_url( $logo ) . '" alt="" style="display:block;max-height:52px;max-width:190px;margin:0 0 10px">' : '' )
