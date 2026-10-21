@@ -35,6 +35,7 @@ final class ProData {
 		add_action( 'asem_notify_email', array( __CLASS__, 'notify_email' ), 10, 3 );
 		add_filter( 'asem_online_dues', array( __CLASS__, 'online_dues' ), 10, 2 );
 		add_filter( 'asem_reservation_active', array( __CLASS__, 'reservation_active' ), 10, 2 );
+		add_action( 'asem_reservation_receipt', array( __CLASS__, 'reservation_receipt' ), 10, 4 );
 		add_filter( 'asem_vat_row', array( __CLASS__, 'vat_row' ), 10, 5 );
 		add_filter( 'asem_vat_input', array( __CLASS__, 'vat_input' ), 10, 2 );
 	}
@@ -202,6 +203,13 @@ final class ProData {
 	/** Una prenotazione di risorsa è ancora attiva? */
 	public static function reservation_active( $active, int $id ) {
 		return Edition::has( 'resources' ) && Resources::is_active( $id );
+	}
+
+	/** Incasso di una prenotazione registrato in prima nota: la quota della risorsa va nel suo fondo (se prevista). */
+	public static function reservation_receipt( int $tx_id, int $reservation_id, int $cents, string $date ): void {
+		if ( Edition::has( 'resources' ) ) {
+			Resources::share_to_fund( $reservation_id, $tx_id, $cents, $date );
+		}
 	}
 
 	/** Rotte REST dei pagamenti online. */

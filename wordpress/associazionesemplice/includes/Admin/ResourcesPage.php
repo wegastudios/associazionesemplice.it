@@ -221,6 +221,27 @@ final class ResourcesPage {
 		echo '</tbody></table></div>';
 	}
 
+	/**
+	 * Riga del modulo: la quota di ogni pagamento accantonata in un fondo. Serve per le risorse date in gestione a terzi (la quota è del gestore)
+	 * o i cui incassi servono per altro. Solo con la funzione dei fondi.
+	 */
+	private static function fund_row( ?array $res ): string {
+		if ( ! \AssociazioneSemplice\Edition::has( 'funds' ) ) {
+			return '';
+		}
+		$mode  = $res ? (string) $res['fund_mode'] : '';
+		$value = $res ? (int) $res['fund_value'] : 0;
+		$shown = \AssociazioneSemplice\FundShare::PERCENT === $mode ? rtrim( rtrim( number_format( $value / 100, 2, ',', '' ), '0' ), ',' ) : ( $value ? Money::plain( $value ) : '' );
+		$funds = array( 0 => '— scegli il fondo —', 'new' => '+ Nuovo fondo' . ( $res ? ' «' . $res['name'] . '»' : ' con il nome della risorsa' ) );
+		foreach ( Plugin::funds()->all() as $f ) {
+			$funds[ $f['id'] ] = $f['name'] . ' (' . Money::format( (int) $f['balance'] ) . ')';
+		}
+		return '<tr><th>Fondo</th><td><select name="fund_mode">' . Ui::options( \AssociazioneSemplice\FundShare::modes(), $mode ) . '</select> '
+			. '<input type="text" name="fund_value" class="small-text" inputmode="decimal" value="' . esc_attr( $shown ) . '"> <span class="description">€ se importo fisso, % se percentuale</span><br>'
+			. 'nel fondo <select name="fund_id">' . Ui::options( $funds, $res && ! empty( $res['fund_id'] ) ? (int) $res['fund_id'] : 0 ) . '</select>'
+			. '<p class="description">Utile per le risorse date in gestione a terzi (la quota è del gestore) o i cui incassi servono a pagare altro. Una parte di ogni pagamento ricevuto (anche in crediti) va nel fondo scelto: l\'incasso resta in cassa o sul conto usato, la quota è accantonata e si sottrae dalla disponibilità reale finché il fondo non si salda o non si libera dalla pagina <em>Conti e fondi</em>. Annullando un incasso sparisce anche la sua quota.</p></td></tr>';
+	}
+
 	private static function form( ?array $res, string $back ): void {
 		$v = function ( string $k, $default = '' ) use ( $res ) {
 			return $res ? $res[ $k ] : $default;
@@ -238,6 +259,7 @@ final class ResourcesPage {
 			. '<tr><th>Tariffe a fasce</th><td><textarea name="rates_text" rows="3" cols="40" placeholder="feriali 18:00-22:00 15,00&#10;weekend 08:00-22:00 20,00">' . esc_textarea( ResourceRules::rates_text( ResourceRules::clean_rates( $v( 'rates', '' ) ) ) ) . '</textarea><br><span class="description">Facoltative, solo per le risorse a fasce: una per riga, «giorni ore importo» (giorni: <em>tutti</em>, <em>feriali</em> lun–ven, <em>weekend</em> sab–dom). Vale la prima riga che corrisponde all\'ora di inizio di ogni fascia; fuori dalle righe vale la tariffa base.</span></td></tr>'
 			. '<tr><th>Pagamento</th><td><select name="pay_mode">' . Ui::options( ResourceRules::pay_modes(), $v( 'pay_mode', ResourceRules::PAY_DESK ) ) . '</select><br><span class="description">Chi prenota online con pagamento in anticipo tiene la fascia riservata solo ' . (int) ResourceRules::HOLD_MINUTES . ' minuti: se il pagamento non arriva si libera. Non ci sono tolleranze di giorni. La segreteria registra sempre le prenotazioni e gli incassi a mano. Il pagamento online richiede i pagamenti online attivi.</span></td></tr>'
 			. ( \AssociazioneSemplice\Edition::has( 'credits' ) ? '<tr><th>Crediti</th><td><input type="number" name="credit_cost" min="0" style="width:80px" value="' . (int) $v( 'credit_cost', 0 ) . '"> crediti ' . ( ResourceRules::ASSIGN === $v( 'mode', ResourceRules::SLOT ) ? 'per periodo' : 'per fascia' ) . '<br><span class="description">0 = non si paga in crediti. Con un costo in crediti il socio può pagare subito con i suoi crediti, oltre alle vie scelte sopra; annullando la prenotazione i crediti tornano al socio. Vale anche per gli ospiti ammessi: non c\'è un supplemento in crediti.</span></td></tr>' : '' )
+			. self::fund_row( $res )
 			. '<tr><th>Ospiti</th><td>fino a <input type="number" name="guests_max" min="0" max="50" style="width:60px" value="' . (int) $v( 'guests_max', 0 ) . '"> per prenotazione, supplemento <input type="text" name="guest_fee" size="6" value="' . esc_attr( Money::plain( (int) $v( 'guest_fee_cents', 0 ) ) ) . '"> € ciascuno<br><span class="description">0 = nessun ospite (posti auto, armadietti, posti barca). Gli ospiti sono solo un nome: non entrano in anagrafe.</span></td></tr>'
 			. '<tr><th>Fasce orarie</th><td>aperta dalle <input type="time" name="open_time" value="' . esc_attr( (string) $v( 'open_time', '08:00' ) ) . '"> alle <input type="time" name="close_time" value="' . esc_attr( (string) $v( 'close_time', '22:00' ) ) . '"> · fascia di <input type="number" name="slot_minutes" min="5" max="720" style="width:70px" value="' . (int) $v( 'slot_minutes', 60 ) . '"> minuti<br>'
 			. 'da <input type="number" name="min_slots" min="1" style="width:60px" value="' . (int) $v( 'min_slots', 1 ) . '"> a <input type="number" name="max_slots" min="1" style="width:60px" value="' . (int) $v( 'max_slots', 1 ) . '"> fasce di seguito · si prenota al massimo <input type="number" name="advance_days" min="0" style="width:70px" value="' . (int) $v( 'advance_days', 0 ) . '"> giorni prima (0 = senza limite)<br><span class="description">Solo per le risorse a fasce.</span></td></tr>'

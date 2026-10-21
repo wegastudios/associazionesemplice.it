@@ -92,6 +92,16 @@ Ogni risorsa ha una **regola di pagamento** (`pay_mode`), decisa dall'ente. Non 
 - Il pagamento online usa `PaymentItems` (voce `reservation`, chiave `r:{prenotazione}:{persona}`) e finisce in prima nota come «Altra entrata» con `reservation_id`. Se un pagamento arriva dopo che la prenotazione è stata liberata, i soldi entrano come «pagamento online non abbinato» e il pagamento è segnato «da controllare».
 - La segreteria registra sempre prenotazioni e incassi a mano, senza riserva provvisoria.
 
+## Fondo della risorsa
+
+Alcune risorse servono a pagare altre cose, o sono date in gestione a terzi (e una parte dell'incasso spetta al gestore). Per questo ogni risorsa può avere una **quota per un fondo** (`fund_mode` = importo fisso o percentuale, `fund_value`, `fund_id`), come già per i corsi e gli eventi ma con un fondo scelto a mano:
+
+- Si sceglie un fondo che esiste già (per esempio «Gestore Sporting Club») oppure «nuovo fondo», che si crea con il nome della risorsa.
+- Ogni incasso della prenotazione (in segreteria o online, anche versato in più volte) accantona la sua quota nel fondo. L'incasso resta in cassa o sul conto; la quota è accantonata e si sottrae dalla disponibilità reale (come per i fondi dei corsi). Se l'incasso si annulla, sparisce anche la quota.
+- Una prenotazione **pagata in crediti** accantona la quota sul suo prezzo in euro (i crediti non hanno un incasso in prima nota); se si annulla e i crediti tornano al socio, la quota torna disponibile.
+- Il fondo si salda o si libera dalla pagina «Conti e fondi», come tutti gli altri. Se il gestore è un socio, il fondo si può intestare a lui da lì.
+- La quota richiede la funzione dei fondi (licenza Pro Full): con il Pro Lite il campo non compare e ciò che c'è non si tocca.
+
 ## Crediti
 
 Le risorse si possono pagare anche **in crediti** (token prepagati comprati dal socio): `resources.credit_cost` = crediti per fascia. Con un costo in crediti il socio può pagare subito, oltre alle vie della regola di pagamento; annullando la prenotazione i crediti tornano al socio. Il costo in crediti copre anche gli ospiti ammessi (nessun supplemento in crediti). Tutto il resto — pacchetti, acquisto, spesa dal vivo con il QR, contabilità — è in [CREDITI.md](CREDITI.md).
