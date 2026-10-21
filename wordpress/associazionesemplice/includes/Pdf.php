@@ -32,6 +32,8 @@ final class Pdf {
 	private $dirty = false;
 	/** @var array[] immagini incorporate (vedi load_image) */
 	private $images = array();
+	/** @var array<string,int> immagini già incorporate, per nome */
+	private $image_keys = array();
 
 	public function __construct() {
 		$this->add_page();
@@ -239,9 +241,18 @@ final class Pdf {
 	}
 
 	/** Disegna un'immagine preparata con {@see Pdf::load_image()} nel rettangolo indicato (punti, dall'angolo in alto a sinistra). */
-	public function image( array $img, float $x, float $y, float $w, float $h ): void {
-		$this->images[] = $img;
-		$this->cur     .= sprintf( "q %.2F 0 0 %.2F %.2F %.2F cm /Im%d Do Q\n", $w, $h, $x, self::H - $y - $h, count( $this->images ) );
+	public function image( array $img, float $x, float $y, float $w, float $h, string $key = '' ): void {
+		if ( '' !== $key && isset( $this->image_keys[ $key ] ) ) { // la stessa immagine usata più volte (sfondo, logo) si incorpora una volta sola
+			$idx = $this->image_keys[ $key ];
+		} else {
+			$this->images[] = $img;
+			$idx            = count( $this->images );
+			if ( '' !== $key ) {
+				$this->image_keys[ $key ] = $idx;
+			}
+		}
+		$this->cur .= sprintf( "q %.2F 0 0 %.2F %.2F %.2F cm /Im%d Do Q
+", $w, $h, $x, self::H - $y - $h, $idx );
 	}
 
 	/** Spezza un testo lungo in righe che stanno in $width punti. @return string[] */

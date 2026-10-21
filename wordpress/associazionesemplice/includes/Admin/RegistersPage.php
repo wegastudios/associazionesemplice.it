@@ -33,6 +33,17 @@ final class RegistersPage {
 		echo '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-book"><select name="filter">'
 			. Ui::options( array( MemberBook::IN_FORCE => 'In carica', MemberBook::LEFT => 'Cessati' ), $filter, 'Tutti' ) . '</select> <button class="button">Filtra</button> ' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
 			. self::downloads( 'book', array( 'filter' => $filter ) ) . '</form>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		$grid = \AssociazioneSemplice\CardLayout::sheet_grid();
+		$per  = Ui::get_int( 'per' );
+		$opts = array( 0 => 'il massimo (' . $grid['max'] . ')' );
+		foreach ( array( 4, 6, 8, 10, 12, 16 ) as $n ) {
+			if ( $n < $grid['max'] ) {
+				$opts[ $n ] = (string) $n;
+			}
+		}
+		echo '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-book"><input type="hidden" name="filter" value="' . esc_attr( $filter ) . '">'
+			. '<strong>Tessere in PDF</strong> (fogli A4 da stampare e ritagliare; i posti che restano sono modelli vuoti): per foglio <select name="per">' . Ui::options( $opts, isset( $opts[ $per ] ) ? $per : 0 ) . '</select> <button class="button">Applica</button> ' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<a class="button button-primary" target="_blank" href="' . esc_url( Docs::url( 'cards', array( 'filter' => $filter, 'per' => isset( $opts[ $per ] ) ? $per : 0 ) ) ) . '">Genera le tessere (' . ( '' === $filter ? 'soci in carica' : ( MemberBook::IN_FORCE === $filter ? 'in carica' : 'cessati' ) ) . ')</a></form>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<p class="description">' . count( $rows ) . ' soci.</p>';
 		echo '<table class="widefat striped"><thead><tr><th>N.</th><th>Cognome e nome</th><th>Codice fiscale</th><th>Livello</th><th>Ingresso</th><th>Cessazione</th></tr></thead><tbody>';
 		if ( ! $rows ) {

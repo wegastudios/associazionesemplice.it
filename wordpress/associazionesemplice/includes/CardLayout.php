@@ -196,19 +196,51 @@ final class CardLayout {
 		return false === $b ? null : $b;
 	}
 
-	/**
-	 * La tessera in PDF alla misura scelta (centimetri), su un foglio A4 pronto da stampare e ritagliare: sfondo, logo, testi e QR come sulla tessera
-	 * personalizzata; con la tessera standard i dati stanno nelle posizioni predefinite.
-	 */
-	public static function pdf( array $p ): string {
-		$d     = self::dims();
-		$pt    = 72 / 2.54;
-		$w     = $d['w'] * $pt;
-		$h     = $d['h'] * $pt;
-		$x0    = max( 20.0, ( Pdf::W - $w ) / 2 );
-		$y0    = 50.0;
-		$l     = self::layout();
+	/** Elementi comuni a tutte le tessere di un PDF: misure in punti, disposizione, sfondo e logo (caricati una volta sola). */
+	private static function pdf_context(): array {
+		$d      = self::dims();
+		$pt     = 72 / 2.54;
+		$l      = self::layout();
 		$custom = self::active();
+		if ( ! $custom ) { // tessera standard: tutti i dati disponibili, nelle posizioni predefinite
+			foreach ( $l as $k => $f ) {
+				$l[ $k ]['show'] = 1;
+			}
+		}
+		$bg   = $custom ? Pdf::load_image( (string) self::attachment_bytes( (int) Settings::get( 'card_bg_id' ) ) ) : null;
+		$logo = null;
+		if ( $l['logo']['show'] ) {
+			$logo_id = (int) Settings::get( 'logo_id' );
+			if ( $logo_id <= 0 ) {
+				$logo_id = (int) attachment_url_to_postid( Frontend\Assets::logo_url() );
+			}
+			$logo = Pdf::load_image( (string) self::attachment_bytes( $logo_id ) );
+		}
+		return array( 'w' => $d['w'] * $pt, 'h' => $d['h'] * $pt, 'l' => $l, 'bg' => $bg, 'logo' => $logo );
+	}
+
+	/**
+	 * Disegna una tessera nel punto indicato. Con $p = null è il modello vuoto (sfondo, bordo e logo, senza dati): le posizioni che restano
+	 * libere in un foglio di tessere.
+	 */
+	private static function pdf_card( Pdf $pdf, array $c, ?array $p, float $x0, float $y0 ): void {
+		$w = $c['w'];
+		$h = $c['h'];
+		$l = $c['l'];
+		if ( $c['bg'] ) {
+			$pdf->image( $c['bg'], $x0, $y0, $w, $h, 'bg' );
+		}
+		$pdf->line( $x0, $y0, $x0 + $w, $y0, 0.4 ); // bordo sottile di taglio
+		$pdf->line( $x0 + $w, $y0, $x0 + $w, $y0 + $h, 0.4 );
+		$pdf->line( $x0 + $w, $y0 + $h, $x0, $y0 + $h, 0.4 );
+		$pdf->line( $x0, $y0 + $h, $x0, $y0, 0.4 );
+		if ( $c['logo'] ) {
+			$lw = $l['logo']['size'] / 100 * $w;
+			$pdf->image( $c['logo'], $x0 + $l['logo']['x'] / 100 * $w, $y0 + $l['logo']['y'] / 100 * $h, $lw, $lw * $c['logo']['h'] / $c['logo']['w'], 'logo' );
+		}
+		if ( null === $p ) {
+			return;
+		}
 		$until = MemberType::GUEST === $p['type'] ? null : Plugin::people()->active_until( (int) $p['id'] );
 		$when  = MemberType::is_auto_renewed( $p['type'] ) ? 'Sempre rinnovata' : ( $until ? 'Valida fino al ' . ( new \DateTimeImmutable( $until ) )->format( 'd/m/Y' ) : '' );
 		$ex    = self::extras( $p );
@@ -220,33 +252,6 @@ final class CardLayout {
 			'roles'  => $ex['roles'],
 			'text'   => $ex['text'],
 		);
-		if ( ! $custom ) { // tessera standard: tutti i dati disponibili, nelle posizioni predefinite
-			foreach ( $l as $k => $f ) {
-				$l[ $k ]['show'] = 1;
-			}
-		}
-		$pdf = new Pdf();
-		$bg  = $custom ? Pdf::load_image( (string) self::attachment_bytes( (int) Settings::get( 'card_bg_id' ) ) ) : null;
-		if ( $bg ) {
-			$pdf->image( $bg, $x0, $y0, $w, $h );
-		}
-		// bordo sottile di taglio
-		$pdf->line( $x0, $y0, $x0 + $w, $y0, 0.4 );
-		$pdf->line( $x0 + $w, $y0, $x0 + $w, $y0 + $h, 0.4 );
-		$pdf->line( $x0 + $w, $y0 + $h, $x0, $y0 + $h, 0.4 );
-		$pdf->line( $x0, $y0 + $h, $x0, $y0, 0.4 );
-		$logo_id = (int) Settings::get( 'logo_id' );
-		$logo    = null;
-		if ( $l['logo']['show'] ) {
-			if ( $logo_id <= 0 ) {
-				$logo_id = (int) attachment_url_to_postid( Frontend\Assets::logo_url() );
-			}
-			$logo = Pdf::load_image( (string) self::attachment_bytes( $logo_id ) );
-		}
-		if ( $logo ) {
-			$lw = $l['logo']['size'] / 100 * $w;
-			$pdf->image( $logo, $x0 + $l['logo']['x'] / 100 * $w, $y0 + $l['logo']['y'] / 100 * $h, $lw, $lw * $logo['h'] / $logo['w'] );
-		}
 		foreach ( $texts as $k => $s ) {
 			if ( empty( $l[ $k ]['show'] ) || '' === $s ) {
 				continue;
@@ -270,20 +275,68 @@ final class CardLayout {
 				$qy  = $y0 + $l['qr']['y'] / 100 * $h;
 				$pdf->rect( $qx, $qy, $box, $box, 1.0 );
 				foreach ( $m as $r => $row ) {
-					$c = 0;
-					while ( $c < $n ) {
-						if ( empty( $row[ $c ] ) ) {
-							$c++;
+					$col = 0;
+					while ( $col < $n ) {
+						if ( empty( $row[ $col ] ) ) {
+							$col++;
 							continue;
 						}
-						$start = $c;
-						while ( $c < $n && ! empty( $row[ $c ] ) ) {
-							$c++;
+						$start = $col;
+						while ( $col < $n && ! empty( $row[ $col ] ) ) {
+							$col++;
 						}
-						$pdf->rect( $qx + ( 4 + $start ) * $mod, $qy + ( 4 + $r ) * $mod, ( $c - $start ) * $mod, $mod, 0.0 );
+						$pdf->rect( $qx + ( 4 + $start ) * $mod, $qy + ( 4 + $r ) * $mod, ( $col - $start ) * $mod, $mod, 0.0 );
 					}
 				}
 			}
+		}
+	}
+
+	/**
+	 * La tessera in PDF alla misura scelta (centimetri), su un foglio A4 pronto da stampare e ritagliare: sfondo, logo, testi e QR come sulla tessera
+	 * personalizzata; con la tessera standard i dati stanno nelle posizioni predefinite.
+	 */
+	public static function pdf( array $p ): string {
+		$c   = self::pdf_context();
+		$pdf = new Pdf();
+		self::pdf_card( $pdf, $c, $p, max( 20.0, ( Pdf::W - $c['w'] ) / 2 ), 50.0 );
+		return $pdf->output();
+	}
+
+	/** @return array{cols:int,rows:int,max:int} quante tessere stanno su un A4 (con un margine di 1 cm) */
+	public static function sheet_grid(): array {
+		$c    = self::pdf_context();
+		$cols = max( 1, (int) floor( ( Pdf::W - 2 * 28.35 ) / $c['w'] ) );
+		$rows = max( 1, (int) floor( ( Pdf::H - 2 * 28.35 ) / $c['h'] ) );
+		return array( 'cols' => $cols, 'rows' => $rows, 'max' => $cols * $rows );
+	}
+
+	/**
+	 * Fogli A4 con più tessere ciascuno, pronti da stampare e ritagliare. Ogni foglio ha la griglia completa: i posti che restano dopo l'ultima
+	 * persona sono modelli vuoti (sfondo e logo), da usare prestampati. $per = tessere per foglio (0 = quante ne stanno).
+	 *
+	 * @param array[] $people persone (soci) con la tessera da stampare
+	 */
+	public static function pdf_sheets( array $people, int $per = 0 ): string {
+		$c     = self::pdf_context();
+		$g     = self::sheet_grid();
+		$cols  = $g['cols'];
+		$rows  = $g['rows'];
+		if ( $per > 0 && $per < $g['max'] ) {
+			$cols = min( $cols, $per );
+			$rows = max( 1, min( $rows, (int) ceil( $per / $cols ) ) );
+		}
+		$slots = $cols * $rows;
+		$x0    = ( Pdf::W - $cols * $c['w'] ) / 2;
+		$y0    = ( Pdf::H - $rows * $c['h'] ) / 2;
+		$pdf   = new Pdf();
+		$total = max( 1, (int) ceil( count( $people ) / $slots ) ) * $slots;
+		for ( $i = 0; $i < $total; $i++ ) {
+			if ( $i > 0 && 0 === $i % $slots ) {
+				$pdf->add_page();
+			}
+			$pos = $i % $slots;
+			self::pdf_card( $pdf, $c, $people[ $i ] ?? null, $x0 + ( $pos % $cols ) * $c['w'], $y0 + (int) floor( $pos / $cols ) * $c['h'] );
 		}
 		return $pdf->output();
 	}

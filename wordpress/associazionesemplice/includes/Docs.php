@@ -17,6 +17,27 @@ final class Docs {
 		add_action( 'admin_post_asem_doc', array( __CLASS__, 'handle' ) );
 	}
 
+	/**
+	 * Le tessere dei soci su fogli A4 con più tessere per foglio, da stampare e ritagliare (i posti che restano sono modelli vuoti).
+	 *
+	 * @param string $filter filtro del libro soci ('' = i soci in carica)
+	 * @param int    $per    tessere per foglio (0 = quante ne stanno)
+	 * @throws \InvalidArgumentException
+	 */
+	public static function cards( string $filter = '', int $per = 0 ): array {
+		$people = array();
+		foreach ( MemberBook::rows( '' === $filter ? MemberBook::IN_FORCE : $filter ) as $r ) {
+			$p = Plugin::people()->get( (int) $r['id'] );
+			if ( $p && MemberType::is_member( $p['type'] ) ) {
+				$people[] = $p;
+			}
+		}
+		if ( ! $people ) {
+			throw new \InvalidArgumentException( 'Nessun socio per cui stampare la tessera.' );
+		}
+		return array( 'body' => CardLayout::pdf_sheets( $people, max( 0, $per ) ), 'filename' => 'tessere.pdf', 'mime' => 'application/pdf' );
+	}
+
 	public static function url( string $what, array $args = array(), string $format = 'pdf' ): string {
 		return wp_nonce_url( add_query_arg( array_merge( array( 'action' => 'asem_doc', 'what' => $what, 'format' => $format ), $args ), admin_url( 'admin-post.php' ) ), 'asem_doc' );
 	}
@@ -250,6 +271,9 @@ final class Docs {
 			switch ( $what ) {
 				case 'book':
 					$doc = self::book( (string) ( $g['filter'] ?? '' ), $format );
+					break;
+				case 'cards':
+					$doc = self::cards( (string) ( $g['filter'] ?? '' ), (int) ( $g['per'] ?? 0 ) );
 					break;
 				case 'minute':
 					$doc = self::minute( (int) ( $g['id'] ?? 0 ) );
