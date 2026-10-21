@@ -35,7 +35,7 @@ return [
 
     // Informativa privacy accettata dal cliente all'apertura del ticket: indirizzo e versione (da aumentare quando il testo cambia)
     'privacy' => [
-        'url' => env('SUPPORT_PRIVACY_URL', 'https://wegastudios.com/privacy'),
+        'url' => env('SUPPORT_PRIVACY_URL', 'https://associazionesemplice.it/privacy'),
         'version' => env('SUPPORT_PRIVACY_VERSION', '1'),
     ],
 

@@ -9,6 +9,7 @@ use App\Models\Plan;
 use App\Models\SupportTicket;
 use App\Models\Topic;
 use App\Services\Site\CustomerLink;
+use App\Services\Site\HubClient;
 use App\Services\Site\HumanCheck;
 use App\Services\Site\TicketService;
 use Illuminate\Http\RedirectResponse;
@@ -36,7 +37,7 @@ class PublicTicketController extends Controller
 
     public function store(Request $request, TicketService $tickets, HumanCheck $human): RedirectResponse
     {
-        // Solo chi ha fatto l'accesso dal portale puo aprire un ticket
+        // Solo chi ha fatto l'accesso dal portale può aprire un ticket
         if (! is_array($request->session()->get('customer'))) {
             return $this->toPortalLogin();
         }
@@ -88,7 +89,7 @@ class PublicTicketController extends Controller
 
         // Con l'id assegnato il cliente va alla pagina del ticket; senza (hub non raggiungibile) vede la conferma di ricezione
         return $ticket->isRegistered()
-            ? redirect(CustomerLink::show($ticket))->with('ok', "Richiesta ricevuta: il tuo ticket è il numero {$ticket->hub_id}. Ti abbiamo scritto una conferma per email.")
+            ? redirect(CustomerLink::show($ticket))->with('ok', "Richiesta ricevuta: la tua richiesta è la numero {$ticket->hub_id}. Ti abbiamo scritto una conferma per email.")
             : redirect()->route('ticket.received');
     }
 
@@ -102,7 +103,7 @@ class PublicTicketController extends Controller
         return view('site.ticket-received');
     }
 
-    public function show(int $hubId): View
+    public function show(int $hubId, HubClient $hub): View
     {
         $ticket = $this->find($hubId)->load('messages', 'topic');
 
@@ -110,6 +111,7 @@ class PublicTicketController extends Controller
             'ticket' => $ticket,
             'messages' => $ticket->messages->where('author_type', '!=', 'note'),
             'replyUrl' => CustomerLink::reply($ticket),
+            'canReopen' => $this->canReopen($hub),
         ]);
     }
 
@@ -122,7 +124,7 @@ class PublicTicketController extends Controller
             $tickets->customerReply($ticket, $data['body']);
         } catch (HubRejectedException $e) {
             if ($e->errorCode === 'REOPEN_DISABLED') {
-                return back()->withErrors(['body' => 'Questo ticket è chiuso e non può essere riaperto: apri una nuova richiesta.'])
+                return back()->withErrors(['body' => 'Questa richiesta è chiusa: aprine una nuova.'])
                     ->with('new_ticket_url', route('ticket.create', ['rif' => $ticket->hub_id]));
             }
 
@@ -132,6 +134,16 @@ class PublicTicketController extends Controller
         }
 
         return redirect(CustomerLink::show($ticket))->with('ok', 'Risposta inviata.');
+    }
+
+    /** Se il portale consente di riaprire le richieste chiuse; nel dubbio (servizio non raggiungibile) si lascia provare. */
+    private function canReopen(HubClient $hub): bool
+    {
+        try {
+            return (bool) ($hub->rules()['allow_reopen'] ?? true);
+        } catch (HubUnavailableException|HubRejectedException) {
+            return true;
+        }
     }
 
     private function find(int $hubId): SupportTicket

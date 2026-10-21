@@ -21,7 +21,7 @@ class StaffReplied extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: "Nuova risposta al ticket {$this->ticket->hub_id}");
+        return new Envelope(subject: "Nuova risposta alla richiesta n. {$this->ticket->hub_id}");
     }
 
     public function content(): Content

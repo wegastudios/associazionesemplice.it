@@ -93,7 +93,7 @@ class SiteController extends Controller
             'allowed_priorities.*' => 'integer|between:0,4',
             'notify_emails' => 'nullable|string|max:2000',
         ], [
-            'allowed_priorities.required' => 'Seleziona almeno un livello di priorita consentito.',
+            'allowed_priorities.required' => 'Seleziona almeno un livello di priorità consentito.',
         ]);
     }
 }

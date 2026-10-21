@@ -36,7 +36,7 @@ class TicketService
         if (! empty($data['related_ticket_id'])) {
             $related = Ticket::query()->where('site_id', $site->id)->find((int) $data['related_ticket_id']);
             if ($related === null) {
-                throw SupportException::of('RELATED_TICKET_NOT_FOUND', 'Il ticket collegato non esiste per questo portale.', 422);
+                throw SupportException::of('RELATED_TICKET_NOT_FOUND', 'La richiesta collegata non è stata trovata.', 422);
             }
         }
 
@@ -97,7 +97,7 @@ class TicketService
         if (isset($data['status']) && $data['status'] !== $ticket->status) {
             $reopening = $ticket->isClosed() && $data['status'] !== 'closed';
             if ($reopening && ! $site->allow_reopen) {
-                throw SupportException::of('REOPEN_DISABLED', 'Questo portale non puo riaprire i ticket chiusi: apri un nuovo ticket.', 409);
+                throw SupportException::of('REOPEN_DISABLED', 'Questa richiesta è chiusa: aprine una nuova.', 409);
             }
             $changes['status'] = ['from' => $ticket->status, 'to' => $data['status']];
             $ticket->status = $data['status'];
@@ -130,7 +130,7 @@ class TicketService
         $allowed = $site->priorities();
 
         if ($allowed === []) {
-            throw SupportException::of('PRIORITY_NOT_ALLOWED', 'Nessun livello di priorita abilitato per questo portale.', 422, ['allowed_priorities' => []]);
+            throw SupportException::of('PRIORITY_NOT_ALLOWED', 'Nessun livello di priorità abilitato per questo portale.', 422, ['allowed_priorities' => []]);
         }
 
         if ($requested === null || $requested === '') {
@@ -141,7 +141,7 @@ class TicketService
 
         $level = (int) $requested;
         if (! $site->allowsPriority($level)) {
-            throw SupportException::of('PRIORITY_NOT_ALLOWED', 'Livello di priorita non consentito a questo portale.', 422, ['allowed_priorities' => $allowed]);
+            throw SupportException::of('PRIORITY_NOT_ALLOWED', 'Livello di priorità non consentito a questo portale.', 422, ['allowed_priorities' => $allowed]);
         }
 
         return $level;

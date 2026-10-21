@@ -2,13 +2,13 @@
 @section('title', 'Apri una richiesta')
 @section('content')
     <h1>Apri una richiesta</h1>
-    @if (! empty($customer))<p class="hint">Stai scrivendo come {{ $customer["email"] }}: i dati del tuo account non si modificano qui. <a href="{{ route("ticket.mine") }}">I miei ticket</a></p>@endif
+    @if (! empty($customer))<p class="hint">Stai scrivendo come {{ $customer["email"] }}: i dati del tuo account non si modificano qui. <a href="{{ route("ticket.mine") }}">Le mie richieste</a></p>@endif
     <form method="post" action="{{ route('ticket.store') }}" class="card" style="max-width:720px">
         @csrf
         {{-- Controllo anti-bot: marca temporale cifrata + campo trappola fuori schermo (le persone non lo vedono) --}}
         <input type="hidden" name="form_token" value="{{ $formToken }}">
         <div style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden" aria-hidden="true"><label for="website">Lascia vuoto questo campo</label><input id="website" name="website" type="text" tabindex="-1" autocomplete="off"></div>
-        @if ($related)<input type="hidden" name="related_hub_id" value="{{ (int) $related }}"><p class="hint">Questa richiesta è collegata al ticket {{ (int) $related }}.</p>@endif
+        @if ($related)<input type="hidden" name="related_hub_id" value="{{ (int) $related }}"><p class="hint">Questa richiesta è collegata alla richiesta n. {{ (int) $related }}.</p>@endif
         <div class="row">
             <div><label for="customer_name">Il tuo nome</label><input id="customer_name" name="customer_name" value="{{ ($customer["name"] ?? null) ?: old("customer_name") }}" maxlength="150" required @readonly(! empty($customer["name"])) @if (! empty($customer["name"])) tabindex="-1" @endif></div>
             <div><label for="customer_email">La tua email</label><input id="customer_email" name="customer_email" type="email" value="{{ $customer["email"] ?? old("customer_email") }}" maxlength="190" required @readonly(! empty($customer["email"])) @if (! empty($customer["email"])) tabindex="-1" @endif></div>

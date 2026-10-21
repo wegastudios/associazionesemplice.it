@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
     <meta name="theme-color" content="#1f218c">
-    <title>@yield('title', 'Assistenza') · {{ config('app.name') }}</title>
+    <title>@yield('title', 'Centro assistenza') · {{ config('app.name') }}</title>
     @include('partials.brand')
 </head>
 <body>
@@ -17,7 +17,7 @@
             <a href="{{ route('ticket.create') }}" @if (request()->routeIs('ticket.create')) aria-current="page" @endif>Apri una richiesta</a>
             <a href="{{ rtrim(config('support.sso.portal'), '/') }}/account">Area riservata licenze</a>
             @if (session('customer'))
-                <a href="{{ route('ticket.mine') }}" @if (request()->routeIs('ticket.mine')) aria-current="page" @endif>I miei ticket</a>
+                <a href="{{ route('ticket.mine') }}" @if (request()->routeIs('ticket.mine')) aria-current="page" @endif>Le mie richieste</a>
                 <form method="post" action="{{ route('sso.logout') }}" style="margin-left:auto">@csrf<button type="submit" class="secondary">Esci</button></form>
             @else
                 <a href="{{ rtrim(config('support.sso.portal'), '/') }}/supporto/accedi" style="margin-left:auto">Accedi</a>
@@ -34,6 +34,6 @@
     @endif
     @yield('content')
 </main>
-<footer class="site">{{ config('app.name') }}</footer>
+<footer class="site">{{ config('app.name') }} · <a href="{{ config('support.sso.portal') }}/privacy">Privacy</a> · <a href="{{ config('support.sso.portal') }}/cookie">Cookie</a> · <a href="{{ config('support.sso.portal') }}/accedi">Area riservata</a></footer>
 </body>
 </html>
