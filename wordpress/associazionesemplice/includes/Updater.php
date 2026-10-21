@@ -158,6 +158,18 @@ final class Updater {
 		update_option( self::OPT, $state, false );
 	}
 
+	/** Icone del plugin nell'elenco degli aggiornamenti (immagini pubblicate dal portale). */
+	private static function icons(): array {
+		$base = 'https://associazionesemplice.it/assets/plugin/';
+		return array( '1x' => $base . 'icon-128x128.png', '2x' => $base . 'icon-256x256.png', 'default' => $base . 'icon-256x256.png' );
+	}
+
+	/** Banner nella scheda dei dettagli. */
+	private static function banners(): array {
+		$base = 'https://associazionesemplice.it/assets/plugin/';
+		return array( 'low' => $base . 'banner-772x250.png', 'high' => $base . 'banner-1544x500.png' );
+	}
+
 	/** Filtro di WordPress: mette gli aggiornamenti nell'elenco (Bacheca → Aggiornamenti e pagina Plugin). */
 	public static function inject( $transient ) {
 		if ( ! is_object( $transient ) || ! self::enabled() ) {
@@ -204,6 +216,8 @@ final class Updater {
 					'requires_php'  => '7.4',
 					'sections'      => array( 'description' => '<p>' . esc_html( $info['name'] ) . ': gestione di soci, attività e prima nota per associazioni. L\'aggiornamento si scarica dal portale di Associazione Semplice.</p>' ),
 					'download_link' => self::PREFIX . $p,
+					'icons'         => self::icons(),
+					'banners'       => self::banners(),
 				);
 			}
 		}
