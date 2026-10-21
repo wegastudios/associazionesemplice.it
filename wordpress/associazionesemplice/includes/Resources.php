@@ -90,6 +90,31 @@ final class Resources {
 			$bands             = ResourceRules::parse_rates( (string) ( $in['rates_text'] ?? '' ) );
 			$d['rates']        = $bands ? wp_json_encode( $bands ) : null;
 		}
+		if ( array_key_exists( 'fund_mode', $in ) ) { // la quota per un fondo (solo con la funzione dei fondi: senza il campo non si tocca ciò che c'è)
+			$mode  = in_array( (string) $in['fund_mode'], array( FundShare::FIXED, FundShare::PERCENT ), true ) ? (string) $in['fund_mode'] : FundShare::NONE;
+			$value = max( 0, (int) ( $in['fund_value'] ?? 0 ) );
+			$fund  = 'new' === (string) ( $in['fund_id'] ?? '' ) ? 'new' : max( 0, (int) ( $in['fund_id'] ?? 0 ) );
+			if ( FundShare::NONE === $mode ) {
+				$value = 0;
+				$fund  = 0;
+			} else {
+				if ( $value <= 0 ) {
+					throw new \InvalidArgumentException( 'Indica la quota per il fondo (importo o percentuale maggiori di zero).' );
+				}
+				if ( FundShare::PERCENT === $mode && $value > 10000 ) {
+					throw new \InvalidArgumentException( 'La percentuale per il fondo non può superare il 100%.' );
+				}
+				if ( 0 === $fund ) {
+					throw new \InvalidArgumentException( 'Scegli il fondo in cui accantonare la quota, oppure creane uno nuovo.' );
+				}
+				if ( 'new' !== $fund && ! Plugin::funds()->get( $fund ) ) {
+					throw new \InvalidArgumentException( 'Fondo non trovato.' );
+				}
+			}
+			$d['fund_mode']  = $mode;
+			$d['fund_value'] = $value;
+			$d['fund_id']    = $fund ?: null;
+		}
 		return $d;
 	}
 
@@ -97,6 +122,9 @@ final class Resources {
 		$d = self::normalize( $in );
 		if ( $d['parent_id'] && ( $d['parent_id'] === $id || ! self::get( (int) $d['parent_id'] ) ) ) {
 			$d['parent_id'] = null;
+		}
+		if ( isset( $d['fund_id'] ) && 'new' === $d['fund_id'] ) { // dopo i controlli: nessun fondo orfano se qualcosa non va
+			$d['fund_id'] = Plugin::funds()->create( 'Quota «' . $d['name'] . '»' );
 		}
 		if ( $id > 0 ) {
 			if ( ! self::get( $id ) ) {
@@ -414,8 +442,32 @@ final class Resources {
 		}
 		Credits::spend( $person_id, $cost, $res['name'] . ' — ' . substr( (string) $r['starts_at'], 0, 16 ), 'reservation', $reservation_id );
 		self::db()->update( Db::t( 'reservations' ), array( 'credits_paid' => $cost, 'hold_until' => null ), array( 'id' => $reservation_id ) );
+		$sh = self::fund_share( $res, (int) $r['fee_due_cents'] ); // la quota del fondo si calcola sul prezzo in euro della prenotazione: i crediti non hanno incasso in prima nota
+		if ( $sh > 0 ) {
+			Plugin::funds()->share_to_fund( (int) $res['fund_id'], $sh, Db::today(), null, 'Quota di «' . $res['name'] . '» pagata in crediti' );
+		}
 		Audit::log( 'reservation.paid_credits', 'resource', (int) $r['resource_id'], array( 'reservation' => $reservation_id, 'credits' => $cost ) );
 		return $cost;
+	}
+
+	// ---------- Quota per un fondo ----------
+
+	/** La quota di un pagamento che spetta al fondo della risorsa (0 se la risorsa non ha un fondo o la funzione dei fondi non c'è). */
+	private static function fund_share( array $res, int $cents ): int {
+		return Edition::has( 'funds' ) && ! empty( $res['fund_id'] ) ? FundShare::cents( (string) $res['fund_mode'], (int) $res['fund_value'], $cents ) : 0;
+	}
+
+	/**
+	 * Incasso di una prenotazione registrato in prima nota: la quota stabilita dalla risorsa va nel suo fondo (a una risorsa data in gestione a terzi,
+	 * o i cui incassi servono per altro). Se l'incasso si annulla, sparisce anche la quota.
+	 *
+	 * @return int centesimi accantonati
+	 */
+	public static function share_to_fund( int $reservation_id, int $tx_id, int $cents, string $date ): int {
+		$r   = self::reservation( $reservation_id );
+		$res = $r ? self::get( (int) $r['resource_id'] ) : null;
+		$sh  = $res ? self::fund_share( $res, $cents ) : 0;
+		return $sh > 0 ? Plugin::funds()->share_to_fund( (int) $res['fund_id'], $sh, $date, $tx_id, 'Quota di «' . $res['name'] . '»' ) : 0;
 	}
 
 	/** I crediti spesi per una prenotazione tornano al socio (annullamento). */
@@ -425,6 +477,11 @@ final class Resources {
 			return;
 		}
 		Credits::refund( (int) $r['person_id'], $credits, 'Annullata la prenotazione del ' . substr( (string) $r['starts_at'], 0, 16 ), 'reservation', (int) $r['id'] );
+		$res = self::get( (int) $r['resource_id'] );
+		$sh  = $res ? self::fund_share( $res, (int) $r['fee_due_cents'] ) : 0; // la quota accantonata alla spesa dei crediti torna disponibile
+		if ( $sh > 0 ) {
+			Plugin::funds()->take_back( (int) $res['fund_id'], $sh, Db::today(), 'Prenotazione annullata: crediti riaccreditati («' . $res['name'] . '»)' );
+		}
 		self::db()->update( Db::t( 'reservations' ), array( 'credits_paid' => 0 ), array( 'id' => (int) $r['id'] ) );
 	}
 

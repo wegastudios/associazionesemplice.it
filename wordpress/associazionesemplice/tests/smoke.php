@@ -5773,6 +5773,43 @@ foreach ( array_merge( array( $tec_p1, $tec_p2, $tec_p3, $tec_p4, $tec_v ), $tec
 }
 wp_delete_term( $tec_tid, 'tribe_events_cat' );
 
+// ---------- Risorse: quota per un fondo (gestione a terzi) ----------
+wp_set_current_user( 1 );
+$fn_fund = Plugin::funds()->create( 'Gestore Sporting Club' );
+$fn_res  = $RS::save( 0, array( 'name' => 'Campo gestito', 'category' => 'court', 'mode' => 'slot', 'open_time' => '08:00', 'close_time' => '22:00', 'slot_minutes' => 60, 'min_slots' => 1, 'max_slots' => 2, 'fee_cents' => 2000, 'credit_cost' => 4, 'fund_mode' => 'percent', 'fund_value' => 2500, 'fund_id' => $fn_fund ) );
+$fn_day  = gmdate( 'Y-m-d', strtotime( $today . ' +9 days' ) );
+$fn_bal  = function () use ( $fn_fund ) { return (int) Plugin::funds()->get( $fn_fund )['balance']; };
+asem_ok( 'percent' === $RS::get( $fn_res )['fund_mode'] && 2500 === (int) $RS::get( $fn_res )['fund_value'] && $fn_fund === (int) $RS::get( $fn_res )['fund_id'], 'risorse: la quota per il fondo (percentuale e fondo) si salva' );
+$fn_b1 = $RS::book_slot( $fn_res, $rs_m1, $fn_day, '10:00', 1 );
+$RS::record_payment( $fn_b1, (int) $rs_cash['id'], 'cash', 2000, $today );
+asem_ok( 500 === $fn_bal(), 'risorse: un incasso di 20 € con il 25% accantona 5 € nel fondo del gestore' );
+$fn_b2 = $RS::book_slot( $fn_res, $rs_m1, $fn_day, '12:00', 1 );
+$RS::record_payment( $fn_b2, (int) $rs_cash['id'], 'cash', 1000, $today );
+asem_ok( 750 === $fn_bal(), 'risorse: un pagamento in due volte accantona la quota di ogni versamento' );
+$fn_tx = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ' . Db::t( 'transactions' ) . ' WHERE reservation_id = %d ORDER BY id DESC LIMIT 1', $fn_b2 ) );
+Plugin::ledger()->void( $fn_tx, 'prova' );
+asem_ok( 500 === $fn_bal(), 'risorse: annullato l\'incasso sparisce anche la sua quota' );
+// pagata in crediti: la quota sul prezzo in euro, e torna se si annulla
+$fn_b3 = $RS::book_slot( $fn_res, $cr_m, $fn_day, '14:00', 1 );
+$RS::pay_with_credits( $fn_b3, $cr_m );
+asem_ok( 1000 === $fn_bal(), 'risorse: una prenotazione pagata in crediti accantona la quota sul prezzo in euro' );
+$RS::cancel( $fn_b3, true );
+asem_ok( 500 === $fn_bal(), 'risorse: annullandola i crediti tornano al socio e la quota torna disponibile' );
+// controlli e nuovo fondo
+$fn_base = array( 'name' => 'Sala data in gestione', 'category' => 'room', 'mode' => 'slot', 'open_time' => '08:00', 'close_time' => '22:00', 'slot_minutes' => 60, 'fee_cents' => 1000 );
+asem_ok( null !== asem_throws( function () use ( $RS, $fn_base ) { $RS::save( 0, array_merge( $fn_base, array( 'fund_mode' => 'percent', 'fund_value' => 0, 'fund_id' => 1 ) ) ); } ), 'risorse: una quota a zero è rifiutata' );
+asem_ok( null !== asem_throws( function () use ( $RS, $fn_base ) { $RS::save( 0, array_merge( $fn_base, array( 'fund_mode' => 'percent', 'fund_value' => 12000, 'fund_id' => 1 ) ) ); } ), 'risorse: oltre il 100% è rifiutato' );
+asem_ok( null !== asem_throws( function () use ( $RS, $fn_base ) { $RS::save( 0, array_merge( $fn_base, array( 'fund_mode' => 'fixed', 'fund_value' => 300 ) ) ); } ), 'risorse: una quota senza fondo è rifiutata' );
+asem_ok( null !== asem_throws( function () use ( $RS, $fn_base ) { $RS::save( 0, array_merge( $fn_base, array( 'fund_mode' => 'fixed', 'fund_value' => 300, 'fund_id' => 999999 ) ) ); } ), 'risorse: un fondo che non esiste è rifiutato' );
+$fn_funds0 = count( Plugin::funds()->all() );
+$fn_new    = $RS::save( 0, array_merge( $fn_base, array( 'fund_mode' => 'fixed', 'fund_value' => 300, 'fund_id' => 'new' ) ) );
+$fn_nres   = $RS::get( $fn_new );
+asem_ok( count( Plugin::funds()->all() ) === $fn_funds0 + 1 && (int) $fn_nres['fund_id'] > 0 && 'fixed' === $fn_nres['fund_mode'] && false !== strpos( Plugin::funds()->get( (int) $fn_nres['fund_id'] )['name'], 'Sala data in gestione' ), 'risorse: «nuovo fondo» crea un fondo con il nome della risorsa' );
+$RS::save( $fn_new, array_merge( $fn_base, array( 'fund_mode' => '' ) ) );
+asem_ok( '' === $RS::get( $fn_new )['fund_mode'] && null === $RS::get( $fn_new )['fund_id'], 'risorse: togliendo la quota la risorsa non accantona più' );
+$RS::save( $fn_new, $fn_base );
+asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'nel fondo', array( 'id' => $fn_res ) );
+
 // ---------- Copia di sicurezza e ripristino (in fondo: tocca tutte le tabelle) ----------
 
 wp_set_current_user( 1 );

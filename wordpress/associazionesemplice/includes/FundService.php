@@ -88,6 +88,35 @@ class FundService {
 		return $cents;
 	}
 
+	/**
+	 * Accantona in un fondo scelto la quota di un pagamento (o di una prenotazione pagata in crediti, senza incasso in prima nota).
+	 * Con $tx_id la quota segue l'incasso: se l'incasso si annulla, sparisce anche la quota.
+	 *
+	 * @return int centesimi accantonati (0 se il fondo non c'è, è estinto o l'importo è zero)
+	 */
+	public function share_to_fund( int $fund_id, int $cents, string $date, ?int $tx_id, string $note ): int {
+		$f = $fund_id > 0 && $cents > 0 ? $this->get( $fund_id ) : null;
+		if ( ! $f || null !== $f['closed_at'] ) {
+			return 0;
+		}
+		$this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund_id, 'kind' => 'share', 'cents' => $cents, 'tx_id' => $tx_id, 'entry_date' => $date, 'note' => mb_substr( $note, 0, 255 ), 'created_at' => Db::now() ) );
+		return $cents;
+	}
+
+	/** Restituisce alla disponibilità una quota accantonata senza incasso (ad esempio crediti riaccreditati); mai più del saldo del fondo. @return int centesimi liberati */
+	public function take_back( int $fund_id, int $cents, string $date, string $note ): int {
+		$f = $fund_id > 0 && $cents > 0 ? $this->get( $fund_id ) : null;
+		if ( ! $f || null !== $f['closed_at'] ) {
+			return 0;
+		}
+		$cents = min( $cents, max( 0, (int) $f['balance'] ) );
+		if ( $cents <= 0 ) {
+			return 0;
+		}
+		$this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund_id, 'kind' => 'release', 'cents' => $cents, 'entry_date' => $date, 'note' => mb_substr( $note, 0, 255 ), 'created_at' => Db::now() ) );
+		return $cents;
+	}
+
 	/** Crea un fondo a mano (ad esempio "Gita sociale"): facoltativamente con una somma già accantonata. */
 	public function create( string $name, int $initial_cents = 0, ?int $person_id = null, string $date = '' ): int {
 		$name = trim( $name );

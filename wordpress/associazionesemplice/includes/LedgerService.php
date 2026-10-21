@@ -382,6 +382,9 @@ class LedgerService {
 							Plugin::people()->set_membership( (int) $p['person']['id'], (string) $p['free_year'], true, 'promo', $tx_id ); // anno in corso in omaggio (se si annulla l'incasso, salta anche questo)
 						}
 					}
+					if ( ! empty( $p['reservation_id'] ) ) {
+						do_action( 'asem_reservation_receipt', $tx_id, (int) $p['reservation_id'], (int) $p['cents'], $date ); // un'estensione accantona la quota di una risorsa
+					}
 					if ( $p['activity_id'] ) {
 						$activity = Plugin::activities()->get( (int) $p['activity_id'] );
 						if ( $activity ) {

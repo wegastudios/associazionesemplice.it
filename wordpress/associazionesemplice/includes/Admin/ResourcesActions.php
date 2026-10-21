@@ -50,6 +50,18 @@ final class ResourcesActions {
 		return '' === $raw ? 0 : (int) ( Money::parse( $raw ) ?? 0 );
 	}
 
+	/** Quota per il fondo: euro (fisso) o percentuale, in centesimi / centesimi di punto percentuale (25,5% = 2550). */
+	private static function fund_value( array $p ): int {
+		$raw = trim( (string) ( $p['fund_value'] ?? '' ) );
+		if ( '' === $raw || '' === (string) ( $p['fund_mode'] ?? '' ) ) {
+			return 0;
+		}
+		if ( 'percent' === $p['fund_mode'] ) {
+			return (int) round( (float) str_replace( ',', '.', $raw ) * 100 );
+		}
+		return (int) ( Money::parse( $raw ) ?? 0 );
+	}
+
 	private static function detail( int $id, array $args = array() ): string {
 		return Ui::url( 'asem-resource', array_merge( array( 'id' => $id ), $args ) );
 	}
@@ -61,6 +73,9 @@ final class ResourcesActions {
 		$in['fee_cents']       = self::cents( $p, 'fee' );
 		$in['guest_fee_cents'] = self::cents( $p, 'guest_fee' );
 		$in['rates_text']      = (string) ( $p['rates_text'] ?? '' );
+		if ( isset( $p['fund_mode'] ) ) { // il campo c'è solo con la funzione dei fondi
+			$in['fund_value'] = self::fund_value( $p );
+		}
 		$id                    = Resources::save( $id, $in );
 		return array( self::detail( $id ), 'Risorsa salvata.' );
 	}
