@@ -5672,6 +5672,19 @@ $cr_act = $CR::create_charge( $cr_m2, 0, '', $rs_ev );
 $cr_c3  = $CR::charge( $cr_act['id'] );
 asem_ok( 3 === (int) $cr_c3['credits'] && 'Torneo campo' === $cr_c3['label'] && in_array( $rs_ev, array_map( 'intval', array_column( $CR::chargeable_activities(), 'id' ) ), true ), 'crediti: scegliendo un\'attività l\'importo e il testo si compilano da soli' );
 asem_ok( 24 === strlen( (string) $wpdb->get_var( 'SELECT code FROM ' . Db::t( 'credit_charges' ) . ' ORDER BY id DESC LIMIT 1' ) ), 'crediti: i codici non sono prevedibili' );
+// Attività con quota per il fondo del volontario, pagata in crediti: la quota si accantona come per un pagamento in denaro
+$cr_fa = $acts->create( array( 'name' => 'Corso con fondo crediti', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 2000, 'instructor_person_id' => $cr_m2, 'fund_mode' => 'percent', 'fund_value' => 2500 ) );
+$CR::set_activity_price( $cr_fa, 4 );
+$CR::adjust( $cr_m, 10, 'prova fondo' );
+$cr_fch = $CR::create_charge( $cr_m2, 0, '', $cr_fa );
+$CR::pay_charge( $cr_fch['code'], $cr_m );
+$cr_fund = null;
+foreach ( Plugin::funds()->all() as $cr_f ) {
+	if ( (int) $cr_f['activity_id'] === $cr_fa ) {
+		$cr_fund = $cr_f;
+	}
+}
+asem_ok( $cr_fund && 500 === (int) $cr_fund['balance'], 'crediti: l\'attività pagata in crediti accantona la quota del 25% (5,00 €) nel fondo del volontario' );
 $_GET['asem_charge'] = $cr_act['id'];
 $cr_screen = \AssociazioneSemplice\Frontend\CreditsFront::staff_section( $people->get( $cr_m2 ) );
 unset( $_GET['asem_charge'] );
