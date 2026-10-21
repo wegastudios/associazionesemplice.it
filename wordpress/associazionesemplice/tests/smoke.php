@@ -298,7 +298,7 @@ foreach ( $pl_fiscal as $pf ) {
 	$pl_off = $pl_off && ! \AssociazioneSemplice\Edition::has( $pf );
 }
 asem_ok( $pl_off && \AssociazioneSemplice\Edition::has( 'payments' ) && \AssociazioneSemplice\Edition::has( 'funds' ) && \AssociazioneSemplice\Edition::has( 'reports' ) && \AssociazioneSemplice\Edition::has( 'levels' ) && \AssociazioneSemplice\Edition::has( 'broadcasts' ), 'licenza contabile: niente IVA, 5x1000 e anni solari; ricevute e il resto del Pro restano' );
-asem_ok( ! \AssociazioneSemplice\Fiscal::vat_applies() && false !== strpos( \AssociazioneSemplice\Edition::missing_message( 'vat' ), 'Pro Fiscale' ), 'licenza contabile: l\'IVA non si applica e il messaggio spiega il livello' );
+asem_ok( ! \AssociazioneSemplice\Fiscal::vat_applies() && false !== strpos( \AssociazioneSemplice\Edition::missing_message( 'vat' ), 'non è compresa nella tua licenza' ), 'licenza contabile: l\'IVA non si applica e il messaggio spiega il livello' );
 asem_ok( in_array( 'asem-fivepm', \AssociazioneSemplice\Edition::missing_pages(), true ) && in_array( 'asem-years', \AssociazioneSemplice\Edition::missing_pages(), true ) && ! in_array( 'asem-reports', \AssociazioneSemplice\Edition::missing_pages(), true ), 'licenza contabile: le pagine fiscali spariscono, i report restano' );
 asem_ok( Admin\ProPage::needed(), 'licenza contabile: la pagina che presenta il livello fiscale è disponibile' );
 ob_start();

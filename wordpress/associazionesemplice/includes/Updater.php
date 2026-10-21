@@ -212,7 +212,7 @@ final class Updater {
 					'name'          => $info['name'],
 					'slug'          => $info['slug'],
 					'version'       => (string) $st['version'],
-					'author'        => '<a href="https://www.wegastudios.com">Wega Studios</a>',
+					'author'        => '<a href="https://associazionesemplice.it">Associazione Semplice</a>',
 					'homepage'      => 'https://associazionesemplice.it',
 					'requires'      => '6.0',
 					'requires_php'  => '7.4',

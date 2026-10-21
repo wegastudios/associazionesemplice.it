@@ -35,7 +35,7 @@ final class LicenseNotice {
 		$html .= '<p>Le funzioni avanzate (pagamenti online, conti e fondi, contabilità, comunicazioni, app e quote diverse per i soci) sono sospese; il resto funziona e i tuoi dati sono al sicuro. ';
 		$html .= $url
 			? '<a class="button button-primary" href="' . esc_url( $url ) . '" target="_blank" rel="noopener">Regolarizza la licenza</a>'
-			: 'Contatta il fornitore del servizio per regolarizzare la licenza.';
+			: 'Scrivi ad Associazione Semplice dall\'area riservata di associazionesemplice.it per regolarizzare la licenza.';
 		return $html . '</p></div>';
 	}
 

@@ -138,7 +138,7 @@ final class Edition {
 
 	/** Perché una funzione aggiunta non è disponibile (da mostrare a chi prova a usarla). */
 	public static function missing_message( string $feature = '' ): string {
-		$default = 'Questa funzione fa parte di Associazione Semplice Pro e non è inclusa in questa edizione.';
+		$default = 'Questa funzione fa parte di Associazione Semplice Pro.';
 		return function_exists( 'apply_filters' ) ? (string) apply_filters( 'asem_feature_unavailable_message', $default, $feature ) : $default;
 	}
 
