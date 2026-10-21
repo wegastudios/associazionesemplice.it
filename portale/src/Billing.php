@@ -527,7 +527,8 @@ final class Billing {
 			if ( in_array( $e->httpStatus, array( 404, 405, 501 ), true ) ) {
 				return 'Wega non offre ancora questa operazione: la modifica non è stata riflessa sul server licenze.';
 			}
-			throw new UserError( 'Il server licenze non ha accettato la modifica (' . $e->errorCode . ', HTTP ' . $e->httpStatus . '): non è cambiato nulla. Riprova.' );
+			error_log( '[portale] modifica licenza rifiutata: ' . $e->errorCode . ' HTTP ' . $e->httpStatus );
+			throw new UserError( 'Non è stato possibile completare la modifica: non è cambiato nulla. Riprova tra qualche minuto.' );
 		}
 	}
 

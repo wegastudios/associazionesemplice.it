@@ -15,7 +15,7 @@ final class Legal {
 			return '' !== trim( (string) ( $l[ $k ] ?? '' ) ) ? (string) $l[ $k ] : $fallback;
 		};
 		return array(
-			'titolare'  => $none( 'titolare', 'Wega Studios' ),
+			'titolare'  => $none( 'titolare', 'Associazione Semplice' ),
 			'indirizzo' => $none( 'indirizzo', '' ),
 			'piva'      => $none( 'piva', '' ),
 			'email'     => $none( 'email', 'info@associazionesemplice.it' ),
@@ -93,7 +93,7 @@ I dati della carta di credito non passano da noi: i pagamenti sono gestiti da St
 Trattiamo i dati per fornirti la licenza, gestire il tuo abbonamento, inviarti le comunicazioni legate al servizio (accesso, rinnovi, scadenze) e adempiere agli obblighi di legge e fiscali. La base giuridica è l'esecuzione del contratto e il rispetto di obblighi di legge.
 
 ## A chi li comunichiamo
-Solo a fornitori che ci permettono di erogare il servizio: Stripe e PayPal per i pagamenti, il servizio di gestione delle licenze di Wega Studios, il fornitore di hosting e di posta. Non vendiamo i tuoi dati.
+Solo a fornitori che ci permettono di erogare il servizio: Stripe e PayPal per i pagamenti, il fornitore del servizio di gestione delle licenze, il fornitore di hosting e di posta. Non vendiamo i tuoi dati.
 
 ## Per quanto tempo li conserviamo
 Per tutta la durata del rapporto e, dopo, per il tempo richiesto dalla legge per le scritture contabili e fiscali (di norma 10 anni). I dati di accesso inutilizzati si cancellano su richiesta.

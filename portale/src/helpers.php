@@ -5,7 +5,7 @@
 function sub_status( array $s ): array {
 	$exp = ! empty( $s['expires_at'] ) ? strtotime( $s['expires_at'] . ' UTC' ) : 0;
 	if ( 'canceled' === $s['status'] ) {
-		return array( 'Annullato', 'warn' );
+		return array( 'Annullata', 'warn' );
 	}
 	if ( 'merged' === $s['status'] ) {
 		return array( 'Rinnovo registrato', '' );
@@ -30,7 +30,7 @@ function sub_kind( array $s ): string {
 		case 'trial':
 			return 'Prova';
 		case 'manual':
-			return 'Manuale';
+			return 'Assegnata manualmente';
 	}
 	$who = 'stripe' === $s['provider'] ? 'Carta' : 'PayPal';
 	return $who . ' · ' . ( 'once' === ( $s['mode'] ?? 'recurring' ) ? 'singolo' : ( 'year' === $s['period'] ? 'annuale ricorrente' : 'mensile ricorrente' ) );

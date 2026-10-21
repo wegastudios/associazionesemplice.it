@@ -49,7 +49,7 @@ $csrf = Portale\App::csrf();
 			</details>
 			<?php endif; ?>
 		<?php endforeach; ?>
-		<p class="hint"><b>Gratuito e Pro si aggiornano insieme.</b> Dalla 1.2.10 (gratuito) e 1.1.10 (Pro) i due plugin devono avere lo stesso livello di compatibilità: se aggiorni solo uno, in WordPress compare un avviso di incompatibilità finché non aggiorni anche l'altro. Il gratuito si aggiorna caricando lo zip da qui; il Pro, dalla 1.1.7, si aggiorna da WordPress.</p>
+		<p class="hint"><b>Aggiorna sempre insieme il plugin gratuito e il Pro:</b> se ne aggiorni uno solo, WordPress mostra un avviso finché non aggiorni anche l'altro. Il gratuito si aggiorna caricando lo zip da qui; il Pro si aggiorna direttamente da WordPress.</p>
 		<p class="hint">I pacchetti si scaricano solo da qui, con la licenza in regola. Carica lo zip da WordPress: Plugin → Aggiungi nuovo → Carica plugin. Per tornare indietro disattiva e sostituisci il plugin con la versione precedente (i dati restano).</p>
 	</div>
 	<?php endif; ?>
