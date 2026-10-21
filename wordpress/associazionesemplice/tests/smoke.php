@@ -6013,6 +6013,35 @@ asem_ok( get_role( Plugin::ROLE_MEMBER ) && get_role( Plugin::ROLE_SECRETARY ), 
 $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}asem_legacyprobe" );
 delete_option( 'asem_legacy_opt' );
 wp_delete_post( $lg_post, true );
+
+// ---------- Tessere: PDF singolo e fogli A4 con più tessere ----------
+$cd_grid = \AssociazioneSemplice\CardLayout::sheet_grid();
+asem_ok( $cd_grid['max'] >= 1 && $cd_grid['max'] === $cd_grid['cols'] * $cd_grid['rows'], 'tessere PDF: la griglia del foglio A4 è calcolata dalle misure (' . $cd_grid['max'] . ' per foglio)' );
+$cd_people = array();
+foreach ( Plugin::people()->search() as $cd_row ) {
+	$cd_p = Plugin::people()->get( (int) $cd_row['id'] );
+	if ( $cd_p && \AssociazioneSemplice\MemberType::is_member( $cd_p['type'] ) ) {
+		$cd_people[] = $cd_p;
+	}
+}
+asem_ok( count( $cd_people ) >= 1, 'tessere PDF: ci sono soci da stampare' );
+$cd_one = \AssociazioneSemplice\CardLayout::pdf( $cd_people[0] );
+asem_ok( 0 === strpos( $cd_one, '%PDF-1.4' ) && false !== strpos( $cd_one, '%%EOF' ), 'tessere PDF: la tessera di un socio è un PDF valido' );
+$cd_extra = \AssociazioneSemplice\CardLayout::extras( $cd_people[0] );
+asem_ok( array( 'type', 'roles', 'text' ) === array_keys( $cd_extra ) && '' !== $cd_extra['type'], 'tessere: tipo di socio, incarichi e testo libero sono disponibili' );
+$cd_slots  = 4;
+$cd_many   = array();
+for ( $i = 0; $i < 9; $i++ ) { // 9 soci su fogli da 4: 3 fogli, l'ultimo con 3 posti vuoti
+	$cd_many[] = $cd_people[ $i % count( $cd_people ) ];
+}
+$cd_sheet = \AssociazioneSemplice\CardLayout::pdf_sheets( $cd_many, $cd_slots );
+asem_ok( 0 === strpos( $cd_sheet, '%PDF-1.4' ) && false !== strpos( $cd_sheet, '/Count 3' ), 'tessere PDF: 9 soci con 4 per foglio fanno 3 fogli' );
+$cd_new = Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Tessera', 'last_name' => 'Foglio' ) );
+Plugin::people()->set_membership( $cd_new, Settings::membership_year()->label(), true );
+asem_ok( false !== strpos( \AssociazioneSemplice\Docs::cards( '', 6 )['mime'], 'pdf' ), 'tessere PDF: dal libro soci si genera il foglio delle tessere' );
+Settings::update( array( 'card_enabled' => 1 ) );
+$cd_html = \AssociazioneSemplice\Frontend\Views::section_card( $cd_people[0] );
+asem_ok( false !== strpos( $cd_html, 'asem_card_pdf=' ), 'tessera: il socio ha il pulsante per scaricare il PDF' );
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' . ( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Tutti i controlli sono passati.' );
