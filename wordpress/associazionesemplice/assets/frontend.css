@@ -173,3 +173,5 @@
 	.asemf-sidenav ul { display: flex; flex-wrap: wrap; }
 	.asemf-sidenav li + li { border-top: 0; border-left: 1px solid var(--asemf-line); }
 }
+.asemf-memcard-roles { font-size: .9em; opacity: .9; margin-top: .2em; }
+.asemf-memcard-text { font-size: .9em; margin-top: .4em; font-style: italic; }

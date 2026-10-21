@@ -10,7 +10,29 @@ final class ProDashboard {
 		add_action( 'asem_dashboard_alerts', array( __CLASS__, 'alerts' ) );
 	}
 
+	/** Da settembre ricorda di aprire il nuovo anno solare: chiudibile (ricompare a inizio mese), a dicembre resta sempre visibile. */
+	private static function next_year_alert(): void {
+		if ( ! \AssociazioneSemplice\Edition::has( 'fiscal' ) || ! current_user_can( \AssociazioneSemplice\Plugin::CAP ) ) {
+			return;
+		}
+		$today = \AssociazioneSemplice\Db::today();
+		$year  = (int) substr( $today, 0, 4 );
+		$month = (int) substr( $today, 5, 2 );
+		$next  = $year + 1;
+		if ( $month < 9 || \AssociazioneSemplice\FiscalYears::get( $next ) ) {
+			return;
+		}
+		$msg = '<strong>Apri l\'anno solare ' . (int) $next . '.</strong> Finché non esiste, le quote dei soci si registrano solo per il ' . (int) $year . ' e non puoi incassare in anticipo per il ' . (int) $next . '. '
+			. '<a class="button" href="' . esc_url( Ui::url( 'asem-years' ) ) . '">Apri il ' . (int) $next . '</a>';
+		if ( 12 === $month ) { // a dicembre non si può chiudere
+			echo '<div class="notice notice-warning inline"><p>' . $msg . '</p></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			return;
+		}
+		echo Dismiss::html( 'next-year-' . substr( $today, 0, 7 ), 'warning', $msg, 31 ); // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto
+	}
+
 	public static function alerts(): void {
+		self::next_year_alert();
 		if ( \AssociazioneSemplice\Edition::has( 'insurance' ) && (bool) \AssociazioneSemplice\Settings::get( 'insurance_association' ) ) {
 			$rc = \AssociazioneSemplice\AssocPolicies::rc_status();
 			if ( \AssociazioneSemplice\Insurance::VALID !== $rc ) {

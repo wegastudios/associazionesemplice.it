@@ -16,6 +16,32 @@ final class IncomePage {
 
 	public static function register_ajax(): void {
 		add_action( 'wp_ajax_asem_person_context', array( __CLASS__, 'ajax_context' ) );
+		add_action( 'wp_ajax_asem_quick_person', array( __CLASS__, 'ajax_new_person' ) );
+	}
+
+	/** Nuova persona creata dal modulo di incasso senza lasciare la pagina: nome, cognome e, se servono, email e cellulare. */
+	public static function ajax_new_person(): void {
+		check_ajax_referer( 'asem_income', 'nonce' );
+		if ( ! current_user_can( Plugin::CAP_OPS ) ) {
+			wp_send_json_error( 'Non autorizzato', 403 );
+		}
+		$in   = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification
+		$type = 'guest' === (string) ( $in['type'] ?? '' ) ? MemberType::GUEST : MemberType::ORDINARY;
+		try {
+			$id = Plugin::people()->create(
+				array(
+					'type'       => $type,
+					'first_name' => sanitize_text_field( (string) ( $in['first_name'] ?? '' ) ),
+					'last_name'  => sanitize_text_field( (string) ( $in['last_name'] ?? '' ) ),
+					'email'      => sanitize_email( (string) ( $in['email'] ?? '' ) ),
+					'phone'      => sanitize_text_field( (string) ( $in['phone'] ?? '' ) ),
+				)
+			);
+		} catch ( \InvalidArgumentException $e ) {
+			wp_send_json_error( $e->getMessage(), 400 );
+		}
+		$p = Plugin::people()->get( $id );
+		wp_send_json_success( array( 'id' => $id, 'label' => $p ? Ui::person_label( $p ) : '' ) );
 	}
 
 	/** Contesto di una persona per l'incasso: tessera, attività a cui è iscritta e primo mese da pagare. */
@@ -112,6 +138,7 @@ final class IncomePage {
 			'yearEnd'       => Settings::membership_year( $today )->end()->format( 'Y-m-d' ),
 			'autofill'      => 1 === Ui::get_int( 'due' ),
 			'accountTypes'  => $account_types,
+			'guests'        => Settings::guests_enabled() ? 1 : 0,
 		);
 
 		Ui::header( 'Nuovo incasso' );
@@ -126,7 +153,7 @@ final class IncomePage {
 		}
 		echo '<select name="account_id" id="asem-account">' . Ui::options( $acc_map, $default_account ? $default_account['id'] : null ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Da chi</th><td>' . Ui::person_select( 'person_id', Plugin::people()->search(), Ui::get_int( 'person_id' ) ?: null, '— nessuno / anonimo —', 'asem-person-select' ) // phpcs:ignore WordPress.Security.EscapeOutput
-			. ' <a href="' . esc_url( Ui::url( 'asem-person', array( 'type' => 'ordinary' ) ) ) . '" target="_blank">+ nuovo socio</a>'
+			. ' <button type="button" class="button" id="asem-new-person">+ nuovo socio</button>'
 			. '<div id="asem-person-info" class="asem-info"></div></td></tr>';
 		echo '</tbody></table>';
 

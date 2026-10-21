@@ -396,12 +396,16 @@ final class PeoplePage {
 
 	/** QR di verifica della tessera: si può stampare o girare al socio (è lo stesso che vede nella sua area riservata). */
 	private static function panel_card_qr( array $p ): void {
-		if ( ! \AssociazioneSemplice\Settings::card_qr_enabled() || ! MemberType::is_member( $p['type'] ) ) {
+		if ( ! MemberType::is_member( $p['type'] ) ) {
 			return;
 		}
-		$url = \AssociazioneSemplice\Settings::card_url( (int) $p['id'] );
-		echo '<div class="asem-card"><h2>QR della tessera</h2><div style="max-width:170px">' . \AssociazioneSemplice\QrCode::svg( $url, 4, 'QR della tessera' ) . '</div>' // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<p class="description"><a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">Apri la pagina di verifica</a> · stesso codice che il socio vede nella sua area riservata.</p></div>';
+		$html = '<div class="asem-card"><h2>Tessera</h2><p><a class="button" target="_blank" rel="noopener" href="' . esc_url( \AssociazioneSemplice\CardLayout::pdf_url( (int) $p['id'] ) ) . '">Tessera in PDF (da stampare)</a></p>';
+		if ( \AssociazioneSemplice\Settings::card_qr_enabled() ) {
+			$url   = \AssociazioneSemplice\Settings::card_url( (int) $p['id'] );
+			$html .= '<h3>QR della tessera</h3><div style="max-width:170px">' . \AssociazioneSemplice\QrCode::svg( $url, 4, 'QR della tessera' ) . '</div>'
+				. '<p class="description"><a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">Apri la pagina di verifica</a> · stesso codice che il socio vede nella sua area riservata.</p>';
+		}
+		echo $html . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto dagli helper
 	}
 
 	/** Privacy: consenso registrato, scarico dei dati, anonimizzazione. */

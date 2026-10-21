@@ -6,7 +6,7 @@ final class CardLayoutTest extends TestCase {
 
 	public function test_defaults_are_complete(): void {
 		$d = CardLayout::defaults();
-		$this->assertSame( array( 'logo', 'name', 'number', 'valid', 'qr' ), array_keys( $d ) );
+		$this->assertSame( array( 'logo', 'name', 'number', 'valid', 'qr', 'type', 'roles', 'text' ), array_keys( $d ) );
 		foreach ( $d as $f ) {
 			$this->assertSame( array( 'show', 'x', 'y', 'size', 'color' ), array_keys( $f ) );
 		}
