@@ -300,6 +300,30 @@ final class Credits {
 		return $row ?: null;
 	}
 
+	/** Valore in euro (centesimi) di una spesa in crediti, dal pacchetto più piccolo: serve per calcolare le quote dei fondi quando l'attività non ha un prezzo in euro. */
+	private static function euro_value( int $credits ): int {
+		foreach ( self::packs() as $p ) {
+			return (int) round( $credits * (int) $p['price_cents'] / max( 1, (int) $p['credits'] ) );
+		}
+		return 0;
+	}
+
+	/** Attività pagata in crediti: la quota prevista per il fondo del volontario (se c'è) viene accantonata, come per un pagamento in denaro. */
+	private static function share_activity_to_fund( array $charge, array $person ): void {
+		if ( empty( $charge['activity_id'] ) || ! Edition::has( 'funds' ) ) {
+			return;
+		}
+		$a = Plugin::activities()->get( (int) $charge['activity_id'] );
+		if ( ! $a ) {
+			return;
+		}
+		$base = (int) Plugin::activities()->fee_for( $a, (string) $person['type'] );
+		if ( $base <= 0 ) {
+			$base = self::euro_value( (int) $charge['credits'] );
+		}
+		Plugin::funds()->attribute_credits( $a, $base, Db::today(), 'Quota di «' . $a['name'] . '» pagata in crediti' );
+	}
+
 	/**
 	 * Il socio conferma e paga un addebito. L'addebito si incassa una sola volta (anche con due conferme insieme) e i crediti si scalano
 	 * solo se bastano; se non bastano l'addebito resta pagabile.
@@ -336,6 +360,7 @@ final class Credits {
 				self::db()->update( $tbl, array( 'entry_id' => $entry ), array( 'id' => (int) $c['id'] ) );
 			}
 		);
+		self::share_activity_to_fund( $c, $person );
 		Audit::log( 'credits.charge_paid', 'person', (int) $person['id'], array( 'charge' => (int) $c['id'], 'credits' => (int) $c['credits'] ) );
 		return self::charge( (int) $c['id'] );
 	}
