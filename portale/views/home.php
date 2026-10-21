@@ -7,7 +7,7 @@ $copy = array(
 		'Libro soci, ospiti e tessere con QR', 'Eventi, corsi, iscrizioni e lista d\'attesa', 'Prima nota con una cassa unica', 'Privacy, verbali e copia di sicurezza', 'Modulo donazioni con PayPal',
 	) ),
 	'lite' => array( 'tagline' => 'Tutto il gratuito, più incassi online e comunicazione ai soci. Senza la parte contabile.', 'features' => array(
-		'Tutto il piano Gratuito', 'Pagamenti online con carta e PayPal', 'Più quote socio e livelli', 'Comunicazioni email ai soci', 'App installabile e tessera nel telefono', 'Assicurazioni, presenze e incasso sul posto',
+		'Tutto il piano Gratuito', 'Pagamenti online con carta e PayPal', 'Più quote socio e livelli', 'Comunicazioni email ai soci', 'App installabile e tessera nel telefono', 'Assicurazioni e presenze', 'Incasso sul posto',
 	) ),
 	'full' => array( 'tagline' => 'Per chi vuole anche la contabilità completa dell\'ente.', 'tag' => 'Il più completo', 'features' => array(
 		'Tutto il Pro Lite', 'Conti, fondi e giroconti', 'Ricevute PDF e rendiconto', 'IVA e anni solari', '5 per mille',
