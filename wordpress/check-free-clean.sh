@@ -13,7 +13,7 @@ strict="${2:-}"
 words=$(tr -d '\r' < associazionesemplice/tests/pro-files.txt | grep -v '^#' | grep -v '^$' | grep '\.php$' | sed 's#.*/##; s#\.php$##' | sort -u)
 tables="insurance assoc_policies fivepm woo_links push_subs attendance receipts payments broadcasts broadcast_rcpt resources reservations reservation_guests credit_entries credit_charges resource_waitlist"
 hits() { # righe del pacchetto che citano la parola $1, senza i falsi positivi
-	grep -rwn --include=*.php "$1" "$dir" | grep -v '/Admin/ProPage.php:' | grep -v ' \* License:' | grep -v '/Resources <<'
+	grep -rwn --include=*.php "$1" "$dir" | grep -v '/Admin/ProPage.php:' | grep -v ' \* License:' | grep -v '/Resources '
 }
 total=0
 echo "== Classi Pro citate nel pacchetto gratuito"
