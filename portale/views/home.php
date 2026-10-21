@@ -4,20 +4,20 @@ $euro = function ( $c ) { return number_format( $c / 100, ( $c % 100 ) ? 2 : 0, 
 // Testi di vetrina: si possono sostituire da config.php (plans.<codice>.tagline / features).
 $copy = array(
 	'free' => array( 'tagline' => 'Per partire subito, senza costi e senza scadenza.', 'features' => array(
-		'Libro soci, ospiti e tessere con QR', 'Eventi, corsi, iscrizioni e lista d\'attesa', 'Prima nota con una cassa unica', 'Privacy, verbali e copia di sicurezza', 'Donazioni con PayPal',
+		'Libro soci, ospiti e tessere con QR', 'Eventi, corsi, iscrizioni e lista d\'attesa', 'Prima nota con una cassa unica', 'Privacy, verbali e copia di sicurezza', 'Modulo donazioni con PayPal',
 	) ),
 	'lite' => array( 'tagline' => 'Tutto il gratuito, più incassi online e comunicazione ai soci. Senza la parte contabile.', 'features' => array(
-		'Tutto il piano Gratuito', 'Pagamenti online con carta e PayPal', 'Più quote socio e livelli', 'Comunicazioni email ai soci', 'App installabile e tessera nel telefono', 'Presenze e incasso sul posto',
+		'Tutto il piano Gratuito', 'Pagamenti online con carta e PayPal', 'Più quote socio e livelli', 'Comunicazioni email ai soci', 'App installabile e tessera nel telefono', 'Assicurazioni e presenze', 'Incasso sul posto',
 	) ),
 	'full' => array( 'tagline' => 'Per chi vuole anche la contabilità completa dell\'ente.', 'tag' => 'Il più completo', 'features' => array(
-		'Tutto il Pro Lite', 'Conti, fondi e giroconti', 'Ricevute PDF e rendiconto', 'IVA e anni solari', '5 per mille', 'Assicurazioni dei soci',
+		'Tutto il Pro Lite', 'Conti, fondi e giroconti', 'Ricevute PDF e rendiconto', 'IVA e anni solari', '5 per mille',
 	) ),
 );
 $features = array(
 	array( 'users', 'Libro soci in ordine', 'Soci, ospiti e figure diverse, con tessera, quote e storico. Importi l\'elenco che hai già, in pochi minuti.' ),
 	array( 'calendar', 'Eventi e corsi', 'Iscrizioni, prenotazioni, lista d\'attesa e calendario. Chi si iscrive riceve avvisi e promemoria per email.' ),
 	array( 'book', 'Prima nota', 'Entrate e uscite sempre al loro posto, con allegati e viste pronte per il bilancio.' ),
-	array( 'shield', 'Privacy senza pensieri', 'Consensi, informativa compilata, esportazione dei dati e anonimizzazione quando serve.' ),
+	array( 'shield', 'Privacy in regola', 'Consensi, informativa compilata, esportazione dei dati e anonimizzazione quando serve.' ),
 	array( 'card', 'Area riservata per i soci', 'Ogni socio ha la sua pagina sul sito: tessera, pagamenti, ingressi. Nel menu del sito, non in wp-admin.' ),
 	array( 'phone', 'Pagamenti e app', 'Con il Pro: quote e biglietti online con carta o PayPal, app installabile e tessera nel telefono.' ),
 );

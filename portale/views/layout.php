@@ -26,7 +26,7 @@ $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 </div></header>
 <main><?php echo $content; ?></main>
 <footer class="site-footer"><div class="wrap">
-	<div>© <?php echo date( 'Y' ); ?> Associazione Semplice · un progetto di Wega Studios</div>
+	<div>© <?php echo date( 'Y' ); ?> Associazione Semplice</div>
 	<div><a href="/free">Licenza gratuita</a><a href="<?php echo e( $support_href ); ?>">Supporto</a><a href="/accedi">Area riservata</a><a href="/privacy">Privacy</a><a href="/cookie">Cookie</a><?php if ( \Portale\Tracking::banner() ) : ?><a href="#" data-cc-open>Preferenze cookie</a><?php endif; ?></div>
 </div></footer>
 <?php if ( \Portale\Tracking::banner() ) : $cc = \Portale\Tracking::categories(); ?>

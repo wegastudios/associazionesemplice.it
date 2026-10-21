@@ -40,7 +40,7 @@ final class App {
 			http_response_code( 502 );
 			// Alla gestione si mostra la causa vera; ai clienti un messaggio generico.
 			$detail = ( ! empty( $_SESSION['customer'] ) && Staff::ADMIN === Staff::role( $this->db, $this->customerEmail( (string) $_SESSION['customer'] ) ) ) ?' Risposta del server licenze: ' . $e->errorCode . ' (HTTP ' . $e->httpStatus . ') ' . $e->getMessage() : '';
-			View::render( 'message', array( 'title' => 'Server licenze non disponibile', 'text' => 'Non è stato possibile completare l\'operazione con il server licenze: riprova tra qualche minuto.' . $detail ) );
+			View::render( 'message', array( 'title' => 'Servizio momentaneamente non disponibile', 'text' => 'Non è stato possibile completare l\'operazione con il server licenze: riprova tra qualche minuto.' . $detail ) );
 		} catch ( \Throwable $e ) {
 			error_log( '[portale] ' . $e->getMessage() );
 			http_response_code( 500 );
@@ -129,7 +129,7 @@ final class App {
 			$this->account();
 		} elseif ( ! $get && '/account/nome' === $path ) {
 			$this->billing->setName( $this->customerId(), (string) $this->in( 'name' ) );
-			$_SESSION['acc_flash'] = 'Nome salvato: lo vediamo anche nelle richieste di supporto.';
+			$_SESSION['acc_flash'] = 'Nome salvato: comparirà anche nelle richieste di supporto.';
 			header( 'Location: /account', true, 303 );
 		} elseif ( ! $get && '/account/password' === $path ) {
 			$this->changePassword();

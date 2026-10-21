@@ -31,9 +31,9 @@ final class LicensePanel {
 		}
 		echo '<p>Dominio della licenza: <code>' . esc_html( $lic['domain'] ) . '</code>. La chiave vale per questo dominio; si cambia dall\'area riservata del portale.</p>';
 		Ui::form_open( 'asem_save_license', Ui::url( 'asem-settings' ) );
-		echo '<p><label for="asem_license_key"><strong>Chiave di licenza</strong></label><br><input type="text" id="asem_license_key" name="license_key" value="' . esc_attr( License::key() ) . '" class="regular-text" autocomplete="off" placeholder="WEGA-XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX"> ';
+		echo '<p><label for="asem_license_key"><strong>Chiave di licenza</strong></label><br><input type="text" id="asem_license_key" name="license_key" value="' . esc_attr( License::key() ) . '" class="regular-text" autocomplete="off" placeholder="Incolla qui la chiave di licenza"> ';
 		submit_button( 'Salva e verifica', 'primary', 'submit', false );
-		echo '</p><p class="description">La chiave gratuita si ottiene dal portale, in due minuti. Con un piano Pro la chiave del piano acquistato sostituisce quella gratuita.</p>';
+		echo '</p><p class="description">La chiave gratuita si richiede su associazionesemplice.it/free. Con un piano Pro la chiave del piano acquistato sostituisce quella gratuita.</p>';
 		Ui::form_close();
 		echo '<p>';
 		echo '<a class="button" href="' . esc_url( License::free_url() ) . '" target="_blank" rel="noopener">Ottieni la chiave gratuita</a> ';

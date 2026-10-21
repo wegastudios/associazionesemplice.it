@@ -3,17 +3,28 @@ Contributors: wegastudios
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.13
+Stable tag: 1.1.14
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Advanced features for Associazione Semplice: online payments, accounts and funds, accounting and reports, registers, mass communications, app and wallet cards.
+Advanced features for Associazione Semplice: online payments, accounts and funds, accounting and reports, insurance and attendance registers, mass communications, app and wallet cards.
 
 == Description ==
 
 Associazione Semplice Pro adds to Associazione Semplice (required) the features that go beyond the basics: online payments with Stripe and PayPal, several accounts and funds, accounting and reports, insurance and attendance registers, mass emails, installable app with notifications, Apple and Google Wallet cards, receipts in PDF, several member levels, VAT and customisation of every text and language.
 
+== External services ==
+
+With a license key entered in Associazione Semplice Pro, once a day (and when you save the key or press "Check now") the plugin sends the key and your site's domain name to the Associazione Semplice website (https://associazionesemplice.it) to confirm that the key is valid for that domain and to receive the plan and its expiry date. No member data, no content and no other information is sent. The same website is asked for new versions of the plugin and, when you update, for the update package (this can be turned off in Settings → Limits and thresholds). Online payments use Stripe and/or PayPal, only if you set them up: the payer is sent to their payment page and the plugin asks them to confirm the payment.
+
+== Third-party data ==
+
+The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, Mozilla Public License 2.0) to tell which domain a license covers.
+
 == Changelog ==
+
+= 1.1.14 =
+* Texts reviewed: clearer license, limits and payment messages.
 
 = 1.1.13 =
 * Reminder to open the next calendar year from September (dismissible each month, always visible in December).
@@ -22,10 +33,10 @@ Associazione Semplice Pro adds to Associazione Semplice (required) the features 
 * Update list shows the plugin icon and banner.
 
 = 1.1.11 =
-* Add-on features now plug into Associazione Semplice through its extension points; creates its own tables (compatibility level 3, requires Associazione Semplice 1.2.11 or later).
+* Works with Associazione Semplice 1.2.11 or later: update both together. Nothing changes in how you use it; your data stays as it is.
 
 = 1.1.10 =
-* Licence, updates and Pro feature registration now handled entirely by the add-on (compatibility level 2); requires Associazione Semplice 1.2.10 or later.
+* The license check and the update notices now live in this add-on; requires Associazione Semplice 1.2.10 or later.
 
 = 1.1.9 =
 * Prepaid credits: packages, live QR charge, credit ledger and admin page.
@@ -34,7 +45,7 @@ Associazione Semplice Pro adds to Associazione Semplice (required) the features 
 * Bookable resources for the Pro Lite and Pro Full plans: management pages, bookings and guests.
 
 = 1.1.7 =
-* Security: direct updates now check the package's SHA-256 and the Ed25519 signature made by Associazione Semplice (key built into the plugin) and refuse older versions.
+* Safer updates: the plugin checks that the downloaded package really comes from Associazione Semplice and refuses older versions.
 
 = 1.1.6 =
 * Direct updates from WordPress (Dashboard → Updates) for the Pro add-on, served by the Associazione Semplice portal.
@@ -43,7 +54,7 @@ Associazione Semplice Pro adds to Associazione Semplice (required) the features 
 * Includes the English language pack, previously shipped in the free plugin.
 
 = 1.1.4 =
-* The license code now lives in the main plugin (shared by the free and the Pro license); Pro features follow the plan: Lite (no accounting) or Full.
+* Pro features follow your plan: Pro Lite (without accounting) or Pro Full.
 
 = 1.1.3 =
 * Renamed to Associazione Semplice Pro (follows the main plugin rename).

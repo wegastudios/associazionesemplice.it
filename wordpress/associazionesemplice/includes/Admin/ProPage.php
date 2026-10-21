@@ -58,7 +58,7 @@ final class ProPage {
 			}
 			echo '</tbody></table></div>';
 		}
-		echo '<p><a class="button button-primary" href="' . esc_url( Edition::pro_url() ) . '" target="_blank" rel="noopener">Scopri Associazione Semplice Pro</a> <span class="description">Si apre il sito di Wega Studios.</span></p>';
+		echo '<p><a class="button button-primary" href="' . esc_url( Edition::pro_url() ) . '" target="_blank" rel="noopener">Scopri Associazione Semplice Pro</a></p>';
 		echo '<p class="description">Pro Lite comprende pagamenti online, quote diverse, comunicazioni, app e Wallet; Pro Full aggiunge la contabilità (conti e fondi, report, ricevute), l\'IVA, il 5 per mille e gli anni solari per il commercialista.</p>';
 		Ui::footer();
 	}

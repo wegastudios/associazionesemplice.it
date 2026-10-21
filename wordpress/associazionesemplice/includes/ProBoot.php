@@ -174,10 +174,10 @@ final class ProBoot {
 				case License::PLAN_LITE:
 					return 'Questa funzione fa parte della licenza Associazione Semplice Pro Full: la tua licenza è Pro Lite, senza la parte contabile.';
 			}
-			return 'Questa funzione fa parte della licenza Associazione Semplice Pro Fiscale: la tua licenza è di livello contabile.';
+			return 'Questa funzione non è compresa nella tua licenza di Associazione Semplice Pro.';
 		}
 		if ( License::degraded() ) {
-			return 'La licenza di Associazione Semplice Pro non è in regola: questa funzione è sospesa. Regolarizza la licenza e torna disponibile; intanto resta tutto il resto, con i tuoi dati.';
+			return 'La licenza di Associazione Semplice Pro non è in regola: questa funzione è sospesa. Quando la licenza torna in regola, la funzione si riattiva da sola; intanto il resto funziona e i dati restano tutti.';
 		}
 		return $default;
 	}
@@ -191,7 +191,7 @@ final class ProBoot {
 		$url = License::payment_url();
 		return $out . ( $url
 			? '<p><a class="button button-primary" href="' . esc_url( $url ) . '" target="_blank" rel="noopener">Regolarizza la licenza</a></p>'
-			: '<p>Contatta il fornitore del servizio per regolarizzare la licenza, poi inseriscila in Impostazioni → Soci e quote.</p>' );
+			: '<p>Scrivi ad Associazione Semplice dall\'area riservata di associazionesemplice.it per regolarizzare la licenza, poi inseriscila in Impostazioni → Soci e quote → Licenza.</p>' );
 	}
 
 	// ---------- Impostazioni e limiti ----------
@@ -231,15 +231,15 @@ final class ProBoot {
 		);
 		$add(
 			'license_offline_days', 'accesso', 'Giorni senza controllo della licenza riuscito, prima di sospendere le funzioni Pro', 'giorni', 7, 1, 60,
-			'Il portale firma la prova della licenza e questa vale circa due giorni; se il sito non riesce a rinnovarla (portale irraggiungibile, chiamate bloccate) si aspettano questi giorni in più prima di sospendere le funzioni Pro.',
+			'La conferma della licenza vale circa due giorni; se il sito non riesce a rinnovarla (portale irraggiungibile, chiamate bloccate) si aspettano questi giorni in più prima di sospendere le funzioni Pro.',
 			'Chi blocca le chiamate verso il portale tiene il piano più a lungo, anche se la licenza nel frattempo è scaduta o revocata. Alzalo se il tuo hosting ha spesso problemi di rete.',
 			'Un problema di rete o del portale sospende le funzioni Pro (e l\'accesso dei soci) più in fretta.'
 		);
 		$add(
 			'license_first_check_days', 'accesso', 'Giorni consentiti prima del primo controllo della licenza', 'giorni', 7, 1, 60,
 			'Su un sito vero, finché il primo controllo della licenza non riesce, le funzioni sono tutte disponibili: questi sono i giorni di attesa prima di sospendere le funzioni Pro.',
-			'Se il controllo periodico di WordPress non gira (cron disattivato) le funzioni Pro restano disponibili senza licenza più a lungo.',
-			'Se il primo controllo tarda (sito appena installato, cron lento) le funzioni Pro si sospendono presto.'
+			'Se i controlli automatici di WordPress sono disattivati le funzioni Pro restano disponibili senza licenza più a lungo.',
+			'Se il primo controllo tarda (sito appena installato, controlli automatici di WordPress lenti) le funzioni Pro si sospendono prima del necessario.'
 		);
 		return $d;
 	}

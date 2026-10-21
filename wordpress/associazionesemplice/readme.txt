@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.13
+Stable tag: 1.2.14
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -28,19 +28,9 @@ The plugin is built around Italian third-sector rules (APS, ETS, registers, tax 
 
 Advanced features (online payments, several accounts and funds, accounting and reports, mass emails, app and wallet cards, receipts, VAT) are in the separate Associazione Semplice Pro add-on.
 
-== Third-party data ==
-
-The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, Mozilla Public License 2.0, file includes/data/public-suffix-list.txt) to tell which domain a license covers.
-
 == External services ==
 
-The plugin works fully on its own. It contacts an external service only if you enter a license key (optional, see below) and for the optional features described after it.
-
-= License service (optional) =
-If you enter a license key in Settings, once a day (and when you save the key or press "Check now") the plugin sends the key and your site's domain name to the website associazionesemplice.it (https://associazionesemplice.it/api/license/validate), which checks it with the license server of Wega Studios (license.wegastudios.com), to confirm that the key is valid for that domain, and receives the plan and its expiry date. No member data, no content and no other information is sent. The free license is free and is requested from https://associazionesemplice.it/free; without a key all the basic features keep working. The license covers the registered domain and its subdomains. The check is never done on local development sites. Terms and privacy: https://associazionesemplice.it/privacy
-
-= Update notice for the Pro add-on (optional) =
-Only if the separate Associazione Semplice Pro add-on is installed and a license key is entered, at most once every 24 hours (configurable in Settings, can be turned off) the plugin asks the website associazionesemplice.it for the latest plugin version numbers (https://associazionesemplice.it/api/plugin/latest) and shows a dismissible notice to administrators when a newer version exists. The request carries no license key, no member data and no information about your site. It is never done on local development sites. Terms and privacy: https://associazionesemplice.it/privacy
+The plugin works fully on its own and contacts no external service by default. The optional features that involve a third party are described below.
 
 = PayPal donations (optional) =
 If you turn on donations, your website shows a form whose button opens PayPal's donation page (www.paypal.com/donate) in the visitor's browser, with the PayPal account, the purpose and the chosen amount you set. Nothing is sent from your server to PayPal. Terms: https://www.paypal.com/legalhub - Privacy: https://www.paypal.com/privacy
@@ -67,6 +57,9 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 
 == Changelog ==
 
+= 1.2.14 =
+* Texts reviewed: clearer messages, author shown as Associazione Semplice; the readme no longer describes the license service (it now belongs to the Pro add-on).
+
 = 1.2.13 =
 * Member book: generate the membership cards of all members as A4 sheets with several cards per page (empty positions stay as blank templates), ready to print and cut.
 
@@ -74,11 +67,11 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 * Add a new member from the cash form without leaving the page; the card can show member type, board and staff roles and a free text, and can be downloaded as a PDF for printing; Appearance, Bank and Donations keep the settings tabs.
 
 = 1.2.11 =
-* Extension points replace every built-in reference to add-on features; the free package no longer contains any add-on code or tables (compatibility level 3).
+* The free plugin no longer contains any code of the Pro add-on: if you use the Pro add-on, update both together.
 * Run events and courses again: a new "Riproponi" box on every event and course creates a new edition in a new date or social year with the same data. Import events from The Events Calendar, courses included (Tools > From The Events Calendar).
 
 = 1.2.10 =
-* Cleaner edition split: extension points replace built-in Pro references; licence and updates now live in the Pro add-on (compatibility level 2).
+* Cleaner structure: the license and the updates of the Pro add-on are now handled by the add-on itself.
 
 = 1.2.9 =
 * Bookable resources phase 2 (waiting list, rates, hold times) and prepaid credits charged live by QR in the member area; schema 39.
@@ -96,7 +89,7 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 * License domain: the complete Public Suffix List (the same copy as the portal) decides which domain a license covers, so customers sharing a host such as altervista.org no longer share a license.
 
 = 1.2.4 =
-* License security: Wega's signing keys are built into the plugin and a valid license needs the signed proof; the plan level comes from the signed part; the Pro features are suspended when the proof is missing, tampered with or too old (new limits: days offline, days before the first check).
+* License security: The license signing keys are built into the plugin and a valid license needs the signed proof; the plan level comes from the signed part; the Pro features are suspended when the proof is missing, tampered with or too old (new limits: days offline, days before the first check).
 
 = 1.2.3 =
 * One free package for everyone (WordPress.org and the portal): the direct updater and the update notice now belong to the Pro add-on; the free plugin no longer contacts the portal for versions.

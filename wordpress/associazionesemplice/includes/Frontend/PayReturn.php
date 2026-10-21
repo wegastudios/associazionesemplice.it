@@ -35,7 +35,7 @@ final class PayReturn {
 		} catch ( \InvalidArgumentException $e ) {
 			wp_safe_redirect( \AssociazioneSemplice\Flash::url( $clean, 'asemf', '', $e->getMessage() ) );
 		} catch ( \Throwable $e ) {
-			wp_safe_redirect( \AssociazioneSemplice\Flash::url( $clean, 'asemf', '', 'Non è stato possibile verificare il pagamento. Se hai pagato, lo registreremo appena il gateway lo conferma.' ) );
+			wp_safe_redirect( \AssociazioneSemplice\Flash::url( $clean, 'asemf', '', 'Non è stato possibile verificare il pagamento. Se hai pagato, lo registreremo appena Stripe o PayPal lo confermano.' ) );
 		}
 		exit;
 	}

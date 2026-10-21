@@ -98,7 +98,7 @@ final class PaymentsPage {
 		echo '<p><button class="button">Verifica i pagamenti in sospeso</button> <span class="description">Interroga il gateway sui pagamenti non ancora confermati (lo fa già da solo ogni ora).</span></p>';
 		Ui::form_close();
 
-		echo '<table class="widefat striped"><thead><tr><th>Data</th><th>Chi ha pagato</th><th>Gateway</th><th>Importo</th><th>Stato</th><th>Voci</th><th></th></tr></thead><tbody>';
+		echo '<table class="widefat striped"><thead><tr><th>Data</th><th>Chi ha pagato</th><th>Metodo</th><th>Importo</th><th>Stato</th><th>Voci</th><th></th></tr></thead><tbody>';
 		if ( ! $rows ) {
 			echo '<tr><td colspan="7">Nessun pagamento.</td></tr>';
 		}
