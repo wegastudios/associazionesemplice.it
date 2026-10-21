@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.11
+Stable tag: 1.2.12
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -66,6 +66,9 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.2.12 =
+* Add a new member from the cash form without leaving the page; the card can show member type, board and staff roles and a free text, and can be downloaded as a PDF for printing; Appearance, Bank and Donations keep the settings tabs.
 
 = 1.2.11 =
 * Extension points replace every built-in reference to add-on features; the free package no longer contains any add-on code or tables (compatibility level 3).

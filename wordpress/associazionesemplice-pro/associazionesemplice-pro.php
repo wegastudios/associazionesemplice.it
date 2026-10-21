@@ -3,7 +3,7 @@
  * Plugin Name:       Associazione Semplice Pro
  * Description:       Funzioni avanzate per Associazione Semplice: pagamenti online, conti e fondi, contabilità e report, registri, comunicazioni, app e Wallet. Richiede Associazione Semplice.
  * Plugin URI:        https://associazionesemplice.it
- * Version:           1.1.12
+ * Version:           1.1.13
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Requires Plugins:  associazionesemplice
@@ -15,7 +15,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ASEM_PRO_VERSION', '1.1.12' );
+define( 'ASEM_PRO_VERSION', '1.1.13' );
 define( 'ASEM_PRO_API', 3 ); // livello di compatibilità richiesto: deve coincidere con ASEM_API di Associazione Semplice
 define( 'ASEM_PRO_DIR', plugin_dir_path( __FILE__ ) );
 
