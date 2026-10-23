@@ -58,7 +58,7 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 == Changelog ==
 
 = 1.2.24 =
-* Small screens: wide admin tables scroll by themselves, price lists lay out in a grid, help text about the email is correct, member area sections fit narrow phones.
+* Small screens: wide admin tables scroll by themselves, price lists lay out in a grid, help text about the email is correct, member area sections fit narrow phones; event lists and seat counts are no longer served stale by page caches.
 
 = 1.2.23 =
 * Review fixes for WordPress.org: scripts and styles are enqueued, form data is cleaned on arrival, attachments are saved with the WordPress upload functions, and the old APSemplice migration is removed.

@@ -7,6 +7,7 @@ Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi u
 - La tabella dei listini si legge bene anche su schermi stretti.
 - Il testo di aiuto sull'email del socio ora dice che è facoltativa.
 - Le sezioni dell'area soci stanno nella larghezza del telefono.
+- Gli elenchi di attività ed eventi e i posti liberi non restano più vecchi nella cache del sito: si aggiornano subito.
 
 ## 1.2.23
 - Il programma è stato rivisto secondo le indicazioni di WordPress.org: pagine e moduli più sicuri e compatibili.
