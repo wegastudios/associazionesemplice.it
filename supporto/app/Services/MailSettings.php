@@ -16,7 +16,7 @@ class MailSettings
 
     public static function domain(): string
     {
-        return (string) env('MAIL_DOMAIN', 'wegastudios.com');
+        return (string) env('MAIL_DOMAIN', 'associazionesemplice.it');
     }
 
     /** @return array<string, ?string> */
