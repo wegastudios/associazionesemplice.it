@@ -8,6 +8,15 @@ if ( ! is_file( $file ) ) {
 }
 Portale\Config::load( require $file );
 
+// Altri nomi del sito (dominio con il trattino, www): si va sempre all'indirizzo principale, mantenendo percorso e parametri.
+$canonical = (string) parse_url( (string) Portale\Config::get( 'base_url', '' ), PHP_URL_HOST );
+$reqHost   = strtolower( preg_replace( '/:\d+$/', '', (string) ( $_SERVER['HTTP_HOST'] ?? '' ) ) );
+$aliases   = (array) Portale\Config::get( 'redirect_hosts', array( 'associazione-semplice.it', 'www.associazione-semplice.it', 'www.associazionesemplice.it' ) );
+if ( '' !== $canonical && '' !== $reqHost && $reqHost !== $canonical && in_array( $reqHost, $aliases, true ) ) {
+	header( 'Location: ' . rtrim( (string) Portale\Config::get( 'base_url' ), '/' ) . (string) ( $_SERVER['REQUEST_URI'] ?? '/' ), true, 301 );
+	exit;
+}
+
 $https = ( ! empty( $_SERVER['HTTPS'] ) && 'off' !== $_SERVER['HTTPS'] ) || 'https' === ( $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '' );
 session_set_cookie_params( array( 'lifetime' => 0, 'path' => '/', 'secure' => $https, 'httponly' => true, 'samesite' => 'Lax' ) );
 // Le API per i plugin, i webhook e le chiavi pubbliche non usano la sessione: niente cookie né file di sessione per ogni chiamata (chiunque può farne molte).

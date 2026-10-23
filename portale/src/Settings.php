@@ -392,7 +392,7 @@ final class Settings {
 		self::write( $db, 'legal', array(
 			'titolare' => $t( 'titolare', 160 ), 'indirizzo' => $t( 'indirizzo', 240 ), 'piva' => $t( 'piva', 40 ),
 			'email' => ( '' === $email || filter_var( $email, FILTER_VALIDATE_EMAIL ) ) ? $email : '',
-			'privacy_body' => $t( 'privacy_body', 30000 ), 'cookie_body' => $t( 'cookie_body', 30000 ),
+			'privacy_body' => $t( 'privacy_body', 30000 ), 'cookie_body' => $t( 'cookie_body', 30000 ), 'terms_body' => $t( 'terms_body', 30000 ),
 		) );
 	}
 
