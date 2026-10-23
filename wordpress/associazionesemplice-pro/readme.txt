@@ -24,7 +24,7 @@ The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, 
 == Changelog ==
 
 = 1.1.18 =
-* Compatibile con la nuova versione del gratuito (livello 4): gli anni solari sono ora nel gratuito
+* Works with the free plugin 1.2.19 (compatibility level 4): calendar years now live in the free plugin.
 
 = 1.1.17 =
 * Cash > Book also shows the resources available on a day, and the free days of a resource.
