@@ -29,6 +29,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Ruoli: segreteria, presidente, tesoriere, volontari, staff | ✓ | ✓ | ✓ |
 | Regolamento da accettare con registrazione della versione | ✓ | ✓ | ✓ |
 | Blocchi, shortcode e widget Elementor | ✓ | ✓ | ✓ |
+| Riquadri «Da lavorare» e «Eventi e corsi della settimana» nella Bacheca di WordPress | ✓ | ✓ | ✓ |
 
 ## Corsi ed eventi
 
@@ -97,6 +98,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Lingue aggiuntive (inglese incluso) | — | ✓ | ✓ |
 | Copia di sicurezza e ripristino | ✓ | ✓ | ✓ |
 | Azzeramento dei dati e registro delle azioni | ✓ | ✓ | ✓ |
+| Novità di ogni versione in italiano semplice (changelog) | ✓ | ✓ | ✓ |
 
 ## Licenza e prezzo
 
