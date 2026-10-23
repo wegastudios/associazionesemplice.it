@@ -64,4 +64,14 @@ final class UpdaterTest extends TestCase {
 		$this->assertSame( 'sig', $r['signature'] );
 		$this->assertSame( 'k', $r['kid'] );
 	}
+
+	public function test_changelog_becomes_safe_html_and_ignores_other_lines(): void {
+		$r = U::parse( '{"version":"1.2.19","changelog":"## 1.2.19\n- Anni solari nel gratuito.\n- <b>x</b>\n\nTesto libero\n## 1.2.18\n- Listini."}' );
+		$html = U::changelog_html( $r['changelog'] );
+		$this->assertStringContainsString( '<h4>1.2.19</h4><ul><li>Anni solari nel gratuito.</li>', $html );
+		$this->assertStringContainsString( '&lt;b&gt;x&lt;/b&gt;', $html );
+		$this->assertStringContainsString( '<h4>1.2.18</h4>', $html );
+		$this->assertStringNotContainsString( 'Testo libero', $html );
+		$this->assertSame( '', U::changelog_html( 'niente di valido' ) );
+	}
 }

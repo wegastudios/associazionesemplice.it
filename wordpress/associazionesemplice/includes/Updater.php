@@ -72,7 +72,27 @@ final class Updater {
 			'sha256'  => isset( $j['sha256'] ) && is_string( $j['sha256'] ) ? strtolower( trim( $j['sha256'] ) ) : '',
 			'signature' => isset( $j['signature'] ) && is_string( $j['signature'] ) ? trim( $j['signature'] ) : '',
 			'kid'     => isset( $j['kid'] ) && is_string( $j['kid'] ) ? trim( $j['kid'] ) : '',
+			'changelog' => isset( $j['changelog'] ) && is_string( $j['changelog'] ) ? mb_substr( $j['changelog'], 0, 20000 ) : '',
 		);
+	}
+
+	/**
+	 * Il log delle novità del portale (stesso formato di CHANGELOG.md: «## 1.1.18» e righe «- …») → HTML per la scheda dei dettagli.
+	 * Tutto il testo viene protetto: vale solo ciò che segue questo formato.
+	 */
+	public static function changelog_html( string $md ): string {
+		$html = '';
+		$open = false;
+		foreach ( preg_split( '/\R/', $md ) ?: array() as $line ) {
+			$line = trim( $line );
+			if ( preg_match( '/^##\s+(\d+(?:\.\d+){1,2})$/', $line, $m ) ) {
+				$html .= ( $open ? '</ul>' : '' ) . '<h4>' . htmlspecialchars( $m[1], ENT_QUOTES, 'UTF-8' ) . '</h4><ul>';
+				$open = true;
+			} elseif ( $open && preg_match( '/^-\s+(.+)$/', $line, $m ) ) {
+				$html .= '<li>' . htmlspecialchars( $m[1], ENT_QUOTES, 'UTF-8' ) . '</li>';
+			}
+		}
+		return $open ? $html . '</ul>' : '';
 	}
 
 	/** base64url senza padding → byte ('' se non valido). */
@@ -207,7 +227,12 @@ final class Updater {
 		}
 		foreach ( self::products() as $p => $info ) {
 			if ( $args->slug === $info['slug'] && ! empty( self::state()[ $p ]['version'] ) ) {
-				$st = self::state()[ $p ];
+				$st       = self::state()[ $p ];
+				$sections = array( 'description' => '<p>' . esc_html( $info['name'] ) . ': gestione di soci, attività e prima nota per associazioni. L\'aggiornamento si scarica dal portale di Associazione Semplice.</p>' );
+				$news     = self::changelog_html( (string) ( $st['changelog'] ?? '' ) );
+				if ( '' !== $news ) {
+					$sections['changelog'] = $news; // «Cosa cambia» nella scheda dei dettagli
+				}
 				return (object) array(
 					'name'          => $info['name'],
 					'slug'          => $info['slug'],
@@ -216,7 +241,7 @@ final class Updater {
 					'homepage'      => 'https://associazionesemplice.it',
 					'requires'      => '6.0',
 					'requires_php'  => '7.4',
-					'sections'      => array( 'description' => '<p>' . esc_html( $info['name'] ) . ': gestione di soci, attività e prima nota per associazioni. L\'aggiornamento si scarica dal portale di Associazione Semplice.</p>' ),
+					'sections'      => $sections,
 					'download_link' => self::PREFIX . $p,
 					'icons'         => self::icons(),
 					'banners'       => self::banners(),

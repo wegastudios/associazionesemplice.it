@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.19
+Stable tag: 1.2.20
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -57,11 +57,14 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 
 == Changelog ==
 
+= 1.2.20 =
+* Dashboard widgets in the WordPress admin home: items to work on and this week's events and courses, with shortcuts to the main functions.
+
 = 1.2.19 =
-* Anni solari (apertura e chiusura) ora anche nel gratuito, con l'avviso del nuovo anno da settembre; gli ospiti dell'associazione e del volontario compaiono solo con la quota del volontario
+* Calendar years (opening and closing) are now in the free plugin too, with a dashboard reminder from September; the association/volunteer guest option only shows with the volunteer share.
 
 = 1.2.18 =
-* Listini per eventi e corsi a date (individuale, di gruppo, pacchetti da 4) e prenotazioni «ospite dell'associazione» e «ospite del volontario» con sconto automatico e fondo del volontario non alimentato
+* Price lists for events (individual, group, packages of 4) and secretariat bookings as association guest or volunteer guest, with the automatic discount and without feeding the volunteer fund.
 
 = 1.2.17 =
 * Outgoing mail log and test email (with a warning on the dashboard when messages do not leave); the first-access limit only counts messages actually sent; copy button for the WhatsApp message; new Cash > Book page to book events and courses by date or by item; the cash form shows when a payment is a deposit.

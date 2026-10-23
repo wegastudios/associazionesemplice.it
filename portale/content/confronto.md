@@ -45,7 +45,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Incasso sul posto durante gli eventi | — | ✓ | ✓ |
 | Suggerimento dei luoghi con Google (con la tua chiave) | ✓ | ✓ | ✓ |
 
-## Soldi
+## Cassa e conti
 
 | Funzione | Free | Pro Contabile | Pro Fiscale |
 |---|---|---|---|
@@ -54,6 +54,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Spese con scontrini e fatture allegati | ✓ | ✓ | ✓ |
 | Importazione ed esportazione della prima nota | ✓ | ✓ | ✓ |
 | Donazioni con PayPal | ✓ | ✓ | ✓ |
+| Anni solari: apertura, chiusura e riapertura (solo amministratori), con avviso del nuovo anno da settembre | ✓ | ✓ | ✓ |
 | Cassa «Prenota» (per data o per attività) | ✓ | ✓ | ✓ |
 | Acconti e sconti con motivo per riga di incasso | ✓ | ✓ | ✓ |
 | Nuovo socio in un popup durante l'incasso, senza perdere l'operazione | ✓ | ✓ | ✓ |
@@ -62,6 +63,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Fondi accantonati (per esempio rimborso dei volontari) | — | ✓ | ✓ |
 | Risorse con quota accantonata in un fondo a ogni pagamento (anche in crediti) | — | ✓ | ✓ |
 | Disponibilità reale dei fondi, liberazione ed estinzione | — | ✓ | ✓ |
+| Tabella dei fondi da rimborsare per anno | — | ✓ | ✓ |
 | Ricevute in PDF e attestazione annuale | — | ✓ | ✓ |
 | Report di gestione (conti e liquidità, anno sociale) | — | ✓ | ✓ |
 
@@ -71,7 +73,6 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 |---|---|---|---|
 | IVA su quote, attività, incassi e spese | — | — | ✓ |
 | 5 per mille e rendiconto sull'utilizzo | — | — | ✓ |
-| Anni solari, apertura e chiusura dell'anno | — | — | ✓ |
 | Rendiconto per cassa per il commercialista | — | — | ✓ |
 
 ## Registri e privacy
@@ -117,7 +118,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 ## Passare da una versione all'altra
 
 - **Da Free a Pro Contabile**: si aggiungono pagamenti online, livelli di socio, conti e fondi, ricevute, comunicazioni, app, wallet e personalizzazione dei testi.
-- **Da Pro Contabile a Pro Fiscale**: si aggiungono IVA, 5 per mille, anni solari e rendiconto per cassa.
+- **Da Pro Contabile a Pro Fiscale**: si aggiungono IVA, 5 per mille e rendiconto per cassa.
 - **Non si reinstalla nulla** (se hai già Pro): cambia la chiave di licenza e compaiono le funzioni in più. Se la licenza scade, il plugin torna alle funzioni di base e i dati restano intatti.
 
 Per i passi concreti leggi [Passare a Pro, provarlo e rinnovare](https://supporto.associazionesemplice.it/articoli/9).
