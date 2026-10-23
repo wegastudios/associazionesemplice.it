@@ -82,6 +82,10 @@
     .prose h1 { font-size:1.9rem; } .prose h2 { font-size:1.35rem; margin-top:34px; padding-top:6px; border-top:1px solid var(--line); }
     .prose h3 { font-size:1.1rem; margin:24px 0 6px; }
     .prose pre { background:var(--code-bg); border:1px solid var(--line); border-radius:8px; padding:14px; overflow-x:auto; line-height:1.45; }
+    .prose table th, .prose table td { border:1px solid var(--line); padding:8px 10px; }
+    .prose table th { background:var(--surface-2); }
+    .prose h2:first-child { border-top:0; margin-top:0; }
+    .prose li { margin:4px 0; }
     .prose pre code { background:none; padding:0; }
     .prose table { display:block; overflow-x:auto; }
     .prose blockquote { margin:14px 0; padding:2px 16px; border-left:5px solid var(--yellow); background:var(--yellow-soft); border-radius:0 8px 8px 0; }

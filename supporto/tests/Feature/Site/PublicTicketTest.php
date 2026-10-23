@@ -302,7 +302,7 @@ class PublicTicketTest extends SiteTestCase
         Mail::fake();
         $this->fakeHub();
 
-        $this->get('/ticket/nuovo?rif=94000001')->assertOk()->assertSee('collegata al ticket 94000001');
+        $this->get('/ticket/nuovo?rif=94000001')->assertOk()->assertSee('collegata alla richiesta n. 94000001');
         $this->post('/ticket', $this->form(['related_hub_id' => 94000001]));
 
         Http::assertSent(fn ($r) => $r->method() === 'POST' && ($r['related_ticket_id'] ?? null) === 94000001);
