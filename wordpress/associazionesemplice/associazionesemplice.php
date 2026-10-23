@@ -6,8 +6,8 @@
  * Version:           1.2.19
  * Requires at least: 6.0
  * Requires PHP:      7.4
- * Author:            Associazione Semplice
- * Author URI:        https://associazionesemplice.it
+ * Author:            Wega Studios
+ * Author URI:        https://www.wegastudios.com
  * License:           GPL-2.0-or-later
  * Text Domain:       associazione-semplice
  */
