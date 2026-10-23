@@ -5865,6 +5865,28 @@ asem_ok( $su_res === (int) $su_ca['resource_id'] && 60 === (int) $su_ca['setup_b
 asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'Allestimento', array( 'id' => $su_res ) );
 asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Nessuna risorsa (evento fuori sede)', array( 'id' => $su_e ) );
 
+// ---------- Risorse: niente sovrapposizioni nuove, quelle già presenti si segnalano e basta ----------
+$ov_e = $acts->create( array( 'name' => 'Incontro sovrapposto', 'social_year' => $sy_label, 'kind' => 'recurring', 'fee_cents' => 0 ) );
+$ov_pd = '\AssociazioneSemplice\ProData';
+$ov_pd::activity_saved( array(), $ov_e, array( 'resource_id' => (string) $su_res, 'setup_before' => '', 'setup_after' => '' ) );
+asem_ok( (int) $su_res === $RS::activity_link( $ov_e ), 'sovrapposizioni: senza date l\'evento si collega alla risorsa' );
+$ov_msg = asem_throws( function () use ( $acts, $ov_e, $su_day ) { $acts->add_session( $ov_e, array( 'session_date' => $su_day, 'start_time' => '10:30', 'end_time' => '11:30' ) ); } );
+asem_ok( null !== $ov_msg && false !== strpos( $ov_msg, 'sovrappongono' ), 'sovrapposizioni: una data che cade sul corso (allestimenti compresi) è rifiutata' );
+$ov_free_day = gmdate( 'Y-m-d', strtotime( $today . ' +20 days' ) );
+asem_ok( $acts->add_session( $ov_e, array( 'session_date' => $ov_free_day, 'start_time' => '10:00', 'end_time' => '11:00' ) ) > 0, 'sovrapposizioni: una data libera si aggiunge' );
+// collegare un evento che già si sovrappone: rifiutato e collegamento com'era
+$RS::link_activity( $ov_e, null );
+$acts->add_session( $ov_e, array( 'session_date' => $su_day, 'start_time' => '10:30', 'end_time' => '11:30' ) );
+$ov_msg2 = asem_throws( function () use ( $ov_pd, $ov_e, $su_res ) { $ov_pd::activity_saved( array(), $ov_e, array( 'resource_id' => (string) $su_res ) ); } );
+asem_ok( null !== $ov_msg2 && false !== strpos( $ov_msg2, 'occupata due volte' ) && null === $RS::activity_link( $ov_e ), 'sovrapposizioni: collegare una risorsa già occupata è rifiutato e tutto resta com\'era' );
+// quelle già presenti: si segnalano, non bloccano le altre modifiche
+$RS::link_activity( $ov_e, $su_res ); // forzata, come se fosse già così
+asem_ok( (bool) $RS::existing_overlaps(), 'sovrapposizioni: quelle già presenti vengono segnalate' );
+$ov_notes = $ov_pd::activity_saved( array(), $ov_e, array( 'resource_id' => (string) $su_res ) );
+asem_ok( $ov_notes && false !== strpos( implode( '', $ov_notes ), 'sistemate a mano' ), 'sovrapposizioni: salvando un\'attività già sovrapposta non si blocca, si ricorda di sistemarla a mano' );
+asem_ok( false !== strpos( asem_render( array( Admin\ProDashboard::class, 'alerts' ), 'Risorse occupate due volte' ), 'Vanno sistemate a mano' ), 'sovrapposizioni: la bacheca avvisa' );
+$RS::link_activity( $ov_e, 0 );
+
 // ---------- Copia di sicurezza e ripristino (in fondo: tocca tutte le tabelle) ----------
 
 wp_set_current_user( 1 );
@@ -6202,28 +6224,6 @@ asem_ok( null !== asem_throws( function () use ( $acts, $pl_sess, $pl_a ) { $act
 asem_ok( '' !== \AssociazioneSemplice\PriceLists::booking_label( $pl_a_row, $pl_g ) && false !== strpos( \AssociazioneSemplice\PriceLists::booking_label( $pl_a_row, $pl_g ), 'ospite dell\'associazione' ), 'listini: l\'etichetta della prenotazione dice listino e ospite' );
 $pl_html = asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Ospite del volontario', array( 'id' => (string) $pl_act ) );
 asem_ok( false !== strpos( $pl_html, 'name="guest_of"' ), 'listini: la scheda evento offre listino e ospite nella prenotazione' );
-
-// ---------- Risorse: niente sovrapposizioni nuove, quelle già presenti si segnalano e basta ----------
-$ov_e = $acts->create( array( 'name' => 'Incontro sovrapposto', 'social_year' => $sy_label, 'kind' => 'recurring', 'fee_cents' => 0 ) );
-$ov_pd = '\AssociazioneSemplice\ProData';
-$ov_pd::activity_saved( array(), $ov_e, array( 'resource_id' => (string) $su_res, 'setup_before' => '', 'setup_after' => '' ) );
-asem_ok( (int) $su_res === $RS::activity_link( $ov_e ), 'sovrapposizioni: senza date l\'evento si collega alla risorsa' );
-$ov_msg = asem_throws( function () use ( $acts, $ov_e, $su_day ) { $acts->add_session( $ov_e, array( 'session_date' => $su_day, 'start_time' => '10:30', 'end_time' => '11:30' ) ); } );
-asem_ok( null !== $ov_msg && false !== strpos( $ov_msg, 'sovrappongono' ), 'sovrapposizioni: una data che cade sul corso (allestimenti compresi) è rifiutata' );
-$ov_free_day = gmdate( 'Y-m-d', strtotime( $today . ' +20 days' ) );
-asem_ok( $acts->add_session( $ov_e, array( 'session_date' => $ov_free_day, 'start_time' => '10:00', 'end_time' => '11:00' ) ) > 0, 'sovrapposizioni: una data libera si aggiunge' );
-// collegare un evento che già si sovrappone: rifiutato e collegamento com'era
-$RS::link_activity( $ov_e, null );
-$acts->add_session( $ov_e, array( 'session_date' => $su_day, 'start_time' => '10:30', 'end_time' => '11:30' ) );
-$ov_msg2 = asem_throws( function () use ( $ov_pd, $ov_e, $su_res ) { $ov_pd::activity_saved( array(), $ov_e, array( 'resource_id' => (string) $su_res ) ); } );
-asem_ok( null !== $ov_msg2 && false !== strpos( $ov_msg2, 'occupata due volte' ) && null === $RS::activity_link( $ov_e ), 'sovrapposizioni: collegare una risorsa già occupata è rifiutato e tutto resta com\'era' );
-// quelle già presenti: si segnalano, non bloccano le altre modifiche
-$RS::link_activity( $ov_e, $su_res ); // forzata, come se fosse già così
-asem_ok( (bool) $RS::existing_overlaps(), 'sovrapposizioni: quelle già presenti vengono segnalate' );
-$ov_notes = $ov_pd::activity_saved( array(), $ov_e, array( 'resource_id' => (string) $su_res ) );
-asem_ok( $ov_notes && false !== strpos( implode( '', $ov_notes ), 'sistemate a mano' ), 'sovrapposizioni: salvando un\'attività già sovrapposta non si blocca, si ricorda di sistemarla a mano' );
-asem_ok( false !== strpos( asem_render( array( Admin\ProDashboard::class, 'alerts' ), 'Risorse occupate due volte' ), 'Vanno sistemate a mano' ), 'sovrapposizioni: la bacheca avvisa' );
-$RS::link_activity( $ov_e, 0 );
 
 // ---------- Widget nella Bacheca di WordPress ----------
 asem_render( array( Admin\WpDashboard::class, 'todo' ), 'Apri la Bacheca di Associazione Semplice' );
