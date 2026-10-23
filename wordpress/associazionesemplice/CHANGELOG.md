@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.20
+- Nella Bacheca di WordPress ci sono due riquadri nuovi: «Da lavorare» (richieste di accesso, soci da rinnovare, ospiti da invitare) e «Eventi e corsi della settimana», con i pulsanti per le funzioni principali.
+
 ## 1.2.19
 - Gli anni solari si aprono e si chiudono anche nella versione gratuita (Cassa → Anni solari).
 - Da settembre compare un avviso in Bacheca per aprire il nuovo anno: lo puoi chiudere e ricompare a inizio mese; a dicembre resta sempre visibile.

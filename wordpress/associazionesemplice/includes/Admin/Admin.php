@@ -22,6 +22,7 @@ final class Admin {
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'assets' ) );
 		Actions::register();
 		YearsPage::register();
+		WpDashboard::register();
 		Exports::register();
 		IncomePage::register_ajax();
 		Dismiss::register();

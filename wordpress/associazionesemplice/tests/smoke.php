@@ -6162,6 +6162,11 @@ asem_ok( '' !== \AssociazioneSemplice\PriceLists::booking_label( $pl_a_row, $pl_
 $pl_html = asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Ospite del volontario', array( 'id' => (string) $pl_act ) );
 asem_ok( false !== strpos( $pl_html, 'name="guest_of"' ), 'listini: la scheda evento offre listino e ospite nella prenotazione' );
 
+// ---------- Widget nella Bacheca di WordPress ----------
+asem_render( array( Admin\WpDashboard::class, 'todo' ), 'Apri la Bacheca di Associazione Semplice' );
+asem_render( array( Admin\WpDashboard::class, 'week' ), 'Serata prenotabile dalla cassa' );
+asem_ok( isset( Admin\WpDashboard::week_days()[ $bd_ev_date ] ), 'bacheca WordPress: la settimana elenca l\'evento dei prossimi giorni, raggruppato per data' );
+
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' . ( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Tutti i controlli sono passati.' );
