@@ -50,6 +50,12 @@ final class PluginUpdates {
 			'sha256'  => $newer ? $all[0]['sha256'] : null, 'signature' => $newer ? $all[0]['signature'] : null, 'kid' => $newer ? $all[0]['kid'] : null,
 			'url'     => rtrim( (string) Config::get( 'base_url', 'https://associazionesemplice.it' ), '/' ) . '/accedi',
 		);
+		if ( $newer ) {
+			$log = Releases::changelog( $p, $latest, $cur );
+			if ( '' !== $log ) {
+				$out['changelog'] = $log;
+			}
+		}
 		return array( 200, (string) json_encode( $out, JSON_UNESCAPED_SLASHES ), array( 'Cache-Control: no-store' ) );
 	}
 

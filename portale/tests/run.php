@@ -2,7 +2,7 @@
 // Prove del portale senza dipendenze: php tests/run.php (esce con codice 1 se qualcosa fallisce).
 require __DIR__ . '/../src/bootstrap.php';
 
-use Portale\{Billing, Config, Db, Domain, Http, Mailer, Stripe, UserError, WegaClient, WegaException, Webhooks};
+use Portale\{Billing, Config, Db, Domain, Http, Mailer, Releases, Stripe, UserError, WegaClient, WegaException, Webhooks};
 
 $fails = 0;
 function check( string $name, bool $ok ): void {
@@ -1062,6 +1062,13 @@ $pdb->run( "UPDATE subscriptions SET provider = 'paypal', mode = 'recurring' WHE
 check( 'cambio piano: PayPal ricorrente non automatico, spiegato', null !== $pc->reason( $pbil->subscription( 's1' ) ) && array() === $pc->options( $pbil->subscription( 's1' ) ) );
 $pdb->run( "UPDATE subscriptions SET provider = 'stripe', status = 'active', cancel_at_period_end = 1 WHERE id = 's1'" );
 check( 'cambio piano: rinnovo disdetto, non si cambia', null !== $pc->reason( $pbil->subscription( 's1' ) ) );
+
+// --- Novità dal CHANGELOG.md del pacchetto -------------------------------------------------------------------------------
+$cl = "# Novità\n\nTesto di introduzione.\n\n## 1.2.20\n- Widget nella Bacheca.\nriga libera ignorata\n\n## 1.2.19\n- Anni solari.\n- Ospiti.\n\n## 1.2.18\n- Listini.\n";
+check( 'novità: solo le versioni più recenti di quella installata', "## 1.2.20\n- Widget nella Bacheca.\n## 1.2.19\n- Anni solari.\n- Ospiti." === Releases::filterChangelog( $cl, '1.2.18' ) );
+check( 'novità: senza versione installata solo l\'ultima, senza righe estranee', "## 1.2.20\n- Widget nella Bacheca." === Releases::filterChangelog( $cl, '' ) );
+check( 'novità: nulla se è già aggiornato', '' === Releases::filterChangelog( $cl, '1.2.20' ) );
+check( 'novità: tetto di 20000 caratteri', strlen( Releases::filterChangelog( "## 9.0\n" . str_repeat( "- voce lunga lunga lunga\n", 2000 ), '1.0' ) ) <= 20000 );
 
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );

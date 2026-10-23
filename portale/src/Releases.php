@@ -140,6 +140,43 @@ final class Releases {
 		return $rows;
 	}
 
+	/**
+	 * Novità dal CHANGELOG.md dentro il pacchetto pubblicato: solo le voci «## x.y.z» più recenti della versione installata
+	 * (senza versione installata, la più recente) e solo le righe «## versione» e «- voce». Massimo 20000 caratteri.
+	 */
+	public static function changelog( string $product, string $latest, string $installed = '' ): string {
+		if ( ! isset( self::PRODUCTS[ $product ] ) || ! self::validVersion( $latest ) || ! class_exists( 'ZipArchive' ) ) {
+			return '';
+		}
+		$file = self::dir( $product ) . '/' . $latest . '.zip';
+		$zip  = new \ZipArchive();
+		if ( ! is_file( $file ) || true !== $zip->open( $file ) ) {
+			return '';
+		}
+		$raw = $zip->getFromName( self::PRODUCTS[ $product ][0] . '/CHANGELOG.md' );
+		$zip->close();
+		return false === $raw ? '' : self::filterChangelog( (string) $raw, $installed );
+	}
+
+	public static function filterChangelog( string $md, string $installed = '' ): string {
+		$out  = array();
+		$keep = false;
+		$n    = 0;
+		foreach ( preg_split( '/\r?\n/', $md ) as $line ) {
+			$line = rtrim( $line );
+			if ( preg_match( '/^## (\d+\.\d+(?:\.\d+)?)$/', $line, $m ) ) {
+				++$n;
+				$keep = '' === $installed ? 1 === $n : version_compare( $m[1], $installed, '>' );
+				if ( $keep ) {
+					$out[] = $line;
+				}
+			} elseif ( $keep && 0 === strpos( $line, '- ' ) ) {
+				$out[] = $line;
+			}
+		}
+		return substr( implode( "\n", $out ), 0, 20000 );
+	}
+
 	public static function get( Db $db, string $product, string $version ): ?array {
 		return $db->one( 'SELECT * FROM releases WHERE product = ? AND version = ?', array( $product, $version ) );
 	}
