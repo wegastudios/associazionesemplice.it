@@ -60,3 +60,18 @@
 .asem-wiz-dot{display:none}
 .asem-wizard:not(.asem-wiz-js) .asem-wiz-stepper{display:none}
 .asem-wiz-more>summary{cursor:pointer;color:#2271b1}
+
+/* Listini di un evento: tre colonne su schermo largo, impilati su schermo stretto */
+.asem-pl{display:grid;gap:8px;max-width:560px}
+.asem-pl-row{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) 90px;gap:8px;align-items:center}
+.asem-pl-head{font-weight:600}
+.asem-pl-price{display:flex;align-items:center;gap:4px}
+.asem-pl-price input{min-width:0;width:100%}
+
+/* Schermi stretti: le tabelle larghe scorrono da sole, la pagina resta ferma */
+@media (max-width:782px){
+	#wpbody-content table.widefat:not(.wp-list-table){display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+	.asem-pl-row{grid-template-columns:minmax(0,1fr) 90px}
+	.asem-pl-row .asem-pl-name{grid-column:1 / -1}
+	.asem-pl-head{display:none}
+}

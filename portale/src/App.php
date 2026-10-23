@@ -60,6 +60,10 @@ final class App {
 		} elseif ( $get && isset( Legal::PAGES[ ltrim( $path, '/' ) ] ) ) {
 			$slug = ltrim( $path, '/' );
 			View::render( 'legal', array( 'title' => Legal::PAGES[ $slug ][0], 'html' => Legal::html( Legal::body( $slug ) ) ) );
+		} elseif ( $get && '/plugin' === $path ) {
+			View::render( 'legal', array( 'title' => 'Il plugin Associazione Semplice', 'html' => Legal::html( (string) file_get_contents( __DIR__ . '/../content/plugin.md' ) ) ) );
+		} elseif ( $get && in_array( $path, array( '/prezzi', '/piani' ), true ) ) {
+			header( 'Location: /#prezzi', true, 301 );
 		} elseif ( $get && '/confronto' === $path ) {
 			View::render( 'confronto', array( 'title' => 'Confronto tra le versioni' ) );
 		} elseif ( $get && '/free' === $path ) {

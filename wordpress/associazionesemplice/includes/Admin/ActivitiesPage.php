@@ -377,13 +377,14 @@ final class ActivitiesPage {
 		}
 		$lists = PriceLists::for_activity( $activity );
 		$lists = array_pad( $lists, max( 4, count( $lists ) + 1 ), array( 'label' => '', 'cents' => 0, 'entries' => 1 ) );
-		$rows  = '';
+		$rows  = '<div class="asem-pl-row asem-pl-head"><span>Nome</span><span>Prezzo</span><span>Ingressi</span></div>';
 		foreach ( array_slice( $lists, 0, PriceLists::MAX ) as $i => $l ) {
-			$rows .= '<tr><td><input type="hidden" name="pl_key[' . (int) $i . ']" value="' . esc_attr( (string) ( $l['key'] ?? '' ) ) . '"><input type="text" name="pl_label[' . (int) $i . ']" value="' . esc_attr( $l['label'] ) . '" placeholder="es. Individuale" maxlength="60"></td>'
-				. '<td><input type="text" name="pl_price[' . (int) $i . ']" size="7" value="' . esc_attr( '' === $l['label'] ? '' : Money::plain( (int) $l['cents'] ) ) . '"> €</td>'
-				. '<td><input type="number" name="pl_entries[' . (int) $i . ']" min="1" max="50" style="width:60px" value="' . (int) $l['entries'] . '"></td></tr>';
+			$rows .= '<div class="asem-pl-row"><input type="hidden" name="pl_key[' . (int) $i . ']" value="' . esc_attr( (string) ( $l['key'] ?? '' ) ) . '">'
+				. '<input type="text" class="asem-pl-name" name="pl_label[' . (int) $i . ']" value="' . esc_attr( $l['label'] ) . '" placeholder="es. Individuale" maxlength="60" aria-label="Nome del listino">'
+				. '<span class="asem-pl-price"><input type="text" name="pl_price[' . (int) $i . ']" size="7" value="' . esc_attr( '' === $l['label'] ? '' : Money::plain( (int) $l['cents'] ) ) . '" aria-label="Prezzo in euro"> €</span>'
+				. '<input type="number" name="pl_entries[' . (int) $i . ']" min="1" max="50" value="' . (int) $l['entries'] . '" aria-label="Ingressi"></div>';
 		}
-		return '<tr><th>Listini</th><td><table class="widefat" style="max-width:520px"><thead><tr><th>Nome</th><th>Prezzo</th><th>Ingressi</th></tr></thead><tbody>' . $rows . '</tbody></table>'
+		return '<tr><th>Listini</th><td><div class="asem-pl">' . $rows . '</div>'
 			. '<p class="description">Facoltativi: ad esempio Individuale, Di gruppo, Pacchetto 4 individuale, Pacchetto 4 di gruppo. In prenotazione la segreteria sceglie il listino; con 4 ingressi il prezzo del pacchetto si paga una volta e le altre date si prenotano «dal pacchetto» senza altro da pagare. Righe vuote ignorate; senza listini vale il contributo sopra.</p></td></tr>';
 	}
 

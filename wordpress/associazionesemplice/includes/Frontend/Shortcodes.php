@@ -69,6 +69,7 @@ final class Shortcodes {
 			case 'tessera':
 				return Views::card();
 			case 'calendario':
+				Views::no_cache();
 				return Views::calendar();
 			case 'avvisi':
 				return Views::notices();
@@ -92,8 +93,10 @@ final class Shortcodes {
 			case 'area_volontari':
 				return Views::volunteer();
 			case 'attivita':
+				Views::no_cache();
 				return Views::activities( shortcode_atts( array( 'anno' => '', 'tipo' => '', 'id' => '', 'date' => '5' ), $atts ) );
 			case 'prossimi_eventi':
+				Views::no_cache();
 				return Views::upcoming( shortcode_atts( array( 'limite' => '5', 'prenotazione' => 'si' ), $atts ) );
 			case 'bonifico':
 				return Views::bank_public();

@@ -110,14 +110,26 @@ final class Views {
 		);
 	}
 
+	/**
+	 * Questa pagina cambia con i posti, i prenotati o chi la guarda: non va nella cache di pagina (ne avrebbe dati vecchi, a volte per giorni).
+	 * Vale per i plugin di cache che rispettano la costante standard e per LiteSpeed (azione apposita).
+	 */
+	public static function no_cache(): void {
+		if ( ! defined( 'DONOTCACHEPAGE' ) ) {
+			define( 'DONOTCACHEPAGE', true ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- costante standard dei plugin di cache
+		}
+		do_action( 'litespeed_control_set_nocache', 'Associazione Semplice: posti e prenotazioni' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- azione di LiteSpeed Cache
+		if ( ! headers_sent() ) {
+			nocache_headers();
+		}
+	}
+
 	/** Esegue $fn( persona ) solo se l'utente è collegato e ha una scheda socio; altrimenti mostra il messaggio giusto. */
 	public static function with_person( callable $fn, string $class = '' ): string {
 		if ( ! is_user_logged_in() ) {
 			return self::login_prompt();
 		}
-		if ( ! defined( 'DONOTCACHEPAGE' ) ) {
-			define( 'DONOTCACHEPAGE', true ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- costante standard dei plugin di cache: dati personali mai nella cache di pagina
-		}
+		self::no_cache();
 		$uid      = get_current_user_id();
 		$is_admin = Access::is_admin_user( $uid );
 		if ( ! $is_admin && ! Edition::allows( 'member_area' ) ) {
@@ -1265,6 +1277,7 @@ final class Views {
 	 * e il pulsante per prenotarsi (soci con tessera valida, anche per i propri ospiti).
 	 */
 	public static function activities( array $atts = array() ): string {
+		self::no_cache();
 		$svc   = Plugin::activities();
 		$label = ! empty( $atts['anno'] ) ? (string) $atts['anno'] : Settings::social_year()->label();
 		$kind  = self::kind_from_text( (string) ( $atts['tipo'] ?? '' ) );
@@ -1323,6 +1336,7 @@ final class Views {
 
 	/** Le prossime date di tutti gli eventi, in ordine di data. */
 	public static function upcoming( array $atts = array() ): string {
+		self::no_cache();
 		$rows = Plugin::activities()->upcoming_sessions( max( 1, min( 50, (int) ( $atts['limite'] ?? 5 ) ) ) );
 		if ( ! $rows ) {
 			return self::wrap( '<p class="asemf-muted">Nessun evento in programma.</p>' );
