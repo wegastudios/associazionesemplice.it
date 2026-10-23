@@ -12,7 +12,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Più livelli di socio con quote diverse | — | ✓ | ✓ |
 | Nucleo familiare con sconto per i familiari | — | ✓ | ✓ |
 | Ospiti con conteggio delle partecipazioni e invito a iscriversi | ✓ | ✓ | ✓ |
-| Ospiti dell'associazione e del volontario con quote ripartite (per amministratori e segreteria) | ✓ | ✓ | ✓ |
+| Ospiti dell'associazione e del volontario con quote ripartite e rimborso al volontario (per amministratori e segreteria) | — | ✓ | ✓ |
 | Importazione di soci e ospiti da Excel, CSV e WP All Import | ✓ | ✓ | ✓ |
 | Esportazione di soci e ospiti | ✓ | ✓ | ✓ |
 | Tessera digitale e stampabile, con colori e logo | ✓ | ✓ | ✓ |
