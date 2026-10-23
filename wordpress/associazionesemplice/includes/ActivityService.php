@@ -395,7 +395,16 @@ class ActivityService {
 		}
 		$n = $this->normalize_session( $s );
 		$this->validate_session( $n );
+		$this->assert_dates_free( $activity_id, array( array( 'date' => $n['session_date'], 'start' => $n['start_time'], 'end' => $n['end_time'] ) ) );
 		return $this->insert_session( $activity_id, $n );
+	}
+
+	/** Le estensioni (risorse) possono rifiutare date che si sovrappongono a qualcosa. @throws \InvalidArgumentException */
+	private function assert_dates_free( int $activity_id, array $dates ): void {
+		$errors = (array) apply_filters( 'asem_session_errors', array(), $activity_id, $dates );
+		if ( $errors ) {
+			throw new \InvalidArgumentException( esc_html( implode( ' ', array_map( 'strval', $errors ) ) ) );
+		}
 	}
 
 	public function update_session( int $session_id, array $s ): void {
@@ -408,6 +417,9 @@ class ActivityService {
 		$act = $this->get( (int) $cur['activity_id'] );
 		if ( $act && $n['session_date'] !== (string) $cur['session_date'] ) { // si controlla solo se la data cambia: le date già presenti non bloccano altre modifiche
 			self::assert_in_social_year( (string) $act['social_year'], (string) $n['session_date'], 'La data dell\'evento' );
+		}
+		if ( $n['session_date'] !== (string) $cur['session_date'] || $n['start_time'] !== $cur['start_time'] || $n['end_time'] !== $cur['end_time'] ) { // si controlla solo se cambia quando si tiene
+			$this->assert_dates_free( (int) $cur['activity_id'], array( array( 'date' => $n['session_date'], 'start' => $n['start_time'], 'end' => $n['end_time'] ) ) );
 		}
 		$this->db()->update( Db::t( 'sessions' ), $n, array( 'id' => $session_id ) );
 		Audit::log( 'session.updated', 'activity', (int) $cur['activity_id'], array( 'session' => $session_id ) );
@@ -436,6 +448,9 @@ class ActivityService {
 		foreach ( $this->sessions( $activity_id ) as $s ) {
 			$have[ $s['session_date'] . '|' . (string) $s['start_time'] ] = true;
 		}
+		$this->assert_dates_free( $activity_id, array_values( array_filter( $dates, function ( $d ) use ( $have ) {
+			return ! isset( $have[ $d['date'] . '|' . (string) $d['start'] ] );
+		} ) ) );
 		$made = 0;
 		foreach ( $dates as $d ) {
 			if ( isset( $have[ $d['date'] . '|' . (string) $d['start'] ] ) ) {
@@ -466,7 +481,14 @@ class ActivityService {
 			throw new \InvalidArgumentException( 'La data finale è prima di quella iniziale.' );
 		}
 		$existing = array_column( $this->sessions( $activity_id ), 'session_date' );
-		$made     = 0;
+		$new      = array();
+		for ( $c = $d; $c <= $end && count( $new ) < 121; $c = $c->modify( '+7 days' ) ) {
+			if ( ! in_array( $c->format( 'Y-m-d' ), $existing, true ) ) {
+				$new[] = array( 'date' => $c->format( 'Y-m-d' ), 'start' => $time, 'end' => null );
+			}
+		}
+		$this->assert_dates_free( $activity_id, $new );
+		$made = 0;
 		while ( $d <= $end ) {
 			if ( $made >= 120 ) {
 				throw new \InvalidArgumentException( 'Troppe date in una volta (massimo 120): accorcia il periodo.' );

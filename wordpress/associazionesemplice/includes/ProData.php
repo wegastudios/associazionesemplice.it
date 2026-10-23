@@ -18,6 +18,7 @@ final class ProData {
 		add_action( 'asem_registration_deleted', array( __CLASS__, 'registration_deleted' ), 10, 2 );
 		add_filter( 'asem_activity_saved', array( __CLASS__, 'activity_saved' ), 10, 3 );
 		add_filter( 'asem_activity_errors', array( __CLASS__, 'activity_errors' ), 10, 3 );
+		add_filter( 'asem_session_errors', array( __CLASS__, 'session_errors' ), 10, 3 );
 		add_filter( 'asem_wizard_next', array( __CLASS__, 'wizard_next' ), 10, 2 );
 		add_filter( 'asem_activity_form_rows', array( __CLASS__, 'activity_form_rows' ), 10, 2 );
 		add_filter( 'asem_entity_values', array( __CLASS__, 'entity_values' ), 10, 3 );
@@ -124,14 +125,30 @@ final class ProData {
 		if ( Edition::has( 'credits' ) && array_key_exists( 'credit_price', $p ) ) { // crediti previsti per l'attività (vuoto = non si paga in crediti)
 			Credits::set_activity_price( $activity_id, (int) $p['credit_price'] );
 		}
+		$res_on = Edition::has( 'resources' ) && ( array_key_exists( 'resource_id', $p ) || array_key_exists( 'setup_before', $p ) || array_key_exists( 'setup_after', $p ) );
+		if ( $res_on ) { // com'era prima: serve per distinguere le sovrapposizioni nuove da quelle già presenti e per tornare indietro
+			$old_link  = Resources::activity_link( $activity_id );
+			$old_setup = Db::db()->get_row( Db::db()->prepare( 'SELECT setup_before_min, setup_after_min FROM ' . Db::t( 'activities' ) . ' WHERE id = %d', $activity_id ), ARRAY_A ) ?: array( 'setup_before_min' => null, 'setup_after_min' => null );
+			$old_over  = $old_link ? Resources::activity_overlaps( $activity_id, $old_link ) : array();
+		}
 		if ( Edition::has( 'resources' ) && ( array_key_exists( 'setup_before', $p ) || array_key_exists( 'setup_after', $p ) ) ) { // allestimento prima e dopo, prima del collegamento: il controllo dei conflitti lo usa
 			Resources::set_activity_setup( $activity_id, ResourceRules::parse_duration( (string) ( $p['setup_before'] ?? '' ) ), ResourceRules::parse_duration( (string) ( $p['setup_after'] ?? '' ) ) );
 		}
 		if ( Edition::has( 'resources' ) && array_key_exists( 'resource_id', $p ) ) {
 			$raw = trim( (string) $p['resource_id'] ); // vuoto = non indicata, «none» = nessuna risorsa (evento fuori sede)
-			$n   = Resources::link_activity( $activity_id, 'none' === $raw ? 0 : ( '' === $raw ? null : (int) $raw ) );
-			if ( $n > 0 ) {
-				$notes[] = ' Attenzione: sulla risorsa ci sono già ' . $n . ( 1 === $n ? ' prenotazione' : ' prenotazioni' ) . ' negli orari di questa attività (prossimi 120 giorni): vanno annullate o spostate.';
+			Resources::link_activity( $activity_id, 'none' === $raw ? 0 : ( '' === $raw ? null : (int) $raw ) );
+		}
+		if ( $res_on ) {
+			$link = Resources::activity_link( $activity_id );
+			$over = $link ? Resources::activity_overlaps( $activity_id, $link ) : array();
+			$new  = array_diff_key( $over, $old_over );
+			if ( $new ) { // niente sovrapposizioni nuove: risorsa e allestimento tornano com'erano
+				Resources::set_activity_setup( $activity_id, null === $old_setup['setup_before_min'] ? null : (int) $old_setup['setup_before_min'], null === $old_setup['setup_after_min'] ? null : (int) $old_setup['setup_after_min'] );
+				Resources::link_activity( $activity_id, $old_link );
+				throw new \InvalidArgumentException( esc_html( 'Non posso salvare: la risorsa risulterebbe occupata due volte. Si sovrappone a ' . implode( '; ', array_slice( array_values( $new ), 0, 5 ) ) . '. Risorsa e allestimento sono rimasti come prima (gli altri dati sono stati salvati): cambia orari, risorsa o allestimento.' ) );
+			}
+			if ( $over ) { // quelle già presenti non si toccano: si segnalano e vanno sistemate a mano
+				$notes[] = ' Attenzione: restano ' . count( $over ) . ( 1 === count( $over ) ? ' sovrapposizione già presente' : ' sovrapposizioni già presenti' ) . ' sulla risorsa (prossimi 120 giorni): vanno sistemate a mano.';
 			}
 		}
 		return $notes;
@@ -165,6 +182,18 @@ final class ProData {
 					break;
 				}
 			}
+		}
+		return $errors;
+	}
+
+	/** Date nuove o spostate di un corso o evento: non possono sovrapporsi (allestimenti compresi) a prenotazioni o ad altre attività sulla risorsa. */
+	public static function session_errors( array $errors, int $activity_id, array $dates ): array {
+		if ( ! Edition::has( 'resources' ) || ! $dates ) {
+			return $errors;
+		}
+		$over = Resources::dates_overlaps( $activity_id, $dates );
+		if ( $over ) {
+			$errors[] = 'Le date si sovrappongono (allestimenti compresi) a ' . implode( '; ', array_slice( $over, 0, 5 ) ) . ': scegli altri giorni o orari.';
 		}
 		return $errors;
 	}

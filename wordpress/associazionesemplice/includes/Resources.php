@@ -794,6 +794,75 @@ final class Resources {
 		return $n;
 	}
 
+	/**
+	 * Sovrapposizioni di periodi di occupazione (con gli allestimenti) con le prenotazioni dei soci e con altri corsi o eventi della stessa risorsa.
+	 * Le chiavi identificano la sovrapposizione: servono a distinguere quelle nuove da quelle già presenti.
+	 *
+	 * @param array[] $windows starts, ends (Y-m-d H:i:s)
+	 * @return array<string,string> chiave => descrizione
+	 */
+	public static function window_conflicts( int $resource_id, array $windows, int $ignore_activity = 0 ): array {
+		$out = array();
+		foreach ( $windows as $w ) {
+			foreach ( self::between( $resource_id, $w['starts'], $w['ends'] ) as $r ) {
+				$out[ 'r' . $r['id'] . '|' . $w['starts'] ] = 'la prenotazione di ' . trim( $r['first_name'] . ' ' . $r['last_name'] ) . ' del ' . mysql2date( 'd/m/Y \a\l\l\e H:i', (string) $r['starts_at'] );
+			}
+			foreach ( self::activity_busy( $resource_id, substr( $w['starts'], 0, 10 ), substr( $w['ends'], 0, 10 ) ) as $x ) {
+				if ( (int) $x['activity_id'] !== $ignore_activity && ResourceRules::overlaps( $w['starts'], $w['ends'], $x['starts'], $x['ends'] ) ) {
+					$out[ 'a' . $x['activity_id'] . '|' . $x['starts'] . '|' . $w['starts'] ] = '«' . $x['title'] . '» del ' . mysql2date( 'd/m/Y', substr( $x['core_starts'], 0, 10 ) );
+				}
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * Date nuove di un'attività collegata a una risorsa a fasce: descrizione delle sovrapposizioni (con gli allestimenti), vuoto se tutto libero.
+	 *
+	 * @param array[] $dates date, start, end
+	 * @return string[]
+	 */
+	public static function dates_overlaps( int $activity_id, array $dates ): array {
+		$rid = self::activity_link( $activity_id );
+		$res = $rid ? self::get( $rid ) : null;
+		$a   = self::db()->get_row( self::db()->prepare( 'SELECT kind, setup_before_min, setup_after_min FROM ' . Db::t( 'activities' ) . ' WHERE id = %d', $activity_id ), ARRAY_A );
+		if ( ! $res || ! $a || ResourceRules::SLOT !== $res['mode'] ) {
+			return array();
+		}
+		$before = ResourceRules::setup_total( (int) $res['setup_before_min'], null === $a['setup_before_min'] ? null : (int) $a['setup_before_min'], (string) $a['kind'] );
+		$after  = ResourceRules::setup_total( (int) $res['setup_after_min'], null === $a['setup_after_min'] ? null : (int) $a['setup_after_min'], (string) $a['kind'] );
+		$wins   = array();
+		foreach ( $dates as $d ) {
+			$wins[] = ResourceRules::busy_window( (string) $d['date'], $d['start'] ?: null, $d['end'] ?: null, $before, $after );
+		}
+		return array_values( self::window_conflicts( (int) $rid, $wins, $activity_id ) );
+	}
+
+	/** Sovrapposizioni dell'attività con la risorsa che occupa (prossimi 120 giorni): vedi {@see window_conflicts()}. */
+	public static function activity_overlaps( int $activity_id, int $resource_id ): array {
+		$today = Db::today();
+		$mine  = array_values( array_filter( self::activity_busy( $resource_id, $today, gmdate( 'Y-m-d', strtotime( $today . ' +120 days' ) ) ), function ( $w ) use ( $activity_id ) {
+			return (int) $w['activity_id'] === $activity_id;
+		} ) );
+		return self::window_conflicts( $resource_id, $mine, $activity_id );
+	}
+
+	/** Tutte le sovrapposizioni già presenti sulle risorse a fasce (prossimi 120 giorni), da sistemare a mano. @return string[] "Risorsa: descrizione" */
+	public static function existing_overlaps(): array {
+		$out = array();
+		foreach ( self::all() as $res ) {
+			if ( ResourceRules::SLOT !== $res['mode'] ) {
+				continue;
+			}
+			foreach ( self::db()->get_col( self::db()->prepare( 'SELECT id FROM ' . Db::t( 'activities' ) . ' WHERE resource_id = %d AND deleted_at IS NULL', (int) $res['id'] ) ) ?: array() as $aid ) {
+				foreach ( self::activity_overlaps( (int) $aid, (int) $res['id'] ) as $k => $text ) {
+					$out[ (int) $res['id'] . '|' . $aid . '|' . $k ] = $res['name'] . ': ' . $text;
+				}
+			}
+		}
+		return array_values( $out );
+	}
+
 	// ---------- Lista d'attesa delle assegnazioni ----------
 
 	/** Mette un socio in coda per una risorsa assegnata a periodo (posto auto, armadietto, posto barca). @throws \InvalidArgumentException */

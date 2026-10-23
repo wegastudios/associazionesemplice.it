@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.22
+- Prima di aggiungere o spostare le date di un corso o di un evento il programma controlla che non si sovrappongano a qualcos'altro.
+
 ## 1.2.21
 - Prima di salvare un corso o un evento il programma controlla che la risorsa scelta sia libera.
 - Un corso o un evento può avere un tempo di allestimento prima e dopo.

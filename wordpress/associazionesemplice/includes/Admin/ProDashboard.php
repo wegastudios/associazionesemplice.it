@@ -12,6 +12,12 @@ final class ProDashboard {
 	}
 
 	public static function alerts(): void {
+		if ( \AssociazioneSemplice\Edition::has( 'resources' ) && current_user_can( \AssociazioneSemplice\Plugin::CAP_OPS ) ) {
+			$ov = \AssociazioneSemplice\Resources::existing_overlaps(); // già presenti: non si cambiano da sole, vanno sistemate a mano
+			if ( $ov ) {
+				echo Dismiss::html( 'res-overlap-' . count( $ov ), 'warning', '<strong>Risorse occupate due volte (' . count( $ov ) . ').</strong> ' . esc_html( implode( ' · ', array_slice( $ov, 0, 4 ) ) ) . ( count( $ov ) > 4 ? ' …' : '' ) . ' Vanno sistemate a mano: sposta o annulla una delle due. <a href="' . esc_url( Ui::url( 'asem-resources' ) ) . '">Apri le risorse</a>.', 7 ); // phpcs:ignore WordPress.Security.EscapeOutput
+			}
+		}
 		if ( \AssociazioneSemplice\Edition::has( 'insurance' ) && (bool) \AssociazioneSemplice\Settings::get( 'insurance_association' ) ) {
 			$rc = \AssociazioneSemplice\AssocPolicies::rc_status();
 			if ( \AssociazioneSemplice\Insurance::VALID !== $rc ) {
