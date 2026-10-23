@@ -15,7 +15,7 @@ Il plugin gratuito contiene tutto il nucleo per gestire una piccola associazione
 
 - **Soci**: libro soci con una quota associativa (e l'opzione socio fondatore), tessera digitale con QR, ospiti, importazione da Excel o CSV ed esportazione.
 - **Attività**: corsi ed eventi con iscrizioni, posti limitati, lista d'attesa, calendario e registrazione degli ingressi.
-- **Soldi**: prima nota con una cassa unica, spese con allegati e donazioni tramite PayPal.
+- **Cassa e conti**: prima nota con una cassa unica, spese con allegati e donazioni tramite PayPal.
 - **Registri e privacy**: verbali, informativa privacy, consensi, anonimizzazione e download dei dati personali.
 - **Area riservata** per i soci, con avvisi, regolamento, tessera, eventi e corsi.
 - **Ruoli**: presidente, vicepresidente, tesoriere, consiglieri e segreteria, con permessi separati.
