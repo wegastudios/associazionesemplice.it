@@ -1,6 +1,6 @@
 # Pulizia del gratuito: nessuna traccia delle funzioni Pro
 
-Decisione del titolare (2026-10-20): il pacchetto gratuito (`AssociazioneSemplice-wporg.zip`) non deve contenere codice, tabelle, impostazioni o nomi delle funzioni Pro.
+Decisione del titolare (2026-10-20): il pacchetto gratuito (`associazionesemplice.zip`) non deve contenere codice, tabelle, impostazioni o nomi delle funzioni Pro.
 Motivi: (1) un revisore di WordPress.org potrebbe obiettare; (2) sicurezza: un gratuito analizzato con cattive intenzioni non deve far intuire cosa c'è nel Pro.
 La **promozione** del Pro resta consentita (pagina «Scopri il Pro», testi che spiegano vantaggi e funzioni): è testo, non logica.
 Tutto il sistema di **licenza** passa nel Pro: il gratuito non sa nulla di chiavi, piani, avvisi o portale.
