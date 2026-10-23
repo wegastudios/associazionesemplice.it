@@ -40,7 +40,7 @@ MD,
 
 ## Iscrivere un nuovo socio
 
-1. Vai nell'elenco **Soci** e aggiungi una nuova persona con nome, cognome ed email.
+1. Vai nell'elenco **Soci** e aggiungi una nuova persona con nome e cognome. L'**email è facoltativa**: con l'email il socio ha subito l'accesso all'area riservata; senza, l'accesso si attiva con un link da mandargli su WhatsApp.
 2. Registra la quota associativa dalla scheda del socio o dall'incasso: se il socio ha la tessera non valida, la quota si inserisce da sola in qualunque incasso.
 3. La tessera si attiva con il versamento.
 
@@ -238,6 +238,10 @@ Se il socio ha indicato solo il cellulare, il plugin **non modifica nulla da sol
 1. Apri la **Bacheca**: la richiesta compare nell'elenco.
 2. Verifica la persona, per esempio scrivendole su WhatsApp con il pulsante già pronto.
 3. Scegli **Approva e manda il link**: si crea l'utente (o si cambia l'email) e parte il link. Oppure **Rifiuta**.
+
+## Soci senza email
+
+Nella scheda del socio l'**email è facoltativa**. Con l'email il socio ha subito l'accesso all'area riservata. Senza email, l'accesso si attiva con un **link da mandare al socio su WhatsApp**.
 
 ## Se l'ente chiede dati obbligatori
 

@@ -163,7 +163,7 @@ MD,
         'topic' => 'domande-frequenti', 'section' => 'Uso quotidiano', 'slug' => 'soci-senza-email',
         'title' => 'Posso gestire soci che non hanno un indirizzo email?',
         'body' => <<<'MD'
-Sì. Un socio senza email non avrà un accesso al sito, ma resta nel libro soci con tessera, quote e partecipazioni. Gli **ospiti** senza email ricevono avvisi e promemoria tramite il socio che li ospita.
+Sì. Nella scheda del socio l'**email è facoltativa**. Con l'email il socio ha subito accesso all'area riservata. Senza email resta nel libro soci con tessera, quote e partecipazioni, e l'accesso si attiva con un **link da mandargli su WhatsApp**. Gli **ospiti** senza email ricevono avvisi e promemoria tramite il socio che li ospita.
 
 Se un socio vuole accedere e non ha l'email, può usare il **Primo accesso** indicando il cellulare: la segreteria verifica la persona e approva l'accesso. Vedi [Primo accesso dei soci e soci senza email](guida:primo-accesso-e-soci-senza-email).
 MD,

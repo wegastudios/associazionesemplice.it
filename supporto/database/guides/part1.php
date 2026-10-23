@@ -78,6 +78,10 @@ La configurazione guidata propone e crea le pagine per area, solo quelle che ser
 - **Ingressi**: elenco dei prenotati e registrazione degli ingressi per chi gestisce un evento.
 - **Pubblico**: elenco attività, prossimi eventi, coordinate per il bonifico, 5 per mille, accesso.
 
+## Se usi un plugin di cache
+
+Gli elenchi pubblici di attività ed eventi e i posti liberi non restano più «vecchi» nella cache delle pagine (per esempio con LiteSpeed). Se avevi già pagine in cache prima dell'aggiornamento alla versione 1.2.24, **svuota la cache una volta** dal plugin di cache.
+
 ## Creare una pagina a mano
 
 1. Crea una pagina in WordPress.
