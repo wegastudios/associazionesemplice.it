@@ -12,7 +12,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Più livelli di socio con quote diverse | — | ✓ | ✓ |
 | Nucleo familiare con sconto per i familiari | — | ✓ | ✓ |
 | Ospiti con conteggio delle partecipazioni e invito a iscriversi | ✓ | ✓ | ✓ |
-| Ospiti dell'associazione e del volontario con quote ripartite (per amministratori e segreteria) | ✓ | ✓ | ✓ |
+| Ospiti dell'associazione e del volontario con quote ripartite (per amministratori e segreteria) | — | ✓ | ✓ |
 | Importazione di soci e ospiti da Excel, CSV e WP All Import | ✓ | ✓ | ✓ |
 | Esportazione di soci e ospiti | ✓ | ✓ | ✓ |
 | Tessera digitale e stampabile, con colori e logo | ✓ | ✓ | ✓ |
@@ -49,6 +49,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Funzione | Free | Pro Contabile | Pro Fiscale |
 |---|---|---|---|
 | Prima nota con cassa unica | ✓ | ✓ | ✓ |
+| Anni solari: apertura, chiusura e riapertura dell'anno | ✓ | ✓ | ✓ |
 | Incassi con calcolo del resto | ✓ | ✓ | ✓ |
 | Spese con scontrini e fatture allegati | ✓ | ✓ | ✓ |
 | Importazione ed esportazione della prima nota | ✓ | ✓ | ✓ |
@@ -56,6 +57,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Pagamenti online con Stripe, PayPal o WooCommerce | — | ✓ | ✓ |
 | Conti multipli, giroconti e cassa per più persone | — | ✓ | ✓ |
 | Fondi accantonati (per esempio rimborso dei volontari) | — | ✓ | ✓ |
+| Tabella dei fondi da rimborsare per anno | — | ✓ | ✓ |
 | Ricevute in PDF e attestazione annuale | — | ✓ | ✓ |
 | Report di gestione (conti e liquidità, anno sociale) | — | ✓ | ✓ |
 
@@ -65,7 +67,6 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 |---|---|---|---|
 | IVA su quote, attività, incassi e spese | — | — | ✓ |
 | 5 per mille e rendiconto sull'utilizzo | — | — | ✓ |
-| Anni solari, apertura e chiusura dell'anno | — | — | ✓ |
 | Rendiconto per cassa per il commercialista | — | — | ✓ |
 
 ## Registri e privacy
@@ -110,7 +111,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 ## Passare da una versione all'altra
 
 - **Da Free a Pro Contabile**: si aggiungono pagamenti online, livelli di socio, conti e fondi, ricevute, comunicazioni, app, wallet e personalizzazione dei testi.
-- **Da Pro Contabile a Pro Fiscale**: si aggiungono IVA, 5 per mille, anni solari e rendiconto per cassa.
+- **Da Pro Contabile a Pro Fiscale**: si aggiungono IVA, 5 per mille e rendiconto per cassa.
 - **Non si reinstalla nulla** (se hai già Pro): cambia la chiave di licenza e compaiono le funzioni in più. Se la licenza scade, il plugin torna alle funzioni di base e i dati restano intatti.
 
 Per i passi concreti leggi [Passare a Pro, provarlo e rinnovare](guida:passare-a-pro-e-rinnovare) e [Installare Associazione Semplice Pro](guida:installare-associazione-semplice-pro).

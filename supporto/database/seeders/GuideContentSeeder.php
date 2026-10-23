@@ -26,8 +26,13 @@ class GuideContentSeeder extends Seeder
         'altro' => ['Altro', 'Privacy e dati personali.'],
     ];
 
+    /** @var array<string, string> articoli rinominati: lo slug vecchio si elimina, cosi non restano doppioni */
+    public const RENAMED = ['anni-solari-e-rendiconto' => 'rendiconto-per-cassa-e-report'];
+
     public function run(): void
     {
+        Article::query()->whereIn('slug', array_keys(self::RENAMED))->delete();
+
         $sort = 0;
         $topics = [];
         foreach (self::TOPICS as $slug => [$name, $description]) {

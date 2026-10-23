@@ -31,28 +31,16 @@ Con **Cassa per più persone** incassi in un'unica operazione quote e contributi
 
 ## Fondi
 
-I fondi accantonano somme già incassate. Per ogni anno solare vedi quanto è stato accantonato, rimborsato o liberato e quanto resta da rimborsare. **Un anno con fondi non rimborsati non si chiude.**
+I fondi accantonano somme già incassate. Per ogni anno solare vedi quanto è stato accantonato, rimborsato o liberato e quanto resta da rimborsare: la tabella dei **fondi da rimborsare per anno** è nella pagina degli anni solari della versione Pro. **Un anno con fondi non rimborsati non si chiude.** Per aprire e chiudere gli anni vedi [Aprire e chiudere gli anni solari](guida:aprire-e-chiudere-gli-anni-solari).
 MD,
     ],
     [
-        'topic' => 'plugin-pro', 'section' => 'Contabilità e adempimenti', 'slug' => 'anni-solari-e-rendiconto',
-        'title' => 'Anni solari, chiusura e rendiconto per cassa',
+        'topic' => 'plugin-pro', 'section' => 'Contabilità e adempimenti', 'slug' => 'rendiconto-per-cassa-e-report',
+        'title' => 'Rendiconto per cassa e report dell\'anno',
         'body' => <<<'MD'
-> Disponibile in: Pro Fiscale
+> Disponibile in: Report: Pro Contabile e Pro Fiscale. Rendiconto per cassa: Pro Fiscale.
 
-Questa parte serve a chi deve chiudere l'anno e preparare i documenti per il commercialista.
-
-## Aprire e chiudere un anno
-
-1. Vai in **Contabilità → Anni solari**.
-2. **Crea** un anno nuovo (per esempio a novembre, per l'anno dopo).
-3. A fine anno **chiudilo**.
-
-Si può incassare, spendere e girare denaro solo negli anni **aperti**. Un anno chiuso rifiuta nuovi movimenti e non permette di annullare i suoi, finché non lo riapri a mano. L'anno in corso esiste sempre.
-
-## La quota associativa
-
-La quota va all'anno solare più recente creato. Un socio che ha già l'anno in corso rinnova in anticipo; un nuovo socio paga il più recente e ha l'anno in corso in omaggio.
+Questa parte serve a chi deve preparare i documenti per il commercialista. L'apertura e la chiusura dell'anno solare sono invece disponibili in tutte le versioni: vedi [Aprire e chiudere gli anni solari](guida:aprire-e-chiudere-gli-anni-solari).
 
 ## Il rendiconto per cassa
 

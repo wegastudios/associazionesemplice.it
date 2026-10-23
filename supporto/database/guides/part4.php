@@ -59,6 +59,37 @@ Non vanno nella libreria media del sito: stanno in una cartella privata e si apr
 MD,
     ],
     [
+        'topic' => 'pagamenti', 'section' => 'Incassi e spese', 'slug' => 'aprire-e-chiudere-gli-anni-solari',
+        'title' => 'Aprire e chiudere gli anni solari',
+        'body' => <<<'MD'
+> Disponibile in: Free, Pro Contabile, Pro Fiscale (dalla versione 1.2.19 del plugin)
+
+La tessera dura l'anno solare e la prima nota si organizza per anno solare: per questo l'apertura e la chiusura dell'anno sono disponibili in tutte le versioni. Solo gli amministratori possono aprire, chiudere e riaprire un anno.
+
+## Aprire l'anno nuovo
+
+1. Vai in **Cassa → Anni solari**.
+2. **Apri** l'anno nuovo (per esempio a novembre, per l'anno dopo).
+
+Da settembre la **Bacheca** ti ricorda di aprire il nuovo anno. L'avviso si può chiudere e ricompare a inizio mese; a dicembre è sempre visibile. L'anno in corso esiste sempre.
+
+## Chiudere un anno
+
+1. Nella stessa pagina scegli l'anno e premi **Chiudi**.
+2. Per chiudere un anno non devono restare fondi non rimborsati (funzione Pro).
+
+Si può incassare, spendere e girare denaro solo negli anni **aperti**. Un anno chiuso rifiuta nuovi movimenti e non permette di annullare i suoi. Se hai bisogno di correggere qualcosa, **riapri** l'anno dalla stessa pagina.
+
+## La quota associativa
+
+La quota va all'anno solare più recente creato. Un socio che ha già l'anno in corso rinnova in anticipo; un nuovo socio paga il più recente e ha l'anno in corso in omaggio.
+
+## Con Pro
+
+Con Pro Contabile e Pro Fiscale la stessa pagina è raggiungibile anche da **Contabilità** e mostra la tabella dei **fondi da rimborsare per anno**. Report e rendiconto per cassa restano funzioni Pro (vedi [Rendiconto per cassa e report dell'anno](guida:rendiconto-per-cassa-e-report)).
+MD,
+    ],
+    [
         'topic' => 'pagamenti', 'section' => 'Incassi e spese', 'slug' => 'importare-ed-esportare-la-prima-nota',
         'title' => 'Importare ed esportare la prima nota',
         'body' => <<<'MD'

@@ -91,7 +91,7 @@ Se l'ente non li accetta (**Impostazioni → Soci e quote**), non se ne registra
 
 ## Ospiti dell'associazione e ospiti del volontario
 
-> Disponibile dalla versione 1.2.18. Solo per amministratori, segreteria e consiglieri con accesso operativo (mai per il socio).
+> Disponibile in: Pro Contabile e Pro Fiscale (compare in prenotazione solo con il Pro, perché si calcola sulla quota del volontario). Solo per amministratori, segreteria e consiglieri con accesso operativo, mai per il socio.
 
 Quando un evento ha una quota per il rimborso del volontario, puoi segnare un ospite in due modi:
 

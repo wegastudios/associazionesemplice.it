@@ -37,7 +37,7 @@ Pro è un plugin a parte, che si aggiunge a quello gratuito e ne estende le funz
 - **Comunicazioni a gruppi**, app installabile con notifiche e tessera nel wallet del telefono.
 - **Incasso sul posto** agli eventi, assicurazioni dei volontari e presenze.
 - **Personalizzazione** di testi, tipo di ente e lingue.
-- Con **Pro Fiscale** anche IVA, 5 per mille, anni solari e rendiconto per cassa.
+- Con **Pro Fiscale** anche IVA, 5 per mille e rendiconto per cassa.
 
 Leggi [Installare Associazione Semplice Pro](guida:installare-associazione-semplice-pro) per i passi di installazione.
 MD,
@@ -52,7 +52,9 @@ MD,
 
 - l'**IVA** su quote, attività, incassi e spese;
 - il **5 per mille** con il registro dei contributi e il rendiconto sull'utilizzo;
-- gli **anni solari** con la chiusura dell'anno e il **rendiconto per cassa** per il commercialista.
+- il **rendiconto per cassa** per il commercialista.
+
+L'apertura e la chiusura degli anni solari sono incluse anche nel piano gratuito.
 
 Se la tua associazione non ha partita IVA e un commercialista che richiede questi documenti, Pro Contabile è di solito sufficiente. Puoi passare da un piano all'altro dall'area riservata, senza reinstallare nulla.
 MD,
