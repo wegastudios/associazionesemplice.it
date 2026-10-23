@@ -45,7 +45,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Incasso sul posto durante gli eventi | — | ✓ | ✓ |
 | Suggerimento dei luoghi con Google (con la tua chiave) | ✓ | ✓ | ✓ |
 
-## Soldi
+## Cassa e conti
 
 | Funzione | Free | Pro Contabile | Pro Fiscale |
 |---|---|---|---|
