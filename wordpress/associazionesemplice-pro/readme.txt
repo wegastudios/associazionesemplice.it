@@ -3,7 +3,7 @@ Contributors: wegastudios
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.18
+Stable tag: 1.1.19
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,9 @@ With a license key entered in Associazione Semplice Pro, once a day (and when yo
 The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, Mozilla Public License 2.0) to tell which domain a license covers.
 
 == Changelog ==
+
+= 1.1.19 =
+* Resources: set-up time before and after courses and events (added together with the resource's own); an event must say which resource it uses. Requires Associazione Semplice 1.2.21.
 
 = 1.1.18 =
 * Works with the free plugin 1.2.19 (compatibility level 4): calendar years now live in the free plugin.
