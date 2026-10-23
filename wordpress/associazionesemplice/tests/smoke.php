@@ -6112,21 +6112,6 @@ update_option( 'asem_pages', array( 'area' => 1 ) );
 \AssociazioneSemplice\Backup::mark_downloaded();
 $rs_msg2 = Admin\TechActions::reset_all( array_merge( $rs_ok, array( 'mode' => 'factory', 'users' => '' ) ) );
 asem_ok( '' === (string) Settings::get( 'association_name' ) && '' === (string) Settings::get( 'tax_code' ) && false === get_option( 'asem_pages', false ) && \AssociazioneSemplice\Wizard::pending() && (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) ) < $rs_audit0 && in_array( 'system.reset', array_column( Audit::recent( 10 ), 'action' ), true ) && false !== strpos( $rs_msg2[1], 'Ripristino di fabbrica completato' ) && false !== strpos( $rs_msg2[0], 'asem-wizard' ), 'ripristino di fabbrica: impostazioni, pagine, registro azioni cancellati e configurazione guidata riaperta' );
-// passaggio dal vecchio nome (APSemplice, prefisso apse_) al nuovo
-$lg_old = $wpdb->prefix . 'apse_legacyprobe';
-$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}asem_legacyprobe" );
-$wpdb->query( "CREATE TABLE $lg_old (id int NOT NULL)" );
-update_option( 'apse_legacy_opt', 'valore' );
-$lg_post = wp_insert_post( array( 'post_title' => 'Vecchia', 'post_status' => 'publish', 'post_type' => 'page', 'post_content' => '[apsemplice_tessera] [apsemplice_area_soci]' ) );
-update_post_meta( $lg_post, '_aps_access', 'members' );
-\AssociazioneSemplice\Legacy::convert();
-asem_ok( $wpdb->prefix . 'asem_legacyprobe' === $wpdb->get_var( "SHOW TABLES LIKE '{$wpdb->prefix}asem_legacyprobe'" ) && null === $wpdb->get_var( "SHOW TABLES LIKE '$lg_old'" ), 'passaggio dal vecchio nome: le tabelle apse_ diventano asem_' );
-asem_ok( 'valore' === get_option( 'asem_legacy_opt' ) && false === get_option( 'apse_legacy_opt', false ), 'passaggio dal vecchio nome: le opzioni apse_ diventano asem_' );
-asem_ok( 'members' === get_post_meta( $lg_post, '_asem_access', true ) && false !== strpos( get_post( $lg_post )->post_content, '[associazionesemplice_tessera] [associazionesemplice_area_soci]' ), 'passaggio dal vecchio nome: regole di accesso e shortcode delle pagine' );
-asem_ok( get_role( Plugin::ROLE_MEMBER ) && get_role( Plugin::ROLE_SECRETARY ), 'passaggio dal vecchio nome: i ruoli restano' );
-$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}asem_legacyprobe" );
-delete_option( 'asem_legacy_opt' );
-wp_delete_post( $lg_post, true );
 
 // ---------- Tessere: PDF singolo e fogli A4 con più tessere ----------
 $cd_grid = \AssociazioneSemplice\CardLayout::sheet_grid();

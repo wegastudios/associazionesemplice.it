@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.23
+- Il programma è stato rivisto secondo le indicazioni di WordPress.org: pagine e moduli più sicuri e compatibili.
+- Tolta la migrazione dal vecchio nome APSemplice: non serve più.
+
 ## 1.2.22
 - Prima di aggiungere o spostare le date di un corso o di un evento il programma controlla che non si sovrappongano a qualcos'altro.
 

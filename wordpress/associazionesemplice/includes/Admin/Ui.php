@@ -43,6 +43,15 @@ final class Ui {
 		self::notices();
 	}
 
+	/** Piccolo script di una pagina, accodato con le funzioni di WordPress (parte nel piè di pagina, a pagina costruita). */
+	public static function inline_js( string $js ): void {
+		static $n = 0;
+		$handle = 'asem-inline-' . ( ++$n );
+		wp_register_script( $handle, false, array(), ASEM_VERSION, true );
+		wp_enqueue_script( $handle );
+		wp_add_inline_script( $handle, $js );
+	}
+
 	public static function footer(): void {
 		echo '</div>';
 	}

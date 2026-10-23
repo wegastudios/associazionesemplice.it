@@ -179,7 +179,7 @@ final class FirstAccess {
 			$tries  = (int) get_transient( $rl_key );
 			if ( $tries >= Limits::get( 'first_access_per_ip' ) ) {
 				$error = 'Troppi tentativi: riprova tra qualche minuto.';
-			} elseif ( ! wp_verify_nonce( (string) ( $post['_asem_nonce'] ?? '' ), 'asem_first_access' ) ) {
+			} elseif ( ! wp_verify_nonce( sanitize_text_field( (string) ( $post['_asem_nonce'] ?? '' ) ), 'asem_first_access' ) ) {
 				$error = 'Sessione scaduta: riprova.';
 			} else {
 				set_transient( $rl_key, $tries + 1, HOUR_IN_SECONDS );

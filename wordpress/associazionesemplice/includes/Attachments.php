@@ -115,12 +115,11 @@ final class Attachments {
 		$ids = array();
 		foreach ( $prepared as $f ) {
 			$stored = AttachmentRules::stored_name( bin2hex( random_bytes( 16 ) ) );
-			$target = $dir . '/' . $stored;
-			$ok     = is_uploaded_file( $f['tmp_name'] ) ? move_uploaded_file( $f['tmp_name'], $target ) : copy( $f['tmp_name'], $target ); // phpcs:ignore Generic.PHP.ForbiddenFunctions.Found -- lettura/scrittura in streaming di file grandi
-			if ( ! $ok ) {
+			$target = self::store_file( $f, $dir, $stored );
+			if ( '' === $target ) {
 				throw new \InvalidArgumentException( 'Impossibile salvare "' . $f['name'] . '".' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
-			chmod( $target, 0640 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod -- lettura/scrittura in streaming di file grandi
+			chmod( $target, 0640 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod -- file privato dell'ente: lettura solo per il server
 			self::db()->insert(
 				Db::t( 'attachments' ),
 				array(
@@ -133,6 +132,42 @@ final class Attachments {
 			Audit::log( 'attachment.added', 'transaction', $tx_id, array( 'attachment' => $id, 'bytes' => $f['size'], 'type' => $f['mime'] ) );
 		}
 		return $ids;
+	}
+
+	/**
+	 * Mette il file caricato nella cartella privata con le funzioni di WordPress (wp_handle_upload per i file arrivati dal browser,
+	 * wp_handle_sideload per gli altri). Il nome salvato è già quello casuale, il tipo è stato controllato da {@see prepare()}.
+	 *
+	 * @return string percorso del file salvato, '' se non è riuscito
+	 */
+	private static function store_file( array $f, string $dir, string $stored ): string {
+		if ( ! function_exists( 'wp_handle_upload' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+		}
+		$to_dir = function ( array $u ) use ( $dir ): array {
+			$u['path']   = $dir;
+			$u['subdir'] = '';
+			$u['url']    = '';
+			return $u;
+		};
+		add_filter( 'upload_dir', $to_dir );
+		$file    = array( 'name' => $stored, 'type' => (string) $f['mime'], 'tmp_name' => (string) $f['tmp_name'], 'error' => 0, 'size' => (int) $f['size'] );
+		$handler = is_uploaded_file( $file['tmp_name'] ) ? 'wp_handle_upload' : 'wp_handle_sideload';
+		$res     = $handler(
+			$file,
+			array(
+				'test_form'                => false,
+				'test_type'                => false, // il tipo reale è già stato controllato; il nome salvato non ha estensione
+				'unique_filename_callback' => function () use ( $stored ) {
+					return $stored;
+				},
+			)
+		);
+		remove_filter( 'upload_dir', $to_dir );
+		if ( ! is_array( $res ) || isset( $res['error'] ) || empty( $res['file'] ) ) {
+			return '';
+		}
+		return (string) $res['file'];
 	}
 
 	// ---------- Lettura ----------

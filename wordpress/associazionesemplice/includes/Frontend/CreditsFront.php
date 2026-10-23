@@ -32,7 +32,7 @@ final class CreditsFront {
 				'admin_post_' . $action,
 				function () use ( $action, $method ) {
 					check_admin_referer( $action );
-					$post = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification
+					$post = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
 					$back = self::back( $post );
 					try {
 						$r = self::$method( $post );
@@ -48,7 +48,7 @@ final class CreditsFront {
 			add_action(
 				'admin_post_nopriv_' . $action,
 				function () {
-					$post = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification
+					$post = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
 					wp_safe_redirect( wp_login_url( self::back( $post ) ) );
 					exit;
 				}

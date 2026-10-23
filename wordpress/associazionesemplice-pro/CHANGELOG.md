@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.1.21
+- Aggiornamento tecnico insieme ad Associazione Semplice 1.2.23: pagine e moduli più sicuri e compatibili.
+
 ## 1.1.20
 - Risorse: una risorsa non può più essere occupata due volte. Collegare un corso o un evento, aggiungere o spostare date con un'occupazione già presa (allestimenti compresi) viene rifiutato.
 - Le sovrapposizioni già presenti non cambiano da sole: compaiono in Bacheca e vanno sistemate a mano.

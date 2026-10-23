@@ -9,7 +9,6 @@ final class Install {
 	const DB_VERSION        = '41';
 
 	public static function activate(): void {
-		Legacy::run(); // installazione con il vecchio nome (APSemplice): i dati passano al nuovo
 		self::create_tables();
 		self::add_roles_and_caps();
 		self::seed();
@@ -23,7 +22,6 @@ final class Install {
 
 	/** Esegue gli aggiornamenti dello schema se il plugin è stato aggiornato senza riattivarlo. */
 	public static function maybe_upgrade(): void {
-		Legacy::run();
 		$old = (string) get_option( self::DB_VERSION_OPTION, '' );
 		if ( $old !== self::DB_VERSION ) {
 			self::activate();

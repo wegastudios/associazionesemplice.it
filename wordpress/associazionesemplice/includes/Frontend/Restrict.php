@@ -207,7 +207,7 @@ final class Restrict {
 		}
 		echo '</select><p class="description">Vedono il contenuto gli iscritti (o prenotati) a una qualsiasi delle attività scelte e chi le tiene.</p></div>';
 		echo '<p class="description">Gli amministratori vedono sempre tutto.</p>';
-		echo '<script>(function(){var box=document.getElementById("asem-access-activities");if(!box){return;}var radios=document.querySelectorAll("input[name=asem_access]");function u(){var v="";radios.forEach(function(r){if(r.checked){v=r.value;}});box.style.display=v==="activity"?"":"none";}radios.forEach(function(r){r.addEventListener("change",u);});u();})();</script>';
+		\AssociazioneSemplice\Admin\Ui::inline_js( '(function(){var box=document.getElementById("asem-access-activities");if(!box){return;}var radios=document.querySelectorAll("input[name=asem_access]");function u(){var v="";radios.forEach(function(r){if(r.checked){v=r.value;}});box.style.display=v==="activity"?"":"none";}radios.forEach(function(r){r.addEventListener("change",u);});u();})();' );
 	}
 
 	public static function save_meta_box( int $post_id, \WP_Post $post ): void {
