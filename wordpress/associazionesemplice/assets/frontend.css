@@ -31,7 +31,7 @@
 /* Struttura */
 .asemf-area { display: grid; gap: 1.5rem; }
 .asemf-hello { font-size: 1.1em; margin-bottom: .75rem; }
-.asemf-section { border: 1px solid var(--asemf-line); border-radius: var(--asemf-radius); padding: 1rem 1.25rem; }
+.asemf-section { border: 1px solid var(--asemf-line); border-radius: var(--asemf-radius); padding: 1rem 1.25rem; box-sizing: border-box; max-width: 100%; min-width: 0; }
 .asemf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 1rem; }
 .asemf-card { border: 1px solid var(--asemf-line); border-radius: var(--asemf-radius); padding: 1rem 1.25rem; background: var(--asemf-soft); }
 .asemf-card h3 { margin-top: .4em; }

@@ -54,7 +54,7 @@ final class MemberType {
 		return self::FOUNDER === $type;
 	}
 
-	/** Gli iscritti sono utenti WordPress: l'email è obbligatoria. L'ospite no. */
+	/** Indica i tipi che hanno un accesso: l'email resta facoltativa (senza, il socio si attiva con un link da mandare su WhatsApp). */
 	public static function requires_email( string $type ): bool {
 		return self::is_member( $type );
 	}

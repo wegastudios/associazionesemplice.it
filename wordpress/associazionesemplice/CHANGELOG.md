@@ -2,6 +2,12 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.24
+- Sul telefono le tabelle larghe scorrono da sole e la pagina non si sposta di lato.
+- La tabella dei listini si legge bene anche su schermi stretti.
+- Il testo di aiuto sull'email del socio ora dice che è facoltativa.
+- Le sezioni dell'area soci stanno nella larghezza del telefono.
+
 ## 1.2.23
 - Il programma è stato rivisto secondo le indicazioni di WordPress.org: pagine e moduli più sicuri e compatibili.
 - Tolta la migrazione dal vecchio nome APSemplice: non serve più.
