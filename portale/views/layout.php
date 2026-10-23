@@ -27,7 +27,7 @@ $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 <main><?php echo $content; ?></main>
 <footer class="site-footer"><div class="wrap">
 	<div>© <?php echo date( 'Y' ); ?> Associazione Semplice</div>
-	<div><a href="/free">Licenza gratuita</a><a href="<?php echo e( $support_href ); ?>">Supporto</a><a href="/accedi">Area riservata</a><a href="/privacy">Privacy</a><a href="/cookie">Cookie</a><?php if ( \Portale\Tracking::banner() ) : ?><a href="#" data-cc-open>Preferenze cookie</a><?php endif; ?></div>
+	<div><a href="/free">Licenza gratuita</a><a href="/confronto">Confronto versioni</a><a href="<?php echo e( $support_href ); ?>">Supporto</a><a href="/accedi">Area riservata</a><a href="/privacy">Privacy</a><a href="/cookie">Cookie</a><?php if ( \Portale\Tracking::banner() ) : ?><a href="#" data-cc-open>Preferenze cookie</a><?php endif; ?></div>
 </div></footer>
 <?php if ( \Portale\Tracking::banner() ) : $cc = \Portale\Tracking::categories(); ?>
 <div class="cc" id="cc" role="dialog" aria-label="Cookie" aria-live="polite" hidden data-rev="<?php echo (int) \Portale\Tracking::conf()['rev']; ?>" data-cats="<?php echo e( implode( ',', array_keys( $cc ) ) ); ?>">

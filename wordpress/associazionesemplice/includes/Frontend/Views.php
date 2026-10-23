@@ -1244,6 +1244,14 @@ final class Views {
 				} else {
 					$fields .= self::hidden( 'person_id', $free[0]['id'] );
 				}
+				$lists = \AssociazioneSemplice\PriceLists::for_activity( $activity );
+				if ( $lists ) {
+					$fields .= '<select name="price_list" aria-label="Listino">';
+					foreach ( $lists as $l ) {
+						$fields .= '<option value="' . esc_attr( $l['key'] ) . '">' . esc_html( $l['label'] . ' — ' . Money::format( $l['cents'] ) ) . '</option>';
+					}
+					$fields .= '</select>';
+				}
 				$html .= self::form( 'asem_front_book', self::hidden( 'session_id', $s['id'] ) . $fields, 'Prenotati', false, 'asemf-inline' );
 			}
 		} elseif ( ! empty( $ctx['actor'] ) ) {

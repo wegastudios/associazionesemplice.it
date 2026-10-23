@@ -515,6 +515,19 @@ final class Actions {
 			'fund_value'           => self::fund_value( $p ),
 			'notes'                => $p['notes'] ?? '',
 		);
+		if ( isset( $p['pl_label'] ) ) { // solo il modulo di modifica ha i listini: senza campi non si toccano
+			$lists = array();
+			foreach ( (array) $p['pl_label'] as $i => $label ) {
+				$price   = self::fee_field( array( 'x' => (string) ( $p['pl_price'][ $i ] ?? '' ) ), 'x' );
+				$lists[] = array(
+					'label'   => (string) $label,
+					'cents'   => null === $price ? 0 : Fiscal::gross_from_input( $price, $vat_rate, $vat_mode ),
+					'entries' => (int) ( $p['pl_entries'][ $i ] ?? 1 ),
+					'key'     => (string) ( $p['pl_key'][ $i ] ?? '' ),
+				);
+			}
+			$data['price_lists'] = \AssociazioneSemplice\PriceLists::clean( $lists );
+		}
 		if ( array_key_exists( 'vat_rate', $p ) ) { // senza il campo (ente senza IVA) l'aliquota già memorizzata non si tocca
 			$data['vat_rate'] = $vat_rate;
 		}
@@ -606,7 +619,15 @@ final class Actions {
 	private static function book( array $p ): array {
 		$pid = (int) ( $p['person_id'] ?? 0 );
 		self::assert_not_suspended( $pid );
-		Plugin::activities()->book( (int) $p['session_id'], $pid );
+		Plugin::activities()->book(
+			(int) $p['session_id'],
+			$pid,
+			array(
+				'price_list'  => sanitize_key( (string) ( $p['price_list'] ?? '' ) ),
+				'guest_of'    => sanitize_key( (string) ( $p['guest_of'] ?? '' ) ),
+				'use_package' => ! empty( $p['use_package'] ),
+			)
+		);
 		return self::after_signup( $pid, Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Prenotazione registrata.', (int) $p['activity_id'], (int) $p['session_id'] );
 	}
 

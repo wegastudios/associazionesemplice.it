@@ -78,8 +78,8 @@ class FundService {
 	}
 
 	/** Accantona la quota di un pagamento ricevuto (incasso $tx_id di $line_cents su $activity). @return int centesimi accantonati */
-	public function attribute( int $tx_id, array $activity, int $line_cents, string $date ): int {
-		$cents = FundShare::cents( (string) ( $activity['fund_mode'] ?? '' ), (int) ( $activity['fund_value'] ?? 0 ), $line_cents );
+	public function attribute( int $tx_id, array $activity, int $line_cents, string $date, ?int $override = null ): int {
+		$cents = null !== $override ? min( max( 0, $override ), $line_cents ) : FundShare::cents( (string) ( $activity['fund_mode'] ?? '' ), (int) ( $activity['fund_value'] ?? 0 ), $line_cents ); // $override: prenotazioni «ospite» (PriceLists::fund_override)
 		if ( $cents <= 0 || empty( $activity['instructor_person_id'] ) ) {
 			return 0;
 		}

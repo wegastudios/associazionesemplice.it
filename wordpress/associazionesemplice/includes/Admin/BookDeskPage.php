@@ -30,7 +30,9 @@ final class BookDeskPage {
 	private static function book_button( array $person, array $s ): string {
 		ob_start();
 		Ui::form_open( 'asem_book', self::back( $person ), false, 'asem-inline' );
+		$act = Plugin::activities()->get( (int) $s['activity_id'] );
 		echo Ui::hidden( 'person_id', (int) $person['id'] ) . Ui::hidden( 'session_id', (int) $s['id'] ) . Ui::hidden( 'activity_id', (int) $s['activity_id'] ) // phpcs:ignore WordPress.Security.EscapeOutput
+			. ( $act ? ActivitiesPage::booking_fields( $act, (int) $person['id'] ) : '' )
 			. '<button class="button button-primary">Prenota</button>';
 		Ui::form_close();
 		return (string) ob_get_clean();

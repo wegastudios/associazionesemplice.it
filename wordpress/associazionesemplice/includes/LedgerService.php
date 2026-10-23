@@ -388,7 +388,8 @@ class LedgerService {
 					if ( $p['activity_id'] ) {
 						$activity = Plugin::activities()->get( (int) $p['activity_id'] );
 						if ( $activity ) {
-							Plugin::funds()->attribute( $tx_id, $activity, $p['cents'], $date ); // quota per il rimborso del volontario (se prevista)
+							$booking = $p['session_id'] && $p['person'] ? Plugin::activities()->booking( (int) $p['session_id'], (int) $p['person']['id'] ) : null;
+							Plugin::funds()->attribute( $tx_id, $activity, $p['cents'], $date, PriceLists::fund_override( $booking, (int) $p['cents'] ) ); // quota per il rimborso del volontario (se prevista); ospiti: vedi PriceLists
 						}
 					}
 				}

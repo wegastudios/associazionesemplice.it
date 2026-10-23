@@ -7,6 +7,7 @@ use AssociazioneSemplice\CancelPolicy;
 use AssociazioneSemplice\MemberType;
 use AssociazioneSemplice\Money;
 use AssociazioneSemplice\Plugin;
+use AssociazioneSemplice\PriceLists;
 use AssociazioneSemplice\Settings;
 use AssociazioneSemplice\SocialYear;
 
@@ -261,7 +262,7 @@ final class ActivitiesPage {
 					$person = $people->get( (int) $b['person_id'] );
 					if ( $person ) {
 						$cnt++;
-						$rows .= self::participant_row( $activity, $person, (int) $s['id'], 'paid' === ( $b['state'] ?? '' ) ? 'pagato' : ( ! empty( $b['fee_due_cents'] ) ? 'da pagare' : '' ), $with_delete );
+						$rows .= self::participant_row( $activity, $person, (int) $s['id'], trim( ( 'paid' === ( $b['state'] ?? '' ) ? 'pagato' : ( ! empty( $b['fee_due_cents'] ) ? 'da pagare' : '' ) ) . ( '' !== PriceLists::booking_label( $activity, $b ) ? ' · ' . PriceLists::booking_label( $activity, $b ) : '' ), ' ·' ), $with_delete );
 					}
 				}
 				$html .= '<details style="margin:6px 0"><summary><strong>' . esc_html( Ui::date( $s['session_date'] ) ) . ( $s['start_time'] ? ' · ore ' . esc_html( $s['start_time'] ) : '' ) . '</strong> — ' . (int) $cnt . ( 1 === $cnt ? ' partecipante atteso' : ' partecipanti attesi' ) . '</summary>'
@@ -339,6 +340,50 @@ final class ActivitiesPage {
 			. '<p><a class="button" style="color:#b32d2e;border-color:#b32d2e" href="' . esc_url( Ui::url( 'asem-activity-delete', array( 'id' => (int) $activity['id'] ) ) ) . '">Elimina l\'evento…</a></p></div>';
 	}
 
+	/** Scelte della segreteria in prenotazione: listino, ospite dell'associazione o del volontario, pacchetto già pagato. */
+	public static function booking_fields( array $activity, int $person_id ): string {
+		if ( ! ActivityKind::uses_sessions( $activity['kind'] ) ) {
+			return '';
+		}
+		$lists = PriceLists::for_activity( $activity );
+		$html  = '';
+		if ( $lists ) {
+			$html .= '<select name="price_list" title="Listino"><option value="">Contributo base</option>';
+			foreach ( $lists as $l ) {
+				$html .= '<option value="' . esc_attr( $l['key'] ) . '">' . esc_html( $l['label'] . ' — ' . Money::format( $l['cents'] ) ) . '</option>';
+			}
+			$html .= '</select> ';
+			$pk = $person_id ? Plugin::activities()->open_packages( $person_id, (int) $activity['id'] ) : array();
+			if ( $pk ) {
+				$html .= '<label><input type="checkbox" name="use_package" value="1"> usa ' . esc_html( $pk[0]['label'] ) . ' (' . (int) $pk[0]['left'] . ' rimasti)</label> ';
+			} elseif ( ! $person_id ) {
+				$html .= '<label><input type="checkbox" name="use_package" value="1"> dal pacchetto già pagato</label> ';
+			}
+		}
+		$html .= '<select name="guest_of" title="Ospite">';
+		foreach ( PriceLists::guest_kinds() as $k => $label ) {
+			$html .= '<option value="' . esc_attr( $k ) . '">' . esc_html( $label ) . '</option>';
+		}
+		return $html . '</select>';
+	}
+
+	/** Righe del modulo con i listini dell'attività (nome, prezzo, ingressi). */
+	private static function price_list_row( array $activity ): string {
+		if ( ! ActivityKind::uses_sessions( $activity['kind'] ) ) {
+			return '';
+		}
+		$lists = PriceLists::for_activity( $activity );
+		$lists = array_pad( $lists, max( 4, count( $lists ) + 1 ), array( 'label' => '', 'cents' => 0, 'entries' => 1 ) );
+		$rows  = '';
+		foreach ( array_slice( $lists, 0, PriceLists::MAX ) as $i => $l ) {
+			$rows .= '<tr><td><input type="hidden" name="pl_key[' . (int) $i . ']" value="' . esc_attr( (string) ( $l['key'] ?? '' ) ) . '"><input type="text" name="pl_label[' . (int) $i . ']" value="' . esc_attr( $l['label'] ) . '" placeholder="es. Individuale" maxlength="60"></td>'
+				. '<td><input type="text" name="pl_price[' . (int) $i . ']" size="7" value="' . esc_attr( '' === $l['label'] ? '' : Money::plain( (int) $l['cents'] ) ) . '"> €</td>'
+				. '<td><input type="number" name="pl_entries[' . (int) $i . ']" min="1" max="50" style="width:60px" value="' . (int) $l['entries'] . '"></td></tr>';
+		}
+		return '<tr><th>Listini</th><td><table class="widefat" style="max-width:520px"><thead><tr><th>Nome</th><th>Prezzo</th><th>Ingressi</th></tr></thead><tbody>' . $rows . '</tbody></table>'
+			. '<p class="description">Facoltativi: ad esempio Individuale, Di gruppo, Pacchetto 4 individuale, Pacchetto 4 di gruppo. In prenotazione la segreteria sceglie il listino; con 4 ingressi il prezzo del pacchetto si paga una volta e le altre date si prenotano «dal pacchetto» senza altro da pagare. Righe vuote ignorate; senza listini vale il contributo sopra.</p></td></tr>';
+	}
+
 	private static function edit_card( array $activity, string $back ): void {
 		$volunteers = Plugin::people()->search( array( 'type' => MemberType::VOLUNTEER ) );
 		echo '<div class="asem-card"><h2>Dati dell\'attività</h2>';
@@ -348,6 +393,7 @@ final class ActivitiesPage {
 		echo '<tr><th>Contributo soci' . ( ActivityKind::COURSE === $activity['kind'] ? '' : ' (' . esc_html( ActivityKind::fee_unit( $activity['kind'] ) ) . ')' ) . '</th><td><input type="text" name="fee" value="' . esc_attr( Money::plain( (int) $activity['fee_cents'] ) ) . '"> €</td></tr>';
 		$guest = null === $activity['guest_fee_cents'] ? '' : Money::plain( (int) $activity['guest_fee_cents'] );
 		echo '<tr><th>Contributo ospiti</th><td><input type="text" name="guest_fee" value="' . esc_attr( $guest ) . '" placeholder="uguale ai soci"> €<p class="description">Vuoto = come i soci · 0 = gratuito. Vale per le nuove prenotazioni/mensilità: quelle già fatte tengono l\'importo di allora (eventi) o seguono la nuova quota (corsi).</p></td></tr>';
+		echo self::price_list_row( $activity ); // phpcs:ignore WordPress.Security.EscapeOutput
 		if ( ActivityKind::uses_sessions( $activity['kind'] ) ) {
 			echo self::cancel_rows( $activity, '' ); // phpcs:ignore WordPress.Security.EscapeOutput
 			echo self::qr_row( $activity, '' ); // phpcs:ignore WordPress.Security.EscapeOutput
@@ -664,7 +710,7 @@ final class ActivitiesPage {
 				} ) );
 				Ui::form_open( 'asem_book', $back );
 				echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
-				echo '<p>Prenota: ' . Ui::person_select( 'person_id', $candidates, null, '— scegli socio o ospite —', 'asem-book-' . (int) $s['id'] ) . ' <button class="button button-primary">Prenota</button></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo '<p>Prenota: ' . Ui::person_select( 'person_id', $candidates, null, '— scegli socio o ospite —', 'asem-book-' . (int) $s['id'] ) . ' ' . self::booking_fields( $activity, 0 ) . ' <button class="button button-primary">Prenota</button></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 				Ui::form_close();
 				if ( \AssociazioneSemplice\Edition::has( 'door_sales' ) ) {
 					self::walk_in_form( $activity, $s, $candidates, $back );

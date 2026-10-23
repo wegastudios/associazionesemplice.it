@@ -240,6 +240,12 @@ Nella scheda di un corso o di un evento a pagamento si può impostare la **quota
 - **Disponibilità reale dell'associazione = saldi dei conti meno i fondi.** È sempre riportata in dashboard, in *Conti e cassa* e nel rendiconto (anche nell'esportazione CSV).
 - Da un fondo si può **liberare** una quota (torna nella disponibilità, nessun movimento di cassa) oppure **estinguerlo**: registra in prima nota l'uscita del rimborso dal conto scelto e chiude il fondo.
 
+### Listini e ospiti (eventi e corsi a date)
+
+Un evento può avere più **listini** (nome, prezzo, ingressi): ad esempio Individuale, Di gruppo, Pacchetto 4 individuale, Pacchetto 4 di gruppo. In prenotazione si sceglie il listino e il contributo dovuto è quello del listino. Con più ingressi (pacchetto) il prezzo si paga sulla prima prenotazione; le date successive si prenotano con «usa pacchetto» e non hanno altro da pagare, finché gli ingressi non finiscono. I soci in area riservata scelgono solo il listino.
+
+La segreteria può prenotare un **ospite dell’associazione** (non paga la parte che resta all’associazione: versa solo la quota del volontario, che va tutta al suo fondo) o un **ospite del volontario** (non paga la quota del volontario e il suo fondo non si alimenta: versa la parte dell’associazione). Le due parti vengono dalla quota per il rimborso dell’attività; senza referente e senza quota l’ospite dell’associazione non paga nulla. Il contributo dovuto è già al netto, quindi in cassa si incassa l’importo giusto senza calcoli.
+
 I conti sono sempre conti reali: non si trasformano in fondi né viceversa. Di un conto si possono cambiare nome, tipo e saldo di partenza; si chiude solo a saldo zero.
 
 ## Menu e impostazioni

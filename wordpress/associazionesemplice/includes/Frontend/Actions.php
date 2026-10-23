@@ -164,7 +164,7 @@ final class Actions {
 		if ( $session['session_date'] < current_time( 'Y-m-d' ) ) {
 			throw new \InvalidArgumentException( 'Questo evento è già passato.' );
 		}
-		Plugin::activities()->book( (int) $session['id'], $person_id );
+		Plugin::activities()->book( (int) $session['id'], $person_id, array( 'price_list' => sanitize_key( (string) ( $post['price_list'] ?? '' ) ) ) ); // ospiti e pacchetti già pagati: solo la segreteria
 		$person = Plugin::people()->get( $person_id );
 		return 'Prenotazione registrata' . ( $person ? ' per ' . $person['first_name'] : '' ) . '.';
 	}
