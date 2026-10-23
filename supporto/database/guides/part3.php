@@ -112,6 +112,36 @@ L'indirizzo è spento di default e si può rigenerare quando vuoi: rigenerandolo
 MD,
     ],
     [
+        'topic' => 'corsi-ed-eventi', 'section' => 'Attività', 'slug' => 'listini-e-pacchetti-per-eventi-e-corsi',
+        'title' => 'Listini e pacchetti di ingressi per eventi e corsi a date',
+        'body' => <<<'MD'
+> Disponibile in: Free, Pro Contabile, Pro Fiscale (dalla versione 1.2.18 del plugin)
+
+Con i **listini** la stessa attività può avere prezzi diversi, per esempio *Individuale*, *Di gruppo* o *Pacchetto 4 ingressi*. Chi prenota sceglie il listino che gli interessa.
+
+## Creare i listini
+
+1. Apri la **scheda dell'attività** (evento o corso a date) da **Attività**.
+2. Nella riga **Listini** aggiungi una riga per ogni listino con **nome**, **prezzo** e numero di **ingressi**.
+3. Salva.
+
+Un listino con un solo ingresso è una prenotazione normale; un listino con più ingressi è un **pacchetto**.
+
+## Prenotare con un listino
+
+- **Dall'amministrazione**: in **Cassa → Prenota** (o dalla scheda dell'evento) scegli la persona e il listino.
+- **Dall'area riservata**: il socio vede e sceglie solo il listino, senza altre opzioni.
+
+## Come funzionano i pacchetti
+
+1. Il pacchetto si **paga sulla prima prenotazione**.
+2. Le altre date si prenotano con **usa pacchetto**: non c'è altro da pagare.
+3. Gli ingressi del pacchetto si consumano a ogni prenotazione.
+
+> I listini non valgono per i **corsi a mensilità**: lì il contributo resta quello mensile del corso (vedi [Creare un corso](guida:creare-un-corso)).
+MD,
+    ],
+    [
         'topic' => 'corsi-ed-eventi', 'section' => 'Ingressi e comunicazioni', 'slug' => 'registrare-gli-ingressi',
         'title' => 'Registrare gli ingressi a un evento',
         'body' => <<<'MD'

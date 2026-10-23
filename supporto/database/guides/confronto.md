@@ -12,6 +12,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Più livelli di socio con quote diverse | — | ✓ | ✓ |
 | Nucleo familiare con sconto per i familiari | — | ✓ | ✓ |
 | Ospiti con conteggio delle partecipazioni e invito a iscriversi | ✓ | ✓ | ✓ |
+| Ospiti dell'associazione e del volontario con quote ripartite (per amministratori e segreteria) | ✓ | ✓ | ✓ |
 | Importazione di soci e ospiti da Excel, CSV e WP All Import | ✓ | ✓ | ✓ |
 | Esportazione di soci e ospiti | ✓ | ✓ | ✓ |
 | Tessera digitale e stampabile, con colori e logo | ✓ | ✓ | ✓ |
@@ -39,6 +40,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Calendario interno e pubblicazione su Google Calendar, Apple e Outlook | ✓ | ✓ | ✓ |
 | Ingressi: elenco prenotati e registrazione | ✓ | ✓ | ✓ |
 | Biglietti con QR per le prenotazioni | ✓ | ✓ | ✓ |
+| Listini per eventi e corsi a date (individuale, di gruppo, pacchetti di ingressi) | ✓ | ✓ | ✓ |
 | Incasso sul posto durante gli eventi | — | ✓ | ✓ |
 | Suggerimento dei luoghi con Google (con la tua chiave) | ✓ | ✓ | ✓ |
 

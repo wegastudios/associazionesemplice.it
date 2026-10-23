@@ -88,6 +88,17 @@ Ai non soci è consentito partecipare solo poche volte: oltre, anche per ragioni
 Se l'ente non li accetta (**Impostazioni → Soci e quote**), non se ne registrano di nuovi e la sezione «I miei ospiti» sparisce dall'area soci. Gli ospiti già registrati restano.
 
 > I soci vedono solo il conto dei propri ospiti, senza segnalazioni.
+
+## Ospiti dell'associazione e ospiti del volontario
+
+> Disponibile dalla versione 1.2.18. Solo per amministratori, segreteria e consiglieri con accesso operativo (mai per il socio).
+
+Quando un evento ha una quota per il rimborso del volontario, puoi segnare un ospite in due modi:
+
+- **Ospite dell'associazione**: non paga la parte che resta all'associazione. Versa solo la quota del volontario, che va tutta al suo fondo.
+- **Ospite del volontario**: non paga la quota del volontario e il suo fondo non si alimenta. Versa la parte dell'associazione.
+
+Le parti derivano dalla quota per il rimborso dell'attività. Si impostano in prenotazione, da **Cassa → Prenota** o dalla scheda dell'evento.
 MD,
     ],
     [
