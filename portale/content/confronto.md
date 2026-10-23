@@ -39,6 +39,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Calendario interno e pubblicazione su Google Calendar, Apple e Outlook | ✓ | ✓ | ✓ |
 | Ingressi: elenco prenotati e registrazione | ✓ | ✓ | ✓ |
 | Biglietti con QR per le prenotazioni | ✓ | ✓ | ✓ |
+| Listini per gli eventi: individuale, di gruppo e pacchetti da 4 | ✓ | ✓ | ✓ |
+| Prenotazioni «ospite dell'associazione» e «ospite del volontario» | ✓ | ✓ | ✓ |
 | Incasso sul posto durante gli eventi | — | ✓ | ✓ |
 | Suggerimento dei luoghi con Google (con la tua chiave) | ✓ | ✓ | ✓ |
 
