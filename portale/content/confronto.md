@@ -42,6 +42,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Calendario interno e pubblicazione su Google Calendar, Apple e Outlook | ✓ | ✓ | ✓ |
 | Ingressi: elenco prenotati e registrazione | ✓ | ✓ | ✓ |
 | Biglietti con QR per le prenotazioni | ✓ | ✓ | ✓ |
+| Risorse (sale, attrezzature) occupate da corsi ed eventi, con allestimento prima e dopo | — | ✓ | ✓ |
 | Listini per eventi e corsi a date (individuale, di gruppo, pacchetti di ingressi) | ✓ | ✓ | ✓ |
 | Incasso sul posto durante gli eventi | — | ✓ | ✓ |
 | Suggerimento dei luoghi con Google (con la tua chiave) | ✓ | ✓ | ✓ |
