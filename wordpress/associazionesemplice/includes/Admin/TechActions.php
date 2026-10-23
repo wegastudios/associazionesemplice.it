@@ -14,6 +14,7 @@ final class TechActions {
 		'asem_save_roles' => 'save_roles',
 		'asem_save_acct'  => 'save_acct',
 		'asem_save_places' => 'save_places',
+		'asem_mail_test'  => 'mail_test',
 		'asem_save_bank'  => 'save_bank',
 		'asem_save_limits' => 'save_limits',
 		'asem_reset_limits' => 'reset_limits',
@@ -47,6 +48,19 @@ final class TechActions {
 		}
 	}
 
+
+	/** Email di prova all'indirizzo di chi la chiede: dice subito se il server l'ha accettata. */
+	public static function mail_test( array $p ): array {
+		$to = (string) wp_get_current_user()->user_email;
+		if ( ! is_email( $to ) ) {
+			throw new \InvalidArgumentException( 'Il tuo utente non ha un indirizzo email valido.' );
+		}
+		if ( ! \AssociazioneSemplice\Texts::mail( $to, 'Prova di invio', "Questa è un'email di prova inviata da Associazione Semplice.\n\nSe la leggi, la posta del sito funziona." ) ) {
+			$last = \AssociazioneSemplice\MailLog::recent( 1 );
+			throw new \InvalidArgumentException( 'Il server non ha accettato il messaggio' . ( $last && ! empty( $last[0]['error'] ) ? ': ' . $last[0]['error'] : '.' ) . ' Controlla la posta del sito (un plugin SMTP di solito risolve).' );
+		}
+		return array( Ui::url( 'asem-tech' ), 'Email di prova inviata a ' . $to . ': controlla la casella (anche la posta indesiderata). Se non arriva, il server l\'ha accettata ma non la consegna: serve un servizio di posta (SMTP).' );
+	}
 
 	public static function save_places( array $p ): array {
 		$key = \AssociazioneSemplice\Places::clean_key( (string) ( $p['places_key'] ?? '' ) );

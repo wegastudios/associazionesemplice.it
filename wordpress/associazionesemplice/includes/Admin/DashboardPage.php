@@ -51,6 +51,10 @@ final class DashboardPage {
 				echo Dismiss::html( 'backup', 'warning', ( $bk ? 'L\'ultima copia di sicurezza dei dati risale a più di 30 giorni fa.' : 'Non hai ancora scaricato una copia di sicurezza dei dati.' ) . ' <a href="' . esc_url( Ui::url( 'asem-backup' ) ) . '">Scaricala ora</a>.', 14 ); // phpcs:ignore WordPress.Security.EscapeOutput
 			}
 		}
+		$mail_fail = current_user_can( \AssociazioneSemplice\Plugin::CAP ) ? \AssociazioneSemplice\MailLog::failures() : 0;
+		if ( $mail_fail > 0 ) {
+			echo Dismiss::html( 'mail-fail-' . $mail_fail, 'warning', '<strong>Alcune email non sono partite</strong> negli ultimi giorni (' . (int) $mail_fail . '). <a href="' . esc_url( Ui::url( 'asem-tech' ) ) . '">Vedi perché e prova l\'invio</a>.', 3 ); // phpcs:ignore WordPress.Security.EscapeOutput
+		}
 		if ( current_user_can( \AssociazioneSemplice\Plugin::CAP ) && '' === trim( (string) \AssociazioneSemplice\Settings::get( 'association_name' ) ) ) {
 			echo Dismiss::html( 'entity-name', 'info', '<strong>Manca il nome dell\'ente.</strong> Compare su ricevute, tessere e messaggi ai soci: inseriscilo in <a href="' . esc_url( Ui::url( 'asem-entity' ) ) . '">Impostazioni → Dati e fiscalità</a>.', 7 ); // phpcs:ignore WordPress.Security.EscapeOutput
 		}

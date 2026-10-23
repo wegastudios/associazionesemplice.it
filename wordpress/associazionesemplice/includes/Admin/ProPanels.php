@@ -18,6 +18,9 @@ final class ProPanels {
 		} );
 		add_action( 'asem_comms_sections', array( __CLASS__, 'comms_sections' ) );
 		add_filter( 'asem_comms_settings', array( __CLASS__, 'comms_settings' ), 10, 2 );
+		add_filter( 'asem_bookdesk_items', array( __CLASS__, 'bookdesk_items' ) );
+		add_filter( 'asem_bookdesk_date', array( __CLASS__, 'bookdesk_date' ), 10, 3 );
+		add_filter( 'asem_bookdesk_item', array( __CLASS__, 'bookdesk_item' ), 10, 3 );
 		add_action( 'asem_person_receipts', array( __CLASS__, 'person_receipts' ) );
 		add_action( 'asem_ledger_row_actions', array( __CLASS__, 'ledger_row_actions' ), 10, 2 );
 	}
@@ -107,5 +110,81 @@ final class ProPanels {
 	public static function comms_settings( array $vals, array $p ): array {
 		$vals['receipt_footer'] = trim( (string) ( $p['receipt_footer'] ?? '' ) );
 		return $vals;
+	}
+
+	/** Risorse tra le cose prenotabili dalla pagina «Prenota» della cassa. */
+	public static function bookdesk_items( array $groups ): array {
+		if ( ! \AssociazioneSemplice\Edition::has( 'resources' ) ) {
+			return $groups;
+		}
+		$opts = array();
+		foreach ( \AssociazioneSemplice\Resources::all() as $r ) {
+			$opts[ 'r:' . (int) $r['id'] ] = (string) $r['name'];
+		}
+		if ( $opts ) {
+			$groups['Risorse'] = $opts;
+		}
+		return $groups;
+	}
+
+	/** Fasce libere di una risorsa in un giorno: [libere, totali] (null se non è a fasce). */
+	private static function free_slots( array $res, string $date ): ?array {
+		if ( \AssociazioneSemplice\ResourceRules::SLOT !== $res['mode'] ) {
+			return null;
+		}
+		$free  = 0;
+		$total = 0;
+		foreach ( \AssociazioneSemplice\Resources::day_grid( $res, $date ) as $s ) {
+			$total++;
+			if ( empty( $s['reservation'] ) ) {
+				$free++;
+			}
+		}
+		return array( $free, $total );
+	}
+
+	/** Risorse con fasce libere in una data. */
+	public static function bookdesk_date( array $rows, string $date, $person ): array {
+		if ( ! \AssociazioneSemplice\Edition::has( 'resources' ) ) {
+			return $rows;
+		}
+		foreach ( \AssociazioneSemplice\Resources::all() as $r ) {
+			$f      = self::free_slots( $r, $date );
+			$rows[] = array(
+				'title' => (string) $r['name'],
+				'info'  => null === $f ? 'assegnazione periodica' : $f[0] . ' fasce libere su ' . $f[1],
+				'url'   => Ui::url( 'asem-resource', array( 'id' => (int) $r['id'], 'd' => $date ) ),
+				'label' => 'Prenota',
+			);
+		}
+		return $rows;
+	}
+
+	/** I prossimi giorni con posto libero di una risorsa. */
+	public static function bookdesk_item( array $rows, string $item, $person ): array {
+		if ( 0 !== strpos( $item, 'r:' ) || ! \AssociazioneSemplice\Edition::has( 'resources' ) ) {
+			return $rows;
+		}
+		$res = \AssociazioneSemplice\Resources::get( (int) substr( $item, 2 ) );
+		if ( ! $res ) {
+			return $rows;
+		}
+		$day = current_time( 'Y-m-d' );
+		for ( $i = 0; $i < 21 && count( $rows ) < 12; $i++ ) {
+			$d = gmdate( 'Y-m-d', strtotime( $day . ' +' . $i . ' day' ) );
+			$f = self::free_slots( $res, $d );
+			if ( null === $f || $f[0] > 0 ) {
+				$rows[] = array(
+					'title' => \AssociazioneSemplice\Docs::d( $d ),
+					'info'  => null === $f ? 'assegnazione periodica' : $f[0] . ' fasce libere su ' . $f[1],
+					'url'   => Ui::url( 'asem-resource', array( 'id' => (int) $res['id'], 'd' => $d ) ),
+					'label' => 'Prenota',
+				);
+				if ( null === $f ) {
+					break;
+				}
+			}
+		}
+		return $rows;
 	}
 }

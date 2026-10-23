@@ -1146,6 +1146,18 @@ class ActivityService {
 		return $this->db()->get_results( 'SELECT id, name, social_year, kind FROM ' . Db::t( 'activities' ) . ' WHERE deleted_at IS NULL ORDER BY social_year DESC, name', ARRAY_A ) ?: array();
 	}
 
+	/** Date non annullate di un giorno, con i dati dell'attività. */
+	public function sessions_on( string $date ): array {
+		return $this->db()->get_results(
+			$this->db()->prepare(
+				'SELECT s.*, a.name AS activity_name, a.kind, a.fee_cents, a.guest_fee_cents FROM ' . Db::t( 'sessions' ) . ' s JOIN ' . Db::t( 'activities' ) . ' a ON a.id = s.activity_id AND a.deleted_at IS NULL '
+				. 'WHERE s.cancelled_at IS NULL AND s.session_date = %s ORDER BY s.start_time, s.id',
+				$date
+			),
+			ARRAY_A
+		) ?: array();
+	}
+
 	/** Prossime date non annullate (da oggi), con i dati dell'attività e i posti occupati. */
 	public function upcoming_sessions( int $limit = 10, ?int $activity_id = null ): array {
 		$sql  = 'SELECT s.*, a.name AS activity_name, a.kind, a.fee_cents, a.guest_fee_cents, '

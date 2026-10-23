@@ -37,8 +37,12 @@ final class Texts {
 		}
 	}
 
-	/** wp_mail con i testi personalizzati (oggetto e messaggio). */
+	/** wp_mail con i testi personalizzati (oggetto e messaggio); l'esito resta nel registro della posta in uscita. */
 	public static function mail( $to, string $subject, string $message, $headers = '', $attachments = array() ): bool {
-		return (bool) wp_mail( $to, self::plain( $subject ), self::plain( $message ), $headers, $attachments );
+		MailLog::begin();
+		$subject = self::plain( $subject );
+		$ok      = (bool) wp_mail( $to, $subject, self::plain( $message ), $headers, $attachments );
+		MailLog::record( $to, $subject, $ok );
+		return $ok;
 	}
 }

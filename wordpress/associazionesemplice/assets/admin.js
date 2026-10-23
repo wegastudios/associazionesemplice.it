@@ -430,7 +430,7 @@
 	var DENOMS = [50000, 20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5, 2, 1];
 
 	function catByKind(kind) { return D.categories.filter(function (c) { return c.kind === kind; })[0]; }
-	function addLine(l) { l.key = ++seq; lines.push(l); render(); }
+	function addLine(l) { l.key = ++seq; if (l.kind === 'activity_fee' && l.due == null) { l.due = parseMoney(l.amount) || 0; } lines.push(l); render(); }
 
 	function render() {
 		box.innerHTML = '';
@@ -449,8 +449,17 @@
 				row.appendChild(el('span', { 'class': 'description', text: l.note || 'tessera fino al 31 dicembre' }));
 			}
 			var amt = el('input', { type: 'text', name: n + '[amount]', inputmode: 'decimal', value: l.amount, size: '8', 'aria-label': 'Importo' });
-			amt.addEventListener('input', function () { l.amount = amt.value; update(); });
+			var acc = el('span', { 'class': 'description asem-acc', text: '' });
+			var descIn = null;
+			function setAcc() {
+				var a = parseMoney(l.amount) || 0, rest = (l.due || 0) - a - (parseMoney(l.discount) || 0);
+				var isAcc = l.kind === 'activity_fee' && l.due > 0 && a > 0 && rest > 0;
+				acc.textContent = isAcc ? ' acconto: resta ' + eur(rest) : '';
+				if (descIn) { descIn.value = l.title + (isAcc ? ' (acconto)' : ''); }
+			}
+			amt.addEventListener('input', function () { l.amount = amt.value; setAcc(); update(); });
 			row.appendChild(amt); row.appendChild(el('span', { text: '€' }));
+			row.appendChild(acc);
 			// Sconto, promozione o arrotondamento: la voce conta come pagata per intero anche se si incassa meno
 			var disc = el('input', { type: 'text', name: n + '[discount]', inputmode: 'decimal', value: l.discount || '', size: '6', placeholder: 'sconto', 'aria-label': 'Sconto' });
 			disc.addEventListener('input', function () {
@@ -471,6 +480,7 @@
 			[['category_id', l.category], ['activity_id', l.activity || ''], ['session_id', l.session || ''], ['competence_month', l.month || ''], ['description', l.title]].forEach(function (p) {
 				row.appendChild(el('input', { type: 'hidden', name: n + '[' + p[0] + ']', value: p[1] }));
 			});
+			descIn = row.lastChild; setAcc();
 			var rm = el('button', { type: 'button', 'class': 'button button-link-delete', text: 'Rimuovi' });
 			rm.addEventListener('click', function () { lines.splice(i, 1); render(); });
 			row.appendChild(rm);
