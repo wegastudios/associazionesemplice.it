@@ -972,5 +972,96 @@ try {
 	check( 'vault: errore di quota segnalato', 'VAULT_QUOTA_EXCEEDED' === $e->errorCode && 422 === $e->httpStatus );
 }
 
+// --- Cambio di piano (upgrade con differenza, downgrade al rinnovo) ------------------------------------------------------
+check( 'cambio piano: differenza proporzionale ai giorni residui', 200 === Portale\PlanChange::diffCents( 800, 1200, gmdate( 'Y-m-d H:i:s', 1000000 + 15 * 86400 ), 30, 1000000 ) );
+check( 'cambio piano: mai sotto il minimo del provider', 50 === Portale\PlanChange::diffCents( 800, 1200, gmdate( 'Y-m-d H:i:s', 1000000 + 3600 ), 30, 1000000 ) );
+check( 'cambio piano: a scadenza lontana non supera la differenza piena', 400 === Portale\PlanChange::diffCents( 800, 1200, gmdate( 'Y-m-d H:i:s', 1000000 + 90 * 86400 ), 30, 1000000 ) );
+
+Config::load( array(
+	'base_url' => 'https://portale.test', 'app_key' => base64_encode( str_repeat( 'k', 32 ) ),
+	'stripe' => array( 'secret_key' => 'sk_test', 'webhook_secret' => 'whsec_test' ),
+	'paypal' => array( 'live' => false, 'client_id' => 'id', 'secret' => 's', 'webhook_id' => 'WH1' ),
+	'plans' => array(
+		'free' => array( 'label' => 'Free', 'plan_name' => 'Free', 'prices' => array() ),
+		'lite' => array( 'label' => 'Pro Contabile', 'plan_name' => 'Pro Lite', 'prices' => array(
+			'month' => array( 'cents' => 800, 'stripe_price' => 'price_lite', 'paypal_plan' => 'P-L' ),
+		) ),
+		'full' => array( 'label' => 'Pro Fiscale', 'plan_name' => 'Pro Full', 'prices' => array(
+			'month' => array( 'cents' => 1200, 'stripe_price' => 'price_full', 'paypal_plan' => 'P-F' ),
+		) ),
+	),
+) );
+$pdb = new Db( new PDO( 'sqlite::memory:' ) );
+$pdb->migrate();
+Portale\Settings::load( $pdb );
+$pcalls = array();
+Http::$transport = function ( $method, $url, $headers, $body ) use ( &$pcalls ) {
+	$pcalls[] = array( $method, $url, $body );
+	if ( false !== strpos( $url, '/licenses/renew' ) ) {
+		return array( 200, json_encode( array( 'data' => array( 'expires_at' => '2030-02-01T00:00:00Z' ) ) ) );
+	}
+	if ( false !== strpos( $url, '/licenses/' ) ) {
+		return array( 200, json_encode( array( 'data' => array( 'license_id' => 'lic_9' ) ) ) );
+	}
+	if ( 'GET' === $method && false !== strpos( $url, '/subscriptions/sub_9' ) ) {
+		return array( 200, '{"items":{"data":[{"id":"si_1"}]}}' );
+	}
+	if ( false !== strpos( $url, '/subscriptions/sub_9' ) ) {
+		return array( 200, '{}' );
+	}
+	if ( false !== strpos( $url, '/checkout/sessions' ) ) {
+		return array( 200, '{"url":"https://stripe.test/pay"}' );
+	}
+	return array( 404, '{}' );
+};
+$pbil  = new Billing( $pdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+$pcust = $pbil->customer( 'cliente@esempio.it' );
+$pexp  = gmdate( 'Y-m-d H:i:s', time() + 15 * 86400 );
+$pdb->run(
+	"INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, provider_ref, status, domain, mode, license_id, license_key_enc, expires_at, created_at, updated_at) VALUES ('s1',?, 'lite','month','stripe','sub_9','active','piani.it','recurring','lic_9',?,?,?,?)",
+	array( $pcust['id'], Portale\Secrets::seal( 'KEY-9' ), $pexp, Db::now(), Db::now() )
+);
+$ps  = $pbil->subscription( 's1' );
+$pc  = $pbil->planChange();
+$opt = $pc->options( $ps );
+check( 'cambio piano: dal Lite si offre il Full come upgrade con la differenza', 1 === count( $opt ) && 'full' === $opt[0]['plan'] && $opt[0]['up'] && $opt[0]['pay'] >= 190 && $opt[0]['pay'] <= 400 );
+check( 'cambio piano: cliente estraneo rifiutato', null !== throwsUser( function () use ( $pc ) {
+	$pc->startUpgrade( 's1', 'altro', 'full' );
+} ) );
+check( 'cambio piano: verso il piano che ha già rifiutato', null !== throwsUser( function () use ( $pc, $pcust ) {
+	$pc->startUpgrade( 's1', $pcust['id'], 'lite' );
+} ) );
+$url = $pc->startUpgrade( 's1', $pcust['id'], 'full' );
+$chg = $pdb->one( "SELECT * FROM subscriptions WHERE renews = 's1'" );
+check( 'upgrade: pagamento singolo creato e riga collegata', 'https://stripe.test/pay' === $url && 'full' === $chg['change_to'] && 'pending' === $chg['status'] );
+$pbil->completePayment( $chg['id'] );
+$pbil->completePayment( $chg['id'] );
+$pa = $pbil->subscription( 's1' );
+$patches = array_filter( $pcalls, function ( $c ) { return 'PATCH' === $c[0]; } );
+$swaps   = array_filter( $pcalls, function ( $c ) { return 'POST' === $c[0] && false !== strpos( $c[1], '/subscriptions/sub_9' ) && false !== strpos( (string) $c[2], 'price_full' ) && false !== strpos( (string) $c[2], 'proration_behavior=none' ); } );
+check( 'upgrade: piano cambiato, scadenza e chiave invariate', 'full' === $pa['plan_code'] && $pexp === $pa['expires_at'] && 'KEY-9' === Portale\Secrets::open( $pa['license_key_enc'] ) );
+check( 'upgrade: un solo cambio sul server licenze e un solo cambio di prezzo su Stripe, anche se il pagamento arriva due volte', 1 === count( $patches ) && 1 === count( $swaps ) && false !== strpos( (string) array_values( $patches )[0][2], 'Pro Full' ) );
+check( 'upgrade: nessun rinnovo registrato', 0 === count( array_filter( $pcalls, function ( $c ) { return false !== strpos( $c[1], '/licenses/renew' ); } ) ) );
+
+$pc->scheduleDowngrade( 's1', $pcust['id'], 'lite' );
+$pd = $pbil->subscription( 's1' );
+check( 'downgrade: programmato, la licenza resta Full fino al rinnovo', 'lite' === $pd['next_plan'] && 'full' === $pd['plan_code'] );
+check( 'downgrade: un secondo cambio mentre ce n\'è uno programmato è rifiutato', null !== throwsUser( function () use ( $pc, $pcust ) {
+	$pc->scheduleDowngrade( 's1', $pcust['id'], 'lite' );
+} ) );
+$pc->cancelScheduled( 's1', $pcust['id'] );
+check( 'downgrade: annullabile', null === $pbil->subscription( 's1' )['next_plan'] );
+$pc->scheduleDowngrade( 's1', $pcust['id'], 'lite' );
+$pbil->renew( 's1' );
+$pr = $pbil->subscription( 's1' );
+check( 'downgrade: al rinnovo la licenza passa al piano inferiore e il programma si azzera', 'lite' === $pr['plan_code'] && null === $pr['next_plan'] );
+$lastPatch = array_values( array_filter( $pcalls, function ( $c ) { return 'PATCH' === $c[0]; } ) );
+check( 'downgrade: il server licenze riceve il tipo nuovo', false !== strpos( (string) end( $lastPatch )[2], 'Pro Lite' ) );
+
+$pdb->run( "UPDATE subscriptions SET provider = 'paypal', mode = 'recurring' WHERE id = 's1'" );
+check( 'cambio piano: PayPal ricorrente non automatico, spiegato', null !== $pc->reason( $pbil->subscription( 's1' ) ) && array() === $pc->options( $pbil->subscription( 's1' ) ) );
+$pdb->run( "UPDATE subscriptions SET provider = 'stripe', status = 'active', cancel_at_period_end = 1 WHERE id = 's1'" );
+check( 'cambio piano: rinnovo disdetto, non si cambia', null !== $pc->reason( $pbil->subscription( 's1' ) ) );
+
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );

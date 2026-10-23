@@ -44,6 +44,20 @@ final class Stripe {
 		return (string) $r['url'];
 	}
 
+	/** Cambia il prezzo di un abbonamento dal prossimo addebito, senza calcoli proporzionali né addebiti immediati (la differenza si incassa a parte). */
+	public static function switchPrice( string $stripeSubscription, string $priceId ): void {
+		$sub  = self::call( 'GET', '/subscriptions/' . rawurlencode( $stripeSubscription ), array() );
+		$item = (string) ( $sub['items']['data'][0]['id'] ?? '' );
+		if ( '' === $item || '' === $priceId ) {
+			throw new \RuntimeException( 'Stripe: abbonamento o prezzo non trovato per il cambio piano.' );
+		}
+		self::call( 'POST', '/subscriptions/' . rawurlencode( $stripeSubscription ), array(
+			'items[0][id]'       => $item,
+			'items[0][price]'    => $priceId,
+			'proration_behavior' => 'none',
+		) );
+	}
+
 	public static function portalUrl( string $stripeCustomer ): string {
 		$r = self::call( 'POST', '/billing_portal/sessions', array( 'customer' => $stripeCustomer, 'return_url' => Config::get( 'base_url' ) . '/account' ) );
 		return (string) ( $r['url'] ?? '' );

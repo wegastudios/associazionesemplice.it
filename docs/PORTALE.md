@@ -66,7 +66,7 @@ Da fare:
 1. Creare su Stripe i prezzi ricorrenti e su PayPal i piani, poi compilare `stripe_price` / `paypal_plan` (da `config.php` o da `/admin/prezzi`); token Wega con scope `licenses:create`, `licenses:read`, `licenses:change-binding` e tipo 3 abilitato.
 2. Passare il plugin al rimbalzo (vedi sotto): così non serve nessuna credenziale nel plugin. I nomi dei piani inviati al server devono contenere Free, Lite o Full.
 3. Prova su staging dei percorsi reali (acquisto, rinnovo, webhook, prova Pro) con le chiavi di test.
-4. Cambio piano (da Lite a Full) a metà periodo, rimborsi e fatturazione elettronica: non ancora gestiti.
+4. Rimborsi e fatturazione elettronica: non ancora gestiti. Cambio piano: vedi sotto (con PayPal ricorrente non è ancora automatico).
 
 ## Chiavi, cookie e pagine legali (dal pannello)
 
@@ -155,3 +155,11 @@ L'aggiornamento diretto offre **solo versioni firmate**. La firma è Ed25519 sul
 ## Dominio registrabile: Public Suffix List completa
 
 `Domain::registrable()` usa la Public Suffix List **completa** (sezioni ICANN e PRIVATE) con l'algoritmo ufficiale (eccezioni «!», regole «*.», regola più lunga): `staging.esempio.it` → `esempio.it`, `www.esempio.co.uk` → `esempio.co.uk`, ma `sito.altervista.org` o `utente.github.io` restano sé stessi, così i clienti di uno stesso ospite non condividono la licenza. Un dominio che è già un suffisso pubblico non è valido. Dati: `portale/src/PublicSuffixData.php` (generato da `public_suffix_list.dat`, scaricato il 2026-10-19, 338207 byte, 10398 regole in punycode; licenza della lista MPL 2.0). Il plugin usa la stessa copia.
+
+## Cambio di piano (upgrade e downgrade)
+
+Dall'area riservata (`/account`), su una licenza acquistata con carta o PayPal, attiva e non disdetta (`src/PlanChange.php`):
+- **Upgrade** (piano più caro, stesso periodo): paga subito la differenza `(nuovo − vecchio) × giorni residui / giorni del periodo` (minimo 0,50 €, quello di Stripe) con un pagamento singolo; a pagamento riuscito il tipo di licenza cambia su Wega (`PATCH plan_name`), la **chiave e la scadenza restano le stesse**; su Stripe ricorrente anche il prezzo dei rinnovi passa al piano nuovo (senza proporzioni né addebiti immediati). Ripetibile senza effetti: se un passaggio esterno fallisce il webhook ritenta.
+- **Downgrade** (piano più economico): programmato (`next_plan`). La licenza resta com'è fino alla scadenza pagata; al rinnovo (`Billing::renew`) cambia tipo su Wega e prezzo. Su Stripe ricorrente il prezzo del prossimo addebito cambia subito alla programmazione; con pagamento singolo il rinnovo è già proposto al prezzo nuovo. Si può annullare prima del rinnovo.
+- Email: `plan_upgraded`, `plan_downgrade_scheduled`, `plan_downgraded` (modificabili da `/admin/email`).
+- **Non gestito**: PayPal ricorrente (il cambio di prezzo richiede una nuova approvazione del cliente su PayPal: per ora «scrivici dal supporto»), licenze manuali/di prova, passaggio tra periodi (mese ↔ anno), rimborsi. Se al rinnovo Wega non risponde al cambio di tipo, l'errore finisce nel log (`[portale] downgrade: …`) e il tipo va allineato dalla gestione.

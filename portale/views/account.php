@@ -83,6 +83,28 @@ $csrf = Portale\App::csrf();
 		</div>
 		<?php endif; ?>
 
+		<?php
+		$pc_reason = in_array( $s['provider'], array( 'stripe', 'paypal' ), true ) && $key ? $billing->planChange()->reason( $s ) : 'no';
+		$pc_opts   = null === $pc_reason ? $billing->planChange()->options( $s ) : array();
+		$pc_next   = ! empty( $s['next_plan'] ) ? (string) Portale\Config::get( 'plans.' . $s['next_plan'] . '.label', $s['next_plan'] ) : '';
+		?>
+		<?php if ( $pc_next ) : ?>
+		<div class="trial-box">
+			<p><b>Dal prossimo rinnovo passi a <?php echo e( $pc_next ); ?></b><br><span class="muted small">Fino al <?php echo e( date( 'd/m/Y', $exp ) ); ?> la licenza resta com'è; poi cambiano piano e prezzo. La chiave non cambia.</span></p>
+			<form method="post" action="/account/piano-annulla" style="display:flex;gap:8px;flex-wrap:wrap"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="id" value="<?php echo e( $s['id'] ); ?>"><button class="btn alt small" type="submit">Annulla il cambio</button></form>
+		</div>
+		<?php elseif ( $pc_opts ) : ?>
+		<div class="trial-box">
+			<p><b>Cambia piano</b><br><span class="muted small">La chiave e la scadenza (<?php echo e( date( 'd/m/Y', $exp ) ); ?>) non cambiano. Passando a un piano superiore paghi ora solo la differenza fino alla scadenza; passando a uno inferiore il cambio vale dal prossimo rinnovo.</span></p>
+			<?php foreach ( $pc_opts as $o ) : ?>
+			<form method="post" action="<?php echo $o['up'] ? '/account/piano' : '/account/piano-programma'; ?>" style="margin-top:8px"<?php if ( ! $o['up'] ) : ?> onsubmit="return confirm('Dal prossimo rinnovo la licenza passa a <?php echo e( $o['label'] ); ?>: le funzioni in più si disattivano, i dati restano. Confermi?')"<?php endif; ?>><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="id" value="<?php echo e( $s['id'] ); ?>"><input type="hidden" name="to" value="<?php echo e( $o['plan'] ); ?>">
+				<button class="btn <?php echo $o['up'] ? '' : 'alt'; ?>" type="submit"><?php echo $o['up'] ? 'Passa a ' . e( $o['label'] ) . ' · paghi ' . e( number_format( $o['pay'] / 100, 2, ',', '.' ) ) . ' € ora' : 'Passa a ' . e( $o['label'] ) . ' dal prossimo rinnovo'; ?></button></form>
+			<?php endforeach; ?>
+		</div>
+		<?php elseif ( is_string( $pc_reason ) && 'no' !== $pc_reason && 'paypal' === $s['provider'] && $rec ) : ?>
+		<p class="hint"><?php echo e( $pc_reason ); ?></p>
+		<?php endif; ?>
+
 		<?php if ( in_array( $s['provider'], array( 'stripe', 'paypal' ), true ) && ! $rec && $key ) : ?>
 		<div class="trial-box">
 			<p><b>Rinnova <?php echo 'year' === $s['period'] ? 'per un altro anno' : 'per un altro mese'; ?></b><br><span class="muted small">Pagamento singolo: la chiave resta la stessa, la scadenza si sposta in avanti.</span></p>

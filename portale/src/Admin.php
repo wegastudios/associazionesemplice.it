@@ -435,7 +435,7 @@ final class Admin {
 	private function sampleVars(): array {
 		return array(
 			'link' => rtrim( (string) Config::get( 'base_url' ), '/' ) . '/entra/ESEMPIO', 'dominio' => 'miaassociazione.it', 'vecchio_dominio' => 'vecchio-sito.it',
-			'piano' => 'Pro Full', 'scadenza' => date( 'd/m/Y', time() + 30 * 86400 ), 'email' => $this->email,
+			'piano' => 'Pro Fiscale', 'nuovo_piano' => 'Pro Contabile', 'scadenza' => date( 'd/m/Y', time() + 30 * 86400 ), 'email' => $this->email,
 			'account_url' => rtrim( (string) Config::get( 'base_url' ), '/' ) . '/account',
 		);
 	}
