@@ -22,7 +22,7 @@ final class Actions {
 	/** Azioni riservate agli amministratori: impostazioni, pagamenti online, tessera e QR, anni solari, privacy, testi, tesoriere e segreteria. */
 	const ADMIN_ONLY = array(
 
-		'asem_save_settings', 'asem_save_card', 'asem_regen_qr',
+		'asem_create_year', 'asem_close_year', 'asem_reopen_year', 'asem_save_settings', 'asem_save_card', 'asem_regen_qr',
 		'asem_save_look', 'asem_save_donate', 'asem_save_campaign', 'asem_delete_campaign', 'asem_create_privacy_page', 'asem_save_ical', 'asem_regen_ical', 'asem_create_pages', 'asem_save_wpai', 'asem_wpai_process', 'asem_wpai_retry', 'asem_wpai_clear', 'asem_privacy_anonymize', 'asem_save_comms',
 		
 		'asem_delete_activity', 'asem_delete_booking', 'asem_purge_enrollments', 'asem_set_treasurer', 'asem_set_secretary', 'asem_set_board_role', 'asem_backup_restore', 
@@ -81,6 +81,9 @@ final class Actions {
 			'asem_add_dates'          => 'add_dates',
 			'asem_cancel_session'     => 'cancel_session',
 			'asem_book'               => 'book',
+			'asem_create_year'        => 'create_year',
+			'asem_close_year'         => 'close_year',
+			'asem_reopen_year'        => 'reopen_year',
 			'asem_event_staff_add'    => 'event_staff_add',
 			'asem_event_staff_remove' => 'event_staff_remove',
 			'asem_event_staff_cash'   => 'event_staff_cash',
@@ -614,6 +617,21 @@ final class Actions {
 	private static function cancel_session( array $p ): array {
 		Plugin::activities()->cancel_session( (int) $p['session_id'] );
 		return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Data annullata.' );
+	}
+
+	private static function create_year( array $p ): array {
+		\AssociazioneSemplice\FiscalYears::create( (int) ( $p['year'] ?? 0 ) );
+		return array( Ui::url( 'asem-years' ), 'Anno solare creato.' );
+	}
+
+	private static function close_year( array $p ): array {
+		\AssociazioneSemplice\FiscalYears::close( (int) ( $p['year'] ?? 0 ) );
+		return array( Ui::url( 'asem-years' ), 'Anno solare chiuso: non accetta più incassi né spese.' );
+	}
+
+	private static function reopen_year( array $p ): array {
+		\AssociazioneSemplice\FiscalYears::reopen( (int) ( $p['year'] ?? 0 ) );
+		return array( Ui::url( 'asem-years' ), 'Anno solare riaperto.' );
 	}
 
 	private static function book( array $p ): array {

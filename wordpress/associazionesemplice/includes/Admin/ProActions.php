@@ -44,9 +44,6 @@ final class ProActions {
 		'asem_fund_deposit' => array( 'fund_deposit', 'funds', false ),
 		'asem_fund_release' => array( 'fund_release', 'funds', false ),
 		'asem_fund_settle' => array( 'fund_settle', 'funds', false ),
-		'asem_create_year' => array( 'create_year', 'fiscal', true ),
-		'asem_close_year' => array( 'close_year', 'fiscal', true ),
-		'asem_reopen_year' => array( 'reopen_year', 'fiscal', true ),
 		'asem_receipt_email' => array( 'receipt_email', 'receipts', false ),
 		'asem_walk_in' => array( 'walk_in', 'door_sales', false ),
 		'asem_broadcast_send' => array( 'broadcast_send', 'broadcasts', false ),
@@ -296,21 +293,6 @@ final class ProActions {
 			Money::parse( $p['amount'] ?? '' ) ?? 0, (string) ( $p['method'] ?? '' ), trim( (string) ( $p['description'] ?? '' ) )
 		);
 		return array( Ui::url( 'asem-ledger' ), 'Giroconto registrato.' );
-	}
-
-	public static function create_year( array $p ): array {
-		\AssociazioneSemplice\FiscalYears::create( (int) ( $p['year'] ?? 0 ) );
-		return array( Ui::url( 'asem-years' ), 'Anno solare creato.' );
-	}
-
-	public static function close_year( array $p ): array {
-		\AssociazioneSemplice\FiscalYears::close( (int) ( $p['year'] ?? 0 ) );
-		return array( Ui::url( 'asem-years' ), 'Anno solare chiuso: non accetta più incassi né spese.' );
-	}
-
-	public static function reopen_year( array $p ): array {
-		\AssociazioneSemplice\FiscalYears::reopen( (int) ( $p['year'] ?? 0 ) );
-		return array( Ui::url( 'asem-years' ), 'Anno solare riaperto.' );
 	}
 
 	public static function add_account( array $p ): array {

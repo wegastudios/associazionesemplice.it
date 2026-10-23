@@ -38,13 +38,13 @@ Senza `--strict` stampa il rapporto (è il cruscotto dell'avanzamento); con `--s
 ## Stato (2026-10-20): completata
 
 Fasi 1-7 eseguite. `bash wordpress/check-free-clean.sh --strict` gira in CI (job «Installable zips») e non trova nulla nel pacchetto gratuito.
-Livello di compatibilità `ASEM_API`/`ASEM_PRO_API` = 3.
+Livello di compatibilità `ASEM_API`/`ASEM_PRO_API` = 4 (dalla 4 gli anni solari e le loro azioni sono nel gratuito; hook `asem_years_page_after`).
 
 ### Punti di estensione del gratuito (filtri e azioni `asem_*`)
 - Registro: `Edition::register()`, `asem_feature_available`, `asem_features_suspended`, `asem_feature_unavailable_message|html`.
 - Schema e dati: `asem_schema_tables`, `asem_privacy_export`, `asem_person_anonymized`, `asem_activity_deleted`, `asem_registration_deleted`, `asem_activity_delete_blockers`, `asem_online_payment_pending`, `asem_activity_saved`.
 - Impostazioni e limiti: `asem_settings_defaults`, `asem_settings_clean`, `asem_secret_keys`, `asem_limits_defs`, `asem_feature_switches`, `asem_settings_page_end`, `asem_card_settings`, `asem_comms_settings`, `asem_entity_values`.
-- Amministrazione: `asem_admin_groups|sections|only|parents|menu_pages|hidden_pages`, `asem_admin_init`, `Admin\Actions::add_handler()`, `asem_card_page_end|switches`, `asem_entity_rows|sections|page_end`, `asem_comms_sections`, `asem_integrations_top|list`, `asem_dashboard_alerts`, `asem_person_receipts`, `asem_ledger_row_actions`, `asem_vat_row|input`, `asem_activity_form_rows`, `asem_guide_options`, `asem_document`.
+- Amministrazione: `asem_admin_groups|sections|only|parents|menu_pages|hidden_pages`, `asem_admin_init`, `Admin\Actions::add_handler()`, `asem_card_page_end|switches`, `asem_entity_rows|sections|page_end`, `asem_comms_sections`, `asem_integrations_top|list`, `asem_dashboard_alerts`, `asem_years_page_after`, `asem_person_receipts`, `asem_ledger_row_actions`, `asem_vat_row|input`, `asem_activity_form_rows`, `asem_guide_options`, `asem_document`.
 - Procedura guidata: `asem_wizard_entity_intro|entity_rows|steps_entity|module_extra|levels_rows|payment_choices|steps_payments|own_step|feature_conditions|page_if|values|done|next`.
 - Sito: `asem_front_init`, `asem_shortcode_views`, `asem_render_view`, `asem_view_available`, `asem_areas`, `asem_page_defs|areas`, `asem_my_sections`, `asem_area_section`, `asem_card_extra`, `asem_checkin_extra`, `asem_treasurer_sections`, `Frontend\Actions::add_handler()`.
 - Servizi: `asem_scheduled_jobs`, `asem_admin_post_classes`, `asem_rest_routes`, `asem_payments_service`, `asem_online_dues`, `asem_reservation_active`, `asem_text_plain|html`, `asem_texts_flush`, `asem_texts_admin_buffer`, `asem_notify_email`, `asem_privacy_uses|processors|transfer_note`.

@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.18
+Stable tag: 1.2.19
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,9 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.2.19 =
+* Anni solari (apertura e chiusura) ora anche nel gratuito, con l'avviso del nuovo anno da settembre; gli ospiti dell'associazione e del volontario compaiono solo con la quota del volontario
 
 = 1.2.18 =
 * Listini per eventi e corsi a date (individuale, di gruppo, pacchetti da 4) e prenotazioni «ospite dell'associazione» e «ospite del volontario» con sconto automatico e fondo del volontario non alimentato

@@ -21,6 +21,7 @@ final class Admin {
 		add_filter( 'parent_file', array( __CLASS__, 'menu_parent' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'assets' ) );
 		Actions::register();
+		YearsPage::register();
 		Exports::register();
 		IncomePage::register_ajax();
 		Dismiss::register();
@@ -35,7 +36,7 @@ final class Admin {
 		'asem-people'     => array( 'Rubrica soci', array( 'asem-people' => 'Soci e ospiti' ) ),
 		'asem-activities' => array( 'Corsi ed eventi', array( 'asem-activities' => 'Elenco' ) ),
 		'asem-tools'      => array( 'Strumenti', array( 'asem-tools' => 'Panoramica', 'asem-import' => 'Importa da Excel/CSV', 'asem-tec' => 'Da The Events Calendar', 'asem-wpai' => 'WP All Import', 'asem-exports' => 'Esporta', 'asem-calendar' => 'Calendari', 'asem-backup' => 'Copia di sicurezza', 'asem-tech' => 'Integrazioni' ) ),
-		'asem-money'      => array( 'Cassa', array( 'asem-money' => 'Cassa', 'asem-ledger' => 'Prima nota', 'asem-income' => 'Nuovo incasso', 'asem-bookdesk' => 'Prenota', 'asem-expense' => 'Nuova spesa' ) ),
+		'asem-money'      => array( 'Cassa', array( 'asem-money' => 'Cassa', 'asem-ledger' => 'Prima nota', 'asem-income' => 'Nuovo incasso', 'asem-bookdesk' => 'Prenota', 'asem-expense' => 'Nuova spesa', 'asem-years' => 'Anni solari' ) ),
 		'asem-book'       => array( 'Registri', array( 'asem-book' => 'Libro soci', 'asem-minutes' => 'Verbali' ) ),
 		'asem-settings'   => array( 'Impostazioni', array( 'asem-entity' => 'Dati dell\'ente', 'asem-comms' => 'Privacy e regolamento', 'asem-settings' => 'Soci e quote', 'asem-look' => 'Aspetto', 'asem-bank' => 'Bonifico', 'asem-donate' => 'Donazioni', 'asem-card' => 'Tessera e QR', 'asem-roles' => 'Ruoli e accessi', 'asem-limits' => 'Limiti e soglie', 'asem-audit' => 'Registro azioni', 'asem-guide' => 'Guida iniziale', 'asem-reset' => 'Azzeramento dati' ) ),
 	);
@@ -49,7 +50,7 @@ final class Admin {
 	);
 
 	/** Pagine riservate agli amministratori (la segreteria non le vede). */
-	const BASE_ADMIN_ONLY = array( 'asem-look', 'asem-pro', 'asem-bank', 'asem-donate', 'asem-settings', 'asem-card', 'asem-comms', 'asem-backup', 'asem-audit', 'asem-wpai', 'asem-tech', 'asem-roles', 'asem-limits', 'asem-wizard', 'asem-entity', 'asem-activity-delete', 'asem-booking-delete', 'asem-reset' );
+	const BASE_ADMIN_ONLY = array( 'asem-years', 'asem-look', 'asem-pro', 'asem-bank', 'asem-donate', 'asem-settings', 'asem-card', 'asem-comms', 'asem-backup', 'asem-audit', 'asem-wpai', 'asem-tech', 'asem-roles', 'asem-limits', 'asem-wizard', 'asem-entity', 'asem-activity-delete', 'asem-booking-delete', 'asem-reset' );
 
 	/** Pagine di dettaglio => voce di menu a cui appartengono. */
 	const BASE_PARENTS = array( 'asem-person' => 'asem-people', 'asem-activity' => 'asem-activities', 'asem-activity-delete' => 'asem-activities', 'asem-booking-delete' => 'asem-activities' );
@@ -103,6 +104,7 @@ final class Admin {
 			array( 'asem-calendar', 'Calendario', array( CalendarPage::class, 'render' ) ),
 			array( 'asem-income', 'Nuovo incasso', array( IncomePage::class, 'render' ) ),
 			array( 'asem-bookdesk', 'Prenota', array( BookDeskPage::class, 'render' ) ),
+			array( 'asem-years', 'Anni solari', array( YearsPage::class, 'render' ) ),
 			array( 'asem-expense', 'Nuova spesa', array( ExpensePage::class, 'render' ) ),
 			array( 'asem-minutes', 'Verbali', array( RegistersPage::class, 'render_minutes' ) ),
 			array( 'asem-guide', 'Guida iniziale', array( GuidePage::class, 'render' ) ),

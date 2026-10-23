@@ -77,6 +77,7 @@ $pages = array(
 	'Prima nota'            => array( array( \AssociazioneSemplice\Admin\LedgerPage::class, 'render' ), array() ),
 	'Nuovo incasso'         => array( array( \AssociazioneSemplice\Admin\IncomePage::class, 'render' ), array() ),
 	'Nuova spesa'           => array( array( \AssociazioneSemplice\Admin\ExpensePage::class, 'render' ), array() ),
+	'Anni solari'           => array( array( \AssociazioneSemplice\Admin\YearsPage::class, 'render' ), array() ),
 );
 $html = array();
 foreach ( $pages as $name => $p ) {
@@ -85,7 +86,7 @@ foreach ( $pages as $name => $p ) {
 }
 // nessun collegamento a pagine che in questa edizione non ci sono
 foreach ( array( 'Bacheca', 'Soldi', 'Prima nota', 'Soci e quote' ) as $pn ) {
-	foreach ( array( 'asem-accounts', 'asem-years', 'asem-group', 'asem-transfer', 'asem-reports', 'asem-statement', 'asem-volunteers', 'asem-attendance', 'asem-app', 'asem-acct', 'asem-fivepm', 'asem-payments', 'asem-messages', 'asem-texts', 'asem-resources', 'asem-credits', 'asem-accounting' ) as $slug ) {
+	foreach ( array( 'asem-accounts', 'asem-group', 'asem-transfer', 'asem-reports', 'asem-statement', 'asem-volunteers', 'asem-attendance', 'asem-app', 'asem-acct', 'asem-fivepm', 'asem-payments', 'asem-messages', 'asem-texts', 'asem-resources', 'asem-credits', 'asem-accounting' ) as $slug ) {
 		free_ok( false === strpos( $html[ $pn ], 'page=' . $slug . '"' ) && false === strpos( $html[ $pn ], 'page=' . $slug . '&' ), "pagina $pn: nessun collegamento a $slug" );
 	}
 }
