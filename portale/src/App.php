@@ -60,6 +60,8 @@ final class App {
 		} elseif ( $get && isset( Legal::PAGES[ ltrim( $path, '/' ) ] ) ) {
 			$slug = ltrim( $path, '/' );
 			View::render( 'legal', array( 'title' => Legal::PAGES[ $slug ][0], 'html' => Legal::html( Legal::body( $slug ) ) ) );
+		} elseif ( $get && '/confronto' === $path ) {
+			View::render( 'confronto', array( 'title' => 'Confronto tra le versioni' ) );
 		} elseif ( $get && '/free' === $path ) {
 			View::render( 'free', array() );
 		} elseif ( ! $get && '/free' === $path ) {

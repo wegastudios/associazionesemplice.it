@@ -10,7 +10,7 @@ $copy = array(
 		'Tutto il piano Gratuito', 'Pagamenti online con carta e PayPal', 'Più quote socio e livelli', 'Comunicazioni email ai soci', 'App installabile e tessera nel telefono', 'Assicurazioni e presenze', 'Incasso sul posto',
 	) ),
 	'full' => array( 'tagline' => 'Per chi vuole anche la contabilità completa dell\'ente.', 'tag' => 'Il più completo', 'features' => array(
-		'Tutto il Pro Lite', 'Conti, fondi e giroconti', 'Ricevute PDF e rendiconto', 'IVA e anni solari', '5 per mille',
+		'Tutto il Pro Contabile', 'Conti, fondi e giroconti', 'Ricevute PDF e rendiconto', 'IVA e anni solari', '5 per mille',
 	) ),
 );
 $features = array(
@@ -112,7 +112,7 @@ $faq = array(
 	<?php endforeach; ?>
 	</div>
 	<?php if ( ! empty( $trial ) ) : ?><p class="fine" style="font-weight:600;color:var(--fg)">Hai già la licenza gratuita? Prova il piano Pro gratis per <?php echo (int) $trial; ?> giorni dall'area riservata, una volta sola.</p><?php endif; ?>
-	<p class="fine">Prezzi in euro. Pagamento sicuro con Stripe o PayPal. Ogni licenza è legata a un dominio, modificabile dall'area riservata.</p>
+	<p class="fine"><a href="/confronto">Confronta tutte le funzioni delle tre versioni</a>. Prezzi in euro. Pagamento sicuro con Stripe o PayPal. Ogni licenza è legata a un dominio, modificabile dall'area riservata.</p>
 </div></section>
 
 <section class="section alt" id="domande"><div class="wrap">

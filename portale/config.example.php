@@ -47,7 +47,7 @@ return array(
 	'plans' => array(
 		'free' => array( 'label' => 'Free', 'plan_name' => 'Free', 'prices' => array() ),
 		'lite' => array(
-			'label' => 'Pro Lite', 'plan_name' => 'Pro Lite',
+			'label' => 'Pro Contabile', 'plan_name' => 'Pro Lite',
 			'description' => 'Tutto il Pro, senza la parte contabile.',
 			'prices' => array(
 				'month' => array( 'cents' => 500,  'stripe_price' => '', 'paypal_plan' => '' ),
@@ -55,7 +55,7 @@ return array(
 			),
 		),
 		'full' => array(
-			'label' => 'Pro Full', 'plan_name' => 'Pro Full',
+			'label' => 'Pro Fiscale', 'plan_name' => 'Pro Full',
 			'description' => 'Tutto: contabilità, IVA, 5 per mille, rendiconto.',
 			'prices' => array(
 				'month' => array( 'cents' => 1200, 'stripe_price' => '', 'paypal_plan' => '' ),
