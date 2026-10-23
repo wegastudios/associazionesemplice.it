@@ -129,7 +129,7 @@ Se `/supporto/accedi` trova la persona non connessa, ricorda la destinazione fis
 
 ## Gratuito unico e aggiornamento diretto solo per il Pro
 
-Dalla 1.2.3 il gratuito è **un solo pacchetto** per tutti, quello per WordPress.org (senza aggiornatore): nel portale il prodotto resta «free» e lo zip da caricare in Versioni è `associazionesemplice-wporg.zip` (`release.sh free` lo cerca prima di `-free.zip`). L'aggiornamento diretto da WordPress (`POST /api/plugin/update`) lo usa **solo il Pro**, con chiave e dominio; per il gratuito l'endpoint resta disponibile ma il plugin non lo chiama. `/api/plugin/latest` resta per gli avvisi. Ultimi caricati: gratuito 1.2.3, Pro 1.1.6.
+Dalla 1.2.3 il gratuito è **un solo pacchetto** per tutti, quello per WordPress.org (senza aggiornatore): nel portale il prodotto resta «free» e lo zip da caricare in Versioni è `associazionesemplice.zip` (il Pro è `associazionesemplice-pro.zip`; nomi uguali in build, CI e radice del repository, `release.sh` li legge da `wordpress/dist/`). L'aggiornamento diretto da WordPress (`POST /api/plugin/update`) lo usa **solo il Pro**, con chiave e dominio; per il gratuito l'endpoint resta disponibile ma il plugin non lo chiama. `/api/plugin/latest` resta per gli avvisi. Ultimi caricati: gratuito 1.2.3, Pro 1.1.6.
 
 ## Revisione di sicurezza (17–19 ottobre 2026)
 
