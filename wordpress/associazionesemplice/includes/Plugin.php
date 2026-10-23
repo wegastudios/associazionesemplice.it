@@ -36,6 +36,7 @@ final class Plugin {
 				}
 			);
 		}
+		MailLog::register();     // registro dell'esito delle email spedite
 		self::schedule_jobs();   // lavori periodici: la classe si carica solo quando il lavoro parte
 		self::lazy_admin_post(); // download e azioni di admin-post: la classe si carica solo per quell'azione
 		// Parti che servono solo se la funzione è presente e in uso: altrimenti nemmeno si caricano.

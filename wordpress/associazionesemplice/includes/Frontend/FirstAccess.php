@@ -53,7 +53,6 @@ final class FirstAccess {
 		if ( $sent >= Limits::get( 'first_access_per_email' ) ) {
 			return false;
 		}
-		set_transient( $mail_key, $sent + 1, HOUR_IN_SECONDS );
 		$person = \AssociazioneSemplice\Access::person_for_user( (int) $user->ID );
 		if ( ! $person || ! MemberType::is_member( $person['type'] ) || user_can( $user, Plugin::CAP_OPS ) ) {
 			return false; // solo i soci (mai gli amministratori)
@@ -70,7 +69,11 @@ final class FirstAccess {
 		$link  = network_site_url( 'wp-login.php?action=rp&key=' . $key . '&login=' . rawurlencode( $user->user_login ), 'login' );
 		$text  = 'Ciao ' . $person['first_name'] . ",\n\necco il link per il tuo primo accesso" . ( '' !== $assoc ? ' a ' . $assoc : '' ) . ":\n\n" . $link
 			. "\n\nApri il link, scegli la tua password e poi entra con questa email. Il link vale 24 ore: se scade, ripeti il \"Primo accesso\" dal sito.\n\nSe non hai chiesto tu questo messaggio, ignoralo.";
-		return (bool) \AssociazioneSemplice\Texts::mail( $user->user_email, 'Primo accesso' . ( '' !== $assoc ? ' — ' . $assoc : '' ), $text );
+		$ok = (bool) \AssociazioneSemplice\Texts::mail( $user->user_email, 'Primo accesso' . ( '' !== $assoc ? ' — ' . $assoc : '' ), $text );
+		if ( $ok ) { // il limite conta i messaggi partiti davvero: se la posta del sito non funziona il socio può riprovare senza restare bloccato
+			set_transient( $mail_key, $sent + 1, HOUR_IN_SECONDS );
+		}
+		return $ok;
 	}
 
 	/**

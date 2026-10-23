@@ -6093,6 +6093,17 @@ asem_ok( false !== strpos( \AssociazioneSemplice\Docs::cards( '', 6 )['mime'], '
 Settings::update( array( 'card_enabled' => 1 ) );
 $cd_html = \AssociazioneSemplice\Frontend\Views::section_card( $cd_people[0] );
 asem_ok( false !== strpos( $cd_html, 'asem_card_pdf=' ), 'tessera: il socio ha il pulsante per scaricare il PDF' );
+
+// ---------- Cassa → Prenota e registro della posta ----------
+$bd_ev_date = gmdate( 'Y-m-d', strtotime( current_time( 'Y-m-d' ) . ' +3 days' ) );
+$bd_act     = $acts->create( array( 'name' => 'Serata prenotabile dalla cassa', 'social_year' => $sy_label, 'kind' => 'event', 'fee_cents' => 1500, 'session' => array( 'session_date' => $bd_ev_date, 'start_time' => '21:00', 'capacity' => 5 ) ) );
+asem_ok( 1 === count( array_filter( $acts->sessions_on( $bd_ev_date ), function ( $s ) use ( $bd_act ) { return (int) $s['activity_id'] === $bd_act; } ) ), 'prenota in cassa: le date di un giorno si trovano' );
+$bd_html = asem_render( array( Admin\BookDeskPage::class, 'render' ), 'Serata prenotabile dalla cassa', array( 'person_id' => (string) $cd_new, 'mode' => 'date', 'date' => $bd_ev_date ) );
+asem_ok( false !== strpos( $bd_html, 'asem_book' ), 'prenota in cassa: dalla data compare il pulsante Prenota' );
+asem_render( array( Admin\BookDeskPage::class, 'render' ), 'prossime date', array( 'person_id' => (string) $cd_new, 'mode' => 'item', 'item' => 'a:' . $bd_act ) );
+\AssociazioneSemplice\Texts::mail( 'prova@example.com', 'Prova registro', 'x' );
+$bd_log = \AssociazioneSemplice\MailLog::recent( 1 );
+asem_ok( $bd_log && 'Prova registro' === $bd_log[0]['what'] && 'p***@example.com' === $bd_log[0]['to'], 'posta: l\'esito resta nel registro con l\'indirizzo in parte nascosto' );
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' . ( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Tutti i controlli sono passati.' );

@@ -14,9 +14,30 @@ final class TechPage {
 
 	// ---------- Integrazioni ----------
 
+	/** Posta in uscita: esito degli ultimi messaggi e prova di invio, per capire perché un'email non parte. */
+	private static function mail_section(): void {
+		echo '<h2>Posta in uscita</h2><p class="description">Le email del plugin (primo accesso, ricevute, promemoria, avvisi) partono dalla posta del sito. Se non arrivano, qui vedi l\'ultimo esito e l\'errore segnalato dal server. '
+			. 'Se i messaggi risultano inviati ma non arrivano, di solito è un problema di consegna: la soluzione affidabile è collegare il sito a un servizio di posta (un plugin SMTP) con un indirizzo del tuo dominio, e controllare che il dominio abbia i record SPF e DKIM.</p>';
+		$rows = \AssociazioneSemplice\MailLog::recent( 10 );
+		if ( $rows ) {
+			echo '<table class="widefat striped" style="max-width:900px"><thead><tr><th>Quando</th><th>A</th><th>Messaggio</th><th>Esito</th></tr></thead><tbody>';
+			foreach ( $rows as $r ) {
+				echo '<tr><td>' . esc_html( wp_date( 'd/m/Y H:i', (int) $r['t'] ) ) . '</td><td>' . esc_html( (string) $r['to'] ) . '</td><td>' . esc_html( (string) $r['what'] ) . '</td><td>'
+					. ( ! empty( $r['ok'] ) ? '<span class="asem-ok">partita</span>' : '<span class="asem-neg">non partita</span> <span class="description">' . esc_html( (string) $r['error'] ) . '</span>' ) . '</td></tr>';
+			}
+			echo '</tbody></table>';
+		} else {
+			echo '<p class="description">Nessuna email spedita finora.</p>';
+		}
+		Ui::form_open( 'asem_mail_test', Ui::url( 'asem-tech' ) );
+		echo '<p><button class="button">Invia un\'email di prova al mio indirizzo</button> <span class="description">(' . esc_html( (string) wp_get_current_user()->user_email ) . ')</span></p>';
+		Ui::form_close();
+	}
+
 	public static function render_integrations(): void {
 		Ui::header( 'Integrazioni' );
 		do_action( 'asem_integrations_top' ); // le estensioni aggiungono qui le loro sezioni
+		self::mail_section();
 		echo '<h2>Ricerca dei luoghi con Google</h2>';
 		echo '<p class="description">Nei campi «Luogo» di corsi ed eventi compaiono i suggerimenti di Google mentre si scrive. Spenta di default. Serve una chiave API di Google Maps dell\'ente (Google Cloud, servizio «Places API»): '
 			. 'limitala ai siti autorizzati dal pannello di Google, perché è visibile nel codice della pagina. Il collegamento con Google avviene solo nelle pagine di amministrazione, dal browser di chi compila il campo; nessun dato dei soci viene inviato.</p>'

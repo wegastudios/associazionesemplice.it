@@ -3,7 +3,7 @@ Contributors: wegastudios
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.16
+Stable tag: 1.1.17
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,9 @@ With a license key entered in Associazione Semplice Pro, once a day (and when yo
 The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, Mozilla Public License 2.0) to tell which domain a license covers.
 
 == Changelog ==
+
+= 1.1.17 =
+* Cash > Book also shows the resources available on a day, and the free days of a resource.
 
 = 1.1.16 =
 * Prepaid credits: an activity paid with credits now sets aside the volunteer's share in their fund, like a payment in money.

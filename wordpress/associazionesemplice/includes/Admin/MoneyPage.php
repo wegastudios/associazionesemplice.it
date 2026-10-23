@@ -19,7 +19,7 @@ final class MoneyPage {
 		Ui::header( 'Cassa' );
 		$year = Settings::social_year();
 		$r    = Plugin::reports()->social_year( $year );
-		echo '<p><a class="button button-primary" href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Nuovo incasso</a> '
+		echo '<p><a class="button button-primary" href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Nuovo incasso</a> <a class="button" href="' . esc_url( Ui::url( 'asem-bookdesk' ) ) . '">Prenota</a> '
 			. ( \AssociazioneSemplice\Edition::has( 'funds' ) ? '<a class="button" href="' . esc_url( Ui::url( 'asem-group' ) ) . '">Cassa per più persone</a> ' : '' )
 			. '<a class="button" href="' . esc_url( Ui::url( 'asem-expense' ) ) . '">Nuova spesa</a>'
 			. ( Modules::on( 'accounts' ) ? ' <a class="button" href="' . esc_url( Ui::url( 'asem-transfer' ) ) . '">Giroconto</a>' : '' ) . '</p>';

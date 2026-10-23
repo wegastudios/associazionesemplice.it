@@ -311,7 +311,10 @@ final class PeoplePage {
 			. '<p><input type="text" readonly class="large-text" value="' . esc_attr( $url ) . '" onclick="this.select()"></p>';
 		$wa = \AssociazioneSemplice\Phone::whatsapp( (string) $p['phone'] );
 		if ( '' !== $wa ) {
-			echo '<p><a class="button button-primary" target="_blank" rel="noopener" href="' . esc_url( 'https://wa.me/' . $wa . '?text=' . rawurlencode( \AssociazioneSemplice\Frontend\Activation::invite_text( $p ) ) ) . '">💬 Invia il link su WhatsApp</a></p>';
+			$msg = \AssociazioneSemplice\Frontend\Activation::invite_text( $p );
+			echo '<p><a class="button button-primary" target="_blank" rel="noopener" href="' . esc_url( 'https://wa.me/' . $wa . '?text=' . rawurlencode( $msg ) ) . '">💬 Invia il link su WhatsApp</a> '
+				. '<button type="button" class="button" data-t="' . esc_attr( $msg ) . '" onclick="if(navigator.clipboard){navigator.clipboard.writeText(this.dataset.t);this.textContent=\'Copiato\';}">Copia il messaggio</button> '
+				. '<span class="description">Se WhatsApp non si apre, copia il messaggio e incollalo nella chat del socio (numero: +' . esc_html( $wa ) . '). Il link vale ' . esc_html( \AssociazioneSemplice\Frontend\Activation::validity_text() ) . ': dopo, si genera un altro da questa scheda.</span></p>';
 		} else {
 			echo '<p class="description">Senza cellulare: copia il link e mandalo come preferisci. Oppure aggiungi l\'email qui sopra: l\'accesso si crea subito.</p>';
 		}
