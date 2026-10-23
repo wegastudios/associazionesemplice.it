@@ -12,11 +12,13 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Più livelli di socio con quote diverse | — | ✓ | ✓ |
 | Nucleo familiare con sconto per i familiari | — | ✓ | ✓ |
 | Ospiti con conteggio delle partecipazioni e invito a iscriversi | ✓ | ✓ | ✓ |
+| Ospiti dell'associazione e del volontario con quote ripartite e rimborso al volontario (per amministratori e segreteria) | — | ✓ | ✓ |
 | Importazione di soci e ospiti da Excel, CSV e WP All Import | ✓ | ✓ | ✓ |
 | Esportazione di soci e ospiti | ✓ | ✓ | ✓ |
 | Tessera digitale e stampabile, con colori e logo | ✓ | ✓ | ✓ |
 | Tessera personalizzata su immagine propria | ✓ | ✓ | ✓ |
 | QR della tessera con verifica in diretta | ✓ | ✓ | ✓ |
+| Tessera in PDF da stampare, con testo libero, tipologia e incarichi | ✓ | ✓ | ✓ |
 | Tessera in Apple Wallet e Google Wallet | — | ✓ | ✓ |
 
 ## Area riservata e permessi
@@ -39,6 +41,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Calendario interno e pubblicazione su Google Calendar, Apple e Outlook | ✓ | ✓ | ✓ |
 | Ingressi: elenco prenotati e registrazione | ✓ | ✓ | ✓ |
 | Biglietti con QR per le prenotazioni | ✓ | ✓ | ✓ |
+| Listini per eventi e corsi a date (individuale, di gruppo, pacchetti di ingressi) | ✓ | ✓ | ✓ |
 | Incasso sul posto durante gli eventi | — | ✓ | ✓ |
 | Suggerimento dei luoghi con Google (con la tua chiave) | ✓ | ✓ | ✓ |
 
@@ -51,9 +54,14 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Spese con scontrini e fatture allegati | ✓ | ✓ | ✓ |
 | Importazione ed esportazione della prima nota | ✓ | ✓ | ✓ |
 | Donazioni con PayPal | ✓ | ✓ | ✓ |
+| Cassa «Prenota» (per data o per attività) | ✓ | ✓ | ✓ |
+| Acconti e sconti con motivo per riga di incasso | ✓ | ✓ | ✓ |
+| Nuovo socio in un popup durante l'incasso, senza perdere l'operazione | ✓ | ✓ | ✓ |
 | Pagamenti online con Stripe, PayPal o WooCommerce | — | ✓ | ✓ |
 | Conti multipli, giroconti e cassa per più persone | — | ✓ | ✓ |
 | Fondi accantonati (per esempio rimborso dei volontari) | — | ✓ | ✓ |
+| Risorse con quota accantonata in un fondo a ogni pagamento (anche in crediti) | — | ✓ | ✓ |
+| Disponibilità reale dei fondi, liberazione ed estinzione | — | ✓ | ✓ |
 | Ricevute in PDF e attestazione annuale | — | ✓ | ✓ |
 | Report di gestione (conti e liquidità, anno sociale) | — | ✓ | ✓ |
 
@@ -82,6 +90,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 |---|---|---|---|
 | Avvisi agli iscritti di un'attività | ✓ | ✓ | ✓ |
 | Promemoria automatici per email (tessera, corsi, eventi) | ✓ | ✓ | ✓ |
+| Registro della posta in uscita e invio di una email di prova | ✓ | ✓ | ✓ |
 | Comunicazioni a gruppi di soci con storico degli invii | — | ✓ | ✓ |
 | App installabile sul telefono e notifiche | — | ✓ | ✓ |
 

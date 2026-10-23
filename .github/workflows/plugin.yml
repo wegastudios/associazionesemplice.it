@@ -130,7 +130,7 @@ jobs:
         with:
           name: associazionesemplice-packages
           path: |
-            wordpress/dist/associazionesemplice-wporg.zip
+            wordpress/dist/associazionesemplice.zip
             wordpress/dist/associazionesemplice-pro.zip
 
   plugincheck:

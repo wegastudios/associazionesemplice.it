@@ -38,7 +38,6 @@ final class ProMenu {
 
 	/** Pagine delle funzioni aggiuntive raggiungibili solo dai link: [slug, titolo, [classe, metodo]]. */
 	const HIDDEN = array(
-		array( 'asem-years', 'Anni solari', array( YearsPage::class, 'render' ) ),
 		array( 'asem-group', 'Cassa per più persone', array( GroupCashPage::class, 'render' ) ),
 		array( 'asem-transfer', 'Giroconto', array( TransferPage::class, 'render' ) ),
 		array( 'asem-accounts', 'Conti e fondi', array( AccountsPage::class, 'render' ) ),

@@ -16,7 +16,6 @@ Admin/TransferPage.php
 Admin/GroupCashPage.php
 GroupCash.php
 Admin/ReportsPage.php
-Admin/YearsPage.php
 Admin/AccountingPage.php
 Statement.php
 Admin/FivePmPage.php

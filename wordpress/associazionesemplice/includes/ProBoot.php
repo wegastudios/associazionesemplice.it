@@ -17,7 +17,7 @@ final class ProBoot {
 		'payments'   => 'PaymentService.php',      // pagamenti online
 		'funds'      => 'Admin/AccountsPage.php',  // conti multipli, giroconti, fondi e cassa per più persone
 		'reports'    => 'Admin/ReportsPage.php',   // report di gestione (saldi, attività)
-		'fiscal'     => 'Admin/YearsPage.php',     // anni solari, contabilità e rendiconto per il commercialista
+		'fiscal'     => 'Statement.php',           // contabilità e rendiconto per il commercialista (gli anni solari sono nel gratuito)
 		'fivepm'     => 'FivePerMille.php',        // 5 per mille
 		'insurance'  => 'Insurance.php',           // assicurazioni e presenze
 		'broadcasts' => 'Broadcasts.php',          // comunicazioni di massa
@@ -35,7 +35,7 @@ final class ProBoot {
 		'payments'   => array( 'asem-payments' ),
 		'funds'      => array( 'asem-accounts', 'asem-transfer', 'asem-group' ),
 		'reports'    => array( 'asem-reports' ),
-		'fiscal'     => array( 'asem-accounting', 'asem-years', 'asem-statement', 'asem-acct' ),
+		'fiscal'     => array( 'asem-accounting', 'asem-statement', 'asem-acct' ),
 		'fivepm'     => array( 'asem-fivepm' ),
 		'insurance'  => array( 'asem-volunteers', 'asem-attendance' ),
 		'broadcasts' => array( 'asem-messages' ),
@@ -49,7 +49,6 @@ final class ProBoot {
 	const ACTIONS = array(
 		'payments'   => array( 'asem_save_payment_settings', 'asem_test_gateway', 'asem_check_payments', 'asem_payment_reviewed' ),
 		'funds'      => array( 'asem_save_group_cash', 'asem_save_transfer', 'asem_add_account', 'asem_update_account', 'asem_close_account', 'asem_reopen_account', 'asem_fund_create', 'asem_fund_deposit', 'asem_fund_release', 'asem_fund_settle' ),
-		'fiscal'     => array( 'asem_create_year', 'asem_close_year', 'asem_reopen_year' ),
 		'receipts'   => array( 'asem_receipt_email' ),
 		'door_sales' => array( 'asem_walk_in' ),
 		'broadcasts' => array( 'asem_broadcast_send', 'asem_broadcast_test', 'asem_broadcast_retry' ),

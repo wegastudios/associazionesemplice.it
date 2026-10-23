@@ -26,6 +26,11 @@ final class Billing {
 
 	// --- Lettura ------------------------------------------------------------------------------------------------
 
+	/** Cambio di piano (upgrade subito, downgrade al rinnovo). */
+	public function planChange(): PlanChange {
+		return new PlanChange( $this->db, $this );
+	}
+
 	public function customer( string $email ): array {
 		$email = strtolower( trim( $email ) );
 		if ( ! filter_var( $email, FILTER_VALIDATE_EMAIL ) || strlen( $email ) > 190 ) {
@@ -162,12 +167,14 @@ final class Billing {
 		if ( ! $old || $old['customer_id'] !== $customerId || empty( $old['license_key_enc'] ) || $this->isRecurring( $old ) || ! in_array( $old['provider'], array( 'stripe', 'paypal' ), true ) ) {
 			throw new UserError( 'Questa licenza non si può rinnovare da qui.' );
 		}
-		$price = Config::price( $old['plan_code'], $old['period'] );
+		// Con un downgrade programmato il rinnovo è già al prezzo del piano nuovo.
+		$plan  = ! empty( $old['next_plan'] ) ? (string) $old['next_plan'] : (string) $old['plan_code'];
+		$price = Config::price( $plan, $old['period'] );
 		if ( ! $price || ! in_array( array( $provider, 'once' ), $this->methods( $price ), true ) ) {
 			throw new UserError( 'Questo metodo di pagamento non è disponibile.' );
 		}
 		$cust = $this->db->one( 'SELECT email FROM customers WHERE id = ?', array( $customerId ) );
-		$sub  = $this->insertSub( $customerId, $old['plan_code'], $old['period'], $provider, $old['domain'], 'once', $old['id'] );
+		$sub  = $this->insertSub( $customerId, $plan, $old['period'], $provider, $old['domain'], 'once', $old['id'] );
 		return $this->checkoutUrl( $sub, (string) $cust['email'], $price, $provider, 'once' );
 	}
 
@@ -241,7 +248,11 @@ final class Billing {
 			$st = $this->db->run( "UPDATE subscriptions SET status = 'merged', provider_ref = COALESCE(?, provider_ref), updated_at = ? WHERE id = ? AND status = 'pending'", array( $providerRef, Db::now(), $subId ) );
 			if ( 1 === $st->rowCount() ) {
 				try {
-					$this->renew( (string) $sub['renews'] );
+					if ( ! empty( $sub['change_to'] ) ) {
+						$this->planChange()->applyUpgrade( $sub );
+					} else {
+						$this->renew( (string) $sub['renews'] );
+					}
 				} catch ( \Throwable $e ) {
 					$this->db->run( "UPDATE subscriptions SET status = 'pending' WHERE id = ?", array( $subId ) );
 					throw $e;
@@ -282,6 +293,7 @@ final class Billing {
 		}
 		$lic = $this->wega->renew( Secrets::open( $sub['license_key_enc'] ) );
 		$this->db->run( "UPDATE subscriptions SET status = 'active', expires_at = ?, updated_at = ? WHERE id = ?", array( $this->date( $lic['expires_at'] ?? null ), Db::now(), $subId ) );
+		$this->planChange()->applyScheduled( $sub );
 		if ( $notify ) {
 			$this->notify( 'renewed', $this->subscription( $subId ) );
 		}

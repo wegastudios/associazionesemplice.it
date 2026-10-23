@@ -147,6 +147,17 @@ final class App {
 		} elseif ( ! $get && '/account/rinnova' === $path ) {
 			$url = $this->billing->startRenewal( (string) $this->in( 'id' ), $this->customerId(), (string) $this->in( 'provider' ) );
 			header( 'Location: ' . $url, true, 303 );
+		} elseif ( ! $get && '/account/piano' === $path ) {
+			$url = $this->billing->planChange()->startUpgrade( (string) $this->in( 'id' ), $this->customerId(), (string) $this->in( 'to' ) );
+			header( 'Location: ' . $url, true, 303 );
+		} elseif ( ! $get && '/account/piano-programma' === $path ) {
+			$this->billing->planChange()->scheduleDowngrade( (string) $this->in( 'id' ), $this->customerId(), (string) $this->in( 'to' ) );
+			$_SESSION['acc_flash'] = 'Cambio piano programmato: la licenza passa al piano scelto dal prossimo rinnovo.';
+			header( 'Location: /account', true, 303 );
+		} elseif ( ! $get && '/account/piano-annulla' === $path ) {
+			$this->billing->planChange()->cancelScheduled( (string) $this->in( 'id' ), $this->customerId() );
+			$_SESSION['acc_flash'] = 'Cambio piano annullato: la licenza resta com\'è.';
+			header( 'Location: /account', true, 303 );
 		} elseif ( ! $get && '/account/fatturazione' === $path ) {
 			$sub = $this->billing->subscription( (string) $this->in( 'id' ) );
 			if ( ! $sub || $sub['customer_id'] !== $this->customerId() || empty( $sub['provider_customer'] ) || 'stripe' !== $sub['provider'] ) {

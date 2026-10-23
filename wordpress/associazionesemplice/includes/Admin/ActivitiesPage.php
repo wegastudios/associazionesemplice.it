@@ -360,6 +360,9 @@ final class ActivitiesPage {
 				$html .= '<label><input type="checkbox" name="use_package" value="1"> dal pacchetto già pagato</label> ';
 			}
 		}
+		if ( ! \AssociazioneSemplice\Edition::has( 'funds' ) ) {
+			return $html; // gli ospiti dell'associazione e del volontario si calcolano sulla quota del volontario (funzione avanzata)
+		}
 		$html .= '<select name="guest_of" title="Ospite">';
 		foreach ( PriceLists::guest_kinds() as $k => $label ) {
 			$html .= '<option value="' . esc_attr( $k ) . '">' . esc_html( $label ) . '</option>';

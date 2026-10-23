@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Carica sul portale i pacchetti del plugin (restano online le ultime N versioni, vedi Impostazioni) FIRMANDOLI sul tuo computer:
 # la chiave privata dei pacchetti (Ed25519) non sta mai sul server, così un portale compromesso non può far installare codice sui siti.
-# Uso: bash portale/release.sh free|pro|both ["nota"]   (legge wordpress/dist/associazionesemplice-{wporg,pro}.zip: il gratuito è il pacchetto wporg; prima `bash wordpress/build.sh`)
+# Uso: bash portale/release.sh free|pro|both ["nota"]   (legge wordpress/dist/associazionesemplice.zip (gratuito) e associazionesemplice-pro.zip (Pro); prima `bash wordpress/build.sh`)
 #      bash portale/release.sh sign free|pro VERSIONE        firma una versione già pubblicata (serve il suo zip in wordpress/dist o l'impronta dal pannello)
 # Chiave: PORTALE_SIGN_KEY (default ~/.asem/pacchetti-ed25519.pem); identificativo in ~/.asem/pacchetti-ed25519.kid. Fai una copia della chiave in un luogo sicuro.
 set -euo pipefail
@@ -19,7 +19,7 @@ sign() { # prodotto versione sha256 → firma Ed25519 base64url del messaggio «
 	rm -f "$msg"
 }
 slug() { [ "$1" = free ] && echo associazionesemplice || echo associazionesemplice-pro; }
-zipfile() { local f="../wordpress/dist/associazionesemplice-$1.zip"; [ "$1" = free ] && [ -f ../wordpress/dist/associazionesemplice-wporg.zip ] && f="../wordpress/dist/associazionesemplice-wporg.zip"; echo "$f"; }
+zipfile() { if [ "$1" = free ]; then echo "../wordpress/dist/associazionesemplice.zip"; else echo "../wordpress/dist/associazionesemplice-pro.zip"; fi; }
 
 if [ "${1:-}" = sign ]; then
 	P="${2:?Uso: release.sh sign free|pro VERSIONE}"; V="${3:?Uso: release.sh sign free|pro VERSIONE}"

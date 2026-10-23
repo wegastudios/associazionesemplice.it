@@ -6,8 +6,33 @@ use AssociazioneSemplice\Plugin;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Anni solari della contabilità: si creano, si chiudono e si riaprono. Si incassa e si spende solo negli anni aperti. */
+/** Anni solari: si creano, si chiudono e si riaprono. Si incassa e si spende solo negli anni aperti. */
 final class YearsPage {
+
+	public static function register(): void {
+		add_action( 'asem_dashboard_alerts', array( __CLASS__, 'alert' ) );
+	}
+
+	/** Da settembre ricorda di aprire il nuovo anno solare: chiudibile (ricompare a inizio mese), a dicembre resta sempre visibile. */
+	public static function alert(): void {
+		if ( ! current_user_can( Plugin::CAP ) ) {
+			return;
+		}
+		$today = \AssociazioneSemplice\Db::today();
+		$year  = (int) substr( $today, 0, 4 );
+		$month = (int) substr( $today, 5, 2 );
+		$next  = $year + 1;
+		if ( $month < 9 || FiscalYears::get( $next ) ) {
+			return;
+		}
+		$msg = '<strong>Apri l\'anno solare ' . (int) $next . '.</strong> Finché non esiste, le quote dei soci si registrano solo per il ' . (int) $year . ' e non puoi incassare in anticipo per il ' . (int) $next . '. '
+			. '<a class="button" href="' . esc_url( Ui::url( 'asem-years' ) ) . '">Apri il ' . (int) $next . '</a>';
+		if ( 12 === $month ) { // a dicembre non si può chiudere
+			echo '<div class="notice notice-warning inline"><p>' . $msg . '</p></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			return;
+		}
+		echo Dismiss::html( 'next-year-' . substr( $today, 0, 7 ), 'warning', $msg, 31 ); // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto
+	}
 
 	public static function render(): void {
 		$back   = Ui::url( 'asem-years' );
@@ -46,7 +71,7 @@ final class YearsPage {
 		Ui::form_close();
 		echo '</div>';
 
-		ReportsPage::funds_by_year();
+		do_action( 'asem_years_page_after' ); // un'estensione aggiunge i fondi da rimborsare per anno
 		Ui::footer();
 	}
 }
