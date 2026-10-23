@@ -164,8 +164,9 @@ final class ActivityCopy {
 			}
 		}
 		$db = Db::db();
-		if ( ! empty( $a['resource_id'] ) || ! empty( $a['credit_price'] ) ) { // risorsa occupata e crediti previsti (funzioni avanzate)
-			$db->update( Db::t( 'activities' ), array( 'resource_id' => $a['resource_id'] ?? null, 'credit_price' => $a['credit_price'] ?? null ), array( 'id' => $new ) );
+		$extra = array( 'resource_id' => $a['resource_id'] ?? null, 'credit_price' => $a['credit_price'] ?? null, 'setup_before_min' => $a['setup_before_min'] ?? null, 'setup_after_min' => $a['setup_after_min'] ?? null );
+		if ( array_filter( $extra, function ( $v ) { return null !== $v; } ) ) { // risorsa occupata (anche «nessuna»), allestimento e crediti previsti (funzioni avanzate)
+			$db->update( Db::t( 'activities' ), $extra, array( 'id' => $new ) );
 		}
 		Audit::log( 'activity.duplicated', 'activity', $new, array( 'from' => $id ) );
 		return $new;

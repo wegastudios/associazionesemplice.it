@@ -92,6 +92,15 @@ Ogni risorsa ha una **regola di pagamento** (`pay_mode`), decisa dall'ente. Non 
 - Il pagamento online usa `PaymentItems` (voce `reservation`, chiave `r:{prenotazione}:{persona}`) e finisce in prima nota come «Altra entrata» con `reservation_id`. Se un pagamento arriva dopo che la prenotazione è stata liberata, i soldi entrano come «pagamento online non abbinato» e il pagamento è segnato «da controllare».
 - La segreteria registra sempre prenotazioni e incassi a mano, senza riserva provvisoria.
 
+## Corsi ed eventi sulle risorse, con l'allestimento
+
+- **Un evento deve dire quale risorsa occupa** (campo, sala…), oppure «Nessuna risorsa (evento fuori sede)»: senza una scelta il modulo non si salva (se esistono risorse a fasce). Per i corsi la scelta è facoltativa. «Fuori sede» si ricorda (`activities.resource_id` = 0), diverso da «non indicata» (vuoto).
+- **La risorsa non è disponibile** per le prenotazioni dei soci né per i blocchi nei periodi occupati dall'attività, **allestimenti compresi**: dall'inizio meno l'allestimento «prima» alla fine più l'allestimento «dopo». Senza orario l'attività occupa tutto il giorno.
+- **Gli allestimenti si sommano**: c'è quello della risorsa (`resources.setup_before_min`/`setup_after_min`, per esempio 20 minuti prima e dopo) e quello dell'attività (`activities.setup_before_min`/`setup_after_min`). Esempio: la sala vuole 20 minuti prima e dopo, lo yoga mezz'ora dopo → la sala è indisponibile 20 minuti prima e 50 dopo.
+- **Valori predefiniti**: se non si scrive niente, un evento ha **3 ore** prima e dopo e un corso nessuna; «0» vuol dire nessuno. La risorsa parte da nessuno. Per l'evento si sceglie sul singolo evento («3 ore», «mezz'ora», «20 minuti», «1h30»).
+- L'allestimento della risorsa vale intorno ai corsi e agli eventi; **non** intorno alle prenotazioni dei soci (le fasce sono già fisse).
+- Il calendario del giorno distingue l'attività («Attività: …») dall'allestimento («Allestimento per: …»). Collegando un'attività si avvisa se ci sono già prenotazioni nel periodo (allestimenti compresi). «Riproponi» mantiene risorsa e allestimenti.
+
 ## Fondo della risorsa
 
 Alcune risorse servono a pagare altre cose, o sono date in gestione a terzi (e una parte dell'incasso spetta al gestore). Per questo ogni risorsa può avere una **quota per un fondo** (`fund_mode` = importo fisso o percentuale, `fund_value`, `fund_id`), come già per i corsi e gli eventi ma con un fondo scelto a mano:

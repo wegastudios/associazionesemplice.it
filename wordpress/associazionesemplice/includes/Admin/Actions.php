@@ -492,6 +492,11 @@ final class Actions {
 	}
 
 	private static function save_activity( array $p ): array {
+		$kind   = ! empty( $p['id'] ) ? (string) ( Plugin::activities()->get( (int) $p['id'] )['kind'] ?? '' ) : (string) ( $p['kind'] ?? 'course' );
+		$errors = (array) apply_filters( 'asem_activity_errors', array(), $kind, $p ); // le estensioni possono chiedere dati in più prima di salvare
+		if ( $errors ) {
+			throw new \InvalidArgumentException( implode( ' ', array_map( 'strval', $errors ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
 		list( $vat_rate, $vat_mode ) = Ui::vat_input( $p ); // gli importi si memorizzano sempre IVA compresa (quanto paga chi partecipa)
 		$fee   = self::fee_field( $p, 'fee' );
 		$guest = self::fee_field( $p, 'guest_fee' );

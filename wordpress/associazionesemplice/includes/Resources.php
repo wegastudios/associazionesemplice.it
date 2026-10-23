@@ -90,6 +90,10 @@ final class Resources {
 			$bands             = ResourceRules::parse_rates( (string) ( $in['rates_text'] ?? '' ) );
 			$d['rates']        = $bands ? wp_json_encode( $bands ) : null;
 		}
+		if ( array_key_exists( 'setup_before', $in ) || array_key_exists( 'setup_after', $in ) ) { // l'allestimento della risorsa: tempo di preparazione prima e di riordino dopo ogni attività
+			$d['setup_before_min'] = (int) ResourceRules::parse_duration( (string) ( $in['setup_before'] ?? '' ) );
+			$d['setup_after_min']  = (int) ResourceRules::parse_duration( (string) ( $in['setup_after'] ?? '' ) );
+		}
 		if ( array_key_exists( 'fund_mode', $in ) ) { // la quota per un fondo (solo con la funzione dei fondi: senza il campo non si tocca ciò che c'è)
 			$mode  = in_array( (string) $in['fund_mode'], array( FundShare::FIXED, FundShare::PERCENT ), true ) ? (string) $in['fund_mode'] : FundShare::NONE;
 			$value = max( 0, (int) ( $in['fund_value'] ?? 0 ) );
@@ -216,29 +220,37 @@ final class Resources {
 	}
 
 	/**
-	 * Quando i corsi e gli eventi collegati alla risorsa la occupano tra due date (incluse). Un'attività senza orario occupa tutto il giorno.
+	 * Quando i corsi e gli eventi collegati alla risorsa la occupano tra due date (incluse). L'attività senza orario occupa tutto il giorno.
+	 * L'indisponibilità comprende l'allestimento prima e dopo: l'esigenza della risorsa e quella dell'attività si sommano
+	 * (la risorsa vuole 20 minuti prima e dopo, lo yoga 30 dopo → 20 minuti prima e 50 dopo). Gli eventi hanno 3 ore di allestimento
+	 * per tipo, se non si indica altro; i corsi nessuno.
 	 *
-	 * @return array[] starts, ends (Y-m-d H:i:s), title, activity_id
+	 * @return array[] starts, ends (con gli allestimenti), core_starts, core_ends (solo l'attività), title, activity_id (Y-m-d H:i:s)
 	 */
 	public static function activity_busy( int $resource_id, string $from, string $to ): array {
-		$ids = array_map( 'intval', self::db()->get_col( self::db()->prepare( 'SELECT id FROM ' . Db::t( 'activities' ) . ' WHERE resource_id = %d AND deleted_at IS NULL', $resource_id ) ) ?: array() );
+		$res  = self::get( $resource_id );
+		$acts = array();
+		foreach ( self::db()->get_results( self::db()->prepare( 'SELECT id, kind, setup_before_min, setup_after_min FROM ' . Db::t( 'activities' ) . ' WHERE resource_id = %d AND deleted_at IS NULL', $resource_id ), ARRAY_A ) ?: array() as $a ) {
+			$acts[ (int) $a['id'] ] = $a;
+		}
 		$out = array();
-		if ( ! $ids ) {
+		if ( ! $acts || ! $res ) {
 			return $out;
 		}
-		foreach ( Calendar::occurrences( $from, $to ) as $o ) {
-			if ( ! in_array( (int) $o['activity_id'], $ids, true ) ) {
+		// Un'attività a ridosso della mezzanotte occupa anche il giorno prima o dopo con l'allestimento: si guarda un giorno in più per parte.
+		foreach ( Calendar::occurrences( gmdate( 'Y-m-d', strtotime( $from . ' -1 day' ) ), gmdate( 'Y-m-d', strtotime( $to . ' +1 day' ) ) ) as $o ) {
+			$a = $acts[ (int) $o['activity_id'] ] ?? null;
+			if ( ! $a ) {
 				continue;
 			}
-			$s = $o['start'] ?: '00:00';
-			$e = $o['end'] ?: '23:59';
-			if ( $e <= $s ) {
-				$e = '23:59';
-			}
-			$out[] = array( 'starts' => $o['date'] . ' ' . $s . ':00', 'ends' => $o['date'] . ' ' . $e . ':00', 'title' => (string) $o['title'], 'activity_id' => (int) $o['activity_id'] );
+			$before = ResourceRules::setup_total( (int) $res['setup_before_min'], null === $a['setup_before_min'] ? null : (int) $a['setup_before_min'], (string) $a['kind'] );
+			$after  = ResourceRules::setup_total( (int) $res['setup_after_min'], null === $a['setup_after_min'] ? null : (int) $a['setup_after_min'], (string) $a['kind'] );
+			$w      = ResourceRules::busy_window( (string) $o['date'], $o['start'] ?: null, $o['end'] ?: null, $before, $after );
+			$out[]  = $w + array( 'title' => (string) $o['title'], 'activity_id' => (int) $o['activity_id'] );
 		}
 		return $out;
 	}
+
 
 	/** La griglia di un giorno: per ogni fascia, libera oppure la prenotazione (o l'attività) che la occupa. */
 	public static function day_grid( array $res, string $date ): array {
@@ -258,7 +270,7 @@ final class Resources {
 			if ( ! $used ) {
 				foreach ( $busy as $x ) {
 					if ( ResourceRules::overlaps( $a, $b, $x['starts'], $x['ends'] ) ) {
-						$used = array( 'id' => 0, 'kind' => 'activity', 'status' => 'booked', 'starts_at' => $x['starts'], 'ends_at' => $x['ends'], 'first_name' => $x['title'], 'last_name' => '', 'note' => $x['title'], 'guests' => array(), 'fee_due_cents' => 0, 'paid' => 0, 'remaining' => 0, 'state' => 'free', 'active' => true );
+						$used = array( 'id' => 0, 'kind' => 'activity', 'status' => 'booked', 'starts_at' => $x['starts'], 'ends_at' => $x['ends'], 'first_name' => $x['title'], 'last_name' => '', 'note' => $x['title'], 'setup' => ! ResourceRules::overlaps( $a, $b, $x['core_starts'], $x['core_ends'] ), 'guests' => array(), 'fee_due_cents' => 0, 'paid' => 0, 'remaining' => 0, 'state' => 'free', 'active' => true );
 						break;
 					}
 				}
@@ -323,7 +335,8 @@ final class Resources {
 					}
 					foreach ( $busy as $x ) {
 						if ( ResourceRules::overlaps( $starts, $ends, $x['starts'], $x['ends'] ) ) {
-							throw new \InvalidArgumentException( 'Il ' . $when . ' la risorsa è occupata da «' . $x['title'] . '».' );
+							$core = ResourceRules::overlaps( $starts, $ends, $x['core_starts'], $x['core_ends'] );
+							throw new \InvalidArgumentException( 'Il ' . $when . ' la risorsa è ' . ( $core ? 'occupata da «' : 'in allestimento per «' ) . $x['title'] . '».' );
 						}
 					}
 				}
@@ -726,20 +739,27 @@ final class Resources {
 
 	// ---------- Corsi ed eventi che occupano la risorsa ----------
 
-	/** La risorsa a cui è collegata un'attività (null = nessuna). */
+	/** La risorsa a cui è collegata un'attività (null = nessuna, anche se è stato scelto «evento fuori sede»). */
 	public static function activity_resource( int $activity_id ): ?int {
+		$v = self::activity_link( $activity_id );
+		return $v ? $v : null;
+	}
+
+	/** Il collegamento com'è memorizzato: null = non indicato, 0 = «nessuna risorsa» scelto apposta (evento fuori sede), altrimenti la risorsa. */
+	public static function activity_link( int $activity_id ): ?int {
 		$v = self::db()->get_var( self::db()->prepare( 'SELECT resource_id FROM ' . Db::t( 'activities' ) . ' WHERE id = %d', $activity_id ) );
-		return $v ? (int) $v : null;
+		return null === $v ? null : (int) $v;
 	}
 
 	/**
-	 * Collega un corso o un evento a una risorsa a fasce (o lo scollega con null): le sue date la occupano e nessuno la prenota negli stessi orari.
+	 * Collega un corso o un evento a una risorsa a fasce (o lo scollega con null; con 0 si dice che non occupa nessuna risorsa): le sue date la
+	 * occupano, con l'allestimento prima e dopo, e nessuno la prenota negli stessi orari.
 	 *
 	 * @return int prenotazioni dei soci già presenti negli orari dell'attività nei prossimi 120 giorni (da annullare o spostare)
 	 * @throws \InvalidArgumentException
 	 */
 	public static function link_activity( int $activity_id, ?int $resource_id ): int {
-		if ( null !== $resource_id ) {
+		if ( $resource_id ) {
 			$res = self::get( $resource_id );
 			if ( ! $res || ResourceRules::SLOT !== $res['mode'] ) {
 				throw new \InvalidArgumentException( 'Un corso o un evento può occupare solo una risorsa a fasce orarie.' );
@@ -747,20 +767,29 @@ final class Resources {
 		}
 		self::db()->update( Db::t( 'activities' ), array( 'resource_id' => $resource_id ), array( 'id' => $activity_id ) );
 		Audit::log( 'activity.resource', 'activity', $activity_id, array( 'resource' => $resource_id ) );
-		return null === $resource_id ? 0 : self::activity_conflicts( $activity_id, $resource_id );
+		return $resource_id ? self::activity_conflicts( $activity_id, $resource_id ) : 0;
 	}
 
-	/** Quante prenotazioni dei soci cadono negli orari dell'attività sulla risorsa, nei prossimi 120 giorni. */
+	/**
+	 * L'allestimento proprio dell'attività, in minuti prima e dopo (null = quello previsto per il suo tipo: 3 ore per gli eventi, niente per i corsi).
+	 * Si somma a quello della risorsa.
+	 */
+	public static function set_activity_setup( int $activity_id, ?int $before_min, ?int $after_min ): void {
+		$clean = function ( ?int $m ): ?int {
+			return null === $m ? null : max( 0, min( ResourceRules::SETUP_MAX_MINUTES, $m ) );
+		};
+		self::db()->update( Db::t( 'activities' ), array( 'setup_before_min' => $clean( $before_min ), 'setup_after_min' => $clean( $after_min ) ), array( 'id' => $activity_id ) );
+		Audit::log( 'activity.setup', 'activity', $activity_id, array( 'before' => $before_min, 'after' => $after_min ) );
+	}
+
+	/** Quante prenotazioni dei soci cadono nel periodo in cui l'attività occupa la risorsa (allestimenti compresi), nei prossimi 120 giorni. */
 	public static function activity_conflicts( int $activity_id, int $resource_id ): int {
 		$today = Db::today();
 		$n     = 0;
-		foreach ( Calendar::occurrences( $today, gmdate( 'Y-m-d', strtotime( $today . ' +120 days' ) ) ) as $o ) {
-			if ( (int) $o['activity_id'] !== $activity_id ) {
-				continue;
+		foreach ( self::activity_busy( $resource_id, $today, gmdate( 'Y-m-d', strtotime( $today . ' +120 days' ) ) ) as $w ) {
+			if ( (int) $w['activity_id'] === $activity_id ) {
+				$n += count( self::between( $resource_id, $w['starts'], $w['ends'] ) );
 			}
-			$s  = $o['start'] ?: '00:00';
-			$e  = $o['end'] ?: '23:59';
-			$n += count( self::between( $resource_id, $o['date'] . ' ' . $s . ':00', $o['date'] . ' ' . ( $e > $s ? $e : '23:59' ) . ':00' ) );
 		}
 		return $n;
 	}

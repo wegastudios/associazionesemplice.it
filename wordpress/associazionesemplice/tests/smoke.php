@@ -5577,7 +5577,7 @@ asem_ok( 2 === $RS::cancel_series( $rs_series[1] ) && 'booked' === $RS::reservat
 $rs_ev = $acts->create( array( 'name' => 'Torneo campo', 'social_year' => $sy_label, 'kind' => 'event', 'session' => array( 'session_date' => $ev_date, 'start_time' => '19:00', 'end_time' => '20:00', 'capacity' => 10 ) ) );
 asem_ok( 0 === $RS::link_activity( $rs_ev, $rs_c2 ) && $rs_c2 === $RS::activity_resource( $rs_ev ), 'risorse: un evento si collega a una risorsa a fasce' );
 $rs_msg = asem_throws( function () use ( $RS, $rs_c2, $rs_m2, $ev_date ) { $RS::book_slot( $rs_c2, $rs_m2, $ev_date, '19:00', 1, array(), true ); } );
-asem_ok( null !== $rs_msg && false !== strpos( $rs_msg, 'Torneo campo' ) && $RS::book_slot( $rs_c2, $rs_m2, $ev_date, '18:00', 1, array(), true ) > 0, 'risorse: negli orari dell\'evento la risorsa non si prenota, negli altri sì' );
+asem_ok( null !== $rs_msg && false !== strpos( $rs_msg, 'Torneo campo' ) && $RS::book_slot( $rs_c2, $rs_m2, $ev_date, '10:00', 1, array(), true ) > 0 && null !== asem_throws( function () use ( $RS, $rs_c2, $rs_m1, $ev_date ) { $RS::book_slot( $rs_c2, $rs_m1, $ev_date, '18:00', 1, array(), true ); } ), 'risorse: negli orari dell\'evento e nelle 3 ore di allestimento prima la risorsa non si prenota, fuori sì' );
 $rs_grid = array_filter( $RS::day_grid( $RS::get( $rs_c2 ), $ev_date ), function ( $s ) { return '19:00' === $s['start']; } );
 asem_ok( 'activity' === array_values( $rs_grid )[0]['reservation']['kind'], 'risorse: il calendario del giorno mostra la fascia occupata dall\'evento' );
 $RS::link_activity( $rs_ev, null );
@@ -5823,6 +5823,47 @@ $RS::save( $fn_new, array_merge( $fn_base, array( 'fund_mode' => '' ) ) );
 asem_ok( '' === $RS::get( $fn_new )['fund_mode'] && null === $RS::get( $fn_new )['fund_id'], 'risorse: togliendo la quota la risorsa non accantona più' );
 $RS::save( $fn_new, $fn_base );
 asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'nel fondo', array( 'id' => $fn_res ) );
+
+// ---------- Risorse: allestimento prima e dopo le attività (le esigenze si sommano) ----------
+wp_set_current_user( 1 );
+$su_res = $RS::save( 0, array( 'name' => 'Sala allestimento', 'category' => 'room', 'mode' => 'slot', 'open_time' => '06:00', 'close_time' => '23:00', 'slot_minutes' => 60, 'fee_cents' => 0, 'setup_before' => '20 minuti', 'setup_after' => '20 minuti' ) );
+asem_ok( 20 === (int) $RS::get( $su_res )['setup_before_min'] && 20 === (int) $RS::get( $su_res )['setup_after_min'], 'risorse: l\'allestimento della risorsa si scrive in modo naturale e si salva in minuti' );
+asem_ok( null !== asem_throws( function () use ( $RS, $su_res ) { $RS::save( $su_res, array( 'name' => 'Sala allestimento', 'mode' => 'slot', 'open_time' => '06:00', 'close_time' => '23:00', 'setup_before' => 'boh' ) ); } ), 'risorse: un allestimento scritto male è rifiutato' );
+$su_day = gmdate( 'Y-m-d', strtotime( $today . ' +12 days' ) );
+$su_c   = $acts->create( array( 'name' => 'Yoga allestimento', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 0, 'starts_on' => $sy->start()->format( 'Y-m-d' ), 'ends_on' => $sy->end()->format( 'Y-m-d' ), 'lesson_slots' => wp_json_encode( array( array( 'type' => 'single', 'date' => $su_day, 'start' => '10:00', 'end' => '11:00' ) ) ) ) );
+$RS::set_activity_setup( $su_c, 0, 30 ); // lo yoga vuole mezz'ora dopo; la sala 20 minuti prima e dopo → 20 prima e 50 dopo
+$RS::link_activity( $su_c, $su_res );
+$su_msg = asem_throws( function () use ( $RS, $su_res, $rs_m1, $su_day ) { $RS::book_slot( $su_res, $rs_m1, $su_day, '09:00', 1, array(), true ); } );
+asem_ok( null !== $su_msg && false !== strpos( $su_msg, 'allestimento' ), 'risorse: 20 minuti prima di un corso la sala è già in allestimento' );
+asem_ok( $RS::book_slot( $su_res, $rs_m1, $su_day, '08:00', 1, array(), true ) > 0, 'risorse: la fascia che finisce prima dell\'allestimento è libera' );
+asem_ok( null !== asem_throws( function () use ( $RS, $su_res, $rs_m1, $su_day ) { $RS::book_slot( $su_res, $rs_m1, $su_day, '10:00', 1, array(), true ); } ) && null !== asem_throws( function () use ( $RS, $su_res, $rs_m1, $su_day ) { $RS::book_slot( $su_res, $rs_m1, $su_day, '11:00', 1, array(), true ); } ), 'risorse: durante il corso e nei 50 minuti dopo (20 della sala + 30 dello yoga) la sala non si prenota' );
+asem_ok( $RS::book_slot( $su_res, $rs_m1, $su_day, '12:00', 1, array(), true ) > 0, 'risorse: dopo i 50 minuti la sala è di nuovo libera' );
+// evento: 3 ore di allestimento se non si dice altro, più i 20 minuti della sala
+$su_day2 = gmdate( 'Y-m-d', strtotime( $today . ' +13 days' ) );
+$su_e    = $acts->create( array( 'name' => 'Cena allestimento', 'social_year' => Settings::social_year( $su_day2 )->label(), 'kind' => 'event', 'session' => array( 'session_date' => $su_day2, 'start_time' => '15:00', 'end_time' => '16:00' ) ) );
+$RS::link_activity( $su_e, $su_res );
+asem_ok( null !== asem_throws( function () use ( $RS, $su_res, $rs_m1, $su_day2 ) { $RS::book_slot( $su_res, $rs_m1, $su_day2, '11:00', 1, array(), true ); } ) && null !== asem_throws( function () use ( $RS, $su_res, $rs_m1, $su_day2 ) { $RS::book_slot( $su_res, $rs_m1, $su_day2, '19:00', 1, array(), true ); } ), 'risorse: un evento occupa la risorsa 3 ore e 20 minuti prima e dopo' );
+asem_ok( $RS::book_slot( $su_res, $rs_m1, $su_day2, '10:00', 1, array(), true ) > 0 && $RS::book_slot( $su_res, $rs_m1, $su_day2, '20:00', 1, array(), true ) > 0, 'risorse: fuori dall\'allestimento dell\'evento la risorsa è libera' );
+$su_grid = array_values( array_filter( $RS::day_grid( $RS::get( $su_res ), $su_day2 ), function ( $s ) { return in_array( $s['start'], array( '11:00', '15:00' ), true ); } ) );
+asem_ok( $su_grid[0]['reservation']['setup'] && ! $su_grid[1]['reservation']['setup'], 'risorse: il calendario distingue l\'allestimento dall\'evento' );
+// allestimento scelto per il singolo evento: 1 ora prima, niente dopo (più i 20 minuti della sala)
+$RS::set_activity_setup( $su_e, 60, 0 );
+asem_ok( null !== asem_throws( function () use ( $RS, $su_res, $rs_m2, $su_day2 ) { $RS::book_slot( $su_res, $rs_m2, $su_day2, '13:00', 1, array(), true ); } ) && null !== asem_throws( function () use ( $RS, $su_res, $rs_m2, $su_day2 ) { $RS::book_slot( $su_res, $rs_m2, $su_day2, '16:00', 1, array(), true ); } ) && $RS::book_slot( $su_res, $rs_m2, $su_day2, '12:00', 1, array(), true ) > 0 && $RS::book_slot( $su_res, $rs_m2, $su_day2, '17:00', 1, array(), true ) > 0, 'risorse: l\'allestimento si sceglie per il singolo evento (1 ora prima, niente dopo)' );
+// evento fuori sede e obbligo di dire quale risorsa occupa
+$RS::link_activity( $su_e, 0 );
+asem_ok( 0 === $RS::activity_link( $su_e ) && null === $RS::activity_resource( $su_e ), 'risorse: «nessuna risorsa» (fuori sede) si ricorda ed è diverso da «non indicata»' );
+$su_pd = '\AssociazioneSemplice\ProData';
+asem_ok( 1 === count( $su_pd::activity_errors( array(), 'event', array( 'resource_id' => '' ) ) ) && 1 === count( $su_pd::activity_errors( array(), 'recurring', array( 'resource_id' => '' ) ) ), 'risorse: un evento deve dire quale risorsa occupa' );
+asem_ok( 0 === count( $su_pd::activity_errors( array(), 'event', array( 'resource_id' => 'none' ) ) ) && 0 === count( $su_pd::activity_errors( array(), 'event', array( 'resource_id' => (string) $su_res ) ) ) && 0 === count( $su_pd::activity_errors( array(), 'course', array( 'resource_id' => '' ) ) ) && 0 === count( $su_pd::activity_errors( array(), 'event', array() ) ), 'risorse: «fuori sede» o una risorsa bastano; i corsi e i moduli senza il campo no' );
+asem_ok( 1 === count( $su_pd::activity_errors( array(), 'event', array( 'resource_id' => 'none', 'setup_before' => 'boh' ) ) ), 'risorse: un allestimento dell\'attività scritto male è segnalato' );
+// riproporre mantiene risorsa e allestimento
+$RS::link_activity( $su_e, $su_res );
+$RS::set_activity_setup( $su_e, 60, 0 );
+$su_copy = $CP::duplicate( $su_e, array( 'date' => gmdate( 'Y-m-d', strtotime( $su_day2 . ' +30 days' ) ) ) );
+$su_ca   = $acts->get( $su_copy );
+asem_ok( $su_res === (int) $su_ca['resource_id'] && 60 === (int) $su_ca['setup_before_min'] && 0 === (int) $su_ca['setup_after_min'], 'riproporre: la risorsa occupata e l\'allestimento restano' );
+asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'Allestimento', array( 'id' => $su_res ) );
+asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Nessuna risorsa (evento fuori sede)', array( 'id' => $su_e ) );
 
 // ---------- Copia di sicurezza e ripristino (in fondo: tocca tutte le tabelle) ----------
 

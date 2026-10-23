@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '40';
+	const DB_VERSION        = '41';
 
 	public static function activate(): void {
 		Legacy::run(); // installazione con il vecchio nome (APSemplice): i dati passano al nuovo
@@ -274,6 +274,8 @@ final class Install {
   fund_value bigint(20) NOT NULL DEFAULT 0,
   resource_id bigint(20) unsigned DEFAULT NULL,
   credit_price int(11) DEFAULT NULL,
+  setup_before_min int(11) DEFAULT NULL,
+  setup_after_min int(11) DEFAULT NULL,
   notes text,
   created_at datetime NOT NULL,
   deleted_at datetime DEFAULT NULL,
