@@ -42,9 +42,11 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Calendario interno e pubblicazione su Google Calendar, Apple e Outlook | ✓ | ✓ | ✓ |
 | Ingressi: elenco prenotati e registrazione | ✓ | ✓ | ✓ |
 | Biglietti con QR per le prenotazioni | ✓ | ✓ | ✓ |
-| Risorse (sale, attrezzature) occupate da corsi ed eventi, con allestimento prima e dopo | — | ✓ | ✓ |
 | Listini per eventi e corsi a date (individuale, di gruppo, pacchetti di ingressi) | ✓ | ✓ | ✓ |
 | Incasso sul posto durante gli eventi | — | ✓ | ✓ |
+| Risorse a fasce orarie (campi, sale) con tariffe, ospiti e regole di prenotazione | — | ✓ | ✓ |
+| Risorse assegnate a periodo (posti auto, armadietti, posti barca) con lista d'attesa | — | ✓ | ✓ |
+| Corsi ed eventi collegati alle risorse, con tempi di allestimento | — | ✓ | ✓ |
 | Suggerimento dei luoghi con Google (con la tua chiave) | ✓ | ✓ | ✓ |
 
 ## Cassa e conti
