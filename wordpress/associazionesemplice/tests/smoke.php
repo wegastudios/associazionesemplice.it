@@ -6104,6 +6104,64 @@ asem_render( array( Admin\BookDeskPage::class, 'render' ), 'prossime date', arra
 \AssociazioneSemplice\Texts::mail( 'prova@example.com', 'Prova registro', 'x' );
 $bd_log = \AssociazioneSemplice\MailLog::recent( 1 );
 asem_ok( $bd_log && 'Prova registro' === $bd_log[0]['what'] && 'p***@example.com' === $bd_log[0]['to'], 'posta: l\'esito resta nel registro con l\'indirizzo in parte nascosto' );
+// ---------- Listini, pacchetti e ospiti dell'associazione / del volontario ----------
+$pl_vol = $people->create( array( 'type' => 'volunteer', 'first_name' => 'Livia', 'last_name' => 'Listino', 'email' => 'livia.listino@example.com' ) );
+$pl_a   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Anna', 'last_name' => 'Listino', 'email' => 'anna.listino@example.com' ) );
+$pl_b   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Bruno', 'last_name' => 'Ospite', 'email' => 'bruno.ospite@example.com' ) );
+$pl_c   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Carla', 'last_name' => 'Pacchetto', 'email' => 'carla.pacchetto@example.com' ) );
+$pl_d   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Dario', 'last_name' => 'Ospite', 'email' => 'dario.ospite@example.com' ) );
+$pl_lists = array(
+	array( 'label' => 'Individuale', 'cents' => 4000, 'entries' => 1 ),
+	array( 'label' => 'Di gruppo', 'cents' => 2500, 'entries' => 1 ),
+	array( 'label' => 'Pacchetto 4 individuale', 'cents' => 13000, 'entries' => 4 ),
+	array( 'label' => 'Pacchetto 4 di gruppo', 'cents' => 8000, 'entries' => 4 ),
+);
+$pl_act   = $acts->create( array( 'name' => 'Laboratorio a listino', 'social_year' => $sy_label, 'kind' => 'recurring', 'fee_cents' => 4000, 'instructor_person_id' => $pl_vol, 'fund_mode' => 'percent', 'fund_value' => 2500, 'price_lists' => $pl_lists ) );
+$pl_a_row = $acts->get( $pl_act );
+asem_ok( 4 === count( \AssociazioneSemplice\PriceLists::for_activity( $pl_a_row ) ) && null !== \AssociazioneSemplice\PriceLists::find( $pl_a_row, 'pacchetto_4_di_gruppo' ), 'listini: i quattro listini restano sull\'attività con una chiave dal nome' );
+$pl_sess = array();
+for ( $i = 3; $i <= 6; $i++ ) {
+	$pl_sess[] = $acts->add_session( $pl_act, array( 'session_date' => gmdate( 'Y-m-d', strtotime( current_time( 'Y-m-d' ) . ' +' . $i . ' days' ) ), 'start_time' => '18:00', 'end_time' => '20:00' ) );
+}
+$acts->book( $pl_sess[0], $pl_a, array( 'price_list' => 'di_gruppo' ) );
+$pl_bk = $acts->booking( $pl_sess[0], $pl_a );
+asem_ok( 2500 === (int) $pl_bk['fee_due_cents'] && 'di_gruppo' === $pl_bk['price_list'], 'listini: la prenotazione prende il prezzo del listino scelto' );
+$acts->book( $pl_sess[0], $pl_c, array( 'price_list' => 'pacchetto_4_individuale' ) );
+asem_ok( 13000 === (int) $acts->booking( $pl_sess[0], $pl_c )['fee_due_cents'], 'pacchetto: il prezzo del pacchetto è dovuto sulla prima prenotazione' );
+$acts->book( $pl_sess[1], $pl_c, array( 'use_package' => true ) );
+$pl_k = $acts->booking( $pl_sess[1], $pl_c );
+asem_ok( 0 === (int) $pl_k['fee_due_cents'] && ! empty( $pl_k['package_of'] ) && 2 === $acts->package_used( (int) $pl_k['package_of'] ), 'pacchetto: la seconda data si prenota dal pacchetto, a costo zero' );
+$acts->book( $pl_sess[2], $pl_c, array( 'use_package' => true ) );
+$acts->book( $pl_sess[3], $pl_c, array( 'use_package' => true ) );
+asem_ok( array() === $acts->open_packages( $pl_c, $pl_act ), 'pacchetto: finiti i 4 ingressi non risulta più aperto' );
+asem_ok( null !== asem_throws( function () use ( $acts, $pl_sess, $pl_c ) { $acts->cancel_booking( $pl_sess[3], $pl_c ); $acts->book( $pl_sess[3], $pl_c, array( 'use_package' => true ) ); $acts->book( $pl_sess[3], $pl_c, array( 'use_package' => true ) ); } ), 'pacchetto: oltre gli ingressi o doppia prenotazione è rifiutata' );
+// ospite dell'associazione: 40 € con quota del volontario al 25% = paga 10 €, e i 10 € vanno al fondo
+$acts->book( $pl_sess[0], $pl_b, array( 'price_list' => 'individuale', 'guest_of' => 'association' ) );
+$pl_g = $acts->booking( $pl_sess[0], $pl_b );
+asem_ok( 1000 === (int) $pl_g['fee_due_cents'] && 3000 === (int) $pl_g['waived_cents'], 'ospite associazione: si condona la parte dell\'associazione (paga solo la quota del volontario)' );
+$pl_fund = function () use ( $pl_act ) {
+	foreach ( Plugin::funds()->all() as $f ) {
+		if ( (int) $f['activity_id'] === $pl_act ) {
+			return (int) $f['balance'];
+		}
+	}
+	return 0;
+};
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $pl_b, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 1000, 'activity_id' => $pl_act, 'session_id' => $pl_sess[0] ) ) ) );
+asem_ok( 1000 === $pl_fund(), 'ospite associazione: l\'intero incasso va al fondo del volontario' );
+// ospite del volontario: paga la parte dell'associazione e il fondo non si alimenta
+$acts->book( $pl_sess[0], $pl_d, array( 'price_list' => 'individuale', 'guest_of' => 'volunteer' ) );
+$pl_g2 = $acts->booking( $pl_sess[0], $pl_d );
+asem_ok( 3000 === (int) $pl_g2['fee_due_cents'] && 1000 === (int) $pl_g2['waived_cents'], 'ospite volontario: si condona la parte del volontario' );
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $pl_d, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 3000, 'activity_id' => $pl_act, 'session_id' => $pl_sess[0] ) ) ) );
+asem_ok( 1000 === $pl_fund(), 'ospite volontario: il fondo del volontario non si alimenta' );
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $pl_a, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 2500, 'activity_id' => $pl_act, 'session_id' => $pl_sess[0] ) ) ) );
+asem_ok( 1625 === $pl_fund(), 'listini: chi paga il listino normale alimenta il fondo con la quota ordinaria (25%)' );
+asem_ok( null !== asem_throws( function () use ( $acts, $pl_sess, $pl_a ) { $acts->book( $pl_sess[1], $pl_a, array( 'price_list' => 'inesistente' ) ); } ), 'listini: un listino che non esiste è rifiutato' );
+asem_ok( '' !== \AssociazioneSemplice\PriceLists::booking_label( $pl_a_row, $pl_g ) && false !== strpos( \AssociazioneSemplice\PriceLists::booking_label( $pl_a_row, $pl_g ), 'ospite dell\'associazione' ), 'listini: l\'etichetta della prenotazione dice listino e ospite' );
+$pl_html = asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Ospite del volontario', array( 'id' => (string) $pl_act ) );
+asem_ok( false !== strpos( $pl_html, 'name="guest_of"' ), 'listini: la scheda evento offre listino e ospite nella prenotazione' );
+
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' . ( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Tutti i controlli sono passati.' );

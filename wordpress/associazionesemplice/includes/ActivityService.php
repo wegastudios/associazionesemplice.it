@@ -70,6 +70,7 @@ class ActivityService {
 				'instructor_person_id' => $d['instructor_person_id'],
 				'fee_cents'            => $d['fee_cents'],
 				'guest_fee_cents'      => $d['guest_fee_cents'],
+				'price_lists'          => $d['price_lists'],
 				'vat_rate'             => $d['vat_rate'],
 				'hold_hours'           => ActivityKind::uses_sessions( $d['kind'] ) ? $d['hold_hours'] : 0,
 				'cancellable'          => ActivityKind::uses_sessions( $d['kind'] ) ? $d['cancellable'] : 0,
@@ -116,6 +117,7 @@ class ActivityService {
 				'instructor_person_id' => $d['instructor_person_id'],
 				'fee_cents'            => $d['fee_cents'],
 				'guest_fee_cents'      => $d['guest_fee_cents'],
+				'price_lists'          => $d['price_lists'],
 				'vat_rate'             => $d['vat_rate'],
 				'hold_hours'           => ActivityKind::uses_sessions( $d['kind'] ) ? $d['hold_hours'] : 0,
 				'cancellable'          => ActivityKind::uses_sessions( $current['kind'] ) ? $d['cancellable'] : 0,
@@ -254,6 +256,7 @@ class ActivityService {
 			'instructor_person_id' => ! empty( $in['instructor_person_id'] ) ? (int) $in['instructor_person_id'] : null,
 			'fee_cents'            => (int) ( $in['fee_cents'] ?? 0 ),
 			'guest_fee_cents'      => $guest,
+			'price_lists'          => PriceLists::encode( PriceLists::clean( $in['price_lists'] ?? null ) ),
 			'vat_rate'             => Fiscal::clean_rate( $in['vat_rate'] ?? null ),
 			'hold_hours'           => max( 0, min( 720, (int) ( $in['hold_hours'] ?? 0 ) ) ),
 			'cancellable'          => ! empty( $in['cancellable'] ) ? 1 : 0,
@@ -490,8 +493,12 @@ class ActivityService {
 
 	// ---------- Prenotazioni ----------
 
-	/** Prenota una persona a una data. Il contributo dovuto è fissato adesso (socio o ospite). */
-	public function book( int $session_id, int $person_id ): int {
+	/**
+	 * Prenota una persona a una data. Il contributo dovuto è fissato adesso (socio o ospite, oppure il listino scelto).
+	 *
+	 * @param array $opt price_list (chiave del listino), guest_of (PriceLists::GUEST_*: solo segreteria), use_package (true = scala un ingresso da un pacchetto già pagato)
+	 */
+	public function book( int $session_id, int $person_id, array $opt = array() ): int {
 		$s = $this->session( $session_id );
 		if ( ! $s || $s['cancelled_at'] ) {
 			throw new \InvalidArgumentException( 'Data non disponibile (inesistente o annullata).' );
@@ -508,7 +515,7 @@ class ActivityService {
 		// Posti e doppie prenotazioni: controllo e scrittura sotto blocco, così due richieste insieme non superano la capienza.
 		list( $id, $fee ) = Db::with_lock(
 			'asem_book_' . $session_id,
-			function () use ( $tbl, $s, $a, $person, $session_id, $person_id ) {
+			function () use ( $tbl, $s, $a, $person, $session_id, $person_id, $opt ) {
 				$existing = $this->db()->get_row( $this->db()->prepare( "SELECT * FROM $tbl WHERE session_id = %d AND person_id = %d", $session_id, $person_id ), ARRAY_A );
 				if ( $existing && 'booked' === $existing['status'] ) {
 					throw new \InvalidArgumentException( 'Questa persona è già prenotata a questa data.' );
@@ -519,12 +526,13 @@ class ActivityService {
 						throw new \InvalidArgumentException( 'Posti esauriti per questa data (' . (int) $s['capacity'] . ').' );
 					}
 				}
-				$fee = $this->fee_for( $a, $person['type'] );
+				$price = $this->price_data( $a, $person, $opt );
+				$fee   = $price['fee_due_cents'];
 				if ( $existing ) {
-					$this->db()->update( $tbl, array( 'status' => 'booked', 'fee_due_cents' => $fee, 'cancelled_at' => null, 'transferred_to' => null, 'transferred_from' => null ), array( 'id' => (int) $existing['id'] ) );
+					$this->db()->update( $tbl, array_merge( $price, array( 'status' => 'booked', 'cancelled_at' => null, 'transferred_to' => null, 'transferred_from' => null ) ), array( 'id' => (int) $existing['id'] ) );
 					return array( (int) $existing['id'], $fee );
 				}
-				if ( ! $this->db()->insert( $tbl, array( 'session_id' => $session_id, 'person_id' => $person_id, 'status' => 'booked', 'fee_due_cents' => $fee, 'created_at' => Db::now() ) ) ) {
+				if ( ! $this->db()->insert( $tbl, array_merge( $price, array( 'session_id' => $session_id, 'person_id' => $person_id, 'status' => 'booked', 'created_at' => Db::now() ) ) ) ) {
 					throw new \InvalidArgumentException( 'Prenotazione non riuscita: riprova.' );
 				}
 				return array( (int) $this->db()->insert_id, $fee );
@@ -532,6 +540,70 @@ class ActivityService {
 		);
 		Audit::log( 'booking.created', 'activity', (int) $a['id'], array( 'session' => $session_id, 'person_id' => $person_id, 'fee' => $fee ) );
 		return $id;
+	}
+
+	/** Ingressi già usati di un pacchetto (la prenotazione che l'ha pagato conta come uno). */
+	public function package_used( int $paying_booking_id ): int {
+		$tbl = Db::t( 'bookings' );
+		return 1 + (int) $this->db()->get_var( $this->db()->prepare( "SELECT COUNT(*) FROM $tbl WHERE package_of = %d AND status = 'booked'", $paying_booking_id ) );
+	}
+
+	/** Pacchetti pagati da una persona per un'attività con ingressi ancora disponibili: [{id, label, left}]. */
+	public function open_packages( int $person_id, int $activity_id ): array {
+		$b   = Db::t( 'bookings' );
+		$s   = Db::t( 'sessions' );
+		$out = array();
+		$rows = $this->db()->get_results(
+			$this->db()->prepare( "SELECT b.id, b.price_list, b.package_entries FROM $b b JOIN $s s ON s.id = b.session_id WHERE b.person_id = %d AND s.activity_id = %d AND b.status = 'booked' AND b.package_entries > 1 ORDER BY b.id", $person_id, $activity_id ),
+			ARRAY_A
+		) ?: array();
+		$a = $this->get( $activity_id );
+		foreach ( $rows as $r ) {
+			$left = (int) $r['package_entries'] - $this->package_used( (int) $r['id'] );
+			if ( $left > 0 ) {
+				$l     = $a ? PriceLists::find( $a, (string) $r['price_list'] ) : null;
+				$out[] = array( 'id' => (int) $r['id'], 'label' => $l ? $l['label'] : 'Pacchetto', 'left' => $left );
+			}
+		}
+		return $out;
+	}
+
+	/** Campi di prezzo di una prenotazione: listino, ospite della segreteria, pacchetto. */
+	private function price_data( array $a, array $person, array $opt ): array {
+		$out = array( 'fee_due_cents' => 0, 'price_list' => null, 'guest_of' => null, 'waived_cents' => 0, 'package_entries' => 0, 'package_of' => null );
+		if ( ! empty( $opt['use_package'] ) ) {
+			$pk = $this->open_packages( (int) $person['id'], (int) $a['id'] );
+			if ( ! $pk ) {
+				throw new \InvalidArgumentException( 'Questa persona non ha un pacchetto con ingressi disponibili per questa attività.' );
+			}
+			$out['package_of'] = $pk[0]['id'];
+			$out['price_list'] = $this->db()->get_var( $this->db()->prepare( 'SELECT price_list FROM ' . Db::t( 'bookings' ) . ' WHERE id = %d', $pk[0]['id'] ) );
+			return $out;
+		}
+		$price   = $this->fee_for( $a, $person['type'] );
+		$entries = 0;
+		$key     = (string) ( $opt['price_list'] ?? '' );
+		if ( '' !== $key ) {
+			$list = PriceLists::find( $a, $key );
+			if ( ! $list ) {
+				throw new \InvalidArgumentException( 'Listino non trovato per questa attività.' );
+			}
+			list( $price, $entries ) = PriceLists::price( $list );
+			$out['price_list']       = $key;
+			$out['package_entries']  = $entries > 1 ? $entries : 0;
+		}
+		$guest = (string) ( $opt['guest_of'] ?? '' );
+		if ( '' !== $guest ) {
+			if ( ! isset( PriceLists::guest_kinds()[ $guest ] ) ) {
+				throw new \InvalidArgumentException( 'Tipo di ospite non valido.' );
+			}
+			$g                   = PriceLists::guest_due( $a, $price, $guest );
+			$price               = $g['due'];
+			$out['guest_of']     = $guest;
+			$out['waived_cents'] = $g['waived'];
+		}
+		$out['fee_due_cents'] = $price;
+		return $out;
 	}
 
 	/** Annulla la prenotazione. Gli eventuali pagamenti restano registrati (rimborso a mano). */

@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '39';
+	const DB_VERSION        = '40';
 
 	public static function activate(): void {
 		Legacy::run(); // installazione con il vecchio nome (APSemplice): i dati passano al nuovo
@@ -256,6 +256,7 @@ final class Install {
   kind varchar(20) NOT NULL DEFAULT 'course',
   fee_cents bigint(20) NOT NULL DEFAULT 0,
   guest_fee_cents bigint(20) DEFAULT NULL,
+  price_lists text,
   hold_hours smallint(5) unsigned NOT NULL DEFAULT 0,
   vat_rate tinyint(3) DEFAULT NULL,
   cancellable tinyint(1) NOT NULL DEFAULT 0,
@@ -367,6 +368,11 @@ final class Install {
   person_id bigint(20) unsigned NOT NULL,
   status varchar(12) NOT NULL DEFAULT 'booked',
   fee_due_cents bigint(20) NOT NULL DEFAULT 0,
+  price_list varchar(40) DEFAULT NULL,
+  guest_of varchar(12) DEFAULT NULL,
+  waived_cents bigint(20) NOT NULL DEFAULT 0,
+  package_entries smallint(5) unsigned NOT NULL DEFAULT 0,
+  package_of bigint(20) unsigned DEFAULT NULL,
   transferred_to bigint(20) unsigned DEFAULT NULL,
   transferred_from bigint(20) unsigned DEFAULT NULL,
   created_at datetime NOT NULL,
