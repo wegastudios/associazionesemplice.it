@@ -171,6 +171,15 @@ Serve a lasciare libera la sala per preparare e riordinare. Ci sono due livelli,
 - Scrivi **0** per indicare nessun allestimento.
 - Puoi scrivere in modo naturale: «3 ore», «mezz'ora», «20 minuti», «1h30».
 
+## Sovrapposizioni
+
+Una risorsa non può essere occupata due volte. Dalla versione 1.2.23 del plugin gratuito e 1.1.21 di Pro (aggiornali insieme):
+
+- se **colleghi** un corso o un evento a una risorsa, oppure **aggiungi o sposti** delle date che si sovrappongono a un'altra attività (**allestimenti compresi**), il salvataggio viene **rifiutato** con un messaggio che dice **con cosa si sovrappone**;
+- per correggere, collega l'attività a un'altra risorsa, oppure aggiungi o sposta le date.
+
+Le sovrapposizioni **già presenti** prima dell'aggiornamento non cambiano da sole: in Bacheca compare l'avviso **«Risorse occupate due volte»** e vanno sistemate a mano, modificando le date o la risorsa di una delle due attività.
+
 > L'allestimento della risorsa non vale intorno alle prenotazioni dei soci: vale solo per le attività.
 MD,
     ],
