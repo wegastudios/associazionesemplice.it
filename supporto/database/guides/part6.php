@@ -5,48 +5,7 @@ return [
     [
         'topic' => 'domande-frequenti', 'section' => 'Free e Pro', 'slug' => 'free-pro-contabile-e-pro-fiscale-a-confronto',
         'title' => 'Free, Pro Contabile e Pro Fiscale a confronto: cosa include ogni versione?',
-        'body' => <<<'MD'
-Ecco, funzione per funzione, cosa trovi in ciascuna versione. **Pro Contabile** include tutto ciò che c'è in Pro tranne la parte fiscale; **Pro Fiscale** include tutto.
-
-| Funzione | Free | Pro Contabile | Pro Fiscale |
-|---|---|---|---|
-| **Soci e tessere** | | | |
-| Libro soci, ospiti e tessera digitale con QR | Sì | Sì | Sì |
-| Quota associativa unica (con socio fondatore) | Sì | Sì | Sì |
-| Più livelli di socio, quote diverse e nucleo familiare | No | Sì | Sì |
-| Importazione ed esportazione di soci (Excel, CSV, WP All Import) | Sì | Sì | Sì |
-| Area riservata dei soci, primo accesso, ruoli e permessi | Sì | Sì | Sì |
-| Tessera in Apple Wallet e Google Wallet | No | Sì | Sì |
-| **Corsi ed eventi** | | | |
-| Corsi, eventi, calendario, posti e lista d'attesa | Sì | Sì | Sì |
-| Ingressi con elenco prenotati e biglietti QR | Sì | Sì | Sì |
-| Incasso sul posto durante gli eventi | No | Sì | Sì |
-| **Soldi** | | | |
-| Prima nota con cassa unica, spese con allegati, donazioni con PayPal | Sì | Sì | Sì |
-| Pagamenti online con Stripe, PayPal o WooCommerce | No | Sì | Sì |
-| Conti multipli, giroconti, fondi e cassa per più persone | No | Sì | Sì |
-| Ricevute in PDF e attestazione annuale | No | Sì | Sì |
-| Report di gestione e rendiconto delle attività | No | Sì | Sì |
-| **Parte fiscale** | | | |
-| IVA su quote, attività, incassi e spese | No | No | Sì |
-| 5 per mille e rendiconto sull'utilizzo | No | No | Sì |
-| Anni solari, chiusura dell'anno e rendiconto per cassa | No | No | Sì |
-| **Registri e privacy** | | | |
-| Verbali, informativa privacy, consensi, anonimizzazione | Sì | Sì | Sì |
-| Assicurazioni dei volontari e presenze | No | Sì | Sì |
-| **Comunicazione** | | | |
-| Avvisi agli iscritti di un'attività | Sì | Sì | Sì |
-| Comunicazioni a gruppi di soci | No | Sì | Sì |
-| App installabile e notifiche sul telefono | No | Sì | Sì |
-| **Personalizzazione e sicurezza dei dati** | | | |
-| Copia di sicurezza, ripristino e azzeramento dei dati | Sì | Sì | Sì |
-| Testi personalizzabili, tipo di ente e lingue (inglese incluso) | No | Sì | Sì |
-| **Prezzo** | 0 € per sempre | 8 € al mese o 80 € all'anno | 12 € al mese o 100 € all'anno |
-
-> I prezzi e i piani sono sempre aggiornati nella sezione **Prezzi** di [associazionesemplice.it](https://associazionesemplice.it). Il piano gratuito resta gratuito e non ha scadenza. Con una licenza non in regola Pro torna alle funzioni di base, senza toccare i dati.
-
-Per i dettagli di ogni funzione leggi le guide: per esempio [Attivare i pagamenti online](guida:attivare-stripe-o-paypal) o [Anni solari e rendiconto](guida:anni-solari-e-rendiconto).
-MD,
+        'body' => file_get_contents(__DIR__.'/confronto.md'),
     ],
     [
         'topic' => 'domande-frequenti', 'section' => 'Free e Pro', 'slug' => 'quali-funzioni-sono-gratuite',

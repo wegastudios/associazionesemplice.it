@@ -77,12 +77,12 @@ class GuideContentTest extends SiteTestCase
     {
         $this->seedGuides();
         $table = Article::where('slug', 'free-pro-contabile-e-pro-fiscale-a-confronto')->firstOrFail();
-        $target = Article::where('slug', 'attivare-stripe-o-paypal')->firstOrFail();
+        $target = Article::where('slug', 'passare-a-pro-e-rinnovare')->firstOrFail();
 
         $this->get('/articoli/'.$table->id)
             ->assertOk()
             ->assertSee('<th>Pro Contabile</th>', false)
-            ->assertSee('<a href="'.route('help.article', $target->id).'">Attivare i pagamenti online</a>', false);
+            ->assertSee('<a href="'.route('help.article', $target->id).'">Passare a Pro, provarlo e rinnovare</a>', false);
     }
 
     public function test_search_finds_guides(): void
