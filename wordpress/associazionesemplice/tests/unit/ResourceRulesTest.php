@@ -185,6 +185,87 @@ final class ResourceRulesTest extends TestCase {
 		$this->assertNull( \AssociazioneSemplice\PaymentItems::parse( 'r:x:7' ) );
 	}
 
+	public function test_durations_are_written_in_a_natural_way(): void {
+		$cases = array(
+			'45' => 45, '20 minuti' => 20, '20 min' => 20, '1 minuto' => 1, '90m' => 90, "mezz'ora" => 30, 'mezz’ora' => 30, 'mezza ora' => 30, '1,5 ore' => 90, '3 ore' => 180, '3h' => 180,
+			'1 ora' => 60, '1h30' => 90, '1 ora e 30' => 90, '2 ore e 5 minuti' => 125, '0' => 0, ' 3 ORE ' => 180, '24 ore' => 1440,
+		);
+		foreach ( $cases as $text => $minutes ) {
+			$this->assertSame( $minutes, R::parse_duration( (string) $text ), (string) $text );
+		}
+	}
+
+	public function test_empty_duration_means_no_indication(): void {
+		$this->assertNull( R::parse_duration( '' ) );
+		$this->assertNull( R::parse_duration( '   ' ) );
+	}
+
+	public function test_bad_durations_are_refused(): void {
+		foreach ( array( 'boh', '3 giorni', '-5', '1h75x', 'ore', '25 ore', '1441' ) as $bad ) {
+			try {
+				R::parse_duration( $bad );
+				$this->fail( $bad );
+			} catch ( InvalidArgumentException $e ) {
+				$this->assertNotSame( '', $e->getMessage(), $bad );
+			}
+		}
+	}
+
+	public function test_durations_read_back_the_way_they_were_written(): void {
+		foreach ( array( 1, 20, 30, 60, 90, 125, 180, 1440 ) as $m ) {
+			$this->assertSame( $m, R::parse_duration( R::format_duration( $m ) ), (string) $m );
+		}
+		$this->assertSame( '3 ore', R::format_duration( 180 ) );
+		$this->assertSame( '1 ora e 30 minuti', R::format_duration( 90 ) );
+		$this->assertSame( 'nessuno', R::format_duration( 0 ) );
+	}
+
+	public function test_events_have_three_hours_of_setup_by_default_and_courses_none(): void {
+		$this->assertSame( 180, R::setup_default( 'event' ) );
+		$this->assertSame( 180, R::setup_default( 'recurring' ) );
+		$this->assertSame( 0, R::setup_default( 'course' ) );
+	}
+
+	public function test_the_needs_of_the_resource_and_of_the_activity_add_up(): void {
+		// la risorsa vuole 20 minuti prima e dopo, lo yoga (un corso) ne vuole 30 dopo
+		$this->assertSame( 20, R::setup_total( 20, 0, 'course' ) );
+		$this->assertSame( 50, R::setup_total( 20, 30, 'course' ) );
+		$this->assertSame( 20, R::setup_total( 20, null, 'course' ), 'un corso senza indicazioni non aggiunge niente' );
+		$this->assertSame( 200, R::setup_total( 20, null, 'event' ), 'un evento senza indicazioni aggiunge le sue 3 ore' );
+		$this->assertSame( 80, R::setup_total( 20, 60, 'event' ), 'un valore indicato sostituisce le 3 ore, ma si somma alla risorsa' );
+		$this->assertSame( 20, R::setup_total( 20, 0, 'event' ), 'zero = nessun allestimento dell\'evento' );
+		$this->assertSame( 180, R::setup_total( 0, null, 'event' ) );
+	}
+
+	public function test_the_busy_window_is_widened_by_the_setups(): void {
+		$w = R::busy_window( '2026-10-20', '10:00', '11:00', 20, 50 );
+		$this->assertSame( '2026-10-20 09:40:00', $w['starts'] );
+		$this->assertSame( '2026-10-20 11:50:00', $w['ends'] );
+		$this->assertSame( '2026-10-20 10:00:00', $w['core_starts'] );
+		$this->assertSame( '2026-10-20 11:00:00', $w['core_ends'] );
+	}
+
+	public function test_the_setup_can_reach_the_day_before_and_after(): void {
+		$w = R::busy_window( '2026-10-20', '01:00', '02:00', 180, 0 );
+		$this->assertSame( '2026-10-19 22:00:00', $w['starts'] );
+		$w = R::busy_window( '2026-10-20', '23:00', '23:30', 0, 120 );
+		$this->assertSame( '2026-10-21 01:30:00', $w['ends'] );
+	}
+
+	public function test_an_activity_without_hours_occupies_the_whole_day_plus_setups(): void {
+		$w = R::busy_window( '2026-10-20', null, null, 60, 60 );
+		$this->assertSame( '2026-10-19 23:00:00', $w['starts'] );
+		$this->assertSame( '2026-10-21 00:59:00', $w['ends'] );
+	}
+
+	public function test_setup_windows_leave_the_neighbouring_slots_free(): void {
+		$w = R::busy_window( '2026-10-20', '15:00', '16:00', 200, 200 );
+		$this->assertFalse( R::overlaps( '2026-10-20 10:00:00', '2026-10-20 11:00:00', $w['starts'], $w['ends'] ), 'finisce prima delle 11:40' );
+		$this->assertTrue( R::overlaps( '2026-10-20 11:00:00', '2026-10-20 12:00:00', $w['starts'], $w['ends'] ) );
+		$this->assertTrue( R::overlaps( '2026-10-20 19:00:00', '2026-10-20 20:00:00', $w['starts'], $w['ends'] ) );
+		$this->assertFalse( R::overlaps( '2026-10-20 20:00:00', '2026-10-20 21:00:00', $w['starts'], $w['ends'] ) );
+	}
+
 	public function test_series_has_one_date_per_week(): void {
 		$this->assertSame( array( '2026-10-20', '2026-10-27', '2026-11-03' ), R::series_dates( '2026-10-20', 3 ) );
 		$this->assertSame( array( '2026-10-20' ), R::series_dates( '2026-10-20', 0 ) );

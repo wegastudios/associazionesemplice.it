@@ -30,7 +30,7 @@ final class ResourcesPage {
 			return '<em>Bloccata' . ( $r['note'] ? ': ' . esc_html( (string) $r['note'] ) : '' ) . '</em>';
 		}
 		if ( 'activity' === $r['kind'] ) { // un corso o un evento collegato alla risorsa
-			return '<em>Attività: ' . esc_html( (string) $r['first_name'] ) . '</em>';
+			return '<em>' . ( ! empty( $r['setup'] ) ? 'Allestimento per: ' : 'Attività: ' ) . esc_html( (string) $r['first_name'] ) . '</em>';
 		}
 		$out = esc_html( trim( $r['first_name'] . ' ' . $r['last_name'] ) );
 		if ( ! empty( $r['guests'] ) ) {
@@ -39,7 +39,10 @@ final class ResourcesPage {
 		return $out;
 	}
 
-	/** Riga del modulo di un corso o di un evento: la risorsa che occupa. Vuota se non ci sono risorse a fasce. Da chiamare solo se la funzione c'è. */
+	/**
+	 * Righe del modulo di un corso o di un evento: la risorsa che occupa e l'allestimento che richiede. Vuote se non ci sono risorse a fasce.
+	 * Per gli eventi la scelta è obbligatoria (anche «nessuna risorsa»): lo controlla {@see ProData::activity_errors}. Da chiamare solo se la funzione c'è.
+	 */
 	public static function activity_row( ?int $activity_id ): string {
 		$opts = array();
 		foreach ( Resources::all() as $r ) {
@@ -50,9 +53,16 @@ final class ResourcesPage {
 		if ( ! $opts ) {
 			return '';
 		}
-		$selected = $activity_id ? Resources::activity_resource( $activity_id ) : null;
-		return '<tr><th>Risorsa occupata</th><td><select name="resource_id">' . Ui::options( $opts, $selected, '— nessuna —' ) . '</select>'
-			. '<p class="description">Se si tiene in un campo o in una sala delle <a href="' . esc_url( Ui::url( 'asem-resources' ) ) . '">Risorse</a>, la occupa nelle sue date e nessuno la prenota negli stessi orari.</p></td></tr>';
+		$link     = $activity_id ? Resources::activity_link( $activity_id ) : null; // null = non scelta, 0 = nessuna risorsa (fuori sede)
+		$selected = null === $link ? '' : ( 0 === $link ? 'none' : $link );
+		$a        = $activity_id ? Plugin::activities()->get( $activity_id ) : null;
+		$show     = function ( $m ) {
+			return null === $m ? '' : ResourceRules::format_duration( (int) $m );
+		};
+		return '<tr><th>Risorsa occupata</th><td><select name="resource_id">' . Ui::options( array( '' => '— scegli —', 'none' => 'Nessuna risorsa (evento fuori sede)' ) + $opts, $selected ) . '</select>'
+			. '<p class="description">Un evento deve dire quale <a href="' . esc_url( Ui::url( 'asem-resources' ) ) . '">risorsa</a> occupa (campo, sala…), oppure che si tiene fuori sede. La risorsa non è disponibile per le prenotazioni nelle sue date, allestimenti compresi. Per i corsi la scelta è facoltativa.</p></td></tr>'
+			. '<tr><th>Allestimento</th><td>prima <input type="text" name="setup_before" class="small-text" value="' . esc_attr( $a ? $show( $a['setup_before_min'] ) : '' ) . '" placeholder="3 ore"> e dopo <input type="text" name="setup_after" class="small-text" value="' . esc_attr( $a ? $show( $a['setup_after_min'] ) : '' ) . '" placeholder="3 ore">'
+			. '<p class="description">Il tempo in cui la risorsa resta indisponibile prima e dopo questa attività, per prepararla e riordinare: «3 ore», «mezz\'ora», «20 minuti», «0» per nessuno. Se lasci vuoto: 3 ore per gli eventi, nessuno per i corsi. Si <strong>somma</strong> a quello della risorsa (ad esempio la risorsa vuole 20 minuti prima e dopo, questa attività 30 dopo: la risorsa è indisponibile 20 minuti prima e 50 dopo).</p></td></tr>';
 	}
 
 	// ---------- Elenco ----------
@@ -242,6 +252,15 @@ final class ResourcesPage {
 			. '<p class="description">Utile per le risorse date in gestione a terzi (la quota è del gestore) o i cui incassi servono a pagare altro. Una parte di ogni pagamento ricevuto (anche in crediti) va nel fondo scelto: l\'incasso resta in cassa o sul conto usato, la quota è accantonata e si sottrae dalla disponibilità reale finché il fondo non si salda o non si libera dalla pagina <em>Conti e fondi</em>. Annullando un incasso sparisce anche la sua quota.</p></td></tr>';
 	}
 
+	/** Riga del modulo: il tempo in cui la risorsa non è disponibile prima e dopo ogni corso o evento che la occupa. */
+	private static function setup_row( ?array $res ): string {
+		$show = function ( int $m ): string {
+			return $m > 0 ? ResourceRules::format_duration( $m ) : '';
+		};
+		return '<tr><th>Allestimento</th><td>prima <input type="text" name="setup_before" class="small-text" value="' . esc_attr( $res ? $show( (int) $res['setup_before_min'] ) : '' ) . '" placeholder="nessuno"> e dopo <input type="text" name="setup_after" class="small-text" value="' . esc_attr( $res ? $show( (int) $res['setup_after_min'] ) : '' ) . '" placeholder="nessuno">'
+			. '<p class="description">Il tempo di preparazione prima e di riordino dopo ogni corso o evento che occupa questa risorsa: «20 minuti», «mezz\'ora», «3 ore». Si <strong>somma</strong> a quello indicato dalla singola attività (eventi: 3 ore se non diversamente indicato). Non riguarda le prenotazioni dei soci.</p></td></tr>';
+	}
+
 	private static function form( ?array $res, string $back ): void {
 		$v = function ( string $k, $default = '' ) use ( $res ) {
 			return $res ? $res[ $k ] : $default;
@@ -256,6 +275,7 @@ final class ResourcesPage {
 			. '<tr><th>Descrizione</th><td><textarea name="description" rows="2" cols="60">' . esc_textarea( (string) $v( 'description' ) ) . '</textarea></td></tr>'
 			. '<tr><th>Regole d\'uso</th><td><textarea name="rules" rows="2" cols="60">' . esc_textarea( (string) $v( 'rules' ) ) . '</textarea><br><span class="description">Si mostrano ai soci prima di prenotare.</span></td></tr>'
 			. '<tr><th>Tariffa</th><td><input type="text" name="fee" size="8" value="' . esc_attr( Money::plain( (int) $v( 'fee_cents', 0 ) ) ) . '"> € <span class="description">per fascia (risorse a fasce) o per periodo (assegnazioni). 0 = gratuita.</span></td></tr>'
+			. self::setup_row( $res )
 			. '<tr><th>Tariffe a fasce</th><td><textarea name="rates_text" rows="3" cols="40" placeholder="feriali 18:00-22:00 15,00&#10;weekend 08:00-22:00 20,00">' . esc_textarea( ResourceRules::rates_text( ResourceRules::clean_rates( $v( 'rates', '' ) ) ) ) . '</textarea><br><span class="description">Facoltative, solo per le risorse a fasce: una per riga, «giorni ore importo» (giorni: <em>tutti</em>, <em>feriali</em> lun–ven, <em>weekend</em> sab–dom). Vale la prima riga che corrisponde all\'ora di inizio di ogni fascia; fuori dalle righe vale la tariffa base.</span></td></tr>'
 			. '<tr><th>Pagamento</th><td><select name="pay_mode">' . Ui::options( ResourceRules::pay_modes(), $v( 'pay_mode', ResourceRules::PAY_DESK ) ) . '</select><br><span class="description">Chi prenota online con pagamento in anticipo tiene la fascia riservata solo ' . (int) ResourceRules::HOLD_MINUTES . ' minuti: se il pagamento non arriva si libera. Non ci sono tolleranze di giorni. La segreteria registra sempre le prenotazioni e gli incassi a mano. Il pagamento online richiede i pagamenti online attivi.</span></td></tr>'
 			. ( \AssociazioneSemplice\Edition::has( 'credits' ) ? '<tr><th>Crediti</th><td><input type="number" name="credit_cost" min="0" style="width:80px" value="' . (int) $v( 'credit_cost', 0 ) . '"> crediti ' . ( ResourceRules::ASSIGN === $v( 'mode', ResourceRules::SLOT ) ? 'per periodo' : 'per fascia' ) . '<br><span class="description">0 = non si paga in crediti. Con un costo in crediti il socio può pagare subito con i suoi crediti, oltre alle vie scelte sopra; annullando la prenotazione i crediti tornano al socio. Vale anche per gli ospiti ammessi: non c\'è un supplemento in crediti.</span></td></tr>' : '' )

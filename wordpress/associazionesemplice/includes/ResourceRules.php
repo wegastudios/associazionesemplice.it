@@ -268,6 +268,103 @@ final class ResourceRules {
 		return $credit_cost > 0 ? array_merge( array( 'credits' ), $base ) : $base;
 	}
 
+	// ---------- Allestimento: il tempo in cui la risorsa non è disponibile prima e dopo un'attività ----------
+
+	/** Allestimento previsto per un evento se non si indica altro: 3 ore prima e 3 dopo. I corsi non ne hanno di loro. */
+	const SETUP_EVENT_MINUTES = 180;
+
+	/** Il massimo di un allestimento: 24 ore. */
+	const SETUP_MAX_MINUTES = 1440;
+
+	/**
+	 * Una durata scritta in modo naturale, in minuti: «45», «20 minuti», «mezz'ora», «1,5 ore», «3h», «1h30», «1 ora e 30». Vuoto = nessuna indicazione.
+	 *
+	 * @throws \InvalidArgumentException
+	 */
+	public static function parse_duration( string $text ): ?int {
+		$t = strtolower( trim( $text ) );
+		if ( '' === $t ) {
+			return null;
+		}
+		$t = str_replace( array( "mezz'ora", 'mezz’ora', 'mezzora', 'mezza ora' ), '0,5 ore', $t );
+		$n = '(\d+(?:[.,]\d+)?)';
+		$f = function ( string $v ): float {
+			return (float) str_replace( ',', '.', $v );
+		};
+		$min = null;
+		if ( preg_match( '/^(\d+)$/', $t, $m ) ) {
+			$min = (int) $m[1];
+		} elseif ( preg_match( '/^' . $n . '\s*(?:m|min|minuti|minuto)$/', $t, $m ) ) {
+			$min = (int) round( $f( $m[1] ) );
+		} elseif ( preg_match( '/^' . $n . '\s*(?:h|ore|ora)$/', $t, $m ) ) {
+			$min = (int) round( $f( $m[1] ) * 60 );
+		} elseif ( preg_match( '/^(\d+)\s*(?:h|ore|ora)\s*(?:e\s*)?(\d{1,2})\s*(?:m|min|minuti)?$/', $t, $m ) ) {
+			$min = (int) $m[1] * 60 + (int) $m[2];
+		}
+		if ( null === $min ) {
+			throw new \InvalidArgumentException( 'Durata non valida: scrivi ad esempio «20 minuti», «mezz\'ora», «3 ore» o «1h30».' );
+		}
+		if ( $min > self::SETUP_MAX_MINUTES ) {
+			throw new \InvalidArgumentException( 'L\'allestimento può durare al massimo 24 ore.' );
+		}
+		return $min;
+	}
+
+	/** Una durata in minuti come testo: 0 → «nessuno», 20 → «20 minuti», 180 → «3 ore», 90 → «1 ora e 30 minuti». */
+	public static function format_duration( int $minutes ): string {
+		if ( $minutes <= 0 ) {
+			return 'nessuno';
+		}
+		$h = intdiv( $minutes, 60 );
+		$m = $minutes % 60;
+		$parts = array();
+		if ( $h > 0 ) {
+			$parts[] = $h . ( 1 === $h ? ' ora' : ' ore' );
+		}
+		if ( $m > 0 ) {
+			$parts[] = $m . ( 1 === $m ? ' minuto' : ' minuti' );
+		}
+		return implode( ' e ', $parts );
+	}
+
+	/** Allestimento previsto per un tipo di attività quando non è indicato: eventi 3 ore, corsi niente. */
+	public static function setup_default( string $kind ): int {
+		return 'event' === $kind || 'recurring' === $kind ? self::SETUP_EVENT_MINUTES : 0;
+	}
+
+	/**
+	 * Quanto tempo la risorsa resta indisponibile prima (o dopo) un'attività: l'esigenza della risorsa e quella dell'attività si sommano.
+	 * Esempio: la risorsa vuole 20 minuti prima e 20 dopo, lo yoga ne vuole 30 dopo → 20 minuti prima e 50 dopo.
+	 *
+	 * @param int      $resource_minutes allestimento della risorsa (prima o dopo)
+	 * @param ?int     $activity_minutes allestimento indicato per l'attività (null = quello previsto per il suo tipo)
+	 */
+	public static function setup_total( int $resource_minutes, ?int $activity_minutes, string $kind ): int {
+		return max( 0, $resource_minutes ) + ( null !== $activity_minutes ? max( 0, $activity_minutes ) : self::setup_default( $kind ) );
+	}
+
+	/**
+	 * La finestra in cui la risorsa è occupata da un'attività: dall'ora di inizio meno l'allestimento prima all'ora di fine più l'allestimento dopo.
+	 * Senza orario l'attività occupa tutto il giorno.
+	 *
+	 * @return array{starts:string,ends:string,core_starts:string,core_ends:string} Y-m-d H:i:s; core_* = l'attività senza gli allestimenti
+	 */
+	public static function busy_window( string $date, ?string $start, ?string $end, int $before_min, int $after_min ): array {
+		$s = $start ?: '00:00';
+		$e = $end ?: '23:59';
+		if ( $e <= $s ) {
+			$e = '23:59';
+		}
+		$core_s = new \DateTimeImmutable( $date . ' ' . $s . ':00' );
+		$core_e = new \DateTimeImmutable( $date . ' ' . $e . ':00' );
+		return array(
+			'starts'      => $core_s->modify( '-' . max( 0, $before_min ) . ' minutes' )->format( 'Y-m-d H:i:s' ),
+			'ends'        => $core_e->modify( '+' . max( 0, $after_min ) . ' minutes' )->format( 'Y-m-d H:i:s' ),
+			'core_starts' => $core_s->format( 'Y-m-d H:i:s' ),
+			'core_ends'   => $core_e->format( 'Y-m-d H:i:s' ),
+		);
+	}
+
 	/** Le date di una ripetizione settimanale: la prima e le altre $count - 1 a distanza di una settimana. @return string[] Y-m-d */
 	public static function series_dates( string $first, int $count ): array {
 		$out = array();
