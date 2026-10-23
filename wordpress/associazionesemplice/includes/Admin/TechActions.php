@@ -57,7 +57,7 @@ final class TechActions {
 		}
 		if ( ! \AssociazioneSemplice\Texts::mail( $to, 'Prova di invio', "Questa è un'email di prova inviata da Associazione Semplice.\n\nSe la leggi, la posta del sito funziona." ) ) {
 			$last = \AssociazioneSemplice\MailLog::recent( 1 );
-			throw new \InvalidArgumentException( 'Il server non ha accettato il messaggio' . ( $last && ! empty( $last[0]['error'] ) ? ': ' . $last[0]['error'] : '.' ) . ' Controlla la posta del sito (un plugin SMTP di solito risolve).' );
+			throw new \InvalidArgumentException( esc_html( 'Il server non ha accettato il messaggio' . ( $last && ! empty( $last[0]['error'] ) ? ': ' . $last[0]['error'] : '.' ) . ' Controlla la posta del sito (un plugin SMTP di solito risolve).' ) );
 		}
 		return array( Ui::url( 'asem-tech' ), 'Email di prova inviata a ' . $to . ': controlla la casella (anche la posta indesiderata). Se non arriva, il server l\'ha accettata ma non la consegna: serve un servizio di posta (SMTP).' );
 	}
