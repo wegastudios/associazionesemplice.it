@@ -116,9 +116,8 @@ final class Plugin {
 	 * con la funzione adatta (testo, email, numero…): qui non si altera il contenuto (per esempio le password o i testi su più righe).
 	 */
 	public static function post_data(): array {
-		// phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- il controllo del nonce lo fa il chiamante; pulizia di base qui, per campo nei gestori
 		return (array) map_deep(
-			wp_unslash( $_POST ),
+			wp_unslash( $_POST ), // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- il nonce lo controlla il chiamante; pulizia di base qui, per campo nei gestori
 			function ( $v ) {
 				return is_string( $v ) ? wp_kses_no_null( (string) wp_check_invalid_utf8( $v ) ) : $v;
 			}

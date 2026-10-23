@@ -90,12 +90,20 @@ final class CardVerify {
 		return self::layout( $title, $color, $body );
 	}
 
+	/** Il foglio di stile delle pagine di verifica, registrato e stampato con le funzioni di WordPress. */
+	private static function styles(): string {
+		wp_register_style( 'asem-verify', ASEM_URL . 'assets/verify.css', array(), \AssociazioneSemplice\Plugin::asset_version( 'verify.css' ) );
+		ob_start();
+		wp_print_styles( 'asem-verify' );
+		return (string) ob_get_clean();
+	}
+
 	/** Pagina completa (senza il tema del sito) con la fascia di stato e il riquadro dei dettagli. */
 	public static function layout( string $title, string $color, string $body ): string {
 		$assoc  = (string) Settings::get( 'association_name' );
 		$accent = Assets::accent( '#2271b1' ); // colore scelto, altrimenti quello del sito (Elementor o tema)
 		return \AssociazioneSemplice\Texts::html( '<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">'
-			. '<title>' . esc_html( $title ) . '</title><link rel="stylesheet" href="' . esc_url( ASEM_URL . 'assets/verify.css?ver=' . \AssociazioneSemplice\Plugin::asset_version( 'verify.css' ) ) . '"></head>'
+			. '<title>' . esc_html( $title ) . '</title>' . self::styles() . '</head>'
 			. '<body style="--c:' . esc_attr( $color ) . ';--a:' . esc_attr( $accent ) . '"><div class="c">'
 			. '<div class="s">' . esc_html( $title ) . '</div><div class="b">' . ( '' !== Assets::logo_url() ? '<img src="' . esc_url( Assets::logo_url() ) . '" alt="" style="display:block;max-height:48px;max-width:180px;margin:0 0 10px">' : '' ) . ( '' !== $assoc ? '<div class="a">' . esc_html( $assoc ) . '</div>' : '' ) . $body . '</div></div></body></html>' );
 	}

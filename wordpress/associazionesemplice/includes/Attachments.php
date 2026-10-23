@@ -153,6 +153,15 @@ final class Attachments {
 		add_filter( 'upload_dir', $to_dir );
 		$file    = array( 'name' => $stored, 'type' => (string) $f['mime'], 'tmp_name' => (string) $f['tmp_name'], 'error' => 0, 'size' => (int) $f['size'] );
 		$handler = is_uploaded_file( $file['tmp_name'] ) ? 'wp_handle_upload' : 'wp_handle_sideload';
+		$copy    = '';
+		if ( 'wp_handle_sideload' === $handler ) { // il file di partenza resta dov'è: WordPress sposta quello che riceve
+			$copy = wp_tempnam( $stored );
+			if ( ! copy( $file['tmp_name'], $copy ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions
+				remove_filter( 'upload_dir', $to_dir );
+				return '';
+			}
+			$file['tmp_name'] = $copy;
+		}
 		$res     = $handler(
 			$file,
 			array(

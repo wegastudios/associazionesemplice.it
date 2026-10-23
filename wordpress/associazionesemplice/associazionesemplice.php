@@ -9,7 +9,7 @@
  * Author:            Wega Studios
  * Author URI:        https://profiles.wordpress.org/wegastudios/
  * License:           GPL-2.0-or-later
- * Text Domain:       associazione-semplice
+ * Text Domain:       associazionesemplice
  */
 
 defined( 'ABSPATH' ) || exit;
