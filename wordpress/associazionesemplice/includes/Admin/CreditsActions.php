@@ -24,7 +24,7 @@ final class CreditsActions {
 						wp_die( 'Non autorizzato.', 403 );
 					}
 					check_admin_referer( $action );
-					$post = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification
+					$post = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
 					$back = ! empty( $post['_back'] ) ? esc_url_raw( $post['_back'] ) : Ui::url( 'asem-credits' );
 					try {
 						Ui::redirect( $back, self::$method( $post ) );

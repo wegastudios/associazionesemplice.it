@@ -129,11 +129,11 @@ final class AppearancePage {
 			. '<div style="display:flex;gap:32px;margin-top:14px"><div><div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;opacity:.8">Tessera n.</div><div style="font-size:20px;font-weight:600">123</div></div>'
 			. '<div><div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;opacity:.8">Valida fino al</div><div style="font-size:20px;font-weight:600">31/12/' . ( (int) current_time( 'Y' ) + 1 ) . '</div></div></div></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
-		echo '<script>(function(){var pick=document.getElementById("asem-logo-pick"),clr=document.getElementById("asem-logo-clear"),id=document.getElementById("asem-logo-id"),pv=document.getElementById("asem-logo-preview"),f;'
+		Ui::inline_js( '(function(){var pick=document.getElementById("asem-logo-pick"),clr=document.getElementById("asem-logo-clear"),id=document.getElementById("asem-logo-id"),pv=document.getElementById("asem-logo-preview"),f;'
 			. 'if(!pick){return;}'
 			. 'pick.addEventListener("click",function(e){e.preventDefault();if(!window.wp||!wp.media){window.alert("La libreria media non è disponibile: ricarica la pagina.");return;}if(!f){f=wp.media({title:"Logo dell\'ente",button:{text:"Usa questo logo"},library:{type:"image"},multiple:false});'
 			. 'f.on("select",function(){var a=f.state().get("selection").first().toJSON();id.value=a.id;var u=(a.sizes&&a.sizes.medium)?a.sizes.medium.url:a.url;pv.innerHTML="<img src=\""+u+"\" alt=\"\" style=\"max-height:56px;max-width:220px;display:block\">";clr.style.display="";});}f.open();});'
-			. 'clr.addEventListener("click",function(e){e.preventDefault();id.value="0";pv.innerHTML="<span class=\"description\">Sarà usato il logo del sito dopo il salvataggio</span>";clr.style.display="none";});})();</script>';
+			. 'clr.addEventListener("click",function(e){e.preventDefault();id.value="0";pv.innerHTML="<span class=\"description\">Sarà usato il logo del sito dopo il salvataggio</span>";clr.style.display="none";});})();' );
 		Ui::footer();
 	}
 }

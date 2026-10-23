@@ -46,3 +46,17 @@
 .asem-modal h2 { margin-top: 0; }
 .asem-modal label { display: block; }
 .asem-modal input.regular-text { width: 100%; max-width: none; }
+
+/* Configurazione guidata */
+.asem-wizard:not(.asem-wiz-js) [data-wiz=back],.asem-wizard:not(.asem-wiz-js) [data-wiz=next],.asem-wizard:not(.asem-wiz-js) .asem-wiz-count{display:none}
+.asem-wiz-step{max-width:820px}
+.asem-wiz-more{margin:12px 0}
+.asem-wiz-stepper{margin:10px 0 18px;max-width:820px}
+.asem-wiz-where{display:block;font-weight:600;margin-bottom:6px;min-height:1.4em}
+.asem-wiz-stepper ol{display:flex;gap:6px;list-style:none;margin:0;padding:0}
+.asem-wiz-stepper li{flex:1;font-size:12px;color:#646970;border-top:4px solid #dcdcde;padding-top:5px}
+.asem-wiz-stepper li.done{border-color:#2271b1;color:#1d2327}
+.asem-wiz-stepper li.current{border-color:#2271b1;color:#1d2327;font-weight:600}
+.asem-wiz-dot{display:none}
+.asem-wizard:not(.asem-wiz-js) .asem-wiz-stepper{display:none}
+.asem-wiz-more>summary{cursor:pointer;color:#2271b1}

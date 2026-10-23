@@ -95,7 +95,7 @@ final class ProPanels {
 	/** Mostra o nasconde i campi della partita IVA. */
 	public static function entity_page_end(): void {
 		if ( \AssociazioneSemplice\Edition::has( 'vat' ) ) {
-			echo '<script>(function(){var c=document.getElementById("asem-has-vat"),b=document.getElementById("asem-vat-block");if(!c||!b)return;function s(){b.style.display=c.checked?"":"none";}c.addEventListener("change",s);s();})();</script>';
+			Ui::inline_js( '(function(){var c=document.getElementById("asem-has-vat"),b=document.getElementById("asem-vat-block");if(!c||!b)return;function s(){b.style.display=c.checked?"":"none";}c.addEventListener("change",s);s();})();' );
 		}
 	}
 

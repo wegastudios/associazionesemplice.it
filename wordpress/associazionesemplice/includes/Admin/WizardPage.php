@@ -181,8 +181,7 @@ final class WizardPage {
 
 	/** Un passo alla volta, saltando ciò che non serve; i campi nascosti non vengono inviati. */
 	private static function script(): void {
-		echo '<style>.asem-wizard:not(.asem-wiz-js) [data-wiz=back],.asem-wizard:not(.asem-wiz-js) [data-wiz=next],.asem-wizard:not(.asem-wiz-js) .asem-wiz-count{display:none}.asem-wiz-step{max-width:820px}.asem-wiz-more{margin:12px 0}.asem-wiz-stepper{margin:10px 0 18px;max-width:820px}.asem-wiz-where{display:block;font-weight:600;margin-bottom:6px;min-height:1.4em}.asem-wiz-stepper ol{display:flex;gap:6px;list-style:none;margin:0;padding:0}.asem-wiz-stepper li{flex:1;font-size:12px;color:#646970;border-top:4px solid #dcdcde;padding-top:5px}.asem-wiz-stepper li.done{border-color:#2271b1;color:#1d2327}.asem-wiz-stepper li.current{border-color:#2271b1;color:#1d2327;font-weight:600}.asem-wiz-dot{display:none}.asem-wizard:not(.asem-wiz-js) .asem-wiz-stepper{display:none}.asem-wiz-more>summary{cursor:pointer;color:#2271b1}</style>';
-		echo '<script>(function(){var f=document.querySelector("form.asem-wizard");if(!f)return;'
+		Ui::inline_js( '(function(){var f=document.querySelector("form.asem-wizard");if(!f)return;'
 			. 'var steps=[].slice.call(f.querySelectorAll(".asem-wiz-step")),cur=0;f.classList.add("asem-wiz-js");'
 			. 'function ok(el){var c=el.getAttribute("data-if");if(!c)return true;var i=c.lastIndexOf("="),n=c.slice(0,i),v=c.slice(i+1);'
 			. 'var els=f.querySelectorAll("[name=\\""+n+"\\"]:checked");for(var k=0;k<els.length;k++){if(els[k].value===v&&!els[k].disabled)return true;}return false;}'
@@ -200,6 +199,6 @@ final class WizardPage {
 			. 'f.addEventListener("change",show);'
 			. 'f.querySelector("[data-wiz=next]").addEventListener("click",function(){var v=vis(),n=v.indexOf(steps[cur]);cur=steps.indexOf(v[Math.min(n+1,v.length-1)]);show();window.scrollTo(0,0);});'
 			. 'f.querySelector("[data-wiz=back]").addEventListener("click",function(){var v=vis(),n=v.indexOf(steps[cur]);cur=steps.indexOf(v[Math.max(n-1,0)]);show();window.scrollTo(0,0);});'
-			. 'show();})();</script>';
+			. 'show();})();' );
 	}
 }

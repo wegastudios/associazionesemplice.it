@@ -25,7 +25,7 @@ final class IncomePage {
 		if ( ! current_user_can( Plugin::CAP_OPS ) ) {
 			wp_send_json_error( 'Non autorizzato', 403 );
 		}
-		$in   = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification
+		$in   = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
 		$type = 'guest' === (string) ( $in['type'] ?? '' ) ? MemberType::GUEST : MemberType::ORDINARY;
 		try {
 			$id = Plugin::people()->create(

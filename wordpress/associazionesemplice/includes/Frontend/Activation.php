@@ -182,13 +182,13 @@ final class Activation {
 		$post  = array();
 		$error = '';
 		if ( 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' ) && isset( $_POST['asem_activate_go'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- valore verificato e ripulito da chi lo usa
-			$post    = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification
+			$post    = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
 			$parsed  = ActivationToken::parse( $param );
 			$rl_key  = 'asem_act_' . md5( \AssociazioneSemplice\ClientIp::get() ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- valore verificato e ripulito da chi lo usa
 			$tries   = (int) get_transient( $rl_key );
 			if ( $tries >= Limits::get( 'activation_per_ip' ) ) {
 				$error = 'Troppi tentativi: riprova tra qualche minuto.';
-			} elseif ( ! $parsed || ! wp_verify_nonce( (string) ( $post['_asem_nonce'] ?? '' ), 'asem_activate_' . $parsed[0] ) ) {
+			} elseif ( ! $parsed || ! wp_verify_nonce( sanitize_text_field( (string) ( $post['_asem_nonce'] ?? '' ) ), 'asem_activate_' . $parsed[0] ) ) {
 				$error = 'Sessione scaduta: riprova.';
 			} else {
 				set_transient( $rl_key, $tries + 1, HOUR_IN_SECONDS );

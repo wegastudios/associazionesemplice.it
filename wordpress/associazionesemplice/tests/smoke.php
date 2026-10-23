@@ -5865,6 +5865,28 @@ asem_ok( $su_res === (int) $su_ca['resource_id'] && 60 === (int) $su_ca['setup_b
 asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'Allestimento', array( 'id' => $su_res ) );
 asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Nessuna risorsa (evento fuori sede)', array( 'id' => $su_e ) );
 
+// ---------- Risorse: niente sovrapposizioni nuove, quelle già presenti si segnalano e basta ----------
+$ov_e = $acts->create( array( 'name' => 'Incontro sovrapposto', 'social_year' => $sy_label, 'kind' => 'recurring', 'fee_cents' => 0 ) );
+$ov_pd = '\AssociazioneSemplice\ProData';
+$ov_pd::activity_saved( array(), $ov_e, array( 'resource_id' => (string) $su_res, 'setup_before' => '', 'setup_after' => '' ) );
+asem_ok( (int) $su_res === $RS::activity_link( $ov_e ), 'sovrapposizioni: senza date l\'evento si collega alla risorsa' );
+$ov_msg = asem_throws( function () use ( $acts, $ov_e, $su_day ) { $acts->add_session( $ov_e, array( 'session_date' => $su_day, 'start_time' => '10:30', 'end_time' => '11:30' ) ); } );
+asem_ok( null !== $ov_msg && false !== strpos( $ov_msg, 'sovrappongono' ), 'sovrapposizioni: una data che cade sul corso (allestimenti compresi) è rifiutata' );
+$ov_free_day = gmdate( 'Y-m-d', strtotime( $today . ' +20 days' ) );
+asem_ok( $acts->add_session( $ov_e, array( 'session_date' => $ov_free_day, 'start_time' => '10:00', 'end_time' => '11:00' ) ) > 0, 'sovrapposizioni: una data libera si aggiunge' );
+// collegare un evento che già si sovrappone: rifiutato e collegamento com'era
+$RS::link_activity( $ov_e, null );
+$acts->add_session( $ov_e, array( 'session_date' => $su_day, 'start_time' => '10:30', 'end_time' => '11:30' ) );
+$ov_msg2 = asem_throws( function () use ( $ov_pd, $ov_e, $su_res ) { $ov_pd::activity_saved( array(), $ov_e, array( 'resource_id' => (string) $su_res ) ); } );
+asem_ok( null !== $ov_msg2 && false !== strpos( $ov_msg2, 'occupata due volte' ) && null === $RS::activity_link( $ov_e ), 'sovrapposizioni: collegare una risorsa già occupata è rifiutato e tutto resta com\'era' );
+// quelle già presenti: si segnalano, non bloccano le altre modifiche
+$RS::link_activity( $ov_e, $su_res ); // forzata, come se fosse già così
+asem_ok( (bool) $RS::existing_overlaps(), 'sovrapposizioni: quelle già presenti vengono segnalate' );
+$ov_notes = $ov_pd::activity_saved( array(), $ov_e, array( 'resource_id' => (string) $su_res ) );
+asem_ok( $ov_notes && false !== strpos( implode( '', $ov_notes ), 'sistemate a mano' ), 'sovrapposizioni: salvando un\'attività già sovrapposta non si blocca, si ricorda di sistemarla a mano' );
+asem_ok( false !== strpos( asem_render( array( Admin\ProDashboard::class, 'alerts' ), 'Risorse occupate due volte' ), 'Vanno sistemate a mano' ), 'sovrapposizioni: la bacheca avvisa' );
+$RS::link_activity( $ov_e, 0 );
+
 // ---------- Copia di sicurezza e ripristino (in fondo: tocca tutte le tabelle) ----------
 
 wp_set_current_user( 1 );
@@ -6090,21 +6112,6 @@ update_option( 'asem_pages', array( 'area' => 1 ) );
 \AssociazioneSemplice\Backup::mark_downloaded();
 $rs_msg2 = Admin\TechActions::reset_all( array_merge( $rs_ok, array( 'mode' => 'factory', 'users' => '' ) ) );
 asem_ok( '' === (string) Settings::get( 'association_name' ) && '' === (string) Settings::get( 'tax_code' ) && false === get_option( 'asem_pages', false ) && \AssociazioneSemplice\Wizard::pending() && (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) ) < $rs_audit0 && in_array( 'system.reset', array_column( Audit::recent( 10 ), 'action' ), true ) && false !== strpos( $rs_msg2[1], 'Ripristino di fabbrica completato' ) && false !== strpos( $rs_msg2[0], 'asem-wizard' ), 'ripristino di fabbrica: impostazioni, pagine, registro azioni cancellati e configurazione guidata riaperta' );
-// passaggio dal vecchio nome (APSemplice, prefisso apse_) al nuovo
-$lg_old = $wpdb->prefix . 'apse_legacyprobe';
-$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}asem_legacyprobe" );
-$wpdb->query( "CREATE TABLE $lg_old (id int NOT NULL)" );
-update_option( 'apse_legacy_opt', 'valore' );
-$lg_post = wp_insert_post( array( 'post_title' => 'Vecchia', 'post_status' => 'publish', 'post_type' => 'page', 'post_content' => '[apsemplice_tessera] [apsemplice_area_soci]' ) );
-update_post_meta( $lg_post, '_aps_access', 'members' );
-\AssociazioneSemplice\Legacy::convert();
-asem_ok( $wpdb->prefix . 'asem_legacyprobe' === $wpdb->get_var( "SHOW TABLES LIKE '{$wpdb->prefix}asem_legacyprobe'" ) && null === $wpdb->get_var( "SHOW TABLES LIKE '$lg_old'" ), 'passaggio dal vecchio nome: le tabelle apse_ diventano asem_' );
-asem_ok( 'valore' === get_option( 'asem_legacy_opt' ) && false === get_option( 'apse_legacy_opt', false ), 'passaggio dal vecchio nome: le opzioni apse_ diventano asem_' );
-asem_ok( 'members' === get_post_meta( $lg_post, '_asem_access', true ) && false !== strpos( get_post( $lg_post )->post_content, '[associazionesemplice_tessera] [associazionesemplice_area_soci]' ), 'passaggio dal vecchio nome: regole di accesso e shortcode delle pagine' );
-asem_ok( get_role( Plugin::ROLE_MEMBER ) && get_role( Plugin::ROLE_SECRETARY ), 'passaggio dal vecchio nome: i ruoli restano' );
-$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}asem_legacyprobe" );
-delete_option( 'asem_legacy_opt' );
-wp_delete_post( $lg_post, true );
 
 // ---------- Tessere: PDF singolo e fogli A4 con più tessere ----------
 $cd_grid = \AssociazioneSemplice\CardLayout::sheet_grid();

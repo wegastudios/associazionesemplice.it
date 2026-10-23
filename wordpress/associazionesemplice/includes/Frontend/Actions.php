@@ -55,7 +55,7 @@ final class Actions {
 			'admin_post_' . $action,
 			function () use ( $action, $handler, $url ) {
 				check_admin_referer( $action );
-				$post = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification
+				$post = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
 				$back = self::back_url( $post );
 				try {
 					$res = call_user_func( $handler, $post );
@@ -74,7 +74,7 @@ final class Actions {
 		add_action(
 			'admin_post_nopriv_' . $action,
 			function () {
-				wp_safe_redirect( wp_login_url( self::back_url( wp_unslash( $_POST ) ) ) ); // phpcs:ignore WordPress.Security.NonceVerification
+				wp_safe_redirect( wp_login_url( self::back_url( \AssociazioneSemplice\Plugin::post_data() ) ) ); // phpcs:ignore WordPress.Security.NonceVerification
 				exit;
 			}
 		);
@@ -90,7 +90,7 @@ final class Actions {
 				'admin_post_' . $action,
 				function () use ( $action, $method ) {
 					check_admin_referer( $action );
-					$post = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification
+					$post = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
 					$back = self::back_url( $post );
 					try {
 						self::redirect( $back, self::$method( $post ) );
@@ -105,7 +105,7 @@ final class Actions {
 			add_action(
 				'admin_post_nopriv_' . $action,
 				function () {
-					wp_safe_redirect( wp_login_url( self::back_url( wp_unslash( $_POST ) ) ) ); // phpcs:ignore WordPress.Security.NonceVerification
+					wp_safe_redirect( wp_login_url( self::back_url( \AssociazioneSemplice\Plugin::post_data() ) ) ); // phpcs:ignore WordPress.Security.NonceVerification
 					exit;
 				}
 			);

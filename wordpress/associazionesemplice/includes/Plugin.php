@@ -111,6 +111,19 @@ final class Plugin {
 	}
 
 	/** Versione di un file in assets/: cambia a ogni aggiornamento, così il browser non tiene in cache script e stili vecchi. */
+	/**
+	 * I dati di un modulo ($_POST) senza le barre aggiunte da WordPress, con UTF-8 valido e senza byte nulli. Ogni gestore poi pulisce i suoi campi
+	 * con la funzione adatta (testo, email, numero…): qui non si altera il contenuto (per esempio le password o i testi su più righe).
+	 */
+	public static function post_data(): array {
+		return (array) map_deep(
+			wp_unslash( $_POST ), // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- il nonce lo controlla il chiamante; pulizia di base qui, per campo nei gestori
+			function ( $v ) {
+				return is_string( $v ) ? wp_kses_no_null( (string) wp_check_invalid_utf8( $v ) ) : $v;
+			}
+		);
+	}
+
 	public static function asset_version( string $file ): string {
 		$path = ASEM_DIR . 'assets/' . $file;
 		return ASEM_VERSION . '.' . ( is_readable( $path ) ? (string) filemtime( $path ) : '0' );
