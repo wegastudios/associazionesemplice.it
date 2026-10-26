@@ -74,6 +74,7 @@ final class DashboardPage {
 
 		self::applications();
 		self::adults_to_invite();
+		self::overdue_loans();
 
 		$requests = \AssociazioneSemplice\AccessRequests::pending();
 		if ( $requests ) {
@@ -159,6 +160,20 @@ final class DashboardPage {
 			echo '</li>';
 		}
 		echo '</ul></div>';
+	}
+
+	/** Beni in prestito il cui rientro è scaduto. */
+	private static function overdue_loans(): void {
+		$late = \AssociazioneSemplice\Inventory::overdue();
+		if ( ! $late ) {
+			return;
+		}
+		echo '<div class="asem-card" id="asem-loans-late"><h2>Prestiti da recuperare (' . count( $late ) . ')</h2><p class="description">Il rientro previsto è passato. Quando il bene torna, registra il rientro dall\'Inventario.</p><ul>';
+		foreach ( array_slice( $late, 0, 10 ) as $l ) {
+			echo '<li><a href="' . esc_url( Ui::url( 'asem-inventory', array( 'view' => (int) $l['item_id'] ) ) ) . '">' . esc_html( $l['item_name'] ) . '</a> <span class="description">a ' . esc_html( $l['person_name'] ) . ' · previsto il '
+				. esc_html( ( new \DateTimeImmutable( $l['due_on'] ) )->format( 'd/m/Y' ) ) . ' · ' . (int) $l['days_late'] . ' giorni di ritardo</span></li>';
+		}
+		echo '</ul><p><a href="' . esc_url( Ui::url( 'asem-inventory', array( 'tab' => 'loans' ) ) ) . '">Tutti i prestiti →</a></p></div>';
 	}
 
 	/** Ragazzi ancora collegati a un tutore che hanno compiuto 18 anni: da invitare a creare il loro accesso. */

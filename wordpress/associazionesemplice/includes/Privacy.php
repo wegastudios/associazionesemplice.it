@@ -82,6 +82,16 @@ final class Privacy {
 		foreach ( Guardians::of( $person_id ) as $g ) {
 			$tutori[] = array( 'nome' => trim( $g['first_name'] . ' ' . $g['last_name'] ), 'email' => $g['email'] );
 		}
+		$loans = $q(
+			'SELECT i.name AS bene, l.quantity AS pezzi, l.lent_on AS uscita, l.due_on AS rientro_previsto, l.returned_on AS rientrato_il, l.notes_out AS note_uscita, l.notes_in AS note_rientro FROM ' . Db::t( 'loans' ) . ' l JOIN ' . Db::t( 'items' ) . ' i ON i.id = l.item_id WHERE l.person_id = %d ORDER BY l.lent_on',
+			array( $person_id )
+		);
+		$polls = $q( 'SELECT po.title AS votazione, po.secret AS segreta, v.voted_at AS votato_il FROM ' . Db::t( 'poll_voters' ) . ' v JOIN ' . Db::t( 'polls' ) . ' po ON po.id = v.poll_id WHERE v.person_id = %d ORDER BY v.voted_at', array( $person_id ) );
+		foreach ( $polls as &$pl ) {
+			$pl['segreta'] = ! empty( $pl['segreta'] ) ? 'sì (la scelta non è registrata)' : 'no';
+		}
+		unset( $pl );
+		$open_choices = $q( 'SELECT po.title AS votazione, o.label AS scelta FROM ' . Db::t( 'poll_votes' ) . ' pv JOIN ' . Db::t( 'polls' ) . ' po ON po.id = pv.poll_id JOIN ' . Db::t( 'poll_options' ) . ' o ON o.id = pv.option_id WHERE pv.person_id = %d ORDER BY po.id', array( $person_id ) );
 		$export = array(
 			'generato_il' => Db::now(),
 			'associazione' => (string) Settings::get( 'association_name' ),
@@ -97,6 +107,9 @@ final class Privacy {
 			'pagamenti'    => $payments,
 			'ospiti_inseriti' => $guests,
 			'tutori' => $tutori,
+			'prestiti_di_beni' => $loans,
+			'votazioni_a_cui_ha_partecipato' => $polls,
+			'scelte_nelle_votazioni_palesi' => $open_choices,
 		);
 		return (array) apply_filters( 'asem_privacy_export', $export, $person_id ); // le estensioni aggiungono i loro dati
 	}
@@ -157,6 +170,9 @@ final class Privacy {
 		if ( (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'enrollments' ) . ' WHERE person_id = %d AND end_month IS NULL', $person_id ) ) > 0 ) {
 			return 'È iscritta a un corso: termina prima l\'iscrizione.';
 		}
+		if ( Inventory::open_loans_of( $person_id ) > 0 ) {
+			return 'Ha dei beni in prestito: registra prima il rientro.';
+		}
 		$future = (int) $db->get_var(
 			$db->prepare(
 				'SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) . ' b JOIN ' . Db::t( 'sessions' ) . " s ON s.id = b.session_id WHERE b.person_id = %d AND b.status = 'booked' AND s.session_date >= %s AND s.cancelled_at IS NULL",
@@ -195,6 +211,8 @@ final class Privacy {
 		);
 		$db->update( Db::t( 'people' ), array( 'family_head_id' => null ), array( 'family_head_id' => $person_id ) ); // chi faceva parte del suo nucleo
 		Guardians::forget( $person_id );
+		// Votazioni e prestiti: restano i numeri e lo storico dei beni, ma la persona non è più riconoscibile (il nome è già tolto dalla scheda).
+		$db->update( Db::t( 'loans' ), array( 'notes_out' => '', 'notes_in' => '' ), array( 'person_id' => $person_id ) );
 		do_action( 'asem_person_anonymized', $person_id, $uid, $name ); // le estensioni cancellano i loro dati della persona
 		if ( $uid > 0 ) {
 			$db->update( Db::t( 'notices' ), array( 'author_name' => 'Persona anonimizzata' ), array( 'author_user_id' => $uid ) ); // firma degli avvisi
