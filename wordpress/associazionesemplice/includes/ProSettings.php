@@ -106,14 +106,14 @@ final class ProSettings {
 			'sumup_api_key'           => '',   // cifrata
 			'sumup_merchant_code'     => '',
 			'pay_fee_book'            => 1,    // registra in prima nota, a ogni incasso online, la commissione stimata come spesa
-			'pay_fee_fixed_stripe'    => 0,    // commissioni di incasso per metodo: fisso (centesimi), percentuale (punti base: 150 = 1,50%), ribaltare su chi paga (spento: la legge vieta il supplemento sulle carte dei consumatori)
-			'pay_fee_pct_stripe'      => 0,
+			'pay_fee_fixed_stripe'    => 25,   // commissioni di incasso per metodo, di partenza le tariffe standard pubblicate dai gestori (Italia, carte europee standard): fisso (centesimi), percentuale (punti base: 150 = 1,50%), ribaltare su chi paga (spento: la legge vieta il supplemento sulle carte dei consumatori)
+			'pay_fee_pct_stripe'      => 150,
 			'pay_fee_pass_stripe'     => 0,
-			'pay_fee_fixed_paypal'    => 0,
-			'pay_fee_pct_paypal'      => 0,
+			'pay_fee_fixed_paypal'    => 35,
+			'pay_fee_pct_paypal'      => 340,
 			'pay_fee_pass_paypal'     => 0,
 			'pay_fee_fixed_sumup'     => 0,
-			'pay_fee_pct_sumup'       => 0,
+			'pay_fee_pct_sumup'       => 250,
 			'pay_fee_pass_sumup'      => 0,
 			'pay_label_sumup'         => '',
 			'pay_note_sumup'          => '',
