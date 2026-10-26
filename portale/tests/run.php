@@ -1070,5 +1070,25 @@ check( 'novità: senza versione installata solo l\'ultima, senza righe estranee'
 check( 'novità: nulla se è già aggiornato', '' === Releases::filterChangelog( $cl, '1.2.20' ) );
 check( 'novità: tetto di 20000 caratteri', strlen( Releases::filterChangelog( "## 9.0\n" . str_repeat( "- voce lunga lunga lunga\n", 2000 ), '1.0' ) ) <= 20000 );
 
+// --- Promozione in vetrina (listino barrato) -------------------------------------------------------------------------------
+Portale\Settings::savePromo( $pdb, array( 'promo_label' => 'Black Friday', 'promo_start' => '2026-11-27', 'promo_end' => '2026-12-01' ) );
+Portale\Settings::load( $pdb );
+Portale\Settings::savePlan( $pdb, 'lite', array( 'label' => 'Pro Contabile', 'plan_name' => 'Pro Lite', 'visible' => '1', 'price_month' => '8', 'list_month' => '10', 'stripe_month' => 'price_liteAB12', 'paypal_month' => 'P-LITE01' ) );
+Portale\Settings::load( $pdb );
+$rome = function ( string $when ) { return ( new DateTime( $when, new DateTimeZone( 'Europe/Rome' ) ) )->getTimestamp(); };
+check( 'promo: attiva tra le date (fine compresa)', 'Black Friday' === Portale\Settings::promoNow( $rome( '2026-11-30 12:00' ) ) && 'Black Friday' === Portale\Settings::promoNow( $rome( '2026-12-01 23:30' ) ) );
+check( 'promo: non attiva prima dell\'inizio e dopo la fine', null === Portale\Settings::promoNow( $rome( '2026-11-26 23:59' ) ) && null === Portale\Settings::promoNow( $rome( '2026-12-02 00:01' ) ) );
+check( 'promo: listino barrato solo in promo e solo se più alto', 1000 === Portale\Settings::listCents( 'lite', 'month', $rome( '2026-11-28 10:00' ) ) && null === Portale\Settings::listCents( 'lite', 'month', $rome( '2026-12-05 10:00' ) ) && null === Portale\Settings::listCents( 'lite', 'year', $rome( '2026-11-28 10:00' ) ) );
+check( 'promo: il prezzo incassato resta quello in vigore', 800 === Portale\Config::price( 'lite', 'month' )['cents'] );
+check( 'promo: serve la data di fine', null !== throwsUser( function () use ( $pdb ) {
+	Portale\Settings::savePromo( $pdb, array( 'promo_label' => 'Prova' ) );
+} ) );
+check( 'promo: inizio dopo la fine rifiutato', null !== throwsUser( function () use ( $pdb ) {
+	Portale\Settings::savePromo( $pdb, array( 'promo_label' => 'Prova', 'promo_start' => '2026-12-05', 'promo_end' => '2026-12-01' ) );
+} ) );
+Portale\Settings::savePromo( $pdb, array( 'promo_label' => '' ) );
+Portale\Settings::load( $pdb );
+check( 'promo: nome vuoto la spegne', null === Portale\Settings::promoNow( $rome( '2026-11-28 10:00' ) ) );
+
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );

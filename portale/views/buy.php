@@ -11,7 +11,7 @@ $names = array(
 	<div class="panel">
 		<span class="eyebrow">Piano <?php echo e( $label ); ?></span>
 		<h1>Completa l'acquisto</h1>
-		<div class="summary"><span><?php echo e( $label ); ?> · <?php echo $year ? 'annuale' : 'mensile'; ?></span><b><?php echo e( money( $price['cents'] ) ); ?> <small class="muted"><?php echo $year ? '/ anno' : '/ mese'; ?></small></b></div>
+		<div class="summary"><span><?php echo e( $label ); ?> · <?php echo $year ? 'annuale' : 'mensile'; ?></span><b><?php $lc = Portale\Settings::listCents( $plan, $period ); echo $lc ? '<s class="was">' . e( money( $lc ) ) . '</s> ' : ''; echo e( money( $price['cents'] ) ); ?> <small class="muted"><?php echo $year ? '/ anno' : '/ mese'; ?></small></b></div>
 		<?php if ( ! $methods ) : ?>
 			<p class="muted">Questo piano non è ancora acquistabile: riprova tra poco o <a href="mailto:info@associazionesemplice.it">scrivici</a>.</p>
 		<?php else : ?>

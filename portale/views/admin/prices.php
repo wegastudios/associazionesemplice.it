@@ -4,6 +4,18 @@ $eur  = function ( $c ) { return null === $c ? '' : number_format( $c / 100, 2, 
 ?>
 <section class="admin"><div class="wrap" style="max-width:900px">
 	<p class="muted">I prezzi mostrati sul sito e i dati per incassare. Il <b>pagamento singolo</b> usa l'importo qui scritto e non richiede nulla su Stripe o PayPal; il <b>rinnovo automatico</b> richiede invece il prezzo ricorrente creato su Stripe (<code>price_…</code>) e/o il piano creato su PayPal (<code>P-…</code>), che devono avere lo stesso importo.</p>
+	<?php $promo = (array) Portale\Config::get( 'promo', array() ); $promoOn = Portale\Settings::promoNow(); ?>
+	<form class="card2" method="post" action="/admin/prezzi/promo">
+		<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>">
+		<h2>Promozione in vetrina <span class="badge <?php echo $promoOn ? 'ok' : ''; ?>"><?php echo $promoOn ? 'in corso' : ( ! empty( $promo['label'] ) ? 'non in corso' : 'spenta' ); ?></span></h2>
+		<p class="hint" style="margin-top:0">Durante la promozione, nella vetrina, nell'acquisto e nel confronto il <b>prezzo di listino</b> compare barrato accanto al prezzo in vigore (quello che si incassa davvero), con il nome della promozione. Il prezzo di listino si scrive piano per piano qui sotto. Finita la promozione la vetrina mostra solo il prezzo in vigore: <b>se il listino deve diventare il prezzo di vendita</b>, cambia importo e prezzi Stripe/PayPal del piano. I clienti già iscritti restano al prezzo con cui hanno acquistato.</p>
+		<div class="form-grid">
+			<div><label for="pl" style="margin-top:0">Nome (vuoto = nessuna promozione)</label><input id="pl" type="text" name="promo_label" value="<?php echo e( $promo['label'] ?? '' ); ?>" maxlength="40" placeholder="Black Friday"></div>
+			<div><label for="ps" style="margin-top:0">Dal (aaaa-mm-gg, facoltativo)</label><input id="ps" type="text" name="promo_start" value="<?php echo e( $promo['start'] ?? '' ); ?>" maxlength="10" placeholder="2026-11-27"></div>
+			<div><label for="pe" style="margin-top:0">Fino al (compreso)</label><input id="pe" type="text" name="promo_end" value="<?php echo e( $promo['end'] ?? '' ); ?>" maxlength="10" placeholder="2026-12-01"></div>
+		</div>
+		<div class="row-actions"><button class="btn" type="submit">Salva promozione</button></div>
+	</form>
 	<?php foreach ( $plans as $code => $p ) :
 		$paid = 'free' !== $code;
 		$feat = implode( "\n", (array) ( $p['features'] ?? array() ) );
@@ -26,6 +38,7 @@ $eur  = function ( $c ) { return null === $c ? '' : number_format( $c / 100, 2, 
 				<div><label for="p<?php echo e( $code . $per ); ?>">Prezzo in euro</label><input id="p<?php echo e( $code . $per ); ?>" type="text" inputmode="decimal" name="price_<?php echo e( $per ); ?>" value="<?php echo e( $eur( $pr['cents'] ?? null ) ); ?>" placeholder="49,90"></div>
 				<div><label for="s<?php echo e( $code . $per ); ?>">Stripe · prezzo ricorrente</label><input id="s<?php echo e( $code . $per ); ?>" type="text" name="stripe_<?php echo e( $per ); ?>" value="<?php echo e( $pr['stripe_price'] ?? '' ); ?>" placeholder="price_…" autocapitalize="none" spellcheck="false"></div>
 				<div><label for="a<?php echo e( $code . $per ); ?>">PayPal · piano ricorrente</label><input id="a<?php echo e( $code . $per ); ?>" type="text" name="paypal_<?php echo e( $per ); ?>" value="<?php echo e( $pr['paypal_plan'] ?? '' ); ?>" placeholder="P-…" autocapitalize="none" spellcheck="false"></div>
+			<div><label for="li<?php echo e( $code . $per ); ?>">Prezzo di listino (barrato in promo)</label><input id="li<?php echo e( $code . $per ); ?>" type="text" inputmode="decimal" name="list_<?php echo e( $per ); ?>" value="<?php echo e( ! empty( $pr['list_cents'] ) ? $eur( $pr['list_cents'] ) : '' ); ?>" placeholder="facoltativo"></div>
 			</div>
 			<label class="check"><input type="checkbox" name="once_<?php echo e( $per ); ?>" value="1"<?php echo false !== ( $pr['once'] ?? true ) ? ' checked' : ''; ?>> Consenti anche il pagamento singolo (senza rinnovo automatico)</label>
 		<?php endforeach; else : ?>

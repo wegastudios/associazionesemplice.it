@@ -98,8 +98,9 @@ $faq = array(
 			<?php if ( 'free' === $code ) : ?>
 				<div class="price"><b>0 €</b><span>per sempre</span></div><div class="price-note">Serve solo la licenza gratuita</div>
 			<?php else : ?>
-				<?php if ( $m ) : ?><div class="only-month"><div class="price"><b><?php echo e( $euro( $m ) ); ?></b><span>al mese</span></div><div class="price-note">Rinnovo mensile, senza vincoli</div></div><?php endif; ?>
-				<?php if ( $y ) : ?><div class="only-year"><div class="price"><b><?php echo e( $euro( (int) round( $y / 12 ) ) ); ?></b><span>al mese</span></div><div class="price-note"><?php echo e( $euro( $y ) ); ?> all'anno<?php echo $m && $m * 12 > $y ? ' · risparmi ' . e( $euro( $m * 12 - $y ) ) : ''; ?></div></div><?php endif; ?>
+				<?php $promoName = Portale\Settings::promoNow(); $lm = Portale\Settings::listCents( $code, 'month' ); $ly = Portale\Settings::listCents( $code, 'year' ); if ( $promoName && ( $lm || $ly ) ) : ?><div class="promo-tag"><?php echo e( $promoName ); ?></div><?php endif; ?>
+				<?php if ( $m ) : ?><div class="only-month"><div class="price"><?php if ( $lm ) : ?><s class="was"><?php echo e( $euro( $lm ) ); ?></s> <?php endif; ?><b><?php echo e( $euro( $m ) ); ?></b><span>al mese</span></div><div class="price-note">Rinnovo mensile, senza vincoli</div></div><?php endif; ?>
+				<?php if ( $y ) : ?><div class="only-year"><div class="price"><?php if ( $ly ) : ?><s class="was"><?php echo e( $euro( (int) round( $ly / 12 ) ) ); ?></s> <?php endif; ?><b><?php echo e( $euro( (int) round( $y / 12 ) ) ); ?></b><span>al mese</span></div><div class="price-note"><?php echo $ly ? '<s class="was">' . e( $euro( $ly ) ) . '</s> ' : ''; ?><?php echo e( $euro( $y ) ); ?> all'anno<?php echo $m && $m * 12 > $y ? ' · risparmi ' . e( $euro( $m * 12 - $y ) ) : ''; ?></div></div><?php endif; ?>
 			<?php endif; ?>
 			<ul><?php foreach ( $feat as $line ) : ?><li><?php echo e( $line ); ?></li><?php endforeach; ?></ul>
 			<?php if ( 'free' === $code ) : ?>

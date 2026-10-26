@@ -116,7 +116,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 |---|---|---|---|
 | Chiave di licenza | Gratuita e facoltativa | Obbligatoria | Obbligatoria |
 | Prova gratuita di Pro per 30 giorni (una volta sola) | ✓ | — | — |
-| Prezzo | 0 € per sempre | 8 € al mese o 80 € all'anno | 12 € al mese o 100 € all'anno |
+| Prezzo | 0 € per sempre | {lite_month} al mese o {lite_year} all'anno | {full_month} al mese o {full_year} all'anno |
 
 > I prezzi e i piani sono sempre aggiornati nella sezione **Prezzi** della home. Con una licenza non in regola Pro torna alle funzioni di base, senza toccare i dati.
 

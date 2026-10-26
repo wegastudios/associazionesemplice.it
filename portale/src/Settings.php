@@ -38,6 +38,7 @@ final class Settings {
 			}
 		}
 		Config::set( 'plans', $plans );
+		Config::set( 'promo', self::read( $db, 'promo' ) );
 
 		$g = self::read( $db, 'general' );
 		self::apply( 'duration_days.month', $g, 'duration_month' );
@@ -166,13 +167,64 @@ final class Settings {
 				if ( '' !== $paypal && ! preg_match( '/^P-[A-Za-z0-9]{6,100}$/', $paypal ) ) {
 					throw new UserError( 'Il piano PayPal deve iniziare con «P-».' );
 				}
-				$over['prices'][ $p ] = array( 'cents' => (int) round( (float) $euro * 100 ), 'stripe_price' => $stripe, 'paypal_plan' => $paypal, 'once' => ! empty( $in[ 'once_' . $p ] ) );
+				$list = str_replace( ',', '.', trim( (string) ( $in[ 'list_' . $p ] ?? '' ) ) );
+				if ( '' !== $list && ( ! is_numeric( $list ) || $list < 0 || $list > 10000 ) ) {
+					throw new UserError( 'Prezzo di listino non valido: scrivi un importo in euro, per esempio 99.' );
+				}
+				$over['prices'][ $p ] = array( 'cents' => (int) round( (float) $euro * 100 ), 'list_cents' => '' === $list ? 0 : (int) round( (float) $list * 100 ), 'stripe_price' => $stripe, 'paypal_plan' => $paypal, 'once' => ! empty( $in[ 'once_' . $p ] ) );
 			}
 		}
 		$all          = self::read( $db, 'plans' );
 		$all[ $code ] = $over;
 		self::write( $db, 'plans', $all );
 		return $over;
+	}
+
+	/**
+	 * Promozione in vetrina (per esempio Black Friday): nome, inizio e fine. Mostra il prezzo di listino barrato accanto a quello in vigore
+	 * (che è anche quello che si incassa); finita la promo la vetrina torna a mostrare solo il prezzo normale.
+	 */
+	public static function savePromo( Db $db, array $in ): void {
+		$label = mb_substr( trim( preg_replace( '/\s+/', ' ', (string) ( $in['promo_label'] ?? '' ) ) ), 0, 40 );
+		$date  = function ( $v ) {
+			$v = trim( (string) $v );
+			if ( '' !== $v && ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $v ) || false === strtotime( $v ) ) ) {
+				throw new UserError( 'Data non valida: usa il formato aaaa-mm-gg.' );
+			}
+			return $v;
+		};
+		$start = $date( $in['promo_start'] ?? '' );
+		$end   = $date( $in['promo_end'] ?? '' );
+		if ( '' !== $label && '' === $end ) {
+			throw new UserError( 'Per la promozione serve la data di fine.' );
+		}
+		if ( '' !== $start && '' !== $end && $start > $end ) {
+			throw new UserError( 'La data di inizio è dopo quella di fine.' );
+		}
+		self::write( $db, 'promo', '' === $label ? array() : array( 'label' => $label, 'start' => $start, 'end' => $end ) );
+	}
+
+	/** La promozione è in corso adesso (ora italiana)? @return string|null il nome della promo, o null */
+	public static function promoNow( ?int $now = null ): ?string {
+		$p = (array) Config::get( 'promo', array() );
+		if ( empty( $p['label'] ) || empty( $p['end'] ) ) {
+			return null;
+		}
+		$tz    = new \DateTimeZone( 'Europe/Rome' );
+		$now   = $now ?? time();
+		$end   = ( new \DateTime( $p['end'] . ' 23:59:59', $tz ) )->getTimestamp();
+		$start = ! empty( $p['start'] ) ? ( new \DateTime( $p['start'] . ' 00:00:00', $tz ) )->getTimestamp() : 0;
+		return ( $now >= $start && $now <= $end ) ? (string) $p['label'] : null;
+	}
+
+	/** Prezzo di listino da mostrare barrato per un piano e un periodo: solo durante la promo e se più alto del prezzo in vigore. */
+	public static function listCents( string $plan, string $period, ?int $now = null ): ?int {
+		if ( null === self::promoNow( $now ) ) {
+			return null;
+		}
+		$list = (int) Config::get( 'plans.' . $plan . '.prices.' . $period . '.list_cents', 0 );
+		$cur  = (int) Config::get( 'plans.' . $plan . '.prices.' . $period . '.cents', 0 );
+		return $list > $cur ? $list : null;
 	}
 
 	public static function mergePlan( array $base, array $over ): array {

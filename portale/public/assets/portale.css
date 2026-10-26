@@ -231,3 +231,8 @@ input[type=number]:focus { border-color: var(--brand); outline: none; box-shadow
 .linklike:hover { color: var(--brand-2); }
 .tabs.sub { margin-top: -14px; gap: 2px; } .tabs.sub a { padding: 7px 14px; font-size: .92rem; font-weight: 500; border-radius: 999px; border-bottom: 0; margin-bottom: 0; }
 .tabs.sub a[aria-current="page"] { background: var(--brand-soft); color: var(--brand-2); }
+
+/* Promozione (Black Friday…): listino barrato e etichetta */
+.was { color: var(--muted); font-size: 1.15rem; font-weight: 500; text-decoration: line-through; text-decoration-thickness: 2px; }
+.price-note .was { font-size: inherit; }
+.promo-tag { display: inline-block; margin-top: 12px; padding: 3px 10px; border-radius: 999px; background: var(--gold, #f0b429); color: #1a1a2e; font-size: .78rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }

@@ -8,7 +8,23 @@ $inline = function ( string $t ): string {
 	}, $t );
 	return $t;
 };
-$lines = preg_split( '/\r?\n/', (string) file_get_contents( __DIR__ . '/../content/confronto.md' ) );
+// Prezzi sempre quelli in vigore (con il listino tra parentesi durante una promozione): nel testo i segnaposto {lite_month}, {lite_year}, {full_month}, {full_year}.
+$priceText = function ( string $code, string $period ): string {
+	$c = (int) Portale\Config::get( 'plans.' . $code . '.prices.' . $period . '.cents', 0 );
+	if ( ! $c ) {
+		return '—';
+	}
+	$l = Portale\Settings::listCents( $code, $period );
+	return money( $c ) . ( $l ? ' (listino ' . money( $l ) . ')' : '' );
+};
+$md = (string) file_get_contents( __DIR__ . '/../content/confronto.md' );
+$md = strtr( $md, array(
+	'{lite_month}' => $priceText( 'lite', 'month' ), '{lite_year}' => $priceText( 'lite', 'year' ),
+	'{full_month}' => $priceText( 'full', 'month' ), '{full_year}' => $priceText( 'full', 'year' ),
+) );
+$promoName = Portale\Settings::promoNow();
+$promoEnd  = (string) Portale\Config::get( 'promo.end', '' );
+$lines     = preg_split( '/\r?\n/', $md );
 $html  = '';
 $mode  = '';
 $close = function () use ( &$html, &$mode ) {
@@ -80,6 +96,7 @@ $close();
 <section class="page"><div class="wrap cmp-page" style="max-width:920px">
 	<span class="eyebrow">Free, Pro Contabile e Pro Fiscale</span>
 	<h1>Confronto tra le versioni</h1>
+	<?php if ( $promoName ) : ?><p><span class="promo-tag" style="margin:0"><?php echo e( $promoName ); ?></span> <b>Prezzi in promozione fino al <?php echo e( date( 'd/m/Y', strtotime( $promoEnd ) ) ); ?></b>: nell'ultima riga della tabella trovi il prezzo in vigore e, tra parentesi, il listino.</p><?php endif; ?>
 	<?php echo $html; ?>
 	<p class="actions"><a class="btn" href="/#prezzi">Vedi i piani e i prezzi</a> <a class="btn alt" href="/free">Ottieni la licenza gratuita</a></p>
 </div></section>
