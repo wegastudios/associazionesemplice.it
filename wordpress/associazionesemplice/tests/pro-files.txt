@@ -7,6 +7,7 @@ Gateways.php
 StripeApi.php
 StripeWebhook.php
 PayPalApi.php
+SumUpApi.php
 WooBridge.php
 WooLinks.php
 Frontend/PayReturn.php

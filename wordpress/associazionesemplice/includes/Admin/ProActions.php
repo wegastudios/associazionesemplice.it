@@ -344,9 +344,20 @@ final class ProActions {
 		$txt = function ( string $k ) use ( $p ) {
 			return sanitize_text_field( $p[ $k ] ?? '' );
 		};
+		$fees = array( 'pay_fee_book' => ! empty( $p['pay_fee_book'] ) ? 1 : 0 );
+		foreach ( PaymentConfig::fee_gateways() as $g ) { // commissioni di incasso: «1,50» per cento e «0,25» euro → punti base e centesimi
+			$pct                       = (float) str_replace( ',', '.', $txt( 'pay_fee_pct_' . $g ) );
+			$fees[ 'pay_fee_fixed_' . $g ] = Money::parse( $txt( 'pay_fee_fixed_' . $g ) ) ?? 0;
+			$fees[ 'pay_fee_pct_' . $g ]   = (int) round( max( 0, min( 25, $pct ) ) * 100 );
+			$fees[ 'pay_fee_pass_' . $g ]  = ! empty( $p[ 'pay_fee_pass_' . $g ] ) ? 1 : 0;
+		}
 		Settings::update(
-			array(
+			$fees + array(
 				'payment_provider'        => $txt( 'payment_provider' ),
+				'sumup_api_key'           => $txt( 'sumup_api_key' ),
+				'sumup_merchant_code'     => $txt( 'sumup_merchant_code' ),
+				'pay_label_sumup'         => $txt( 'pay_label_sumup' ),
+				'pay_note_sumup'          => $txt( 'pay_note_sumup' ),
 				'stripe_mode'             => $txt( 'stripe_mode' ),
 				'stripe_publishable_key'  => $txt( 'stripe_publishable_key' ),
 				'stripe_secret_key'       => $txt( 'stripe_secret_key' ),     // vuoto = lascia quella salvata
@@ -377,7 +388,7 @@ final class ProActions {
 
 	/** Prova la connessione a Stripe o PayPal con le chiavi salvate (solo quando l'amministratore preme il pulsante). */
 	public static function test_gateway( array $p ): array {
-		$provider = in_array( $p['provider'] ?? '', array( PaymentConfig::STRIPE, PaymentConfig::PAYPAL ), true ) ? $p['provider'] : '';
+		$provider = in_array( $p['provider'] ?? '', array( PaymentConfig::STRIPE, PaymentConfig::PAYPAL, PaymentConfig::SUMUP ), true ) ? $p['provider'] : '';
 		$res      = Gateways::test( $provider, \AssociazioneSemplice\ProSettings::payment_config(), array( Gateways::class, 'wp_http' ) );
 		Audit::log( 'gateway.tested', 'settings', null, array( 'provider' => $provider, 'ok' => $res['ok'] ) );
 		if ( ! $res['ok'] ) {

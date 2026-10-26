@@ -1572,7 +1572,8 @@ add_filter(
 // gateway simulati
 $stripe_sessions = array();
 $paypal_orders   = array();
-$fake_gateway    = function ( $method, $url, $headers, $body ) use ( &$stripe_sessions, &$paypal_orders ) {
+$sumup_checkouts = array();
+$fake_gateway    = function ( $method, $url, $headers, $body ) use ( &$stripe_sessions, &$paypal_orders, &$sumup_checkouts ) {
 	if ( false !== strpos( $url, 'api.stripe.com/v1/checkout/sessions' ) ) {
 		if ( 'POST' === $method ) {
 			parse_str( (string) $body, $b );
@@ -1587,6 +1588,17 @@ $fake_gateway    = function ( $method, $url, $headers, $body ) use ( &$stripe_se
 		$id = basename( (string) wp_parse_url( $url, PHP_URL_PATH ) );
 		$s  = $stripe_sessions[ $id ];
 		return array( 'code' => 200, 'body' => wp_json_encode( array( 'id' => $id, 'payment_status' => $s['paid'] ? 'paid' : 'unpaid', 'status' => $s['status'], 'amount_total' => $s['amount'], 'payment_intent' => 'pi_' . $id, 'client_reference_id' => $s['ref'] ) ) );
+	}
+	if ( false !== strpos( $url, 'api.sumup.com/v0.1/checkouts' ) ) {
+		if ( 'POST' === $method ) {
+			$b                      = json_decode( (string) $body, true );
+			$id                     = 'sumup-' . ( count( $sumup_checkouts ) + 1 );
+			$sumup_checkouts[ $id ] = array( 'paid' => false, 'amount' => (float) $b['amount'], 'ref' => $b['checkout_reference'], 'merchant' => $b['merchant_code'], 'auth' => $headers['Authorization'] ?? '' );
+			return array( 'code' => 201, 'body' => wp_json_encode( array( 'id' => $id, 'status' => 'PENDING', 'hosted_checkout_url' => 'https://checkout.sumup.com/pay/' . $id ) ) );
+		}
+		$id = basename( (string) wp_parse_url( $url, PHP_URL_PATH ) );
+		$c  = $sumup_checkouts[ $id ];
+		return array( 'code' => 200, 'body' => wp_json_encode( array( 'id' => $id, 'status' => $c['paid'] ? 'PAID' : 'PENDING', 'amount' => $c['amount'], 'currency' => 'EUR', 'transactions' => array( array( 'transaction_code' => 'TX' . $id ) ) ) ) );
 	}
 	if ( false !== strpos( $url, '/v1/oauth2/token' ) ) {
 		return array( 'code' => 200, 'body' => '{"access_token":"TOK"}' );
@@ -1917,6 +1929,50 @@ asem_render( array( Admin\PaymentsPage::class, 'render' ), 'checkout.session.asy
 $audit_all = Audit::recent( 400 );
 $audit     = array_column( $audit_all, 'action' );
 asem_ok( in_array( 'payment.created', $audit, true ) && in_array( 'payment.paid', $audit, true ) && false === strpos( wp_json_encode( $audit_all ), 'sk_test_51Smoke1' ), 'registro azioni: pagamenti tracciati, senza chiavi' );
+
+// SumUp e commissioni di incasso (a carico dell'ente o ribaltate), registrate come spesa stimata
+Settings::update( array( 'payment_provider' => 'sumup', 'sumup_merchant_code' => 'MSMOKE01', 'sumup_api_key' => 'sup_sk_smokekey1234567890', 'pay_fee_fixed_sumup' => 25, 'pay_fee_pct_sumup' => 150, 'pay_fee_pass_sumup' => 0, 'pay_fee_book' => 1 ) );
+asem_ok( 'sumup' === $ps->provider() && $ps->enabled(), 'SumUp: attivo con codice commerciante e chiave API' );
+$su_ev1 = $mkev( 'Cena SumUp uno', 1000, 1000 );
+$su_s1  = $first_session( $su_ev1 );
+$acts->book( $su_s1, $pm );
+wp_set_current_user( $u_pm );
+$su_url = $ps->create_checkout( $pmp, $u_pm, array( "b:$su_s1:$pm" ), home_url( '/area/' ) );
+$su_row = $latest();
+asem_ok( 0 === strpos( $su_url, 'https://checkout.sumup.com/pay/sumup-' ) && 'pending' === $su_row['status'] && 1000 === (int) $su_row['amount_cents'] && 'sumup' === $su_row['provider'], 'SumUp: pagina ospitata e pagamento in attesa, senza supplemento' );
+asem_ok( 10.0 === $sumup_checkouts[ $su_row['provider_ref'] ]['amount'] && 'MSMOKE01' === $sumup_checkouts[ $su_row['provider_ref'] ]['merchant'] && 'Bearer sup_sk_smokekey1234567890' === $sumup_checkouts[ $su_row['provider_ref'] ]['auth'] && $sumup_checkouts[ $su_row['provider_ref'] ]['ref'] === $su_row['public_id'], 'SumUp riceve importo del server, codice commerciante e riferimento' );
+asem_ok( false !== strpos( $ps->handle_return( $su_row['public_id'], 'ok', $u_pm ), 'attesa' ), 'SumUp: se non risulta pagato resta in attesa' );
+$sumup_checkouts[ $su_row['provider_ref'] ]['paid'] = true;
+asem_ok( false !== strpos( $ps->handle_return( $su_row['public_id'], 'ok', $u_pm ), 'ricevuto' ) && 'paid' === $ps->get_by_public( $su_row['public_id'] )['status'], 'SumUp: pagamento confermato' );
+asem_ok( 1000 === $sum_tx( "type = 'income' AND method = 'sumup'" ) && 40 === $sum_tx( "type = 'expense' AND method = 'sumup'" ) && 960 === $balance_of( 'SumUp' ), 'SumUp: incasso 10,00 e commissione stimata 0,40 (0,25 + 1,5%) registrata come spesa sul conto SumUp' );
+// ribaltata su chi paga
+Settings::update( array( 'pay_fee_pass_sumup' => 1 ) );
+asem_ok( '' !== \AssociazioneSemplice\PaymentConfig::fee_note( Settings::all(), 'sumup' ) && '' === \AssociazioneSemplice\PaymentConfig::fee_note( Settings::all(), 'woocommerce' ), 'commissione ribaltata: il socio la legge sotto il pulsante' );
+$su_ev2 = $mkev( 'Cena SumUp due', 1000, 1000 );
+$su_s2  = $first_session( $su_ev2 );
+$acts->book( $su_s2, $pm );
+$ps->create_checkout( $pmp, $u_pm, array( "b:$su_s2:$pm" ), home_url( '/area/' ) );
+$su_row2 = $latest();
+asem_ok( 1041 === (int) $su_row2['amount_cents'] && 10.41 === $sumup_checkouts[ $su_row2['provider_ref'] ]['amount'], 'commissione ribaltata: si addebita 10,41 perché, tolta la commissione, restino 10,00' );
+$sumup_checkouts[ $su_row2['provider_ref'] ]['paid'] = true;
+$ps->handle_return( $su_row2['public_id'], 'ok', $u_pm );
+$su_paid2 = $ps->get_by_public( $su_row2['public_id'] );
+asem_ok( 'paid' === $su_paid2['status'] && 1041 === (int) $su_paid2['allocated_cents'] && ! (int) $su_paid2['review'], 'commissione ribaltata: tutto registrato, nessun controllo da fare' );
+asem_ok( 2041 === $sum_tx( "type = 'income' AND method = 'sumup'" ) && 81 === $sum_tx( "type = 'expense' AND method = 'sumup'" ) && 1960 === $balance_of( 'SumUp' ), 'commissione ribaltata: entrata 10,41 (10,00 + 0,41) e spesa stimata 0,41, il conto resta a 10,00 netti' );
+// solo nei report: nessuna spesa automatica
+Settings::update( array( 'pay_fee_book' => 0, 'pay_fee_pass_sumup' => 0 ) );
+$su_ev3 = $mkev( 'Cena SumUp tre', 1000, 1000 );
+$su_s3  = $first_session( $su_ev3 );
+$acts->book( $su_s3, $pm );
+$ps->create_checkout( $pmp, $u_pm, array( "b:$su_s3:$pm" ), home_url( '/area/' ) );
+$su_row3 = $latest();
+$sumup_checkouts[ $su_row3['provider_ref'] ]['paid'] = true;
+$ps->handle_return( $su_row3['public_id'], 'ok', $u_pm );
+asem_ok( 81 === $sum_tx( "type = 'expense' AND method = 'sumup'" ) && 'paid' === $ps->get_by_public( $su_row3['public_id'] )['status'], 'commissione non registrata se l\'amministratore non lo vuole' );
+asem_ok( array() !== \AssociazioneSemplice\PaymentConfig::validate( array( 'payment_provider' => 'sumup', 'sumup_api_key' => '', 'sumup_merchant_code' => '' ) )['errors'] && array() === \AssociazioneSemplice\PaymentConfig::validate( array( 'payment_provider' => 'stripe_paypal_sumup', 'stripe_mode' => 'test', 'stripe_publishable_key' => 'pk_test_51Smoke1', 'stripe_secret_key' => 'sk_test_51Smoke1', 'stripe_webhook_secret' => 'whsec_smoke123', 'paypal_mode' => 'sandbox', 'paypal_client_id' => 'AbCdEfGhIjKlMnOpQrStUv', 'paypal_client_secret' => 'AbCdEfGhIjKlMnOpQrStUv', 'sumup_api_key' => 'sup_sk_smokekey1234567890', 'sumup_merchant_code' => 'MSMOKE01' ) )['errors'], 'SumUp: controllo della configurazione, anche insieme a Stripe e PayPal' );
+Settings::update( array( 'pay_fee_fixed_sumup' => 0, 'pay_fee_pct_sumup' => 0 ) );
+Settings::clear_secret( 'sumup_api_key' );
+wp_set_current_user( 1 );
 
 // ripristino
 Settings::update( array( 'payment_provider' => 'none' ) );

@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 final class ProSettings {
 
 	/** Chiavi segrete: nel database restano cifrate e non vengono mai mostrate. */
-	const SECRET_KEYS = array( 'stripe_secret_key', 'stripe_webhook_secret', 'paypal_client_secret', 'wallet_apple_key_pem', 'wallet_google_key_pem' );
+	const SECRET_KEYS = array( 'stripe_secret_key', 'stripe_webhook_secret', 'paypal_client_secret', 'sumup_api_key', 'wallet_apple_key_pem', 'wallet_google_key_pem' );
 
 	public static function register(): void {
 		add_filter( 'asem_secret_keys', array( __CLASS__, 'secret_keys' ) );
@@ -72,7 +72,7 @@ final class ProSettings {
 	/** Configurazione dei pagamenti con i segreti in chiaro (solo per uso interno: mai da stampare). */
 	public static function payment_config(): array {
 		$c = array( 'payment_provider' => (string) Settings::get( 'payment_provider' ), 'site_https' => 0 === strpos( home_url(), 'https://' ) ? 1 : 0 );
-		foreach ( array( 'stripe_mode', 'stripe_publishable_key', 'paypal_mode', 'paypal_client_id' ) as $k ) {
+		foreach ( array( 'stripe_mode', 'stripe_publishable_key', 'paypal_mode', 'paypal_client_id', 'sumup_merchant_code' ) as $k ) {
 			$c[ $k ] = (string) Settings::get( $k );
 		}
 		foreach ( self::SECRET_KEYS as $k ) {
@@ -103,6 +103,20 @@ final class ProSettings {
 			'paypal_mode'             => 'sandbox',
 			'paypal_client_id'        => '',
 			'paypal_client_secret'    => '',   // cifrata
+			'sumup_api_key'           => '',   // cifrata
+			'sumup_merchant_code'     => '',
+			'pay_fee_book'            => 1,    // registra in prima nota, a ogni incasso online, la commissione stimata come spesa
+			'pay_fee_fixed_stripe'    => 0,    // commissioni di incasso per metodo: fisso (centesimi), percentuale (punti base: 150 = 1,50%), ribaltare su chi paga (spento: la legge vieta il supplemento sulle carte dei consumatori)
+			'pay_fee_pct_stripe'      => 0,
+			'pay_fee_pass_stripe'     => 0,
+			'pay_fee_fixed_paypal'    => 0,
+			'pay_fee_pct_paypal'      => 0,
+			'pay_fee_pass_paypal'     => 0,
+			'pay_fee_fixed_sumup'     => 0,
+			'pay_fee_pct_sumup'       => 0,
+			'pay_fee_pass_sumup'      => 0,
+			'pay_label_sumup'         => '',
+			'pay_note_sumup'          => '',
 			'wallet_enabled'          => 0,     // pulsanti Apple/Google Wallet
 			'wallet_apple_pass_type'  => '',    // Apple Wallet: identificativo del tipo di pass (dal certificato)
 			'wallet_apple_team'       => '',
@@ -154,12 +168,18 @@ final class ProSettings {
 		$clean['vat_default_rate']        = max( 0, min( 30, (int) $clean['vat_default_rate'] ) );
 		$clean['vat_membership_rate']     = null === Fiscal::clean_rate( $clean['vat_membership_rate'] ) ? '' : Fiscal::clean_rate( $clean['vat_membership_rate'] );
 		$clean['vat_prices_mode']       = Fiscal::EXCLUDED === (string) $clean['vat_prices_mode'] ? Fiscal::EXCLUDED : Fiscal::INCLUDED;
-		foreach ( array( 'stripe', 'paypal', 'woocommerce' ) as $g ) {
+		foreach ( array( 'stripe', 'paypal', 'sumup', 'woocommerce' ) as $g ) {
 			$clean[ 'pay_label_' . $g ] = mb_substr( trim( (string) $clean[ 'pay_label_' . $g ] ), 0, 60 );
 			$clean[ 'pay_note_' . $g ]  = mb_substr( trim( (string) $clean[ 'pay_note_' . $g ] ), 0, 300 );
 		}
-		foreach ( array( 'stripe_publishable_key', 'paypal_client_id' ) as $k ) {
+		foreach ( array( 'stripe_publishable_key', 'paypal_client_id', 'sumup_merchant_code' ) as $k ) {
 			$clean[ $k ] = mb_substr( trim( (string) $clean[ $k ] ), 0, 200 );
+		}
+		$clean['pay_fee_book'] = empty( $clean['pay_fee_book'] ) ? 0 : 1;
+		foreach ( PaymentConfig::fee_gateways() as $g ) { // commissioni: fisso fino a 20 €, percentuale fino al 25%
+			$clean[ 'pay_fee_fixed_' . $g ] = max( 0, min( 2000, (int) $clean[ 'pay_fee_fixed_' . $g ] ) );
+			$clean[ 'pay_fee_pct_' . $g ]   = max( 0, min( 2500, (int) $clean[ 'pay_fee_pct_' . $g ] ) );
+			$clean[ 'pay_fee_pass_' . $g ]  = empty( $clean[ 'pay_fee_pass_' . $g ] ) ? 0 : 1;
 		}
 		return $clean;
 	}

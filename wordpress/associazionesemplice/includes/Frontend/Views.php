@@ -372,7 +372,7 @@ final class Views {
 			$notes    = array();
 			foreach ( $pay->providers() as $g ) { // un pulsante per ogni metodo attivo, con le diciture scelte dall'amministratore
 				$buttons[] = array( 'value' => $g, 'label' => PaymentConfig::label( $g, $all ) );
-				$notes[]   = PaymentConfig::note( $g, $all );
+				$notes[]   = trim( PaymentConfig::note( $g, $all ) . ' ' . PaymentConfig::fee_note( $all, $g ) ); // se il metodo ribalta la commissione, il socio lo legge prima di pagare
 			}
 			$html .= self::form( 'asem_front_pay', $fields, '', false, '', false, $buttons );
 			foreach ( array_filter( $notes ) as $n ) {
