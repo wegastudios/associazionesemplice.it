@@ -13,6 +13,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Nucleo familiare con sconto per i familiari | — | ✓ | ✓ |
 | Ospiti con conteggio delle partecipazioni e invito a iscriversi | ✓ | ✓ | ✓ |
 | Ospiti dell'associazione e del volontario con quote ripartite e rimborso al volontario (per amministratori e segreteria) | — | ✓ | ✓ |
+| Domanda di adesione online con modulo sul sito (shortcode) | ✓ | ✓ | ✓ |
+| Minori con genitori o tutori (non soci), con tessera valida dal pagamento | ✓ | ✓ | ✓ |
 | Importazione di soci e ospiti da Excel, CSV e WP All Import | ✓ | ✓ | ✓ |
 | Esportazione di soci e ospiti | ✓ | ✓ | ✓ |
 | Tessera digitale e stampabile, con colori e logo | ✓ | ✓ | ✓ |
@@ -63,6 +65,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Acconti e sconti con motivo per riga di incasso | ✓ | ✓ | ✓ |
 | Nuovo socio in un popup durante l'incasso, senza perdere l'operazione | ✓ | ✓ | ✓ |
 | Pagamenti online con Stripe, PayPal o WooCommerce | — | ✓ | ✓ |
+| Pagamento online della quota dalla domanda di adesione | — | ✓ | ✓ |
 | Conti multipli, giroconti e cassa per più persone | — | ✓ | ✓ |
 | Fondi accantonati (per esempio rimborso dei volontari) | — | ✓ | ✓ |
 | Risorse con quota accantonata in un fondo a ogni pagamento (anche in crediti) | — | ✓ | ✓ |
