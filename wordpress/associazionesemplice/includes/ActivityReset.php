@@ -18,7 +18,7 @@ final class ActivityReset {
 	const REFUND = 'refund';
 	const VOID   = 'void';
 
-	const ONLINE_METHODS = array( 'stripe', 'paypal', 'woocommerce', 'online' );
+	const ONLINE_METHODS = array( 'stripe', 'paypal', 'sumup', 'woocommerce', 'online' );
 
 	private static function db(): \wpdb {
 		return Db::db();
