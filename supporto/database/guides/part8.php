@@ -32,7 +32,14 @@ Se la data di nascita indica un **minorenne**, il modulo chiede anche i dati del
 
 1. Apri la domanda dalla Bacheca.
 2. Premi **Approva** e scegli il **numero di tessera**: ti viene proposto il successivo libero, controllando che non sia già assegnato. Oppure premi **Rifiuta**.
-3. Con l'approvazione, al richiedente parte un'email con il **link per scegliere email e password**.
+3. Con l'approvazione la persona entra nel **libro soci** e al richiedente parte un'email con il **link per scegliere email e password**.
+4. Con il rifiuto la domanda sparisce e a chi l'aveva inviata arriva un breve avviso. Se non c'è stato un pagamento, non resta alcun dato personale.
+
+## Controllo dei doppioni e protezioni
+
+- La domanda viene confrontata con le persone già presenti, e con quelle in coda, per **email** e **codice fiscale**.
+- A chi compila il modulo la risposta è sempre la stessa («Domanda ricevuta…»), qualunque cosa succeda: così non si scopre chi è già socio.
+- Ci sono limiti contro l'uso scorretto: al massimo 5 domande l'ora per connessione e 200 domande in attesa.
 
 ## La tessera e la quota
 
@@ -55,7 +62,7 @@ Un minore si registra con **uno o due genitori o tutori**, che gestiscono per lu
 2. Scegli **uno o due tutori** tra le persone con email già registrata. Un tutore deve essere maggiorenne (se la sua data è nota) e deve poter entrare nell'area riservata: un socio o una persona di tipo **«genitore o tutore»**. Un ospite non può essere tutore.
 3. Salva.
 
-Il genitore o tutore di tipo «genitore o tutore» **non è socio** e non compare nel libro soci. I genitori ricevono l'invito per scegliere la password dell'accesso. Il minore può anche non avere né email né utente WordPress.
+Il genitore o tutore di tipo **«Genitore o tutore (non socio)»** **non è socio**: non compare nel libro soci, non ha la tessera, non paga la quota, non riceve i promemoria di rinnovo e non vota. Può invece entrare nell'area riservata per seguire il minore: riceve l'invito per scegliere la password, gli avvisi e i promemoria del minore. Il minore può anche non avere né email né utente WordPress, e può usare l'email del genitore.
 
 ## Da una domanda di adesione online
 
