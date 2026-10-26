@@ -717,3 +717,33 @@ Strumenti → Integrazioni: con la chiave API di Google Maps dell'ente (spenta d
 ## Versioni
 
 Associazione Semplice e Associazione Semplice Pro hanno numerazione indipendente (da 1.1.1 a 1.1.20, poi 1.2); il numero cambia solo del plugin modificato e non per soli testi o link. Si parlano per livello di compatibilità (`ASEM_API` / `ASEM_PRO_API`). `wordpress/bump.sh` aggiorna intestazione, costante e readme.
+
+## Votazioni, inventario e archivio documenti (gratuito, database v43)
+
+Tre funzioni nuove, nel gruppo **Registri** del menu (schede **Votazioni**, **Inventario**, **Documenti**). Sono incluse nel plugin gratuito, senza blocchi di licenza. Le gestiscono la segreteria, il presidente e il vicepresidente (permesso `asem_operate`) e gli amministratori.
+
+### Votazioni e sondaggi
+
+- La segreteria crea una **votazione** o un **sondaggio**: titolo, domanda, da 2 a 20 risposte, data e ora di apertura e di chiusura, scelta singola o multipla (con un massimo), voto **segreto** o palese.
+- Chi può votare: tutti i soci in regola, oppure gli iscritti di un'attività. Non votano i genitori e i tutori che non sono soci (`MemberType::is_member()`), gli ospiti, i soci sospesi o usciti e chi ha la tessera scaduta.
+- I soci votano dall'area riservata (sezione «Votazioni e sondaggi», o con lo shortcode `[associazionesemplice_votazioni]`). Un voto per persona: lo garantisce il database (chiave unica su votazione e persona).
+- Voto segreto: si registra **chi** ha votato (tabella `poll_voters`) ma non **cosa** (`poll_votes.person_id` resta vuoto). Dopo il primo voto non si cambiano più risposte, tipo di scelta, segretezza e chi può votare.
+- Risultati: la segreteria li vede sempre; i soci solo dopo la chiusura e se la segreteria lo ha scelto. Esportazione CSV e **verbale dei risultati in PDF** (con le firme di segretario e presidente), come i verbali.
+- Avvisi: con «Avvisa i soci per email» e i promemoria attivi, ogni giorno parte l'avviso di apertura e, nelle ultime 48 ore, un promemoria a chi non ha ancora votato (una sola volta per persona, tabella `reminders`). Il pulsante «Avvisa i soci ora» lo manda subito.
+- Tabelle: `polls`, `poll_options`, `poll_voters`, `poll_votes`.
+
+### Inventario e prestiti
+
+- Registro dei beni: nome, categoria, codice (unico), quantità, stato (buono, usurato, da riparare, perso, dismesso), ubicazione, valore e data d'acquisto facoltativi, foto o allegato. **Non** sono le Risorse prenotabili del Pro: qui si tiene l'elenco di ciò che l'associazione possiede.
+- Prestito a un socio o volontario con data di uscita e di rientro previsto e note sullo stato; non si presta più di quanto è disponibile né un bene da riparare, perso o dismesso. Il rientro si registra con data, note e, se serve, il nuovo stato del bene. Storico per bene e per persona.
+- Un prestito non rientrato è **scaduto** dal giorno dopo il rientro previsto: compare nel riquadro «Prestiti da recuperare» della Bacheca e nel widget «Da lavorare» di WordPress, e parte un promemoria per email a chi ha il bene (una volta per prestito; Impostazioni → Privacy e regolamento → Prestiti).
+- Esportazione CSV di beni e prestiti.
+- Privacy: l'esportazione dei dati di una persona comprende i suoi prestiti e le votazioni a cui ha partecipato (con la scelta solo nel voto palese); chi ha beni in prestito non si può anonimizzare finché non li riporta.
+- Tabelle: `items`, `loans`.
+
+### Archivio documenti
+
+- Statuto, regolamenti, verbali firmati, moduli: titolo, categoria (libera, con suggerimenti), data, descrizione e file (PDF, foto, Word, Excel, LibreOffice, testo; fino al limite «Peso massimo di un allegato»). Visibilità: **solo segreteria**, **soci** (in regola) o **pubblico**.
+- I file stanno nella cartella privata di `uploads` (nome casuale, senza estensione) e **non hanno un indirizzo diretto**: il download passa da `admin-post.php?action=asem_document`, che controlla il permesso con `Access::can_read_document()`. Il tipo del file si decide dall'estensione controllata, con `nosniff` e senza esecuzione nel browser.
+- I soci trovano l'elenco nell'area riservata (sezione «Documenti» o `[associazionesemplice_documenti_soci]`); l'elenco pubblico si inserisce con `[associazionesemplice_documenti]` (facoltativo `categoria="Moduli"`) o con il blocco Associazione Semplice. Un documento eliminato esce dagli elenchi; il file resta sul disco, come gli allegati dei movimenti.
+- Tabella: `documents`. Copia di sicurezza e azzeramento includono tabelle e file.

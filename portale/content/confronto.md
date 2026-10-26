@@ -87,6 +87,9 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Funzione | Free | Pro Contabile | Pro Fiscale |
 |---|---|---|---|
 | Verbali di assemblea e consiglio con PDF | ✓ | ✓ | ✓ |
+| Votazioni e sondaggi dei soci, anche a voto segreto, con verbale dei risultati in PDF e CSV | ✓ | ✓ | ✓ |
+| Inventario dei beni con prestiti a soci e volontari, rientri, storico e promemoria | ✓ | ✓ | ✓ |
+| Archivio documenti (statuto, regolamenti, moduli) per segreteria, soci o pubblico | ✓ | ✓ | ✓ |
 | Informativa privacy generata e registro dei consensi | ✓ | ✓ | ✓ |
 | Anonimizzazione e download dei dati personali | ✓ | ✓ | ✓ |
 | Assicurazioni dei volontari e polizze dell'associazione | — | ✓ | ✓ |
