@@ -6423,6 +6423,7 @@ $ap_kid_id = (int) $ap_kid['id'];
 \AssociazioneSemplice\Applications::approve( $ap_kid_id, 'ap200' );
 $ap_g = $people->find_by_email( 'gianna.giovane@example.com' );
 asem_ok( $ap_g && $people->get( $ap_kid_id ) && \AssociazioneSemplice\Guardians::is_guardian_of( (int) $ap_g['id'], $ap_kid_id ) && ! $people->is_active_member( $ap_kid_id ) && empty( $people->get( $ap_kid_id )['wp_user_id'] ), 'minorenne approvato: genitore registrato e collegato, il minore ha la tessera ma non un accesso; la quota è da incassare' );
+asem_ok( null !== asem_throws( function () use ( $ledger, $today, $cash, $cat, $ap_g ) { $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => (int) $ap_g['id'], 'lines' => array( array( 'category_id' => $cat['membership'], 'amount_cents' => 1000 ) ) ) ); } ), 'il genitore/tutore non è socio: la quota associativa è rifiutata' );
 asem_ok( 'guardian' === $ap_g['type'] && ! \AssociazioneSemplice\MemberType::is_member( $ap_g['type'] ) && array() === array_filter( \AssociazioneSemplice\MemberBook::rows(), function ( $x ) use ( $ap_g ) { return (int) $x['id'] === (int) $ap_g['id']; } ), 'il genitore registrato dalla domanda non è un socio: non sta nel libro soci' );
 $ap_kid_row = $people->get( $ap_kid_id );
 asem_ok( (int) $ap_kid_row['rules_accepted_by'] === (int) $ap_g['id'] && (int) $ap_kid_row['privacy_consent_by'] === (int) $ap_g['id'], 'minorenne approvato: regolamento e privacy accettati dal genitore, registrato chi' );

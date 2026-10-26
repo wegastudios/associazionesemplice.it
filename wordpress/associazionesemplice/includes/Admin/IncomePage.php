@@ -91,7 +91,8 @@ final class IncomePage {
 			array(
 				'person'           => array( 'id' => (int) $person['id'], 'type' => $person['type'], 'type_label' => \AssociazioneSemplice\Levels::label( $person ) ),
 				'is_guest'         => MemberType::GUEST === $person['type'],
-				'is_founder'       => MemberType::is_auto_renewed( $person['type'] ),
+				'is_member'        => MemberType::is_member( $person['type'] ),
+				'is_founder'       =>MemberType::is_auto_renewed( $person['type'] ),
 				'active_until'     => $until,
 				'needs_membership' => in_array( $person['type'], array( MemberType::ORDINARY, MemberType::VOLUNTEER ), true ) && ( ! $until || $until < $date ),
 				'social_year'      => $sy,
