@@ -275,6 +275,8 @@ final class Actions {
 				'reminders_membership_days' => (int) ( $p['reminders_membership_days'] ?? 30 ),
 				'reminders_dues'            => ! empty( $p['reminders_dues'] ) ? 1 : 0,
 				'reminders_events'          => ! empty( $p['reminders_events'] ) ? 1 : 0,
+				'reminders_polls'           => ! empty( $p['reminders_polls'] ) ? 1 : 0,
+				'reminders_loans'           => ! empty( $p['reminders_loans'] ) ? 1 : 0,
 				'privacy_url'               => $txt( 'privacy_url' ),
 				'privacy_email'             => $txt( 'privacy_email' ),
 				'privacy_retention_years'   => (int) ( $p['privacy_retention_years'] ?? 5 ),
@@ -294,7 +296,7 @@ final class Actions {
 			throw new \InvalidArgumentException( 'I promemoria sono disattivati: attivali e salva le impostazioni prima di inviarli.' );
 		}
 		$r = \AssociazioneSemplice\Reminders::run();
-		return array( Ui::url( 'asem-comms' ), 'Promemoria inviati: ' . $r['membership'] . ' per la tessera, ' . $r['dues'] . ' per le mensilità, ' . $r['events'] . ' per gli eventi di domani.' );
+		return array( Ui::url( 'asem-comms' ), 'Promemoria inviati: ' . $r['membership'] . ' per la tessera, ' . $r['dues'] . ' per le mensilità, ' . $r['events'] . ' per gli eventi di domani, ' . $r['polls'] . ' per le votazioni, ' . $r['loans'] . ' per i prestiti scaduti.' );
 	}
 
 
