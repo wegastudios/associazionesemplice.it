@@ -167,6 +167,43 @@ try {
 }
 free_ok( $threw, 'livelli: il salvataggio non è consentito' );
 
+// ---------- Domanda di adesione e minori: funzionano anche senza le funzioni avanzate ----------
+$fr_mails = array();
+add_filter(
+	'pre_wp_mail',
+	function ( $null, $atts ) use ( &$fr_mails ) {
+		$fr_mails[] = $atts;
+		return true;
+	},
+	10,
+	2
+);
+Settings::update( array( 'apply_enabled' => 1, 'apply_pay_online' => 1, 'membership_fee_cents' => 1000, 'rules_enabled' => 0, 'apply_email' => 'segreteria.free@example.com' ) );
+free_ok( ! \AssociazioneSemplice\Applications::online_payment(), 'domanda: senza pagamenti online la quota si paga in sede (anche con l\'impostazione accesa)' );
+$fr_form = \AssociazioneSemplice\Frontend\Shortcodes::render_view( 'adesione' );
+free_ok( false !== strpos( $fr_form, 'name="birth_date"' ) && false !== strpos( $fr_form, 'si paga in sede' ), 'domanda: il modulo funziona nel gratuito' );
+$fr_in = array(
+	'first_name' => 'Carla', 'last_name' => 'Gratis', 'email' => 'carla.gratis@example.com', 'phone' => '333 4040404', 'tax_code' => 'RSSMRA80A01H501U',
+	'birth_date' => '1985-05-05', 'type' => 'ordinary', 'privacy_ok' => '1', 'rules_ok' => '1',
+);
+free_ok( 'ok' === \AssociazioneSemplice\Applications::submit( $fr_in )['status'] && 1 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: registrata nel gratuito' );
+$fr_app = \AssociazioneSemplice\Applications::pending()[0];
+free_ok( null === $fr_app['paid'] && 1000 === (int) $fr_app['fee_cents'], 'domanda: nessun pagamento online, quota da pagare in sede' );
+\AssociazioneSemplice\Applications::approve( (int) $fr_app['id'], 'free100' );
+free_ok( $people->is_active_member( (int) $fr_app['id'] ) && 'free100' === $people->get( (int) $fr_app['id'] )['card_number'], 'domanda: approvata, tessera e iscrizione' );
+\AssociazioneSemplice\Applications::submit( array_merge( $fr_in, array( 'first_name' => 'Rino', 'last_name' => 'Rifiutato', 'email' => 'rino.rifiutato@example.com' ) ) );
+\AssociazioneSemplice\Applications::reject( (int) \AssociazioneSemplice\Applications::pending()[0]['id'] );
+free_ok( 0 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: rifiutata, senza pagamento non resta nulla' );
+$fr_mum = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Mara', 'last_name' => 'Tutrice', 'email' => 'mara.tutrice@example.com' ) );
+$fr_kid = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Pio', 'last_name' => 'Piccolo', 'birth_date' => gmdate( 'Y-m-d', strtotime( '-9 years' ) ) ) );
+\AssociazioneSemplice\Guardians::link( $fr_kid, $fr_mum );
+free_ok( \AssociazioneSemplice\Guardians::is_guardian_of( $fr_mum, $fr_kid ) && array_key_exists( $fr_kid, \AssociazioneSemplice\Guardians::names_by_person() ), 'minori: il tutore si collega anche nel gratuito' );
+free_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::section_minors( $people->get( $fr_mum ) ), 'Pio' ), 'minori: l\'area del tutore mostra il figlio' );
+$fr_dues = Plugin::payments()->dues_for( $people->get( $fr_mum ) );
+free_ok( isset( $fr_dues[ "q:$fr_kid:" . $people->membership_plan( $fr_kid, current_time( 'Y-m-d' ) )['year'] ] ), 'minori: la quota del figlio è tra le voci del tutore' );
+remove_all_filters( 'pre_wp_mail' );
+Settings::update( array( 'apply_enabled' => 0 ) );
+
 free_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice PHP dal plugin' . ( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Edizione gratuita: tutti i controlli sono passati.' );

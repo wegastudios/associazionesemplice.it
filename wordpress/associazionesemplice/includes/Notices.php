@@ -79,6 +79,11 @@ final class Notices {
 			if ( '' !== $email && is_email( $email ) ) {
 				$out[ Text::lower( $email ) ] = array( 'email' => $email, 'name' => $name );
 			}
+			foreach ( Guardians::recipients( $p ) as $g ) { // di un minore ricevono l'avviso anche i tutori
+				if ( '' !== $g['about'] ) {
+					$out[ Text::lower( $g['email'] ) ] = array( 'email' => $g['email'], 'name' => $g['name'] );
+				}
+			}
 		}
 		return array_values( $out );
 	}
@@ -162,7 +167,7 @@ final class Notices {
 	 */
 	public static function board( int $person_id, int $limit = 10 ): array {
 		$people = array( $person_id );
-		foreach ( Plugin::people()->guests_of( $person_id ) as $g ) {
+		foreach ( Plugin::people()->managed_by( $person_id ) as $g ) {
 			$people[] = (int) $g['id'];
 		}
 		$acts  = array();

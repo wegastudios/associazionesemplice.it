@@ -16,6 +16,7 @@ final class Front {
 		TicketVerify::register();
 		Activation::register();
 		FirstAccess::register();
+		Application::register();
 		\AssociazioneSemplice\Calendar::register();
 		Blocks::register();
 		ElementorSupport::register();

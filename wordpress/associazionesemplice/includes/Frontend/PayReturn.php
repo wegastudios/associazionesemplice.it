@@ -24,6 +24,17 @@ final class PayReturn {
 		$public = sanitize_text_field( wp_unslash( $_GET['asem_pay'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
 		$ret    = isset( $_GET['asem_ret'] ) && 'ok' === sanitize_key( wp_unslash( $_GET['asem_ret'] ) ) ? 'ok' : 'cancel'; // phpcs:ignore WordPress.Security.NonceVerification
 		$url    = Restrict::current_url();
+		$engine = \AssociazioneSemplice\PaymentService::engine();
+		$known  = $engine->get_by_public( $public );
+		if ( $known && 0 === (int) $known['payer_user_id'] ) { // quota di una domanda di adesione: chi paga non ha ancora un accesso, il codice del pagamento è il suo lasciapassare
+			$clean = remove_query_arg( self::PARAMS, $url );
+			try {
+				wp_safe_redirect( \AssociazioneSemplice\Flash::url( $clean, 'asemf', $engine->handle_return( $public, $ret, 0 ) ) );
+			} catch ( \Throwable $e ) {
+				wp_safe_redirect( \AssociazioneSemplice\Flash::url( $clean, 'asemf', '', 'Non è stato possibile verificare il pagamento. Se hai pagato, lo registreremo appena Stripe o PayPal lo confermano.' ) );
+			}
+			exit;
+		}
 		if ( ! is_user_logged_in() ) {
 			wp_safe_redirect( wp_login_url( $url ) ); // dopo l'accesso si torna qui e il pagamento viene verificato
 			exit;

@@ -61,6 +61,11 @@ class PeopleService {
 		$db    = $this->db();
 		$today = Db::today();
 		$where = array( 'p.deleted_at IS NULL', 'p.anonymized_at IS NULL' ); // le persone anonimizzate non compaiono più negli elenchi
+		if ( empty( $f['applications'] ) ) {
+			$where[] = 'p.application_status IS NULL'; // chi ha chiesto di aderire e non è ancora stato approvato non è nell'anagrafica
+		} else {
+			$where[] = 'p.application_status = \'requested\'';
+		}
 		$args  = array( $today );
 		if ( ! empty( $f['type'] ) ) {
 			$where[] = 'p.type = %s';
@@ -113,6 +118,16 @@ class PeopleService {
 
 	public function guests_of( int $member_id ): array {
 		return $this->search( array( 'host_id' => $member_id ) );
+	}
+
+	/** I minori (e i ragazzi ancora collegati) di cui il socio è tutore. */
+	public function dependents_of( int $guardian_id ): array {
+		return Guardians::dependents_of( $guardian_id );
+	}
+
+	/** Chi un socio gestisce dalla sua area: i suoi ospiti e le persone di cui è tutore. */
+	public function managed_by( int $member_id ): array {
+		return array_merge( $this->guests_of( $member_id ), $this->dependents_of( $member_id ) );
 	}
 
 	public function active_until( int $person_id, ?string $date = null ): ?string {
@@ -368,6 +383,7 @@ class PeopleService {
 			'email'          => null === $t( 'email' ) ? null : strtolower( $t( 'email' ) ),
 			'phone'          => $t( 'phone' ),
 			'tax_code'       => null === $t( 'tax_code' ) ? null : strtoupper( str_replace( ' ', '', $t( 'tax_code' ) ) ),
+			'birth_date'     => null === $t( 'birth_date' ) ? null : ( Age::parse( (string) $t( 'birth_date' ) ) ?? (string) $t( 'birth_date' ) ),
 			'address'        => $t( 'address' ),
 			'zip'            => $t( 'zip' ),
 			'city'           => $t( 'city' ),
@@ -422,7 +438,7 @@ class PeopleService {
 				'last_name'      => $d['last_name'],
 				'email'          => $d['email'],
 				'phone'          => $d['phone'],
-				'tax_code'       => $d['tax_code'],
+				'tax_code'       => $d['tax_code'], 'birth_date' => $d['birth_date'],
 				'address'        => $d['address'],
 				'zip'            => $d['zip'],
 				'city'           => $d['city'],
@@ -639,7 +655,7 @@ class PeopleService {
 				'last_name'      => $d['last_name'],
 				'email'          => $d['email'],
 				'phone'          => $d['phone'],
-				'tax_code'       => $d['tax_code'],
+				'tax_code'       => $d['tax_code'], 'birth_date' => $d['birth_date'],
 				'address'        => $d['address'],
 				'zip'            => $d['zip'],
 				'city'           => $d['city'],
@@ -715,6 +731,7 @@ class PeopleService {
 			array( 'deleted_at' => Db::now(), 'card_number' => null, 'wp_user_id' => null ),
 			array( 'id' => $id )
 		);
+		Guardians::forget( $id );
 		Audit::log( 'person.deleted', 'person', $id, array( 'type' => $p['type'] ) );
 	}
 

@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '41';
+	const DB_VERSION        = '42';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -116,6 +116,7 @@ final class Install {
   email varchar(190) DEFAULT NULL,
   phone varchar(60) DEFAULT NULL,
   tax_code varchar(32) DEFAULT NULL,
+  birth_date date DEFAULT NULL,
   address varchar(190) DEFAULT NULL,
   zip varchar(12) DEFAULT NULL,
   city varchar(100) DEFAULT NULL,
@@ -135,6 +136,11 @@ final class Install {
   rules_accepted_at datetime DEFAULT NULL,
   rules_accepted_version varchar(20) DEFAULT NULL,
   rules_accepted_source varchar(20) DEFAULT NULL,
+  rules_accepted_by bigint(20) unsigned DEFAULT NULL,
+  privacy_consent_by bigint(20) unsigned DEFAULT NULL,
+  application_status varchar(12) DEFAULT NULL,
+  application_at datetime DEFAULT NULL,
+  application_data text,
   prior_visits int(10) unsigned NOT NULL DEFAULT 0,
   notes text,
   created_at datetime NOT NULL,
@@ -146,6 +152,16 @@ final class Install {
   KEY type (type),
   KEY host_person_id (host_person_id),
   KEY family_head_id (family_head_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}guardians (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  person_id bigint(20) unsigned NOT NULL,
+  guardian_person_id bigint(20) unsigned NOT NULL,
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY person_guardian (person_id,guardian_person_id),
+  KEY guardian_person_id (guardian_person_id)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}minutes (

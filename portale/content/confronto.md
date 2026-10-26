@@ -14,6 +14,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Ospiti con conteggio delle partecipazioni e invito a iscriversi | ✓ | ✓ | ✓ |
 | Ospiti dell'associazione e del volontario con quote ripartite e rimborso al volontario (per amministratori e segreteria) | — | ✓ | ✓ |
 | Importazione di soci e ospiti da Excel, CSV e WP All Import | ✓ | ✓ | ✓ |
+| Data di nascita e tutore nel libro soci, nell'esportazione e nell'importazione | ✓ | ✓ | ✓ |
 | Esportazione di soci e ospiti | ✓ | ✓ | ✓ |
 | Tessera digitale e stampabile, con colori e logo | ✓ | ✓ | ✓ |
 | Tessera personalizzata su immagine propria | ✓ | ✓ | ✓ |
@@ -27,6 +28,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 |---|---|---|---|
 | Area riservata dei soci (tessera, attività, avvisi, profilo) | ✓ | ✓ | ✓ |
 | Primo accesso e approvazione della segreteria | ✓ | ✓ | ✓ |
+| Domanda di adesione online per chi non è ancora socio, con approvazione, tessera e link per la password | ✓ | ✓ | ✓ |
+| Minori con uno o due genitori o tutori: area riservata del genitore con tessera, prenotazioni, pagamenti e avvisi del minore, regolamento e privacy accettati per suo conto | ✓ | ✓ | ✓ |
 | Ruoli: segreteria, presidente, tesoriere, volontari, staff | ✓ | ✓ | ✓ |
 | Regolamento da accettare con registrazione della versione | ✓ | ✓ | ✓ |
 | Blocchi, shortcode e widget Elementor | ✓ | ✓ | ✓ |

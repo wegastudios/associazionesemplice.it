@@ -63,6 +63,11 @@ final class Reminders {
 		}
 		$name  = trim( $p['first_name'] . ' ' . $p['last_name'] );
 		$email = (string) $p['email'];
+		foreach ( Guardians::recipients( $p ) as $g ) { // un minore: il promemoria va al tutore
+			if ( '' !== $g['about'] ) {
+				return $g;
+			}
+		}
 		if ( '' !== $email && is_email( $email ) ) {
 			return array( 'email' => $email, 'name' => $p['first_name'], 'about' => '' );
 		}

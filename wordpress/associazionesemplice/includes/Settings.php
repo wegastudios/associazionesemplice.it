@@ -90,6 +90,10 @@ final class Settings {
 			'modules'                 => array(),   // parti del gestionale usate (vedi Modules): vuoto = tutte, come prima della configurazione guidata
 			'join_mode'               => 'request', // chi non è in elenco: 'request' = può chiedere l'accesso alla segreteria; 'invite' = solo su presentazione
 			'guests_enabled'          => 1,         // si accettano ospiti (non soci): se spento non si registrano e spariscono dall'area soci
+			'apply_enabled'           => 0,         // domanda di adesione online per chi non è ancora socio: spenta di default
+			'apply_volunteer'         => 0,         // nella domanda si può chiedere anche di essere «socio e volontario»
+			'apply_pay_online'        => 0,         // nella domanda si può pagare subito la quota online (se c'è un metodo di pagamento attivo)
+			'apply_email'             => '',        // a chi arriva l'avviso di una nuova domanda (vuoto = l'indirizzo del sito)
 			'delete_on_uninstall'     => 0,         // all'eliminazione del plugin da WordPress si cancellano anche i dati (di default restano)
 			'limits'                  => array(),   // limiti e soglie personalizzati (vedi Limits): vuoto = valori predefiniti
 			'bank_enabled'            => 0,         // coordinate bancarie (IBAN) mostrate ai soci e inviate per email: spente di default
@@ -195,6 +199,10 @@ final class Settings {
 		$clean['guests_enabled']          = empty( $clean['guests_enabled'] ) ? 0 : 1;
 		$clean['delete_on_uninstall']     = empty( $clean['delete_on_uninstall'] ) ? 0 : 1;
 		$clean['join_mode']             ='invite' === $clean['join_mode'] ? 'invite' : 'request';
+		$clean['apply_enabled']           = empty( $clean['apply_enabled'] ) ? 0 : 1;
+		$clean['apply_volunteer']         = empty( $clean['apply_volunteer'] ) ? 0 : 1;
+		$clean['apply_pay_online']        = empty( $clean['apply_pay_online'] ) ? 0 : 1;
+		$clean['apply_email']             = is_email( trim( (string) $clean['apply_email'] ) ) ? strtolower( trim( (string) $clean['apply_email'] ) ) : '';
 		$clean['limits']                  = Limits::sanitize( is_array( $clean['limits'] ) ? $clean['limits'] : array() );
 		$clean['bank_enabled']            = empty( $clean['bank_enabled'] ) ? 0 : 1;
 		$clean['donate_enabled']          = empty( $clean['donate_enabled'] ) ? 0 : 1;

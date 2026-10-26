@@ -58,9 +58,10 @@ final class MemberBook {
 	 */
 	public static function rows( string $filter = '' ): array {
 		$rows = self::db()->get_results(
-			'SELECT * FROM ' . Db::t( 'people' ) . " WHERE deleted_at IS NULL AND type <> 'guest' ORDER BY joined_on, id",
+			'SELECT * FROM ' . Db::t( 'people' ) . " WHERE deleted_at IS NULL AND application_status IS NULL AND type <> 'guest' ORDER BY joined_on, id",
 			ARRAY_A
 		) ?: array();
+		$tutori = Guardians::names_by_person();
 		$out = array();
 		$n   = 0;
 		foreach ( $rows as $p ) {
@@ -78,6 +79,8 @@ final class MemberBook {
 				'id'          => (int) $p['id'],
 				'name'        => $anon ? '(dati anonimizzati)' : trim( $p['last_name'] . ' ' . $p['first_name'] ),
 				'tax_code'    => $anon ? '' : (string) $p['tax_code'],
+				'birth_date'  => $anon ? '' : (string) $p['birth_date'],
+				'guardian'    => $anon ? '' : (string) ( $tutori[ (int) $p['id'] ] ?? '' ),
 				'card_number' => (string) $p['card_number'],
 				'level'       => Levels::label( $p ),
 				'joined_on'   => (string) $p['joined_on'],

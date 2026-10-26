@@ -157,15 +157,16 @@ final class Docs {
 
 	private static function book_cols(): array {
 		return array(
-			array( 'label' => 'N.', 'w' => 26, 'align' => 'R' ), array( 'label' => 'Cognome e nome', 'w' => 135 ), array( 'label' => 'Codice fiscale', 'w' => 98 ),
-			array( 'label' => 'Livello', 'w' => 80 ), array( 'label' => 'Ingresso', 'w' => 56 ), array( 'label' => 'Cessazione', 'w' => 100 ),
+			array( 'label' => 'N.', 'w' => 22, 'align' => 'R' ), array( 'label' => 'Cognome e nome', 'w' => 105 ), array( 'label' => 'Codice fiscale', 'w' => 88 ),
+			array( 'label' => 'Nascita', 'w' => 50 ), array( 'label' => 'Tutore', 'w' => 80 ),
+			array( 'label' => 'Livello', 'w' => 50 ), array( 'label' => 'Ingresso', 'w' => 50 ), array( 'label' => 'Cessazione', 'w' => 50 ),
 		);
 	}
 
 	private static function book_rows( array $rows ): array {
 		$out = array();
 		foreach ( $rows as $r ) {
-			$out[] = array( (string) $r['n'], $r['name'], $r['tax_code'], $r['level'], self::d( $r['joined_on'] ), $r['left_on'] ? self::d( $r['left_on'] ) . ( '' !== $r['left_reason'] ? ' · ' . $r['left_reason'] : '' ) : '' );
+			$out[] = array( (string) $r['n'], $r['name'], $r['tax_code'], '' !== $r['birth_date'] ? self::d( $r['birth_date'] ) : '', $r['guardian'], $r['level'], self::d( $r['joined_on'] ), $r['left_on'] ? self::d( $r['left_on'] ) . ( '' !== $r['left_reason'] ? ' · ' . $r['left_reason'] : '' ) : '' );
 		}
 		return $out;
 	}

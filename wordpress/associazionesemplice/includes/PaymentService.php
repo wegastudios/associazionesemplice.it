@@ -207,6 +207,161 @@ class PaymentService extends OfflinePayments {
 		return $res['url'];
 	}
 
+	// ---------- Quota della domanda di adesione ----------
+
+	/** Chi chiede di iscriversi non ha un accesso: può pagare solo con Stripe o PayPal (il negozio WooCommerce richiede un utente). */
+	public function application_online(): bool {
+		return Edition::has( 'payments' ) && array() !== array_diff( $this->providers(), array( PaymentConfig::WOOCOMMERCE ) );
+	}
+
+	/**
+	 * Pagamento online della quota di una domanda di adesione. Il pagamento nasce senza utente collegato; il ritorno dal gateway e l'incasso in prima nota
+	 * (e l'iscrizione) avvengono solo se la domanda viene approvata: se è rifiutata il pagamento resta «da rimborsare».
+	 */
+	public function application_checkout( array $person, int $cents, string $back_url, string $provider = '' ): string {
+		$available = array_values( array_diff( $this->providers(), array( PaymentConfig::WOOCOMMERCE ) ) );
+		if ( ! $available || ! Edition::has( 'payments' ) ) {
+			throw new \InvalidArgumentException( 'Il pagamento online non è disponibile: la quota si paga in sede.' );
+		}
+		if ( '' === $provider ) {
+			$provider = $available[0];
+		} elseif ( ! in_array( $provider, $available, true ) ) {
+			throw new \InvalidArgumentException( 'Questo metodo di pagamento non è disponibile.' );
+		}
+		$min = Limits::get( 'pay_min_cents' );
+		if ( $cents < $min ) {
+			throw new \InvalidArgumentException( 'L\'importo minimo per pagare online è ' . Money::format( $min ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$tbl  = Db::t( 'payments' );
+		$open = (int) $this->db()->get_var( $this->db()->prepare( "SELECT COUNT(*) FROM $tbl WHERE payer_person_id = %d AND created_at >= %s", (int) $person['id'], gmdate( 'Y-m-d H:i:s', strtotime( Db::now() ) - HOUR_IN_SECONDS ) ) );
+		if ( $open >= 5 ) {
+			throw new \InvalidArgumentException( 'Hai avviato molti pagamenti in poco tempo: aspetta un po\' prima di riprovare.' );
+		}
+		$year = Settings::membership_year()->label();
+		$item = array(
+			'type' => PaymentItems::APPLICATION, 'person_id' => (int) $person['id'], 'person_name' => trim( $person['first_name'] . ' ' . $person['last_name'] ),
+			'social_year' => $year, 'amount_cents' => $cents, 'label' => 'Quota associativa ' . $year . ' (domanda di adesione)',
+		);
+		$item['key'] = PaymentItems::key( $item );
+		$items       = array( $item );
+		$public      = wp_generate_uuid4();
+		$now         = Db::now();
+		$this->db()->insert(
+			$tbl,
+			array(
+				'public_id' => $public, 'provider' => $provider, 'status' => 'created', 'amount_cents' => $cents, 'currency' => 'EUR',
+				'payer_person_id' => (int) $person['id'], 'payer_user_id' => 0, 'items' => wp_json_encode( $items ), 'created_at' => $now, 'updated_at' => $now,
+			)
+		);
+		$id      = (int) $this->db()->insert_id;
+		$success = add_query_arg( array( 'asem_pay' => $public, 'asem_ret' => 'ok' ), $back_url );
+		$cancel  = add_query_arg( array( 'asem_pay' => $public, 'asem_ret' => 'cancel' ), $back_url );
+		$cfg     = ProSettings::payment_config();
+		$brand   = (string) Settings::get( 'association_name' );
+		$email   = (string) ( $person['email'] ?? '' );
+		if ( '' === $email ) {
+			$g     = Applications::guardian_data( $person );
+			$email = $g ? (string) $g['email'] : '';
+		}
+		try {
+			if ( PaymentConfig::STRIPE === $provider ) {
+				$params = StripeApi::checkout_params( $items, $public, $email, $success, $cancel );
+				$res    = StripeApi::create_session( $this->http(), $cfg['stripe_secret_key'], $params, $public );
+			} else {
+				$live  = 'live' === $cfg['paypal_mode'];
+				$token = PayPalApi::access_token( $this->http(), $live, $cfg['paypal_client_id'], $cfg['paypal_client_secret'] );
+				$res   = PayPalApi::create_order( $this->http(), $live, $token, PayPalApi::order_payload( $items, $public, $success, $cancel, $brand ), $public );
+			}
+		} catch ( \RuntimeException $e ) {
+			$this->update( $id, array( 'status' => 'failed', 'error' => mb_substr( $e->getMessage(), 0, 250 ) ) );
+			Audit::log( 'payment.failed', 'payment', $id, array( 'provider' => $provider ) );
+			throw new \InvalidArgumentException( 'Il servizio di pagamento non risponde in questo momento. Riprova più tardi.' );
+		}
+		$this->update( $id, array( 'status' => 'pending', 'provider_ref' => $res['id'] ) );
+		Audit::log( 'payment.created', 'payment', $id, array( 'provider' => $provider, 'cents' => $cents, 'items' => 1, 'application' => 1 ) );
+		return $res['url'];
+	}
+
+	/** Pagamenti della domanda già incassati dal gateway e non ancora registrati in prima nota né restituiti. @return array[] */
+	private function application_payments( int $person_id ): array {
+		$rows = $this->db()->get_results(
+			$this->db()->prepare( 'SELECT * FROM ' . Db::t( 'payments' ) . " WHERE payer_person_id = %d AND status = 'paid' AND allocated_cents = 0 AND refund_due = 0 ORDER BY id", $person_id ),
+			ARRAY_A
+		) ?: array();
+		return array_values( array_filter( $rows, function ( $r ) {
+			$items = (array) json_decode( (string) $r['items'], true );
+			return isset( $items[0]['type'] ) && PaymentItems::APPLICATION === $items[0]['type'];
+		} ) );
+	}
+
+	public function application_paid( int $person_id ): ?array {
+		$rows = $this->application_payments( $person_id );
+		return $rows ? array( 'cents' => (int) $rows[0]['amount_cents'], 'id' => (int) $rows[0]['id'] ) : null;
+	}
+
+	/** Domanda approvata: la quota pagata online entra in prima nota (e con lei l'iscrizione all'anno). */
+	public function application_settle( int $person_id, string $social_year ): bool {
+		$done   = false;
+		$ledger = Plugin::ledger();
+		foreach ( $this->application_payments( $person_id ) as $p ) {
+			try {
+				$ledger->record_receipt(
+					array(
+						'date' => Db::today(), 'account_id' => $ledger->online_account( $p['provider'] ), 'method' => $p['provider'], 'person_id' => $person_id,
+						'document_ref' => substr( (string) $p['provider_ref'], 0, 80 ),
+						'lines' => array( array( 'category_id' => $ledger->category_id_of_kind( 'membership' ), 'amount_cents' => (int) $p['amount_cents'], 'social_year' => $social_year, 'description' => 'Pagamento online della quota con la domanda di adesione' ) ),
+					)
+				);
+				$this->update( (int) $p['id'], array( 'allocated_cents' => (int) $p['amount_cents'] ) );
+				$done = true;
+			} catch ( \InvalidArgumentException $e ) {
+				$this->update( (int) $p['id'], array( 'review' => 1, 'error' => mb_substr( 'Quota della domanda non registrata: ' . $e->getMessage(), 0, 250 ) ) );
+			}
+		}
+		return $done;
+	}
+
+	/** Domanda rifiutata: i pagamenti già incassati vanno restituiti (il rimborso si fa dal pannello del gateway). @return int pagamenti segnati */
+	public function application_refund_due( int $person_id ): int {
+		$n = 0;
+		foreach ( $this->application_payments( $person_id ) as $p ) {
+			$this->update( (int) $p['id'], array( 'refund_due' => 1 ) );
+			Audit::log( 'payment.refund_due', 'payment', (int) $p['id'], array( 'reason' => 'application_rejected' ) );
+			$n++;
+		}
+		return $n;
+	}
+
+	/** Il rimborso è stato fatto dal gateway. */
+	public function mark_refunded( int $id ): void {
+		$this->update( $id, array( 'refund_due' => 0 ) );
+		Audit::log( 'payment.refunded', 'payment', $id );
+	}
+
+	/**
+	 * Un pagamento di quota arrivato dal gateway per una domanda: non entra in prima nota finché la segreteria non approva (lo fa {@see application_settle()}).
+	 * Se la domanda non esiste più (rifiutata nel frattempo) il pagamento è da rimborsare; se è già stata approvata si registra subito.
+	 */
+	private function finalize_application( array $p, int $paid_cents, string $provider_payment_id ): bool {
+		$person = Plugin::people()->get( (int) $p['payer_person_id'] );
+		$data   = array( 'status' => 'paid', 'paid_at' => Db::now(), 'provider_payment_id' => mb_substr( $provider_payment_id, 0, 120 ) );
+		if ( $paid_cents !== (int) $p['amount_cents'] ) {
+			$data['review'] = 1;
+			$data['error']  = 'Importo pagato (' . Money::format( $paid_cents ) . ') diverso da quello atteso (' . Money::format( (int) $p['amount_cents'] ) . ').';
+		}
+		if ( ! $person ) {
+			$data['refund_due'] = 1;
+			$data['review']     = 1;
+			$data['error']      = 'Pagamento arrivato dopo il rifiuto della domanda: da rimborsare.';
+		}
+		$this->update( (int) $p['id'], $data );
+		Audit::log( 'payment.paid', 'payment', (int) $p['id'], array( 'provider' => $p['provider'], 'cents' => $paid_cents, 'application' => 1 ) );
+		if ( $person && empty( $person['application_status'] ) && $paid_cents === (int) $p['amount_cents'] ) { // domanda già approvata: la quota si registra ora
+			$this->application_settle( (int) $person['id'], Settings::membership_year()->label() );
+		}
+		return true;
+	}
+
 	// ---------- Conferme ----------
 
 	/** Ritorno del socio dalla pagina del gateway. @return string messaggio per l'utente */
@@ -354,6 +509,9 @@ class PaymentService extends OfflinePayments {
 			return false; // già registrato (o in registrazione) da un altro passaggio
 		}
 		$items       = (array) json_decode( (string) $p['items'], true );
+		if ( isset( $items[0]['type'] ) && PaymentItems::APPLICATION === $items[0]['type'] ) {
+			return $this->finalize_application( $p, $paid_cents, $provider_payment_id ); // la quota di una domanda entra in prima nota quando la domanda è approvata
+		}
 		$ledger      = Plugin::ledger();
 		$account     = $ledger->online_account( $p['provider'] );
 		$method      = $p['provider'];

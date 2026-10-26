@@ -7,17 +7,20 @@ defined( 'ABSPATH' ) || exit;
  * Link di attivazione per un socio registrato senza email: "ID.SCADENZA.firma". Chi ha il link (mandato su WhatsApp)
  * sceglie la propria email e la password e così attiva l'accesso all'area riservata. La firma non si può costruire senza il
  * segreto del sito; il link scade e, una volta usato, non serve più (il socio ha già un utente).
+ *
+ * Lo stesso formato serve ad altri link a tempo legati a una persona (ad esempio il pagamento della quota di una domanda di adesione): lo scopo
+ * entra nella firma, così un link nato per una cosa non vale per l'altra.
  */
 final class ActivationToken {
 
 	const VALID_DAYS = 1;
 
-	public static function make( int $person_id, int $expires, string $secret ): string {
-		return substr( hash_hmac( 'sha256', 'activate:' . $person_id . ':' . $expires, $secret ), 0, 24 );
+	public static function make( int $person_id, int $expires, string $secret, string $purpose = 'activate' ): string {
+		return substr( hash_hmac( 'sha256', $purpose . ':' . $person_id . ':' . $expires, $secret ), 0, 24 );
 	}
 
-	public static function param( int $person_id, int $expires, string $secret ): string {
-		return $person_id . '.' . $expires . '.' . self::make( $person_id, $expires, $secret );
+	public static function param( int $person_id, int $expires, string $secret, string $purpose = 'activate' ): string {
+		return $person_id . '.' . $expires . '.' . self::make( $person_id, $expires, $secret, $purpose );
 	}
 
 	/** @return array|null [persona, scadenza, firma] */
@@ -29,9 +32,9 @@ final class ActivationToken {
 	}
 
 	/** @return string ok | invalid | expired */
-	public static function check( string $value, string $secret, int $now ): string {
+	public static function check( string $value, string $secret, int $now, string $purpose = 'activate' ): string {
 		$p = self::parse( $value );
-		if ( ! $p || ! hash_equals( self::make( $p[0], $p[1], $secret ), $p[2] ) ) {
+		if ( ! $p || ! hash_equals( self::make( $p[0], $p[1], $secret, $purpose ), $p[2] ) ) {
 			return 'invalid';
 		}
 		return $p[1] >= $now ? 'ok' : 'expired';

@@ -34,6 +34,7 @@ final class ProActions {
 		'asem_test_gateway' => array( 'test_gateway', 'payments', true ),
 		'asem_check_payments' => array( 'check_payments', 'payments', false ),
 		'asem_payment_reviewed' => array( 'payment_reviewed', 'payments', false ),
+		'asem_payment_refunded' => array( 'payment_refunded', 'payments', false ),
 		'asem_save_group_cash' => array( 'save_group_cash', 'funds', false ),
 		'asem_save_transfer' => array( 'save_transfer', 'funds', false ),
 		'asem_add_account' => array( 'add_account', 'funds', false ),
@@ -389,6 +390,11 @@ final class ProActions {
 	public static function check_payments( array $p ): array {
 		$r = Plugin::payments()->check_pending( true );
 		return array( Ui::url( 'asem-payments' ), 'Controllati ' . $r['checked'] . ', registrati ' . $r['registered'] . ', scaduti ' . $r['expired'] . '.' );
+	}
+
+	public static function payment_refunded( array $p ): array {
+		Plugin::payments()->mark_refunded( (int) $p['id'] );
+		return array( Ui::url( 'asem-payments' ), 'Rimborso segnato come fatto.' );
 	}
 
 	public static function payment_reviewed( array $p ): array {

@@ -101,7 +101,7 @@ final class FirstAccess {
 
 		// 1. L'email è già di un socio: caso sicuro, il link va a quell'indirizzo.
 		$by_mail = $people->find_by_email( strtolower( $email ) );
-		if ( $by_mail && MemberType::is_member( $by_mail['type'] ) ) {
+		if ( $by_mail && MemberType::is_member( $by_mail['type'] ) && empty( $by_mail['application_status'] ) ) { // chi ha solo chiesto di iscriversi non è ancora socio
 			if ( empty( $by_mail['wp_user_id'] ) ) {
 				$people->update( (int) $by_mail['id'], array() ); // crea l'utente che mancava
 			}

@@ -45,12 +45,12 @@ final class RegistersPage {
 			. '<strong>Tessere in PDF</strong> (fogli A4 da stampare e ritagliare; i posti che restano sono modelli vuoti): per foglio <select name="per">' . Ui::options( $opts, isset( $opts[ $per ] ) ? $per : 0 ) . '</select> <button class="button">Applica</button> ' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<a class="button button-primary" target="_blank" href="' . esc_url( Docs::url( 'cards', array( 'filter' => $filter, 'per' => isset( $opts[ $per ] ) ? $per : 0 ) ) ) . '">Genera le tessere (' . ( '' === $filter ? 'soci in carica' : ( MemberBook::IN_FORCE === $filter ? 'in carica' : 'cessati' ) ) . ')</a></form>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<p class="description">' . count( $rows ) . ' soci.</p>';
-		echo '<table class="widefat striped"><thead><tr><th>N.</th><th>Cognome e nome</th><th>Codice fiscale</th><th>Livello</th><th>Ingresso</th><th>Cessazione</th></tr></thead><tbody>';
+		echo '<table class="widefat striped"><thead><tr><th>N.</th><th>Cognome e nome</th><th>Codice fiscale</th><th>Data di nascita</th><th>Tutore</th><th>Livello</th><th>Ingresso</th><th>Cessazione</th></tr></thead><tbody>';
 		if ( ! $rows ) {
-			echo '<tr><td colspan="6">Nessun socio.</td></tr>';
+			echo '<tr><td colspan="8">Nessun socio.</td></tr>';
 		}
 		foreach ( $rows as $r ) {
-			echo '<tr><td>' . (int) $r['n'] . '</td><td><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $r['id'] ) ) ) . '">' . esc_html( $r['name'] ) . '</a></td><td>' . esc_html( $r['tax_code'] ) . '</td><td>' . esc_html( $r['level'] ) . '</td><td>' . self::date( $r['joined_on'] ) // phpcs:ignore WordPress.Security.EscapeOutput
+			echo '<tr><td>' . (int) $r['n'] . '</td><td><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $r['id'] ) ) ) . '">' . esc_html( $r['name'] ) . '</a></td><td>' . esc_html( $r['tax_code'] ) . '</td><td>' . ( '' !== $r['birth_date'] ? self::date( $r['birth_date'] ) : '' ) . '</td><td>' . esc_html( $r['guardian'] ) . '</td><td>' . esc_html( $r['level'] ) . '</td><td>' . self::date( $r['joined_on'] ) // phpcs:ignore WordPress.Security.EscapeOutput
 				. '</td><td>' . ( $r['left_on'] ? self::date( $r['left_on'] ) . ( '' !== $r['left_reason'] ? ' · ' . esc_html( $r['left_reason'] ) : '' ) : '' ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
 		echo '</tbody></table>';

@@ -72,6 +72,9 @@ final class DashboardPage {
 		self::renewals();
 		self::expected_guests();
 
+		self::applications();
+		self::adults_to_invite();
+
 		$requests = \AssociazioneSemplice\AccessRequests::pending();
 		if ( $requests ) {
 			echo '<div class="asem-card"><h2>Richieste di accesso (' . count( $requests ) . ')</h2><p class="description">Dal "Primo accesso" del sito: chi non è stato riconosciuto, chi chiede di cambiare email e chi si è attivato col solo cellulare.</p><ul>';
@@ -122,6 +125,61 @@ final class DashboardPage {
 			echo '</div>';
 		}
 		Ui::footer();
+	}
+
+	/** Domande di adesione dal sito: Approva (si assegna la tessera, si propone la successiva) o Rifiuta. */
+	private static function applications(): void {
+		$apps = \AssociazioneSemplice\Applications::pending();
+		if ( ! $apps ) {
+			return;
+		}
+		echo '<div class="asem-card" id="asem-applications"><h2>Domande di adesione (' . count( $apps ) . ')</h2><p class="description">Dal modulo «Diventa socio» del sito. Approvando assegni il numero di tessera: il nuovo socio riceve il link per scegliere la password (per un minore, il genitore). Rifiutando, la domanda sparisce; una quota pagata online resta «da rimborsare».</p><ul>';
+		foreach ( $apps as $a ) {
+			$age   = \AssociazioneSemplice\Age::years( $a['birth_date'] ?? null, \AssociazioneSemplice\Db::today() );
+			$minor = ! empty( $a['guardian'] );
+			echo '<li style="margin-bottom:14px"><strong>' . esc_html( $a['first_name'] . ' ' . $a['last_name'] ) . '</strong> <span class="description">' . esc_html( MemberType::label( $a['type'] ) )
+				. ' · nato/a il ' . esc_html( \AssociazioneSemplice\Age::display( $a['birth_date'] ?? null ) ) . ( null !== $age ? ' (' . (int) $age . ' anni)' : '' )
+				. ( ! empty( $a['email'] ) ? ' · ' . esc_html( (string) $a['email'] ) : '' ) . ( ! empty( $a['phone'] ) ? ' · ' . esc_html( (string) $a['phone'] ) : '' )
+				. ' · ' . esc_html( mysql2date( 'd/m H:i', (string) $a['application_at'] ) ) . '</span>';
+			if ( $minor ) {
+				$g = $a['guardian'];
+				echo '<br><span class="description">Genitore/tutore: <strong>' . esc_html( trim( $g['first_name'] . ' ' . $g['last_name'] ) ) . '</strong> · ' . esc_html( (string) $g['email'] ) . ' · ' . esc_html( (string) $g['phone'] ) . ' · ha accettato regolamento e privacy a nome del minore</span>';
+			}
+			if ( $a['fee_cents'] > 0 ) {
+				echo '<br><span class="description">Quota ' . Ui::money( (int) $a['fee_cents'] ) . ' — ' . ( $a['paid'] ? '<strong>pagata online</strong> (' . Ui::money( (int) $a['paid']['cents'] ) . ')' : 'da pagare in sede' ) . '</span>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			}
+			echo '<br>';
+			Ui::form_open( 'asem_application_approve', Ui::url( 'asem' ), false, 'asem-inline' );
+			echo Ui::hidden( 'id', $a['id'] ) . '<label>Tessera n. <input type="text" name="card_number" value="' . esc_attr( (string) $a['suggested_card'] ) . '" size="8"></label> <button class="button button-primary button-small">Approva</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			Ui::form_close();
+			echo ' ';
+			Ui::form_open( 'asem_application_reject', Ui::url( 'asem' ), false, 'asem-inline' );
+			echo Ui::hidden( 'id', $a['id'] ) . '<button class="button button-small" onclick="return confirm(\'Rifiutare la domanda?\');">Rifiuta</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			Ui::form_close();
+			echo '</li>';
+		}
+		echo '</ul></div>';
+	}
+
+	/** Ragazzi ancora collegati a un tutore che hanno compiuto 18 anni: da invitare a creare il loro accesso. */
+	private static function adults_to_invite(): void {
+		$list = \AssociazioneSemplice\Guardians::adults_to_invite();
+		if ( ! $list ) {
+			return;
+		}
+		echo '<div class="asem-card"><h2>Maggiorenni da invitare (' . count( $list ) . ')</h2><p class="description">Hanno compiuto 18 anni e hanno ancora il tutore al loro posto. Invitali a creare il loro accesso (serve la loro email). Il collegamento col tutore resta finché non lo togli dalla scheda.</p><ul>';
+		foreach ( array_slice( $list, 0, 20 ) as $p ) {
+			echo '<li><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '">' . esc_html( $p['first_name'] . ' ' . $p['last_name'] ) . '</a> <span class="description">maggiorenne dal ' . esc_html( \AssociazioneSemplice\Age::display( (string) $p['adult_on'] ) ) . '</span> ';
+			if ( ! empty( $p['email'] ) ) {
+				Ui::form_open( 'asem_adult_invite', Ui::url( 'asem' ), false, 'asem-inline' );
+				echo Ui::hidden( 'id', $p['id'] ) . '<button class="button button-small">Invita a creare l\'accesso</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				Ui::form_close();
+			} else {
+				echo '<span class="description">manca l\'email: <a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '">aggiungila nella scheda</a></span>';
+			}
+			echo '</li>';
+		}
+		echo '</ul></div>';
 	}
 
 	/** Cassa rapida: un incasso o una spesa semplici in pochi campi (per il resto c'è la Contabilità). */

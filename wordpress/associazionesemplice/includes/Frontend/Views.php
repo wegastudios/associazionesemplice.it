@@ -316,7 +316,7 @@ final class Views {
 			$html .= '<div class="asemf-small asemf-muted">' . esc_html( $ev['message'] ) . '</div>';
 		}
 		if ( $ev['can_transfer'] ) {
-			$pool    = array_merge( array( $actor ), Plugin::people()->guests_of( (int) $actor['id'] ) );
+			$pool    = array_merge( array( $actor ), Plugin::people()->managed_by( (int) $actor['id'] ) );
 			$options = '';
 			foreach ( $pool as $cand ) {
 				if ( (int) $cand['id'] === $pid || $svc->has_active_booking( $sid, (int) $cand['id'] ) ) {
@@ -413,6 +413,10 @@ final class Views {
 		$pend  = count( \AssociazioneSemplice\AccessRequests::pending() );
 		$links = array( array( 'asem-people', 'Soci e ospiti', true ), array( 'asem-person', 'Nuovo socio', true ), array( 'asem-messages', 'Comunicazioni', \AssociazioneSemplice\Modules::on( 'messages' ) ), array( 'asem-activities', 'Corsi ed eventi', \AssociazioneSemplice\Modules::on( 'activities' ) ), array( 'asem-money', 'Cassa', \AssociazioneSemplice\Modules::on( 'ledger' ) ), array( 'asem-book', 'Libro soci e registri', \AssociazioneSemplice\Modules::on( 'book' ) ), array( 'asem', 'Bacheca', true ) );
 		$html  = '<section class="asemf-section asemf-secretary"><h3>Segreteria</h3>';
+		$apps  = \AssociazioneSemplice\Applications::pending_count();
+		if ( $apps > 0 ) {
+			$html .= '<p><strong>' . (int) $apps . ( 1 === $apps ? ' domanda di adesione' : ' domande di adesione' ) . '</strong> da approvare: si approvano dalla <a href="' . $url( 'asem' ) . '">Bacheca</a>.</p>';
+		}
 		$html .= '<p>' . ( $pend > 0 ? '<strong>' . (int) $pend . ( 1 === $pend ? ' richiesta di accesso' : ' richieste di accesso' ) . '</strong> da evadere: si evadono dalla <a href="' . $url( 'asem' ) . '">Bacheca</a>.' : 'Nessuna richiesta di accesso da evadere.' ) . '</p><p class="asemf-small asemf-muted">Da qui si arriva alle funzioni di gestione.</p><p class="asemf-actions">';
 		foreach ( $links as $l ) {
 			if ( $l[2] ) {
@@ -590,6 +594,49 @@ final class Views {
 		$fields = '<div class="asemf-fields"><label>Nome <input type="text" name="first_name" required></label><label>Cognome <input type="text" name="last_name" required></label>'
 			. '<label>Email (facoltativa) <input type="email" name="email"></label><label>Cellulare (obbligatorio) <input type="tel" name="phone" required placeholder="333 1234567" inputmode="tel"></label></div>';
 		return $html . '<details class="asemf-details"><summary>Aggiungi un ospite</summary>' . self::form( 'asem_front_add_guest', $fields, 'Aggiungi ospite' ) . '</details></section>';
+	}
+
+	/**
+	 * I minori di cui il socio è tutore: per ognuno la tessera, le attività e, finché mancano, il regolamento e la privacy da accettare per suo conto.
+	 * I pagamenti da fare per loro compaiono insieme a quelli del tutore, in «Pagamenti».
+	 */
+	public static function section_minors( array $p ): string {
+		if ( ! MemberType::is_member( $p['type'] ) ) {
+			return '';
+		}
+		$wards = Plugin::people()->dependents_of( (int) $p['id'] );
+		if ( ! $wards ) {
+			return '';
+		}
+		$html = '<section class="asemf-section"><h3>I miei figli</h3><p class="asemf-muted">Sei il tutore di queste persone: vedi la loro tessera e le attività, le prenoti agli eventi e paghi per loro. Le email che li riguardano arrivano anche a te.</p></section>';
+		foreach ( $wards as $m ) {
+			$name  = trim( $m['first_name'] . ' ' . $m['last_name'] );
+			$adult = ! \AssociazioneSemplice\Age::is_minor( $m['birth_date'] ?? null, current_time( 'Y-m-d' ) ) && ! empty( $m['birth_date'] );
+			$html .= '<section class="asemf-section"><h3>' . esc_html( $name ) . '</h3>'
+				. ( $adult ? '<p class="asemf-small asemf-muted">Ha compiuto 18 anni: può avere un suo accesso. Chiedi alla segreteria di invitarlo; finché il collegamento resta, continui a vedere i suoi dati.</p>' : '' )
+				. '</section>';
+			$html .= self::ward_accept_box( $p, $m );
+			$html .= self::section_card( $m );
+			$html .= str_replace( '<h3>Le mie attività</h3>', '<h3>Attività di ' . esc_html( $m['first_name'] ) . '</h3>', self::section_activities( $m ) );
+		}
+		return $html;
+	}
+
+	/** Casella per accettare, a nome del minore, il regolamento e la privacy ancora mancanti. */
+	private static function ward_accept_box( array $guardian, array $m ): string {
+		$fields = '';
+		if ( \AssociazioneSemplice\Regulation::applies_to( $m ) && ! \AssociazioneSemplice\Regulation::accepted( $m ) ) {
+			$title   = mb_strtolower( \AssociazioneSemplice\Regulation::title(), 'UTF-8' );
+			$fields .= \AssociazioneSemplice\Regulation::box_html() . '<label><input type="checkbox" name="rules_ok" value="1"> Ho letto e accetto il ' . esc_html( $title ) . ' per conto di ' . esc_html( $m['first_name'] ) . '.</label>';
+		}
+		if ( ! \AssociazioneSemplice\Privacy::has_consent( $m ) ) {
+			$fields .= '<p><label><input type="checkbox" name="privacy_ok" value="1"> Ho letto l\'<a href="' . esc_url( (string) Settings::get( 'privacy_url' ) ) . '" target="_blank" rel="noopener">informativa privacy</a> e acconsento al trattamento dei dati di ' . esc_html( $m['first_name'] ) . '.</label></p>';
+		}
+		if ( '' === $fields ) {
+			return '';
+		}
+		return '<section class="asemf-section asemf-rules-box"><h3>Da accettare per conto di ' . esc_html( $m['first_name'] ) . '</h3>'
+			. self::form( 'asem_front_accept_for', self::hidden( 'person_id', $m['id'] ) . $fields, 'Accetto' ) . '</section>'; // phpcs:ignore WordPress.Security.EscapeOutput
 	}
 
 	/** Avviso in cima all'area: il profilo va completato (indirizzo e codice fiscale) prima di prenotare e pagare. Vuoto se non serve. */
@@ -965,7 +1012,7 @@ final class Views {
 	);
 
 	/** Sezioni della parte «Il mio spazio»: tutto ciò che riguarda il socio come persona. */
-	const MY_SECTIONS = array( 'regolamento', 'tessera', 'attivita', 'calendario', 'avvisi', 'pagamenti', 'ospiti', 'profilo' );
+	const MY_SECTIONS = array( 'regolamento', 'tessera', 'attivita', 'calendario', 'avvisi', 'pagamenti', 'ospiti', 'minori', 'profilo' );
 
 	/** Sezioni dell'area soci, nell'ordine in cui compaiono (un'estensione aggiunge le sue con il filtro `asem_my_sections`). */
 	private static function my_sections(): array {
@@ -1023,7 +1070,7 @@ final class Views {
 		}
 		$html = self::section_complete( $p );
 		foreach ( self::my_sections() as $s ) {
-			$map = array( 'tessera' => 'section_card', 'attivita' => 'section_activities', 'calendario' => 'section_calendar', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests', 'profilo' => 'section_profile', 'regolamento' => 'section_rules', 'avvisi' => 'section_notices' );
+			$map = array( 'tessera' => 'section_card', 'attivita' => 'section_activities', 'calendario' => 'section_calendar', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests', 'minori' => 'section_minors', 'profilo' => 'section_profile', 'regolamento' => 'section_rules', 'avvisi' => 'section_notices' );
 			$html .= isset( $map[ $s ] ) ? self::{$map[ $s ]}( $p ) : (string) apply_filters( 'asem_area_section', '', $s, $p );
 		}
 		return $html;
@@ -1058,7 +1105,7 @@ final class Views {
 		return self::with_person(
 			function ( $p ) use ( $sections ) {
 				$map  = array(
-					'tessera'    => 'section_card', 'attivita' => 'section_activities', 'calendario' => 'section_calendar', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests',
+					'tessera'    => 'section_card', 'attivita' => 'section_activities', 'calendario' => 'section_calendar', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests', 'minori' => 'section_minors',
 					'profilo'    => 'section_profile', 'regolamento' => 'section_rules', 'volontario' => 'section_volunteer', 'spese' => 'section_expenses', 'ingressi' => 'section_checkin', 'avvisi' => 'section_notices',
 				);
 				$html = '<div class="asemf-hello">Ciao <strong>' . esc_html( $p['first_name'] ) . '</strong></div><div class="asemf-area">';
@@ -1093,6 +1140,10 @@ final class Views {
 
 	public static function guests(): string {
 		return self::with_person( array( __CLASS__, 'section_guests' ) );
+	}
+
+	public static function minors(): string {
+		return self::with_person( array( __CLASS__, 'section_minors' ) );
 	}
 
 
@@ -1191,8 +1242,18 @@ final class Views {
 		$p = Access::current_person();
 		if ( $p && MemberType::is_member( $p['type'] ) ) {
 			$ctx['actor']    = $p;
-			$ctx['can_book'] = Plugin::people()->is_active_member( (int) $p['id'] );
-			$ctx['people']   = array_merge( array( $p ), Plugin::people()->guests_of( (int) $p['id'] ) );
+			$people = Plugin::people();
+			$list   = array();
+			if ( $people->is_active_member( (int) $p['id'] ) ) {
+				$list = array_merge( array( $p ), $people->guests_of( (int) $p['id'] ) );
+			}
+			foreach ( $people->dependents_of( (int) $p['id'] ) as $m ) { // chi ha il tutore prenota con la tessera del minore, non con la propria
+				if ( $people->is_active_member( (int) $m['id'] ) ) {
+					$list[] = $m;
+				}
+			}
+			$ctx['can_book'] = array() !== $list;
+			$ctx['people']   = $list;
 		}
 		return $ctx;
 	}

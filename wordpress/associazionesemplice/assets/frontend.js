@@ -153,3 +153,28 @@
 	}
 	if (box.getAttribute('data-state') === 'ok') { setTimeout(tick, 2000); }
 })();
+
+/* Domanda di adesione: chi ha meno di 18 anni indica anche il genitore o tutore (il blocco compare solo in quel caso). */
+(function () {
+	'use strict';
+	function adult(birth) {
+		var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(birth || '');
+		if (!m) { return null; }
+		var now = new Date(), age = now.getFullYear() - parseInt(m[1], 10);
+		if (now.getMonth() + 1 < parseInt(m[2], 10) || (now.getMonth() + 1 === parseInt(m[2], 10) && now.getDate() < parseInt(m[3], 10))) { age--; }
+		return age >= 18;
+	}
+	function sync(form) {
+		var box = form.querySelector('[data-asemf-guardian]'), birth = form.querySelector('[data-asemf-birth]');
+		if (!box || !birth) { return; }
+		var a = adult(birth.value);
+		box.hidden = a === true;
+	}
+	document.addEventListener('change', function (e) {
+		var form = e.target && e.target.closest ? e.target.closest('.asemf-apply form') : null;
+		if (form && e.target.matches('[data-asemf-birth]')) { sync(form); }
+	});
+	document.addEventListener('DOMContentLoaded', function () {
+		document.querySelectorAll('.asemf-apply form').forEach(sync);
+	});
+})();

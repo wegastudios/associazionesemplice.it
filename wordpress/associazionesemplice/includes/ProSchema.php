@@ -277,6 +277,7 @@ final class ProSchema {
   provider_payment_id varchar(120) DEFAULT NULL,
   allocated_cents bigint(20) NOT NULL DEFAULT 0,
   review tinyint(1) NOT NULL DEFAULT 0,
+  refund_due tinyint(1) NOT NULL DEFAULT 0,
   error varchar(255) DEFAULT NULL,
   created_at datetime NOT NULL,
   updated_at datetime NOT NULL,
