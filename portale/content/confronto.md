@@ -65,6 +65,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Acconti e sconti con motivo per riga di incasso | ✓ | ✓ | ✓ |
 | Nuovo socio in un popup durante l'incasso, senza perdere l'operazione | ✓ | ✓ | ✓ |
 | Pagamenti online con Stripe, PayPal o WooCommerce | — | ✓ | ✓ |
+| Pagamento online con SumUp (carta, checkout ospitato), insieme a Stripe e PayPal | — | ✓ | ✓ |
+| Costi di incasso per metodo (commissione fissa o percentuale), registrati come spesa stimata | — | ✓ | ✓ |
 | Pagamento online della quota dalla domanda di adesione | — | ✓ | ✓ |
 | Conti multipli, giroconti e cassa per più persone | — | ✓ | ✓ |
 | Fondi accantonati (per esempio rimborso dei volontari) | — | ✓ | ✓ |
