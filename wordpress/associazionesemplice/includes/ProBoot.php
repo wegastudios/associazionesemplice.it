@@ -47,7 +47,7 @@ final class ProBoot {
 
 	/** Azioni di amministrazione di ogni funzione: senza la funzione si bloccano. */
 	const ACTIONS = array(
-		'payments'   => array( 'asem_save_payment_settings', 'asem_test_gateway', 'asem_check_payments', 'asem_payment_reviewed' ),
+		'payments'   => array( 'asem_save_payment_settings', 'asem_test_gateway', 'asem_check_payments', 'asem_payment_reviewed', 'asem_payment_refunded' ),
 		'funds'      => array( 'asem_save_group_cash', 'asem_save_transfer', 'asem_add_account', 'asem_update_account', 'asem_close_account', 'asem_reopen_account', 'asem_fund_create', 'asem_fund_deposit', 'asem_fund_release', 'asem_fund_settle' ),
 		'receipts'   => array( 'asem_receipt_email' ),
 		'door_sales' => array( 'asem_walk_in' ),

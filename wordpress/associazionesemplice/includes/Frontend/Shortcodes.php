@@ -29,6 +29,8 @@ final class Shortcodes {
 		'ingressi'        => 'Ingressi agli eventi (prenotati e QR, per responsabile e staff)',
 		'avvisi'          => 'Avvisi dei volontari agli iscritti (bacheca)',
 		'ospiti'          => 'I miei ospiti',
+		'minori'          => 'I miei figli (minori di cui sei tutore)',
+		'adesione'        => 'Domanda di adesione online (pubblico, per chi non è ancora socio)',
 		'profilo'         => 'Il mio profilo',
 		'area_volontari'  => 'Area volontari (le attività di cui sei referente)',
 		'calendario'      => 'Calendario di corsi ed eventi (soci)',
@@ -86,6 +88,11 @@ final class Shortcodes {
 				return Views::pay();
 			case 'mie_attivita':
 				return Views::my_activities();
+			case 'minori':
+				return Views::minors();
+			case 'adesione':
+				Views::no_cache();
+				return Application::form_html();
 			case 'ospiti':
 				return Views::guests();
 			case 'profilo':

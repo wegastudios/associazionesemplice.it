@@ -438,6 +438,12 @@ final class Receipts {
 			$host = Plugin::people()->get( (int) $payer['host_person_id'] );
 			$to   = $host && ! empty( $host['email'] ) ? (string) $host['email'] : '';
 		}
+		if ( '' === $to && $payer && class_exists( Guardians::class ) ) { // un minore senza email: la ricevuta va al tutore
+			foreach ( Guardians::recipients( $payer ) as $g ) {
+				$to = (string) $g['email'];
+				break;
+			}
+		}
 		if ( '' === $to || ! is_email( $to ) ) {
 			throw new \InvalidArgumentException( 'Chi ha pagato non ha un indirizzo email (né il socio che lo ospita).' );
 		}

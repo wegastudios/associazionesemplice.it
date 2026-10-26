@@ -59,7 +59,7 @@ final class IncomePage {
 			wp_send_json_success( array( 'person' => null ) );
 		}
 		$sy    = Settings::social_year( $date )->label();
-		$until = MemberType::GUEST === $person['type'] ? null : Plugin::people()->active_until( (int) $person['id'], $date );
+		$until = ! MemberType::is_member( $person['type'] ) ? null : Plugin::people()->active_until( (int) $person['id'], $date );
 		$acts  = array();
 		foreach ( Plugin::activities()->active_activity_ids( (int) $person['id'] ) as $aid ) {
 			$a = Plugin::activities()->get( $aid );
@@ -91,7 +91,8 @@ final class IncomePage {
 			array(
 				'person'           => array( 'id' => (int) $person['id'], 'type' => $person['type'], 'type_label' => \AssociazioneSemplice\Levels::label( $person ) ),
 				'is_guest'         => MemberType::GUEST === $person['type'],
-				'is_founder'       => MemberType::is_auto_renewed( $person['type'] ),
+				'is_member'        => MemberType::is_member( $person['type'] ),
+				'is_founder'       =>MemberType::is_auto_renewed( $person['type'] ),
 				'active_until'     => $until,
 				'needs_membership' => in_array( $person['type'], array( MemberType::ORDINARY, MemberType::VOLUNTEER ), true ) && ( ! $until || $until < $date ),
 				'social_year'      => $sy,

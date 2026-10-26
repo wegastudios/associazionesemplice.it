@@ -47,6 +47,14 @@ final class WpDashboard {
 	/** Le cose da lavorare: [numero, testo, indirizzo]. */
 	public static function todo_items(): array {
 		$items = array();
+		$apps  = \AssociazioneSemplice\Applications::pending_count();
+		if ( $apps > 0 ) {
+			$items[] = array( $apps, 1 === $apps ? 'domanda di adesione da approvare' : 'domande di adesione da approvare', Ui::url( 'asem' ) . '#asem-applications' );
+		}
+		$adults = count( \AssociazioneSemplice\Guardians::adults_to_invite() );
+		if ( $adults > 0 ) {
+			$items[] = array( $adults, 1 === $adults ? 'maggiorenne da invitare a creare il suo accesso' : 'maggiorenni da invitare a creare il loro accesso', Ui::url( 'asem' ) );
+		}
 		$req   = count( \AssociazioneSemplice\AccessRequests::pending() );
 		if ( $req > 0 ) {
 			$items[] = array( $req, 1 === $req ? 'richiesta di accesso da controllare' : 'richieste di accesso da controllare', Ui::url( 'asem' ) );

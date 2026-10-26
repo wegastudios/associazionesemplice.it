@@ -38,6 +38,8 @@ final class PeopleCsv {
 		'notes' => array( 'note', 'eventipassati', 'eventi', 'storico', 'annotazioni' ),
 		'since' => array( 'annodiiscrizione', 'annoiscrizione', 'datadiiscrizione', 'dataiscrizione', 'iscrittodal', 'sociodal', 'dataingresso', 'ingresso' ),
 		'host'  => array( 'ospitedi', 'ospitante', 'socioospitante', 'invitatoda', 'ospiteda', 'tesseraospitante', 'host' ),
+		'birth' => array( 'datadinascita', 'datanascita', 'nascita', 'natoil', 'natail', 'nata', 'nato', 'dob', 'birthdate', 'dateofbirth' ),
+		'guardian' => array( 'tutore', 'genitore', 'tutoregenitore', 'genitoretutore', 'tutoreogenitore', 'genitoreotutore', 'tutori', 'genitori', 'guardian', 'parent' ),
 	);
 
 	public static function accepts_header( array $h ): bool {
@@ -122,6 +124,9 @@ final class PeopleCsv {
 				'notes'     => $cell( $cells, $col['notes'] ),
 				'since'     => self::parse_since( $cell( $cells, $col['since'] ) ),
 				'host'      => $cell( $cells, $col['host'] ),
+				'birth'     => Age::parse( (string) $cell( $cells, $col['birth'] ) ),
+				'birth_text' => $cell( $cells, $col['birth'] ),
+				'guardian'  => $cell( $cells, $col['guardian'] ),
 			);
 		}
 		return array( 'rows' => $rows );
@@ -291,6 +296,14 @@ final class PeopleCsv {
 
 			if ( '' === trim( $r['first'] ) || '' === trim( $r['last'] ) ) {
 				$plans[] = $err( 'Nome o cognome mancante' );
+				continue;
+			}
+			if ( null !== $r['birth_text'] && null === $r['birth'] ) {
+				$plans[] = $err( 'Data di nascita non valida: "' . $r['birth_text'] . '" (scrivila come 31/12/2010)' );
+				continue;
+			}
+			if ( null !== $r['guardian'] && null === $r['birth'] ) {
+				$plans[] = $err( 'Per indicare il tutore serve la data di nascita' );
 				continue;
 			}
 			$type = $default_type;

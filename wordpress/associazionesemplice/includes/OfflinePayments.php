@@ -47,14 +47,15 @@ class OfflinePayments {
 	public function dues_for( array $actor ): array {
 		$people  = Plugin::people();
 		$acts    = Plugin::activities();
-		$persons = array_merge( array( $actor ), $people->guests_of( (int) $actor['id'] ) );
+		$persons = array_merge( array( $actor ), $people->managed_by( (int) $actor['id'] ) ); // lui, i suoi ospiti e le persone di cui è tutore
+		$dependents = array_map( 'intval', array_column( $people->dependents_of( (int) $actor['id'] ), 'id' ) );
 		$items   = array();
 		foreach ( $persons as $p ) {
 			$pid  = (int) $p['id'];
 			$name = trim( $p['first_name'] . ' ' . $p['last_name'] );
-			// Quota associativa: solo per il socio stesso (i fondatori e gli ospiti non la pagano)
+			// Quota associativa: per il socio stesso e per chi è sotto la sua tutela (i fondatori e gli ospiti non la pagano)
 			$fee = \AssociazioneSemplice\Levels::fee_for( $p );
-			if ( $pid === (int) $actor['id'] && MemberType::is_member( $p['type'] ) && ! MemberType::is_auto_renewed( $p['type'] ) && $fee > 0 ) {
+			if ( ( $pid === (int) $actor['id'] || in_array( $pid, $dependents, true ) ) && MemberType::is_member( $p['type'] ) && ! MemberType::is_auto_renewed( $p['type'] ) && $fee > 0 ) {
 				$plan = $people->membership_plan( $pid, Db::today() ); // anno più recente (o quello in corso, se è scaduto)
 				if ( ! $people->has_membership( $pid, $plan['year'] ) ) {
 					$i                  = array( 'type' => PaymentItems::MEMBERSHIP, 'person_id' => $pid, 'person_name' => $name, 'social_year' => $plan['year'], 'amount_cents' => $fee, 'label' => 'Quota associativa ' . $plan['year'] . ( $plan['free'] ? ' (' . $plan['free'] . ' in omaggio)' : '' ) );
@@ -85,6 +86,38 @@ class OfflinePayments {
 			}
 		}
 		return (array) apply_filters( 'asem_online_dues', $items, $actor ); // un'estensione aggiunge altre voci da pagare
+	}
+
+	// ---------- Quota della domanda di adesione ----------
+	// Senza pagamenti online non c'è niente da fare: la quota si paga in sede. Un'estensione che li porta ridefinisce questi quattro metodi.
+
+	/** Chi chiede di iscriversi può pagare la quota online (c'è un metodo che non richiede un accesso)? */
+	public function application_online(): bool {
+		return false;
+	}
+
+	/**
+	 * Avvia il pagamento online della quota di chi ha chiesto di iscriversi e non ha ancora un accesso. @return string indirizzo della pagina di pagamento
+	 *
+	 * @throws \InvalidArgumentException
+	 */
+	public function application_checkout( array $person, int $cents, string $back_url, string $provider = '' ): string {
+		throw new \InvalidArgumentException( 'I pagamenti online non sono attivi: la quota si paga in sede.' );
+	}
+
+	/** La quota di questa domanda è già stata pagata online (e non ancora registrata in prima nota)? @return array|null ['cents' => importo versato] */
+	public function application_paid( int $person_id ): ?array {
+		return null;
+	}
+
+	/** Domanda approvata: registra in prima nota la quota pagata online e l'iscrizione. @return bool true se c'era un pagamento da registrare */
+	public function application_settle( int $person_id, string $social_year ): bool {
+		return false;
+	}
+
+	/** Domanda rifiutata: il pagamento già fatto va restituito. @return int pagamenti segnati «da rimborsare» */
+	public function application_refund_due( int $person_id ): int {
+		return 0;
 	}
 
 	// ---------- Archivio ----------

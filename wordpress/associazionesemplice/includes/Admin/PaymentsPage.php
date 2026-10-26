@@ -112,8 +112,13 @@ final class PaymentsPage {
 			}
 			echo '<tr><td>' . esc_html( mysql2date( 'd/m/Y H:i', $r['created_at'] ) ) . '</td><td>' . esc_html( (string) $r['payer_name'] ) . '</td>'
 				. '<td>' . esc_html( array( 'paypal' => 'PayPal', 'woocommerce' => 'WooCommerce' )[ $r['provider'] ] ?? 'Stripe' ) . '</td><td>' . esc_html( Money::format( (int) $r['amount_cents'] ) ) . '</td><td>' . $state // phpcs:ignore WordPress.Security.EscapeOutput
-				. ( $r['review'] ? '<br><strong class="asem-warn">⚠ da controllare</strong>' : '' ) . ( $r['error'] ? '<br><span class="description">' . esc_html( $r['error'] ) . '</span>' : '' ) . '</td>'
+				. ( $r['review'] ? '<br><strong class="asem-warn">⚠ da controllare</strong>' : '' ) . ( ! empty( $r['refund_due'] ) ? '<br><strong class="asem-neg">↩ da rimborsare</strong> <span class="description">(domanda di adesione rifiutata: restituisci la quota dal pannello del gateway)</span>' : '' ) . ( $r['error'] ? '<br><span class="description">' . esc_html( $r['error'] ) . '</span>' : '' ) . '</td>'
 				. '<td>' . esc_html( implode( '; ', $items ) ) . '<br><span class="description">' . esc_html( (string) $r['provider_ref'] ) . '</span></td><td>';
+			if ( ! empty( $r['refund_due'] ) ) {
+				Ui::form_open( 'asem_payment_refunded', Ui::url( 'asem-payments' ) );
+				echo Ui::hidden( 'id', $r['id'] ) . '<button class="button button-small">Rimborsato</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				Ui::form_close();
+			}
 			if ( $r['review'] ) {
 				Ui::form_open( 'asem_payment_reviewed', Ui::url( 'asem-payments' ) );
 				echo Ui::hidden( 'id', $r['id'] ) . '<button class="button button-small">Controllato</button>'; // phpcs:ignore WordPress.Security.EscapeOutput

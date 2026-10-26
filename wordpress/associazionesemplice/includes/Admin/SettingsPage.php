@@ -5,6 +5,7 @@ use AssociazioneSemplice\CancelPolicy;
 use AssociazioneSemplice\Edition;
 use AssociazioneSemplice\Money;
 use AssociazioneSemplice\PaymentConfig;
+use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Secrets;
 use AssociazioneSemplice\Settings;
 
@@ -62,6 +63,14 @@ final class SettingsPage {
 		echo '<tr><th>Termine predefinito per annullare</th><td><select name="cancel_policy_default">' . Ui::options( CancelPolicy::labels(), $s['cancel_policy_default'] ) . '</select>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<p class="description">Vale per gli eventi creati come «cancellabili» senza un termine proprio. Gli eventi gratuiti si annullano sempre; quelli a pagamento mai, ma si può cambiare nominativo.</p></td></tr>';
 
+		echo '</tbody></table><h2>Domanda di adesione online</h2><table class="form-table"><tbody>';
+		$pay_on = Plugin::payments()->enabled() && Plugin::payments()->application_online();
+		echo '<tr><th>Chi non è ancora socio</th><td><input type="hidden" name="apply_present" value="1"><label><input type="checkbox" name="apply_enabled" value="1"' . checked( ! empty( $s['apply_enabled'] ), true, false ) . '> Si può chiedere di iscriversi dal sito</label>'
+			. '<p class="description">Aggiungi la pagina «Diventa socio» (shortcode <code>[associazionesemplice_adesione]</code>, si crea dalla sezione «Pagine del sito» qui sotto). Ogni domanda arriva nella Bacheca e nel riquadro «Da lavorare»: tu scegli <em>Approva</em> (assegni la tessera e al richiedente arriva il link per scegliere la password) o <em>Rifiuta</em>. Chi risulta minorenne dalla data di nascita deve indicare anche il genitore.</p></td></tr>';
+		echo '<tr><th>Tipi di socio richiedibili</th><td><label><input type="checkbox" checked disabled> Socio ordinario</label><br><label><input type="checkbox" name="apply_volunteer" value="1"' . checked( ! empty( $s['apply_volunteer'] ), true, false ) . '> Socio e volontario</label></td></tr>';
+		echo '<tr><th>Quota con la domanda</th><td><label><input type="checkbox" name="apply_pay_online" value="1"' . checked( ! empty( $s['apply_pay_online'] ), true, false ) . ( $pay_on ? '' : ' disabled' ) . '> Chi chiede di iscriversi può pagare subito la quota online</label>'
+			. '<p class="description">' . ( $pay_on ? 'Se la domanda viene rifiutata il pagamento resta segnato «da rimborsare» nei Pagamenti online.' : 'Non c\'è nessun metodo di pagamento online attivo: la domanda dice di pagare la quota in sede.' ) . '</p></td></tr>';
+		echo '<tr><th>Avviso alla segreteria</th><td><input type="email" name="apply_email" value="' . esc_attr( (string) $s['apply_email'] ) . '" class="regular-text" placeholder="' . esc_attr( (string) get_option( 'admin_email' ) ) . '"><p class="description">A questo indirizzo arriva un\'email a ogni nuova domanda. Vuoto = l\'email di amministrazione del sito.</p></td></tr>';
 		echo '</tbody></table><h2>Aspetto e messaggi del sito</h2><table class="form-table"><tbody>';
 		echo '<tr><th>Logo e colori</th><td><a href="' . esc_url( Ui::url( 'asem-look' ) ) . '">Aspetto →</a><p class="description">Logo, colore principale e secondario di tessera e pulsanti: di default quelli del sito, personalizzabili.</p></td></tr>';
 		echo '<tr><th>Invito al pagamento</th><td><textarea name="payment_hint" rows="2" class="large-text">' . esc_textarea( Settings::payment_hint() ) . '</textarea>'

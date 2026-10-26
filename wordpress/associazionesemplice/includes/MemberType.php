@@ -16,6 +16,7 @@ final class MemberType {
 	const ORDINARY  = 'ordinary';
 	const VOLUNTEER = 'volunteer';
 	const GUEST     = 'guest';
+	const GUARDIAN  = 'guardian';
 
 	public static function labels(): array {
 		return array(
@@ -23,12 +24,18 @@ final class MemberType {
 			self::ORDINARY  => 'Socio ordinario',
 			self::VOLUNTEER => 'Socio e volontario',
 			self::GUEST     => 'Ospite di un socio',
+			self::GUARDIAN  => 'Genitore o tutore (non socio)',
 		);
 	}
 
 	/** Tipi che sono soci veri (tutti tranne l'ospite). */
 	public static function member_types(): array {
 		return array( self::FOUNDER, self::ORDINARY, self::VOLUNTEER );
+	}
+
+	/** Chi può entrare nell'area riservata: i soci e i genitori o tutori (che non sono soci: seguono i figli, senza tessera né quota). */
+	public static function can_login( string $type ): bool {
+		return self::is_member( $type ) || self::GUARDIAN === $type;
 	}
 
 	public static function label( string $type ): string {

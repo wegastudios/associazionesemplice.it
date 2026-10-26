@@ -21,6 +21,7 @@ final class PaymentItems {
 	const BOOKING      = 'booking';
 	const RESERVATION  = 'reservation';
 	const CREDITS      = 'credits';
+	const APPLICATION  = 'application';
 
 	/** Importo minimo accettato dai gateway (Stripe: 0,50 €). */
 	const MIN_TOTAL_CENTS = 50;
@@ -33,6 +34,8 @@ final class PaymentItems {
 				return 'm:' . (int) $i['activity_id'] . ':' . (int) $i['person_id'] . ':' . $i['month'];
 			case self::RESERVATION:
 				return 'r:' . (int) $i['reservation_id'] . ':' . (int) $i['person_id'];
+			case self::APPLICATION:
+				return 'a:' . (int) $i['person_id'] . ':' . $i['social_year'];
 			case self::CREDITS:
 				return 'c:' . (int) $i['person_id'] . ':' . (int) $i['credits'];
 			default:
@@ -48,6 +51,9 @@ final class PaymentItems {
 		}
 		if ( 'm' === $p[0] && 4 === count( $p ) && ctype_digit( $p[1] ) && ctype_digit( $p[2] ) && preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/', $p[3] ) ) {
 			return array( 'type' => self::COURSE_MONTH, 'activity_id' => (int) $p[1], 'person_id' => (int) $p[2], 'month' => $p[3] );
+		}
+		if ( 'a' === $p[0] && 3 === count( $p ) && ctype_digit( $p[1] ) && preg_match( '#^\d{4}(/\d{4})?$#', $p[2] ) ) {
+			return array( 'type' => self::APPLICATION, 'person_id' => (int) $p[1], 'social_year' => $p[2] );
 		}
 		if ( 'c' === $p[0] && 3 === count( $p ) && ctype_digit( $p[1] ) && ctype_digit( $p[2] ) ) {
 			return array( 'type' => self::CREDITS, 'person_id' => (int) $p[1], 'credits' => (int) $p[2] );

@@ -315,8 +315,8 @@ class LedgerService {
 				if ( ! $person ) {
 					throw new \InvalidArgumentException( "Voce $n: la quota associativa richiede di indicare il socio." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
-				if ( MemberType::GUEST === $person['type'] ) {
-					throw new \InvalidArgumentException( "Voce $n: un ospite non è socio e non paga la quota associativa." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				if ( ! MemberType::is_member( $person['type'] ) ) {
+					throw new \InvalidArgumentException( "Voce $n: un ospite o un genitore/tutore non è socio e non paga la quota associativa." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				if ( MemberType::is_auto_renewed( $person['type'] ) ) {
 					throw new \InvalidArgumentException( "Voce $n: il socio fondatore ha la tessera sempre rinnovata." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
