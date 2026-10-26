@@ -235,7 +235,18 @@ free_ok( $bb_throws( function () use ( $bb_poll, $bb_a, $bb_opts ) { \Associazio
 free_ok( $bb_throws( function () use ( $bb_poll, $bb_a, $bb_opts ) { \AssociazioneSemplice\Polls::vote( $bb_poll, $bb_a, array( (int) $bb_opts[1] ) ); } ), 'votazioni: un voto solo per persona' );
 $bb_res = \AssociazioneSemplice\Polls::results( $bb_poll, true );
 free_ok( 1 === $bb_res['voters'] && 1 === $bb_res['options'][0]['count'] && 0 === $bb_res['options'][1]['count'] && $bb_res['eligible'] >= 1, 'votazioni: risultati e numero degli aventi diritto' );
-free_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'poll_votes' ) . ' WHERE poll_id = ' . (int) $bb_poll . ' AND person_id IS NOT NULL' ) && \AssociazioneSemplice\Polls::has_voted( $bb_poll, $bb_a ), 'votazioni: nel voto segreto si sa chi ha votato ma non cosa' );
+$bb_sum = function () use ( $wpdb, $bb_poll ): int {
+	return (int) $wpdb->get_var( 'SELECT SUM(votes) FROM ' . Db::t( 'poll_options' ) . ' WHERE poll_id = ' . (int) $bb_poll );
+};
+free_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'poll_votes' ) . ' WHERE poll_id = ' . (int) $bb_poll ) && \AssociazioneSemplice\Polls::has_voted( $bb_poll, $bb_a ) && 1 === $bb_sum(), 'votazioni: nel voto segreto nessuna scheda collega persona e scelta, restano chi ha votato e i contatori' );
+free_ok( $bb_throws( function () use ( $bb_poll, $bb_a, $bb_opts ) { \AssociazioneSemplice\Polls::vote( $bb_poll, $bb_a, array( (int) $bb_opts[1] ) ); } ) && 1 === $bb_sum() && 1 === \AssociazioneSemplice\Polls::vote_count( $bb_poll ), 'votazioni: un secondo tentativo non lascia schede o contatori a metà' );
+free_ok( 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) . ' WHERE action = %s', 'poll.voted' ) ), 'votazioni: il voto non finisce nel registro azioni' );
+$bb_c = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Ugo', 'last_name' => 'Avvisato', 'email' => 'ugo.avvisato@example.com' ) );
+$people->set_membership( $bb_c, $bb_label, true );
+add_filter( 'pre_wp_mail', '__return_true' );
+\AssociazioneSemplice\Reminders::notify( $people->get( $bb_c ), 'poll_open', (string) $bb_poll, 'Votazione', 'testo' );
+free_ok( \AssociazioneSemplice\Polls::announce( $bb_poll, 'poll_open', true, true ) >= 1 && 0 === \AssociazioneSemplice\Polls::announce( $bb_poll, 'poll_open', true, true ), 'votazioni: «Avvisa i soci ora» parte anche se l\'avviso automatico c\'era già, ma una volta al giorno' );
+remove_filter( 'pre_wp_mail', '__return_true' );
 free_ok( false !== strpos( \AssociazioneSemplice\Docs::poll( $bb_poll, 'csv' )['body'], 'Favorevole' ) && 0 === strpos( \AssociazioneSemplice\Docs::poll( $bb_poll, 'pdf' )['body'], '%PDF' ), 'votazioni: CSV e PDF del verbale dei risultati' );
 $bb_exp = \AssociazioneSemplice\Privacy::export( $bb_a );
 free_ok( 1 === count( $bb_exp['votazioni_a_cui_ha_partecipato'] ) && ! $bb_exp['scelte_nelle_votazioni_palesi'], 'privacy: l\'esportazione dei dati elenca le votazioni, senza la scelta nel voto segreto' );

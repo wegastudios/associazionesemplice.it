@@ -140,15 +140,19 @@ final class PollRules {
 	}
 
 	/**
-	 * Le righe da salvare per un voto. Nel voto segreto non c'è traccia di chi ha scelto cosa: la persona è solo nell'elenco di chi ha votato.
+	 * Le schede da salvare per un voto PALESE (chi ha scelto cosa). Nel voto segreto non si salva nessuna scheda: restano solo i contatori
+	 * delle opzioni e l'elenco di chi ha votato, senza legame tra le due cose.
 	 *
 	 * @param int[] $option_ids
-	 * @return array[] poll_id, option_id, person_id (null se segreto)
+	 * @return array[] poll_id, option_id, person_id (vuoto se segreto)
 	 */
 	public static function ballot_rows( int $poll_id, bool $secret, int $person_id, array $option_ids ): array {
 		$rows = array();
+		if ( $secret ) {
+			return $rows;
+		}
 		foreach ( $option_ids as $oid ) {
-			$rows[] = array( 'poll_id' => $poll_id, 'option_id' => (int) $oid, 'person_id' => $secret ? null : $person_id );
+			$rows[] = array( 'poll_id' => $poll_id, 'option_id' => (int) $oid, 'person_id' => $person_id );
 		}
 		return $rows;
 	}

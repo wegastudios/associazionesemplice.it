@@ -134,6 +134,14 @@ final class Attachments {
 		return $ids;
 	}
 
+	/** Cancella dal disco un file salvato con {@see save_upload()} (documenti sostituiti o eliminati, foto dei beni). */
+	public static function delete_stored( ?string $stored ): void {
+		$name = AttachmentRules::stored_name( (string) $stored );
+		if ( '' !== $name ) {
+			wp_delete_file( self::dir() . '/' . $name );
+		}
+	}
+
 	/** Tipo reale di un file (letto dal contenuto), '' se il server non sa leggerlo. */
 	public static function mime_of( string $path ): string {
 		return self::real_mime( $path );

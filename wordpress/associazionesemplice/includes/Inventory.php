@@ -103,10 +103,14 @@ final class Inventory {
 		}
 		$db = self::db();
 		if ( $id ) {
-			if ( ! self::item( $id ) ) {
+			$prev = self::item( $id );
+			if ( ! $prev ) {
 				throw new \InvalidArgumentException( 'Bene non trovato.' );
 			}
 			$db->update( Db::t( 'items' ), $d + array( 'updated_at' => Db::now() ), array( 'id' => $id ) );
+			if ( $file ) {
+				Attachments::delete_stored( (string) $prev['file_stored'] ); // la foto sostituita non resta sul disco
+			}
 			Audit::log( 'item.updated', 'item', $id, array( 'state' => $state ) );
 			return $id;
 		}
@@ -125,7 +129,9 @@ final class Inventory {
 		if ( self::out_quantity( $id ) > 0 ) {
 			throw new \InvalidArgumentException( 'Il bene è in prestito: registra prima il rientro.' );
 		}
+		$prev = self::item( $id );
 		self::db()->update( Db::t( 'items' ), array( 'deleted_at' => Db::now() ), array( 'id' => $id ) );
+		Attachments::delete_stored( $prev['file_stored'] ?? null );
 		Audit::log( 'item.deleted', 'item', $id );
 	}
 
@@ -175,7 +181,7 @@ final class Inventory {
 			throw new \InvalidArgumentException( 'Bene non trovato.' );
 		}
 		$p = Plugin::people()->get( $person_id );
-		if ( ! $p || ! empty( $p['anonymized_at'] ) || ! in_array( $p['type'], array_merge( MemberType::member_types() ), true ) ) {
+		if ( ! $p || ! empty( $p['anonymized_at'] ) || ! MemberType::is_member( (string) $p['type'] ) ) {
 			throw new \InvalidArgumentException( 'Scegli un socio o volontario.' );
 		}
 		$err = LoanRules::check_dates( $lent_on, $due_on );

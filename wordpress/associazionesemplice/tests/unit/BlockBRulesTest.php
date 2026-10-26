@@ -68,8 +68,7 @@ final class BlockBRulesTest extends TestCase {
 	public function test_secret_ballot_has_no_person(): void {
 		$secret = PollRules::ballot_rows( 5, true, 77, array( 1, 2 ) );
 		$open   = PollRules::ballot_rows( 5, false, 77, array( 1 ) );
-		$this->assertNull( $secret[0]['person_id'] );
-		$this->assertCount( 2, $secret );
+		$this->assertSame( array(), $secret ); // nel voto segreto nessuna scheda: solo i contatori delle opzioni
 		$this->assertSame( 77, $open[0]['person_id'] );
 	}
 

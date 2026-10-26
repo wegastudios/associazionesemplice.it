@@ -72,7 +72,7 @@ final class WpDashboard {
 			$items[] = array( $late, 1 === $late ? 'prestito con il rientro scaduto' : 'prestiti con il rientro scaduto', Ui::url( 'asem-inventory', array( 'tab' => 'loans' ) ) );
 		}
 		if ( current_user_can( Plugin::CAP ) ) {
-			$mail =\AssociazioneSemplice\MailLog::failures();
+			$mail = \AssociazioneSemplice\MailLog::failures();
 			if ( $mail > 0 ) {
 				$items[] = array( $mail, 1 === $mail ? 'email non partita' : 'email non partite', Ui::url( 'asem-tech' ) );
 			}

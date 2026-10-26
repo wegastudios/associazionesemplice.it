@@ -549,7 +549,6 @@ final class Actions {
 		return self::checkin_message( Plugin::activities()->check_in( $t[0], $t[1], false, current_user_can( Plugin::CAP_OPS ) ), $t[0], $t[1] );
 	}
 
-	/** Avviso agli iscritti di un'attività: solo chi la tiene o chi gestisce l'evento (e gli amministratori). */
 	/** Il socio vota: un solo voto per votazione, solo se ha diritto di voto (controllo in Polls). */
 	public static function do_vote( array $post ): string {
 		$actor   = self::actor();
@@ -558,6 +557,7 @@ final class Actions {
 		return 'Il tuo voto è stato registrato. Grazie!';
 	}
 
+	/** Avviso agli iscritti di un'attività: solo chi la tiene o chi gestisce l'evento (e gli amministratori). */
 	public static function do_notice( array $post ): string {
 		$aid = (int) ( $post['activity_id'] ?? 0 );
 		if ( ! \AssociazioneSemplice\Notices::can_send( $aid ) ) {

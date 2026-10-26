@@ -89,6 +89,9 @@ final class Documents {
 				$d['file_size']   = $file['size'];
 			}
 			$db->update( Db::t( 'documents' ), $d + array( 'updated_at' => Db::now() ), array( 'id' => $id ) );
+			if ( $file ) {
+				Attachments::delete_stored( $old['file_stored'] ); // il file sostituito non resta sul disco (né nelle copie di sicurezza)
+			}
 			Audit::log( 'document.updated', 'document', $id, array( 'visibility' => $vis, 'file_replaced' => (bool) $file ) );
 			return $id;
 		}
@@ -107,10 +110,12 @@ final class Documents {
 	}
 
 	public static function delete( int $id ): void {
-		if ( ! self::get( $id ) ) {
+		$doc = self::get( $id );
+		if ( ! $doc ) {
 			throw new \InvalidArgumentException( 'Documento non trovato.' );
 		}
 		self::db()->update( Db::t( 'documents' ), array( 'deleted_at' => Db::now() ), array( 'id' => $id ) );
+		Attachments::delete_stored( (string) $doc['file_stored'] ); // il file non resta sul disco (né nelle copie di sicurezza)
 		Audit::log( 'document.deleted', 'document', $id );
 	}
 

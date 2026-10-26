@@ -24,6 +24,15 @@ final class Polls {
 	 * @throws \InvalidArgumentException
 	 */
 	public static function save( int $id, array $in, ?int $user_id = null ): int {
+		if ( ! $id ) {
+			return self::save_locked( $id, $in, $user_id );
+		}
+		return (int) Db::with_lock( 'asem_poll_' . $id, function () use ( $id, $in, $user_id ) { // lo stesso blocco del voto: il primo voto non arriva mentre si riscrivono le risposte
+			return self::save_locked( $id, $in, $user_id );
+		} );
+	}
+
+	private static function save_locked( int $id, array $in, ?int $user_id ): int {
 		$title = mb_substr( trim( sanitize_text_field( (string) ( $in['title'] ?? '' ) ) ), 0, 190 );
 		if ( '' === $title ) {
 			throw new \InvalidArgumentException( 'Scrivi il titolo.' );
@@ -120,7 +129,7 @@ final class Polls {
 
 	/** @return array[] id, label */
 	public static function options( int $poll_id ): array {
-		return self::db()->get_results( self::db()->prepare( 'SELECT id, label FROM ' . Db::t( 'poll_options' ) . ' WHERE poll_id = %d ORDER BY sort_order, id', $poll_id ), ARRAY_A ) ?: array();
+		return self::db()->get_results( self::db()->prepare( 'SELECT id, label, votes FROM ' . Db::t( 'poll_options' ) . ' WHERE poll_id = %d ORDER BY sort_order, id', $poll_id ), ARRAY_A ) ?: array();
 	}
 
 	public static function vote_count( int $poll_id ): int {
@@ -145,6 +154,21 @@ final class Polls {
 		}
 		$active = MemberType::is_member( (string) $person['type'] ) && Plugin::people()->is_active_member( (int) $person['id'] );
 		return PollRules::is_eligible( (string) $person['type'], $active, $in_audience );
+	}
+
+	/** Quanti hanno diritto al voto: una sola interrogazione (stesse regole di is_eligible). */
+	public static function eligible_count( array $poll ): int {
+		$db    = self::db();
+		$today = Db::today();
+		$types = "'" . implode( "','", array_map( 'esc_sql', MemberType::member_types() ) ) . "'";
+		$sql   = 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . " p WHERE p.deleted_at IS NULL AND p.anonymized_at IS NULL AND p.application_status IS NULL AND p.suspended_at IS NULL AND p.type IN ($types) AND (p.left_on IS NULL OR p.left_on > %s) "
+			. 'AND EXISTS (SELECT 1 FROM ' . Db::t( 'memberships' ) . ' m WHERE m.person_id = p.id AND m.deleted_at IS NULL AND m.valid_from <= %s AND m.valid_to >= %s)';
+		$args  = array( $today, $today, $today );
+		if ( PollRules::AUDIENCE_ACTIVITY === $poll['audience'] ) {
+			$sql   .= ' AND EXISTS (SELECT 1 FROM ' . Db::t( 'enrollments' ) . ' e WHERE e.person_id = p.id AND e.activity_id = %d AND e.end_month IS NULL)';
+			$args[] = (int) $poll['activity_id'];
+		}
+		return (int) $db->get_var( $db->prepare( $sql, $args ) );
 	}
 
 	/** Tutte le persone che hanno diritto al voto. @return array[] */
@@ -187,6 +211,12 @@ final class Polls {
 	 * @throws \InvalidArgumentException
 	 */
 	public static function vote( int $poll_id, int $person_id, array $choices ): void {
+		Db::with_lock( 'asem_poll_' . $poll_id, function () use ( $poll_id, $person_id, $choices ) {
+			self::vote_locked( $poll_id, $person_id, $choices );
+		} );
+	}
+
+	private static function vote_locked( int $poll_id, int $person_id, array $choices ): void {
 		$poll   = self::get( $poll_id );
 		$person = Plugin::people()->get( $person_id );
 		if ( ! $poll || ! $person ) {
@@ -198,19 +228,29 @@ final class Polls {
 		}
 		$ids  = array_map( 'intval', array_column( self::options( $poll_id ), 'id' ) );
 		$mine = PollRules::check_choices( (bool) $poll['multiple'], (int) $poll['max_choices'], $choices, $ids );
-		$db   = self::db();
-		$db->query( $db->prepare( 'INSERT IGNORE INTO ' . Db::t( 'poll_voters' ) . ' (poll_id, person_id, voted_at) VALUES (%d, %d, %s)', $poll_id, $person_id, Db::now() ) );
-		if ( 1 !== (int) $db->rows_affected ) {
-			throw new \InvalidArgumentException( 'Hai già votato.' );
-		}
-		foreach ( PollRules::ballot_rows( $poll_id, (bool) $poll['secret'], $person_id, $mine ) as $row ) {
-			if ( ! $db->insert( Db::t( 'poll_votes' ), $row ) ) {
-				$db->delete( Db::t( 'poll_votes' ), array( 'poll_id' => $poll_id, 'person_id' => $person_id ) );
-				$db->delete( Db::t( 'poll_voters' ), array( 'poll_id' => $poll_id, 'person_id' => $person_id ) );
-				throw new \InvalidArgumentException( 'Il voto non è stato registrato: riprova.' );
+		$db = self::db();
+		$db->query( 'START TRANSACTION' );
+		try {
+			$db->query( $db->prepare( 'INSERT IGNORE INTO ' . Db::t( 'poll_voters' ) . ' (poll_id, person_id, voted_at) VALUES (%d, %d, %s)', $poll_id, $person_id, Db::now() ) );
+			if ( 1 !== (int) $db->rows_affected ) {
+				throw new \InvalidArgumentException( 'Hai già votato.' );
 			}
+			foreach ( $mine as $oid ) { // contatore dell'opzione: nel voto segreto è l'unica traccia della scelta
+				if ( false === $db->query( $db->prepare( 'UPDATE ' . Db::t( 'poll_options' ) . ' SET votes = votes + 1 WHERE id = %d AND poll_id = %d', $oid, $poll_id ) ) || 1 !== (int) $db->rows_affected ) {
+					throw new \InvalidArgumentException( 'Il voto non è stato registrato: riprova.' );
+				}
+			}
+			foreach ( PollRules::ballot_rows( $poll_id, (bool) $poll['secret'], $person_id, $mine ) as $row ) { // solo nel voto palese
+				if ( ! $db->insert( Db::t( 'poll_votes' ), $row ) ) {
+					throw new \InvalidArgumentException( 'Il voto non è stato registrato: riprova.' );
+				}
+			}
+			$db->query( 'COMMIT' );
+		} catch ( \Throwable $e ) {
+			$db->query( 'ROLLBACK' );
+			throw $e;
 		}
-		Audit::log( 'poll.voted', 'poll', $poll_id ); // chi ha votato non si scrive nel registro: nel voto segreto sarebbe un legame col voto
+		// Nessuna riga nel registro azioni: conterrebbe utente e ora del voto, e nel voto segreto romperebbe il segreto.
 	}
 
 	// ---------- Risultati ----------
@@ -224,7 +264,10 @@ final class Polls {
 			throw new \InvalidArgumentException( 'Votazione non trovata.' );
 		}
 		$opts  = self::options( $poll_id );
-		$votes = array_map( 'intval', self::db()->get_col( self::db()->prepare( 'SELECT option_id FROM ' . Db::t( 'poll_votes' ) . ' WHERE poll_id = %d', $poll_id ) ) ?: array() );
+		$votes = array();
+		foreach ( $opts as $o ) { // i contatori delle opzioni: valgono sia per il voto segreto sia per il palese
+			$votes = array_merge( $votes, array_fill( 0, (int) $o['votes'], (int) $o['id'] ) );
+		}
 		$tally = PollRules::tally( array_column( $opts, 'id' ), $votes );
 		$voters = self::vote_count( $poll_id );
 		$names  = array();
@@ -240,7 +283,7 @@ final class Polls {
 			$o['names']   = $names[ $o['id'] ] ?? array();
 		}
 		unset( $o );
-		return array( 'options' => $opts, 'voters' => $voters, 'eligible' => count( self::eligible_people( $poll ) ), 'total' => array_sum( $tally ), 'winners' => PollRules::winners( $tally ) );
+		return array( 'options' => $opts, 'voters' => $voters, 'eligible' => self::eligible_count( $poll ), 'total' => array_sum( $tally ), 'winners' => PollRules::winners( $tally ) );
 	}
 
 	/** Chi ha votato (non cosa), per la segreteria. @return string[] */
@@ -266,10 +309,11 @@ final class Polls {
 	/**
 	 * Manda l'avviso ai soci che hanno diritto al voto e non hanno ancora votato, una sola volta per persona.
 	 *
-	 * @param string $kind poll_open | poll_closing
+	 * @param string $kind   poll_open | poll_closing
+	 * @param bool   $manual invio dal pulsante «Avvisa i soci ora»: vale una volta al giorno per persona, anche se l'avviso automatico è già partito
 	 * @return int avvisi partiti
 	 */
-	public static function announce( int $poll_id, string $kind = 'poll_open', bool $send = true ): int {
+	public static function announce( int $poll_id, string $kind = 'poll_open', bool $send = true, bool $manual = false ): int {
 		$poll = self::get( $poll_id );
 		if ( ! $poll || PollRules::OPEN !== $poll['status'] ) {
 			throw new \InvalidArgumentException( 'L\'avviso si manda quando la votazione è aperta.' );
@@ -279,12 +323,13 @@ final class Polls {
 			$subject = 'Ultimo giorno per votare: ' . $poll['title'];
 			$body    = 'la votazione «' . $poll['title'] . '» si chiude il ' . mysql2date( 'd/m/Y \a\l\l\e H:i', (string) $poll['closes_at'] ) . ' e non risulta il tuo voto. Puoi votare dall\'area riservata: ' . Gatekeeper::area_url();
 		}
-		$n = 0;
+		$ref = $manual ? 'm' . $poll_id . ':' . gmdate( 'Ymd', strtotime( Db::today() ) ) : (string) $poll_id;
+		$n   = 0;
 		foreach ( self::eligible_people( $poll ) as $p ) {
 			if ( self::has_voted( $poll_id, (int) $p['id'] ) ) {
 				continue;
 			}
-			if ( $send ? Reminders::notify( $p, $kind, (string) $poll_id, $subject, $body ) : Reminders::pending( $p, $kind, (string) $poll_id ) ) {
+			if ( $send ? Reminders::notify( $p, $kind, $ref, $subject, $body ) : Reminders::pending( $p, $kind, $ref ) ) {
 				$n++;
 			}
 		}

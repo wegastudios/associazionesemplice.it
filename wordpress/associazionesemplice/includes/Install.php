@@ -521,6 +521,7 @@ final class Install {
   poll_id bigint(20) unsigned NOT NULL,
   label varchar(190) NOT NULL,
   sort_order int(11) NOT NULL DEFAULT 0,
+  votes int(11) NOT NULL DEFAULT 0,
   PRIMARY KEY  (id),
   KEY poll_id (poll_id)
 ) $c;";
@@ -557,7 +558,6 @@ final class Install {
   notes text,
   file_name varchar(190) DEFAULT NULL,
   file_stored varchar(64) DEFAULT NULL,
-  file_mime varchar(100) DEFAULT NULL,
   created_at datetime NOT NULL,
   updated_at datetime NOT NULL,
   deleted_at datetime DEFAULT NULL,

@@ -59,8 +59,8 @@ final class BlockBActions {
 
 	public static function poll_announce( array $p ): array {
 		$id = (int) ( $p['id'] ?? 0 );
-		$n  = Polls::announce( $id );
-		return array( Ui::url( 'asem-polls', array( 'view' => $id ) ), $n . ' avvisi inviati.' );
+		$n  = Polls::announce( $id, 'poll_open', true, true );
+		return array( Ui::url( 'asem-polls', array( 'view' => $id ) ), $n > 0 ? $n . ' avvisi inviati.' : 'Nessun avviso da mandare: chi non ha votato lo ha già ricevuto oggi, oppure manca l\'indirizzo email.' );
 	}
 
 	public static function item_save( array $p ): array {
