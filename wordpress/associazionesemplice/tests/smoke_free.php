@@ -190,7 +190,7 @@ free_ok( 'ok' === \AssociazioneSemplice\Applications::submit( $fr_in )['status']
 $fr_app = \AssociazioneSemplice\Applications::pending()[0];
 free_ok( null === $fr_app['paid'] && 1000 === (int) $fr_app['fee_cents'], 'domanda: nessun pagamento online, quota da pagare in sede' );
 \AssociazioneSemplice\Applications::approve( (int) $fr_app['id'], 'free100' );
-free_ok( ! $people->is_active_member( (int) $fr_app['id'] ) && 'free100' === $people->get( (int) $fr_app['id'] )['card_number'] && isset( Plugin::payments()->dues_for( $people->get( (int) $fr_app['id'] ) )[ 'q:' . (int) $fr_app['id'] . ':' . $people->membership_plan( (int) $fr_app['id'], current_time( 'Y-m-d' ) )['year'] ] ), 'domanda: approvata con la tessera; l'iscrizione vale all'incasso della quota, che resta da pagare' );
+free_ok( ! $people->is_active_member( (int) $fr_app['id'] ) && 'free100' === $people->get( (int) $fr_app['id'] )['card_number'] && isset( Plugin::payments()->dues_for( $people->get( (int) $fr_app['id'] ) )[ 'q:' . (int) $fr_app['id'] . ':' . $people->membership_plan( (int) $fr_app['id'], current_time( 'Y-m-d' ) )['year'] ] ), 'domanda: approvata con la tessera; l\'iscrizione vale all\'incasso della quota, che resta da pagare' );
 \AssociazioneSemplice\Applications::submit( array_merge( $fr_in, array( 'first_name' => 'Rino', 'last_name' => 'Rifiutato', 'email' => 'rino.rifiutato@example.com', 'tax_code' => 'RSSMRA79A07H501S' ) ) );
 \AssociazioneSemplice\Applications::reject( (int) \AssociazioneSemplice\Applications::pending()[0]['id'] );
 free_ok( 0 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: rifiutata, senza pagamento non resta nulla' );

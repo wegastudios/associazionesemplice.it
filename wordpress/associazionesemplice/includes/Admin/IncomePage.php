@@ -59,7 +59,7 @@ final class IncomePage {
 			wp_send_json_success( array( 'person' => null ) );
 		}
 		$sy    = Settings::social_year( $date )->label();
-		$until = MemberType::GUEST === $person['type'] ? null : Plugin::people()->active_until( (int) $person['id'], $date );
+		$until = ! MemberType::is_member( $person['type'] ) ? null : Plugin::people()->active_until( (int) $person['id'], $date );
 		$acts  = array();
 		foreach ( Plugin::activities()->active_activity_ids( (int) $person['id'] ) as $aid ) {
 			$a = Plugin::activities()->get( $aid );

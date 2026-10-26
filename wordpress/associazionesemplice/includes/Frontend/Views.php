@@ -151,8 +151,8 @@ final class Views {
 			return ''; // tessera digitale spenta nelle impostazioni
 		}
 		$people = Plugin::people();
-		$until  = MemberType::GUEST === $p['type'] ? null : $people->active_until( (int) $p['id'] );
-		$active = MemberType::GUEST !== $p['type'] && $people->is_active_member( (int) $p['id'] ); // un socio sospeso o uscito non ha la tessera valida, come al controllo con il QR
+		$until  = ! MemberType::is_member( $p['type'] ) ? null : $people->active_until( (int) $p['id'] );
+		$active = MemberType::is_member( $p['type'] ) && $people->is_active_member( (int) $p['id'] ); // un socio sospeso o uscito non ha la tessera valida, come al controllo con il QR
 		$assoc  = (string) Settings::get( 'association_name' );
 		$valid  = MemberType::is_auto_renewed( $p['type'] ) ? 'Sempre rinnovata' : ( $until ? self::d( $until ) : '—' );
 		if ( \AssociazioneSemplice\CardLayout::active() ) { // tessera su un'immagine dell'associazione, con i dati posizionati sopra

@@ -197,7 +197,7 @@ final class PeoplePage {
 		echo '<tr><th>Data di nascita</th><td><input type="date" name="birth_date" value="' . esc_attr( $birth ) . '" max="' . esc_attr( current_time( 'Y-m-d' ) ) . '">'
 			. ( $minor ? ' <strong class="asem-warn">minorenne</strong>' : '' )
 			. '<p class="description">Facoltativa; serve per i minorenni (che hanno un tutore) e per i controlli sui certificati.</p></td></tr>';
-		if ( MemberType::GUEST !== $type ) {
+		if ( MemberType::is_member( $type ) ) {
 			$guardians = $id ? \AssociazioneSemplice\Guardians::of( $id ) : array();
 			$cands     = array_values( array_filter( $people->search(), function ( $x ) use ( $id ) {
 				return (int) $x['id'] !== $id && '' !== trim( (string) $x['email'] ) && MemberType::can_login( $x['type'] );
