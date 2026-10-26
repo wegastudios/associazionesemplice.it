@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.24
+Stable tag: 1.2.25
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,9 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.2.25 =
+* Online membership applications (shortcode, approved or refused by the secretariat), minors with parents or guardians who are not members, membership valid from payment, invitation for parents.
 
 = 1.2.24 =
 * Small screens: wide admin tables scroll by themselves, price lists lay out in a grid, help text about the email is correct, member area sections fit narrow phones; event lists and seat counts are no longer served stale by page caches.

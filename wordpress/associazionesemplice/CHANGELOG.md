@@ -2,6 +2,11 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.25
+- Domanda di adesione online: chi vuole iscriversi compila un modulo sul sito e la segreteria la approva o la rifiuta.
+- I minori si registrano con i genitori o i tutori: loro non sono soci e non compaiono nel libro soci, e ricevono l'invito per l'accesso.
+- La tessera vale dal momento in cui la quota è pagata online o se la quota è zero.
+
 ## 1.2.24
 - Sul telefono le tabelle larghe scorrono da sole e la pagina non si sposta di lato.
 - La tabella dei listini si legge bene anche su schermi stretti.

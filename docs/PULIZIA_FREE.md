@@ -38,7 +38,7 @@ Senza `--strict` stampa il rapporto (è il cruscotto dell'avanzamento); con `--s
 ## Stato (2026-10-20): completata
 
 Fasi 1-7 eseguite. `bash wordpress/check-free-clean.sh --strict` gira in CI (job «Installable zips») e non trova nulla nel pacchetto gratuito.
-Livello di compatibilità `ASEM_API`/`ASEM_PRO_API` = 6 (dalla 6 il Pro usa `Ui::inline_js` e `Plugin::post_data`), hook `asem_session_errors` (dalla 5 le risorse e gli allestimenti degli eventi; dalla 4 gli anni solari e le loro azioni sono nel gratuito; hook `asem_years_page_after`).
+Livello di compatibilità `ASEM_API`/`ASEM_PRO_API` = 7 (dalla 7 domanda di adesione online e minori; dalla 6 il Pro usa `Ui::inline_js` e `Plugin::post_data`), hook `asem_session_errors` (dalla 5 le risorse e gli allestimenti degli eventi; dalla 4 gli anni solari e le loro azioni sono nel gratuito; hook `asem_years_page_after`).
 
 ### Punti di estensione del gratuito (filtri e azioni `asem_*`)
 - Registro: `Edition::register()`, `asem_feature_available`, `asem_features_suspended`, `asem_feature_unavailable_message|html`.
