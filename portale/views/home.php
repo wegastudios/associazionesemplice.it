@@ -14,7 +14,7 @@ $copy = array(
 		'Importazione ed esportazione degli elenchi',
 		'Copia di sicurezza dei dati',
 	) ),
-	'lite' => array( 'tagline' => 'Tutto il gratuito, più incassi online e comunicazione ai soci. Senza la parte fiscale.', 'lead' => 'Tutto il Free, più:', 'features' => array(
+	'lite' => array( 'tagline' => 'Tutto il gratuito, più incassi online e comunicazione ai soci. Senza la parte fiscale.', 'tag' => 'Il più scelto', 'lead' => 'Tutto il Free, più:', 'features' => array(
 		'Pagamenti online con carta, PayPal e WooCommerce',
 		'Più livelli di socio, quote diverse e nucleo familiare',
 		'Conti multipli, fondi e giroconti',
@@ -26,7 +26,7 @@ $copy = array(
 		'Tessera in Apple Wallet e Google Wallet',
 		'Testi personalizzabili e lingue',
 	) ),
-	'full' => array( 'tagline' => 'Per chi vuole anche la parte fiscale dell\'ente.', 'tag' => 'Il più completo', 'lead' => 'Tutto il Pro Contabile, più:', 'features' => array(
+	'full' => array( 'tagline' => 'Per chi vuole anche la parte fiscale dell\'ente.', 'lead' => 'Tutto il Pro Contabile, più:', 'features' => array(
 		'IVA su quote, attività, incassi e spese',
 		'5 per mille con rendiconto sull\'utilizzo',
 		'Rendiconto per cassa per il commercialista',
@@ -111,7 +111,7 @@ $faq = array(
 		$prevLabel = $p['label'];
 		$m    = $p['prices']['month']['cents'] ?? null;
 		$y    = $p['prices']['year']['cents'] ?? null;
-		$hot  = 'full' === $code;
+		$hot  = 'lite' === $code;
 	?>
 		<div class="plan<?php echo $hot ? ' hot' : ''; ?>">
 			<?php if ( $tag ) : ?><span class="tag"><?php echo e( $tag ); ?></span><?php endif; ?>
