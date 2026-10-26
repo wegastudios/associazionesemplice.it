@@ -2,6 +2,11 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.27
+- Nuove votazioni e sondaggi, anche a scrutinio segreto, per tutti i soci o per chi è iscritto a un'attività.
+- Nuovo inventario dei beni con prestiti ai soci, scadenze e promemoria automatici.
+- Nuovo archivio documenti riservato: ogni file è visibile a segreteria, soci o tutti.
+
 ## 1.2.26
 - Per ogni metodo di pagamento online puoi indicare quanto costa incassare (una cifra fissa e/o una percentuale) e, se vuoi, ribaltare la commissione su chi paga (spento di partenza: la legge lo vieta sulle carte dei consumatori).
 - Sotto il pulsante di pagamento il socio legge la commissione, se è a suo carico.
