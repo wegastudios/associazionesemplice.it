@@ -2,6 +2,11 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.26
+- Per ogni metodo di pagamento online puoi indicare quanto costa incassare (una cifra fissa e/o una percentuale) e, se vuoi, ribaltare la commissione su chi paga (spento di partenza: la legge lo vieta sulle carte dei consumatori).
+- Sotto il pulsante di pagamento il socio legge la commissione, se è a suo carico.
+- Gli incassi con SumUp entrano in prima nota sul conto SumUp.
+
 ## 1.2.25
 - Domanda di adesione online: chi vuole iscriversi compila un modulo sul sito e la segreteria la approva o la rifiuta.
 - I minori si registrano con i genitori o i tutori: loro non sono soci e non compaiono nel libro soci, e ricevono l'invito per l'accesso.

@@ -145,7 +145,14 @@ Dalle **Impostazioni** si sceglie il gateway e si incollano le chiavi (cifrate n
 4. L'incasso entra in prima nota sul conto **Stripe** o **PayPal** (creato in automatico), una ricevuta per persona, con metodo e riferimento del gateway; il socio riceve la ricevuta via email.
 5. Se qualcosa non torna (importo diverso, prenotazione annullata nel frattempo) i soldi entrano comunque come "pagamento online non abbinato" e il pagamento è segnato **da controllare** in *Pagamenti online*.
 
-Commissioni, payout sul conto corrente e rimborsi si registrano a mano (spesa e giroconto); i rimborsi si fanno dal pannello del gateway.
+Payout sul conto corrente e rimborsi si registrano a mano (giroconto e spesa); le commissioni si registrano da sole come spesa stimata, se lo scegli (vedi sotto); i rimborsi si fanno dal pannello del gateway.
+
+### SumUp e commissioni di incasso
+
+- **SumUp** è il terzo metodo diretto, accanto a Stripe e PayPal (anche insieme: «Stripe, PayPal e SumUp»). Si inserisce il **codice commerciante** e la **chiave API** (cifrata); il socio paga su una pagina ospitata da SumUp (checkout ospitato) e il pagamento si conferma al ritorno sul sito e con il controllo automatico ogni ora, senza webhook. L'incasso entra in prima nota sul conto «SumUp». «Verifica connessione» legge il profilo dell'account e controlla che il codice commerciante corrisponda alla chiave. SumUp non ha una modalità di prova sul sito: per provare serve un account di prova SumUp.
+- **Commissioni**: per ogni metodo (Stripe, PayPal, SumUp) si indica quanto costa incassare: una commissione **fissa** e/o una **percentuale** sul totale addebitato. Con «Registra come spesa la commissione stimata», a ogni pagamento confermato il plugin scrive in prima nota la spesa «Commissione di incasso (stima)» sul conto del metodo usato; quando arriva l'estratto conto del gestore si corregge se la cifra vera è diversa. Non vale per le domande di adesione né per WooCommerce (ha le sue commissioni).
+- **Ribaltare la commissione su chi paga** (spento di partenza, per metodo): il totale addebitato aumenta di quanto serve a coprire la commissione (calcolata sul totale pagato) e il socio la vede sotto il pulsante; in prima nota entra come entrata «commissione di incasso a carico di chi paga». **Attenzione alla legge**: in Italia e nell'UE è vietato far pagare un supplemento a chi paga con carta (e con alcuni bonifici e addebiti) se è un consumatore (PSD2, D.Lgs. 11/2010); la scelta e la responsabilità sono dell'associazione.
+
 
 ## Allegati alle spese (scontrini e fatture)
 

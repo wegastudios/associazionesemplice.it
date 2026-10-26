@@ -109,8 +109,10 @@
 	if (payProvider) {
 		var applyProvider = function () {
 			var p = payProvider.value;
-			$$('.asem-pay-stripe').forEach(function (r) { r.style.display = (p === 'stripe' || p === 'stripe_paypal') ? '' : 'none'; });
-			$$('.asem-pay-paypal').forEach(function (r) { r.style.display = (p === 'paypal' || p === 'stripe_paypal') ? '' : 'none'; });
+			var has = function (g) { return p.split('_').indexOf(g) >= 0; };
+			$$('.asem-pay-stripe').forEach(function (r) { r.style.display = has('stripe') ? '' : 'none'; });
+			$$('.asem-pay-paypal').forEach(function (r) { r.style.display = has('paypal') ? '' : 'none'; });
+			$$('.asem-pay-sumup').forEach(function (r) { r.style.display = has('sumup') ? '' : 'none'; });
 			$$('.asem-pay-woocommerce').forEach(function (r) { r.style.display = p === 'woocommerce' ? '' : 'none'; });
 		};
 		payProvider.addEventListener('change', applyProvider);

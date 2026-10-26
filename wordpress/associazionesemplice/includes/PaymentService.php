@@ -176,6 +176,8 @@ class PaymentService extends OfflinePayments {
 			Audit::log( 'payment.created', 'payment', $wid, array( 'provider' => $provider, 'cents' => $total, 'items' => count( $items ) ) );
 			return $url;
 		}
+		$items = $this->with_fee( $items, $provider, (int) $actor['id'], trim( (string) $actor['first_name'] . ' ' . (string) $actor['last_name'] ) ); // commissione a carico di chi paga, se il metodo la ribalta
+		$total = PaymentItems::total( $items );
 		$this->db()->insert(
 			Db::t( 'payments' ),
 			array(
@@ -189,14 +191,7 @@ class PaymentService extends OfflinePayments {
 		$cfg       = ProSettings::payment_config();
 		$brand     = (string) Settings::get( 'association_name' );
 		try {
-			if ( PaymentConfig::STRIPE === $provider ) {
-				$params = StripeApi::checkout_params( $items, $public, (string) $actor['email'], $success, $cancel );
-				$res    = StripeApi::create_session( $this->http(), $cfg['stripe_secret_key'], $params, $public );
-			} else {
-				$live  = 'live' === $cfg['paypal_mode'];
-				$token = PayPalApi::access_token( $this->http(), $live, $cfg['paypal_client_id'], $cfg['paypal_client_secret'] );
-				$res   = PayPalApi::create_order( $this->http(), $live, $token, PayPalApi::order_payload( $items, $public, $success, $cancel, $brand ), $public );
-			}
+			$res = $this->gateway_session( $provider, $items, $public, (string) $actor['email'], $success, $cancel, $cfg, $brand );
 		} catch ( \RuntimeException $e ) {
 			$this->update( $id, array( 'status' => 'failed', 'error' => mb_substr( $e->getMessage(), 0, 250 ) ) );
 			Audit::log( 'payment.failed', 'payment', $id, array( 'provider' => $provider ) );
@@ -205,6 +200,74 @@ class PaymentService extends OfflinePayments {
 		$this->update( $id, array( 'status' => 'pending', 'provider_ref' => $res['id'] ) );
 		Audit::log( 'payment.created', 'payment', $id, array( 'provider' => $provider, 'cents' => $total, 'items' => count( $items ) ) );
 		return $res['url'];
+	}
+
+	/** Crea la pagina di pagamento sul gateway scelto. @return array ['id' => riferimento, 'url' => pagina di pagamento] @throws \RuntimeException */
+	private function gateway_session( string $provider, array $items, string $public, string $email, string $success, string $cancel, array $cfg, string $brand ): array {
+		if ( PaymentConfig::STRIPE === $provider ) {
+			$params = StripeApi::checkout_params( $items, $public, $email, $success, $cancel );
+			return StripeApi::create_session( $this->http(), $cfg['stripe_secret_key'], $params, $public );
+		}
+		if ( PaymentConfig::SUMUP === $provider ) {
+			return SumUpApi::create_checkout( $this->http(), $cfg['sumup_api_key'], SumUpApi::checkout_payload( $items, $public, $cfg['sumup_merchant_code'], $success, $brand ) );
+		}
+		$live  = 'live' === $cfg['paypal_mode'];
+		$token = PayPalApi::access_token( $this->http(), $live, $cfg['paypal_client_id'], $cfg['paypal_client_secret'] );
+		return PayPalApi::create_order( $this->http(), $live, $token, PayPalApi::order_payload( $items, $public, $success, $cancel, $brand ), $public );
+	}
+
+	/**
+	 * Aggiunge la voce «commissione di incasso» se il metodo è impostato per ribaltarla su chi paga (spento di default: va usato solo dove la
+	 * legge lo consente). Il supplemento è calcolato perché, tolta la commissione dal totale addebitato, resti l'importo dovuto.
+	 */
+	private function with_fee( array $items, string $provider, int $person_id, string $person_name ): array {
+		if ( ! in_array( $provider, PaymentConfig::fee_gateways(), true ) ) {
+			return $items;
+		}
+		list( $fixed, $bp, $pass ) = PaymentConfig::fee_of( Settings::all(), $provider );
+		if ( ! $pass || ( 0 === $fixed && 0 === $bp ) ) {
+			return $items;
+		}
+		$base = PaymentItems::total( $items );
+		$fee  = PaymentConfig::gross_up( $base, $fixed, $bp ) - $base;
+		if ( $fee > 0 ) {
+			$items[] = array( 'type' => PaymentItems::FEE, 'person_id' => $person_id, 'person_name' => $person_name, 'amount_cents' => $fee, 'label' => 'Commissione di incasso' );
+		}
+		return $items;
+	}
+
+	/**
+	 * Registra in prima nota, come spesa, la commissione di incasso stimata dalle impostazioni (fisso + percentuale sul totale addebitato) quando
+	 * l'amministratore lo ha scelto. Se non riesce non succede nulla: l'incasso è già registrato. @return int centesimi registrati
+	 */
+	private function book_fee( array $p, int $charged_cents, string $account_method, int $account_id, string $ref ): int {
+		if ( ! Settings::get( 'pay_fee_book' ) || ! in_array( $p['provider'], PaymentConfig::fee_gateways(), true ) ) {
+			return 0;
+		}
+		list( $fixed, $bp ) = PaymentConfig::fee_of( Settings::all(), $p['provider'] );
+		$fee = PaymentConfig::fee_cents( $charged_cents, $fixed, $bp );
+		if ( $fee <= 0 ) {
+			return 0;
+		}
+		try {
+			$ledger = Plugin::ledger();
+			$ledger->record_expense(
+				array(
+					'date'         => Db::today(),
+					'account_id'   => $account_id,
+					'method'       => $account_method,
+					'category_id'  => $ledger->category_id_of_kind( 'general_cost' ),
+					'amount_cents' => $fee,
+					'description'  => 'Commissione di incasso (stima) — pagamento online n. ' . (int) $p['id'],
+					'document_ref' => $ref,
+				)
+			);
+			Audit::log( 'payment.fee_booked', 'payment', (int) $p['id'], array( 'cents' => $fee ) );
+			return $fee;
+		} catch ( \Throwable $e ) {
+			Audit::log( 'payment.fee_failed', 'payment', (int) $p['id'], array( 'error' => mb_substr( $e->getMessage(), 0, 120 ) ) );
+			return 0;
+		}
 	}
 
 	// ---------- Quota della domanda di adesione ----------
@@ -264,14 +327,7 @@ class PaymentService extends OfflinePayments {
 			$email = $g ? (string) $g['email'] : '';
 		}
 		try {
-			if ( PaymentConfig::STRIPE === $provider ) {
-				$params = StripeApi::checkout_params( $items, $public, $email, $success, $cancel );
-				$res    = StripeApi::create_session( $this->http(), $cfg['stripe_secret_key'], $params, $public );
-			} else {
-				$live  = 'live' === $cfg['paypal_mode'];
-				$token = PayPalApi::access_token( $this->http(), $live, $cfg['paypal_client_id'], $cfg['paypal_client_secret'] );
-				$res   = PayPalApi::create_order( $this->http(), $live, $token, PayPalApi::order_payload( $items, $public, $success, $cancel, $brand ), $public );
-			}
+			$res = $this->gateway_session( $provider, $items, $public, $email, $success, $cancel, $cfg, $brand );
 		} catch ( \RuntimeException $e ) {
 			$this->update( $id, array( 'status' => 'failed', 'error' => mb_substr( $e->getMessage(), 0, 250 ) ) );
 			Audit::log( 'payment.failed', 'payment', $id, array( 'provider' => $provider ) );
@@ -387,7 +443,7 @@ class PaymentService extends OfflinePayments {
 		if ( 'paid' === $p['status'] ) {
 			return 'Pagamento ricevuto: grazie!';
 		}
-		return 'Pagamento in attesa di conferma: appena Stripe o PayPal lo confermano, lo registriamo.';
+		return 'Pagamento in attesa di conferma: appena il gestore del pagamento lo conferma, lo registriamo.';
 	}
 
 	/** Interroga il gateway e, se il pagamento risulta riuscito, lo registra. @return bool true se è stato registrato ora */
@@ -404,6 +460,16 @@ class PaymentService extends OfflinePayments {
 				}
 				if ( 'expired' === ( $s['status'] ?? '' ) ) {
 					$this->update( (int) $p['id'], array( 'status' => 'expired' ) );
+				}
+				return false;
+			}
+			if ( PaymentConfig::SUMUP === $p['provider'] ) {
+				$c = SumUpApi::retrieve_checkout( $this->http(), $cfg['sumup_api_key'], $p['provider_ref'] );
+				if ( SumUpApi::is_paid( $c ) ) {
+					return $this->finalize( $p, SumUpApi::paid_eur_cents( $c ), SumUpApi::transaction_id( $c ) );
+				}
+				if ( SumUpApi::is_failed( $c ) ) {
+					$this->update( (int) $p['id'], array( 'status' => 'failed', 'error' => 'SumUp: pagamento non riuscito o scaduto.' ) );
 				}
 				return false;
 			}
@@ -517,7 +583,7 @@ class PaymentService extends OfflinePayments {
 		$method      = $p['provider'];
 		$today       = Db::today();
 		$ref         = substr( (string) $p['provider_ref'], 0, 80 );
-		$labels      = array( 'paypal' => 'PayPal', 'woocommerce' => 'WooCommerce' );
+		$labels      = array( 'paypal' => 'PayPal', 'sumup' => 'SumUp', 'woocommerce' => 'WooCommerce' );
 		$note        = 'Pagamento online (' . ( $labels[ $p['provider'] ] ?? 'Stripe' ) . ')';
 		$allocated   = 0;
 		$review      = false;
@@ -566,6 +632,7 @@ class PaymentService extends OfflinePayments {
 		}
 		$this->update( (int) $p['id'], array( 'status' => 'paid', 'paid_at' => Db::now(), 'provider_payment_id' => mb_substr( $provider_payment_id, 0, 120 ), 'allocated_cents' => $allocated, 'review' => $review ? 1 : 0, 'error' => $error ) );
 		Audit::log( 'payment.paid', 'payment', (int) $p['id'], array( 'provider' => $p['provider'], 'cents' => $paid_cents, 'review' => $review ) );
+		$this->book_fee( $p, $paid_cents, $method, $account, $ref ); // spesa «commissioni di incasso» (stima), se l'amministratore l'ha scelta
 		$this->send_receipt_email( $this->get( (int) $p['id'] ), $items );
 		return true;
 	}
@@ -600,6 +667,8 @@ class PaymentService extends OfflinePayments {
 				return array( 'category_id' => $ledger->category_id_of_kind( 'other_income' ), 'amount_cents' => (int) $i['amount_cents'], 'description' => mb_substr( 'Acquisto crediti: ' . (int) $i['credits'] . ' — ' . $note, 0, 255 ) );
 			case PaymentItems::RESERVATION:
 				return array( 'category_id' => $ledger->category_id_of_kind( 'other_income' ), 'amount_cents' => (int) $i['amount_cents'], 'reservation_id' => (int) $i['reservation_id'], 'description' => mb_substr( $note . ' — ' . ( $i['label'] ?? '' ), 0, 255 ) );
+			case PaymentItems::FEE:
+				return array( 'category_id' => $ledger->category_id_of_kind( 'other_income' ), 'amount_cents' => (int) $i['amount_cents'], 'description' => mb_substr( 'Commissione di incasso a carico di chi paga — ' . $note, 0, 255 ) );
 			default:
 				return array( 'category_id' => $ledger->category_id_of_kind( 'activity_fee' ), 'amount_cents' => (int) $i['amount_cents'], 'activity_id' => (int) $i['activity_id'], 'session_id' => (int) $i['session_id'], 'description' => $note );
 		}

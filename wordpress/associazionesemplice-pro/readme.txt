@@ -3,7 +3,7 @@ Contributors: wegastudios
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.22
+Stable tag: 1.1.23
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,9 @@ With a license key entered in Associazione Semplice Pro, once a day (and when yo
 The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, Mozilla Public License 2.0) to tell which domain a license covers.
 
 == Changelog ==
+
+= 1.1.23 =
+* SumUp as a payment method (hosted checkout); collecting costs per method, optional pass-on to the payer and automatic estimated expense in the cash book. Requires Associazione Semplice 1.2.26.
 
 = 1.1.22 =
 * Online payment of the membership application fee (Stripe, PayPal); if the application is refused the payment stays to be refunded. Requires Associazione Semplice 1.2.25.

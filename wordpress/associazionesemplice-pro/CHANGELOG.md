@@ -2,6 +2,11 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.1.23
+- Nuovo metodo di pagamento: SumUp. Il socio paga su una pagina sicura di SumUp e l'incasso entra in prima nota da solo.
+- Commissioni di incasso per ogni metodo: se vuoi, la spesa stimata si registra da sola in prima nota a ogni pagamento, e la commissione si può ribaltare su chi paga (spento di partenza).
+- Aggiorna insieme ad Associazione Semplice 1.2.26.
+
 ## 1.1.22
 - Pagamento online della quota quando si chiede di iscriversi (carta o PayPal): se la domanda viene rifiutata la somma resta da rimborsare.
 - Aggiorna insieme ad Associazione Semplice 1.2.25.

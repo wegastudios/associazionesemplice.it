@@ -14,11 +14,16 @@ final class PaymentConfig {
 	const STRIPE      = 'stripe';
 	const PAYPAL      = 'paypal';
 	const BOTH        = 'stripe_paypal';
+	const SUMUP       = 'sumup';
+	const STRIPE_SUMUP = 'stripe_sumup';
+	const PAYPAL_SUMUP = 'paypal_sumup';
+	const ALL         = 'stripe_paypal_sumup';
 
 	/** Diciture predefinite dei pulsanti e delle note: si possono personalizzare da Impostazioni → Pagamenti online. */
 	const DEFAULT_LABELS = array(
 		self::STRIPE      => 'Paga con carta',
 		self::PAYPAL      => 'Paga con PayPal',
+		self::SUMUP       => 'Paga con carta (SumUp)',
 		self::WOOCOMMERCE => 'Paga nel negozio',
 	);
 
@@ -29,6 +34,10 @@ final class PaymentConfig {
 			self::STRIPE      => 'Stripe (carta)',
 			self::PAYPAL      => 'PayPal',
 			self::BOTH        => 'Stripe e PayPal insieme',
+			self::SUMUP       => 'SumUp (carta)',
+			self::STRIPE_SUMUP => 'Stripe e SumUp insieme',
+			self::PAYPAL_SUMUP => 'PayPal e SumUp insieme',
+			self::ALL         => 'Stripe, PayPal e SumUp insieme',
 		);
 	}
 
@@ -45,8 +54,66 @@ final class PaymentConfig {
 				return array( self::PAYPAL );
 			case self::BOTH:
 				return array( self::STRIPE, self::PAYPAL );
+			case self::SUMUP:
+				return array( self::SUMUP );
+			case self::STRIPE_SUMUP:
+				return array( self::STRIPE, self::SUMUP );
+			case self::PAYPAL_SUMUP:
+				return array( self::PAYPAL, self::SUMUP );
+			case self::ALL:
+				return array( self::STRIPE, self::PAYPAL, self::SUMUP );
 		}
 		return array();
+	}
+
+	/** Metodi con commissioni configurabili (il negozio WooCommerce ha le sue). */
+	public static function fee_gateways(): array {
+		return array( self::STRIPE, self::PAYPAL, self::SUMUP );
+	}
+
+	/** Commissione di incasso stimata su un importo: fisso + percentuale (punti base: 150 = 1,50%), arrotondata al centesimo. */
+	public static function fee_cents( int $amount_cents, int $fixed_cents, int $bp ): int {
+		if ( $amount_cents <= 0 ) {
+			return 0;
+		}
+		return max( 0, $fixed_cents ) + (int) round( $amount_cents * max( 0, $bp ) / 10000 );
+	}
+
+	/**
+	 * Importo da addebitare perché, tolta la commissione (fissa + percentuale sul totale addebitato), restino $base_cents: la commissione si calcola
+	 * sul totale pagato, quindi il supplemento è più della commissione calcolata sul solo importo dovuto.
+	 */
+	public static function gross_up( int $base_cents, int $fixed_cents, int $bp ): int {
+		if ( $base_cents <= 0 ) {
+			return 0;
+		}
+		$bp = max( 0, min( 2500, $bp ) );
+		return (int) ceil( ( $base_cents + max( 0, $fixed_cents ) ) * 10000 / ( 10000 - $bp ) );
+	}
+
+	/** Commissioni di un metodo dalle impostazioni: [fisso in centesimi, percentuale in punti base, ribaltare sul pagante]. */
+	public static function fee_of( array $settings, string $gateway ): array {
+		return array(
+			max( 0, min( 2000, (int) ( $settings[ 'pay_fee_fixed_' . $gateway ] ?? 0 ) ) ),
+			max( 0, min( 2500, (int) ( $settings[ 'pay_fee_pct_' . $gateway ] ?? 0 ) ) ),
+			! empty( $settings[ 'pay_fee_pass_' . $gateway ] ),
+		);
+	}
+
+	/** Frase sotto il pulsante quando la commissione è a carico di chi paga ('' se no). */
+	public static function fee_note( array $settings, string $gateway ): string {
+		list( $fixed, $bp, $pass ) = self::fee_of( $settings, $gateway );
+		if ( ! $pass || ( 0 === $fixed && 0 === $bp ) ) {
+			return '';
+		}
+		$parts = array();
+		if ( $bp > 0 ) {
+			$parts[] = rtrim( rtrim( number_format( $bp / 100, 2, ',', '' ), '0' ), ',' ) . '%';
+		}
+		if ( $fixed > 0 ) {
+			$parts[] = Money::format( $fixed );
+		}
+		return 'Con questo metodo si aggiunge una commissione di incasso (' . implode( ' + ', $parts ) . ') al totale.';
 	}
 
 	/**
@@ -132,6 +199,26 @@ final class PaymentConfig {
 				$warnings[] = 'PayPal è in modalità REALE: i pagamenti saranno veri.';
 			}
 		}
+		if ( self::SUMUP === $gateway ) {
+			$key  = trim( (string) ( $c['sumup_api_key'] ?? '' ) );
+			$code = trim( (string) ( $c['sumup_merchant_code'] ?? '' ) );
+			if ( '' === $key ) {
+				$errors[] = 'SumUp: manca la chiave API (da SumUp → Sviluppatori → Chiavi API).';
+			} elseif ( ! preg_match( '/^[A-Za-z0-9_\-]{16,}$/', $key ) ) {
+				$errors[] = 'SumUp: la chiave API non sembra valida.';
+			}
+			if ( '' === $code ) {
+				$errors[] = 'SumUp: manca il codice commerciante (merchant code, tipo MABCD123).';
+			} elseif ( ! preg_match( '/^[A-Za-z0-9]{4,20}$/', $code ) ) {
+				$errors[] = 'SumUp: il codice commerciante non sembra valido (solo lettere e cifre).';
+			}
+			if ( ! $https ) {
+				$warnings[] = 'SumUp: l\'indirizzo del sito è http. Per i pagamenti veri il sito deve essere servito in https: il ritorno dal pagamento potrebbe non funzionare.';
+			}
+			if ( empty( $errors ) ) {
+				$warnings[] = 'SumUp non ha una modalità di prova separata sul sito: con una chiave di un account reale i pagamenti sono veri (per provare usa un account di prova SumUp).';
+			}
+		}
 		return array( 'errors' => $errors, 'warnings' => $warnings );
 	}
 
@@ -152,6 +239,8 @@ final class PaymentConfig {
 				return 'Paghi su una pagina sicura di Stripe: i dati della carta non passano da questo sito.';
 			case self::PAYPAL:
 				return 'Paghi su una pagina sicura di PayPal: i dati della carta non passano da questo sito.';
+			case self::SUMUP:
+				return 'Paghi su una pagina sicura di SumUp: i dati della carta non passano da questo sito.';
 			case self::WOOCOMMERCE:
 				return 'Completi il pagamento nel negozio del sito: non appena risulta pagato, lo registriamo.';
 		}

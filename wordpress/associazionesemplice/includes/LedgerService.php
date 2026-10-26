@@ -104,7 +104,7 @@ class LedgerService {
 
 	/** Conto "Stripe" / "PayPal" in cui entrano gli incassi online (creato al primo pagamento). */
 	public function online_account( string $provider ): int {
-		$names = array( 'paypal' => 'PayPal', 'woocommerce' => 'WooCommerce' );
+		$names = array( 'paypal' => 'PayPal', 'sumup' => 'SumUp', 'woocommerce' => 'WooCommerce' );
 		$name  = $names[ $provider ] ?? 'Stripe';
 		foreach ( $this->accounts() as $a ) {
 			if ( $a['name'] === $name ) {

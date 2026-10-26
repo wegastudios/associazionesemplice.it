@@ -22,6 +22,7 @@ final class PaymentItems {
 	const RESERVATION  = 'reservation';
 	const CREDITS      = 'credits';
 	const APPLICATION  = 'application';
+	const FEE          = 'fee';          // commissione di incasso a carico di chi paga (solo se il metodo la ribalta)
 
 	/** Importo minimo accettato dai gateway (Stripe: 0,50 €). */
 	const MIN_TOTAL_CENTS = 50;
@@ -36,6 +37,8 @@ final class PaymentItems {
 				return 'r:' . (int) $i['reservation_id'] . ':' . (int) $i['person_id'];
 			case self::APPLICATION:
 				return 'a:' . (int) $i['person_id'] . ':' . $i['social_year'];
+			case self::FEE:
+				return 'f:' . (int) $i['person_id'];
 			case self::CREDITS:
 				return 'c:' . (int) $i['person_id'] . ':' . (int) $i['credits'];
 			default:
