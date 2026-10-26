@@ -78,6 +78,9 @@ final class ApplicationRules {
 				'phone'      => $t( 'guardian_phone' ),
 				'tax_code'   => TaxCode::normalize( $t( 'guardian_tax_code' ) ),
 			);
+			if ( '' !== $data['email'] && $data['email'] === $g['email'] ) {
+				$data['email'] = ''; // il minore ha scritto l'email del genitore: resta solo al genitore (due persone non possono avere la stessa)
+			}
 			if ( '' === $g['first_name'] || '' === $g['last_name'] ) {
 				$errors[] = 'Chi ha meno di 18 anni si iscrive con un genitore o tutore: scrivi il suo nome e cognome.';
 			}

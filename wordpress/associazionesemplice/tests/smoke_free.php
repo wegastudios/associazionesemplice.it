@@ -183,15 +183,15 @@ free_ok( ! \AssociazioneSemplice\Applications::online_payment(), 'domanda: senza
 $fr_form = \AssociazioneSemplice\Frontend\Shortcodes::render_view( 'adesione' );
 free_ok( false !== strpos( $fr_form, 'name="birth_date"' ) && false !== strpos( $fr_form, 'si paga in sede' ), 'domanda: il modulo funziona nel gratuito' );
 $fr_in = array(
-	'first_name' => 'Carla', 'last_name' => 'Gratis', 'email' => 'carla.gratis@example.com', 'phone' => '333 4040404', 'tax_code' => 'RSSMRA80A01H501U',
+	'first_name' => 'Carla', 'last_name' => 'Gratis', 'email' => 'carla.gratis@example.com', 'phone' => '333 4040404', 'tax_code' => 'RSSMRA79A01H501B',
 	'birth_date' => '1985-05-05', 'type' => 'ordinary', 'privacy_ok' => '1', 'rules_ok' => '1',
 );
 free_ok( 'ok' === \AssociazioneSemplice\Applications::submit( $fr_in )['status'] && 1 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: registrata nel gratuito' );
 $fr_app = \AssociazioneSemplice\Applications::pending()[0];
 free_ok( null === $fr_app['paid'] && 1000 === (int) $fr_app['fee_cents'], 'domanda: nessun pagamento online, quota da pagare in sede' );
 \AssociazioneSemplice\Applications::approve( (int) $fr_app['id'], 'free100' );
-free_ok( $people->is_active_member( (int) $fr_app['id'] ) && 'free100' === $people->get( (int) $fr_app['id'] )['card_number'], 'domanda: approvata, tessera e iscrizione' );
-\AssociazioneSemplice\Applications::submit( array_merge( $fr_in, array( 'first_name' => 'Rino', 'last_name' => 'Rifiutato', 'email' => 'rino.rifiutato@example.com' ) ) );
+free_ok( ! $people->is_active_member( (int) $fr_app['id'] ) && 'free100' === $people->get( (int) $fr_app['id'] )['card_number'] && isset( Plugin::payments()->dues_for( $people->get( (int) $fr_app['id'] ) )[ 'q:' . (int) $fr_app['id'] . ':' . $people->membership_plan( (int) $fr_app['id'], current_time( 'Y-m-d' ) )['year'] ] ), 'domanda: approvata con la tessera; l'iscrizione vale all'incasso della quota, che resta da pagare' );
+\AssociazioneSemplice\Applications::submit( array_merge( $fr_in, array( 'first_name' => 'Rino', 'last_name' => 'Rifiutato', 'email' => 'rino.rifiutato@example.com', 'tax_code' => 'RSSMRA79A07H501S' ) ) );
 \AssociazioneSemplice\Applications::reject( (int) \AssociazioneSemplice\Applications::pending()[0]['id'] );
 free_ok( 0 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: rifiutata, senza pagamento non resta nulla' );
 $fr_mum = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Mara', 'last_name' => 'Tutrice', 'email' => 'mara.tutrice@example.com' ) );

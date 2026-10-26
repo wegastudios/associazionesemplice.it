@@ -103,4 +103,12 @@ final class ApplicationRulesTest extends TestCase {
 		$r = $this->check( $this->minor( array( 'birth_date' => '2008-10-27' ) ) );
 		$this->assertTrue( $r['minor'] );
 	}
+
+	public function test_minor_email_equal_to_the_guardian_one_is_dropped(): void {
+		$r = $this->check( $this->minor( array( 'email' => 'Anna@Example.com' ) ) );
+		$this->assertSame( array(), $r['errors'] );
+		$this->assertSame( '', $r['data']['email'], 'l\'email resta solo al genitore' );
+		$r = $this->check( $this->minor( array( 'email' => 'luigi@example.com' ) ) );
+		$this->assertSame( 'luigi@example.com', $r['data']['email'] );
+	}
 }

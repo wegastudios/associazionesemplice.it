@@ -6351,7 +6351,7 @@ asem_ok( ! \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, (int) $mn_l
 
 // ---------- Domanda di adesione ----------
 $ap_in = array(
-	'first_name' => 'Aldo', 'last_name' => 'Adesioni', 'email' => 'Aldo.Adesioni@example.com', 'phone' => '333 1010101', 'tax_code' => 'RSSMRA80A01H501U',
+	'first_name' => 'Aldo', 'last_name' => 'Adesioni', 'email' => 'Aldo.Adesioni@example.com', 'phone' => '333 1010101', 'tax_code' => 'RSSMRA79A01H501B',
 	'birth_date' => '1980-01-01', 'type' => 'ordinary', 'rules_ok' => '1', 'privacy_ok' => '1',
 );
 asem_ok( 'off' === \AssociazioneSemplice\Applications::submit( $ap_in )['status'] && 0 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: spenta di default, non registra nulla' );
@@ -6376,6 +6376,8 @@ asem_ok( count( $ap_log ) >= 2 && false !== strpos( wp_json_encode( $ap_log ), '
 $ap_n    = count( $ap_mails );
 $ap_dup1 = \AssociazioneSemplice\Applications::submit( $ap_in );
 $ap_dup2 = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'email' => 'marta.madre@example.com' ) ) );
+$ap_dup3 = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'email' => 'altra.email@example.com' ) ) );
+asem_ok( 'ok' === $ap_dup3['status'] && 1 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: lo stesso codice fiscale già in coda ha la stessa risposta e non crea nulla' );
 asem_ok( 'ok' === $ap_dup1['status'] && 'ok' === $ap_dup2['status'] && 1 === \AssociazioneSemplice\Applications::pending_count() && count( $ap_mails ) === $ap_n, 'domanda: doppioni e email di soci esistenti hanno la stessa risposta e non creano nulla' );
 asem_ok( 'emailed' !== \AssociazioneSemplice\Frontend\FirstAccess::submit( 'Aldo Adesioni', 'aldo.adesioni@example.com', '333 1010101' ) && ! get_user_by( 'email', 'aldo.adesioni@example.com' ), 'domanda: con il «Primo accesso» chi non è ancora approvato non entra' );
 $ap_html = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Domande di adesione' );
@@ -6384,20 +6386,24 @@ asem_ok( false !== strpos( wp_json_encode( Admin\WpDashboard::todo_items() ), 'd
 asem_ok( null !== asem_throws( function () use ( $ap_aldo ) { \AssociazioneSemplice\Applications::approve( $ap_aldo, 'mn1' ); } ), 'approvazione: una tessera già assegnata è rifiutata' );
 $ap_msg = \AssociazioneSemplice\Applications::approve( $ap_aldo, 'ap100' );
 $ap_row = $people->get( $ap_aldo );
-asem_ok( false !== strpos( $ap_msg, 'ap100' ) && empty( $ap_row['application_status'] ) && 'ap100' === $ap_row['card_number'] && $people->is_active_member( $ap_aldo ) && 0 === \AssociazioneSemplice\Applications::pending_count(), 'approvazione: tessera assegnata e iscrizione all\'anno sociale' );
+asem_ok( false !== strpos( $ap_msg, 'ap100' ) && false !== strpos( $ap_msg, 'da incassare' ) && empty( $ap_row['application_status'] ) && 'ap100' === $ap_row['card_number'] && 0 === \AssociazioneSemplice\Applications::pending_count(), 'approvazione: tessera assegnata, quota da incassare' );
+asem_ok( ! $people->is_active_member( $ap_aldo ) && ! $people->has_membership( $ap_aldo, $mn_year ) && isset( Plugin::payments()->dues_for( $people->get( $ap_aldo ) )[ "q:$ap_aldo:" . $people->membership_plan( $ap_aldo, $today )['year'] ] ), 'approvazione senza quota pagata: nessuna iscrizione, la quota resta da pagare (in sede o dall\'area soci)' );
 $ap_ok_mail = $ap_mail_to( 'aldo.adesioni@example.com' );
-asem_ok( false !== strpos( (string) $ap_ok_mail['subject'], 'approvata' ) && 1 === preg_match( '/asem_activate=([0-9a-f.]+)/', (string) $ap_ok_mail['message'], $ap_m ), 'approvazione: email con il link per scegliere la password' );
+asem_ok( false !== strpos( (string) $ap_ok_mail['subject'], 'approvata' ) && false !== strpos( (string) $ap_ok_mail['message'], 'quota associativa' ) && 1 === preg_match( '/asem_activate=([0-9a-f.]+)/', (string) $ap_ok_mail['message'], $ap_m ), 'approvazione: email con il link per scegliere la password' );
 asem_ok( null !== asem_throws( function () use ( $ap_aldo ) { \AssociazioneSemplice\Applications::approve( $ap_aldo, 'ap101' ); } ), 'approvazione: una domanda già lavorata non si approva due volte' );
 $ap_res = \AssociazioneSemplice\Frontend\Activation::resolve( $ap_m[1] );
 asem_ok( 'ok' === $ap_res['status'], 'il link di approvazione è valido' );
 $ap_act = \AssociazioneSemplice\Frontend\Activation::complete(
 	$ap_m[1],
-	array( 'email' => 'aldo.adesioni@example.com', 'phone' => '333 1010101', 'password' => 'Password-123456', 'password2' => 'Password-123456', 'rules_ok' => '1', 'privacy_ok' => '1', 'tax_code' => 'RSSMRA80A01H501U', 'address' => 'Via Roma 1', 'zip' => '00100', 'city' => 'Roma' )
+	array( 'email' => 'aldo.adesioni@example.com', 'phone' => '333 1010101', 'password' => 'Password-123456', 'password2' => 'Password-123456', 'rules_ok' => '1', 'privacy_ok' => '1', 'tax_code' => 'RSSMRA79A01H501B', 'address' => 'Via Roma 1', 'zip' => '00100', 'city' => 'Roma' )
 );
 asem_ok( ! empty( $ap_act['ok'] ) && ! empty( $people->get( $ap_aldo )['wp_user_id'] ), 'il nuovo socio sceglie la password e ha il suo accesso' . ( empty( $ap_act['ok'] ) ? ': ' . (string) ( $ap_act['error'] ?? '' ) : '' ) );
 
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $ap_aldo, 'lines' => array( array( 'category_id' => $ledger->category_id_of_kind( 'membership' ), 'amount_cents' => 1000 ) ) ) );
+asem_ok( $people->is_active_member( $ap_aldo ), 'incassata la quota in sede: la tessera diventa valida' );
+
 // rifiuto
-\AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'first_name' => 'Rita', 'last_name' => 'Rifiuti', 'email' => 'rita.rifiuti@example.com' ) ) );
+\AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'first_name' => 'Rita', 'last_name' => 'Rifiuti', 'email' => 'rita.rifiuti@example.com', 'tax_code' => 'RSSMRA79A03H501I' ) ) );
 $ap_rita = (int) \AssociazioneSemplice\Applications::pending()[0]['id'];
 \AssociazioneSemplice\Applications::reject( $ap_rita );
 asem_ok( null === $people->get( $ap_rita ) && 0 === \AssociazioneSemplice\Applications::pending_count() && 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE id = %d', $ap_rita ) ), 'rifiuto: senza pagamento la domanda sparisce, nessun dato personale resta' );
@@ -6416,20 +6422,25 @@ asem_ok( 'Gianna' === $ap_kid['guardian']['first_name'] && 'Gianni' === $ap_kid[
 $ap_kid_id = (int) $ap_kid['id'];
 \AssociazioneSemplice\Applications::approve( $ap_kid_id, 'ap200' );
 $ap_g = $people->find_by_email( 'gianna.giovane@example.com' );
-asem_ok( $ap_g && $people->get( $ap_kid_id ) && \AssociazioneSemplice\Guardians::is_guardian_of( (int) $ap_g['id'], $ap_kid_id ) && $people->is_active_member( $ap_kid_id ) && empty( $people->get( $ap_kid_id )['wp_user_id'] ), 'minorenne approvato: genitore registrato e collegato, il minore ha la tessera e non un accesso' );
+asem_ok( $ap_g && $people->get( $ap_kid_id ) && \AssociazioneSemplice\Guardians::is_guardian_of( (int) $ap_g['id'], $ap_kid_id ) && ! $people->is_active_member( $ap_kid_id ) && empty( $people->get( $ap_kid_id )['wp_user_id'] ), 'minorenne approvato: genitore registrato e collegato, il minore ha la tessera ma non un accesso; la quota è da incassare' );
+asem_ok( 'guardian' === $ap_g['type'] && ! \AssociazioneSemplice\MemberType::is_member( $ap_g['type'] ) && array() === array_filter( \AssociazioneSemplice\MemberBook::rows(), function ( $x ) use ( $ap_g ) { return (int) $x['id'] === (int) $ap_g['id']; } ), 'il genitore registrato dalla domanda non è un socio: non sta nel libro soci' );
 $ap_kid_row = $people->get( $ap_kid_id );
 asem_ok( (int) $ap_kid_row['rules_accepted_by'] === (int) $ap_g['id'] && (int) $ap_kid_row['privacy_consent_by'] === (int) $ap_g['id'], 'minorenne approvato: regolamento e privacy accettati dal genitore, registrato chi' );
 $ap_gm = $ap_mail_to( 'gianna.giovane@example.com' );
 asem_ok( false !== strpos( (string) $ap_gm['subject'], 'approvata' ) && 1 === preg_match( '/asem_activate=([0-9a-f.]+)/', (string) $ap_gm['message'], $ap_gl ), 'minorenne approvato: il genitore riceve il link per scegliere la password' );
 $ap_gact = \AssociazioneSemplice\Frontend\Activation::complete(
 	$ap_gl[1],
-	array( 'email' => 'gianna.giovane@example.com', 'phone' => '339 2020202', 'password' => 'Password-123456', 'password2' => 'Password-123456', 'rules_ok' => '1', 'privacy_ok' => '1', 'tax_code' => 'RSSMRA80A01H501U', 'address' => 'Via Roma 2', 'zip' => '00100', 'city' => 'Roma' )
+	array( 'email' => 'gianna.giovane@example.com', 'phone' => '339 2020202', 'password' => 'Password-123456', 'password2' => 'Password-123456', 'rules_ok' => '1', 'privacy_ok' => '1', 'tax_code' => 'RSSMRA79A02H501G', 'address' => 'Via Roma 2', 'zip' => '00100', 'city' => 'Roma' )
 );
 asem_ok( ! empty( $ap_gact['ok'] ), 'il genitore attiva il suo accesso' . ( empty( $ap_gact['ok'] ) ? ': ' . (string) ( $ap_gact['error'] ?? '' ) : '' ) );
-asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::section_minors( $people->get( (int) $ap_g['id'] ) ), 'Gianni' ), 'il genitore vede il figlio nella sua area' );
+$ap_g_row = $people->get( (int) $ap_g['id'] );
+$ap_g_due = array_keys( Plugin::payments()->dues_for( $ap_g_row ) );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::section_minors( $ap_g_row ), 'Gianni' ) && Access::user_can( (int) $ap_g_row['wp_user_id'], 'asem_book_for', $ap_kid_id ) && '' === \AssociazioneSemplice\Frontend\Views::section_card( $ap_g_row ), 'il genitore (non socio) vede il figlio, può agire per lui e non ha una tessera propria' );
+asem_ok( array() === array_filter( $ap_g_due, function ( $k ) use ( $ap_g ) { return 0 === strpos( $k, 'q:' . (int) $ap_g['id'] . ':' ); } ) && in_array( "q:$ap_kid_id:" . $people->membership_plan( $ap_kid_id, $today )['year'], $ap_g_due, true ), 'il genitore non ha quote proprie ma paga quella del figlio' );
+asem_ok( null !== asem_throws( function () use ( $ap_g ) { Plugin::people()->set_membership( (int) $ap_g['id'], Settings::membership_year()->label(), true ); } ), 'il genitore non può avere un\'iscrizione da socio' );
 
 // minorenne con genitore già socio
-\AssociazioneSemplice\Applications::submit( array_merge( $ap_kid_in, array( 'first_name' => 'Mia', 'last_name' => 'Madre', 'guardian_email' => 'marta.madre@example.com', 'guardian_first_name' => 'Marta', 'guardian_last_name' => 'Madre' ) ) );
+\AssociazioneSemplice\Applications::submit( array_merge( $ap_kid_in, array( 'first_name' => 'Mia', 'last_name' => 'Madre', 'tax_code' => 'BNCGNN12B03F205L', 'guardian_email' => 'marta.madre@example.com', 'guardian_first_name' => 'Marta', 'guardian_last_name' => 'Madre' ) ) );
 $ap_mia = (int) \AssociazioneSemplice\Applications::pending()[0]['id'];
 $ap_ppl = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) );
 \AssociazioneSemplice\Applications::approve( $ap_mia, 'ap201' );
@@ -6448,7 +6459,7 @@ $ap_post = function ( array $data ) use ( $AP ) {
 	$_POST                     = $old_p;
 	return $html;
 };
-$ap_ok_post = array_merge( $ap_in, array( 'first_name' => 'Pia', 'last_name' => 'Postale', 'email' => 'pia.postale@example.com', 'asem_apply_go' => '1', 'website' => '', 't' => $AP::make_token( time() - 30 ) ) );
+$ap_ok_post = array_merge( $ap_in, array( 'first_name' => 'Pia', 'last_name' => 'Postale', 'tax_code' => 'RSSMRA79A04H501K', 'email' => 'pia.postale@example.com', 'asem_apply_go' => '1', 'website' => '', 't' => $AP::make_token( time() - 30 ) ) );
 delete_transient( 'asem_ap_' . md5( \AssociazioneSemplice\ClientIp::get() ) );
 $ap_pn  = \AssociazioneSemplice\Applications::pending_count();
 $ap_out = $ap_post( $ap_ok_post );
@@ -6477,8 +6488,8 @@ $ap_ps->set_http( $fake_gateway );
 asem_ok( $ap_ps->enabled() && $ap_ps->application_online() && \AssociazioneSemplice\Applications::online_payment(), 'quota online: attiva con Stripe e l\'impostazione accesa' );
 $ap_fee = \AssociazioneSemplice\Applications::fee_cents( 'ordinary' );
 asem_ok( $ap_fee >= 50, 'la quota proposta permette il pagamento online' );
-\AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'first_name' => 'Paolo', 'last_name' => 'Paga', 'email' => 'paolo.paga@example.com' ) ) );
-\AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'first_name' => 'Rosa', 'last_name' => 'Rimborsi', 'email' => 'rosa.rimborsi@example.com' ) ) );
+\AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'first_name' => 'Paolo', 'last_name' => 'Paga', 'email' => 'paolo.paga@example.com', 'tax_code' => 'RSSMRA79A05H501O' ) ) );
+\AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'first_name' => 'Rosa', 'last_name' => 'Rimborsi', 'email' => 'rosa.rimborsi@example.com', 'tax_code' => 'RSSMRA79A06H501Q' ) ) );
 $ap_paolo = 0;
 $ap_rosa  = 0;
 foreach ( \AssociazioneSemplice\Applications::pending() as $ap_x ) {

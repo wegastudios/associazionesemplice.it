@@ -34,6 +34,9 @@ final class Guardians {
 		if ( empty( $minor['birth_date'] ) ) {
 			$errors[] = 'Per collegare un tutore serve la data di nascita del minore.';
 		}
+		if ( ! MemberType::can_login( (string) ( $guardian['type'] ?? '' ) ) ) {
+			$errors[] = 'Il tutore deve poter entrare nell\'area riservata: un socio o una persona registrata come genitore o tutore (un ospite non può).';
+		}
 		$email = trim( (string) ( $guardian['email'] ?? '' ) );
 		if ( '' === $email || ! filter_var( $email, FILTER_VALIDATE_EMAIL ) ) {
 			$errors[] = 'Il tutore deve avere un\'email.';
@@ -97,6 +100,30 @@ final class Guardians {
 		return $out;
 	}
 
+	/**
+	 * I tutori di molte persone con una sola interrogazione (per gli avvisi ai partecipanti).
+	 *
+	 * @param int[] $person_ids
+	 * @return array<int,array[]> id persona => tutori
+	 */
+	public static function map_for( array $person_ids ): array {
+		$ids = array_values( array_unique( array_filter( array_map( 'intval', $person_ids ) ) ) );
+		if ( ! $ids ) {
+			return array();
+		}
+		$rows = self::db()->get_results(
+			'SELECT g.person_id AS ward_id, p.* FROM ' . Db::t( 'guardians' ) . ' g JOIN ' . Db::t( 'people' ) . ' p ON p.id = g.guardian_person_id WHERE p.deleted_at IS NULL AND g.person_id IN (' . implode( ',', $ids ) . ') ORDER BY g.id',
+			ARRAY_A
+		) ?: array();
+		$out = array();
+		foreach ( $rows as $r ) {
+			$ward = (int) $r['ward_id'];
+			unset( $r['ward_id'] );
+			$out[ $ward ][] = $r;
+		}
+		return $out;
+	}
+
 	// ---------- Scrittura ----------
 
 	/** @throws \InvalidArgumentException */
@@ -138,7 +165,7 @@ final class Guardians {
 	 *
 	 * @return array[] ['email', 'name' (a chi ci si rivolge), 'about' (il nome del minore, se il messaggio va al tutore)]
 	 */
-	public static function recipients( array $p ): array {
+	public static function recipients( array $p, ?array $guardians = null ): array {
 		$out   = array();
 		$name  = trim( $p['first_name'] . ' ' . $p['last_name'] );
 		$own   = trim( (string) ( $p['email'] ?? '' ) );
@@ -147,7 +174,7 @@ final class Guardians {
 			$out[ Text::lower( $own ) ] = array( 'email' => $own, 'name' => $p['first_name'], 'about' => '' );
 		}
 		if ( $minor || array() === $out ) {
-			foreach ( self::of( (int) $p['id'] ) as $g ) {
+			foreach ( null === $guardians ? self::of( (int) $p['id'] ) : $guardians as $g ) {
 				$mail = trim( (string) $g['email'] );
 				if ( '' !== $mail && is_email( $mail ) && ! isset( $out[ Text::lower( $mail ) ] ) ) {
 					$out[ Text::lower( $mail ) ] = array( 'email' => $mail, 'name' => $g['first_name'], 'about' => $name );
@@ -166,7 +193,7 @@ final class Guardians {
 		$rows  = self::db()->get_results(
 			self::db()->prepare(
 				'SELECT DISTINCT p.* FROM ' . Db::t( 'guardians' ) . ' g JOIN ' . Db::t( 'people' ) . ' p ON p.id = g.person_id '
-				. 'WHERE p.deleted_at IS NULL AND p.anonymized_at IS NULL AND p.application_status IS NULL AND p.type <> %s AND p.birth_date IS NOT NULL AND p.birth_date <= %s ORDER BY p.last_name, p.first_name',
+				. 'WHERE p.deleted_at IS NULL AND p.anonymized_at IS NULL AND p.application_status IS NULL AND p.wp_user_id IS NULL AND p.type <> %s AND p.birth_date IS NOT NULL AND p.birth_date <= %s ORDER BY p.last_name, p.first_name',
 				MemberType::GUEST,
 				$limit
 			),

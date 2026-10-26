@@ -147,7 +147,7 @@ final class Views {
 	// ---------- Sezioni dell'area soci ----------
 
 	public static function section_card( array $p ): string {
-		if ( ! Settings::get( 'card_enabled' ) ) {
+		if ( ! Settings::get( 'card_enabled' ) || MemberType::GUARDIAN === $p['type'] ) {
 			return ''; // tessera digitale spenta nelle impostazioni
 		}
 		$people = Plugin::people();
@@ -601,7 +601,7 @@ final class Views {
 	 * I pagamenti da fare per loro compaiono insieme a quelli del tutore, in «Pagamenti».
 	 */
 	public static function section_minors( array $p ): string {
-		if ( ! MemberType::is_member( $p['type'] ) ) {
+		if ( ! MemberType::can_login( $p['type'] ) ) {
 			return '';
 		}
 		$wards = Plugin::people()->dependents_of( (int) $p['id'] );
@@ -1240,7 +1240,7 @@ final class Views {
 			return $ctx;
 		}
 		$p = Access::current_person();
-		if ( $p && MemberType::is_member( $p['type'] ) ) {
+		if ( $p && MemberType::can_login( $p['type'] ) ) {
 			$ctx['actor']    = $p;
 			$people = Plugin::people();
 			$list   = array();

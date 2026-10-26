@@ -54,7 +54,7 @@ final class Activation {
 			return array( 'status' => 'suspended', 'person' => null );
 		}
 		$p = Plugin::people()->get( ActivationToken::parse( $param )[0] );
-		if ( ! $p || ! \AssociazioneSemplice\MemberType::is_member( $p['type'] ) || ! empty( $p['application_status'] ) ) { // una domanda non ancora approvata non attiva nessun accesso
+		if ( ! $p || ! \AssociazioneSemplice\MemberType::can_login( $p['type'] ) || ! empty( $p['application_status'] ) ) { // una domanda non ancora approvata non attiva nessun accesso
 			return array( 'status' => 'invalid', 'person' => null );
 		}
 		return array( 'status' => ! empty( $p['wp_user_id'] ) ? 'done' : 'ok', 'person' => $p );

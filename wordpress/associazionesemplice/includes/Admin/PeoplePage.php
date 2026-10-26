@@ -200,7 +200,7 @@ final class PeoplePage {
 		if ( MemberType::GUEST !== $type ) {
 			$guardians = $id ? \AssociazioneSemplice\Guardians::of( $id ) : array();
 			$cands     = array_values( array_filter( $people->search(), function ( $x ) use ( $id ) {
-				return (int) $x['id'] !== $id && '' !== trim( (string) $x['email'] );
+				return (int) $x['id'] !== $id && '' !== trim( (string) $x['email'] ) && MemberType::can_login( $x['type'] );
 			} ) );
 			echo '<tr><th>Tutore</th><td><input type="hidden" name="guardians_present" value="1">';
 			for ( $i = 0; $i < \AssociazioneSemplice\Guardians::MAX; $i++ ) {
@@ -269,6 +269,10 @@ final class PeoplePage {
 	private static function panel_membership( array $p ): void {
 		$people = Plugin::people();
 		echo '<div class="asem-card"><h2>Tessera e iscrizione</h2>';
+		if ( MemberType::GUARDIAN === $p['type'] ) {
+			echo '<p>Genitore o tutore: non è un socio e non ha tessera né quota. Ha l\'accesso all\'area riservata per seguire i figli (si collegano dalla loro scheda). Per iscriverlo come socio cambia il tipo qui sopra.</p></div>';
+			return;
+		}
 		if ( MemberType::GUEST === $p['type'] ) {
 			echo '<p>Gli ospiti non sono soci: partecipano alle attività tramite un socio.</p>';
 			if ( $p['host_person_id'] ) {

@@ -54,7 +54,7 @@ final class FirstAccess {
 			return false;
 		}
 		$person = \AssociazioneSemplice\Access::person_for_user( (int) $user->ID );
-		if ( ! $person || ! MemberType::is_member( $person['type'] ) || user_can( $user, Plugin::CAP_OPS ) ) {
+		if ( ! $person || ! MemberType::can_login( $person['type'] ) || user_can( $user, Plugin::CAP_OPS ) ) {
 			return false; // solo i soci (mai gli amministratori)
 		}
 		$key = get_password_reset_key( $user );
@@ -101,7 +101,7 @@ final class FirstAccess {
 
 		// 1. L'email è già di un socio: caso sicuro, il link va a quell'indirizzo.
 		$by_mail = $people->find_by_email( strtolower( $email ) );
-		if ( $by_mail && MemberType::is_member( $by_mail['type'] ) && empty( $by_mail['application_status'] ) ) { // chi ha solo chiesto di iscriversi non è ancora socio
+		if ( $by_mail && MemberType::can_login( $by_mail['type'] ) && empty( $by_mail['application_status'] ) ) { // chi ha solo chiesto di iscriversi non è ancora socio
 			if ( empty( $by_mail['wp_user_id'] ) ) {
 				$people->update( (int) $by_mail['id'], array() ); // crea l'utente che mancava
 			}

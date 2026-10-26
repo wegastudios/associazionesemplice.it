@@ -55,7 +55,7 @@ final class Access {
 			case 'asem_add_guest':
 				return (int) ( $ctx['person_id'] ?? 0 ) === $me && MemberType::is_member( (string) $actor['type'] );
 			case 'asem_book_for':
-				return MemberType::is_member( (string) $actor['type'] ) && ( (int) ( $ctx['person_id'] ?? 0 ) === $me || (int) ( $ctx['host_person_id'] ?? 0 ) === $me || ! empty( $ctx['is_guardian'] ) );
+				return MemberType::can_login( (string) $actor['type'] ) && ( (int) ( $ctx['person_id'] ?? 0 ) === $me || (int) ( $ctx['host_person_id'] ?? 0 ) === $me || ! empty( $ctx['is_guardian'] ) );
 			case 'asem_manage_event':
 				return MemberType::is_member( (string) $actor['type'] ) && ( self::is_instructor( $actor, $ctx ) || ! empty( $ctx['is_staff'] ) || ! empty( $ctx['is_entity_staff'] ) ); // referente, staff dell'evento o staff dell'ente (su tutti gli eventi)
 			case 'asem_door_cash': // referente, staff dell'evento con l'incasso abilitato, tesoriere (vendita degli eventi)

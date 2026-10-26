@@ -169,6 +169,7 @@
 		if (!box || !birth) { return; }
 		var a = adult(birth.value);
 		box.hidden = a === true;
+		form.querySelectorAll('[data-asemf-adult-required]').forEach(function (i) { i.required = (a === true); }); // chi ha 18 anni o più deve dare email e cellulare, per un minore bastano quelli del genitore
 	}
 	document.addEventListener('change', function (e) {
 		var form = e.target && e.target.closest ? e.target.closest('.asemf-apply form') : null;

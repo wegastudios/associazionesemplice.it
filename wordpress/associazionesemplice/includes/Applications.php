@@ -68,12 +68,16 @@ final class Applications {
 	/** Domande in attesa, dalla più vecchia. @return array[] persona + 'guardian', 'fee_cents', 'paid', 'suggested_card' */
 	public static function pending(): array {
 		$rows = self::db()->get_results( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE deleted_at IS NULL AND application_status = 'requested' ORDER BY application_at, id", ARRAY_A ) ?: array();
-		$card = Plugin::people()->next_free_card();
-		foreach ( $rows as $i => &$r ) {
+		$people = Plugin::people();
+		$n      = (int) $people->next_free_card();
+		foreach ( $rows as &$r ) {
 			$r['guardian']       = self::guardian_data( $r );
 			$r['fee_cents']      = self::fee_cents( (string) $r['type'] );
 			$r['paid']           = Plugin::payments()->application_paid( (int) $r['id'] );
-			$r['suggested_card'] = (string) ( (int) $card + $i );
+			while ( $people->find_by_card( (string) $n ) ) { // tessere con lettere o numeri già presi: si salta al primo libero
+				$n++;
+			}
+			$r['suggested_card'] = (string) $n++;
 		}
 		unset( $r );
 		return $rows;
@@ -100,6 +104,9 @@ final class Applications {
 		$people = Plugin::people();
 		if ( '' !== $d['email'] && $people->find_by_email( $d['email'] ) ) {
 			return array( 'status' => 'ok', 'errors' => array() ); // già nell'anagrafica o già in coda: nessuna differenza per chi scrive
+		}
+		if ( (int) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND tax_code = %s', $d['tax_code'] ) ) > 0 ) {
+			return array( 'status' => 'ok', 'errors' => array() ); // stesso codice fiscale già in anagrafica o già in coda
 		}
 		if ( self::pending_count() >= Limits::get( 'applications_max' ) ) {
 			return array( 'status' => 'ok', 'errors' => array() );
@@ -189,8 +196,8 @@ final class Applications {
 	// ---------- Approvazione e rifiuto ----------
 
 	/**
-	 * Approva una domanda: assegna la tessera, registra l'iscrizione all'anno sociale (e l'incasso, se la quota è stata pagata online) e
-	 * manda il link per scegliere la password. Per un minore collega il genitore (registrandolo se non c'è) e scrive a lui.
+	 * Approva una domanda: assegna la tessera e manda il link per scegliere la password. L'iscrizione all'anno sociale si registra con l'incasso della
+	 * quota: subito se è stata pagata online con la domanda (o non c'è quota), altrimenti quando la segreteria la incassa. Per un minore collega il genitore (registrandolo se non c'è) e scrive a lui.
 	 *
 	 * @return string messaggio per la segreteria
 	 * @throws \InvalidArgumentException
@@ -220,6 +227,9 @@ final class Applications {
 			if ( $guardian && ! empty( $guardian['application_status'] ) ) {
 				throw new \InvalidArgumentException( 'Il genitore ha chiesto a sua volta di iscriversi con la stessa email: approva prima la sua domanda.' );
 			}
+			if ( $guardian && ! MemberType::can_login( (string) $guardian['type'] ) ) {
+				throw new \InvalidArgumentException( 'L\'email del genitore è già usata da un ospite, che non può entrare nell\'area riservata: iscrivilo come socio o cambia l\'email, poi riprova.' );
+			}
 		}
 		$year = Settings::membership_year()->label();
 		if ( $gd && ! $guardian ) {
@@ -232,8 +242,13 @@ final class Applications {
 			array( 'card_number' => $card, 'joined_on' => Db::today(), 'application_status' => null, 'application_data' => null, 'updated_at' => Db::now() ),
 			array( 'id' => $id )
 		);
+		// L'iscrizione all'anno si registra solo con l'incasso della quota (pagata online con la domanda, oppure in sede o dall'area soci): senza quota da pagare vale subito.
+		$due = 0;
 		if ( ! Plugin::payments()->application_settle( $id, $year ) ) {
-			$people->set_membership( $id, $year, true, 'application' );
+			$due = self::fee_cents( (string) $row['type'] );
+			if ( $due <= 0 ) {
+				$people->set_membership( $id, $year, true, 'application' );
+			}
 		}
 		if ( $guardian ) {
 			Guardians::link( $id, (int) $guardian['id'] );
@@ -241,10 +256,13 @@ final class Applications {
 			self::db()->update( Db::t( 'people' ), array( 'rules_accepted_by' => Regulation::enabled() ? (int) $guardian['id'] : null, 'privacy_consent_by' => (int) $guardian['id'] ), array( 'id' => $id ) );
 		}
 		Audit::log( 'application.approved', 'person', $id, array( 'guardian' => $guardian ? (int) $guardian['id'] : 0 ) );
-		self::mail_approved( $people->get( $id ), $guardian );
+		self::mail_approved( $people->get( $id ), $guardian, $due );
 		$msg = 'Domanda approvata: tessera n. ' . $card . '. ' . ( $guardian ? 'È arrivata l\'email al genitore.' : 'Al nuovo socio è arrivato il link per scegliere la password.' );
+		if ( $due > 0 ) {
+			$msg .= ' Quota da incassare: ' . Money::format( $due ) . ' (in sede o dall\'area riservata); la tessera diventa valida all\'incasso.';
+		}
 		if ( $created ) {
-			$msg .= ' Il genitore è stato registrato come socio ordinario, senza quota né tessera: puoi completarlo dalla sua scheda.';
+			$msg .= ' Il genitore è registrato come «genitore o tutore» (non socio): ha solo l\'accesso per seguire il figlio, senza tessera né quota.';
 		}
 		return $msg;
 	}
@@ -252,10 +270,13 @@ final class Applications {
 	/** Registra il genitore indicato nella domanda come persona (senza accesso: lo attiva dal link ricevuto). @return int id */
 	private static function register_guardian( array $g ): int {
 		$now = Db::now();
+		if ( Plugin::people()->find_by_email( strtolower( (string) $g['email'] ) ) ) {
+			throw new \InvalidArgumentException( 'L\'email del genitore è già usata da un\'altra persona: modifica la domanda o la scheda di chi la usa, poi riprova.' );
+		}
 		self::db()->insert(
 			Db::t( 'people' ),
 			array(
-				'type'       => MemberType::ORDINARY,
+				'type'       => MemberType::GUARDIAN,
 				'first_name' => mb_substr( (string) $g['first_name'], 0, 120 ),
 				'last_name'  => mb_substr( (string) $g['last_name'], 0, 120 ),
 				'email'      => strtolower( (string) $g['email'] ),
@@ -271,17 +292,21 @@ final class Applications {
 			throw new \InvalidArgumentException( 'Impossibile registrare il genitore (errore del database).' );
 		}
 		Privacy::set_consent( $id, 'web' );
-		Audit::log( 'person.created', 'person', $id, array( 'type' => MemberType::ORDINARY, 'from' => 'application' ) );
+		Audit::log( 'person.created', 'person', $id, array( 'type' => MemberType::GUARDIAN, 'from' => 'application' ) );
 		return $id;
 	}
 
-	private static function mail_approved( ?array $person, ?array $guardian ): void {
+	private static function mail_approved( ?array $person, ?array $guardian, int $due = 0 ): void {
 		if ( ! $person ) {
 			return;
 		}
 		$assoc = (string) Settings::get( 'association_name' );
 		$of    = '' !== $assoc ? ' a ' . $assoc : '';
 		$days  = Frontend\Activation::validity_text();
+		$pay   = '';
+		if ( $due > 0 ) {
+			$pay = "\n\nLa tessera diventa valida appena versi la quota associativa di " . Money::format( $due ) . ': in sede, alla segreteria' . ( Plugin::payments()->enabled() ? ', oppure online dall\'area riservata (voce «Pagamenti»)' : '' ) . '.';
+		}
 		if ( $guardian ) {
 			$text = 'Ciao ' . $guardian['first_name'] . ",\n\nla domanda di adesione di " . $person['first_name'] . ' ' . $person['last_name'] . ' è stata approvata: la tessera è la n. ' . $person['card_number'] . ".\n\n";
 			if ( empty( $guardian['wp_user_id'] ) ) {
@@ -289,10 +314,11 @@ final class Applications {
 			} else {
 				$text .= $person['first_name'] . ' compare ora nella tua area riservata: ' . Gatekeeper::area_url() . "\n";
 			}
+			$text .= $pay;
 			$to = (string) $guardian['email'];
 		} else {
 			$text = 'Ciao ' . $person['first_name'] . ",\n\nla tua domanda di adesione" . $of . ' è stata approvata: la tua tessera è la n. ' . $person['card_number'] . ".\n\nScegli la tua password da questo link (vale " . $days . "):\n" . Frontend\Activation::url( (int) $person['id'] )
-				. "\n\nSe il link scade, dal sito vai su «Primo accesso» e ne ricevi uno nuovo.";
+				. "\n\nSe il link scade, dal sito vai su «Primo accesso» e ne ricevi uno nuovo." . $pay;
 			$to = (string) $person['email'];
 		}
 		if ( '' !== $to && is_email( $to ) ) {

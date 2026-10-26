@@ -126,7 +126,7 @@ final class Actions {
 	/** La persona collegata all'utente, solo se è un socio (non un ospite). */
 	public static function actor(): array {
 		$p = Access::current_person();
-		if ( ! $p || ! MemberType::is_member( $p['type'] ) ) {
+		if ( ! $p || ! MemberType::can_login( $p['type'] ) ) {
 			throw new \InvalidArgumentException( 'Serve un accesso come socio.' );
 		}
 		return $p;

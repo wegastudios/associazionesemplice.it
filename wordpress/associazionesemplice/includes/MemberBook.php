@@ -58,7 +58,7 @@ final class MemberBook {
 	 */
 	public static function rows( string $filter = '' ): array {
 		$rows = self::db()->get_results(
-			'SELECT * FROM ' . Db::t( 'people' ) . " WHERE deleted_at IS NULL AND application_status IS NULL AND type <> 'guest' ORDER BY joined_on, id",
+			'SELECT * FROM ' . Db::t( 'people' ) . " WHERE deleted_at IS NULL AND application_status IS NULL AND type NOT IN ('guest','guardian') ORDER BY joined_on, id",
 			ARRAY_A
 		) ?: array();
 		$tutori = Guardians::names_by_person();

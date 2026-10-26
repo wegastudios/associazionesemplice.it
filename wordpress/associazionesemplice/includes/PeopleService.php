@@ -98,6 +98,9 @@ class PeopleService {
 						if ( 'noconsent' === $f['status'] ) {
 							return empty( $r['privacy_consent_at'] );
 						}
+						if ( ! MemberType::is_member( $r['type'] ) && 'noaccess' !== $f['status'] ) {
+							return false; // ospiti e genitori/tutori non hanno la tessera
+						}
 						if ( MemberType::GUEST === $r['type'] ) {
 							return false;
 						}
@@ -424,7 +427,7 @@ class PeopleService {
 		$this->assert_valid( $d, null );
 
 		$user_id = null;
-		if ( MemberType::is_member( $d['type'] ) && null !== $d['email'] ) { // senza email: nessun utente finché il socio non si attiva col suo link
+		if ( MemberType::can_login( $d['type'] ) && null !== $d['email'] ) { // senza email: nessun utente finché il socio non si attiva col suo link
 			$user_id = $this->ensure_wp_user( $d, null );
 		}
 		$now = Db::now();
@@ -470,7 +473,7 @@ class PeopleService {
 	 */
 	public function activate( int $id, string $email, string $phone, string $password ): int {
 		$p = $this->get( $id );
-		if ( ! $p || ! MemberType::is_member( $p['type'] ) ) {
+		if ( ! $p || ! MemberType::can_login( $p['type'] ) ) {
 			throw new \InvalidArgumentException( 'Socio non trovato.' );
 		}
 		if ( ! empty( $p['wp_user_id'] ) ) {
@@ -635,7 +638,7 @@ class PeopleService {
 		$this->assert_valid( $d, $id );
 
 		$user_id = $current['wp_user_id'] ? (int) $current['wp_user_id'] : null;
-		if ( MemberType::is_member( $d['type'] ) ) {
+		if ( MemberType::can_login( $d['type'] ) ) {
 			if ( null === $user_id ) {
 				if ( null !== $d['email'] ) {
 					$user_id = $this->ensure_wp_user( $d, $id ); // ad es. ospite diventato socio, o socio che ha dato l'email
@@ -840,8 +843,8 @@ class PeopleService {
 		if ( ! $p ) {
 			throw new \InvalidArgumentException( 'Persona non trovata.' );
 		}
-		if ( MemberType::GUEST === $p['type'] ) {
-			throw new \InvalidArgumentException( 'Gli ospiti non sono soci: non hanno iscrizione.' );
+		if ( ! MemberType::is_member( $p['type'] ) ) {
+			throw new \InvalidArgumentException( MemberType::GUARDIAN === $p['type'] ? 'Un genitore o tutore non è un socio: non ha iscrizione né tessera.' : 'Gli ospiti non sono soci: non hanno iscrizione.' );
 		}
 		if ( MemberType::is_auto_renewed( $p['type'] ) ) {
 			throw new \InvalidArgumentException( 'Il socio fondatore ha la tessera sempre rinnovata.' );

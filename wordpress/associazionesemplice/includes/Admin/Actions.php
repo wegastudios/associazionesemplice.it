@@ -190,11 +190,21 @@ final class Actions {
 		}
 		$id = (int) ( $p['id'] ?? 0 );
 		if ( $id ) {
+			$before = Plugin::people()->get( $id );
 			Plugin::people()->update( $id, $data );
 			if ( array_key_exists( 'level_id', $p ) ) {
 				Plugin::people()->set_level_and_family( $id, (int) $p['level_id'], (int) ( $p['family_head_id'] ?? 0 ) );
 			}
 			self::sync_guardians( $id, $p );
+			$after = Plugin::people()->get( $id );
+			if ( $before && $after && empty( $before['wp_user_id'] ) && ! empty( $after['wp_user_id'] ) && \AssociazioneSemplice\Guardians::has_guardian( $id ) && ! \AssociazioneSemplice\Age::is_minor( $after['birth_date'] ?? null, \AssociazioneSemplice\Db::today() ) ) {
+				try { // un ragazzo maggiorenne ancora collegato a un tutore che riceve l'email: gli arriva l'invito a scegliere la password
+					\AssociazioneSemplice\Guardians::invite_adult( $id );
+					return array( Ui::url( 'asem-person', array( 'id' => $id ) ), 'Scheda salvata. Essendo maggiorenne, gli è arrivato l\'invito a scegliere la password.' );
+				} catch ( \InvalidArgumentException $e ) {
+					unset( $e ); // l'invio non è riuscito: resta nell'elenco della Bacheca
+				}
+			}
 			return array( Ui::url( 'asem-person', array( 'id' => $id ) ), 'Scheda salvata.' );
 		}
 		$id = Plugin::people()->create( $data );

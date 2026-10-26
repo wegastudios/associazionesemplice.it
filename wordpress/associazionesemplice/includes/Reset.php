@@ -61,7 +61,7 @@ final class Reset {
 			}
 		}
 		return array(
-			'people'       => $n( 'people', "deleted_at IS NULL AND type <> 'guest'" ),
+			'people'       => $n( 'people', "deleted_at IS NULL AND type NOT IN ('guest','guardian')" ),
 			'guests'       => $n( 'people', "deleted_at IS NULL AND type = 'guest'" ),
 			'activities'   => $n( 'activities' ),
 			'transactions' => $n( 'transactions', 'voided_at IS NULL' ),

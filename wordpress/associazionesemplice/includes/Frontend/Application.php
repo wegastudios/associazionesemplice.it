@@ -134,7 +134,7 @@ final class Application {
 			. self::field( 'Nome', 'first_name', 'text', $post, 'given-name', true ) . self::field( 'Cognome', 'last_name', 'text', $post, 'family-name', true )
 			. self::field( 'Data di nascita', 'birth_date', 'date', $post, 'bday', true, ' data-asemf-birth max="' . esc_attr( gmdate( 'Y-m-d' ) ) . '"' )
 			. self::field( 'Codice fiscale', 'tax_code', 'text', $post, 'off', true, ' maxlength="16"' )
-			. self::field( 'Email', 'email', 'email', $post, 'email', true ) . self::field( 'Cellulare', 'phone', 'tel', $post, 'tel', true, ' inputmode="tel"' )
+			. self::field( 'Email', 'email', 'email', $post, 'email', false, ' data-asemf-adult-required' ) . self::field( 'Cellulare', 'phone', 'tel', $post, 'tel', false, ' inputmode="tel" data-asemf-adult-required' )
 			. '</div>';
 		if ( count( $types ) > 1 ) {
 			$sel = (string) ( $post['type'] ?? '' );
