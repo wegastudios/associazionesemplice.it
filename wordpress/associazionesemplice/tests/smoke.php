@@ -1931,7 +1931,7 @@ $audit     = array_column( $audit_all, 'action' );
 asem_ok( in_array( 'payment.created', $audit, true ) && in_array( 'payment.paid', $audit, true ) && false === strpos( wp_json_encode( $audit_all ), 'sk_test_51Smoke1' ), 'registro azioni: pagamenti tracciati, senza chiavi' );
 
 // SumUp e commissioni di incasso (a carico dell'ente o ribaltate), registrate come spesa stimata
-Settings::update( array( 'payment_provider' => 'sumup', 'sumup_merchant_code' => 'MSMOKE01', 'sumup_api_key' => 'sup_sk_smokekey1234567890', 'pay_fee_fixed_sumup' => 25, 'pay_fee_pct_sumup' => 150, 'pay_fee_pass_sumup' => 0, 'pay_fee_book' => 1 ) );
+Settings::update( array( 'payment_provider' => 'sumup', 'sumup_merchant_code' => 'MSMOKE01', 'sumup_api_key' => 'sup_sk_smokekey1234567890', 'pay_fee_fixed_sumup' => 25, 'pay_fee_pct_sumup' => 150, 'pay_fee_pass_sumup' => 0, 'pay_fee_book' => 1, 'limits' => array( 'pay_open_per_hour' => 100 ) ) );
 asem_ok( 'sumup' === $ps->provider() && $ps->enabled(), 'SumUp: attivo con codice commerciante e chiave API' );
 $su_ev1 = $mkev( 'Cena SumUp uno', 1000, 1000 );
 $su_s1  = $first_session( $su_ev1 );
