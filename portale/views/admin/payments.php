@@ -28,7 +28,6 @@ $group = function ( bool $live, bool $active, callable $inner ) {
 };
 ?>
 <section class="admin"><div class="wrap" style="max-width:820px">
-	<p class="muted">Qui inserisci le chiavi per incassare e per emettere le licenze. Vengono salvate <b>cifrate</b> nel database, non si rivedono mai per intero (solo gli ultimi caratteri) e il campo lasciato vuoto non cambia nulla. Dopo il salvataggio usa «Prova il collegamento».</p>
 
 	<form class="card2" method="post" action="/admin/pagamenti">
 		<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="stripe_live_present" value="1">
@@ -85,5 +84,4 @@ $group = function ( bool $live, bool $active, callable $inner ) {
 	</form>
 	<div style="margin:-8px 0 20px"><?php $test( 'wega' ); ?></div>
 
-	<p class="muted small">Per il pagamento ricorrente servono anche il prezzo ricorrente su Stripe e il piano su PayPal: li inserisci in <a href="/admin/prezzi">Piani e prezzi</a>. Il pagamento singolo non richiede nulla di più.</p>
 </div></section>
