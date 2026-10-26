@@ -220,7 +220,8 @@ $noOnce = $price;
 $noOnce['once'] = false;
 check( 'pagamenti: senza «singolo» restano i ricorrenti', array( array( 'stripe', 'recurring' ), array( 'paypal', 'recurring' ) ) === $billing->methods( $noOnce ) );
 $noIds = array( 'cents' => 500 );
-check( 'pagamenti: senza id restano i singoli', array( array( 'stripe', 'once' ), array( 'paypal', 'once' ) ) === $billing->methods( $noIds ) );
+check( 'pagamenti: senza id il rinnovo automatico si crea da solo, e restano i singoli', array( array( 'stripe', 'recurring' ), array( 'paypal', 'recurring' ), array( 'stripe', 'once' ), array( 'paypal', 'once' ) ) === $billing->methods( $noIds ) );
+check( 'pagamenti: senza importo non si vende', array() === $billing->methods( array() ) );
 check( 'pagamenti: modo non disponibile rifiutato', null !== throwsUser( function () use ( $billing ) {
 	$billing->startPaid( 'dora@esempio.it', 'dora.it', 'full', 'year', 'stripe', 'strano' );
 } ) );
@@ -1089,6 +1090,48 @@ check( 'promo: inizio dopo la fine rifiutato', null !== throwsUser( function () 
 Portale\Settings::savePromo( $pdb, array( 'promo_label' => '' ) );
 Portale\Settings::load( $pdb );
 check( 'promo: nome vuoto la spegne', null === Portale\Settings::promoNow( $rome( '2026-11-28 10:00' ) ) );
+
+// --- Rinnovo automatico senza prezzi creati a mano su Stripe e PayPal ------------------------------------------------------
+Portale\Settings::savePlan( $pdb, 'full', array( 'label' => 'Pro Fiscale', 'plan_name' => 'Pro Full', 'visible' => '1', 'price_month' => '12', 'price_year' => '120' ) );
+Portale\Settings::load( $pdb );
+$acalls = array();
+Http::$transport = function ( $method, $url, $headers, $body ) use ( &$acalls ) {
+	$acalls[] = array( $method, $url, $body );
+	if ( false !== strpos( $url, '/oauth2/token' ) ) {
+		return array( 200, '{"access_token":"tok"}' );
+	}
+	if ( false !== strpos( $url, '/checkout/sessions' ) ) {
+		return array( 200, '{"url":"https://stripe.test/pay"}' );
+	}
+	if ( false !== strpos( $url, '/catalogs/products' ) ) {
+		return array( 201, '{"id":"PROD-1"}' );
+	}
+	if ( false !== strpos( $url, '/v1/billing/plans' ) ) {
+		return array( 201, '{"id":"P-AUTO' . count( $GLOBALS['acalls'] ) . '"}' );
+	}
+	if ( false !== strpos( $url, '/v1/billing/subscriptions' ) ) {
+		return array( 200, '{"links":[{"rel":"approve","href":"https://paypal.test/sub"}]}' );
+	}
+	return array( 404, '{}' );
+};
+$abil = new Billing( $pdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+check( 'automatico: il piano si può comprare con rinnovo automatico anche senza ID', in_array( array( 'stripe', 'recurring' ), $abil->methods( Portale\Config::price( 'full', 'year' ) ), true ) && in_array( array( 'paypal', 'recurring' ), $abil->methods( Portale\Config::price( 'full', 'year' ) ), true ) );
+$abil->startPaid( 'auto@esempio.it', 'auto-uno.it', 'full', 'year', 'stripe', 'recurring' );
+$co = null;
+foreach ( $acalls as $c ) {
+	if ( false !== strpos( $c[1], '/checkout/sessions' ) ) {
+		parse_str( (string) $c[2], $co );
+	}
+}
+check( 'automatico Stripe: prezzo ricorrente annuale creato al volo con l\'importo del piano', $co && 'subscription' === $co['mode'] && '12000' === (string) $co['line_items'][0]['price_data']['unit_amount'] && 'year' === $co['line_items'][0]['price_data']['recurring']['interval'] && empty( $co['line_items'][0]['price'] ) );
+$abil->startPaid( 'auto2@esempio.it', 'auto-due.it', 'full', 'year', 'paypal', 'recurring' );
+$abil->startPaid( 'auto3@esempio.it', 'auto-tre.it', 'full', 'year', 'paypal', 'recurring' );
+$made = array_filter( $acalls, function ( $c ) { return false !== strpos( $c[1], '/v1/billing/plans' ); } );
+$prod = array_filter( $acalls, function ( $c ) { return false !== strpos( $c[1], '/catalogs/products' ); } );
+$subs = array_values( array_filter( $acalls, function ( $c ) { return false !== strpos( $c[1], '/v1/billing/subscriptions' ); } ) );
+$pj   = json_decode( (string) array_values( $made )[0][2], true );
+check( 'automatico PayPal: prodotto e piano creati una volta sola e riusati', 1 === count( $made ) && 1 === count( $prod ) && 2 === count( $subs ) && json_decode( (string) $subs[0][2], true )['plan_id'] === json_decode( (string) $subs[1][2], true )['plan_id'] );
+check( 'automatico PayPal: piano annuale da 120,00 EUR', 'YEAR' === $pj['billing_cycles'][0]['frequency']['interval_unit'] && '120.00' === $pj['billing_cycles'][0]['pricing_scheme']['fixed_price']['value'] );
 
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );

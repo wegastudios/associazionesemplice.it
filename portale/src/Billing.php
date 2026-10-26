@@ -72,10 +72,10 @@ final class Billing {
 		$stripe = '' !== (string) Config::get( 'stripe.secret_key', '' );
 		$paypal = '' !== (string) Config::get( 'paypal.client_id', '' ) && '' !== (string) Config::get( 'paypal.secret', '' );
 		$once   = false !== ( $price['once'] ?? true );
-		if ( $stripe && ! empty( $price['stripe_price'] ) ) {
+		if ( $stripe && ( ! empty( $price['stripe_price'] ) || ! empty( $price['cents'] ) ) ) {
 			$out[] = array( 'stripe', 'recurring' );
 		}
-		if ( $paypal && ! empty( $price['paypal_plan'] ) ) {
+		if ( $paypal && ( ! empty( $price['paypal_plan'] ) || ! empty( $price['cents'] ) ) ) {
 			$out[] = array( 'paypal', 'recurring' );
 		}
 		if ( $stripe && $once ) {
@@ -178,12 +178,32 @@ final class Billing {
 		return $this->checkoutUrl( $sub, (string) $cust['email'], $price, $provider, 'once' );
 	}
 
+	/** Piano PayPal da usare: quello scritto nel pannello, altrimenti uno creato da solo (e ricordato) con l'importo del piano. */
+	private function paypalPlan( array $price, string $period, string $label ): string {
+		if ( ! empty( $price['paypal_plan'] ) ) {
+			return (string) $price['paypal_plan'];
+		}
+		$key  = (int) $price['cents'] . '-' . $period;
+		$have = Settings::paypalAuto( $this->db, $key );
+		if ( $have ) {
+			return $have;
+		}
+		$product = Settings::paypalAuto( $this->db, 'product' );
+		if ( ! $product ) {
+			$product = PayPal::createProduct( 'Associazione Semplice' );
+			Settings::savePaypalAuto( $this->db, 'product', $product );
+		}
+		$plan = PayPal::createPlan( $product, (int) $price['cents'], $period, 'Associazione Semplice · ' . $label );
+		Settings::savePaypalAuto( $this->db, $key, $plan );
+		return $plan;
+	}
+
 	private function checkoutUrl( array $sub, string $email, array $price, string $provider, string $mode ): string {
 		$label = (string) Config::get( 'plans.' . $sub['plan_code'] . '.label', $sub['plan_code'] ) . ( 'year' === $sub['period'] ? ' · 1 anno' : ' · 1 mese' );
 		if ( 'recurring' === $mode ) {
 			return 'stripe' === $provider
-				? Stripe::checkoutUrl( $sub['id'], $email, (string) $price['stripe_price'] )
-				: PayPal::approvalUrl( $sub['id'], $email, (string) $price['paypal_plan'] );
+				? Stripe::checkoutUrl( $sub['id'], $email, (string) ( $price['stripe_price'] ?? '' ), (int) $price['cents'], $sub['period'], $label )
+				: PayPal::approvalUrl( $sub['id'], $email, $this->paypalPlan( $price, $sub['period'], $label ) );
 		}
 		if ( 'stripe' === $provider ) {
 			return Stripe::oneTimeUrl( $sub['id'], $email, (int) $price['cents'], $label );

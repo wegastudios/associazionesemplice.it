@@ -163,10 +163,10 @@ final class Settings {
 				$paypal = trim( (string) ( $in[ 'paypal_' . $p ] ?? '' ) );
 				if ( '' !== $stripe && ! preg_match( '/^price_[A-Za-z0-9]{6,100}$/', $stripe ) ) {
 					$prefix = 0 === strpos( $stripe, 'prod_' ) ? ' Quello che hai scritto è l\'ID di un prodotto (prod_…): serve invece l\'ID del prezzo.' : '';
-					throw new UserError( 'Nel campo Stripe (' . ( 'year' === $p ? 'annuale' : 'mensile' ) . ') va l\'ID del prezzo ricorrente, che inizia con «price_» (per esempio price_1Abc…); hai scritto «' . mb_substr( $stripe, 0, 24 ) . '».' . $prefix . ' Lo trovi su Stripe → Catalogo prodotti → il prodotto → il prezzo → «ID API». Non vanno bene l\'importo, un link di pagamento o la chiave segreta. Se non usi il rinnovo automatico, lascia il campo vuoto.' );
+					throw new UserError( 'Nel campo Stripe (' . ( 'year' === $p ? 'annuale' : 'mensile' ) . ') va l\'ID del prezzo ricorrente, che inizia con «price_» (per esempio price_1Abc…); hai scritto «' . mb_substr( $stripe, 0, 24 ) . '».' . $prefix . ' Lo trovi su Stripe → Catalogo prodotti → il prodotto → il prezzo → «ID API». Non vanno bene l\'importo, un link di pagamento o la chiave segreta. Se non hai già un prezzo tuo, lascia il campo vuoto: si crea da solo.' );
 				}
 				if ( '' !== $paypal && ! preg_match( '/^P-[A-Za-z0-9]{6,100}$/', $paypal ) ) {
-					throw new UserError( 'Nel campo PayPal (' . ( 'year' === $p ? 'annuale' : 'mensile' ) . ') va l\'ID del piano di abbonamento, che inizia con «P-»; hai scritto «' . mb_substr( $paypal, 0, 24 ) . '». Lo trovi su PayPal tra i piani di fatturazione dell\'abbonamento. Se non usi il rinnovo automatico con PayPal, lascia il campo vuoto.' );
+					throw new UserError( 'Nel campo PayPal (' . ( 'year' === $p ? 'annuale' : 'mensile' ) . ') va l\'ID del piano di abbonamento, che inizia con «P-»; hai scritto «' . mb_substr( $paypal, 0, 24 ) . '». Lo trovi su PayPal tra i piani di fatturazione dell\'abbonamento. Se non hai già un piano tuo, lascia il campo vuoto: si crea da solo.' );
 				}
 				$list = str_replace( ',', '.', trim( (string) ( $in[ 'list_' . $p ] ?? '' ) ) );
 				if ( '' !== $list && ( ! is_numeric( $list ) || $list < 0 || $list > 10000 ) ) {
@@ -179,6 +179,22 @@ final class Settings {
 		$all[ $code ] = $over;
 		self::write( $db, 'plans', $all );
 		return $over;
+	}
+
+	/**
+	 * Piani e prodotto PayPal creati in automatico: si ricordano per modalità (reale/prova), importo e periodo, così il portale
+	 * non ne crea uno nuovo a ogni acquisto. Chiavi: «product» oppure «cents-interval».
+	 */
+	public static function paypalAuto( Db $db, string $key ): ?string {
+		$all = self::read( $db, 'paypal_auto' );
+		$k   = ( Config::get( 'paypal.live' ) ? 'live:' : 'sandbox:' ) . $key;
+		return isset( $all[ $k ] ) && is_string( $all[ $k ] ) && '' !== $all[ $k ] ? $all[ $k ] : null;
+	}
+
+	public static function savePaypalAuto( Db $db, string $key, string $id ): void {
+		$all = self::read( $db, 'paypal_auto' );
+		$all[ ( Config::get( 'paypal.live' ) ? 'live:' : 'sandbox:' ) . $key ] = $id;
+		self::write( $db, 'paypal_auto', $all );
 	}
 
 	/**
