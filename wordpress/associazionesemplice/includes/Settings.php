@@ -50,6 +50,8 @@ final class Settings {
 			'reminders_membership_days' => 30,  // ... quanti giorni prima della scadenza
 			'reminders_dues'          => 1,     // ... mensilità dei corsi non pagate
 			'reminders_events'        => 1,     // ... evento il giorno dopo
+			'reminders_polls'         => 1,     // ... votazioni aperte e in chiusura
+			'reminders_loans'         => 1,     // ... rientri dei prestiti scaduti
 			'rules_enabled'           => 0,     // regolamento: se attivo, i soci devono accettarlo
 			'rules_title'             => 'Regolamento',
 			'rules_text'              => '',    // testo del regolamento (facoltativo se c'è l'indirizzo di una pagina)
@@ -158,7 +160,7 @@ final class Settings {
 		$clean['entity_types_custom'] = mb_substr( trim( (string) $clean['entity_types_custom'] ), 0, 1000 );
 		$clean['member_terms_custom'] = mb_substr( trim( (string) $clean['member_terms_custom'] ), 0, 1000 );
 		Texts::flush(); // tipo di ente e termini (funzione di Associazione Semplice Pro): le sostituzioni si ricalcolano
-		foreach ( array( 'reminders_enabled', 'reminders_membership', 'reminders_dues', 'reminders_events' ) as $k ) {
+		foreach ( array( 'reminders_enabled', 'reminders_membership', 'reminders_dues', 'reminders_events', 'reminders_polls', 'reminders_loans' ) as $k ) {
 			$clean[ $k ] = empty( $clean[ $k ] ) ? 0 : 1;
 		}
 		$clean['reminders_membership_days'] = max( 1, min( 120, (int) $clean['reminders_membership_days'] ) );

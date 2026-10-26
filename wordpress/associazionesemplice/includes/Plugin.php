@@ -76,6 +76,8 @@ final class Plugin {
 		'asem_backup_saved'    => 'Backup',
 		'asem_privacy_export'  => 'Privacy',
 		'asem_doc'             => 'Docs',
+		'asem_document'        => 'Documents',
+		'asem_item_file'       => 'Inventory',
 	);
 
 	/** Azioni di admin-post con la classe che le gestisce, comprese quelle di un'estensione (filtro `asem_admin_post_classes`). */

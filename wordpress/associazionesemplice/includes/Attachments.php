@@ -134,6 +134,37 @@ final class Attachments {
 		return $ids;
 	}
 
+	/** Cancella dal disco un file salvato con {@see save_upload()} (documenti sostituiti o eliminati, foto dei beni). */
+	public static function delete_stored( ?string $stored ): void {
+		$name = AttachmentRules::stored_name( (string) $stored );
+		if ( '' !== $name ) {
+			wp_delete_file( self::dir() . '/' . $name );
+		}
+	}
+
+	/** Tipo reale di un file (letto dal contenuto), '' se il server non sa leggerlo. */
+	public static function mime_of( string $path ): string {
+		return self::real_mime( $path );
+	}
+
+	/**
+	 * Salva nella cartella privata un file caricato (campo di un modulo) già controllato, con nome casuale e senza estensione.
+	 *
+	 * @param array $f name, tmp_name, size, mime
+	 * @return string nome con cui è salvato
+	 * @throws \InvalidArgumentException
+	 */
+	public static function save_upload( array $f ): string {
+		$dir    = self::ensure_dir();
+		$stored = AttachmentRules::stored_name( bin2hex( random_bytes( 16 ) ) );
+		$target = self::store_file( $f, $dir, $stored );
+		if ( '' === $target ) {
+			throw new \InvalidArgumentException( 'Impossibile salvare "' . AttachmentRules::display_name( (string) $f['name'] ) . '".' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		chmod( $target, 0640 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod -- file privato dell'ente: lettura solo per il server
+		return $stored;
+	}
+
 	/**
 	 * Mette il file caricato nella cartella privata con le funzioni di WordPress (wp_handle_upload per i file arrivati dal browser,
 	 * wp_handle_sideload per gli altri). Il nome salvato è già quello casuale, il tipo è stato controllato da {@see prepare()}.

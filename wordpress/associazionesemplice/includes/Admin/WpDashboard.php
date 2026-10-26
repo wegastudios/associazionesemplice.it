@@ -67,6 +67,10 @@ final class WpDashboard {
 		if ( $inv > 0 ) {
 			$items[] = array( $inv, 1 === $inv ? 'ospite da invitare a iscriversi' : 'ospiti da invitare a iscriversi', Ui::url( 'asem-people', array( 'type' => 'guest', 'at_limit' => 1 ) ) );
 		}
+		$late = count( \AssociazioneSemplice\Inventory::overdue() );
+		if ( $late > 0 ) {
+			$items[] = array( $late, 1 === $late ? 'prestito con il rientro scaduto' : 'prestiti con il rientro scaduto', Ui::url( 'asem-inventory', array( 'tab' => 'loans' ) ) );
+		}
 		if ( current_user_can( Plugin::CAP ) ) {
 			$mail = \AssociazioneSemplice\MailLog::failures();
 			if ( $mail > 0 ) {
