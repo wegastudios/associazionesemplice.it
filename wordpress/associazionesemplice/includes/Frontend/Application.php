@@ -66,7 +66,7 @@ final class Application {
 		$errors = array();
 		$sent   = false;
 		$post   = array();
-		if ( 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' ) && isset( $_POST['asem_apply_go'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification -- gettone firmato verificato qui sotto (la pagina può essere in cache)
+		if ( 'POST' === ( isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : '' ) && isset( $_POST['asem_apply_go'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification -- gettone firmato verificato qui sotto (la pagina può essere in cache)
 			$post = Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
 			$key  = 'asem_ap_' . md5( ClientIp::get() );
 			$n    = (int) get_transient( $key );

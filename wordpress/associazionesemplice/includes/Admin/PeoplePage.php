@@ -210,9 +210,11 @@ final class PeoplePage {
 			if ( $id ) {
 				$wards = \AssociazioneSemplice\Guardians::dependents_of( $id );
 				if ( $wards ) {
-					echo '<p>È tutore di: ' . implode( ', ', array_map( function ( $w ) {
-						return '<a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $w['id'] ) ) ) . '">' . esc_html( $w['first_name'] . ' ' . $w['last_name'] ) . '</a>';
-					}, $wards ) ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+					$ward_links = array();
+					foreach ( $wards as $w ) {
+						$ward_links[] = '<a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $w['id'] ) ) ) . '">' . esc_html( $w['first_name'] . ' ' . $w['last_name'] ) . '</a>';
+					}
+					echo '<p>È tutore di: ' . wp_kses_post( implode( ', ', $ward_links ) ) . '</p>';
 				}
 			}
 			echo '</td></tr>';
