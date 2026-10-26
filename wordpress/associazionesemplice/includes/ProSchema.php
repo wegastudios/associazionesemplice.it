@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 final class ProSchema {
 
 	const VERSION_OPTION = 'asem_pro_db_version';
-	const VERSION        = '3';
+	const VERSION        = '4';
 
 	public static function register(): void {
 		add_filter( 'asem_schema_tables', array( __CLASS__, 'tables' ), 10, 3 );
@@ -287,6 +287,60 @@ final class ProSchema {
   KEY provider_ref (provider_ref),
   KEY status (status),
   KEY payer_person_id (payer_person_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}medical_certs (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  person_id bigint(20) unsigned NOT NULL,
+  kind varchar(16) NOT NULL,
+  issued_on date NOT NULL,
+  expires_on date NOT NULL,
+  doctor varchar(190) DEFAULT NULL,
+  file_name varchar(190) DEFAULT NULL,
+  file_stored varchar(80) DEFAULT NULL,
+  file_size bigint(20) unsigned DEFAULT NULL,
+  created_at datetime NOT NULL,
+  deleted_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY person_id (person_id),
+  KEY expires_on (expires_on)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}cert_activities (
+  activity_id bigint(20) unsigned NOT NULL,
+  PRIMARY KEY  (activity_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}affiliations (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  body varchar(12) NOT NULL,
+  body_label varchar(80) DEFAULT NULL,
+  code varchar(60) NOT NULL,
+  season varchar(12) NOT NULL,
+  expires_on date DEFAULT NULL,
+  cost_cents bigint(20) DEFAULT NULL,
+  created_at datetime NOT NULL,
+  deleted_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY body_season (body,season)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}body_cards (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  person_id bigint(20) unsigned NOT NULL,
+  body varchar(12) NOT NULL,
+  body_label varchar(80) DEFAULT NULL,
+  card_number varchar(60) DEFAULT NULL,
+  card_type varchar(60) DEFAULT NULL,
+  season varchar(12) NOT NULL,
+  issued_on date DEFAULT NULL,
+  expires_on date DEFAULT NULL,
+  cost_cents bigint(20) DEFAULT NULL,
+  created_at datetime NOT NULL,
+  deleted_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY person_id (person_id),
+  KEY body_season (body,season)
 ) $c;";
 
 		return $tables;
