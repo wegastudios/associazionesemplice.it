@@ -214,6 +214,16 @@ Ogni gateway trattiene una commissione su ciascun pagamento. Il plugin ti aiuta 
 1. Vai in **Impostazioni → Pagamenti online**.
 2. Per ogni metodo (**Stripe**, **PayPal**, **SumUp**) indica la commissione: una **cifra fissa**, una **percentuale**, oppure **entrambe**.
 
+Dalla versione 1.1.24 di Pro i campi partono già compilati con le **tariffe standard**:
+
+| Metodo | Commissione di partenza |
+|---|---|
+| Stripe | 1,5% + 0,25 € |
+| PayPal | 3,40% + 0,35 € |
+| SumUp | 2,5% |
+
+Sono valori di partenza: **modificali** se il tuo contratto ha condizioni diverse, oppure **svuota** i campi se non vuoi stimare la commissione. Le tariffe applicate dal gateway possono cambiare: controlla sempre il tuo contratto.
+
 ## Registrarla come spesa
 
 Con l'opzione **«Registra come spesa la commissione stimata»**, a ogni pagamento confermato entra in prima nota una spesa chiamata **«Commissione di incasso (stima)»**. È una **stima**: confrontala con l'estratto conto del gateway e correggila quando serve.
