@@ -8,7 +8,6 @@
             <dt>Credenziali</dt><dd>{{ $configured ? 'presenti (SUPPORT_HUB_TOKEN)' : 'mancanti' }}</dd>
             <dt>Ticket in attesa di numero</dt><dd>{{ $pending }}</dd>
         </dl>
-        <p class="hint">URL e token si impostano nel file <code>.env</code>; il token si ottiene registrando questo portale nell'hub.</p>
         <form method="post" action="{{ route('admin.hub.check') }}">@csrf <button type="submit" @disabled(! $configured)>Verifica il collegamento</button></form>
         @error('hub')<p class="hint" style="color:var(--danger)">{{ $message }}</p>@enderror
     </div>
