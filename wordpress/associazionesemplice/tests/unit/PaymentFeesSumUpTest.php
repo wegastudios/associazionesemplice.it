@@ -51,7 +51,8 @@ final class PaymentFeesSumUpTest extends TestCase {
 		$ok = P::validate_gateway( array( 'sumup_api_key' => 'sup_sk_abcdefghijklmnop', 'sumup_merchant_code' => 'MABCD123', 'site_https' => 1 ), P::SUMUP );
 		$this->assertSame( array(), $ok['errors'] );
 		$http = P::validate_gateway( array( 'sumup_api_key' => 'sup_sk_abcdefghijklmnop', 'sumup_merchant_code' => 'MABCD123', 'site_https' => 0 ), P::SUMUP );
-		$this->assertNotEmpty( $http['errors'], 'senza https non si accetta' );
+		$this->assertSame( array(), $http['errors'] );
+		$this->assertNotEmpty( $http['warnings'], 'senza https si avvisa' );
 		$this->assertNotSame( '', P::note( P::SUMUP ) );
 		$this->assertNotSame( '', P::label( P::SUMUP ) );
 	}

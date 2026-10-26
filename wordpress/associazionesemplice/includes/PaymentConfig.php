@@ -213,7 +213,7 @@ final class PaymentConfig {
 				$errors[] = 'SumUp: il codice commerciante non sembra valido (solo lettere e cifre).';
 			}
 			if ( ! $https ) {
-				$errors[] = 'SumUp richiede che il sito sia servito in https: oggi l\'indirizzo del sito è http.';
+				$warnings[] = 'SumUp: l\'indirizzo del sito è http. Per i pagamenti veri il sito deve essere servito in https: il ritorno dal pagamento potrebbe non funzionare.';
 			}
 			if ( empty( $errors ) ) {
 				$warnings[] = 'SumUp non ha una modalità di prova separata sul sito: con una chiave di un account reale i pagamenti sono veri (per provare usa un account di prova SumUp).';
