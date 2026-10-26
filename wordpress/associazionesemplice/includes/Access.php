@@ -154,6 +154,21 @@ final class Access {
 		}
 	}
 
+	/**
+	 * L'utente corrente può aprire questo documento dell'archivio? La segreteria sempre; il pubblico i documenti «Pubblico»;
+	 * i soci in regola anche quelli «Soci». Ogni download passa da qui.
+	 */
+	public static function can_read_document( array $doc ): bool {
+		$uid    = get_current_user_id();
+		$staff  = $uid > 0 && self::is_admin_user( $uid );
+		$member = false;
+		if ( ! $staff && $uid > 0 && DocumentRules::MEMBERS === (string) $doc['visibility'] ) {
+			$actor  = self::person_for_user( $uid );
+			$member = $actor && MemberType::is_member( (string) $actor['type'] ) && Plugin::people()->is_active_member( (int) $actor['id'] );
+		}
+		return DocumentRules::can_read( (string) $doc['visibility'], $staff, (bool) $member );
+	}
+
 	public static function is_admin_user( int $user_id ): bool {
 		return $user_id > 0 && user_can( $user_id, Plugin::CAP_OPS );
 	}
