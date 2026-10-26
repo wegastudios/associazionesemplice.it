@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.1.22
+- Pagamento online della quota quando si chiede di iscriversi (carta o PayPal): se la domanda viene rifiutata la somma resta da rimborsare.
+- Aggiorna insieme ad Associazione Semplice 1.2.25.
+
 ## 1.1.21
 - Aggiornamento tecnico insieme ad Associazione Semplice 1.2.23: pagine e moduli più sicuri e compatibili.
 
