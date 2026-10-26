@@ -162,10 +162,11 @@ final class Settings {
 				$stripe = trim( (string) ( $in[ 'stripe_' . $p ] ?? '' ) );
 				$paypal = trim( (string) ( $in[ 'paypal_' . $p ] ?? '' ) );
 				if ( '' !== $stripe && ! preg_match( '/^price_[A-Za-z0-9]{6,100}$/', $stripe ) ) {
-					throw new UserError( 'Il prezzo Stripe deve iniziare con «price_».' );
+					$prefix = 0 === strpos( $stripe, 'prod_' ) ? ' Quello che hai scritto è l\'ID di un prodotto (prod_…): serve invece l\'ID del prezzo.' : '';
+					throw new UserError( 'Nel campo Stripe (' . ( 'year' === $p ? 'annuale' : 'mensile' ) . ') va l\'ID del prezzo ricorrente, che inizia con «price_» (per esempio price_1Abc…); hai scritto «' . mb_substr( $stripe, 0, 24 ) . '».' . $prefix . ' Lo trovi su Stripe → Catalogo prodotti → il prodotto → il prezzo → «ID API». Non vanno bene l\'importo, un link di pagamento o la chiave segreta. Se non usi il rinnovo automatico, lascia il campo vuoto.' );
 				}
 				if ( '' !== $paypal && ! preg_match( '/^P-[A-Za-z0-9]{6,100}$/', $paypal ) ) {
-					throw new UserError( 'Il piano PayPal deve iniziare con «P-».' );
+					throw new UserError( 'Nel campo PayPal (' . ( 'year' === $p ? 'annuale' : 'mensile' ) . ') va l\'ID del piano di abbonamento, che inizia con «P-»; hai scritto «' . mb_substr( $paypal, 0, 24 ) . '». Lo trovi su PayPal tra i piani di fatturazione dell\'abbonamento. Se non usi il rinnovo automatico con PayPal, lascia il campo vuoto.' );
 				}
 				$list = str_replace( ',', '.', trim( (string) ( $in[ 'list_' . $p ] ?? '' ) ) );
 				if ( '' !== $list && ( ! is_numeric( $list ) || $list < 0 || $list > 10000 ) ) {

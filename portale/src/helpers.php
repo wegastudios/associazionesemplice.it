@@ -44,3 +44,16 @@ function money( $cents ): string {
 function date_it( ?string $utc ): string {
 	return $utc ? date( 'd/m/Y', strtotime( $utc . ' UTC' ) ) : '—';
 }
+
+/**
+ * Fumetto di aiuto: un piccolo «?» che apre una nuvoletta con la spiegazione (clic o tastiera; si chiude con Esc o fuori).
+ * Il testo è semplice: **grassetto** e a capo con una riga vuota; tutto il resto viene reso innocuo.
+ */
+function tip( string $text, string $title = '' ): string {
+	$body = preg_replace( '/\*\*(.+?)\*\*/s', '<strong>$1</strong>', e( $text ) );
+	$body = preg_replace( '/\n{2,}/', '</p><p>', trim( $body ) );
+	static $n = 0;
+	++$n;
+	return '<span class="tip"><button type="button" class="tip-btn" aria-label="Spiegazione: ' . e( $title ?: 'aiuto' ) . '" aria-expanded="false" aria-controls="tip' . $n . '">?</button>'
+		. '<span class="tip-bubble" id="tip' . $n . '" role="note" hidden>' . ( '' !== $title ? '<b class="tip-title">' . e( $title ) . '</b>' : '' ) . '<p>' . $body . '</p></span></span>';
+}

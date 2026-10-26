@@ -236,3 +236,13 @@ input[type=number]:focus { border-color: var(--brand); outline: none; box-shadow
 .was { color: var(--muted); font-size: 1.15rem; font-weight: 500; text-decoration: line-through; text-decoration-thickness: 2px; }
 .price-note .was { font-size: inherit; }
 .promo-tag { display: inline-block; margin-top: 12px; padding: 3px 10px; border-radius: 999px; background: var(--gold, #f0b429); color: #1a1a2e; font-size: .78rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+
+/* Fumetti di aiuto */
+.tip { position: relative; display: inline-block; vertical-align: middle; margin-left: 6px; }
+.tip-btn { width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 2px solid var(--ink, #1a1a2e); background: var(--gold, #f0b429); color: var(--ink, #1a1a2e); font: 700 13px/1 inherit; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.tip-btn:hover, .tip-btn[aria-expanded="true"] { background: var(--ink, #1a1a2e); color: #fff; }
+.tip-bubble { position: absolute; z-index: 30; left: -8px; top: 34px; width: min(340px, 78vw); padding: 12px 14px; background: #fff; color: #1a1a2e; border: 2px solid #1a1a2e; border-radius: 16px; box-shadow: 4px 4px 0 rgba(26, 26, 46, .18); font-size: .88rem; line-height: 1.45; font-weight: 400; text-align: left; text-transform: none; letter-spacing: 0; }
+.tip-bubble::before { content: ""; position: absolute; top: -10px; left: 14px; width: 16px; height: 16px; background: #fff; border-left: 2px solid #1a1a2e; border-top: 2px solid #1a1a2e; transform: rotate(45deg); border-top-left-radius: 4px; }
+.tip-bubble p { margin: 0 0 8px; } .tip-bubble p:last-child { margin-bottom: 0; }
+.tip-title { display: block; margin-bottom: 4px; }
+@media (prefers-color-scheme: dark) { .tip-bubble, .tip-bubble::before { background: #fff; } }

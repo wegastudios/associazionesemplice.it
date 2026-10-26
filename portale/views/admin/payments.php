@@ -1,9 +1,16 @@
 <?php /** @var array $s @var string $base */ include __DIR__ . '/_nav.php';
 $csrf = Portale\App::csrf();
-$field = function ( string $name, string $label, string $placeholder, string $hint = '' ) use ( $s ) {
+$tips = array(
+	'stripe_secret'       => array( 'Chiave segreta di Stripe', "È la chiave con cui il portale crea i pagamenti. Su Stripe apri **Sviluppatori → Chiavi API** e copia la «Chiave segreta» (inizia con sk_live_ per i pagamenti veri, sk_test_ per le prove).\n\nTrattala come una password: non va mai scritta nel plugin né inviata per email." ),
+	'stripe_webhook'      => array( 'Segreto del webhook', "Il webhook è l'avviso con cui Stripe comunica al portale che un pagamento è andato a buon fine. Il segreto (inizia con whsec_) compare quando crei il webhook con il pulsante qui sotto, o su Stripe in **Sviluppatori → Webhook**. Senza, i pagamenti non attivano le licenze." ),
+	'paypal_client'       => array( 'Client ID di PayPal', "Su developer.paypal.com apri **Apps e credenziali**, scegli l'app (modalità «Live» per i pagamenti veri) e copia il Client ID. Insieme al Segreto permette al portale di creare i pagamenti." ),
+	'paypal_secret'       => array( 'Segreto di PayPal', "Sta accanto al Client ID, nella stessa app su developer.paypal.com: clicca «Mostra». Trattalo come una password." ),
+	'paypal_webhook'      => array( 'ID del webhook di PayPal', "PayPal avvisa il portale dei pagamenti e dei rinnovi. L'ID del webhook compare quando lo crei con il pulsante qui sotto, o nell'app su developer.paypal.com alla voce Webhook." ),
+);
+$field = function ( string $name, string $label, string $placeholder, string $hint = '' ) use ( $s, $tips ) {
 	$st = $s[ $name ];
 	?>
-	<label for="<?php echo e( $name ); ?>"><?php echo e( $label ); ?></label>
+	<label for="<?php echo e( $name ); ?>"><?php echo e( $label ); ?><?php $tk = preg_replace( '/_test$/', '', $name ); if ( isset( $tips[ $tk ] ) ) { echo tip( $tips[ $tk ][1], $tips[ $tk ][0] ); } ?></label>
 	<input id="<?php echo e( $name ); ?>" type="password" name="<?php echo e( $name ); ?>" autocomplete="new-password" autocapitalize="none" spellcheck="false" placeholder="<?php echo e( $st['set'] ? 'Impostata (' . $st['mask'] . ') · lascia vuoto per non cambiarla' : $placeholder ); ?>">
 	<?php if ( $st['set'] ) : ?>
 		<p class="hint"><span class="status-dot"></span>In uso, inserita da <?php echo e( 'pannello' === $st['source'] ? 'questo pannello' : 'config.php' ); ?>.
