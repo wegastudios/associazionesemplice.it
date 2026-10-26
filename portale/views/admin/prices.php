@@ -16,7 +16,6 @@ $eur  = function ( $c ) { return null === $c ? '' : number_format( $c / 100, 2, 
 	</form>
 	<?php foreach ( $plans as $code => $p ) :
 		$paid = 'free' !== $code;
-		$feat = implode( "\n", (array) ( $p['features'] ?? array() ) );
 	?>
 	<form class="card2 plan-edit" id="<?php echo e( $code ); ?>" method="post" action="/admin/prezzi/<?php echo e( $code ); ?>">
 		<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>">
@@ -28,7 +27,6 @@ $eur  = function ( $c ) { return null === $c ? '' : number_format( $c / 100, 2, 
 			<div><label class="check" style="margin-top:44px"><input type="checkbox" name="visible" value="1"<?php echo false !== ( $p['visible'] ?? true ) ? ' checked' : ''; ?>> Mostra questo piano sul sito</label></div>
 		</div>
 		<label for="g<?php echo e( $code ); ?>">Descrizione breve</label><input id="g<?php echo e( $code ); ?>" type="text" name="tagline" value="<?php echo e( $p['tagline'] ?? '' ); ?>" maxlength="200" placeholder="Se vuoto si usa il testo predefinito">
-		<label for="f<?php echo e( $code ); ?>">Funzioni elencate (una per riga)</label><textarea id="f<?php echo e( $code ); ?>" name="features" rows="6" placeholder="Se vuoto si usa l'elenco predefinito"><?php echo e( $feat ); ?></textarea>
 		<?php if ( $paid ) : foreach ( array( 'month' => 'Mensile', 'year' => 'Annuale' ) as $per => $txt ) : $pr = $p['prices'][ $per ] ?? null; ?>
 			<div class="sep"></div>
 			<h3 style="margin-bottom:4px"><?php echo e( $txt ); ?></h3>

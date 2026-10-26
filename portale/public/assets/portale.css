@@ -246,3 +246,6 @@ input[type=number]:focus { border-color: var(--brand); outline: none; box-shadow
 .tip-bubble p { margin: 0 0 8px; } .tip-bubble p:last-child { margin-bottom: 0; }
 .tip-title { display: block; margin-bottom: 4px; }
 @media (prefers-color-scheme: dark) { .tip-bubble, .tip-bubble::before { background: #fff; } }
+.plan ul li.lead { font-weight: 700; list-style: none; margin-left: -4px; padding-left: 0; }
+.plan ul li.lead::before { content: none; }
+.price-note small { font-size: .88rem; }

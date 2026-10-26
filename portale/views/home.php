@@ -3,14 +3,33 @@ $euro = function ( $c ) { return number_format( $c / 100, ( $c % 100 ) ? 2 : 0, 
 
 // Testi di vetrina: si possono sostituire da config.php (plans.<codice>.tagline / features).
 $copy = array(
-	'free' => array( 'tagline' => 'Per partire subito, senza costi e senza scadenza.', 'features' => array(
-		'Libro soci, ospiti e tessere con QR', 'Eventi, corsi, iscrizioni e lista d\'attesa', 'Prima nota con una cassa unica', 'Privacy, verbali e copia di sicurezza', 'Modulo donazioni con PayPal',
+	'free' => array( 'tagline' => 'Per partire subito, senza costi e senza scadenza.', 'lead' => '', 'features' => array(
+		'Libro soci con nuovi iscritti, schede e numerazione',
+		'Tessera digitale e stampabile con QR',
+		'Corsi ed eventi: iscrizioni, posti e lista d\'attesa',
+		'Prima nota con cassa unica, spese e donazioni PayPal',
+		'Anni solari: apertura e chiusura',
+		'Verbali, informativa privacy e consensi',
+		'Area riservata dei soci e ruoli della segreteria',
+		'Importazione ed esportazione degli elenchi',
+		'Copia di sicurezza dei dati',
 	) ),
-	'lite' => array( 'tagline' => 'Tutto il gratuito, più incassi online e comunicazione ai soci. Senza la parte contabile.', 'features' => array(
-		'Tutto il piano Gratuito', 'Pagamenti online con carta e PayPal', 'Più quote socio e livelli', 'Comunicazioni email ai soci', 'App installabile e tessera nel telefono', 'Assicurazioni e presenze', 'Incasso sul posto',
+	'lite' => array( 'tagline' => 'Tutto il gratuito, più incassi online e comunicazione ai soci. Senza la parte fiscale.', 'lead' => 'Tutto il Free, più:', 'features' => array(
+		'Pagamenti online con carta, PayPal e WooCommerce',
+		'Più livelli di socio, quote diverse e nucleo familiare',
+		'Conti multipli, fondi e giroconti',
+		'Ricevute in PDF e report di gestione',
+		'Risorse prenotabili: campi, sale, posti auto',
+		'Incasso sul posto agli eventi',
+		'Assicurazioni dei volontari e presenze',
+		'Comunicazioni a gruppi di soci, app e notifiche',
+		'Tessera in Apple Wallet e Google Wallet',
+		'Testi personalizzabili e lingue',
 	) ),
-	'full' => array( 'tagline' => 'Per chi vuole anche la contabilità completa dell\'ente.', 'tag' => 'Il più completo', 'features' => array(
-		'Tutto il Pro Contabile', 'Conti, fondi e giroconti', 'Ricevute PDF e rendiconto', 'IVA e anni solari', '5 per mille',
+	'full' => array( 'tagline' => 'Per chi vuole anche la parte fiscale dell\'ente.', 'tag' => 'Il più completo', 'lead' => 'Tutto il Pro Contabile, più:', 'features' => array(
+		'IVA su quote, attività, incassi e spese',
+		'5 per mille con rendiconto sull\'utilizzo',
+		'Rendiconto per cassa per il commercialista',
 	) ),
 );
 $features = array(
@@ -86,7 +105,10 @@ $faq = array(
 		if ( false === ( $p['visible'] ?? true ) ) { continue; }
 		$c    = $copy[ $code ] ?? array( 'tagline' => $p['description'] ?? '', 'features' => array() );
 		$tag  = $p['tag'] ?? ( $c['tag'] ?? '' );
-		$feat = $p['features'] ?? $c['features'];
+		$feat = $c['features'];
+		$lead = $c['lead'] ?? '';
+		if ( '' !== $lead && isset( $prevLabel ) ) { $lead = 'Tutto il ' . $prevLabel . ', più:'; }
+		$prevLabel = $p['label'];
 		$m    = $p['prices']['month']['cents'] ?? null;
 		$y    = $p['prices']['year']['cents'] ?? null;
 		$hot  = 'full' === $code;
@@ -100,9 +122,9 @@ $faq = array(
 			<?php else : ?>
 				<?php $promoName = Portale\Settings::promoNow(); $lm = Portale\Settings::listCents( $code, 'month' ); $ly = Portale\Settings::listCents( $code, 'year' ); if ( $promoName && ( $lm || $ly ) ) : ?><div class="promo-tag"><?php echo e( $promoName ); ?></div><?php endif; ?>
 				<?php if ( $m ) : ?><div class="only-month"><div class="price"><?php if ( $lm ) : ?><s class="was"><?php echo e( $euro( $lm ) ); ?></s> <?php endif; ?><b><?php echo e( $euro( $m ) ); ?></b><span>al mese</span></div><div class="price-note">Rinnovo mensile, senza vincoli</div></div><?php endif; ?>
-				<?php if ( $y ) : ?><div class="only-year"><div class="price"><?php if ( $ly ) : ?><s class="was"><?php echo e( $euro( (int) round( $ly / 12 ) ) ); ?></s> <?php endif; ?><b><?php echo e( $euro( (int) round( $y / 12 ) ) ); ?></b><span>al mese</span></div><div class="price-note"><?php echo $ly ? '<s class="was">' . e( $euro( $ly ) ) . '</s> ' : ''; ?><?php echo e( $euro( $y ) ); ?> all'anno<?php echo $m && $m * 12 > $y ? ' · risparmi ' . e( $euro( $m * 12 - $y ) ) : ''; ?></div></div><?php endif; ?>
+				<?php if ( $y ) : ?><div class="only-year"><div class="price"><?php if ( $ly ) : ?><s class="was"><?php echo e( $euro( $ly ) ); ?></s> <?php endif; ?><b><?php echo e( $euro( $y ) ); ?></b><span>all'anno</span></div><div class="price-note"><small>pari a <?php echo e( $euro( (int) round( $y / 12 ) ) ); ?> al mese<?php echo $m && $m * 12 > $y ? ' · risparmi ' . e( $euro( $m * 12 - $y ) ) . ' rispetto al mensile' : ''; ?></small></div></div><?php endif; ?>
 			<?php endif; ?>
-			<ul><?php foreach ( $feat as $line ) : ?><li><?php echo e( $line ); ?></li><?php endforeach; ?></ul>
+			<ul><?php if ( '' !== $lead ) : ?><li class="lead"><?php echo e( $lead ); ?></li><?php endif; foreach ( $feat as $line ) : ?><li><?php echo e( $line ); ?></li><?php endforeach; ?></ul>
 			<?php if ( 'free' === $code ) : ?>
 				<a class="btn alt block" href="/free">Inizia gratis</a>
 			<?php else : ?>
