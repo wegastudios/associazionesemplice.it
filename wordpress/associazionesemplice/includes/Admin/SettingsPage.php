@@ -5,6 +5,7 @@ use AssociazioneSemplice\CancelPolicy;
 use AssociazioneSemplice\Edition;
 use AssociazioneSemplice\Money;
 use AssociazioneSemplice\PaymentConfig;
+use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Secrets;
 use AssociazioneSemplice\Settings;
 
