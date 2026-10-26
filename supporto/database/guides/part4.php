@@ -154,7 +154,7 @@ Ti serve un account **Stripe** o **PayPal Business** dell'associazione. Le chiav
 ## Cosa fare
 
 1. Vai in **Impostazioni → Tecniche → Pagamenti online**.
-2. Scegli il gateway: Stripe, PayPal, entrambi, WooCommerce (in alternativa) oppure solo bonifico.
+2. Scegli il gateway: Stripe, PayPal, SumUp (anche combinati), WooCommerce (in alternativa) oppure solo bonifico. Per SumUp vedi [Attivare i pagamenti online con SumUp](guida:attivare-sumup).
 3. Incolla le chiavi. Vengono salvate **cifrate** e legate al sito: se lo copi su un altro dominio vanno reinserite.
 4. Per Stripe, crea nel pannello Stripe un **webhook** verso l'indirizzo mostrato nella pagina del plugin.
 5. Salva e fai un **pagamento di prova** con un importo minimo.
@@ -167,6 +167,66 @@ Ti serve un account **Stripe** o **PayPal Business** dell'associazione. Le chiav
 4. L'incasso entra in prima nota sul conto **Stripe** o **PayPal** (creato in automatico) e il socio riceve la ricevuta via email.
 
 > Commissioni, trasferimenti sul conto corrente e rimborsi si registrano a mano (una spesa e un giroconto). I rimborsi si fanno dal pannello del fornitore.
+MD,
+    ],
+    [
+        'topic' => 'pagamenti', 'section' => 'Pagamenti online', 'slug' => 'attivare-sumup',
+        'title' => 'Attivare i pagamenti online con SumUp',
+        'body' => <<<'MD'
+> Disponibile in: Pro Contabile, Pro Fiscale (dalla versione 1.2.26 del plugin gratuito e 1.1.23 di Pro: aggiornali insieme)
+
+SumUp è un altro metodo di pagamento online. Il socio paga su una **pagina sicura di SumUp**: i dati della carta non passano mai dal tuo sito. Si può usare da solo o **insieme a Stripe e PayPal**.
+
+## Cosa ti serve
+
+Un account **SumUp** dell'associazione, con il **codice commerciante** e la **chiave API**, che trovi nel pannello SumUp.
+
+## Cosa fare
+
+1. Vai in **Impostazioni → Pagamenti online**.
+2. Attiva **SumUp** e inserisci il **codice commerciante** e la **chiave API**. La chiave viene salvata cifrata.
+3. Premi **Verifica connessione**: il plugin controlla che chiave e codice siano validi.
+4. Salva.
+
+## Come funziona
+
+1. Il socio sceglie SumUp dall'area riservata e paga sulla pagina di SumUp.
+2. **Non serve nessun webhook**: la conferma arriva quando il socio torna sul sito e il plugin la ricontrolla anche **ogni ora**.
+3. L'incasso entra in prima nota sul conto **«SumUp»**, creato in automatico.
+
+## Per le prove
+
+SumUp **non ha una modalità di prova** sul sito: per provare serve un **account di prova di SumUp**. Fai un pagamento di importo minimo per verificare tutto.
+
+> Commissioni e trasferimenti sul conto corrente si registrano come per gli altri metodi. Per la gestione delle commissioni vedi [Commissioni di incasso sui pagamenti online](guida:commissioni-di-incasso).
+MD,
+    ],
+    [
+        'topic' => 'pagamenti', 'section' => 'Pagamenti online', 'slug' => 'commissioni-di-incasso',
+        'title' => 'Commissioni di incasso sui pagamenti online',
+        'body' => <<<'MD'
+> Disponibile in: Pro Contabile, Pro Fiscale (dalla versione 1.2.26 del plugin gratuito e 1.1.23 di Pro)
+
+Ogni gateway trattiene una commissione su ciascun pagamento. Il plugin ti aiuta a tenerne conto in prima nota e, se vuoi, a ribaltarla su chi paga.
+
+## Indicare la commissione
+
+1. Vai in **Impostazioni → Pagamenti online**.
+2. Per ogni metodo (**Stripe**, **PayPal**, **SumUp**) indica la commissione: una **cifra fissa**, una **percentuale**, oppure **entrambe**.
+
+## Registrarla come spesa
+
+Con l'opzione **«Registra come spesa la commissione stimata»**, a ogni pagamento confermato entra in prima nota una spesa chiamata **«Commissione di incasso (stima)»**. È una **stima**: confrontala con l'estratto conto del gateway e correggila quando serve.
+
+## Ribaltarla su chi paga
+
+L'opzione **«Ribalta la commissione su chi paga»** è **spenta di partenza**. Se la accendi, il totale da pagare aumenta e il socio vede la commissione sotto il pulsante di pagamento.
+
+> **Attenzione**: in Italia e nell'Unione europea è **vietato** applicare un supplemento ai consumatori per i pagamenti con carta (direttiva PSD2, D.Lgs. 11/2010). La responsabilità di accendere questa opzione è dell'associazione: valuta bene prima di attivarla.
+
+## Dove non vale
+
+Le commissioni non si applicano alle **domande di adesione online** e ai pagamenti tramite **WooCommerce**.
 MD,
     ],
     [

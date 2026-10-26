@@ -30,7 +30,7 @@ MD,
         'body' => <<<'MD'
 Pro è un plugin a parte, che si aggiunge a quello gratuito e ne estende le funzioni:
 
-- **Pagamenti online** con Stripe, PayPal o WooCommerce.
+- **Pagamenti online** con Stripe, PayPal, SumUp o WooCommerce.
 - **Più livelli di socio** con quote diverse e sconto per il nucleo familiare.
 - **Conti e fondi** multipli, giroconti e cassa per più persone.
 - **Ricevute in PDF** e attestazioni annuali.
@@ -172,7 +172,7 @@ MD,
         'topic' => 'domande-frequenti', 'section' => 'Uso quotidiano', 'slug' => 'pagamenti-con-carta',
         'title' => 'Posso far pagare i soci con carta o PayPal?',
         'body' => <<<'MD'
-Sì, con **Pro** (Contabile o Fiscale): i pagamenti online funzionano con **Stripe**, **PayPal** o, in alternativa, con **WooCommerce**. Il socio paga dall'area riservata e l'incasso entra da solo in prima nota, con la ricevuta.
+Sì, con **Pro** (Contabile o Fiscale): i pagamenti online funzionano con **Stripe**, **PayPal**, **SumUp** (anche insieme) o, in alternativa, con **WooCommerce**. Il socio paga dall'area riservata e l'incasso entra da solo in prima nota, con la ricevuta.
 
 Nel **plugin gratuito** puoi comunque indicare le coordinate del bonifico, registrare a mano contanti e bonifici e ricevere **donazioni** con un modulo che porta alla pagina di PayPal. Vedi [Attivare i pagamenti online](guida:attivare-stripe-o-paypal).
 MD,

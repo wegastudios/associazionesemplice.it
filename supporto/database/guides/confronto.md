@@ -65,7 +65,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Cassa «Prenota» (per data o per attività) | ✓ | ✓ | ✓ |
 | Acconti e sconti con motivo per riga di incasso | ✓ | ✓ | ✓ |
 | Nuovo socio in un popup durante l'incasso, senza perdere l'operazione | ✓ | ✓ | ✓ |
-| Pagamenti online con Stripe, PayPal o WooCommerce | — | ✓ | ✓ |
+| Pagamenti online con Stripe, PayPal, SumUp o WooCommerce | — | ✓ | ✓ |
+| Commissioni di incasso per metodo: stima in prima nota e ribaltamento opzionale | — | ✓ | ✓ |
 | Conti multipli, giroconti e cassa per più persone | — | ✓ | ✓ |
 | Fondi accantonati (per esempio rimborso dei volontari) | — | ✓ | ✓ |
 | Risorse con quota accantonata in un fondo a ogni pagamento (anche in crediti) | — | ✓ | ✓ |
