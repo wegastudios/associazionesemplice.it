@@ -1944,7 +1944,7 @@ asem_ok( 10.0 === $sumup_checkouts[ $su_row['provider_ref'] ]['amount'] && 'MSMO
 asem_ok( false !== strpos( $ps->handle_return( $su_row['public_id'], 'ok', $u_pm ), 'attesa' ), 'SumUp: se non risulta pagato resta in attesa' );
 $sumup_checkouts[ $su_row['provider_ref'] ]['paid'] = true;
 asem_ok( false !== strpos( $ps->handle_return( $su_row['public_id'], 'ok', $u_pm ), 'ricevuto' ) && 'paid' === $ps->get_by_public( $su_row['public_id'] )['status'], 'SumUp: pagamento confermato' );
-asem_ok( 1000 === $sum_tx( "type = 'income' AND method = 'sumup'" ) && 40 === $sum_tx( "type = 'expense' AND method = 'sumup'" ) && 960 === $balance_of( 'SumUp' ), 'SumUp: incasso 10,00 e commissione stimata 0,40 (0,25 + 1,5%) registrata come spesa sul conto SumUp' );
+asem_ok( 1000 === $sum_tx( "type = 'income' AND method = 'sumup'" ) && 40 === $sum_tx( "type = 'expense' AND method = 'sumup'" ) && 960 === $balance_of( 'SumUp' ), 'SumUp: incasso 10,00 e commissione stimata 0,40 (0,25 + 1,5%) registrata come spesa sul conto SumUp [entrate ' . $sum_tx( "type = 'income' AND method = 'sumup'" ) . ', spese ' . $sum_tx( "type = 'expense' AND method = 'sumup'" ) . ', saldo ' . $balance_of( 'SumUp' ) . ', audit ' . wp_json_encode( array_slice( array_filter( Audit::recent( 30 ), function ( $a ) { return 0 === strpos( $a['action'], 'payment.fee' ); } ), 0, 2 ) ) . ']' );
 // ribaltata su chi paga
 Settings::update( array( 'pay_fee_pass_sumup' => 1 ) );
 asem_ok( '' !== \AssociazioneSemplice\PaymentConfig::fee_note( Settings::all(), 'sumup' ) && '' === \AssociazioneSemplice\PaymentConfig::fee_note( Settings::all(), 'woocommerce' ), 'commissione ribaltata: il socio la legge sotto il pulsante' );
