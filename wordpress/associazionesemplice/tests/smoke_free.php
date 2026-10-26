@@ -204,6 +204,82 @@ free_ok( isset( $fr_dues[ "q:$fr_kid:" . $people->membership_plan( $fr_kid, curr
 remove_all_filters( 'pre_wp_mail' );
 Settings::update( array( 'apply_enabled' => 0 ) );
 
+// ---------- Blocco B: votazioni, inventario e prestiti, archivio documenti ----------
+$bb_throws = function ( callable $fn ): bool {
+	try {
+		$fn();
+	} catch ( \InvalidArgumentException $e ) {
+		return true;
+	}
+	return false;
+};
+$bb_local = function ( string $mod ): string {
+	return gmdate( 'Y-m-d\TH:i', strtotime( \AssociazioneSemplice\Db::now() . ' ' . $mod ) );
+};
+$bb_label = Settings::membership_year()->label();
+$bb_a = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Vera', 'last_name' => 'Votante', 'email' => 'vera.votante@example.com' ) );
+$bb_b = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Nino', 'last_name' => 'Sospeso', 'email' => 'nino.sospeso@example.com' ) );
+$bb_g = $people->create( array( 'type' => 'guardian', 'first_name' => 'Gina', 'last_name' => 'Genitore', 'email' => 'gina.genitore@example.com' ) );
+$people->set_membership( $bb_a, $bb_label, true );
+$people->set_membership( $bb_b, $bb_label, true );
+$people->suspend( $bb_b );
+$bb_poll = \AssociazioneSemplice\Polls::save( 0, array( 'kind' => 'vote', 'title' => 'Bilancio', 'question' => 'Approvi?', 'options' => array( 'Favorevole', 'Contrario' ), 'secret' => 1, 'opens_at' => $bb_local( '-1 hour' ), 'closes_at' => $bb_local( '+1 day' ), 'show_results' => 1 ), $admin->ID );
+$bb_opts = array_column( \AssociazioneSemplice\Polls::options( $bb_poll ), 'id' );
+free_ok( 2 === count( $bb_opts ) && \AssociazioneSemplice\PollRules::OPEN === \AssociazioneSemplice\Polls::get( $bb_poll )['status'], 'votazioni: creata con due risposte e aperta' );
+free_ok( $bb_throws( function () use ( $bb_local, $admin ) { \AssociazioneSemplice\Polls::save( 0, array( 'title' => 'Storta', 'options' => array( 'Una' ), 'opens_at' => $bb_local( '-1 hour' ), 'closes_at' => $bb_local( '+1 day' ) ), $admin->ID ); } ), 'votazioni: servono almeno due risposte' );
+free_ok( $bb_throws( function () use ( $bb_local, $admin ) { \AssociazioneSemplice\Polls::save( 0, array( 'title' => 'Storta', 'options' => array( 'Una', 'Due' ), 'opens_at' => $bb_local( '+2 day' ), 'closes_at' => $bb_local( '+1 day' ) ), $admin->ID ); } ), 'votazioni: la chiusura deve venire dopo l\'apertura' );
+free_ok( $bb_throws( function () use ( $bb_poll, $bb_g, $bb_opts ) { \AssociazioneSemplice\Polls::vote( $bb_poll, $bb_g, array( (int) $bb_opts[0] ) ); } ), 'votazioni: un genitore o tutore non vota' );
+free_ok( $bb_throws( function () use ( $bb_poll, $bb_b, $bb_opts ) { \AssociazioneSemplice\Polls::vote( $bb_poll, $bb_b, array( (int) $bb_opts[0] ) ); } ), 'votazioni: un socio sospeso non vota' );
+free_ok( $bb_throws( function () use ( $bb_poll, $bb_a, $bb_opts ) { \AssociazioneSemplice\Polls::vote( $bb_poll, $bb_a, array( (int) $bb_opts[0], (int) $bb_opts[1] ) ); } ), 'votazioni: a scelta singola non si scelgono due risposte' );
+\AssociazioneSemplice\Polls::vote( $bb_poll, $bb_a, array( (int) $bb_opts[0] ) );
+free_ok( $bb_throws( function () use ( $bb_poll, $bb_a, $bb_opts ) { \AssociazioneSemplice\Polls::vote( $bb_poll, $bb_a, array( (int) $bb_opts[1] ) ); } ), 'votazioni: un voto solo per persona' );
+$bb_res = \AssociazioneSemplice\Polls::results( $bb_poll, true );
+free_ok( 1 === $bb_res['voters'] && 1 === $bb_res['options'][0]['count'] && 0 === $bb_res['options'][1]['count'] && $bb_res['eligible'] >= 1, 'votazioni: risultati e numero degli aventi diritto' );
+free_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'poll_votes' ) . ' WHERE poll_id = ' . (int) $bb_poll . ' AND person_id IS NOT NULL' ) && \AssociazioneSemplice\Polls::has_voted( $bb_poll, $bb_a ), 'votazioni: nel voto segreto si sa chi ha votato ma non cosa' );
+free_ok( false !== strpos( \AssociazioneSemplice\Docs::poll( $bb_poll, 'csv' )['body'], 'Favorevole' ) && 0 === strpos( \AssociazioneSemplice\Docs::poll( $bb_poll, 'pdf' )['body'], '%PDF' ), 'votazioni: CSV e PDF del verbale dei risultati' );
+$bb_exp = \AssociazioneSemplice\Privacy::export( $bb_a );
+free_ok( 1 === count( $bb_exp['votazioni_a_cui_ha_partecipato'] ) && ! $bb_exp['scelte_nelle_votazioni_palesi'], 'privacy: l\'esportazione dei dati elenca le votazioni, senza la scelta nel voto segreto' );
+
+$bb_item = \AssociazioneSemplice\Inventory::save_item( 0, array( 'name' => 'Proiettore', 'category' => 'Audio e video', 'code' => 'PRJ-1', 'quantity' => 2, 'state' => 'good', 'location' => 'Armadio', 'value' => '350,00' ) );
+free_ok( $bb_throws( function () { \AssociazioneSemplice\Inventory::save_item( 0, array( 'name' => 'Doppione', 'code' => 'PRJ-1', 'quantity' => 1, 'state' => 'good' ) ); } ), 'inventario: il codice è unico' );
+$bb_today = current_time( 'Y-m-d' );
+$bb_loan  = \AssociazioneSemplice\Inventory::lend( $bb_item, $bb_a, 1, gmdate( 'Y-m-d', strtotime( $bb_today . ' -10 days' ) ), gmdate( 'Y-m-d', strtotime( $bb_today . ' -3 days' ) ), 'Funziona bene' );
+free_ok( 1 === \AssociazioneSemplice\Inventory::items( 'Proiettore' )[0]['available'], 'inventario: un pezzo è fuori, uno è disponibile' );
+free_ok( $bb_throws( function () use ( $bb_item, $bb_a, $bb_today ) { \AssociazioneSemplice\Inventory::lend( $bb_item, $bb_a, 2, $bb_today, $bb_today ); } ), 'inventario: non si prestano più pezzi di quelli disponibili' );
+free_ok( $bb_throws( function () use ( $bb_item, $bb_g, $bb_today ) { \AssociazioneSemplice\Inventory::lend( $bb_item, $bb_g, 1, $bb_today, $bb_today ); } ), 'inventario: si presta solo a soci e volontari' );
+$bb_late = \AssociazioneSemplice\Inventory::overdue();
+free_ok( 1 === count( $bb_late ) && 3 === $bb_late[0]['days_late'], 'prestiti: il rientro scaduto compare tra quelli da recuperare' );
+free_ok( in_array( 'prestito con il rientro scaduto', array_column( \AssociazioneSemplice\Admin\WpDashboard::todo_items(), 1 ), true ), 'prestiti: riquadro «Da lavorare»' );
+free_ok( $bb_throws( function () use ( $bb_a ) { \AssociazioneSemplice\Privacy::anonymize( $bb_a ); } ), 'privacy: non si anonimizza chi ha un bene in prestito' );
+Settings::update( array( 'reminders_enabled' => 1, 'reminders_loans' => 1 ) );
+add_filter( 'pre_wp_mail', '__return_true' );
+$bb_rem = \AssociazioneSemplice\Reminders::run();
+free_ok( $bb_rem['loans'] >= 1, 'prestiti: promemoria per email al rientro scaduto' );
+free_ok( 0 === \AssociazioneSemplice\Reminders::run()['loans'], 'prestiti: il promemoria parte una volta sola' );
+remove_filter( 'pre_wp_mail', '__return_true' );
+Settings::update( array( 'reminders_enabled' => 0 ) );
+\AssociazioneSemplice\Inventory::return_loan( $bb_loan, $bb_today, 'Tutto a posto', 'worn' );
+free_ok( ! \AssociazioneSemplice\Inventory::overdue() && 2 === \AssociazioneSemplice\Inventory::items( 'Proiettore' )[0]['available'] && 'worn' === \AssociazioneSemplice\Inventory::item( $bb_item )['state'], 'prestiti: rientro registrato, bene di nuovo disponibile' );
+free_ok( false !== strpos( \AssociazioneSemplice\Inventory::items_csv(), 'PRJ-1' ) && false !== strpos( \AssociazioneSemplice\Inventory::loans_csv(), 'Proiettore' ), 'inventario: esportazione CSV di beni e prestiti' );
+
+$wpdb->insert( Db::t( 'documents' ), array( 'title' => 'Statuto pubblico', 'category' => 'Statuto', 'visibility' => 'public', 'file_name' => 'statuto.pdf', 'file_stored' => str_repeat( 'a', 32 ), 'file_size' => 10, 'created_at' => Db::now(), 'updated_at' => Db::now() ) );
+$bb_d_pub = (int) $wpdb->insert_id;
+$wpdb->insert( Db::t( 'documents' ), array( 'title' => 'Verbale interno', 'category' => 'Verbali firmati', 'visibility' => 'staff', 'file_name' => 'verbale.pdf', 'file_stored' => str_repeat( 'b', 32 ), 'file_size' => 10, 'created_at' => Db::now(), 'updated_at' => Db::now() ) );
+$bb_d_staff = (int) $wpdb->insert_id;
+$wpdb->insert( Db::t( 'documents' ), array( 'title' => 'Modulo soci', 'category' => 'Moduli', 'visibility' => 'members', 'file_name' => 'modulo.docx', 'file_stored' => str_repeat( 'c', 32 ), 'file_size' => 10, 'created_at' => Db::now(), 'updated_at' => Db::now() ) );
+$bb_d_mem = (int) $wpdb->insert_id;
+free_ok( \AssociazioneSemplice\Access::can_read_document( \AssociazioneSemplice\Documents::get( $bb_d_staff ) ), 'documenti: la segreteria apre tutto' );
+$bb_user = wp_insert_user( array( 'user_login' => 'vera_votante', 'user_pass' => wp_generate_password(), 'user_email' => 'vera.votante@example.com', 'role' => Plugin::ROLE_MEMBER ) );
+$wpdb->update( Db::t( 'people' ), array( 'wp_user_id' => $bb_user ), array( 'id' => $bb_a ) );
+wp_set_current_user( $bb_user );
+free_ok( \AssociazioneSemplice\Access::can_read_document( \AssociazioneSemplice\Documents::get( $bb_d_mem ) ) && \AssociazioneSemplice\Access::can_read_document( \AssociazioneSemplice\Documents::get( $bb_d_pub ) ) && ! \AssociazioneSemplice\Access::can_read_document( \AssociazioneSemplice\Documents::get( $bb_d_staff ) ), 'documenti: un socio in regola apre quelli per i soci e quelli pubblici, non quelli della segreteria' );
+free_ok( false !== strpos( \AssociazioneSemplice\Frontend\BlockBViews::section_polls( $people->get( $bb_a ) ), 'Bilancio' ) && false !== strpos( \AssociazioneSemplice\Frontend\BlockBViews::section_documents( $people->get( $bb_a ) ), 'Modulo soci' ), 'area soci: votazioni e documenti' );
+wp_set_current_user( 0 );
+free_ok( \AssociazioneSemplice\Access::can_read_document( \AssociazioneSemplice\Documents::get( $bb_d_pub ) ) && ! \AssociazioneSemplice\Access::can_read_document( \AssociazioneSemplice\Documents::get( $bb_d_mem ) ), 'documenti: chi non ha fatto l\'accesso apre solo i pubblici' );
+$bb_pub = \AssociazioneSemplice\Frontend\Shortcodes::render_view( 'documenti' );
+free_ok( false !== strpos( $bb_pub, 'Statuto pubblico' ) && false === strpos( $bb_pub, 'Modulo soci' ) && false === strpos( $bb_pub, 'Verbale interno' ), 'documenti: lo shortcode pubblico mostra solo i documenti pubblici' );
+wp_set_current_user( $admin->ID );
+
 free_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice PHP dal plugin' . ( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Edizione gratuita: tutti i controlli sono passati.' );

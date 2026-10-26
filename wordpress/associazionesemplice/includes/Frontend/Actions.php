@@ -37,6 +37,7 @@ final class Actions {
 		'asem_front_collect'        => 'do_collect',
 		'asem_front_new_member'     => 'do_new_member',
 		'asem_front_notice'         => 'do_notice',
+		'asem_front_vote'           => 'do_vote',
 		'asem_front_bank_email'     => 'do_bank_email',
 	);
 
@@ -549,6 +550,14 @@ final class Actions {
 	}
 
 	/** Avviso agli iscritti di un'attività: solo chi la tiene o chi gestisce l'evento (e gli amministratori). */
+	/** Il socio vota: un solo voto per votazione, solo se ha diritto di voto (controllo in Polls). */
+	public static function do_vote( array $post ): string {
+		$actor   = self::actor();
+		$choices = isset( $post['choice'] ) ? (array) $post['choice'] : array();
+		\AssociazioneSemplice\Polls::vote( (int) ( $post['poll_id'] ?? 0 ), (int) $actor['id'], array_map( 'intval', $choices ) );
+		return 'Il tuo voto è stato registrato. Grazie!';
+	}
+
 	public static function do_notice( array $post ): string {
 		$aid = (int) ( $post['activity_id'] ?? 0 );
 		if ( ! \AssociazioneSemplice\Notices::can_send( $aid ) ) {
