@@ -17,7 +17,7 @@ Il plugin gratuito contiene tutto il nucleo per gestire una piccola associazione
 - **Attività**: corsi ed eventi con iscrizioni, posti limitati, lista d'attesa, calendario e registrazione degli ingressi.
 - **Cassa e conti**: prima nota con una cassa unica, spese con allegati e donazioni tramite PayPal.
 - **Registri e privacy**: verbali, informativa privacy, consensi, anonimizzazione e download dei dati personali.
-- **Area riservata** per i soci, con avvisi, regolamento, tessera, eventi e corsi.
+- **Area riservata** per i soci, con avvisi, regolamento, tessera, eventi e corsi, e **domanda di adesione online** per chi vuole iscriversi (con minori e genitori o tutori).
 - **Ruoli**: presidente, vicepresidente, tesoriere, consiglieri e segreteria, con permessi separati.
 - **Copia di sicurezza** e azzeramento dei dati.
 

@@ -12,12 +12,14 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Più livelli di socio con quote diverse | — | ✓ | ✓ |
 | Nucleo familiare con sconto per i familiari | — | ✓ | ✓ |
 | Ospiti con conteggio delle partecipazioni e invito a iscriversi | ✓ | ✓ | ✓ |
-| Ospiti dell'associazione e del volontario con quote ripartite (per amministratori e segreteria) | — | ✓ | ✓ |
+| Ospiti dell'associazione e del volontario con quote ripartite e rimborso al volontario (per amministratori e segreteria) | — | ✓ | ✓ |
 | Importazione di soci e ospiti da Excel, CSV e WP All Import | ✓ | ✓ | ✓ |
+| Data di nascita e tutore nel libro soci, nell'esportazione e nell'importazione | ✓ | ✓ | ✓ |
 | Esportazione di soci e ospiti | ✓ | ✓ | ✓ |
 | Tessera digitale e stampabile, con colori e logo | ✓ | ✓ | ✓ |
 | Tessera personalizzata su immagine propria | ✓ | ✓ | ✓ |
 | QR della tessera con verifica in diretta | ✓ | ✓ | ✓ |
+| Tessera in PDF da stampare, con testo libero, tipologia e incarichi | ✓ | ✓ | ✓ |
 | Tessera in Apple Wallet e Google Wallet | — | ✓ | ✓ |
 
 ## Area riservata e permessi
@@ -26,6 +28,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 |---|---|---|---|
 | Area riservata dei soci (tessera, attività, avvisi, profilo) | ✓ | ✓ | ✓ |
 | Primo accesso e approvazione della segreteria | ✓ | ✓ | ✓ |
+| Domanda di adesione online per chi non è ancora socio, con approvazione, tessera e link per la password | ✓ | ✓ | ✓ |
+| Minori con uno o due genitori o tutori: area riservata del genitore con tessera, prenotazioni, pagamenti e avvisi del minore, regolamento e privacy accettati per suo conto | ✓ | ✓ | ✓ |
 | Ruoli: segreteria, presidente, tesoriere, volontari, staff | ✓ | ✓ | ✓ |
 | Regolamento da accettare con registrazione della versione | ✓ | ✓ | ✓ |
 | Blocchi, shortcode e widget Elementor | ✓ | ✓ | ✓ |
@@ -53,14 +57,19 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Funzione | Free | Pro Contabile | Pro Fiscale |
 |---|---|---|---|
 | Prima nota con cassa unica | ✓ | ✓ | ✓ |
-| Anni solari: apertura, chiusura e riapertura dell'anno | ✓ | ✓ | ✓ |
 | Incassi con calcolo del resto | ✓ | ✓ | ✓ |
 | Spese con scontrini e fatture allegati | ✓ | ✓ | ✓ |
 | Importazione ed esportazione della prima nota | ✓ | ✓ | ✓ |
 | Donazioni con PayPal | ✓ | ✓ | ✓ |
+| Anni solari: apertura, chiusura e riapertura (solo amministratori), con avviso del nuovo anno da settembre | ✓ | ✓ | ✓ |
+| Cassa «Prenota» (per data o per attività) | ✓ | ✓ | ✓ |
+| Acconti e sconti con motivo per riga di incasso | ✓ | ✓ | ✓ |
+| Nuovo socio in un popup durante l'incasso, senza perdere l'operazione | ✓ | ✓ | ✓ |
 | Pagamenti online con Stripe, PayPal o WooCommerce | — | ✓ | ✓ |
 | Conti multipli, giroconti e cassa per più persone | — | ✓ | ✓ |
 | Fondi accantonati (per esempio rimborso dei volontari) | — | ✓ | ✓ |
+| Risorse con quota accantonata in un fondo a ogni pagamento (anche in crediti) | — | ✓ | ✓ |
+| Disponibilità reale dei fondi, liberazione ed estinzione | — | ✓ | ✓ |
 | Tabella dei fondi da rimborsare per anno | — | ✓ | ✓ |
 | Ricevute in PDF e attestazione annuale | — | ✓ | ✓ |
 | Report di gestione (conti e liquidità, anno sociale) | — | ✓ | ✓ |
@@ -89,6 +98,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 |---|---|---|---|
 | Avvisi agli iscritti di un'attività | ✓ | ✓ | ✓ |
 | Promemoria automatici per email (tessera, corsi, eventi) | ✓ | ✓ | ✓ |
+| Registro della posta in uscita e invio di una email di prova | ✓ | ✓ | ✓ |
 | Comunicazioni a gruppi di soci con storico degli invii | — | ✓ | ✓ |
 | App installabile sul telefono e notifiche | — | ✓ | ✓ |
 
@@ -97,11 +107,11 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Funzione | Free | Pro Contabile | Pro Fiscale |
 |---|---|---|---|
 | Colori e logo dell'associazione | ✓ | ✓ | ✓ |
+| Novità di ogni versione in italiano semplice (changelog) | ✓ | ✓ | ✓ |
 | Testi personalizzabili, tipo di ente e termini | — | ✓ | ✓ |
 | Lingue aggiuntive (inglese incluso) | — | ✓ | ✓ |
 | Copia di sicurezza e ripristino | ✓ | ✓ | ✓ |
 | Azzeramento dei dati e registro delle azioni | ✓ | ✓ | ✓ |
-| Novità di ogni versione in italiano semplice (changelog) | ✓ | ✓ | ✓ |
 
 ## Licenza e prezzo
 
