@@ -149,12 +149,26 @@ final class Affiliations {
 		return array( 'created' => $created, 'skipped' => count( $people ) - $created );
 	}
 
-	/** @throws \InvalidArgumentException */
-	public static function update_card( int $id, array $in ): void {
+	/**
+	 * Cambia numero, tipo, data e scadenza di una tessera (ente, stagione e costo restano).
+	 *
+	 * @throws \InvalidArgumentException
+	 */
+	public static function update_card( int $id, array $changes ): void {
 		$c = self::card( $id );
 		if ( ! $c ) {
 			throw new \InvalidArgumentException( 'Tessera non trovata.' );
 		}
+		$in = array(
+			'body'        => $c['body'],
+			'body_label'  => $c['body_label'],
+			'season'      => $c['season'],
+			'cost'        => null === $c['cost_cents'] ? '' : Money::plain( (int) $c['cost_cents'] ),
+			'card_number' => $changes['card_number'] ?? $c['card_number'],
+			'card_type'   => $changes['card_type'] ?? $c['card_type'],
+			'issued_on'   => $changes['issued_on'] ?? $c['issued_on'],
+			'expires_on'  => $changes['expires_on'] ?? $c['expires_on'],
+		);
 		self::db()->update( Db::t( 'body_cards' ), AffiliationRules::clean_card( $in ), array( 'id' => $id ) );
 		Audit::log( 'body_card.updated', 'person', (int) $c['person_id'], array( 'card' => $id ) );
 	}
