@@ -76,8 +76,10 @@ final class InventoryPage {
 				. '<td>' . (int) $l['quantity'] . '</td><td>' . self::d( $l['lent_on'] ) . '</td><td>' . self::d( $l['due_on'] ) . '</td><td>' . $state . '</td><td>' . esc_html( trim( $l['notes_out'] . ' ' . ( '' !== $l['notes_in'] ? '→ ' . $l['notes_in'] : '' ) ) ) . '</td><td>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			if ( LoanRules::RETURNED !== $l['status'] ) {
 				Ui::form_open( 'asem_loan_return', Ui::url( 'asem-inventory', array( 'view' => (int) $l['item_id'] ) ), false, 'asem-inline' );
+				// phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
 				echo Ui::hidden( 'id', $l['id'] ) . '<input type="date" name="returned_on" value="' . esc_attr( Db::today() ) . '"> <input type="text" name="notes_in" placeholder="Stato al rientro" maxlength="255" style="width:150px"> '
 					. '<select name="new_state">' . Ui::options( LoanRules::item_states(), '', 'Stato invariato' ) . '</select> <button class="button button-small">Rientrato</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				// phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
 				Ui::form_close();
 			}
 			echo '</td></tr>';

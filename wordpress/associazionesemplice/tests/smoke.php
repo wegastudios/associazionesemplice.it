@@ -4161,7 +4161,7 @@ $people->set_membership( $rp2, $ym_label, true );
 $wpdb->update( Db::t( 'memberships' ), array( 'valid_to' => gmdate( 'Y-m-d', strtotime( $today . ' +10 days' ) ) ), array( 'person_id' => $rp ) );
 $wpdb->update( Db::t( 'memberships' ), array( 'valid_to' => gmdate( 'Y-m-d', strtotime( $today . ' -3 days' ) ) ), array( 'person_id' => $rp2 ) );
 $r_off = \AssociazioneSemplice\Reminders::run( $today );
-asem_ok( array( 0, 0, 0 ) === array_values( $r_off ) && 0 === $mails_to( 'rita.promemoria@example.com' ), 'promemoria: spenti di default, nessuna email' );
+asem_ok( array( 0, 0, 0, 0, 0 ) === array_values( $r_off ) && 0 === $mails_to( 'rita.promemoria@example.com' ), 'promemoria: spenti di default, nessuna email' );
 $prev = \AssociazioneSemplice\Reminders::run( $today, false );
 asem_ok( $prev['membership'] >= 2 && 0 === $mails_to( 'rita.promemoria@example.com' ), 'promemoria: l\'anteprima conta ma non manda nulla' );
 $rm_ev   = $mkev( 'Gita sociale', 0, null, array( 'session' => array( 'session_date' => gmdate( 'Y-m-d', strtotime( $today . ' +1 day' ) ), 'start_time' => '09:30', 'location' => 'Piazza Grande', 'capacity' => 20 ) ) );

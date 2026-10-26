@@ -269,7 +269,10 @@ $bb_d_staff = (int) $wpdb->insert_id;
 $wpdb->insert( Db::t( 'documents' ), array( 'title' => 'Modulo soci', 'category' => 'Moduli', 'visibility' => 'members', 'file_name' => 'modulo.docx', 'file_stored' => str_repeat( 'c', 32 ), 'file_size' => 10, 'created_at' => Db::now(), 'updated_at' => Db::now() ) );
 $bb_d_mem = (int) $wpdb->insert_id;
 free_ok( \AssociazioneSemplice\Access::can_read_document( \AssociazioneSemplice\Documents::get( $bb_d_staff ) ), 'documenti: la segreteria apre tutto' );
-$bb_user = wp_insert_user( array( 'user_login' => 'vera_votante', 'user_pass' => wp_generate_password(), 'user_email' => 'vera.votante@example.com', 'role' => Plugin::ROLE_MEMBER ) );
+$bb_user = (int) email_exists( 'vera.votante@example.com' );
+if ( ! $bb_user ) {
+	$bb_user = (int) wp_insert_user( array( 'user_login' => 'vera_votante', 'user_pass' => wp_generate_password(), 'user_email' => 'vera.votante@example.com', 'role' => Plugin::ROLE_MEMBER ) );
+}
 $wpdb->update( Db::t( 'people' ), array( 'wp_user_id' => $bb_user ), array( 'id' => $bb_a ) );
 wp_set_current_user( $bb_user );
 free_ok( \AssociazioneSemplice\Access::can_read_document( \AssociazioneSemplice\Documents::get( $bb_d_mem ) ) && \AssociazioneSemplice\Access::can_read_document( \AssociazioneSemplice\Documents::get( $bb_d_pub ) ) && ! \AssociazioneSemplice\Access::can_read_document( \AssociazioneSemplice\Documents::get( $bb_d_staff ) ), 'documenti: un socio in regola apre quelli per i soci e quelli pubblici, non quelli della segreteria' );
