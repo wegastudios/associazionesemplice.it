@@ -249,9 +249,6 @@ final class PaymentConfig {
 				$warnings[] = 'Satispay è in modalità REALE: i pagamenti saranno veri.';
 			}
 		}
-		if ( self::STRIPE === $gateway && ! empty( $c['stripe_klarna'] ) ) {
-			$warnings[] = 'Klarna: per comparire tra i metodi di Stripe va attivato anche nel tuo account Stripe (Impostazioni → Metodi di pagamento). Funziona solo in euro, per importi da ' . Money::format( KlarnaRules::MIN_CENTS ) . ' a ' . Money::format( KlarnaRules::MAX_CENTS ) . ' e con l\'email di chi paga.';
-		}
 		return array( 'errors' => $errors, 'warnings' => $warnings );
 	}
 

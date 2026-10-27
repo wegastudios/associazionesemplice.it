@@ -367,6 +367,5 @@ final class BlockERulesTest extends TestCase {
 		$this->assertFalse( StripeApi::is_paid( array( 'payment_status' => 'unpaid' ) ), 'finché non è pagata non si registra nulla' );
 		$warn = P::validate_gateway( array( 'stripe_mode' => 'test', 'stripe_publishable_key' => 'pk_test_abc', 'stripe_secret_key' => 'sk_test_abc', 'stripe_webhook_secret' => 'whsec_x', 'stripe_klarna' => 1 ), P::STRIPE );
 		$this->assertSame( array(), $warn['errors'] );
-		$this->assertStringContainsString( 'Klarna', implode( ' ', $warn['warnings'] ) );
 	}
 }
