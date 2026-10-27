@@ -4,7 +4,7 @@ $csrf = Portale\App::csrf();
 <section class="admin"><div class="wrap">
 	<div class="card2">
 		<h2>Carica una versione</h2>
-		<p class="muted">Scegli lo zip costruito con <code>wordpress/build.sh</code>: il numero di versione si legge dal pacchetto. Restano online le ultime <?php echo (int) $keep; ?> versioni di ciascun plugin (si cambia in <a href="/admin/impostazioni">Impostazioni</a>). I file stanno fuori dalla cartella pubblica e si scaricano solo dall'area cliente, con licenza in regola.</p>
+		<p style="margin:0 0 8px"><?php echo tip( 'Carica lo zip costruito con build.sh: il numero di versione si legge dal pacchetto. Restano online le ultime ' . (int) $keep . " versioni di ciascun plugin (il numero si cambia in Impostazioni). I file stanno fuori dalla cartella pubblica e si scaricano solo dall'area cliente, con licenza in regola.", 'Come funzionano le versioni' ); ?></p>
 		<form method="post" action="/admin/versioni" enctype="multipart/form-data">
 			<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>">
 			<div class="form-grid two">

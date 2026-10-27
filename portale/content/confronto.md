@@ -13,6 +13,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Nucleo familiare con sconto per i familiari | — | ✓ | ✓ |
 | Ospiti con conteggio delle partecipazioni e invito a iscriversi | ✓ | ✓ | ✓ |
 | Ospiti dell'associazione e del volontario con quote ripartite e rimborso al volontario (per amministratori e segreteria) | — | ✓ | ✓ |
+| Domanda di adesione online con modulo sul sito (shortcode) | ✓ | ✓ | ✓ |
+| Minori con genitori o tutori (non soci), con tessera valida dal pagamento | ✓ | ✓ | ✓ |
 | Importazione di soci e ospiti da Excel, CSV e WP All Import | ✓ | ✓ | ✓ |
 | Data di nascita e tutore nel libro soci, nell'esportazione e nell'importazione | ✓ | ✓ | ✓ |
 | Esportazione di soci e ospiti | ✓ | ✓ | ✓ |
@@ -65,7 +67,9 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Cassa «Prenota» (per data o per attività) | ✓ | ✓ | ✓ |
 | Acconti e sconti con motivo per riga di incasso | ✓ | ✓ | ✓ |
 | Nuovo socio in un popup durante l'incasso, senza perdere l'operazione | ✓ | ✓ | ✓ |
-| Pagamenti online con Stripe, PayPal o WooCommerce | — | ✓ | ✓ |
+| Pagamenti online con Stripe, PayPal, SumUp o WooCommerce | — | ✓ | ✓ |
+| Commissioni di incasso per metodo: stima in prima nota da tariffe standard modificabili e ribaltamento opzionale | — | ✓ | ✓ |
+| Pagamento online della quota dalla domanda di adesione | — | ✓ | ✓ |
 | Conti multipli, giroconti e cassa per più persone | — | ✓ | ✓ |
 | Fondi accantonati (per esempio rimborso dei volontari) | — | ✓ | ✓ |
 | Risorse con quota accantonata in un fondo a ogni pagamento (anche in crediti) | — | ✓ | ✓ |
@@ -117,6 +121,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Lingue aggiuntive (inglese incluso) | — | ✓ | ✓ |
 | Copia di sicurezza e ripristino | ✓ | ✓ | ✓ |
 | Azzeramento dei dati e registro delle azioni | ✓ | ✓ | ✓ |
+| Registro azioni con spazio occupato, «Libera spazio» e pulizia automatica | ✓ | ✓ | ✓ |
 
 ## Licenza e prezzo
 
@@ -124,7 +129,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 |---|---|---|---|
 | Chiave di licenza | Gratuita e facoltativa | Obbligatoria | Obbligatoria |
 | Prova gratuita di Pro per 30 giorni (una volta sola) | ✓ | — | — |
-| Prezzo | 0 € per sempre | 8 € al mese o 80 € all'anno | 12 € al mese o 100 € all'anno |
+| Prezzo | 0 € per sempre | {lite_month} al mese o {lite_year} all'anno | {full_month} al mese o {full_year} all'anno |
 
 > I prezzi e i piani sono sempre aggiornati nella sezione **Prezzi** della home. Con una licenza non in regola Pro torna alle funzioni di base, senza toccare i dati.
 

@@ -91,6 +91,9 @@ final class Admin {
 		} elseif ( 'prezzi' === $a ) {
 			if ( $get ) {
 				$this->show( 'prices', 'prezzi', array( 'plans' => Config::get( 'plans', array() ) ) );
+			} elseif ( 'promo' === $b ) {
+				Settings::savePromo( $this->db, $_POST );
+				$this->done( 'promo', 'Promozione salvata.', '/admin/prezzi' );
 			} elseif ( '' !== $b ) {
 				$this->savePlan( $b );
 			} else {

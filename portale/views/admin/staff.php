@@ -1,6 +1,6 @@
 <?php /** @var array $rows @var array $labels @var bool $sso @var string $support_url */ include __DIR__ . '/_nav.php'; $csrf = Portale\App::csrf(); ?>
 <section class="admin"><div class="wrap">
-	<p class="muted">Lo staff entra con la stessa email e password (o link per email) degli altri utenti. <strong>Amministratore</strong>: gestione del portale e del supporto. <strong>Solo supporto</strong>: entra solo nella parte amministrativa del <a href="<?php echo e( $support_url ); ?>"><?php echo e( preg_replace( '#^https?://#', '', $support_url ) ); ?></a>, senza accesso alla gestione del portale. Gli indirizzi in <code>admins</code> di config.php sono sempre amministratori e si cambiano solo lì.</p>
+	<p style="margin:0 0 8px"><?php echo tip( "Lo staff entra con la stessa email e password (o link per email) degli altri utenti.\n\n**Amministratore**: gestisce portale e supporto.\n\n**Solo supporto**: entra solo nella parte amministrativa del sito di supporto, senza accesso alla gestione del portale.\n\nGli indirizzi in «admins» di config.php sono sempre amministratori e si cambiano solo lì.", 'Ruoli dello staff' ); ?></p>
 	<?php if ( ! $sso ) : ?><p class="flash" role="status">Accesso unico al supporto non ancora attivo: manca <code>support.sso_secret</code> (almeno 32 caratteri) in config.php. Finché manca, il link «Supporto» porta alla home del sito di supporto.</p><?php endif; ?>
 	<form method="post" action="/admin/staff" class="inline-form">
 		<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>">

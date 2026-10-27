@@ -88,3 +88,31 @@
 		a.addEventListener('click', function (ev) { ev.preventDefault(); show(); });
 	});
 })();
+
+// Fumetti di aiuto («?»): si aprono con un clic, si chiudono con Esc o cliccando altrove.
+(function () {
+	function closeAll(except) {
+		document.querySelectorAll('.tip-btn[aria-expanded="true"]').forEach(function (b) {
+			if (b === except) { return; }
+			b.setAttribute('aria-expanded', 'false');
+			var t = document.getElementById(b.getAttribute('aria-controls'));
+			if (t) { t.hidden = true; }
+		});
+	}
+	document.addEventListener('click', function (ev) {
+		var b = ev.target.closest ? ev.target.closest('.tip-btn') : null;
+		if (!b) {
+			if (!(ev.target.closest && ev.target.closest('.tip-bubble'))) { closeAll(null); }
+			return;
+		}
+		ev.preventDefault();
+		var t = document.getElementById(b.getAttribute('aria-controls'));
+		var open = b.getAttribute('aria-expanded') === 'true';
+		closeAll(b);
+		b.setAttribute('aria-expanded', open ? 'false' : 'true');
+		if (t) { t.hidden = open; }
+	});
+	document.addEventListener('keydown', function (ev) {
+		if (ev.key === 'Escape') { closeAll(null); }
+	});
+})();

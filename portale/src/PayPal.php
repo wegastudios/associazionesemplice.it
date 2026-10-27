@@ -28,6 +28,36 @@ final class PayPal {
 		return is_array( $d ) ? $d : array();
 	}
 
+	/** Crea il prodotto di abbonamento (una volta sola, poi si riusa) e restituisce il suo id. */
+	public static function createProduct( string $name ): string {
+		$r = self::call( 'POST', '/v1/billing/catalogs/products', array( 'name' => mb_substr( $name, 0, 120 ), 'type' => 'SERVICE', 'category' => 'SOFTWARE' ) );
+		if ( empty( $r['id'] ) ) {
+			throw new \RuntimeException( 'PayPal: prodotto non creato.' );
+		}
+		return (string) $r['id'];
+	}
+
+	/** Crea un piano di fatturazione ricorrente (mensile o annuale, senza fine) e restituisce il suo id. */
+	public static function createPlan( string $productId, int $cents, string $interval, string $name ): string {
+		$r = self::call( 'POST', '/v1/billing/plans', array(
+			'product_id'          => $productId,
+			'name'                => mb_substr( $name, 0, 120 ),
+			'status'              => 'ACTIVE',
+			'billing_cycles'      => array( array(
+				'frequency'      => array( 'interval_unit' => 'year' === $interval ? 'YEAR' : 'MONTH', 'interval_count' => 1 ),
+				'tenure_type'    => 'REGULAR',
+				'sequence'       => 1,
+				'total_cycles'   => 0,
+				'pricing_scheme' => array( 'fixed_price' => array( 'value' => number_format( $cents / 100, 2, '.', '' ), 'currency_code' => 'EUR' ) ),
+			) ),
+			'payment_preferences' => array( 'auto_bill_outstanding' => true, 'setup_fee_failure_action' => 'CANCEL', 'payment_failure_threshold' => 3 ),
+		) );
+		if ( empty( $r['id'] ) ) {
+			throw new \RuntimeException( 'PayPal: piano non creato.' );
+		}
+		return (string) $r['id'];
+	}
+
 	/** @return string indirizzo dove il cliente approva l'abbonamento */
 	public static function approvalUrl( string $subscriptionId, string $email, string $planId ): string {
 		$r = self::call( 'POST', '/v1/billing/subscriptions', array(

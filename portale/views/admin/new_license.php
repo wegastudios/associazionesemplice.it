@@ -2,7 +2,6 @@
 <section class="admin"><div class="wrap" style="max-width:720px">
 	<div class="card2">
 		<h2>Emetti una licenza a mano</h2>
-		<p class="muted">Per regali, collaborazioni o accordi fuori dal portale: la licenza si crea sul server Wega senza alcun pagamento e compare nell'area riservata del cliente.</p>
 		<form method="post" action="/admin/licenze/nuova">
 			<input type="hidden" name="csrf" value="<?php echo e( Portale\App::csrf() ); ?>">
 			<div class="form-grid two">
