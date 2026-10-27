@@ -63,7 +63,7 @@ final class BlockFActions {
 	public static function convention_announce( array $p ): array {
 		$id = (int) ( $p['id'] ?? 0 );
 		$n  = Conventions::announce( $id, true );
-		return array( Ui::url( 'asem-conventions', array( 'view' => $id ) ), $n > 0 ? $n . ' avvisi inviati.' : 'Nessun avviso partito: ai soci a cui spetta manca l\'indirizzo email.' );
+		return array( Ui::url( 'asem-conventions', array( 'view' => $id ) ), $n > 0 ? $n . ' avvisi inviati.' : 'Nessun avviso partito (ai soci a cui spetta manca l\'indirizzo email o la posta non ha funzionato): puoi riprovare.' );
 	}
 
 	public static function convention_categories( array $p ): array {

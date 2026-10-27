@@ -337,6 +337,13 @@ $cf_sent = \AssociazioneSemplice\Conventions::announce( $cf_all, true );
 remove_filter( 'pre_wp_mail', '__return_true' );
 free_ok( $cf_sent >= 2 && ! empty( \AssociazioneSemplice\Conventions::get( $cf_all )['announced_at'] ), 'convenzioni: l\'avviso parte ai soci a cui spetta' );
 free_ok( $bb_throws( function () use ( $cf_all ) { \AssociazioneSemplice\Conventions::announce( $cf_all, true ); } ), 'convenzioni: l\'avviso parte una sola volta per convenzione' );
+add_filter( 'pre_wp_mail', '__return_false' ); // la posta non parte
+$cf_fail = \AssociazioneSemplice\Conventions::announce( $cf_vols, true );
+remove_filter( 'pre_wp_mail', '__return_false' );
+free_ok( 0 === $cf_fail && empty( \AssociazioneSemplice\Conventions::get( $cf_vols )['announced_at'] ), 'convenzioni: se nessuna email parte l\'avviso non risulta fatto e si può riprovare' );
+add_filter( 'pre_wp_mail', '__return_true' );
+free_ok( \AssociazioneSemplice\Conventions::announce( $cf_vols, true ) >= 1 && ! empty( \AssociazioneSemplice\Conventions::get( $cf_vols )['announced_at'] ), 'convenzioni: al secondo tentativo l\'avviso parte' );
+remove_filter( 'pre_wp_mail', '__return_true' );
 free_ok( $bb_throws( function () use ( $cf_old ) { \AssociazioneSemplice\Conventions::announce( $cf_old, true ); } ), 'convenzioni: non si avvisa per una convenzione scaduta' );
 free_ok( in_array( $cf_all, $cf_ids( \AssociazioneSemplice\Conventions::expiring() ), true ) && ! in_array( $cf_vols, $cf_ids( \AssociazioneSemplice\Conventions::expiring() ), true ), 'convenzioni: «in scadenza» comprende quelle che finiscono entro 30 giorni' );
 $cf_csv = \AssociazioneSemplice\Conventions::csv();

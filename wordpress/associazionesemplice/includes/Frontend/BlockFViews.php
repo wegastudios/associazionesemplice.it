@@ -53,8 +53,15 @@ final class BlockFViews {
 		if ( count( $cats ) < 2 ) {
 			return '';
 		}
-		$vista = isset( $_GET['asemf_vista'] ) ? sanitize_key( wp_unslash( $_GET['asemf_vista'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification -- solo lettura: resta nella stessa parte dell'area soci
-		$html  = '<form method="get" class="asemf-conv-filter">' . ( '' !== $vista ? '<input type="hidden" name="asemf_vista" value="' . esc_attr( $vista ) . '">' : '' ) . '<label>Categoria <select name="conv_cat"><option value="">Tutte</option>';
+		// Il modulo GET riparte dalla stessa pagina: ne riporta i parametri (con i permalink semplici c'è ?page_id=…), tranne la categoria e gli esiti di azioni.
+		$hidden = '';
+		foreach ( $_GET as $k => $v ) { // phpcs:ignore WordPress.Security.NonceVerification -- solo lettura: i parametri della pagina corrente
+			if ( ! is_scalar( $v ) || in_array( $k, array( 'conv_cat', 'asemf_ok', 'asemf_err', 'asemf_sig' ), true ) ) {
+				continue;
+			}
+			$hidden .= '<input type="hidden" name="' . esc_attr( sanitize_text_field( (string) $k ) ) . '" value="' . esc_attr( sanitize_text_field( wp_unslash( (string) $v ) ) ) . '">';
+		}
+		$html = '<form method="get" class="asemf-conv-filter">' . $hidden . '<label>Categoria <select name="conv_cat"><option value="">Tutte</option>';
 		foreach ( $cats as $c ) {
 			$html .= '<option value="' . esc_attr( $c ) . '"' . selected( $c, $current, false ) . '>' . esc_html( $c ) . '</option>';
 		}
@@ -86,9 +93,6 @@ final class BlockFViews {
 
 	/** Le convenzioni valide oggi per questo socio; vuoto se non ha diritto a nessuna (anche per i tutori non soci). */
 	public static function section_members( array $p ): string {
-		if ( ! MemberType::is_member( (string) $p['type'] ) ) {
-			return '';
-		}
 		$all = Conventions::for_person( $p );
 		if ( ! $all ) {
 			return '';

@@ -127,9 +127,13 @@ final class Conventions {
 
 	/** Quelle valide oggi (non scadute, non archiviate), eventualmente di una categoria. @return array[] */
 	public static function valid( string $category = '' ): array {
-		return array_values( array_filter( self::all( $category ), function ( $c ) {
-			return ConventionRules::STATUS_ACTIVE === $c['status'];
-		} ) );
+		$today = Db::today();
+		$sql   = 'SELECT * FROM ' . Db::t( 'conventions' ) . ' WHERE deleted_at IS NULL AND archived_at IS NULL'
+			. ' AND (valid_from IS NULL OR valid_from <= %s) AND (valid_to IS NULL OR valid_to >= %s)'
+			. ( '' !== $category ? ' AND category = %s' : '' ) . ' ORDER BY category, name, id';
+		$args  = '' !== $category ? array( $today, $today, $category ) : array( $today, $today );
+		$rows  = self::db()->get_results( self::db()->prepare( $sql, $args ), ARRAY_A ) ?: array();
+		return array_map( array( __CLASS__, 'decorate' ), $rows );
 	}
 
 	/** Convenzioni che scadono entro 30 giorni, la più vicina per prima. @return array[] */
@@ -173,15 +177,26 @@ final class Conventions {
 	// ---------- A chi spetta ----------
 
 	/** La persona ha diritto a questa convenzione oggi (socio in regola del tipo previsto)? */
-	public static function is_entitled( array $conv, array $person ): bool {
+	public static function is_entitled( array $conv, array $person, ?bool $active = null ): bool {
+		$active = $active ?? self::in_good_standing( $person );
+		return ConventionRules::is_entitled( (string) $conv['audience'], (array) $conv['types_list'], (string) $person['type'], $active );
+	}
+
+	/**
+	 * Tessera valida oggi, non sospeso, non uscito, non anonimizzato. Con una riga di `PeopleService::search()` (che ha già
+	 * 'active_until') non fa interrogazioni; con una riga semplice ne fa due.
+	 */
+	private static function in_good_standing( array $person ): bool {
 		if ( ! empty( $person['anonymized_at'] ) || ! empty( $person['deleted_at'] ) || ! empty( $person['application_status'] ) ) {
 			return false;
 		}
 		if ( ! empty( $person['left_on'] ) && (string) $person['left_on'] <= Db::today() ) {
 			return false; // socio uscito
 		}
-		$active = MemberType::is_member( (string) $person['type'] ) && Plugin::people()->is_active_member( (int) $person['id'] );
-		return ConventionRules::is_entitled( (string) $conv['audience'], (array) $conv['types_list'], (string) $person['type'], $active );
+		if ( array_key_exists( 'active_until', $person ) && array_key_exists( 'suspended_at', $person ) ) {
+			return empty( $person['suspended_at'] ) && ! empty( $person['active_until'] ) && (string) $person['active_until'] >= Db::today();
+		}
+		return Plugin::people()->is_active_member( (int) $person['id'] );
 	}
 
 	/**
@@ -190,11 +205,12 @@ final class Conventions {
 	 * @return array[]
 	 */
 	public static function for_person( array $person, string $category = '' ): array {
-		if ( ! MemberType::is_member( (string) $person['type'] ) ) {
+		$active = self::in_good_standing( $person ); // una volta sola, non per ogni convenzione
+		if ( ! $active ) {
 			return array();
 		}
-		return array_values( array_filter( self::valid( $category ), function ( $c ) use ( $person ) {
-			return self::is_entitled( $c, $person );
+		return array_values( array_filter( self::valid( $category ), function ( $c ) use ( $person, $active ) {
+			return self::is_entitled( $c, $person, $active );
 		} ) );
 	}
 
@@ -208,8 +224,8 @@ final class Conventions {
 	/** I soci a cui spetta (con la tessera valida oggi e del tipo previsto). @return array[] */
 	public static function recipients( array $conv ): array {
 		$out = array();
-		foreach ( Plugin::people()->search() as $p ) {
-			if ( MemberType::is_member( (string) $p['type'] ) && self::is_entitled( $conv, $p ) ) {
+		foreach ( Plugin::people()->search() as $p ) { // le righe hanno già 'active_until': nessuna interrogazione per persona
+			if ( self::is_entitled( $conv, $p ) ) {
 				$out[] = $p;
 			}
 		}
@@ -255,7 +271,7 @@ final class Conventions {
 				$n++;
 			}
 		}
-		if ( $send ) {
+		if ( $send && $n > 0 ) { // con zero invii (nessun indirizzo, posta che non parte) si può riprovare
 			self::db()->update( Db::t( 'conventions' ), array( 'announced_at' => Db::now() ), array( 'id' => $id ) );
 			Audit::log( 'convention.announced', 'convention', $id, array( 'sent' => $n ) );
 		}
