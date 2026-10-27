@@ -22,7 +22,7 @@ final class Reminders {
 
 	// ---------- Registro degli invii ----------
 
-	private static function sent( int $person_id, string $kind, string $ref ): bool {
+	public static function sent( int $person_id, string $kind, string $ref ): bool {
 		$db = Db::db();
 		return (bool) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'reminders' ) . ' WHERE person_id = %d AND kind = %s AND ref = %s', $person_id, $kind, $ref ) );
 	}
@@ -33,14 +33,14 @@ final class Reminders {
 	}
 
 	/** Si prenota l'invio prima di spedire: se un'altra esecuzione (cron e "Invia ora" insieme) l'ha già preso, non si manda due volte. @return bool true se l'invio è nostro */
-	private static function claim( int $person_id, string $kind, string $ref ): bool {
+	public static function claim( int $person_id, string $kind, string $ref ): bool {
 		$db = Db::db();
 		$db->query( $db->prepare( 'INSERT IGNORE INTO ' . Db::t( 'reminders' ) . ' (person_id, kind, ref, sent_at) VALUES (%d, %s, %s, %s)', $person_id, $kind, substr( $ref, 0, 60 ), Db::now() ) );
 		return 1 === (int) $db->rows_affected;
 	}
 
 	/** L'email non è partita: il promemoria torna in coda per la prossima esecuzione. */
-	private static function release( int $person_id, string $kind, string $ref ): void {
+	public static function release( int $person_id, string $kind, string $ref ): void {
 		Db::db()->delete( Db::t( 'reminders' ), array( 'person_id' => $person_id, 'kind' => $kind, 'ref' => substr( $ref, 0, 60 ) ) );
 	}
 

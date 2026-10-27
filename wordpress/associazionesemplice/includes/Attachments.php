@@ -142,6 +142,28 @@ final class Attachments {
 		}
 	}
 
+	/**
+	 * Manda al browser un file della cartella privata e termina. I permessi li controlla chi chiama, prima.
+	 *
+	 * @param string $path     percorso del file (già controllato)
+	 * @param string $ext      estensione originale (decide il tipo di contenuto)
+	 * @param string $filename nome con cui il browser lo salva
+	 * @param bool   $inline   aprirlo nel browser invece di scaricarlo (solo i tipi che lo permettono)
+	 */
+	public static function stream( string $path, string $ext, string $filename, bool $inline = false ): void {
+		while ( ob_get_level() ) {
+			ob_end_clean();
+		}
+		nocache_headers();
+		header( 'Content-Type: ' . ( DocumentRules::SERVE_AS[ $ext ] ?? 'application/octet-stream' ) );
+		header( 'X-Content-Type-Options: nosniff' );
+		header( "Content-Security-Policy: default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox" );
+		header( 'Content-Disposition: ' . ( $inline && DocumentRules::is_inline( $ext ) ? 'inline' : 'attachment' ) . '; filename="' . preg_replace( '/[^A-Za-z0-9._-]+/', '_', $filename ) . '"' );
+		header( 'Content-Length: ' . (int) filesize( $path ) );
+		readfile( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile -- lettura in streaming di un file privato
+		exit;
+	}
+
 	/** Tipo reale di un file (letto dal contenuto), '' se il server non sa leggerlo. */
 	public static function mime_of( string $path ): string {
 		return self::real_mime( $path );

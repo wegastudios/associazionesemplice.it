@@ -37,7 +37,7 @@ final class Exports {
 		return "'" . $v;
 	}
 
-	private static function line( array $cells ): string {
+	public static function line( array $cells ): string {
 		$out = array();
 		foreach ( $cells as $c ) {
 			$v     = self::neutralize( null === $c ? '' : (string) $c );

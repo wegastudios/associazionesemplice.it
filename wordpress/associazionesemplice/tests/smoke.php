@@ -6665,6 +6665,11 @@ $CE::anonymize( $bc_b );
 asem_ok( 0 === count( $CE::for_person( $bc_b ) ), 'certificati: l\'anonimizzazione cancella i certificati' );
 $CE::delete( $bc_c1 );
 asem_ok( null === $CE::get( $bc_c1 ), 'certificati: eliminazione' );
+asem_ok( 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'medical_certs' ) . ' WHERE id = %d', $bc_c1 ) ), 'certificati: l\x27eliminazione cancella davvero la riga (dato sanitario)' );
+$bc_sub = wp_insert_user( array( 'user_login' => 'bc_subscriber', 'user_pass' => wp_generate_password(), 'user_email' => 'bc.sub@example.com', 'role' => 'subscriber' ) );
+wp_set_current_user( $bc_sub );
+asem_ok( ! $CE::can_manage() && ! current_user_can( Plugin::CAP_OPS ), 'certificati: chi non è staff non può gestire né vedere i certificati' );
+wp_set_current_user( 1 );
 // pagine
 $bc_html = asem_render( array( Admin\CertificatesPage::class, 'render' ), 'Certificati medici' );
 asem_ok( false !== strpos( $bc_html, 'asem_save_cert_settings' ), 'certificati: pagina dell\'elenco con le impostazioni' );
