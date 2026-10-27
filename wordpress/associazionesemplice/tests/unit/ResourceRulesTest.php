@@ -270,7 +270,7 @@ final class ResourceRulesTest extends TestCase {
 		$from = '2026-10-01 00:00:00';
 		$to   = '2026-11-01 00:00:00';
 		$this->assertSame( 60, R::overlap_minutes( '2026-10-20 18:00:00', '2026-10-20 19:00:00', $from, $to ) );
-		$this->assertSame( 30, R::overlap_minutes( '2026-09-30 23:30:00', '2026-10-01 01:00:00', $from, $to ), 'a cavallo dell\'inizio conta solo la parte dentro' );
+		$this->assertSame( 60, R::overlap_minutes( '2026-09-30 23:30:00', '2026-10-01 01:00:00', $from, $to ), 'a cavallo dell\'inizio conta solo la parte dentro (dalle 00:00 all\'1:00)' );
 		$this->assertSame( 60, R::overlap_minutes( '2026-10-31 23:00:00', '2026-11-01 05:00:00', $from, $to ), 'a cavallo della fine' );
 		$this->assertSame( 0, R::overlap_minutes( '2026-11-01 00:00:00', '2026-11-01 02:00:00', $from, $to ), 'fuori dal periodo' );
 		$this->assertSame( 0, R::overlap_minutes( '2026-09-30 22:00:00', '2026-10-01 00:00:00', $from, $to ), 'finisce quando comincia il periodo' );

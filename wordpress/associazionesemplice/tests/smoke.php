@@ -6006,7 +6006,7 @@ asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'Promemoria',
 
 // ---------- Risorse: report di occupazione e richieste di assegnazione ----------
 wp_set_current_user( 1 );
-$oc_res = $RS::save( 0, array( 'name' => 'Campo occupazione', 'category' => 'court', 'mode' => 'slot', 'open_time' => '08:00', 'close_time' => '20:00', 'slot_minutes' => 60, 'fee_cents' => 1000 ) );
+$oc_res = $RS::save( 0, array( 'name' => 'Campo occupazione', 'category' => 'court', 'mode' => 'slot', 'open_time' => '08:00', 'close_time' => '20:00', 'slot_minutes' => 60, 'min_slots' => 1, 'max_slots' => 2, 'fee_cents' => 1000 ) );
 $oc_d0  = $today;
 $oc_d6  = gmdate( 'Y-m-d', strtotime( $today . ' +6 days' ) );
 $oc_b   = $RS::book_slot( $oc_res, $rs_m1, gmdate( 'Y-m-d', strtotime( $today . ' +3 days' ) ), '10:00', 2, array(), true );
