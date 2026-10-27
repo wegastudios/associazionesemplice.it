@@ -42,7 +42,7 @@ MD,
 
 1. Vai nell'elenco **Soci** e aggiungi una nuova persona con nome e cognome. L'**email è facoltativa**: con l'email il socio ha subito l'accesso all'area riservata; senza, l'accesso si attiva con un link da mandargli su WhatsApp.
 2. Registra la quota associativa dalla scheda del socio o dall'incasso: se il socio ha la tessera non valida, la quota si inserisce da sola in qualunque incasso.
-3. La tessera si attiva con il versamento.
+3. La tessera si attiva quando la quota è **saldata** (vedi «Quota pagata a rate» più sotto).
 
 Creando il socio il plugin crea anche l'**utente WordPress** con la stessa email, con il solo ruolo «Socio»: nessun accesso alla gestione e nessuna email automatica. Se esiste già un utente con quell'email, viene collegato senza cambiargli ruolo.
 
@@ -55,6 +55,22 @@ La tessera dura l'anno solare e **scade sempre il 31 dicembre**, per tutti trann
 1. Dalla **Bacheca** apri l'elenco **Soci da rinnovare**: tessera scaduta o in scadenza.
 2. Premi **Incassa** accanto al socio: l'incasso si apre già compilato con la persona e gli importi dovuti.
 3. Se un socio non rinnova più, puoi **Sospendere**: diventa inattivo, non compare più in Bacheca e non può prenotare finché non lo riattivi a mano dalla sua scheda.
+
+## Quota pagata a rate
+
+Dalla versione 1.2.30 del plugin gratuito un socio può versare la quota in più volte.
+
+- Se versa **meno della quota** (per esempio 20 su 25), nella scheda del socio vedi **«versati 20 su 25, mancano 5»** con il pulsante **Incassa il saldo**. Lo stesso avviso compare in **Pagamenti da incassare**.
+- L'incasso si apre **già compilato con il residuo**, e il **pagamento online** propone il saldo.
+- La **tessera arriva solo al saldo**. Se annulli un versamento, la tessera decade.
+
+### Cambiare il comportamento
+
+In **Impostazioni → Limiti e soglie** trovi **«Tessera valida solo quando la quota è saldata»**, attivo di partenza. Se lo **spegni**, basta un versamento qualsiasi per attivare la tessera, come prima.
+
+### Quota ridotta di proposito
+
+Se il socio deve pagare meno per un motivo preciso (una riduzione concordata), **non** registrarlo come rata: usa il campo **sconto** nell'incasso, così la quota risulta saldata.
 
 ## Altro che può servire
 

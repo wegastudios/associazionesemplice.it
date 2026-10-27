@@ -7,6 +7,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Funzione | Free | Pro Contabile | Pro Fiscale |
 |---|---|---|---|
 | Libro soci con numerazione progressiva e cessazioni | ✓ | ✓ | ✓ |
+| Quota associativa a rate: saldo da incassare e tessera valida al saldo | ✓ | ✓ | ✓ |
 | Schede dei soci e collegamento all'utente WordPress | ✓ | ✓ | ✓ |
 | Quota associativa unica e socio fondatore | ✓ | ✓ | ✓ |
 | Più livelli di socio con quote diverse | — | ✓ | ✓ |
