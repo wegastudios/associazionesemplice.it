@@ -95,8 +95,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Anonimizzazione e download dei dati personali | ✓ | ✓ | ✓ |
 | Assicurazioni dei volontari e polizze dell'associazione | — | ✓ | ✓ |
 | Registro delle presenze a corsi ed eventi | — | ✓ | ✓ |
-| Registro dei certificati medici con scadenze e promemoria | — | ✓ | ✓ |
-| Affiliazioni agli enti con tessere ed elenco da caricare sui loro portali | — | ✓ | ✓ |
+| Certificati medici sportivi con scadenze, promemoria e riquadro in Bacheca | — | ✓ | ✓ |
+| Affiliazioni agli enti, tessere dei soci anche in blocco e file CSV per i portali degli enti | — | ✓ | ✓ |
 
 ## Comunicazione
 
