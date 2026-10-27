@@ -503,4 +503,18 @@ final class Assemblies {
 		}
 		return Docs::csv( array( array( 'label' => 'Cognome' ), array( 'label' => 'Nome' ), array( 'label' => 'Tessera' ), array( 'label' => 'Presenza' ), array( 'label' => 'Delegato a' ) ), $rows );
 	}
+
+	/** Presenze e deleghe di una persona nell'esportazione dei suoi dati (filtro `asem_privacy_export`). */
+	public static function privacy_export( array $data, int $person_id ): array {
+		$db = self::db();
+		$data['assemblee_presenze'] = $db->get_results( $db->prepare( 'SELECT s.title AS assemblea, s.first_call_at AS data, a.marked_at AS presenza_registrata_il FROM ' . Db::t( 'assembly_attendees' ) . ' a JOIN ' . Db::t( 'assemblies' ) . ' s ON s.id = a.assembly_id WHERE a.person_id = %d ORDER BY s.first_call_at', $person_id ), ARRAY_A ) ?: array();
+		$proxies = $db->get_results( $db->prepare( 'SELECT s.title AS assemblea, x.delegator_id, x.created_at AS registrata_il FROM ' . Db::t( 'assembly_proxies' ) . ' x JOIN ' . Db::t( 'assemblies' ) . ' s ON s.id = x.assembly_id WHERE x.delegator_id = %d OR x.delegate_id = %d ORDER BY s.first_call_at', $person_id, $person_id ), ARRAY_A ) ?: array();
+		foreach ( $proxies as &$px ) {
+			$px['ruolo'] = (int) $px['delegator_id'] === $person_id ? 'ha delegato un altro socio' : 'ha ricevuto una delega';
+			unset( $px['delegator_id'] );
+		}
+		unset( $px );
+		$data['assemblee_deleghe'] = $proxies;
+		return $data;
+	}
 }

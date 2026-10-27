@@ -94,7 +94,7 @@ final class AssembliesPage {
 				echo Ui::confirm_button( 'asem_assembly_minutes', self::back( $id ), array( 'id' => $id ), 'Crea il verbale', 'Creare il verbale con presenti, deleghe e numero legale già scritti?' ) . ' '; // phpcs:ignore WordPress.Security.EscapeOutput
 			}
 		}
-		echo '<a class="button" href="' . esc_url( Docs::url( 'assembly', array( 'id' => $id ), 'csv' ) ) . '">Foglio presenze (CSV)</a></p>';
+		echo '<a class="button" href="' . esc_url( BlockDExports::url( 'asem_assembly_csv', array( 'id' => $id ) ) ) . '">Foglio presenze (CSV)</a></p>';
 		if ( AssemblyRules::CANCELLED === $a['status'] ) {
 			echo Ui::confirm_button( 'asem_assembly_draft', self::back( $id ), array( 'id' => $id ), 'Riporta in bozza', 'Riportare l\'assemblea in bozza?' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		}

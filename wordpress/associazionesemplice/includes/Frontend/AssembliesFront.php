@@ -3,19 +3,12 @@ namespace AssociazioneSemplice\Frontend;
 
 use AssociazioneSemplice\Assemblies;
 use AssociazioneSemplice\AssemblyRules;
+use AssociazioneSemplice\Edition;
 
 defined( 'ABSPATH' ) || exit;
 
 /** Area soci: le assemblee convocate, con la possibilità di delegare un altro socio e di revocare la delega. */
 final class AssembliesFront {
-
-	public static function register(): void {
-		add_filter( 'asem_area_section', array( __CLASS__, 'area_section' ), 10, 3 );
-	}
-
-	public static function area_section( $html, $section, $person ) {
-		return 'assemblee' === $section ? (string) $html . self::section( (array) $person ) : $html;
-	}
 
 	public static function section( array $p ): string {
 		$list = Assemblies::for_person( $p );
@@ -64,12 +57,18 @@ final class AssembliesFront {
 	}
 
 	public static function do_proxy( array $post ): string {
+		if ( ! Edition::has( 'assemblies' ) ) {
+			throw new \InvalidArgumentException( Edition::missing_message( 'assemblies' ) );
+		}
 		$actor = Actions::actor();
 		Assemblies::add_proxy( (int) ( $post['assembly_id'] ?? 0 ), (int) $actor['id'], (int) ( $post['delegate_id'] ?? 0 ), false );
 		return 'Delega registrata. Il socio scelto la porterà in assemblea.';
 	}
 
 	public static function do_revoke( array $post ): string {
+		if ( ! Edition::has( 'assemblies' ) ) {
+			throw new \InvalidArgumentException( Edition::missing_message( 'assemblies' ) );
+		}
 		$actor = Actions::actor();
 		Assemblies::revoke_proxy( (int) ( $post['assembly_id'] ?? 0 ), (int) $actor['id'] );
 		return 'Delega revocata.';

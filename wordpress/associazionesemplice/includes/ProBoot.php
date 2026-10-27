@@ -32,6 +32,7 @@ final class ProBoot {
 		'affiliations' => 'Affiliations.php',      // affiliazioni agli enti (CONI/RAS, UISP, CSEN, ACSI, AICS) e tesseramento dei soci
 		'budget'       => 'Budget.php',            // bilancio preventivo e confronto con il consuntivo della prima nota
 		'refunds'      => 'Refunds.php',           // rimborsi ai volontari: richiesta, approvazione, pagamento e prima nota
+		'assemblies'   => 'Assemblies.php',        // assemblee dei soci: convocazione, presenze, deleghe, numero legale e verbale
 	);
 
 	/** Pagine di amministrazione di ogni funzione: se la funzione non c'è, spariscono dal menu e dalle schede. */
@@ -51,6 +52,7 @@ final class ProBoot {
 		'affiliations' => array( 'asem-affiliations' ),
 		'budget'       => array( 'asem-budget' ),
 		'refunds'      => array( 'asem-refunds' ),
+		'assemblies'   => array( 'asem-assemblies' ),
 	);
 
 	/** Azioni di amministrazione di ogni funzione: senza la funzione si bloccano. */
@@ -65,6 +67,7 @@ final class ProBoot {
 		'affiliations' => array( 'asem_aff_save', 'asem_aff_delete', 'asem_card_add', 'asem_card_update', 'asem_card_delete', 'asem_card_bulk', 'asem_save_aff_settings' ),
 		'budget'       => array( 'asem_budget_save', 'asem_budget_lines', 'asem_budget_copy', 'asem_budget_approve', 'asem_budget_reopen', 'asem_budget_delete' ),
 		'refunds'      => array( 'asem_refund_request', 'asem_refund_approve', 'asem_refund_reject', 'asem_refund_cancel', 'asem_refund_pay', 'asem_save_refund_settings', 'asem_front_refund', 'asem_front_refund_cancel' ),
+		'assemblies'   => array( 'asem_assembly_save', 'asem_assembly_delete', 'asem_assembly_convene', 'asem_assembly_hold', 'asem_assembly_cancel', 'asem_assembly_draft', 'asem_assembly_attendance', 'asem_assembly_proxy_add', 'asem_assembly_proxy_revoke', 'asem_assembly_minutes', 'asem_front_proxy', 'asem_front_proxy_revoke' ),
 		'texts'      => array( 'asem_save_terms', 'asem_save_texts', 'asem_import_texts', 'asem_reset_texts', 'asem_add_text', 'asem_save_language', 'asem_import_language', 'asem_delete_language' ),
 	);
 
@@ -90,7 +93,7 @@ final class ProBoot {
 		ProData::register(); // esportazione, anonimizzazione ed eliminazioni
 		ProSettings::register();
 		ProBlockC::register(); // certificati medici e affiliazioni agli enti
-		ProBlockD::register(); // bilancio preventivo e rimborsi ai volontari
+		ProBlockD::register(); // assemblee, bilancio preventivo e rimborsi ai volontari
 		DocsPro::register();
 		add_filter( 'asem_settings_defaults', array( ProSettings::class, 'defaults' ) );
 		add_filter( 'asem_settings_clean', array( ProSettings::class, 'clean' ), 10, 2 );

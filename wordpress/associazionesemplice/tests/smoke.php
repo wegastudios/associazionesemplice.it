@@ -6817,6 +6817,91 @@ asem_ok( '' === \AssociazioneSemplice\Frontend\CertificatesFront::section( $peop
 remove_filter( 'pre_wp_mail', $bc_hook, 10 );
 wp_set_current_user( 1 );
 
+// ---------- Blocco D: assemblee e deleghe ----------
+$as_throws = function ( callable $fn ): bool {
+	try {
+		$fn();
+	} catch ( \InvalidArgumentException $e ) {
+		return true;
+	}
+	return false;
+};
+$as_local = function ( string $mod ): string {
+	return gmdate( 'Y-m-d\TH:i', strtotime( Db::now() . ' ' . $mod ) );
+};
+$as_label = Settings::membership_year()->label();
+asem_ok( \AssociazioneSemplice\Edition::has( 'assemblies' ), 'blocco D: le assemblee ci sono con il Pro' );
+$as_mail = 0;
+$as_hook = function () use ( &$as_mail ) {
+	$as_mail++;
+	return true;
+};
+add_filter( 'pre_wp_mail', $as_hook, 10 );
+$as_ids = array();
+foreach ( array( 'Anna' => 'Alfa', 'Berto' => 'Beta', 'Carla' => 'Gamma', 'Dino' => 'Delta' ) as $as_first => $as_last ) {
+	$as_p = $people->create( array( 'type' => 'ordinary', 'first_name' => $as_first, 'last_name' => 'Assemblea ' . $as_last, 'email' => strtolower( $as_first ) . '.assemblea@example.com' ) );
+	$people->set_membership( $as_p, $as_label, true );
+	$as_ids[] = $as_p;
+}
+list( $as_a, $as_b, $as_c, $as_d ) = $as_ids;
+$as_g = $people->create( array( 'type' => 'guardian', 'first_name' => 'Gigi', 'last_name' => 'Assemblea Tutore', 'email' => 'gigi.assemblea@example.com' ) );
+$as_asm = \AssociazioneSemplice\Assemblies::save( 0, array( 'kind' => 'ordinary', 'title' => 'Assemblea di prova', 'first_call_at' => $as_local( '+10 days' ), 'second_call_at' => $as_local( '+11 days' ), 'place' => 'Sede', 'agenda' => "Bilancio\nVarie", 'quorum_first' => '0', 'quorum_second' => '0' ), 1 );
+asem_ok( \AssociazioneSemplice\AssemblyRules::DRAFT === \AssociazioneSemplice\Assemblies::get( $as_asm )['status'], 'assemblee: creata in bozza' );
+asem_ok( $as_throws( function () use ( $as_local ) { \AssociazioneSemplice\Assemblies::save( 0, array( 'title' => 'Storta', 'first_call_at' => $as_local( '+3 days' ), 'second_call_at' => $as_local( '+2 days' ), 'agenda' => 'x' ), 1 ); } ), 'assemblee: la seconda convocazione viene dopo la prima' );
+$as_noagenda = \AssociazioneSemplice\Assemblies::save( 0, array( 'title' => 'Senza odg', 'first_call_at' => $as_local( '+10 days' ) ), 1 );
+asem_ok( $as_throws( function () use ( $as_noagenda ) { \AssociazioneSemplice\Assemblies::convene( $as_noagenda ); } ), 'assemblee: senza ordine del giorno non si convoca' );
+\AssociazioneSemplice\Assemblies::delete( $as_noagenda );
+$as_conv = \AssociazioneSemplice\Assemblies::convene( $as_asm );
+asem_ok( \AssociazioneSemplice\AssemblyRules::CONVENED === \AssociazioneSemplice\Assemblies::get( $as_asm )['status'] && $as_conv['sent'] >= 4 && $as_mail >= 4, 'assemblee: convocata, avviso a tutti i soci con diritto' );
+asem_ok( 0 === \AssociazioneSemplice\Assemblies::convene( $as_asm )['sent'], 'assemblee: l\'avviso parte una sola volta per socio' );
+asem_ok( ! \AssociazioneSemplice\Assemblies::is_eligible( $people->get( $as_g ) ) && \AssociazioneSemplice\Assemblies::is_eligible( $people->get( $as_a ) ), 'assemblee: il tutore non è socio e non interviene' );
+\AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_a, $as_b );
+asem_ok( $as_throws( function () use ( $as_asm, $as_a, $as_c ) { \AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_a, $as_c ); } ), 'deleghe: un socio delega una volta sola' );
+asem_ok( $as_throws( function () use ( $as_asm, $as_c, $as_a ) { \AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_c, $as_a ); } ), 'deleghe: chi ha delegato non riceve deleghe' );
+asem_ok( $as_throws( function () use ( $as_asm, $as_b, $as_c ) { \AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_b, $as_c ); } ), 'deleghe: chi ha ricevuto una delega non delega' );
+asem_ok( $as_throws( function () use ( $as_asm, $as_c, $as_g ) { \AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_c, $as_g ); } ), 'deleghe: non si delega a chi non è socio (tutore)' );
+asem_ok( $as_throws( function () use ( $as_asm, $as_g, $as_c ) { \AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_g, $as_c ); } ), 'deleghe: il tutore non delega' );
+asem_ok( $as_throws( function () use ( $as_asm, $as_c ) { \AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_c, $as_c ); } ), 'deleghe: non si delega sé stessi' );
+\AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_c, $as_b );
+\AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_d, $as_b );
+$as_e = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Elia', 'last_name' => 'Assemblea Epsilon', 'email' => 'elia.assemblea@example.com' ) );
+$people->set_membership( $as_e, $as_label, true );
+asem_ok( $as_throws( function () use ( $as_asm, $as_e, $as_b ) { \AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_e, $as_b ); } ), 'deleghe: al massimo tre per socio (meno di 500 soci)' );
+$as_n = \AssociazioneSemplice\Assemblies::set_attendance( $as_asm, array( $as_b, $as_g, 999999 ) );
+$as_t = \AssociazioneSemplice\Assemblies::tally( $as_asm );
+asem_ok( 1 === $as_n && 1 === $as_t['present'] && 3 === $as_t['proxies'], 'presenze: tutore e persone inesistenti non si registrano; le deleghe contano se il delegato c\'è' );
+\AssociazioneSemplice\Assemblies::set_attendance( $as_asm, array( $as_b, $as_a ) );
+$as_t = \AssociazioneSemplice\Assemblies::tally( $as_asm );
+asem_ok( 2 === $as_t['present'] && 2 === $as_t['proxies'], 'presenze: chi delega ma viene di persona non conta due volte' );
+$people->suspend( $as_d );
+asem_ok( 1 === \AssociazioneSemplice\Assemblies::tally( $as_asm )['proxies'], 'deleghe: la delega di chi non è più in regola non conta' );
+$wpdb->update( Db::t( 'people' ), array( 'suspended_at' => null ), array( 'id' => $as_d ) );
+asem_ok( 2 === \AssociazioneSemplice\Assemblies::tally( $as_asm )['proxies'], 'deleghe: tornato in regola, la delega conta di nuovo' );
+$as_draft = \AssociazioneSemplice\Assemblies::save( 0, array( 'title' => 'Bozza per deleghe', 'first_call_at' => $as_local( '+30 days' ), 'agenda' => 'Varie' ), 1 );
+asem_ok( $as_throws( function () use ( $as_draft, $as_a, $as_b ) { \AssociazioneSemplice\Assemblies::add_proxy( $as_draft, $as_a, $as_b, false ); } ), 'deleghe: dall\'area soci non si delega su un\'assemblea in bozza' );
+\AssociazioneSemplice\Assemblies::add_proxy( $as_draft, $as_a, $as_b );
+asem_ok( null !== \AssociazioneSemplice\Assemblies::proxy_of( $as_draft, $as_a ), 'deleghe: la segreteria può registrare una delega scritta anche in bozza' );
+$as_other = \AssociazioneSemplice\Assemblies::save( 0, array( 'title' => 'Assemblea straordinaria prova', 'kind' => 'extraordinary', 'first_call_at' => $as_local( '+20 days' ), 'agenda' => 'Modifica dello statuto' ), 1 );
+asem_ok( 75 === (int) \AssociazioneSemplice\Assemblies::get( $as_other )['quorum_first'], 'assemblee: la straordinaria parte dal 75%' );
+\AssociazioneSemplice\Assemblies::convene( $as_other, false );
+asem_ok( $as_throws( function () use ( $as_other ) { \AssociazioneSemplice\Assemblies::hold( $as_other, 1 ); } ), 'assemblee: non si chiude senza presenze e numero legale' );
+$as_held = \AssociazioneSemplice\Assemblies::hold( $as_asm, 1 );
+asem_ok( \AssociazioneSemplice\AssemblyRules::HELD === \AssociazioneSemplice\Assemblies::get( $as_asm )['status'] && $as_held['quorum']['reached'], 'assemblee: chiusa come svolta' );
+asem_ok( $as_throws( function () use ( $as_asm, $as_c ) { \AssociazioneSemplice\Assemblies::set_attendance( $as_asm, array( $as_c ) ); } ) && $as_throws( function () use ( $as_asm ) { \AssociazioneSemplice\Assemblies::delete( $as_asm ); } ), 'assemblee: dopo lo svolgimento presenze e registro non cambiano' );
+$as_min = \AssociazioneSemplice\Assemblies::create_minutes( $as_asm, 1 );
+$as_m   = \AssociazioneSemplice\Minutes::get( $as_min );
+asem_ok( $as_m && 'assembly' === $as_m['kind'] && (int) \AssociazioneSemplice\Assemblies::get( $as_asm )['minutes_id'] === $as_min && false !== strpos( $as_m['body'], 'Bilancio' ) && false !== strpos( $as_m['attendees'], 'Beta' ), 'assemblee: verbale collegato con presenti e ordine del giorno' );
+asem_ok( $as_throws( function () use ( $as_asm ) { \AssociazioneSemplice\Assemblies::create_minutes( $as_asm ); } ), 'assemblee: un solo verbale per assemblea' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Assemblies::sheet_csv( $as_asm ), 'Presente' ) && false !== strpos( \AssociazioneSemplice\Assemblies::sheet_csv( $as_asm ), 'Delegato' ), 'assemblee: foglio presenze in CSV' );
+asem_render( array( Admin\AssembliesPage::class, 'render' ), 'Assemblea di prova' );
+asem_render( array( Admin\AssembliesPage::class, 'render' ), 'asem_assembly_hold', array( 'view' => $as_other ) );
+$as_front = \AssociazioneSemplice\Frontend\AssembliesFront::section( $people->get( $as_a ) );
+asem_ok( false !== strpos( $as_front, 'Assemblea straordinaria prova' ) && false !== strpos( $as_front, 'asem_front_proxy' ), 'area soci: assemblee convocate con il modulo di delega' );
+asem_ok( '' === \AssociazioneSemplice\Frontend\AssembliesFront::section( $people->get( $as_g ) ), 'area soci: il tutore non vede le assemblee' );
+asem_ok( isset( \AssociazioneSemplice\Frontend\Shortcodes::views()['assemblee'] ), 'assemblee: shortcode disponibile' );
+remove_filter( 'pre_wp_mail', $as_hook, 10 );
+wp_set_current_user( 1 );
+
 // ---------- Blocco D: preventivo e rimborsi ----------
 wp_set_current_user( 1 );
 asem_ok( \AssociazioneSemplice\Edition::has( 'budget' ) && \AssociazioneSemplice\Edition::has( 'refunds' ), 'blocco D: preventivo e rimborsi ci sono con il Pro' );

@@ -102,3 +102,8 @@ Frontend/RefundsFront.php
 Admin/ResourcesReportPage.php
 ResourceGate.php
 Frontend/ResourcesGate.php
+Assemblies.php
+AssemblyRules.php
+Admin/AssembliesPage.php
+Admin/BlockDActions.php
+Frontend/AssembliesFront.php

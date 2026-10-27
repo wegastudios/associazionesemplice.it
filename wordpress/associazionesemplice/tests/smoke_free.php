@@ -295,78 +295,12 @@ $bb_pub = \AssociazioneSemplice\Frontend\Shortcodes::render_view( 'documenti' );
 free_ok( false !== strpos( $bb_pub, 'Statuto pubblico' ) && false === strpos( $bb_pub, 'Modulo soci' ) && false === strpos( $bb_pub, 'Verbale interno' ), 'documenti: lo shortcode pubblico mostra solo i documenti pubblici' );
 wp_set_current_user( $admin->ID );
 
-// ---------- Blocco D: assemblee e deleghe ----------
-free_ok( ! Edition::has( 'budget' ) && ! Edition::has( 'refunds' ) && ! class_exists( 'AssociazioneSemplice\\Budget' ) && ! class_exists( 'AssociazioneSemplice\\Refunds' ), 'senza il Pro non ci sono preventivo né rimborsi' );
-$bd_mail = 0;
-$bd_hook = function () use ( &$bd_mail ) {
-	$bd_mail++;
-	return true;
-};
-add_filter( 'pre_wp_mail', $bd_hook, 10 );
-$bd_ids = array();
-foreach ( array( 'Anna' => 'Alfa', 'Berto' => 'Beta', 'Carla' => 'Gamma', 'Dino' => 'Delta' ) as $bd_first => $bd_last ) {
-	$bd_p = $people->create( array( 'type' => 'ordinary', 'first_name' => $bd_first, 'last_name' => 'Assemblea ' . $bd_last, 'email' => strtolower( $bd_first ) . '.assemblea@example.com' ) );
-	$people->set_membership( $bd_p, $bb_label, true );
-	$bd_ids[] = $bd_p;
-}
-list( $bd_a, $bd_b, $bd_c, $bd_d ) = $bd_ids;
-$bd_g = $people->create( array( 'type' => 'guardian', 'first_name' => 'Gigi', 'last_name' => 'Assemblea Tutore', 'email' => 'gigi.assemblea@example.com' ) );
-$bd_asm = \AssociazioneSemplice\Assemblies::save( 0, array( 'kind' => 'ordinary', 'title' => 'Assemblea di prova', 'first_call_at' => $bb_local( '+10 days' ), 'second_call_at' => $bb_local( '+11 days' ), 'place' => 'Sede', 'agenda' => "Bilancio\nVarie", 'quorum_first' => '0', 'quorum_second' => '0' ), $admin->ID );
-free_ok( \AssociazioneSemplice\AssemblyRules::DRAFT === \AssociazioneSemplice\Assemblies::get( $bd_asm )['status'], 'assemblee: creata in bozza' );
-free_ok( $bb_throws( function () use ( $bb_local, $admin ) { \AssociazioneSemplice\Assemblies::save( 0, array( 'title' => 'Storta', 'first_call_at' => $bb_local( '+3 days' ), 'second_call_at' => $bb_local( '+2 days' ), 'agenda' => 'x' ), $admin->ID ); } ), 'assemblee: la seconda convocazione viene dopo la prima' );
-$bd_noagenda = \AssociazioneSemplice\Assemblies::save( 0, array( 'title' => 'Senza odg', 'first_call_at' => $bb_local( '+10 days' ) ), $admin->ID );
-free_ok( $bb_throws( function () use ( $bd_noagenda ) { \AssociazioneSemplice\Assemblies::convene( $bd_noagenda ); } ), 'assemblee: senza ordine del giorno non si convoca' );
-\AssociazioneSemplice\Assemblies::delete( $bd_noagenda );
-$bd_conv = \AssociazioneSemplice\Assemblies::convene( $bd_asm );
-free_ok( \AssociazioneSemplice\AssemblyRules::CONVENED === \AssociazioneSemplice\Assemblies::get( $bd_asm )['status'] && $bd_conv['sent'] >= 4 && $bd_mail >= 4, 'assemblee: convocata, avviso a tutti i soci con diritto' );
-free_ok( 0 === \AssociazioneSemplice\Assemblies::convene( $bd_asm )['sent'], 'assemblee: l\'avviso parte una sola volta per socio' );
-free_ok( ! \AssociazioneSemplice\Assemblies::is_eligible( $people->get( $bd_g ) ) && \AssociazioneSemplice\Assemblies::is_eligible( $people->get( $bd_a ) ), 'assemblee: il tutore non è socio e non interviene' );
-\AssociazioneSemplice\Assemblies::add_proxy( $bd_asm, $bd_a, $bd_b );
-free_ok( $bb_throws( function () use ( $bd_asm, $bd_a, $bd_c ) { \AssociazioneSemplice\Assemblies::add_proxy( $bd_asm, $bd_a, $bd_c ); } ), 'deleghe: un socio delega una volta sola' );
-free_ok( $bb_throws( function () use ( $bd_asm, $bd_c, $bd_a ) { \AssociazioneSemplice\Assemblies::add_proxy( $bd_asm, $bd_c, $bd_a ); } ), 'deleghe: chi ha delegato non riceve deleghe' );
-free_ok( $bb_throws( function () use ( $bd_asm, $bd_b, $bd_c ) { \AssociazioneSemplice\Assemblies::add_proxy( $bd_asm, $bd_b, $bd_c ); } ), 'deleghe: chi ha ricevuto una delega non delega' );
-free_ok( $bb_throws( function () use ( $bd_asm, $bd_c, $bd_g ) { \AssociazioneSemplice\Assemblies::add_proxy( $bd_asm, $bd_c, $bd_g ); } ), 'deleghe: non si delega a chi non è socio (tutore)' );
-free_ok( $bb_throws( function () use ( $bd_asm, $bd_g, $bd_c ) { \AssociazioneSemplice\Assemblies::add_proxy( $bd_asm, $bd_g, $bd_c ); } ), 'deleghe: il tutore non delega' );
-free_ok( $bb_throws( function () use ( $bd_asm, $bd_c ) { \AssociazioneSemplice\Assemblies::add_proxy( $bd_asm, $bd_c, $bd_c ); } ), 'deleghe: non si delega sé stessi' );
-\AssociazioneSemplice\Assemblies::add_proxy( $bd_asm, $bd_c, $bd_b );
-\AssociazioneSemplice\Assemblies::add_proxy( $bd_asm, $bd_d, $bd_b );
-$bd_e = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Elia', 'last_name' => 'Assemblea Epsilon', 'email' => 'elia.assemblea@example.com' ) );
-$people->set_membership( $bd_e, $bb_label, true );
-free_ok( $bb_throws( function () use ( $bd_asm, $bd_e, $bd_b ) { \AssociazioneSemplice\Assemblies::add_proxy( $bd_asm, $bd_e, $bd_b ); } ), 'deleghe: al massimo tre per socio (meno di 500 soci)' );
-$bd_n = \AssociazioneSemplice\Assemblies::set_attendance( $bd_asm, array( $bd_b, $bd_g, 999999 ) );
-$bd_t = \AssociazioneSemplice\Assemblies::tally( $bd_asm );
-free_ok( 1 === $bd_n && 1 === $bd_t['present'] && 3 === $bd_t['proxies'], 'presenze: tutore e persone inesistenti non si registrano; le deleghe contano se il delegato c\'è' );
-\AssociazioneSemplice\Assemblies::set_attendance( $bd_asm, array( $bd_b, $bd_a ) );
-$bd_t = \AssociazioneSemplice\Assemblies::tally( $bd_asm );
-free_ok( 2 === $bd_t['present'] && 2 === $bd_t['proxies'], 'presenze: chi delega ma viene di persona non conta due volte' );
-$people->suspend( $bd_d );
-free_ok( 1 === \AssociazioneSemplice\Assemblies::tally( $bd_asm )['proxies'], 'deleghe: la delega di chi non è più in regola non conta' );
-$wpdb->update( Db::t( 'people' ), array( 'suspended_at' => null ), array( 'id' => $bd_d ) );
-free_ok( 2 === \AssociazioneSemplice\Assemblies::tally( $bd_asm )['proxies'], 'deleghe: tornato in regola, la delega conta di nuovo' );
-$bd_draft = \AssociazioneSemplice\Assemblies::save( 0, array( 'title' => 'Bozza per deleghe', 'first_call_at' => $bb_local( '+30 days' ), 'agenda' => 'Varie' ), $admin->ID );
-free_ok( $bb_throws( function () use ( $bd_draft, $bd_a, $bd_b ) { \AssociazioneSemplice\Assemblies::add_proxy( $bd_draft, $bd_a, $bd_b, false ); } ), 'deleghe: dall\'area soci non si delega su un\'assemblea in bozza' );
-\AssociazioneSemplice\Assemblies::add_proxy( $bd_draft, $bd_a, $bd_b );
-free_ok( null !== \AssociazioneSemplice\Assemblies::proxy_of( $bd_draft, $bd_a ), 'deleghe: la segreteria può registrare una delega scritta anche in bozza' );
-$bd_other = \AssociazioneSemplice\Assemblies::save( 0, array( 'title' => 'Assemblea straordinaria prova', 'kind' => 'extraordinary', 'first_call_at' => $bb_local( '+20 days' ), 'agenda' => 'Modifica dello statuto' ), $admin->ID );
-free_ok( 75 === (int) \AssociazioneSemplice\Assemblies::get( $bd_other )['quorum_first'], 'assemblee: la straordinaria parte dal 75%' );
-\AssociazioneSemplice\Assemblies::convene( $bd_other, false );
-free_ok( $bb_throws( function () use ( $bd_other ) { \AssociazioneSemplice\Assemblies::hold( $bd_other, 1 ); } ), 'assemblee: non si chiude senza presenze e numero legale' );
-$bd_held = \AssociazioneSemplice\Assemblies::hold( $bd_asm, 1 );
-free_ok( \AssociazioneSemplice\AssemblyRules::HELD === \AssociazioneSemplice\Assemblies::get( $bd_asm )['status'] && $bd_held['quorum']['reached'], 'assemblee: chiusa come svolta' );
-free_ok( $bb_throws( function () use ( $bd_asm, $bd_c ) { \AssociazioneSemplice\Assemblies::set_attendance( $bd_asm, array( $bd_c ) ); } ) && $bb_throws( function () use ( $bd_asm ) { \AssociazioneSemplice\Assemblies::delete( $bd_asm ); } ), 'assemblee: dopo lo svolgimento presenze e registro non cambiano' );
-$bd_min = \AssociazioneSemplice\Assemblies::create_minutes( $bd_asm, $admin->ID );
-$bd_m   = \AssociazioneSemplice\Minutes::get( $bd_min );
-free_ok( $bd_m && 'assembly' === $bd_m['kind'] && (int) \AssociazioneSemplice\Assemblies::get( $bd_asm )['minutes_id'] === $bd_min && false !== strpos( $bd_m['body'], 'Bilancio' ) && false !== strpos( $bd_m['attendees'], 'Beta' ), 'assemblee: verbale collegato con presenti e ordine del giorno' );
-free_ok( $bb_throws( function () use ( $bd_asm ) { \AssociazioneSemplice\Assemblies::create_minutes( $bd_asm ); } ), 'assemblee: un solo verbale per assemblea' );
-free_ok( false !== strpos( \AssociazioneSemplice\Assemblies::sheet_csv( $bd_asm ), 'Presente' ) && false !== strpos( \AssociazioneSemplice\Assemblies::sheet_csv( $bd_asm ), 'Delegato' ), 'assemblee: foglio presenze in CSV' );
-free_ok( false !== strpos( free_render( array( \AssociazioneSemplice\Admin\AssembliesPage::class, 'render' ) ), 'Assemblea di prova' ), 'assemblee: pagina elenco' );
-free_ok( false !== strpos( free_render( array( \AssociazioneSemplice\Admin\AssembliesPage::class, 'render' ), array( 'view' => $bd_other ) ), 'asem_assembly_hold' ), 'assemblee: pagina di una convocata con i pulsanti' );
-$bd_front = \AssociazioneSemplice\Frontend\AssembliesFront::section( $people->get( $bd_a ) );
-free_ok( false !== strpos( $bd_front, 'Assemblea straordinaria prova' ) && false !== strpos( $bd_front, 'asem_front_proxy' ), 'area soci: assemblee convocate con il modulo di delega' );
-free_ok( '' === \AssociazioneSemplice\Frontend\AssembliesFront::section( $people->get( $bd_g ) ), 'area soci: il tutore non vede le assemblee' );
-free_ok( isset( \AssociazioneSemplice\Frontend\Shortcodes::views()['assemblee'] ), 'assemblee: shortcode disponibile' );
-remove_filter( 'pre_wp_mail', $bd_hook, 10 );
-wp_set_current_user( $admin->ID );
+// ---------- Blocco D: nel gratuito non c'è nulla di assemblee, preventivo e rimborsi ----------
+free_ok( ! Edition::has( 'assemblies' ) && ! Edition::has( 'budget' ) && ! Edition::has( 'refunds' ), 'senza il Pro non ci sono assemblee, preventivo né rimborsi' );
+free_ok( ! class_exists( 'AssociazioneSemplice\Assemblies', false ) && ! class_exists( 'AssociazioneSemplice\Budget', false ) && ! class_exists( 'AssociazioneSemplice\Refunds', false ), 'senza il Pro le classi di assemblee, preventivo e rimborsi non ci sono' );
+free_ok( ! isset( \AssociazioneSemplice\Frontend\Shortcodes::views()['assemblee'] ) && ! isset( \AssociazioneSemplice\Frontend\Shortcodes::views()['rimborsi'] ), 'senza il Pro gli shortcode «assemblee» e «rimborsi» non ci sono' );
+free_ok( ! in_array( 'assemblee', \AssociazioneSemplice\Areas::groups()['soci'][1], true ) && ! isset( \AssociazioneSemplice\Admin\Admin::groups()['asem-book'][1]['asem-assemblies'] ), 'senza il Pro né l\'area soci né il menu mostrano le assemblee' );
+free_ok( ! has_action( 'admin_post_asem_assembly_save' ) && ! has_action( 'admin_post_asem_front_proxy' ), 'senza il Pro le azioni delle assemblee non sono registrate' );
 
 free_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 

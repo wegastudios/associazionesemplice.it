@@ -136,20 +136,21 @@ final class BudgetPage {
 	private static function approval( array $b ): void {
 		$id = (int) $b['id'];
 		echo '<h2>Approvazione</h2>';
+		$with_asm = Edition::has( 'assemblies' ); // senza le assemblee il preventivo ricorda solo la data di approvazione
 		if ( BudgetRules::APPROVED === $b['status'] ) {
-			$a = ! empty( $b['assembly_id'] ) ? Assemblies::get( (int) $b['assembly_id'] ) : null;
+			$a = $with_asm && ! empty( $b['assembly_id'] ) ? Assemblies::get( (int) $b['assembly_id'] ) : null;
 			echo '<p>Approvato il <strong>' . esc_html( ( new \DateTimeImmutable( (string) $b['approved_on'] ) )->format( 'd/m/Y' ) ) . '</strong>'
 				. ( $a ? ' dall\'assemblea «<a href="' . esc_url( Ui::url( 'asem-assemblies', array( 'view' => (int) $a['id'] ) ) ) . '">' . esc_html( $a['title'] ) . '</a>»' : '' ) . '. ';
 			echo Ui::confirm_button( 'asem_budget_reopen', self::back( $id ), array( 'id' => $id ), 'Riapri per modificare', 'Riaprire il preventivo? Torna in preparazione.' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			return;
 		}
 		$asm = array();
-		foreach ( Assemblies::all() as $a ) {
+		foreach ( $with_asm ? Assemblies::all() : array() as $a ) {
 			$asm[ (int) $a['id'] ] = $a['title'] . ' (' . mysql2date( 'd/m/Y', $a['first_call_at'] ) . ')';
 		}
 		Ui::form_open( 'asem_budget_approve', self::back( $id ) );
 		echo Ui::hidden( 'id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<p>Approvato il <input type="date" name="approved_on" value="' . esc_attr( Db::today() ) . '" required> dall\'assemblea <select name="assembly_id">' . Ui::options( $asm, null, '— nessuna —' ) . '</select> '; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<p>Approvato il <input type="date" name="approved_on" value="' . esc_attr( Db::today() ) . '" required> ' . ( $with_asm ? 'dall\'assemblea <select name="assembly_id">' . Ui::options( $asm, null, '— nessuna —' ) . '</select> ' : '' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		submit_button( 'Segna come approvato', 'secondary', 'submit', false );
 		echo '</p>';
 		Ui::form_close();

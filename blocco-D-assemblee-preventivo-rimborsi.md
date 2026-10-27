@@ -1,8 +1,8 @@
 # Blocco D — testo per le guide di supporto
 
-Tre funzioni nuove. **Assemblee e deleghe** sono nel plugin **gratuito**. **Bilancio preventivo** e **Rimborsi ai volontari** sono nel plugin **Pro** (Associazione Semplice Pro): il preventivo c'è in Pro Contabile e Pro Fiscale, i rimborsi in tutti i piani Pro. Senza Pro o con la licenza non in regola le due funzioni Pro spariscono; i dati restano.
+Tre funzioni nuove, tutte del plugin **Pro** (Associazione Semplice Pro): **Assemblee e deleghe** e **Rimborsi ai volontari** in tutti i piani Pro, **Bilancio preventivo** in Pro Contabile e Pro Fiscale. Senza Pro o con la licenza non in regola le tre funzioni spariscono; i dati restano.
 
-## Assemblee e deleghe (gratuito)
+## Assemblee e deleghe (Pro)
 
 **A cosa serve.** Convocare l'assemblea dei soci, registrare chi c'è, le deleghe tra soci, controllare il numero legale e avere il verbale già pronto.
 

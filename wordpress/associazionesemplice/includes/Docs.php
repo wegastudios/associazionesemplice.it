@@ -359,9 +359,6 @@ final class Docs {
 				case 'poll':
 					$doc = self::poll( (int) ( $g['id'] ?? 0 ), $format );
 					break;
-				case 'assembly':
-					$doc = array( 'body' => Assemblies::sheet_csv( (int) ( $g['id'] ?? 0 ) ), 'filename' => 'foglio-presenze-assemblea-' . (int) ( $g['id'] ?? 0 ) . '.csv', 'mime' => 'text/csv; charset=utf-8' );
-					break;
 				case 'items':
 					$doc = array( 'body' => Inventory::items_csv(), 'filename' => 'inventario.csv', 'mime' => 'text/csv; charset=utf-8' );
 					break;

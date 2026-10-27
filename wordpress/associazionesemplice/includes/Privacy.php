@@ -92,13 +92,6 @@ final class Privacy {
 		}
 		unset( $pl );
 		$open_choices = $q( 'SELECT po.title AS votazione, o.label AS scelta FROM ' . Db::t( 'poll_votes' ) . ' pv JOIN ' . Db::t( 'polls' ) . ' po ON po.id = pv.poll_id JOIN ' . Db::t( 'poll_options' ) . ' o ON o.id = pv.option_id WHERE pv.person_id = %d ORDER BY po.id', array( $person_id ) );
-		$assemblies = $q( 'SELECT s.title AS assemblea, s.first_call_at AS data, a.marked_at AS presenza_registrata_il FROM ' . Db::t( 'assembly_attendees' ) . ' a JOIN ' . Db::t( 'assemblies' ) . ' s ON s.id = a.assembly_id WHERE a.person_id = %d ORDER BY s.first_call_at', array( $person_id ) );
-		$proxies    = $q( 'SELECT s.title AS assemblea, x.delegator_id, x.created_at AS registrata_il FROM ' . Db::t( 'assembly_proxies' ) . ' x JOIN ' . Db::t( 'assemblies' ) . ' s ON s.id = x.assembly_id WHERE x.delegator_id = %d OR x.delegate_id = %d ORDER BY s.first_call_at', array( $person_id, $person_id ) );
-		foreach ( $proxies as &$px ) {
-			$px['ruolo'] = (int) $px['delegator_id'] === $person_id ? 'ha delegato un altro socio' : 'ha ricevuto una delega';
-			unset( $px['delegator_id'] );
-		}
-		unset( $px );
 		$export = array(
 			'generato_il' => Db::now(),
 			'associazione' => (string) Settings::get( 'association_name' ),
@@ -117,8 +110,6 @@ final class Privacy {
 			'prestiti_di_beni' => $loans,
 			'votazioni_a_cui_ha_partecipato' => $polls,
 			'scelte_nelle_votazioni_palesi' => $open_choices,
-			'assemblee_presenze' => $assemblies,
-			'assemblee_deleghe' => $proxies,
 		);
 		return (array) apply_filters( 'asem_privacy_export', $export, $person_id ); // le estensioni aggiungono i loro dati
 	}

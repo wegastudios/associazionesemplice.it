@@ -28,7 +28,6 @@ final class Admin {
 		Dismiss::register();
 		RegistersActions::register();
 		BlockBActions::register();
-		BlockDActions::register();
 		TechActions::register();
 		do_action( 'asem_admin_init' ); // le estensioni registrano qui le loro azioni
 		\AssociazioneSemplice\Wizard::register();
@@ -40,7 +39,7 @@ final class Admin {
 		'asem-activities' => array( 'Corsi ed eventi', array( 'asem-activities' => 'Elenco' ) ),
 		'asem-tools'      => array( 'Strumenti', array( 'asem-tools' => 'Panoramica', 'asem-import' => 'Importa da Excel/CSV', 'asem-tec' => 'Da The Events Calendar', 'asem-wpai' => 'WP All Import', 'asem-exports' => 'Esporta', 'asem-calendar' => 'Calendari', 'asem-backup' => 'Copia di sicurezza', 'asem-tech' => 'Integrazioni' ) ),
 		'asem-money'      => array( 'Cassa', array( 'asem-money' => 'Cassa', 'asem-ledger' => 'Prima nota', 'asem-income' => 'Nuovo incasso', 'asem-bookdesk' => 'Prenota', 'asem-expense' => 'Nuova spesa', 'asem-years' => 'Anni solari' ) ),
-		'asem-book'       => array( 'Registri', array( 'asem-book' => 'Libro soci', 'asem-minutes' => 'Verbali', 'asem-polls' => 'Votazioni', 'asem-assemblies' => 'Assemblee', 'asem-inventory' => 'Inventario', 'asem-documents' => 'Documenti' ) ),
+		'asem-book'       => array( 'Registri', array( 'asem-book' => 'Libro soci', 'asem-minutes' => 'Verbali', 'asem-polls' => 'Votazioni', 'asem-inventory' => 'Inventario', 'asem-documents' => 'Documenti' ) ),
 		'asem-settings'   => array( 'Impostazioni', array( 'asem-entity' => 'Dati dell\'ente', 'asem-comms' => 'Privacy e regolamento', 'asem-settings' => 'Soci e quote', 'asem-look' => 'Aspetto', 'asem-bank' => 'Bonifico', 'asem-donate' => 'Donazioni', 'asem-card' => 'Tessera e QR', 'asem-roles' => 'Ruoli e accessi', 'asem-limits' => 'Limiti e soglie', 'asem-audit' => 'Registro azioni', 'asem-guide' => 'Guida iniziale', 'asem-reset' => 'Azzeramento dati' ) ),
 	);
 
@@ -111,7 +110,6 @@ final class Admin {
 			array( 'asem-expense', 'Nuova spesa', array( ExpensePage::class, 'render' ) ),
 			array( 'asem-minutes', 'Verbali', array( RegistersPage::class, 'render_minutes' ) ),
 			array( 'asem-polls', 'Votazioni', array( PollsPage::class, 'render' ) ),
-			array( 'asem-assemblies', 'Assemblee', array( AssembliesPage::class, 'render' ) ),
 			array( 'asem-inventory', 'Inventario', array( InventoryPage::class, 'render' ) ),
 			array( 'asem-documents', 'Documenti', array( DocumentsPage::class, 'render' ) ),
 			array( 'asem-guide', 'Guida iniziale', array( GuidePage::class, 'render' ) ),

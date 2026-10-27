@@ -3,6 +3,7 @@ namespace AssociazioneSemplice\Admin;
 
 use AssociazioneSemplice\Assemblies;
 use AssociazioneSemplice\AssemblyRules;
+use AssociazioneSemplice\Edition;
 use AssociazioneSemplice\Plugin;
 
 defined( 'ABSPATH' ) || exit;
@@ -28,7 +29,7 @@ final class BlockDActions {
 			add_action(
 				'admin_post_' . $action,
 				function () use ( $action, $method ) {
-					if ( ! current_user_can( Plugin::CAP_OPS ) ) {
+					if ( ! current_user_can( Plugin::CAP_OPS ) || ! Edition::has( 'assemblies' ) ) {
 						wp_die( 'Non autorizzato.', 403 );
 					}
 					check_admin_referer( $action );

@@ -55,6 +55,7 @@ final class ProMenu {
 		array( 'asem-res-report', 'Occupazione delle risorse', array( ResourcesReportPage::class, 'render' ) ),
 		array( 'asem-medical', 'Certificati medici', array( CertificatesPage::class, 'render' ) ),
 		array( 'asem-affiliations', 'Affiliazioni', array( AffiliationsPage::class, 'render' ) ),
+		array( 'asem-assemblies', 'Assemblee', array( AssembliesPage::class, 'render' ) ),
 		array( 'asem-budget', 'Bilancio preventivo', array( BudgetPage::class, 'render' ) ),
 		array( 'asem-refunds', 'Rimborsi ai volontari', array( RefundsPage::class, 'render' ) ),
 	);
@@ -91,6 +92,9 @@ final class ProMenu {
 		}
 		if ( \AssociazioneSemplice\Edition::has( 'credits' ) ) {
 			CreditsActions::register();
+		}
+		if ( \AssociazioneSemplice\Edition::has( 'assemblies' ) ) {
+			BlockDActions::register();
 		}
 	}
 

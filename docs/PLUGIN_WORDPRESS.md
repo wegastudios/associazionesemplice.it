@@ -780,13 +780,13 @@ Due funzioni nuove del Pro, nel gruppo **Registri** (schede **Certificati medici
 - Privacy: `tessere_enti` nell'esportazione; l'anonimizzazione cancella le tessere.
 - Tabelle: `affiliations`, `body_cards`.
 
-## Assemblee, bilancio preventivo e rimborsi ai volontari (blocco D, database v44, schema Pro v5)
+## Assemblee, bilancio preventivo e rimborsi ai volontari (solo Pro, schema Pro v8)
 
-Tre funzioni nuove. **Assemblee e deleghe** sono nel **gratuito** (scheda **Assemblee** in Registri): un'assemblea è un obbligo di legge per ogni associazione, come i verbali e le votazioni. **Preventivo** e **rimborsi** sono nel **Pro**: toccano la prima nota e la contabilità, come conti, report e ricevute. Il preventivo (`budget`) fa parte dei livelli Pro Contabile e Pro Fiscale (è in `ProBoot::ACCOUNTING`); i rimborsi (`refunds`) sono in tutti i piani Pro. Con il Pro assente o la licenza non in regola le pagine, le azioni e le sezioni dell'area soci spariscono senza errori e i dati restano. Testo per le guide di supporto: `blocco-D-assemblee-preventivo-rimborsi.md` alla radice.
+Tre funzioni nuove, tutte del **Pro** (classi dell'edizione Pro, elenco in `tests/pro-files.txt`): senza Pro o con la licenza non in regola le pagine, le azioni, le sezioni dell'area soci e gli shortcode spariscono senza errori e i dati restano. Il gratuito non contiene nulla di questo blocco (nessun riferimento diretto alle classi: tutto passa dai punti di estensione registrati da `ProBlockD`). **Assemblee e deleghe** (`assemblies`) e **rimborsi** (`refunds`) valgono per tutti i piani Pro; il **preventivo** (`budget`) è in `ProBoot::ACCOUNTING`, quindi solo Pro Contabile e Pro Fiscale. Con il preventivo senza le assemblee il collegamento all'assemblea non compare e resta la data di approvazione. Testo per le guide di supporto: `blocco-D-assemblee-preventivo-rimborsi.md` alla radice.
 
-### Assemblee e deleghe (gratuito)
+### Assemblee e deleghe (Pro)
 
-- Classi: `AssemblyRules` (regole pure), `Assemblies` (servizio), `Admin\AssembliesPage`, `Admin\BlockDActions`, `Frontend\AssembliesFront`. Tabelle `assemblies`, `assembly_attendees`, `assembly_proxies`.
+- Classi: `AssemblyRules` (regole pure), `Assemblies` (servizio), `Admin\AssembliesPage`, `Admin\BlockDActions`, `Frontend\AssembliesFront`. Tabelle `assemblies`, `assembly_attendees`, `assembly_proxies` (in `ProSchema`). Download del foglio presenze: `asem_assembly_csv` (`AdminBlockDExports`).
 - Stati: bozza → convocata → svolta (oppure annullata). Si convoca solo con l'ordine del giorno; l'avviso parte per email a ogni socio con diritto di intervenire, una sola volta per persona (`Reminders::notify`, tipo `assembly_call`). Se la prima convocazione è fra meno di otto giorni compare un avviso (non un blocco).
 - Chi interviene: stesse regole delle votazioni (`Polls::is_eligible`): socio in regola, non sospeso, non uscito; `MemberType::is_member()` esclude tutori e ospiti.
 - Numero legale: percentuale degli aventi diritto per la prima e la seconda convocazione, scritta assemblea per assemblea. Valori di partenza: ordinaria 50% e 0%, straordinaria 75% e 50%. Il 50% vale «metà più uno»; le altre percentuali si arrotondano per eccesso. Contano i presenti e le deleghe di chi è presente; chi delega ma viene di persona non conta due volte. Alla chiusura («Svolta») si fotografa il numero degli aventi diritto e non si chiude senza presenze e numero legale.

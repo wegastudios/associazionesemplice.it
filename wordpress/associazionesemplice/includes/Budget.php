@@ -251,6 +251,7 @@ final class Budget {
 		if ( ! $dt || $dt->format( 'Y-m-d' ) !== $date ) {
 			throw new \InvalidArgumentException( 'Indica la data di approvazione.' );
 		}
+		$assembly_id = Edition::has( 'assemblies' ) ? $assembly_id : 0; // senza le assemblee il preventivo ricorda solo la data
 		if ( $assembly_id && ! Assemblies::get( $assembly_id ) ) {
 			throw new \InvalidArgumentException( 'Assemblea non trovata.' );
 		}

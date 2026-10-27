@@ -1,6 +1,7 @@
 <?php
 namespace AssociazioneSemplice\Admin;
 
+use AssociazioneSemplice\Assemblies;
 use AssociazioneSemplice\Audit;
 use AssociazioneSemplice\Budget;
 use AssociazioneSemplice\Db;
@@ -16,6 +17,7 @@ final class BlockDExports {
 	public static function register(): void {
 		add_action( 'admin_post_asem_budget_csv', array( __CLASS__, 'budget_csv' ) );
 		add_action( 'admin_post_asem_refunds_csv', array( __CLASS__, 'refunds_csv' ) );
+		add_action( 'admin_post_asem_assembly_csv', array( __CLASS__, 'assembly_csv' ) );
 	}
 
 	/** Indirizzo di un download (con nonce). */
@@ -46,6 +48,20 @@ final class BlockDExports {
 		}
 		Audit::log( 'budget.exported', 'budget', $id );
 		self::send( 'preventivo-' . (int) $b['year'] . '.csv', Budget::csv( $id ) );
+	}
+
+	/** Foglio presenze di un'assemblea. */
+	public static function assembly_csv(): void {
+		if ( ! current_user_can( Plugin::CAP_OPS ) || ! Edition::has( 'assemblies' ) ) {
+			wp_die( 'Non autorizzato.', 403 );
+		}
+		check_admin_referer( 'asem_assembly_csv' );
+		$id = isset( $_GET['id'] ) ? (int) $_GET['id'] : 0;
+		if ( ! Assemblies::get( $id ) ) {
+			wp_die( 'Assemblea non trovata.', 404 );
+		}
+		Audit::log( 'assembly.exported', 'assembly', $id );
+		self::send( 'foglio-presenze-assemblea-' . $id . '.csv', Assemblies::sheet_csv( $id ) );
 	}
 
 	public static function refunds_csv(): void {
