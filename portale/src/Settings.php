@@ -38,6 +38,7 @@ final class Settings {
 			}
 		}
 		Config::set( 'plans', $plans );
+		Config::set( 'promo', self::read( $db, 'promo' ) );
 
 		$g = self::read( $db, 'general' );
 		self::apply( 'duration_days.month', $g, 'duration_month' );
@@ -161,18 +162,86 @@ final class Settings {
 				$stripe = trim( (string) ( $in[ 'stripe_' . $p ] ?? '' ) );
 				$paypal = trim( (string) ( $in[ 'paypal_' . $p ] ?? '' ) );
 				if ( '' !== $stripe && ! preg_match( '/^price_[A-Za-z0-9]{6,100}$/', $stripe ) ) {
-					throw new UserError( 'Il prezzo Stripe deve iniziare con «price_».' );
+					$prefix = 0 === strpos( $stripe, 'prod_' ) ? ' Quello che hai scritto è l\'ID di un prodotto (prod_…): serve invece l\'ID del prezzo.' : '';
+					throw new UserError( 'Nel campo Stripe (' . ( 'year' === $p ? 'annuale' : 'mensile' ) . ') va l\'ID del prezzo ricorrente, che inizia con «price_» (per esempio price_1Abc…); hai scritto «' . mb_substr( $stripe, 0, 24 ) . '».' . $prefix . ' Lo trovi su Stripe → Catalogo prodotti → il prodotto → il prezzo → «ID API». Non vanno bene l\'importo, un link di pagamento o la chiave segreta. Se non hai già un prezzo tuo, lascia il campo vuoto: si crea da solo.' );
 				}
 				if ( '' !== $paypal && ! preg_match( '/^P-[A-Za-z0-9]{6,100}$/', $paypal ) ) {
-					throw new UserError( 'Il piano PayPal deve iniziare con «P-».' );
+					throw new UserError( 'Nel campo PayPal (' . ( 'year' === $p ? 'annuale' : 'mensile' ) . ') va l\'ID del piano di abbonamento, che inizia con «P-»; hai scritto «' . mb_substr( $paypal, 0, 24 ) . '». Lo trovi su PayPal tra i piani di fatturazione dell\'abbonamento. Se non hai già un piano tuo, lascia il campo vuoto: si crea da solo.' );
 				}
-				$over['prices'][ $p ] = array( 'cents' => (int) round( (float) $euro * 100 ), 'stripe_price' => $stripe, 'paypal_plan' => $paypal, 'once' => ! empty( $in[ 'once_' . $p ] ) );
+				$list = str_replace( ',', '.', trim( (string) ( $in[ 'list_' . $p ] ?? '' ) ) );
+				if ( '' !== $list && ( ! is_numeric( $list ) || $list < 0 || $list > 10000 ) ) {
+					throw new UserError( 'Prezzo di listino non valido: scrivi un importo in euro, per esempio 99.' );
+				}
+				$over['prices'][ $p ] = array( 'cents' => (int) round( (float) $euro * 100 ), 'list_cents' => '' === $list ? 0 : (int) round( (float) $list * 100 ), 'stripe_price' => $stripe, 'paypal_plan' => $paypal, 'once' => ! empty( $in[ 'once_' . $p ] ) );
 			}
 		}
 		$all          = self::read( $db, 'plans' );
 		$all[ $code ] = $over;
 		self::write( $db, 'plans', $all );
 		return $over;
+	}
+
+	/**
+	 * Piani e prodotto PayPal creati in automatico: si ricordano per modalità (reale/prova), importo e periodo, così il portale
+	 * non ne crea uno nuovo a ogni acquisto. Chiavi: «product» oppure «cents-interval».
+	 */
+	public static function paypalAuto( Db $db, string $key ): ?string {
+		$all = self::read( $db, 'paypal_auto' );
+		$k   = ( Config::get( 'paypal.live' ) ? 'live:' : 'sandbox:' ) . $key;
+		return isset( $all[ $k ] ) && is_string( $all[ $k ] ) && '' !== $all[ $k ] ? $all[ $k ] : null;
+	}
+
+	public static function savePaypalAuto( Db $db, string $key, string $id ): void {
+		$all = self::read( $db, 'paypal_auto' );
+		$all[ ( Config::get( 'paypal.live' ) ? 'live:' : 'sandbox:' ) . $key ] = $id;
+		self::write( $db, 'paypal_auto', $all );
+	}
+
+	/**
+	 * Promozione in vetrina (per esempio Black Friday): nome, inizio e fine. Mostra il prezzo di listino barrato accanto a quello in vigore
+	 * (che è anche quello che si incassa); finita la promo la vetrina torna a mostrare solo il prezzo normale.
+	 */
+	public static function savePromo( Db $db, array $in ): void {
+		$label = mb_substr( trim( preg_replace( '/\s+/', ' ', (string) ( $in['promo_label'] ?? '' ) ) ), 0, 40 );
+		$date  = function ( $v ) {
+			$v = trim( (string) $v );
+			if ( '' !== $v && ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $v ) || false === strtotime( $v ) ) ) {
+				throw new UserError( 'Data non valida: usa il formato aaaa-mm-gg.' );
+			}
+			return $v;
+		};
+		$start = $date( $in['promo_start'] ?? '' );
+		$end   = $date( $in['promo_end'] ?? '' );
+		if ( '' !== $label && '' === $end ) {
+			throw new UserError( 'Per la promozione serve la data di fine.' );
+		}
+		if ( '' !== $start && '' !== $end && $start > $end ) {
+			throw new UserError( 'La data di inizio è dopo quella di fine.' );
+		}
+		self::write( $db, 'promo', '' === $label ? array() : array( 'label' => $label, 'start' => $start, 'end' => $end ) );
+	}
+
+	/** La promozione è in corso adesso (ora italiana)? @return string|null il nome della promo, o null */
+	public static function promoNow( ?int $now = null ): ?string {
+		$p = (array) Config::get( 'promo', array() );
+		if ( empty( $p['label'] ) || empty( $p['end'] ) ) {
+			return null;
+		}
+		$tz    = new \DateTimeZone( 'Europe/Rome' );
+		$now   = $now ?? time();
+		$end   = ( new \DateTime( $p['end'] . ' 23:59:59', $tz ) )->getTimestamp();
+		$start = ! empty( $p['start'] ) ? ( new \DateTime( $p['start'] . ' 00:00:00', $tz ) )->getTimestamp() : 0;
+		return ( $now >= $start && $now <= $end ) ? (string) $p['label'] : null;
+	}
+
+	/** Prezzo di listino da mostrare barrato per un piano e un periodo: solo durante la promo e se più alto del prezzo in vigore. */
+	public static function listCents( string $plan, string $period, ?int $now = null ): ?int {
+		if ( null === self::promoNow( $now ) ) {
+			return null;
+		}
+		$list = (int) Config::get( 'plans.' . $plan . '.prices.' . $period . '.list_cents', 0 );
+		$cur  = (int) Config::get( 'plans.' . $plan . '.prices.' . $period . '.cents', 0 );
+		return $list > $cur ? $list : null;
 	}
 
 	public static function mergePlan( array $base, array $over ): array {

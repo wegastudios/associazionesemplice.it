@@ -5668,7 +5668,7 @@ asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'Tariffe a fa
 $RS::waitlist_join( $rs_park, $rs_m2 );
 asem_ok( 1 === $RS::waitlist_position( $rs_park, $rs_m2 ) && null !== asem_throws( function () use ( $RS, $rs_park, $rs_m2 ) { $RS::waitlist_join( $rs_park, $rs_m2 ); } ) && null !== asem_throws( function () use ( $RS, $rs_park, $rs_m1 ) { $RS::waitlist_join( $rs_park, $rs_m1 ); } ), 'risorse: si entra una volta sola in lista d\'attesa e non chi ha già il posto' );
 asem_ok( null !== asem_throws( function () use ( $RS, $rs_c2, $rs_m2 ) { $RS::waitlist_join( $rs_c2, $rs_m2 ); } ), 'risorse: la lista d\'attesa c\'è solo per le assegnazioni' );
-asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'Lista d\'attesa', array( 'id' => $rs_park ) );
+asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'lista d\'attesa', array( 'id' => $rs_park ) );
 $RS::cancel( $rs_a1, true );
 $RS::assign( $rs_park, $rs_m2, $today, '' );
 asem_ok( null === $RS::waitlist_position( $rs_park, $rs_m2 ) && ! $RS::waitlist( $rs_park ), 'risorse: rilasciato il posto, chi era in coda lo riceve e esce dalla lista' );
@@ -5965,6 +5965,109 @@ $ov_notes = $ov_pd::activity_saved( array(), $ov_e, array( 'resource_id' => (str
 asem_ok( $ov_notes && false !== strpos( implode( '', $ov_notes ), 'sistemate a mano' ), 'sovrapposizioni: salvando un\'attività già sovrapposta non si blocca, si ricorda di sistemarla a mano' );
 asem_ok( false !== strpos( asem_render( array( Admin\ProDashboard::class, 'alerts' ), 'Risorse occupate due volte' ), 'Vanno sistemate a mano' ), 'sovrapposizioni: la bacheca avvisa' );
 $RS::link_activity( $ov_e, 0 );
+
+// ---------- Risorse: promemoria prima della prenotazione e voce di prima nota ----------
+wp_set_current_user( 1 );
+$pm_m    = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Paola', 'last_name' => 'Promemoria', 'email' => 'paola.promemoria@example.com' ) );
+$people->set_membership( $pm_m, $sy_label, true );
+$pm_base = array( 'name' => 'Campo promemoria', 'category' => 'court', 'mode' => 'slot', 'open_time' => '08:00', 'close_time' => '22:00', 'slot_minutes' => 60, 'fee_cents' => 1000 );
+$pm_res  = $RS::save( 0, array_merge( $pm_base, array( 'remind_hours' => 24 ) ) );
+asem_ok( 24 === (int) $RS::get( $pm_res )['remind_hours'] && 0 === (int) $RS::get( $RS::save( 0, array_merge( $pm_base, array( 'name' => 'Senza promemoria', 'remind_hours' => 5 ) ) ) )['remind_hours'], 'risorse: il promemoria si sceglie tra le opzioni previste, altrimenti nessuno' );
+$pm_day = gmdate( 'Y-m-d', strtotime( $today . ' +20 days' ) );
+$pm_b1  = $RS::book_slot( $pm_res, $pm_m, $pm_day, '18:00', 1, array(), true );
+asem_ok( 0 === $RS::send_reminders(), 'risorse: troppo presto non parte nessun promemoria' );
+$mails   = array();
+$pm_hook = function ( $null, $atts ) use ( &$mails ) { // la posta di prova: si raccoglie ciò che partirebbe
+	$mails[] = $atts;
+	return true;
+};
+add_filter( 'pre_wp_mail', $pm_hook, 10, 2 );
+asem_ok( 1 === $RS::send_reminders( $pm_day . ' 08:00:00' ) && 1 === count( $mails ) && false !== strpos( wp_json_encode( $mails[0] ), 'paola.promemoria@example.com' ) && false !== strpos( (string) $mails[0]['message'], 'Campo promemoria' ) && false !== strpos( (string) $mails[0]['message'], '10,00' ), 'risorse: dentro le 24 ore parte il promemoria, con quanto resta da pagare' );
+asem_ok( 0 === $RS::send_reminders( $pm_day . ' 08:00:00' ), 'risorse: il promemoria parte una volta sola' );
+$pm_b2 = $RS::book_slot( $pm_res, $pm_m, $pm_day, '20:00', 1, array(), true );
+$wpdb->update( Db::t( 'reservations' ), array( 'created_at' => $pm_day . ' 18:00:00' ), array( 'id' => $pm_b2 ) ); // prenotata a ridosso: sa già
+asem_ok( 0 === $RS::send_reminders( $pm_day . ' 08:00:00' ), 'risorse: chi prenota dentro la finestra del promemoria non lo riceve' );
+$pm_b3 = $RS::book_slot( $pm_res, $pm_m, $pm_day, '21:00', 1, array(), true );
+$RS::cancel( $pm_b3, true );
+asem_ok( 0 === $RS::send_reminders( $pm_day . ' 08:00:00' ), 'risorse: una prenotazione annullata non riceve il promemoria' );
+remove_filter( 'pre_wp_mail', $pm_hook, 10 );
+// voce di prima nota
+$wpdb->insert( Db::t( 'categories' ), array( 'name' => 'Affitto campi', 'kind' => 'other_income' ) );
+$pm_cat = (int) $wpdb->insert_id;
+$RS::save( $pm_res, array_merge( $pm_base, array( 'category_id' => $pm_cat ) ) );
+$RS::record_payment( $pm_b1, (int) $rs_cash['id'], 'cash', 1000, $today );
+asem_ok( $pm_cat === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT category_id FROM ' . Db::t( 'transactions' ) . ' WHERE reservation_id = %d ORDER BY id DESC LIMIT 1', $pm_b1 ) ) && $pm_cat === $RS::income_category_for( $pm_b1 ), 'risorse: l\'incasso va sulla voce di prima nota scelta per la risorsa' );
+asem_ok( null !== asem_throws( function () use ( $RS, $pm_res, $pm_base ) { $RS::save( $pm_res, array_merge( $pm_base, array( 'category_id' => 999999 ) ) ); } ), 'risorse: una voce di prima nota che non esiste è rifiutata' );
+$RS::save( $pm_res, array_merge( $pm_base, array( 'category_id' => 0 ) ) );
+asem_ok( Plugin::ledger()->category_id_of_kind( 'other_income' ) === $RS::income_category_for( $pm_b1 ), 'risorse: senza una voce scelta vale «Altra entrata»' );
+asem_ok( in_array( $pm_cat, array_map( 'intval', array_column( $RS::income_categories(), 'id' ) ), true ) && ! in_array( Plugin::ledger()->category_id_of_kind( 'membership' ), array_map( 'intval', array_column( $RS::income_categories(), 'id' ) ), true ), 'risorse: tra le voci non c\'è la quota associativa' );
+asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'Voce di prima nota', array( 'id' => $pm_res ) );
+asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'Promemoria', array( 'id' => $pm_res ) );
+
+// ---------- Risorse: report di occupazione e richieste di assegnazione ----------
+wp_set_current_user( 1 );
+$oc_res = $RS::save( 0, array( 'name' => 'Campo occupazione', 'category' => 'court', 'mode' => 'slot', 'open_time' => '08:00', 'close_time' => '20:00', 'slot_minutes' => 60, 'min_slots' => 1, 'max_slots' => 2, 'fee_cents' => 1000 ) );
+$oc_d0  = $today;
+$oc_d6  = gmdate( 'Y-m-d', strtotime( $today . ' +6 days' ) );
+$oc_b   = $RS::book_slot( $oc_res, $rs_m1, gmdate( 'Y-m-d', strtotime( $today . ' +3 days' ) ), '10:00', 2, array(), true );
+$RS::record_payment( $oc_b, (int) $rs_cash['id'], 'cash', 1000, $today );
+$RS::block( $oc_res, gmdate( 'Y-m-d', strtotime( $today . ' +5 days' ) ) . ' 08:00:00', gmdate( 'Y-m-d', strtotime( $today . ' +5 days' ) ) . ' 10:00:00' );
+$oc_ev  = $acts->create( array( 'name' => 'Evento occupazione', 'social_year' => Settings::social_year( gmdate( 'Y-m-d', strtotime( $today . ' +2 days' ) ) )->label(), 'kind' => 'event', 'session' => array( 'session_date' => gmdate( 'Y-m-d', strtotime( $today . ' +2 days' ) ), 'start_time' => '15:00', 'end_time' => '16:00' ) ) );
+$RS::link_activity( $oc_ev, $oc_res );
+$oc_rows = array();
+foreach ( $RS::occupancy( $oc_d0, $oc_d6 ) as $oc_r ) {
+	$oc_rows[ (int) $oc_r['id'] ] = $oc_r;
+}
+$oc = $oc_rows[ $oc_res ];
+asem_ok( 7 * 720 === (int) $oc['available'] && 120 === (int) $oc['booked'] && 1 === (int) $oc['bookings'], 'risorse: il report conta le ore disponibili (7 giorni da 12 ore) e quelle prenotate dai soci' );
+asem_ok( 60 === (int) $oc['activities'] && 360 === (int) $oc['setup'] && 120 === (int) $oc['blocked'], 'risorse: il report separa le ore di un evento (1), i suoi allestimenti (3 + 3) e i blocchi' );
+asem_ok( (int) round( 100 * 180 / ( 7 * 720 ) ) === (int) $oc['occupancy'] && 1000 === (int) $oc['cents'], 'risorse: l\'occupazione conta prenotazioni ed eventi, non allestimenti né blocchi; gli incassi sono quelli del periodo' );
+$oc_far = array();
+foreach ( $RS::occupancy( gmdate( 'Y-m-d', strtotime( $today . ' +400 days' ) ), gmdate( 'Y-m-d', strtotime( $today . ' +406 days' ) ) ) as $oc_r ) {
+	$oc_far[ (int) $oc_r['id'] ] = $oc_r;
+}
+asem_ok( 0 === (int) $oc_far[ $oc_res ]['booked'] && 0 === (int) $oc_far[ $oc_res ]['activities'] && 0 === (int) $oc_far[ $oc_res ]['occupancy'] && 7 * 720 === (int) $oc_far[ $oc_res ]['available'], 'risorse: un periodo senza prenotazioni è a zero' );
+asem_ok( (int) $oc_rows[ $rs_park ]['holders'] >= 1 && 'assign' === $oc_rows[ $rs_park ]['mode'], 'risorse: le risorse assegnate a periodo mostrano le assegnazioni in corso' );
+asem_render( array( Admin\ResourcesReportPage::class, 'render' ), 'Campo occupazione', array( 'from' => $oc_d0, 'to' => $oc_d6 ) );
+// una risorsa libera si può chiedere: la richiesta entra nella lista e la segreteria la approva assegnando
+$rq_res = $RS::save( 0, array( 'name' => 'Armadietto 12', 'category' => 'locker', 'mode' => 'assign', 'fee_cents' => 3000 ) );
+$RS::waitlist_join( $rq_res, $rs_m1 );
+asem_ok( 1 === $RS::waitlist_position( $rq_res, $rs_m1 ), 'risorse: un socio può chiedere una risorsa libera (richiesta in lista)' );
+$RS::assign( $rq_res, $rs_m1, $today, '' );
+asem_ok( null === $RS::waitlist_position( $rq_res, $rs_m1 ) && ! $RS::waitlist( $rq_res ), 'risorse: approvata la richiesta con l\'assegnazione, la richiesta si chiude' );
+asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'Richieste e lista d\'attesa', array( 'id' => $rq_res ) );
+
+// ---------- Risorse: ingresso con il QR ----------
+wp_set_current_user( 1 );
+$gt_res = $RS::save( 0, array( 'name' => 'Campo con ingresso', 'category' => 'court', 'mode' => 'slot', 'open_time' => '08:00', 'close_time' => '22:00', 'slot_minutes' => 60, 'fee_cents' => 1000, 'guests_max' => 2, 'remind_hours' => 0, 'entry_qr' => 1 ) );
+asem_ok( 1 === (int) $RS::get( $gt_res )['entry_qr'], 'risorse: l\'ingresso con il QR si attiva per risorsa' );
+$gt_day = gmdate( 'Y-m-d', strtotime( $today . ' +15 days' ) );
+$gt_b   = $RS::book_slot( $gt_res, $rs_m1, $gt_day, '18:00', 1, array( 'Ospite QR' ), true );
+$gt_r   = $RS::reservation( $gt_b );
+$gt_p   = \AssociazioneSemplice\ResourceGate::param( $gt_b, $rs_m1, \AssociazioneSemplice\Settings::card_secret() );
+parse_str( (string) wp_parse_url( $RS::gate_url( $gt_r ), PHP_URL_QUERY ), $gt_q );
+asem_ok( $gt_p === ( $gt_q['asem_res'] ?? '' ), 'risorse: l\'indirizzo del QR contiene prenotazione, socio e firma' );
+asem_ok( 'early' === $RS::gate_state( $gt_r, $gt_day . ' 10:00:00' ) && 'ok' === $RS::gate_state( $gt_r, $gt_day . ' 17:45:00' ) && 'late' === $RS::gate_state( $gt_r, $gt_day . ' 19:30:00' ), 'risorse: l\'ingresso vale dalla mezz\'ora prima alla fine della fascia' );
+asem_ok( null !== asem_throws( function () use ( $RS, $gt_b, $gt_day ) { $RS::check_in( $gt_b, 1, $gt_day . ' 10:00:00' ); } ), 'risorse: troppo presto non si registra l\'ingresso' );
+$RS::check_in( $gt_b, 1, $gt_day . ' 17:45:00' );
+asem_ok( $gt_day . ' 17:45:00' === $RS::reservation( $gt_b )['checked_in_at'] && 'used' === $RS::gate_state( $RS::reservation( $gt_b ), $gt_day . ' 18:10:00' ), 'risorse: l\'ingresso si registra' );
+$gt_msg = asem_throws( function () use ( $RS, $gt_b, $gt_day ) { $RS::check_in( $gt_b, 1, $gt_day . ' 18:10:00' ); } );
+asem_ok( null !== $gt_msg && false !== strpos( $gt_msg, 'Già entrato' ), 'risorse: il QR vale una volta sola' );
+$RS::undo_check_in( $gt_b );
+asem_ok( null === $RS::reservation( $gt_b )['checked_in_at'] && 'ok' === $RS::gate_state( $RS::reservation( $gt_b ), $gt_day . ' 18:10:00' ), 'risorse: l\'ingresso registrato per sbaglio si toglie' );
+$gt_b2 = $RS::book_slot( $gt_res, $rs_m1, $gt_day, '20:00', 1, array(), true );
+$RS::cancel( $gt_b2, true );
+asem_ok( 'cancelled' === $RS::gate_state( $RS::reservation( $gt_b2 ), $gt_day . ' 20:00:00' ) && null !== asem_throws( function () use ( $RS, $gt_b2, $gt_day ) { $RS::check_in( $gt_b2, 1, $gt_day . ' 20:00:00' ); } ), 'risorse: una prenotazione annullata non entra' );
+// la pagina del QR
+$gt_staff = \AssociazioneSemplice\Frontend\ResourcesGate::page( $gt_p, array( 'ok' => '', 'err' => '' ) );
+asem_ok( false !== strpos( $gt_staff, 'Campo con ingresso' ) && false !== strpos( $gt_staff, 'Troppo presto' ) && false !== strpos( $gt_staff, 'Rita Risorsa' ) && false !== strpos( $gt_staff, 'Ospite QR' ), 'risorse: la pagina del QR dice risorsa, stato, socio e ospiti (allo staff il nome intero)' );
+wp_set_current_user( 0 );
+$gt_pub = \AssociazioneSemplice\Frontend\ResourcesGate::page( $gt_p, array( 'ok' => '', 'err' => '' ) );
+asem_ok( false !== strpos( $gt_pub, 'Rita R.' ) && false === strpos( $gt_pub, 'Rita Risorsa' ) && false !== strpos( $gt_pub, 'Mostra questo QR allo staff' ), 'risorse: a chi non è dello staff la pagina mostra il nome abbreviato' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\ResourcesGate::page( '1.2.' . str_repeat( '0', 20 ), array( 'ok' => '', 'err' => '' ) ), 'Non valida' ) && false !== strpos( \AssociazioneSemplice\Frontend\ResourcesGate::page( \AssociazioneSemplice\ResourceGate::param( $oc_b, $rs_m1, \AssociazioneSemplice\Settings::card_secret() ), array( 'ok' => '', 'err' => '' ) ), 'Non valida' ), 'risorse: un codice sbagliato o di una risorsa senza ingresso con QR non vale' );
+wp_set_current_user( 1 );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\ResourcesFront::section( $people->get( $rs_m1 ) ), 'QR di ingresso' ), 'risorse: il socio trova il QR di ingresso nella sua area' );
+asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'ingresso con il QR della prenotazione', array( 'id' => $gt_res ) );
 
 // ---------- Copia di sicurezza e ripristino (in fondo: tocca tutte le tabelle) ----------
 

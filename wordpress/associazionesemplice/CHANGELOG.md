@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.29
+- Aggiornamento di compatibilità con il Pro 1.1.25: aggiorna insieme gratuito e Pro.
+
 ## 1.2.28
 - Il registro azioni si pulisce da solo: restano gli ultimi 18 mesi (si cambia da Limiti e soglie).
 - Nel registro azioni vedi quanto spazio occupa e puoi liberarlo subito con un pulsante.

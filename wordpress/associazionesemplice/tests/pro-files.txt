@@ -99,3 +99,6 @@ Admin/RefundsPage.php
 Admin/BlockDProActions.php
 Admin/BlockDExports.php
 Frontend/RefundsFront.php
+Admin/ResourcesReportPage.php
+ResourceGate.php
+Frontend/ResourcesGate.php

@@ -2,7 +2,6 @@
 @section('title', 'Piani')
 @section('content')
     <h1>Piani del portale</h1>
-    <p class="muted">Servono a classificare i ticket per piano del cliente. Li gestisci qui, in autonomia.</p>
     <form method="post" action="{{ route('admin.plans.store') }}" class="card filters">
         @csrf
         <div><label for="name">Nuovo piano</label><input id="name" name="name" maxlength="120" required></div>

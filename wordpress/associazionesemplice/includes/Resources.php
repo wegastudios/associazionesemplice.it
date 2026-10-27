@@ -94,6 +94,18 @@ final class Resources {
 			$d['setup_before_min'] = (int) ResourceRules::parse_duration( (string) ( $in['setup_before'] ?? '' ) );
 			$d['setup_after_min']  = (int) ResourceRules::parse_duration( (string) ( $in['setup_after'] ?? '' ) );
 		}
+		if ( array_key_exists( 'remind_hours', $in ) ) { // promemoria al socio prima della prenotazione (0 = nessuno)
+			$h                   = (int) $in['remind_hours'];
+			$d['remind_hours']   = in_array( $h, array( 2, 12, 24, 48 ), true ) ? $h : 0;
+			$d['entry_qr']       = ! empty( $in['entry_qr'] ) ? 1 : 0; // ingresso con il QR (lo stesso modulo: la spunta assente vale no)
+		}
+		if ( array_key_exists( 'category_id', $in ) ) { // la voce di prima nota degli incassi (vuoto = «Altra entrata»)
+			$cid = max( 0, (int) $in['category_id'] );
+			if ( $cid > 0 && ! in_array( $cid, array_map( 'intval', array_column( self::income_categories(), 'id' ) ), true ) ) {
+				throw new \InvalidArgumentException( 'La voce di prima nota scelta non è valida.' );
+			}
+			$d['category_id'] = $cid > 0 ? $cid : null;
+		}
 		if ( array_key_exists( 'fund_mode', $in ) ) { // la quota per un fondo (solo con la funzione dei fondi: senza il campo non si tocca ciò che c'è)
 			$mode  = in_array( (string) $in['fund_mode'], array( FundShare::FIXED, FundShare::PERCENT ), true ) ? (string) $in['fund_mode'] : FundShare::NONE;
 			$value = max( 0, (int) ( $in['fund_value'] ?? 0 ) );
@@ -461,6 +473,176 @@ final class Resources {
 		}
 		Audit::log( 'reservation.paid_credits', 'resource', (int) $r['resource_id'], array( 'reservation' => $reservation_id, 'credits' => $cost ) );
 		return $cost;
+	}
+
+	// ---------- Ingresso con il QR ----------
+
+	/** Una prenotazione con quanto è stato pagato, quanto resta e gli ospiti. */
+	public static function decorated( array $row ): array {
+		return self::decorate( array( $row ) )[0];
+	}
+
+	/** L'indirizzo che sta nel QR di una prenotazione. */
+	public static function gate_url( array $r ): string {
+		return add_query_arg( 'asem_res', ResourceGate::param( (int) $r['id'], (int) $r['person_id'], Settings::card_secret() ), home_url( '/' ) );
+	}
+
+	/** A che punto è la prenotazione all'ingresso (vedi {@see ResourceGate::state}). */
+	public static function gate_state( array $r, ?string $now = null ): string {
+		return ResourceGate::state( (string) $r['status'], (string) $r['starts_at'], $r['ends_at'] ? (string) $r['ends_at'] : null, $r['checked_in_at'] ?? null, $now ?? Db::now() );
+	}
+
+	/**
+	 * Registra l'ingresso di una prenotazione (lo staff, dopo aver inquadrato il QR). Solo dalla mezz'ora prima dell'inizio alla fine, una volta sola.
+	 *
+	 * @throws \InvalidArgumentException
+	 */
+	public static function check_in( int $reservation_id, int $user_id, ?string $now = null ): void {
+		$r = self::reservation( $reservation_id );
+		if ( ! $r || ResourceRules::KIND_SLOT !== $r['kind'] || ! $r['person_id'] ) {
+			throw new \InvalidArgumentException( 'Prenotazione non trovata.' );
+		}
+		$state = self::gate_state( $r, $now );
+		if ( 'ok' !== $state ) {
+			throw new \InvalidArgumentException( ResourceGate::label( $state ) . '.' );
+		}
+		self::db()->update( Db::t( 'reservations' ), array( 'checked_in_at' => $now ?? Db::now(), 'checked_in_by' => $user_id ?: null ), array( 'id' => $reservation_id ) );
+		Audit::log( 'reservation.checked_in', 'resource', (int) $r['resource_id'], array( 'reservation' => $reservation_id ) );
+	}
+
+	/** Toglie l'ingresso registrato per sbaglio. */
+	public static function undo_check_in( int $reservation_id ): void {
+		self::db()->update( Db::t( 'reservations' ), array( 'checked_in_at' => null, 'checked_in_by' => null ), array( 'id' => $reservation_id ) );
+		Audit::log( 'reservation.check_in_undone', 'resource', null, array( 'reservation' => $reservation_id ) );
+	}
+
+	// ---------- Voce di prima nota ----------
+
+	/** Le voci di entrata tra cui scegliere per gli incassi di una risorsa (non la quota associativa né le rettifiche). @return array[] */
+	public static function income_categories(): array {
+		$kinds = Labels::category_kinds();
+		return array_values(
+			array_filter(
+				Plugin::ledger()->categories(),
+				function ( $c ) use ( $kinds ) {
+					return ! empty( $kinds[ $c['kind'] ][1] ) && ! in_array( $c['kind'], array( 'membership', 'adjustment' ), true );
+				}
+			)
+		);
+	}
+
+	/** La voce di prima nota per l'incasso di una prenotazione: quella scelta nella risorsa, altrimenti «Altra entrata». */
+	public static function income_category_for( int $reservation_id ): int {
+		$r   = self::reservation( $reservation_id );
+		$res = $r ? self::get( (int) $r['resource_id'] ) : null;
+		$cid = $res ? (int) ( $res['category_id'] ?? 0 ) : 0;
+		if ( $cid > 0 && in_array( $cid, array_map( 'intval', array_column( self::income_categories(), 'id' ) ), true ) ) {
+			return $cid;
+		}
+		return Plugin::ledger()->category_id_of_kind( 'other_income' );
+	}
+
+	// ---------- Promemoria ----------
+
+	/** Lavoro periodico di WP-Cron (pianificato da Plugin::schedule_jobs()). */
+	public static function reminders_job(): void {
+		self::send_reminders();
+	}
+
+	/**
+	 * Manda il promemoria della prenotazione ai soci, per le risorse che lo prevedono (da 2 a 48 ore prima). Una volta sola per prenotazione; non
+	 * per chi ha prenotato dentro la finestra del promemoria (si sa già) né per le prenotazioni ancora provvisorie.
+	 *
+	 * @return int promemoria inviati
+	 */
+	public static function send_reminders( ?string $now = null ): int {
+		$now  = $now ?? Db::now();
+		$sent = 0;
+		$tbl  = Db::t( 'reservations' );
+		foreach ( self::db()->get_results( 'SELECT * FROM ' . Db::t( 'resources' ) . ' WHERE deleted_at IS NULL AND active = 1 AND remind_hours > 0', ARRAY_A ) ?: array() as $res ) {
+			$hours = (int) $res['remind_hours'];
+			$until = gmdate( 'Y-m-d H:i:s', strtotime( $now . ' +' . $hours . ' hours' ) );
+			$rows  = self::db()->get_results(
+				self::db()->prepare(
+					"SELECT * FROM $tbl WHERE resource_id = %d AND status = 'booked' AND kind = 'slot' AND person_id IS NOT NULL AND hold_until IS NULL AND starts_at > %s AND starts_at <= %s AND created_at <= DATE_SUB(starts_at, INTERVAL %d HOUR) ORDER BY starts_at",
+					(int) $res['id'],
+					$now,
+					$until,
+					$hours
+				),
+				ARRAY_A
+			) ?: array();
+			foreach ( self::decorate( $rows ) as $r ) {
+				$p = Plugin::people()->get( (int) $r['person_id'] );
+				if ( ! $p ) {
+					continue;
+				}
+				$d    = new \DateTimeImmutable( (string) $r['starts_at'] );
+				$body = 'ti ricordo la prenotazione di «' . $res['name'] . '» il ' . $d->format( 'd/m/Y' ) . ' dalle ' . $d->format( 'H:i' ) . ( $r['ends_at'] ? ' alle ' . substr( (string) $r['ends_at'], 11, 5 ) : '' ) . '.'
+					. ( $r['guests'] ? "\n\nOspiti: " . implode( ', ', $r['guests'] ) . '.' : '' )
+					. ( $r['remaining'] > 0 ? "\n\nDa pagare: " . Money::format( (int) $r['remaining'] ) . '.' : '' )
+					. "\n\nSe non puoi venire, annullala dalla tua area (o scrivi alla segreteria): così la fascia torna libera per altri soci.";
+				if ( Reminders::notify( $p, 'resource', (string) $r['id'], 'Promemoria: ' . $res['name'] . ' — ' . $d->format( 'd/m H:i' ), 'Ciao ' . $p['first_name'] . ",\n\n" . $body ) ) {
+					$sent++;
+				}
+			}
+		}
+		return $sent;
+	}
+
+	// ---------- Occupazione ----------
+
+	/**
+	 * Quanto è stata usata ogni risorsa in un periodo (date incluse): ore disponibili, prenotate dai soci, occupate da corsi ed eventi, in allestimento,
+	 * bloccate, e quanto si è incassato. Per le risorse assegnate a periodo ci sono le assegnazioni in corso e gli incassi.
+	 *
+	 * @return array[] id, name, mode, available, booked, bookings, activities, setup, blocked, occupancy (0–100), cents, credits, holders; i tempi in minuti
+	 */
+	public static function occupancy( string $from, string $to ): array {
+		$p_start = $from . ' 00:00:00';
+		$p_end   = gmdate( 'Y-m-d', strtotime( $to . ' +1 day' ) ) . ' 00:00:00';
+		$days    = max( 0, (int) round( ( strtotime( $p_end . ' UTC' ) - strtotime( $p_start . ' UTC' ) ) / DAY_IN_SECONDS ) );
+		$out     = array();
+		foreach ( self::all( true ) as $res ) {
+			$rid = (int) $res['id'];
+			$row = array( 'id' => $rid, 'name' => $res['name'], 'mode' => $res['mode'], 'available' => 0, 'booked' => 0, 'bookings' => 0, 'activities' => 0, 'setup' => 0, 'blocked' => 0, 'occupancy' => 0, 'cents' => 0, 'credits' => 0, 'holders' => 0 );
+			if ( ResourceRules::SLOT === $res['mode'] ) {
+				$open = ResourceRules::minutes( (string) $res['open_time'] );
+				$shut = ResourceRules::minutes( (string) $res['close_time'] );
+				$row['available'] = null !== $open && null !== $shut && $shut > $open ? $days * ( $shut - $open ) : 0;
+				foreach ( self::between( $rid, $p_start, $p_end ) as $r ) {
+					$m = ResourceRules::overlap_minutes( (string) $r['starts_at'], $r['ends_at'] ? (string) $r['ends_at'] : null, $p_start, $p_end );
+					if ( ResourceRules::KIND_BLOCK === $r['kind'] ) {
+						$row['blocked'] += $m;
+					} elseif ( ResourceRules::KIND_SLOT === $r['kind'] ) {
+						$row['booked']   += $m;
+						$row['bookings'] += 1;
+						$row['credits']  += (int) $r['credits_paid'];
+					}
+				}
+				foreach ( self::activity_busy( $rid, $from, $to ) as $w ) {
+					$core              = ResourceRules::overlap_minutes( $w['core_starts'], $w['core_ends'], $p_start, $p_end );
+					$all               = ResourceRules::overlap_minutes( $w['starts'], $w['ends'], $p_start, $p_end );
+					$row['activities'] += $core;
+					$row['setup']      += max( 0, $all - $core );
+				}
+				$row['occupancy'] = $row['available'] > 0 ? (int) min( 100, round( 100 * ( $row['booked'] + $row['activities'] ) / $row['available'] ) ) : 0;
+			} else {
+				$row['holders'] = count( array_filter( self::between( $rid, Db::now(), Db::now() ), function ( $r ) {
+					return ResourceRules::KIND_ASSIGN === $r['kind'];
+				} ) );
+			}
+			$row['cents'] = (int) self::db()->get_var(
+				self::db()->prepare(
+					'SELECT COALESCE(SUM(t.amount_cents), 0) FROM ' . Db::t( 'transactions' ) . ' t JOIN ' . Db::t( 'reservations' ) . " r ON r.id = t.reservation_id WHERE r.resource_id = %d AND t.type = 'income' AND t.voided_at IS NULL AND t.tx_date BETWEEN %s AND %s",
+					$rid,
+					$from,
+					$to
+				)
+			);
+			$out[] = $row;
+		}
+		return $out;
 	}
 
 	// ---------- Quota per un fondo ----------
@@ -928,7 +1110,7 @@ final class Resources {
 
 	/** Prenotazioni e assegnazioni di un socio: quelle in corso o future per prime. */
 	public static function for_person( int $person_id, bool $future_only = true ): array {
-		$sql  = 'SELECT r.*, x.name AS resource_name, x.category FROM ' . Db::t( 'reservations' ) . ' r JOIN ' . Db::t( 'resources' ) . ' x ON x.id = r.resource_id AND x.deleted_at IS NULL '
+		$sql  = 'SELECT r.*, x.name AS resource_name, x.category, x.entry_qr FROM ' . Db::t( 'reservations' ) . ' r JOIN ' . Db::t( 'resources' ) . ' x ON x.id = r.resource_id AND x.deleted_at IS NULL '
 			. "WHERE r.person_id = %d AND r.status = 'booked'" . ( $future_only ? ' AND (r.ends_at IS NULL OR r.ends_at > %s)' : '' ) . ' ORDER BY r.starts_at';
 		$args = $future_only ? array( $person_id, Db::now() ) : array( $person_id );
 		return self::decorate( self::db()->get_results( self::db()->prepare( $sql, $args ), ARRAY_A ) ?: array() );
@@ -974,7 +1156,7 @@ final class Resources {
 			throw new \InvalidArgumentException( 'Importo non valido.' );
 		}
 		$res = self::get( (int) $r['resource_id'] );
-		$cat = Plugin::ledger()->category_id_of_kind( 'other_income' );
+		$cat = self::income_category_for( $reservation_id );
 		if ( ! $cat ) {
 			throw new \InvalidArgumentException( 'Manca la voce «Altra entrata» in prima nota.' );
 		}

@@ -45,7 +45,7 @@ final class ProBoot {
 		'broadcasts' => array( 'asem-messages' ),
 		'pwa'        => array( 'asem-app' ),
 		'texts'      => array( 'asem-texts' ),
-		'resources'  => array( 'asem-resources', 'asem-resource' ),
+		'resources'  => array( 'asem-resources', 'asem-resource', 'asem-res-report' ),
 		'credits'    => array( 'asem-credits' ),
 		'medical'      => array( 'asem-medical' ),
 		'affiliations' => array( 'asem-affiliations' ),

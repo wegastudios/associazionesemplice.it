@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 final class ProSchema {
 
 	const VERSION_OPTION = 'asem_pro_db_version';
-	const VERSION        = '5';
+	const VERSION        = '7';
 
 	public static function register(): void {
 		add_filter( 'asem_schema_tables', array( __CLASS__, 'tables' ), 10, 3 );
@@ -129,6 +129,9 @@ final class ProSchema {
   fund_value bigint(20) NOT NULL DEFAULT 0,
   setup_before_min int(11) NOT NULL DEFAULT 0,
   setup_after_min int(11) NOT NULL DEFAULT 0,
+  category_id bigint(20) unsigned DEFAULT NULL,
+  remind_hours smallint(5) unsigned NOT NULL DEFAULT 0,
+  entry_qr tinyint(1) NOT NULL DEFAULT 0,
   open_time char(5) DEFAULT NULL,
   close_time char(5) DEFAULT NULL,
   slot_minutes smallint(5) unsigned NOT NULL DEFAULT 60,
@@ -160,6 +163,8 @@ final class ProSchema {
   series_id bigint(20) unsigned DEFAULT NULL,
   hold_until datetime DEFAULT NULL,
   credits_paid int(11) NOT NULL DEFAULT 0,
+  checked_in_at datetime DEFAULT NULL,
+  checked_in_by bigint(20) unsigned DEFAULT NULL,
   session_id bigint(20) unsigned DEFAULT NULL,
   created_by bigint(20) unsigned DEFAULT NULL,
   created_at datetime NOT NULL,

@@ -144,9 +144,19 @@ Le risorse si possono pagare anche **in crediti** (token prepagati comprati dal 
 
 **Fase 2c (fatta)**: pagamento in crediti (vedi [CREDITI.md](CREDITI.md)).
 
-**Fase 2d (da fare)**: promemoria prima della prenotazione, categoria contabile per risorsa.
+**Fase 2d (fatta)**:
+- **Promemoria** (`resources.remind_hours`: nessuno, 2, 12, 24 o 48 ore prima): un'email al socio con data, ora, ospiti e quanto resta da pagare, mandata dal lavoro orario con il registro dei promemoria già usato per tessere ed eventi (una sola volta per prenotazione; ai minori va al tutore). Non parte per chi prenota dentro la finestra, per le prenotazioni provvisorie in attesa del pagamento online e per quelle annullate.
+- **Voce di prima nota** (`resources.category_id`): gli incassi della risorsa (in segreteria e online) vanno sulla voce scelta tra quelle di entrata (non la quota associativa), altrimenti su «Altra entrata». Nei report e nel rendiconto le risorse si vedono separate. I crediti spesi non hanno un incasso: l'entrata è la vendita dei crediti.
 
-**Fase 3**: ingresso con QR, carnet di ore, report di occupazione, assegnazioni richieste dal socio con approvazione.
+**Fase 3a (fatta)**:
+- **Report di occupazione** (Risorse → Occupazione, per un periodo scelto): per ogni risorsa a fasce le ore disponibili (tra apertura e chiusura), prenotate dai soci, occupate da corsi ed eventi, in allestimento e bloccate; la percentuale di occupazione (prenotazioni ed eventi sulle ore disponibili: allestimenti e blocchi si vedono a parte); gli incassi del periodo e i crediti spesi. Per le risorse assegnate a periodo, le assegnazioni in corso e gli incassi.
+- **Assegnazioni richieste dal socio**: se un posto auto, un armadietto o un posto barca è libero il socio lo **chiede** dalla sua area; la richiesta entra nella lista della risorsa («Richieste e lista d'attesa») e la segreteria la approva con «Assegna» (o la toglie). Se è occupato, il socio si mette in coda come prima.
+- **Carnet di ore**: li coprono i **crediti** (pacchetti prepagati da spendere sulle risorse, vedi [CREDITI.md](CREDITI.md)); non c'è un secondo meccanismo.
+
+**Fase 3b (fatta)**: ingresso con QR, per le risorse che lo prevedono (`resources.entry_qr`).
+- Il socio vede nella sua area il **QR di ogni prenotazione** (non per le assegnazioni né per quelle ancora in attesa del pagamento online). Il QR contiene solo prenotazione, socio e una firma (HMAC) che non si indovina.
+- Lo staff lo inquadra con la **fotocamera del telefono**: si apre una pagina con risorsa, giorno e ora, socio, ospiti e pagamento, con una fascia colorata: valida, già entrato, troppo presto, scaduta, annullata. Chi non è dello staff vede il nome abbreviato («Mario R.»).
+- Con l'accesso della **segreteria** compare «Registra l'ingresso» (o «Togli l'ingresso» se è stato registrato per sbaglio). Vale **dalla mezz'ora prima dell'inizio alla fine della fascia**, una volta sola. L'ingresso si vede anche nell'elenco delle prenotazioni della risorsa (`reservations.checked_in_at`).
 
 ## Fuori perimetro
 

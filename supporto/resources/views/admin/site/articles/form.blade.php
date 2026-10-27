@@ -12,7 +12,6 @@
         <input id="title" name="title" value="{{ old('title', $article->title) }}" maxlength="200" required>
         <label for="body">Testo</label>
         <textarea id="body" name="body" rows="16" required>{{ old('body', $article->body) }}</textarea>
-        <p class="hint">Testo semplice: gli a capo vengono mantenuti.</p>
         <label><input type="checkbox" name="is_published" value="1" @checked(old('is_published', $article->is_published))> Pubblicato</label>
         <p class="actions" style="margin-top:18px"><button type="submit">Salva</button><a class="btn secondary" href="{{ route('admin.articles.index') }}">Indietro</a></p>
     </form>

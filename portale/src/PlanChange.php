@@ -70,9 +70,6 @@ final class PlanChange {
 			if ( ! $p || empty( $p['cents'] ) ) {
 				continue;
 			}
-			if ( $this->billing->isRecurring( $sub ) && 'stripe' === $sub['provider'] && empty( $p['stripe_price'] ) ) {
-				continue;
-			}
 			$up  = (int) $p['cents'] > (int) $cur['cents'];
 			$row = array( 'plan' => $code, 'label' => (string) Config::get( 'plans.' . $code . '.label', $code ), 'up' => $up, 'price' => (int) $p['cents'] );
 			if ( $up ) {
@@ -174,6 +171,6 @@ final class PlanChange {
 			return;
 		}
 		$price = Config::price( $plan, $sub['period'] );
-		Stripe::switchPrice( (string) $sub['provider_ref'], (string) ( $price['stripe_price'] ?? '' ) );
+		Stripe::switchPrice( (string) $sub['provider_ref'], (string) ( $price['stripe_price'] ?? '' ), (int) ( $price['cents'] ?? 0 ), (string) $sub['period'] );
 	}
 }

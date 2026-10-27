@@ -13,7 +13,6 @@ $names = array(
 		<input type="hidden" name="csrf" value="<?php echo e( Portale\App::csrf() ); ?>">
 		<div class="card2">
 			<h2>Prova Pro gratuita</h2>
-			<p class="muted">Chi ha una licenza gratuita attiva può provare un piano Pro, una sola volta per licenza (e una sola volta per dominio). La prova ha una chiave sua, valida solo per il periodo indicato.</p>
 			<label class="check" style="margin-top:0"><input type="checkbox" name="trial_enabled" value="1"<?php echo $g['trial_enabled'] ? ' checked' : ''; ?>> Offri la prova gratuita</label>
 			<div class="form-grid two">
 				<div><label for="trial_plan">Piano provato</label><select class="field" id="trial_plan" name="trial_plan"><?php foreach ( $plans as $code => $p ) : if ( 'free' === $code ) { continue; } ?><option value="<?php echo e( $code ); ?>"<?php echo $code === $g['trial_plan'] ? ' selected' : ''; ?>><?php echo e( $p['label'] ); ?></option><?php endforeach; ?></select></div>
@@ -31,7 +30,6 @@ $names = array(
 		</div>
 		<div class="card2">
 			<h2>Verifiche dal plugin</h2>
-			<p class="muted">Il plugin controlla la licenza passando da qui (<code>/api/license/validate</code>): il server Wega non è visibile nel plugin. Le risposte valide restano in memoria 5 minuti.</p>
 			<?php foreach ( array( 'proxy_ip', 'proxy_key' ) as $k ) : ?>
 				<label for="<?php echo e( $k ); ?>"><?php echo e( $names[ $k ] ); ?></label>
 				<input id="<?php echo e( $k ); ?>" type="number" name="<?php echo e( $k ); ?>" value="<?php echo (int) $g[ $k ]; ?>" min="<?php echo (int) $limits[ $k ][1]; ?>" max="<?php echo (int) $limits[ $k ][2]; ?>">
@@ -40,7 +38,6 @@ $names = array(
 		</div>
 		<div class="card2">
 			<h2>Pacchetti del plugin</h2>
-			<p class="muted">I pacchetti si caricano da <a href="/admin/versioni">Versioni</a> e si scaricano solo dall'area cliente.</p>
 			<?php foreach ( array( 'releases_keep', 'download_day', 'update_link_ttl' ) as $k ) : ?>
 				<label for="<?php echo e( $k ); ?>"><?php echo e( $names[ $k ] ); ?></label>
 				<input id="<?php echo e( $k ); ?>" type="number" name="<?php echo e( $k ); ?>" value="<?php echo (int) $g[ $k ]; ?>" min="<?php echo (int) $limits[ $k ][1]; ?>" max="<?php echo (int) $limits[ $k ][2]; ?>">
@@ -49,7 +46,6 @@ $names = array(
 		</div>
 		<div class="card2">
 			<h2>Accesso dei clienti</h2>
-			<p class="muted">Email e password; il link per email resta per il primo accesso e per chi dimentica la password.</p>
 			<?php foreach ( array( 'password_min', 'login_fails', 'session_hours', 'form_ip', 'pending_hold_hours' ) as $k ) : ?>
 				<label for="<?php echo e( $k ); ?>"><?php echo e( $names[ $k ] ); ?></label>
 				<input id="<?php echo e( $k ); ?>" type="number" name="<?php echo e( $k ); ?>" value="<?php echo (int) $g[ $k ]; ?>" min="<?php echo (int) $limits[ $k ][1]; ?>" max="<?php echo (int) $limits[ $k ][2]; ?>">

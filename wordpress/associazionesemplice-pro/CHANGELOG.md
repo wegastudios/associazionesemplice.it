@@ -2,6 +2,16 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.1.26
+- Risorse: promemoria prima della prenotazione e voce di prima nota per ogni risorsa.
+- Risorse: nuovo report di occupazione e richieste di assegnazione dai soci per le risorse libere.
+- Risorse: ingresso con il QR della prenotazione, registrato dalla segreteria.
+
+## 1.1.25
+- Nuovo registro dei certificati medici: file riservato alla segreteria, scadenze, promemoria, avvisi in Bacheca e nell'area soci.
+- Nuove affiliazioni agli enti con le tessere dei soci, una alla volta o in blocco, ed elenco da caricare sui portali degli enti.
+- Richiede il gratuito 1.2.29 o successivo.
+
 ## 1.1.24
 - Le commissioni di incasso partono dalle tariffe standard pubblicate da Stripe, PayPal e SumUp. Puoi cambiarle o svuotarle dalle impostazioni dei pagamenti.
 

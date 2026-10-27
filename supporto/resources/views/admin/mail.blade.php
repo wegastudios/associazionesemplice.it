@@ -2,7 +2,6 @@
 @section('title', 'Email')
 @section('content')
     <h1>Email</h1>
-    <p class="muted">Posta in uscita del sistema (per ora: recupero password). Per impostazione predefinita il mittente è <strong>{{ $defaults['from_address'] }}</strong> e il server <strong>{{ $defaults['host'] }}</strong>.</p>
     <form method="post" action="{{ route('admin.mail.update') }}" class="card" style="max-width:640px">
         @csrf
         <div class="row">
