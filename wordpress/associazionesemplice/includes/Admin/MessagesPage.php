@@ -75,7 +75,7 @@ final class MessagesPage {
 			if ( $r ) {
 				$n  = count( $r['list'] );
 				$ns = count( $sms['list'] );
-				echo '<div class="asem-card"><h2>Destinatari</h2>';
+				echo '<div class="asem-card"><h2>Destinatari: ' . (int) max( $n, $ns ) . '</h2>';
 				if ( in_array( 'email', $chosen, true ) ) {
 					echo '<p><strong>Email: ' . (int) $n . '</strong>';
 					if ( $r['no_email'] ) {
