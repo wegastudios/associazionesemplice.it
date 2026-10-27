@@ -213,6 +213,13 @@ final class Limits {
 			'Fatture in PDF molto pesanti potrebbero essere rifiutate.'
 		);
 		$add(
+			'audit_keep_months', 'dati', 'Per quanto tempo si conserva il registro azioni', 'mesi', 18, 6, 120,
+			'Dopo questo tempo le righe più vecchie del registro azioni (chi ha fatto cosa) vengono cancellate da sole, ogni giorno.',
+			'Si può risalire a più indietro per capire chi ha fatto cosa, ma la tabella cresce e occupa più spazio nel database del sito.',
+			'Il database resta più leggero, ma non si potrà più controllare chi ha fatto cosa prima di quel limite.'
+		);
+
+		$add(
 			'backup_keep', 'dati', 'Copie di sicurezza fatte prima dei ripristini', 'copie', 3, 1, 30,
 			'Quante copie del sito, fatte in automatico prima di un ripristino, restano sul server.',
 			'Ogni copia contiene tutti i dati del sito (e gli allegati): più copie significano più spazio occupato e più dati personali conservati in un posto solo.',

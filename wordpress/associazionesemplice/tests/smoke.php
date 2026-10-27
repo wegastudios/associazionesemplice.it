@@ -1944,7 +1944,30 @@ asem_ok( 10.0 === $sumup_checkouts[ $su_row['provider_ref'] ]['amount'] && 'MSMO
 asem_ok( false !== strpos( $ps->handle_return( $su_row['public_id'], 'ok', $u_pm ), 'attesa' ), 'SumUp: se non risulta pagato resta in attesa' );
 $sumup_checkouts[ $su_row['provider_ref'] ]['paid'] = true;
 asem_ok( false !== strpos( $ps->handle_return( $su_row['public_id'], 'ok', $u_pm ), 'ricevuto' ) && 'paid' === $ps->get_by_public( $su_row['public_id'] )['status'], 'SumUp: pagamento confermato' );
-asem_ok( 1000 === $sum_tx( "type = 'income' AND method = 'sumup'" ) && 40 === $sum_tx( "type = 'expense' AND method = 'sumup'" ) && 960 === $balance_of( 'SumUp' ), 'SumUp: incasso 10,00 e commissione stimata 0,40 (0,25 + 1,5%) registrata come spesa sul conto SumUp [entrate ' . $sum_tx( "type = 'income' AND method = 'sumup'" ) . ', spese ' . $sum_tx( "type = 'expense' AND method = 'sumup'" ) . ', saldo ' . $balance_of( 'SumUp' ) . ', audit ' . wp_json_encode( array_slice( array_filter( Audit::recent( 30 ), function ( $a ) { return 0 === strpos( $a['action'], 'payment.fee' ); } ), 0, 2 ) ) . ']' );
+asem_ok( 1000 === $sum_tx( "type = 'income' AND method = 'sumup'" ) && 40 === $sum_tx( "type = 'expense' AND method = 'sumup'" ) && 960 === $balance_of( 'SumUp' ), 'SumUp: incasso 10,00 e commissione stimata 0,40 (0,25 + 1,5%) registrata come spesa sul conto SumUp' );
+
+// Registro azioni: conservazione a 18 mesi e «Libera spazio»
+global $wpdb;
+$audit_t = \AssociazioneSemplice\Db::t( 'audit_log' );
+$yr      = (int) substr( \AssociazioneSemplice\Db::now(), 0, 4 );
+$put     = function ( string $when, string $action ) use ( $wpdb, $audit_t ) {
+	$wpdb->insert( $audit_t, array( 'created_at' => $when, 'action' => $action, 'object_type' => 'test' ) );
+};
+$put( gmdate( 'Y-m-d H:i:s', strtotime( '-30 months' ) ), 'prova.molto_vecchia' );
+$put( gmdate( 'Y-m-d H:i:s', strtotime( '-10 months' ) ), 'prova.recente' );
+$put( ( $yr - 1 ) . '-12-31 23:00:00', 'prova.anno_scorso' );
+asem_ok( 18 === \AssociazioneSemplice\Limits::get( 'audit_keep_months' ), 'registro azioni: si conserva per 18 mesi di partenza' );
+$st = Audit::stats();
+asem_ok( $st['rows'] >= 3 && '' !== $st['oldest'], 'registro azioni: stato con righe e riga più vecchia' );
+Audit::purge_old();
+$have = array_column( Audit::recent( 5000 ), 'action' );
+asem_ok( ! in_array( 'prova.molto_vecchia', $have, true ) && in_array( 'prova.recente', $have, true ) && in_array( 'prova.anno_scorso', $have, true ), 'registro azioni: la pulizia giornaliera toglie solo le righe oltre i 18 mesi' );
+$freed = Audit::free_space();
+$have  = array_column( Audit::recent( 5000 ), 'action' );
+asem_ok( $freed >= 1 && ! in_array( 'prova.anno_scorso', $have, true ) && in_array( 'audit.freed', $have, true ), 'registro azioni: «Libera spazio» toglie gli anni scorsi e lo segna' );
+$put( ( $yr - 1 ) . '-06-01 10:00:00', 'prova.da_liberare' );
+$ta = \AssociazioneSemplice\Admin\TechActions::audit_free( array() );
+asem_ok( false !== strpos( $ta[1], 'eliminate 1 righe' ) || false !== strpos( $ta[1], 'Registro alleggerito' ), 'registro azioni: il pulsante dà l\'esito' );
 // ribaltata su chi paga
 Settings::update( array( 'pay_fee_pass_sumup' => 1 ) );
 asem_ok( '' !== \AssociazioneSemplice\PaymentConfig::fee_note( Settings::all(), 'sumup' ) && '' === \AssociazioneSemplice\PaymentConfig::fee_note( Settings::all(), 'woocommerce' ), 'commissione ribaltata: il socio la legge sotto il pulsante' );
