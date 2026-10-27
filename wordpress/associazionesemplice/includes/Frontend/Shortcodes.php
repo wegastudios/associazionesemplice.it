@@ -31,6 +31,8 @@ final class Shortcodes {
 		'votazioni'       => 'Votazioni e sondaggi dei soci',
 		'documenti_soci'  => 'Documenti per i soci (statuto, regolamenti, moduli)',
 		'documenti'       => 'Documenti pubblici (statuto, regolamenti, moduli)',
+		'convenzioni_soci' => 'Convenzioni per i soci in regola (sconti e vantaggi dei partner)',
+		'convenzioni'     => 'Convenzioni pubbliche (sconti e vantaggi dei partner)',
 		'ospiti'          => 'I miei ospiti',
 		'minori'          => 'I miei figli (minori di cui sei tutore)',
 		'adesione'        => 'Domanda di adesione online (pubblico, per chi non è ancora socio)',
@@ -104,6 +106,11 @@ final class Shortcodes {
 				return BlockBViews::documents_member();
 			case 'documenti':
 				return BlockBViews::documents_public( shortcode_atts( array( 'categoria' => '' ), $atts ) );
+			case 'convenzioni_soci':
+				Views::no_cache();
+				return BlockFViews::members();
+			case 'convenzioni':
+				return BlockFViews::public_list( shortcode_atts( array( 'categoria' => '' ), $atts ) );
 			case 'ospiti':
 				return Views::guests();
 			case 'profilo':
