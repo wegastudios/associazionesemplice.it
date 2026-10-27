@@ -6,7 +6,7 @@ return [
         'topic' => 'plugin-pro', 'section' => 'Registri', 'slug' => 'assemblee-e-deleghe',
         'title' => 'Convocare l\'assemblea e gestire presenze e deleghe',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale (non nel plugin gratuito)
+> Disponibile in: Pro Contabile, Pro Fiscale (da Pro 1.1.27; non nel plugin gratuito)
 
 Con le assemblee convochi i soci, registri chi c'è, gestisci le deleghe, controlli il **numero legale** e ottieni il verbale già compilato. Lo trovi in **Registri → Assemblee**. Lo usano segreteria, presidente, vicepresidente e amministratori. Senza Pro, o con la licenza non in regola, la voce sparisce; i dati restano.
 
@@ -54,7 +54,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Conti e fondi', 'slug' => 'bilancio-preventivo',
         'title' => 'Preparare il bilancio preventivo e confrontarlo con la prima nota',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale
+> Disponibile in: Pro Contabile, Pro Fiscale (da Pro 1.1.27)
 
 Il preventivo ti fa scrivere quanto prevedi di incassare e spendere nell'anno e vedere, voce per voce, come va rispetto ai movimenti reali. Si trova in **Contabilità → Preventivo**. Senza Pro, o con la licenza non in regola, la voce sparisce; i dati restano.
 
@@ -92,7 +92,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Conti e fondi', 'slug' => 'rimborsi-ai-volontari',
         'title' => 'Gestire i rimborsi spese ai volontari',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale
+> Disponibile in: Pro Contabile, Pro Fiscale (da Pro 1.1.27)
 
 I rimborsi ti fanno gestire le richieste dei volontari dall'approvazione al pagamento, con registrazione in prima nota. Li trovi in **Cassa → Rimborsi**. Senza Pro, o con la licenza non in regola, la voce sparisce; i dati restano.
 
