@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 final class ProSchema {
 
 	const VERSION_OPTION = 'asem_pro_db_version';
-	const VERSION        = '4';
+	const VERSION        = '5';
 
 	public static function register(): void {
 		add_filter( 'asem_schema_tables', array( __CLASS__, 'tables' ), 10, 3 );
@@ -341,6 +341,61 @@ final class ProSchema {
   PRIMARY KEY  (id),
   KEY person_id (person_id),
   KEY body_season (body,season)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}budgets (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  year smallint(5) unsigned NOT NULL,
+  title varchar(190) NOT NULL DEFAULT '',
+  status varchar(10) NOT NULL DEFAULT 'draft',
+  approved_on date DEFAULT NULL,
+  assembly_id bigint(20) unsigned DEFAULT NULL,
+  notes text,
+  created_by bigint(20) unsigned DEFAULT NULL,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  deleted_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY year (year)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}budget_lines (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  budget_id bigint(20) unsigned NOT NULL,
+  category_id bigint(20) unsigned NOT NULL,
+  type varchar(8) NOT NULL,
+  planned_cents bigint(20) NOT NULL DEFAULT 0,
+  notes varchar(255) NOT NULL DEFAULT '',
+  PRIMARY KEY  (id),
+  UNIQUE KEY budget_category (budget_id,category_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}refunds (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  person_id bigint(20) unsigned NOT NULL,
+  kind varchar(12) NOT NULL DEFAULT 'documented',
+  expense_date date NOT NULL,
+  description varchar(255) NOT NULL DEFAULT '',
+  activity_id bigint(20) unsigned DEFAULT NULL,
+  km int(11) DEFAULT NULL,
+  amount_cents bigint(20) NOT NULL,
+  status varchar(10) NOT NULL DEFAULT 'requested',
+  file_name varchar(190) DEFAULT NULL,
+  file_stored varchar(64) DEFAULT NULL,
+  decided_by bigint(20) unsigned DEFAULT NULL,
+  decided_on date DEFAULT NULL,
+  reject_reason varchar(255) DEFAULT NULL,
+  paid_on date DEFAULT NULL,
+  paid_by bigint(20) unsigned DEFAULT NULL,
+  account_id bigint(20) unsigned DEFAULT NULL,
+  tx_id bigint(20) unsigned DEFAULT NULL,
+  requested_by bigint(20) unsigned DEFAULT NULL,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  KEY person_id (person_id),
+  KEY status (status),
+  KEY expense_date (expense_date)
 ) $c;";
 
 		return $tables;
