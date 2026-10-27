@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '43';
+	const DB_VERSION        = '44';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -599,6 +599,33 @@ final class Install {
   deleted_at datetime DEFAULT NULL,
   PRIMARY KEY  (id),
   KEY visibility (visibility)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}conventions (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  name varchar(190) NOT NULL,
+  category varchar(80) NOT NULL DEFAULT '',
+  benefit varchar(500) NOT NULL DEFAULT '',
+  terms text,
+  valid_from date DEFAULT NULL,
+  valid_to date DEFAULT NULL,
+  address varchar(190) NOT NULL DEFAULT '',
+  phone varchar(40) NOT NULL DEFAULT '',
+  email varchar(190) NOT NULL DEFAULT '',
+  website varchar(255) NOT NULL DEFAULT '',
+  logo_id bigint(20) unsigned DEFAULT NULL,
+  audience varchar(10) NOT NULL DEFAULT 'all',
+  types varchar(120) NOT NULL DEFAULT '',
+  is_public tinyint(1) NOT NULL DEFAULT 0,
+  code varchar(60) NOT NULL DEFAULT '',
+  announced_at datetime DEFAULT NULL,
+  archived_at datetime DEFAULT NULL,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  deleted_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY category (category),
+  KEY valid_to (valid_to)
 ) $c;";
 
 		$tables = (array) apply_filters( 'asem_schema_tables', $tables, $p, $c ); // le estensioni aggiungono le loro tabelle

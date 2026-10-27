@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.29
+Stable tag: 1.2.30
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,10 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.2.30 =
+* Member discounts ("Convenzioni"): partner offers shown to members with a valid card, optional public list, notify button, expiring card and CSV export.
+* Membership fee can be paid in instalments: shows what is missing and grants the card on full payment (configurable).
 
 = 1.2.29 =
 * Internal changes needed by Pro 1.1.25 (reminders, exports, private file download).

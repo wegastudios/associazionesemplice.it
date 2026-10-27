@@ -295,6 +295,68 @@ $bb_pub = \AssociazioneSemplice\Frontend\Shortcodes::render_view( 'documenti' );
 free_ok( false !== strpos( $bb_pub, 'Statuto pubblico' ) && false === strpos( $bb_pub, 'Modulo soci' ) && false === strpos( $bb_pub, 'Verbale interno' ), 'documenti: lo shortcode pubblico mostra solo i documenti pubblici' );
 wp_set_current_user( $admin->ID );
 
+// ---------- Blocco F: convenzioni per i soci ----------
+$cf_today = Db::today();
+$cf_day   = function ( string $mod ) use ( $cf_today ): string {
+	return gmdate( 'Y-m-d', strtotime( $cf_today . ' ' . $mod ) );
+};
+$cf_vol = $people->create( array( 'type' => 'volunteer', 'first_name' => 'Livia', 'last_name' => 'Volontaria', 'email' => 'livia.volontaria@example.com' ) );
+$people->set_membership( $cf_vol, $bb_label, true );
+$cf_all  = \AssociazioneSemplice\Conventions::save( 0, array( 'name' => 'Palestra Forma', 'category' => 'Sport', 'benefit' => 'Sconto del 10%', 'terms' => 'Non cumulabile con altre offerte', 'audience' => 'all', 'is_public' => 1, 'code' => 'FORMA-SOCI-10', 'website' => 'palestraforma.example.com', 'valid_from' => $cf_day( '-10 days' ), 'valid_to' => $cf_day( '+20 days' ) ) );
+$cf_vols = \AssociazioneSemplice\Conventions::save( 0, array( 'name' => 'Libreria Solo Volontari', 'category' => 'Cultura', 'benefit' => 'Libro in omaggio', 'audience' => 'types', 'types' => array( 'volunteer' ), 'code' => 'LIBRI-VOL' ) );
+$cf_old  = \AssociazioneSemplice\Conventions::save( 0, array( 'name' => 'Bar Scaduto', 'category' => 'Sport', 'benefit' => 'Caffè in omaggio', 'is_public' => 1, 'valid_to' => $cf_day( '-1 day' ) ) );
+$cf_arch = \AssociazioneSemplice\Conventions::save( 0, array( 'name' => 'Cinema Archiviato', 'category' => 'Cultura', 'benefit' => 'Biglietto ridotto', 'is_public' => 1 ) );
+\AssociazioneSemplice\Conventions::set_archived( $cf_arch, true );
+free_ok( $bb_throws( function () { \AssociazioneSemplice\Conventions::save( 0, array( 'name' => '', 'benefit' => 'x' ) ); } ), 'convenzioni: serve il nome' );
+free_ok( $bb_throws( function () { \AssociazioneSemplice\Conventions::save( 0, array( 'name' => 'Storta', 'benefit' => 'x', 'valid_from' => '2026-05-02', 'valid_to' => '2026-05-01' ) ); } ), 'convenzioni: la fine non può precedere l\'inizio' );
+free_ok( $bb_throws( function () { \AssociazioneSemplice\Conventions::save( 0, array( 'name' => 'Storta', 'benefit' => 'x', 'audience' => 'types' ) ); } ), 'convenzioni: «alcuni tipi» richiede almeno un tipo' );
+free_ok( 'https://palestraforma.example.com' === \AssociazioneSemplice\Conventions::get( $cf_all )['website'], 'convenzioni: il sito senza https:// lo prende' );
+free_ok( \AssociazioneSemplice\ConventionRules::STATUS_EXPIRED === \AssociazioneSemplice\Conventions::get( $cf_old )['status'] && \AssociazioneSemplice\ConventionRules::STATUS_ARCHIVED === \AssociazioneSemplice\Conventions::get( $cf_arch )['status'], 'convenzioni: scaduta e archiviata hanno lo stato giusto' );
+$cf_ids = function ( array $list ): array {
+	return array_map( 'intval', array_column( $list, 'id' ) );
+};
+free_ok( in_array( $cf_old, $cf_ids( \AssociazioneSemplice\Conventions::all() ), true ) && in_array( $cf_arch, $cf_ids( \AssociazioneSemplice\Conventions::all() ), true ), 'convenzioni: in admin restano anche quelle scadute e archiviate' );
+$cf_mine = $cf_ids( \AssociazioneSemplice\Conventions::for_person( $people->get( $bb_a ) ) );
+free_ok( in_array( $cf_all, $cf_mine, true ) && ! in_array( $cf_vols, $cf_mine, true ) && ! in_array( $cf_old, $cf_mine, true ) && ! in_array( $cf_arch, $cf_mine, true ), 'convenzioni: un socio in regola vede quelle valide del suo tipo, non quelle scadute, archiviate o di altri tipi' );
+free_ok( in_array( $cf_vols, $cf_ids( \AssociazioneSemplice\Conventions::for_person( $people->get( $cf_vol ) ) ), true ), 'convenzioni: un socio volontario vede quella riservata ai volontari' );
+free_ok( ! \AssociazioneSemplice\Conventions::for_person( $people->get( $bb_b ) ) && ! \AssociazioneSemplice\Conventions::for_person( $people->get( $bb_g ) ), 'convenzioni: un socio sospeso e un tutore non vedono nulla' );
+$cf_pub = \AssociazioneSemplice\Frontend\Shortcodes::render_view( 'convenzioni' );
+free_ok( false !== strpos( $cf_pub, 'Palestra Forma' ) && false !== strpos( $cf_pub, 'Sconto del 10%' ) && false === strpos( $cf_pub, 'FORMA-SOCI-10' ) && false === strpos( $cf_pub, 'Non cumulabile' ) && false === strpos( $cf_pub, 'Bar Scaduto' ) && false === strpos( $cf_pub, 'Cinema Archiviato' ) && false === strpos( $cf_pub, 'Libreria Solo Volontari' ), 'convenzioni: l\'elenco pubblico mostra solo le pubbliche valide, senza codice né condizioni' );
+free_ok( false === strpos( \AssociazioneSemplice\Frontend\Shortcodes::render_view( 'convenzioni', array( 'categoria' => 'Cultura' ) ), 'Palestra Forma' ), 'convenzioni: il filtro per categoria dello shortcode pubblico' );
+free_ok( shortcode_exists( 'convenzioni' ) && shortcode_exists( 'convenzioni_soci' ) && isset( \AssociazioneSemplice\Frontend\Shortcodes::views()['convenzioni'] ), 'convenzioni: gli shortcode [convenzioni] e [convenzioni_soci] esistono' );
+$cf_sec = \AssociazioneSemplice\Frontend\BlockFViews::section_members( $people->get( $bb_a ) );
+free_ok( false !== strpos( $cf_sec, 'Palestra Forma' ) && false !== strpos( $cf_sec, 'FORMA-SOCI-10' ) && false !== strpos( $cf_sec, 'Vera Votante' ) && false !== strpos( $cf_sec, 'Non cumulabile' ) && false === strpos( $cf_sec, 'LIBRI-VOL' ), 'convenzioni: l\'area soci mostra codice, condizioni e i dati per farsi riconoscere' );
+wp_set_current_user( $bb_user );
+free_ok( false !== strpos( \AssociazioneSemplice\Frontend\Shortcodes::render_view( 'convenzioni_soci' ), 'Palestra Forma' ), 'convenzioni: lo shortcode per i soci mostra le convenzioni a chi ha fatto l\'accesso' );
+wp_set_current_user( 0 );
+free_ok( false === strpos( \AssociazioneSemplice\Frontend\Shortcodes::render_view( 'convenzioni_soci' ), 'FORMA-SOCI-10' ), 'convenzioni: senza accesso lo shortcode per i soci non mostra il codice' );
+wp_set_current_user( $admin->ID );
+free_ok( \AssociazioneSemplice\Conventions::announce( $cf_all, false ) >= 2, 'convenzioni: l\'avviso raggiungerebbe i soci a cui spetta' );
+add_filter( 'pre_wp_mail', '__return_true' );
+$cf_sent = \AssociazioneSemplice\Conventions::announce( $cf_all, true );
+remove_filter( 'pre_wp_mail', '__return_true' );
+free_ok( $cf_sent >= 2 && ! empty( \AssociazioneSemplice\Conventions::get( $cf_all )['announced_at'] ), 'convenzioni: l\'avviso parte ai soci a cui spetta' );
+free_ok( $bb_throws( function () use ( $cf_all ) { \AssociazioneSemplice\Conventions::announce( $cf_all, true ); } ), 'convenzioni: l\'avviso parte una sola volta per convenzione' );
+add_filter( 'pre_wp_mail', '__return_false' ); // la posta non parte
+$cf_fail = \AssociazioneSemplice\Conventions::announce( $cf_vols, true );
+remove_filter( 'pre_wp_mail', '__return_false' );
+free_ok( 0 === $cf_fail && empty( \AssociazioneSemplice\Conventions::get( $cf_vols )['announced_at'] ), 'convenzioni: se nessuna email parte l\'avviso non risulta fatto e si può riprovare' );
+add_filter( 'pre_wp_mail', '__return_true' );
+free_ok( \AssociazioneSemplice\Conventions::announce( $cf_vols, true ) >= 1 && ! empty( \AssociazioneSemplice\Conventions::get( $cf_vols )['announced_at'] ), 'convenzioni: al secondo tentativo l\'avviso parte' );
+remove_filter( 'pre_wp_mail', '__return_true' );
+free_ok( $bb_throws( function () use ( $cf_old ) { \AssociazioneSemplice\Conventions::announce( $cf_old, true ); } ), 'convenzioni: non si avvisa per una convenzione scaduta' );
+free_ok( in_array( $cf_all, $cf_ids( \AssociazioneSemplice\Conventions::expiring() ), true ) && ! in_array( $cf_vols, $cf_ids( \AssociazioneSemplice\Conventions::expiring() ), true ), 'convenzioni: «in scadenza» comprende quelle che finiscono entro 30 giorni' );
+$cf_csv = \AssociazioneSemplice\Conventions::csv();
+free_ok( false !== strpos( $cf_csv, 'Palestra Forma' ) && false !== strpos( $cf_csv, 'Bar Scaduto' ) && false !== strpos( $cf_csv, 'FORMA-SOCI-10' ), 'convenzioni: il CSV comprende tutte le convenzioni' );
+\AssociazioneSemplice\Conventions::save_categories( "Sport\nSalute" );
+free_ok( in_array( 'Salute', \AssociazioneSemplice\Conventions::categories(), true ) && in_array( 'Cultura', \AssociazioneSemplice\Conventions::categories(), true ), 'convenzioni: le categorie salvate si uniscono a quelle in uso' );
+$cf_page = free_render( array( \AssociazioneSemplice\Admin\ConventionsPage::class, 'render' ) );
+free_ok( false !== strpos( $cf_page, 'Palestra Forma' ) && false !== strpos( $cf_page, 'Bar Scaduto' ) && false !== strpos( $cf_page, 'Cinema Archiviato' ), 'convenzioni: la pagina di amministrazione elenca anche scadute e archiviate' );
+free_ok( false !== strpos( free_render( array( \AssociazioneSemplice\Admin\ConventionsPage::class, 'render' ), array( 'view' => $cf_vols ) ), 'Libreria Solo Volontari' ), 'convenzioni: la scheda si apre' );
+free_ok( isset( \AssociazioneSemplice\Admin\Admin::groups()['asem-book'][1]['asem-conventions'] ) && has_action( 'admin_post_asem_convention_save' ), 'convenzioni: menu e azioni registrati' );
+\AssociazioneSemplice\Conventions::delete( $cf_old );
+free_ok( null === \AssociazioneSemplice\Conventions::get( $cf_old ), 'convenzioni: eliminata' );
+
 // ---------- Blocco D: nel gratuito non c'è nulla di assemblee, preventivo e rimborsi ----------
 free_ok( ! Edition::has( 'assemblies' ) && ! Edition::has( 'budget' ) && ! Edition::has( 'refunds' ), 'senza il Pro non ci sono assemblee, preventivo né rimborsi' );
 free_ok( ! class_exists( 'AssociazioneSemplice\Assemblies', false ) && ! class_exists( 'AssociazioneSemplice\Budget', false ) && ! class_exists( 'AssociazioneSemplice\Refunds', false ), 'senza il Pro le classi di assemblee, preventivo e rimborsi non ci sono' );

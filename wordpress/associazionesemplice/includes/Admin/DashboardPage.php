@@ -75,6 +75,7 @@ final class DashboardPage {
 		self::applications();
 		self::adults_to_invite();
 		self::overdue_loans();
+		ConventionsPage::dashboard_card();
 
 		$requests = \AssociazioneSemplice\AccessRequests::pending();
 		if ( $requests ) {
@@ -273,7 +274,11 @@ final class DashboardPage {
 			if ( $until && $until >= $today ) {
 				return null; // tessera valida
 			}
-			$plan = $people->membership_plan( (int) $p['id'], $today );
+			$plan    = $people->membership_plan( (int) $p['id'], $today );
+			$missing = $people->membership_missing( $p, $plan['year'] ); // quota a rate: manca solo il residuo
+			if ( $missing > 0 ) {
+				return array( 'Quota associativa ' . $plan['year'] . ' (versati ' . \AssociazioneSemplice\Money::format( $fee - $missing ) . ' su ' . \AssociazioneSemplice\Money::format( $fee ) . ')', $missing );
+			}
 			return array( 'Quota associativa ' . $plan['year'] . ( $plan['free'] ? ' (' . $plan['free'] . ' in omaggio)' : '' ), $fee );
 		};
 		$add = function ( array $p, string $what, int $cents ) use ( &$by ) {

@@ -2,6 +2,12 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.30
+- Nuove convenzioni per i soci (Registri → Convenzioni): sconti dei partner con descrizione, validità, codice, logo e a chi si rivolgono. I soci con tessera valida le vedono nell'area riservata; un elenco pubblico è facoltativo.
+- Pulsante «Avvisa i soci» per ogni convenzione, scheda «Convenzioni in scadenza» in Bacheca ed esportazione CSV.
+- La quota associativa si può versare a rate: vedi quanto manca e la tessera arriva quando la quota è saldata (si cambia da Limiti e soglie).
+- Il saldo si incassa dalla scheda del socio o da «Pagamenti da incassare» con l'importo già pronto.
+
 ## 1.2.29
 - Aggiornamento di compatibilità con il Pro 1.1.25: aggiorna insieme gratuito e Pro.
 

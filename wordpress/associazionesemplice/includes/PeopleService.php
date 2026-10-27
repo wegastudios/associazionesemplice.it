@@ -888,6 +888,29 @@ class PeopleService {
 		return array( 'year' => $year, 'free' => $free );
 	}
 
+	/** Quanto copre ciò che è stato incassato per la quota associativa di un anno della tessera (movimenti non annullati, sconti compresi). */
+	public function membership_paid( int $person_id, string $year_label ): int {
+		return (int) $this->db()->get_var(
+			$this->db()->prepare(
+				'SELECT COALESCE(SUM(t.amount_cents + t.discount_cents), 0) FROM ' . Db::t( 'transactions' ) . ' t JOIN ' . Db::t( 'categories' ) . " c ON c.id = t.category_id WHERE t.person_id = %d AND t.social_year = %s AND t.type = 'income' AND t.voided_at IS NULL AND c.kind = 'membership'", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nomi tabella interni
+				$person_id,
+				$year_label
+			)
+		);
+	}
+
+	/**
+	 * Quanto manca per completare la quota di quell'anno quando si paga a rate («tessera solo al saldo» attivo e almeno un versamento già fatto); altrimenti 0.
+	 */
+	public function membership_missing( array $person, string $year_label ): int {
+		if ( ! Limits::flag( 'membership_on_balance' ) ) {
+			return 0;
+		}
+		$fee  = Levels::fee_for( $person );
+		$paid = $this->membership_paid( (int) $person['id'], $year_label );
+		return $fee > 0 && $paid > 0 ? max( 0, $fee - $paid ) : 0;
+	}
+
 	/** Annulla l'iscrizione nata da un incasso (usato quando si annulla il movimento). */
 	public function remove_membership_of_transaction( int $tx_id ): void {
 		$row = $this->db()->get_row( $this->db()->prepare( 'SELECT person_id, social_year FROM ' . Db::t( 'memberships' ) . ' WHERE transaction_id = %d AND deleted_at IS NULL', $tx_id ), ARRAY_A );
@@ -896,5 +919,18 @@ class PeopleService {
 		}
 		$this->db()->update( Db::t( 'memberships' ), array( 'deleted_at' => Db::now() ), array( 'transaction_id' => $tx_id ) );
 		Audit::log( 'membership.removed', 'person', (int) $row['person_id'], array( 'social_year' => $row['social_year'], 'source' => 'void', 'transaction' => $tx_id ) );
+	}
+
+	/** Dopo l'annullamento di un versamento: se la quota dell'anno non è più completa, la tessera data al saldo decade. */
+	public function recheck_membership_after_void( int $tx_id ): void {
+		$row = $this->db()->get_row( $this->db()->prepare( 'SELECT t.person_id, t.social_year FROM ' . Db::t( 'transactions' ) . ' t JOIN ' . Db::t( 'categories' ) . " c ON c.id = t.category_id WHERE t.id = %d AND c.kind = 'membership' AND t.person_id IS NOT NULL", $tx_id ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nomi tabella interni
+		$p   = $row ? $this->get( (int) $row['person_id'] ) : null;
+		if ( ! $p || '' === (string) $row['social_year'] || ! $this->has_membership( (int) $p['id'], (string) $row['social_year'] ) ) {
+			return;
+		}
+		if ( $this->membership_missing( $p, (string) $row['social_year'] ) > 0 ) {
+			$this->db()->update( Db::t( 'memberships' ), array( 'deleted_at' => Db::now() ), array( 'person_id' => (int) $p['id'], 'social_year' => (string) $row['social_year'] ) );
+			Audit::log( 'membership.removed', 'person', (int) $p['id'], array( 'social_year' => $row['social_year'], 'source' => 'void_partial', 'transaction' => $tx_id ) );
+		}
 	}
 }
