@@ -238,6 +238,53 @@ Le impostazioni le cambia solo l'amministratore.
 MD,
     ],
     [
+        'topic' => 'plugin-pro', 'section' => 'Risorse e spazi', 'slug' => 'risorse-promemoria-qr-occupazione-richieste',
+        'title' => 'Risorse: promemoria, QR d\'ingresso, report di occupazione e richieste dei soci',
+        'body' => <<<'MD'
+> Disponibile in: Pro Contabile, Pro Fiscale (da Pro 1.1.26; plugin gratuito invariato)
+
+Queste funzioni completano le [risorse](guida:creare-e-gestire-le-risorse): le impostazioni stanno nella scheda di ciascuna risorsa.
+
+## Promemoria prima della prenotazione
+
+1. Apri la scheda della risorsa (**Risorse → Elenco**).
+2. In **Promemoria** scegli **nessuno**, **2**, **12**, **24** o **48 ore** prima.
+3. Salva.
+
+Il socio riceve un'email con data, ora, ospiti e quanto resta da pagare. L'email parte **una sola volta** per prenotazione; per i minori va al tutore. Non parte per chi prenota dentro la finestra scelta, per le prenotazioni provvisorie in attesa del pagamento online e per quelle annullate.
+
+## Voce di prima nota per risorsa
+
+Nella scheda della risorsa puoi scegliere la **voce di entrata** su cui registrare gli incassi, in segreteria e online. La quota associativa non è tra le voci scelte. Se non scegli nulla, gli incassi vanno su «Altra entrata». Nei report e nel rendiconto le risorse si vedono separate. Con i **crediti** l'entrata è la vendita dei crediti, non la singola prenotazione.
+
+## Report di occupazione
+
+1. Vai in **Risorse → Occupazione**.
+2. Scegli il **periodo**.
+
+Per ogni risorsa a fasce vedi le ore **disponibili** (tra apertura e chiusura), **prenotate dai soci**, **occupate da corsi ed eventi**, **in allestimento** e **bloccate**, la **percentuale di occupazione** (allestimenti e blocchi si vedono a parte), gli incassi del periodo e i crediti spesi. Per le risorse assegnate a periodo vedi le assegnazioni in corso e gli incassi.
+
+## Richieste di assegnazione dei soci
+
+Per i posti auto, gli armadietti e i posti barca:
+
+- se la risorsa è **libera**, il socio la **chiede** dalla sua area;
+- se è **occupata**, il socio si mette in coda come prima.
+
+Come segreteria apri la risorsa e vai in **«Richieste e lista d'attesa»**. Premi **Assegna** per approvare la richiesta, oppure toglila.
+
+## Ingresso con il QR
+
+Per le risorse che lo prevedono, il socio vede nella sua area il **QR di ogni prenotazione**. Non c'è per le assegnazioni né per le prenotazioni ancora in attesa del pagamento online.
+
+1. Inquadra il QR con la **fotocamera del telefono**.
+2. Si apre una pagina con risorsa, giorno e ora, socio, ospiti e pagamento, con una fascia colorata: **valida**, **già entrato**, **troppo presto**, **scaduta** o **annullata**.
+3. Con l'accesso della **segreteria** premi **Registra l'ingresso** (o **Togli l'ingresso** se l'hai registrato per sbaglio).
+
+L'ingresso vale **dalla mezz'ora prima dell'inizio alla fine della fascia**, una volta sola, e si vede anche nell'elenco delle prenotazioni della risorsa. Chi non fa parte dello staff vede solo il nome abbreviato del socio (per esempio «Mario R.»). Il QR contiene solo prenotazione, socio e una firma che non si può indovinare.
+MD,
+    ],
+    [
         'topic' => 'altro', 'section' => 'Registri', 'slug' => 'registro-azioni-e-spazio-occupato',
         'title' => 'Registro azioni: controllare lo spazio e liberarlo',
         'body' => <<<'MD'
