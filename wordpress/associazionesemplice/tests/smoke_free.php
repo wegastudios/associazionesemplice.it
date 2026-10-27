@@ -364,6 +364,7 @@ free_ok( ! isset( \AssociazioneSemplice\Frontend\Shortcodes::views()['assemblee'
 free_ok( ! in_array( 'assemblee', \AssociazioneSemplice\Areas::groups()['soci'][1], true ) && ! isset( \AssociazioneSemplice\Admin\Admin::groups()['asem-book'][1]['asem-assemblies'] ), 'senza il Pro né l\'area soci né il menu mostrano le assemblee' );
 free_ok( ! has_action( 'admin_post_asem_assembly_save' ) && ! has_action( 'admin_post_asem_front_proxy' ), 'senza il Pro le azioni delle assemblee non sono registrate' );
 
+free_ok( array( 'none', 'woocommerce', 'stripe', 'paypal', 'stripe_paypal', 'sumup', 'stripe_sumup', 'paypal_sumup', 'stripe_paypal_sumup' ) === array_keys( \AssociazioneSemplice\PaymentConfig::providers() ) && array( 'stripe', 'paypal', 'sumup' ) === \AssociazioneSemplice\PaymentConfig::fee_gateways() && array() === \AssociazioneSemplice\PaymentConfig::gateways_of( 'satispay' ), 'pagamenti: senza le funzioni avanzate le scelte sono le nove di sempre, nessun Satispay' );
 free_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Edizione gratuita: tutti i controlli sono passati.' );

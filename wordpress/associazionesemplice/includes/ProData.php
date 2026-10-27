@@ -283,6 +283,7 @@ final class ProData {
 	public static function rest_routes( string $ns ): void {
 		if ( Edition::installed( 'payments' ) ) {
 			register_rest_route( $ns, '/webhooks/stripe', array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'stripe_webhook' ), 'permission_callback' => '__return_true' ) );
+			register_rest_route( $ns, '/webhooks/satispay', array( 'methods' => 'GET,POST', 'callback' => array( __CLASS__, 'satispay_callback' ), 'permission_callback' => '__return_true' ) );
 		}
 	}
 
@@ -298,6 +299,15 @@ final class ProData {
 			return new \WP_Error( 'asem_bad_payload', 'Contenuto non valido.', array( 'status' => 400 ) );
 		}
 		return rest_ensure_response( array( 'received' => true, 'result' => PaymentService::engine()->handle_stripe_event( $event ) ) );
+	}
+
+	/**
+	 * Avviso di Satispay: pubblico, ma non si crede al contenuto. Serve solo a indicare quale pagamento ricontrollare; l'esito si legge da
+	 * Satispay con una richiesta firmata (e solo per un pagamento che noi stessi abbiamo avviato).
+	 */
+	public static function satispay_callback( \WP_REST_Request $r ) {
+		$id = SatispayRules::clean_id( (string) $r->get_param( 'payment_id' ) );
+		return rest_ensure_response( array( 'received' => true, 'result' => '' === $id ? 'ignorato' : PaymentService::engine()->handle_satispay_callback( $id ) ) );
 	}
 
 	/** Il servizio dei pagamenti online. */

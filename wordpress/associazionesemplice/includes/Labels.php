@@ -16,7 +16,7 @@ final class Labels {
 	}
 
 	public static function methods(): array {
-		return array( 'cash' => 'Contanti', 'bank_transfer' => 'Bonifico', 'pos' => 'POS / carta', 'check' => 'Assegno', 'stripe' => 'Carta online (Stripe)', 'paypal' => 'PayPal', 'sumup' => 'Carta online (SumUp)', 'woocommerce' => 'Negozio online (WooCommerce)', 'other' => 'Altro' );
+		return (array) apply_filters( 'asem_payment_methods', array( 'cash' => 'Contanti', 'bank_transfer' => 'Bonifico', 'pos' => 'POS / carta', 'check' => 'Assegno', 'stripe' => 'Carta online (Stripe)', 'paypal' => 'PayPal', 'sumup' => 'Carta online (SumUp)', 'woocommerce' => 'Negozio online (WooCommerce)', 'other' => 'Altro' ) ); // un'estensione aggiunge altri metodi di pagamento
 	}
 
 	/** kind => [etichetta, è un'entrata, è un'uscita] */

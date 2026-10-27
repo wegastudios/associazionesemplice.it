@@ -14,7 +14,7 @@ final class StripeApi {
 	const BASE = 'https://api.stripe.com';
 
 	/** Parametri per creare la sessione di pagamento (da inviare con http_build_query). */
-	public static function checkout_params( array $items, string $public_id, string $payer_email, string $success_url, string $cancel_url ): array {
+	public static function checkout_params( array $items, string $public_id, string $payer_email, string $success_url, string $cancel_url, bool $klarna = false ): array {
 		$lines = array();
 		foreach ( array_values( $items ) as $idx => $i ) {
 			$lines[ $idx ] = array(
@@ -38,6 +38,9 @@ final class StripeApi {
 		);
 		if ( '' !== $payer_email ) {
 			$params['customer_email'] = $payer_email;
+		}
+		if ( $klarna ) { // Klarna va elencato a mano (insieme alla carta); chi lo chiama ha già controllato euro, importo ed email con KlarnaRules
+			$params['payment_method_types'] = KlarnaRules::payment_method_types( true );
 		}
 		return $params;
 	}

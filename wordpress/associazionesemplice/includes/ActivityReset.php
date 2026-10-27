@@ -20,6 +20,11 @@ final class ActivityReset {
 
 	const ONLINE_METHODS = array( 'stripe', 'paypal', 'sumup', 'woocommerce', 'online' );
 
+	/** Metodi di incasso online (un'estensione con altri metodi, come Satispay, li aggiunge con il filtro). @return string[] */
+	public static function online_methods(): array {
+		return (array) apply_filters( 'asem_online_methods', self::ONLINE_METHODS );
+	}
+
 	private static function db(): \wpdb {
 		return Db::db();
 	}
@@ -74,7 +79,7 @@ final class ActivityReset {
 			$out['years'][ $y ]  = true;
 			$out[ 'years_' . $k ][ $y ] = true;
 			if ( $is_inc ) {
-				$online = in_array( (string) $m['method'], self::ONLINE_METHODS, true ) ? (int) $m['amount_cents'] : 0;
+				$online = in_array( (string) $m['method'], self::online_methods(), true ) ? (int) $m['amount_cents'] : 0;
 				$out['income']['online_cents'] += $online;
 				if ( ! empty( $m['receipt_id'] ) ) {
 					$out['income']['receipts'][ (string) $m['receipt_id'] ] = true;
@@ -300,7 +305,7 @@ final class ActivityReset {
 			$out['income']['count']++;
 			$out['income']['cents'] += (int) $m['amount_cents'];
 			$out['income']['ids'][]  = (int) $m['id'];
-			if ( in_array( (string) $m['method'], self::ONLINE_METHODS, true ) ) {
+			if ( in_array( (string) $m['method'], self::online_methods(), true ) ) {
 				$out['income']['online_cents'] += (int) $m['amount_cents'];
 			}
 			if ( ! empty( $m['receipt_id'] ) ) {
