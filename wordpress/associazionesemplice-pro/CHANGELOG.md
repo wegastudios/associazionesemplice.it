@@ -2,6 +2,13 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.1.28
+- Nuovi SMS ai soci (Brevo o Twilio) con coda, nuovi tentativi, registro e crediti residui; copia SMS degli avvisi automatici, spenta di partenza.
+- Newsletter sincronizzata con Brevo, Mailchimp o MailPoet, solo per chi ha dato il consenso; chi lo ritira o cambia indirizzo esce da solo.
+- Consensi per SMS e newsletter nella scheda del socio e in «Le mie comunicazioni» nell'area soci, compresi nell'esportazione privacy.
+- Nuovo pagamento con Satispay e Klarna tramite Stripe (da 35 € a 10.000 €).
+- Richiede il gratuito 1.2.31 o successivo.
+
 ## 1.1.27
 - Nuove assemblee e deleghe: convocazione via email, presenze, deleghe tra soci, numero legale e verbale già compilato.
 - Nuovo bilancio preventivo per categoria, confrontato con quello che è successo davvero (Pro Contabile e Fiscale).
