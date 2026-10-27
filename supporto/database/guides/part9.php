@@ -350,7 +350,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Comunicazione', 'slug' => 'sms-ai-soci-e-consensi',
         'title' => 'Mandare SMS ai soci e gestire i consensi',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale (non nel plugin gratuito)
+> Disponibile in: Pro Contabile, Pro Fiscale (da Pro 1.1.28, che richiede il plugin gratuito 1.2.31: aggiorna insieme gratuito e Pro; non nel plugin gratuito)
 
 Oltre alle email puoi scrivere ai soci per **SMS**, con il fornitore che preferisci. Il costo degli SMS è quello del fornitore scelto.
 
@@ -361,7 +361,7 @@ Per scrivere a qualcuno per SMS, o per iscriverlo alla newsletter, serve il suo 
 - nella **scheda della persona**, riquadro **«Consensi SMS e newsletter»**, se il consenso è su modulo cartaceo o a voce;
 - oppure lo dà il socio da solo, nell'**area riservata**, sezione **«Le mie comunicazioni»**.
 
-Si può **revocare quando si vuole**: da quel momento non parte più nulla.
+Si può **revocare quando si vuole**: da quel momento non parte più nulla. I consensi sono compresi nell'**esportazione dei dati** della persona.
 
 ## Collegare il fornitore
 
@@ -393,7 +393,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Comunicazione', 'slug' => 'newsletter-con-brevo-mailchimp-o-mailpoet',
         'title' => 'Collegare la newsletter: Brevo, Mailchimp o MailPoet',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale (non nel plugin gratuito)
+> Disponibile in: Pro Contabile, Pro Fiscale (da Pro 1.1.28, che richiede il plugin gratuito 1.2.31: aggiorna insieme gratuito e Pro; non nel plugin gratuito)
 
 Il sito tiene **allineata la lista** della tua newsletter con i soci che hanno dato il consenso. **La newsletter si scrive e si invia dal servizio che scegli**, non dal plugin.
 
@@ -425,7 +425,7 @@ MD,
         'topic' => 'pagamenti', 'section' => 'Pagamenti online', 'slug' => 'attivare-satispay-e-klarna',
         'title' => 'Attivare Satispay e Klarna',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale (non nel plugin gratuito)
+> Disponibile in: Pro Contabile, Pro Fiscale (da Pro 1.1.28, che richiede il plugin gratuito 1.2.31: aggiorna insieme gratuito e Pro; non nel plugin gratuito)
 
 Due metodi in più per i pagamenti online. Il resto della configurazione è in [Attivare i pagamenti online con Stripe o PayPal](guida:attivare-stripe-o-paypal).
 
