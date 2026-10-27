@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.1.29
+- Corretto: con il Pro attivo la scheda «Convenzioni» tra i Registri era sparita.
+
 ## 1.1.28
 - Nuovi SMS ai soci (Brevo o Twilio) con coda, nuovi tentativi, registro e crediti residui; copia SMS degli avvisi automatici, spenta di partenza.
 - Newsletter sincronizzata con Brevo, Mailchimp o MailPoet, solo per chi ha dato il consenso; chi lo ritira o cambia indirizzo esce da solo.
