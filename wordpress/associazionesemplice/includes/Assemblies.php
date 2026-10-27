@@ -260,19 +260,20 @@ final class Assemblies {
 	 *
 	 * @throws \InvalidArgumentException
 	 */
-	public static function add_proxy( int $id, int $delegator, int $delegate ): void {
-		Db::with_lock( 'asem_assembly_' . $id, function () use ( $id, $delegator, $delegate ) {
-			self::add_proxy_locked( $id, $delegator, $delegate );
+	public static function add_proxy( int $id, int $delegator, int $delegate, bool $staff = true ): void {
+		Db::with_lock( 'asem_assembly_' . $id, function () use ( $id, $delegator, $delegate, $staff ) {
+			self::add_proxy_locked( $id, $delegator, $delegate, $staff );
 		} );
 	}
 
-	private static function add_proxy_locked( int $id, int $delegator, int $delegate ): void {
+	/** @param bool $staff true: la segreteria registra una delega scritta anche su un'assemblea in bozza; false: il socio dall'area riservata, solo su un'assemblea convocata */
+	private static function add_proxy_locked( int $id, int $delegator, int $delegate, bool $staff ): void {
 		$a = self::get( $id );
 		if ( ! $a ) {
 			throw new \InvalidArgumentException( 'Assemblea non trovata.' );
 		}
-		if ( ! in_array( $a['status'], array( AssemblyRules::DRAFT, AssemblyRules::CONVENED ), true ) ) {
-			throw new \InvalidArgumentException( 'Le deleghe si danno prima dell\'assemblea.' );
+		if ( ! in_array( $a['status'], $staff ? array( AssemblyRules::DRAFT, AssemblyRules::CONVENED ) : array( AssemblyRules::CONVENED ), true ) ) {
+			throw new \InvalidArgumentException( 'Le deleghe si danno prima dell\'assemblea, quando è stata convocata.' );
 		}
 		$p1 = Plugin::people()->get( $delegator );
 		$p2 = Plugin::people()->get( $delegate );
@@ -312,6 +313,34 @@ final class Assemblies {
 
 	// ---------- Numero legale ----------
 
+	/** Gli id dei soci che hanno diritto di intervenire oggi, in una sola interrogazione (stesse regole di {@see Polls::eligible_count()}). @return int[] */
+	public static function eligible_ids(): array {
+		$db    = self::db();
+		$today = Db::today();
+		$types = "'" . implode( "','", array_map( 'esc_sql', MemberType::member_types() ) ) . "'";
+		$sql   = 'SELECT p.id FROM ' . Db::t( 'people' ) . " p WHERE p.deleted_at IS NULL AND p.anonymized_at IS NULL AND p.application_status IS NULL AND p.suspended_at IS NULL AND p.type IN ($types) AND (p.left_on IS NULL OR p.left_on > %s) "
+			. 'AND EXISTS (SELECT 1 FROM ' . Db::t( 'memberships' ) . ' m WHERE m.person_id = p.id AND m.deleted_at IS NULL AND m.valid_from <= %s AND m.valid_to >= %s)';
+		return array_map( 'intval', $db->get_col( $db->prepare( $sql, $today, $today, $today ) ) ?: array() );
+	}
+
+	/**
+	 * Le deleghe che contano: il delegato è presente, chi ha delegato non è venuto di persona e (finché l'assemblea non è svolta) è ancora un socio in regola.
+	 *
+	 * @param int[] $present
+	 * @return array[]
+	 */
+	public static function counted_proxies( array $assembly, array $present ): array {
+		$live = AssemblyRules::HELD !== $assembly['status'];
+		$ok   = $live ? self::eligible_ids() : array();
+		$out  = array();
+		foreach ( self::proxies( (int) $assembly['id'] ) as $x ) {
+			if ( in_array( (int) $x['delegate_id'], $present, true ) && ! in_array( (int) $x['delegator_id'], $present, true ) && ( ! $live || in_array( (int) $x['delegator_id'], $ok, true ) ) ) {
+				$out[] = $x;
+			}
+		}
+		return $out;
+	}
+
 	/**
 	 * Situazione delle presenze. Le deleghe contano solo se chi le ha ricevute è presente e chi ha delegato non è venuto di persona.
 	 *
@@ -324,12 +353,7 @@ final class Assemblies {
 			throw new \InvalidArgumentException( 'Assemblea non trovata.' );
 		}
 		$present  = self::present_ids( $id );
-		$proxies  = 0;
-		foreach ( self::proxies( $id ) as $x ) {
-			if ( in_array( (int) $x['delegate_id'], $present, true ) && ! in_array( (int) $x['delegator_id'], $present, true ) ) {
-				$proxies++;
-			}
-		}
+		$proxies  = count( self::counted_proxies( $a, $present ) );
 		$eligible = AssemblyRules::HELD === $a['status'] && null !== $a['eligible_at_close'] ? (int) $a['eligible_at_close'] : self::eligible_count();
 		$call     = $call ?: ( (int) $a['call_held'] ?: 1 );
 		$percent  = AssemblyRules::percent_for_call( $call, (int) $a['quorum_first'], (int) $a['quorum_second'] );
@@ -378,6 +402,12 @@ final class Assemblies {
 	 * @throws \InvalidArgumentException
 	 */
 	public static function create_minutes( int $id, ?int $user_id = null ): int {
+		return (int) Db::with_lock( 'asem_assembly_' . $id, function () use ( $id, $user_id ) { // il doppio clic non crea due verbali
+			return self::create_minutes_locked( $id, $user_id );
+		} );
+	}
+
+	private static function create_minutes_locked( int $id, ?int $user_id ): int {
 		$a = self::get( $id );
 		if ( ! $a ) {
 			throw new \InvalidArgumentException( 'Assemblea non trovata.' );
@@ -395,10 +425,8 @@ final class Assemblies {
 		}
 		$by_proxy = array();
 		$present  = self::present_ids( $id );
-		foreach ( self::proxies( $id ) as $x ) {
-			if ( in_array( (int) $x['delegate_id'], $present, true ) && ! in_array( (int) $x['delegator_id'], $present, true ) ) {
-				$by_proxy[] = self::proxy_name( $x, 'a' ) . ' (delega a ' . self::proxy_name( $x, 'b' ) . ')';
-			}
+		foreach ( self::counted_proxies( $a, $present ) as $x ) {
+			$by_proxy[] = self::proxy_name( $x, 'a' ) . ' (delega a ' . self::proxy_name( $x, 'b' ) . ')';
 		}
 		$call = $t['call'];
 		$body = AssemblyRules::summary_line( $t['eligible'], $t['present'], $t['proxies'], $t['quorum'], $call ) . "\n\n"
@@ -441,9 +469,12 @@ final class Assemblies {
 				continue;
 			}
 			$id          = (int) $a['id'];
-			$a['given']  = self::proxy_of( $id, $pid );
+			$a['given']  = null;
 			$a['gotten'] = array();
-			foreach ( self::proxies( $id ) as $x ) {
+			foreach ( self::proxies( $id ) as $x ) { // un'unica lettura per assemblea
+				if ( (int) $x['delegator_id'] === $pid ) {
+					$a['given'] = $x;
+				}
 				if ( (int) $x['delegate_id'] === $pid ) {
 					$a['gotten'][] = self::proxy_name( $x, 'a' );
 				}

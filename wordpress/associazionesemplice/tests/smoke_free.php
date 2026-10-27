@@ -339,6 +339,14 @@ free_ok( 1 === $bd_n && 1 === $bd_t['present'] && 3 === $bd_t['proxies'], 'prese
 \AssociazioneSemplice\Assemblies::set_attendance( $bd_asm, array( $bd_b, $bd_a ) );
 $bd_t = \AssociazioneSemplice\Assemblies::tally( $bd_asm );
 free_ok( 2 === $bd_t['present'] && 2 === $bd_t['proxies'], 'presenze: chi delega ma viene di persona non conta due volte' );
+$people->suspend( $bd_d );
+free_ok( 1 === \AssociazioneSemplice\Assemblies::tally( $bd_asm )['proxies'], 'deleghe: la delega di chi non è più in regola non conta' );
+$wpdb->update( Db::t( 'people' ), array( 'suspended_at' => null ), array( 'id' => $bd_d ) );
+free_ok( 2 === \AssociazioneSemplice\Assemblies::tally( $bd_asm )['proxies'], 'deleghe: tornato in regola, la delega conta di nuovo' );
+$bd_draft = \AssociazioneSemplice\Assemblies::save( 0, array( 'title' => 'Bozza per deleghe', 'first_call_at' => $bb_local( '+30 days' ), 'agenda' => 'Varie' ), $admin->ID );
+free_ok( $bb_throws( function () use ( $bd_draft, $bd_a, $bd_b ) { \AssociazioneSemplice\Assemblies::add_proxy( $bd_draft, $bd_a, $bd_b, false ); } ), 'deleghe: dall\'area soci non si delega su un\'assemblea in bozza' );
+\AssociazioneSemplice\Assemblies::add_proxy( $bd_draft, $bd_a, $bd_b );
+free_ok( null !== \AssociazioneSemplice\Assemblies::proxy_of( $bd_draft, $bd_a ), 'deleghe: la segreteria può registrare una delega scritta anche in bozza' );
 $bd_other = \AssociazioneSemplice\Assemblies::save( 0, array( 'title' => 'Assemblea straordinaria prova', 'kind' => 'extraordinary', 'first_call_at' => $bb_local( '+20 days' ), 'agenda' => 'Modifica dello statuto' ), $admin->ID );
 free_ok( 75 === (int) \AssociazioneSemplice\Assemblies::get( $bd_other )['quorum_first'], 'assemblee: la straordinaria parte dal 75%' );
 \AssociazioneSemplice\Assemblies::convene( $bd_other, false );

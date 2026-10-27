@@ -116,7 +116,7 @@ final class Refunds {
 		$db = self::db();
 		$sql = 'SELECT COALESCE(SUM(CASE WHEN expense_date = %s THEN amount_cents ELSE 0 END),0) AS d, COALESCE(SUM(amount_cents),0) AS m FROM ' . Db::t( 'refunds' )
 			. " WHERE person_id = %d AND kind = 'selfcert' AND status IN ('requested','approved','paid') AND expense_date BETWEEN %s AND %s";
-		$r   = $db->get_row( $db->prepare( $sql, $date, $person_id, substr( $date, 0, 7 ) . '-01', substr( $date, 0, 7 ) . '-31' ), ARRAY_A );
+		$r   = $db->get_row( $db->prepare( $sql, $date, $person_id, substr( $date, 0, 7 ) . '-01', gmdate( 'Y-m-t', strtotime( $date ) ) ), ARRAY_A );
 		return array( (int) ( $r['d'] ?? 0 ), (int) ( $r['m'] ?? 0 ) );
 	}
 

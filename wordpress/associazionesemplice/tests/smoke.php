@@ -6799,7 +6799,10 @@ asem_ok( 'rejected' === $R::get( $bd_r2 )['status'] && $bd_throws( function () u
 $bd_r3 = $R::request( $bd_vol, array( 'kind' => 'selfcert', 'expense_date' => gmdate( 'Y-m-d', strtotime( $today . ' -1 day' ) ), 'description' => 'Da ritirare', 'amount' => '2' ), null, 1 );
 $R::cancel( $bd_r3 );
 asem_ok( 'cancelled' === $R::get( $bd_r3 )['status'], 'rimborsi: la richiesta si annulla prima della decisione' );
-asem_ok( 3 === count( $R::privacy_export( array(), $bd_vol )['rimborsi_spese'] ), 'rimborsi: nell\'esportazione privacy' );
+$bd_feb = ($bd_year - 1) . '-02-28';
+$bd_r4  = $R::request( $bd_vol, array( 'kind' => 'selfcert', 'expense_date' => $bd_feb, 'description' => 'Fine febbraio', 'amount' => '5,00' ), null, 1 );
+asem_ok( array( 500, 500 ) === $R::selfcert_totals( $bd_vol, $bd_feb ), 'rimborsi: il tetto mensile conta anche il 28 febbraio' );
+asem_ok( 4 === count( $R::privacy_export( array(), $bd_vol )['rimborsi_spese'] ), 'rimborsi: nell\'esportazione privacy' );
 $bd_html = asem_render( array( Admin\RefundsPage::class, 'render' ), 'Rimborsi ai volontari' );
 $bd_html = asem_render( array( Admin\RefundsPage::class, 'render' ), 'Rimborso n.', array( 'view' => $bd_r1 ) );
 asem_ok( false !== strpos( $bd_html, 'movimento n.' ), 'rimborsi: scheda con il collegamento alla prima nota' );

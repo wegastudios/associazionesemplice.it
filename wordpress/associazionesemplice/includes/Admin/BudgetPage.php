@@ -26,12 +26,11 @@ final class BudgetPage {
 		if ( ! $rows ) {
 			echo '<tr><td colspan="5">Nessun preventivo.</td></tr>';
 		}
+		$planned = Budget::planned_totals(); // una sola interrogazione per tutti i preventivi
 		foreach ( $rows as $b ) {
-			$t = BudgetRules::totals( array_map( function ( $l ) {
-				return array( 'type' => $l['type'], 'planned' => (int) $l['planned_cents'], 'actual' => 0 );
-			}, Budget::lines( (int) $b['id'] ) ) );
+			$t = $planned[ (int) $b['id'] ] ?? array( BudgetRules::INCOME => 0, BudgetRules::EXPENSE => 0 );
 			echo '<tr><td>' . (int) $b['year'] . '</td><td><a href="' . esc_url( Ui::url( 'asem-budget', array( 'view' => (int) $b['id'] ) ) ) . '">' . esc_html( $b['title'] ) . '</a></td><td>' . esc_html( BudgetRules::statuses()[ $b['status'] ] ?? '' )
-				. '</td><td>' . esc_html( Money::format( $t['income_planned'] ) ) . '</td><td>' . esc_html( Money::format( $t['expense_planned'] ) ) . '</td></tr>';
+				. '</td><td>' . esc_html( Money::format( $t[ BudgetRules::INCOME ] ) ) . '</td><td>' . esc_html( Money::format( $t[ BudgetRules::EXPENSE ] ) ) . '</td></tr>';
 		}
 		echo '</tbody></table>';
 		Ui::footer();
@@ -140,7 +139,7 @@ final class BudgetPage {
 		if ( BudgetRules::APPROVED === $b['status'] ) {
 			$a = ! empty( $b['assembly_id'] ) ? Assemblies::get( (int) $b['assembly_id'] ) : null;
 			echo '<p>Approvato il <strong>' . esc_html( ( new \DateTimeImmutable( (string) $b['approved_on'] ) )->format( 'd/m/Y' ) ) . '</strong>'
-				. ( $a && Edition::installed( 'budget' ) ? ' dall\'assemblea «<a href="' . esc_url( Ui::url( 'asem-assemblies', array( 'view' => (int) $a['id'] ) ) ) . '">' . esc_html( $a['title'] ) . '</a>»' : '' ) . '. ';
+				. ( $a ? ' dall\'assemblea «<a href="' . esc_url( Ui::url( 'asem-assemblies', array( 'view' => (int) $a['id'] ) ) ) . '">' . esc_html( $a['title'] ) . '</a>»' : '' ) . '. ';
 			echo Ui::confirm_button( 'asem_budget_reopen', self::back( $id ), array( 'id' => $id ), 'Riapri per modificare', 'Riaprire il preventivo? Torna in preparazione.' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			return;
 		}

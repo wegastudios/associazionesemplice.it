@@ -65,7 +65,7 @@ final class AssembliesFront {
 
 	public static function do_proxy( array $post ): string {
 		$actor = Actions::actor();
-		Assemblies::add_proxy( (int) ( $post['assembly_id'] ?? 0 ), (int) $actor['id'], (int) ( $post['delegate_id'] ?? 0 ) );
+		Assemblies::add_proxy( (int) ( $post['assembly_id'] ?? 0 ), (int) $actor['id'], (int) ( $post['delegate_id'] ?? 0 ), false );
 		return 'Delega registrata. Il socio scelto la porterà in assemblea.';
 	}
 

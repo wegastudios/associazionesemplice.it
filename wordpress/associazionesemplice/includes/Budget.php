@@ -21,6 +21,12 @@ final class Budget {
 		if ( ! BudgetRules::valid_year( $year ) ) {
 			throw new \InvalidArgumentException( 'Indica l\'anno del preventivo.' );
 		}
+		return (int) Db::with_lock( 'asem_budget_year_' . $year, function () use ( $id, $in, $user_id, $year ) { // due richieste insieme non creano due preventivi per lo stesso anno
+			return self::save_locked( $id, $in, $user_id, $year );
+		} );
+	}
+
+	private static function save_locked( int $id, array $in, ?int $user_id, int $year ): int {
 		$old = $id ? self::get( $id ) : null;
 		if ( $id && ! $old ) {
 			throw new \InvalidArgumentException( 'Preventivo non trovato.' );
@@ -77,7 +83,6 @@ final class Budget {
 			throw new \InvalidArgumentException( 'Un preventivo approvato non si elimina: riaprilo prima.' );
 		}
 		self::db()->update( Db::t( 'budgets' ), array( 'deleted_at' => Db::now() ), array( 'id' => $id ) );
-		self::db()->delete( Db::t( 'budget_lines' ), array( 'budget_id' => $id ) );
 		Audit::log( 'budget.deleted', 'budget', $id );
 	}
 
@@ -92,6 +97,19 @@ final class Budget {
 				$out[ (int) $c['id'] ] = array( (string) $c['name'], $type );
 			}
 		}
+		return $out;
+	}
+
+	/** Totali previsti di tutti i preventivi in una sola interrogazione. @return array budget_id => [income => cents, expense => cents] */
+	public static function planned_totals(): array {
+		$out = array();
+		foreach ( self::db()->get_results( 'SELECT l.budget_id, l.type, SUM(l.planned_cents) AS cents FROM ' . Db::t( 'budget_lines' ) . ' l JOIN ' . Db::t( 'budgets' ) . ' b ON b.id = l.budget_id WHERE b.deleted_at IS NULL GROUP BY l.budget_id, l.type', ARRAY_A ) ?: array() as $r ) {
+			$out[ (int) $r['budget_id'] ][ (string) $r['type'] ] = (int) $r['cents'];
+		}
+		foreach ( $out as &$t ) {
+			$t += array( BudgetRules::INCOME => 0, BudgetRules::EXPENSE => 0 );
+		}
+		unset( $t );
 		return $out;
 	}
 
