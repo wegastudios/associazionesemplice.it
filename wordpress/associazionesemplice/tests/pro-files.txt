@@ -76,3 +76,16 @@ Admin/ProWizard.php
 DocsPro.php
 Frontend/ProViews.php
 Frontend/ProActions.php
+ExpiryRules.php
+CertificateRules.php
+AffiliationRules.php
+MemberQuery.php
+StaffReminders.php
+Certificates.php
+Affiliations.php
+ProBlockC.php
+Admin/CertificatesPage.php
+Admin/AffiliationsPage.php
+Admin/BlockCActions.php
+Admin/BlockCExports.php
+Frontend/CertificatesFront.php

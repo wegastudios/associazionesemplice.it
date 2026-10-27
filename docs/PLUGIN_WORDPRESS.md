@@ -754,3 +754,28 @@ Tre funzioni nuove, nel gruppo **Registri** del menu (schede **Votazioni**, **In
 - I file stanno nella cartella privata di `uploads` (nome casuale, senza estensione) e **non hanno un indirizzo diretto**: il download passa da `admin-post.php?action=asem_document`, che controlla il permesso con `Access::can_read_document()`. Il tipo del file si decide dall'estensione controllata, con `nosniff` e senza esecuzione nel browser.
 - I soci trovano l'elenco nell'area riservata (sezione «Documenti» o `[associazionesemplice_documenti_soci]`); l'elenco pubblico si inserisce con `[associazionesemplice_documenti]` (facoltativo `categoria="Moduli"`) o con il blocco Associazione Semplice. Un documento eliminato esce dagli elenchi; il file resta sul disco, come gli allegati dei movimenti.
 - Tabella: `documents`. Copia di sicurezza e azzeramento includono tabelle e file.
+
+## Certificato medico e affiliazioni agli enti (solo Pro, schema Pro v4)
+
+Due funzioni nuove del Pro, nel gruppo **Registri** (schede **Certificati medici** e **Affiliazioni**). Sono classi dell'edizione Pro (elenco in `tests/pro-files.txt`): senza Pro o con la licenza non in regola le pagine, le azioni e i lavori periodici spariscono senza errori. Le regole pure stanno in `ExpiryRules`, `CertificateRules` e `AffiliationRules` (test in `BlockCRulesTest`); i servizi in `Certificates` e `Affiliations`; il collegamento con il gratuito in `ProBlockC`.
+
+### Certificato medico sportivo (funzione `medical`)
+
+- Più certificati per persona: tipo (non agonistico, agonistico, altro), rilascio, scadenza, medico o struttura, file allegato. Solo i soci (`MemberType::is_member()`): il tutore e l'ospite sono esclusi.
+- Stato: valido, in scadenza (giorni di preavviso in `cert_warn_days`, predefinito 30), scaduto, mancante. Conta il certificato già rilasciato che scade più tardi.
+- Flag «richiede il certificato» sulle attività (riga nel modulo dell'attività, tabella `cert_activities`). L'elenco predefinito sono gli iscritti a quelle attività (corsi: iscrizione in corso; eventi: prenotazione attiva); con «tutti i soci attivi» si guarda l'intera anagrafica. Filtri per stato e attività, esportazione CSV.
+- **Dato sanitario**: lo vedono e lo gestiscono solo lo staff (`Access::is_admin_user()`, cioè `asem_operate`). Il file sta nella cartella privata di `uploads` (come i documenti) e si scarica solo da `admin-post.php?action=asem_cert_file` con nonce, con nome generico (`certificato-ID`). Il registro azioni (`Audit`) riceve solo l'azione (`medical.added`, `medical.deleted`, `medical.file_opened`, `medical.exported`) con l'id opaco: mai date, tipo, medico o nomi.
+- Promemoria (impostazione `cert_reminders`, spenta di default): una volta al giorno, al socio (o al tutore se minorenne) con `Reminders::notify` e alla segreteria con un'unica email d'elenco (indirizzo degli avvisi di nuova adesione). Una sola volta per tipo e certificato (`cert_soon`, `cert_expired` fino a 30 giorni dopo la scadenza, `cert_staff`).
+- Bacheca: riquadro con scaduti, mancanti e in scadenza. Scheda «Certificato medico» nella persona.
+- Area soci (facoltativa, `cert_show_member`): il socio vede stato e scadenza, mai file né medico.
+- Privacy: `certificati_medici` nell'esportazione dei dati; l'anonimizzazione cancella certificati e file.
+- Tabelle: `medical_certs`, `cert_activities`.
+
+### Affiliazioni agli enti (funzione `affiliations`)
+
+- **Affiliazione dell'associazione**: ente (CONI/RAS, UISP, CSEN, ACSI, AICS, altro con nome libero), codice, stagione (`2026` o `2025/2026`), scadenza, costo. Una per ente e stagione.
+- **Tessere dei soci**: numero, tipo tessera, ente, stagione, data, scadenza, costo; una per socio, ente e stagione. Inserimento singolo (anche dalla scheda persona) e **in blocco** per tutti i soci attivi o per gli iscritti a un'attività (il numero si aggiunge dopo dall'elenco).
+- Elenco con filtri (ente, stagione, stato, attività) ed esportazione CSV: «Esporta l'elenco» e **«File per il portale dell'ente»** con le colonne Nome, Cognome, Codice fiscale, Data di nascita, Luogo di nascita (codice catastale), Sesso, Indirizzo, Email, Telefono, Tipo tessera. L'anagrafica non conserva luogo di nascita né sesso: si ricavano dal codice fiscale (sesso dal giorno, luogo come codice catastale, omocodie comprese); vanno controllati prima del caricamento.
+- Promemoria (`aff_reminders`, spenti di default, preavviso `aff_warn_days`, predefinito 30): al socio per la sua tessera, e alla segreteria un'unica email con affiliazioni e tessere. Una sola volta per tipo e scadenza. Riquadro in Bacheca (le scadenze oltre 30 giorni fa non contano).
+- Privacy: `tessere_enti` nell'esportazione; l'anonimizzazione cancella le tessere.
+- Tabelle: `affiliations`, `body_cards`.
