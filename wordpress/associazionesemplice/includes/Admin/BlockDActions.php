@@ -65,7 +65,7 @@ final class BlockDActions {
 	public static function convene( array $p ): array {
 		$id = (int) ( $p['id'] ?? 0 );
 		$r  = Assemblies::convene( $id );
-		$m  = 'Assemblea convocata: ' . $r['sent'] . ' avvisi inviati.' . ( $r['no_email'] ? ' ' . $r['no_email'] . ' soci senza email non sono stati avvisati.' : '' ) . ( '' !== $r['warning'] ? ' ' . $r['warning'] : '' );
+		$m  = 'Assemblea convocata: ' . ( 1 === (int) $r['sent'] ? '1 avviso inviato.' : $r['sent'] . ' avvisi inviati.' ) . ( $r['no_email'] ? ' ' . $r['no_email'] . ' soci senza email non sono stati avvisati.' : '' ) . ( '' !== $r['warning'] ? ' ' . $r['warning'] : '' );
 		return array( self::view( $id ), $m );
 	}
 

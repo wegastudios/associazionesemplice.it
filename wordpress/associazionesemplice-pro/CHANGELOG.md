@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.1.30
+- L'elenco delle integrazioni cita tutti i metodi di pagamento online (Stripe, PayPal, SumUp, Satispay e Klarna).
+- Gli avvisi dicono «1 avviso inviato» al singolare.
+
 ## 1.1.29
 - Corretto: con il Pro attivo la scheda «Convenzioni» tra i Registri era sparita.
 

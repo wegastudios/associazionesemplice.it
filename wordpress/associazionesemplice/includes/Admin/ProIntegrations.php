@@ -73,7 +73,7 @@ final class ProIntegrations {
 	/** Voci dell'elenco «Altre integrazioni». */
 	public static function list_items(): void {
 		$pay = \AssociazioneSemplice\Edition::has( 'payments' );
-		if ( $pay ) echo '<li><strong>Stripe e PayPal</strong> — carta e PayPal senza negozio: <a href="' . esc_url( Ui::url( 'asem-payments' ) ) . '">Pagamenti online</a>.</li>';
+		if ( $pay ) echo '<li><strong>Stripe, PayPal, SumUp, Satispay e Klarna</strong> — pagamenti con carta e portafoglio digitale senza negozio: <a href="' . esc_url( Ui::url( 'asem-payments' ) ) . '">Pagamenti online</a>.</li>';
 		echo '<li><strong>Apple Wallet, Google Wallet, QR e calendario</strong>: <a href="' . esc_url( Ui::url( 'asem-card' ) ) . '">Tessera, QR e Wallet</a>.</li>';
 	}
 }

@@ -74,4 +74,5 @@
 	.asem-pl-row{grid-template-columns:minmax(0,1fr) 90px}
 	.asem-pl-row .asem-pl-name{grid-column:1 / -1}
 	.asem-pl-head{display:none}
+	#wpbody-content input.regular-text,#wpbody-content input.large-text,#wpbody-content textarea.large-text{max-width:100%;box-sizing:border-box}
 }
