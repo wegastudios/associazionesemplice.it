@@ -6714,6 +6714,103 @@ asem_ok( '' === \AssociazioneSemplice\Frontend\CertificatesFront::section( $peop
 remove_filter( 'pre_wp_mail', $bc_hook, 10 );
 wp_set_current_user( 1 );
 
-asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' . ( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
+// ---------- Blocco D: preventivo e rimborsi ----------
+wp_set_current_user( 1 );
+asem_ok( \AssociazioneSemplice\Edition::has( 'budget' ) && \AssociazioneSemplice\Edition::has( 'refunds' ), 'blocco D: preventivo e rimborsi ci sono con il Pro' );
+$bd_mail = 0;
+$bd_hook = function () use ( &$bd_mail ) {
+	$bd_mail++;
+	return true;
+};
+add_filter( 'pre_wp_mail', $bd_hook, 10 );
+$bd_year = (int) substr( $today, 0, 4 );
+$bd_inc  = (int) $cat['donation'];
+$bd_gen  = (int) $cat['general_cost'];
+$bd_before_exp = ( \AssociazioneSemplice\Budget::actuals( $bd_year )[ $bd_gen ] ?? 0 );
+$bd_b = \AssociazioneSemplice\Budget::save( 0, array( 'year' => $bd_year + 5, 'title' => '' ), 1 );
+asem_ok( 'Bilancio preventivo ' . ( $bd_year + 5 ) === \AssociazioneSemplice\Budget::get( $bd_b )['title'], 'preventivo: titolo di default' );
+try {
+	\AssociazioneSemplice\Budget::save( 0, array( 'year' => $bd_year + 5 ), 1 );
+	asem_ok( false, 'preventivo: un solo preventivo per anno' );
+} catch ( \InvalidArgumentException $e ) {
+	asem_ok( true, 'preventivo: un solo preventivo per anno' );
+}
+\AssociazioneSemplice\Budget::delete( $bd_b );
+$bd_b = \AssociazioneSemplice\Budget::save( 0, array( 'year' => $bd_year, 'title' => 'Preventivo prova' ), 1 );
+if ( ! $bd_b ) {
+	$bd_b = (int) \AssociazioneSemplice\Budget::by_year( $bd_year )['id'];
+}
+$bd_n = \AssociazioneSemplice\Budget::set_lines( $bd_b, array( $bd_gen => (string) ( ( $bd_before_exp + 1000 ) / 100 + 1 ), $bd_inc => '5.000,00', 999999 => '10' ) );
+asem_ok( 2 === $bd_n, 'preventivo: le voci si salvano, le categorie inesistenti no' );
+$bd_c = \AssociazioneSemplice\Budget::compare( $bd_b );
+$bd_row = array_values( array_filter( $bd_c['rows'], function ( $r ) use ( $bd_gen ) { return $r['category_id'] === $bd_gen; } ) )[0];
+asem_ok( $bd_row['actual'] === $bd_before_exp && $bd_row['planned'] > $bd_before_exp, 'preventivo: il consuntivo viene dalla prima nota' );
+$bd_acc = (int) $cash['id'];
+$ledger->record_expense( array( 'date' => $today, 'account_id' => $bd_acc, 'method' => 'cash', 'category_id' => $bd_gen, 'amount_cents' => 50000, 'description' => 'Spesa oltre preventivo' ) );
+$bd_row = array_values( array_filter( \AssociazioneSemplice\Budget::compare( $bd_b )['rows'], function ( $r ) use ( $bd_gen ) { return $r['category_id'] === $bd_gen; } ) )[0];
+asem_ok( \AssociazioneSemplice\BudgetRules::OVER === $bd_row['status'] && $bd_row['actual'] === $bd_before_exp + 50000, 'preventivo: una spesa in più supera il preventivo' );
+$bd_csv = \AssociazioneSemplice\Budget::csv( $bd_b );
+asem_ok( false !== strpos( $bd_csv, 'oltre il preventivo' ) && false !== strpos( $bd_csv, 'Risultato' ), 'preventivo: esportazione CSV' );
+try {
+	\AssociazioneSemplice\Budget::approve( $bd_b, '2026-01-10', 0 );
+	asem_ok( true, 'preventivo: approvato' );
+	\AssociazioneSemplice\Budget::set_lines( $bd_b, array( $bd_gen => '1' ) );
+	asem_ok( false, 'preventivo: approvato non si modifica' );
+} catch ( \InvalidArgumentException $e ) {
+	asem_ok( true, 'preventivo: approvato non si modifica' );
+}
+\AssociazioneSemplice\Budget::reopen( $bd_b );
+$bd_html = asem_render( array( Admin\BudgetPage::class, 'render' ), 'Bilancio preventivo' );
+$bd_html = asem_render( array( Admin\BudgetPage::class, 'render' ), 'Preventivo e consuntivo', array( 'view' => $bd_b ) );
+asem_ok( false !== strpos( $bd_html, 'asem_budget_lines' ) && false !== strpos( $bd_html, 'oltre il preventivo' ), 'preventivo: pagina con voci e confronto' );
+
+// rimborsi
+$bd_vol = $people->create( array( 'type' => 'volunteer', 'first_name' => 'Rita', 'last_name' => 'Rimborsi', 'email' => 'rita.rimborsi@example.com' ) );
+$bd_gst = $people->create( array( 'type' => 'guardian', 'first_name' => 'Tino', 'last_name' => 'Tutore Rimborsi', 'email' => 'tino.rimborsi@example.com' ) );
+$bd_throws = function ( callable $fn ): bool {
+	try {
+		$fn();
+	} catch ( \InvalidArgumentException $e ) {
+		return true;
+	}
+	return false;
+};
+$R = '\AssociazioneSemplice\Refunds';
+asem_ok( $bd_throws( function () use ( $R, $bd_gst, $today ) { $R::request( $bd_gst, array( 'kind' => 'selfcert', 'expense_date' => $today, 'description' => 'x', 'amount' => '5' ) ); } ), 'rimborsi: il tutore non è socio e non chiede rimborsi' );
+asem_ok( $bd_throws( function () use ( $R, $bd_vol, $today ) { $R::request( $bd_vol, array( 'kind' => 'documented', 'expense_date' => $today, 'description' => 'Senza scontrino', 'amount' => '5' ) ); } ), 'rimborsi: la spesa documentata vuole il giustificativo' );
+asem_ok( $bd_throws( function () use ( $R, $bd_vol ) { $R::request( $bd_vol, array( 'kind' => 'selfcert', 'expense_date' => '2999-01-01', 'description' => 'Futura', 'amount' => '5' ) ); } ), 'rimborsi: la data della spesa non può essere futura' );
+asem_ok( $bd_throws( function () use ( $R, $bd_vol, $today ) { $R::request( $bd_vol, array( 'kind' => 'km', 'expense_date' => $today, 'description' => 'Km', 'km' => 10 ) ); } ), 'rimborsi: senza tariffa non c\'è il rimborso chilometrico' );
+$bd_r1 = $R::request( $bd_vol, array( 'kind' => 'selfcert', 'expense_date' => $today, 'description' => 'Carta e penne', 'amount' => '6,00' ), null, 1 );
+asem_ok( $bd_throws( function () use ( $R, $bd_vol, $today ) { $R::request( $bd_vol, array( 'kind' => 'selfcert', 'expense_date' => $today, 'description' => 'Altre', 'amount' => '5,00' ) ); } ), 'rimborsi: l\'autocertificazione ha il tetto di 10 euro al giorno' );
+asem_ok( $bd_throws( function () use ( $R, $bd_r1, $cash ) { $R::pay( $bd_r1, (int) $cash['id'], '' ); } ), 'rimborsi: non si paga senza approvare' );
+$R::approve( $bd_r1, 1 );
+asem_ok( $bd_mail >= 1, 'rimborsi: il volontario riceve l\'avviso di approvazione' );
+$bd_tx_before = count( $ledger->rows( $today, $today ) );
+$bd_tx = $R::pay( $bd_r1, (int) $cash['id'], $today, 1 );
+$bd_rr = $R::get( $bd_r1 );
+$bd_tx_row = array_values( array_filter( $ledger->rows( $today, $today ), function ( $r ) use ( $bd_tx ) { return (int) $r['id'] === $bd_tx; } ) );
+asem_ok( 'paid' === $bd_rr['status'] && (int) $bd_rr['tx_id'] === $bd_tx && $bd_tx_row && 600 === (int) $bd_tx_row[0]['amount_cents'] && 'expense' === $bd_tx_row[0]['type'] && (int) $bd_tx_row[0]['person_id'] === $bd_vol && count( $ledger->rows( $today, $today ) ) === $bd_tx_before + 1, 'rimborsi: il pagamento registra l\'uscita in prima nota e la collega' );
+asem_ok( $bd_throws( function () use ( $R, $bd_r1, $cash, $today ) { $R::pay( $bd_r1, (int) $cash['id'], $today ); } ) && count( $ledger->rows( $today, $today ) ) === $bd_tx_before + 1, 'rimborsi: un rimborso pagato non si paga due volte' );
+Settings::update( array( 'refund_km_rate_cents' => 45 ) );
+$bd_r2 = $R::request( $bd_vol, array( 'kind' => 'km', 'expense_date' => $today, 'description' => 'Trasferta evento', 'km' => 40 ), null, 1 );
+asem_ok( 1800 === (int) $R::get( $bd_r2 )['amount_cents'], 'rimborsi: il chilometrico si calcola dalla tariffa' );
+$R::reject( $bd_r2, 'Non deliberato', 1 );
+asem_ok( 'rejected' === $R::get( $bd_r2 )['status'] && $bd_throws( function () use ( $R, $bd_r2 ) { $R::approve( $bd_r2 ); } ), 'rimborsi: un rifiuto è definitivo' );
+$bd_r3 = $R::request( $bd_vol, array( 'kind' => 'selfcert', 'expense_date' => gmdate( 'Y-m-d', strtotime( $today . ' -1 day' ) ), 'description' => 'Da ritirare', 'amount' => '2' ), null, 1 );
+$R::cancel( $bd_r3 );
+asem_ok( 'cancelled' === $R::get( $bd_r3 )['status'], 'rimborsi: la richiesta si annulla prima della decisione' );
+asem_ok( 3 === count( $R::privacy_export( array(), $bd_vol )['rimborsi_spese'] ), 'rimborsi: nell\'esportazione privacy' );
+$bd_html = asem_render( array( Admin\RefundsPage::class, 'render' ), 'Rimborsi ai volontari' );
+$bd_html = asem_render( array( Admin\RefundsPage::class, 'render' ), 'Rimborso n.', array( 'view' => $bd_r1 ) );
+asem_ok( false !== strpos( $bd_html, 'movimento n.' ), 'rimborsi: scheda con il collegamento alla prima nota' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\RefundsFront::section( $people->get( $bd_vol ) ), 'asem_front_refund' ) && '' === \AssociazioneSemplice\Frontend\RefundsFront::section( $people->get( $bd_gst ) ), 'area soci: rimborsi per il volontario, niente per il tutore' );
+asem_ok( false !== strpos( $R::csv(), 'Carta e penne' ), 'rimborsi: esportazione CSV' );
+$R::anonymize( $bd_vol );
+asem_ok( 'Dato cancellato' === $R::get( $bd_r1 )['description'], 'rimborsi: l\'anonimizzazione cancella i testi' );
+Settings::update( array( 'refund_km_rate_cents' => 0 ) );
+remove_filter( 'pre_wp_mail', $bd_hook, 10 );
+wp_set_current_user( 1 );
+
+asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Tutti i controlli sono passati.' );
