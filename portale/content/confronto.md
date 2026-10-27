@@ -9,6 +9,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Libro soci con numerazione progressiva e cessazioni | ✓ | ✓ | ✓ |
 | Schede dei soci e collegamento all'utente WordPress | ✓ | ✓ | ✓ |
 | Quota associativa unica e socio fondatore | ✓ | ✓ | ✓ |
+| Quota associativa a rate: residuo in scheda, saldo da incassare e tessera valida solo a quota saldata | ✓ | ✓ | ✓ |
 | Più livelli di socio con quote diverse | — | ✓ | ✓ |
 | Nucleo familiare con sconto per i familiari | — | ✓ | ✓ |
 | Ospiti con conteggio delle partecipazioni e invito a iscriversi | ✓ | ✓ | ✓ |
