@@ -18,6 +18,7 @@ final class TechActions {
 		'asem_save_bank'  => 'save_bank',
 		'asem_save_limits' => 'save_limits',
 		'asem_reset_limits' => 'reset_limits',
+		'asem_audit_free'  => 'audit_free',
 		'asem_save_entity' => 'save_entity',
 		'asem_reset_all'   => 'reset_all',
 		'asem_wizard_save' => 'wizard_save',
@@ -133,6 +134,12 @@ final class TechActions {
 		Settings::update( array( 'limits' => array() ) );
 		Audit::log( 'limits.reset', 'settings' );
 		return array( Ui::url( 'asem-limits' ), 'Ripristinati i valori predefiniti.' );
+	}
+
+	/** «Libera spazio»: cancella dal registro azioni tutto ciò che non è dell'anno in corso. */
+	public static function audit_free( array $p ): array {
+		$n = Audit::free_space();
+		return array( Ui::url( 'asem-audit' ), 0 === $n ? 'Nel registro non c\'era niente degli anni scorsi.' : 'Registro alleggerito: eliminate ' . number_format_i18n( $n ) . ' righe degli anni scorsi.' );
 	}
 
 	/** Azzeramento dei dati: spunta, frase scritta e password dell'amministratore che opera, poi copia di sicurezza e cancellazione. */

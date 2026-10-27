@@ -501,7 +501,7 @@ final class LedgerImport {
 			return null;
 		}
 		$map = array(
-			'stripe' => array( 'stripe', 'cartaonline' ), 'paypal' => array( 'paypal' ),
+			'stripe' => array( 'stripe', 'cartaonline' ), 'paypal' => array( 'paypal' ), 'sumup' => array( 'sumup' ),
 			'cash' => array( 'contant', 'cash', 'cassa' ), 'bank_transfer' => array( 'bonific', 'sepa', 'bancari', 'banca', 'rid', 'addebito' ),
 			'pos' => array( 'pos', 'carta', 'bancomat', 'visa', 'mastercard' ), 'check' => array( 'assegn' ),
 		);

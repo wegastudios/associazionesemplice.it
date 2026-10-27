@@ -47,14 +47,15 @@ final class Access {
 		}
 		$me = (int) $actor['id'];
 		switch ( $ability ) {
-			case 'asem_view_person':
 			case 'asem_edit_own_profile':
-			case 'asem_view_payments':
 				return (int) ( $ctx['person_id'] ?? 0 ) === $me;
+			case 'asem_view_person':
+			case 'asem_view_payments':
+				return (int) ( $ctx['person_id'] ?? 0 ) === $me || ! empty( $ctx['is_guardian'] );
 			case 'asem_add_guest':
 				return (int) ( $ctx['person_id'] ?? 0 ) === $me && MemberType::is_member( (string) $actor['type'] );
 			case 'asem_book_for':
-				return MemberType::is_member( (string) $actor['type'] ) && ( (int) ( $ctx['person_id'] ?? 0 ) === $me || (int) ( $ctx['host_person_id'] ?? 0 ) === $me );
+				return MemberType::can_login( (string) $actor['type'] ) && ( (int) ( $ctx['person_id'] ?? 0 ) === $me || (int) ( $ctx['host_person_id'] ?? 0 ) === $me || ! empty( $ctx['is_guardian'] ) );
 			case 'asem_manage_event':
 				return MemberType::is_member( (string) $actor['type'] ) && ( self::is_instructor( $actor, $ctx ) || ! empty( $ctx['is_staff'] ) || ! empty( $ctx['is_entity_staff'] ) ); // referente, staff dell'evento o staff dell'ente (su tutti gli eventi)
 			case 'asem_door_cash': // referente, staff dell'evento con l'incasso abilitato, tesoriere (vendita degli eventi)
@@ -153,6 +154,21 @@ final class Access {
 		}
 	}
 
+	/**
+	 * L'utente corrente può aprire questo documento dell'archivio? La segreteria sempre; il pubblico i documenti «Pubblico»;
+	 * i soci in regola anche quelli «Soci». Ogni download passa da qui.
+	 */
+	public static function can_read_document( array $doc ): bool {
+		$uid    = get_current_user_id();
+		$staff  = $uid > 0 && self::is_admin_user( $uid );
+		$member = false;
+		if ( ! $staff && $uid > 0 && DocumentRules::MEMBERS === (string) $doc['visibility'] ) {
+			$actor  = self::person_for_user( $uid );
+			$member = $actor && MemberType::is_member( (string) $actor['type'] ) && Plugin::people()->is_active_member( (int) $actor['id'] );
+		}
+		return DocumentRules::can_read( (string) $doc['visibility'], $staff, (bool) $member );
+	}
+
 	public static function is_admin_user( int $user_id ): bool {
 		return $user_id > 0 && user_can( $user_id, Plugin::CAP_OPS );
 	}
@@ -171,6 +187,9 @@ final class Access {
 			return false;
 		}
 		$ctx = array( 'person_id' => $object_id );
+		if ( in_array( $ability, array( 'asem_view_person', 'asem_view_payments', 'asem_book_for' ), true ) ) {
+			$ctx['is_guardian'] = Guardians::is_guardian_of( (int) $actor['id'], $object_id ); // il tutore agisce per le persone di cui risponde
+		}
 		if ( in_array( $ability, array( 'asem_add_expense', 'asem_collect', 'asem_register_member' ), true ) ) {
 			$ctx['is_treasurer'] = self::is_treasurer( $user_id );
 		}

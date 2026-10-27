@@ -57,6 +57,7 @@ final class Plugin {
 			'asem_release_holds'          => array( 'hourly', 900, 'Holds', 'release_expired', '' ),
 			'asem_send_reminders'         => array( 'daily', 600, 'Reminders', 'run', '' ),
 			'asem_purge_backups'          => array( 'hourly', 1200, 'Backup', 'purge_old', '' ),
+			'asem_purge_audit'            => array( 'daily', 1800, 'Audit', 'purge_old', '' ),
 		);
 		$jobs = (array) apply_filters( 'asem_scheduled_jobs', $jobs ); // un'estensione aggiunge i suoi lavori periodici
 		foreach ( $jobs as $hook => $j ) {
@@ -76,6 +77,8 @@ final class Plugin {
 		'asem_backup_saved'    => 'Backup',
 		'asem_privacy_export'  => 'Privacy',
 		'asem_doc'             => 'Docs',
+		'asem_document'        => 'Documents',
+		'asem_item_file'       => 'Inventory',
 	);
 
 	/** Azioni di admin-post con la classe che le gestisce, comprese quelle di un'estensione (filtro `asem_admin_post_classes`). */

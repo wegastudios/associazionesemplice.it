@@ -2,6 +2,23 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.1.25
+- Nuovo registro dei certificati medici: file riservato alla segreteria, scadenze, promemoria, avvisi in Bacheca e nell'area soci.
+- Nuove affiliazioni agli enti con le tessere dei soci, una alla volta o in blocco, ed elenco da caricare sui portali degli enti.
+- Richiede il gratuito 1.2.29 o successivo.
+
+## 1.1.24
+- Le commissioni di incasso partono dalle tariffe standard pubblicate da Stripe, PayPal e SumUp. Puoi cambiarle o svuotarle dalle impostazioni dei pagamenti.
+
+## 1.1.23
+- Nuovo metodo di pagamento: SumUp. Il socio paga su una pagina sicura di SumUp e l'incasso entra in prima nota da solo.
+- Commissioni di incasso per ogni metodo: se vuoi, la spesa stimata si registra da sola in prima nota a ogni pagamento, e la commissione si può ribaltare su chi paga (spento di partenza).
+- Aggiorna insieme ad Associazione Semplice 1.2.26.
+
+## 1.1.22
+- Pagamento online della quota quando si chiede di iscriversi (carta o PayPal): se la domanda viene rifiutata la somma resta da rimborsare.
+- Aggiorna insieme ad Associazione Semplice 1.2.25.
+
 ## 1.1.21
 - Aggiornamento tecnico insieme ad Associazione Semplice 1.2.23: pagine e moduli più sicuri e compatibili.
 

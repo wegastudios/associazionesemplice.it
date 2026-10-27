@@ -124,6 +124,18 @@ final class Limits {
 			'Più sicuro, ma la segreteria dovrà rimandare il link ai soci che non lo aprono in tempo: con 24 ore, chi non lo apre entro il giorno dopo ne riceve uno nuovo.'
 		);
 		$add(
+			'apply_per_ip', 'accesso', 'Domande di adesione per connessione, in un\'ora', 'domande', 5, 1, 200,
+			'Quante domande di adesione online può inviare la stessa connessione. Impedisce di riempire la segreteria di domande false.',
+			'Se il sito è dietro un servizio di protezione (CDN, proxy) tutti i visitatori possono apparire con lo stesso indirizzo: in quel caso va alzato. Un valore alto facilita le domande in massa.',
+			'Più protezione, ma una sede con un solo wifi pubblico (ad esempio un open day) può esaurire il limite: alzalo per l\'occasione.'
+		);
+		$add(
+			'applications_max', 'accesso', 'Domande di adesione in attesa, al massimo', 'domande', 200, 10, 5000,
+			'Quante domande di adesione possono aspettare insieme una risposta della segreteria. Oltre questo numero le nuove domande non vengono registrate finché non ne approvi o rifiuti qualcuna.',
+			'Chi vuole intasare la Bacheca con domande false può farlo più a lungo prima di essere fermato.',
+			'Se ricevi molte domande vere e non le lavori in tempo, le nuove vengono scartate: chi le ha inviate non lo sa.'
+		);
+		$add(
 			'profile_required', 'accesso', 'Indirizzo e codice fiscale obbligatori per chi attiva l\'accesso dal sito', 'flag', 1, 0, 1,
 			'Chi attiva da solo il proprio accesso (dal link ricevuto o dal «Primo accesso») deve completare il profilo con indirizzo e codice fiscale. Se la segreteria aveva già registrato il codice fiscale, deve coincidere: è un secondo controllo che impedisce di attivare l\'accesso di un altro socio con un link ricevuto per errore. L\'iscrizione fatta dalla segreteria resta snella: questi dati non sono obbligatori.',
 			'Se lo disattivi i soci possono attivarsi senza dati: ricevute e attestazioni risultano incomplete e viene meno il controllo del codice fiscale sull\'attivazione.',
@@ -200,6 +212,13 @@ final class Limits {
 			'Pesa sullo spazio del server e sulle copie di sicurezza con allegati.',
 			'Fatture in PDF molto pesanti potrebbero essere rifiutate.'
 		);
+		$add(
+			'audit_keep_months', 'dati', 'Per quanto tempo si conserva il registro azioni', 'mesi', 18, 6, 120,
+			'Dopo questo tempo le righe più vecchie del registro azioni (chi ha fatto cosa) vengono cancellate da sole, ogni giorno.',
+			'Si può risalire a più indietro per capire chi ha fatto cosa, ma la tabella cresce e occupa più spazio nel database del sito.',
+			'Il database resta più leggero, ma non si potrà più controllare chi ha fatto cosa prima di quel limite.'
+		);
+
 		$add(
 			'backup_keep', 'dati', 'Copie di sicurezza fatte prima dei ripristini', 'copie', 3, 1, 30,
 			'Quante copie del sito, fatte in automatico prima di un ripristino, restano sul server.',

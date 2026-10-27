@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '41';
+	const DB_VERSION        = '43';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -116,6 +116,7 @@ final class Install {
   email varchar(190) DEFAULT NULL,
   phone varchar(60) DEFAULT NULL,
   tax_code varchar(32) DEFAULT NULL,
+  birth_date date DEFAULT NULL,
   address varchar(190) DEFAULT NULL,
   zip varchar(12) DEFAULT NULL,
   city varchar(100) DEFAULT NULL,
@@ -135,6 +136,11 @@ final class Install {
   rules_accepted_at datetime DEFAULT NULL,
   rules_accepted_version varchar(20) DEFAULT NULL,
   rules_accepted_source varchar(20) DEFAULT NULL,
+  rules_accepted_by bigint(20) unsigned DEFAULT NULL,
+  privacy_consent_by bigint(20) unsigned DEFAULT NULL,
+  application_status varchar(12) DEFAULT NULL,
+  application_at datetime DEFAULT NULL,
+  application_data text,
   prior_visits int(10) unsigned NOT NULL DEFAULT 0,
   notes text,
   created_at datetime NOT NULL,
@@ -146,6 +152,16 @@ final class Install {
   KEY type (type),
   KEY host_person_id (host_person_id),
   KEY family_head_id (family_head_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}guardians (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  person_id bigint(20) unsigned NOT NULL,
+  guardian_person_id bigint(20) unsigned NOT NULL,
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY person_guardian (person_id,guardian_person_id),
+  KEY guardian_person_id (guardian_person_id)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}minutes (
@@ -476,6 +492,113 @@ final class Install {
   PRIMARY KEY  (id),
   KEY created_at (created_at),
   KEY action (action)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}polls (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  kind varchar(10) NOT NULL DEFAULT 'vote',
+  title varchar(190) NOT NULL,
+  question text,
+  multiple tinyint(1) NOT NULL DEFAULT 0,
+  max_choices smallint(5) unsigned NOT NULL DEFAULT 0,
+  secret tinyint(1) NOT NULL DEFAULT 0,
+  audience varchar(10) NOT NULL DEFAULT 'members',
+  activity_id bigint(20) unsigned DEFAULT NULL,
+  opens_at datetime NOT NULL,
+  closes_at datetime NOT NULL,
+  show_results tinyint(1) NOT NULL DEFAULT 0,
+  notify tinyint(1) NOT NULL DEFAULT 0,
+  created_by bigint(20) unsigned DEFAULT NULL,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  deleted_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY opens_closes (opens_at,closes_at)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}poll_options (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  poll_id bigint(20) unsigned NOT NULL,
+  label varchar(190) NOT NULL,
+  sort_order int(11) NOT NULL DEFAULT 0,
+  votes int(11) NOT NULL DEFAULT 0,
+  PRIMARY KEY  (id),
+  KEY poll_id (poll_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}poll_voters (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  poll_id bigint(20) unsigned NOT NULL,
+  person_id bigint(20) unsigned NOT NULL,
+  voted_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY poll_person (poll_id,person_id),
+  KEY person_id (person_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}poll_votes (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  poll_id bigint(20) unsigned NOT NULL,
+  option_id bigint(20) unsigned NOT NULL,
+  person_id bigint(20) unsigned DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY poll_option (poll_id,option_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}items (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  name varchar(190) NOT NULL,
+  category varchar(80) NOT NULL DEFAULT '',
+  code varchar(60) DEFAULT NULL,
+  quantity int(11) NOT NULL DEFAULT 1,
+  state varchar(10) NOT NULL DEFAULT 'good',
+  location varchar(190) NOT NULL DEFAULT '',
+  value_cents bigint(20) DEFAULT NULL,
+  purchased_on date DEFAULT NULL,
+  notes text,
+  file_name varchar(190) DEFAULT NULL,
+  file_stored varchar(64) DEFAULT NULL,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  deleted_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY code (code)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}loans (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  item_id bigint(20) unsigned NOT NULL,
+  person_id bigint(20) unsigned NOT NULL,
+  quantity int(11) NOT NULL DEFAULT 1,
+  lent_on date NOT NULL,
+  due_on date NOT NULL,
+  returned_on date DEFAULT NULL,
+  notes_out varchar(255) NOT NULL DEFAULT '',
+  notes_in varchar(255) NOT NULL DEFAULT '',
+  created_by bigint(20) unsigned DEFAULT NULL,
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  KEY item_id (item_id),
+  KEY person_id (person_id),
+  KEY due_on (due_on)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}documents (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  title varchar(190) NOT NULL,
+  category varchar(80) NOT NULL DEFAULT '',
+  doc_date date DEFAULT NULL,
+  visibility varchar(10) NOT NULL DEFAULT 'staff',
+  description varchar(255) NOT NULL DEFAULT '',
+  file_name varchar(190) NOT NULL,
+  file_stored varchar(64) NOT NULL,
+  file_size bigint(20) unsigned NOT NULL DEFAULT 0,
+  uploaded_by bigint(20) unsigned DEFAULT NULL,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  deleted_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY visibility (visibility)
 ) $c;";
 
 		$tables = (array) apply_filters( 'asem_schema_tables', $tables, $p, $c ); // le estensioni aggiungono le loro tabelle

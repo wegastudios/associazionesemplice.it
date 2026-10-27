@@ -28,7 +28,12 @@ final class Shortcodes {
 		'spese'           => 'Spese del tesoriere (nome precedente di «Area tesoriere»)',
 		'ingressi'        => 'Ingressi agli eventi (prenotati e QR, per responsabile e staff)',
 		'avvisi'          => 'Avvisi dei volontari agli iscritti (bacheca)',
+		'votazioni'       => 'Votazioni e sondaggi dei soci',
+		'documenti_soci'  => 'Documenti per i soci (statuto, regolamenti, moduli)',
+		'documenti'       => 'Documenti pubblici (statuto, regolamenti, moduli)',
 		'ospiti'          => 'I miei ospiti',
+		'minori'          => 'I miei figli (minori di cui sei tutore)',
+		'adesione'        => 'Domanda di adesione online (pubblico, per chi non è ancora socio)',
 		'profilo'         => 'Il mio profilo',
 		'area_volontari'  => 'Area volontari (le attività di cui sei referente)',
 		'calendario'      => 'Calendario di corsi ed eventi (soci)',
@@ -86,6 +91,19 @@ final class Shortcodes {
 				return Views::pay();
 			case 'mie_attivita':
 				return Views::my_activities();
+			case 'minori':
+				return Views::minors();
+			case 'adesione':
+				Views::no_cache();
+				return Application::form_html();
+			case 'votazioni':
+				Views::no_cache();
+				return BlockBViews::polls();
+			case 'documenti_soci':
+				Views::no_cache();
+				return BlockBViews::documents_member();
+			case 'documenti':
+				return BlockBViews::documents_public( shortcode_atts( array( 'categoria' => '' ), $atts ) );
 			case 'ospiti':
 				return Views::guests();
 			case 'profilo':

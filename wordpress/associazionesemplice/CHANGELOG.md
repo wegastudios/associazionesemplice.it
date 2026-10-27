@@ -2,6 +2,28 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.29
+- Aggiornamento di compatibilità con il Pro 1.1.25: aggiorna insieme gratuito e Pro.
+
+## 1.2.28
+- Il registro azioni si pulisce da solo: restano gli ultimi 18 mesi (si cambia da Limiti e soglie).
+- Nel registro azioni vedi quanto spazio occupa e puoi liberarlo subito con un pulsante.
+
+## 1.2.27
+- Nuove votazioni e sondaggi, anche a scrutinio segreto, per tutti i soci o per chi è iscritto a un'attività.
+- Nuovo inventario dei beni con prestiti ai soci, scadenze e promemoria automatici.
+- Nuovo archivio documenti riservato: ogni file è visibile a segreteria, soci o tutti.
+
+## 1.2.26
+- Per ogni metodo di pagamento online puoi indicare quanto costa incassare (una cifra fissa e/o una percentuale) e, se vuoi, ribaltare la commissione su chi paga (spento di partenza: la legge lo vieta sulle carte dei consumatori).
+- Sotto il pulsante di pagamento il socio legge la commissione, se è a suo carico.
+- Gli incassi con SumUp entrano in prima nota sul conto SumUp.
+
+## 1.2.25
+- Domanda di adesione online: chi vuole iscriversi compila un modulo sul sito e la segreteria la approva o la rifiuta.
+- I minori si registrano con i genitori o i tutori: loro non sono soci e non compaiono nel libro soci, e ricevono l'invito per l'accesso.
+- La tessera vale dal momento in cui la quota è pagata online o se la quota è zero.
+
 ## 1.2.24
 - Sul telefono le tabelle larghe scorrono da sole e la pagina non si sposta di lato.
 - La tabella dei listini si legge bene anche su schermi stretti.

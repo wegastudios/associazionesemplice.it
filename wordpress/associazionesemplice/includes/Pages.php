@@ -11,7 +11,7 @@ final class Pages {
 	/** Area di ogni pagina (vedi Areas). */
 	const AREA = array(
 		'area' => 'soci', 'calendario' => 'soci', 'volontari' => 'eventi', 'ingressi' => 'eventi', 'attivita' => 'pubblico',
-		'bonifico' => 'pubblico', 'privacy' => 'pubblico', 'segreteria' => 'segreteria', 'tesoriere' => 'tesoriere',
+		'bonifico' => 'pubblico', 'privacy' => 'pubblico', 'adesione' => 'pubblico', 'segreteria' => 'segreteria', 'tesoriere' => 'tesoriere',
 	);
 
 	/** @return array<string,array> area => [chiave pagina => definizione], nell'ordine delle aree */
@@ -37,6 +37,7 @@ final class Pages {
 			'calendario' => array( 'title' => 'Calendario', 'content' => '[associazionesemplice_calendario]', 'access' => 'members', 'hint' => 'Il calendario di corsi ed eventi per i soli soci.', 'default' => false ),
 			'privacy'   => array( 'title' => 'Informativa privacy', 'content' => '[associazionesemplice_privacy]', 'access' => '', 'hint' => 'L\'informativa sul trattamento dei dati personali, compilata con i dati dell\'ente (si aggiorna da sola).', 'default' => true ),
 			'bonifico'  => array( 'title' => 'Dona con bonifico', 'content' => '[associazionesemplice_bonifico]', 'access' => '', 'hint' => 'Le coordinate bancarie per chi vuole sostenere l\'associazione (servono il bonifico attivo e almeno un IBAN).', 'default' => false ),
+			'adesione'  => array( 'title' => 'Diventa socio', 'content' => '[associazionesemplice_adesione]', 'access' => '', 'hint' => 'La domanda di adesione online per chi non è ancora socio: la segreteria la approva dalla Bacheca.', 'default' => false ),
 			'segreteria' => array( 'title' => 'Area segreteria', 'content' => '[associazionesemplice_segreteria]', 'access' => '', 'hint' => 'Il punto d\'ingresso di chi lavora con la segreteria (anche presidente e vicepresidente): richieste di accesso e collegamenti alla gestione.', 'default' => false ),
 			'tesoriere' => array( 'title' => 'Area tesoriere', 'content' => '[associazionesemplice_tesoriere]', 'access' => '', 'hint' => 'Per il tesoriere: incassi, spese con foto dello scontrino, nuove iscrizioni e vendita degli eventi.', 'default' => false ),
 			'ingressi'  => array( 'title' => 'Ingressi agli eventi', 'content' => '[associazionesemplice_ingressi]', 'access' => '', 'hint' => 'Per responsabili e staff: prenotati, QR e registrazione degli ingressi.', 'default' => false ),

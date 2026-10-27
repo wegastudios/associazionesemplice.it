@@ -23,6 +23,7 @@ final class Actions {
 	const MAP = array(
 		'asem_front_book'           => 'do_book',
 		'asem_front_accept_rules'   => 'do_accept_rules',
+		'asem_front_accept_for'     => 'do_accept_for',
 		'asem_front_waitlist_join'  => 'do_waitlist_join',
 		'asem_front_waitlist_leave' => 'do_waitlist_leave',
 		'asem_front_cancel_booking' => 'do_cancel_booking',
@@ -36,6 +37,7 @@ final class Actions {
 		'asem_front_collect'        => 'do_collect',
 		'asem_front_new_member'     => 'do_new_member',
 		'asem_front_notice'         => 'do_notice',
+		'asem_front_vote'           => 'do_vote',
 		'asem_front_bank_email'     => 'do_bank_email',
 	);
 
@@ -125,7 +127,7 @@ final class Actions {
 	/** La persona collegata all'utente, solo se è un socio (non un ospite). */
 	public static function actor(): array {
 		$p = Access::current_person();
-		if ( ! $p || ! MemberType::is_member( $p['type'] ) ) {
+		if ( ! $p || ! MemberType::can_login( $p['type'] ) ) {
 			throw new \InvalidArgumentException( 'Serve un accesso come socio.' );
 		}
 		return $p;
@@ -136,6 +138,12 @@ final class Actions {
 		if ( ! \AssociazioneSemplice\Edition::has( $feature ) ) {
 			throw new \InvalidArgumentException( \AssociazioneSemplice\Edition::missing_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
+	}
+
+	/** Con la tessera di chi si prenota: della persona stessa (o del suo ospitante, che prenota con la propria) oppure, per un minore, del minore. */
+	private static function booking_subject( array $actor, int $person_id ): array {
+		$ward = \AssociazioneSemplice\Guardians::is_guardian_of( (int) $actor['id'], $person_id ) ? Plugin::people()->get( $person_id ) : null;
+		return $ward ?: $actor;
 	}
 
 	public static function require_cap( string $ability, int $object_id ): void {
@@ -150,12 +158,13 @@ final class Actions {
 		$person_id = (int) ( $post['person_id'] ?? $actor['id'] );
 		self::assert_profile( $actor );
 		self::require_cap( 'asem_book_for', $person_id );
-		$block = \AssociazioneSemplice\Regulation::booking_block( $actor );
+		$ward  = \AssociazioneSemplice\Guardians::is_guardian_of( (int) $actor['id'], $person_id ) ? Plugin::people()->get( $person_id ) : null; // un minore prenota con la propria tessera, per mano del tutore
+		$block = \AssociazioneSemplice\Regulation::booking_block( $ward ?: $actor );
 		if ( '' !== $block ) {
 			throw new \InvalidArgumentException( $block ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
-		if ( ! Plugin::people()->is_active_member( (int) $actor['id'] ) ) {
-			throw new \InvalidArgumentException( 'La tua tessera non è valida: rinnovala per prenotare.' );
+		if ( ! Plugin::people()->is_active_member( (int) ( $ward ? $ward['id'] : $actor['id'] ) ) ) {
+			throw new \InvalidArgumentException( $ward ? 'La tessera di ' . $ward['first_name'] . ' non è valida: va rinnovata per prenotare.' : 'La tua tessera non è valida: rinnovala per prenotare.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$session = Plugin::activities()->session( (int) ( $post['session_id'] ?? 0 ) );
 		if ( ! $session ) {
@@ -175,12 +184,13 @@ final class Actions {
 		$person_id = (int) ( $post['person_id'] ?? $actor['id'] );
 		self::assert_profile( $actor );
 		self::require_cap( 'asem_book_for', $person_id );
-		$block = \AssociazioneSemplice\Regulation::booking_block( $actor );
+		$subject = self::booking_subject( $actor, $person_id );
+		$block   = \AssociazioneSemplice\Regulation::booking_block( $subject );
 		if ( '' !== $block ) {
 			throw new \InvalidArgumentException( $block ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
-		if ( ! Plugin::people()->is_active_member( (int) $actor['id'] ) ) {
-			throw new \InvalidArgumentException( 'La tua tessera non è valida: rinnovala per prenotare.' );
+		if ( ! Plugin::people()->is_active_member( (int) $subject['id'] ) ) {
+			throw new \InvalidArgumentException( (int) $subject['id'] === (int) $actor['id'] ? 'La tua tessera non è valida: rinnovala per prenotare.' : 'La tessera di ' . $subject['first_name'] . ' non è valida: va rinnovata per prenotare.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$sid = (int) ( $post['session_id'] ?? 0 );
 		\AssociazioneSemplice\Waitlist::join( $sid, $person_id, (int) $actor['id'] );
@@ -206,6 +216,30 @@ final class Actions {
 		}
 		\AssociazioneSemplice\Regulation::accept( (int) $actor['id'], 'web' );
 		return 'Grazie, il ' . mb_strtolower( \AssociazioneSemplice\Regulation::title(), 'UTF-8' ) . ' è stato accettato.';
+	}
+
+	/** Il tutore accetta il regolamento e/o dà il consenso privacy per conto di un minore: resta registrato chi ha accettato. */
+	public static function do_accept_for( array $post ): string {
+		$actor     = self::actor();
+		$person_id = (int) ( $post['person_id'] ?? 0 );
+		self::require_cap( 'asem_book_for', $person_id );
+		$ward = \AssociazioneSemplice\Guardians::is_guardian_of( (int) $actor['id'], $person_id ) ? Plugin::people()->get( $person_id ) : null;
+		if ( ! $ward ) {
+			throw new \InvalidArgumentException( 'Non sei il tutore di questa persona.' );
+		}
+		$done = 0;
+		if ( ! empty( $post['rules_ok'] ) && \AssociazioneSemplice\Regulation::applies_to( $ward ) && ! \AssociazioneSemplice\Regulation::accepted( $ward ) ) {
+			\AssociazioneSemplice\Regulation::accept( $person_id, 'web', (int) $actor['id'] );
+			$done++;
+		}
+		if ( ! empty( $post['privacy_ok'] ) && ! \AssociazioneSemplice\Privacy::has_consent( $ward ) ) {
+			\AssociazioneSemplice\Privacy::set_consent( $person_id, 'web', (int) $actor['id'] );
+			$done++;
+		}
+		if ( 0 === $done ) {
+			throw new \InvalidArgumentException( 'Per continuare spunta la casella di accettazione.' );
+		}
+		return 'Registrato: hai accettato per conto di ' . $ward['first_name'] . '.';
 	}
 
 	/** Annulla una prenotazione se la regola lo consente: gratis sempre; a pagamento solo se l'evento è cancellabile e nei termini. */
@@ -234,10 +268,11 @@ final class Actions {
 		$from_id    = (int) ( $post['person_id'] ?? $actor['id'] );
 		$session_id = (int) ( $post['session_id'] ?? 0 );
 		self::require_cap( 'asem_book_for', $from_id );
-		if ( ! Plugin::people()->is_active_member( (int) $actor['id'] ) ) {
-			throw new \InvalidArgumentException( 'La tua tessera non è valida: rinnovala per gestire le prenotazioni.' );
+		$subject = self::booking_subject( $actor, $from_id );
+		if ( ! Plugin::people()->is_active_member( (int) $subject['id'] ) ) {
+			throw new \InvalidArgumentException( 'La tessera non è valida: va rinnovata per gestire le prenotazioni.' );
 		}
-		$block = \AssociazioneSemplice\Regulation::booking_block( $actor );
+		$block = \AssociazioneSemplice\Regulation::booking_block( $subject );
 		if ( '' !== $block ) {
 			throw new \InvalidArgumentException( $block ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
@@ -512,6 +547,14 @@ final class Actions {
 		}
 		self::require_cap( 'asem_manage_event', (int) $session['activity_id'] );
 		return self::checkin_message( Plugin::activities()->check_in( $t[0], $t[1], false, current_user_can( Plugin::CAP_OPS ) ), $t[0], $t[1] );
+	}
+
+	/** Il socio vota: un solo voto per votazione, solo se ha diritto di voto (controllo in Polls). */
+	public static function do_vote( array $post ): string {
+		$actor   = self::actor();
+		$choices = isset( $post['choice'] ) ? (array) $post['choice'] : array();
+		\AssociazioneSemplice\Polls::vote( (int) ( $post['poll_id'] ?? 0 ), (int) $actor['id'], array_map( 'intval', $choices ) );
+		return 'Il tuo voto è stato registrato. Grazie!';
 	}
 
 	/** Avviso agli iscritti di un'attività: solo chi la tiene o chi gestisce l'evento (e gli amministratori). */

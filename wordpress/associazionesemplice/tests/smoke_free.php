@@ -58,6 +58,7 @@ foreach ( $lines as $rel ) {
 	free_ok( ! file_exists( ASEM_DIR . 'includes/' . $rel ), "assente nell'edizione gratuita: $rel" );
 }
 free_ok( ! Edition::has( 'vat' ) && ! Edition::has( 'levels' ) && ! Edition::pro_present(), 'senza estensioni nessuna funzione aggiunta è presente' );
+free_ok( ! Edition::has( 'medical' ) && ! Edition::has( 'affiliations' ) && ! class_exists( 'AssociazioneSemplice\\Certificates' ), 'senza il Pro non ci sono certificati medici né affiliazioni agli enti' );
 free_ok( Edition::allows( 'export' ) && Edition::allows( 'member_area' ), 'senza licenza le funzioni presenti sono consentite' );
 
 // ---------- IVA: anche con la partita IVA accesa non compare nulla di fiscale ----------
@@ -166,6 +167,133 @@ try {
 	$threw = true;
 }
 free_ok( $threw, 'livelli: il salvataggio non è consentito' );
+
+// ---------- Domanda di adesione e minori: funzionano anche senza le funzioni avanzate ----------
+$fr_mails = array();
+add_filter(
+	'pre_wp_mail',
+	function ( $null, $atts ) use ( &$fr_mails ) {
+		$fr_mails[] = $atts;
+		return true;
+	},
+	10,
+	2
+);
+Settings::update( array( 'apply_enabled' => 1, 'apply_pay_online' => 1, 'membership_fee_cents' => 1000, 'rules_enabled' => 0, 'apply_email' => 'segreteria.free@example.com' ) );
+free_ok( ! \AssociazioneSemplice\Applications::online_payment(), 'domanda: senza pagamenti online la quota si paga in sede (anche con l\'impostazione accesa)' );
+$fr_form = \AssociazioneSemplice\Frontend\Shortcodes::render_view( 'adesione' );
+free_ok( false !== strpos( $fr_form, 'name="birth_date"' ) && false !== strpos( $fr_form, 'si paga in sede' ), 'domanda: il modulo funziona nel gratuito' );
+$fr_in = array(
+	'first_name' => 'Carla', 'last_name' => 'Gratis', 'email' => 'carla.gratis@example.com', 'phone' => '333 4040404', 'tax_code' => 'RSSMRA79A01H501B',
+	'birth_date' => '1985-05-05', 'type' => 'ordinary', 'privacy_ok' => '1', 'rules_ok' => '1',
+);
+free_ok( 'ok' === \AssociazioneSemplice\Applications::submit( $fr_in )['status'] && 1 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: registrata nel gratuito' );
+$fr_app = \AssociazioneSemplice\Applications::pending()[0];
+free_ok( null === $fr_app['paid'] && 1000 === (int) $fr_app['fee_cents'], 'domanda: nessun pagamento online, quota da pagare in sede' );
+\AssociazioneSemplice\Applications::approve( (int) $fr_app['id'], 'free100' );
+free_ok( ! $people->is_active_member( (int) $fr_app['id'] ) && 'free100' === $people->get( (int) $fr_app['id'] )['card_number'] && isset( Plugin::payments()->dues_for( $people->get( (int) $fr_app['id'] ) )[ 'q:' . (int) $fr_app['id'] . ':' . $people->membership_plan( (int) $fr_app['id'], current_time( 'Y-m-d' ) )['year'] ] ), 'domanda: approvata con la tessera; l\'iscrizione vale all\'incasso della quota, che resta da pagare' );
+\AssociazioneSemplice\Applications::submit( array_merge( $fr_in, array( 'first_name' => 'Rino', 'last_name' => 'Rifiutato', 'email' => 'rino.rifiutato@example.com', 'tax_code' => 'RSSMRA79A07H501S' ) ) );
+\AssociazioneSemplice\Applications::reject( (int) \AssociazioneSemplice\Applications::pending()[0]['id'] );
+free_ok( 0 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: rifiutata, senza pagamento non resta nulla' );
+$fr_mum = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Mara', 'last_name' => 'Tutrice', 'email' => 'mara.tutrice@example.com' ) );
+$fr_kid = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Pio', 'last_name' => 'Piccolo', 'birth_date' => gmdate( 'Y-m-d', strtotime( '-9 years' ) ) ) );
+\AssociazioneSemplice\Guardians::link( $fr_kid, $fr_mum );
+free_ok( \AssociazioneSemplice\Guardians::is_guardian_of( $fr_mum, $fr_kid ) && array_key_exists( $fr_kid, \AssociazioneSemplice\Guardians::names_by_person() ), 'minori: il tutore si collega anche nel gratuito' );
+free_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::section_minors( $people->get( $fr_mum ) ), 'Pio' ), 'minori: l\'area del tutore mostra il figlio' );
+$fr_dues = Plugin::payments()->dues_for( $people->get( $fr_mum ) );
+free_ok( isset( $fr_dues[ "q:$fr_kid:" . $people->membership_plan( $fr_kid, current_time( 'Y-m-d' ) )['year'] ] ), 'minori: la quota del figlio è tra le voci del tutore' );
+remove_all_filters( 'pre_wp_mail' );
+Settings::update( array( 'apply_enabled' => 0 ) );
+
+// ---------- Blocco B: votazioni, inventario e prestiti, archivio documenti ----------
+$bb_throws = function ( callable $fn ): bool {
+	try {
+		$fn();
+	} catch ( \InvalidArgumentException $e ) {
+		return true;
+	}
+	return false;
+};
+$bb_local = function ( string $mod ): string {
+	return gmdate( 'Y-m-d\TH:i', strtotime( \AssociazioneSemplice\Db::now() . ' ' . $mod ) );
+};
+$bb_label = Settings::membership_year()->label();
+$bb_a = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Vera', 'last_name' => 'Votante', 'email' => 'vera.votante@example.com' ) );
+$bb_b = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Nino', 'last_name' => 'Sospeso', 'email' => 'nino.sospeso@example.com' ) );
+$bb_g = $people->create( array( 'type' => 'guardian', 'first_name' => 'Gina', 'last_name' => 'Genitore', 'email' => 'gina.genitore@example.com' ) );
+$people->set_membership( $bb_a, $bb_label, true );
+$people->set_membership( $bb_b, $bb_label, true );
+$people->suspend( $bb_b );
+$bb_poll = \AssociazioneSemplice\Polls::save( 0, array( 'kind' => 'vote', 'title' => 'Bilancio', 'question' => 'Approvi?', 'options' => array( 'Favorevole', 'Contrario' ), 'secret' => 1, 'opens_at' => $bb_local( '-1 hour' ), 'closes_at' => $bb_local( '+1 day' ), 'show_results' => 1 ), $admin->ID );
+$bb_opts = array_column( \AssociazioneSemplice\Polls::options( $bb_poll ), 'id' );
+free_ok( 2 === count( $bb_opts ) && \AssociazioneSemplice\PollRules::OPEN === \AssociazioneSemplice\Polls::get( $bb_poll )['status'], 'votazioni: creata con due risposte e aperta' );
+free_ok( $bb_throws( function () use ( $bb_local, $admin ) { \AssociazioneSemplice\Polls::save( 0, array( 'title' => 'Storta', 'options' => array( 'Una' ), 'opens_at' => $bb_local( '-1 hour' ), 'closes_at' => $bb_local( '+1 day' ) ), $admin->ID ); } ), 'votazioni: servono almeno due risposte' );
+free_ok( $bb_throws( function () use ( $bb_local, $admin ) { \AssociazioneSemplice\Polls::save( 0, array( 'title' => 'Storta', 'options' => array( 'Una', 'Due' ), 'opens_at' => $bb_local( '+2 day' ), 'closes_at' => $bb_local( '+1 day' ) ), $admin->ID ); } ), 'votazioni: la chiusura deve venire dopo l\'apertura' );
+free_ok( $bb_throws( function () use ( $bb_poll, $bb_g, $bb_opts ) { \AssociazioneSemplice\Polls::vote( $bb_poll, $bb_g, array( (int) $bb_opts[0] ) ); } ), 'votazioni: un genitore o tutore non vota' );
+free_ok( $bb_throws( function () use ( $bb_poll, $bb_b, $bb_opts ) { \AssociazioneSemplice\Polls::vote( $bb_poll, $bb_b, array( (int) $bb_opts[0] ) ); } ), 'votazioni: un socio sospeso non vota' );
+free_ok( $bb_throws( function () use ( $bb_poll, $bb_a, $bb_opts ) { \AssociazioneSemplice\Polls::vote( $bb_poll, $bb_a, array( (int) $bb_opts[0], (int) $bb_opts[1] ) ); } ), 'votazioni: a scelta singola non si scelgono due risposte' );
+\AssociazioneSemplice\Polls::vote( $bb_poll, $bb_a, array( (int) $bb_opts[0] ) );
+free_ok( $bb_throws( function () use ( $bb_poll, $bb_a, $bb_opts ) { \AssociazioneSemplice\Polls::vote( $bb_poll, $bb_a, array( (int) $bb_opts[1] ) ); } ), 'votazioni: un voto solo per persona' );
+$bb_res = \AssociazioneSemplice\Polls::results( $bb_poll, true );
+free_ok( 1 === $bb_res['voters'] && 1 === $bb_res['options'][0]['count'] && 0 === $bb_res['options'][1]['count'] && $bb_res['eligible'] >= 1, 'votazioni: risultati e numero degli aventi diritto' );
+$bb_sum = function () use ( $wpdb, $bb_poll ): int {
+	return (int) $wpdb->get_var( 'SELECT SUM(votes) FROM ' . Db::t( 'poll_options' ) . ' WHERE poll_id = ' . (int) $bb_poll );
+};
+free_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'poll_votes' ) . ' WHERE poll_id = ' . (int) $bb_poll ) && \AssociazioneSemplice\Polls::has_voted( $bb_poll, $bb_a ) && 1 === $bb_sum(), 'votazioni: nel voto segreto nessuna scheda collega persona e scelta, restano chi ha votato e i contatori' );
+free_ok( $bb_throws( function () use ( $bb_poll, $bb_a, $bb_opts ) { \AssociazioneSemplice\Polls::vote( $bb_poll, $bb_a, array( (int) $bb_opts[1] ) ); } ) && 1 === $bb_sum() && 1 === \AssociazioneSemplice\Polls::vote_count( $bb_poll ), 'votazioni: un secondo tentativo non lascia schede o contatori a metà' );
+free_ok( 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) . ' WHERE action = %s', 'poll.voted' ) ), 'votazioni: il voto non finisce nel registro azioni' );
+$bb_c = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Ugo', 'last_name' => 'Avvisato', 'email' => 'ugo.avvisato@example.com' ) );
+$people->set_membership( $bb_c, $bb_label, true );
+add_filter( 'pre_wp_mail', '__return_true' );
+\AssociazioneSemplice\Reminders::notify( $people->get( $bb_c ), 'poll_open', (string) $bb_poll, 'Votazione', 'testo' );
+free_ok( \AssociazioneSemplice\Polls::announce( $bb_poll, 'poll_open', true, true ) >= 1 && 0 === \AssociazioneSemplice\Polls::announce( $bb_poll, 'poll_open', true, true ), 'votazioni: «Avvisa i soci ora» parte anche se l\'avviso automatico c\'era già, ma una volta al giorno' );
+remove_filter( 'pre_wp_mail', '__return_true' );
+free_ok( false !== strpos( \AssociazioneSemplice\Docs::poll( $bb_poll, 'csv' )['body'], 'Favorevole' ) && 0 === strpos( \AssociazioneSemplice\Docs::poll( $bb_poll, 'pdf' )['body'], '%PDF' ), 'votazioni: CSV e PDF del verbale dei risultati' );
+$bb_exp = \AssociazioneSemplice\Privacy::export( $bb_a );
+free_ok( 1 === count( $bb_exp['votazioni_a_cui_ha_partecipato'] ) && ! $bb_exp['scelte_nelle_votazioni_palesi'], 'privacy: l\'esportazione dei dati elenca le votazioni, senza la scelta nel voto segreto' );
+
+$bb_item = \AssociazioneSemplice\Inventory::save_item( 0, array( 'name' => 'Proiettore', 'category' => 'Audio e video', 'code' => 'PRJ-1', 'quantity' => 2, 'state' => 'good', 'location' => 'Armadio', 'value' => '350,00' ) );
+free_ok( $bb_throws( function () { \AssociazioneSemplice\Inventory::save_item( 0, array( 'name' => 'Doppione', 'code' => 'PRJ-1', 'quantity' => 1, 'state' => 'good' ) ); } ), 'inventario: il codice è unico' );
+$bb_today = current_time( 'Y-m-d' );
+$bb_loan  = \AssociazioneSemplice\Inventory::lend( $bb_item, $bb_a, 1, gmdate( 'Y-m-d', strtotime( $bb_today . ' -10 days' ) ), gmdate( 'Y-m-d', strtotime( $bb_today . ' -3 days' ) ), 'Funziona bene' );
+free_ok( 1 === \AssociazioneSemplice\Inventory::items( 'Proiettore' )[0]['available'], 'inventario: un pezzo è fuori, uno è disponibile' );
+free_ok( $bb_throws( function () use ( $bb_item, $bb_a, $bb_today ) { \AssociazioneSemplice\Inventory::lend( $bb_item, $bb_a, 2, $bb_today, $bb_today ); } ), 'inventario: non si prestano più pezzi di quelli disponibili' );
+free_ok( $bb_throws( function () use ( $bb_item, $bb_g, $bb_today ) { \AssociazioneSemplice\Inventory::lend( $bb_item, $bb_g, 1, $bb_today, $bb_today ); } ), 'inventario: si presta solo a soci e volontari' );
+$bb_late = \AssociazioneSemplice\Inventory::overdue();
+free_ok( 1 === count( $bb_late ) && 3 === $bb_late[0]['days_late'], 'prestiti: il rientro scaduto compare tra quelli da recuperare' );
+free_ok( in_array( 'prestito con il rientro scaduto', array_column( \AssociazioneSemplice\Admin\WpDashboard::todo_items(), 1 ), true ), 'prestiti: riquadro «Da lavorare»' );
+free_ok( $bb_throws( function () use ( $bb_a ) { \AssociazioneSemplice\Privacy::anonymize( $bb_a ); } ), 'privacy: non si anonimizza chi ha un bene in prestito' );
+Settings::update( array( 'reminders_enabled' => 1, 'reminders_loans' => 1 ) );
+add_filter( 'pre_wp_mail', '__return_true' );
+$bb_rem = \AssociazioneSemplice\Reminders::run();
+free_ok( $bb_rem['loans'] >= 1, 'prestiti: promemoria per email al rientro scaduto' );
+free_ok( 0 === \AssociazioneSemplice\Reminders::run()['loans'], 'prestiti: il promemoria parte una volta sola' );
+remove_filter( 'pre_wp_mail', '__return_true' );
+Settings::update( array( 'reminders_enabled' => 0 ) );
+\AssociazioneSemplice\Inventory::return_loan( $bb_loan, $bb_today, 'Tutto a posto', 'worn' );
+free_ok( ! \AssociazioneSemplice\Inventory::overdue() && 2 === \AssociazioneSemplice\Inventory::items( 'Proiettore' )[0]['available'] && 'worn' === \AssociazioneSemplice\Inventory::item( $bb_item )['state'], 'prestiti: rientro registrato, bene di nuovo disponibile' );
+free_ok( false !== strpos( \AssociazioneSemplice\Inventory::items_csv(), 'PRJ-1' ) && false !== strpos( \AssociazioneSemplice\Inventory::loans_csv(), 'Proiettore' ), 'inventario: esportazione CSV di beni e prestiti' );
+
+$wpdb->insert( Db::t( 'documents' ), array( 'title' => 'Statuto pubblico', 'category' => 'Statuto', 'visibility' => 'public', 'file_name' => 'statuto.pdf', 'file_stored' => str_repeat( 'a', 32 ), 'file_size' => 10, 'created_at' => Db::now(), 'updated_at' => Db::now() ) );
+$bb_d_pub = (int) $wpdb->insert_id;
+$wpdb->insert( Db::t( 'documents' ), array( 'title' => 'Verbale interno', 'category' => 'Verbali firmati', 'visibility' => 'staff', 'file_name' => 'verbale.pdf', 'file_stored' => str_repeat( 'b', 32 ), 'file_size' => 10, 'created_at' => Db::now(), 'updated_at' => Db::now() ) );
+$bb_d_staff = (int) $wpdb->insert_id;
+$wpdb->insert( Db::t( 'documents' ), array( 'title' => 'Modulo soci', 'category' => 'Moduli', 'visibility' => 'members', 'file_name' => 'modulo.docx', 'file_stored' => str_repeat( 'c', 32 ), 'file_size' => 10, 'created_at' => Db::now(), 'updated_at' => Db::now() ) );
+$bb_d_mem = (int) $wpdb->insert_id;
+free_ok( \AssociazioneSemplice\Access::can_read_document( \AssociazioneSemplice\Documents::get( $bb_d_staff ) ), 'documenti: la segreteria apre tutto' );
+$bb_user = (int) email_exists( 'vera.votante@example.com' );
+if ( ! $bb_user ) {
+	$bb_user = (int) wp_insert_user( array( 'user_login' => 'vera_votante', 'user_pass' => wp_generate_password(), 'user_email' => 'vera.votante@example.com', 'role' => Plugin::ROLE_MEMBER ) );
+}
+$wpdb->update( Db::t( 'people' ), array( 'wp_user_id' => $bb_user ), array( 'id' => $bb_a ) );
+wp_set_current_user( $bb_user );
+free_ok( \AssociazioneSemplice\Access::can_read_document( \AssociazioneSemplice\Documents::get( $bb_d_mem ) ) && \AssociazioneSemplice\Access::can_read_document( \AssociazioneSemplice\Documents::get( $bb_d_pub ) ) && ! \AssociazioneSemplice\Access::can_read_document( \AssociazioneSemplice\Documents::get( $bb_d_staff ) ), 'documenti: un socio in regola apre quelli per i soci e quelli pubblici, non quelli della segreteria' );
+free_ok( false !== strpos( \AssociazioneSemplice\Frontend\BlockBViews::section_polls( $people->get( $bb_a ) ), 'Bilancio' ) && false !== strpos( \AssociazioneSemplice\Frontend\BlockBViews::section_documents( $people->get( $bb_a ) ), 'Modulo soci' ), 'area soci: votazioni e documenti' );
+wp_set_current_user( 0 );
+free_ok( \AssociazioneSemplice\Access::can_read_document( \AssociazioneSemplice\Documents::get( $bb_d_pub ) ) && ! \AssociazioneSemplice\Access::can_read_document( \AssociazioneSemplice\Documents::get( $bb_d_mem ) ), 'documenti: chi non ha fatto l\'accesso apre solo i pubblici' );
+$bb_pub = \AssociazioneSemplice\Frontend\Shortcodes::render_view( 'documenti' );
+free_ok( false !== strpos( $bb_pub, 'Statuto pubblico' ) && false === strpos( $bb_pub, 'Modulo soci' ) && false === strpos( $bb_pub, 'Verbale interno' ), 'documenti: lo shortcode pubblico mostra solo i documenti pubblici' );
+wp_set_current_user( $admin->ID );
 
 free_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice PHP dal plugin' . ( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 

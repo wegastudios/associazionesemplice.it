@@ -17,11 +17,11 @@ final class Areas {
 
 	/** Area => [titolo, viste]. */
 	const BASE_GROUPS = array(
-		'soci'       => array( 'Soci', array( 'area_soci', 'tessera', 'mie_attivita', 'pagamenti', 'regolamento', 'ospiti', 'profilo', 'avvisi', 'calendario' ) ),
+		'soci'       => array( 'Soci', array( 'area_soci', 'tessera', 'mie_attivita', 'pagamenti', 'regolamento', 'ospiti', 'minori', 'profilo', 'avvisi', 'calendario', 'votazioni', 'documenti_soci' ) ),
 		'segreteria' => array( 'Segreteria', array( 'segreteria' ) ),
 		'tesoriere'  => array( 'Tesoriere', array( 'tesoriere' ) ),
 		'eventi'     => array( 'Eventi', array( 'area_volontari', 'ingressi' ) ),
-		'pubblico'   => array( 'Pubblico', array( 'attivita', 'prossimi_eventi', 'bonifico', 'donazioni', 'privacy', 'accesso' ) ),
+		'pubblico'   => array( 'Pubblico', array( 'attivita', 'prossimi_eventi', 'bonifico', 'donazioni', 'privacy', 'adesione', 'documenti', 'accesso' ) ),
 	);
 
 	/** Le aree con le loro viste, comprese quelle di un'estensione (filtro `asem_areas`). */

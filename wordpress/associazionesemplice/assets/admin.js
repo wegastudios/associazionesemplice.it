@@ -109,8 +109,10 @@
 	if (payProvider) {
 		var applyProvider = function () {
 			var p = payProvider.value;
-			$$('.asem-pay-stripe').forEach(function (r) { r.style.display = (p === 'stripe' || p === 'stripe_paypal') ? '' : 'none'; });
-			$$('.asem-pay-paypal').forEach(function (r) { r.style.display = (p === 'paypal' || p === 'stripe_paypal') ? '' : 'none'; });
+			var has = function (g) { return p.split('_').indexOf(g) >= 0; };
+			$$('.asem-pay-stripe').forEach(function (r) { r.style.display = has('stripe') ? '' : 'none'; });
+			$$('.asem-pay-paypal').forEach(function (r) { r.style.display = has('paypal') ? '' : 'none'; });
+			$$('.asem-pay-sumup').forEach(function (r) { r.style.display = has('sumup') ? '' : 'none'; });
 			$$('.asem-pay-woocommerce').forEach(function (r) { r.style.display = p === 'woocommerce' ? '' : 'none'; });
 		};
 		payProvider.addEventListener('change', applyProvider);
@@ -313,7 +315,7 @@
 					addLine(b, { kind: 'course', title: c.name + ' · ' + G.month, activity_id: c.id, month: G.month, amount: plain(fee(c, b.type)) });
 				});
 				bar.appendChild(evSel); bar.appendChild(document.createTextNode(' ')); bar.appendChild(coSel);
-				if (!b.isNew && b.type !== 'guest' && b.type !== 'founder' && G.cats.membership) {
+				if (!b.isNew && b.ctx && b.ctx.is_member && !b.ctx.is_founder && G.cats.membership) {
 					var mb = el('button', { type: 'button', 'class': 'button', text: '+ Quota associativa' });
 					mb.addEventListener('click', function () { addLine(b, { kind: 'membership', title: 'Quota associativa', amount: plain(b.ctx && b.ctx.membership_fee != null ? b.ctx.membership_fee : G.membershipFee) }); });
 					bar.appendChild(document.createTextNode(' ')); bar.appendChild(mb);

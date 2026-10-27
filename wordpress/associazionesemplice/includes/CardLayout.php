@@ -241,7 +241,7 @@ final class CardLayout {
 		if ( null === $p ) {
 			return;
 		}
-		$until = MemberType::GUEST === $p['type'] ? null : Plugin::people()->active_until( (int) $p['id'] );
+		$until = ! MemberType::is_member( $p['type'] ) ? null : Plugin::people()->active_until( (int) $p['id'] );
 		$when  = MemberType::is_auto_renewed( $p['type'] ) ? 'Sempre rinnovata' : ( $until ? 'Valida fino al ' . ( new \DateTimeImmutable( $until ) )->format( 'd/m/Y' ) : '' );
 		$ex    = self::extras( $p );
 		$texts = array(

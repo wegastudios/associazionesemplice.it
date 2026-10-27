@@ -145,7 +145,14 @@ Dalle **Impostazioni** si sceglie il gateway e si incollano le chiavi (cifrate n
 4. L'incasso entra in prima nota sul conto **Stripe** o **PayPal** (creato in automatico), una ricevuta per persona, con metodo e riferimento del gateway; il socio riceve la ricevuta via email.
 5. Se qualcosa non torna (importo diverso, prenotazione annullata nel frattempo) i soldi entrano comunque come "pagamento online non abbinato" e il pagamento è segnato **da controllare** in *Pagamenti online*.
 
-Commissioni, payout sul conto corrente e rimborsi si registrano a mano (spesa e giroconto); i rimborsi si fanno dal pannello del gateway.
+Payout sul conto corrente e rimborsi si registrano a mano (giroconto e spesa); le commissioni si registrano da sole come spesa stimata, se lo scegli (vedi sotto); i rimborsi si fanno dal pannello del gateway.
+
+### SumUp e commissioni di incasso
+
+- **SumUp** è il terzo metodo diretto, accanto a Stripe e PayPal (anche insieme: «Stripe, PayPal e SumUp»). Si inserisce il **codice commerciante** e la **chiave API** (cifrata); il socio paga su una pagina ospitata da SumUp (checkout ospitato) e il pagamento si conferma al ritorno sul sito e con il controllo automatico ogni ora, senza webhook. L'incasso entra in prima nota sul conto «SumUp». «Verifica connessione» legge il profilo dell'account e controlla che il codice commerciante corrisponda alla chiave. SumUp non ha una modalità di prova sul sito: per provare serve un account di prova SumUp.
+- **Commissioni**: per ogni metodo (Stripe, PayPal, SumUp) si indica quanto costa incassare: una commissione **fissa** e/o una **percentuale** sul totale addebitato. Con «Registra come spesa la commissione stimata», a ogni pagamento confermato il plugin scrive in prima nota la spesa «Commissione di incasso (stima)» sul conto del metodo usato; quando arriva l'estratto conto del gestore si corregge se la cifra vera è diversa. Non vale per le domande di adesione né per WooCommerce (ha le sue commissioni).
+- **Ribaltare la commissione su chi paga** (spento di partenza, per metodo): il totale addebitato aumenta di quanto serve a coprire la commissione (calcolata sul totale pagato) e il socio la vede sotto il pulsante; in prima nota entra come entrata «commissione di incasso a carico di chi paga». **Attenzione alla legge**: in Italia e nell'UE è vietato far pagare un supplemento a chi paga con carta (e con alcuni bonifici e addebiti) se è un consumatore (PSD2, D.Lgs. 11/2010); la scelta e la responsabilità sono dell'associazione.
+
 
 ## Allegati alle spese (scontrini e fatture)
 
@@ -226,6 +233,28 @@ Nella pagina di accesso e nell'area riservata c'è il link **Primo accesso**: il
 - **Nessuno dei due** → la richiesta va in dashboard con il pulsante per scrivere su WhatsApp.
 
 La risposta al socio è sempre la stessa, così non si scopre chi è socio. Limite: 10 tentativi l'ora per indirizzo IP.
+
+## Domanda di adesione online
+
+Per chi **non è ancora socio**. Si accende da *Impostazioni → Soci e quote → Domanda di adesione online* (spenta di default) e si inserisce nel sito con lo shortcode `[associazionesemplice_adesione]` (anche blocco e widget Elementor «Associazione Semplice → Pubblico · Domanda di adesione online»; la pagina «Diventa socio» si crea da *Pagine del sito*).
+
+- **Il modulo** chiede nome, cognome, data di nascita, codice fiscale (controllato come forma e carattere di controllo), email, cellulare, tipo di socio (ordinario, e «socio e volontario» se acceso) e l'accettazione del regolamento (con la versione in vigore) e dell'informativa privacy. Chi risulta **minorenne** dalla data di nascita deve indicare anche il **genitore o tutore** (nome, cognome, email, cellulare; codice fiscale facoltativo) e dichiararsi tale; email e cellulare del minore diventano facoltativi.
+- **La domanda** entra come persona con stato **«richiesta»**: non compare in rubrica, libro soci, esportazioni, tessere né nei conti, non ha tessera né utente WordPress e non può usare il «Primo accesso». Si vede nella **Bacheca** (riquadro *Domande di adesione*) e nel riquadro **Da lavorare** di WordPress. Alla segreteria arriva un'email (indirizzo in *Avviso alla segreteria*, altrimenti quello di amministrazione del sito) e a chi ha scritto una conferma. Le email passano dal registro della posta.
+- **Approva**: la segreteria sceglie il numero di tessera (proposto il successivo libero, controllato che non sia già assegnato) e al richiedente parte l'email con il **link per scegliere email e password** (lo stesso dei soci registrati senza accesso, `ActivationToken`). **L'iscrizione all'anno sociale non si registra all'approvazione**: la tessera diventa valida con l'incasso della quota, che resta tra le voci da pagare (in sede, o online dall'area riservata); se la quota è stata già pagata online con la domanda, o non è prevista, vale subito. Per un minore: il genitore indicato viene cercato per email tra le persone già registrate (se c'è si collega, altrimenti si registra come «genitore o tutore»: un tipo di persona che **non è socio** — niente libro soci, tessera, quota, promemoria di rinnovo — ma può entrare nell'area riservata per seguire i figli; se la sua email è già di un ospite l'approvazione si ferma, e il minore che ha scritto la stessa email del genitore la tiene solo il genitore), collegato come tutore, e l'email con il link va a lui; sul minore resta scritto che regolamento e privacy li ha accettati il genitore. Se la persona indicata nel genitore ha a sua volta una domanda in coda, va approvata prima.
+- **Rifiuta**: la domanda sparisce (e a chi l'aveva inviata arriva un breve avviso); senza pagamento non resta alcun dato personale.
+- **Quota con la domanda** (facoltativa, *Quota con la domanda*): con Stripe o PayPal attivi nei pagamenti online, la conferma contiene il link per pagare subito la quota (valido 7 giorni, una voce «Quota associativa» creata dal server). Il pagamento nasce **senza utente** e il ritorno dal gateway si verifica col codice del pagamento. **Non entra in prima nota finché la domanda non è approvata**: approvando si registra l'incasso (conto Stripe/PayPal, voce «Quota associativa») e l'iscrizione nasce da quell'incasso; **se la domanda viene rifiutata** il pagamento resta segnato **«da rimborsare»** in *Pagamenti online* (con il pulsante *Rimborsato* dopo che la restituzione è stata fatta dal pannello del gateway). Con WooCommerce come metodo di pagamento, o senza pagamenti online, la domanda dice di **pagare in sede**.
+- **Protezioni**: massimo 5 domande l'ora per connessione (*Limiti e soglie → Accessi*), tetto di 200 domande in attesa, campo esca invisibile, tempo minimo di compilazione, gettone firmato al posto del nonce (la pagina può stare in cache); doppioni controllati anche per codice fiscale (in coda e in anagrafica); i controlli sui dati dicono solo se sono scritti bene. **La risposta è sempre la stessa** («Domanda ricevuta…») qualunque cosa succeda: email già di un socio o già in coda, campo esca compilato, coda piena. Nessun dato personale nel registro azioni.
+
+## Minori e genitori/tutori
+
+- **Data di nascita** (facoltativa) nella scheda, nell'importazione (colonna *Data di nascita*), nel libro soci, nelle esportazioni e nell'esportazione dei dati personali. È obbligatoria per chi ha un tutore.
+- **Tutori**: uno o due per persona (tabella `asem_guardians`), scelti nella scheda del minore tra le persone con email già registrate; il tutore deve essere maggiorenne se la sua data è nota. Il tutore deve poter entrare nell'area riservata: un socio o una persona di tipo «genitore o tutore» (un ospite no). Un minore può non avere né email né utente WordPress.
+- **Area riservata del tutore**: nuova sezione **«I miei figli»** (shortcode `[associazionesemplice_minori]`, anche nell'area soci) con, per ogni minore, tessera, attività e le caselle per accettare **regolamento e privacy a suo nome** (resta registrato chi ha accettato, anche nella scheda e nelle esportazioni). In *Pagamenti* compaiono le voci del minore (anche la quota associativa) e il tutore paga per lui; le **prenotazioni** agli eventi si fanno per il minore **con la tessera del minore** (anche se quella del tutore è scaduta), il regolamento da accettare è quello del minore; avvisi dei corsi del minore nella bacheca del tutore.
+- **Email del minore**: promemoria, avvisi delle attività e ricevute arrivano anche (o solo, se non ha email) ai tutori.
+- **Diciottesimo compleanno**: nella Bacheca e in *Da lavorare* compare **«Maggiorenni da invitare»**; compaiono i ragazzi che non hanno ancora un accesso; aggiungendo la loro email nella scheda gli arriva da solo l'invito a scegliere la password. Il collegamento con il tutore **resta** (il tutore continua a vedere i dati) finché l'amministratore non lo toglie dalla scheda.
+- **Importazione** (Excel/CSV): colonne facoltative *Data di nascita* (31/12/2010) e *Tutore* (numero di tessera, email o nome e cognome; per indicarlo serve la data di nascita). Il tutore può essere nello stesso file; un tutore non trovato o ambiguo è segnalato senza fermare le altre righe; l'annullamento dell'import toglie anche i collegamenti.
+- **Libro soci e esportazione**: colonne *Data di nascita* e *Tutore* (PDF e CSV del libro soci, CSV dei soci).
+- **Database v42**: su `people` le colonne `birth_date`, `application_status` (`requested`/`rejected`), `application_at`, `application_data`, `rules_accepted_by`, `privacy_consent_by`; la tabella `guardians` (minore, tutore); nei pagamenti online (Pro) la colonna `refund_due`. Tutto è incluso nella copia di sicurezza.
 
 ## Conti e chiusura
 
@@ -518,7 +547,7 @@ Resta un rischio accettato: la risposta del «Primo accesso» è sempre la stess
 Tutti i limiti operativi mantengono il valore predefinito di sempre ma si possono cambiare dal pannello (solo amministratori), ognuno con minimo e massimo di sicurezza e con una spiegazione di cosa succede se lo si alza o lo si abbassa. Sono raccolti in `Limits.php` (una voce per limite: gruppo, valore predefinito, intervallo, descrizione e rischi) e salvati nelle impostazioni; un ripristino riporta tutto ai valori predefiniti.
 
 - **Comunicazioni**: comunicazioni a gruppi nelle 24 ore (20), email per gruppo di invio (25), avvisi per attività nelle 24 ore (5), durata degli avvisi in bacheca (45 giorni), link e IBAN negli avvisi dei volontari (non consentiti), tempo massimo per le notifiche push (8 s), dispositivi per utente (10).
-- **Accessi**: richieste di primo accesso per connessione (10/ora) e per email (3/ora), tentativi di attivazione (15/ora), validità del link (30 giorni), coda delle richieste (200), indirizzo e codice fiscale obbligatori all'attivazione (sì), blocco di prenotazioni e pagamenti con profilo incompleto (sì).
+- **Accessi**: richieste di primo accesso per connessione (10/ora) e per email (3/ora), domande di adesione per connessione (5/ora) e in attesa (200), tentativi di attivazione (15/ora), validità del link (30 giorni), coda delle richieste (200), indirizzo e codice fiscale obbligatori all'attivazione (sì), blocco di prenotazioni e pagamenti con profilo incompleto (sì).
 - **Pagamenti**: importo minimo (0,50 €), attesa prima di ricontrollare (10 minuti), scadenza dei pagamenti non confermati (3 giorni), pagamenti avviati per utente all'ora (10), invii delle coordinate per email all'ora (3).
 - **Dati**: righe e dimensione dei file di importazione (5000 righe, 20 MB), allegati per movimento e peso (10, 10 MB), copie di sicurezza conservate (3).
 - **Soci**: mesi di tessera scaduta prima di proporre la sospensione (8), giorni di promemoria dopo la scadenza (7).
@@ -695,3 +724,58 @@ Strumenti → Integrazioni: con la chiave API di Google Maps dell'ente (spenta d
 ## Versioni
 
 Associazione Semplice e Associazione Semplice Pro hanno numerazione indipendente (da 1.1.1 a 1.1.20, poi 1.2); il numero cambia solo del plugin modificato e non per soli testi o link. Si parlano per livello di compatibilità (`ASEM_API` / `ASEM_PRO_API`). `wordpress/bump.sh` aggiorna intestazione, costante e readme.
+
+## Votazioni, inventario e archivio documenti (gratuito, database v43)
+
+Tre funzioni nuove, nel gruppo **Registri** del menu (schede **Votazioni**, **Inventario**, **Documenti**). Sono incluse nel plugin gratuito, senza blocchi di licenza. Le gestiscono la segreteria, il presidente e il vicepresidente (permesso `asem_operate`) e gli amministratori.
+
+### Votazioni e sondaggi
+
+- La segreteria crea una **votazione** o un **sondaggio**: titolo, domanda, da 2 a 20 risposte, data e ora di apertura e di chiusura, scelta singola o multipla (con un massimo), voto **segreto** o palese.
+- Chi può votare: tutti i soci in regola, oppure gli iscritti di un'attività. Non votano i genitori e i tutori che non sono soci (`MemberType::is_member()`), gli ospiti, i soci sospesi o usciti e chi ha la tessera scaduta.
+- I soci votano dall'area riservata (sezione «Votazioni e sondaggi», o con lo shortcode `[associazionesemplice_votazioni]`). Un voto per persona: lo garantisce il database (chiave unica su votazione e persona).
+- Voto segreto: si registra **chi** ha votato (tabella `poll_voters`) ma non **cosa** (`poll_votes.person_id` resta vuoto). Dopo il primo voto non si cambiano più risposte, tipo di scelta, segretezza e chi può votare.
+- Risultati: la segreteria li vede sempre; i soci solo dopo la chiusura e se la segreteria lo ha scelto. Esportazione CSV e **verbale dei risultati in PDF** (con le firme di segretario e presidente), come i verbali.
+- Avvisi: con «Avvisa i soci per email» e i promemoria attivi, ogni giorno parte l'avviso di apertura e, nelle ultime 48 ore, un promemoria a chi non ha ancora votato (una sola volta per persona, tabella `reminders`). Il pulsante «Avvisa i soci ora» lo manda subito.
+- Tabelle: `polls`, `poll_options`, `poll_voters`, `poll_votes`.
+
+### Inventario e prestiti
+
+- Registro dei beni: nome, categoria, codice (unico), quantità, stato (buono, usurato, da riparare, perso, dismesso), ubicazione, valore e data d'acquisto facoltativi, foto o allegato. **Non** sono le Risorse prenotabili del Pro: qui si tiene l'elenco di ciò che l'associazione possiede.
+- Prestito a un socio o volontario con data di uscita e di rientro previsto e note sullo stato; non si presta più di quanto è disponibile né un bene da riparare, perso o dismesso. Il rientro si registra con data, note e, se serve, il nuovo stato del bene. Storico per bene e per persona.
+- Un prestito non rientrato è **scaduto** dal giorno dopo il rientro previsto: compare nel riquadro «Prestiti da recuperare» della Bacheca e nel widget «Da lavorare» di WordPress, e parte un promemoria per email a chi ha il bene (una volta per prestito; Impostazioni → Privacy e regolamento → Prestiti).
+- Esportazione CSV di beni e prestiti.
+- Privacy: l'esportazione dei dati di una persona comprende i suoi prestiti e le votazioni a cui ha partecipato (con la scelta solo nel voto palese); chi ha beni in prestito non si può anonimizzare finché non li riporta.
+- Tabelle: `items`, `loans`.
+
+### Archivio documenti
+
+- Statuto, regolamenti, verbali firmati, moduli: titolo, categoria (libera, con suggerimenti), data, descrizione e file (PDF, foto, Word, Excel, LibreOffice, testo; fino al limite «Peso massimo di un allegato»). Visibilità: **solo segreteria**, **soci** (in regola) o **pubblico**.
+- I file stanno nella cartella privata di `uploads` (nome casuale, senza estensione) e **non hanno un indirizzo diretto**: il download passa da `admin-post.php?action=asem_document`, che controlla il permesso con `Access::can_read_document()`. Il tipo del file si decide dall'estensione controllata, con `nosniff` e senza esecuzione nel browser.
+- I soci trovano l'elenco nell'area riservata (sezione «Documenti» o `[associazionesemplice_documenti_soci]`); l'elenco pubblico si inserisce con `[associazionesemplice_documenti]` (facoltativo `categoria="Moduli"`) o con il blocco Associazione Semplice. Un documento eliminato esce dagli elenchi; il file resta sul disco, come gli allegati dei movimenti.
+- Tabella: `documents`. Copia di sicurezza e azzeramento includono tabelle e file.
+
+## Certificato medico e affiliazioni agli enti (solo Pro, schema Pro v4)
+
+Due funzioni nuove del Pro, nel gruppo **Registri** (schede **Certificati medici** e **Affiliazioni**). Sono classi dell'edizione Pro (elenco in `tests/pro-files.txt`): senza Pro o con la licenza non in regola le pagine, le azioni e i lavori periodici spariscono senza errori. Le regole pure stanno in `ExpiryRules`, `CertificateRules` e `AffiliationRules` (test in `BlockCRulesTest`); i servizi in `Certificates` e `Affiliations`; il collegamento con il gratuito in `ProBlockC`.
+
+### Certificato medico sportivo (funzione `medical`)
+
+- Più certificati per persona: tipo (non agonistico, agonistico, altro), rilascio, scadenza, medico o struttura, file allegato. Solo i soci (`MemberType::is_member()`): il tutore e l'ospite sono esclusi.
+- Stato: valido, in scadenza (giorni di preavviso in `cert_warn_days`, predefinito 30), scaduto, mancante. Conta il certificato già rilasciato che scade più tardi.
+- Flag «richiede il certificato» sulle attività (riga nel modulo dell'attività, tabella `cert_activities`). L'elenco predefinito sono gli iscritti a quelle attività (corsi: iscrizione in corso; eventi: prenotazione attiva); con «tutti i soci attivi» si guarda l'intera anagrafica. Filtri per stato e attività, esportazione CSV.
+- **Dato sanitario**: lo vedono e lo gestiscono solo lo staff (`Access::is_admin_user()`, cioè `asem_operate`). Il file sta nella cartella privata di `uploads` (come i documenti) e si scarica solo da `admin-post.php?action=asem_cert_file` con nonce, con nome generico (`certificato-ID`). Il registro azioni (`Audit`) riceve solo l'azione (`medical.added`, `medical.deleted`, `medical.file_opened`, `medical.exported`) con l'id opaco: mai date, tipo, medico o nomi.
+- Promemoria (impostazione `cert_reminders`, spenta di default): una volta al giorno, al socio (o al tutore se minorenne) con `Reminders::notify` e alla segreteria con un'unica email d'elenco (indirizzo degli avvisi di nuova adesione). Una sola volta per tipo e certificato (`cert_soon`, `cert_expired` fino a 30 giorni dopo la scadenza, `cert_staff`).
+- Bacheca: riquadro con scaduti, mancanti e in scadenza. Scheda «Certificato medico» nella persona.
+- Area soci (facoltativa, `cert_show_member`): il socio vede stato e scadenza, mai file né medico.
+- Privacy: `certificati_medici` nell'esportazione dei dati; l'anonimizzazione cancella certificati e file.
+- Tabelle: `medical_certs`, `cert_activities`.
+
+### Affiliazioni agli enti (funzione `affiliations`)
+
+- **Affiliazione dell'associazione**: ente (CONI/RAS, UISP, CSEN, ACSI, AICS, altro con nome libero), codice, stagione (`2026` o `2025/2026`), scadenza, costo. Una per ente e stagione.
+- **Tessere dei soci**: numero, tipo tessera, ente, stagione, data, scadenza, costo; una per socio, ente e stagione. Inserimento singolo (anche dalla scheda persona) e **in blocco** per tutti i soci attivi o per gli iscritti a un'attività (il numero si aggiunge dopo dall'elenco).
+- Elenco con filtri (ente, stagione, stato, attività) ed esportazione CSV: «Esporta l'elenco» e **«File per il portale dell'ente»** con le colonne Nome, Cognome, Codice fiscale, Data di nascita, Luogo di nascita (codice catastale), Sesso, Indirizzo, Email, Telefono, Tipo tessera. L'anagrafica non conserva luogo di nascita né sesso: si ricavano dal codice fiscale (sesso dal giorno, luogo come codice catastale, omocodie comprese); vanno controllati prima del caricamento.
+- Promemoria (`aff_reminders`, spenti di default, preavviso `aff_warn_days`, predefinito 30): al socio per la sua tessera, e alla segreteria un'unica email con affiliazioni e tessere. Una sola volta per tipo e scadenza. Riquadro in Bacheca (le scadenze oltre 30 giorni fa non contano).
+- Privacy: `tessere_enti` nell'esportazione; l'anonimizzazione cancella le tessere.
+- Tabelle: `affiliations`, `body_cards`.

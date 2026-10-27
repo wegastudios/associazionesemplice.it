@@ -156,7 +156,7 @@ final class Api {
 	/** Scheda di una persona con la validità della tessera. */
 	private static function shape_person( array $p, bool $with_contacts = true ): array {
 		$people = Plugin::people();
-		$until  = MemberType::GUEST === $p['type'] ? null : $people->active_until( (int) $p['id'] );
+		$until  = ! MemberType::is_member( $p['type'] ) ? null : $people->active_until( (int) $p['id'] );
 		$out    = array(
 			'id'           => (int) $p['id'],
 			'type'         => $p['type'],

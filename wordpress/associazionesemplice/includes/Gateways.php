@@ -24,10 +24,35 @@ final class Gateways {
 			if ( PaymentConfig::PAYPAL === $provider ) {
 				return self::test_paypal( $c, $http );
 			}
+			if ( PaymentConfig::SUMUP === $provider ) {
+				return self::test_sumup( $c, $http );
+			}
 		} catch ( \Throwable $e ) {
 			return array( 'ok' => false, 'message' => 'Connessione non riuscita: ' . $e->getMessage() );
 		}
-		return array( 'ok' => false, 'message' => 'Scegli Stripe o PayPal per fare la prova.' );
+		return array( 'ok' => false, 'message' => 'Scegli Stripe, PayPal o SumUp per fare la prova.' );
+	}
+
+	/** SumUp: lettura del profilo dell'account con la chiave API (non muove denaro). */
+	private static function test_sumup( array $c, callable $http ): array {
+		$key = trim( (string) ( $c['sumup_api_key'] ?? '' ) );
+		if ( '' === $key ) {
+			return array( 'ok' => false, 'message' => 'Inserisci prima la chiave API di SumUp.' );
+		}
+		$r    = $http( 'GET', SumUpApi::BASE . '/v0.1/me', array( 'Authorization' => 'Bearer ' . $key, 'Accept' => 'application/json' ), null );
+		$data = json_decode( (string) $r['body'], true );
+		if ( 200 === (int) $r['code'] && is_array( $data ) ) {
+			$code  = trim( (string) ( $c['sumup_merchant_code'] ?? '' ) );
+			$mine  = (string) ( $data['merchant_profile']['merchant_code'] ?? '' );
+			if ( '' !== $code && '' !== $mine && 0 !== strcasecmp( $code, $mine ) ) {
+				return array( 'ok' => false, 'message' => 'SumUp: la chiave funziona ma appartiene al commerciante ' . $mine . ', non a ' . $code . '.' );
+			}
+			return array( 'ok' => true, 'message' => 'SumUp: connessione riuscita' . ( '' !== $mine ? ' (commerciante ' . $mine . ')' : '' ) . '.' );
+		}
+		if ( in_array( (int) $r['code'], array( 401, 403 ), true ) ) {
+			return array( 'ok' => false, 'message' => 'SumUp: la chiave API non è valida.' );
+		}
+		return array( 'ok' => false, 'message' => 'SumUp: risposta inattesa (' . (int) $r['code'] . ').' );
 	}
 
 	private static function test_stripe( array $c, callable $http ): array {

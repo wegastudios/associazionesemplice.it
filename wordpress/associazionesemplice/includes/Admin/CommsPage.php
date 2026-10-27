@@ -22,6 +22,8 @@ final class CommsPage {
 			. '— avvisa <input type="number" min="1" max="120" name="reminders_membership_days" value="' . (int) $s['reminders_membership_days'] . '" style="width:70px"> giorni prima</td></tr>';
 		echo '<tr><th>Mensilità dei corsi</th><td><label><input type="checkbox" name="reminders_dues" value="1"' . checked( ! empty( $s['reminders_dues'] ), true, false ) . '> Rinnovo dei corsi mensili</label> <span class="description">Dopo l\'ultima lezione del mese si ricorda a chi non ha ancora pagato il mese dopo (i corsi si rinnovano a inizio mese). Senza orari di lezione, dal 25 del mese. Un messaggio per persona, corso e mese.</span></td></tr>';
 		echo '<tr><th>Eventi</th><td><label><input type="checkbox" name="reminders_events" value="1"' . checked( ! empty( $s['reminders_events'] ), true, false ) . '> Promemoria il giorno prima a chi è prenotato</label></td></tr>';
+		echo '<tr><th>Votazioni</th><td><label><input type="checkbox" name="reminders_polls" value="1"' . checked( ! empty( $s['reminders_polls'] ), true, false ) . '> Avviso di apertura e promemoria prima della chiusura</label> <span class="description">Solo per le votazioni con «Avvisa i soci per email» e solo a chi non ha ancora votato.</span></td></tr>';
+		echo '<tr><th>Prestiti</th><td><label><input type="checkbox" name="reminders_loans" value="1"' . checked( ! empty( $s['reminders_loans'] ), true, false ) . '> Rientro scaduto di un bene in prestito</label></td></tr>';
 		echo '</tbody></table>';
 
 		echo '<h2>Privacy</h2><table class="form-table"><tbody>';
@@ -61,7 +63,7 @@ final class CommsPage {
 		// Promemoria: anteprima e invio manuale
 		echo '<h2>Promemoria di oggi</h2>';
 		$prev = Reminders::run( null, false );
-		echo '<p>Da mandare adesso: <strong>' . (int) $prev['membership'] . '</strong> per la tessera · <strong>' . (int) $prev['dues'] . '</strong> per le mensilità · <strong>' . (int) $prev['events'] . '</strong> per gli eventi di domani. ';
+		echo '<p>Da mandare adesso: <strong>' . (int) $prev['membership'] . '</strong> per la tessera · <strong>' . (int) $prev['dues'] . '</strong> per le mensilità · <strong>' . (int) $prev['events'] . '</strong> per gli eventi di domani · <strong>' . (int) $prev['polls'] . '</strong> per le votazioni · <strong>' . (int) $prev['loans'] . '</strong> per i prestiti scaduti. ';
 		$last = Reminders::last_run();
 		echo $last ? '<span class="description">Ultimo invio: ' . esc_html( mysql2date( 'd/m/Y H:i', $last['at'] ) ) . '.</span>' : '<span class="description">Nessun invio finora.</span>';
 		echo '</p>';

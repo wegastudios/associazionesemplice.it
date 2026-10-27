@@ -16,6 +16,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Domanda di adesione online con modulo sul sito (shortcode) | ✓ | ✓ | ✓ |
 | Minori con genitori o tutori (non soci), con tessera valida dal pagamento | ✓ | ✓ | ✓ |
 | Importazione di soci e ospiti da Excel, CSV e WP All Import | ✓ | ✓ | ✓ |
+| Data di nascita e tutore nel libro soci, nell'esportazione e nell'importazione | ✓ | ✓ | ✓ |
 | Esportazione di soci e ospiti | ✓ | ✓ | ✓ |
 | Tessera digitale e stampabile, con colori e logo | ✓ | ✓ | ✓ |
 | Tessera personalizzata su immagine propria | ✓ | ✓ | ✓ |
@@ -29,6 +30,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 |---|---|---|---|
 | Area riservata dei soci (tessera, attività, avvisi, profilo) | ✓ | ✓ | ✓ |
 | Primo accesso e approvazione della segreteria | ✓ | ✓ | ✓ |
+| Domanda di adesione online per chi non è ancora socio, con approvazione, tessera e link per la password | ✓ | ✓ | ✓ |
+| Minori con uno o due genitori o tutori: area riservata del genitore con tessera, prenotazioni, pagamenti e avvisi del minore, regolamento e privacy accettati per suo conto | ✓ | ✓ | ✓ |
 | Ruoli: segreteria, presidente, tesoriere, volontari, staff | ✓ | ✓ | ✓ |
 | Regolamento da accettare con registrazione della versione | ✓ | ✓ | ✓ |
 | Blocchi, shortcode e widget Elementor | ✓ | ✓ | ✓ |
@@ -88,15 +91,15 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Funzione | Free | Pro Contabile | Pro Fiscale |
 |---|---|---|---|
 | Verbali di assemblea e consiglio con PDF | ✓ | ✓ | ✓ |
-| Votazioni e sondaggi tra i soci, anche a voto segreto, con verbale dei risultati | ✓ | ✓ | ✓ |
-| Inventario dei beni e prestiti ai soci con promemoria | ✓ | ✓ | ✓ |
-| Archivio documenti con accesso per segreteria, soci o pubblico | ✓ | ✓ | ✓ |
+| Votazioni e sondaggi dei soci, anche a voto segreto, con verbale dei risultati in PDF e CSV | ✓ | ✓ | ✓ |
+| Inventario dei beni con prestiti a soci e volontari, rientri, storico e promemoria | ✓ | ✓ | ✓ |
+| Archivio documenti (statuto, regolamenti, moduli) per segreteria, soci o pubblico | ✓ | ✓ | ✓ |
 | Informativa privacy generata e registro dei consensi | ✓ | ✓ | ✓ |
 | Anonimizzazione e download dei dati personali | ✓ | ✓ | ✓ |
 | Assicurazioni dei volontari e polizze dell'associazione | — | ✓ | ✓ |
 | Registro delle presenze a corsi ed eventi | — | ✓ | ✓ |
-| Certificati medici sportivi con scadenze, promemoria e riquadro in Bacheca | — | ✓ | ✓ |
-| Affiliazioni agli enti, tessere dei soci anche in blocco e file CSV per i portali degli enti | — | ✓ | ✓ |
+| Certificato medico sportivo dei soci: scadenze, attività che lo richiedono, promemoria ed esportazione | — | ✓ | ✓ |
+| Affiliazioni agli enti (CONI/RAS, UISP, CSEN, ACSI, AICS) e tesseramento dei soci, anche in blocco, con file per i portali | — | ✓ | ✓ |
 
 ## Comunicazione
 

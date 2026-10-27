@@ -91,6 +91,9 @@ final class Actions {
 			'asem_promote_guest'      => 'promote_guest',
 			'asem_access_done'        => 'access_done',
 			'asem_access_approve'     => 'access_approve',
+			'asem_application_approve' => 'application_approve',
+			'asem_application_reject' => 'application_reject',
+			'asem_adult_invite'       => 'adult_invite',
 			'asem_send_notice'        => 'send_notice',
 			'asem_transfer_booking'   => 'transfer_booking',
 			'asem_cancel_booking'     => 'cancel_booking',
@@ -182,11 +185,25 @@ final class Actions {
 			'notes'          => $p['notes'] ?? '',
 			'prior_visits'   => $p['prior_visits'] ?? 0,
 		);
+		if ( array_key_exists( 'birth_date', $p ) ) {
+			$data['birth_date'] = $p['birth_date'];
+		}
 		$id = (int) ( $p['id'] ?? 0 );
 		if ( $id ) {
+			$before = Plugin::people()->get( $id );
 			Plugin::people()->update( $id, $data );
 			if ( array_key_exists( 'level_id', $p ) ) {
 				Plugin::people()->set_level_and_family( $id, (int) $p['level_id'], (int) ( $p['family_head_id'] ?? 0 ) );
+			}
+			self::sync_guardians( $id, $p );
+			$after = Plugin::people()->get( $id );
+			if ( $before && $after && empty( $before['wp_user_id'] ) && ! empty( $after['wp_user_id'] ) && \AssociazioneSemplice\Guardians::has_guardian( $id ) && ! \AssociazioneSemplice\Age::is_minor( $after['birth_date'] ?? null, \AssociazioneSemplice\Db::today() ) ) {
+				try { // un ragazzo maggiorenne ancora collegato a un tutore che riceve l'email: gli arriva l'invito a scegliere la password
+					\AssociazioneSemplice\Guardians::invite_adult( $id );
+					return array( Ui::url( 'asem-person', array( 'id' => $id ) ), 'Scheda salvata. Essendo maggiorenne, gli è arrivato l\'invito a scegliere la password.' );
+				} catch ( \InvalidArgumentException $e ) {
+					unset( $e ); // l'invio non è riuscito: resta nell'elenco della Bacheca
+				}
 			}
 			return array( Ui::url( 'asem-person', array( 'id' => $id ) ), 'Scheda salvata.' );
 		}
@@ -194,6 +211,7 @@ final class Actions {
 		if ( array_key_exists( 'level_id', $p ) ) {
 			Plugin::people()->set_level_and_family( $id, (int) $p['level_id'], (int) ( $p['family_head_id'] ?? 0 ) );
 		}
+		self::sync_guardians( $id, $p );
 		return array( Ui::url( 'asem-person', array( 'id' => $id ) ), 'Persona creata.' );
 	}
 
@@ -257,6 +275,8 @@ final class Actions {
 				'reminders_membership_days' => (int) ( $p['reminders_membership_days'] ?? 30 ),
 				'reminders_dues'            => ! empty( $p['reminders_dues'] ) ? 1 : 0,
 				'reminders_events'          => ! empty( $p['reminders_events'] ) ? 1 : 0,
+				'reminders_polls'           => ! empty( $p['reminders_polls'] ) ? 1 : 0,
+				'reminders_loans'           => ! empty( $p['reminders_loans'] ) ? 1 : 0,
 				'privacy_url'               => $txt( 'privacy_url' ),
 				'privacy_email'             => $txt( 'privacy_email' ),
 				'privacy_retention_years'   => (int) ( $p['privacy_retention_years'] ?? 5 ),
@@ -276,7 +296,7 @@ final class Actions {
 			throw new \InvalidArgumentException( 'I promemoria sono disattivati: attivali e salva le impostazioni prima di inviarli.' );
 		}
 		$r = \AssociazioneSemplice\Reminders::run();
-		return array( Ui::url( 'asem-comms' ), 'Promemoria inviati: ' . $r['membership'] . ' per la tessera, ' . $r['dues'] . ' per le mensilità, ' . $r['events'] . ' per gli eventi di domani.' );
+		return array( Ui::url( 'asem-comms' ), 'Promemoria inviati: ' . $r['membership'] . ' per la tessera, ' . $r['dues'] . ' per le mensilità, ' . $r['events'] . ' per gli eventi di domani, ' . $r['polls'] . ' per le votazioni, ' . $r['loans'] . ' per i prestiti scaduti.' );
 	}
 
 
@@ -671,6 +691,41 @@ final class Actions {
 		return array( Ui::url( 'asem' ), 'Email aggiornata: al socio è arrivato il link per scegliere la password.' );
 	}
 
+	private static function application_approve( array $p ): array {
+		$msg = \AssociazioneSemplice\Applications::approve( (int) ( $p['id'] ?? 0 ), (string) ( $p['card_number'] ?? '' ) );
+		return array( Ui::url( 'asem' ), $msg );
+	}
+
+	private static function application_reject( array $p ): array {
+		$msg = \AssociazioneSemplice\Applications::reject( (int) ( $p['id'] ?? 0 ) );
+		return array( Ui::url( 'asem' ), $msg );
+	}
+
+	private static function adult_invite( array $p ): array {
+		\AssociazioneSemplice\Guardians::invite_adult( (int) ( $p['id'] ?? 0 ) );
+		return array( Ui::url( 'asem' ), 'Invito inviato: gli è arrivato il link per scegliere la password.' );
+	}
+
+	/** Allinea i tutori di una persona a quelli scelti nella scheda (fino a due): toglie quelli tolti, collega quelli nuovi. */
+	private static function sync_guardians( int $id, array $p ): void {
+		if ( empty( $p['guardians_present'] ) ) {
+			return;
+		}
+		$want = array();
+		foreach ( (array) ( $p['guardian_ids'] ?? array() ) as $g ) {
+			if ( (int) $g > 0 ) {
+				$want[ (int) $g ] = (int) $g;
+			}
+		}
+		$have = array_map( 'intval', array_column( \AssociazioneSemplice\Guardians::of( $id ), 'id' ) );
+		foreach ( array_diff( $have, $want ) as $gone ) {
+			\AssociazioneSemplice\Guardians::unlink( $id, (int) $gone );
+		}
+		foreach ( array_diff( $want, $have ) as $new ) {
+			\AssociazioneSemplice\Guardians::link( $id, (int) $new );
+		}
+	}
+
 	private static function promote_guest( array $p ): array {
 		$id = (int) ( $p['id'] ?? 0 );
 		Plugin::people()->promote_guest( $id, array( 'email' => $p['email'] ?? '', 'type' => $p['type'] ?? '', 'card_number' => $p['card_number'] ?? '', 'membership' => ! empty( $p['membership'] ) ) );
@@ -968,6 +1023,12 @@ final class Actions {
 		}
 		if ( ! empty( $p['guests_present'] ) ) { // la casella non spuntata non arriva nel modulo
 			$ente['guests_enabled'] = ! empty( $p['guests_enabled'] ) ? 1 : 0;
+		}
+		if ( ! empty( $p['apply_present'] ) ) {
+			$ente['apply_enabled']    = ! empty( $p['apply_enabled'] ) ? 1 : 0;
+			$ente['apply_volunteer']  = ! empty( $p['apply_volunteer'] ) ? 1 : 0;
+			$ente['apply_pay_online'] = ! empty( $p['apply_pay_online'] ) ? 1 : 0;
+			$ente['apply_email']      = $txt( 'apply_email' );
 		}
 		if ( ! empty( $p['uninstall_present'] ) ) {
 			$ente['delete_on_uninstall'] = ! empty( $p['delete_on_uninstall'] ) ? 1 : 0;

@@ -27,7 +27,8 @@ final class Privacy {
 
 	// ---------- Consenso ----------
 
-	public static function set_consent( int $person_id, string $source ): void {
+	/** @param int|null $by il tutore che dà il consenso per conto di un minore (null = lo dà la persona stessa) */
+	public static function set_consent( int $person_id, string $source, ?int $by = null ): void {
 		$p = Plugin::people()->get( $person_id );
 		if ( ! $p ) {
 			throw new \InvalidArgumentException( 'Persona non trovata.' );
@@ -35,12 +36,12 @@ final class Privacy {
 		if ( ! isset( self::SOURCES[ $source ] ) ) {
 			throw new \InvalidArgumentException( 'Modalità non valida.' );
 		}
-		Db::db()->update( Db::t( 'people' ), array( 'privacy_consent_at' => Db::now(), 'privacy_consent_source' => $source ), array( 'id' => $person_id ) );
-		Audit::log( 'privacy.consent', 'person', $person_id, array( 'source' => $source ) );
+		Db::db()->update( Db::t( 'people' ), array( 'privacy_consent_at' => Db::now(), 'privacy_consent_source' => $source, 'privacy_consent_by' => $by && $by !== $person_id ? $by : null ), array( 'id' => $person_id ) );
+		Audit::log( 'privacy.consent', 'person', $person_id, array( 'source' => $source ) + ( $by && $by !== $person_id ? array( 'by' => $by ) : array() ) );
 	}
 
 	public static function clear_consent( int $person_id ): void {
-		Db::db()->update( Db::t( 'people' ), array( 'privacy_consent_at' => null, 'privacy_consent_source' => null ), array( 'id' => $person_id ) );
+		Db::db()->update( Db::t( 'people' ), array( 'privacy_consent_at' => null, 'privacy_consent_source' => null, 'privacy_consent_by' => null ), array( 'id' => $person_id ) );
 		Audit::log( 'privacy.consent_cleared', 'person', $person_id );
 	}
 
@@ -77,12 +78,26 @@ final class Privacy {
 		foreach ( Plugin::people()->guests_of( $person_id ) as $g ) {
 			$guests[] = array( 'nome' => trim( $g['first_name'] . ' ' . $g['last_name'] ), 'cellulare' => $g['phone'] );
 		}
+		$tutori = array();
+		foreach ( Guardians::of( $person_id ) as $g ) {
+			$tutori[] = array( 'nome' => trim( $g['first_name'] . ' ' . $g['last_name'] ), 'email' => $g['email'] );
+		}
+		$loans = $q(
+			'SELECT i.name AS bene, l.quantity AS pezzi, l.lent_on AS uscita, l.due_on AS rientro_previsto, l.returned_on AS rientrato_il, l.notes_out AS note_uscita, l.notes_in AS note_rientro FROM ' . Db::t( 'loans' ) . ' l JOIN ' . Db::t( 'items' ) . ' i ON i.id = l.item_id WHERE l.person_id = %d ORDER BY l.lent_on',
+			array( $person_id )
+		);
+		$polls = $q( 'SELECT po.title AS votazione, po.secret AS segreta, v.voted_at AS votato_il FROM ' . Db::t( 'poll_voters' ) . ' v JOIN ' . Db::t( 'polls' ) . ' po ON po.id = v.poll_id WHERE v.person_id = %d ORDER BY v.voted_at', array( $person_id ) );
+		foreach ( $polls as &$pl ) {
+			$pl['segreta'] = ! empty( $pl['segreta'] ) ? 'sì (la scelta non è registrata)' : 'no';
+		}
+		unset( $pl );
+		$open_choices = $q( 'SELECT po.title AS votazione, o.label AS scelta FROM ' . Db::t( 'poll_votes' ) . ' pv JOIN ' . Db::t( 'polls' ) . ' po ON po.id = pv.poll_id JOIN ' . Db::t( 'poll_options' ) . ' o ON o.id = pv.option_id WHERE pv.person_id = %d ORDER BY po.id', array( $person_id ) );
 		$export = array(
 			'generato_il' => Db::now(),
 			'associazione' => (string) Settings::get( 'association_name' ),
 			'anagrafica'  => array(
 				'tipo' => Levels::label( $p ), 'nome' => $p['first_name'], 'cognome' => $p['last_name'], 'email' => $p['email'], 'cellulare' => $p['phone'],
-				'codice_fiscale' => $p['tax_code'], 'indirizzo' => $p['address'] ?? null, 'cap' => $p['zip'] ?? null, 'comune' => $p['city'] ?? null, 'provincia' => $p['province'] ?? null, 'tessera' => $p['card_number'], 'iscritto_dal' => $p['joined_on'], 'carica' => BoardRole::label( $p['board_role'] ?? null ), 'uscito_il' => $p['left_on'] ?? null, 'motivo_uscita' => $p['left_reason'] ?? null, 'note' => $p['notes'],
+				'codice_fiscale' => $p['tax_code'], 'data_di_nascita' => $p['birth_date'] ?? null, 'indirizzo' => $p['address'] ?? null, 'cap' => $p['zip'] ?? null, 'comune' => $p['city'] ?? null, 'provincia' => $p['province'] ?? null, 'tessera' => $p['card_number'], 'iscritto_dal' => $p['joined_on'], 'carica' => BoardRole::label( $p['board_role'] ?? null ), 'uscito_il' => $p['left_on'] ?? null, 'motivo_uscita' => $p['left_reason'] ?? null, 'note' => $p['notes'],
 				'regolamento_accettato' => $p['rules_accepted_at'] ?? null, 'regolamento_versione' => $p['rules_accepted_version'] ?? null,
 				'consenso_privacy' => $p['privacy_consent_at'], 'consenso_modalita' => $p['privacy_consent_source'] ? ( self::SOURCES[ $p['privacy_consent_source'] ] ?? $p['privacy_consent_source'] ) : null,
 			),
@@ -91,6 +106,10 @@ final class Privacy {
 			'prenotazioni' => $bookings,
 			'pagamenti'    => $payments,
 			'ospiti_inseriti' => $guests,
+			'tutori' => $tutori,
+			'prestiti_di_beni' => $loans,
+			'votazioni_a_cui_ha_partecipato' => $polls,
+			'scelte_nelle_votazioni_palesi' => $open_choices,
 		);
 		return (array) apply_filters( 'asem_privacy_export', $export, $person_id ); // le estensioni aggiungono i loro dati
 	}
@@ -151,6 +170,9 @@ final class Privacy {
 		if ( (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'enrollments' ) . ' WHERE person_id = %d AND end_month IS NULL', $person_id ) ) > 0 ) {
 			return 'È iscritta a un corso: termina prima l\'iscrizione.';
 		}
+		if ( Inventory::open_loans_of( $person_id ) > 0 ) {
+			return 'Ha dei beni in prestito: registra prima il rientro.';
+		}
 		$future = (int) $db->get_var(
 			$db->prepare(
 				'SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) . ' b JOIN ' . Db::t( 'sessions' ) . " s ON s.id = b.session_id WHERE b.person_id = %d AND b.status = 'booked' AND s.session_date >= %s AND s.cancelled_at IS NULL",
@@ -183,11 +205,14 @@ final class Privacy {
 			Db::t( 'people' ),
 			array(
 				'first_name' => 'Persona', 'last_name' => 'anonimizzata #' . $person_id, 'email' => null, 'phone' => null, 'tax_code' => null, 'address' => null, 'zip' => null, 'city' => null, 'province' => null, 'profile_due' => 0, 'card_number' => null, 'notes' => null,
-				'wp_user_id' => null, 'left_reason' => null, 'family_head_id' => null, 'privacy_consent_at' => null, 'privacy_consent_source' => null, 'rules_accepted_at' => null, 'rules_accepted_version' => null, 'rules_accepted_source' => null, 'anonymized_at' => Db::now(), 'updated_at' => Db::now(),
+				'wp_user_id' => null, 'left_reason' => null, 'family_head_id' => null, 'privacy_consent_at' => null, 'privacy_consent_source' => null, 'rules_accepted_at' => null, 'rules_accepted_version' => null, 'rules_accepted_source' => null, 'birth_date' => null, 'rules_accepted_by' => null, 'privacy_consent_by' => null, 'application_data' => null, 'anonymized_at' => Db::now(), 'updated_at' => Db::now(),
 			),
 			array( 'id' => $person_id )
 		);
 		$db->update( Db::t( 'people' ), array( 'family_head_id' => null ), array( 'family_head_id' => $person_id ) ); // chi faceva parte del suo nucleo
+		Guardians::forget( $person_id );
+		// Votazioni e prestiti: restano i numeri e lo storico dei beni, ma la persona non è più riconoscibile (il nome è già tolto dalla scheda).
+		$db->update( Db::t( 'loans' ), array( 'notes_out' => '', 'notes_in' => '' ), array( 'person_id' => $person_id ) );
 		do_action( 'asem_person_anonymized', $person_id, $uid, $name ); // le estensioni cancellano i loro dati della persona
 		if ( $uid > 0 ) {
 			$db->update( Db::t( 'notices' ), array( 'author_name' => 'Persona anonimizzata' ), array( 'author_user_id' => $uid ) ); // firma degli avvisi

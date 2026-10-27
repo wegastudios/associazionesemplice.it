@@ -10,12 +10,14 @@ final class Front {
 		Shortcodes::register();
 		Restrict::register();
 		Actions::register();
+		BlockBViews::register();
 		do_action( 'asem_front_init' ); // le estensioni registrano qui le loro parti del sito
 		CardVerify::register();
 		CardPdf::register();
 		TicketVerify::register();
 		Activation::register();
 		FirstAccess::register();
+		Application::register();
 		\AssociazioneSemplice\Calendar::register();
 		Blocks::register();
 		ElementorSupport::register();

@@ -192,6 +192,33 @@ final class PeoplePage {
 			. '<p class="description asem-email-note">Facoltativa: con l\'email il socio ha subito il suo accesso all\'area riservata. Senza email il socio si registra lo stesso (meglio se con cellulare o numero di tessera) e si attiva dopo con un link da mandare su WhatsApp.</p></td></tr>';
 		echo '<tr><th>' . ( MemberType::GUEST === $type ? 'Cellulare' : 'Telefono' ) . '</th><td><input type="text" name="phone" value="' . esc_attr( $val( 'phone' ) ) . '" class="regular-text"' . ( MemberType::GUEST === $type ? ' required placeholder="333 1234567"' : '' ) . '>' . ( MemberType::GUEST === $type ? '<p class="description">Obbligatorio per gli ospiti: è il dato che serve a riconoscerli (anche se si registrano da soci diversi) e a contattarli su WhatsApp.</p>' : '' ) . '</td></tr>';
 		echo '<tr><th>Codice fiscale</th><td><input type="text" name="tax_code" value="' . esc_attr( $val( 'tax_code' ) ) . '" class="regular-text"><p class="description">Facoltativo per l\'iscrizione fatta dalla segreteria. Se lo scrivi, chi attiva da solo il proprio accesso dovrà riscriverlo uguale (un controllo in più sull\'identità).</p></td></tr>';
+		$birth = $val( 'birth_date' );
+		$minor = '' !== $birth && \AssociazioneSemplice\Age::is_minor( $birth, current_time( 'Y-m-d' ) );
+		echo '<tr><th>Data di nascita</th><td><input type="date" name="birth_date" value="' . esc_attr( $birth ) . '" max="' . esc_attr( current_time( 'Y-m-d' ) ) . '">'
+			. ( $minor ? ' <strong class="asem-warn">minorenne</strong>' : '' )
+			. '<p class="description">Facoltativa; serve per i minorenni (che hanno un tutore) e per i controlli sui certificati.</p></td></tr>';
+		if ( MemberType::is_member( $type ) ) {
+			$guardians = $id ? \AssociazioneSemplice\Guardians::of( $id ) : array();
+			$cands     = array_values( array_filter( $people->search(), function ( $x ) use ( $id ) {
+				return (int) $x['id'] !== $id && '' !== trim( (string) $x['email'] ) && MemberType::can_login( $x['type'] );
+			} ) );
+			echo '<tr><th>Tutore</th><td><input type="hidden" name="guardians_present" value="1">';
+			for ( $i = 0; $i < \AssociazioneSemplice\Guardians::MAX; $i++ ) {
+				echo Ui::person_select( 'guardian_ids[]', $cands, isset( $guardians[ $i ] ) ? (int) $guardians[ $i ]['id'] : 0, $i ? '— secondo tutore (facoltativo) —' : '— nessun tutore —', 'asem-guardian-' . $i ) . '<br>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			}
+			echo '<p class="description">Per un minorenne: un genitore o tutore già registrato (con email), al massimo due. Il tutore vede la tessera, le prenotazioni e i pagamenti del minore dalla sua area riservata, paga per lui e riceve le sue email; il minore può non avere né email né accesso. Il collegamento resta anche dopo i 18 anni finché non lo togli qui. Serve la data di nascita.</p>';
+			if ( $id ) {
+				$wards = \AssociazioneSemplice\Guardians::dependents_of( $id );
+				if ( $wards ) {
+					$ward_links = array();
+					foreach ( $wards as $w ) {
+						$ward_links[] = '<a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $w['id'] ) ) ) . '">' . esc_html( $w['first_name'] . ' ' . $w['last_name'] ) . '</a>';
+					}
+					echo '<p>È tutore di: ' . wp_kses_post( implode( ', ', $ward_links ) ) . '</p>';
+				}
+			}
+			echo '</td></tr>';
+		}
 		echo '<tr><th>Indirizzo</th><td><input type="text" name="address" value="' . esc_attr( $val( 'address' ) ) . '" class="regular-text" maxlength="190" placeholder="Via e numero"> '
 			. 'CAP <input type="text" name="zip" value="' . esc_attr( $val( 'zip' ) ) . '" size="7" maxlength="12"> Comune <input type="text" name="city" value="' . esc_attr( $val( 'city' ) ) . '" maxlength="100"> Prov. <input type="text" name="province" value="' . esc_attr( $val( 'province' ) ) . '" size="3" maxlength="5">'
 			. '<p class="description">Facoltativo per l\'iscrizione fatta dalla segreteria; chi si attiva dal sito deve inserirlo.</p></td></tr>';
@@ -242,6 +269,10 @@ final class PeoplePage {
 	private static function panel_membership( array $p ): void {
 		$people = Plugin::people();
 		echo '<div class="asem-card"><h2>Tessera e iscrizione</h2>';
+		if ( MemberType::GUARDIAN === $p['type'] ) {
+			echo '<p>Genitore o tutore: non è un socio e non ha tessera né quota. Ha l\'accesso all\'area riservata per seguire i figli (si collegano dalla loro scheda). Per iscriverlo come socio cambia il tipo qui sopra.</p></div>';
+			return;
+		}
 		if ( MemberType::GUEST === $p['type'] ) {
 			echo '<p>Gli ospiti non sono soci: partecipano alle attività tramite un socio.</p>';
 			if ( $p['host_person_id'] ) {
@@ -412,11 +443,17 @@ final class PeoplePage {
 	}
 
 	/** Privacy: consenso registrato, scarico dei dati, anonimizzazione. */
+	/** « — per conto del minore, da Mario Rossi» se ha accettato un tutore. */
+	private static function accepted_by( $by ): string {
+		$g = $by ? Plugin::people()->get( (int) $by ) : null;
+		return $g ? ' — per conto del minore, da <a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $g['id'] ) ) ) . '">' . esc_html( $g['first_name'] . ' ' . $g['last_name'] ) . '</a>' : '';
+	}
+
 	private static function panel_privacy( array $p ): void {
 		$id = (int) $p['id'];
 		echo '<div class="asem-card"><h2>Privacy</h2>';
 		if ( \AssociazioneSemplice\Privacy::has_consent( $p ) ) {
-			echo '<p><strong class="asem-ok">Consenso registrato</strong> il ' . esc_html( mysql2date( 'd/m/Y', $p['privacy_consent_at'] ) ) . ' (' . esc_html( \AssociazioneSemplice\Privacy::SOURCES[ $p['privacy_consent_source'] ] ?? '—' ) . ')</p>';
+			echo '<p><strong class="asem-ok">Consenso registrato</strong> il ' . esc_html( mysql2date( 'd/m/Y', $p['privacy_consent_at'] ) ) . ' (' . esc_html( \AssociazioneSemplice\Privacy::SOURCES[ $p['privacy_consent_source'] ] ?? '—' ) . ')' . self::accepted_by( $p['privacy_consent_by'] ?? null ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			Ui::form_open( 'asem_privacy_consent', Ui::url( 'asem-person', array( 'id' => $id ) ), false, 'asem-inline' );
 			echo Ui::hidden( 'id', $id ) . Ui::hidden( 'mode', 'clear' ) . '<button class="button-link" data-confirm="Rimuovere il consenso registrato?">rimuovi il consenso</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			Ui::form_close();
@@ -448,7 +485,7 @@ final class PeoplePage {
 		$id = (int) $p['id'];
 		echo '<div class="asem-card"><h2>' . esc_html( \AssociazioneSemplice\Regulation::title() ) . '</h2>';
 		if ( \AssociazioneSemplice\Regulation::accepted( $p ) ) {
-			echo '<p><strong class="asem-ok">Accettato</strong> il ' . esc_html( mysql2date( 'd/m/Y', $p['rules_accepted_at'] ) ) . ' (versione ' . esc_html( (string) $p['rules_accepted_version'] ) . ', ' . esc_html( \AssociazioneSemplice\Regulation::SOURCES[ $p['rules_accepted_source'] ] ?? '—' ) . ')</p>';
+			echo '<p><strong class="asem-ok">Accettato</strong> il ' . esc_html( mysql2date( 'd/m/Y', $p['rules_accepted_at'] ) ) . ' (versione ' . esc_html( (string) $p['rules_accepted_version'] ) . ', ' . esc_html( \AssociazioneSemplice\Regulation::SOURCES[ $p['rules_accepted_source'] ] ?? '—' ) . ')' . self::accepted_by( $p['rules_accepted_by'] ?? null ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			Ui::form_open( 'asem_rules_record', Ui::url( 'asem-person', array( 'id' => $id ) ), false, 'asem-inline' );
 			echo Ui::hidden( 'id', $id ) . Ui::hidden( 'mode', 'clear' ) . '<button class="button-link" data-confirm="Rimuovere l\'accettazione registrata?">rimuovi l\'accettazione</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			Ui::form_close();

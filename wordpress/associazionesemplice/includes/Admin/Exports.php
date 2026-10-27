@@ -37,7 +37,7 @@ final class Exports {
 		return "'" . $v;
 	}
 
-	private static function line( array $cells ): string {
+	public static function line( array $cells ): string {
 		$out = array();
 		foreach ( $cells as $c ) {
 			$v     = self::neutralize( null === $c ? '' : (string) $c );
@@ -156,10 +156,11 @@ final class Exports {
 	}
 
 	public static function people(): array {
-		$csv = self::line( array( 'Numero tessera', 'Tipo', 'Nome', 'Cognome', 'Email', 'Telefono', 'Codice fiscale', 'Indirizzo', 'CAP', 'Comune', 'Provincia', 'Ospite di', 'Tessera valida fino al' ) );
+		$csv = self::line( array( 'Numero tessera', 'Tipo', 'Nome', 'Cognome', 'Email', 'Telefono', 'Codice fiscale', 'Data di nascita', 'Tutore', 'Indirizzo', 'CAP', 'Comune', 'Provincia', 'Ospite di', 'Tessera valida fino al' ) );
+		$tutori = \AssociazioneSemplice\Guardians::names_by_person();
 		foreach ( Plugin::people()->search() as $p ) {
 			$csv .= self::line(
-				array( $p['card_number'], \AssociazioneSemplice\Levels::label( $p ), $p['first_name'], $p['last_name'], $p['email'], $p['phone'], $p['tax_code'], $p['address'], $p['zip'], $p['city'], $p['province'], $p['host_name'], self::d( MemberType::GUEST === $p['type'] ? null : $p['active_until'] ) )
+				array( $p['card_number'], \AssociazioneSemplice\Levels::label( $p ), $p['first_name'], $p['last_name'], $p['email'], $p['phone'], $p['tax_code'], self::d( $p['birth_date'] ?? null ), $tutori[ (int) $p['id'] ] ?? '', $p['address'], $p['zip'], $p['city'], $p['province'], $p['host_name'], self::d( MemberType::GUEST === $p['type'] ? null : $p['active_until'] ) )
 			);
 		}
 		return array( 'soci.csv', $csv );

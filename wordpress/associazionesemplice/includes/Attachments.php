@@ -134,6 +134,59 @@ final class Attachments {
 		return $ids;
 	}
 
+	/** Cancella dal disco un file salvato con {@see save_upload()} (documenti sostituiti o eliminati, foto dei beni). */
+	public static function delete_stored( ?string $stored ): void {
+		$name = AttachmentRules::stored_name( (string) $stored );
+		if ( '' !== $name ) {
+			wp_delete_file( self::dir() . '/' . $name );
+		}
+	}
+
+	/**
+	 * Manda al browser un file della cartella privata e termina. I permessi li controlla chi chiama, prima.
+	 *
+	 * @param string $path     percorso del file (già controllato)
+	 * @param string $ext      estensione originale (decide il tipo di contenuto)
+	 * @param string $filename nome con cui il browser lo salva
+	 * @param bool   $inline   aprirlo nel browser invece di scaricarlo (solo i tipi che lo permettono)
+	 */
+	public static function stream( string $path, string $ext, string $filename, bool $inline = false ): void {
+		while ( ob_get_level() ) {
+			ob_end_clean();
+		}
+		nocache_headers();
+		header( 'Content-Type: ' . ( DocumentRules::SERVE_AS[ $ext ] ?? 'application/octet-stream' ) );
+		header( 'X-Content-Type-Options: nosniff' );
+		header( "Content-Security-Policy: default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox" );
+		header( 'Content-Disposition: ' . ( $inline && DocumentRules::is_inline( $ext ) ? 'inline' : 'attachment' ) . '; filename="' . preg_replace( '/[^A-Za-z0-9._-]+/', '_', $filename ) . '"' );
+		header( 'Content-Length: ' . (int) filesize( $path ) );
+		readfile( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile -- lettura in streaming di un file privato
+		exit;
+	}
+
+	/** Tipo reale di un file (letto dal contenuto), '' se il server non sa leggerlo. */
+	public static function mime_of( string $path ): string {
+		return self::real_mime( $path );
+	}
+
+	/**
+	 * Salva nella cartella privata un file caricato (campo di un modulo) già controllato, con nome casuale e senza estensione.
+	 *
+	 * @param array $f name, tmp_name, size, mime
+	 * @return string nome con cui è salvato
+	 * @throws \InvalidArgumentException
+	 */
+	public static function save_upload( array $f ): string {
+		$dir    = self::ensure_dir();
+		$stored = AttachmentRules::stored_name( bin2hex( random_bytes( 16 ) ) );
+		$target = self::store_file( $f, $dir, $stored );
+		if ( '' === $target ) {
+			throw new \InvalidArgumentException( 'Impossibile salvare "' . AttachmentRules::display_name( (string) $f['name'] ) . '".' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		chmod( $target, 0640 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod -- file privato dell'ente: lettura solo per il server
+		return $stored;
+	}
+
 	/**
 	 * Mette il file caricato nella cartella privata con le funzioni di WordPress (wp_handle_upload per i file arrivati dal browser,
 	 * wp_handle_sideload per gli altri). Il nome salvato è già quello casuale, il tipo è stato controllato da {@see prepare()}.

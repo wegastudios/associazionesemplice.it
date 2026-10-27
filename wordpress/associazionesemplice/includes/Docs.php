@@ -157,15 +157,16 @@ final class Docs {
 
 	private static function book_cols(): array {
 		return array(
-			array( 'label' => 'N.', 'w' => 26, 'align' => 'R' ), array( 'label' => 'Cognome e nome', 'w' => 135 ), array( 'label' => 'Codice fiscale', 'w' => 98 ),
-			array( 'label' => 'Livello', 'w' => 80 ), array( 'label' => 'Ingresso', 'w' => 56 ), array( 'label' => 'Cessazione', 'w' => 100 ),
+			array( 'label' => 'N.', 'w' => 22, 'align' => 'R' ), array( 'label' => 'Cognome e nome', 'w' => 105 ), array( 'label' => 'Codice fiscale', 'w' => 88 ),
+			array( 'label' => 'Nascita', 'w' => 50 ), array( 'label' => 'Tutore', 'w' => 80 ),
+			array( 'label' => 'Livello', 'w' => 50 ), array( 'label' => 'Ingresso', 'w' => 50 ), array( 'label' => 'Cessazione', 'w' => 50 ),
 		);
 	}
 
 	private static function book_rows( array $rows ): array {
 		$out = array();
 		foreach ( $rows as $r ) {
-			$out[] = array( (string) $r['n'], $r['name'], $r['tax_code'], $r['level'], self::d( $r['joined_on'] ), $r['left_on'] ? self::d( $r['left_on'] ) . ( '' !== $r['left_reason'] ? ' · ' . $r['left_reason'] : '' ) : '' );
+			$out[] = array( (string) $r['n'], $r['name'], $r['tax_code'], '' !== $r['birth_date'] ? self::d( $r['birth_date'] ) : '', $r['guardian'], $r['level'], self::d( $r['joined_on'] ), $r['left_on'] ? self::d( $r['left_on'] ) . ( '' !== $r['left_reason'] ? ' · ' . $r['left_reason'] : '' ) : '' );
 		}
 		return $out;
 	}
@@ -241,6 +242,80 @@ final class Docs {
 		return array( 'body' => $out, 'filename' => 'verbale-' . str_replace( '/', '-', $m['number'] ) . '-' . $m['kind'] . '.pdf', 'mime' => 'application/pdf' );
 	}
 
+	// ---------- Risultati di una votazione ----------
+
+	/** Verbale (PDF) o tabella (CSV) dei risultati. @return array{body:string,filename:string,mime:string} @throws \InvalidArgumentException */
+	public static function poll( int $id, string $format = 'pdf' ): array {
+		$poll = Polls::get( $id );
+		if ( ! $poll ) {
+			throw new \InvalidArgumentException( 'Votazione non trovata.' );
+		}
+		$res  = Polls::results( $id, true );
+		$slug = 'risultati-votazione-' . $id;
+		if ( 'csv' === $format ) {
+			$rows = array();
+			foreach ( $res['options'] as $o ) {
+				$rows[] = array( $o['label'], $o['count'], $o['percent'] . '%', implode( ', ', $o['names'] ) );
+			}
+			$cols = array( array( 'label' => 'Risposta' ), array( 'label' => 'Voti' ), array( 'label' => 'Sul totale dei votanti' ), array( 'label' => $poll['secret'] ? 'Chi ha scelto (voto segreto: non registrato)' : 'Chi ha scelto' ) );
+			return array( 'body' => self::csv( $cols, $rows ), 'filename' => $slug . '.csv', 'mime' => 'text/csv; charset=utf-8' );
+		}
+		Pdf::$filter = array( Texts::class, 'plain' );
+		$pdf         = new Pdf();
+		$y           = self::head( $pdf, 'VERBALE DEI RISULTATI — ' . mb_strtoupper( PollRules::kinds()[ $poll['kind'] ] ), $poll['title'] );
+		$w           = self::RIGHT - self::LEFT;
+		$put         = function ( string $text, float $size = 10, bool $bold = false ) use ( $pdf, &$y, $w ) {
+			foreach ( preg_split( "/\r\n|\n|\r/", $text ) ?: array( '' ) as $para ) {
+				foreach ( '' === trim( $para ) ? array( '' ) : Pdf::wrap( $para, $w, $size, $bold ) as $line ) {
+					if ( $y > self::BOTTOM ) {
+						$pdf->add_page();
+						$y = 60.0;
+					}
+					$pdf->text( self::LEFT, $y, $line, $size, $bold );
+					$y += $size + 4;
+				}
+			}
+		};
+		$fmt = function ( string $dt ): string {
+			return mysql2date( 'd/m/Y H:i', $dt );
+		};
+		if ( '' !== (string) $poll['question'] ) {
+			$put( (string) $poll['question'] );
+			$y += 6;
+		}
+		$aud = PollRules::AUDIENCE_ACTIVITY === $poll['audience'] ? 'iscritti all\'attività «' . ( Plugin::activities()->get( (int) $poll['activity_id'] )['name'] ?? '' ) . '»' : 'tutti i soci in regola';
+		$put( 'Votazione aperta dal ' . $fmt( $poll['opens_at'] ) . ' al ' . $fmt( $poll['closes_at'] ) . '. Hanno diritto al voto: ' . $aud . '.' );
+		$put( ( $poll['secret'] ? 'Voto segreto: si è registrato chi ha votato, non cosa ha scelto. ' : 'Voto palese. ' ) . ( $poll['multiple'] ? 'Si potevano scegliere più risposte' . ( $poll['max_choices'] ? ' (al massimo ' . (int) $poll['max_choices'] . ')' : '' ) . '.' : 'Si sceglieva una sola risposta.' ) );
+		$put( 'Hanno votato ' . $res['voters'] . ' soci su ' . $res['eligible'] . ' con diritto al voto.' );
+		$y += 8;
+		$put( 'Risultati', 10, true );
+		foreach ( $res['options'] as $o ) {
+			$put( $o['label'] . ': ' . $o['count'] . ' voti (' . $o['percent'] . '%)' . ( in_array( $o['id'], $res['winners'], true ) ? ' — più votata' : '' ) );
+			if ( $o['names'] ) {
+				$put( '   ' . implode( ', ', $o['names'] ), 9 );
+			}
+		}
+		if ( PollRules::CLOSED !== $poll['status'] ) {
+			$y += 8;
+			$put( 'Attenzione: la votazione non è ancora chiusa, i risultati sono provvisori.', 9, true );
+		}
+		$y += 8;
+		$put( 'Documento generato il ' . self::d( Db::today() ) . '.', 9 );
+		$y += 24;
+		if ( $y > self::BOTTOM - 40 ) {
+			$pdf->add_page();
+			$y = 80.0;
+		}
+		$pdf->line( self::LEFT, $y + 24, self::LEFT + 170, $y + 24 );
+		$pdf->text( self::LEFT, $y + 37, 'Il Segretario', 9 );
+		$pdf->line( self::RIGHT - 170, $y + 24, self::RIGHT, $y + 24 );
+		$pres = self::president();
+		$pdf->text( self::RIGHT, $y + 37, 'Il Presidente' . ( '' !== $pres ? ' ' . $pres : '' ), 9, false, 'R' );
+		$out         = $pdf->output();
+		Pdf::$filter = null;
+		return array( 'body' => $out, 'filename' => $slug . '.pdf', 'mime' => 'application/pdf' );
+	}
+
 	// ---------- Download ----------
 
 	private static function send( array $doc ): void {
@@ -280,6 +355,15 @@ final class Docs {
 					break;
 				case 'privacy':
 					$doc = PrivacyNotice::pdf();
+					break;
+				case 'poll':
+					$doc = self::poll( (int) ( $g['id'] ?? 0 ), $format );
+					break;
+				case 'items':
+					$doc = array( 'body' => Inventory::items_csv(), 'filename' => 'inventario.csv', 'mime' => 'text/csv; charset=utf-8' );
+					break;
+				case 'loans':
+					$doc = array( 'body' => Inventory::loans_csv(), 'filename' => 'prestiti.csv', 'mime' => 'text/csv; charset=utf-8' );
 					break;
 				default:
 					$doc = apply_filters( 'asem_document', null, $what, $g, $format ); // le estensioni forniscono altri documenti

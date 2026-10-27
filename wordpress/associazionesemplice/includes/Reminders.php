@@ -22,7 +22,7 @@ final class Reminders {
 
 	// ---------- Registro degli invii ----------
 
-	private static function sent( int $person_id, string $kind, string $ref ): bool {
+	public static function sent( int $person_id, string $kind, string $ref ): bool {
 		$db = Db::db();
 		return (bool) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'reminders' ) . ' WHERE person_id = %d AND kind = %s AND ref = %s', $person_id, $kind, $ref ) );
 	}
@@ -33,14 +33,14 @@ final class Reminders {
 	}
 
 	/** Si prenota l'invio prima di spedire: se un'altra esecuzione (cron e "Invia ora" insieme) l'ha già preso, non si manda due volte. @return bool true se l'invio è nostro */
-	private static function claim( int $person_id, string $kind, string $ref ): bool {
+	public static function claim( int $person_id, string $kind, string $ref ): bool {
 		$db = Db::db();
 		$db->query( $db->prepare( 'INSERT IGNORE INTO ' . Db::t( 'reminders' ) . ' (person_id, kind, ref, sent_at) VALUES (%d, %s, %s, %s)', $person_id, $kind, substr( $ref, 0, 60 ), Db::now() ) );
 		return 1 === (int) $db->rows_affected;
 	}
 
 	/** L'email non è partita: il promemoria torna in coda per la prossima esecuzione. */
-	private static function release( int $person_id, string $kind, string $ref ): void {
+	public static function release( int $person_id, string $kind, string $ref ): void {
 		Db::db()->delete( Db::t( 'reminders' ), array( 'person_id' => $person_id, 'kind' => $kind, 'ref' => substr( $ref, 0, 60 ) ) );
 	}
 
@@ -56,6 +56,33 @@ final class Reminders {
 		return true;
 	}
 
+	/** Manda un avviso a una persona (una sola volta per tipo e riferimento). @return bool true se è partito ora */
+	public static function notify( array $p, string $kind, string $ref, string $subject, string $body ): bool {
+		$to = self::recipient( $p );
+		return $to && ! self::sent( (int) $p['id'], $kind, $ref ) && self::deliver( $to, (int) $p['id'], $kind, $ref, $subject, $body );
+	}
+
+	/** L'avviso ci sarebbe da mandare (ha un indirizzo e non è già partito)? */
+	public static function pending( array $p, string $kind, string $ref ): bool {
+		return null !== self::recipient( $p ) && ! self::sent( (int) $p['id'], $kind, $ref );
+	}
+
+	/** Prestiti con il rientro scaduto: un promemoria per prestito a chi ha il bene. @return int promemoria (o da mandare, senza invio) */
+	private static function loans( bool $send ): int {
+		$n = 0;
+		foreach ( Inventory::overdue() as $l ) {
+			$p = Plugin::people()->get( (int) $l['person_id'] );
+			if ( ! $p ) {
+				continue;
+			}
+			$body = 'il rientro di «' . $l['item_name'] . '» era previsto per il ' . ( new \DateTimeImmutable( $l['due_on'] ) )->format( 'd/m/Y' ) . '. Quando puoi, riportalo alla segreteria o scrivici se ti serve più tempo. Se l\'hai già riportato, ignora questo messaggio.';
+			if ( $send ? self::notify( $p, 'loan_late', (string) $l['id'], 'Rientro scaduto: ' . $l['item_name'], $body ) : self::pending( $p, 'loan_late', (string) $l['id'] ) ) {
+				$n++;
+			}
+		}
+		return $n;
+	}
+
 	/** Dove mandare il promemoria di una persona: la sua email o, per un ospite senza email, quella del socio che lo ospita. @return array{email:string,name:string,about:string}|null */
 	public static function recipient( array $p ): ?array {
 		if ( ! empty( $p['anonymized_at'] ) ) {
@@ -63,6 +90,11 @@ final class Reminders {
 		}
 		$name  = trim( $p['first_name'] . ' ' . $p['last_name'] );
 		$email = (string) $p['email'];
+		foreach ( Guardians::recipients( $p ) as $g ) { // un minore: il promemoria va al tutore
+			if ( '' !== $g['about'] ) {
+				return $g;
+			}
+		}
 		if ( '' !== $email && is_email( $email ) ) {
 			return array( 'email' => $email, 'name' => $p['first_name'], 'about' => '' );
 		}
@@ -92,7 +124,7 @@ final class Reminders {
 	 * Cerca i promemoria da mandare oggi e (se $send) li manda. @return array membership, dues, events (conteggi di quelli mandati o, senza invio, da mandare)
 	 */
 	public static function run( ?string $today = null, bool $send = true ): array {
-		$out = array( 'membership' => 0, 'dues' => 0, 'events' => 0 );
+		$out = array( 'membership' => 0, 'dues' => 0, 'events' => 0, 'polls' => 0, 'loans' => 0 );
 		if ( $send && ! self::enabled() ) {
 			return $out;
 		}
@@ -108,6 +140,12 @@ final class Reminders {
 		}
 		if ( ! empty( Settings::get( 'reminders_events' ) ) ) {
 			$out['events'] = self::events( $today, $send );
+		}
+		if ( ! empty( Settings::get( 'reminders_polls' ) ) ) {
+			$out['polls'] = Polls::remind( $send );
+		}
+		if ( ! empty( Settings::get( 'reminders_loans' ) ) ) {
+			$out['loans'] = self::loans( $send );
 		}
 		if ( $send ) {
 			update_option( self::OPT_LAST, array( 'at' => Db::now(), 'counts' => $out ), false );

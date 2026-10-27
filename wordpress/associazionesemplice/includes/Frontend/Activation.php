@@ -54,7 +54,7 @@ final class Activation {
 			return array( 'status' => 'suspended', 'person' => null );
 		}
 		$p = Plugin::people()->get( ActivationToken::parse( $param )[0] );
-		if ( ! $p || ! \AssociazioneSemplice\MemberType::is_member( $p['type'] ) ) {
+		if ( ! $p || ! \AssociazioneSemplice\MemberType::can_login( $p['type'] ) || ! empty( $p['application_status'] ) ) { // una domanda non ancora approvata non attiva nessun accesso
 			return array( 'status' => 'invalid', 'person' => null );
 		}
 		return array( 'status' => ! empty( $p['wp_user_id'] ) ? 'done' : 'ok', 'person' => $p );
@@ -158,7 +158,7 @@ final class Activation {
 			. '<div class="n">Ciao ' . esc_html( $p['first_name'] ) . '!</div><p>Scegli l\'email e la password con cui entrerai nell\'area riservata.</p>'
 			. '<form method="post" action="' . esc_url( add_query_arg( 'asem_activate', $param, home_url( '/' ) ) ) . '" autocomplete="on">'
 			. '<input type="hidden" name="asem_activate_go" value="1">' . wp_nonce_field( 'asem_activate_' . (int) $p['id'], '_asem_nonce', false, false )
-			. '<label>La tua email<input style="' . $input . '" type="email" name="email" value="' . esc_attr( (string) ( $post['email'] ?? '' ) ) . '" required autocomplete="email"></label>'
+			. '<label>La tua email<input style="' . $input . '" type="email" name="email" value="' . esc_attr( (string) ( $post['email'] ?? $p['email'] ?? '' ) ) . '" required autocomplete="email"></label>'
 			. '<label>Il tuo cellulare<input style="' . $input . '" type="tel" name="phone" value="' . esc_attr( (string) ( $post['phone'] ?? $p['phone'] ?? '' ) ) . '" required autocomplete="tel"></label>'
 			. '<p class="a" style="margin:4px 0 8px">I tuoi dati' . ( $need ? ' (obbligatori)' : '' ) . ': servono per le ricevute e per verificare che sei proprio tu.</p>'
 			. '<label>Codice fiscale<input style="' . $input . '" type="text" name="tax_code" maxlength="16" ' . ( $need ? 'required ' : '' ) . 'autocomplete="off" value="' . esc_attr( (string) ( $post['tax_code'] ?? '' ) ) . '"></label>'

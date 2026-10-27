@@ -139,7 +139,7 @@ final class BookDeskPage {
 		if ( $pid && ! $person ) {
 			echo '<p class="asem-neg">Persona non trovata.</p>';
 		}
-		if ( $person && MemberType::GUEST !== $person['type'] && Plugin::people()->is_suspended( (int) $person['id'] ) ) {
+		if ( $person && MemberType::is_member( $person['type'] ) && Plugin::people()->is_suspended( (int) $person['id'] ) ) {
 			echo '<p class="asem-info asem-info-warn">⚠ Socio sospeso (inattivo): riattivalo dalla sua scheda prima di prenotare.</p>';
 			$person = null;
 		}
