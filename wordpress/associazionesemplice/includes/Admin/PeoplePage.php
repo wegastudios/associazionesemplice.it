@@ -284,6 +284,14 @@ final class PeoplePage {
 		$until  = $people->active_until( (int) $p['id'] );
 		$active = $until && $until >= current_time( 'Y-m-d' );
 		echo '<p>' . ( $active ? '<strong class="asem-ok">Tessera valida fino al ' . Ui::date( $until ) . '</strong>' : '<strong class="asem-neg">Tessera non valida' . ( $until ? ' (scaduta il ' . Ui::date( $until ) . ')' : '' ) . '</strong>' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		if ( ! $active && MemberType::is_member( $p['type'] ) && ! MemberType::is_auto_renewed( $p['type'] ) ) { // quota versata a rate
+			$m_year    = $people->membership_plan( (int) $p['id'], current_time( 'Y-m-d' ) )['year'];
+			$m_missing = $people->membership_missing( $p, $m_year );
+			if ( $m_missing > 0 ) {
+				$m_fee = \AssociazioneSemplice\Levels::fee_for( $p );
+				echo '<p>Quota associativa ' . esc_html( $m_year ) . ': versati <strong>' . esc_html( \AssociazioneSemplice\Money::format( $m_fee - $m_missing ) ) . '</strong> su ' . esc_html( \AssociazioneSemplice\Money::format( $m_fee ) ) . ', mancano <strong>' . esc_html( \AssociazioneSemplice\Money::format( $m_missing ) ) . '</strong>. La tessera arriva al saldo. <a class="button button-small" href="' . esc_url( Ui::url( 'asem-income', array( 'person_id' => $p['id'], 'due' => 1 ) ) ) . '">Incassa il saldo</a></p>';
+			}
+		}
 		if ( MemberType::is_auto_renewed( $p['type'] ) ) {
 			echo '<p class="description">Socio fondatore: la tessera è sempre rinnovata (scadenza a ' . (int) Settings::get( 'founder_years' ) . ' anni dall\'ingresso).</p></div>';
 			return;

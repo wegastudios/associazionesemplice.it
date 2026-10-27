@@ -606,7 +606,7 @@
 			if (ctx.is_guest) { txt += ' · non è socio: paga solo le attività'; }
 			else if (ctx.is_founder) { txt += ' · tessera sempre rinnovata'; }
 			else if (ctx.suspended) { txt += ' · ⚠ socio sospeso (inattivo): riattivalo dalla sua scheda prima di incassare'; info.className = 'asem-info asem-info-warn'; }
-			else if (ctx.needs_membership) { txt += ' · ⚠ tessera non valida: serve la quota associativa'; info.className = 'asem-info asem-info-warn'; }
+			else if (ctx.needs_membership) { txt += ctx.membership_missing > 0 ? ' · ⚠ quota associativa versata in parte (' + (ctx.membership_paid / 100).toFixed(2).replace('.', ',') + ' €): mancano ' + (ctx.membership_missing / 100).toFixed(2).replace('.', ',') + ' € per la tessera' : ' · ⚠ tessera non valida: serve la quota associativa'; info.className = 'asem-info asem-info-warn'; }
 			else { txt += ' · tessera valida fino al ' + ctx.active_until.split('-').reverse().join('/'); }
 			info.textContent = txt;
 		});

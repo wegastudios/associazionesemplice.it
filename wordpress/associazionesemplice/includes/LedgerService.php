@@ -377,9 +377,14 @@ class LedgerService {
 						)
 					);
 					if ( 'membership' === $p['cat']['kind'] ) {
-						Plugin::people()->set_membership( (int) $p['person']['id'], $p['social_year'], true, 'payment', $tx_id );
-						if ( ! empty( $p['free_year'] ) ) {
-							Plugin::people()->set_membership( (int) $p['person']['id'], (string) $p['free_year'], true, 'promo', $tx_id ); // anno in corso in omaggio (se si annulla l'incasso, salta anche questo)
+						$missing = Plugin::people()->membership_missing( $p['person'], (string) $p['social_year'] ); // quota a rate: la tessera arriva al saldo (se il limite è attivo)
+						if ( $missing > 0 ) {
+							Audit::log( 'membership.partial', 'person', (int) $p['person']['id'], array( 'social_year' => $p['social_year'], 'missing_cents' => $missing, 'transaction' => $tx_id ) );
+						} else {
+							Plugin::people()->set_membership( (int) $p['person']['id'], $p['social_year'], true, 'payment', $tx_id );
+							if ( ! empty( $p['free_year'] ) ) {
+								Plugin::people()->set_membership( (int) $p['person']['id'], (string) $p['free_year'], true, 'promo', $tx_id ); // anno in corso in omaggio (se si annulla l'incasso, salta anche questo)
+							}
 						}
 					}
 					if ( ! empty( $p['reservation_id'] ) ) {
@@ -481,6 +486,7 @@ class LedgerService {
 				foreach ( $ids as $id ) {
 					$this->db()->update( $tbl, array( 'voided_at' => Db::now(), 'void_reason' => $reason ), array( 'id' => $id ) );
 					Plugin::people()->remove_membership_of_transaction( $id );
+					Plugin::people()->recheck_membership_after_void( $id );
 					Audit::log( 'tx.voided', 'transaction', $id, array( 'reason' => $reason ) );
 				}
 			}

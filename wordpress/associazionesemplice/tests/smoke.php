@@ -7002,6 +7002,29 @@ Settings::update( array( 'refund_km_rate_cents' => 0 ) );
 remove_filter( 'pre_wp_mail', $bd_hook, 10 );
 wp_set_current_user( 1 );
 
+// Quota associativa a rate: la tessera arriva al saldo
+Settings::update( array( 'membership_fee_cents' => 1000 ) );
+$qr_pay = function ( int $pid, int $eur ) use ( $ledger, $cash, $cat, $today ) {
+	$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $pid, 'lines' => array( array( 'category_id' => $cat['membership'], 'amount_cents' => $eur * 100 ) ) ) );
+};
+$qr_p   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Rita', 'last_name' => 'Arate', 'email' => 'rita.arate@example.com' ) );
+$qr_row = $people->get( $qr_p );
+$qr_yr  = $people->membership_plan( $qr_p, current_time( 'Y-m-d' ) )['year'];
+wp_set_current_user( 1 );
+$qr_pay( $qr_p, 4 );
+asem_ok( ! $people->has_membership( $qr_p, $qr_yr ) && 600 === $people->membership_missing( $qr_row, $qr_yr ) && 400 === $people->membership_paid( $qr_p, $qr_yr ), 'quota a rate: dopo l\'acconto mancano 6,00 e la tessera non c\'è ancora' );
+$qr_pay( $qr_p, 6 );
+asem_ok( $people->has_membership( $qr_p, $qr_yr ) && 0 === $people->membership_missing( $qr_row, $qr_yr ), 'quota a rate: al saldo arriva la tessera' );
+$qr_tx = (int) $wpdb->get_var( 'SELECT id FROM ' . Db::t( 'transactions' ) . " WHERE person_id = $qr_p AND voided_at IS NULL ORDER BY id ASC LIMIT 1" );
+$ledger->void( $qr_tx, 'prova' );
+asem_ok( ! $people->has_membership( $qr_p, $qr_yr ) && 400 === $people->membership_missing( $qr_row, $qr_yr ), 'quota a rate: annullando un versamento la tessera decade' );
+Settings::update( array( 'limits' => array( 'membership_on_balance' => 0 ) ) );
+$qr_q = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Livio', 'last_name' => 'Subito', 'email' => 'livio.subito@example.com' ) );
+$qr_pay( $qr_q, 4 );
+asem_ok( $people->has_membership( $qr_q, $qr_yr ) && 0 === $people->membership_missing( $people->get( $qr_q ), $qr_yr ), 'quota a rate spenta: basta un versamento qualsiasi, come prima' );
+Settings::update( array( 'limits' => array() ) );
+wp_set_current_user( 1 );
+
 // ---------- Blocco F: convenzioni per i soci (anche con il Pro attivo) ----------
 $bf_label = Settings::membership_year()->label();
 $bf_m     = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Carla', 'last_name' => 'Convenzionata', 'email' => 'carla.convenzionata@example.com' ) );

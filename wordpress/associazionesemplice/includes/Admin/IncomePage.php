@@ -87,6 +87,9 @@ final class IncomePage {
 				}
 			}
 		}
+		$m_plan    = Plugin::people()->membership_plan( (int) $person['id'], $date );
+		$m_missing = Plugin::people()->membership_missing( $person, $m_plan['year'] );
+		$m_paid    = $m_missing > 0 ? Plugin::people()->membership_paid( (int) $person['id'], $m_plan['year'] ) : 0;
 		wp_send_json_success(
 			array(
 				'person'           => array( 'id' => (int) $person['id'], 'type' => $person['type'], 'type_label' => \AssociazioneSemplice\Levels::label( $person ) ),
@@ -101,7 +104,9 @@ final class IncomePage {
 				'dues'             => $dues,
 				'membership'       => Plugin::people()->membership_plan( (int) $person['id'], $date ),
 				'suspended'        => Plugin::people()->is_suspended( (int) $person['id'] ),
-				'membership_fee'   => \AssociazioneSemplice\Levels::fee_for( $person ),
+				'membership_fee'   => $m_missing > 0 ? $m_missing : \AssociazioneSemplice\Levels::fee_for( $person ), // a rate: si precompila il residuo
+				'membership_paid'  => $m_paid,
+				'membership_missing' => $m_missing,
 			)
 		);
 	}
