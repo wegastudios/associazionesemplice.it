@@ -159,7 +159,7 @@ final class AffiliationsPage {
 
 	/** Scheda nella pagina di una persona: le sue tessere e una nuova. */
 	public static function person_panel( array $p ): void {
-		if ( ! Edition::has( 'affiliations' ) || ! current_user_can( Plugin::CAP_OPS ) || ! MemberType::is_member( (string) $p['type'] ) || ! AssociazioneSempliceMemberQuery::find( (int) $p['id'] ) ) { // un socio sospeso o uscito non ha il modulo: il salvataggio lo rifiuterebbe
+		if ( ! Edition::has( 'affiliations' ) || ! current_user_can( Plugin::CAP_OPS ) || ! MemberType::is_member( (string) $p['type'] ) || ! MemberQuery::find( (int) $p['id'] ) ) { // un socio sospeso o uscito non ha il modulo: il salvataggio lo rifiuterebbe
 			return;
 		}
 		$id   = (int) $p['id'];
