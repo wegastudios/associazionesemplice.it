@@ -98,7 +98,7 @@ final class CertificatesPage {
 
 	/** Scheda nella pagina di una persona: stato, certificati, nuovo certificato. */
 	public static function person_panel( array $p ): void {
-		if ( ! Edition::has( 'medical' ) || ! Certificates::can_manage() || ! MemberType::is_member( (string) $p['type'] ) ) {
+		if ( ! Edition::has( 'medical' ) || ! Certificates::can_manage() || ! MemberType::is_member( (string) $p['type'] ) || ! AssociazioneSempliceMemberQuery::find( (int) $p['id'] ) ) { // un socio sospeso o uscito non ha il modulo: il salvataggio lo rifiuterebbe
 			return;
 		}
 		$id    = (int) $p['id'];

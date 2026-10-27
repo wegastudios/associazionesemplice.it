@@ -23,19 +23,10 @@ final class BlockCExports {
 		return wp_nonce_url( add_query_arg( array_merge( array( 'action' => $action ), $args ), admin_url( 'admin-post.php' ) ), $action );
 	}
 
-	private static function line( array $cells ): string {
-		$out = array();
-		foreach ( $cells as $c ) {
-			$v     = Exports::neutralize( null === $c ? '' : (string) $c );
-			$out[] = preg_match( '/[;"\r\n]/', $v ) ? '"' . str_replace( '"', '""', $v ) . '"' : $v;
-		}
-		return implode( ';', $out ) . "\r\n";
-	}
-
 	private static function send( string $name, array $rows ): void {
 		$csv = '';
 		foreach ( $rows as $r ) {
-			$csv .= self::line( $r );
+			$csv .= Exports::line( $r );
 		}
 		while ( ob_get_level() ) {
 			ob_end_clean();

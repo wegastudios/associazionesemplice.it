@@ -49,17 +49,7 @@ final class Certificates {
 		}
 		Audit::log( 'medical.file_opened', 'medical_cert', $id ); // solo l'azione: niente nome, tipo o date
 		$ext = AttachmentRules::extension( (string) $c['file_name'] );
-		while ( ob_get_level() ) {
-			ob_end_clean();
-		}
-		nocache_headers();
-		header( 'Content-Type: ' . ( DocumentRules::SERVE_AS[ $ext ] ?? 'application/octet-stream' ) );
-		header( 'X-Content-Type-Options: nosniff' );
-		header( "Content-Security-Policy: default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox" );
-		header( 'Content-Disposition: attachment; filename="certificato-' . (int) $id . ( '' !== $ext ? '.' . $ext : '' ) . '"' ); // il nome originale può contenere il nome della persona: non lo si rimanda
-		header( 'Content-Length: ' . (int) filesize( $path ) );
-		readfile( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile -- lettura in streaming di un file privato
-		exit;
+		Attachments::stream( $path, $ext, 'certificato-' . (int) $id . ( '' !== $ext ? '.' . $ext : '' ) ); // il nome originale può contenere il nome della persona: non lo si rimanda
 	}
 
 	// ---------- Certificati ----------
@@ -76,9 +66,11 @@ final class Certificates {
 			$d['file_size']   = $file['size'];
 		}
 		if ( ! self::db()->insert( Db::t( 'medical_certs' ), $d + array( 'person_id' => $person_id, 'created_at' => Db::now() ) ) ) {
+			Attachments::delete_stored( (string) ( $d['file_stored'] ?? '' ) ); // niente file orfano nella cartella privata
 			throw new \InvalidArgumentException( 'Impossibile salvare il certificato (errore del database).' );
 		}
 		$id = (int) self::db()->insert_id;
+		self::flush_counts();
 		Audit::log( 'medical.added', 'medical_cert', $id ); // solo l'azione
 		return $id;
 	}
@@ -89,8 +81,9 @@ final class Certificates {
 		if ( ! $c ) {
 			throw new \InvalidArgumentException( 'Certificato non trovato.' );
 		}
-		self::db()->update( Db::t( 'medical_certs' ), array( 'deleted_at' => Db::now(), 'file_name' => null, 'file_stored' => null, 'file_size' => null ), array( 'id' => $id ) );
+		self::db()->delete( Db::t( 'medical_certs' ), array( 'id' => $id ) ); // dato sanitario: si cancella davvero, non resta nulla nel database
 		Attachments::delete_stored( (string) $c['file_stored'] ); // il file non resta sul disco (né nelle copie di sicurezza)
+		self::flush_counts();
 		Audit::log( 'medical.deleted', 'medical_cert', $id );
 	}
 
@@ -147,6 +140,7 @@ final class Certificates {
 		} else {
 			self::db()->delete( Db::t( 'cert_activities' ), array( 'activity_id' => $activity_id ) );
 		}
+		self::flush_counts();
 	}
 
 	/** @return int[] */
@@ -195,13 +189,29 @@ final class Certificates {
 		return CertificateRules::filter_by_status( $out, $filter );
 	}
 
-	/** Conteggi per la Bacheca. @return array<string,int> */
+	const COUNTS_KEY = 'asem_cert_counts';
+
+	/** Conteggi per la Bacheca; si ricalcolano al massimo ogni 5 minuti o appena cambia un certificato. @return array<string,int> */
 	public static function counts( ?string $today = null ): array {
+		if ( null === $today ) {
+			$cached = get_transient( self::COUNTS_KEY );
+			if ( is_array( $cached ) && ( $cached['day'] ?? '' ) === Db::today() ) {
+				return $cached['counts'];
+			}
+		}
 		$c = array( ExpiryRules::VALID => 0, ExpiryRules::EXPIRING => 0, ExpiryRules::EXPIRED => 0, ExpiryRules::NONE => 0 );
 		foreach ( self::rows( '', 0, false, $today ) as $r ) {
 			$c[ $r['status'] ]++;
 		}
+		if ( null === $today ) {
+			set_transient( self::COUNTS_KEY, array( 'day' => Db::today(), 'counts' => $c ), 5 * MINUTE_IN_SECONDS );
+		}
 		return $c;
+	}
+
+	/** Un certificato o un'attività sono cambiati: i conteggi della Bacheca si rifanno. */
+	public static function flush_counts(): void {
+		delete_transient( self::COUNTS_KEY );
 	}
 
 	// ---------- Esportazione ----------
@@ -250,6 +260,7 @@ final class Certificates {
 			Attachments::delete_stored( (string) $c['file_stored'] );
 		}
 		$db->delete( Db::t( 'medical_certs' ), array( 'person_id' => $person_id ) );
+		self::flush_counts();
 	}
 
 	// ---------- Promemoria ----------
@@ -283,12 +294,15 @@ final class Certificates {
 			$p    = $r['person'];
 			$ref  = CertificateRules::reminder_ref( (int) $c['id'], (string) $c['expires_on'] );
 			$when = ExpiryRules::it_date( (string) $c['expires_on'] );
+			$to    = Reminders::recipient( $p );
+			$about = $to ? (string) $to['about'] : ''; // per un minore (o un ospite) il messaggio va a un adulto e parla di un'altra persona
+			$whose = '' !== $about ? 'di ' . $about : 'tuo';
 			if ( ExpiryRules::EXPIRING === $r['status'] ) {
-				$subject = 'Il tuo certificato medico sta per scadere';
-				$body    = 'il tuo certificato medico sportivo scade il ' . $when . '. Per continuare a partecipare alle attività che lo richiedono portane uno nuovo alla segreteria prima di quella data.';
+				$subject = '' !== $about ? 'Il certificato medico di ' . $about . ' sta per scadere' : 'Il tuo certificato medico sta per scadere';
+				$body    = ( '' !== $about ? 'il certificato medico sportivo ' . $whose : 'il ' . $whose . ' certificato medico sportivo' ) . ' scade il ' . $when . '. Per continuare a partecipare alle attività che lo richiedono portane uno nuovo alla segreteria prima di quella data.';
 			} else {
-				$subject = 'Il tuo certificato medico è scaduto';
-				$body    = 'il tuo certificato medico sportivo è scaduto il ' . $when . '. Per continuare a partecipare alle attività che lo richiedono portane uno nuovo alla segreteria.';
+				$subject = '' !== $about ? 'Il certificato medico di ' . $about . ' è scaduto' : 'Il tuo certificato medico è scaduto';
+				$body    = ( '' !== $about ? 'il certificato medico sportivo ' . $whose : 'il ' . $whose . ' certificato medico sportivo' ) . ' è scaduto il ' . $when . '. Per continuare a partecipare alle attività che lo richiedono portane uno nuovo alla segreteria.';
 			}
 			if ( $send ? Reminders::notify( $p, $kind, $ref, $subject, $body ) : Reminders::pending( $p, $kind, $ref ) ) {
 				$out['members']++;

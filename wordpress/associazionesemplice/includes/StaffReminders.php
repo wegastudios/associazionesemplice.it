@@ -5,26 +5,23 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Promemoria alla segreteria (certificati medici, affiliazioni, tessere degli enti): un solo messaggio con l'elenco, e ogni riga una sola volta per
- * tipo e riferimento. Gli invii si ricordano nella stessa tabella dei promemoria ai soci ({@see Reminders}).
+ * tipo e riferimento. Gli invii si ricordano nella stessa tabella dei promemoria ai soci, tramite {@see Reminders}.
  */
 final class StaffReminders {
 
 	/** Prenota l'invio di una riga (persona 0 se non riguarda un socio). @return bool true se la riga è nuova */
 	public static function claim( int $person_id, string $kind, string $ref ): bool {
-		$db = Db::db();
-		$db->query( $db->prepare( 'INSERT IGNORE INTO ' . Db::t( 'reminders' ) . ' (person_id, kind, ref, sent_at) VALUES (%d, %s, %s, %s)', $person_id, $kind, substr( $ref, 0, 60 ), Db::now() ) );
-		return 1 === (int) $db->rows_affected;
+		return Reminders::claim( $person_id, $kind, $ref );
 	}
 
 	/** L'email non è partita: la riga torna in coda per la prossima esecuzione. */
 	public static function release( int $person_id, string $kind, string $ref ): void {
-		Db::db()->delete( Db::t( 'reminders' ), array( 'person_id' => $person_id, 'kind' => $kind, 'ref' => substr( $ref, 0, 60 ) ) );
+		Reminders::release( $person_id, $kind, $ref );
 	}
 
 	/** La riga è già stata mandata? */
 	public static function seen( int $person_id, string $kind, string $ref ): bool {
-		$db = Db::db();
-		return (bool) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'reminders' ) . ' WHERE person_id = %d AND kind = %s AND ref = %s', $person_id, $kind, substr( $ref, 0, 60 ) ) );
+		return Reminders::sent( $person_id, $kind, $ref );
 	}
 
 	/** Prenota la riga se si invia davvero; senza invio dice solo se sarebbe nuova. */

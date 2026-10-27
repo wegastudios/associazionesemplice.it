@@ -35,17 +35,7 @@ final class Inventory {
 		}
 		$ext  = AttachmentRules::extension( (string) $item['file_name'] );
 		$name = DocumentRules::download_name( (string) $item['name'], (string) $item['file_name'] );
-		while ( ob_get_level() ) {
-			ob_end_clean();
-		}
-		nocache_headers();
-		header( 'Content-Type: ' . ( DocumentRules::SERVE_AS[ $ext ] ?? 'application/octet-stream' ) );
-		header( 'X-Content-Type-Options: nosniff' );
-		header( "Content-Security-Policy: default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox" );
-		header( 'Content-Disposition: ' . ( DocumentRules::is_inline( $ext ) ? 'inline' : 'attachment' ) . '; filename="' . preg_replace( '/[^A-Za-z0-9._-]+/', '_', $name ) . '"' );
-		header( 'Content-Length: ' . (int) filesize( $path ) );
-		readfile( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile -- lettura in streaming di un file privato
-		exit;
+		Attachments::stream( $path, $ext, $name, true );
 	}
 
 	// ---------- Beni ----------

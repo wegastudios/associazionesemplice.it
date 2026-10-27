@@ -38,6 +38,7 @@ final class Affiliations {
 				throw new \InvalidArgumentException( 'Affiliazione non trovata.' );
 			}
 			$db->update( Db::t( 'affiliations' ), $d, array( 'id' => $id ) );
+			self::flush_counts();
 			Audit::log( 'affiliation.updated', 'affiliation', $id );
 			return $id;
 		}
@@ -49,6 +50,7 @@ final class Affiliations {
 			throw new \InvalidArgumentException( 'Impossibile salvare l\'affiliazione (errore del database).' );
 		}
 		$id = (int) $db->insert_id;
+		self::flush_counts();
 		Audit::log( 'affiliation.added', 'affiliation', $id, array( 'body' => $d['body'], 'season' => $d['season'] ) );
 		return $id;
 	}
@@ -59,6 +61,7 @@ final class Affiliations {
 			throw new \InvalidArgumentException( 'Affiliazione non trovata.' );
 		}
 		self::db()->update( Db::t( 'affiliations' ), array( 'deleted_at' => Db::now() ), array( 'id' => $id ) );
+		self::flush_counts();
 		Audit::log( 'affiliation.deleted', 'affiliation', $id );
 	}
 
@@ -113,6 +116,7 @@ final class Affiliations {
 			throw new \InvalidArgumentException( 'Impossibile salvare la tessera (errore del database).' );
 		}
 		$id = (int) $db->insert_id;
+		self::flush_counts();
 		Audit::log( 'body_card.added', 'person', $person_id, array( 'card' => $id, 'body' => $d['body'], 'season' => $d['season'] ) );
 		return $id;
 	}
@@ -170,6 +174,7 @@ final class Affiliations {
 			'expires_on'  => $changes['expires_on'] ?? $c['expires_on'],
 		);
 		self::db()->update( Db::t( 'body_cards' ), AffiliationRules::clean_card( $in ), array( 'id' => $id ) );
+		self::flush_counts();
 		Audit::log( 'body_card.updated', 'person', (int) $c['person_id'], array( 'card' => $id ) );
 	}
 
@@ -180,6 +185,7 @@ final class Affiliations {
 			throw new \InvalidArgumentException( 'Tessera non trovata.' );
 		}
 		self::db()->update( Db::t( 'body_cards' ), array( 'deleted_at' => Db::now() ), array( 'id' => $id ) );
+		self::flush_counts();
 		Audit::log( 'body_card.deleted', 'person', (int) $c['person_id'], array( 'card' => $id ) );
 	}
 
@@ -296,6 +302,7 @@ final class Affiliations {
 	/** Anonimizzazione: le tessere della persona si cancellano. */
 	public static function anonymize( int $person_id ): void {
 		self::db()->delete( Db::t( 'body_cards' ), array( 'person_id' => $person_id ) );
+		self::flush_counts();
 	}
 
 	// ---------- Promemoria ----------
@@ -343,8 +350,11 @@ final class Affiliations {
 			$p    = Plugin::people()->get( $pid );
 			if ( $p ) {
 				$soon    = ExpiryRules::EXPIRING === $c['status'];
-				$subject = $soon ? 'La tessera ' . self::body_name( $c ) . ' sta per scadere' : 'La tessera ' . self::body_name( $c ) . ' è scaduta';
-				$body    = 'la tua tessera ' . self::body_name( $c ) . ' (stagione ' . $c['season'] . ') ' . ( $soon ? 'scade il ' : 'è scaduta il ' ) . $when . '. Per rinnovarla rivolgiti alla segreteria.';
+				$to      = Reminders::recipient( $p );
+				$about   = $to ? (string) $to['about'] : ''; // per un minore il messaggio va a un adulto e parla di un'altra persona
+				$card    = 'tessera ' . self::body_name( $c );
+				$subject = '' !== $about ? ( $soon ? 'La ' . $card . ' di ' . $about . ' sta per scadere' : 'La ' . $card . ' di ' . $about . ' è scaduta' ) : ( $soon ? 'La ' . $card . ' sta per scadere' : 'La ' . $card . ' è scaduta' );
+				$body    = ( '' !== $about ? 'la ' . $card . ' di ' . $about : 'la tua ' . $card ) . ' (stagione ' . $c['season'] . ') ' . ( $soon ? 'scade il ' : 'è scaduta il ' ) . $when . '. Per rinnovarla rivolgiti alla segreteria.';
 				if ( $send ? Reminders::notify( $p, $kind, $ref, $subject, $body ) : Reminders::pending( $p, $kind, $ref ) ) {
 					$out['members']++;
 				}
@@ -363,8 +373,22 @@ final class Affiliations {
 		self::run_reminders();
 	}
 
+	const COUNTS_KEY = 'asem_aff_counts';
+
+	/** Un'affiliazione o una tessera sono cambiate: i conteggi della Bacheca si rifanno. */
+	public static function flush_counts(): void {
+		delete_transient( self::COUNTS_KEY );
+	}
+
 	/** Conteggi per la Bacheca: affiliazioni e tessere scadute o in scadenza. @return array{aff_expired:int,aff_expiring:int,card_expired:int,card_expiring:int} */
 	public static function counts( ?string $today = null ): array {
+		$cache = null === $today;
+		if ( $cache ) { // si ricalcolano al massimo ogni 5 minuti o appena qualcosa cambia
+			$cached = get_transient( self::COUNTS_KEY );
+			if ( is_array( $cached ) && ( $cached['day'] ?? '' ) === Db::today() ) {
+				return $cached['counts'];
+			}
+		}
 		$n = array( 'aff_expired' => 0, 'aff_expiring' => 0, 'card_expired' => 0, 'card_expiring' => 0 );
 		$today = $today ?: Db::today();
 		$recent = function ( array $r ) use ( $today ): bool { // una scadenza vecchia non deve restare per sempre tra gli avvisi
@@ -389,6 +413,9 @@ final class Affiliations {
 			} elseif ( ExpiryRules::EXPIRING === $c['status'] ) {
 				$n['card_expiring']++;
 			}
+		}
+		if ( $cache ) {
+			set_transient( self::COUNTS_KEY, array( 'day' => Db::today(), 'counts' => $n ), 5 * MINUTE_IN_SECONDS );
 		}
 		return $n;
 	}

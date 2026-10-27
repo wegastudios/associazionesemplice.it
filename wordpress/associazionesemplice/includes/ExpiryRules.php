@@ -16,8 +16,7 @@ final class ExpiryRules {
 	const MAX_WARN     = 365;
 
 	public static function is_date( string $v ): bool {
-		$dt = \DateTime::createFromFormat( 'Y-m-d', $v );
-		return $dt && $dt->format( 'Y-m-d' ) === $v;
+		return LoanRules::is_date( $v );
 	}
 
 	/** Giorni di preavviso: un numero tra 1 e 365 (altrimenti 30). */
