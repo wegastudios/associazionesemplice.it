@@ -38,6 +38,8 @@ final class Actions {
 		'asem_front_new_member'     => 'do_new_member',
 		'asem_front_notice'         => 'do_notice',
 		'asem_front_vote'           => 'do_vote',
+		'asem_front_proxy'          => 'do_proxy',
+		'asem_front_proxy_revoke'   => 'do_proxy_revoke',
 		'asem_front_bank_email'     => 'do_bank_email',
 	);
 
@@ -555,6 +557,15 @@ final class Actions {
 		$choices = isset( $post['choice'] ) ? (array) $post['choice'] : array();
 		\AssociazioneSemplice\Polls::vote( (int) ( $post['poll_id'] ?? 0 ), (int) $actor['id'], array_map( 'intval', $choices ) );
 		return 'Il tuo voto è stato registrato. Grazie!';
+	}
+
+	/** Il socio delega un altro socio per un'assemblea, o revoca la delega (regole in Assemblies). */
+	public static function do_proxy( array $post ): string {
+		return AssembliesFront::do_proxy( $post );
+	}
+
+	public static function do_proxy_revoke( array $post ): string {
+		return AssembliesFront::do_revoke( $post );
 	}
 
 	/** Avviso agli iscritti di un'attività: solo chi la tiene o chi gestisce l'evento (e gli amministratori). */

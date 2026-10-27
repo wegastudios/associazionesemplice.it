@@ -1012,7 +1012,7 @@ final class Views {
 	);
 
 	/** Sezioni della parte «Il mio spazio»: tutto ciò che riguarda il socio come persona. */
-	const MY_SECTIONS = array( 'regolamento', 'tessera', 'attivita', 'calendario', 'avvisi', 'pagamenti', 'ospiti', 'minori', 'votazioni', 'documenti', 'profilo' );
+	const MY_SECTIONS = array( 'regolamento', 'tessera', 'attivita', 'calendario', 'avvisi', 'pagamenti', 'ospiti', 'minori', 'votazioni', 'assemblee', 'documenti', 'profilo' );
 
 	/** Sezioni dell'area soci, nell'ordine in cui compaiono (un'estensione aggiunge le sue con il filtro `asem_my_sections`). */
 	private static function my_sections(): array {

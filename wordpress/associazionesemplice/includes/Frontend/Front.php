@@ -11,6 +11,7 @@ final class Front {
 		Restrict::register();
 		Actions::register();
 		BlockBViews::register();
+		AssembliesFront::register();
 		do_action( 'asem_front_init' ); // le estensioni registrano qui le loro parti del sito
 		CardVerify::register();
 		CardPdf::register();

@@ -29,6 +29,7 @@ final class Shortcodes {
 		'ingressi'        => 'Ingressi agli eventi (prenotati e QR, per responsabile e staff)',
 		'avvisi'          => 'Avvisi dei volontari agli iscritti (bacheca)',
 		'votazioni'       => 'Votazioni e sondaggi dei soci',
+		'assemblee'       => 'Assemblee dei soci: convocazioni e deleghe',
 		'documenti_soci'  => 'Documenti per i soci (statuto, regolamenti, moduli)',
 		'documenti'       => 'Documenti pubblici (statuto, regolamenti, moduli)',
 		'ospiti'          => 'I miei ospiti',
@@ -99,6 +100,9 @@ final class Shortcodes {
 			case 'votazioni':
 				Views::no_cache();
 				return BlockBViews::polls();
+			case 'assemblee':
+				Views::no_cache();
+				return AssembliesFront::view();
 			case 'documenti_soci':
 				Views::no_cache();
 				return BlockBViews::documents_member();

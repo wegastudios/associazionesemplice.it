@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '43';
+	const DB_VERSION        = '44';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -599,6 +599,50 @@ final class Install {
   deleted_at datetime DEFAULT NULL,
   PRIMARY KEY  (id),
   KEY visibility (visibility)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}assemblies (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  kind varchar(15) NOT NULL DEFAULT 'ordinary',
+  title varchar(190) NOT NULL,
+  first_call_at datetime NOT NULL,
+  second_call_at datetime DEFAULT NULL,
+  place varchar(190) NOT NULL DEFAULT '',
+  agenda text,
+  quorum_first tinyint(3) unsigned NOT NULL DEFAULT 50,
+  quorum_second tinyint(3) unsigned NOT NULL DEFAULT 0,
+  status varchar(10) NOT NULL DEFAULT 'draft',
+  convened_on date DEFAULT NULL,
+  call_held tinyint(1) unsigned NOT NULL DEFAULT 0,
+  eligible_at_close int(11) DEFAULT NULL,
+  minutes_id bigint(20) unsigned DEFAULT NULL,
+  created_by bigint(20) unsigned DEFAULT NULL,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  deleted_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY first_call_at (first_call_at)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}assembly_attendees (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  assembly_id bigint(20) unsigned NOT NULL,
+  person_id bigint(20) unsigned NOT NULL,
+  marked_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY assembly_person (assembly_id,person_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}assembly_proxies (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  assembly_id bigint(20) unsigned NOT NULL,
+  delegator_id bigint(20) unsigned NOT NULL,
+  delegate_id bigint(20) unsigned NOT NULL,
+  created_by bigint(20) unsigned DEFAULT NULL,
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY assembly_delegator (assembly_id,delegator_id),
+  KEY delegate_id (delegate_id)
 ) $c;";
 
 		$tables = (array) apply_filters( 'asem_schema_tables', $tables, $p, $c ); // le estensioni aggiungono le loro tabelle
