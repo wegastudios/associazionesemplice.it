@@ -365,6 +365,20 @@ final class ResourceRules {
 		);
 	}
 
+	/**
+	 * Quanti minuti dell'intervallo A cadono dentro il periodo B (per i report di occupazione). Una fine vuota di A vale «senza scadenza».
+	 *
+	 * @param string $a_start Y-m-d H:i:s
+	 */
+	public static function overlap_minutes( string $a_start, ?string $a_end, string $b_start, string $b_end ): int {
+		$from = max( $a_start, $b_start );
+		$to   = null === $a_end ? $b_end : min( $a_end, $b_end );
+		if ( $to <= $from ) {
+			return 0;
+		}
+		return (int) round( ( strtotime( $to . ' UTC' ) - strtotime( $from . ' UTC' ) ) / 60 );
+	}
+
 	/** Le date di una ripetizione settimanale: la prima e le altre $count - 1 a distanza di una settimana. @return string[] Y-m-d */
 	public static function series_dates( string $first, int $count ): array {
 		$out = array();

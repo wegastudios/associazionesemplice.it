@@ -548,6 +548,61 @@ final class Resources {
 		return $sent;
 	}
 
+	// ---------- Occupazione ----------
+
+	/**
+	 * Quanto è stata usata ogni risorsa in un periodo (date incluse): ore disponibili, prenotate dai soci, occupate da corsi ed eventi, in allestimento,
+	 * bloccate, e quanto si è incassato. Per le risorse assegnate a periodo ci sono le assegnazioni in corso e gli incassi.
+	 *
+	 * @return array[] id, name, mode, available, booked, bookings, activities, setup, blocked, occupancy (0–100), cents, credits, holders; i tempi in minuti
+	 */
+	public static function occupancy( string $from, string $to ): array {
+		$p_start = $from . ' 00:00:00';
+		$p_end   = gmdate( 'Y-m-d', strtotime( $to . ' +1 day' ) ) . ' 00:00:00';
+		$days    = max( 0, (int) round( ( strtotime( $p_end . ' UTC' ) - strtotime( $p_start . ' UTC' ) ) / DAY_IN_SECONDS ) );
+		$out     = array();
+		foreach ( self::all( true ) as $res ) {
+			$rid = (int) $res['id'];
+			$row = array( 'id' => $rid, 'name' => $res['name'], 'mode' => $res['mode'], 'available' => 0, 'booked' => 0, 'bookings' => 0, 'activities' => 0, 'setup' => 0, 'blocked' => 0, 'occupancy' => 0, 'cents' => 0, 'credits' => 0, 'holders' => 0 );
+			if ( ResourceRules::SLOT === $res['mode'] ) {
+				$open = ResourceRules::minutes( (string) $res['open_time'] );
+				$shut = ResourceRules::minutes( (string) $res['close_time'] );
+				$row['available'] = null !== $open && null !== $shut && $shut > $open ? $days * ( $shut - $open ) : 0;
+				foreach ( self::between( $rid, $p_start, $p_end ) as $r ) {
+					$m = ResourceRules::overlap_minutes( (string) $r['starts_at'], $r['ends_at'] ? (string) $r['ends_at'] : null, $p_start, $p_end );
+					if ( ResourceRules::KIND_BLOCK === $r['kind'] ) {
+						$row['blocked'] += $m;
+					} elseif ( ResourceRules::KIND_SLOT === $r['kind'] ) {
+						$row['booked']   += $m;
+						$row['bookings'] += 1;
+						$row['credits']  += (int) $r['credits_paid'];
+					}
+				}
+				foreach ( self::activity_busy( $rid, $from, $to ) as $w ) {
+					$core              = ResourceRules::overlap_minutes( $w['core_starts'], $w['core_ends'], $p_start, $p_end );
+					$all               = ResourceRules::overlap_minutes( $w['starts'], $w['ends'], $p_start, $p_end );
+					$row['activities'] += $core;
+					$row['setup']      += max( 0, $all - $core );
+				}
+				$row['occupancy'] = $row['available'] > 0 ? (int) min( 100, round( 100 * ( $row['booked'] + $row['activities'] ) / $row['available'] ) ) : 0;
+			} else {
+				$row['holders'] = count( array_filter( self::between( $rid, Db::now(), Db::now() ), function ( $r ) {
+					return ResourceRules::KIND_ASSIGN === $r['kind'];
+				} ) );
+			}
+			$row['cents'] = (int) self::db()->get_var(
+				self::db()->prepare(
+					'SELECT COALESCE(SUM(t.amount_cents), 0) FROM ' . Db::t( 'transactions' ) . ' t JOIN ' . Db::t( 'reservations' ) . " r ON r.id = t.reservation_id WHERE r.resource_id = %d AND t.type = 'income' AND t.voided_at IS NULL AND t.tx_date BETWEEN %s AND %s",
+					$rid,
+					$from,
+					$to
+				)
+			);
+			$out[] = $row;
+		}
+		return $out;
+	}
+
 	// ---------- Quota per un fondo ----------
 
 	/** La quota di un pagamento che spetta al fondo della risorsa (0 se la risorsa non ha un fondo o la funzione dei fondi non c'è). */

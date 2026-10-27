@@ -5668,7 +5668,7 @@ asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'Tariffe a fa
 $RS::waitlist_join( $rs_park, $rs_m2 );
 asem_ok( 1 === $RS::waitlist_position( $rs_park, $rs_m2 ) && null !== asem_throws( function () use ( $RS, $rs_park, $rs_m2 ) { $RS::waitlist_join( $rs_park, $rs_m2 ); } ) && null !== asem_throws( function () use ( $RS, $rs_park, $rs_m1 ) { $RS::waitlist_join( $rs_park, $rs_m1 ); } ), 'risorse: si entra una volta sola in lista d\'attesa e non chi ha già il posto' );
 asem_ok( null !== asem_throws( function () use ( $RS, $rs_c2, $rs_m2 ) { $RS::waitlist_join( $rs_c2, $rs_m2 ); } ), 'risorse: la lista d\'attesa c\'è solo per le assegnazioni' );
-asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'Lista d\'attesa', array( 'id' => $rs_park ) );
+asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'lista d\'attesa', array( 'id' => $rs_park ) );
 $RS::cancel( $rs_a1, true );
 $RS::assign( $rs_park, $rs_m2, $today, '' );
 asem_ok( null === $RS::waitlist_position( $rs_park, $rs_m2 ) && ! $RS::waitlist( $rs_park ), 'risorse: rilasciato il posto, chi era in coda lo riceve e esce dalla lista' );
@@ -6003,6 +6003,39 @@ asem_ok( Plugin::ledger()->category_id_of_kind( 'other_income' ) === $RS::income
 asem_ok( in_array( $pm_cat, array_map( 'intval', array_column( $RS::income_categories(), 'id' ) ), true ) && ! in_array( Plugin::ledger()->category_id_of_kind( 'membership' ), array_map( 'intval', array_column( $RS::income_categories(), 'id' ) ), true ), 'risorse: tra le voci non c\'è la quota associativa' );
 asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'Voce di prima nota', array( 'id' => $pm_res ) );
 asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'Promemoria', array( 'id' => $pm_res ) );
+
+// ---------- Risorse: report di occupazione e richieste di assegnazione ----------
+wp_set_current_user( 1 );
+$oc_res = $RS::save( 0, array( 'name' => 'Campo occupazione', 'category' => 'court', 'mode' => 'slot', 'open_time' => '08:00', 'close_time' => '20:00', 'slot_minutes' => 60, 'min_slots' => 1, 'max_slots' => 2, 'fee_cents' => 1000 ) );
+$oc_d0  = $today;
+$oc_d6  = gmdate( 'Y-m-d', strtotime( $today . ' +6 days' ) );
+$oc_b   = $RS::book_slot( $oc_res, $rs_m1, gmdate( 'Y-m-d', strtotime( $today . ' +3 days' ) ), '10:00', 2, array(), true );
+$RS::record_payment( $oc_b, (int) $rs_cash['id'], 'cash', 1000, $today );
+$RS::block( $oc_res, gmdate( 'Y-m-d', strtotime( $today . ' +5 days' ) ) . ' 08:00:00', gmdate( 'Y-m-d', strtotime( $today . ' +5 days' ) ) . ' 10:00:00' );
+$oc_ev  = $acts->create( array( 'name' => 'Evento occupazione', 'social_year' => Settings::social_year( gmdate( 'Y-m-d', strtotime( $today . ' +2 days' ) ) )->label(), 'kind' => 'event', 'session' => array( 'session_date' => gmdate( 'Y-m-d', strtotime( $today . ' +2 days' ) ), 'start_time' => '15:00', 'end_time' => '16:00' ) ) );
+$RS::link_activity( $oc_ev, $oc_res );
+$oc_rows = array();
+foreach ( $RS::occupancy( $oc_d0, $oc_d6 ) as $oc_r ) {
+	$oc_rows[ (int) $oc_r['id'] ] = $oc_r;
+}
+$oc = $oc_rows[ $oc_res ];
+asem_ok( 7 * 720 === (int) $oc['available'] && 120 === (int) $oc['booked'] && 1 === (int) $oc['bookings'], 'risorse: il report conta le ore disponibili (7 giorni da 12 ore) e quelle prenotate dai soci' );
+asem_ok( 60 === (int) $oc['activities'] && 360 === (int) $oc['setup'] && 120 === (int) $oc['blocked'], 'risorse: il report separa le ore di un evento (1), i suoi allestimenti (3 + 3) e i blocchi' );
+asem_ok( (int) round( 100 * 180 / ( 7 * 720 ) ) === (int) $oc['occupancy'] && 1000 === (int) $oc['cents'], 'risorse: l\'occupazione conta prenotazioni ed eventi, non allestimenti né blocchi; gli incassi sono quelli del periodo' );
+$oc_far = array();
+foreach ( $RS::occupancy( gmdate( 'Y-m-d', strtotime( $today . ' +400 days' ) ), gmdate( 'Y-m-d', strtotime( $today . ' +406 days' ) ) ) as $oc_r ) {
+	$oc_far[ (int) $oc_r['id'] ] = $oc_r;
+}
+asem_ok( 0 === (int) $oc_far[ $oc_res ]['booked'] && 0 === (int) $oc_far[ $oc_res ]['activities'] && 0 === (int) $oc_far[ $oc_res ]['occupancy'] && 7 * 720 === (int) $oc_far[ $oc_res ]['available'], 'risorse: un periodo senza prenotazioni è a zero' );
+asem_ok( (int) $oc_rows[ $rs_park ]['holders'] >= 1 && 'assign' === $oc_rows[ $rs_park ]['mode'], 'risorse: le risorse assegnate a periodo mostrano le assegnazioni in corso' );
+asem_render( array( Admin\ResourcesReportPage::class, 'render' ), 'Campo occupazione', array( 'from' => $oc_d0, 'to' => $oc_d6 ) );
+// una risorsa libera si può chiedere: la richiesta entra nella lista e la segreteria la approva assegnando
+$rq_res = $RS::save( 0, array( 'name' => 'Armadietto 12', 'category' => 'locker', 'mode' => 'assign', 'fee_cents' => 3000 ) );
+$RS::waitlist_join( $rq_res, $rs_m1 );
+asem_ok( 1 === $RS::waitlist_position( $rq_res, $rs_m1 ), 'risorse: un socio può chiedere una risorsa libera (richiesta in lista)' );
+$RS::assign( $rq_res, $rs_m1, $today, '' );
+asem_ok( null === $RS::waitlist_position( $rq_res, $rs_m1 ) && ! $RS::waitlist( $rq_res ), 'risorse: approvata la richiesta con l\'assegnazione, la richiesta si chiude' );
+asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'Richieste e lista d\'attesa', array( 'id' => $rq_res ) );
 
 // ---------- Copia di sicurezza e ripristino (in fondo: tocca tutte le tabelle) ----------
 

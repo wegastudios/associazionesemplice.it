@@ -13,7 +13,7 @@ final class ProMenu {
 	const GROUPS = array(
 		'asem-people'     => array( 'Rubrica soci', array( 'asem-people' => 'Soci e ospiti', 'asem-messages' => 'Comunicazioni' ) ),
 		'asem-activities' => array( 'Corsi ed eventi', array( 'asem-activities' => 'Elenco' ) ),
-		'asem-resources'  => array( 'Risorse', array( 'asem-resources' => 'Risorse' ) ),
+		'asem-resources'  => array( 'Risorse', array( 'asem-resources' => 'Risorse', 'asem-res-report' => 'Occupazione' ) ),
 		'asem-credits'    => array( 'Crediti', array( 'asem-credits' => 'Crediti' ) ),
 		'asem-tools'      => array( 'Strumenti', array( 'asem-tools' => 'Panoramica', 'asem-import' => 'Importa da Excel/CSV', 'asem-tec' => 'Da The Events Calendar', 'asem-wpai' => 'WP All Import', 'asem-exports' => 'Esporta', 'asem-calendar' => 'Calendari', 'asem-backup' => 'Copia di sicurezza', 'asem-tech' => 'Integrazioni' ) ),
 		'asem-money'      => array( 'Cassa', array( 'asem-money' => 'Cassa', 'asem-ledger' => 'Prima nota', 'asem-income' => 'Nuovo incasso', 'asem-bookdesk' => 'Prenota', 'asem-group' => 'Cassa per più persone', 'asem-expense' => 'Nuova spesa', 'asem-transfer' => 'Giroconto', 'asem-accounts' => 'Conti e fondi' ) ),
@@ -52,6 +52,7 @@ final class ProMenu {
 		array( 'asem-messages', 'Comunicazioni', array( MessagesPage::class, 'render' ) ),
 		array( 'asem-texts', 'Testi personalizzati', array( TextsPage::class, 'render' ) ),
 		array( 'asem-resource', 'Scheda risorsa', array( ResourcesPage::class, 'render_detail' ) ),
+		array( 'asem-res-report', 'Occupazione delle risorse', array( ResourcesReportPage::class, 'render' ) ),
 		array( 'asem-medical', 'Certificati medici', array( CertificatesPage::class, 'render' ) ),
 		array( 'asem-affiliations', 'Affiliazioni', array( AffiliationsPage::class, 'render' ) ),
 	);

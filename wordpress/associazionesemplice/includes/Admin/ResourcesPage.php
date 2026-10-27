@@ -184,9 +184,9 @@ final class ResourcesPage {
 			echo '</div>';
 
 			$queue = Resources::waitlist( $rid );
-			echo '<div class="asem-card"><h2>Lista d\'attesa</h2>';
+			echo '<div class="asem-card"><h2>Richieste e lista d\'attesa</h2>';
 			if ( ! $queue ) {
-				echo '<p class="description">Nessuno in coda. I soci si mettono in lista dalla loro area quando la risorsa è occupata; quando si libera il primo riceve un\'email e l\'assegnazione resta alla segreteria.</p>';
+				echo '<p class="description">Nessuna richiesta. I soci chiedono la risorsa dalla loro area: se è libera è una richiesta da approvare con «Assegna»; se è occupata si mettono in coda e, quando si libera, il primo riceve un\'email. L\'assegnazione la fa sempre la segreteria.</p>';
 			} else {
 				echo '<table class="widefat striped" style="max-width:720px"><thead><tr><th>#</th><th>Socio</th><th>Dal</th><th></th></tr></thead><tbody>';
 				foreach ( $queue as $i => $w ) {
