@@ -93,7 +93,7 @@ final class ConventionRules {
 
 	/** Tipi di socio scelti, ripuliti: solo tipi che sono soci veri, senza doppi. @return string[] */
 	public static function clean_types( array $types ): array {
-		return array_values( array_intersect( MemberType::member_types(), array_map( 'strval', $types ) ) );
+		return array_values( array_intersect( MemberType::member_types(), array_map( 'trim', array_map( 'strval', $types ) ) ) );
 	}
 
 	/**
