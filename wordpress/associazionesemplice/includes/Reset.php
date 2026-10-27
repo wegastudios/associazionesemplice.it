@@ -23,7 +23,7 @@ final class Reset {
 	const PHRASE = 'AZZERA TUTTO';
 
 	/** Opzioni del plugin che il ripristino di fabbrica cancella. */
-	const FACTORY_OPTIONS = array( 'asem_settings', 'asem_texts', 'asem_pages', 'asem_access_requests', 'asem_wizard_status', 'asem_backup_last' );
+	const FACTORY_OPTIONS = array( 'asem_settings', 'asem_texts', 'asem_pages', 'asem_access_requests', 'asem_wizard_status', 'asem_backup_last', 'asem_convention_categories' );
 
 	private static function db(): \wpdb {
 		return Db::db();

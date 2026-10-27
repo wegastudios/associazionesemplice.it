@@ -58,6 +58,7 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 == Changelog ==
 
 = 1.2.30 =
+* Member discounts ("Convenzioni"): partner offers shown to members with a valid card, optional public list, notify button, expiring card and CSV export.
 * Membership fee can be paid in instalments: shows what is missing and grants the card on full payment (configurable).
 
 = 1.2.29 =

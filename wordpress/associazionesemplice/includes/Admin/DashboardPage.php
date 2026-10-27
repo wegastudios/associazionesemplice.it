@@ -75,6 +75,7 @@ final class DashboardPage {
 		self::applications();
 		self::adults_to_invite();
 		self::overdue_loans();
+		ConventionsPage::dashboard_card();
 
 		$requests = \AssociazioneSemplice\AccessRequests::pending();
 		if ( $requests ) {

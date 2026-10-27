@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
 final class Backup {
 
 	const OPT_LAST   = 'asem_backup_last';
-	const OPT_NAMES  = array( 'asem_texts', 'asem_card_salt', 'asem_ical_salt', 'asem_access_requests' );
+	const OPT_NAMES  = array( 'asem_texts', 'asem_card_salt', 'asem_ical_salt', 'asem_access_requests', 'asem_convention_categories' );
 	const KEEP       = 3;
 	const CHUNK      = 1000;
 	const MAX_ENTRY  = 1073741824; // 1 GB per file dentro lo zip

@@ -7022,6 +7022,18 @@ asem_ok( $people->has_membership( $qr_q, $qr_yr ) && 0 === $people->membership_m
 Settings::update( array( 'limits' => array() ) );
 wp_set_current_user( 1 );
 
+// ---------- Blocco F: convenzioni per i soci (anche con il Pro attivo) ----------
+$bf_label = Settings::membership_year()->label();
+$bf_m     = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Carla', 'last_name' => 'Convenzionata', 'email' => 'carla.convenzionata@example.com' ) );
+$bf_x     = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Aldo', 'last_name' => 'Senzatessera', 'email' => 'aldo.senzatessera@example.com' ) );
+$people->set_membership( $bf_m, $bf_label, true );
+$bf_c = \AssociazioneSemplice\Conventions::save( 0, array( 'name' => 'Teatro Aperto', 'category' => 'Cultura', 'benefit' => 'Biglietto ridotto', 'terms' => 'Con tessera', 'code' => 'TEATRO-26', 'is_public' => 1 ) );
+asem_ok( 1 === count( \AssociazioneSemplice\Conventions::for_person( $people->get( $bf_m ) ) ) && ! \AssociazioneSemplice\Conventions::for_person( $people->get( $bf_x ) ), 'convenzioni: le vede solo chi ha la tessera valida' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Shortcodes::render_view( 'convenzioni' ), 'Teatro Aperto' ) && false === strpos( \AssociazioneSemplice\Frontend\Shortcodes::render_view( 'convenzioni' ), 'TEATRO-26' ), 'convenzioni: elenco pubblico senza codice' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\BlockFViews::section_members( $people->get( $bf_m ) ), 'TEATRO-26' ), 'convenzioni: area soci con il codice' );
+asem_ok( has_action( 'admin_post_asem_convention_save' ) && shortcode_exists( 'convenzioni' ), 'convenzioni: azioni e shortcode presenti anche con il Pro' );
+\AssociazioneSemplice\Conventions::delete( $bf_c );
+
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Tutti i controlli sono passati.' );

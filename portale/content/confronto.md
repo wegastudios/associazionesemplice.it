@@ -97,6 +97,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Assemblee dei soci: convocazione per email, presenze, deleghe tra soci, numero legale e verbale già compilato | — | ✓ | ✓ |
 | Inventario dei beni con prestiti a soci e volontari, rientri, storico e promemoria | ✓ | ✓ | ✓ |
 | Archivio documenti (statuto, regolamenti, moduli) per segreteria, soci o pubblico | ✓ | ✓ | ✓ |
+| Convenzioni per i soci: sconti dei partner con codice, validità, destinatari per tipo di socio, elenco pubblico, avviso per email e CSV | ✓ | ✓ | ✓ |
 | Informativa privacy generata e registro dei consensi | ✓ | ✓ | ✓ |
 | Anonimizzazione e download dei dati personali | ✓ | ✓ | ✓ |
 | Assicurazioni dei volontari e polizze dell'associazione | — | ✓ | ✓ |
