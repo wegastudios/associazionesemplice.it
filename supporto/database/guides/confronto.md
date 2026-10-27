@@ -91,6 +91,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Votazioni e sondaggi tra i soci, anche a voto segreto, con verbale dei risultati | ✓ | ✓ | ✓ |
 | Inventario dei beni e prestiti ai soci con promemoria | ✓ | ✓ | ✓ |
 | Archivio documenti con accesso per segreteria, soci o pubblico | ✓ | ✓ | ✓ |
+| Certificati medici sportivi con scadenze, promemoria e riquadro in Bacheca | — | ✓ | ✓ |
+| Affiliazioni agli enti, tessere dei soci anche in blocco e file CSV per i portali degli enti | — | ✓ | ✓ |
 | Informativa privacy generata e registro dei consensi | ✓ | ✓ | ✓ |
 | Anonimizzazione e download dei dati personali | ✓ | ✓ | ✓ |
 | Assicurazioni dei volontari e polizze dell'associazione | — | ✓ | ✓ |

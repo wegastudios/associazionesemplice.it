@@ -142,6 +142,102 @@ I documenti sono inclusi nella [copia di sicurezza](guida:copia-di-sicurezza-e-r
 MD,
     ],
     [
+        'topic' => 'plugin-pro', 'section' => 'Registri', 'slug' => 'certificati-medici-sportivi',
+        'title' => 'Tenere i certificati medici sportivi dei soci',
+        'body' => <<<'MD'
+> Disponibile in: Pro Contabile, Pro Fiscale (da Pro 1.1.25; richiede il plugin gratuito 1.2.29, aggiorna insieme gratuito e Pro)
+
+Il registro dei **certificati medici** ti dice chi ha il certificato in regola, chi è in scadenza, chi è scaduto e chi non lo ha mai portato, tra gli iscritti alle attività che lo richiedono. Lo trovi in **Registri → Certificati medici**, accanto a Libro soci e Verbali. Lo usano segreteria, presidente, vicepresidente e amministratori. Senza Pro, o con la licenza non in regola, la voce sparisce.
+
+## Preparare le attività
+
+1. Apri il modulo dell'attività (corso o evento).
+2. Spunta **«richiede il certificato medico sportivo»** nella riga **Certificato medico**.
+3. Salva.
+
+## Registrare un certificato
+
+1. Apri la scheda del socio, sezione **«Certificato medico»**, oppure vai in **Registri → Certificati medici**.
+2. Scegli il **tipo**: non agonistico, agonistico o altro.
+3. Indica la **data di rilascio** e la **scadenza**. La scadenza viene proposta a un anno dal rilascio: correggila con quella scritta sul certificato.
+4. Se vuoi, indica il **medico o la struttura** e allega il **file** (PDF o foto).
+5. Salva.
+
+## Controllare chi è in regola
+
+**Registri → Certificati medici** mostra gli iscritti con lo stato: **valido**, **in scadenza**, **scaduto** o **mancante**. Filtra per stato, per attività o su «tutti i soci attivi». **Esporta (CSV)** scarica l'elenco. In **Bacheca** un riquadro avvisa quanti certificati sono scaduti, mancanti o in scadenza.
+
+## Promemoria
+
+Sono **spenti** di partenza. Li accendi in **Registri → Certificati medici → Impostazioni → Promemoria automatici**.
+
+- Una volta al giorno il socio, o il suo tutore se è minorenne, riceve un'email quando il certificato sta per scadere e, una volta, quando è scaduto da poco.
+- La segreteria riceve un'unica email con l'elenco.
+- Ogni avviso parte una sola volta per certificato.
+- **Preavviso**: i giorni prima della scadenza in cui il certificato risulta «in scadenza» (di partenza 30).
+
+Nelle stesse impostazioni puoi attivare **«Il socio vede nella sua area la scadenza del proprio certificato»**: il socio vede stato e scadenza, non il file né il medico. Le impostazioni le cambia solo l'amministratore.
+
+## Privacy
+
+- Il certificato è un **dato sanitario**: lo vede solo la segreteria, con i suoi stessi permessi. Il file non ha un indirizzo pubblico e si scarica solo dal sito da chi è autorizzato.
+- Nel [registro azioni](guida:registro-azioni-e-spazio-occupato) resta scritto che un certificato è stato aggiunto, aperto o eliminato, mai cosa conteneva.
+- I certificati compaiono nell'esportazione dei dati della persona. Se la persona viene anonimizzata, certificati e file vengono cancellati.
+- Genitori e tutori non sono soci: non hanno certificati.
+MD,
+    ],
+    [
+        'topic' => 'plugin-pro', 'section' => 'Registri', 'slug' => 'affiliazioni-agli-enti',
+        'title' => 'Gestire le affiliazioni agli enti e le tessere dei soci',
+        'body' => <<<'MD'
+> Disponibile in: Pro Contabile, Pro Fiscale (da Pro 1.1.25; richiede il plugin gratuito 1.2.29, aggiorna insieme gratuito e Pro)
+
+In **Registri → Affiliazioni** tieni i codici di affiliazione dell'associazione agli enti di promozione sportiva, le tessere dei soci e i file da caricare sui portali degli enti.
+
+Gli enti disponibili sono CONI/RAS, UISP, CSEN, ACSI, AICS, oppure **«Altro ente»** con il nome scritto a mano.
+
+## Registrare l'affiliazione dell'associazione
+
+1. Vai in **Registri → Affiliazioni** e premi **Registra un'affiliazione**.
+2. Scegli l'**ente** e scrivi il **codice**.
+3. Indica la **stagione** (per esempio 2026 oppure 2025/2026), la **scadenza** e il **costo**.
+4. Salva. Puoi avere una sola affiliazione per ente e per stagione.
+
+## Tesserare un socio
+
+**Una persona per volta**: dalla scheda del socio, sezione **«Tessere degli enti»**, oppure da **Registri → Affiliazioni → Nuova tessera**. Indica ente, stagione, numero (facoltativo), tipo di tessera, data, scadenza e costo.
+
+**Più soci insieme**:
+
+1. Premi **Tesseramento in blocco**.
+2. Scegli **tutti i soci attivi** oppure **gli iscritti a un'attività**.
+3. Conferma. Chi ha già la tessera dello stesso ente e stagione viene saltato.
+4. Quando l'ente assegna i numeri, aggiungili dall'elenco.
+
+Tutori e ospiti non sono soci: non si tesserano.
+
+## Elenco e file per il portale dell'ente
+
+Filtra l'elenco per ente, stagione, stato e attività.
+
+- **Esporta l'elenco (CSV)**: scarica l'elenco con numeri, costi e stato.
+- **File per il portale dell'ente (CSV)**: scarica nome, cognome, codice fiscale, data e luogo di nascita, sesso, indirizzo, email, telefono e tipo di tessera.
+
+> **Controlla il file prima di caricarlo.** Il sito non conserva luogo di nascita e sesso: li ricava dal codice fiscale, e il luogo è il **codice catastale** (per esempio H501), non il nome del comune.
+
+## Promemoria di scadenza
+
+Sono **spenti** di partenza. Li accendi in **Registri → Affiliazioni → Impostazioni**.
+
+- Il socio, o il suo tutore, riceve un'email per la scadenza della tessera.
+- La segreteria riceve un'unica email con affiliazioni e tessere in scadenza o scadute da poco.
+- Ogni avviso parte una sola volta per scadenza. Il **preavviso** di partenza è di 30 giorni.
+- In **Bacheca** un riquadro ricorda le scadenze.
+
+Le impostazioni le cambia solo l'amministratore.
+MD,
+    ],
+    [
         'topic' => 'altro', 'section' => 'Registri', 'slug' => 'registro-azioni-e-spazio-occupato',
         'title' => 'Registro azioni: controllare lo spazio e liberarlo',
         'body' => <<<'MD'
