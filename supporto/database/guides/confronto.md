@@ -73,6 +73,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Commissioni di incasso per metodo: stima in prima nota da tariffe standard modificabili e ribaltamento opzionale | — | ✓ | ✓ |
 | Conti multipli, giroconti e cassa per più persone | — | ✓ | ✓ |
 | Fondi accantonati (per esempio rimborso dei volontari) | — | ✓ | ✓ |
+| Bilancio preventivo per categoria, confrontato con la prima nota e approvato | — | ✓ | ✓ |
+| Rimborsi ai volontari: richiesta dall'area soci, approvazione, pagamento e registrazione in prima nota | — | ✓ | ✓ |
 | Risorse con quota accantonata in un fondo a ogni pagamento (anche in crediti) | — | ✓ | ✓ |
 | Voce di prima nota per ogni risorsa, separata nei report | — | ✓ | ✓ |
 | Disponibilità reale dei fondi, liberazione ed estinzione | — | ✓ | ✓ |
@@ -93,6 +95,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Funzione | Free | Pro Contabile | Pro Fiscale |
 |---|---|---|---|
 | Verbali di assemblea e consiglio con PDF | ✓ | ✓ | ✓ |
+| Assemblee: convocazione per email, presenze, deleghe, numero legale e verbale compilato | — | ✓ | ✓ |
 | Votazioni e sondaggi tra i soci, anche a voto segreto, con verbale dei risultati | ✓ | ✓ | ✓ |
 | Inventario dei beni e prestiti ai soci con promemoria | ✓ | ✓ | ✓ |
 | Archivio documenti con accesso per segreteria, soci o pubblico | ✓ | ✓ | ✓ |
