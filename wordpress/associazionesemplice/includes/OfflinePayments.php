@@ -58,7 +58,8 @@ class OfflinePayments {
 			if ( ( $pid === (int) $actor['id'] || in_array( $pid, $dependents, true ) ) && MemberType::is_member( $p['type'] ) && ! MemberType::is_auto_renewed( $p['type'] ) && $fee > 0 ) {
 				$plan = $people->membership_plan( $pid, Db::today() ); // anno più recente (o quello in corso, se è scaduto)
 				if ( ! $people->has_membership( $pid, $plan['year'] ) ) {
-					$i                  = array( 'type' => PaymentItems::MEMBERSHIP, 'person_id' => $pid, 'person_name' => $name, 'social_year' => $plan['year'], 'amount_cents' => $fee, 'label' => 'Quota associativa ' . $plan['year'] . ( $plan['free'] ? ' (' . $plan['free'] . ' in omaggio)' : '' ) );
+					$missing            = $people->membership_missing( $p, $plan['year'] ); // quota a rate: si paga il residuo
+					$i                  = array( 'type' => PaymentItems::MEMBERSHIP, 'person_id' => $pid, 'person_name' => $name, 'social_year' => $plan['year'], 'amount_cents' => $missing > 0 ? $missing : $fee, 'label' => 'Quota associativa ' . $plan['year'] . ( $missing > 0 ? ' (saldo)' : '' ) . ( $plan['free'] ? ' (' . $plan['free'] . ' in omaggio)' : '' ) );
 					$i['key']           = PaymentItems::key( $i );
 					$items[ $i['key'] ] = $i;
 				}

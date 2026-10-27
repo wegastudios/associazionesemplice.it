@@ -246,6 +246,12 @@ final class Limits {
 			'Si possono registrare ospiti senza dire chi li ha portati: si perde l\'elenco degli ospiti di ciascun socio. Utile per importare uno storico di ospiti.'
 		);
 		$add(
+			'membership_on_balance', 'soci', 'Tessera valida solo quando la quota è saldata', 'flag', 1, 0, 1,
+			'La quota associativa si può versare a rate (ad esempio 20 su 25): il programma mostra quanto manca e dà la tessera solo quando la somma raggiunge la quota.',
+			'Attivo: un socio che versa meno della quota non ha la tessera finché non salda. Va bene per chi vuole il saldo completo prima dell\'iscrizione.',
+			'Spento: basta un versamento qualsiasi, anche parziale, per avere la tessera (come nelle versioni precedenti) e il residuo non viene seguito.'
+		);
+		$add(
 			'suspend_after_months', 'soci', 'Mesi di tessera scaduta prima di proporre la sospensione', 'mesi', 8, 1, 60,
 			'Dopo quanti mesi dalla scadenza compare il pulsante per sospendere in blocco i soci che non hanno rinnovato.',
 			'I soci che non rinnovano restano «attivi» più a lungo nelle liste e nei conteggi.',

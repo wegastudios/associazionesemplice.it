@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.30
+- La quota associativa si può versare a rate: vedi quanto manca e la tessera arriva quando la quota è saldata (si cambia da Limiti e soglie).
+- Il saldo si incassa dalla scheda del socio o da «Pagamenti da incassare» con l'importo già pronto.
+
 ## 1.2.29
 - Aggiornamento di compatibilità con il Pro 1.1.25: aggiorna insieme gratuito e Pro.
 

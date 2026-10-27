@@ -7002,6 +7002,26 @@ Settings::update( array( 'refund_km_rate_cents' => 0 ) );
 remove_filter( 'pre_wp_mail', $bd_hook, 10 );
 wp_set_current_user( 1 );
 
+// Quota associativa a rate: la tessera arriva al saldo
+Settings::update( array( 'membership_fee_cents' => 1000 ) );
+$qr_p   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Rita', 'last_name' => 'Arate', 'email' => 'rita.arate@example.com' ) );
+$qr_row = $people->get( $qr_p );
+$qr_yr  = $people->membership_plan( $qr_p, current_time( 'Y-m-d' ) )['year'];
+wp_set_current_user( $u_tre );
+$front::do_collect( array( 'person_id' => $qr_p, 'account_id' => (int) $cash['id'], 'lines' => array( array( 'what' => 'm', 'amount' => '4' ) ) ) );
+asem_ok( ! $people->has_membership( $qr_p, $qr_yr ) && 600 === $people->membership_missing( $qr_row, $qr_yr ) && 400 === $people->membership_paid( $qr_p, $qr_yr ), 'quota a rate: dopo l\'acconto mancano 6,00 e la tessera non c\'è ancora' );
+$front::do_collect( array( 'person_id' => $qr_p, 'account_id' => (int) $cash['id'], 'lines' => array( array( 'what' => 'm', 'amount' => '6' ) ) ) );
+asem_ok( $people->has_membership( $qr_p, $qr_yr ) && 0 === $people->membership_missing( $qr_row, $qr_yr ), 'quota a rate: al saldo arriva la tessera' );
+$qr_tx = (int) $wpdb->get_var( 'SELECT id FROM ' . Db::t( 'transactions' ) . " WHERE person_id = $qr_p AND voided_at IS NULL ORDER BY id ASC LIMIT 1" );
+$ledger->void( $qr_tx, 'prova' );
+asem_ok( ! $people->has_membership( $qr_p, $qr_yr ) && 400 === $people->membership_missing( $qr_row, $qr_yr ), 'quota a rate: annullando un versamento la tessera decade' );
+Settings::update( array( 'limits' => array( 'membership_on_balance' => 0 ) ) );
+$qr_q = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Livio', 'last_name' => 'Subito', 'email' => 'livio.subito@example.com' ) );
+$front::do_collect( array( 'person_id' => $qr_q, 'account_id' => (int) $cash['id'], 'lines' => array( array( 'what' => 'm', 'amount' => '4' ) ) ) );
+asem_ok( $people->has_membership( $qr_q, $qr_yr ) && 0 === $people->membership_missing( $people->get( $qr_q ), $qr_yr ), 'quota a rate spenta: basta un versamento qualsiasi, come prima' );
+Settings::update( array( 'limits' => array() ) );
+wp_set_current_user( 1 );
+
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Tutti i controlli sono passati.' );
