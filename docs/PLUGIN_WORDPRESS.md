@@ -779,3 +779,31 @@ Due funzioni nuove del Pro, nel gruppo **Registri** (schede **Certificati medici
 - Promemoria (`aff_reminders`, spenti di default, preavviso `aff_warn_days`, predefinito 30): al socio per la sua tessera, e alla segreteria un'unica email con affiliazioni e tessere. Una sola volta per tipo e scadenza. Riquadro in Bacheca (le scadenze oltre 30 giorni fa non contano).
 - Privacy: `tessere_enti` nell'esportazione; l'anonimizzazione cancella le tessere.
 - Tabelle: `affiliations`, `body_cards`.
+
+## Assemblee, bilancio preventivo e rimborsi ai volontari (solo Pro, schema Pro v8)
+
+Tre funzioni nuove, tutte del **Pro** (classi dell'edizione Pro, elenco in `tests/pro-files.txt`): senza Pro o con la licenza non in regola le pagine, le azioni, le sezioni dell'area soci e gli shortcode spariscono senza errori e i dati restano. Il gratuito non contiene nulla di questo blocco (nessun riferimento diretto alle classi: tutto passa dai punti di estensione registrati da `ProBlockD`). **Assemblee e deleghe** (`assemblies`) e **rimborsi** (`refunds`) valgono per tutti i piani Pro; il **preventivo** (`budget`) è in `ProBoot::ACCOUNTING`, quindi solo Pro Contabile e Pro Fiscale. Con il preventivo senza le assemblee il collegamento all'assemblea non compare e resta la data di approvazione. Testo per le guide di supporto: `blocco-D-assemblee-preventivo-rimborsi.md` alla radice.
+
+### Assemblee e deleghe (Pro)
+
+- Classi: `AssemblyRules` (regole pure), `Assemblies` (servizio), `Admin\AssembliesPage`, `Admin\BlockDActions`, `Frontend\AssembliesFront`. Tabelle `assemblies`, `assembly_attendees`, `assembly_proxies` (in `ProSchema`). Download del foglio presenze: `asem_assembly_csv` (`AdminBlockDExports`).
+- Stati: bozza → convocata → svolta (oppure annullata). Si convoca solo con l'ordine del giorno; l'avviso parte per email a ogni socio con diritto di intervenire, una sola volta per persona (`Reminders::notify`, tipo `assembly_call`). Se la prima convocazione è fra meno di otto giorni compare un avviso (non un blocco).
+- Chi interviene: stesse regole delle votazioni (`Polls::is_eligible`): socio in regola, non sospeso, non uscito; `MemberType::is_member()` esclude tutori e ospiti.
+- Numero legale: percentuale degli aventi diritto per la prima e la seconda convocazione, scritta assemblea per assemblea. Valori di partenza: ordinaria 50% e 0%, straordinaria 75% e 50%. Il 50% vale «metà più uno»; le altre percentuali si arrotondano per eccesso. Contano i presenti e le deleghe di chi è presente; chi delega ma viene di persona non conta due volte. Alla chiusura («Svolta») si fotografa il numero degli aventi diritto e non si chiude senza presenze e numero legale.
+- Deleghe (art. 24 c. 3 CTS): tra soci in regola, una per socio e per assemblea, al massimo 3 per delegato (5 da 500 soci), niente catene (chi riceve non delega e chi ha delegato non riceve). Le dà il socio dall'area riservata o la segreteria (delega scritta ricevuta).
+- Verbale collegato: «Crea il verbale» genera un verbale (Registri → Verbali, tipo assemblea) già compilato con convocazione, presenti, rappresentati per delega, numero legale e ordine del giorno; ne esiste uno solo per assemblea. Foglio presenze in CSV (`Docs`, `what=assembly`).
+- Area soci: sezione «Assemblee» con le assemblee convocate e il modulo di delega; shortcode `[associazionesemplice_assemblee]`. L'esportazione privacy comprende presenze e deleghe.
+
+### Bilancio preventivo (Pro)
+
+- Classi: `BudgetRules`, `Budget`, `Admin\BudgetPage`, `Admin\BlockDProActions`, `Admin\BlockDExports`. Tabelle `budgets`, `budget_lines`. Pagina in **Contabilità → Preventivo** (`asem-budget`).
+- Un preventivo per anno solare, con voci per categoria (entrate e uscite; niente rettifiche di cassa). Il consuntivo è la somma dei movimenti non annullati dell'anno per categoria (i giroconti non contano). La differenza è «a favore»: per le entrate quanto in più si è incassato, per le uscite quanto resta; stato «nei limiti», «quasi esaurita» (dal 90%), «oltre il preventivo», «non prevista».
+- Si può partire dall'anno prima (dal suo preventivo o dal suo consuntivo, con una variazione in percentuale). Approvazione con data e assemblea di riferimento; approvato non si modifica finché non lo si riapre. Esportazione CSV. Riquadro in Bacheca se una spesa supera il preventivo approvato.
+
+### Rimborsi ai volontari (Pro)
+
+- Classi: `RefundRules`, `Refunds`, `Admin\RefundsPage`, `Frontend\RefundsFront`. Tabella `refunds`. Pagina in **Cassa → Rimborsi** (`asem-refunds`).
+- Richiesta dal volontario (area soci, sezione «Rimborsi spese», shortcode `[associazionesemplice_rimborsi]`) o dalla segreteria. Tre tipi: spesa documentata (scontrino o fattura obbligatori, nella cartella privata degli allegati), autocertificazione (tetto di 10 € al giorno e 150 € al mese per volontario) e chilometrico (solo se nelle impostazioni dei rimborsi c'è la tariffa al chilometro).
+- Stati: da approvare → approvato → pagato (oppure rifiutato con motivo o annullato). Chi approva o paga non può farlo per un rimborso a proprio nome, salvo l'opzione «Chi ha chiesto il rimborso può anche approvarlo e pagarlo». Il volontario riceve un'email a ogni decisione.
+- Il pagamento registra in prima nota (`LedgerService::record_expense`) un'uscita nella categoria «Rimborso spese socio/volontario» dal conto scelto, con `document_ref` `RIMB-n`, e salva il numero del movimento nella richiesta. Il blocco su ogni richiesta impedisce il doppio pagamento.
+- Privacy: l'esportazione dei dati comprende i rimborsi; l'anonimizzazione cancella i giustificativi e i testi, mentre importi e collegamento alla prima nota restano.

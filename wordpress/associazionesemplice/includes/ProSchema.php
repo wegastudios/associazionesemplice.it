@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 final class ProSchema {
 
 	const VERSION_OPTION = 'asem_pro_db_version';
-	const VERSION        = '6';
+	const VERSION        = '8';
 
 	public static function register(): void {
 		add_filter( 'asem_schema_tables', array( __CLASS__, 'tables' ), 10, 3 );
@@ -346,6 +346,105 @@ final class ProSchema {
   PRIMARY KEY  (id),
   KEY person_id (person_id),
   KEY body_season (body,season)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}budgets (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  year smallint(5) unsigned NOT NULL,
+  title varchar(190) NOT NULL DEFAULT '',
+  status varchar(10) NOT NULL DEFAULT 'draft',
+  approved_on date DEFAULT NULL,
+  assembly_id bigint(20) unsigned DEFAULT NULL,
+  notes text,
+  created_by bigint(20) unsigned DEFAULT NULL,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  deleted_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY year (year)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}budget_lines (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  budget_id bigint(20) unsigned NOT NULL,
+  category_id bigint(20) unsigned NOT NULL,
+  type varchar(8) NOT NULL,
+  planned_cents bigint(20) NOT NULL DEFAULT 0,
+  notes varchar(255) NOT NULL DEFAULT '',
+  PRIMARY KEY  (id),
+  UNIQUE KEY budget_category (budget_id,category_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}refunds (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  person_id bigint(20) unsigned NOT NULL,
+  kind varchar(12) NOT NULL DEFAULT 'documented',
+  expense_date date NOT NULL,
+  description varchar(255) NOT NULL DEFAULT '',
+  activity_id bigint(20) unsigned DEFAULT NULL,
+  km int(11) DEFAULT NULL,
+  amount_cents bigint(20) NOT NULL,
+  status varchar(10) NOT NULL DEFAULT 'requested',
+  file_name varchar(190) DEFAULT NULL,
+  file_stored varchar(64) DEFAULT NULL,
+  decided_by bigint(20) unsigned DEFAULT NULL,
+  decided_on date DEFAULT NULL,
+  reject_reason varchar(255) DEFAULT NULL,
+  paid_on date DEFAULT NULL,
+  paid_by bigint(20) unsigned DEFAULT NULL,
+  account_id bigint(20) unsigned DEFAULT NULL,
+  tx_id bigint(20) unsigned DEFAULT NULL,
+  requested_by bigint(20) unsigned DEFAULT NULL,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  KEY person_id (person_id),
+  KEY status (status),
+  KEY expense_date (expense_date)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}assemblies (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  kind varchar(15) NOT NULL DEFAULT 'ordinary',
+  title varchar(190) NOT NULL,
+  first_call_at datetime NOT NULL,
+  second_call_at datetime DEFAULT NULL,
+  place varchar(190) NOT NULL DEFAULT '',
+  agenda text,
+  quorum_first tinyint(3) unsigned NOT NULL DEFAULT 50,
+  quorum_second tinyint(3) unsigned NOT NULL DEFAULT 0,
+  status varchar(10) NOT NULL DEFAULT 'draft',
+  convened_on date DEFAULT NULL,
+  call_held tinyint(1) unsigned NOT NULL DEFAULT 0,
+  eligible_at_close int(11) DEFAULT NULL,
+  minutes_id bigint(20) unsigned DEFAULT NULL,
+  created_by bigint(20) unsigned DEFAULT NULL,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  deleted_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY first_call_at (first_call_at)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}assembly_attendees (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  assembly_id bigint(20) unsigned NOT NULL,
+  person_id bigint(20) unsigned NOT NULL,
+  marked_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY assembly_person (assembly_id,person_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}assembly_proxies (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  assembly_id bigint(20) unsigned NOT NULL,
+  delegator_id bigint(20) unsigned NOT NULL,
+  delegate_id bigint(20) unsigned NOT NULL,
+  created_by bigint(20) unsigned DEFAULT NULL,
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY assembly_delegator (assembly_id,delegator_id),
+  KEY delegate_id (delegate_id)
 ) $c;";
 
 		return $tables;

@@ -295,6 +295,13 @@ $bb_pub = \AssociazioneSemplice\Frontend\Shortcodes::render_view( 'documenti' );
 free_ok( false !== strpos( $bb_pub, 'Statuto pubblico' ) && false === strpos( $bb_pub, 'Modulo soci' ) && false === strpos( $bb_pub, 'Verbale interno' ), 'documenti: lo shortcode pubblico mostra solo i documenti pubblici' );
 wp_set_current_user( $admin->ID );
 
-free_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice PHP dal plugin' . ( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
+// ---------- Blocco D: nel gratuito non c'è nulla di assemblee, preventivo e rimborsi ----------
+free_ok( ! Edition::has( 'assemblies' ) && ! Edition::has( 'budget' ) && ! Edition::has( 'refunds' ), 'senza il Pro non ci sono assemblee, preventivo né rimborsi' );
+free_ok( ! class_exists( 'AssociazioneSemplice\Assemblies', false ) && ! class_exists( 'AssociazioneSemplice\Budget', false ) && ! class_exists( 'AssociazioneSemplice\Refunds', false ), 'senza il Pro le classi di assemblee, preventivo e rimborsi non ci sono' );
+free_ok( ! isset( \AssociazioneSemplice\Frontend\Shortcodes::views()['assemblee'] ) && ! isset( \AssociazioneSemplice\Frontend\Shortcodes::views()['rimborsi'] ), 'senza il Pro gli shortcode «assemblee» e «rimborsi» non ci sono' );
+free_ok( ! in_array( 'assemblee', \AssociazioneSemplice\Areas::groups()['soci'][1], true ) && ! isset( \AssociazioneSemplice\Admin\Admin::groups()['asem-book'][1]['asem-assemblies'] ), 'senza il Pro né l\'area soci né il menu mostrano le assemblee' );
+free_ok( ! has_action( 'admin_post_asem_assembly_save' ) && ! has_action( 'admin_post_asem_front_proxy' ), 'senza il Pro le azioni delle assemblee non sono registrate' );
+
+free_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Edizione gratuita: tutti i controlli sono passati.' );

@@ -6817,6 +6817,191 @@ asem_ok( '' === \AssociazioneSemplice\Frontend\CertificatesFront::section( $peop
 remove_filter( 'pre_wp_mail', $bc_hook, 10 );
 wp_set_current_user( 1 );
 
-asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' . ( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
+// ---------- Blocco D: assemblee e deleghe ----------
+$as_throws = function ( callable $fn ): bool {
+	try {
+		$fn();
+	} catch ( \InvalidArgumentException $e ) {
+		return true;
+	}
+	return false;
+};
+$as_local = function ( string $mod ): string {
+	return gmdate( 'Y-m-d\TH:i', strtotime( Db::now() . ' ' . $mod ) );
+};
+$as_label = Settings::membership_year()->label();
+asem_ok( \AssociazioneSemplice\Edition::has( 'assemblies' ), 'blocco D: le assemblee ci sono con il Pro' );
+$as_mail = 0;
+$as_hook = function () use ( &$as_mail ) {
+	$as_mail++;
+	return true;
+};
+add_filter( 'pre_wp_mail', $as_hook, 10 );
+$as_ids = array();
+foreach ( array( 'Anna' => 'Alfa', 'Berto' => 'Beta', 'Carla' => 'Gamma', 'Dino' => 'Delta' ) as $as_first => $as_last ) {
+	$as_p = $people->create( array( 'type' => 'ordinary', 'first_name' => $as_first, 'last_name' => 'Assemblea ' . $as_last, 'email' => strtolower( $as_first ) . '.assemblea@example.com' ) );
+	$people->set_membership( $as_p, $as_label, true );
+	$as_ids[] = $as_p;
+}
+list( $as_a, $as_b, $as_c, $as_d ) = $as_ids;
+$as_g = $people->create( array( 'type' => 'guardian', 'first_name' => 'Gigi', 'last_name' => 'Assemblea Tutore', 'email' => 'gigi.assemblea@example.com' ) );
+$as_asm = \AssociazioneSemplice\Assemblies::save( 0, array( 'kind' => 'ordinary', 'title' => 'Assemblea di prova', 'first_call_at' => $as_local( '+10 days' ), 'second_call_at' => $as_local( '+11 days' ), 'place' => 'Sede', 'agenda' => "Bilancio\nVarie", 'quorum_first' => '0', 'quorum_second' => '0' ), 1 );
+asem_ok( \AssociazioneSemplice\AssemblyRules::DRAFT === \AssociazioneSemplice\Assemblies::get( $as_asm )['status'], 'assemblee: creata in bozza' );
+asem_ok( $as_throws( function () use ( $as_local ) { \AssociazioneSemplice\Assemblies::save( 0, array( 'title' => 'Storta', 'first_call_at' => $as_local( '+3 days' ), 'second_call_at' => $as_local( '+2 days' ), 'agenda' => 'x' ), 1 ); } ), 'assemblee: la seconda convocazione viene dopo la prima' );
+$as_noagenda = \AssociazioneSemplice\Assemblies::save( 0, array( 'title' => 'Senza odg', 'first_call_at' => $as_local( '+10 days' ) ), 1 );
+asem_ok( $as_throws( function () use ( $as_noagenda ) { \AssociazioneSemplice\Assemblies::convene( $as_noagenda ); } ), 'assemblee: senza ordine del giorno non si convoca' );
+\AssociazioneSemplice\Assemblies::delete( $as_noagenda );
+$as_conv = \AssociazioneSemplice\Assemblies::convene( $as_asm );
+asem_ok( \AssociazioneSemplice\AssemblyRules::CONVENED === \AssociazioneSemplice\Assemblies::get( $as_asm )['status'] && $as_conv['sent'] >= 4 && $as_mail >= 4, 'assemblee: convocata, avviso a tutti i soci con diritto' );
+asem_ok( 0 === \AssociazioneSemplice\Assemblies::convene( $as_asm )['sent'], 'assemblee: l\'avviso parte una sola volta per socio' );
+asem_ok( ! \AssociazioneSemplice\Assemblies::is_eligible( $people->get( $as_g ) ) && \AssociazioneSemplice\Assemblies::is_eligible( $people->get( $as_a ) ), 'assemblee: il tutore non è socio e non interviene' );
+\AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_a, $as_b );
+asem_ok( $as_throws( function () use ( $as_asm, $as_a, $as_c ) { \AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_a, $as_c ); } ), 'deleghe: un socio delega una volta sola' );
+asem_ok( $as_throws( function () use ( $as_asm, $as_c, $as_a ) { \AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_c, $as_a ); } ), 'deleghe: chi ha delegato non riceve deleghe' );
+asem_ok( $as_throws( function () use ( $as_asm, $as_b, $as_c ) { \AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_b, $as_c ); } ), 'deleghe: chi ha ricevuto una delega non delega' );
+asem_ok( $as_throws( function () use ( $as_asm, $as_c, $as_g ) { \AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_c, $as_g ); } ), 'deleghe: non si delega a chi non è socio (tutore)' );
+asem_ok( $as_throws( function () use ( $as_asm, $as_g, $as_c ) { \AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_g, $as_c ); } ), 'deleghe: il tutore non delega' );
+asem_ok( $as_throws( function () use ( $as_asm, $as_c ) { \AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_c, $as_c ); } ), 'deleghe: non si delega sé stessi' );
+\AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_c, $as_b );
+\AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_d, $as_b );
+$as_e = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Elia', 'last_name' => 'Assemblea Epsilon', 'email' => 'elia.assemblea@example.com' ) );
+$people->set_membership( $as_e, $as_label, true );
+asem_ok( $as_throws( function () use ( $as_asm, $as_e, $as_b ) { \AssociazioneSemplice\Assemblies::add_proxy( $as_asm, $as_e, $as_b ); } ), 'deleghe: al massimo tre per socio (meno di 500 soci)' );
+$as_n = \AssociazioneSemplice\Assemblies::set_attendance( $as_asm, array( $as_b, $as_g, 999999 ) );
+$as_t = \AssociazioneSemplice\Assemblies::tally( $as_asm );
+asem_ok( 1 === $as_n && 1 === $as_t['present'] && 3 === $as_t['proxies'], 'presenze: tutore e persone inesistenti non si registrano; le deleghe contano se il delegato c\'è' );
+\AssociazioneSemplice\Assemblies::set_attendance( $as_asm, array( $as_b, $as_a ) );
+$as_t = \AssociazioneSemplice\Assemblies::tally( $as_asm );
+asem_ok( 2 === $as_t['present'] && 2 === $as_t['proxies'], 'presenze: chi delega ma viene di persona non conta due volte' );
+$people->suspend( $as_d );
+asem_ok( 1 === \AssociazioneSemplice\Assemblies::tally( $as_asm )['proxies'], 'deleghe: la delega di chi non è più in regola non conta' );
+$wpdb->update( Db::t( 'people' ), array( 'suspended_at' => null ), array( 'id' => $as_d ) );
+asem_ok( 2 === \AssociazioneSemplice\Assemblies::tally( $as_asm )['proxies'], 'deleghe: tornato in regola, la delega conta di nuovo' );
+$as_draft = \AssociazioneSemplice\Assemblies::save( 0, array( 'title' => 'Bozza per deleghe', 'first_call_at' => $as_local( '+30 days' ), 'agenda' => 'Varie' ), 1 );
+asem_ok( $as_throws( function () use ( $as_draft, $as_a, $as_b ) { \AssociazioneSemplice\Assemblies::add_proxy( $as_draft, $as_a, $as_b, false ); } ), 'deleghe: dall\'area soci non si delega su un\'assemblea in bozza' );
+\AssociazioneSemplice\Assemblies::add_proxy( $as_draft, $as_a, $as_b );
+asem_ok( null !== \AssociazioneSemplice\Assemblies::proxy_of( $as_draft, $as_a ), 'deleghe: la segreteria può registrare una delega scritta anche in bozza' );
+$as_other = \AssociazioneSemplice\Assemblies::save( 0, array( 'title' => 'Assemblea straordinaria prova', 'kind' => 'extraordinary', 'first_call_at' => $as_local( '+20 days' ), 'agenda' => 'Modifica dello statuto' ), 1 );
+asem_ok( 75 === (int) \AssociazioneSemplice\Assemblies::get( $as_other )['quorum_first'], 'assemblee: la straordinaria parte dal 75%' );
+\AssociazioneSemplice\Assemblies::convene( $as_other, false );
+asem_ok( $as_throws( function () use ( $as_other ) { \AssociazioneSemplice\Assemblies::hold( $as_other, 1 ); } ), 'assemblee: non si chiude senza presenze e numero legale' );
+$as_held = \AssociazioneSemplice\Assemblies::hold( $as_asm, 1 );
+asem_ok( \AssociazioneSemplice\AssemblyRules::HELD === \AssociazioneSemplice\Assemblies::get( $as_asm )['status'] && $as_held['quorum']['reached'], 'assemblee: chiusa come svolta' );
+asem_ok( $as_throws( function () use ( $as_asm, $as_c ) { \AssociazioneSemplice\Assemblies::set_attendance( $as_asm, array( $as_c ) ); } ) && $as_throws( function () use ( $as_asm ) { \AssociazioneSemplice\Assemblies::delete( $as_asm ); } ), 'assemblee: dopo lo svolgimento presenze e registro non cambiano' );
+$as_min = \AssociazioneSemplice\Assemblies::create_minutes( $as_asm, 1 );
+$as_m   = \AssociazioneSemplice\Minutes::get( $as_min );
+asem_ok( $as_m && 'assembly' === $as_m['kind'] && (int) \AssociazioneSemplice\Assemblies::get( $as_asm )['minutes_id'] === $as_min && false !== strpos( $as_m['body'], 'Bilancio' ) && false !== strpos( $as_m['attendees'], 'Beta' ), 'assemblee: verbale collegato con presenti e ordine del giorno' );
+asem_ok( $as_throws( function () use ( $as_asm ) { \AssociazioneSemplice\Assemblies::create_minutes( $as_asm ); } ), 'assemblee: un solo verbale per assemblea' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Assemblies::sheet_csv( $as_asm ), 'Presente' ) && false !== strpos( \AssociazioneSemplice\Assemblies::sheet_csv( $as_asm ), 'Delegato' ), 'assemblee: foglio presenze in CSV' );
+asem_render( array( Admin\AssembliesPage::class, 'render' ), 'Assemblea di prova' );
+asem_render( array( Admin\AssembliesPage::class, 'render' ), 'asem_assembly_hold', array( 'view' => $as_other ) );
+$as_front = \AssociazioneSemplice\Frontend\AssembliesFront::section( $people->get( $as_a ) );
+asem_ok( false !== strpos( $as_front, 'Assemblea straordinaria prova' ) && false !== strpos( $as_front, 'asem_front_proxy' ), 'area soci: assemblee convocate con il modulo di delega' );
+asem_ok( '' === \AssociazioneSemplice\Frontend\AssembliesFront::section( $people->get( $as_g ) ), 'area soci: il tutore non vede le assemblee' );
+asem_ok( isset( \AssociazioneSemplice\Frontend\Shortcodes::views()['assemblee'] ), 'assemblee: shortcode disponibile' );
+remove_filter( 'pre_wp_mail', $as_hook, 10 );
+wp_set_current_user( 1 );
+
+// ---------- Blocco D: preventivo e rimborsi ----------
+wp_set_current_user( 1 );
+asem_ok( \AssociazioneSemplice\Edition::has( 'budget' ) && \AssociazioneSemplice\Edition::has( 'refunds' ), 'blocco D: preventivo e rimborsi ci sono con il Pro' );
+$bd_mail = 0;
+$bd_hook = function () use ( &$bd_mail ) {
+	$bd_mail++;
+	return true;
+};
+add_filter( 'pre_wp_mail', $bd_hook, 10 );
+$bd_year = (int) substr( $today, 0, 4 );
+$bd_inc  = (int) $cat['donation'];
+$bd_gen  = (int) $cat['general_cost'];
+$bd_before_exp = ( \AssociazioneSemplice\Budget::actuals( $bd_year )[ $bd_gen ] ?? 0 );
+$bd_b = \AssociazioneSemplice\Budget::save( 0, array( 'year' => $bd_year + 5, 'title' => '' ), 1 );
+asem_ok( 'Bilancio preventivo ' . ( $bd_year + 5 ) === \AssociazioneSemplice\Budget::get( $bd_b )['title'], 'preventivo: titolo di default' );
+try {
+	\AssociazioneSemplice\Budget::save( 0, array( 'year' => $bd_year + 5 ), 1 );
+	asem_ok( false, 'preventivo: un solo preventivo per anno' );
+} catch ( \InvalidArgumentException $e ) {
+	asem_ok( true, 'preventivo: un solo preventivo per anno' );
+}
+\AssociazioneSemplice\Budget::delete( $bd_b );
+$bd_b = \AssociazioneSemplice\Budget::save( 0, array( 'year' => $bd_year, 'title' => 'Preventivo prova' ), 1 );
+if ( ! $bd_b ) {
+	$bd_b = (int) \AssociazioneSemplice\Budget::by_year( $bd_year )['id'];
+}
+$bd_n = \AssociazioneSemplice\Budget::set_lines( $bd_b, array( $bd_gen => (string) ( ( $bd_before_exp + 1000 ) / 100 + 1 ), $bd_inc => '5.000,00', 999999 => '10' ) );
+asem_ok( 2 === $bd_n, 'preventivo: le voci si salvano, le categorie inesistenti no' );
+$bd_c = \AssociazioneSemplice\Budget::compare( $bd_b );
+$bd_row = array_values( array_filter( $bd_c['rows'], function ( $r ) use ( $bd_gen ) { return $r['category_id'] === $bd_gen; } ) )[0];
+asem_ok( $bd_row['actual'] === $bd_before_exp && $bd_row['planned'] > $bd_before_exp, 'preventivo: il consuntivo viene dalla prima nota' );
+$bd_acc = (int) $cash['id'];
+$ledger->record_expense( array( 'date' => $today, 'account_id' => $bd_acc, 'method' => 'cash', 'category_id' => $bd_gen, 'amount_cents' => 50000, 'description' => 'Spesa oltre preventivo' ) );
+$bd_row = array_values( array_filter( \AssociazioneSemplice\Budget::compare( $bd_b )['rows'], function ( $r ) use ( $bd_gen ) { return $r['category_id'] === $bd_gen; } ) )[0];
+asem_ok( \AssociazioneSemplice\BudgetRules::OVER === $bd_row['status'] && $bd_row['actual'] === $bd_before_exp + 50000, 'preventivo: una spesa in più supera il preventivo' );
+$bd_csv = \AssociazioneSemplice\Budget::csv( $bd_b );
+asem_ok( false !== strpos( $bd_csv, 'oltre il preventivo' ) && false !== strpos( $bd_csv, 'Risultato' ), 'preventivo: esportazione CSV' );
+try {
+	\AssociazioneSemplice\Budget::approve( $bd_b, '2026-01-10', 0 );
+	asem_ok( true, 'preventivo: approvato' );
+	\AssociazioneSemplice\Budget::set_lines( $bd_b, array( $bd_gen => '1' ) );
+	asem_ok( false, 'preventivo: approvato non si modifica' );
+} catch ( \InvalidArgumentException $e ) {
+	asem_ok( true, 'preventivo: approvato non si modifica' );
+}
+\AssociazioneSemplice\Budget::reopen( $bd_b );
+$bd_html = asem_render( array( Admin\BudgetPage::class, 'render' ), 'Bilancio preventivo' );
+$bd_html = asem_render( array( Admin\BudgetPage::class, 'render' ), 'Preventivo e consuntivo', array( 'view' => $bd_b ) );
+asem_ok( false !== strpos( $bd_html, 'asem_budget_lines' ) && false !== strpos( $bd_html, 'oltre il preventivo' ), 'preventivo: pagina con voci e confronto' );
+
+// rimborsi
+$bd_vol = $people->create( array( 'type' => 'volunteer', 'first_name' => 'Rita', 'last_name' => 'Rimborsi', 'email' => 'rita.rimborsi@example.com' ) );
+$bd_gst = $people->create( array( 'type' => 'guardian', 'first_name' => 'Tino', 'last_name' => 'Tutore Rimborsi', 'email' => 'tino.rimborsi@example.com' ) );
+$bd_throws = function ( callable $fn ): bool {
+	try {
+		$fn();
+	} catch ( \InvalidArgumentException $e ) {
+		return true;
+	}
+	return false;
+};
+$R = '\AssociazioneSemplice\Refunds';
+asem_ok( $bd_throws( function () use ( $R, $bd_gst, $today ) { $R::request( $bd_gst, array( 'kind' => 'selfcert', 'expense_date' => $today, 'description' => 'x', 'amount' => '5' ) ); } ), 'rimborsi: il tutore non è socio e non chiede rimborsi' );
+asem_ok( $bd_throws( function () use ( $R, $bd_vol, $today ) { $R::request( $bd_vol, array( 'kind' => 'documented', 'expense_date' => $today, 'description' => 'Senza scontrino', 'amount' => '5' ) ); } ), 'rimborsi: la spesa documentata vuole il giustificativo' );
+asem_ok( $bd_throws( function () use ( $R, $bd_vol ) { $R::request( $bd_vol, array( 'kind' => 'selfcert', 'expense_date' => '2999-01-01', 'description' => 'Futura', 'amount' => '5' ) ); } ), 'rimborsi: la data della spesa non può essere futura' );
+asem_ok( $bd_throws( function () use ( $R, $bd_vol, $today ) { $R::request( $bd_vol, array( 'kind' => 'km', 'expense_date' => $today, 'description' => 'Km', 'km' => 10 ) ); } ), 'rimborsi: senza tariffa non c\'è il rimborso chilometrico' );
+$bd_r1 = $R::request( $bd_vol, array( 'kind' => 'selfcert', 'expense_date' => $today, 'description' => 'Carta e penne', 'amount' => '6,00' ), null, 1 );
+asem_ok( $bd_throws( function () use ( $R, $bd_vol, $today ) { $R::request( $bd_vol, array( 'kind' => 'selfcert', 'expense_date' => $today, 'description' => 'Altre', 'amount' => '5,00' ) ); } ), 'rimborsi: l\'autocertificazione ha il tetto di 10 euro al giorno' );
+asem_ok( $bd_throws( function () use ( $R, $bd_r1, $cash ) { $R::pay( $bd_r1, (int) $cash['id'], '' ); } ), 'rimborsi: non si paga senza approvare' );
+$R::approve( $bd_r1, 1 );
+asem_ok( $bd_mail >= 1, 'rimborsi: il volontario riceve l\'avviso di approvazione' );
+$bd_tx_before = count( $ledger->rows( $today, $today ) );
+$bd_tx = $R::pay( $bd_r1, (int) $cash['id'], $today, 1 );
+$bd_rr = $R::get( $bd_r1 );
+$bd_tx_row = array_values( array_filter( $ledger->rows( $today, $today ), function ( $r ) use ( $bd_tx ) { return (int) $r['id'] === $bd_tx; } ) );
+asem_ok( 'paid' === $bd_rr['status'] && (int) $bd_rr['tx_id'] === $bd_tx && $bd_tx_row && 600 === (int) $bd_tx_row[0]['amount_cents'] && 'expense' === $bd_tx_row[0]['type'] && (int) $bd_tx_row[0]['person_id'] === $bd_vol && count( $ledger->rows( $today, $today ) ) === $bd_tx_before + 1, 'rimborsi: il pagamento registra l\'uscita in prima nota e la collega' );
+asem_ok( $bd_throws( function () use ( $R, $bd_r1, $cash, $today ) { $R::pay( $bd_r1, (int) $cash['id'], $today ); } ) && count( $ledger->rows( $today, $today ) ) === $bd_tx_before + 1, 'rimborsi: un rimborso pagato non si paga due volte' );
+Settings::update( array( 'refund_km_rate_cents' => 45 ) );
+$bd_r2 = $R::request( $bd_vol, array( 'kind' => 'km', 'expense_date' => $today, 'description' => 'Trasferta evento', 'km' => 40 ), null, 1 );
+asem_ok( 1800 === (int) $R::get( $bd_r2 )['amount_cents'], 'rimborsi: il chilometrico si calcola dalla tariffa' );
+$R::reject( $bd_r2, 'Non deliberato', 1 );
+asem_ok( 'rejected' === $R::get( $bd_r2 )['status'] && $bd_throws( function () use ( $R, $bd_r2 ) { $R::approve( $bd_r2 ); } ), 'rimborsi: un rifiuto è definitivo' );
+$bd_r3 = $R::request( $bd_vol, array( 'kind' => 'selfcert', 'expense_date' => gmdate( 'Y-m-d', strtotime( $today . ' -1 day' ) ), 'description' => 'Da ritirare', 'amount' => '2' ), null, 1 );
+$R::cancel( $bd_r3 );
+asem_ok( 'cancelled' === $R::get( $bd_r3 )['status'], 'rimborsi: la richiesta si annulla prima della decisione' );
+$bd_feb = ($bd_year - 1) . '-02-28';
+$bd_r4  = $R::request( $bd_vol, array( 'kind' => 'selfcert', 'expense_date' => $bd_feb, 'description' => 'Fine febbraio', 'amount' => '5,00' ), null, 1 );
+asem_ok( array( 500, 500 ) === $R::selfcert_totals( $bd_vol, $bd_feb ), 'rimborsi: il tetto mensile conta anche il 28 febbraio' );
+asem_ok( 4 === count( $R::privacy_export( array(), $bd_vol )['rimborsi_spese'] ), 'rimborsi: nell\'esportazione privacy' );
+$bd_html = asem_render( array( Admin\RefundsPage::class, 'render' ), 'Rimborsi ai volontari' );
+$bd_html = asem_render( array( Admin\RefundsPage::class, 'render' ), 'Rimborso n.', array( 'view' => $bd_r1 ) );
+asem_ok( false !== strpos( $bd_html, 'movimento n.' ), 'rimborsi: scheda con il collegamento alla prima nota' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\RefundsFront::section( $people->get( $bd_vol ) ), 'asem_front_refund' ) && '' === \AssociazioneSemplice\Frontend\RefundsFront::section( $people->get( $bd_gst ) ), 'area soci: rimborsi per il volontario, niente per il tutore' );
+asem_ok( false !== strpos( $R::csv(), 'Carta e penne' ), 'rimborsi: esportazione CSV' );
+$R::anonymize( $bd_vol );
+asem_ok( 'Dato cancellato' === $R::get( $bd_r1 )['description'], 'rimborsi: l\'anonimizzazione cancella i testi' );
+Settings::update( array( 'refund_km_rate_cents' => 0 ) );
+remove_filter( 'pre_wp_mail', $bd_hook, 10 );
+wp_set_current_user( 1 );
+
+asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Tutti i controlli sono passati.' );

@@ -77,6 +77,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Tabella dei fondi da rimborsare per anno | — | ✓ | ✓ |
 | Ricevute in PDF e attestazione annuale | — | ✓ | ✓ |
 | Report di gestione (conti e liquidità, anno sociale) | — | ✓ | ✓ |
+| Bilancio preventivo per categoria con confronto con il consuntivo della prima nota | — | ✓ | ✓ |
+| Rimborsi ai volontari: richiesta, approvazione, pagamento e registrazione in prima nota | — | ✓ | ✓ |
 
 ## Parte fiscale
 
@@ -92,6 +94,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 |---|---|---|---|
 | Verbali di assemblea e consiglio con PDF | ✓ | ✓ | ✓ |
 | Votazioni e sondaggi dei soci, anche a voto segreto, con verbale dei risultati in PDF e CSV | ✓ | ✓ | ✓ |
+| Assemblee dei soci: convocazione per email, presenze, deleghe tra soci, numero legale e verbale già compilato | — | ✓ | ✓ |
 | Inventario dei beni con prestiti a soci e volontari, rientri, storico e promemoria | ✓ | ✓ | ✓ |
 | Archivio documenti (statuto, regolamenti, moduli) per segreteria, soci o pubblico | ✓ | ✓ | ✓ |
 | Informativa privacy generata e registro dei consensi | ✓ | ✓ | ✓ |
