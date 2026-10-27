@@ -7011,7 +7011,7 @@ $bf_c = \AssociazioneSemplice\Conventions::save( 0, array( 'name' => 'Teatro Ape
 asem_ok( 1 === count( \AssociazioneSemplice\Conventions::for_person( $people->get( $bf_m ) ) ) && ! \AssociazioneSemplice\Conventions::for_person( $people->get( $bf_x ) ), 'convenzioni: le vede solo chi ha la tessera valida' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Shortcodes::render_view( 'convenzioni' ), 'Teatro Aperto' ) && false === strpos( \AssociazioneSemplice\Frontend\Shortcodes::render_view( 'convenzioni' ), 'TEATRO-26' ), 'convenzioni: elenco pubblico senza codice' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\BlockFViews::section_members( $people->get( $bf_m ) ), 'TEATRO-26' ), 'convenzioni: area soci con il codice' );
-asem_ok( isset( \AssociazioneSemplice\Admin\Admin::groups()['asem-book'][1]['asem-conventions'] ), 'convenzioni: voce di menu presente anche con il Pro' );
+asem_ok( 'asem' !== \AssociazioneSemplice\Admin\Admin::menu_item_of( 'asem-conventions' ), 'convenzioni: scheda di menu presente anche con il Pro' );
 \AssociazioneSemplice\Conventions::delete( $bf_c );
 
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
