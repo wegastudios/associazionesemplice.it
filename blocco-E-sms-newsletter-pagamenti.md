@@ -11,7 +11,7 @@ Prima di scrivere a qualcuno per SMS o di mandarlo in newsletter serve il suo co
 1. **Strumenti → Integrazioni → SMS ai soci**: scegli Brevo o Twilio, inserisci le chiavi e il mittente (fino a 11 lettere o cifre), salva. «Verifica il collegamento» mostra anche i crediti residui.
 2. **Rubrica soci → Comunicazioni**: sotto «Canali» spunta Email, SMS o tutti e due. L'anteprima dice quanti riceveranno l'SMS e quanti no perché senza consenso o senza numero valido. Il testo può avere al massimo 480 caratteri; messaggi lunghi o con emoji usano più SMS.
 3. Nella scheda della comunicazione vedi chi ha ricevuto l'SMS. Se un invio non riesce il sito riprova da solo (dopo 15 minuti e poi dopo 2 ore); per gli errori definitivi (numero non valido) c'è il pulsante «Riprova».
-4. I promemoria automatici possono partire anche per SMS: si accende in Integrazioni («Manda anche per SMS i promemoria»). È spento di partenza.
+4. Gli avvisi automatici di servizio (promemoria di scadenza, avvisi sulle attività, lista d'attesa) possono partire anche per SMS: si accende in Integrazioni («Manda anche per SMS gli avvisi automatici»). È spento di partenza.
 
 Il costo degli SMS è quello del fornitore scelto. I numeri nel registro sono sempre in parte nascosti.
 
@@ -30,7 +30,7 @@ In **Impostazioni → Pagamenti online** scegli Satispay (da solo o con gli altr
 
 ## Klarna
 
-Sempre in Pagamenti online, con Stripe attivo: spunta «Offri anche Klarna». Va attivato anche nel tuo account Stripe (Metodi di pagamento). Si propone solo per pagamenti in euro da 1 € a 10.000 € e a chi ha un'email; altrimenti resta la sola carta. Nel webhook di Stripe aggiungi l'evento `checkout.session.async_payment_failed`.
+Sempre in Pagamenti online, con Stripe attivo: spunta «Offri anche Klarna». Va attivato anche nel tuo account Stripe (Metodi di pagamento). Con Klarna acceso il sito elenca a mano i metodi (carta e Klarna): gli altri metodi attivati nel pannello di Stripe, come Link, non compaiono. Si propone solo per pagamenti in euro da 35 € a 10.000 € e a chi ha un'email; altrimenti resta la sola carta. Nel webhook di Stripe aggiungi l'evento `checkout.session.async_payment_failed`.
 
 ## Domande frequenti
 
