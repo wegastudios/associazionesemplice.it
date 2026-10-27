@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.28
+- Il registro azioni si pulisce da solo: restano gli ultimi 18 mesi (si cambia da Limiti e soglie).
+- Nel registro azioni vedi quanto spazio occupa e puoi liberarlo subito con un pulsante.
+
 ## 1.2.27
 - Nuove votazioni e sondaggi, anche a scrutinio segreto, per tutti i soci o per chi è iscritto a un'attività.
 - Nuovo inventario dei beni con prestiti ai soci, scadenze e promemoria automatici.
