@@ -7004,10 +7004,13 @@ wp_set_current_user( 1 );
 
 // Quota associativa a rate: la tessera arriva al saldo
 Settings::update( array( 'membership_fee_cents' => 1000 ) );
+$qr_pay = function ( int $pid, int $eur ) use ( $ledger, $cash, $cat, $today ) {
+	$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $pid, 'lines' => array( array( 'category_id' => $cat['membership'], 'amount_cents' => $eur * 100 ) ) ) );
+};
 $qr_p   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Rita', 'last_name' => 'Arate', 'email' => 'rita.arate@example.com' ) );
 $qr_row = $people->get( $qr_p );
 $qr_yr  = $people->membership_plan( $qr_p, current_time( 'Y-m-d' ) )['year'];
-wp_set_current_user( $u_tre );
+wp_set_current_user( 1 );
 $front::do_collect( array( 'person_id' => $qr_p, 'account_id' => (int) $cash['id'], 'lines' => array( array( 'what' => 'm', 'amount' => '4' ) ) ) );
 asem_ok( ! $people->has_membership( $qr_p, $qr_yr ) && 600 === $people->membership_missing( $qr_row, $qr_yr ) && 400 === $people->membership_paid( $qr_p, $qr_yr ), 'quota a rate: dopo l\'acconto mancano 6,00 e la tessera non c\'è ancora' );
 $front::do_collect( array( 'person_id' => $qr_p, 'account_id' => (int) $cash['id'], 'lines' => array( array( 'what' => 'm', 'amount' => '6' ) ) ) );
