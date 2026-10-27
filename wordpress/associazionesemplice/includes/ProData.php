@@ -202,6 +202,7 @@ final class ProData {
 	public static function jobs( array $jobs ): array {
 		return $jobs + array(
 			'asem_release_resources'      => array( 'hourly', 1000, 'Resources', 'release_unpaid_job', 'resources' ),
+			'asem_resource_reminders'     => array( 'hourly', 1500, 'Resources', 'reminders_job', 'resources' ),
 			'asem_broadcast_batch'        => array( '', 0, 'Broadcasts', 'process_all', 'broadcasts' ),
 			'asem_check_pending_payments' => array( 'hourly', 300, 'PaymentService', 'check_pending_job', 'payments' ),
 		);

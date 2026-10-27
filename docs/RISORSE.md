@@ -144,7 +144,9 @@ Le risorse si possono pagare anche **in crediti** (token prepagati comprati dal 
 
 **Fase 2c (fatta)**: pagamento in crediti (vedi [CREDITI.md](CREDITI.md)).
 
-**Fase 2d (da fare)**: promemoria prima della prenotazione, categoria contabile per risorsa.
+**Fase 2d (fatta)**:
+- **Promemoria** (`resources.remind_hours`: nessuno, 2, 12, 24 o 48 ore prima): un'email al socio con data, ora, ospiti e quanto resta da pagare, mandata dal lavoro orario con il registro dei promemoria già usato per tessere ed eventi (una sola volta per prenotazione; ai minori va al tutore). Non parte per chi prenota dentro la finestra, per le prenotazioni provvisorie in attesa del pagamento online e per quelle annullate.
+- **Voce di prima nota** (`resources.category_id`): gli incassi della risorsa (in segreteria e online) vanno sulla voce scelta tra quelle di entrata (non la quota associativa), altrimenti su «Altra entrata». Nei report e nel rendiconto le risorse si vedono separate. I crediti spesi non hanno un incasso: l'entrata è la vendita dei crediti.
 
 **Fase 3**: ingresso con QR, carnet di ore, report di occupazione, assegnazioni richieste dal socio con approvazione.
 
