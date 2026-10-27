@@ -58,6 +58,7 @@ foreach ( $lines as $rel ) {
 	free_ok( ! file_exists( ASEM_DIR . 'includes/' . $rel ), "assente nell'edizione gratuita: $rel" );
 }
 free_ok( ! Edition::has( 'vat' ) && ! Edition::has( 'levels' ) && ! Edition::pro_present(), 'senza estensioni nessuna funzione aggiunta è presente' );
+free_ok( ! Edition::has( 'medical' ) && ! Edition::has( 'affiliations' ) && ! class_exists( 'AssociazioneSempliceCertificates' ), 'senza il Pro non ci sono certificati medici né affiliazioni agli enti' );
 free_ok( Edition::allows( 'export' ) && Edition::allows( 'member_area' ), 'senza licenza le funzioni presenti sono consentite' );
 
 // ---------- IVA: anche con la partita IVA accesa non compare nulla di fiscale ----------

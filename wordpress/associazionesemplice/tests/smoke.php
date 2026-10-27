@@ -6597,6 +6597,95 @@ Settings::update( array( 'payment_provider' => 'none', 'apply_pay_online' => 0, 
 remove_filter( 'pre_wp_mail', $ap_hook, 10 );
 wp_set_current_user( 1 );
 
+// ---------- Blocco C: certificato medico e affiliazioni agli enti ----------
+wp_set_current_user( 1 );
+$CE = '\AssociazioneSemplice\Certificates';
+$AF = '\AssociazioneSemplice\Affiliations';
+asem_ok( \AssociazioneSemplice\Edition::has( 'medical' ) && \AssociazioneSemplice\Edition::has( 'affiliations' ), 'blocco C: le funzioni ci sono con il Pro' );
+$bc_mail = 0;
+$bc_hook = function () use ( &$bc_mail ) {
+	$bc_mail++;
+	return true;
+};
+add_filter( 'pre_wp_mail', $bc_hook, 10 );
+$bc_a   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Cecilia', 'last_name' => 'Certa', 'email' => 'cecilia.certa@example.com', 'tax_code' => 'RSSMRA85T50A562W', 'birth_date' => '1985-12-10' ) );
+$bc_b   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Bruno', 'last_name' => 'Bianchi', 'email' => 'bruno.bianchi@example.com' ) );
+$bc_g   = $people->create( array( 'type' => 'guardian', 'first_name' => 'Gino', 'last_name' => 'Tutore', 'email' => 'gino.tutore@example.com' ) );
+$bc_act = $acts->create( array( 'name' => 'Corsa certificata', 'social_year' => $sy->label(), 'instructor_person_id' => $vol, 'monthly_fee_cents' => 1000 ) );
+$acts->enroll( $bc_act, $bc_a, $month );
+$acts->enroll( $bc_act, $bc_b, $month );
+asem_ok( ! $CE::is_required( $bc_act ) && array() === $CE::rows(), 'certificati: senza attività che lo richiedono l\'elenco è vuoto' );
+$CE::set_required( $bc_act, true );
+asem_ok( $CE::is_required( $bc_act ) && 2 === count( $CE::rows() ) && 2 === count( $CE::rows( 'none' ) ), 'certificati: gli iscritti all\'attività risultano senza certificato' );
+asem_ok( null !== asem_throws( function () use ( $CE, $bc_g ) { $CE::add( $bc_g, array( 'kind' => 'other', 'issued_on' => '2026-01-01', 'expires_on' => '2027-01-01' ) ); } ), 'certificati: il tutore non è socio e non ha certificati' );
+asem_ok( null !== asem_throws( function () use ( $CE, $bc_a ) { $CE::add( $bc_a, array( 'kind' => 'agonistic', 'issued_on' => '2026-05-01', 'expires_on' => '2026-04-01' ) ); } ), 'certificati: la scadenza non precede il rilascio' );
+$bc_soon = gmdate( 'Y-m-d', strtotime( $today . ' +10 days' ) );
+$bc_c1   = $CE::add( $bc_a, array( 'kind' => 'agonistic', 'issued_on' => gmdate( 'Y-m-d', strtotime( $today . ' -300 days' ) ), 'expires_on' => $bc_soon, 'doctor' => 'Dott. Verdi' ) );
+asem_ok( 'expiring' === $CE::status_of( $bc_a )['status'] && 'none' === $CE::status_of( $bc_b )['status'], 'certificati: in scadenza e mancante' );
+$bc_c2 = $CE::add( $bc_b, array( 'kind' => 'non_agonistic', 'issued_on' => gmdate( 'Y-m-d', strtotime( $today . ' -400 days' ) ), 'expires_on' => gmdate( 'Y-m-d', strtotime( $today . ' -5 days' ) ) ) );
+asem_ok( 'expired' === $CE::status_of( $bc_b )['status'] && 1 === count( $CE::rows( 'expired' ) ) && 1 === count( $CE::rows( 'expiring' ) ), 'certificati: scaduto e filtri' );
+asem_ok( 3 === count( $CE::csv_rows() ) && 'Cognome' === $CE::csv_rows()[0][0], 'certificati: esportazione CSV con intestazione' );
+asem_ok( 1 === count( $CE::privacy_export( array(), $bc_a )['certificati_medici'] ), 'certificati: compaiono nell\'esportazione privacy' );
+$bc_audit = wp_json_encode( \AssociazioneSemplice\Audit::recent( 20, 'medical.' ) );
+asem_ok( false !== strpos( $bc_audit, 'medical.added' ) && false === strpos( $bc_audit, 'Verdi' ) && false === strpos( $bc_audit, $bc_soon ), 'certificati: il registro azioni non contiene dati sanitari' );
+// promemoria
+Settings::update( array( 'cert_reminders' => 0 ) );
+asem_ok( array( 'members' => 0, 'staff' => 0 ) === $CE::run_reminders(), 'certificati: promemoria spenti, niente invii' );
+Settings::update( array( 'cert_reminders' => 1, 'cert_warn_days' => 30 ) );
+$bc_r1 = $CE::run_reminders();
+asem_ok( 2 === $bc_r1['members'] && 2 === $bc_r1['staff'] && $bc_mail >= 3, 'certificati: promemoria ai soci e un\'email alla segreteria' );
+$bc_before = $bc_mail;
+$bc_r2     = $CE::run_reminders();
+asem_ok( 0 === $bc_r2['members'] && 0 === $bc_r2['staff'] && $bc_mail === $bc_before, 'certificati: ogni promemoria parte una sola volta' );
+// anonimizzazione ed eliminazione
+$CE::anonymize( $bc_b );
+asem_ok( 0 === count( $CE::for_person( $bc_b ) ), 'certificati: l\'anonimizzazione cancella i certificati' );
+$CE::delete( $bc_c1 );
+asem_ok( null === $CE::get( $bc_c1 ), 'certificati: eliminazione' );
+// pagine
+$bc_html = asem_render( array( Admin\CertificatesPage::class, 'render' ), 'Certificati medici' );
+asem_ok( false !== strpos( $bc_html, 'asem_save_cert_settings' ), 'certificati: pagina dell\'elenco con le impostazioni' );
+ob_start();
+Admin\CertificatesPage::person_panel( $people->get( $bc_a ) );
+asem_ok( false !== strpos( ob_get_clean(), 'asem_cert_add' ), 'certificati: scheda nella persona' );
+ob_start();
+Admin\CertificatesPage::person_panel( $people->get( $bc_g ) );
+asem_ok( '' === ob_get_clean(), 'certificati: nessuna scheda per il tutore' );
+asem_ok( false !== strpos( Admin\CertificatesPage::activity_row( $bc_act ), 'cert_required' ), 'certificati: riga nel modulo dell\'attività' );
+// affiliazioni
+$bc_aff = $AF::save_affiliation( 0, array( 'body' => 'uisp', 'code' => 'UI123', 'season' => '2025/2026', 'expires_on' => $bc_soon, 'cost' => '120,00' ) );
+asem_ok( $bc_aff > 0 && null !== asem_throws( function () use ( $AF ) { $AF::save_affiliation( 0, array( 'body' => 'uisp', 'code' => 'UI124', 'season' => '2025/2026' ) ); } ), 'affiliazioni: una per ente e stagione' );
+asem_ok( 'expiring' === $AF::affiliations()[0]['status'], 'affiliazioni: in scadenza' );
+$bc_k = $AF::add_card( $bc_a, array( 'body' => 'csen', 'card_number' => 'C-1', 'season' => '2026', 'card_type' => 'Atleta', 'issued_on' => $today, 'expires_on' => $bc_soon, 'cost' => '15,00' ) );
+asem_ok( $bc_k > 0 && null !== asem_throws( function () use ( $AF, $bc_a ) { $AF::add_card( $bc_a, array( 'body' => 'csen', 'season' => '2026' ) ); } ), 'tessere: niente doppioni di ente e stagione' );
+asem_ok( null !== asem_throws( function () use ( $AF, $bc_g ) { $AF::add_card( $bc_g, array( 'body' => 'csen', 'season' => '2026' ) ); } ), 'tessere: il tutore non si tessera' );
+$bc_bulk = $AF::bulk_add( array( 'body' => 'csen', 'season' => '2026', 'card_type' => 'Socio' ), $bc_act );
+asem_ok( 1 === $bc_bulk['created'] && 1 === $bc_bulk['skipped'], 'tessere: in blocco per attività, salta chi ce l\'ha già' );
+$bc_all = $AF::bulk_add( array( 'body' => 'aics', 'season' => '2026' ) );
+asem_ok( $bc_all['created'] >= 2 && 0 === count( array_filter( $AF::cards( array( 'body' => 'aics' ) ), function ( $c ) use ( $bc_g ) { return (int) $c['person_id'] === $bc_g; } ) ), 'tessere: in blocco a tutti i soci attivi, senza tutori' );
+$AF::update_card( $bc_k, array( 'card_number' => 'C-2' ) );
+asem_ok( 'C-2' === $AF::card( $bc_k )['card_number'], 'tessere: il numero si aggiorna' );
+$bc_p = $AF::portal_rows( array( 'body' => 'csen', 'activity' => $bc_act ) );
+asem_ok( 10 === count( $bc_p[0] ) && 'Codice fiscale' === $bc_p[0][2] && count( $bc_p ) >= 2, 'tessere: file per i portali' );
+$bc_cecilia = array_values( array_filter( $AF::portal_rows( array( 'body' => 'csen' ) ), function ( $r ) { return 'Cecilia' === $r[0]; } ) );
+asem_ok( $bc_cecilia && 'F' === $bc_cecilia[0][5] && 'A562' === $bc_cecilia[0][4] && 'Atleta' === $bc_cecilia[0][9], 'tessere: sesso e luogo di nascita dal codice fiscale' );
+Settings::update( array( 'aff_reminders' => 1 ) );
+$bc_ar = $AF::run_reminders();
+asem_ok( $bc_ar['members'] >= 1 && $bc_ar['staff'] >= 2 && 0 === $AF::run_reminders()['staff'], 'affiliazioni: promemoria una sola volta' );
+asem_ok( 1 <= count( $AF::privacy_export( array(), $bc_a )['tessere_enti'] ), 'tessere: nell\'esportazione privacy' );
+$bc_html = asem_render( array( Admin\AffiliationsPage::class, 'render' ), 'Affiliazioni dell\'associazione' );
+asem_ok( false !== strpos( $bc_html, 'asem_card_bulk' ) && false !== strpos( $bc_html, 'UI123' ), 'affiliazioni: pagina con tessere e tesseramento in blocco' );
+$AF::anonymize( $bc_a );
+asem_ok( 0 === count( $AF::cards_for_person( $bc_a ) ), 'tessere: l\'anonimizzazione le cancella' );
+// area soci
+Settings::update( array( 'cert_show_member' => 1 ) );
+$CE::add( $bc_a, array( 'kind' => 'other', 'issued_on' => $today, 'expires_on' => gmdate( 'Y-m-d', strtotime( $today . ' +200 days' ) ) ) );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\CertificatesFront::section( $people->get( $bc_a ) ), 'valido' ), 'certificati: il socio vede la scadenza nell\'area soci' );
+Settings::update( array( 'cert_show_member' => 0, 'cert_reminders' => 0, 'aff_reminders' => 0 ) );
+asem_ok( '' === \AssociazioneSemplice\Frontend\CertificatesFront::section( $people->get( $bc_a ) ), 'certificati: l\'area soci non mostra nulla se spento' );
+remove_filter( 'pre_wp_mail', $bc_hook, 10 );
+wp_set_current_user( 1 );
+
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' . ( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Tutti i controlli sono passati.' );
