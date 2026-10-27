@@ -18,57 +18,70 @@ final class PaymentConfig {
 	const STRIPE_SUMUP = 'stripe_sumup';
 	const PAYPAL_SUMUP = 'paypal_sumup';
 	const ALL         = 'stripe_paypal_sumup';
+	const SATISPAY    = 'satispay';
+
+	/** Gateway diretti, nell'ordine in cui compongono il nome di una scelta multipla (ad esempio stripe_paypal_satispay). */
+	const DIRECT = array( self::STRIPE, self::PAYPAL, self::SUMUP, self::SATISPAY );
 
 	/** Diciture predefinite dei pulsanti e delle note: si possono personalizzare da Impostazioni → Pagamenti online. */
 	const DEFAULT_LABELS = array(
 		self::STRIPE      => 'Paga con carta',
 		self::PAYPAL      => 'Paga con PayPal',
 		self::SUMUP       => 'Paga con carta (SumUp)',
+		self::SATISPAY    => 'Paga con Satispay',
 		self::WOOCOMMERCE => 'Paga nel negozio',
 	);
 
 	public static function providers(): array {
-		return array(
+		$names = array( self::STRIPE => 'Stripe', self::PAYPAL => 'PayPal', self::SUMUP => 'SumUp', self::SATISPAY => 'Satispay' );
+		$out   = array(
 			self::NONE        => 'Nessuno (pagamento in sede o con bonifico)',
 			self::WOOCOMMERCE => 'WooCommerce (negozio del sito)',
-			self::STRIPE      => 'Stripe (carta)',
-			self::PAYPAL      => 'PayPal',
-			self::BOTH        => 'Stripe e PayPal insieme',
-			self::SUMUP       => 'SumUp (carta)',
-			self::STRIPE_SUMUP => 'Stripe e SumUp insieme',
-			self::PAYPAL_SUMUP => 'PayPal e SumUp insieme',
-			self::ALL         => 'Stripe, PayPal e SumUp insieme',
 		);
+		$by_size = array();
+		for ( $mask = 1; $mask < 16; $mask++ ) { // tutte le combinazioni dei gateway diretti, prima i singoli poi le coppie…
+			$set = array();
+			foreach ( self::DIRECT as $i => $g ) {
+				if ( $mask & ( 1 << $i ) ) {
+					$set[] = $g;
+				}
+			}
+			$by_size[ count( $set ) ][] = $set;
+		}
+		ksort( $by_size );
+		foreach ( $by_size as $size => $list ) {
+			foreach ( $list as $set ) {
+				$labels = array();
+				foreach ( $set as $g ) {
+					$labels[] = $names[ $g ];
+				}
+				$last = array_pop( $labels );
+				if ( 1 === $size ) {
+					$text = $last . ( in_array( $set[0], array( self::STRIPE, self::SUMUP ), true ) ? ' (carta)' : '' );
+				} else {
+					$text = implode( ', ', $labels ) . ' e ' . $last . ' insieme';
+				}
+				$out[ implode( '_', $set ) ] = $text;
+			}
+		}
+		return $out;
 	}
 
 	public static function is_valid( string $provider ): bool {
 		return isset( self::providers()[ $provider ] );
 	}
 
-	/** Gateway diretti previsti dalla scelta: stripe e/o paypal (WooCommerce e «nessuno» non ne hanno). @return string[] */
+	/** Gateway diretti previsti dalla scelta (WooCommerce e «nessuno» non ne hanno). @return string[] */
 	public static function gateways_of( string $provider ): array {
-		switch ( $provider ) {
-			case self::STRIPE:
-				return array( self::STRIPE );
-			case self::PAYPAL:
-				return array( self::PAYPAL );
-			case self::BOTH:
-				return array( self::STRIPE, self::PAYPAL );
-			case self::SUMUP:
-				return array( self::SUMUP );
-			case self::STRIPE_SUMUP:
-				return array( self::STRIPE, self::SUMUP );
-			case self::PAYPAL_SUMUP:
-				return array( self::PAYPAL, self::SUMUP );
-			case self::ALL:
-				return array( self::STRIPE, self::PAYPAL, self::SUMUP );
+		if ( ! self::is_valid( $provider ) || self::NONE === $provider || self::WOOCOMMERCE === $provider ) {
+			return array();
 		}
-		return array();
+		return array_values( array_intersect( self::DIRECT, explode( '_', $provider ) ) );
 	}
 
 	/** Metodi con commissioni configurabili (il negozio WooCommerce ha le sue). */
 	public static function fee_gateways(): array {
-		return array( self::STRIPE, self::PAYPAL, self::SUMUP );
+		return array( self::STRIPE, self::PAYPAL, self::SUMUP, self::SATISPAY );
 	}
 
 	/** Commissione di incasso stimata su un importo: fisso + percentuale (punti base: 150 = 1,50%), arrotondata al centesimo. */
@@ -219,6 +232,26 @@ final class PaymentConfig {
 				$warnings[] = 'SumUp non ha una modalità di prova separata sul sito: con una chiave di un account reale i pagamenti sono veri (per provare usa un account di prova SumUp).';
 			}
 		}
+		if ( self::SATISPAY === $gateway ) {
+			$mode = 'live' === ( $c['satispay_mode'] ?? 'sandbox' ) ? 'live' : 'sandbox';
+			if ( '' === trim( (string) ( $c['satispay_key_id'] ?? '' ) ) || '' === trim( (string) ( $c['satispay_private_key'] ?? '' ) ) ) {
+				$errors[] = 'Satispay: non è ancora collegato. Inserisci il codice di attivazione che trovi nell\'area Satispay Business e premi «Collega Satispay».';
+			}
+			if ( ! $https ) {
+				$msg = 'Satispay richiede che il sito sia servito in https: oggi l\'indirizzo del sito è http (serve per la conferma automatica dei pagamenti).';
+				if ( 'live' === $mode ) {
+					$errors[] = $msg;
+				} else {
+					$warnings[] = $msg;
+				}
+			}
+			if ( 'live' === $mode && empty( $errors ) ) {
+				$warnings[] = 'Satispay è in modalità REALE: i pagamenti saranno veri.';
+			}
+		}
+		if ( self::STRIPE === $gateway && ! empty( $c['stripe_klarna'] ) ) {
+			$warnings[] = 'Klarna: per comparire tra i metodi di Stripe va attivato anche nel tuo account Stripe (Impostazioni → Metodi di pagamento). Funziona solo in euro, per importi da ' . Money::format( KlarnaRules::MIN_CENTS ) . ' a ' . Money::format( KlarnaRules::MAX_CENTS ) . ' e con l\'email di chi paga.';
+		}
 		return array( 'errors' => $errors, 'warnings' => $warnings );
 	}
 
@@ -241,6 +274,8 @@ final class PaymentConfig {
 				return 'Paghi su una pagina sicura di PayPal: i dati della carta non passano da questo sito.';
 			case self::SUMUP:
 				return 'Paghi su una pagina sicura di SumUp: i dati della carta non passano da questo sito.';
+			case self::SATISPAY:
+				return 'Confermi il pagamento nell\'app Satispay: i dati del tuo conto non passano da questo sito.';
 			case self::WOOCOMMERCE:
 				return 'Completi il pagamento nel negozio del sito: non appena risulta pagato, lo registriamo.';
 		}

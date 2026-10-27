@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 final class ProSchema {
 
 	const VERSION_OPTION = 'asem_pro_db_version';
-	const VERSION        = '8';
+	const VERSION        = '9';
 
 	public static function register(): void {
 		add_filter( 'asem_schema_tables', array( __CLASS__, 'tables' ), 10, 3 );
@@ -445,6 +445,57 @@ final class ProSchema {
   PRIMARY KEY  (id),
   UNIQUE KEY assembly_delegator (assembly_id,delegator_id),
   KEY delegate_id (delegate_id)
+) $c;";
+
+		// Blocco E: consensi a SMS e newsletter, coda e registro degli SMS, sincronizzazione della newsletter.
+		$tables[] = "CREATE TABLE {$p}consents (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  person_id bigint(20) unsigned NOT NULL,
+  channel varchar(12) NOT NULL,
+  granted_at datetime DEFAULT NULL,
+  revoked_at datetime DEFAULT NULL,
+  source varchar(12) DEFAULT NULL,
+  updated_by bigint(20) unsigned DEFAULT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY person_channel (person_id,channel)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}sms_queue (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  broadcast_id bigint(20) unsigned DEFAULT NULL,
+  person_id bigint(20) unsigned DEFAULT NULL,
+  kind varchar(12) NOT NULL,
+  phone varchar(20) NOT NULL,
+  name varchar(120) DEFAULT NULL,
+  body text NOT NULL,
+  status varchar(12) NOT NULL,
+  attempts tinyint(3) unsigned NOT NULL DEFAULT 0,
+  next_try_at datetime DEFAULT NULL,
+  provider varchar(12) DEFAULT NULL,
+  provider_ref varchar(80) DEFAULT NULL,
+  parts smallint(5) unsigned NOT NULL DEFAULT 0,
+  error varchar(250) DEFAULT NULL,
+  created_at datetime NOT NULL,
+  sent_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY status_try (status,next_try_at),
+  KEY broadcast_id (broadcast_id),
+  KEY person_id (person_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}newsletter_sync (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  person_id bigint(20) unsigned NOT NULL,
+  provider varchar(12) NOT NULL,
+  list_id varchar(60) NOT NULL,
+  email varchar(190) NOT NULL,
+  status varchar(12) NOT NULL,
+  hash char(32) DEFAULT NULL,
+  error varchar(250) DEFAULT NULL,
+  synced_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY person_target (person_id,provider,list_id),
+  KEY status (status)
 ) $c;";
 
 		return $tables;

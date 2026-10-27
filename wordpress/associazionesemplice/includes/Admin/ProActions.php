@@ -260,9 +260,19 @@ final class ProActions {
 
 	public static function broadcast_send( array $p ): array {
 		list( $g, $ref ) = MessagesPage::parse_audience( (string) ( $p['audience'] ?? '' ) );
-		$id = \AssociazioneSemplice\Broadcasts::create( (string) ( $p['subject'] ?? '' ), (string) ( $p['body'] ?? '' ), $g, $ref );
+		$channels = isset( $p['channels'] ) ? array_map( 'sanitize_key', (array) $p['channels'] ) : array( 'email' );
+		$id = \AssociazioneSemplice\Broadcasts::create( (string) ( $p['subject'] ?? '' ), (string) ( $p['body'] ?? '' ), $g, $ref, $channels );
 		$b  = \AssociazioneSemplice\Broadcasts::get( $id );
-		return array( Ui::url( 'asem-messages', array( 'view' => $id ) ), 'Comunicazione avviata: ' . (int) $b['sent'] . ' email inviate su ' . (int) $b['total'] . ( (int) $b['total'] > (int) $b['sent'] ? ', le altre continuano da sole in background.' : '.' ) );
+		$sc = \AssociazioneSemplice\Sms::counts( $id );
+		$parts = array();
+		if ( (int) $b['total'] > 0 ) {
+			$parts[] = (int) $b['sent'] . ' email inviate su ' . (int) $b['total'];
+		}
+		if ( array_sum( $sc ) > 0 ) {
+			$parts[] = (int) $sc['sent'] . ' SMS inviati su ' . (int) array_sum( $sc );
+		}
+		$left = (int) $b['total'] - (int) $b['sent'] - (int) $b['failed'] + (int) $sc['queued'] + (int) $sc['sending'];
+		return array( Ui::url( 'asem-messages', array( 'view' => $id ) ), 'Comunicazione avviata: ' . implode( ', ', $parts ) . ( $left > 0 ? ', gli altri continuano da soli in background.' : '.' ) );
 	}
 
 	public static function broadcast_test( array $p ): array {
@@ -351,6 +361,10 @@ final class ProActions {
 			$fees[ 'pay_fee_pct_' . $g ]   = (int) round( max( 0, min( 25, $pct ) ) * 100 );
 			$fees[ 'pay_fee_pass_' . $g ]  = ! empty( $p[ 'pay_fee_pass_' . $g ] ) ? 1 : 0;
 		}
+		if ( $txt( 'satispay_mode' ) !== (string) Settings::get( 'satispay_mode' ) && '' !== (string) Settings::get( 'satispay_key_id' ) ) { // la chiave di prova non vale per il conto reale (e viceversa): va ricollegato
+			Settings::update( array( 'satispay_key_id' => '' ) );
+			Settings::clear_secret( 'satispay_private_key' );
+		}
 		Settings::update(
 			$fees + array(
 				'payment_provider'        => $txt( 'payment_provider' ),
@@ -358,6 +372,10 @@ final class ProActions {
 				'sumup_merchant_code'     => $txt( 'sumup_merchant_code' ),
 				'pay_label_sumup'         => $txt( 'pay_label_sumup' ),
 				'pay_note_sumup'          => $txt( 'pay_note_sumup' ),
+				'satispay_mode'           => $txt( 'satispay_mode' ),
+				'pay_label_satispay'      => $txt( 'pay_label_satispay' ),
+				'pay_note_satispay'       => $txt( 'pay_note_satispay' ),
+				'stripe_klarna'           => ! empty( $p['stripe_klarna'] ) ? 1 : 0,
 				'stripe_mode'             => $txt( 'stripe_mode' ),
 				'stripe_publishable_key'  => $txt( 'stripe_publishable_key' ),
 				'stripe_secret_key'       => $txt( 'stripe_secret_key' ),     // vuoto = lascia quella salvata
@@ -388,7 +406,7 @@ final class ProActions {
 
 	/** Prova la connessione a Stripe o PayPal con le chiavi salvate (solo quando l'amministratore preme il pulsante). */
 	public static function test_gateway( array $p ): array {
-		$provider = in_array( $p['provider'] ?? '', array( PaymentConfig::STRIPE, PaymentConfig::PAYPAL, PaymentConfig::SUMUP ), true ) ? $p['provider'] : '';
+		$provider = in_array( $p['provider'] ?? '', array( PaymentConfig::STRIPE, PaymentConfig::PAYPAL, PaymentConfig::SUMUP, PaymentConfig::SATISPAY ), true ) ? $p['provider'] : '';
 		$res      = Gateways::test( $provider, \AssociazioneSemplice\ProSettings::payment_config(), array( Gateways::class, 'wp_http' ) );
 		Audit::log( 'gateway.tested', 'settings', null, array( 'provider' => $provider, 'ok' => $res['ok'] ) );
 		if ( ! $res['ok'] ) {

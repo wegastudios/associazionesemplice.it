@@ -820,3 +820,26 @@ Tre funzioni nuove, tutte del **Pro** (classi dell'edizione Pro, elenco in `test
 - Stati: da approvare → approvato → pagato (oppure rifiutato con motivo o annullato). Chi approva o paga non può farlo per un rimborso a proprio nome, salvo l'opzione «Chi ha chiesto il rimborso può anche approvarlo e pagarlo». Il volontario riceve un'email a ogni decisione.
 - Il pagamento registra in prima nota (`LedgerService::record_expense`) un'uscita nella categoria «Rimborso spese socio/volontario» dal conto scelto, con `document_ref` `RIMB-n`, e salva il numero del movimento nella richiesta. Il blocco su ogni richiesta impedisce il doppio pagamento.
 - Privacy: l'esportazione dei dati comprende i rimborsi; l'anonimizzazione cancella i giustificativi e i testi, mentre importi e collegamento alla prima nota restano.
+
+## SMS, newsletter, Satispay e Klarna (solo Pro, schema Pro v9)
+
+Funzioni `sms` e `newsletter` (tutti i piani Pro) e, nella funzione `payments`, Satispay e Klarna. Nessun file del gratuito cambia comportamento: gli unici ritocchi sono quattro punti di estensione neutri (filtri `asem_payment_methods`, `asem_online_account_names`, `asem_online_methods`, usati da `Labels`, `LedgerService`, `ActivityReset` e dalla vista dei pagamenti), che senza il Pro non fanno nulla.
+
+### Consensi (`Consents`, `ConsentRules`)
+Tabella `consents` (persona, canale `sms` o `newsletter`, dato il, revocato il, modalità). Il consenso lo registra la segreteria dalla scheda della persona o lo dà il socio dall'area («Le mie comunicazioni»). Senza consenso non parte nessun SMS e nessun dato va alla newsletter. L'anonimizzazione cancella i consensi; l'esportazione privacy li include.
+
+### SMS (`Sms`, `SmsRules`, interfaccia `SmsProvider`)
+- Fornitori: `BrevoSms` e `TwilioSms`; se ne aggiungono altri con il filtro `asem_sms_providers`. Si scelgono in Strumenti → Integrazioni; le chiavi sono cifrate (`Secrets`).
+- Numeri in E.164 tramite `Phone`. Le comunicazioni (`Broadcasts::create(..., $channels)`) usano email, SMS o entrambi con le stesse platee; per gli SMS contano solo numero valido e consenso.
+- Coda `sms_queue` = registro: stato, tentativi (3, dopo 15 e 120 minuti; subito «non partito» per errori definitivi), «Riprova». Lavoro orario `asem_sms_queue`. Conteggio mensile e crediti del fornitore in Integrazioni; numeri sempre mascherati.
+- Promemoria: facoltativi (impostazione `sms_reminders`), agganciati all'azione `asem_notify_email` dei promemoria, solo a chi ha il consenso.
+
+### Newsletter (`Newsletter`, `NewsletterRules`, interfaccia `NewsletterProvider`)
+- Servizi: Brevo, Mailchimp, MailPoet (API PHP, se attivo). Si sceglie la lista; sincronizzazione a mano e lavoro giornaliero `asem_newsletter_sync`, a gruppi, saltando chi non è cambiato (tabella `newsletter_sync`).
+- Si iscrive solo chi ha il consenso e un'email valida; chi revoca è disiscritto subito, chi cambia indirizzo toglie il vecchio, chi è anonimizzato esce. Chi si è disiscritto dal servizio non viene mai reiscritto.
+
+### Satispay (`SatispayApi`, `SatispayRules`)
+GBusiness API con richieste firmate (RSA-SHA256: metodo e percorso, host, data, impronta del corpo). Il collegamento crea la coppia di chiavi e registra la pubblica con il codice di attivazione; la privata è cifrata. L'esito si conferma con la callback `/webhooks/satispay` (che serve solo a indicare quale pagamento ricontrollare) e rileggendo lo stato firmato; c'è anche il controllo orario. La prova in `Gateways::test` usa il punto di prova della firma. Le scelte multiple di gateway sono ora generate da `PaymentConfig::DIRECT`.
+
+### Klarna tramite Stripe (`KlarnaRules`)
+Interruttore `stripe_klarna`: la Checkout Session elenca `card` e `klarna` solo se l'importo è in euro, tra 1 € e 10.000 € e c'è l'email di chi paga. Gli esiti differiti arrivano dal webhook (`async_payment_succeeded` / `async_payment_failed`).

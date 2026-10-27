@@ -205,11 +205,16 @@ class PaymentService extends OfflinePayments {
 	/** Crea la pagina di pagamento sul gateway scelto. @return array ['id' => riferimento, 'url' => pagina di pagamento] @throws \RuntimeException */
 	private function gateway_session( string $provider, array $items, string $public, string $email, string $success, string $cancel, array $cfg, string $brand ): array {
 		if ( PaymentConfig::STRIPE === $provider ) {
-			$params = StripeApi::checkout_params( $items, $public, $email, $success, $cancel );
+			$klarna = KlarnaRules::check( ! empty( $cfg['stripe_klarna'] ), PaymentItems::total( $items ), $email )['ok']; // Klarna solo se l'interruttore è acceso e l'acquisto ne rispetta i requisiti
+			$params = StripeApi::checkout_params( $items, $public, $email, $success, $cancel, $klarna );
 			return StripeApi::create_session( $this->http(), $cfg['stripe_secret_key'], $params, $public );
 		}
 		if ( PaymentConfig::SUMUP === $provider ) {
 			return SumUpApi::create_checkout( $this->http(), $cfg['sumup_api_key'], SumUpApi::checkout_payload( $items, $public, $cfg['sumup_merchant_code'], $success, $brand ) );
+		}
+		if ( PaymentConfig::SATISPAY === $provider ) {
+			$callback = SatispayRules::callback_url( rest_url( 'associazionesemplice/v1/webhooks/satispay' ) );
+			return SatispayApi::create_payment( $this->http(), $cfg, SatispayRules::payment_payload( $items, $public, $callback, $success, $brand ) );
 		}
 		$live  = 'live' === $cfg['paypal_mode'];
 		$token = PayPalApi::access_token( $this->http(), $live, $cfg['paypal_client_id'], $cfg['paypal_client_secret'] );
@@ -473,6 +478,16 @@ class PaymentService extends OfflinePayments {
 				}
 				return false;
 			}
+			if ( PaymentConfig::SATISPAY === $p['provider'] ) {
+				$c = SatispayApi::retrieve_payment( $this->http(), $cfg, $p['provider_ref'] );
+				if ( SatispayRules::is_accepted( $c ) ) {
+					return $this->finalize( $p, SatispayRules::paid_eur_cents( $c ), (string) ( $c['id'] ?? $p['provider_ref'] ) );
+				}
+				if ( SatispayRules::is_failed( $c ) ) {
+					$this->update( (int) $p['id'], array( 'status' => 'failed', 'error' => 'Satispay: pagamento annullato o scaduto.' ) );
+				}
+				return false;
+			}
 			$live  = 'live' === $cfg['paypal_mode'];
 			$token = PayPalApi::access_token( $this->http(), $live, $cfg['paypal_client_id'], $cfg['paypal_client_secret'] );
 			$order = PayPalApi::get_order( $this->http(), $live, $token, $p['provider_ref'] );
@@ -486,6 +501,22 @@ class PaymentService extends OfflinePayments {
 			$this->update( (int) $p['id'], array( 'error' => mb_substr( $e->getMessage(), 0, 250 ) ) );
 		}
 		return false;
+	}
+
+	/**
+	 * Avviso (callback) di Satispay: il contenuto della richiesta non si crede, serve solo a sapere QUALE pagamento ricontrollare;
+	 * l'esito vero si legge da Satispay con una richiesta firmata. @return string esito per il log
+	 */
+	public function handle_satispay_callback( string $payment_id ): string {
+		$payment_id = SatispayRules::clean_id( $payment_id );
+		if ( '' === $payment_id ) {
+			return 'ignorato';
+		}
+		$p = $this->db()->get_row( $this->db()->prepare( 'SELECT * FROM ' . Db::t( 'payments' ) . " WHERE provider = 'satispay' AND provider_ref = %s", $payment_id ), ARRAY_A );
+		if ( ! $p ) {
+			return 'pagamento sconosciuto';
+		}
+		return $this->confirm_with_gateway( $p ) ? 'registrato' : 'in attesa';
 	}
 
 	/** Webhook di Stripe già verificato (firma). @return string esito per il log */
@@ -513,6 +544,9 @@ class PaymentService extends OfflinePayments {
 		if ( in_array( $type, array( 'checkout.session.expired', 'checkout.session.async_payment_failed' ), true ) && in_array( $p['status'], array( 'created', 'pending' ), true ) ) {
 			$this->update( (int) $p['id'], array( 'status' => 'checkout.session.expired' === $type ? 'expired' : 'failed' ) );
 			return 'chiuso';
+		}
+		if ( 'checkout.session.completed' === $type && KlarnaRules::is_deferred( $obj ) ) {
+			return 'in attesa del pagamento differito'; // Klarna e gli altri metodi differiti: l'esito arriva con async_payment_succeeded / async_payment_failed
 		}
 		return 'in attesa';
 	}
@@ -583,7 +617,7 @@ class PaymentService extends OfflinePayments {
 		$method      = $p['provider'];
 		$today       = Db::today();
 		$ref         = substr( (string) $p['provider_ref'], 0, 80 );
-		$labels      = array( 'paypal' => 'PayPal', 'sumup' => 'SumUp', 'woocommerce' => 'WooCommerce' );
+		$labels      = array( 'paypal' => 'PayPal', 'sumup' => 'SumUp', 'satispay' => 'Satispay', 'woocommerce' => 'WooCommerce' );
 		$note        = 'Pagamento online (' . ( $labels[ $p['provider'] ] ?? 'Stripe' ) . ')';
 		$allocated   = 0;
 		$review      = false;

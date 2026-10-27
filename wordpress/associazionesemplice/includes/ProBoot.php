@@ -33,6 +33,8 @@ final class ProBoot {
 		'budget'       => 'Budget.php',            // bilancio preventivo e confronto con il consuntivo della prima nota
 		'refunds'      => 'Refunds.php',           // rimborsi ai volontari: richiesta, approvazione, pagamento e prima nota
 		'assemblies'   => 'Assemblies.php',        // assemblee dei soci: convocazione, presenze, deleghe, numero legale e verbale
+		'sms'          => 'Sms.php',               // SMS ai soci: comunicazioni, promemoria facoltativi, registro e nuovi tentativi
+		'newsletter'   => 'Newsletter.php',        // newsletter: sincronizzazione dei soci con Brevo, Mailchimp e MailPoet, solo con il consenso
 	);
 
 	/** Pagine di amministrazione di ogni funzione: se la funzione non c'è, spariscono dal menu e dalle schede. */
@@ -57,7 +59,7 @@ final class ProBoot {
 
 	/** Azioni di amministrazione di ogni funzione: senza la funzione si bloccano. */
 	const ACTIONS = array(
-		'payments'   => array( 'asem_save_payment_settings', 'asem_test_gateway', 'asem_check_payments', 'asem_payment_reviewed', 'asem_payment_refunded' ),
+		'payments'   => array( 'asem_save_payment_settings', 'asem_test_gateway', 'asem_satispay_connect', 'asem_check_payments', 'asem_payment_reviewed', 'asem_payment_refunded' ),
 		'funds'      => array( 'asem_save_group_cash', 'asem_save_transfer', 'asem_add_account', 'asem_update_account', 'asem_close_account', 'asem_reopen_account', 'asem_fund_create', 'asem_fund_deposit', 'asem_fund_release', 'asem_fund_settle' ),
 		'receipts'   => array( 'asem_receipt_email' ),
 		'door_sales' => array( 'asem_walk_in' ),
@@ -68,6 +70,8 @@ final class ProBoot {
 		'budget'       => array( 'asem_budget_save', 'asem_budget_lines', 'asem_budget_copy', 'asem_budget_approve', 'asem_budget_reopen', 'asem_budget_delete' ),
 		'refunds'      => array( 'asem_refund_request', 'asem_refund_approve', 'asem_refund_reject', 'asem_refund_cancel', 'asem_refund_pay', 'asem_save_refund_settings', 'asem_front_refund', 'asem_front_refund_cancel' ),
 		'assemblies'   => array( 'asem_assembly_save', 'asem_assembly_delete', 'asem_assembly_convene', 'asem_assembly_hold', 'asem_assembly_cancel', 'asem_assembly_draft', 'asem_assembly_attendance', 'asem_assembly_proxy_add', 'asem_assembly_proxy_revoke', 'asem_assembly_minutes', 'asem_front_proxy', 'asem_front_proxy_revoke' ),
+		'sms'          => array( 'asem_save_sms', 'asem_test_sms', 'asem_sms_retry' ),
+		'newsletter'   => array( 'asem_save_newsletter', 'asem_newsletter_lists', 'asem_test_newsletter', 'asem_newsletter_sync' ),
 		'texts'      => array( 'asem_save_terms', 'asem_save_texts', 'asem_import_texts', 'asem_reset_texts', 'asem_add_text', 'asem_save_language', 'asem_import_language', 'asem_delete_language' ),
 	);
 
@@ -94,6 +98,7 @@ final class ProBoot {
 		ProSettings::register();
 		ProBlockC::register(); // certificati medici e affiliazioni agli enti
 		ProBlockD::register(); // assemblee, bilancio preventivo e rimborsi ai volontari
+		ProBlockE::register(); // SMS, newsletter, Satispay e Klarna
 		DocsPro::register();
 		add_filter( 'asem_settings_defaults', array( ProSettings::class, 'defaults' ) );
 		add_filter( 'asem_settings_clean', array( ProSettings::class, 'clean' ), 10, 2 );
@@ -127,6 +132,7 @@ final class ProBoot {
 		Admin\ProActions::register();
 		Admin\BlockCActions::register();
 		Admin\BlockDProActions::register();
+		Admin\BlockEActions::register();
 	}
 
 	/** Dopo l'avvio di Associazione Semplice: avvisi, aggiornatore, lavori periodici. */
@@ -140,6 +146,7 @@ final class ProBoot {
 		if ( Edition::installed( 'payments' ) && class_exists( 'WooCommerce', false ) ) {
 			add_action( 'plugins_loaded', array( WooBridge::class, 'register' ), 20 ); // compatibilità con WooCommerce
 		}
+		ProBlockE::schedule();
 		License::maybe_resync();
 		if ( ! wp_next_scheduled( 'asem_license_check' ) ) {
 			wp_schedule_event( time() + 1800, 'daily', 'asem_license_check' );
@@ -151,6 +158,7 @@ final class ProBoot {
 
 	/** Alla disattivazione si tolgono i lavori periodici. */
 	public static function deactivate(): void {
+		ProBlockE::unschedule();
 		foreach ( array( 'asem_license_check', 'asem_update_check', 'asem_license_resync' ) as $hook ) {
 			wp_clear_scheduled_hook( $hook );
 		}

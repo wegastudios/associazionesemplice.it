@@ -67,7 +67,10 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Cassa «Prenota» (per data o per attività) | ✓ | ✓ | ✓ |
 | Acconti e sconti con motivo per riga di incasso | ✓ | ✓ | ✓ |
 | Nuovo socio in un popup durante l'incasso, senza perdere l'operazione | ✓ | ✓ | ✓ |
-| Pagamenti online con Stripe, PayPal, SumUp o WooCommerce | — | ✓ | ✓ |
+| Pagamenti online con Stripe, PayPal, SumUp, Satispay o WooCommerce | — | ✓ | ✓ |
+| Klarna (paga dopo o a rate) tra i metodi di pagamento di Stripe | — | ✓ | ✓ |
+| SMS ai soci dalle comunicazioni e, a scelta, dai promemoria (Brevo o Twilio), con consenso, crediti, registro e nuovi tentativi | — | ✓ | ✓ |
+| Newsletter: sincronizzazione dei soci con consenso verso Brevo, Mailchimp o MailPoet | — | ✓ | ✓ |
 | Commissioni di incasso per metodo: stima in prima nota da tariffe standard modificabili e ribaltamento opzionale | — | ✓ | ✓ |
 | Pagamento online della quota dalla domanda di adesione | — | ✓ | ✓ |
 | Conti multipli, giroconti e cassa per più persone | — | ✓ | ✓ |

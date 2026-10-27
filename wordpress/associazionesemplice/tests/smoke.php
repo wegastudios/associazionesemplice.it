@@ -7014,6 +7014,317 @@ asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\BlockFViews::section_m
 asem_ok( has_action( 'admin_post_asem_convention_save' ) && shortcode_exists( 'convenzioni' ), 'convenzioni: azioni e shortcode presenti anche con il Pro' );
 \AssociazioneSemplice\Conventions::delete( $bf_c );
 
+// ---------- Blocco E: SMS, newsletter, Satispay e Klarna (con il Pro attivo) ----------
+asem_ok( \AssociazioneSemplice\Edition::has( 'sms' ) && \AssociazioneSemplice\Edition::has( 'newsletter' ) && 9 === (int) \AssociazioneSemplice\ProSchema::VERSION, 'blocco E: funzioni SMS e newsletter presenti, schema Pro alla versione 9' );
+asem_ok( has_action( 'admin_post_asem_save_sms' ) && has_action( 'admin_post_asem_newsletter_sync' ) && has_action( 'admin_post_asem_consent_set' ) && has_action( 'admin_post_asem_satispay_connect' ) && has_action( 'admin_post_asem_front_consent' ), 'blocco E: azioni di amministrazione e dell\'area soci registrate' );
+
+// --- Satispay ---
+$be_keys = \AssociazioneSemplice\SatispayApi::generate_keys();
+$be_pay  = array();
+$be_sat  = function ( $method, $url, $headers, $body ) use ( &$be_pay, $be_keys ) {
+	if ( false === strpos( $url, 'staging.authservices.satispay.com' ) ) {
+		return array( 'code' => 404, 'body' => '{}' );
+	}
+	$path = (string) wp_parse_url( $url, PHP_URL_PATH );
+	if ( '/g_business/v1/authentication_keys' === $path ) {
+		return array( 'code' => 200, 'body' => '{"key_id":"KEY-NUOVA"}' );
+	}
+	// ogni altra richiesta deve essere firmata: si verifica la firma con la chiave pubblica
+	preg_match( '/signature="([^"]+)"/', (string) ( $headers['Authorization'] ?? '' ), $m );
+	$string = \AssociazioneSemplice\SatispayRules::signing_string( $method, $path, (string) ( $headers['Host'] ?? '' ), (string) ( $headers['Date'] ?? '' ), (string) ( $headers['Digest'] ?? '' ) );
+	if ( empty( $m[1] ) || 1 !== openssl_verify( $string, base64_decode( $m[1] ), $be_keys['public'], OPENSSL_ALGO_SHA256 ) || \AssociazioneSemplice\SatispayRules::digest( (string) $body ) !== ( $headers['Digest'] ?? '' ) ) {
+		return array( 'code' => 401, 'body' => '{"message":"firma non valida"}' );
+	}
+	if ( '/wally-services/protocol/tests/signature' === $path ) {
+		return array( 'code' => 200, 'body' => '{"ok":true}' );
+	}
+	if ( 'POST' === $method && '/g_business/v1/payments' === $path ) {
+		$b                = json_decode( (string) $body, true );
+		$id               = 'sp-' . ( count( $be_pay ) + 1 );
+		$be_pay[ $id ]    = array( 'paid' => false, 'amount' => (int) $b['amount_unit'], 'ext' => $b['external_code'], 'callback' => $b['callback_url'], 'key' => $headers['Authorization'] );
+		return array( 'code' => 200, 'body' => wp_json_encode( array( 'id' => $id, 'status' => 'PENDING', 'redirect_url' => 'https://online.satispay.com/pay/' . $id ) ) );
+	}
+	if ( 'GET' === $method && 0 === strpos( $path, '/g_business/v1/payments/' ) ) {
+		$id = basename( $path );
+		if ( ! isset( $be_pay[ $id ] ) ) {
+			return array( 'code' => 404, 'body' => '{"message":"non trovato"}' );
+		}
+		return array( 'code' => 200, 'body' => wp_json_encode( array( 'id' => $id, 'status' => $be_pay[ $id ]['paid'] ? 'ACCEPTED' : 'PENDING', 'amount_unit' => $be_pay[ $id ]['amount'], 'currency' => 'EUR' ) ) );
+	}
+	return array( 'code' => 404, 'body' => '{}' );
+};
+Settings::update( array( 'payment_provider' => 'satispay', 'satispay_mode' => 'sandbox', 'satispay_key_id' => 'KEY-SMOKE', 'satispay_private_key' => $be_keys['private'], 'pay_fee_book' => 0, 'limits' => array( 'pay_open_per_hour' => 100 ) ) );
+asem_ok( 'satispay' === $ps->provider() && $ps->enabled(), 'Satispay: attivo con la chiave di firma collegata' );
+asem_ok( Settings::has_secret( 'satispay_private_key' ) && false === strpos( (string) Settings::get( 'satispay_private_key' ), 'BEGIN' ), 'Satispay: la chiave di firma è salvata cifrata' );
+$be_t = \AssociazioneSemplice\Gateways::test( 'satispay', \AssociazioneSemplice\ProSettings::payment_config(), $be_sat );
+asem_ok( $be_t['ok'], 'Satispay: prova di collegamento con richiesta firmata' . ( $be_t['ok'] ? '' : ': ' . $be_t['message'] ) );
+asem_ok( ! \AssociazioneSemplice\Gateways::test( 'satispay', array( 'satispay_key_id' => '', 'satispay_private_key' => '' ), $be_sat )['ok'], 'Satispay: senza collegamento la prova dice di collegarlo' );
+$be_bad = $be_keys;
+$be_bad = \AssociazioneSemplice\SatispayApi::generate_keys(); // un'altra chiave: la firma non corrisponde
+asem_ok( ! \AssociazioneSemplice\Gateways::test( 'satispay', array( 'satispay_mode' => 'sandbox', 'satispay_key_id' => 'X', 'satispay_private_key' => $be_bad['private'] ), $be_sat )['ok'], 'Satispay: una firma sbagliata viene rifiutata' );
+$ps->set_http( $be_sat );
+$be_ev = $mkev( 'Cena Satispay', 1000, 1000 );
+$be_s  = $first_session( $be_ev );
+$acts->book( $be_s, $pm );
+wp_set_current_user( $u_pm );
+$be_url = $ps->create_checkout( $pmp, $u_pm, array( "b:$be_s:$pm" ), home_url( '/area/' ) );
+$be_row = $latest();
+asem_ok( 0 === strpos( $be_url, 'https://online.satispay.com/pay/sp-' ) && 'pending' === $be_row['status'] && 'satispay' === $be_row['provider'] && 1000 === (int) $be_row['amount_cents'], 'Satispay: pagina di pagamento e pagamento in attesa' );
+asem_ok( 1000 === $be_pay[ $be_row['provider_ref'] ]['amount'] && $be_pay[ $be_row['provider_ref'] ]['ext'] === $be_row['public_id'] && '/webhooks/satispay?payment_id={uuid}' === substr( $be_pay[ $be_row['provider_ref'] ]['callback'], -36 ) && 0 === strpos( $be_pay[ $be_row['provider_ref'] ]['key'], 'Signature keyId="KEY-SMOKE"' ), 'Satispay riceve importo del server, riferimento, indirizzo dell\'avviso e richiesta firmata' );
+asem_ok( 'in attesa' === $ps->handle_satispay_callback( $be_row['provider_ref'] ) && 'pending' === $ps->get_by_public( $be_row['public_id'] )['status'], 'Satispay: avviso con pagamento non ancora accettato resta in attesa' );
+asem_ok( 'pagamento sconosciuto' === $ps->handle_satispay_callback( 'sp-999' ) && 'ignorato' === $ps->handle_satispay_callback( '<>' ), 'Satispay: un avviso per un pagamento che non conosciamo non fa nulla' );
+$be_pay[ $be_row['provider_ref'] ]['paid'] = true;
+$be_req = new WP_REST_Request( 'GET', '/associazionesemplice/v1/webhooks/satispay' );
+$be_req->set_param( 'payment_id', $be_row['provider_ref'] );
+$be_res = \AssociazioneSemplice\ProData::satispay_callback( $be_req );
+asem_ok( 'registrato' === $be_res->get_data()['result'] && 'paid' === $ps->get_by_public( $be_row['public_id'] )['status'], 'Satispay: l\'avviso fa rileggere lo stato firmato e registra l\'incasso' );
+asem_ok( 'in attesa' === $ps->handle_satispay_callback( $be_row['provider_ref'] ) && 1000 === $sum_tx( "type = 'income' AND method = 'satispay'" ) && 1000 === $balance_of( 'Satispay' ), 'Satispay: incasso registrato una sola volta sul conto Satispay' );
+asem_ok( isset( \AssociazioneSemplice\Labels::methods()['satispay'] ) && in_array( 'satispay', \AssociazioneSemplice\ActivityReset::online_methods(), true ), 'Satispay: è un metodo di pagamento online riconosciuto' );
+$be_row2 = null;
+$be_ev2  = $mkev( 'Cena Satispay due', 1000, 1000 );
+$be_s2   = $first_session( $be_ev2 );
+$acts->book( $be_s2, $pm );
+$ps->create_checkout( $pmp, $u_pm, array( "b:$be_s2:$pm" ), home_url( '/area/' ) );
+$be_row2 = $latest();
+asem_ok( 'ok' === ( $ps->handle_return( $be_row2['public_id'], 'cancel', $u_pm ) ? 'ok' : '' ) && 'cancelled' === $ps->get_by_public( $be_row2['public_id'] )['status'], 'Satispay: se la persona annulla, il pagamento risulta annullato' );
+$be_html = \AssociazioneSemplice\Admin\PaymentsPage::class;
+asem_render( array( $be_html, 'render' ), 'Collega Satispay' );
+Settings::update( array( 'payment_provider' => 'stripe_satispay' ) );
+asem_ok( array( 'stripe', 'satispay' ) === \AssociazioneSemplice\PaymentConfig::gateways_of( (string) Settings::get( 'payment_provider' ) ) && in_array( 'satispay', $ps->providers(), true ), 'Satispay: insieme a Stripe tra le scelte' );
+
+// --- Klarna tramite Stripe ---
+$be_stripe = array();
+$be_sf     = function ( $method, $url, $headers, $body ) use ( &$be_stripe ) {
+	if ( false !== strpos( $url, 'api.stripe.com/v1/checkout/sessions' ) && 'POST' === $method ) {
+		parse_str( (string) $body, $b );
+		$id                = 'cs_test_be' . ( count( $be_stripe ) + 1 );
+		$be_stripe[ $id ] = array( 'types' => $b['payment_method_types'] ?? null, 'email' => $b['customer_email'] ?? '', 'ref' => $b['client_reference_id'] );
+		return array( 'code' => 200, 'body' => wp_json_encode( array( 'id' => $id, 'url' => 'https://checkout.stripe.com/c/pay/' . $id ) ) );
+	}
+	return array( 'code' => 404, 'body' => '{}' );
+};
+Settings::update( array( 'payment_provider' => 'stripe', 'stripe_mode' => 'test', 'stripe_publishable_key' => 'pk_test_51Smoke1', 'stripe_secret_key' => 'sk_test_51Smoke1', 'stripe_webhook_secret' => 'whsec_smoke123', 'stripe_klarna' => 0 ) );
+$ps->set_http( $be_sf );
+$be_k1 = $mkev( 'Cena senza Klarna', 1000, 1000 );
+$be_ks = $first_session( $be_k1 );
+$acts->book( $be_ks, $pm );
+$ps->create_checkout( $pmp, $u_pm, array( "b:$be_ks:$pm" ), home_url( '/area/' ) );
+$be_r1 = $latest();
+asem_ok( null === $be_stripe[ $be_r1['provider_ref'] ]['types'], 'Klarna spento: la sessione Stripe resta quella di sempre' );
+Settings::update( array( 'stripe_klarna' => 1 ) );
+$be_k2 = $mkev( 'Cena con Klarna', 1000, 1000 );
+$be_ks2 = $first_session( $be_k2 );
+$acts->book( $be_ks2, $pm );
+$ps->create_checkout( $pmp, $u_pm, array( "b:$be_ks2:$pm" ), home_url( '/area/' ) );
+$be_r2 = $latest();
+asem_ok( array( 'card', 'klarna' ) === $be_stripe[ $be_r2['provider_ref'] ]['types'], 'Klarna acceso: la sessione Stripe elenca carta e Klarna' );
+$be_k3 = $mkev( 'Cena piccola', 80, 80 );
+$be_ks3 = $first_session( $be_k3 );
+$acts->book( $be_ks3, $pm );
+$ps->create_checkout( $pmp, $u_pm, array( "b:$be_ks3:$pm" ), home_url( '/area/' ) );
+$be_r3 = $latest();
+asem_ok( 80 === (int) $be_r3['amount_cents'] && null === $be_stripe[ $be_r3['provider_ref'] ]['types'], 'Klarna: sotto l\'importo minimo non si offre' );
+$be_ev_obj = function ( string $type, array $row, string $pay ) {
+	return array( 'type' => $type, 'livemode' => false, 'data' => array( 'object' => array( 'id' => $row['provider_ref'], 'client_reference_id' => $row['public_id'], 'payment_status' => $pay, 'status' => 'complete', 'amount_total' => (int) $row['amount_cents'], 'currency' => 'eur', 'payment_intent' => 'pi_be' ) ) );
+};
+asem_ok( 'in attesa del pagamento differito' === $ps->handle_stripe_event( $be_ev_obj( 'checkout.session.completed', $be_r2, 'unpaid' ) ) && 'pending' === $ps->get_by_public( $be_r2['public_id'] )['status'], 'Klarna: sessione completata ma non pagata, si attende l\'esito' );
+asem_ok( 'registrato' === $ps->handle_stripe_event( $be_ev_obj( 'checkout.session.async_payment_succeeded', $be_r2, 'paid' ) ) && 'paid' === $ps->get_by_public( $be_r2['public_id'] )['status'], 'Klarna: l\'esito differito positivo registra l\'incasso' );
+asem_ok( 'chiuso' === $ps->handle_stripe_event( $be_ev_obj( 'checkout.session.async_payment_failed', $be_r1, 'unpaid' ) ) && 'failed' === $ps->get_by_public( $be_r1['public_id'] )['status'], 'Klarna: l\'esito differito negativo chiude il pagamento' );
+$ps->set_http( null );
+Settings::update( array( 'payment_provider' => 'none', 'stripe_klarna' => 0 ) );
+Settings::clear_secret( 'stripe_secret_key' );
+Settings::clear_secret( 'stripe_webhook_secret' );
+Settings::clear_secret( 'satispay_private_key' );
+Settings::update( array( 'satispay_key_id' => '' ) );
+
+// --- Consensi, SMS ---
+$be_label = Settings::membership_year()->label();
+$be_sara  = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Sara', 'last_name' => 'Sms', 'email' => 'sara.sms@example.com', 'phone' => '333 111 2222' ) );
+$be_tino  = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Tino', 'last_name' => 'Senzaconsenso', 'email' => 'tino.nl@example.com', 'phone' => '333 333 4444' ) );
+$be_gina  = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Gina', 'last_name' => 'Senzanumero', 'email' => 'gina.sms@example.com' ) );
+foreach ( array( $be_sara, $be_tino, $be_gina ) as $be_id ) {
+	$people->set_membership( $be_id, $be_label, true );
+}
+$be_sms_log = array();
+$be_sms_mode = 'ok';
+$be_sms_http = function ( $method, $url, $headers, $body ) use ( &$be_sms_log, &$be_sms_mode ) {
+	if ( false !== strpos( $url, 'api.brevo.com/v3/account' ) ) {
+		return array( 'code' => 200, 'body' => '{"plan":[{"type":"sms","credits":42}]}' );
+	}
+	if ( false !== strpos( $url, 'api.brevo.com/v3/transactionalSMS/sms' ) ) {
+		$b             = json_decode( (string) $body, true );
+		$be_sms_log[]  = array( 'to' => $b['recipient'], 'text' => $b['content'], 'key' => $headers['api-key'] ?? '', 'sender' => $b['sender'] );
+		if ( 'busy' === $be_sms_mode ) {
+			return array( 'code' => 503, 'body' => '' );
+		}
+		if ( 'invalid' === $be_sms_mode ) {
+			return array( 'code' => 400, 'body' => '{"message":"Invalid phone"}' );
+		}
+		return array( 'code' => 201, 'body' => '{"messageId":"m' . count( $be_sms_log ) . '","smsCount":1}' );
+	}
+	return array( 'code' => 404, 'body' => '{}' );
+};
+\AssociazioneSemplice\Sms::set_http( $be_sms_http );
+asem_ok( ! \AssociazioneSemplice\Sms::available(), 'SMS: senza fornitore non si può mandare nulla' );
+Settings::update( array( 'sms_provider' => 'brevo', 'sms_brevo_key' => 'xkeysib-smoke', 'sms_sender' => 'ProLoco' ) );
+asem_ok( \AssociazioneSemplice\Sms::available() && Settings::has_secret( 'sms_brevo_key' ) && false === strpos( (string) Settings::get( 'sms_brevo_key' ), 'xkeysib' ), 'SMS: fornitore configurato, chiave API cifrata' );
+$be_rc = \AssociazioneSemplice\Broadcasts::sms_recipients( 'members_all' );
+asem_ok( ! in_array( $be_sara, array_column( $be_rc['list'], 'person_id' ), true ), 'SMS: senza consenso nessuno riceve nulla, nemmeno chi ha il numero' );
+\AssociazioneSemplice\Consents::set( $be_sara, 'sms', true, 'paper' );
+$be_rc = \AssociazioneSemplice\Broadcasts::sms_recipients( 'members_all' );
+$be_ids = array_column( $be_rc['list'], 'person_id' );
+asem_ok( in_array( $be_sara, $be_ids, true ) && ! in_array( $be_tino, $be_ids, true ) && ! in_array( $be_gina, $be_ids, true ) && $be_rc['no_consent'] >= 1, 'SMS: solo chi ha numero e consenso; gli altri sono contati a parte' );
+$be_bid = \AssociazioneSemplice\Broadcasts::create( '', 'Ciao {nome}, riunione domani alle 21', 'members_all', 0, array( 'sms' ) );
+$be_b   = \AssociazioneSemplice\Broadcasts::get( $be_bid );
+$be_c   = \AssociazioneSemplice\Sms::counts( $be_bid );
+asem_ok( 1 === $be_c['sent'] && 1 === count( $be_sms_log ) && '393331112222' === $be_sms_log[0]['to'] && 'Ciao Sara, riunione domani alle 21' === $be_sms_log[0]['text'] && 'ProLoco' === $be_sms_log[0]['sender'] && 'xkeysib-smoke' === $be_sms_log[0]['key'], 'SMS: comunicazione solo SMS, numero in formato internazionale e testo personalizzato' );
+asem_ok( 0 === (int) $be_b['total'] && 'done' === $be_b['status'] && 0 === strpos( (string) $be_b['subject'], 'SMS:' ), 'SMS: la comunicazione solo SMS non ha email e ha un titolo per lo storico' );
+asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\Broadcasts::create( 'x', str_repeat( 'a', 500 ), 'members_all', 0, array( 'sms' ) ); } ), 'SMS: un testo troppo lungo è rifiutato' );
+$be_u = \AssociazioneSemplice\Sms::month_usage();
+asem_ok( $be_u['sms'] >= 1 && $be_u['parts'] >= 1, 'SMS: conteggio mensile degli invii' );
+// nuovi tentativi: errore momentaneo → in coda con attesa; errore definitivo → non partito, poi si può riprovare
+$be_sms_mode = 'busy';
+$be_q = \AssociazioneSemplice\Sms::enqueue( $be_sara, '+393331112222', 'Sara Sms', 'Secondo messaggio', 'broadcast', $be_bid );
+\AssociazioneSemplice\Sms::process( null, $be_bid );
+$be_qr = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . \AssociazioneSemplice\Db::t( 'sms_queue' ) . ' WHERE id = %d', $be_q ), ARRAY_A );
+asem_ok( 'queued' === $be_qr['status'] && 1 === (int) $be_qr['attempts'] && ! empty( $be_qr['next_try_at'] ) && '' !== (string) $be_qr['error'], 'SMS: fornitore momentaneamente fuori uso, resta in coda con un nuovo tentativo' );
+$n_before = count( $be_sms_log );
+\AssociazioneSemplice\Sms::process( null, $be_bid );
+asem_ok( count( $be_sms_log ) === $n_before, 'SMS: il nuovo tentativo non parte prima dell\'ora prevista' );
+$wpdb->update( \AssociazioneSemplice\Db::t( 'sms_queue' ), array( 'next_try_at' => '2000-01-01 00:00:00' ), array( 'id' => $be_q ) );
+$be_sms_mode = 'ok';
+\AssociazioneSemplice\Sms::process( null, $be_bid );
+$be_qr = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . \AssociazioneSemplice\Db::t( 'sms_queue' ) . ' WHERE id = %d', $be_q ), ARRAY_A );
+asem_ok( 'sent' === $be_qr['status'] && 2 === (int) $be_qr['attempts'] && 'brevo' === $be_qr['provider'], 'SMS: al secondo tentativo parte' );
+$be_sms_mode = 'invalid';
+$be_q2 = \AssociazioneSemplice\Sms::enqueue( $be_sara, '+393331112222', 'Sara Sms', 'Terzo messaggio', 'broadcast', $be_bid );
+\AssociazioneSemplice\Sms::process( null, $be_bid );
+$be_qr2 = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . \AssociazioneSemplice\Db::t( 'sms_queue' ) . ' WHERE id = %d', $be_q2 ), ARRAY_A );
+asem_ok( 'failed' === $be_qr2['status'] && 1 === (int) $be_qr2['attempts'], 'SMS: errore definitivo, non si riprova da solo' );
+$be_sms_mode = 'ok';
+asem_ok( 1 === \AssociazioneSemplice\Sms::retry_failed( $be_bid ) && 'sent' === $wpdb->get_var( $wpdb->prepare( 'SELECT status FROM ' . \AssociazioneSemplice\Db::t( 'sms_queue' ) . ' WHERE id = %d', $be_q2 ) ), 'SMS: «Riprova» rimette in coda i non partiti e li manda' );
+// revoca: gli SMS già in coda non partono
+$be_sms_mode = 'busy';
+$be_q3 = \AssociazioneSemplice\Sms::enqueue( $be_sara, '+393331112222', 'Sara Sms', 'Quarto messaggio', 'broadcast', $be_bid );
+\AssociazioneSemplice\Sms::process( null, $be_bid );
+\AssociazioneSemplice\Consents::set( $be_sara, 'sms', false, 'web' );
+$be_sms_mode = 'ok';
+$wpdb->update( \AssociazioneSemplice\Db::t( 'sms_queue' ), array( 'next_try_at' => '2000-01-01 00:00:00' ), array( 'id' => $be_q3 ) );
+$n_before = count( $be_sms_log );
+\AssociazioneSemplice\Sms::process( null, $be_bid );
+asem_ok( 'skipped' === $wpdb->get_var( $wpdb->prepare( 'SELECT status FROM ' . \AssociazioneSemplice\Db::t( 'sms_queue' ) . ' WHERE id = %d', $be_q3 ) ) && count( $be_sms_log ) === $n_before, 'SMS: chi revoca il consenso non riceve più nulla, nemmeno quello già in coda' );
+asem_ok( ! \AssociazioneSemplice\Consents::has( $be_sara, 'sms' ) && null !== \AssociazioneSemplice\Consents::get( $be_sara, 'sms' )['revoked_at'], 'consensi: la revoca resta registrata' );
+asem_ok( null !== asem_throws( function () use ( $be_sara ) { \AssociazioneSemplice\Consents::set( $be_sara, 'posta', true ); } ), 'consensi: un canale inventato è rifiutato' );
+\AssociazioneSemplice\Broadcasts::create( '', 'Avviso a nessuno', 'members_all', 0, array( 'email' ) ); // l'email resta com'era: parte a chi ha un indirizzo
+asem_ok( count( $be_sms_log ) === $n_before, 'SMS: una comunicazione solo email non manda SMS' );
+// promemoria facoltativi
+\AssociazioneSemplice\Consents::set( $be_sara, 'sms', true, 'paper' );
+Settings::update( array( 'sms_reminders' => 0 ) );
+$n_before = count( $be_sms_log );
+do_action( 'asem_notify_email', 'sara.sms@example.com', 'Tessera in scadenza', 'La tua tessera scade tra pochi giorni.' );
+asem_ok( count( $be_sms_log ) === $n_before, 'promemoria: con l\'SMS spento non parte nulla' );
+Settings::update( array( 'sms_reminders' => 1 ) );
+do_action( 'asem_notify_email', 'sara.sms@example.com', 'Tessera in scadenza', 'La tua tessera scade tra pochi giorni.' );
+asem_ok( count( $be_sms_log ) === $n_before + 1 && false !== strpos( $be_sms_log[ $n_before ]['text'], 'Tessera in scadenza' ) && 393331112222 === (int) $be_sms_log[ $n_before ]['to'], 'promemoria: con l\'SMS acceso parte anche l\'SMS, a chi ha il consenso' );
+do_action( 'asem_notify_email', 'tino.nl@example.com', 'Tessera in scadenza', 'La tua tessera scade tra pochi giorni.' );
+asem_ok( count( $be_sms_log ) === $n_before + 1, 'promemoria: senza consenso nessun SMS' );
+Settings::update( array( 'sms_reminders' => 0 ) );
+\AssociazioneSemplice\Sms::job();
+asem_ok( true, 'SMS: il lavoro periodico gira senza errori' );
+$be_page = asem_render( array( \AssociazioneSemplice\Admin\BlockEPanels::class, 'integrations' ), 'SMS ai soci' );
+asem_ok( false !== strpos( $be_page, 'Crediti o saldo residui: 42' ) && false !== strpos( $be_page, 'Ultimi SMS' ) && false === strpos( $be_page, '393331112222' ) && false === strpos( $be_page, 'xkeysib-smoke' ), 'SMS: registro e crediti in Integrazioni, senza numeri interi né chiavi' );
+$be_msg = asem_render( array( \AssociazioneSemplice\Admin\MessagesPage::class, 'render' ), 'Canali', array( 'audience' => 'members_all', 'subject' => 'x', 'body' => 'Ciao', 'preview' => '1', 'channels' => array( 'sms' ) ) );
+asem_ok( false !== strpos( $be_msg, 'SMS: ' ), 'SMS: l\'anteprima delle comunicazioni conta i destinatari SMS' );
+asem_render( array( \AssociazioneSemplice\Admin\MessagesPage::class, 'render' ), 'SMS', array( 'view' => $be_bid ) );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\ConsentFront::section( $people->get( $be_sara ) ), 'asem_front_consent' ), 'area soci: la persona vede le sue scelte di comunicazione' );
+$be_panel = function () use ( $people, $be_sara ) {
+	\AssociazioneSemplice\Admin\BlockEPanels::person_consents( $people->get( $be_sara ) );
+};
+asem_render( $be_panel, 'Consensi SMS e newsletter' );
+
+// --- Newsletter ---
+$be_nl_log = array();
+$be_nl_http = function ( $method, $url, $headers, $body ) use ( &$be_nl_log ) {
+	if ( false === strpos( $url, 'us21.api.mailchimp.com/3.0' ) ) {
+		return array( 'code' => 404, 'body' => '{}' );
+	}
+	$be_nl_log[] = array( 'method' => $method, 'path' => (string) wp_parse_url( $url, PHP_URL_PATH ), 'body' => json_decode( (string) $body, true ) );
+	if ( '/3.0/ping' === (string) wp_parse_url( $url, PHP_URL_PATH ) ) {
+		return array( 'code' => 200, 'body' => '{"health_status":"Everything\'s Chimpy!"}' );
+	}
+	if ( '/3.0/lists' === (string) wp_parse_url( $url, PHP_URL_PATH ) ) {
+		return array( 'code' => 200, 'body' => '{"lists":[{"id":"LST1","name":"Soci"}]}' );
+	}
+	return array( 'code' => 200, 'body' => '{}' );
+};
+\AssociazioneSemplice\Newsletter::set_http( $be_nl_http );
+$be_anna  = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Anna', 'last_name' => 'Newsletter', 'email' => 'anna.nl@example.com' ) );
+$people->set_membership( $be_anna, $be_label, true );
+asem_ok( ! \AssociazioneSemplice\Newsletter::available() && 0 === \AssociazioneSemplice\Newsletter::sync()['added'] && ! $be_nl_log, 'newsletter: senza servizio scelto non parte nulla' );
+Settings::update( array( 'newsletter_provider' => 'mailchimp', 'newsletter_mailchimp_key' => 'abcdef-us21', 'newsletter_auto' => 1 ) );
+asem_ok( \AssociazioneSemplice\Newsletter::test()['ok'] && array( 'LST1' => 'Soci' ) === \AssociazioneSemplice\Newsletter::fetch_lists(), 'newsletter: prova di collegamento e lettura delle liste' );
+asem_ok( 0 === \AssociazioneSemplice\Newsletter::sync()['added'] && ! \AssociazioneSemplice\Newsletter::configured(), 'newsletter: senza lista scelta non parte nulla' );
+Settings::update( array( 'newsletter_list' => 'LST1' ) );
+$be_nl_log = array();
+$be_r = \AssociazioneSemplice\Newsletter::sync();
+asem_ok( 0 === $be_r['added'] && ! $be_nl_log, 'newsletter: senza consenso nessun dato lascia il sito' );
+\AssociazioneSemplice\Consents::set( $be_anna, 'newsletter', true, 'web' );
+$be_r = \AssociazioneSemplice\Newsletter::sync();
+$be_put = array_values( array_filter( $be_nl_log, function ( $c ) { return 'PUT' === $c['method']; } ) );
+asem_ok( 1 === $be_r['added'] && 1 === count( $be_put ) && false !== strpos( $be_put[0]['path'], md5( 'anna.nl@example.com' ) ) && 'subscribed' === $be_put[0]['body']['status_if_new'] && 'Anna' === $be_put[0]['body']['merge_fields']['FNAME'], 'newsletter: si iscrive solo chi ha dato il consenso' );
+asem_ok( ! array_filter( $be_nl_log, function ( $c ) { return false !== strpos( $c['path'], md5( 'tino.nl@example.com' ) ) || false !== strpos( wp_json_encode( $c['body'] ), 'tino.nl' ); } ), 'newsletter: chi non ha consenso non compare in nessuna chiamata' );
+$be_nl_log = array();
+$be_r = \AssociazioneSemplice\Newsletter::sync();
+asem_ok( 0 === $be_r['added'] && 0 === $be_r['updated'] && $be_r['unchanged'] >= 1 && ! $be_nl_log, 'newsletter: seconda sincronizzazione senza novità, nessuna chiamata' );
+\AssociazioneSemplice\Consents::set( $be_anna, 'newsletter', false, 'web' );
+$be_patch = array_values( array_filter( $be_nl_log, function ( $c ) { return 'PATCH' === $c['method']; } ) );
+asem_ok( 1 === count( $be_patch ) && 'unsubscribed' === $be_patch[0]['body']['status'] && false !== strpos( $be_patch[0]['path'], md5( 'anna.nl@example.com' ) ), 'newsletter: chi revoca il consenso è disiscritto subito' );
+$be_nl_log = array();
+asem_ok( 0 === \AssociazioneSemplice\Newsletter::sync()['added'] && ! array_filter( $be_nl_log, function ( $c ) { return 'PUT' === $c['method']; } ), 'newsletter: dopo la revoca non viene reiscritta' );
+\AssociazioneSemplice\Consents::set( $be_anna, 'newsletter', true, 'web' );
+asem_ok( 1 === \AssociazioneSemplice\Newsletter::sync()['added'], 'newsletter: se rinnova il consenso torna in lista' );
+$be_nl_log = array();
+\AssociazioneSemplice\Privacy::anonymize( $be_anna );
+$be_patch = array_values( array_filter( $be_nl_log, function ( $c ) { return 'PATCH' === $c['method']; } ) );
+asem_ok( 1 === count( $be_patch ) && 'unsubscribed' === $be_patch[0]['body']['status'] && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . \AssociazioneSemplice\Db::t( 'newsletter_sync' ) . ' WHERE person_id = ' . (int) $be_anna ) && null === \AssociazioneSemplice\Consents::get( $be_anna, 'newsletter' ), 'newsletter: la persona anonimizzata è tolta dalla lista e i suoi consensi cancellati' );
+$be_page = asem_render( array( \AssociazioneSemplice\Admin\BlockEPanels::class, 'integrations' ), 'Newsletter' );
+asem_ok( false !== strpos( $be_page, 'Sincronizza adesso' ) && false === strpos( $be_page, 'abcdef-us21' ), 'newsletter: sezione in Integrazioni, senza mostrare la chiave' );
+// MailPoet (API PHP finta)
+$be_mp = new class() {
+	public $log = array();
+	public function getLists() {
+		return array( array( 'id' => 5, 'name' => 'Newsletter' ) );
+	}
+	public function getSubscriber( $email ) {
+		throw new \Exception( 'non esiste' );
+	}
+	public function addSubscriber( $s, $lists, $opts ) {
+		$this->log[] = array( 'add', $s['email'], $lists );
+	}
+	public function subscribeToLists( $id, $lists, $opts ) {
+		$this->log[] = array( 'sub', $id );
+	}
+	public function unsubscribeFromLists( $id, $lists ) {
+		$this->log[] = array( 'unsub', $id );
+	}
+};
+\AssociazioneSemplice\Newsletter::set_mailpoet( $be_mp );
+Settings::update( array( 'newsletter_provider' => 'mailpoet', 'newsletter_list' => '5' ) );
+\AssociazioneSemplice\Consents::set( $be_sara, 'newsletter', true, 'paper' );
+$be_r = \AssociazioneSemplice\Newsletter::sync();
+asem_ok( 1 === $be_r['added'] && 1 === count( $be_mp->log ) && 'add' === $be_mp->log[0][0] && 'sara.sms@example.com' === $be_mp->log[0][1], 'newsletter: MailPoet tramite la sua API PHP, solo chi ha il consenso' );
+\AssociazioneSemplice\Newsletter::set_mailpoet( null );
+\AssociazioneSemplice\Newsletter::set_http( null );
+\AssociazioneSemplice\Sms::set_http( null );
+Settings::update( array( 'newsletter_provider' => '', 'newsletter_list' => '', 'sms_provider' => '', 'sms_sender' => '', 'sms_reminders' => 0 ) );
+Settings::clear_secret( 'newsletter_mailchimp_key' );
+Settings::clear_secret( 'sms_brevo_key' );
+// anonimizzazione: spariscono coda SMS e consensi
+\AssociazioneSemplice\Privacy::anonymize( $be_sara );
+asem_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . \AssociazioneSemplice\Db::t( 'sms_queue' ) . ' WHERE person_id = ' . (int) $be_sara ) && null === \AssociazioneSemplice\Consents::get( $be_sara, 'sms' ), 'privacy: l\'anonimizzazione cancella SMS in coda e consensi' );
+asem_ok( 'Persona' === $people->get( $be_sara )['first_name'] && ! isset( \AssociazioneSemplice\Consents::privacy_export( array(), $be_tino )['consensi_sms_newsletter'][0] ), 'privacy: l\'esportazione dei dati include i consensi (vuota se non ce ne sono)' );
+wp_set_current_user( 1 );
+
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Tutti i controlli sono passati.' );

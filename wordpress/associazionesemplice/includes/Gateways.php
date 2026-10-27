@@ -27,10 +27,27 @@ final class Gateways {
 			if ( PaymentConfig::SUMUP === $provider ) {
 				return self::test_sumup( $c, $http );
 			}
+			if ( PaymentConfig::SATISPAY === $provider ) {
+				return self::test_satispay( $c, $http );
+			}
 		} catch ( \Throwable $e ) {
 			return array( 'ok' => false, 'message' => 'Connessione non riuscita: ' . $e->getMessage() );
 		}
-		return array( 'ok' => false, 'message' => 'Scegli Stripe, PayPal o SumUp per fare la prova.' );
+		return array( 'ok' => false, 'message' => 'Scegli Stripe, PayPal, SumUp o Satispay per fare la prova.' );
+	}
+
+	/** Satispay: richiesta firmata al punto di prova della firma (non muove denaro). */
+	private static function test_satispay( array $c, callable $http ): array {
+		if ( '' === trim( (string) ( $c['satispay_key_id'] ?? '' ) ) || '' === trim( (string) ( $c['satispay_private_key'] ?? '' ) ) ) {
+			return array( 'ok' => false, 'message' => 'Collega prima Satispay con il codice di attivazione.' );
+		}
+		$mode = 'live' === ( $c['satispay_mode'] ?? 'sandbox' ) ? 'reale' : 'sandbox';
+		try {
+			SatispayApi::test_signature( $http, $c );
+		} catch ( \RuntimeException $e ) {
+			return array( 'ok' => false, 'message' => $e->getMessage() );
+		}
+		return array( 'ok' => true, 'message' => 'Satispay: connessione e firma riuscite (modalità ' . $mode . ').' );
 	}
 
 	/** SumUp: lettura del profilo dell'account con la chiave API (non muove denaro). */
