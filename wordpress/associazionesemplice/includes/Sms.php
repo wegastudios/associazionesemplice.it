@@ -10,7 +10,9 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Sms {
 
-	const HOOK       = 'asem_sms_queue';
+	const HOOK       = 'asem_sms_queue';  // evento singolo: il gruppo successivo di una coda lunga
+	const HOURLY     = 'asem_sms_hourly'; // lavoro orario: nuovi tentativi e pulizia
+	const STUCK_MIN  = 15;                // minuti dopo i quali un SMS «in invio» si considera rimasto a metà
 	const BATCH      = 20;
 	const KEEP_DAYS  = 120;
 	const CREDITS_TR = 'asem_sms_credits';
@@ -148,11 +150,12 @@ final class Sms {
 		$provider = self::provider();
 		$db       = self::db();
 		$tbl      = Db::t( 'sms_queue' );
+		$db->query( $db->prepare( "UPDATE $tbl SET status = 'queued', next_try_at = NULL WHERE status = 'sending' AND next_try_at < %s", gmdate( 'Y-m-d H:i:s', strtotime( Db::now() ) - self::STUCK_MIN * 60 ) ) ); // rimasti a metà (timeout, errore fatale): tornano in coda
 		$where    = "status = 'queued' AND (next_try_at IS NULL OR next_try_at <= %s)" . ( null !== $broadcast_id ? $db->prepare( ' AND broadcast_id = %d', $broadcast_id ) : '' );
 		$rows     = $db->get_results( $db->prepare( "SELECT * FROM $tbl WHERE $where ORDER BY id LIMIT %d", Db::now(), $limit ?: self::BATCH ), ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $where è già preparato
 		$sender   = self::sender();
 		foreach ( $rows as $r ) {
-			if ( 1 !== (int) $db->update( $tbl, array( 'status' => 'sending' ), array( 'id' => (int) $r['id'], 'status' => 'queued' ) ) ) {
+			if ( 1 !== (int) $db->update( $tbl, array( 'status' => 'sending', 'next_try_at' => Db::now() ), array( 'id' => (int) $r['id'], 'status' => 'queued' ) ) ) { // next_try_at ricorda da quando è «in invio»
 				continue; // lo sta mandando un altro passaggio
 			}
 			if ( ! empty( $r['person_id'] ) && 'test' !== $r['kind'] && ! Consents::has( (int) $r['person_id'], ConsentRules::SMS ) ) {
@@ -283,7 +286,7 @@ final class Sms {
 
 	/**
 	 * Un promemoria è partito per email: se l'associazione ha scelto di mandarlo anche per SMS, lo si accoda a chi ha quell'indirizzo, un numero e il consenso.
-	 * Si aggancia all'azione `asem_notify_email` dei promemoria (che porta indirizzo, oggetto e testo).
+	 * Si aggancia all'azione `asem_notify_email`, che il plugin lancia per ogni email automatica di servizio: promemoria di scadenza, avvisi sulle attività e lista d'attesa. L'opzione «SMS anche per i promemoria» li copre quindi tutti. Qui si accoda soltanto.
 	 */
 	public static function on_reminder( $email, $subject, $body ): void {
 		if ( ! self::reminders_enabled() || ! self::available() || '' === (string) $email ) {
@@ -297,7 +300,9 @@ final class Sms {
 		}, $ids ) ) ) )['list'] as $r ) {
 			self::enqueue( $r['person_id'], $r['phone'], $r['name'], SmsRules::reminder_text( $assoc, (string) $subject, (string) $body ), 'reminder' );
 		}
-		self::process( 5 );
+		if ( ! wp_next_scheduled( self::HOOK ) ) { // solo in coda: l'invio vero lo fa il lavoro in background, mai dentro la richiesta che manda i promemoria
+			wp_schedule_single_event( time() + 30, self::HOOK );
+		}
 	}
 
 	// ---------- Dati della persona ----------

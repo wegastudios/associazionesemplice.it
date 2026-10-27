@@ -212,7 +212,7 @@ class PaymentService extends OfflinePayments {
 		if ( PaymentConfig::SUMUP === $provider ) {
 			return SumUpApi::create_checkout( $this->http(), $cfg['sumup_api_key'], SumUpApi::checkout_payload( $items, $public, $cfg['sumup_merchant_code'], $success, $brand ) );
 		}
-		if ( PaymentConfig::SATISPAY === $provider ) {
+		if ( SatispayRules::ID === $provider ) {
 			$callback = SatispayRules::callback_url( rest_url( 'associazionesemplice/v1/webhooks/satispay' ) );
 			return SatispayApi::create_payment( $this->http(), $cfg, SatispayRules::payment_payload( $items, $public, $callback, $success, $brand ) );
 		}
@@ -478,7 +478,7 @@ class PaymentService extends OfflinePayments {
 				}
 				return false;
 			}
-			if ( PaymentConfig::SATISPAY === $p['provider'] ) {
+			if ( SatispayRules::ID === $p['provider'] ) {
 				$c = SatispayApi::retrieve_payment( $this->http(), $cfg, $p['provider_ref'] );
 				if ( SatispayRules::is_accepted( $c ) ) {
 					return $this->finalize( $p, SatispayRules::paid_eur_cents( $c ), (string) ( $c['id'] ?? $p['provider_ref'] ) );

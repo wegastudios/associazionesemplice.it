@@ -27,7 +27,7 @@ final class Gateways {
 			if ( PaymentConfig::SUMUP === $provider ) {
 				return self::test_sumup( $c, $http );
 			}
-			if ( PaymentConfig::SATISPAY === $provider ) {
+			if ( SatispayRules::ID === $provider ) {
 				return self::test_satispay( $c, $http );
 			}
 		} catch ( \Throwable $e ) {

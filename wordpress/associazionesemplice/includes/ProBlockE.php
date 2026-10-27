@@ -9,7 +9,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class ProBlockE {
 
-	const SMS_JOB = Sms::HOOK;
+	const SMS_JOB = Sms::HOURLY; // lavoro orario; i gruppi successivi usano un evento singolo, Sms::HOOK
 
 	public static function register(): void {
 		add_filter( 'asem_settings_defaults', array( __CLASS__, 'defaults' ) );
@@ -27,6 +27,11 @@ final class ProBlockE {
 		add_filter( 'asem_payment_methods', array( __CLASS__, 'payment_methods' ) );
 		add_filter( 'asem_online_account_names', array( __CLASS__, 'account_names' ) );
 		add_filter( 'asem_online_methods', array( __CLASS__, 'online_methods' ) );
+		add_filter( 'asem_direct_gateways', array( __CLASS__, 'direct_gateways' ) );
+		add_filter( 'asem_payment_default_labels', array( __CLASS__, 'default_labels' ) );
+		add_filter( 'asem_payment_validate', array( __CLASS__, 'validate_gateway' ), 10, 3 );
+		add_filter( 'asem_payment_note', array( __CLASS__, 'payment_note' ), 10, 2 );
+		add_filter( 'asem_fee_gateways', array( __CLASS__, 'fee_gateways' ) );
 		Frontend\Actions::add_handler( 'asem_front_consent', array( Frontend\ConsentFront::class, 'do_save' ) );
 		Admin\BlockEPanels::register();
 	}
@@ -122,14 +127,38 @@ final class ProBlockE {
 	// ---------- Satispay ----------
 
 	public static function payment_methods( array $m ): array {
-		return $m + array( PaymentConfig::SATISPAY => 'Satispay' );
+		return $m + array( SatispayRules::ID => 'Satispay' );
 	}
 
 	public static function account_names( array $n ): array {
-		return $n + array( PaymentConfig::SATISPAY => 'Satispay' );
+		return $n + array( SatispayRules::ID => 'Satispay' );
 	}
 
 	public static function online_methods( array $m ): array {
-		return array_merge( $m, array( PaymentConfig::SATISPAY ) );
+		return array_merge( $m, array( SatispayRules::ID ) );
+	}
+
+	public static function direct_gateways( array $extra ): array {
+		return $extra + array( SatispayRules::ID => 'Satispay' );
+	}
+
+	public static function default_labels( array $labels ): array {
+		return $labels + array( SatispayRules::ID => 'Paga con Satispay' );
+	}
+
+	public static function fee_gateways( array $list ): array {
+		return array_merge( $list, array( SatispayRules::ID ) );
+	}
+
+	public static function validate_gateway( $result, $config, $gateway ) {
+		if ( SatispayRules::ID !== $gateway ) {
+			return $result;
+		}
+		$r = SatispayRules::validate( (array) $config );
+		return array( 'errors' => array_merge( (array) $result['errors'], $r['errors'] ), 'warnings' => array_merge( (array) $result['warnings'], $r['warnings'] ) );
+	}
+
+	public static function payment_note( $note, $gateway ) {
+		return SatispayRules::ID === $gateway ? 'Confermi il pagamento nell\'app Satispay: i dati del tuo conto non passano da questo sito.' : $note;
 	}
 }

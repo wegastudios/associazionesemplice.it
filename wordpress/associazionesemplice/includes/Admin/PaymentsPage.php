@@ -7,6 +7,7 @@ use AssociazioneSemplice\Money;
 use AssociazioneSemplice\PaymentConfig;
 use AssociazioneSemplice\PaymentItems;
 use AssociazioneSemplice\Plugin;
+use AssociazioneSemplice\SatispayRules;
 use AssociazioneSemplice\Settings;
 
 defined( 'ABSPATH' ) || exit;
@@ -21,8 +22,8 @@ final class PaymentsPage {
 
 	/** Righe di personalizzazione di un metodo di pagamento: dicitura del pulsante e nota sotto il pulsante. */
 	private static function label_rows( string $gateway, string $name, array $s, string $class, string $hint ): string {
-		return '<tr class="' . esc_attr( $class ) . '"><th>' . esc_html( $name ) . ' — pulsante</th><td><input type="text" name="pay_label_' . esc_attr( $gateway ) . '" value="' . esc_attr( (string) $s[ 'pay_label_' . $gateway ] ) . '" class="regular-text" maxlength="60" placeholder="' . esc_attr( PaymentConfig::DEFAULT_LABELS[ $gateway ] ) . '"> '
-			. '<p class="description">La scritta del pulsante che vedono i soci. Vuoto = «' . esc_html( PaymentConfig::DEFAULT_LABELS[ $gateway ] ) . '».' . ( '' !== $hint ? ' ' . esc_html( $hint ) : '' ) . '</p></td></tr>'
+		return '<tr class="' . esc_attr( $class ) . '"><th>' . esc_html( $name ) . ' — pulsante</th><td><input type="text" name="pay_label_' . esc_attr( $gateway ) . '" value="' . esc_attr( (string) $s[ 'pay_label_' . $gateway ] ) . '" class="regular-text" maxlength="60" placeholder="' . esc_attr( PaymentConfig::default_labels()[ $gateway ] ) . '"> '
+			. '<p class="description">La scritta del pulsante che vedono i soci. Vuoto = «' . esc_html( PaymentConfig::default_labels()[ $gateway ] ) . '».' . ( '' !== $hint ? ' ' . esc_html( $hint ) : '' ) . '</p></td></tr>'
 			. '<tr class="' . esc_attr( $class ) . '"><th>' . esc_html( $name ) . ' — nota</th><td><input type="text" name="pay_note_' . esc_attr( $gateway ) . '" value="' . esc_attr( (string) $s[ 'pay_note_' . $gateway ] ) . '" class="large-text" maxlength="300" placeholder="' . esc_attr( PaymentConfig::note( $gateway ) ) . '">'
 			. '<p class="description">La frase sotto il pulsante. Vuoto = la frase standard.</p></td></tr>';
 	}
@@ -60,7 +61,7 @@ final class PaymentsPage {
 		echo self::label_rows( PaymentConfig::STRIPE, 'Stripe', $s, 'asem-pay-stripe', 'Ad esempio «Paga con carta».' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo self::label_rows( PaymentConfig::PAYPAL, 'PayPal', $s, 'asem-pay-paypal', 'Se il tuo account PayPal offre il pagamento a rate puoi scrivere ad esempio «Paga a rate con PayPal» e spiegare nella nota come funziona.' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo self::label_rows( PaymentConfig::SUMUP, 'SumUp', $s, 'asem-pay-sumup', 'Ad esempio «Paga con carta (SumUp)».' ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo self::label_rows( PaymentConfig::SATISPAY, 'Satispay', $s, 'asem-pay-satispay', 'Ad esempio «Paga con Satispay».' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo self::label_rows( SatispayRules::ID, 'Satispay', $s, 'asem-pay-satispay', 'Ad esempio «Paga con Satispay».' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo self::label_rows( PaymentConfig::WOOCOMMERCE, 'Negozio', $s, 'asem-pay-woocommerce', '' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo SettingsPage::gateway_row( 'stripe_mode', 'Stripe — modalità', $s, 'select', array( 'test' => 'Prova (test)', 'live' => 'Reale (live)' ), 'asem-pay-stripe' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo SettingsPage::gateway_row( 'stripe_publishable_key', 'Stripe — chiave pubblicabile', $s, 'text', array(), 'asem-pay-stripe', 'pk_test_… / pk_live_…' ); // phpcs:ignore WordPress.Security.EscapeOutput
@@ -68,7 +69,7 @@ final class PaymentsPage {
 		echo SettingsPage::secret_row( 'stripe_webhook_secret', 'Stripe — segreto del webhook', 'asem-pay-stripe', 'whsec_… (da Stripe → Sviluppatori → Webhook)' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr class="asem-pay-stripe"><th>Indirizzo del webhook</th><td><code>' . esc_html( rest_url( 'associazionesemplice/v1/webhooks/stripe' ) ) . '</code><p class="description">In Stripe (Sviluppatori → Webhook) aggiungi questo indirizzo con gli eventi <code>checkout.session.completed</code>, <code>checkout.session.async_payment_succeeded</code> e <code>checkout.session.expired</code>, poi incolla qui il segreto <code>whsec_…</code>. È una rete di sicurezza: il pagamento si conferma anche quando il socio torna sul sito e con un controllo automatico ogni ora.</p></td></tr>';
 		echo '<tr class="asem-pay-stripe"><th>Klarna</th><td><label><input type="checkbox" name="stripe_klarna" value="1"' . checked( ! empty( $s['stripe_klarna'] ), true, false ) . '> Offri anche Klarna (paga dopo o a rate) nella pagina di pagamento di Stripe</label>'
-			. '<p class="description">Klarna passa da Stripe: va attivato anche nel tuo account Stripe (Impostazioni → Metodi di pagamento). Si offre solo per pagamenti in euro, da ' . esc_html( Money::format( \AssociazioneSemplice\KlarnaRules::MIN_CENTS ) ) . ' a ' . esc_html( Money::format( \AssociazioneSemplice\KlarnaRules::MAX_CENTS ) ) . ' e quando il socio ha un indirizzo email; negli altri casi resta la sola carta. '
+			. '<p class="description">Klarna passa da Stripe: va attivato anche nel tuo account Stripe (Impostazioni → Metodi di pagamento). <strong>Attenzione:</strong> con Klarna acceso il sito elenca a mano i metodi della pagina di pagamento (carta e Klarna), quindi gli altri metodi che hai attivato nel pannello di Stripe (ad esempio Link) non compaiono finché Klarna è acceso.Si offre solo per pagamenti in euro, da ' . esc_html( Money::format( \AssociazioneSemplice\KlarnaRules::MIN_CENTS ) ) . ' a ' . esc_html( Money::format( \AssociazioneSemplice\KlarnaRules::MAX_CENTS ) ) . ' e quando il socio ha un indirizzo email; negli altri casi resta la sola carta. '
 			. 'Nel webhook di Stripe aggiungi anche <code>checkout.session.async_payment_failed</code>, per chiudere i pagamenti differiti non riusciti.</p></td></tr>';
 		echo '<tr class="asem-pay-paypal"><th>Conferma dei pagamenti</th><td><p class="description">PayPal non richiede configurazioni aggiuntive: il pagamento si conferma quando il socio torna sul sito e con un controllo automatico ogni ora.</p></td></tr>';
 		echo SettingsPage::gateway_row( 'paypal_mode', 'PayPal — modalità', $s, 'select', array( 'sandbox' => 'Prova (sandbox)', 'live' => 'Reale (live)' ), 'asem-pay-paypal' ); // phpcs:ignore WordPress.Security.EscapeOutput
@@ -85,7 +86,7 @@ final class PaymentsPage {
 		echo self::fee_rows( PaymentConfig::STRIPE, 'Stripe', $s, 'asem-pay-stripe' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo self::fee_rows( PaymentConfig::PAYPAL, 'PayPal', $s, 'asem-pay-paypal' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo self::fee_rows( PaymentConfig::SUMUP, 'SumUp', $s, 'asem-pay-sumup' ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo self::fee_rows( PaymentConfig::SATISPAY, 'Satispay', $s, 'asem-pay-satispay' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo self::fee_rows( SatispayRules::ID, 'Satispay', $s, 'asem-pay-satispay' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Commissioni in prima nota</th><td><label><input type="checkbox" name="pay_fee_book" value="1"' . checked( ! empty( $s['pay_fee_book'] ), true, false ) . '> Registra come spesa la commissione stimata a ogni incasso online</label><p class="description">A ogni pagamento confermato si registra la spesa «Commissione di incasso» calcolata dai valori che hai indicato sopra (fissa + percentuale sul totale addebitato), sul conto del metodo usato. È una stima: quando arriva l\'estratto conto del gestore correggi la spesa se la cifra vera è diversa. Non vale per le domande di adesione.</p></td></tr>';
 		if ( PaymentConfig::NONE !== $s['payment_provider'] ) {
 			$check = PaymentConfig::validate( \AssociazioneSemplice\ProSettings::payment_config() );
@@ -108,7 +109,7 @@ final class PaymentsPage {
 		submit_button( 'Salva' );
 		Ui::form_close();
 		echo '<h2>Prova di connessione</h2><p class="description">Usa le chiavi già salvate (salva prima le impostazioni). Non muove denaro: Stripe legge il saldo, PayPal chiede un token di accesso, SumUp legge il profilo dell\'account.</p><div style="display:flex;gap:12px;flex-wrap:wrap">';
-		foreach ( array( PaymentConfig::STRIPE => 'Verifica connessione Stripe', PaymentConfig::PAYPAL => 'Verifica connessione PayPal', PaymentConfig::SUMUP => 'Verifica connessione SumUp', PaymentConfig::SATISPAY => 'Verifica connessione Satispay' ) as $prov => $label ) {
+		foreach ( array( PaymentConfig::STRIPE => 'Verifica connessione Stripe', PaymentConfig::PAYPAL => 'Verifica connessione PayPal', PaymentConfig::SUMUP => 'Verifica connessione SumUp', SatispayRules::ID => 'Verifica connessione Satispay' ) as $prov => $label ) {
 			Ui::form_open( 'asem_test_gateway', Ui::url( 'asem-payments' ) );
 			echo Ui::hidden( 'provider', $prov ) . '<button class="button">' . esc_html( $label ) . '</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			Ui::form_close();

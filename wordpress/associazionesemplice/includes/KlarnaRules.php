@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class KlarnaRules {
 
-	const MIN_CENTS = 100;     // 1 €
+	const MIN_CENTS = 3500;    // 35 €: prudente per Klarna via Stripe in Italia, così non si chiede a Stripe una sessione che rifiuterebbe
 	const MAX_CENTS = 1000000; // 10.000 €
 
 	/**

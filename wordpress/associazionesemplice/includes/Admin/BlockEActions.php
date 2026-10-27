@@ -8,6 +8,7 @@ use AssociazioneSemplice\Gateways;
 use AssociazioneSemplice\Newsletter;
 use AssociazioneSemplice\PaymentConfig;
 use AssociazioneSemplice\SatispayApi;
+use AssociazioneSemplice\SatispayRules;
 use AssociazioneSemplice\Settings;
 use AssociazioneSemplice\Sms;
 
@@ -170,7 +171,7 @@ final class BlockEActions {
 			throw new \InvalidArgumentException( $e->getMessage() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		Settings::update( array( 'satispay_key_id' => $key_id, 'satispay_private_key' => $keys['private'] ) );
-		\AssociazioneSemplice\Audit::log( 'gateway.connected', 'settings', null, array( 'provider' => PaymentConfig::SATISPAY, 'mode' => $mode ) ); // senza codice né chiavi
+		\AssociazioneSemplice\Audit::log( 'gateway.connected', 'settings', null, array( 'provider' => SatispayRules::ID, 'mode' => $mode ) ); // senza codice né chiavi
 		return array( Ui::url( 'asem-payments' ), 'Satispay collegato (' . ( 'live' === $mode ? 'modalità reale' : 'sandbox' ) . '). Scegli Satispay tra i metodi di pagamento e prova il collegamento.' );
 	}
 }

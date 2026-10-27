@@ -64,7 +64,7 @@ final class BlockEPanels {
 		echo '<tr><th>Fornitore</th><td><select name="sms_provider" id="asem-sms-provider">' . Ui::options( $choices, (string) $s['sms_provider'] ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo self::fields_rows( $providers, $s, 'asem-sms' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr><th>Mittente</th><td><input type="text" name="sms_sender" value="' . esc_attr( (string) $s['sms_sender'] ) . '" class="regular-text" maxlength="15" placeholder="' . esc_attr( Sms::sender() ) . '"><p class="description">Fino a 11 lettere o cifre (senza simboli) oppure un numero. Vuoto = il nome dell\'associazione, accorciato. Alcuni paesi e fornitori richiedono di registrare il mittente.</p></td></tr>';
-		echo '<tr><th>Promemoria</th><td><label><input type="checkbox" name="sms_reminders" value="1"' . checked( ! empty( $s['sms_reminders'] ), true, false ) . '> Manda anche per SMS i promemoria automatici (scadenze, rientri, eventi)</label><p class="description">Solo a chi ha dato il consenso. Con i promemoria spenti non cambia nulla.</p></td></tr>';
+		echo '<tr><th>Promemoria</th><td><label><input type="checkbox" name="sms_reminders" value="1"' . checked( ! empty( $s['sms_reminders'] ), true, false ) . '> Manda anche per SMS gli avvisi automatici di servizio (promemoria di scadenza e rientro, avvisi sulle attività e lista d\'attesa)</label><p class="description">Solo a chi ha dato il consenso. Con i promemoria spenti non cambia nulla.</p></td></tr>';
 		echo '</tbody></table><p><button class="button button-primary">Salva</button></p>';
 		Ui::form_close();
 		self::toggle_js( 'asem-sms-provider', 'asem-sms', array_keys( $providers ) );

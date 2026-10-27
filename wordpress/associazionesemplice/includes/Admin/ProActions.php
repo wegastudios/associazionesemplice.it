@@ -3,6 +3,7 @@ namespace AssociazioneSemplice\Admin;
 
 use AssociazioneSemplice\AssocPolicies;
 use AssociazioneSemplice\Attachments;
+use AssociazioneSemplice\SatispayRules;
 use AssociazioneSemplice\Attendance;
 use AssociazioneSemplice\Audit;
 use AssociazioneSemplice\Edition;
@@ -406,7 +407,7 @@ final class ProActions {
 
 	/** Prova la connessione a Stripe o PayPal con le chiavi salvate (solo quando l'amministratore preme il pulsante). */
 	public static function test_gateway( array $p ): array {
-		$provider = in_array( $p['provider'] ?? '', array( PaymentConfig::STRIPE, PaymentConfig::PAYPAL, PaymentConfig::SUMUP, PaymentConfig::SATISPAY ), true ) ? $p['provider'] : '';
+		$provider = in_array( $p['provider'] ?? '', array( PaymentConfig::STRIPE, PaymentConfig::PAYPAL, PaymentConfig::SUMUP, SatispayRules::ID ), true ) ? $p['provider'] : '';
 		$res      = Gateways::test( $provider, \AssociazioneSemplice\ProSettings::payment_config(), array( Gateways::class, 'wp_http' ) );
 		Audit::log( 'gateway.tested', 'settings', null, array( 'provider' => $provider, 'ok' => $res['ok'] ) );
 		if ( ! $res['ok'] ) {

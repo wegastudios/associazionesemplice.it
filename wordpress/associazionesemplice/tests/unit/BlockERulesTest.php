@@ -7,6 +7,7 @@ use AssociazioneSemplice\MailchimpNewsletter;
 use AssociazioneSemplice\MailPoetNewsletter;
 use AssociazioneSemplice\NewsletterRules;
 use AssociazioneSemplice\PaymentConfig as P;
+use AssociazioneSemplice\ProBlockE;
 use AssociazioneSemplice\SatispayApi;
 use AssociazioneSemplice\SatispayRules;
 use AssociazioneSemplice\SmsRules;
@@ -308,29 +309,25 @@ final class BlockERulesTest extends TestCase {
 		SatispayApi::retrieve_payment( $this->http( array( 'code' => 200, 'body' => '{}' ) ), $cfg, 'x' );
 	}
 
-	public function test_satispay_is_a_payment_choice(): void {
-		$this->assertSame( array( 'satispay' ), P::gateways_of( 'satispay' ) );
-		$this->assertSame( array( 'stripe', 'satispay' ), P::gateways_of( 'stripe_satispay' ) );
-		$this->assertSame( array( 'stripe', 'paypal', 'sumup', 'satispay' ), P::gateways_of( 'stripe_paypal_sumup_satispay' ) );
-		$this->assertSame( array(), P::gateways_of( 'woocommerce' ) );
-		$this->assertSame( array(), P::gateways_of( 'inventato' ) );
-		$this->assertTrue( P::is_valid( 'paypal_satispay' ) );
-		$this->assertFalse( P::is_valid( 'satispay_stripe' ), 'l\'ordine è sempre lo stesso' );
-		$this->assertCount( 17, P::providers(), 'nessuno, WooCommerce e le 15 combinazioni' );
-		foreach ( array( 'stripe_paypal', 'stripe_sumup', 'paypal_sumup', 'stripe_paypal_sumup', 'sumup', 'stripe', 'paypal' ) as $old ) {
-			$this->assertTrue( P::is_valid( $old ), "$old resta valido" );
-		}
-		$bad = P::validate_gateway( array( 'site_https' => 1 ), P::SATISPAY );
-		$this->assertNotEmpty( $bad['errors'], 'senza collegamento c\'è un errore' );
-		$ok = P::validate_gateway( array( 'satispay_key_id' => 'k', 'satispay_private_key' => 'pem', 'site_https' => 1 ), P::SATISPAY );
+	public function test_satispay_is_added_to_payments_only_through_the_extension_points(): void {
+		$this->assertCount( 9, P::providers(), 'senza il Pro le scelte sono sempre le nove di prima' );
+		$this->assertSame( array(), P::gateways_of( 'satispay' ), 'senza il Pro Satispay non esiste' );
+		$this->assertArrayHasKey( 'satispay', ProBlockE::direct_gateways( array() ) );
+		$this->assertArrayHasKey( 'satispay', ProBlockE::default_labels( P::DEFAULT_LABELS ) );
+		$this->assertContains( 'satispay', ProBlockE::fee_gateways( P::fee_gateways() ) );
+		$this->assertContains( 'satispay', ProBlockE::online_methods( array( 'stripe' ) ) );
+		$this->assertNotSame( '', ProBlockE::payment_note( '', 'satispay' ) );
+		$this->assertSame( 'x', ProBlockE::payment_note( 'x', 'stripe' ), 'gli altri metodi non cambiano' );
+		$base = array( 'errors' => array(), 'warnings' => array() );
+		$this->assertSame( $base, ProBlockE::validate_gateway( $base, array(), 'stripe' ) );
+		$this->assertNotEmpty( ProBlockE::validate_gateway( $base, array( 'site_https' => 1 ), 'satispay' )['errors'], 'senza collegamento c\'è un errore' );
+		$ok = SatispayRules::validate( array( 'satispay_key_id' => 'k', 'satispay_private_key' => 'pem', 'site_https' => 1 ) );
 		$this->assertSame( array(), $ok['errors'] );
-		$http = P::validate_gateway( array( 'satispay_key_id' => 'k', 'satispay_private_key' => 'pem', 'site_https' => 0 ), P::SATISPAY );
+		$http = SatispayRules::validate( array( 'satispay_key_id' => 'k', 'satispay_private_key' => 'pem', 'site_https' => 0 ) );
 		$this->assertSame( array(), $http['errors'], 'in prova senza https basta un avviso' );
 		$this->assertNotEmpty( $http['warnings'] );
-		$live = P::validate_gateway( array( 'satispay_mode' => 'live', 'satispay_key_id' => 'k', 'satispay_private_key' => 'pem', 'site_https' => 0 ), P::SATISPAY );
+		$live = SatispayRules::validate( array( 'satispay_mode' => 'live', 'satispay_key_id' => 'k', 'satispay_private_key' => 'pem', 'site_https' => 0 ) );
 		$this->assertNotEmpty( $live['errors'], 'in modalità reale la conferma automatica richiede https' );
-		$this->assertNotSame( '', P::label( P::SATISPAY ) );
-		$this->assertNotSame( '', P::note( P::SATISPAY ) );
 	}
 
 	// ---------- Klarna ----------

@@ -32,7 +32,7 @@ final class PaymentFeesSumUpTest extends TestCase {
 		$this->assertSame( '', P::fee_note( array( 'pay_fee_fixed_sumup' => 25, 'pay_fee_pct_sumup' => 150 ), 'sumup' ), 'senza ribaltamento nessuna nota' );
 		$note = P::fee_note( array( 'pay_fee_fixed_sumup' => 25, 'pay_fee_pct_sumup' => 150, 'pay_fee_pass_sumup' => 1 ), 'sumup' );
 		$this->assertStringContainsString( '1,5%', $note );
-		$this->assertSame( array( P::STRIPE, P::PAYPAL, P::SUMUP, P::SATISPAY ), P::fee_gateways() );
+		$this->assertSame( array( P::STRIPE, P::PAYPAL, P::SUMUP ), P::fee_gateways() );
 	}
 
 	public function test_providers_include_sumup_alone_and_together(): void {

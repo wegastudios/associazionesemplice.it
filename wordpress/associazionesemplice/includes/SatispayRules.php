@@ -9,6 +9,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class SatispayRules {
 
+	const ID           = 'satispay';
 	const BASE_LIVE    = 'https://authservices.satispay.com';
 	const BASE_SANDBOX = 'https://staging.authservices.satispay.com';
 
@@ -76,6 +77,29 @@ final class SatispayRules {
 			return 0;
 		}
 		return max( 0, (int) ( $payment['amount_unit'] ?? 0 ) );
+	}
+
+	/** Controllo della configurazione. @param array $c satispay_mode, satispay_key_id, satispay_private_key, site_https (facoltativo) @return array{errors:string[],warnings:string[]} */
+	public static function validate( array $c ): array {
+		$errors   = array();
+		$warnings = array();
+		$https    = ! array_key_exists( 'site_https', $c ) || ! empty( $c['site_https'] );
+		$mode     = 'live' === ( $c['satispay_mode'] ?? 'sandbox' ) ? 'live' : 'sandbox';
+		if ( '' === trim( (string) ( $c['satispay_key_id'] ?? '' ) ) || '' === trim( (string) ( $c['satispay_private_key'] ?? '' ) ) ) {
+			$errors[] = 'Satispay: non è ancora collegato. Inserisci il codice di attivazione che trovi nell\'area Satispay Business e premi «Collega Satispay».';
+		}
+		if ( ! $https ) {
+			$msg = 'Satispay richiede che il sito sia servito in https: oggi l\'indirizzo del sito è http (serve per la conferma automatica dei pagamenti).';
+			if ( 'live' === $mode ) {
+				$errors[] = $msg;
+			} else {
+				$warnings[] = $msg;
+			}
+		}
+		if ( 'live' === $mode && ! $errors ) {
+			$warnings[] = 'Satispay è in modalità REALE: i pagamenti saranno veri.';
+		}
+		return array( 'errors' => $errors, 'warnings' => $warnings );
 	}
 
 	/** Identificativo scelto da Satispay per un pagamento: solo lettere, cifre e trattini (viene usato in un indirizzo). */
