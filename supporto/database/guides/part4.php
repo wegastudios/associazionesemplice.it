@@ -212,7 +212,7 @@ Ogni gateway trattiene una commissione su ciascun pagamento. Il plugin ti aiuta 
 ## Indicare la commissione
 
 1. Vai in **Impostazioni → Pagamenti online**.
-2. Per ogni metodo (**Stripe**, **PayPal**, **SumUp**) indica la commissione: una **cifra fissa**, una **percentuale**, oppure **entrambe**.
+2. Per ogni metodo (**Stripe**, **PayPal**, **SumUp** e, da Pro 1.1.28, **Satispay**) indica la commissione: una **cifra fissa**, una **percentuale**, oppure **entrambe**.
 
 Dalla versione 1.1.24 di Pro i campi partono già compilati con le **tariffe standard**:
 
@@ -221,6 +221,7 @@ Dalla versione 1.1.24 di Pro i campi partono già compilati con le **tariffe sta
 | Stripe | 1,5% + 0,25 € |
 | PayPal | 3,40% + 0,35 € |
 | SumUp | 2,5% |
+| Satispay (da Pro 1.1.28) | 0,20 € fissi, 0% |
 
 Sono valori di partenza: **modificali** se il tuo contratto ha condizioni diverse, oppure **svuota** i campi se non vuoi stimare la commissione. Le tariffe applicate dal gateway possono cambiare: controlla sempre il tuo contratto.
 
