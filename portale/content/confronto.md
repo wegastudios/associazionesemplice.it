@@ -94,6 +94,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Anonimizzazione e download dei dati personali | ✓ | ✓ | ✓ |
 | Assicurazioni dei volontari e polizze dell'associazione | — | ✓ | ✓ |
 | Registro delle presenze a corsi ed eventi | — | ✓ | ✓ |
+| Certificato medico sportivo dei soci: scadenze, attività che lo richiedono, promemoria ed esportazione | — | ✓ | ✓ |
+| Affiliazioni agli enti (CONI/RAS, UISP, CSEN, ACSI, AICS) e tesseramento dei soci, anche in blocco, con file per i portali | — | ✓ | ✓ |
 
 ## Comunicazione
 
