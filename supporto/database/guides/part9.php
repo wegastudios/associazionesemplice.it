@@ -347,6 +347,115 @@ Nella scheda della convenzione, il pulsante **«Avvisa i soci della nuova conven
 MD,
     ],
     [
+        'topic' => 'plugin-pro', 'section' => 'Comunicazione', 'slug' => 'sms-ai-soci-e-consensi',
+        'title' => 'Mandare SMS ai soci e gestire i consensi',
+        'body' => <<<'MD'
+> Disponibile in: Pro Contabile, Pro Fiscale (non nel plugin gratuito)
+
+Oltre alle email puoi scrivere ai soci per **SMS**, con il fornitore che preferisci. Il costo degli SMS è quello del fornitore scelto.
+
+## Prima di tutto: il consenso
+
+Per scrivere a qualcuno per SMS, o per iscriverlo alla newsletter, serve il suo **consenso**. Lo registri in due modi:
+
+- nella **scheda della persona**, riquadro **«Consensi SMS e newsletter»**, se il consenso è su modulo cartaceo o a voce;
+- oppure lo dà il socio da solo, nell'**area riservata**, sezione **«Le mie comunicazioni»**.
+
+Si può **revocare quando si vuole**: da quel momento non parte più nulla.
+
+## Collegare il fornitore
+
+1. Vai in **Strumenti → Integrazioni → SMS ai soci**.
+2. Scegli **Brevo** o **Twilio** e inserisci le chiavi.
+3. Scrivi il **mittente** (fino a 11 lettere o cifre) e salva.
+4. Premi **Verifica il collegamento**: controlla anche i **crediti residui**.
+
+## Mandare una comunicazione per SMS
+
+1. Vai in **Rubrica soci → Comunicazioni** e crea la comunicazione (vedi [Comunicazioni a gruppi](guida:comunicazioni-a-gruppi)).
+2. Sotto **«Canali»** spunta **Email**, **SMS** o tutti e due.
+3. Guarda l'**anteprima**: dice quanti riceveranno l'SMS e quanti no, perché senza consenso o senza numero valido.
+4. Scrivi il testo: al massimo **480 caratteri**. I messaggi lunghi o con emoji usano **più SMS**.
+5. Invia.
+
+Nella scheda della comunicazione vedi chi ha ricevuto l'SMS. Se un invio non riesce il sito **riprova da solo** (dopo 15 minuti e poi dopo 2 ore); per gli errori definitivi, come un numero non valido, c'è il pulsante **Riprova**. I numeri nel registro sono sempre in parte nascosti.
+
+## Avvisi automatici anche per SMS
+
+I promemoria di scadenza, gli avvisi sulle attività e quelli della lista d'attesa possono partire anche per SMS. In **Integrazioni** attiva **«Manda anche per SMS gli avvisi automatici»**: è **spento** di partenza.
+
+## Un SMS non è partito
+
+Controlla che la persona abbia un **numero di cellulare valido** e il **consenso agli SMS**.
+MD,
+    ],
+    [
+        'topic' => 'plugin-pro', 'section' => 'Comunicazione', 'slug' => 'newsletter-con-brevo-mailchimp-o-mailpoet',
+        'title' => 'Collegare la newsletter: Brevo, Mailchimp o MailPoet',
+        'body' => <<<'MD'
+> Disponibile in: Pro Contabile, Pro Fiscale (non nel plugin gratuito)
+
+Il sito tiene **allineata la lista** della tua newsletter con i soci che hanno dato il consenso. **La newsletter si scrive e si invia dal servizio che scegli**, non dal plugin.
+
+## Collegare il servizio
+
+1. Vai in **Strumenti → Integrazioni → Newsletter**.
+2. Scegli **Brevo**, **Mailchimp** o **MailPoet** (se è attivo sul sito).
+3. Inserisci la **chiave** e premi **Leggi le liste**.
+4. Scegli la **lista** e salva.
+
+**Sincronizza adesso** allinea subito la lista; ogni giorno lo fa da solo.
+
+## Chi entra e chi esce
+
+- Si iscrive **solo chi ha dato il consenso alla newsletter** e ha un'email valida (vedi [Mandare SMS ai soci e gestire i consensi](guida:sms-ai-soci-e-consensi) per registrare i consensi).
+- Chi **revoca il consenso**, cambia indirizzo o viene anonimizzato **esce** dalla lista.
+- Chi si è **disiscritto dal servizio** resta disiscritto: il sito non lo reiscrive.
+
+## Tipo di socio e stato della tessera
+
+Con l'opzione **«Invia anche tipo di socio e stato della tessera»**:
+
+- in **Brevo** servono due campi di testo, `TIPO_SOCIO` e `STATO_TESSERA`;
+- in **Mailchimp** arrivano come etichette;
+- **MailPoet** non li supporta.
+MD,
+    ],
+    [
+        'topic' => 'pagamenti', 'section' => 'Pagamenti online', 'slug' => 'attivare-satispay-e-klarna',
+        'title' => 'Attivare Satispay e Klarna',
+        'body' => <<<'MD'
+> Disponibile in: Pro Contabile, Pro Fiscale (non nel plugin gratuito)
+
+Due metodi in più per i pagamenti online. Il resto della configurazione è in [Attivare i pagamenti online con Stripe o PayPal](guida:attivare-stripe-o-paypal).
+
+## Satispay
+
+1. In **Satispay Business** genera un **codice di attivazione**.
+2. In **Impostazioni → Pagamenti online** scegli **Satispay** (da solo o con gli altri metodi).
+3. Incolla il codice in **«Collega Satispay»** e premi il pulsante. Il sito crea e conserva da solo la **chiave di firma**.
+4. Premi **Verifica connessione Satispay** per controllare che tutto funzioni.
+
+Il socio paga nell'**app Satispay**; l'incasso entra da solo in prima nota sul conto **«Satispay»**.
+
+- Se cambi **modalità** (prova o reale) devi **ricollegare**.
+- In modalità reale il sito deve essere in **https**.
+
+## Klarna
+
+Funziona **con Stripe attivo**.
+
+1. In **Pagamenti online** spunta **«Offri anche Klarna»**.
+2. Attivalo anche nel tuo **account Stripe**, in **Metodi di pagamento**.
+3. Nel **webhook di Stripe** aggiungi l'evento `checkout.session.async_payment_failed`.
+
+Cose da sapere:
+
+- Si propone **solo per pagamenti in euro da 35 € a 10.000 €** e a chi ha un'**email**; altrimenti resta la sola carta.
+- Con Klarna acceso il sito **elenca a mano** i metodi (carta e Klarna): gli altri metodi attivati nel pannello di Stripe, come **Link**, **non compaiono**.
+MD,
+    ],
+    [
         'topic' => 'altro', 'section' => 'Registri', 'slug' => 'registro-azioni-e-spazio-occupato',
         'title' => 'Registro azioni: controllare lo spazio e liberarlo',
         'body' => <<<'MD'

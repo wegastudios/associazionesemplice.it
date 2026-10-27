@@ -72,6 +72,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Acconti e sconti con motivo per riga di incasso | ✓ | ✓ | ✓ |
 | Nuovo socio in un popup durante l'incasso, senza perdere l'operazione | ✓ | ✓ | ✓ |
 | Pagamenti online con Stripe, PayPal, SumUp o WooCommerce | — | ✓ | ✓ |
+| Satispay e Klarna (tramite Stripe) tra i metodi di pagamento online | — | ✓ | ✓ |
 | Commissioni di incasso per metodo: stima in prima nota da tariffe standard modificabili e ribaltamento opzionale | — | ✓ | ✓ |
 | Conti multipli, giroconti e cassa per più persone | — | ✓ | ✓ |
 | Fondi accantonati (per esempio rimborso dei volontari) | — | ✓ | ✓ |
@@ -116,6 +117,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Promemoria automatici per email (tessera, corsi, eventi) | ✓ | ✓ | ✓ |
 | Registro della posta in uscita e invio di una email di prova | ✓ | ✓ | ✓ |
 | Comunicazioni a gruppi di soci con storico degli invii | — | ✓ | ✓ |
+| SMS ai soci (Brevo o Twilio) con consensi, anteprima e avvisi automatici | — | ✓ | ✓ |
+| Newsletter sincronizzata con Brevo, Mailchimp o MailPoet, solo per chi ha dato il consenso | — | ✓ | ✓ |
 | App installabile sul telefono e notifiche | — | ✓ | ✓ |
 
 ## Personalizzazione e sicurezza dei dati
