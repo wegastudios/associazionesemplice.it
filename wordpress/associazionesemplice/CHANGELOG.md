@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.32
+- Su schermi stretti i campi lunghi delle impostazioni non escono più dalla pagina.
+- Gli avvisi dicono «1 avviso inviato» al singolare.
+
 ## 1.2.31
 - Aggiornamento di compatibilità con il Pro 1.1.28: aggiorna insieme gratuito e Pro.
 
