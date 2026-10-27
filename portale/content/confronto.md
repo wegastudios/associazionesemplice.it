@@ -9,6 +9,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Libro soci con numerazione progressiva e cessazioni | ✓ | ✓ | ✓ |
 | Schede dei soci e collegamento all'utente WordPress | ✓ | ✓ | ✓ |
 | Quota associativa unica e socio fondatore | ✓ | ✓ | ✓ |
+| Quota associativa a rate: residuo in scheda, saldo da incassare e tessera valida solo a quota saldata | ✓ | ✓ | ✓ |
 | Più livelli di socio con quote diverse | — | ✓ | ✓ |
 | Nucleo familiare con sconto per i familiari | — | ✓ | ✓ |
 | Ospiti con conteggio delle partecipazioni e invito a iscriversi | ✓ | ✓ | ✓ |
@@ -51,6 +52,10 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Incasso sul posto durante gli eventi | — | ✓ | ✓ |
 | Risorse a fasce orarie (campi, sale) con tariffe, ospiti e regole di prenotazione | — | ✓ | ✓ |
 | Risorse assegnate a periodo (posti auto, armadietti, posti barca) con lista d'attesa | — | ✓ | ✓ |
+| Richieste di assegnazione dei soci per le risorse libere | — | ✓ | ✓ |
+| Promemoria prima della prenotazione di una risorsa | — | ✓ | ✓ |
+| Ingresso con il QR della prenotazione | — | ✓ | ✓ |
+| Report di occupazione delle risorse | — | ✓ | ✓ |
 | Corsi ed eventi collegati alle risorse, con tempi di allestimento | — | ✓ | ✓ |
 | Suggerimento dei luoghi con Google (con la tua chiave) | ✓ | ✓ | ✓ |
 
@@ -73,6 +78,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Conti multipli, giroconti e cassa per più persone | — | ✓ | ✓ |
 | Fondi accantonati (per esempio rimborso dei volontari) | — | ✓ | ✓ |
 | Risorse con quota accantonata in un fondo a ogni pagamento (anche in crediti) | — | ✓ | ✓ |
+| Voce di prima nota per ogni risorsa, separata nei report | — | ✓ | ✓ |
 | Disponibilità reale dei fondi, liberazione ed estinzione | — | ✓ | ✓ |
 | Tabella dei fondi da rimborsare per anno | — | ✓ | ✓ |
 | Ricevute in PDF e attestazione annuale | — | ✓ | ✓ |
