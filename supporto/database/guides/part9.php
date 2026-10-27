@@ -141,4 +141,29 @@ I file stanno in una **cartella protetta** e non hanno un indirizzo diretto: ogn
 I documenti sono inclusi nella [copia di sicurezza](guida:copia-di-sicurezza-e-ripristino).
 MD,
     ],
+    [
+        'topic' => 'altro', 'section' => 'Registri', 'slug' => 'registro-azioni-e-spazio-occupato',
+        'title' => 'Registro azioni: controllare lo spazio e liberarlo',
+        'body' => <<<'MD'
+> Disponibile in: Free, Pro Contabile, Pro Fiscale (dalla versione 1.2.28 del plugin gratuito)
+
+Il **registro azioni** tiene traccia di ciò che si fa nel plugin (chi ha cambiato cosa e quando). Col tempo occupa spazio nel database: ora puoi vedere quanto e liberarlo.
+
+## Vedere lo spazio occupato
+
+1. Vai in **Impostazioni → Registro azioni**.
+2. In alto leggi lo **spazio occupato** dal registro.
+
+## Liberare spazio
+
+1. Nella stessa pagina premi **«Libera spazio»**.
+2. Conferma.
+
+Il pulsante **elimina tutto ciò che non appartiene all'anno solare in corso**. L'operazione non si può annullare e la può fare **solo l'amministratore**. Se ti serve conservare lo storico, fai prima una [copia di sicurezza](guida:copia-di-sicurezza-e-ripristino).
+
+## Pulizia automatica
+
+Ogni giorno il plugin cancella da solo le righe **più vecchie di 18 mesi**. Per cambiare il limite vai in **Limiti e soglie** e scegli un valore da **6 a 120 mesi**.
+MD,
+    ],
 ];
