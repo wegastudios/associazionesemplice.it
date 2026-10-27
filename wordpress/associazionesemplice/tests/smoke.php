@@ -5976,7 +5976,12 @@ asem_ok( 24 === (int) $RS::get( $pm_res )['remind_hours'] && 0 === (int) $RS::ge
 $pm_day = gmdate( 'Y-m-d', strtotime( $today . ' +20 days' ) );
 $pm_b1  = $RS::book_slot( $pm_res, $pm_m, $pm_day, '18:00', 1, array(), true );
 asem_ok( 0 === $RS::send_reminders(), 'risorse: troppo presto non parte nessun promemoria' );
-$mails = array();
+$mails   = array();
+$pm_hook = function ( $null, $atts ) use ( &$mails ) { // la posta di prova: si raccoglie ciò che partirebbe
+	$mails[] = $atts;
+	return true;
+};
+add_filter( 'pre_wp_mail', $pm_hook, 10, 2 );
 asem_ok( 1 === $RS::send_reminders( $pm_day . ' 08:00:00' ) && 1 === count( $mails ) && false !== strpos( wp_json_encode( $mails[0] ), 'paola.promemoria@example.com' ) && false !== strpos( (string) $mails[0]['message'], 'Campo promemoria' ) && false !== strpos( (string) $mails[0]['message'], '10,00' ), 'risorse: dentro le 24 ore parte il promemoria, con quanto resta da pagare' );
 asem_ok( 0 === $RS::send_reminders( $pm_day . ' 08:00:00' ), 'risorse: il promemoria parte una volta sola' );
 $pm_b2 = $RS::book_slot( $pm_res, $pm_m, $pm_day, '20:00', 1, array(), true );
@@ -5985,6 +5990,7 @@ asem_ok( 0 === $RS::send_reminders( $pm_day . ' 08:00:00' ), 'risorse: chi preno
 $pm_b3 = $RS::book_slot( $pm_res, $pm_m, $pm_day, '21:00', 1, array(), true );
 $RS::cancel( $pm_b3, true );
 asem_ok( 0 === $RS::send_reminders( $pm_day . ' 08:00:00' ), 'risorse: una prenotazione annullata non riceve il promemoria' );
+remove_filter( 'pre_wp_mail', $pm_hook, 10 );
 // voce di prima nota
 $wpdb->insert( Db::t( 'categories' ), array( 'name' => 'Affitto campi', 'kind' => 'other_income' ) );
 $pm_cat = (int) $wpdb->insert_id;
