@@ -3,7 +3,7 @@ Contributors: wegastudios
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.28
+Stable tag: 1.1.29
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,9 @@ With a license key entered in Associazione Semplice Pro, once a day (and when yo
 The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, Mozilla Public License 2.0) to tell which domain a license covers.
 
 == Changelog ==
+
+= 1.1.29 =
+* Fix: the Conventions tab is visible again in Registers when Pro is active.
 
 = 1.1.28 =
 * SMS (Brevo, Twilio), newsletter sync (Brevo, Mailchimp, MailPoet), SMS/newsletter consents, Satispay and Klarna via Stripe.
