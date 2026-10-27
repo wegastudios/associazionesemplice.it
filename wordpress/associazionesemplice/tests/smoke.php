@@ -6037,6 +6037,38 @@ $RS::assign( $rq_res, $rs_m1, $today, '' );
 asem_ok( null === $RS::waitlist_position( $rq_res, $rs_m1 ) && ! $RS::waitlist( $rq_res ), 'risorse: approvata la richiesta con l\'assegnazione, la richiesta si chiude' );
 asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'Richieste e lista d\'attesa', array( 'id' => $rq_res ) );
 
+// ---------- Risorse: ingresso con il QR ----------
+wp_set_current_user( 1 );
+$gt_res = $RS::save( 0, array( 'name' => 'Campo con ingresso', 'category' => 'court', 'mode' => 'slot', 'open_time' => '08:00', 'close_time' => '22:00', 'slot_minutes' => 60, 'fee_cents' => 1000, 'guests_max' => 2, 'remind_hours' => 0, 'entry_qr' => 1 ) );
+asem_ok( 1 === (int) $RS::get( $gt_res )['entry_qr'], 'risorse: l\'ingresso con il QR si attiva per risorsa' );
+$gt_day = gmdate( 'Y-m-d', strtotime( $today . ' +15 days' ) );
+$gt_b   = $RS::book_slot( $gt_res, $rs_m1, $gt_day, '18:00', 1, array( 'Ospite QR' ), true );
+$gt_r   = $RS::reservation( $gt_b );
+$gt_p   = \AssociazioneSemplice\ResourceGate::param( $gt_b, $rs_m1, \AssociazioneSemplice\Settings::card_secret() );
+parse_str( (string) wp_parse_url( $RS::gate_url( $gt_r ), PHP_URL_QUERY ), $gt_q );
+asem_ok( $gt_p === ( $gt_q['asem_res'] ?? '' ), 'risorse: l\'indirizzo del QR contiene prenotazione, socio e firma' );
+asem_ok( 'early' === $RS::gate_state( $gt_r, $gt_day . ' 10:00:00' ) && 'ok' === $RS::gate_state( $gt_r, $gt_day . ' 17:45:00' ) && 'late' === $RS::gate_state( $gt_r, $gt_day . ' 19:30:00' ), 'risorse: l\'ingresso vale dalla mezz\'ora prima alla fine della fascia' );
+asem_ok( null !== asem_throws( function () use ( $RS, $gt_b, $gt_day ) { $RS::check_in( $gt_b, 1, $gt_day . ' 10:00:00' ); } ), 'risorse: troppo presto non si registra l\'ingresso' );
+$RS::check_in( $gt_b, 1, $gt_day . ' 17:45:00' );
+asem_ok( $gt_day . ' 17:45:00' === $RS::reservation( $gt_b )['checked_in_at'] && 'used' === $RS::gate_state( $RS::reservation( $gt_b ), $gt_day . ' 18:10:00' ), 'risorse: l\'ingresso si registra' );
+$gt_msg = asem_throws( function () use ( $RS, $gt_b, $gt_day ) { $RS::check_in( $gt_b, 1, $gt_day . ' 18:10:00' ); } );
+asem_ok( null !== $gt_msg && false !== strpos( $gt_msg, 'Già entrato' ), 'risorse: il QR vale una volta sola' );
+$RS::undo_check_in( $gt_b );
+asem_ok( null === $RS::reservation( $gt_b )['checked_in_at'] && 'ok' === $RS::gate_state( $RS::reservation( $gt_b ), $gt_day . ' 18:10:00' ), 'risorse: l\'ingresso registrato per sbaglio si toglie' );
+$gt_b2 = $RS::book_slot( $gt_res, $rs_m1, $gt_day, '20:00', 1, array(), true );
+$RS::cancel( $gt_b2, true );
+asem_ok( 'cancelled' === $RS::gate_state( $RS::reservation( $gt_b2 ), $gt_day . ' 20:00:00' ) && null !== asem_throws( function () use ( $RS, $gt_b2, $gt_day ) { $RS::check_in( $gt_b2, 1, $gt_day . ' 20:00:00' ); } ), 'risorse: una prenotazione annullata non entra' );
+// la pagina del QR
+$gt_staff = \AssociazioneSemplice\Frontend\ResourcesGate::page( $gt_p, array( 'ok' => '', 'err' => '' ) );
+asem_ok( false !== strpos( $gt_staff, 'Campo con ingresso' ) && false !== strpos( $gt_staff, 'Troppo presto' ) && false !== strpos( $gt_staff, 'Rita Risorsa' ) && false !== strpos( $gt_staff, 'Ospite QR' ), 'risorse: la pagina del QR dice risorsa, stato, socio e ospiti (allo staff il nome intero)' );
+wp_set_current_user( 0 );
+$gt_pub = \AssociazioneSemplice\Frontend\ResourcesGate::page( $gt_p, array( 'ok' => '', 'err' => '' ) );
+asem_ok( false !== strpos( $gt_pub, 'Rita R.' ) && false === strpos( $gt_pub, 'Rita Risorsa' ) && false !== strpos( $gt_pub, 'Mostra questo QR allo staff' ), 'risorse: a chi non è dello staff la pagina mostra il nome abbreviato' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\ResourcesGate::page( '1.2.' . str_repeat( '0', 20 ), array( 'ok' => '', 'err' => '' ) ), 'Non valida' ) && false !== strpos( \AssociazioneSemplice\Frontend\ResourcesGate::page( \AssociazioneSemplice\ResourceGate::param( $oc_b, $rs_m1, \AssociazioneSemplice\Settings::card_secret() ), array( 'ok' => '', 'err' => '' ) ), 'Non valida' ), 'risorse: un codice sbagliato o di una risorsa senza ingresso con QR non vale' );
+wp_set_current_user( 1 );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\ResourcesFront::section( $people->get( $rs_m1 ) ), 'QR di ingresso' ), 'risorse: il socio trova il QR di ingresso nella sua area' );
+asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'ingresso con il QR della prenotazione', array( 'id' => $gt_res ) );
+
 // ---------- Copia di sicurezza e ripristino (in fondo: tocca tutte le tabelle) ----------
 
 wp_set_current_user( 1 );

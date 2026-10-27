@@ -193,6 +193,7 @@ final class ResourcesFront {
 					. ( (int) $r['fee_due_cents'] > 0 ? ( 'paid' === $r['state'] ? '<span class="asemf-badge asemf-badge-ok">pagata</span> ' : '<span class="asemf-badge">da pagare ' . esc_html( Money::format( (int) $r['remaining'] ) ) . '</span> ' ) : '' )
 					. ( ! empty( $r['hold_until'] ) ? '<span class="asemf-small asemf-muted">riservata fino alle ' . esc_html( substr( (string) $r['hold_until'], 11, 5 ) ) . ', poi si libera se non paghi</span> ' : '' )
 					. ( isset( $due[ 'r:' . (int) $r['id'] . ':' . $pid ] ) ? self::form( 'asem_front_pay', self::hidden( 'items[]', 'r:' . (int) $r['id'] . ':' . $pid ), 'Paga ora' ) . ' ' : '' )
+					. self::gate_box( $r )
 					. ( $can['allowed'] ? self::form( 'asem_front_res_cancel', self::hidden( 'id', $r['id'] ), 'Annulla', 'asemf-inline', true ) : '<span class="asemf-small asemf-muted">' . esc_html( $can['message'] ) . '</span>' )
 					. '</div></li>';
 			}
@@ -230,6 +231,18 @@ final class ResourcesFront {
 			$html .= self::day( $r, $open ? $sel_day : $today, $today ) . '</details>';
 		}
 		return $html . '</section>';
+	}
+
+	/** Il QR dell'ingresso, per le risorse che lo prevedono (fasce con l'ingresso con QR): si apre e lo si mostra allo staff. */
+	private static function gate_box( array $r ): string {
+		if ( empty( $r['entry_qr'] ) || ResourceRules::KIND_SLOT !== $r['kind'] || ! empty( $r['hold_until'] ) ) {
+			return '';
+		}
+		if ( ! empty( $r['checked_in_at'] ) ) {
+			return '<span class="asemf-small asemf-muted">Entrato alle ' . esc_html( substr( (string) $r['checked_in_at'], 11, 5 ) ) . '</span> ';
+		}
+		return '<details class="asemf-gate" style="display:inline-block"><summary class="asemf-btn" style="cursor:pointer">QR di ingresso</summary>'
+			. '<div style="max-width:260px;margin:8px 0">' . \AssociazioneSemplice\QrCode::svg( Resources::gate_url( $r ), 4, 'QR di ingresso per ' . $r['resource_name'] ) . '<div class="asemf-small asemf-muted">Mostralo allo staff all\'ingresso: vale dalla mezz\'ora prima della tua fascia.</div></div></details> '; // phpcs:ignore WordPress.Security.EscapeOutput -- SVG generato dal plugin
 	}
 
 	/** Risorsa assegnata a periodo: la assegna la segreteria; se è occupata il socio può mettersi in coda. */
