@@ -7216,7 +7216,7 @@ $n_before = count( $be_sms_log );
 asem_ok( 'skipped' === $wpdb->get_var( $wpdb->prepare( 'SELECT status FROM ' . \AssociazioneSemplice\Db::t( 'sms_queue' ) . ' WHERE id = %d', $be_q3 ) ) && count( $be_sms_log ) === $n_before, 'SMS: chi revoca il consenso non riceve più nulla, nemmeno quello già in coda' );
 asem_ok( ! \AssociazioneSemplice\Consents::has( $be_sara, 'sms' ) && null !== \AssociazioneSemplice\Consents::get( $be_sara, 'sms' )['revoked_at'], 'consensi: la revoca resta registrata' );
 asem_ok( null !== asem_throws( function () use ( $be_sara ) { \AssociazioneSemplice\Consents::set( $be_sara, 'posta', true ); } ), 'consensi: un canale inventato è rifiutato' );
-\AssociazioneSemplice\Broadcasts::create( '', 'Avviso a nessuno', 'members_all', 0, array( 'email' ) ); // l'email resta com'era: parte a chi ha un indirizzo
+\AssociazioneSemplice\Broadcasts::create( 'Avviso', 'Avviso a tutti', 'members_all', 0, array( 'email' ) ); // l'email resta com'era: parte a chi ha un indirizzo
 asem_ok( count( $be_sms_log ) === $n_before, 'SMS: una comunicazione solo email non manda SMS' );
 // promemoria facoltativi
 \AssociazioneSemplice\Consents::set( $be_sara, 'sms', true, 'paper' );
