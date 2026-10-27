@@ -30,6 +30,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Primo accesso e approvazione della segreteria | ✓ | ✓ | ✓ |
 | Domanda di adesione online per chi non è ancora socio, con approvazione, tessera e link per la password | ✓ | ✓ | ✓ |
 | Minori con uno o due genitori o tutori: area riservata del genitore con tessera, prenotazioni, pagamenti e avvisi del minore, regolamento e privacy accettati per suo conto | ✓ | ✓ | ✓ |
+| Convenzioni per i soci: sconti e vantaggi dei partner nell'area riservata, elenco pubblico e avviso ai soci | ✓ | ✓ | ✓ |
 | Ruoli: segreteria, presidente, tesoriere, volontari, staff | ✓ | ✓ | ✓ |
 | Regolamento da accettare con registrazione della versione | ✓ | ✓ | ✓ |
 | Blocchi, shortcode e widget Elementor | ✓ | ✓ | ✓ |

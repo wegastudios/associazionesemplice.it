@@ -285,6 +285,68 @@ L'ingresso vale **dalla mezz'ora prima dell'inizio alla fine della fascia**, una
 MD,
     ],
     [
+        'topic' => 'soci-e-tessere', 'section' => 'Area riservata', 'slug' => 'convenzioni-per-i-soci',
+        'title' => 'Offrire ai soci sconti e vantaggi: le convenzioni',
+        'body' => <<<'MD'
+> Disponibile in: Free, Pro Contabile, Pro Fiscale
+
+Le **convenzioni** raccolgono in un posto solo gli sconti e i vantaggi che negozi, palestre, teatri e altri enti partner riservano ai soci, e li mostrano ai soci giusti nell'area riservata. Le trovi in **Associazione Semplice → Registri → Convenzioni**. Le gestiscono segreteria, presidente, vicepresidente e amministratori. Non ci sono impostazioni da attivare.
+
+## Creare una convenzione
+
+1. Vai in **Registri → Convenzioni** e premi **Nuova convenzione**.
+2. Compila i campi obbligatori: **esercente o ente partner** e **vantaggio** (per esempio «Sconto del 10%», «Prezzo agevolato 8 €», «Un caffè in omaggio»).
+3. Scegli la **categoria** dall'elenco o scrivine una nuova. L'elenco si gestisce in fondo alla pagina «Convenzioni», una categoria per riga.
+4. Se vuoi, aggiungi le **condizioni d'uso** (le vedono solo i soci), i contatti (indirizzo, telefono, email, sito: il sito va bene anche senza «https://») e il **logo**, scelto dalla libreria media di WordPress.
+5. Indica **a chi spetta**: tutti i soci in regola oppure solo alcuni tipi (socio fondatore, ordinario, socio e volontario).
+6. Scegli se è **visibile anche al pubblico** e, se vuoi, un **codice convenzione** da mostrare all'esercente.
+7. Indica **valida dal / al** (facoltative). L'ultimo giorno è compreso. Senza data di fine la convenzione non scade.
+8. Salva.
+
+Dalla scheda puoi anche **archiviare** la convenzione (esce dall'area soci ma resta in elenco, e puoi **riportarla in elenco**) oppure **eliminarla**.
+
+## Quando è visibile
+
+Una convenzione è «in corso» se non è archiviata, è già iniziata e non è finita. **Solo quelle in corso** si vedono ai soci e sul sito. Passato l'ultimo giorno sparisce da sola dall'area soci, ma resta nella pagina di amministrazione con lo stato **«Scaduta»** (puoi filtrare per stato). Per riattivarla sposta o togli la data di fine.
+
+In **Bacheca** il riquadro **«Convenzioni in scadenza»** mostra quelle che finiscono nei prossimi 30 giorni.
+
+## Cosa vedono i soci
+
+Nell'**area riservata**, sezione **Convenzioni** (o con lo shortcode `[associazionesemplice_convenzioni_soci]` in una pagina). Vedono le convenzioni in corso che spettano a loro e possono filtrarle per categoria. Serve una **tessera valida oggi** e il tipo di socio previsto.
+
+**Non le vedono**: soci sospesi, con tessera scaduta o usciti, ospiti, e genitori o tutori che non sono soci (nemmeno per i figli minori).
+
+Aprendo **«Come usarla»** il socio trova il codice (se c'è), le condizioni, i contatti dell'esercente e la riga per farsi riconoscere: nome e cognome, numero di tessera e scadenza. Può mostrarla all'esercente insieme alla tessera digitale.
+
+## Elenco pubblico sul sito
+
+Lo shortcode `[associazionesemplice_convenzioni]` mostra a tutti le convenzioni segnate «visibile anche al pubblico» e in corso: nome, logo, categoria e vantaggio in breve. Per una sola categoria usa `[associazionesemplice_convenzioni categoria="Sport e benessere"]`. L'elenco pubblico **non mostra mai** codice, condizioni né contatti.
+
+Le pagine con questi shortcode non finiscono nella cache di pagina, così le convenzioni scadute non restano visibili.
+
+## Avvisare i soci
+
+Nella scheda della convenzione, il pulsante **«Avvisa i soci della nuova convenzione»** manda un'email a tutti i soci a cui spetta (tessera valida e tipo previsto) con il vantaggio e il rimando all'area riservata. Prima dell'invio la pagina dice quanti soci hanno un indirizzo email.
+
+- Funziona solo se la convenzione è **in corso** e ogni socio riceve l'email **una volta sola**.
+- Non dipende dall'interruttore «Promemoria attivi» di Impostazioni → Privacy e regolamento.
+- Per un minore l'email va al tutore.
+- **Una volta partito, l'avviso non si può rimandare.** Se invece non parte nessuna email (per esempio mancano gli indirizzi o la posta non funziona), l'avviso non risulta usato e puoi **riprovare**. Per un'altra comunicazione usa le comunicazioni ai soci.
+
+## Esportare e salvare i dati
+
+**Esporta (CSV)**, nella pagina «Convenzioni», scarica tutte le convenzioni (anche scadute e archiviate) con codice e contatti; il file si apre in Excel. Le convenzioni sono incluse nella [copia di sicurezza](guida:copia-di-sicurezza-e-ripristino); l'azzeramento dei dati le cancella.
+
+## Domande frequenti
+
+- **Un socio non vede nessuna convenzione.** Controlla che abbia la tessera valida oggi, che non sia sospeso né uscito e che esistano convenzioni in corso per il suo tipo. Ospiti e tutori non le vedono mai.
+- **La convenzione è scaduta ma serve ancora.** Aprila e sposta la data di fine (o toglila). Se è archiviata, premi **Riporta in elenco**.
+- **Il logo non si vede.** Deve essere un'immagine della libreria media: gli altri file vengono ignorati.
+- **Il pubblico può vedere il codice?** No: l'elenco pubblico non mostra mai codice, condizioni né contatti.
+MD,
+    ],
+    [
         'topic' => 'altro', 'section' => 'Registri', 'slug' => 'registro-azioni-e-spazio-occupato',
         'title' => 'Registro azioni: controllare lo spazio e liberarlo',
         'body' => <<<'MD'
