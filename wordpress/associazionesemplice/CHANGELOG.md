@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.31
+- Aggiornamento di compatibilità con il Pro 1.1.28: aggiorna insieme gratuito e Pro.
+
 ## 1.2.30
 - Nuove convenzioni per i soci (Registri → Convenzioni): sconti dei partner con descrizione, validità, codice, logo e a chi si rivolgono. I soci con tessera valida le vedono nell'area riservata; un elenco pubblico è facoltativo.
 - Pulsante «Avvisa i soci» per ogni convenzione, scheda «Convenzioni in scadenza» in Bacheca ed esportazione CSV.
