@@ -94,6 +94,17 @@ final class Resources {
 			$d['setup_before_min'] = (int) ResourceRules::parse_duration( (string) ( $in['setup_before'] ?? '' ) );
 			$d['setup_after_min']  = (int) ResourceRules::parse_duration( (string) ( $in['setup_after'] ?? '' ) );
 		}
+		if ( array_key_exists( 'remind_hours', $in ) ) { // promemoria al socio prima della prenotazione (0 = nessuno)
+			$h                   = (int) $in['remind_hours'];
+			$d['remind_hours']   = in_array( $h, array( 2, 12, 24, 48 ), true ) ? $h : 0;
+		}
+		if ( array_key_exists( 'category_id', $in ) ) { // la voce di prima nota degli incassi (vuoto = «Altra entrata»)
+			$cid = max( 0, (int) $in['category_id'] );
+			if ( $cid > 0 && ! in_array( $cid, array_map( 'intval', array_column( self::income_categories(), 'id' ) ), true ) ) {
+				throw new \InvalidArgumentException( 'La voce di prima nota scelta non è valida.' );
+			}
+			$d['category_id'] = $cid > 0 ? $cid : null;
+		}
 		if ( array_key_exists( 'fund_mode', $in ) ) { // la quota per un fondo (solo con la funzione dei fondi: senza il campo non si tocca ciò che c'è)
 			$mode  = in_array( (string) $in['fund_mode'], array( FundShare::FIXED, FundShare::PERCENT ), true ) ? (string) $in['fund_mode'] : FundShare::NONE;
 			$value = max( 0, (int) ( $in['fund_value'] ?? 0 ) );
@@ -461,6 +472,80 @@ final class Resources {
 		}
 		Audit::log( 'reservation.paid_credits', 'resource', (int) $r['resource_id'], array( 'reservation' => $reservation_id, 'credits' => $cost ) );
 		return $cost;
+	}
+
+	// ---------- Voce di prima nota ----------
+
+	/** Le voci di entrata tra cui scegliere per gli incassi di una risorsa (non la quota associativa né le rettifiche). @return array[] */
+	public static function income_categories(): array {
+		$kinds = Labels::category_kinds();
+		return array_values(
+			array_filter(
+				Plugin::ledger()->categories(),
+				function ( $c ) use ( $kinds ) {
+					return ! empty( $kinds[ $c['kind'] ][1] ) && ! in_array( $c['kind'], array( 'membership', 'adjustment' ), true );
+				}
+			)
+		);
+	}
+
+	/** La voce di prima nota per l'incasso di una prenotazione: quella scelta nella risorsa, altrimenti «Altra entrata». */
+	public static function income_category_for( int $reservation_id ): int {
+		$r   = self::reservation( $reservation_id );
+		$res = $r ? self::get( (int) $r['resource_id'] ) : null;
+		$cid = $res ? (int) ( $res['category_id'] ?? 0 ) : 0;
+		if ( $cid > 0 && in_array( $cid, array_map( 'intval', array_column( self::income_categories(), 'id' ) ), true ) ) {
+			return $cid;
+		}
+		return Plugin::ledger()->category_id_of_kind( 'other_income' );
+	}
+
+	// ---------- Promemoria ----------
+
+	/** Lavoro periodico di WP-Cron (pianificato da Plugin::schedule_jobs()). */
+	public static function reminders_job(): void {
+		self::send_reminders();
+	}
+
+	/**
+	 * Manda il promemoria della prenotazione ai soci, per le risorse che lo prevedono (da 2 a 48 ore prima). Una volta sola per prenotazione; non
+	 * per chi ha prenotato dentro la finestra del promemoria (si sa già) né per le prenotazioni ancora provvisorie.
+	 *
+	 * @return int promemoria inviati
+	 */
+	public static function send_reminders( ?string $now = null ): int {
+		$now  = $now ?? Db::now();
+		$sent = 0;
+		$tbl  = Db::t( 'reservations' );
+		foreach ( self::db()->get_results( 'SELECT * FROM ' . Db::t( 'resources' ) . ' WHERE deleted_at IS NULL AND active = 1 AND remind_hours > 0', ARRAY_A ) ?: array() as $res ) {
+			$hours = (int) $res['remind_hours'];
+			$until = gmdate( 'Y-m-d H:i:s', strtotime( $now . ' +' . $hours . ' hours' ) );
+			$rows  = self::db()->get_results(
+				self::db()->prepare(
+					"SELECT * FROM $tbl WHERE resource_id = %d AND status = 'booked' AND kind = 'slot' AND person_id IS NOT NULL AND hold_until IS NULL AND starts_at > %s AND starts_at <= %s AND created_at <= DATE_SUB(starts_at, INTERVAL %d HOUR) ORDER BY starts_at",
+					(int) $res['id'],
+					$now,
+					$until,
+					$hours
+				),
+				ARRAY_A
+			) ?: array();
+			foreach ( self::decorate( $rows ) as $r ) {
+				$p = Plugin::people()->get( (int) $r['person_id'] );
+				if ( ! $p ) {
+					continue;
+				}
+				$d    = new \DateTimeImmutable( (string) $r['starts_at'] );
+				$body = 'ti ricordo la prenotazione di «' . $res['name'] . '» il ' . $d->format( 'd/m/Y' ) . ' dalle ' . $d->format( 'H:i' ) . ( $r['ends_at'] ? ' alle ' . substr( (string) $r['ends_at'], 11, 5 ) : '' ) . '.'
+					. ( $r['guests'] ? "\n\nOspiti: " . implode( ', ', $r['guests'] ) . '.' : '' )
+					. ( $r['remaining'] > 0 ? "\n\nDa pagare: " . Money::format( (int) $r['remaining'] ) . '.' : '' )
+					. "\n\nSe non puoi venire, annullala dalla tua area (o scrivi alla segreteria): così la fascia torna libera per altri soci.";
+				if ( Reminders::notify( $p, 'resource', (string) $r['id'], 'Promemoria: ' . $res['name'] . ' — ' . $d->format( 'd/m H:i' ), 'Ciao ' . $p['first_name'] . ",\n\n" . $body ) ) {
+					$sent++;
+				}
+			}
+		}
+		return $sent;
 	}
 
 	// ---------- Quota per un fondo ----------
@@ -974,7 +1059,7 @@ final class Resources {
 			throw new \InvalidArgumentException( 'Importo non valido.' );
 		}
 		$res = self::get( (int) $r['resource_id'] );
-		$cat = Plugin::ledger()->category_id_of_kind( 'other_income' );
+		$cat = self::income_category_for( $reservation_id );
 		if ( ! $cat ) {
 			throw new \InvalidArgumentException( 'Manca la voce «Altra entrata» in prima nota.' );
 		}

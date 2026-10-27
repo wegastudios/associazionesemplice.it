@@ -5966,6 +5966,38 @@ asem_ok( $ov_notes && false !== strpos( implode( '', $ov_notes ), 'sistemate a m
 asem_ok( false !== strpos( asem_render( array( Admin\ProDashboard::class, 'alerts' ), 'Risorse occupate due volte' ), 'Vanno sistemate a mano' ), 'sovrapposizioni: la bacheca avvisa' );
 $RS::link_activity( $ov_e, 0 );
 
+// ---------- Risorse: promemoria prima della prenotazione e voce di prima nota ----------
+wp_set_current_user( 1 );
+$pm_m    = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Paola', 'last_name' => 'Promemoria', 'email' => 'paola.promemoria@example.com' ) );
+$people->set_membership( $pm_m, $sy_label, true );
+$pm_base = array( 'name' => 'Campo promemoria', 'category' => 'court', 'mode' => 'slot', 'open_time' => '08:00', 'close_time' => '22:00', 'slot_minutes' => 60, 'fee_cents' => 1000 );
+$pm_res  = $RS::save( 0, array_merge( $pm_base, array( 'remind_hours' => 24 ) ) );
+asem_ok( 24 === (int) $RS::get( $pm_res )['remind_hours'] && 0 === (int) $RS::get( $RS::save( 0, array_merge( $pm_base, array( 'name' => 'Senza promemoria', 'remind_hours' => 5 ) ) ) )['remind_hours'], 'risorse: il promemoria si sceglie tra le opzioni previste, altrimenti nessuno' );
+$pm_day = gmdate( 'Y-m-d', strtotime( $today . ' +20 days' ) );
+$pm_b1  = $RS::book_slot( $pm_res, $pm_m, $pm_day, '18:00', 1, array(), true );
+asem_ok( 0 === $RS::send_reminders(), 'risorse: troppo presto non parte nessun promemoria' );
+$mails = array();
+asem_ok( 1 === $RS::send_reminders( $pm_day . ' 08:00:00' ) && 1 === count( $mails ) && false !== strpos( wp_json_encode( $mails[0] ), 'paola.promemoria@example.com' ) && false !== strpos( (string) $mails[0]['message'], 'Campo promemoria' ) && false !== strpos( (string) $mails[0]['message'], '10,00' ), 'risorse: dentro le 24 ore parte il promemoria, con quanto resta da pagare' );
+asem_ok( 0 === $RS::send_reminders( $pm_day . ' 08:00:00' ), 'risorse: il promemoria parte una volta sola' );
+$pm_b2 = $RS::book_slot( $pm_res, $pm_m, $pm_day, '20:00', 1, array(), true );
+$wpdb->update( Db::t( 'reservations' ), array( 'created_at' => $pm_day . ' 18:00:00' ), array( 'id' => $pm_b2 ) ); // prenotata a ridosso: sa già
+asem_ok( 0 === $RS::send_reminders( $pm_day . ' 08:00:00' ), 'risorse: chi prenota dentro la finestra del promemoria non lo riceve' );
+$pm_b3 = $RS::book_slot( $pm_res, $pm_m, $pm_day, '21:00', 1, array(), true );
+$RS::cancel( $pm_b3, true );
+asem_ok( 0 === $RS::send_reminders( $pm_day . ' 08:00:00' ), 'risorse: una prenotazione annullata non riceve il promemoria' );
+// voce di prima nota
+$wpdb->insert( Db::t( 'categories' ), array( 'name' => 'Affitto campi', 'kind' => 'other_income' ) );
+$pm_cat = (int) $wpdb->insert_id;
+$RS::save( $pm_res, array_merge( $pm_base, array( 'category_id' => $pm_cat ) ) );
+$RS::record_payment( $pm_b1, (int) $rs_cash['id'], 'cash', 1000, $today );
+asem_ok( $pm_cat === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT category_id FROM ' . Db::t( 'transactions' ) . ' WHERE reservation_id = %d ORDER BY id DESC LIMIT 1', $pm_b1 ) ) && $pm_cat === $RS::income_category_for( $pm_b1 ), 'risorse: l\'incasso va sulla voce di prima nota scelta per la risorsa' );
+asem_ok( null !== asem_throws( function () use ( $RS, $pm_res, $pm_base ) { $RS::save( $pm_res, array_merge( $pm_base, array( 'category_id' => 999999 ) ) ); } ), 'risorse: una voce di prima nota che non esiste è rifiutata' );
+$RS::save( $pm_res, array_merge( $pm_base, array( 'category_id' => 0 ) ) );
+asem_ok( Plugin::ledger()->category_id_of_kind( 'other_income' ) === $RS::income_category_for( $pm_b1 ), 'risorse: senza una voce scelta vale «Altra entrata»' );
+asem_ok( in_array( $pm_cat, array_map( 'intval', array_column( $RS::income_categories(), 'id' ) ), true ) && ! in_array( Plugin::ledger()->category_id_of_kind( 'membership' ), array_map( 'intval', array_column( $RS::income_categories(), 'id' ) ), true ), 'risorse: tra le voci non c\'è la quota associativa' );
+asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'Voce di prima nota', array( 'id' => $pm_res ) );
+asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'Promemoria', array( 'id' => $pm_res ) );
+
 // ---------- Copia di sicurezza e ripristino (in fondo: tocca tutte le tabelle) ----------
 
 wp_set_current_user( 1 );
