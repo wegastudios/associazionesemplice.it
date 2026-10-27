@@ -116,6 +116,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Lingue aggiuntive (inglese incluso) | — | ✓ | ✓ |
 | Copia di sicurezza e ripristino | ✓ | ✓ | ✓ |
 | Azzeramento dei dati e registro delle azioni | ✓ | ✓ | ✓ |
+| Registro azioni con spazio occupato, «Libera spazio» e pulizia automatica | ✓ | ✓ | ✓ |
 
 ## Licenza e prezzo
 
