@@ -97,6 +97,7 @@ final class Resources {
 		if ( array_key_exists( 'remind_hours', $in ) ) { // promemoria al socio prima della prenotazione (0 = nessuno)
 			$h                   = (int) $in['remind_hours'];
 			$d['remind_hours']   = in_array( $h, array( 2, 12, 24, 48 ), true ) ? $h : 0;
+			$d['entry_qr']       = ! empty( $in['entry_qr'] ) ? 1 : 0; // ingresso con il QR (lo stesso modulo: la spunta assente vale no)
 		}
 		if ( array_key_exists( 'category_id', $in ) ) { // la voce di prima nota degli incassi (vuoto = «Altra entrata»)
 			$cid = max( 0, (int) $in['category_id'] );
@@ -472,6 +473,47 @@ final class Resources {
 		}
 		Audit::log( 'reservation.paid_credits', 'resource', (int) $r['resource_id'], array( 'reservation' => $reservation_id, 'credits' => $cost ) );
 		return $cost;
+	}
+
+	// ---------- Ingresso con il QR ----------
+
+	/** Una prenotazione con quanto è stato pagato, quanto resta e gli ospiti. */
+	public static function decorated( array $row ): array {
+		return self::decorate( array( $row ) )[0];
+	}
+
+	/** L'indirizzo che sta nel QR di una prenotazione. */
+	public static function gate_url( array $r ): string {
+		return add_query_arg( 'asem_res', ResourceGate::param( (int) $r['id'], (int) $r['person_id'], Settings::card_secret() ), home_url( '/' ) );
+	}
+
+	/** A che punto è la prenotazione all'ingresso (vedi {@see ResourceGate::state}). */
+	public static function gate_state( array $r, ?string $now = null ): string {
+		return ResourceGate::state( (string) $r['status'], (string) $r['starts_at'], $r['ends_at'] ? (string) $r['ends_at'] : null, $r['checked_in_at'] ?? null, $now ?? Db::now() );
+	}
+
+	/**
+	 * Registra l'ingresso di una prenotazione (lo staff, dopo aver inquadrato il QR). Solo dalla mezz'ora prima dell'inizio alla fine, una volta sola.
+	 *
+	 * @throws \InvalidArgumentException
+	 */
+	public static function check_in( int $reservation_id, int $user_id, ?string $now = null ): void {
+		$r = self::reservation( $reservation_id );
+		if ( ! $r || ResourceRules::KIND_SLOT !== $r['kind'] || ! $r['person_id'] ) {
+			throw new \InvalidArgumentException( 'Prenotazione non trovata.' );
+		}
+		$state = self::gate_state( $r, $now );
+		if ( 'ok' !== $state ) {
+			throw new \InvalidArgumentException( ResourceGate::label( $state ) . '.' );
+		}
+		self::db()->update( Db::t( 'reservations' ), array( 'checked_in_at' => $now ?? Db::now(), 'checked_in_by' => $user_id ?: null ), array( 'id' => $reservation_id ) );
+		Audit::log( 'reservation.checked_in', 'resource', (int) $r['resource_id'], array( 'reservation' => $reservation_id ) );
+	}
+
+	/** Toglie l'ingresso registrato per sbaglio. */
+	public static function undo_check_in( int $reservation_id ): void {
+		self::db()->update( Db::t( 'reservations' ), array( 'checked_in_at' => null, 'checked_in_by' => null ), array( 'id' => $reservation_id ) );
+		Audit::log( 'reservation.check_in_undone', 'resource', null, array( 'reservation' => $reservation_id ) );
 	}
 
 	// ---------- Voce di prima nota ----------
@@ -1068,7 +1110,7 @@ final class Resources {
 
 	/** Prenotazioni e assegnazioni di un socio: quelle in corso o future per prime. */
 	public static function for_person( int $person_id, bool $future_only = true ): array {
-		$sql  = 'SELECT r.*, x.name AS resource_name, x.category FROM ' . Db::t( 'reservations' ) . ' r JOIN ' . Db::t( 'resources' ) . ' x ON x.id = r.resource_id AND x.deleted_at IS NULL '
+		$sql  = 'SELECT r.*, x.name AS resource_name, x.category, x.entry_qr FROM ' . Db::t( 'reservations' ) . ' r JOIN ' . Db::t( 'resources' ) . ' x ON x.id = r.resource_id AND x.deleted_at IS NULL '
 			. "WHERE r.person_id = %d AND r.status = 'booked'" . ( $future_only ? ' AND (r.ends_at IS NULL OR r.ends_at > %s)' : '' ) . ' ORDER BY r.starts_at';
 		$args = $future_only ? array( $person_id, Db::now() ) : array( $person_id );
 		return self::decorate( self::db()->get_results( self::db()->prepare( $sql, $args ), ARRAY_A ) ?: array() );

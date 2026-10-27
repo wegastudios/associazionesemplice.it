@@ -73,6 +73,7 @@ final class ProViews {
 	public static function front_init(): void {
 		if ( Edition::has( 'resources' ) ) {
 			ResourcesFront::register();
+			ResourcesGate::register();
 		}
 		if ( Edition::has( 'credits' ) ) {
 			CreditsFront::register();

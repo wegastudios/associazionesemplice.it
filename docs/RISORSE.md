@@ -153,7 +153,10 @@ Le risorse si possono pagare anche **in crediti** (token prepagati comprati dal 
 - **Assegnazioni richieste dal socio**: se un posto auto, un armadietto o un posto barca è libero il socio lo **chiede** dalla sua area; la richiesta entra nella lista della risorsa («Richieste e lista d'attesa») e la segreteria la approva con «Assegna» (o la toglie). Se è occupato, il socio si mette in coda come prima.
 - **Carnet di ore**: li coprono i **crediti** (pacchetti prepagati da spendere sulle risorse, vedi [CREDITI.md](CREDITI.md)); non c'è un secondo meccanismo.
 
-**Fase 3b (da fare)**: ingresso con QR (il socio mostra il QR della prenotazione, lo staff registra l'ingresso).
+**Fase 3b (fatta)**: ingresso con QR, per le risorse che lo prevedono (`resources.entry_qr`).
+- Il socio vede nella sua area il **QR di ogni prenotazione** (non per le assegnazioni né per quelle ancora in attesa del pagamento online). Il QR contiene solo prenotazione, socio e una firma (HMAC) che non si indovina.
+- Lo staff lo inquadra con la **fotocamera del telefono**: si apre una pagina con risorsa, giorno e ora, socio, ospiti e pagamento, con una fascia colorata: valida, già entrato, troppo presto, scaduta, annullata. Chi non è dello staff vede il nome abbreviato («Mario R.»).
+- Con l'accesso della **segreteria** compare «Registra l'ingresso» (o «Togli l'ingresso» se è stato registrato per sbaglio). Vale **dalla mezz'ora prima dell'inizio alla fine della fascia**, una volta sola. L'ingresso si vede anche nell'elenco delle prenotazioni della risorsa (`reservations.checked_in_at`).
 
 ## Fuori perimetro
 

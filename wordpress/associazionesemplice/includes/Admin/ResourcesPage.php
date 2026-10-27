@@ -36,6 +36,9 @@ final class ResourcesPage {
 		if ( ! empty( $r['guests'] ) ) {
 			$out .= ' + ' . esc_html( implode( ', ', $r['guests'] ) );
 		}
+		if ( ! empty( $r['checked_in_at'] ) ) {
+			$out .= ' <span class="description">· entrato alle ' . esc_html( substr( (string) $r['checked_in_at'], 11, 5 ) ) . '</span>';
+		}
 		return $out;
 	}
 
@@ -262,6 +265,12 @@ final class ResourcesPage {
 			. '<p class="description">Gli incassi di questa risorsa (in segreteria e online) vanno su questa voce, così nei report e nel rendiconto si vedono separati da quelli delle altre risorse. Le voci si creano in <em>Conti e fondi</em>/<em>Prima nota</em>. I crediti spesi non hanno un incasso: l\'entrata è la vendita dei crediti.</p></td></tr>';
 	}
 
+	/** Riga del modulo: l'ingresso con il QR della prenotazione. */
+	private static function entry_row( ?array $res ): string {
+		return '<tr><th>Ingresso</th><td><label><input type="checkbox" name="entry_qr" value="1"' . checked( $res ? (int) $res['entry_qr'] : 0, 1, false ) . '> ingresso con il QR della prenotazione</label>'
+			. '<p class="description">Il socio vede nella sua area il QR di ogni prenotazione; lo staff lo inquadra con la fotocamera del telefono, vede se è valida (risorsa, ora, socio, ospiti, pagamento) e, dopo aver fatto l\'accesso, registra l\'ingresso. Vale dalla mezz\'ora prima dell\'inizio alla fine della fascia, una volta sola.</p></td></tr>';
+	}
+
 	/** Riga del modulo: il promemoria al socio prima della prenotazione. */
 	private static function reminder_row( ?array $res ): string {
 		$opts = array( 0 => 'Nessuno', 2 => '2 ore prima', 12 => '12 ore prima', 24 => '1 giorno prima', 48 => '2 giorni prima' );
@@ -298,6 +307,7 @@ final class ResourcesPage {
 			. ( \AssociazioneSemplice\Edition::has( 'credits' ) ? '<tr><th>Crediti</th><td><input type="number" name="credit_cost" min="0" style="width:80px" value="' . (int) $v( 'credit_cost', 0 ) . '"> crediti ' . ( ResourceRules::ASSIGN === $v( 'mode', ResourceRules::SLOT ) ? 'per periodo' : 'per fascia' ) . '<br><span class="description">0 = non si paga in crediti. Con un costo in crediti il socio può pagare subito con i suoi crediti, oltre alle vie scelte sopra; annullando la prenotazione i crediti tornano al socio. Vale anche per gli ospiti ammessi: non c\'è un supplemento in crediti.</span></td></tr>' : '' )
 			. self::category_row( $res )
 			. self::reminder_row( $res )
+			. self::entry_row( $res )
 			. self::fund_row( $res )
 			. '<tr><th>Ospiti</th><td>fino a <input type="number" name="guests_max" min="0" max="50" style="width:60px" value="' . (int) $v( 'guests_max', 0 ) . '"> per prenotazione, supplemento <input type="text" name="guest_fee" size="6" value="' . esc_attr( Money::plain( (int) $v( 'guest_fee_cents', 0 ) ) ) . '"> € ciascuno<br><span class="description">0 = nessun ospite (posti auto, armadietti, posti barca). Gli ospiti sono solo un nome: non entrano in anagrafe.</span></td></tr>'
 			. '<tr><th>Fasce orarie</th><td>aperta dalle <input type="time" name="open_time" value="' . esc_attr( (string) $v( 'open_time', '08:00' ) ) . '"> alle <input type="time" name="close_time" value="' . esc_attr( (string) $v( 'close_time', '22:00' ) ) . '"> · fascia di <input type="number" name="slot_minutes" min="5" max="720" style="width:70px" value="' . (int) $v( 'slot_minutes', 60 ) . '"> minuti<br>'
