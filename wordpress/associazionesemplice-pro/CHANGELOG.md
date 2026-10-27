@@ -2,6 +2,11 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.1.27
+- Nuove assemblee e deleghe: convocazione via email, presenze, deleghe tra soci, numero legale e verbale già compilato.
+- Nuovo bilancio preventivo per categoria, confrontato con quello che è successo davvero (Pro Contabile e Fiscale).
+- Nuovi rimborsi spese ai volontari: spesa documentata, autocertificazione e chilometrico, con approvazione, pagamento e registrazione in prima nota.
+
 ## 1.1.26
 - Risorse: promemoria prima della prenotazione e voce di prima nota per ogni risorsa.
 - Risorse: nuovo report di occupazione e richieste di assegnazione dai soci per le risorse libere.
