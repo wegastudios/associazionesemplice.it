@@ -7015,7 +7015,7 @@ asem_ok( has_action( 'admin_post_asem_convention_save' ) && shortcode_exists( 'c
 \AssociazioneSemplice\Conventions::delete( $bf_c );
 
 // ---------- Blocco E: SMS, newsletter, Satispay e Klarna (con il Pro attivo) ----------
-$ps = AssociazioneSemplicePaymentService::engine(); // il nome $ps è stato riusato più sopra
+$ps = \AssociazioneSemplice\PaymentService::engine(); // il nome $ps è stato riusato più sopra
 asem_ok( \AssociazioneSemplice\Edition::has( 'sms' ) && \AssociazioneSemplice\Edition::has( 'newsletter' ) && 9 === (int) \AssociazioneSemplice\ProSchema::VERSION, 'blocco E: funzioni SMS e newsletter presenti, schema Pro alla versione 9' );
 asem_ok( has_action( 'admin_post_asem_save_sms' ) && has_action( 'admin_post_asem_newsletter_sync' ) && has_action( 'admin_post_asem_consent_set' ) && has_action( 'admin_post_asem_satispay_connect' ) && has_action( 'admin_post_asem_front_consent' ), 'blocco E: azioni di amministrazione e dell\'area soci registrate' );
 
