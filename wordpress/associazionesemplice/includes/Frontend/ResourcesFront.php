@@ -134,8 +134,10 @@ final class ResourcesFront {
 
 	public static function do_wait( array $post ): string {
 		$actor = self::actor();
-		Resources::waitlist_join( (int) ( $post['resource_id'] ?? 0 ), (int) $actor['id'] );
-		return 'Sei in lista d\'attesa: ti avvisiamo per email quando si libera.';
+		$rid  = (int) ( $post['resource_id'] ?? 0 );
+		$free = ! Resources::between( $rid, current_time( 'Y-m-d H:i:s' ), gmdate( 'Y-m-d H:i:s', strtotime( current_time( 'Y-m-d H:i:s' ) . ' +1 second' ) ) );
+		Resources::waitlist_join( $rid, (int) $actor['id'] );
+		return $free ? 'Richiesta inviata: la segreteria la valuta e ti avvisa.' : 'Sei in lista d\'attesa: ti avvisiamo per email quando si libera.';
 	}
 
 	public static function do_unwait( array $post ): string {
@@ -245,7 +247,8 @@ final class ResourcesFront {
 				. self::form( 'asem_front_res_unwait', self::hidden( 'resource_id', $rid ), 'Esci dalla lista', 'asemf-inline', true );
 		}
 		if ( ! Resources::between( $rid, $now, gmdate( 'Y-m-d H:i:s', strtotime( $now . ' +1 second' ) ) ) ) {
-			return '<p class="asemf-muted">Al momento è libera: scrivi alla segreteria per averla.</p>';
+			return '<p class="asemf-muted">Al momento è libera: puoi chiederla, la segreteria valuta la richiesta e ti avvisa.</p>'
+				. self::form( 'asem_front_res_wait', self::hidden( 'resource_id', $rid ), 'Richiedi questa risorsa' );
 		}
 		return '<p class="asemf-muted">Al momento è occupata. Se si libera ti avvisiamo; l\'assegnazione la fa la segreteria.</p>'
 			. self::form( 'asem_front_res_wait', self::hidden( 'resource_id', $rid ), 'Mettiti in lista d\'attesa' );

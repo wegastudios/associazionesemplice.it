@@ -266,6 +266,21 @@ final class ResourceRulesTest extends TestCase {
 		$this->assertFalse( R::overlaps( '2026-10-20 20:00:00', '2026-10-20 21:00:00', $w['starts'], $w['ends'] ) );
 	}
 
+	public function test_minutes_inside_a_period(): void {
+		$from = '2026-10-01 00:00:00';
+		$to   = '2026-11-01 00:00:00';
+		$this->assertSame( 60, R::overlap_minutes( '2026-10-20 18:00:00', '2026-10-20 19:00:00', $from, $to ) );
+		$this->assertSame( 30, R::overlap_minutes( '2026-09-30 23:30:00', '2026-10-01 01:00:00', $from, $to ), 'a cavallo dell\'inizio conta solo la parte dentro' );
+		$this->assertSame( 60, R::overlap_minutes( '2026-10-31 23:00:00', '2026-11-01 05:00:00', $from, $to ), 'a cavallo della fine' );
+		$this->assertSame( 0, R::overlap_minutes( '2026-11-01 00:00:00', '2026-11-01 02:00:00', $from, $to ), 'fuori dal periodo' );
+		$this->assertSame( 0, R::overlap_minutes( '2026-09-30 22:00:00', '2026-10-01 00:00:00', $from, $to ), 'finisce quando comincia il periodo' );
+	}
+
+	public function test_an_open_ended_assignment_counts_until_the_end_of_the_period(): void {
+		$this->assertSame( 2880, R::overlap_minutes( '2026-10-30 00:00:00', null, '2026-10-01 00:00:00', '2026-11-01 00:00:00' ) );
+		$this->assertSame( 44640, R::overlap_minutes( '2025-01-01 00:00:00', null, '2026-10-01 00:00:00', '2026-11-01 00:00:00' ), 'tutto il mese' );
+	}
+
 	public function test_series_has_one_date_per_week(): void {
 		$this->assertSame( array( '2026-10-20', '2026-10-27', '2026-11-03' ), R::series_dates( '2026-10-20', 3 ) );
 		$this->assertSame( array( '2026-10-20' ), R::series_dates( '2026-10-20', 0 ) );

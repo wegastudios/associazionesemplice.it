@@ -148,7 +148,12 @@ Le risorse si possono pagare anche **in crediti** (token prepagati comprati dal 
 - **Promemoria** (`resources.remind_hours`: nessuno, 2, 12, 24 o 48 ore prima): un'email al socio con data, ora, ospiti e quanto resta da pagare, mandata dal lavoro orario con il registro dei promemoria già usato per tessere ed eventi (una sola volta per prenotazione; ai minori va al tutore). Non parte per chi prenota dentro la finestra, per le prenotazioni provvisorie in attesa del pagamento online e per quelle annullate.
 - **Voce di prima nota** (`resources.category_id`): gli incassi della risorsa (in segreteria e online) vanno sulla voce scelta tra quelle di entrata (non la quota associativa), altrimenti su «Altra entrata». Nei report e nel rendiconto le risorse si vedono separate. I crediti spesi non hanno un incasso: l'entrata è la vendita dei crediti.
 
-**Fase 3**: ingresso con QR, carnet di ore, report di occupazione, assegnazioni richieste dal socio con approvazione.
+**Fase 3a (fatta)**:
+- **Report di occupazione** (Risorse → Occupazione, per un periodo scelto): per ogni risorsa a fasce le ore disponibili (tra apertura e chiusura), prenotate dai soci, occupate da corsi ed eventi, in allestimento e bloccate; la percentuale di occupazione (prenotazioni ed eventi sulle ore disponibili: allestimenti e blocchi si vedono a parte); gli incassi del periodo e i crediti spesi. Per le risorse assegnate a periodo, le assegnazioni in corso e gli incassi.
+- **Assegnazioni richieste dal socio**: se un posto auto, un armadietto o un posto barca è libero il socio lo **chiede** dalla sua area; la richiesta entra nella lista della risorsa («Richieste e lista d'attesa») e la segreteria la approva con «Assegna» (o la toglie). Se è occupato, il socio si mette in coda come prima.
+- **Carnet di ore**: li coprono i **crediti** (pacchetti prepagati da spendere sulle risorse, vedi [CREDITI.md](CREDITI.md)); non c'è un secondo meccanismo.
+
+**Fase 3b (da fare)**: ingresso con QR (il socio mostra il QR della prenotazione, lo staff registra l'ingresso).
 
 ## Fuori perimetro
 

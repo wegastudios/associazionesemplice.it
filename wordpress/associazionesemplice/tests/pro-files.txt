@@ -89,3 +89,4 @@ Admin/AffiliationsPage.php
 Admin/BlockCActions.php
 Admin/BlockCExports.php
 Frontend/CertificatesFront.php
+Admin/ResourcesReportPage.php
