@@ -22,9 +22,12 @@ final class ConventionsPage {
 		$labels = ConventionRules::status_labels();
 		Ui::header( 'Convenzioni', '<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-conventions', array( 'new' => 1 ) ) ) . '">Nuova convenzione</a>' );
 		echo '<p class="description">Sconti e vantaggi di esercenti ed enti partner per i soci. I soci in regola con la tessera vedono quelle valide oggi nell\'area riservata (sezione «Convenzioni», o lo shortcode <code>[convenzioni_soci]</code>). Per mostrare sul sito quelle segnate «pubbliche» usa lo shortcode <code>[convenzioni]</code>. Una convenzione scaduta o archiviata sparisce dall\'area soci ma resta qui.</p>';
-		echo '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-conventions"><select name="category">' . Ui::options( array_combine( Conventions::categories(), Conventions::categories() ), $cat, 'Tutte le categorie' ) . '</select> '
+		$cats = Conventions::categories();
+		// phpcs:disable WordPress.Security.EscapeOutput -- opzioni e link costruiti con esc_html/esc_attr/esc_url
+		echo '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-conventions"><select name="category">' . Ui::options( array_combine( $cats, $cats ), $cat, 'Tutte le categorie' ) . '</select> '
 			. '<select name="state">' . Ui::options( $labels, $state, 'Tutti gli stati' ) . '</select> <button class="button">Filtra</button> '
-			. BlockFActions::csv_link() . '</form>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			. BlockFActions::csv_link() . '</form>';
+		// phpcs:enable WordPress.Security.EscapeOutput
 		echo '<table class="widefat striped"><thead><tr><th>Convenzione</th><th>Categoria</th><th>Vantaggio</th><th>Validità</th><th>Stato</th><th>Chi</th><th>Sito</th></tr></thead><tbody>';
 		$n = 0;
 		foreach ( Conventions::all( $cat ) as $c ) {

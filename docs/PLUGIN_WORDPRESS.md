@@ -757,7 +757,7 @@ Tre funzioni nuove, nel gruppo **Registri** del menu (schede **Votazioni**, **In
 
 ## Convenzioni per i soci (gratuito, database v44)
 
-Funzione del plugin gratuito, senza blocchi di licenza, con la sua voce di menu **Convenzioni** (permesso `asem_operate`: segreteria, presidente e vicepresidente, amministratori).
+Funzione del plugin gratuito, senza blocchi di licenza, nel gruppo **Registri** del menu (scheda **Convenzioni**) (permesso `asem_operate`: segreteria, presidente e vicepresidente, amministratori).
 
 - **Admin**: elenco con filtro per categoria e stato, aggiunta, modifica, archiviazione, eliminazione (logica: `deleted_at`). Campi: esercente o ente, categoria, vantaggio, condizioni d'uso, validità dal/al (l'ultimo giorno è compreso), indirizzo, telefono, email, sito (si accettano solo http/https), logo scelto dalla libreria media (`logo_id`), destinatari (tutti i soci in regola oppure solo alcuni tipi: fondatore, ordinario, volontario), «visibile anche al pubblico», codice convenzione facoltativo. Le categorie sono un elenco libero gestibile nella stessa pagina (opzione `asem_convention_categories`, inclusa nella copia di sicurezza) più quelle già in uso.
 - **Stato** (`ConventionRules::status`): in corso, non ancora valida, scaduta, archiviata. Una convenzione che non è «in corso» sparisce dall'area soci e dall'elenco pubblico ma resta in admin.

@@ -1,6 +1,6 @@
 # Blocco F — testo per le guide di supporto
 
-Una funzione nuova nel plugin **gratuito** (Associazione Semplice 1.2.x): le **convenzioni per i soci**. Ha la sua voce nel menu di WordPress: **Associazione Semplice → Convenzioni**. La usano la segreteria, il presidente, il vicepresidente e gli amministratori.
+Una funzione nuova nel plugin **gratuito** (Associazione Semplice 1.2.x): le **convenzioni per i soci**. Si trova nel gruppo Registri del menu di WordPress: **Associazione Semplice → Registri → Convenzioni**. La usano la segreteria, il presidente, il vicepresidente e gli amministratori.
 
 ## A cosa serve
 
@@ -8,7 +8,7 @@ Raccogliere in un posto solo gli sconti e i vantaggi che negozi, palestre, teatr
 
 ## Come si crea una convenzione
 
-Convenzioni → «Nuova convenzione». I campi:
+Registri → Convenzioni → «Nuova convenzione». I campi:
 
 - **Esercente o ente partner** (obbligatorio);
 - **Categoria**: si sceglie dall'elenco o se ne scrive una nuova. L'elenco si gestisce in fondo alla pagina «Convenzioni» (una categoria per riga);

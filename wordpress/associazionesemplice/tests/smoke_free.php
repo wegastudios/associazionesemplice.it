@@ -344,7 +344,7 @@ free_ok( in_array( 'Salute', \AssociazioneSemplice\Conventions::categories(), tr
 $cf_page = free_render( array( \AssociazioneSemplice\Admin\ConventionsPage::class, 'render' ) );
 free_ok( false !== strpos( $cf_page, 'Palestra Forma' ) && false !== strpos( $cf_page, 'Bar Scaduto' ) && false !== strpos( $cf_page, 'Cinema Archiviato' ), 'convenzioni: la pagina di amministrazione elenca anche scadute e archiviate' );
 free_ok( false !== strpos( free_render( array( \AssociazioneSemplice\Admin\ConventionsPage::class, 'render' ), array( 'view' => $cf_vols ) ), 'Libreria Solo Volontari' ), 'convenzioni: la scheda si apre' );
-free_ok( isset( \AssociazioneSemplice\Admin\Admin::groups()['asem-conventions'] ) && has_action( 'admin_post_asem_convention_save' ), 'convenzioni: menu e azioni registrati' );
+free_ok( isset( \AssociazioneSemplice\Admin\Admin::groups()['asem-book'][1]['asem-conventions'] ) && has_action( 'admin_post_asem_convention_save' ), 'convenzioni: menu e azioni registrati' );
 \AssociazioneSemplice\Conventions::delete( $cf_old );
 free_ok( null === \AssociazioneSemplice\Conventions::get( $cf_old ), 'convenzioni: eliminata' );
 
