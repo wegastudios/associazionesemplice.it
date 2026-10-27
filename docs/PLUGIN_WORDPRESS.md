@@ -755,6 +755,19 @@ Tre funzioni nuove, nel gruppo **Registri** del menu (schede **Votazioni**, **In
 - I soci trovano l'elenco nell'area riservata (sezione «Documenti» o `[associazionesemplice_documenti_soci]`); l'elenco pubblico si inserisce con `[associazionesemplice_documenti]` (facoltativo `categoria="Moduli"`) o con il blocco Associazione Semplice. Un documento eliminato esce dagli elenchi; il file resta sul disco, come gli allegati dei movimenti.
 - Tabella: `documents`. Copia di sicurezza e azzeramento includono tabelle e file.
 
+## Convenzioni per i soci (gratuito, database v44)
+
+Funzione del plugin gratuito, senza blocchi di licenza, con la sua voce di menu **Convenzioni** (permesso `asem_operate`: segreteria, presidente e vicepresidente, amministratori).
+
+- **Admin**: elenco con filtro per categoria e stato, aggiunta, modifica, archiviazione, eliminazione (logica: `deleted_at`). Campi: esercente o ente, categoria, vantaggio, condizioni d'uso, validità dal/al (l'ultimo giorno è compreso), indirizzo, telefono, email, sito (si accettano solo http/https), logo scelto dalla libreria media (`logo_id`), destinatari (tutti i soci in regola oppure solo alcuni tipi: fondatore, ordinario, volontario), «visibile anche al pubblico», codice convenzione facoltativo. Le categorie sono un elenco libero gestibile nella stessa pagina (opzione `asem_convention_categories`, inclusa nella copia di sicurezza) più quelle già in uso.
+- **Stato** (`ConventionRules::status`): in corso, non ancora valida, scaduta, archiviata. Una convenzione che non è «in corso» sparisce dall'area soci e dall'elenco pubblico ma resta in admin.
+- **Area soci**: sezione «Convenzioni» (o `[convenzioni_soci]`, equivalente a `[associazionesemplice_convenzioni_soci]`). Vede le convenzioni valide oggi chi è `MemberType::is_member()` con tessera valida (`PeopleService::is_active_member`, quindi non sospeso) e del tipo previsto. Gli ospiti e i genitori o tutori che non sono soci non le vedono (nessuna visualizzazione «da accompagnatore»). Filtro per categoria con un modulo GET (`conv_cat`). Il dettaglio («Come usarla») ha codice, condizioni e la riga per farsi riconoscere: nome del socio, numero di tessera e scadenza del tesseramento.
+- **Elenco pubblico**: `[convenzioni]` (o `[associazionesemplice_convenzioni]`), attributo facoltativo `categoria`. Solo le convenzioni «pubbliche» in corso: nome, logo, categoria e vantaggio; niente codice, condizioni né contatti. Entrambi gli shortcode chiamano `Views::no_cache()` (funzionano fuori dalla cache di pagina come gli elenchi di attività ed eventi).
+- **Avviso ai soci**: pulsante «Avvisa i soci della nuova convenzione» nella scheda: email ai soci a cui spetta, con `Reminders::notify` (tipo `convention_new`, riferimento = id). Una sola volta per convenzione (`announced_at`) e per persona. Serve una convenzione in corso. Parte subito, non dipende dal flag dei promemoria automatici.
+- **Bacheca**: riquadro «Convenzioni in scadenza» (prossimi 30 giorni).
+- **CSV**: `admin-post.php?action=asem_conventions_csv` (con nonce), tutte le convenzioni.
+- Regole pure e test: `ConventionRules` (`tests/unit/BlockFRulesTest.php`). Tabella: `conventions`. Classi: `Conventions`, `Admin\ConventionsPage`, `Admin\BlockFActions`, `Frontend\BlockFViews`.
+
 ## Certificato medico e affiliazioni agli enti (solo Pro, schema Pro v4)
 
 Due funzioni nuove del Pro, nel gruppo **Registri** (schede **Certificati medici** e **Affiliazioni**). Sono classi dell'edizione Pro (elenco in `tests/pro-files.txt`): senza Pro o con la licenza non in regola le pagine, le azioni e i lavori periodici spariscono senza errori. Le regole pure stanno in `ExpiryRules`, `CertificateRules` e `AffiliationRules` (test in `BlockCRulesTest`); i servizi in `Certificates` e `Affiliations`; il collegamento con il gratuito in `ProBlockC`.
