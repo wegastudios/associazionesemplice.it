@@ -45,6 +45,17 @@ final class License {
 		if ( LicensePolicy::STATUS_NOKEY === $s['status'] ) {
 			return self::PLAN_FREE;
 		}
+		if ( LicenseClient::enabled() ) {
+			if ( LicensePolicy::STATUS_ACTIVE === $s['status'] ) { // il livello lo dice la prova firmata, non il campo salvato (modificabile a mano nel database)
+				$claims = self::attestation_claims( $s );
+				if ( $claims && ! empty( $claims['plan'] ) ) {
+					return LicenseClient::plan_from_name( (string) $claims['plan'] );
+				}
+			}
+			if ( ! in_array( (string) $s['plan'], self::PLANS, true ) ) {
+				return self::PLAN_FREE; // un valore inventato non regala il livello massimo
+			}
+		}
 		return in_array( (string) $s['plan'], self::PLANS, true ) ? (string) $s['plan'] : self::PLAN_FISCAL;
 	}
 
@@ -121,6 +132,10 @@ final class License {
 		if ( ! LicenseClient::enabled() ) {
 			return (string) $s['status'];
 		}
+		$known = array( LicensePolicy::STATUS_STANDBY, LicensePolicy::STATUS_ACTIVE, LicensePolicy::STATUS_UNPAID, LicensePolicy::STATUS_UNLICENSED, LicensePolicy::STATUS_NOKEY, LicensePolicy::STATUS_UNVERIFIED );
+		if ( ! in_array( (string) $s['status'], $known, true ) ) {
+			return LicensePolicy::STATUS_UNVERIFIED; // uno stato inventato non toglie le restrizioni
+		}
 		if ( LicensePolicy::STATUS_ACTIVE === $s['status'] ) {
 			return self::attestation_holds( $s ) ? LicensePolicy::STATUS_ACTIVE : LicensePolicy::STATUS_UNVERIFIED;
 		}
@@ -132,12 +147,17 @@ final class License {
 
 	/** L'attestazione salvata è firmata da Wega, è per questo dominio e non è scaduta oltre la tolleranza? (si calcola una volta per richiesta) */
 	private static function attestation_holds( array $s ): bool {
+		return null !== self::attestation_claims( $s );
+	}
+
+	/** Le affermazioni (livello, dominio…) della prova firmata salvata, se regge; altrimenti null. */
+	private static function attestation_claims( array $s ): ?array {
 		static $memo = array();
 		$domain = LicenseClient::normalize_domain( home_url() );
 		$leeway = Limits::get( 'license_offline_days' ) * DAY_IN_SECONDS;
 		$key    = md5( $s['attestation'] . '|' . $s['product'] . '|' . $domain . '|' . $leeway );
-		if ( ! isset( $memo[ $key ] ) ) {
-			$memo[ $key ] = '' !== $s['attestation'] && null !== LicenseClient::verify_attestation( $s['attestation'], LicenseClient::jwks(), LicenseClient::ISSUER, $s['product'], $domain, null, $leeway );
+		if ( ! array_key_exists( $key, $memo ) ) {
+			$memo[ $key ] = '' === $s['attestation'] ? null : LicenseClient::verify_attestation( $s['attestation'], LicenseClient::jwks(), LicenseClient::ISSUER, $s['product'], $domain, null, $leeway );
 		}
 		return $memo[ $key ];
 	}
