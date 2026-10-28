@@ -2,9 +2,6 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
-## 1.2.39
-- Il livello della licenza (Gratuito, Contabile, Pro Full) lo decide solo il portale con una prova firmata: se un piano cambia nome la licenza resta valida e il livello non cambia.
-
 ## 1.2.38
 - A 18 anni i permessi del tutore si spengono da soli, anche se il ragazzo non ha ancora un accesso suo: il tutore non lo vede più, non paga per lui e non riceve più le sue email.
 
