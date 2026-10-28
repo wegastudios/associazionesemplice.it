@@ -65,6 +65,11 @@ final class LicenseProxy {
 			return $this->error( 502, 'UPSTREAM', 'Server licenze non raggiungibile.' );
 		}
 
+		// Il livello lo decide e lo firma il portale (tabella dei piani e degli acquisti), non il nome del piano scritto su Wega.
+		$portal = PortalAttestation::forResponse( $this->db, $data, $now );
+		if ( null !== $portal ) {
+			$data['portal_attestation'] = $portal;
+		}
 		$body = (string) json_encode( $data );
 		$this->seen( $body, $now );
 		$this->db->run( 'DELETE FROM proxy_cache WHERE k = ?', array( $ck ) );
