@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.38
+Stable tag: 1.2.39
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,9 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.2.39 =
+* Code cleanup for the WordPress.org review: all output is escaped through an allow-list, no inline event handlers, request data sanitised on entry.
 
 = 1.2.38 =
 * Guardians: at 18 the guardian's permissions switch off, even if the young person has no login yet.
