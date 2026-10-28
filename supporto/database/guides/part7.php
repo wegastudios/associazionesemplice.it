@@ -57,7 +57,7 @@ Ogni plugin ha un **elenco delle novità** (il *changelog*), scritto in italiano
 
 1. Prima di aggiornare, leggi le novità della versione nuova.
 2. Fai una [copia di sicurezza](guida:copia-di-sicurezza-e-ripristino).
-3. Aggiorna il plugin da **Plugin → Plugin installati**. Il plugin gratuito e Pro hanno versioni indipendenti: puoi aggiornare l'uno o l'altro in qualsiasi ordine.
+3. Aggiorna il plugin da **Plugin → Plugin installati**. Il plugin gratuito e Pro hanno numeri di versione diversi, ma **vanno aggiornati insieme**: con un plugin gratuito vecchio, il Pro nuovo si sospende e mostra un avviso. Aggiorna prima il gratuito, poi Pro.
 4. Controlla la Bacheca di Associazione Semplice e prova un'operazione semplice, per esempio aprire la scheda di un socio.
 
 ## Avviso degli aggiornamenti
