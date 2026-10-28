@@ -116,7 +116,7 @@ Dopo il controllo compaiono nel menu le funzioni incluse nel tuo piano.
 
 ## Aggiornare
 
-Il plugin gratuito e Pro hanno numeri di versione indipendenti: puoi aggiornare l'uno o l'altro in qualsiasi ordine. Se il sito segnala che i due non sono compatibili, aggiorna entrambi all'ultima versione.
+Il plugin gratuito e Pro hanno numeri di versione diversi, ma **vanno aggiornati insieme**: con un plugin gratuito vecchio, il Pro nuovo si sospende e mostra un avviso. Aggiorna prima il gratuito, poi Pro; se il sito segnala che i due non sono compatibili, aggiorna entrambi all'ultima versione.
 
 > Se cambi piano (per esempio da Pro Contabile a Pro Fiscale) non devi reinstallare nulla: dopo il controllo della licenza compaiono le funzioni in più.
 MD,

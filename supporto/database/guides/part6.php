@@ -65,7 +65,7 @@ MD,
         'body' => <<<'MD'
 Sì. Associazione Semplice Pro è un'aggiunta e richiede che il plugin gratuito sia installato e attivo: i due condividono dati e funzioni.
 
-Hanno numeri di versione indipendenti, quindi puoi aggiornare uno o l'altro in qualsiasi ordine. Se il sito segnala che non sono compatibili, aggiorna entrambi all'ultima versione.
+Hanno numeri di versione diversi, ma vanno **aggiornati insieme**: con un plugin gratuito vecchio, il Pro nuovo si sospende e mostra un avviso. Aggiorna prima il gratuito, poi Pro; se il sito segnala che non sono compatibili, aggiorna entrambi all'ultima versione.
 MD,
     ],
     [
