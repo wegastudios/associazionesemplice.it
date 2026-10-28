@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.40
+- Pulizia interna del codice dei pagamenti per la revisione di WordPress.org: nessun cambiamento d'uso.
+
 ## 1.2.39
 - Pulizia interna del codice per la revisione di WordPress.org: le pagine si comportano come prima.
 
