@@ -4,8 +4,10 @@ namespace App\Services\Site;
 
 use App\Exceptions\HubRejectedException;
 use App\Exceptions\HubUnavailableException;
+use App\Mail\NewTicketForStaff;
 use App\Mail\TicketReceived;
 use App\Models\SupportTicket;
+use App\Models\User;
 use Illuminate\Support\Facades\Mail;
 
 /**
@@ -47,6 +49,11 @@ class TicketRegistrar
         }
 
         Mail::to($ticket->customer_email)->send(new TicketReceived($ticket));
+
+        $staff = User::query()->whereNotNull('email')->pluck('email')->all();
+        if ($staff !== []) {
+            Mail::to($staff)->send(new NewTicketForStaff($ticket));
+        }
 
         return true;
     }
