@@ -3,7 +3,7 @@
  * Plugin Name:       Associazione Semplice
  * Description:       Soci, eventi e corsi, prima nota e privacy per le associazioni del Terzo settore (APS ed ETS).
  * Plugin URI:        https://associazionesemplice.it
- * Version:           1.2.37
+ * Version:           1.2.38
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Wega Studios
@@ -14,7 +14,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ASEM_VERSION', '1.2.37' );
+define( 'ASEM_VERSION', '1.2.38' );
 define( 'ASEM_API', 10 ); // livello di compatibilità con Associazione Semplice Pro: cambia solo se cambia ciò che i due plugin si scambiano
 define( 'ASEM_FILE', __FILE__ );
 define( 'ASEM_DIR', plugin_dir_path( __FILE__ ) );
