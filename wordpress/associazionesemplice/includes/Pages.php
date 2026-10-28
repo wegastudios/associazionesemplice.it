@@ -56,6 +56,12 @@ final class Pages {
 		return $out;
 	}
 
+	/** La pagina più vecchia (non nel cestino) il cui contenuto è esattamente lo shortcode indicato, o 0. */
+	private static function find_by_content( string $content ): int {
+		global $wpdb;
+		return (int) $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} WHERE post_type = 'page' AND post_status IN ('publish','draft','pending','private') AND post_content = %s ORDER BY ID ASC LIMIT 1", $content ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+	}
+
 	/**
 	 * Crea le pagine richieste che non esistono già.
 	 *
@@ -71,7 +77,18 @@ final class Pages {
 			if ( ! isset( $defs[ $key ] ) || isset( $have[ $key ] ) ) {
 				continue;
 			}
-			$d  = $defs[ $key ];
+			$d      = $defs[ $key ];
+			$reused = self::find_by_content( (string) $d['content'] ); // dopo un ripristino di fabbrica le pagine create dalla procedura restano: si riprendono, non si duplicano
+			if ( $reused ) {
+				$saved[ $key ] = $reused;
+				if ( '' !== $d['access'] && '' === (string) get_post_meta( $reused, '_asem_access', true ) ) {
+					update_post_meta( $reused, '_asem_access', $d['access'] );
+				}
+				if ( 'area' === $key ) {
+					self::add_to_menu( $reused );
+				}
+				continue;
+			}
 			$id = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => $d['title'], 'post_content' => $d['content'] ) );
 			if ( $id && ! is_wp_error( $id ) ) {
 				$saved[ $key ] = (int) $id;

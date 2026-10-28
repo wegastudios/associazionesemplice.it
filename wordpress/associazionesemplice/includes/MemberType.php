@@ -7,7 +7,7 @@ defined( 'ABSPATH' ) || exit;
  * Le quattro figure gestite dall'associazione.
  *
  *  - founder   Socio fondatore: tessera sempre rinnovata (scadenza a 99 anni, configurabile).
- *  - ordinary  Socio ordinario: tessera valida per anno sociale, rinnovata con la quota.
+ *  - ordinary  Socio ordinario: tessera valida per anno solare, rinnovata con la quota.
  *  - volunteer Socio e volontario: come l'ordinario, e può tenere le attività.
  *  - guest     Ospite di un socio: non è socio, partecipa alle attività tramite un socio.
  */
