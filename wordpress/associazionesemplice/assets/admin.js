@@ -79,7 +79,7 @@
 	if (typeSel) {
 		var hints = {
 			founder: 'Socio fondatore: tessera sempre rinnovata (scadenza a lungo termine, vedi Impostazioni). Email facoltativa: con l\'email ha subito l\'accesso all\'area riservata.',
-			ordinary: 'Socio ordinario: tessera valida per anno sociale, si rinnova con la quota associativa. Email facoltativa: con l\'email ha subito l\'accesso all\'area riservata.',
+			ordinary: 'Socio ordinario: tessera valida fino al 31 dicembre, si rinnova con la quota associativa. Email facoltativa: con l\'email ha subito l\'accesso all\'area riservata.',
 			volunteer: 'Socio e volontario: come l\'ordinario, e può tenere le attività. Email facoltativa: con l\'email ha subito l\'accesso all\'area riservata.',
 			guest: 'Ospite: non è socio, partecipa alle attività tramite il socio che lo ospita. Non ha tessera.'
 		};

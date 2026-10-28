@@ -760,6 +760,17 @@ asem_ok( (int) $saved_pages['area'] === (int) Settings::get( 'member_area_page_i
 asem_ok( false !== strpos( $pages->invoke( null, array() )[1], 'esistono già' ), 'pagine standard: non si duplicano' );
 asem_ok( false !== strpos( do_shortcode( get_post( $saved_pages['attivita'] )->post_content ), 'Yoga' ), 'la pagina Attività mostra le attività' );
 
+// Dopo un ripristino di fabbrica le pagine create restano: la procedura le riprende e non ne fa di doppie
+\AssociazioneSemplice\Pages::create( array( 'calendario' ) ); // la pagina c'è (la crea qui se manca)
+$pg_before = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'page' AND post_status = 'publish' AND post_content = '[associazionesemplice_calendario]'" );
+$pg_cal   = (int) ( \AssociazioneSemplice\Pages::existing()['calendario'] ?? 0 );
+$pg_opt    = get_option( \AssociazioneSemplice\Pages::OPTION, array() );
+delete_option( \AssociazioneSemplice\Pages::OPTION ); // come dopo il ripristino di fabbrica: l'elenco si perde, le pagine restano
+$pg_made   = \AssociazioneSemplice\Pages::create( array( 'calendario' ) );
+$pg_after  = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'page' AND post_status = 'publish' AND post_content = '[associazionesemplice_calendario]'" );
+asem_ok( $pg_before >= 1 && $pg_after === $pg_before && array() === $pg_made && ( 0 === $pg_cal || $pg_cal === (int) ( \AssociazioneSemplice\Pages::existing()['calendario'] ?? 0 ) ), 'pagine: dopo il ripristino di fabbrica la procedura riprende la pagina che c\'è, senza duplicarla' );
+update_option( \AssociazioneSemplice\Pages::OPTION, $pg_opt ); // l'elenco torna com'era per le prove che seguono
+
 // Configurazione guidata
 $wz_ent = (string) Settings::get( 'entity_type' );
 $wz_mem = (string) Settings::get( 'member_term' );

@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.36
+- Dopo un ripristino di fabbrica la configurazione guidata riprende le pagine già presenti invece di crearne di doppie.
+- Nella scheda del socio il testo dice «tessera valida fino al 31 dicembre».
+
 ## 1.2.35
 - Il livello della licenza viene dalla prova firmata dal portale, non dal campo salvato
 - Un livello o uno stato di licenza sconosciuto non sblocca più le funzioni

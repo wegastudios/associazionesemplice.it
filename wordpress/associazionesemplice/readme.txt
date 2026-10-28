@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.35
+Stable tag: 1.2.36
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,9 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.2.36 =
+* Fix: after a factory reset the setup wizard reuses the existing pages instead of creating duplicates; clearer card validity wording.
 
 = 1.2.35 =
 * Security: the license level comes from the signed proof, unknown levels or states no longer unlock features.
