@@ -276,7 +276,7 @@ final class ProBoot {
 		$key = mb_substr( sanitize_text_field( $p['license_key'] ?? '' ), 0, 120 );
 		Settings::update( array( 'license_key' => $key ) );
 		$r = License::sync();
-		return array( AdminI::URL( 'asem-settings' ), ( '' === $key ? 'Chiave rimossa. ' : 'Chiave salvata. ' ) . $r['message'] );
+		return array( Admin\Ui::url( 'asem-settings' ), ( '' === $key ? 'Chiave rimossa. ' : 'Chiave salvata. ' ) . $r['message'] );
 	}
 
 	public static function license_check( array $p ): array {
@@ -286,7 +286,7 @@ final class ProBoot {
 			\AssociazioneSemplice\UpdateCheck::fetch(); // «Controlla adesso» salta anche l'attesa tra un controllo di versione e l'altro
 			$msg .= ' ' . \AssociazioneSemplice\UpdateCheck::summary();
 		}
-		return array( AdminI::URL( 'asem-settings' ), $msg );
+		return array( Admin\Ui::url( 'asem-settings' ), $msg );
 	}
 
 }

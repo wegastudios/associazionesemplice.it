@@ -792,6 +792,18 @@ class PeopleService {
 		return $login;
 	}
 
+	/**
+	 * Chi ha una carica (presidente, vicepresidente), è tesoriere o staff dell'ente ha più poteri di un socio: la segreteria non può spostare la sua email
+	 * di accesso (con «Password dimenticata» si entrerebbe al suo posto). Solo un amministratore, o la persona stessa, la cambia.
+	 */
+	private function email_change_needs_admin( \WP_User $user ): bool {
+		if ( get_current_user_id() === (int) $user->ID || current_user_can( Plugin::CAP ) ) {
+			return false;
+		}
+		$uid = (int) $user->ID;
+		return Access::is_board_operator( $uid ) || Access::is_treasurer( $uid ) || Access::is_entity_staff( $uid );
+	}
+
 	/** Allinea email e nome dell'utente WordPress, ma solo se è un utente "solo socio" (mai admin o altri ruoli). */
 	private function sync_wp_user( int $user_id, array $d ): void {
 		$user = get_userdata( $user_id );
@@ -799,7 +811,7 @@ class PeopleService {
 			return;
 		}
 		$args = array( 'ID' => $user_id, 'first_name' => $d['first_name'], 'last_name' => $d['last_name'], 'display_name' => trim( $d['first_name'] . ' ' . $d['last_name'] ) );
-		if ( null !== $d['email'] && strtolower( $user->user_email ) !== $d['email'] ) {
+		if ( null !== $d['email'] && strtolower( $user->user_email ) !== $d['email'] && ! $this->email_change_needs_admin( $user ) ) {
 			$args['user_email'] = $d['email'];
 		}
 		$res = wp_update_user( $args );

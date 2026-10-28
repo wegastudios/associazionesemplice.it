@@ -241,6 +241,16 @@ $bb_sum = function () use ( $wpdb, $bb_poll ): int {
 };
 free_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'poll_votes' ) . ' WHERE poll_id = ' . (int) $bb_poll ) && \AssociazioneSemplice\Polls::has_voted( $bb_poll, $bb_a ) && 1 === $bb_sum(), 'votazioni: nel voto segreto nessuna scheda collega persona e scelta, restano chi ha votato e i contatori' );
 free_ok( $bb_throws( function () use ( $bb_poll, $bb_a, $bb_opts ) { \AssociazioneSemplice\Polls::vote( $bb_poll, $bb_a, array( (int) $bb_opts[1] ) ); } ) && 1 === $bb_sum() && 1 === \AssociazioneSemplice\Polls::vote_count( $bb_poll ), 'votazioni: un secondo tentativo non lascia schede o contatori a metà' );
+$bb_win = function ( string $open, string $close ) use ( $bb_local ) {
+	return array( 'title' => 'Bilancio', 'question' => 'Approvi?', 'opens_at' => $bb_local( $open ), 'closes_at' => $bb_local( $close ), 'show_results' => 1 );
+};
+free_ok( $bb_throws( function () use ( $bb_poll, $bb_win, $admin ) { \AssociazioneSemplice\Polls::save( $bb_poll, $bb_win( '-2 hour', '+1 day' ), $admin->ID ); } ), 'votazioni: con voti già dati la data di apertura non si sposta' );
+$bb_keep = array( 'title' => 'Bilancio', 'question' => 'Approvi?', 'opens_at' => \AssociazioneSemplice\Polls::get( $bb_poll )['opens_at'], 'closes_at' => $bb_local( '+2 day' ), 'show_results' => 1 );
+\AssociazioneSemplice\Polls::save( $bb_poll, $bb_keep, $admin->ID );
+free_ok( substr( (string) \AssociazioneSemplice\Polls::get( $bb_poll )['closes_at'], 0, 10 ) === substr( (string) $bb_keep['closes_at'], 0, 10 ), 'votazioni: finché è aperta la chiusura si può prorogare' );
+$wpdb->update( Db::t( 'polls' ), array( 'opens_at' => $bb_local( '-3 day' ), 'closes_at' => $bb_local( '-1 day' ) ), array( 'id' => $bb_poll ) );
+free_ok( $bb_throws( function () use ( $bb_poll, $bb_win, $admin ) { \AssociazioneSemplice\Polls::save( $bb_poll, $bb_win( '-3 day', '+5 day' ), $admin->ID ); } ), 'votazioni: una votazione chiusa con voti non si riapre spostando la chiusura' );
+$wpdb->update( Db::t( 'polls' ), array( 'opens_at' => $bb_local( '-1 hour' ), 'closes_at' => $bb_local( '+1 day' ) ), array( 'id' => $bb_poll ) );
 free_ok( 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) . ' WHERE action = %s', 'poll.voted' ) ), 'votazioni: il voto non finisce nel registro azioni' );
 $bb_c = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Ugo', 'last_name' => 'Avvisato', 'email' => 'ugo.avvisato@example.com' ) );
 $people->set_membership( $bb_c, $bb_label, true );
@@ -248,7 +258,10 @@ add_filter( 'pre_wp_mail', '__return_true' );
 \AssociazioneSemplice\Reminders::notify( $people->get( $bb_c ), 'poll_open', (string) $bb_poll, 'Votazione', 'testo' );
 free_ok( \AssociazioneSemplice\Polls::announce( $bb_poll, 'poll_open', true, true ) >= 1 && 0 === \AssociazioneSemplice\Polls::announce( $bb_poll, 'poll_open', true, true ), 'votazioni: «Avvisa i soci ora» parte anche se l\'avviso automatico c\'era già, ma una volta al giorno' );
 remove_filter( 'pre_wp_mail', '__return_true' );
+free_ok( $bb_throws( function () use ( $bb_poll ) { \AssociazioneSemplice\Docs::poll( $bb_poll, 'csv' ); } ), 'votazioni: nel voto segreto i risultati non si scaricano finché è aperto' );
+$wpdb->update( Db::t( 'polls' ), array( 'opens_at' => $bb_local( '-3 day' ), 'closes_at' => $bb_local( '-1 day' ) ), array( 'id' => $bb_poll ) );
 free_ok( false !== strpos( \AssociazioneSemplice\Docs::poll( $bb_poll, 'csv' )['body'], 'Favorevole' ) && 0 === strpos( \AssociazioneSemplice\Docs::poll( $bb_poll, 'pdf' )['body'], '%PDF' ), 'votazioni: CSV e PDF del verbale dei risultati' );
+$wpdb->update( Db::t( 'polls' ), array( 'opens_at' => $bb_local( '-1 hour' ), 'closes_at' => $bb_local( '+1 day' ) ), array( 'id' => $bb_poll ) );
 $bb_exp = \AssociazioneSemplice\Privacy::export( $bb_a );
 free_ok( 1 === count( $bb_exp['votazioni_a_cui_ha_partecipato'] ) && ! $bb_exp['scelte_nelle_votazioni_palesi'], 'privacy: l\'esportazione dei dati elenca le votazioni, senza la scelta nel voto segreto' );
 

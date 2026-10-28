@@ -96,6 +96,16 @@ final class PollsPage {
 		$res = Polls::results( $id, true );
 		echo '<h2>Risultati <span class="description">(' . esc_html( PollRules::status_labels()[ $p['status'] ] ) . ')</span></h2>';
 		echo '<p>Hanno votato <strong>' . (int) $res['voters'] . '</strong> su <strong>' . (int) $res['eligible'] . '</strong> soci con diritto al voto.</p>';
+		$hide = $p['secret'] && PollRules::CLOSED !== $p['status']; // voto segreto ancora aperto: niente conteggi né elenco, si confronterebbero tra un aggiornamento e l'altro
+		if ( $hide ) {
+			echo '<p class="description">Voto segreto: i risultati e chi ha votato si vedono a votazione chiusa.</p>';
+			echo '<p>';
+			if ( PollRules::OPEN === $p['status'] ) {
+				echo Ui::confirm_button( 'asem_poll_announce', Ui::url( 'asem-polls', array( 'view' => $id ) ), array( 'id' => $id ), 'Avvisa i soci ora', 'Mandare ora l\'email ai soci che non hanno ancora votato?' ); // phpcs:ignore WordPress.Security.EscapeOutput
+			}
+			echo '</p>';
+			return;
+		}
 		echo '<table class="widefat striped" style="max-width:720px"><thead><tr><th>Risposta</th><th>Voti</th><th>%</th></tr></thead><tbody>';
 		foreach ( $res['options'] as $o ) {
 			echo '<tr><td>' . esc_html( $o['label'] ) . ( in_array( $o['id'], $res['winners'], true ) ? ' <strong>— più votata</strong>' : '' )

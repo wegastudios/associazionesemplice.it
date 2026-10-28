@@ -266,6 +266,9 @@ foreach ( array( 'person.created', 'person.updated', 'membership.set', 'membersh
 	asem_ok( in_array( $a, $actions, true ), "registro azioni: $a" );
 }
 asem_ok( 1 === (int) Audit::recent( 1 )[0]['user_id'], 'il registro ricorda chi ha agito' );
+Settings::update( array( 'entity_types_custom' => "Cooperativa;f\n<img src=x onerror=alert(1)>Club\"x;m", 'member_terms_custom' => '<script>alert(1)</script>Tesserato;Tesserati;m' ) );
+asem_ok( ! preg_match( '/[<>"]/', (string) Settings::get( 'entity_types_custom' ) . (string) Settings::get( 'member_terms_custom' ) ) && false !== strpos( (string) Settings::get( 'entity_types_custom' ), "Cooperativa;f\n" ) && false !== strpos( (string) Settings::get( 'member_terms_custom' ), 'Tesserato;Tesserati;m' ), 'termini personalizzati: niente HTML né virgolette (si stampano senza escape), le righe valide restano' );
+Settings::update( array( 'entity_types_custom' => '', 'member_terms_custom' => '' ) );
 Settings::update( array( 'license_key' => '  ABC-123  ', 'member_area_page_id' => 0 ) );
 asem_ok( 'ABC-123' === License::key() && License::allows( 'online_payments' ), 'licenza: chiave salvata, funzioni consentite (standby)' );
 asem_ok( '' !== License::status()['domain'], 'licenza: dominio del sito' );
@@ -417,6 +420,8 @@ remove_filter( 'home_url', $lic_home );
 Settings::update( array( 'license_key' => '' ) );
 delete_option( License::OPT_STATE );
 asem_ok( ! License::enabled() && '' === Admin\LicenseNotice::html(), 'sito locale: la verifica torna in standby' );
+$lic_save = \AssociazioneSemplice\ProBoot::save_license( array( 'license_key' => '' ) );
+asem_ok( false !== strpos( (string) $lic_save[0], 'asem-settings' ), 'licenza: salvando la chiave si torna alle impostazioni (non un errore fatale)' );
 // quote diverse: spariscono, resta la quota sola
 $lv_fee = Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Livello', 'last_name' => 'Speciale' ) );
 \AssociazioneSemplice\Levels::save( array_merge( array_map( function ( $l ) { return array( 'id' => (int) $l['id'], 'name' => $l['name'], 'base_type' => $l['base_type'], 'fee' => null === $l['fee_cents'] ? '' : \AssociazioneSemplice\Money::plain( (int) $l['fee_cents'] ), 'active' => (int) $l['active'] ); }, \AssociazioneSemplice\Levels::all() ), array( array( 'id' => 0, 'name' => 'Livello con quota propria', 'base_type' => 'ordinary', 'fee' => '77,00', 'active' => 1 ) ) ) );
@@ -4564,6 +4569,17 @@ list( $sec_p, $sec_u ) = $mkmem( 'Sara', 'Segreteria' );
 $set_sec = new ReflectionMethod( Admin\Actions::class, 'set_secretary' );
 $set_sec->invoke( null, array( 'id' => $sec_p, 'enabled' => '1' ) );
 asem_ok( in_array( Plugin::ROLE_SECRETARY, (array) get_userdata( $sec_u )->roles, true ) && user_can( $sec_u, Plugin::CAP_OPS ) && ! user_can( $sec_u, Plugin::CAP ) && Access::is_admin_user( $sec_u ), 'segreteria: opera sul plugin ma non è amministratore' );
+// la segreteria non sposta l'email di accesso di chi ha più poteri (tesoriere): sarebbe una presa dell'account con «Password dimenticata»
+list( $tt_p, $tt_u ) = $mkmem( 'Tina', 'Tesoro' );
+Access::set_treasurer( $tt_u, true );
+$tt_mail = get_userdata( $tt_u )->user_email;
+wp_set_current_user( $sec_u );
+$people->update( $tt_p, array( 'email' => 'altra-tina@example.com' ) );
+asem_ok( $tt_mail === get_userdata( $tt_u )->user_email, 'segreteria: non cambia l\'email di accesso di un tesoriere' );
+wp_set_current_user( 1 );
+$people->update( $tt_p, array( 'email' => 'altra-tina@example.com' ) );
+asem_ok( 'altra-tina@example.com' === get_userdata( $tt_u )->user_email, 'amministratore: può cambiare l\'email di accesso di un tesoriere' );
+Access::set_treasurer( $tt_u, false );
 // informativa privacy: compilata con i dati dell'ente; responsabile = presidente, altrimenti la segreteria
 Settings::update( array( 'association_name' => 'Circolo Prova', 'tax_code' => '12345678903', 'legal_address' => 'Via Roma 1', 'legal_zip' => '80100', 'legal_city' => 'Napoli', 'legal_province' => 'NA', 'pec' => 'circolo@pec.example.org', 'privacy_email' => '' ) );
 $pn_saved = array();
@@ -6095,6 +6111,7 @@ $settings_json = json_decode( (string) $za->getFromName( 'impostazioni.json' ), 
 $has_att = false !== $za->locateName( 'allegati/' . str_repeat( 'a', 32 ) );
 $za->close();
 asem_ok( 'associazionesemplice' === $man['plugin'] && (int) $man['tables']['asem_people'] === $ppl && count( $p_lines ) === $ppl && $has_att && 'Associazione di prova' === $settings_json['settings']['association_name'] && ! isset( $settings_json['settings']['stripe_secret_key'] ) && \AssociazioneSemplice\Backup::last() > 0, 'copia: il file contiene tabelle, impostazioni (senza chiavi segrete), allegati e indice' );
+asem_ok( ! isset( $settings_json['settings']['license_key'] ) && ! isset( $settings_json['options']['asem_card_salt'] ) && ! isset( $settings_json['options']['asem_ical_salt'] ), 'copia: chiave di licenza e sali dei QR/calendario restano sul sito, non finiscono nel file' );
 asem_ok( $man === \AssociazioneSemplice\Backup::inspect( $bk_zip ), 'copia: il file si riconosce come copia valida' );
 // file non validi
 $bad1 = wp_tempnam( 'asem-bad' );
