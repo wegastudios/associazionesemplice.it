@@ -39,7 +39,7 @@ final class PaymentConfig {
 			self::PAYPAL_SUMUP => 'PayPal e SumUp insieme',
 			self::ALL         => 'Stripe, PayPal e SumUp insieme',
 		);
-		$extra = (array) self::filter( 'asem_direct_gateways', array() ); // un'estensione aggiunge altri gateway: id => nome
+		$extra = (array) self::filter( 'direct_gateways', array() ); // un'estensione aggiunge altri gateway: id => nome
 		if ( $extra ) {
 			$names = array( self::STRIPE => 'Stripe', self::PAYPAL => 'PayPal', self::SUMUP => 'SumUp' ) + $extra;
 			$ids   = array_keys( $names );
@@ -87,24 +87,24 @@ final class PaymentConfig {
 				return array( self::STRIPE, self::PAYPAL, self::SUMUP );
 		}
 		if ( self::is_valid( $provider ) && ! in_array( $provider, array( self::NONE, self::WOOCOMMERCE ), true ) ) { // combinazione con gateway aggiunti da un'estensione
-			return array_values( array_intersect( array_merge( array( self::STRIPE, self::PAYPAL, self::SUMUP ), array_keys( (array) self::filter( 'asem_direct_gateways', array() ) ) ), explode( '_', $provider ) ) );
+			return array_values( array_intersect( array_merge( array( self::STRIPE, self::PAYPAL, self::SUMUP ), array_keys( (array) self::filter( 'direct_gateways', array() ) ) ), explode( '_', $provider ) ) );
 		}
 		return array();
 	}
 
 	/** Diciture predefinite dei pulsanti, comprese quelle di un'estensione. */
 	public static function default_labels(): array {
-		return (array) self::filter( 'asem_payment_default_labels', self::DEFAULT_LABELS );
+		return (array) self::filter( 'payment_default_labels', self::DEFAULT_LABELS );
 	}
 
-	/** Un punto di estensione neutro: senza WordPress (prove) o senza gestori restituisce il valore di partenza. */
-	private static function filter( string $tag, $value, ...$args ) {
-		return function_exists( 'apply_filters' ) ? apply_filters( $tag, $value, ...$args ) : $value;
+	/** Un punto di estensione neutro (il filtro asem_$name): senza WordPress (prove) o senza gestori restituisce il valore di partenza. */
+	private static function filter( string $name, $value, ...$args ) {
+		return function_exists( 'apply_filters' ) ? apply_filters( 'asem_' . $name, $value, ...$args ) : $value;
 	}
 
 	/** Metodi con commissioni configurabili (il negozio WooCommerce ha le sue). */
 	public static function fee_gateways(): array {
-		return (array) self::filter( 'asem_fee_gateways', array( self::STRIPE, self::PAYPAL, self::SUMUP ) );
+		return (array) self::filter( 'fee_gateways', array( self::STRIPE, self::PAYPAL, self::SUMUP ) );
 	}
 
 	/** Commissione di incasso stimata su un importo: fisso + percentuale (punti base: 150 = 1,50%), arrotondata al centesimo. */
@@ -255,7 +255,7 @@ final class PaymentConfig {
 				$warnings[] = 'SumUp non ha una modalità di prova separata sul sito: con una chiave di un account reale i pagamenti sono veri (per provare usa un account di prova SumUp).';
 			}
 		}
-		return (array) self::filter( 'asem_payment_validate', array( 'errors' => $errors, 'warnings' => $warnings ), $c, $gateway ); // un'estensione controlla i suoi metodi
+		return (array) self::filter( 'payment_validate', array( 'errors' => $errors, 'warnings' => $warnings ), $c, $gateway ); // un'estensione controlla i suoi metodi
 	}
 
 	/** Dicitura del pulsante di un gateway (personalizzata o predefinita). @param array $settings impostazioni (Settings::all()) */
@@ -280,6 +280,6 @@ final class PaymentConfig {
 			case self::WOOCOMMERCE:
 				return 'Completi il pagamento nel negozio del sito: non appena risulta pagato, lo registriamo.';
 		}
-		return (string) self::filter( 'asem_payment_note', '', $gateway ); // un'estensione aggiunge la nota dei suoi metodi
+		return (string) self::filter( 'payment_note', '', $gateway ); // un'estensione aggiunge la nota dei suoi metodi
 	}
 }
