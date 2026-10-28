@@ -11,7 +11,7 @@
 	<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Email</th><th>Ruolo</th><th>Dal</th><th></th></tr></thead><tbody>
 	<?php foreach ( $rows as $r ) : ?>
 		<tr><td><?php echo e( $r['email'] ); ?></td><td><?php echo e( $labels[ $r['role'] ] ?? $r['role'] ); ?><?php echo $r['locked'] ? ' <span class="muted small">(config.php)</span>' : ''; ?></td><td><?php echo $r['created_at'] ? e( date_it( $r['created_at'] ) ) : ''; ?></td>
-		<td><?php if ( ! $r['locked'] ) : ?><form method="post" action="/admin/staff/rimuovi" onsubmit="return confirm('Togliere <?php echo e( $r['email'] ); ?> dallo staff?')"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="email" value="<?php echo e( $r['email'] ); ?>"><button class="btn danger small" type="submit">Togli</button></form><?php endif; ?></td></tr>
+		<td><?php if ( ! $r['locked'] ) : ?><form method="post" action="/admin/staff/rimuovi" onsubmit="<?php echo js_confirm( 'Togliere ' . $r['email'] . ' dallo staff?' ); ?>"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="email" value="<?php echo e( $r['email'] ); ?>"><button class="btn danger small" type="submit">Togli</button></form><?php endif; ?></td></tr>
 	<?php endforeach; ?>
 	<?php if ( ! $rows ) : ?><tr><td colspan="4" class="muted">Nessuno per ora.</td></tr><?php endif; ?>
 	</tbody></table></div>

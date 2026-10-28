@@ -143,6 +143,19 @@ Da decidere / configurare (non risolvibile solo nel codice):
 - **Ruolo «solo supporto»** può rinnovare di un periodo una licenza senza pagamento (e rileggere le chiavi): scegliere se limitarlo.
 - Dashboard Stripe: abilitare solo i metodi di pagamento voluti e l'evento `checkout.session.async_payment_succeeded` sul webhook.
 
+## Seconda revisione di sicurezza (28 ottobre 2026)
+
+Riletti tutti i file di `portale/src`, le viste e gli script; le correzioni della prima revisione reggono.
+
+Corretto:
+- **Script nel pannello (alta)**: la conferma «Elimina» di clienti, staff, licenze, versioni e cambio piano metteva email o nomi dentro una stringa JavaScript con il solo `e()`. Il browser decodifica `&#039;` prima di eseguire lo script, e il controllo email di PHP accetta anche `"x');...//"@esempio.it` e `x'+setTimeout`…`+'@esempio.it`: chi si iscriveva con un indirizzo del genere poteva far eseguire codice nella sessione dell'amministratore al clic su «Elimina». Ora tutte le conferme passano da `js_confirm()` (JSON, mai concatenazione).
+- **Email accettate**: `Billing::validEmail()` rifiuta la parte locale tra virgolette (virgole, parentesi, chiocciole): certi server di posta la leggono in modo diverso e finisce in pagine e messaggi. Vale per iscrizioni, acquisti, staff e importazione da Wega.
+- **Limiti aggirabili dietro proxy**: con `trust_forwarded_for` si leggeva la prima voce di `X-Forwarded-For`, che sceglie chi chiama (un indirizzo diverso a ogni tentativo azzerava tutti i limiti). Ora `ClientIp` legge da destra (`forwarded_hops`, default 1) e accetta solo indirizzi validi. Con l'opzione spenta (default) non cambia nulla.
+
+Regola per chi scrive le pagine: un dato dentro un attributo `on…` o dentro uno script va sempre da `json_encode`, mai da `e()`.
+
+Resta da decidere (invariato): proprietà del dominio, evento PayPal che emette la licenza, ruolo «solo supporto» (rinnovo gratuito e lettura delle chiavi). Annotati e non toccati: l'ingresso con un solo clic dal link per email (`/entra/…`: un sito terzo può far entrare un visitatore nell'account di chi ha un link valido, effetto trascurabile) e le due `DELETE` a ogni richiesta pubblica dei limiti orari (costo minimo, nessun rischio di sicurezza).
+
 ## Pacchetti firmati (aggiornamento diretto)
 
 L'aggiornamento diretto offre **solo versioni firmate**. La firma è Ed25519 sul messaggio `prodotto|versione|sha256` (UTF-8, sha256 in esadecimale minuscolo dello zip), in base64url senza padding; il plugin verifica impronta e firma con la chiave pubblica del `kid` prima di installare (`POST /api/plugin/update` risponde con `sha256`, `signature`, `kid`).

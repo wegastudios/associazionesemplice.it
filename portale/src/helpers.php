@@ -46,6 +46,14 @@ function date_it( ?string $utc ): string {
 }
 
 /**
+ * Gestore `onsubmit` che chiede conferma. Il messaggio può contenere dati (email, domini): va passato come stringa JavaScript
+ * vera (json_encode) e poi come attributo HTML; e() da solo non basta, perché il browser decodifica &#039; prima di eseguire lo script.
+ */
+function js_confirm( string $message ): string {
+	return e( 'return confirm(' . json_encode( $message, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT ) . ')' );
+}
+
+/**
  * Fumetto di aiuto: un piccolo «?» che apre una nuvoletta con la spiegazione (clic o tastiera; si chiude con Esc o fuori).
  * Il testo è semplice: **grassetto** e a capo con una riga vuota; tutto il resto viene reso innocuo.
  */

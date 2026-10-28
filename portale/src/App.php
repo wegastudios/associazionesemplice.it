@@ -218,8 +218,7 @@ final class App {
 	}
 
 	private function clientIp(): string {
-		$ip = Config::get( 'trust_forwarded_for', false ) ? trim( explode( ',', (string) ( $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '' ) )[0] ) : '';
-		return '' !== $ip ? $ip : (string) ( $_SERVER['REMOTE_ADDR'] ?? '' );
+		return ClientIp::from( $_SERVER, (bool) Config::get( 'trust_forwarded_for', false ), (int) Config::get( 'forwarded_hops', 1 ) );
 	}
 
 	private function changePassword(): void {
