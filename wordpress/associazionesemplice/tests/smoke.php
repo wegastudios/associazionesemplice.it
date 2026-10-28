@@ -405,6 +405,27 @@ asem_ok( 'lite' === License::plan(), 'verifica: il livello è quello della parte
 $lic_resp = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice', 'attestation' => $lic_att( array( 'aud' => 'altro-prodotto' ) ) );
 $lic_r    = License::sync();
 asem_ok( ! $lic_r['ok'] && 'lite' === License::plan(), 'verifica: una firma per un altro prodotto non vale' );
+// il piano lo firma il portale: vale più del nome salvato su Wega
+$pl_pair = sodium_crypto_sign_keypair();
+define( 'ASEM_PORTAL_JWKS', wp_json_encode( array( 'keys' => array( array( 'kty' => 'OKP', 'crv' => 'Ed25519', 'kid' => 'kportal', 'x' => $lic_b64( sodium_crypto_sign_publickey( $pl_pair ) ) ) ) ) ) );
+$pl_att = function ( array $over = array() ) use ( $pl_pair, $lic_b64 ) {
+	$claims = $over + array( 'iss' => \AssociazioneSemplice\LicenseClient::PORTAL_ISSUER, 'aud' => 'associazionesemplice', 'exp' => time() + 14 * DAY_IN_SECONDS, 'bid' => 'prova-sito.it', 'plan' => 'accounting' );
+	$head   = $lic_b64( wp_json_encode( array( 'alg' => 'EdDSA', 'typ' => 'JWT', 'kid' => 'kportal' ) ) );
+	$body   = $lic_b64( wp_json_encode( $claims ) );
+	return $head . '.' . $body . '.' . $lic_b64( sodium_crypto_sign_detached( $head . '.' . $body, sodium_crypto_sign_secretkey( $pl_pair ) ) );
+};
+$lic_resp = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Lite', 'product_code' => 'associazionesemplice', 'attestation' => $lic_att( array( 'plan' => 'lite' ) ), 'portal_attestation' => $pl_att() );
+License::sync();
+asem_ok( 'accounting' === License::plan() && 'accounting' === License::state()['plan'], 'piano del portale: il livello è quello firmato dal portale, non quello salvato su Wega' );
+$lic_resp = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Lite', 'product_code' => 'associazionesemplice', 'attestation' => $lic_att( array( 'plan' => 'lite' ) ), 'portal_attestation' => $pl_att( array( 'bid' => 'altro-sito.it', 'plan' => 'fiscal' ) ) );
+License::sync();
+asem_ok( 'lite' === License::plan(), 'piano del portale: una prova di un altro dominio si ignora e resta il livello di Wega' );
+$lic_resp = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Lite', 'product_code' => 'associazionesemplice', 'attestation' => $lic_att( array( 'plan' => 'lite' ) ), 'portal_attestation' => 'non-un-jwt' );
+License::sync();
+asem_ok( 'lite' === License::plan(), 'piano del portale: una prova non valida si ignora (resta il livello di Wega)' );
+$lic_resp = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Lite', 'product_code' => 'associazionesemplice', 'attestation' => $lic_att( array( 'plan' => 'lite' ) ) );
+License::sync();
+asem_ok( 'lite' === License::plan(), 'piano del portale: senza prova del portale vale il livello di Wega (come prima)' );
 $lic_att_state = function ( array $claims, string $plan = 'full' ) use ( $lic_att ) {
 	License::set_state( 'active', null, null, $plan, array( 'attestation' => $lic_att( $claims ), 'product' => 'associazionesemplice' ) );
 	return License::policy()['status'];

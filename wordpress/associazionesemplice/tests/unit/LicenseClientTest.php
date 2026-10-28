@@ -154,4 +154,34 @@ final class LicenseClientTest extends TestCase {
 		}
 		$this->assertArrayHasKey( 'k20261015-4304ed', C::PINNED_KEYS );
 	}
+
+	// --- Piano firmato dal portale ----------------------------------------------------------------------------------
+
+	private function portal_claims( array $over = array() ): array {
+		return $over + array( 'iss' => C::PORTAL_ISSUER, 'aud' => 'associazionesemplice', 'exp' => 2000000000, 'bid' => 'esempio.it', 'plan' => 'accounting' );
+	}
+
+	public function test_portal_plan_is_read_from_the_signed_proof(): void {
+		foreach ( array( 'free', 'lite', 'accounting', 'fiscal' ) as $plan ) {
+			list( $jwt, $jwks ) = $this->make( $this->portal_claims( array( 'plan' => $plan ) ) );
+			$this->assertSame( $plan, C::portal_plan( $jwt, 'associazionesemplice', 'esempio.it', 1800000000, 0, $jwks ), $plan );
+		}
+	}
+
+	public function test_portal_plan_is_refused_when_the_proof_does_not_hold(): void {
+		list( $jwt, $jwks ) = $this->make( $this->portal_claims() );
+		$now = 1800000000;
+		$this->assertNull( C::portal_plan( $jwt, 'altro-prodotto', 'esempio.it', $now, 0, $jwks ), 'prodotto diverso' );
+		$this->assertNull( C::portal_plan( $jwt, 'associazionesemplice', 'altro.it', $now, 0, $jwks ), 'dominio diverso' );
+		$this->assertNull( C::portal_plan( $jwt, 'associazionesemplice', 'esempio.it', 2100000000, 0, $jwks ), 'scaduta' );
+		$this->assertNull( C::portal_plan( '', 'associazionesemplice', 'esempio.it', $now, 0, $jwks ), 'assente' );
+		$this->assertNull( C::portal_plan( $jwt, 'associazionesemplice', 'esempio.it', $now, 0, array( 'keys' => array() ) ), 'senza chiavi non ci si fida' );
+		list( $wega ) = $this->make( $this->claims( array( 'plan' => 'fiscal' ) ) ); // firmata con l'emittente di Wega: non vale come piano del portale
+		list( , $jwks2 ) = $this->make( $this->claims() );
+		$this->assertNull( C::portal_plan( $wega, 'associazionesemplice', 'esempio.it', $now, 0, $jwks2 ), 'emittente sbagliato' );
+		list( $bad, $jwks3 ) = $this->make( $this->portal_claims( array( 'plan' => 'platino' ) ) );
+		$this->assertNull( C::portal_plan( $bad, 'associazionesemplice', 'esempio.it', $now, 0, $jwks3 ), 'livello inventato' );
+		list( $nop, $jwks4 ) = $this->make( array_diff_key( $this->portal_claims(), array( 'plan' => 1 ) ) );
+		$this->assertNull( C::portal_plan( $nop, 'associazionesemplice', 'esempio.it', $now, 0, $jwks4 ), 'senza livello' );
+	}
 }
