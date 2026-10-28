@@ -2,6 +2,13 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.34
+- Più sicurezza: la copia di sicurezza non contiene più la chiave di licenza né i codici dei QR e del calendario, e il file temporaneo si cancella sempre
+- La segreteria non può cambiare l'email di accesso di tesoriere, presidente e staff
+- Nel voto segreto i risultati e l'elenco di chi ha votato si vedono solo a votazione chiusa
+- Una votazione con voti non si può riaprire dopo la chiusura
+- I termini personalizzati non accettano più HTML
+
 ## 1.2.33
 - Nella configurazione guidata, scegliendo «Chiunque può chiedere di iscriversi» si accende anche la domanda di adesione online (pagina «Diventa socio»).
 

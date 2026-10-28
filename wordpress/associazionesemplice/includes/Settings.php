@@ -157,8 +157,8 @@ final class Settings {
 		$clean['member_area_page_id']     = max( 0, (int) $clean['member_area_page_id'] );
 		$clean['entity_type']         = mb_substr( trim( (string) $clean['entity_type'] ), 0, 60 );
 		$clean['member_term']         = mb_substr( trim( (string) $clean['member_term'] ), 0, 60 );
-		$clean['entity_types_custom'] = mb_substr( trim( (string) $clean['entity_types_custom'] ), 0, 1000 );
-		$clean['member_terms_custom'] = mb_substr( trim( (string) $clean['member_terms_custom'] ), 0, 1000 );
+		$clean['entity_types_custom'] = mb_substr( trim( str_replace( array( '<', '>', '"' ), '', wp_strip_all_tags( (string) $clean['entity_types_custom'], false ) ) ), 0, 1000 );
+		$clean['member_terms_custom'] = mb_substr( trim( str_replace( array( '<', '>', '"' ), '', wp_strip_all_tags( (string) $clean['member_terms_custom'], false ) ) ), 0, 1000 );
 		Texts::flush(); // tipo di ente e termini (funzione di Associazione Semplice Pro): le sostituzioni si ricalcolano
 		foreach ( array( 'reminders_enabled', 'reminders_membership', 'reminders_dues', 'reminders_events', 'reminders_polls', 'reminders_loans' ) as $k ) {
 			$clean[ $k ] = empty( $clean[ $k ] ) ? 0 : 1;

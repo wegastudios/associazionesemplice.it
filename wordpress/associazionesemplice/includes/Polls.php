@@ -53,6 +53,15 @@ final class Polls {
 		if ( $id && ! $old ) {
 			throw new \InvalidArgumentException( 'Votazione non trovata.' );
 		}
+		if ( $locked && $old ) { // con voti già dati la finestra non si sposta: né si riapre una votazione chiusa, né si chiude prima del tempo dopo aver visto i risultati
+			$old_closed = Db::now() >= (string) $old['closes_at'];
+			if ( $opens !== (string) $old['opens_at'] && Db::now() >= (string) $old['opens_at'] ) {
+				throw new \InvalidArgumentException( 'Ci sono già dei voti: la data di apertura non si cambia.' );
+			}
+			if ( $old_closed && $closes !== (string) $old['closes_at'] ) {
+				throw new \InvalidArgumentException( 'La votazione è chiusa: la data di chiusura non si cambia.' );
+			}
+		}
 		$d = array(
 			'kind'         => $kind,
 			'title'        => $title,
@@ -99,7 +108,7 @@ final class Polls {
 				$db->insert( Db::t( 'poll_options' ), array( 'poll_id' => $id, 'label' => $label, 'sort_order' => $i ) );
 			}
 		}
-		Audit::log( $old ? 'poll.updated' : 'poll.created', 'poll', $id, array( 'kind' => $kind ) );
+		Audit::log( $old ? 'poll.updated' : 'poll.created', 'poll', $id, array( 'kind' => $kind, 'opens_at' => $opens, 'closes_at' => $closes ) );
 		return $id;
 	}
 

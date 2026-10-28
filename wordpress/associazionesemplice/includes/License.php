@@ -149,7 +149,7 @@ final class License {
 			$v = time();
 			update_option( 'asem_license_first_seen', $v, false );
 		}
-		return $v;
+		return min( $v, time() ); // una data nel futuro non allunga all'infinito il periodo di attesa
 	}
 
 	public static function allows( string $feature ): bool {

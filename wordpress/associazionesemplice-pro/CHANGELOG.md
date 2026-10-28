@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.1.31
+- Salvando la chiave di licenza non compare più «Errore imprevisto»
+- Il periodo di attesa della licenza non si allunga più cambiando la data
+
 ## 1.1.30
 - L'elenco delle integrazioni cita tutti i metodi di pagamento online (Stripe, PayPal, SumUp, Satispay e Klarna).
 - Gli avvisi dicono «1 avviso inviato» al singolare.

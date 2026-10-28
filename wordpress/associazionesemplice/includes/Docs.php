@@ -250,6 +250,9 @@ final class Docs {
 		if ( ! $poll ) {
 			throw new \InvalidArgumentException( 'Votazione non trovata.' );
 		}
+		if ( $poll['secret'] && PollRules::CLOSED !== $poll['status'] ) { // a voto aperto i conteggi parziali, confrontati tra un download e l'altro, rivelerebbero le scelte
+			throw new \InvalidArgumentException( 'Nel voto segreto i risultati si scaricano a votazione chiusa.' );
+		}
 		$res  = Polls::results( $id, true );
 		$slug = 'risultati-votazione-' . $id;
 		if ( 'csv' === $format ) {
