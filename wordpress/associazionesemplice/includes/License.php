@@ -51,6 +51,9 @@ final class License {
 				if ( null !== $portal ) {
 					return $portal;
 				}
+				if ( LicenseClient::portal_decides_plan() ) {
+					return self::PLAN_FREE; // senza la prova del portale il livello non si ricava dal nome del piano su Wega
+				}
 				$claims = self::attestation_claims( $s );
 				if ( $claims && ! empty( $claims['plan'] ) ) {
 					return LicenseClient::plan_from_name( (string) $claims['plan'] );
@@ -245,6 +248,9 @@ final class License {
 		$extra       = array( 'reason' => $i['reason'], 'expires_at' => $i['expires_at'], 'next_check_at' => $i['next_check_at'], 'in_grace' => $i['in_grace'] );
 		$portal_att  = $claims ? (string) ( $r['portal_attestation'] ?? '' ) : '';
 		$portal_plan = '' === $portal_att ? null : LicenseClient::portal_plan( $portal_att, (string) ( $r['product_code'] ?? '' ), $domain );
+		if ( $claims && null === $portal_plan && LicenseClient::portal_decides_plan() ) {
+			return self::failed( 'La risposta del portale non porta il piano firmato: la licenza non è stata aggiornata.' ); // il livello lo decide il portale, mai il nome su Wega
+		}
 		if ( null !== $portal_plan ) { // il piano firmato dal portale vale più del nome salvato su Wega
 			$i['plan']                  = $portal_plan;
 			$extra['portal_attestation'] = $portal_att;

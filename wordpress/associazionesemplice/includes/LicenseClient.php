@@ -203,6 +203,15 @@ final class LicenseClient {
 	}
 
 	/**
+	 * Il piano lo decide solo il portale? Vero da quando il plugin porta la chiave del portale: da lì il livello non si ricava più dal nome del piano
+	 * su Wega (che può cambiare senza toccare la validità della licenza) e una licenza valida senza la prova del portale non si accetta.
+	 * Nei test si accende con ASEM_PORTAL_STRICT (con ASEM_TESTING).
+	 */
+	public static function portal_decides_plan(): bool {
+		return array() !== self::PINNED_PORTAL_KEYS || ( defined( 'ASEM_TESTING' ) && ASEM_TESTING && defined( 'ASEM_PORTAL_STRICT' ) && ASEM_PORTAL_STRICT );
+	}
+
+	/**
 	 * Il livello della licenza (free, lite, accounting, fiscal) dichiarato nella prova firmata dal portale, se la prova regge: firma, emittente,
 	 * prodotto, dominio e scadenza come per quella di Wega. Altrimenti null (portale senza chiave, prova assente o non valida).
 	 */
