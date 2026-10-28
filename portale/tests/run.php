@@ -1166,5 +1166,58 @@ foreach ( Portale\Demo::links() as $rows ) {
 check( 'demo: i collegamenti sono percorsi della demo e non portano al pannello degli amministratori', $demoLinks && ! array_filter( $demoLinks, function ( $p ) { return 0 !== strpos( $p, '/' ) || false !== strpos( $p, 'page=asem-settings' ) || false !== strpos( $p, 'users.php' ); } ) );
 check( 'demo: l\'indirizzo non finisce con la barra', '/' !== substr( Portale\Demo::url(), -1 ) );
 
+// --- Livello firmato dal portale (portal_attestation) -------------------------------------------------------------------
+$pseed = random_bytes( SODIUM_CRYPTO_SIGN_SEEDBYTES );
+$adb   = new Db( new PDO( 'sqlite::memory:' ) );
+$adb->migrate();
+$mkSub = function ( string $id, string $plan, string $status, string $license ) use ( $adb ) {
+	$adb->run( 'INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, license_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)', array( $id, 'c1', $plan, 'year', 'stripe', $status, 'esempio.it', $license, Db::now(), Db::now() ) );
+};
+$mkSub( 's1', 'full', 'active', 'LIC-FULL' );
+$mkSub( 's2', 'lite', 'active', 'LIC-LITE' );
+$mkSub( 's3', 'free', 'active', 'LIC-FREE' );
+$mkSub( 's4', 'full', 'canceled', 'LIC-OFF' );
+$mkSub( 's5', 'strano', 'active', 'LIC-ODD' );
+$wega = function ( string $license, bool $valid = true ) {
+	return array( 'valid' => $valid, 'license_id' => $license, 'product_code' => 'prodotto-wega-x1', 'identity' => 'esempio.it', 'domain' => 'esempio.it', 'plan_name' => 'Nome libero' );
+};
+$verifyJwt = function ( string $jwt ) use ( $pseed ) {
+	$p = explode( '.', $jwt );
+	if ( 3 !== count( $p ) ) {
+		return null;
+	}
+	$d   = function ( $s ) { return base64_decode( strtr( $s, '-_', '+/' ) . str_repeat( '=', ( 4 - strlen( $s ) % 4 ) % 4 ), true ); };
+	$pub = $d( Portale\PortalAttestation::publicKey( $pseed ) );
+	return sodium_crypto_sign_verify_detached( (string) $d( $p[2] ), $p[0] . '.' . $p[1], (string) $pub ) ? array( json_decode( (string) $d( $p[0] ), true ), json_decode( (string) $d( $p[1] ), true ) ) : null;
+};
+check( 'prova del portale: senza chiave non si firma niente', ! Portale\PortalAttestation::enabled() && null === Portale\PortalAttestation::forResponse( $adb, $wega( 'LIC-FULL' ) ) );
+Config::set( 'portal_sign_key', base64_encode( $pseed ) );
+check( 'prova del portale: con la chiave è attiva e dà kid e chiave pubblica da fissare nel plugin', Portale\PortalAttestation::enabled() && 0 === strpos( Portale\PortalAttestation::kid(), 'portale-' ) && 43 === strlen( Portale\PortalAttestation::publicKey() ) );
+$jwt = Portale\PortalAttestation::forResponse( $adb, $wega( 'LIC-FULL' ), 1700000000 );
+$ver = $jwt ? $verifyJwt( $jwt ) : null;
+check( 'prova del portale: firma Ed25519 valida con la chiave pubblica e intestazione EdDSA con kid', $ver && 'EdDSA' === $ver[0]['alg'] && Portale\PortalAttestation::kid() === $ver[0]['kid'] );
+check( 'prova del portale: Pro Fiscale → livello «fiscal», aud e bid come Wega, 14 giorni', $ver && 'fiscal' === $ver[1]['plan'] && 'prodotto-wega-x1' === $ver[1]['aud'] && 'esempio.it' === $ver[1]['bid'] && 'LIC-FULL' === $ver[1]['sub'] && 'https://portale.test' === $ver[1]['iss'] && 1209600 === $ver[1]['exp'] - $ver[1]['iat'] );
+check( 'prova del portale: il livello viene dalla tabella dei piani, non dal nome su Wega', $ver && false === stripos( (string) $wega( 'LIC-FULL' )['plan_name'], 'fiscal' ) && 'fiscal' === $ver[1]['plan'] );
+$lite = $verifyJwt( (string) Portale\PortalAttestation::forResponse( $adb, $wega( 'LIC-LITE' ) ) );
+$free = $verifyJwt( (string) Portale\PortalAttestation::forResponse( $adb, $wega( 'LIC-FREE' ) ) );
+check( 'prova del portale: Pro Contabile → «accounting», gratuito → «free»', $lite && 'accounting' === $lite[1]['plan'] && $free && 'free' === $free[1]['plan'] );
+check( 'prova del portale: licenza non valida per Wega, sconosciuta, annullata o di piano ignoto: nessuna prova', null === Portale\PortalAttestation::forResponse( $adb, $wega( 'LIC-FULL', false ) ) && null === Portale\PortalAttestation::forResponse( $adb, $wega( 'LIC-NON-ESISTE' ) ) && null === Portale\PortalAttestation::forResponse( $adb, $wega( 'LIC-OFF' ) ) && null === Portale\PortalAttestation::forResponse( $adb, $wega( 'LIC-ODD' ) ) );
+$tamper = explode( '.', (string) $jwt );
+$tamper[1] = rtrim( strtr( base64_encode( str_replace( 'fiscal', 'free', (string) base64_decode( strtr( $tamper[1], '-_', '+/' ) ) ) ), '+/', '-_' ), '=' );
+check( 'prova del portale: se si cambia il livello la firma non torna più', null === $verifyJwt( implode( '.', $tamper ) ) );
+Config::set( 'plan_levels', array( 'lite' => 'lite' ) );
+check( 'prova del portale: la corrispondenza piano → livello si cambia da config.php', 'lite' === Portale\PortalAttestation::level( 'lite' ) && 'fiscal' === Portale\PortalAttestation::level( 'full' ) && null === Portale\PortalAttestation::level( 'altro' ) );
+Config::set( 'plan_levels', array() );
+$transportBefore = Http::$transport;
+Http::$transport = function ( $method, $url, $headers, $body ) use ( $wega ) {
+	return array( 200, json_encode( $wega( 'LIC-FULL' ) + array( 'attestation' => 'JWT.WEGA.X' ) ) );
+};
+$aproxy = new Portale\LicenseProxy( $adb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+$ar     = $aproxy->validate( '{"license_key":"chiave-valida-1","domain":"esempio.it"}', '9.9.9.9', 1700000000 );
+$aj     = json_decode( $ar[1], true );
+check( 'prova del portale: nella risposta del rimbalzo accanto all\'attestazione di Wega, che resta com\'è', 200 === $ar[0] && 'JWT.WEGA.X' === $aj['attestation'] && ! empty( $aj['portal_attestation'] ) && null !== $verifyJwt( $aj['portal_attestation'] ) );
+Http::$transport = $transportBefore;
+Config::set( 'portal_sign_key', '' );
+
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );

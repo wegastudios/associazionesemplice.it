@@ -171,6 +171,12 @@ Licenza: finché la verifica del plugin è in «standby» valgono tutte le funzi
 
 Aggiornamento dei plugin: `update.sh` installa nella demo le ultime versioni pubblicate sul portale (le legge da `~/portale/data/releases`, prima il gratuito, poi il Pro). Parte da solo in fondo a `portale/release.sh` a ogni pubblicazione e a ogni azzeramento notturno; non serve fare altro.
 
+## Livello della licenza firmato dal portale
+
+Wega resta la fonte di nome, date e chiave; il **livello** (gratuito, contabile, Pro Full) lo decide e lo firma il portale. `/api/license/validate` aggiunge alla risposta di Wega il campo `portal_attestation`: un JWT EdDSA (intestazione `{alg: EdDSA, kid}`) con `iss` (indirizzo del portale), `aud` (`product_code` di Wega), `bid` (dominio registrato), `sub` (id licenza), `plan` (`free`, `lite`, `accounting` o `fiscal`), `iat` e `exp` (14 giorni). Si firma solo se Wega dice che la licenza è valida e il portale la conosce (tabella `subscriptions`, non annullata); il livello viene dal codice del piano del portale (`free` → free, `lite` = Pro Contabile → accounting, `full` = Pro Fiscale → fiscal; si cambia con `plan_levels` in `config.php`), mai dal nome su Wega.
+
+Chiave: `data/portal-sign.key` sul server (base64 di 32 byte, permessi 600, fuori dalla cartella pubblica e dal repository) oppure `portal_sign_key` in `config.php`. Si crea con `php bin/portal-key.php`, che stampa solo `kid` e chiave pubblica (`x`) da fissare nel plugin; la privata non si stampa mai. Finché la chiave non c'è il campo non compare e il plugin usa il livello dell'attestazione di Wega. Una chiave sul server vale quanto il database: chi entra nel server potrebbe firmare un livello a piacere (come potrebbe già cambiare i piani). Per cambiare chiave: nuovo `kid` nel plugin, poi sostituire il file.
+
 ## Pacchetti firmati (aggiornamento diretto)
 
 L'aggiornamento diretto offre **solo versioni firmate**. La firma è Ed25519 sul messaggio `prodotto|versione|sha256` (UTF-8, sha256 in esadecimale minuscolo dello zip), in base64url senza padding; il plugin verifica impronta e firma con la chiave pubblica del `kid` prima di installare (`POST /api/plugin/update` risponde con `sha256`, `signature`, `kid`).
