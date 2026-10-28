@@ -43,7 +43,7 @@ Parte da sola alla prima attivazione. Puoi riaprirla quando vuoi da **Strumenti 
 
 ## Le sezioni
 
-1. **Ente**: nome, tipo di ente, come chiamare chi partecipa (socio, tesserato…), se accetti ospiti e chi può iscriversi. Nei dettagli trovi codice fiscale, inizio dell'anno sociale e sede.
+1. **Ente**: nome, tipo di ente, come chiamare chi partecipa (socio, tesserato…), se accetti ospiti e chi può iscriversi. Dalla versione 1.2.33 del plugin gratuito, scegliendo **«Chiunque può chiedere di iscriversi»** si accende anche la **domanda di adesione online** (pagina **«Diventa socio»**), mentre **«Solo su presentazione»** la spegne. Chi ha già configurato non cambia nulla finché non riapre la procedura guidata. Nei dettagli trovi codice fiscale, inizio dell'anno sociale e sede.
 2. **Partita IVA**: rispondi sì o no. Se sì, inserisci numero e regime.
 3. **Cosa ti serve**: scegli le parti che userai, per esempio corsi ed eventi, prima nota, libro soci e verbali. Una parte che spegni sparisce dal menu, ma i dati non vengono toccati.
 4. **Quota associativa** e, nei dettagli, altri tipi di socio.

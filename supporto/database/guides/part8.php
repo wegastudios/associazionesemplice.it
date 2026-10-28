@@ -12,7 +12,7 @@ Chi vuole iscriversi compila un modulo sul tuo sito e la segreteria lo **approva
 
 ## Attivare il modulo
 
-1. Vai in **Impostazioni → Soci e quote → Domanda di adesione online** e attivala (è spenta di default).
+1. Vai in **Impostazioni → Soci e quote → Domanda di adesione online** e attivala (è spenta di default). Se invece usi la [configurazione guidata](guida:completare-la-configurazione-guidata), dalla versione 1.2.33 la accende da sola scegliendo **«Chiunque può chiedere di iscriversi»** (e la spegne con **«Solo su presentazione»**): chi ha già configurato non cambia nulla finché non riapre la procedura.
 2. Indica, se vuoi, l'indirizzo per l'**Avviso alla segreteria**, a cui arriva un'email a ogni nuova domanda (se non lo indichi, va all'indirizzo di amministrazione del sito).
 3. Inserisci il modulo in una pagina con lo shortcode `[associazionesemplice_adesione]`, con il blocco o con il widget Elementor **Associazione Semplice → Pubblico · Domanda di adesione online**. La pagina **«Diventa socio»** si crea da **Pagine del sito**.
 
