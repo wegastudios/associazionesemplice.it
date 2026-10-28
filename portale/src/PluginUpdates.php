@@ -38,7 +38,10 @@ final class PluginUpdates {
 			if ( 200 !== $st ) {
 				return array( $st, $body, array() );
 			}
-			if ( empty( $j['valid'] ) || false !== stripos( (string) ( $j['plan_name'] ?? 'free' ), 'free' ) ) {
+			// Il livello lo dice il portale (prova firmata che lui stesso ha appena aggiunto); solo se manca vale il nome del piano su Wega.
+			$level = PortalAttestation::levelOf( (string) ( $j['portal_attestation'] ?? '' ) );
+			$free  = null !== $level ? 'free' === $level : false !== stripos( (string) ( $j['plan_name'] ?? 'free' ), 'free' );
+			if ( empty( $j['valid'] ) || $free ) {
 				return self::error( 403, 'LICENSE_REQUIRED', 'Per aggiornare il Pro serve una licenza di un piano Pro in regola per questo dominio.' );
 			}
 		}

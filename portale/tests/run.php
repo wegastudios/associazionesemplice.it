@@ -821,7 +821,7 @@ if ( class_exists( 'ZipArchive' ) ) {
 	$GLOBALS['u_valid'] = true;
 	Http::$transport = function ( $m, $url, $h, $body ) {
 		$in = json_decode( (string) $body, true );
-		return array( 200, json_encode( array( 'valid' => $GLOBALS['u_valid'], 'reason_code' => 'ACTIVE', 'plan_name' => $GLOBALS['u_plan'] ?? 'Pro Full', 'license_id' => 'LU' ) ) );
+		return array( 200, json_encode( array( 'valid' => $GLOBALS['u_valid'], 'reason_code' => 'ACTIVE', 'plan_name' => $GLOBALS['u_plan'] ?? 'Pro Full', 'license_id' => 'LU', 'product_code' => 'prodotto-u', 'identity' => 'esempio.it' ) ) );
 	};
 	$upx = new Portale\LicenseProxy( $udb, new WegaClient( 'https://license.test/api/v1', 't' ) );
 	$ut  = 1800000000;
@@ -840,6 +840,16 @@ if ( class_exists( 'ZipArchive' ) ) {
 	$GLOBALS['u_plan'] = 'Pro Lite';
 	$jp = json_decode( Portale\PluginUpdates::check( $udb, $upx, str_replace( 'chiave-pro-di-prova', 'chiave-lite-prova-1', $pro ), '9.1.1.6', $ut )[1], true );
 	check( 'aggiornamento Pro: licenza Pro valida → link', true === $jp['update'] && '1.1.5' === $jp['version'] && ! empty( $jp['package'] ) );
+	// Con la chiave del portale conta il livello firmato dal portale, non il nome del piano su Wega.
+	Config::set( 'portal_sign_key', base64_encode( random_bytes( SODIUM_CRYPTO_SIGN_SEEDBYTES ) ) );
+	$udb->run( 'INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, license_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)', array( 'su1', 'cu', 'free', 'year', 'free', 'active', 'esempio.it', 'LU', Db::now(), Db::now() ) );
+	$GLOBALS['u_plan'] = 'Pro Lite';
+	check( 'aggiornamento Pro: il portale dice «free», anche se il nome su Wega sembra Pro → 403', 403 === Portale\PluginUpdates::check( $udb, $upx, str_replace( 'chiave-pro-di-prova', 'chiave-nome-pro-1', $pro ), '9.1.1.7', $ut )[0] );
+	$udb->run( "UPDATE subscriptions SET plan_code = 'full' WHERE id = 'su1'" );
+	$GLOBALS['u_plan'] = 'Free';
+	$jq = json_decode( Portale\PluginUpdates::check( $udb, $upx, str_replace( 'chiave-pro-di-prova', 'chiave-nome-free-1', $pro ), '9.1.1.8', $ut )[1], true );
+	check( 'aggiornamento Pro: il portale dice «fiscal», anche se il nome su Wega è Free → link', ! empty( $jq['update'] ) && ! empty( $jq['package'] ) );
+	Config::set( 'portal_sign_key', '' );
 	$tok = substr( $j['package'], strpos( $j['package'], '?t=' ) + 3 );
 	$pk  = Portale\PluginUpdates::package( $udb, $tok, $ut + 10 );
 	check( 'pacchetto: token valido → file dello zip', 200 === $pk[0] && is_file( $pk[1] ) && 'free' === $pk[2] && '1.2' === $pk[3] );
@@ -1201,7 +1211,13 @@ check( 'prova del portale: il livello viene dalla tabella dei piani, non dal nom
 $lite = $verifyJwt( (string) Portale\PortalAttestation::forResponse( $adb, $wega( 'LIC-LITE' ) ) );
 $free = $verifyJwt( (string) Portale\PortalAttestation::forResponse( $adb, $wega( 'LIC-FREE' ) ) );
 check( 'prova del portale: Pro Contabile → «accounting», gratuito → «free»', $lite && 'accounting' === $lite[1]['plan'] && $free && 'free' === $free[1]['plan'] );
-check( 'prova del portale: licenza non valida per Wega, sconosciuta, annullata o di piano ignoto: nessuna prova', null === Portale\PortalAttestation::forResponse( $adb, $wega( 'LIC-FULL', false ) ) && null === Portale\PortalAttestation::forResponse( $adb, $wega( 'LIC-NON-ESISTE' ) ) && null === Portale\PortalAttestation::forResponse( $adb, $wega( 'LIC-OFF' ) ) && null === Portale\PortalAttestation::forResponse( $adb, $wega( 'LIC-ODD' ) ) );
+$lvl = function ( string $license, bool $valid = true ) use ( $adb, $wega, $verifyJwt ) {
+	$j = $verifyJwt( (string) Portale\PortalAttestation::forResponse( $adb, $wega( $license, $valid ) ) );
+	return $j ? $j[1]['plan'] : null;
+};
+check( 'prova del portale: licenza non valida per Wega → nessuna prova', null === Portale\PortalAttestation::forResponse( $adb, $wega( 'LIC-FULL', false ) ) );
+check( 'prova del portale: licenza valida ma sconosciuta, annullata o di piano ignoto → prova con livello «free» (mai niente)', 'free' === $lvl( 'LIC-NON-ESISTE' ) && 'free' === $lvl( 'LIC-OFF' ) && 'free' === $lvl( 'LIC-ODD' ) );
+check( 'prova del portale: levelOf rilegge il livello dalla prova e rifiuta il resto', 'fiscal' === Portale\PortalAttestation::levelOf( (string) $jwt ) && null === Portale\PortalAttestation::levelOf( 'a.b' ) && null === Portale\PortalAttestation::levelOf( '' ) );
 $tamper = explode( '.', (string) $jwt );
 $tamper[1] = rtrim( strtr( base64_encode( str_replace( 'fiscal', 'free', (string) base64_decode( strtr( $tamper[1], '-_', '+/' ) ) ) ), '+/', '-_' ), '=' );
 check( 'prova del portale: se si cambia il livello la firma non torna più', null === $verifyJwt( implode( '.', $tamper ) ) );

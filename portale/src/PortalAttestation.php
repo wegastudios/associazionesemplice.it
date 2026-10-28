@@ -65,8 +65,8 @@ final class PortalAttestation {
 	}
 
 	/**
-	 * La prova da accodare alla risposta di Wega, o null: chiave non configurata, licenza non valida per Wega, licenza che il portale non
-	 * conosce o annullata, piano senza livello, dominio mancante.
+	 * La prova da accodare alla risposta di Wega, o null: chiave non configurata o licenza non valida per Wega. Per ogni licenza valida c'è sempre
+	 * (anche per una sconosciuta, annullata o di piano ignoto, con livello «free»); manca solo se mancano id licenza, prodotto o dominio.
 	 *
 	 * @param array $wega risposta di Wega a /licenses/validate
 	 */
@@ -79,13 +79,10 @@ final class PortalAttestation {
 			return null;
 		}
 		$sub = $db->one( 'SELECT plan_code, status FROM subscriptions WHERE license_id = ?', array( (string) $wega['license_id'] ) );
-		if ( ! $sub || 'canceled' === $sub['status'] ) {
-			return null;
-		}
-		$level = self::level( (string) $sub['plan_code'] );
-		if ( null === $level ) {
-			return null;
-		}
+		// Licenza valida per Wega ma sconosciuta al portale, annullata qui o di un piano senza livello: la prova c'è lo stesso, con il livello più basso.
+		// Il plugin non guarda il nome del piano su Wega, e senza la nostra prova non accetterebbe nemmeno la licenza.
+		$level = $sub && 'canceled' !== $sub['status'] ? self::level( (string) $sub['plan_code'] ) : null;
+		$level = $level ?? 'free';
 		$now = $now ?? time();
 		return self::sign( array(
 			'iss'  => rtrim( (string) Config::get( 'base_url', 'https://associazionesemplice.it' ), '/' ),
@@ -96,6 +93,17 @@ final class PortalAttestation {
 			'iat'  => $now,
 			'exp'  => $now + self::TTL,
 		) );
+	}
+
+	/** Livello scritto in una prova appena emessa dal portale (la firma non si controlla: serve a rileggere il nostro stesso output). */
+	public static function levelOf( string $jwt ): ?string {
+		$p = explode( '.', $jwt );
+		if ( 3 !== count( $p ) ) {
+			return null;
+		}
+		$c = json_decode( (string) base64_decode( strtr( $p[1], '-_', '+/' ) ), true );
+		$l = is_array( $c ) ? (string) ( $c['plan'] ?? '' ) : '';
+		return in_array( $l, array( 'free', 'lite', 'accounting', 'fiscal' ), true ) ? $l : null;
 	}
 
 	private static function b64( string $raw ): string {
