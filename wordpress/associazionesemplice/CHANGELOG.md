@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.33
+- Nella configurazione guidata, scegliendo «Chiunque può chiedere di iscriversi» si accende anche la domanda di adesione online (pagina «Diventa socio»).
+
 ## 1.2.32
 - Su schermi stretti i campi lunghi delle impostazioni non escono più dalla pagina.
 - Gli avvisi dicono «1 avviso inviato» al singolare.
