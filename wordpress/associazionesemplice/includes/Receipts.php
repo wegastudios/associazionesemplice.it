@@ -124,11 +124,11 @@ final class Receipts {
 			return true;
 		}
 		$payer = self::payer( $rows );
-		return $payer && current_user_can( 'asem_book_for', (int) $payer['id'] );
+		return $payer && current_user_can( 'asem_view_payments', (int) $payer['id'] ); // solo l'interessato o il suo tutore: l'ospitante non vede codice fiscale e pagamenti di un ospite
 	}
 
 	public static function can_statement( int $person_id ): bool {
-		return $person_id > 0 && ( current_user_can( Plugin::CAP_OPS ) || current_user_can( 'asem_book_for', $person_id ) );
+		return $person_id > 0 && ( current_user_can( Plugin::CAP_OPS ) || current_user_can( 'asem_view_payments', $person_id ) );
 	}
 
 	public static function url( string $key ): string {
@@ -447,10 +447,13 @@ final class Receipts {
 		if ( '' === $to || ! is_email( $to ) ) {
 			throw new \InvalidArgumentException( 'Chi ha pagato non ha un indirizzo email (né il socio che lo ospita).' );
 		}
-		$tmp = wp_tempnam( 'asem-ricevuta' );
-		$dst = dirname( $tmp ) . '/' . $r['filename'];
+		$dir = trailingslashit( get_temp_dir() ) . 'asem-' . bin2hex( random_bytes( 12 ) ); // cartella con nome casuale: il PDF (nome e cognome, codice fiscale) non è indovinabile né sostituibile da altri
+		if ( ! wp_mkdir_p( $dir ) ) {
+			throw new \InvalidArgumentException( 'Impossibile preparare la ricevuta: controlla i permessi della cartella temporanea.' );
+		}
+		chmod( $dir, 0700 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod
+		$dst = $dir . '/' . $r['filename'];
 		file_put_contents( $dst, $r['pdf'] );
-		wp_delete_file( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
 		$assoc = (string) Settings::get( 'association_name' );
 		$ok    = \AssociazioneSemplice\Texts::mail(
 			$to,
@@ -460,6 +463,7 @@ final class Receipts {
 			array( $dst )
 		);
 		wp_delete_file( $dst ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+		@rmdir( $dir ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, WordPress.WP.AlternativeFunctions.file_system_operations_rmdir
 		if ( ! $ok ) {
 			throw new \InvalidArgumentException( 'Invio non riuscito: controlla la posta in uscita del sito.' );
 		}

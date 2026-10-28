@@ -749,6 +749,9 @@ class PeopleService {
 			if ( $linked ) {
 				throw new \InvalidArgumentException( 'L\'utente WordPress con questa email è già collegato a un altro socio.' );
 			}
+			if ( array_diff( (array) $existing->roles, array( 'subscriber', 'customer', Plugin::ROLE_MEMBER ) ) && ! current_user_can( Plugin::CAP ) ) {
+				throw new \InvalidArgumentException( 'Con questa email esiste già un utente del sito con altri ruoli (ad esempio redattore o amministratore): solo un amministratore può collegarlo a un socio.' );
+			}
 			$this->secure_existing_user( $existing ); // si collega l'utente esistente senza cambiargli il ruolo
 			return (int) $existing->ID;
 		}
