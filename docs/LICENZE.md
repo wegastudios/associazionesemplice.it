@@ -22,6 +22,8 @@
 
 Il nome del piano si sceglie nel pannello del portale (Piani e prezzi): deve contenere Free, Lite o Full. Il mapping è in `LicenseClient::plan_from_name()`.
 
+**Chi decide il livello (dalla versione che porta la chiave del portale).** Wega custodisce il nome, le date e la chiave e dice solo se la licenza è valida per quel dominio; il significato del piano (che cosa sblocca «Free», «Pro Contabile»…) lo conosce solo il portale, dalla sua tabella piani. Il portale aggiunge alla risposta di verifica `portal_attestation`: un JWT EdDSA (iss `https://associazionesemplice.it`, aud = `product_code`, `bid` = dominio, `plan` ∈ `free|lite|accounting|fiscal`, `exp`) firmato con la sua chiave, la cui parte pubblica è scritta nel plugin (`LicenseClient::PINNED_PORTAL_KEYS`). Da quando c è la chiave, il plugin non legge più il nome del piano su Wega: il livello viene solo dalla prova del portale (una licenza valida senza prova non aggiorna lo stato; una prova salvata che non regge vale gratuito; subito dopo l aggiornamento del plugin, finché non ne è salvata una, vale per poco la parte firmata da Wega e un controllo immediato porta quella del portale). Se un piano cambia nome su Wega la licenza resta valida e il livello non cambia.
+
 ## Verifica
 
 - Una volta al giorno (WP-Cron `asem_license_check`), al salvataggio della chiave e con «Controlla adesso» in Impostazioni → Licenza: `POST /api/license/validate` del portale con `license_key` e `domain`.

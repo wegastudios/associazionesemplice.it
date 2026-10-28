@@ -338,10 +338,19 @@ $lic_att = function ( array $over = array() ) use ( $lic_sign ) {
 	return $lic_sign( $over + array( 'iss' => \AssociazioneSemplice\LicenseClient::ISSUER, 'aud' => 'associazionesemplice', 'exp' => time() + 172800, 'nbf' => time() - 30, 'bid' => 'prova-sito.it', 'plan' => 'lite' ) );
 };
 $lic_calls = array();
+// il piano lo firma il portale con la sua chiave (nel plugin c'è la chiave pubblica vera; nei test se ne usa una di prova)
+$pl_pair = sodium_crypto_sign_keypair();
+define( 'ASEM_PORTAL_JWKS', wp_json_encode( array( 'keys' => array( array( 'kty' => 'OKP', 'crv' => 'Ed25519', 'kid' => 'kportal', 'x' => $lic_b64( sodium_crypto_sign_publickey( $pl_pair ) ) ) ) ) ) );
+$pl_att = function ( array $over = array() ) use ( $pl_pair, $lic_b64 ) {
+	$claims = $over + array( 'iss' => \AssociazioneSemplice\LicenseClient::PORTAL_ISSUER, 'aud' => 'associazionesemplice', 'exp' => time() + 14 * DAY_IN_SECONDS, 'bid' => 'prova-sito.it', 'plan' => 'accounting' );
+	$head   = $lic_b64( wp_json_encode( array( 'alg' => 'EdDSA', 'typ' => 'JWT', 'kid' => 'kportal' ) ) );
+	$body   = $lic_b64( wp_json_encode( $claims ) );
+	return $head . '.' . $body . '.' . $lic_b64( sodium_crypto_sign_detached( $head . '.' . $body, sodium_crypto_sign_secretkey( $pl_pair ) ) );
+};
 $lic_resp  = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Lite', 'expires_at' => '2027-01-01T00:00:00Z', 'product_code' => 'associazionesemplice' );
 $lic_sign_on = true; // il server «firma» le risposte valide (false = risposta senza attestazione)
 $lic_home  = function () { return 'https://www.Prova-Sito.it'; };
-$lic_http  = function ( $pre, $args, $url ) use ( &$lic_calls, &$lic_resp, &$lic_sign_on, $lic_att ) {
+$lic_http  = function ( $pre, $args, $url ) use ( &$lic_calls, &$lic_resp, &$lic_sign_on, $lic_att, $pl_att ) {
 	if ( false === strpos( $url, 'associazionesemplice.it' ) ) {
 		return $pre;
 	}
@@ -349,6 +358,9 @@ $lic_http  = function ( $pre, $args, $url ) use ( &$lic_calls, &$lic_resp, &$lic
 	if ( is_array( $lic_resp ) && ! empty( $lic_resp['valid'] ) && $lic_sign_on && empty( $lic_resp['attestation'] ) ) {
 		$code                    = false !== stripos( (string) ( $lic_resp['plan_name'] ?? '' ), 'full' ) ? 'full' : 'lite';
 		$lic_resp['attestation'] = $lic_att( array( 'plan' => $code ) );
+		if ( ! isset( $lic_resp['portal_attestation'] ) ) {
+			$lic_resp['portal_attestation'] = $pl_att( array( 'plan' => 'full' === $code ? 'fiscal' : 'lite' ) ); // il portale firma il livello dalla sua tabella piani
+		}
 	}
 	return is_array( $lic_resp )
 		? array( 'response' => array( 'code' => 200, 'message' => 'OK' ), 'body' => wp_json_encode( $lic_resp ), 'headers' => array(), 'cookies' => array(), 'filename' => null )
@@ -369,7 +381,7 @@ update_option( License::OPT_STATE, array_merge( $lic_saved, array( 'plan' => 'fi
 asem_ok( 'lite' === License::plan(), 'licenza: il livello viene dalla prova firmata, non dal campo salvato' );
 update_option( License::OPT_STATE, array_merge( $lic_saved, array( 'status' => 'inventato' ) ) );
 asem_ok( ! License::allows( 'member_area' ), 'licenza: uno stato sconosciuto non toglie le restrizioni' );
-update_option( License::OPT_STATE, array_merge( $lic_saved, array( 'plan' => 'inventato', 'attestation' => '' ) ) );
+update_option( License::OPT_STATE, array_merge( $lic_saved, array( 'plan' => 'inventato', 'attestation' => '', 'portal_attestation' => '' ) ) );
 asem_ok( 'free' === License::plan(), 'licenza: un livello sconosciuto non regala il massimo' );
 update_option( License::OPT_STATE, $lic_saved );
 asem_ok( 'https://associazionesemplice.it/api/license/validate' === $lic_calls[0][0] && ! isset( $lic_calls[0][2]['Authorization'] ) && '2027-01-01' === License::state()['expires_at'], 'verifica: chiamata al portale senza credenziali, scadenza salvata' );
@@ -399,12 +411,34 @@ $lic_plan0   = License::state()['plan'];
 $lic_r       = License::sync();
 asem_ok( ! $lic_r['ok'] && false !== strpos( $lic_r['message'], 'firma' ) && License::state()['plan'] === $lic_plan0, 'verifica: una licenza valida senza firma non viene accettata e lo stato resta com\'era' );
 $lic_sign_on = true;
-$lic_resp    = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice', 'attestation' => $lic_att( array( 'plan' => 'lite' ) ) );
+$lic_resp    = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice', 'attestation' => $lic_att( array( 'plan' => 'lite' ) ), 'portal_attestation' => $pl_att( array( 'plan' => 'lite' ) ) );
 License::sync();
-asem_ok( 'lite' === License::plan(), 'verifica: il livello è quello della parte firmata, non quello modificabile in transito' );
+asem_ok( 'lite' === License::plan(), 'verifica: il livello è quello firmato dal portale, non quello modificabile in transito' );
 $lic_resp = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice', 'attestation' => $lic_att( array( 'aud' => 'altro-prodotto' ) ) );
 $lic_r    = License::sync();
 asem_ok( ! $lic_r['ok'] && 'lite' === License::plan(), 'verifica: una firma per un altro prodotto non vale' );
+// il piano lo decide solo il portale: il nome del piano su Wega non conta e può cambiare senza toccare la validità
+$lic_resp = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Lite', 'product_code' => 'associazionesemplice', 'attestation' => $lic_att( array( 'plan' => 'lite' ) ), 'portal_attestation' => $pl_att() );
+License::sync();
+asem_ok( 'accounting' === License::plan() && 'accounting' === License::state()['plan'], 'piano del portale: il livello è quello firmato dal portale, non quello salvato su Wega' );
+$lic_resp = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Nome nuovo del piano', 'product_code' => 'associazionesemplice', 'attestation' => $lic_att( array( 'plan' => 'nome-nuovo' ) ), 'portal_attestation' => $pl_att( array( 'plan' => 'fiscal' ) ) );
+$lic_r    = License::sync();
+asem_ok( $lic_r['ok'] && 'active' === License::state()['status'] && 'fiscal' === License::plan(), 'piano del portale: se il piano cambia nome su Wega la licenza resta valida e il livello non cambia' );
+$lic_resp = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Lite', 'product_code' => 'associazionesemplice', 'attestation' => $lic_att( array( 'plan' => 'lite' ) ), 'portal_attestation' => $pl_att( array( 'bid' => 'altro-sito.it', 'plan' => 'lite' ) ) );
+$lic_r    = License::sync();
+asem_ok( ! $lic_r['ok'] && 'fiscal' === License::plan(), 'piano del portale: la prova di un altro dominio non vale e lo stato resta com\'era' );
+$lic_resp = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Lite', 'product_code' => 'associazionesemplice', 'attestation' => $lic_att( array( 'plan' => 'lite' ) ), 'portal_attestation' => 'non-un-jwt' );
+$lic_r    = License::sync();
+asem_ok( ! $lic_r['ok'] && 'fiscal' === License::plan(), 'piano del portale: una prova non valida non si accetta e lo stato resta com\'era' );
+$lic_resp = array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Full', 'product_code' => 'associazionesemplice', 'attestation' => $lic_att( array( 'plan' => 'fiscal' ) ), 'portal_attestation' => '' );
+$lic_r    = License::sync();
+asem_ok( ! $lic_r['ok'] && false !== strpos( $lic_r['message'], 'piano firmato' ) && 'fiscal' === License::plan(), 'piano del portale: una licenza valida senza la prova del portale non si accetta e lo stato resta com\'era' );
+$lic_saved = get_option( License::OPT_STATE );
+update_option( License::OPT_STATE, array_merge( $lic_saved, array( 'plan' => 'fiscal', 'portal_attestation' => 'non-un-jwt' ) ) );
+asem_ok( 'free' === License::plan(), 'piano del portale: una prova del portale che non regge non lascia il livello al nome su Wega: gratuito' );
+update_option( License::OPT_STATE, array_merge( $lic_saved, array( 'plan' => 'fiscal', 'portal_attestation' => '' ) ) );
+asem_ok( 'lite' === License::plan(), 'piano del portale: appena aggiornato il plugin (nessuna prova del portale salvata) vale per poco la parte firmata da Wega, non il campo modificabile' );
+update_option( License::OPT_STATE, $lic_saved );
 $lic_att_state = function ( array $claims, string $plan = 'full' ) use ( $lic_att ) {
 	License::set_state( 'active', null, null, $plan, array( 'attestation' => $lic_att( $claims ), 'product' => 'associazionesemplice' ) );
 	return License::policy()['status'];

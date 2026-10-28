@@ -26,6 +26,17 @@ final class LicenseClient {
 		'k20261015-4304ed' => '1J6fs2yrHCTTa5w1Mt1JnuDwO7zkjyRiiERm3gESdsQ',
 	);
 
+	/** Emittente del piano firmato: è il portale a decidere il livello della licenza (Wega custodisce nome, date e chiave). */
+	const PORTAL_ISSUER = 'https://associazionesemplice.it';
+
+	/**
+	 * Chiavi pubbliche con cui il portale firma il piano (kid => chiave Ed25519, base64url), scritte nel plugin come quelle di Wega: il livello della
+	 * licenza lo decide solo il portale (vedi `portal_decides_plan()`).
+	 */
+	const PINNED_PORTAL_KEYS = array(
+		'portale-51db047c' => 'hpbmCcpzb_qleyYCjW9vmN2YGZsimb74gQT-BIva7i8',
+	);
+
 	/** Solo per i test (con ASEM_TESTING): forza «sito locale» sì/no. @var bool|null */
 	private static $local_override = null;
 
@@ -176,6 +187,44 @@ final class LicenseClient {
 			$keys[] = array( 'kty' => 'OKP', 'crv' => 'Ed25519', 'kid' => $kid, 'x' => $x, 'use' => 'sig', 'alg' => 'EdDSA' );
 		}
 		return array( 'keys' => $keys );
+	}
+
+	/** Chiavi pubbliche del portale (JWKS): quelle scritte nel plugin. Nei test si possono sostituire con ASEM_PORTAL_JWKS (con ASEM_TESTING). */
+	public static function portal_jwks(): array {
+		if ( defined( 'ASEM_TESTING' ) && ASEM_TESTING && defined( 'ASEM_PORTAL_JWKS' ) ) {
+			$doc = json_decode( (string) ASEM_PORTAL_JWKS, true );
+			if ( is_array( $doc ) && isset( $doc['keys'] ) ) {
+				return $doc;
+			}
+		}
+		$keys = array();
+		foreach ( self::PINNED_PORTAL_KEYS as $kid => $x ) {
+			$keys[] = array( 'kty' => 'OKP', 'crv' => 'Ed25519', 'kid' => $kid, 'x' => $x, 'use' => 'sig', 'alg' => 'EdDSA' );
+		}
+		return array( 'keys' => $keys );
+	}
+
+	/**
+	 * Il piano lo decide solo il portale? Vero da quando il plugin porta la chiave del portale: da lì il livello non si ricava più dal nome del piano
+	 * su Wega (che può cambiare senza toccare la validità della licenza) e una licenza valida senza la prova del portale non si accetta.
+	 * Nei test si accende con ASEM_PORTAL_STRICT (con ASEM_TESTING).
+	 */
+	public static function portal_decides_plan(): bool {
+		return array() !== self::PINNED_PORTAL_KEYS || ( defined( 'ASEM_TESTING' ) && ASEM_TESTING && defined( 'ASEM_PORTAL_STRICT' ) && ASEM_PORTAL_STRICT );
+	}
+
+	/**
+	 * Il livello della licenza (free, lite, accounting, fiscal) dichiarato nella prova firmata dal portale, se la prova regge: firma, emittente,
+	 * prodotto, dominio e scadenza come per quella di Wega. Altrimenti null (portale senza chiave, prova assente o non valida).
+	 */
+	public static function portal_plan( string $jwt, string $audience, ?string $domain, ?int $now = null, int $leeway = 0, ?array $jwks = null ): ?string {
+		$jwks = $jwks ?? self::portal_jwks();
+		if ( '' === $jwt || empty( $jwks['keys'] ) ) {
+			return null;
+		}
+		$claims = self::verify_attestation( $jwt, $jwks, self::PORTAL_ISSUER, $audience, $domain, $now, $leeway );
+		$plan   = is_array( $claims ) ? (string) ( $claims['plan'] ?? '' ) : '';
+		return in_array( $plan, License::PLANS, true ) ? $plan : null;
 	}
 
 	private static function b64d( string $s ): string {

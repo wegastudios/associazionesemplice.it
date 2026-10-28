@@ -47,6 +47,14 @@ final class License {
 		}
 		if ( LicenseClient::enabled() ) {
 			if ( LicensePolicy::STATUS_ACTIVE === $s['status'] ) { // il livello lo dice la prova firmata, non il campo salvato (modificabile a mano nel database)
+				$portal = self::portal_plan( $s ); // prima il piano firmato dal portale: è lui a decidere il livello
+				if ( null !== $portal ) {
+					return $portal;
+				}
+				if ( LicenseClient::portal_decides_plan() && '' !== $s['portal_attestation'] ) {
+					return self::PLAN_FREE; // la prova del portale c'è ma non regge (scaduta, altro dominio): il livello non si ricava dal nome del piano su Wega
+				}
+				// nessuna prova del portale ancora salvata (appena aggiornato il plugin): vale per poco la parte firmata da Wega, finché il controllo immediato non porta quella del portale
 				$claims = self::attestation_claims( $s );
 				if ( $claims && ! empty( $claims['plan'] ) ) {
 					return LicenseClient::plan_from_name( (string) $claims['plan'] );
@@ -89,6 +97,7 @@ final class License {
 			'in_grace'      => ! empty( $s['in_grace'] ),
 			'error'         => (string) ( $s['error'] ?? '' ),
 			'attestation'   => (string) ( $s['attestation'] ?? '' ),
+			'portal_attestation' => (string) ( $s['portal_attestation'] ?? '' ),
 			'product'       => (string) ( $s['product'] ?? '' ),
 		);
 	}
@@ -143,6 +152,21 @@ final class License {
 			return LicensePolicy::STATUS_UNVERIFIED;
 		}
 		return (string) $s['status'];
+	}
+
+	/** Il livello della licenza dalla prova firmata dal portale (salvata nello stato), se regge; altrimenti null. (Si calcola una volta per richiesta.) */
+	private static function portal_plan( array $s ): ?string {
+		static $memo = array();
+		if ( '' === $s['portal_attestation'] ) {
+			return null;
+		}
+		$domain = LicenseClient::normalize_domain( home_url() );
+		$leeway = Limits::get( 'license_offline_days' ) * DAY_IN_SECONDS;
+		$key    = md5( $s['portal_attestation'] . '|' . $s['product'] . '|' . $domain . '|' . $leeway );
+		if ( ! array_key_exists( $key, $memo ) ) {
+			$memo[ $key ] = LicenseClient::portal_plan( $s['portal_attestation'], $s['product'], $domain, null, $leeway );
+		}
+		return $memo[ $key ];
 	}
 
 	/** L'attestazione salvata è firmata da Wega, è per questo dominio e non è scaduta oltre la tolleranza? (si calcola una volta per richiesta) */
@@ -222,7 +246,16 @@ final class License {
 		if ( $claims && ! empty( $claims['plan'] ) ) {
 			$i['plan'] = LicenseClient::plan_from_name( (string) $claims['plan'] ); // il livello lo dice la parte firmata, non quella modificabile in transito
 		}
-		$extra = array( 'reason' => $i['reason'], 'expires_at' => $i['expires_at'], 'next_check_at' => $i['next_check_at'], 'in_grace' => $i['in_grace'] );
+		$extra       = array( 'reason' => $i['reason'], 'expires_at' => $i['expires_at'], 'next_check_at' => $i['next_check_at'], 'in_grace' => $i['in_grace'] );
+		$portal_att  = $claims ? (string) ( $r['portal_attestation'] ?? '' ) : '';
+		$portal_plan = '' === $portal_att ? null : LicenseClient::portal_plan( $portal_att, (string) ( $r['product_code'] ?? '' ), $domain );
+		if ( $claims && null === $portal_plan && LicenseClient::portal_decides_plan() ) {
+			return self::failed( 'La risposta del portale non porta il piano firmato: la licenza non è stata aggiornata.' ); // il livello lo decide il portale, mai il nome su Wega
+		}
+		if ( null !== $portal_plan ) { // il piano firmato dal portale vale più del nome salvato su Wega
+			$i['plan']                  = $portal_plan;
+			$extra['portal_attestation'] = $portal_att;
+		}
 		if ( $claims ) {
 			$extra['attestation'] = $att;
 			$extra['product']     = (string) ( $r['product_code'] ?? '' );
@@ -246,7 +279,8 @@ final class License {
 	/** Stato «attivo» salvato da una versione che non conservava la prova firmata: la si rinnova subito invece di aspettare il giro del giorno dopo. */
 	public static function maybe_resync(): void {
 		$s = self::state();
-		if ( LicenseClient::enabled() && LicensePolicy::STATUS_ACTIVE === $s['status'] && '' === $s['attestation'] && ! wp_next_scheduled( 'asem_license_resync' ) ) {
+		$no_proof = '' === $s['attestation'] || ( LicenseClient::portal_decides_plan() && '' === $s['portal_attestation'] ); // anche la prova del piano firmata dal portale
+		if ( LicenseClient::enabled() && LicensePolicy::STATUS_ACTIVE === $s['status'] && $no_proof && ! wp_next_scheduled( 'asem_license_resync' ) ) {
 			wp_schedule_single_event( time() + 30, 'asem_license_resync' );
 		}
 	}
