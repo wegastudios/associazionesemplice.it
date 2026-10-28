@@ -157,7 +157,7 @@ final class DashboardPage {
 			Ui::form_close();
 			echo ' ';
 			Ui::form_open( 'asem_application_reject', Ui::url( 'asem' ), false, 'asem-inline' );
-			echo Ui::hidden( 'id', $a['id'] ) . '<button class="button button-small" data-confirm="Rifiutare la domanda?">Rifiuta</button>';
+			echo wp_kses( Ui::hidden( 'id', $a['id'] ) . '<button class="button button-small" data-confirm="Rifiutare la domanda?">Rifiuta</button>', Html::allowed() );
 			Ui::form_close();
 			echo '</li>';
 		}

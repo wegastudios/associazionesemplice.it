@@ -626,7 +626,7 @@ final class ActivitiesPage {
 				$in[] = (int) $m['person_id'];
 				echo '<li>' . esc_html( $m['first_name'] . ' ' . $m['last_name'] ) . ' <span class="description">' . esc_html( MemberType::label( $m['type'] ) ) . '</span> ';
 				Ui::form_open( 'asem_event_staff_cash', $back, false, 'asem-inline' );
-				echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $m['person_id'] ) . '<label><input type="checkbox" name="can_cash" value="1"' . checked( ! empty( $m['can_cash'] ), true, false ) . ' data-asem-autosubmit> può incassare sul posto</label>';
+				echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $m['person_id'] ) . '<label><input type="checkbox" name="can_cash" value="1"' . checked( ! empty( $m['can_cash'] ), true, false ) . ' data-asem-autosubmit> può incassare sul posto</label>', Html::allowed() );
 				Ui::form_close();
 				echo ' ';
 				Ui::form_open( 'asem_event_staff_remove', $back, false, 'asem-inline' );
