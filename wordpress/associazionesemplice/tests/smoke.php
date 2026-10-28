@@ -6553,9 +6553,16 @@ $people->update( $mn_teen, array( 'email' => 'teo.grande@example.com' ) );
 $ap_n = count( $ap_mails );
 \AssociazioneSemplice\Guardians::invite_adult( $mn_teen );
 asem_ok( count( $ap_mails ) === $ap_n + 1 && null !== $ap_mail_to( 'teo.grande@example.com' ) && ! in_array( $mn_teen, $mn_inv_ids(), true ), 'invito: gli arriva il link e l\'avviso sparisce' );
-asem_ok( \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $mn_teen ), 'il collegamento resta finché non lo toglie l\'amministratore' );
+asem_ok( \AssociazioneSemplice\Guardians::has_guardian( $mn_teen ) && ! \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $mn_teen ) && ! in_array( $mn_teen, array_map( 'intval', array_column( \AssociazioneSemplice\Guardians::dependents_of( $mn_mum ), 'id' ) ), true ), 'maggiorenne: il collegamento resta registrato ma il tutore non ha più alcun potere' );
+$mn_teen_nomail = $people->create( array( 'type' => 'ordinary', 'card_number' => 'mn8', 'first_name' => 'Tea', 'last_name' => 'Grande', 'phone' => '333 8383839', 'birth_date' => gmdate( 'Y-m-d', strtotime( '-20 years' ) ) ) );
+\AssociazioneSemplice\Guardians::link( $mn_teen_nomail, $mn_mum );
+asem_ok( array() === \AssociazioneSemplice\Guardians::recipients( $people->get( $mn_teen_nomail ) ), 'maggiorenne senza email: le email non vanno più al tutore' );
+Settings::update( array( 'limits' => array( 'guardian_until_adult' => 0 ) ) );
+asem_ok( \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $mn_teen ) && 1 === count( \AssociazioneSemplice\Guardians::recipients( $people->get( $mn_teen_nomail ) ) ), 'limite spento: il tutore resta attivo anche dopo i 18 anni (come prima)' );
+Settings::update( array( 'limits' => array() ) );
+\AssociazioneSemplice\Guardians::unlink( $mn_teen_nomail, $mn_mum );
 \AssociazioneSemplice\Guardians::unlink( $mn_teen, $mn_mum );
-asem_ok( ! \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $mn_teen ), 'collegamento tolto' );
+asem_ok( ! \AssociazioneSemplice\Guardians::has_guardian( $mn_teen ), 'collegamento tolto' );
 
 // scheda, libro soci ed esportazione
 $mn_page = asem_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Data di nascita', array( 'id' => $mn_kid ) );

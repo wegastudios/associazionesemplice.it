@@ -252,6 +252,12 @@ final class Limits {
 			'Spento: basta un versamento qualsiasi, anche parziale, per avere la tessera (come nelle versioni precedenti) e il residuo non viene seguito.'
 		);
 		$add(
+			'guardian_until_adult', 'soci', 'Il tutore smette di agire per chi compie 18 anni', 'flag', 1, 0, 1,
+			'Ai 18 anni il genitore o tutore collegato non vede più i dati del ragazzo, non prenota e non paga per lui e non riceve più le sue email, anche se il ragazzo non ha ancora un accesso suo. Il collegamento resta registrato e il ragazzo si invita a creare il suo accesso.',
+			'Acceso: è il comportamento consigliato, perché un maggiorenne decide da sé sui propri dati. Il ragazzo senza accesso proprio non ha nessuno che prenoti o paghi per lui finché non lo crea.',
+			'Spento: il tutore continua a gestire il ragazzo anche dopo i 18 anni, finché un amministratore non toglie il collegamento (è il comportamento delle versioni precedenti): il tutore vede e può esportare i dati di una persona adulta senza il suo consenso.'
+		);
+		$add(
 			'suspend_after_months', 'soci', 'Mesi di tessera scaduta prima di proporre la sospensione', 'mesi', 8, 1, 60,
 			'Dopo quanti mesi dalla scadenza compare il pulsante per sospendere in blocco i soci che non hanno rinnovato.',
 			'I soci che non rinnovano restano «attivi» più a lungo nelle liste e nei conteggi.',

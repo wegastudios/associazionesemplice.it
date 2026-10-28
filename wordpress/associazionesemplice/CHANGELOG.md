@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.38
+- A 18 anni i permessi del tutore si spengono da soli, anche se il ragazzo non ha ancora un accesso suo: il tutore non lo vede più, non paga per lui e non riceve più le sue email.
+
 ## 1.2.37
 - L'indirizzo del visitatore dietro Cloudflare si legge solo se la richiesta arriva davvero da Cloudflare.
 - Il link «torna alla pagina» dopo il login usa sempre l'indirizzo del sito.
