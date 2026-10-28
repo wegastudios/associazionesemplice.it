@@ -169,7 +169,7 @@ Il sito non conserva copie dei dati cancellati, per rispetto della privacy. Prim
 1. Vai in **Impostazioni → Sistema → Azzeramento dati**.
 2. Scegli cosa azzerare e guarda l'anteprima di ciò che c'è:
    - **Solo i dati**: soci, ospiti, attività, prima nota, registri, pagamenti, comunicazioni, ricevute e allegati. Restano impostazioni, testi, pagine e registro azioni.
-   - **Ripristino di fabbrica**: cancella anche impostazioni e testi e riapre la configurazione guidata.
+   - **Ripristino di fabbrica**: cancella anche impostazioni e testi e riapre la configurazione guidata. Dalla versione 1.2.36 del plugin gratuito la procedura **riprende le pagine già create** invece di duplicarle.
 3. Se vuoi, elimina anche gli accessi dei soci (gli utenti WordPress con solo il ruolo «Socio»: mai amministratori o altri utenti).
 4. Nel riepilogo conferma con la spunta, scrivi la frase **AZZERA TUTTO** e inserisci la tua password.
 
