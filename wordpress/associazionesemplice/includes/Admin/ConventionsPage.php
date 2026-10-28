@@ -5,6 +5,7 @@ use AssociazioneSemplice\ConventionRules;
 use AssociazioneSemplice\Conventions;
 use AssociazioneSemplice\Db;
 use AssociazioneSemplice\MemberType;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -23,11 +24,9 @@ final class ConventionsPage {
 		Ui::header( 'Convenzioni', '<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-conventions', array( 'new' => 1 ) ) ) . '">Nuova convenzione</a>' );
 		echo '<p class="description">Sconti e vantaggi di esercenti ed enti partner per i soci. I soci in regola con la tessera vedono quelle valide oggi nell\'area riservata (sezione «Convenzioni», o lo shortcode <code>[convenzioni_soci]</code>). Per mostrare sul sito quelle segnate «pubbliche» usa lo shortcode <code>[convenzioni]</code>. Una convenzione scaduta o archiviata sparisce dall\'area soci ma resta qui.</p>';
 		$cats = Conventions::categories();
-		// phpcs:disable WordPress.Security.EscapeOutput -- opzioni e link costruiti con esc_html/esc_attr/esc_url
-		echo '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-conventions"><select name="category">' . Ui::options( array_combine( $cats, $cats ), $cat, 'Tutte le categorie' ) . '</select> '
+		echo wp_kses( '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-conventions"><select name="category">' . Ui::options( array_combine( $cats, $cats ), $cat, 'Tutte le categorie' ) . '</select> '
 			. '<select name="state">' . Ui::options( $labels, $state, 'Tutti gli stati' ) . '</select> <button class="button">Filtra</button> '
-			. BlockFActions::csv_link() . '</form>';
-		// phpcs:enable WordPress.Security.EscapeOutput
+			. BlockFActions::csv_link() . '</form>', Html::allowed() );
 		echo '<table class="widefat striped"><thead><tr><th>Convenzione</th><th>Categoria</th><th>Vantaggio</th><th>Validità</th><th>Stato</th><th>Chi</th><th>Sito</th></tr></thead><tbody>';
 		$n = 0;
 		foreach ( Conventions::all( $cat ) as $c ) {
@@ -73,7 +72,7 @@ final class ConventionsPage {
 			echo '<p><strong>Stato:</strong> ' . esc_html( $labels[ $c['status'] ] ?? '' ) . ( $c['announced_at'] ? ' · soci avvisati il ' . esc_html( mysql2date( 'd/m/Y', (string) $c['announced_at'] ) ) : '' ) . '</p>';
 		}
 		Ui::form_open( 'asem_convention_save', Ui::url( 'asem-conventions', $c ? array( 'view' => $id ) : array( 'new' => 1 ) ) );
-		echo Ui::hidden( 'id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( Ui::hidden( 'id', $id ), Html::allowed() );
 		echo '<table class="form-table asem-form"><tbody>';
 		echo '<tr><th>Esercente o ente partner *</th><td><input type="text" name="name" value="' . esc_attr( $v( 'name' ) ) . '" class="large-text" maxlength="190" required></td></tr>';
 		echo '<tr><th>Categoria</th><td><input type="text" name="category" value="' . esc_attr( $v( 'category' ) ) . '" class="regular-text" maxlength="80" list="asem-conv-cats"><datalist id="asem-conv-cats">';
@@ -112,11 +111,11 @@ final class ConventionsPage {
 		if ( $c ) {
 			echo '<hr><p>';
 			if ( ConventionRules::STATUS_ARCHIVED === $c['status'] ) {
-				echo Ui::confirm_button( 'asem_convention_archive', Ui::url( 'asem-conventions', array( 'view' => $id ) ), array( 'id' => $id, 'archive' => 0 ), 'Riporta in elenco', 'Riportare in elenco questa convenzione?' ) . ' '; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( Ui::confirm_button( 'asem_convention_archive', Ui::url( 'asem-conventions', array( 'view' => $id ) ), array( 'id' => $id, 'archive' => 0 ), 'Riporta in elenco', 'Riportare in elenco questa convenzione?' ) . ' ', Html::allowed() );
 			} else {
-				echo Ui::confirm_button( 'asem_convention_archive', Ui::url( 'asem-conventions', array( 'view' => $id ) ), array( 'id' => $id, 'archive' => 1 ), 'Archivia', 'Archiviare questa convenzione? Sparisce dall\'area soci ma resta qui.' ) . ' '; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( Ui::confirm_button( 'asem_convention_archive', Ui::url( 'asem-conventions', array( 'view' => $id ) ), array( 'id' => $id, 'archive' => 1 ), 'Archivia', 'Archiviare questa convenzione? Sparisce dall\'area soci ma resta qui.' ) . ' ', Html::allowed() );
 			}
-			echo Ui::confirm_button( 'asem_convention_delete', Ui::url( 'asem-conventions' ), array( 'id' => $id ), 'Elimina', 'Eliminare questa convenzione?' ); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::confirm_button( 'asem_convention_delete', Ui::url( 'asem-conventions' ), array( 'id' => $id ), 'Elimina', 'Eliminare questa convenzione?' ), Html::allowed() );
 			echo '</p>';
 			echo '<h2>Avviso ai soci</h2>';
 			if ( ConventionRules::STATUS_ACTIVE !== $c['status'] ) {
@@ -126,7 +125,7 @@ final class ConventionsPage {
 			} else {
 				$n = Conventions::announce( $id, false );
 				echo '<p class="description">Manda un\'email ai soci a cui spetta (tessera valida e tipo previsto): ora ' . (int) $n . ' con un indirizzo email. Parte una sola volta per convenzione.</p>';
-				echo Ui::confirm_button( 'asem_convention_announce', Ui::url( 'asem-conventions', array( 'view' => $id ) ), array( 'id' => $id ), 'Avvisa i soci della nuova convenzione', 'Mandare ora l\'email ai soci a cui spetta? Non si può rimandare.' ); // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( Ui::confirm_button( 'asem_convention_announce', Ui::url( 'asem-conventions', array( 'view' => $id ) ), array( 'id' => $id ), 'Avvisa i soci della nuova convenzione', 'Mandare ora l\'email ai soci a cui spetta? Non si può rimandare.' ), Html::allowed() );
 			}
 		}
 		Ui::inline_js( '(function(){var pick=document.getElementById("asem-conv-logo-pick"),clr=document.getElementById("asem-conv-logo-clear"),id=document.getElementById("asem-conv-logo-id"),pv=document.getElementById("asem-conv-logo-preview"),f;'

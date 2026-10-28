@@ -43,7 +43,7 @@ final class CardPdf {
 		header( 'Content-Type: application/pdf' );
 		header( 'Content-Disposition: inline; filename="tessera-' . ( '' !== (string) $p['card_number'] ? sanitize_file_name( (string) $p['card_number'] ) : (int) $id ) . '.pdf"' );
 		header( 'Content-Length: ' . strlen( $pdf ) );
-		echo $pdf; // phpcs:ignore WordPress.Security.EscapeOutput -- file PDF binario generato dal plugin
+		\AssociazioneSemplice\Download::bytes( $pdf );
 		exit;
 	}
 }

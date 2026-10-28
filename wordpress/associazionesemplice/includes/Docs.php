@@ -330,7 +330,7 @@ final class Docs {
 		header( 'X-Content-Type-Options: nosniff' );
 		header( ( 0 === strpos( $doc['mime'], 'text/csv' ) ? 'Content-Disposition: attachment' : 'Content-Disposition: inline' ) . '; filename="' . preg_replace( '/[^A-Za-z0-9._-]+/', '_', $doc['filename'] ) . '"' );
 		header( 'Content-Length: ' . strlen( $doc['body'] ) );
-		echo $doc['body']; // phpcs:ignore WordPress.Security.EscapeOutput -- file
+		Download::bytes( (string) $doc['body'] );
 		exit;
 	}
 
@@ -342,7 +342,7 @@ final class Docs {
 		if ( ! Edition::allows( 'export' ) ) {
 			wp_die( 'L\'esportazione dei dati è sospesa perché la licenza di Associazione Semplice non risulta in regola.', 'Licenza non in regola', array( 'response' => 402, 'back_link' => true ) );
 		}
-		$g      = wp_unslash( $_GET ); // phpcs:ignore WordPress.Security.NonceVerification
+		$g      = (array) map_deep( wp_unslash( $_GET ), 'sanitize_text_field' ); // phpcs:ignore WordPress.Security.NonceVerification -- nonce controllato sopra con check_admin_referer()
 		$what   = (string) ( $g['what'] ?? '' );
 		$format = 'csv' === ( $g['format'] ?? '' ) ? 'csv' : 'pdf';
 		try {

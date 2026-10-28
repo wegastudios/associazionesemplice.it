@@ -4,6 +4,7 @@ namespace AssociazioneSemplice\Admin;
 use AssociazioneSemplice\ActivityReset;
 use AssociazioneSemplice\Money;
 use AssociazioneSemplice\Plugin;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -35,7 +36,7 @@ final class DeleteBookingPage {
 
 		if ( 0 === (int) $inc['count'] ) { // nessun incasso collegato: la prima nota non cambia, una sola conferma (il pulsante)
 			Ui::form_open( 'asem_delete_booking', self::url( $aid, $pid, $sid ) );
-			echo Ui::hidden( 'activity', $aid ) . Ui::hidden( 'person', $pid ) . Ui::hidden( 'session', $sid ); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::hidden( 'activity', $aid ) . Ui::hidden( 'person', $pid ) . Ui::hidden( 'session', $sid ), Html::allowed() );
 			if ( is_email( (string) $p['person']['email'] ) ) {
 				echo '<p><label><input type="checkbox" name="notify" value="1" checked> Avvisa ' . esc_html( $who ) . ' per email</label></p>';
 			}
@@ -83,7 +84,7 @@ final class DeleteBookingPage {
 		}
 		echo '<h3>Conferma</h3>';
 		Ui::form_open( 'asem_delete_booking', self::url( $aid, $pid, $sid, array( 'step' => 2, 'mode' => $mode, 'notify' => $notify ? 1 : 0 ) ) );
-		echo Ui::hidden( 'activity', $aid ) . Ui::hidden( 'person', $pid ) . Ui::hidden( 'session', $sid ) . Ui::hidden( 'mode', $mode ) . Ui::hidden( 'notify', $notify ? 1 : 0 ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( Ui::hidden( 'activity', $aid ) . Ui::hidden( 'person', $pid ) . Ui::hidden( 'session', $sid ) . Ui::hidden( 'mode', $mode ) . Ui::hidden( 'notify', $notify ? 1 : 0 ), Html::allowed() );
 		echo '<p><label><input type="checkbox" name="confirm" value="1"> Ho letto e ho capito: la cancellazione è definitiva.</label></p>';
 		echo '<p><label>Per confermare scrivi nome e cognome: <strong>' . esc_html( $who ) . '</strong><br><input type="text" name="typed" class="regular-text" autocomplete="off"></label></p>';
 		echo '<p><button class="button button-primary" style="background:#b32d2e;border-color:#b32d2e">Cancella l\'iscrizione</button> <a class="button" href="' . esc_url( self::url( $aid, $pid, $sid ) ) . '">← Cambia scelta</a> <a class="button" href="' . esc_url( $back ) . '">Annulla</a></p>';

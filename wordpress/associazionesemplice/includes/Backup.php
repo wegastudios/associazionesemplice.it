@@ -374,7 +374,7 @@ final class Backup {
 			wp_die( 'Non autorizzato.', 403 );
 		}
 		check_admin_referer( 'asem_backup' );
-		$with = isset( $_GET['files'] ) && '1' === (string) $_GET['files']; // phpcs:ignore WordPress.Security
+		$with = isset( $_GET['files'] ) && 1 === absint( $_GET['files'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- nonce controllato sopra con check_admin_referer()
 		try {
 			$path = self::export( $with );
 		} catch ( \RuntimeException $e ) {

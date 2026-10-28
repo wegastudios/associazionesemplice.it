@@ -10,6 +10,7 @@ use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\PriceLists;
 use AssociazioneSemplice\Settings;
 use AssociazioneSemplice\SocialYear;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -128,37 +129,37 @@ final class ActivitiesPage {
 						break;
 					}
 				}
-				echo '<p class="description">' . count( $sessions ) . ( 1 === count( $sessions ) ? ' data' : ' date' ) . ( $next ? ' · prossima: ' . Ui::date( $next['session_date'] ) . ( $next['start_time'] ? ' ore ' . esc_html( $next['start_time'] ) : '' ) : '' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( '<p class="description">' . count( $sessions ) . ( 1 === count( $sessions ) ? ' data' : ' date' ) . ( $next ? ' · prossima: ' . Ui::date( $next['session_date'] ) . ( $next['start_time'] ? ' ore ' . esc_html( $next['start_time'] ) : '' ) : '' ) . '</p>', Html::allowed() );
 			}
-			echo self::participants_html( $a, 1, false ) // phpcs:ignore WordPress.Security.EscapeOutput -- partecipanti attesi (prossima data) a scomparsa, con WhatsApp
-				. '<table class="asem-kv"><tr><td>Incassi</td><td>' . Ui::money( $s['income'] ) . '</td></tr><tr><td>Costi</td><td>' . Ui::money( $s['cost'] ) . '</td></tr>' // phpcs:ignore WordPress.Security.EscapeOutput
-				. '<tr><td><strong>Resta all\'associazione</strong></td><td><strong>' . Ui::money( $s['margin'] ) . '</strong></td></tr></table></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( self::participants_html( $a, 1, false )
+				. '<table class="asem-kv"><tr><td>Incassi</td><td>' . Ui::money( $s['income'] ) . '</td></tr><tr><td>Costi</td><td>' . Ui::money( $s['cost'] ) . '</td></tr>'
+				. '<tr><td><strong>Resta all\'associazione</strong></td><td><strong>' . Ui::money( $s['margin'] ) . '</strong></td></tr></table></div>', Html::allowed() );
 		}
 		echo '</div>';
 
 		$volunteers = Plugin::people()->search( array( 'type' => MemberType::VOLUNTEER ) );
 		echo '<div class="asem-card"><h2>Nuova attività</h2>';
 		Ui::form_open( 'asem_save_activity', $back );
-		echo Ui::hidden( 'social_year', $year->label() ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( Ui::hidden( 'social_year', $year->label() ), Html::allowed() );
 		echo '<table class="form-table asem-form"><tbody>';
-		echo '<tr><th>Tipo *</th><td><select name="kind" id="asem-kind">' . Ui::options( ActivityKind::labels(), ActivityKind::COURSE ) . '</select>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<tr><th>Tipo *</th><td><select name="kind" id="asem-kind">' . Ui::options( ActivityKind::labels(), ActivityKind::COURSE ) . '</select>', Html::allowed() );
 		echo '<p class="description" id="asem-kind-hint"></p></td></tr>';
 		echo '<tr><th>Nome *</th><td><input type="text" name="name" class="regular-text" required placeholder="es. Yoga, Serata di giochi"></td></tr>';
-		echo '<tr><th>Quando *</th><td>' . self::when_builder() . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<tr><th>Quando *</th><td>' . self::when_builder() . '</td></tr>', Html::allowed() );
 		echo '<tr class="asem-row-sessions"><th>Luogo</th><td><input type="text" name="location" class="regular-text"></td></tr>';
 		echo '<tr class="asem-row-sessions"><th>Posti disponibili</th><td><input type="number" min="1" name="capacity" class="small-text"> <span class="description">vuoto = nessun limite</span></td></tr>';
-		echo self::cancel_rows( null, 'asem-row-sessions' ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo self::qr_row( null, 'asem-row-sessions' ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo self::hold_row( null, 'asem-row-sessions' ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo self::weekday_row( null, 'asem-row-course', false ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( self::cancel_rows( null, 'asem-row-sessions' ), Html::allowed() );
+		echo wp_kses( self::qr_row( null, 'asem-row-sessions' ), Html::allowed() );
+		echo wp_kses( self::hold_row( null, 'asem-row-sessions' ), Html::allowed() );
+		echo wp_kses( self::weekday_row( null, 'asem-row-course', false ), Html::allowed() );
 		echo '<tr><th><span class="asem-fee-label">Contributo soci</span></th><td><input type="text" name="fee" inputmode="decimal" placeholder="0,00"> € <span class="description">0 o vuoto = gratuito</span></td></tr>';
 		echo '<tr><th>Contributo ospiti</th><td><input type="text" name="guest_fee" inputmode="decimal" placeholder="uguale ai soci"> € <span class="description">vuoto = come i soci · 0 = gratuito per gli ospiti</span></td></tr>';
-		echo Ui::vat_row( \AssociazioneSemplice\Fiscal::default_rate(), \AssociazioneSemplice\Fiscal::default_mode(), 'I contributi' ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<tr><th>Referente</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, null, '— nessuno —', 'asem-instructor' ) // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<p class="description">Solo soci e volontari possono essere referenti di un\'attività.</p></td></tr>';
-		echo implode( '', (array) apply_filters( 'asem_activity_form_rows', array(), null ) ); // phpcs:ignore WordPress.Security.EscapeOutput -- righe aggiunte da un'estensione, già protette
-		echo self::fund_row( null ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '</tbody></table>';
+		echo wp_kses( Ui::vat_row( \AssociazioneSemplice\Fiscal::default_rate(), \AssociazioneSemplice\Fiscal::default_mode(), 'I contributi' ), Html::allowed() );
+		echo wp_kses( '<tr><th>Referente</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, null, '— nessuno —', 'asem-instructor' )
+			. '<p class="description">Solo soci e volontari possono essere referenti di un\'attività.</p></td></tr>', Html::allowed() );
+		echo wp_kses( implode( '', (array) apply_filters( 'asem_activity_form_rows', array(), null ) ), Html::allowed() );
+		echo wp_kses( self::fund_row( null ), Html::allowed() );
+		echo wp_kses( '</tbody></table>', Html::allowed() );
 		submit_button( 'Crea attività' );
 		Ui::form_close();
 		echo '</div>';
@@ -209,9 +210,9 @@ final class ActivitiesPage {
 		$one = \AssociazioneSemplice\Calendar::feed_url( (int) $activity['id'] );
 		$all = \AssociazioneSemplice\Calendar::feed_url();
 		echo '<p><strong>Solo questa attività</strong><br><a class="button" target="_blank" rel="noopener" href="' . esc_url( \AssociazioneSemplice\Calendar::google_add_url( $one ) ) . '">Aggiungi a Google Calendar</a> '
-			. '<a class="button" href="' . esc_url( \AssociazioneSemplice\Calendar::webcal_url( $one ) ) . '">Apple / Outlook</a><br><input type="text" readonly class="large-text" value="' . esc_attr( $one ) . '" onclick="this.select()"></p>'
+			. '<a class="button" href="' . esc_url( \AssociazioneSemplice\Calendar::webcal_url( $one ) ) . '">Apple / Outlook</a><br><input type="text" readonly class="large-text" value="' . esc_attr( $one ) . '" data-asem-select></p>'
 			. '<p><strong>Tutte le attività</strong><br><a class="button" target="_blank" rel="noopener" href="' . esc_url( \AssociazioneSemplice\Calendar::google_add_url( $all ) ) . '">Aggiungi a Google Calendar</a> '
-			. '<a class="button" href="' . esc_url( \AssociazioneSemplice\Calendar::webcal_url( $all ) ) . '">Apple / Outlook</a><br><input type="text" readonly class="large-text" value="' . esc_attr( $all ) . '" onclick="this.select()"></p>';
+			. '<a class="button" href="' . esc_url( \AssociazioneSemplice\Calendar::webcal_url( $all ) ) . '">Apple / Outlook</a><br><input type="text" readonly class="large-text" value="' . esc_attr( $all ) . '" data-asem-select></p>';
 		echo '</div>';
 	}
 
@@ -288,7 +289,7 @@ final class ActivitiesPage {
 	}
 
 	private static function participants_card( array $activity ): void {
-		echo '<div class="asem-card"><h2>Partecipanti attesi</h2>' . self::participants_html( $activity ) . '<p class="description">Il collegamento WhatsApp compare solo per chi ha lasciato un cellulare.</p></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<div class="asem-card"><h2>Partecipanti attesi</h2>' . self::participants_html( $activity ) . '<p class="description">Il collegamento WhatsApp compare solo per chi ha lasciato un cellulare.</p></div>', Html::allowed() );
 	}
 
 	/** Riproporre l'attività in una nuova data (eventi) o in un nuovo anno sociale (corsi), senza rifare tutto. */
@@ -297,7 +298,7 @@ final class ActivitiesPage {
 		$kind = (string) $activity['kind'];
 		echo '<div class="asem-card"><h2>Riproponi</h2><p class="description">Crea una nuova edizione con gli stessi dati (contributi, referente, regole, note, luogo, staff). Iscrizioni, prenotazioni e incassi non si copiano: la nuova attività parte vuota.</p>';
 		Ui::form_open( 'asem_duplicate_activity', Ui::url( 'asem-activity', array( 'id' => $id ) ) );
-		echo Ui::hidden( 'id', $id ) . '<table class="form-table"><tr><th>Nome</th><td><input type="text" name="name" class="regular-text" value="' . esc_attr( (string) $activity['name'] ) . '"></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( Ui::hidden( 'id', $id ) . '<table class="form-table"><tr><th>Nome</th><td><input type="text" name="name" class="regular-text" value="' . esc_attr( (string) $activity['name'] ) . '"></td></tr>', Html::allowed() );
 		if ( ActivityKind::COURSE === $kind ) {
 			$year = SocialYear::from_label( (string) $activity['social_year'], Settings::start_month() );
 			$opts = array();
@@ -306,8 +307,8 @@ final class ActivitiesPage {
 				$opts[ $y->label() ] = $y->label() . ( 0 === $i ? ' (stesso anno)' : '' );
 				$y                   = $y->next();
 			}
-			echo '<tr><th>Anno sociale</th><td><select name="social_year">' . Ui::options( $opts, $year->next()->label() ) . '</select></td></tr>' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper
-				. '<tr><th>Dal / al</th><td><input type="date" name="starts_on"> <input type="date" name="ends_on"> <span class="description">vuoti = le date di prima, spostate di settimane intere (stessi giorni della settimana)</span></td></tr>';
+			echo wp_kses( '<tr><th>Anno sociale</th><td><select name="social_year">' . Ui::options( $opts, $year->next()->label() ) . '</select></td></tr>'
+				. '<tr><th>Dal / al</th><td><input type="date" name="starts_on"> <input type="date" name="ends_on"> <span class="description">vuoti = le date di prima, spostate di settimane intere (stessi giorni della settimana)</span></td></tr>', Html::allowed() );
 		} else {
 			$last = null;
 			foreach ( Plugin::activities()->sessions( $id ) as $s ) {
@@ -392,24 +393,24 @@ final class ActivitiesPage {
 		$volunteers = Plugin::people()->search( array( 'type' => MemberType::VOLUNTEER ) );
 		echo '<div class="asem-card"><h2>Dati dell\'attività</h2>';
 		Ui::form_open( 'asem_save_activity', $back );
-		echo Ui::hidden( 'id', $activity['id'] ) . Ui::hidden( 'social_year', $activity['social_year'] ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( Ui::hidden( 'id', $activity['id'] ) . Ui::hidden( 'social_year', $activity['social_year'] ), Html::allowed() );
 		echo '<table class="form-table"><tbody><tr><th>Nome</th><td><input type="text" name="name" value="' . esc_attr( $activity['name'] ) . '" class="regular-text" required></td></tr>';
 		echo '<tr><th>Contributo soci' . ( ActivityKind::COURSE === $activity['kind'] ? '' : ' (' . esc_html( ActivityKind::fee_unit( $activity['kind'] ) ) . ')' ) . '</th><td><input type="text" name="fee" value="' . esc_attr( Money::plain( (int) $activity['fee_cents'] ) ) . '"> €</td></tr>';
 		$guest = null === $activity['guest_fee_cents'] ? '' : Money::plain( (int) $activity['guest_fee_cents'] );
 		echo '<tr><th>Contributo ospiti</th><td><input type="text" name="guest_fee" value="' . esc_attr( $guest ) . '" placeholder="uguale ai soci"> €<p class="description">Vuoto = come i soci · 0 = gratuito. Vale per le nuove prenotazioni/mensilità: quelle già fatte tengono l\'importo di allora (eventi) o seguono la nuova quota (corsi).</p></td></tr>';
-		echo self::price_list_row( $activity ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( self::price_list_row( $activity ), Html::allowed() );
 		if ( ActivityKind::uses_sessions( $activity['kind'] ) ) {
-			echo self::cancel_rows( $activity, '' ); // phpcs:ignore WordPress.Security.EscapeOutput
-			echo self::qr_row( $activity, '' ); // phpcs:ignore WordPress.Security.EscapeOutput
-			echo self::hold_row( $activity, '' ); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( self::cancel_rows( $activity, '' ), Html::allowed() );
+			echo wp_kses( self::qr_row( $activity, '' ), Html::allowed() );
+			echo wp_kses( self::hold_row( $activity, '' ), Html::allowed() );
 		} else {
-			echo self::weekday_row( $activity, '' ); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( self::weekday_row( $activity, '' ), Html::allowed() );
 		}
-		echo Ui::vat_row( \AssociazioneSemplice\Fiscal::activity_rate( $activity ), \AssociazioneSemplice\Fiscal::INCLUDED, 'I contributi' ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<tr><th>Referente</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, $activity['instructor_person_id'], '— nessuno —', 'asem-instructor' ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
-		echo implode( '', (array) apply_filters( 'asem_activity_form_rows', array(), (int) $activity['id'] ) ); // phpcs:ignore WordPress.Security.EscapeOutput -- righe aggiunte da un'estensione, già protette
-		echo self::fund_row( $activity ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '</tbody></table>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( Ui::vat_row( \AssociazioneSemplice\Fiscal::activity_rate( $activity ), \AssociazioneSemplice\Fiscal::INCLUDED, 'I contributi' ), Html::allowed() );
+		echo wp_kses( '<tr><th>Referente</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, $activity['instructor_person_id'], '— nessuno —', 'asem-instructor' ) . '</td></tr>', Html::allowed() );
+		echo wp_kses( implode( '', (array) apply_filters( 'asem_activity_form_rows', array(), (int) $activity['id'] ) ), Html::allowed() );
+		echo wp_kses( self::fund_row( $activity ), Html::allowed() );
+		echo '</tbody></table>';
 		submit_button( 'Salva', 'secondary' );
 		Ui::form_close();
 		echo '</div>';
@@ -431,9 +432,9 @@ final class ActivitiesPage {
 		}, $statuses ) );
 		$default_month = $year->clamp( substr( current_time( 'Y-m-d' ), 0, 7 ) );
 
-		echo '<div class="asem-card"><h2>Riepilogo · anno sociale ' . esc_html( $activity['social_year'] ) . '</h2><table class="asem-kv">'
-			. '<tr><td>Dovuto finora</td><td>' . Ui::money( $due ) . '</td></tr><tr><td>Incassato</td><td>' . Ui::money( $paid ) . '</td></tr>' // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<tr><td><strong>Ancora da incassare</strong></td><td><strong>' . Ui::money( $to_collect ) . '</strong></td></tr></table></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<div class="asem-card"><h2>Riepilogo · anno sociale ' . esc_html( $activity['social_year'] ) . '</h2><table class="asem-kv">'
+			. '<tr><td>Dovuto finora</td><td>' . Ui::money( $due ) . '</td></tr><tr><td>Incassato</td><td>' . Ui::money( $paid ) . '</td></tr>'
+			. '<tr><td><strong>Ancora da incassare</strong></td><td><strong>' . Ui::money( $to_collect ) . '</strong></td></tr></table></div>', Html::allowed() );
 
 		$enrolled_ids = array();
 		foreach ( $statuses as $s ) {
@@ -448,9 +449,9 @@ final class ActivitiesPage {
 			? '<p class="description">Corso a <strong>pagamento unico</strong>: la quota è dovuta per intero all\'iscrizione (si può versare anche a rate).</p>'
 			: '<p class="description">L\'iscrizione si <strong>rinnova da sola ogni mese</strong> finché non viene cancellata' . ( $activity['ends_on'] ? ' (o fino alla fine del corso)' : '' ) . '. Ogni mensilità si paga alla prima lezione del mese' . ( (int) $activity['lesson_weekday'] ? '' : ' (indica il giorno della lezione nei dati del corso per saperlo con precisione)' ) . '.</p>' );
 		Ui::form_open( 'asem_enroll', $back );
-		echo Ui::hidden( 'activity_id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<p>' . Ui::person_select( 'person_id', $candidates, null, '— scegli —', 'asem-enroll-person' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<p>Primo mese dovuto: <select name="start_month">' . Ui::month_options( $year->months(), $default_month ) . '</select></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( Ui::hidden( 'activity_id', $id ), Html::allowed() );
+		echo wp_kses( '<p>' . Ui::person_select( 'person_id', $candidates, null, '— scegli —', 'asem-enroll-person' ) . '</p>', Html::allowed() );
+		echo wp_kses( '<p>Primo mese dovuto: <select name="start_month">' . Ui::month_options( $year->months(), $default_month ) . '</select></p>', Html::allowed() );
 		submit_button( 'Iscrivi', 'secondary' );
 		Ui::form_close();
 		echo '</div>';
@@ -467,30 +468,30 @@ final class ActivitiesPage {
 		$ended = \AssociazioneSemplice\ActivityReset::ended_enrollments( $id );
 		if ( $ended && current_user_can( Plugin::CAP ) ) { // chi non ha confermato: si toglie dall'elenco in un colpo solo
 			Ui::form_open( 'asem_purge_enrollments', $back, false, 'asem-inline' );
-			echo Ui::hidden( 'activity_id', $id ) // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::hidden( 'activity_id', $id )
 				. '<div class="notice notice-warning inline"><p><strong>' . count( $ended ) . ( 1 === count( $ended ) ? ' iscritto con l\'iscrizione già finita' : ' iscritti con l\'iscrizione già finita' ) . '</strong> (non confermati o disdetti). '
 				. '<label><input type="checkbox" name="confirm" value="1"> Togli dall\'elenco chi non ha incassi registrati</label> <button class="button">Togli dall\'elenco</button></p>'
-				. '<p class="description">Si tolgono soltanto gli iscritti senza incassi: la prima nota non cambia. Chi ha incassi resta e si cancella uno per uno con «Cancella», scegliendo cosa fare delle somme.</p></div>';
+				. '<p class="description">Si tolgono soltanto gli iscritti senza incassi: la prima nota non cambia. Chi ha incassi resta e si cancella uno per uno con «Cancella», scegliendo cosa fare delle somme.</p></div>', Html::allowed() );
 			Ui::form_close();
 		}
 		foreach ( $statuses as $s ) {
 			$e      = $s['enrollment'];
 			$active = null === $e['end_month'];
 			$label  = trim( ( $e['card_number'] ? 'n.' . $e['card_number'] . ' · ' : '' ) . $e['first_name'] . ' ' . $e['last_name'] );
-			echo '<details class="asem-detail"><summary><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $e['person_id'] ) ) ) . '"><strong>' . esc_html( $label ) . '</strong></a> '
-				. '<em>(' . esc_html( MemberType::label( $e['type'] ) ) . ')</em> — ' . Ui::pay_status( $s['summary'] ) // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( '<details class="asem-detail"><summary><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $e['person_id'] ) ) ) . '"><strong>' . esc_html( $label ) . '</strong></a> '
+				. '<em>(' . esc_html( MemberType::label( $e['type'] ) ) . ')</em> — ' . Ui::pay_status( $s['summary'] )
 				. ( $active ? '' : ' <span class="asem-warn">· cancellato dopo ' . esc_html( Ui::month( $e['end_month'] ) ) . '</span>' )
 				. ( (int) $s['summary']['balance'] < 0 ? ' <a class="button button-small button-primary" href="' . esc_url( Ui::url( 'asem-income', array( 'person_id' => (int) $e['person_id'], 'due' => 1 ) ) ) . '">Paga</a>' : '' )
-				. ( current_user_can( Plugin::CAP ) ? ' ' . self::cancel_control( $id, array( 'id' => (int) $e['person_id'], 'first_name' => (string) $e['first_name'], 'last_name' => (string) $e['last_name'] ), 0, 'Cancella' ) : '' ) // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
-				. '</summary>';
-			echo Ui::months_table( $s['summary'] ); // phpcs:ignore WordPress.Security.EscapeOutput
+				. ( current_user_can( Plugin::CAP ) ? ' ' . self::cancel_control( $id, array( 'id' => (int) $e['person_id'], 'first_name' => (string) $e['first_name'], 'last_name' => (string) $e['last_name'] ), 0, 'Cancella' ) : '' )
+				. '</summary>', Html::allowed() );
+			echo wp_kses( Ui::months_table( $s['summary'] ), Html::allowed() );
 			Ui::form_open( $active ? 'asem_cancel_enrollment' : 'asem_enroll', $back );
-			echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $e['person_id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $e['person_id'] ), Html::allowed() );
 			if ( $active ) {
-				echo '<p>Ultimo mese dovuto: <select name="last_month">' . Ui::month_options( $year->months(), $default_month ) . '</select> '; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( '<p>Ultimo mese dovuto: <select name="last_month">' . Ui::month_options( $year->months(), $default_month ) . '</select> ', Html::allowed() );
 				echo '<button class="button">Disdici il rinnovo</button></p><p class="description">L\'iscrizione smette di rinnovarsi: i mesi dopo quello indicato non saranno più dovuti. I pagamenti già fatti restano registrati.</p>';
 			} else {
-				echo '<p>Riattiva dal mese: <select name="start_month">' . Ui::month_options( $year->months(), $default_month ) . '</select> <button class="button">Riattiva iscrizione</button></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( '<p>Riattiva dal mese: <select name="start_month">' . Ui::month_options( $year->months(), $default_month ) . '</select> <button class="button">Riattiva iscrizione</button></p>', Html::allowed() );
 			}
 			Ui::form_close();
 			echo '</details>';
@@ -515,17 +516,17 @@ final class ActivitiesPage {
 				}
 			}
 		}
-		echo '<div class="asem-card"><h2>Riepilogo</h2><table class="asem-kv">'
+		echo wp_kses( '<div class="asem-card"><h2>Riepilogo</h2><table class="asem-kv">'
 			. '<tr><td>Date</td><td>' . count( $sessions ) . '</td></tr><tr><td>Partecipanti (persone distinte)</td><td>' . (int) Plugin::activities()->active_participants( $id ) . '</td></tr>'
-			. '<tr><td>Contributi dovuti dalle prenotazioni</td><td>' . Ui::money( $due ) . '</td></tr><tr><td>Incassati</td><td>' . Ui::money( $paid ) . '</td></tr>' // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<tr><td><strong>Ancora da incassare</strong></td><td><strong>' . Ui::money( $due - $paid ) . '</strong></td></tr></table></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<tr><td>Contributi dovuti dalle prenotazioni</td><td>' . Ui::money( $due ) . '</td></tr><tr><td>Incassati</td><td>' . Ui::money( $paid ) . '</td></tr>'
+			. '<tr><td><strong>Ancora da incassare</strong></td><td><strong>' . Ui::money( $due - $paid ) . '</strong></td></tr></table></div>', Html::allowed() );
 
 		self::staff_card( $activity, $back );
 
 		if ( ActivityKind::RECURRING === $activity['kind'] ) {
 			echo '<div class="asem-card"><h2>Aggiungi date</h2>';
 			Ui::form_open( 'asem_add_dates', $back );
-			echo Ui::hidden( 'activity_id', $id ) . self::when_builder(); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::hidden( 'activity_id', $id ) . self::when_builder(), Html::allowed() );
 			echo '<p>Luogo <input type="text" name="location"> posti <input type="number" min="1" name="capacity" class="small-text"> <span class="description">(per le date che aggiungi; posti vuoti = nessun limite)</span></p>'
 				. '<p><button class="button button-primary">Aggiungi le date</button> <span class="description">Le date già presenti non vengono duplicate (massimo 400 alla volta).</span></p>';
 			Ui::form_close();
@@ -559,17 +560,17 @@ final class ActivitiesPage {
 			}
 		}
 		Ui::form_open( 'asem_walk_in', $back );
-		echo Ui::hidden( 'activity_id', $activity['id'] ) . Ui::hidden( 'session_id', $sid ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( Ui::hidden( 'activity_id', $activity['id'] ) . Ui::hidden( 'session_id', $sid ), Html::allowed() );
 		echo '<div data-asem-change data-fee="' . (int) $fee . '" data-guest-fee="' . (int) $guest . '" data-guest-ids="' . esc_attr( wp_json_encode( $guest_ids ) ) . '" data-types="' . esc_attr( wp_json_encode( $types ) ) . '">';
-		echo '<p>Persona già in anagrafica: ' . Ui::person_select( 'person_id', $candidates, null, '— scegli socio o ospite —', 'asem-walk-' . $sid ) . '</p>' // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<p>Persona già in anagrafica: ' . Ui::person_select( 'person_id', $candidates, null, '— scegli socio o ospite —', 'asem-walk-' . $sid ) . '</p>'
 			. '<p><strong>oppure</strong> nuovo ospite: nome <input type="text" name="new_first_name"> cognome <input type="text" name="new_last_name"> cellulare <input type="text" name="new_phone" placeholder="333 1234567"> del socio '
-			. Ui::person_select( 'host_person_id', $members, null, '— socio che lo ospita —', 'asem-walkhost-' . $sid ) . '</p>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. Ui::person_select( 'host_person_id', $members, null, '— socio che lo ospita —', 'asem-walkhost-' . $sid ) . '</p>'
 			. '<p><label><input type="checkbox" name="pay" value="1" checked> Incassa ora il contributo</label> (soci ' . esc_html( Money::format( $fee ) ) . ', ospiti ' . esc_html( Money::format( $guest ) ) . ') — '
 			. 'sul conto '
-			. '<select name="account_id">' . Ui::options( $accounts, $default ? (int) $default['id'] : null ) . '</select></p>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<select name="account_id">' . Ui::options( $accounts, $default ? (int) $default['id'] : null ) . '</select></p>'
 			. '<div class="asem-cashbox" style="display:none"><p>Contanti ricevuti <input type="text" class="asem-tendered" inputmode="decimal" placeholder="importo esatto" size="8"> € <span class="asem-quick"></span></p><p class="asem-change-out"></p></div></div>'
 			. '<p><label><input type="checkbox" name="checkin" value="1" checked> Registra subito l\'ingresso</label> <button class="button button-primary">Prenota sul posto</button></p>'
-			. '<p class="description">Il nuovo ospite viene creato (il cellulare è obbligatorio: serve a riconoscerlo) e collegato al socio che lo ospita. L\'incasso entra in prima nota, sul conto scelto, con la data di oggi.</p>';
+			. '<p class="description">Il nuovo ospite viene creato (il cellulare è obbligatorio: serve a riconoscerlo) e collegato al socio che lo ospita. L\'incasso entra in prima nota, sul conto scelto, con la data di oggi.</p>', Html::allowed() );
 		Ui::form_close();
 		echo '</details>';
 	}
@@ -583,8 +584,8 @@ final class ActivitiesPage {
 		$in = ! empty( $b['checked_in_at'] );
 		echo $in ? '<strong class="asem-ok">✔ ' . esc_html( mysql2date( 'H:i', $b['checked_in_at'] ) ) . '</strong> ' : '';
 		Ui::form_open( 'asem_checkin', $back, false, 'asem-inline' );
-		echo Ui::hidden( 'activity_id', $activity_id ) . Ui::hidden( 'session_id', $session_id ) . Ui::hidden( 'person_id', $b['person_id'] ) . ( $in ? Ui::hidden( 'undo', 1 ) : '' ) // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<button class="button button-small">' . ( $in ? 'Annulla' : 'Registra ingresso' ) . '</button>';
+		echo wp_kses( Ui::hidden( 'activity_id', $activity_id ) . Ui::hidden( 'session_id', $session_id ) . Ui::hidden( 'person_id', $b['person_id'] ) . ( $in ? Ui::hidden( 'undo', 1 ) : '' )
+			. '<button class="button button-small">' . ( $in ? 'Annulla' : 'Registra ingresso' ) . '</button>', Html::allowed() );
 		Ui::form_close();
 	}
 
@@ -595,10 +596,10 @@ final class ActivitiesPage {
 		echo '<div class="asem-card"><h2>Avvisi agli iscritti</h2><p class="description">Arrivano per email a chi è iscritto (ora ' . (int) $count . ' persone) e restano nella bacheca dell\'area riservata. '
 			. 'Il referente e i gestori dell\'evento li inviano dalla propria area riservata.</p>';
 		Ui::form_open( 'asem_send_notice', $back );
-		echo Ui::hidden( 'activity_id', $id ) // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<p><input type="text" name="subject" class="large-text" maxlength="' . \AssociazioneSemplice\Notices::MAX_SUBJECT . '" placeholder="Titolo" required></p>' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
-			. '<p><textarea name="body" class="large-text" rows="3" maxlength="' . \AssociazioneSemplice\Notices::MAX_BODY . '" placeholder="Messaggio" required></textarea></p>' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
-			. '<p><button class="button" data-confirm="Inviare l\'avviso a tutti gli iscritti?">Invia avviso</button></p>';
+		echo wp_kses( Ui::hidden( 'activity_id', $id )
+			. '<p><input type="text" name="subject" class="large-text" maxlength="' . \AssociazioneSemplice\Notices::MAX_SUBJECT . '" placeholder="Titolo" required></p>'
+			. '<p><textarea name="body" class="large-text" rows="3" maxlength="' . \AssociazioneSemplice\Notices::MAX_BODY . '" placeholder="Messaggio" required></textarea></p>'
+			. '<p><button class="button" data-confirm="Inviare l\'avviso a tutti gli iscritti?">Invia avviso</button></p>', Html::allowed() );
 		Ui::form_close();
 		$recent = \AssociazioneSemplice\Notices::recent( $id, 5 );
 		if ( $recent ) {
@@ -625,11 +626,11 @@ final class ActivitiesPage {
 				$in[] = (int) $m['person_id'];
 				echo '<li>' . esc_html( $m['first_name'] . ' ' . $m['last_name'] ) . ' <span class="description">' . esc_html( MemberType::label( $m['type'] ) ) . '</span> ';
 				Ui::form_open( 'asem_event_staff_cash', $back, false, 'asem-inline' );
-				echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $m['person_id'] ) . '<label><input type="checkbox" name="can_cash" value="1"' . checked( ! empty( $m['can_cash'] ), true, false ) . ' onchange="this.form.submit()"> può incassare sul posto</label>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $m['person_id'] ) . '<label><input type="checkbox" name="can_cash" value="1"' . checked( ! empty( $m['can_cash'] ), true, false ) . ' data-asem-autosubmit> può incassare sul posto</label>';
 				Ui::form_close();
 				echo ' ';
 				Ui::form_open( 'asem_event_staff_remove', $back, false, 'asem-inline' );
-				echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $m['person_id'] ) . '<button class="button-link" data-confirm="Togliere questo gestore?">togli</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $m['person_id'] ) . '<button class="button-link" data-confirm="Togliere questo gestore?">togli</button>', Html::allowed() );
 				Ui::form_close();
 				echo '</li>';
 			}
@@ -639,7 +640,7 @@ final class ActivitiesPage {
 			return MemberType::is_member( $p['type'] ) && ! in_array( (int) $p['id'], $in, true ) && (int) $p['id'] !== (int) $activity['instructor_person_id'];
 		} ) );
 		Ui::form_open( 'asem_event_staff_add', $back );
-		echo Ui::hidden( 'activity_id', $id ) . Ui::person_select( 'person_id', $candidates, null, '— scegli un socio —', 'asem-staff-' . $id ) . ' <label><input type="checkbox" name="can_cash" value="1"> può incassare sul posto</label> <button class="button">Aggiungi</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::person_select( 'person_id', $candidates, null, '— scegli un socio —', 'asem-staff-' . $id ) . ' <label><input type="checkbox" name="can_cash" value="1"> può incassare sul posto</label> <button class="button">Aggiungi</button>', Html::allowed() );
 		Ui::form_close();
 		echo '</div>';
 	}
@@ -663,9 +664,9 @@ final class ActivitiesPage {
 				}
 			}
 			$cap   = null === $s['capacity'] ? null : (int) $s['capacity'];
-			$title = Ui::date( $s['session_date'] ) . ( $s['start_time'] ? ' · ore ' . esc_html( $s['start_time'] ) : '' ) . ( $s['location'] ? ' · ' . esc_html( $s['location'] ) : '' ); // phpcs:ignore WordPress.Security.EscapeOutput
-			echo '<details class="asem-detail"' . ( ActivityKind::EVENT === $activity['kind'] ? ' open' : '' ) . '><summary><strong>' . $title . '</strong> — ' // phpcs:ignore WordPress.Security.EscapeOutput
-				. count( $booked ) . ( null === $cap ? ' prenotati' : ' / ' . $cap . ' posti (' . max( 0, $cap - count( $booked ) ) . ' liberi)' ) . ( $cancelled ? ' <span class="asem-neg">· ANNULLATA</span>' : '' ) . '</summary>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
+			$title = Ui::date( $s['session_date'] ) . ( $s['start_time'] ? ' · ore ' . esc_html( $s['start_time'] ) : '' ) . ( $s['location'] ? ' · ' . esc_html( $s['location'] ) : '' );
+			echo wp_kses( '<details class="asem-detail"' . ( ActivityKind::EVENT === $activity['kind'] ? ' open' : '' ) . '><summary><strong>' . $title . '</strong> — '
+				. count( $booked ) . ( null === $cap ? ' prenotati' : ' / ' . $cap . ' posti (' . max( 0, $cap - count( $booked ) ) . ' liberi)' ) . ( $cancelled ? ' <span class="asem-neg">· ANNULLATA</span>' : '' ) . '</summary>', Html::allowed() );
 
 			$queue = \AssociazioneSemplice\Waitlist::waiting( (int) $s['id'] );
 			if ( $queue ) {
@@ -673,7 +674,7 @@ final class ActivitiesPage {
 				foreach ( $queue as $w ) {
 					echo '<li>' . esc_html( trim( $w['first_name'] . ' ' . $w['last_name'] ) ) . ' <span class="description">dal ' . esc_html( mysql2date( 'd/m H:i', $w['since'] ) ) . '</span> ';
 					Ui::form_open( 'asem_waitlist_remove', $back, false, 'asem-inline' );
-					echo Ui::hidden( 'session_id', $s['id'] ) . Ui::hidden( 'person_id', $w['person_id'] ) . Ui::hidden( 'activity_id', $id ) . '<button class="button-link">togli</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+					echo wp_kses( Ui::hidden( 'session_id', $s['id'] ) . Ui::hidden( 'person_id', $w['person_id'] ) . Ui::hidden( 'activity_id', $id ) . '<button class="button-link">togli</button>', Html::allowed() );
 					Ui::form_close();
 					echo '</li>';
 				}
@@ -683,13 +684,13 @@ final class ActivitiesPage {
 				echo '<table class="widefat striped"><thead><tr><th>Persona</th><th>Tipo</th><th>Contributo</th><th>Stato</th><th>Ingresso</th><th></th></tr></thead><tbody>';
 				foreach ( $bookings as $b ) {
 					$label = trim( ( $b['card_number'] ? 'n.' . $b['card_number'] . ' · ' : '' ) . $b['first_name'] . ' ' . $b['last_name'] );
-					echo '<tr><td><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $b['person_id'] ) ) ) . '">' . esc_html( $label ) . '</a></td><td>' . esc_html( MemberType::label( $b['type'] ) ) . ( MemberType::GUEST === $b['type'] && $b['active'] ? '<br>' . PeoplePage::guest_badge( $gov[ (int) $b['person_id'] ] ?? null ) : '' ) . '</td>' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
-						. '<td>' . esc_html( Money::format( (int) $b['fee_due_cents'] ) ) . '</td><td>' . ( $b['active'] ? Ui::booking_state( $b ) : ( 'transferred' === $b['status'] ? '<span class="asem-warn">trasferita ad altra persona' : '<span class="asem-warn">prenotazione annullata' ) . ( $b['paid'] > 0 ? ' · versati ' . esc_html( Money::format( $b['paid'] ) ) . ' da rimborsare' : '' ) . '</span>' ) . '</td><td>'; // phpcs:ignore WordPress.Security.EscapeOutput
+					echo wp_kses( '<tr><td><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $b['person_id'] ) ) ) . '">' . esc_html( $label ) . '</a></td><td>' . esc_html( MemberType::label( $b['type'] ) ) . ( MemberType::GUEST === $b['type'] && $b['active'] ? '<br>' . PeoplePage::guest_badge( $gov[ (int) $b['person_id'] ] ?? null ) : '' ) . '</td>'
+						. '<td>' . esc_html( Money::format( (int) $b['fee_due_cents'] ) ) . '</td><td>' . ( $b['active'] ? Ui::booking_state( $b ) : ( 'transferred' === $b['status'] ? '<span class="asem-warn">trasferita ad altra persona' : '<span class="asem-warn">prenotazione annullata' ) . ( $b['paid'] > 0 ? ' · versati ' . esc_html( Money::format( $b['paid'] ) ) . ' da rimborsare' : '' ) . '</span>' ) . '</td><td>', Html::allowed() );
 					self::checkin_cell( $b, (int) $s['id'], $id, $back, $cancelled );
 					echo '</td><td>';
 					if ( $b['active'] ) {
 						Ui::form_open( 'asem_cancel_booking', $back, false, 'asem-confirm' );
-						echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ) . Ui::hidden( 'person_id', $b['person_id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
+						echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ) . Ui::hidden( 'person_id', $b['person_id'] ), Html::allowed() );
 						echo '<button class="button button-small" data-confirm="Annullare la prenotazione? Gli eventuali pagamenti restano registrati.">Annulla prenotazione</button>';
 						Ui::form_close();
 						$others = array_values( array_filter( $all, function ( $x ) use ( $b, $booked ) {
@@ -697,8 +698,8 @@ final class ActivitiesPage {
 						} ) );
 						echo '<details style="margin-top:6px"><summary>Cambia nominativo</summary>';
 						Ui::form_open( 'asem_transfer_booking', $back );
-						echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ) . Ui::hidden( 'person_id', $b['person_id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
-						echo Ui::person_select( 'to_person_id', $others, null, '— scegli la nuova persona —', 'asem-tr-' . (int) $s['id'] . '-' . (int) $b['person_id'] ) . ' <button class="button button-small">Cambia</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+						echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ) . Ui::hidden( 'person_id', $b['person_id'] ), Html::allowed() );
+						echo wp_kses( Ui::person_select( 'to_person_id', $others, null, '— scegli la nuova persona —', 'asem-tr-' . (int) $s['id'] . '-' . (int) $b['person_id'] ) . ' <button class="button button-small">Cambia</button>', Html::allowed() );
 						echo '<p class="description">Il pagamento già fatto passa alla nuova persona; se il suo contributo è maggiore (es. ospite) resta da pagare la differenza.</p>';
 						Ui::form_close();
 						echo '</details>';
@@ -713,21 +714,21 @@ final class ActivitiesPage {
 					return ! in_array( (int) $p['id'], $booked, true );
 				} ) );
 				Ui::form_open( 'asem_book', $back );
-				echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
-				echo '<p>Prenota: ' . Ui::person_select( 'person_id', $candidates, null, '— scegli socio o ospite —', 'asem-book-' . (int) $s['id'] ) . ' ' . self::booking_fields( $activity, 0 ) . ' <button class="button button-primary">Prenota</button></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ), Html::allowed() );
+				echo wp_kses( '<p>Prenota: ' . Ui::person_select( 'person_id', $candidates, null, '— scegli socio o ospite —', 'asem-book-' . (int) $s['id'] ) . ' ' . self::booking_fields( $activity, 0 ) . ' <button class="button button-primary">Prenota</button></p>', Html::allowed() );
 				Ui::form_close();
 				if ( \AssociazioneSemplice\Edition::has( 'door_sales' ) ) {
 					self::walk_in_form( $activity, $s, $candidates, $back );
 				}
 
 				Ui::form_open( 'asem_update_session', $back );
-				echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ), Html::allowed() );
 				echo '<p class="description">Modifica la data: <input type="date" name="session_date" value="' . esc_attr( $s['session_date'] ) . '"> ore <input type="time" name="start_time" value="' . esc_attr( (string) $s['start_time'] ) . '"> '
 					. 'luogo <input type="text" name="location" value="' . esc_attr( (string) $s['location'] ) . '"> posti <input type="number" min="1" name="capacity" class="small-text" value="' . esc_attr( null === $cap ? '' : (string) $cap ) . '"> <button class="button button-small">Salva</button></p>';
 				Ui::form_close();
 
 				Ui::form_open( 'asem_cancel_session', $back, false, 'asem-confirm' );
-				echo Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ), Html::allowed() );
 				echo '<button class="button button-link-delete" data-confirm="Annullare questa data? Le prenotazioni non contano più; i pagamenti già ricevuti vanno rimborsati a mano.">Annulla questa data</button>';
 				Ui::form_close();
 			}

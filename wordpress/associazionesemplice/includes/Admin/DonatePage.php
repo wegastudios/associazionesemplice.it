@@ -3,6 +3,7 @@ namespace AssociazioneSemplice\Admin;
 
 use AssociazioneSemplice\Donations;
 use AssociazioneSemplice\Settings;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -14,8 +15,8 @@ final class DonatePage {
 
 	/** Campo con lo shortcode e il pulsante per copiarlo. */
 	private static function copy_field( string $code ): string {
-		return '<input type="text" readonly class="regular-text code" value="' . esc_attr( $code ) . '" onclick="this.select()"> '
-			. '<button type="button" class="button" onclick="var i=this.previousElementSibling;i.select();if(navigator.clipboard){navigator.clipboard.writeText(i.value);}this.textContent=\'Copiato\'">Copia</button>';
+		return '<input type="text" readonly class="regular-text code" value="' . esc_attr( $code ) . '" data-asem-select> '
+			. '<button type="button" class="button" data-asem-copy="' . esc_attr( $code ) . '">Copia</button>';
 	}
 
 	public static function render(): void {
@@ -40,7 +41,7 @@ final class DonatePage {
 			. '<p class="description">In euro, separati da punto e virgola (al massimo 8), ad esempio <code>5;10;20;50</code>. Valgono per la raccolta generale e per le raccolte senza importi propri. Chi vuole può sempre scegliere un altro importo su PayPal.</p></td></tr>';
 		echo '<tr><th>Causale generale</th><td><input type="text" name="donate_purpose" value="' . esc_attr( (string) $s['donate_purpose'] ) . '" class="regular-text" maxlength="120">'
 			. '<p class="description">Il titolo del modulo e il motivo che compare su PayPal. Vuoto = «Donazione a» e il nome dell\'ente.</p></td></tr>';
-		echo '<tr><th>Shortcode della raccolta generale</th><td>' . self::copy_field( Donations::shortcode() ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<tr><th>Shortcode della raccolta generale</th><td>' . self::copy_field( Donations::shortcode() ) . '</td></tr>', Html::allowed() );
 		echo '</tbody></table>';
 		submit_button( 'Salva' );
 		Ui::form_close();
@@ -52,11 +53,11 @@ final class DonatePage {
 			echo '<table class="widefat striped"><thead><tr><th>Raccolta</th><th>Shortcode</th><th>Stato</th><th></th></tr></thead><tbody>';
 			foreach ( $list as $c ) {
 				$state = ! $c['active'] ? 'Spenta' : ( Donations::enabled() ? '<span class="asem-ok">Attiva</span>' : '<span class="asem-warn">In attesa: PayPal non è configurato</span>' );
-				echo '<tr><td><strong>' . esc_html( $c['name'] ) . '</strong>' . ( '' !== $c['purpose'] ? '<br><span class="description">' . esc_html( $c['purpose'] ) . '</span>' : '' ) . '</td>' // phpcs:ignore WordPress.Security.EscapeOutput
-					. '<td>' . self::copy_field( Donations::shortcode( $c['id'] ) ) . '</td><td>' . $state . '</td><td>'  // phpcs:ignore WordPress.Security.EscapeOutput
-					. '<a class="button button-small" href="' . esc_url( Ui::url( 'asem-donate', array( 'campaign' => $c['id'] ) ) ) . '#asem-campaign">Modifica</a> ';
+				echo wp_kses( '<tr><td><strong>' . esc_html( $c['name'] ) . '</strong>' . ( '' !== $c['purpose'] ? '<br><span class="description">' . esc_html( $c['purpose'] ) . '</span>' : '' ) . '</td>'
+					. '<td>' . self::copy_field( Donations::shortcode( $c['id'] ) ) . '</td><td>' . $state . '</td><td>'
+					. '<a class="button button-small" href="' . esc_url( Ui::url( 'asem-donate', array( 'campaign' => $c['id'] ) ) ) . '#asem-campaign">Modifica</a> ', Html::allowed() );
 				Ui::form_open( 'asem_delete_campaign', Ui::url( 'asem-donate' ), false, 'asem-inline' );
-				echo Ui::hidden( 'id', $c['id'] ) . '<button class="button button-small" data-confirm="Eliminare la raccolta «' . esc_attr( $c['name'] ) . '»? Il suo shortcode smette di mostrare il modulo.">Elimina</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( Ui::hidden( 'id', $c['id'] ) . '<button class="button button-small" data-confirm="Eliminare la raccolta «' . esc_attr( $c['name'] ) . '»? Il suo shortcode smette di mostrare il modulo.">Elimina</button>', Html::allowed() );
 				Ui::form_close();
 				echo '</td></tr>';
 			}
@@ -68,7 +69,7 @@ final class DonatePage {
 		$e = $edit ?: array( 'id' => 0, 'name' => '', 'purpose' => '', 'amounts' => '', 'note' => '', 'active' => 1 );
 		echo '<h2 id="asem-campaign">' . ( $edit ? 'Modifica la raccolta' : 'Nuova raccolta' ) . '</h2>';
 		Ui::form_open( 'asem_save_campaign', Ui::url( 'asem-donate' ) );
-		echo Ui::hidden( 'id', $e['id'] ) . '<table class="form-table"><tbody>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( Ui::hidden( 'id', $e['id'] ) . '<table class="form-table"><tbody>', Html::allowed() );
 		echo '<tr><th>Nome *</th><td><input type="text" name="name" value="' . esc_attr( $e['name'] ) . '" class="regular-text" maxlength="80" required><p class="description">Serve a riconoscerla nell\'elenco, ad esempio «Restauro del tetto».</p></td></tr>';
 		echo '<tr><th>Titolo e causale</th><td><input type="text" name="purpose" value="' . esc_attr( $e['purpose'] ) . '" class="regular-text" maxlength="120"><p class="description">Il titolo del modulo e il motivo che compare su PayPal. Vuoto = il nome della raccolta.</p></td></tr>';
 		echo '<tr><th>Testo</th><td><textarea name="note" rows="3" class="large-text" maxlength="400">' . esc_textarea( $e['note'] ) . '</textarea><p class="description">Facoltativo: due righe per spiegare a cosa serve la raccolta.</p></td></tr>';
@@ -82,7 +83,7 @@ final class DonatePage {
 		}
 
 		if ( Donations::enabled() ) {
-			echo '<h2>Anteprima della raccolta generale</h2>' . \AssociazioneSemplice\Frontend\Views::donate(); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( '<h2>Anteprima della raccolta generale</h2>' . \AssociazioneSemplice\Frontend\Views::donate(), Html::allowed() );
 		}
 		Ui::footer();
 	}

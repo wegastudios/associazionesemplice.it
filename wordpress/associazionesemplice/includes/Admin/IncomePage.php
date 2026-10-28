@@ -5,6 +5,7 @@ use AssociazioneSemplice\Labels;
 use AssociazioneSemplice\MemberType;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Settings;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -50,7 +51,7 @@ final class IncomePage {
 		if ( ! current_user_can( Plugin::CAP_OPS ) ) {
 			wp_send_json_error( 'Non autorizzato', 403 );
 		}
-		$person = Plugin::people()->get( (int) ( $_POST['person_id'] ?? 0 ) ); // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- valore verificato e ripulito da chi lo usa
+		$person = Plugin::people()->get( isset( $_POST['person_id'] ) ? absint( $_POST['person_id'] ) : 0 ); // phpcs:ignore WordPress.Security.NonceVerification
 		$date   = isset( $_POST['date'] ) ? sanitize_text_field( wp_unslash( $_POST['date'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
 		if ( ! preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $date, $dm ) || ! checkdate( (int) $dm[2], (int) $dm[3], (int) $dm[1] ) ) {
 			$date = current_time( 'Y-m-d' ); // data mancante o non valida: oggi
@@ -148,7 +149,7 @@ final class IncomePage {
 		);
 
 		Ui::header( 'Nuovo incasso' );
-		echo '<script type="application/json" id="asem-income-data">' . wp_json_encode( $data, JSON_HEX_TAG | JSON_HEX_AMP ) . '</script>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		wp_print_inline_script_tag( (string) wp_json_encode( $data, JSON_HEX_TAG | JSON_HEX_AMP ), array( 'type' => 'application/json', 'id' => 'asem-income-data' ) );
 		Ui::form_open( 'asem_save_income', Ui::url( 'asem-income' ), false, 'asem-income' );
 		echo '<table class="form-table asem-form"><tbody>';
 		echo '<tr><th>Data</th><td><input type="date" name="date" id="asem-date" value="' . esc_attr( $today ) . '" required></td></tr>';
@@ -157,10 +158,10 @@ final class IncomePage {
 		foreach ( $accounts as $a ) {
 			$acc_map[ $a['id'] ] = $a['name'];
 		}
-		echo '<select name="account_id" id="asem-account">' . Ui::options( $acc_map, $default_account ? $default_account['id'] : null ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<tr><th>Da chi</th><td>' . Ui::person_select( 'person_id', Plugin::people()->search(), Ui::get_int( 'person_id' ) ?: null, '— nessuno / anonimo —', 'asem-person-select' ) // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<select name="account_id" id="asem-account">' . Ui::options( $acc_map, $default_account ? $default_account['id'] : null ) . '</select></td></tr>', Html::allowed() );
+		echo wp_kses( '<tr><th>Da chi</th><td>' . Ui::person_select( 'person_id', Plugin::people()->search(), Ui::get_int( 'person_id' ) ?: null, '— nessuno / anonimo —', 'asem-person-select' )
 			. ' <button type="button" class="button" id="asem-new-person">+ nuovo socio</button>'
-			. '<div id="asem-person-info" class="asem-info"></div></td></tr>';
+			. '<div id="asem-person-info" class="asem-info"></div></td></tr>', Html::allowed() );
 		echo '</tbody></table>';
 
 		echo '<h2>Voci</h2><div id="asem-lines"></div>';
@@ -176,7 +177,7 @@ final class IncomePage {
 			. '<p id="asem-quick"></p><p id="asem-change" class="asem-change"></p></div>';
 		$vat = Ui::vat_row( null, \AssociazioneSemplice\Fiscal::default_mode(), 'Gli importi', true );
 		if ( '' !== $vat ) {
-			echo '<table class="form-table"><tbody>' . $vat . '</tbody></table>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( '<table class="form-table"><tbody>' . $vat . '</tbody></table>', Html::allowed() );
 		}
 		echo '<p><label>N. ricevuta (facoltativo) <input type="text" name="document_ref" maxlength="80"></label></p>';
 		submit_button( 'Registra incasso' );

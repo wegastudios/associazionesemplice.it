@@ -3,6 +3,7 @@ namespace AssociazioneSemplice\Admin;
 
 use AssociazioneSemplice\Money;
 use AssociazioneSemplice\PaymentCalc;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -38,8 +39,8 @@ final class Ui {
 
 	public static function header( string $title, string $actions_html = '' ): void {
 		\AssociazioneSemplice\Texts::start_admin_buffer(); // testi personalizzati anche in amministrazione
-		echo '<div class="wrap asem"><h1 class="wp-heading-inline">' . esc_html( $title ) . '</h1> ' . $actions_html . '<hr class="wp-header-end">'; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo Admin::tabs( isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '' ); // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.EscapeOutput
+		echo wp_kses( '<div class="wrap asem"><h1 class="wp-heading-inline">' . esc_html( $title ) . '</h1> ' . $actions_html . '<hr class="wp-header-end">', Html::allowed() );
+		echo wp_kses( Admin::tabs( isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '' ), Html::allowed() ); // phpcs:ignore WordPress.Security.NonceVerification
 		self::notices();
 	}
 
@@ -82,13 +83,13 @@ final class Ui {
 	 * @param array<string,scalar> $fields campi nascosti
 	 */
 	public static function confirm_button( string $action, string $back_url, array $fields, string $label, string $confirm_text, string $style = '' ): string {
-		$html = '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline" onsubmit="return confirm(' . esc_attr( wp_json_encode( $confirm_text ) ) . ');">'
+		$html = '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline">'
 			. '<input type="hidden" name="action" value="' . esc_attr( $action ) . '"><input type="hidden" name="_back" value="' . esc_url( $back_url ) . '">'
 			. wp_nonce_field( $action, '_wpnonce', true, false );
 		foreach ( $fields as $k => $v ) {
 			$html .= '<input type="hidden" name="' . esc_attr( (string) $k ) . '" value="' . esc_attr( (string) $v ) . '">';
 		}
-		return $html . '<button class="button button-small"' . ( '' !== $style ? ' style="' . esc_attr( $style ) . '"' : '' ) . '>' . esc_html( $label ) . '</button></form>';
+		return $html . '<button class="button button-small" data-confirm="' . esc_attr( $confirm_text ) . '"' . ( '' !== $style ? ' style="' . esc_attr( $style ) . '"' : '' ) . '>' . esc_html( $label ) . '</button></form>';
 	}
 
 	public static function form_close(): void {

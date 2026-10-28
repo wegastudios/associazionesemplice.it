@@ -2,6 +2,7 @@
 namespace AssociazioneSemplice\Admin;
 
 use AssociazioneSemplice\Plugin;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -274,7 +275,7 @@ final class Admin {
 			}
 			if ( in_array( $slug, self::absent_pages(), true ) ) {
 				Ui::header( \AssociazioneSemplice\Edition::degraded() ? 'Funzione sospesa' : 'Funzione non inclusa' );
-				echo \AssociazioneSemplice\Edition::missing_html(); // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( \AssociazioneSemplice\Edition::missing_html(), Html::allowed() );
 				Ui::footer();
 				return;
 			}

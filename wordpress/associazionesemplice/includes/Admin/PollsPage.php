@@ -6,6 +6,7 @@ use AssociazioneSemplice\Docs;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\PollRules;
 use AssociazioneSemplice\Polls;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -64,20 +65,18 @@ final class PollsPage {
 			echo '<div class="notice notice-info inline"><p>Qualcuno ha già votato: puoi cambiare titolo, testo, chiusura e avvisi. Risposte, tipo di scelta, segretezza e chi può votare non si cambiano più.</p></div>';
 		}
 		Ui::form_open( 'asem_poll_save', Ui::url( 'asem-polls', $p ? array( 'view' => $id ) : array( 'new' => 1 ) ) );
-		echo Ui::hidden( 'id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( Ui::hidden( 'id', $id ), Html::allowed() );
 		$dis = $locked ? ' disabled' : '';
 		echo '<table class="form-table asem-form"><tbody>';
-		echo '<tr><th>Tipo</th><td><select name="kind">' . Ui::options( PollRules::kinds(), $v( 'kind', 'vote' ) ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<tr><th>Tipo</th><td><select name="kind">' . Ui::options( PollRules::kinds(), $v( 'kind', 'vote' ) ) . '</select></td></tr>', Html::allowed() );
 		echo '<tr><th>Titolo *</th><td><input type="text" name="title" value="' . esc_attr( $v( 'title' ) ) . '" class="large-text" maxlength="190" required></td></tr>';
 		echo '<tr><th>Domanda o spiegazione</th><td><textarea name="question" rows="4" class="large-text">' . esc_textarea( $v( 'question' ) ) . '</textarea></td></tr>';
-		echo '<tr><th>Risposte *</th><td><textarea name="options" rows="5" class="large-text"' . $dis . '>' . esc_textarea( $opts ) . '</textarea><p class="description">Una risposta per riga (da 2 a ' . (int) PollRules::MAX_OPTIONS . '). Per sì o no: «Favorevole», «Contrario», «Astenuto».</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		// phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper, numeri interi o attributi di WordPress
-		echo '<tr><th>Scelta</th><td><label><input type="checkbox" name="multiple" value="1"' . checked( ! empty( $p['multiple'] ), true, false ) . $dis . '> Si possono scegliere più risposte</label> '
-			. '— al massimo <input type="number" min="0" max="' . (int) PollRules::MAX_OPTIONS . '" name="max_choices" value="' . (int) $v( 'max_choices', '0' ) . '" style="width:70px"' . $dis . '> (0 = senza limite)</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<tr><th>Voto segreto</th><td><label><input type="checkbox" name="secret" value="1"' . checked( ! empty( $p['secret'] ), true, false ) . $dis . '> Si registra chi ha votato ma non cosa</label></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<tr><th>Chi può votare</th><td><select name="audience"' . $dis . '>' . Ui::options( PollRules::audiences(), $v( 'audience', PollRules::AUDIENCE_MEMBERS ) ) . '</select> '
-			. '<select name="activity_id"' . $dis . '>' . Ui::options( $acts, $v( 'activity_id' ), 'Attività (se scelti gli iscritti)' ) . '</select><p class="description">Votano solo i soci con la tessera valida: non i sospesi, non gli usciti, non i genitori o tutori che non sono soci.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		// phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
+		echo wp_kses( '<tr><th>Risposte *</th><td><textarea name="options" rows="5" class="large-text"' . $dis . '>' . esc_textarea( $opts ) . '</textarea><p class="description">Una risposta per riga (da 2 a ' . (int) PollRules::MAX_OPTIONS . '). Per sì o no: «Favorevole», «Contrario», «Astenuto».</p></td></tr>', Html::allowed() );
+		echo wp_kses( '<tr><th>Scelta</th><td><label><input type="checkbox" name="multiple" value="1"' . checked( ! empty( $p['multiple'] ), true, false ) . $dis . '> Si possono scegliere più risposte</label> '
+			. '— al massimo <input type="number" min="0" max="' . (int) PollRules::MAX_OPTIONS . '" name="max_choices" value="' . (int) $v( 'max_choices', '0' ) . '" style="width:70px"' . $dis . '> (0 = senza limite)</td></tr>', Html::allowed() );
+		echo wp_kses( '<tr><th>Voto segreto</th><td><label><input type="checkbox" name="secret" value="1"' . checked( ! empty( $p['secret'] ), true, false ) . $dis . '> Si registra chi ha votato ma non cosa</label></td></tr>', Html::allowed() );
+		echo wp_kses( '<tr><th>Chi può votare</th><td><select name="audience"' . $dis . '>' . Ui::options( PollRules::audiences(), $v( 'audience', PollRules::AUDIENCE_MEMBERS ) ) . '</select> '
+			. '<select name="activity_id"' . $dis . '>' . Ui::options( $acts, $v( 'activity_id' ), 'Attività (se scelti gli iscritti)' ) . '</select><p class="description">Votano solo i soci con la tessera valida: non i sospesi, non gli usciti, non i genitori o tutori che non sono soci.</p></td></tr>', Html::allowed() );
 		echo '<tr><th>Si apre *</th><td><input type="datetime-local" name="opens_at" value="' . esc_attr( PollRules::to_local( $v( 'opens_at', $now ) ) ) . '" required></td></tr>';
 		echo '<tr><th>Si chiude *</th><td><input type="datetime-local" name="closes_at" value="' . esc_attr( PollRules::to_local( $v( 'closes_at', gmdate( 'Y-m-d H:i:s', strtotime( $now . ' +7 days' ) ) ) ) ) . '" required></td></tr>';
 		echo '<tr><th>Risultati ai soci</th><td><label><input type="checkbox" name="show_results" value="1"' . checked( ! empty( $p['show_results'] ), true, false ) . '> Dopo la chiusura i soci vedono i risultati</label></td></tr>';
@@ -86,7 +85,7 @@ final class PollsPage {
 		submit_button( $p ? 'Salva' : 'Crea' );
 		Ui::form_close();
 		if ( $p ) {
-			echo Ui::confirm_button( 'asem_poll_delete', Ui::url( 'asem-polls' ), array( 'id' => $id ), 'Elimina', 'Eliminare questa votazione? Non comparirà più negli elenchi.' ); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::confirm_button( 'asem_poll_delete', Ui::url( 'asem-polls' ), array( 'id' => $id ), 'Elimina', 'Eliminare questa votazione? Non comparirà più negli elenchi.' ), Html::allowed() );
 		}
 		Ui::footer();
 	}
@@ -101,7 +100,7 @@ final class PollsPage {
 			echo '<p class="description">Voto segreto: i risultati e chi ha votato si vedono a votazione chiusa.</p>';
 			echo '<p>';
 			if ( PollRules::OPEN === $p['status'] ) {
-				echo Ui::confirm_button( 'asem_poll_announce', Ui::url( 'asem-polls', array( 'view' => $id ) ), array( 'id' => $id ), 'Avvisa i soci ora', 'Mandare ora l\'email ai soci che non hanno ancora votato?' ); // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( Ui::confirm_button( 'asem_poll_announce', Ui::url( 'asem-polls', array( 'view' => $id ) ), array( 'id' => $id ), 'Avvisa i soci ora', 'Mandare ora l\'email ai soci che non hanno ancora votato?' ), Html::allowed() );
 			}
 			echo '</p>';
 			return;
@@ -123,7 +122,7 @@ final class PollsPage {
 		echo '<p><a class="button" target="_blank" href="' . esc_url( Docs::url( 'poll', array( 'id' => $id ) ) ) . '">Verbale dei risultati (PDF)</a> '
 			. '<a class="button" href="' . esc_url( Docs::url( 'poll', array( 'id' => $id ), 'csv' ) ) . '">Risultati (CSV)</a> ';
 		if ( PollRules::OPEN === $p['status'] ) {
-			echo Ui::confirm_button( 'asem_poll_announce', Ui::url( 'asem-polls', array( 'view' => $id ) ), array( 'id' => $id ), 'Avvisa i soci ora', 'Mandare ora l\'email ai soci che non hanno ancora votato?' ); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::confirm_button( 'asem_poll_announce', Ui::url( 'asem-polls', array( 'view' => $id ) ), array( 'id' => $id ), 'Avvisa i soci ora', 'Mandare ora l\'email ai soci che non hanno ancora votato?' ), Html::allowed() );
 		}
 		echo '</p>';
 	}

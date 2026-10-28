@@ -8,6 +8,7 @@ use AssociazioneSemplice\LoanRules;
 use AssociazioneSemplice\MemberType;
 use AssociazioneSemplice\Money;
 use AssociazioneSemplice\Plugin;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -42,8 +43,8 @@ final class InventoryPage {
 		echo '<p class="description">Il registro dei beni dell\'associazione (attrezzature, strumenti, materiali) e di chi li ha in prestito. Per le sale e le attrezzature da prenotare si usano le Risorse.</p>';
 		echo '<p><a class="button button-primary" href="' . esc_url( Ui::url( 'asem-inventory' ) ) . '">Beni</a> <a class="button" href="' . esc_url( Ui::url( 'asem-inventory', array( 'tab' => 'loans' ) ) ) . '">Prestiti</a> '
 			. '<a class="button" href="' . esc_url( Docs::url( 'items', array(), 'csv' ) ) . '">Esporta i beni (CSV)</a></p>';
-		echo '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-inventory"><input type="search" name="q" value="' . esc_attr( $q ) . '" placeholder="Nome, codice, ubicazione"> '
-			. '<select name="category">' . Ui::options( array_combine( Inventory::categories(), Inventory::categories() ), $cat, 'Tutte le categorie' ) . '</select> <button class="button">Filtra</button></form>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-inventory"><input type="search" name="q" value="' . esc_attr( $q ) . '" placeholder="Nome, codice, ubicazione"> '
+			. '<select name="category">' . Ui::options( array_combine( Inventory::categories(), Inventory::categories() ), $cat, 'Tutte le categorie' ) . '</select> <button class="button">Filtra</button></form>', Html::allowed() );
 		echo '<table class="widefat striped"><thead><tr><th>Codice</th><th>Bene</th><th>Categoria</th><th>Pezzi</th><th>In prestito</th><th>Stato</th><th>Ubicazione</th></tr></thead><tbody>';
 		$rows = Inventory::items( $q, $cat );
 		if ( ! $rows ) {
@@ -71,15 +72,13 @@ final class InventoryPage {
 			} else {
 				$state = esc_html( $state );
 			}
-			echo '<tr>' . ( $with_item ? '<td><a href="' . esc_url( Ui::url( 'asem-inventory', array( 'view' => (int) $l['item_id'] ) ) ) . '">' . esc_html( $l['item_name'] ) . '</a></td>' : '' )
+			echo wp_kses( '<tr>' . ( $with_item ? '<td><a href="' . esc_url( Ui::url( 'asem-inventory', array( 'view' => (int) $l['item_id'] ) ) ) . '">' . esc_html( $l['item_name'] ) . '</a></td>' : '' )
 				. ( $with_person ? '<td><a href="' . esc_url( Ui::url( 'asem-inventory', array( 'person' => (int) $l['person_id'] ) ) ) . '">' . esc_html( $l['person_name'] ) . '</a></td>' : '' )
-				. '<td>' . (int) $l['quantity'] . '</td><td>' . self::d( $l['lent_on'] ) . '</td><td>' . self::d( $l['due_on'] ) . '</td><td>' . $state . '</td><td>' . esc_html( trim( $l['notes_out'] . ' ' . ( '' !== $l['notes_in'] ? '→ ' . $l['notes_in'] : '' ) ) ) . '</td><td>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				. '<td>' . (int) $l['quantity'] . '</td><td>' . self::d( $l['lent_on'] ) . '</td><td>' . self::d( $l['due_on'] ) . '</td><td>' . $state . '</td><td>' . esc_html( trim( $l['notes_out'] . ' ' . ( '' !== $l['notes_in'] ? '→ ' . $l['notes_in'] : '' ) ) ) . '</td><td>', Html::allowed() );
 			if ( LoanRules::RETURNED !== $l['status'] ) {
 				Ui::form_open( 'asem_loan_return', Ui::url( 'asem-inventory', array( 'view' => (int) $l['item_id'] ) ), false, 'asem-inline' );
-				// phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
-				echo Ui::hidden( 'id', $l['id'] ) . '<input type="date" name="returned_on" value="' . esc_attr( Db::today() ) . '"> <input type="text" name="notes_in" placeholder="Stato al rientro" maxlength="255" style="width:150px"> '
-					. '<select name="new_state">' . Ui::options( LoanRules::item_states(), '', 'Stato invariato' ) . '</select> <button class="button button-small">Rientrato</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
-				// phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo wp_kses( Ui::hidden( 'id', $l['id'] ) . '<input type="date" name="returned_on" value="' . esc_attr( Db::today() ) . '"> <input type="text" name="notes_in" placeholder="Stato al rientro" maxlength="255" style="width:150px"> '
+					. '<select name="new_state">' . Ui::options( LoanRules::item_states(), '', 'Stato invariato' ) . '</select> <button class="button button-small">Rientrato</button>', Html::allowed() );
 				Ui::form_close();
 			}
 			echo '</td></tr>';
@@ -112,17 +111,17 @@ final class InventoryPage {
 			echo '<h2>Prestito</h2><p>Disponibili <strong>' . (int) $avail . '</strong> su ' . (int) $i['quantity'] . '.</p>';
 			if ( $avail > 0 && LoanRules::lendable_state( (string) $i['state'] ) ) {
 				Ui::form_open( 'asem_loan_save', Ui::url( 'asem-inventory', array( 'view' => $id ) ) );
-				echo Ui::hidden( 'item_id', $id ) . '<p>A ' . Ui::person_select( 'person_id', self::borrowers(), null, 'Scegli il socio o volontario' ) // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( Ui::hidden( 'item_id', $id ) . '<p>A ' . Ui::person_select( 'person_id', self::borrowers(), null, 'Scegli il socio o volontario' )
 					. ' pezzi <input type="number" name="quantity" min="1" max="' . (int) $avail . '" value="1" style="width:70px"> uscita <input type="date" name="lent_on" value="' . esc_attr( Db::today() ) . '" required> '
 					. 'rientro previsto <input type="date" name="due_on" value="' . esc_attr( gmdate( 'Y-m-d', strtotime( Db::today() . ' +14 days' ) ) ) . '" required> '
-					. '<input type="text" name="notes" placeholder="Note sullo stato all\'uscita" maxlength="255" style="width:220px"> <button class="button button-primary">Registra il prestito</button></p>';
+					. '<input type="text" name="notes" placeholder="Note sullo stato all\'uscita" maxlength="255" style="width:220px"> <button class="button button-primary">Registra il prestito</button></p>', Html::allowed() );
 				Ui::form_close();
 			}
 			self::loans_table( Inventory::loans( $id ), false, true );
 		}
 		echo '<h2>' . ( $i ? 'Scheda del bene' : 'Nuovo bene' ) . '</h2>';
 		Ui::form_open( 'asem_item_save', Ui::url( 'asem-inventory', $i ? array( 'view' => $id ) : array( 'new' => 1 ) ), true );
-		echo Ui::hidden( 'id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( Ui::hidden( 'id', $id ), Html::allowed() );
 		echo '<table class="form-table asem-form"><tbody>';
 		echo '<tr><th>Nome *</th><td><input type="text" name="name" value="' . esc_attr( $v( 'name' ) ) . '" class="regular-text" maxlength="190" required></td></tr>';
 		echo '<tr><th>Categoria</th><td><input type="text" name="category" value="' . esc_attr( $v( 'category' ) ) . '" class="regular-text" maxlength="80" list="asem-item-cats"><datalist id="asem-item-cats">';
@@ -132,7 +131,7 @@ final class InventoryPage {
 		echo '</datalist></td></tr>';
 		echo '<tr><th>Codice</th><td><input type="text" name="code" value="' . esc_attr( $v( 'code' ) ) . '" maxlength="60"><p class="description">Facoltativo, unico (ad esempio il numero scritto sull\'etichetta).</p></td></tr>';
 		echo '<tr><th>Quantità *</th><td><input type="number" name="quantity" min="1" value="' . (int) $v( 'quantity', '1' ) . '" style="width:90px" required></td></tr>';
-		echo '<tr><th>Stato</th><td><select name="state">' . Ui::options( LoanRules::item_states(), $v( 'state', 'good' ) ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<tr><th>Stato</th><td><select name="state">' . Ui::options( LoanRules::item_states(), $v( 'state', 'good' ) ) . '</select></td></tr>', Html::allowed() );
 		echo '<tr><th>Ubicazione</th><td><input type="text" name="location" value="' . esc_attr( $v( 'location' ) ) . '" class="regular-text" maxlength="190"></td></tr>';
 		echo '<tr><th>Valore (€)</th><td><input type="text" name="value" value="' . esc_attr( $i && null !== $i['value_cents'] ? Money::plain( (int) $i['value_cents'] ) : '' ) . '" style="width:110px" placeholder="0,00"></td></tr>';
 		echo '<tr><th>Acquistato il</th><td><input type="date" name="purchased_on" value="' . esc_attr( $v( 'purchased_on' ) ) . '"></td></tr>';
@@ -145,7 +144,7 @@ final class InventoryPage {
 		submit_button( $i ? 'Salva' : 'Aggiungi il bene' );
 		Ui::form_close();
 		if ( $i ) {
-			echo Ui::confirm_button( 'asem_item_delete', Ui::url( 'asem-inventory' ), array( 'id' => $id ), 'Elimina il bene', 'Eliminare questo bene dall\'inventario? Lo storico dei prestiti resta.' ); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::confirm_button( 'asem_item_delete', Ui::url( 'asem-inventory' ), array( 'id' => $id ), 'Elimina il bene', 'Eliminare questo bene dall\'inventario? Lo storico dei prestiti resta.' ), Html::allowed() );
 		}
 		Ui::footer();
 	}

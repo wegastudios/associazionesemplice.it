@@ -176,7 +176,7 @@ final class Application {
 
 	private static function stop( string $text ): void {
 		CardVerify::send_headers();
-		echo CardVerify::layout( 'Pagamento della quota', Assets::accent( '#2271b1' ), '<p>' . esc_html( $text ) . '</p><p><a href="' . esc_url( home_url( '/' ) ) . '">← Torna al sito</a></p>' ); // phpcs:ignore WordPress.Security.EscapeOutput -- già escapato
+		CardVerify::output( CardVerify::layout( 'Pagamento della quota', Assets::accent( '#2271b1' ), '<p>' . esc_html( $text ) . '</p><p><a href="' . esc_url( home_url( '/' ) ) . '">← Torna al sito</a></p>' ) );
 		exit;
 	}
 

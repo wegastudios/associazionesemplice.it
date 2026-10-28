@@ -161,7 +161,7 @@ final class CardLayout {
 			}
 		}
 		if ( $l['qr']['show'] && '' !== $qr_svg ) {
-			$html .= '<span class="asemf-card-f asemf-card-qr" style="left:' . (float) $l['qr']['x'] . '%;top:' . (float) $l['qr']['y'] . '%;width:' . (float) $l['qr']['size'] . '%">' . $qr_svg . '</span>'; // phpcs:ignore WordPress.Security.EscapeOutput -- SVG generato dal plugin
+			$html .= '<span class="asemf-card-f asemf-card-qr" style="left:' . (float) $l['qr']['x'] . '%;top:' . (float) $l['qr']['y'] . '%;width:' . (float) $l['qr']['size'] . '%">' . $qr_svg . '</span>';
 		}
 		return $html . '</div>';
 	}

@@ -142,7 +142,7 @@ final class Privacy {
 		header( 'Content-Type: application/json; charset=utf-8' );
 		header( 'X-Content-Type-Options: nosniff' );
 		header( 'Content-Disposition: attachment; filename="miei-dati-' . gmdate( 'Y-m-d' ) . '.json"' );
-		echo $json; // phpcs:ignore WordPress.Security.EscapeOutput -- JSON
+		Download::bytes( $json );
 		exit;
 	}
 

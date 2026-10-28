@@ -33,7 +33,7 @@ final class Documents {
 		if ( empty( $_FILES[ $field ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
 			return null;
 		}
-		$n = AttachmentRules::normalize_files( $_FILES[ $field ] ); // phpcs:ignore WordPress.Security.NonceVerification,WordPress.Security.ValidatedSanitizedInput
+		$n = Attachments::request_files( $field );
 		if ( $n['errors'] ) {
 			throw new \InvalidArgumentException( $n['errors'][0] ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}

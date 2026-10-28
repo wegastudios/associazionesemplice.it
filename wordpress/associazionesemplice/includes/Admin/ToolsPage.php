@@ -4,6 +4,7 @@ namespace AssociazioneSemplice\Admin;
 use AssociazioneSemplice\Modules;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Settings;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -50,7 +51,7 @@ final class ToolsPage {
 				$rows .= '<p><a href="' . esc_url( Ui::url( $it[0] ) ) . '"><strong>' . esc_html( $it[1] ) . '</strong></a><br><span class="description">' . esc_html( $it[2] ) . '</span></p>';
 			}
 			if ( '' !== $rows ) {
-				echo '<div class="asem-card"><h2>' . esc_html( $title ) . '</h2>' . $rows . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( '<div class="asem-card"><h2>' . esc_html( $title ) . '</h2>' . $rows . '</div>', Html::allowed() );
 			}
 		}
 		echo '</div>';
@@ -78,7 +79,7 @@ final class ToolsPage {
 		);
 		foreach ( $rows as $r ) {
 			if ( $r[3] ) {
-				echo '<tr><td><strong>' . esc_html( $r[0] ) . '</strong></td><td>' . esc_html( $r[1] ) . '</td><td>' . $r[2] . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( '<tr><td><strong>' . esc_html( $r[0] ) . '</strong></td><td>' . esc_html( $r[1] ) . '</td><td>' . $r[2] . '</td></tr>', Html::allowed() );
 			}
 		}
 		echo '</tbody></table><p class="description">I file usano il punto e virgola e la virgola decimale: si aprono direttamente in Excel italiano.</p>';

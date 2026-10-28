@@ -7,6 +7,7 @@ use AssociazioneSemplice\MemberBook;
 use AssociazioneSemplice\Minutes;
 use AssociazioneSemplice\Money;
 use AssociazioneSemplice\Plugin;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -30,9 +31,9 @@ final class RegistersPage {
 		$rows = MemberBook::rows( $filter );
 		echo '<p class="description">L\'elenco progressivo dei soci con data di ingresso e, se c\'è stata, di cessazione (recesso, esclusione, decesso). Gli ospiti non sono soci e non compaiono. '
 			. 'La cessazione si registra dalla scheda del socio.</p>';
-		echo '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-book"><select name="filter">'
-			. Ui::options( array( MemberBook::IN_FORCE => 'In carica', MemberBook::LEFT => 'Cessati' ), $filter, 'Tutti' ) . '</select> <button class="button">Filtra</button> ' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
-			. self::downloads( 'book', array( 'filter' => $filter ) ) . '</form>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-book"><select name="filter">'
+			. Ui::options( array( MemberBook::IN_FORCE => 'In carica', MemberBook::LEFT => 'Cessati' ), $filter, 'Tutti' ) . '</select> <button class="button">Filtra</button> '
+			. self::downloads( 'book', array( 'filter' => $filter ) ) . '</form>', Html::allowed() );
 		$grid = \AssociazioneSemplice\CardLayout::sheet_grid();
 		$per  = Ui::get_int( 'per' );
 		$opts = array( 0 => 'il massimo (' . $grid['max'] . ')' );
@@ -41,17 +42,17 @@ final class RegistersPage {
 				$opts[ $n ] = (string) $n;
 			}
 		}
-		echo '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-book"><input type="hidden" name="filter" value="' . esc_attr( $filter ) . '">'
-			. '<strong>Tessere in PDF</strong> (fogli A4 da stampare e ritagliare; i posti che restano sono modelli vuoti): per foglio <select name="per">' . Ui::options( $opts, isset( $opts[ $per ] ) ? $per : 0 ) . '</select> <button class="button">Applica</button> ' // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<a class="button button-primary" target="_blank" href="' . esc_url( Docs::url( 'cards', array( 'filter' => $filter, 'per' => isset( $opts[ $per ] ) ? $per : 0 ) ) ) . '">Genera le tessere (' . ( '' === $filter ? 'soci in carica' : ( MemberBook::IN_FORCE === $filter ? 'in carica' : 'cessati' ) ) . ')</a></form>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-book"><input type="hidden" name="filter" value="' . esc_attr( $filter ) . '">'
+			. '<strong>Tessere in PDF</strong> (fogli A4 da stampare e ritagliare; i posti che restano sono modelli vuoti): per foglio <select name="per">' . Ui::options( $opts, isset( $opts[ $per ] ) ? $per : 0 ) . '</select> <button class="button">Applica</button> '
+			. '<a class="button button-primary" target="_blank" href="' . esc_url( Docs::url( 'cards', array( 'filter' => $filter, 'per' => isset( $opts[ $per ] ) ? $per : 0 ) ) ) . '">Genera le tessere (' . ( '' === $filter ? 'soci in carica' : ( MemberBook::IN_FORCE === $filter ? 'in carica' : 'cessati' ) ) . ')</a></form>', Html::allowed() );
 		echo '<p class="description">' . count( $rows ) . ' soci.</p>';
 		echo '<table class="widefat striped"><thead><tr><th>N.</th><th>Cognome e nome</th><th>Codice fiscale</th><th>Data di nascita</th><th>Tutore</th><th>Livello</th><th>Ingresso</th><th>Cessazione</th></tr></thead><tbody>';
 		if ( ! $rows ) {
 			echo '<tr><td colspan="8">Nessun socio.</td></tr>';
 		}
 		foreach ( $rows as $r ) {
-			echo '<tr><td>' . (int) $r['n'] . '</td><td><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $r['id'] ) ) ) . '">' . esc_html( $r['name'] ) . '</a></td><td>' . esc_html( $r['tax_code'] ) . '</td><td>' . ( '' !== $r['birth_date'] ? self::date( $r['birth_date'] ) : '' ) . '</td><td>' . esc_html( $r['guardian'] ) . '</td><td>' . esc_html( $r['level'] ) . '</td><td>' . self::date( $r['joined_on'] ) // phpcs:ignore WordPress.Security.EscapeOutput
-				. '</td><td>' . ( $r['left_on'] ? self::date( $r['left_on'] ) . ( '' !== $r['left_reason'] ? ' · ' . esc_html( $r['left_reason'] ) : '' ) : '' ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( '<tr><td>' . (int) $r['n'] . '</td><td><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $r['id'] ) ) ) . '">' . esc_html( $r['name'] ) . '</a></td><td>' . esc_html( $r['tax_code'] ) . '</td><td>' . ( '' !== $r['birth_date'] ? self::date( $r['birth_date'] ) : '' ) . '</td><td>' . esc_html( $r['guardian'] ) . '</td><td>' . esc_html( $r['level'] ) . '</td><td>' . self::date( $r['joined_on'] )
+				. '</td><td>' . ( $r['left_on'] ? self::date( $r['left_on'] ) . ( '' !== $r['left_reason'] ? ' · ' . esc_html( $r['left_reason'] ) : '' ) : '' ) . '</td></tr>', Html::allowed() );
 		}
 		echo '</tbody></table>';
 		Ui::footer();
@@ -64,8 +65,8 @@ final class RegistersPage {
 		}
 		echo '<div class="asem-card"><h2>Libro soci</h2>';
 		Ui::form_open( 'asem_member_left', Ui::url( 'asem-person', array( 'id' => (int) $p['id'] ) ) );
-		echo Ui::hidden( 'id', $p['id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<p>Ingresso: <strong>' . self::date( (string) $p['joined_on'] ) . '</strong></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( Ui::hidden( 'id', $p['id'] ), Html::allowed() );
+		echo wp_kses( '<p>Ingresso: <strong>' . self::date( (string) $p['joined_on'] ) . '</strong></p>', Html::allowed() );
 		echo '<p>Cessazione <input type="date" name="left_on" value="' . esc_attr( (string) $p['left_on'] ) . '"> motivo <input type="text" name="left_reason" value="' . esc_attr( (string) $p['left_reason'] ) . '" placeholder="recesso, esclusione, decesso…" maxlength="190"> <button class="button">Salva</button></p>';
 		Ui::form_close();
 		echo '<p class="description">Lascia vuota la data per tenere il socio in carica. Il socio cessato resta nel libro soci con le sue date.</p></div>';
@@ -87,8 +88,8 @@ final class RegistersPage {
 		for ( $y = (int) substr( Db::today(), 0, 4 ); $y >= (int) substr( Db::today(), 0, 4 ) - 10; $y-- ) {
 			$years[ $y ] = (string) $y;
 		}
-		echo '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-minutes"><select name="kind">' . Ui::options( Minutes::kinds(), $kind, 'Tutti i tipi' ) // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
-			. '</select> <select name="year">' . Ui::options( $years, $year ?: null, 'Tutti gli anni' ) . '</select> <button class="button">Filtra</button></form>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-minutes"><select name="kind">' . Ui::options( Minutes::kinds(), $kind, 'Tutti i tipi' )
+			. '</select> <select name="year">' . Ui::options( $years, $year ?: null, 'Tutti gli anni' ) . '</select> <button class="button">Filtra</button></form>', Html::allowed() );
 		$rows  = Minutes::all( $kind ?: null, $year ?: null );
 		$kinds = Minutes::kinds();
 		echo '<table class="widefat striped"><thead><tr><th>N.</th><th>Data</th><th>Tipo</th><th>Titolo</th><th>Approvato</th></tr></thead><tbody>';
@@ -96,8 +97,8 @@ final class RegistersPage {
 			echo '<tr><td colspan="5">Nessun verbale.</td></tr>';
 		}
 		foreach ( $rows as $m ) {
-			echo '<tr><td>' . esc_html( $m['number'] ) . '</td><td>' . self::date( $m['meeting_date'] ) . '</td><td>' . esc_html( $kinds[ $m['kind'] ] ) // phpcs:ignore WordPress.Security.EscapeOutput
-				. '</td><td><a href="' . esc_url( Ui::url( 'asem-minutes', array( 'view' => (int) $m['id'] ) ) ) . '">' . esc_html( $m['title'] ) . '</a></td><td>' . ( $m['approved_on'] ? self::date( $m['approved_on'] ) : '—' ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( '<tr><td>' . esc_html( $m['number'] ) . '</td><td>' . self::date( $m['meeting_date'] ) . '</td><td>' . esc_html( $kinds[ $m['kind'] ] )
+				. '</td><td><a href="' . esc_url( Ui::url( 'asem-minutes', array( 'view' => (int) $m['id'] ) ) ) . '">' . esc_html( $m['title'] ) . '</a></td><td>' . ( $m['approved_on'] ? self::date( $m['approved_on'] ) : '—' ) . '</td></tr>', Html::allowed() );
 		}
 		echo '</tbody></table>';
 		Ui::footer();
@@ -118,9 +119,9 @@ final class RegistersPage {
 			echo '<p><a class="button" target="_blank" href="' . esc_url( Docs::url( 'minute', array( 'id' => $id ) ) ) . '">Stampa il PDF</a></p>';
 		}
 		Ui::form_open( 'asem_minute_save', Ui::url( 'asem-minutes', $m ? array( 'view' => $id ) : array( 'new' => 1 ) ) );
-		echo Ui::hidden( 'id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( Ui::hidden( 'id', $id ), Html::allowed() );
 		echo '<table class="form-table asem-form"><tbody>';
-		echo '<tr><th>Tipo *</th><td><select name="kind">' . Ui::options( Minutes::kinds(), $v( 'kind', Minutes::ASSEMBLY ) ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<tr><th>Tipo *</th><td><select name="kind">' . Ui::options( Minutes::kinds(), $v( 'kind', Minutes::ASSEMBLY ) ) . '</select></td></tr>', Html::allowed() );
 		echo '<tr><th>Data *</th><td><input type="date" name="meeting_date" value="' . esc_attr( $v( 'meeting_date', Db::today() ) ) . '" required></td></tr>';
 		echo '<tr><th>Luogo</th><td><input type="text" name="place" value="' . esc_attr( $v( 'place' ) ) . '" class="regular-text" maxlength="190"></td></tr>';
 		echo '<tr><th>Titolo *</th><td><input type="text" name="title" value="' . esc_attr( $v( 'title' ) ) . '" class="large-text" maxlength="190" required></td></tr>';
@@ -133,7 +134,7 @@ final class RegistersPage {
 		Ui::form_close();
 		if ( $m ) {
 			Ui::form_open( 'asem_minute_delete', Ui::url( 'asem-minutes' ), false, 'asem-confirm' );
-			echo Ui::hidden( 'id', $id ) . '<button class="button button-link-delete" data-confirm="Eliminare questo verbale?">Elimina il verbale</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::hidden( 'id', $id ) . '<button class="button button-link-delete" data-confirm="Eliminare questo verbale?">Elimina il verbale</button>', Html::allowed() );
 			Ui::form_close();
 		}
 		Ui::footer();

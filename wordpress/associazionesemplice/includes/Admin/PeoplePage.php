@@ -5,6 +5,7 @@ use AssociazioneSemplice\MemberType;
 use AssociazioneSemplice\Money;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Settings;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -42,7 +43,7 @@ final class PeoplePage {
 			foreach ( $board as $b ) {
 				$parts[] = '<strong>' . esc_html( \AssociazioneSemplice\BoardRole::label( $b['board_role'] ) ) . '</strong> <a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => (int) $b['id'] ) ) ) . '">' . esc_html( $b['first_name'] . ' ' . $b['last_name'] ) . '</a>' . ( $b['in_regola'] ? '' : ' <span class="asem-neg">(tessera non in regola)</span>' );
 			}
-			echo '<p class="asem-board">Consiglio direttivo: ' . implode( ' · ', $parts ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( '<p class="asem-board">Consiglio direttivo: ' . implode( ' · ', $parts ) . '</p>', Html::allowed() );
 		}
 
 		echo '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-people">';
@@ -50,8 +51,8 @@ final class PeoplePage {
 			echo '<input type="hidden" name="orderby" value="' . esc_attr( $by ) . '"><input type="hidden" name="order" value="' . esc_attr( $dir ) . '">';
 		}
 		echo '<input type="search" name="q" value="' . esc_attr( $q ) . '" placeholder="Cerca per nome, tessera, email o codice fiscale"> ';
-		echo '<select name="type">' . Ui::options( MemberType::labels(), $type, 'Tutti i tipi' ) . '</select> '; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
-		echo '<select name="status">' . Ui::options( array( 'active' => 'Tessera valida', 'expired' => 'Tessera scaduta / senza tessera', 'noaccess' => 'Senza accesso all\'area riservata', 'suspended' => 'Sospesi (inattivi)', 'noconsent' => 'Senza consenso privacy', 'norules' => 'Regolamento non accettato' ), $status, 'Qualsiasi stato' ) . '</select> '; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
+		echo wp_kses( '<select name="type">' . Ui::options( MemberType::labels(), $type, 'Tutti i tipi' ) . '</select> ', Html::allowed() );
+		echo wp_kses( '<select name="status">' . Ui::options( array( 'active' => 'Tessera valida', 'expired' => 'Tessera scaduta / senza tessera', 'noaccess' => 'Senza accesso all\'area riservata', 'suspended' => 'Sospesi (inattivi)', 'noconsent' => 'Senza consenso privacy', 'norules' => 'Regolamento non accettato' ), $status, 'Qualsiasi stato' ) . '</select> ', Html::allowed() );
 		echo '<label><input type="checkbox" name="at_limit" value="1"' . checked( $at_limit, true, false ) . '> Solo ospiti da invitare a iscriversi</label> ';
 		echo '<button class="button">Filtra</button></form>';
 
@@ -59,11 +60,11 @@ final class PeoplePage {
 		$stale  = Plugin::people()->expired_for_months( $months );
 		if ( $stale ) {
 			Ui::form_open( 'asem_suspend_expired', Ui::url( 'asem-people' ), false, 'asem-inline' );
-			echo '<button class="button" data-confirm="Sospendere ' . count( $stale ) . ' soci con la tessera scaduta da oltre ' . (int) $months . ' mesi? Diventano inattivi (non compaiono più in Bacheca) finché non li riattivi a mano.">Sospendi soci scaduti da oltre ' . (int) $months . ' mesi (' . count( $stale ) . ')</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( '<button class="button" data-confirm="Sospendere ' . count( $stale ) . ' soci con la tessera scaduta da oltre ' . (int) $months . ' mesi? Diventano inattivi (non compaiono più in Bacheca) finché non li riattivi a mano.">Sospendi soci scaduti da oltre ' . (int) $months . ' mesi (' . count( $stale ) . ')</button>', Html::allowed() );
 			Ui::form_close();
 		}
 		echo '<p class="description">' . count( $rows ) . ' persone.</p>';
-		echo '<table class="widefat striped"><thead><tr>' . self::sort_th( 'Tessera', 'card', $by, $dir, $keep ) . self::sort_th( 'Nome', 'name', $by, $dir, $keep ) . self::sort_th( 'Tipo', 'type', $by, $dir, $keep ) . '<th>Contatti</th><th>Stato</th><th></th></tr></thead><tbody>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<table class="widefat striped"><thead><tr>' . self::sort_th( 'Tessera', 'card', $by, $dir, $keep ) . self::sort_th( 'Nome', 'name', $by, $dir, $keep ) . self::sort_th( 'Tipo', 'type', $by, $dir, $keep ) . '<th>Contatti</th><th>Stato</th><th></th></tr></thead><tbody>', Html::allowed() );
 		if ( ! $rows ) {
 			echo '<tr><td colspan="6">Nessuna persona trovata.</td></tr>';
 		}
@@ -84,7 +85,7 @@ final class PeoplePage {
 			}
 			echo '<tr><td>' . esc_html( (string) $p['card_number'] ?: '—' ) . '</td>';
 			echo '<td><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '"><strong>' . esc_html( $p['last_name'] . ' ' . $p['first_name'] ) . '</strong></a></td>';
-			echo '<td>' . esc_html( \AssociazioneSemplice\Levels::label( $p ) ) . '</td><td>' . ( '' !== (string) $p['email'] ? esc_html( (string) $p['email'] ) . '<br>' : '' ) . Ui::contact_links( $p ) . '</td><td>' . $state . '</td>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( '<td>' . esc_html( \AssociazioneSemplice\Levels::label( $p ) ) . '</td><td>' . ( '' !== (string) $p['email'] ? esc_html( (string) $p['email'] ) . '<br>' : '' ) . Ui::contact_links( $p ) . '</td><td>' . $state . '</td>', Html::allowed() );
 			echo '<td><a class="button button-small" href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '">Apri</a></td></tr>';
 		}
 		echo '</tbody></table>';
@@ -154,9 +155,9 @@ final class PeoplePage {
 
 		echo '<div class="asem-cols"><div class="asem-col">';
 		Ui::form_open( 'asem_save_person', $back );
-		echo Ui::hidden( 'id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( Ui::hidden( 'id', $id ), Html::allowed() );
 		echo '<table class="form-table asem-form"><tbody>';
-		echo '<tr><th>Tipo</th><td><select name="type" id="asem-type">' . Ui::options( MemberType::labels(), $type ) . '</select>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<tr><th>Tipo</th><td><select name="type" id="asem-type">' . Ui::options( MemberType::labels(), $type ) . '</select>', Html::allowed() );
 		echo '<p class="description" id="asem-type-hint"></p></td></tr>';
 		$lv_opts = '<option value="">Livello predefinito del tipo</option>';
 		foreach ( \AssociazioneSemplice\Levels::all() as $lv ) {
@@ -166,12 +167,12 @@ final class PeoplePage {
 			}
 			$lv_opts .= '<option value="' . (int) $lv['id'] . '" data-base="' . esc_attr( $lv['base_type'] ) . '"' . selected( $sel, true, false ) . '>' . esc_html( $lv['name'] . ( null === $lv['fee_cents'] ? '' : ' — ' . \AssociazioneSemplice\Money::format( (int) $lv['fee_cents'] ) ) ) . '</option>';
 		}
-		echo '<tr class="asem-row-level"><th>Livello</th><td><select name="level_id" id="asem-level">' . $lv_opts . '</select>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<tr class="asem-row-level"><th>Livello</th><td><select name="level_id" id="asem-level">' . $lv_opts . '</select>', Html::allowed() );
 		echo '<p class="description">Decide il nome sulla tessera e la quota associativa (si definiscono in Impostazioni).</p></td></tr>';
 		$fam_heads = array_values( array_filter( $hosts, function ( $x ) use ( $id ) {
 			return empty( $x['family_head_id'] ) && (int) $x['id'] !== $id;
 		} ) );
-		echo '<tr class="asem-row-level"><th>Nucleo familiare</th><td>' . Ui::person_select( 'family_head_id', $fam_heads, $p ? (int) $p['family_head_id'] : 0, '— nessuno (paga la quota piena) —', 'asem-family' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<tr class="asem-row-level"><th>Nucleo familiare</th><td>' . Ui::person_select( 'family_head_id', $fam_heads, $p ? (int) $p['family_head_id'] : 0, '— nessuno (paga la quota piena) —', 'asem-family' ), Html::allowed() );
 		echo '<p class="description">Scegli il capofamiglia se questo socio fa parte del suo nucleo familiare: ' . ( \AssociazioneSemplice\Settings::family_discount() > 0 ? 'la quota è ridotta del ' . (int) \AssociazioneSemplice\Settings::family_discount() . '%.' : 'lo sconto familiare si imposta in Impostazioni (ora è 0%).' ) . '</p>';
 		if ( $p ) {
 			$fam = $people->family_of( $id );
@@ -182,7 +183,7 @@ final class PeoplePage {
 			}
 		}
 		echo '</td></tr>';
-		echo '<tr class="asem-row-host"><th>Socio ospitante *</th><td>' . Ui::person_select( 'host_person_id', $hosts, $host_id, '— scegli il socio —', 'asem-host' ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<tr class="asem-row-host"><th>Socio ospitante *</th><td>' . Ui::person_select( 'host_person_id', $hosts, $host_id, '— scegli il socio —', 'asem-host' ) . '</td></tr>', Html::allowed() );
 		echo '<tr class="asem-row-card"><th>N. tessera</th><td><input type="text" name="card_number" id="asem-card" value="' . esc_attr( $val( 'card_number' ) ) . '" class="regular-text"> '
 			. '<button type="button" class="button" id="asem-next-card" data-next="' . esc_attr( $people->next_free_card() ) . '">Prossimo libero</button>'
 			. '<p class="description">Assegnata a mano, univoca, modificabile.</p></td></tr>';
@@ -204,7 +205,7 @@ final class PeoplePage {
 			} ) );
 			echo '<tr><th>Tutore</th><td><input type="hidden" name="guardians_present" value="1">';
 			for ( $i = 0; $i < \AssociazioneSemplice\Guardians::MAX; $i++ ) {
-				echo Ui::person_select( 'guardian_ids[]', $cands, isset( $guardians[ $i ] ) ? (int) $guardians[ $i ]['id'] : 0, $i ? '— secondo tutore (facoltativo) —' : '— nessun tutore —', 'asem-guardian-' . $i ) . '<br>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( Ui::person_select( 'guardian_ids[]', $cands, isset( $guardians[ $i ] ) ? (int) $guardians[ $i ]['id'] : 0, $i ? '— secondo tutore (facoltativo) —' : '— nessun tutore —', 'asem-guardian-' . $i ) . '<br>', Html::allowed() );
 			}
 			echo '<p class="description">Per un minorenne: un genitore o tutore già registrato (con email), al massimo due. Il tutore vede la tessera, le prenotazioni e i pagamenti del minore dalla sua area riservata, paga per lui e riceve le sue email; il minore può non avere né email né accesso. Il collegamento resta anche dopo i 18 anni finché non lo togli qui. Serve la data di nascita.</p>';
 			if ( $id ) {
@@ -232,7 +233,7 @@ final class PeoplePage {
 		if ( $p ) {
 			echo '<hr>';
 			Ui::form_open( 'asem_delete_person', $back, false, 'asem-confirm' );
-			echo Ui::hidden( 'id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::hidden( 'id', $id ), Html::allowed() );
 			echo '<button class="button button-link-delete" data-confirm="Eliminare questa persona? L\'utente WordPress collegato non viene cancellato.">Elimina persona</button>';
 			Ui::form_close();
 		}
@@ -283,7 +284,7 @@ final class PeoplePage {
 		}
 		$until  = $people->active_until( (int) $p['id'] );
 		$active = $until && $until >= current_time( 'Y-m-d' );
-		echo '<p>' . ( $active ? '<strong class="asem-ok">Tessera valida fino al ' . Ui::date( $until ) . '</strong>' : '<strong class="asem-neg">Tessera non valida' . ( $until ? ' (scaduta il ' . Ui::date( $until ) . ')' : '' ) . '</strong>' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<p>' . ( $active ? '<strong class="asem-ok">Tessera valida fino al ' . Ui::date( $until ) . '</strong>' : '<strong class="asem-neg">Tessera non valida' . ( $until ? ' (scaduta il ' . Ui::date( $until ) . ')' : '' ) . '</strong>' ) . '</p>', Html::allowed() );
 		if ( ! $active && MemberType::is_member( $p['type'] ) && ! MemberType::is_auto_renewed( $p['type'] ) ) { // quota versata a rate
 			$m_year    = $people->membership_plan( (int) $p['id'], current_time( 'Y-m-d' ) )['year'];
 			$m_missing = $people->membership_missing( $p, $m_year );
@@ -299,25 +300,25 @@ final class PeoplePage {
 		$cur = Settings::membership_year();
 		$opts = array( $cur->previous()->label() => $cur->previous()->label(), $cur->label() => $cur->label() . ' (corrente)', $cur->next()->label() => $cur->next()->label() );
 		Ui::form_open( 'asem_set_membership', Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) );
-		echo Ui::hidden( 'id', $p['id'] ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<p>Anno della tessera (scade il 31 dicembre): <select name="social_year">' . Ui::options( $opts, $cur->label() ) . '</select> '; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( Ui::hidden( 'id', $p['id'] ), Html::allowed() );
+		echo wp_kses( '<p>Anno della tessera (scade il 31 dicembre): <select name="social_year">' . Ui::options( $opts, $cur->label() ) . '</select> ', Html::allowed() );
 		echo '<button class="button" name="enabled" value="1">Segna iscritto</button> <button class="button" name="enabled" value="0">Togli iscrizione</button></p>';
 		Ui::form_close();
 		echo '<p class="description">L\'incasso di una "Quota associativa" iscrive in automatico. Qui puoi iscrivere a mano chi ha già pagato.</p>';
 		if ( ! empty( $p['suspended_at'] ) ) {
 			Ui::form_open( 'asem_reactivate_member', Ui::url( 'asem-person', array( 'id' => $p['id'] ) ), false, 'asem-inline' );
-			echo '<p><strong class="asem-warn">Socio sospeso dal ' . esc_html( mysql2date( 'd/m/Y', $p['suspended_at'] ) ) . ' (inattivo).</strong> ' . Ui::hidden( 'id', $p['id'] ) . '<button class="button">Riattiva il socio</button> <span class="description">Va riattivato a mano prima di poter incassare la quota o prenotare.</span></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( '<p><strong class="asem-warn">Socio sospeso dal ' . esc_html( mysql2date( 'd/m/Y', $p['suspended_at'] ) ) . ' (inattivo).</strong> ' . Ui::hidden( 'id', $p['id'] ) . '<button class="button">Riattiva il socio</button> <span class="description">Va riattivato a mano prima di poter incassare la quota o prenotare.</span></p>', Html::allowed() );
 			Ui::form_close();
 		} else {
 			Ui::form_open( 'asem_suspend_member', Ui::url( 'asem-person', array( 'id' => $p['id'] ) ), false, 'asem-inline' );
-			echo Ui::hidden( 'id', $p['id'] ) . '<p><button class="button" data-confirm="Sospendere questo socio? Diventa inattivo finché non lo riattivi.">Sospendi il socio</button></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::hidden( 'id', $p['id'] ) . '<p><button class="button" data-confirm="Sospendere questo socio? Diventa inattivo finché non lo riattivi.">Sospendi il socio</button></p>', Html::allowed() );
 			Ui::form_close();
 		}
 		$rows = $people->memberships( (int) $p['id'] );
 		if ( $rows ) {
 			echo '<table class="widefat striped"><thead><tr><th>Anno sociale</th><th>Dal</th><th>Al</th><th>Origine</th></tr></thead><tbody>';
 			foreach ( $rows as $m ) {
-				echo '<tr><td>' . esc_html( $m['social_year'] ) . '</td><td>' . Ui::date( $m['valid_from'] ) . '</td><td>' . Ui::date( $m['valid_to'] ) . '</td><td>' . esc_html( $m['source'] ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( '<tr><td>' . esc_html( $m['social_year'] ) . '</td><td>' . Ui::date( $m['valid_from'] ) . '</td><td>' . Ui::date( $m['valid_to'] ) . '</td><td>' . esc_html( $m['source'] ) . '</td></tr>', Html::allowed() );
 			}
 			echo '</tbody></table>';
 		}
@@ -347,12 +348,12 @@ final class PeoplePage {
 		}
 		$url = \AssociazioneSemplice\Frontend\Activation::url( (int) $p['id'] );
 		echo '<p><strong class="asem-warn">Senza accesso.</strong> Il socio non ha ancora un\'email collegata: con questo link sceglie email e password e attiva il proprio accesso (vale ' . esc_html( \AssociazioneSemplice\Frontend\Activation::validity_text() ) . ', se scade se ne genera un altro aprendo questa scheda).</p>'
-			. '<p><input type="text" readonly class="large-text" value="' . esc_attr( $url ) . '" onclick="this.select()"></p>';
+			. '<p><input type="text" readonly class="large-text" value="' . esc_attr( $url ) . '" data-asem-select></p>';
 		$wa = \AssociazioneSemplice\Phone::whatsapp( (string) $p['phone'] );
 		if ( '' !== $wa ) {
 			$msg = \AssociazioneSemplice\Frontend\Activation::invite_text( $p );
 			echo '<p><a class="button button-primary" target="_blank" rel="noopener" href="' . esc_url( 'https://wa.me/' . $wa . '?text=' . rawurlencode( $msg ) ) . '">💬 Invia il link su WhatsApp</a> '
-				. '<button type="button" class="button" data-t="' . esc_attr( $msg ) . '" onclick="if(navigator.clipboard){navigator.clipboard.writeText(this.dataset.t);this.textContent=\'Copiato\';}">Copia il messaggio</button> '
+				. '<button type="button" class="button" data-asem-copy="' . esc_attr( $msg ) . '">Copia il messaggio</button> '
 				. '<span class="description">Se WhatsApp non si apre, copia il messaggio e incollalo nella chat del socio (numero: +' . esc_html( $wa ) . '). Il link vale ' . esc_html( \AssociazioneSemplice\Frontend\Activation::validity_text() ) . ': dopo, si genera un altro da questa scheda.</span></p>';
 		} else {
 			echo '<p class="description">Senza cellulare: copia il link e mandalo come preferisci. Oppure aggiungi l\'email qui sopra: l\'accesso si crea subito.</p>';
@@ -366,12 +367,12 @@ final class PeoplePage {
 		$back = Ui::url( 'asem-person', array( 'id' => $p['id'] ) );
 		if ( ! empty( $p['email'] ) || ! empty( $p['wp_user_id'] ) ) {
 			Ui::form_open( 'asem_detach_email', $back, false, 'asem-inline' );
-			echo Ui::hidden( 'id', $p['id'] ) . '<p><button class="button" data-confirm="Scollegare l\'email? Il socio perde l\'accesso all\'area riservata e si riparte senza email; lo storico resta.">Scollega email</button> <span class="description">Il socio perde l\'accesso e può riattivarlo col link; lo storico resta. L\'utente del sito non viene cancellato: per riattivarsi il socio dovrà usare un\'altra email.</span></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::hidden( 'id', $p['id'] ) . '<p><button class="button" data-confirm="Scollegare l\'email? Il socio perde l\'accesso all\'area riservata e si riparte senza email; lo storico resta.">Scollega email</button> <span class="description">Il socio perde l\'accesso e può riattivarlo col link; lo storico resta. L\'utente del sito non viene cancellato: per riattivarsi il socio dovrà usare un\'altra email.</span></p>', Html::allowed() );
 			Ui::form_close();
 		}
 		if ( ! empty( $p['phone'] ) ) {
 			Ui::form_open( 'asem_detach_phone', $back, false, 'asem-inline' );
-			echo Ui::hidden( 'id', $p['id'] ) . '<p><button class="button" data-confirm="Scollegare il numero di telefono? Lo storico resta.">Scollega numero di telefono</button> <span class="description">Toglie il numero ' . esc_html( (string) $p['phone'] ) . ' dalla scheda; lo storico resta.</span></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::hidden( 'id', $p['id'] ) . '<p><button class="button" data-confirm="Scollegare il numero di telefono? Lo storico resta.">Scollega numero di telefono</button> <span class="description">Toglie il numero ' . esc_html( (string) $p['phone'] ) . ' dalla scheda; lo storico resta.</span></p>', Html::allowed() );
 			Ui::form_close();
 		}
 	}
@@ -398,7 +399,7 @@ final class PeoplePage {
 		}
 		$st = Plugin::activities()->guest_status( (int) $p['id'] );
 		$ov = Plugin::people()->guest_overview()[ (int) $p['id'] ] ?? null;
-		echo '<div class="asem-card"><h2>Partecipazioni come ospite</h2><p>' . self::guest_badge( $ov ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<div class="asem-card"><h2>Partecipazioni come ospite</h2><p>' . self::guest_badge( $ov ) . '</p>', Html::allowed() );
 		if ( $ov && $ov['flag'] ) {
 			echo '<p class="asem-neg">Ha raggiunto la soglia di partecipazioni per i non soci' . ( $ov['twins'] ? ' (sommando le altre registrazioni)' : '' ) . ': conviene invitarlo a iscriversi come socio, anche per l\'assicurazione. Nessun blocco automatico: decidi tu.</p>';
 		}
@@ -414,7 +415,7 @@ final class PeoplePage {
 			foreach ( $st['items'] as $i ) {
 				$when  = 'event' === $i['type'] ? Ui::date( $i['when'] ) . ( $i['time'] ? ' ' . esc_html( $i['time'] ) : '' ) : 'dal ' . esc_html( $i['when'] );
 				$state = 'event' === $i['type'] ? ( $i['checked_in'] ? '<span class="asem-ok">✔ è venuto</span>' : ( $i['ended'] ? 'prenotato, ingresso non registrato' : 'prenotato' ) ) : ( $i['ended'] ? 'corso concluso' : 'iscritto al corso' );
-				echo '<tr><td>' . $when . '</td><td><a href="' . esc_url( Ui::url( 'asem-activity', array( 'id' => $i['activity_id'] ) ) ) . '">' . esc_html( $i['activity_name'] ) . '</a> <span class="description">' . ( 'event' === $i['type'] ? 'evento' : 'corso' ) . '</span></td><td>' . $state . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( '<tr><td>' . $when . '</td><td><a href="' . esc_url( Ui::url( 'asem-activity', array( 'id' => $i['activity_id'] ) ) ) . '">' . esc_html( $i['activity_name'] ) . '</a> <span class="description">' . ( 'event' === $i['type'] ? 'evento' : 'corso' ) . '</span></td><td>' . $state . '</td></tr>', Html::allowed() );
 			}
 			echo '</tbody></table>';
 		} else {
@@ -427,11 +428,11 @@ final class PeoplePage {
 			echo '<p><a class="button" href="' . esc_url( 'https://wa.me/' . $wa . '?text=' . rawurlencode( $msg ) ) . '" target="_blank" rel="noopener">💬 Scrivigli su WhatsApp</a> <span class="description">cellulare ' . esc_html( (string) $p['phone'] ) . '</span></p>';
 		}
 		Ui::form_open( 'asem_promote_guest', Ui::url( 'asem-person', array( 'id' => (int) $p['id'] ) ), false, 'asem-confirm' );
-		echo '<details style="margin-top:10px"' . ( $ov && $ov['flag'] ? ' open' : '' ) . '><summary><strong>Iscrivi come socio</strong></summary>' . Ui::hidden( 'id', $p['id'] ) // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<p>Email (facoltativa) <input type="email" name="email" value="' . esc_attr( (string) $p['email'] ) . '"> tipo <select name="type">' . Ui::options( array( MemberType::ORDINARY => MemberType::label( MemberType::ORDINARY ), MemberType::VOLUNTEER => MemberType::label( MemberType::VOLUNTEER ) ), MemberType::ORDINARY ) . '</select> ' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
+		echo wp_kses( '<details style="margin-top:10px"' . ( $ov && $ov['flag'] ? ' open' : '' ) . '><summary><strong>Iscrivi come socio</strong></summary>' . Ui::hidden( 'id', $p['id'] )
+			. '<p>Email (facoltativa) <input type="email" name="email" value="' . esc_attr( (string) $p['email'] ) . '"> tipo <select name="type">' . Ui::options( array( MemberType::ORDINARY => MemberType::label( MemberType::ORDINARY ), MemberType::VOLUNTEER => MemberType::label( MemberType::VOLUNTEER ) ), MemberType::ORDINARY ) . '</select> '
 			. 'n. tessera (facoltativo) <input type="text" name="card_number" class="small-text"></p>'
-			. '<p><label><input type="checkbox" name="membership" value="1" checked> Segna l\'iscrizione all\'anno sociale ' . esc_html( \AssociazioneSemplice\Settings::social_year()->label() ) . '</label> <button class="button button-primary">Iscrivi come socio</button></p>' // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<p class="description">La scheda resta la stessa: tutte le partecipazioni e i pagamenti già registrati restano collegati. Si crea l\'utente per l\'area riservata.</p></details>';
+			. '<p><label><input type="checkbox" name="membership" value="1" checked> Segna l\'iscrizione all\'anno sociale ' . esc_html( \AssociazioneSemplice\Settings::social_year()->label() ) . '</label> <button class="button button-primary">Iscrivi come socio</button></p>'
+			. '<p class="description">La scheda resta la stessa: tutte le partecipazioni e i pagamenti già registrati restano collegati. Si crea l\'utente per l\'area riservata.</p></details>', Html::allowed() );
 		Ui::form_close();
 		echo '</div>';
 	}
@@ -447,7 +448,7 @@ final class PeoplePage {
 			$html .= '<h3>QR della tessera</h3><div style="max-width:170px">' . \AssociazioneSemplice\QrCode::svg( $url, 4, 'QR della tessera' ) . '</div>'
 				. '<p class="description"><a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">Apri la pagina di verifica</a> · stesso codice che il socio vede nella sua area riservata.</p>';
 		}
-		echo $html . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto dagli helper
+		echo wp_kses( $html . '</div>', Html::allowed() );
 	}
 
 	/** Privacy: consenso registrato, scarico dei dati, anonimizzazione. */
@@ -461,14 +462,14 @@ final class PeoplePage {
 		$id = (int) $p['id'];
 		echo '<div class="asem-card"><h2>Privacy</h2>';
 		if ( \AssociazioneSemplice\Privacy::has_consent( $p ) ) {
-			echo '<p><strong class="asem-ok">Consenso registrato</strong> il ' . esc_html( mysql2date( 'd/m/Y', $p['privacy_consent_at'] ) ) . ' (' . esc_html( \AssociazioneSemplice\Privacy::SOURCES[ $p['privacy_consent_source'] ] ?? '—' ) . ')' . self::accepted_by( $p['privacy_consent_by'] ?? null ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( '<p><strong class="asem-ok">Consenso registrato</strong> il ' . esc_html( mysql2date( 'd/m/Y', $p['privacy_consent_at'] ) ) . ' (' . esc_html( \AssociazioneSemplice\Privacy::SOURCES[ $p['privacy_consent_source'] ] ?? '—' ) . ')' . self::accepted_by( $p['privacy_consent_by'] ?? null ) . '</p>', Html::allowed() );
 			Ui::form_open( 'asem_privacy_consent', Ui::url( 'asem-person', array( 'id' => $id ) ), false, 'asem-inline' );
-			echo Ui::hidden( 'id', $id ) . Ui::hidden( 'mode', 'clear' ) . '<button class="button-link" data-confirm="Rimuovere il consenso registrato?">rimuovi il consenso</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::hidden( 'id', $id ) . Ui::hidden( 'mode', 'clear' ) . '<button class="button-link" data-confirm="Rimuovere il consenso registrato?">rimuovi il consenso</button>', Html::allowed() );
 			Ui::form_close();
 		} else {
 			echo '<p>Consenso non registrato.</p>';
 			Ui::form_open( 'asem_privacy_consent', Ui::url( 'asem-person', array( 'id' => $id ) ) );
-			echo Ui::hidden( 'id', $id ) . '<select name="mode">' . Ui::options( \AssociazioneSemplice\Privacy::SOURCES, 'paper' ) . '</select> <button class="button">Registra il consenso</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::hidden( 'id', $id ) . '<select name="mode">' . Ui::options( \AssociazioneSemplice\Privacy::SOURCES, 'paper' ) . '</select> <button class="button">Registra il consenso</button>', Html::allowed() );
 			Ui::form_close();
 		}
 		echo '<p><a class="button" href="' . esc_url( \AssociazioneSemplice\Privacy::export_url( $id ) ) . '">Scarica i dati (JSON)</a></p>';
@@ -477,7 +478,7 @@ final class PeoplePage {
 			// la cancellazione dei dati la decide un amministratore
 		} elseif ( '' === $why ) {
 			Ui::form_open( 'asem_privacy_anonymize', Ui::url( 'asem-comms' ), false, 'asem-inline' );
-			echo Ui::hidden( 'id', $id ) . '<button class="button" data-confirm="Anonimizzare questa persona? Nome, contatti, codice fiscale, tessera e note vengono tolti e non si recuperano. I movimenti contabili restano.">Anonimizza (cancellazione dati)</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::hidden( 'id', $id ) . '<button class="button" data-confirm="Anonimizzare questa persona? Nome, contatti, codice fiscale, tessera e note vengono tolti e non si recuperano. I movimenti contabili restano.">Anonimizza (cancellazione dati)</button>', Html::allowed() );
 			Ui::form_close();
 		} else {
 			echo '<p class="description">Anonimizzazione non possibile ora: ' . esc_html( $why ) . '</p>';
@@ -493,14 +494,14 @@ final class PeoplePage {
 		$id = (int) $p['id'];
 		echo '<div class="asem-card"><h2>' . esc_html( \AssociazioneSemplice\Regulation::title() ) . '</h2>';
 		if ( \AssociazioneSemplice\Regulation::accepted( $p ) ) {
-			echo '<p><strong class="asem-ok">Accettato</strong> il ' . esc_html( mysql2date( 'd/m/Y', $p['rules_accepted_at'] ) ) . ' (versione ' . esc_html( (string) $p['rules_accepted_version'] ) . ', ' . esc_html( \AssociazioneSemplice\Regulation::SOURCES[ $p['rules_accepted_source'] ] ?? '—' ) . ')' . self::accepted_by( $p['rules_accepted_by'] ?? null ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( '<p><strong class="asem-ok">Accettato</strong> il ' . esc_html( mysql2date( 'd/m/Y', $p['rules_accepted_at'] ) ) . ' (versione ' . esc_html( (string) $p['rules_accepted_version'] ) . ', ' . esc_html( \AssociazioneSemplice\Regulation::SOURCES[ $p['rules_accepted_source'] ] ?? '—' ) . ')' . self::accepted_by( $p['rules_accepted_by'] ?? null ) . '</p>', Html::allowed() );
 			Ui::form_open( 'asem_rules_record', Ui::url( 'asem-person', array( 'id' => $id ) ), false, 'asem-inline' );
-			echo Ui::hidden( 'id', $id ) . Ui::hidden( 'mode', 'clear' ) . '<button class="button-link" data-confirm="Rimuovere l\'accettazione registrata?">rimuovi l\'accettazione</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::hidden( 'id', $id ) . Ui::hidden( 'mode', 'clear' ) . '<button class="button-link" data-confirm="Rimuovere l\'accettazione registrata?">rimuovi l\'accettazione</button>', Html::allowed() );
 			Ui::form_close();
 		} else {
 			echo '<p>' . ( ! empty( $p['rules_accepted_at'] ) ? 'Ha accettato la versione ' . esc_html( (string) $p['rules_accepted_version'] ) . ': ora è in vigore la ' . esc_html( \AssociazioneSemplice\Regulation::version() ) . '.' : 'Non ancora accettato.' ) . '</p>';
 			Ui::form_open( 'asem_rules_record', Ui::url( 'asem-person', array( 'id' => $id ) ) );
-			echo Ui::hidden( 'id', $id ) . '<select name="mode">' . Ui::options( \AssociazioneSemplice\Regulation::SOURCES, 'paper' ) . '</select> <button class="button">Registra l\'accettazione</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::hidden( 'id', $id ) . '<select name="mode">' . Ui::options( \AssociazioneSemplice\Regulation::SOURCES, 'paper' ) . '</select> <button class="button">Registra l\'accettazione</button>', Html::allowed() );
 			Ui::form_close();
 		}
 		echo '</div>';
@@ -519,7 +520,7 @@ final class PeoplePage {
 		$svc  = Plugin::people();
 		echo '<div class="asem-card"><h2>Consiglio direttivo</h2>';
 		Ui::form_open( 'asem_set_board_role', Ui::url( 'asem-person', array( 'id' => (int) $p['id'] ) ) );
-		echo Ui::hidden( 'id', $p['id'] ) . '<select name="board_role"><option value="">Nessuna carica</option>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( Ui::hidden( 'id', $p['id'] ) . '<select name="board_role"><option value="">Nessuna carica</option>', Html::allowed() );
 		foreach ( \AssociazioneSemplice\BoardRole::labels() as $k => $l ) {
 			echo '<option value="' . esc_attr( $k ) . '"' . selected( (string) $p['board_role'], $k, false ) . '>' . esc_html( $l ) . '</option>';
 		}
@@ -545,8 +546,8 @@ final class PeoplePage {
 		echo '<div class="asem-card"><h2>Segreteria</h2>';
 		echo '<p>' . ( $on ? '<strong class="asem-ok">Fa parte della segreteria</strong>' : 'Non fa parte della segreteria.' ) . '</p>';
 		Ui::form_open( 'asem_set_secretary', Ui::url( 'asem-person', array( 'id' => (int) $p['id'] ) ) );
-		echo Ui::hidden( 'id', $p['id'] ) . ( $on ? '' : Ui::hidden( 'enabled', 1 ) ) // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<button class="button">' . ( $on ? 'Togli dalla segreteria' : 'Aggiungi alla segreteria' ) . '</button>';
+		echo wp_kses( Ui::hidden( 'id', $p['id'] ) . ( $on ? '' : Ui::hidden( 'enabled', 1 ) )
+			. '<button class="button">' . ( $on ? 'Togli dalla segreteria' : 'Aggiungi alla segreteria' ) . '</button>', Html::allowed() );
 		Ui::form_close();
 		echo '<p class="description">La segreteria accede all\'amministrazione per gestire soci, attività, incassi e spese, comunicazioni e ricevute. Non vede Impostazioni, pagamenti online, privacy (anonimizzazione), testi personalizzati e anni solari.</p></div>';
 	}
@@ -560,8 +561,8 @@ final class PeoplePage {
 		echo '<div class="asem-card"><h2>Tesoriere</h2>';
 		echo '<p>' . ( $on ? '<strong class="asem-ok">Può incassare, registrare spese, iscrivere soci e vendere gli eventi dall\'area riservata</strong>' : 'Non può incassare, registrare spese né iscrivere soci.' ) . '</p>';
 		Ui::form_open( 'asem_set_treasurer', Ui::url( 'asem-person', array( 'id' => (int) $p['id'] ) ) );
-		echo Ui::hidden( 'id', $p['id'] ) . ( $on ? '' : Ui::hidden( 'enabled', 1 ) ) // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<button class="button">' . ( $on ? 'Togli il permesso' : 'Permetti di registrare spese' ) . '</button>';
+		echo wp_kses( Ui::hidden( 'id', $p['id'] ) . ( $on ? '' : Ui::hidden( 'enabled', 1 ) )
+			. '<button class="button">' . ( $on ? 'Togli il permesso' : 'Permetti di registrare spese' ) . '</button>', Html::allowed() );
 		Ui::form_close();
 		echo '<p class="description">Con il permesso, nell\'area riservata compare la pagina "Spese" (shortcode <code>[associazionesemplice_spese]</code>): scatta lo scontrino e registra la spesa. Vede solo le spese che ha registrato personalmente e non i saldi dei conti.</p></div>';
 	}
@@ -575,8 +576,8 @@ final class PeoplePage {
 		echo '<div class="asem-card"><h2>Staff dell\'ente</h2>';
 		echo '<p>' . ( $on ? '<strong class="asem-ok">Verifica gli accessi a tutti gli eventi</strong>' : 'Non fa parte dello staff dell\'ente.' ) . '</p>';
 		Ui::form_open( 'asem_set_staff', Ui::url( 'asem-person', array( 'id' => (int) $p['id'] ) ) );
-		echo Ui::hidden( 'id', $p['id'] ) . ( $on ? '' : Ui::hidden( 'enabled', 1 ) ) // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<button class="button">' . ( $on ? 'Togli dallo staff' : 'Aggiungi allo staff' ) . '</button>';
+		echo wp_kses( Ui::hidden( 'id', $p['id'] ) . ( $on ? '' : Ui::hidden( 'enabled', 1 ) )
+			. '<button class="button">' . ( $on ? 'Togli dallo staff' : 'Aggiungi allo staff' ) . '</button>', Html::allowed() );
 		Ui::form_close();
 		echo '<p class="description">Lo staff dell\'ente può registrare gli ingressi di tutti gli eventi. Può anche essere staff di un singolo evento (scheda dell\'attività): solo lì si può abilitare l\'incasso del biglietto sul posto. Non gestisce soldi né comunicazioni.</p></div>';
 	}
@@ -608,9 +609,9 @@ final class PeoplePage {
 		}
 		foreach ( $statuses as $s ) {
 			$e = $s['enrollment'];
-			echo '<details class="asem-detail"><summary><strong><a href="' . esc_url( Ui::url( 'asem-activity', array( 'id' => $e['activity_id'] ) ) ) . '">' . esc_html( $s['activity']['name'] ) . '</a></strong> (' . esc_html( $s['activity']['social_year'] ) . ') — ' . Ui::pay_status( $s['summary'] ) . '</summary>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( '<details class="asem-detail"><summary><strong><a href="' . esc_url( Ui::url( 'asem-activity', array( 'id' => $e['activity_id'] ) ) ) . '">' . esc_html( $s['activity']['name'] ) . '</a></strong> (' . esc_html( $s['activity']['social_year'] ) . ') — ' . Ui::pay_status( $s['summary'] ) . '</summary>', Html::allowed() );
 			echo '<p class="description">' . ( null === $e['end_month'] ? 'Iscritto dal ' . esc_html( Ui::month( $e['start_month'] ) ) : 'Cancellato (ultimo mese dovuto: ' . esc_html( Ui::month( $e['end_month'] ) ) . ')' ) . '</p>';
-			echo Ui::months_table( $s['summary'] ); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::months_table( $s['summary'] ), Html::allowed() );
 			echo '</details>';
 		}
 		echo '</div>';
@@ -623,9 +624,9 @@ final class PeoplePage {
 		}
 		echo '<div class="asem-card"><h2>Eventi e prenotazioni</h2><table class="widefat striped"><thead><tr><th>Data</th><th>Evento</th><th>Contributo</th><th>Stato</th></tr></thead><tbody>';
 		foreach ( $rows as $b ) {
-			echo '<tr><td>' . Ui::date( $b['session_date'] ) . ( $b['start_time'] ? ' ' . esc_html( $b['start_time'] ) : '' ) . '</td>' // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( '<tr><td>' . Ui::date( $b['session_date'] ) . ( $b['start_time'] ? ' ' . esc_html( $b['start_time'] ) : '' ) . '</td>'
 				. '<td><a href="' . esc_url( Ui::url( 'asem-activity', array( 'id' => $b['activity_id'] ) ) ) . '">' . esc_html( $b['activity_name'] ) . '</a></td>'
-				. '<td>' . esc_html( Money::format( (int) $b['fee_due_cents'] ) ) . '</td><td>' . ( $b['active'] ? Ui::booking_state( $b ) : '<span class="asem-warn">annullata</span>' ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				. '<td>' . esc_html( Money::format( (int) $b['fee_due_cents'] ) ) . '</td><td>' . ( $b['active'] ? Ui::booking_state( $b ) : '<span class="asem-warn">annullata</span>' ) . '</td></tr>', Html::allowed() );
 		}
 		echo '</tbody></table></div>';
 	}
@@ -637,7 +638,7 @@ final class PeoplePage {
 		}
 		echo '<div class="asem-card"><h2>Ultimi movimenti</h2><table class="widefat striped"><tbody>';
 		foreach ( $rows as $r ) {
-			echo '<tr><td>' . Ui::date( $r['tx_date'] ) . '</td><td>' . esc_html( $r['category_name'] . ( $r['activity_name'] ? ' · ' . $r['activity_name'] : '' ) ) . '</td><td>' . esc_html( Money::format( (int) $r['amount_cents'] ) ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( '<tr><td>' . Ui::date( $r['tx_date'] ) . '</td><td>' . esc_html( $r['category_name'] . ( $r['activity_name'] ? ' · ' . $r['activity_name'] : '' ) ) . '</td><td>' . esc_html( Money::format( (int) $r['amount_cents'] ) ) . '</td></tr>', Html::allowed() );
 		}
 		echo '</tbody></table></div>';
 	}

@@ -248,7 +248,7 @@ final class Restrict {
 			return;
 		}
 		list( $rule, $ids ) = self::rule_of( (int) $post_id );
-		echo Visibility::PUBLIC_ === $rule ? '—' : '🔒 ' . esc_html( Visibility::short_label( $rule, self::activity_names( $ids ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo Visibility::PUBLIC_ === $rule ? '—' : '🔒 ' . esc_html( Visibility::short_label( $rule, self::activity_names( $ids ) ) );
 	}
 
 	// ---------- Parti di pagina: shortcode, blocco, widget ----------

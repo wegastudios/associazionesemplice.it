@@ -161,7 +161,7 @@ final class Edition {
 		add_action(
 			'admin_post_' . $action,
 			function () {
-				wp_die( self::missing_html(), 'Funzione non disponibile', array( 'response' => 403, 'back_link' => true ) ); // phpcs:ignore WordPress.Security.EscapeOutput
+				wp_die( wp_kses_post( self::missing_html() ), 'Funzione non disponibile', array( 'response' => 403, 'back_link' => true ) );
 			}
 		);
 	}

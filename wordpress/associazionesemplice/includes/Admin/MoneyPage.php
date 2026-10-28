@@ -6,6 +6,7 @@ use AssociazioneSemplice\Modules;
 use AssociazioneSemplice\Money;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Settings;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -27,19 +28,19 @@ final class MoneyPage {
 		echo '<div class="asem-grid"><div class="asem-card"><h2>Disponibilità reale</h2>';
 		$avail    = Plugin::funds()->available();
 		$balances = Plugin::ledger()->balances();
-		echo '<p class="asem-big">' . Ui::money( $avail['available'] ) . '</p><p class="description">Saldi dei conti meno i fondi accantonati per i rimborsi.</p><table class="asem-kv">'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<p class="asem-big">' . Ui::money( $avail['available'] ) . '</p><p class="description">Saldi dei conti meno i fondi accantonati per i rimborsi.</p><table class="asem-kv">', Html::allowed() );
 		foreach ( $balances as $b ) {
-			echo '<tr><td>' . esc_html( $b['name'] ) . '</td><td>' . Ui::money( $b['balance'] ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( '<tr><td>' . esc_html( $b['name'] ) . '</td><td>' . Ui::money( $b['balance'] ) . '</td></tr>', Html::allowed() );
 		}
-		echo '<tr><td><strong>Totale saldi</strong></td><td><strong>' . Ui::money( $avail['accounts'] ) . '</strong></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<tr><td><strong>Totale saldi</strong></td><td><strong>' . Ui::money( $avail['accounts'] ) . '</strong></td></tr>', Html::allowed() );
 		foreach ( Plugin::funds()->all() as $f ) {
-			echo '<tr><td>− ' . esc_html( $f['name'] ) . '</td><td>' . Ui::money( $f['balance'] ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( '<tr><td>− ' . esc_html( $f['name'] ) . '</td><td>' . Ui::money( $f['balance'] ) . '</td></tr>', Html::allowed() );
 		}
 		echo '</table>' . ( Modules::on( 'accounts' ) ? '<p><a href="' . esc_url( Ui::url( 'asem-accounts' ) ) . '">Conti, fondi e verifica saldi →</a></p>' : '' ) . '</div>';
 
-		echo '<div class="asem-card"><h2>Anno sociale ' . esc_html( $year->label() ) . '</h2><table class="asem-kv">'
-			. '<tr><td>Entrate</td><td>' . Ui::money( $r['total_income'] ) . '</td></tr><tr><td>Uscite</td><td>' . Ui::money( $r['total_expense'] ) . '</td></tr>' // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<tr><td><strong>Resta all\'ente</strong></td><td><strong>' . Ui::money( $r['result'] ) . '</strong></td></tr></table>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<div class="asem-card"><h2>Anno sociale ' . esc_html( $year->label() ) . '</h2><table class="asem-kv">'
+			. '<tr><td>Entrate</td><td>' . Ui::money( $r['total_income'] ) . '</td></tr><tr><td>Uscite</td><td>' . Ui::money( $r['total_expense'] ) . '</td></tr>'
+			. '<tr><td><strong>Resta all\'ente</strong></td><td><strong>' . Ui::money( $r['result'] ) . '</strong></td></tr></table>', Html::allowed() );
 		echo '<p class="description">Per cassa: conta quando i soldi entrano ed escono, nell\'anno sociale. La contabilità per anno solare è in Contabilità.</p></div></div>';
 
 		// Ultimi movimenti
@@ -53,8 +54,8 @@ final class MoneyPage {
 			echo '<table class="widefat striped"><thead><tr><th>Data</th><th>Voce</th><th>Conto</th><th>Importo</th></tr></thead><tbody>';
 			foreach ( $rows as $m ) {
 				$sign = Labels::sign( $m['type'] ) > 0 ? '+' : '−';
-				echo '<tr><td>' . Ui::date( $m['tx_date'] ) . '</td><td>' . esc_html( Labels::is_transfer( $m['type'] ) ? 'Giroconto' : $m['category_name'] ) . ( '' !== (string) $m['person_name'] && ' ' !== $m['person_name'] ? ' <span class="description">' . esc_html( trim( (string) $m['person_name'] ) ) . '</span>' : '' ) . '</td>' // phpcs:ignore WordPress.Security.EscapeOutput
-					. '<td>' . esc_html( $m['account_name'] ) . '</td><td>' . esc_html( $sign . ' ' . Money::format( (int) $m['amount_cents'] ) ) . '</td></tr>';
+				echo wp_kses( '<tr><td>' . Ui::date( $m['tx_date'] ) . '</td><td>' . esc_html( Labels::is_transfer( $m['type'] ) ? 'Giroconto' : $m['category_name'] ) . ( '' !== (string) $m['person_name'] && ' ' !== $m['person_name'] ? ' <span class="description">' . esc_html( trim( (string) $m['person_name'] ) ) . '</span>' : '' ) . '</td>'
+					. '<td>' . esc_html( $m['account_name'] ) . '</td><td>' . esc_html( $sign . ' ' . Money::format( (int) $m['amount_cents'] ) ) . '</td></tr>', Html::allowed() );
 			}
 			echo '</tbody></table>';
 		}
