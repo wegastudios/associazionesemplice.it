@@ -30,10 +30,12 @@ final class LicenseClient {
 	const PORTAL_ISSUER = 'https://associazionesemplice.it';
 
 	/**
-	 * Chiavi pubbliche con cui il portale firma il piano (kid => chiave Ed25519, base64url), scritte nel plugin come quelle di Wega. Finché è vuoto
-	 * (il portale non ha ancora una chiave) il livello si legge dall'attestazione di Wega come prima.
+	 * Chiavi pubbliche con cui il portale firma il piano (kid => chiave Ed25519, base64url), scritte nel plugin come quelle di Wega: il livello della
+	 * licenza lo decide solo il portale (vedi `portal_decides_plan()`).
 	 */
-	const PINNED_PORTAL_KEYS = array();
+	const PINNED_PORTAL_KEYS = array(
+		'portale-51db047c' => 'hpbmCcpzb_qleyYCjW9vmN2YGZsimb74gQT-BIva7i8',
+	);
 
 	/** Solo per i test (con ASEM_TESTING): forza «sito locale» sì/no. @var bool|null */
 	private static $local_override = null;

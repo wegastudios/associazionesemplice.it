@@ -184,4 +184,14 @@ final class LicenseClientTest extends TestCase {
 		list( $nop, $jwks4 ) = $this->make( array_diff_key( $this->portal_claims(), array( 'plan' => 1 ) ) );
 		$this->assertNull( C::portal_plan( $nop, 'associazionesemplice', 'esempio.it', $now, 0, $jwks4 ), 'senza livello' );
 	}
+
+	public function test_pinned_portal_key_is_well_formed_and_the_portal_decides_the_plan(): void {
+		$this->assertNotEmpty( C::PINNED_PORTAL_KEYS );
+		foreach ( C::PINNED_PORTAL_KEYS as $kid => $x ) {
+			$this->assertNotSame( '', $kid );
+			$this->assertSame( 32, strlen( base64_decode( strtr( $x, '-_', '+/' ) . '=' ) ), 'chiave Ed25519 da 32 byte' );
+		}
+		$this->assertTrue( C::portal_decides_plan() );
+		$this->assertSame( array_keys( C::PINNED_PORTAL_KEYS ), array_column( C::portal_jwks()['keys'], 'kid' ) );
+	}
 }

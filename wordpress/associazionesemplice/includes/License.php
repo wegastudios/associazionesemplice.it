@@ -51,9 +51,10 @@ final class License {
 				if ( null !== $portal ) {
 					return $portal;
 				}
-				if ( LicenseClient::portal_decides_plan() ) {
-					return self::PLAN_FREE; // senza la prova del portale il livello non si ricava dal nome del piano su Wega
+				if ( LicenseClient::portal_decides_plan() && '' !== $s['portal_attestation'] ) {
+					return self::PLAN_FREE; // la prova del portale c'è ma non regge (scaduta, altro dominio): il livello non si ricava dal nome del piano su Wega
 				}
+				// nessuna prova del portale ancora salvata (appena aggiornato il plugin): vale per poco la parte firmata da Wega, finché il controllo immediato non porta quella del portale
 				$claims = self::attestation_claims( $s );
 				if ( $claims && ! empty( $claims['plan'] ) ) {
 					return LicenseClient::plan_from_name( (string) $claims['plan'] );
@@ -278,7 +279,8 @@ final class License {
 	/** Stato «attivo» salvato da una versione che non conservava la prova firmata: la si rinnova subito invece di aspettare il giro del giorno dopo. */
 	public static function maybe_resync(): void {
 		$s = self::state();
-		if ( LicenseClient::enabled() && LicensePolicy::STATUS_ACTIVE === $s['status'] && '' === $s['attestation'] && ! wp_next_scheduled( 'asem_license_resync' ) ) {
+		$no_proof = '' === $s['attestation'] || ( LicenseClient::portal_decides_plan() && '' === $s['portal_attestation'] ); // anche la prova del piano firmata dal portale
+		if ( LicenseClient::enabled() && LicensePolicy::STATUS_ACTIVE === $s['status'] && $no_proof && ! wp_next_scheduled( 'asem_license_resync' ) ) {
 			wp_schedule_single_event( time() + 30, 'asem_license_resync' );
 		}
 	}
