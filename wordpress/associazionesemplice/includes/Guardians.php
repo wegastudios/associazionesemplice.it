@@ -66,6 +66,9 @@ final class Guardians {
 
 	/** Nata dopo questa data = ancora minorenne (a 18 anni il tutore non ha più alcun potere). */
 	private static function minor_after(): string {
+		if ( ! Limits::flag( 'guardian_until_adult' ) ) {
+			return '1000-01-01'; // limite spento: il tutore resta attivo anche dopo i 18 anni (comportamento di prima)
+		}
 		return ( new \DateTimeImmutable( Db::today() ) )->modify( '-' . Age::ADULT_AT . ' years' )->format( 'Y-m-d' );
 	}
 
@@ -188,7 +191,7 @@ final class Guardians {
 		if ( '' !== $own && is_email( $own ) ) {
 			$out[ Text::lower( $own ) ] = array( 'email' => $own, 'name' => $p['first_name'], 'about' => '' );
 		}
-		$known_adult = ! $minor && null !== Age::years( $p['birth_date'] ?? null, Db::today() ); // maggiorenne: le email non vanno più al tutore, nemmeno se non ha una email sua
+		$known_adult = Limits::flag( 'guardian_until_adult' ) && ! $minor && null !== Age::years( $p['birth_date'] ?? null, Db::today() ); // maggiorenne: le email non vanno più al tutore, nemmeno se non ha una email sua
 		if ( $minor || ( ! $known_adult && array() === $out ) ) {
 			foreach ( null === $guardians ? self::of( (int) $p['id'] ) : $guardians as $g ) {
 				$mail = trim( (string) $g['email'] );
