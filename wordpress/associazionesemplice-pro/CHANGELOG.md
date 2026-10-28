@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.1.32
+- Rafforzamenti di sicurezza condivisi con il gratuito (indirizzo del visitatore, ricevute, avvisi dello staff, collegamento degli utenti).
+
 ## 1.1.31
 - Salvando la chiave di licenza non compare più «Errore imprevisto»
 - Il periodo di attesa della licenza non si allunga più cambiando la data
