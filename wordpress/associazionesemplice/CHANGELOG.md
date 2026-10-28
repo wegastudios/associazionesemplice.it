@@ -2,6 +2,15 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.37
+- L'indirizzo del visitatore dietro Cloudflare si legge solo se la richiesta arriva davvero da Cloudflare.
+- Il link «torna alla pagina» dopo il login usa sempre l'indirizzo del sito.
+- La ricevuta mandata per email non lascia più un PDF dal nome prevedibile.
+- Il rendiconto di un ospite lo vedono l'ospite, il suo tutore e la segreteria, non chi lo ospita.
+- Lo staff dell'ente manda avvisi solo agli eventi di cui è staff.
+- Un socio con la stessa email di un utente del sito con altri ruoli lo collega solo un amministratore.
+- In Pagamenti compare un avviso se le chiavi di sicurezza di WordPress mancano o sono quelle di esempio.
+
 ## 1.2.36
 - Dopo un ripristino di fabbrica la configurazione guidata riprende le pagine già presenti invece di crearne di doppie.
 - Nella scheda del socio il testo dice «tessera valida fino al 31 dicembre».
