@@ -36,7 +36,8 @@ Dall'**area riservata**, nella sezione **«Votazioni e sondaggi»**. Si vota **u
 
 ## Risultati
 
-- La segreteria li vede quando vuole, anche a votazione aperta (in quel caso sono provvisori).
+- Nel **voto palese** la segreteria li vede quando vuole, anche a votazione aperta (in quel caso sono provvisori).
+- Nel **voto segreto**, finché la votazione è **aperta** non si vedono né i conteggi né l'elenco dei votanti, e non si possono scaricare i risultati: compaiono alla **chiusura** (dalla versione 1.2.34 del plugin gratuito).
 - I soci li vedono **solo dopo la chiusura** e solo se hai spuntato **«Dopo la chiusura i soci vedono i risultati»**.
 - Puoi scaricare il **verbale dei risultati in PDF**, con lo spazio per le firme di segretario e presidente, e la tabella in **CSV**. Il PDF è un documento di supporto: il verbale dell'assemblea resta quello di **Registri → Verbali**.
 
