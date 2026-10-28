@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Site;
 
+use App\Mail\CustomerRepliedForStaff;
 use App\Mail\NewTicketForStaff;
 use App\Mail\StaffReplied;
 use App\Mail\TicketReceived;
@@ -272,6 +273,19 @@ class PublicTicketTest extends SiteTestCase
 
         $this->assertSame('open', $ticket->refresh()->status);
         $this->assertSame(2, $ticket->messages()->count());
+    }
+
+    public function test_staff_gets_an_email_when_the_customer_replies(): void
+    {
+        Mail::fake();
+        $this->fakeHub();
+        User::factory()->create(['email' => 'staff@example.com']);
+        $ticket = $this->makeTicket(['status' => 'pending', 'priority' => 3]);
+
+        $this->post(CustomerLink::reply($ticket), ['body' => 'Ecco altri dettagli.'])->assertRedirect();
+
+        Mail::assertQueued(CustomerRepliedForStaff::class, fn ($m) => $m->hasTo('staff@example.com')
+            && $m->envelope()->subject === '[Urgenza: Alta] Risposta del cliente: Non riesco ad accedere');
     }
 
     public function test_reply_without_signature_is_refused(): void

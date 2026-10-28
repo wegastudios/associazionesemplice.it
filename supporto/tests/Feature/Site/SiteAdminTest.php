@@ -137,6 +137,25 @@ class SiteAdminTest extends SiteTestCase
             ->assertSee('94000001')->assertSee('in attesa')->assertSee('1 ticket in attesa di registrazione');
     }
 
+    public function test_queue_sorts_by_urgency_then_arrival_or_by_date(): void
+    {
+        $this->travelTo(now()->subDays(3));
+        $this->makeTicket(['hub_id' => 94000001, 'subject' => 'Vecchio normale', 'priority' => 2]);
+        $this->travelTo(now()->addDay());
+        $this->makeTicket(['hub_id' => 94000002, 'subject' => 'Urgente recente', 'priority' => 4]);
+        $this->travelTo(now()->addDay());
+        $this->makeTicket(['hub_id' => 94000003, 'subject' => 'Normale recente', 'priority' => 2]);
+        $this->travelBack();
+
+        $admin = $this->admin();
+        $this->actingAs($admin)->get('/admin/ticket')
+            ->assertSeeInOrder(['Urgente recente', 'Vecchio normale', 'Normale recente']);
+        $this->actingAs($admin)->get('/admin/ticket?order=oldest')
+            ->assertSeeInOrder(['Vecchio normale', 'Urgente recente', 'Normale recente']);
+        $this->actingAs($admin)->get('/admin/ticket?order=newest')
+            ->assertSeeInOrder(['Normale recente', 'Urgente recente', 'Vecchio normale']);
+    }
+
     public function test_hub_status_page_verifies_the_link_and_shows_the_rules(): void
     {
         $this->fakeHub(allowed: [0, 1, 2]);

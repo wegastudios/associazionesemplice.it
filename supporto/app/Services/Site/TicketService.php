@@ -4,6 +4,7 @@ namespace App\Services\Site;
 
 use App\Exceptions\HubRejectedException;
 use App\Exceptions\HubUnavailableException;
+use App\Mail\CustomerRepliedForStaff;
 use App\Mail\StaffReplied;
 use App\Models\SupportTicket;
 use App\Models\TicketMessage;
@@ -83,6 +84,11 @@ class TicketService
 
         $message = $ticket->messages()->create(['author_type' => 'customer', 'author_name' => $ticket->customer_name, 'body' => $body]);
         $ticket->forceFill(['last_activity_at' => now()])->save();
+
+        $staff = User::query()->whereNotNull('email')->pluck('email')->all();
+        if ($staff !== [] && $ticket->isRegistered()) {
+            Mail::to($staff)->send(new CustomerRepliedForStaff($ticket, $message));
+        }
 
         return $message;
     }
