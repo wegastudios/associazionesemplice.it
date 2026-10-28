@@ -10,7 +10,8 @@ $url = function ( string $path ) use ( $base ): string { return $base . $path; }
 	</div>
 
 	<h2>Come entrare</h2>
-	<p class="muted">Due accessi di prova: scegli il ruolo che vuoi vedere. Per cambiare ruolo usa «Esci» nella barra blu in fondo alla pagina e poi entra con l'altro.</p>
+	<p class="muted">Tre accessi di prova: scegli il ruolo che vuoi vedere. Per cambiare ruolo usa «Esci» nella barra blu in fondo alla pagina e poi entra con un altro.</p>
+	<p class="feature" style="margin:0 0 20px"><b>Vuoi provare per più giorni?</b> La demo si azzera ogni notte alle 4, ma con l'accesso «amministratore del plugin» puoi scaricare una copia dei tuoi dati da <i>Copia di sicurezza</i> («Scarica la copia dei dati») e ricaricarla il giorno dopo con «Ripristina dalla copia»: ritrovi tutto com'era.</p>
 	<div class="grid-3" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));margin-bottom:12px">
 	<?php foreach ( $accounts as $a ) : ?>
 		<div class="feature">
@@ -23,7 +24,7 @@ $url = function ( string $path ) use ( $base ): string { return $base . $path; }
 		</div>
 	<?php endforeach; ?>
 	</div>
-	<p class="fine">Nella demo non c'è nessun accesso da amministratore del sito: impostazioni, pagamenti online e licenza non sono visibili.</p>
+	<p class="fine">Nessun accesso è amministratore di WordPress: l'amministratore del plugin ha tutti i permessi di Associazione Semplice ma non gestisce il sito. Non inserire chiavi vere (Stripe, PayPal…): la demo è pubblica.</p>
 </div></section>
 
 <section class="section alt"><div class="wrap" style="max-width:960px">

@@ -158,7 +158,7 @@ Resta da decidere (invariato): proprietà del dominio, evento PayPal che emette 
 
 ## Demo pubblica (`associazionesemplice.it/demo/`)
 
-WordPress vero con il gratuito e il Pro attivi, nella cartella `~/public_html/demo` del server del portale (database `associazionesemp_demo`). Le credenziali sono pubbliche e stanno nella pagina `/plugin` del portale: utenti `segreteria` (ruolo Segreteria) e `socio` (ruolo Socio). Nessun utente amministratore: quello d'installazione (`setup_tmp`) si toglie a ogni azzeramento, e per la manutenzione si usa `wp` da riga di comando.
+WordPress vero con il gratuito e il Pro attivi, nella cartella `~/public_html/demo` del server del portale (database `associazionesemp_demo`). Le credenziali sono pubbliche e stanno nella pagina `/plugin` del portale: utenti `segreteria` (ruolo Segreteria), `socio` (ruolo Socio) e `amministratore` (ruolo `asem_demo_admin` «Amministratore del plugin»: permessi `asem_manage` e `asem_operate`, quindi tutte le pagine del plugin, ma nessun permesso di WordPress su plugin, temi, utenti o impostazioni; nella demo è l'unico che scarica e ricarica la copia di sicurezza, per provare per più giorni; la chiave di licenza è nascosta e non si cambia, e un avviso dice di non inserire chiavi vere). Nessun utente `administrator` di WordPress: quello d'installazione (`setup_tmp`) si toglie a ogni azzeramento, e per la manutenzione si usa `wp` da riga di comando.
 
 File in `demo/` (copiati sul server in `~/demo-provision/`, il mu-plugin in `wp-content/mu-plugins/`):
 - `update.sh` porta i due plugin alle ultime versioni pubblicate (vedi sotto).

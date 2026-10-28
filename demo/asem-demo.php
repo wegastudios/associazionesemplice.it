@@ -27,9 +27,33 @@ add_action( 'init', function () {
 	}
 } );
 
+// La licenza della demo è nostra: chi ha tutti i permessi del plugin non la vede né la cambia (la chiave si nasconde da ogni pagina del pannello).
+add_action( 'admin_post_asem_save_license', function () {
+	wp_die( 'Nella demo la licenza non si cambia.', '', array( 'response' => 403, 'back_link' => true ) );
+}, 0 );
+add_action( 'admin_init', function () {
+	if ( ! isset( $_GET['page'] ) || ! class_exists( '\AssociazioneSemplice\License' ) ) { // solo le pagine del pannello: mai gli scarichi (come la copia di sicurezza)
+		return;
+	}
+	$k = (string) \AssociazioneSemplice\License::key();
+	if ( strlen( $k ) < 8 ) {
+		return;
+	}
+	ob_start( function ( $html ) use ( $k ) {
+		return str_replace( array( $k, esc_attr( $k ), rawurlencode( $k ) ), '••••••••••••', (string) $html );
+	} );
+}, 0 );
+// Nessuna chiave vera in una demo pubblica: avviso nelle schermate dei pagamenti e delle impostazioni.
+add_action( 'admin_notices', function () {
+	$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+	if ( in_array( $page, array( 'asem-settings', 'asem-payments', 'asem-tech', 'asem-wpai' ), true ) ) {
+		echo '<div class="notice notice-warning"><p><strong>Non inserire chiavi vere</strong> (Stripe, PayPal, Brevo, Google…): la demo è pubblica e le chiavi resterebbero salvate fino all\'azzeramento di notte.</p></div>';
+	}
+} );
+
 // La segreteria entra direttamente nella Bacheca del plugin (il profilo non serve a niente qui).
 add_filter( 'login_redirect', function ( $to, $requested, $user ) {
-	if ( $user instanceof WP_User && in_array( 'asem_secretary', (array) $user->roles, true ) && ( '' === (string) $requested || false !== strpos( (string) $requested, 'wp-admin/' ) && false === strpos( (string) $requested, 'page=' ) ) ) {
+	if ( $user instanceof WP_User && array_intersect( array( 'asem_secretary', 'asem_demo_admin' ), (array) $user->roles ) && ( '' === (string) $requested || false !== strpos( (string) $requested, 'wp-admin/' ) && false === strpos( (string) $requested, 'page=' ) ) ) {
 		return admin_url( 'admin.php?page=asem' );
 	}
 	return $to;

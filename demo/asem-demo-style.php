@@ -85,7 +85,7 @@ add_filter( 'login_headertext', function () {
 	return get_bloginfo( 'name' );
 } );
 add_filter( 'login_message', function ( $m ) {
-	return $m . '<p class="message">Accessi di prova: <strong>segreteria</strong> / Segreteria-Demo-2026 · <strong>socio</strong> / Socio-Demo-2026</p>';
+	return $m . '<p class="message">Accessi di prova: <strong>segreteria</strong> / Segreteria-Demo-2026 · <strong>socio</strong> / Socio-Demo-2026 · <strong>amministratore</strong> / Amministratore-Demo-2026</p>';
 } );
 
 // Pannello: barra e menu nei colori del marchio.

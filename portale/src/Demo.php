@@ -25,6 +25,11 @@ final class Demo {
 				'what' => array( 'Tessera con QR', 'Prenotazioni a corsi ed eventi', 'Pagamenti e quote', 'I propri dati e gli ospiti' ),
 				'note' => 'Usa l\'area riservata sul sito, come farebbe un socio vero: non entra mai nel pannello di WordPress.',
 			),
+			array(
+				'user' => 'amministratore', 'password' => 'Amministratore-Demo-2026', 'role' => 'Amministratore del plugin', 'start' => '/wp-admin/admin.php?page=asem-backup',
+				'what' => array( 'Tutte le impostazioni di Associazione Semplice', 'Copia di sicurezza: scarichi i tuoi dati e li ricarichi il giorno dopo', 'Ruoli, limiti, tessera e registro delle azioni', 'Tutto quello che fa la segreteria' ),
+				'note' => 'Ha tutti i permessi del plugin ma non è un amministratore di WordPress: non installa plugin, non cambia utenti né impostazioni del sito. La chiave di licenza non si vede né si cambia.',
+			),
 		);
 	}
 
@@ -39,6 +44,12 @@ final class Demo {
 			),
 			'Come socio' => array(
 				array( 'Area soci', '/area-soci/', 'Tessera, prenotazioni, pagamenti e dati personali.' ),
+			),
+			'Come amministratore del plugin' => array(
+				array( 'Copia di sicurezza', '/wp-admin/admin.php?page=asem-backup', 'Scarichi una copia dei tuoi dati e la ricarichi quando vuoi (la demo si azzera ogni notte alle 4).' ),
+				array( 'Impostazioni', '/wp-admin/admin.php?page=asem-settings', 'Funzioni accese, pagine del sito, privacy.' ),
+				array( 'Ruoli', '/wp-admin/admin.php?page=asem-roles', 'Chi può fare cosa: carica e assegna i permessi.' ),
+				array( 'Registro delle azioni', '/wp-admin/admin.php?page=asem-audit', 'Chi ha fatto cosa, con spazio occupato e pulizia.' ),
 			),
 			'Come segreteria' => array(
 				array( 'Bacheca', '/wp-admin/admin.php?page=asem', 'Il riepilogo con gli avvisi e le cose da fare.' ),
@@ -79,6 +90,7 @@ final class Demo {
 	public static function roleNotes(): array {
 		return array(
 			array( 'Amministratore', 'Chi gestisce il sito WordPress: tutto, comprese impostazioni, pagamenti online, licenza e copia di sicurezza.', false ),
+			array( 'Amministratore del plugin', 'Ha tutti i permessi di Associazione Semplice ma non gestisce il sito WordPress (plugin, temi, utenti). Nella demo è l\'unico che scarica e ricarica la copia dei dati.', true ),
 			array( 'Segreteria', 'Una persona del sito con il ruolo «Segreteria»: opera su soci, incassi, attività e registri, senza toccare le impostazioni.', true ),
 			array( 'Presidente e vicepresidente', 'Cariche del consiglio: se la tessera è in regola agiscono come la segreteria su tutto.', false ),
 			array( 'Tesoriere', 'Lavora dall\'area riservata: incassa, registra spese con la foto dello scontrino, iscrive soci e vende gli eventi.', false ),

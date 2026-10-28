@@ -1163,7 +1163,7 @@ check( 'IP: più proxy dichiarati delle voci presenti, torna la connessione', '1
 
 // --- Demo pubblica: dati della pagina /prova ---------------------------------------------------------------------------
 $demoAcc = Portale\Demo::accounts();
-check( 'demo: solo segreteria e socio, nessun accesso da amministratore', array( 'segreteria', 'socio' ) === array_column( $demoAcc, 'user' ) && ! preg_match( '/admin/i', implode( ' ', array_column( $demoAcc, 'user' ) ) ) );
+check( 'demo: segreteria, socio e amministratore del plugin, nessun «admin» di WordPress', array( 'segreteria', 'socio', 'amministratore' ) === array_column( $demoAcc, 'user' ) && ! preg_match( '/admin/i', implode( ' ', array_column( $demoAcc, 'user' ) ) ) );
 check( 'demo: ogni accesso ha una password di almeno 12 caratteri e un punto di partenza nella demo', ! array_filter( $demoAcc, function ( $a ) { return strlen( $a['password'] ) < 12 || 0 !== strpos( $a['start'], '/' ); } ) );
 $demoRoles = Portale\Demo::roles();
 check( 'demo: la tabella dei ruoli ha tante celle quante colonne', ! array_filter( $demoRoles['rows'], function ( $cells ) use ( $demoRoles ) { return count( $cells ) !== count( $demoRoles['columns'] ); } ) );
@@ -1173,7 +1173,7 @@ foreach ( Portale\Demo::links() as $rows ) {
 		$demoLinks[] = $r[1];
 	}
 }
-check( 'demo: i collegamenti sono percorsi della demo e non portano al pannello degli amministratori', $demoLinks && ! array_filter( $demoLinks, function ( $p ) { return 0 !== strpos( $p, '/' ) || false !== strpos( $p, 'page=asem-settings' ) || false !== strpos( $p, 'users.php' ); } ) );
+check( 'demo: i collegamenti sono percorsi della demo e non portano alle pagine di WordPress riservate agli amministratori del sito', $demoLinks && ! array_filter( $demoLinks, function ( $p ) { return 0 !== strpos( $p, '/' ) || preg_match( '#(users|plugins|plugin-install|themes|options-general|tools|update-core).php#', $p ); } ) );
 check( 'demo: l\'indirizzo non finisce con la barra', '/' !== substr( Portale\Demo::url(), -1 ) );
 
 // --- Livello firmato dal portale (portal_attestation) -------------------------------------------------------------------
