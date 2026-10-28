@@ -1133,5 +1133,23 @@ $pj   = json_decode( (string) array_values( $made )[0][2], true );
 check( 'automatico PayPal: prodotto e piano creati una volta sola e riusati', 1 === count( $made ) && 1 === count( $prod ) && 2 === count( $subs ) && json_decode( (string) $subs[0][2], true )['plan_id'] === json_decode( (string) $subs[1][2], true )['plan_id'] );
 check( 'automatico PayPal: piano annuale da 120,00 EUR', 'YEAR' === $pj['billing_cycles'][0]['frequency']['interval_unit'] && '120.00' === $pj['billing_cycles'][0]['pricing_scheme']['fixed_price']['value'] );
 
+// --- Sicurezza: dati scelti da chi si iscrive non devono finire in uno script del pannello ---------------------------
+check( 'email: indirizzo normale accettato', Billing::validEmail( 'mario.rossi+asem@esempio.it' ) );
+check( 'email: parte locale tra virgolette rifiutata', ! Billing::validEmail( "\"x');alert(1);//\"@esempio.it" ) && ! Billing::validEmail( '"a,b@c.it"@esempio.it' ) );
+check( 'email: apice e accento grave senza virgolette restano validi ma innocui', Billing::validEmail( "o'brien@esempio.it" ) );
+$attack = "x'+setTimeout`location=/evil.it`+'@esempio.it";
+$conf   = js_confirm( 'Eliminare ' . $attack . ' con tutte le sue licenze?' );
+check( 'conferma: il messaggio è una stringa JavaScript che non si può chiudere dall\'interno', 0 === strpos( $conf, 'return confirm(&quot;' ) && false === strpos( $conf, "'" ) && false === strpos( $conf, '<' ) );
+check( 'conferma: il testo originale si ritrova nel valore decodificato', false !== strpos( html_entity_decode( $conf, ENT_QUOTES ), 'x' . chr( 92 ) . 'u0027+setTimeout`location=/evil.it`+' . chr( 92 ) . 'u0027@esempio.it' ) );
+check( 'conferma: da testo con virgolette e tag esce solo JSON', false === strpos( js_confirm( '</script><img src=x onerror=alert(1)>"' ), '<' ) );
+
+// --- Indirizzo IP dietro il proxy: contano le voci aggiunte dal proxy, non quelle scritte da chi chiama -------------
+$srv = array( 'REMOTE_ADDR' => '10.0.0.1', 'HTTP_X_FORWARDED_FOR' => '1.2.3.4, 203.0.113.7' );
+check( 'IP: senza proxy fidato conta la connessione', '10.0.0.1' === Portale\ClientIp::from( $srv, false ) );
+check( 'IP: con un proxy fidato conta l\'ultima voce, non la prima scelta dal chiamante', '203.0.113.7' === Portale\ClientIp::from( $srv, true ) );
+check( 'IP: due proxy fidati, penultima voce', '1.2.3.4' === Portale\ClientIp::from( $srv, true, 2 ) );
+check( 'IP: voce non valida o mancante, torna la connessione', '10.0.0.1' === Portale\ClientIp::from( array( 'REMOTE_ADDR' => '10.0.0.1', 'HTTP_X_FORWARDED_FOR' => 'non-un-ip' ), true ) && '10.0.0.1' === Portale\ClientIp::from( array( 'REMOTE_ADDR' => '10.0.0.1' ), true ) );
+check( 'IP: più proxy dichiarati delle voci presenti, torna la connessione', '10.0.0.1' === Portale\ClientIp::from( array( 'REMOTE_ADDR' => '10.0.0.1', 'HTTP_X_FORWARDED_FOR' => '1.2.3.4' ), true, 2 ) );
+
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );

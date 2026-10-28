@@ -31,9 +31,16 @@ final class Billing {
 		return new PlanChange( $this->db, $this );
 	}
 
+	/**
+	 * Solo indirizzi «semplici»: filter_var accetta anche la parte prima della chiocciola tra virgolette (con virgole, apici, parentesi, @),
+	 * che certi server di posta leggono in modo diverso e che finirebbe in pagine e messaggi del pannello.
+	 */
+	public static function validEmail( string $email ): bool {
+		return strlen( $email ) <= 190 && false !== filter_var( $email, FILTER_VALIDATE_EMAIL ) && ! preg_match( '/["\s,;<>()\[\]\\\\]/', $email );
+	}
 	public function customer( string $email ): array {
 		$email = strtolower( trim( $email ) );
-		if ( ! filter_var( $email, FILTER_VALIDATE_EMAIL ) || strlen( $email ) > 190 ) {
+		if ( ! self::validEmail( $email ) ) {
 			throw new UserError( 'Indirizzo email non valido.' );
 		}
 		$c = $this->db->one( 'SELECT * FROM customers WHERE email = ?', array( $email ) );

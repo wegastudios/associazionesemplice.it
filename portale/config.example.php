@@ -6,6 +6,7 @@ return array(
 	'mail_from' => 'info@associazionesemplice.it',
 	'indexable' => false, // finché è false: robots.txt, X-Robots-Tag e meta robots vietano l'indicizzazione (cambiare anche public/robots.txt prima del lancio)
 	'trust_forwarded_for' => false, // true solo dietro un proxy fidato: i limiti del rimbalzo licenze usano X-Forwarded-For invece dell'IP della connessione
+	'forwarded_hops' => 1, // con trust_forwarded_for: quanti proxy fidati stanno davanti al portale (si legge X-Forwarded-For da destra, mai da sinistra)
 	'admins'    => array(),   // email che possono entrare nel pannello di gestione (stesso accesso dei clienti, link per email)
 
 	// Sito di supporto clienti e accesso unico: lo stesso segreto (almeno 32 caratteri casuali) va nel .env del sito di supporto.
