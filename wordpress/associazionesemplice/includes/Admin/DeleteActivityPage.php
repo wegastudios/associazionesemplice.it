@@ -3,6 +3,7 @@ namespace AssociazioneSemplice\Admin;
 
 use AssociazioneSemplice\ActivityReset;
 use AssociazioneSemplice\Money;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -55,7 +56,7 @@ final class DeleteActivityPage {
 
 		if ( ActivityReset::activity_is_free( $id ) ) { // nessun movimento in prima nota: una sola conferma (il pulsante)
 			Ui::form_open( 'asem_delete_activity', $back );
-			echo Ui::hidden( 'id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::hidden( 'id', $id ), Html::allowed() );
 			if ( $p['recipients'] > 0 ) {
 				echo '<p><label><input type="checkbox" name="notify" value="1" checked> Avvisa per email le ' . (int) $p['recipients'] . ' persone prenotate o iscritte con un indirizzo email</label></p>';
 			}
@@ -126,7 +127,7 @@ final class DeleteActivityPage {
 
 		echo '<h3>Conferma</h3>';
 		Ui::form_open( 'asem_delete_activity', self::review_url( $id, $mode, $notify, $void_costs ) );
-		echo Ui::hidden( 'id', $id ) . Ui::hidden( 'mode', $mode ) . Ui::hidden( 'notify', $notify ? 1 : 0 ) . Ui::hidden( 'void_costs', $void_costs ? 1 : 0 ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( Ui::hidden( 'id', $id ) . Ui::hidden( 'mode', $mode ) . Ui::hidden( 'notify', $notify ? 1 : 0 ) . Ui::hidden( 'void_costs', $void_costs ? 1 : 0 ), Html::allowed() );
 		echo '<p><label><input type="checkbox" name="confirm" value="1"> Ho letto e ho capito: l\'eliminazione è definitiva e non si può annullare.</label></p>';
 		echo '<p><label>Per confermare scrivi il nome dell\'evento: <strong>' . esc_html( (string) $p['activity']['name'] ) . '</strong><br><input type="text" name="typed" class="regular-text" autocomplete="off"></label></p>';
 		echo '<p><button class="button button-primary" style="background:#b32d2e;border-color:#b32d2e">Elimina definitivamente</button> '

@@ -173,9 +173,9 @@ final class FirstAccess {
 		$message = '';
 		$error   = '';
 		$post    = array();
-		if ( 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' ) && isset( $_POST['asem_first_go'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- valore verificato e ripulito da chi lo usa
-			$post   = array_map( 'sanitize_text_field', wp_unslash( $_POST ) ); // phpcs:ignore WordPress.Security.NonceVerification
-			$rl_key = 'asem_fa_' . md5( \AssociazioneSemplice\ClientIp::get() ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- valore verificato e ripulito da chi lo usa
+		if ( isset( $_SERVER['REQUEST_METHOD'], $_POST['asem_first_go'] ) && 'POST' === sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification -- il nonce si controlla qui sotto
+			$post   = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
+			$rl_key = 'asem_fa_' . md5( \AssociazioneSemplice\ClientIp::get() );
 			$tries  = (int) get_transient( $rl_key );
 			if ( $tries >= Limits::get( 'first_access_per_ip' ) ) {
 				$error = 'Troppi tentativi: riprova tra qualche minuto.';
@@ -192,7 +192,7 @@ final class FirstAccess {
 			}
 		}
 		CardVerify::send_headers();
-		echo self::page( $message, $post, $error ); // phpcs:ignore WordPress.Security.EscapeOutput -- già escapato in page()
+		CardVerify::output( self::page( $message, $post, $error ) );
 		exit;
 	}
 }

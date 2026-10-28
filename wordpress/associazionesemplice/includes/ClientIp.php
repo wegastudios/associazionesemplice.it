@@ -76,6 +76,12 @@ final class ClientIp {
 	}
 
 	public static function get(): string {
-		return self::pick( $_SERVER, Limits::flag( 'trust_proxy_headers' ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- si usano solo indirizzi IP validati
+		$server = array();
+		foreach ( array( 'REMOTE_ADDR', 'HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR' ) as $k ) { // solo le intestazioni che servono, ripulite; pick() poi accetta solo indirizzi IP validi
+			if ( isset( $_SERVER[ $k ] ) ) {
+				$server[ $k ] = sanitize_text_field( wp_unslash( $_SERVER[ $k ] ) );
+			}
+		}
+		return self::pick( $server, Limits::flag( 'trust_proxy_headers' ) );
 	}
 }

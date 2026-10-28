@@ -89,7 +89,7 @@ final class BlockFActions {
 		nocache_headers();
 		header( 'Content-Type: text/csv; charset=utf-8' );
 		header( 'Content-Disposition: attachment; filename="convenzioni.csv"' );
-		echo "\xEF\xBB\xBF" . Conventions::csv(); // phpcs:ignore WordPress.Security.EscapeOutput -- file CSV, non HTML
+		\AssociazioneSemplice\Download::csv( Conventions::csv() );
 		exit;
 	}
 }

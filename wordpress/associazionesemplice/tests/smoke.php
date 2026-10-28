@@ -1285,7 +1285,7 @@ Admin\ActivitiesPage::render_detail();
 $fr_det = (string) ob_get_clean();
 $_GET = array();
 asem_ok( false === strpos( $fr_pg, 'name="typed"' ) && false !== strpos( $fr_pg, 'Cancella l\'iscrizione' ) && false !== strpos( $fr_pg, 'la prima nota non cambia' ) && false === strpos( $fr_pe, 'name="typed"' ) && false !== strpos( $fr_pe, 'Elimina l\'evento' ), 'senza incassi: le pagine di cancellazione hanno un solo pulsante, niente nome da scrivere' );
-asem_ok( false !== strpos( $fr_det, 'onsubmit="return confirm(' ) && false !== strpos( $fr_det, 'asem_delete_booking' ), 'senza incassi: dalla lista la cancellazione è un pulsante con una sola conferma' );
+asem_ok( false !== strpos( $fr_det, 'data-confirm="' ) && false === strpos( $fr_det, 'onsubmit=' ) && false !== strpos( $fr_det, 'asem_delete_booking' ), 'senza incassi: dalla lista la cancellazione è un pulsante con una sola conferma' );
 $fr_del_b = new ReflectionMethod( Admin\Actions::class, 'delete_booking' );
 $fr_del_b->setAccessible( true );
 $fr_del_b->invoke( null, array( 'activity' => $fr_a, 'person' => $fr_p, 'session' => $fr_s ) );

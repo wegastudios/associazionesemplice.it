@@ -757,10 +757,11 @@ final class Actions {
 		if ( empty( $p['confirm'] ) ) {
 			throw new \InvalidArgumentException( 'Spunta la casella di conferma per ripristinare.' );
 		}
-		if ( empty( $_FILES['backup_file']['tmp_name'] ) || UPLOAD_ERR_OK !== (int) $_FILES['backup_file']['error'] || ! is_uploaded_file( $_FILES['backup_file']['tmp_name'] ) ) { // phpcs:ignore WordPress.Security
+		$f = self::uploaded_file( 'backup_file' );
+		if ( ! $f || UPLOAD_ERR_OK !== $f['error'] ) {
 			throw new \InvalidArgumentException( 'Scegli il file della copia da ripristinare.' );
 		}
-		$r = \AssociazioneSemplice\Backup::restore( (string) $_FILES['backup_file']['tmp_name'] ); // phpcs:ignore WordPress.Security
+		$r = \AssociazioneSemplice\Backup::restore( $f['tmp_name'] );
 		return array( Ui::url( 'asem-backup' ), 'Ripristino completato: ' . $r['rows'] . ' record in ' . $r['tables'] . ' tabelle' . ( $r['files'] ? ', ' . $r['files'] . ' allegati' : '' ) . '. Copia di sicurezza dello stato precedente: ' . $r['safety'] . '.' );
 	}
 
@@ -1086,16 +1087,16 @@ final class Actions {
 	// ---------- Import (Excel / CSV) ----------
 
 	private static function import_preview( array $p ): array {
-		$f = $_FILES['file'] ?? null; // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- valore verificato e ripulito da chi lo usa
-		if ( empty( $f['tmp_name'] ) || ! is_uploaded_file( $f['tmp_name'] ) ) { // phpcs:ignore WordPress.Security
+		$f = self::uploaded_file( 'file' );
+		if ( ! $f || UPLOAD_ERR_OK !== $f['error'] ) {
 			throw new \InvalidArgumentException( 'Scegli un file Excel o CSV da caricare.' );
 		}
-		if ( (int) $f['size'] > \AssociazioneSemplice\Limits::get( 'import_max_mb' ) * 1048576 ) {
+		if ( $f['size'] > \AssociazioneSemplice\Limits::get( 'import_max_mb' ) * 1048576 ) {
 			throw new \InvalidArgumentException( 'Il file supera i ' . \AssociazioneSemplice\Limits::get( 'import_max_mb' ) . ' MB: dividilo in più file.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$prev  = \AssociazioneSemplice\ImportService::preview_file(
 			$f['tmp_name'],
-			(string) $f['name'],
+			$f['name'],
 			array( 'default_type' => (string) ( $p['default_type'] ?? '' ), 'default_account_id' => (int) ( $p['default_account_id'] ?? 0 ) )
 		);
 		$token = sanitize_key( wp_generate_password( 16, false ) ); // minuscole: stessa forma con cui viene poi riletto
@@ -1194,14 +1195,37 @@ final class Actions {
 
 	/** Contenuto di un file caricato (null se non ne è stato scelto uno). */
 	public static function uploaded_bytes( string $key ): ?string {
-		if ( empty( $_FILES[ $key ]['tmp_name'] ) || UPLOAD_ERR_NO_FILE === (int) $_FILES[ $key ]['error'] ) { // phpcs:ignore WordPress.Security
+		$f = self::uploaded_file( $key );
+		if ( ! $f || UPLOAD_ERR_NO_FILE === $f['error'] ) {
 			return null;
 		}
-		$f = $_FILES[ $key ]; // phpcs:ignore WordPress.Security
-		if ( UPLOAD_ERR_OK !== (int) $f['error'] || ! is_uploaded_file( $f['tmp_name'] ) || (int) $f['size'] > 1048576 ) {
+		if ( UPLOAD_ERR_OK !== $f['error'] || $f['size'] > 1048576 ) {
 			throw new \InvalidArgumentException( 'Caricamento del file non riuscito (massimo 1 MB).' );
 		}
 		return (string) file_get_contents( $f['tmp_name'] );
+	}
+
+	/**
+	 * Il file caricato nel campo $key con i valori già controllati: nome ripulito con sanitize_file_name(), file temporaneo
+	 * accettato solo se arriva davvero da un caricamento (is_uploaded_file), dimensione ed errore come numeri. Null se il campo manca.
+	 *
+	 * @return array{name:string,tmp_name:string,size:int,error:int}|null
+	 */
+	private static function uploaded_file( string $key ): ?array {
+		if ( empty( $_FILES[ $key ] ) || ! is_array( $_FILES[ $key ] ) || ! isset( $_FILES[ $key ]['name'] ) || is_array( $_FILES[ $key ]['name'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification -- il nonce lo controlla chi gestisce l'azione
+			return null;
+		}
+		$tmp   = isset( $_FILES[ $key ]['tmp_name'] ) ? (string) $_FILES[ $key ]['tmp_name'] : ''; // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- percorso del server, validato con is_uploaded_file() qui sotto
+		$error = isset( $_FILES[ $key ]['error'] ) ? absint( $_FILES[ $key ]['error'] ) : UPLOAD_ERR_NO_FILE; // phpcs:ignore WordPress.Security.NonceVerification
+		if ( UPLOAD_ERR_OK === $error && ( '' === $tmp || ! is_uploaded_file( $tmp ) ) ) {
+			$error = UPLOAD_ERR_NO_FILE;
+		}
+		return array(
+			'name'     => sanitize_file_name( wp_unslash( (string) $_FILES[ $key ]['name'] ) ), // phpcs:ignore WordPress.Security.NonceVerification
+			'tmp_name' => UPLOAD_ERR_OK === $error ? $tmp : '',
+			'size'     => isset( $_FILES[ $key ]['size'] ) ? absint( $_FILES[ $key ]['size'] ) : 0, // phpcs:ignore WordPress.Security.NonceVerification
+			'error'    => $error,
+		);
 	}
 
 

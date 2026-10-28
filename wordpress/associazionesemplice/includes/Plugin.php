@@ -113,20 +113,37 @@ final class Plugin {
 		return true;
 	}
 
-	/** Versione di un file in assets/: cambia a ogni aggiornamento, così il browser non tiene in cache script e stili vecchi. */
+	/** Campi delle password: non si ripuliscono (come fa WordPress), si usano solo per wp_set_password() o per cifrarli. */
+	const VERBATIM_FIELDS = array( 'password', 'password2', 'pass1', 'pass2', 'apple_password' );
+
 	/**
-	 * I dati di un modulo ($_POST) senza le barre aggiunte da WordPress, con UTF-8 valido e senza byte nulli. Ogni gestore poi pulisce i suoi campi
-	 * con la funzione adatta (testo, email, numero…): qui non si altera il contenuto (per esempio le password o i testi su più righe).
+	 * I dati di un modulo ($_POST) senza le barre aggiunte da WordPress e già ripuliti: gli indirizzi (_back, *_url) con esc_url_raw(),
+	 * ogni altro testo con sanitize_textarea_field() (niente tag, UTF-8 valido, a capo conservati per i testi su più righe). Ogni gestore
+	 * poi valida i suoi campi con la funzione adatta (email, numero, data, valori ammessi…). Fanno eccezione solo le password, che non vanno alterate.
 	 */
 	public static function post_data(): array {
-		return (array) map_deep(
-			wp_unslash( $_POST ), // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- il nonce lo controlla il chiamante; pulizia di base qui, per campo nei gestori
-			function ( $v ) {
-				return is_string( $v ) ? wp_kses_no_null( (string) wp_check_invalid_utf8( $v ) ) : $v;
+		$out = array();
+		foreach ( (array) wp_unslash( $_POST ) as $key => $value ) { // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- il nonce lo controlla il chiamante; ogni valore è ripulito qui sotto
+			$name = strtolower( (string) $key );
+			if ( in_array( $name, self::VERBATIM_FIELDS, true ) ) {
+				$out[ $key ] = is_string( $value ) ? wp_kses_no_null( (string) wp_check_invalid_utf8( $value ) ) : '';
+				continue;
 			}
-		);
+			$is_url      = '_back' === $name || '_wp_http_referer' === $name || '_url' === substr( $name, -4 );
+			$out[ $key ] = map_deep(
+				$value,
+				static function ( $v ) use ( $is_url ) {
+					if ( ! is_string( $v ) ) {
+						return $v;
+					}
+					return $is_url ? esc_url_raw( $v ) : sanitize_textarea_field( $v );
+				}
+			);
+		}
+		return $out;
 	}
 
+	/** Versione di un file in assets/: cambia a ogni aggiornamento, così il browser non tiene in cache script e stili vecchi. */
 	public static function asset_version( string $file ): string {
 		$path = ASEM_DIR . 'assets/' . $file;
 		return ASEM_VERSION . '.' . ( is_readable( $path ) ? (string) filemtime( $path ) : '0' );

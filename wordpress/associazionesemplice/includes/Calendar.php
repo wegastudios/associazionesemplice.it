@@ -171,7 +171,7 @@ final class Calendar {
 		nocache_headers();
 		header( 'Content-Type: text/calendar; charset=utf-8' );
 		header( 'Content-Disposition: inline; filename="associazionesemplice.ics"' );
-		echo self::ics( null, isset( $_GET['a'] ) ? (int) $_GET['a'] : null ); // phpcs:ignore WordPress.Security.EscapeOutput , WordPress.Security.NonceVerification.Recommended -- sola lettura pubblica, nessuna modifica
+		Download::bytes( self::ics( null, isset( $_GET['a'] ) ? absint( $_GET['a'] ) : null ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- sola lettura pubblica, nessuna modifica
 		exit;
 	}
 }

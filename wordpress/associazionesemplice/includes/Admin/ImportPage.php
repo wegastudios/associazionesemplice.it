@@ -7,6 +7,7 @@ use AssociazioneSemplice\Money;
 use AssociazioneSemplice\PeopleCsv;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Settings;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -53,11 +54,11 @@ final class ImportPage {
 		foreach ( Plugin::ledger()->accounts() as $a ) {
 			$accounts[ $a['id'] ] = $a['name'];
 		}
-		echo '<p>Tipo socio se manca la colonna: <select name="default_type">' . Ui::options( $types, MemberType::ORDINARY ) . '</select> '; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo ' · Conto della prima nota se manca la colonna: <select name="default_account_id">' . Ui::options( $accounts, null, '— nessuno —' ) . '</select></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<p>Tipo socio se manca la colonna: <select name="default_type">' . Ui::options( $types, MemberType::ORDINARY ) . '</select> ', Html::allowed() );
+		echo wp_kses( ' · Conto della prima nota se manca la colonna: <select name="default_account_id">' . Ui::options( $accounts, null, '— nessuno —' ) . '</select></p>', Html::allowed() );
 		submit_button( 'Carica e controlla' );
 		Ui::form_close();
-		echo '<p>Modelli CSV: ' . self::data_link( PeopleCsv::TEMPLATE, 'modello-soci.csv', 'soci' ) . ' · ' . self::data_link( self::GUESTS_TEMPLATE, 'modello-ospiti.csv', 'ospiti' ) . ' · ' . self::data_link( self::LEDGER_TEMPLATE, 'modello-prima-nota.csv', 'prima nota' ) . ' <span class="description">(si aprono anche con Excel)</span></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<p>Modelli CSV: ' . self::data_link( PeopleCsv::TEMPLATE, 'modello-soci.csv', 'soci' ) . ' · ' . self::data_link( self::GUESTS_TEMPLATE, 'modello-ospiti.csv', 'ospiti' ) . ' · ' . self::data_link( self::LEDGER_TEMPLATE, 'modello-prima-nota.csv', 'prima nota' ) . ' <span class="description">(si aprono anche con Excel)</span></p>', Html::allowed(), array_merge( wp_allowed_protocols(), array( 'data' ) ) ); // i modelli CSV sono link data:text/csv generati qui
 		echo '<p class="description">Usi <strong>WP All Import</strong>? Si può importare anche da lì: vedi <a href="' . esc_url( Ui::url( 'asem-wpai' ) ) . '">Import con WP All Import</a>.</p>';
 		self::history();
 	}
@@ -85,7 +86,7 @@ final class ImportPage {
 				echo '<span class="description">Annullato il ' . esc_html( mysql2date( 'd/m/Y H:i', $b['undone_at'] ) ) . '</span>';
 			} else {
 				Ui::form_open( 'asem_import_undo', Ui::url( 'asem-import' ), false, 'asem-inline' );
-				echo Ui::hidden( 'batch_id', $b['id'] ) . '<button class="button button-small" data-confirm="Annullare TUTTO questo import? Si annullano i movimenti, si tolgono i soci creati se non sono ancora stati usati e si rimettono i dati dei soci aggiornati. Non si può rifare con un clic.">Annulla questo import</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( Ui::hidden( 'batch_id', $b['id'] ) . '<button class="button button-small" data-confirm="Annullare TUTTO questo import? Si annullano i movimenti, si tolgono i soci creati se non sono ancora stati usati e si rimettono i dati dei soci aggiornati. Non si può rifare con un clic.">Annulla questo import</button>', Html::allowed() );
 				Ui::form_close();
 			}
 			echo '</td></tr>';
@@ -127,7 +128,7 @@ final class ImportPage {
 				. ' · <strong class="asem-neg">' . (int) $s['counts']['error'] . '</strong> con errori (saltati)'
 				. ( $s['counts']['warn'] ? ' · ' . (int) $s['counts']['warn'] . ' con avvisi' : '' ) . '.</p>';
 			if ( $s['from'] ) {
-				echo '<p>Periodo: dal ' . esc_html( Ui::date( $s['from'] ) ) . ' al ' . esc_html( Ui::date( $s['to'] ) ) . ' · Entrate <strong>' . esc_html( Money::format( $s['income'] ) ) . '</strong> · Uscite <strong>' . esc_html( Money::format( $s['expense'] ) ) . '</strong></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( '<p>Periodo: dal ' . esc_html( Ui::date( $s['from'] ) ) . ' al ' . esc_html( Ui::date( $s['to'] ) ) . ' · Entrate <strong>' . esc_html( Money::format( $s['income'] ) ) . '</strong> · Uscite <strong>' . esc_html( Money::format( $s['expense'] ) ) . '</strong></p>', Html::allowed() );
 			}
 			if ( $s['per_account'] ) {
 				echo '<p>Effetto sui conti: ';
@@ -135,7 +136,7 @@ final class ImportPage {
 				foreach ( $s['per_account'] as $name => $delta ) {
 					$parts[] = esc_html( $name ) . ' <strong>' . esc_html( ( $delta >= 0 ? '+' : '−' ) . ' ' . Money::format( abs( $delta ) ) ) . '</strong>' . ( in_array( $name, $s['new_accounts'], true ) ? ' (conto nuovo)' : '' );
 				}
-				echo implode( ' · ', $parts ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( implode( ' · ', $parts ) . '</p>', Html::allowed() );
 			}
 			self::ledger_table( $ledger['plan'] );
 			echo '</div>';
@@ -145,7 +146,7 @@ final class ImportPage {
 		}
 		if ( $ok > 0 ) {
 			Ui::form_open( 'asem_import_apply', Ui::url( 'asem-import', array( 'token' => $token ) ) );
-			echo Ui::hidden( 'token', $token ); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::hidden( 'token', $token ), Html::allowed() );
 			if ( $people ) {
 				echo '<p><label><input type="checkbox" name="mark_members" value="1"> Segna i soci come iscritti all\'anno sociale ' . esc_html( Settings::social_year()->label() ) . ' (non vale per i fondatori, sempre in regola)</label></p>';
 			}
@@ -167,8 +168,8 @@ final class ImportPage {
 			}
 			$r = $p['row'];
 			echo '<tr><td>' . esc_html( ( $r['sheet'] ? $r['sheet'] . ' · ' : '' ) . $r['line'] ) . '</td><td>' . esc_html( (string) $r['card'] ) . '</td><td>' . esc_html( $r['first'] . ' ' . $r['last'] ) . '</td><td>' . esc_html( (string) $r['email'] ) . '</td>';
-			echo '<td>' . esc_html( $p['type'] ? MemberType::label( $p['type'] ) : '—' ) . '</td><td>' . self::badge( $p['action'], false ) . esc_html( $p['message'] ? ' — ' . $p['message'] : '' ) // phpcs:ignore WordPress.Security.EscapeOutput
-				. ( ! empty( $p['host_text'] ) ? esc_html( ' · ospite di ' . $p['host_text'] ) : '' ) . '</td></tr>';
+			echo wp_kses( '<td>' . esc_html( $p['type'] ? MemberType::label( $p['type'] ) : '—' ) . '</td><td>' . self::badge( $p['action'], false ) . esc_html( $p['message'] ? ' — ' . $p['message'] : '' )
+				. ( ! empty( $p['host_text'] ) ? esc_html( ' · ospite di ' . $p['host_text'] ) : '' ) . '</td></tr>', Html::allowed() );
 		}
 		echo '</tbody></table>';
 		if ( count( $plan ) > 300 ) {
@@ -192,11 +193,11 @@ final class ImportPage {
 			$d = $p['data'];
 			$title = $d && isset( $d['category_id'] ) ? ( $cats[ $d['category_id'] ] ?? '' ) : ( $d ? 'Giroconto' : '' );
 			$sign  = ( $r['type'] ?? '' ) === 'expense' || ( $r['type'] ?? '' ) === 'transfer_out' ? '−' : '+';
-			echo '<tr><td>' . esc_html( ( $r['sheet'] ? $r['sheet'] . ' · ' : '' ) . $r['line'] ) . '</td><td>' . esc_html( $r['date'] ? Ui::date( $r['date'] ) : '' ) . '</td><td>' . esc_html( (string) $r['account'] ) . '</td>'
+			echo wp_kses( '<tr><td>' . esc_html( ( $r['sheet'] ? $r['sheet'] . ' · ' : '' ) . $r['line'] ) . '</td><td>' . esc_html( $r['date'] ? Ui::date( $r['date'] ) : '' ) . '</td><td>' . esc_html( (string) $r['account'] ) . '</td>'
 				. '<td>' . esc_html( $title ?: (string) $r['category'] ) . '<br><span class="description">' . esc_html( (string) $r['desc'] ) . '</span></td>'
 				. '<td>' . esc_html( $r['cents'] ? $sign . ' ' . Money::format( (int) $r['cents'] ) : '' ) . '</td>'
-				. '<td>' . self::badge( $p['action'], ! empty( $p['warnings'] ) ) . esc_html( $p['message'] ? ' — ' . $p['message'] : '' ) // phpcs:ignore WordPress.Security.EscapeOutput
-				. ( $p['warnings'] ? '<br><span class="description asem-warn">' . esc_html( implode( '; ', $p['warnings'] ) ) . '</span>' : '' ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				. '<td>' . self::badge( $p['action'], ! empty( $p['warnings'] ) ) . esc_html( $p['message'] ? ' — ' . $p['message'] : '' )
+				. ( $p['warnings'] ? '<br><span class="description asem-warn">' . esc_html( implode( '; ', $p['warnings'] ) ) . '</span>' : '' ) . '</td></tr>', Html::allowed() );
 		}
 		echo '</tbody></table>';
 		echo '<p class="description">Sono mostrate tutte le righe con errori o avvisi e le prime 200 delle altre. I movimenti importati si possono annullare uno per uno dalla Prima nota.</p>';

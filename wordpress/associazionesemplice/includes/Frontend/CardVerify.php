@@ -3,6 +3,7 @@ namespace AssociazioneSemplice\Frontend;
 
 use AssociazioneSemplice\CardToken;
 use AssociazioneSemplice\Edition;
+use AssociazioneSemplice\Html;
 use AssociazioneSemplice\MemberType;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Settings;
@@ -36,7 +37,7 @@ final class CardVerify {
 		}
 		$html = self::page( sanitize_text_field( wp_unslash( $_GET['asem_card'] ) ) ); // phpcs:ignore WordPress.Security.NonceVerification
 		self::send_headers();
-		echo $html; // phpcs:ignore WordPress.Security.EscapeOutput -- già escapato in page()
+		self::output( $html );
 		exit;
 	}
 
@@ -96,6 +97,12 @@ final class CardVerify {
 		ob_start();
 		wp_print_styles( 'asem-verify' );
 		return (string) ob_get_clean();
+	}
+
+	/** Stampa una pagina costruita con layout(): il doctype a parte (wp_kses non lo conserva), tutto il resto filtrato da wp_kses(). */
+	public static function output( string $page ): void {
+		echo '<!doctype html>';
+		echo wp_kses( (string) preg_replace( '/^<!doctype html>/i', '', $page ), Html::document() );
 	}
 
 	/** Pagina completa (senza il tema del sito) con la fascia di stato e il riquadro dei dettagli. */

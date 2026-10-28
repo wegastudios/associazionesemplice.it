@@ -56,6 +56,30 @@
 		if (t && !window.confirm(t.getAttribute('data-confirm'))) { e.preventDefault(); }
 	});
 
+	/* Campi da copiare (link, shortcode): un clic seleziona tutto il testo */
+	document.addEventListener('click', function (e) {
+		var t = e.target.closest ? e.target.closest('[data-asem-select]') : null;
+		if (t && t.select) { t.select(); }
+	});
+
+	/* Pulsante «Copia»: mette il testo negli appunti */
+	document.addEventListener('click', function (e) {
+		var b = e.target.closest ? e.target.closest('[data-asem-copy]') : null;
+		if (!b) { return; }
+		var prev = b.previousElementSibling;
+		if (prev && prev.select) { prev.select(); }
+		if (navigator.clipboard) {
+			navigator.clipboard.writeText(b.getAttribute('data-asem-copy') || '');
+			b.textContent = 'Copiato';
+		}
+	});
+
+	/* Filtri che si applicano appena si cambia la scelta */
+	document.addEventListener('change', function (e) {
+		var t = e.target.closest ? e.target.closest('[data-asem-autosubmit]') : null;
+		if (t && t.form) { t.form.submit(); }
+	});
+
 	/* Elenchi lunghi: campo di testo che filtra la select collegata */
 	$$('.asem-filter').forEach(function (inp) {
 		var sel = $(inp.getAttribute('data-target'));

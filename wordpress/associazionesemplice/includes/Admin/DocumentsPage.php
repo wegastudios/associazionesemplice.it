@@ -3,6 +3,7 @@ namespace AssociazioneSemplice\Admin;
 
 use AssociazioneSemplice\Documents;
 use AssociazioneSemplice\DocumentRules;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -18,7 +19,7 @@ final class DocumentsPage {
 		$cat = Ui::get_str( 'category' );
 		Ui::header( 'Documenti', '<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-documents', array( 'new' => 1 ) ) ) . '">Carica un documento</a>' );
 		echo '<p class="description">L\'archivio dei documenti dell\'associazione. I file non hanno un indirizzo pubblico: si aprono solo con il controllo dei permessi. Per mostrare i documenti «Pubblico» sul sito usa lo shortcode <code>[associazionesemplice_documenti]</code>.</p>';
-		echo '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-documents"><select name="category">' . Ui::options( array_combine( Documents::categories(), Documents::categories() ), $cat, 'Tutte le categorie' ) . '</select> <button class="button">Filtra</button></form>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-documents"><select name="category">' . Ui::options( array_combine( Documents::categories(), Documents::categories() ), $cat, 'Tutte le categorie' ) . '</select> <button class="button">Filtra</button></form>', Html::allowed() );
 		echo '<table class="widefat striped"><thead><tr><th>Titolo</th><th>Categoria</th><th>Data</th><th>Chi lo vede</th><th>File</th></tr></thead><tbody>';
 		$rows = Documents::all( $cat );
 		if ( ! $rows ) {
@@ -45,7 +46,7 @@ final class DocumentsPage {
 			return $d ? (string) ( $d[ $k ] ?? '' ) : $default;
 		};
 		Ui::form_open( 'asem_document_save', Ui::url( 'asem-documents', $d ? array( 'view' => $id ) : array( 'new' => 1 ) ), true );
-		echo Ui::hidden( 'id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( Ui::hidden( 'id', $id ), Html::allowed() );
 		echo '<table class="form-table asem-form"><tbody>';
 		echo '<tr><th>Titolo *</th><td><input type="text" name="title" value="' . esc_attr( $v( 'title' ) ) . '" class="large-text" maxlength="190" required></td></tr>';
 		echo '<tr><th>Categoria</th><td><input type="text" name="category" value="' . esc_attr( $v( 'category' ) ) . '" class="regular-text" maxlength="80" list="asem-doc-cats"><datalist id="asem-doc-cats">';
@@ -54,7 +55,7 @@ final class DocumentsPage {
 		}
 		echo '</datalist></td></tr>';
 		echo '<tr><th>Data del documento</th><td><input type="date" name="doc_date" value="' . esc_attr( $v( 'doc_date' ) ) . '"></td></tr>';
-		echo '<tr><th>Chi lo vede</th><td><select name="visibility">' . Ui::options( DocumentRules::visibilities(), $v( 'visibility', DocumentRules::MEMBERS ) ) . '</select><p class="description">«Soci»: i soci in regola, dall\'area riservata. «Pubblico»: chiunque, con lo shortcode.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<tr><th>Chi lo vede</th><td><select name="visibility">' . Ui::options( DocumentRules::visibilities(), $v( 'visibility', DocumentRules::MEMBERS ) ) . '</select><p class="description">«Soci»: i soci in regola, dall\'area riservata. «Pubblico»: chiunque, con lo shortcode.</p></td></tr>', Html::allowed() );
 		echo '<tr><th>Descrizione</th><td><input type="text" name="description" value="' . esc_attr( $v( 'description' ) ) . '" class="large-text" maxlength="255"></td></tr>';
 		echo '<tr><th>File' . ( $d ? '' : ' *' ) . '</th><td><input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.odt,.xls,.xlsx,.ods,.txt"' . ( $d ? '' : ' required' ) . '>';
 		if ( $d ) {
@@ -64,7 +65,7 @@ final class DocumentsPage {
 		submit_button( $d ? 'Salva' : 'Carica' );
 		Ui::form_close();
 		if ( $d ) {
-			echo Ui::confirm_button( 'asem_document_delete', Ui::url( 'asem-documents' ), array( 'id' => $id ), 'Elimina', 'Eliminare questo documento dall\'archivio?' ); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::confirm_button( 'asem_document_delete', Ui::url( 'asem-documents' ), array( 'id' => $id ), 'Elimina', 'Eliminare questo documento dall\'archivio?' ), Html::allowed() );
 		}
 		Ui::footer();
 	}

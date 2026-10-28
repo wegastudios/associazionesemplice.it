@@ -181,10 +181,10 @@ final class Activation {
 		$param = sanitize_text_field( wp_unslash( $_GET['asem_activate'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
 		$post  = array();
 		$error = '';
-		if ( 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' ) && isset( $_POST['asem_activate_go'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- valore verificato e ripulito da chi lo usa
+		if ( isset( $_SERVER['REQUEST_METHOD'], $_POST['asem_activate_go'] ) && 'POST' === sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification -- il nonce si controlla qui sotto
 			$post    = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
 			$parsed  = ActivationToken::parse( $param );
-			$rl_key  = 'asem_act_' . md5( \AssociazioneSemplice\ClientIp::get() ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- valore verificato e ripulito da chi lo usa
+			$rl_key  = 'asem_act_' . md5( \AssociazioneSemplice\ClientIp::get() );
 			$tries   = (int) get_transient( $rl_key );
 			if ( $tries >= Limits::get( 'activation_per_ip' ) ) {
 				$error = 'Troppi tentativi: riprova tra qualche minuto.';
@@ -205,7 +205,7 @@ final class Activation {
 			}
 		}
 		CardVerify::send_headers();
-		echo self::page( $param, $post, $error ); // phpcs:ignore WordPress.Security.EscapeOutput -- già escapato in page()
+		CardVerify::output( self::page( $param, $post, $error ) );
 		exit;
 	}
 }

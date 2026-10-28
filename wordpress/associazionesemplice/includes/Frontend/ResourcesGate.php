@@ -64,7 +64,7 @@ final class ResourcesGate {
 		}
 		$param = sanitize_text_field( wp_unslash( $_GET['asem_res'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
 		CardVerify::send_headers();
-		echo self::page( $param, Flash::read( 'asemf' ) ); // phpcs:ignore WordPress.Security.EscapeOutput -- già escapato in page()
+		CardVerify::output( self::page( $param, Flash::read( 'asemf' ) ) );
 		exit;
 	}
 

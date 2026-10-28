@@ -5,6 +5,7 @@ use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Privacy;
 use AssociazioneSemplice\Reminders;
 use AssociazioneSemplice\Settings;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -58,7 +59,7 @@ final class CommsPage {
 		Ui::form_open( 'asem_create_privacy_page', Ui::url( 'asem-comms' ), false, 'asem-inline' );
 		echo '<button class="button">Crea la pagina «Informativa privacy» sul sito</button>';
 		Ui::form_close();
-		echo '</p><details><summary><strong>Anteprima dell\'informativa</strong></summary><div style="max-width:820px;background:#fff;padding:12px 20px;border:1px solid #c3c4c7">' . \AssociazioneSemplice\PrivacyNotice::html() . '</div></details>'; // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto da PrivacyNotice
+		echo wp_kses( '</p><details><summary><strong>Anteprima dell\'informativa</strong></summary><div style="max-width:820px;background:#fff;padding:12px 20px;border:1px solid #c3c4c7">' . \AssociazioneSemplice\PrivacyNotice::html() . '</div></details>', Html::allowed() );
 
 		// Promemoria: anteprima e invio manuale
 		echo '<h2>Promemoria di oggi</h2>';
@@ -87,7 +88,7 @@ final class CommsPage {
 			foreach ( $cands as $c ) {
 				echo '<li><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $c['id'] ) ) ) . '">' . esc_html( $c['name'] ) . '</a> <span class="description">ultima attività ' . esc_html( Ui::date( $c['last_seen'] ) ) . '</span> ';
 				Ui::form_open( 'asem_privacy_anonymize', Ui::url( 'asem-comms' ), false, 'asem-inline' );
-				echo Ui::hidden( 'id', $c['id'] ) . '<button class="button button-small" data-confirm="Anonimizzare ' . esc_attr( $c['name'] ) . '? I suoi dati personali vengono tolti e non si possono recuperare.">Anonimizza</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( Ui::hidden( 'id', $c['id'] ) . '<button class="button button-small" data-confirm="Anonimizzare ' . esc_attr( $c['name'] ) . '? I suoi dati personali vengono tolti e non si possono recuperare.">Anonimizza</button>', Html::allowed() );
 				Ui::form_close();
 				echo '</li>';
 			}

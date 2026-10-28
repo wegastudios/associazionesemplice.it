@@ -26,7 +26,7 @@ final class TicketVerify {
 		$flash = \AssociazioneSemplice\Flash::read( 'asemf' );
 		$html  = self::page( sanitize_text_field( wp_unslash( $_GET['asem_ticket'] ) ), $flash ); // phpcs:ignore WordPress.Security.NonceVerification
 		CardVerify::send_headers();
-		echo $html; // phpcs:ignore WordPress.Security.EscapeOutput -- già escapato in page()
+		CardVerify::output( $html );
 		exit;
 	}
 

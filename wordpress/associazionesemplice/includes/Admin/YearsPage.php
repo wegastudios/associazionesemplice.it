@@ -3,6 +3,7 @@ namespace AssociazioneSemplice\Admin;
 
 use AssociazioneSemplice\FiscalYears;
 use AssociazioneSemplice\Plugin;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -28,10 +29,10 @@ final class YearsPage {
 		$msg = '<strong>Apri l\'anno solare ' . (int) $next . '.</strong> Finché non esiste, le quote dei soci si registrano solo per il ' . (int) $year . ' e non puoi incassare in anticipo per il ' . (int) $next . '. '
 			. '<a class="button" href="' . esc_url( Ui::url( 'asem-years' ) ) . '">Apri il ' . (int) $next . '</a>';
 		if ( 12 === $month ) { // a dicembre non si può chiudere
-			echo '<div class="notice notice-warning inline"><p>' . $msg . '</p></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( '<div class="notice notice-warning inline"><p>' . $msg . '</p></div>', Html::allowed() );
 			return;
 		}
-		echo Dismiss::html( 'next-year-' . substr( $today, 0, 7 ), 'warning', $msg, 31 ); // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto
+		echo wp_kses( Dismiss::html( 'next-year-' . substr( $today, 0, 7 ), 'warning', $msg, 31 ), Html::allowed() );
 	}
 
 	public static function render(): void {
@@ -47,17 +48,17 @@ final class YearsPage {
 			$year     = (int) $y['year'];
 			$open     = 'open' === $y['status'];
 			$unsettled = (int) ( $totals[ $year ]['unsettled'] ?? 0 );
-			echo '<tr><td><strong>' . $year . '</strong></td><td>' . ( $open ? '<span class="asem-ok">aperto</span>' : '<strong>chiuso</strong>' . ( $y['closed_at'] ? ' <span class="description">il ' . esc_html( mysql2date( 'd/m/Y', $y['closed_at'] ) ) . '</span>' : '' ) ) . '</td>' // phpcs:ignore WordPress.Security.EscapeOutput
-				. '<td>' . (int) FiscalYears::movements( $year ) . '</td><td>' . ( $unsettled > 0 ? '<strong class="asem-warn">' . Ui::money( $unsettled ) . '</strong>' : Ui::money( 0 ) ) . '</td><td>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( '<tr><td><strong>' . $year . '</strong></td><td>' . ( $open ? '<span class="asem-ok">aperto</span>' : '<strong>chiuso</strong>' . ( $y['closed_at'] ? ' <span class="description">il ' . esc_html( mysql2date( 'd/m/Y', $y['closed_at'] ) ) . '</span>' : '' ) ) . '</td>'
+				. '<td>' . (int) FiscalYears::movements( $year ) . '</td><td>' . ( $unsettled > 0 ? '<strong class="asem-warn">' . Ui::money( $unsettled ) . '</strong>' : Ui::money( 0 ) ) . '</td><td>', Html::allowed() );
 			if ( $open && $year >= FiscalYears::current() ) {
 				echo '<span class="description">' . ( $year === FiscalYears::current() ? 'anno in corso: si chiude dopo la fine dell\'anno' : 'anno non ancora iniziato' ) . '</span>';
 			} elseif ( $open ) {
 				Ui::form_open( 'asem_close_year', $back, false, 'asem-inline' );
-				echo Ui::hidden( 'year', $year ) . '<button class="button" data-confirm="Chiudere l\'anno ' . $year . '? Non accetterà più incassi né spese (si può riaprire).">Chiudi l\'anno</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( Ui::hidden( 'year', $year ) . '<button class="button" data-confirm="Chiudere l\'anno ' . $year . '? Non accetterà più incassi né spese (si può riaprire).">Chiudi l\'anno</button>', Html::allowed() );
 				Ui::form_close();
 			} else {
 				Ui::form_open( 'asem_reopen_year', $back, false, 'asem-inline' );
-				echo Ui::hidden( 'year', $year ) . '<button class="button">Riapri l\'anno</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( Ui::hidden( 'year', $year ) . '<button class="button">Riapri l\'anno</button>', Html::allowed() );
 				Ui::form_close();
 			}
 			echo '</td></tr>';

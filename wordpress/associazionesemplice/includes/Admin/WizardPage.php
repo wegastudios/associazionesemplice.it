@@ -6,6 +6,7 @@ use AssociazioneSemplice\Money;
 use AssociazioneSemplice\Pages;
 use AssociazioneSemplice\Settings;
 use AssociazioneSemplice\Wizard;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -73,7 +74,7 @@ final class WizardPage {
 		Ui::header( 'Configurazione guidata' );
 		echo '<p style="font-size:15px"><strong>Descrivi il tuo ente e scegli in 4 sezioni veloci i servizi che vuoi gestire.</strong><br><span class="description">Le voci «Più dettagli» sono facoltative: ciò che non scegli resta spento e si accende dopo, dalle impostazioni o riaprendo questa procedura dagli Strumenti.</span></p>';
 		Ui::form_open( 'asem_wizard_save', Ui::url( 'asem-wizard' ), false, 'asem-wizard' );
-	echo self::stepper(); // phpcs:ignore WordPress.Security.EscapeOutput
+	echo wp_kses( self::stepper(), Html::allowed() );
 
 		// 1. Ente, ospiti e iscrizione
 		$jm   = (string) $s['join_mode'];
@@ -82,13 +83,13 @@ final class WizardPage {
 		echo '<tr><th>Come si chiama</th><td><input type="text" name="association_name" value="' . esc_attr( (string) $s['association_name'] ) . '" class="regular-text"></td></tr>';
 		do_action( 'asem_wizard_entity_rows', $s ); // le estensioni aggiungono qui le loro domande
 		echo '</tbody></table>';
-		echo self::yes_no( 'guests_enabled', 'Accettate ospiti, cioè persone che partecipano senza essere iscritte?', Settings::guests_enabled() ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( self::yes_no( 'guests_enabled', 'Accettate ospiti, cioè persone che partecipano senza essere iscritte?', Settings::guests_enabled() ), Html::allowed() );
 		echo '<p class="asem-wiz-q"><strong>Chi può iscriversi</strong><br>'
 			. '<label><input type="radio" name="join_mode" value="request"' . checked( 'invite' !== $jm, true, false ) . '> Chiunque può chiedere di iscriversi</label> <span class="description">(la richiesta arriva alla segreteria, che approva; si apre la domanda online nella pagina «Diventa socio»)</span><br>'
 			. '<label><input type="radio" name="join_mode" value="invite"' . checked( 'invite' === $jm, true, false ) . '> Solo su presentazione</label> <span class="description">(le iscrizioni le fa la segreteria)</span></p>';
 		echo '<details class="asem-wiz-more"><summary>Più dettagli: codice fiscale, anno sociale, sede</summary><table class="form-table"><tbody>';
 		echo '<tr><th>Codice fiscale dell\'ente</th><td><input type="text" name="tax_code" value="' . esc_attr( (string) $s['tax_code'] ) . '" class="regular-text"></td></tr>';
-		echo '<tr><th>L\'anno sociale inizia a</th><td><select name="social_year_start_month">' . Ui::options( Ui::MONTHS, (int) $s['social_year_start_month'] ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<tr><th>L\'anno sociale inizia a</th><td><select name="social_year_start_month">' . Ui::options( Ui::MONTHS, (int) $s['social_year_start_month'] ) . '</select></td></tr>', Html::allowed() );
 		echo '<tr><th>Sede</th><td><input type="text" name="legal_address" value="' . esc_attr( (string) $s['legal_address'] ) . '" class="regular-text" placeholder="Indirizzo"> <input type="text" name="legal_zip" value="' . esc_attr( (string) $s['legal_zip'] ) . '" size="6" placeholder="CAP"> <input type="text" name="legal_city" value="' . esc_attr( (string) $s['legal_city'] ) . '" placeholder="Comune"> <input type="text" name="legal_province" value="' . esc_attr( (string) $s['legal_province'] ) . '" size="4" placeholder="Prov."></td></tr>';
 		echo '</tbody></table></details>';
 		self::end_step();
@@ -102,11 +103,11 @@ final class WizardPage {
 			if ( 'import' === $key ) {
 				continue; // le importazioni sono sempre disponibili (dagli Strumenti)
 			}
-			echo '<div' . ( '' !== $d['needs'] ? ' data-if="mod[' . esc_attr( $d['needs'] ) . ']=1" style="margin-left:24px"' : '' ) . '>' . self::yes_no( 'mod[' . $key . ']', $d['ask'], Modules::on( $key ) ); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( '<div' . ( '' !== $d['needs'] ? ' data-if="mod[' . esc_attr( $d['needs'] ) . ']=1" style="margin-left:24px"' : '' ) . '>' . self::yes_no( 'mod[' . $key . ']', $d['ask'], Modules::on( $key ) ), Html::allowed() );
 			do_action( 'asem_wizard_module_extra', $key, $s );
 			echo '</div>';
 		}
-		echo '<details class="asem-wiz-more"><summary>Più dettagli: altre funzioni facoltative (tutte spente)</summary>' . self::features_box( $s ) . '</details>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<details class="asem-wiz-more"><summary>Più dettagli: altre funzioni facoltative (tutte spente)</summary>' . self::features_box( $s ) . '</details>', Html::allowed() );
 		self::end_step();
 
 
@@ -145,9 +146,9 @@ final class WizardPage {
 		if ( ! $priv_sel && Wizard::pending() ) { // solo alla prima configurazione si propone la pagina privacy di WordPress; su un sito già in uso non si cambia da sola l'accettazione dell'informativa
 			$priv_sel = (int) get_option( 'wp_page_for_privacy_policy', 0 );
 		}
-		echo '<p><label><strong>Pagina con l\'informativa privacy</strong><br>' . wp_dropdown_pages( // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<p><label><strong>Pagina con l\'informativa privacy</strong><br>' . wp_dropdown_pages(
 			array( 'name' => 'privacy_page_id', 'selected' => $priv_sel, 'show_option_none' => '— non ho ancora la pagina —', 'option_none_value' => '0', 'echo' => 0 )
-		) . '</label><br><span class="description">Chi attiva l\'accesso dal sito dovrà accettarla. Si sceglie tra le pagine che hai già su WordPress.</span></p>';
+		) . '</label><br><span class="description">Chi attiva l\'accesso dal sito dovrà accettarla. Si sceglie tra le pagine che hai già su WordPress.</span></p>', Html::allowed() );
 		$titles = \AssociazioneSemplice\Areas::titles();
 		$page_if = (array) apply_filters( 'asem_wizard_page_if', self::PAGE_IF ); // condizioni di visibilità delle pagine proposte
 		foreach ( Pages::by_area() as $area => $defs ) {
@@ -155,7 +156,7 @@ final class WizardPage {
 				return $page_if[ $k ] ?? '';
 			}, array_keys( $defs ) ) );
 			$wrap  = 1 === count( $conds ) && '' !== $conds[0] ? ' data-if="' . esc_attr( $conds[0] ) . '"' : ''; // l'intera area compare solo se serve
-			echo '<div' . $wrap . '><h3 style="margin-bottom:4px">' . esc_html( $titles[ $area ] ?? $area ) . '</h3>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( '<div' . $wrap . '><h3 style="margin-bottom:4px">' . esc_html( $titles[ $area ] ?? $area ) . '</h3>', Html::allowed() );
 		foreach ( $defs as $key => $d ) {
 			$if = $page_if[ $key ] ?? '';
 			echo '<div' . ( '' !== $if ? ' data-if="' . esc_attr( $if ) . '"' : '' ) . '><label><input type="checkbox" name="pages[]" value="' . esc_attr( $key ) . '"' . checked( isset( $exist[ $key ] ) || ! empty( $d['default'] ), true, false ) . disabled( isset( $exist[ $key ] ), true, false ) . '> <strong>' . esc_html( $d['title'] ) . '</strong>'
@@ -166,7 +167,7 @@ final class WizardPage {
 		self::end_step();
 
 		self::step( 'Elenco dei soci', 'Hai già un elenco di soci e ospiti (Excel o CSV, anche in un unico file)? Puoi caricarlo subito dopo: si vede un\'anteprima e si conferma prima di salvare. L\'importazione resta sempre disponibile dagli Strumenti.', '', 'optional' );
-		echo self::yes_no( 'go_import', 'Vuoi importare ora l\'elenco dei soci e degli ospiti?', false ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( self::yes_no( 'go_import', 'Vuoi importare ora l\'elenco dei soci e degli ospiti?', false ), Html::allowed() );
 		self::end_step();
 
 		echo '<p class="asem-wiz-nav"><span class="asem-wiz-count"></span> <button type="button" class="button" data-wiz="back">← Indietro</button> <button type="button" class="button button-primary" data-wiz="next">Avanti →</button> '

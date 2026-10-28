@@ -293,14 +293,32 @@ final class Attachments {
 		return null !== $by && (int) $by === get_current_user_id();
 	}
 
+	/**
+	 * I file di un campo `<input type="file">` della richiesta, con i valori ripuliti: nome come testo semplice, percorso temporaneo
+	 * e dimensione con il loro tipo. Il contenuto viene poi controllato da prepare() (tipo reale, dimensione, duplicati).
+	 *
+	 * @return array ['files' => [['name','tmp_name','size'], ...], 'errors' => string[]]
+	 */
+	public static function request_files( string $key ): array {
+		if ( empty( $_FILES[ $key ] ) || ! is_array( $_FILES[ $key ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification -- il nonce lo controlla chi gestisce l'azione
+			return array( 'files' => array(), 'errors' => array() );
+		}
+		$n = AttachmentRules::normalize_files( $_FILES[ $key ] ); // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- ogni valore viene ripulito qui sotto
+		foreach ( $n['files'] as $i => $f ) {
+			$n['files'][ $i ] = array(
+				'name'     => sanitize_text_field( AttachmentRules::display_name( (string) $f['name'] ) ),
+				'tmp_name' => (string) $f['tmp_name'],
+				'size'     => absint( $f['size'] ),
+			);
+		}
+		return $n;
+	}
+
 	/** File caricati con i campi `docs` (scelti) e `shots` (scattati con la fotocamera), uniti nella struttura di un solo campo. */
 	public static function from_request(): ?array {
 		$all = array();
 		foreach ( array( 'docs', 'shots' ) as $k ) {
-			if ( empty( $_FILES[ $k ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
-				continue;
-			}
-			$n = AttachmentRules::normalize_files( $_FILES[ $k ] ); // phpcs:ignore WordPress.Security.NonceVerification,WordPress.Security.ValidatedSanitizedInput
+			$n = self::request_files( $k );
 			if ( $n['errors'] ) {
 				throw new \InvalidArgumentException( $n['errors'][0] ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}

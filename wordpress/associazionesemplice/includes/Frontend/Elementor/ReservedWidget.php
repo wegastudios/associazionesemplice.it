@@ -6,6 +6,7 @@ use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Visibility;
 use Elementor\Controls_Manager;
 use Elementor\Widget_Base;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -63,6 +64,6 @@ class ReservedWidget extends Widget_Base {
 		$rule = Visibility::is_valid( (string) ( $s['rule'] ?? '' ) ) ? (string) $s['rule'] : Visibility::MEMBERS;
 		$ids  = array_values( array_filter( array_map( 'intval', (array) ( $s['activities'] ?? array() ) ) ) );
 		$body = Restrict::allowed( $rule, $ids ) ? do_shortcode( wp_kses_post( (string) ( $s['body'] ?? '' ) ) ) : ''; // gli shortcode non si eseguono per chi non può vedere
-		echo Restrict::render_reserved( $rule, $ids, $body, (string) ( $s['message'] ?? '' ) ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( Restrict::render_reserved( $rule, $ids, $body, (string) ( $s['message'] ?? '' ) ), Html::with_post() );
 	}
 }

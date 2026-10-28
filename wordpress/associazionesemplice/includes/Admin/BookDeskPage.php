@@ -7,6 +7,7 @@ use AssociazioneSemplice\Levels;
 use AssociazioneSemplice\MemberType;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Settings;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -31,9 +32,9 @@ final class BookDeskPage {
 		ob_start();
 		Ui::form_open( 'asem_book', self::back( $person ), false, 'asem-inline' );
 		$act = Plugin::activities()->get( (int) $s['activity_id'] );
-		echo Ui::hidden( 'person_id', (int) $person['id'] ) . Ui::hidden( 'session_id', (int) $s['id'] ) . Ui::hidden( 'activity_id', (int) $s['activity_id'] ) // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( Ui::hidden( 'person_id', (int) $person['id'] ) . Ui::hidden( 'session_id', (int) $s['id'] ) . Ui::hidden( 'activity_id', (int) $s['activity_id'] )
 			. ( $act ? ActivitiesPage::booking_fields( $act, (int) $person['id'] ) : '' )
-			. '<button class="button button-primary">Prenota</button>';
+			. '<button class="button button-primary">Prenota</button>', Html::allowed() );
 		Ui::form_close();
 		return (string) ob_get_clean();
 	}
@@ -60,9 +61,9 @@ final class BookDeskPage {
 					$act = self::book_button( $person, $s );
 				}
 			}
-			echo '<tr><td>' . esc_html( trim( $when ) ) . '</td><td><a href="' . esc_url( Ui::url( 'asem-activity', array( 'id' => (int) $s['activity_id'] ) ) ) . '">' . esc_html( $s['activity_name'] ) . '</a>'
+			echo wp_kses( '<tr><td>' . esc_html( trim( $when ) ) . '</td><td><a href="' . esc_url( Ui::url( 'asem-activity', array( 'id' => (int) $s['activity_id'] ) ) ) . '">' . esc_html( $s['activity_name'] ) . '</a>'
 				. ( ! empty( $s['location'] ) ? ' <span class="description">· ' . esc_html( $s['location'] ) . '</span>' : '' ) . '</td><td>'
-				. ( null === $seat['free'] ? 'senza limite' : (int) $seat['free'] . ' liberi su ' . (int) $seat['capacity'] ) . '</td><td>' . ( $fee > 0 ? Ui::money( $fee ) : 'gratuito' ) . '</td><td>' . $act . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				. ( null === $seat['free'] ? 'senza limite' : (int) $seat['free'] . ' liberi su ' . (int) $seat['capacity'] ) . '</td><td>' . ( $fee > 0 ? Ui::money( $fee ) : 'gratuito' ) . '</td><td>' . $act . '</td></tr>', Html::allowed() );
 		}
 		echo '</tbody></table>';
 	}
@@ -77,13 +78,13 @@ final class BookDeskPage {
 			} else {
 				ob_start();
 				Ui::form_open( 'asem_enroll', self::back( $person ), false, 'asem-inline' );
-				echo Ui::hidden( 'person_id', (int) $person['id'] ) . Ui::hidden( 'activity_id', (int) $a['id'] ) . Ui::hidden( 'start_month', $month ) // phpcs:ignore WordPress.Security.EscapeOutput
-					. '<button class="button button-primary">Iscrivi da ' . esc_html( $month ) . '</button>';
+				echo wp_kses( Ui::hidden( 'person_id', (int) $person['id'] ) . Ui::hidden( 'activity_id', (int) $a['id'] ) . Ui::hidden( 'start_month', $month )
+					. '<button class="button button-primary">Iscrivi da ' . esc_html( $month ) . '</button>', Html::allowed() );
 				Ui::form_close();
 				$act = (string) ob_get_clean();
 			}
 		}
-		return '<tr><td><a href="' . esc_url( Ui::url( 'asem-activity', array( 'id' => (int) $a['id'] ) ) ) . '">' . esc_html( $a['name'] ) . '</a></td><td>' . ( $fee > 0 ? Ui::money( $fee ) . ' al mese' : 'gratuito' ) . '</td><td>' . $act . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		return '<tr><td><a href="' . esc_url( Ui::url( 'asem-activity', array( 'id' => (int) $a['id'] ) ) ) . '">' . esc_html( $a['name'] ) . '</a></td><td>' . ( $fee > 0 ? Ui::money( $fee ) . ' al mese' : 'gratuito' ) . '</td><td>' . $act . '</td></tr>';
 	}
 
 	/** Righe [titolo, info, indirizzo] aggiunte da un'estensione (ad esempio le risorse). */
@@ -118,12 +119,12 @@ final class BookDeskPage {
 			$groups[ $g ] = (array) $opts;
 		}
 
-		echo '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-bookdesk">'
-			. '<p><strong>Chi</strong> ' . Ui::person_select( 'person_id', Plugin::people()->search(), $pid ?: null, '— scegli la persona —', 'asem-desk-person' ) // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-bookdesk">'
+			. '<p><strong>Chi</strong> ' . Ui::person_select( 'person_id', Plugin::people()->search(), $pid ?: null, '— scegli la persona —', 'asem-desk-person' )
 			. ' <a href="' . esc_url( Ui::url( 'asem-person', array( 'type' => 'ordinary' ) ) ) . '">+ nuovo socio</a></p>'
 			. '<p><label><input type="radio" name="mode" value="date"' . checked( 'date' === $mode, true, false ) . '> <strong>Parto dalla data</strong></label> '
 			. '<input type="date" name="date" value="' . esc_attr( $date ) . '"> &nbsp; '
-			. '<label><input type="radio" name="mode" value="item"' . checked( 'item' === $mode, true, false ) . '> <strong>Parto dalla cosa</strong></label> <select name="item"><option value="">— scegli —</option>';
+			. '<label><input type="radio" name="mode" value="item"' . checked( 'item' === $mode, true, false ) . '> <strong>Parto dalla cosa</strong></label> <select name="item"><option value="">— scegli —</option>', Html::allowed() );
 		foreach ( $groups as $label => $opts ) {
 			if ( ! $opts ) {
 				continue;
@@ -163,7 +164,7 @@ final class BookDeskPage {
 				$month = $sy->clamp( substr( $date, 0, 7 ) );
 				echo '<table class="widefat striped"><thead><tr><th>Corso</th><th>Quota</th><th></th></tr></thead><tbody>';
 				foreach ( $courses as $a ) {
-					echo self::course_row( $a, $person, $month ); // phpcs:ignore WordPress.Security.EscapeOutput
+					echo wp_kses( self::course_row( $a, $person, $month ), Html::allowed() );
 				}
 				echo '</tbody></table>';
 			} else {
@@ -175,8 +176,8 @@ final class BookDeskPage {
 		} elseif ( 0 === strpos( $item, 'a:' ) ) {
 			$a = Plugin::activities()->get( (int) substr( $item, 2 ) );
 			if ( $a && ActivityKind::COURSE === $a['kind'] ) {
-				echo '<h2>' . esc_html( $a['name'] ) . '</h2><table class="widefat striped"><thead><tr><th>Corso</th><th>Quota</th><th></th></tr></thead><tbody>'
-					. self::course_row( $a, $person, Settings::social_year()->clamp( substr( $today, 0, 7 ) ) ) . '</tbody></table>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( '<h2>' . esc_html( $a['name'] ) . '</h2><table class="widefat striped"><thead><tr><th>Corso</th><th>Quota</th><th></th></tr></thead><tbody>'
+					. self::course_row( $a, $person, Settings::social_year()->clamp( substr( $today, 0, 7 ) ) ) . '</tbody></table>', Html::allowed() );
 			} elseif ( $a ) {
 				echo '<h2>' . esc_html( $a['name'] ) . ': prossime date</h2>';
 				self::sessions_table( Plugin::activities()->upcoming_sessions( 40, (int) $a['id'] ), $person, true );
