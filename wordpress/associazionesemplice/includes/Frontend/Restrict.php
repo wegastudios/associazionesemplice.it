@@ -97,9 +97,14 @@ final class Restrict {
 
 	/** Indirizzo della pagina corrente (per tornarci dopo il login). */
 	public static function current_url(): string {
-		$host = isset( $_SERVER['HTTP_HOST'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ) ) : '';
-		$uri  = isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
-		return '' === $host ? home_url( '/' ) : set_url_scheme( '//' . $host . $uri );
+		$uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
+		$uri = '' !== $uri && '/' === $uri[0] && 0 !== strpos( $uri, '//' ) ? esc_url_raw( $uri ) : ''; // solo un percorso del sito
+		$p   = wp_parse_url( home_url( '/' ) );
+		if ( '' === $uri || empty( $p['host'] ) ) {
+			return home_url( '/' );
+		}
+		// L'indirizzo del sito, non l'intestazione Host della richiesta (la può scrivere chi fa la richiesta e finire in link e cache).
+		return ( $p['scheme'] ?? 'https' ) . '://' . $p['host'] . ( isset( $p['port'] ) ? ':' . $p['port'] : '' ) . $uri;
 	}
 	// ---------- Messaggio al posto del contenuto ----------
 

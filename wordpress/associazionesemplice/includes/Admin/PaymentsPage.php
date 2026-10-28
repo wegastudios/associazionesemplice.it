@@ -99,6 +99,9 @@ final class PaymentsPage {
 		}
 		echo '<tr><th>Sicurezza delle chiavi</th><td><p class="description">Le chiavi segrete sono salvate <strong>cifrate</strong> nel database e non vengono mai mostrate né scritte nel registro azioni: si inseriscono qui e basta, senza toccare file. '
 			. 'La cifratura è legata a questo sito: se copi il database su un altro sito (ad esempio lo staging) le chiavi non vi sono leggibili e vanno reinserite. Questo impedisce a un sito di prova di usare per errore le chiavi reali. Usa le chiavi di prova finché non hai verificato il funzionamento.</p></td></tr>';
+		if ( \AssociazioneSemplice\Secrets::salts_weak( defined( 'AUTH_KEY' ) ? (string) AUTH_KEY : null, defined( 'AUTH_SALT' ) ? (string) AUTH_SALT : null ) ) {
+			echo '<tr><th></th><td class="asem-warn">⚠ I codici di sicurezza di <code>wp-config.php</code> (AUTH_KEY e AUTH_SALT) mancano o sono quelli di esempio: la cifratura delle chiavi qui sopra è più debole. Generane di nuovi su <a href="https://api.wordpress.org/secret-key/1.1/salt/" target="_blank" rel="noopener">api.wordpress.org/secret-key</a> e incollali in <code>wp-config.php</code>; poi reinserisci le chiavi.</td></tr>';
+		}
 		foreach ( \AssociazioneSemplice\Settings::secret_keys() as $sk ) {
 			if ( Settings::secret_unreadable( $sk ) ) {
 				echo '<tr><th></th><td class="asem-warn">⚠ Una chiave è salvata ma non è leggibile su questo sito: reinseriscila.</td></tr>';

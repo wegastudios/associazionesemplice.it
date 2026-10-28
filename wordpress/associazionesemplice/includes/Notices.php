@@ -22,7 +22,15 @@ final class Notices {
 
 	/** Chi può inviare avvisi per un'attività: il referente, chi gestisce l'evento, gli amministratori. */
 	public static function can_send( int $activity_id ): bool {
-		return current_user_can( 'asem_notify_activity', $activity_id ) || current_user_can( 'asem_manage_event', $activity_id );
+		if ( current_user_can( 'asem_notify_activity', $activity_id ) ) {
+			return true;
+		}
+		if ( ! current_user_can( 'asem_manage_event', $activity_id ) ) {
+			return false;
+		}
+		// Lo staff dell'ente verifica gli ingressi di tutti gli eventi, ma gli avvisi li manda solo a quelli di cui è anche staff dell'evento.
+		$me = Access::current_person();
+		return ! Access::is_entity_staff( get_current_user_id() ) || ( $me && Plugin::activities()->is_staff( $activity_id, (int) $me['id'] ) );
 	}
 
 	/**
