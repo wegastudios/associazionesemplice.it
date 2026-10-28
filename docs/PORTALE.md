@@ -156,6 +156,19 @@ Regola per chi scrive le pagine: un dato dentro un attributo `on…` o dentro un
 
 Resta da decidere (invariato): proprietà del dominio, evento PayPal che emette la licenza, ruolo «solo supporto» (rinnovo gratuito e lettura delle chiavi). Annotati e non toccati: l'ingresso con un solo clic dal link per email (`/entra/…`: un sito terzo può far entrare un visitatore nell'account di chi ha un link valido, effetto trascurabile) e le due `DELETE` a ogni richiesta pubblica dei limiti orari (costo minimo, nessun rischio di sicurezza).
 
+## Demo pubblica (`associazionesemplice.it/demo/`)
+
+WordPress vero con il gratuito e il Pro attivi, nella cartella `~/public_html/demo` del server del portale (database `associazionesemp_demo`). Le credenziali sono pubbliche e stanno nella pagina `/plugin` del portale: utenti `segreteria` (ruolo Segreteria) e `socio` (ruolo Socio). Nessun utente amministratore: quello d'installazione (`setup_tmp`) si toglie a ogni azzeramento, e per la manutenzione si usa `wp` da riga di comando.
+
+File in `demo/` (copiati sul server in `~/demo-provision/`, il mu-plugin in `wp-content/mu-plugins/`):
+- `reset.sh` azzera tutto: database pulito, installazione, plugin attivi, dati inventati. Da lanciare ogni notte alle 4 (`0 4 * * * bash ~/demo-provision/reset.sh >> ~/logs/demo-reset.log 2>&1`, da mettere in cPanel → Cron Jobs).
+- `provision.php` crea ente, pagine, utenti, 14 soci inventati, quote, spese, un corso e due eventi. Si lancia con `wp eval-file`.
+- `asem-demo.php` (mu-plugin): nessuna email in uscita, profili e password bloccati, nessun file caricato, noindex, avviso in ogni pagina, la segreteria entra nella Bacheca del plugin.
+
+Licenza: finché la verifica del plugin è in «standby» valgono tutte le funzioni e non serve nessuna chiave. Quando la verifica si attiva serve una licenza Pro Fiscale per il dominio `associazionesemplice.it` (emissione manuale da `/admin/licenze/nuova`), da mettere in `~/.demo_key` (`provision.php` la legge).
+
+Per aggiornare i plugin della demo: caricare i nuovi zip e `wp plugin install ZIP --force` da `~/public_html/demo` (poi un `reset.sh`).
+
 ## Pacchetti firmati (aggiornamento diretto)
 
 L'aggiornamento diretto offre **solo versioni firmate**. La firma è Ed25519 sul messaggio `prodotto|versione|sha256` (UTF-8, sha256 in esadecimale minuscolo dello zip), in base64url senza padding; il plugin verifica impronta e firma con la chiave pubblica del `kid` prima di installare (`POST /api/plugin/update` risponde con `sha256`, `signature`, `kid`).
