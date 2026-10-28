@@ -4,10 +4,7 @@ Associazione Semplice è un plugin per WordPress pensato per le piccole associaz
 Il plugin segue le regole del terzo settore (APS, ETS, registri, regole fiscali), perciò l'interfaccia e i testi sono in italiano. Un pacchetto di testi in inglese è incluso nel Pro e si sceglie dalle impostazioni.
 
 ## Provalo subito
-C'è una demo con il plugin gratuito e il Pro già installati e piena di dati inventati: puoi provare a inserire, modificare e cancellare senza rompere niente. Non mandare dati veri: tutto si azzera ogni notte, non partono email e le password non si possono cambiare.
-- **Indirizzo:** [associazionesemplice.it/demo](https://associazionesemplice.it/demo/)
-- **Come segreteria** (soci, attività, cassa e registri): [entra qui](https://associazionesemplice.it/demo/wp-login.php), utente **segreteria**, password **Segreteria-Demo-2026**
-- **Come socio** (area riservata con tessera, eventi e pagamenti): [entra qui](https://associazionesemplice.it/demo/wp-login.php), utente **socio**, password **Socio-Demo-2026**
+C'è una demo con il plugin gratuito e il Pro già installati e piena di dati inventati. Gli accessi di prova (segreteria e socio), i collegamenti e i ruoli del plugin sono nella pagina [Prova la demo](/prova).
 
 ## Il plugin gratuito
 Si scarica da WordPress.org e funziona da solo, senza chiave e senza contattare servizi esterni.
@@ -33,5 +30,5 @@ Il gratuito non contatta nessun servizio. Il Pro verifica la licenza una volta a
 
 ## Per iniziare
 - [Ottieni la licenza gratuita](/free)
-- [Vedi i piani Pro](/#prezzi)
+- [Vedi i piani Pro](/prezzi)
 - Per dubbi e assistenza usa il sito di supporto, dall'area riservata.

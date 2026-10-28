@@ -8,7 +8,7 @@ $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Associazione Semplice · Il gestionale per le associazioni</title>
+<title><?php echo ! empty( $title ) && is_string( $title ) ? e( $title ) . ' · Associazione Semplice' : 'Associazione Semplice · Il gestionale per le associazioni'; ?></title>
 <meta name="description" content="Soci, eventi, prima nota e privacy per la tua associazione. Plugin WordPress gratuito, con piani Pro per pagamenti online e contabilità.">
 <?php if ( $robots ) : ?><meta name="robots" content="noindex, nofollow"><?php endif; ?>
 <meta name="theme-color" content="#1f218c">
@@ -19,7 +19,7 @@ $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 <header class="site-header"><div class="wrap">
 	<a class="logo" href="/" aria-label="Associazione Semplice"><picture class="logo-full"><source media="(prefers-color-scheme: dark)" srcset="/assets/brand/logo-orizzontale-negativo.svg?v=<?php echo e( $v ); ?>"><img src="/assets/brand/logo-orizzontale-colore.svg?v=<?php echo e( $v ); ?>" alt="Associazione Semplice" width="143" height="52"></picture><picture class="logo-sym"><source media="(prefers-color-scheme: dark)" srcset="/assets/brand/simbolo-negativo.svg?v=<?php echo e( $v ); ?>"><img src="/assets/brand/simbolo-colore.svg?v=<?php echo e( $v ); ?>" alt="Associazione Semplice" width="40" height="40"></picture></a>
 	<nav class="nav" aria-label="Principale">
-		<a href="/#funzioni">Funzioni</a><a href="/#prezzi">Prezzi</a><a href="/#domande">Domande</a><a href="<?php echo e( $support_href ); ?>">Supporto</a>
+		<a href="/funzioni">Funzioni</a><a href="/prezzi">Prezzi</a><a href="/prova">Demo</a><a href="/domande">Domande</a><a href="<?php echo e( $support_href ); ?>">Supporto</a>
 		<?php if ( ! empty( $_SESSION['staff'] ) ) : ?><a href="/admin">Gestione</a><?php endif; ?>
 		<a class="btn small" href="<?php echo $logged ? '/account' : '/accedi'; ?>">Area riservata</a>
 	</nav>

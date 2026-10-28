@@ -9,6 +9,7 @@ wp option update blog_public 0 >/dev/null
 wp option update timezone_string Europe/Rome >/dev/null
 wp rewrite structure "/%postname%/" >/dev/null
 wp plugin delete akismet hello >/dev/null 2>&1 || true
+bash "$HOME/demo-provision/update.sh"
 wp plugin activate associazionesemplice associazionesemplice-pro
 wp eval-file "$HOME/demo-provision/provision.php"
 wp user delete setup_tmp --yes >/dev/null

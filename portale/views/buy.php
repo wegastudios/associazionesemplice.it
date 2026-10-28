@@ -42,6 +42,6 @@ $names = array(
 			<li><?php echo icon( 'mail' ); ?><div><b>Ricevi un'email</b>Con il link per entrare nell'area riservata.</div></li>
 			<li><?php echo icon( 'key' ); ?><div><b>Trovi la chiave</b>Incolla la chiave nel plugin e le funzioni Pro si attivano.</div></li>
 		</ul>
-		<p class="muted small"><a href="/#prezzi">Confronta di nuovo i piani</a></p>
+		<p class="muted small"><a href="/prezzi">Confronta di nuovo i piani</a></p>
 	</div>
 </div></section>

@@ -1,60 +1,4 @@
-<?php /** @var array $plans */
-$euro = function ( $c ) { return number_format( $c / 100, ( $c % 100 ) ? 2 : 0, ',', '.' ) . ' €'; };
-
-// Testi di vetrina: si possono sostituire da config.php (plans.<codice>.tagline / features).
-$copy = array(
-	'free' => array( 'tagline' => 'Per partire subito, senza costi e senza scadenza.', 'lead' => '', 'features' => array(
-		'Libro soci con nuovi iscritti, schede e numerazione',
-		'Tessera digitale e stampabile con QR',
-		'Corsi ed eventi: iscrizioni, posti e lista d\'attesa',
-		'Prima nota con cassa unica, spese e donazioni PayPal',
-		'Anni solari: apertura e chiusura',
-		'Verbali, informativa privacy e consensi',
-		'Area riservata dei soci e ruoli della segreteria',
-		'Importazione ed esportazione degli elenchi',
-		'Copia di sicurezza dei dati',
-	) ),
-	'lite' => array( 'tagline' => 'Tutto il gratuito, più incassi online e comunicazione ai soci. Senza la parte fiscale.', 'tag' => 'Il più scelto', 'lead' => 'Tutto il Free, più:', 'features' => array(
-		'Pagamenti online con carta, PayPal e WooCommerce',
-		'Più livelli di socio, quote diverse e nucleo familiare',
-		'Conti multipli, fondi e giroconti',
-		'Ricevute in PDF e report di gestione',
-		'Risorse prenotabili: campi, sale, posti auto',
-		'Incasso sul posto agli eventi',
-		'Assicurazioni dei volontari e presenze',
-		'Comunicazioni a gruppi di soci, app e notifiche',
-		'Tessera in Apple Wallet e Google Wallet',
-		'Testi personalizzabili e lingue',
-	) ),
-	'full' => array( 'tagline' => 'Per chi vuole anche la parte fiscale dell\'ente.', 'lead' => 'Tutto il Pro Contabile, più:', 'features' => array(
-		'IVA su quote, attività, incassi e spese',
-		'5 per mille con rendiconto sull\'utilizzo',
-		'Rendiconto per cassa per il commercialista',
-	) ),
-);
-$features = array(
-	array( 'users', 'Libro soci in ordine', 'Soci, ospiti e figure diverse, con tessera, quote e storico. Importi l\'elenco che hai già, in pochi minuti.' ),
-	array( 'calendar', 'Eventi e corsi', 'Iscrizioni, prenotazioni, lista d\'attesa e calendario. Chi si iscrive riceve avvisi e promemoria per email.' ),
-	array( 'book', 'Prima nota', 'Entrate e uscite sempre al loro posto, con allegati e viste pronte per il bilancio.' ),
-	array( 'shield', 'Privacy in regola', 'Consensi, informativa compilata, esportazione dei dati e anonimizzazione quando serve.' ),
-	array( 'card', 'Area riservata per i soci', 'Ogni socio ha la sua pagina sul sito: tessera, pagamenti, ingressi. Nel menu del sito, non in wp-admin.' ),
-	array( 'phone', 'Pagamenti e app', 'Con il Pro: quote e biglietti online con carta o PayPal, app installabile e tessera nel telefono.' ),
-);
-$save = 0;
-foreach ( $plans as $p ) {
-	if ( ! empty( $p['prices']['month']['cents'] ) && ! empty( $p['prices']['year']['cents'] ) ) {
-		$save = max( $save, (int) round( 100 - 100 * $p['prices']['year']['cents'] / ( 12 * $p['prices']['month']['cents'] ) ) );
-	}
-}
-$faq = array(
-	array( 'Devo pagare per usare Associazione Semplice?', 'No. Il plugin è gratuito e resta tale. Serve solo una licenza gratuita, legata al dominio del tuo sito, che ricevi in due minuti.' ),
-	array( 'Cosa significa «licenza legata a un dominio»?', 'La chiave funziona sul sito per cui l\'hai richiesta. Se cambi indirizzo, lo aggiorni tu dall\'area riservata (fino a 3 volte ogni 30 giorni), senza scrivere a nessuno.' ),
-	array( 'Posso passare dal gratuito al Pro più avanti?', 'Sì, in qualsiasi momento. I dati restano dove sono: si attivano soltanto le funzioni in più.' ),
-	array( 'Come funziona il rinnovo?', 'Il rinnovo è automatico, mensile o annuale a scelta. Puoi disdire quando vuoi dall\'area riservata: la licenza resta valida fino alla scadenza già pagata.' ),
-	array( 'Cosa succede se un pagamento non va a buon fine?', 'Hai alcuni giorni di tolleranza. I tuoi dati non vengono mai cancellati: se la licenza scade, tornano disponibili le funzioni di base.' ),
-	array( 'Come pago?', 'Con carta tramite Stripe oppure con PayPal. Non vediamo né conserviamo i dati della tua carta.' ),
-);
-?>
+<?php /** @var array $plans */ ?>
 <section class="hero"><div class="wrap hero-grid">
 	<div>
 		<span class="eyebrow">Plugin WordPress per associazioni</span>
@@ -62,7 +6,7 @@ $faq = array(
 		<p class="lead">Soci, eventi, prima nota e privacy in un unico plugin per il tuo sito WordPress. Si parte gratis; i pagamenti online e la contabilità arrivano quando servono.</p>
 		<div class="hero-cta">
 			<a class="btn big" href="/free">Ottieni la licenza gratuita</a>
-			<a class="btn alt big" href="#prezzi">Vedi i piani Pro</a>
+			<a class="btn alt big" href="/prova">Prova la demo</a>
 		</div>
 		<ul class="ticks"><li>Gratis, senza scadenza</li><li>Dati sempre tuoi</li><li>In italiano</li></ul>
 	</div>
@@ -75,16 +19,6 @@ $faq = array(
 		<div class="mock-row"><span class="avatar">LN</span><div><b>Luca Neri</b><span>Quota annuale 2026</span></div><span class="pill bad">Scaduta</span></div>
 	</div>
 </div></section>
-
-<section class="section" id="funzioni"><div class="wrap">
-	<div class="section-head"><h2>Tutto quello che serve a una segreteria</h2><p>Pensato per chi gestisce un'associazione nel tempo libero: poche schermate, parole chiare, niente da imparare a memoria.</p></div>
-	<div class="grid-3">
-	<?php foreach ( $features as $f ) : ?>
-		<div class="feature"><div class="ico"><?php echo icon( $f[0] ); ?></div><h3><?php echo e( $f[1] ); ?></h3><p><?php echo e( $f[2] ); ?></p></div>
-	<?php endforeach; ?>
-	</div>
-</div></section>
-
 <section class="section alt"><div class="wrap">
 	<div class="section-head"><h2>Si parte in tre passi</h2></div>
 	<div class="steps">
@@ -93,60 +27,13 @@ $faq = array(
 		<div class="step"><h3>Cresci quando vuoi</h3><p>Ti servono incassi online o contabilità? Passi al Pro dall'area riservata, senza reinstallare nulla.</p></div>
 	</div>
 </div></section>
-
-<section class="section pricing" id="prezzi" data-period="year"><div class="wrap">
-	<div class="section-head"><h2>Prezzi chiari, disdici quando vuoi</h2><p>Il piano gratuito resta gratuito. I piani Pro si rinnovano da soli e si cambiano o si disdicono in autonomia.</p></div>
-	<div class="seg" role="group" aria-label="Periodo di fatturazione">
-		<button type="button" data-period="month" aria-pressed="false">Mensile</button>
-		<button type="button" data-period="year" aria-pressed="true">Annuale<?php echo $save > 0 ? ' <span class="save">-' . (int) $save . '%</span>' : ''; ?></button>
-	</div>
-	<div class="plans">
-	<?php foreach ( $plans as $code => $p ) :
-		if ( false === ( $p['visible'] ?? true ) ) { continue; }
-		$c    = $copy[ $code ] ?? array( 'tagline' => $p['description'] ?? '', 'features' => array() );
-		$tag  = $p['tag'] ?? ( $c['tag'] ?? '' );
-		$feat = $c['features'];
-		$lead = $c['lead'] ?? '';
-		if ( '' !== $lead && isset( $prevLabel ) ) { $lead = 'Tutto il ' . $prevLabel . ', più:'; }
-		$prevLabel = $p['label'];
-		$m    = $p['prices']['month']['cents'] ?? null;
-		$y    = $p['prices']['year']['cents'] ?? null;
-		$hot  = 'lite' === $code;
-	?>
-		<div class="plan<?php echo $hot ? ' hot' : ''; ?>">
-			<?php if ( $tag ) : ?><span class="tag"><?php echo e( $tag ); ?></span><?php endif; ?>
-			<h3><?php echo e( $p['label'] ); ?></h3>
-			<p class="for"><?php echo e( $p['tagline'] ?? $c['tagline'] ); ?></p>
-			<?php if ( 'free' === $code ) : ?>
-				<div class="price"><b>0 €</b><span>per sempre</span></div><div class="price-note">Serve solo la licenza gratuita</div>
-			<?php else : ?>
-				<?php $promoName = Portale\Settings::promoNow(); $lm = Portale\Settings::listCents( $code, 'month' ); $ly = Portale\Settings::listCents( $code, 'year' ); if ( $promoName && ( $lm || $ly ) ) : ?><div class="promo-tag"><?php echo e( $promoName ); ?></div><?php endif; ?>
-				<?php if ( $m ) : ?><div class="only-month"><div class="price"><?php if ( $lm ) : ?><s class="was"><?php echo e( $euro( $lm ) ); ?></s> <?php endif; ?><b><?php echo e( $euro( $m ) ); ?></b><span>al mese</span></div><div class="price-note">Rinnovo mensile, senza vincoli</div></div><?php endif; ?>
-				<?php if ( $y ) : ?><div class="only-year"><div class="price"><?php if ( $ly ) : ?><s class="was"><?php echo e( $euro( $ly ) ); ?></s> <?php endif; ?><b><?php echo e( $euro( $y ) ); ?></b><span>all'anno</span></div><div class="price-note"><small>pari a <?php echo e( $euro( (int) round( $y / 12 ) ) ); ?> al mese<?php echo $m && $m * 12 > $y ? ' · risparmi ' . e( $euro( $m * 12 - $y ) ) . ' rispetto al mensile' : ''; ?></small></div></div><?php endif; ?>
-			<?php endif; ?>
-			<ul><?php if ( '' !== $lead ) : ?><li class="lead"><?php echo e( $lead ); ?></li><?php endif; foreach ( $feat as $line ) : ?><li><?php echo e( $line ); ?></li><?php endforeach; ?></ul>
-			<?php if ( 'free' === $code ) : ?>
-				<a class="btn alt block" href="/free">Inizia gratis</a>
-			<?php else : ?>
-				<?php if ( $m ) : ?><a class="btn<?php echo $hot ? '' : ' alt'; ?> block only-month" href="/acquista?plan=<?php echo e( $code ); ?>&amp;period=month">Scegli <?php echo e( $p['label'] ); ?></a><?php endif; ?>
-				<?php if ( $y ) : ?><a class="btn<?php echo $hot ? '' : ' alt'; ?> block only-year" href="/acquista?plan=<?php echo e( $code ); ?>&amp;period=year">Scegli <?php echo e( $p['label'] ); ?></a><?php endif; ?>
-			<?php endif; ?>
-		</div>
-	<?php endforeach; ?>
-	</div>
-	<?php if ( ! empty( $trial ) ) : ?><p class="fine" style="font-weight:600;color:var(--fg)">Hai già la licenza gratuita? Prova il piano Pro gratis per <?php echo (int) $trial; ?> giorni dall'area riservata, una volta sola.</p><?php endif; ?>
-	<p class="fine"><a href="/confronto">Confronta tutte le funzioni delle tre versioni</a>. Prezzi in euro. Pagamento sicuro con Stripe o PayPal. Ogni licenza è legata a un dominio, modificabile dall'area riservata.</p>
-</div></section>
-
-<section class="section alt" id="domande"><div class="wrap">
-	<div class="section-head"><h2>Domande frequenti</h2></div>
-	<div class="faq">
-	<?php foreach ( $faq as $q ) : ?>
-		<details><summary><?php echo e( $q[0] ); ?></summary><p><?php echo e( $q[1] ); ?></p></details>
-	<?php endforeach; ?>
+<section class="section alt"><div class="wrap">
+	<div class="grid-3">
+		<a class="feature" href="/funzioni" style="text-decoration:none;color:inherit"><div class="ico"><?php echo icon( 'book' ); ?></div><h3>Cosa fa</h3><p>Soci, eventi, prima nota e privacy: le funzioni una per una.</p></a>
+		<a class="feature" href="/prezzi" style="text-decoration:none;color:inherit"><div class="ico"><?php echo icon( 'card' ); ?></div><h3>Quanto costa</h3><p>Gratis per partire; i piani Pro quando servono incassi online e contabilità.</p></a>
+		<a class="feature" href="/prova" style="text-decoration:none;color:inherit"><div class="ico"><?php echo icon( 'globe' ); ?></div><h3>Provalo subito</h3><p>Una demo già piena di dati inventati: entra come segreteria o come socio.</p></a>
 	</div>
 </div></section>
-
 <section class="section"><div class="wrap">
 	<div class="cta-band">
 		<h2>Metti ordine nella tua associazione oggi</h2>
