@@ -761,6 +761,8 @@ asem_ok( false !== strpos( $pages->invoke( null, array() )[1], 'esistono già' )
 asem_ok( false !== strpos( do_shortcode( get_post( $saved_pages['attivita'] )->post_content ), 'Yoga' ), 'la pagina Attività mostra le attività' );
 
 // Dopo un ripristino di fabbrica le pagine create restano: la procedura le riprende e non ne fa di doppie
+$pg_opt0 = get_option( \AssociazioneSemplice\Pages::OPTION, array() );
+$pg_ids0 = array_map( 'intval', $wpdb->get_col( "SELECT ID FROM {$wpdb->posts} WHERE post_type = 'page' AND post_content = '[associazionesemplice_calendario]'" ) );
 \AssociazioneSemplice\Pages::create( array( 'calendario' ) ); // la pagina c'è (la crea qui se manca)
 $pg_before = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'page' AND post_status = 'publish' AND post_content = '[associazionesemplice_calendario]'" );
 $pg_cal   = (int) ( \AssociazioneSemplice\Pages::existing()['calendario'] ?? 0 );
@@ -769,7 +771,12 @@ delete_option( \AssociazioneSemplice\Pages::OPTION ); // come dopo il ripristino
 $pg_made   = \AssociazioneSemplice\Pages::create( array( 'calendario' ) );
 $pg_after  = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'page' AND post_status = 'publish' AND post_content = '[associazionesemplice_calendario]'" );
 asem_ok( $pg_before >= 1 && $pg_after === $pg_before && array() === $pg_made && ( 0 === $pg_cal || $pg_cal === (int) ( \AssociazioneSemplice\Pages::existing()['calendario'] ?? 0 ) ), 'pagine: dopo il ripristino di fabbrica la procedura riprende la pagina che c\'è, senza duplicarla' );
-update_option( \AssociazioneSemplice\Pages::OPTION, $pg_opt ); // l'elenco torna com'era per le prove che seguono
+update_option( \AssociazioneSemplice\Pages::OPTION, $pg_opt0 ); // tutto torna com'era per le prove che seguono
+foreach ( array_map( 'intval', $wpdb->get_col( "SELECT ID FROM {$wpdb->posts} WHERE post_type = 'page' AND post_content = '[associazionesemplice_calendario]'" ) ) as $pg_id ) {
+	if ( ! in_array( $pg_id, $pg_ids0, true ) ) {
+		wp_delete_post( $pg_id, true ); // la pagina creata solo per questa prova
+	}
+}
 
 // Configurazione guidata
 $wz_ent = (string) Settings::get( 'entity_type' );
