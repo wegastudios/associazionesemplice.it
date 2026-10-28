@@ -81,7 +81,11 @@ Promemoria, avvisi delle attività e ricevute arrivano anche ai tutori, o **solo
 
 ## Il diciottesimo compleanno
 
-Nella Bacheca e in **Da lavorare** compare **«Maggiorenni da invitare»** con i ragazzi che non hanno ancora un accesso. Aggiungendo la loro email nella scheda, gli arriva l'invito per scegliere la password. Il collegamento con il tutore **resta** finché l'amministratore non lo toglie dalla scheda.
+Nella Bacheca e in **Da lavorare** compare **«Maggiorenni da invitare»** con i ragazzi che non hanno ancora un accesso. Aggiungendo la loro email nella scheda, gli arriva l'invito per scegliere la password.
+
+Dalla versione 1.2.38 del plugin gratuito, **a 18 anni il genitore o tutore collegato smette di agire per il ragazzo**, anche se questo non ha ancora un accesso suo: non lo vede più nell'area riservata, non prenota né paga per lui e non riceve più le sue email. Il **collegamento resta registrato** e si toglie dalla scheda.
+
+Se preferisci che il tutore continui anche dopo i 18 anni, come nelle versioni precedenti, spegni in **Impostazioni → Limiti e soglie** l'opzione **«Il tutore smette di agire per chi compie 18 anni»** (è **accesa** di partenza).
 
 ## Importare minori
 
