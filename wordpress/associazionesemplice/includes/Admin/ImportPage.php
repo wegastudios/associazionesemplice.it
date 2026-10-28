@@ -58,7 +58,7 @@ final class ImportPage {
 		echo wp_kses( ' · Conto della prima nota se manca la colonna: <select name="default_account_id">' . Ui::options( $accounts, null, '— nessuno —' ) . '</select></p>', Html::allowed() );
 		submit_button( 'Carica e controlla' );
 		Ui::form_close();
-		echo wp_kses( '<p>Modelli CSV: ' . self::data_link( PeopleCsv::TEMPLATE, 'modello-soci.csv', 'soci' ) . ' · ' . self::data_link( self::GUESTS_TEMPLATE, 'modello-ospiti.csv', 'ospiti' ) . ' · ' . self::data_link( self::LEDGER_TEMPLATE, 'modello-prima-nota.csv', 'prima nota' ) . ' <span class="description">(si aprono anche con Excel)</span></p>', Html::allowed() );
+		echo wp_kses( '<p>Modelli CSV: ' . self::data_link( PeopleCsv::TEMPLATE, 'modello-soci.csv', 'soci' ) . ' · ' . self::data_link( self::GUESTS_TEMPLATE, 'modello-ospiti.csv', 'ospiti' ) . ' · ' . self::data_link( self::LEDGER_TEMPLATE, 'modello-prima-nota.csv', 'prima nota' ) . ' <span class="description">(si aprono anche con Excel)</span></p>', Html::allowed(), array_merge( wp_allowed_protocols(), array( 'data' ) ) ); // i modelli CSV sono link data:text/csv generati qui
 		echo '<p class="description">Usi <strong>WP All Import</strong>? Si può importare anche da lì: vedi <a href="' . esc_url( Ui::url( 'asem-wpai' ) ) . '">Import con WP All Import</a>.</p>';
 		self::history();
 	}
