@@ -4420,7 +4420,7 @@ $rc_ok = \AssociazioneSemplice\Receipts::can_view( $rc_list[0]['key'] ) && \Asso
 $front_rc = $as( $rc_uid, '[associazionesemplice_ricevute]' );
 wp_set_current_user( $uq );
 $rc_no = \AssociazioneSemplice\Receipts::can_view( $rc_list[0]['key'] ) || \AssociazioneSemplice\Receipts::can_statement( $rc_p );
-$rc_guest = $people->create( array( 'type' => 'guest', 'host_person_id' => $rc_p, 'first_name' => 'Ospite', 'last_name' => 'Ricevute' ) );
+$rc_guest = $people->create( array( 'type' => 'guest', 'host_person_id' => $rc_p, 'first_name' => 'Ospite', 'last_name' => 'Ricevute', 'phone' => '3331234567' ) );
 wp_set_current_user( $rc_uid );
 $rc_host_sees = \AssociazioneSemplice\Receipts::can_statement( $rc_guest );
 wp_set_current_user( 1 );
