@@ -5,8 +5,9 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Minori e tutori. Un minore può non avere né email né accesso: il suo tutore (un genitore, al massimo due) lo vede nella propria area riservata,
- * paga per lui e riceve le sue email. Il tutore è una persona già registrata con una email. Il collegamento resta anche dopo i 18 anni,
- * finché non lo toglie l'amministratore: nel frattempo la dashboard avvisa che il ragazzo è maggiorenne e va invitato a creare il suo accesso.
+ * paga per lui e riceve le sue email. Il tutore è una persona già registrata con una email. A 18 anni i permessi del tutore si spengono da soli
+ * (anche se il ragazzo non ha ancora un accesso suo: maggiorenne è maggiorenne); il collegamento resta registrato finché non lo toglie
+ * l'amministratore e la dashboard avvisa che il ragazzo va invitato a creare il suo accesso.
  */
 final class Guardians {
 
@@ -63,22 +64,36 @@ final class Guardians {
 		) ?: array();
 	}
 
-	/** Le persone di cui uno è tutore (minori, e ragazzi diventati maggiorenni finché il collegamento resta). @return array[] persone */
+	/** Nata dopo questa data = ancora minorenne (a 18 anni il tutore non ha più alcun potere). */
+	private static function minor_after(): string {
+		return ( new \DateTimeImmutable( Db::today() ) )->modify( '-' . Age::ADULT_AT . ' years' )->format( 'Y-m-d' );
+	}
+
+	/** Le persone di cui uno è tutore: solo finché sono minorenni (senza data di nascita il collegamento vale come prima). @return array[] persone */
 	public static function dependents_of( int $guardian_id ): array {
 		return self::db()->get_results(
 			self::db()->prepare(
-				'SELECT p.* FROM ' . Db::t( 'guardians' ) . ' g JOIN ' . Db::t( 'people' ) . ' p ON p.id = g.person_id WHERE g.guardian_person_id = %d AND p.deleted_at IS NULL AND p.application_status IS NULL ORDER BY p.last_name, p.first_name',
-				$guardian_id
+				'SELECT p.* FROM ' . Db::t( 'guardians' ) . ' g JOIN ' . Db::t( 'people' ) . ' p ON p.id = g.person_id WHERE g.guardian_person_id = %d AND p.deleted_at IS NULL AND p.application_status IS NULL AND ( p.birth_date IS NULL OR p.birth_date > %s ) ORDER BY p.last_name, p.first_name',
+				$guardian_id,
+				self::minor_after()
 			),
 			ARRAY_A
 		) ?: array();
 	}
 
+	/** Uno è tutore di quella persona? Solo finché la persona è minorenne: ai 18 anni i permessi del tutore si spengono da soli. */
 	public static function is_guardian_of( int $guardian_id, int $person_id ): bool {
 		if ( $guardian_id <= 0 || $person_id <= 0 ) {
 			return false;
 		}
-		return (bool) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'guardians' ) . ' WHERE guardian_person_id = %d AND person_id = %d', $guardian_id, $person_id ) );
+		return (bool) self::db()->get_var(
+			self::db()->prepare(
+				'SELECT COUNT(*) FROM ' . Db::t( 'guardians' ) . ' g JOIN ' . Db::t( 'people' ) . ' p ON p.id = g.person_id WHERE g.guardian_person_id = %d AND g.person_id = %d AND ( p.birth_date IS NULL OR p.birth_date > %s )',
+				$guardian_id,
+				$person_id,
+				self::minor_after()
+			)
+		);
 	}
 
 	/** Persona con almeno un tutore collegato? */
@@ -173,7 +188,8 @@ final class Guardians {
 		if ( '' !== $own && is_email( $own ) ) {
 			$out[ Text::lower( $own ) ] = array( 'email' => $own, 'name' => $p['first_name'], 'about' => '' );
 		}
-		if ( $minor || array() === $out ) {
+		$known_adult = ! $minor && null !== Age::years( $p['birth_date'] ?? null, Db::today() ); // maggiorenne: le email non vanno più al tutore, nemmeno se non ha una email sua
+		if ( $minor || ( ! $known_adult && array() === $out ) ) {
 			foreach ( null === $guardians ? self::of( (int) $p['id'] ) : $guardians as $g ) {
 				$mail = trim( (string) $g['email'] );
 				if ( '' !== $mail && is_email( $mail ) && ! isset( $out[ Text::lower( $mail ) ] ) ) {
