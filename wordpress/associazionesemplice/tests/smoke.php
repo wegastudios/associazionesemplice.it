@@ -364,6 +364,14 @@ asem_ok( false !== strpos( Admin\LicenseNotice::html(), 'Collega la licenza grat
 Settings::update( array( 'license_key' => 'WEGA-AAAAAAAA-BBBBBBBB-CCCCCCCC-DDDDDDDD' ) );
 $lic_r = License::sync();
 asem_ok( $lic_r['ok'] && 'lite' === License::plan() && 1 === count( $lic_calls ) && 'prova-sito.it' === $lic_calls[0][1]['domain'] && 'WEGA-AAAAAAAA-BBBBBBBB-CCCCCCCC-DDDDDDDD' === $lic_calls[0][1]['license_key'], 'verifica: chiave e dominio normalizzato inviati, livello Lite letto' );
+$lic_saved = get_option( License::OPT_STATE );
+update_option( License::OPT_STATE, array_merge( $lic_saved, array( 'plan' => 'fiscal' ) ) ); // livello alzato a mano nel database
+asem_ok( 'lite' === License::plan(), 'licenza: il livello viene dalla prova firmata, non dal campo salvato' );
+update_option( License::OPT_STATE, array_merge( $lic_saved, array( 'status' => 'inventato' ) ) );
+asem_ok( ! License::allows( 'member_area' ), 'licenza: uno stato sconosciuto non toglie le restrizioni' );
+update_option( License::OPT_STATE, array_merge( $lic_saved, array( 'plan' => 'inventato', 'attestation' => '' ) ) );
+asem_ok( 'free' === License::plan(), 'licenza: un livello sconosciuto non regala il massimo' );
+update_option( License::OPT_STATE, $lic_saved );
 asem_ok( 'https://associazionesemplice.it/api/license/validate' === $lic_calls[0][0] && ! isset( $lic_calls[0][2]['Authorization'] ) && '2027-01-01' === License::state()['expires_at'], 'verifica: chiamata al portale senza credenziali, scadenza salvata' );
 asem_ok( 'Pro Lite' === License::status()['plan_label'] && false !== strpos( License::status()['note'], '01/01/2027' ) && \AssociazioneSemplice\Edition::has( 'payments' ) && ! \AssociazioneSemplice\Edition::has( 'funds' ), 'verifica: stato mostrabile e funzioni del livello' );
 $lic_resp = array( 'valid' => false, 'reason_code' => 'EXPIRED', 'plan_name' => 'Pro Full', 'expires_at' => gmdate( 'Y-m-d\TH:i:s\Z', time() - 2 * DAY_IN_SECONDS ), 'product_code' => 'associazionesemplice' );
