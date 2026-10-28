@@ -45,12 +45,39 @@ demo_step( 'pagine', function () {
 	$link = function ( string $key, string $text ) use ( $have ): string {
 		return isset( $have[ $key ] ) ? '<li><a href="' . esc_url( (string) get_permalink( $have[ $key ] ) ) . '">' . esc_html( $text ) . '</a></li>' : '';
 	};
-	$home = wp_insert_post( array(
-		'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Demo di Associazione Semplice',
-		'post_content' => '<p>Questa è una demo: i dati sono inventati e si azzerano ogni notte. Per provare le funzioni entra con le credenziali scritte nella pagina <a href="https://associazionesemplice.it/plugin">Il plugin</a> del sito associazionesemplice.it.</p>'
-			. '<ul>' . $link( 'area', 'Area soci (entra come socio)' ) . $link( 'attivita', 'Attività ed eventi' ) . $link( 'adesione', 'Diventa socio (domanda online)' ) . $link( 'segreteria', 'Area segreteria (entra come segreteria)' ) . '</ul>'
-			. '<p>La segreteria lavora anche nel pannello: <a href="' . esc_url( admin_url( 'admin.php?page=asem-dashboard' ) ) . '">Bacheca di Associazione Semplice</a>.</p>',
-	) );
+		$url = function ( string $key ) use ( $have ): string {
+			return isset( $have[ $key ] ) ? (string) get_permalink( $have[ $key ] ) : home_url( '/' );
+		};
+		$btn = function ( string $text, string $href, bool $outline = false ): string {
+			return '<!-- wp:button' . ( $outline ? ' {"className":"is-style-outline"}' : '' ) . ' --><div class="wp-block-button' . ( $outline ? ' is-style-outline' : '' ) . '"><a class="wp-block-button__link wp-element-button" href="' . esc_url( $href ) . '">' . esc_html( $text ) . '</a></div><!-- /wp:button -->';
+		};
+		$card = function ( string $title, string $text, string $extra, string $buttons ): string {
+			return '<!-- wp:column --><div class="wp-block-column"><!-- wp:group {"className":"asem-card","layout":{"type":"constrained"}} --><div class="wp-block-group asem-card">'
+				. '<!-- wp:heading {"level":3} --><h3 class="wp-block-heading">' . esc_html( $title ) . '</h3><!-- /wp:heading -->'
+				. '<!-- wp:paragraph --><p>' . esc_html( $text ) . '</p><!-- /wp:paragraph -->' . $extra
+				. '<!-- wp:buttons --><div class="wp-block-buttons">' . $buttons . '</div><!-- /wp:buttons --></div><!-- /wp:group --></div><!-- /wp:column -->';
+		};
+		$cred = function ( string $user, string $pass ): string {
+			return '<!-- wp:html --><p class="asem-cred">Utente <code>' . esc_html( $user ) . '</code><br>Password <code>' . esc_html( $pass ) . '</code></p><!-- /wp:html -->';
+		};
+		$content = '<!-- wp:group {"className":"asem-hero","align":"wide","layout":{"type":"constrained"}} --><div class="wp-block-group alignwide asem-hero">'
+			. '<!-- wp:heading {"level":1} --><h1 class="wp-block-heading">Prova Associazione Semplice</h1><!-- /wp:heading -->'
+			. '<!-- wp:paragraph --><p>Un sito WordPress vero con il plugin gratuito e il Pro già installati, pieno di dati inventati. Clicca, inserisci, cancella: non rompi niente. Tutto si azzera ogni notte e non parte nessuna email.</p><!-- /wp:paragraph -->'
+			. '<!-- wp:buttons --><div class="wp-block-buttons">' . $btn( 'Entra come segreteria', wp_login_url( admin_url( 'admin.php?page=asem' ) ) ) . $btn( 'Entra come socio', wp_login_url( $url( 'area' ) ), true ) . '</div><!-- /wp:buttons --></div><!-- /wp:group -->'
+			. '<!-- wp:spacer {"height":"36px"} --><div style="height:36px" aria-hidden="true" class="wp-block-spacer"></div><!-- /wp:spacer -->'
+			. '<!-- wp:columns {"align":"wide"} --><div class="wp-block-columns alignwide">'
+			. $card( 'Senza entrare', 'Guarda cosa vede chi visita il sito dell\'associazione: l\'elenco di corsi ed eventi e la domanda di adesione online.', '', $btn( 'Attività ed eventi', $url( 'attivita' ) ) . $btn( 'Diventa socio', $url( 'adesione' ), true ) )
+			. $card( 'Come socio', 'La tessera con QR, le prenotazioni, i pagamenti e i propri dati: l\'area riservata che ogni socio ha sul sito.', $cred( 'socio', 'Socio-Demo-2026' ), $btn( 'Area soci', $url( 'area' ) ) )
+			. $card( 'Come segreteria', 'Soci, incassi, spese, attività e registri: il lavoro di ogni giorno, dal pannello o dal sito.', $cred( 'segreteria', 'Segreteria-Demo-2026' ), $btn( 'Bacheca', admin_url( 'admin.php?page=asem' ) ) . $btn( 'Area segreteria', $url( 'segreteria' ), true ) )
+			. '</div><!-- /wp:columns -->'
+			. '<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center">Per i ruoli del plugin, i collegamenti e il confronto con le versioni: <a href="https://associazionesemplice.it/prova">associazionesemplice.it/prova</a></p><!-- /wp:paragraph -->';
+		$home = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Demo di Associazione Semplice', 'post_name' => 'demo', 'post_content' => $content ) );
+		// Menu del sito: solo ciò che serve a chi prova.
+		$nav = '';
+		foreach ( array( array( 'Attività ed eventi', 'attivita' ), array( 'Diventa socio', 'adesione' ), array( 'Area soci', 'area' ), array( 'Area segreteria', 'segreteria' ) ) as $n ) {
+			$nav .= '<!-- wp:navigation-link ' . wp_json_encode( array( 'label' => $n[0], 'url' => $url( $n[1] ), 'kind' => 'custom' ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . ' /-->';
+		}
+		wp_insert_post( array( 'post_type' => 'wp_navigation', 'post_status' => 'publish', 'post_title' => 'Menu della demo', 'post_name' => 'menu-demo', 'post_content' => wp_slash( $nav ) ) );
 	if ( $home && ! is_wp_error( $home ) ) {
 		update_option( 'show_on_front', 'page' );
 		update_option( 'page_on_front', (int) $home );

@@ -1151,5 +1151,20 @@ check( 'IP: due proxy fidati, penultima voce', '1.2.3.4' === Portale\ClientIp::f
 check( 'IP: voce non valida o mancante, torna la connessione', '10.0.0.1' === Portale\ClientIp::from( array( 'REMOTE_ADDR' => '10.0.0.1', 'HTTP_X_FORWARDED_FOR' => 'non-un-ip' ), true ) && '10.0.0.1' === Portale\ClientIp::from( array( 'REMOTE_ADDR' => '10.0.0.1' ), true ) );
 check( 'IP: più proxy dichiarati delle voci presenti, torna la connessione', '10.0.0.1' === Portale\ClientIp::from( array( 'REMOTE_ADDR' => '10.0.0.1', 'HTTP_X_FORWARDED_FOR' => '1.2.3.4' ), true, 2 ) );
 
+// --- Demo pubblica: dati della pagina /prova ---------------------------------------------------------------------------
+$demoAcc = Portale\Demo::accounts();
+check( 'demo: solo segreteria e socio, nessun accesso da amministratore', array( 'segreteria', 'socio' ) === array_column( $demoAcc, 'user' ) && ! preg_match( '/admin/i', implode( ' ', array_column( $demoAcc, 'user' ) ) ) );
+check( 'demo: ogni accesso ha una password di almeno 12 caratteri e un punto di partenza nella demo', ! array_filter( $demoAcc, function ( $a ) { return strlen( $a['password'] ) < 12 || 0 !== strpos( $a['start'], '/' ); } ) );
+$demoRoles = Portale\Demo::roles();
+check( 'demo: la tabella dei ruoli ha tante celle quante colonne', ! array_filter( $demoRoles['rows'], function ( $cells ) use ( $demoRoles ) { return count( $cells ) !== count( $demoRoles['columns'] ); } ) );
+$demoLinks = array();
+foreach ( Portale\Demo::links() as $rows ) {
+	foreach ( $rows as $r ) {
+		$demoLinks[] = $r[1];
+	}
+}
+check( 'demo: i collegamenti sono percorsi della demo e non portano al pannello degli amministratori', $demoLinks && ! array_filter( $demoLinks, function ( $p ) { return 0 !== strpos( $p, '/' ) || false !== strpos( $p, 'page=asem-settings' ) || false !== strpos( $p, 'users.php' ); } ) );
+check( 'demo: l\'indirizzo non finisce con la barra', '/' !== substr( Portale\Demo::url(), -1 ) );
+
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );

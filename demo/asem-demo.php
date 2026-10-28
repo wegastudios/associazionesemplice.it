@@ -45,9 +45,32 @@ add_filter( 'wp_robots', function ( $robots ) {
 	return array( 'noindex' => true, 'nofollow' => true );
 } );
 $asem_demo_note = 'Questa è una <strong>demo pubblica</strong> di Associazione Semplice: i dati sono inventati, non vengono inviate email e tutto si azzera ogni notte alle 4.';
-add_action( 'admin_notices', function () use ( $asem_demo_note ) {
-	echo '<div class="notice notice-info"><p>' . wp_kses( $asem_demo_note, array( 'strong' => array() ) ) . '</p></div>';
+// Uscire dalla demo: un collegamento sempre in vista (per cambiare accesso, da segreteria a socio e viceversa) che riporta alla pagina iniziale.
+$asem_demo_exit = function (): string {
+	if ( ! is_user_logged_in() ) {
+		return ' <a href="' . esc_url( wp_login_url( home_url( '/' ) ) ) . '" style="color:inherit;font-weight:700">Entra</a>';
+	}
+	$u = wp_get_current_user();
+	return ' Sei entrato come <strong>' . esc_html( $u->user_login ) . '</strong> · <a href="' . esc_url( wp_logout_url( home_url( '/' ) ) ) . '" style="color:inherit;font-weight:700">Esci</a>';
+};
+add_action( 'admin_notices', function () use ( $asem_demo_note, $asem_demo_exit ) {
+	echo '<div class="notice notice-info"><p>' . wp_kses( $asem_demo_note, array( 'strong' => array() ) ) . wp_kses( $asem_demo_exit(), array( 'strong' => array(), 'a' => array( 'href' => array(), 'style' => array() ) ) ) . '</p></div>';
 } );
-add_action( 'wp_footer', function () use ( $asem_demo_note ) {
-	echo '<div style="position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#1f218c;color:#fff;padding:8px 16px;font:14px/1.4 system-ui,sans-serif;text-align:center">' . wp_kses( $asem_demo_note, array( 'strong' => array() ) ) . '</div>';
+add_action( 'wp_footer', function () use ( $asem_demo_note, $asem_demo_exit ) {
+	echo '<div style="position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#1f218c;color:#fff;padding:8px 16px;font:14px/1.4 system-ui,sans-serif;text-align:center">' . wp_kses( $asem_demo_note, array( 'strong' => array() ) ) . wp_kses( $asem_demo_exit(), array( 'strong' => array(), 'a' => array( 'href' => array(), 'style' => array() ) ) ) . '</div>';
 } );
+// Anche nella barra in alto un «Esci» diretto, senza aprire il menu del profilo.
+add_action( 'admin_bar_menu', function ( $bar ) {
+	if ( is_user_logged_in() ) {
+		$bar->add_node( array( 'id' => 'asem-demo-exit', 'title' => 'Esci dalla demo', 'href' => wp_logout_url( home_url( '/' ) ), 'parent' => 'top-secondary' ) );
+	}
+}, 5 );
+// Il logout non chiede conferma: nella demo si passa spesso da un ruolo all'altro.
+add_action( 'login_form_logout', function () {
+	if ( isset( $_REQUEST['_wpnonce'] ) || ! is_user_logged_in() ) { // phpcs:ignore WordPress.Security.NonceVerification
+		return;
+	}
+	wp_logout();
+	wp_safe_redirect( home_url( '/' ) );
+	exit;
+}, 1 );

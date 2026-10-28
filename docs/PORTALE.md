@@ -161,13 +161,15 @@ Resta da decidere (invariato): proprietà del dominio, evento PayPal che emette 
 WordPress vero con il gratuito e il Pro attivi, nella cartella `~/public_html/demo` del server del portale (database `associazionesemp_demo`). Le credenziali sono pubbliche e stanno nella pagina `/plugin` del portale: utenti `segreteria` (ruolo Segreteria) e `socio` (ruolo Socio). Nessun utente amministratore: quello d'installazione (`setup_tmp`) si toglie a ogni azzeramento, e per la manutenzione si usa `wp` da riga di comando.
 
 File in `demo/` (copiati sul server in `~/demo-provision/`, il mu-plugin in `wp-content/mu-plugins/`):
+- `update.sh` porta i due plugin alle ultime versioni pubblicate (vedi sotto).
 - `reset.sh` azzera tutto: database pulito, installazione, plugin attivi, dati inventati. Da lanciare ogni notte alle 4 (`0 4 * * * bash ~/demo-provision/reset.sh >> ~/logs/demo-reset.log 2>&1`, da mettere in cPanel → Cron Jobs).
 - `provision.php` crea ente, pagine, utenti, 14 soci inventati, quote, spese, un corso e due eventi. Si lancia con `wp eval-file`.
+- `asem-demo-style.php` (mu-plugin) e `assets/` (carattere e logo del portale, copiati in `wp-content/mu-plugins/asem-demo-assets/`): aspetto del sito, dell'accesso e del pannello nei colori del marchio. La pagina iniziale e il menu li crea `provision.php`. Le credenziali pubbliche compaiono in `portale/src/Demo.php`, `provision.php` (home) e nell'accesso (`asem-demo-style.php`): se cambiano, vanno cambiate tutte e tre.
 - `asem-demo.php` (mu-plugin): nessuna email in uscita, profili e password bloccati, nessun file caricato, noindex, avviso in ogni pagina, la segreteria entra nella Bacheca del plugin.
 
 Licenza: finché la verifica del plugin è in «standby» valgono tutte le funzioni e non serve nessuna chiave. Quando la verifica si attiva serve una licenza Pro Fiscale per il dominio `associazionesemplice.it` (emissione manuale da `/admin/licenze/nuova`), da mettere in `~/.demo_key` (`provision.php` la legge).
 
-Per aggiornare i plugin della demo: caricare i nuovi zip e `wp plugin install ZIP --force` da `~/public_html/demo` (poi un `reset.sh`).
+Aggiornamento dei plugin: `update.sh` installa nella demo le ultime versioni pubblicate sul portale (le legge da `~/portale/data/releases`, prima il gratuito, poi il Pro). Parte da solo in fondo a `portale/release.sh` a ogni pubblicazione e a ogni azzeramento notturno; non serve fare altro.
 
 ## Pacchetti firmati (aggiornamento diretto)
 

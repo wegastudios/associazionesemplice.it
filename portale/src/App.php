@@ -62,8 +62,16 @@ final class App {
 			View::render( 'legal', array( 'title' => Legal::PAGES[ $slug ][0], 'html' => Legal::html( Legal::body( $slug ) ) ) );
 		} elseif ( $get && '/plugin' === $path ) {
 			View::render( 'legal', array( 'title' => 'Il plugin Associazione Semplice', 'html' => Legal::html( (string) file_get_contents( __DIR__ . '/../content/plugin.md' ) ) ) );
-		} elseif ( $get && in_array( $path, array( '/prezzi', '/piani' ), true ) ) {
-			header( 'Location: /#prezzi', true, 301 );
+		} elseif ( $get && '/piani' === $path ) {
+			header( 'Location: /prezzi', true, 301 );
+		} elseif ( $get && '/prezzi' === $path ) {
+			View::render( 'pricing', array( 'title' => 'Prezzi', 'plans' => Config::get( 'plans', array() ), 'trial' => Config::get( 'trial_enabled', true ) ? Settings::limit( 'trial_days' ) : 0 ) );
+		} elseif ( $get && '/funzioni' === $path ) {
+			View::render( 'features', array( 'title' => 'Funzioni' ) );
+		} elseif ( $get && '/domande' === $path ) {
+			View::render( 'faq', array( 'title' => 'Domande frequenti' ) );
+		} elseif ( $get && '/prova' === $path ) {
+			View::render( 'demo', array( 'title' => 'Prova la demo', 'accounts' => Demo::accounts(), 'links' => Demo::links(), 'matrix' => Demo::roles(), 'notes' => Demo::roleNotes(), 'base' => Demo::url() ) );
 		} elseif ( $get && '/confronto' === $path ) {
 			View::render( 'confronto', array( 'title' => 'Confronto tra le versioni' ) );
 		} elseif ( $get && '/free' === $path ) {

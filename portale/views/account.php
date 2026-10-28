@@ -35,7 +35,7 @@ $csrf = Portale\App::csrf();
 	</div>
 	<?php if ( ! $subs ) : ?>
 		<div class="sub empty"><div class="ico" style="margin:0 auto 16px"><?php echo icon( 'key' ); ?></div><h2>Nessuna licenza, per ora</h2><p class="muted">Parti dal piano gratuito oppure scegli un piano Pro.</p>
-		<a class="btn" href="/free">Licenza gratuita</a> <a class="btn alt" href="/#prezzi">Vedi i piani</a></div>
+		<a class="btn" href="/free">Licenza gratuita</a> <a class="btn alt" href="/prezzi">Vedi i piani</a></div>
 	<?php endif; ?>
 	<?php if ( ! empty( $releases ) ) : ?>
 	<div class="sub">

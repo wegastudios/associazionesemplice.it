@@ -42,3 +42,5 @@ for p in $LIST; do
 	"${S[@]}" "cat > ~/$tmp" < "$f"
 	"${S[@]}" "cd ~/portale && php bin/release.php $p ~/$tmp $(printf '%q' "$NOTE") $SIG $SIGN_KID; rc=\$?; rm -f ~/$tmp; exit \$rc"
 done
+# La demo pubblica (associazionesemplice.it/demo) segue sempre le ultime versioni: se non si aggiorna, la pubblicazione resta valida.
+"${S[@]}" 'bash ~/demo-provision/update.sh' || echo "Attenzione: la demo non è stata aggiornata (la pubblicazione è andata a buon fine)." >&2
