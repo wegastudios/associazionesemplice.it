@@ -88,6 +88,12 @@ final class Limits {
 		);
 		// ---------- Accessi e sicurezza ----------
 		$add(
+			'guardian_ends_at_adult', 'accesso', 'Il tutore non agisce più per chi è maggiorenne e ha un accesso suo', 'flag', 1, 0, 1,
+			'Quando un ragazzo compie 18 anni e ha un accesso proprio all\'area soci, il genitore o tutore collegato non vede più i suoi dati, non prenota e non paga per lui. Il collegamento resta registrato e si toglie dalla scheda.',
+			'Spegnerlo fa restare al tutore l\'accesso ai dati di un maggiorenne che ha già il suo account: è un problema di privacy.',
+			'Acceso (consigliato): dai 18 anni il ragazzo con accesso proprio risponde di sé. Spento: il tutore continua ad agire finché il collegamento non viene tolto. Chi è maggiorenne ma non ha un accesso proprio resta gestito dal tutore.'
+		);
+		$add(
 			'trust_proxy_headers', 'accesso', 'Leggere l\'indirizzo del visitatore dal proxy (Cloudflare, bilanciatore)', 'flag', 0, 0, 1,
 			'Per i limiti «per connessione» (primo accesso, attivazione dell\'accesso) il sito conta i tentativi per indirizzo. Dietro un proxy tutti i visitatori hanno lo stesso indirizzo e uno solo può bloccare gli altri: con questa scelta si legge l\'indirizzo inoltrato dal proxy.',
 			'Accendilo solo se il sito è davvero dietro un proxy che aggiunge l\'indirizzo del visitatore: altrimenti chiunque può scrivere un indirizzo finto e aggirare i limiti.',

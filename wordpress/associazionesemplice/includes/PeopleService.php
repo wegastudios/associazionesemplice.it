@@ -123,9 +123,11 @@ class PeopleService {
 		return $this->search( array( 'host_id' => $member_id ) );
 	}
 
-	/** I minori (e i ragazzi ancora collegati) di cui il socio è tutore. */
+	/** I minori (e i ragazzi maggiorenni senza accesso proprio) per cui il socio può agire come tutore. */
 	public function dependents_of( int $guardian_id ): array {
-		return Guardians::dependents_of( $guardian_id );
+		return array_values( array_filter( Guardians::dependents_of( $guardian_id ), function ( $p ) {
+			return ! Guardians::is_independent( $p );
+		} ) );
 	}
 
 	/** Chi un socio gestisce dalla sua area: i suoi ospiti e le persone di cui è tutore. */

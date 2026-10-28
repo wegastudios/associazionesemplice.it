@@ -255,7 +255,7 @@ final class ImportService {
 				if ( ! $g ) {
 					throw new \InvalidArgumentException( 'tutore "' . $l[1] . '" non trovato o ambiguo (indica la tessera o l\'email)' );
 				}
-				if ( ! Guardians::is_guardian_of( (int) $g['id'], (int) $l[0] ) ) {
+				if ( ! Guardians::is_linked( (int) $g['id'], (int) $l[0] ) ) {
 					Guardians::link( (int) $l[0], (int) $g['id'] );
 					$track['guardians'][] = array( (int) $l[0], (int) $g['id'] );
 				}

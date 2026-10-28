@@ -6553,7 +6553,12 @@ $people->update( $mn_teen, array( 'email' => 'teo.grande@example.com' ) );
 $ap_n = count( $ap_mails );
 \AssociazioneSemplice\Guardians::invite_adult( $mn_teen );
 asem_ok( count( $ap_mails ) === $ap_n + 1 && null !== $ap_mail_to( 'teo.grande@example.com' ) && ! in_array( $mn_teen, $mn_inv_ids(), true ), 'invito: gli arriva il link e l\'avviso sparisce' );
-asem_ok( \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $mn_teen ), 'il collegamento resta finché non lo toglie l\'amministratore' );
+asem_ok( \AssociazioneSemplice\Guardians::is_linked( $mn_mum, $mn_teen ), 'il collegamento resta registrato finché non lo toglie l\'amministratore' );
+$mn_teen_own = ! empty( $people->get( $mn_teen )['wp_user_id'] );
+asem_ok( \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $mn_teen ) === ! $mn_teen_own && ( $mn_teen_own === ! in_array( $mn_teen, array_map( 'intval', array_column( $people->dependents_of( $mn_mum ), 'id' ) ), true ) ), 'tutore: ai 18 anni, se il ragazzo ha un accesso suo, non agisce più per lui (resta se non ce l\'ha)' );
+Settings::update( array( 'limits' => array( 'guardian_ends_at_adult' => 0 ) ) );
+asem_ok( \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $mn_teen ), 'tutore: con il limite spento resta tutore finché il collegamento non si toglie' );
+Settings::update( array( 'limits' => array() ) );
 \AssociazioneSemplice\Guardians::unlink( $mn_teen, $mn_mum );
 asem_ok( ! \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $mn_teen ), 'collegamento tolto' );
 

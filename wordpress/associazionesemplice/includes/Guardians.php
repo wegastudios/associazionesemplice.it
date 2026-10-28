@@ -74,11 +74,26 @@ final class Guardians {
 		) ?: array();
 	}
 
-	public static function is_guardian_of( int $guardian_id, int $person_id ): bool {
+	/** Il collegamento esiste (anche se il ragazzo è diventato maggiorenne e ha un accesso suo)? */
+	public static function is_linked( int $guardian_id, int $person_id ): bool {
 		if ( $guardian_id <= 0 || $person_id <= 0 ) {
 			return false;
 		}
 		return (bool) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'guardians' ) . ' WHERE guardian_person_id = %d AND person_id = %d', $guardian_id, $person_id ) );
+	}
+
+	/** Il tutore può agire per questa persona (vedere i dati, prenotare, pagare)? Non più quando è maggiorenne e ha un accesso suo (limite «guardian_ends_at_adult»). */
+	public static function is_guardian_of( int $guardian_id, int $person_id ): bool {
+		if ( ! self::is_linked( $guardian_id, $person_id ) ) {
+			return false;
+		}
+		$p = Plugin::people()->get( $person_id );
+		return ! $p || ! self::is_independent( $p );
+	}
+
+	/** Maggiorenne con un accesso suo: risponde di sé stesso e il tutore non vede più i suoi dati. */
+	public static function is_independent( array $person ): bool {
+		return Limits::flag( 'guardian_ends_at_adult' ) && ! empty( $person['wp_user_id'] ) && ! empty( $person['birth_date'] ) && ! Age::is_minor( (string) $person['birth_date'], Db::today() );
 	}
 
 	/** Persona con almeno un tutore collegato? */
@@ -134,7 +149,7 @@ final class Guardians {
 		if ( ! $minor || ! $guardian ) {
 			throw new \InvalidArgumentException( 'Persona non trovata.' );
 		}
-		if ( self::is_guardian_of( $guardian_id, $person_id ) ) {
+		if ( self::is_linked( $guardian_id, $person_id ) ) {
 			return;
 		}
 		$errors = self::validate( $minor, $guardian, count( self::of( $person_id ) ), Db::today() );
