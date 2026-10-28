@@ -11,7 +11,7 @@ wp rewrite structure "/%postname%/" >/dev/null
 wp plugin delete akismet hello >/dev/null 2>&1 || true
 bash "$HOME/demo-provision/update.sh"
 wp plugin activate associazionesemplice associazionesemplice-pro
-wp eval-file "$HOME/demo-provision/provision.php"
+wp eval-file "$HOME/demo-provision/provision.php" --user=setup_tmp # come amministratore d'installazione: il plugin lascia collegare a un socio un utente con ruolo solo a un amministratore
 wp user delete setup_tmp --yes >/dev/null
 find wp-content/uploads -mindepth 1 -delete 2>/dev/null || true
 wp cache flush >/dev/null 2>&1 || true

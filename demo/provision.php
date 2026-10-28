@@ -11,6 +11,7 @@ use AssociazioneSemplice\Wizard;
 
 const DEMO_PASS_SEGRETERIA = 'Segreteria-Demo-2026';
 const DEMO_PASS_SOCIO      = 'Socio-Demo-2026';
+const DEMO_PASS_AMMIN      = 'Amministratore-Demo-2026';
 
 function demo_step( string $what, callable $fn ) {
 	try {
@@ -69,6 +70,7 @@ demo_step( 'pagine', function () {
 			. $card( 'Senza entrare', 'Guarda cosa vede chi visita il sito dell\'associazione: l\'elenco di corsi ed eventi e la domanda di adesione online.', '', $btn( 'Attività ed eventi', $url( 'attivita' ) ) . $btn( 'Diventa socio', $url( 'adesione' ), true ) )
 			. $card( 'Come socio', 'La tessera con QR, le prenotazioni, i pagamenti e i propri dati: l\'area riservata che ogni socio ha sul sito.', $cred( 'socio', 'Socio-Demo-2026' ), $btn( 'Area soci', $url( 'area' ) ) )
 			. $card( 'Come segreteria', 'Soci, incassi, spese, attività e registri: il lavoro di ogni giorno, dal pannello o dal sito.', $cred( 'segreteria', 'Segreteria-Demo-2026' ), $btn( 'Bacheca', admin_url( 'admin.php?page=asem' ) ) . $btn( 'Area segreteria', $url( 'segreteria' ), true ) )
+			. $card( 'Come amministratore del plugin', 'Tutte le impostazioni di Associazione Semplice. Qui puoi scaricare una copia dei tuoi dati e ricaricarla il giorno dopo, per provare a lungo.', $cred( 'amministratore', 'Amministratore-Demo-2026' ), $btn( 'Copia di sicurezza', admin_url( 'admin.php?page=asem-backup' ) ) . $btn( 'Impostazioni', admin_url( 'admin.php?page=asem-settings' ), true ) )
 			. '</div><!-- /wp:columns -->'
 			. '<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center">Per i ruoli del plugin, i collegamenti e il confronto con le versioni: <a href="https://associazionesemplice.it/prova">associazionesemplice.it/prova</a></p><!-- /wp:paragraph -->';
 		$home = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Demo di Associazione Semplice', 'post_name' => 'demo', 'post_content' => $content ) );
@@ -120,6 +122,13 @@ demo_step( 'utente segreteria', function () use ( $mk_user ) {
 } );
 demo_step( 'utente socio', function () use ( $mk_user ) {
 	$mk_user( 'socio', 'socio@demo.invalid', 'Mario Demo (socio)', Plugin::ROLE_MEMBER, DEMO_PASS_SOCIO );
+} );
+// Amministratore del plugin: tutti i permessi di Associazione Semplice (impostazioni, copia di sicurezza, ruoli, registro) ma non è un amministratore di WordPress:
+// niente plugin, temi, utenti o impostazioni del sito. Mai il ruolo «administrator».
+demo_step( 'ruolo e utente amministratore del plugin', function () use ( $mk_user ) {
+	remove_role( 'asem_demo_admin' );
+	add_role( 'asem_demo_admin', 'Amministratore del plugin', array( 'read' => true, Plugin::CAP => true, Plugin::CAP_OPS => true ) );
+	$mk_user( 'amministratore', 'amministratore@demo.invalid', 'Amministratore del plugin (demo)', 'asem_demo_admin', DEMO_PASS_AMMIN );
 } );
 
 // 4. Persone: le due di prova (collegate agli utenti per email) e dei soci inventati
