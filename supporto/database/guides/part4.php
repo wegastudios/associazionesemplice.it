@@ -151,7 +151,7 @@ I soci pagano quote, mensilità e contributi direttamente dall'area riservata. I
 
 Ti serve un account **Stripe** o **PayPal Business** dell'associazione. Le chiavi si copiano dal pannello del fornitore.
 
-Se nella pagina **Pagamenti** compare un avviso sulle **chiavi di sicurezza di WordPress** (`AUTH_KEY` e `AUTH_SALT`) mancanti o di esempio, fai sostituire quei valori nel file `wp-config.php` dal tuo fornitore di hosting o da chi segue il sito (avviso dalla versione 1.2.37).
+Se in **Impostazioni → Pagamenti online** compare un avviso sulle **chiavi di sicurezza di WordPress** (`AUTH_KEY` e `AUTH_SALT`) mancanti o di esempio, fai sostituire quei valori nel file `wp-config.php` dal tuo fornitore di hosting o da chi segue il sito (avviso dalla versione 1.2.37).
 
 ## Cosa fare
 
