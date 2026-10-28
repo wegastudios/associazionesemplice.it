@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.35
+- Il livello della licenza viene dalla prova firmata dal portale, non dal campo salvato
+- Un livello o uno stato di licenza sconosciuto non sblocca più le funzioni
+
 ## 1.2.34
 - Più sicurezza: la copia di sicurezza non contiene più la chiave di licenza né i codici dei QR e del calendario, e il file temporaneo si cancella sempre
 - La segreteria non può cambiare l'email di accesso di tesoriere, presidente e staff
