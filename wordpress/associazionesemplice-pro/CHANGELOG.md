@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.1.33
+- Il livello della licenza (Gratuito, Contabile, Pro Full) lo decide solo il portale con una prova firmata: se un piano cambia nome la licenza resta valida e il livello non cambia.
+
 ## 1.1.32
 - Rafforzamenti di sicurezza condivisi con il gratuito (indirizzo del visitatore, ricevute, avvisi dello staff, collegamento degli utenti).
 
