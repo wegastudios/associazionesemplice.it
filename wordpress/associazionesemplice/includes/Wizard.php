@@ -79,7 +79,8 @@ final class Wizard {
 			$vals['guests_enabled'] = ! empty( $p['guests_enabled'] ) ? 1 : 0;
 		}
 		if ( isset( $p['join_mode'] ) ) {
-			$vals['join_mode'] = 'invite' === (string) $p['join_mode'] ? 'invite' : 'request';
+			$vals['join_mode']     = 'invite' === (string) $p['join_mode'] ? 'invite' : 'request';
+			$vals['apply_enabled'] = 'request' === $vals['join_mode'] ? 1 : 0; // «chiunque può chiedere di iscriversi» apre anche la domanda online (pagina «Diventa socio»)
 		}
 
 		// Parti del gestionale usate

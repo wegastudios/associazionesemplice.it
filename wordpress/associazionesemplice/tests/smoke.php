@@ -823,6 +823,10 @@ $wz_req = count( \AssociazioneSemplice\AccessRequests::pending() );
 \AssociazioneSemplice\Wizard::apply( array( 'join_mode' => 'invite' ) );
 asem_ok( 'invite' === Settings::get( 'join_mode' ) && 'unknown_queued' === \AssociazioneSemplice\Frontend\FirstAccess::submit( 'Sconosciuto Presentato', 'sconosciuto.presentato@example.com', '347 9990011' ) && count( \AssociazioneSemplice\AccessRequests::pending() ) === $wz_req, 'iscrizione su presentazione: lo sconosciuto riceve la stessa risposta ma nessuna richiesta viene registrata' );
 \AssociazioneSemplice\Wizard::apply( array( 'join_mode' => 'request' ) );
+asem_ok( 1 === (int) Settings::get( 'apply_enabled' ), 'procedura guidata: «chiunque può chiedere di iscriversi» accende anche la domanda online' );
+\AssociazioneSemplice\Wizard::apply( array( 'join_mode' => 'invite' ) );
+asem_ok( 0 === (int) Settings::get( 'apply_enabled' ), 'procedura guidata: «solo su presentazione» spegne la domanda online' );
+\AssociazioneSemplice\Wizard::apply( array( 'join_mode' => 'request' ) );
 \AssociazioneSemplice\Frontend\FirstAccess::submit( 'Sconosciuto Richiesta', 'sconosciuto.richiesta@example.com', '347 9990022' );
 asem_ok( count( \AssociazioneSemplice\AccessRequests::pending() ) === $wz_req + 1, 'iscrizione aperta alle richieste: la richiesta arriva alla segreteria' );
 foreach ( \AssociazioneSemplice\AccessRequests::pending() as $wz_r ) { // la coda torna com'era: altri controlli la leggono
