@@ -3,9 +3,6 @@
 # Da cron ogni notte alle 4. Nessun utente amministratore resta: quello d'installazione si toglie alla fine.
 set -euo pipefail
 cd "$HOME/public_html/demo"
-# Prima di cancellare si salva sempre una copia del database (le ultime 14 restano in ~/demo-backups): un azzeramento fatto per errore si può annullare con restore-last.sh.
-mkdir -p "$HOME/demo-backups" && wp db export "$HOME/demo-backups/demo-$(date +%Y%m%d-%H%M%S).sql" >/dev/null
-ls -1t "$HOME"/demo-backups/demo-*.sql 2>/dev/null | tail -n +15 | xargs -r rm -f
 wp db reset --yes >/dev/null
 wp core install --url=https://associazionesemplice.it/demo --title="Demo di Associazione Semplice" --admin_user=setup_tmp --admin_password="$(openssl rand -hex 16)" --admin_email=info@associazionesemplice.it --skip-email >/dev/null
 wp option update blog_public 0 >/dev/null
