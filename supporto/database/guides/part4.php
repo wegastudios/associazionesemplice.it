@@ -151,6 +151,8 @@ I soci pagano quote, mensilità e contributi direttamente dall'area riservata. I
 
 Ti serve un account **Stripe** o **PayPal Business** dell'associazione. Le chiavi si copiano dal pannello del fornitore.
 
+Se nella pagina **Pagamenti** compare un avviso sulle **chiavi di sicurezza di WordPress** (`AUTH_KEY` e `AUTH_SALT`) mancanti o di esempio, fai sostituire quei valori nel file `wp-config.php` dal tuo fornitore di hosting o da chi segue il sito (avviso dalla versione 1.2.37).
+
 ## Cosa fare
 
 1. Vai in **Impostazioni → Tecniche → Pagamenti online**.
@@ -294,7 +296,7 @@ Dalla scheda persona (o dall'area soci) si può ottenere l'**attestazione annual
 
 ## Area soci
 
-Con lo shortcode `[associazionesemplice_ricevute]` (già incluso nell'area soci) il socio vede l'elenco e scarica le ricevute. Le vedono solo chi ha pagato (o il socio che ospita chi ha pagato) e gli amministratori.
+Con lo shortcode `[associazionesemplice_ricevute]` (già incluso nell'area soci) il socio vede l'elenco e scarica le ricevute. Le vedono solo chi ha pagato e gli amministratori. Dalla versione 1.2.37 del plugin gratuito la ricevuta o il rendiconto di un **ospite** lo scaricano solo l'ospite, il suo tutore e la segreteria, **non** chi lo ospita; le ricevute dei pagamenti fatti dall'ospitante restano sue.
 
 ## Impostazioni
 

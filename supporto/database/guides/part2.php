@@ -44,7 +44,7 @@ MD,
 2. Registra la quota associativa dalla scheda del socio o dall'incasso: se il socio ha la tessera non valida, la quota si inserisce da sola in qualunque incasso.
 3. La tessera si attiva quando la quota è **saldata** (vedi «Quota pagata a rate» più sotto).
 
-Creando il socio il plugin crea anche l'**utente WordPress** con la stessa email, con il solo ruolo «Socio»: nessun accesso alla gestione e nessuna email automatica. Se esiste già un utente con quell'email, viene collegato senza cambiargli ruolo.
+Creando il socio il plugin crea anche l'**utente WordPress** con la stessa email, con il solo ruolo «Socio»: nessun accesso alla gestione e nessuna email automatica. Se esiste già un utente con quell'email, viene collegato senza cambiargli ruolo. Dalla versione 1.2.37 del plugin gratuito, se quell'utente ha **altri ruoli** (redattore, amministratore…) la segreteria vede un errore: **solo un amministratore** può collegarlo.
 
 ## Come dura la tessera
 
@@ -132,7 +132,7 @@ I permessi derivano dai dati della persona, non solo dai ruoli di WordPress. Si 
 - **Presidente e vicepresidente**: agiscono come la segreteria finché la carica e la tessera sono valide.
 - **Tesoriere**: dall'area riservata incassa, registra le spese, iscrive nuovi soci e vende gli eventi. Non vede comunicazioni né impostazioni.
 - **Volontario**: non gestisce soldi; per le attività di cui è referente gestisce avvisi agli iscritti, staff e ingressi.
-- **Staff dell'ente**: verifica gli ingressi di tutti gli eventi.
+- **Staff dell'ente**: verifica gli ingressi di tutti gli eventi, ma manda avvisi solo agli iscritti degli eventi di cui è staff (dalla versione 1.2.37 del plugin gratuito).
 - **Staff dell'evento**: verifica gli ingressi di quell'evento e, se abilitato, incassa il biglietto sul posto.
 - **Socio**: i propri dati, la tessera, le prenotazioni e i pagamenti.
 
