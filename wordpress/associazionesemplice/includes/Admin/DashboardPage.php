@@ -75,6 +75,7 @@ final class DashboardPage {
 
 		self::applications();
 		self::adults_to_invite();
+		self::incomplete_cards();
 		self::overdue_loans();
 		ConventionsPage::dashboard_card();
 
@@ -176,6 +177,23 @@ final class DashboardPage {
 				. esc_html( ( new \DateTimeImmutable( $l['due_on'] ) )->format( 'd/m/Y' ) ) . ' · ' . (int) $l['days_late'] . ' giorni di ritardo</span></li>';
 		}
 		echo '</ul><p><a href="' . esc_url( Ui::url( 'asem-inventory', array( 'tab' => 'loans' ) ) ) . '">Tutti i prestiti →</a></p></div>';
+	}
+
+	/** Soci con la scheda incompleta: cosa manca, con il link per completarla. */
+	private static function incomplete_cards(): void {
+		$list = \AssociazioneSemplice\IncompleteCards::all();
+		if ( ! $list ) {
+			return;
+		}
+		echo '<div class="asem-card" id="asem-incomplete"><h2>Schede da completare (' . count( $list ) . ')</h2><p class="description">Mancano dati utili per il libro soci, le ricevute e le tessere degli enti di promozione. Apri la scheda per completarla.</p><ul>';
+		foreach ( array_slice( $list, 0, 20 ) as $x ) {
+			$p = $x['person'];
+			echo '<li><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '">' . esc_html( $p['first_name'] . ' ' . $p['last_name'] ) . '</a> <span class="description">manca: ' . esc_html( implode( ', ', $x['missing'] ) ) . '</span></li>';
+		}
+		if ( count( $list ) > 20 ) {
+			echo '<li class="description">…e altre ' . ( count( $list ) - 20 ) . '.</li>';
+		}
+		echo '</ul></div>';
 	}
 
 	/** Ragazzi ancora collegati a un tutore che hanno compiuto 18 anni: da invitare a creare il loro accesso. */

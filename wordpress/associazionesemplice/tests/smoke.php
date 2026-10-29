@@ -6645,6 +6645,22 @@ asem_ok( false !== strpos( $mn_csv, 'Data di nascita' ) && false !== strpos( $mn
 asem_ok( false !== strpos( \AssociazioneSemplice\Docs::book( '', 'csv' )['body'], 'Marta Madre' ), 'libro soci in CSV: il tutore c\'è' );
 $mn_exp = \AssociazioneSemplice\Privacy::export( $mn_kid );
 asem_ok( 'Marta Madre' === ( $mn_exp['tutori'][0]['nome'] ?? '' ) && ! empty( $mn_exp['anagrafica']['data_di_nascita'] ), 'privacy: l\'esportazione dei dati include data di nascita e tutori' );
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $mn_kid, 'method' => 'bank_transfer', 'lines' => array( array( 'category_id' => $ledger->category_id_of_kind( 'membership' ), 'amount_cents' => 2500 ) ) ) );
+$mn_rc = \AssociazioneSemplice\Receipts::list_for_payer( $mn_kid );
+$mn_rcb = $mn_rc ? \AssociazioneSemplice\Receipts::build( $mn_rc[0]['key'] ) : null;
+asem_ok( $mn_rcb && 0 === strpos( $mn_rcb['pdf'], '%PDF' ) && $mn_rcb['payer'] && (int) $mn_rcb['payer']['id'] === $mn_kid, 'ricevuta di un minore: si genera (intestata al genitore, con i codici fiscali)' );
+$people->update( $mn_mum, array( 'image_consent' => '1', 'affiliation_role' => 'athlete' ) );
+$mn_m = $people->get( $mn_mum );
+asem_ok( 1 === (int) $mn_m['image_consent'] && ! empty( $mn_m['image_consent_at'] ) && 'athlete' === $mn_m['affiliation_role'] && empty( $mn_m['image_consent_by'] ), 'scheda: liberatoria foto e tipo di tesseramento (maggiorenne: risponde lui)' );
+$people->update( $mn_mum, array( 'affiliation_role' => 'inventato' ) );
+asem_ok( null === $people->get( $mn_mum )['affiliation_role'], 'tipo di tesseramento non valido: ignorato' );
+$people->update( $mn_mum, array( 'affiliation_role' => 'athlete' ) );
+$people->update( $mn_kid, array( 'image_consent' => '0' ) );
+asem_ok( '0' === (string) $people->get( $mn_kid )['image_consent'] && (int) $people->get( $mn_kid )['image_consent_by'] === $mn_mum, 'liberatoria foto di un minore: ne risponde il tutore che opera sul sito' );
+asem_ok( false !== strpos( Admin\Exports::people()[1], 'Atleta' ) && false !== strpos( Admin\Exports::people()[1], 'Tipo di tesseramento' ), 'esportazione soci: tipo di tesseramento e foto' );
+$mn_inc = array_map( 'intval', array_column( array_column( \AssociazioneSemplice\IncompleteCards::all(), 'person' ), 'id' ) );
+asem_ok( in_array( $mn_kid, $mn_inc, true ) && false !== strpos( wp_json_encode( Admin\WpDashboard::todo_items() ), 'da completare' ), 'schede incomplete: il socio senza codice fiscale compare tra quelle da completare e nel riquadro «Da lavorare»' );
+asem_render( array( Admin\DashboardPage::class, 'render' ), 'Schede da completare' );
 
 // importazione con data di nascita e tutore
 $mn_csv_f = $mkf( 'minori.csv', "Tessera;Nome;Cognome;Email;Data di nascita;Tutore\r\nmn20;Lia;Piccola;;12/05/2015;marta.madre@example.com\r\nmn21;Gigi;Senzatutore;gigi.senza@example.com;03/04/1990;\r\nmn22;Bea;Errore;;01/01/2014;nessuno@example.com\r\n" );

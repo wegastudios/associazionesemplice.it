@@ -123,6 +123,8 @@ final class Applications {
 				'tax_code'           => $d['tax_code'],
 				'birth_date'         => $d['birth_date'],
 				'birth_place'        => '' === $d['birth_place'] ? null : $d['birth_place'],
+				'image_consent'      => $d['image_ok'] ? 1 : 0,
+				'image_consent_at'   => $now,
 				'address'            => '' === $d['address'] ? null : $d['address'],
 				'zip'                => '' === $d['zip'] ? null : $d['zip'],
 				'city'               => '' === $d['city'] ? null : $d['city'],
@@ -257,6 +259,7 @@ final class Applications {
 		}
 		if ( $guardian ) {
 			Guardians::link( $id, (int) $guardian['id'] );
+			self::db()->update( Db::t( 'people' ), array( 'image_consent_by' => (int) $guardian['id'] ), array( 'id' => $id ) ); // la liberatoria immagini del minore la risponde il genitore
 			// A nome del minore hanno accettato regolamento e privacy il genitore: resta registrato chi.
 			self::db()->update( Db::t( 'people' ), array( 'rules_accepted_by' => Regulation::enabled() ? (int) $guardian['id'] : null, 'privacy_consent_by' => (int) $guardian['id'] ), array( 'id' => $id ) );
 		}

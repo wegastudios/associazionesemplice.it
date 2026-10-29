@@ -55,6 +55,10 @@ final class WpDashboard {
 		if ( $adults > 0 ) {
 			$items[] = array( $adults, 1 === $adults ? 'maggiorenne da invitare a creare il suo accesso' : 'maggiorenni da invitare a creare il loro accesso', Ui::url( 'asem' ) );
 		}
+		$inc = count( \AssociazioneSemplice\IncompleteCards::all() );
+		if ( $inc > 0 ) {
+			$items[] = array( $inc, 1 === $inc ? 'scheda socio da completare' : 'schede soci da completare', Ui::url( 'asem' ) . '#asem-incomplete' );
+		}
 		$req   = count( \AssociazioneSemplice\AccessRequests::pending() );
 		if ( $req > 0 ) {
 			$items[] = array( $req, 1 === $req ? 'richiesta di accesso da controllare' : 'richieste di accesso da controllare', Ui::url( 'asem' ) );

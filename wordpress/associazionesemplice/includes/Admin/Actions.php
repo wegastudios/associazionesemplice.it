@@ -185,7 +185,7 @@ final class Actions {
 			'notes'          => $p['notes'] ?? '',
 			'prior_visits'   => $p['prior_visits'] ?? 0,
 		);
-		foreach ( array( 'birth_date', 'birth_place', 'approved_on' ) as $k ) {
+		foreach ( array( 'birth_date', 'birth_place', 'approved_on', 'image_consent', 'affiliation_role' ) as $k ) {
 			if ( array_key_exists( $k, $p ) ) {
 				$data[ $k ] = $p[ $k ];
 			}

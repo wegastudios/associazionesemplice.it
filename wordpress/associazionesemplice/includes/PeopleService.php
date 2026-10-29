@@ -397,7 +397,18 @@ class PeopleService {
 			'approved_on'    => $t( 'approved_on' ),
 			'notes'          => $t( 'notes' ),
 			'prior_visits'   => max( 0, min( 9999, (int) ( $d['prior_visits'] ?? 0 ) ) ),
+			'image_consent'  => isset( $d['image_consent'] ) && in_array( (string) $d['image_consent'], array( '0', '1' ), true ) ? (int) $d['image_consent'] : null,
+			'affiliation_role' => MembershipRoles::is_valid( $d['affiliation_role'] ?? null ) ? (string) $d['affiliation_role'] : null,
 		);
+	}
+
+	/** Chi risponde della liberatoria immagini: per un minore il tutore che opera sul sito, per un maggiorenne nessuno (è lui). */
+	private function image_consent_giver( array $person ): ?int {
+		if ( ! Age::is_minor( $person['birth_date'] ?? null, Db::today() ) ) {
+			return null;
+		}
+		$g = Guardians::operative_of( (int) $person['id'] );
+		return $g ? (int) $g['id'] : null;
 	}
 
 	private function assert_valid( array $d, ?int $except_id ): void {
@@ -454,6 +465,9 @@ class PeopleService {
 				'approved_on'    => $d['approved_on'],
 				'notes'          => $d['notes'],
 				'prior_visits'   => $d['prior_visits'],
+				'affiliation_role' => $d['affiliation_role'],
+				'image_consent'  => $d['image_consent'],
+				'image_consent_at' => null === $d['image_consent'] ? null : $now,
 				'created_at'     => $now,
 				'updated_at'     => $now,
 			)
@@ -673,6 +687,10 @@ class PeopleService {
 				'approved_on'    => $d['approved_on'],
 				'notes'          => $d['notes'],
 				'prior_visits'   => $d['prior_visits'],
+				'affiliation_role' => $d['affiliation_role'],
+				'image_consent'  => $d['image_consent'],
+				'image_consent_at' => $d['image_consent'] === ( null === $current['image_consent'] ? null : (int) $current['image_consent'] ) ? $current['image_consent_at'] : ( null === $d['image_consent'] ? null : Db::now() ),
+				'image_consent_by' => $d['image_consent'] === ( null === $current['image_consent'] ? null : (int) $current['image_consent'] ) ? $current['image_consent_by'] : $this->image_consent_giver( $current ),
 				'updated_at'     => Db::now(),
 			),
 			array( 'id' => $id )

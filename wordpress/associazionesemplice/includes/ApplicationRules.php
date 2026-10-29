@@ -32,6 +32,7 @@ final class ApplicationRules {
 			'type'       => $t( 'type' ),
 			'birth_date' => null,
 			'birth_place' => mb_substr( $t( 'birth_place' ), 0, 120, 'UTF-8' ),
+			'image_ok'   => ! empty( $in['image_ok'] ),
 			'address'    => mb_substr( $t( 'address' ), 0, 190, 'UTF-8' ),
 			'zip'        => mb_substr( $t( 'zip' ), 0, 12, 'UTF-8' ),
 			'city'       => mb_substr( $t( 'city' ), 0, 100, 'UTF-8' ),

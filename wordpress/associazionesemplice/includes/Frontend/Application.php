@@ -163,6 +163,7 @@ final class Application {
 		$url   = (string) Settings::get( 'privacy_url' );
 		$html .= '<div class="asemf-rules-box">' . ( '' === $url ? '<div style="max-height:200px;overflow:auto;border:1px solid #c3c4c7;border-radius:8px;padding:10px 12px;margin:8px 0;background:#fff">' . PrivacyNotice::html() . '</div>' : '' )
 			. '<label class="asemf-check"><input type="checkbox" name="privacy_ok" value="1"' . checked( ! empty( $post['privacy_ok'] ), true, false ) . '> Ho letto ' . ( '' !== $url ? '<a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">l\'informativa sulla privacy</a>' : 'l\'informativa sulla privacy' ) . ' e acconsento al trattamento dei dati.</label></div>';
+		$html .= '<div class="asemf-rules-box"><label class="asemf-check"><input type="checkbox" name="image_ok" value="1"' . checked( ! empty( $post['image_ok'] ), true, false ) . '> Acconsento alla pubblicazione di foto e video dell\'attività (facoltativo; per un minore lo dichiara il genitore o tutore, che se ne assume la responsabilità anche verso l\'altro genitore).</label></div>';
 		if ( $fee > 0 ) {
 			$html .= '<p class="asemf-small asemf-muted">Quota associativa: ' . esc_html( Money::format( $fee ) ) . '.' . esc_html( self::fee_note() ) . '</p>';
 		}
