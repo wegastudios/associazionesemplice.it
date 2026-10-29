@@ -17,9 +17,9 @@ final class SportCatalog {
 			'Cheerleading', 'Ciclismo', 'Cinofilia', 'Cricket', 'Cronometraggio', 'Dama', 'Danza sportiva', 'Fistball', 'Floorball', 'Football americano', 'Freccette', 'Ginnastica',
 			'Giochi e sport tradizionali', 'Go', 'Golf', 'Hockey', 'Judo', 'Ju-Jitsu', 'Karate', 'Kendo', 'Kickboxing', 'Korfball', 'Lacrosse', 'Lotta', 'Medicina dello sport', 'Minigolf',
 			'Motociclismo', 'Motonautica', 'Muay Thai', 'Netball', 'Orientamento', 'Palla tamburello', 'Pallacanestro', 'Pallamano', 'Pallapugno', 'Pallavolo', 'Pelota basca',
-			'Pentathlon moderno', 'Pesca sportiva', 'Pesistica', 'Powerlifting', 'Pugilato', 'Rafting', 'Rugby', 'Salvataggio (lifesaving)', 'Sambo', 'Scherma', 'Sci nautico e wakeboard',
+			'Pentathlon moderno', 'Pesca sportiva', 'Pesistica', 'Powerlifting', 'Pugilato', 'Rafting', 'Rugby', 'Salvataggio (lifesaving)', 'Sambo', 'Scacchi', 'Scherma', 'Sci nautico e wakeboard',
 			'Sepaktakraw', 'Skateboarding', 'Slittino e skeleton', 'Sport equestri', 'Sport e giochi sferistici', 'Squash e racquetball', 'Sumo', 'Surf', 'Taekwondo', 'Tennis', 'Tennistavolo',
-			'Tiro a segno', 'Tiro a volo', 'Tiro con l\'arco', 'Triathlon', 'Twirling', 'Wushu',
+			'Tiro a segno', 'Tiro a volo', 'Tiro con l\'arco', 'Tiro dinamico sportivo', 'Triathlon', 'Turismo equestre', 'Twirling', 'Wushu',
 		);
 	}
 
