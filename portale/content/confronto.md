@@ -48,6 +48,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 |---|---|---|---|
 | Corsi con rinnovo mensile, trimestrale o pagamento unico | ✓ | ✓ | ✓ |
 | Lezioni di un corso annullate o spostate, con avviso agli iscritti | ✓ | ✓ | ✓ |
+| Varianti del contributo dei corsi (per esempio «Famiglia», «Secondo corso»), assegnate a mano a ogni iscritto | ✓ | ✓ | ✓ |
 | Eventi con date uniche o ricorrenti | ✓ | ✓ | ✓ |
 | Posti limitati, lista d'attesa e tolleranza sul pagamento | ✓ | ✓ | ✓ |
 | Calendario interno e pubblicazione su Google Calendar, Apple e Outlook | ✓ | ✓ | ✓ |
