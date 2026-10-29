@@ -185,8 +185,10 @@ final class Actions {
 			'notes'          => $p['notes'] ?? '',
 			'prior_visits'   => $p['prior_visits'] ?? 0,
 		);
-		if ( array_key_exists( 'birth_date', $p ) ) {
-			$data['birth_date'] = $p['birth_date'];
+		foreach ( array( 'birth_date', 'birth_place', 'approved_on' ) as $k ) {
+			if ( array_key_exists( $k, $p ) ) {
+				$data[ $k ] = $p[ $k ];
+			}
 		}
 		$id = (int) ( $p['id'] ?? 0 );
 		if ( $id ) {
@@ -706,7 +708,7 @@ final class Actions {
 		return array( Ui::url( 'asem' ), 'Invito inviato: gli è arrivato il link per scegliere la password.' );
 	}
 
-	/** Allinea i tutori di una persona a quelli scelti nella scheda (fino a due): toglie quelli tolti, collega quelli nuovi. */
+	/** Allinea i tutori di una persona a quelli scelti nella scheda (uno solo): toglie quelli tolti, collega quelli nuovi. */
 	private static function sync_guardians( int $id, array $p ): void {
 		if ( empty( $p['guardians_present'] ) ) {
 			return;
@@ -717,6 +719,7 @@ final class Actions {
 				$want[ (int) $g ] = (int) $g;
 			}
 		}
+		$want = array_slice( $want, 0, \AssociazioneSemplice\Guardians::MAX, true );
 		$have = array_map( 'intval', array_column( \AssociazioneSemplice\Guardians::of( $id ), 'id' ) );
 		foreach ( array_diff( $have, $want ) as $gone ) {
 			\AssociazioneSemplice\Guardians::unlink( $id, (int) $gone );

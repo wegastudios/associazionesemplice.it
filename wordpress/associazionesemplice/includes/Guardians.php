@@ -4,14 +4,14 @@ namespace AssociazioneSemplice;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Minori e tutori. Un minore può non avere né email né accesso: il suo tutore (un genitore, al massimo due) lo vede nella propria area riservata,
+ * Minori e tutori. Un minore può non avere né email né accesso: il suo tutore (un genitore, uno solo) lo vede nella propria area riservata,
  * paga per lui e riceve le sue email. Il tutore è una persona già registrata con una email. A 18 anni i permessi del tutore si spengono da soli
  * (anche se il ragazzo non ha ancora un accesso suo: maggiorenne è maggiorenne); il collegamento resta registrato finché non lo toglie
  * l'amministratore e la dashboard avvisa che il ragazzo va invitato a creare il suo accesso.
  */
 final class Guardians {
 
-	const MAX = 2;
+	const MAX = 1;
 
 	/** Ragazzi diventati maggiorenni che hanno già ricevuto l'invito a creare il loro accesso (id persona). */
 	const INVITED_OPTION = 'asem_adult_invited';
@@ -46,7 +46,7 @@ final class Guardians {
 			$errors[] = 'Il tutore deve essere maggiorenne.';
 		}
 		if ( $already_linked >= self::MAX ) {
-			$errors[] = 'Un minore può avere al massimo ' . self::MAX . ' tutori.';
+			$errors[] = 'Un minore ha un solo tutore: toglilo prima di collegarne un altro.';
 		}
 		return $errors;
 	}

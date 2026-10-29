@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '44';
+	const DB_VERSION        = '45';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -117,6 +117,7 @@ final class Install {
   phone varchar(60) DEFAULT NULL,
   tax_code varchar(32) DEFAULT NULL,
   birth_date date DEFAULT NULL,
+  birth_place varchar(120) DEFAULT NULL,
   address varchar(190) DEFAULT NULL,
   zip varchar(12) DEFAULT NULL,
   city varchar(100) DEFAULT NULL,
@@ -124,6 +125,7 @@ final class Install {
   profile_due tinyint(1) NOT NULL DEFAULT 0,
   host_person_id bigint(20) unsigned DEFAULT NULL,
   joined_on date DEFAULT NULL,
+  approved_on date DEFAULT NULL,
   suspended_at datetime DEFAULT NULL,
   board_role varchar(20) DEFAULT NULL,
   level_id bigint(20) unsigned DEFAULT NULL,

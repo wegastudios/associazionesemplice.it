@@ -133,7 +133,10 @@ final class Application {
 			. '<div class="asemf-fields">'
 			. self::field( 'Nome', 'first_name', 'text', $post, 'given-name', true ) . self::field( 'Cognome', 'last_name', 'text', $post, 'family-name', true )
 			. self::field( 'Data di nascita', 'birth_date', 'date', $post, 'bday', true, ' data-asemf-birth max="' . esc_attr( gmdate( 'Y-m-d' ) ) . '"' )
+			. self::field( 'Luogo di nascita', 'birth_place', 'text', $post, 'off', false, ' maxlength="120"' )
 			. self::field( 'Codice fiscale', 'tax_code', 'text', $post, 'off', true, ' maxlength="16"' )
+			. self::field( 'Indirizzo di residenza', 'address', 'text', $post, 'street-address', false, ' maxlength="190"' )
+			. self::field( 'CAP', 'zip', 'text', $post, 'postal-code', false, ' maxlength="12"' ) . self::field( 'Comune', 'city', 'text', $post, 'address-level2', false, ' maxlength="100"' ) . self::field( 'Provincia', 'province', 'text', $post, 'address-level1', false, ' maxlength="5"' )
 			. self::field( 'Email', 'email', 'email', $post, 'email', false, ' data-asemf-adult-required' ) . self::field( 'Cellulare', 'phone', 'tel', $post, 'tel', false, ' inputmode="tel" data-asemf-adult-required' )
 			. '</div>';
 		if ( count( $types ) > 1 ) {

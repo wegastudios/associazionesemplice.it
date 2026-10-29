@@ -6531,12 +6531,12 @@ asem_ok( null !== asem_throws( function () use ( $mn_kid, $mn_noem ) { \Associaz
 asem_ok( null !== asem_throws( function () use ( $mn_kid ) { \AssociazioneSemplice\Guardians::link( $mn_kid, $mn_kid ); } ), 'tutore: nessuno è tutore di se stesso' );
 \AssociazioneSemplice\Guardians::link( $mn_kid, $mn_mum );
 \AssociazioneSemplice\Guardians::link( $mn_kid, $mn_mum ); // ripetere non duplica
-\AssociazioneSemplice\Guardians::link( $mn_kid, $mn_dad );
-asem_ok( null !== asem_throws( function () use ( $mn_kid, $mn_aunt ) { \AssociazioneSemplice\Guardians::link( $mn_kid, $mn_aunt ); } ), 'tutore: al massimo due' );
-asem_ok( 2 === count( \AssociazioneSemplice\Guardians::of( $mn_kid ) ) && \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $mn_kid ) && ! \AssociazioneSemplice\Guardians::is_guardian_of( $mn_aunt, $mn_kid ), 'tutore: due genitori collegati, la zia no' );
-asem_ok( array( $mn_kid ) === array_map( 'intval', array_column( $people->dependents_of( $mn_mum ), 'id' ) ) && in_array( $mn_kid, array_map( 'intval', array_column( $people->managed_by( $mn_dad ), 'id' ) ), true ), 'tutore: l\'elenco di chi segue' );
+asem_ok( null !== asem_throws( function () use ( $mn_kid, $mn_dad ) { \AssociazioneSemplice\Guardians::link( $mn_kid, $mn_dad ); } ), 'tutore: un solo tutore per minore' );
+asem_ok( null !== asem_throws( function () use ( $mn_kid, $mn_aunt ) { \AssociazioneSemplice\Guardians::link( $mn_kid, $mn_aunt ); } ), 'tutore: il secondo non si collega' );
+asem_ok( 1 === count( \AssociazioneSemplice\Guardians::of( $mn_kid ) ) && \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $mn_kid ) && ! \AssociazioneSemplice\Guardians::is_guardian_of( $mn_aunt, $mn_kid ), 'tutore: uno solo collegato, la zia no' );
+asem_ok( array( $mn_kid ) === array_map( 'intval', array_column( $people->dependents_of( $mn_mum ), 'id' ) ), 'tutore: l\'elenco di chi segue' );
 $mn_names = \AssociazioneSemplice\Guardians::names_by_person();
-asem_ok( false !== strpos( (string) ( $mn_names[ $mn_kid ] ?? '' ), 'Marta Madre' ) && false !== strpos( (string) ( $mn_names[ $mn_kid ] ?? '' ), 'Pino Padre' ), 'tutore: nomi per il libro soci e l\'esportazione' );
+asem_ok( false !== strpos( (string) ( $mn_names[ $mn_kid ] ?? '' ), 'Marta Madre' ), 'tutore: nomi per il libro soci e l\'esportazione' );
 
 // permessi del tutore
 $mn_mum_u  = (int) $people->get( $mn_mum )['wp_user_id'];
@@ -6612,6 +6612,16 @@ foreach ( \AssociazioneSemplice\MemberBook::rows() as $mn_r ) {
 	}
 }
 asem_ok( $mn_book && gmdate( 'Y-m-d', strtotime( '-10 years' ) ) === $mn_book['birth_date'] && 'Marta Madre' === $mn_book['guardian'], 'libro soci: data di nascita e tutore' );
+$people->update( $mn_kid, array( 'birth_place' => 'Lecce', 'approved_on' => '2025-09-10', 'address' => 'Via Roma 1', 'zip' => '73100', 'city' => 'Lecce', 'province' => 'le', 'phone' => '333 1212121' ) );
+$mn_book = null;
+foreach ( \AssociazioneSemplice\MemberBook::rows() as $mn_r ) {
+	if ( (int) $mn_r['id'] === $mn_kid ) {
+		$mn_book = $mn_r;
+	}
+}
+asem_ok( $mn_book && 'Lecce' === $mn_book['birth_place'] && '2025-09-10' === $mn_book['approved_on'] && 'Via Roma 1, 73100 Lecce (LE)' === $mn_book['residence'] && '' !== $mn_book['applied_on'], 'libro soci: luogo di nascita, delibera, residenza e data della domanda' );
+$mn_bk = \AssociazioneSemplice\Docs::book( '', 'csv' );
+asem_ok( false !== strpos( $mn_bk['body'], 'Luogo di nascita' ) && false !== strpos( $mn_bk['body'], 'Via Roma 1, 73100 Lecce (LE)' ) && false !== strpos( $mn_bk['body'], '10/09/2025' ) && 0 === strpos( \AssociazioneSemplice\Docs::book( '', 'pdf' )['body'], '%PDF' ), 'libro soci: CSV completo e PDF' );
 $mn_csv = Admin\Exports::people()[1];
 asem_ok( false !== strpos( $mn_csv, 'Data di nascita' ) && false !== strpos( $mn_csv, 'Tutore' ) && false !== strpos( $mn_csv, 'Marta Madre' ), 'esportazione soci: data di nascita e tutore' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Docs::book( '', 'csv' )['body'], 'Marta Madre' ), 'libro soci in CSV: il tutore c\'è' );
@@ -6634,7 +6644,7 @@ asem_ok( ! \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, (int) $mn_l
 // ---------- Domanda di adesione ----------
 $ap_in = array(
 	'first_name' => 'Aldo', 'last_name' => 'Adesioni', 'email' => 'Aldo.Adesioni@example.com', 'phone' => '333 1010101', 'tax_code' => 'RSSMRA79A01H501B',
-	'birth_date' => '1980-01-01', 'type' => 'ordinary', 'rules_ok' => '1', 'privacy_ok' => '1',
+	'birth_date' => '1980-01-01', 'birth_place' => 'Roma', 'address' => 'Via Dante 2', 'zip' => '00100', 'city' => 'Roma', 'province' => 'rm', 'type' => 'ordinary', 'rules_ok' => '1', 'privacy_ok' => '1',
 );
 asem_ok( 'off' === \AssociazioneSemplice\Applications::submit( $ap_in )['status'] && 0 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: spenta di default, non registra nulla' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Application::form_html(), 'non sono attive' ), 'domanda: il modulo dice che non è attiva' );
@@ -6668,6 +6678,7 @@ asem_ok( false !== strpos( wp_json_encode( Admin\WpDashboard::todo_items() ), 'd
 asem_ok( null !== asem_throws( function () use ( $ap_aldo ) { \AssociazioneSemplice\Applications::approve( $ap_aldo, 'mn1' ); } ), 'approvazione: una tessera già assegnata è rifiutata' );
 $ap_msg = \AssociazioneSemplice\Applications::approve( $ap_aldo, 'ap100' );
 $ap_row = $people->get( $ap_aldo );
+asem_ok( 'Roma' === $ap_row['birth_place'] && 'Via Dante 2' === $ap_row['address'] && 'RM' === $ap_row['province'] && $today === $ap_row['approved_on'] && ! empty( $ap_row['application_at'] ), 'domanda: luogo di nascita e residenza dal modulo, data della delibera all\'approvazione' );
 asem_ok( false !== strpos( $ap_msg, 'ap100' ) && false !== strpos( $ap_msg, 'da incassare' ) && empty( $ap_row['application_status'] ) && 'ap100' === $ap_row['card_number'] && 0 === \AssociazioneSemplice\Applications::pending_count(), 'approvazione: tessera assegnata, quota da incassare' );
 asem_ok( ! $people->is_active_member( $ap_aldo ) && ! $people->has_membership( $ap_aldo, $mn_year ) && isset( Plugin::payments()->dues_for( $people->get( $ap_aldo ) )[ "q:$ap_aldo:" . $people->membership_plan( $ap_aldo, $today )['year'] ] ), 'approvazione senza quota pagata: nessuna iscrizione, la quota resta da pagare (in sede o dall\'area soci)' );
 $ap_ok_mail = $ap_mail_to( 'aldo.adesioni@example.com' );
