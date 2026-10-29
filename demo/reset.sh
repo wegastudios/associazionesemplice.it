@@ -2,6 +2,11 @@
 # Azzera la demo pubblica (associazionesemplice.it/demo): database pulito, plugin attivi, dati inventati di nuovo.
 # Da cron ogni notte alle 4. Nessun utente amministratore resta: quello d'installazione si toglie alla fine.
 set -euo pipefail
+# Il reset cancella TUTTI i dati della demo: parte da solo alle 4 di notte (cron). A mano si rifiuta, a meno che non lo chieda esplicitamente l'utente (--forza).
+if [ "$(date +%H)" != "04" ] && [ "${1:-}" != "--forza" ]; then
+	echo "Rifiuto: il reset cancella tutti i dati della demo e parte da solo alle 4. Per forzarlo (solo su richiesta esplicita dell'utente): bash reset.sh --forza" >&2
+	exit 3
+fi
 cd "$HOME/public_html/demo"
 wp db reset --yes >/dev/null
 wp core install --url=https://associazionesemplice.it/demo --title="Demo di Associazione Semplice" --admin_user=setup_tmp --admin_password="$(openssl rand -hex 16)" --admin_email=info@associazionesemplice.it --skip-email >/dev/null
