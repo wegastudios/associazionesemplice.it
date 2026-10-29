@@ -1208,7 +1208,7 @@ class ActivityService {
 		}
 		$rows = $this->db()->get_results(
 			$this->db()->prepare(
-				'SELECT e.*, a.name AS activity_name, a.social_year, a.kind, a.fee_cents, a.guest_fee_cents, a.lesson_weekday, a.lesson_slots, a.billing, a.ends_on FROM ' . Db::t( 'enrollments' ) . ' e '
+				'SELECT e.*, a.name AS activity_name, a.social_year, a.kind, a.fee_cents, a.guest_fee_cents, a.lesson_weekday, a.lesson_slots, a.billing, a.price_lists, a.ends_on FROM ' . Db::t( 'enrollments' ) . ' e '
 				. 'JOIN ' . Db::t( 'activities' ) . ' a ON a.id = e.activity_id AND a.deleted_at IS NULL WHERE e.person_id = %d ORDER BY a.social_year DESC, a.name',
 				$person_id
 			),
@@ -1219,7 +1219,7 @@ class ActivityService {
 		foreach ( $rows as $e ) {
 			$activity = array(
 				'id' => $e['activity_id'], 'name' => $e['activity_name'], 'social_year' => $e['social_year'], 'kind' => $e['kind'],
-				'fee_cents' => $e['fee_cents'], 'guest_fee_cents' => $e['guest_fee_cents'], 'lesson_weekday' => $e['lesson_weekday'], 'lesson_slots' => $e['lesson_slots'], 'billing' => $e['billing'], 'ends_on' => $e['ends_on'],
+				'fee_cents' => $e['fee_cents'], 'guest_fee_cents' => $e['guest_fee_cents'], 'lesson_weekday' => $e['lesson_weekday'], 'lesson_slots' => $e['lesson_slots'], 'billing' => $e['billing'], 'price_lists' => $e['price_lists'], 'ends_on' => $e['ends_on'],
 			);
 			$out[]    = array(
 				'enrollment' => $e,
