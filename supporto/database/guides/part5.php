@@ -131,6 +131,7 @@ Dalle **Impostazioni → Assicurazioni** puoi accendere, separatamente:
 1. In **Registri → Presenze** scegli la lezione di un corso o la data di un evento.
 2. A lezione fatta, segna chi c'era: la prima volta sono tutti presenti, togli gli assenti.
 3. Il riepilogo per periodo mostra presenze, lezioni e percentuale; il PDF è a matrice (fino a 10 lezioni) o riepilogativo.
+4. Dal Pro 1.1.36 (con il gratuito 1.2.43) c'è una **seconda vista a calendario**, con le **date in orizzontale** e le **persone in verticale**. Le lezioni annullate o spostate (vedi [Creare un corso](guida:creare-un-corso)) sono tenute in conto.
 
 ## Altri registri
 

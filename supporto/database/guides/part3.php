@@ -27,6 +27,11 @@ Per una nuova edizione di un corso o di un evento già fatto, nell'**elenco dell
 
 - **Rinnovo mensile**: il corso si rinnova da solo ogni mese finché l'iscritto non viene «disdetto». La mensilità è dovuta dalla prima lezione del mese; prima risulta «in arrivo», poi «da pagare». Senza giorno indicato è dovuta dal 1°.
 - **Pagamento unico**: la quota è il totale (per esempio «10 incontri a 120 €»), dovuta all'iscrizione e versabile anche a rate. Se l'iscrizione viene cancellata prima di qualunque pagamento, non è dovuto nulla.
+- **Pagamento trimestrale** (dalla versione 1.2.43 del plugin gratuito): oltre a «una tantum» e «rinnovo mensile» puoi scegliere il pagamento del corso a trimestre. I **promemoria mensili** saltano i corsi trimestrali.
+
+## Annullare o spostare una lezione
+
+Dalla versione 1.2.43 le **singole lezioni** di un corso si possono **annullare** o **spostare**, per esempio per una festività o per il maltempo. Gli **iscritti vengono avvisati**, e il **calendario** e le **presenze** ne tengono conto.
 
 ## Gli iscritti
 
