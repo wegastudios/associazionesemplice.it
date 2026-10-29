@@ -4,14 +4,14 @@ namespace AssociazioneSemplice;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Minori e tutori. Un minore può non avere né email né accesso: il suo tutore (un genitore, uno solo) lo vede nella propria area riservata,
+ * Minori e tutori. Un minore può non avere né email né accesso: il suo tutore (un genitore o tutore legale) lo vede nella propria area riservata,
  * paga per lui e riceve le sue email. Il tutore è una persona già registrata con una email. A 18 anni i permessi del tutore si spengono da soli
  * (anche se il ragazzo non ha ancora un accesso suo: maggiorenne è maggiorenne); il collegamento resta registrato finché non lo toglie
  * l'amministratore e la dashboard avvisa che il ragazzo va invitato a creare il suo accesso.
  */
 final class Guardians {
 
-	const MAX = 1;
+	const MAX = 2;
 
 	/** Ragazzi diventati maggiorenni che hanno già ricevuto l'invito a creare il loro accesso (id persona). */
 	const INVITED_OPTION = 'asem_adult_invited';
@@ -46,7 +46,7 @@ final class Guardians {
 			$errors[] = 'Il tutore deve essere maggiorenne.';
 		}
 		if ( $already_linked >= self::MAX ) {
-			$errors[] = 'Un minore ha un solo tutore: toglilo prima di collegarne un altro.';
+			$errors[] = 'Un minore può avere al massimo ' . self::MAX . ' tutori (due genitori, oppure un tutore legale).';
 		}
 		return $errors;
 	}
@@ -57,7 +57,7 @@ final class Guardians {
 	public static function of( int $person_id ): array {
 		return self::db()->get_results(
 			self::db()->prepare(
-				'SELECT p.* FROM ' . Db::t( 'guardians' ) . ' g JOIN ' . Db::t( 'people' ) . ' p ON p.id = g.guardian_person_id WHERE g.person_id = %d AND p.deleted_at IS NULL ORDER BY g.id',
+				'SELECT p.*, g.is_operative FROM ' . Db::t( 'guardians' ) . ' g JOIN ' . Db::t( 'people' ) . ' p ON p.id = g.guardian_person_id WHERE g.person_id = %d AND p.deleted_at IS NULL ORDER BY g.id',
 				$person_id
 			),
 			ARRAY_A
@@ -76,7 +76,7 @@ final class Guardians {
 	public static function dependents_of( int $guardian_id ): array {
 		return self::db()->get_results(
 			self::db()->prepare(
-				'SELECT p.* FROM ' . Db::t( 'guardians' ) . ' g JOIN ' . Db::t( 'people' ) . ' p ON p.id = g.person_id WHERE g.guardian_person_id = %d AND p.deleted_at IS NULL AND p.application_status IS NULL AND ( p.birth_date IS NULL OR p.birth_date > %s ) ORDER BY p.last_name, p.first_name',
+				'SELECT p.* FROM ' . Db::t( 'guardians' ) . ' g JOIN ' . Db::t( 'people' ) . ' p ON p.id = g.person_id WHERE g.guardian_person_id = %d AND g.is_operative = 1 AND p.deleted_at IS NULL AND p.application_status IS NULL AND ( p.birth_date IS NULL OR p.birth_date > %s ) ORDER BY p.last_name, p.first_name',
 				$guardian_id,
 				self::minor_after()
 			),
@@ -91,7 +91,7 @@ final class Guardians {
 		}
 		return (bool) self::db()->get_var(
 			self::db()->prepare(
-				'SELECT COUNT(*) FROM ' . Db::t( 'guardians' ) . ' g JOIN ' . Db::t( 'people' ) . ' p ON p.id = g.person_id WHERE g.guardian_person_id = %d AND g.person_id = %d AND ( p.birth_date IS NULL OR p.birth_date > %s )',
+				'SELECT COUNT(*) FROM ' . Db::t( 'guardians' ) . ' g JOIN ' . Db::t( 'people' ) . ' p ON p.id = g.person_id WHERE g.guardian_person_id = %d AND g.person_id = %d AND g.is_operative = 1 AND ( p.birth_date IS NULL OR p.birth_date > %s )',
 				$guardian_id,
 				$person_id,
 				self::minor_after()
@@ -130,7 +130,7 @@ final class Guardians {
 			return array();
 		}
 		$rows = self::db()->get_results(
-			'SELECT g.person_id AS ward_id, p.* FROM ' . Db::t( 'guardians' ) . ' g JOIN ' . Db::t( 'people' ) . ' p ON p.id = g.guardian_person_id WHERE p.deleted_at IS NULL AND g.person_id IN (' . implode( ',', $ids ) . ') ORDER BY g.id',
+			'SELECT g.person_id AS ward_id, g.is_operative, p.* FROM ' . Db::t( 'guardians' ) . ' g JOIN ' . Db::t( 'people' ) . ' p ON p.id = g.guardian_person_id WHERE p.deleted_at IS NULL AND g.person_id IN (' . implode( ',', $ids ) . ') ORDER BY g.id',
 			ARRAY_A
 		) ?: array();
 		$out = array();
@@ -159,12 +159,45 @@ final class Guardians {
 		if ( $errors ) {
 			throw new \InvalidArgumentException( implode( ' ', $errors ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
-		self::db()->insert( Db::t( 'guardians' ), array( 'person_id' => $person_id, 'guardian_person_id' => $guardian_id, 'created_at' => Db::now() ) );
+		$first = ! self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'guardians' ) . ' WHERE person_id = %d AND is_operative = 1', $person_id ) ); // il primo collegato è chi opera sul sito, finché non si sceglie un altro
+		self::db()->insert( Db::t( 'guardians' ), array( 'person_id' => $person_id, 'guardian_person_id' => $guardian_id, 'is_operative' => $first ? 1 : 0, 'created_at' => Db::now() ) );
 		Audit::log( 'guardian.linked', 'person', $person_id, array( 'guardian' => $guardian_id ) );
 	}
 
+	/**
+	 * Sceglie chi dei tutori (al massimo due) opera sul sito per il minore: l'altro resta censito (libro soci, ricevute, consensi) ma non ha accesso.
+	 *
+	 * @throws \InvalidArgumentException
+	 */
+	public static function set_operative( int $person_id, int $guardian_id ): void {
+		$ids = array_map( 'intval', array_column( self::of( $person_id ), 'id' ) );
+		if ( ! in_array( $guardian_id, $ids, true ) ) {
+			throw new \InvalidArgumentException( 'Prima collega questa persona come tutore.' );
+		}
+		self::db()->update( Db::t( 'guardians' ), array( 'is_operative' => 0 ), array( 'person_id' => $person_id ) );
+		self::db()->update( Db::t( 'guardians' ), array( 'is_operative' => 1 ), array( 'person_id' => $person_id, 'guardian_person_id' => $guardian_id ) );
+		Audit::log( 'guardian.operative', 'person', $person_id, array( 'guardian' => $guardian_id ) );
+	}
+
+	/** Il tutore che opera sul sito per quella persona (o null). */
+	public static function operative_of( int $person_id ): ?array {
+		foreach ( self::of( $person_id ) as $g ) {
+			if ( ! empty( $g['is_operative'] ) ) {
+				return $g;
+			}
+		}
+		return null;
+	}
+
 	public static function unlink( int $person_id, int $guardian_id ): void {
-		$n = self::db()->delete( Db::t( 'guardians' ), array( 'person_id' => $person_id, 'guardian_person_id' => $guardian_id ) );
+		$was = self::operative_of( $person_id );
+		$n   = self::db()->delete( Db::t( 'guardians' ), array( 'person_id' => $person_id, 'guardian_person_id' => $guardian_id ) );
+		if ( $n && $was && (int) $was['id'] === $guardian_id ) { // tolto chi operava: passa all'altro rimasto
+			$rest = self::of( $person_id );
+			if ( $rest ) {
+				self::db()->update( Db::t( 'guardians' ), array( 'is_operative' => 1 ), array( 'person_id' => $person_id, 'guardian_person_id' => (int) $rest[0]['id'] ) );
+			}
+		}
 		if ( $n ) {
 			Audit::log( 'guardian.unlinked', 'person', $person_id, array( 'guardian' => $guardian_id ) );
 		}
@@ -193,7 +226,15 @@ final class Guardians {
 		}
 		$known_adult = Limits::flag( 'guardian_until_adult' ) && ! $minor && null !== Age::years( $p['birth_date'] ?? null, Db::today() ); // maggiorenne: le email non vanno più al tutore, nemmeno se non ha una email sua
 		if ( $minor || ( ! $known_adult && array() === $out ) ) {
-			foreach ( null === $guardians ? self::of( (int) $p['id'] ) : $guardians as $g ) {
+			$all  = null === $guardians ? self::of( (int) $p['id'] ) : $guardians;
+			$ops  = array_values( array_filter( $all, function ( $g ) {
+				return ! isset( $g['is_operative'] ) || ! empty( $g['is_operative'] ); // scrive a chi opera sul sito
+			} ) );
+			$have = false;
+			foreach ( $ops as $g ) {
+				$have = $have || ( '' !== trim( (string) $g['email'] ) && is_email( trim( (string) $g['email'] ) ) );
+			}
+			foreach ( $have ? $ops : $all as $g ) { // se chi opera non ha una email valida, si scrive all'altro genitore
 				$mail = trim( (string) $g['email'] );
 				if ( '' !== $mail && is_email( $mail ) && ! isset( $out[ Text::lower( $mail ) ] ) ) {
 					$out[ Text::lower( $mail ) ] = array( 'email' => $mail, 'name' => $g['first_name'], 'about' => $name );

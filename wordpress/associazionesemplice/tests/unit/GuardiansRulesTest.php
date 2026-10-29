@@ -14,7 +14,7 @@ final class GuardiansRulesTest extends TestCase {
 
 	public function test_a_normal_link_has_no_errors(): void {
 		$this->assertSame( array(), Guardians::validate( $this->minor(), $this->parent_(), 0, '2026-10-26' ) );
-		$this->assertSame( array(), Guardians::validate( $this->minor(), $this->parent_( array( 'birth_date' => null ) ), 0, '2026-10-26' ), 'la nascita del tutore è facoltativa' );
+		$this->assertSame( array(), Guardians::validate( $this->minor(), $this->parent_( array( 'birth_date' => null ) ), 1, '2026-10-26' ), 'il secondo genitore; la nascita del tutore è facoltativa' );
 	}
 
 	public function test_minor_needs_a_birth_date(): void {
@@ -33,9 +33,9 @@ final class GuardiansRulesTest extends TestCase {
 		$this->assertStringContainsString( 'maggiorenne', implode( ' ', $e ) );
 	}
 
-	public function test_only_one_guardian(): void {
-		$e = Guardians::validate( $this->minor(), $this->parent_(), 1, '2026-10-26' );
-		$this->assertStringContainsString( 'un solo tutore', implode( ' ', $e ) );
+	public function test_at_most_two_guardians(): void {
+		$e = Guardians::validate( $this->minor(), $this->parent_(), 2, '2026-10-26' );
+		$this->assertStringContainsString( 'al massimo 2', implode( ' ', $e ) );
 	}
 
 	public function test_nobody_is_their_own_guardian(): void {

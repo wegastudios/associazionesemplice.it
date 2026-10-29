@@ -6532,12 +6532,15 @@ asem_ok( null !== asem_throws( function () use ( $mn_kid, $mn_noem ) { \Associaz
 asem_ok( null !== asem_throws( function () use ( $mn_kid ) { \AssociazioneSemplice\Guardians::link( $mn_kid, $mn_kid ); } ), 'tutore: nessuno è tutore di se stesso' );
 \AssociazioneSemplice\Guardians::link( $mn_kid, $mn_mum );
 \AssociazioneSemplice\Guardians::link( $mn_kid, $mn_mum ); // ripetere non duplica
-asem_ok( null !== asem_throws( function () use ( $mn_kid, $mn_dad ) { \AssociazioneSemplice\Guardians::link( $mn_kid, $mn_dad ); } ), 'tutore: un solo tutore per minore' );
-asem_ok( null !== asem_throws( function () use ( $mn_kid, $mn_aunt ) { \AssociazioneSemplice\Guardians::link( $mn_kid, $mn_aunt ); } ), 'tutore: il secondo non si collega' );
-asem_ok( 1 === count( \AssociazioneSemplice\Guardians::of( $mn_kid ) ) && \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $mn_kid ) && ! \AssociazioneSemplice\Guardians::is_guardian_of( $mn_aunt, $mn_kid ), 'tutore: uno solo collegato, la zia no' );
-asem_ok( array( $mn_kid ) === array_map( 'intval', array_column( $people->dependents_of( $mn_mum ), 'id' ) ), 'tutore: l\'elenco di chi segue' );
+\AssociazioneSemplice\Guardians::link( $mn_kid, $mn_dad );
+asem_ok( null !== asem_throws( function () use ( $mn_kid, $mn_aunt ) { \AssociazioneSemplice\Guardians::link( $mn_kid, $mn_aunt ); } ), 'tutore: al massimo due' );
+asem_ok( 2 === count( \AssociazioneSemplice\Guardians::of( $mn_kid ) ) && \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $mn_kid ) && ! \AssociazioneSemplice\Guardians::is_guardian_of( $mn_dad, $mn_kid ) && ! \AssociazioneSemplice\Guardians::is_guardian_of( $mn_aunt, $mn_kid ), 'tutore: due genitori censiti, opera solo il primo; la zia no' );
+asem_ok( array( $mn_kid ) === array_map( 'intval', array_column( $people->dependents_of( $mn_mum ), 'id' ) ) && array() === $people->dependents_of( $mn_dad ), 'tutore: l\'elenco di chi segue è solo di chi opera' );
 $mn_names = \AssociazioneSemplice\Guardians::names_by_person();
-asem_ok( false !== strpos( (string) ( $mn_names[ $mn_kid ] ?? '' ), 'Marta Madre' ), 'tutore: nomi per il libro soci e l\'esportazione' );
+asem_ok( false !== strpos( (string) ( $mn_names[ $mn_kid ] ?? '' ), 'Marta Madre' ) && false !== strpos( (string) ( $mn_names[ $mn_kid ] ?? '' ), 'Pino Padre' ), 'tutore: nomi di entrambi per il libro soci e l\'esportazione' );
+\AssociazioneSemplice\Guardians::set_operative( $mn_kid, $mn_dad );
+asem_ok( \AssociazioneSemplice\Guardians::is_guardian_of( $mn_dad, $mn_kid ) && ! \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $mn_kid ) && (int) \AssociazioneSemplice\Guardians::operative_of( $mn_kid )['id'] === $mn_dad, 'tutore: si sceglie chi opera sul sito' );
+\AssociazioneSemplice\Guardians::set_operative( $mn_kid, $mn_mum );
 
 // permessi del tutore
 $mn_mum_u  = (int) $people->get( $mn_mum )['wp_user_id'];

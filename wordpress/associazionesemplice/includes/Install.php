@@ -31,10 +31,28 @@ final class Install {
 			if ( '' !== $old && version_compare( $old, '17', '<' ) ) {
 				self::migrate_membership_years();
 			}
+			if ( '' !== $old && version_compare( $old, '45', '<' ) ) {
+				self::migrate_operative_guardians();
+			}
 			if ( '' !== $old && version_compare( $old, '3', '<' ) ) {
 				// Dalla v3 il contributo di un'attività è `fee_cents` (per i corsi resta "al mese").
 				Db::db()->query( 'UPDATE ' . Db::t( 'activities' ) . ' SET fee_cents = monthly_fee_cents WHERE fee_cents = 0 AND monthly_fee_cents > 0' );
 			}
+		}
+	}
+
+	/** Dalla v45 di due tutori ne opera uno solo sul sito: dove prima ce n'erano due resta operativo il primo collegato. */
+	public static function migrate_operative_guardians(): void {
+		$db   = Db::db();
+		$tbl  = Db::t( 'guardians' );
+		$rows = $db->get_results( "SELECT id, person_id FROM $tbl ORDER BY id", ARRAY_A ) ?: array();
+		$seen = array();
+		foreach ( $rows as $r ) {
+			$k = (int) $r['person_id'];
+			if ( isset( $seen[ $k ] ) ) {
+				$db->update( $tbl, array( 'is_operative' => 0 ), array( 'id' => (int) $r['id'] ) );
+			}
+			$seen[ $k ] = true;
 		}
 	}
 
@@ -160,6 +178,7 @@ final class Install {
   id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   person_id bigint(20) unsigned NOT NULL,
   guardian_person_id bigint(20) unsigned NOT NULL,
+  is_operative tinyint(1) NOT NULL DEFAULT 1,
   created_at datetime NOT NULL,
   PRIMARY KEY  (id),
   UNIQUE KEY person_guardian (person_id,guardian_person_id),

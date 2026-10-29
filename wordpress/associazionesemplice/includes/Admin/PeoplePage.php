@@ -206,9 +206,11 @@ final class PeoplePage {
 			} ) );
 			echo '<tr><th>Tutore</th><td><input type="hidden" name="guardians_present" value="1">';
 			for ( $i = 0; $i < \AssociazioneSemplice\Guardians::MAX; $i++ ) {
-				echo wp_kses( Ui::person_select( 'guardian_ids[]', $cands, isset( $guardians[ $i ] ) ? (int) $guardians[ $i ]['id'] : 0, '— nessun tutore —', 'asem-guardian-' . $i ) . '<br>', Html::allowed() );
+				$is_op = isset( $guardians[ $i ] ) ? ! empty( $guardians[ $i ]['is_operative'] ) : 0 === $i;
+				echo wp_kses( Ui::person_select( 'guardian_ids[]', $cands, isset( $guardians[ $i ] ) ? (int) $guardians[ $i ]['id'] : 0, $i ? '— secondo genitore (facoltativo) —' : '— nessun tutore —', 'asem-guardian-' . $i )
+					. ' <label><input type="radio" name="guardian_operative" value="' . (int) $i . '"' . checked( $is_op, true, false ) . '> opera sul sito</label><br>', Html::allowed() );
 			}
-			echo '<p class="description">Per un minorenne: un genitore o tutore già registrato (con email), uno solo: si prende la responsabilità verso l\'altro genitore di ciò che riguarda il minore (anche liberatorie e consensi). Il tutore vede la tessera, le prenotazioni e i pagamenti del minore dalla sua area riservata, paga per lui e riceve le sue email; il minore può non avere né email né accesso. Il collegamento resta anche dopo i 18 anni finché non lo togli qui. Serve la data di nascita.</p>';
+			echo '<p class="description">Per un minorenne: i due genitori oppure un tutore legale, già registrati (con email): compaiono tutti nel libro soci, nelle ricevute e nei consensi. Uno solo «opera sul sito» e si prende la responsabilità verso l\'altro genitore di tutto ciò che riguarda il minore (anche liberatorie e consensi). Chi opera vede la tessera, le prenotazioni e i pagamenti del minore dalla sua area riservata, paga per lui e riceve le sue email; il minore può non avere né email né accesso. Il collegamento resta anche dopo i 18 anni finché non lo togli qui. Serve la data di nascita.</p>';
 			if ( $id ) {
 				$wards = \AssociazioneSemplice\Guardians::dependents_of( $id );
 				if ( $wards ) {

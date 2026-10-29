@@ -708,7 +708,7 @@ final class Actions {
 		return array( Ui::url( 'asem' ), 'Invito inviato: gli è arrivato il link per scegliere la password.' );
 	}
 
-	/** Allinea i tutori di una persona a quelli scelti nella scheda (uno solo): toglie quelli tolti, collega quelli nuovi. */
+	/** Allinea i tutori di una persona a quelli scelti nella scheda (fino a due, uno solo operativo): toglie quelli tolti, collega quelli nuovi. */
 	private static function sync_guardians( int $id, array $p ): void {
 		if ( empty( $p['guardians_present'] ) ) {
 			return;
@@ -726,6 +726,11 @@ final class Actions {
 		}
 		foreach ( array_diff( $want, $have ) as $new ) {
 			\AssociazioneSemplice\Guardians::link( $id, (int) $new );
+		}
+		$list = array_values( (array) ( $p['guardian_ids'] ?? array() ) );
+		$op   = (int) ( $list[ (int) ( $p['guardian_operative'] ?? 0 ) ] ?? 0 ); // chi opera sul sito: il tutore scelto nella riga indicata
+		if ( $op > 0 && in_array( $op, $want, true ) ) {
+			\AssociazioneSemplice\Guardians::set_operative( $id, $op );
 		}
 	}
 
