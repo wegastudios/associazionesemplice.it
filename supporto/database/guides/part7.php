@@ -17,7 +17,7 @@ Il riquadro elenca le cose che aspettano te:
 - **richieste di accesso** da controllare (i soci che hanno chiesto di entrare);
 - **soci da rinnovare**, con tessera scaduta o in scadenza;
 - **ospiti da invitare** a iscriversi;
-- **schede da completare**, cioè soci a cui mancano dei dati (dalla versione 1.2.42 del plugin gratuito: l'avviso compare anche nella Bacheca di Associazione Semplice);
+- **schede da completare**: soci in carica a cui mancano dei dati (dalla versione 1.2.42 del plugin gratuito; l'avviso compare anche nella Bacheca di Associazione Semplice, con l'elenco e il contatore). Per ogni scheda il plugin controlla codice fiscale, data e luogo di nascita e residenza (indirizzo **e** comune). Per un **minorenne** serve almeno un genitore o tutore, con l'email del tutore che opera sul sito e il codice fiscale di ciascun genitore; per un maggiorenne (o senza data di nascita) serve almeno **email o telefono**. L'elenco mostra le voci mancanti scheda per scheda. Ospiti, genitori non soci, soci receduti o anonimizzati e domande in attesa non sono controllati, e la liberatoria non conta perché è facoltativa;
 - **email non partite** (solo per l'amministratore).
 
 Ogni voce ha un collegamento che porta alla pagina giusta. In fondo trovi il collegamento alla **Bacheca di Associazione Semplice**, con il quadro completo.
