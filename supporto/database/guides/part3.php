@@ -25,7 +25,14 @@ Per una nuova edizione di un corso o di un evento già fatto, nell'**elenco dell
 
 ## Sport e disciplina
 
-Dalla versione 1.2.45 del plugin gratuito ogni attività (corso o evento) ha uno **sport**, scelto da un **elenco di sport basato sull'elenco CONI**, e una **disciplina** dell'ente, a **testo libero**. Si compilano nella scheda dell'attività. Con Pro servono anche per il file dei portali degli enti: vedi [Gestire le affiliazioni agli enti](guida:affiliazioni-agli-enti).
+Dalla versione 1.2.45 del plugin gratuito ogni attività ha uno **sport** e una **disciplina**, entrambi **facoltativi**. Valgono per **tutti i tipi di attività**: corsi, eventi e ricorrenti.
+
+1. Compili la riga **«Sport e disciplina»** nel modulo **«Nuova attività»** (da **Corsi ed eventi**) oppure, per un'attività esistente, nella scheda **«Dati dell'attività»**.
+2. Nel menu **«Sport»** scegli dall'**elenco di sport basato sull'elenco CONI** (o lascia «— nessuno —»).
+3. In **«Disciplina secondo l'ente»** scrivi a mano la disciplina dell'ente (per esempio «Ginnastica dolce»), fino a 120 caratteri.
+4. Salva.
+
+Con Pro questi dati finiscono nel file per i portali degli enti: le colonne **Sport** e **Disciplina** sono ricavate dai corsi a cui la persona è iscritta in quel momento e dagli eventi a cui ha una prenotazione, separati da «;» se sono più di uno (vedi [Gestire le affiliazioni agli enti](guida:affiliazioni-agli-enti)).
 
 ## Come funzionano i pagamenti
 
