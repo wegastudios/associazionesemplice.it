@@ -18,7 +18,7 @@ Chi vuole iscriversi compila un modulo sul tuo sito e la segreteria lo **approva
 
 ## Cosa chiede il modulo
 
-Nome, cognome, data di nascita, codice fiscale (con controllo di forma e di carattere finale), email, cellulare, tipo di socio (ordinario, e «socio e volontario» se lo hai acceso) e l'accettazione del **regolamento** e dell'**informativa privacy**.
+Nome, cognome, data di nascita, **luogo di nascita e residenza** (dalla versione 1.2.41), codice fiscale (con controllo di forma e di carattere finale), email, cellulare, tipo di socio (ordinario, e «socio e volontario» se lo hai acceso) e l'accettazione del **regolamento** e dell'**informativa privacy**.
 
 Se la data di nascita indica un **minorenne**, il modulo chiede anche i dati del genitore o tutore (vedi [Minori con genitori o tutori](guida:minori-con-genitori-o-tutori)).
 
@@ -54,12 +54,12 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, Pro Contabile, Pro Fiscale (dalla versione 1.2.25 del plugin)
 
-Un minore si registra con **uno o due genitori o tutori**, che gestiscono per lui tessera, prenotazioni, pagamenti e avvisi.
+Un minore si registra con **uno o due genitori o tutori**, anche non soci e senza email. Sul sito però **opera uno solo, il primo**: è lui che gestisce per il minore tessera, prenotazioni, pagamenti e avvisi. Aggiornando alla 1.2.41, per i minori già registrati resta operativo il primo tutore già collegato. Nel **libro soci** il minore eredita le date (domanda, delibera) del tutore che opera.
 
 ## Registrare un minore
 
 1. Nella scheda della persona inserisci la **data di nascita**: è obbligatoria per chi ha un tutore.
-2. Scegli **uno o due tutori** tra le persone con email già registrata. Un tutore deve essere maggiorenne (se la sua data è nota) e deve poter entrare nell'area riservata: un socio o una persona di tipo **«genitore o tutore»**. Un ospite non può essere tutore.
+2. Scegli **uno o due tutori**: un socio o una persona di tipo **«genitore o tutore»**, anche **senza email** (dalla versione 1.2.41). Un tutore deve essere maggiorenne (se la sua data è nota). Un ospite non può essere tutore. Se ne indichi due, sul sito **opera solo il primo**.
 3. Salva.
 
 Il genitore o tutore di tipo **«Genitore o tutore (non socio)»** **non è socio**: non compare nel libro soci, non ha la tessera, non paga la quota, non riceve i promemoria di rinnovo e non vota. Può invece entrare nell'area riservata per seguire il minore: riceve l'invito per scegliere la password, gli avvisi e i promemoria del minore. Il minore può anche non avere né email né utente WordPress, e può usare l'email del genitore.

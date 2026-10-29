@@ -457,6 +457,34 @@ Cose da sapere:
 MD,
     ],
     [
+        'topic' => 'soci-e-tessere', 'section' => 'Soci', 'slug' => 'libro-soci-completo',
+        'title' => 'Il libro soci completo: dati, PDF e CSV',
+        'body' => <<<'MD'
+> Disponibile in: Free, Pro Contabile, Pro Fiscale (dalla versione 1.2.41 del plugin gratuito)
+
+Il **libro soci** è il registro ufficiale delle persone iscritte, in **Registri → Libro soci**. Dalla versione 1.2.41 è completo: per ogni socio riporta
+
+- la **data della domanda** e la **data della delibera**;
+- il **luogo di nascita** e la **residenza**;
+- i **contatti**;
+- l'**ultima quota** versata;
+- l'eventuale **recesso**;
+- per i minori, il **tutore**.
+
+Lo scarichi in **PDF** e in **CSV**.
+
+## Tenerlo completo
+
+1. Compila questi dati nella **scheda del socio**.
+2. Se i soci arrivano dalla **domanda di adesione online**, il modulo chiede già luogo di nascita e residenza (vedi [Ricevere le domande di adesione online](guida:domanda-di-adesione-online)). Quando approvi la domanda, controlla la data della delibera.
+3. Per i soci che escono, registra la cessazione dalla scheda: restano nel libro con la data del recesso.
+
+## I minori
+
+Per un minore il libro riporta il tutore. Un minore può avere fino a due genitori o tutori, ma sul sito **opera solo il primo**: nel libro soci il minore eredita le date del tutore che opera (vedi [Iscrivere i minori con genitori o tutori](guida:minori-con-genitori-o-tutori)).
+MD,
+    ],
+    [
         'topic' => 'altro', 'section' => 'Registri', 'slug' => 'registro-azioni-e-spazio-occupato',
         'title' => 'Registro azioni: controllare lo spazio e liberarlo',
         'body' => <<<'MD'
