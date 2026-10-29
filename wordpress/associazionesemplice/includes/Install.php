@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '45';
+	const DB_VERSION        = '46';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -161,6 +161,10 @@ final class Install {
   application_status varchar(12) DEFAULT NULL,
   application_at datetime DEFAULT NULL,
   application_data text,
+  image_consent tinyint(1) DEFAULT NULL,
+  image_consent_at datetime DEFAULT NULL,
+  image_consent_by bigint(20) unsigned DEFAULT NULL,
+  affiliation_role varchar(20) DEFAULT NULL,
   prior_visits int(10) unsigned NOT NULL DEFAULT 0,
   notes text,
   created_at datetime NOT NULL,

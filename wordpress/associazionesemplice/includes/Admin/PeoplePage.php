@@ -231,6 +231,13 @@ final class PeoplePage {
 		if ( MemberType::is_member( $type ) ) {
 			echo '<tr><th>Data della delibera</th><td><input type="date" name="approved_on" value="' . esc_attr( $val( 'approved_on' ) ) . '"><p class="description">Quando il consiglio direttivo ha accettato la domanda (per un minore vale la stessa data). Se la lasci vuota, il libro dei soci riporta la data di ingresso; con una domanda online si compila da sola all\'approvazione.</p></td></tr>';
 		}
+		if ( MemberType::is_member( $type ) ) {
+			$ic = $val( 'image_consent' );
+			echo wp_kses( '<tr><th>Foto e video</th><td><select name="image_consent">' . Ui::options( array( '1' => 'Acconsente alla pubblicazione', '0' => 'Non acconsente' ), '' === (string) $ic ? '' : (string) (int) $ic, 'Non ancora chiesto' ) . '</select>'
+				. '<p class="description">Per un minorenne risponde il tutore che opera sul sito, anche verso l\'altro genitore.</p></td></tr>', Html::allowed() );
+			echo wp_kses( '<tr><th>Tipo di tesseramento</th><td><select name="affiliation_role">' . Ui::options( \AssociazioneSemplice\MembershipRoles::labels(), (string) $val( 'affiliation_role' ), '— da indicare —' ) . '</select>'
+				. '<p class="description">Come va comunicato all\'ente di promozione sportiva (atleta, istruttore, dirigente…).</p></td></tr>', Html::allowed() );
+		}
 		echo '<tr class="asem-row-host"><th>Volte già venuto</th><td><input type="number" name="prior_visits" min="0" max="9999" value="' . (int) $val( 'prior_visits' ) . '" class="small-text"><p class="description">Quante volte è già venuto prima di usare il programma: si somma alle partecipazioni registrate qui e conta per la soglia dell\'invito a iscriversi. Gli eventi passati puoi segnarli nelle note.</p></td></tr>';
 		echo '<tr><th>Note</th><td><textarea name="notes" rows="3" class="large-text">' . esc_textarea( $val( 'notes' ) ) . '</textarea></td></tr>';
 		echo '</tbody></table>';
