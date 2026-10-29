@@ -2,6 +2,11 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.42
+- Liberatoria per foto e video nella scheda e nel modulo di domanda online (per i minori risponde il tutore che opera).
+- Tipo di tesseramento (atleta, istruttore, dirigente…) nella scheda e nell'esportazione dei soci.
+- Nuovo avviso alla segreteria «Schede da completare» in Bacheca e in «Da lavorare» di WordPress.
+
 ## 1.2.41
 - Il libro soci è completo: data della domanda e della delibera, luogo di nascita, residenza, contatti, ultima quota, recesso e tutore (PDF e CSV).
 - Fino a due genitori o tutori per ogni minore, anche non soci e senza email: sul sito opera uno solo, il primo.
