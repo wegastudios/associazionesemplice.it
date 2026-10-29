@@ -6616,14 +6616,23 @@ foreach ( \AssociazioneSemplice\MemberBook::rows() as $mn_r ) {
 	}
 }
 asem_ok( $mn_book && gmdate( 'Y-m-d', strtotime( '-10 years' ) ) === $mn_book['birth_date'] && 'Marta Madre' === $mn_book['guardian'], 'libro soci: data di nascita e tutore' );
-$people->update( $mn_kid, array( 'birth_place' => 'Lecce', 'approved_on' => '2025-09-10', 'address' => 'Via Roma 1', 'zip' => '73100', 'city' => 'Lecce', 'province' => 'le', 'phone' => '333 1212121' ) );
+$people->update( $mn_mum, array( 'approved_on' => '2025-09-10', 'joined_on' => '2025-09-01' ) );
+$people->update( $mn_kid, array( 'birth_place' => 'Lecce', 'address' => 'Via Roma 1', 'zip' => '73100', 'city' => 'Lecce', 'province' => 'le', 'phone' => '333 1212121' ) );
 $mn_book = null;
 foreach ( \AssociazioneSemplice\MemberBook::rows() as $mn_r ) {
 	if ( (int) $mn_r['id'] === $mn_kid ) {
 		$mn_book = $mn_r;
 	}
 }
-asem_ok( $mn_book && 'Lecce' === $mn_book['birth_place'] && '2025-09-10' === $mn_book['approved_on'] && 'Via Roma 1, 73100 Lecce (LE)' === $mn_book['residence'] && '' !== $mn_book['applied_on'], 'libro soci: luogo di nascita, delibera, residenza e data della domanda' );
+asem_ok( $mn_book && 'Lecce' === $mn_book['birth_place'] && '2025-09-10' === $mn_book['approved_on'] && '2025-09-01' === $mn_book['joined_on'] && 'Via Roma 1, 73100 Lecce (LE)' === $mn_book['residence'] && '' !== $mn_book['applied_on'], 'libro soci: luogo di nascita, residenza e date ereditate dal tutore che opera' );
+$mn_kid2 = $people->create( array( 'type' => 'ordinary', 'card_number' => 'mn9', 'first_name' => 'Lia', 'last_name' => 'Piccola', 'birth_date' => gmdate( 'Y-m-d', strtotime( '-8 years' ) ) ) );
+$mn_g2   = $people->create( array( 'type' => 'guardian', 'first_name' => 'Gianni', 'last_name' => 'Genitore', 'tax_code' => 'RSSGNN70A01H501Z' ) );
+asem_ok( null !== asem_throws( function () use ( $mn_kid2, $mn_g2 ) { \AssociazioneSemplice\Guardians::link( $mn_kid2, $mn_g2 ); } ), 'tutore: chi opera sul sito deve avere l\'email' );
+\AssociazioneSemplice\Guardians::link( $mn_kid2, $mn_mum );
+\AssociazioneSemplice\Guardians::link( $mn_kid2, $mn_g2 );
+asem_ok( 2 === count( \AssociazioneSemplice\Guardians::of( $mn_kid2 ) ) && ! \AssociazioneSemplice\Guardians::is_guardian_of( $mn_g2, $mn_kid2 ) && (int) \AssociazioneSemplice\Guardians::operative_of( $mn_kid2 )['id'] === $mn_mum, 'tutore: il secondo genitore è censito anche se non socio e senza email, ma non opera' );
+asem_ok( null !== asem_throws( function () use ( $mn_kid2, $mn_g2 ) { \AssociazioneSemplice\Guardians::set_operative( $mn_kid2, $mn_g2 ); } ), 'tutore: senza email non può diventare chi opera' );
+asem_ok( 1 === count( \AssociazioneSemplice\Guardians::recipients( $people->get( $mn_kid2 ), \AssociazioneSemplice\Guardians::of( $mn_kid2 ) ) ), 'tutore: le email vanno solo a chi opera' );
 $mn_bk = \AssociazioneSemplice\Docs::book( '', 'csv' );
 asem_ok( false !== strpos( $mn_bk['body'], 'Luogo di nascita' ) && false !== strpos( $mn_bk['body'], 'Via Roma 1, 73100 Lecce (LE)' ) && false !== strpos( $mn_bk['body'], '10/09/2025' ) && 0 === strpos( \AssociazioneSemplice\Docs::book( '', 'pdf' )['body'], '%PDF' ), 'libro soci: CSV completo e PDF' );
 $mn_enroll = new ReflectionMethod( Admin\Actions::class, 'enroll' );

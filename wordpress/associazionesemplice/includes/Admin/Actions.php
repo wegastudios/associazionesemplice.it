@@ -713,6 +713,23 @@ final class Actions {
 		if ( empty( $p['guardians_present'] ) ) {
 			return;
 		}
+		$ids = array_values( (array) ( $p['guardian_ids'] ?? array() ) );
+		if ( '' !== trim( (string) ( $p['new_guardian_first_name'] ?? '' ) ) && '' !== trim( (string) ( $p['new_guardian_last_name'] ?? '' ) ) ) { // genitore non ancora in anagrafica: lo si censisce qui, anche senza essere socio
+			$new_id = Plugin::people()->create( array(
+				'type'       => \AssociazioneSemplice\MemberType::GUARDIAN,
+				'first_name' => $p['new_guardian_first_name'],
+				'last_name'  => $p['new_guardian_last_name'],
+				'tax_code'   => $p['new_guardian_tax_code'] ?? '',
+				'email'      => $p['new_guardian_email'] ?? '',
+			) );
+			$slot = array_search( '', array_map( 'strval', $ids ), true );
+			if ( false === $slot ) {
+				$ids[] = (string) $new_id;
+			} else {
+				$ids[ $slot ] = (string) $new_id;
+			}
+			$p['guardian_ids'] = $ids;
+		}
 		$want = array();
 		foreach ( (array) ( $p['guardian_ids'] ?? array() ) as $g ) {
 			if ( (int) $g > 0 ) {

@@ -27,7 +27,7 @@ final class Guardians {
 	 * @param array $guardian il tutore (con type, email, birth_date)
 	 * @return string[] errori (vuoto = collegamento possibile)
 	 */
-	public static function validate( array $minor, array $guardian, int $already_linked, string $today ): array {
+	public static function validate( array $minor, array $guardian, int $already_linked, string $today, bool $operative = true ): array {
 		$errors = array();
 		if ( (int) $minor['id'] === (int) $guardian['id'] ) {
 			$errors[] = 'Una persona non può essere tutore di se stessa.';
@@ -35,11 +35,11 @@ final class Guardians {
 		if ( empty( $minor['birth_date'] ) ) {
 			$errors[] = 'Per collegare un tutore serve la data di nascita del minore.';
 		}
-		if ( ! MemberType::can_login( (string) ( $guardian['type'] ?? '' ) ) ) {
+		if ( $operative && ! MemberType::can_login( (string) ( $guardian['type'] ?? '' ) ) ) { // chi opera sul sito deve poter entrare; l'altro genitore basta che sia censito
 			$errors[] = 'Il tutore deve poter entrare nell\'area riservata: un socio o una persona registrata come genitore o tutore (un ospite non può).';
 		}
 		$email = trim( (string) ( $guardian['email'] ?? '' ) );
-		if ( '' === $email || ! filter_var( $email, FILTER_VALIDATE_EMAIL ) ) {
+		if ( $operative && ( '' === $email || ! filter_var( $email, FILTER_VALIDATE_EMAIL ) ) ) {
 			$errors[] = 'Il tutore deve avere un\'email.';
 		}
 		if ( Age::is_minor( $guardian['birth_date'] ?? null, $today ) ) {
@@ -152,14 +152,17 @@ final class Guardians {
 		if ( ! $minor || ! $guardian ) {
 			throw new \InvalidArgumentException( 'Persona non trovata.' );
 		}
-		if ( self::is_guardian_of( $guardian_id, $person_id ) ) {
+		if ( in_array( $guardian_id, array_map( 'intval', array_column( self::of( $person_id ), 'id' ) ), true ) ) {
 			return;
 		}
-		$errors = self::validate( $minor, $guardian, count( self::of( $person_id ) ), Db::today() );
+		$first  = ! self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'guardians' ) . ' WHERE person_id = %d AND is_operative = 1', $person_id ) ); // il primo collegato è chi opera sul sito, finché non si sceglie un altro
+		$errors = self::validate( $minor, $guardian, count( self::of( $person_id ) ), Db::today(), $first );
+		if ( MemberType::GUEST === (string) $guardian['type'] ) {
+			$errors[] = 'Un ospite non può essere genitore o tutore: registralo come «genitore o tutore».';
+		}
 		if ( $errors ) {
 			throw new \InvalidArgumentException( implode( ' ', $errors ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
-		$first = ! self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'guardians' ) . ' WHERE person_id = %d AND is_operative = 1', $person_id ) ); // il primo collegato è chi opera sul sito, finché non si sceglie un altro
 		self::db()->insert( Db::t( 'guardians' ), array( 'person_id' => $person_id, 'guardian_person_id' => $guardian_id, 'is_operative' => $first ? 1 : 0, 'created_at' => Db::now() ) );
 		Audit::log( 'guardian.linked', 'person', $person_id, array( 'guardian' => $guardian_id ) );
 	}
@@ -174,9 +177,24 @@ final class Guardians {
 		if ( ! in_array( $guardian_id, $ids, true ) ) {
 			throw new \InvalidArgumentException( 'Prima collega questa persona come tutore.' );
 		}
+		$g = Plugin::people()->get( $guardian_id );
+		$e = $g ? self::validate( (array) Plugin::people()->get( $person_id ), $g, 0, Db::today(), true ) : array( 'Persona non trovata.' );
+		if ( $e ) {
+			throw new \InvalidArgumentException( implode( ' ', $e ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
 		self::db()->update( Db::t( 'guardians' ), array( 'is_operative' => 0 ), array( 'person_id' => $person_id ) );
 		self::db()->update( Db::t( 'guardians' ), array( 'is_operative' => 1 ), array( 'person_id' => $person_id, 'guardian_person_id' => $guardian_id ) );
 		Audit::log( 'guardian.operative', 'person', $person_id, array( 'guardian' => $guardian_id ) );
+	}
+
+	/** Per tutti i minori il tutore che opera sul sito: id minore => id tutore. @return array<int,int> */
+	public static function operative_ids(): array {
+		$rows = self::db()->get_results( 'SELECT person_id, guardian_person_id FROM ' . Db::t( 'guardians' ) . ' WHERE is_operative = 1', ARRAY_A ) ?: array();
+		$out  = array();
+		foreach ( $rows as $r ) {
+			$out[ (int) $r['person_id'] ] = (int) $r['guardian_person_id'];
+		}
+		return $out;
 	}
 
 	/** Il tutore che opera sul sito per quella persona (o null). */

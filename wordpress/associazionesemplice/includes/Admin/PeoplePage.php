@@ -202,7 +202,7 @@ final class PeoplePage {
 		if ( MemberType::is_member( $type ) ) {
 			$guardians = $id ? \AssociazioneSemplice\Guardians::of( $id ) : array();
 			$cands     = array_values( array_filter( $people->search(), function ( $x ) use ( $id ) {
-				return (int) $x['id'] !== $id && '' !== trim( (string) $x['email'] ) && MemberType::can_login( $x['type'] );
+				return (int) $x['id'] !== $id && MemberType::GUEST !== $x['type']; // basta che il genitore sia censito: socio o «genitore o tutore»; chi opera sul sito deve avere l'email
 			} ) );
 			echo '<tr><th>Tutore</th><td><input type="hidden" name="guardians_present" value="1">';
 			for ( $i = 0; $i < \AssociazioneSemplice\Guardians::MAX; $i++ ) {
@@ -211,8 +211,9 @@ final class PeoplePage {
 					. ' <label><input type="radio" name="guardian_operative" value="' . (int) $i . '"' . checked( $is_op, true, false ) . '> opera sul sito</label><br>', Html::allowed() );
 			}
 			echo '<p class="description">Per un minorenne: i due genitori oppure un tutore legale, già registrati (con email): compaiono tutti nel libro soci, nelle ricevute e nei consensi. Uno solo «opera sul sito» e si prende la responsabilità verso l\'altro genitore di tutto ciò che riguarda il minore (anche liberatorie e consensi). Chi opera vede la tessera, le prenotazioni e i pagamenti del minore dalla sua area riservata, paga per lui e riceve le sue email; il minore può non avere né email né accesso. Il collegamento resta anche dopo i 18 anni finché non lo togli qui. Serve la data di nascita.</p>';
+			echo '<p><strong>Genitore non ancora in anagrafica?</strong> Inseriscilo qui (non serve che sia socio): <input type="text" name="new_guardian_first_name" placeholder="Nome" size="14"> <input type="text" name="new_guardian_last_name" placeholder="Cognome" size="16"> <input type="text" name="new_guardian_tax_code" placeholder="Codice fiscale" size="18" maxlength="16"> <input type="email" name="new_guardian_email" placeholder="Email (se opera sul sito)" size="22"></p>';
 			if ( $id ) {
-				$wards = \AssociazioneSemplice\Guardians::dependents_of( $id );
+				$wards =\AssociazioneSemplice\Guardians::dependents_of( $id );
 				if ( $wards ) {
 					$ward_links = array();
 					foreach ( $wards as $w ) {

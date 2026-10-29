@@ -84,6 +84,11 @@ final class MemberBook {
 		) ?: array();
 		$tutori = Guardians::names_by_person();
 		$fees   = self::last_fees();
+		$by_id  = array();
+		foreach ( $rows as $r ) {
+			$by_id[ (int) $r['id'] ] = $r;
+		}
+		$ops    = Guardians::operative_ids();
 		$out = array();
 		$n   = 0;
 		foreach ( $rows as $p ) {
@@ -96,6 +101,7 @@ final class MemberBook {
 				continue;
 			}
 			$anon = ! empty( $p['anonymized_at'] );
+			$src  = isset( $ops[ (int) $p['id'] ], $by_id[ $ops[ (int) $p['id'] ] ] ) ? $by_id[ $ops[ (int) $p['id'] ] ] : $p; // un minore eredita le date (domanda, delibera, ingresso) del tutore che opera, se è socio
 			$out[] = array(
 				'n'           => $n,
 				'id'          => (int) $p['id'],
@@ -106,14 +112,14 @@ final class MemberBook {
 				'residence'   => $anon ? '' : self::residence( $p ),
 				'email'       => $anon ? '' : (string) $p['email'],
 				'phone'       => $anon ? '' : (string) $p['phone'],
-				'applied_on'  => substr( (string) ( $p['application_at'] ?: $p['joined_on'] ), 0, 10 ),
-				'approved_on' => (string) ( $p['approved_on'] ?: $p['joined_on'] ),
+				'applied_on'  => substr( (string) ( $src['application_at'] ?: $src['joined_on'] ), 0, 10 ),
+				'approved_on' => (string) ( $src['approved_on'] ?: $src['joined_on'] ),
 				'fee_cents'   => (int) ( $fees[ (int) $p['id'] ]['cents'] ?? 0 ),
 				'fee_year'    => (string) ( $fees[ (int) $p['id'] ]['year'] ?? '' ),
 				'guardian'    => $anon ? '' : (string) ( $tutori[ (int) $p['id'] ] ?? '' ),
 				'card_number' => (string) $p['card_number'],
 				'level'       => Levels::label( $p ),
-				'joined_on'   => (string) $p['joined_on'],
+				'joined_on'   => (string) $src['joined_on'],
 				'left_on'     => $gone ? (string) $p['left_on'] : '',
 				'left_reason' => (string) $p['left_reason'],
 				'status'      => $gone ? self::LEFT : self::IN_FORCE,
