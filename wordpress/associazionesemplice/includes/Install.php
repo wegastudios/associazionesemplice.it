@@ -303,7 +303,7 @@ final class Install {
   booking_qr tinyint(1) NOT NULL DEFAULT 0,
   lesson_weekday tinyint(1) NOT NULL DEFAULT 0,
   lesson_slots text,
-  billing varchar(8) NOT NULL DEFAULT 'monthly',
+  billing varchar(12) NOT NULL DEFAULT 'monthly',
   lesson_start char(5) DEFAULT NULL,
   lesson_end char(5) DEFAULT NULL,
   location varchar(190) DEFAULT NULL,
