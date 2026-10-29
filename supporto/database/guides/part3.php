@@ -29,6 +29,35 @@ Per una nuova edizione di un corso o di un evento già fatto, nell'**elenco dell
 - **Pagamento unico**: la quota è il totale (per esempio «10 incontri a 120 €»), dovuta all'iscrizione e versabile anche a rate. Se l'iscrizione viene cancellata prima di qualunque pagamento, non è dovuto nulla.
 - **Pagamento trimestrale** (dalla versione 1.2.43 del plugin gratuito): oltre a «una tantum» e «rinnovo mensile» puoi scegliere il pagamento del corso a trimestre. I **promemoria mensili** saltano i corsi trimestrali.
 
+## Varianti del contributo
+
+Dalla versione 1.2.44 del plugin gratuito puoi descrivere liberamente delle **varianti del contributo** di un **corso** (non degli eventi), per esempio «Secondo corso -25%», «Famiglia» o «Solo il sabato», e assegnarle a mano agli iscritti. Sono facoltative. **Gli sconti non sono automatici**: la variante è un prezzo alternativo che scegli tu.
+
+### Creare le varianti
+
+1. Apri il corso da **Corsi ed eventi** e vai nella scheda **«Dati dell'attività»**.
+2. Nella riga **«Varianti del contributo»** compila **Variante** (un nome libero, fino a 60 caratteri) e **Prezzo** in euro.
+3. Parti con tre righe; a ogni salvataggio se ne aggiunge una vuota. Puoi averne **al massimo 8**. Le righe senza nome vengono ignorate.
+4. Salva.
+
+Il prezzo vale per **ogni periodo di pagamento** del corso: il mese, il trimestre o l'importo unico, a seconda del tipo di pagamento.
+
+### Assegnare una variante a un iscritto
+
+1. Nel modulo **«Iscrivi un socio o un ospite»**, se il corso ha varianti compare **«Contributo»**: un menu con **«Quota base»** e le varianti.
+2. Scegli la voce giusta e, se vuoi, scrivi una **nota** (fino a 190 caratteri, per esempio «sorella iscritta a Danza»).
+3. Iscrivi la persona.
+
+Dopo, nell'elenco degli iscritti, accanto a ogni persona trovi lo stesso menu con la nota e il pulsante **Salva**: puoi **cambiare la variante quando vuoi**. Nell'elenco leggi «· Nome variante» e la nota tra parentesi. Il cambio resta nel registro azioni.
+
+### Cosa succede alla quota
+
+- La quota dell'iscritto segue la variante in **«Pagamenti da incassare»**, nell'incasso già compilato (l'importo proposto) e nei pagamenti online del socio.
+- Chi si iscrive da solo dall'**area soci** paga sempre la **quota base**. L'iscritto non vede il nome della variante, vede solo l'importo che deve; il nome lo vede la segreteria.
+- L'incasso resta una normale quota del corso per il mese di competenza, senza il nome della variante.
+
+> **Se cambi variante**, il dovuto si **ricalcola per tutta l'iscrizione** con il prezzo della nuova variante, anche per i mesi già passati. I versamenti già registrati restano come sono e il saldo è «dovuto meno versato»: con un prezzo più basso può comparire un credito, con uno più alto una differenza da incassare. Nei corsi a rinnovo mensile o trimestrale ogni periodo successivo usa il nuovo prezzo.
+
 ## Annullare o spostare una lezione
 
 Dalla versione 1.2.43 le **singole lezioni** di un corso si possono **annullare** o **spostare**, per esempio per una festività o per il maltempo.
