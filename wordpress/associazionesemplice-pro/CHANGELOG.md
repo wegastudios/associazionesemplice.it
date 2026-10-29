@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.1.36
+- Il registro presenze ha una seconda vista a calendario (le date in orizzontale, le persone in verticale) e tiene conto delle lezioni annullate o spostate.
+- Richiede il gratuito 1.2.43 o successivo.
+
 ## 1.1.35
 - Le ricevute dei minori sono intestate al genitore che opera (o a chi ha pagato), con i codici fiscali dei genitori e del ragazzo e, dai 5 ai 18 anni, l'indicazione se il pagamento è tracciato (detrazione delle spese sportive).
 

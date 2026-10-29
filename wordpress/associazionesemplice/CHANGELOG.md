@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.43
+- Le singole lezioni di un corso si possono annullare o spostare (festività, maltempo), con avviso agli iscritti.
+- Nuovo pagamento del corso trimestrale: i promemoria mensili saltano i corsi trimestrali.
+
 ## 1.2.42
 - Liberatoria per foto e video nella scheda e nel modulo di domanda online (per i minori risponde il tutore che opera).
 - Tipo di tesseramento (atleta, istruttore, dirigente…) nella scheda e nell'esportazione dei soci.
