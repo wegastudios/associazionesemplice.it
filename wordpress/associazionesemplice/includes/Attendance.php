@@ -54,6 +54,27 @@ final class Attendance {
 		return $db->get_results( $db->prepare( $sql, (int) $a['id'], $ym, $ym ), ARRAY_A ) ?: array();
 	}
 
+	/**
+	 * Presenze di un periodo come matrice (date in orizzontale, persone in verticale).
+	 *
+	 * @return array{dates:string[],people:array<int,string>,marks:array<string,array<int,bool>>,expected:array<string,array<int,bool>>}
+	 */
+	public static function matrix( array $a, string $from, string $to ): array {
+		$dates  = self::lesson_dates( $a, $from, $to );
+		$people = array();
+		$marks  = array();
+		$exp    = array();
+		foreach ( $dates as $d ) {
+			foreach ( self::roster( $a, $d ) as $r ) {
+				$people[ (int) $r['id'] ] = trim( $r['last_name'] . ' ' . $r['first_name'] );
+				$exp[ $d ][ (int) $r['id'] ] = true;
+			}
+			$marks[ $d ] = self::marks( (int) $a['id'], $d );
+		}
+		asort( $people );
+		return array( 'dates' => $dates, 'people' => $people, 'marks' => $marks, 'expected' => $exp );
+	}
+
 	/** Segni già registrati per quella data: person_id => presente? Vuoto se la lezione non è ancora stata registrata. @return array<int,bool> */
 	public static function marks( int $activity_id, string $date ): array {
 		$out = array();
