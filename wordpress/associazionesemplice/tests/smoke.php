@@ -6625,7 +6625,7 @@ foreach ( \AssociazioneSemplice\MemberBook::rows() as $mn_r ) {
 	}
 }
 asem_ok( $mn_book && 'Lecce' === $mn_book['birth_place'] && '2025-09-10' === $mn_book['approved_on'] && '2025-09-01' === $mn_book['joined_on'] && 'Via Roma 1, 73100 Lecce (LE)' === $mn_book['residence'] && '' !== $mn_book['applied_on'], 'libro soci: luogo di nascita, residenza e date ereditate dal tutore che opera' );
-$mn_kid2 = $people->create( array( 'type' => 'ordinary', 'card_number' => 'mn9', 'first_name' => 'Lia', 'last_name' => 'Piccola', 'birth_date' => gmdate( 'Y-m-d', strtotime( '-8 years' ) ) ) );
+$mn_kid2 = $people->create( array( 'type' => 'ordinary', 'card_number' => 'mn9', 'first_name' => 'Ada', 'last_name' => 'Minuscola', 'birth_date' => gmdate( 'Y-m-d', strtotime( '-8 years' ) ) ) );
 $mn_g2   = $people->create( array( 'type' => 'guardian', 'first_name' => 'Gianni', 'last_name' => 'Genitore', 'tax_code' => 'RSSGNN70A01H501Z' ) );
 asem_ok( null !== asem_throws( function () use ( $mn_kid2, $mn_g2 ) { \AssociazioneSemplice\Guardians::link( $mn_kid2, $mn_g2 ); } ), 'tutore: chi opera sul sito deve avere l\'email' );
 \AssociazioneSemplice\Guardians::link( $mn_kid2, $mn_mum );
