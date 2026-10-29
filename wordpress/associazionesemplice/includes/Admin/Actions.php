@@ -785,6 +785,9 @@ final class Actions {
 		$pid = (int) ( $p['person_id'] ?? 0 );
 		self::assert_not_suspended( $pid );
 		Plugin::activities()->enroll( (int) $p['activity_id'], $pid, (string) $p['start_month'] );
+		if ( ! empty( $p['next'] ) ) { // «Salva e prossimo inserimento»: si resta sulla pagina per iscrivere la persona dopo
+			return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ) . '#asem-enroll-person', 'Iscrizione registrata: puoi inserire la prossima.' . self::membership_warning( $pid ) );
+		}
 		return self::after_signup( $pid, Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Iscrizione registrata.', (int) $p['activity_id'] );
 	}
 

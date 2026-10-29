@@ -6622,6 +6622,10 @@ foreach ( \AssociazioneSemplice\MemberBook::rows() as $mn_r ) {
 asem_ok( $mn_book && 'Lecce' === $mn_book['birth_place'] && '2025-09-10' === $mn_book['approved_on'] && 'Via Roma 1, 73100 Lecce (LE)' === $mn_book['residence'] && '' !== $mn_book['applied_on'], 'libro soci: luogo di nascita, delibera, residenza e data della domanda' );
 $mn_bk = \AssociazioneSemplice\Docs::book( '', 'csv' );
 asem_ok( false !== strpos( $mn_bk['body'], 'Luogo di nascita' ) && false !== strpos( $mn_bk['body'], 'Via Roma 1, 73100 Lecce (LE)' ) && false !== strpos( $mn_bk['body'], '10/09/2025' ) && 0 === strpos( \AssociazioneSemplice\Docs::book( '', 'pdf' )['body'], '%PDF' ), 'libro soci: CSV completo e PDF' );
+$mn_enroll = new ReflectionMethod( Admin\Actions::class, 'enroll' );
+$mn_enroll->setAccessible( true );
+$mn_en = $mn_enroll->invoke( null, array( 'activity_id' => $yoga, 'person_id' => $mn_mum, 'start_month' => $month, 'next' => '1' ) );
+asem_ok( false !== strpos( $mn_en[0], 'asem-activity' ) && false !== strpos( $mn_en[0], '#asem-enroll-person' ) && false !== strpos( $mn_en[1], 'prossima' ) && in_array( $yoga, array_map( function ( $st ) { return (int) $st['enrollment']['activity_id']; }, $acts->status_for_person( $mn_mum ) ), true ), 'iscrizione fluida: «prossimo inserimento» resta sulla pagina del corso' );
 $mn_csv = Admin\Exports::people()[1];
 asem_ok( false !== strpos( $mn_csv, 'Data di nascita' ) && false !== strpos( $mn_csv, 'Tutore' ) && false !== strpos( $mn_csv, 'Marta Madre' ), 'esportazione soci: data di nascita e tutore' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Docs::book( '', 'csv' )['body'], 'Marta Madre' ), 'libro soci in CSV: il tutore c\'è' );
