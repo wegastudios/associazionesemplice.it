@@ -86,6 +86,8 @@ final class ActivityCopy {
 			'cancel_policy'        => $a['cancel_policy'],
 			'booking_qr'           => (int) $a['booking_qr'],
 			'billing'              => $a['billing'],
+			'sport'                => $a['sport'] ?? null,
+			'discipline'           => $a['discipline'] ?? null,
 			'fund_mode'            => $a['fund_mode'],
 			'fund_value'           => (int) $a['fund_value'],
 			'notes'                => $a['notes'],

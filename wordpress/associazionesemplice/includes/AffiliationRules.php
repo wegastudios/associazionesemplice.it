@@ -15,15 +15,28 @@ final class AffiliationRules {
 	const EXPIRED_WINDOW = 30;
 
 	/** Intestazione del file per i portali degli enti. */
-	const CSV_HEADER = array( 'Nome', 'Cognome', 'Codice fiscale', 'Data di nascita', 'Luogo di nascita (codice catastale)', 'Sesso', 'Indirizzo', 'Email', 'Telefono', 'Tipo tessera' );
+	const CSV_HEADER = array( 'Nome', 'Cognome', 'Codice fiscale', 'Data di nascita', 'Luogo di nascita (codice catastale)', 'Sesso', 'Indirizzo', 'Email', 'Telefono', 'Tipo tessera', 'Sport', 'Disciplina' );
 
+	/** CONI / RAS e i 16 enti di promozione sportiva riconosciuti dal CONI (14 nazionali e 2 su base regionale), più «Altro ente». */
 	public static function bodies(): array {
 		return array(
 			'coni'      => 'CONI / RAS',
-			'uisp'      => 'UISP',
-			'csen'      => 'CSEN',
 			'acsi'      => 'ACSI',
 			'aics'      => 'AICS',
+			'asc'       => 'ASC',
+			'asi'       => 'ASI',
+			'libertas'  => 'CNS Libertas',
+			'csain'     => 'CSAIN',
+			'csen'      => 'CSEN',
+			'csi'       => 'CSI',
+			'endas'     => 'ENDAS',
+			'msp'       => 'MSP Italia',
+			'opes'      => 'OPES',
+			'pgs'       => 'PGS',
+			'uisp'      => 'UISP',
+			'usacli'    => 'US ACLI',
+			'ussa'      => 'USSA (Alto Adige)',
+			'vss'       => 'VSS (Alto Adige)',
 			self::OTHER => 'Altro ente',
 		);
 	}
@@ -114,6 +127,7 @@ final class AffiliationRules {
 		if ( '' === $d['code'] ) {
 			throw new \InvalidArgumentException( 'Scrivi il codice di affiliazione.' );
 		}
+		$d['disciplines'] = mb_substr( trim( strip_tags( (string) ( $in['disciplines'] ?? '' ) ) ), 0, 190 );
 		$d['season']     = self::season( (string) ( $in['season'] ?? '' ) );
 		$d['expires_on'] = self::expiry( $in );
 		$d['cost_cents'] = self::cost( $in['cost'] ?? '' );
@@ -226,7 +240,7 @@ final class AffiliationRules {
 	 * @param array $p persona (first_name, last_name, tax_code, birth_date, address, zip, city, province, email, phone)
 	 * @return string[]
 	 */
-	public static function csv_row( array $p, string $card_type ): array {
+	public static function csv_row( array $p, string $card_type, array $extra = array() ): array {
 		$cf    = strtoupper( (string) preg_replace( '/\s+/', '', (string) ( $p['tax_code'] ?? '' ) ) );
 		$birth = (string) ( $p['birth_date'] ?? '' );
 		return array(
@@ -240,6 +254,8 @@ final class AffiliationRules {
 			(string) ( $p['email'] ?? '' ),
 			(string) ( $p['phone'] ?? '' ),
 			$card_type,
+			(string) ( $extra['sport'] ?? '' ),
+			(string) ( $extra['discipline'] ?? '' ),
 		);
 	}
 }

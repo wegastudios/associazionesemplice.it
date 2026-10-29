@@ -55,6 +55,14 @@ final class ActivitiesPage {
 			. $tr . '<th>Dal / al</th><td><input type="date" name="starts_on" value="' . $val( 'starts_on' ) . '"> <input type="date" name="ends_on" value="' . $val( 'ends_on' ) . '"> <span class="description">facoltative: se il corso ha una fine, dopo quella data le mensilità non sono più dovute</span></td></tr>';
 	}
 
+	/** Riga del modulo: sport (elenco CONI) e disciplina secondo l'ente di promozione, per l'affiliazione e le tessere degli enti. */
+	private static function sport_row( ?array $a ): string {
+		$sports = array_combine( \AssociazioneSemplice\SportCatalog::sports(), \AssociazioneSemplice\SportCatalog::sports() );
+		return '<tr><th>Sport e disciplina</th><td><select name="sport">' . Ui::options( $sports, $a ? (string) ( $a['sport'] ?? '' ) : '', '— nessuno —' ) . '</select> '
+			. '<input type="text" name="discipline" class="regular-text" maxlength="120" value="' . esc_attr( $a ? (string) ( $a['discipline'] ?? '' ) : '' ) . '" placeholder="Disciplina secondo l\'ente (es. Ginnastica dolce)">'
+			. '<p class="description">Lo sport segue l\'elenco delle discipline riconosciute dal CONI; la disciplina la scrivi come la chiama il tuo ente di promozione (CSEN, UISP, ASI…). Compaiono nel file per le tessere degli enti.</p></td></tr>';
+	}
+
 	/** Riga del modulo: quota di ogni pagamento accantonata nel fondo per rimborsare il volontario. */
 	private static function fund_row( ?array $a ): string {
 		if ( ! \AssociazioneSemplice\Edition::has( 'funds' ) ) { // il rimborso al volontario con accantonamento è delle funzioni avanzate
@@ -160,6 +168,7 @@ final class ActivitiesPage {
 			. '<p class="description">Solo soci e volontari possono essere referenti di un\'attività.</p></td></tr>', Html::allowed() );
 		echo wp_kses( implode( '', (array) apply_filters( 'asem_activity_form_rows', array(), null ) ), Html::allowed() );
 		echo wp_kses( self::fund_row( null ), Html::allowed() );
+		echo wp_kses( self::sport_row( null ), Html::allowed() );
 		echo wp_kses( '</tbody></table>', Html::allowed() );
 		submit_button( 'Crea attività' );
 		Ui::form_close();
@@ -491,6 +500,7 @@ final class ActivitiesPage {
 		echo wp_kses( '<tr><th>Referente</th><td>' . Ui::person_select( 'instructor_person_id', $volunteers, $activity['instructor_person_id'], '— nessuno —', 'asem-instructor' ) . '</td></tr>', Html::allowed() );
 		echo wp_kses( implode( '', (array) apply_filters( 'asem_activity_form_rows', array(), (int) $activity['id'] ) ), Html::allowed() );
 		echo wp_kses( self::fund_row( $activity ), Html::allowed() );
+		echo wp_kses( self::sport_row( $activity ), Html::allowed() );
 		echo '</tbody></table>';
 		submit_button( 'Salva', 'secondary' );
 		Ui::form_close();

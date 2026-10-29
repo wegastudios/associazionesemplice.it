@@ -208,7 +208,7 @@ final class Affiliations {
 	public static function cards( array $f = array(), ?string $today = null ): array {
 		$today = $today ?: Db::today();
 		$db    = self::db();
-		$sql   = 'SELECT c.*, p.first_name, p.last_name, p.tax_code, p.birth_date, p.address, p.zip, p.city, p.province, p.email, p.phone FROM ' . Db::t( 'body_cards' ) . ' c JOIN ' . Db::t( 'people' ) . ' p ON p.id = c.person_id WHERE c.deleted_at IS NULL AND p.deleted_at IS NULL AND p.anonymized_at IS NULL';
+		$sql   = 'SELECT c.*, p.first_name, p.last_name, p.tax_code, p.birth_date, p.address, p.zip, p.city, p.province, p.email, p.phone, p.affiliation_role FROM ' . Db::t( 'body_cards' ) . ' c JOIN ' . Db::t( 'people' ) . ' p ON p.id = c.person_id WHERE c.deleted_at IS NULL AND p.deleted_at IS NULL AND p.anonymized_at IS NULL';
 		$args  = array();
 		if ( ! empty( $f['body'] ) && AffiliationRules::is_body( (string) $f['body'] ) ) {
 			$sql   .= ' AND c.body = %s';
@@ -252,9 +252,45 @@ final class Affiliations {
 
 	/** Righe del file per i portali degli enti (intestazione compresa), una per tessera. @return array[] */
 	public static function portal_rows( array $f = array() ): array {
-		$out = array( AffiliationRules::CSV_HEADER );
-		foreach ( self::cards( $f ) as $c ) {
-			$out[] = AffiliationRules::csv_row( $c, (string) $c['card_type'] );
+		$out   = array( AffiliationRules::CSV_HEADER );
+		$cards = self::cards( $f );
+		$sport = self::sports_by_person( array_map( 'intval', array_column( $cards, 'person_id' ) ) );
+		foreach ( $cards as $c ) {
+			$type = '' !== trim( (string) $c['card_type'] ) ? (string) $c['card_type'] : MembershipRoles::label( $c['affiliation_role'] ?? null ); // senza un tipo scritto sulla tessera vale il tipo di tesseramento della scheda
+			$out[] = AffiliationRules::csv_row( $c, $type, $sport[ (int) $c['person_id'] ] ?? array() );
+		}
+		return $out;
+	}
+
+	/**
+	 * Sport e discipline delle attività a cui ogni persona partecipa (iscrizioni ai corsi in corso e prenotazioni degli eventi), per le tessere degli enti.
+	 *
+	 * @param int[] $ids
+	 * @return array<int,array{sport:string,discipline:string}>
+	 */
+	public static function sports_by_person( array $ids ): array {
+		$ids = array_values( array_unique( array_filter( $ids ) ) );
+		if ( ! $ids ) {
+			return array();
+		}
+		$db   = self::db();
+		$in   = implode( ',', $ids );
+		$rows = array_merge(
+			$db->get_results( 'SELECT e.person_id, a.sport, a.discipline FROM ' . Db::t( 'enrollments' ) . ' e JOIN ' . Db::t( 'activities' ) . " a ON a.id = e.activity_id AND a.deleted_at IS NULL WHERE e.end_month IS NULL AND e.person_id IN ($in) AND (a.sport IS NOT NULL OR a.discipline IS NOT NULL)", ARRAY_A ) ?: array(), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- id numerici
+			$db->get_results( 'SELECT b.person_id, a.sport, a.discipline FROM ' . Db::t( 'bookings' ) . " b JOIN " . Db::t( 'sessions' ) . ' s ON s.id = b.session_id JOIN ' . Db::t( 'activities' ) . " a ON a.id = s.activity_id AND a.deleted_at IS NULL WHERE b.status = 'booked' AND b.person_id IN ($in) AND (a.sport IS NOT NULL OR a.discipline IS NOT NULL)", ARRAY_A ) ?: array() // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- id numerici
+		);
+		$tmp = array();
+		foreach ( $rows as $r ) {
+			$pid = (int) $r['person_id'];
+			foreach ( array( 'sport', 'discipline' ) as $k ) {
+				if ( '' !== trim( (string) $r[ $k ] ) ) {
+					$tmp[ $pid ][ $k ][ (string) $r[ $k ] ] = true;
+				}
+			}
+		}
+		$out = array();
+		foreach ( $tmp as $pid => $x ) {
+			$out[ $pid ] = array( 'sport' => implode( '; ', array_keys( $x['sport'] ?? array() ) ), 'discipline' => implode( '; ', array_keys( $x['discipline'] ?? array() ) ) );
 		}
 		return $out;
 	}

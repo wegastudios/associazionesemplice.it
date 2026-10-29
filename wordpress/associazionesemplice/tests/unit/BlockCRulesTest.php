@@ -158,8 +158,8 @@ final class BlockCRulesTest extends TestCase {
 		);
 		$row = AffiliationRules::csv_row( $p, 'Atleta' );
 		$this->assertCount( count( AffiliationRules::CSV_HEADER ), $row );
-		$this->assertSame( array( 'Mario', 'Rossi', 'RSSMRA85T10A562S', '10/12/1985', 'A562', 'M', 'Via Roma 1, 09100 Cagliari (CA)', 'm@example.org', '+39 333 1234567', 'Atleta' ), $row );
+		$this->assertSame( array( 'Mario', 'Rossi', 'RSSMRA85T10A562S', '10/12/1985', 'A562', 'M', 'Via Roma 1, 09100 Cagliari (CA)', 'm@example.org', '+39 333 1234567', 'Atleta', '', '' ), $row );
 		$empty = AffiliationRules::csv_row( array( 'first_name' => 'A', 'last_name' => 'B' ), '' );
-		$this->assertSame( array( 'A', 'B', '', '', '', '', '', '', '', '' ), $empty );
+		$this->assertSame( array( 'A', 'B', '', '', '', '', '', '', '', '', '', '' ), $empty );
 	}
 }
