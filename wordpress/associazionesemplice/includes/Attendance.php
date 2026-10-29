@@ -33,9 +33,7 @@ final class Attendance {
 				$dates[] = $d;
 			}
 		}
-		$dates = array_values( array_unique( $dates ) );
-		sort( $dates );
-		return $dates;
+		return LessonExceptions::adjust_dates( array_values( array_unique( $dates ) ), LessonExceptions::between( $from, $to, (int) $a['id'] ), $from, $to ); // lezioni annullate o spostate
 	}
 
 	public static function is_lesson_date( array $a, string $date ): bool {

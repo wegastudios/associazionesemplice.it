@@ -2,6 +2,13 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.41
+- Il libro soci è completo: data della domanda e della delibera, luogo di nascita, residenza, contatti, ultima quota, recesso e tutore (PDF e CSV).
+- Fino a due genitori o tutori per ogni minore, anche non soci e senza email: sul sito opera uno solo, il primo.
+- Il modulo di domanda online chiede anche luogo di nascita e residenza.
+- Nei corsi: «Salva e prossimo inserimento» e «Iscrivi e vai alla cassa».
+- Nell'elenco delle attività c'è il collegamento «Riproponi».
+
 ## 1.2.40
 - Pulizia interna del codice dei pagamenti per la revisione di WordPress.org: nessun cambiamento d'uso.
 

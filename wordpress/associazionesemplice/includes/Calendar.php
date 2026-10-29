@@ -27,7 +27,17 @@ final class Calendar {
 		$db   = Db::db();
 		$out  = array();
 		$acts = $db->get_results( 'SELECT * FROM ' . Db::t( 'activities' ) . ' WHERE deleted_at IS NULL', ARRAY_A ) ?: array();
+		$skip = array(); // lezioni annullate o spostate: activity_id => [data => true]
+		$moves = array();
+		foreach ( LessonExceptions::between( $from, $to ) as $e ) {
+			$skip[ (int) $e['activity_id'] ][ (string) $e['lesson_date'] ] = true;
+			if ( LessonExceptions::MOVE === $e['action'] && $e['new_date'] >= $from && $e['new_date'] <= $to ) {
+				$moves[] = $e;
+			}
+		}
+		$by_id = array();
 		foreach ( $acts as $a ) {
+			$by_id[ (int) $a['id'] ] = $a;
 			if ( ActivityKind::COURSE !== $a['kind'] ) {
 				continue;
 			}
@@ -36,7 +46,7 @@ final class Calendar {
 			$base1 = $a['ends_on'] ?: $year->end()->format( 'Y-m-d' );
 			foreach ( ActivityService::lessons( $a ) as $slot ) {
 				if ( 'single' === $slot['type'] ) {
-					if ( $slot['date'] >= $from && $slot['date'] <= $to ) {
+					if ( $slot['date'] >= $from && $slot['date'] <= $to && empty( $skip[ (int) $a['id'] ][ $slot['date'] ] ) ) {
 						$out[] = array(
 							'date' => $slot['date'], 'start' => $slot['start'], 'end' => $slot['end'], 'title' => $a['name'], 'location' => (string) $a['location'],
 							'kind' => 'course', 'activity_id' => (int) $a['id'], 'session_id' => 0,
@@ -47,12 +57,31 @@ final class Calendar {
 				$first = max( $from, $slot['from'] ?: $base0 );
 				$last  = min( $to, $slot['until'] ?: $base1 );
 				foreach ( self::weekly_dates( $first, $last, (int) $slot['day'] ) as $d ) {
+					if ( ! empty( $skip[ (int) $a['id'] ][ $d ] ) ) {
+						continue; // lezione annullata o spostata
+					}
 					$out[] = array(
 						'date' => $d, 'start' => $slot['start'], 'end' => $slot['end'], 'title' => $a['name'], 'location' => (string) $a['location'],
 						'kind' => 'course', 'activity_id' => (int) $a['id'], 'session_id' => 0,
 					);
 				}
 			}
+		}
+		foreach ( $moves as $e ) { // lezioni spostate: compaiono nella nuova data, con l'orario nuovo o quello solito
+			$a = $by_id[ (int) $e['activity_id'] ] ?? null;
+			if ( ! $a ) {
+				continue;
+			}
+			$slot = null;
+			foreach ( ActivityService::lessons( $a ) as $s ) {
+				if ( 'weekly' === $s['type'] && (int) $s['day'] === (int) gmdate( 'N', strtotime( $e['lesson_date'] ) ) ) {
+					$slot = $s;
+				}
+			}
+			$out[] = array(
+				'date' => $e['new_date'], 'start' => $e['new_start'] ?: ( $slot ? $slot['start'] : null ), 'end' => $e['new_end'] ?: ( $slot ? $slot['end'] : null ), 'title' => $a['name'], 'location' => (string) $a['location'],
+				'kind' => 'course', 'activity_id' => (int) $a['id'], 'session_id' => 0,
+			);
 		}
 		$rows = $db->get_results(
 			$db->prepare(

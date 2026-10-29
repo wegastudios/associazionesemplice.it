@@ -188,6 +188,9 @@ final class ActivitiesPage {
 		}
 		echo '</div><div class="asem-col">';
 		self::edit_card( $activity, $back );
+		if ( ActivityKind::COURSE === $activity['kind'] ) {
+			self::lessons_card( $activity, $back );
+		}
 		self::calendar_card( $activity );
 		self::notices_card( $activity, $back );
 		self::participants_card( $activity );
@@ -202,6 +205,42 @@ final class ActivitiesPage {
 	}
 
 	/** Collegamenti al calendario di questa attività (e a quello di tutte). */
+	/** Corsi: annulla o sposta una singola lezione (festività, maltempo, cambio di giorno) e ripristina le eccezioni. */
+	private static function lessons_card( array $activity, string $back ): void {
+		$id    = (int) $activity['id'];
+		$today = current_time( 'Y-m-d' );
+		$next  = array();
+		foreach ( \AssociazioneSemplice\Calendar::occurrences( $today, gmdate( 'Y-m-d', strtotime( $today . ' +60 days' ) ) ) as $o ) {
+			if ( (int) $o['activity_id'] === $id ) {
+				$next[] = $o;
+			}
+		}
+		$ex = \AssociazioneSemplice\LessonExceptions::for_activity( $id );
+		echo '<div class="asem-card"><h2>Date delle lezioni</h2><p class="description">Annulla una lezione (festività, maltempo) o spostala a un altro giorno: il calendario, le presenze e i promemoria seguono. Le quote non cambiano.</p>';
+		if ( ! $next ) {
+			echo '<p class="description">Nessuna lezione nei prossimi 60 giorni.</p>';
+		}
+		foreach ( $next as $o ) {
+			Ui::form_open( 'asem_lesson_exception', $back, false, 'asem-inline' );
+			echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'date', $o['date'] ), Html::allowed() );
+			echo '<p><strong>' . esc_html( Ui::date( $o['date'] ) ) . '</strong>' . ( $o['start'] ? ' ore ' . esc_html( (string) $o['start'] ) : '' ) . ' · <input type="text" name="note" placeholder="Motivo (facoltativo)" size="22"> '
+				. '<label><input type="checkbox" name="notify" value="1" checked> avvisa gli iscritti</label> '
+				. '<button class="button" name="mode" value="cancel">Annulla la lezione</button><br>Sposta a <input type="date" name="new_date"> dalle <input type="time" name="new_start"> alle <input type="time" name="new_end"> <button class="button" name="mode" value="move">Sposta</button></p>';
+			Ui::form_close();
+		}
+		if ( $ex ) {
+			echo '<h3>Lezioni cambiate</h3><ul>';
+			foreach ( $ex as $e ) {
+				Ui::form_open( 'asem_lesson_restore', $back, false, 'asem-inline' );
+				echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'date', $e['lesson_date'] ), Html::allowed() );
+				echo '<li>' . esc_html( Ui::date( $e['lesson_date'] ) ) . ( \AssociazioneSemplice\LessonExceptions::MOVE === $e['action'] ? ' → spostata al ' . esc_html( Ui::date( $e['new_date'] ) ) : ' — annullata' ) . ( $e['note'] ? ' <span class="description">(' . esc_html( $e['note'] ) . ')</span>' : '' ) . ' <button class="button button-small">Ripristina</button></li>';
+				Ui::form_close();
+			}
+			echo '</ul>';
+		}
+		echo '</div>';
+	}
+
 	private static function calendar_card( array $activity ): void {
 		echo '<div class="asem-card"><h2>Calendario</h2>';
 		if ( ! \AssociazioneSemplice\Calendar::enabled() ) {
