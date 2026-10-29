@@ -122,6 +122,11 @@ final class Applications {
 				'phone'              => '' === $d['phone'] ? null : $d['phone'],
 				'tax_code'           => $d['tax_code'],
 				'birth_date'         => $d['birth_date'],
+				'birth_place'        => '' === $d['birth_place'] ? null : $d['birth_place'],
+				'address'            => '' === $d['address'] ? null : $d['address'],
+				'zip'                => '' === $d['zip'] ? null : $d['zip'],
+				'city'               => '' === $d['city'] ? null : $d['city'],
+				'province'           => '' === $d['province'] ? null : $d['province'],
 				'joined_on'          => Db::today(),
 				'application_status' => self::REQUESTED,
 				'application_at'     => $now,
@@ -239,7 +244,7 @@ final class Applications {
 		}
 		self::db()->update(
 			Db::t( 'people' ),
-			array( 'card_number' => $card, 'joined_on' => Db::today(), 'application_status' => null, 'application_data' => null, 'updated_at' => Db::now() ),
+			array( 'card_number' => $card, 'joined_on' => Db::today(), 'approved_on' => Db::today(), 'application_status' => null, 'application_data' => null, 'updated_at' => Db::now() ),
 			array( 'id' => $id )
 		);
 		// L'iscrizione all'anno si registra solo con l'incasso della quota (pagata online con la domanda, oppure in sede o dall'area soci): senza quota da pagare vale subito.

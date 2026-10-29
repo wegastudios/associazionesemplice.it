@@ -185,8 +185,10 @@ final class Actions {
 			'notes'          => $p['notes'] ?? '',
 			'prior_visits'   => $p['prior_visits'] ?? 0,
 		);
-		if ( array_key_exists( 'birth_date', $p ) ) {
-			$data['birth_date'] = $p['birth_date'];
+		foreach ( array( 'birth_date', 'birth_place', 'approved_on' ) as $k ) {
+			if ( array_key_exists( $k, $p ) ) {
+				$data[ $k ] = $p[ $k ];
+			}
 		}
 		$id = (int) ( $p['id'] ?? 0 );
 		if ( $id ) {
@@ -706,10 +708,27 @@ final class Actions {
 		return array( Ui::url( 'asem' ), 'Invito inviato: gli è arrivato il link per scegliere la password.' );
 	}
 
-	/** Allinea i tutori di una persona a quelli scelti nella scheda (fino a due): toglie quelli tolti, collega quelli nuovi. */
+	/** Allinea i tutori di una persona a quelli scelti nella scheda (fino a due, uno solo operativo): toglie quelli tolti, collega quelli nuovi. */
 	private static function sync_guardians( int $id, array $p ): void {
 		if ( empty( $p['guardians_present'] ) ) {
 			return;
+		}
+		$ids = array_values( (array) ( $p['guardian_ids'] ?? array() ) );
+		if ( '' !== trim( (string) ( $p['new_guardian_first_name'] ?? '' ) ) && '' !== trim( (string) ( $p['new_guardian_last_name'] ?? '' ) ) ) { // genitore non ancora in anagrafica: lo si censisce qui, anche senza essere socio
+			$new_id = Plugin::people()->create( array(
+				'type'       => \AssociazioneSemplice\MemberType::GUARDIAN,
+				'first_name' => $p['new_guardian_first_name'],
+				'last_name'  => $p['new_guardian_last_name'],
+				'tax_code'   => $p['new_guardian_tax_code'] ?? '',
+				'email'      => $p['new_guardian_email'] ?? '',
+			) );
+			$slot = array_search( '', array_map( 'strval', $ids ), true );
+			if ( false === $slot ) {
+				$ids[] = (string) $new_id;
+			} else {
+				$ids[ $slot ] = (string) $new_id;
+			}
+			$p['guardian_ids'] = $ids;
 		}
 		$want = array();
 		foreach ( (array) ( $p['guardian_ids'] ?? array() ) as $g ) {
@@ -717,12 +736,18 @@ final class Actions {
 				$want[ (int) $g ] = (int) $g;
 			}
 		}
+		$want = array_slice( $want, 0, \AssociazioneSemplice\Guardians::MAX, true );
 		$have = array_map( 'intval', array_column( \AssociazioneSemplice\Guardians::of( $id ), 'id' ) );
 		foreach ( array_diff( $have, $want ) as $gone ) {
 			\AssociazioneSemplice\Guardians::unlink( $id, (int) $gone );
 		}
 		foreach ( array_diff( $want, $have ) as $new ) {
 			\AssociazioneSemplice\Guardians::link( $id, (int) $new );
+		}
+		$list = array_values( (array) ( $p['guardian_ids'] ?? array() ) );
+		$op   = (int) ( $list[ (int) ( $p['guardian_operative'] ?? 0 ) ] ?? 0 ); // chi opera sul sito: il tutore scelto nella riga indicata
+		if ( $op > 0 && in_array( $op, $want, true ) ) {
+			\AssociazioneSemplice\Guardians::set_operative( $id, $op );
 		}
 	}
 
@@ -782,6 +807,9 @@ final class Actions {
 		$pid = (int) ( $p['person_id'] ?? 0 );
 		self::assert_not_suspended( $pid );
 		Plugin::activities()->enroll( (int) $p['activity_id'], $pid, (string) $p['start_month'] );
+		if ( ! empty( $p['next'] ) ) { // «Salva e prossimo inserimento»: si resta sulla pagina per iscrivere la persona dopo
+			return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ) . '#asem-enroll-person', 'Iscrizione registrata: puoi inserire la prossima.' . self::membership_warning( $pid ) );
+		}
 		return self::after_signup( $pid, Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Iscrizione registrata.', (int) $p['activity_id'] );
 	}
 

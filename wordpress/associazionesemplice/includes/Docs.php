@@ -156,18 +156,66 @@ final class Docs {
 	// ---------- Libro soci ----------
 
 	private static function book_cols(): array {
-		return array(
-			array( 'label' => 'N.', 'w' => 22, 'align' => 'R' ), array( 'label' => 'Cognome e nome', 'w' => 105 ), array( 'label' => 'Codice fiscale', 'w' => 88 ),
-			array( 'label' => 'Nascita', 'w' => 50 ), array( 'label' => 'Tutore', 'w' => 80 ),
-			array( 'label' => 'Livello', 'w' => 50 ), array( 'label' => 'Ingresso', 'w' => 50 ), array( 'label' => 'Cessazione', 'w' => 50 ),
+		$labels = array( 'N.', 'Cognome e nome', 'Codice fiscale', 'Data di nascita', 'Luogo di nascita', 'Residenza', 'Email', 'Telefono', 'Data domanda', 'Data delibera', 'Ingresso', 'Ultima quota versata', 'Anno della quota', 'Cessazione (recesso/esclusione)', 'Motivo', 'Genitore o tutore firmatario', 'Livello' );
+		return array_map(
+			function ( $l ) {
+				return array( 'label' => $l, 'w' => 60 );
+			},
+			$labels
 		);
 	}
 
 	private static function book_rows( array $rows ): array {
 		$out = array();
 		foreach ( $rows as $r ) {
-			$out[] = array( (string) $r['n'], $r['name'], $r['tax_code'], '' !== $r['birth_date'] ? self::d( $r['birth_date'] ) : '', $r['guardian'], $r['level'], self::d( $r['joined_on'] ), $r['left_on'] ? self::d( $r['left_on'] ) . ( '' !== $r['left_reason'] ? ' · ' . $r['left_reason'] : '' ) : '' );
+			$out[] = array(
+				(string) $r['n'], $r['name'], $r['tax_code'], '' !== $r['birth_date'] ? self::d( $r['birth_date'] ) : '', $r['birth_place'], $r['residence'], $r['email'], $r['phone'],
+				self::d( $r['applied_on'] ), self::d( $r['approved_on'] ), self::d( $r['joined_on'] ), $r['fee_cents'] > 0 ? Money::format( $r['fee_cents'] ) : '', $r['fee_year'],
+				$r['left_on'] ? self::d( $r['left_on'] ) : '', $r['left_reason'], $r['guardian'], $r['level'],
+			);
 		}
+		return $out;
+	}
+
+	/** Libro soci in PDF: ogni socio occupa tre righe (anagrafica, recapiti, date e quota), perché i dati richiesti non stanno su una riga sola. */
+	private static function book_pdf( array $rows, string $subtitle ): string {
+		Pdf::$filter = array( Texts::class, 'plain' );
+		$pdf         = new Pdf();
+		$y           = self::head( $pdf, 'LIBRO DEI SOCI', $subtitle );
+		$w           = self::RIGHT - self::LEFT;
+		foreach ( $rows as $i => $r ) {
+			if ( $y + 40 > self::BOTTOM ) {
+				$pdf->add_page();
+				$y = 60.0;
+			}
+			if ( 0 === $i % 2 ) {
+				$pdf->rect( self::LEFT, $y - 9, $w, 38, 0.97 );
+			}
+			$born = trim( ( '' !== $r['birth_date'] ? 'nato/a il ' . self::d( $r['birth_date'] ) : '' ) . ( '' !== $r['birth_place'] ? ' a ' . $r['birth_place'] : '' ) );
+			$pdf->text( self::LEFT + 3, $y, self::fit( $r['n'] . '. ' . $r['name'] . ( '' !== $r['tax_code'] ? ' · CF ' . $r['tax_code'] : '' ), 240, 8, true ), 8, true );
+			$pdf->text( self::LEFT + 250, $y, self::fit( $born, $w - 253, 8 ), 8 );
+			$y += 12;
+			$pdf->text( self::LEFT + 3, $y, self::fit( ( '' !== $r['residence'] ? 'Residenza: ' . $r['residence'] : '' ), 300, 8 ), 8 );
+			$pdf->text( self::LEFT + 310, $y, self::fit( trim( $r['email'] . ( '' !== $r['phone'] ? ' · ' . $r['phone'] : '' ) ), $w - 313, 8 ), 8 );
+			$y += 12;
+			$parts = array( 'Domanda ' . self::d( $r['applied_on'] ), 'Delibera ' . self::d( $r['approved_on'] ), 'Ingresso ' . self::d( $r['joined_on'] ) );
+			if ( $r['fee_cents'] > 0 ) {
+				$parts[] = 'Quota ' . Money::format( $r['fee_cents'] ) . ( '' !== $r['fee_year'] ? ' (' . $r['fee_year'] . ')' : '' );
+			}
+			if ( $r['left_on'] ) {
+				$parts[] = 'Cessato il ' . self::d( $r['left_on'] ) . ( '' !== $r['left_reason'] ? ' · ' . $r['left_reason'] : '' );
+			}
+			if ( '' !== $r['guardian'] ) {
+				$parts[] = 'Tutore ' . $r['guardian'];
+			}
+			$pdf->text( self::LEFT + 3, $y, self::fit( implode( ' · ', $parts ), $w - 6, 8 ), 8 );
+			$y += 18;
+		}
+		if ( ! $rows ) {
+			$pdf->text( self::LEFT + 3, $y, 'Nessun dato.', 9 );
+		}
+		$out         = $pdf->output();
+		Pdf::$filter = null;
 		return $out;
 	}
 
@@ -181,7 +229,7 @@ final class Docs {
 			return array( 'body' => self::csv( self::book_cols(), $cells ), 'filename' => 'libro-soci.csv', 'mime' => 'text/csv; charset=utf-8' );
 		}
 		$sub = 'Aggiornato al ' . self::d( Db::today() ) . ' · ' . count( $all ) . ' soci iscritti, ' . $active . ' in carica';
-		return array( 'body' => self::table_pdf( 'LIBRO DEI SOCI', $sub, self::book_cols(), $cells ), 'filename' => 'libro-soci.pdf', 'mime' => 'application/pdf' );
+		return array( 'body' => self::book_pdf( $rows, $sub ), 'filename' => 'libro-soci.pdf', 'mime' => 'application/pdf' );
 	}
 
 	// ---------- Verbale ----------

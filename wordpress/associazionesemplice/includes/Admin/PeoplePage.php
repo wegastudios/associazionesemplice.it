@@ -198,18 +198,22 @@ final class PeoplePage {
 		echo '<tr><th>Data di nascita</th><td><input type="date" name="birth_date" value="' . esc_attr( $birth ) . '" max="' . esc_attr( current_time( 'Y-m-d' ) ) . '">'
 			. ( $minor ? ' <strong class="asem-warn">minorenne</strong>' : '' )
 			. '<p class="description">Facoltativa; serve per i minorenni (che hanno un tutore) e per i controlli sui certificati.</p></td></tr>';
+		echo '<tr><th>Luogo di nascita</th><td><input type="text" name="birth_place" value="' . esc_attr( $val( 'birth_place' ) ) . '" class="regular-text" maxlength="120" placeholder="Comune (e provincia)"><p class="description">Facoltativo; il libro dei soci lo riporta.</p></td></tr>';
 		if ( MemberType::is_member( $type ) ) {
 			$guardians = $id ? \AssociazioneSemplice\Guardians::of( $id ) : array();
 			$cands     = array_values( array_filter( $people->search(), function ( $x ) use ( $id ) {
-				return (int) $x['id'] !== $id && '' !== trim( (string) $x['email'] ) && MemberType::can_login( $x['type'] );
+				return (int) $x['id'] !== $id && MemberType::GUEST !== $x['type']; // basta che il genitore sia censito: socio o «genitore o tutore»; chi opera sul sito deve avere l'email
 			} ) );
 			echo '<tr><th>Tutore</th><td><input type="hidden" name="guardians_present" value="1">';
 			for ( $i = 0; $i < \AssociazioneSemplice\Guardians::MAX; $i++ ) {
-				echo wp_kses( Ui::person_select( 'guardian_ids[]', $cands, isset( $guardians[ $i ] ) ? (int) $guardians[ $i ]['id'] : 0, $i ? '— secondo tutore (facoltativo) —' : '— nessun tutore —', 'asem-guardian-' . $i ) . '<br>', Html::allowed() );
+				$is_op = isset( $guardians[ $i ] ) ? ! empty( $guardians[ $i ]['is_operative'] ) : 0 === $i;
+				echo wp_kses( Ui::person_select( 'guardian_ids[]', $cands, isset( $guardians[ $i ] ) ? (int) $guardians[ $i ]['id'] : 0, $i ? '— secondo genitore (facoltativo) —' : '— nessun tutore —', 'asem-guardian-' . $i )
+					. ' <label><input type="radio" name="guardian_operative" value="' . (int) $i . '"' . checked( $is_op, true, false ) . '> opera sul sito</label><br>', Html::allowed() );
 			}
-			echo '<p class="description">Per un minorenne: un genitore o tutore già registrato (con email), al massimo due. Il tutore vede la tessera, le prenotazioni e i pagamenti del minore dalla sua area riservata, paga per lui e riceve le sue email; il minore può non avere né email né accesso. Il collegamento resta anche dopo i 18 anni finché non lo togli qui. Serve la data di nascita.</p>';
+			echo '<p class="description">Per un minorenne: i due genitori oppure un tutore legale, già registrati (con email): compaiono tutti nel libro soci, nelle ricevute e nei consensi. Uno solo «opera sul sito» e si prende la responsabilità verso l\'altro genitore di tutto ciò che riguarda il minore (anche liberatorie e consensi). Chi opera vede la tessera, le prenotazioni e i pagamenti del minore dalla sua area riservata, paga per lui e riceve le sue email; il minore può non avere né email né accesso. Il collegamento resta anche dopo i 18 anni finché non lo togli qui. Serve la data di nascita.</p>';
+			echo '<p><strong>Genitore non ancora in anagrafica?</strong> Inseriscilo qui (non serve che sia socio): <input type="text" name="new_guardian_first_name" placeholder="Nome" size="14"> <input type="text" name="new_guardian_last_name" placeholder="Cognome" size="16"> <input type="text" name="new_guardian_tax_code" placeholder="Codice fiscale" size="18" maxlength="16"> <input type="email" name="new_guardian_email" placeholder="Email (se opera sul sito)" size="22"></p>';
 			if ( $id ) {
-				$wards = \AssociazioneSemplice\Guardians::dependents_of( $id );
+				$wards =\AssociazioneSemplice\Guardians::dependents_of( $id );
 				if ( $wards ) {
 					$ward_links = array();
 					foreach ( $wards as $w ) {
@@ -224,6 +228,9 @@ final class PeoplePage {
 			. 'CAP <input type="text" name="zip" value="' . esc_attr( $val( 'zip' ) ) . '" size="7" maxlength="12"> Comune <input type="text" name="city" value="' . esc_attr( $val( 'city' ) ) . '" maxlength="100"> Prov. <input type="text" name="province" value="' . esc_attr( $val( 'province' ) ) . '" size="3" maxlength="5">'
 			. '<p class="description">Facoltativo per l\'iscrizione fatta dalla segreteria; chi si attiva dal sito deve inserirlo.</p></td></tr>';
 		echo '<tr><th>Data di ingresso</th><td><input type="date" name="joined_on" value="' . esc_attr( $val( 'joined_on' ) ?: current_time( 'Y-m-d' ) ) . '"></td></tr>';
+		if ( MemberType::is_member( $type ) ) {
+			echo '<tr><th>Data della delibera</th><td><input type="date" name="approved_on" value="' . esc_attr( $val( 'approved_on' ) ) . '"><p class="description">Quando il consiglio direttivo ha accettato la domanda (per un minore vale la stessa data). Se la lasci vuota, il libro dei soci riporta la data di ingresso; con una domanda online si compila da sola all\'approvazione.</p></td></tr>';
+		}
 		echo '<tr class="asem-row-host"><th>Volte già venuto</th><td><input type="number" name="prior_visits" min="0" max="9999" value="' . (int) $val( 'prior_visits' ) . '" class="small-text"><p class="description">Quante volte è già venuto prima di usare il programma: si somma alle partecipazioni registrate qui e conta per la soglia dell\'invito a iscriversi. Gli eventi passati puoi segnarli nelle note.</p></td></tr>';
 		echo '<tr><th>Note</th><td><textarea name="notes" rows="3" class="large-text">' . esc_textarea( $val( 'notes' ) ) . '</textarea></td></tr>';
 		echo '</tbody></table>';

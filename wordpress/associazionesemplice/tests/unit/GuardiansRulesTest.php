@@ -14,7 +14,7 @@ final class GuardiansRulesTest extends TestCase {
 
 	public function test_a_normal_link_has_no_errors(): void {
 		$this->assertSame( array(), Guardians::validate( $this->minor(), $this->parent_(), 0, '2026-10-26' ) );
-		$this->assertSame( array(), Guardians::validate( $this->minor(), $this->parent_( array( 'birth_date' => null ) ), 1, '2026-10-26' ), 'il secondo tutore; la nascita del tutore è facoltativa' );
+		$this->assertSame( array(), Guardians::validate( $this->minor(), $this->parent_( array( 'birth_date' => null ) ), 1, '2026-10-26' ), 'il secondo genitore; la nascita del tutore è facoltativa' );
 	}
 
 	public function test_minor_needs_a_birth_date(): void {

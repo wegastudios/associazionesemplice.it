@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '44';
+	const DB_VERSION        = '45';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -31,10 +31,28 @@ final class Install {
 			if ( '' !== $old && version_compare( $old, '17', '<' ) ) {
 				self::migrate_membership_years();
 			}
+			if ( '' !== $old && version_compare( $old, '45', '<' ) ) {
+				self::migrate_operative_guardians();
+			}
 			if ( '' !== $old && version_compare( $old, '3', '<' ) ) {
 				// Dalla v3 il contributo di un'attività è `fee_cents` (per i corsi resta "al mese").
 				Db::db()->query( 'UPDATE ' . Db::t( 'activities' ) . ' SET fee_cents = monthly_fee_cents WHERE fee_cents = 0 AND monthly_fee_cents > 0' );
 			}
+		}
+	}
+
+	/** Dalla v45 di due tutori ne opera uno solo sul sito: dove prima ce n'erano due resta operativo il primo collegato. */
+	public static function migrate_operative_guardians(): void {
+		$db   = Db::db();
+		$tbl  = Db::t( 'guardians' );
+		$rows = $db->get_results( "SELECT id, person_id FROM $tbl ORDER BY id", ARRAY_A ) ?: array();
+		$seen = array();
+		foreach ( $rows as $r ) {
+			$k = (int) $r['person_id'];
+			if ( isset( $seen[ $k ] ) ) {
+				$db->update( $tbl, array( 'is_operative' => 0 ), array( 'id' => (int) $r['id'] ) );
+			}
+			$seen[ $k ] = true;
 		}
 	}
 
@@ -117,6 +135,7 @@ final class Install {
   phone varchar(60) DEFAULT NULL,
   tax_code varchar(32) DEFAULT NULL,
   birth_date date DEFAULT NULL,
+  birth_place varchar(120) DEFAULT NULL,
   address varchar(190) DEFAULT NULL,
   zip varchar(12) DEFAULT NULL,
   city varchar(100) DEFAULT NULL,
@@ -124,6 +143,7 @@ final class Install {
   profile_due tinyint(1) NOT NULL DEFAULT 0,
   host_person_id bigint(20) unsigned DEFAULT NULL,
   joined_on date DEFAULT NULL,
+  approved_on date DEFAULT NULL,
   suspended_at datetime DEFAULT NULL,
   board_role varchar(20) DEFAULT NULL,
   level_id bigint(20) unsigned DEFAULT NULL,
@@ -158,6 +178,7 @@ final class Install {
   id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   person_id bigint(20) unsigned NOT NULL,
   guardian_person_id bigint(20) unsigned NOT NULL,
+  is_operative tinyint(1) NOT NULL DEFAULT 1,
   created_at datetime NOT NULL,
   PRIMARY KEY  (id),
   UNIQUE KEY person_guardian (person_id,guardian_person_id),

@@ -133,7 +133,8 @@ final class ActivitiesPage {
 			}
 			echo wp_kses( self::participants_html( $a, 1, false )
 				. '<table class="asem-kv"><tr><td>Incassi</td><td>' . Ui::money( $s['income'] ) . '</td></tr><tr><td>Costi</td><td>' . Ui::money( $s['cost'] ) . '</td></tr>'
-				. '<tr><td><strong>Resta all\'associazione</strong></td><td><strong>' . Ui::money( $s['margin'] ) . '</strong></td></tr></table></div>', Html::allowed() );
+				. '<tr><td><strong>Resta all\'associazione</strong></td><td><strong>' . Ui::money( $s['margin'] ) . '</strong></td></tr></table>'
+				. '<p><a class="button button-small" href="' . esc_url( Ui::url( 'asem-activity', array( 'id' => $a['id'] ) ) . '#asem-riproponi' ) . '">Riproponi</a></p></div>', Html::allowed() );
 		}
 		echo '</div>';
 
@@ -296,7 +297,7 @@ final class ActivitiesPage {
 	private static function copy_card( array $activity ): void {
 		$id   = (int) $activity['id'];
 		$kind = (string) $activity['kind'];
-		echo '<div class="asem-card"><h2>Riproponi</h2><p class="description">Crea una nuova edizione con gli stessi dati (contributi, referente, regole, note, luogo, staff). Iscrizioni, prenotazioni e incassi non si copiano: la nuova attività parte vuota.</p>';
+		echo '<div class="asem-card" id="asem-riproponi"><h2>Riproponi</h2><p class="description">Crea una nuova edizione con gli stessi dati (contributi, referente, regole, note, luogo, staff). Iscrizioni, prenotazioni e incassi non si copiano: la nuova attività parte vuota.</p>';
 		Ui::form_open( 'asem_duplicate_activity', Ui::url( 'asem-activity', array( 'id' => $id ) ) );
 		echo wp_kses( Ui::hidden( 'id', $id ) . '<table class="form-table"><tr><th>Nome</th><td><input type="text" name="name" class="regular-text" value="' . esc_attr( (string) $activity['name'] ) . '"></td></tr>', Html::allowed() );
 		if ( ActivityKind::COURSE === $kind ) {
@@ -452,7 +453,11 @@ final class ActivitiesPage {
 		echo wp_kses( Ui::hidden( 'activity_id', $id ), Html::allowed() );
 		echo wp_kses( '<p>' . Ui::person_select( 'person_id', $candidates, null, '— scegli —', 'asem-enroll-person' ) . '</p>', Html::allowed() );
 		echo wp_kses( '<p>Primo mese dovuto: <select name="start_month">' . Ui::month_options( $year->months(), $default_month ) . '</select></p>', Html::allowed() );
-		submit_button( 'Iscrivi', 'secondary' );
+		echo '<p>';
+		submit_button( 'Iscrivi e vai alla cassa', 'primary', 'go_cash', false );
+		echo ' ';
+		submit_button( 'Salva e prossimo inserimento', 'secondary', 'next', false );
+		echo '</p><p class="description">«Vai alla cassa» apre l\'incasso già compilato se c\'è qualcosa da pagare; «prossimo inserimento» resta qui, pronto per iscrivere la persona dopo.</p>';
 		Ui::form_close();
 		echo '</div>';
 	}

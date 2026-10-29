@@ -50,6 +50,27 @@ final class MemberBook {
 		Audit::log( 'member.left', 'person', $person_id, array( 'date' => $date ) );
 	}
 
+	/** Residenza su una riga: via, CAP, comune (provincia). */
+	private static function residence( array $p ): string {
+		$town = trim( trim( (string) $p['zip'] . ' ' . (string) $p['city'] ) . ( '' !== (string) $p['province'] ? ' (' . $p['province'] . ')' : '' ) );
+		return implode( ', ', array_filter( array( trim( (string) $p['address'] ), $town ) ) );
+	}
+
+	/** Per ogni persona la quota associativa dell'anno più recente per cui risulta incassata: person_id => [year, cents]. */
+	private static function last_fees(): array {
+		$rows = self::db()->get_results(
+			'SELECT t.person_id, t.social_year, SUM(t.amount_cents + t.discount_cents) AS cents FROM ' . Db::t( 'transactions' ) . ' t JOIN ' . Db::t( 'categories' ) . " c ON c.id = t.category_id WHERE t.person_id IS NOT NULL AND t.type = 'income' AND t.voided_at IS NULL AND c.kind = 'membership' GROUP BY t.person_id, t.social_year ORDER BY t.social_year", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nomi tabella interni
+			ARRAY_A
+		) ?: array();
+		$out = array();
+		foreach ( $rows as $r ) {
+			if ( (int) $r['cents'] > 0 ) {
+				$out[ (int) $r['person_id'] ] = array( 'year' => (string) $r['social_year'], 'cents' => (int) $r['cents'] ); // l'ultimo anno vince
+			}
+		}
+		return $out;
+	}
+
 	/**
 	 * Righe del libro soci in ordine di ingresso, con numero progressivo.
 	 *
@@ -62,6 +83,12 @@ final class MemberBook {
 			ARRAY_A
 		) ?: array();
 		$tutori = Guardians::names_by_person();
+		$fees   = self::last_fees();
+		$by_id  = array();
+		foreach ( $rows as $r ) {
+			$by_id[ (int) $r['id'] ] = $r;
+		}
+		$ops    = Guardians::operative_ids();
 		$out = array();
 		$n   = 0;
 		foreach ( $rows as $p ) {
@@ -74,16 +101,25 @@ final class MemberBook {
 				continue;
 			}
 			$anon = ! empty( $p['anonymized_at'] );
+			$src  = isset( $ops[ (int) $p['id'] ], $by_id[ $ops[ (int) $p['id'] ] ] ) ? $by_id[ $ops[ (int) $p['id'] ] ] : $p; // un minore eredita le date (domanda, delibera, ingresso) del tutore che opera, se è socio
 			$out[] = array(
 				'n'           => $n,
 				'id'          => (int) $p['id'],
 				'name'        => $anon ? '(dati anonimizzati)' : trim( $p['last_name'] . ' ' . $p['first_name'] ),
 				'tax_code'    => $anon ? '' : (string) $p['tax_code'],
 				'birth_date'  => $anon ? '' : (string) $p['birth_date'],
+				'birth_place' => $anon ? '' : (string) $p['birth_place'],
+				'residence'   => $anon ? '' : self::residence( $p ),
+				'email'       => $anon ? '' : (string) $p['email'],
+				'phone'       => $anon ? '' : (string) $p['phone'],
+				'applied_on'  => substr( (string) ( $src['application_at'] ?: $src['joined_on'] ), 0, 10 ),
+				'approved_on' => (string) ( $src['approved_on'] ?: $src['joined_on'] ),
+				'fee_cents'   => (int) ( $fees[ (int) $p['id'] ]['cents'] ?? 0 ),
+				'fee_year'    => (string) ( $fees[ (int) $p['id'] ]['year'] ?? '' ),
 				'guardian'    => $anon ? '' : (string) ( $tutori[ (int) $p['id'] ] ?? '' ),
 				'card_number' => (string) $p['card_number'],
 				'level'       => Levels::label( $p ),
-				'joined_on'   => (string) $p['joined_on'],
+				'joined_on'   => (string) $src['joined_on'],
 				'left_on'     => $gone ? (string) $p['left_on'] : '',
 				'left_reason' => (string) $p['left_reason'],
 				'status'      => $gone ? self::LEFT : self::IN_FORCE,
