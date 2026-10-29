@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.1.37
+- Affiliazioni: tutti gli enti di promozione riconosciuti dal CONI, campo «discipline», e nel file per i portali degli enti le colonne Sport e Disciplina; il tipo di tessera di ripiego è il tipo di tesseramento della scheda.
+- Richiede il gratuito 1.2.45 o successivo.
+
 ## 1.1.36
 - Il registro presenze ha una seconda vista a calendario (le date in orizzontale, le persone in verticale) e tiene conto delle lezioni annullate o spostate.
 - Richiede il gratuito 1.2.43 o successivo.

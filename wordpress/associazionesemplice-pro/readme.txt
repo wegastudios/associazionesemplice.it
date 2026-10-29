@@ -3,7 +3,7 @@ Contributors: wegastudios
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.36
+Stable tag: 1.1.37
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,9 @@ With a license key entered in Associazione Semplice Pro, once a day (and when yo
 The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, Mozilla Public License 2.0) to tell which domain a license covers.
 
 == Changelog ==
+
+= 1.1.37 =
+* Affiliations: all CONI-recognised promotion bodies, disciplines field, sport and discipline columns in the file for the bodies' portals, card type defaults to the membership type.
 
 = 1.1.36 =
 * Attendance register with a second calendar view (dates across, people down); lessons cancelled or moved are taken into account.
