@@ -3614,9 +3614,8 @@ $save_ical = new ReflectionMethod( Admin\Actions::class, 'save_ical' );
 $save_ical->setAccessible( true );
 $save_ical->invoke( null, array( 'ical_enabled' => '1' ) );
 asem_ok( \AssociazioneSemplice\Calendar::enabled(), 'calendario: il gestore lo pubblica dalle impostazioni' );
-$_GET['m'] = gmdate( 'Y-m', strtotime( 'next wednesday', strtotime( $today . ' -1 day' ) ) ); // il primo mercoledì del corso, anche se cade nel mese dopo (a fine mese)
-$cal_html = asem_render( array( Admin\CalendarPage::class, 'render' ), 'Collegamento a Google Calendar' );
-unset( $_GET['m'] );
+$cal_m = gmdate( 'Y-m', strtotime( 'next wednesday', strtotime( $today . ' -1 day' ) ) ); // il primo mercoledì del corso, anche se cade nel mese dopo (a fine mese)
+$cal_html = asem_render( array( Admin\CalendarPage::class, 'render' ), 'Collegamento a Google Calendar', array( 'm' => $cal_m ) );
 asem_ok( false !== strpos( $cal_html, \AssociazioneSemplice\Calendar::token() ) && false !== strpos( $cal_html, 'Scrittura creativa' ), 'calendario: la pagina mostra il mese e l\'indirizzo da incollare in Google Calendar' );
 $save_ical->invoke( null, array() );
 asem_ok( ! \AssociazioneSemplice\Calendar::enabled(), 'calendario: spento di default / si può spegnere' );
