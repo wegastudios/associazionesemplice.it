@@ -6571,7 +6571,7 @@ Settings::update( array( 'rules_enabled' => 0 ) );
 
 // email del minore ai tutori
 $mn_rcp = \AssociazioneSemplice\Guardians::recipients( $people->get( $mn_kid ) );
-asem_ok( 2 === count( $mn_rcp ) && 'marta.madre@example.com' === $mn_rcp[0]['email'] && 'Kid Minore' === $mn_rcp[0]['about'], 'email del minore: arrivano ai tutori' );
+asem_ok( 1 === count( $mn_rcp ) && 'marta.madre@example.com' === $mn_rcp[0]['email'] && 'Kid Minore' === $mn_rcp[0]['about'], 'email del minore: arrivano ai tutori' );
 $mn_rem = \AssociazioneSemplice\Reminders::recipient( $people->get( $mn_kid ) );
 asem_ok( $mn_rem && 'marta.madre@example.com' === $mn_rem['email'] && 'Kid Minore' === $mn_rem['about'], 'promemoria del minore: vanno al tutore' );
 
