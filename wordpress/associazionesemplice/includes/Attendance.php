@@ -33,9 +33,7 @@ final class Attendance {
 				$dates[] = $d;
 			}
 		}
-		$dates = array_values( array_unique( $dates ) );
-		sort( $dates );
-		return $dates;
+		return LessonExceptions::adjust_dates( array_values( array_unique( $dates ) ), LessonExceptions::between( $from, $to, (int) $a['id'] ), $from, $to ); // lezioni annullate o spostate
 	}
 
 	public static function is_lesson_date( array $a, string $date ): bool {
@@ -54,6 +52,27 @@ final class Attendance {
 		$ym  = substr( $date, 0, 7 );
 		$sql = "SELECT p.id, p.first_name, p.last_name, p.type, p.card_number FROM $p p JOIN " . Db::t( 'enrollments' ) . ' e ON e.person_id = p.id WHERE p.deleted_at IS NULL AND e.activity_id = %d AND e.start_month <= %s AND (e.end_month IS NULL OR e.end_month >= %s) ORDER BY p.last_name, p.first_name';
 		return $db->get_results( $db->prepare( $sql, (int) $a['id'], $ym, $ym ), ARRAY_A ) ?: array();
+	}
+
+	/**
+	 * Presenze di un periodo come matrice (date in orizzontale, persone in verticale).
+	 *
+	 * @return array{dates:string[],people:array<int,string>,marks:array<string,array<int,bool>>,expected:array<string,array<int,bool>>}
+	 */
+	public static function matrix( array $a, string $from, string $to ): array {
+		$dates  = self::lesson_dates( $a, $from, $to );
+		$people = array();
+		$marks  = array();
+		$exp    = array();
+		foreach ( $dates as $d ) {
+			foreach ( self::roster( $a, $d ) as $r ) {
+				$people[ (int) $r['id'] ] = trim( $r['last_name'] . ' ' . $r['first_name'] );
+				$exp[ $d ][ (int) $r['id'] ] = true;
+			}
+			$marks[ $d ] = self::marks( (int) $a['id'], $d );
+		}
+		asort( $people );
+		return array( 'dates' => $dates, 'people' => $people, 'marks' => $marks, 'expected' => $exp );
 	}
 
 	/** Segni già registrati per quella data: person_id => presente? Vuoto se la lezione non è ancora stata registrata. @return array<int,bool> */

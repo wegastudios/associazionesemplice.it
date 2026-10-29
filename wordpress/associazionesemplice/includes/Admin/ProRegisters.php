@@ -109,6 +109,41 @@ final class ProRegisters {
 
 	// ---------- Presenze ----------
 
+	/** Presenze del mese a matrice: le persone in verticale, le lezioni in orizzontale, una sola registrazione per tutto il mese. */
+	private static function attendance_matrix( array $a, string $ym, string $first, string $last, string $today ): void {
+		$m = Attendance::matrix( $a, $first, $last );
+		if ( ! $m['dates'] ) {
+			echo '<p class="description">In questo mese non ci sono lezioni.</p>';
+			return;
+		}
+		if ( ! $m['people'] ) {
+			echo '<p class="description">Nessun iscritto o prenotato in questo mese.</p>';
+			return;
+		}
+		Ui::form_open( 'asem_attendance_matrix_save', Ui::url( 'asem-attendance', array( 'activity' => (int) $a['id'], 'ym' => $ym, 'view' => 'matrix' ) ) );
+		echo Ui::hidden( 'activity_id', (int) $a['id'] ) . Ui::hidden( 'ym', $ym ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<div style="overflow-x:auto"><table class="widefat striped"><thead><tr><th>Persona</th>';
+		foreach ( $m['dates'] as $d ) {
+			echo '<th style="text-align:center">' . esc_html( ( new \DateTimeImmutable( $d ) )->format( 'd/m' ) ) . ( $d > $today ? '<br><span class="description">da fare</span>' : Ui::hidden( 'dates[]', $d ) ) . '</th>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		}
+		echo '</tr></thead><tbody>';
+		foreach ( $m['people'] as $pid => $name ) {
+			echo '<tr><td>' . esc_html( $name ) . '</td>';
+			foreach ( $m['dates'] as $d ) {
+				if ( empty( $m['expected'][ $d ][ $pid ] ) ) {
+					echo '<td style="text-align:center">—</td>';
+				} elseif ( $d > $today ) {
+					echo '<td style="text-align:center"><span class="description">·</span></td>';
+				} else {
+					echo '<td style="text-align:center"><input type="checkbox" name="present[' . esc_attr( $d ) . '][]" value="' . (int) $pid . '"' . checked( ! empty( $m['marks'][ $d ][ $pid ] ), true, false ) . '></td>';
+				}
+			}
+			echo '</tr>';
+		}
+		echo '</tbody></table></div><p class="description">Spunta chi era presente. Le lezioni mai registrate senza nessuna spunta restano da compilare.</p><p><button class="button button-primary">Registra le presenze</button></p>';
+		Ui::form_close();
+	}
+
 	public static function render_attendance(): void {
 		$aid   = Ui::get_int( 'activity' );
 		$today = Db::today();
@@ -131,7 +166,16 @@ final class ProRegisters {
 		$last  = ( new \DateTimeImmutable( $first ) )->modify( 'last day of this month' )->format( 'Y-m-d' );
 		$dates = Attendance::lesson_dates( $a, $first, $last );
 		echo '<h2>' . esc_html( $a['name'] ) . ' — ' . esc_html( Ui::month( $ym ) ) . '</h2>';
-		if ( ! $dates ) {
+		$view = 'matrix' === Ui::get_str( 'view' ) ? 'matrix' : 'day';
+		echo '<p><a class="button' . ( 'day' === $view ? ' button-primary' : '' ) . '" href="' . esc_url( Ui::url( 'asem-attendance', array( 'activity' => $aid, 'ym' => $ym ) ) ) . '">Per giornata</a> '
+			. '<a class="button' . ( 'matrix' === $view ? ' button-primary' : '' ) . '" href="' . esc_url( Ui::url( 'asem-attendance', array( 'activity' => $aid, 'ym' => $ym, 'view' => 'matrix' ) ) ) . '">A calendario (date in orizzontale)</a></p>';
+		if ( 'matrix' === $view ) {
+			self::attendance_matrix( $a, $ym, $first, $last, $today );
+			$date = '';
+		}
+		if ( 'matrix' === $view ) {
+			// vista a calendario: sotto
+		} elseif ( ! $dates ) {
 			echo '<p class="description">In questo mese non ci sono lezioni.</p>';
 		} else {
 			echo '<p>';

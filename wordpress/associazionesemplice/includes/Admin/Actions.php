@@ -72,6 +72,8 @@ final class Actions {
 			'asem_save_card'          => 'save_card',
 			'asem_save_activity'      => 'save_activity',
 			'asem_duplicate_activity' => 'duplicate_activity',
+			'asem_lesson_exception'   => 'lesson_exception',
+			'asem_lesson_restore'     => 'lesson_restore',
 			'asem_tec_import'         => 'tec_import',
 			'asem_enroll'             => 'enroll',
 			'asem_cancel_enrollment'  => 'cancel_enrollment',
@@ -613,6 +615,39 @@ final class Actions {
 			)
 		);
 		return array( Ui::url( 'asem-activity', array( 'id' => $new ) ), 'Attività riproposta: controlla date e dati e correggi quello che serve.' );
+	}
+
+	/** Annulla o sposta una singola lezione di un corso, avvisando gli iscritti se richiesto. */
+	private static function lesson_exception( array $p ): array {
+		$id   = (int) ( $p['activity_id'] ?? 0 );
+		$date = (string) ( $p['date'] ?? '' );
+		$note = (string) ( $p['note'] ?? '' );
+		$back = Ui::url( 'asem-activity', array( 'id' => $id ) );
+		$a    = Plugin::activities()->get( $id );
+		if ( 'move' === ( $p['mode'] ?? '' ) ) {
+			\AssociazioneSemplice\LessonExceptions::move( $id, $date, (string) ( $p['new_date'] ?? '' ), (string) ( $p['new_start'] ?? '' ), (string) ( $p['new_end'] ?? '' ), $note );
+			$msg  = 'Lezione spostata al ' . Ui::date( (string) $p['new_date'] ) . '.';
+			$text = 'La lezione di ' . ( $a ? $a['name'] : 'corso' ) . ' del ' . Ui::date( $date ) . ' è spostata al ' . Ui::date( (string) $p['new_date'] ) . ( '' !== trim( (string) ( $p['new_start'] ?? '' ) ) ? ' alle ' . trim( (string) $p['new_start'] ) : '' ) . ( '' !== trim( $note ) ? ' (' . trim( $note ) . ')' : '' ) . '.';
+		} else {
+			\AssociazioneSemplice\LessonExceptions::cancel( $id, $date, $note );
+			$msg  = 'Lezione annullata.';
+			$text = 'La lezione di ' . ( $a ? $a['name'] : 'corso' ) . ' del ' . Ui::date( $date ) . ' è annullata' . ( '' !== trim( $note ) ? ' (' . trim( $note ) . ')' : '' ) . '.';
+		}
+		if ( ! empty( $p['notify'] ) && \AssociazioneSemplice\Notices::can_send( $id ) ) {
+			try {
+				$r    = \AssociazioneSemplice\Notices::send( $id, null, 'Cambio lezione: ' . ( $a ? $a['name'] : '' ), $text );
+				$msg .= ' Avviso inviato agli iscritti (' . (int) $r['recipients'] . ').';
+			} catch ( \InvalidArgumentException $e ) {
+				$msg .= ' L\'avviso agli iscritti non è partito: ' . $e->getMessage();
+			}
+		}
+		return array( $back, $msg );
+	}
+
+	private static function lesson_restore( array $p ): array {
+		$id = (int) ( $p['activity_id'] ?? 0 );
+		\AssociazioneSemplice\LessonExceptions::restore( $id, (string) ( $p['date'] ?? '' ) );
+		return array( Ui::url( 'asem-activity', array( 'id' => $id ) ), 'Lezione ripristinata.' );
 	}
 
 	/** Importa gli eventi di The Events Calendar. */

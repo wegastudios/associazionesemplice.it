@@ -214,7 +214,7 @@ final class Reminders {
 		$n = 0;
 		foreach ( $acts->for_year( Settings::social_year( $today )->label() ) as $a ) {
 			$aid = (int) $a['id'];
-			if ( ActivityKind::COURSE !== $a['kind'] || 'once' === ( $a['billing'] ?? 'monthly' ) ) {
+			if ( ActivityKind::COURSE !== $a['kind'] || in_array( $a['billing'] ?? 'monthly', array( 'once', 'quarterly' ), true ) ) {
 				continue;
 			}
 			if ( ! in_array( $target, SocialYear::from_label( $a['social_year'], Settings::start_month() )->months(), true ) ) {

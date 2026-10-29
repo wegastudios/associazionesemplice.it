@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '46';
+	const DB_VERSION        = '47';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -303,7 +303,7 @@ final class Install {
   booking_qr tinyint(1) NOT NULL DEFAULT 0,
   lesson_weekday tinyint(1) NOT NULL DEFAULT 0,
   lesson_slots text,
-  billing varchar(8) NOT NULL DEFAULT 'monthly',
+  billing varchar(12) NOT NULL DEFAULT 'monthly',
   lesson_start char(5) DEFAULT NULL,
   lesson_end char(5) DEFAULT NULL,
   location varchar(190) DEFAULT NULL,
@@ -401,6 +401,21 @@ final class Install {
   PRIMARY KEY  (id),
   KEY activity_id (activity_id),
   KEY session_date (session_date)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}lesson_exceptions (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  activity_id bigint(20) unsigned NOT NULL,
+  lesson_date date NOT NULL,
+  action varchar(8) NOT NULL,
+  new_date date DEFAULT NULL,
+  new_start char(5) DEFAULT NULL,
+  new_end char(5) DEFAULT NULL,
+  note varchar(190) DEFAULT NULL,
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY activity_lesson (activity_id,lesson_date),
+  KEY new_date (new_date)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}bookings (

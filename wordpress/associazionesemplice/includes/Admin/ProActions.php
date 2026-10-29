@@ -68,6 +68,7 @@ final class ProActions {
 		'asem_policy_add' => array( 'policy_add', 'insurance', false ),
 		'asem_policy_delete' => array( 'policy_delete', 'insurance', false ),
 		'asem_attendance_save' => array( 'attendance_save', 'insurance', false ),
+		'asem_attendance_matrix_save' => array( 'attendance_matrix_save', 'insurance', false ),
 		'asem_fivepm_settings' => array( 'fivepm_settings', 'fivepm', false ),
 		'asem_fivepm_add' => array( 'fivepm_add', 'fivepm', false ),
 		'asem_fivepm_report' => array( 'fivepm_report', 'fivepm', false ),
@@ -472,6 +473,24 @@ final class ProActions {
 		$date = (string) ( $p['date'] ?? '' );
 		$n    = Attendance::save( $aid, $date, array_map( 'intval', (array) ( $p['present'] ?? array() ) ), get_current_user_id() );
 		return array( Ui::url( 'asem-attendance', array( 'activity' => $aid, 'ym' => substr( $date, 0, 7 ), 'date' => $date ) ), 'Presenze registrate (' . $n . ' persone).' );
+	}
+
+	/** Salva le presenze di più lezioni insieme (vista a calendario). Le date mai registrate e senza nessun segno restano come sono. */
+	public static function attendance_matrix_save( array $p ): array {
+		$aid     = (int) ( $p['activity_id'] ?? 0 );
+		$ym      = (string) ( $p['ym'] ?? '' );
+		$present = (array) ( $p['present'] ?? array() );
+		$saved   = 0;
+		foreach ( (array) ( $p['dates'] ?? array() ) as $date ) {
+			$date = (string) $date;
+			$ids  = array_map( 'intval', (array) ( $present[ $date ] ?? array() ) );
+			if ( ! $ids && ! Attendance::marks( $aid, $date ) ) {
+				continue;
+			}
+			Attendance::save( $aid, $date, $ids, get_current_user_id() );
+			$saved++;
+		}
+		return array( Ui::url( 'asem-attendance', array( 'activity' => $aid, 'ym' => $ym, 'view' => 'matrix' ) ), 'Presenze registrate per ' . $saved . ( 1 === $saved ? ' lezione.' : ' lezioni.' ) );
 	}
 
 	public static function fivepm_settings( array $p ): array {

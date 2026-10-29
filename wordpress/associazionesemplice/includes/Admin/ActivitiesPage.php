@@ -48,8 +48,8 @@ final class ActivitiesPage {
 			return $a && ! empty( $a[ $k ] ) ? esc_attr( (string) $a[ $k ] ) : '';
 		};
 		$tr = '<tr class="' . esc_attr( $row_class ) . '">';
-		return $tr . '<th>Come si paga</th><td><select name="billing" class="asem-billing">' . Ui::options( array( 'once' => 'Una tantum', 'monthly' => 'Rinnovo mensile' ), $billing ) . '</select>'
-			. '<p class="description"><strong>Una tantum:</strong> la quota indicata è il totale (es. 10 incontri a 120 €), dovuta subito all\'iscrizione. <strong>Rinnovo mensile:</strong> il corso si rinnova da solo ogni mese finché l\'iscritto non lo cancella, e ogni mensilità è dovuta <strong>dalla prima lezione del mese</strong>.</p></td></tr>'
+		return $tr . '<th>Come si paga</th><td><select name="billing" class="asem-billing">' . Ui::options( array( 'once' => 'Una tantum (anche annuale)', 'monthly' => 'Rinnovo mensile', 'quarterly' => 'Rinnovo trimestrale' ), $billing ) . '</select>'
+			. '<p class="description"><strong>Una tantum:</strong> la quota indicata è il totale (es. 10 incontri a 120 €), dovuta subito all\'iscrizione. <strong>Rinnovo trimestrale:</strong> la quota indicata è quella di un trimestre, dovuta all\'inizio di ogni periodo di tre mesi dal primo mese dell\'iscrizione. <strong>Rinnovo mensile:</strong> il corso si rinnova da solo ogni mese finché l\'iscritto non lo cancella, e ogni mensilità è dovuta <strong>dalla prima lezione del mese</strong>.</p></td></tr>'
 			. ( $with_when ? $tr . '<th>Quando</th><td>' . self::when_builder( $rows ) . '</td></tr>' : '' )
 			. $tr . '<th>Luogo</th><td><input type="text" name="location" class="regular-text" value="' . $val( 'location' ) . '"></td></tr>'
 			. $tr . '<th>Dal / al</th><td><input type="date" name="starts_on" value="' . $val( 'starts_on' ) . '"> <input type="date" name="ends_on" value="' . $val( 'ends_on' ) . '"> <span class="description">facoltative: se il corso ha una fine, dopo quella data le mensilità non sono più dovute</span></td></tr>';
@@ -188,6 +188,9 @@ final class ActivitiesPage {
 		}
 		echo '</div><div class="asem-col">';
 		self::edit_card( $activity, $back );
+		if ( ActivityKind::COURSE === $activity['kind'] ) {
+			self::lessons_card( $activity, $back );
+		}
 		self::calendar_card( $activity );
 		self::notices_card( $activity, $back );
 		self::participants_card( $activity );
@@ -202,6 +205,42 @@ final class ActivitiesPage {
 	}
 
 	/** Collegamenti al calendario di questa attività (e a quello di tutte). */
+	/** Corsi: annulla o sposta una singola lezione (festività, maltempo, cambio di giorno) e ripristina le eccezioni. */
+	private static function lessons_card( array $activity, string $back ): void {
+		$id    = (int) $activity['id'];
+		$today = current_time( 'Y-m-d' );
+		$next  = array();
+		foreach ( \AssociazioneSemplice\Calendar::occurrences( $today, gmdate( 'Y-m-d', strtotime( $today . ' +60 days' ) ) ) as $o ) {
+			if ( (int) $o['activity_id'] === $id ) {
+				$next[] = $o;
+			}
+		}
+		$ex = \AssociazioneSemplice\LessonExceptions::for_activity( $id );
+		echo '<div class="asem-card"><h2>Date delle lezioni</h2><p class="description">Annulla una lezione (festività, maltempo) o spostala a un altro giorno: il calendario, le presenze e i promemoria seguono. Le quote non cambiano.</p>';
+		if ( ! $next ) {
+			echo '<p class="description">Nessuna lezione nei prossimi 60 giorni.</p>';
+		}
+		foreach ( $next as $o ) {
+			Ui::form_open( 'asem_lesson_exception', $back, false, 'asem-inline' );
+			echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'date', $o['date'] ), Html::allowed() );
+			echo '<p><strong>' . esc_html( Ui::date( $o['date'] ) ) . '</strong>' . ( $o['start'] ? ' ore ' . esc_html( (string) $o['start'] ) : '' ) . ' · <input type="text" name="note" placeholder="Motivo (facoltativo)" size="22"> '
+				. '<label><input type="checkbox" name="notify" value="1" checked> avvisa gli iscritti</label> '
+				. '<button class="button" name="mode" value="cancel">Annulla la lezione</button><br>Sposta a <input type="date" name="new_date"> dalle <input type="time" name="new_start"> alle <input type="time" name="new_end"> <button class="button" name="mode" value="move">Sposta</button></p>';
+			Ui::form_close();
+		}
+		if ( $ex ) {
+			echo '<h3>Lezioni cambiate</h3><ul>';
+			foreach ( $ex as $e ) {
+				Ui::form_open( 'asem_lesson_restore', $back, false, 'asem-inline' );
+				echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'date', $e['lesson_date'] ), Html::allowed() );
+				echo '<li>' . esc_html( Ui::date( $e['lesson_date'] ) ) . ( \AssociazioneSemplice\LessonExceptions::MOVE === $e['action'] ? ' → spostata al ' . esc_html( Ui::date( $e['new_date'] ) ) : ' — annullata' ) . ( $e['note'] ? ' <span class="description">(' . esc_html( $e['note'] ) . ')</span>' : '' ) . ' <button class="button button-small">Ripristina</button></li>';
+				Ui::form_close();
+			}
+			echo '</ul>';
+		}
+		echo '</div>';
+	}
+
 	private static function calendar_card( array $activity ): void {
 		echo '<div class="asem-card"><h2>Calendario</h2>';
 		if ( ! \AssociazioneSemplice\Calendar::enabled() ) {
@@ -448,7 +487,7 @@ final class ActivitiesPage {
 		} ) );
 		echo '<div class="asem-card"><h2>Iscrivi un socio o un ospite</h2>' . ( 'once' === $activity['billing']
 			? '<p class="description">Corso a <strong>pagamento unico</strong>: la quota è dovuta per intero all\'iscrizione (si può versare anche a rate).</p>'
-			: '<p class="description">L\'iscrizione si <strong>rinnova da sola ogni mese</strong> finché non viene cancellata' . ( $activity['ends_on'] ? ' (o fino alla fine del corso)' : '' ) . '. Ogni mensilità si paga alla prima lezione del mese' . ( (int) $activity['lesson_weekday'] ? '' : ' (indica il giorno della lezione nei dati del corso per saperlo con precisione)' ) . '.</p>' );
+			: ( 'quarterly' === $activity['billing'] ? '<p class="description">L\'iscrizione si <strong>rinnova da sola ogni trimestre</strong> (tre mesi dal primo mese dovuto) finché non viene cancellata.</p>' : '<p class="description">L\'iscrizione si <strong>rinnova da sola ogni mese</strong> finché non viene cancellata' . ( $activity['ends_on'] ? ' (o fino alla fine del corso)' : '' ) . '. Ogni mensilità si paga alla prima lezione del mese' . ( (int) $activity['lesson_weekday'] ? '' : ' (indica il giorno della lezione nei dati del corso per saperlo con precisione)' ) . '.</p>' ) );
 		Ui::form_open( 'asem_enroll', $back );
 		echo wp_kses( Ui::hidden( 'activity_id', $id ), Html::allowed() );
 		echo wp_kses( '<p>' . Ui::person_select( 'person_id', $candidates, null, '— scegli —', 'asem-enroll-person' ) . '</p>', Html::allowed() );
