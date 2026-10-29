@@ -17,9 +17,11 @@ Un corso ha lezioni che si ripetono ogni settimana. Gli iscritti pagano **ogni m
 3. Costruisci il programma: ogni riga ha **giorno e orario**. Con la spunta *ricorrente* la lezione si ripete ogni settimana (puoi anche scegliere *tutti i giorni* o *lun-ven*). Puoi aggiungere più righe, per esempio lunedì alle 20 e giovedì alle 19.
 4. Imposta le **date di inizio e fine**: con la data di fine le mensilità non sono più dovute dopo quel mese. Le date devono cadere nello stesso anno sociale.
 5. Scegli **come si paga** e il contributo.
-6. Salva. Dalla versione 1.2.41 del plugin gratuito, se devi inserire più corsi di seguito, premi **«Salva e prossimo inserimento»**: salva questo e ti apre un nuovo modulo.
+6. Salva.
 
-Per creare un'attività simile a una già fatta, nell'**elenco delle attività** usa il collegamento **«Riproponi»** accanto a quella da copiare.
+## Riproporre un'attività
+
+Per una nuova edizione di un corso o di un evento già fatto, nell'**elenco delle attività** usa il collegamento **«Riproponi»**: apre la sezione **«Riproponi»** della scheda dell'attività (dalla versione 1.2.41 del plugin gratuito). Crea una **nuova edizione** con gli stessi dati: contributi, referente, regole, note, luogo e staff. **Iscrizioni, prenotazioni e incassi non si copiano**: la nuova attività parte vuota.
 
 ## Come funzionano i pagamenti
 
@@ -28,7 +30,7 @@ Per creare un'attività simile a una già fatta, nell'**elenco delle attività**
 
 ## Gli iscritti
 
-Nella scheda del corso gli iscritti stanno sotto il modulo di iscrizione. Accanto a chi deve versare c'è **Paga**, che apre l'incasso già compilato. Iscrivendo una persona puoi premere **«Iscrivi e vai alla cassa»** (dalla versione 1.2.41): la iscrive e ti porta direttamente all'incasso. Per togliere chi non è più iscritto usa **Togli dall'elenco** (solo chi non ha incassi registrati).
+Nella scheda del corso gli iscritti stanno sotto il modulo di iscrizione. Accanto a chi deve versare c'è **Paga**, che apre l'incasso già compilato. Dalla versione 1.2.41, nel modulo di iscrizione hai due pulsanti in più: **«Salva e prossimo inserimento»** iscrive la persona e resta sulla stessa pagina, pronta per iscrivere quella dopo; **«Iscrivi e vai alla cassa»** la iscrive e apre l'incasso già compilato, se c'è qualcosa da pagare (altrimenti resta lì). Per togliere chi non è più iscritto usa **Togli dall'elenco** (solo chi non ha incassi registrati).
 MD,
     ],
     [
