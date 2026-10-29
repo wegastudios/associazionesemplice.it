@@ -413,6 +413,9 @@ final class ActivitiesPage {
 
 	/** Righe del modulo con i listini dell'attività (nome, prezzo, ingressi). */
 	private static function price_list_row( array $activity ): string {
+		if ( ActivityKind::COURSE === $activity['kind'] ) {
+			return self::course_variants_row( $activity );
+		}
 		if ( ! ActivityKind::uses_sessions( $activity['kind'] ) ) {
 			return '';
 		}
@@ -427,6 +430,44 @@ final class ActivitiesPage {
 		}
 		return '<tr><th>Listini</th><td><div class="asem-pl">' . $rows . '</div>'
 			. '<p class="description">Facoltativi: ad esempio Individuale, Di gruppo, Pacchetto 4 individuale, Pacchetto 4 di gruppo. In prenotazione la segreteria sceglie il listino; con 4 ingressi il prezzo del pacchetto si paga una volta e le altre date si prenotano «dal pacchetto» senza altro da pagare. Righe vuote ignorate; senza listini vale il contributo sopra.</p></td></tr>';
+	}
+
+	/** Il menu delle varianti del contributo di un corso (la quota base è la prima voce). */
+	private static function variant_select( array $activity, string $selected ): string {
+		$html = '<select name="price_list"><option value="">Quota base — ' . esc_html( Money::format( (int) $activity['fee_cents'] ) ) . '</option>';
+		foreach ( PriceLists::for_activity( $activity ) as $l ) {
+			$html .= '<option value="' . esc_attr( $l['key'] ) . '"' . selected( $selected, $l['key'], false ) . '>' . esc_html( $l['label'] . ' — ' . Money::format( (int) $l['cents'] ) ) . '</option>';
+		}
+		return $html . '</select>';
+	}
+
+	/** Variante e nota di un'iscrizione, in breve, per l'elenco degli iscritti. */
+	private static function variant_text( array $activity, array $enrollment ): string {
+		$out = '';
+		if ( ! empty( $enrollment['price_list'] ) ) {
+			$l = PriceLists::find( $activity, (string) $enrollment['price_list'] );
+			if ( $l ) {
+				$out .= ' <span class="description">· ' . esc_html( $l['label'] ) . '</span>';
+			}
+		}
+		if ( ! empty( $enrollment['fee_note'] ) ) {
+			$out .= ' <span class="description">(' . esc_html( (string) $enrollment['fee_note'] ) . ')</span>';
+		}
+		return $out;
+	}
+
+	/** Corsi: varianti del contributo (nome libero e prezzo per ogni periodo di pagamento) che la segreteria assegna all'iscrizione. */
+	private static function course_variants_row( array $activity ): string {
+		$lists = PriceLists::for_activity( $activity );
+		$lists = array_pad( $lists, max( 3, count( $lists ) + 1 ), array( 'label' => '', 'cents' => 0, 'entries' => 1 ) );
+		$rows  = '<div class="asem-pl-row asem-pl-head"><span>Variante</span><span>Prezzo</span></div>';
+		foreach ( array_slice( $lists, 0, PriceLists::MAX ) as $i => $l ) {
+			$rows .= '<div class="asem-pl-row"><input type="hidden" name="pl_key[' . (int) $i . ']" value="' . esc_attr( (string) ( $l['key'] ?? '' ) ) . '"><input type="hidden" name="pl_entries[' . (int) $i . ']" value="1">'
+				. '<input type="text" class="asem-pl-name" name="pl_label[' . (int) $i . ']" value="' . esc_attr( $l['label'] ) . '" placeholder="es. Secondo corso -10%, Famiglia, Solo il sabato" maxlength="60" aria-label="Nome della variante">'
+				. '<span class="asem-pl-price"><input type="text" name="pl_price[' . (int) $i . ']" size="7" value="' . esc_attr( '' === $l['label'] ? '' : Money::plain( (int) $l['cents'] ) ) . '" aria-label="Prezzo in euro"> €</span></div>';
+		}
+		return '<tr><th>Varianti del contributo</th><td><div class="asem-pl">' . $rows . '</div>'
+			. '<p class="description">Facoltative e descritte come vuoi: sconto per più corsi, attività parziale, più familiari iscritti. Il prezzo è quello di ogni periodo di pagamento del corso. Le assegna la segreteria all\'iscrizione di una persona; chi si iscrive da solo paga il contributo sopra.</p></td></tr>';
 	}
 
 	private static function edit_card( array $activity, string $back ): void {
@@ -492,6 +533,9 @@ final class ActivitiesPage {
 		echo wp_kses( Ui::hidden( 'activity_id', $id ), Html::allowed() );
 		echo wp_kses( '<p>' . Ui::person_select( 'person_id', $candidates, null, '— scegli —', 'asem-enroll-person' ) . '</p>', Html::allowed() );
 		echo wp_kses( '<p>Primo mese dovuto: <select name="start_month">' . Ui::month_options( $year->months(), $default_month ) . '</select></p>', Html::allowed() );
+		if ( PriceLists::for_activity( $activity ) ) {
+			echo wp_kses( '<p>Contributo: ' . self::variant_select( $activity, '' ) . ' <input type="text" name="fee_note" placeholder="Nota (facoltativa)" size="28" maxlength="190"></p>', Html::allowed() );
+		}
 		echo '<p>';
 		submit_button( 'Iscrivi e vai alla cassa', 'primary', 'go_cash', false );
 		echo ' ';
@@ -525,10 +569,17 @@ final class ActivitiesPage {
 			echo wp_kses( '<details class="asem-detail"><summary><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $e['person_id'] ) ) ) . '"><strong>' . esc_html( $label ) . '</strong></a> '
 				. '<em>(' . esc_html( MemberType::label( $e['type'] ) ) . ')</em> — ' . Ui::pay_status( $s['summary'] )
 				. ( $active ? '' : ' <span class="asem-warn">· cancellato dopo ' . esc_html( Ui::month( $e['end_month'] ) ) . '</span>' )
+				. ( self::variant_text( $activity, $e ) )
 				. ( (int) $s['summary']['balance'] < 0 ? ' <a class="button button-small button-primary" href="' . esc_url( Ui::url( 'asem-income', array( 'person_id' => (int) $e['person_id'], 'due' => 1 ) ) ) . '">Paga</a>' : '' )
 				. ( current_user_can( Plugin::CAP ) ? ' ' . self::cancel_control( $id, array( 'id' => (int) $e['person_id'], 'first_name' => (string) $e['first_name'], 'last_name' => (string) $e['last_name'] ), 0, 'Cancella' ) : '' )
 				. '</summary>', Html::allowed() );
 			echo wp_kses( Ui::months_table( $s['summary'] ), Html::allowed() );
+			if ( PriceLists::for_activity( $activity ) ) { // varianti del contributo: le assegna la segreteria
+				Ui::form_open( 'asem_enroll_variant', $back, false, 'asem-inline' );
+				echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $e['person_id'] ) . '<p>Contributo: ' . self::variant_select( $activity, (string) ( $e['price_list'] ?? '' ) )
+					. ' <input type="text" name="fee_note" value="' . esc_attr( (string) ( $e['fee_note'] ?? '' ) ) . '" placeholder="Nota (es. sorella iscritta a Danza)" size="28" maxlength="190"> <button class="button">Salva</button></p>', Html::allowed() );
+				Ui::form_close();
+			}
 			Ui::form_open( $active ? 'asem_cancel_enrollment' : 'asem_enroll', $back );
 			echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $e['person_id'] ), Html::allowed() );
 			if ( $active ) {
