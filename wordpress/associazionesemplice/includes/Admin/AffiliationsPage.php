@@ -53,13 +53,13 @@ final class AffiliationsPage {
 	private static function affiliations_section( ?array $edit ): void {
 		$back = Ui::url( 'asem-affiliations' );
 		echo '<h2>Affiliazioni dell\'associazione</h2>';
-		echo '<table class="widefat striped"><thead><tr><th>Ente</th><th>Codice</th><th>Stagione</th><th>Scade il</th><th>Costo</th><th>Stato</th><th></th></tr></thead><tbody>';
+		echo '<table class="widefat striped"><thead><tr><th>Ente</th><th>Codice</th><th>Discipline</th><th>Stagione</th><th>Scade il</th><th>Costo</th><th>Stato</th><th></th></tr></thead><tbody>';
 		$rows = Affiliations::affiliations();
 		if ( ! $rows ) {
-			echo '<tr><td colspan="7">Nessuna affiliazione registrata.</td></tr>';
+			echo '<tr><td colspan="8">Nessuna affiliazione registrata.</td></tr>';
 		}
 		foreach ( $rows as $r ) {
-			echo '<tr><td>' . esc_html( Affiliations::body_name( $r ) ) . '</td><td>' . esc_html( $r['code'] ) . '</td><td>' . esc_html( $r['season'] ) . '</td><td>' . self::date( $r['expires_on'] ) . '</td><td>' . self::cost( $r['cost_cents'] ) . '</td><td>' // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto
+			echo '<tr><td>' . esc_html( Affiliations::body_name( $r ) ) . '</td><td>' . esc_html( $r['code'] ) . '</td><td>' . esc_html( (string) ( $r['disciplines'] ?? '' ) ) . '</td><td>' . esc_html( $r['season'] ) . '</td><td>' . self::date( $r['expires_on'] ) . '</td><td>' . self::cost( $r['cost_cents'] ) . '</td><td>' // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto
 				. ( $r['expires_on'] ? self::badge( $r['status'] ) : '—' ) . '</td><td><a href="' . esc_url( Ui::url( 'asem-affiliations', array( 'edit' => (int) $r['id'] ) ) ) . '#asem-aff-form">modifica</a> ';
 			Ui::form_open( 'asem_aff_delete', $back, false, 'asem-inline' );
 			echo Ui::hidden( 'id', $r['id'] ) . '<button class="button-link-delete" data-confirm="Eliminare questa affiliazione? Le tessere dei soci restano.">elimina</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
@@ -67,10 +67,11 @@ final class AffiliationsPage {
 			echo '</td></tr>';
 		}
 		echo '</tbody></table>';
-		$v = $edit ?: array( 'body' => 'coni', 'body_label' => '', 'code' => '', 'season' => AffiliationRules::default_season( Db::today() ), 'expires_on' => '', 'cost_cents' => null );
+		$v = $edit ?: array( 'body' => 'coni', 'body_label' => '', 'code' => '', 'disciplines' => '', 'season' => AffiliationRules::default_season( Db::today() ), 'expires_on' => '', 'cost_cents' => null );
 		Ui::form_open( 'asem_aff_save', $back );
 		echo '<div id="asem-aff-form"><h3>' . ( $edit ? 'Modifica l\'affiliazione' : 'Registra un\'affiliazione' ) . '</h3>' . Ui::hidden( 'id', $edit ? $edit['id'] : 0 ) // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<p>' . self::body_fields( (string) $v['body'], (string) $v['body_label'] ) . ' <input type="text" name="code" maxlength="60" placeholder="Codice di affiliazione" required value="' . esc_attr( (string) $v['code'] ) . '"></p>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<p><input type="text" name="disciplines" class="large-text" maxlength="190" placeholder="Discipline per cui sei affiliato all\'ente (es. Yoga, Pilates, Danza)" value="' . esc_attr( (string) ( $v['disciplines'] ?? '' ) ) . '"></p>'
 			. '<p>Stagione <input type="text" name="season" size="10" required value="' . esc_attr( (string) $v['season'] ) . '"> scade il <input type="date" name="expires_on" value="' . esc_attr( (string) $v['expires_on'] ) . '"> costo € <input type="text" name="cost" size="8" inputmode="decimal" value="' . esc_attr( null === $v['cost_cents'] ? '' : Money::plain( (int) $v['cost_cents'] ) ) . '"></p>'
 			. '<p><button class="button button-primary">' . ( $edit ? 'Salva le modifiche' : 'Registra l\'affiliazione' ) . '</button>' . ( $edit ? ' <a class="button" href="' . esc_url( $back ) . '">Annulla</a>' : '' ) . '</p></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		Ui::form_close();

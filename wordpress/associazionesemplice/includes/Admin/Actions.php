@@ -548,6 +548,10 @@ final class Actions {
 			'fund_value'           => self::fund_value( $p ),
 			'notes'                => $p['notes'] ?? '',
 		);
+		if ( array_key_exists( 'sport', $p ) ) { // classificazione sportiva (CONI e disciplina dell'ente), presente solo nei moduli che la chiedono
+			$data['sport']      = $p['sport'];
+			$data['discipline'] = $p['discipline'] ?? '';
+		}
 		if ( isset( $p['pl_label'] ) ) { // solo il modulo di modifica ha i listini: senza campi non si toccano
 			$lists = array();
 			foreach ( (array) $p['pl_label'] as $i => $label ) {

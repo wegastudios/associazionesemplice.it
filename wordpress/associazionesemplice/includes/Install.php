@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '48';
+	const DB_VERSION        = '49';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -304,6 +304,8 @@ final class Install {
   lesson_weekday tinyint(1) NOT NULL DEFAULT 0,
   lesson_slots text,
   billing varchar(12) NOT NULL DEFAULT 'monthly',
+  sport varchar(60) DEFAULT NULL,
+  discipline varchar(120) DEFAULT NULL,
   lesson_start char(5) DEFAULT NULL,
   lesson_end char(5) DEFAULT NULL,
   location varchar(190) DEFAULT NULL,

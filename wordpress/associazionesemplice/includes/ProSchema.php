@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 final class ProSchema {
 
 	const VERSION_OPTION = 'asem_pro_db_version';
-	const VERSION        = '9';
+	const VERSION        = '10';
 
 	public static function register(): void {
 		add_filter( 'asem_schema_tables', array( __CLASS__, 'tables' ), 10, 3 );
@@ -321,6 +321,7 @@ final class ProSchema {
   body varchar(12) NOT NULL,
   body_label varchar(80) DEFAULT NULL,
   code varchar(60) NOT NULL,
+  disciplines varchar(190) DEFAULT NULL,
   season varchar(12) NOT NULL,
   expires_on date DEFAULT NULL,
   cost_cents bigint(20) DEFAULT NULL,
