@@ -2,6 +2,7 @@
 # Porta la demo (associazionesemplice.it/demo) alle ultime versioni dei due plugin pubblicate sul portale.
 # Si lancia da solo a ogni pubblicazione (portale/release.sh) e a ogni azzeramento notturno. Prima il gratuito, poi il Pro (stesso livello di compatibilità).
 set -euo pipefail
+export PATH="/usr/local/bin:/usr/bin:/bin:$PATH" # il cron ha un PATH ridotto: senza questo non trova wp (e php sarebbe quello CGI)
 cd "$HOME/public_html/demo"
 R="$HOME/portale/data/releases"
 latest() { ls "$R/$1"/*.zip 2>/dev/null | sed 's|.*/||; s|\.zip$||' | sort -V | tail -1; }
