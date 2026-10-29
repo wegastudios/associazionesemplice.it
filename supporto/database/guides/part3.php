@@ -23,6 +23,10 @@ Un corso ha lezioni che si ripetono ogni settimana. Gli iscritti pagano **ogni m
 
 Per una nuova edizione di un corso o di un evento già fatto, nell'**elenco delle attività** usa il collegamento **«Riproponi»**: apre la sezione **«Riproponi»** della scheda dell'attività (dalla versione 1.2.41 del plugin gratuito). Crea una **nuova edizione** con gli stessi dati: contributi, referente, regole, note, luogo e staff. **Iscrizioni, prenotazioni e incassi non si copiano**: la nuova attività parte vuota.
 
+## Sport e disciplina
+
+Dalla versione 1.2.45 del plugin gratuito ogni attività (corso o evento) ha uno **sport**, scelto da un **elenco di sport basato sull'elenco CONI**, e una **disciplina** dell'ente, a **testo libero**. Si compilano nella scheda dell'attività. Con Pro servono anche per il file dei portali degli enti: vedi [Gestire le affiliazioni agli enti](guida:affiliazioni-agli-enti).
+
 ## Come funzionano i pagamenti
 
 - **Rinnovo mensile**: il corso si rinnova da solo ogni mese finché l'iscritto non viene «disdetto». La mensilità è dovuta dalla prima lezione del mese; prima risulta «in arrivo», poi «da pagare». Senza giorno indicato è dovuta dal 1°.

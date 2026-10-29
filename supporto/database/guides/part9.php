@@ -195,7 +195,7 @@ MD,
 
 In **Registri → Affiliazioni** tieni i codici di affiliazione dell'associazione agli enti di promozione sportiva, le tessere dei soci e i file da caricare sui portali degli enti.
 
-Gli enti disponibili sono CONI/RAS, UISP, CSEN, ACSI, AICS, oppure **«Altro ente»** con il nome scritto a mano.
+Gli enti disponibili sono **CONI/RAS** e i **16 enti di promozione sportiva riconosciuti dal CONI** (ACSI, AICS, ASC, ASI, CNS Libertas, CSAIN, CSEN, CSI, ENDAS, MSP, OPES, PGS, UISP, US ACLI, USSA, VSS), oppure **«Altro ente»** con il nome scritto a mano (elenco aggiornato dal Pro 1.1.37).
 
 ## Registrare l'affiliazione dell'associazione
 
@@ -206,7 +206,7 @@ Gli enti disponibili sono CONI/RAS, UISP, CSEN, ACSI, AICS, oppure **«Altro ent
 
 ## Tesserare un socio
 
-**Una persona per volta**: dalla scheda del socio, sezione **«Tessere degli enti»**, oppure da **Registri → Affiliazioni → Nuova tessera**. Indica ente, stagione, numero (facoltativo), tipo di tessera, data, scadenza e costo.
+**Una persona per volta**: dalla scheda del socio, sezione **«Tessere degli enti»**, oppure da **Registri → Affiliazioni → Nuova tessera**. Indica ente, stagione, numero (facoltativo), tipo di tessera, **discipline**, data, scadenza e costo.
 
 **Più soci insieme**:
 
@@ -222,7 +222,7 @@ Tutori e ospiti non sono soci: non si tesserano.
 Filtra l'elenco per ente, stagione, stato e attività.
 
 - **Esporta l'elenco (CSV)**: scarica l'elenco con numeri, costi e stato.
-- **File per il portale dell'ente (CSV)**: scarica nome, cognome, codice fiscale, data e luogo di nascita, sesso, indirizzo, email, telefono e tipo di tessera.
+- **File per il portale dell'ente (CSV)**: scarica nome, cognome, codice fiscale, data e luogo di nascita, sesso, indirizzo, email, telefono, tipo di tessera e, dal Pro 1.1.37, **Sport** e **Disciplina**, ricavati dai corsi e dagli eventi a cui la persona partecipa. Se manca il tipo di tessera, usa il **tipo di tesseramento** della scheda del socio.
 
 > **Controlla il file prima di caricarlo.** Il sito non conserva luogo di nascita e sesso: li ricava dal codice fiscale, e il luogo è il **codice catastale** (per esempio H501), non il nome del comune.
 

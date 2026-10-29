@@ -110,7 +110,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Inventario dei beni e prestiti ai soci con promemoria | ✓ | ✓ | ✓ |
 | Archivio documenti con accesso per segreteria, soci o pubblico | ✓ | ✓ | ✓ |
 | Certificati medici sportivi con scadenze, promemoria e riquadro in Bacheca | — | ✓ | ✓ |
-| Affiliazioni agli enti, tessere dei soci anche in blocco e file CSV per i portali degli enti | — | ✓ | ✓ |
+| Affiliazioni agli enti (CONI/RAS e enti di promozione sportiva), tessere dei soci anche in blocco e file CSV per i portali degli enti con sport e disciplina | — | ✓ | ✓ |
+| Sport (elenco basato sull'elenco CONI) e disciplina dell'ente su corsi ed eventi | ✓ | ✓ | ✓ |
 | Informativa privacy generata e registro dei consensi | ✓ | ✓ | ✓ |
 | Anonimizzazione e download dei dati personali | ✓ | ✓ | ✓ |
 | Assicurazioni dei volontari e polizze dell'associazione | — | ✓ | ✓ |
