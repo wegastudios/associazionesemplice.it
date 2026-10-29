@@ -3,7 +3,7 @@ Contributors: wegastudios
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.34
+Stable tag: 1.1.35
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,9 @@ With a license key entered in Associazione Semplice Pro, once a day (and when yo
 The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, Mozilla Public License 2.0) to tell which domain a license covers.
 
 == Changelog ==
+
+= 1.1.35 =
+* Receipts for minors are addressed to the operating parent, with all parents' tax codes and traceable-payment note for ages 5-18.
 
 = 1.1.34 =
 * Compatible with free 1.2.39 (resource entry pages use the new escaped output).

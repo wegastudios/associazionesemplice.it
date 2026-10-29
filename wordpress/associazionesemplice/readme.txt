@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.41
+Stable tag: 1.2.42
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,9 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.2.42 =
+* Photo/video release, membership type, receipts for minors addressed to the operating parent, 'Incomplete cards' alerts.
 
 = 1.2.41 =
 * Members register with application and approval dates, birthplace, residence and last fee; up to two guardians with one operating on the site; smoother enrolment flow; 'Re-run' link in the activity list.
