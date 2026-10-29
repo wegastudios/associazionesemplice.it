@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.1.35
+- Le ricevute dei minori sono intestate al genitore che opera (o a chi ha pagato), con i codici fiscali dei genitori e del ragazzo e, dai 5 ai 18 anni, l'indicazione se il pagamento è tracciato (detrazione delle spese sportive).
+
 ## 1.1.34
 - Compatibile con il gratuito 1.2.39: aggiorna insieme gratuito e Pro.
 
