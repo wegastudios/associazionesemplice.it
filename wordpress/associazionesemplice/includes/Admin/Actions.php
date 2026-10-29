@@ -76,6 +76,7 @@ final class Actions {
 			'asem_lesson_restore'     => 'lesson_restore',
 			'asem_tec_import'         => 'tec_import',
 			'asem_enroll'             => 'enroll',
+			'asem_enroll_variant'     => 'enroll_variant',
 			'asem_cancel_enrollment'  => 'cancel_enrollment',
 			'asem_add_session'        => 'add_session',
 			'asem_update_session'     => 'update_session',
@@ -842,10 +843,18 @@ final class Actions {
 		$pid = (int) ( $p['person_id'] ?? 0 );
 		self::assert_not_suspended( $pid );
 		Plugin::activities()->enroll( (int) $p['activity_id'], $pid, (string) $p['start_month'] );
+		if ( isset( $p['price_list'] ) ) { // variante del contributo scelta dalla segreteria
+			Plugin::activities()->set_enrollment_price( (int) $p['activity_id'], $pid, (string) $p['price_list'], (string) ( $p['fee_note'] ?? '' ) );
+		}
 		if ( ! empty( $p['next'] ) ) { // «Salva e prossimo inserimento»: si resta sulla pagina per iscrivere la persona dopo
 			return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ) . '#asem-enroll-person', 'Iscrizione registrata: puoi inserire la prossima.' . self::membership_warning( $pid ) );
 		}
 		return self::after_signup( $pid, Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Iscrizione registrata.', (int) $p['activity_id'] );
+	}
+
+	private static function enroll_variant( array $p ): array {
+		Plugin::activities()->set_enrollment_price( (int) $p['activity_id'], (int) $p['person_id'], (string) ( $p['price_list'] ?? '' ), (string) ( $p['fee_note'] ?? '' ) );
+		return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Contributo dell\'iscritto aggiornato.' );
 	}
 
 	private static function cancel_enrollment( array $p ): array {

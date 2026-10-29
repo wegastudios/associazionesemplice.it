@@ -1065,6 +1065,31 @@ class ActivityService {
 		Audit::log( 'activity.enrolled', 'activity', $activity_id, array( 'person_id' => $person_id, 'from' => $start_month ) );
 	}
 
+	/**
+	 * La variante del contributo (listino) e la nota libera di un'iscrizione: la sceglie la segreteria, il socio paga la quota base.
+	 *
+	 * @throws \InvalidArgumentException
+	 */
+	public function set_enrollment_price( int $activity_id, int $person_id, string $price_list, string $note = '' ): void {
+		$a = $this->get( $activity_id );
+		if ( ! $a || ActivityKind::COURSE !== $a['kind'] ) {
+			throw new \InvalidArgumentException( 'Le varianti del contributo valgono per i corsi.' );
+		}
+		$price_list = sanitize_key( $price_list );
+		if ( '' !== $price_list && ! PriceLists::find( $a, $price_list ) ) {
+			throw new \InvalidArgumentException( 'Variante del contributo non trovata: controlla i listini del corso.' );
+		}
+		$n = $this->db()->update(
+			Db::t( 'enrollments' ),
+			array( 'price_list' => '' === $price_list ? null : $price_list, 'fee_note' => '' === trim( $note ) ? null : mb_substr( trim( $note ), 0, 190 ) ),
+			array( 'activity_id' => $activity_id, 'person_id' => $person_id )
+		);
+		if ( false === $n ) {
+			throw new \InvalidArgumentException( 'Impossibile salvare la variante (errore del database).' );
+		}
+		Audit::log( 'activity.fee_variant', 'activity', $activity_id, array( 'person_id' => $person_id, 'price_list' => $price_list ) );
+	}
+
 	/** Cancella da un corso: $last_month è l'ultimo mese ancora dovuto. I pagamenti restano registrati. */
 	public function cancel( int $activity_id, int $person_id, string $last_month ): void {
 		$this->assert_month( $last_month );
@@ -1117,6 +1142,10 @@ class ActivityService {
 
 	private function summarize( array $activity, array $enrollment, array $paid_by_month, string $person_type ): array {
 		$fee = $this->fee_for( $activity, $person_type );
+		if ( ! empty( $enrollment['price_list'] ) ) { // variante scelta dalla segreteria per questa iscrizione (2° corso, famiglia, attività parziale…)
+			$list = PriceLists::find( $activity, (string) $enrollment['price_list'] );
+			$fee  = $list ? (int) $list['cents'] : $fee;
+		}
 		if ( 'once' === ( $activity['billing'] ?? 'monthly' ) ) {
 			return PaymentCalc::compute_once( $fee, $enrollment['start_month'], $enrollment['end_month'], $paid_by_month );
 		}
@@ -1179,7 +1208,7 @@ class ActivityService {
 		}
 		$rows = $this->db()->get_results(
 			$this->db()->prepare(
-				'SELECT e.*, a.name AS activity_name, a.social_year, a.kind, a.fee_cents, a.guest_fee_cents, a.lesson_weekday, a.lesson_slots, a.billing, a.ends_on FROM ' . Db::t( 'enrollments' ) . ' e '
+				'SELECT e.*, a.name AS activity_name, a.social_year, a.kind, a.fee_cents, a.guest_fee_cents, a.lesson_weekday, a.lesson_slots, a.billing, a.price_lists, a.ends_on FROM ' . Db::t( 'enrollments' ) . ' e '
 				. 'JOIN ' . Db::t( 'activities' ) . ' a ON a.id = e.activity_id AND a.deleted_at IS NULL WHERE e.person_id = %d ORDER BY a.social_year DESC, a.name',
 				$person_id
 			),
@@ -1190,7 +1219,7 @@ class ActivityService {
 		foreach ( $rows as $e ) {
 			$activity = array(
 				'id' => $e['activity_id'], 'name' => $e['activity_name'], 'social_year' => $e['social_year'], 'kind' => $e['kind'],
-				'fee_cents' => $e['fee_cents'], 'guest_fee_cents' => $e['guest_fee_cents'], 'lesson_weekday' => $e['lesson_weekday'], 'lesson_slots' => $e['lesson_slots'], 'billing' => $e['billing'], 'ends_on' => $e['ends_on'],
+				'fee_cents' => $e['fee_cents'], 'guest_fee_cents' => $e['guest_fee_cents'], 'lesson_weekday' => $e['lesson_weekday'], 'lesson_slots' => $e['lesson_slots'], 'billing' => $e['billing'], 'price_lists' => $e['price_lists'], 'ends_on' => $e['ends_on'],
 			);
 			$out[]    = array(
 				'enrollment' => $e,

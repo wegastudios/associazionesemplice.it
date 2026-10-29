@@ -3645,6 +3645,24 @@ $acts->enroll( $q_c, $once_p, $month );
 $q_s = array_values( array_filter( $acts->status_for_person( $once_p ), function ( $st ) use ( $q_c ) { return (int) $st['enrollment']['activity_id'] === (int) $q_c; } ) )[0]['summary'];
 asem_ok( 9000 === $q_s['total_due'] && 1 === count( $q_s['months'] ), 'corso trimestrale: nel primo mese è dovuta l\'intera quota del trimestre' );
 asem_ok( 'a trimestre' === \AssociazioneSemplice\ActivityKind::fee_unit( 'course', 'quarterly' ), 'corso trimestrale: la dicitura è «a trimestre»' );
+$v_c = $acts->create( array( 'name' => 'Danza varianti', 'social_year' => $sy_label, 'kind' => 'course', 'monthly_fee_cents' => 4000, 'price_lists' => array( array( 'label' => 'Secondo corso -25%', 'cents' => 3000 ) ) ) );
+$acts->enroll( $v_c, $once_p, $month );
+$v_sum = function () use ( $acts, $once_p, $v_c ) {
+	foreach ( $acts->status_for_person( $once_p ) as $st ) {
+		if ( (int) $st['enrollment']['activity_id'] === (int) $v_c ) {
+			return $st['summary'];
+		}
+	}
+	return null;
+};
+asem_ok( 4000 === $v_sum()['total_due'], 'varianti del contributo: senza variante vale la quota base' );
+$v_key = \AssociazioneSemplice\PriceLists::for_activity( $acts->get( $v_c ) )[0]['key'];
+$acts->set_enrollment_price( $v_c, $once_p, $v_key, 'sorella iscritta a Yoga' );
+asem_ok( 3000 === $v_sum()['total_due'], 'varianti del contributo: la segreteria assegna la variante e la quota cambia' );
+asem_ok( null !== asem_throws( function () use ( $acts, $v_c, $once_p ) { $acts->set_enrollment_price( $v_c, $once_p, 'inesistente' ); } ), 'varianti del contributo: una variante che non esiste è rifiutata' );
+$acts->set_enrollment_price( $v_c, $once_p, '' );
+asem_ok( 4000 === $v_sum()['total_due'], 'varianti del contributo: si torna alla quota base' );
+asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Varianti del contributo', array( 'id' => $v_c ) );
 $mx = \AssociazioneSemplice\Attendance::matrix( $acts->get( $once_c ), $today, gmdate( 'Y-m-d', strtotime( $today . ' +20 days' ) ) );
 asem_ok( count( $mx['dates'] ) >= 2 && isset( $mx['people'][ $once_p ] ) && ! empty( $mx['expected'][ $mx['dates'][0] ][ $once_p ] ), 'presenze a calendario: date in orizzontale, iscritti in verticale' );
 asem_render( array( Admin\ProRegisters::class, 'render_attendance' ), 'A calendario (date in orizzontale)', array( 'activity' => $once_c, 'ym' => substr( $today, 0, 7 ), 'view' => 'matrix' ) );
