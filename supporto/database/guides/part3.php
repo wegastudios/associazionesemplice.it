@@ -31,7 +31,19 @@ Per una nuova edizione di un corso o di un evento già fatto, nell'**elenco dell
 
 ## Annullare o spostare una lezione
 
-Dalla versione 1.2.43 le **singole lezioni** di un corso si possono **annullare** o **spostare**, per esempio per una festività o per il maltempo. Gli **iscritti vengono avvisati**, e il **calendario** e le **presenze** ne tengono conto.
+Dalla versione 1.2.43 le **singole lezioni** di un corso si possono **annullare** o **spostare**, per esempio per una festività o per il maltempo.
+
+1. Vai in **Corsi ed eventi** e apri il corso.
+2. Apri la scheda **«Date delle lezioni»**: compaiono le lezioni dei **prossimi 60 giorni**, ciascuna con data e ora. Se non ce ne sono, leggi «Nessuna lezione nei prossimi 60 giorni».
+3. Se vuoi, scrivi il **Motivo** (per esempio festività o maltempo).
+4. Lascia la spunta **«avvisa gli iscritti»**, attiva di partenza, se vuoi che ricevano un avviso.
+5. Scegli come procedere:
+   - **Annulla la lezione**: premi il pulsante;
+   - **Sposta**: indica la nuova data in **«Sposta a»** (l'ora di inizio e di fine sono facoltative) e premi **Sposta**.
+
+Con la spunta gli iscritti ricevono un avviso come «La lezione di … del … è annullata» o «è spostata al …». L'avviso parte solo se chi opera può mandare avvisi per quel corso: se non parte, l'annullamento o lo spostamento resta comunque e il messaggio te lo dice.
+
+Sotto trovi **«Lezioni cambiate»**, con quelle annullate o spostate, il motivo e il pulsante **Ripristina**, che rimette la lezione com'era. **Le quote non cambiano**. Calendario, presenze e promemoria seguono le date nuove.
 
 ## Gli iscritti
 
