@@ -46,7 +46,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 
 | Funzione | Free | Pro Contabile | Pro Fiscale |
 |---|---|---|---|
-| Corsi con rinnovo mensile o pagamento unico | ✓ | ✓ | ✓ |
+| Corsi con rinnovo mensile, trimestrale o pagamento unico | ✓ | ✓ | ✓ |
+| Lezioni di un corso annullate o spostate, con avviso agli iscritti | ✓ | ✓ | ✓ |
 | Eventi con date uniche o ricorrenti | ✓ | ✓ | ✓ |
 | Posti limitati, lista d'attesa e tolleranza sul pagamento | ✓ | ✓ | ✓ |
 | Calendario interno e pubblicazione su Google Calendar, Apple e Outlook | ✓ | ✓ | ✓ |
@@ -115,7 +116,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Informativa privacy generata e registro dei consensi | ✓ | ✓ | ✓ |
 | Anonimizzazione e download dei dati personali | ✓ | ✓ | ✓ |
 | Assicurazioni dei volontari e polizze dell'associazione | — | ✓ | ✓ |
-| Registro delle presenze a corsi ed eventi | — | ✓ | ✓ |
+| Registro delle presenze a corsi ed eventi, anche in vista a calendario | — | ✓ | ✓ |
 | Certificato medico sportivo dei soci: scadenze, attività che lo richiedono, promemoria ed esportazione | — | ✓ | ✓ |
 | Affiliazioni agli enti (CONI/RAS, UISP, CSEN, ACSI, AICS) e tesseramento dei soci, anche in blocco, con file per i portali | — | ✓ | ✓ |
 
