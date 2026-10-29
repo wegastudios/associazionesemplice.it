@@ -6645,6 +6645,10 @@ asem_ok( false !== strpos( $mn_csv, 'Data di nascita' ) && false !== strpos( $mn
 asem_ok( false !== strpos( \AssociazioneSemplice\Docs::book( '', 'csv' )['body'], 'Marta Madre' ), 'libro soci in CSV: il tutore c\'è' );
 $mn_exp = \AssociazioneSemplice\Privacy::export( $mn_kid );
 asem_ok( 'Marta Madre' === ( $mn_exp['tutori'][0]['nome'] ?? '' ) && ! empty( $mn_exp['anagrafica']['data_di_nascita'] ), 'privacy: l\'esportazione dei dati include data di nascita e tutori' );
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $mn_kid, 'method' => 'bank_transfer', 'lines' => array( array( 'category_id' => $ledger->category_id_of_kind( 'membership' ), 'amount_cents' => 2500 ) ) ) );
+$mn_rc = \AssociazioneSemplice\Receipts::list_for_payer( $mn_kid );
+$mn_rcb = $mn_rc ? \AssociazioneSemplice\Receipts::build( $mn_rc[0]['key'] ) : null;
+asem_ok( $mn_rcb && 0 === strpos( $mn_rcb['pdf'], '%PDF' ) && $mn_rcb['payer'] && (int) $mn_rcb['payer']['id'] === $mn_kid, 'ricevuta di un minore: si genera (intestata al genitore, con i codici fiscali)' );
 
 // importazione con data di nascita e tutore
 $mn_csv_f = $mkf( 'minori.csv', "Tessera;Nome;Cognome;Email;Data di nascita;Tutore\r\nmn20;Lia;Piccola;;12/05/2015;marta.madre@example.com\r\nmn21;Gigi;Senzatutore;gigi.senza@example.com;03/04/1990;\r\nmn22;Bea;Errore;;01/01/2014;nessuno@example.com\r\n" );

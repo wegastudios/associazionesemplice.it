@@ -253,6 +253,56 @@ final class Receipts {
 
 	// ---------- Ricevuta ----------
 
+	/** Metodi di pagamento tracciabili (valgono per la detrazione); contanti e «altro» no. */
+	const TRACKED_METHODS = array( 'bank_transfer', 'pos', 'check', 'stripe', 'paypal', 'sumup', 'woocommerce' );
+
+	/**
+	 * La ricevuta di un minore va intestata a un genitore: chi opera sul sito (o chi ha pagato, se è un genitore), con i codici fiscali di tutti i genitori
+	 * e, per i ragazzi dai 5 ai 18 anni, l'indicazione se il pagamento è tracciato (serve per la detrazione delle spese sportive).
+	 *
+	 * @param array|null $payer     chi ha pagato
+	 * @param array|null $ward      a chi si riferisce il pagamento
+	 * @param array      $guardians i genitori o tutori del minore (con is_operative)
+	 * @param string     $method_label  come si chiama il metodo di pagamento
+	 * @param string[]   $kinds     tipi di voce della ricevuta (category_kind)
+	 * @return array{holder:?array,lines:string[],note:string}
+	 */
+	public static function minor_block( ?array $payer, ?array $ward, array $guardians, string $date, string $method, string $method_label, array $kinds ): array {
+		$none = array( 'holder' => $payer, 'lines' => array(), 'note' => '' );
+		if ( ! $ward || ! $guardians || ! Age::is_minor( $ward['birth_date'] ?? null, $date ) ) {
+			return $none;
+		}
+		$holder = $guardians[0];
+		foreach ( $guardians as $g ) {
+			if ( ! empty( $g['is_operative'] ) ) {
+				$holder = $g;
+				break;
+			}
+		}
+		if ( $payer ) {
+			foreach ( $guardians as $g ) {
+				if ( (int) $g['id'] === (int) $payer['id'] ) {
+					$holder = $g; // ha pagato l'altro genitore: la ricevuta è sua
+				}
+			}
+		}
+		$lines = array();
+		foreach ( $guardians as $g ) {
+			if ( (int) $g['id'] !== (int) $holder['id'] ) {
+				$lines[] = 'Altro genitore o tutore: ' . trim( $g['first_name'] . ' ' . $g['last_name'] ) . ' — C.F. ' . ( ! empty( $g['tax_code'] ) ? $g['tax_code'] : 'non indicato' );
+			}
+		}
+		$lines[] = 'Per conto di ' . trim( $ward['first_name'] . ' ' . $ward['last_name'] ) . ' — C.F. ' . ( ! empty( $ward['tax_code'] ) ? $ward['tax_code'] : 'non indicato' ) . ', nato/a il ' . Age::display( $ward['birth_date'] );
+		$note  = '';
+		$years = Age::years( $ward['birth_date'], $date );
+		if ( null !== $years && $years >= 5 && $years <= 18 && array_intersect( $kinds, array( 'activity_fee', 'membership' ) ) ) {
+			$note = in_array( $method, self::TRACKED_METHODS, true )
+				? 'Pagamento tracciato (' . $method_label . '): idoneo alla detrazione delle spese sportive per ragazzi dai 5 ai 18 anni (art. 15, c. 1, lett. i-quinquies, TUIR).'
+				: 'Pagamento non tracciato (' . $method_label . '): non consente la detrazione delle spese sportive per ragazzi dai 5 ai 18 anni.';
+		}
+		return array( 'holder' => $holder, 'lines' => $lines, 'note' => $note );
+	}
+
 	/** @return array pdf (byte), filename, number (stringa N/AAAA), payer (persona o null)
 	 *  @throws \InvalidArgumentException */
 	public static function build( string $key ): array {
@@ -277,12 +327,22 @@ final class Receipts {
 		$y += 30;
 		$pdf->text( 50, $y, 'Ricevuto da', 9 );
 		$y += 15;
-		if ( $payer ) {
-			$pdf->text( 50, $y, Plugin::people()->full_name( $payer ), 12, true );
+		$ward_id = (int) $rows[0]['person_id'];
+		$ward    = $ward_id ? Plugin::people()->get( $ward_id ) : $payer;
+		$minor   = self::minor_block( $payer, $ward, $ward ? Guardians::of( (int) $ward['id'] ) : array(), $date, (string) $rows[0]['method'], Labels::methods()[ (string) $rows[0]['method'] ] ?? (string) $rows[0]['method'], $kinds );
+		$holder  = $minor['holder'];
+		if ( $holder ) {
+			$pdf->text( 50, $y, Plugin::people()->full_name( $holder ), 12, true );
 			$y += 15;
-			if ( ! empty( $payer['tax_code'] ) ) {
-				$pdf->text( 50, $y, 'Codice fiscale: ' . $payer['tax_code'], 10 );
+			if ( ! empty( $holder['tax_code'] ) ) {
+				$pdf->text( 50, $y, 'Codice fiscale: ' . $holder['tax_code'], 10 );
 				$y += 14;
+			}
+			foreach ( $minor['lines'] as $line ) {
+				foreach ( Pdf::wrap( $line, Pdf::W - 100, 10 ) as $l ) {
+					$pdf->text( 50, $y, $l, 10 );
+					$y += 14;
+				}
 			}
 		} else {
 			$pdf->text( 50, $y, '—', 12 );
@@ -322,6 +382,12 @@ final class Receipts {
 		if ( ! empty( $rows[0]['document_ref'] ) ) {
 			$y += 14;
 			$pdf->text( 56, $y, 'Riferimento: ' . $rows[0]['document_ref'], 10 );
+		}
+		if ( '' !== $minor['note'] ) {
+			foreach ( Pdf::wrap( $minor['note'], Pdf::W - 112, 10 ) as $l ) {
+				$y += 14;
+				$pdf->text( 56, $y, $l, 10 );
+			}
 		}
 		$y += 60;
 		$pdf->text( Pdf::W - 60, $y, 'Per l\'associazione', 10, false, 'R' );
