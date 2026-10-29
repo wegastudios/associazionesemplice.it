@@ -49,6 +49,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Corsi con rinnovo mensile, trimestrale o pagamento unico | ✓ | ✓ | ✓ |
 | Lezioni di un corso annullate o spostate, con avviso agli iscritti | ✓ | ✓ | ✓ |
 | Varianti del contributo dei corsi (per esempio «Famiglia», «Secondo corso»), assegnate a mano a ogni iscritto | ✓ | ✓ | ✓ |
+| Sport (elenco basato sull'elenco CONI) e disciplina dell'ente su corsi ed eventi | ✓ | ✓ | ✓ |
 | Eventi con date uniche o ricorrenti | ✓ | ✓ | ✓ |
 | Posti limitati, lista d'attesa e tolleranza sul pagamento | ✓ | ✓ | ✓ |
 | Calendario interno e pubblicazione su Google Calendar, Apple e Outlook | ✓ | ✓ | ✓ |
@@ -119,7 +120,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Assicurazioni dei volontari e polizze dell'associazione | — | ✓ | ✓ |
 | Registro delle presenze a corsi ed eventi, anche in vista a calendario | — | ✓ | ✓ |
 | Certificato medico sportivo dei soci: scadenze, attività che lo richiedono, promemoria ed esportazione | — | ✓ | ✓ |
-| Affiliazioni agli enti (CONI/RAS, UISP, CSEN, ACSI, AICS) e tesseramento dei soci, anche in blocco, con file per i portali | — | ✓ | ✓ |
+| Affiliazioni agli enti (CONI/RAS e enti di promozione sportiva), tessere dei soci anche in blocco e file CSV per i portali degli enti con sport e disciplina | — | ✓ | ✓ |
 
 ## Comunicazione
 
