@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.45
+- Le attività hanno lo sport (elenco CONI) e la disciplina dell'ente, a testo libero.
+- L'elenco degli enti per le affiliazioni comprende CONI/RAS e tutti gli enti di promozione riconosciuti dal CONI.
+
 ## 1.2.44
 - Varianti del contributo dei corsi: descrivi le varianti (nome e prezzo, ad esempio «Secondo corso», «Famiglia», «Solo il sabato») nel corso e assegnale all'iscrizione con una nota libera: la quota dell'iscritto segue la variante.
 - Chi si iscrive da solo paga la quota base.
