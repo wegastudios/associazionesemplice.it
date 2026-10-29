@@ -3656,7 +3656,8 @@ $v_sum = function () use ( $acts, $once_p, $v_c ) {
 	return null;
 };
 asem_ok( 4000 === $v_sum()['total_due'], 'varianti del contributo: senza variante vale la quota base' );
-$acts->set_enrollment_price( $v_c, $once_p, 'secondo_corso_25', 'sorella iscritta a Yoga' );
+$v_key = \AssociazioneSemplice\PriceLists::for_activity( $acts->get( $v_c ) )[0]['key'];
+$acts->set_enrollment_price( $v_c, $once_p, $v_key, 'sorella iscritta a Yoga' );
 asem_ok( 3000 === $v_sum()['total_due'], 'varianti del contributo: la segreteria assegna la variante e la quota cambia' );
 asem_ok( null !== asem_throws( function () use ( $acts, $v_c, $once_p ) { $acts->set_enrollment_price( $v_c, $once_p, 'inesistente' ); } ), 'varianti del contributo: una variante che non esiste è rifiutata' );
 $acts->set_enrollment_price( $v_c, $once_p, '' );
