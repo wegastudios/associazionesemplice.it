@@ -3639,6 +3639,12 @@ asem_ok( null !== asem_throws( function () use ( $once_c, $le_w ) { \Associazion
 \AssociazioneSemplice\LessonExceptions::restore( $once_c, $le_w[0] );
 \AssociazioneSemplice\LessonExceptions::restore( $once_c, $le_w[1] );
 asem_ok( null !== $le_has( $le_w[0] ) && null !== $le_has( $le_w[1] ) && null === $le_has( $le_new ), 'lezioni: ripristinate come prima' );
+$q_c = $acts->create( array( 'name' => 'Nuoto trimestrale', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 9000, 'billing' => 'quarterly' ) );
+asem_ok( 'quarterly' === $acts->get( $q_c )['billing'], 'corso trimestrale: il tipo di pagamento si salva' );
+$acts->enroll( $q_c, $once_p, $month );
+$q_s = array_values( array_filter( $acts->status_for_person( $once_p ), function ( $st ) use ( $q_c ) { return (int) $st['enrollment']['activity_id'] === (int) $q_c; } ) )[0]['summary'];
+asem_ok( 9000 === $q_s['total_due'] && 1 === count( $q_s['months'] ), 'corso trimestrale: nel primo mese è dovuta l\'intera quota del trimestre' );
+asem_ok( 'a trimestre' === \AssociazioneSemplice\ActivityKind::fee_unit( 'course', 'quarterly' ), 'corso trimestrale: la dicitura è «a trimestre»' );
 $mx = \AssociazioneSemplice\Attendance::matrix( $acts->get( $once_c ), $today, gmdate( 'Y-m-d', strtotime( $today . ' +20 days' ) ) );
 asem_ok( count( $mx['dates'] ) >= 2 && isset( $mx['people'][ $once_p ] ) && ! empty( $mx['expected'][ $mx['dates'][0] ][ $once_p ] ), 'presenze a calendario: date in orizzontale, iscritti in verticale' );
 asem_render( array( Admin\ProRegisters::class, 'render_attendance' ), 'A calendario (date in orizzontale)', array( 'activity' => $once_c, 'ym' => substr( $today, 0, 7 ), 'view' => 'matrix' ) );

@@ -265,7 +265,7 @@ class ActivityService {
 			'lesson_weekday'       => $weekly ? $weekly[0]['day'] : 0,
 			'slots'                => $slots,
 			'lesson_slots'         => $slots ? wp_json_encode( $slots ) : null,
-			'billing'              => isset( $in['billing'] ) && 'once' === $in['billing'] ? 'once' : 'monthly',
+			'billing'              => isset( $in['billing'] ) && in_array( $in['billing'], array( 'once', 'quarterly' ), true ) ? (string) $in['billing'] : 'monthly',
 			'lesson_start'        => $weekly ? $weekly[0]['start'] : null,
 			'lesson_end'          => $weekly ? $weekly[0]['end'] : null,
 			'location'            => isset( $in['location'] ) && '' !== trim( (string) $in['location'] ) ? mb_substr( trim( (string) $in['location'] ), 0, 190 ) : null,
@@ -1133,7 +1133,8 @@ class ActivityService {
 			SocialYear::from_label( $activity['social_year'], Settings::start_month() ),
 			$paid_by_month,
 			self::slot_days( $activity ),
-			Db::today()
+			Db::today(),
+			'quarterly' === ( $activity['billing'] ?? 'monthly' ) ? 3 : 1
 		);
 	}
 

@@ -48,8 +48,8 @@ final class ActivitiesPage {
 			return $a && ! empty( $a[ $k ] ) ? esc_attr( (string) $a[ $k ] ) : '';
 		};
 		$tr = '<tr class="' . esc_attr( $row_class ) . '">';
-		return $tr . '<th>Come si paga</th><td><select name="billing" class="asem-billing">' . Ui::options( array( 'once' => 'Una tantum', 'monthly' => 'Rinnovo mensile' ), $billing ) . '</select>'
-			. '<p class="description"><strong>Una tantum:</strong> la quota indicata è il totale (es. 10 incontri a 120 €), dovuta subito all\'iscrizione. <strong>Rinnovo mensile:</strong> il corso si rinnova da solo ogni mese finché l\'iscritto non lo cancella, e ogni mensilità è dovuta <strong>dalla prima lezione del mese</strong>.</p></td></tr>'
+		return $tr . '<th>Come si paga</th><td><select name="billing" class="asem-billing">' . Ui::options( array( 'once' => 'Una tantum (anche annuale)', 'monthly' => 'Rinnovo mensile', 'quarterly' => 'Rinnovo trimestrale' ), $billing ) . '</select>'
+			. '<p class="description"><strong>Una tantum:</strong> la quota indicata è il totale (es. 10 incontri a 120 €), dovuta subito all\'iscrizione. <strong>Rinnovo trimestrale:</strong> la quota indicata è quella di un trimestre, dovuta all\'inizio di ogni periodo di tre mesi dal primo mese dell\'iscrizione. <strong>Rinnovo mensile:</strong> il corso si rinnova da solo ogni mese finché l\'iscritto non lo cancella, e ogni mensilità è dovuta <strong>dalla prima lezione del mese</strong>.</p></td></tr>'
 			. ( $with_when ? $tr . '<th>Quando</th><td>' . self::when_builder( $rows ) . '</td></tr>' : '' )
 			. $tr . '<th>Luogo</th><td><input type="text" name="location" class="regular-text" value="' . $val( 'location' ) . '"></td></tr>'
 			. $tr . '<th>Dal / al</th><td><input type="date" name="starts_on" value="' . $val( 'starts_on' ) . '"> <input type="date" name="ends_on" value="' . $val( 'ends_on' ) . '"> <span class="description">facoltative: se il corso ha una fine, dopo quella data le mensilità non sono più dovute</span></td></tr>';
@@ -487,7 +487,7 @@ final class ActivitiesPage {
 		} ) );
 		echo '<div class="asem-card"><h2>Iscrivi un socio o un ospite</h2>' . ( 'once' === $activity['billing']
 			? '<p class="description">Corso a <strong>pagamento unico</strong>: la quota è dovuta per intero all\'iscrizione (si può versare anche a rate).</p>'
-			: '<p class="description">L\'iscrizione si <strong>rinnova da sola ogni mese</strong> finché non viene cancellata' . ( $activity['ends_on'] ? ' (o fino alla fine del corso)' : '' ) . '. Ogni mensilità si paga alla prima lezione del mese' . ( (int) $activity['lesson_weekday'] ? '' : ' (indica il giorno della lezione nei dati del corso per saperlo con precisione)' ) . '.</p>' );
+			: ( 'quarterly' === $activity['billing'] ? '<p class="description">L\'iscrizione si <strong>rinnova da sola ogni trimestre</strong> (tre mesi dal primo mese dovuto) finché non viene cancellata.</p>' : '<p class="description">L\'iscrizione si <strong>rinnova da sola ogni mese</strong> finché non viene cancellata' . ( $activity['ends_on'] ? ' (o fino alla fine del corso)' : '' ) . '. Ogni mensilità si paga alla prima lezione del mese' . ( (int) $activity['lesson_weekday'] ? '' : ' (indica il giorno della lezione nei dati del corso per saperlo con precisione)' ) . '.</p>' ) );
 		Ui::form_open( 'asem_enroll', $back );
 		echo wp_kses( Ui::hidden( 'activity_id', $id ), Html::allowed() );
 		echo wp_kses( '<p>' . Ui::person_select( 'person_id', $candidates, null, '— scegli —', 'asem-enroll-person' ) . '</p>', Html::allowed() );
