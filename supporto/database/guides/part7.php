@@ -17,6 +17,7 @@ Il riquadro elenca le cose che aspettano te:
 - **richieste di accesso** da controllare (i soci che hanno chiesto di entrare);
 - **soci da rinnovare**, con tessera scaduta o in scadenza;
 - **ospiti da invitare** a iscriversi;
+- **schede da completare**, cioè soci a cui mancano dei dati (dalla versione 1.2.42 del plugin gratuito: l'avviso compare anche nella Bacheca di Associazione Semplice);
 - **email non partite** (solo per l'amministratore).
 
 Ogni voce ha un collegamento che porta alla pagina giusta. In fondo trovi il collegamento alla **Bacheca di Associazione Semplice**, con il quadro completo.

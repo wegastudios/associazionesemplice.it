@@ -270,6 +270,7 @@ Il responsabile del trattamento è il presidente; in mancanza, il socio con il r
 
 - Nella **scheda persona** registri quando e come è stato dato il consenso: cartaceo, sul sito, a voce, importato.
 - Nella Rubrica usi il filtro **Senza consenso privacy** per trovare chi manca.
+- Dalla versione 1.2.42 la scheda del socio ha anche la **liberatoria per foto e video**, che si chiede pure nel modulo di domanda online. Per i **minori** risponde il genitore o tutore che opera.
 - Se indichi la pagina dell'informativa, chi attiva il proprio accesso deve accettarla e il consenso si registra da solo.
 
 ## Regolamento

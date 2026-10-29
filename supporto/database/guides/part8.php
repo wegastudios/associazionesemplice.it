@@ -18,7 +18,7 @@ Chi vuole iscriversi compila un modulo sul tuo sito e la segreteria lo **approva
 
 ## Cosa chiede il modulo
 
-Nome, cognome, data di nascita, **luogo di nascita e residenza** (dalla versione 1.2.41), codice fiscale (con controllo di forma e di carattere finale), email, cellulare, tipo di socio (ordinario, e «socio e volontario» se lo hai acceso) e l'accettazione del **regolamento** e dell'**informativa privacy**.
+Nome, cognome, data di nascita, **luogo di nascita e residenza** (dalla versione 1.2.41), codice fiscale (con controllo di forma e di carattere finale), email, cellulare, tipo di socio (ordinario, e «socio e volontario» se lo hai acceso) la **liberatoria per foto e video** (dalla versione 1.2.42; per i minori risponde il tutore che opera) e l'accettazione del **regolamento** e dell'**informativa privacy**.
 
 Se la data di nascita indica un **minorenne**, il modulo chiede anche i dati del genitore o tutore (vedi [Minori con genitori o tutori](guida:minori-con-genitori-o-tutori)).
 

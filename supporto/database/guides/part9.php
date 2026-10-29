@@ -473,6 +473,8 @@ Il **libro soci** è il registro ufficiale delle persone iscritte, in **Registri
 
 Lo scarichi in **PDF** e in **CSV**.
 
+Dalla versione 1.2.42 nella scheda del socio trovi anche il **tipo di tesseramento** (atleta, istruttore, dirigente…), che compare nell'**esportazione dei soci**, e la **liberatoria per foto e video**. In **Bacheca** e nel riquadro **Da lavorare** l'avviso **«Schede da completare»** ti ricorda i soci a cui mancano dei dati.
+
 ## Tenerlo completo
 
 1. Compila questi dati nella **scheda del socio**.

@@ -33,6 +33,9 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Domanda di adesione online per chi non è ancora socio, con approvazione, tessera e link per la password | ✓ | ✓ | ✓ |
 | Minori con uno o due genitori o tutori: area riservata del genitore con tessera, prenotazioni, pagamenti e avvisi del minore, regolamento e privacy accettati per suo conto | ✓ | ✓ | ✓ |
 | Convenzioni per i soci: sconti e vantaggi dei partner nell'area riservata, elenco pubblico e avviso ai soci | ✓ | ✓ | ✓ |
+| Liberatoria per foto e video nella scheda e nel modulo di domanda online, con il tutore per i minori | ✓ | ✓ | ✓ |
+| Tipo di tesseramento (atleta, istruttore, dirigente…) nella scheda e nell'esportazione soci | ✓ | ✓ | ✓ |
+| Avviso «Schede da completare» in Bacheca e in «Da lavorare» | ✓ | ✓ | ✓ |
 | Ruoli: segreteria, presidente, tesoriere, volontari, staff | ✓ | ✓ | ✓ |
 | Regolamento da accettare con registrazione della versione | ✓ | ✓ | ✓ |
 | Blocchi, shortcode e widget Elementor | ✓ | ✓ | ✓ |
@@ -84,6 +87,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Disponibilità reale dei fondi, liberazione ed estinzione | — | ✓ | ✓ |
 | Tabella dei fondi da rimborsare per anno | — | ✓ | ✓ |
 | Ricevute in PDF e attestazione annuale | — | ✓ | ✓ |
+| Ricevute dei minori intestate al genitore, con codici fiscali e indicazione di pagamento tracciato per la detrazione delle spese sportive | — | ✓ | ✓ |
 | Report di gestione (conti e liquidità, anno sociale) | — | ✓ | ✓ |
 
 ## Parte fiscale

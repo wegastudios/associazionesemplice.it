@@ -290,6 +290,12 @@ Ogni incasso può avere una **ricevuta in PDF**, numerata e con il nome dell'ass
 
 Un incasso annullato non ha ricevuta.
 
+## Ricevute dei minori
+
+Dal Pro 1.1.35 (che richiede il gratuito 1.2.42) la ricevuta di un minore è **intestata al genitore o tutore che opera**, o a quello che ha pagato. Riporta i **codici fiscali** di tutti i genitori e del ragazzo e, per i **5-18 anni**, l'indicazione di **pagamento tracciato o non tracciato**: serve per la detrazione delle spese sportive.
+
+Sono **tracciabili** bonifico, POS, assegno, Stripe, PayPal, SumUp e WooCommerce. **Non** sono tracciabili i **contanti** e il metodo «altro».
+
 ## Attestazione annuale
 
 Dalla scheda persona (o dall'area soci) si può ottenere l'**attestazione annuale** dei versamenti: quote, contributi ed erogazioni liberali, con i totali.
