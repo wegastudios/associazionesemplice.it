@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.46
+- Nell'elenco degli sport sono stati aggiunti Scacchi, Tiro dinamico sportivo e Turismo equestre.
+
 ## 1.2.45
 - Le attività hanno lo sport (elenco CONI) e la disciplina dell'ente, a testo libero.
 - L'elenco degli enti per le affiliazioni comprende CONI/RAS e tutti gli enti di promozione riconosciuti dal CONI.
