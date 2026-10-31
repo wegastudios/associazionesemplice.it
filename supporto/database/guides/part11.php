@@ -12,19 +12,26 @@ Per molte associazioni l'esercizio non coincide con l'anno solare. Dal Pro 1.1.3
 
 ## Dove si imposta
 
-1. Vai in **Impostazioni → Dati e fiscalità**.
-2. Nella riga **«L'anno fiscale inizia a»**, accanto a «L'anno sociale inizia a», scegli il mese. Di partenza è **gennaio**, cioè come prima.
+1. Vai in **Impostazioni → Dati e fiscalità** (scheda dell'ente).
+2. Nel menu **«L'anno fiscale inizia a»**, accanto a «L'anno sociale inizia a», scegli il mese. Di partenza è **gennaio**, cioè l'anno solare, come prima.
 3. Salva.
 
 Lo trovi anche nella [configurazione guidata](guida:completare-la-configurazione-guidata), dentro **«Più dettagli: codice fiscale, anno sociale, sede»**.
 
+Un anno si chiama con **l'anno in cui inizia**: con inizio a luglio, il 2025 va dal 1° luglio 2025 al 30 giugno 2026.
+
 ## Cosa segue l'anno fiscale
 
-Seguono il mese scelto la **prima nota**, gli **anni**, i **report**, il **preventivo** e il **rendiconto**.
+Seguono il mese scelto l'apertura e la chiusura degli anni, la **prima nota**, i **report**, il **rendiconto**, il **preventivo**, i **fondi per anno** e le **esportazioni e importazioni**.
 
 ## Cosa non cambia
 
-Le **tessere** restano per **anno solare** e scadono sempre il 31 dicembre. Restano così anche l'**anno sociale** e il **5 per mille**.
+Le **tessere** restano per **anno solare** e scadono il 31 dicembre. Restano così anche l'**anno sociale** e il **5 per mille** (anno d'imposta solare).
+
+## Da sapere
+
+- Funziona solo con il **Pro Fiscale**: senza la licenza gli anni tornano solari.
+- **Cambiando il mese gli anni si ricreano** per contenere i movimenti: conviene farlo **a inizio esercizio**.
 MD,
     ],
     [
@@ -38,31 +45,35 @@ Quando registri una **spesa con scontrino o fattura**, il plugin la attribuisce 
 ## Registrare una spesa
 
 1. Vai in **Cassa → Nuova spesa** e allega lo scontrino o la fattura.
-2. Nella riga **«Fondo da coprire»** lascia **Automatico**, oppure scegli **Nessun fondo** o un fondo preciso (compare come «da documentare …»).
-3. Salva. Il messaggio dopo il salvataggio dice **a quale fondo e per quanto** la spesa è stata attribuita.
+2. Nella riga **«Fondo da coprire»** lascia **Automatico** (è la scelta di partenza), oppure scegli un fondo preciso o **«Nessun fondo»**. Con «Nessun fondo» la spesa **non viene mai attribuita**, nemmeno quando arrivano i documenti.
+3. Salva. Il messaggio dice **a quale fondo e per quanto** la spesa è stata attribuita, oppure che non lo è ancora: succede da sola quando c'è un documento allegato e un fondo con documentazione da coprire.
 
 ## Come sceglie il fondo
 
-- Il fondo giusto è quello che ha accantonato e non ha ancora **documentazione a supporto**.
-- Se chi registra è un **volontario**, valgono solo i **suoi** fondi. Se è un **consigliere** o un altro ruolo, vale **qualunque fondo** con documentazione scoperta, con la precedenza a quello dell'attività.
+La regola vale **solo per le spese documentate**, cioè con scontrino o fattura allegati. Per i rimborsi il documento è il file della richiesta.
+
+- Se il beneficiario è un **volontario**, valgono solo i **suoi** fondi.
+- Se è un **consigliere** o un altro ruolo (o manca il beneficiario), vale **qualunque fondo** con documentazione scoperta: prima quelli dell'attività della spesa, poi i più vecchi.
 - Valgono anche i fondi **già liquidati**.
-- La spesa si può **dividere su due fondi**.
+- La spesa si può **dividere su più fondi** se serve.
 
 ## Controllare e correggere
 
-In **Cassa → Conti e fondi**, in basso, trovi:
+In **Contabilità → Bilancio provvisorio** (in breve in **Bacheca**, e per intero anche in **Cassa → Conti e fondi**) trovi:
 
-- **Spese documentate non rimborsate**: ogni riga ha un menu e il pulsante **Attribuisci**;
-- **Fondi accantonati non documentati**;
-- **Attribuzioni recenti**, con il pulsante **Annulla**.
+- **Spese documentate non rimborsate**: ogni riga ha il menu **«— scegli il fondo —»** e il pulsante **Attribuisci**, per attribuire a mano;
+- **Fondi accantonati non documentati**, con le colonne Fondo, Stato, Accantonato, Documentato e Da documentare;
+- **Attribuzioni recenti**, con il pulsante **Annulla** (chiede conferma).
 
-I primi due elenchi hanno il link **Esporta CSV**. In **Bacheca** compaiono le versioni brevi. Ogni attribuzione è tracciata nel registro azioni.
+I primi due elenchi hanno il link **Esporta CSV**. Un'attribuzione annullata resta nell'elenco e la spesa **non viene riattribuita da sola**. Ogni correzione a mano è tracciata nel registro azioni.
+
+Negli elenchi si guarda **indietro di 24 mesi**: si cambia con **«Quanti mesi guardare indietro negli elenchi dei fondi»** in Limiti e soglie.
 
 Per i conti e i fondi in generale vedi [Conti, fondi e giroconti](guida:conti-fondi-e-giroconti).
 
 ## Il prospetto dei rimborsi per persona
 
-In **Contabilità → Bilancio provvisorio**, la sezione **«Rimborsi e spese documentate per persona»** mette a confronto quanto è stato rimborsato con le spese documentate di ciascuno. Ha i pulsanti **Esporta CSV** e **Scarica PDF per il rendiconto**.
+Nella stessa pagina, la sezione **«Rimborsi e spese documentate per persona»** (con la scelta dell'**anno fiscale**) ha le colonne **Persona**, **Rimborsato dai fondi**, **Spese documentate attribuite**, **Differenza** (rimborsato meno documentato) e **Situazione**. I pulsanti sono **Esporta CSV** e **Scarica PDF per il rendiconto**. Se i conti non quadrano, in Bacheca compare un avviso che non blocca nulla (si regola con **«Avviso in Bacheca se rimborsi e spese non quadrano»**).
 MD,
     ],
     [
@@ -75,28 +86,37 @@ Con il Pro Fiscale hai sempre sott'occhio come sta andando l'anno fiscale.
 
 ## Il bilancio provvisorio
 
-Vai in **Contabilità → Bilancio provvisorio**. La pagina mostra il bilancio dell'anno fiscale **aggiornato all'ultimo mese concluso**, l'andamento del **mese in corso** e la **stima di fine anno**. Lo stesso riquadro compare in **Bacheca**, **Contabilità**, **Report** e **Preventivo**.
+Vai in **Contabilità → Bilancio provvisorio**. Il titolo è **«Bilancio dell'anno fiscale …»**. La pagina mostra:
+
+- il bilancio **aggiornato all'ultimo mese concluso**, con il preventivo in proporzione ai mesi conclusi;
+- l'andamento del **mese in corso**;
+- la **stima di fine anno**;
+- la tabella **«Voce per voce, contro il preventivo»**, con Previsto per i mesi conclusi, Consuntivo e Differenza a favore.
+
+Lo stesso riquadro compare in **Bacheca**, **Contabilità**, **Report** e **Preventivo**.
 
 ## Gli avvisi di bilancio
 
-Compaiono **solo quando c'è qualcosa che non va**: se tutto è a posto non c'è nessun messaggio verde.
+Compaiono **solo quando c'è qualcosa che non va**: se tutto è a posto non c'è nessun messaggio verde. In **Bacheca** la riga si può chiudere; il riquadro compare anche in **Cassa**, **Contabilità**, **Report**, **Preventivo** e **Bilancio provvisorio**.
 
-- **«Spese non coperte»**: le spese superano gli incassi oltre una soglia, di partenza **10%**.
-- **«Utile troppo alto»**: l'utile supera una soglia, di partenza **20%**.
+- **«Spese non coperte»**: la stima di fine anno delle uscite supera le entrate di più di una soglia, di partenza **10%**.
+- **«Utile eccessivo»**: le entrate superano le uscite di più del **20%** delle uscite.
 
-Compaiono dopo almeno **3 mesi** dall'inizio dell'anno fiscale e si ricalcolano a ogni apertura. In **Bacheca** la riga si può chiudere. Le soglie si cambiano in **Impostazioni → Limiti e soglie**, gruppo **«Bilancio, avvisi e fondi»**.
+Non scattano nei **primi 3 mesi** dell'anno fiscale.
 
 ## Lo storico mensile
 
-Sempre in **Bilancio provvisorio**, la tabella **«Storico mensile»** ti fa scegliere l'anno e mostra i mesi uno per uno. A fine mese il plugin **salva da solo un'istantanea**. Puoi usare:
+Sempre in **Bilancio provvisorio**, la sezione **«Storico mensile»** ti fa scegliere l'**anno fiscale** e mostra i mesi uno per uno, con **Esporta CSV** (e PDF). A ogni fine mese un lavoro giornaliero **salva una foto** del consuntivo contro il preventivo, che poi **non cambia**. Se ne mancano, il pulsante **«Salva ora le foto dei mesi conclusi mancanti»** le recupera. Non parte nessuna email.
 
-- **Esporta CSV** per l'anno scelto;
-- **Esporta tutto** per tutti gli anni;
-- **«Salva ora le foto dei mesi conclusi mancanti»**, se vuoi salvare subito quelle che mancano.
+## Le impostazioni
 
-## Altre impostazioni
+In **Impostazioni → Limiti e soglie**, gruppo **«Bilancio, avvisi e fondi»**:
 
-Nel gruppo **«Bilancio, avvisi e fondi»** di **Limiti e soglie** trovi anche i mesi minimi prima degli avvisi, l'istantanea mensile e i mesi di guardia indietro dell'attribuzione automatica ([vedi Spese documentate e fondi](guida:spese-documentate-e-fondi-dei-rimborsi)).
+- **«Avvisi sulla tendenza del bilancio»**: sì o no;
+- **«Spese non coperte: soglia»** e **«Utile eccessivo: soglia»**, in percentuale;
+- **«Mesi trascorsi prima di fare la stima»**;
+- **«Istantanea mensile del bilancio»**;
+- **«Attribuzione automatica delle spese ai fondi»** (vedi [Spese documentate e fondi](guida:spese-documentate-e-fondi-dei-rimborsi)).
 MD,
     ],
     [
@@ -105,33 +125,43 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Pro Fiscale (da Pro 1.1.38, con il plugin gratuito 1.2.47: aggiorna insieme gratuito e Pro)
 
-Prima della fine dell'anno fiscale il plugin ti avvisa se ci sono **discrepanze**, per esempio rimborsi senza spese documentate a copertura, e può **bloccare la chiusura** finché non le sistemi.
+Prima della fine dell'anno fiscale il plugin ti avvisa se ci sono **discrepanze**, per esempio rimborsi senza spese documentate a copertura, e può **fermare la chiusura** finché non le sistemi. L'avviso compare **solo se ci sono discrepanze**, senza messaggi verdi.
 
-## Gli avvisi di fine anno
+## Le due fasi dell'avviso
 
-L'avviso ha **due fasi**:
+1. **Preavviso**: parte **3 mesi prima** della fase fissa (di partenza) e si può **chiudere**. La chiusura vale per la settimana corrente: ricompare il lunedì, ed è per utente.
+2. **Avviso fisso**: **non si può chiudere**. Di partenza parte dal **mese prima dell'ultimo mese** dell'anno fiscale: con l'anno da gennaio a dicembre il 1° novembre, con l'anno da settembre il 1° luglio.
 
-1. **Preavviso**: parte **3 mesi prima** dell'avviso fisso (di partenza) e si può **chiudere**; la chiusura vale fino al lunedì.
-2. **Avviso fisso**: **non si può chiudere**. Compare dal mese prima dell'ultimo mese dell'anno fiscale (con l'anno da gennaio a dicembre: dal 1° novembre).
+Lo vedono amministratori, segreteria, tesorieri, presidente e vicepresidente, in **Bacheca** e nelle pagine **Cassa**, **Contabilità**, **Report**, **Preventivo** e **Bilancio provvisorio**.
 
-Compare in **Bacheca**, **Cassa**, **Contabilità**, **Report** e **Preventivo**, **solo se ci sono discrepanze**, con i link **«verifica»**. Lo vedono amministratori, presidente, vicepresidente, la segreteria con il permesso contabile e il tesoriere.
+L'avviso elenca, con il link per correggere:
 
-Puoi attivare anche un **promemoria per email**, **spento** di partenza.
+- fondi non documentati;
+- spese documentate non rimborsate;
+- rimborsi senza documentazione;
+- spese documentate oltre i rimborsi;
+- spese con beneficiario non attribuite;
+- sbilancio oltre le soglie;
+- voci fuori preventivo;
+- movimenti senza categoria vera.
 
 ## Chiudere l'anno
 
 1. Vai in **Contabilità → Anni solari** e premi **Chiudi l'anno** (vedi [Aprire e chiudere gli anni solari](guida:aprire-e-chiudere-gli-anni-solari)).
-2. Di partenza la chiusura **si ferma** se chi ha avuto rimborsi non ha spese documentate a copertura.
-3. Se hai scelto l'opzione **«chiedi conferma»**, compare una casella da spuntare per procedere.
+2. Di partenza la chiusura **si ferma** e mostra l'elenco se ci sono rimborsi non documentati.
+3. Con l'opzione **«chiedi conferma»** compare l'elenco con una casella da spuntare per procedere.
 
-## Cosa si può configurare
+Dopo la chiusura le regolarizzazioni si fanno da **prima nota**.
+
+## Le impostazioni
 
 In **Impostazioni → Limiti e soglie**, gruppo **«Bilancio, avvisi e fondi»**:
 
-- il **comportamento alla chiusura**: spento, solo avviso, chiede conferma, oppure blocca;
-- la **tolleranza** sulla differenza, di partenza **1,00 €**;
-- i **mesi di avviso fisso** e i **mesi di preavviso**;
-- il **promemoria email**.
+- **«Mesi di preavviso chiudibile prima dell'avviso fisso»**: di partenza 3, **0** = nessun preavviso, massimo 11;
+- **«Mesi di avviso fisso delle verifiche di fine anno fiscale»**: di partenza 1, da 1 a 3;
+- **«Promemoria email delle verifiche di fine anno fiscale»**: **spento** di partenza; se lo accendi parte una email all'inizio del preavviso e una all'inizio della fase fissa, solo se ci sono discrepanze;
+- **«Chiusura dell'anno con rimborsi non documentati»**: **3** = si ferma e mostra l'elenco (di partenza), **2** = chiede conferma con l'elenco, **1** = chiude e resta l'avviso, **0** = nessun controllo;
+- **«Tolleranza nella quadratura rimborsi e spese»**: di partenza 100 centesimi, cioè **1,00 €**.
 MD,
     ],
 ];
