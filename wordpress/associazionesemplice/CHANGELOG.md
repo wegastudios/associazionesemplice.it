@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.47
+- Il mese di inizio dell'anno fiscale si può scegliere separato da quello dell'anno sociale (Pro Fiscale).
+
 ## 1.2.46
 - Nell'elenco degli sport sono stati aggiunti Scacchi, Tiro dinamico sportivo e Turismo equestre.
 
