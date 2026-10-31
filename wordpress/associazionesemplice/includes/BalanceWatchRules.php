@@ -172,6 +172,14 @@ final class BalanceWatchRules {
 	}
 
 	/** Le persone con una differenza oltre la tolleranza, solo quelle da regolarizzare (rimborsato senza documenti) o anche quelle da rimborsare. */
+	public static function year_end_window( string $today, int $start_month, int $lead ): array {
+		$year = FiscalYears::year_for( $today, $start_month );
+		$to   = FiscalYears::range_for( $year, $start_month )[1];
+		$from = ( new \DateTimeImmutable( substr( $to, 0, 7 ) . '-01' ) )->modify( '-' . max( 1, min( 3, $lead ) ) . ' months' )->format( 'Y-m-d' );
+		return array( 'year' => $year, 'start' => $from, 'end' => $to, 'active' => $today >= $from && $today <= $to );
+	}
+
+	/** Le persone con una differenza oltre la tolleranza. */
 	public static function gaps( array $rows, bool $only_uncovered = false ): array {
 		return array_values(
 			array_filter(

@@ -7713,6 +7713,25 @@ asem_ok( array() === \AssociazioneSemplice\FundReconciliation::blockers( array()
 Settings::update( array( 'limits' => array() ) );
 asem_ok( false !== strpos( asem_render( array( Admin\WatchPage::class, 'render' ), 'Rimborsi e spese documentate per persona' ), 'Francesco Scoperto' ), 'prospetto per persona nella pagina del bilancio' );
 
+// Verifiche di fine anno fiscale
+$wt_ye = \AssociazioneSemplice\YearEndCheck::window( $wt_cur_cal . '-11-15' );
+asem_ok( $wt_ye['active'] && $wt_cur_cal . '-11-01' === $wt_ye['start'] && ! \AssociazioneSemplice\YearEndCheck::window( $wt_cur_cal . '-10-15' )['active'], 'fine anno: l\'avviso fisso parte il 1° novembre con anno da gennaio' );
+$wt_items = \AssociazioneSemplice\YearEndCheck::discrepancies( $wt_cur_cal );
+asem_ok( count( $wt_items ) >= 1 && isset( $wt_items[0]['url'] ), 'fine anno: elenco delle discrepanze con il link a ciascuna' );
+asem_ok( 0 === \AssociazioneSemplice\YearEndCheck::mail_job( $wt_cur_cal . '-11-15' ), 'fine anno: promemoria email spento di partenza' );
+$wt_mail = 0;
+$wt_mail_hook = function () use ( &$wt_mail ) {
+	$wt_mail++;
+	return true;
+};
+add_filter( 'pre_wp_mail', $wt_mail_hook, 10 );
+Settings::update( array( 'limits' => array( 'watch_yearend_email' => 1 ) ) );
+asem_ok( 0 === \AssociazioneSemplice\YearEndCheck::mail_job( $wt_cur_cal . '-10-15' ), 'fine anno: fuori dalla finestra nessuna email' );
+asem_ok( \AssociazioneSemplice\YearEndCheck::mail_job( $wt_cur_cal . '-11-15' ) >= 1 && 0 === \AssociazioneSemplice\YearEndCheck::mail_job( $wt_cur_cal . '-11-16' ) && $wt_mail >= 1, 'fine anno: una sola email per anno fiscale ai ruoli amministrativi' );
+delete_option( \AssociazioneSemplice\YearEndCheck::MAIL_OPTION );
+remove_filter( 'pre_wp_mail', $wt_mail_hook, 10 );
+Settings::update( array( 'limits' => array() ) );
+
 // Bilancio provvisorio, avvisi e istantanee mensili.
 $wt_s = \AssociazioneSemplice\BalanceWatch::status();
 asem_ok( $wt_s['year'] === \AssociazioneSemplice\FiscalYears::current() && $wt_s['from'] === $wt_cur_cal . '-01-01' && $wt_s['to'] === $wt_cur_cal . '-12-31' && isset( $wt_s['month']['income'] ), 'bilancio provvisorio: anno fiscale in corso e mese in corso' );

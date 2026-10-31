@@ -140,4 +140,20 @@ final class BalanceWatchRulesTest extends TestCase {
 		$this->assertSame( R::RECON_UNCOVERED, R::reconcile( array( 1 => 101 ), array(), 100 )[0]['status'] );
 		$this->assertSame( R::RECON_OK, R::reconcile( array( 1 => 100 ), array(), 100 )[0]['status'] );
 	}
+
+	public function test_year_end_window_follows_the_fiscal_year(): void {
+		$w = R::year_end_window( '2026-11-01', 1, 1 );
+		$this->assertTrue( $w['active'] );
+		$this->assertSame( '2026-11-01', $w['start'] );
+		$this->assertSame( '2026-12-31', $w['end'] );
+		$this->assertFalse( R::year_end_window( '2026-10-31', 1, 1 )['active'] );
+		$this->assertSame( '2026-10-01', R::year_end_window( '2026-10-15', 1, 2 )['start'] );
+		$s = R::year_end_window( '2026-07-01', 9, 1 ); // l'anno inizia a settembre: finisce il 31 agosto
+		$this->assertTrue( $s['active'] );
+		$this->assertSame( '2026-08-31', $s['end'] );
+		$this->assertSame( 2025, $s['year'] );
+		$this->assertFalse( R::year_end_window( '2026-06-30', 9, 1 )['active'] );
+		$this->assertFalse( R::year_end_window( '2026-09-01', 9, 1 )['active'], 'un nuovo anno è appena iniziato' );
+		$this->assertSame( '2026-10-01', R::year_end_window( '2026-12-01', 1, 9 )['start'], 'anticipo limitato a 3 mesi' );
+	}
 }

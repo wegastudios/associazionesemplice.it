@@ -55,6 +55,7 @@ final class WatchPage {
 		if ( ! Edition::has( 'watch' ) || ! current_user_can( Plugin::CAP_OPS ) ) {
 			return;
 		}
+		\AssociazioneSemplice\YearEndCheck::show();
 		$s = BalanceWatch::status();
 		foreach ( $s['alerts'] as $a ) {
 			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html( BalanceWatchRules::title( $a['kind'] ) ) . '.</strong> ' . esc_html( BalanceWatchRules::message( $a ) ) . '</p></div>';
@@ -99,6 +100,7 @@ final class WatchPage {
 
 	public static function render(): void {
 		Ui::header( 'Bilancio provvisorio' );
+		\AssociazioneSemplice\YearEndCheck::show();
 		$s = BalanceWatch::status();
 		foreach ( $s['alerts'] as $a ) {
 			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html( BalanceWatchRules::title( $a['kind'] ) ) . '.</strong> ' . esc_html( BalanceWatchRules::message( $a ) ) . '</p></div>';

@@ -27,6 +27,7 @@ final class ProWatch {
 		add_filter( 'asem_admin_post_classes', array( __CLASS__, 'admin_post_classes' ) );
 		add_action( 'asem_dashboard_alerts', array( Admin\WatchPage::class, 'alerts' ), 20 );
 		add_action( 'asem_dashboard_cards', array( Admin\WatchPage::class, 'dashboard_cards' ) );
+		add_action( 'asem_dashboard_alerts', array( YearEndCheck::class, 'show' ), 15 );
 		add_filter( 'asem_expense_saved_note', array( ExpenseFunds::class, 'saved_note' ), 10, 2 );
 		FundReconciliation::register();
 	}
@@ -155,6 +156,18 @@ final class ProWatch {
 			'Differenza massima, in centesimi (100 = 1,00 €), tra rimborsato e documentato per cui una persona risulta comunque in pari: assorbe gli arrotondamenti.',
 			'Più alta: differenze reali piccole passano inosservate e non fermano la chiusura.',
 			'Più bassa (0): ogni centesimo di differenza compare nel prospetto e può fermare la chiusura dell\'anno.'
+		);
+		$add(
+			'watch_yearend_lead_months', 'Mesi di anticipo delle verifiche di fine anno fiscale', 'mesi', 1, 1, 3,
+			'Dal primo giorno del mese indicato prima dell\'ultimo mese dell\'anno fiscale, ai ruoli amministrativi compare in Bacheca e nelle pagine di Cassa, Contabilità, Report e Preventivo un avviso fisso (non chiudibile) con le discrepanze da verificare, e solo se ce ne sono. Con 1 e anno da gennaio a dicembre parte il 1° novembre; con anno da settembre, il 1° luglio.',
+			'Più alto: più tempo per correggere, ma l\'avviso resta a lungo e in anticipo molte discrepanze sono ancora normali (spese da documentare, rimborsi in corso).',
+			'Più basso: l\'avviso arriva a ridosso della chiusura, con meno tempo per rimediare e il rischio di arrivare a fine anno con le correzioni da fare.'
+		);
+		$add(
+			'watch_yearend_email', 'Promemoria email delle verifiche di fine anno fiscale', 'flag', 0, 0, 1,
+			'Quando parte l\'avviso fisso, una sola email per anno fiscale ricorda ad amministratori, segreteria, tesorieri, presidente e vicepresidente le discrepanze da verificare (se ce ne sono).',
+			'Acceso: una email in più a più persone; se le discrepanze si risolvono subito l\'email può risultare superflua.',
+			'Spento: ci si affida solo all\'avviso nel gestionale, che si vede solo entrando.'
 		);
 		$add(
 			'watch_recon_alerts', 'Avviso in Bacheca se rimborsi e spese non quadrano', 'flag', 1, 0, 1,

@@ -215,7 +215,11 @@ final class BalanceWatch {
 
 	/** Lavoro periodico: salva le istantanee dei mesi conclusi. */
 	public static function snapshot_job(): void {
-		if ( ! self::enabled() || ! Limits::get( 'watch_snapshots' ) ) {
+		if ( ! self::enabled() ) {
+			return;
+		}
+		YearEndCheck::mail_job(); // promemoria di fine anno (facoltativo)
+		if ( ! Limits::get( 'watch_snapshots' ) ) {
 			return;
 		}
 		self::take_missing();

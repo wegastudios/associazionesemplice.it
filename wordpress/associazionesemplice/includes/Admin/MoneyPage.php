@@ -18,6 +18,9 @@ final class MoneyPage {
 
 	public static function render(): void {
 		Ui::header( 'Cassa' );
+		if ( \AssociazioneSemplice\Edition::has( 'watch' ) ) {
+			\AssociazioneSemplice\YearEndCheck::show(); // verifiche di fine anno fiscale (Pro Fiscale)
+		}
 		$year = Settings::social_year();
 		$r    = Plugin::reports()->social_year( $year );
 		echo '<p><a class="button button-primary" href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Nuovo incasso</a> <a class="button" href="' . esc_url( Ui::url( 'asem-bookdesk' ) ) . '">Prenota</a> '
