@@ -18,6 +18,7 @@ final class ProBoot {
 		'funds'      => 'Admin/AccountsPage.php',  // conti multipli, giroconti, fondi e cassa per più persone
 		'reports'    => 'Admin/ReportsPage.php',   // report di gestione (saldi, attività)
 		'fiscal'     => 'Statement.php',           // contabilità e rendiconto per il commercialista (gli anni solari sono nel gratuito)
+		'watch'      => 'BalanceWatch.php',        // Pro Fiscale: controllo di bilancio, avvisi, istantanee mensili, spese attribuite ai fondi, inizio dell'anno fiscale
 		'fivepm'     => 'FivePerMille.php',        // 5 per mille
 		'insurance'  => 'Insurance.php',           // assicurazioni e presenze
 		'broadcasts' => 'Broadcasts.php',          // comunicazioni di massa
@@ -43,6 +44,7 @@ final class ProBoot {
 		'funds'      => array( 'asem-accounts', 'asem-transfer', 'asem-group' ),
 		'reports'    => array( 'asem-reports' ),
 		'fiscal'     => array( 'asem-accounting', 'asem-statement', 'asem-acct' ),
+		'watch'      => array( 'asem-watch' ),
 		'fivepm'     => array( 'asem-fivepm' ),
 		'insurance'  => array( 'asem-volunteers', 'asem-attendance' ),
 		'broadcasts' => array( 'asem-messages' ),
@@ -60,6 +62,7 @@ final class ProBoot {
 	/** Azioni di amministrazione di ogni funzione: senza la funzione si bloccano. */
 	const ACTIONS = array(
 		'payments'   => array( 'asem_save_payment_settings', 'asem_test_gateway', 'asem_satispay_connect', 'asem_check_payments', 'asem_payment_reviewed', 'asem_payment_refunded' ),
+		'watch'      => array( 'asem_expense_fund_attach', 'asem_expense_fund_undo', 'asem_watch_snapshot', 'asem_watch_csv' ),
 		'funds'      => array( 'asem_save_group_cash', 'asem_save_transfer', 'asem_add_account', 'asem_update_account', 'asem_close_account', 'asem_reopen_account', 'asem_fund_create', 'asem_fund_deposit', 'asem_fund_release', 'asem_fund_settle' ),
 		'receipts'   => array( 'asem_receipt_email' ),
 		'door_sales' => array( 'asem_walk_in' ),
@@ -76,7 +79,7 @@ final class ProBoot {
 	);
 
 	/** Funzioni fiscali: solo con la licenza Pro Full (IVA, 5 per mille, anni solari e rendiconto; più avanti la fatturazione elettronica). */
-	const FISCAL = array( 'vat', 'fivepm', 'fiscal' );
+	const FISCAL = array( 'vat', 'fivepm', 'fiscal', 'watch' );
 
 	/** Funzioni di contabilità: conti e fondi, report, ricevute. Mancano nel Pro Lite; ci sono nel Pro Full e nel vecchio livello contabile. */
 	const ACCOUNTING = array( 'funds', 'reports', 'receipts', 'budget' );
@@ -98,6 +101,7 @@ final class ProBoot {
 		ProSettings::register();
 		ProBlockC::register(); // certificati medici e affiliazioni agli enti
 		ProBlockD::register(); // assemblee, bilancio preventivo e rimborsi ai volontari
+		ProWatch::register(); // controllo di bilancio, spese attribuite ai fondi e inizio dell'anno fiscale (Pro Fiscale)
 		ProBlockE::register(); // SMS, newsletter, Satispay e Klarna
 		DocsPro::register();
 		add_filter( 'asem_settings_defaults', array( ProSettings::class, 'defaults' ) );
@@ -133,6 +137,7 @@ final class ProBoot {
 		Admin\BlockCActions::register();
 		Admin\BlockDProActions::register();
 		Admin\BlockEActions::register();
+		Admin\WatchActions::register();
 	}
 
 	/** Dopo l'avvio di Associazione Semplice: avvisi, aggiornatore, lavori periodici. */
@@ -159,7 +164,7 @@ final class ProBoot {
 	/** Alla disattivazione si tolgono i lavori periodici. */
 	public static function deactivate(): void {
 		ProBlockE::unschedule();
-		foreach ( array( 'asem_license_check', 'asem_update_check', 'asem_license_resync' ) as $hook ) {
+		foreach ( array( 'asem_license_check', 'asem_update_check', 'asem_license_resync', 'asem_watch_month_end' ) as $hook ) {
 			wp_clear_scheduled_hook( $hook );
 		}
 	}

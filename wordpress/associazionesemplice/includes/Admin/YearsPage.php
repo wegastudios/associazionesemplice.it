@@ -20,8 +20,8 @@ final class YearsPage {
 			return;
 		}
 		$today = \AssociazioneSemplice\Db::today();
-		$year  = (int) substr( $today, 0, 4 );
-		$month = (int) substr( $today, 5, 2 );
+		$year  = FiscalYears::current();
+		$month = ( (int) substr( $today, 5, 2 ) - FiscalYears::start_month() + 12 ) % 12 + 1; // posizione del mese nell'anno: 1 = il primo, 12 = l'ultimo
 		$next  = $year + 1;
 		if ( $month < 9 || FiscalYears::get( $next ) ) {
 			return;

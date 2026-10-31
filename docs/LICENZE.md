@@ -15,7 +15,7 @@
 | Piano (`plan_name` del server) | Livello nel plugin | Funzioni Pro |
 |---|---|---|
 | contiene «Free» | `free` | nessuna |
-| contiene «Lite» | `lite` | tutte tranne contabilità (`Edition::ACCOUNTING`: conti e fondi, report, ricevute) e fiscali (`Edition::FISCAL`: IVA, 5 per mille, anni solari e rendiconto) |
+| contiene «Lite» | `lite` | tutte tranne contabilità (`Edition::ACCOUNTING`: conti e fondi, report, ricevute) e fiscali (`Edition::FISCAL`: IVA, 5 per mille, anni solari, rendiconto, controllo di bilancio e fondi documentati) |
 | contiene «Full» o «Fiscale» | `fiscal` | tutte |
 | «contabile» (vecchio livello) | `accounting` | tutte tranne le fiscali |
 | altro (piano a pagamento non riconosciuto) | `lite` | come Lite |

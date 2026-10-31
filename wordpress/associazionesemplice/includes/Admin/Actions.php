@@ -926,6 +926,7 @@ final class Actions {
 				'person_id'    => (int) ( $p['person_id'] ?? 0 ),
 				'description'  => $p['description'] ?? '',
 				'document_ref' => $p['document_ref'] ?? '',
+				'fund_choice'  => (string) ( $p['fund_choice'] ?? '' ), // scelta del fondo (funzione aggiuntiva): vuoto = automatico
 			) + ( array_key_exists( 'vat_rate', $p ) ? array( 'vat_rate' => Ui::vat_input( $p )[0], 'vat_mode' => Ui::vat_input( $p )[1] ) : array() )
 		);
 		$ids = Attachments::add( $tx, $docs );

@@ -31,7 +31,7 @@ final class BudgetRules {
 
 	/** Date di inizio e fine dell'anno. @return array{0:string,1:string} */
 	public static function period( int $year ): array {
-		return array( sprintf( '%04d-01-01', $year ), sprintf( '%04d-12-31', $year ) );
+		return FiscalYears::range( $year );
 	}
 
 	/** Anno valido per un preventivo (2000–2100). */

@@ -78,6 +78,7 @@ final class DashboardPage {
 		self::incomplete_cards();
 		self::overdue_loans();
 		ConventionsPage::dashboard_card();
+		do_action( 'asem_dashboard_cards' ); // le estensioni aggiungono qui le loro schede
 
 		$requests = \AssociazioneSemplice\AccessRequests::pending();
 		if ( $requests ) {

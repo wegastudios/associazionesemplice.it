@@ -421,7 +421,7 @@ class LedgerService {
 		}
 		$vat_rate = Fiscal::vat_applies() && array_key_exists( 'vat_rate', $d ) ? Fiscal::clean_rate( $d['vat_rate'] ) : null;
 		$d['amount_cents'] = Fiscal::gross_from_input( (int) $d['amount_cents'], $vat_rate, (string) ( $d['vat_mode'] ?? '' ) ); // se l'importo è scritto IVA esclusa si paga con l'IVA
-		return $this->insert_tx(
+		$tx_id = $this->insert_tx(
 			array(
 				'vat_rate'     => $vat_rate,
 				'vat_cents'    => Fiscal::vat_of( (int) $d['amount_cents'], $vat_rate ),
@@ -437,6 +437,8 @@ class LedgerService {
 				'document_ref' => ! empty( $d['document_ref'] ) ? mb_substr( trim( $d['document_ref'] ), 0, 80 ) : null,
 			)
 		);
+		do_action( 'asem_expense_recorded', $tx_id, $d ); // un'estensione può collegare la spesa ai fondi (i documenti arrivano dopo: vedi `asem_attachments_added`)
+		return $tx_id;
 	}
 
 	/** Giroconto tra due conti (versamento contanti in banca, accredito POS...). */

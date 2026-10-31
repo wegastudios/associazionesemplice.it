@@ -6,6 +6,7 @@ use AssociazioneSemplice\Budget;
 use AssociazioneSemplice\BudgetRules;
 use AssociazioneSemplice\Db;
 use AssociazioneSemplice\Edition;
+use AssociazioneSemplice\FiscalYears;
 use AssociazioneSemplice\Money;
 
 defined( 'ABSPATH' ) || exit;
@@ -20,6 +21,7 @@ final class BudgetPage {
 			return;
 		}
 		Ui::header( 'Bilancio preventivo', '<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-budget', array( 'new' => 1 ) ) ) . '">Nuovo preventivo</a>' );
+		WatchPage::box_html(); // bilancio provvisorio e avvisi (Pro Fiscale)
 		echo '<p class="description">Per ogni anno scrivi quanto prevedi di incassare e di spendere per categoria; il confronto con il consuntivo si aggiorna da solo con i movimenti della prima nota (i giroconti e i movimenti annullati non contano).</p>';
 		echo '<table class="widefat striped"><thead><tr><th>Anno</th><th>Preventivo</th><th>Stato</th><th>Entrate previste</th><th>Uscite previste</th></tr></thead><tbody>';
 		$rows = Budget::all();
@@ -65,7 +67,7 @@ final class BudgetPage {
 		Ui::form_open( 'asem_budget_save', $b ? self::back( $id ) : Ui::url( 'asem-budget', array( 'new' => 1 ) ) );
 		echo Ui::hidden( 'id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<table class="form-table asem-form"><tbody>';
-		echo '<tr><th>Anno *</th><td><input type="number" name="year" min="2000" max="2100" value="' . esc_attr( $b ? (string) $b['year'] : (string) ( (int) substr( Db::today(), 0, 4 ) + ( (int) substr( Db::today(), 5, 2 ) >= 9 ? 1 : 0 ) ) ) . '" required></td></tr>';
+		echo '<tr><th>Anno *</th><td><input type="number" name="year" min="2000" max="2100" value="' . esc_attr( $b ? (string) $b['year'] : (string) ( FiscalYears::current() + ( (int) substr( Db::today(), 5, 2 ) >= 9 ? 1 : 0 ) ) ) . '" required></td></tr>';
 		echo '<tr><th>Titolo</th><td><input type="text" name="title" class="large-text" maxlength="190" value="' . esc_attr( $b ? $b['title'] : '' ) . '" placeholder="Bilancio preventivo"></td></tr>';
 		echo '<tr><th>Note</th><td><textarea name="notes" rows="3" class="large-text">' . esc_textarea( $b ? (string) $b['notes'] : '' ) . '</textarea></td></tr>';
 		echo '</tbody></table>';

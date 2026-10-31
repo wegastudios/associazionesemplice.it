@@ -127,3 +127,10 @@ ProBlockE.php
 Admin/BlockEActions.php
 Admin/BlockEPanels.php
 Frontend/ConsentFront.php
+BalanceWatch.php
+BalanceWatchRules.php
+ExpenseFunds.php
+ProWatch.php
+Admin/WatchPage.php
+Admin/WatchActions.php
+Admin/WatchExports.php

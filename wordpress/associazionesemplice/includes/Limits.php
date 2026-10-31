@@ -17,6 +17,7 @@ final class Limits {
 		'pagamenti'     => 'Pagamenti online',
 		'dati'          => 'Importazioni, allegati e copie di sicurezza',
 		'soci'          => 'Soci e scadenze',
+		'bilancio'      => 'Bilancio, avvisi e fondi',
 	);
 
 	/** @var array|null */

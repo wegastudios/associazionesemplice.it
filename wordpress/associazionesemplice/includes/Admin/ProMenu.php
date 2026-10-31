@@ -17,7 +17,7 @@ final class ProMenu {
 		'asem-credits'    => array( 'Crediti', array( 'asem-credits' => 'Crediti' ) ),
 		'asem-tools'      => array( 'Strumenti', array( 'asem-tools' => 'Panoramica', 'asem-import' => 'Importa da Excel/CSV', 'asem-tec' => 'Da The Events Calendar', 'asem-wpai' => 'WP All Import', 'asem-exports' => 'Esporta', 'asem-calendar' => 'Calendari', 'asem-backup' => 'Copia di sicurezza', 'asem-tech' => 'Integrazioni' ) ),
 		'asem-money'      => array( 'Cassa', array( 'asem-money' => 'Cassa', 'asem-ledger' => 'Prima nota', 'asem-income' => 'Nuovo incasso', 'asem-bookdesk' => 'Prenota', 'asem-group' => 'Cassa per più persone', 'asem-expense' => 'Nuova spesa', 'asem-refunds' => 'Rimborsi', 'asem-transfer' => 'Giroconto', 'asem-accounts' => 'Conti e fondi' ) ),
-		'asem-accounting' => array( 'Contabilità', array( 'asem-accounting' => 'Anno solare', 'asem-years' => 'Anni solari', 'asem-budget' => 'Preventivo', 'asem-reports' => 'Report', 'asem-statement' => 'Rendiconto',  'asem-fivepm' => 'Adempimenti (5x1000)' ) ),
+		'asem-accounting' => array( 'Contabilità', array( 'asem-accounting' => 'Anno solare', 'asem-years' => 'Anni solari', 'asem-budget' => 'Preventivo', 'asem-watch' => 'Bilancio provvisorio', 'asem-reports' => 'Report', 'asem-statement' => 'Rendiconto',  'asem-fivepm' => 'Adempimenti (5x1000)' ) ),
 		'asem-book'       => array( 'Registri', array( 'asem-book' => 'Libro soci', 'asem-minutes' => 'Verbali', 'asem-polls' => 'Votazioni', 'asem-assemblies' => 'Assemblee', 'asem-inventory' => 'Inventario', 'asem-documents' => 'Documenti', 'asem-conventions' => 'Convenzioni', 'asem-volunteers' => 'Assicurazioni', 'asem-attendance' => 'Presenze', 'asem-medical' => 'Certificati medici', 'asem-affiliations' => 'Affiliazioni' ) ),
 		'asem-settings'   => array( 'Impostazioni', array( 'asem-entity' => 'Dati e fiscalità', 'asem-comms' => 'Privacy, regolamento e ricevute', 'asem-texts' => 'Testi e lingua', 'asem-settings' => 'Soci e quote', 'asem-look' => 'Aspetto', 'asem-bank' => 'Bonifico', 'asem-donate' => 'Donazioni', 'asem-card' => 'Tessera, QR e Wallet', 'asem-roles' => 'Ruoli e accessi', 'asem-payments' => 'Pagamenti online', 'asem-acct' => 'Opzioni contabili', 'asem-app' => 'App e notifiche', 'asem-limits' => 'Limiti e soglie', 'asem-audit' => 'Registro azioni', 'asem-guide' => 'Guida iniziale', 'asem-reset' => 'Azzeramento dati' ) ),
 	);
@@ -57,6 +57,7 @@ final class ProMenu {
 		array( 'asem-affiliations', 'Affiliazioni', array( AffiliationsPage::class, 'render' ) ),
 		array( 'asem-assemblies', 'Assemblee', array( AssembliesPage::class, 'render' ) ),
 		array( 'asem-budget', 'Bilancio preventivo', array( BudgetPage::class, 'render' ) ),
+		array( 'asem-watch', 'Bilancio provvisorio', array( WatchPage::class, 'render' ) ),
 		array( 'asem-refunds', 'Rimborsi ai volontari', array( RefundsPage::class, 'render' ) ),
 	);
 

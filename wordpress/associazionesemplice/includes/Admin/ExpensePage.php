@@ -39,6 +39,7 @@ final class ExpensePage {
 		echo wp_kses( '<tr><th>Attività</th><td><select name="activity_id">' . Ui::options( $acts, null, 'Nessuna (costo generale)' ) . '</select></td></tr>', Html::allowed() );
 		echo wp_kses( '<tr><th>Beneficiario</th><td>' . Ui::person_select( 'person_id', Plugin::people()->search(), null, '— nessuno / fornitore —', 'asem-beneficiary' ) . '<p class="description">Es. il referente o il socio rimborsato.</p></td></tr>', Html::allowed() );
 		echo '<tr><th>Descrizione</th><td><input type="text" name="description" class="large-text"></td></tr>';
+		do_action( 'asem_expense_form_rows' ); // le estensioni aggiungono qui i loro campi (ad esempio il fondo da coprire)
 		echo wp_kses( Ui::vat_row( null, \AssociazioneSemplice\Fiscal::default_mode() ) . '<tr><th>N. fattura / scontrino</th><td><input type="text" name="document_ref" maxlength="80"></td></tr>', Html::allowed() );
 		echo '<tr><th>Documenti</th><td><input type="file" name="docs[]" class="asem-doc-input" accept="image/*,application/pdf" multiple> '
 			. '<label class="button asem-shot">📷 Scatta una foto<input type="file" name="shots[]" class="asem-doc-input" accept="image/*" capture="environment" hidden></label>'

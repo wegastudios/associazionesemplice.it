@@ -3,6 +3,7 @@ namespace AssociazioneSemplice\Admin;
 
 use AssociazioneSemplice\AttachmentRules;
 use AssociazioneSemplice\Attachments;
+use AssociazioneSemplice\FiscalYears;
 use AssociazioneSemplice\Labels;
 use AssociazioneSemplice\Money;
 use AssociazioneSemplice\Plugin;
@@ -36,10 +37,9 @@ final class LedgerPage {
 	}
 
 	public static function render(): void {
-		$year   = Ui::get_int( 'year', (int) current_time( 'Y' ) );
+		$year   = Ui::get_int( 'year', FiscalYears::current() );
 		$acc    = Ui::get_int( 'account' );
-		$from   = sprintf( '%04d-01-01', $year );
-		$to     = sprintf( '%04d-12-31', $year );
+		list( $from, $to ) = FiscalYears::range( $year );
 		$rows   = Plugin::ledger()->rows( $from, $to, $acc ?: null );
 		$here   = Ui::url( 'asem-ledger', array( 'year' => $year, 'account' => $acc ?: null ) );
 		$income = 0;
@@ -52,7 +52,7 @@ final class LedgerPage {
 			}
 		}
 
-		Ui::header( 'Prima nota — anno solare ' . $year, Exports::link( 'ledger', array( 'from' => $from, 'to' => $to ), 'Esporta CSV' ) );
+		Ui::header( 'Prima nota — ' . ( 1 === FiscalYears::start_month() ? 'anno solare ' : 'esercizio ' ) . FiscalYears::label( $year ), Exports::link( 'ledger', array( 'from' => $from, 'to' => $to ), 'Esporta CSV' ) );
 		echo wp_kses( '<p><a class="button" href="' . esc_url( Ui::url( 'asem-ledger', array( 'year' => $year - 1, 'account' => $acc ?: null ) ) ) . '">‹ ' . ( $year - 1 ) . '</a> '
 			. '<a class="button" href="' . esc_url( Ui::url( 'asem-ledger', array( 'year' => $year + 1, 'account' => $acc ?: null ) ) ) . '">' . ( $year + 1 ) . ' ›</a> ', Html::allowed() );
 		$accounts = array();

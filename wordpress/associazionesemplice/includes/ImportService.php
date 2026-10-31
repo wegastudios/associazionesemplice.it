@@ -343,7 +343,7 @@ final class ImportService {
 				foreach ( $plan as $p ) { // importando gli anni precedenti, gli anni solari che mancano si creano (aperti); uno chiuso resta chiuso e blocca l'import
 					$when = (string) ( $p['data']['date'] ?? '' );
 					if ( preg_match( '/^(\d{4})-\d{2}-\d{2}$/', $when, $ym ) && (int) $ym[1] >= 2000 && (int) $ym[1] <= 2100 ) {
-						FiscalYears::ensure( (int) $ym[1] );
+						FiscalYears::ensure( FiscalYears::year_of( $when ) );
 					}
 				}
 				foreach ( $plan as $p ) {

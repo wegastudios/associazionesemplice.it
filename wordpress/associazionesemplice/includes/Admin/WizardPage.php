@@ -90,6 +90,7 @@ final class WizardPage {
 		echo '<details class="asem-wiz-more"><summary>Più dettagli: codice fiscale, anno sociale, sede</summary><table class="form-table"><tbody>';
 		echo '<tr><th>Codice fiscale dell\'ente</th><td><input type="text" name="tax_code" value="' . esc_attr( (string) $s['tax_code'] ) . '" class="regular-text"></td></tr>';
 		echo wp_kses( '<tr><th>L\'anno sociale inizia a</th><td><select name="social_year_start_month">' . Ui::options( Ui::MONTHS, (int) $s['social_year_start_month'] ) . '</select></td></tr>', Html::allowed() );
+		do_action( 'asem_wizard_more_rows', $s ); // le estensioni aggiungono qui le loro domande secondarie (ad esempio l'inizio dell'anno fiscale)
 		echo '<tr><th>Sede</th><td><input type="text" name="legal_address" value="' . esc_attr( (string) $s['legal_address'] ) . '" class="regular-text" placeholder="Indirizzo"> <input type="text" name="legal_zip" value="' . esc_attr( (string) $s['legal_zip'] ) . '" size="6" placeholder="CAP"> <input type="text" name="legal_city" value="' . esc_attr( (string) $s['legal_city'] ) . '" placeholder="Comune"> <input type="text" name="legal_province" value="' . esc_attr( (string) $s['legal_province'] ) . '" size="4" placeholder="Prov."></td></tr>';
 		echo '</tbody></table></details>';
 		self::end_step();
