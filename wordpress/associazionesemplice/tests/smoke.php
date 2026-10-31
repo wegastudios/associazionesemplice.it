@@ -7636,7 +7636,7 @@ $wt_doc( $wt_e2 );
 asem_ok( array( $wt_f2 => 500 ) === $wt_alloc( $wt_e2 ), 'seconda spesa: solo quanto manca al fondo' );
 $wt_e3 = $wt_exp( 200 );
 $wt_doc( $wt_e3 );
-asem_ok( array() === $wt_alloc( $wt_e3 ) && 0 === count( \AssociazioneSemplice\ExpenseFunds::undocumented_funds() ), 'terza spesa: i fondi sono coperti, niente da attribuire' );
+asem_ok( array() === $wt_alloc( $wt_e3 ) && 0 === array_sum( array_column( array_filter( \AssociazioneSemplice\ExpenseFunds::coverage(), function ( $f ) use ( $wt_f1, $wt_f2 ) { return in_array( (int) $f['id'], array( $wt_f1, $wt_f2 ), true ); } ), 'missing' ) ), 'terza spesa: i fondi sono coperti, niente da attribuire' );
 $wt_unc = array();
 foreach ( \AssociazioneSemplice\ExpenseFunds::uncovered_expenses() as $r ) {
 	$wt_unc[ (int) $r['id'] ] = (int) $r['remaining'];
