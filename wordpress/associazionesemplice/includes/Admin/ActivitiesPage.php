@@ -55,12 +55,47 @@ final class ActivitiesPage {
 			. $tr . '<th>Dal / al</th><td><input type="date" name="starts_on" value="' . $val( 'starts_on' ) . '"> <input type="date" name="ends_on" value="' . $val( 'ends_on' ) . '"> <span class="description">facoltative: se il corso ha una fine, dopo quella data le mensilità non sono più dovute</span></td></tr>';
 	}
 
+	/** Gli sport del menu: l'amministratore li aggiunge, li toglie, ne importa un elenco o torna a quello di base del CONI. */
+	private static function sports_card(): void {
+		if ( ! current_user_can( Plugin::CAP ) ) {
+			return;
+		}
+		$back = Ui::url( 'asem-activities' );
+		$list = \AssociazioneSemplice\SportCatalog::sports();
+		echo '<details class="asem-card" id="asem-sports"><summary><strong>Sport disponibili (' . count( $list ) . ')</strong> · ' . ( \AssociazioneSemplice\SportCatalog::is_default() ? 'elenco del CONI' : 'elenco personalizzato' ) . '</summary>';
+		echo '<p class="description">Sono gli sport tra cui scegli nelle attività e che finiscono nel file per le tessere degli enti. Togliere uno sport dal menu non lo cancella dalle attività che già lo usano.</p>';
+		Ui::form_open( 'asem_sports', $back, false, 'asem-inline' );
+		echo wp_kses( Ui::hidden( 'op', 'add' ) . '<p><input type="text" name="sport" maxlength="60" placeholder="Nuovo sport (es. Zumba)"> <button class="button">Aggiungi</button></p>', Html::allowed() );
+		Ui::form_close();
+		Ui::form_open( 'asem_sports', $back );
+		echo wp_kses( Ui::hidden( 'op', 'add' ) . '<p><textarea name="sport" rows="3" class="large-text" placeholder="Importa un elenco: uno sport per riga (o separati da punto e virgola)"></textarea> <button class="button">Importa</button></p>', Html::allowed() );
+		Ui::form_close();
+		echo '<p>';
+		foreach ( $list as $s ) {
+			Ui::form_open( 'asem_sports', $back, false, 'asem-inline' );
+			echo wp_kses( Ui::hidden( 'op', 'remove' ) . Ui::hidden( 'sport', $s ) . '<span class="asem-chip">' . esc_html( $s ) . ' <button class="button-link-delete" title="Togli dal menu" aria-label="' . esc_attr( 'Togli ' . $s ) . '">×</button></span> ', Html::allowed() );
+			Ui::form_close();
+		}
+		echo '</p>';
+		if ( ! \AssociazioneSemplice\SportCatalog::is_default() ) {
+			Ui::form_open( 'asem_sports', $back, false, 'asem-inline' );
+			echo wp_kses( Ui::hidden( 'op', 'reset' ) . '<button class="button" data-confirm="Tornare all\'elenco di base del CONI? Gli sport che hai aggiunto spariscono dal menu.">Ripristina l\'elenco del CONI</button>', Html::allowed() );
+			Ui::form_close();
+		}
+		echo '</details>';
+	}
+
 	/** Riga del modulo: sport (elenco CONI) e disciplina secondo l'ente di promozione, per l'affiliazione e le tessere degli enti. */
 	private static function sport_row( ?array $a ): string {
-		$sports = array_combine( \AssociazioneSemplice\SportCatalog::sports(), \AssociazioneSemplice\SportCatalog::sports() );
+		$list   = \AssociazioneSemplice\SportCatalog::sports();
+		$now    = $a ? (string) ( $a['sport'] ?? '' ) : '';
+		if ( '' !== $now && ! in_array( $now, $list, true ) ) {
+			$list[] = $now; // uno sport tolto dal menu resta a chi già lo usa
+		}
+		$sports = array_combine( $list, $list );
 		return '<tr><th>Sport e disciplina</th><td><select name="sport">' . Ui::options( $sports, $a ? (string) ( $a['sport'] ?? '' ) : '', '— nessuno —' ) . '</select> '
 			. '<input type="text" name="discipline" class="regular-text" maxlength="120" value="' . esc_attr( $a ? (string) ( $a['discipline'] ?? '' ) : '' ) . '" placeholder="Disciplina secondo l\'ente (es. Ginnastica dolce)">'
-			. '<p class="description">Lo sport segue l\'elenco delle discipline riconosciute dal CONI; la disciplina la scrivi come la chiama il tuo ente di promozione (CSEN, UISP, ASI…). Compaiono nel file per le tessere degli enti.</p></td></tr>';
+			. '<p class="description">Lo sport segue l\'elenco delle discipline riconosciute dal CONI (l\'amministratore lo modifica dall\'elenco delle attività); la disciplina la scrivi come la chiama il tuo ente di promozione (CSEN, UISP, ASI…). Compaiono nel file per le tessere degli enti.</p></td></tr>';
 	}
 
 	/** Riga del modulo: quota di ogni pagamento accantonata nel fondo per rimborsare il volontario. */
@@ -146,6 +181,7 @@ final class ActivitiesPage {
 		}
 		echo '</div>';
 
+		self::sports_card();
 		$volunteers = Plugin::people()->search( array( 'type' => MemberType::VOLUNTEER ) );
 		echo '<div class="asem-card"><h2>Nuova attività</h2>';
 		Ui::form_open( 'asem_save_activity', $back );

@@ -22,7 +22,7 @@ final class Actions {
 	/** Azioni riservate agli amministratori: impostazioni, pagamenti online, tessera e QR, anni solari, privacy, testi, tesoriere e segreteria. */
 	const ADMIN_ONLY = array(
 
-		'asem_create_year', 'asem_close_year', 'asem_reopen_year', 'asem_save_settings', 'asem_save_card', 'asem_regen_qr',
+		'asem_sports', 'asem_create_year', 'asem_close_year', 'asem_reopen_year', 'asem_save_settings', 'asem_save_card', 'asem_regen_qr',
 		'asem_save_look', 'asem_save_donate', 'asem_save_campaign', 'asem_delete_campaign', 'asem_create_privacy_page', 'asem_save_ical', 'asem_regen_ical', 'asem_create_pages', 'asem_save_wpai', 'asem_wpai_process', 'asem_wpai_retry', 'asem_wpai_clear', 'asem_privacy_anonymize', 'asem_save_comms',
 		
 		'asem_delete_activity', 'asem_delete_booking', 'asem_purge_enrollments', 'asem_set_treasurer', 'asem_set_secretary', 'asem_set_board_role', 'asem_backup_restore', 
@@ -73,6 +73,7 @@ final class Actions {
 			'asem_save_activity'      => 'save_activity',
 			'asem_duplicate_activity' => 'duplicate_activity',
 			'asem_lesson_exception'   => 'lesson_exception',
+			'asem_sports'             => 'sports',
 			'asem_lesson_restore'     => 'lesson_restore',
 			'asem_tec_import'         => 'tec_import',
 			'asem_enroll'             => 'enroll',
@@ -684,6 +685,22 @@ final class Actions {
 	private static function cancel_session( array $p ): array {
 		Plugin::activities()->cancel_session( (int) $p['session_id'] );
 		return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Data annullata.' );
+	}
+
+	/** Gli sport del menu: aggiungi (anche più d'uno), togli, ripristina l'elenco del CONI. */
+	private static function sports( array $p ): array {
+		$back = Ui::url( 'asem-activities' ) . '#asem-sports';
+		switch ( (string) ( $p['op'] ?? '' ) ) {
+			case 'remove':
+				\AssociazioneSemplice\SportCatalog::remove( (string) ( $p['sport'] ?? '' ) );
+				return array( $back, 'Sport tolto dal menu: le attività che lo usano lo tengono.' );
+			case 'reset':
+				\AssociazioneSemplice\SportCatalog::reset();
+				return array( $back, 'Elenco del CONI ripristinato.' );
+			default:
+				$n = \AssociazioneSemplice\SportCatalog::add( (string) ( $p['sport'] ?? '' ) );
+				return array( $back, 0 === $n ? 'Nessuno sport nuovo: erano già nell\'elenco (o il testo era vuoto).' : ( 1 === $n ? 'Sport aggiunto.' : $n . ' sport aggiunti.' ) );
+		}
 	}
 
 	private static function create_year( array $p ): array {
