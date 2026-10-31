@@ -32,6 +32,17 @@ Dalla versione 1.2.45 del plugin gratuito ogni attività ha uno **sport** e una 
 3. In **«Disciplina secondo l'ente»** scrivi a mano la disciplina dell'ente (per esempio «Ginnastica dolce»), fino a 120 caratteri.
 4. Salva.
 
+### L'elenco degli sport
+
+Dalla versione 1.2.48 l'elenco lo gestisce l'**amministratore** (non la segreteria), dal riquadro **«Sport disponibili»** in fondo all'elenco delle attività, in **Corsi ed eventi**. Puoi:
+
+- **aggiungere** uno sport;
+- **importare** un elenco, uno per riga o separati da «;»;
+- **togliere** uno sport dal menu: le attività che già lo usano lo tengono;
+- **ripristinare** l'elenco di base.
+
+Inoltre un'attività accetta **qualsiasi sport scritto in modo sensato**, non solo quelli dell'elenco. L'elenco di base resta «basato sull'elenco CONI».
+
 Con Pro questi dati finiscono nel file per i portali degli enti: le colonne **Sport** e **Disciplina** sono ricavate dai corsi a cui la persona è iscritta in quel momento e dagli eventi a cui ha una prenotazione, separati da «;» se sono più di uno (vedi [Gestire le affiliazioni agli enti](guida:affiliazioni-agli-enti)).
 
 ## Come funzionano i pagamenti
