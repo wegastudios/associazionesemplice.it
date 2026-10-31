@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.48
+- Gli sport del menu delle attività li gestisce l'amministratore: aggiunge, importa un elenco (uno per riga), toglie dal menu e ripristina l'elenco di base.
+- Un'attività accetta qualsiasi sport scritto in modo sensato, non solo quelli dell'elenco.
+
 ## 1.2.47
 - Il mese di inizio dell'anno fiscale si può scegliere separato da quello dell'anno sociale (Pro Fiscale).
 
