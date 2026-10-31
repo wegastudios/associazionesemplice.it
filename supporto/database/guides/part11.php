@@ -67,7 +67,7 @@ In **Contabilità → Bilancio provvisorio** (in breve in **Bacheca**, e per int
 
 I primi due elenchi hanno il link **Esporta CSV**. Un'attribuzione annullata resta nell'elenco e la spesa **non viene riattribuita da sola**. Ogni correzione a mano è tracciata nel registro azioni.
 
-Negli elenchi si guarda **indietro di 24 mesi**: si cambia con **«Quanti mesi guardare indietro negli elenchi dei fondi»** in Limiti e soglie.
+L'elenco **«Spese documentate non rimborsate»** considera le spese degli **ultimi 24 mesi**: si cambia con **«Quanti mesi guardare indietro negli elenchi dei fondi»** in Limiti e soglie.
 
 Per i conti e i fondi in generale vedi [Conti, fondi e giroconti](guida:conti-fondi-e-giroconti).
 
