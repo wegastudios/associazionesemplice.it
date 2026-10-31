@@ -104,6 +104,11 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | IVA su quote, attività, incassi e spese | — | — | ✓ |
 | 5 per mille e rendiconto sull'utilizzo | — | — | ✓ |
 | Rendiconto per cassa per il commercialista | — | — | ✓ |
+| Anno fiscale con mese di inizio diverso dall'anno sociale | — | — | ✓ |
+| Spese documentate attribuite in automatico ai fondi dei rimborsi, con elenchi e CSV | — | — | ✓ |
+| Bilancio provvisorio dell'anno fiscale, avvisi di bilancio e storico mensile con CSV | — | — | ✓ |
+| Prospetto dei rimborsi per persona, con CSV e PDF | — | — | ✓ |
+| Verifiche di fine anno e blocco della chiusura se mancano le spese documentate dei rimborsi | — | — | ✓ |
 
 ## Registri e privacy
 
