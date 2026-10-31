@@ -29,6 +29,6 @@ mkdir -p assets && cp -r ../portale/public/assets/* assets/
 sed -i '/^# Sito non ancora pubblico/,$d;/^# Tutto ci/,$d' .htaccess
 { echo; cat ../portale/public/.htaccess; } >> .htaccess
 rm -f robots.txt
-( crontab -l 2>/dev/null | grep -q "portale/bin/cron.php" ) || ( crontab -l 2>/dev/null; echo "0 8 * * * php $HOME/portale/bin/cron.php >> $HOME/logs/portale-cron.log 2>&1" ) | crontab -
+( crontab -l 2>/dev/null | grep -q "portale/bin/cron.php" ) || ( crontab -l 2>/dev/null; echo "0 8 * * * /usr/local/bin/php $HOME/portale/bin/cron.php >> $HOME/logs/portale-cron.log 2>&1" ) | crontab -
 echo "Pubblicato."
 REMOTE

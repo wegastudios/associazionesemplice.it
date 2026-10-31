@@ -1,6 +1,6 @@
 <?php
 // Lavori giornalieri: avvisi di scadenza per le licenze che non si rinnovano da sole.
-// Da lanciare una volta al giorno, per esempio: 0 8 * * * php ~/portale/bin/cron.php
+// Da lanciare una volta al giorno, per esempio: 0 8 * * * /usr/local/bin/php ~/portale/bin/cron.php (con il php «cli»: da cron un semplice «php» è la versione CGI e lo script esce subito)
 if ( 'cli' !== PHP_SAPI ) {
 	exit( 1 );
 }
