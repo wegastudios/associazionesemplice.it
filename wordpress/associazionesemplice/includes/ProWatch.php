@@ -158,14 +158,20 @@ final class ProWatch {
 			'Più bassa (0): ogni centesimo di differenza compare nel prospetto e può fermare la chiusura dell\'anno.'
 		);
 		$add(
-			'watch_yearend_lead_months', 'Mesi di anticipo delle verifiche di fine anno fiscale', 'mesi', 1, 1, 3,
+			'watch_yearend_lead_months', 'Mesi di avviso fisso delle verifiche di fine anno fiscale', 'mesi', 1, 1, 3,
 			'Dal primo giorno del mese indicato prima dell\'ultimo mese dell\'anno fiscale, ai ruoli amministrativi compare in Bacheca e nelle pagine di Cassa, Contabilità, Report e Preventivo un avviso fisso (non chiudibile) con le discrepanze da verificare, e solo se ce ne sono. Con 1 e anno da gennaio a dicembre parte il 1° novembre; con anno da settembre, il 1° luglio.',
 			'Più alto: più tempo per correggere, ma l\'avviso resta a lungo e in anticipo molte discrepanze sono ancora normali (spese da documentare, rimborsi in corso).',
 			'Più basso: l\'avviso arriva a ridosso della chiusura, con meno tempo per rimediare e il rischio di arrivare a fine anno con le correzioni da fare.'
 		);
 		$add(
+			'watch_yearend_notice_months', 'Mesi di preavviso chiudibile prima dell\'avviso fisso', 'mesi', 3, 0, 11,
+			'Nei mesi che precedono la fase dell\'avviso fisso, le stesse discrepanze compaiono già come avviso che si può chiudere: la chiusura vale fino a lunedì (è memorizzata per utente) e l\'avviso ricompare se le discrepanze ci sono ancora. 0 = nessun preavviso.',
+			'Più alto: si comincia a vedere l\'avviso molto prima, quando molte discrepanze sono ancora normali (rimborsi in corso, documenti da raccogliere); si rischia di abituarsi a chiuderlo.',
+			'Più basso: meno tempo per sistemare con calma; a 0 le discrepanze compaiono solo nella fase fissa, vicino alla fine dell\'anno.'
+		);
+		$add(
 			'watch_yearend_email', 'Promemoria email delle verifiche di fine anno fiscale', 'flag', 0, 0, 1,
-			'Quando parte l\'avviso fisso, una sola email per anno fiscale ricorda ad amministratori, segreteria, tesorieri, presidente e vicepresidente le discrepanze da verificare (se ce ne sono).',
+			'Quando parte l\'avviso fisso, una email all\'inizio del preavviso e una all\'inizio della fase fissa ricordano ad amministratori, segreteria, tesorieri, presidente e vicepresidente le discrepanze da verificare (se ce ne sono).',
 			'Acceso: una email in più a più persone; se le discrepanze si risolvono subito l\'email può risultare superflua.',
 			'Spento: ci si affida solo all\'avviso nel gestionale, che si vede solo entrando.'
 		);

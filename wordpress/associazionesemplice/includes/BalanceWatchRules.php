@@ -172,11 +172,19 @@ final class BalanceWatchRules {
 	}
 
 	/** Le persone con una differenza oltre la tolleranza, solo quelle da regolarizzare (rimborsato senza documenti) o anche quelle da rimborsare. */
-	public static function year_end_window( string $today, int $start_month, int $lead ): array {
+	public static function year_end_window( string $today, int $start_month, int $lead, int $notice = 0 ): array {
 		$year = FiscalYears::year_for( $today, $start_month );
 		$to   = FiscalYears::range_for( $year, $start_month )[1];
 		$from = ( new \DateTimeImmutable( substr( $to, 0, 7 ) . '-01' ) )->modify( '-' . max( 1, min( 3, $lead ) ) . ' months' )->format( 'Y-m-d' );
-		return array( 'year' => $year, 'start' => $from, 'end' => $to, 'active' => $today >= $from && $today <= $to );
+		$year_from    = FiscalYears::range_for( $year, $start_month )[0];
+		$notice_start = max( $year_from, ( new \DateTimeImmutable( $from ) )->modify( '-' . max( 0, min( 11, $notice ) ) . ' months' )->format( 'Y-m-d' ) ); // preavviso chiudibile prima della fase fissa
+		$phase        = '';
+		if ( $today >= $from && $today <= $to ) {
+			$phase = 'fixed';
+		} elseif ( $notice > 0 && $today >= $notice_start && $today < $from ) {
+			$phase = 'notice';
+		}
+		return array( 'year' => $year, 'start' => $from, 'end' => $to, 'active' => 'fixed' === $phase, 'notice_start' => $notice_start, 'phase' => $phase );
 	}
 
 	/** Le persone con una differenza oltre la tolleranza. */

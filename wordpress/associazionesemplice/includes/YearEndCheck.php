@@ -13,7 +13,7 @@ final class YearEndCheck {
 	const MAIL_OPTION = 'asem_watch_yearend_mail';
 
 	public static function window( ?string $today = null ): array {
-		return BalanceWatchRules::year_end_window( $today ?: Db::today(), FiscalYears::start_month(), Limits::get( 'watch_yearend_lead_months' ) );
+		return BalanceWatchRules::year_end_window( $today ?: Db::today(), FiscalYears::start_month(), Limits::get( 'watch_yearend_lead_months' ), Limits::get( 'watch_yearend_notice_months' ) );
 	}
 
 	/** Le discrepanze dell'anno fiscale. @return array[] label, count, url */
@@ -94,12 +94,20 @@ final class YearEndCheck {
 			return '';
 		}
 		$w = self::window();
-		if ( ! $w['active'] ) {
+		if ( '' === $w['phase'] ) {
 			return '';
 		}
 		$items = self::discrepancies( (int) $w['year'] );
 		if ( ! $items ) {
 			return '';
+		}
+		if ( 'notice' === $w['phase'] ) { // preavviso: chiudibile fino a lunedì (la chiusura è dell'utente, con la settimana nel nome)
+			$parts = array();
+			foreach ( $items as $i ) {
+				$parts[] = (int) $i['count'] . ' ' . esc_html( $i['label'] ) . ' (<a href="' . esc_url( $i['url'] ) . '">verifica</a>)';
+			}
+			$monday = ( new \DateTimeImmutable( Db::today() ) )->modify( 'monday this week' )->format( 'Y-m-d' );
+			return Admin\Dismiss::html( 'yearend-' . $monday, 'warning', '<strong>Verifiche in vista della fine dell\'anno fiscale</strong> (' . esc_html( ( new \DateTimeImmutable( $w['end'] ) )->format( 'd/m/Y' ) ) . '): ' . implode( '; ', $parts ) . '. Si può chiudere per questa settimana; da lunedì ricompare finché ci sono discrepanze.', 7 );
 		}
 		$li = '';
 		foreach ( $items as $i ) {
@@ -138,14 +146,15 @@ final class YearEndCheck {
 			return 0;
 		}
 		$w = self::window( $today );
-		if ( ! $w['active'] || (int) get_option( self::MAIL_OPTION, 0 ) === (int) $w['year'] ) {
+		$mark = $w['year'] . ':' . $w['phase']; // una email all'inizio del preavviso e una all'inizio della fase fissa
+		if ( '' === $w['phase'] || (string) get_option( self::MAIL_OPTION, '' ) === $mark ) {
 			return 0;
 		}
 		$items = self::discrepancies( (int) $w['year'] );
 		if ( ! $items ) {
 			return 0; // niente da segnalare: si riprova nei giorni seguenti
 		}
-		update_option( self::MAIL_OPTION, (int) $w['year'], false );
+		update_option( self::MAIL_OPTION, $mark, false );
 		$lines = array();
 		foreach ( $items as $i ) {
 			$lines[] = '- ' . $i['count'] . ' ' . $i['label'] . ': ' . $i['url'];

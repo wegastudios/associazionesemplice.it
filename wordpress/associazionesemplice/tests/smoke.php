@@ -7726,7 +7726,8 @@ $wt_mail_hook = function () use ( &$wt_mail ) {
 };
 add_filter( 'pre_wp_mail', $wt_mail_hook, 10 );
 Settings::update( array( 'limits' => array( 'watch_yearend_email' => 1 ) ) );
-asem_ok( 0 === \AssociazioneSemplice\YearEndCheck::mail_job( $wt_cur_cal . '-10-15' ), 'fine anno: fuori dalla finestra nessuna email' );
+asem_ok( 0 === \AssociazioneSemplice\YearEndCheck::mail_job( $wt_cur_cal . '-06-15' ), 'fine anno: fuori dal preavviso nessuna email' );
+asem_ok( 'notice' === \AssociazioneSemplice\YearEndCheck::window( $wt_cur_cal . '-10-15' )['phase'] && 'fixed' === \AssociazioneSemplice\YearEndCheck::window( $wt_cur_cal . '-11-15' )['phase'] && '' === \AssociazioneSemplice\YearEndCheck::window( $wt_cur_cal . '-06-15' )['phase'], 'fine anno: preavviso chiudibile (3 mesi prima) e poi fase fissa' );
 asem_ok( \AssociazioneSemplice\YearEndCheck::mail_job( $wt_cur_cal . '-11-15' ) >= 1 && 0 === \AssociazioneSemplice\YearEndCheck::mail_job( $wt_cur_cal . '-11-16' ) && $wt_mail >= 1, 'fine anno: una sola email per anno fiscale ai ruoli amministrativi' );
 delete_option( \AssociazioneSemplice\YearEndCheck::MAIL_OPTION );
 remove_filter( 'pre_wp_mail', $wt_mail_hook, 10 );

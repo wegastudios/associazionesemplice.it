@@ -156,4 +156,15 @@ final class BalanceWatchRulesTest extends TestCase {
 		$this->assertFalse( R::year_end_window( '2026-09-01', 9, 1 )['active'], 'un nuovo anno è appena iniziato' );
 		$this->assertSame( '2026-10-01', R::year_end_window( '2026-12-01', 1, 9 )['start'], 'anticipo limitato a 3 mesi' );
 	}
+
+	public function test_year_end_notice_phase_comes_before_the_fixed_one(): void {
+		$n = R::year_end_window( '2026-09-10', 1, 1, 3 );
+		$this->assertSame( 'notice', $n['phase'] );
+		$this->assertSame( '2026-08-01', $n['notice_start'] );
+		$this->assertFalse( $n['active'] );
+		$this->assertSame( 'fixed', R::year_end_window( '2026-11-02', 1, 1, 3 )['phase'] );
+		$this->assertSame( '', R::year_end_window( '2026-07-31', 1, 1, 3 )['phase'] );
+		$this->assertSame( '', R::year_end_window( '2026-10-15', 1, 1, 0 )['phase'], '0 = nessun preavviso' );
+		$this->assertSame( '2026-01-01', R::year_end_window( '2026-02-01', 1, 1, 11 )['notice_start'], 'il preavviso non esce dall\'anno fiscale' );
+	}
 }
