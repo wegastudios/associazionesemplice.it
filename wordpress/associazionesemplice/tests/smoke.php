@@ -7622,7 +7622,7 @@ $wt_exp = function ( int $cents, array $extra = array() ) use ( $ledger, $cash, 
 	return $ledger->record_expense( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'category_id' => $cat['general_cost'], 'amount_cents' => $cents, 'person_id' => $wt_vol, 'description' => 'Spesa attribuzioni' ) + $extra );
 };
 $wt_doc = function ( int $tx ) use ( $files, $mkf ) { // il file caricato viene spostato: ogni volta se ne crea uno nuovo
-	Attachments::add( $tx, Attachments::prepare( $files( array( 'ricevuta.png' => $mkf( 'ricevuta.png', base64_decode( 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==' ) ) ) ) );
+	Attachments::add( $tx, Attachments::prepare( $files( array( 'ricevuta.png' => $mkf( 'ricevuta.png', base64_decode( 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==' ) ) ) ) ) );
 };
 $wt_alloc = function ( int $tx ) {
 	return array_map( 'intval', array_column( \AssociazioneSemplice\ExpenseFunds::allocations( $tx ), 'cents', 'fund_id' ) );
