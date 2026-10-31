@@ -7634,9 +7634,11 @@ asem_ok( array( $wt_f1 => 1000, $wt_f2 => 500 ) === $wt_alloc( $wt_e1 ), 'spesa 
 $wt_e2 = $wt_exp( 800 );
 $wt_doc( $wt_e2 );
 asem_ok( array( $wt_f2 => 500 ) === $wt_alloc( $wt_e2 ), 'seconda spesa: solo quanto manca al fondo' );
+Settings::update( array( 'limits' => array( 'watch_auto_attribute' => 0 ) ) ); // la terza spesa si attribuisce a mano: altri fondi scoperti dello smoke la assorbirebbero
 $wt_e3 = $wt_exp( 200 );
 $wt_doc( $wt_e3 );
-asem_ok( array() === $wt_alloc( $wt_e3 ) && 0 === array_sum( array_column( array_filter( \AssociazioneSemplice\ExpenseFunds::coverage(), function ( $f ) use ( $wt_f1, $wt_f2 ) { return in_array( (int) $f['id'], array( $wt_f1, $wt_f2 ), true ); } ), 'missing' ) ), 'terza spesa: i fondi sono coperti, niente da attribuire' );
+asem_ok( array() === $wt_alloc( $wt_e3 ) && 0 === array_sum( array_column( array_filter( \AssociazioneSemplice\ExpenseFunds::coverage(), function ( $f ) use ( $wt_f1, $wt_f2 ) { return in_array( (int) $f['id'], array( $wt_f1, $wt_f2 ), true ); } ), 'missing' ) ), 'terza spesa: i fondi sono coperti, niente da attribuire ai loro' );
+Settings::update( array( 'limits' => array() ) );
 $wt_unc = array();
 foreach ( \AssociazioneSemplice\ExpenseFunds::uncovered_expenses() as $r ) {
 	$wt_unc[ (int) $r['id'] ] = (int) $r['remaining'];
