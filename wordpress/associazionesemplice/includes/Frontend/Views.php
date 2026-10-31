@@ -524,6 +524,7 @@ final class Views {
 			. '<label>Attività <select name="activity_id">' . $opts( $acts, null, 'Nessuna (costo generale)' ) . '</select></label>'
 			. '<label>Descrizione <input type="text" name="description" maxlength="255"></label>'
 			. '<label>N. fattura / scontrino <input type="text" name="document_ref" maxlength="80"></label>'
+			. (string) apply_filters( 'asem_front_expense_fields', '' ) // un'estensione aggiunge qui i suoi campi (chi ha anticipato, fondo)
 			. '</div>' . self::doc_inputs();
 		$html = '<section class="asemf-section asemf-expenses"><h3>Registra una spesa</h3>'
 			. '<p class="asemf-small asemf-muted">Fotografa lo scontrino o allega la fattura: la spesa entra in prima nota con il documento.</p>'

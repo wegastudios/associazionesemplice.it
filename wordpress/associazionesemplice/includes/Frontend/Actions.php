@@ -340,6 +340,8 @@ final class Actions {
 				'amount_cents' => Money::parse( $post['amount'] ?? '' ) ?? 0,
 				'activity_id'  => (int) ( $post['activity_id'] ?? 0 ),
 				'description'  => $post['description'] ?? '',
+				'person_id'    => (int) apply_filters( 'asem_expense_person', 0, $post ), // un'estensione imposta chi ha anticipato la spesa
+				'fund_choice'  => (string) ( $post['fund_choice'] ?? '' ),
 				'document_ref' => $post['document_ref'] ?? '',
 			)
 		);
