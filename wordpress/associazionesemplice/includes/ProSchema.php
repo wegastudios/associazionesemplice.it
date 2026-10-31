@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 final class ProSchema {
 
 	const VERSION_OPTION = 'asem_pro_db_version';
-	const VERSION        = '10';
+	const VERSION        = '11';
 
 	public static function register(): void {
 		add_filter( 'asem_schema_tables', array( __CLASS__, 'tables' ), 10, 3 );
@@ -497,6 +497,39 @@ final class ProSchema {
   PRIMARY KEY  (id),
   UNIQUE KEY person_target (person_id,provider,list_id),
   KEY status (status)
+) $c;";
+
+
+		// Pro Fiscale: spese attribuite ai fondi (fondo 0 = «nessun fondo») e istantanee mensili del bilancio.
+		$tables[] = "CREATE TABLE {$p}expense_funds (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  tx_id bigint(20) unsigned NOT NULL,
+  fund_id bigint(20) unsigned NOT NULL DEFAULT 0,
+  cents bigint(20) NOT NULL DEFAULT 0,
+  source varchar(8) NOT NULL DEFAULT 'auto',
+  created_by bigint(20) unsigned DEFAULT NULL,
+  created_at datetime NOT NULL,
+  undone_at datetime DEFAULT NULL,
+  undone_by bigint(20) unsigned DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY tx_id (tx_id),
+  KEY fund_id (fund_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}balance_snaps (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  fiscal_year smallint(5) unsigned NOT NULL,
+  month char(7) NOT NULL,
+  month_income_cents bigint(20) NOT NULL DEFAULT 0,
+  month_expense_cents bigint(20) NOT NULL DEFAULT 0,
+  ytd_income_cents bigint(20) NOT NULL DEFAULT 0,
+  ytd_expense_cents bigint(20) NOT NULL DEFAULT 0,
+  planned_income_cents bigint(20) DEFAULT NULL,
+  planned_expense_cents bigint(20) DEFAULT NULL,
+  source varchar(8) NOT NULL DEFAULT 'monthly',
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY fiscal_month (fiscal_year,month)
 ) $c;";
 
 		return $tables;

@@ -1,6 +1,7 @@
 <?php
 namespace AssociazioneSemplice\Admin;
 
+use AssociazioneSemplice\FiscalYears;
 use AssociazioneSemplice\Modules;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Settings;
@@ -60,7 +61,7 @@ final class ToolsPage {
 
 	/** Esportazioni CSV: ognuna con il suo periodo. Le voci contabili compaiono solo se la prima nota è in uso. */
 	public static function render_exports(): void {
-		$cur  = (int) current_time( 'Y' );
+		$cur  = FiscalYears::current();
 		$year = max( $cur - 10, min( $cur + 1, Ui::get_int( 'year', $cur ) ) );
 		Ui::header( 'Esportazioni' );
 		echo '<form method="get"><input type="hidden" name="page" value="asem-exports"><p><label>Anno <select name="year">';
@@ -68,13 +69,12 @@ final class ToolsPage {
 			echo '<option value="' . (int) $y . '"' . selected( $year, $y, false ) . '>' . (int) $y . '</option>';
 		}
 		echo '</select></label> <button class="button">Mostra</button></p></form>';
-		$from = $year . '-01-01';
-		$to   = $year . '-12-31';
+		list( $from, $to ) = FiscalYears::range( $year );
 		echo '<table class="widefat striped" style="max-width:900px"><thead><tr><th>Esportazione</th><th>Contenuto</th><th></th></tr></thead><tbody>';
 		$rows = array(
 			array( 'Soci e ospiti', 'Rubrica completa, con i dati anagrafici.', Exports::link( 'people', array(), 'Scarica CSV' ), true ),
-			array( 'Prima nota (anno solare ' . $year . ')', 'Tutti i movimenti con conto, voce, attività e competenza.', Exports::link( 'ledger', array( 'from' => $from, 'to' => $to ), 'Scarica CSV' ), Modules::on( 'ledger' ) ),
-			array( 'Rendiconto per cassa (anno solare ' . $year . ')', 'Entrate e uscite per voce, per il commercialista.', Exports::link( 'period', array( 'from' => $from, 'to' => $to ), 'Scarica CSV' ), Modules::on( 'reports' ) && \AssociazioneSemplice\Edition::has( 'fiscal' ) ),
+			array( 'Prima nota (' . ( 1 === FiscalYears::start_month() ? 'anno solare ' : 'esercizio ' ) . FiscalYears::label( $year ) . ')', 'Tutti i movimenti con conto, voce, attività e competenza.', Exports::link( 'ledger', array( 'from' => $from, 'to' => $to ), 'Scarica CSV' ), Modules::on( 'ledger' ) ),
+			array( 'Rendiconto per cassa (' . ( 1 === FiscalYears::start_month() ? 'anno solare ' : 'esercizio ' ) . FiscalYears::label( $year ) . ')', 'Entrate e uscite per voce, per il commercialista.', Exports::link( 'period', array( 'from' => $from, 'to' => $to ), 'Scarica CSV' ), Modules::on( 'reports' ) && \AssociazioneSemplice\Edition::has( 'fiscal' ) ),
 			array( 'Report delle attività (anno sociale ' . $year . ')', 'Partecipazioni e incassi per attività.', Exports::link( 'social', array( 'year' => $year ), 'Scarica CSV' ), Modules::on( 'activities' ) && Modules::on( 'reports' ) && \AssociazioneSemplice\Edition::has( 'reports' ) ),
 		);
 		foreach ( $rows as $r ) {

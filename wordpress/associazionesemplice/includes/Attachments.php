@@ -131,6 +131,7 @@ final class Attachments {
 			$ids[] = $id;
 			Audit::log( 'attachment.added', 'transaction', $tx_id, array( 'attachment' => $id, 'bytes' => $f['size'], 'type' => $f['mime'] ) );
 		}
+		do_action( 'asem_attachments_added', $tx_id, $ids );
 		return $ids;
 	}
 

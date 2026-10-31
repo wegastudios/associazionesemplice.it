@@ -170,7 +170,7 @@ class FundService {
 		$e = Db::t( 'fund_entries' );
 		$t = Db::t( 'transactions' );
 		return $this->db()->get_results(
-			"SELECT e.fund_id, e.kind, e.cents, YEAR(e.entry_date) AS year FROM $e e LEFT JOIN $t t ON t.id = e.tx_id WHERE (e.tx_id IS NULL OR t.voided_at IS NULL) ORDER BY e.entry_date, e.id",
+			"SELECT e.fund_id, e.kind, e.cents, YEAR(DATE_SUB(e.entry_date, INTERVAL " . ( FiscalYears::start_month() - 1 ) . " MONTH)) AS year FROM $e e LEFT JOIN $t t ON t.id = e.tx_id WHERE (e.tx_id IS NULL OR t.voided_at IS NULL) ORDER BY e.entry_date, e.id",
 			ARRAY_A
 		) ?: array();
 	}

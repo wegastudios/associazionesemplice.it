@@ -30,8 +30,8 @@ final class Statement {
 	/** Anni per cui ha senso il rendiconto: dal primo con movimenti all'anno in corso. @return int[] */
 	public static function years(): array {
 		$first = Db::db()->get_var( 'SELECT MIN(tx_date) FROM ' . Db::t( 'transactions' ) . ' WHERE voided_at IS NULL' );
-		$now   = (int) substr( Db::today(), 0, 4 );
-		$from  = $first ? min( (int) substr( (string) $first, 0, 4 ), $now ) : $now;
+		$now   = FiscalYears::current();
+		$from  = $first ? min( FiscalYears::year_of( (string) $first ), $now ) : $now;
 		return range( $now, $from );
 	}
 
@@ -77,8 +77,8 @@ final class Statement {
 	/** @return array dati del rendiconto dell'anno (e di quello precedente per il confronto) */
 	public static function data( int $year ): array {
 		$svc  = new ReportService();
-		$cur  = $svc->period( $year . '-01-01', $year . '-12-31' );
-		$prev = $svc->period( ( $year - 1 ) . '-01-01', ( $year - 1 ) . '-12-31' );
+		$cur  = $svc->period( ...FiscalYears::range( $year ) );
+		$prev = $svc->period( ...FiscalYears::range( $year - 1 ) );
 		$accounts = array();
 		foreach ( $cur['accounts'] as $a ) {
 			$accounts[] = array( 'name' => (string) $a['account']['name'], 'opening' => (int) $a['opening'], 'closing' => (int) $a['closing'] );

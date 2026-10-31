@@ -294,7 +294,7 @@ final class Budget {
 
 	/** Quante spese hanno superato il preventivo nell'anno in corso (per la Bacheca). Zero se non c'è un preventivo approvato. */
 	public static function over_count(): int {
-		$b = self::by_year( (int) substr( Db::today(), 0, 4 ) );
+		$b = self::by_year( FiscalYears::current() );
 		if ( ! $b || BudgetRules::APPROVED !== $b['status'] ) {
 			return 0;
 		}

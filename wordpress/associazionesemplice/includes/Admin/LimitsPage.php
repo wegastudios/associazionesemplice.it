@@ -18,6 +18,11 @@ final class LimitsPage {
 
 		Ui::form_open( 'asem_save_limits', Ui::url( 'asem-limits' ) );
 		foreach ( Limits::GROUPS as $gk => $gl ) {
+			if ( ! array_filter( Limits::defs(), function ( $d ) use ( $gk ) {
+				return $d['group'] === $gk;
+			} ) ) {
+				continue; // gruppo senza limiti (ad esempio quelli di una funzione aggiuntiva non presente)
+			}
 			echo '<h2>' . esc_html( $gl ) . '</h2>';
 			foreach ( Limits::defs() as $key => $d ) {
 				if ( $d['group'] !== $gk ) {

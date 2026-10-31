@@ -272,6 +272,7 @@ final class Refunds {
 					throw new \InvalidArgumentException( 'Il pagamento non è stato registrato: riprova.' );
 				}
 				Audit::log( 'refund.paid', 'refund', $id, array( 'tx' => $tx, 'cents' => (int) $r['amount_cents'] ) );
+				ExpenseFunds::on_attachments( $tx ); // il file della richiesta è il documento della spesa: attribuzione ai fondi del volontario (Pro Fiscale)
 				self::notify( $r, 'refund_paid', 'Rimborso pagato', 'il rimborso ' . self::summary( $r ) . ' è stato pagato il ' . ( new \DateTimeImmutable( $date ) )->format( 'd/m/Y' ) . '.' );
 				return $tx;
 			}

@@ -112,6 +112,7 @@ final class AccountsPage {
 		}
 
 		ReportsPage::funds_by_year();
+		WatchPage::funds_lists(); // spese documentate non rimborsate e fondi non documentati (Pro Fiscale)
 
 		if ( $closed ) {
 			echo '<h2>Conti chiusi</h2><div class="asem-grid">';

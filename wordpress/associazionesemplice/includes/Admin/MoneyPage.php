@@ -18,6 +18,7 @@ final class MoneyPage {
 
 	public static function render(): void {
 		Ui::header( 'Cassa' );
+		do_action( 'asem_yearend_alert' ); // un'estensione mostra qui le verifiche di fine anno fiscale
 		$year = Settings::social_year();
 		$r    = Plugin::reports()->social_year( $year );
 		echo '<p><a class="button button-primary" href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Nuovo incasso</a> <a class="button" href="' . esc_url( Ui::url( 'asem-bookdesk' ) ) . '">Prenota</a> '

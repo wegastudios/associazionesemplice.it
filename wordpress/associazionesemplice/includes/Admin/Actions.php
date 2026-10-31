@@ -692,7 +692,7 @@ final class Actions {
 	}
 
 	private static function close_year( array $p ): array {
-		\AssociazioneSemplice\FiscalYears::close( (int) ( $p['year'] ?? 0 ) );
+		\AssociazioneSemplice\FiscalYears::close( (int) ( $p['year'] ?? 0 ), ! empty( $p['confirm_gaps'] ) );
 		return array( Ui::url( 'asem-years' ), 'Anno solare chiuso: non accetta più incassi né spese.' );
 	}
 
@@ -926,10 +926,11 @@ final class Actions {
 				'person_id'    => (int) ( $p['person_id'] ?? 0 ),
 				'description'  => $p['description'] ?? '',
 				'document_ref' => $p['document_ref'] ?? '',
+				'fund_choice'  => (string) ( $p['fund_choice'] ?? '' ), // scelta del fondo (funzione aggiuntiva): vuoto = automatico
 			) + ( array_key_exists( 'vat_rate', $p ) ? array( 'vat_rate' => Ui::vat_input( $p )[0], 'vat_mode' => Ui::vat_input( $p )[1] ) : array() )
 		);
 		$ids = Attachments::add( $tx, $docs );
-		return array( Ui::url( 'asem-ledger' ), 'Spesa registrata' . ( $ids ? ' con ' . count( $ids ) . ( 1 === count( $ids ) ? ' allegato.' : ' allegati.' ) : '.' ) );
+		return array( Ui::url( 'asem-ledger' ), 'Spesa registrata' . ( $ids ? ' con ' . count( $ids ) . ( 1 === count( $ids ) ? ' allegato.' : ' allegati.' ) : '.' ) . (string) apply_filters( 'asem_expense_saved_note', '', $tx ) );
 	}
 
 
