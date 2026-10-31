@@ -7734,6 +7734,12 @@ delete_option( \AssociazioneSemplice\YearEndCheck::MAIL_OPTION );
 remove_filter( 'pre_wp_mail', $wt_mail_hook, 10 );
 Settings::update( array( 'limits' => array() ) );
 
+// Nuova spesa: spunta «attribuzione automatica» (di partenza accesa) che nasconde beneficiario e fondo; spenta, prima la persona loggata, poi i volontari.
+asem_render( array( Admin\ExpensePage::class, 'render' ), 'id="asem-fund-auto" checked' );
+$wt_list = \AssociazioneSemplice\ProWatch::expense_people( array( array( 'id' => 900001, 'type' => 'ordinary' ), array( 'id' => $wt_vol, 'type' => 'volunteer' ) ) );
+asem_ok( (int) $wt_list[0]['id'] === $wt_vol, 'spese: tra i beneficiari i volontari vengono prima degli altri' );
+asem_ok( 777 === \AssociazioneSemplice\ProWatch::expense_person( 777, array() ), 'spese: senza attribuzione automatica resta il beneficiario scelto' );
+
 // Bilancio provvisorio, avvisi e istantanee mensili.
 $wt_s = \AssociazioneSemplice\BalanceWatch::status();
 asem_ok( $wt_s['year'] === \AssociazioneSemplice\FiscalYears::current() && $wt_s['from'] === $wt_cur_cal . '-01-01' && $wt_s['to'] === $wt_cur_cal . '-12-31' && isset( $wt_s['month']['income'] ), 'bilancio provvisorio: anno fiscale in corso e mese in corso' );

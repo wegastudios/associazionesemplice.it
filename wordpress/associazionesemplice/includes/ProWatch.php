@@ -22,6 +22,9 @@ final class ProWatch {
 		add_action( 'asem_expense_recorded', array( ExpenseFunds::class, 'on_recorded' ), 10, 2 );
 		add_action( 'asem_attachments_added', array( ExpenseFunds::class, 'on_attachments' ), 10, 1 );
 		add_action( 'asem_expense_form_rows', array( __CLASS__, 'expense_form_row' ) );
+		add_filter( 'asem_expense_person', array( __CLASS__, 'expense_person' ), 10, 2 );
+		add_filter( 'asem_expense_default_person', array( __CLASS__, 'expense_default_person' ) );
+		add_filter( 'asem_expense_people', array( __CLASS__, 'expense_people' ) );
 		add_filter( 'asem_privacy_export', array( ExpenseFunds::class, 'privacy_export' ), 40, 2 );
 		add_filter( 'asem_scheduled_jobs', array( __CLASS__, 'jobs' ) );
 		add_filter( 'asem_admin_post_classes', array( __CLASS__, 'admin_post_classes' ) );
@@ -195,7 +198,43 @@ final class ProWatch {
 		return $map + array( 'asem_watch_csv' => 'Admin\\WatchExports' );
 	}
 
-	/** Nel modulo «Nuova spesa»: a quale fondo attribuirla. */
+	/** Chi sta registrando la spesa (la persona collegata all'utente), se c'è. */
+	private static function me(): int {
+		$p = Access::current_person();
+		return $p ? (int) $p['id'] : 0;
+	}
+
+	/** Con l'attribuzione automatica chi ha anticipato la spesa è la persona che la registra; senza, si propone comunque lei. */
+	public static function expense_person( $person_id, $p ) {
+		if ( Edition::has( 'watch' ) && ! empty( $p['fund_auto'] ) && self::me() ) {
+			return self::me();
+		}
+		return $person_id;
+	}
+
+	public static function expense_default_person( $selected ) {
+		return Edition::has( 'watch' ) && self::me() ? self::me() : $selected;
+	}
+
+	/** Elenco dei beneficiari: prima la persona loggata, poi i volontari, poi gli altri. */
+	public static function expense_people( $people ) {
+		if ( ! Edition::has( 'watch' ) ) {
+			return $people;
+		}
+		$me   = self::me();
+		$rank = function ( $p ) use ( $me ) {
+			return (int) $p['id'] === $me ? 0 : ( 'volunteer' === ( $p['type'] ?? '' ) ? 1 : 2 );
+		};
+		usort(
+			$people,
+			function ( $a, $b ) use ( $rank ) {
+				return $rank( $a ) <=> $rank( $b );
+			}
+		);
+		return $people;
+	}
+
+	/** Nel modulo «Nuova spesa»: la spunta «attribuzione automatica» e, se la si toglie, il fondo da coprire. */
 	public static function expense_form_row(): void {
 		if ( ! Edition::has( 'watch' ) ) {
 			return;
@@ -206,6 +245,8 @@ final class ProWatch {
 				$opts[ (string) $f['id'] ] = $f['name'] . ( null === $f['closed_at'] ? '' : ' (liquidato)' ) . ' — da documentare ' . Money::format( (int) $f['missing'] );
 			}
 		}
-		echo '<tr><th>Fondo da coprire</th><td><select name="fund_choice">' . Admin\Ui::options( $opts, '' ) . '</select><p class="description">I fondi accantonano i pagamenti dei corsi per rimborsare il volontario. Se la spesa è sua e ha uno scontrino o una fattura allegati, di norma si attribuisce da sola ai suoi fondi, anche già liquidati. Qui si può scegliere a mano, o escludere la spesa.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<tr><th>Attribuzione automatica</th><td><label><input type="checkbox" name="fund_auto" value="1" id="asem-fund-auto" checked> la spesa è mia: si attribuisce da sola ai fondi giusti</label><p class="description">Acceso: chi anticipa la spesa sei tu (se sei un volontario, si usano i tuoi fondi; altrimenti il fondo con più documentazione da coprire) e non serve indicare altro. Spento: scegli tu chi ha anticipato (di partenza sei tu, poi i volontari) e il fondo.</p></td></tr>';
+		echo '<tr id="asem-row-fund"><th>Fondo da coprire</th><td><select name="fund_choice" id="asem-fund-choice">' . Admin\Ui::options( $opts, '' ) . '</select><p class="description">I fondi accantonano i pagamenti dei corsi per rimborsare il volontario. Con una spesa documentata di norma si attribuisce da sola, anche ai fondi già liquidati. Qui si può scegliere a mano, o escludere la spesa.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<script>(function(){var c=document.getElementById("asem-fund-auto"),b=document.getElementById("asem-row-beneficiary"),f=document.getElementById("asem-row-fund"),s=document.getElementById("asem-fund-choice");if(!c){return;}function u(){var on=c.checked;if(b){b.style.display=on?"none":"";}if(f){f.style.display=on?"none":"";}if(s){s.disabled=on;}}c.addEventListener("change",u);u();})();</script>'; // phpcs:ignore WordPress.Security.EscapeOutput -- script fisso
 	}
 }

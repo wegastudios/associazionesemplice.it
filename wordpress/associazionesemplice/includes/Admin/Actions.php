@@ -923,7 +923,7 @@ final class Actions {
 				'category_id'  => (int) ( $p['category_id'] ?? 0 ),
 				'amount_cents' => Money::parse( $p['amount'] ?? '' ) ?? 0,
 				'activity_id'  => (int) ( $p['activity_id'] ?? 0 ),
-				'person_id'    => (int) ( $p['person_id'] ?? 0 ),
+				'person_id'    => (int) apply_filters( 'asem_expense_person', (int) ( $p['person_id'] ?? 0 ), $p ), // un'estensione può impostare chi ha anticipato la spesa
 				'description'  => $p['description'] ?? '',
 				'document_ref' => $p['document_ref'] ?? '',
 				'fund_choice'  => (string) ( $p['fund_choice'] ?? '' ), // scelta del fondo (funzione aggiuntiva): vuoto = automatico
