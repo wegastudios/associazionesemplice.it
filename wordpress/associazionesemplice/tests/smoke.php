@@ -7738,6 +7738,7 @@ Settings::update( array( 'limits' => array() ) );
 asem_render( array( Admin\ExpensePage::class, 'render' ), 'id="asem-fund-auto" checked' );
 $wt_list = \AssociazioneSemplice\ProWatch::expense_people( array( array( 'id' => 900001, 'type' => 'ordinary' ), array( 'id' => $wt_vol, 'type' => 'volunteer' ) ) );
 asem_ok( (int) $wt_list[0]['id'] === $wt_vol, 'spese: tra i beneficiari i volontari vengono prima degli altri' );
+asem_ok( false !== strpos( (string) apply_filters( 'asem_front_expense_fields', '' ), 'name="fund_auto"' ) && false !== strpos( (string) apply_filters( 'asem_front_expense_fields', '' ), 'name="fund_choice"' ), 'spese del tesoriere: stesse scelte della segreteria (automatico, chi ha anticipato, fondo)' );
 asem_ok( 777 === \AssociazioneSemplice\ProWatch::expense_person( 777, array() ), 'spese: senza attribuzione automatica resta il beneficiario scelto' );
 
 // Bilancio provvisorio, avvisi e istantanee mensili.
