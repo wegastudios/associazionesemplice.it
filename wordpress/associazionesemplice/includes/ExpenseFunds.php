@@ -116,8 +116,8 @@ final class ExpenseFunds {
 
 	/**
 	 * Attribuzione automatica: se la spesa è documentata e non è mai stata attribuita (né annullata, né esclusa a mano), la divide tra i fondi del
-	 * volontario che l'ha sostenuta — i più vecchi prima, aperti o liquidati — fino a coprire quanto manca. Senza volontario si usano i fondi
-	 * della stessa attività. @return array<int,int> fund_id => centesimi attribuiti
+	 * volontario che l'ha sostenuta; per chi non è volontario (consigliere…) o senza beneficiario, tra i fondi con documentazione scoperta
+	 * (prima quelli della stessa attività, poi i più vecchi). Aperti o liquidati, fino a coprire quanto manca. @return array<int,int> fund_id => centesimi attribuiti
 	 */
 	public static function auto( int $tx_id ): array {
 		$tx = self::tx( $tx_id );
@@ -133,9 +133,8 @@ final class ExpenseFunds {
 				$room  = array();
 				$funds = array();
 				foreach ( self::coverage() as $f ) {
-					$mine = ! empty( $tx['person_id'] )
-						? (int) $f['person_id'] === (int) $tx['person_id']
-						: ( ! empty( $tx['activity_id'] ) && (int) $f['activity_id'] === (int) $tx['activity_id'] );
+					$person = ! empty( $tx['person_id'] ) ? Plugin::people()->get( (int) $tx['person_id'] ) : null; // volontario: solo i suoi fondi (il resto lo sistema la segreteria); consigliere o altro: qualunque fondo scoperto, quello dell'attività prima
+					$mine   = ! ( $person && 'volunteer' === $person['type'] ) || (int) $f['person_id'] === (int) $tx['person_id'];
 					if ( $mine && $f['missing'] > 0 ) {
 						$funds[] = $f;
 					}
@@ -298,6 +297,22 @@ final class ExpenseFunds {
 			array( array( 'label' => 'Fondo' ), array( 'label' => 'Stato' ), array( 'label' => 'Accantonato' ), array( 'label' => 'Documentato' ), array( 'label' => 'Da documentare' ) ),
 			$rows
 		);
+	}
+
+
+	/** Dopo il salvataggio di una spesa: a quale fondo (e per quanto) è stata attribuita, e dove cambiarla. */
+	public static function saved_note( $note, $tx_id ) {
+		if ( ! Edition::has( 'watch' ) ) {
+			return $note;
+		}
+		$parts = array();
+		foreach ( self::allocations( (int) $tx_id ) as $a ) {
+			$parts[] = $a['name'] . ' (' . Money::format( (int) $a['cents'] ) . ')';
+		}
+		if ( $parts ) {
+			return $note . ' Attribuita al fondo: ' . implode( ' + ', $parts ) . '. Per cambiarla: Cassa → Conti e fondi → Attribuzioni recenti.';
+		}
+		return $note . ( self::enabled() ? ' Non è ancora attribuita a nessun fondo: succede da sola quando la spesa ha un documento allegato e un fondo con documentazione da coprire.' : '' );
 	}
 
 	// ---------- Privacy ----------

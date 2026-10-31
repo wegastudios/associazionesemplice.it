@@ -135,4 +135,51 @@ final class BalanceWatchRules {
 		);
 		return $funds;
 	}
+
+	const RECON_OK        = 'ok';
+	const RECON_UNCOVERED = 'uncovered'; // rimborsato senza documentazione: da regolarizzare
+	const RECON_UNPAID    = 'unpaid';    // documentato e non rimborsato: da rimborsare
+
+	/**
+	 * Quadratura per persona: rimborsato dai fondi contro spese documentate attribuite ai suoi fondi.
+	 *
+	 * @param array<int,int> $reimbursed person_id => centesimi rimborsati
+	 * @param array<int,int> $documented person_id => centesimi documentati
+	 * @param int            $tolerance  differenza (centesimi) sotto cui una persona risulta in pari
+	 * @return array[] person_id, reimbursed, documented, diff (rimborsato − documentato), status; prima chi ha differenze più grandi
+	 */
+	public static function reconcile( array $reimbursed, array $documented, int $tolerance ): array {
+		$rows = array();
+		foreach ( array_unique( array_merge( array_keys( $reimbursed ), array_keys( $documented ) ) ) as $pid ) {
+			$r      = (int) ( $reimbursed[ $pid ] ?? 0 );
+			$d      = (int) ( $documented[ $pid ] ?? 0 );
+			$diff   = $r - $d;
+			$status = self::RECON_OK;
+			if ( $diff > max( 0, $tolerance ) ) {
+				$status = self::RECON_UNCOVERED;
+			} elseif ( -$diff > max( 0, $tolerance ) ) {
+				$status = self::RECON_UNPAID;
+			}
+			$rows[] = array( 'person_id' => (int) $pid, 'reimbursed' => $r, 'documented' => $d, 'diff' => $diff, 'status' => $status );
+		}
+		usort(
+			$rows,
+			function ( $a, $b ) {
+				return abs( $b['diff'] ) <=> abs( $a['diff'] ) ?: $a['person_id'] <=> $b['person_id'];
+			}
+		);
+		return $rows;
+	}
+
+	/** Le persone con una differenza oltre la tolleranza, solo quelle da regolarizzare (rimborsato senza documenti) o anche quelle da rimborsare. */
+	public static function gaps( array $rows, bool $only_uncovered = false ): array {
+		return array_values(
+			array_filter(
+				$rows,
+				function ( $r ) use ( $only_uncovered ) {
+					return self::RECON_UNCOVERED === $r['status'] || ( ! $only_uncovered && self::RECON_UNPAID === $r['status'] );
+				}
+			)
+		);
+	}
 }

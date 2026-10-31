@@ -146,10 +146,10 @@ final class FiscalYears {
 		if ( $funds > 0 ) {
 			$out[] = 'ci sono fondi accantonati non ancora rimborsati (' . Money::format( $funds ) . '): rimborsali o libera le somme prima di chiudere l\'anno';
 		}
-		return $out;
+		return function_exists( 'apply_filters' ) ? (array) apply_filters( 'asem_year_close_blockers', $out, $year ) : $out; // un'estensione aggiunge i suoi motivi
 	}
 
-	public static function close( int $year ): void {
+	public static function close( int $year, bool $confirmed = false ): void {
 		$row = self::get( $year );
 		if ( ! $row ) {
 			throw new \InvalidArgumentException( 'Anno solare non trovato.' );
@@ -161,8 +161,12 @@ final class FiscalYears {
 		if ( $b ) {
 			throw new \InvalidArgumentException( 'L\'anno ' . $year . ' non si può chiudere: ' . implode( '; ', $b ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
+		$gaps = function_exists( 'apply_filters' ) ? (array) apply_filters( 'asem_year_close_confirm', array(), $year ) : array(); // cose da confermare per chiudere lo stesso
+		if ( $gaps && ! $confirmed ) {
+			throw new \InvalidArgumentException( 'L\'anno ' . $year . ' si chiude solo con la tua conferma: ' . implode( '; ', $gaps ) . '. Spunta la conferma accanto a «Chiudi l\'anno» se vuoi chiuderlo comunque.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
 		self::db()->update( Db::t( 'fiscal_years' ), array( 'status' => 'closed', 'closed_at' => Db::now() ), array( 'year' => $year ) );
-		Audit::log( 'year.closed', 'year', $year );
+		Audit::log( 'year.closed', 'year', $year, $gaps ? array( 'confirmed_gaps' => $gaps ) : array() );
 	}
 
 	public static function reopen( int $year ): void {

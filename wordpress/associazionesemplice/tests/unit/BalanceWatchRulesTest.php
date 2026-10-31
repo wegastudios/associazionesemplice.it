@@ -122,4 +122,22 @@ final class BalanceWatchRulesTest extends TestCase {
 			}
 		}
 	}
+
+	public function test_reconcile_reimbursed_against_documented_per_person(): void {
+		$rows = R::reconcile( array( 1 => 100000, 2 => 50000, 3 => 20000 ), array( 1 => 40000, 2 => 50050, 4 => 30000 ), 100 );
+		$by   = array();
+		foreach ( $rows as $r ) {
+			$by[ $r['person_id'] ] = $r;
+		}
+		$this->assertSame( 60000, $by[1]['diff'] );
+		$this->assertSame( R::RECON_UNCOVERED, $by[1]['status'] );
+		$this->assertSame( R::RECON_OK, $by[2]['status'], 'differenza di 0,50 €: sotto la tolleranza' );
+		$this->assertSame( R::RECON_UNCOVERED, $by[3]['status'], 'rimborsato e niente documentato' );
+		$this->assertSame( R::RECON_UNPAID, $by[4]['status'], 'documentato e mai rimborsato' );
+		$this->assertSame( 1, $rows[0]['person_id'], 'prima chi ha la differenza più grande' );
+		$this->assertCount( 3, R::gaps( $rows ) );
+		$this->assertCount( 2, R::gaps( $rows, true ) );
+		$this->assertSame( R::RECON_UNCOVERED, R::reconcile( array( 1 => 101 ), array(), 100 )[0]['status'] );
+		$this->assertSame( R::RECON_OK, R::reconcile( array( 1 => 100 ), array(), 100 )[0]['status'] );
+	}
 }

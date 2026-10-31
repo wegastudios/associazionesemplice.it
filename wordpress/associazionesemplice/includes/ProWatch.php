@@ -27,6 +27,8 @@ final class ProWatch {
 		add_filter( 'asem_admin_post_classes', array( __CLASS__, 'admin_post_classes' ) );
 		add_action( 'asem_dashboard_alerts', array( Admin\WatchPage::class, 'alerts' ), 20 );
 		add_action( 'asem_dashboard_cards', array( Admin\WatchPage::class, 'dashboard_cards' ) );
+		add_filter( 'asem_expense_saved_note', array( ExpenseFunds::class, 'saved_note' ), 10, 2 );
+		FundReconciliation::register();
 	}
 
 	// ---------- Impostazioni ----------
@@ -141,6 +143,24 @@ final class ProWatch {
 			'L\'elenco delle spese documentate non rimborsate considera le spese degli ultimi mesi indicati.',
 			'Più alto: l\'elenco comprende anche spese vecchie, più completo ma più lungo da leggere e più pesante da calcolare.',
 			'Più basso: spese vecchie scompaiono dall\'elenco anche se non sono mai state attribuite.'
+		);
+		$add(
+			'watch_close_mode', 'Chiusura dell\'anno con rimborsi non documentati', 'scelta', 3, 0, 3,
+			'A fine anno chi ha avuto rimborsi dai fondi deve trovarsi con le spese sostenute. Cosa fa la chiusura dell\'anno se qualcuno ha rimborsi senza documenti a copertura: 3 = si ferma e mostra l\'elenco; 2 = chiede una conferma con l\'elenco; 1 = chiude e basta (resta l\'avviso in Bacheca); 0 = nessun controllo.',
+			'Più alto (3): nessuna chiusura con rimborsi scoperti; se un documento non si trova l\'anno resta aperto finché non si regolarizza o non si cambia questo limite.',
+			'Più basso: l\'anno si chiude anche con rimborsi privi di documenti, e dopo la chiusura le regolarizzazioni si fanno da prima nota (restano nel registro azioni). A 0 la differenza si scopre solo al controllo dei revisori o del fisco.'
+		);
+		$add(
+			'watch_recon_tolerance_cents', 'Tolleranza nella quadratura rimborsi e spese', 'centesimi', 100, 0, 100000,
+			'Differenza massima, in centesimi (100 = 1,00 €), tra rimborsato e documentato per cui una persona risulta comunque in pari: assorbe gli arrotondamenti.',
+			'Più alta: differenze reali piccole passano inosservate e non fermano la chiusura.',
+			'Più bassa (0): ogni centesimo di differenza compare nel prospetto e può fermare la chiusura dell\'anno.'
+		);
+		$add(
+			'watch_recon_alerts', 'Avviso in Bacheca se rimborsi e spese non quadrano', 'flag', 1, 0, 1,
+			'Nella Bacheca compare un avviso (chiudibile, non bloccante) con il numero di persone che hanno una differenza tra rimborsato e documentato nell\'anno fiscale in corso. Si ricalcola a ogni apertura, quindi anche a fine mese.',
+			'Acceso: nessun rischio, solo un avviso in più.',
+			'Spento: le differenze si scoprono solo aprendo il prospetto o al momento di chiudere l\'anno.'
 		);
 		return $d;
 	}

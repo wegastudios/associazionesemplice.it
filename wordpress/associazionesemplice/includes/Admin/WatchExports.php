@@ -31,6 +31,16 @@ final class WatchExports {
 			self::send( 'bilancio-mensile' . ( $year ? '-' . $year : '' ) . '.csv', BalanceWatch::snapshots_csv( $year ) );
 		} elseif ( 'uncovered' === $what ) {
 			self::send( 'spese-documentate-non-rimborsate.csv', ExpenseFunds::uncovered_csv() );
+		} elseif ( 'recon' === $what || 'recon_pdf' === $what ) {
+			$year = isset( $_GET['year'] ) ? (int) $_GET['year'] : \AssociazioneSemplice\FiscalYears::current();
+			if ( 'recon' === $what ) {
+				self::send( 'rimborsi-e-spese-' . $year . '.csv', \AssociazioneSemplice\FundReconciliation::csv( $year ) );
+			}
+			nocache_headers();
+			header( 'Content-Type: application/pdf' );
+			header( 'Content-Disposition: attachment; filename="rimborsi-e-spese-' . $year . '.pdf"' );
+			echo \AssociazioneSemplice\FundReconciliation::pdf( $year ); // phpcs:ignore WordPress.Security.EscapeOutput -- file PDF, non HTML
+			exit;
 		} elseif ( 'undocumented' === $what ) {
 			self::send( 'fondi-non-documentati.csv', ExpenseFunds::undocumented_csv() );
 		}

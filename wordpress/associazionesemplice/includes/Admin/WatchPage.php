@@ -116,6 +116,24 @@ final class WatchPage {
 			echo '</tbody></table>';
 		}
 
+		// Quadratura rimborsi e spese per persona
+		$ry = Ui::get_int( 'ry', $s['year'] );
+		echo '<h2 id="asem-recon">Rimborsi e spese documentate per persona</h2><p class="description">Chi ha avuto rimborsi dai fondi deve trovarsi con le spese sostenute: a fine mese è bene, a fine anno è necessario. Differenza = rimborsato − documentato: se è positiva i rimborsi non hanno documenti a copertura (da regolarizzare), se è negativa ci sono spese documentate non ancora rimborsate.</p>';
+		echo '<form method="get"><input type="hidden" name="page" value="asem-watch"><p><label>Anno fiscale <select name="ry" data-asem-autosubmit>';
+		for ( $y = $s['year']; $y >= $s['year'] - 5; $y-- ) {
+			echo '<option value="' . (int) $y . '"' . selected( $ry, $y, false ) . '>' . esc_html( \AssociazioneSemplice\FiscalYears::label( $y ) ) . '</option>';
+		}
+		echo '</select></label> <a class="button" href="' . esc_url( WatchExports::url( 'recon', array( 'year' => $ry ) ) ) . '">Esporta CSV</a> <a class="button" href="' . esc_url( WatchExports::url( 'recon_pdf', array( 'year' => $ry ) ) ) . '">Scarica PDF per il rendiconto</a></p></form>';
+		$recon = \AssociazioneSemplice\FundReconciliation::rows( $ry );
+		echo '<table class="widefat striped"><thead><tr><th>Persona</th><th>Rimborsato dai fondi</th><th>Spese documentate attribuite</th><th>Differenza</th><th>Situazione</th></tr></thead><tbody>';
+		if ( ! $recon ) {
+			echo '<tr><td colspan="5">Nessun rimborso né spesa documentata in questo anno fiscale.</td></tr>';
+		}
+		foreach ( $recon as $r ) {
+			echo '<tr><td><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $r['person_id'] ) ) ) . '">' . esc_html( $r['name'] ) . '</a></td><td>' . self::m( $r['reimbursed'] ) . '</td><td>' . self::m( $r['documented'] ) . '</td><td><strong>' . self::m( $r['diff'] ) . '</strong></td><td>' . esc_html( \AssociazioneSemplice\FundReconciliation::status_label( $r['status'] ) ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		}
+		echo '</tbody></table>';
+
 		// Storico mensile
 		$years = BalanceWatch::snapshot_years();
 		$year  = Ui::get_int( 'year', $years ? $years[0] : $s['year'] );

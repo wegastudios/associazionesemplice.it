@@ -7676,6 +7676,43 @@ $wt_doc( $wt_off );
 asem_ok( array() === $wt_alloc( $wt_off ), 'limite: spento, la spesa non si attribuisce da sola' );
 Settings::update( array( 'limits' => array() ) );
 
+// Consigliere o altro: la spesa non specificata va a un fondo con documentazione scoperta; il volontario resta sui suoi fondi.
+$wt_fra = $people->create( array( 'type' => 'volunteer', 'first_name' => 'Francesco', 'last_name' => 'Scoperto', 'email' => 'francesco.scoperto@example.com' ) );
+$wt_luca = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Luca', 'last_name' => 'Consigliere', 'email' => 'luca.consigliere@example.com' ) );
+$wt_c3 = $acts->create( array( 'name' => 'Corso Francesco', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 2000, 'instructor_person_id' => $wt_fra, 'fund_mode' => 'percent', 'fund_value' => 5000 ) );
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $wt_pay, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 2000, 'activity_id' => $wt_c3, 'competence_month' => $month ) ) ) );
+$wt_ffr = 0;
+foreach ( $wt_funds->all( true ) as $f ) {
+	if ( (int) $f['person_id'] === $wt_fra ) {
+		$wt_ffr = (int) $f['id'];
+	}
+}
+$wt_luca_tx = $ledger->record_expense( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'category_id' => $cat['general_cost'], 'amount_cents' => 120, 'person_id' => $wt_luca, 'activity_id' => $wt_c3, 'description' => 'Spesa di Luca' ) );
+$wt_doc( $wt_luca_tx );
+asem_ok( array( $wt_ffr => 120 ) === $wt_alloc( $wt_luca_tx ), 'consigliere: la spesa dell\'attività va al fondo con documentazione scoperta, anche se è di un altro' );
+$wt_vol_tx = $wt_exp( 50, array( 'activity_id' => $wt_c3 ) );
+$wt_doc( $wt_vol_tx );
+asem_ok( ! isset( $wt_alloc( $wt_vol_tx )[ $wt_ffr ] ), 'volontario: la spesa non finisce nei fondi di un altro' );
+asem_ok( false !== strpos( \AssociazioneSemplice\ExpenseFunds::saved_note( '', $wt_luca_tx ), 'Attribuita al fondo' ), 'dopo il salvataggio si dice a quale fondo è stata attribuita' );
+// Quadratura rimborsi e spese per persona
+$wt_funds->settle( $wt_ffr, (int) $cash['id'], 'cash', $today );
+$wt_rec = array();
+foreach ( \AssociazioneSemplice\FundReconciliation::rows( \AssociazioneSemplice\FiscalYears::current() ) as $r ) {
+	$wt_rec[ (int) $r['person_id'] ] = $r;
+}
+asem_ok( 1000 === $wt_rec[ $wt_fra ]['reimbursed'] && 120 === $wt_rec[ $wt_fra ]['documented'] && 880 === $wt_rec[ $wt_fra ]['diff'] && 'uncovered' === $wt_rec[ $wt_fra ]['status'], 'quadratura: rimborsato, documentato e differenza per persona' );
+asem_ok( false !== strpos( \AssociazioneSemplice\FundReconciliation::csv( \AssociazioneSemplice\FiscalYears::current() ), 'Francesco Scoperto' ) && 0 === strpos( \AssociazioneSemplice\FundReconciliation::pdf( \AssociazioneSemplice\FiscalYears::current() ), '%PDF' ), 'quadratura: esportazione CSV e PDF' );
+$wt_y_now = \AssociazioneSemplice\FiscalYears::current();
+asem_ok( 1 === count( \AssociazioneSemplice\FundReconciliation::blockers( array(), $wt_y_now ) ) && array() === \AssociazioneSemplice\FundReconciliation::confirm( array(), $wt_y_now ), 'chiusura anno: di partenza si ferma se chi ha avuto rimborsi non ha i documenti' );
+Settings::update( array( 'limits' => array( 'watch_close_mode' => 2 ) ) );
+asem_ok( array() === \AssociazioneSemplice\FundReconciliation::blockers( array(), $wt_y_now ) && count( \AssociazioneSemplice\FundReconciliation::confirm( array(), $wt_y_now ) ) >= 1, 'chiusura anno: con «chiedi conferma» non si ferma ma chiede conferma con l\'elenco' );
+Settings::update( array( 'limits' => array( 'watch_close_mode' => 0 ) ) );
+asem_ok( array() === \AssociazioneSemplice\FundReconciliation::blockers( array(), $wt_y_now ) && array() === \AssociazioneSemplice\FundReconciliation::confirm( array(), $wt_y_now ), 'chiusura anno: controllo spento' );
+Settings::update( array( 'limits' => array( 'watch_close_mode' => 3, 'watch_recon_tolerance_cents' => 100000 ) ) );
+asem_ok( array() === \AssociazioneSemplice\FundReconciliation::blockers( array(), $wt_y_now ), 'chiusura anno: sotto la tolleranza non si ferma' );
+Settings::update( array( 'limits' => array() ) );
+asem_ok( false !== strpos( asem_render( array( Admin\WatchPage::class, 'render' ), 'Rimborsi e spese documentate per persona' ), 'Francesco Scoperto' ), 'prospetto per persona nella pagina del bilancio' );
+
 // Bilancio provvisorio, avvisi e istantanee mensili.
 $wt_s = \AssociazioneSemplice\BalanceWatch::status();
 asem_ok( $wt_s['year'] === \AssociazioneSemplice\FiscalYears::current() && $wt_s['from'] === $wt_cur_cal . '-01-01' && $wt_s['to'] === $wt_cur_cal . '-12-31' && isset( $wt_s['month']['income'] ), 'bilancio provvisorio: anno fiscale in corso e mese in corso' );

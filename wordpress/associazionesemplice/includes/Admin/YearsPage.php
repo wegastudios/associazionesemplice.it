@@ -54,6 +54,7 @@ final class YearsPage {
 				echo '<span class="description">' . ( $year === FiscalYears::current() ? 'anno in corso: si chiude dopo la fine dell\'anno' : 'anno non ancora iniziato' ) . '</span>';
 			} elseif ( $open ) {
 				Ui::form_open( 'asem_close_year', $back, false, 'asem-inline' );
+				do_action( 'asem_year_close_form', $year ); // un'estensione aggiunge una conferma
 				echo wp_kses( Ui::hidden( 'year', $year ) . '<button class="button" data-confirm="Chiudere l\'anno ' . $year . '? Non accetterà più incassi né spese (si può riaprire).">Chiudi l\'anno</button>', Html::allowed() );
 				Ui::form_close();
 			} else {
