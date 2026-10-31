@@ -139,7 +139,7 @@ final class ProWatch {
 		);
 		$add(
 			'watch_auto_attribute', 'Attribuzione automatica delle spese ai fondi', 'flag', 1, 0, 1,
-			'Una spesa documentata (con scontrino o fattura allegati) e con un beneficiario viene attribuita da sola ai fondi di quel volontario, aperti o già liquidati, i più vecchi prima, finché i documenti coprono quanto accantonato. Resta annullabile e si può scegliere il fondo a mano.',
+			'Una spesa documentata (con scontrino o fattura allegati) viene attribuita da sola: se chi ha anticipato è un volontario, ai suoi fondi; se è un consigliere o la spesa non ha un beneficiario (i soci non volontari la documentano alla segreteria, che la registra), al fondo con più documentazione da coprire. Aperti o già liquidati, quelli dell'attività della spesa prima, poi i più vecchi, finché i documenti coprono quanto accantonato. Resta annullabile e si può scegliere il fondo a mano.',
 			'Acceso: l\'attribuzione segue i documenti allegati; una spesa registrata con il beneficiario sbagliato si attribuisce al fondo sbagliato finché non la annulli.',
 			'Spento: le spese non si attribuiscono da sole e restano tutte nell\'elenco «spese documentate non rimborsate» finché non le colleghi a mano.'
 		);
@@ -198,13 +198,13 @@ final class ProWatch {
 		return $map + array( 'asem_watch_csv' => 'Admin\\WatchExports' );
 	}
 
-	/** Chi sta registrando la spesa (la persona collegata all'utente), se c'è. */
+	/** Chi sta registrando la spesa, solo se è un volontario (gli altri soci documentano le spese alla segreteria). */
 	private static function me(): int {
 		$p = Access::current_person();
-		return $p ? (int) $p['id'] : 0;
+		return $p && 'volunteer' === $p['type'] ? (int) $p['id'] : 0; // i soci non volontari non caricano spese da soli: le documentano alla segreteria, che le registra
 	}
 
-	/** Con l'attribuzione automatica chi ha anticipato la spesa è la persona che la registra; senza, si propone comunque lei. */
+	/** Con l'attribuzione automatica, se a registrare è un volontario la spesa è sua; se registra la segreteria per conto di altri (consiglieri, soci) la spesa resta senza beneficiario e va al fondo più coerente. */
 	public static function expense_person( $person_id, $p ) {
 		if ( Edition::has( 'watch' ) && ! empty( $p['fund_auto'] ) && self::me() ) {
 			return self::me();
@@ -245,7 +245,7 @@ final class ProWatch {
 				$opts[ (string) $f['id'] ] = $f['name'] . ( null === $f['closed_at'] ? '' : ' (liquidato)' ) . ' — da documentare ' . Money::format( (int) $f['missing'] );
 			}
 		}
-		echo '<tr><th>Attribuzione automatica</th><td><label><input type="checkbox" name="fund_auto" value="1" id="asem-fund-auto" checked> la spesa è mia: si attribuisce da sola ai fondi giusti</label><p class="description">Acceso: chi anticipa la spesa sei tu (se sei un volontario, si usano i tuoi fondi; altrimenti il fondo con più documentazione da coprire) e non serve indicare altro. Spento: scegli tu chi ha anticipato (di partenza sei tu, poi i volontari) e il fondo.</p></td></tr>';
+		echo '<tr><th>Attribuzione automatica</th><td><label><input type="checkbox" name="fund_auto" value="1" id="asem-fund-auto" checked> la spesa è mia: si attribuisce da sola ai fondi giusti</label><p class="description">Acceso: se sei un volontario la spesa è tua e va ai tuoi fondi; se la registri per conto di altri (consiglieri, soci che ti hanno consegnato lo scontrino) va al fondo con più documentazione da coprire, e non serve indicare altro. Spento: scegli tu chi ha anticipato (di partenza tu, se sei un volontario, poi i volontari) e il fondo.</p></td></tr>';
 		echo '<tr id="asem-row-fund"><th>Fondo da coprire</th><td><select name="fund_choice" id="asem-fund-choice">' . Admin\Ui::options( $opts, '' ) . '</select><p class="description">I fondi accantonano i pagamenti dei corsi per rimborsare il volontario. Con una spesa documentata di norma si attribuisce da sola, anche ai fondi già liquidati. Qui si può scegliere a mano, o escludere la spesa.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<script>(function(){var c=document.getElementById("asem-fund-auto"),b=document.getElementById("asem-row-beneficiary"),f=document.getElementById("asem-row-fund"),s=document.getElementById("asem-fund-choice");if(!c){return;}function u(){var on=c.checked;if(b){b.style.display=on?"none":"";}if(f){f.style.display=on?"none":"";}if(s){s.disabled=on;}}c.addEventListener("change",u);u();})();</script>'; // phpcs:ignore WordPress.Security.EscapeOutput -- script fisso
 	}
