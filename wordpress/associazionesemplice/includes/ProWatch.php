@@ -133,6 +133,12 @@ final class ProWatch {
 			'Più basso: gli avvisi arrivano prima, ma nei primi mesi sono spesso falsi allarmi.'
 		);
 		$add(
+			'watch_auto_default', 'Spunta «attribuzione automatica» accesa di partenza nel modulo spese', 'flag', 1, 0, 1,
+			'Nel modulo di una nuova spesa (amministrazione e area riservata del tesoriere) la spunta «Attribuzione automatica» parte accesa: la spesa va ai fondi di chi la registra se ne ha con documentazione da coprire, altrimenti si distribuisce da sola. Spegnendo questo limite la spunta parte spenta e chi registra sceglie ogni volta chi ha anticipato e il fondo.',
+			'Acceso: più veloce, ma una spesa registrata di fretta può finire a un fondo sbagliato (si annulla da Cassa → Conti e fondi).',
+			'Spento: più controllo, ma ogni spesa richiede una scelta in più e chi la dimentica lascia la spesa senza beneficiario.'
+		);
+		$add(
 			'watch_snapshots', 'Istantanea mensile del bilancio', 'flag', 1, 0, 1,
 			'Un lavoro automatico salva, a ogni fine mese, il consuntivo dell\'anno contro il preventivo, e ne conserva lo storico mese per mese (consultabile ed esportabile). Non invia email.',
 			'Acceso: ogni mese una riga in più in archivio, trascurabile.',
@@ -140,7 +146,7 @@ final class ProWatch {
 		);
 		$add(
 			'watch_auto_attribute', 'Attribuzione automatica delle spese ai fondi', 'flag', 1, 0, 1,
-			'Una spesa documentata (con scontrino o fattura allegati) viene attribuita da sola: se chi ha anticipato è un volontario, ai suoi fondi; se è un consigliere o la spesa non ha un beneficiario (i soci non volontari la documentano alla segreteria, che la registra), al fondo con più documentazione da coprire. Aperti o già liquidati, quelli dell\'attività della spesa prima, poi i più vecchi, finché i documenti coprono quanto accantonato. Resta annullabile e si può scegliere il fondo a mano.',
+			'Una spesa documentata (con scontrino o fattura allegati) viene attribuita da sola: se chi ha anticipato ha un fondo con documentazione da coprire, ai suoi fondi; altrimenti (ad esempio la registra la segreteria per un consigliere o un socio non volontario) tra i fondi con più documentazione da coprire. Aperti o già liquidati, quelli dell\'attività della spesa prima, poi i più vecchi, finché i documenti coprono quanto accantonato. Resta annullabile e si può scegliere il fondo a mano.',
 			'Acceso: l\'attribuzione segue i documenti allegati; una spesa registrata con il beneficiario sbagliato si attribuisce al fondo sbagliato finché non la annulli.',
 			'Spento: le spese non si attribuiscono da sole e restano tutte nell\'elenco «spese documentate non rimborsate» finché non le colleghi a mano.'
 		);
@@ -199,10 +205,23 @@ final class ProWatch {
 		return $map + array( 'asem_watch_csv' => 'Admin\\WatchExports' );
 	}
 
-	/** Chi sta registrando la spesa, solo se è un volontario (gli altri soci documentano le spese alla segreteria). */
+	/** La persona che sta registrando la spesa, solo se ha un fondo con documentazione scoperta (allora la spesa è sua); altrimenti 0. */
 	private static function me(): int {
 		$p = Access::current_person();
-		return $p && 'volunteer' === $p['type'] ? (int) $p['id'] : 0; // i soci non volontari non caricano spese da soli: le documentano alla segreteria, che le registra
+		if ( ! $p ) {
+			return 0;
+		}
+		foreach ( ExpenseFunds::coverage() as $f ) {
+			if ( (int) $f['person_id'] === (int) $p['id'] && $f['missing'] > 0 ) {
+				return (int) $p['id'];
+			}
+		}
+		return 0;
+	}
+
+	/** La spunta «attribuzione automatica» parte accesa, salvo il limite `watch_auto_default`. */
+	public static function auto_checked(): string {
+		return Limits::get( 'watch_auto_default' ) ? ' checked' : '';
 	}
 
 	/** Con l'attribuzione automatica, se a registrare è un volontario la spesa è sua; se registra la segreteria per conto di altri (consiglieri, soci) la spesa resta senza beneficiario e va al fondo più coerente. */
@@ -249,7 +268,7 @@ final class ProWatch {
 				$opts[ (string) $f['id'] ] = $f['name'] . ( null === $f['closed_at'] ? '' : ' (liquidato)' ) . ' — da documentare ' . Money::format( (int) $f['missing'] );
 			}
 		}
-		echo '<tr><th>Attribuzione automatica</th><td><label><input type="checkbox" name="fund_auto" value="1" id="asem-fund-auto" checked> la spesa è mia: si attribuisce da sola ai fondi giusti</label><p class="description">Acceso: se sei un volontario la spesa è tua e va ai tuoi fondi; se la registri per conto di altri (consiglieri, soci che ti hanno consegnato lo scontrino) va al fondo con più documentazione da coprire, e non serve indicare altro. Spento: scegli tu chi ha anticipato (un volontario o anche un socio non volontario, ad esempio da rimborsare per un favore; di partenza tu, se sei un volontario, poi i volontari) e il fondo: automatico, uno in particolare o «Nessun fondo» (per un semplice rimborso senza fondi).</p></td></tr>';
+		echo '<tr><th>Attribuzione automatica</th><td><label><input type="checkbox" name="fund_auto" value="1" id="asem-fund-auto"' . self::auto_checked() . '> la spesa è mia o si distribuisce da sola ai fondi giusti</label><p class="description">Acceso: se hai un fondo con documentazione da coprire la spesa è tua e va ai tuoi fondi; altrimenti (ad esempio la registri per conto di un consigliere o di un socio) si distribuisce tra i fondi con più documentazione da coprire, e non serve indicare altro. Spento: scegli tu chi ha anticipato (un volontario o anche un socio non volontario, ad esempio da rimborsare per un favore; di partenza tu, se hai un fondo da coprire, poi i volontari) e il fondo: automatico, uno in particolare o «Nessun fondo» (per un semplice rimborso senza fondi).</p></td></tr>';
 		echo '<tr id="asem-row-fund"><th>Fondo da coprire</th><td><select name="fund_choice" id="asem-fund-choice">' . Admin\Ui::options( $opts, '' ) . '</select><p class="description">I fondi accantonano i pagamenti dei corsi per rimborsare il volontario. Con una spesa documentata di norma si attribuisce da sola, anche ai fondi già liquidati. Qui si può scegliere a mano, o escludere la spesa.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<script>(function(){var c=document.getElementById("asem-fund-auto"),b=document.getElementById("asem-row-beneficiary"),f=document.getElementById("asem-row-fund"),s=document.getElementById("asem-fund-choice");if(!c){return;}function u(){var on=c.checked;if(b){b.style.display=on?"none":"";}if(f){f.style.display=on?"none":"";}if(s){s.disabled=on;}}c.addEventListener("change",u);u();})();</script>'; // phpcs:ignore WordPress.Security.EscapeOutput -- script fisso
 	}
@@ -277,7 +296,7 @@ final class ProWatch {
 			return $h;
 		};
 		return $html
-			. '<label><input type="checkbox" name="fund_auto" value="1" id="asem-fund-auto" checked> Attribuzione automatica ai fondi (se la spesa è tua, o la registri per altri)</label>'
+			. '<label><input type="checkbox" name="fund_auto" value="1" id="asem-fund-auto"' . self::auto_checked() . '> Attribuzione automatica ai fondi (se la spesa è tua, o la registri per altri)</label>'
 			. '<label id="asem-row-beneficiary">Chi ha anticipato <select name="person_id" id="asem-beneficiary">' . $sel( $people, self::me() ?: '', '— nessuno / fornitore —' ) . '</select></label>'
 			. '<label id="asem-row-fund">Fondo da coprire <select name="fund_choice" id="asem-fund-choice">' . $sel( $opts, '' ) . '</select></label>'
 			. '<script>(function(){var c=document.getElementById("asem-fund-auto"),b=document.getElementById("asem-row-beneficiary"),f=document.getElementById("asem-row-fund"),s=document.getElementById("asem-fund-choice");if(!c){return;}function u(){var on=c.checked;if(b){b.style.display=on?"none":"";}if(f){f.style.display=on?"none":"";}if(s){s.disabled=on;}}c.addEventListener("change",u);u();})();</script>';

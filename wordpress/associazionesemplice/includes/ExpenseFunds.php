@@ -131,14 +131,20 @@ final class ExpenseFunds {
 					return array();
 				}
 				$room  = array();
-				$funds = array();
+				$own   = array();
+				$all   = array();
 				foreach ( self::coverage() as $f ) {
-					$person = ! empty( $tx['person_id'] ) ? Plugin::people()->get( (int) $tx['person_id'] ) : null; // volontario: solo i suoi fondi (il resto lo sistema la segreteria); consigliere o altro: qualunque fondo scoperto, quello dell'attività prima
-					$mine   = ! ( $person && 'volunteer' === $person['type'] ) || (int) $f['person_id'] === (int) $tx['person_id'];
-					if ( $mine && $f['missing'] > 0 ) {
-						$funds[] = $f;
+					if ( $f['missing'] <= 0 ) {
+						continue;
+					}
+					$all[] = $f;
+					if ( ! empty( $tx['person_id'] ) && (int) $f['person_id'] === (int) $tx['person_id'] ) {
+						$own[] = $f;
 					}
 				}
+				// Chi ha anticipato ha un fondo con documentazione scoperta: la spesa è sua, ai suoi fondi. Altrimenti (qualunque ruolo) si distribuisce
+				// tra i fondi con documentazione scoperta, quelli dell'attività della spesa prima; le inesattezze le sistema la segreteria a mano.
+				$funds = $own ? $own : $all;
 				foreach ( BalanceWatchRules::order_funds( $funds, (int) $tx['activity_id'] ) as $f ) {
 					$room[ (int) $f['id'] ] = (int) $f['missing'];
 				}
