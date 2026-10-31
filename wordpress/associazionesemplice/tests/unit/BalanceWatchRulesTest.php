@@ -154,7 +154,7 @@ final class BalanceWatchRulesTest extends TestCase {
 		$this->assertSame( 2025, $s['year'] );
 		$this->assertFalse( R::year_end_window( '2026-06-30', 9, 1 )['active'] );
 		$this->assertFalse( R::year_end_window( '2026-09-01', 9, 1 )['active'], 'un nuovo anno è appena iniziato' );
-		$this->assertSame( '2026-10-01', R::year_end_window( '2026-12-01', 1, 9 )['start'], 'anticipo limitato a 3 mesi' );
+		$this->assertSame( '2026-09-01', R::year_end_window( '2026-12-01', 1, 9 )['start'], 'anticipo limitato a 3 mesi' );
 	}
 
 	public function test_year_end_notice_phase_comes_before_the_fixed_one(): void {
