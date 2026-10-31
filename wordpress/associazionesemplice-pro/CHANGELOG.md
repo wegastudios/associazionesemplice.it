@@ -2,6 +2,14 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.1.38
+- Pro Fiscale: le spese documentate si attribuiscono ai fondi dei rimborsi (anche divise su due fondi), con gli elenchi delle spese non rimborsate e dei fondi non documentati.
+- Pro Fiscale: avvisi di bilancio quando le spese superano gli incassi o l'utile è eccessivo.
+- Pro Fiscale: bilancio provvisorio sempre aggiornato al mese concluso, con l'andamento del mese in corso e lo storico mensile.
+- Pro Fiscale: prospetto dei rimborsi per persona e avviso di discrepanze nei mesi prima della fine dell'anno fiscale.
+- Pro Fiscale: mese di inizio dell'anno fiscale separato da quello dell'anno sociale.
+- Richiede il gratuito 1.2.47 o successivo.
+
 ## 1.1.37
 - Affiliazioni: tutti gli enti di promozione riconosciuti dal CONI, campo «discipline», e nel file per i portali degli enti le colonne Sport e Disciplina; il tipo di tessera di ripiego è il tipo di tesseramento della scheda.
 - Richiede il gratuito 1.2.45 o successivo.
