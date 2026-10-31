@@ -139,7 +139,7 @@ final class ProWatch {
 		);
 		$add(
 			'watch_auto_attribute', 'Attribuzione automatica delle spese ai fondi', 'flag', 1, 0, 1,
-			'Una spesa documentata (con scontrino o fattura allegati) viene attribuita da sola: se chi ha anticipato è un volontario, ai suoi fondi; se è un consigliere o la spesa non ha un beneficiario (i soci non volontari la documentano alla segreteria, che la registra), al fondo con più documentazione da coprire. Aperti o già liquidati, quelli dell'attività della spesa prima, poi i più vecchi, finché i documenti coprono quanto accantonato. Resta annullabile e si può scegliere il fondo a mano.',
+			'Una spesa documentata (con scontrino o fattura allegati) viene attribuita da sola: se chi ha anticipato è un volontario, ai suoi fondi; se è un consigliere o la spesa non ha un beneficiario (i soci non volontari la documentano alla segreteria, che la registra), al fondo con più documentazione da coprire. Aperti o già liquidati, quelli dell\'attività della spesa prima, poi i più vecchi, finché i documenti coprono quanto accantonato. Resta annullabile e si può scegliere il fondo a mano.',
 			'Acceso: l\'attribuzione segue i documenti allegati; una spesa registrata con il beneficiario sbagliato si attribuisce al fondo sbagliato finché non la annulli.',
 			'Spento: le spese non si attribuiscono da sole e restano tutte nell\'elenco «spese documentate non rimborsate» finché non le colleghi a mano.'
 		);
