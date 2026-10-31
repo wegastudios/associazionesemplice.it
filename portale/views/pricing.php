@@ -30,6 +30,9 @@ $copy = array(
 		'IVA su quote, attività, incassi e spese',
 		'5 per mille con rendiconto sull\'utilizzo',
 		'Rendiconto per cassa per il commercialista',
+		'Spese documentate sui fondi dei rimborsi, con prospetto per persona',
+		'Bilancio provvisorio, avvisi di bilancio e storico mensile',
+		'Anno fiscale con mese di inizio proprio e verifiche prima della chiusura',
 	) ),
 );
 $save = 0;
