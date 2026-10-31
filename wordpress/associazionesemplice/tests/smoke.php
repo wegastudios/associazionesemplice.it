@@ -5797,14 +5797,15 @@ $RS::book_slot( $rs_c2, $rs_m1, gmdate( 'Y-m-d', strtotime( $rs_tue . ' +7 days'
 asem_ok( null !== asem_throws( function () use ( $RS, $rs_c2, $rs_m2, $rs_tue ) { $RS::book_series( $rs_c2, $rs_m2, $rs_tue, '21:00', 1, 3 ); } ) && $RS::book_slot( $rs_c2, $rs_m2, $rs_tue, '21:00', 1, array(), true ) > 0, 'risorse: se una settimana è occupata nessuna delle altre viene prenotata' );
 asem_ok( 2 === $RS::cancel_series( $rs_series[1] ) && 'booked' === $RS::reservation( $rs_series[0] )['status'] && 'cancelled' === $RS::reservation( $rs_series[2] )['status'], 'risorse: si annullano una prenotazione e le successive della serie' );
 // un evento collegato alla risorsa la occupa
-$rs_ev = $acts->create( array( 'name' => 'Torneo campo', 'social_year' => $sy_label, 'kind' => 'event', 'session' => array( 'session_date' => $ev_date, 'start_time' => '19:00', 'end_time' => '20:00', 'capacity' => 10 ) ) );
+$rs_evd = gmdate( 'Y-m-d', strtotime( $rs_tue . ' +1 day' ) ); // un giorno senza le prenotazioni delle serie (con +10 giorni dall'oggi poteva coincidere con il martedì delle serie)
+$rs_ev = $acts->create( array( 'name' => 'Torneo campo', 'social_year' => $sy_label, 'kind' => 'event', 'session' => array( 'session_date' => $rs_evd, 'start_time' => '19:00', 'end_time' => '20:00', 'capacity' => 10 ) ) );
 asem_ok( 0 === $RS::link_activity( $rs_ev, $rs_c2 ) && $rs_c2 === $RS::activity_resource( $rs_ev ), 'risorse: un evento si collega a una risorsa a fasce' );
-$rs_msg = asem_throws( function () use ( $RS, $rs_c2, $rs_m2, $ev_date ) { $RS::book_slot( $rs_c2, $rs_m2, $ev_date, '19:00', 1, array(), true ); } );
-asem_ok( null !== $rs_msg && false !== strpos( $rs_msg, 'Torneo campo' ) && $RS::book_slot( $rs_c2, $rs_m2, $ev_date, '12:00', 1, array(), true ) > 0 && null !== asem_throws( function () use ( $RS, $rs_c2, $rs_m1, $ev_date ) { $RS::book_slot( $rs_c2, $rs_m1, $ev_date, '18:00', 1, array(), true ); } ), 'risorse: negli orari dell\'evento e nelle 3 ore di allestimento prima la risorsa non si prenota, fuori sì' );
-$rs_grid = array_filter( $RS::day_grid( $RS::get( $rs_c2 ), $ev_date ), function ( $s ) { return '19:00' === $s['start']; } );
+$rs_msg = asem_throws( function () use ( $RS, $rs_c2, $rs_m2, $rs_evd ) { $RS::book_slot( $rs_c2, $rs_m2, $rs_evd, '19:00', 1, array(), true ); } );
+asem_ok( null !== $rs_msg && false !== strpos( $rs_msg, 'Torneo campo' ) && $RS::book_slot( $rs_c2, $rs_m2, $rs_evd, '12:00', 1, array(), true ) > 0 && null !== asem_throws( function () use ( $RS, $rs_c2, $rs_m1, $rs_evd ) { $RS::book_slot( $rs_c2, $rs_m1, $rs_evd, '18:00', 1, array(), true ); } ), 'risorse: negli orari dell\'evento e nelle 3 ore di allestimento prima la risorsa non si prenota, fuori sì' );
+$rs_grid = array_filter( $RS::day_grid( $RS::get( $rs_c2 ), $rs_evd ), function ( $s ) { return '19:00' === $s['start']; } );
 asem_ok( 'activity' === array_values( $rs_grid )[0]['reservation']['kind'], 'risorse: il calendario del giorno mostra la fascia occupata dall\'evento' );
 $RS::link_activity( $rs_ev, null );
-$rs_late = $RS::book_slot( $rs_c2, $rs_m2, $ev_date, '19:00', 1, array(), true );
+$rs_late = $RS::book_slot( $rs_c2, $rs_m2, $rs_evd, '19:00', 1, array(), true );
 asem_ok( $RS::link_activity( $rs_ev, $rs_c2 ) >= 1 && null !== asem_throws( function () use ( $RS, $rs_ev, $rs_park ) { $RS::link_activity( $rs_ev, $rs_park ); } ), 'risorse: collegando un evento si segnalano le prenotazioni già presenti; le assegnazioni non si possono collegare' );
 asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Risorsa occupata', array( 'id' => $rs_ev ) );
 asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'Tariffe a fasce', array( 'id' => $rs_c2 ) );
