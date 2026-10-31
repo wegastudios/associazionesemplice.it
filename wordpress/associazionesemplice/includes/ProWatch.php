@@ -28,6 +28,7 @@ final class ProWatch {
 		add_action( 'asem_dashboard_alerts', array( Admin\WatchPage::class, 'alerts' ), 20 );
 		add_action( 'asem_dashboard_cards', array( Admin\WatchPage::class, 'dashboard_cards' ) );
 		add_action( 'asem_dashboard_alerts', array( YearEndCheck::class, 'show' ), 15 );
+		add_action( 'asem_yearend_alert', array( YearEndCheck::class, 'show' ) );
 		add_filter( 'asem_expense_saved_note', array( ExpenseFunds::class, 'saved_note' ), 10, 2 );
 		FundReconciliation::register();
 	}
