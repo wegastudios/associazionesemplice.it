@@ -7595,7 +7595,7 @@ asem_render( array( Admin\EntityPage::class, 'render' ), 'fiscal_start_month' );
 
 // Spese attribuite ai fondi.
 $wt_vol = $people->create( array( 'type' => 'volunteer', 'first_name' => 'Gina', 'last_name' => 'Fondi', 'email' => 'gina.fondi@example.com' ) );
-$wt_pay = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Paolo', 'last_name' => 'Paga', 'email' => 'paolo.paga@example.com' ) );
+$wt_pay = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Attribuzioninte', 'last_name' => 'Paga', 'email' => 'pagante.attribuzioni@example.com' ) );
 $wt_c1  = $acts->create( array( 'name' => 'Corso Attribuzioni A', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 2000, 'instructor_person_id' => $wt_vol, 'fund_mode' => 'percent', 'fund_value' => 5000 ) );
 $wt_c2  = $acts->create( array( 'name' => 'Corso Attribuzioni B', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 2000, 'instructor_person_id' => $wt_vol, 'fund_mode' => 'percent', 'fund_value' => 5000 ) );
 foreach ( array( $wt_c1, $wt_c2 ) as $wt_c ) {
