@@ -7009,7 +7009,7 @@ $acts->update( $bc_act, array( 'sport' => 'Zumba' ) );
 $SC::remove( 'Zumba' );
 asem_ok( 'Zumba' === $acts->get( $bc_act )['sport'], 'sport: togliere dal menu non cambia le attività che lo usano' );
 asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Zumba', array( 'id' => $bc_act ) );
-asem_render( array( Admin\ActivitiesPage::class, 'render' ), 'Sport disponibili' );
+asem_render( array( Admin\ActivitiesPage::class, 'render_list' ), 'Sport disponibili' );
 $SC::reset();
 asem_ok( $SC::is_default() && in_array( 'Judo', $SC::sports(), true ) && ! in_array( 'Zumba', $SC::sports(), true ), 'sport: si torna all\'elenco del CONI' );
 $acts->update( $bc_act, array( 'sport' => 'Atletica leggera', 'discipline' => 'Corsa su strada' ) );
