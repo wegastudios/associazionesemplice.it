@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.51
+Stable tag: 1.2.52
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,9 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.2.52 =
+* Members sign in with email and a password they choose on first entry (required; the members area stays closed until then). Forgotten password: an emailed link signs in but forces a new password before browsing; changing the password signs out the other devices. Signing in with an emailed link or code, without a password, is still available.
 
 = 1.2.51 =
 * Member sign-in with an emailed link or code (password optional) is on by default: new members no longer get a WordPress user. A WordPress user is created only when a member is given a role (secretary, treasurer, staff). Members who already have a WordPress user keep signing in with WordPress.

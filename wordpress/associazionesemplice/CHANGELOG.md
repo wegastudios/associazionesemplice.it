@@ -2,6 +2,12 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.52
+- I soci entrano con email e password: la password si sceglie alla prima entrata ed è obbligatoria (finché non c'è, l'area riservata resta chiusa). Il modulo dell'area soci è quello con email e password.
+- «Password dimenticata»: arriva per email un link che fa entrare ma obbliga a scegliere una nuova password prima di navigare. Cambiata la password, gli altri dispositivi devono rientrare.
+- Chi preferisce può ancora entrare con un link o un codice via email, senza password.
+- All'attivazione dal link della segreteria la password si sceglie subito.
+
 ## 1.2.51
 - L'accesso dei soci con un link o un codice via email (password facoltativa) è acceso di default: i nuovi soci non hanno più un utente WordPress. L'utente WordPress nasce solo quando a un socio si dà un potere (segreteria, tesoriere, staff). Chi ha già un utente WordPress continua a entrare da WordPress.
 - Gli amministratori possono scegliere di creare comunque anche un utente WordPress per ogni socio (Impostazioni → Accesso dei soci, oppure la configurazione guidata, dove la scelta è spiegata con vantaggi e svantaggi e con una nota se c'è WooCommerce). A WordPress e a WooCommerce passano solo nome, cognome ed email.

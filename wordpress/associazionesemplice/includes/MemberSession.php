@@ -66,6 +66,7 @@ final class MemberSession {
 		self::set_cookie( $raw, $now + self::IDLE_DAYS * DAY_IN_SECONDS );
 		$_COOKIE[ self::COOKIE ] = $raw;
 		self::$current           = null;
+		self::flush();
 		return $raw;
 	}
 
@@ -125,10 +126,52 @@ final class MemberSession {
 		}
 		$p = Plugin::people()->get( (int) $s['person_id'] );
 		if ( self::person_allowed( $p ) ) {
-			return $p;
+			return self::needs_password( (int) $p['id'] ) ? null : $p; // finché non sceglie la password nessuno vede l'area riservata
 		}
 		self::destroy(); // la persona non può più entrare (tolta, anonimizzata, tipo cambiato)
 		return null;
+	}
+
+	/** @var array<int,string> stato della password per persona, in memoria per questa richiesta */
+	private static $pw = array();
+
+	public static function flush(): void {
+		self::$pw = array();
+	}
+
+	/** Il socio deve ancora scegliere la password (la prima volta o dopo il recupero). */
+	public static function needs_password( int $person_id ): bool {
+		if ( ! isset( self::$pw[ $person_id ] ) ) {
+			self::$pw[ $person_id ] = MemberLogin::password_state( $person_id );
+		}
+		return 'ok' !== self::$pw[ $person_id ];
+	}
+
+	/** Entrato ma senza password valida: può solo sceglierla (o uscire). @return array|null person, state («none»: prima volta, «reset»: recupero) */
+	public static function pending_setup(): ?array {
+		$s = self::current();
+		if ( ! $s ) {
+			return null;
+		}
+		$p = Plugin::people()->get( (int) $s['person_id'] );
+		if ( ! self::person_allowed( $p ) ) {
+			return null;
+		}
+		$state = MemberLogin::password_state( (int) $p['id'] );
+		return 'ok' === $state ? null : array( 'person' => $p, 'state' => $state );
+	}
+
+	/** Chiude le sessioni della persona tranne quella di questa richiesta (dopo il cambio della password). */
+	public static function destroy_others( int $person_id ): void {
+		$raw = self::cookie_token();
+		$db  = Db::db();
+		$tbl = Db::t( 'member_sessions' );
+		if ( '' === $raw ) {
+			$db->delete( $tbl, array( 'person_id' => $person_id ) );
+		} else {
+			$db->query( $db->prepare( "DELETE FROM $tbl WHERE person_id = %d AND token_hash <> %s", $person_id, SessionToken::hash( $raw ) ) );
+		}
+		self::flush();
 	}
 
 	/**
@@ -173,6 +216,7 @@ final class MemberSession {
 		self::set_cookie( '', time() - YEAR_IN_SECONDS );
 		unset( $_COOKIE[ self::COOKIE ] );
 		self::$current = false;
+		self::flush();
 	}
 
 	/** «Esci da tutti i dispositivi» e revoca dalla segreteria. @return int sessioni chiuse */

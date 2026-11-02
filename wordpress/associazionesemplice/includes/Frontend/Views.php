@@ -103,6 +103,16 @@ final class Views {
 
 	public static function login_prompt(): string {
 		Assets::enqueue();
+		if ( \AssociazioneSemplice\MemberSession::enabled() && ! \AssociazioneSemplice\MemberSession::wp_users_wanted() ) { // i soci non sono utenti WordPress: email e password propri
+			$back = Restrict::current_url();
+			$own  = MemberLoginPage::url();
+			return self::wrap(
+				'<div class="asemf-card"><h3>Area riservata ai soci</h3><p>Accedi per vedere la tessera, le tue attività e prenotarti agli eventi.</p>'
+				. MemberLoginPage::inline_login( $back )
+				. '<p class="asemf-small"><a href="' . esc_url( add_query_arg( '_back', rawurlencode( $back ), $own ) ) . '">Password dimenticata?</a> · <a href="' . esc_url( add_query_arg( '_back', rawurlencode( $back ), $own ) ) . '">Entra con un link o un codice via email</a> · <strong><a href="' . esc_url( FirstAccess::url() ) . '">Primo accesso</a></strong></p>'
+				. '<p class="asemf-small">Segreteria e staff: <a href="' . esc_url( wp_login_url( $back ) ) . '">accedi da qui</a>.</p></div>'
+			);
+		}
 		$form = wp_login_form( array( 'echo' => false, 'redirect' => Restrict::current_url(), 'label_username' => 'Email o nome utente', 'label_log_in' => 'Accedi' ) );
 		return self::wrap(
 			'<div class="asemf-card"><h3>Area riservata ai soci</h3><p>Accedi per vedere la tua tessera, le tue attività e prenotarti agli eventi.</p>'
@@ -128,6 +138,10 @@ final class Views {
 	/** Esegue $fn( persona ) solo se l'utente è collegato e ha una scheda socio; altrimenti mostra il messaggio giusto. */
 	public static function with_person( callable $fn, string $class = '' ): string {
 		if ( ! \AssociazioneSemplice\MemberSession::logged_in() ) {
+			if ( \AssociazioneSemplice\MemberSession::pending_setup() ) { // entrato ma senza password: prima la sceglie
+				self::no_cache();
+				return self::wrap( '<div class="asemf-card"><h3>Scegli la tua password</h3><p>Per continuare devi scegliere la tua password.</p><p><a class="asemf-btn wp-element-button" href="' . esc_url( add_query_arg( '_back', rawurlencode( Restrict::current_url() ), MemberLoginPage::url() ) ) . '">Scegli la password</a></p></div>' );
+			}
 			return self::login_prompt();
 		}
 		self::no_cache();
