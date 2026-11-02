@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.51
+- In Strumenti, nella panoramica, c'è il riquadro «Accesso dei soci»: dice quanti utenti si possono spostare all'accesso proprio, quanti non hanno l'email e quanti restano utenti WordPress (segreteria, presidente e vicepresidente, tesoriere, staff). Solo lettura.
+- Le pagine dei soci, i moduli, i download (ricevute, tessera PDF, wallet), i pagamenti e le notifiche funzionano anche per chi entra con l'accesso proprio. Resta spento: finché non lo accendi dai Limiti non cambia nulla.
+
 ## 1.2.50
 - Predisposto l'accesso dei soci senza bisogno di un utente WordPress: entrano con un link o un codice che arriva per email, oppure con una password facoltativa. È spento: finché l'amministratore non lo accende dai Limiti («Accesso dei soci indipendente da WordPress») non cambia nulla e i soci entrano come prima.
 - Quando sarà acceso, il sito userà un cookie tecnico di sessione («asem_s») e scriverà ai soci per mandare il link di accesso.

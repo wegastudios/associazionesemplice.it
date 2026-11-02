@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.50
+Stable tag: 1.2.51
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,10 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.2.51 =
+* Tools > Overview shows a summary of member accounts that can move to the independent sign-in (how many can move, how many have no email, how many stay WordPress users). Read-only.
+* Member pages, forms, downloads, payments, REST and push notifications now also work for members signed in without a WordPress user. Still off by default: nothing changes until the setting is turned on.
 
 = 1.2.50 =
 * Groundwork for member sign-in that does not need a WordPress user: three new tables, link/code/password login page and a daily cleanup. Off by default (Settings > Technical > Limits, "Member sign-in independent of WordPress"): nothing changes until an administrator turns it on. When on, it sets a "asem_s" session cookie (HttpOnly, SameSite=Lax) and sends sign-in links by email.
