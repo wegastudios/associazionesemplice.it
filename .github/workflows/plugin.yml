@@ -145,3 +145,17 @@ jobs:
         uses: WordPress/plugin-check-action@v1
         with:
           build-dir: wordpress/dist/free/associazionesemplice
+
+  prostatic:
+    name: Pro static check (Plugin Check rules)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          tools: composer
+      - name: Build the packages
+        run: bash wordpress/build.sh wordpress/dist
+      - name: Pro package against the Plugin Check security rules (new findings fail)
+        run: bash wordpress/check-pro-static.sh wordpress/dist/pro/associazionesemplice-pro
