@@ -145,11 +145,18 @@ final class ExpenseFunds {
 				// Un volontario: solo i suoi fondi. Chi non lo è: se ha un fondo con documentazione scoperta la spesa è sua, ai suoi fondi; altrimenti si distribuisce
 				// tra i fondi con documentazione scoperta, quelli dell'attività della spesa prima; le inesattezze le sistema la segreteria a mano.
 				$person = ! empty( $tx['person_id'] ) ? Plugin::people()->get( (int) $tx['person_id'] ) : null;
-				$funds  = $person && 'volunteer' === $person['type'] ? $own : ( $own ? $own : $all ); // un volontario solo sui suoi fondi (se sono coperti la sistema la segreteria)
+				$funds  = $person && 'volunteer' === $person['type'] ? $own : ( $own ? $own : $all ); // un volontario solo sui suoi fondi (oltre, resta a lui in credito)
 				foreach ( BalanceWatchRules::order_funds( $funds, (int) $tx['activity_id'] ) as $f ) {
 					$room[ (int) $f['id'] ] = (int) $f['missing'];
 				}
 				$parts = BalanceWatchRules::split( (int) $tx['amount_cents'], $room );
+				$rest = (int) $tx['amount_cents'] - (int) array_sum( $parts );
+				if ( $person && 'volunteer' === $person['type'] && $rest > 0 ) { // oltre i suoi fondi: la spesa resta attribuita a lui, che va in credito (si sana con i futuri incassi o versando nel fondo)
+					$target = self::credit_fund( (int) $tx['person_id'] );
+					if ( $target ) {
+						$parts[ $target ] = ( $parts[ $target ] ?? 0 ) + $rest;
+					}
+				}
 				foreach ( $parts as $fund_id => $cents ) {
 					self::insert( (int) $tx['id'], $fund_id, $cents, self::AUTO );
 				}
@@ -161,6 +168,53 @@ final class ExpenseFunds {
 		);
 	}
 
+
+	/** Il fondo che porta il credito di un volontario: il suo fondo aperto più recente, o uno nuovo se non ne ha. */
+	private static function credit_fund( int $person_id ): int {
+		$db = self::db();
+		$id = (int) $db->get_var( $db->prepare( 'SELECT id FROM ' . Db::t( 'funds' ) . ' WHERE person_id = %d AND closed_at IS NULL ORDER BY id DESC LIMIT 1', $person_id ) );
+		if ( $id ) {
+			return $id;
+		}
+		$p = Plugin::people()->get( $person_id );
+		if ( ! $p ) {
+			return 0;
+		}
+		return Plugin::funds()->create( 'Rimborso ' . trim( $p['first_name'] . ' ' . $p['last_name'] ) . ' — spese anticipate', 0, $person_id );
+	}
+
+	/**
+	 * Volontari in credito: le spese documentate attribuite ai suoi fondi superano quanto è stato accantonato. Si sana da solo con i futuri incassi
+	 * dei suoi corsi, o versando una somma nel fondo da un conto o da un altro fondo.
+	 *
+	 * @return array[] person_id, name, accrued, documented, credit
+	 */
+	public static function credits(): array {
+		$by = array();
+		foreach ( self::coverage() as $f ) {
+			if ( empty( $f['person_id'] ) ) {
+				continue;
+			}
+			$pid = (int) $f['person_id'];
+			$by[ $pid ] = ( $by[ $pid ] ?? array( 'accrued' => 0, 'documented' => 0 ) );
+			$by[ $pid ]['accrued']    += (int) $f['accrued'];
+			$by[ $pid ]['documented'] += (int) $f['documented'];
+		}
+		$out = array();
+		foreach ( $by as $pid => $v ) {
+			if ( $v['documented'] > $v['accrued'] ) {
+				$p     = Plugin::people()->get( $pid );
+				$out[] = array( 'person_id' => $pid, 'name' => $p ? trim( $p['first_name'] . ' ' . $p['last_name'] ) : 'Persona eliminata', 'accrued' => $v['accrued'], 'documented' => $v['documented'], 'credit' => $v['documented'] - $v['accrued'] );
+			}
+		}
+		usort(
+			$out,
+			function ( $a, $b ) {
+				return $b['credit'] <=> $a['credit'];
+			}
+		);
+		return $out;
+	}
 	private static function insert( int $tx_id, int $fund_id, int $cents, string $source ): void {
 		self::db()->insert( Db::t( 'expense_funds' ), array( 'tx_id' => $tx_id, 'fund_id' => $fund_id, 'cents' => $cents, 'source' => $source, 'created_by' => get_current_user_id() ?: null, 'created_at' => Db::now() ) );
 		ProWatch::forget(); // la situazione dei fondi è cambiata

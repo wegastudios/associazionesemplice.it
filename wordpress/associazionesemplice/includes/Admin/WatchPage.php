@@ -173,7 +173,7 @@ final class WatchPage {
 		$spese = ExpenseFunds::uncovered_expenses();
 		$fondi = ExpenseFunds::undocumented_funds();
 		$back  = Ui::url( $compact ? 'asem' : 'asem-accounts' );
-		if ( $compact && ! $spese && ! $fondi ) {
+		if ( $compact && ! $spese && ! $fondi && ! ExpenseFunds::credits() ) {
 			return;
 		}
 		$limit = $compact ? 5 : 500;
@@ -225,6 +225,16 @@ final class WatchPage {
 			echo '</tbody></table>' . ( $compact && count( $fondi ) > $limit ? '<p><a href="' . esc_url( Ui::url( 'asem-accounts' ) ) . '">Vedi tutti →</a></p>' : '' );
 		}
 		echo '</div>';
+
+		$crediti = ExpenseFunds::credits();
+		if ( $crediti ) {
+			echo '<div class="asem-card"><h2>Volontari in credito (' . count( $crediti ) . ')</h2><p class="description">Questi volontari hanno anticipato spese dell\'associazione, ad esempio per eventi che incasseranno più avanti, oltre quanto accantonato nei loro fondi: la spesa resta attribuita a loro ed essi restano creditori per un periodo, il che è normale. Si sana da solo con i prossimi incassi dei loro corsi, oppure versando una somma nel loro fondo da un conto o da un altro fondo («Accantona» nella scheda del fondo). Per distribuire la spesa su altri fondi: annulla l\'attribuzione qui sotto e attribuiscila a un altro fondo.</p>';
+			echo '<table class="widefat striped"><thead><tr><th>Volontario</th><th>Accantonato</th><th>Spese documentate</th><th>Credito</th></tr></thead><tbody>';
+			foreach ( array_slice( $crediti, 0, $limit ) as $c ) {
+				echo '<tr><td>' . esc_html( $c['name'] ) . '</td><td>' . self::m( (int) $c['accrued'] ) . '</td><td>' . self::m( (int) $c['documented'] ) . '</td><td><strong>' . self::m( (int) $c['credit'] ) . '</strong></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			}
+			echo '</tbody></table></div>';
+		}
 
 		if ( ! $compact ) {
 			$recent = ExpenseFunds::recent( 20 );
