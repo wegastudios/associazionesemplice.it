@@ -165,9 +165,12 @@ Si cifra nell'applicazione con `sodium`: la chiave non entra mai nel database.
 
 Nuove per il SaaS: schema `core` (associazioni, utenti, ruoli, abbonamenti, chiavi, domini) e schema `sites`.
 
-## 10. Domande aperte
+## 10. Decisioni sullo schema
 
-1. **Prima nota**: resta in partita singola come oggi? (Basta per il rendiconto per cassa degli ETS; la partita doppia
-   serve solo per il rendiconto per competenza.)
-2. **Email**: in chiaro (serve per l'accesso e gli invii) o cifrata con blind index, rinunciando alla ricerca parziale?
-3. **Numero di tessera**: progressivo per associazione e anno, come oggi, o libero?
+1. **Prima nota in partita singola**, come oggi. La **partita doppia è un addon**: lo schema dei movimenti va pensato
+   per poterla aggiungere senza riscrivere quello che c'è.
+2. **Email in chiaro**: serve per l'accesso, gli invii e la ricerca parziale.
+3. **Numero di tessera modificabile a mano**, come oggi, con il pulsante **"primo numero libero"**, che propone il numero
+   più basso non ancora usato nell'associazione (riempie anche i buchi). Unicità garantita dal database:
+   `UNIQUE (org_id, card_number)` sulle schede non cancellate.
+4. **Chiavi primarie UUIDv7** (§2).
