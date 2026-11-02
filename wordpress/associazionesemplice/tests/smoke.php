@@ -8028,7 +8028,8 @@ asem_ok( $cf_p === MemberLogin::login_with_code( $cf_addr, $cf_c ), 'sicurezza: 
 $sq_res = \AssociazioneSemplice\Affiliations::sports_by_person( array( '1); DROP TABLE x;--', 'abc' ) );
 asem_ok( is_array( $sq_res ) && '' === (string) $wpdb->last_error, 'sicurezza: gli id nelle query sono sempre numeri' );
 asem_ok( ! isset( \AssociazioneSemplice\Html::allowed()['button']['formaction'] ) && ! isset( \AssociazioneSemplice\Html::document()['meta']['http-equiv'] ), 'sicurezza: tolti formaction e meta refresh dai tag consentiti' );
-asem_ok( false === strpos( wp_kses( '<form action="/x"><button formaction="https://evil.example">ok</button></form><meta http-equiv="refresh" content="0;url=https://evil.example">', \AssociazioneSemplice\Html::document() ), 'evil.example' ), 'sicurezza: HTML iniettato non può spedire un modulo né fare un reindirizzamento' );
+$kses_out = wp_kses( '<form action="/x"><button formaction="https://evil.example">ok</button></form><meta http-equiv="refresh" content="0;url=https://evil.example">', \AssociazioneSemplice\Html::document() );
+asem_ok( false === strpos( $kses_out, 'formaction' ) && false === strpos( $kses_out, 'http-equiv' ), 'sicurezza: HTML iniettato non può spedire un modulo altrove né fare un reindirizzamento' );
 
 // Scelta dell'amministratore: anche un utente WordPress per i soci (solo nome, cognome ed email passano a WordPress)
 Settings::update( array( 'member_wp_users' => 'x' ) );

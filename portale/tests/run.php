@@ -544,6 +544,30 @@ for ( $i = 0; $i < 6; $i++ ) {
 check( 'password: dopo 5 errori si blocca anche con la password giusta', false !== strpos( (string) throwsUser( function () use ( $auth ) { $auth->loginWithPassword( 'socio@esempio.it', 'una password lunga abbastanza', '9.9.9.6' ); } ), 'Troppi tentativi' ) );
 check( 'password: il blocco scade con l\'ora', 'c1' === $auth->loginWithPassword( 'socio@esempio.it', 'una password lunga abbastanza', '9.9.9.6', time() + 7200 )['id'] );
 
+// Revisione di sicurezza: tentativi riservati prima del controllo, impronta finta dello stesso costo
+$dm = new ReflectionMethod( Portale\Auth::class, 'dummy_hash' );
+$dm->setAccessible( true );
+check( 'password: l\'impronta finta ha lo stesso costo di quelle vere (i tempi non rivelano chi è cliente)', password_get_info( (string) $dm->invoke( null ) )['options']['cost'] === password_get_info( password_hash( 'x', PASSWORD_DEFAULT ) )['options']['cost'] && ! password_verify( 'qualunque', (string) $dm->invoke( null ) ) );
+check( 'password: una password enorme non viene nemmeno controllata', null !== throwsUser( function () use ( $auth ) { $auth->loginWithPassword( 'socio@esempio.it', str_repeat( 'a', 2000 ), '9.9.9.20' ); } ) );
+$rdb = new Db( new PDO( 'sqlite::memory:' ) );
+$rdb->migrate();
+$took = 0;
+for ( $i = 0; $i < 6; $i++ ) {
+	$took += Portale\RateLimit::take( $rdb, 'prova', '2026110100', 3, 1793000000 ) ? 1 : 0;
+}
+check( 'limite: al massimo tre posti in un\'ora, anche con tante richieste', 3 === $took );
+Portale\RateLimit::give_back( $rdb, 'prova', '2026110100' );
+check( 'limite: un posto restituito si può riusare, un solo posto', Portale\RateLimit::take( $rdb, 'prova', '2026110100', 3, 1793000000 ) && ! Portale\RateLimit::take( $rdb, 'prova', '2026110100', 3, 1793000000 ) );
+$mdb = new Db( new PDO( 'sqlite::memory:' ) );
+$mdb->migrate();
+$mdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'c9', 'ok@esempio.it', Db::now() ) );
+$mauth = new Portale\Auth( $mdb );
+$mauth->setPassword( 'c9', 'una password lunga abbastanza', 'ok@esempio.it' );
+for ( $i = 0; $i < 3; $i++ ) {
+	$mauth->loginWithPassword( 'ok@esempio.it', 'una password lunga abbastanza', '8.8.8.8' );
+}
+check( 'password: gli accessi riusciti non consumano il limite dell\'indirizzo', 'c9' === $mauth->loginWithPassword( 'ok@esempio.it', 'una password lunga abbastanza', '8.8.8.8' )['id'] && 0 === (int) ( $mdb->one( 'SELECT n FROM rate_limits WHERE bucket = ?', array( 'login:i:' . hash( 'sha256', '8.8.8.8' ) ) )['n'] ?? 0 ) );
+
 // --- Eliminazione di clienti e licenze --------------------------------------------------------
 $ddb = new Db( new PDO( 'sqlite::memory:' ) );
 $ddb->migrate();

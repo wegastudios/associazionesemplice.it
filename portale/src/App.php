@@ -32,6 +32,7 @@ final class App {
 				throw new UserError( 'Sessione scaduta: ricarica la pagina e riprova.' );
 			}
 			$this->route( $method, $path );
+			$this->finish();
 		} catch ( UserError $e ) {
 			http_response_code( 422 );
 			View::render( 'message', array( 'title' => 'Non è andata a buon fine', 'text' => $e->getMessage() ) );
@@ -203,6 +204,7 @@ final class App {
 	/** Apre la sessione del cliente; entrando dal link per email la password si può impostare senza digitare la vecchia. */
 	private function startSession( array $cust, bool $viaLink ): void {
 		session_regenerate_id( true );
+		unset( $_SESSION['csrf'] ); // nuovo token dopo l'accesso
 		$_SESSION['customer'] = $cust['id'];
 		$this->billing->touchCustomer( (string) $cust['id'] );
 		$_SESSION['via_link'] = $viaLink;
@@ -338,8 +340,35 @@ final class App {
 		http_response_code( $code );
 	}
 
+	/** @var callable[] email da mandare dopo che la risposta è stata consegnata */
+	private $after = array();
+
 	private function sendLink( array $cust, string $token, string $event, array $vars = array() ): void {
-		Emails::send( $this->db, $event, $cust['email'], $vars + array( 'link' => rtrim( (string) Config::get( 'base_url' ), '/' ) . '/entra/' . $token ) );
+		// L'email parte a risposta consegnata: il tempo di risposta non dice se l'indirizzo è di un cliente.
+		$this->after[] = function () use ( $cust, $token, $event, $vars ) {
+			Emails::send( $this->db, $event, $cust['email'], $vars + array( 'link' => rtrim( (string) Config::get( 'base_url' ), '/' ) . '/entra/' . $token ) );
+		};
+	}
+
+	/** Consegna la risposta e poi manda le email in coda. */
+	private function finish(): void {
+		if ( ! $this->after ) {
+			return;
+		}
+		if ( function_exists( 'fastcgi_finish_request' ) ) {
+			fastcgi_finish_request();
+		} else {
+			flush();
+		}
+		$jobs        = $this->after;
+		$this->after = array();
+		foreach ( $jobs as $job ) {
+			try {
+				$job();
+			} catch ( \Throwable $e ) {
+				error_log( '[portale] email non inviata: ' . $e->getMessage() );
+			}
+		}
 	}
 
 	/** @return mixed */
