@@ -88,12 +88,12 @@ final class MemberSession {
 		if ( null !== self::$current ) {
 			return self::$current ?: null;
 		}
-		self::$current = false;
-		$raw           = self::cookie_token();
+		$raw = self::cookie_token();
 		if ( '' === $raw || ! self::enabled() ) {
-			return null;
+			return null; // niente in memoria: l'interruttore o il cookie possono cambiare nella stessa richiesta
 		}
-		$db  = Db::db();
+		self::$current = false;
+		$db            = Db::db();
 		$tbl = Db::t( 'member_sessions' );
 		$now = time();
 		$row = $db->get_row( $db->prepare( "SELECT * FROM $tbl WHERE token_hash = %s AND expires_at > %s AND created_at > %s", SessionToken::hash( $raw ), self::utc( $now ), self::utc( $now - self::MAX_DAYS * DAY_IN_SECONDS ) ), ARRAY_A );
