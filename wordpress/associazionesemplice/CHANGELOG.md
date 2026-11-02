@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.4
+- Cancellando una singola iscrizione si restituisce o annulla solo il non fruito: gli incassi già fruiti restano in prima nota
+- Per il fruito la pagina e il messaggio finale mostrano quanto manca (da incassare) o quanto avanza (da restituire a mano)
+
 ## 1.3.3
 - Corretto l'ultimo avviso di Plugin Check (lettura del cookie di sessione dei soci): nessun cambiamento per chi usa il programma
 

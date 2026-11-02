@@ -32,7 +32,9 @@ final class DeleteBookingPage {
 		echo '<h2>' . esc_html( $who ) . ' — ' . esc_html( (string) $p['activity']['name'] ) . ( $p['session'] ? ' del ' . esc_html( Ui::date( $p['session']['session_date'] ) ) : '' ) . '</h2>';
 		echo '<div class="notice notice-error inline"><p><strong>Operazione definitiva.</strong> L\'iscrizione (' . ( $p['session'] ? 'prenotazione a questa data' : 'iscrizione al corso, con le presenze' ) . ') viene cancellata e non si può ripristinare.</p></div>';
 		echo '<h3>Soldi collegati all\'iscrizione</h3>';
-		echo $inc['count'] ? '<p><strong>' . (int) $inc['count'] . ' incassi</strong> per ' . esc_html( Money::format( (int) $inc['cents'] ) ) . ( $inc['online_cents'] > 0 ? ' (di cui ' . esc_html( Money::format( (int) $inc['online_cents'] ) ) . ' pagati online)' : '' ) . '.</p>' : '<p>Nessun incasso registrato: la prima nota non cambia.</p>';
+		echo $inc['count'] ? '<p><strong>' . (int) $inc['count'] . ' incassi</strong> per ' . esc_html( Money::format( (int) $inc['cents'] ) ) . ( $inc['online_cents'] > 0 ? ' (di cui ' . esc_html( Money::format( (int) $inc['online_cents'] ) ) . ' pagati online)' : '' ) . '.</p>' : '<p>Nessun incasso da restituire o annullare: la prima nota non cambia.</p>';
+		$kept = ActivityReset::kept_text( $p['fruited'] );
+		echo '' !== $kept ? '<p>' . esc_html( trim( $kept ) ) . '</p>' : '';
 
 		if ( 0 === (int) $inc['count'] ) { // nessun incasso collegato: la prima nota non cambia, una sola conferma (il pulsante)
 			Ui::form_open( 'asem_delete_booking', self::url( $aid, $pid, $sid ) );

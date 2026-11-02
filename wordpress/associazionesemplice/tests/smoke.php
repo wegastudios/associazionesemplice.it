@@ -1278,8 +1278,15 @@ $ledger->record_receipt( $vt_base + array( 'person_id' => $nf_p1, 'lines' => arr
 $ledger->record_receipt( $vt_base + array( 'person_id' => $nf_p2, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 700, 'activity_id' => $nf_a, 'session_id' => $nf_s2 ) ) ) );
 $nf_pre = \AssociazioneSemplice\ActivityReset::preview( $nf_a );
 asem_ok( 2 === $nf_pre['income']['count'] && 1 === $nf_pre['income_fruited']['count'] && 500 === $nf_pre['income_fruited']['cents'] && 1 === $nf_pre['income_void']['count'] && 700 === $nf_pre['income_void']['cents'] && 1 === $nf_pre['income_open']['count'], 'evento in più date: la data già svolta risulta fruita, quella futura no' );
+// singola prenotazione: l'incasso della data già svolta resta, quello della data futura si può restituire
+$nf_r1 = \AssociazioneSemplice\ActivityReset::registration_preview( $nf_a, $nf_p1, $nf_s1 );
+$nf_r2 = \AssociazioneSemplice\ActivityReset::registration_preview( $nf_a, $nf_p2, $nf_s2 );
+asem_ok( 0 === $nf_r1['income']['count'] && 1 === $nf_r1['fruited']['count'] && 500 === $nf_r1['fruited']['cents'] && 1 === $nf_r2['income']['count'] && 0 === $nf_r2['fruited']['count'], 'prenotazione: la data già svolta è fruita, quella futura no' );
+$nf_c0  = $ev_bal();
+$nf_rr  = \AssociazioneSemplice\ActivityReset::delete_registration( $nf_a, $nf_p1, $nf_s1, 'refund' );
+asem_ok( 0 === $nf_rr['refunds'] && 1 === $nf_rr['kept_count'] && 500 === $nf_rr['kept_cents'] && $ev_bal() === $nf_c0 && ! $acts->booking( $nf_s1, $nf_p1 ), 'prenotazione già svolta cancellata: l\'incasso resta, nessuna restituzione' );
 $nf_b0  = $ev_bal();
-$nf_res = \AssociazioneSemplice\ActivityReset::delete( $nf_a, 'refund' );
+$nf_res =\AssociazioneSemplice\ActivityReset::delete( $nf_a, 'refund' );
 asem_ok( 1 === $nf_res['refunds'] && 1 === $nf_res['kept_count'] && 500 === $nf_res['kept_cents'] && $ev_bal() === $nf_b0 - 700, 'evento in più date eliminato con restituzione: si restituisce solo la data futura' );
 // cancellazioni che non toccano la prima nota: una sola conferma
 $fr_a = $acts->create( array( 'name' => 'Evento senza soldi', 'social_year' => $ev_sy, 'kind' => 'event', 'fee_cents' => 0, 'session' => array( 'session_date' => $today ) ) );
