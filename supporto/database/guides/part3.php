@@ -132,6 +132,12 @@ Nella scheda c'è **Gestori dell'evento**: i soci o volontari indicati possono, 
 ## Cancellare un evento
 
 Solo gli amministratori possono eliminare un evento, dal pulsante **Elimina l'evento** nella scheda. Se ci sono incassi la procedura chiede cosa fare delle somme (restituirle o annullarle) e una doppia conferma; se non ci sono, basta una conferma semplice.
+
+Dalla versione 1.3.2 del plugin gratuito, eliminando un **evento** o un **corso**, il rimborso o l'annullamento riguardano **solo il non fruito**. Gli incassi legati a **date già svolte**, o a **mesi con almeno una lezione già svolta**, restano in prima nota e non vengono restituiti né annullati. Per esempio, per un corso tenuto a ottobre e annullato a novembre, ottobre resta e novembre si restituisce. La pagina di eliminazione ti mostra **quanti incassi restano**.
+
+## Annullare una data di un evento ricorrente
+
+Negli eventi ricorrenti, accanto a **«Annulla solo questa data»** c'è **«Annulla questa data e le successive»**. Le **date passate non si toccano**. L'annullamento di una data **non registra rimborsi**: le somme si restituiscono a mano, come prima.
 MD,
     ],
     [
