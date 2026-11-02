@@ -89,7 +89,7 @@ final class MemberSession {
 	}
 
 	private static function cookie_token(): string {
-		$raw = isset( $_COOKIE[ self::COOKIE ] ) ? (string) wp_unslash( $_COOKIE[ self::COOKIE ] ) : '';
+		$raw = isset( $_COOKIE[ self::COOKIE ] ) ? sanitize_text_field( wp_unslash( $_COOKIE[ self::COOKIE ] ) ) : ''; // poi si accetta solo un token del formato esatto
 		return SessionToken::is_well_formed( $raw ) ? $raw : '';
 	}
 
