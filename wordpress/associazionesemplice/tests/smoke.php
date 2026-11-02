@@ -4731,6 +4731,17 @@ asem_ok( false !== strpos( $pn_html, 'cookie tecnici di autenticazione di WordPr
 Settings::update( array( 'member_wp_users' => 0 ) );
 $pn_own = \AssociazioneSemplice\PrivacyNotice::html();
 asem_ok( false !== strpos( $pn_own, 'asem_s' ) && false !== strpos( $pn_own, 'impronta cifrata' ) && false !== strpos( $pn_own, '15 minuti' ) && false !== strpos( $pn_own, 'Accesso all&#039;area riservata e cookie' ) || false !== strpos( $pn_own, 'Accesso all\'area riservata e cookie' ), 'informativa privacy: con l\'accesso proprio dichiara il cookie asem_s, la password cifrata e i codici' );
+Settings::update( array( 'privacy_extra_cookies' => "_ga — statistiche anonime\n<b>mappa</b> — cartina del sito\n\n" ) );
+$pn_ck_hook = function ( $c ) {
+	$c[] = 'cookie_estensione — prova di un\'estensione';
+	return $c;
+};
+add_filter( 'asem_privacy_cookies', $pn_ck_hook );
+$pn_ck = \AssociazioneSemplice\PrivacyNotice::html();
+remove_filter( 'asem_privacy_cookies', $pn_ck_hook );
+asem_ok( false !== strpos( $pn_ck, '_ga — statistiche anonime' ) && false !== strpos( $pn_ck, 'mappa — cartina del sito' ) && false === strpos( $pn_ck, '<b>mappa' ) && false !== strpos( $pn_ck, 'cookie_estensione' ) && false !== strpos( $pn_ck, 'asem_s' ), 'informativa privacy: l\'amministratore e le estensioni possono aggiungere i nomi di altri cookie, senza tag' );
+Settings::update( array( 'privacy_extra_cookies' => '' ) );
+asem_ok( false === strpos( \AssociazioneSemplice\PrivacyNotice::html(), 'altri cookie, indicati' ), 'informativa privacy: senza altri cookie non compare l\'elenco' );
 Settings::update( array( 'member_wp_users' => 1 ) );
 Settings::update( array( 'association_name' => '', 'pec' => '' ) );
 asem_ok( in_array( 'denominazione', \AssociazioneSemplice\PrivacyNotice::missing(), true ) && in_array( 'indirizzo email o PEC', \AssociazioneSemplice\PrivacyNotice::missing(), true ), 'informativa privacy: segnala ciò che manca' );

@@ -136,7 +136,9 @@ final class PrivacyNotice {
 
 		// Accesso all'area riservata: con l'accesso proprio dei soci (senza utente WordPress) cambiano i dati trattati e il cookie usato.
 		$own_access = MemberSession::enabled() && ! Settings::member_wp_users();
-		$access     = $own_access
+		$cookies = Settings::cookie_lines( (string) Settings::get( 'privacy_extra_cookies' ) );
+		$cookies = array_values( array_filter( array_map( 'strval', (array) apply_filters( 'asem_privacy_cookies', $cookies ) ) ) ); // le estensioni aggiungono i loro cookie
+		$access  = $own_access
 			? array(
 				'Per entrare nell\'area riservata si usano l\'indirizzo email e una password scelta da ciascun socio. La password non è conservata in chiaro: se ne salva solo un\'impronta cifrata, dalla quale non si può risalire alla password.',
 				'Il sito usa un solo cookie, tecnico e di prima parte («asem_s»): serve a mantenere l\'accesso dopo l\'ingresso, non è usato per profilare né per statistiche o pubblicità e per questo non richiede il consenso. Dura al più 30 giorni senza utilizzo e comunque non oltre 90 giorni, e si cancella uscendo dall\'area riservata.',
@@ -152,6 +154,10 @@ final class PrivacyNotice {
 			: array(
 				'Per entrare nell\'area riservata il sito usa i cookie tecnici di autenticazione di WordPress, necessari a mantenere l\'accesso: non servono a profilare e non richiedono il consenso.',
 			);
+		if ( $cookies ) {
+			$access[] = 'Il sito usa inoltre questi altri cookie, indicati dall\'Associazione:';
+			$access[] = array( 'ul' => $cookies );
+		}
 		$transfer = '' !== $ext_note
 			? $ext_note
 			: 'I dati non sono trasferiti verso Paesi al di fuori dello Spazio economico europeo.';
