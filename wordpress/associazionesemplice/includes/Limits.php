@@ -144,7 +144,7 @@ final class Limits {
 		);
 		$add(
 			'member_sessions', 'accesso', 'Accesso dei soci indipendente da WordPress', 'flag', 1, 0, 1,
-			'I soci entrano con un accesso proprio (un link o un codice via email, password facoltativa) e non hanno bisogno di un utente WordPress. Spento, i soci tornano a entrare con un utente WordPress come prima.',
+			'I soci entrano con un accesso proprio (email e password; recupero e accesso senza password con un link via email) e non hanno bisogno di un utente WordPress. Spento, i soci tornano a entrare con un utente WordPress come prima.',
 			'Acceso, il sito usa un cookie tecnico di sessione («asem_s») e scrive ai soci per mandare il link di accesso. Se la posta del sito non funziona i soci non ricevono il link: provala prima.',
 			'Spento: i soci hanno un utente WordPress e un\'unica password sul sito, come nelle versioni precedenti.'
 		);

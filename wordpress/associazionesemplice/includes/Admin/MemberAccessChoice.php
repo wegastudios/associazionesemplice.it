@@ -21,10 +21,10 @@ final class MemberAccessChoice {
 		$wp   = Settings::member_wp_users();
 		$html = '<input type="hidden" name="wpusers_present" value="1">'
 			. '<p class="asem-wiz-q"><strong>Come entrano i soci nell\'area riservata?</strong></p>'
-			. '<p><label><input type="radio" name="member_wp_users" value="0"' . checked( ! $wp, true, false ) . '> <strong>Con un link o un codice che ricevono per email</strong> (consigliato)</label></p>'
+			. '<p><label><input type="radio" name="member_wp_users" value="0"' . checked( ! $wp, true, false ) . '> <strong>Con un accesso proprio del plugin, senza utente WordPress</strong> (consigliato)</label></p>'
 			. '<ul style="margin:0 0 12px 22px;list-style:disc">'
-			. '<li><strong>Vantaggi.</strong> Nessuna password da dimenticare o da farsi rubare (la password resta facoltativa). I soci non sono utenti del tuo sito: non hanno una pagina di accesso di WordPress da attaccare, non compaiono nell\'elenco utenti e non possono toccare niente fuori dall\'area soci. Le password del sito restano solo di chi lo gestisce.</li>'
-			. '<li><strong>Svantaggi.</strong> I soci non hanno un account WordPress, quindi non possono usare altre funzioni del sito che lo richiedono (commentare da registrati, aree riservate di altri plugin). La posta del sito deve funzionare, perché il link arriva per email: provala prima.</li>'
+			. '<li><strong>Vantaggi.</strong> I soci entrano con email e password proprie, che scelgono alla prima entrata e restano nel plugin: non sono utenti del tuo sito, quindi non hanno una pagina di accesso di WordPress da attaccare, non compaiono nell\'elenco utenti e non possono toccare niente fuori dall\'area soci. Le password del sito restano solo di chi lo gestisce. Chi dimentica la password riceve per email un link che gli fa scegliere una nuova password, e chi preferisce può entrare con un link o un codice senza password.</li>'
+			. '<li><strong>Svantaggi.</strong> I soci non hanno un account WordPress, quindi non possono usare altre funzioni del sito che lo richiedono (commentare da registrati, aree riservate di altri plugin). La posta del sito deve funzionare, perché il recupero della password e il link arrivano per email: provala prima.</li>'
 			. '</ul>'
 			. '<p><label><input type="radio" name="member_wp_users" value="1"' . checked( $wp, true, false ) . '> <strong>Anche con un utente WordPress per ogni socio</strong></label></p>'
 			. '<ul style="margin:0 0 12px 22px;list-style:disc">'

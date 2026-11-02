@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '50';
+	const DB_VERSION        = '51';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -677,6 +677,7 @@ final class Install {
   person_id bigint(20) unsigned NOT NULL,
   login_email varchar(190) NOT NULL,
   pass_hash varchar(255) DEFAULT NULL,
+  must_reset tinyint(1) unsigned NOT NULL DEFAULT 0,
   failed_count smallint(5) unsigned NOT NULL DEFAULT 0,
   locked_until datetime DEFAULT NULL,
   created_at datetime NOT NULL,

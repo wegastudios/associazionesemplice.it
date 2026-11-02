@@ -7818,6 +7818,7 @@ wp_set_current_user( 0 ); // qui si prova l'accesso senza utente WordPress
 asem_ok( MemberSession::enabled() && ! MemberSession::wp_users_wanted(), 'accesso proprio: acceso di default, senza utente WordPress per i soci' );
 Settings::update( array( 'limits' => array( 'member_sessions' => 0 ) ) );
 $ms_p = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Sessione', 'last_name' => 'Prova' ) );
+$wpdb->insert( Db::t( 'member_auth' ), array( 'person_id' => $ms_p, 'login_email' => 'sessione@example.org', 'pass_hash' => MemberPassword::make( 'una password lunga' ), 'created_at' => gmdate( 'Y-m-d H:i:s' ) ) ); // la password è obbligatoria: senza, la sessione non vede l'area riservata
 $ms_raw2 = MemberSession::start( $ms_p );
 asem_ok( 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'member_sessions' ) . ' WHERE person_id = %d AND token_hash = %s', $ms_p, SessionToken::hash( $ms_raw2 ) ) ), 'accesso proprio: la sessione è salvata con l\'impronta del token' );
 asem_ok( null === MemberSession::current(), 'accesso proprio: da spento il cookie non viene letto' );
@@ -7860,7 +7861,6 @@ MemberSession::start( $ms_p );
 MemberSession::start( $ms_p );
 asem_ok( 2 === MemberSession::destroy_all( $ms_p ), 'accesso proprio: «esci da tutti i dispositivi» chiude ogni sessione' );
 MemberSession::start( $ms_p );
-$wpdb->insert( Db::t( 'member_auth' ), array( 'person_id' => $ms_p, 'login_email' => 'sessione@example.org', 'created_at' => gmdate( 'Y-m-d H:i:s' ) ) );
 MemberSession::forget_person( $ms_p );
 asem_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_sessions' ) . ' WHERE person_id = ' . $ms_p ) + (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = ' . $ms_p ), 'accesso proprio: eliminando la persona spariscono sessioni e password' );
 asem_ok( wp_next_scheduled( 'asem_purge_member_sessions' ) > 0, 'accesso proprio: pulizia giornaliera programmata' );
@@ -7918,12 +7918,53 @@ $sp_mails = count( $ml_mail );
 delete_transient( 'asem_ml_m_' . md5( $ml_addr ) );
 asem_ok( \AssociazioneSemplice\Frontend\FirstAccess::request( $ml_addr ) && count( $ml_mail ) === $sp_mails + 1 && false !== strpos( (string) end( $ml_mail )['message'], 'asem_ml=' ), 'separazione: il «Primo accesso» manda il link di accesso, non il ripristino della password di WordPress' );
 $sp_p = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Attiva', 'last_name' => 'Prova' ) );
-asem_ok( 0 === Plugin::people()->activate( $sp_p, 'attiva.prova@example.org', '3331234567', '' ) && ! get_user_by( 'email', 'attiva.prova@example.org' ) && 'attiva.prova@example.org' === Plugin::people()->get( $sp_p )['email'], 'separazione: l\'attivazione dal link salva l\'email e non crea nessun utente WordPress (password facoltativa)' );
+asem_ok( null !== asem_throws( function () use ( $sp_p ) { Plugin::people()->activate( $sp_p, 'attiva.prova@example.org', '3331234567', '' ); } ), 'password: all\'attivazione la password è obbligatoria' );
+asem_ok( 0 === Plugin::people()->activate( $sp_p, 'attiva.prova@example.org', '3331234567', 'Segreta123!' ) && ! get_user_by( 'email', 'attiva.prova@example.org' ) && 'attiva.prova@example.org' === Plugin::people()->get( $sp_p )['email'] && 'ok' === MemberLogin::password_state( $sp_p ), 'separazione: l\'attivazione dal link salva email e password e non crea nessun utente WordPress' );
 asem_ok( $sp_p === (int) ( MemberLogin::person_by_email( 'attiva.prova@example.org' )['id'] ?? 0 ), 'separazione: chi si è attivato entra con link o codice' );
 asem_ok( \AssociazioneSemplice\Frontend\Activation::resolve( \AssociazioneSemplice\ActivationToken::param( $sp_p, time() + 600, wp_salt( 'auth' ) . '|activate' ) )['status'] === 'done', 'separazione: il link di attivazione non vale più una volta attivato' );
 $sp_uid = Plugin::people()->ensure_user( $sp_p );
 asem_ok( $sp_uid > 0 && $sp_uid === (int) Plugin::people()->get( $sp_p )['wp_user_id'] && in_array( Plugin::ROLE_MEMBER, (array) get_userdata( $sp_uid )->roles, true ) && null === MemberLogin::person_by_email( 'attiva.prova@example.org' ), 'separazione: l\'utente WordPress nasce solo quando si dà un potere, e da allora si entra da WordPress' );
 asem_ok( $sp_uid === Plugin::people()->ensure_user( $sp_p ), 'separazione: dare un secondo potere non crea un secondo utente' );
+// Password obbligatoria, recupero e link senza password
+$pw_addr = 'pw.prova@example.org';
+$pw_p    = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Password', 'last_name' => 'Prova', 'email' => $pw_addr ) );
+$pw_cookie = MemberSession::COOKIE;
+delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
+MemberLogin::request( $pw_addr );
+list( $pw_tok ) = $ml_pull();
+asem_ok( 'none' === MemberLogin::password_state( $pw_p ) && $pw_p === MemberLogin::login_with_token( $pw_tok ), 'password: chi non l\'ha ancora scelta può entrare con il link' );
+$ms_fake->setValue( null, null );
+asem_ok( null === MemberSession::session_person() && 'none' === ( MemberSession::pending_setup()['state'] ?? '' ) && ! current_user_can( 'asem_edit_own_profile', $pw_p ) && ! MemberSession::logged_in(), 'password: senza password scelta non si vede l\'area riservata, si può solo sceglierla' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::with_person( function ( $p ) { return 'segreto'; } ), 'Scegli la password' ), 'password: la pagina dei soci chiede di scegliere la password' );
+asem_ok( '' !== MemberLogin::set_password( $pw_p, 'corta' ) && '' === MemberLogin::set_password( $pw_p, 'Prima password 1' ), 'password: la scelta rispetta la lunghezza minima' );
+$ms_fake->setValue( null, null );
+MemberSession::flush();
+asem_ok( 'ok' === MemberLogin::password_state( $pw_p ) && null !== MemberSession::session_person() && current_user_can( 'asem_edit_own_profile', $pw_p ), 'password: scelta la password si naviga' );
+$pw_pre = (string) $_COOKIE[ $pw_cookie ];
+// recupero: il link fa entrare ma obbliga a scegliere una nuova password
+delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
+asem_ok( MemberLogin::request( $pw_addr, 'reset' ) && false !== strpos( (string) end( $ml_mail )['subject'], 'Reimposta' ), 'recupero: la richiesta manda un link per reimpostare la password' );
+list( $pw_tok2 ) = $ml_pull();
+asem_ok( $pw_p === MemberLogin::login_with_token( $pw_tok2 ) && 'reset' === MemberLogin::password_state( $pw_p ), 'recupero: aperto il link la password va reimpostata' );
+$ms_fake->setValue( null, null );
+MemberSession::flush();
+$pw_x = (string) $_COOKIE[ $pw_cookie ];
+asem_ok( null === MemberSession::session_person() && 'reset' === ( MemberSession::pending_setup()['state'] ?? '' ) && ! current_user_can( 'asem_edit_own_profile', $pw_p ), 'recupero: prima della nuova password non si naviga' );
+MemberSession::start( $pw_p ); // un altro dispositivo
+$_COOKIE[ $pw_cookie ] = $pw_x;
+$ms_fake->setValue( null, null );
+MemberSession::flush();
+asem_ok( '' === MemberLogin::set_password( $pw_p, 'Seconda password 2' ), 'recupero: la nuova password si sceglie' );
+asem_ok( 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'member_sessions' ) . ' WHERE person_id = %d', $pw_p ) ) && 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'member_sessions' ) . ' WHERE person_id = %d AND token_hash = %s', $pw_p, SessionToken::hash( $pw_x ) ) ), 'recupero: cambiata la password si chiudono gli altri dispositivi' );
+$ms_fake->setValue( null, null );
+MemberSession::flush();
+asem_ok( null !== MemberSession::session_person() && 'ok' === MemberLogin::password_state( $pw_p ), 'recupero: dopo la nuova password si naviga' );
+asem_ok( null === MemberLogin::login_with_password( $pw_addr, 'Prima password 1' ) && $pw_p === MemberLogin::login_with_password( $pw_addr, 'Seconda password 2' ), 'password: vale solo l\'ultima' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::login_prompt(), 'name="password"' ) && false !== strpos( \AssociazioneSemplice\Frontend\Views::login_prompt(), 'Password dimenticata' ), 'password: il modulo dell\'area soci è email e password, con il recupero' );
+unset( $_COOKIE[ $pw_cookie ] );
+$ms_fake->setValue( null, null );
+MemberSession::flush();
+
 // Scelta dell'amministratore: anche un utente WordPress per i soci (solo nome, cognome ed email passano a WordPress)
 Settings::update( array( 'member_wp_users' => 'x' ) );
 asem_ok( Settings::member_wp_users() && MemberSession::wp_users_wanted(), 'scelta dell\'amministratore: con «anche un utente WordPress» i soci nuovi ne hanno uno' );

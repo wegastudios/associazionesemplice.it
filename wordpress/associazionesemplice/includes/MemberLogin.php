@@ -33,8 +33,33 @@ final class MemberLogin {
 		return gmdate( 'Y-m-d H:i:s' );
 	}
 
-	/** Manda link e codice se l'email è di un socio. @return bool true se è partita una email (da non mostrare a chi chiede) */
-	public static function request( string $email ): bool {
+	/** Stato della password di un socio: «ok» (scelta), «none» (non l'ha ancora scelta), «reset» (ha chiesto il recupero e deve sceglierne una nuova). */
+	public static function password_state( int $person_id ): string {
+		$r = Db::db()->get_row( Db::db()->prepare( 'SELECT pass_hash, must_reset FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = %d', $person_id ), ARRAY_A );
+		if ( ! $r || '' === (string) $r['pass_hash'] ) {
+			return 'none';
+		}
+		return (int) $r['must_reset'] ? 'reset' : 'ok';
+	}
+
+	/** Dopo il recupero della password: prima di navigare il socio deve sceglierne una nuova. */
+	private static function require_reset( int $person_id ): void {
+		$db  = Db::db();
+		$tbl = Db::t( 'member_auth' );
+		if ( $db->get_var( $db->prepare( "SELECT COUNT(*) FROM $tbl WHERE person_id = %d", $person_id ) ) ) {
+			$db->update( $tbl, array( 'must_reset' => 1 ), array( 'person_id' => $person_id ) );
+			return;
+		}
+		$p = Plugin::people()->get( $person_id );
+		$db->insert( $tbl, array( 'person_id' => $person_id, 'login_email' => strtolower( (string) ( $p['email'] ?? '' ) ), 'must_reset' => 1, 'created_at' => self::now() ) );
+	}
+
+	/**
+	 * Manda link e codice se l'email è di un socio. Con $kind «reset» è il recupero della password: il link fa entrare ma il socio deve
+	 * scegliere una nuova password prima di navigare. @return bool true se è partita una email (da non mostrare a chi chiede)
+	 */
+	public static function request( string $email, string $kind = 'login' ): bool {
+		$kind = 'reset' === $kind ? 'reset' : 'login';
 		if ( ! MemberSession::enabled() || ! Edition::allows( 'member_area' ) ) {
 			return false;
 		}
@@ -50,14 +75,14 @@ final class MemberLogin {
 		$db  = Db::db();
 		$tbl = Db::t( 'member_challenges' );
 		$pid = (int) $p['id'];
-		$db->delete( $tbl, array( 'person_id' => $pid, 'kind' => 'login' ) ); // vale solo l'ultimo
+		$db->delete( $tbl, array( 'person_id' => $pid ) ); // vale solo l'ultimo
 		$raw  = SessionToken::generate();
 		$code = SessionToken::code();
 		$db->insert(
 			$tbl,
 			array(
 				'person_id'  => $pid,
-				'kind'       => 'login',
+				'kind'       => $kind,
 				'token_hash' => SessionToken::hash( $raw ),
 				'code_hash'  => SessionToken::hash_code( $code, $pid, MemberSession::secret() ),
 				'created_at' => self::now(),
@@ -66,10 +91,18 @@ final class MemberLogin {
 		);
 		$assoc = (string) Settings::get( 'association_name' );
 		$link  = add_query_arg( 'asem_ml', $raw, home_url( '/' ) );
-		$text  = 'Ciao ' . $p['first_name'] . ",\n\nper entrare" . ( '' !== $assoc ? ' in ' . $assoc : '' ) . " apri questo link:\n\n" . $link
-			. "\n\noppure scrivi questo codice nella pagina di accesso: " . $code
-			. "\n\nValgono 15 minuti e si usano una volta sola. Se non hai chiesto tu questo messaggio, ignoralo: nessuno può entrare senza.";
-		$ok = (bool) Texts::mail( (string) $p['email'], 'Il tuo accesso' . ( '' !== $assoc ? ' — ' . $assoc : '' ), $text );
+		if ( 'reset' === $kind ) {
+			$text    = 'Ciao ' . $p['first_name'] . ",\n\nhai chiesto di reimpostare la password" . ( '' !== $assoc ? ' di ' . $assoc : '' ) . ". Apri questo link e scegli una nuova password:\n\n" . $link
+				. "\n\noppure scrivi questo codice nella pagina di accesso: " . $code
+				. "\n\nValgono 15 minuti e si usano una volta sola. Se non l'hai chiesto tu, ignora questo messaggio: la tua password non cambia.";
+			$subject = 'Reimposta la password';
+		} else {
+			$text    = 'Ciao ' . $p['first_name'] . ",\n\nper entrare" . ( '' !== $assoc ? ' in ' . $assoc : '' ) . " apri questo link:\n\n" . $link
+				. "\n\noppure scrivi questo codice nella pagina di accesso: " . $code
+				. "\n\nValgono 15 minuti e si usano una volta sola. Se non hai chiesto tu questo messaggio, ignoralo: nessuno può entrare senza.";
+			$subject = 'Il tuo accesso';
+		}
+		$ok = (bool) Texts::mail( (string) $p['email'], $subject . ( '' !== $assoc ? ' — ' . $assoc : '' ), $text );
 		if ( $ok ) {
 			set_transient( $mail_key, $sent + 1, HOUR_IN_SECONDS );
 		}
@@ -87,7 +120,10 @@ final class MemberLogin {
 		if ( ! MemberSession::person_allowed( $p ) ) {
 			return null;
 		}
-		return self::open( (int) $p['id'], 'link' );
+		if ( 'reset' === (string) $row['kind'] ) {
+			self::require_reset( (int) $p['id'] );
+		}
+		return self::open( (int) $p['id'], 'reset' === (string) $row['kind'] ? 'reset' : 'link' );
 	}
 
 	/** Apre la sessione di una persona già riconosciuta (ad esempio dopo l'attivazione dal link della segreteria). */
@@ -155,7 +191,7 @@ final class MemberLogin {
 			$db->update( $tbl, array( 'failed_count' => $failed, 'locked_until' => $lock ? gmdate( 'Y-m-d H:i:s', time() + $lock ) : null ), array( 'person_id' => (int) $p['id'] ) );
 			return null;
 		}
-		$upd = array( 'failed_count' => 0, 'locked_until' => null );
+		$upd = array( 'failed_count' => 0, 'locked_until' => null, 'must_reset' => 0 ); // ha dimostrato di conoscere la password: un recupero lasciato a metà non la blocca
 		if ( MemberPassword::needs_rehash( $hash ) ) {
 			$upd['pass_hash'] = MemberPassword::make( $password );
 		}
@@ -186,10 +222,11 @@ final class MemberLogin {
 		}
 		$hash = MemberPassword::make( $password );
 		if ( $db->get_var( $db->prepare( "SELECT COUNT(*) FROM $tbl WHERE person_id = %d", $person_id ) ) ) {
-			$db->update( $tbl, array( 'login_email' => $email, 'pass_hash' => $hash, 'failed_count' => 0, 'locked_until' => null ), array( 'person_id' => $person_id ) );
+			$db->update( $tbl, array( 'login_email' => $email, 'pass_hash' => $hash, 'must_reset' => 0, 'failed_count' => 0, 'locked_until' => null ), array( 'person_id' => $person_id ) );
 		} else {
 			$db->insert( $tbl, array( 'person_id' => $person_id, 'login_email' => $email, 'pass_hash' => $hash, 'created_at' => self::now() ) );
 		}
+		MemberSession::destroy_others( $person_id ); // cambiata la password, gli altri dispositivi devono rientrare
 		Audit::log( 'member.password_set', 'person', $person_id );
 		return '';
 	}

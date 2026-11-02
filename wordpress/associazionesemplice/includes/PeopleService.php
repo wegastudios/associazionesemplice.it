@@ -524,8 +524,7 @@ class PeopleService {
 	}
 
 	/**
-	 * Attivazione con l'accesso proprio: email e cellulare sulla scheda, nessun utente WordPress. La password è facoltativa (senza, si entra con il
-	 * link o il codice che arriva per email).
+	 * Attivazione con l'accesso proprio: email e cellulare sulla scheda, nessun utente WordPress. La password è obbligatoria (si sceglie qui).
 	 *
 	 * @return int 0: nessun utente WordPress
 	 */
@@ -538,18 +537,14 @@ class PeopleService {
 		if ( ! Phone::is_valid( $phone ) ) {
 			throw new \InvalidArgumentException( 'Inserisci il tuo numero di cellulare.' );
 		}
-		if ( '' !== $password ) {
-			$problem = MemberPassword::problem( $password );
-			if ( '' !== $problem ) {
-				throw new \InvalidArgumentException( $problem ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
-			}
+		$problem = MemberPassword::problem( $password ); // la password si sceglie subito, è obbligatoria
+		if ( '' !== $problem ) {
+			throw new \InvalidArgumentException( $problem ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$this->update( $id, array( 'email' => $email, 'phone' => trim( $phone ) ) );
-		if ( '' !== $password ) {
-			$err = MemberLogin::set_password( $id, $password );
-			if ( '' !== $err ) {
-				throw new \InvalidArgumentException( $err ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
-			}
+		$err = MemberLogin::set_password( $id, $password );
+		if ( '' !== $err ) {
+			throw new \InvalidArgumentException( $err ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		Audit::log( 'person.activated', 'person', $id, array( 'own' => true ) );
 		return 0;
