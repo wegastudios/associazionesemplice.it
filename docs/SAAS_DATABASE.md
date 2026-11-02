@@ -12,7 +12,7 @@ Priorità, in quest'ordine: **1. sicurezza dei dati personali e fiscali · 2. ve
 | Stack | Laravel + PostgreSQL. La logica delle classi `*Rules` del plugin si riusa. |
 | Multi-tenant | Un database condiviso con `org_id` + Row-Level Security. **Database dedicato** (esclusivo dell'associazione, anche sullo stesso server Postgres) come opzione a pagamento. |
 | Hosting iniziale | Sub-account `associazionesemplice` del reseller Wega Studios su SupportHost (nodo in Finlandia, backup in UE). Per crescere: semidedicato o VPS. |
-| PostgreSQL | Oggi 13.23 (fuori supporto): aggiornamento alla 17 richiesto a SupportHost **prima dei dati veri**. Estensioni `pgcrypto`, `pg_trgm`, `citext`, `uuid-ossp` installate. |
+| PostgreSQL | **16** (aggiornato da SupportHost dalla 13; è l'ultima che cPanel supporta, con aggiornamenti fino a novembre 2028). Estensioni `pgcrypto`, `pg_trgm`, `citext`, `uuid-ossp` installate. |
 | Redis | Istanza dedicata via socket, 64 MB, rifiuta le scritture quando è piena: **solo cache e limiti di frequenza, sempre con scadenza**. Code dei lavori su Postgres. |
 | Backup | JetBackup giornaliero (30 giorni) + **nostro dump orario cifrato** di ogni database su uno spazio esterno in UE. Perdita massima: un'ora. |
 | Creazione dei database | Via cPanel UAPI. L'utente Postgres deve avere un **nome diverso dal database** (cPanel lo vieta), poi `update_privileges`. |
@@ -33,7 +33,7 @@ come oggi in `Access`.
 ## 2. Chiavi primarie: UUIDv7
 
 - Tutte le tabelle hanno `id uuid` **UUIDv7** (ordinato nel tempo, quindi efficiente per gli indici), generato da Laravel.
-  Postgres 13 non lo genera nativamente (arriva nella 18).
+  Postgres 16 non lo genera nativamente (arriva nella 18).
 - **Motivo principale: la portabilità.** Un'associazione passa dal database condiviso a uno dedicato, o dal plugin al SaaS
   e ritorno, senza riscrivere nessun identificativo.
 - Gli id non si possono indovinare da un URL. I token pubblici (QR della tessera, link personali) restano comunque
