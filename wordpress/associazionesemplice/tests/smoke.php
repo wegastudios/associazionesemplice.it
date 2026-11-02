@@ -7721,7 +7721,7 @@ asem_ok( 1 === count( \AssociazioneSemplice\FundReconciliation::blockers( array(
 asem_ok( array() === \AssociazioneSemplice\FundReconciliation::blockers( array(), $wt_y_now ) && \AssociazioneSemplice\Discrepancies::is_approved( 'recon_uncovered', (string) $wt_fra, 880 ) && ! \AssociazioneSemplice\Discrepancies::is_approved( 'recon_uncovered', (string) $wt_fra, 900 ), 'discrepanze: approvata a mano, non ferma la chiusura; vale solo per quell\'importo' );
 asem_ok( null !== asem_throws( function () use ( $wt_fra, $wt_y_now ) { \AssociazioneSemplice\Discrepancies::approve( 'recon_uncovered', (string) $wt_fra, 1, '', $wt_y_now ); } ), 'discrepanze: non si approva una discrepanza che è cambiata o non esiste' );
 $wt_aid = (int) $wpdb->get_var( 'SELECT id FROM ' . Db::t( 'discrepancy_approvals' ) . " WHERE kind = 'recon_uncovered'" );
-asem_render( array( Admin\WatchPage::class, 'render' ), 'Togli l\'approvazione' );
+asem_render( array( Admin\WatchPage::class, 'render' ), 'Revoca l\'approvazione' );
 \AssociazioneSemplice\Discrepancies::revoke( $wt_aid );
 asem_ok( 1 === count( \AssociazioneSemplice\FundReconciliation::blockers( array(), $wt_y_now ) ), 'discrepanze: tolta l\'approvazione torna da verificare' );
 Settings::update( array( 'limits' => array( 'watch_close_mode' => 2 ) ) );
