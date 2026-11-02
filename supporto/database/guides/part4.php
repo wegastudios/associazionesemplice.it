@@ -264,7 +264,7 @@ Premi il pulsante di controllo nella pagina **Pagamenti online**: il plugin inte
 
 ## Con WooCommerce
 
-Se usi WooCommerce, quando l'ordine passa a «in lavorazione» o «completato» l'incasso entra in prima nota una sola volta; se l'importo è diverso entra come «non abbinato». Gli ordini senza voci di Associazione Semplice non vengono toccati.
+Se usi WooCommerce, quando l'ordine passa a «in lavorazione» o «completato» l'incasso entra in prima nota una sola volta; se l'importo è diverso entra come «non abbinato». Gli ordini senza voci di Associazione Semplice non vengono toccati. Dalla versione 1.3.0, se per lo stesso pagamento viene pagato un **secondo ordine**, non si incassa due volte: il secondo finisce in **«da controllare»**.
 MD,
     ],
     [

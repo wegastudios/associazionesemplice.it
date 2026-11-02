@@ -236,6 +236,8 @@ Chi gestisce un evento può registrare chi entra direttamente dal telefono, senz
 
 Un biglietto già usato risulta «Ingresso già registrato»: una copia del QR non entra due volte. Se il contributo non è versato, lo vedi subito.
 
+Con **Pro** (dalla 1.3.0), se per l'evento è **abilitato l'incasso**, lo **staff dell'evento** può anche **addebitare crediti** al socio con il QR, **senza che serva un utente WordPress**.
+
 ## Da sapere
 
 - L'ingresso si registra **nel giorno dell'evento**. Gli amministratori possono farlo anche in un altro giorno dalla scheda dell'evento.

@@ -284,6 +284,8 @@ Il **link** o il **codice** ricevuto per email restano come opzione, per entrare
 
 **«Password dimenticata»** manda un link che fa entrare, ma **obbliga a scegliere una nuova password** prima di navigare. Cambiata la password, gli **altri dispositivi devono rientrare**.
 
+Per **cambiare** la password dall'area riservata serve **quella attuale**; anche in questo caso gli altri dispositivi vengono chiusi.
+
 ## Quando nasce un utente WordPress
 
 L'utente WordPress nasce **solo quando si dà un potere** al socio: segreteria, tesoriere, staff. Chi ha già un utente WordPress continua a entrare da WordPress, come prima.
@@ -307,7 +309,7 @@ Il sito usa un **cookie tecnico «asem_s»** per tenere aperto l'accesso dei soc
 
 ## Aggiornamento
 
-Il Pro 1.1.41 richiede il gratuito 1.2.51: crediti, risorse e notifiche push funzionano anche per i soci senza utente WordPress. Vanno aggiornati insieme.
+Gratuito e Pro 1.3.0 escono insieme e vanno aggiornati insieme. Crediti, risorse e notifiche push funzionano anche per i soci senza utente WordPress, e lo staff di un evento con l'incasso abilitato può addebitare crediti con il QR anche senza utente WordPress. La ricerca dei soci per cellulare è più veloce.
 MD,
     ],
 ];

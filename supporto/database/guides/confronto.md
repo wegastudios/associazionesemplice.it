@@ -10,6 +10,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Libro soci completo: date di domanda e delibera, luogo di nascita, residenza, contatti, ultima quota, recesso e tutore, con PDF e CSV | ✓ | ✓ | ✓ |
 | Quota associativa a rate: saldo da incassare e tessera valida al saldo | ✓ | ✓ | ✓ |
 | Schede dei soci e collegamento all'utente WordPress | ✓ | ✓ | ✓ |
+| Addebito di crediti con il QR da parte dello staff di un evento con incasso abilitato, anche senza utente WordPress | — | ✓ | ✓ |
 | Accesso dei soci con email e password (o link e codice via email), senza utente WordPress (utente WordPress solo per chi ha un ruolo, o per tutti se lo scegli) | ✓ | ✓ | ✓ |
 | Quota associativa unica e socio fondatore | ✓ | ✓ | ✓ |
 | Più livelli di socio con quote diverse | — | ✓ | ✓ |
