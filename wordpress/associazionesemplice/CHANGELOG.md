@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.3
+- Corretto l'ultimo avviso di Plugin Check (lettura del cookie di sessione dei soci): nessun cambiamento per chi usa il programma
+
 ## 1.3.2
 - Se elimini un evento o un corso, le somme si restituiscono o si annullano solo per ciò che non è ancora stato fatto: le date e i mesi già svolti restano incassati
 - Negli eventi ricorrenti puoi annullare solo una data oppure quella e le successive (le passate restano)
