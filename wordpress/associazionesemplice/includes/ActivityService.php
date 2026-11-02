@@ -1102,6 +1102,28 @@ class ActivityService {
 		Audit::log( 'activity.fee_variant', 'activity', $activity_id, array( 'person_id' => $person_id, 'price_list' => $price_list ) );
 	}
 
+	/**
+	 * «Non rinnova»: l'iscritto resta nel corso fino alla fine del periodo già pagato (o del mese in corso) e dopo non deve più nulla.
+	 * Non si restituisce niente: il periodo pagato è fruito.
+	 *
+	 * @return string ultimo mese dovuto (YYYY-MM)
+	 */
+	public function stop_renewal( int $activity_id, int $person_id ): string {
+		$last = substr( Db::today(), 0, 7 );
+		foreach ( $this->status_for_activity( $activity_id ) as $row ) {
+			if ( (int) $row['enrollment']['person_id'] !== $person_id ) {
+				continue;
+			}
+			foreach ( (array) ( $row['summary']['months'] ?? array() ) as $mo ) {
+				if ( (int) $mo['paid'] > 0 && (string) $mo['month'] > $last ) {
+					$last = (string) $mo['month']; // pagato in anticipo: resta fino a quel mese
+				}
+			}
+		}
+		$this->cancel( $activity_id, $person_id, $last );
+		return $last;
+	}
+
 	/** Cancella da un corso: $last_month è l'ultimo mese ancora dovuto. I pagamenti restano registrati. */
 	public function cancel( int $activity_id, int $person_id, string $last_month ): void {
 		$this->assert_month( $last_month );

@@ -626,6 +626,11 @@ final class ActivitiesPage {
 					. ' <input type="text" name="fee_note" value="' . esc_attr( (string) ( $e['fee_note'] ?? '' ) ) . '" placeholder="Nota (es. sorella iscritta a Danza)" size="28" maxlength="190"> <button class="button">Salva</button></p>', Html::allowed() );
 				Ui::form_close();
 			}
+			if ( $active ) { // «Non rinnova»: finito il periodo pagato non è più dovuto nulla, senza scegliere il mese
+				Ui::form_open( 'asem_stop_renewal', $back, false, 'asem-inline' );
+				echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $e['person_id'] ) . '<p><button class="button button-primary">Non rinnova</button> <span class="description">Resta nel corso fino alla fine del periodo già pagato (o del mese in corso) e poi non deve più nulla. Chi smette di venire ha già fruito del mese: non si restituisce niente.</span></p>', Html::allowed() );
+				Ui::form_close();
+			}
 			Ui::form_open( $active ? 'asem_cancel_enrollment' : 'asem_enroll', $back );
 			echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'person_id', $e['person_id'] ), Html::allowed() );
 			if ( $active ) {

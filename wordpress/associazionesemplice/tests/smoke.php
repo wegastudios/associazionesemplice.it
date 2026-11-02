@@ -1289,8 +1289,23 @@ asem_ok( 1 === $nf_rr['kept_count'] && 500 === $nf_rr['kept_cents'], 'prenotazio
 asem_ok( $ev_bal() === $nf_c0, 'prenotazione già svolta cancellata: il saldo non cambia' );
 asem_ok( ! $acts->booking( $nf_s1, $nf_p1 ), 'prenotazione già svolta cancellata: la prenotazione sparisce' );
 $nf_b0  = $ev_bal();
-$nf_res =\AssociazioneSemplice\ActivityReset::delete( $nf_a, 'refund' );
+$nf_res = \AssociazioneSemplice\ActivityReset::delete( $nf_a, 'refund' );
 asem_ok( 1 === $nf_res['refunds'] && 1 === $nf_res['kept_count'] && 500 === $nf_res['kept_cents'] && $ev_bal() === $nf_b0 - 700, 'evento in più date eliminato con restituzione: si restituisce solo la data futura' );
+// corso eliminato a metà mese: del mese pagato si rende la quota delle lezioni non ancora tenute
+$pr_m1  = gmdate( 'Y-m-01', strtotime( $today ) );
+$pr_m2  = gmdate( 'Y-m-t', strtotime( $today ) );
+$pr_day = 3; // mercoledì
+$pr_a   = $acts->create( array( 'name' => 'Corso a metà mese', 'social_year' => $ev_sy, 'kind' => 'course', 'fee_cents' => 6000, 'lesson_weekday' => $pr_day, 'starts_on' => $pr_m1, 'ends_on' => $pr_m2 ) );
+$pr_p   = $ev_mk( 'Paola', 'Prorata' );
+$ledger->record_receipt( $vt_base + array( 'person_id' => $pr_p, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 6000, 'activity_id' => $pr_a, 'competence_month' => substr( $pr_m1, 0, 7 ) ) ) ) );
+$pr_all  = \AssociazioneSemplice\Schedule::weekly_dates( $pr_m1, $pr_m2, $pr_day );
+$pr_held = count( array_filter( $pr_all, function ( $d ) use ( $today ) {
+	return $d < $today;
+} ) );
+$pr_exp  = count( $pr_all ) > $pr_held ? (int) round( 6000 * ( count( $pr_all ) - $pr_held ) / count( $pr_all ) ) : 0;
+$pr_b0   = $ev_bal();
+$pr_res  = \AssociazioneSemplice\ActivityReset::delete( $pr_a, 'refund' );
+asem_ok( $ev_bal() === $pr_b0 - $pr_exp && ( $pr_exp > 0 ? 1 : 0 ) === $pr_res['refunds'], 'corso eliminato a metà mese: si restituisce la quota delle lezioni non tenute (' . $pr_exp . ' su 6000; lezioni ' . count( $pr_all ) . ', svolte ' . $pr_held . ')' );
 // cancellazioni che non toccano la prima nota: una sola conferma
 $fr_a = $acts->create( array( 'name' => 'Evento senza soldi', 'social_year' => $ev_sy, 'kind' => 'event', 'fee_cents' => 0, 'session' => array( 'session_date' => $today ) ) );
 $fr_s = (int) $acts->sessions( $fr_a )[0]['id'];
