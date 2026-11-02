@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.49
+- Nel modulo della nuova spesa il beneficiario si sceglie con più facilità e il programma può proporre l'attribuzione ai fondi.
+
 ## 1.2.48
 - Gli sport del menu delle attività li gestisce l'amministratore: aggiunge, importa un elenco (uno per riga), toglie dal menu e ripristina l'elenco di base.
 - Un'attività accetta qualsiasi sport scritto in modo sensato, non solo quelli dell'elenco.

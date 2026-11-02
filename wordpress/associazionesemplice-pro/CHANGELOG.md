@@ -2,6 +2,12 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.1.39
+- Le spese si attribuiscono da sole ai fondi giusti
+- Il volontario usa solo i suoi fondi e, se supera, resta in credito
+- Le differenze di fine anno si controllano una per una e si approvano a mano
+- Nuovo elenco dei volontari in credito in Cassa e in Bacheca
+
 ## 1.1.38
 - Pro Fiscale: le spese documentate si attribuiscono ai fondi dei rimborsi (anche divise su due fondi), con gli elenchi delle spese non rimborsate e dei fondi non documentati.
 - Pro Fiscale: avvisi di bilancio quando le spese superano gli incassi o l'utile è eccessivo.
