@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.2.50
+- Predisposto l'accesso dei soci senza bisogno di un utente WordPress: entrano con un link o un codice che arriva per email, oppure con una password facoltativa. È spento: finché l'amministratore non lo accende dai Limiti («Accesso dei soci indipendente da WordPress») non cambia nulla e i soci entrano come prima.
+- Quando sarà acceso, il sito userà un cookie tecnico di sessione («asem_s») e scriverà ai soci per mandare il link di accesso.
+
 ## 1.2.49
 - Nel modulo della nuova spesa il beneficiario si sceglie con più facilità e il programma può proporre l'attribuzione ai fondi.
 
