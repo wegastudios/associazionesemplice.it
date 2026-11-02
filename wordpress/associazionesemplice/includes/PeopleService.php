@@ -617,12 +617,15 @@ class PeopleService {
 		Audit::log( 'person.wp_user_released', 'person', $id );
 	}
 
-	/** Il socio ha un accesso: un utente WordPress oppure, con l'accesso proprio acceso, l'email con cui riceve il link. */
+	/**
+	 * Il socio ha un accesso: un utente WordPress oppure, quando i soci entrano con l'accesso proprio (cioè non si creano utenti WordPress),
+	 * l'email con cui riceve il link. Con la scelta «anche un utente WordPress» chi non ce l'ha deve ancora attivarsi dal link.
+	 */
 	public static function has_access( array $p ): bool {
 		if ( ! empty( $p['wp_user_id'] ) ) {
 			return true;
 		}
-		return MemberSession::enabled() && MemberType::can_login( (string) $p['type'] ) && '' !== trim( (string) $p['email'] ) && empty( $p['application_status'] );
+		return ! MemberSession::wp_users_wanted() && MemberType::can_login( (string) $p['type'] ) && '' !== trim( (string) $p['email'] ) && empty( $p['application_status'] );
 	}
 
 	/** Persone (soci e ospiti) con lo stesso cellulare, comunque sia scritto (+39, spazi, trattini). */
