@@ -677,9 +677,18 @@ class PaymentService extends OfflinePayments {
 		if ( ! $p || PaymentConfig::WOOCOMMERCE !== $p['provider'] ) {
 			return false;
 		}
-		$this->update( (int) $p['id'], array( 'provider_ref' => substr( $ref, 0, 120 ) ) );
-		$p = $this->get( (int) $p['id'] );
-		return $p ? $this->finalize( $p, $paid_cents, $ref ) : false;
+		$p['provider_ref'] = substr( $ref, 0, 120 ); // in memoria: serve alla registrazione; si salva solo se questo ordine è quello che incassa
+		$done              = $this->finalize( $p, $paid_cents, $ref );
+		if ( $done ) {
+			$this->update( (int) $p['id'], array( 'provider_ref' => $p['provider_ref'] ) );
+		} else {
+			$now = $this->get( (int) $p['id'] );
+			if ( $now && 'paid' === $now['status'] && (string) $now['provider_ref'] !== $p['provider_ref'] ) { // un secondo ordine pagato per lo stesso pagamento: i soldi sono arrivati due volte
+				$this->update( (int) $p['id'], array( 'review' => 1, 'error' => mb_substr( 'Pagato di nuovo con un altro ordine (' . $p['provider_ref'] . '): controlla se va restituito.', 0, 250 ) ) );
+				Audit::log( 'payment.duplicate_external', 'payment', (int) $p['id'], array( 'ref' => $p['provider_ref'] ) );
+			}
+		}
+		return $done;
 	}
 
 	/** Ordine WooCommerce annullato o fallito: il pagamento in attesa si chiude. */

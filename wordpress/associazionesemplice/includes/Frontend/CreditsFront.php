@@ -57,6 +57,7 @@ final class CreditsFront {
 		}
 		add_action( 'template_redirect', array( __CLASS__, 'handle_scan' ), 1 );
 		add_action( 'wp_ajax_asem_credit_status', array( __CLASS__, 'ajax_status' ) );
+		add_action( 'wp_ajax_nopriv_asem_credit_status', array( __CLASS__, 'ajax_status' ) ); // lo staff entrato con l'accesso proprio non è un utente WordPress
 	}
 
 	private static function back( array $post ): string {
@@ -77,7 +78,7 @@ final class CreditsFront {
 	/** Lo staff crea l'addebito: si torna alla stessa pagina con il QR. */
 	public static function do_charge( array $post ): array {
 		$staff = self::actor();
-		if ( ! Credits::can_charge( get_current_user_id() ) ) {
+		if ( ! Credits::can_charge_person( $staff, get_current_user_id() ) ) {
 			throw new \InvalidArgumentException( 'Non hai il permesso di addebitare crediti.' );
 		}
 		$activity = ! empty( $post['activity_id'] ) ? (int) $post['activity_id'] : null;
@@ -86,8 +87,8 @@ final class CreditsFront {
 	}
 
 	public static function do_cancel( array $post ): string {
-		self::actor();
-		Credits::cancel_charge( (int) ( $post['charge'] ?? 0 ), get_current_user_id() );
+		$staff = self::actor();
+		Credits::cancel_charge( (int) ( $post['charge'] ?? 0 ), get_current_user_id(), $staff );
 		return 'Addebito annullato.';
 	}
 
@@ -101,8 +102,8 @@ final class CreditsFront {
 
 	/** Stato di un addebito per lo schermo dello staff (si aggiorna ogni due secondi). */
 	public static function ajax_status(): void {
-		check_ajax_referer( 'asem_credit_status', 'n' );
-		wp_send_json( Credits::charge_status( isset( $_GET['id'] ) ? (int) $_GET['id'] : 0, get_current_user_id() ) ); // phpcs:ignore WordPress.Security.NonceVerification -- il nonce è controllato sopra
+		\AssociazioneSemplice\Csrf::check_ajax( 'asem_credit_status', 'n' );
+		wp_send_json( Credits::charge_status( isset( $_GET['id'] ) ? (int) $_GET['id'] : 0, get_current_user_id(), Access::current_person() ) ); // phpcs:ignore WordPress.Security.NonceVerification -- il nonce è controllato sopra
 	}
 
 	// ---------- Pagina del QR ----------
@@ -182,15 +183,15 @@ final class CreditsFront {
 
 	/** La schermata dello staff: modulo dell'addebito e, dopo averlo creato, il QR con lo stato che si aggiorna da solo. */
 	public static function staff_section( array $p ): string {
-		if ( ! Credits::can_charge( get_current_user_id() ) ) {
+		if ( ! Credits::can_charge_person( $p, get_current_user_id() ) ) {
 			return '<section class="asemf-section"><h3>Incasso crediti</h3><p class="asemf-muted">Non hai il permesso di incassare crediti.</p></section>';
 		}
 		$html = '<section class="asemf-section"><h3>Incasso crediti</h3>';
 		$cid  = isset( $_GET['asem_charge'] ) ? (int) $_GET['asem_charge'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
 		$c    = $cid ? Credits::charge( $cid ) : null;
-		if ( $c && Credits::owns_charge( $c, get_current_user_id() ) ) {
+		if ( $c && Credits::owns_charge( $c, get_current_user_id(), $p ) ) {
 			$state = 'paid' === $c['status'] ? 'paid' : CreditRules::charge_state( $c, current_time( 'mysql' ) );
-			$poll  = add_query_arg( array( 'action' => 'asem_credit_status', 'id' => $cid, 'n' => wp_create_nonce( 'asem_credit_status' ) ), admin_url( 'admin-ajax.php' ) );
+			$poll  = add_query_arg( array( 'action' => 'asem_credit_status', 'id' => $cid, 'n' => \AssociazioneSemplice\Csrf::create( 'asem_credit_status' ) ), admin_url( 'admin-ajax.php' ) );
 			$html .= '<div class="asemf-card" style="text-align:center" data-asemf-credit-poll="' . (int) $cid . '" data-url="' . esc_url( $poll ) . '" data-state="' . esc_attr( $state ) . '">'
 				. '<div style="font-size:2em;font-weight:700">' . (int) $c['credits'] . ' crediti</div><div>' . esc_html( (string) $c['label'] ) . '</div>'
 				. '<div style="max-width:320px;margin:12px auto">' . QrCode::svg( Credits::url( (string) $c['code'] ), 4, 'QR per pagare ' . (int) $c['credits'] . ' crediti' ) . '</div>' // phpcs:ignore WordPress.Security.EscapeOutput -- SVG generato dal plugin

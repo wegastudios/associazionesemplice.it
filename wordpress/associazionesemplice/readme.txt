@@ -60,6 +60,7 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 = 1.2.53 =
 * Security review: sign-in attempts are counted atomically (parallel requests cannot exceed the limit), wrong codes are capped per person across requests, response time no longer reveals whether an email belongs to a member (emails are sent after the response), changing a password requires the current one, very long passwords are refused, repeated requests no longer invalidate the link already emailed, injected HTML can no longer redirect a form (formaction) or the page (meta refresh).
 * Members-only pages and the REST "me" endpoint now recognise members signed in with their own access.
+* Event staff with cash enabled can charge credits with the QR even without a WordPress user; a second paid shop order for the same payment is flagged for review instead of silently overwriting the first reference.
 * Faster: the people table has an index on the email, the email lookup uses it, and the phone lookup no longer loads the full member list.
 
 = 1.2.52 =

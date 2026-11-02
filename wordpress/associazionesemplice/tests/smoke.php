@@ -8031,6 +8031,16 @@ asem_ok( ! isset( \AssociazioneSemplice\Html::allowed()['button']['formaction'] 
 $kses_out = wp_kses( '<form action="/x"><button formaction="https://evil.example">ok</button></form><meta http-equiv="refresh" content="0;url=https://evil.example">', \AssociazioneSemplice\Html::document() );
 asem_ok( false === strpos( $kses_out, 'formaction' ) && false === strpos( $kses_out, 'http-equiv' ), 'sicurezza: HTML iniettato non può spedire un modulo altrove né fare un reindirizzamento' );
 
+// Crediti: lo staff dell'evento con l'incasso è per persona, non per utente WordPress
+$cs_a = $acts->create( array( 'name' => 'Evento incasso crediti', 'social_year' => Settings::social_year()->label(), 'kind' => 'event', 'fee_cents' => 0, 'session' => array( 'session_date' => current_time( 'Y-m-d' ), 'capacity' => 10 ) ) );
+$cs_p = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Staff', 'last_name' => 'Crediti', 'email' => 'staff.crediti@example.org' ) );
+$cs_o = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Altro', 'last_name' => 'Staff', 'email' => 'altro.staff@example.org' ) );
+asem_ok( ! \AssociazioneSemplice\Credits::can_charge_person( Plugin::people()->get( $cs_p ), 0 ), 'crediti: un socio qualunque non può addebitare' );
+$acts->add_staff( $cs_a, $cs_p, true );
+asem_ok( \AssociazioneSemplice\Credits::can_charge_person( Plugin::people()->get( $cs_p ), 0 ) && ! \AssociazioneSemplice\Credits::can_charge( 0 ), 'crediti: lo staff con l\'incasso abilitato può addebitare anche senza utente WordPress' );
+$cs_c = \AssociazioneSemplice\Credits::create_charge( $cs_p, 3, 'Prova staff', null );
+asem_ok( 'missing' !== \AssociazioneSemplice\Credits::charge_status( $cs_c['id'], 0, Plugin::people()->get( $cs_p ) )['state'] && 'missing' === \AssociazioneSemplice\Credits::charge_status( $cs_c['id'], 0, Plugin::people()->get( $cs_o ) )['state'], 'crediti: lo stato di un addebito lo vede solo chi l\'ha creato' );
+
 // Scelta dell'amministratore: anche un utente WordPress per i soci (solo nome, cognome ed email passano a WordPress)
 Settings::update( array( 'member_wp_users' => 'x' ) );
 asem_ok( Settings::member_wp_users() && MemberSession::wp_users_wanted(), 'scelta dell\'amministratore: con «anche un utente WordPress» i soci nuovi ne hanno uno' );

@@ -211,13 +211,17 @@ final class Credits {
 
 	/** Chi può addebitare crediti dal vivo: segreteria, tesoriere e lo staff degli eventi con il permesso di incasso. */
 	public static function can_charge( int $user_id ): bool {
-		if ( $user_id < 1 ) {
-			return false;
-		}
-		if ( user_can( $user_id, Plugin::CAP_OPS ) || Access::is_treasurer( $user_id ) ) {
+		return $user_id > 0 && self::can_charge_person( Access::person_for_user( $user_id ), $user_id );
+	}
+
+	/**
+	 * Come {@see can_charge()} ma anche per chi è entrato con l'accesso proprio (senza utente WordPress, $user_id = 0): lo staff di un evento con
+	 * l'incasso abilitato è indicato per persona, non per utente.
+	 */
+	public static function can_charge_person( ?array $person, int $user_id ): bool {
+		if ( $user_id > 0 && ( user_can( $user_id, Plugin::CAP_OPS ) || Access::is_treasurer( $user_id ) ) ) {
 			return true;
 		}
-		$person = Access::person_for_user( $user_id );
 		return $person && (int) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'activity_staff' ) . ' WHERE person_id = %d AND can_cash = 1', (int) $person['id'] ) ) > 0;
 	}
 
@@ -366,9 +370,9 @@ final class Credits {
 	}
 
 	/** Lo staff annulla un addebito non ancora pagato. @throws \InvalidArgumentException */
-	public static function cancel_charge( int $id, int $user_id ): void {
+	public static function cancel_charge( int $id, int $user_id, ?array $person = null ): void {
 		$c = self::charge( $id );
-		if ( ! $c || ! self::owns_charge( $c, $user_id ) ) {
+		if ( ! $c || ! self::owns_charge( $c, $user_id, $person ) ) {
 			throw new \InvalidArgumentException( 'Addebito non trovato.' );
 		}
 		$n = (int) self::db()->query( self::db()->prepare( 'UPDATE ' . Db::t( 'credit_charges' ) . " SET status = 'cancelled' WHERE id = %d AND status = 'pending'", $id ) );
@@ -379,15 +383,15 @@ final class Credits {
 	}
 
 	/** Un addebito lo vede e lo gestisce chi l'ha creato e la segreteria. */
-	public static function owns_charge( array $c, int $user_id ): bool {
-		$person = Access::person_for_user( $user_id );
-		return ( $person && (int) $person['id'] === (int) $c['staff_person_id'] ) || user_can( $user_id, Plugin::CAP_OPS );
+	public static function owns_charge( array $c, int $user_id, ?array $person = null ): bool {
+		$person = $person ?? Access::person_for_user( $user_id );
+		return ( $person && (int) $person['id'] === (int) $c['staff_person_id'] ) || ( $user_id > 0 && user_can( $user_id, Plugin::CAP_OPS ) );
 	}
 
 	/** Stato di un addebito per lo schermo dello staff (si aggiorna da solo). @return array state, label, payer */
-	public static function charge_status( int $id, int $user_id ): array {
+	public static function charge_status( int $id, int $user_id, ?array $person = null ): array {
 		$c = self::charge( $id );
-		if ( ! $c || ! self::owns_charge( $c, $user_id ) ) {
+		if ( ! $c || ! self::owns_charge( $c, $user_id, $person ) ) {
 			return array( 'state' => 'missing', 'message' => 'Addebito non trovato.', 'payer' => '' );
 		}
 		$state = 'paid' === $c['status'] ? 'paid' : CreditRules::charge_state( $c, Db::now() );
