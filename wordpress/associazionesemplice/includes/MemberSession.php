@@ -109,21 +109,36 @@ final class MemberSession {
 		return $row;
 	}
 
-	/**
-	 * Chi sta navigando: la persona della sessione propria; se non c'è, quella dell'utente WordPress collegato (così segreteria,
-	 * tesoriere e consiglio, che restano utenti WordPress, funzionano come prima).
-	 */
-	public static function current_person(): ?array {
+	/** La persona dell'accesso proprio di questa richiesta (null se non c'è sessione o la persona non può più entrare). */
+	public static function session_person(): ?array {
 		$s = self::current();
-		if ( $s ) {
-			$p = Plugin::people()->get( (int) $s['person_id'] );
-			if ( self::person_allowed( $p ) ) {
-				return $p;
-			}
-			self::destroy(); // la persona non può più entrare (tolta, anonimizzata, tipo cambiato)
+		if ( ! $s ) {
 			return null;
 		}
-		return is_user_logged_in() ? Access::current_person() : null;
+		$p = Plugin::people()->get( (int) $s['person_id'] );
+		if ( self::person_allowed( $p ) ) {
+			return $p;
+		}
+		self::destroy(); // la persona non può più entrare (tolta, anonimizzata, tipo cambiato)
+		return null;
+	}
+
+	/**
+	 * Chi sta navigando. Se è collegato a WordPress vale WordPress (segreteria, tesoriere e consiglio restano utenti WordPress e i loro
+	 * poteri sono coerenti); altrimenti vale l'accesso proprio.
+	 */
+	public static function current_person(): ?array {
+		return Access::current_person();
+	}
+
+	/** Qualcuno è entrato, in uno dei due modi. */
+	public static function logged_in(): bool {
+		return is_user_logged_in() || null !== self::session_person();
+	}
+
+	/** Entrato con l'accesso proprio e non con WordPress (i moduli usano il token CSRF della sessione). */
+	public static function is_own_session(): bool {
+		return ! is_user_logged_in() && null !== self::session_person();
 	}
 
 	/** Chiude la sessione di questa richiesta e toglie il cookie. */

@@ -7811,6 +7811,7 @@ $ms_h = MemberPassword::make( 'una password lunga' );
 asem_ok( MemberPassword::verify( 'una password lunga', $ms_h ) && ! MemberPassword::verify( 'un\'altra', $ms_h ) && ! MemberPassword::is_legacy( $ms_h ), 'accesso proprio: la password si controlla sull\'impronta' );
 asem_ok( MemberPassword::is_legacy( '$P$B123456789012345678901234567890' ) && MemberPassword::needs_rehash( '$wp$2y$10$abc' ) && ! MemberPassword::verify( 'x', '$P$B123456789012345678901234567890' ), 'accesso proprio: le impronte di WordPress si riconoscono e vanno rifatte' );
 asem_ok( '' !== MemberPassword::problem( 'corta' ) && '' === MemberPassword::problem( 'abbastanza lunga' ), 'accesso proprio: password di almeno 8 caratteri' );
+wp_set_current_user( 0 ); // qui si prova l'accesso senza utente WordPress
 asem_ok( ! MemberSession::enabled(), 'accesso proprio: spento di default' );
 $ms_p = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Sessione', 'last_name' => 'Prova' ) );
 $ms_raw2 = MemberSession::start( $ms_p );
@@ -7822,6 +7823,13 @@ $ms_cur = MemberSession::current_person();
 asem_ok( $ms_cur && (int) $ms_cur['id'] === $ms_p, 'accesso proprio: da acceso la sessione riconosce il socio' );
 $ms_tok = MemberSession::csrf( 'prenota' );
 asem_ok( '' !== $ms_tok && MemberSession::check_csrf( 'prenota', $ms_tok ) && ! MemberSession::check_csrf( 'paga', $ms_tok ), 'accesso proprio: CSRF legato alla sessione' );
+$ms_other = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Altro', 'last_name' => 'Socio' ) );
+asem_ok( MemberSession::logged_in() && MemberSession::is_own_session() && (int) Access::current_person()['id'] === $ms_p, 'accesso proprio: senza utente WordPress la persona è quella della sessione' );
+asem_ok( current_user_can( 'asem_edit_own_profile', $ms_p ) && ! current_user_can( 'asem_edit_own_profile', $ms_other ) && ! current_user_can( 'asem_view_person', $ms_other ), 'accesso proprio: i permessi seguono la persona della sessione (i suoi dati sì, quelli degli altri no)' );
+asem_ok( ! current_user_can( Plugin::CAP_OPS ) && ! current_user_can( 'asem_add_expense', 0 ) && ! current_user_can( 'asem_collect', 0 ), 'accesso proprio: nessun potere di segreteria o di tesoriere' );
+wp_set_current_user( 1 );
+asem_ok( ! MemberSession::is_own_session() && MemberSession::logged_in() && current_user_can( Plugin::CAP_OPS ), 'accesso proprio: se si è collegati a WordPress vale WordPress' );
+wp_set_current_user( 0 );
 $_COOKIE[ MemberSession::COOKIE ] = SessionToken::generate(); // cookie inventato
 $ms_fake = new ReflectionProperty( MemberSession::class, 'current' );
 $ms_fake->setAccessible( true );
@@ -7895,6 +7903,7 @@ remove_filter( 'pre_wp_mail', $ml_hook, 10 );
 unset( $_COOKIE[ MemberSession::COOKIE ] );
 Settings::update( array( 'limits' => array() ) );
 $ms_fake->setValue( null, null );
+wp_set_current_user( 1 );
 
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 

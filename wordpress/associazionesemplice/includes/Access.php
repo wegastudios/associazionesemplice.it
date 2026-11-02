@@ -120,6 +120,10 @@ final class Access {
 		if ( ! in_array( $cap, self::ABILITIES, true ) ) {
 			return $caps;
 		}
+		if ( 0 === (int) $user_id ) { // nessun utente WordPress: vale l'accesso proprio dei soci, se c'è
+			$p = MemberSession::session_person();
+			return $p && Edition::allows( 'member_area' ) && self::person_can( $p, 0, $cap, (int) ( $args[0] ?? 0 ) ) ? array( 'exist' ) : array( 'do_not_allow' );
+		}
 		return self::user_can( (int) $user_id, $cap, (int) ( $args[0] ?? 0 ) ) ? array( 'exist' ) : array( 'do_not_allow' );
 	}
 
@@ -135,8 +139,9 @@ final class Access {
 		return $row ?: null;
 	}
 
+	/** Chi sta navigando: la persona dell'utente WordPress collegato oppure, senza utente, quella dell'accesso proprio. */
 	public static function current_person(): ?array {
-		return self::person_for_user( get_current_user_id() );
+		return is_user_logged_in() ? self::person_for_user( get_current_user_id() ) : MemberSession::session_person();
 	}
 
 	const TREASURER_META = 'asem_treasurer';
@@ -182,7 +187,14 @@ final class Access {
 		if ( ! Edition::allows( 'member_area' ) ) {
 			return false;
 		}
-		$actor = self::person_for_user( $user_id );
+		return self::person_can( self::person_for_user( $user_id ), $user_id, $ability, $object_id );
+	}
+
+	/**
+	 * Il permesso di una persona (senza amministratori e senza controllo della licenza: li fa user_can). $user_id è l'utente WordPress
+	 * collegato, 0 per chi è entrato con l'accesso proprio: tesoriere e staff dell'ente sono scelte sull'utente WordPress, quindi senza utente non valgono.
+	 */
+	public static function person_can( ?array $actor, int $user_id, string $ability, int $object_id ): bool {
 		if ( ! $actor ) {
 			return false;
 		}
