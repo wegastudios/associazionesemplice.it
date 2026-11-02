@@ -60,6 +60,7 @@ final class Settings {
 			'rules_block_booking'     => 1,     // senza accettazione non si prenota
 			'privacy_url'             => '',    // pagina con l'informativa privacy: se c'è, chi attiva l'accesso deve accettarla
 			'privacy_email'           => '',    // indirizzo email per le richieste sulla privacy (vuoto = si usa la PEC)
+			'privacy_extra_cookies'   => '',    // altri cookie del sito da elencare nell'informativa: uno per riga, «nome — a cosa serve»
 			'privacy_retention_years' => 5,     // dopo quanti anni di inattività si propone l'anonimizzazione
 			'member_area_page_id'     => 0,     // pagina del sito con l'area riservata (shortcode); 0 = home
 			'cancel_policy_default'   => CancelPolicy::H48, // termine predefinito per annullare gli eventi cancellabili
@@ -119,6 +120,18 @@ final class Settings {
 	}
 
 	/** L'ente accetta ospiti (persone che partecipano senza essere soci)? */
+	/** Righe dell'elenco dei cookie: senza tag, al massimo 30 righe di 300 caratteri. @return string[] */
+	public static function cookie_lines( string $raw ): array {
+		$out = array();
+		foreach ( preg_split( '/\r\n|\r|\n/', $raw ) as $line ) {
+			$line = trim( wp_strip_all_tags( (string) $line ) );
+			if ( '' !== $line ) {
+				$out[] = mb_substr( $line, 0, 300 );
+			}
+		}
+		return array_slice( $out, 0, 30 );
+	}
+
 	/** L'amministratore ha scelto di creare anche un utente WordPress per ogni socio (di default no). */
 	public static function member_wp_users(): bool {
 		return ! empty( self::get( 'member_wp_users' ) );
@@ -179,6 +192,7 @@ final class Settings {
 		$clean['rules_url']               = esc_url_raw( trim( (string) $clean['rules_url'] ) );
 		$clean['rules_version']           = mb_substr( trim( (string) $clean['rules_version'] ), 0, 20 );
 		$clean['privacy_retention_years'] = max( 1, min( 30, (int) $clean['privacy_retention_years'] ) );
+		$clean['privacy_extra_cookies']   = implode( "\n", self::cookie_lines( (string) $clean['privacy_extra_cookies'] ) );
 		$clean['cancel_policy_default']   = CancelPolicy::is_valid( (string) $clean['cancel_policy_default'] ) ? (string) $clean['cancel_policy_default'] : CancelPolicy::H48;
 		$clean['accent_color']            = Color::normalize( (string) $clean['accent_color'] );
 		$clean['secondary_color']         = Color::normalize( (string) $clean['secondary_color'] );

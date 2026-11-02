@@ -287,6 +287,7 @@ final class Actions {
 				'privacy_url'               => $txt( 'privacy_url' ),
 				'privacy_email'             => $txt( 'privacy_email' ),
 				'privacy_retention_years'   => (int) ( $p['privacy_retention_years'] ?? 5 ),
+				'privacy_extra_cookies'     => (string) ( $p['privacy_extra_cookies'] ?? '' ),
 				'rules_enabled'             => ! empty( $p['rules_enabled'] ) ? 1 : 0,
 				'rules_title'               => $txt( 'rules_title' ),
 				'rules_text'                => (string) ( $p['rules_text'] ?? '' ),
