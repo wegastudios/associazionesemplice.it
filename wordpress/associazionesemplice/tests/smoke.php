@@ -1267,11 +1267,13 @@ asem_ok( false !== strpos( $ev_list, 'Quarta serata' ) && false !== strpos( $ev_
 // evento in più date: si restituisce solo il non fruito (la data passata resta incassata)
 $nf_a  = $acts->create( array( 'name' => 'Evento a più date', 'social_year' => $ev_sy, 'kind' => 'event', 'fee_cents' => 100, 'session' => array( 'session_date' => $today ) ) );
 $nf_s1 = (int) $acts->sessions( $nf_a )[0]['id'];
-Db::db()->update( Db::t( 'sessions' ), array( 'session_date' => gmdate( 'Y-m-d', strtotime( $today . ' -10 days' ) ) ), array( 'id' => $nf_s1 ) );
 Db::db()->insert( Db::t( 'sessions' ), array( 'activity_id' => $nf_a, 'session_date' => gmdate( 'Y-m-d', strtotime( $today . ' +10 days' ) ), 'created_at' => Db::now() ) );
 $nf_s2 = (int) Db::db()->insert_id;
 $nf_p1 = $ev_mk( 'Nora', 'Passata' );
 $nf_p2 = $ev_mk( 'Omar', 'Futura' );
+$acts->book( $nf_s1, $nf_p1 );
+$acts->book( $nf_s2, $nf_p2 );
+Db::db()->update( Db::t( 'sessions' ), array( 'session_date' => gmdate( 'Y-m-d', strtotime( $today . ' -10 days' ) ) ), array( 'id' => $nf_s1 ) ); // la prima data è già passata
 $ledger->record_receipt( $vt_base + array( 'person_id' => $nf_p1, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 500, 'activity_id' => $nf_a, 'session_id' => $nf_s1 ) ) ) );
 $ledger->record_receipt( $vt_base + array( 'person_id' => $nf_p2, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 700, 'activity_id' => $nf_a, 'session_id' => $nf_s2 ) ) ) );
 $nf_pre = \AssociazioneSemplice\ActivityReset::preview( $nf_a );
