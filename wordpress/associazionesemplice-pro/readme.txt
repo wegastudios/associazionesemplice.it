@@ -3,7 +3,7 @@ Contributors: wegastudios
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.41
+Stable tag: 1.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,9 @@ With a license key entered in Associazione Semplice Pro, once a day (and when yo
 The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, Mozilla Public License 2.0) to tell which domain a license covers.
 
 == Changelog ==
+
+= 1.3.0 =
+* Event staff with cash enabled can charge credits with the QR even without a WordPress user; a second paid shop order for the same payment is flagged for review. Released together with the free plugin 1.3.0.
 
 = 1.1.41 =
 * Works with the new member access (members without a WordPress user): credits, resources and push notifications.
