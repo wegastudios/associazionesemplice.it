@@ -133,6 +133,25 @@ final class PrivacyNotice {
 			: '';
 
 		$ext_note = (string) apply_filters( 'asem_privacy_transfer_note', '', $u );
+
+		// Accesso all'area riservata: con l'accesso proprio dei soci (senza utente WordPress) cambiano i dati trattati e il cookie usato.
+		$own_access = MemberSession::enabled() && ! Settings::member_wp_users();
+		$access     = $own_access
+			? array(
+				'Per entrare nell\'area riservata si usano l\'indirizzo email e una password scelta da ciascun socio. La password non è conservata in chiaro: se ne salva solo un\'impronta cifrata, dalla quale non si può risalire alla password.',
+				'Il sito usa un solo cookie, tecnico e di prima parte («asem_s»): serve a mantenere l\'accesso dopo l\'ingresso, non è usato per profilare né per statistiche o pubblicità e per questo non richiede il consenso. Dura al più 30 giorni senza utilizzo e comunque non oltre 90 giorni, e si cancella uscendo dall\'area riservata.',
+				array(
+					'ul' => array(
+						'per la sicurezza dell\'accesso si conservano, solo come impronte non reversibili, l\'indirizzo IP e il programma di navigazione usati;',
+						'i link e i codici per entrare o per recuperare la password valgono 15 minuti e si usano una sola volta; si conservano solo come impronte e sono inviati per email, come messaggi di servizio;',
+						'dopo troppi tentativi sbagliati l\'accesso si blocca per un tempo crescente.',
+					),
+				),
+				'Sessioni, password e codici di accesso si cancellano quando la persona è eliminata o resa anonima e non sono incluse nelle copie di sicurezza.',
+			)
+			: array(
+				'Per entrare nell\'area riservata il sito usa i cookie tecnici di autenticazione di WordPress, necessari a mantenere l\'accesso: non servono a profilare e non richiedono il consenso.',
+			);
 		$transfer = '' !== $ext_note
 			? $ext_note
 			: 'I dati non sono trasferiti verso Paesi al di fuori dello Spazio economico europeo.';
@@ -217,6 +236,10 @@ final class PrivacyNotice {
 						),
 					),
 				),
+			),
+			array(
+				'Accesso all\'area riservata e cookie',
+				$access,
 			),
 			array(
 				'Natura del conferimento',
