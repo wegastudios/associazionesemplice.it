@@ -6572,7 +6572,7 @@ Settings::update( array( 'membership_fee_cents' => 1000, 'rules_enabled' => 0, '
 Settings::update( array( 'limits' => array_merge( (array) Settings::get( 'limits' ), array( 'apply_per_ip' => 100, 'first_access_per_email' => 50 ) ) ) );
 
 // minori e tutori
-asem_ok( Settings::member_wp_users() && MemberSession::wp_users_wanted(), 'diagnostica: prima dei tutori i soci nuovi hanno ancora un utente WordPress (member_wp_users=' . (int) Settings::get( 'member_wp_users' ) . ', accesso proprio ' . (int) MemberSession::enabled() . ')' );
+asem_ok( Settings::member_wp_users() && \AssociazioneSemplice\MemberSession::wp_users_wanted(), 'diagnostica: prima dei tutori i soci nuovi hanno ancora un utente WordPress (member_wp_users=' . (int) Settings::get( 'member_wp_users' ) . ', accesso proprio ' . (int) \AssociazioneSemplice\MemberSession::enabled() . ')' );
 $mn_mum  = $people->create( array( 'type' => 'ordinary', 'card_number' => 'mn1', 'first_name' => 'Marta', 'last_name' => 'Madre', 'email' => 'marta.madre@example.com', 'birth_date' => '1980-03-04' ) );
 $mn_dad  = $people->create( array( 'type' => 'ordinary', 'card_number' => 'mn2', 'first_name' => 'Pino', 'last_name' => 'Padre', 'email' => 'pino.padre@example.com' ) );
 $mn_aunt = $people->create( array( 'type' => 'ordinary', 'card_number' => 'mn3', 'first_name' => 'Zita', 'last_name' => 'Zia', 'email' => 'zita.zia@example.com' ) );
