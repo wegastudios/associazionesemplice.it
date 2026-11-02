@@ -155,7 +155,15 @@ final class Push {
 		if ( ! self::enabled() || '' === $email ) {
 			return 0;
 		}
-		$u = get_user_by( 'email', $email );
-		return $u ? self::notify_users( array( (int) $u->ID ), $title, $body, $url ) : 0;
+		$ids = array();
+		$u   = get_user_by( 'email', $email );
+		if ( $u ) {
+			$ids[] = (int) $u->ID;
+		}
+		$p = Plugin::people()->find_by_email( strtolower( trim( $email ) ) ); // chi ha l'accesso proprio non ha un utente: le sue notifiche stanno sul numero legato alla persona
+		if ( $p && empty( $p['wp_user_id'] ) ) {
+			$ids[] = MemberSession::ACTOR_BASE + (int) $p['id'];
+		}
+		return $ids ? self::notify_users( $ids, $title, $body, $url ) : 0;
 	}
 }

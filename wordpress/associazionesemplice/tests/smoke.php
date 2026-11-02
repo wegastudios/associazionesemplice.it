@@ -7833,6 +7833,9 @@ asem_ok( MemberSession::actor_key() === MemberSession::ACTOR_BASE + $ms_p && Mem
 $ms_dl = html_entity_decode( \AssociazioneSemplice\Csrf::url( 'http://example.org/wp-admin/admin-post.php?action=asem_receipt&key=k1', 'asem_receipt_k1' ) );
 parse_str( (string) wp_parse_url( $ms_dl, PHP_URL_QUERY ), $ms_q );
 asem_ok( isset( $ms_q['_wpnonce'] ) && \AssociazioneSemplice\Csrf::verify( $ms_q['_wpnonce'], 'asem_receipt_k1' ) && ! \AssociazioneSemplice\Csrf::verify( $ms_q['_wpnonce'], 'asem_receipt_k2' ) && 'asem_receipt' === $ms_q['action'], 'accesso proprio: i link dei download portano il token della sessione' );
+$ms_req = new WP_REST_Request( 'GET', '/associazionesemplice/v1/me/bookings' );
+$ms_res = rest_do_request( $ms_req );
+asem_ok( 200 === $ms_res->get_status(), 'accesso proprio: la REST dei soci riconosce la sessione (le mie prenotazioni)' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::form( 'asem_front_book', '', 'Prenota' ), $ms_csrf ), 'accesso proprio: il modulo porta il token della sessione' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::with_person( function ( $p ) { return 'Ciao ' . $p['first_name']; } ), 'Ciao Sessione' ), 'accesso proprio: la pagina dei soci riconosce chi è entrato' );
 wp_set_current_user( 1 );

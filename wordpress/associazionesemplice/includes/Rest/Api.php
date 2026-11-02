@@ -4,6 +4,7 @@ namespace AssociazioneSemplice\Rest;
 use AssociazioneSemplice\Access;
 use AssociazioneSemplice\ActivityKind;
 use AssociazioneSemplice\Edition;
+use AssociazioneSemplice\MemberSession;
 use AssociazioneSemplice\MemberType;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Settings;
@@ -62,8 +63,15 @@ final class Api {
 	 * @return true|false|\WP_Error
 	 */
 	private static function guard( ?string $ability = null, int $object_id = 0 ) {
-		if ( ! is_user_logged_in() ) {
+		if ( ! MemberSession::logged_in() ) {
 			return false;
+		}
+		// Con l'accesso proprio le richieste che modificano qualcosa devono portare il token della sessione (intestazione X-ASEM-CSRF).
+		if ( MemberSession::is_own_session() && ! in_array( isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) ) : 'GET', array( 'GET', 'HEAD' ), true ) ) {
+			$tok = isset( $_SERVER['HTTP_X_ASEM_CSRF'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_ASEM_CSRF'] ) ) : '';
+			if ( ! MemberSession::check_csrf( 'rest', $tok ) ) {
+				return false;
+			}
 		}
 		if ( ! Access::is_admin_user( get_current_user_id() ) && ! Edition::allows( 'member_area' ) ) {
 			return new \WP_Error( 'asem_suspended', 'Servizio sospeso.', array( 'status' => 403 ) );
@@ -100,7 +108,7 @@ final class Api {
 	}
 
 	public static function my_bookings() {
-		$person = Access::person_for_user( get_current_user_id() );
+		$person = Access::current_person();
 		if ( ! $person ) {
 			return new \WP_Error( 'asem_no_person', 'Questo utente non è collegato a un socio.', array( 'status' => 404 ) );
 		}
@@ -210,7 +218,7 @@ final class Api {
 	}
 
 	public static function my_activities() {
-		$person = Access::person_for_user( get_current_user_id() );
+		$person = Access::current_person();
 		if ( ! $person ) {
 			return new \WP_Error( 'asem_no_person', 'Questo utente non è collegato a un socio.', array( 'status' => 404 ) );
 		}
