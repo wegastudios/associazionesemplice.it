@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.51
+Stable tag: 1.2.52
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -57,8 +57,11 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 
 == Changelog ==
 
+= 1.2.52 =
+* Members sign in with email and a password they choose on first entry (required; the members area stays closed until then). Forgotten password: an emailed link signs in but forces a new password before browsing; changing the password signs out the other devices. Signing in with an emailed link or code, without a password, is still available.
+
 = 1.2.51 =
-* The members' own sign-in is on by default: new members no longer get a WordPress user and sign in with email and a password they choose on first entry (required). A forgotten password is recovered with an emailed link that signs in but forces a new password before browsing; members can also sign in with an emailed link or code without a password. A WordPress user is created only when a member is given a role (secretary, treasurer, staff). Members who already have a WordPress user keep signing in with WordPress.
+* Member sign-in with an emailed link or code (password optional) is on by default: new members no longer get a WordPress user. A WordPress user is created only when a member is given a role (secretary, treasurer, staff). Members who already have a WordPress user keep signing in with WordPress.
 * Administrators can still choose to create a WordPress user for every member (Settings > Member sign-in, or the setup wizard, which explains pros and cons and notes WooCommerce). Only first name, last name and email are passed to WordPress or WooCommerce.
 * When a member loses their last role, the member page offers to switch them to link sign-in (administrator's decision; the WordPress user is deleted only if it has no content or shop orders).
 * Member pages, forms, downloads, payments, REST and push notifications now also work for members signed in without a WordPress user. Still off by default: nothing changes until the setting is turned on.
