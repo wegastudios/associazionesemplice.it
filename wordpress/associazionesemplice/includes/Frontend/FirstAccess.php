@@ -46,7 +46,7 @@ final class FirstAccess {
 		$email = trim( $email );
 		$user  = '' !== $email && is_email( $email ) ? get_user_by( 'email', $email ) : false;
 		if ( ! $user ) {
-			return \AssociazioneSemplice\MemberSession::enabled() && \AssociazioneSemplice\MemberLogin::request( $email ); // senza utente WordPress: link e codice per l'accesso proprio
+			return ! \AssociazioneSemplice\MemberSession::wp_users_wanted() && \AssociazioneSemplice\MemberLogin::request( $email ); // senza utente WordPress: link e codice per l'accesso proprio
 		}
 		// Non più di qualche email all'ora allo stesso indirizzo: nessuno può inondare di messaggi la casella di un socio (la risposta del sito resta uguale).
 		$mail_key = 'asem_fa_m_' . md5( strtolower( $user->user_email ) );
