@@ -162,6 +162,7 @@ final class ExpenseFunds {
 
 	private static function insert( int $tx_id, int $fund_id, int $cents, string $source ): void {
 		self::db()->insert( Db::t( 'expense_funds' ), array( 'tx_id' => $tx_id, 'fund_id' => $fund_id, 'cents' => $cents, 'source' => $source, 'created_by' => get_current_user_id() ?: null, 'created_at' => Db::now() ) );
+		ProWatch::forget(); // la situazione dei fondi è cambiata
 	}
 
 	/**

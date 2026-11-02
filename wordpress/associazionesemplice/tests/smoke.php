@@ -7645,11 +7645,11 @@ asem_ok( array( $wt_f1 => 1000, $wt_f2 => 500 ) === $wt_alloc( $wt_e1 ), 'spesa 
 $wt_e2 = $wt_exp( 800 );
 $wt_doc( $wt_e2 );
 asem_ok( array( $wt_f2 => 500 ) === $wt_alloc( $wt_e2 ), 'seconda spesa: solo quanto manca al fondo' );
-Settings::update( array( 'limits' => array( 'watch_auto_attribute' => 0 ) ) ); // la terza spesa si attribuisce a mano: altri fondi scoperti dello smoke la assorbirebbero
 $wt_e3 = $wt_exp( 200 );
 $wt_doc( $wt_e3 );
-asem_ok( array() === $wt_alloc( $wt_e3 ) && 0 === array_sum( array_column( array_filter( \AssociazioneSemplice\ExpenseFunds::coverage(), function ( $f ) use ( $wt_f1, $wt_f2 ) { return in_array( (int) $f['id'], array( $wt_f1, $wt_f2 ), true ); } ), 'missing' ) ), 'terza spesa: i fondi sono coperti, niente da attribuire ai loro' );
-Settings::update( array( 'limits' => array() ) );
+$wt_a3 = $wt_alloc( $wt_e3 );
+asem_ok( ! isset( $wt_a3[ $wt_f1 ] ) && ! isset( $wt_a3[ $wt_f2 ] ) && 0 === array_sum( array_column( array_filter( \AssociazioneSemplice\ExpenseFunds::coverage(), function ( $f ) use ( $wt_f1, $wt_f2 ) { return in_array( (int) $f['id'], array( $wt_f1, $wt_f2 ), true ); } ), 'missing' ) ), 'terza spesa: i fondi coperti non si riempiono oltre (se ci sono altri fondi scoperti la spesa si distribuisce lì)' );
+\AssociazioneSemplice\ExpenseFunds::undo( $wt_e3 ); // torna da attribuire: i passaggi seguenti la usano
 $wt_unc = array();
 foreach ( \AssociazioneSemplice\ExpenseFunds::uncovered_expenses() as $r ) {
 	$wt_unc[ (int) $r['id'] ] = (int) $r['remaining'];
@@ -7755,8 +7755,9 @@ asem_ok( ' checked' === \AssociazioneSemplice\ProWatch::auto_checked(), 'spese: 
 Settings::update( array( 'limits' => array( 'watch_auto_default' => 0 ) ) );
 asem_ok( '' === \AssociazioneSemplice\ProWatch::auto_checked(), 'spese: dai limiti la spunta può partire spenta' );
 Settings::update( array( 'limits' => array() ) );
-asem_ok( false !== strpos( (string) apply_filters( 'asem_front_expense_fields', '' ), 'name="fund_auto"' ) && false !== strpos( (string) apply_filters( 'asem_front_expense_fields', '' ), 'name="fund_choice"' ), 'spese del tesoriere: stesse scelte della segreteria (automatico, chi ha anticipato, fondo)' );
 asem_ok( 777 === \AssociazioneSemplice\ProWatch::expense_person( 777, array() ), 'spese: senza attribuzione automatica resta il beneficiario scelto' );
+asem_ok( 555 === \AssociazioneSemplice\ProWatch::expense_person( 0, array( 'fund_auto' => '1', 'person_id' => '555' ) ), 'spese: un beneficiario scelto esplicitamente vale anche con l\'attribuzione automatica' );
+asem_ok( false === has_filter( 'asem_front_expense_fields' ), 'area soci: nessun elenco di soci né di fondi nel modulo del tesoriere' );
 
 // Bilancio provvisorio, avvisi e istantanee mensili.
 $wt_s = \AssociazioneSemplice\BalanceWatch::status();

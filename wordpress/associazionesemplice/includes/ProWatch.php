@@ -25,7 +25,6 @@ final class ProWatch {
 		add_filter( 'asem_expense_person', array( __CLASS__, 'expense_person' ), 10, 2 );
 		add_filter( 'asem_expense_default_person', array( __CLASS__, 'expense_default_person' ) );
 		add_filter( 'asem_expense_people', array( __CLASS__, 'expense_people' ) );
-		add_filter( 'asem_front_expense_fields', array( __CLASS__, 'front_expense_fields' ) );
 		add_filter( 'asem_privacy_export', array( ExpenseFunds::class, 'privacy_export' ), 40, 2 );
 		add_filter( 'asem_scheduled_jobs', array( __CLASS__, 'jobs' ) );
 		add_filter( 'asem_admin_post_classes', array( __CLASS__, 'admin_post_classes' ) );
@@ -205,18 +204,30 @@ final class ProWatch {
 		return $map + array( 'asem_watch_csv' => 'Admin\\WatchExports' );
 	}
 
+	/** @var array<int,int> utente => persona (o 0) già calcolata in questa richiesta */
+	private static $me = array();
+
+	/** Dopo una nuova attribuzione la situazione dei fondi cambia: si ricalcola. */
+	public static function forget(): void {
+		self::$me = array();
+	}
+
 	/** La persona che sta registrando la spesa, solo se ha un fondo con documentazione scoperta (allora la spesa è sua); altrimenti 0. */
 	private static function me(): int {
-		$p = Access::current_person();
-		if ( ! $p ) {
-			return 0;
-		}
-		foreach ( ExpenseFunds::coverage() as $f ) {
-			if ( (int) $f['person_id'] === (int) $p['id'] && $f['missing'] > 0 ) {
-				return (int) $p['id'];
+		$uid = get_current_user_id();
+		if ( ! isset( self::$me[ $uid ] ) ) {
+			self::$me[ $uid ] = 0;
+			$p                = Access::current_person();
+			if ( $p ) {
+				foreach ( ExpenseFunds::coverage() as $f ) {
+					if ( (int) $f['person_id'] === (int) $p['id'] && $f['missing'] > 0 ) {
+						self::$me[ $uid ] = (int) $p['id'];
+						break;
+					}
+				}
 			}
 		}
-		return 0;
+		return self::$me[ $uid ];
 	}
 
 	/** La spunta «attribuzione automatica» parte accesa, salvo il limite `watch_auto_default`. */
@@ -224,37 +235,37 @@ final class ProWatch {
 		return Limits::get( 'watch_auto_default' ) ? ' checked' : '';
 	}
 
-	/** Con l'attribuzione automatica, se a registrare è un volontario la spesa è sua; se registra la segreteria per conto di altri (consiglieri, soci) la spesa resta senza beneficiario e va al fondo più coerente. */
+	/**
+	 * Chi ha anticipato la spesa. Un beneficiario scelto esplicitamente vale sempre; altrimenti, con l'attribuzione automatica, è chi registra se ha un
+	 * fondo con documentazione scoperta, e se no nessuno (la spesa va ai fondi più coerenti). Nell'area soci il beneficiario non si sceglie mai:
+	 * il chiamante passa solo `fund_auto`.
+	 */
 	public static function expense_person( $person_id, $p ) {
 		if ( ! Edition::has( 'watch' ) ) {
 			return $person_id;
 		}
-		if ( ! empty( $p['fund_auto'] ) ) { // automatico: se registra un volontario la spesa è sua, altrimenti resta senza beneficiario
-			return self::me();
+		$explicit = (int) $person_id ?: (int) ( $p['person_id'] ?? 0 );
+		if ( $explicit ) {
+			return $explicit;
 		}
-		return $person_id ?: (int) ( $p['person_id'] ?? 0 );
+		return ! empty( $p['fund_auto'] ) ? self::me() : 0;
 	}
 
 	public static function expense_default_person( $selected ) {
 		return Edition::has( 'watch' ) && self::me() ? self::me() : $selected;
 	}
 
-	/** Elenco dei beneficiari: prima la persona loggata, poi i volontari, poi gli altri. */
+	/** Elenco dei beneficiari: prima la persona loggata, poi i volontari, poi gli altri (un solo passaggio, senza ordinare l'elenco). */
 	public static function expense_people( $people ) {
 		if ( ! Edition::has( 'watch' ) ) {
 			return $people;
 		}
 		$me   = self::me();
-		$rank = function ( $p ) use ( $me ) {
-			return (int) $p['id'] === $me ? 0 : ( 'volunteer' === ( $p['type'] ?? '' ) ? 1 : 2 );
-		};
-		usort(
-			$people,
-			function ( $a, $b ) use ( $rank ) {
-				return $rank( $a ) <=> $rank( $b );
-			}
-		);
-		return $people;
+		$rank = array( array(), array(), array() );
+		foreach ( $people as $p ) {
+			$rank[ (int) $p['id'] === $me ? 0 : ( 'volunteer' === ( $p['type'] ?? '' ) ? 1 : 2 ) ][] = $p;
+		}
+		return array_merge( $rank[0], $rank[1], $rank[2] );
 	}
 
 	/** Nel modulo «Nuova spesa»: la spunta «attribuzione automatica» e, se la si toglie, il fondo da coprire. */
@@ -268,37 +279,8 @@ final class ProWatch {
 				$opts[ (string) $f['id'] ] = $f['name'] . ( null === $f['closed_at'] ? '' : ' (liquidato)' ) . ' — da documentare ' . Money::format( (int) $f['missing'] );
 			}
 		}
-		echo '<tr><th>Attribuzione automatica</th><td><label><input type="checkbox" name="fund_auto" value="1" id="asem-fund-auto"' . self::auto_checked() . '> la spesa è mia o si distribuisce da sola ai fondi giusti</label><p class="description">Acceso: se hai un fondo con documentazione da coprire la spesa è tua e va ai tuoi fondi; altrimenti (ad esempio la registri per conto di un consigliere o di un socio) si distribuisce tra i fondi con più documentazione da coprire, e non serve indicare altro. Spento: scegli tu chi ha anticipato (un volontario o anche un socio non volontario, ad esempio da rimborsare per un favore; di partenza tu, se hai un fondo da coprire, poi i volontari) e il fondo: automatico, uno in particolare o «Nessun fondo» (per un semplice rimborso senza fondi).</p></td></tr>';
+		echo '<tr><th>Attribuzione automatica</th><td><label><input type="checkbox" name="fund_auto" value="1" id="asem-fund-auto"' . self::auto_checked() . '> la spesa è mia o si distribuisce da sola ai fondi giusti</label><p class="description">Acceso: se hai un fondo con documentazione da coprire la spesa è tua e va ai tuoi fondi; altrimenti (ad esempio la registri per conto di un consigliere o di un socio) si distribuisce tra i fondi con più documentazione da coprire, e non serve indicare altro. Spento: scegli tu chi ha anticipato (un volontario o anche un socio non volontario, ad esempio da rimborsare per un favore; di partenza tu, se hai un fondo da coprire, poi i volontari) e il fondo: automatico, uno in particolare o «Nessun fondo» (per un semplice rimborso senza fondi). Un beneficiario scelto qui vale sempre.</p></td></tr>';
 		echo '<tr id="asem-row-fund"><th>Fondo da coprire</th><td><select name="fund_choice" id="asem-fund-choice">' . Admin\Ui::options( $opts, '' ) . '</select><p class="description">I fondi accantonano i pagamenti dei corsi per rimborsare il volontario. Con una spesa documentata di norma si attribuisce da sola, anche ai fondi già liquidati. Qui si può scegliere a mano, o escludere la spesa.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<script>(function(){var c=document.getElementById("asem-fund-auto"),b=document.getElementById("asem-row-beneficiary"),f=document.getElementById("asem-row-fund"),s=document.getElementById("asem-fund-choice");if(!c){return;}function u(){var on=c.checked;if(b){b.style.display=on?"none":"";}if(f){f.style.display=on?"none":"";}if(s){s.disabled=on;}}c.addEventListener("change",u);u();})();</script>'; // phpcs:ignore WordPress.Security.EscapeOutput -- script fisso
-	}
-
-	/** Nel modulo del tesoriere (area riservata): le stesse scelte della segreteria — attribuzione automatica, oppure chi ha anticipato e il fondo. */
-	public static function front_expense_fields( $html ) {
-		if ( ! Edition::has( 'watch' ) ) {
-			return $html;
-		}
-		$people = array();
-		foreach ( self::expense_people( Plugin::people()->search() ) as $p ) {
-			$people[ (int) $p['id'] ] = Admin\Ui::person_label( $p );
-		}
-		$opts = array( '' => 'Automatico (dai documenti allegati)', 'none' => 'Nessun fondo' );
-		foreach ( ExpenseFunds::coverage() as $f ) {
-			if ( $f['missing'] > 0 ) {
-				$opts[ (string) $f['id'] ] = $f['name'] . ( null === $f['closed_at'] ? '' : ' (liquidato)' ) . ' — da documentare ' . Money::format( (int) $f['missing'] );
-			}
-		}
-		$sel = function ( array $items, $selected, string $empty = '' ) {
-			$h = '' !== $empty ? '<option value="">' . esc_html( $empty ) . '</option>' : '';
-			foreach ( $items as $k => $label ) {
-				$h .= '<option value="' . esc_attr( (string) $k ) . '"' . ( (string) $k === (string) $selected ? ' selected' : '' ) . '>' . esc_html( $label ) . '</option>';
-			}
-			return $h;
-		};
-		return $html
-			. '<label><input type="checkbox" name="fund_auto" value="1" id="asem-fund-auto"' . self::auto_checked() . '> Attribuzione automatica ai fondi (se la spesa è tua, o la registri per altri)</label>'
-			. '<label id="asem-row-beneficiary">Chi ha anticipato <select name="person_id" id="asem-beneficiary">' . $sel( $people, self::me() ?: '', '— nessuno / fornitore —' ) . '</select></label>'
-			. '<label id="asem-row-fund">Fondo da coprire <select name="fund_choice" id="asem-fund-choice">' . $sel( $opts, '' ) . '</select></label>'
-			. '<script>(function(){var c=document.getElementById("asem-fund-auto"),b=document.getElementById("asem-row-beneficiary"),f=document.getElementById("asem-row-fund"),s=document.getElementById("asem-fund-choice");if(!c){return;}function u(){var on=c.checked;if(b){b.style.display=on?"none":"";}if(f){f.style.display=on?"none":"";}if(s){s.disabled=on;}}c.addEventListener("change",u);u();})();</script>';
+		Admin\Ui::inline_js( '(function(){var c=document.getElementById("asem-fund-auto"),b=document.getElementById("asem-row-beneficiary"),f=document.getElementById("asem-row-fund"),s=document.getElementById("asem-fund-choice");if(!c){return;}function u(){var on=c.checked;if(b){b.style.display=on?"none":"";}if(f){f.style.display=on?"none":"";}if(s){s.disabled=on;}}c.addEventListener("change",u);u();})();' );
 	}
 }
