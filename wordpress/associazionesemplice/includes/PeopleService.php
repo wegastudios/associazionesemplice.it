@@ -35,7 +35,7 @@ class PeopleService {
 
 	public function find_by_email( string $email, ?int $except_id = null ): ?array {
 		$row = $this->db()->get_row(
-			$this->db()->prepare( 'SELECT * FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND LOWER(email) = LOWER(%s) AND id <> %d LIMIT 1', $email, (int) $except_id ),
+			$this->db()->prepare( 'SELECT * FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND email = %s AND id <> %d LIMIT 1', strtolower( trim( $email ) ), (int) $except_id ), // le email si salvano in minuscolo: il confronto usa l'indice
 			ARRAY_A
 		);
 		return $row ?: null;
@@ -630,8 +630,10 @@ class PeopleService {
 		}
 		$key = Phone::key( $raw );
 		$out = array();
-		foreach ( $this->search() as $p ) {
-			if ( (int) $p['id'] !== (int) $except_id && ! empty( $p['phone'] ) && Phone::key( (string) $p['phone'] ) === $key ) {
+		// Solo chi ha un cellulare, senza le sottointerrogazioni dell'elenco completo: la ricerca è chiamata anche da pagine pubbliche.
+		$rows = $this->db()->get_results( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE deleted_at IS NULL AND anonymized_at IS NULL AND application_status IS NULL AND phone IS NOT NULL AND phone <> ''", ARRAY_A ) ?: array();
+		foreach ( $rows as $p ) {
+			if ( (int) $p['id'] !== (int) $except_id && Phone::key( (string) $p['phone'] ) === $key ) {
 				$out[] = $p;
 			}
 		}

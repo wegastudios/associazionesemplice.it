@@ -12,6 +12,27 @@ final class MemberLogin {
 
 	const TTL_SECONDS  = 900; // link e codice valgono 15 minuti
 	const MAX_ATTEMPTS = 5;   // tentativi sul codice prima di doverne chiedere uno nuovo
+	const MAX_CODE_FAILS_PER_HOUR = 10; // codici sbagliati in un'ora per persona, qualunque sia la richiesta: chiedere nuovi codici non azzera il conto
+	const MAX_ACTIVE = 3;     // richieste valide contemporaneamente per persona (chi riceve due email non perde il primo link)
+	const MAX_PASSWORD_BYTES = 1000; // oltre non si controlla nemmeno: l'impronta di una password enorme costerebbe al server
+
+	/** @var bool le email di accesso partono dopo la risposta (così il tempo di risposta non dice se l'indirizzo è di un socio) */
+	private static $defer = false;
+	/** @var callable[] invii in attesa */
+	private static $queue = array();
+
+	public static function defer( bool $on ): void {
+		self::$defer = $on;
+	}
+
+	/** Manda le email messe in coda, dopo che la risposta è stata consegnata. */
+	public static function send_queued(): void {
+		$jobs        = self::$queue;
+		self::$queue = array();
+		foreach ( $jobs as $job ) {
+			$job();
+		}
+	}
 
 	/** Chi può entrare così: socio con accesso e senza un utente WordPress (chi ha un utente, cioè chi ha poteri, entra da WordPress). */
 	public static function person_by_email( string $email ): ?array {
@@ -75,7 +96,12 @@ final class MemberLogin {
 		$db  = Db::db();
 		$tbl = Db::t( 'member_challenges' );
 		$pid = (int) $p['id'];
-		$db->delete( $tbl, array( 'person_id' => $pid ) ); // vale solo l'ultimo
+		$db->query( $db->prepare( "DELETE FROM $tbl WHERE person_id = %d AND (used_at IS NOT NULL OR expires_at <= %s)", $pid, self::now() ) );
+		$active = array_map( 'intval', (array) $db->get_col( $db->prepare( "SELECT id FROM $tbl WHERE person_id = %d ORDER BY id DESC", $pid ) ) );
+		if ( count( $active ) >= self::MAX_ACTIVE ) { // restano le più recenti: chi chiede mille volte non fa scadere il link che il socio ha appena ricevuto
+			$old = array_slice( $active, self::MAX_ACTIVE - 1 );
+			$db->query( "DELETE FROM $tbl WHERE id IN (" . implode( ',', $old ) . ')' ); // phpcs:ignore WordPress.DB.PreparedSQL -- id interi
+		}
 		$raw  = SessionToken::generate();
 		$code = SessionToken::code();
 		$db->insert(
@@ -102,7 +128,16 @@ final class MemberLogin {
 				. "\n\nValgono 15 minuti e si usano una volta sola. Se non hai chiesto tu questo messaggio, ignoralo: nessuno può entrare senza.";
 			$subject = 'Il tuo accesso';
 		}
-		$ok = (bool) Texts::mail( (string) $p['email'], $subject . ( '' !== $assoc ? ' — ' . $assoc : '' ), $text );
+		$to      = (string) $p['email'];
+		$subject = $subject . ( '' !== $assoc ? ' — ' . $assoc : '' );
+		if ( self::$defer ) { // dalla pagina pubblica: la richiesta si conta subito e l'email parte a risposta consegnata
+			set_transient( $mail_key, $sent + 1, HOUR_IN_SECONDS );
+			self::$queue[] = static function () use ( $to, $subject, $text ) {
+				Texts::mail( $to, $subject, $text );
+			};
+			return true;
+		}
+		$ok = (bool) Texts::mail( $to, $subject, $text );
 		if ( $ok ) {
 			set_transient( $mail_key, $sent + 1, HOUR_IN_SECONDS );
 		}
@@ -154,22 +189,32 @@ final class MemberLogin {
 		if ( ! $p ) {
 			return null;
 		}
+		$fails_key = 'asem_ml_cf_' . (int) $p['id'];
+		if ( (int) get_transient( $fails_key ) >= self::MAX_CODE_FAILS_PER_HOUR ) {
+			return null; // troppi codici sbagliati per questa persona: anche chiedendone di nuovi non si ricomincia
+		}
 		$db  = Db::db();
 		$tbl = Db::t( 'member_challenges' );
-		$row = $db->get_row( $db->prepare( "SELECT * FROM $tbl WHERE person_id = %d AND kind = 'login' AND used_at IS NULL AND expires_at > %s ORDER BY id DESC LIMIT 1", (int) $p['id'], self::now() ), ARRAY_A );
-		if ( ! $row || (int) $row['attempts'] >= self::MAX_ATTEMPTS ) {
+		$row = $db->get_row( $db->prepare( "SELECT * FROM $tbl WHERE person_id = %d AND used_at IS NULL AND expires_at > %s ORDER BY id DESC LIMIT 1", (int) $p['id'], self::now() ), ARRAY_A );
+		if ( ! $row ) {
 			return null;
 		}
-		$db->query( $db->prepare( "UPDATE $tbl SET attempts = attempts + 1 WHERE id = %d", (int) $row['id'] ) ); // prima si conta, poi si controlla
+		// Il tentativo si conta e si controlla nello stesso colpo: richieste parallele non possono superare il limite.
+		$counted = $db->query( $db->prepare( "UPDATE $tbl SET attempts = attempts + 1 WHERE id = %d AND attempts < %d", (int) $row['id'], self::MAX_ATTEMPTS ) );
+		if ( 1 !== (int) $counted ) {
+			return null;
+		}
 		if ( ! hash_equals( (string) $row['code_hash'], SessionToken::hash_code( $code, (int) $p['id'], MemberSession::secret() ) ) ) {
+			set_transient( $fails_key, (int) get_transient( $fails_key ) + 1, HOUR_IN_SECONDS );
 			return null;
 		}
+		delete_transient( $fails_key ); // codice giusto: il conto dei errori riparte
 		return self::finish( $row );
 	}
 
 	/** Entra con email e password. Blocco progressivo per account dopo gli errori di fila. */
 	public static function login_with_password( string $email, string $password ): ?int {
-		if ( ! MemberSession::enabled() ) {
+		if ( ! MemberSession::enabled() || strlen( $password ) > self::MAX_PASSWORD_BYTES ) {
 			return null;
 		}
 		$db   = Db::db();
@@ -177,7 +222,7 @@ final class MemberLogin {
 		$p    = self::person_by_email( $email );
 		$auth = $p ? $db->get_row( $db->prepare( "SELECT * FROM $tbl WHERE person_id = %d AND pass_hash IS NOT NULL", (int) $p['id'] ), ARRAY_A ) : null;
 		if ( ! $auth ) {
-			MemberPassword::verify( $password, MemberPassword::make( 'x' ) ); // stesso tempo di una password sbagliata
+			MemberPassword::verify( $password, self::dummy_hash() ); // un controllo vero su un'impronta finta: stesso tempo di una password sbagliata
 			return null;
 		}
 		if ( ! empty( $auth['locked_until'] ) && strtotime( $auth['locked_until'] . ' UTC' ) > time() ) {
@@ -186,9 +231,13 @@ final class MemberLogin {
 		$hash = (string) $auth['pass_hash'];
 		$ok   = MemberPassword::verify( $password, $hash );
 		if ( ! $ok ) {
-			$failed = (int) $auth['failed_count'] + 1;
+			// Il conto sale con una sola istruzione: tentativi in parallelo non lo aggirano.
+			$db->query( $db->prepare( "UPDATE $tbl SET failed_count = LEAST(failed_count + 1, 1000) WHERE person_id = %d", (int) $p['id'] ) );
+			$failed = (int) $db->get_var( $db->prepare( "SELECT failed_count FROM $tbl WHERE person_id = %d", (int) $p['id'] ) );
 			$lock   = MemberPassword::lock_seconds( $failed );
-			$db->update( $tbl, array( 'failed_count' => $failed, 'locked_until' => $lock ? gmdate( 'Y-m-d H:i:s', time() + $lock ) : null ), array( 'person_id' => (int) $p['id'] ) );
+			if ( $lock > 0 ) {
+				$db->update( $tbl, array( 'locked_until' => gmdate( 'Y-m-d H:i:s', time() + $lock ) ), array( 'person_id' => (int) $p['id'] ) );
+			}
 			return null;
 		}
 		$upd = array( 'failed_count' => 0, 'locked_until' => null, 'must_reset' => 0 ); // ha dimostrato di conoscere la password: un recupero lasciato a metà non la blocca
@@ -197,6 +246,25 @@ final class MemberLogin {
 		}
 		$db->update( $tbl, $upd, array( 'person_id' => (int) $p['id'] ) );
 		return self::open( (int) $p['id'], 'password' );
+	}
+
+	/** Impronta finta (creata una volta sola) per spendere lo stesso tempo anche quando l'email non è di un socio. */
+	private static function dummy_hash(): string {
+		$h = (string) get_option( 'asem_ml_dummy', '' );
+		if ( '' === $h ) {
+			$h = MemberPassword::make( bin2hex( random_bytes( 16 ) ) );
+			add_option( 'asem_ml_dummy', $h, '', false );
+		}
+		return $h;
+	}
+
+	/** La password data è quella attuale del socio? (serve per cambiarla: chi ha rubato una sessione non può cambiarla da solo). */
+	public static function check_password( int $person_id, string $password ): bool {
+		if ( strlen( $password ) > self::MAX_PASSWORD_BYTES ) {
+			return false;
+		}
+		$hash = (string) Db::db()->get_var( Db::db()->prepare( 'SELECT pass_hash FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = %d', $person_id ) );
+		return '' !== $hash && MemberPassword::verify( $password, $hash );
 	}
 
 	public static function has_password( int $person_id ): bool {

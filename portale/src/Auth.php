@@ -86,21 +86,22 @@ final class Auth {
 		$email = strtolower( trim( $email ) );
 		$bEmail = 'login:e:' . hash( 'sha256', $email );
 		$bIp    = 'login:i:' . hash( 'sha256', $ip );
-		if ( $this->count( $bEmail, $hour ) >= $max || $this->count( $bIp, $hour ) >= $max * 4 ) {
+		// Il tentativo si riserva prima di controllare la password (e si restituisce se va bene): richieste contemporanee non aggirano il limite.
+		if ( strlen( $password ) > 1000 || ! RateLimit::take( $this->db, $bEmail, $hour, $max, $now ) ) {
+			throw new UserError( 'Troppi tentativi di accesso: riprova tra un\'ora, oppure fatti mandare il link per email.' );
+		}
+		if ( ! RateLimit::take( $this->db, $bIp, $hour, $max * 4, $now ) ) {
+			RateLimit::give_back( $this->db, $bEmail, $hour );
 			throw new UserError( 'Troppi tentativi di accesso: riprova tra un\'ora, oppure fatti mandare il link per email.' );
 		}
 		$cust = $this->db->one( 'SELECT * FROM customers WHERE email = ?', array( $email ) );
 		$hash = $cust && ! empty( $cust['password_hash'] ) ? (string) $cust['password_hash'] : '';
-		static $dummy = null;
-		if ( '' === $hash && null === $dummy ) {
-			$dummy = password_hash( 'x', PASSWORD_DEFAULT );
-		}
-		$ok = password_verify( self::prehash( $password ), '' !== $hash ? $hash : (string) $dummy ) && '' !== $hash;
+		// Anche senza cliente si fa un controllo vero, su un'impronta fissa dello stesso costo: il tempo non dice chi è cliente.
+		$ok = password_verify( self::prehash( $password ), '' !== $hash ? $hash : self::dummy_hash() ) && '' !== $hash;
 		if ( ! $ok ) {
-			$this->bump( $bEmail, $hour );
-			$this->bump( $bIp, $hour );
 			throw new UserError( 'Email o password non corrette.' );
 		}
+		RateLimit::give_back( $this->db, $bIp, $hour );
 		$this->db->run( 'DELETE FROM rate_limits WHERE bucket = ?', array( $bEmail ) );
 		if ( password_needs_rehash( $hash, PASSWORD_DEFAULT ) ) {
 			$this->db->run( 'UPDATE customers SET password_hash = ? WHERE id = ?', array( password_hash( self::prehash( $password ), PASSWORD_DEFAULT ), $cust['id'] ) );
@@ -108,16 +109,10 @@ final class Auth {
 		return $cust;
 	}
 
-	private function count( string $bucket, string $hour ): int {
-		$r = $this->db->one( 'SELECT n FROM rate_limits WHERE bucket = ? AND hour = ?', array( $bucket, $hour ) );
-		return $r ? (int) $r['n'] : 0;
-	}
-
-	private function bump( string $bucket, string $hour ): void {
-		if ( $this->db->one( 'SELECT 1 AS x FROM rate_limits WHERE bucket = ? AND hour = ?', array( $bucket, $hour ) ) ) {
-			$this->db->run( 'UPDATE rate_limits SET n = n + 1 WHERE bucket = ? AND hour = ?', array( $bucket, $hour ) );
-		} else {
-			$this->db->run( 'INSERT INTO rate_limits (bucket, hour, n) VALUES (?,?,1)', array( $bucket, $hour ) );
-		}
+	/** Impronta già pronta (di una password che nessuno conosce) con lo stesso costo di PASSWORD_DEFAULT: da PHP 8.4 il costo è 12, prima 10. */
+	private static function dummy_hash(): string {
+		return PHP_VERSION_ID >= 80400
+			? '$2y$12$gvraSfa8692uKJI2avfjE.ToCoo0QG4ojudgfjXkvSmwhvZ9F75ea'
+			: '$2y$10$30/nTbZyYbw6xDNjOG72Ou8Sy/KQhzen3/1PF/YqShWb9/lDYHQam';
 	}
 }

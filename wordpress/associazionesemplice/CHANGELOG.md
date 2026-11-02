@@ -2,6 +2,15 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.0
+- Versione 1.3: l'accesso dei soci senza utente WordPress è completo. I soci entrano con email e password (obbligatoria alla prima entrata), con recupero tramite link e, se preferiscono, con un link o un codice senza password. Gratuito e Pro escono insieme alla 1.3.0.
+- Più sicurezza nell'accesso dei soci: i tentativi si contano senza che richieste in parallelo li aggirino, i codici sbagliati hanno un tetto per persona anche chiedendone di nuovi, il tempo di risposta non rivela più se un'email è di un socio (l'email parte dopo la risposta), per cambiare la password serve quella attuale, le password enormi sono rifiutate e chi richiede più volte il link non fa scadere quello già arrivato.
+- Un testo iniettato per errore nelle pagine non può più dirottare un modulo né mandare il visitatore su un altro sito.
+- Le pagine riservate ai soci e i dati «io» dell'applicazione riconoscono anche chi è entrato con l'accesso proprio.
+- Lo staff di un evento con l'incasso abilitato può addebitare crediti con il QR anche se non ha un utente WordPress.
+- Se un secondo ordine del negozio risulta pagato per lo stesso pagamento, la segreteria lo vede tra i pagamenti da controllare e il riferimento del primo incasso non viene perso.
+- Più veloce: l'anagrafica ha un indice sull'email e la ricerca per cellulare non carica più tutto l'elenco dei soci.
+
 ## 1.2.52
 - I soci entrano con email e password: la password si sceglie alla prima entrata ed è obbligatoria (finché non c'è, l'area riservata resta chiusa). Il modulo dell'area soci è quello con email e password.
 - «Password dimenticata»: arriva per email un link che fa entrare ma obbliga a scegliere una nuova password prima di navigare. Cambiata la password, gli altri dispositivi devono rientrare.

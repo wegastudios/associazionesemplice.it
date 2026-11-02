@@ -2,6 +2,11 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.0
+- Lo staff di un evento con l'incasso abilitato può addebitare crediti con il QR anche se entra con il link, senza utente WordPress
+- Se un secondo ordine del negozio risulta pagato per lo stesso pagamento, compare tra i pagamenti da controllare e il riferimento del primo incasso non si perde
+- Esce insieme al gratuito 1.3.0 (stesso livello di compatibilità: funziona anche con il gratuito 1.2.51 o successivo)
+
 ## 1.1.41
 - Crediti, risorse e notifiche funzionano anche per i soci che entrano con il link, senza utente WordPress
 - Richiede il gratuito 1.2.51 o successivo

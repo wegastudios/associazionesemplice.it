@@ -7854,6 +7854,9 @@ asem_ok( MemberSession::actor_key() === MemberSession::ACTOR_BASE + $ms_p && Mem
 $ms_dl = html_entity_decode( \AssociazioneSemplice\Csrf::url( 'http://example.org/wp-admin/admin-post.php?action=asem_receipt&key=k1', 'asem_receipt_k1' ) );
 parse_str( (string) wp_parse_url( $ms_dl, PHP_URL_QUERY ), $ms_q );
 asem_ok( isset( $ms_q['_wpnonce'] ) && \AssociazioneSemplice\Csrf::verify( $ms_q['_wpnonce'], 'asem_receipt_k1' ) && ! \AssociazioneSemplice\Csrf::verify( $ms_q['_wpnonce'], 'asem_receipt_k2' ) && 'asem_receipt' === $ms_q['action'], 'accesso proprio: i link dei download portano il token della sessione' );
+asem_ok( true === \AssociazioneSemplice\Frontend\Restrict::context()['logged_in'] && Plugin::people()->get( $ms_p )['type'] === \AssociazioneSemplice\Frontend\Restrict::context()['person_type'], 'accesso proprio: le pagine riservate ai soci riconoscono chi è entrato senza utente WordPress' );
+$ms_me = rest_do_request( new WP_REST_Request( 'GET', '/associazionesemplice/v1/me' ) )->get_data();
+asem_ok( (int) ( $ms_me['person']['id'] ?? 0 ) === $ms_p && 'Sessione Prova' === (string) ( $ms_me['user']['name'] ?? '' ), 'accesso proprio: la REST «me» restituisce la persona della sessione' );
 $ms_req = new WP_REST_Request( 'GET', '/associazionesemplice/v1/me/bookings' );
 $ms_res = rest_do_request( $ms_req );
 asem_ok( 200 === $ms_res->get_status(), 'accesso proprio: la REST dei soci riconosce la sessione (le mie prenotazioni)' );
@@ -7980,6 +7983,63 @@ asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::login_prompt(),
 unset( $_COOKIE[ $pw_cookie ] );
 $ms_fake->setValue( null, null );
 MemberSession::flush();
+
+// Revisione di sicurezza: tentativi, tempi, richieste ripetute, password attuale
+asem_ok( $pw_p === (int) ( Plugin::people()->find_by_email( 'PW.Prova@Example.org' )['id'] ?? 0 ), 'sicurezza: l\'email si trova anche scritta in maiuscolo (confronto sull\'indice)' );
+asem_ok( MemberLogin::check_password( $pw_p, 'Seconda password 2' ) && ! MemberLogin::check_password( $pw_p, 'Prima password 1' ) && ! MemberLogin::check_password( $pw_p, str_repeat( 'a', 1500 ) ), 'sicurezza: per cambiare la password serve quella attuale' );
+asem_ok( null === MemberLogin::login_with_password( $pw_addr, str_repeat( 'a', 1500 ) ), 'sicurezza: una password enorme non viene nemmeno controllata' );
+// le email partono dopo la risposta
+$df_n = count( $ml_mail );
+delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
+MemberLogin::defer( true );
+asem_ok( MemberLogin::request( $pw_addr ) && count( $ml_mail ) === $df_n, 'sicurezza: dalla pagina pubblica l\'email non parte prima della risposta' );
+MemberLogin::send_queued();
+MemberLogin::defer( false );
+asem_ok( count( $ml_mail ) === $df_n + 1, 'sicurezza: a risposta consegnata l\'email parte' );
+// chi riceve più email non perde il primo link, ma le richieste valide sono al massimo 3
+$cf_addr = 'codici.prova@example.org';
+$cf_p    = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Codici', 'last_name' => 'Prova', 'email' => $cf_addr ) );
+$cf_tok  = array();
+$cf_code = array();
+for ( $cf_i = 0; $cf_i < 4; $cf_i++ ) {
+	delete_transient( 'asem_ml_m_' . md5( $cf_addr ) );
+	MemberLogin::request( $cf_addr );
+	list( $cf_tok[ $cf_i ], $cf_code[ $cf_i ] ) = $ml_pull();
+}
+asem_ok( 3 === (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $ml_ch WHERE person_id = %d", $cf_p ) ), 'sicurezza: al massimo tre richieste di accesso valide per persona' );
+asem_ok( $cf_p === MemberLogin::login_with_token( $cf_tok[1] ) && null === MemberLogin::login_with_token( $cf_tok[0] ), 'sicurezza: il link ricevuto prima vale ancora, solo il più vecchio decade' );
+// chiedere nuovi codici non azzera il conto degli errori
+delete_transient( 'asem_ml_cf_' . $cf_p );
+$cf_bad = function ( $good ) {
+	return '000000' === $good ? '111111' : '000000';
+};
+for ( $cf_i = 0; $cf_i < 3; $cf_i++ ) {
+	delete_transient( 'asem_ml_m_' . md5( $cf_addr ) );
+	MemberLogin::request( $cf_addr );
+	list( , $cf_c ) = $ml_pull();
+	for ( $cf_j = 0; $cf_j < 4; $cf_j++ ) {
+		MemberLogin::login_with_code( $cf_addr, $cf_bad( $cf_c ) );
+	}
+}
+asem_ok( null === MemberLogin::login_with_code( $cf_addr, $cf_c ), 'sicurezza: dopo troppi codici sbagliati anche il codice giusto di una richiesta nuova non vale' );
+delete_transient( 'asem_ml_cf_' . $cf_p );
+asem_ok( $cf_p === MemberLogin::login_with_code( $cf_addr, $cf_c ), 'sicurezza: passata l\'ora (o dopo un accesso riuscito) si riparte' );
+// iniezioni e HTML iniettato
+$sq_res = \AssociazioneSemplice\Affiliations::sports_by_person( array( '1); DROP TABLE x;--', 'abc' ) );
+asem_ok( is_array( $sq_res ) && '' === (string) $wpdb->last_error, 'sicurezza: gli id nelle query sono sempre numeri' );
+asem_ok( ! isset( \AssociazioneSemplice\Html::allowed()['button']['formaction'] ) && ! isset( \AssociazioneSemplice\Html::document()['meta']['http-equiv'] ), 'sicurezza: tolti formaction e meta refresh dai tag consentiti' );
+$kses_out = wp_kses( '<form action="/x"><button formaction="https://evil.example">ok</button></form><meta http-equiv="refresh" content="0;url=https://evil.example">', \AssociazioneSemplice\Html::document() );
+asem_ok( false === strpos( $kses_out, 'formaction' ) && false === strpos( $kses_out, 'http-equiv' ), 'sicurezza: HTML iniettato non può spedire un modulo altrove né fare un reindirizzamento' );
+
+// Crediti: lo staff dell'evento con l'incasso è per persona, non per utente WordPress
+$cs_a = $acts->create( array( 'name' => 'Evento incasso crediti', 'social_year' => Settings::social_year()->label(), 'kind' => 'event', 'fee_cents' => 0, 'session' => array( 'session_date' => current_time( 'Y-m-d' ), 'capacity' => 10 ) ) );
+$cs_p = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Staff', 'last_name' => 'Crediti', 'email' => 'staff.crediti@example.org' ) );
+$cs_o = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Altro', 'last_name' => 'Staff', 'email' => 'altro.staff@example.org' ) );
+asem_ok( ! \AssociazioneSemplice\Credits::can_charge_person( Plugin::people()->get( $cs_p ), 0 ), 'crediti: un socio qualunque non può addebitare' );
+$acts->add_staff( $cs_a, $cs_p, true );
+asem_ok( \AssociazioneSemplice\Credits::can_charge_person( Plugin::people()->get( $cs_p ), 0 ) && ! \AssociazioneSemplice\Credits::can_charge( 0 ), 'crediti: lo staff con l\'incasso abilitato può addebitare anche senza utente WordPress' );
+$cs_c = \AssociazioneSemplice\Credits::create_charge( $cs_p, 3, 'Prova staff', null );
+asem_ok( 'missing' !== \AssociazioneSemplice\Credits::charge_status( $cs_c['id'], 0, Plugin::people()->get( $cs_p ) )['state'] && 'missing' === \AssociazioneSemplice\Credits::charge_status( $cs_c['id'], 0, Plugin::people()->get( $cs_o ) )['state'], 'crediti: lo stato di un addebito lo vede solo chi l\'ha creato' );
 
 // Scelta dell'amministratore: anche un utente WordPress per i soci (solo nome, cognome ed email passano a WordPress)
 Settings::update( array( 'member_wp_users' => 'x' ) );

@@ -18,6 +18,9 @@ final class View {
 		header( 'X-Content-Type-Options: nosniff' );
 		header( 'X-Frame-Options: DENY' );
 		header( 'Referrer-Policy: same-origin' );
+		if ( ( ! empty( $_SERVER['HTTPS'] ) && 'off' !== $_SERVER['HTTPS'] ) || 'https' === ( $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '' ) ) {
+			header( 'Strict-Transport-Security: max-age=31536000' ); // il sito si apre solo in https
+		}
 		header( 'Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()' );
 		// Niente plugin, niente <base> altrui, nessuna incorniciatura; gli script di monitoraggio configurati dal pannello restano ammessi.
 		header( "Content-Security-Policy: object-src 'none'; base-uri 'self'; frame-ancestors 'none'" );
