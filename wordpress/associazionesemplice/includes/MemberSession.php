@@ -25,7 +25,8 @@ final class MemberSession {
 		return Limits::flag( 'member_sessions' );
 	}
 
-	private static function secret(): string {
+	/** Segreto per firmare codici e token di questo accesso (derivato dal sale del sito). */
+	public static function secret(): string {
 		return wp_salt( 'auth' ) . '|member-session';
 	}
 

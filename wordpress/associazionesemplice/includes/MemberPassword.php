@@ -44,4 +44,14 @@ final class MemberPassword {
 		}
 		return '';
 	}
+
+	const MAX_FAILED = 5; // errori di fila prima del blocco
+
+	/** Secondi di blocco dopo tanti errori di fila: nessuno fino a 4, poi un minuto che raddoppia a ogni errore, al massimo un'ora. */
+	public static function lock_seconds( int $failed ): int {
+		if ( $failed < self::MAX_FAILED ) {
+			return 0;
+		}
+		return min( 3600, 60 * ( 1 << min( 10, $failed - self::MAX_FAILED ) ) );
+	}
 }

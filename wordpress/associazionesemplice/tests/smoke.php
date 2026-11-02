@@ -7840,6 +7840,58 @@ $wpdb->insert( Db::t( 'member_auth' ), array( 'person_id' => $ms_p, 'login_email
 MemberSession::forget_person( $ms_p );
 asem_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_sessions' ) . ' WHERE person_id = ' . $ms_p ) + (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = ' . $ms_p ), 'accesso proprio: eliminando la persona spariscono sessioni e password' );
 asem_ok( wp_next_scheduled( 'asem_purge_member_sessions' ) > 0, 'accesso proprio: pulizia giornaliera programmata' );
+
+// ---------- Accesso proprio: link, codice e password ----------
+use AssociazioneSemplice\MemberLogin;
+$ml_mail = array();
+$ml_hook = function ( $null, $atts ) use ( &$ml_mail ) {
+	$ml_mail[] = $atts;
+	return true;
+};
+add_filter( 'pre_wp_mail', $ml_hook, 10, 2 );
+$ml_addr = 'link.prova@example.org';
+$ml_p    = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Link', 'last_name' => 'Prova', 'email' => $ml_addr ) );
+$ml_ch   = Db::t( 'member_challenges' );
+$ml_now  = function () { return gmdate( 'Y-m-d H:i:s' ); };
+$ml_pull = function () use ( &$ml_mail ) {
+	$m = (string) end( $ml_mail )['message'];
+	return array( 1 === preg_match( '/asem_ml=([A-Za-z0-9_-]{43})/', $m, $a ) ? $a[1] : '', 1 === preg_match( '/codice[^\d]*(\d{6})/', $m, $b ) ? $b[1] : '' );
+};
+asem_ok( ! MemberLogin::request( 'nessuno@example.org' ) && ! $ml_mail, 'accesso proprio: un\'email sconosciuta non riceve niente' );
+asem_ok( MemberLogin::request( $ml_addr ) && 1 === count( $ml_mail ), 'accesso proprio: a un socio arriva una email con link e codice' );
+list( $ml_tok, $ml_code ) = $ml_pull();
+asem_ok( '' !== $ml_tok && '' !== $ml_code, 'accesso proprio: l\'email contiene il link e il codice' );
+asem_ok( 0 === (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $ml_ch WHERE token_hash = %s OR code_hash = %s", $ml_tok, $ml_code ) ), 'accesso proprio: nel database né il link né il codice in chiaro' );
+asem_ok( null === MemberLogin::login_with_code( $ml_addr, '000000' === $ml_code ? '111111' : '000000' ) && null === MemberLogin::login_with_token( SessionToken::generate() ), 'accesso proprio: codice o link sbagliati non fanno entrare' );
+asem_ok( $ml_p === MemberLogin::login_with_token( $ml_tok ), 'accesso proprio: il link fa entrare' );
+asem_ok( null === MemberLogin::login_with_token( $ml_tok ) && null === MemberLogin::login_with_code( $ml_addr, $ml_code ), 'accesso proprio: il link si usa una volta sola' );
+asem_ok( 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'member_sessions' ) . ' WHERE person_id = %d', $ml_p ) ), 'accesso proprio: l\'ingresso apre una sessione' );
+delete_transient( 'asem_ml_m_' . md5( $ml_addr ) );
+MemberLogin::request( $ml_addr );
+list( , $ml_code ) = $ml_pull();
+asem_ok( $ml_p === MemberLogin::login_with_code( $ml_addr, $ml_code ), 'accesso proprio: il codice fa entrare' );
+delete_transient( 'asem_ml_m_' . md5( $ml_addr ) );
+MemberLogin::request( $ml_addr );
+list( $ml_tok, $ml_code ) = $ml_pull();
+$ml_bad = '000000' === $ml_code ? '111111' : '000000';
+for ( $ml_i = 0; $ml_i < MemberLogin::MAX_ATTEMPTS; $ml_i++ ) {
+	MemberLogin::login_with_code( $ml_addr, $ml_bad );
+}
+asem_ok( null === MemberLogin::login_with_code( $ml_addr, $ml_code ), 'accesso proprio: dopo 5 codici sbagliati anche quello giusto non vale più' );
+$wpdb->update( $ml_ch, array( 'attempts' => 0, 'expires_at' => '2000-01-01 00:00:00' ), array( 'person_id' => $ml_p ) );
+asem_ok( null === MemberLogin::login_with_token( $ml_tok ), 'accesso proprio: un link scaduto non vale' );
+asem_ok( '' !== MemberLogin::set_password( $ml_p, 'corta' ) && '' === MemberLogin::set_password( $ml_p, 'una password lunga' ) && MemberLogin::has_password( $ml_p ), 'accesso proprio: la password si sceglie (almeno 8 caratteri)' );
+asem_ok( null === MemberLogin::login_with_password( $ml_addr, 'sbagliata!' ) && $ml_p === MemberLogin::login_with_password( strtoupper( $ml_addr ), 'una password lunga' ), 'accesso proprio: con la password giusta si entra, con quella sbagliata no' );
+for ( $ml_i = 0; $ml_i < MemberPassword::MAX_FAILED; $ml_i++ ) {
+	MemberLogin::login_with_password( $ml_addr, 'sbagliata!' );
+}
+asem_ok( null === MemberLogin::login_with_password( $ml_addr, 'una password lunga' ), 'accesso proprio: dopo gli errori di fila l\'account si blocca anche con la password giusta' );
+$wpdb->update( Db::t( 'member_auth' ), array( 'failed_count' => 0, 'locked_until' => null, 'pass_hash' => wp_hash_password( 'vecchia password' ) ), array( 'person_id' => $ml_p ) );
+asem_ok( $ml_p === MemberLogin::login_with_password( $ml_addr, 'vecchia password' ) && ! MemberPassword::is_legacy( (string) $wpdb->get_var( 'SELECT pass_hash FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = ' . $ml_p ) ), 'accesso proprio: la password di WordPress vale e viene rifatta con l\'algoritmo nuovo' );
+Settings::update( array( 'limits' => array() ) );
+delete_transient( 'asem_ml_m_' . md5( $ml_addr ) );
+asem_ok( ! MemberLogin::request( $ml_addr ) && null === MemberLogin::login_with_password( $ml_addr, 'vecchia password' ), 'accesso proprio: da spento non si entra né si manda niente' );
+remove_filter( 'pre_wp_mail', $ml_hook, 10 );
 unset( $_COOKIE[ MemberSession::COOKIE ] );
 Settings::update( array( 'limits' => array() ) );
 $ms_fake->setValue( null, null );
