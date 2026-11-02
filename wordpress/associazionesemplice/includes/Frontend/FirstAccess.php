@@ -33,6 +33,9 @@ final class FirstAccess {
 
 	/** Avviso sopra il modulo di accesso di WordPress. */
 	public static function login_message( $message ) {
+		if ( \AssociazioneSemplice\MemberSession::enabled() && ! \AssociazioneSemplice\MemberSession::wp_users_wanted() ) { // i soci non sono utenti del sito: questa pagina è per chi lo gestisce
+			return (string) $message . '<p class="message">Questa pagina è per la segreteria e per chi gestisce il sito. Sei un socio? <a href="' . esc_url( \AssociazioneSemplice\Frontend\MemberLoginPage::url() ) . '"><strong>Entra nell\'area soci</strong></a></p>';
+		}
 		return (string) $message . '<p class="message">Sei un socio e non hai ancora una password? <a href="' . esc_url( self::url() ) . '"><strong>Primo accesso</strong></a></p>';
 	}
 
@@ -159,11 +162,11 @@ final class FirstAccess {
 		};
 		$body = ( '' !== $message ? '<div class="w" style="color:#1a7f37">' . esc_html( $message ) . '</div>' : '' )
 			. ( '' !== $error ? '<div class="w" style="color:#b32d2e">' . esc_html( $error ) . '</div>' : '' )
-			. '<div class="n">Primo accesso</div><p>Indica i tuoi dati: ti mandiamo il link per scegliere la password. ' . ( 'invite' === Settings::get( 'join_mode' ) ? 'L\'accesso è riservato a chi è già iscritto: l\'iscrizione si fa su presentazione, rivolgendosi alla segreteria.' : 'Se non ti riconosciamo, la richiesta arriva alla segreteria, che ti scrive su WhatsApp.' ) . '</p>'
+			. '<div class="n">Primo accesso</div><p>Indica i tuoi dati: ' . ( ! \AssociazioneSemplice\MemberSession::wp_users_wanted() ? 'ti mandiamo il link per entrare e scegliere la tua password. ' : 'ti mandiamo il link per scegliere la password. ' ) . ( 'invite' === Settings::get( 'join_mode' ) ? 'L\'accesso è riservato a chi è già iscritto: l\'iscrizione si fa su presentazione, rivolgendosi alla segreteria.' : 'Se non ti riconosciamo, la richiesta arriva alla segreteria, che ti scrive su WhatsApp.' ) . '</p>'
 			. '<form method="post" action="' . esc_url( self::url() ) . '">' . wp_nonce_field( 'asem_first_access', '_asem_nonce', false, false ) . '<input type="hidden" name="asem_first_go" value="1">'
 			. $field( 'Nome e cognome', 'name', 'text', 'name' ) . $field( 'La tua email', 'email', 'email', 'email' ) . $field( 'Il tuo cellulare', 'phone', 'tel', 'tel' )
 			. '<button type="submit" style="width:100%;padding:14px;font-size:18px;border:0;border-radius:10px;cursor:pointer;background:' . esc_attr( $accent ) . ';color:#fff">Mandami il link</button></form>'
-			. '<p style="margin-top:14px"><a href="' . esc_url( wp_login_url() ) . '">← Torna all\'accesso</a></p>';
+			. '<p style="margin-top:14px"><a href="' . esc_url( ! \AssociazioneSemplice\MemberSession::wp_users_wanted() ? MemberLoginPage::url() : wp_login_url() ) . '">← Torna all\'accesso</a></p>';
 		return CardVerify::layout( 'Primo accesso', $accent, $body );
 	}
 

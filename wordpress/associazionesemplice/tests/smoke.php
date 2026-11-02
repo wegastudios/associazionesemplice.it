@@ -8041,6 +8041,15 @@ asem_ok( \AssociazioneSemplice\Credits::can_charge_person( Plugin::people()->get
 $cs_c = \AssociazioneSemplice\Credits::create_charge( $cs_p, 3, 'Prova staff', null );
 asem_ok( 'missing' !== \AssociazioneSemplice\Credits::charge_status( $cs_c['id'], 0, Plugin::people()->get( $cs_p ) )['state'] && 'missing' === \AssociazioneSemplice\Credits::charge_status( $cs_c['id'], 0, Plugin::people()->get( $cs_o ) )['state'], 'crediti: lo stato di un addebito lo vede solo chi l\'ha creato' );
 
+// wp-login.php: con l'accesso proprio è la pagina di chi gestisce il sito, ai soci si indica l'area soci
+$wl_own = \AssociazioneSemplice\Frontend\FirstAccess::login_message( '' );
+asem_ok( false !== strpos( $wl_own, 'segreteria' ) && false !== strpos( $wl_own, 'asem_member_login=1' ) && false === strpos( $wl_own, 'asem_first_access' ), 'wp-login: con l\'accesso proprio rimanda i soci all\'area soci, non al «Primo accesso»' );
+$wl_page = \AssociazioneSemplice\Frontend\FirstAccess::page();
+asem_ok( false !== strpos( $wl_page, 'entrare e scegliere la tua password' ) && false !== strpos( $wl_page, 'asem_member_login=1' ), 'primo accesso: con l\'accesso proprio il testo e il ritorno sono quelli dell\'area soci' );
+Settings::update( array( 'member_wp_users' => 1 ) );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\FirstAccess::login_message( '' ), 'asem_first_access' ), 'wp-login: con gli utenti WordPress per i soci resta il «Primo accesso»' );
+Settings::update( array( 'member_wp_users' => 0 ) );
+
 // Scelta dell'amministratore: anche un utente WordPress per i soci (solo nome, cognome ed email passano a WordPress)
 Settings::update( array( 'member_wp_users' => 'x' ) );
 asem_ok( Settings::member_wp_users() && MemberSession::wp_users_wanted(), 'scelta dell\'amministratore: con «anche un utente WordPress» i soci nuovi ne hanno uno' );
