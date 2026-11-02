@@ -440,7 +440,7 @@ class PeopleService {
 		$this->assert_valid( $d, null );
 
 		$user_id = null;
-		if ( MemberType::can_login( $d['type'] ) && null !== $d['email'] ) { // senza email: nessun utente finché il socio non si attiva col suo link
+		if ( MemberType::can_login( $d['type'] ) && null !== $d['email'] && ! MemberSession::enabled() ) { // senza email: nessun utente finché il socio non si attiva col suo link; con l'accesso proprio acceso i soci semplici non hanno mai un utente WordPress
 			$user_id = $this->ensure_wp_user( $d, null );
 		}
 		$now = Db::now();
@@ -497,6 +497,9 @@ class PeopleService {
 		if ( ! empty( $p['wp_user_id'] ) ) {
 			throw new \InvalidArgumentException( 'L\'accesso è già attivo.' );
 		}
+		if ( MemberSession::enabled() ) {
+			return $this->activate_own( $p, $email, $phone, $password );
+		}
 		$email = strtolower( trim( $email ) );
 		if ( ! filter_var( $email, FILTER_VALIDATE_EMAIL ) ) {
 			throw new \InvalidArgumentException( 'Inserisci un indirizzo email valido.' );
@@ -518,6 +521,69 @@ class PeopleService {
 		wp_set_password( $password, $uid );
 		Audit::log( 'person.activated', 'person', $id );
 		return $uid;
+	}
+
+	/**
+	 * Attivazione con l'accesso proprio: email e cellulare sulla scheda, nessun utente WordPress. La password è facoltativa (senza, si entra con il
+	 * link o il codice che arriva per email).
+	 *
+	 * @return int 0: nessun utente WordPress
+	 */
+	private function activate_own( array $p, string $email, string $phone, string $password ): int {
+		$id    = (int) $p['id'];
+		$email = strtolower( trim( $email ) );
+		if ( ! filter_var( $email, FILTER_VALIDATE_EMAIL ) ) {
+			throw new \InvalidArgumentException( 'Inserisci un indirizzo email valido.' );
+		}
+		if ( ! Phone::is_valid( $phone ) ) {
+			throw new \InvalidArgumentException( 'Inserisci il tuo numero di cellulare.' );
+		}
+		if ( '' !== $password ) {
+			$problem = MemberPassword::problem( $password );
+			if ( '' !== $problem ) {
+				throw new \InvalidArgumentException( $problem ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			}
+		}
+		$this->update( $id, array( 'email' => $email, 'phone' => trim( $phone ) ) );
+		if ( '' !== $password ) {
+			$err = MemberLogin::set_password( $id, $password );
+			if ( '' !== $err ) {
+				throw new \InvalidArgumentException( $err ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			}
+		}
+		Audit::log( 'person.activated', 'person', $id, array( 'own' => true ) );
+		return 0;
+	}
+
+	/**
+	 * Chi ha un potere (segreteria, tesoriere, staff) lavora con un utente WordPress: lo si crea (o si collega quello con la stessa email)
+	 * solo quando il potere viene dato. I soci semplici non ne hanno.
+	 *
+	 * @return int id dell'utente WordPress
+	 */
+	public function ensure_user( int $id ): int {
+		$p = $this->get( $id );
+		if ( ! $p || ! MemberType::can_login( $p['type'] ) ) {
+			throw new \InvalidArgumentException( 'Socio non trovato.' );
+		}
+		if ( ! empty( $p['wp_user_id'] ) ) {
+			return (int) $p['wp_user_id'];
+		}
+		if ( '' === trim( (string) $p['email'] ) ) {
+			throw new \InvalidArgumentException( 'Prima inserisci l\'email nella scheda: serve per l\'accesso.' );
+		}
+		$uid = $this->ensure_wp_user( $this->normalize( $p ), $id );
+		$this->db()->update( Db::t( 'people' ), array( 'wp_user_id' => $uid, 'updated_at' => Db::now() ), array( 'id' => $id ) );
+		Audit::log( 'person.wp_user_created', 'person', $id );
+		return $uid;
+	}
+
+	/** Il socio ha un accesso: un utente WordPress oppure, con l'accesso proprio acceso, l'email con cui riceve il link. */
+	public static function has_access( array $p ): bool {
+		if ( ! empty( $p['wp_user_id'] ) ) {
+			return true;
+		}
+		return MemberSession::enabled() && MemberType::can_login( (string) $p['type'] ) && '' !== trim( (string) $p['email'] ) && empty( $p['application_status'] );
 	}
 
 	/** Persone (soci e ospiti) con lo stesso cellulare, comunque sia scritto (+39, spazi, trattini). */
@@ -658,7 +724,7 @@ class PeopleService {
 		$user_id = $current['wp_user_id'] ? (int) $current['wp_user_id'] : null;
 		if ( MemberType::can_login( $d['type'] ) ) {
 			if ( null === $user_id ) {
-				if ( null !== $d['email'] ) {
+				if ( null !== $d['email'] && ! MemberSession::enabled() ) {
 					$user_id = $this->ensure_wp_user( $d, $id ); // ad es. ospite diventato socio, o socio che ha dato l'email
 				}
 			} else {

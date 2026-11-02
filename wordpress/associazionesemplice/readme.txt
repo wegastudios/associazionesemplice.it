@@ -58,7 +58,7 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 == Changelog ==
 
 = 1.2.51 =
-* Tools > Overview shows a summary of member accounts that can move to the independent sign-in (how many can move, how many have no email, how many stay WordPress users). Read-only.
+* With the independent sign-in turned on, new members no longer get a WordPress user: they sign in with an emailed link or code (password optional). A WordPress user is created only when a member is given a role (secretary, treasurer, staff). Members who already have a WordPress user keep signing in with WordPress.
 * Member pages, forms, downloads, payments, REST and push notifications now also work for members signed in without a WordPress user. Still off by default: nothing changes until the setting is turned on.
 
 = 1.2.50 =

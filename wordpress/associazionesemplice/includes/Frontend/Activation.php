@@ -57,7 +57,7 @@ final class Activation {
 		if ( ! $p || ! \AssociazioneSemplice\MemberType::can_login( $p['type'] ) || ! empty( $p['application_status'] ) ) { // una domanda non ancora approvata non attiva nessun accesso
 			return array( 'status' => 'invalid', 'person' => null );
 		}
-		return array( 'status' => ! empty( $p['wp_user_id'] ) ? 'done' : 'ok', 'person' => $p );
+		return array( 'status' => \AssociazioneSemplice\PeopleService::has_access( $p ) ? 'done' : 'ok', 'person' => $p );
 	}
 
 	private static function message( string $status ): string {
@@ -65,7 +65,9 @@ final class Activation {
 			case 'expired':
 				return 'Il link è scaduto: chiedi alla segreteria di mandartene uno nuovo.';
 			case 'done':
-				return 'Il tuo accesso è già attivo: entra con la tua email e, se hai dimenticato la password, usa "Password dimenticata".';
+				return \AssociazioneSemplice\MemberSession::enabled()
+					? 'Il tuo accesso è già attivo: scrivi la tua email nella pagina di accesso e ti mandiamo un link per entrare.'
+					: 'Il tuo accesso è già attivo: entra con la tua email e, se hai dimenticato la password, usa "Password dimenticata".';
 			case 'suspended':
 				return 'Il servizio è temporaneamente sospeso. Riprova più tardi.';
 		}
@@ -142,7 +144,7 @@ final class Activation {
 		if ( \AssociazioneSemplice\Regulation::enabled() ) {
 			\AssociazioneSemplice\Regulation::accept( (int) $r['person']['id'], 'web' );
 		}
-		return array( 'ok' => true, 'user_id' => $uid );
+		return array( 'ok' => true, 'user_id' => $uid, 'person_id' => (int) $r['person']['id'] );
 	}
 
 	public static function page( string $param, array $post = array(), string $error = '' ): string {
@@ -154,8 +156,9 @@ final class Activation {
 		$p     = $r['person'];
 		$input = 'width:100%;box-sizing:border-box;padding:10px;font-size:16px;margin:4px 0 12px;border:1px solid #8c8f94;border-radius:8px';
 		$need  = Limits::flag( 'profile_required' );
+		$own   = \AssociazioneSemplice\MemberSession::enabled();
 		$body  = ( '' !== $error ? '<div class="w" style="color:#b32d2e">' . esc_html( $error ) . '</div>' : '' )
-			. '<div class="n">Ciao ' . esc_html( $p['first_name'] ) . '!</div><p>Scegli l\'email e la password con cui entrerai nell\'area riservata.</p>'
+			. '<div class="n">Ciao ' . esc_html( $p['first_name'] ) . '!</div><p>' . ( \AssociazioneSemplice\MemberSession::enabled() ? 'Scrivi la tua email: con quella entrerai nell\'area riservata, ogni volta con un link che ti mandiamo. La password è facoltativa.' : 'Scegli l\'email e la password con cui entrerai nell\'area riservata.' ) . '</p>'
 			. '<form method="post" action="' . esc_url( add_query_arg( 'asem_activate', $param, home_url( '/' ) ) ) . '" autocomplete="on">'
 			. '<input type="hidden" name="asem_activate_go" value="1">' . wp_nonce_field( 'asem_activate_' . (int) $p['id'], '_asem_nonce', false, false )
 			. '<label>La tua email<input style="' . $input . '" type="email" name="email" value="' . esc_attr( (string) ( $post['email'] ?? $p['email'] ?? '' ) ) . '" required autocomplete="email"></label>'
@@ -166,8 +169,8 @@ final class Activation {
 			. '<label>CAP<input style="' . $input . '" type="text" name="zip" maxlength="12" ' . ( $need ? 'required ' : '' ) . 'autocomplete="postal-code" value="' . esc_attr( (string) ( $post['zip'] ?? $p['zip'] ?? '' ) ) . '"></label>'
 			. '<label>Comune<input style="' . $input . '" type="text" name="city" maxlength="100" ' . ( $need ? 'required ' : '' ) . 'autocomplete="address-level2" value="' . esc_attr( (string) ( $post['city'] ?? $p['city'] ?? '' ) ) . '"></label>'
 			. '<label>Provincia (facoltativa)<input style="' . $input . '" type="text" name="province" maxlength="5" autocomplete="address-level1" value="' . esc_attr( (string) ( $post['province'] ?? $p['province'] ?? '' ) ) . '"></label>'
-			. '<label>Password (almeno 8 caratteri)<input style="' . $input . '" type="password" name="password" minlength="8" required autocomplete="new-password"></label>'
-			. '<label>Ripeti la password<input style="' . $input . '" type="password" name="password2" minlength="8" required autocomplete="new-password"></label>'
+			. '<label>Password' . ( $own ? ' (facoltativa, almeno 8 caratteri)' : ' (almeno 8 caratteri)' ) . '<input style="' . $input . '" type="password" name="password" minlength="8" ' . ( $own ? '' : 'required ' ) . 'autocomplete="new-password"></label>'
+			. '<label>Ripeti la password<input style="' . $input . '" type="password" name="password2" minlength="8" ' . ( $own ? '' : 'required ' ) . 'autocomplete="new-password"></label>'
 			. ( \AssociazioneSemplice\Regulation::enabled() ? '<div style="margin:8px 0"><strong>' . esc_html( \AssociazioneSemplice\Regulation::title() ) . '</strong>' . \AssociazioneSemplice\Regulation::box_html() . '<label style="display:block;margin:6px 0 14px"><input type="checkbox" name="rules_ok" value="1" required> Ho letto e accetto il ' . esc_html( mb_strtolower( \AssociazioneSemplice\Regulation::title(), 'UTF-8' ) ) . '.</label></div>' : '' )
 			. ( '' !== (string) Settings::get( 'privacy_url' ) ? '<label style="display:block;margin:6px 0 14px"><input type="checkbox" name="privacy_ok" value="1" required> Ho letto <a href="' . esc_url( (string) Settings::get( 'privacy_url' ) ) . '" target="_blank" rel="noopener">l\'informativa sulla privacy</a> e acconsento al trattamento dei miei dati.</label>' : '' )
 			. '<button type="submit" style="width:100%;padding:14px;font-size:18px;border:0;border-radius:10px;cursor:pointer;background:' . esc_attr( $accent ) . ';color:#fff">Attiva il mio accesso</button></form>';
@@ -194,8 +197,12 @@ final class Activation {
 				set_transient( $rl_key, $tries + 1, HOUR_IN_SECONDS );
 				$res = self::complete( $param, $post );
 				if ( $res['ok'] ) {
-					wp_set_current_user( (int) $res['user_id'] );
-					wp_set_auth_cookie( (int) $res['user_id'], true );
+					if ( (int) $res['user_id'] > 0 ) {
+						wp_set_current_user( (int) $res['user_id'] );
+						wp_set_auth_cookie( (int) $res['user_id'], true );
+					} else { // accesso proprio: nessun utente WordPress, si apre la sessione dei soci
+						\AssociazioneSemplice\MemberLogin::open( (int) $res['person_id'], 'activation' );
+					}
 					$page = (int) Settings::get( 'member_area_page_id' );
 					$url  = $page ? (string) get_permalink( $page ) : home_url( '/' );
 					wp_safe_redirect( \AssociazioneSemplice\Flash::url( $url, 'asemf', 'Accesso attivato: benvenuto/a!' ) );

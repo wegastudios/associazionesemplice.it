@@ -7808,8 +7808,7 @@ $ms_c = SessionToken::csrf( 'abc', 'prenota', time() + 600, 'sec' );
 asem_ok( SessionToken::check_csrf( $ms_c, 'abc', 'prenota', time(), 'sec' ), 'accesso proprio: il token CSRF vale per la sua sessione e azione' );
 asem_ok( ! SessionToken::check_csrf( $ms_c, 'abd', 'prenota', time(), 'sec' ) && ! SessionToken::check_csrf( $ms_c, 'abc', 'paga', time(), 'sec' ) && ! SessionToken::check_csrf( $ms_c, 'abc', 'prenota', time() + 1200, 'sec' ) && ! SessionToken::check_csrf( 'x.y', 'abc', 'prenota', time(), 'sec' ), 'accesso proprio: il token CSRF non vale per un\'altra sessione, azione o dopo la scadenza' );
 $ms_h = MemberPassword::make( 'una password lunga' );
-asem_ok( MemberPassword::verify( 'una password lunga', $ms_h ) && ! MemberPassword::verify( 'un\'altra', $ms_h ) && ! MemberPassword::is_legacy( $ms_h ), 'accesso proprio: la password si controlla sull\'impronta' );
-asem_ok( MemberPassword::is_legacy( '$P$B123456789012345678901234567890' ) && MemberPassword::needs_rehash( '$wp$2y$10$abc' ) && ! MemberPassword::verify( 'x', '$P$B123456789012345678901234567890' ), 'accesso proprio: le impronte di WordPress si riconoscono e vanno rifatte' );
+asem_ok( MemberPassword::verify( 'una password lunga', $ms_h ) && ! MemberPassword::verify( 'un\'altra', $ms_h ), 'accesso proprio: la password si controlla sull\'impronta' );
 asem_ok( '' !== MemberPassword::problem( 'corta' ) && '' === MemberPassword::problem( 'abbastanza lunga' ), 'accesso proprio: password di almeno 8 caratteri' );
 wp_set_current_user( 0 ); // qui si prova l'accesso senza utente WordPress
 asem_ok( ! MemberSession::enabled(), 'accesso proprio: spento di default' );
@@ -7906,8 +7905,20 @@ for ( $ml_i = 0; $ml_i < MemberPassword::MAX_FAILED; $ml_i++ ) {
 	MemberLogin::login_with_password( $ml_addr, 'sbagliata!' );
 }
 asem_ok( null === MemberLogin::login_with_password( $ml_addr, 'una password lunga' ), 'accesso proprio: dopo gli errori di fila l\'account si blocca anche con la password giusta' );
-$wpdb->update( Db::t( 'member_auth' ), array( 'failed_count' => 0, 'locked_until' => null, 'pass_hash' => wp_hash_password( 'vecchia password' ) ), array( 'person_id' => $ml_p ) );
-asem_ok( $ml_p === MemberLogin::login_with_password( $ml_addr, 'vecchia password' ) && ! MemberPassword::is_legacy( (string) $wpdb->get_var( 'SELECT pass_hash FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = ' . $ml_p ) ), 'accesso proprio: la password di WordPress vale e viene rifatta con l\'algoritmo nuovo' );
+$wpdb->update( Db::t( 'member_auth' ), array( 'failed_count' => 0, 'locked_until' => null, 'pass_hash' => password_hash( 'vecchia password', PASSWORD_BCRYPT, array( 'cost' => 4 ) ) ), array( 'person_id' => $ml_p ) );
+asem_ok( $ml_p === MemberLogin::login_with_password( $ml_addr, 'vecchia password' ) && ! MemberPassword::needs_rehash( (string) $wpdb->get_var( 'SELECT pass_hash FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = ' . $ml_p ) ), 'accesso proprio: un\'impronta con un costo vecchio vale e viene rifatta con quello di oggi' );
+// Separazione: con l'accesso proprio acceso i soci semplici non hanno un utente WordPress
+asem_ok( empty( Plugin::people()->get( $ml_p )['wp_user_id'] ) && ! get_user_by( 'email', $ml_addr ) && \AssociazioneSemplice\PeopleService::has_access( Plugin::people()->get( $ml_p ) ), 'separazione: un nuovo socio con email non ha un utente WordPress ma ha un accesso' );
+$sp_mails = count( $ml_mail );
+delete_transient( 'asem_ml_m_' . md5( $ml_addr ) );
+asem_ok( \AssociazioneSemplice\Frontend\FirstAccess::request( $ml_addr ) && count( $ml_mail ) === $sp_mails + 1 && false !== strpos( (string) end( $ml_mail )['message'], 'asem_ml=' ), 'separazione: il «Primo accesso» manda il link di accesso, non il ripristino della password di WordPress' );
+$sp_p = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Attiva', 'last_name' => 'Prova' ) );
+asem_ok( 0 === Plugin::people()->activate( $sp_p, 'attiva.prova@example.org', '3331234567', '' ) && ! get_user_by( 'email', 'attiva.prova@example.org' ) && 'attiva.prova@example.org' === Plugin::people()->get( $sp_p )['email'], 'separazione: l\'attivazione dal link salva l\'email e non crea nessun utente WordPress (password facoltativa)' );
+asem_ok( $sp_p === (int) ( MemberLogin::person_by_email( 'attiva.prova@example.org' )['id'] ?? 0 ), 'separazione: chi si è attivato entra con link o codice' );
+asem_ok( \AssociazioneSemplice\Frontend\Activation::resolve( \AssociazioneSemplice\ActivationToken::param( $sp_p, time() + 600, wp_salt( 'auth' ) . '|activate' ) )['status'] === 'done', 'separazione: il link di attivazione non vale più una volta attivato' );
+$sp_uid = Plugin::people()->ensure_user( $sp_p );
+asem_ok( $sp_uid > 0 && $sp_uid === (int) Plugin::people()->get( $sp_p )['wp_user_id'] && in_array( Plugin::ROLE_MEMBER, (array) get_userdata( $sp_uid )->roles, true ) && null === MemberLogin::person_by_email( 'attiva.prova@example.org' ), 'separazione: l\'utente WordPress nasce solo quando si dà un potere, e da allora si entra da WordPress' );
+asem_ok( $sp_uid === Plugin::people()->ensure_user( $sp_p ), 'separazione: dare un secondo potere non crea un secondo utente' );
 Settings::update( array( 'limits' => array() ) );
 delete_transient( 'asem_ml_m_' . md5( $ml_addr ) );
 asem_ok( ! MemberLogin::request( $ml_addr ) && null === MemberLogin::login_with_password( $ml_addr, 'vecchia password' ), 'accesso proprio: da spento non si entra né si manda niente' );

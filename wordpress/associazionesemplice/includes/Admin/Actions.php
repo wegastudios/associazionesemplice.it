@@ -313,7 +313,11 @@ final class Actions {
 
 	private static function set_secretary( array $p ): array {
 		$person = Plugin::people()->get( (int) ( $p['id'] ?? 0 ) );
-		$user   = $person && ! empty( $person['wp_user_id'] ) ? get_userdata( (int) $person['wp_user_id'] ) : null;
+		if ( $person && ! empty( $p['enabled'] ) && empty( $person['wp_user_id'] ) && MemberType::is_member( $person['type'] ) && \AssociazioneSemplice\PeopleService::has_access( $person ) ) {
+			Plugin::people()->ensure_user( (int) $person['id'] ); // il potere si esercita da WordPress: l'utente nasce ora
+			$person = Plugin::people()->get( (int) $person['id'] );
+		}
+		$user = $person && ! empty( $person['wp_user_id'] ) ? get_userdata( (int) $person['wp_user_id'] ) : null;
 		if ( ! $person || ! $user || ! MemberType::is_member( $person['type'] ) ) {
 			throw new \InvalidArgumentException( 'Solo un socio con accesso al sito può far parte della segreteria.' );
 		}
@@ -332,6 +336,10 @@ final class Actions {
 
 	private static function set_treasurer( array $p ): array {
 		$person = Plugin::people()->get( (int) ( $p['id'] ?? 0 ) );
+		if ( $person && ! empty( $p['enabled'] ) && empty( $person['wp_user_id'] ) && MemberType::is_member( $person['type'] ) && \AssociazioneSemplice\PeopleService::has_access( $person ) ) {
+			Plugin::people()->ensure_user( (int) $person['id'] ); // il potere si esercita da WordPress: l'utente nasce ora
+			$person = Plugin::people()->get( (int) $person['id'] );
+		}
 		if ( ! $person || empty( $person['wp_user_id'] ) || ! MemberType::is_member( $person['type'] ) ) {
 			throw new \InvalidArgumentException( 'Solo un socio o volontario con accesso al sito può essere tesoriere.' );
 		}
@@ -344,6 +352,10 @@ final class Actions {
 	/** Staff dell'ente: può verificare gli accessi a tutti gli eventi (l'incasso resta una scelta per singolo evento). */
 	private static function set_staff( array $p ): array {
 		$person = Plugin::people()->get( (int) ( $p['id'] ?? 0 ) );
+		if ( $person && ! empty( $p['enabled'] ) && empty( $person['wp_user_id'] ) && MemberType::is_member( $person['type'] ) && \AssociazioneSemplice\PeopleService::has_access( $person ) ) {
+			Plugin::people()->ensure_user( (int) $person['id'] ); // il potere si esercita da WordPress: l'utente nasce ora
+			$person = Plugin::people()->get( (int) $person['id'] );
+		}
 		if ( ! $person || empty( $person['wp_user_id'] ) || ! MemberType::is_member( $person['type'] ) ) {
 			throw new \InvalidArgumentException( 'Solo un socio o volontario con accesso al sito può far parte dello staff.' );
 		}

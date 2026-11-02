@@ -13,7 +13,7 @@ final class MemberLogin {
 	const TTL_SECONDS  = 900; // link e codice valgono 15 minuti
 	const MAX_ATTEMPTS = 5;   // tentativi sul codice prima di doverne chiedere uno nuovo
 
-	/** Chi può entrare così: socio con accesso e senza i poteri di segreteria (chi opera entra da WordPress). */
+	/** Chi può entrare così: socio con accesso e senza un utente WordPress (chi ha un utente, cioè chi ha poteri, entra da WordPress). */
 	public static function person_by_email( string $email ): ?array {
 		$email = strtolower( trim( $email ) );
 		if ( '' === $email || ! is_email( $email ) ) {
@@ -23,7 +23,7 @@ final class MemberLogin {
 		if ( ! MemberSession::person_allowed( $p ) ) {
 			return null;
 		}
-		if ( ! empty( $p['wp_user_id'] ) && user_can( (int) $p['wp_user_id'], Plugin::CAP_OPS ) ) {
+		if ( ! empty( $p['wp_user_id'] ) ) {
 			return null;
 		}
 		return $p;
@@ -90,7 +90,8 @@ final class MemberLogin {
 		return self::open( (int) $p['id'], 'link' );
 	}
 
-	private static function open( int $person_id, string $how ): int {
+	/** Apre la sessione di una persona già riconosciuta (ad esempio dopo l'attivazione dal link della segreteria). */
+	public static function open( int $person_id, string $how ): int {
 		MemberSession::destroy(); // il token cambia a ogni accesso
 		MemberSession::start( $person_id );
 		Db::db()->update( Db::t( 'member_auth' ), array( 'last_login_at' => self::now() ), array( 'person_id' => $person_id ) );
@@ -147,7 +148,7 @@ final class MemberLogin {
 			return null;
 		}
 		$hash = (string) $auth['pass_hash'];
-		$ok   = MemberPassword::is_legacy( $hash ) ? wp_check_password( $password, $hash ) : MemberPassword::verify( $password, $hash );
+		$ok   = MemberPassword::verify( $password, $hash );
 		if ( ! $ok ) {
 			$failed = (int) $auth['failed_count'] + 1;
 			$lock   = MemberPassword::lock_seconds( $failed );
@@ -156,7 +157,7 @@ final class MemberLogin {
 		}
 		$upd = array( 'failed_count' => 0, 'locked_until' => null );
 		if ( MemberPassword::needs_rehash( $hash ) ) {
-			$upd['pass_hash'] = MemberPassword::make( $password ); // le impronte vecchie si rifanno con l'algoritmo nuovo
+			$upd['pass_hash'] = MemberPassword::make( $password );
 		}
 		$db->update( $tbl, $upd, array( 'person_id' => (int) $p['id'] ) );
 		return self::open( (int) $p['id'], 'password' );

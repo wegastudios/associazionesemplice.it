@@ -4,8 +4,7 @@ namespace AssociazioneSemplice;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Password dei soci per l'accesso proprio. Argon2id se il server lo ha, altrimenti bcrypt; le impronte dei vecchi utenti WordPress
- * (phpass «$P$» e «$wp$») si riconoscono per poterle portare così come sono e rifare al primo accesso con l'algoritmo nuovo.
+ * Password dei soci per l'accesso proprio. Argon2id se il server lo ha, altrimenti bcrypt.
  * Classe "pura": non usa né WordPress né il database.
  */
 final class MemberPassword {
@@ -20,18 +19,13 @@ final class MemberPassword {
 		return password_hash( $password, self::algo() );
 	}
 
-	/** Solo per le impronte nate qui: quelle di WordPress le controlla MemberSession con le funzioni di WordPress. */
 	public static function verify( string $password, string $hash ): bool {
-		return '' !== $hash && ! self::is_legacy( $hash ) && password_verify( $password, $hash );
+		return '' !== $hash && password_verify( $password, $hash );
 	}
 
+	/** L'impronta è stata fatta con un algoritmo o un costo più vecchio di quello di oggi: si rifà al prossimo accesso riuscito. */
 	public static function needs_rehash( string $hash ): bool {
-		return self::is_legacy( $hash ) || password_needs_rehash( $hash, self::algo() );
-	}
-
-	/** Impronta nata in WordPress (phpass o il formato nuovo «$wp$»). */
-	public static function is_legacy( string $hash ): bool {
-		return 0 === strpos( $hash, '$P$' ) || 0 === strpos( $hash, '$wp$' ) || 0 === strpos( $hash, '$H$' );
+		return password_needs_rehash( $hash, self::algo() );
 	}
 
 	/** @return string vuoto se va bene, altrimenti cosa non va (da mostrare al socio) */

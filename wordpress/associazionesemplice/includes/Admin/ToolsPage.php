@@ -2,8 +2,6 @@
 namespace AssociazioneSemplice\Admin;
 
 use AssociazioneSemplice\FiscalYears;
-use AssociazioneSemplice\MemberMigration;
-use AssociazioneSemplice\MemberSession;
 use AssociazioneSemplice\Modules;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Settings;
@@ -57,33 +55,8 @@ final class ToolsPage {
 				echo wp_kses( '<div class="asem-card"><h2>' . esc_html( $title ) . '</h2>' . $rows . '</div>', Html::allowed() );
 			}
 		}
-		if ( $admin ) {
-			self::access_card();
-		}
 		echo '</div>';
 		Ui::footer();
-	}
-
-	/** Riepilogo del passaggio all'accesso proprio dei soci: quanti utenti WordPress si possono spostare e quanti restano. Sola lettura. */
-	private static function access_card(): void {
-		$r    = MemberMigration::recap();
-		$rows = array(
-			array( 'Soci semplici con un utente WordPress, spostabili', $r[ MemberMigration::MIGRATE ], 'Hanno solo il ruolo Socio e un\'email: potranno entrare con il link o il codice.' ),
-			array( 'Soci semplici senza email', $r[ MemberMigration::MIGRATE_NO_EMAIL ], 'Spostabili, ma senza un\'email non ricevono il link: serve completarla prima.' ),
-			array( 'Restano utenti WordPress', $r[ MemberMigration::OPERATOR ], 'Segreteria, presidente e vicepresidente, tesoriere, staff dell\'ente o con altri ruoli: lavorano nell\'amministrazione.' ),
-			array( 'Schede collegate che non possono accedere', $r[ MemberMigration::NOT_ALLOWED ], 'Ad esempio domande di iscrizione in attesa: non si toccano.' ),
-			array( 'Già con l\'accesso proprio', $r['own'], 'Hanno una password scelta qui e nessun utente WordPress.' ),
-			array( 'Possono accedere ma non hanno un utente WordPress', $r['no_user'], 'Entrano solo con link o codice, se l\'accesso proprio è acceso.' ),
-		);
-		$html = '<div class="asem-card"><h2>Accesso dei soci</h2><p class="description">Stato del passaggio a un accesso proprio, indipendente da WordPress. ' . ( MemberSession::enabled() ? '<strong>L\'accesso proprio è acceso.</strong>' : 'L\'accesso proprio è spento (Impostazioni → Tecniche → Limiti e soglie).' ) . ' Questo riepilogo non cambia niente.</p><table class="widefat striped"><tbody>';
-		foreach ( $rows as $row ) {
-			$html .= '<tr><td><strong>' . esc_html( $row[0] ) . '</strong><br><span class="description">' . esc_html( $row[2] ) . '</span></td><td style="text-align:right;font-size:1.3em"><strong>' . (int) $row[1] . '</strong></td></tr>';
-		}
-		$html .= '</tbody></table><p class="description">Utenti WordPress collegati a una scheda: ' . (int) $r['linked'] . '.';
-		if ( $r['examples'] ) {
-			$html .= ' Senza email, ad esempio: ' . esc_html( implode( ', ', $r['examples'] ) ) . '.';
-		}
-		echo wp_kses( $html . '</p></div>', Html::allowed() );
 	}
 
 	/** Esportazioni CSV: ognuna con il suo periodo. Le voci contabili compaiono solo se la prima nota è in uso. */
