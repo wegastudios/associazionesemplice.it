@@ -456,6 +456,7 @@ final class Actions {
 		$msg  = 'Iscrizione di ' . $s['name'] . ' cancellata.';
 		$msg .= $s['refunds'] ? ' Registrata la restituzione di ' . Money::format( (int) $s['income_cents'] ) . ' in prima nota: il denaro va restituito a chi ha pagato.' : '';
 		$msg .= $s['voided'] ? ' Annullati ' . (int) $s['voided'] . ' incassi (' . Money::format( (int) $s['income_cents'] ) . '): non risultano più in prima nota.' : '';
+		$msg .= \AssociazioneSemplice\ActivityReset::kept_text( $s );
 		return array( Ui::url( 'asem-activity', array( 'id' => $aid ) ), $msg );
 	}
 

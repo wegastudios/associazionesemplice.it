@@ -396,8 +396,19 @@ final class ActivityReset {
 				return null;
 			}
 		}
-		$out = array( 'activity' => $a, 'person' => $person, 'session' => $session, 'session_id' => $session_id, 'income' => array( 'count' => 0, 'cents' => 0, 'online_cents' => 0, 'ids' => array(), 'receipts' => array() ), 'years' => array() );
+		$out = array(
+			'activity' => $a, 'person' => $person, 'session' => $session, 'session_id' => $session_id,
+			'income'   => array( 'count' => 0, 'cents' => 0, 'online_cents' => 0, 'ids' => array(), 'receipts' => array() ),
+			'fruited'  => array( 'count' => 0, 'cents' => 0, 'debt_cents' => 0, 'credit_cents' => 0 ),
+			'years'    => array(),
+		);
+		$ctx = self::fruit_context( $a );
 		foreach ( self::registration_incomes( $activity_id, $person_id, $session_id ) as $m ) {
+			if ( self::is_fruited( $m, $ctx ) ) { // il già fruito resta in prima nota così com'è
+				$out['fruited']['count']++;
+				$out['fruited']['cents'] += (int) $m['amount_cents'];
+				continue;
+			}
 			$out['income']['count']++;
 			$out['income']['cents'] += (int) $m['amount_cents'];
 			$out['income']['ids'][]  = (int) $m['id'];
@@ -411,6 +422,34 @@ final class ActivityReset {
 		}
 		$out['income']['receipts'] = array_keys( $out['income']['receipts'] );
 		$out['years']              = array_keys( $out['years'] );
+		if ( ! $session_id ) { // corso: i mesi già dovuti sono quelli fruiti; ciò che manca è un debito, ciò che avanza un credito
+			foreach ( Plugin::activities()->status_for_activity( $activity_id ) as $row ) {
+				if ( (int) $row['enrollment']['person_id'] !== $person_id ) {
+					continue;
+				}
+				foreach ( (array) ( $row['summary']['months'] ?? array() ) as $mo ) {
+					if ( (int) $mo['due'] > 0 ) {
+						$out['fruited']['debt_cents']   += max( 0, (int) $mo['due'] - (int) $mo['paid'] );
+						$out['fruited']['credit_cents'] += max( 0, (int) $mo['paid'] - (int) $mo['due'] );
+					}
+				}
+			}
+		}
+		return $out;
+	}
+
+	/** Frase sul già fruito che resta in prima nota, con l'eventuale residuo (debito o credito). @param array $f count, cents, debt_cents, credit_cents */
+	public static function kept_text( array $f ): string {
+		$out = '';
+		if ( (int) ( $f['count'] ?? $f['kept_count'] ?? 0 ) > 0 ) {
+			$out = ' Gli incassi già fruiti (' . Money::format( (int) ( $f['cents'] ?? $f['kept_cents'] ?? 0 ) ) . ') restano in prima nota così come sono e non vengono restituiti né annullati.';
+		}
+		if ( (int) $f['debt_cents'] > 0 ) {
+			$out .= ' Per il fruito mancano ' . Money::format( (int) $f['debt_cents'] ) . ': restano da incassare, fuori dall\'iscrizione.';
+		}
+		if ( (int) $f['credit_cents'] > 0 ) {
+			$out .= ' Per il fruito risultano versati ' . Money::format( (int) $f['credit_cents'] ) . ' in più: il credito va restituito a mano.';
+		}
 		return $out;
 	}
 
@@ -448,7 +487,7 @@ final class ActivityReset {
 			if ( ! $pre ) {
 				continue;
 			}
-			if ( $pre['income']['count'] > 0 ) {
+			if ( $pre['income']['count'] + $pre['fruited']['count'] > 0 ) {
 				$out['kept'][] = Plugin::people()->full_name( $pre['person'] );
 				continue;
 			}
@@ -500,12 +539,16 @@ final class ActivityReset {
 		$db     = self::db();
 		$ledger = Plugin::ledger();
 		$sid    = (int) $p['session_id'];
-		$sum    = array( 'income_count' => $p['income']['count'], 'income_cents' => $p['income']['cents'], 'refunds' => 0, 'voided' => 0, 'notified' => 0, 'name' => $who );
+		$sum    = array( 'income_count' => $p['income']['count'], 'income_cents' => $p['income']['cents'], 'kept_count' => $p['fruited']['count'], 'kept_cents' => $p['fruited']['cents'], 'debt_cents' => $p['fruited']['debt_cents'], 'credit_cents' => $p['fruited']['credit_cents'], 'refunds' => 0, 'voided' => 0, 'notified' => 0, 'name' => $who );
 		$ledger->in_batch(
 			function () use ( $activity_id, $person_id, $sid, $mode, $a, $who, $ledger, $db, &$sum, $p ) {
 				$today = current_time( 'Y-m-d' );
 				$cat   = self::REFUND === $mode ? self::refund_category() : 0;
+				$ctx   = self::fruit_context( $a );
 				foreach ( self::registration_incomes( $activity_id, $person_id, $sid ) as $m ) {
+					if ( self::is_fruited( $m, $ctx ) ) {
+						continue; // già fruito: resta in prima nota
+					}
 					if ( self::REFUND === $mode ) {
 						$d = array(
 							'date' => $today, 'account_id' => (int) $m['account_id'], 'method' => (string) $m['method'], 'category_id' => $cat, 'amount_cents' => (int) $m['amount_cents'],
@@ -535,7 +578,7 @@ final class ActivityReset {
 					$db->delete( Db::t( 'enrollments' ), array( 'activity_id' => $activity_id, 'person_id' => $person_id ) );
 					do_action( 'asem_registration_deleted', $activity_id, $person_id );
 				}
-				Audit::log( 'registration.deleted', 'activity', $activity_id, array( 'person' => $person_id, 'session' => $sid, 'mode' => $mode, 'income_cents' => $sum['income_cents'], 'refunds' => $sum['refunds'], 'voided' => $sum['voided'] ) );
+				Audit::log( 'registration.deleted', 'activity', $activity_id, array( 'person' => $person_id, 'session' => $sid, 'mode' => $mode, 'income_cents' => $sum['income_cents'], 'kept_cents' => $sum['kept_cents'], 'debt_cents' => $sum['debt_cents'], 'credit_cents' => $sum['credit_cents'], 'refunds' => $sum['refunds'], 'voided' => $sum['voided'] ) );
 			}
 		);
 		if ( ! empty( $opts['notify'] ) && is_email( (string) $p['person']['email'] ) ) {
