@@ -81,7 +81,11 @@ final class Backup {
 		$prefix = $db->prefix . 'asem_';
 		$out    = array();
 		foreach ( $db->get_col( $db->prepare( 'SHOW TABLES LIKE %s', $db->esc_like( $prefix ) . '%' ) ) ?: array() as $t ) {
-			$out[] = substr( (string) $t, strlen( $db->prefix ) );
+			$name = substr( (string) $t, strlen( $db->prefix ) );
+			if ( in_array( $name, array( 'asem_member_sessions', 'asem_member_challenges' ), true ) ) {
+				continue; // sessioni e codici di accesso non vanno nelle copie: un ripristino non deve riaprire accessi già chiusi
+			}
+			$out[] = $name;
 		}
 		sort( $out );
 		return $out;
