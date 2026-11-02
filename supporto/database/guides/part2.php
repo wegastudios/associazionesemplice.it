@@ -44,7 +44,9 @@ MD,
 2. Registra la quota associativa dalla scheda del socio o dall'incasso: se il socio ha la tessera non valida, la quota si inserisce da sola in qualunque incasso.
 3. La tessera si attiva quando la quota è **saldata** (vedi «Quota pagata a rate» più sotto).
 
-Creando il socio il plugin crea anche l'**utente WordPress** con la stessa email, con il solo ruolo «Socio»: nessun accesso alla gestione e nessuna email automatica. Se esiste già un utente con quell'email, viene collegato senza cambiargli ruolo. Dalla versione 1.2.37 del plugin gratuito, se quell'utente ha **altri ruoli** (redattore, amministratore…) la segreteria vede un errore: **solo un amministratore** può collegarlo.
+Dalla versione 1.2.51 (gratuito) e 1.1.41 (Pro) i nuovi soci **non hanno più un utente WordPress**: entrano nell'area riservata con un **link o un codice ricevuto per email** (la password è facoltativa). L'utente WordPress nasce **solo quando si dà un potere** al socio (segreteria, tesoriere, staff). Chi ha già un utente WordPress continua a entrare da WordPress. Se esiste già un utente con l'email del socio, viene collegato senza cambiargli ruolo. Dalla versione 1.2.37, se quell'utente ha **altri ruoli** (redattore, amministratore…) la segreteria vede un errore: **solo un amministratore** può collegarlo.
+
+Se preferisci un utente WordPress per ogni socio (per esempio per usare WooCommerce con il loro account), vedi [Come entrano i soci: link, codice o utente WordPress](guida:accesso-dei-soci-link-codice-o-utente-wordpress).
 
 ## Come dura la tessera
 
@@ -245,6 +247,8 @@ Nella pagina di accesso e nell'area riservata c'è il link **Primo accesso**.
 2. Se l'email è già quella di un socio, gli arriva il link per scegliere la password.
 3. Se non c'è corrispondenza sull'email, la richiesta arriva alla segreteria.
 
+Dalla 1.2.51 il socio può anche entrare ogni volta con un **link o un codice** che riceve per email, senza password. Vedi [Come entrano i soci: link, codice o utente WordPress](guida:accesso-dei-soci-link-codice-o-utente-wordpress).
+
 La risposta mostrata al socio è sempre la stessa, così non si scopre chi è socio e chi no. Ogni indirizzo IP può fare 10 tentativi l'ora.
 
 ## Cosa fa la segreteria
@@ -262,6 +266,47 @@ Nella scheda del socio l'**email è facoltativa**. Con l'email il socio ha subit
 ## Se l'ente chiede dati obbligatori
 
 Puoi indicare la pagina dell'informativa privacy e un regolamento: chi attiva il proprio accesso deve accettarli, e l'accettazione si registra con data e versione.
+MD,
+    ],
+    [
+        'topic' => 'soci-e-tessere', 'section' => 'Area riservata', 'slug' => 'accesso-dei-soci-link-codice-o-utente-wordpress',
+        'title' => 'Come entrano i soci: link, codice o utente WordPress',
+        'body' => <<<'MD'
+> Disponibile in: Free, Pro Contabile, Pro Fiscale (dal gratuito 1.2.51 e dal Pro 1.1.41)
+
+## Come entra un socio
+
+I nuovi soci **non hanno un utente WordPress**. Entrano nell'area riservata con:
+
+- un **link** ricevuto per email, oppure un **codice** da inserire;
+- la **password**, se decidono di sceglierla (è facoltativa).
+
+Per questo **la posta del sito deve funzionare**: il link arriva per email. Prova l'invio prima di aprire l'area ai soci.
+
+## Quando nasce un utente WordPress
+
+L'utente WordPress nasce **solo quando si dà un potere** al socio: segreteria, tesoriere, staff. Chi ha già un utente WordPress continua a entrare da WordPress, come prima.
+
+## Creare comunque un utente WordPress per ogni socio
+
+L'amministratore può scegliere di creare **sempre** un utente WordPress per ogni socio:
+
+- in **Impostazioni**, nella riga **«Accesso dei soci»**;
+- nella configurazione guidata, al passo **«Cosa ti serve»**.
+
+Le due scelte hanno vantaggi e svantaggi, spiegati accanto alla scelta. Se usi **WooCommerce**, a WordPress e a WooCommerce passano solo **nome, cognome ed email**.
+
+## Togliere l'ultimo potere
+
+Quando si toglie l'ultimo potere a un socio, la scheda propone **«Passa all'accesso con link»**. Lo possono fare **solo gli amministratori**, caso per caso.
+
+## Per l'informativa
+
+Il sito usa un **cookie tecnico «asem_s»** per tenere aperto l'accesso dei soci: va dichiarato nell'informativa sui cookie.
+
+## Aggiornamento
+
+Il Pro 1.1.41 richiede il gratuito 1.2.51: crediti, risorse e notifiche push funzionano anche per i soci senza utente WordPress. Vanno aggiornati insieme.
 MD,
     ],
 ];
