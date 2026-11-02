@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.2
+- Se elimini un evento o un corso, le somme si restituiscono o si annullano solo per ciò che non è ancora stato fatto: le date e i mesi già svolti restano incassati
+- Negli eventi ricorrenti puoi annullare solo una data oppure quella e le successive (le passate restano)
+
 ## 1.3.1
 - Nella pagina di accesso di WordPress i soci vengono indirizzati all'area soci, senza proporre il primo accesso
 

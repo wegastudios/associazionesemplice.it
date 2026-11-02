@@ -870,8 +870,14 @@ final class ActivitiesPage {
 
 				Ui::form_open( 'asem_cancel_session', $back, false, 'asem-confirm' );
 				echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ), Html::allowed() );
-				echo '<button class="button button-link-delete" data-confirm="Annullare questa data? Le prenotazioni non contano più; i pagamenti già ricevuti vanno rimborsati a mano.">Annulla questa data</button>';
+				echo '<button class="button button-link-delete" data-confirm="Annullare questa data? Le prenotazioni non contano più; i pagamenti già ricevuti vanno rimborsati a mano.">Annulla solo questa data</button>';
 				Ui::form_close();
+				if ( ActivityKind::RECURRING === $activity['kind'] ) {
+					Ui::form_open( 'asem_cancel_session', $back, false, 'asem-confirm' );
+					echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ) . Ui::hidden( 'scope', 'future' ), Html::allowed() );
+					echo '<button class="button button-link-delete" data-confirm="Annullare questa data e tutte le successive? Le date già passate restano; i pagamenti già ricevuti per le date annullate vanno rimborsati a mano.">Annulla questa data e le successive</button>';
+					Ui::form_close();
+				}
 			}
 			echo '</details>';
 		}

@@ -52,6 +52,9 @@ final class DeleteActivityPage {
 			echo '<ul style="list-style:disc;margin-left:20px"><li><strong>' . (int) $p['income']['count'] . ' incassi</strong> per ' . esc_html( Money::format( (int) $p['income']['cents'] ) )
 				. ( $p['income']['online_cents'] > 0 ? ' (di cui ' . esc_html( Money::format( (int) $p['income']['online_cents'] ) ) . ' pagati online)' : '' ) . '</li>'
 				. '<li>' . (int) $p['expense']['count'] . ' spese per ' . esc_html( Money::format( (int) $p['expense']['cents'] ) ) . '</li></ul>';
+			if ( $p['income_fruited']['count'] ) {
+				echo '<p class="description"><strong>' . (int) $p['income_fruited']['count'] . ' di questi incassi (' . esc_html( Money::format( (int) $p['income_fruited']['cents'] ) ) . ') riguardano date o mesi già svolti</strong>: restano in prima nota così come sono e non vengono restituiti né annullati. Restituzione e annullamento valgono solo per ciò che non è ancora stato fruito.</p>';
+			}
 		}
 
 		if ( ActivityReset::activity_is_free( $id ) ) { // nessun movimento in prima nota: una sola conferma (il pulsante)
@@ -93,7 +96,7 @@ final class DeleteActivityPage {
 		$id                       = (int) $p['activity']['id'];
 		list( $mode, $notify, $void_costs ) = self::choices();
 		$blockers                 = ActivityReset::blockers( $id, $mode, $void_costs );
-		$inc                      = ActivityReset::REFUND === $mode ? array_merge( $p['income'], $p['income_open'] ) : $p['income']; // si restituisce solo ciò che non è già stato restituito
+		$inc                      = ActivityReset::REFUND === $mode ? array_merge( $p['income_void'], $p['income_open'] ) : $p['income_void']; // si restituisce solo ciò che non è già stato restituito, e né si restituisce né si annulla ciò che è già stato fruito
 
 		echo '<div class="notice notice-warning inline" style="padding:12px 16px"><h3 style="margin-top:0">Cosa succede alla prima nota</h3>';
 		if ( ! $inc['count'] && ! ( $void_costs && $p['expense']['count'] ) ) {

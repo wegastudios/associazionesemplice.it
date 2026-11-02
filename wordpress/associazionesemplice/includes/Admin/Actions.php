@@ -409,6 +409,7 @@ final class Actions {
 		$msg .= $nr ? ' ' . ( 1 === $nr ? 'Registrata 1 restituzione' : 'Registrate ' . $nr . ' restituzioni' ) . ' in prima nota (' . Money::format( (int) $s['income_cents'] ) . '): il denaro va restituito a chi ha pagato.' : '';
 		$msg .= $s['voided'] ? ' Annullati ' . (int) $s['voided'] . ' incassi (' . Money::format( (int) $s['income_cents'] ) . '): non risultano più in prima nota.' : '';
 		$msg .= $s['expenses_voided'] ? ' Annullate ' . (int) $s['expenses_voided'] . ' spese.' : '';
+		$msg .= $s['kept_count'] ? ' ' . ( 1 === (int) $s['kept_count'] ? 'Un incasso' : (int) $s['kept_count'] . ' incassi' ) . ' (' . Money::format( (int) $s['kept_cents'] ) . ') di date o mesi già svolti ' . ( 1 === (int) $s['kept_count'] ? 'resta' : 'restano' ) . ' in prima nota, senza restituzione.' : '';
 		$msg .= $s['notified'] ? ' Avvisate ' . (int) $s['notified'] . ' persone.' : '';
 		return array( Ui::url( 'asem-activities' ), $msg );
 	}
@@ -713,8 +714,8 @@ final class Actions {
 	}
 
 	private static function cancel_session( array $p ): array {
-		Plugin::activities()->cancel_session( (int) $p['session_id'] );
-		return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Data annullata.' );
+		$n = Plugin::activities()->cancel_session( (int) $p['session_id'], 'future' === ( $p['scope'] ?? '' ) );
+		return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 1 === $n ? 'Data annullata.' : $n . ' date annullate (questa e le successive; le passate restano).' );
 	}
 
 	/** Gli sport del menu: aggiungi (anche più d'uno), togli, ripristina l'elenco del CONI. */
