@@ -118,6 +118,30 @@ final class WatchPage {
 			echo '</tbody></table>';
 		}
 
+		// Discrepanze di fine anno: da verificare, o approvate a mano per portarle al nuovo anno
+		$disc = \AssociazioneSemplice\Discrepancies::all( $s['year'] );
+		if ( $disc ) {
+			$labels = \AssociazioneSemplice\Discrepancies::LABELS;
+			echo '<h2 id="asem-disc">Discrepanze da verificare</h2><p class="description">Ognuna si corregge dal link, oppure si approva a mano per portarla al nuovo anno (con una nota). Un\'approvazione vale finché la discrepanza resta com\'è: se cambia importo torna da verificare. Le approvate non fanno avvisi né fermano la chiusura dell\'anno.</p>';
+			echo '<table class="widefat striped"><thead><tr><th>Tipo</th><th>Voce</th><th>Importo</th><th>Situazione</th></tr></thead><tbody>';
+			foreach ( $disc as $d ) {
+				echo '<tr><td>' . esc_html( $labels[ $d['kind'] ] ?? $d['kind'] ) . '</td><td><a href="' . esc_url( $d['url'] ) . '">' . esc_html( '' !== $d['desc'] ? $d['desc'] : '—' ) . '</a></td><td>' . self::m( (int) $d['cents'] ) . '</td><td>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				if ( $d['approved'] ) {
+					$a = $d['approval'];
+					echo esc_html( 'approvata il ' . mysql2date( 'd/m/Y', $a['approved_at'] ) . ( $a['who'] ? ' da ' . $a['who'] : '' ) . ' (anno ' . $a['fiscal_year'] . ')' . ( '' !== $a['note'] ? ': ' . $a['note'] : '' ) ) . ' ';
+					Ui::form_open( 'asem_discrepancy_revoke', Ui::url( 'asem-watch' ), false, 'asem-inline' );
+					echo Ui::hidden( 'id', (int) $a['id'] ) . '<button class="button button-small">Togli l\'approvazione</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+					Ui::form_close();
+				} else {
+					Ui::form_open( 'asem_discrepancy_approve', Ui::url( 'asem-watch' ), false, 'asem-inline' );
+					echo Ui::hidden( 'kind', $d['kind'] ) . Ui::hidden( 'ref', $d['ref'] ) . Ui::hidden( 'cents', (int) $d['cents'] ) . Ui::hidden( 'year', (int) $s['year'] ) . '<input type="text" name="note" placeholder="Nota (facoltativa)" maxlength="255"> <button class="button button-small" data-confirm="Approvare questa discrepanza e portarla al nuovo anno?">Approva</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+					Ui::form_close();
+				}
+				echo '</td></tr>';
+			}
+			echo '</tbody></table>';
+		}
+
 		// Quadratura rimborsi e spese per persona
 		$ry = Ui::get_int( 'ry', $s['year'] );
 		echo '<h2 id="asem-recon">Rimborsi e spese documentate per persona</h2><p class="description">Chi ha avuto rimborsi dai fondi deve trovarsi con le spese sostenute: a fine mese è bene, a fine anno è necessario. Differenza = rimborsato − documentato: se è positiva i rimborsi non hanno documenti a copertura (da regolarizzare), se è negativa ci sono spese documentate non ancora rimborsate.</p>';
@@ -173,7 +197,7 @@ final class WatchPage {
 		$spese = ExpenseFunds::uncovered_expenses();
 		$fondi = ExpenseFunds::undocumented_funds();
 		$back  = Ui::url( $compact ? 'asem' : 'asem-accounts' );
-		if ( $compact && ! $spese && ! $fondi ) {
+		if ( $compact && ! $spese && ! $fondi && ! ExpenseFunds::credits() ) {
 			return;
 		}
 		$limit = $compact ? 5 : 500;
@@ -225,6 +249,16 @@ final class WatchPage {
 			echo '</tbody></table>' . ( $compact && count( $fondi ) > $limit ? '<p><a href="' . esc_url( Ui::url( 'asem-accounts' ) ) . '">Vedi tutti →</a></p>' : '' );
 		}
 		echo '</div>';
+
+		$crediti = ExpenseFunds::credits();
+		if ( $crediti ) {
+			echo '<div class="asem-card"><h2>Volontari in credito (' . count( $crediti ) . ')</h2><p class="description">Questi volontari hanno anticipato spese dell\'associazione, ad esempio per eventi che incasseranno più avanti, oltre quanto accantonato nei loro fondi: la spesa resta attribuita a loro ed essi restano creditori per un periodo, il che è normale. Si sana da solo con i prossimi incassi dei loro corsi, oppure versando una somma nel loro fondo da un conto o da un altro fondo («Accantona» nella scheda del fondo). Per distribuire la spesa su altri fondi: annulla l\'attribuzione qui sotto e attribuiscila a un altro fondo.</p>';
+			echo '<table class="widefat striped"><thead><tr><th>Volontario</th><th>Accantonato</th><th>Spese documentate</th><th>Credito</th></tr></thead><tbody>';
+			foreach ( array_slice( $crediti, 0, $limit ) as $c ) {
+				echo '<tr><td>' . esc_html( $c['name'] ) . '</td><td>' . self::m( (int) $c['accrued'] ) . '</td><td>' . self::m( (int) $c['documented'] ) . '</td><td><strong>' . self::m( (int) $c['credit'] ) . '</strong></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			}
+			echo '</tbody></table></div>';
+		}
 
 		if ( ! $compact ) {
 			$recent = ExpenseFunds::recent( 20 );

@@ -64,6 +64,9 @@ final class FundReconciliation {
 	private static function open_items( int $year ): array {
 		$out = array();
 		foreach ( BalanceWatchRules::gaps( self::rows( $year ), true ) as $r ) {
+			if ( Discrepancies::is_approved( 'recon_uncovered', (string) $r['person_id'], (int) $r['diff'] ) ) {
+				continue; // approvata a mano per il nuovo anno
+			}
 			$out[] = $r['name'] . ': rimborsati ' . Money::format( (int) $r['reimbursed'] ) . ', documentati ' . Money::format( (int) $r['documented'] ) . ' (scoperto ' . Money::format( (int) $r['diff'] ) . ')';
 		}
 		return $out;
@@ -103,7 +106,9 @@ final class FundReconciliation {
 			return;
 		}
 		$year = FiscalYears::current();
-		$gaps = BalanceWatchRules::gaps( self::rows( $year ) );
+		$gaps = array_values( array_filter( BalanceWatchRules::gaps( self::rows( $year ) ), function ( $r ) {
+			return ! Discrepancies::is_approved( BalanceWatchRules::RECON_UNCOVERED === $r['status'] ? 'recon_uncovered' : 'recon_unpaid', (string) $r['person_id'], (int) abs( $r['diff'] ) );
+		} ) );
 		if ( ! $gaps ) {
 			return;
 		}

@@ -16,71 +16,9 @@ final class YearEndCheck {
 		return BalanceWatchRules::year_end_window( $today ?: Db::today(), FiscalYears::start_month(), Limits::get( 'watch_yearend_lead_months' ), Limits::get( 'watch_yearend_notice_months' ) );
 	}
 
-	/** Le discrepanze dell'anno fiscale. @return array[] label, count, url */
+	/** Le discrepanze ancora da verificare (quelle approvate a mano per il nuovo anno non contano), per tipo. @return array[] label, count, url */
 	public static function discrepancies( int $year ): array {
-		$db = Db::db();
-		$t  = Db::t( 'transactions' );
-		$x  = Db::t( 'expense_funds' );
-		$e  = Db::t( 'fund_entries' );
-		$c  = Db::t( 'categories' );
-		list( $from, $to ) = FiscalYears::range( $year );
-		$items = array();
-		$add   = function ( string $label, int $n, string $url ) use ( &$items ) {
-			if ( $n > 0 ) {
-				$items[] = array( 'label' => $label, 'count' => $n, 'url' => $url );
-			}
-		};
-		$accounts = Admin\Ui::url( 'asem-accounts' );
-		$watch    = Admin\Ui::url( 'asem-watch', array( 'ry' => $year ) );
-		$add( 'fondi accantonati non documentati (o documentati solo in parte)', count( ExpenseFunds::undocumented_funds() ), $accounts );
-		$add( 'spese documentate non rimborsate', count( ExpenseFunds::uncovered_expenses() ), $accounts );
-		$recon = FundReconciliation::rows( $year );
-		$add( 'persone con rimborsi senza documentazione a copertura', count( BalanceWatchRules::gaps( $recon, true ) ), $watch . '#asem-recon' );
-		$add(
-			'persone con spese documentate oltre i rimborsi ricevuti',
-			count(
-				array_filter(
-					$recon,
-					function ( $r ) {
-						return BalanceWatchRules::RECON_UNPAID === $r['status'];
-					}
-				)
-			),
-			$watch . '#asem-recon'
-		);
-		$unattached = (int) $db->get_var(
-			$db->prepare(
-				"SELECT COUNT(*) FROM $t t WHERE t.voided_at IS NULL AND t.type = 'expense' AND t.person_id IS NOT NULL AND t.tx_date BETWEEN %s AND %s AND t.id NOT IN (SELECT tx_id FROM $e WHERE kind = 'payout' AND tx_id IS NOT NULL) AND NOT EXISTS (SELECT 1 FROM $x n WHERE n.tx_id = t.id)",
-				$from,
-				$to
-			)
-		);
-		$add( 'spese con beneficiario non attribuite a nessun fondo', $unattached, Admin\Ui::url( 'asem-ledger', array( 'year' => $year ) ) );
-		$s = BalanceWatch::status();
-		if ( (int) $s['year'] === $year ) {
-			$add( 'sbilancio di fine anno oltre le soglie degli avvisi', count( $s['alerts'] ), Admin\Ui::url( 'asem-watch' ) );
-		}
-		if ( Edition::has( 'budget' ) ) {
-			$b = Budget::by_year( $year );
-			if ( $b ) {
-				$out = 0;
-				foreach ( Budget::compare( (int) $b['id'] )['rows'] as $r ) {
-					if ( in_array( $r['status'], array( BudgetRules::OVER, BudgetRules::UNPLANNED ), true ) ) {
-						$out++;
-					}
-				}
-				$add( 'voci fuori preventivo (oltre il previsto o non previste)', $out, Admin\Ui::url( 'asem-budget', array( 'view' => (int) $b['id'] ) ) );
-			}
-		}
-		$uncat = (int) $db->get_var(
-			$db->prepare(
-				"SELECT COUNT(*) FROM $t t LEFT JOIN $c c ON c.id = t.category_id WHERE t.voided_at IS NULL AND t.type IN ('income','expense') AND t.tx_date BETWEEN %s AND %s AND (c.id IS NULL OR c.deleted_at IS NOT NULL OR c.kind = 'adjustment')",
-				$from,
-				$to
-			)
-		);
-		$add( 'movimenti senza una categoria vera (rettifiche o categorie eliminate)', $uncat, Admin\Ui::url( 'asem-ledger', array( 'year' => $year ) ) );
-		return $items;
+		return Discrepancies::grouped( $year );
 	}
 
 	/** Chi vede l'avviso nell'amministrazione: chi opera sulla contabilità (amministratori, segreteria, presidente e vicepresidente). */
@@ -113,7 +51,7 @@ final class YearEndCheck {
 		foreach ( $items as $i ) {
 			$li .= '<li>' . (int) $i['count'] . ' ' . esc_html( $i['label'] ) . ' — <a href="' . esc_url( $i['url'] ) . '">verifica</a></li>';
 		}
-		return '<div class="notice notice-warning inline asem-yearend"><p><strong>Verifiche di fine anno fiscale.</strong> L\'anno finisce il ' . esc_html( ( new \DateTimeImmutable( $w['end'] ) )->format( 'd/m/Y' ) ) . ': conviene sistemare ora queste discrepanze, così non restano correzioni da fare dopo la chiusura.</p><ul style="list-style:disc;margin-left:2em">' . $li . '</ul></div>';
+		return '<div class="notice notice-warning inline asem-yearend"><p><strong>Verifiche di fine anno fiscale.</strong> L\'anno finisce il ' . esc_html( ( new \DateTimeImmutable( $w['end'] ) )->format( 'd/m/Y' ) ) . ': conviene sistemare ora queste discrepanze, così non restano correzioni da fare dopo la chiusura. Ogni discrepanza si può anche approvare a mano per portarla al nuovo anno (<a href="' . esc_url( Admin\Ui::url( 'asem-watch' ) ) . '#asem-disc">verifica e approva</a>).</p><ul style="list-style:disc;margin-left:2em">' . $li . '</ul></div>';
 	}
 
 	public static function show(): void {

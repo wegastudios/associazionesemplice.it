@@ -340,6 +340,7 @@ final class Actions {
 				'amount_cents' => Money::parse( $post['amount'] ?? '' ) ?? 0,
 				'activity_id'  => (int) ( $post['activity_id'] ?? 0 ),
 				'description'  => $post['description'] ?? '',
+				'person_id'    => (int) apply_filters( 'asem_expense_person', 0, array( 'fund_auto' => '1' ) ), // nell'area soci non si sceglie né il beneficiario né il fondo: un'estensione imposta chi ha anticipato (chi registra) e l'attribuzione è sempre automatica
 				'document_ref' => $post['document_ref'] ?? '',
 			)
 		);

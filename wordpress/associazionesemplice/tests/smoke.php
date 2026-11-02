@@ -7644,37 +7644,38 @@ $wt_doc( $wt_e1 );
 asem_ok( array( $wt_f1 => 1000, $wt_f2 => 500 ) === $wt_alloc( $wt_e1 ), 'spesa documentata: divisa su due fondi, il più vecchio (già liquidato) per primo' );
 $wt_e2 = $wt_exp( 800 );
 $wt_doc( $wt_e2 );
-asem_ok( array( $wt_f2 => 500 ) === $wt_alloc( $wt_e2 ), 'seconda spesa: solo quanto manca al fondo' );
+asem_ok( array( $wt_f2 => 800 ) === $wt_alloc( $wt_e2 ), 'seconda spesa: quanto manca al fondo, il resto resta attribuito al volontario (credito)' );
+$wt_cr = array_column( \AssociazioneSemplice\ExpenseFunds::credits(), 'credit', 'person_id' );
+asem_ok( 300 === (int) ( $wt_cr[ $wt_vol ] ?? 0 ), 'volontari in credito: le spese oltre l\'accantonato' );
 $wt_e3 = $wt_exp( 200 );
 $wt_doc( $wt_e3 );
-asem_ok( array() === $wt_alloc( $wt_e3 ) && 0 === array_sum( array_column( array_filter( \AssociazioneSemplice\ExpenseFunds::coverage(), function ( $f ) use ( $wt_f1, $wt_f2 ) { return in_array( (int) $f['id'], array( $wt_f1, $wt_f2 ), true ); } ), 'missing' ) ), 'terza spesa: i fondi sono coperti, niente da attribuire' );
-$wt_unc = array();
-foreach ( \AssociazioneSemplice\ExpenseFunds::uncovered_expenses() as $r ) {
-	$wt_unc[ (int) $r['id'] ] = (int) $r['remaining'];
-}
-asem_ok( 300 === ( $wt_unc[ $wt_e2 ] ?? 0 ) && 200 === ( $wt_unc[ $wt_e3 ] ?? 0 ) && ! isset( $wt_unc[ $wt_e1 ] ) && ! isset( $wt_unc[ $wt_f1_tx ] ), 'spese documentate non rimborsate: solo la parte non attribuita (e non il rimborso del fondo)' );
-// annullamento: la spesa torna nell'elenco e non si riattribuisce da sola
+asem_ok( array( $wt_f2 => 200 ) === $wt_alloc( $wt_e3 ) && 500 === (int) ( array_column( \AssociazioneSemplice\ExpenseFunds::credits(), 'credit', 'person_id' )[ $wt_vol ] ?? 0 ), 'terza spesa: i suoi fondi sono coperti, la spesa resta al volontario che va in credito (mai sui fondi di altri)' );
+$wt_unc = array_map( 'intval', array_column( \AssociazioneSemplice\ExpenseFunds::uncovered_expenses(), 'id' ) );
+asem_ok( ! in_array( $wt_e1, $wt_unc, true ) && ! in_array( $wt_e2, $wt_unc, true ) && ! in_array( $wt_e3, $wt_unc, true ) && ! in_array( $wt_f1_tx, $wt_unc, true ), 'spese documentate non rimborsate: le spese attribuite non compaiono (né il rimborso del fondo)' );
+// annullamento: la spesa non si riattribuisce da sola e il credito si riduce
 asem_ok( 2 === \AssociazioneSemplice\ExpenseFunds::undo( $wt_e1 ) && array() === $wt_alloc( $wt_e1 ), 'attribuzione annullabile' );
 $wt_doc( $wt_e1 );
-asem_ok( array() === $wt_alloc( $wt_e1 ), 'dopo l\'annullamento non si riattribuisce da sola' );
+asem_ok( array() === $wt_alloc( $wt_e1 ) && in_array( $wt_e1, array_map( 'intval', array_column( \AssociazioneSemplice\ExpenseFunds::uncovered_expenses(), 'id' ) ), true ), 'dopo l\'annullamento non si riattribuisce da sola e torna tra le spese da rimborsare' );
 $wt_und = array_column( \AssociazioneSemplice\ExpenseFunds::undocumented_funds(), 'missing', 'id' );
-asem_ok( 1000 === (int) ( $wt_und[ $wt_f1 ] ?? 0 ) && 500 === (int) ( $wt_und[ $wt_f2 ] ?? 0 ), 'fondi accantonati non documentati: aperti e liquidati' );
-asem_ok( 200 === \AssociazioneSemplice\ExpenseFunds::attach( $wt_e3, $wt_f1 ), 'attribuzione a mano a un fondo già liquidato' );
-asem_ok( null !== asem_throws( function () use ( $wt_e3, $wt_f1 ) { \AssociazioneSemplice\ExpenseFunds::attach( $wt_e3, $wt_f1 ); } ), 'attribuzione a mano: la spesa è già attribuita per intero' );
+asem_ok( 1000 === (int) ( $wt_und[ $wt_f1 ] ?? 0 ) && ! isset( $wt_und[ $wt_f2 ] ) && 0 === count( array_filter( \AssociazioneSemplice\ExpenseFunds::credits(), function ( $c ) use ( $wt_vol ) { return (int) $c['person_id'] === $wt_vol; } ) ), 'fondi accantonati non documentati: aperti e liquidati; senza credito' );
+// senza beneficiario: si usa l'attività
+$wt_act = $ledger->record_expense( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'category_id' => $cat['general_cost'], 'amount_cents' => 100, 'activity_id' => $wt_c1, 'description' => 'Materiale corso' ) );
+$wt_doc( $wt_act );
+asem_ok( array( $wt_f1 => 100 ) === $wt_alloc( $wt_act ), 'spesa senza volontario identificabile: ai fondi della stessa attività' );
+// spesa annullata: l'attribuzione non conta più
+$wt_before = (int) array_column( \AssociazioneSemplice\ExpenseFunds::coverage(), 'documented', 'id' )[ $wt_f1 ];
+$ledger->void( $wt_act, 'prova' );
+asem_ok( $wt_before - 100 === (int) array_column( \AssociazioneSemplice\ExpenseFunds::coverage(), 'documented', 'id' )[ $wt_f1 ], 'spesa annullata: torna da documentare' );
+// a mano, anche a un fondo già liquidato
+asem_ok( 1000 === \AssociazioneSemplice\ExpenseFunds::attach( $wt_e1, $wt_f1 ), 'attribuzione a mano a un fondo già liquidato' );
+asem_ok( null !== asem_throws( function () use ( $wt_e1, $wt_f1 ) { \AssociazioneSemplice\ExpenseFunds::attach( $wt_e1, $wt_f1 ); } ), 'attribuzione a mano: il fondo è già coperto dai documenti' );
 // scelta nel modulo di registrazione
 $wt_none = $wt_exp( 100, array( 'fund_choice' => 'none' ) );
 $wt_doc( $wt_none );
 asem_ok( array() === $wt_alloc( $wt_none ) && ! in_array( $wt_none, array_map( 'intval', array_column( \AssociazioneSemplice\ExpenseFunds::uncovered_expenses(), 'id' ) ), true ), '«Nessun fondo»: non si attribuisce e non compare tra le spese da rimborsare' );
-$wt_man = $wt_exp( 400, array( 'fund_choice' => (string) $wt_f1 ) );
-asem_ok( array( $wt_f1 => 400 ) === $wt_alloc( $wt_man ), 'fondo scelto a mano alla registrazione: attribuita anche senza documenti' );
-// senza beneficiario: si usa l'attività
-$wt_act = $ledger->record_expense( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'category_id' => $cat['general_cost'], 'amount_cents' => 100, 'activity_id' => $wt_c2, 'description' => 'Materiale corso' ) );
-$wt_doc( $wt_act );
-asem_ok( array( $wt_f2 => 100 ) === $wt_alloc( $wt_act ), 'spesa senza volontario identificabile: ai fondi della stessa attività' );
-// spesa annullata: l'attribuzione non conta più
-$wt_before = (int) array_column( \AssociazioneSemplice\ExpenseFunds::coverage(), 'documented', 'id' )[ $wt_f2 ];
-$ledger->void( $wt_act, 'prova' );
-asem_ok( $wt_before - 100 === (int) array_column( \AssociazioneSemplice\ExpenseFunds::coverage(), 'documented', 'id' )[ $wt_f2 ], 'spesa annullata: torna da documentare' );
+$wt_fm  = $wt_funds->create( 'Fondo manuale prova', 1000, $wt_vol );
+$wt_man = $wt_exp( 400, array( 'fund_choice' => (string) $wt_fm ) );
+asem_ok( array( $wt_fm => 400 ) === $wt_alloc( $wt_man ), 'fondo scelto a mano alla registrazione: attribuita anche senza documenti' );
 // pagine, CSV, privacy, azzeramento
 asem_render( array( Admin\AccountsPage::class, 'render' ), 'Spese documentate non rimborsate' );
 asem_render( array( Admin\AccountsPage::class, 'render' ), 'Fondi accantonati non documentati' );
@@ -7716,6 +7717,13 @@ asem_ok( 1000 === $wt_rec[ $wt_fra ]['reimbursed'] && 120 === $wt_rec[ $wt_fra ]
 asem_ok( false !== strpos( \AssociazioneSemplice\FundReconciliation::csv( \AssociazioneSemplice\FiscalYears::current() ), 'Francesco Scoperto' ) && 0 === strpos( \AssociazioneSemplice\FundReconciliation::pdf( \AssociazioneSemplice\FiscalYears::current() ), '%PDF' ), 'quadratura: esportazione CSV e PDF' );
 $wt_y_now = \AssociazioneSemplice\FiscalYears::current();
 asem_ok( 1 === count( \AssociazioneSemplice\FundReconciliation::blockers( array(), $wt_y_now ) ) && array() === \AssociazioneSemplice\FundReconciliation::confirm( array(), $wt_y_now ), 'chiusura anno: di partenza si ferma se chi ha avuto rimborsi non ha i documenti' );
+\AssociazioneSemplice\Discrepancies::approve( 'recon_uncovered', (string) $wt_fra, 880, 'prova', $wt_y_now );
+asem_ok( array() === \AssociazioneSemplice\FundReconciliation::blockers( array(), $wt_y_now ) && \AssociazioneSemplice\Discrepancies::is_approved( 'recon_uncovered', (string) $wt_fra, 880 ) && ! \AssociazioneSemplice\Discrepancies::is_approved( 'recon_uncovered', (string) $wt_fra, 900 ), 'discrepanze: approvata a mano, non ferma la chiusura; vale solo per quell\'importo' );
+asem_ok( null !== asem_throws( function () use ( $wt_fra, $wt_y_now ) { \AssociazioneSemplice\Discrepancies::approve( 'recon_uncovered', (string) $wt_fra, 1, '', $wt_y_now ); } ), 'discrepanze: non si approva una discrepanza che è cambiata o non esiste' );
+$wt_aid = (int) $wpdb->get_var( 'SELECT id FROM ' . Db::t( 'discrepancy_approvals' ) . " WHERE kind = 'recon_uncovered'" );
+asem_render( array( Admin\WatchPage::class, 'render' ), 'Togli l\'approvazione' );
+\AssociazioneSemplice\Discrepancies::revoke( $wt_aid );
+asem_ok( 1 === count( \AssociazioneSemplice\FundReconciliation::blockers( array(), $wt_y_now ) ), 'discrepanze: tolta l\'approvazione torna da verificare' );
 Settings::update( array( 'limits' => array( 'watch_close_mode' => 2 ) ) );
 asem_ok( array() === \AssociazioneSemplice\FundReconciliation::blockers( array(), $wt_y_now ) && count( \AssociazioneSemplice\FundReconciliation::confirm( array(), $wt_y_now ) ) >= 1, 'chiusura anno: con «chiedi conferma» non si ferma ma chiede conferma con l\'elenco' );
 Settings::update( array( 'limits' => array( 'watch_close_mode' => 0 ) ) );
@@ -7744,6 +7752,18 @@ asem_ok( \AssociazioneSemplice\YearEndCheck::mail_job( $wt_cur_cal . '-11-15' ) 
 delete_option( \AssociazioneSemplice\YearEndCheck::MAIL_OPTION );
 remove_filter( 'pre_wp_mail', $wt_mail_hook, 10 );
 Settings::update( array( 'limits' => array() ) );
+
+// Nuova spesa: spunta «attribuzione automatica» (di partenza accesa) che nasconde beneficiario e fondo; spenta, prima la persona loggata, poi i volontari.
+asem_render( array( Admin\ExpensePage::class, 'render' ), 'id="asem-fund-auto" checked' );
+$wt_list = \AssociazioneSemplice\ProWatch::expense_people( array( array( 'id' => 900001, 'type' => 'ordinary' ), array( 'id' => $wt_vol, 'type' => 'volunteer' ) ) );
+asem_ok( (int) $wt_list[0]['id'] === $wt_vol, 'spese: tra i beneficiari i volontari vengono prima degli altri' );
+asem_ok( ' checked' === \AssociazioneSemplice\ProWatch::auto_checked(), 'spese: la spunta di attribuzione automatica parte accesa' );
+Settings::update( array( 'limits' => array( 'watch_auto_default' => 0 ) ) );
+asem_ok( '' === \AssociazioneSemplice\ProWatch::auto_checked(), 'spese: dai limiti la spunta può partire spenta' );
+Settings::update( array( 'limits' => array() ) );
+asem_ok( 777 === \AssociazioneSemplice\ProWatch::expense_person( 777, array() ), 'spese: senza attribuzione automatica resta il beneficiario scelto' );
+asem_ok( 555 === \AssociazioneSemplice\ProWatch::expense_person( 0, array( 'fund_auto' => '1', 'person_id' => '555' ) ), 'spese: un beneficiario scelto esplicitamente vale anche con l\'attribuzione automatica' );
+asem_ok( false === has_filter( 'asem_front_expense_fields' ), 'area soci: nessun elenco di soci né di fondi nel modulo del tesoriere' );
 
 // Bilancio provvisorio, avvisi e istantanee mensili.
 $wt_s = \AssociazioneSemplice\BalanceWatch::status();

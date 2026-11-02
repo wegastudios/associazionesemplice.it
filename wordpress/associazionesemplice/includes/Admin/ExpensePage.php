@@ -37,7 +37,7 @@ final class ExpensePage {
 		echo wp_kses( '<tr><th>Voce</th><td><select name="category_id" required>' . Ui::options( $cats, null, '— scegli —' ) . '</select></td></tr>', Html::allowed() );
 		echo '<tr><th>Importo</th><td><input type="text" name="amount" inputmode="decimal" required> €</td></tr>';
 		echo wp_kses( '<tr><th>Attività</th><td><select name="activity_id">' . Ui::options( $acts, null, 'Nessuna (costo generale)' ) . '</select></td></tr>', Html::allowed() );
-		echo wp_kses( '<tr><th>Beneficiario</th><td>' . Ui::person_select( 'person_id', Plugin::people()->search(), null, '— nessuno / fornitore —', 'asem-beneficiary' ) . '<p class="description">Es. il referente o il socio rimborsato.</p></td></tr>', Html::allowed() );
+		echo wp_kses( '<tr id="asem-row-beneficiary"><th>Beneficiario</th><td>' . Ui::person_select( 'person_id', (array) apply_filters( 'asem_expense_people', Plugin::people()->search() ), apply_filters( 'asem_expense_default_person', null ), '— nessuno / fornitore —', 'asem-beneficiary' ) . '<p class="description">Es. il referente o il socio rimborsato.</p></td></tr>', Html::allowed() );
 		echo '<tr><th>Descrizione</th><td><input type="text" name="description" class="large-text"></td></tr>';
 		do_action( 'asem_expense_form_rows' ); // le estensioni aggiungono qui i loro campi (ad esempio il fondo da coprire)
 		echo wp_kses( Ui::vat_row( null, \AssociazioneSemplice\Fiscal::default_mode() ) . '<tr><th>N. fattura / scontrino</th><td><input type="text" name="document_ref" maxlength="80"></td></tr>', Html::allowed() );
