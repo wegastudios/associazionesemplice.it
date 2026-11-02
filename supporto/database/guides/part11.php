@@ -61,7 +61,11 @@ La regola vale **solo per le spese documentate**, cioè con scontrino o fattura 
 
 - Un **beneficiario scelto esplicitamente** vale sempre.
 - Dall'**area soci** non c'è la scelta del beneficiario né del fondo: il beneficiario è **chi registra** la spesa.
-- Il **volontario** va **solo sui suoi fondi**. Ciò che supera resta **in credito**: si sana con gli incassi dei suoi corsi oppure con **«Accantona»**.
+- Il **volontario** va **solo sui suoi fondi**. Ciò che supera resta **in credito**. Il credito si chiude da solo con i futuri incassi dei suoi corsi; per sanarlo subito:
+
+  1. vai in **Cassa → Conti e fondi** e trova il fondo del volontario;
+  2. apri **«Accantona una somma»** (aggiunge soldi al fondo e li sottrae dalla disponibilità reale);
+  3. scrivi l'importo nel campo **«0,00 €»** e premi **«Accantona»**.
 - L'elenco **«Volontari in credito»** si trova in **Cassa → Conti e fondi** e in **Bacheca**.
 - L'attribuzione automatica si accende e si spegne con l'impostazione **«Attribuzione automatica delle spese ai fondi»** in Limiti e soglie: è **accesa** di partenza.
 
@@ -156,6 +160,12 @@ L'avviso elenca, con il link per correggere:
 ## Approvare una discrepanza a mano (da Pro 1.1.39)
 
 Le discrepanze si vedono **una per una**, con **tipo**, **voce** e **importo**. Se una la ritieni accettabile puoi **approvarla a mano**, con una **nota facoltativa**, per portarla al nuovo anno.
+
+1. Vai in **Contabilità → Bilancio provvisorio → «Discrepanze da verificare»**.
+2. Nella riga della discrepanza, se vuoi, scrivi il campo **«Nota (facoltativa)»**.
+3. Premi **«Approva»** e conferma **«Approvare questa discrepanza e portarla al nuovo anno?»**.
+
+Le approvate restano elencate con **chi e quando** le ha approvate e si possono **revocare**.
 
 - L'approvazione vale **solo per quell'importo**: se l'importo cambia, la discrepanza torna.
 - Le discrepanze approvate **non generano avvisi** e **non fermano la chiusura dell'anno**.
