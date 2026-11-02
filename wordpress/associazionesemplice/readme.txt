@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.47
+Stable tag: 1.2.48
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,9 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.2.48 =
+* Sports in the activity menu are managed by the administrator: add, import a list, remove, restore the base CONI list; activities accept any sensible sport.
 
 = 1.2.47 =
 * Fiscal year start month separate from the social year (used by the Pro Fiscale plan); hooks for the Pro budget watch.
