@@ -15,7 +15,7 @@
 defined( 'ABSPATH' ) || exit;
 
 define( 'ASEM_VERSION', '1.2.51' );
-define( 'ASEM_API', 14 ); // livello di compatibilità con Associazione Semplice Pro: cambia solo se cambia ciò che i due plugin si scambiano
+define( 'ASEM_API', 15 ); // livello di compatibilità con Associazione Semplice Pro: cambia solo se cambia ciò che i due plugin si scambiano
 define( 'ASEM_FILE', __FILE__ );
 define( 'ASEM_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ASEM_URL', plugin_dir_url( __FILE__ ) );

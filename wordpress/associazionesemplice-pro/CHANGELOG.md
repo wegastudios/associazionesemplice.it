@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.1.41
+- Crediti, risorse e notifiche funzionano anche per i soci che entrano con il link, senza utente WordPress
+- Richiede il gratuito 1.2.51 o successivo
+
 ## 1.1.40
 - Il pulsante per annullare l'approvazione di una differenza di fine anno si chiama «Revoca l'approvazione»
 
