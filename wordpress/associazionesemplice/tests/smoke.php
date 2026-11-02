@@ -6572,6 +6572,7 @@ Settings::update( array( 'membership_fee_cents' => 1000, 'rules_enabled' => 0, '
 Settings::update( array( 'limits' => array_merge( (array) Settings::get( 'limits' ), array( 'apply_per_ip' => 100, 'first_access_per_email' => 50 ) ) ) );
 
 // minori e tutori
+asem_ok( Settings::member_wp_users() && MemberSession::wp_users_wanted(), 'diagnostica: prima dei tutori i soci nuovi hanno ancora un utente WordPress (member_wp_users=' . (int) Settings::get( 'member_wp_users' ) . ', accesso proprio ' . (int) MemberSession::enabled() . ')' );
 $mn_mum  = $people->create( array( 'type' => 'ordinary', 'card_number' => 'mn1', 'first_name' => 'Marta', 'last_name' => 'Madre', 'email' => 'marta.madre@example.com', 'birth_date' => '1980-03-04' ) );
 $mn_dad  = $people->create( array( 'type' => 'ordinary', 'card_number' => 'mn2', 'first_name' => 'Pino', 'last_name' => 'Padre', 'email' => 'pino.padre@example.com' ) );
 $mn_aunt = $people->create( array( 'type' => 'ordinary', 'card_number' => 'mn3', 'first_name' => 'Zita', 'last_name' => 'Zia', 'email' => 'zita.zia@example.com' ) );
@@ -6598,6 +6599,7 @@ asem_ok( \AssociazioneSemplice\Guardians::is_guardian_of( $mn_dad, $mn_kid ) && 
 
 // permessi del tutore
 $mn_mum_u  = (int) $people->get( $mn_mum )['wp_user_id'];
+asem_ok( $mn_mum_u > 0, 'diagnostica: la madre ha un utente WordPress (id ' . $mn_mum_u . ')' );
 $mn_aunt_u = (int) $people->get( $mn_aunt )['wp_user_id'];
 asem_ok( Access::user_can( $mn_mum_u, 'asem_book_for', $mn_kid ) && Access::user_can( $mn_mum_u, 'asem_view_payments', $mn_kid ) && Access::user_can( $mn_mum_u, 'asem_view_person', $mn_kid ), 'tutore: prenota, vede pagamenti e scheda del minore' );
 asem_ok( ! Access::user_can( $mn_mum_u, 'asem_edit_own_profile', $mn_kid ) && ! Access::user_can( $mn_aunt_u, 'asem_book_for', $mn_kid ) && ! Access::user_can( $mn_aunt_u, 'asem_view_payments', $mn_kid ), 'tutore: non modifica il profilo del minore; chi non è tutore non vede nulla' );
