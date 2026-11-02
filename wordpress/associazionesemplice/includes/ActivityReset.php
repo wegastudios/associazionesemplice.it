@@ -544,7 +544,11 @@ final class ActivityReset {
 			function () use ( $activity_id, $person_id, $sid, $mode, $a, $who, $ledger, $db, &$sum, $p ) {
 				$today = current_time( 'Y-m-d' );
 				$cat   = self::REFUND === $mode ? self::refund_category() : 0;
+				$ctx   = self::fruit_context( $a );
 				foreach ( self::registration_incomes( $activity_id, $person_id, $sid ) as $m ) {
+					if ( self::is_fruited( $m, $ctx ) ) {
+						continue; // già fruito: resta in prima nota
+					}
 					if ( self::REFUND === $mode ) {
 						$d = array(
 							'date' => $today, 'account_id' => (int) $m['account_id'], 'method' => (string) $m['method'], 'category_id' => $cat, 'amount_cents' => (int) $m['amount_cents'],
