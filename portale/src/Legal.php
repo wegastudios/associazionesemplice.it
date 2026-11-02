@@ -114,6 +114,7 @@ I cookie sono piccoli file che il sito salva nel tuo browser. Alcuni servono a f
 
 ## Cookie che usiamo
 - **Tecnici (sempre attivi):** mantengono la sessione quando accedi all'area riservata e ricordano le tue scelte sui cookie. Non richiedono consenso.
+- **Accesso alla demo (tecnico):** nella demo pubblica sotto `/demo/` il cookie «asem_s» ricorda l'accesso di chi entra come socio. Dura poco, serve solo a restare collegato e non richiede consenso.
 - **Statistiche (solo con il tuo consenso):** ci aiutano a capire quali pagine sono utili, in forma aggregata.
 - **Marketing (solo con il tuo consenso):** servono a misurare l'efficacia delle comunicazioni.
 
