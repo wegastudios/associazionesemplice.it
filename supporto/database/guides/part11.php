@@ -6,7 +6,7 @@ return [
         'topic' => 'plugin-pro', 'section' => 'Contabilità e adempimenti', 'slug' => 'inizio-dell-anno-fiscale',
         'title' => 'Impostare il mese di inizio dell\'anno fiscale',
         'body' => <<<'MD'
-> Disponibile in: Pro Fiscale (da Pro 1.1.38, con il plugin gratuito 1.2.47: aggiorna insieme gratuito e Pro)
+> Disponibile in: Pro Fiscale (da Pro 1.1.38, con il plugin gratuito 1.2.47: aggiorna insieme gratuito e Pro; novità fino al Pro 1.1.39)
 
 Per molte associazioni l'esercizio non coincide con l'anno solare. Dal Pro 1.1.38 puoi indicare il **mese di inizio dell'anno fiscale** separatamente da quello dell'anno sociale.
 
@@ -38,7 +38,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Contabilità e adempimenti', 'slug' => 'spese-documentate-e-fondi-dei-rimborsi',
         'title' => 'Spese documentate e fondi: l\'attribuzione automatica',
         'body' => <<<'MD'
-> Disponibile in: Pro Fiscale (da Pro 1.1.38, con il plugin gratuito 1.2.47: aggiorna insieme gratuito e Pro)
+> Disponibile in: Pro Fiscale (da Pro 1.1.38, con il plugin gratuito 1.2.47: aggiorna insieme gratuito e Pro; novità fino al Pro 1.1.39)
 
 Quando registri una **spesa con scontrino o fattura**, il plugin la attribuisce da solo al fondo dei rimborsi che ha **accantonato ma non ha ancora spese a supporto**. L'attribuzione si vede sempre e si può correggere.
 
@@ -56,6 +56,14 @@ La regola vale **solo per le spese documentate**, cioè con scontrino o fattura 
 - Se è un **consigliere** o un altro ruolo (o manca il beneficiario), vale **qualunque fondo** con documentazione scoperta: prima quelli dell'attività della spesa, poi i più vecchi.
 - Valgono anche i fondi **già liquidati**.
 - La spesa si può **dividere su più fondi** se serve.
+
+## Beneficiario e volontari (da Pro 1.1.39)
+
+- Un **beneficiario scelto esplicitamente** vale sempre.
+- Dall'**area soci** non c'è la scelta del beneficiario né del fondo: il beneficiario è **chi registra** la spesa.
+- Il **volontario** va **solo sui suoi fondi**. Ciò che supera resta **in credito**: si sana con gli incassi dei suoi corsi oppure con **«Accantona»**.
+- L'elenco **«Volontari in credito»** si trova in **Cassa → Conti e fondi** e in **Bacheca**.
+- L'attribuzione automatica si accende e si spegne con l'impostazione **«Attribuzione automatica delle spese ai fondi»** in Limiti e soglie: è **accesa** di partenza.
 
 ## Controllare e correggere
 
@@ -80,7 +88,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Contabilità e adempimenti', 'slug' => 'bilancio-provvisorio-e-avvisi-di-bilancio',
         'title' => 'Bilancio provvisorio, avvisi di bilancio e storico mensile',
         'body' => <<<'MD'
-> Disponibile in: Pro Fiscale (da Pro 1.1.38, con il plugin gratuito 1.2.47: aggiorna insieme gratuito e Pro)
+> Disponibile in: Pro Fiscale (da Pro 1.1.38, con il plugin gratuito 1.2.47: aggiorna insieme gratuito e Pro; novità fino al Pro 1.1.39)
 
 Con il Pro Fiscale hai sempre sott'occhio come sta andando l'anno fiscale.
 
@@ -123,7 +131,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Contabilità e adempimenti', 'slug' => 'verifiche-di-fine-anno-e-chiusura',
         'title' => 'Verifiche di fine anno fiscale e chiusura dell\'anno',
         'body' => <<<'MD'
-> Disponibile in: Pro Fiscale (da Pro 1.1.38, con il plugin gratuito 1.2.47: aggiorna insieme gratuito e Pro)
+> Disponibile in: Pro Fiscale (da Pro 1.1.38, con il plugin gratuito 1.2.47: aggiorna insieme gratuito e Pro; novità fino al Pro 1.1.39)
 
 Prima della fine dell'anno fiscale il plugin ti avvisa se ci sono **discrepanze**, per esempio rimborsi senza spese documentate a copertura, e può **fermare la chiusura** finché non le sistemi. L'avviso compare **solo se ci sono discrepanze**, senza messaggi verdi.
 
@@ -144,6 +152,15 @@ L'avviso elenca, con il link per correggere:
 - sbilancio oltre le soglie;
 - voci fuori preventivo;
 - movimenti senza categoria vera.
+
+## Approvare una discrepanza a mano (da Pro 1.1.39)
+
+Le discrepanze si vedono **una per una**, con **tipo**, **voce** e **importo**. Se una la ritieni accettabile puoi **approvarla a mano**, con una **nota facoltativa**, per portarla al nuovo anno.
+
+- L'approvazione vale **solo per quell'importo**: se l'importo cambia, la discrepanza torna.
+- Le discrepanze approvate **non generano avvisi** e **non fermano la chiusura dell'anno**.
+- Restano elencate in **Contabilità → Bilancio provvisorio → «Discrepanze da verificare»**.
+- Ogni approvazione è tracciata nel registro azioni.
 
 ## Chiudere l'anno
 
