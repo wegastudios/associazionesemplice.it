@@ -44,7 +44,7 @@ MD,
 2. Registra la quota associativa dalla scheda del socio o dall'incasso: se il socio ha la tessera non valida, la quota si inserisce da sola in qualunque incasso.
 3. La tessera si attiva quando la quota è **saldata** (vedi «Quota pagata a rate» più sotto).
 
-Dalla versione 1.2.51 (gratuito) e 1.1.41 (Pro) i nuovi soci **non hanno più un utente WordPress**: entrano nell'area riservata con un **link o un codice ricevuto per email** (la password è facoltativa). L'utente WordPress nasce **solo quando si dà un potere** al socio (segreteria, tesoriere, staff). Chi ha già un utente WordPress continua a entrare da WordPress. Se esiste già un utente con l'email del socio, viene collegato senza cambiargli ruolo. Dalla versione 1.2.37, se quell'utente ha **altri ruoli** (redattore, amministratore…) la segreteria vede un errore: **solo un amministratore** può collegarlo.
+Dalla versione 1.2.51 (gratuito) e 1.1.41 (Pro) i nuovi soci **non hanno più un utente WordPress**: entrano nell'area riservata con **email e password** (obbligatoria, la scelgono alla prima entrata); il link o codice ricevuto per email resta come opzione. L'utente WordPress nasce **solo quando si dà un potere** al socio (segreteria, tesoriere, staff). Chi ha già un utente WordPress continua a entrare da WordPress. Se esiste già un utente con l'email del socio, viene collegato senza cambiargli ruolo. Dalla versione 1.2.37, se quell'utente ha **altri ruoli** (redattore, amministratore…) la segreteria vede un errore: **solo un amministratore** può collegarlo.
 
 Se preferisci un utente WordPress per ogni socio (per esempio per usare WooCommerce con il loro account), vedi [Come entrano i soci: link, codice o utente WordPress](guida:accesso-dei-soci-link-codice-o-utente-wordpress).
 
@@ -247,7 +247,7 @@ Nella pagina di accesso e nell'area riservata c'è il link **Primo accesso**.
 2. Se l'email è già quella di un socio, gli arriva il link per scegliere la password.
 3. Se non c'è corrispondenza sull'email, la richiesta arriva alla segreteria.
 
-Dalla 1.2.51 il socio può anche entrare ogni volta con un **link o un codice** che riceve per email, senza password. Vedi [Come entrano i soci: link, codice o utente WordPress](guida:accesso-dei-soci-link-codice-o-utente-wordpress).
+Dalla 1.2.51 il socio può anche entrare con un **link o un codice** che riceve per email, senza password; dalla 1.2.52 la password però è **obbligatoria** e va scelta alla prima entrata. Vedi [Come entrano i soci: link, codice o utente WordPress](guida:accesso-dei-soci-link-codice-o-utente-wordpress).
 
 La risposta mostrata al socio è sempre la stessa, così non si scopre chi è socio e chi no. Ogni indirizzo IP può fare 10 tentativi l'ora.
 
@@ -276,12 +276,13 @@ MD,
 
 ## Come entra un socio
 
-I nuovi soci **non hanno un utente WordPress**. Entrano nell'area riservata con:
+I nuovi soci **non hanno un utente WordPress**. Entrano nell'area riservata con **email e password**. La password è **obbligatoria** (dal gratuito 1.2.52): il socio la sceglie **alla prima entrata** o quando attiva l'accesso dal link; finché non l'ha scelta l'area riservata resta chiusa. Chi era stato creato con la 1.2.51 senza password la sceglie alla prossima entrata.
 
-- un **link** ricevuto per email, oppure un **codice** da inserire;
-- la **password**, se decidono di sceglierla (è facoltativa).
+Il **link** o il **codice** ricevuto per email restano come opzione, per entrare senza password. Per questo **la posta del sito deve funzionare**: link, codici e recupero password arrivano per email. Prova l'invio prima di aprire l'area ai soci.
 
-Per questo **la posta del sito deve funzionare**: il link arriva per email. Prova l'invio prima di aprire l'area ai soci.
+## Password dimenticata
+
+**«Password dimenticata»** manda un link che fa entrare, ma **obbliga a scegliere una nuova password** prima di navigare. Cambiata la password, gli **altri dispositivi devono rientrare**.
 
 ## Quando nasce un utente WordPress
 
@@ -302,7 +303,7 @@ Quando si toglie l'ultimo potere a un socio, la scheda propone **«Passa all'acc
 
 ## Per l'informativa
 
-Il sito usa un **cookie tecnico «asem_s»** per tenere aperto l'accesso dei soci: va dichiarato nell'informativa sui cookie.
+Il sito usa un **cookie tecnico «asem_s»** per tenere aperto l'accesso dei soci (non richiede consenso; 30 giorni senza uso, 90 al massimo). L'informativa generata dal plugin lo dichiara, insieme alla password conservata solo come impronta cifrata, ai link e codici validi 15 minuti e al blocco crescente dopo i tentativi sbagliati. Vedi [Informativa privacy e consensi dei soci](guida:informativa-privacy-e-consensi).
 
 ## Aggiornamento
 
