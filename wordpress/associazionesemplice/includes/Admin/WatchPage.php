@@ -130,7 +130,7 @@ final class WatchPage {
 					$a = $d['approval'];
 					echo esc_html( 'approvata il ' . mysql2date( 'd/m/Y', $a['approved_at'] ) . ( $a['who'] ? ' da ' . $a['who'] : '' ) . ' (anno ' . $a['fiscal_year'] . ')' . ( '' !== $a['note'] ? ': ' . $a['note'] : '' ) ) . ' ';
 					Ui::form_open( 'asem_discrepancy_revoke', Ui::url( 'asem-watch' ), false, 'asem-inline' );
-					echo Ui::hidden( 'id', (int) $a['id'] ) . '<button class="button button-small">Togli l\'approvazione</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+					echo Ui::hidden( 'id', (int) $a['id'] ) . '<button class="button button-small">Revoca l\'approvazione</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
 					Ui::form_close();
 				} else {
 					Ui::form_open( 'asem_discrepancy_approve', Ui::url( 'asem-watch' ), false, 'asem-inline' );
