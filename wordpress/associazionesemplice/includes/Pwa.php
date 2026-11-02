@@ -22,6 +22,7 @@ final class Pwa {
 		add_action( 'init', array( __CLASS__, 'maybe_serve' ), 0 );
 		add_action( 'wp_head', array( __CLASS__, 'print_head' ), 1 );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue' ) );
+		add_action( 'asem_member_access_forgotten', array( __CLASS__, 'forget_member' ), 10, 2 ); // eliminando la persona si tolgono le sue notifiche
 		add_action( 'wp_ajax_asem_push_subscribe', array( __CLASS__, 'ajax_subscribe' ) );
 		add_action( 'wp_ajax_asem_push_unsubscribe', array( __CLASS__, 'ajax_unsubscribe' ) );
 		add_action( 'wp_ajax_nopriv_asem_push_subscribe', array( __CLASS__, 'ajax_subscribe' ) ); // chi è entrato con l'accesso proprio non è un utente WordPress
@@ -288,5 +289,10 @@ JS;
 		$uid = self::ajax_guard();
 		Push::unsubscribe( $uid, (string) wp_unslash( $_POST['endpoint'] ?? '' ) ); // phpcs:ignore WordPress.Security
 		wp_send_json_success( array( 'subscribed' => false ) );
+	}
+
+	/** Toglie le notifiche di chi entrava con l'accesso proprio quando la persona viene eliminata o anonimizzata. */
+	public static function forget_member( int $person_id, int $actor_key ): void {
+		Push::unsubscribe_all( $actor_key );
 	}
 }

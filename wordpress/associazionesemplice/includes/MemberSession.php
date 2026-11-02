@@ -179,10 +179,7 @@ final class MemberSession {
 		foreach ( array( 'member_sessions', 'member_auth', 'member_challenges' ) as $t ) {
 			$db->delete( Db::t( $t ), array( 'person_id' => $person_id ) );
 		}
-		$push = Db::t( 'push_subs' ); // le notifiche del telefono (edizione con le funzioni avanzate)
-		if ( $db->get_var( $db->prepare( 'SHOW TABLES LIKE %s', $db->esc_like( $push ) ) ) === $push ) {
-			$db->delete( $push, array( 'user_id' => self::ACTOR_BASE + $person_id ) );
-		}
+		do_action( 'asem_member_access_forgotten', $person_id, self::ACTOR_BASE + $person_id ); // le funzioni avanzate tolgono qui ciò che hanno legato alla persona (ad esempio le notifiche del telefono)
 		self::$current = null;
 	}
 
