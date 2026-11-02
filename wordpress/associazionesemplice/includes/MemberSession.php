@@ -21,6 +21,14 @@ final class MemberSession {
 	/** @var array|false|null sessione trovata in questa richiesta (false = nessuna) */
 	private static $current = null;
 
+	/**
+	 * Ai nuovi soci si crea anche un utente WordPress? Sì solo se l'accesso proprio è spento oppure se l'amministratore l'ha scelto
+	 * (Impostazioni: «Crea anche un utente WordPress per i soci»). Di default no: i soci semplici entrano con un link o un codice.
+	 */
+	public static function wp_users_wanted(): bool {
+		return ! self::enabled() || Settings::member_wp_users();
+	}
+
 	public static function enabled(): bool {
 		return Limits::flag( 'member_sessions' );
 	}

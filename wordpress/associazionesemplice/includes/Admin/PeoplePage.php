@@ -348,6 +348,18 @@ final class PeoplePage {
 		return '<span class="asem-warn">Senza accesso</span> <a class="button button-small" target="_blank" rel="noopener" href="' . esc_url( 'https://wa.me/' . $wa . '?text=' . rawurlencode( \AssociazioneSemplice\Frontend\Activation::invite_text( $p ) ) ) . '">💬 Invia link</a>';
 	}
 
+	/** Socio con un utente WordPress ma senza più poteri: l'amministratore può farlo passare all'accesso con link. */
+	private static function release_panel( array $p ): void {
+		$uid = (int) ( $p['wp_user_id'] ?? 0 );
+		if ( $uid <= 0 || ! current_user_can( \AssociazioneSemplice\Plugin::CAP ) || ! \AssociazioneSemplice\MemberSession::enabled() || \AssociazioneSemplice\Access::has_powers( $uid ) ) {
+			return;
+		}
+		echo '<hr><p><strong>Passa all\'accesso con link</strong><br><span class="description">Non ha poteri oltre a quelli di socio. Con questo passaggio l\'utente WordPress viene eliminato e da ora entra solo con un link o un codice che riceve per email (password facoltativa). Non si elimina se ha scritto contenuti o ha ordini nel negozio. I dati della scheda non cambiano.</span></p>';
+		Ui::form_open( 'asem_release_wp_user', Ui::url( 'asem-person', array( 'id' => (int) $p['id'] ) ) );
+		echo wp_kses( Ui::hidden( 'id', $p['id'] ) . '<button class="button" data-confirm="Elimino il suo utente WordPress? Da ora entrerà con il link via email.">Passa all\'accesso con link</button>', Html::allowed() );
+		Ui::form_close();
+	}
+
 	/** Accesso all'area riservata di un socio: attivo, oppure link di attivazione da mandare (WhatsApp o copia). */
 	private static function panel_access( array $p ): void {
 		if ( ! MemberType::is_member( $p['type'] ) ) {
@@ -357,6 +369,7 @@ final class PeoplePage {
 		if ( \AssociazioneSemplice\PeopleService::has_access( $p ) ) {
 			echo '<p><strong class="asem-ok">Accesso attivo</strong> · email ' . esc_html( (string) $p['email'] ) . ( empty( $p['wp_user_id'] ) ? ' · entra con un link o un codice che riceve per email' : '' ) . '</p>';
 			self::detach_buttons( $p );
+			self::release_panel( $p );
 			echo '</div>';
 			return;
 		}

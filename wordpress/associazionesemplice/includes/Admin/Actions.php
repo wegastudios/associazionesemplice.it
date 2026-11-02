@@ -25,7 +25,7 @@ final class Actions {
 		'asem_sports', 'asem_create_year', 'asem_close_year', 'asem_reopen_year', 'asem_save_settings', 'asem_save_card', 'asem_regen_qr',
 		'asem_save_look', 'asem_save_donate', 'asem_save_campaign', 'asem_delete_campaign', 'asem_create_privacy_page', 'asem_save_ical', 'asem_regen_ical', 'asem_create_pages', 'asem_save_wpai', 'asem_wpai_process', 'asem_wpai_retry', 'asem_wpai_clear', 'asem_privacy_anonymize', 'asem_save_comms',
 		
-		'asem_delete_activity', 'asem_delete_booking', 'asem_purge_enrollments', 'asem_set_treasurer', 'asem_set_secretary', 'asem_set_board_role', 'asem_backup_restore', 
+		'asem_delete_activity', 'asem_delete_booking', 'asem_purge_enrollments', 'asem_set_treasurer', 'asem_set_secretary', 'asem_release_wp_user', 'asem_set_board_role', 'asem_backup_restore', 
 	);
 
 	/** @var array<string,callable> azioni di amministrazione aggiunte da un'estensione */
@@ -56,6 +56,7 @@ final class Actions {
 			'asem_delete_person'      => 'delete_person',
 			'asem_set_membership'     => 'set_membership',
 			'asem_set_treasurer'      => 'set_treasurer',
+			'asem_release_wp_user'    => 'release_wp_user',
 			'asem_set_staff'          => 'set_staff',
 			'asem_delete_activity'    => 'delete_activity',
 			'asem_delete_booking'     => 'delete_booking',
@@ -311,6 +312,22 @@ final class Actions {
 
 
 
+	/** Dopo aver tolto un potere: se non ne restano, la scheda propone di passare all'accesso con link (decide l'amministratore). */
+	private static function release_hint( array $person ): string {
+		$uid = (int) ( Plugin::people()->get( (int) $person['id'] )['wp_user_id'] ?? 0 );
+		if ( $uid > 0 && \AssociazioneSemplice\MemberSession::enabled() && ! \AssociazioneSemplice\Access::has_powers( $uid ) ) {
+			return ' Non ha più poteri: nella sua scheda, in «Accesso all\'area riservata», puoi farlo passare all\'accesso con link.';
+		}
+		return '';
+	}
+
+	/** Un socio senza più poteri torna all'accesso con link: l'utente WordPress si elimina. Solo amministratori, caso per caso. */
+	private static function release_wp_user( array $p ): array {
+		$id = (int) ( $p['id'] ?? 0 );
+		Plugin::people()->release_wp_user( $id );
+		return array( Ui::url( 'asem-person', array( 'id' => $id ) ), 'Fatto: da ora entra con un link o un codice via email e non ha più un utente WordPress.' );
+	}
+
 	private static function set_secretary( array $p ): array {
 		$person = Plugin::people()->get( (int) ( $p['id'] ?? 0 ) );
 		if ( $person && ! empty( $p['enabled'] ) && empty( $person['wp_user_id'] ) && MemberType::is_member( $person['type'] ) && \AssociazioneSemplice\PeopleService::has_access( $person ) ) {
@@ -331,7 +348,7 @@ final class Actions {
 			$user->remove_role( Plugin::ROLE_SECRETARY );
 		}
 		Audit::log( $on ? 'secretary.granted' : 'secretary.revoked', 'person', (int) $person['id'] );
-		return array( Ui::url( 'asem-person', array( 'id' => (int) $person['id'] ) ), $on ? 'Ora fa parte della segreteria.' : 'Non fa più parte della segreteria.' );
+		return array( Ui::url( 'asem-person', array( 'id' => (int) $person['id'] ) ), $on ? 'Ora fa parte della segreteria.' : 'Non fa più parte della segreteria.' . self::release_hint( $person ) );
 	}
 
 	private static function set_treasurer( array $p ): array {
@@ -346,7 +363,7 @@ final class Actions {
 		$on = ! empty( $p['enabled'] );
 		\AssociazioneSemplice\Access::set_treasurer( (int) $person['wp_user_id'], $on );
 		Audit::log( $on ? 'treasurer.granted' : 'treasurer.revoked', 'person', (int) $person['id'] );
-		return array( Ui::url( 'asem-person', array( 'id' => (int) $person['id'] ) ), $on ? 'Ora è tesoriere: può incassare, registrare spese, iscrivere soci e vendere gli eventi dall\'area riservata.' : 'Non è più tesoriere.' );
+		return array( Ui::url( 'asem-person', array( 'id' => (int) $person['id'] ) ), $on ? 'Ora è tesoriere: può incassare, registrare spese, iscrivere soci e vendere gli eventi dall\'area riservata.' : 'Non è più tesoriere.' . self::release_hint( $person ) );
 	}
 
 	/** Staff dell'ente: può verificare gli accessi a tutti gli eventi (l'incasso resta una scelta per singolo evento). */
@@ -362,7 +379,7 @@ final class Actions {
 		$on = ! empty( $p['enabled'] );
 		\AssociazioneSemplice\Access::set_entity_staff( (int) $person['wp_user_id'], $on );
 		Audit::log( $on ? 'staff.granted' : 'staff.revoked', 'person', (int) $person['id'] );
-		return array( Ui::url( 'asem-person', array( 'id' => (int) $person['id'] ) ), $on ? 'Ora fa parte dello staff: verifica gli accessi a tutti gli eventi.' : 'Non fa più parte dello staff dell\'ente.' );
+		return array( Ui::url( 'asem-person', array( 'id' => (int) $person['id'] ) ), $on ? 'Ora fa parte dello staff: verifica gli accessi a tutti gli eventi.' : 'Non fa più parte dello staff dell\'ente.' . self::release_hint( $person ) );
 	}
 
 	/** Eliminazione completa di un evento, con la sorte delle somme incassate. Conferma scritta obbligatoria. */
@@ -1130,6 +1147,9 @@ final class Actions {
 		}
 		if ( ! empty( $p['guests_present'] ) ) { // la casella non spuntata non arriva nel modulo
 			$ente['guests_enabled'] = ! empty( $p['guests_enabled'] ) ? 1 : 0;
+		}
+		if ( ! empty( $p['wpusers_present'] ) ) {
+			$ente['member_wp_users'] = ! empty( $p['member_wp_users'] ) ? 1 : 0;
 		}
 		if ( ! empty( $p['apply_present'] ) ) {
 			$ente['apply_enabled']    = ! empty( $p['apply_enabled'] ) ? 1 : 0;

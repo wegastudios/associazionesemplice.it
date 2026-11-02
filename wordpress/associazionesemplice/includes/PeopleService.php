@@ -440,7 +440,7 @@ class PeopleService {
 		$this->assert_valid( $d, null );
 
 		$user_id = null;
-		if ( MemberType::can_login( $d['type'] ) && null !== $d['email'] && ! MemberSession::enabled() ) { // senza email: nessun utente finché il socio non si attiva col suo link; con l'accesso proprio acceso i soci semplici non hanno mai un utente WordPress
+		if ( MemberType::can_login( $d['type'] ) && null !== $d['email'] && MemberSession::wp_users_wanted() ) { // senza email: nessun utente finché il socio non si attiva col suo link; con l'accesso proprio i soci semplici non hanno un utente WordPress, salvo scelta dell'amministratore
 			$user_id = $this->ensure_wp_user( $d, null );
 		}
 		$now = Db::now();
@@ -497,7 +497,7 @@ class PeopleService {
 		if ( ! empty( $p['wp_user_id'] ) ) {
 			throw new \InvalidArgumentException( 'L\'accesso è già attivo.' );
 		}
-		if ( MemberSession::enabled() ) {
+		if ( ! MemberSession::wp_users_wanted() ) {
 			return $this->activate_own( $p, $email, $phone, $password );
 		}
 		$email = strtolower( trim( $email ) );
@@ -576,6 +576,45 @@ class PeopleService {
 		$this->db()->update( Db::t( 'people' ), array( 'wp_user_id' => $uid, 'updated_at' => Db::now() ), array( 'id' => $id ) );
 		Audit::log( 'person.wp_user_created', 'person', $id );
 		return $uid;
+	}
+
+	/**
+	 * Un socio che non ha più poteri torna all'accesso con link: l'utente WordPress si elimina. Lo decide l'amministratore, sempre caso per caso.
+	 * Non si elimina un utente che ha ancora poteri, scritto contenuti o fatto ordini nel negozio: serve a loro.
+	 *
+	 * @throws \InvalidArgumentException con il motivo per cui non si può
+	 */
+	public function release_wp_user( int $id ): void {
+		$p   = $this->get( $id );
+		$uid = $p ? (int) $p['wp_user_id'] : 0;
+		if ( ! $p || $uid <= 0 ) {
+			throw new \InvalidArgumentException( 'Questo socio non ha un utente WordPress.' );
+		}
+		if ( ! MemberSession::enabled() ) {
+			throw new \InvalidArgumentException( 'L\'accesso con link è spento (Impostazioni → Tecniche → Limiti e soglie): accendilo prima.' );
+		}
+		if ( '' === trim( (string) $p['email'] ) ) {
+			throw new \InvalidArgumentException( 'Prima inserisci la sua email nella scheda: il link di accesso arriva lì.' );
+		}
+		if ( Access::has_powers( $uid ) ) {
+			throw new \InvalidArgumentException( 'Ha ancora dei poteri (segreteria, presidente o vicepresidente, tesoriere, staff o altri ruoli del sito): toglili prima.' );
+		}
+		if ( get_userdata( $uid ) ) {
+			if ( count_user_posts( $uid, 'any' ) > 0 ) {
+				throw new \InvalidArgumentException( 'L\'utente ha scritto contenuti sul sito: non si elimina da qui.' );
+			}
+			if ( function_exists( 'wc_get_customer_order_count' ) && (int) wc_get_customer_order_count( $uid ) > 0 ) {
+				throw new \InvalidArgumentException( 'L\'utente ha ordini nel negozio WooCommerce: resta, serve allo storico degli ordini.' );
+			}
+			\WP_Session_Tokens::get_instance( $uid )->destroy_all();
+			require_once ABSPATH . 'wp-admin/includes/user.php';
+			if ( ! wp_delete_user( $uid ) ) {
+				throw new \InvalidArgumentException( 'Non è stato possibile eliminare l\'utente WordPress.' );
+			}
+		}
+		$this->db()->update( Db::t( 'people' ), array( 'wp_user_id' => null, 'updated_at' => Db::now() ), array( 'id' => $id ) );
+		do_action( 'asem_member_access_forgotten', $id, $uid ); // le funzioni avanzate tolgono ciò che avevano legato all'utente (ad esempio le notifiche)
+		Audit::log( 'person.wp_user_released', 'person', $id );
 	}
 
 	/** Il socio ha un accesso: un utente WordPress oppure, con l'accesso proprio acceso, l'email con cui riceve il link. */
@@ -724,7 +763,7 @@ class PeopleService {
 		$user_id = $current['wp_user_id'] ? (int) $current['wp_user_id'] : null;
 		if ( MemberType::can_login( $d['type'] ) ) {
 			if ( null === $user_id ) {
-				if ( null !== $d['email'] && ! MemberSession::enabled() ) {
+				if ( null !== $d['email'] && MemberSession::wp_users_wanted() ) {
 					$user_id = $this->ensure_wp_user( $d, $id ); // ad es. ospite diventato socio, o socio che ha dato l'email
 				}
 			} else {

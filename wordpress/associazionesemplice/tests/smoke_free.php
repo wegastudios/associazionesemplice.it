@@ -103,6 +103,7 @@ $people = Plugin::people();
 $acts   = Plugin::activities();
 $ledger = Plugin::ledger();
 $sy     = Settings::social_year( current_time( 'Y-m-d' ) )->label();
+Settings::update( array( 'member_wp_users' => 1 ) ); // questo controllo presuppone un utente WordPress per ogni socio
 $pid    = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Prova', 'last_name' => 'Gratuita', 'email' => 'prova.gratuita@example.com' ) );
 $people->set_membership( $pid, Settings::membership_year()->label(), true );
 $aid = $acts->create( array( 'name' => 'Cena di prova', 'social_year' => $sy, 'kind' => 'event', 'fee_cents' => 1500, 'session' => array( 'session_date' => current_time( 'Y-m-d' ), 'capacity' => 10 ) ) );

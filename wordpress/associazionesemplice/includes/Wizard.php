@@ -75,6 +75,9 @@ final class Wizard {
 		// 1. Ente
 		$vals = EntityData::values( $p, false ); // nome, tipo, codice fiscale, sede, partita IVA: stesse regole della scheda «Dati e fiscalità»
 
+		if ( ! empty( $p['wpusers_present'] ) ) {
+			$vals['member_wp_users'] = ! empty( $p['member_wp_users'] ) ? 1 : 0;
+		}
 		if ( array_key_exists( 'guests_enabled', $p ) ) {
 			$vals['guests_enabled'] = ! empty( $p['guests_enabled'] ) ? 1 : 0;
 		}

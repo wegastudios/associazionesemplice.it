@@ -305,7 +305,7 @@ final class Guardians {
 		if ( '' === trim( (string) $p['email'] ) ) {
 			throw new \InvalidArgumentException( 'Prima inserisci la sua email nella scheda: l\'invito parte da lì.' );
 		}
-		if ( empty( $p['wp_user_id'] ) && ! MemberSession::enabled() ) {
+		if ( empty( $p['wp_user_id'] ) && MemberSession::wp_users_wanted() ) {
 			$people->update( $person_id, array() ); // crea l'utente WordPress con la sua email (con l'accesso proprio non serve)
 		}
 		if ( ! Frontend\FirstAccess::request( (string) $p['email'] ) ) {

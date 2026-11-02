@@ -156,9 +156,9 @@ final class Activation {
 		$p     = $r['person'];
 		$input = 'width:100%;box-sizing:border-box;padding:10px;font-size:16px;margin:4px 0 12px;border:1px solid #8c8f94;border-radius:8px';
 		$need  = Limits::flag( 'profile_required' );
-		$own   = \AssociazioneSemplice\MemberSession::enabled();
+		$own   = ! \AssociazioneSemplice\MemberSession::wp_users_wanted();
 		$body  = ( '' !== $error ? '<div class="w" style="color:#b32d2e">' . esc_html( $error ) . '</div>' : '' )
-			. '<div class="n">Ciao ' . esc_html( $p['first_name'] ) . '!</div><p>' . ( \AssociazioneSemplice\MemberSession::enabled() ? 'Scrivi la tua email: con quella entrerai nell\'area riservata, ogni volta con un link che ti mandiamo. La password è facoltativa.' : 'Scegli l\'email e la password con cui entrerai nell\'area riservata.' ) . '</p>'
+			. '<div class="n">Ciao ' . esc_html( $p['first_name'] ) . '!</div><p>' . ( ! \AssociazioneSemplice\MemberSession::wp_users_wanted() ? 'Scrivi la tua email: con quella entrerai nell\'area riservata, ogni volta con un link che ti mandiamo. La password è facoltativa.' : 'Scegli l\'email e la password con cui entrerai nell\'area riservata.' ) . '</p>'
 			. '<form method="post" action="' . esc_url( add_query_arg( 'asem_activate', $param, home_url( '/' ) ) ) . '" autocomplete="on">'
 			. '<input type="hidden" name="asem_activate_go" value="1">' . wp_nonce_field( 'asem_activate_' . (int) $p['id'], '_asem_nonce', false, false )
 			. '<label>La tua email<input style="' . $input . '" type="email" name="email" value="' . esc_attr( (string) ( $post['email'] ?? $p['email'] ?? '' ) ) . '" required autocomplete="email"></label>'

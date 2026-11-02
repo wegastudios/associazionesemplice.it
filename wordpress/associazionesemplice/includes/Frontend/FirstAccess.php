@@ -103,7 +103,7 @@ final class FirstAccess {
 		// 1. L'email è già di un socio: caso sicuro, il link va a quell'indirizzo.
 		$by_mail = $people->find_by_email( strtolower( $email ) );
 		if ( $by_mail && MemberType::can_login( $by_mail['type'] ) && empty( $by_mail['application_status'] ) ) { // chi ha solo chiesto di iscriversi non è ancora socio
-			if ( empty( $by_mail['wp_user_id'] ) && ! \AssociazioneSemplice\MemberSession::enabled() ) {
+			if ( empty( $by_mail['wp_user_id'] ) && \AssociazioneSemplice\MemberSession::wp_users_wanted() ) {
 				$people->update( (int) $by_mail['id'], array() ); // crea l'utente che mancava (con l'accesso proprio non serve: il link va all'email)
 			}
 			return self::request( $email ) ? 'emailed' : 'none';

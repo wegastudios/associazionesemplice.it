@@ -174,6 +174,16 @@ final class Access {
 		return DocumentRules::can_read( (string) $doc['visibility'], $staff, (bool) $member );
 	}
 
+	/** L'utente WordPress ha dei poteri oltre a quelli di un socio: segreteria, presidente o vicepresidente, tesoriere, staff dell'ente, altri ruoli. */
+	public static function has_powers( int $user_id ): bool {
+		$u = $user_id > 0 ? get_userdata( $user_id ) : false;
+		if ( ! $u ) {
+			return false;
+		}
+		return (bool) array_diff( (array) $u->roles, array( Plugin::ROLE_MEMBER, 'subscriber' ) )
+			|| user_can( $u, Plugin::CAP_OPS ) || self::is_board_operator( $user_id ) || self::is_treasurer( $user_id ) || self::is_entity_staff( $user_id );
+	}
+
 	public static function is_admin_user( int $user_id ): bool {
 		return $user_id > 0 && user_can( $user_id, Plugin::CAP_OPS );
 	}

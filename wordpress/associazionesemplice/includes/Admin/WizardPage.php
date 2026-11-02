@@ -95,6 +95,10 @@ final class WizardPage {
 		echo '</tbody></table></details>';
 		self::end_step();
 
+		self::step( 'Come entrano i soci', 'Una scelta che riguarda la sicurezza del sito: vale per i soci nuovi e si cambia quando vuoi dalle Impostazioni.', '', 'gestione' );
+		echo wp_kses( MemberAccessChoice::html(), Html::allowed() );
+		self::end_step();
+
 		do_action( 'asem_wizard_steps_entity', $s ); // le estensioni aggiungono qui i loro passi
 
 		// 4. Parti da usare, con le domande che dipendono dalle risposte
