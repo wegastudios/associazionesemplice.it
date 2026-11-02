@@ -5,10 +5,13 @@
 # (di solito funzioni del plugin che ripuliscono dentro, che l'analisi non riconosce).
 # Uso: bash wordpress/check-pro-static.sh [cartella-del-pro] [--update]   (prima: bash wordpress/build.sh wordpress/dist)
 set -euo pipefail
-cd "$(dirname "$0")"
-dir="dist/pro/associazionesemplice-pro"; update=""
+here="$(cd "$(dirname "$0")" && pwd)"
+dir=""; update=""
 for a in "$@"; do case "$a" in --update) update="--update" ;; *) dir="$a" ;; esac; done
-[ -d "$dir" ] || { echo "Cartella non trovata: $dir (prima: bash wordpress/build.sh wordpress/dist)" >&2; exit 2; }
+[ -n "$dir" ] || dir="$here/dist/pro/associazionesemplice-pro"
+given="$dir"
+dir="$(cd "$dir" 2>/dev/null && pwd)" || { echo "Cartella non trovata: $given (prima: bash wordpress/build.sh wordpress/dist)" >&2; exit 2; }
+cd "$here"
 tools="${PHPCS_DIR:-${TMPDIR:-/tmp}/asem-phpcs}"
 if [ ! -x "$tools/vendor/bin/phpcs" ]; then
 	mkdir -p "$tools" && cp phpcs/composer.json "$tools/"
@@ -17,4 +20,4 @@ if [ ! -x "$tools/vendor/bin/phpcs" ]; then
 fi
 report="$(mktemp)"
 "$tools/vendor/bin/phpcs" --standard=phpcs/ruleset.xml --report=json --report-file="$report" "$dir" > /dev/null || true # esce con 1 se trova qualcosa: lo giudica il confronto
-php phpcs/compare.php "$report" phpcs/pro-baseline.txt "$(cd "$dir" && pwd)" $update
+php phpcs/compare.php "$report" phpcs/pro-baseline.txt "$dir" $update
