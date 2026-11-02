@@ -95,10 +95,6 @@ final class WizardPage {
 		echo '</tbody></table></details>';
 		self::end_step();
 
-		self::step( 'Come entrano i soci', 'Una scelta che riguarda la sicurezza del sito: vale per i soci nuovi e si cambia quando vuoi dalle Impostazioni.', '', 'gestione' );
-		echo wp_kses( MemberAccessChoice::html(), Html::allowed() );
-		self::end_step();
-
 		do_action( 'asem_wizard_steps_entity', $s ); // le estensioni aggiungono qui i loro passi
 
 		// 4. Parti da usare, con le domande che dipendono dalle risposte
@@ -113,6 +109,7 @@ final class WizardPage {
 			echo '</div>';
 		}
 		echo wp_kses( '<details class="asem-wiz-more"><summary>Più dettagli: altre funzioni facoltative (tutte spente)</summary>' . self::features_box( $s ) . '</details>', Html::allowed() );
+		echo wp_kses( '<hr>' . MemberAccessChoice::html(), Html::allowed() ); // come entrano i soci: scelta dell'amministratore, spiegata con vantaggi e svantaggi
 		self::end_step();
 
 
