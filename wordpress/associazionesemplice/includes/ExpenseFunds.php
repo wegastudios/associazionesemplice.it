@@ -142,9 +142,10 @@ final class ExpenseFunds {
 						$own[] = $f;
 					}
 				}
-				// Chi ha anticipato ha un fondo con documentazione scoperta: la spesa è sua, ai suoi fondi. Altrimenti (qualunque ruolo) si distribuisce
+				// Un volontario: solo i suoi fondi. Chi non lo è: se ha un fondo con documentazione scoperta la spesa è sua, ai suoi fondi; altrimenti si distribuisce
 				// tra i fondi con documentazione scoperta, quelli dell'attività della spesa prima; le inesattezze le sistema la segreteria a mano.
-				$funds = $own ? $own : $all;
+				$person = ! empty( $tx['person_id'] ) ? Plugin::people()->get( (int) $tx['person_id'] ) : null;
+				$funds  = $person && 'volunteer' === $person['type'] ? $own : ( $own ? $own : $all ); // un volontario solo sui suoi fondi (se sono coperti la sistema la segreteria)
 				foreach ( BalanceWatchRules::order_funds( $funds, (int) $tx['activity_id'] ) as $f ) {
 					$room[ (int) $f['id'] ] = (int) $f['missing'];
 				}

@@ -7648,7 +7648,7 @@ asem_ok( array( $wt_f2 => 500 ) === $wt_alloc( $wt_e2 ), 'seconda spesa: solo qu
 $wt_e3 = $wt_exp( 200 );
 $wt_doc( $wt_e3 );
 $wt_a3 = $wt_alloc( $wt_e3 );
-asem_ok( ! isset( $wt_a3[ $wt_f1 ] ) && ! isset( $wt_a3[ $wt_f2 ] ) && 0 === array_sum( array_column( array_filter( \AssociazioneSemplice\ExpenseFunds::coverage(), function ( $f ) use ( $wt_f1, $wt_f2 ) { return in_array( (int) $f['id'], array( $wt_f1, $wt_f2 ), true ); } ), 'missing' ) ), 'terza spesa: i fondi coperti non si riempiono oltre (se ci sono altri fondi scoperti la spesa si distribuisce lì)' );
+asem_ok( array() === $wt_a3 && 0 === array_sum( array_column( array_filter( \AssociazioneSemplice\ExpenseFunds::coverage(), function ( $f ) use ( $wt_f1, $wt_f2 ) { return in_array( (int) $f['id'], array( $wt_f1, $wt_f2 ), true ); } ), 'missing' ) ), 'terza spesa di un volontario: i suoi fondi sono coperti, la spesa resta senza attribuzione (non finisce sui fondi di altri)' );
 \AssociazioneSemplice\ExpenseFunds::undo( $wt_e3 ); // torna da attribuire: i passaggi seguenti la usano
 $wt_unc = array();
 foreach ( \AssociazioneSemplice\ExpenseFunds::uncovered_expenses() as $r ) {
