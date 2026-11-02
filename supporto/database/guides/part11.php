@@ -165,7 +165,7 @@ Le discrepanze si vedono **una per una**, con **tipo**, **voce** e **importo**. 
 2. Nella riga della discrepanza, se vuoi, scrivi il campo **«Nota (facoltativa)»**.
 3. Premi **«Approva»** e conferma **«Approvare questa discrepanza e portarla al nuovo anno?»**.
 
-Le approvate restano elencate con **chi e quando** le ha approvate e si possono **revocare**.
+Le approvate restano elencate con **chi e quando** le ha approvate (per esempio «approvata il gg/mm/aaaa da Nome (anno N): nota»). Per **revocare** l'approvazione premi **«Togli l'approvazione»**: la discrepanza torna «da verificare». Se l'importo cambia, l'approvazione **decade da sola**.
 
 - L'approvazione vale **solo per quell'importo**: se l'importo cambia, la discrepanza torna.
 - Le discrepanze approvate **non generano avvisi** e **non fermano la chiusura dell'anno**.
