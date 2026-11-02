@@ -80,6 +80,25 @@ Dopo, nell'elenco degli iscritti, accanto a ogni persona trovi lo stesso menu co
 
 > **Se cambi variante**, il dovuto si **ricalcola per tutta l'iscrizione** con il prezzo della nuova variante, anche per i mesi già passati. I versamenti già registrati restano come sono e il saldo è «dovuto meno versato»: con un prezzo più basso può comparire un credito, con uno più alto una differenza da incassare. Nei corsi a rinnovo mensile o trimestrale ogni periodo successivo usa il nuovo prezzo.
 
+## Quando un iscritto smette di venire
+
+Chi smette di venire a un corso ha **già fruito** del periodo pagato: **non si restituisce nulla**. Dalla versione 1.3.5, nella scheda del corso, accanto all'iscrizione attiva trovi il pulsante **«Non rinnova»**:
+
+- l'iscritto **resta nel corso** fino alla fine del periodo già pagato (o del mese in corso);
+- poi **non deve più nulla**: non diventa debitore dei rinnovi successivi;
+- **non viene tolto** dal corso.
+
+**«Disdici il rinnovo»**, con la scelta del mese, resta per i casi particolari.
+
+## Quando è l'associazione a non poter più tenere il corso
+
+Il **non fruito** si restituisce quando è l'organizzazione a non poter più fare l'attività (per esempio l'insegnante non può più tenere il corso). Eliminando il corso:
+
+- un mese pagato per intero ma svolto a metà rende la quota delle **lezioni non ancora tenute**, in proporzione alle lezioni del mese: con un mese da 60 €, 4 lezioni e 2 già tenute, si rendono **30 €**;
+- i mesi **già interamente svolti** restano;
+- i mesi **senza lezioni svolte** si rendono per intero;
+- con **«annulla gli incassi»** un mese in parte svolto **resta com'è**: si può rendere solo con la **restituzione**.
+
 ## Annullare o spostare una lezione
 
 Dalla versione 1.2.43 le **singole lezioni** di un corso si possono **annullare** o **spostare**, per esempio per una festività o per il maltempo.
