@@ -7,6 +7,7 @@ Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi u
 - «Password dimenticata»: arriva per email un link che fa entrare ma obbliga a scegliere una nuova password prima di navigare. Cambiata la password, gli altri dispositivi devono rientrare.
 - Chi preferisce può ancora entrare con un link o un codice via email, senza password.
 - All'attivazione dal link della segreteria la password si sceglie subito.
+- L'informativa privacy dichiara l'accesso all'area riservata e il cookie tecnico «asem_s»; nelle impostazioni (Comunicazioni e privacy) si possono elencare altri cookie del sito, che compaiono nell'informativa.
 
 ## 1.2.51
 - L'accesso dei soci con un link o un codice via email (password facoltativa) è acceso di default: i nuovi soci non hanno più un utente WordPress. L'utente WordPress nasce solo quando a un socio si dà un potere (segreteria, tesoriere, staff). Chi ha già un utente WordPress continua a entrare da WordPress.
