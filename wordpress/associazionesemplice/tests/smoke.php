@@ -1284,7 +1284,10 @@ $nf_r2 = \AssociazioneSemplice\ActivityReset::registration_preview( $nf_a, $nf_p
 asem_ok( 0 === $nf_r1['income']['count'] && 1 === $nf_r1['fruited']['count'] && 500 === $nf_r1['fruited']['cents'] && 1 === $nf_r2['income']['count'] && 0 === $nf_r2['fruited']['count'], 'prenotazione: la data già svolta è fruita, quella futura no' );
 $nf_c0  = $ev_bal();
 $nf_rr  = \AssociazioneSemplice\ActivityReset::delete_registration( $nf_a, $nf_p1, $nf_s1, 'refund' );
-asem_ok( 0 === $nf_rr['refunds'] && 1 === $nf_rr['kept_count'] && 500 === $nf_rr['kept_cents'] && $ev_bal() === $nf_c0 && ! $acts->booking( $nf_s1, $nf_p1 ), 'prenotazione già svolta cancellata: l\'incasso resta, nessuna restituzione' );
+asem_ok( 0 === $nf_rr['refunds'] && 0 === $nf_rr['voided'], 'prenotazione già svolta cancellata: nessuna restituzione né annullamento' );
+asem_ok( 1 === $nf_rr['kept_count'] && 500 === $nf_rr['kept_cents'], 'prenotazione già svolta cancellata: l\'incasso fruito risulta tenuto (' . wp_json_encode( $nf_rr ) . ')' );
+asem_ok( $ev_bal() === $nf_c0, 'prenotazione già svolta cancellata: il saldo non cambia' );
+asem_ok( ! $acts->booking( $nf_s1, $nf_p1 ), 'prenotazione già svolta cancellata: la prenotazione sparisce' );
 $nf_b0  = $ev_bal();
 $nf_res =\AssociazioneSemplice\ActivityReset::delete( $nf_a, 'refund' );
 asem_ok( 1 === $nf_res['refunds'] && 1 === $nf_res['kept_count'] && 500 === $nf_res['kept_cents'] && $ev_bal() === $nf_b0 - 700, 'evento in più date eliminato con restituzione: si restituisce solo la data futura' );
