@@ -109,6 +109,7 @@ final class WizardPage {
 			echo '</div>';
 		}
 		echo wp_kses( '<details class="asem-wiz-more"><summary>Più dettagli: altre funzioni facoltative (tutte spente)</summary>' . self::features_box( $s ) . '</details>', Html::allowed() );
+		echo wp_kses( '<hr>' . MemberAccessChoice::html(), Html::allowed() ); // come entrano i soci: scelta dell'amministratore, spiegata con vantaggi e svantaggi
 		self::end_step();
 
 

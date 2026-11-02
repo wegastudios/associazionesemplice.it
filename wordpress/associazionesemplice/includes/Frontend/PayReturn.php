@@ -35,13 +35,13 @@ final class PayReturn {
 			}
 			exit;
 		}
-		if ( ! is_user_logged_in() ) {
+		if ( ! \AssociazioneSemplice\MemberSession::logged_in() ) {
 			wp_safe_redirect( wp_login_url( $url ) ); // dopo l'accesso si torna qui e il pagamento viene verificato
 			exit;
 		}
 		$clean = remove_query_arg( self::PARAMS, $url );
 		try {
-			$msg = \AssociazioneSemplice\PaymentService::engine()->handle_return( $public, $ret, get_current_user_id() );
+			$msg = \AssociazioneSemplice\PaymentService::engine()->handle_return( $public, $ret, \AssociazioneSemplice\MemberSession::actor_key() );
 			wp_safe_redirect( \AssociazioneSemplice\Flash::url( $clean, 'asemf', $msg ) );
 		} catch ( \InvalidArgumentException $e ) {
 			wp_safe_redirect( \AssociazioneSemplice\Flash::url( $clean, 'asemf', '', $e->getMessage() ) );

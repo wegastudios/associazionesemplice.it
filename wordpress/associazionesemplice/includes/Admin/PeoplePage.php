@@ -80,7 +80,7 @@ final class PeoplePage {
 			} else {
 				$state = '<span class="asem-neg">Non iscritto</span>';
 			}
-			if ( MemberType::is_member( $p['type'] ) && empty( $p['wp_user_id'] ) ) {
+			if ( MemberType::is_member( $p['type'] ) && ! \AssociazioneSemplice\PeopleService::has_access( $p ) ) {
 				$state .= '<br>' . self::invite_link( $p );
 			}
 			echo '<tr><td>' . esc_html( (string) $p['card_number'] ?: '—' ) . '</td>';
@@ -348,15 +348,28 @@ final class PeoplePage {
 		return '<span class="asem-warn">Senza accesso</span> <a class="button button-small" target="_blank" rel="noopener" href="' . esc_url( 'https://wa.me/' . $wa . '?text=' . rawurlencode( \AssociazioneSemplice\Frontend\Activation::invite_text( $p ) ) ) . '">💬 Invia link</a>';
 	}
 
+	/** Socio con un utente WordPress ma senza più poteri: l'amministratore può farlo passare all'accesso con link. */
+	private static function release_panel( array $p ): void {
+		$uid = (int) ( $p['wp_user_id'] ?? 0 );
+		if ( $uid <= 0 || ! current_user_can( \AssociazioneSemplice\Plugin::CAP ) || ! \AssociazioneSemplice\MemberSession::enabled() || \AssociazioneSemplice\Access::has_powers( $uid ) ) {
+			return;
+		}
+		echo '<hr><p><strong>Passa all\'accesso con link</strong><br><span class="description">Non ha poteri oltre a quelli di socio. Con questo passaggio l\'utente WordPress viene eliminato e da ora entra solo con un link o un codice che riceve per email (password facoltativa). Non si elimina se ha scritto contenuti o ha ordini nel negozio. I dati della scheda non cambiano.</span></p>';
+		Ui::form_open( 'asem_release_wp_user', Ui::url( 'asem-person', array( 'id' => (int) $p['id'] ) ) );
+		echo wp_kses( Ui::hidden( 'id', $p['id'] ) . '<button class="button" data-confirm="Elimino il suo utente WordPress? Da ora entrerà con il link via email.">Passa all\'accesso con link</button>', Html::allowed() );
+		Ui::form_close();
+	}
+
 	/** Accesso all'area riservata di un socio: attivo, oppure link di attivazione da mandare (WhatsApp o copia). */
 	private static function panel_access( array $p ): void {
 		if ( ! MemberType::is_member( $p['type'] ) ) {
 			return;
 		}
 		echo '<div class="asem-card"><h2>Accesso all\'area riservata</h2>';
-		if ( ! empty( $p['wp_user_id'] ) ) {
-			echo '<p><strong class="asem-ok">Accesso attivo</strong> · email ' . esc_html( (string) $p['email'] ) . '</p>';
+		if ( \AssociazioneSemplice\PeopleService::has_access( $p ) ) {
+			echo '<p><strong class="asem-ok">Accesso attivo</strong> · email ' . esc_html( (string) $p['email'] ) . ( empty( $p['wp_user_id'] ) ? ' · entra con un link o un codice che riceve per email' : '' ) . '</p>';
 			self::detach_buttons( $p );
+			self::release_panel( $p );
 			echo '</div>';
 			return;
 		}
@@ -549,14 +562,14 @@ final class PeoplePage {
 
 	/** Ruolo Segreteria: lavora su soci, attività e contabilità senza essere amministratore del sito. */
 	private static function panel_secretary( array $p ): void {
-		if ( \AssociazioneSemplice\MemberType::GUEST === $p['type'] || empty( $p['wp_user_id'] ) ) {
+		if ( \AssociazioneSemplice\MemberType::GUEST === $p['type'] || ! \AssociazioneSemplice\PeopleService::has_access( $p ) ) {
 			return;
 		}
-		$user = get_userdata( (int) $p['wp_user_id'] );
-		if ( ! $user || $user->has_cap( \AssociazioneSemplice\Plugin::CAP ) ) {
+		$user = ! empty( $p['wp_user_id'] ) ? get_userdata( (int) $p['wp_user_id'] ) : null; // senza utente WordPress (accesso proprio) lo si crea quando si dà il ruolo
+		if ( $user && $user->has_cap( \AssociazioneSemplice\Plugin::CAP ) ) {
 			return;
 		}
-		$on = in_array( \AssociazioneSemplice\Plugin::ROLE_SECRETARY, (array) $user->roles, true );
+		$on = $user && in_array( \AssociazioneSemplice\Plugin::ROLE_SECRETARY, (array) $user->roles, true );
 		echo '<div class="asem-card"><h2>Segreteria</h2>';
 		echo '<p>' . ( $on ? '<strong class="asem-ok">Fa parte della segreteria</strong>' : 'Non fa parte della segreteria.' ) . '</p>';
 		Ui::form_open( 'asem_set_secretary', Ui::url( 'asem-person', array( 'id' => (int) $p['id'] ) ) );
@@ -568,10 +581,10 @@ final class PeoplePage {
 
 	/** Permesso di registrare spese dall'area riservata (per chi non usa l'amministrazione del sito). */
 	private static function panel_treasurer( array $p ): void {
-		if ( MemberType::GUEST === $p['type'] || empty( $p['wp_user_id'] ) ) {
+		if ( MemberType::GUEST === $p['type'] || ! \AssociazioneSemplice\PeopleService::has_access( $p ) ) {
 			return;
 		}
-		$on = \AssociazioneSemplice\Access::is_treasurer( (int) $p['wp_user_id'] );
+		$on = \AssociazioneSemplice\Access::is_treasurer( (int) ( $p['wp_user_id'] ?? 0 ) );
 		echo '<div class="asem-card"><h2>Tesoriere</h2>';
 		echo '<p>' . ( $on ? '<strong class="asem-ok">Può incassare, registrare spese, iscrivere soci e vendere gli eventi dall\'area riservata</strong>' : 'Non può incassare, registrare spese né iscrivere soci.' ) . '</p>';
 		Ui::form_open( 'asem_set_treasurer', Ui::url( 'asem-person', array( 'id' => (int) $p['id'] ) ) );
@@ -583,10 +596,10 @@ final class PeoplePage {
 
 	/** Staff dell'ente: verifica gli accessi a tutti gli eventi. Per l'incasso sul posto serve inoltre l'abilitazione sul singolo evento. */
 	private static function panel_staff( array $p ): void {
-		if ( ! MemberType::is_member( $p['type'] ) || empty( $p['wp_user_id'] ) ) {
+		if ( ! MemberType::is_member( $p['type'] ) || ! \AssociazioneSemplice\PeopleService::has_access( $p ) ) {
 			return;
 		}
-		$on = \AssociazioneSemplice\Access::is_entity_staff( (int) $p['wp_user_id'] );
+		$on = \AssociazioneSemplice\Access::is_entity_staff( (int) ( $p['wp_user_id'] ?? 0 ) );
 		echo '<div class="asem-card"><h2>Staff dell\'ente</h2>';
 		echo '<p>' . ( $on ? '<strong class="asem-ok">Verifica gli accessi a tutti gli eventi</strong>' : 'Non fa parte dello staff dell\'ente.' ) . '</p>';
 		Ui::form_open( 'asem_set_staff', Ui::url( 'asem-person', array( 'id' => (int) $p['id'] ) ) );

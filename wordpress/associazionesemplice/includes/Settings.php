@@ -91,6 +91,7 @@ final class Settings {
 			'sdi_code'                => '',        // codice destinatario per la fatturazione elettronica
 			'modules'                 => array(),   // parti del gestionale usate (vedi Modules): vuoto = tutte, come prima della configurazione guidata
 			'join_mode'               => 'request', // chi non è in elenco: 'request' = può chiedere l'accesso alla segreteria; 'invite' = solo su presentazione
+			'member_wp_users'         => 0,         // 0 = i soci entrano con un link o un codice via email e non hanno un utente WordPress (consigliato); 1 = si crea anche un utente WordPress per ogni socio (scelta dell'amministratore)
 			'guests_enabled'          => 1,         // si accettano ospiti (non soci): se spento non si registrano e spariscono dall'area soci
 			'apply_enabled'           => 0,         // domanda di adesione online per chi non è ancora socio: spenta di default
 			'apply_volunteer'         => 0,         // nella domanda si può chiedere anche di essere «socio e volontario»
@@ -118,6 +119,11 @@ final class Settings {
 	}
 
 	/** L'ente accetta ospiti (persone che partecipano senza essere soci)? */
+	/** L'amministratore ha scelto di creare anche un utente WordPress per ogni socio (di default no). */
+	public static function member_wp_users(): bool {
+		return ! empty( self::get( 'member_wp_users' ) );
+	}
+
 	public static function guests_enabled(): bool {
 		return ! empty( self::get( 'guests_enabled' ) );
 	}
@@ -199,6 +205,7 @@ final class Settings {
 		$clean['sdi_code']                = strtoupper( substr( preg_replace( '/[^A-Za-z0-9]/', '', (string) $clean['sdi_code'] ), 0, 7 ) );
 		$clean['modules']                 = Modules::sanitize( is_array( $clean['modules'] ) ? $clean['modules'] : array() );
 		$clean['guests_enabled']          = empty( $clean['guests_enabled'] ) ? 0 : 1;
+		$clean['member_wp_users']         = empty( $clean['member_wp_users'] ) ? 0 : 1;
 		$clean['delete_on_uninstall']     = empty( $clean['delete_on_uninstall'] ) ? 0 : 1;
 		$clean['join_mode']             ='invite' === $clean['join_mode'] ? 'invite' : 'request';
 		$clean['apply_enabled']           = empty( $clean['apply_enabled'] ) ? 0 : 1;

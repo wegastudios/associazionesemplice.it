@@ -175,7 +175,7 @@ final class Documents {
 			wp_die( 'Documento non trovato.', 404 );
 		}
 		if ( ! Access::can_read_document( $doc ) ) {
-			if ( ! is_user_logged_in() ) {
+			if ( ! MemberSession::logged_in() ) {
 				wp_safe_redirect( wp_login_url( self::url( $id ) ) );
 				exit;
 			}

@@ -83,7 +83,7 @@ final class Views {
 		$html  = '<form class="asemf-form ' . esc_attr( $class ) . '" method="post"' . ( $multipart ? ' enctype="multipart/form-data"' : '' ) . ' action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		$html .= '<input type="hidden" name="action" value="' . esc_attr( $action ) . '">';
 		$html .= '<input type="hidden" name="_back" value="' . esc_url( Restrict::current_url() ) . '">';
-		$html .= wp_nonce_field( $action, '_wpnonce', false, false );
+		$html .= \AssociazioneSemplice\Csrf::field( $action );
 		$html .= $fields_html;
 		if ( $buttons ) {
 			foreach ( $buttons as $b ) {
@@ -127,16 +127,16 @@ final class Views {
 
 	/** Esegue $fn( persona ) solo se l'utente è collegato e ha una scheda socio; altrimenti mostra il messaggio giusto. */
 	public static function with_person( callable $fn, string $class = '' ): string {
-		if ( ! is_user_logged_in() ) {
+		if ( ! \AssociazioneSemplice\MemberSession::logged_in() ) {
 			return self::login_prompt();
 		}
 		self::no_cache();
-		$uid      = get_current_user_id();
+		$uid      = get_current_user_id(); // 0 per chi è entrato con l'accesso proprio
 		$is_admin = Access::is_admin_user( $uid );
 		if ( ! $is_admin && ! Edition::allows( 'member_area' ) ) {
 			return self::wrap( self::notice( 'Servizio temporaneamente sospeso. Contatta l\'associazione.', 'asemf-err' ) );
 		}
-		$person = Access::person_for_user( $uid );
+		$person = Access::current_person();
 		if ( ! $person ) {
 			return self::wrap( self::notice( $is_admin
 				? 'Sei amministratore del sito e non hai una scheda socio collegata: qui i soci vedono i propri dati.'
@@ -1232,7 +1232,7 @@ final class Views {
 
 	/** Chi sta guardando e chi può prenotare (sé stesso e i propri ospiti). */
 	private static function booking_context(): array {
-		$ctx = array( 'logged' => is_user_logged_in(), 'can_book' => false, 'people' => array(), 'suspended' => false );
+		$ctx = array( 'logged' => \AssociazioneSemplice\MemberSession::logged_in(), 'can_book' => false, 'people' => array(), 'suspended' => false );
 		if ( ! $ctx['logged'] ) {
 			return $ctx;
 		}

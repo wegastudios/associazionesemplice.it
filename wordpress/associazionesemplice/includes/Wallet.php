@@ -14,13 +14,7 @@ final class Wallet {
 
 	public static function register(): void {
 		add_action( 'admin_post_asem_wallet_apple', array( __CLASS__, 'handle_apple' ) );
-		add_action(
-			'admin_post_nopriv_asem_wallet_apple',
-			function () {
-				wp_safe_redirect( wp_login_url( home_url( '/' ) ) );
-				exit;
-			}
-		);
+		add_action( 'admin_post_nopriv_asem_wallet_apple', Csrf::nopriv( array( __CLASS__, 'handle_apple' ), array( Csrf::class, 'to_login' ) ) );
 	}
 
 	// ---------- Configurazione ----------
@@ -190,7 +184,7 @@ final class Wallet {
 	}
 
 	public static function apple_url( int $person_id ): string {
-		return wp_nonce_url( add_query_arg( array( 'action' => 'asem_wallet_apple', 'person' => $person_id ), admin_url( 'admin-post.php' ) ), 'asem_wallet_apple_' . $person_id );
+		return Csrf::url( add_query_arg( array( 'action' => 'asem_wallet_apple', 'person' => $person_id ), admin_url( 'admin-post.php' ) ), 'asem_wallet_apple_' . $person_id );
 	}
 
 	/** Pulsanti "Aggiungi al wallet" per la tessera digitale del socio (vuoto se nessun wallet è configurato). */
@@ -214,7 +208,7 @@ final class Wallet {
 
 	public static function handle_apple(): void {
 		$pid = isset( $_GET['person'] ) ? (int) $_GET['person'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
-		check_admin_referer( 'asem_wallet_apple_' . $pid );
+		Csrf::check( 'asem_wallet_apple_' . $pid );
 		if ( ! current_user_can( 'asem_view_person', $pid ) ) {
 			wp_die( 'Non autorizzato.', 403 );
 		}

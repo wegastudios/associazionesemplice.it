@@ -22,8 +22,11 @@ final class Pwa {
 		add_action( 'init', array( __CLASS__, 'maybe_serve' ), 0 );
 		add_action( 'wp_head', array( __CLASS__, 'print_head' ), 1 );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue' ) );
+		add_action( 'asem_member_access_forgotten', array( __CLASS__, 'forget_member' ), 10, 2 ); // eliminando la persona si tolgono le sue notifiche
 		add_action( 'wp_ajax_asem_push_subscribe', array( __CLASS__, 'ajax_subscribe' ) );
 		add_action( 'wp_ajax_asem_push_unsubscribe', array( __CLASS__, 'ajax_unsubscribe' ) );
+		add_action( 'wp_ajax_nopriv_asem_push_subscribe', array( __CLASS__, 'ajax_subscribe' ) ); // chi è entrato con l'accesso proprio non è un utente WordPress
+		add_action( 'wp_ajax_nopriv_asem_push_unsubscribe', array( __CLASS__, 'ajax_unsubscribe' ) );
 	}
 
 	// ---------- Indirizzi ----------
@@ -251,9 +254,9 @@ JS;
 				'sw'    => self::url( 'asem-sw.js' ),
 				'scope' => home_url( '/' ),
 				'ajax'  => admin_url( 'admin-ajax.php' ),
-				'nonce' => is_user_logged_in() ? wp_create_nonce( 'asem_push' ) : '',
-				'push'  => Push::enabled() && is_user_logged_in(),
-				'vapid' => Push::enabled() && is_user_logged_in() ? Push::public_key() : '',
+				'nonce' => MemberSession::logged_in() ? Csrf::create( 'asem_push' ) : '',
+				'push'  => Push::enabled() && MemberSession::logged_in(),
+				'vapid' => Push::enabled() && MemberSession::logged_in() ? Push::public_key() : '',
 			)
 		);
 	}
@@ -261,11 +264,11 @@ JS;
 	// ---------- Dispositivi ----------
 
 	private static function ajax_guard(): int {
-		check_ajax_referer( 'asem_push', 'nonce' );
-		if ( ! is_user_logged_in() || ! Push::enabled() ) {
+		Csrf::check_ajax( 'asem_push', 'nonce' );
+		if ( ! MemberSession::logged_in() || ! Push::enabled() ) {
 			wp_send_json_error( array( 'message' => 'Le notifiche non sono attive.' ), 403 );
 		}
-		return get_current_user_id();
+		return MemberSession::actor_key(); // l'utente WordPress oppure, con l'accesso proprio, il numero legato alla persona
 	}
 
 	public static function ajax_subscribe(): void {
@@ -286,5 +289,10 @@ JS;
 		$uid = self::ajax_guard();
 		Push::unsubscribe( $uid, (string) wp_unslash( $_POST['endpoint'] ?? '' ) ); // phpcs:ignore WordPress.Security
 		wp_send_json_success( array( 'subscribed' => false ) );
+	}
+
+	/** Toglie le notifiche di chi entrava con l'accesso proprio quando la persona viene eliminata o anonimizzata. */
+	public static function forget_member( int $person_id, int $actor_key ): void {
+		Push::unsubscribe_all( $actor_key );
 	}
 }

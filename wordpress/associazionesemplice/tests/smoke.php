@@ -90,6 +90,7 @@ $ledger   = Plugin::ledger();
 $reports  = Plugin::reports();
 $today    = Db::today();
 Settings::update( array( 'ticket_qr_enabled' => 1, 'wallet_enabled' => 1 ) ); // spenti di default: i test li accendono
+Settings::update( array( 'member_wp_users' => 1 ) ); // i controlli più vecchi presuppongono un utente WordPress per ogni socio (la scelta di default, senza utente, si prova nel blocco «Accesso proprio»)
 $year     = substr( $today, 0, 4 );
 $sy       = Settings::social_year();
 $month    = $sy->clamp( substr( $today, 0, 7 ) );
@@ -951,6 +952,7 @@ asem_ok( false !== $wz_p_ente && false !== $wz_p_iva && $wz_p_ente < $wz_p_iva &
 asem_ok( false !== strpos( $wz_html3, 'privacy_page_id' ) && false === strpos( $wz_html3, 'privacy_retention_years' ) && false === strpos( $wz_html3, 'Conservazione dei dati' ) && false !== strpos( $wz_html3, 'altre funzioni facoltative' ), 'procedura: privacy tra le pagine esistenti, niente anonimizzazione, funzioni facoltative a scomparsa' );
 $wz_steps = preg_match_all( '/<section class="asem-wiz-step"/', $wz_html3 );
 asem_ok( $wz_steps <= 8, 'procedura: al massimo otto passi (' . $wz_steps . ')' );
+asem_ok( false !== strpos( $wz_html3, 'name="member_wp_users" value="0"' ) && false !== strpos( $wz_html3, 'name="wpusers_present"' ), 'procedura: la scelta su come entrano i soci è nel passo «Cosa ti serve», senza un passo in più' );
 asem_ok( false !== strpos( $wz_html3, 'Descrivi il tuo ente e scegli in 4 sezioni veloci i servizi che vuoi gestire' ) && 4 === preg_match_all( '/<li data-group="/', $wz_html3 ) && false !== strpos( $wz_html3, '>Ente<' ) && false !== strpos( $wz_html3, '>Gestione<' ) && false !== strpos( $wz_html3, '>Pagamenti<' ) && false !== strpos( $wz_html3, '>Aspetto<' ), 'procedura: indicatore di sezione (Ente, Gestione, Pagamenti, Aspetto) al posto del conteggio delle pagine' );
 asem_ok( 2 === preg_match_all( '/<section class="asem-wiz-step"[^>]*data-group="ente"/', $wz_html3 ) && (int) preg_match_all( '/<section class="asem-wiz-step"[^>]*data-group="pagamenti"/', $wz_html3 ) >= 2 && 1 === preg_match_all( '/<section class="asem-wiz-step"[^>]*data-group="gestione"/', $wz_html3 ) && 1 === preg_match_all( '/<section class="asem-wiz-step"[^>]*data-group="aspetto"/', $wz_html3 ) && 1 === preg_match_all( '/<section class="asem-wiz-step"[^>]*data-group="optional"/', $wz_html3 ) && false === strpos( $wz_html3, 'Passo "' ), 'procedura: l\'ente occupa tre schermate di una sola sezione, l\'elenco dei soci è facoltativo e non si conta' );
 asem_ok( 5 === (int) Settings::get( 'privacy_retention_years' ), 'anonimizzazione: di default 5 anni di inattività' );
@@ -6570,6 +6572,7 @@ Settings::update( array( 'membership_fee_cents' => 1000, 'rules_enabled' => 0, '
 Settings::update( array( 'limits' => array_merge( (array) Settings::get( 'limits' ), array( 'apply_per_ip' => 100, 'first_access_per_email' => 50 ) ) ) );
 
 // minori e tutori
+Settings::update( array( 'member_wp_users' => 1 ) ); // il ripristino di fabbrica qui sopra ha riportato le impostazioni ai valori di default: i controlli che seguono presuppongono un utente WordPress per ogni socio
 $mn_mum  = $people->create( array( 'type' => 'ordinary', 'card_number' => 'mn1', 'first_name' => 'Marta', 'last_name' => 'Madre', 'email' => 'marta.madre@example.com', 'birth_date' => '1980-03-04' ) );
 $mn_dad  = $people->create( array( 'type' => 'ordinary', 'card_number' => 'mn2', 'first_name' => 'Pino', 'last_name' => 'Padre', 'email' => 'pino.padre@example.com' ) );
 $mn_aunt = $people->create( array( 'type' => 'ordinary', 'card_number' => 'mn3', 'first_name' => 'Zita', 'last_name' => 'Zia', 'email' => 'zita.zia@example.com' ) );
@@ -7796,7 +7799,8 @@ asem_render( array( Admin\DashboardPage::class, 'render' ), 'Bilancio dell\'anno
 $wpdb->query( 'DELETE FROM ' . Db::t( 'balance_snaps' ) );
 wp_set_current_user( 1 );
 
-// ---------- Accesso proprio dei soci (predisposizione, spento di default) ----------
+// ---------- Accesso proprio dei soci (acceso di default; l'utente WordPress per i soci è una scelta dell'amministratore) ----------
+Settings::update( array( 'member_wp_users' => 0 ) );
 use AssociazioneSemplice\MemberPassword;
 use AssociazioneSemplice\MemberSession;
 use AssociazioneSemplice\SessionToken;
@@ -7808,10 +7812,11 @@ $ms_c = SessionToken::csrf( 'abc', 'prenota', time() + 600, 'sec' );
 asem_ok( SessionToken::check_csrf( $ms_c, 'abc', 'prenota', time(), 'sec' ), 'accesso proprio: il token CSRF vale per la sua sessione e azione' );
 asem_ok( ! SessionToken::check_csrf( $ms_c, 'abd', 'prenota', time(), 'sec' ) && ! SessionToken::check_csrf( $ms_c, 'abc', 'paga', time(), 'sec' ) && ! SessionToken::check_csrf( $ms_c, 'abc', 'prenota', time() + 1200, 'sec' ) && ! SessionToken::check_csrf( 'x.y', 'abc', 'prenota', time(), 'sec' ), 'accesso proprio: il token CSRF non vale per un\'altra sessione, azione o dopo la scadenza' );
 $ms_h = MemberPassword::make( 'una password lunga' );
-asem_ok( MemberPassword::verify( 'una password lunga', $ms_h ) && ! MemberPassword::verify( 'un\'altra', $ms_h ) && ! MemberPassword::is_legacy( $ms_h ), 'accesso proprio: la password si controlla sull\'impronta' );
-asem_ok( MemberPassword::is_legacy( '$P$B123456789012345678901234567890' ) && MemberPassword::needs_rehash( '$wp$2y$10$abc' ) && ! MemberPassword::verify( 'x', '$P$B123456789012345678901234567890' ), 'accesso proprio: le impronte di WordPress si riconoscono e vanno rifatte' );
+asem_ok( MemberPassword::verify( 'una password lunga', $ms_h ) && ! MemberPassword::verify( 'un\'altra', $ms_h ), 'accesso proprio: la password si controlla sull\'impronta' );
 asem_ok( '' !== MemberPassword::problem( 'corta' ) && '' === MemberPassword::problem( 'abbastanza lunga' ), 'accesso proprio: password di almeno 8 caratteri' );
-asem_ok( ! MemberSession::enabled(), 'accesso proprio: spento di default' );
+wp_set_current_user( 0 ); // qui si prova l'accesso senza utente WordPress
+asem_ok( MemberSession::enabled() && ! MemberSession::wp_users_wanted(), 'accesso proprio: acceso di default, senza utente WordPress per i soci' );
+Settings::update( array( 'limits' => array( 'member_sessions' => 0 ) ) );
 $ms_p = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Sessione', 'last_name' => 'Prova' ) );
 $ms_raw2 = MemberSession::start( $ms_p );
 asem_ok( 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'member_sessions' ) . ' WHERE person_id = %d AND token_hash = %s', $ms_p, SessionToken::hash( $ms_raw2 ) ) ), 'accesso proprio: la sessione è salvata con l\'impronta del token' );
@@ -7822,6 +7827,25 @@ $ms_cur = MemberSession::current_person();
 asem_ok( $ms_cur && (int) $ms_cur['id'] === $ms_p, 'accesso proprio: da acceso la sessione riconosce il socio' );
 $ms_tok = MemberSession::csrf( 'prenota' );
 asem_ok( '' !== $ms_tok && MemberSession::check_csrf( 'prenota', $ms_tok ) && ! MemberSession::check_csrf( 'paga', $ms_tok ), 'accesso proprio: CSRF legato alla sessione' );
+$ms_other = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Altro', 'last_name' => 'Socio' ) );
+asem_ok( MemberSession::logged_in() && MemberSession::is_own_session() && (int) Access::current_person()['id'] === $ms_p, 'accesso proprio: senza utente WordPress la persona è quella della sessione' );
+asem_ok( current_user_can( 'asem_edit_own_profile', $ms_p ) && ! current_user_can( 'asem_edit_own_profile', $ms_other ) && ! current_user_can( 'asem_view_person', $ms_other ), 'accesso proprio: i permessi seguono la persona della sessione (i suoi dati sì, quelli degli altri no)' );
+asem_ok( ! current_user_can( Plugin::CAP_OPS ) && ! current_user_can( 'asem_add_expense', 0 ) && ! current_user_can( 'asem_collect', 0 ), 'accesso proprio: nessun potere di segreteria o di tesoriere' );
+$ms_csrf = \AssociazioneSemplice\Csrf::create( 'asem_front_book' );
+asem_ok( \AssociazioneSemplice\Csrf::verify( $ms_csrf, 'asem_front_book' ) && ! \AssociazioneSemplice\Csrf::verify( $ms_csrf, 'altra_azione' ) && ! \AssociazioneSemplice\Csrf::verify( wp_create_nonce( 'asem_front_book' ), 'asem_front_book' ), 'accesso proprio: i moduli usano il token della sessione, non un nonce di WordPress' );
+asem_ok( MemberSession::actor_key() === MemberSession::ACTOR_BASE + $ms_p && MemberSession::actor_key() !== MemberSession::ACTOR_BASE + $ms_other, 'accesso proprio: chi paga è identificato dalla persona, non da uno zero uguale per tutti' );
+$ms_dl = html_entity_decode( \AssociazioneSemplice\Csrf::url( 'http://example.org/wp-admin/admin-post.php?action=asem_receipt&key=k1', 'asem_receipt_k1' ) );
+parse_str( (string) wp_parse_url( $ms_dl, PHP_URL_QUERY ), $ms_q );
+asem_ok( isset( $ms_q['_wpnonce'] ) && \AssociazioneSemplice\Csrf::verify( $ms_q['_wpnonce'], 'asem_receipt_k1' ) && ! \AssociazioneSemplice\Csrf::verify( $ms_q['_wpnonce'], 'asem_receipt_k2' ) && 'asem_receipt' === $ms_q['action'], 'accesso proprio: i link dei download portano il token della sessione' );
+$ms_req = new WP_REST_Request( 'GET', '/associazionesemplice/v1/me/bookings' );
+$ms_res = rest_do_request( $ms_req );
+asem_ok( 200 === $ms_res->get_status(), 'accesso proprio: la REST dei soci riconosce la sessione (le mie prenotazioni)' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::form( 'asem_front_book', '', 'Prenota' ), $ms_csrf ), 'accesso proprio: il modulo porta il token della sessione' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::with_person( function ( $p ) { return 'Ciao ' . $p['first_name']; } ), 'Ciao Sessione' ), 'accesso proprio: la pagina dei soci riconosce chi è entrato' );
+wp_set_current_user( 1 );
+asem_ok( 1 === MemberSession::actor_key(), 'accesso proprio: con WordPress chi agisce è l\'utente WordPress' );
+asem_ok( ! MemberSession::is_own_session() && MemberSession::logged_in() && current_user_can( Plugin::CAP_OPS ), 'accesso proprio: se si è collegati a WordPress vale WordPress' );
+wp_set_current_user( 0 );
 $_COOKIE[ MemberSession::COOKIE ] = SessionToken::generate(); // cookie inventato
 $ms_fake = new ReflectionProperty( MemberSession::class, 'current' );
 $ms_fake->setAccessible( true );
@@ -7886,15 +7910,53 @@ for ( $ml_i = 0; $ml_i < MemberPassword::MAX_FAILED; $ml_i++ ) {
 	MemberLogin::login_with_password( $ml_addr, 'sbagliata!' );
 }
 asem_ok( null === MemberLogin::login_with_password( $ml_addr, 'una password lunga' ), 'accesso proprio: dopo gli errori di fila l\'account si blocca anche con la password giusta' );
-$wpdb->update( Db::t( 'member_auth' ), array( 'failed_count' => 0, 'locked_until' => null, 'pass_hash' => wp_hash_password( 'vecchia password' ) ), array( 'person_id' => $ml_p ) );
-asem_ok( $ml_p === MemberLogin::login_with_password( $ml_addr, 'vecchia password' ) && ! MemberPassword::is_legacy( (string) $wpdb->get_var( 'SELECT pass_hash FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = ' . $ml_p ) ), 'accesso proprio: la password di WordPress vale e viene rifatta con l\'algoritmo nuovo' );
-Settings::update( array( 'limits' => array() ) );
+$wpdb->update( Db::t( 'member_auth' ), array( 'failed_count' => 0, 'locked_until' => null, 'pass_hash' => password_hash( 'vecchia password', PASSWORD_BCRYPT, array( 'cost' => 4 ) ) ), array( 'person_id' => $ml_p ) );
+asem_ok( $ml_p === MemberLogin::login_with_password( $ml_addr, 'vecchia password' ) && ! MemberPassword::needs_rehash( (string) $wpdb->get_var( 'SELECT pass_hash FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = ' . $ml_p ) ), 'accesso proprio: un\'impronta con un costo vecchio vale e viene rifatta con quello di oggi' );
+// Separazione: con l'accesso proprio acceso i soci semplici non hanno un utente WordPress
+asem_ok( empty( Plugin::people()->get( $ml_p )['wp_user_id'] ) && ! get_user_by( 'email', $ml_addr ) && \AssociazioneSemplice\PeopleService::has_access( Plugin::people()->get( $ml_p ) ), 'separazione: un nuovo socio con email non ha un utente WordPress ma ha un accesso' );
+$sp_mails = count( $ml_mail );
 delete_transient( 'asem_ml_m_' . md5( $ml_addr ) );
-asem_ok( ! MemberLogin::request( $ml_addr ) && null === MemberLogin::login_with_password( $ml_addr, 'vecchia password' ), 'accesso proprio: da spento non si entra né si manda niente' );
+asem_ok( \AssociazioneSemplice\Frontend\FirstAccess::request( $ml_addr ) && count( $ml_mail ) === $sp_mails + 1 && false !== strpos( (string) end( $ml_mail )['message'], 'asem_ml=' ), 'separazione: il «Primo accesso» manda il link di accesso, non il ripristino della password di WordPress' );
+$sp_p = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Attiva', 'last_name' => 'Prova' ) );
+asem_ok( 0 === Plugin::people()->activate( $sp_p, 'attiva.prova@example.org', '3331234567', '' ) && ! get_user_by( 'email', 'attiva.prova@example.org' ) && 'attiva.prova@example.org' === Plugin::people()->get( $sp_p )['email'], 'separazione: l\'attivazione dal link salva l\'email e non crea nessun utente WordPress (password facoltativa)' );
+asem_ok( $sp_p === (int) ( MemberLogin::person_by_email( 'attiva.prova@example.org' )['id'] ?? 0 ), 'separazione: chi si è attivato entra con link o codice' );
+asem_ok( \AssociazioneSemplice\Frontend\Activation::resolve( \AssociazioneSemplice\ActivationToken::param( $sp_p, time() + 600, wp_salt( 'auth' ) . '|activate' ) )['status'] === 'done', 'separazione: il link di attivazione non vale più una volta attivato' );
+$sp_uid = Plugin::people()->ensure_user( $sp_p );
+asem_ok( $sp_uid > 0 && $sp_uid === (int) Plugin::people()->get( $sp_p )['wp_user_id'] && in_array( Plugin::ROLE_MEMBER, (array) get_userdata( $sp_uid )->roles, true ) && null === MemberLogin::person_by_email( 'attiva.prova@example.org' ), 'separazione: l\'utente WordPress nasce solo quando si dà un potere, e da allora si entra da WordPress' );
+asem_ok( $sp_uid === Plugin::people()->ensure_user( $sp_p ), 'separazione: dare un secondo potere non crea un secondo utente' );
+// Scelta dell'amministratore: anche un utente WordPress per i soci (solo nome, cognome ed email passano a WordPress)
+Settings::update( array( 'member_wp_users' => 'x' ) );
+asem_ok( Settings::member_wp_users() && MemberSession::wp_users_wanted(), 'scelta dell\'amministratore: con «anche un utente WordPress» i soci nuovi ne hanno uno' );
+$wu_p = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Utente', 'last_name' => 'Facoltativo', 'email' => 'utente.facoltativo@example.org', 'phone' => '3331234568', 'address' => 'Via Segreta 99' ) );
+$wu_uid = (int) Plugin::people()->get( $wu_p )['wp_user_id'];
+$wu_meta = wp_json_encode( get_user_meta( $wu_uid ) );
+asem_ok( $wu_uid > 0 && false === strpos( $wu_meta, '3331234568' ) && false === strpos( $wu_meta, 'Via Segreta' ) && false === strpos( $wu_meta, 'billing_' ) && 'utente.facoltativo@example.org' === get_userdata( $wu_uid )->user_email, 'dati: a WordPress passano solo nome, cognome ed email (niente telefono, indirizzo o campi di fatturazione)' );
+asem_ok( Plugin::ROLE_MEMBER === get_userdata( $wu_uid )->roles[0] && ! Access::has_powers( $wu_uid ), 'passaggio all\'accesso con link: un socio con il solo ruolo Socio non ha poteri' );
+Settings::update( array( 'member_wp_users' => 0 ) );
+// Passaggio all'accesso con link quando non restano poteri (decide l'amministratore)
+Access::set_treasurer( $wu_uid, true );
+$wu_err = '';
+try {
+	Plugin::people()->release_wp_user( $wu_p );
+} catch ( \InvalidArgumentException $e ) {
+	$wu_err = $e->getMessage();
+}
+asem_ok( '' !== $wu_err && $wu_uid === (int) Plugin::people()->get( $wu_p )['wp_user_id'] && get_userdata( $wu_uid ), 'passaggio all\'accesso con link: chi ha ancora un potere non si tocca' );
+Access::set_treasurer( $wu_uid, false );
+Plugin::people()->release_wp_user( $wu_p );
+asem_ok( empty( Plugin::people()->get( $wu_p )['wp_user_id'] ) && ! get_userdata( $wu_uid ) && $wu_p === (int) ( MemberLogin::person_by_email( 'utente.facoltativo@example.org' )['id'] ?? 0 ), 'passaggio all\'accesso con link: senza poteri l\'utente WordPress sparisce e il socio entra con il link' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Admin\MemberAccessChoice::html(), 'nome, cognome ed email' ) && false !== strpos( \AssociazioneSemplice\Admin\MemberAccessChoice::html(), 'name="member_wp_users" value="1"' ), 'impostazioni e configurazione guidata: la scelta spiega vantaggi, svantaggi e cosa passa a WordPress' );
+Settings::update( array( 'limits' => array( 'member_sessions' => 0 ) ) );
+delete_transient( 'asem_ml_m_' . md5( $ml_addr ) );
+asem_ok( ! MemberLogin::request( $ml_addr ) && null === MemberLogin::login_with_password( $ml_addr, 'vecchia password' ) && MemberSession::wp_users_wanted(), 'accesso proprio: da spento non si entra né si manda niente, e i soci tornano ad avere un utente WordPress' );
 remove_filter( 'pre_wp_mail', $ml_hook, 10 );
 unset( $_COOKIE[ MemberSession::COOKIE ] );
-Settings::update( array( 'limits' => array() ) );
 $ms_fake->setValue( null, null );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::with_person( function ( $p ) { return 'segreto'; } ), 'Area riservata ai soci' ), 'accesso proprio: senza accesso la pagina dei soci chiede di entrare' );
+Settings::update( array( 'limits' => array() ) );
+Settings::update( array( 'member_wp_users' => 1 ) ); // fine del blocco: i controlli che seguono presuppongono un utente WordPress per ogni socio
+$ms_fake->setValue( null, null );
+wp_set_current_user( 1 );
 
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 

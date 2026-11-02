@@ -83,6 +83,11 @@ final class Push {
 		self::db()->delete( Db::t( 'push_subs' ), array( 'user_id' => $user_id, 'endpoint_hash' => sha1( $endpoint ) ) );
 	}
 
+	/** Toglie tutti i dispositivi di un utente (o del numero legato a una persona senza utente). */
+	public static function unsubscribe_all( int $user_id ): void {
+		self::db()->delete( Db::t( 'push_subs' ), array( 'user_id' => $user_id ) );
+	}
+
 	public static function subscribed( int $user_id ): bool {
 		return (bool) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'push_subs' ) . ' WHERE user_id = %d', $user_id ) );
 	}
@@ -155,7 +160,15 @@ final class Push {
 		if ( ! self::enabled() || '' === $email ) {
 			return 0;
 		}
-		$u = get_user_by( 'email', $email );
-		return $u ? self::notify_users( array( (int) $u->ID ), $title, $body, $url ) : 0;
+		$ids = array();
+		$u   = get_user_by( 'email', $email );
+		if ( $u ) {
+			$ids[] = (int) $u->ID;
+		}
+		$p = Plugin::people()->find_by_email( strtolower( trim( $email ) ) ); // chi ha l'accesso proprio non ha un utente: le sue notifiche stanno sul numero legato alla persona
+		if ( $p && empty( $p['wp_user_id'] ) ) {
+			$ids[] = MemberSession::ACTOR_BASE + (int) $p['id'];
+		}
+		return $ids ? self::notify_users( $ids, $title, $body, $url ) : 0;
 	}
 }

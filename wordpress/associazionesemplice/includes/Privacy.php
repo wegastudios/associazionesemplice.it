@@ -16,13 +16,7 @@ final class Privacy {
 
 	public static function register(): void {
 		add_action( 'admin_post_asem_privacy_export', array( __CLASS__, 'handle_export' ) );
-		add_action(
-			'admin_post_nopriv_asem_privacy_export',
-			function () {
-				wp_safe_redirect( wp_login_url( home_url( '/' ) ) );
-				exit;
-			}
-		);
+		add_action( 'admin_post_nopriv_asem_privacy_export', Csrf::nopriv( array( __CLASS__, 'handle_export' ), array( Csrf::class, 'to_login' ) ) );
 	}
 
 	// ---------- Consenso ----------
@@ -119,12 +113,12 @@ final class Privacy {
 	}
 
 	public static function export_url( int $person_id ): string {
-		return wp_nonce_url( add_query_arg( array( 'action' => 'asem_privacy_export', 'person' => $person_id ), admin_url( 'admin-post.php' ) ), 'asem_privacy_export_' . $person_id );
+		return Csrf::url( add_query_arg( array( 'action' => 'asem_privacy_export', 'person' => $person_id ), admin_url( 'admin-post.php' ) ), 'asem_privacy_export_' . $person_id );
 	}
 
 	public static function handle_export(): void {
 		$pid = isset( $_GET['person'] ) ? (int) $_GET['person'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
-		check_admin_referer( 'asem_privacy_export_' . $pid );
+		Csrf::check( 'asem_privacy_export_' . $pid );
 		if ( ! self::can_export( $pid ) ) {
 			wp_die( 'Non autorizzato.', 403 );
 		}

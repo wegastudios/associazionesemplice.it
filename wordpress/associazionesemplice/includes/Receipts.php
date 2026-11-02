@@ -15,16 +15,9 @@ final class Receipts {
 	const MONTHS = array( 1 => 'gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre' );
 
 	public static function register(): void {
-		add_action( 'admin_post_asem_receipt', array( __CLASS__, 'handle_receipt' ) );
-		add_action( 'admin_post_asem_statement', array( __CLASS__, 'handle_statement' ) );
-		foreach ( array( 'asem_receipt', 'asem_statement' ) as $a ) {
-			add_action(
-				'admin_post_nopriv_' . $a,
-				function () {
-					wp_safe_redirect( wp_login_url( home_url( '/' ) ) );
-					exit;
-				}
-			);
+		foreach ( array( 'asem_receipt' => 'handle_receipt', 'asem_statement' => 'handle_statement' ) as $a => $m ) {
+			add_action( 'admin_post_' . $a, array( __CLASS__, $m ) );
+			add_action( 'admin_post_nopriv_' . $a, Csrf::nopriv( array( __CLASS__, $m ), array( Csrf::class, 'to_login' ) ) );
 		}
 	}
 
@@ -133,11 +126,11 @@ final class Receipts {
 
 	public static function url( string $key ): string {
 		$key = self::clean_key( $key );
-		return wp_nonce_url( add_query_arg( array( 'action' => 'asem_receipt', 'key' => $key ), admin_url( 'admin-post.php' ) ), 'asem_receipt_' . $key );
+		return Csrf::url( add_query_arg( array( 'action' => 'asem_receipt', 'key' => $key ), admin_url( 'admin-post.php' ) ), 'asem_receipt_' . $key );
 	}
 
 	public static function statement_url( int $person_id, int $year ): string {
-		return wp_nonce_url( add_query_arg( array( 'action' => 'asem_statement', 'person' => $person_id, 'year' => $year ), admin_url( 'admin-post.php' ) ), 'asem_statement_' . $person_id . '_' . $year );
+		return Csrf::url( add_query_arg( array( 'action' => 'asem_statement', 'person' => $person_id, 'year' => $year ), admin_url( 'admin-post.php' ) ), 'asem_statement_' . $person_id . '_' . $year );
 	}
 
 	// ---------- Numerazione ----------
@@ -553,7 +546,7 @@ final class Receipts {
 
 	public static function handle_receipt(): void {
 		$key = isset( $_GET['key'] ) ? self::clean_key( sanitize_text_field( wp_unslash( $_GET['key'] ) ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
-		check_admin_referer( 'asem_receipt_' . $key );
+		Csrf::check( 'asem_receipt_' . $key );
 		if ( ! self::can_view( $key ) ) {
 			wp_die( 'Non autorizzato.', 403 );
 		}
@@ -568,7 +561,7 @@ final class Receipts {
 	public static function handle_statement(): void {
 		$pid  = isset( $_GET['person'] ) ? (int) $_GET['person'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
 		$year = isset( $_GET['year'] ) ? (int) $_GET['year'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
-		check_admin_referer( 'asem_statement_' . $pid . '_' . $year );
+		Csrf::check( 'asem_statement_' . $pid . '_' . $year );
 		if ( ! self::can_statement( $pid ) ) {
 			wp_die( 'Non autorizzato.', 403 );
 		}

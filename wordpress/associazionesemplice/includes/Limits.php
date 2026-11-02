@@ -143,10 +143,10 @@ final class Limits {
 			'Mantienilo attivo: è il comportamento consigliato.'
 		);
 		$add(
-			'member_sessions', 'accesso', 'Accesso dei soci indipendente da WordPress', 'flag', 0, 0, 1,
-			'Predisposizione: i soci possono avere un accesso proprio (sessione dedicata) senza essere utenti di WordPress. Con la funzione spenta non cambia nulla: i soci entrano come prima. Si accende quando la migrazione è pronta.',
-			'Acceso, il cookie di sessione dei soci viene letto e accettato: tienilo spento finché non hai seguito la procedura di passaggio.',
-			'Spento è il comportamento attuale: nessun rischio.'
+			'member_sessions', 'accesso', 'Accesso dei soci indipendente da WordPress', 'flag', 1, 0, 1,
+			'I soci entrano con un accesso proprio (un link o un codice via email, password facoltativa) e non hanno bisogno di un utente WordPress. Spento, i soci tornano a entrare con un utente WordPress come prima.',
+			'Acceso, il sito usa un cookie tecnico di sessione («asem_s») e scrive ai soci per mandare il link di accesso. Se la posta del sito non funziona i soci non ricevono il link: provala prima.',
+			'Spento: i soci hanno un utente WordPress e un\'unica password sul sito, come nelle versioni precedenti.'
 		);
 		$add(
 			'profile_gate', 'accesso', 'Blocca prenotazioni e pagamenti finché il profilo è incompleto', 'flag', 1, 0, 1,

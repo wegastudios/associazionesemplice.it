@@ -21,6 +21,14 @@ final class MemberSession {
 	/** @var array|false|null sessione trovata in questa richiesta (false = nessuna) */
 	private static $current = null;
 
+	/**
+	 * Ai nuovi soci si crea anche un utente WordPress? Sì solo se l'accesso proprio è spento oppure se l'amministratore l'ha scelto
+	 * (Impostazioni: «Crea anche un utente WordPress per i soci»). Di default no: i soci semplici entrano con un link o un codice.
+	 */
+	public static function wp_users_wanted(): bool {
+		return ! self::enabled() || Settings::member_wp_users();
+	}
+
 	public static function enabled(): bool {
 		return Limits::flag( 'member_sessions' );
 	}
@@ -109,21 +117,51 @@ final class MemberSession {
 		return $row;
 	}
 
-	/**
-	 * Chi sta navigando: la persona della sessione propria; se non c'è, quella dell'utente WordPress collegato (così segreteria,
-	 * tesoriere e consiglio, che restano utenti WordPress, funzionano come prima).
-	 */
-	public static function current_person(): ?array {
+	/** La persona dell'accesso proprio di questa richiesta (null se non c'è sessione o la persona non può più entrare). */
+	public static function session_person(): ?array {
 		$s = self::current();
-		if ( $s ) {
-			$p = Plugin::people()->get( (int) $s['person_id'] );
-			if ( self::person_allowed( $p ) ) {
-				return $p;
-			}
-			self::destroy(); // la persona non può più entrare (tolta, anonimizzata, tipo cambiato)
+		if ( ! $s ) {
 			return null;
 		}
-		return is_user_logged_in() ? Access::current_person() : null;
+		$p = Plugin::people()->get( (int) $s['person_id'] );
+		if ( self::person_allowed( $p ) ) {
+			return $p;
+		}
+		self::destroy(); // la persona non può più entrare (tolta, anonimizzata, tipo cambiato)
+		return null;
+	}
+
+	/**
+	 * Chi sta navigando. Se è collegato a WordPress vale WordPress (segreteria, tesoriere e consiglio restano utenti WordPress e i loro
+	 * poteri sono coerenti); altrimenti vale l'accesso proprio.
+	 */
+	public static function current_person(): ?array {
+		return Access::current_person();
+	}
+
+	/** Base dei numeri che identificano chi paga o agisce senza utente WordPress: molto sopra qualsiasi id utente, così non si confonde con nessuno. */
+	const ACTOR_BASE = 1000000000000;
+
+	/**
+	 * Chi agisce, come numero: l'utente WordPress se collegato; con l'accesso proprio un numero legato alla persona (ACTOR_BASE + id);
+	 * 0 se nessuno. Serve dove un servizio vuole «l'utente» (pagamenti, limiti orari, avvisi) e 0 per tutti i soci li confonderebbe.
+	 */
+	public static function actor_key(): int {
+		if ( is_user_logged_in() ) {
+			return get_current_user_id();
+		}
+		$p = self::session_person();
+		return $p ? self::ACTOR_BASE + (int) $p['id'] : 0;
+	}
+
+	/** Qualcuno è entrato, in uno dei due modi. */
+	public static function logged_in(): bool {
+		return is_user_logged_in() || null !== self::session_person();
+	}
+
+	/** Entrato con l'accesso proprio e non con WordPress (i moduli usano il token CSRF della sessione). */
+	public static function is_own_session(): bool {
+		return ! is_user_logged_in() && null !== self::session_person();
 	}
 
 	/** Chiude la sessione di questa richiesta e toglie il cookie. */
@@ -149,6 +187,7 @@ final class MemberSession {
 		foreach ( array( 'member_sessions', 'member_auth', 'member_challenges' ) as $t ) {
 			$db->delete( Db::t( $t ), array( 'person_id' => $person_id ) );
 		}
+		do_action( 'asem_member_access_forgotten', $person_id, self::ACTOR_BASE + $person_id ); // le funzioni avanzate tolgono qui ciò che hanno legato alla persona (ad esempio le notifiche del telefono)
 		self::$current = null;
 	}
 

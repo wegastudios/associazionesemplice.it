@@ -53,10 +53,8 @@ final class Actions {
 	}
 
 	private static function bind_extra( string $action, callable $handler, bool $url ): void {
-		add_action(
-			'admin_post_' . $action,
-			function () use ( $action, $handler, $url ) {
-				check_admin_referer( $action );
+		$run = function () use ( $action, $handler, $url ) {
+				\AssociazioneSemplice\Csrf::check( $action );
 				$post = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
 				$back = self::back_url( $post );
 				try {
@@ -71,15 +69,15 @@ final class Actions {
 				} catch ( \Throwable $e ) {
 					self::redirect( $back, '', 'Operazione non riuscita. Riprova più tardi.' );
 				}
-			}
-		);
-		add_action(
-			'admin_post_nopriv_' . $action,
-			function () {
-				wp_safe_redirect( wp_login_url( self::back_url( \AssociazioneSemplice\Plugin::post_data() ) ) ); // phpcs:ignore WordPress.Security.NonceVerification
-				exit;
-			}
-		);
+			};
+		add_action( 'admin_post_' . $action, $run );
+		add_action( 'admin_post_nopriv_' . $action, \AssociazioneSemplice\Csrf::nopriv( $run, array( __CLASS__, 'to_login' ) ) );
+	}
+
+	/** Chi non ha fatto l'accesso viene mandato al login e poi riportato alla pagina. */
+	public static function to_login(): void {
+		wp_safe_redirect( wp_login_url( self::back_url( \AssociazioneSemplice\Plugin::post_data() ) ) ); // phpcs:ignore WordPress.Security.NonceVerification
+		exit;
 	}
 
 	public static function register(): void {
@@ -88,29 +86,21 @@ final class Actions {
 			self::bind_extra( $action, $h[0], $h[1] );
 		}
 		foreach ( self::MAP as $action => $method ) {
-			add_action(
-				'admin_post_' . $action,
-				function () use ( $action, $method ) {
-					check_admin_referer( $action );
-					$post = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
-					$back = self::back_url( $post );
-					try {
-						self::redirect( $back, self::$method( $post ) );
-					} catch ( \InvalidArgumentException $e ) {
-						self::redirect( $back, '', $e->getMessage() );
-					} catch ( \Throwable $e ) {
-						self::redirect( $back, '', 'Operazione non riuscita. Riprova più tardi.' );
-					}
+			$run = function () use ( $action, $method ) {
+				\AssociazioneSemplice\Csrf::check( $action );
+				$post = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
+				$back = self::back_url( $post );
+				try {
+					self::redirect( $back, self::$method( $post ) );
+				} catch ( \InvalidArgumentException $e ) {
+					self::redirect( $back, '', $e->getMessage() );
+				} catch ( \Throwable $e ) {
+					self::redirect( $back, '', 'Operazione non riuscita. Riprova più tardi.' );
 				}
-			);
-			// Chi non ha fatto l'accesso viene mandato al login e poi riportato alla pagina.
-			add_action(
-				'admin_post_nopriv_' . $action,
-				function () {
-					wp_safe_redirect( wp_login_url( self::back_url( \AssociazioneSemplice\Plugin::post_data() ) ) ); // phpcs:ignore WordPress.Security.NonceVerification
-					exit;
-				}
-			);
+			};
+			add_action( 'admin_post_' . $action, $run );
+			// Chi non ha fatto l'accesso viene mandato al login e poi riportato alla pagina (chi ha l'accesso proprio prosegue).
+			add_action( 'admin_post_nopriv_' . $action, \AssociazioneSemplice\Csrf::nopriv( $run, array( __CLASS__, 'to_login' ) ) );
 		}
 	}
 
@@ -319,7 +309,7 @@ final class Actions {
 		if ( $keys ) { // solo le voci scelte (se non ne sceglie nessuna, tutte quelle dovute)
 			$dues = array_intersect_key( $dues, array_flip( $keys ) );
 		}
-		Bank::send_to_member( $actor, array_values( $dues ), get_current_user_id() );
+		Bank::send_to_member( $actor, array_values( $dues ), \AssociazioneSemplice\MemberSession::actor_key() );
 		return 'Ti abbiamo inviato le coordinate per il bonifico: controlla la tua email.';
 	}
 

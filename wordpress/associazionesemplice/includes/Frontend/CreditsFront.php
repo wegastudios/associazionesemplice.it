@@ -28,30 +28,31 @@ final class CreditsFront {
 
 	public static function register(): void {
 		foreach ( self::ACTIONS as $action => $method ) {
-			add_action(
-				'admin_post_' . $action,
-				function () use ( $action, $method ) {
-					check_admin_referer( $action );
-					$post = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
-					$back = self::back( $post );
-					try {
-						$r = self::$method( $post );
-						wp_safe_redirect( is_array( $r ) ? $r['url'] : Flash::url( $back, 'asemf', $r, '' ) );
-					} catch ( \InvalidArgumentException $e ) {
-						wp_safe_redirect( Flash::url( $back, 'asemf', '', $e->getMessage() ) );
-					} catch ( \Throwable $e ) {
-						wp_safe_redirect( Flash::url( $back, 'asemf', '', 'Operazione non riuscita. Riprova più tardi.' ) );
-					}
-					exit;
+			$run = function () use ( $action, $method ) {
+				\AssociazioneSemplice\Csrf::check( $action );
+				$post = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
+				$back = self::back( $post );
+				try {
+					$r = self::$method( $post );
+					wp_safe_redirect( is_array( $r ) ? $r['url'] : Flash::url( $back, 'asemf', $r, '' ) );
+				} catch ( \InvalidArgumentException $e ) {
+					wp_safe_redirect( Flash::url( $back, 'asemf', '', $e->getMessage() ) );
+				} catch ( \Throwable $e ) {
+					wp_safe_redirect( Flash::url( $back, 'asemf', '', 'Operazione non riuscita. Riprova più tardi.' ) );
 				}
-			);
+				exit;
+			};
+			add_action( 'admin_post_' . $action, $run );
 			add_action(
 				'admin_post_nopriv_' . $action,
-				function () {
-					$post = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
-					wp_safe_redirect( wp_login_url( self::back( $post ) ) );
-					exit;
-				}
+				\AssociazioneSemplice\Csrf::nopriv(
+					$run,
+					function () {
+						$post = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
+						wp_safe_redirect( wp_login_url( self::back( $post ) ) );
+						exit;
+					}
+				)
 			);
 		}
 		add_action( 'template_redirect', array( __CLASS__, 'handle_scan' ), 1 );
@@ -111,7 +112,7 @@ final class CreditsFront {
 			return;
 		}
 		$code = sanitize_text_field( wp_unslash( $_GET['asem_credit'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
-		if ( ! is_user_logged_in() ) {
+		if ( ! \AssociazioneSemplice\MemberSession::logged_in() ) {
 			wp_safe_redirect( wp_login_url( Credits::url( $code ) ) );
 			exit;
 		}
@@ -219,6 +220,6 @@ final class CreditsFront {
 	private static function form( string $action, string $fields, string $button, string $class = 'asemf-inline', bool $confirm = false ): string {
 		return '<form class="asemf-form ' . esc_attr( $class ) . '" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"' . ( $confirm ? ' onsubmit="return confirm(\'Confermi?\');"' : '' ) . '>'
 			. '<input type="hidden" name="action" value="' . esc_attr( $action ) . '"><input type="hidden" name="_back" value="' . esc_url( Restrict::current_url() ) . '">'
-			. wp_nonce_field( $action, '_wpnonce', false, false ) . $fields . '<button class="asemf-btn">' . esc_html( $button ) . '</button></form>';
+			. \AssociazioneSemplice\Csrf::field( $action ) . $fields . '<button class="asemf-btn">' . esc_html( $button ) . '</button></form>';
 	}
 }

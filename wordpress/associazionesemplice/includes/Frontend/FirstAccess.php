@@ -19,6 +19,7 @@ defined( 'ABSPATH' ) || exit;
 final class FirstAccess {
 
 	const MAX_PER_HOUR = 10;
+	const MESSAGE_OWN  = 'Richiesta ricevuta. Se sei un socio ti abbiamo scritto all\'email indicata: apri il link per entrare (controlla anche la posta indesiderata). Altrimenti ti contatta la segreteria su WhatsApp.';
 	const MESSAGE      = 'Richiesta ricevuta. Se sei un socio ti abbiamo scritto all\'email indicata: apri il messaggio e scegli la tua password (controlla anche la posta indesiderata). Altrimenti ti contatta la segreteria su WhatsApp.';
 
 	public static function register(): void {
@@ -45,7 +46,7 @@ final class FirstAccess {
 		$email = trim( $email );
 		$user  = '' !== $email && is_email( $email ) ? get_user_by( 'email', $email ) : false;
 		if ( ! $user ) {
-			return false;
+			return ! \AssociazioneSemplice\MemberSession::wp_users_wanted() && \AssociazioneSemplice\MemberLogin::request( $email ); // senza utente WordPress: link e codice per l'accesso proprio
 		}
 		// Non più di qualche email all'ora allo stesso indirizzo: nessuno può inondare di messaggi la casella di un socio (la risposta del sito resta uguale).
 		$mail_key = 'asem_fa_m_' . md5( strtolower( $user->user_email ) );
@@ -102,8 +103,8 @@ final class FirstAccess {
 		// 1. L'email è già di un socio: caso sicuro, il link va a quell'indirizzo.
 		$by_mail = $people->find_by_email( strtolower( $email ) );
 		if ( $by_mail && MemberType::can_login( $by_mail['type'] ) && empty( $by_mail['application_status'] ) ) { // chi ha solo chiesto di iscriversi non è ancora socio
-			if ( empty( $by_mail['wp_user_id'] ) ) {
-				$people->update( (int) $by_mail['id'], array() ); // crea l'utente che mancava
+			if ( empty( $by_mail['wp_user_id'] ) && \AssociazioneSemplice\MemberSession::wp_users_wanted() ) {
+				$people->update( (int) $by_mail['id'], array() ); // crea l'utente che mancava (con l'accesso proprio non serve: il link va all'email)
 			}
 			return self::request( $email ) ? 'emailed' : 'none';
 		}
@@ -186,7 +187,7 @@ final class FirstAccess {
 				if ( 'invalid' === self::submit( (string) ( $post['name'] ?? '' ), (string) ( $post['email'] ?? '' ), (string) ( $post['phone'] ?? '' ) ) ) {
 					$error = 'Controlla i dati: servono nome e cognome, un\'email valida e il numero di cellulare.';
 				} else {
-					$message = self::MESSAGE; // sempre la stessa risposta: non si scopre chi è socio
+					$message = \AssociazioneSemplice\MemberSession::enabled() ? self::MESSAGE_OWN : self::MESSAGE; // sempre la stessa risposta: non si scopre chi è socio
 					$post    = array();
 				}
 			}

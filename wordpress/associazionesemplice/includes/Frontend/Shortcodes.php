@@ -130,7 +130,7 @@ final class Shortcodes {
 			case 'privacy':
 				return Views::privacy_notice();
 			case 'accesso':
-				return is_user_logged_in() ? '' : Views::login_prompt();
+				return \AssociazioneSemplice\MemberSession::logged_in() ? '' : Views::login_prompt();
 		}
 		return (string) apply_filters( 'asem_render_view', '', $view, $atts ); // le viste di un'estensione
 	}

@@ -72,7 +72,7 @@ final class RefundsFront {
 			throw new \InvalidArgumentException( Edition::missing_message( 'refunds' ) );
 		}
 		$actor = Actions::actor();
-		Refunds::request( (int) $actor['id'], $post, Documents::prepare_upload( 'file' ), get_current_user_id() );
+		Refunds::request( (int) $actor['id'], $post, Documents::prepare_upload( 'file' ), get_current_user_id() ?: null );
 		return 'Richiesta inviata. La segreteria la esamina e ti avvisa per email.';
 	}
 
