@@ -28,10 +28,8 @@ final class ResourcesFront {
 
 	public static function register(): void {
 		foreach ( self::ACTIONS as $action => $method ) {
-			add_action(
-				'admin_post_' . $action,
-				function () use ( $action, $method ) {
-					check_admin_referer( $action );
+			$run = function () use ( $action, $method ) {
+					\AssociazioneSemplice\Csrf::check( $action );
 					$post = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
 					$back = wp_validate_redirect( ! empty( $post['_back'] ) ? esc_url_raw( $post['_back'] ) : home_url( '/' ), home_url( '/' ) );
 					try {
@@ -47,16 +45,14 @@ final class ResourcesFront {
 						wp_safe_redirect( \AssociazioneSemplice\Flash::url( $back, 'asemf', '', 'Operazione non riuscita. Riprova più tardi.' ) );
 					}
 					exit;
-				}
-			);
-			add_action(
-				'admin_post_nopriv_' . $action,
-				function () {
+				};
+			add_action( 'admin_post_' . $action, $run );
+			$login = function () {
 					$post = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
 					wp_safe_redirect( wp_login_url( wp_validate_redirect( ! empty( $post['_back'] ) ? esc_url_raw( $post['_back'] ) : home_url( '/' ), home_url( '/' ) ) ) );
 					exit;
-				}
-			);
+				};
+			add_action( 'admin_post_nopriv_' . $action, \AssociazioneSemplice\Csrf::nopriv( $run, $login ) );
 		}
 	}
 
@@ -118,7 +114,7 @@ final class ResourcesFront {
 		$id   = Resources::book_slot( $rid, (int) $actor['id'], $date, $start, $slots, $guests, false, '', true );
 		$back = remove_query_arg( array( 'asemf_ok', 'asemf_err', 'asemf_sig', 'asem_pay', 'asem_ret', 'token', 'PayerID' ), wp_validate_redirect( ! empty( $post['_back'] ) ? esc_url_raw( $post['_back'] ) : home_url( '/' ), home_url( '/' ) ) );
 		try {
-			$url = Plugin::payments()->create_checkout( $actor, get_current_user_id(), array( PaymentItems::key( array( 'type' => PaymentItems::RESERVATION, 'reservation_id' => $id, 'person_id' => (int) $actor['id'] ) ) ), $back );
+			$url = Plugin::payments()->create_checkout( $actor, \AssociazioneSemplice\MemberSession::actor_key(), array( PaymentItems::key( array( 'type' => PaymentItems::RESERVATION, 'reservation_id' => $id, 'person_id' => (int) $actor['id'] ) ) ), $back );
 		} catch ( \Throwable $e ) {
 			Resources::cancel( $id, true ); // niente pagamento: la fascia torna libera
 			throw $e;
@@ -151,7 +147,7 @@ final class ResourcesFront {
 	private static function form( string $action, string $fields, string $button, string $class = 'asemf-inline', bool $confirm = false ): string {
 		return '<form class="asemf-form ' . esc_attr( $class ) . '" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"' . ( $confirm ? ' onsubmit="return confirm(\'Confermi?\');"' : '' ) . '>'
 			. '<input type="hidden" name="action" value="' . esc_attr( $action ) . '"><input type="hidden" name="_back" value="' . esc_url( Restrict::current_url() ) . '">'
-			. wp_nonce_field( $action, '_wpnonce', false, false ) . $fields . '<button class="asemf-btn">' . esc_html( $button ) . '</button></form>';
+			. \AssociazioneSemplice\Csrf::field( $action ) . $fields . '<button class="asemf-btn">' . esc_html( $button ) . '</button></form>';
 	}
 
 	private static function hidden( string $name, $value ): string {
@@ -282,7 +278,7 @@ final class ResourcesFront {
 		}
 		return '<form class="asemf-form asemf-inline" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">'
 			. '<input type="hidden" name="action" value="asem_front_res_book"><input type="hidden" name="_back" value="' . esc_url( Restrict::current_url() ) . '">'
-			. wp_nonce_field( 'asem_front_res_book', '_wpnonce', false, false ) . $fields . $buttons . '</form>';
+			. \AssociazioneSemplice\Csrf::field( 'asem_front_res_book' ) . $fields . $buttons . '</form>';
 	}
 
 	private static function day( array $r, string $day, string $today ): string {

@@ -16,6 +16,7 @@ final class Refunds {
 
 	public static function register(): void {
 		add_action( 'admin_post_asem_refund_file', array( __CLASS__, 'handle_file' ) );
+		add_action( 'admin_post_nopriv_asem_refund_file', Csrf::nopriv( array( __CLASS__, 'handle_file' ), array( Csrf::class, 'to_login' ) ) );
 	}
 
 	/** Chi gestisce i rimborsi: segreteria, presidente e vicepresidente, amministratori. */
@@ -33,7 +34,7 @@ final class Refunds {
 
 	/** La persona collegata all'utente corrente (0 se non è un socio). */
 	private static function actor_person_id(): int {
-		$p = Access::person_for_user( get_current_user_id() );
+		$p = Access::current_person();
 		return $p ? (int) $p['id'] : 0;
 	}
 
@@ -282,7 +283,7 @@ final class Refunds {
 	// ---------- File ----------
 
 	public static function file_url( int $id ): string {
-		return wp_nonce_url( add_query_arg( array( 'action' => 'asem_refund_file', 'id' => $id ), admin_url( 'admin-post.php' ) ), 'asem_refund_file_' . $id );
+		return Csrf::url( add_query_arg( array( 'action' => 'asem_refund_file', 'id' => $id ), admin_url( 'admin-post.php' ) ), 'asem_refund_file_' . $id );
 	}
 
 	public static function handle_file(): void {
@@ -290,7 +291,7 @@ final class Refunds {
 		if ( ! Edition::has( 'refunds' ) ) {
 			wp_die( 'Non autorizzato.', 403 );
 		}
-		check_admin_referer( 'asem_refund_file_' . $id );
+		Csrf::check( 'asem_refund_file_' . $id );
 		$r = self::get( $id );
 		if ( ! $r || ! ( self::can_manage() || ( self::actor_person_id() && (int) $r['person_id'] === self::actor_person_id() ) ) ) {
 			wp_die( 'Non autorizzato.', 403 );

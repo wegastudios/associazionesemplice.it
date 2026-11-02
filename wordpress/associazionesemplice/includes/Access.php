@@ -167,8 +167,8 @@ final class Access {
 		$uid    = get_current_user_id();
 		$staff  = $uid > 0 && self::is_admin_user( $uid );
 		$member = false;
-		if ( ! $staff && $uid > 0 && DocumentRules::MEMBERS === (string) $doc['visibility'] ) {
-			$actor  = self::person_for_user( $uid );
+		if ( ! $staff && DocumentRules::MEMBERS === (string) $doc['visibility'] ) {
+			$actor  = self::current_person();
 			$member = $actor && MemberType::is_member( (string) $actor['type'] ) && Plugin::people()->is_active_member( (int) $actor['id'] );
 		}
 		return DocumentRules::can_read( (string) $doc['visibility'], $staff, (bool) $member );

@@ -309,7 +309,7 @@ final class Actions {
 		if ( $keys ) { // solo le voci scelte (se non ne sceglie nessuna, tutte quelle dovute)
 			$dues = array_intersect_key( $dues, array_flip( $keys ) );
 		}
-		Bank::send_to_member( $actor, array_values( $dues ), get_current_user_id() );
+		Bank::send_to_member( $actor, array_values( $dues ), \AssociazioneSemplice\MemberSession::actor_key() );
 		return 'Ti abbiamo inviato le coordinate per il bonifico: controlla la tua email.';
 	}
 

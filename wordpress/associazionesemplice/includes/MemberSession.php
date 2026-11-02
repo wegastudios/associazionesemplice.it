@@ -131,6 +131,21 @@ final class MemberSession {
 		return Access::current_person();
 	}
 
+	/** Base dei numeri che identificano chi paga o agisce senza utente WordPress: molto sopra qualsiasi id utente, così non si confonde con nessuno. */
+	const ACTOR_BASE = 1000000000000;
+
+	/**
+	 * Chi agisce, come numero: l'utente WordPress se collegato; con l'accesso proprio un numero legato alla persona (ACTOR_BASE + id);
+	 * 0 se nessuno. Serve dove un servizio vuole «l'utente» (pagamenti, limiti orari, avvisi) e 0 per tutti i soci li confonderebbe.
+	 */
+	public static function actor_key(): int {
+		if ( is_user_logged_in() ) {
+			return get_current_user_id();
+		}
+		$p = self::session_person();
+		return $p ? self::ACTOR_BASE + (int) $p['id'] : 0;
+	}
+
 	/** Qualcuno è entrato, in uno dei due modi. */
 	public static function logged_in(): bool {
 		return is_user_logged_in() || null !== self::session_person();

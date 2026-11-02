@@ -183,7 +183,7 @@ final class CardLayout {
 
 	/** Indirizzo da cui il socio (o la segreteria) scarica la tessera in PDF: valido per chi è collegato, con un codice di sicurezza. */
 	public static function pdf_url( int $person_id ): string {
-		return add_query_arg( array( 'asem_card_pdf' => $person_id, '_n' => wp_create_nonce( 'asem_card_pdf_' . $person_id ) ), home_url( '/' ) );
+		return add_query_arg( array( 'asem_card_pdf' => $person_id, '_n' => Csrf::create( 'asem_card_pdf_' . $person_id ) ), home_url( '/' ) );
 	}
 
 	/** File di un'immagine della libreria media (null se non c'è o non si legge). */

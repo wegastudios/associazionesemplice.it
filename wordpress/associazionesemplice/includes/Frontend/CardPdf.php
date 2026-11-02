@@ -23,10 +23,10 @@ final class CardPdf {
 		}
 		$id    = absint( wp_unslash( $_GET['asem_card_pdf'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
 		$nonce = isset( $_GET['_n'] ) ? sanitize_text_field( wp_unslash( $_GET['_n'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
-		if ( ! is_user_logged_in() || ! wp_verify_nonce( $nonce, 'asem_card_pdf_' . $id ) ) {
+		if ( ! \AssociazioneSemplice\MemberSession::logged_in() || ! \AssociazioneSemplice\Csrf::verify( $nonce, 'asem_card_pdf_' . $id ) ) {
 			wp_die( 'Il link non è più valido: riapri la pagina della tessera e riprova.', 'Tessera', array( 'response' => 403 ) );
 		}
-		$mine = Access::person_for_user( get_current_user_id() );
+		$mine = Access::current_person();
 		if ( ! ( $mine && (int) $mine['id'] === $id ) && ! current_user_can( Plugin::CAP_OPS ) ) {
 			wp_die( 'Non hai il permesso di scaricare questa tessera.', 'Tessera', array( 'response' => 403 ) );
 		}

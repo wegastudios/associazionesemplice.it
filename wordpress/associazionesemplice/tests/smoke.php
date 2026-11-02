@@ -7829,9 +7829,14 @@ asem_ok( current_user_can( 'asem_edit_own_profile', $ms_p ) && ! current_user_ca
 asem_ok( ! current_user_can( Plugin::CAP_OPS ) && ! current_user_can( 'asem_add_expense', 0 ) && ! current_user_can( 'asem_collect', 0 ), 'accesso proprio: nessun potere di segreteria o di tesoriere' );
 $ms_csrf = \AssociazioneSemplice\Csrf::create( 'asem_front_book' );
 asem_ok( \AssociazioneSemplice\Csrf::verify( $ms_csrf, 'asem_front_book' ) && ! \AssociazioneSemplice\Csrf::verify( $ms_csrf, 'altra_azione' ) && ! \AssociazioneSemplice\Csrf::verify( wp_create_nonce( 'asem_front_book' ), 'asem_front_book' ), 'accesso proprio: i moduli usano il token della sessione, non un nonce di WordPress' );
+asem_ok( MemberSession::actor_key() === MemberSession::ACTOR_BASE + $ms_p && MemberSession::actor_key() !== MemberSession::ACTOR_BASE + $ms_other, 'accesso proprio: chi paga è identificato dalla persona, non da uno zero uguale per tutti' );
+$ms_dl = html_entity_decode( \AssociazioneSemplice\Csrf::url( 'http://example.org/wp-admin/admin-post.php?action=asem_receipt&key=k1', 'asem_receipt_k1' ) );
+parse_str( (string) wp_parse_url( $ms_dl, PHP_URL_QUERY ), $ms_q );
+asem_ok( isset( $ms_q['_wpnonce'] ) && \AssociazioneSemplice\Csrf::verify( $ms_q['_wpnonce'], 'asem_receipt_k1' ) && ! \AssociazioneSemplice\Csrf::verify( $ms_q['_wpnonce'], 'asem_receipt_k2' ) && 'asem_receipt' === $ms_q['action'], 'accesso proprio: i link dei download portano il token della sessione' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::form( 'asem_front_book', '', 'Prenota' ), $ms_csrf ), 'accesso proprio: il modulo porta il token della sessione' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::with_person( function ( $p ) { return 'Ciao ' . $p['first_name']; } ), 'Ciao Sessione' ), 'accesso proprio: la pagina dei soci riconosce chi è entrato' );
 wp_set_current_user( 1 );
+asem_ok( 1 === MemberSession::actor_key(), 'accesso proprio: con WordPress chi agisce è l\'utente WordPress' );
 asem_ok( ! MemberSession::is_own_session() && MemberSession::logged_in() && current_user_can( Plugin::CAP_OPS ), 'accesso proprio: se si è collegati a WordPress vale WordPress' );
 wp_set_current_user( 0 );
 $_COOKIE[ MemberSession::COOKIE ] = SessionToken::generate(); // cookie inventato

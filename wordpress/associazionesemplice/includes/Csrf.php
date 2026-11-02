@@ -25,6 +25,11 @@ final class Csrf {
 		return false !== wp_verify_nonce( $token, $action );
 	}
 
+	/** Come wp_nonce_url: aggiunge il token a un indirizzo (download dei soci). */
+	public static function url( string $url, string $action, string $name = self::FIELD ): string {
+		return esc_html( add_query_arg( $name, self::create( $action ), str_replace( '&amp;', '&', $url ) ) );
+	}
+
 	/** Campo nascosto per un modulo. */
 	public static function field( string $action, string $name = self::FIELD ): string {
 		return '<input type="hidden" name="' . esc_attr( $name ) . '" value="' . esc_attr( self::create( $action ) ) . '">';
@@ -55,6 +60,12 @@ final class Csrf {
 		if ( ! MemberSession::check_csrf( $action, self::request_token( $name ) ) ) {
 			wp_die( '-1', '', array( 'response' => 403 ) );
 		}
+	}
+
+	/** Chi non è entrato viene mandato al login (download e azioni riservate). */
+	public static function to_login(): void {
+		wp_safe_redirect( wp_login_url( home_url( '/' ) ) );
+		exit;
 	}
 
 	/**

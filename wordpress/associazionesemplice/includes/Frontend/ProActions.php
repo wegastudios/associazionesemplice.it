@@ -33,7 +33,7 @@ final class ProActions {
 		Actions::assert_profile( $actor );
 		Actions::require_cap( 'asem_view_payments', (int) $actor['id'] );
 		$back = remove_query_arg( array( 'asemf_ok', 'asemf_err', 'asemf_sig', 'asem_pay', 'asem_ret', 'token', 'PayerID' ), Actions::back_url( $post ) );
-		return Plugin::payments()->create_checkout( $actor, get_current_user_id(), (array) ( $post['items'] ?? array() ), $back, sanitize_key( (string) ( $post['provider'] ?? '' ) ) );
+		return Plugin::payments()->create_checkout( $actor, \AssociazioneSemplice\MemberSession::actor_key(), (array) ( $post['items'] ?? array() ), $back, sanitize_key( (string) ( $post['provider'] ?? '' ) ) );
 	}
 
 	/** Cassa per più persone del tesoriere (stesse regole degli amministratori). */

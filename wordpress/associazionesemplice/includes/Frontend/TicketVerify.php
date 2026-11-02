@@ -71,7 +71,7 @@ final class TicketVerify {
 
 	/** Comandi per chi gestisce l'evento (accesso effettuato): registrare o annullare l'ingresso. Per gli altri, niente. */
 	private static function manager_controls( array $r, string $param ): string {
-		if ( ! is_user_logged_in() || ! in_array( $r['status'], array( 'valid', 'used' ), true ) || ! current_user_can( 'asem_manage_event', (int) $r['activity']['id'] ) ) {
+		if ( ! \AssociazioneSemplice\MemberSession::logged_in() || ! in_array( $r['status'], array( 'valid', 'used' ), true ) || ! current_user_can( 'asem_manage_event', (int) $r['activity']['id'] ) ) {
 			return '';
 		}
 		$s    = $r['session'];
@@ -82,7 +82,7 @@ final class TicketVerify {
 		$undo = 'used' === $r['status'];
 		return '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="margin-top:14px">'
 			. '<input type="hidden" name="action" value="asem_front_checkin"><input type="hidden" name="_back" value="' . esc_url( $back ) . '">'
-			. wp_nonce_field( 'asem_front_checkin', '_wpnonce', false, false )
+			. \AssociazioneSemplice\Csrf::field( 'asem_front_checkin' )
 			. '<input type="hidden" name="session_id" value="' . (int) $s['id'] . '"><input type="hidden" name="person_id" value="' . (int) $r['person']['id'] . '">'
 			. ( $undo ? '<input type="hidden" name="undo" value="1">' : '' )
 			. '<button type="submit" style="width:100%;padding:14px;font-size:18px;border:0;border-radius:10px;cursor:pointer;background:' . ( $undo ? '#dcdcde;color:#1d2327' : '#1a7f37;color:#fff' ) . '">'
