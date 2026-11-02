@@ -23,7 +23,7 @@ final class Html {
 		'b'          => array(),
 		'blockquote' => array( 'cite' ),
 		'br'         => array(),
-		'button'     => array( 'type', 'name', 'value', 'disabled', 'form', 'formaction', 'formmethod', 'formnovalidate', 'formtarget', 'autofocus' ),
+		'button'     => array( 'type', 'name', 'value', 'disabled', 'form', 'formnovalidate', 'autofocus' ), // niente formaction/formmethod/formtarget: con HTML iniettato dirotterebbero un modulo (anche la password) verso un altro sito
 		'caption'    => array(),
 		'circle'     => array( 'cx', 'cy', 'r', 'fill', 'stroke', 'stroke-width' ),
 		'code'       => array(),
@@ -105,7 +105,7 @@ final class Html {
 	const DOCUMENT_TAGS = array(
 		'html'  => array( 'lang' ),
 		'head'  => array(),
-		'meta'  => array( 'charset', 'name', 'content', 'http-equiv' ),
+		'meta'  => array( 'charset', 'name', 'content' ), // niente http-equiv: un «refresh» porterebbe il visitatore su un altro sito
 		'title' => array(),
 		'link'  => array( 'rel', 'href', 'media', 'type', 'sizes' ),
 		'body'  => array(),

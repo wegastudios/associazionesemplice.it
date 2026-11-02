@@ -33,8 +33,8 @@ final class MemberPassword {
 		if ( mb_strlen( $password, 'UTF-8' ) < self::MIN_LENGTH ) {
 			return 'La password deve avere almeno ' . self::MIN_LENGTH . ' caratteri.';
 		}
-		if ( strlen( $password ) > 200 ) {
-			return 'La password è troppo lunga.';
+		if ( strlen( $password ) > 200 || ( ! defined( 'PASSWORD_ARGON2ID' ) && strlen( $password ) > 72 ) ) { // con bcrypt oltre 72 byte il resto verrebbe ignorato
+			return ! defined( 'PASSWORD_ARGON2ID' ) ? 'La password è troppo lunga: al massimo 72 caratteri.' : 'La password è troppo lunga.';
 		}
 		return '';
 	}

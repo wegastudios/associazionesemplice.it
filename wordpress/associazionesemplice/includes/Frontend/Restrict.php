@@ -64,9 +64,12 @@ final class Restrict {
 	public static function context( ?int $user_id = null, array $required_activity_ids = array() ): array {
 		$uid    = $user_id ?? get_current_user_id();
 		$person = $uid > 0 ? Access::person_for_user( $uid ) : null;
+		if ( null === $user_id && $uid <= 0 ) {
+			$person = \AssociazioneSemplice\MemberSession::session_person(); // chi è entrato con l'accesso proprio (senza utente WordPress)
+		}
 		$ctx    = array(
 			'is_admin'              => Access::is_admin_user( $uid ),
-			'logged_in'             => $uid > 0,
+			'logged_in'             => $uid > 0 || null !== $person,
 			'member_area_allowed'   => Edition::allows( 'member_area' ),
 			'active_member'         => false,
 			'person_type'           => $person ? $person['type'] : null,

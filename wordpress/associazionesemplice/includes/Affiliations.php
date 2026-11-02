@@ -269,7 +269,7 @@ final class Affiliations {
 	 * @return array<int,array{sport:string,discipline:string}>
 	 */
 	public static function sports_by_person( array $ids ): array {
-		$ids = array_values( array_unique( array_filter( $ids ) ) );
+		$ids = array_values( array_unique( array_filter( array_map( 'intval', $ids ) ) ) ); // interi: finiscono dentro IN (...)
 		if ( ! $ids ) {
 			return array();
 		}

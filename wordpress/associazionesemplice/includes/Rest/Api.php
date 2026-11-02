@@ -204,10 +204,11 @@ final class Api {
 
 	public static function me() {
 		$user   = wp_get_current_user();
-		$person = Access::person_for_user( (int) $user->ID );
+		$person = Access::current_person(); // l'utente WordPress collegato oppure la persona dell'accesso proprio
+		$name   = (int) $user->ID > 0 ? $user->display_name : ( $person ? trim( $person['first_name'] . ' ' . $person['last_name'] ) : '' );
 		return rest_ensure_response(
 			array(
-				'user'        => array( 'id' => (int) $user->ID, 'name' => $user->display_name ),
+				'user'        => array( 'id' => (int) $user->ID, 'name' => $name ),
 				'is_admin'    => Access::is_admin_user( (int) $user->ID ),
 				'person'      => $person ? self::shape_person( $person ) : null,
 				'is_volunteer' => $person && MemberType::can_teach( $person['type'] ),

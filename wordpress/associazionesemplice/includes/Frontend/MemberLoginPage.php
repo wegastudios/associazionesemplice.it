@@ -68,6 +68,7 @@ final class MemberLoginPage {
 		if ( ! MemberSession::enabled() || ! Edition::allows( 'member_area' ) ) {
 			return; // spento: la pagina non esiste e il sito si comporta come prima
 		}
+		MemberLogin::defer( true ); // le email di accesso partono dopo la risposta: il tempo di risposta non rivela chi è socio
 		$msg  = '';
 		$err  = '';
 		$step = '';
@@ -101,6 +102,8 @@ final class MemberLoginPage {
 					$pending = null !== MemberSession::pending_setup();
 					if ( self::post( 'password' ) !== self::post( 'password2' ) ) {
 						$err = 'Le due password non coincidono.';
+					} elseif ( ! $pending && ! MemberLogin::check_password( (int) $session['person_id'], self::post( 'current_password' ) ) ) {
+						$err = 'La password attuale non è corretta.'; // chi ha solo rubato una sessione non può cambiarla
 					} else {
 						$err = MemberLogin::set_password( (int) $session['person_id'], self::post( 'password' ) );
 						if ( '' === $err ) {
@@ -137,6 +140,12 @@ final class MemberLoginPage {
 		CardVerify::send_headers();
 		header( 'Cache-Control: no-store, max-age=0' );
 		CardVerify::output( self::page( $token, $msg, $err, $step, $mail, $back ) );
+		if ( function_exists( 'fastcgi_finish_request' ) ) {
+			fastcgi_finish_request(); // la risposta parte subito; l'email, se c'è, dopo
+		} else {
+			flush();
+		}
+		MemberLogin::send_queued();
 		exit;
 	}
 
@@ -200,7 +209,7 @@ final class MemberLoginPage {
 			$body .= '<div class="n">Sei dentro</div><p>' . esc_html( trim( (string) ( $p['first_name'] ?? '' ) . ' ' . (string) ( $p['last_name'] ?? '' ) ) ) . '</p>'
 				. self::form( 'logout', '', 'Esci', true ) . $gap
 				. '<div class="n">Cambia la password</div>'
-				. self::form( 'password', self::field( 'Nuova password (almeno 8 caratteri)', 'password', 'password', 'new-password', '', ' minlength="8"' ) . self::field( 'Ripeti la password', 'password2', 'password', 'new-password', '', ' minlength="8"' ), 'Salva la password', true ) . $gap
+				. self::form( 'password', self::field( 'Password attuale', 'current_password', 'password', 'current-password' ) . self::field( 'Nuova password (almeno 8 caratteri)', 'password', 'password', 'new-password', '', ' minlength="8"' ) . self::field( 'Ripeti la password', 'password2', 'password', 'new-password', '', ' minlength="8"' ), 'Salva la password', true ) . $gap
 				. self::form( 'logout_all', '', 'Esci da tutti i dispositivi', true );
 			return CardVerify::layout( 'Il tuo accesso', Assets::accent( '#2271b1' ), $body );
 		}

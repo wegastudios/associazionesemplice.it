@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '51';
+	const DB_VERSION        = '52';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -173,6 +173,7 @@ final class Install {
   PRIMARY KEY  (id),
   UNIQUE KEY card_number (card_number),
   UNIQUE KEY wp_user_id (wp_user_id),
+  KEY email (email),
   KEY type (type),
   KEY host_person_id (host_person_id),
   KEY family_head_id (family_head_id)
