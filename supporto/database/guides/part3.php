@@ -135,6 +135,8 @@ Solo gli amministratori possono eliminare un evento, dal pulsante **Elimina l'ev
 
 Dalla versione 1.3.2 del plugin gratuito, eliminando un **evento** o un **corso**, il rimborso o l'annullamento riguardano **solo il non fruito**. Gli incassi legati a **date già svolte**, o a **mesi con almeno una lezione già svolta**, restano in prima nota e non vengono restituiti né annullati. Per esempio, per un corso tenuto a ottobre e annullato a novembre, ottobre resta e novembre si restituisce. La pagina di eliminazione ti mostra **quanti incassi restano**.
 
+Dalla versione 1.3.4 vale lo stesso anche cancellando una **singola iscrizione** (a una data di un evento o a un corso): si restituisce o si annulla solo il non fruito, e gli incassi già fruiti (data passata, mese con almeno una lezione svolta) restano in prima nota. Per la parte fruita la pagina e il messaggio finale ti dicono **quanto manca** (resta da incassare) oppure **quanto avanza** (credito da restituire a mano).
+
 ## Annullare una data di un evento ricorrente
 
 Negli eventi ricorrenti, accanto a **«Annulla solo questa data»** c'è **«Annulla questa data e le successive»**. Le **date passate non si toccano**. L'annullamento di una data **non registra rimborsi**: le somme si restituiscono a mano, come prima.

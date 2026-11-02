@@ -65,7 +65,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Report di occupazione delle risorse | — | ✓ | ✓ |
 | Corsi ed eventi collegati alle risorse, con tempi di allestimento | — | ✓ | ✓ |
 | Suggerimento dei luoghi con Google (con la tua chiave) | ✓ | ✓ | ✓ |
-| Eliminando un corso o un evento si restituisce solo il non fruito; annullamento di una data o «di questa data e delle successive» negli eventi ricorrenti | ✓ | ✓ | ✓ |
+| Eliminando un corso, un evento o una singola iscrizione si restituisce solo il non fruito; annullamento di una data o «di questa data e delle successive» negli eventi ricorrenti | ✓ | ✓ | ✓ |
 
 ## Cassa e conti
 
