@@ -60,6 +60,7 @@ final class ActivityReset {
 			'income_open' => array( 'count' => 0, 'cents' => 0, 'online_cents' => 0 ),
 			'income_void' => array( 'count' => 0, 'cents' => 0, 'online_cents' => 0, 'receipts' => array() ), // da annullare: tutti tranne quelli di date o mesi già svolti
 			'income_fruited' => array( 'count' => 0, 'cents' => 0 ), // date o mesi già svolti: restano così come sono
+			'income_partial' => array( 'count' => 0, 'cents' => 0 ), // tra questi, mesi in parte svolti: con la restituzione si rende la quota non fruita (cents = somma da rendere)
 			'expense'     => array( 'count' => 0, 'cents' => 0, 'ids' => array() ),
 			'refund_exp'  => array( 'count' => 0, 'cents' => 0, 'ids' => array() ),
 			'fund_cents'  => 0,
@@ -91,6 +92,15 @@ final class ActivityReset {
 				if ( ! $settled && self::is_fruited( $m, $ctx ) ) {
 					$out['income_fruited']['count']++;
 					$out['income_fruited']['cents'] += (int) $m['amount_cents'];
+					$part = self::refund_cents( $m, $ctx );
+					if ( $part > 0 ) { // mese in parte svolto: con la restituzione si rende la quota delle lezioni non tenute
+						$out['income_partial']['count']++;
+						$out['income_partial']['cents']  += $part;
+						$out['income_open']['count']++;
+						$out['income_open']['cents']        += $part;
+						$out['income_open']['online_cents'] += (int) round( $online * $part / max( 1, (int) $m['amount_cents'] ) );
+						$out['years_income_open'][ $y ]      = true;
+					}
 					continue;
 				}
 				$out['income_void']['count']++;
@@ -141,28 +151,62 @@ final class ActivityReset {
 			$ctx['held'][]                     = (string) $r['session_date'];
 		}
 		if ( ! ActivityKind::uses_sessions( (string) $a['kind'] ) ) { // corso: lezioni dal calendario settimanale, meno quelle annullate o spostate
-			$slots = ActivityService::lessons( $a );
-			$from  = $today;
-			foreach ( $slots as $s ) {
+			$from = $today;
+			foreach ( ActivityService::lessons( $a ) as $s ) {
 				$from = min( $from, (string) ( 'single' === $s['type'] ? $s['date'] : ( $s['from'] ?: ( $a['starts_on'] ?: $today ) ) ) );
 			}
-			$from = max( $from, gmdate( 'Y-m-d', strtotime( $today . ' -3 years' ) ) );
-			$held = array();
-			foreach ( $slots as $s ) {
-				if ( 'single' === $s['type'] ) {
-					$held[] = (string) $s['date'];
-					continue;
-				}
-				$lo = max( $from, (string) ( $s['from'] ?: ( $a['starts_on'] ?: $from ) ) );
-				$hi = min( $today, (string) ( $s['until'] ?: ( $a['ends_on'] ?: $today ) ) );
-				foreach ( Schedule::weekly_dates( $lo, $hi, (int) $s['day'] ) as $d ) {
-					$held[] = $d;
-				}
-			}
-			$ctx['held'] = LessonExceptions::adjust_dates( array_values( array_unique( $held ) ), LessonExceptions::between( $from, $today, (int) $a['id'] ), $from, $today );
+			$from          = max( $from, gmdate( 'Y-m-d', strtotime( $today . ' -3 years' ) ) );
+			$ctx['held']   = self::course_dates( $a, $from, $today );
+			$ctx['course'] = $a;
 		}
 		sort( $ctx['held'] );
 		return $ctx;
+	}
+
+	/** Date delle lezioni di un corso tra due giorni, dal calendario settimanale meno quelle annullate e con quelle spostate. @return string[] */
+	private static function course_dates( array $a, string $from, string $to ): array {
+		$dates = array();
+		foreach ( ActivityService::lessons( $a ) as $s ) {
+			if ( 'single' === $s['type'] ) {
+				$dates[] = (string) $s['date'];
+				continue;
+			}
+			$lo = max( $from, (string) ( $s['from'] ?: ( $a['starts_on'] ?: $from ) ) );
+			$hi = min( $to, (string) ( $s['until'] ?: ( $a['ends_on'] ?: $to ) ) );
+			if ( $lo > $hi ) {
+				continue;
+			}
+			foreach ( Schedule::weekly_dates( $lo, $hi, (int) $s['day'] ) as $d ) {
+				$dates[] = $d;
+			}
+		}
+		return LessonExceptions::adjust_dates( array_values( array_unique( $dates ) ), LessonExceptions::between( $from, $to, (int) $a['id'] ), $from, $to );
+	}
+
+	/**
+	 * Quanto di un incasso si restituisce se l'organizzazione non può più tenere l'attività: tutto se non è fruito, niente se è tutto fruito.
+	 * Per un mese di corso in parte già svolto si restituisce la quota delle lezioni non ancora tenute.
+	 *
+	 * @param array $m movimento (amount_cents, session_id, competence_month)
+	 * @param array $ctx risultato di fruit_context()
+	 */
+	public static function refund_cents( array $m, array $ctx ): int {
+		$amount = (int) $m['amount_cents'];
+		if ( ! self::is_fruited( $m, $ctx ) ) {
+			return $amount;
+		}
+		$month = (string) ( $m['competence_month'] ?? '' );
+		if ( (int) ( $m['session_id'] ?? 0 ) || empty( $ctx['course'] ) || ! preg_match( '/^\d{4}-\d{2}$/', $month ) ) {
+			return 0;
+		}
+		$total = count( self::course_dates( $ctx['course'], $month . '-01', gmdate( 'Y-m-t', (int) strtotime( $month . '-01' ) ) ) );
+		$held  = 0;
+		foreach ( (array) $ctx['held'] as $d ) {
+			if ( 0 === strpos( (string) $d, $month ) && self::occurred( (string) $d, '', (string) $ctx['today'], (string) $ctx['now'] ) ) {
+				$held++;
+			}
+		}
+		return $total > $held ? (int) round( $amount * ( $total - $held ) / $total ) : 0;
 	}
 
 	/**
@@ -286,7 +330,7 @@ final class ActivityReset {
 		$ledger = Plugin::ledger();
 		$sessions = array_map( 'intval', $db->get_col( $db->prepare( 'SELECT id FROM ' . Db::t( 'sessions' ) . ' WHERE activity_id = %d', $activity_id ) ) );
 		$mail_to  = ! empty( $opts['notify'] ) ? self::recipients( $activity_id, $sessions ) : array();
-		$sum      = array( 'sessions' => count( $sessions ), 'bookings' => $p['bookings'], 'income_count' => self::REFUND === $mode ? $p['income_open']['count'] : $p['income_void']['count'], 'income_cents' => self::REFUND === $mode ? $p['income_open']['cents'] : $p['income_void']['cents'], 'kept_count' => $p['income_fruited']['count'], 'kept_cents' => $p['income_fruited']['cents'], 'refunds' => 0, 'voided' => 0, 'expenses_voided' => 0, 'notified' => 0, 'name' => $name );
+		$sum      = array( 'sessions' => count( $sessions ), 'bookings' => $p['bookings'], 'income_count' => self::REFUND === $mode ? $p['income_open']['count'] : $p['income_void']['count'], 'income_cents' => self::REFUND === $mode ? $p['income_open']['cents'] : $p['income_void']['cents'], 'kept_count' => $p['income_fruited']['count'], 'kept_cents' => $p['income_fruited']['cents'] - ( self::REFUND === $mode ? $p['income_partial']['cents'] : 0 ), 'refunds' => 0, 'voided' => 0, 'expenses_voided' => 0, 'notified' => 0, 'name' => $name );
 
 		$ledger->in_batch(
 			function () use ( $activity_id, $mode, $opts, $name, $sessions, $ledger, $db, &$sum, $p ) {
@@ -296,7 +340,19 @@ final class ActivityReset {
 				foreach ( self::movements( $activity_id ) as $m ) {
 					if ( 'income' === $m['type'] ) {
 						if ( ! self::is_settled( $m ) && self::is_fruited( $m, $ctx ) ) {
-							continue; // data o mese già svolti: il contributo resta, non si restituisce né si annulla
+							$part = self::REFUND === $mode ? self::refund_cents( $m, $ctx ) : 0;
+							if ( $part > 0 ) { // mese in parte svolto: si rende solo la quota delle lezioni non tenute
+								$d = array(
+									'date' => $today, 'account_id' => (int) $m['account_id'], 'method' => (string) $m['method'], 'category_id' => $cat, 'amount_cents' => $part,
+									'person_id' => $m['person_id'] ? (int) $m['person_id'] : 0, 'description' => mb_substr( '[Evento eliminato: ' . $name . '] Restituzione di un incasso del ' . $m['tx_date'] . ' (quota non fruita)', 0, 255 ),
+								);
+								if ( null !== $m['vat_rate'] && '' !== $m['vat_rate'] ) {
+									$d['vat_rate'] = (int) $m['vat_rate'];
+								}
+								$ledger->record_expense( $d );
+								$sum['refunds']++;
+							}
+							continue; // data o mese già svolti: il contributo resta (a parte la quota non fruita), non si annulla
 						}
 						if ( self::REFUND === $mode ) {
 							if ( self::is_settled( $m ) ) {

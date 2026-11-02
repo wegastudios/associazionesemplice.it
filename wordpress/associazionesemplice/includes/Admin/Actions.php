@@ -80,6 +80,7 @@ final class Actions {
 			'asem_enroll'             => 'enroll',
 			'asem_enroll_variant'     => 'enroll_variant',
 			'asem_cancel_enrollment'  => 'cancel_enrollment',
+			'asem_stop_renewal'       => 'stop_renewal',
 			'asem_add_session'        => 'add_session',
 			'asem_update_session'     => 'update_session',
 			'asem_generate_sessions'  => 'generate_sessions',
@@ -908,6 +909,11 @@ final class Actions {
 	private static function enroll_variant( array $p ): array {
 		Plugin::activities()->set_enrollment_price( (int) $p['activity_id'], (int) $p['person_id'], (string) ( $p['price_list'] ?? '' ), (string) ( $p['fee_note'] ?? '' ) );
 		return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Contributo dell\'iscritto aggiornato.' );
+	}
+
+	private static function stop_renewal( array $p ): array {
+		$last = Plugin::activities()->stop_renewal( (int) $p['activity_id'], (int) $p['person_id'] );
+		return array( Ui::url( 'asem-activity', array( 'id' => (int) $p['activity_id'] ) ), 'Non rinnova: resta iscritto fino a ' . Ui::month( $last ) . ' (periodo già pagato o in corso), poi non deve più nulla. Non si restituisce niente.' );
 	}
 
 	private static function cancel_enrollment( array $p ): array {
