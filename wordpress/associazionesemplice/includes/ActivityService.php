@@ -510,13 +510,19 @@ class ActivityService {
 	}
 
 	/** Annulla una data. Le prenotazioni restano ma non contano più; eventuali pagamenti vanno rimborsati a mano. */
-	public function cancel_session( int $session_id ): void {
+	public function cancel_session( int $session_id, bool $and_future = false ): int {
 		$s = $this->session( $session_id );
 		if ( ! $s ) {
 			throw new \InvalidArgumentException( 'Data non trovata.' );
 		}
 		$this->db()->update( Db::t( 'sessions' ), array( 'cancelled_at' => Db::now() ), array( 'id' => $session_id ) );
-		Audit::log( 'session.cancelled', 'activity', (int) $s['activity_id'], array( 'session' => $session_id ) );
+		$n = 1;
+		if ( $and_future ) { // questa e le successive; le date passate non si toccano
+			$more = (int) $this->db()->query( $this->db()->prepare( 'UPDATE ' . Db::t( 'sessions' ) . ' SET cancelled_at = %s WHERE activity_id = %d AND session_date > %s AND cancelled_at IS NULL', Db::now(), (int) $s['activity_id'], (string) $s['session_date'] ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- tabella interna, valori preparati
+			$n   += $more;
+		}
+		Audit::log( 'session.cancelled', 'activity', (int) $s['activity_id'], array( 'session' => $session_id, 'future' => $and_future ? $n - 1 : 0 ) );
+		return $n;
 	}
 
 	// ---------- Prenotazioni ----------

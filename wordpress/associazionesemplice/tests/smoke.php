@@ -1264,6 +1264,21 @@ $ev_list = (string) ob_get_clean();
 asem_ok( false !== strpos( $ev_list, 'Quarta serata' ) && false !== strpos( $ev_list, '<details' ) && false !== strpos( $ev_list, 'Lia Otto' ) && false !== strpos( $ev_list, 'wa.me/' ) && false === strpos( $ev_list, 'page=asem-booking-delete' ), 'elenco attività: partecipanti attesi a scomparsa in ogni evento, con WhatsApp (la cancellazione resta nella scheda)' );
 \AssociazioneSemplice\ActivityReset::delete( $ev_a4, 'void' );
 \AssociazioneSemplice\ActivityReset::delete( $ev_r, 'refund' );
+// evento in più date: si restituisce solo il non fruito (la data passata resta incassata)
+$nf_a  = $acts->create( array( 'name' => 'Evento a più date', 'social_year' => $ev_sy, 'kind' => 'event', 'fee_cents' => 100, 'session' => array( 'session_date' => $today ) ) );
+$nf_s1 = (int) $acts->sessions( $nf_a )[0]['id'];
+Db::db()->update( Db::t( 'sessions' ), array( 'session_date' => gmdate( 'Y-m-d', strtotime( $today . ' -10 days' ) ) ), array( 'id' => $nf_s1 ) );
+Db::db()->insert( Db::t( 'sessions' ), array( 'activity_id' => $nf_a, 'session_date' => gmdate( 'Y-m-d', strtotime( $today . ' +10 days' ) ), 'created_at' => Db::now() ) );
+$nf_s2 = (int) Db::db()->insert_id;
+$nf_p1 = $ev_mk( 'Nora', 'Passata' );
+$nf_p2 = $ev_mk( 'Omar', 'Futura' );
+$ledger->record_receipt( $vt_base + array( 'person_id' => $nf_p1, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 500, 'activity_id' => $nf_a, 'session_id' => $nf_s1 ) ) ) );
+$ledger->record_receipt( $vt_base + array( 'person_id' => $nf_p2, 'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 700, 'activity_id' => $nf_a, 'session_id' => $nf_s2 ) ) ) );
+$nf_pre = \AssociazioneSemplice\ActivityReset::preview( $nf_a );
+asem_ok( 2 === $nf_pre['income']['count'] && 1 === $nf_pre['income_fruited']['count'] && 500 === $nf_pre['income_fruited']['cents'] && 1 === $nf_pre['income_void']['count'] && 700 === $nf_pre['income_void']['cents'] && 1 === $nf_pre['income_open']['count'], 'evento in più date: la data già svolta risulta fruita, quella futura no' );
+$nf_b0  = $ev_bal();
+$nf_res = \AssociazioneSemplice\ActivityReset::delete( $nf_a, 'refund' );
+asem_ok( 1 === $nf_res['refunds'] && 1 === $nf_res['kept_count'] && 500 === $nf_res['kept_cents'] && $ev_bal() === $nf_b0 - 700, 'evento in più date eliminato con restituzione: si restituisce solo la data futura' );
 // cancellazioni che non toccano la prima nota: una sola conferma
 $fr_a = $acts->create( array( 'name' => 'Evento senza soldi', 'social_year' => $ev_sy, 'kind' => 'event', 'fee_cents' => 0, 'session' => array( 'session_date' => $today ) ) );
 $fr_s = (int) $acts->sessions( $fr_a )[0]['id'];

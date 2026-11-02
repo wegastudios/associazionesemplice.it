@@ -58,16 +58,20 @@ final class ActivityReset {
 			'notices'     => (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . $t( 'notices' ) . ' WHERE activity_id = %d', $activity_id ) ),
 			'income'      => array( 'count' => 0, 'cents' => 0, 'online_cents' => 0, 'ids' => array(), 'receipts' => array() ),
 			'income_open' => array( 'count' => 0, 'cents' => 0, 'online_cents' => 0 ),
+			'income_void' => array( 'count' => 0, 'cents' => 0, 'online_cents' => 0, 'receipts' => array() ), // da annullare: tutti tranne quelli di date o mesi già svolti
+			'income_fruited' => array( 'count' => 0, 'cents' => 0 ), // date o mesi già svolti: restano così come sono
 			'expense'     => array( 'count' => 0, 'cents' => 0, 'ids' => array() ),
 			'refund_exp'  => array( 'count' => 0, 'cents' => 0, 'ids' => array() ),
 			'fund_cents'  => 0,
 			'years'       => array(),
 			'years_income' => array(),
 			'years_income_open' => array(),
+			'years_income_void' => array(),
 			'years_expense' => array(),
 			'years_refund_exp' => array(),
 			'recipients'  => count( self::recipients( $activity_id, $sessions ) ),
 		);
+		$ctx = self::fruit_context( $a );
 		foreach ( self::movements( $activity_id ) as $m ) {
 			$is_inc  = 'income' === $m['type'];
 			$k       = $is_inc ? 'income' : ( self::is_refund_expense( $m ) ? 'refund_exp' : 'expense' );
@@ -84,6 +88,18 @@ final class ActivityReset {
 				if ( ! empty( $m['receipt_id'] ) ) {
 					$out['income']['receipts'][ (string) $m['receipt_id'] ] = true;
 				}
+				if ( ! $settled && self::is_fruited( $m, $ctx ) ) {
+					$out['income_fruited']['count']++;
+					$out['income_fruited']['cents'] += (int) $m['amount_cents'];
+					continue;
+				}
+				$out['income_void']['count']++;
+				$out['income_void']['cents']        += (int) $m['amount_cents'];
+				$out['income_void']['online_cents'] += $online;
+				$out['years_income_void'][ $y ]      = true;
+				if ( ! empty( $m['receipt_id'] ) ) {
+					$out['income_void']['receipts'][ (string) $m['receipt_id'] ] = true;
+				}
 				if ( ! $settled ) {
 					$out['income_open']['count']++;
 					$out['income_open']['cents']        += (int) $m['amount_cents'];
@@ -92,16 +108,92 @@ final class ActivityReset {
 				}
 			}
 		}
-		$out['income']['receipts'] = array_keys( $out['income']['receipts'] );
+		$out['income']['receipts']      = array_keys( $out['income']['receipts'] );
+		$out['income_void']['receipts'] = array_keys( $out['income_void']['receipts'] );
 		$fund = $db->get_var( $db->prepare( 'SELECT id FROM ' . $t( 'funds' ) . ' WHERE activity_id = %d', $activity_id ) );
 		if ( $fund ) {
 			$out['fund_cents'] = (int) $db->get_var( $db->prepare( 'SELECT COALESCE(SUM(cents),0) FROM ' . $t( 'fund_entries' ) . " WHERE fund_id = %d AND kind = 'share'", (int) $fund ) );
 		}
 		ksort( $out['years'] );
-		foreach ( array( 'years', 'years_income', 'years_income_open', 'years_expense', 'years_refund_exp' ) as $yk ) {
+		foreach ( array( 'years', 'years_income', 'years_income_open', 'years_income_void', 'years_expense', 'years_refund_exp' ) as $yk ) {
 			$out[ $yk ] = array_keys( $out[ $yk ] );
 		}
 		return $out;
+	}
+
+	/** Tolleranza: si è «svolta» una data di oggi solo se l'orario di inizio c'è ed è passato. */
+	private static function occurred( string $date, string $start, string $today, string $now ): bool {
+		return $date < $today || ( $date === $today && '' !== $start && $start <= $now );
+	}
+
+	/**
+	 * Dati per capire cosa è già stato fruito: le date non annullate con orario (eventi) o le lezioni calcolate dal calendario (corsi), fino a oggi.
+	 *
+	 * @return array{today:string,now:string,sessions:array<int,array{date:string,start:string}>,held:string[]}
+	 */
+	private static function fruit_context( array $a ): array {
+		$today = current_time( 'Y-m-d' );
+		$ctx   = array( 'today' => $today, 'now' => current_time( 'H:i' ), 'sessions' => array(), 'held' => array() );
+		$db    = self::db();
+		$rows  = $db->get_results( $db->prepare( 'SELECT id, session_date, start_time FROM ' . Db::t( 'sessions' ) . ' WHERE activity_id = %d AND cancelled_at IS NULL', (int) $a['id'] ), ARRAY_A ) ?: array();
+		foreach ( $rows as $r ) {
+			$ctx['sessions'][ (int) $r['id'] ] = array( 'date' => (string) $r['session_date'], 'start' => (string) $r['start_time'] );
+			$ctx['held'][]                     = (string) $r['session_date'];
+		}
+		if ( ! ActivityKind::uses_sessions( (string) $a['kind'] ) ) { // corso: lezioni dal calendario settimanale, meno quelle annullate o spostate
+			$slots = ActivityService::lessons( $a );
+			$from  = $today;
+			foreach ( $slots as $s ) {
+				$from = min( $from, (string) ( 'single' === $s['type'] ? $s['date'] : ( $s['from'] ?: ( $a['starts_on'] ?: $today ) ) ) );
+			}
+			$from = max( $from, gmdate( 'Y-m-d', strtotime( $today . ' -3 years' ) ) );
+			$held = array();
+			foreach ( $slots as $s ) {
+				if ( 'single' === $s['type'] ) {
+					$held[] = (string) $s['date'];
+					continue;
+				}
+				$lo = max( $from, (string) ( $s['from'] ?: ( $a['starts_on'] ?: $from ) ) );
+				$hi = min( $today, (string) ( $s['until'] ?: ( $a['ends_on'] ?: $today ) ) );
+				foreach ( Schedule::weekly_dates( $lo, $hi, (int) $s['day'] ) as $d ) {
+					$held[] = $d;
+				}
+			}
+			$ctx['held'] = LessonExceptions::adjust_dates( array_values( array_unique( $held ) ), LessonExceptions::between( $from, $today, (int) $a['id'] ), $from, $today );
+		}
+		sort( $ctx['held'] );
+		return $ctx;
+	}
+
+	/**
+	 * Un incasso è «fruito» se riguarda una data già svolta (collegato a quella data), un mese in cui si è svolta almeno una lezione o,
+	 * senza data né mese, se l'attività è già cominciata. Si usa il criterio uguale per rimborsare e per annullare.
+	 *
+	 * @param array $m movimento (session_id, competence_month)
+	 * @param array $ctx risultato di fruit_context()
+	 */
+	public static function is_fruited( array $m, array $ctx ): bool {
+		$today = (string) $ctx['today'];
+		$now   = (string) $ctx['now'];
+		$sid   = (int) ( $m['session_id'] ?? 0 );
+		if ( $sid ) {
+			$s = $ctx['sessions'][ $sid ] ?? null;
+			return $s ? self::occurred( $s['date'], $s['start'], $today, $now ) : false; // data annullata o sparita: non fruita
+		}
+		$month = (string) ( $m['competence_month'] ?? '' );
+		foreach ( (array) $ctx['held'] as $d ) {
+			if ( ( '' === $month || 0 === strpos( (string) $d, $month ) ) && self::occurred( (string) $d, '', $today, $now ) ) {
+				return true; // basta una lezione già svolta nel mese (o, senza mese, nell'attività)
+			}
+		}
+		if ( '' === $month || ! preg_match( '/^\d{4}-\d{2}$/', $month ) ) { // senza mese: per gli eventi guarda anche l'orario delle date
+			foreach ( (array) $ctx['sessions'] as $s ) {
+				if ( self::occurred( $s['date'], $s['start'], $today, $now ) ) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	/** Incasso già restituito (o annullato) con la cancellazione di una singola iscrizione. */
@@ -127,7 +219,7 @@ final class ActivityReset {
 				$years[] = (int) current_time( 'Y' );
 			}
 		} else { // si annullano gli incassi e le restituzioni che li compensano; le altre spese solo se si sceglie di annullarle
-			$years = array_merge( $p['years_income'], $p['years_refund_exp'] );
+			$years = array_merge( $p['years_income_void'], $p['years_refund_exp'] );
 			if ( $void_costs ) {
 				$years = array_merge( $years, $p['years_expense'] );
 			}
@@ -194,14 +286,18 @@ final class ActivityReset {
 		$ledger = Plugin::ledger();
 		$sessions = array_map( 'intval', $db->get_col( $db->prepare( 'SELECT id FROM ' . Db::t( 'sessions' ) . ' WHERE activity_id = %d', $activity_id ) ) );
 		$mail_to  = ! empty( $opts['notify'] ) ? self::recipients( $activity_id, $sessions ) : array();
-		$sum      = array( 'sessions' => count( $sessions ), 'bookings' => $p['bookings'], 'income_count' => self::REFUND === $mode ? $p['income_open']['count'] : $p['income']['count'], 'income_cents' => self::REFUND === $mode ? $p['income_open']['cents'] : $p['income']['cents'], 'refunds' => 0, 'voided' => 0, 'expenses_voided' => 0, 'notified' => 0, 'name' => $name );
+		$sum      = array( 'sessions' => count( $sessions ), 'bookings' => $p['bookings'], 'income_count' => self::REFUND === $mode ? $p['income_open']['count'] : $p['income_void']['count'], 'income_cents' => self::REFUND === $mode ? $p['income_open']['cents'] : $p['income_void']['cents'], 'kept_count' => $p['income_fruited']['count'], 'kept_cents' => $p['income_fruited']['cents'], 'refunds' => 0, 'voided' => 0, 'expenses_voided' => 0, 'notified' => 0, 'name' => $name );
 
 		$ledger->in_batch(
-			function () use ( $activity_id, $mode, $opts, $name, $sessions, $ledger, $db, &$sum ) {
+			function () use ( $activity_id, $mode, $opts, $name, $sessions, $ledger, $db, &$sum, $p ) {
 				$today = current_time( 'Y-m-d' );
 				$cat   = self::REFUND === $mode ? self::refund_category() : 0;
+				$ctx   = self::fruit_context( $p['activity'] );
 				foreach ( self::movements( $activity_id ) as $m ) {
 					if ( 'income' === $m['type'] ) {
+						if ( ! self::is_settled( $m ) && self::is_fruited( $m, $ctx ) ) {
+							continue; // data o mese già svolti: il contributo resta, non si restituisce né si annulla
+						}
 						if ( self::REFUND === $mode ) {
 							if ( self::is_settled( $m ) ) {
 								continue; // già restituito con la cancellazione della singola iscrizione: non si restituisce due volte
@@ -253,7 +349,7 @@ final class ActivityReset {
 				do_action( 'asem_activity_deleted', $activity_id ); // le estensioni tolgono i dati collegati
 				$db->delete( Db::t( 'activities' ), array( 'id' => $activity_id ) );
 				self::forget_in_pages( $activity_id );
-				Audit::log( 'activity.deleted', 'activity', $activity_id, array( 'name' => $name, 'mode' => $mode, 'income_cents' => $sum['income_cents'], 'refunds' => $sum['refunds'], 'voided' => $sum['voided'] ) );
+				Audit::log( 'activity.deleted', 'activity', $activity_id, array( 'name' => $name, 'mode' => $mode, 'income_cents' => $sum['income_cents'], 'refunds' => $sum['refunds'], 'voided' => $sum['voided'], 'kept_cents' => $sum['kept_cents'] ) );
 			}
 		);
 
