@@ -58,6 +58,7 @@ final class Plugin {
 			'asem_send_reminders'         => array( 'daily', 600, 'Reminders', 'run', '' ),
 			'asem_purge_backups'          => array( 'hourly', 1200, 'Backup', 'purge_old', '' ),
 			'asem_purge_audit'            => array( 'daily', 1800, 'Audit', 'purge_old', '' ),
+			'asem_purge_member_sessions'  => array( 'daily', 2400, 'MemberSession', 'purge_expired', '' ),
 		);
 		$jobs = (array) apply_filters( 'asem_scheduled_jobs', $jobs ); // un'estensione aggiunge i suoi lavori periodici
 		foreach ( $jobs as $hook => $j ) {

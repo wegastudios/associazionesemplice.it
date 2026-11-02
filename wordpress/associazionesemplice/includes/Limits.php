@@ -143,6 +143,12 @@ final class Limits {
 			'Mantienilo attivo: è il comportamento consigliato.'
 		);
 		$add(
+			'member_sessions', 'accesso', 'Accesso dei soci indipendente da WordPress', 'flag', 0, 0, 1,
+			'Predisposizione: i soci possono avere un accesso proprio (sessione dedicata) senza essere utenti di WordPress. Con la funzione spenta non cambia nulla: i soci entrano come prima. Si accende quando la migrazione è pronta.',
+			'Acceso, il cookie di sessione dei soci viene letto e accettato: tienilo spento finché non hai seguito la procedura di passaggio.',
+			'Spento è il comportamento attuale: nessun rischio.'
+		);
+		$add(
 			'profile_gate', 'accesso', 'Blocca prenotazioni e pagamenti finché il profilo è incompleto', 'flag', 1, 0, 1,
 			'Chi si è attivato dal sito senza completare indirizzo e codice fiscale non può prenotare né pagare online finché non li inserisce dal suo profilo.',
 			'Se lo disattivi i soci possono continuare a usare l\'area anche con il profilo incompleto: più comodo, ma i dati restano mancanti.',

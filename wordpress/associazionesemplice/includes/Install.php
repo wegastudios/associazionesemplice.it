@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '49';
+	const DB_VERSION        = '50';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -670,6 +670,50 @@ final class Install {
   PRIMARY KEY  (id),
   KEY category (category),
   KEY valid_to (valid_to)
+) $c;";
+
+		// Accesso proprio dei soci (senza utente WordPress). Orari in UTC; nel database restano solo impronte, mai token o codici in chiaro.
+		$tables[] = "CREATE TABLE {$p}member_auth (
+  person_id bigint(20) unsigned NOT NULL,
+  login_email varchar(190) NOT NULL,
+  pass_hash varchar(255) DEFAULT NULL,
+  failed_count smallint(5) unsigned NOT NULL DEFAULT 0,
+  locked_until datetime DEFAULT NULL,
+  created_at datetime NOT NULL,
+  last_login_at datetime DEFAULT NULL,
+  PRIMARY KEY  (person_id),
+  UNIQUE KEY login_email (login_email)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}member_sessions (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  token_hash char(64) NOT NULL,
+  person_id bigint(20) unsigned NOT NULL,
+  created_at datetime NOT NULL,
+  last_seen datetime NOT NULL,
+  expires_at datetime NOT NULL,
+  ip_hash char(32) NOT NULL DEFAULT '',
+  ua_hash char(32) NOT NULL DEFAULT '',
+  PRIMARY KEY  (id),
+  UNIQUE KEY token_hash (token_hash),
+  KEY person_id (person_id),
+  KEY expires_at (expires_at)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}member_challenges (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  person_id bigint(20) unsigned NOT NULL,
+  kind varchar(8) NOT NULL DEFAULT 'login',
+  token_hash char(64) NOT NULL,
+  code_hash char(64) NOT NULL,
+  attempts tinyint(3) unsigned NOT NULL DEFAULT 0,
+  created_at datetime NOT NULL,
+  expires_at datetime NOT NULL,
+  used_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY token_hash (token_hash),
+  KEY person_id (person_id),
+  KEY expires_at (expires_at)
 ) $c;";
 
 		$tables = (array) apply_filters( 'asem_schema_tables', $tables, $p, $c ); // le estensioni aggiungono le loro tabelle
