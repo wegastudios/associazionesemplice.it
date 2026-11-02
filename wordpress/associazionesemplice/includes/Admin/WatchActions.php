@@ -18,6 +18,8 @@ final class WatchActions {
 		'asem_expense_fund_attach' => 'attach',
 		'asem_expense_fund_undo'   => 'undo',
 		'asem_watch_snapshot'      => 'snapshot',
+		'asem_discrepancy_approve' => 'approve',
+		'asem_discrepancy_revoke'  => 'revoke',
 	);
 
 	public static function register(): void {
@@ -47,5 +49,15 @@ final class WatchActions {
 	private static function snapshot( array $p ): array {
 		$n = BalanceWatch::take_missing();
 		return array( Ui::url( 'asem-watch' ), 0 === $n ? 'Le foto dei mesi conclusi ci sono già tutte.' : $n . ( 1 === $n ? ' foto salvata.' : ' foto salvate.' ) );
+	}
+
+	private static function approve( array $p ): array {
+		\AssociazioneSemplice\Discrepancies::approve( (string) ( $p['kind'] ?? '' ), (string) ( $p['ref'] ?? '' ), (int) ( $p['cents'] ?? 0 ), (string) ( $p['note'] ?? '' ), (int) ( $p['year'] ?? 0 ) );
+		return array( $p['_back'] ?? Ui::url( 'asem-watch' ), 'Discrepanza approvata: viene portata al nuovo anno e non fa più avvisi finché non cambia.' );
+	}
+
+	private static function revoke( array $p ): array {
+		\AssociazioneSemplice\Discrepancies::revoke( (int) ( $p['id'] ?? 0 ) );
+		return array( $p['_back'] ?? Ui::url( 'asem-watch' ), 'Approvazione tolta: la discrepanza torna da verificare.' );
 	}
 }

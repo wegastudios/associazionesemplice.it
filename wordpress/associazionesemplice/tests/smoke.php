@@ -7717,6 +7717,13 @@ asem_ok( 1000 === $wt_rec[ $wt_fra ]['reimbursed'] && 120 === $wt_rec[ $wt_fra ]
 asem_ok( false !== strpos( \AssociazioneSemplice\FundReconciliation::csv( \AssociazioneSemplice\FiscalYears::current() ), 'Francesco Scoperto' ) && 0 === strpos( \AssociazioneSemplice\FundReconciliation::pdf( \AssociazioneSemplice\FiscalYears::current() ), '%PDF' ), 'quadratura: esportazione CSV e PDF' );
 $wt_y_now = \AssociazioneSemplice\FiscalYears::current();
 asem_ok( 1 === count( \AssociazioneSemplice\FundReconciliation::blockers( array(), $wt_y_now ) ) && array() === \AssociazioneSemplice\FundReconciliation::confirm( array(), $wt_y_now ), 'chiusura anno: di partenza si ferma se chi ha avuto rimborsi non ha i documenti' );
+\AssociazioneSemplice\Discrepancies::approve( 'recon_uncovered', (string) $wt_fra, 880, 'prova', $wt_y_now );
+asem_ok( array() === \AssociazioneSemplice\FundReconciliation::blockers( array(), $wt_y_now ) && \AssociazioneSemplice\Discrepancies::is_approved( 'recon_uncovered', (string) $wt_fra, 880 ) && ! \AssociazioneSemplice\Discrepancies::is_approved( 'recon_uncovered', (string) $wt_fra, 900 ), 'discrepanze: approvata a mano, non ferma la chiusura; vale solo per quell\'importo' );
+asem_ok( null !== asem_throws( function () use ( $wt_fra, $wt_y_now ) { \AssociazioneSemplice\Discrepancies::approve( 'recon_uncovered', (string) $wt_fra, 1, '', $wt_y_now ); } ), 'discrepanze: non si approva una discrepanza che è cambiata o non esiste' );
+$wt_aid = (int) $wpdb->get_var( 'SELECT id FROM ' . Db::t( 'discrepancy_approvals' ) . " WHERE kind = 'recon_uncovered'" );
+asem_render( array( Admin\WatchPage::class, 'render' ), 'Togli l\'approvazione' );
+\AssociazioneSemplice\Discrepancies::revoke( $wt_aid );
+asem_ok( 1 === count( \AssociazioneSemplice\FundReconciliation::blockers( array(), $wt_y_now ) ), 'discrepanze: tolta l\'approvazione torna da verificare' );
 Settings::update( array( 'limits' => array( 'watch_close_mode' => 2 ) ) );
 asem_ok( array() === \AssociazioneSemplice\FundReconciliation::blockers( array(), $wt_y_now ) && count( \AssociazioneSemplice\FundReconciliation::confirm( array(), $wt_y_now ) ) >= 1, 'chiusura anno: con «chiedi conferma» non si ferma ma chiede conferma con l\'elenco' );
 Settings::update( array( 'limits' => array( 'watch_close_mode' => 0 ) ) );

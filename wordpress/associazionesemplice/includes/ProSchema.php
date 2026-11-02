@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 final class ProSchema {
 
 	const VERSION_OPTION = 'asem_pro_db_version';
-	const VERSION        = '11';
+	const VERSION        = '12';
 
 	public static function register(): void {
 		add_filter( 'asem_schema_tables', array( __CLASS__, 'tables' ), 10, 3 );
@@ -530,6 +530,21 @@ final class ProSchema {
   created_at datetime NOT NULL,
   PRIMARY KEY  (id),
   UNIQUE KEY fiscal_month (fiscal_year,month)
+) $c;";
+
+
+		// Pro Fiscale: discrepanze di fine anno approvate a mano per portarle al nuovo anno.
+		$tables[] = "CREATE TABLE {$p}discrepancy_approvals (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  kind varchar(24) NOT NULL,
+  ref varchar(40) NOT NULL,
+  cents bigint(20) NOT NULL DEFAULT 0,
+  fiscal_year smallint(5) unsigned NOT NULL,
+  note varchar(255) NOT NULL DEFAULT '',
+  approved_by bigint(20) unsigned DEFAULT NULL,
+  approved_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY kind_ref (kind,ref)
 ) $c;";
 
 		return $tables;

@@ -118,6 +118,30 @@ final class WatchPage {
 			echo '</tbody></table>';
 		}
 
+		// Discrepanze di fine anno: da verificare, o approvate a mano per portarle al nuovo anno
+		$disc = \AssociazioneSemplice\Discrepancies::all( $s['year'] );
+		if ( $disc ) {
+			$labels = \AssociazioneSemplice\Discrepancies::LABELS;
+			echo '<h2 id="asem-disc">Discrepanze da verificare</h2><p class="description">Ognuna si corregge dal link, oppure si approva a mano per portarla al nuovo anno (con una nota). Un\'approvazione vale finché la discrepanza resta com\'è: se cambia importo torna da verificare. Le approvate non fanno avvisi né fermano la chiusura dell\'anno.</p>';
+			echo '<table class="widefat striped"><thead><tr><th>Tipo</th><th>Voce</th><th>Importo</th><th>Situazione</th></tr></thead><tbody>';
+			foreach ( $disc as $d ) {
+				echo '<tr><td>' . esc_html( $labels[ $d['kind'] ] ?? $d['kind'] ) . '</td><td><a href="' . esc_url( $d['url'] ) . '">' . esc_html( '' !== $d['desc'] ? $d['desc'] : '—' ) . '</a></td><td>' . self::m( (int) $d['cents'] ) . '</td><td>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				if ( $d['approved'] ) {
+					$a = $d['approval'];
+					echo esc_html( 'approvata il ' . mysql2date( 'd/m/Y', $a['approved_at'] ) . ( $a['who'] ? ' da ' . $a['who'] : '' ) . ' (anno ' . $a['fiscal_year'] . ')' . ( '' !== $a['note'] ? ': ' . $a['note'] : '' ) ) . ' ';
+					Ui::form_open( 'asem_discrepancy_revoke', Ui::url( 'asem-watch' ), false, 'asem-inline' );
+					echo Ui::hidden( 'id', (int) $a['id'] ) . '<button class="button button-small">Togli l\'approvazione</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+					Ui::form_close();
+				} else {
+					Ui::form_open( 'asem_discrepancy_approve', Ui::url( 'asem-watch' ), false, 'asem-inline' );
+					echo Ui::hidden( 'kind', $d['kind'] ) . Ui::hidden( 'ref', $d['ref'] ) . Ui::hidden( 'cents', (int) $d['cents'] ) . Ui::hidden( 'year', (int) $s['year'] ) . '<input type="text" name="note" placeholder="Nota (facoltativa)" maxlength="255"> <button class="button button-small" data-confirm="Approvare questa discrepanza e portarla al nuovo anno?">Approva</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+					Ui::form_close();
+				}
+				echo '</td></tr>';
+			}
+			echo '</tbody></table>';
+		}
+
 		// Quadratura rimborsi e spese per persona
 		$ry = Ui::get_int( 'ry', $s['year'] );
 		echo '<h2 id="asem-recon">Rimborsi e spese documentate per persona</h2><p class="description">Chi ha avuto rimborsi dai fondi deve trovarsi con le spese sostenute: a fine mese è bene, a fine anno è necessario. Differenza = rimborsato − documentato: se è positiva i rimborsi non hanno documenti a copertura (da regolarizzare), se è negativa ci sono spese documentate non ancora rimborsate.</p>';
