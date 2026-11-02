@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.1.40
+- Il pulsante per annullare l'approvazione di una differenza di fine anno si chiama «Revoca l'approvazione»
+
 ## 1.1.39
 - Le spese si attribuiscono da sole ai fondi giusti
 - Il volontario usa solo i suoi fondi e, se supera, resta in credito
