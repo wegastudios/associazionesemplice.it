@@ -58,8 +58,12 @@ Fonti: [TeamSystem Terzo Settore in Cloud](https://www.teamsystem.com/associazio
 - IVA e corrispettivi, regime L.398 per le sportive.
 
 **Ruoli e accessi**
-- più operatori, con verifica in due passaggi e registro delle azioni;
-- ruoli pronti: amministratore, tesoriere, segreteria, revisore in sola lettura, referente di attività.
+- **3 operatori inclusi**: presidente, vicepresidente, tesoriere;
+- **operatori aggiuntivi a pagamento**, a basso costo, non gratuiti e illimitati: segretari e consiglieri con permessi
+  configurabili. Una segreteria numerosa ha il budget per pagarli;
+- il **commercialista** (o altro professionista invitato dall'associazione) non conta come operatore: accesso alla
+  contabilità, revocabile dall'associazione, e un'**area Studio** gratuita con tutte le associazioni seguite;
+- verifica in due passaggi per tutti e registro delle azioni.
 
 **Soci**
 - anagrafica, tesseramento e quote, libro soci;
@@ -74,7 +78,7 @@ Fonti: [TeamSystem Terzo Settore in Cloud](https://www.teamsystem.com/associazio
 |---|---|---|
 | **Area soci e pagamenti online** | al lancio | tessera QR, profilo, iscrizioni e pagamenti online (Stripe, PayPal), PWA |
 | **Database dedicato** | al lancio | database esclusivo dell'associazione, con chiave e backup propri |
-| **Sito** | fase 3 | sito generato dall'AI, dominio di terzo livello incluso, area soci compresa; il cliente controlla solo testi e allegati |
+| **Sito** | fase 3 | sito generato dall'AI, dominio di terzo livello incluso; il cliente controlla solo testi e allegati. **Non comprende l'area soci**: i blocchi di iscrizione e pagamento online compaiono solo se è attivo anche quel pacchetto |
 | **Dominio personalizzato** | con il Sito | extra a pagamento |
 
 ## 5. Addon successivi
@@ -122,6 +126,35 @@ dell'associazione per ora non è previsto.
 **Da verificare**: obblighi attuali per le sportive in regime 398 (l'esonero sotto i 65.000 € è stato ridotto dal 2022)
 con un commercialista; preventivo dei due intermediari.
 
+## 5.2 Programma partner
+
+Per chi porta clienti: commercialisti, CAF, agenzie di comunicazione, centri di servizio, chiunque.
+
+- **Iscrizione a un mini-portale partner**: dati fiscali e di pagamento, accettazione delle condizioni. Il portale
+  rilascia un **codice** e un **link** da condividere.
+- **Compenso**: una **percentuale su tutto ciò che fatturiamo all'associazione** (canone, pacchetti, ricariche,
+  addon), **ricorrente** per tutto il tempo in cui il partner amministra il cliente: ogni mese, ogni anno, non una
+  tantum. Calcolata sull'incassato, al netto di IVA e rimborsi.
+- **A chi spetta**: al partner che **amministra il cliente in quel momento**. L'attribuzione nasce dal codice o dal link
+  alla registrazione; se l'associazione cambia partner, da quel momento il compenso passa al nuovo.
+- **Liquidazione su richiesta**, raggiunta una soglia minima: il portale emette un **numero di pratica**, il partner ci
+  manda una regolare fattura con quel numero, noi paghiamo agli estremi indicati.
+- Vale anche per le **licenze Pro del plugin**: un unico programma, gestito dal portale.
+- Nel database: ogni incasso registra il partner attribuito in quel momento, in una tabella a sola aggiunta; maturato,
+  richieste e pagamenti si ricavano da lì.
+
+**Soglia minima di liquidazione**: circa **due anni di compenso sul servizio minimo**, arrotondata per eccesso.
+Esempio: servizio minimo a 7 €/mese (84 €/anno), percentuale al 10% → 16,80 € in due anni → soglia **20 €**. Con un
+solo cliente al minimo ci vogliono due anni; con più clienti e pacchetti si arriva prima e più spesso, ed è lo scopo.
+La soglia si ricalcola quando si fissano prezzi e percentuale.
+
+**Il maturato non scade, ma sotto la soglia non è esigibile in nessun caso**: nemmeno se il cliente cambia partner,
+ci lascia, o il partner non ha più clienti. Resta fermo, in attesa dei prossimi clienti che lo portino sopra la
+soglia. Va scritto chiaramente nelle condizioni del programma.
+
+Da decidere: percentuale (ed eventuali scaglioni), verifica dei limiti deontologici dei commercialisti (trasparenza
+verso il cliente).
+
 ## 6. Interventi successivi
 
 - Biglietteria e controllo degli ingressi.
@@ -139,6 +172,8 @@ con un commercialista; preventivo dei due intermediari.
 
 ## 8. Domande aperte
 
-1. **Fattura elettronica**: addon subito dopo il lancio?
-2. **Area soci**: venduta da sola **e** compresa nel Sito, oppure solo dentro il Sito?
-3. **Prezzo**: oltre alla fascia di soci, un limite di **operatori** per fascia (come TeamSystem e AssoFacile)?
+1. Programma partner: percentuale ed eventuali scaglioni (§5.2).
+
+Decise: fattura elettronica come primo addon dopo il lancio (§5.1); **Sito e Area soci sono due pacchetti separati**,
+perché l'area soci non serve a tutti; **3 operatori inclusi** più aggiuntivi a pagamento (§3); programma partner
+aperto a tutti (§5.2).
