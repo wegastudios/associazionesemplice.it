@@ -63,6 +63,61 @@ eventi in evidenza come locandine verticali, chi siamo, corsi, sale, calendario,
 con i soci, piè di pagina con contatti, social, canale WhatsApp e "Sostienici". Il catalogo deve poterlo riprodurre
 per intero, sia nei contenuti sia nel tipo di grafica.
 
+### 3.1 Spunti da altri tipi di associazione
+
+| Tipo | Esempio | Cosa ci insegna |
+|---|---|---|
+| ASD / polisportiva | [polsanmarco.it](https://www.polsanmarco.it/) | griglia delle discipline con pagina per ciascuna; pulsante **"Iscriviti subito" sempre visibile**; pagina **Safeguarding** in evidenza; sponsor nel piè di pagina; WhatsApp tra i contatti |
+| Pro loco | [prolocosommarivaperno.it](https://www.prolocosommarivaperno.it/) | **territorio** (storia, luoghi da visitare, personaggi); **ospitalità**; programma delle manifestazioni; **archivio delle edizioni** (sagra per anno, con foto); video; siti amici; statuto e verbali pubblici. Le ultime notizie sono vecchie di anni: l'aggiornamento automatico dal gestionale è un argomento di vendita |
+| ODV per animali (rifugi, gattili) | Chance for Pets, Protezione del gatto e simili | **schede degli animali da adottare** con foto, età, carattere e stato; raccolte fondi con obiettivo; banchetti ed eventi; lasciti |
+| Pubblica assistenza | Croci verdi e simili | **servizi offerti**; **percorso per diventare volontario** (candidatura, corso, servizio); corsi aperti al pubblico (primo soccorso, defibrillatore); numeri dell'attività |
+| Onlus e ODV in generale | — | **progetti** con obiettivo e risultati; pulsante **"Dona" sempre visibile**; storie e testimonianze; trasparenza dei bilanci |
+
+**Componenti aggiunti al catalogo**
+
+| Componente | Per chi | Dati |
+|---|---|---|
+| Pulsante d'azione fisso ("Iscriviti", "Dona", "Diventa volontario") | tutti | scelto dall'AI in base al tipo di ente |
+| Scheda disciplina o corso: orari, quote, età, istruttori | ASD, scuole, culturali | dal gestionale; istruttori solo con consenso |
+| **Collezione di schede** con campi liberi e stato (disponibile, adottato, venduto…) | animali da adottare, opere, squadre, progetti, luoghi | testi e foto del cliente |
+| **Raccolta fondi con barra di avanzamento** | onlus, ODV | collegata a un **fondo della contabilità**: la barra si aggiorna da sola |
+| Territorio e luoghi, con mappa statica | pro loco, culturali | testi e foto del cliente |
+| Ospitalità e convenzioni (esercizi del territorio) | pro loco, tutti | dal modulo convenzioni |
+| **Archivio delle edizioni** (eventi passati per anno, con foto) | pro loco, festival | dagli eventi del gestionale |
+| **Percorso volontario** con modulo di candidatura | ODV, pubbliche assistenze | la candidatura entra nel gestionale come domanda |
+| Servizi offerti | pubbliche assistenze, ODV | testi del cliente |
+| **Numeri dell'attività** (soci, volontari, eventi dell'anno) | tutti | dal gestionale, solo totali, solo se l'associazione lo attiva |
+| Progetti con obiettivo e risultati | onlus, ODV | testi e foto del cliente |
+| Storie e testimonianze | tutti | testi del cliente, con consenso delle persone citate |
+| Video | tutti | YouTube in modalità senza cookie, caricato solo al clic |
+| Siti amici e rete | tutti | link del cliente |
+| Trasparenza: statuto, verbali pubblici, bilanci | tutti | dai documenti e dalle assemblee del gestionale |
+| **Impianti prenotabili** (campi da tennis, calcetto, padel): disponibilità in tempo reale, tariffe soci e non soci, prenota e paga | circoli sportivi | dal modulo **risorse e prenotazioni**; prenotazione e pagamento con l'Area soci |
+| **Sala feste e spazi in affitto**: foto, capienza, servizi, richiesta di preventivo | circoli, pro loco, culturali | richiesta che entra nel gestionale |
+| **Ristorante o bar**: orari, menu (testo o PDF), prenotazione del tavolo o richiesta | circoli | testi e allegati del cliente |
+| **Posti barca**: dimensioni, tariffe stagionali, disponibilità, lista d'attesa | circoli nautici | dal modulo risorse (lista d'attesa già prevista) |
+| **Postazioni spiaggia o solarium** (ombrellone e lettini): giornaliere e stagionali, disponibilità per data | circoli nautici e balneari | dal modulo risorse |
+
+### 3.2 Profili di partenza per tipo di ente
+
+L'AI parte da un profilo scelto in base al tipo di ente e al settore registrati nel gestionale, poi lo adatta con il
+questionario e i dati.
+
+| Profilo | Pagine e sezioni di partenza | Pulsante fisso |
+|---|---|---|
+| ASD / SSD / polisportiva | discipline, orari e quote, iscrizioni, safeguarding, sponsor, notizie | Iscriviti |
+| APS culturale | eventi con locandine, corsi, spazi, diventa socio, comunità (come sognaragazzosogna.it) | Unisciti a noi |
+| Pro loco | manifestazioni e programma, archivio edizioni, territorio, ospitalità, trasparenza | Programma |
+| ODV / onlus | progetti, raccolte fondi, diventa volontario, storie, trasparenza, 5×1000 | Dona |
+| ODV per animali | schede degli animali da adottare, raccolte fondi, eventi, volontari, 5×1000 | Adotta / Dona |
+| Pubblica assistenza | servizi, percorso volontario, corsi aperti, numeri dell'attività, dona | Diventa volontario |
+| Circolo sportivo con impianti | campi prenotabili (tennis, calcetto, padel), corsi, sala feste, ristorante, diventa socio | Prenota un campo |
+| Circolo nautico o balneare | posti barca, postazioni spiaggia e solarium, corsi (vela…), regate ed eventi, ristorante, diventa socio | Prenota |
+
+I profili con impianti, posti barca e postazioni usano il pacchetto **Risorse e prenotazioni**, anticipato al lancio
+per questi circoli ([SAAS_PERIMETRO.md](SAAS_PERIMETRO.md) §4). Senza quel pacchetto il sito li mostra con una
+richiesta di informazioni.
+
 ## 4. Il gestionale tiene il sito aggiornato
 
 - **Contenuti stabili** (eventi, corsi, orari, documenti, contributi pubblici): quando cambiano nel gestionale, le
@@ -83,6 +138,7 @@ del cliente.**
 | Trasparenza dei contributi pubblici (L. 124/2017) | contributi pubblici sopra la soglia di legge | elenco generato dalla contabilità |
 | Compensi di amministratori, controllori, dirigenti e associati (art. 14 c. 2 CTS) | ETS con entrate annue sopra 100.000 € (da verificare se la soglia è più bassa per alcuni enti) | pubblicazione annuale, anche in forma anonima |
 | Bilancio sociale (art. 14 c. 1 CTS) | ETS con entrate sopra 1 milione € | pubblicazione del documento |
+| **Safeguarding** (tutela dei minori e degli atleti) | ASD e SSD, con la riforma dello sport (D.Lgs. 39/2021) | modello organizzativo, codice di condotta e responsabile contro gli abusi, pubblicati in evidenza; obbligo e modalità da verificare con le federazioni e gli enti di promozione |
 | **Consiglio direttivo** | **sempre previsto**, visibile **a richiesta** dell'associazione | nomi e ruoli solo con il consenso delle persone registrato nel gestionale; se una norma lo impone, la norma prevale |
 
 Le soglie e i testi normativi vanno verificati con un commercialista prima del lancio.
@@ -118,4 +174,8 @@ Le soglie e i testi normativi vanno verificati con un commercialista prima del l
 [Brocardi: art. 14 Codice del Terzo settore](https://brocardi.it/codice-terzo-settore/titolo-ii/art14.html) ·
 [ecnews: pubblicazione dei compensi anche in forma anonima](https://www.ecnews.it/fiscale/fisco-e-patrimonio/enti-non-commerciali/ets-obbligo-di-pubblicazione-dei-compensi-sul-sito-internet-anche-in-forma-anonima/) ·
 [TeamSystem: quando vige l'obbligo del sito web](https://www.teamsystem.com/magazine/terzo-settore/obbligo-sito-web-associazioni/) ·
-[fiscoetasse: bilancio sociale e compensi](https://www.fiscoetasse.com/rassegna-stampa/29901-bilancio-sociale-e-indicazione-compensi-organi-di-amministrazione-e-controllo-degli-ets.html)
+[fiscoetasse: bilancio sociale e compensi](https://www.fiscoetasse.com/rassegna-stampa/29901-bilancio-sociale-e-indicazione-compensi-organi-di-amministrazione-e-controllo-degli-ets.html) ·
+[Polisportiva San Marco](https://www.polsanmarco.it/) ·
+[Pro Loco Sommariva Perno](https://www.prolocosommarivaperno.it/) ·
+[GoFundMe: volontariato con gli animali in Italia](https://gofundme.com/it-it/c/blog/volunteering-with-animals-italy) ·
+[Il Piccolo: Croce Verde Casale, corso per soccorritori](https://www.ilpiccolo.net/2023/09/10/croce-verde-casale-corso-gratuito-per-diventare-soccorritori-118)

@@ -77,6 +77,7 @@ Fonti: [TeamSystem Terzo Settore in Cloud](https://www.teamsystem.com/associazio
 | Pacchetto | Quando | Contenuto |
 |---|---|---|
 | **Area soci e pagamenti online** | al lancio | tessera QR, profilo, iscrizioni e pagamenti online (Stripe, PayPal), PWA |
+| **Risorse e prenotazioni** | al lancio | impianti e spazi prenotabili (campi da tennis, calcetto, padel, sale), posti barca, postazioni spiaggia e solarium; disponibilità per data, tariffe soci e non soci, giornaliere e stagionali, lista d'attesa. Prenotazione e pagamento online dei soci con l'Area soci. Anticipato per circoli sportivi con impianti e circoli nautici e balneari: per loro le risorse sono il cuore dell'attività, e senza questo pacchetto il gestionale non servirebbe |
 | **Database dedicato** | al lancio | database esclusivo dell'associazione, con chiave e backup propri |
 | **Sito** | fase 3 | sito generato dall'AI, dominio di terzo livello incluso; il cliente controlla solo testi e allegati. **Non comprende l'area soci**: i blocchi di iscrizione e pagamento online compaiono solo se è attivo anche quel pacchetto |
 | **Dominio personalizzato** | con il Sito | extra a pagamento |
@@ -158,7 +159,6 @@ verso il cliente).
 ## 6. Interventi successivi
 
 - Biglietteria e controllo degli ingressi.
-- Gestione delle risorse e prenotazione degli spazi.
 - Assemblee, votazioni e verbali; registro presenze e assicurazioni.
 - Affiliazioni, convenzioni, tessera nei wallet, 5×1000.
 - Migrazione bidirezionale con il plugin (ultimo passo).
