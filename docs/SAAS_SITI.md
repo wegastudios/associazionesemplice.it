@@ -94,7 +94,7 @@ per intero, sia nei contenuti sia nel tipo di grafica.
 | Trasparenza: statuto, verbali pubblici, bilanci | tutti | dai documenti e dalle assemblee del gestionale |
 | **Impianti prenotabili** (campi da tennis, calcetto, padel): disponibilità in tempo reale, tariffe soci e non soci, prenota e paga | circoli sportivi | dal modulo **risorse e prenotazioni**; prenotazione e pagamento con l'Area soci |
 | **Sala feste e spazi in affitto**: foto, capienza, servizi, richiesta di preventivo | circoli, pro loco, culturali | richiesta che entra nel gestionale |
-| **Ristorante o bar**: orari, menu (testo o PDF), prenotazione del tavolo o richiesta | circoli | testi e allegati del cliente |
+| **Ristorante o bar**: orari, menu come allegato, **sale prenotabili per eventi privati** (per esempio un aperitivo con sala riservata) | circoli | orari e menu dal cliente; le sale dal modulo risorse. Il bar e la somministrazione non li gestiamo |
 | **Posti barca**: dimensioni, tariffe stagionali, disponibilità, lista d'attesa | circoli nautici | dal modulo risorse (lista d'attesa già prevista) |
 | **Postazioni spiaggia o solarium** (ombrellone e lettini): giornaliere e stagionali, disponibilità per data | circoli nautici e balneari | dal modulo risorse |
 

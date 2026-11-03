@@ -77,7 +77,7 @@ Fonti: [TeamSystem Terzo Settore in Cloud](https://www.teamsystem.com/associazio
 | Pacchetto | Quando | Contenuto |
 |---|---|---|
 | **Area soci e pagamenti online** | al lancio | tessera QR, profilo, iscrizioni e pagamenti online (Stripe, PayPal), PWA |
-| **Risorse e prenotazioni** | al lancio | impianti e spazi prenotabili (campi da tennis, calcetto, padel, sale), posti barca, postazioni spiaggia e solarium; disponibilità per data, tariffe soci e non soci, giornaliere e stagionali, lista d'attesa. Prenotazione e pagamento online dei soci con l'Area soci. Anticipato per circoli sportivi con impianti e circoli nautici e balneari: per loro le risorse sono il cuore dell'attività, e senza questo pacchetto il gestionale non servirebbe |
+| **Risorse e prenotazioni** | al lancio | impianti e spazi prenotabili (campi da tennis, calcetto, padel, sale, comprese le sale del bar o del ristorante con servizi aggiuntivi alla prenotazione), posti barca, postazioni spiaggia e solarium; disponibilità per data, tariffe soci e non soci, giornaliere e stagionali, lista d'attesa. Prenotazione e pagamento online dei soci con l'Area soci. Anticipato per circoli sportivi con impianti e circoli nautici e balneari: per loro le risorse sono il cuore dell'attività, e senza questo pacchetto il gestionale non servirebbe |
 | **Database dedicato** | al lancio | database esclusivo dell'associazione, con chiave e backup propri |
 | **Sito** | fase 3 | sito generato dall'AI, dominio di terzo livello incluso; il cliente controlla solo testi e allegati. **Non comprende l'area soci**: i blocchi di iscrizione e pagamento online compaiono solo se è attivo anche quel pacchetto |
 | **Dominio personalizzato** | con il Sito | extra a pagamento |
@@ -199,12 +199,16 @@ delle fatture passive via SDI per chi ha partita IVA, con un limite d'uso ragion
 prenotazioni e scritture di 200 posti barca assegnati una volta l'anno. Il criterio è quindi la **modalità di
 prenotazione** di ogni risorsa:
 
-| Modalità | Esempi | Movimento | Scaglioni |
+| Tipologia | Esempi | Movimento | Primo scaglione |
 |---|---|---|---|
-| **A turni** (orari o giornalieri) | campi, sale, postazioni spiaggia giornaliere | alto | primo scaglione: **2** risorse |
-| **Stagionali** (assegnazione per stagione o anno, qualche rotazione) | posti barca, ombrelloni stagionali, armadietti | basso | primo scaglione: **50** risorse (un circolo nautico parte in genere da circa 20 posti) |
+| **Oraria** | campi da tennis, padel, calcetto | alto | **2** risorse |
+| **Giornaliera** | sala del ristorante o del bar, postazioni spiaggia a giornata, sale per feste | medio | **10** risorse |
+| **Stagionale** (assegnazione per stagione o anno, qualche rotazione) | posti barca, ombrelloni stagionali, armadietti | basso | **50** risorse (un circolo nautico parte in genere da circa 20 posti) |
 
-Gli scaglioni successivi si definiscono insieme ai prezzi.
+La tipologia è **il modo in cui la risorsa si vende**, non la risorsa in sé: un posto barca è di solito stagionale, ma
+il circolo può venderne anche 3 a giornata o a ore, e allora quei 3 contano come giornalieri o orari. Per usare la
+stessa sala in più fasce della giornata (colazione, pranzo, cena) si comprano 3 risorse giornaliere. Un circolo con
+più tipologie somma i loro scaglioni.
 
 Una stessa risorsa conta nella modalità in cui è usata; un circolo con entrambe somma i due scaglioni.
 
@@ -227,6 +231,155 @@ database dedicato, ricariche di fatture elettroniche, SMS e rigenerazioni del si
 | Base (c'è molto da compilare) | **30 giorni** |
 | Pacchetti attivati **insieme alla base** in prova | 30 giorni, insieme alla base |
 | Pacchetto provato **su una base già operativa** | **7 giorni**, prorogabili a **14** su richiesta, inviata automaticamente all'assistenza |
+
+## 7.2 Listino a regime
+
+Prezzi **di listino**, come se fossimo già consolidati; le promo si applicano sopra. Tutti **IVA esclusa** (per le
+associazioni senza partita IVA l'IVA è un costo: da ricordare nella comunicazione). **Annuale = 10 mensilità.**
+**Nessuna commissione** su pagamenti e prenotazioni.
+
+### Base: Gestionale, a scaglioni marginali di soci
+
+Si contano i tesserati attivi nell'anno. Ogni socio costa in base allo scaglione in cui cade, come le aliquote IRPEF.
+
+| Soci | Prezzo per socio al mese |
+|---|---|
+| primi 50 | **15 € fissi** (prezzo minimo) |
+| dal 51° al 150° | 0,18 € |
+| dal 151° al 400° | 0,12 € |
+| oltre il 400° | 0,06 € |
+
+| Soci | Mensile | Per socio all'anno |
+|---|---|---|
+| 50 | 15 € | 3,60 € |
+| 100 | 24 € | 2,88 € |
+| 150 | 33 € | 2,64 € |
+| 250 | 45 € | 2,16 € |
+| 400 | 63 € | 1,89 € |
+| 1.000 | 99 € | 1,19 € |
+| 2.500 | 189 € | 0,91 € |
+
+Confronto: TeamSystem 26–42 € (69 con la partita doppia) senza scala per socio, AssoFacile circa 25 € fino a
+1.000 anagrafiche, ACLI/ARCI circa 4 € a socio all'anno (affiliazione, assicurazione e servizi).
+
+**Spazio file**: **5 MB a socio** (certificato medico e poco più), minimo 250 MB. I pacchetti ne aggiungono: Sito
++2 GB, Vita associativa +500 MB, Risorse +500 MB, Fattura elettronica +500 MB.
+
+### Pacchetti (mensile)
+
+| Pacchetto | Prezzo |
+|---|---|
+| **Area soci e pagamenti** | stessi scaglioni della base: 5 € fissi fino a 50 soci, poi 0,06 € · 0,04 € · 0,02 € a socio (150 soci: 11 €; 400: 21 €; 1.000: 33 €) |
+| **Risorse orarie, Web** (prenotabili online dai soci) | fino a 2: 19 € · fino a 5: 29 € · fino a 10: 45 € · oltre: 69 € |
+| **Risorse giornaliere, Web** | fino a 10: 19 € · fino a 25: 29 € · fino a 50: 45 € · oltre: 69 € |
+| **Risorse stagionali, Web** | fino a 50: 19 € · fino a 150: 35 € · fino a 400: 59 € · oltre: su preventivo |
+| **Versione Interna** di ciascuna (prenota solo l'operatore) | 50% della Web |
+| **Sito** | 19 € |
+| **Fattura elettronica** (50 fatture emesse all'anno) | 7 € |
+| **Comunicazioni** | 9 €, SMS a consumo |
+| **Contabilità avanzata** | 19 € |
+| **Vita associativa** | 7 € |
+| **Sport** | 12 € |
+**Sale del bar e del ristorante.** Non gestiamo il bar né la somministrazione: non ci riguarda. Le sale e gli spazi
+del bar o del ristorante (per esempio un aperitivo con sala riservata) sono **risorse giornaliere**, con
+eventuali **servizi aggiuntivi alla prenotazione** (aperitivo, buffet, allestimento) a prezzo deciso dal circolo, che
+finiscono nell'incasso della prenotazione.
+
+**Versione Web e versione Interna.** Una risorsa prenotabile online è un servizio diverso da una risorsa che prenota
+solo l'operatore: più carico, più valore per il circolo. Le Risorse esistono quindi in due versioni: **Web** al prezzo
+di listino, **Interna** al **50%**. La versione Web richiede l'Area soci (accesso e pagamento online). Si può passare
+dall'una all'altra in qualsiasi momento.
+
+### Extra e consumi
+
+| Voce | Prezzo |
+|---|---|
+| Operatore aggiuntivo | 3 €/mese l'uno |
+| Dominio personalizzato (collegamento e certificato; registrazione a carico del cliente) | 3 €/mese |
+| Database dedicato | 25 €/mese |
+| Ricarica fatture elettroniche (non scadono) | 50 fatture 15 € · 200 fatture 40 € |
+| SMS | circa 0,10 € l'uno, da tarare sul costo del fornitore |
+| Rigenerazioni del sito oltre quelle incluse | 10 rigenerazioni 5 € |
+| Spazio file oltre quello incluso | 10 GB 3 €/mese |
+
+### Sconti per combinazione di pacchetti
+
+Gli sconti valgono **sui pacchetti**, non sulla base (che scala già con gli scaglioni). Si applica lo sconto più
+favorevole, senza cumulo con gli altri.
+
+| Combinazione | Sconto sui pacchetti coinvolti |
+|---|---|
+| **Trio web**: Sito + Area soci + Risorse Web | **50%** |
+| Sito + Area soci | 25% |
+| 2 pacchetti qualsiasi | 15% |
+| 3 pacchetti qualsiasi | 25% |
+| 4 o più pacchetti | 30% |
+
+Il trio web premia chi porta online tutta la vita del circolo: con le risorse già Web, aggiungere il sito costa quasi
+nulla.
+
+### Bundle: il terzo pacchetto quasi in regalo
+
+Ancora più convenienti degli sconti per combinazione: **con poco più di due pacchetti se ne prendono tre**. Così il
+circolo gestisce con noi anche ciò che altrimenti terrebbe separato (la fattura elettronica per gli affitti, le
+comunicazioni…).
+
+**Regola**: i due pacchetti più cari del bundle con lo sconto per combinazione di due (15%, o 25% se sono Sito + Area
+soci), **il terzo a 5 €/mese** qualunque sia il suo listino. Il sistema applica sempre il calcolo più favorevole al
+cliente tra bundle, trio web (50%) e sconti per combinazione: chi sceglie un bundle non paga mai più del 25% sui tre
+pacchetti.
+
+| Bundle | Pacchetti | Per chi |
+|---|---|---|
+| **Circolo sportivo** | Area soci + Risorse orarie Web + **Fattura elettronica** | tennis, padel, calcetto |
+| **Circolo nautico** | Area soci + Risorse stagionali + **Fattura elettronica** | circoli nautici e balneari |
+| **Associazione online** | Area soci + Sito + **Comunicazioni** | APS, ODV, culturali |
+| **Sportiva** | Area soci + Sport + **Comunicazioni** | ASD e SSD |
+
+Esempio: circolo tennis, 250 soci, 4 campi prenotabili online (risorse orarie, scaglione fino a 5). La sala del bar
+si aggiungerebbe come risorsa giornaliera.
+
+| | Area soci | Risorse Web | Comunicazioni | Pacchetti | Base | **Totale** |
+|---|---|---|---|---|---|---|
+| Listino | 15 € | 29 € | 9 € | 53 € | 45 € | 98 € |
+| Tre pacchetti con il 25% | | | | 39,75 € | 45 € | 84,75 € |
+| **Bundle con Comunicazioni come terzo** | (15 + 29) − 15% = 37,40 € | | **5 €** | **42,40 €** | 45 € | **87,40 €** |
+| Solo i primi due, con il 15% | | | | 37,40 € | 45 € | 82,40 € |
+
+Con la Fattura elettronica (7 €) come terzo pacchetto il bundle costa uguale: 87,40 €. **Il terzo pacchetto entra
+sempre per 5 € in più**, e conviene soprattutto quando il suo listino è alto: con un terzo pacchetto da 19 € (Sito,
+Contabilità avanzata) il risparmio rispetto al 25% è di circa 5–7 €. Le offerte già composte (Associazione, Associazione con sito, Sportiva, Circolo) restano come **combinazioni
+proposte** in vetrina, con questi sconti già applicati.
+
+| Profilo | Composizione | Listino | Con sconto |
+|---|---|---|---|
+| APS, 40 soci | base + Area soci | 20 € | **20 €** (un solo pacchetto) |
+| APS, 120 soci | base + Area soci + Sito | 55,80 € | **48,90 €** (25% su Area soci e Sito) |
+| ASD, 300 soci | base + Area soci + Sport | 80 € | **75,35 €** (15% su due pacchetti) |
+| Circolo tennis, 250 soci, 4 campi prenotabili online | base + Area soci + Risorse Web + Fattura elettronica | 96 € | **83,25 €** (25% su tre pacchetti) |
+| Lo stesso circolo **con il sito** | + Sito: scatta il trio web | 115 € | **83,50 €** (50% sul trio, Fattura elettronica piena) |
+| Circolo nautico, 200 soci, 120 posti barca gestiti in segreteria | base + Area soci + Risorse stagionali Interna + Fattura elettronica | 76,50 € | **67,13 €** (25% su tre pacchetti) |
+
+Per confronto: Harba costa circa 275 €/mese per un circolo con 120 posti barca (solo posti barca); Playtomic
+59–279 € più il 4% sulle prenotazioni (solo campi).
+
+### Plugin
+
+| Piano | Mensile | Annuale |
+|---|---|---|
+| PRO Contabilità | 18 € | 180 € |
+| PRO Contabilità & Fiscalità | 29 € | 290 € |
+| Addon Fattura elettronica (tramite portale) | 7 € | 70 €, più le stesse ricariche del SaaS |
+
+Prezzo fisso, senza scala per socio: per le grandi associazioni che vogliono i dati sul proprio spazio resta la scelta
+più economica. Da sistemare: il sito pubblico usa "PRO Contabilità" e "PRO Contabilità & Fiscalità", la tabella di
+confronto "Pro Contabile" e "Pro Fiscale": serve un nome unico, da usare anche nel SaaS.
+
+### Programma partner
+
+- **15%** ricorrente su tutto ciò che fatturiamo all'associazione; **20%** oltre i 10 clienti attivi. Vale per SaaS e
+  licenze del plugin.
+- **Soglia di liquidazione**: 15 € × 24 mesi × 15% = 54 € → **55 €**.
 
 ## 8. Domande aperte
 
