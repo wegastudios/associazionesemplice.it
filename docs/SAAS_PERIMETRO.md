@@ -168,7 +168,65 @@ verso il cliente).
 - 3–5 associazioni vere nella prima fase, scelte tra chi usa già il plugin.
 - Demo SaaS a sé: ogni visitatore riceve un'associazione di prova con dati finti, creata al volo e cancellata dopo
   qualche giorno. La demo attuale del plugin non si tocca.
-- Niente piano gratuito nel SaaS, solo la prova di 30 giorni: il gratuito resta il plugin.
+- Niente piano gratuito nel SaaS, solo la prova (regole al §7.1): il gratuito resta il plugin.
+
+## 7.1 Struttura dei piani (prezzi da definire)
+
+**Concorrenza verticale per circoli**: Playtomic Manager (campi; secondo un concorrente circa 59–279 €/mese più il 4%
+sulle prenotazioni, dato non verificato), [Harba](https://harba.co/pricing) (porti e yacht club: 2.700 €/anno più
+5 € per posto barca, più 1.350 € di avvio), TeamSystem (case history della Lega Navale di Ancona), Sportclubby. Costano
+più dei gestionali per associazioni e non gestiscono soci e contabilità da ente non profit. **Noi niente commissioni
+sulle prenotazioni.**
+
+**Base: Gestionale** (§3), prezzo per **fascia di soci** (tesserati attivi nell'anno). In più rispetto al §3: domanda
+di adesione online tramite link pubblico, email di servizio (ricevute, rinnovi, scadenze dei certificati), ricezione
+delle fatture passive via SDI per chi ha partita IVA, con un limite d'uso ragionevole.
+
+**Pacchetti**
+
+| Pacchetto | Contenuto | Criterio di prezzo |
+|---|---|---|
+| Area soci e pagamenti | PWA, tessera QR e wallet, profilo, iscrizioni e rinnovi online, prenotazione eventi, pagamenti, notifiche push | fascia di soci |
+| Risorse e prenotazioni | impianti, sale, posti barca, postazioni; tariffe soci e non soci; liste d'attesa; calendario di occupazione | **numero di risorse, pesato per modalità di prenotazione** (sotto) |
+| Sito | builder AI, sottodominio, rigenerazioni mensili incluse | fisso |
+| Fattura elettronica | 50 fatture emesse all'anno, conservazione | fisso, più ricariche |
+| Comunicazioni | email di massa e newsletter, avvisi di gruppo, SMS | fisso, SMS a consumo |
+| Contabilità avanzata | partita doppia, competenza, stato patrimoniale e rendiconto gestionale ETS | fisso |
+| Vita associativa | assemblee, deleghe, votazioni online, verbali, libri sociali | fisso |
+| Sport | affiliazioni e tesseramenti con federazioni ed enti di promozione, registro safeguarding, compensi dei collaboratori sportivi (da sviluppare) | fisso |
+
+**Risorse: il peso dipende da quanto lavorano, non da quante sono.** Quattro campi da tennis generano molte più
+prenotazioni e scritture di 200 posti barca assegnati una volta l'anno. Il criterio è quindi la **modalità di
+prenotazione** di ogni risorsa:
+
+| Modalità | Esempi | Movimento | Scaglioni |
+|---|---|---|---|
+| **A turni** (orari o giornalieri) | campi, sale, postazioni spiaggia giornaliere | alto | primo scaglione: **2** risorse |
+| **Stagionali** (assegnazione per stagione o anno, qualche rotazione) | posti barca, ombrelloni stagionali, armadietti | basso | primo scaglione: **50** risorse (un circolo nautico parte in genere da circa 20 posti) |
+
+Gli scaglioni successivi si definiscono insieme ai prezzi.
+
+Una stessa risorsa conta nella modalità in cui è usata; un circolo con entrambe somma i due scaglioni.
+
+**Extra e consumi**: operatori aggiuntivi (segretari e consiglieri con permessi configurabili), dominio personalizzato,
+database dedicato, ricariche di fatture elettroniche, SMS e rigenerazioni del sito.
+
+**Offerte già composte**, con sconto rispetto ai pacchetti singoli; chi vuole compone da sé.
+
+| Offerta | Contenuto | Per chi |
+|---|---|---|
+| Associazione | Gestionale + Area soci | APS, ODV, culturali |
+| Associazione con sito | Gestionale + Area soci + Sito | chi parte da zero |
+| Sportiva | Gestionale + Area soci + Sport | ASD e SSD |
+| Circolo | Gestionale + Risorse + Area soci + Fattura elettronica | circoli sportivi, nautici, balneari |
+
+**Prova gratuita**
+
+| Caso | Durata |
+|---|---|
+| Base (c'è molto da compilare) | **30 giorni** |
+| Pacchetti attivati **insieme alla base** in prova | 30 giorni, insieme alla base |
+| Pacchetto provato **su una base già operativa** | **7 giorni**, prorogabili a **14** su richiesta, inviata automaticamente all'assistenza |
 
 ## 8. Domande aperte
 
