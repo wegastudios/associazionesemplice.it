@@ -367,13 +367,49 @@ Per confronto: Harba costa circa 275 €/mese per un circolo con 120 posti barca
 
 | Piano | Mensile | Annuale |
 |---|---|---|
+| Gratuito | 0 € | 0 € |
 | PRO Contabilità | 18 € | 180 € |
 | PRO Contabilità & Fiscalità | 29 € | 290 € |
-| Addon Fattura elettronica (tramite portale) | 7 € | 70 €, più le stesse ricariche del SaaS |
+| Addon Fattura elettronica (tramite portale; 50 fatture all'anno) | **12 €** | 120 €, più le stesse ricariche del SaaS |
 
-Prezzo fisso, senza scala per socio: per le grandi associazioni che vogliono i dati sul proprio spazio resta la scelta
-più economica. Da sistemare: il sito pubblico usa "PRO Contabilità" e "PRO Contabilità & Fiscalità", la tabella di
-confronto "Pro Contabile" e "Pro Fiscale": serve un nome unico, da usare anche nel SaaS.
+**Prezzo piatto, senza limite di soci**: il plugin non comunica il numero di soci e il readme resta com'è. La
+differenza con il SaaS si gioca sull'**assistenza** (sotto), non sul prezzo: le grandi associazioni non hanno problemi
+di budget ma di sicurezza, solidità e assistenza, e il plugin paga meno perché ci impegna molto meno.
+
+La fattura elettronica costa di più sul plugin (12 € contro 7 €): stesso costo per noi, ma i ticket sugli scarti
+arrivano da installazioni che non controlliamo. Nel SaaS resta bassa perché è il terzo pacchetto dei bundle dei circoli.
+
+Da sistemare: il sito pubblico usa "PRO Contabilità" e "PRO Contabilità & Fiscalità", la tabella di confronto
+"Pro Contabile" e "Pro Fiscale": serve un nome unico, da usare anche nel SaaS.
+
+### Assistenza
+
+| | **SaaS** | **Plugin Pro** | **Plugin gratuito** |
+|---|---|---|---|
+| Presa in carico del ticket | **entro 24 ore lavorative** | entro 48 ore lavorative | nessuna garanzia (guide, FAQ) |
+| Problemi tecnici | ✓ | ✓ | — |
+| Assistenza sulle funzioni ("come registro…", "come chiudo l'anno…") | ✓ inclusa | a pagamento | a pagamento |
+| Configurazione iniziale | guidata, inclusa | a pagamento | a pagamento |
+| Sicurezza, backup, aggiornamenti | nostri | del cliente | del cliente |
+| Coda dei ticket | prioritaria | normale | — |
+
+Nelle condizioni:
+1. **Presa in carico, non risoluzione**: entro il termine rispondiamo e iniziamo a lavorare.
+2. **Ore lavorative**: dal lunedì al venerdì, festivi esclusi, in un orario dichiarato (per esempio 9–18).
+3. **Un guasto della piattaforma SaaS non è un ticket**: lo vediamo dal monitoraggio e lo comunichiamo su una pagina
+   di stato.
+
+**Servizi a pagamento** (per il plugin, e per il SaaS oltre quanto incluso)
+
+| Servizio | Prezzo |
+|---|---|
+| Configurazione iniziale del plugin (impostazioni, conti, categorie, tipi di socio, primo import) | 149 € una tantum |
+| Ora di assistenza sulle funzioni o di formazione (anche online) | 49 € |
+| Pacchetto da 5 ore, valido 12 mesi | 199 € |
+| Import dati assistito da Excel o da altri gestionali | su preventivo |
+
+Il sito di supporto deve conoscere il piano del cliente per ordinare i ticket e misurare i tempi: il portale lo
+aggiunge ai dati che già passa con l'accesso unico (lavoro delle sessioni del portale e del supporto).
 
 ### Programma partner
 
