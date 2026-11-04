@@ -108,12 +108,13 @@ Dalla versione 1.2.43 le **singole lezioni** di un corso si possono **annullare*
 3. Se vuoi, scrivi il **Motivo** (per esempio festività o maltempo).
 4. Lascia la spunta **«avvisa gli iscritti»**, attiva di partenza, se vuoi che ricevano un avviso.
 5. Scegli come procedere:
-   - **Annulla la lezione**: premi il pulsante;
+   - **Annulla solo questa lezione**: premi il pulsante;
+   - **Annulla questa lezione e le successive** (dalla versione 1.3.10): annulla quella data e tutte le successive dello stesso giorno della settimana, fino alla fine del corso o dell'anno sociale. Le lezioni passate non si toccano;
    - **Sposta**: indica la nuova data in **«Sposta a»** (l'ora di inizio e di fine sono facoltative) e premi **Sposta**.
 
 Con la spunta gli iscritti ricevono un avviso come «La lezione di … del … è annullata» o «è spostata al …». L'avviso parte solo se chi opera può mandare avvisi per quel corso: se non parte, l'annullamento o lo spostamento resta comunque e il messaggio te lo dice.
 
-Sotto trovi **«Lezioni cambiate»**, con quelle annullate o spostate, il motivo e il pulsante **Ripristina**, che rimette la lezione com'era. **Le quote non cambiano**. Calendario, presenze e promemoria seguono le date nuove.
+Sotto trovi **«Lezioni cambiate»**, con quelle annullate o spostate, il motivo e il pulsante **Ripristina**, che rimette la lezione com'era. **Le quote non cambiano**. L'annullamento di lezioni **non registra rimborsi**: se serve, si restituisce a mano. Calendario, presenze e promemoria seguono le date nuove.
 
 ## Gli iscritti
 
