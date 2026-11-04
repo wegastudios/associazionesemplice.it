@@ -31,7 +31,7 @@ $names = array(
 				<label><input type="radio" name="method" value="<?php echo e( $k ); ?>"<?php echo $first ? ' checked' : ''; ?>><span><?php echo e( $names[ $k ][0] ); ?><small class="muted" style="display:block;font-weight:400"><?php echo e( $names[ $k ][1] ); ?></small></span></label>
 			<?php $first = false; endforeach; ?>
 			</div>
-			<button class="btn big block" type="submit">Vai al pagamento sicuro</button>
+			<button class="btn big block" type="submit">Ordina e paga</button>
 		</form>
 		<?php endif; ?>
 	</div>

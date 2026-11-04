@@ -5,13 +5,13 @@ $euro = function ( $c ) { return number_format( $c / 100, ( $c % 100 ) ? 2 : 0, 
 <?php foreach ( $plans as $code => $p ) :
 	if ( false === ( $p['visible'] ?? true ) ) { continue; }
 	$m = $p['prices']['month']['cents'] ?? null; $y = $p['prices']['year']['cents'] ?? null;
-	$hot = 'lite' === $code; $tag = $p['tag'] ?? ( $hot ? 'Il più scelto' : '' );
+	$hot = 'lite' === $code; $tag = $p['tag'] ?? ( $hot ? 'Per gli incassi online' : '' );
 ?>
 	<div class="plan<?php echo $hot ? ' hot' : ''; ?>">
 		<?php if ( $tag ) : ?><span class="tag"><?php echo e( $tag ); ?></span><?php endif; ?>
 		<h3><?php echo e( $p['label'] ); ?></h3>
 		<?php if ( 'free' === $code || ! $y ) : ?>
-			<div class="price"><b>0 €</b><span>per sempre</span></div>
+			<div class="price"><b>0 €</b><span>senza scadenza</span></div>
 			<p class="price-note">Serve solo la licenza gratuita</p>
 		<?php else : ?>
 			<div class="price"><b><?php echo e( $euro( $y ) ); ?></b><span>all'anno</span></div>

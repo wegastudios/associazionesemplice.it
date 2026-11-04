@@ -35,7 +35,7 @@ foreach ( (array) Portale\Config::get( 'plans', array() ) as $code => $p ) {
 	$ly = $y ? (int) Portale\Settings::listCents( $code, 'year' ) : 0;
 	$row = array( 'code' => $code, 'name' => $planName( $code, (string) $code ), 'hot' => 'lite' === $code, 'blurb' => Portale\Site::blurb( $code ) );
 	if ( 'free' === $code || ! $y ) {
-		$row += array( 'price' => '0 €', 'per' => 'per sempre', 'alt' => 'Serve solo la licenza gratuita', 'url' => $cmpBase . '/free', 'cta' => 'Inizia gratis' );
+		$row += array( 'price' => '0 €', 'per' => 'senza scadenza', 'alt' => 'Serve solo la licenza gratuita', 'url' => $cmpBase . '/free', 'cta' => 'Inizia gratis' );
 	} else {
 		$row += array( 'price' => money( $y ), 'per' => 'all\'anno', 'alt' => $m ? 'oppure ' . money( $m ) . ' al mese' : '', 'url' => $cmpBase . '/acquista?plan=' . Portale\Site::slug( $code ) . '&period=year', 'cta' => 'Scegli' );
 		if ( $ly && $ly > $y ) {
