@@ -96,3 +96,10 @@
 	table.asem-cards tbody td[data-label="Tessera"]{grid-row:2;grid-column:1 / -1}
 	table.asem-cards tbody td[colspan]{display:block}
 }
+
+/* Telefono: le schede in cima a ogni pagina stanno su una riga che scorre (su 4 righe occupavano 190 px prima del contenuto) */
+@media (max-width:782px){
+	.asem .asem-tabs{position:relative;display:flex;flex-wrap:nowrap;gap:.35rem;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:8px 0 12px}
+	.asem .asem-tabs::-webkit-scrollbar{display:none}
+	.asem .asem-tabs .nav-tab{flex:none;float:none;margin:0;white-space:nowrap;min-height:44px;display:inline-flex;align-items:center}
+}

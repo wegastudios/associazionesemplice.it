@@ -878,3 +878,14 @@ window.asemPlacesInit = function () {
 		});
 	});
 };
+
+/* Schede in cima alla pagina: la scheda attiva si vede subito anche quando la riga scorre (telefono) */
+(function () {
+	'use strict';
+	document.addEventListener('DOMContentLoaded', function () {
+		document.querySelectorAll('.asem-tabs').forEach(function (bar) {
+			var a = bar.querySelector('.nav-tab-active');
+			if (a && bar.scrollWidth > bar.clientWidth) { bar.scrollLeft = Math.max(0, a.offsetLeft - (bar.clientWidth - a.offsetWidth) / 2); }
+		});
+	});
+})();
