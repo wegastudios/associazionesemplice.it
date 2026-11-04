@@ -29,7 +29,7 @@
 .asemf-bad { color: var(--asemf-bad); font-weight: 600; }
 
 /* Struttura */
-.asemf-area { display: grid; gap: 1.5rem; }
+.asemf-area { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
 .asemf-hello { font-size: 1.1em; margin-bottom: .75rem; }
 .asemf-section { border: 1px solid var(--asemf-line); border-radius: var(--asemf-radius); padding: 1rem 1.25rem; box-sizing: border-box; max-width: 100%; min-width: 0; }
 .asemf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 1rem; }
@@ -184,7 +184,7 @@
 .asemf-conv-code { font-size: 1.15em; letter-spacing: .04em; }
 
 /* Telefono: barra di salto alle sezioni, invito all'app e tocchi da 44 px */
-.asemf-jump { display: none; }
+.asemf-jump { display: none; min-width: 0; max-width: 100%; }
 .asemf-tip { border: 1px solid var(--asemf-accent); border-radius: var(--asemf-radius); background: var(--asemf-soft); padding: .8rem 1.1rem; margin: 1rem 0; }
 .asemf-tip p { margin: 0 0 .5rem; }
 .asemf-tip .asemf-tip-actions { margin: 0; display: flex; gap: .5rem; flex-wrap: wrap; }
