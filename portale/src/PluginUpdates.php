@@ -63,6 +63,9 @@ final class PluginUpdates {
 	}
 
 	public static function packageUrl( string $product, string $version, ?int $now = null ): string {
+		if ( '' === (string) Config::get( 'app_key', '' ) ) {
+			throw new \RuntimeException( 'app_key mancante: i link dei pacchetti non si possono firmare.' );
+		}
 		$now     = $now ?? time();
 		$payload = self::b64( (string) json_encode( array( 'p' => $product, 'v' => $version, 'e' => $now + Settings::limit( 'update_link_ttl' ) ) ) );
 		return rtrim( (string) Config::get( 'base_url', 'https://associazionesemplice.it' ), '/' ) . '/api/plugin/package?t=' . $payload . '.' . self::b64( hash_hmac( 'sha256', $payload, self::key(), true ) );
@@ -72,6 +75,9 @@ final class PluginUpdates {
 	 * Verifica il token e registra lo scarico. @return array [codice, percorso del file o messaggio di errore, prodotto, versione]
 	 */
 	public static function package( Db $db, string $token, ?int $now = null ): array {
+		if ( '' === (string) Config::get( 'app_key', '' ) ) {
+			return array( 403, 'Link non valido.', '', '' );
+		}
 		$now   = $now ?? time();
 		$parts = explode( '.', $token );
 		if ( 2 !== count( $parts ) || ! hash_equals( self::b64( hash_hmac( 'sha256', $parts[0], self::key(), true ) ), $parts[1] ) ) {

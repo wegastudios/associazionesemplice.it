@@ -233,6 +233,12 @@ final class Billing {
 	 * @param int|null    $days   durata se diversa da quella del periodo (prova, emissione manuale)
 	 * @param string|null $extRef riferimento univoco per il server licenze
 	 */
+	/** Segnaposto in license_id mentre un processo sta emettendo la licenza (dopo 10 minuti si considera abbandonato). */
+	const CLAIM = 'in-emissione';
+
+	/** Vero se l'ultima activate() ha emesso davvero una licenza: serve a mandare una sola email di benvenuto. */
+	private $issued = false;
+
 	public function activate( string $subId, ?string $providerRef = null, ?string $providerCustomer = null, ?int $days = null, ?string $extRef = null ): array {
 		$sub = $this->subscription( $subId );
 		if ( ! $sub ) {
@@ -241,23 +247,37 @@ final class Billing {
 		if ( $providerRef ) {
 			$this->db->run( 'UPDATE subscriptions SET provider_ref = ?, provider_customer = COALESCE(?, provider_customer) WHERE id = ?', array( $providerRef, $providerCustomer, $subId ) );
 		}
-		if ( ! empty( $sub['license_id'] ) ) {
+		if ( ! empty( $sub['license_id'] ) && self::CLAIM !== $sub['license_id'] ) {
 			$this->db->run( "UPDATE subscriptions SET status = 'active', updated_at = ? WHERE id = ? AND status <> 'canceled'", array( Db::now(), $subId ) );
 			return $this->subscription( $subId );
 		}
-		$cust = $this->db->one( 'SELECT email FROM customers WHERE id = ?', array( $sub['customer_id'] ) );
-		$lic  = $this->wega->createLicense( array(
-			'type'          => 3,
-			'plan_name'     => (string) Config::get( 'plans.' . $sub['plan_code'] . '.plan_name', $sub['plan_code'] ),
-			'customer_id'   => $cust['email'],
-			'duration_days' => max( 1, min( 3650, $days ?? $this->days( $sub['period'] ) ) ),
-			'domain'        => $sub['domain'],
-			'external_ref'  => $extRef ?? 'sub-' . $sub['id'],
-		) );
+		// Un solo processo emette la licenza: chi vince il segnaposto chiama il server, gli altri non fanno nulla.
+		$claim = $this->db->run(
+			"UPDATE subscriptions SET license_id = ?, updated_at = ? WHERE id = ? AND (license_id IS NULL OR license_id = '' OR (license_id = ? AND updated_at < ?))",
+			array( self::CLAIM, Db::now(), $subId, self::CLAIM, gmdate( 'Y-m-d H:i:s', time() - 600 ) )
+		);
+		if ( 1 !== $claim->rowCount() ) {
+			return $this->subscription( $subId );
+		}
+		try {
+			$cust = $this->db->one( 'SELECT email FROM customers WHERE id = ?', array( $sub['customer_id'] ) );
+			$lic  = $this->wega->createLicense( array(
+				'type'          => 3,
+				'plan_name'     => (string) Config::get( 'plans.' . $sub['plan_code'] . '.plan_name', $sub['plan_code'] ),
+				'customer_id'   => $cust['email'],
+				'duration_days' => max( 1, min( 3650, $days ?? $this->days( $sub['period'] ) ) ),
+				'domain'        => $sub['domain'],
+				'external_ref'  => $extRef ?? 'sub-' . $sub['id'],
+			) );
+		} catch ( \Throwable $e ) {
+			$this->db->run( 'UPDATE subscriptions SET license_id = NULL WHERE id = ? AND license_id = ?', array( $subId, self::CLAIM ) );
+			throw $e;
+		}
 		$this->db->run(
 			"UPDATE subscriptions SET status = 'active', license_id = ?, license_key_enc = ?, expires_at = ?, updated_at = ? WHERE id = ?",
 			array( (string) $lic['license_id'], Secrets::seal( (string) $lic['license_key'] ), $this->date( $lic['expires_at'] ?? null ), Db::now(), $subId )
 		);
+		$this->issued = true;
 		return $this->subscription( $subId );
 	}
 
@@ -287,9 +307,9 @@ final class Billing {
 			}
 			return;
 		}
-		$first = empty( $sub['license_id'] );
-		$sub   = $this->activate( $subId, $providerRef, $providerCustomer );
-		if ( $first && ! empty( $sub['license_id'] ) ) {
+		$this->issued = false;
+		$sub          = $this->activate( $subId, $providerRef, $providerCustomer );
+		if ( $this->issued && ! empty( $sub['license_id'] ) ) {
 			$this->welcome( $sub );
 		}
 	}

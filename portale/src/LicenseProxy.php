@@ -136,16 +136,7 @@ final class LicenseProxy {
 		$this->db->run( 'DELETE FROM rate_limits WHERE hour < ?', array( gmdate( 'YmdH', $ref - 7200 ) ) );
 		// La memoria delle verifiche non cresce all'infinito (le chiavi pubbliche si rileggono comunque).
 		$this->db->run( "DELETE FROM proxy_cache WHERE at < ? AND k <> 'jwks'", array( gmdate( 'Y-m-d H:i:s', $ref - 86400 ) ) );
-		$row = $this->db->one( 'SELECT n FROM rate_limits WHERE bucket = ? AND hour = ?', array( $bucket, $hour ) );
-		if ( ! $row ) {
-			$this->db->run( 'INSERT INTO rate_limits (bucket, hour, n) VALUES (?,?,1)', array( $bucket, $hour ) );
-			return true;
-		}
-		if ( (int) $row['n'] >= $max ) {
-			return false;
-		}
-		$this->db->run( 'UPDATE rate_limits SET n = n + 1 WHERE bucket = ? AND hour = ?', array( $bucket, $hour ) );
-		return true;
+		return RateLimit::take( $this->db, $bucket, $hour, $max, $ref ); // conteggio atomico: richieste parallele non superano il limite
 	}
 
 	private function error( int $status, string $code, string $message, array $headers = array() ): array {
