@@ -664,6 +664,120 @@ check( 'specchio: errore vero del server → bloccato', null !== throwsUser( fun
 check( 'differenze: licenze identiche', array() === Portale\WegaSync::differences( array( 'domain' => 'a.it', 'expires_at' => '2027-01-01 00:00:00', 'status' => 'active' ), array( 'domain' => 'www.a.it', 'expires_at' => '2027-01-01T00:00:00Z', 'state' => 'ACTIVE' ) ) );
 check( 'differenze: dominio, scadenza e stato diversi', 3 === count( Portale\WegaSync::differences( array( 'domain' => 'a.it', 'expires_at' => '2027-01-01 00:00:00', 'status' => 'canceled' ), array( 'domain' => 'b.it', 'expires_at' => '2027-03-01T00:00:00Z', 'state' => 'ACTIVE' ) ) ) );
 
+// --- Rinnovo automatico delle licenze gratuite ------------------------------------------------
+$fdb  = new Db( new PDO( 'sqlite::memory:' ) );
+$fdb->migrate();
+$fbil = new Billing( $fdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+$fdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'f1', 'f@esempio.it', Db::now() ) );
+$fnow = 1800000000;
+$fmk  = function ( string $dom, string $exp, ?string $seen, string $created, string $provider = 'free' ) use ( $fdb ) {
+	$id = Db::id();
+	$fdb->run( 'INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, mode, license_key_enc, expires_at, last_seen_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', array( $id, 'f1', 'free', 'free', $provider, 'active', $dom, 'once', Portale\Secrets::seal( 'K-' . $dom ), $exp, $seen, $created, $created ) );
+	return $id;
+};
+$day     = 86400;
+$due     = $fmk( 'attiva.it', gmdate( 'Y-m-d H:i:s', $fnow + $day ), gmdate( 'Y-m-d H:i:s', $fnow - 5 * $day ), gmdate( 'Y-m-d H:i:s', $fnow - 300 * $day ) );
+$idle    = $fmk( 'inattiva.it', gmdate( 'Y-m-d H:i:s', $fnow + $day ), gmdate( 'Y-m-d H:i:s', $fnow - 45 * $day ), gmdate( 'Y-m-d H:i:s', $fnow - 300 * $day ) );
+$fresh   = $fmk( 'nuova.it', gmdate( 'Y-m-d H:i:s', $fnow + $day ), null, gmdate( 'Y-m-d H:i:s', $fnow - 10 * $day ) );
+$later   = $fmk( 'lontana.it', gmdate( 'Y-m-d H:i:s', $fnow + 100 * $day ), gmdate( 'Y-m-d H:i:s', $fnow ), gmdate( 'Y-m-d H:i:s', $fnow - 300 * $day ) );
+$paid    = $fmk( 'pagata.it', gmdate( 'Y-m-d H:i:s', $fnow + $day ), gmdate( 'Y-m-d H:i:s', $fnow ), gmdate( 'Y-m-d H:i:s', $fnow - 300 * $day ), 'stripe' );
+$renewed = array();
+Http::$transport = function ( $m, $url, $h, $body ) use ( &$renewed, $fnow ) {
+	$renewed[] = json_decode( (string) $body, true )['license_key'];
+	return array( 200, json_encode( array( 'data' => array( 'expires_at' => gmdate( 'Y-m-d\TH:i:s\Z', $fnow + 366 * 86400 ) ) ) ) );
+};
+list( $r, $l ) = $fbil->autoRenewFree( $fnow );
+check( 'gratuite: rinnova chi ha accessi recenti e chi è appena nato, lascia scadere chi è inattivo da oltre 30 giorni', 2 === $r && 1 === $l && array( 'K-attiva.it', 'K-nuova.it' ) === $renewed );
+check( 'gratuite: la scadenza della rinnovata si sposta avanti', strtotime( $fbil->subscription( $due )['expires_at'] . ' UTC' ) > $fnow + 300 * $day );
+check( 'gratuite: non tocca quelle lontane dalla scadenza né quelle a pagamento', in_array( 'K-lontana.it', $renewed, true ) === false && in_array( 'K-pagata.it', $renewed, true ) === false );
+list( $r2 ) = $fbil->autoRenewFree( $fnow );
+check( 'gratuite: ripetere il lavoro non rinnova due volte', 0 === $r2 );
+$fbil->touch( 'ZZ' );
+$fdb->run( 'UPDATE subscriptions SET license_id = ? WHERE id = ?', array( 'LIC-I', $idle ) );
+$fbil->touch( 'LIC-I', $fnow );
+check( 'gratuite: un accesso riporta la licenza tra quelle da rinnovare', 'x' !== (string) $fdb->one( 'SELECT last_seen_at FROM subscriptions WHERE id = ?', array( $idle ) )['last_seen_at'] && strtotime( $fdb->one( 'SELECT last_seen_at FROM subscriptions WHERE id = ?', array( $idle ) )['last_seen_at'] . ' UTC' ) === $fnow );
+
+// --- Ultime versioni dei plugin (avviso aggiornamenti) ----------------------------------------
+$ldb = new Db( new PDO( 'sqlite::memory:' ) );
+$ldb->migrate();
+$lpx = new Portale\LicenseProxy( $ldb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+$r   = $lpx->latest( '7.7.7.7', 1700000000 );
+check( 'aggiornamenti: senza versioni pubblicate l\'elenco è vuoto', 200 === $r[0] && '{}' === $r[1] );
+foreach ( array( '1.1.9', '1.1.14', '1.1.10' ) as $v ) {
+	$ldb->run( 'INSERT INTO releases (product, version, size, sha256, created_at) VALUES (?,?,?,?,?)', array( 'free', $v, 1, 'x', Db::now() ) );
+}
+$j = json_decode( $lpx->latest( '7.7.7.7', 1700000000 )[1], true );
+check( 'aggiornamenti: ultima versione in ordine numerico, prodotto senza versioni omesso, link https all\'accesso', '1.1.14' === $j['free']['version'] && ! isset( $j['pro'] ) && 0 === strpos( $j['free']['url'], 'https://' ) && '/accedi' === substr( $j['free']['url'], -7 ) );
+check( 'aggiornamenti: cache pubblica di 5 minuti', in_array( 'Cache-Control: public, max-age=300', $lpx->latest( '7.7.7.7', 1700000000 )[2], true ) );
+$last = 0;
+for ( $i = 0; $i < 70; $i++ ) {
+	$last = $lpx->latest( '8.8.8.8', 1700000000 )[0];
+}
+check( 'aggiornamenti: limite per IP', 429 === $last );
+
+// --- Recupero della chiave da Wega ------------------------------------------------------------
+$kdb  = new Db( new PDO( 'sqlite::memory:' ) );
+$kdb->migrate();
+$kbil = new Billing( $kdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+$kdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'k1', 'k@esempio.it', Db::now() ) );
+$kdb->run( 'INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, mode, license_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)', array( 's1', 'k1', 'free', 'manual', 'manual', 'active', 'k.it', 'once', 'LK1', Db::now(), Db::now() ) );
+$kurl = '';
+Http::$transport = function ( $m, $url ) use ( &$kurl ) {
+	$kurl = $m . ' ' . $url;
+	return array( 200, '{"data":{"license_id":"LK1","license_key":"WEGA-RECUPERATA"}}' );
+};
+check( 'chiave: recuperata da Wega e salvata cifrata', $kbil->recoverKey( 's1' ) && 'GET https://license.test/api/v1/licenses/LK1/key' === $kurl && 'WEGA-RECUPERATA' === Portale\Secrets::open( $kbil->subscription( 's1' )['license_key_enc'] ) );
+check( 'chiave: già presente, non si rilegge', ! $kbil->recoverKey( 's1' ) );
+// --- Risoluzione di riserva del server licenze --------------------------------------------------
+new WegaClient( 'https://license.test/api/v1', 't' );
+check( 'wega: se il DNS non risolve il nome si riprova sull IP noto', '65.108.75.89' === ( Http::$fallback['license.test'] ?? '' ) );
+Http::$fallback = array();
+
+// --- Modalità reale/prova: due gruppi di credenziali ---------------------------------------------------------
+$k = array( 'live' => 'sk_live_' . str_repeat( 'b', 24 ), 'test' => 'sk_test_' . str_repeat( 'a', 24 ) );
+$pdb2 = new Db( new PDO( 'sqlite::memory:' ) );
+$pdb2->migrate();
+Portale\Settings::load( $pdb2 );
+check( 'stripe: chiave di prova nel campo reale rifiutata', null !== throwsUser( function () use ( $pdb2, $k ) { Portale\Settings::saveSecrets( $pdb2, array( 'stripe_secret' => $k['test'] ) ); } ) );
+check( 'stripe: chiave reale nel campo di prova rifiutata', null !== throwsUser( function () use ( $pdb2, $k ) { Portale\Settings::saveSecrets( $pdb2, array( 'stripe_secret_test' => $k['live'] ) ); } ) );
+Portale\Settings::saveSecrets( $pdb2, array( 'stripe_live_present' => '1', 'stripe_secret' => $k['live'], 'stripe_secret_test' => $k['test'], 'stripe_webhook' => 'whsec_LIVELIVELIVE1', 'stripe_webhook_test' => 'whsec_TESTTESTTEST1' ) );
+Portale\Settings::load( $pdb2 );
+check( 'stripe: con la casella spenta si usano le credenziali di prova', false === Portale\Settings::stripeLive() && $k['test'] === Config::get( 'stripe.secret_key' ) && 'whsec_TESTTESTTEST1' === Config::get( 'stripe.webhook_secret' ) );
+Portale\Settings::saveSecrets( $pdb2, array( 'stripe_live_present' => '1', 'stripe_live' => '1' ) );
+Portale\Settings::load( $pdb2 );
+check( 'stripe: accendere la casella cambia da sola le credenziali (reali)', true === Portale\Settings::stripeLive() && $k['live'] === Config::get( 'stripe.secret_key' ) && 'whsec_LIVELIVELIVE1' === Config::get( 'stripe.webhook_secret' ) );
+Portale\Settings::saveSecrets( $pdb2, array( 'paypal_client_test' => str_repeat( 'S', 24 ), 'paypal_secret_test' => str_repeat( 'T', 24 ), 'paypal_live_present' => '1' ) );
+Portale\Settings::load( $pdb2 );
+check( 'paypal: sandbox attivo usa le credenziali sandbox; Stripe resta reale', str_repeat( 'S', 24 ) === Config::get( 'paypal.client_id' ) && true === Portale\Settings::stripeLive() );
+// Vecchio salvataggio con un solo gruppo: si assegna alla modalità giusta.
+$mdb2 = new Db( new PDO( 'sqlite::memory:' ) );
+$mdb2->migrate();
+$mdb2->run( 'INSERT INTO settings (name, val) VALUES (?,?)', array( 'secrets', json_encode( array( 'stripe_secret' => Portale\Secrets::seal( $k['test'] ), 'stripe_webhook' => Portale\Secrets::seal( 'whsec_OLDOLDOLD12' ) ) ) ) );
+Portale\Settings::load( $mdb2 );
+$st2 = Portale\Settings::secretsStatus( $mdb2 );
+check( 'migrazione: chiave Stripe di prova del vecchio salvataggio finisce nel gruppo di prova', ! $st2['stripe_secret']['set'] && $st2['stripe_secret_test']['set'] && $st2['stripe_webhook_test']['set'] && false === Portale\Settings::stripeLive() );
+
+
+// --- Dominio registrabile: la licenza vale per i sottodomini ----------------------------------
+check( 'dominio: staging, test e clone ricadono nel dominio registrabile', array( 'esempio.it', 'esempio.it', 'esempio.it', 'esempio.it' ) === array_map( array( 'Portale\Domain', 'forLicense' ), array( 'staging.esempio.it', 'https://test.esempio.it/wp-admin', 'www.clone.esempio.it', 'esempio.it/staging' ) ) );
+check( 'dominio: suffissi a più etichette (co.uk)', 'esempio.co.uk' === Domain::forLicense( 'staging.esempio.co.uk' ) && '' === Domain::forLicense( 'localhost' ) );
+$rdb2 = new Db( new PDO( 'sqlite::memory:' ) );
+$rdb2->migrate();
+$seen = array();
+Http::$transport = function ( $m, $url, $h, $body ) use ( &$seen ) {
+	$in     = json_decode( (string) $body, true );
+	$seen[] = $in['domain'];
+	$ok     = in_array( $in['domain'], array( 'esempio.it', 'legato.esempio.it' ), true ) && ( 'legato.esempio.it' === $in['domain'] || ! empty( $GLOBALS['reg_ok'] ) );
+	return array( 200, json_encode( array( 'valid' => $ok, 'reason_code' => $ok ? 'ACTIVE' : 'DOMAIN_MISMATCH', 'license_id' => 'LZ' ) ) );
+};
+$GLOBALS['reg_ok'] = true;
+$px = new Portale\LicenseProxy( $rdb2, new WegaClient( 'https://license.test/api/v1', 't' ) );
+$r  = json_decode( $px->validate( '{"license_key":"chiave-di-prova-1","domain":"staging.esempio.it"}', '3.3.3.3', 1700000000 )[1], true );
+check( 'rimbalzo: un sottodominio chiede a Wega il dominio registrabile', true === $r['valid'] && array( 'esempio.it' ) === $seen );
+$seen = array();
+$GLOBALS['reg_ok'] = false;
+$r = json_decode( $px->validate( '{"license_key":"chiave-di-prova-2","domain":"legato.esempio.it"}', '3.3.3.4', 1700000000 )[1], true );
+check( 'rimbalzo: licenza emessa per un sottodominio esatto: secondo tentativo sul sottodominio', true === $r['valid'] && array( 'esempio.it', 'legato.esempio.it' ) === $seen );
 // --- Staff e accesso unico al supporto --------------------------------------------------------
 $tdb  = new Db( new PDO( 'sqlite::memory:' ) );
 $tdb->migrate();
@@ -690,6 +804,500 @@ check( 'sso: firma HMAC-SHA256 verificabile', hash_equals( rtrim( strtr( base64_
 check( 'sso: chi non è staff entra come cliente', 'customer' === Portale\SupportSso::roleFor( $tdb, 'cliente@esempio.it' ) );
 Config::set( 'support', array( 'url' => 'https://supporto.test', 'sso_secret' => 'corto' ) );
 check( 'sso: segreto corto → non attivo, si va alla home del supporto', ! Portale\SupportSso::enabled() && 'https://supporto.test' === Portale\SupportSso::url( $tdb, 'capo@esempio.it' ) );
+
+// --- Accesso unico al supporto: piano nel token ---------------------------------------------
+$cdb = new Db( new PDO( 'sqlite::memory:' ) );
+$cdb->migrate();
+$cdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'p1', 'free@esempio.it', Db::now() ) );
+$cdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'p2', 'pro@esempio.it', Db::now() ) );
+$cdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'p3', 'scaduto@esempio.it', Db::now() ) );
+$ins2 = function ( $cid, $plan, $exp ) use ( $cdb ) {
+	$cdb->run( 'INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, mode, expires_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)', array( Db::id(), $cid, $plan, 'year', 'manual', 'active', Db::id() . '.it', 'once', $exp, Db::now(), Db::now() ) );
+};
+$future = gmdate( 'Y-m-d H:i:s', time() + 86400 * 30 );
+$past   = gmdate( 'Y-m-d H:i:s', time() - 86400 );
+$ins2( 'p1', 'free', $future );
+$ins2( 'p2', 'free', $future );
+$ins2( 'p2', 'full', $future );
+$ins2( 'p3', 'full', $past );
+check( 'sso: solo licenza gratuita → piano Free', array( 'plan' => 'Free' ) === Portale\SupportSso::claimsFor( $cdb, 'Free@Esempio.it' ) );
+check( 'sso: licenza a pagamento in regola → piano Pro', array( 'plan' => 'Pro' ) === Portale\SupportSso::claimsFor( $cdb, 'pro@esempio.it' ) );
+check( 'sso: licenza scaduta o sconosciuto → nessun piano', array() === Portale\SupportSso::claimsFor( $cdb, 'scaduto@esempio.it' ) && array() === Portale\SupportSso::claimsFor( $cdb, 'nessuno@esempio.it' ) );
+Config::set( 'support', array( 'url' => 'https://supporto.test', 'sso_secret' => str_repeat( 'a', 64 ) ) );
+list( $pp ) = explode( '.', Portale\SupportSso::token( 'pro@esempio.it', 'customer', 1000, array( 'plan' => 'Pro' ) ) );
+$pl2 = json_decode( base64_decode( strtr( $pp, '-_', '+/' ) ), true );
+check( 'sso: il token porta il piano e conserva gli altri claim', 'Pro' === $pl2['plan'] && 'customer' === $pl2['role'] && 'pro@esempio.it' === $pl2['sub'] && 1060 === $pl2['exp'] );
+
+// --- Versioni con due numeri (1.2) ---------------------------------------------------------------
+check( 'versioni: ammesse x.y.z e x.y, il resto no', Portale\Releases::validVersion( '1.1.14' ) && Portale\Releases::validVersion( '1.2' ) && ! Portale\Releases::validVersion( '1' ) && ! Portale\Releases::validVersion( '1.2.3.4' ) && ! Portale\Releases::validVersion( '../1.2' ) && ! Portale\Releases::validVersion( '1.2 ' ) );
+check( 'versioni: intestazione con due numeri', '1.2' === Portale\Releases::headerVersion( "<?php\n/**\n * Version:           1.2\n */" ) );
+if ( class_exists( 'ZipArchive' ) ) {
+	$vdb = new Db( new PDO( 'sqlite::memory:' ) );
+	$vdb->migrate();
+	Config::set( 'releases_dir', sys_get_temp_dir() . '/asem-rel-v-' . bin2hex( random_bytes( 4 ) ) );
+	foreach ( array( '1.1.20', '1.2', '1.1.9' ) as $vv ) {
+		$zf = tempnam( sys_get_temp_dir(), 'z' );
+		$zz = new ZipArchive();
+		$zz->open( $zf, ZipArchive::OVERWRITE );
+		$zz->addFromString( 'associazionesemplice/associazionesemplice.php', "<?php\n/**\n * Version:           $vv\n */\n" );
+		$zz->close();
+		Portale\Releases::add( $vdb, 'free', $zf, '', 'test' );
+	}
+	check( 'versioni: 1.1.20 viene prima di 1.2, che è l\'ultima', array( '1.2', '1.1.20', '1.1.9' ) === array_column( Portale\Releases::all( $vdb, 'free' ), 'version' ) );
+	$lp = json_decode( ( new Portale\LicenseProxy( $vdb, new WegaClient( 'https://license.test/api/v1', 't' ) ) )->latest( '4.4.4.4', 1700000000 )[1], true );
+	check( 'versioni: l\'avviso aggiornamenti propone 1.2', '1.2' === $lp['free']['version'] );
+	check( 'versioni: scarico della 1.2 autorizzato', is_file( Portale\Releases::authorize( $vdb, 'k', true, array(), 'free', '1.2' ) ) );
+}
+
+// --- Aggiornamento diretto dei plugin da WordPress ------------------------------------------------
+if ( class_exists( 'ZipArchive' ) ) {
+	$udb = new Db( new PDO( 'sqlite::memory:' ) );
+	$udb->migrate();
+	Config::set( 'releases_dir', sys_get_temp_dir() . '/asem-rel-u-' . bin2hex( random_bytes( 4 ) ) );
+	foreach ( array( array( 'free', 'associazionesemplice', '1.2' ), array( 'pro', 'associazionesemplice-pro', '1.1.5' ) ) as $rel ) {
+		$zf = tempnam( sys_get_temp_dir(), 'z' );
+		$zz = new ZipArchive();
+		$zz->open( $zf, ZipArchive::OVERWRITE );
+		$zz->addFromString( $rel[1] . '/' . $rel[1] . '.php', "<?php\n/**\n * Version:           {$rel[2]}\n */\n" );
+		$zz->close();
+		if ( ! function_exists( 'sodium_crypto_sign_keypair' ) ) { continue; }
+		static $ukp = null;
+		if ( null === $ukp ) { $ukp = sodium_crypto_sign_keypair(); Config::set( 'package_keys', array( 'k-u' => rtrim( strtr( base64_encode( sodium_crypto_sign_publickey( $ukp ) ), '+/', '-_' ), '=' ) ) ); }
+		$usig = rtrim( strtr( base64_encode( sodium_crypto_sign_detached( Portale\Releases::signedMessage( $rel[0], $rel[2], hash_file( 'sha256', $zf ) ), sodium_crypto_sign_secretkey( $ukp ) ) ), '+/', '-_' ), '=' );
+		Portale\Releases::add( $udb,$rel[0], $zf, '', 'test', null, $usig, 'k-u' );
+	}
+	$GLOBALS['u_valid'] = true;
+	Http::$transport = function ( $m, $url, $h, $body ) {
+		$in = json_decode( (string) $body, true );
+		return array( 200, json_encode( array( 'valid' => $GLOBALS['u_valid'], 'reason_code' => 'ACTIVE', 'plan_name' => $GLOBALS['u_plan'] ?? 'Pro Full', 'license_id' => 'LU', 'product_code' => 'prodotto-u', 'identity' => 'esempio.it' ) ) );
+	};
+	$upx = new Portale\LicenseProxy( $udb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+	$ut  = 1800000000;
+	$r   = Portale\PluginUpdates::check( $udb, $upx, '{"product":"free","version":"1.1.20"}', '9.1.1.1', $ut );
+	$j   = json_decode( $r[1], true );
+	check( 'aggiornamento free: versione più vecchia → c\'è l\'aggiornamento, con link firmato, senza chiave', 200 === $r[0] && '1.2' === $j['version'] && true === $j['update'] && 0 === strpos( (string) $j['package'], 'https://portale.test/api/plugin/package?t=' ) );
+	$j2 = json_decode( Portale\PluginUpdates::check( $udb, $upx, '{"product":"free","version":"1.2"}', '9.1.1.2', $ut )[1], true );
+	check( 'aggiornamento free: già all\'ultima → nessun link', false === $j2['update'] && null === $j2['package'] );
+	check( 'aggiornamento: prodotto sconosciuto rifiutato', 422 === Portale\PluginUpdates::check( $udb, $upx, '{"product":"x"}', '9.1.1.3', $ut )[0] );
+	$pro = '{"product":"pro","version":"1.1.4","license_key":"chiave-pro-di-prova","domain":"staging.esempio.it"}';
+	$GLOBALS['u_valid'] = false;
+	check( 'aggiornamento Pro: licenza non valida → 403', 403 === Portale\PluginUpdates::check( $udb, $upx, $pro, '9.1.1.4', $ut )[0] );
+	$GLOBALS['u_valid'] = true;
+	$GLOBALS['u_plan']  = 'Free';
+	check( 'aggiornamento Pro: licenza gratuita → 403', 403 === Portale\PluginUpdates::check( $udb, $upx, str_replace( 'chiave-pro-di-prova', 'chiave-gratuita-prova', $pro ), '9.1.1.5', $ut )[0] );
+	$GLOBALS['u_plan'] = 'Pro Lite';
+	$jp = json_decode( Portale\PluginUpdates::check( $udb, $upx, str_replace( 'chiave-pro-di-prova', 'chiave-lite-prova-1', $pro ), '9.1.1.6', $ut )[1], true );
+	check( 'aggiornamento Pro: licenza Pro valida → link', true === $jp['update'] && '1.1.5' === $jp['version'] && ! empty( $jp['package'] ) );
+	// Con la chiave del portale conta il livello firmato dal portale, non il nome del piano su Wega.
+	Config::set( 'portal_sign_key', base64_encode( random_bytes( SODIUM_CRYPTO_SIGN_SEEDBYTES ) ) );
+	$udb->run( 'INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, license_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)', array( 'su1', 'cu', 'free', 'year', 'free', 'active', 'esempio.it', 'LU', Db::now(), Db::now() ) );
+	$GLOBALS['u_plan'] = 'Pro Lite';
+	check( 'aggiornamento Pro: il portale dice «free», anche se il nome su Wega sembra Pro → 403', 403 === Portale\PluginUpdates::check( $udb, $upx, str_replace( 'chiave-pro-di-prova', 'chiave-nome-pro-1', $pro ), '9.1.1.7', $ut )[0] );
+	$udb->run( "UPDATE subscriptions SET plan_code = 'full' WHERE id = 'su1'" );
+	$GLOBALS['u_plan'] = 'Free';
+	$jq = json_decode( Portale\PluginUpdates::check( $udb, $upx, str_replace( 'chiave-pro-di-prova', 'chiave-nome-free-1', $pro ), '9.1.1.8', $ut )[1], true );
+	check( 'aggiornamento Pro: il portale dice «fiscal», anche se il nome su Wega è Free → link', ! empty( $jq['update'] ) && ! empty( $jq['package'] ) );
+	Config::set( 'portal_sign_key', '' );
+	$tok = substr( $j['package'], strpos( $j['package'], '?t=' ) + 3 );
+	$pk  = Portale\PluginUpdates::package( $udb, $tok, $ut + 10 );
+	check( 'pacchetto: token valido → file dello zip', 200 === $pk[0] && is_file( $pk[1] ) && 'free' === $pk[2] && '1.2' === $pk[3] );
+	check( 'pacchetto: token scaduto → 410', 410 === Portale\PluginUpdates::package( $udb, $tok, $ut + 3600 )[0] );
+	check( 'pacchetto: token manomesso → 403', 403 === Portale\PluginUpdates::package( $udb, substr( $tok, 0, -3 ) . 'xxx', $ut )[0] && 403 === Portale\PluginUpdates::package( $udb, 'abc', $ut )[0] );
+}
+
+// --- Revisione di sicurezza ---------------------------------------------------------------------
+$sdb2 = new Db( new PDO( 'sqlite::memory:' ) );
+$sdb2->migrate();
+$wh   = new Portale\Webhooks( $sdb2, new Billing( $sdb2, new WegaClient( 'https://license.test/api/v1', 't' ) ) );
+Config::set( 'stripe', array( 'webhook_secret' => 'whsec_test' ) );
+$stripeEvent = function ( array $ev ) use ( $wh ) {
+	$p = json_encode( $ev );
+	$t = time();
+	return $wh->stripe( $p, 't=' . $t . ',v1=' . hash_hmac( 'sha256', $t . '.' . $p, 'whsec_test' ) );
+};
+$sdb2->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'w1', 'w@esempio.it', Db::now() ) );
+$sdb2->run( 'INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, mode, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)', array( 'ws1', 'w1', 'full', 'year', 'stripe', 'pending', 'w.it', 'recurring', Db::now(), Db::now() ) );
+$wcalls = 0;
+Http::$transport = function () use ( &$wcalls ) {
+	++$wcalls;
+	return array( 200, json_encode( array( 'data' => array( 'license_id' => 'LW', 'license_key' => 'WEGA-KEY-W', 'expires_at' => '2027-01-01T00:00:00Z' ) ) ) );
+};
+$stripeEvent( array( 'id' => 'evt_a', 'type' => 'checkout.session.completed', 'data' => array( 'object' => array( 'client_reference_id' => 'ws1', 'mode' => 'subscription', 'payment_status' => 'unpaid', 'subscription' => 'sub_1', 'customer' => 'cus_1' ) ) ) );
+check( 'stripe: pagamento non ancora incassato (unpaid) → nessuna licenza', 0 === $wcalls && 'pending' === $sdb2->one( "SELECT status FROM subscriptions WHERE id = 'ws1'" )['status'] );
+$stripeEvent( array( 'id' => 'evt_b', 'type' => 'checkout.session.async_payment_succeeded', 'data' => array( 'object' => array( 'client_reference_id' => 'ws1', 'mode' => 'subscription', 'payment_status' => 'paid', 'subscription' => 'sub_1', 'customer' => 'cus_1' ) ) ) );
+check( 'stripe: incasso asincrono riuscito → licenza emessa', $wcalls >= 1 && 'active' === $sdb2->one( "SELECT status FROM subscriptions WHERE id = 'ws1'" )['status'] );
+// moduli pubblici e domini
+check( 'limite moduli: l\'undicesima richiesta dello stesso IP in un\'ora è respinta', ( function () use ( $sdb2 ) { $ok = 0; for ( $i = 0; $i < 12; $i++ ) { $ok += Portale\RateLimit::hit( $sdb2, 'form', '5.6.7.8', 10, 1700000000 ) ? 1 : 0; } return 10 === $ok; } )() && Portale\RateLimit::hit( $sdb2, 'form', '5.6.7.9', 10, 1700000000 ) && Portale\RateLimit::hit( $sdb2, 'form', '5.6.7.8', 10, 1700000000 + 7200 ) );
+$sbil2 = new Billing( $sdb2, new WegaClient( 'https://license.test/api/v1', 't' ) );
+$sdb2->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'w2', 'altro@esempio.it', Db::now() ) );
+$sdb2->run( 'INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, mode, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)', array( 'old1', 'w2', 'free', 'free', 'free', 'pending', 'occupato.it', 'once', gmdate( 'Y-m-d H:i:s', time() - 5 * 86400 ), Db::now() ) );
+check( 'dominio: una richiesta in attesa da oltre 48 ore non lo tiene più occupato', null === throwsUser( function () use ( $sbil2 ) { $sbil2->startFree( 'w@esempio.it', 'occupato.it' ); } ) );
+$sdb2->run( 'INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, mode, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)', array( 'fresh1', 'w2', 'free', 'free', 'free', 'active', 'squat.it', 'once', Db::now(), Db::now() ) );
+check( 'dominio: una licenza gratuita altrui attiva blocca un\'altra richiesta gratuita', null !== throwsUser( function () use ( $sbil2 ) { $sbil2->startFree( 'w@esempio.it', 'squat.it' ); } ) );
+$rc = new ReflectionMethod( $sbil2, 'create' );
+$rc->setAccessible( true );
+check( 'dominio: chi paga non è bloccato da una licenza gratuita altrui sullo stesso dominio', is_array( $rc->invoke( $sbil2, 'w@esempio.it', 'squat.it', 'full', 'year', 'stripe', 'recurring' ) ) );
+// intestazioni
+check( 'intestazioni: nosniff, permessi e CSP definiti', ( function () { ob_start(); $src = file_get_contents( __DIR__ . '/../src/View.php' ); ob_end_clean(); return false !== strpos( $src, 'X-Content-Type-Options: nosniff' ) && false !== strpos( $src, 'Content-Security-Policy' ) && false !== strpos( $src, 'Permissions-Policy' ); } )() );
+
+// --- Nome del cliente ----------------------------------------------------------------------------
+$ndb = new Db( new PDO( 'sqlite::memory:' ) );
+$ndb->migrate();
+$nbil = new Billing( $ndb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+check( 'nome: spazi e caratteri di controllo ripuliti, al massimo 150 caratteri', 'Mario Rossi' === Portale\Billing::cleanName( "  Mario \t\n Rossi\x00 " ) && 150 === mb_strlen( Portale\Billing::cleanName( str_repeat( 'a', 400 ) ) ) );
+list( $nc ) = $nbil->startFree( 'nuovo@esempio.it', 'nome-prova.it', '  Anna   Verdi ' );
+check( 'nome: dal modulo pubblico per un cliente nuovo', 'Anna Verdi' === $ndb->one( 'SELECT name FROM customers WHERE id = ?', array( $nc['id'] ) )['name'] );
+$nbil->startFree( 'nuovo@esempio.it', 'altro-nome.it', 'Impostore' );
+check( 'nome: un modulo pubblico non cambia il nome di un cliente già presente', 'Anna Verdi' === $ndb->one( 'SELECT name FROM customers WHERE id = ?', array( $nc['id'] ) )['name'] );
+$nbil->setName( $nc['id'], 'Anna V. Verdi' );
+check( 'nome: dall\'area riservata si può cambiare', 'Anna V. Verdi' === $ndb->one( 'SELECT name FROM customers WHERE id = ?', array( $nc['id'] ) )['name'] );
+check( 'sso: il token porta il nome del cliente', 'Anna V. Verdi' === Portale\SupportSso::claimsFor( $ndb, 'nuovo@esempio.it' )['name'] );
+$nbil->setName( $nc['id'], '   ' );
+check( 'sso: senza nome il claim non c\'è', ! isset( Portale\SupportSso::claimsFor( $ndb, 'nuovo@esempio.it' )['name'] ) );
+
+// --- Pacchetti firmati ---------------------------------------------------------------------------
+if ( class_exists( 'ZipArchive' ) && function_exists( 'sodium_crypto_sign_keypair' ) ) {
+	$kp   = sodium_crypto_sign_keypair();
+	$sk   = sodium_crypto_sign_secretkey( $kp );
+	$b64u = function ( $r ) { return rtrim( strtr( base64_encode( $r ), '+/', '-_' ), '=' ); };
+	Config::set( 'package_keys', array( 'k-test' => $b64u( sodium_crypto_sign_publickey( $kp ) ) ) );
+	$gdb = new Db( new PDO( 'sqlite::memory:' ) );
+	$gdb->migrate();
+	Config::set( 'releases_dir', sys_get_temp_dir() . '/asem-rel-g-' . bin2hex( random_bytes( 4 ) ) );
+	$mkz = function ( $ver ) {
+		$zf = tempnam( sys_get_temp_dir(), 'z' );
+		$zz = new ZipArchive();
+		$zz->open( $zf, ZipArchive::OVERWRITE );
+		$zz->addFromString( 'associazionesemplice-pro/associazionesemplice-pro.php', "<?php\n/**\n * Version:           $ver\n */\n" );
+		$zz->close();
+		return $zf;
+	};
+	$z1  = $mkz( '1.0.1' );
+	$sig = $b64u( sodium_crypto_sign_detached( Portale\Releases::signedMessage( 'pro', '1.0.1', hash_file( 'sha256', $z1 ) ), $sk ) );
+	$row = Portale\Releases::add( $gdb, 'pro', $z1, '', 'test', null, $sig, 'k-test' );
+	check( 'firma: pacchetto firmato accettato e registrato', $sig === $row['signature'] && 'k-test' === $row['kid'] );
+	check( 'firma: firma di un altro pacchetto rifiutata', null !== throwsUser( function () use ( $gdb, $mkz, $sig ) { Portale\Releases::add( $gdb, 'pro', $mkz( '1.0.2' ), '', 'test', null, $sig, 'k-test' ); } ) );
+	check( 'firma: chiave sconosciuta rifiutata', null !== throwsUser( function () use ( $gdb, $mkz, $sig ) { Portale\Releases::add( $gdb, 'pro', $mkz( '1.0.3' ), '', 'test', null, $sig, 'k-altra' ); } ) );
+	$z4 = $mkz( '1.0.4' );
+	Portale\Releases::add( $gdb, 'pro', $z4, '', 'test' );
+	$sig4 = $b64u( sodium_crypto_sign_detached( Portale\Releases::signedMessage( 'pro', '1.0.4', hash_file( 'sha256', $z4 ) ), $sk ) );
+	Http::$transport = function () { return array( 200, json_encode( array( 'valid' => true, 'reason_code' => 'ACTIVE', 'plan_name' => 'Pro Full', 'license_id' => 'LG' ) ) ); };
+	$gpx = new Portale\LicenseProxy( $gdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+	$req = '{"product":"pro","version":"1.0.0","license_key":"chiave-firma-prova","domain":"esempio.it"}';
+	$g1  = json_decode( Portale\PluginUpdates::check( $gdb, $gpx, $req, '8.8.1.1', 1800000000 )[1], true );
+	check( 'aggiornamento: l\'ultima versione NON firmata (1.0.4) non si offre, si offre la firmata (1.0.1) con impronta e firma', '1.0.1' === $g1['version'] && $sig === $g1['signature'] && 'k-test' === $g1['kid'] && 64 === strlen( (string) $g1['sha256'] ) );
+	Portale\Releases::sign( $gdb, 'pro', '1.0.4', $sig4, 'k-test', 'test' );
+	$g2 = json_decode( Portale\PluginUpdates::check( $gdb, $gpx, str_replace( 'chiave-firma-prova', 'chiave-firma-prova2', $req ), '8.8.1.2', 1800000000 )[1], true );
+	check( 'firma: dopo la firma la 1.0.4 diventa l\'aggiornamento offerto', '1.0.4' === $g2['version'] && $sig4 === $g2['signature'] );
+	check( 'firma: firma aggiunta a una versione sbagliata rifiutata', null !== throwsUser( function () use ( $gdb, $sig ) { Portale\Releases::sign( $gdb, 'pro', '1.0.4', $sig, 'k-test', 'test' ); } ) );
+	Config::set( 'package_keys', Portale\Releases::SIGNING_KEYS );
+}
+
+// --- Public Suffix List completa -----------------------------------------------------------------
+$pslCases = array(
+	'esempio.it' => 'esempio.it', 'staging.esempio.it' => 'esempio.it', 'a.b.c.esempio.it' => 'esempio.it',
+	'www.esempio.co.uk' => 'esempio.co.uk', 'esempio.com.au' => 'esempio.com.au',
+	'sito.altervista.org' => 'sito.altervista.org', 'staging.sito.altervista.org' => 'sito.altervista.org',
+	'utente.github.io' => 'utente.github.io', 'x.blogspot.com' => 'x.blogspot.com',
+	'foo.bar.ck' => 'foo.bar.ck', 'www.ck' => 'www.ck', 'altro.www.ck' => 'www.ck',
+	'esempio.org.it' => 'org.it', 'esempio.roma.it' => 'esempio.roma.it', 'test.associazione.roma.it' => 'associazione.roma.it',
+	'xn--bcher-kva.ch' => 'xn--bcher-kva.ch', 'esempio.xn--p1ai' => 'esempio.xn--p1ai',
+	'co.uk' => '', 'altervista.org' => '', 'ck' => '',
+);
+$pslBad = array();
+foreach ( $pslCases as $in => $want ) {
+	if ( $want !== Domain::registrable( $in ) ) {
+		$pslBad[] = $in . ' → ' . Domain::registrable( $in ) . ' (atteso ' . $want . ')';
+	}
+}
+check( 'psl: ' . count( $pslCases ) . ' casi (suffissi ICANN e privati, wildcard, eccezioni, punycode)' . ( $pslBad ? ' — ' . implode( '; ', $pslBad ) : '' ), ! $pslBad );
+check( 'psl: due clienti dello stesso ospite (altervista.org) non condividono il dominio registrabile', Domain::registrable( 'a.altervista.org' ) !== Domain::registrable( 'b.altervista.org' ) );
+
+// --- Vault di Wega (copia di riserva cifrata) ---------------------------------------------------------
+$vh = array();
+$vb = '';
+Http::$transport = function ( $m, $url, $h, $body ) use ( &$vh, &$vb ) {
+	$vh = array( $m, $url, $h );
+	$vb = (string) $body;
+	return array( 201, json_encode( array( 'data' => array( 'id' => 'V1', 'name' => 'k.pem', 'size' => 12, 'sha256' => str_repeat( 'a', 64 ), 'stored_at' => '2026-10-20T10:00:00Z' ) ) ) );
+};
+$vr = ( new WegaClient( 'https://license.test/api/v1', 'tok' ) )->vaultStore( 'k.pem', "-----BEGIN ENCRYPTED PRIVATE KEY-----\nAAAA\n" );
+check( 'vault: richiesta multipart con file e nome, e risposta con l\'impronta', 'POST' === $vh[0] && 'https://license.test/api/v1/vault' === $vh[1] && false !== strpos( implode( '|', $vh[2] ), 'multipart/form-data; boundary=' ) && false !== strpos( $vb, 'name="file"; filename="k.pem"' ) && false !== strpos( $vb, 'ENCRYPTED PRIVATE KEY' ) && 'V1' === $vr['id'] && str_repeat( 'a', 64 ) === $vr['sha256'] );
+Http::$transport = function () { return array( 422, json_encode( array( 'error' => array( 'code' => 'VAULT_QUOTA_EXCEEDED', 'message' => 'pieno' ) ) ) ); };
+try {
+	( new WegaClient( 'https://license.test/api/v1', 'tok' ) )->vaultStore( 'k.pem', 'x' );
+	check( 'vault: errore di quota segnalato', false );
+} catch ( WegaException $e ) {
+	check( 'vault: errore di quota segnalato', 'VAULT_QUOTA_EXCEEDED' === $e->errorCode && 422 === $e->httpStatus );
+}
+
+// --- Cambio di piano (upgrade con differenza, downgrade al rinnovo) ------------------------------------------------------
+check( 'cambio piano: differenza proporzionale ai giorni residui', 200 === Portale\PlanChange::diffCents( 800, 1200, gmdate( 'Y-m-d H:i:s', 1000000 + 15 * 86400 ), 30, 1000000 ) );
+check( 'cambio piano: mai sotto il minimo del provider', 50 === Portale\PlanChange::diffCents( 800, 1200, gmdate( 'Y-m-d H:i:s', 1000000 + 3600 ), 30, 1000000 ) );
+check( 'cambio piano: a scadenza lontana non supera la differenza piena', 400 === Portale\PlanChange::diffCents( 800, 1200, gmdate( 'Y-m-d H:i:s', 1000000 + 90 * 86400 ), 30, 1000000 ) );
+
+Config::load( array(
+	'base_url' => 'https://portale.test', 'app_key' => base64_encode( str_repeat( 'k', 32 ) ),
+	'stripe' => array( 'secret_key' => 'sk_test', 'webhook_secret' => 'whsec_test' ),
+	'paypal' => array( 'live' => false, 'client_id' => 'id', 'secret' => 's', 'webhook_id' => 'WH1' ),
+	'plans' => array(
+		'free' => array( 'label' => 'Free', 'plan_name' => 'Free', 'prices' => array() ),
+		'lite' => array( 'label' => 'Pro Contabile', 'plan_name' => 'Pro Lite', 'prices' => array(
+			'month' => array( 'cents' => 800, 'stripe_price' => 'price_lite', 'paypal_plan' => 'P-L' ),
+		) ),
+		'full' => array( 'label' => 'Pro Fiscale', 'plan_name' => 'Pro Full', 'prices' => array(
+			'month' => array( 'cents' => 1200, 'stripe_price' => 'price_full', 'paypal_plan' => 'P-F' ),
+		) ),
+	),
+) );
+$pdb = new Db( new PDO( 'sqlite::memory:' ) );
+$pdb->migrate();
+Portale\Settings::load( $pdb );
+$pcalls = array();
+Http::$transport = function ( $method, $url, $headers, $body ) use ( &$pcalls ) {
+	$pcalls[] = array( $method, $url, $body );
+	if ( false !== strpos( $url, '/licenses/renew' ) ) {
+		return array( 200, json_encode( array( 'data' => array( 'expires_at' => '2030-02-01T00:00:00Z' ) ) ) );
+	}
+	if ( false !== strpos( $url, '/licenses/' ) ) {
+		return array( 200, json_encode( array( 'data' => array( 'license_id' => 'lic_9' ) ) ) );
+	}
+	if ( 'GET' === $method && false !== strpos( $url, '/subscriptions/sub_9' ) ) {
+		return array( 200, '{"items":{"data":[{"id":"si_1"}]}}' );
+	}
+	if ( false !== strpos( $url, '/subscriptions/sub_9' ) ) {
+		return array( 200, '{}' );
+	}
+	if ( false !== strpos( $url, '/checkout/sessions' ) ) {
+		return array( 200, '{"url":"https://stripe.test/pay"}' );
+	}
+	return array( 404, '{}' );
+};
+$pbil  = new Billing( $pdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+$pcust = $pbil->customer( 'cliente@esempio.it' );
+$pexp  = gmdate( 'Y-m-d H:i:s', time() + 15 * 86400 );
+$pdb->run(
+	"INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, provider_ref, status, domain, mode, license_id, license_key_enc, expires_at, created_at, updated_at) VALUES ('s1',?, 'lite','month','stripe','sub_9','active','piani.it','recurring','lic_9',?,?,?,?)",
+	array( $pcust['id'], Portale\Secrets::seal( 'KEY-9' ), $pexp, Db::now(), Db::now() )
+);
+$ps  = $pbil->subscription( 's1' );
+$pc  = $pbil->planChange();
+$opt = $pc->options( $ps );
+check( 'cambio piano: dal Lite si offre il Full come upgrade con la differenza', 1 === count( $opt ) && 'full' === $opt[0]['plan'] && $opt[0]['up'] && $opt[0]['pay'] >= 190 && $opt[0]['pay'] <= 400 );
+check( 'cambio piano: cliente estraneo rifiutato', null !== throwsUser( function () use ( $pc ) {
+	$pc->startUpgrade( 's1', 'altro', 'full' );
+} ) );
+check( 'cambio piano: verso il piano che ha già rifiutato', null !== throwsUser( function () use ( $pc, $pcust ) {
+	$pc->startUpgrade( 's1', $pcust['id'], 'lite' );
+} ) );
+$url = $pc->startUpgrade( 's1', $pcust['id'], 'full' );
+$chg = $pdb->one( "SELECT * FROM subscriptions WHERE renews = 's1'" );
+check( 'upgrade: pagamento singolo creato e riga collegata', 'https://stripe.test/pay' === $url && 'full' === $chg['change_to'] && 'pending' === $chg['status'] );
+$pbil->completePayment( $chg['id'] );
+$pbil->completePayment( $chg['id'] );
+$pa = $pbil->subscription( 's1' );
+$patches = array_filter( $pcalls, function ( $c ) { return 'PATCH' === $c[0]; } );
+$swaps   = array_filter( $pcalls, function ( $c ) { return 'POST' === $c[0] && false !== strpos( $c[1], '/subscriptions/sub_9' ) && false !== strpos( (string) $c[2], 'price_full' ) && false !== strpos( (string) $c[2], 'proration_behavior=none' ); } );
+check( 'upgrade: piano cambiato, scadenza e chiave invariate', 'full' === $pa['plan_code'] && $pexp === $pa['expires_at'] && 'KEY-9' === Portale\Secrets::open( $pa['license_key_enc'] ) );
+check( 'upgrade: un solo cambio sul server licenze e un solo cambio di prezzo su Stripe, anche se il pagamento arriva due volte', 1 === count( $patches ) && 1 === count( $swaps ) && false !== strpos( (string) array_values( $patches )[0][2], 'Pro Full' ) );
+check( 'upgrade: nessun rinnovo registrato', 0 === count( array_filter( $pcalls, function ( $c ) { return false !== strpos( $c[1], '/licenses/renew' ); } ) ) );
+
+$pc->scheduleDowngrade( 's1', $pcust['id'], 'lite' );
+$pd = $pbil->subscription( 's1' );
+check( 'downgrade: programmato, la licenza resta Full fino al rinnovo', 'lite' === $pd['next_plan'] && 'full' === $pd['plan_code'] );
+check( 'downgrade: un secondo cambio mentre ce n\'è uno programmato è rifiutato', null !== throwsUser( function () use ( $pc, $pcust ) {
+	$pc->scheduleDowngrade( 's1', $pcust['id'], 'lite' );
+} ) );
+$pc->cancelScheduled( 's1', $pcust['id'] );
+check( 'downgrade: annullabile', null === $pbil->subscription( 's1' )['next_plan'] );
+$pc->scheduleDowngrade( 's1', $pcust['id'], 'lite' );
+$pbil->renew( 's1' );
+$pr = $pbil->subscription( 's1' );
+check( 'downgrade: al rinnovo la licenza passa al piano inferiore e il programma si azzera', 'lite' === $pr['plan_code'] && null === $pr['next_plan'] );
+$lastPatch = array_values( array_filter( $pcalls, function ( $c ) { return 'PATCH' === $c[0]; } ) );
+check( 'downgrade: il server licenze riceve il tipo nuovo', false !== strpos( (string) end( $lastPatch )[2], 'Pro Lite' ) );
+
+$pdb->run( "UPDATE subscriptions SET provider = 'paypal', mode = 'recurring' WHERE id = 's1'" );
+check( 'cambio piano: PayPal ricorrente non automatico, spiegato', null !== $pc->reason( $pbil->subscription( 's1' ) ) && array() === $pc->options( $pbil->subscription( 's1' ) ) );
+$pdb->run( "UPDATE subscriptions SET provider = 'stripe', status = 'active', cancel_at_period_end = 1 WHERE id = 's1'" );
+check( 'cambio piano: rinnovo disdetto, non si cambia', null !== $pc->reason( $pbil->subscription( 's1' ) ) );
+
+// --- Novità dal CHANGELOG.md del pacchetto -------------------------------------------------------------------------------
+$cl = "# Novità\n\nTesto di introduzione.\n\n## 1.2.20\n- Widget nella Bacheca.\nriga libera ignorata\n\n## 1.2.19\n- Anni solari.\n- Ospiti.\n\n## 1.2.18\n- Listini.\n";
+check( 'novità: solo le versioni più recenti di quella installata', "## 1.2.20\n- Widget nella Bacheca.\n## 1.2.19\n- Anni solari.\n- Ospiti." === Releases::filterChangelog( $cl, '1.2.18' ) );
+check( 'novità: senza versione installata solo l\'ultima, senza righe estranee', "## 1.2.20\n- Widget nella Bacheca." === Releases::filterChangelog( $cl, '' ) );
+check( 'novità: nulla se è già aggiornato', '' === Releases::filterChangelog( $cl, '1.2.20' ) );
+check( 'novità: tetto di 20000 caratteri', strlen( Releases::filterChangelog( "## 9.0\n" . str_repeat( "- voce lunga lunga lunga\n", 2000 ), '1.0' ) ) <= 20000 );
+
+// --- Promozione in vetrina (listino barrato) -------------------------------------------------------------------------------
+Portale\Settings::savePromo( $pdb, array( 'promo_label' => 'Black Friday', 'promo_start' => '2026-11-27', 'promo_end' => '2026-12-01' ) );
+Portale\Settings::load( $pdb );
+Portale\Settings::savePlan( $pdb, 'lite', array( 'label' => 'Pro Contabile', 'plan_name' => 'Pro Lite', 'visible' => '1', 'price_month' => '8', 'list_month' => '10', 'stripe_month' => 'price_liteAB12', 'paypal_month' => 'P-LITE01' ) );
+Portale\Settings::load( $pdb );
+$rome = function ( string $when ) { return ( new DateTime( $when, new DateTimeZone( 'Europe/Rome' ) ) )->getTimestamp(); };
+check( 'promo: attiva tra le date (fine compresa)', 'Black Friday' === Portale\Settings::promoNow( $rome( '2026-11-30 12:00' ) ) && 'Black Friday' === Portale\Settings::promoNow( $rome( '2026-12-01 23:30' ) ) );
+check( 'promo: non attiva prima dell\'inizio e dopo la fine', null === Portale\Settings::promoNow( $rome( '2026-11-26 23:59' ) ) && null === Portale\Settings::promoNow( $rome( '2026-12-02 00:01' ) ) );
+check( 'promo: listino barrato solo in promo e solo se più alto', 1000 === Portale\Settings::listCents( 'lite', 'month', $rome( '2026-11-28 10:00' ) ) && null === Portale\Settings::listCents( 'lite', 'month', $rome( '2026-12-05 10:00' ) ) && null === Portale\Settings::listCents( 'lite', 'year', $rome( '2026-11-28 10:00' ) ) );
+check( 'promo: il prezzo incassato resta quello in vigore', 800 === Portale\Config::price( 'lite', 'month' )['cents'] );
+check( 'promo: serve la data di fine', null !== throwsUser( function () use ( $pdb ) {
+	Portale\Settings::savePromo( $pdb, array( 'promo_label' => 'Prova' ) );
+} ) );
+check( 'promo: inizio dopo la fine rifiutato', null !== throwsUser( function () use ( $pdb ) {
+	Portale\Settings::savePromo( $pdb, array( 'promo_label' => 'Prova', 'promo_start' => '2026-12-05', 'promo_end' => '2026-12-01' ) );
+} ) );
+Portale\Settings::savePromo( $pdb, array( 'promo_label' => '' ) );
+Portale\Settings::load( $pdb );
+check( 'promo: nome vuoto la spegne', null === Portale\Settings::promoNow( $rome( '2026-11-28 10:00' ) ) );
+
+// --- Rinnovo automatico senza prezzi creati a mano su Stripe e PayPal ------------------------------------------------------
+Portale\Settings::savePlan( $pdb, 'full', array( 'label' => 'Pro Fiscale', 'plan_name' => 'Pro Full', 'visible' => '1', 'price_month' => '12', 'price_year' => '120' ) );
+Portale\Settings::load( $pdb );
+$acalls = array();
+Http::$transport = function ( $method, $url, $headers, $body ) use ( &$acalls ) {
+	$acalls[] = array( $method, $url, $body );
+	if ( false !== strpos( $url, '/oauth2/token' ) ) {
+		return array( 200, '{"access_token":"tok"}' );
+	}
+	if ( false !== strpos( $url, '/checkout/sessions' ) ) {
+		return array( 200, '{"url":"https://stripe.test/pay"}' );
+	}
+	if ( false !== strpos( $url, '/catalogs/products' ) ) {
+		return array( 201, '{"id":"PROD-1"}' );
+	}
+	if ( false !== strpos( $url, '/v1/billing/plans' ) ) {
+		return array( 201, '{"id":"P-AUTO' . count( $GLOBALS['acalls'] ) . '"}' );
+	}
+	if ( false !== strpos( $url, '/v1/billing/subscriptions' ) ) {
+		return array( 200, '{"links":[{"rel":"approve","href":"https://paypal.test/sub"}]}' );
+	}
+	return array( 404, '{}' );
+};
+$abil = new Billing( $pdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+check( 'automatico: il piano si può comprare con rinnovo automatico anche senza ID', in_array( array( 'stripe', 'recurring' ), $abil->methods( Portale\Config::price( 'full', 'year' ) ), true ) && in_array( array( 'paypal', 'recurring' ), $abil->methods( Portale\Config::price( 'full', 'year' ) ), true ) );
+$abil->startPaid( 'auto@esempio.it', 'auto-uno.it', 'full', 'year', 'stripe', 'recurring' );
+$co = null;
+foreach ( $acalls as $c ) {
+	if ( false !== strpos( $c[1], '/checkout/sessions' ) ) {
+		parse_str( (string) $c[2], $co );
+	}
+}
+check( 'automatico Stripe: prezzo ricorrente annuale creato al volo con l\'importo del piano', $co && 'subscription' === $co['mode'] && '12000' === (string) $co['line_items'][0]['price_data']['unit_amount'] && 'year' === $co['line_items'][0]['price_data']['recurring']['interval'] && empty( $co['line_items'][0]['price'] ) );
+$abil->startPaid( 'auto2@esempio.it', 'auto-due.it', 'full', 'year', 'paypal', 'recurring' );
+$abil->startPaid( 'auto3@esempio.it', 'auto-tre.it', 'full', 'year', 'paypal', 'recurring' );
+$made = array_filter( $acalls, function ( $c ) { return false !== strpos( $c[1], '/v1/billing/plans' ); } );
+$prod = array_filter( $acalls, function ( $c ) { return false !== strpos( $c[1], '/catalogs/products' ); } );
+$subs = array_values( array_filter( $acalls, function ( $c ) { return false !== strpos( $c[1], '/v1/billing/subscriptions' ); } ) );
+$pj   = json_decode( (string) array_values( $made )[0][2], true );
+check( 'automatico PayPal: prodotto e piano creati una volta sola e riusati', 1 === count( $made ) && 1 === count( $prod ) && 2 === count( $subs ) && json_decode( (string) $subs[0][2], true )['plan_id'] === json_decode( (string) $subs[1][2], true )['plan_id'] );
+check( 'automatico PayPal: piano annuale da 120,00 EUR', 'YEAR' === $pj['billing_cycles'][0]['frequency']['interval_unit'] && '120.00' === $pj['billing_cycles'][0]['pricing_scheme']['fixed_price']['value'] );
+
+// --- Sicurezza: dati scelti da chi si iscrive non devono finire in uno script del pannello ---------------------------
+check( 'email: indirizzo normale accettato', Billing::validEmail( 'mario.rossi+asem@esempio.it' ) );
+check( 'email: parte locale tra virgolette rifiutata', ! Billing::validEmail( "\"x');alert(1);//\"@esempio.it" ) && ! Billing::validEmail( '"a,b@c.it"@esempio.it' ) );
+check( 'email: apice e accento grave senza virgolette restano validi ma innocui', Billing::validEmail( "o'brien@esempio.it" ) );
+$attack = "x'+setTimeout`location=/evil.it`+'@esempio.it";
+$conf   = js_confirm( 'Eliminare ' . $attack . ' con tutte le sue licenze?' );
+check( 'conferma: il messaggio è una stringa JavaScript che non si può chiudere dall\'interno', 0 === strpos( $conf, 'return confirm(&quot;' ) && false === strpos( $conf, "'" ) && false === strpos( $conf, '<' ) );
+check( 'conferma: il testo originale si ritrova nel valore decodificato', false !== strpos( html_entity_decode( $conf, ENT_QUOTES ), 'x' . chr( 92 ) . 'u0027+setTimeout`location=/evil.it`+' . chr( 92 ) . 'u0027@esempio.it' ) );
+check( 'conferma: da testo con virgolette e tag esce solo JSON', false === strpos( js_confirm( '</script><img src=x onerror=alert(1)>"' ), '<' ) );
+
+// --- Indirizzo IP dietro il proxy: contano le voci aggiunte dal proxy, non quelle scritte da chi chiama -------------
+$srv = array( 'REMOTE_ADDR' => '10.0.0.1', 'HTTP_X_FORWARDED_FOR' => '1.2.3.4, 203.0.113.7' );
+check( 'IP: senza proxy fidato conta la connessione', '10.0.0.1' === Portale\ClientIp::from( $srv, false ) );
+check( 'IP: con un proxy fidato conta l\'ultima voce, non la prima scelta dal chiamante', '203.0.113.7' === Portale\ClientIp::from( $srv, true ) );
+check( 'IP: due proxy fidati, penultima voce', '1.2.3.4' === Portale\ClientIp::from( $srv, true, 2 ) );
+check( 'IP: voce non valida o mancante, torna la connessione', '10.0.0.1' === Portale\ClientIp::from( array( 'REMOTE_ADDR' => '10.0.0.1', 'HTTP_X_FORWARDED_FOR' => 'non-un-ip' ), true ) && '10.0.0.1' === Portale\ClientIp::from( array( 'REMOTE_ADDR' => '10.0.0.1' ), true ) );
+check( 'IP: più proxy dichiarati delle voci presenti, torna la connessione', '10.0.0.1' === Portale\ClientIp::from( array( 'REMOTE_ADDR' => '10.0.0.1', 'HTTP_X_FORWARDED_FOR' => '1.2.3.4' ), true, 2 ) );
+
+// --- Demo pubblica: dati della pagina /prova ---------------------------------------------------------------------------
+$demoAcc = Portale\Demo::accounts();
+check( 'demo: segreteria, socio e amministratore del plugin, nessun «admin» di WordPress', array( 'segreteria', 'socio@demo.invalid', 'amministratore' ) === array_column( $demoAcc, 'user' ) && ! preg_match( '/admin/i', implode( ' ', array_column( $demoAcc, 'user' ) ) ) );
+check( 'demo: ogni accesso ha una password di almeno 12 caratteri e un punto di partenza nella demo', ! array_filter( $demoAcc, function ( $a ) { return strlen( $a['password'] ) < 12 || 0 !== strpos( $a['start'], '/' ); } ) );
+$demoRoles = Portale\Demo::roles();
+check( 'demo: la tabella dei ruoli ha tante celle quante colonne', ! array_filter( $demoRoles['rows'], function ( $cells ) use ( $demoRoles ) { return count( $cells ) !== count( $demoRoles['columns'] ); } ) );
+$demoLinks = array();
+foreach ( Portale\Demo::links() as $rows ) {
+	foreach ( $rows as $r ) {
+		$demoLinks[] = $r[1];
+	}
+}
+check( 'demo: i collegamenti sono percorsi della demo e non portano alle pagine di WordPress riservate agli amministratori del sito', $demoLinks && ! array_filter( $demoLinks, function ( $p ) { return 0 !== strpos( $p, '/' ) || preg_match( '#(users|plugins|plugin-install|themes|options-general|tools|update-core).php#', $p ); } ) );
+check( 'demo: l\'indirizzo non finisce con la barra', '/' !== substr( Portale\Demo::url(), -1 ) );
+
+// --- Livello firmato dal portale (portal_attestation) -------------------------------------------------------------------
+$pseed = random_bytes( SODIUM_CRYPTO_SIGN_SEEDBYTES );
+$adb   = new Db( new PDO( 'sqlite::memory:' ) );
+$adb->migrate();
+$mkSub = function ( string $id, string $plan, string $status, string $license ) use ( $adb ) {
+	$adb->run( 'INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, license_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)', array( $id, 'c1', $plan, 'year', 'stripe', $status, 'esempio.it', $license, Db::now(), Db::now() ) );
+};
+$mkSub( 's1', 'full', 'active', 'LIC-FULL' );
+$mkSub( 's2', 'lite', 'active', 'LIC-LITE' );
+$mkSub( 's3', 'free', 'active', 'LIC-FREE' );
+$mkSub( 's4', 'full', 'canceled', 'LIC-OFF' );
+$mkSub( 's5', 'strano', 'active', 'LIC-ODD' );
+$wega = function ( string $license, bool $valid = true ) {
+	return array( 'valid' => $valid, 'license_id' => $license, 'product_code' => 'prodotto-wega-x1', 'identity' => 'esempio.it', 'domain' => 'esempio.it', 'plan_name' => 'Nome libero' );
+};
+$verifyJwt = function ( string $jwt ) use ( $pseed ) {
+	$p = explode( '.', $jwt );
+	if ( 3 !== count( $p ) ) {
+		return null;
+	}
+	$d   = function ( $s ) { return base64_decode( strtr( $s, '-_', '+/' ) . str_repeat( '=', ( 4 - strlen( $s ) % 4 ) % 4 ), true ); };
+	$pub = $d( Portale\PortalAttestation::publicKey( $pseed ) );
+	return sodium_crypto_sign_verify_detached( (string) $d( $p[2] ), $p[0] . '.' . $p[1], (string) $pub ) ? array( json_decode( (string) $d( $p[0] ), true ), json_decode( (string) $d( $p[1] ), true ) ) : null;
+};
+check( 'prova del portale: senza chiave non si firma niente', ! Portale\PortalAttestation::enabled() && null === Portale\PortalAttestation::forResponse( $adb, $wega( 'LIC-FULL' ) ) );
+Config::set( 'portal_sign_key', base64_encode( $pseed ) );
+check( 'prova del portale: con la chiave è attiva e dà kid e chiave pubblica da fissare nel plugin', Portale\PortalAttestation::enabled() && 0 === strpos( Portale\PortalAttestation::kid(), 'portale-' ) && 43 === strlen( Portale\PortalAttestation::publicKey() ) );
+$jwt = Portale\PortalAttestation::forResponse( $adb, $wega( 'LIC-FULL' ), 1700000000 );
+$ver = $jwt ? $verifyJwt( $jwt ) : null;
+check( 'prova del portale: firma Ed25519 valida con la chiave pubblica e intestazione EdDSA con kid', $ver && 'EdDSA' === $ver[0]['alg'] && Portale\PortalAttestation::kid() === $ver[0]['kid'] );
+check( 'prova del portale: Pro Fiscale → livello «fiscal», aud e bid come Wega, 14 giorni', $ver && 'fiscal' === $ver[1]['plan'] && 'prodotto-wega-x1' === $ver[1]['aud'] && 'esempio.it' === $ver[1]['bid'] && 'LIC-FULL' === $ver[1]['sub'] && 'https://portale.test' === $ver[1]['iss'] && 1209600 === $ver[1]['exp'] - $ver[1]['iat'] );
+check( 'prova del portale: il livello viene dalla tabella dei piani, non dal nome su Wega', $ver && false === stripos( (string) $wega( 'LIC-FULL' )['plan_name'], 'fiscal' ) && 'fiscal' === $ver[1]['plan'] );
+$lite = $verifyJwt( (string) Portale\PortalAttestation::forResponse( $adb, $wega( 'LIC-LITE' ) ) );
+$free = $verifyJwt( (string) Portale\PortalAttestation::forResponse( $adb, $wega( 'LIC-FREE' ) ) );
+check( 'prova del portale: Pro Contabile → «accounting», gratuito → «free»', $lite && 'accounting' === $lite[1]['plan'] && $free && 'free' === $free[1]['plan'] );
+$lvl = function ( string $license, bool $valid = true ) use ( $adb, $wega, $verifyJwt ) {
+	$j = $verifyJwt( (string) Portale\PortalAttestation::forResponse( $adb, $wega( $license, $valid ) ) );
+	return $j ? $j[1]['plan'] : null;
+};
+check( 'prova del portale: licenza non valida per Wega → nessuna prova', null === Portale\PortalAttestation::forResponse( $adb, $wega( 'LIC-FULL', false ) ) );
+check( 'prova del portale: licenza valida ma sconosciuta, annullata o di piano ignoto → prova con livello «free» (mai niente)', 'free' === $lvl( 'LIC-NON-ESISTE' ) && 'free' === $lvl( 'LIC-OFF' ) && 'free' === $lvl( 'LIC-ODD' ) );
+check( 'prova del portale: levelOf rilegge il livello dalla prova e rifiuta il resto', 'fiscal' === Portale\PortalAttestation::levelOf( (string) $jwt ) && null === Portale\PortalAttestation::levelOf( 'a.b' ) && null === Portale\PortalAttestation::levelOf( '' ) );
+$tamper = explode( '.', (string) $jwt );
+$tamper[1] = rtrim( strtr( base64_encode( str_replace( 'fiscal', 'free', (string) base64_decode( strtr( $tamper[1], '-_', '+/' ) ) ) ), '+/', '-_' ), '=' );
+check( 'prova del portale: se si cambia il livello la firma non torna più', null === $verifyJwt( implode( '.', $tamper ) ) );
+Config::set( 'plan_levels', array( 'lite' => 'lite' ) );
+check( 'prova del portale: la corrispondenza piano → livello si cambia da config.php', 'lite' === Portale\PortalAttestation::level( 'lite' ) && 'fiscal' === Portale\PortalAttestation::level( 'full' ) && null === Portale\PortalAttestation::level( 'altro' ) );
+Config::set( 'plan_levels', array() );
+$transportBefore = Http::$transport;
+Http::$transport = function ( $method, $url, $headers, $body ) use ( $wega ) {
+	return array( 200, json_encode( $wega( 'LIC-FULL' ) + array( 'attestation' => 'JWT.WEGA.X' ) ) );
+};
+$aproxy = new Portale\LicenseProxy( $adb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+$ar     = $aproxy->validate( '{"license_key":"chiave-valida-1","domain":"esempio.it"}', '9.9.9.9', 1700000000 );
+$aj     = json_decode( $ar[1], true );
+check( 'prova del portale: nella risposta del rimbalzo accanto all\'attestazione di Wega, che resta com\'è', 200 === $ar[0] && 'JWT.WEGA.X' === $aj['attestation'] && ! empty( $aj['portal_attestation'] ) && null !== $verifyJwt( $aj['portal_attestation'] ) );
+Http::$transport = $transportBefore;
+Config::set( 'portal_sign_key', '' );
+
+// Blocco del dominio dopo un cambio: libero la prima volta, poi bloccato per domain_lock_days; 0 lo toglie.
+check( 'blocco dominio: mai cambiato → nessun blocco', null === Portale\Billing::domainUnlockAt( array( 'domain_changed_at' => null ) ) );
+$lockSub = array( 'domain_changed_at' => gmdate( 'Y-m-d H:i:s', time() - 10 * 86400 ) );
+check( 'blocco dominio: cambiato da 10 giorni → bloccato fino a 180 giorni dal cambio', null !== Portale\Billing::domainUnlockAt( $lockSub ) && abs( strtotime( Portale\Billing::domainUnlockAt( $lockSub ) . ' UTC' ) - ( time() + 170 * 86400 ) ) < 5 );
+check( 'blocco dominio: cambiato da 200 giorni → di nuovo libero', null === Portale\Billing::domainUnlockAt( array( 'domain_changed_at' => gmdate( 'Y-m-d H:i:s', time() - 200 * 86400 ) ) ) );
+Config::set( 'domain_lock_days', 0 );
+check( 'blocco dominio: 0 giorni = nessun blocco', null === Portale\Billing::domainUnlockAt( $lockSub ) );
+Config::set( 'domain_lock_days', 180 );
+check( 'blocco dominio: il valore predefinito è 180 giorni e si può impostare da pannello (clamp 0-730)', 180 === Portale\Settings::limit( 'domain_lock_days' ) && 730 === Portale\Settings::clamp( 'domain_lock_days', 9999 ) && 0 === Portale\Settings::clamp( 'domain_lock_days', -5 ) );
+
+$pp = Portale\Site::publicPlans()['piani'];
+check( 'elenco pubblico dei piani: slug fissi nell\'ordine free, procontabile, profiscale', array( 'free', 'procontabile', 'profiscale' ) === array_column( $pp, 'slug' ) );
+Config::set( 'plans.lite.label', 'Nome nuovo' );
+check( 'elenco pubblico dei piani: il nome segue il pannello e gli slug restano', 'Nome nuovo' === Portale\Site::publicPlans()['piani'][1]['nome'] && 'procontabile' === Portale\Site::publicPlans()['piani'][1]['slug'] );
+check( 'elenco pubblico dei piani: nessun prezzo né altri dati', array( 'slug', 'nome' ) === array_keys( $pp[0] ) );
 
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );
