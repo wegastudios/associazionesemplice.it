@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Soci\Import;
 
+use App\Modules\Documenti\Contracts\SheetReader;
+use App\Modules\Documenti\Contracts\Text;
 use App\Modules\Soci\Contracts\MemberType;
 use App\Modules\Soci\Rules\Age;
 use App\Modules\Soci\Rules\Phone;
@@ -54,14 +56,9 @@ final class PeopleSheet
         };
     }
 
-    /** UTF-8 (anche con BOM); se non è UTF-8 valido ripiega su Windows-1252 (Excel). */
     public static function decode(string $bytes): string
     {
-        if (! mb_check_encoding($bytes, 'UTF-8')) {
-            $bytes = (string) mb_convert_encoding($bytes, 'UTF-8', 'Windows-1252');
-        }
-
-        return str_starts_with($bytes, "\xEF\xBB\xBF") ? substr($bytes, 3) : $bytes;
+        return SheetReader::decode($bytes);
     }
 
     /** @param  list<string>  $h */
@@ -193,69 +190,10 @@ final class PeopleSheet
         return preg_match('/^(\d+)[.,]0+$/', $raw, $m) === 1 ? $m[1] : $raw;
     }
 
-    /**
-     * Righe di celle, senza righe completamente vuote; campi tra virgolette; separatore ; , o tabulazione.
-     *
-     * @return list<list<string>>
-     */
+    /** @return list<list<string>> */
     public static function readTable(string $text): array
     {
-        $firstLine = '';
-        foreach (preg_split('/\r\n|\n|\r/', $text) ?: [] as $l) {
-            if (trim($l) !== '') {
-                $firstLine = $l;
-                break;
-            }
-        }
-        if ($firstLine === '') {
-            return [];
-        }
-        $delim = ';';
-        $best = substr_count($firstLine, ';');
-        foreach ([',', "\t"] as $d) {
-            if (substr_count($firstLine, $d) > $best) {
-                $best = substr_count($firstLine, $d);
-                $delim = $d;
-            }
-        }
-
-        /** @var list<list<string>> $rows */
-        $rows = [];
-        /** @var list<string> $row */
-        $row = [];
-        $cell = '';
-        $quoted = false;
-        $endRow = static function () use (&$rows, &$row, &$cell): void {
-            $row[] = $cell;
-            $cell = '';
-            if (implode('', array_map('trim', $row)) !== '') {
-                $rows[] = $row;
-            }
-            $row = [];
-        };
-        for ($i = 0, $len = strlen($text); $i < $len; $i++) {
-            $ch = $text[$i];
-            if ($quoted && $ch === '"' && $i + 1 < $len && $text[$i + 1] === '"') {
-                $cell .= '"';
-                $i++;
-            } elseif ($ch === '"') {
-                $quoted = ! $quoted;
-            } elseif (! $quoted && $ch === $delim) {
-                $row[] = $cell;
-                $cell = '';
-            } elseif (! $quoted && $ch === "\n") {
-                $endRow();
-            } elseif (! $quoted && $ch === "\r") {
-                continue;
-            } else {
-                $cell .= $ch;
-            }
-        }
-        if ($cell !== '' || $row !== []) {
-            $endRow();
-        }
-
-        return $rows;
+        return SheetReader::readTable($text);
     }
 
     /**

@@ -9,9 +9,11 @@ use App\Modules\Core\Console\HealthCommand;
 use App\Modules\Core\Console\InviteOperatorCommand;
 use App\Modules\Core\Console\MigrateAllCommand;
 use App\Modules\Core\Contracts\DatabaseNames;
+use App\Modules\Core\Contracts\DataExport;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgDirectory;
 use App\Modules\Core\Database\DatabaseRegistry;
+use App\Modules\Core\Export\CoreDataExport;
 use App\Modules\Core\Org\DatabaseOrgContext;
 use App\Modules\Core\Org\DatabaseOrgDirectory;
 use Illuminate\Console\Scheduling\Schedule;
@@ -26,6 +28,7 @@ final class CoreServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->tag([CoreDataExport::class], DataExport::TAG);
         $this->app->singleton(DatabaseRegistry::class);
         $this->app->singleton(DatabaseNames::class, DatabaseRegistry::class);
         $this->app->singleton(OrgDirectory::class, DatabaseOrgDirectory::class);

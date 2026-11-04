@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Soci\Import;
+namespace App\Modules\Documenti\Contracts;
 
 use DateTimeImmutable;
 use DateTimeZone;

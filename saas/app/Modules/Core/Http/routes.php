@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Core\Http\Controllers\DashboardController;
+use App\Modules\Core\Http\Controllers\ExportController;
 use App\Modules\Core\Http\Controllers\OperatorsController;
 use App\Modules\Core\Http\Controllers\OrgSwitchController;
 use App\Modules\Core\Http\Controllers\SetupController;
@@ -35,6 +36,8 @@ Route::middleware('web')->group(function (): void {
                 Route::get('/configurazione', [SetupController::class, 'show'])->name('setup');
                 Route::post('/configurazione', [SetupController::class, 'save'])->name('setup.save');
                 Route::post('/configurazione/rimanda', [SetupController::class, 'skip'])->name('setup.skip');
+                Route::get('/esportazione', [ExportController::class, 'show'])->name('export');
+                Route::get('/esportazione.zip', [ExportController::class, 'download'])->middleware('throttle:3,1')->name('export.download');
             });
 
             // Operatori e ruoli personalizzati: titolare e amministratore.

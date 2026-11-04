@@ -6,11 +6,11 @@ namespace App\Modules\Soci\Services;
 
 use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Documenti\Contracts\SheetReader;
+use App\Modules\Documenti\Contracts\Text;
 use App\Modules\Soci\Contracts\MemberType;
 use App\Modules\Soci\Contracts\PeopleError;
 use App\Modules\Soci\Import\PeopleSheet;
-use App\Modules\Soci\Import\SheetReader;
-use App\Modules\Soci\Import\Text;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Rules\SocialYear;
 use Illuminate\Database\DatabaseManager;

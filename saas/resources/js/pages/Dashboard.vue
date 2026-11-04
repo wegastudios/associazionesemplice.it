@@ -26,6 +26,9 @@ defineProps({
                 <p class="mt-2 text-3xl font-bold tabular-nums">{{ peopleCount }}</p>
             </section>
         </div>
-        <p v-if="canSetup && !setupPending" class="mt-6 text-sm"><Link href="/gestionale/configurazione" class="font-semibold text-accent hover:underline">Riapri la configurazione guidata</Link></p>
+        <p v-if="canSetup" class="mt-6 flex flex-wrap gap-4 text-sm font-semibold">
+            <Link v-if="!setupPending" href="/gestionale/configurazione" class="text-accent hover:underline">Riapri la configurazione guidata</Link>
+            <Link href="/gestionale/esportazione" class="text-accent hover:underline">Esportazione completa dei dati</Link>
+        </p>
     </AppLayout>
 </template>

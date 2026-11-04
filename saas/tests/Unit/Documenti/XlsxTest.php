@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Modules\Soci\Import\Xlsx;
+use App\Modules\Documenti\Contracts\Xlsx;
 
 // Casi portati dall'XlsxTest del plugin.
 function xlsxFiles(string $sheetXml, array $extra = []): array

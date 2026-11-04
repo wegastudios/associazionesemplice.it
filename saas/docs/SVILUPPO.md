@@ -215,6 +215,19 @@ operatori e nessun pacchetto finché non ne ricevono.
   dal plugin con i suoi test), con la nota sulla detrazione dai 5 ai 18 anni. I dati delle persone arrivano da
   `Soci\Contracts\People`. Le ricevute stornate non si stampano. Scarico e invio nel registro.
 
+## 9 quater. Import ed esportazione
+
+- Lettura di Excel e CSV condivisa in `Documenti\Contracts` (`SheetReader`, `Xlsx`, `Text`); CSV per Excel con
+  `Documenti\Contracts\Csv` (BOM, «;», celle-formula protette).
+- Prima nota: `Contabilita\Import\LedgerSheet` (dal LedgerImport del plugin, con i suoi test) e
+  `LedgerImportService` (`/gestionale/prima-nota/importa`, `accounting.edit`): anteprima e applicazione dello stesso
+  file; movimenti senza ricevuta, conti nuovi creati, giroconti accoppiati, doppioni saltati (anche quelli del proprio
+  export), righe rifiutate elencate. `LedgerExport` scrive lo stesso formato (`/gestionale/prima-nota/esporta`).
+- Esportazione completa (`Core\Export\FullExport`, `/gestionale/esportazione`, `org.settings`): ogni modulo fornisce
+  i suoi file con una classe che implementa `Core\Contracts\DataExport`, registrata con il tag `DataExport::TAG`;
+  ciascuno esporta solo ciò che l'operatore può vedere. L'archivio si crea in `storage/app/tmp` e si cancella dopo lo
+  scarico; nel registro `export.full`. Gli allegati dei certificati non ci sono.
+
 ## 10. Nuova tabella di un'associazione
 
 Ogni tabella di `app`, `audit` e `sites`:

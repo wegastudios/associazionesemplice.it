@@ -6,6 +6,7 @@ namespace App\Modules\Soci\Services;
 
 use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Documenti\Contracts\Csv;
 use App\Modules\Soci\Contracts\MemberType;
 use App\Modules\Soci\Models\MemberLevel;
 use App\Modules\Soci\Models\Person;
@@ -94,14 +95,9 @@ final readonly class PeopleExportService
         fputcsv($out, array_map(self::cell(...), $cells), ';', '"', '', "\r\n");
     }
 
-    /** Una cella che Excel leggerebbe come formula (=, +, -, @ non seguiti da cifre) si apre con un apostrofo. */
+    /** Una cella che Excel leggerebbe come formula si apre con un apostrofo (vedi Csv::cell). */
     public static function cell(?string $v): string
     {
-        $v ??= '';
-        if ($v !== '' && (in_array($v[0], ['=', '@', "\t", "\r"], true) || (in_array($v[0], ['+', '-'], true) && preg_match('/^[+-][\d\s().]+$/', $v) !== 1))) {
-            return "'".$v;
-        }
-
-        return $v;
+        return Csv::cell($v);
     }
 }

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Soci\Import;
+namespace App\Modules\Documenti\Contracts;
 
 /** Testo per confronti: minuscolo, senza accenti, spazi e segni (dal Text del plugin). */
 final class Text

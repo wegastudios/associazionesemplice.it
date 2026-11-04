@@ -82,7 +82,13 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
     <Head title="Prima nota" />
     <AppLayout>
         <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
-            <h1 class="text-2xl font-bold">Prima nota</h1>
+            <div>
+                <h1 class="text-2xl font-bold">Prima nota</h1>
+                <p class="text-sm font-semibold">
+                    <a :href="`/gestionale/prima-nota/esporta?anno=${year}`" class="text-accent hover:underline">Esporta l'esercizio (CSV)</a>
+                    <template v-if="canEdit"> · <Link href="/gestionale/prima-nota/importa" class="text-accent hover:underline">Importa da Excel o CSV</Link></template>
+                </p>
+            </div>
             <div class="flex flex-wrap gap-3 text-sm">
                 <label class="space-y-1">
                     <span class="block font-semibold">Esercizio</span>

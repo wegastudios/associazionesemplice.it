@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Contabilita\Http\Controllers\AccountsController;
 use App\Modules\Contabilita\Http\Controllers\LedgerController;
+use App\Modules\Contabilita\Http\Controllers\LedgerTransferController;
 use App\Modules\Contabilita\Http\Controllers\ReceiptsController;
 use App\Modules\Contabilita\Http\Controllers\YearsController;
 use Illuminate\Support\Facades\Route;
@@ -11,12 +12,15 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale')->group(function (): void {
     Route::middleware('can:accounting.view')->group(function (): void {
         Route::get('/prima-nota', [LedgerController::class, 'index'])->name('ledger');
+        Route::get('/prima-nota/esporta', [LedgerTransferController::class, 'export'])->middleware('throttle:10,1')->name('ledger.export');
         Route::get('/conti', [AccountsController::class, 'index'])->name('accounts');
         Route::get('/ricevute/{receipt}.pdf', [ReceiptsController::class, 'pdf'])->whereUuid('receipt')->name('receipts.pdf');
         Route::get('/rendiconto/{year?}', [YearsController::class, 'statement'])->whereNumber('year')->name('statement');
     });
 
     Route::middleware('can:accounting.edit')->group(function (): void {
+        Route::get('/prima-nota/importa', [LedgerTransferController::class, 'form'])->name('ledger.import');
+        Route::post('/prima-nota/importa', [LedgerTransferController::class, 'import'])->name('ledger.import.run');
         Route::post('/prima-nota/incassi', [LedgerController::class, 'income'])->name('ledger.income');
         Route::post('/prima-nota/spese', [LedgerController::class, 'expense'])->name('ledger.expense');
         Route::post('/prima-nota/giroconti', [LedgerController::class, 'transfer'])->name('ledger.transfer');
