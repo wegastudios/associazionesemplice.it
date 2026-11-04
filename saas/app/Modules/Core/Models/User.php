@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Models;
 
-use Carbon\CarbonImmutable;
+use App\Modules\Core\Auth\ResetPasswordNotification;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Fortify\TwoFactorAuthenticatable;
+use SensitiveParameter;
 
 /**
  * Utente di accesso, globale: una persona attiva in più associazioni ha un solo utente e una scheda
@@ -17,14 +19,18 @@ use Illuminate\Notifications\Notifiable;
  * @property string $name
  * @property string $email
  * @property string $password
- * @property CarbonImmutable|null $email_verified_at
- * @property CarbonImmutable|null $created_at
- * @property CarbonImmutable|null $updated_at
+ * @property string|null $two_factor_secret
+ * @property string|null $two_factor_recovery_codes
+ * @property \Carbon\CarbonImmutable|null $two_factor_confirmed_at
+ * @property \Carbon\CarbonImmutable|null $email_verified_at
+ * @property \Carbon\CarbonImmutable|null $created_at
+ * @property \Carbon\CarbonImmutable|null $updated_at
  */
 final class User extends Authenticatable
 {
     use HasUuids;
     use Notifiable;
+    use TwoFactorAuthenticatable;
 
     protected $connection = 'pgsql';
 
@@ -34,7 +40,7 @@ final class User extends Authenticatable
     protected $fillable = ['name', 'email', 'password'];
 
     /** @var list<string> */
-    protected $hidden = ['password', 'remember_token'];
+    protected $hidden = ['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes'];
 
     /** @return array<string, string> */
     protected function casts(): array
@@ -42,6 +48,18 @@ final class User extends Authenticatable
         return [
             'email_verified_at' => 'immutable_datetime',
             'password' => 'hashed',
+            'two_factor_confirmed_at' => 'immutable_datetime',
         ];
+    }
+
+    public function hasConfirmedTwoFactor(): bool
+    {
+        return $this->two_factor_secret !== null && $this->two_factor_confirmed_at !== null;
+    }
+
+    /** @param  string  $token */
+    public function sendPasswordResetNotification(#[SensitiveParameter] $token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
     }
 }

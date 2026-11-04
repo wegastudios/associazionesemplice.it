@@ -40,8 +40,9 @@ Ordine consigliato. Ogni passo si chiude con i suoi test.
 |---|---|
 | 1. Scheletro | **fatto** (2026-11-04) |
 | 2. Database | **fatto** (2026-11-04) |
-| 3. Separazione tra associazioni | **fatto** il motore (contesto, connessioni, RLS, richieste, code, database dedicati); il riconoscimento da utente e dominio arriva con il passo 4 |
-| 4–8 | da fare |
+| 3. Separazione tra associazioni | **fatto** il motore (contesto, connessioni, RLS, richieste, code, database dedicati); dall'utente con il passo 4; dal dominio (area soci e sito) con quei pacchetti |
+| 4. Accesso | **fatto** (2026-11-04): Fortify, verifica in due passaggi obbligatoria, ruoli e permessi, scelta dell'associazione, inviti. Passkey e ruoli configurabili più avanti |
+| 5–8 | da fare |
 
 1. **Scheletro**: Laravel 13 in `saas/`, moduli in `app/Modules/`, Pest, PHPStan al massimo, Pint, test di architettura,
    `.github/workflows/saas.yml`.

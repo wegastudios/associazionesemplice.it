@@ -9,6 +9,8 @@
         "php": "^8.3",
         "ext-pdo_pgsql": "*",
         "ext-sodium": "*",
+        "inertiajs/inertia-laravel": "^3.7",
+        "laravel/fortify": "^1.41",
         "laravel/framework": "^13.17",
         "laravel/tinker": "^3.0"
     },

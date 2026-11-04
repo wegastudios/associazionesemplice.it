@@ -5,7 +5,7 @@ dall'AI, fattura elettronica. Il plugin WordPress resta un prodotto a sé: la di
 l'assistenza.
 
 **Stato:** fase 0 in corso ([piano di lavoro](docs/PIANO_DI_LAVORO.md)). Ci sono lo scheletro Laravel 13, il database
-con i due ruoli e la separazione tra associazioni con i suoi test. Avvio in locale: [SVILUPPO.md](docs/SVILUPPO.md).
+con i due ruoli, la separazione tra associazioni e l'accesso con la verifica in due passaggi, tutti con i loro test. Avvio in locale: [SVILUPPO.md](docs/SVILUPPO.md).
 
 Priorità, in quest'ordine: **1. sicurezza dei dati personali e fiscali · 2. velocità**.
 

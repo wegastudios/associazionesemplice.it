@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Providers;
 
+use App\Modules\Core\Console\CreateOrgCommand;
+use App\Modules\Core\Console\InviteOperatorCommand;
 use App\Modules\Core\Console\MigrateAllCommand;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Database\DatabaseRegistry;
@@ -38,7 +40,7 @@ final class CoreServiceProvider extends ServiceProvider
         Event::listen(JobFailed::class, $reset);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([MigrateAllCommand::class]);
+            $this->commands([MigrateAllCommand::class, CreateOrgCommand::class, InviteOperatorCommand::class]);
         }
     }
 }

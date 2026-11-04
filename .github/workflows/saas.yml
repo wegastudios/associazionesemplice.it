@@ -60,6 +60,18 @@ jobs:
 
       - run: composer install --no-interaction --no-progress --prefer-dist
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: saas/package-lock.json
+
+      - name: Frontend (Vite)
+        run: |
+          npm ci --no-audit --no-fund
+          npm audit --audit-level=high
+          npm run build
+
       - name: Controllo delle dipendenze
         run: composer audit --no-interaction
 
