@@ -16,7 +16,7 @@ $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?php echo ! empty( $title ) && is_string( $title ) ? e( $title ) . ' · Associazione Semplice' : 'Associazione Semplice · Il gestionale per le associazioni'; ?></title>
-<meta name="description" content="Soci, eventi, prima nota e privacy per la tua associazione. Plugin WordPress gratuito, con piani Pro per pagamenti online e contabilità.">
+<meta name="description" content="<?php echo e( \Portale\Site::description( $path ) ); ?>">
 <?php if ( $robots ) : ?><meta name="robots" content="noindex, nofollow"><?php endif; ?>
 <meta name="theme-color" content="#1f218c">
 <link rel="icon" type="image/svg+xml" href="/assets/brand/favicon.svg?v=<?php echo e( $v ); ?>"><link rel="icon" type="image/png" sizes="32x32" href="/assets/brand/favicon-32.png?v=<?php echo e( $v ); ?>"><link rel="alternate icon" href="/assets/brand/favicon.ico?v=<?php echo e( $v ); ?>"><link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png?v=<?php echo e( $v ); ?>">
