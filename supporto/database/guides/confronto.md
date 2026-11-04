@@ -136,7 +136,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Comunicazioni a gruppi di soci con storico degli invii | — | ✓ | ✓ |
 | SMS ai soci (Brevo o Twilio) con consensi, anteprima e avvisi automatici | — | ✓ | ✓ |
 | Newsletter sincronizzata con Brevo, Mailchimp o MailPoet, solo per chi ha dato il consenso | — | ✓ | ✓ |
-| App installabile sul telefono e notifiche | — | ✓ | ✓ |
+| App installabile sul telefono e notifiche, con icona dell'associazione, pagina offline con «Riprova» e invito a installarla sotto la tessera | — | ✓ | ✓ |
 
 ## Personalizzazione e sicurezza dei dati
 

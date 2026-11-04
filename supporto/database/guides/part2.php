@@ -223,6 +223,7 @@ L'area riservata è la pagina dove ogni socio trova il suo spazio: tessera, atti
 
 - **Tutti i soci**: «Il mio spazio» con tessera, attività, pagamenti, ricevute, ospiti, profilo, avvisi, calendario e regolamento.
 - **Chi ha un ruolo**: un piccolo menu laterale con **Segreteria**, **Gestione corsi** e **Gestione eventi**.
+- **Da telefono**: una barra permette di **saltare alle sezioni** dell'area soci e i pulsanti sono più grandi (44 px). In **«Il tuo accesso»** c'è il pulsante **«Vai alla tua area»**.
 
 ## Aspetto e contenuti
 

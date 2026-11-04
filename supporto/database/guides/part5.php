@@ -184,19 +184,19 @@ L'area soci può diventare un'**app installabile** sul telefono, con notifiche. 
 
 1. Vai in **Impostazioni → Tecniche → App e notifiche**.
 2. Attiva l'app e, se vuoi, le notifiche.
-3. Scegli nome e icona (un'immagine quadrata di almeno 192 px, meglio 512).
+3. Scegli nome e icona (un'immagine quadrata di almeno 192 px, meglio 512). Senza immagine, l'icona mostra l'**iniziale dell'associazione** e si adatta alle forme di Android.
 
 ## Cosa fa il socio
 
 1. Nell'area soci apre la sezione **App e notifiche**.
-2. Preme **Installa l'app** (su iPhone segue le istruzioni per la schermata Home).
+2. Preme **Installa l'app** (su iPhone segue le istruzioni per la schermata Home). Dalla versione 1.3.6 (gratuito) e 1.3.1 (Pro) l'invito a installarla compare anche **sotto la tessera**.
 3. Attiva le notifiche con un tocco, su ogni dispositivo.
 
 ## Quando arrivano le notifiche
 
 Insieme alle email, per comunicazioni a gruppi, avvisi dei volontari, promemoria e posti liberati dalla lista d'attesa. Chi non le ha attivate riceve solo l'email.
 
-> Per la privacy l'app **non salva mai pagine con dati personali**: offre soltanto una pagina «Sei offline» e gli stili del plugin. Spegnendo l'app, scompare da sola dai dispositivi.
+> Per la privacy l'app **non salva mai pagine con dati personali**: offre soltanto una pagina «Sei offline», con il pulsante **«Riprova»**, e gli stili del plugin. Spegnendo l'app, scompare da sola dai dispositivi.
 MD,
     ],
     [
