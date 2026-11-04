@@ -43,6 +43,7 @@ final readonly class LedgerService implements Ledger
         }
         $method = $this->method($income->accountId, $income->method);
         $this->assertPerson($income->personId);
+        $this->assertActivity($income->activityId);
 
         $lines = [];
         foreach ($income->lines as $i => $line) {
@@ -95,6 +96,7 @@ final readonly class LedgerService implements Ledger
                     'method' => $method->value,
                     'category_id' => $line->categoryId,
                     'person_id' => $income->personId,
+                    'activity_id' => $income->activityId,
                     'receipt_id' => $receiptId,
                     'competence_month' => $line->competenceMonth,
                     'description' => self::text($line->description, 255),
@@ -128,6 +130,7 @@ final readonly class LedgerService implements Ledger
             throw new LedgerError('Aliquota IVA non valida.');
         }
         $this->assertPerson($expense->personId);
+        $this->assertActivity($expense->activityId);
 
         return $this->transaction(function () use ($expense, $method): string {
             $id = $this->insert([
@@ -139,6 +142,7 @@ final readonly class LedgerService implements Ledger
                 'method' => $method->value,
                 'category_id' => $expense->categoryId,
                 'person_id' => $expense->personId,
+                'activity_id' => $expense->activityId,
                 'description' => self::text($expense->description, 255),
                 'document_ref' => $expense->documentRef === null ? null : self::text($expense->documentRef, 80),
                 'vat_rate' => $expense->vatRate,
@@ -199,6 +203,87 @@ final readonly class LedgerService implements Ledger
 
             return is_numeric($count) ? (int) $count : 0;
         });
+    }
+
+    public function assignActivity(string $transactionId, ?string $activityId): void
+    {
+        $this->assertActivity($activityId);
+        $this->transaction(function () use ($transactionId, $activityId): void {
+            $tx = Str::isUuid($transactionId)
+                ? $this->connection()->table('app.transactions')->where('id', $transactionId)->whereNull('voided_at')->lockForUpdate()->first(['id', 'type', 'activity_id'])
+                : null;
+            if ($tx === null) {
+                throw new LedgerError('Movimento inesistente o stornato.');
+            }
+            if (! in_array($tx->type ?? null, [TxType::Income->value, TxType::Expense->value], true)) {
+                throw new LedgerError('Un giroconto non si assegna a un\'attività.');
+            }
+            if (($tx->activity_id ?? null) === $activityId) {
+                return;
+            }
+            $this->connection()->table('app.transactions')->where('id', $transactionId)->update(['activity_id' => $activityId]);
+            $from = $tx->activity_id ?? null;
+            $this->audit->record('ledger.activity', 'app.transactions', $transactionId, ['from' => is_string($from) ? $from : null, 'to' => $activityId]);
+        });
+    }
+
+    public function activityTotals(array $activityIds): array
+    {
+        if ($activityIds === []) {
+            return [];
+        }
+        $out = [];
+        $rows = $this->connection()->table('app.transactions')->whereIn('activity_id', $activityIds)->whereNull('voided_at')
+            ->groupBy('activity_id')
+            ->selectRaw("activity_id, coalesce(sum(amount_cents) FILTER (WHERE type = 'income'), 0) AS income, coalesce(sum(amount_cents) FILTER (WHERE type = 'expense'), 0) AS expense")
+            ->get();
+        foreach ($rows as $r) {
+            if (is_string($r->activity_id ?? null)) {
+                $out[$r->activity_id] = ['income' => is_numeric($r->income ?? null) ? (int) $r->income : 0, 'expense' => is_numeric($r->expense ?? null) ? (int) $r->expense : 0];
+            }
+        }
+
+        return $out;
+    }
+
+    public function activityMovements(string $activityId): array
+    {
+        $rows = $this->connection()->table('app.transactions as t')
+            ->join('app.categories as c', 'c.id', '=', 't.category_id')
+            ->leftJoin('app.receipts as r', 'r.id', '=', 't.receipt_id')
+            ->where('t.activity_id', $activityId)
+            ->orderByDesc('t.tx_date')->orderByDesc('t.created_at')->orderByDesc('t.id')
+            ->limit(500)
+            ->get(['t.id', 't.tx_date', 't.type', 't.amount_cents', 'c.name as category', 't.person_id', 't.description', 't.voided_at', 'r.number', 'r.year']);
+
+        return array_values($rows->map(static fn (object $r): array => [
+            'id' => is_string($r->id ?? null) ? $r->id : '',
+            'date' => is_string($r->tx_date ?? null) ? $r->tx_date : '',
+            'type' => is_string($r->type ?? null) ? $r->type : '',
+            'cents' => is_numeric($r->amount_cents ?? null) ? (int) $r->amount_cents : 0,
+            'category' => is_string($r->category ?? null) ? $r->category : '',
+            'person_id' => is_string($r->person_id ?? null) ? $r->person_id : null,
+            'description' => is_string($r->description ?? null) ? $r->description : '',
+            'receipt' => is_numeric($r->number ?? null) && is_numeric($r->year ?? null) ? $r->number.'/'.$r->year : null,
+            'voided' => ($r->voided_at ?? null) !== null,
+        ])->all());
+    }
+
+    public function activityPayments(string $activityId): array
+    {
+        $out = [];
+        $rows = $this->connection()->table('app.transactions')->where('activity_id', $activityId)->where('type', TxType::Income->value)
+            ->whereNull('voided_at')->whereNotNull('person_id')
+            ->groupByRaw("person_id, coalesce(competence_month, to_char(tx_date, 'YYYY-MM'))")
+            ->selectRaw("person_id, coalesce(competence_month, to_char(tx_date, 'YYYY-MM')) AS ym, sum(amount_cents) AS cents")
+            ->get();
+        foreach ($rows as $r) {
+            if (is_string($r->person_id ?? null) && is_string($r->ym ?? null)) {
+                $out[$r->person_id][$r->ym] = is_numeric($r->cents ?? null) ? (int) $r->cents : 0;
+            }
+        }
+
+        return $out;
     }
 
     public function balances(): array
@@ -308,6 +393,14 @@ final readonly class LedgerService implements Ledger
         if ($personId !== null && (! Str::isUuid($personId)
             || ! $this->connection()->table('app.people')->where('id', $personId)->whereNull('deleted_at')->exists())) {
             throw new LedgerError('Persona non trovata.');
+        }
+    }
+
+    private function assertActivity(?string $activityId): void
+    {
+        if ($activityId !== null && (! Str::isUuid($activityId)
+            || ! $this->connection()->table('app.activities')->where('id', $activityId)->exists())) {
+            throw new LedgerError('Attività non trovata.');
         }
     }
 

@@ -21,6 +21,14 @@ watch(query, (q) => {
     }, 250);
 });
 
+// Se il modulo si azzera (dopo il salvataggio), si svuota anche la ricerca.
+watch(model, (v) => {
+    if (!v && chosen.value) {
+        chosen.value = '';
+        query.value = '';
+    }
+});
+
 const pick = (r) => {
     model.value = r.id;
     chosen.value = r.label;

@@ -177,6 +177,18 @@ operatori e nessun pacchetto finché non ne ricevono.
 - Export (`PeopleExportService`, permesso `people.export`, non per il commercialista): CSV per Excel con le colonne
   che l'import riconosce, celle che sembrano formule precedute da un apostrofo; nel registro `export.done`.
 
+## 9 bis. Attività
+
+- Modulo `Attivita`: corsi ed eventi di un anno sociale (`app.activities`), iscrizioni (`app.enrollments`, si chiudono
+  con l'ultimo mese, non si cancellano). Regole portate dal plugin in `Attivita/Rules` (`PaymentCalc`, `Pricing`,
+  `ActivityRules`) con i loro casi di test.
+- Centro di costo: `app.transactions.activity_id`, scritto con `Income`/`Expense` (`activityId`) e cambiato con
+  `Ledger::assignActivity()`. Totali, movimenti e incassi per persona e mese con `Ledger::activityTotals()`,
+  `activityMovements()`, `activityPayments()`. La prima nota elenca le attività con `Attivita\Contracts\Activities`.
+- Situazione dei contributi calcolata dagli incassi non stornati con mese di competenza: stornare un incasso lo toglie.
+- Permessi: vedere `people.view`; attività e iscrizioni `people.edit`; incassi `people.edit` e `accounting.edit`;
+  spese e cambio dell'attività di un movimento `accounting.edit`.
+
 ## 10. Nuova tabella di un'associazione
 
 Ogni tabella di `app`, `audit` e `sites`:

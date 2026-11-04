@@ -52,6 +52,17 @@ final readonly class SocialYear
         return new self($this->startYear + 1, $this->startMonth);
     }
 
+    /** @return list<string> i dodici mesi «AAAA-MM» dell'anno sociale */
+    public function months(): array
+    {
+        $out = [];
+        for ($i = 0; $i < 12; $i++) {
+            $out[] = $this->start()->modify('+'.$i.' month')->format('Y-m');
+        }
+
+        return $out;
+    }
+
     public function previous(): self
     {
         return new self($this->startYear - 1, $this->startMonth);

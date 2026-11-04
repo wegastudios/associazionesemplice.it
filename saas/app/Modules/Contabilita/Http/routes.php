@@ -18,6 +18,7 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale
         Route::post('/prima-nota/incassi', [LedgerController::class, 'income'])->name('ledger.income');
         Route::post('/prima-nota/spese', [LedgerController::class, 'expense'])->name('ledger.expense');
         Route::post('/prima-nota/giroconti', [LedgerController::class, 'transfer'])->name('ledger.transfer');
+        Route::post('/prima-nota/{transaction}/attivita', [LedgerController::class, 'activity'])->whereUuid('transaction')->name('ledger.activity');
         Route::post('/prima-nota/{transaction}/storno', [LedgerController::class, 'void'])->whereUuid('transaction')->name('ledger.void');
         Route::post('/conti', [AccountsController::class, 'store'])->name('accounts.store');
         Route::post('/conti/{account}/chiudi', [AccountsController::class, 'close'])->whereUuid('account')->name('accounts.close');

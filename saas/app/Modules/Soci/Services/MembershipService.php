@@ -55,6 +55,28 @@ final readonly class MembershipService implements Members
         return SocialYear::forDate($date ?? now()->toDateString(), $this->startMonth());
     }
 
+    public function socialYearLabel(?string $date = null): string
+    {
+        return $this->socialYear($date)->label();
+    }
+
+    public function socialYearInfo(string $label): ?array
+    {
+        if (preg_match('/^(\d{4})(\/(\d{4}))?$/', $label, $m) !== 1 || (isset($m[3]) && (int) $m[3] !== (int) $m[1] + 1)) {
+            return null;
+        }
+        $year = SocialYear::fromLabel($label, $this->startMonth());
+
+        return [
+            'label' => $year->label(),
+            'start' => $year->start()->format('Y-m-d'),
+            'end' => $year->end()->format('Y-m-d'),
+            'months' => $year->months(),
+            'next' => $year->next()->label(),
+            'previous' => $year->previous()->label(),
+        ];
+    }
+
     /** Quota del socio: quella del suo livello, se c'è, altrimenti quella dell'associazione. */
     public function feeFor(Person $person): int
     {

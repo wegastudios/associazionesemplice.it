@@ -16,5 +16,6 @@ final readonly class Expense
         public ?string $personId = null,
         public ?string $documentRef = null,
         public ?int $vatRate = null,
+        public ?string $activityId = null,
     ) {}
 }

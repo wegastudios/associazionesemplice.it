@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Contabilita\Contracts;
 
-/** Incasso: una o più voci, un solo conto e una sola modalità; con $receipt riceve il numero di ricevuta. */
+/** Incasso: una o più voci, un solo conto e una sola modalità; con $receipt riceve il numero di ricevuta. $activityId è il centro di costo. */
 final readonly class Income
 {
     /** @param  list<IncomeLine>  $lines */
@@ -16,5 +16,6 @@ final readonly class Income
         public ?string $personId = null,
         public bool $receipt = true,
         public ?string $documentRef = null,
+        public ?string $activityId = null,
     ) {}
 }

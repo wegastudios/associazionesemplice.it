@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Contabilita\Http\Controllers;
 
+use App\Modules\Attivita\Contracts\Activities;
 use App\Modules\Contabilita\Contracts\Expense;
 use App\Modules\Contabilita\Contracts\Income;
 use App\Modules\Contabilita\Contracts\IncomeLine;
@@ -33,6 +34,7 @@ final readonly class LedgerController
     public function __construct(
         private Ledger $ledger,
         private FiscalYearService $years,
+        private Activities $activities,
     ) {}
 
     public function index(Request $request): Response
@@ -46,6 +48,10 @@ final readonly class LedgerController
         if ($account !== '' && Str::isUuid($account)) {
             $query->where('account_id', $account);
         }
+        $activity = $request->string('attivita')->toString();
+        if ($activity !== '' && Str::isUuid($activity)) {
+            $query->where('activity_id', $activity);
+        }
         $page = $query->cursorPaginate(50)->withQueryString();
 
         $accounts = Account::query()->orderBy('sort_order')->get(['id', 'name', 'type', 'closed_at']);
@@ -53,11 +59,14 @@ final readonly class LedgerController
         $receipts = Receipt::query()
             ->whereIn('id', collect($page->items())->pluck('receipt_id')->filter()->unique()->values())
             ->get(['id', 'number', 'year'])->keyBy('id');
+        $activityNames = $this->activities->names(array_values(array_filter(collect($page->items())->pluck('activity_id')->unique()->all(), is_string(...))));
 
         return Inertia::render('Contabilita/PrimaNota', [
             'year' => $year,
             'years' => $years,
             'account' => $account,
+            'activity' => $activity,
+            'activities' => $this->activities->options(),
             'accounts' => $accounts->map(fn (Account $a): array => ['id' => $a->id, 'name' => $a->name, 'open' => $a->closed_at === null])->values(),
             'categories' => $categories->map(fn (Category $c): array => [
                 'id' => $c->id, 'name' => $c->name, 'income' => $c->kind->isIncome(), 'expense' => $c->kind->isExpense(), 'adjustment' => $c->kind->value === 'adjustment',
@@ -76,6 +85,8 @@ final readonly class LedgerController
                 'receipt' => $t->receipt_id !== null && isset($receipts[$t->receipt_id]) ? $receipts[$t->receipt_id]->label() : null,
                 'voided' => $t->voided_at !== null,
                 'void_reason' => $t->void_reason,
+                'activity_id' => $t->activity_id,
+                'activity' => $t->activity_id !== null ? ($activityNames[$t->activity_id] ?? null) : null,
             ])->values(),
             'next' => $page->nextPageUrl(),
             'prev' => $page->previousPageUrl(),
@@ -93,6 +104,7 @@ final readonly class LedgerController
             'receipt' => ['boolean'],
             'person_id' => ['nullable', 'uuid'],
             'document_ref' => ['nullable', 'string', 'max:80'],
+            'activity_id' => ['nullable', 'uuid'],
             'lines' => ['required', 'array', 'min:1', 'max:20'],
             'lines.*.category_id' => ['required', 'uuid'],
             'lines.*.amount' => ['required', 'string', 'max:20'],
@@ -121,6 +133,7 @@ final readonly class LedgerController
                 Input::optionalString($data, 'person_id'),
                 Input::bool($data, 'receipt', true),
                 Input::optionalString($data, 'document_ref'),
+                Input::optionalString($data, 'activity_id'),
             ));
 
             return $result['receipt'] === null ? 'Incasso registrato.' : "Incasso registrato: ricevuta n. {$result['receipt']}.";
@@ -138,6 +151,7 @@ final readonly class LedgerController
             'description' => ['nullable', 'string', 'max:255'],
             'document_ref' => ['nullable', 'string', 'max:80'],
             'vat_rate' => ['nullable'],
+            'activity_id' => ['nullable', 'uuid'],
         ]));
 
         return $this->attempt(function () use ($data): string {
@@ -152,6 +166,7 @@ final readonly class LedgerController
                 null,
                 Input::optionalString($data, 'document_ref'),
                 Vat::cleanRate(Input::raw($data, 'vat_rate')),
+                Input::optionalString($data, 'activity_id'),
             ));
 
             return 'Spesa registrata.';
@@ -188,6 +203,18 @@ final readonly class LedgerController
         return $this->attempt(fn (): string => $this->ledger->void($transaction, Input::string($data, 'reason')) > 1
             ? 'Movimento stornato insieme alle righe collegate.'
             : 'Movimento stornato.');
+    }
+
+    /** Cambia l'attività (centro di costo) di un movimento. */
+    public function activity(Request $request, string $transaction): RedirectResponse
+    {
+        $data = Input::of($request->validate(['activity_id' => ['nullable', 'uuid']]));
+
+        return $this->attempt(function () use ($transaction, $data): string {
+            $this->ledger->assignActivity($transaction, Input::optionalString($data, 'activity_id'));
+
+            return 'Attività del movimento aggiornata.';
+        });
     }
 
     /** @param  Closure(): string  $action */

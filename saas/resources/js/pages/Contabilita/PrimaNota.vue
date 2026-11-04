@@ -8,6 +8,8 @@ const props = defineProps({
     year: Number,
     years: Array,
     account: String,
+    activity: String,
+    activities: Array,
     accounts: Array,
     categories: Array,
     methods: Array,
@@ -24,7 +26,8 @@ const incomeCategories = computed(() => props.categories.filter((c) => c.income 
 const expenseCategories = computed(() => props.categories.filter((c) => c.expense && !c.adjustment));
 const mode = ref(null);
 
-const filter = (changes) => router.get('/gestionale/prima-nota', { anno: props.year, conto: props.account, ...changes }, { preserveState: true });
+const filter = (changes) => router.get('/gestionale/prima-nota', { anno: props.year, conto: props.account, attivita: props.activity, ...changes }, { preserveState: true });
+const setActivity = (r, id) => router.post(`/gestionale/prima-nota/${r.id}/attivita`, { activity_id: id || null }, { preserveScroll: true });
 
 const income = useForm({
     date: today,
@@ -33,6 +36,7 @@ const income = useForm({
     receipt: true,
     person_id: '',
     document_ref: '',
+    activity_id: '',
     lines: [{ category_id: incomeCategories.value[0]?.id ?? '', amount: '', description: '', competence_month: '' }],
 });
 const addLine = () => income.lines.push({ category_id: incomeCategories.value[0]?.id ?? '', amount: '', description: '', competence_month: '' });
@@ -46,6 +50,7 @@ const expense = useForm({
     method: '',
     description: '',
     document_ref: '',
+    activity_id: '',
 });
 const transfer = useForm({
     date: today,
@@ -56,8 +61,9 @@ const transfer = useForm({
 });
 
 const done = (form) => ({ preserveScroll: true, onSuccess: () => { form.reset(); mode.value = null; } });
-const submitIncome = () => income.post('/gestionale/prima-nota/incassi', done(income));
-const submitExpense = () => expense.post('/gestionale/prima-nota/spese', done(expense));
+const noEmpty = (d) => ({ ...d, activity_id: d.activity_id || null });
+const submitIncome = () => income.transform(noEmpty).post('/gestionale/prima-nota/incassi', done(income));
+const submitExpense = () => expense.transform(noEmpty).post('/gestionale/prima-nota/spese', done(expense));
 const submitTransfer = () => transfer.post('/gestionale/prima-nota/giroconti', done(transfer));
 
 const voidReason = ref('');
@@ -90,6 +96,13 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
                         <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
                     </select>
                 </label>
+                <label v-if="activities.length" class="space-y-1">
+                    <span class="block font-semibold">Attività</span>
+                    <select :class="field" :value="activity" @change="filter({ attivita: $event.target.value })">
+                        <option value="">Tutte</option>
+                        <option v-for="a in activities" :key="a.id" :value="a.id">{{ a.name }}</option>
+                    </select>
+                </label>
             </div>
         </div>
 
@@ -117,9 +130,13 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
                     <select v-model="income.method" :class="field"><option value="">Quella del conto</option><option v-for="m in methods" :key="m.value" :value="m.value">{{ m.label }}</option></select></label>
                 <label class="flex items-end gap-2 pb-2 text-sm"><input v-model="income.receipt" type="checkbox" class="size-4 accent-indaco" /> Emetti la ricevuta</label>
             </div>
-            <div class="space-y-1 text-sm">
-                <label for="payer" class="font-semibold">Chi paga (facoltativo)</label>
-                <PersonPicker id="payer" v-model="income.person_id" />
+            <div class="grid gap-3 sm:grid-cols-2">
+                <div class="space-y-1 text-sm">
+                    <label for="payer" class="font-semibold">Chi paga (facoltativo)</label>
+                    <PersonPicker id="payer" v-model="income.person_id" />
+                </div>
+                <label class="space-y-1 text-sm"><span class="font-semibold">Attività (facoltativa)</span>
+                    <select v-model="income.activity_id" :class="field"><option value="">Nessuna</option><option v-for="a in activities" :key="a.id" :value="a.id">{{ a.name }}</option></select></label>
             </div>
             <fieldset v-for="(line, i) in income.lines" :key="i" class="grid gap-3 rounded-lg border border-line p-3 sm:grid-cols-[2fr_1fr_2fr_1fr_auto]">
                 <legend class="px-1 text-sm font-semibold">Voce {{ i + 1 }}</legend>
@@ -147,6 +164,8 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
                 <label class="space-y-1 text-sm"><span class="font-semibold">Importo</span><input v-model="expense.amount" inputmode="decimal" placeholder="es. 120,00" :class="field" required /></label>
                 <label class="space-y-1 text-sm"><span class="font-semibold">Descrizione</span><input v-model="expense.description" :class="field" /></label>
                 <label class="space-y-1 text-sm"><span class="font-semibold">Documento</span><input v-model="expense.document_ref" placeholder="n. fattura o scontrino" :class="field" /></label>
+                <label class="space-y-1 text-sm"><span class="font-semibold">Attività (facoltativa)</span>
+                    <select v-model="expense.activity_id" :class="field"><option value="">Nessuna</option><option v-for="a in activities" :key="a.id" :value="a.id">{{ a.name }}</option></select></label>
             </div>
             <p v-if="expense.errors.amount" class="text-sm text-danger">{{ expense.errors.amount }}</p>
             <button type="submit" class="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" :disabled="expense.processing">Registra la spesa</button>
@@ -186,7 +205,13 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
                             <span v-if="r.receipt" class="ml-1 rounded bg-surface px-1.5 py-0.5 text-xs no-underline">ricevuta {{ r.receipt }}</span>
                             <span v-if="r.voided" class="block text-xs no-underline">Stornato: {{ r.void_reason }}</span>
                         </td>
-                        <td class="px-4 py-3">{{ r.category }}</td>
+                        <td class="px-4 py-3">
+                            {{ r.category }}
+                            <select v-if="canEdit && !r.voided && (r.type === 'income' || r.type === 'expense') && activities.length" :value="r.activity_id ?? ''" class="mt-1 block max-w-48 rounded border border-line bg-card px-1 py-0.5 text-xs no-underline" aria-label="Attività del movimento" @change="setActivity(r, $event.target.value)">
+                                <option value="">nessuna attività</option><option v-for="a in activities" :key="a.id" :value="a.id">{{ a.name }}</option>
+                            </select>
+                            <span v-else-if="r.activity" class="mt-1 block text-xs text-muted no-underline">{{ r.activity }}</span>
+                        </td>
                         <td class="px-4 py-3">{{ r.account }} · {{ r.method }}</td>
                         <td class="whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums">{{ r.amount }}</td>
                         <td class="px-4 py-3 text-right">

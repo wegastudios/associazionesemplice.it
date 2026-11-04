@@ -22,6 +22,31 @@ interface Ledger
     /** Storna il movimento e il suo gruppo (giroconto, ricevuta). @return int righe stornate */
     public function void(string $transactionId, string $reason): int;
 
+    /** Cambia il centro di costo (l'attività) di un incasso o di una spesa non stornati; null lo toglie. */
+    public function assignActivity(string $transactionId, ?string $activityId): void;
+
+    /**
+     * Entrate e uscite non stornate per attività.
+     *
+     * @param  list<string>  $activityIds
+     * @return array<string, array{income: int, expense: int}>
+     */
+    public function activityTotals(array $activityIds): array;
+
+    /**
+     * Movimenti di un'attività, dal più recente.
+     *
+     * @return list<array{id: string, date: string, type: string, cents: int, category: string, person_id: string|null, description: string, receipt: string|null, voided: bool}>
+     */
+    public function activityMovements(string $activityId): array;
+
+    /**
+     * Incassi non stornati di un'attività per persona e mese di competenza (o mese del movimento).
+     *
+     * @return array<string, array<string, int>> persona => mese «AAAA-MM» => centesimi
+     */
+    public function activityPayments(string $activityId): array;
+
     /** @return array<string, int> id del conto => saldo in centesimi */
     public function balances(): array;
 

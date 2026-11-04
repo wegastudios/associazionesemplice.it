@@ -150,7 +150,9 @@ Si cifra nell'applicazione con `sodium`: la chiave non entra mai nel database.
 
 Fatto in `app/Modules/Contabilita` (migrazione `create_accounting_tables`); le regole qui sotto valgono nel database.
 
-- Il ruolo dell'applicazione ha **solo `INSERT` e `SELECT`** su `app.transactions`.
+- Il ruolo dell'applicazione ha **solo `INSERT` e `SELECT`** su `app.transactions`, più `UPDATE` sulla sola colonna
+  `activity_id`: il centro di costo è un dato di analisi e si può correggere (incassi e spese non stornati, esercizio
+  aperto, con traccia nel registro). Il trigger rifiuta ogni altra modifica insieme a quella.
 - Lo storno passa da `app.void_transaction()` (`SECURITY DEFINER`), che scrive soltanto `voided_at`, `void_reason` e
   `voided_by`, e storna insieme il gruppo: le due righe di un giroconto, tutte le voci e la ricevuta di un incasso.
   Un trigger rifiuta qualunque altra modifica e qualunque cancellazione.

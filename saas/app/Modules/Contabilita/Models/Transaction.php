@@ -21,6 +21,7 @@ use Carbon\CarbonImmutable;
  * @property PaymentMethod $method
  * @property string $category_id
  * @property string|null $person_id
+ * @property string|null $activity_id
  * @property string|null $receipt_id
  * @property string|null $transfer_id
  * @property string|null $competence_month
