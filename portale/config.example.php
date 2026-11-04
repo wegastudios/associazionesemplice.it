@@ -39,7 +39,7 @@ return array(
 	),
 
 	// Giorni di margine tra pagamento e scadenza della licenza (la tolleranza del server è 5 giorni).
-	'duration_days' => array( 'month' => 31, 'year' => 366, 'free' => 3650 ),
+	'duration_days' => array( 'month' => 31, 'year' => 366, 'free' => 30 ),
 	// Un pagamento PayPal è trattato come rinnovo solo negli ultimi N giorni di validità (evita il doppio conteggio del primo).
 	'renew_window_days' => 5,
 
