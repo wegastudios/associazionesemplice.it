@@ -152,7 +152,9 @@ Si cifra nell'applicazione con `sodium`: la chiave non entra mai nel database.
 ## 8. Partizioni, migrazioni e backup
 
 - **Partizioni** solo dove servono: `audit.log`, code dei messaggi, presenze. Non sulle tabelle delle associazioni.
-- **Migrazioni Laravel versionate**, eseguite con un solo comando su tutti i database (condiviso e dedicati).
+- **Migrazioni Laravel versionate**, eseguite con un solo comando su tutti i database (condiviso e dedicati):
+  `php artisan saas:migrate`, sempre con il ruolo proprietario. Stanno nei moduli, in `Database/Migrations/Central`
+  (solo `core`) e `Database/Migrations/Org` (tutti i database); dettagli in [SVILUPPO.md](SVILUPPO.md).
 - Modifiche in due tempi: prima si **aggiunge** il nuovo, poi si **toglie** il vecchio. Nessun fermo durante gli
   aggiornamenti.
 - **Dump orario** per database, cifrato prima di uscire dal server, su uno spazio esterno in UE. Prova di ripristino

@@ -35,11 +35,13 @@ indicare chi vende (per esempio sulle fatture). Colori, logo e carattere sono in
 
 ## Qualità
 
-- Test con Pest, PHPStan al livello massimo, Pint e controllo delle dipendenze: tutto verde prima di unire.
+- Test con Pest, PHPStan al livello massimo, Pint e controllo delle dipendenze: tutto verde prima di unire
+  (`composer check` in locale, `.github/workflows/saas.yml` su GitHub).
+- I test girano su PostgreSQL vero, mai su SQLite: la Row-Level Security va provata davvero.
 - Le regole portate dal plugin arrivano insieme ai loro test.
 - Importi in centesimi interi. Istanti in `timestamptz`, date contabili in `date`.
 - Ogni modifica dello schema passa da una migrazione, in due tempi: prima si aggiunge il nuovo, poi si toglie il vecchio.
-- I moduli comunicano solo dalle interfacce pubbliche.
+- I moduli comunicano solo dalle interfacce pubbliche (namespace `Contracts` di ogni modulo; c'è il test).
 - Ogni richiesta e ogni lavoro in coda impostano `app.org_id`.
 
 ## Server

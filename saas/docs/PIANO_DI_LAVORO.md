@@ -36,6 +36,13 @@ Promo, nome unico dei piani Pro, percentuale dei partner, scaglioni delle risors
 
 Ordine consigliato. Ogni passo si chiude con i suoi test.
 
+| Passo | Stato |
+|---|---|
+| 1. Scheletro | **fatto** (2026-11-04) |
+| 2. Database | **fatto** (2026-11-04) |
+| 3. Separazione tra associazioni | **fatto** il motore (contesto, connessioni, RLS, richieste, code, database dedicati); il riconoscimento da utente e dominio arriva con il passo 4 |
+| 4–8 | da fare |
+
 1. **Scheletro**: Laravel 13 in `saas/`, moduli in `app/Modules/`, Pest, PHPStan al massimo, Pint, test di architettura,
    `.github/workflows/saas.yml`.
 2. **Database**: Postgres 16 locale, schemi, due ruoli (proprietario e applicazione), migrazioni `core` e migrazioni

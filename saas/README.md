@@ -4,8 +4,8 @@ Gestionale online per associazioni, con pacchetti aggiuntivi: area soci, risorse
 dall'AI, fattura elettronica. Il plugin WordPress resta un prodotto a sé: la differenza è dove stanno i dati e
 l'assistenza.
 
-**Stato:** progetto definito, sviluppo non ancora iniziato. In questa cartella c'è solo la documentazione.
-L'applicazione Laravel nascerà qui, con la fase 0 del [piano di lavoro](docs/PIANO_DI_LAVORO.md).
+**Stato:** fase 0 in corso ([piano di lavoro](docs/PIANO_DI_LAVORO.md)). Ci sono lo scheletro Laravel 13, il database
+con i due ruoli e la separazione tra associazioni con i suoi test. Avvio in locale: [SVILUPPO.md](docs/SVILUPPO.md).
 
 Priorità, in quest'ordine: **1. sicurezza dei dati personali e fiscali · 2. velocità**.
 
@@ -15,6 +15,7 @@ Priorità, in quest'ordine: **1. sicurezza dei dati personali e fiscali · 2. ve
 |---|---|
 | [PIANO_DI_LAVORO.md](docs/PIANO_DI_LAVORO.md) | **Inizia da qui**: prerequisiti, fasi, primo traguardo |
 | [REGOLE_DI_LAVORO.md](docs/REGOLE_DI_LAVORO.md) | Regole per chi sviluppa: sessioni, sicurezza, marchio, qualità |
+| [SVILUPPO.md](docs/SVILUPPO.md) | Avvio in locale, ruoli del database, moduli, come si aggiunge una tabella |
 | [ARCHITETTURA.md](docs/ARCHITETTURA.md) | Portale e SaaS, moduli, domini, code, chiavi, ambienti, contratto con il portale |
 | [DATABASE.md](docs/DATABASE.md) | Hosting verificato, schemi, separazione tra associazioni, cifratura, prima nota immutabile |
 | [PORTING_DAL_PLUGIN.md](docs/PORTING_DAL_PLUGIN.md) | Cosa si porta dal plugin, modulo per modulo, con i test da riusare |
