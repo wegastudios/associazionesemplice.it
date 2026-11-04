@@ -3683,6 +3683,18 @@ asem_ok( null !== asem_throws( function () use ( $once_c, $le_w ) { \Associazion
 \AssociazioneSemplice\LessonExceptions::restore( $once_c, $le_w[0] );
 \AssociazioneSemplice\LessonExceptions::restore( $once_c, $le_w[1] );
 asem_ok( null !== $le_has( $le_w[0] ) && null !== $le_has( $le_w[1] ) && null === $le_has( $le_new ), 'lezioni: ripristinate come prima' );
+// questa lezione e le successive: la prima resta, dalla seconda in poi (stesso giorno) sono annullate
+$le_end  = gmdate( 'Y-m-d', strtotime( $today . ' +70 days' ) );
+$le_rest = \AssociazioneSemplice\Schedule::weekly_dates( $le_w[1], $le_end, 3 );
+$le_n    = \AssociazioneSemplice\LessonExceptions::cancel_from( $once_c, $le_w[1], 'Insegnante assente' );
+$le_gone = true;
+foreach ( $le_rest as $d ) {
+	$le_gone = $le_gone && null === $le_has( $d );
+}
+asem_ok( count( $le_rest ) === $le_n && $le_gone && null !== $le_has( $le_w[0] ), 'lezioni: «questa e le successive» annulla da quella data in poi e lascia le precedenti (' . $le_n . ' annullate)' );
+foreach ( $le_rest as $d ) {
+	\AssociazioneSemplice\LessonExceptions::restore( $once_c, $d );
+}
 $q_c = $acts->create( array( 'name' => 'Nuoto trimestrale', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 9000, 'billing' => 'quarterly' ) );
 asem_ok( 'quarterly' === $acts->get( $q_c )['billing'], 'corso trimestrale: il tipo di pagamento si salva' );
 $acts->enroll( $q_c, $once_p, $month );
