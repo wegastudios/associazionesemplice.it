@@ -6,6 +6,16 @@ import BrandLogo from '../components/BrandLogo.vue';
 const page = usePage();
 const user = computed(() => page.props.auth.user);
 const org = computed(() => page.props.org);
+const status = computed(() => page.props.flash?.status);
+const error = computed(() => page.props.errors?.ledger);
+
+const sections = [
+    { href: '/gestionale', label: 'Riepilogo' },
+    { href: '/gestionale/prima-nota', label: 'Prima nota' },
+    { href: '/gestionale/conti', label: 'Conti' },
+    { href: '/gestionale/rendiconto', label: 'Rendiconto' },
+];
+const current = (href) => (href === '/gestionale' ? page.url === href : page.url.startsWith(href));
 </script>
 
 <template>
@@ -23,9 +33,21 @@ const org = computed(() => page.props.org);
                     <Link href="/esci" method="post" as="button" class="text-accent hover:underline">Esci</Link>
                 </nav>
             </div>
+            <nav class="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 pb-2 text-sm font-semibold" aria-label="Gestionale">
+                <Link
+                    v-for="s in sections"
+                    :key="s.href"
+                    :href="s.href"
+                    class="whitespace-nowrap rounded-lg px-3 py-2 hover:bg-surface"
+                    :class="current(s.href) ? 'bg-surface text-accent' : 'text-muted'"
+                    :aria-current="current(s.href) ? 'page' : undefined"
+                >{{ s.label }}</Link>
+            </nav>
         </header>
         <main class="mx-auto max-w-6xl px-4 py-8">
             <p v-if="user" class="sr-only">Collegato come {{ user.name }}</p>
+            <p v-if="status" class="mb-4 rounded-lg border border-salvia/40 bg-salvia/10 px-3 py-2 text-sm font-semibold" role="status">{{ status }}</p>
+            <p v-if="error" class="mb-4 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-semibold text-danger" role="alert">{{ error }}</p>
             <slot />
         </main>
     </div>

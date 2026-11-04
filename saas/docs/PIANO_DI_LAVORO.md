@@ -70,6 +70,11 @@ filtro, e il codice fiscale è cifrato nel database. Il ripristino da un dump fu
 
 ## 3. Fase 1: lancio
 
+| Parte | Stato |
+|---|---|
+| Contabilità: conti, categorie, esercizi, prima nota con storno, ricevute numerate, rendiconto per cassa, chiusura | **fatto** (2026-11-04), con le pagine del gestionale |
+| Contabilità: ricevute in PDF, fondi, budget, verifica di cassa, import da banca | da fare |
+
 **Gestionale base**, in quest'ordine: contabilità (prima nota, conti, ricevute, rendiconto, chiusura), soci e
 tesseramento, attività come centri di costo, ruoli configurabili, import ed export, configurazione guidata.
 

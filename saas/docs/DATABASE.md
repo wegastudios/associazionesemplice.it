@@ -148,13 +148,17 @@ Si cifra nell'applicazione con `sodium`: la chiave non entra mai nel database.
 
 ## 6. Prima nota immutabile
 
+Fatto in `app/Modules/Contabilita` (migrazione `create_accounting_tables`); le regole qui sotto valgono nel database.
+
 - Il ruolo dell'applicazione ha **solo `INSERT` e `SELECT`** su `app.transactions`.
-- Lo storno passa da una funzione `SECURITY DEFINER` che può scrivere soltanto `voided_at` e `void_reason`.
-- Un **trigger** rifiuta i movimenti datati in un esercizio chiuso.
+- Lo storno passa da `app.void_transaction()` (`SECURITY DEFINER`), che scrive soltanto `voided_at`, `void_reason` e
+  `voided_by`, e storna insieme il gruppo: le due righe di un giroconto, tutte le voci e la ricevuta di un incasso.
+  Un trigger rifiuta qualunque altra modifica e qualunque cancellazione.
+- Un **trigger** rifiuta i movimenti (e gli storni) fuori da un esercizio aperto e sui conti chiusi.
 - **Numerazione delle ricevute senza buchi**: tabella `app.counters (org_id, kind, year, last_value)`, letta con
   `SELECT … FOR UPDATE` nella stessa transazione dell'emissione.
-- **Saldi precalcolati** (`app.account_balances`), aggiornati nella stessa transazione del movimento, più le fotografie
-  mensili (`balance_snaps`). Nessuna pagina somma l'intera prima nota.
+- **Saldi precalcolati** (`app.account_balances`), aggiornati dai trigger nella stessa transazione del movimento; il
+  ruolo dell'applicazione li può solo leggere. Le fotografie mensili (`balance_snaps`) arriveranno con i fondi.
 
 ## 7. Registro delle azioni e GDPR
 

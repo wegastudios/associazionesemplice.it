@@ -13,10 +13,33 @@ use Illuminate\Support\Str;
  */
 trait Audited
 {
+    /**
+     * Esegue $callback senza annotare le modifiche dei modelli Audited: per le preparazioni in blocco, che scrivono
+     * una sola riga riassuntiva.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $callback
+     * @return T
+     */
+    public static function withoutAudit(callable $callback): mixed
+    {
+        $previous = AuditMute::$muted;
+        AuditMute::$muted = true;
+        try {
+            return $callback();
+        } finally {
+            AuditMute::$muted = $previous;
+        }
+    }
+
     public static function bootAudited(): void
     {
         foreach (['created', 'updated', 'deleted', 'restored'] as $event) {
             static::registerModelEvent($event, static function (Model $model) use ($event): void {
+                if (AuditMute::$muted) {
+                    return;
+                }
                 $fields = $event === 'created' ? array_keys($model->getAttributes()) : array_keys($model->getChanges());
                 $fields = array_values(array_unique(array_map(
                     static fn (string $f): string => (string) preg_replace('/_(enc|bidx)$/', '', $f),

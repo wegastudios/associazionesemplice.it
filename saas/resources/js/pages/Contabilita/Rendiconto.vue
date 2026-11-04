@@ -1,0 +1,72 @@
+<script setup>
+import { Head, router, useForm } from '@inertiajs/vue3';
+import AppLayout from '../../layouts/AppLayout.vue';
+
+const props = defineProps({ years: Array, statement: Object, canClose: Boolean });
+
+const reopen = useForm({ reason: '' });
+const close = () => router.post(`/gestionale/esercizi/${props.statement.year}/chiudi`, {}, { preserveScroll: true });
+const submitReopen = () => reopen.post(`/gestionale/esercizi/${props.statement.year}/riapri`, { preserveScroll: true, onSuccess: () => reopen.reset() });
+const go = (year) => router.get(`/gestionale/rendiconto/${year}`);
+const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text-ink';
+</script>
+
+<template>
+    <Head :title="`Rendiconto ${statement.year}`" />
+    <AppLayout>
+        <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-bold">Rendiconto per cassa {{ statement.year }}</h1>
+                <p class="text-sm text-muted">Dal {{ statement.starts_on }} al {{ statement.ends_on }} · {{ statement.status === 'closed' ? 'esercizio chiuso' : 'esercizio aperto' }}</p>
+            </div>
+            <label class="space-y-1 text-sm">
+                <span class="block font-semibold">Esercizio</span>
+                <select :class="field" :value="statement.year" @change="go($event.target.value)">
+                    <option v-for="y in years" :key="y.year" :value="y.year">{{ y.year }}</option>
+                </select>
+            </label>
+        </div>
+
+        <div class="grid gap-6 lg:grid-cols-2">
+            <section v-for="side in [['Entrate', statement.income, statement.totals.income], ['Uscite', statement.expense, statement.totals.expense]]" :key="side[0]" class="rounded-2xl border border-line bg-card p-5">
+                <h2 class="mb-3 text-lg font-bold">{{ side[0] }}</h2>
+                <p v-if="!side[1].length" class="text-sm text-muted">Nessun movimento.</p>
+                <table v-else class="w-full text-sm">
+                    <tbody>
+                        <tr v-for="l in side[1]" :key="l.group + l.category" class="border-t border-line">
+                            <td class="py-2"><span class="block text-xs text-muted">{{ l.group }}</span>{{ l.category }}</td>
+                            <td class="py-2 text-right tabular-nums">{{ l.amount }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p class="mt-3 flex justify-between border-t border-line pt-3 font-bold"><span>Totale</span><span class="tabular-nums">{{ side[2] }}</span></p>
+            </section>
+        </div>
+
+        <p class="mt-6 rounded-2xl border border-line bg-card p-5 text-lg font-bold">Avanzo / disavanzo: <span class="tabular-nums">{{ statement.totals.result }}</span></p>
+
+        <section class="mt-6 rounded-2xl border border-line bg-card p-5">
+            <h2 class="mb-3 text-lg font-bold">Conti</h2>
+            <table class="w-full text-sm">
+                <thead class="text-left text-muted"><tr><th class="py-2">Conto</th><th class="py-2 text-right">Inizio esercizio</th><th class="py-2 text-right">Fine esercizio</th></tr></thead>
+                <tbody>
+                    <tr v-for="a in statement.accounts" :key="a.name" class="border-t border-line">
+                        <td class="py-2">{{ a.name }}</td><td class="py-2 text-right tabular-nums">{{ a.opening }}</td><td class="py-2 text-right tabular-nums">{{ a.closing }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section v-if="canClose" class="mt-6 rounded-2xl border border-line bg-card p-5">
+            <h2 class="mb-3 text-lg font-bold">Chiusura dell'esercizio</h2>
+            <template v-if="statement.status === 'open'">
+                <p class="mb-3 text-sm text-muted">Con l'esercizio chiuso non si registrano né si stornano movimenti con date al suo interno.</p>
+                <button type="button" class="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" @click="close">Chiudi l'esercizio {{ statement.year }}</button>
+            </template>
+            <form v-else class="flex flex-wrap items-end gap-3" @submit.prevent="submitReopen">
+                <label class="min-w-64 flex-1 space-y-1 text-sm"><span class="font-semibold">Motivo della riapertura</span><input v-model="reopen.reason" required :class="field" /></label>
+                <button type="submit" class="rounded-lg border border-line px-4 py-2 font-semibold">Riapri l'esercizio</button>
+            </form>
+        </section>
+    </AppLayout>
+</template>

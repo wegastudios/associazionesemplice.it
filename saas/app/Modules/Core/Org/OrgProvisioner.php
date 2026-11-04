@@ -6,6 +6,7 @@ namespace App\Modules\Core\Org;
 
 use App\Modules\Cifratura\Contracts\OrgKeys;
 use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Core\Contracts\OrgCreated;
 use App\Modules\Core\Database\DatabaseRegistry;
 use App\Modules\Core\Models\Org;
 use Illuminate\Database\DatabaseManager;
@@ -46,6 +47,8 @@ final readonly class OrgProvisioner
                     'created_at' => $now,
                     'updated_at' => $now,
                 ]);
+
+                event(new OrgCreated($org->id));
             });
 
             return $org;

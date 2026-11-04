@@ -13,10 +13,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Tests\Fixtures\HealthRecord;
 
-/** @return list<object> */
+/** Righe del registro, senza quella della preparazione della contabilità (scritta alla nascita dell'associazione). */
 function auditRows(string $orgId): array
 {
-    return test()->orgContext()->run($orgId, fn () => DB::table('audit.log')->orderBy('seq')->get()->all());
+    return test()->orgContext()->run($orgId, fn () => DB::table('audit.log')->where('action', '<>', 'accounting.seeded')->orderBy('seq')->get()->all());
 }
 
 it('annota creazione, modifica e cancellazione con i nomi dei campi, mai i valori', function (): void {
@@ -33,7 +33,7 @@ it('annota creazione, modifica e cancellazione con i nomi dei campi, mai i valor
     $rows = auditRows($org->id);
     $actions = array_column($rows, 'action');
     expect($actions)->toBe(['person.created', 'person.updated', 'person.updated', 'person.deleted'])
-        ->and(array_column($rows, 'seq'))->toBe([1, 2, 3, 4])
+        ->and(array_column($rows, 'seq'))->toBe([2, 3, 4, 5])
         ->and($rows[0]->actor_type)->toBe('user')
         ->and($rows[0]->actor_id)->toBe($user->id)
         ->and(json_decode($rows[0]->details, true)['fields'])->toBe(['first_name', 'last_name', 'tax_code'])
@@ -51,9 +51,10 @@ it('tiene una catena per associazione che si verifica', function (): void {
     }
 
     $verifier = app(ChainVerifier::class);
-    expect($verifier->verify($alfa->id))->toBe(['ok' => true, 'checked' => 2, 'broken_at' => null, 'reason' => null])
-        ->and($verifier->verify($beta->id)['checked'])->toBe(1)
-        ->and(array_column(auditRows($beta->id), 'seq'))->toBe([1]);
+    // Ogni associazione parte con la riga della preparazione della contabilità.
+    expect($verifier->verify($alfa->id))->toBe(['ok' => true, 'checked' => 3, 'broken_at' => null, 'reason' => null])
+        ->and($verifier->verify($beta->id)['checked'])->toBe(2)
+        ->and(array_column(auditRows($beta->id), 'seq'))->toBe([2]);
 
     $this->artisan('saas:audit:verify', ['org' => $alfa->id])->assertSuccessful();
 });
@@ -156,7 +157,7 @@ it('scrive il registro di un\'associazione dedicata nel suo database', function 
         return $this->orgContext()->require()->connection;
     });
 
-    expect($this->orgContext()->run($org->id, fn () => DB::connection($connection)->table('audit.log')->count()))->toBe(1)
+    expect($this->orgContext()->run($org->id, fn () => DB::connection($connection)->table('audit.log')->count()))->toBe(2)
         ->and(DB::table('audit.heads')->count())->toBe(0)
         ->and(app(ChainVerifier::class)->verify($org->id)['ok'])->toBeTrue();
 });

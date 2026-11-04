@@ -42,8 +42,13 @@ Sub-account cPanel del reseller (produzione `associazionesemplice`, staging a pa
    impronta → controllo di salute → `saas:migrate` → partizioni → cache (`optimize`) → **cambio del link `current`**
    → riavvio delle code → controllo di salute; se il controllo fallisce si torna da soli alla versione precedente.
 
-Quando parte: **staging** a ogni push su `main` che tocca `saas/`; **produzione** solo a mano (Actions → «SaaS ·
-rilascio» → production), solo da `main`, con l'approvazione obbligatoria dell'ambiente.
+Quando parte: **solo a mano** (Actions → «SaaS · rilascio»), solo da `main`, con l'approvazione obbligatoria
+dell'ambiente. Per ora c'è **un solo ambiente**: finché non ci sono clienti operativi staging e produzione coincidono.
+Quando ci sarà uno staging separato, si potrà farlo partire da solo a ogni push su `main`.
+
+Con un solo ambiente, la **prova di ripristino** (che non gira dove sta la produzione, perché lì non deve esserci la
+chiave privata dei backup) si fa a mano dal computer di chi gestisce, con la coppia di chiavi dei backup in un `.env`
+locale e il database di prova locale: `php artisan saas:backup:restore-test`.
 
 Segreti per ambiente (GitHub → Settings → Environments → `staging` e `production`): `SAAS_SSH_HOST`, `SAAS_SSH_PORT`,
 `SAAS_SSH_USER`, `SAAS_SSH_PRIVATE_KEY` (chiave Ed25519 solo per il rilascio, autorizzata solo su quel sub-account),

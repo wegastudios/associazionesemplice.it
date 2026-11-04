@@ -1,27 +1,25 @@
 name: SaaS · rilascio
 
-# Rilascio del SaaS (saas/docs/RILASCIO.md). Staging a ogni push su main che tocca saas/; produzione solo a mano.
+# Rilascio del SaaS (saas/docs/RILASCIO.md). Per ora c'è un solo ambiente (produzione): il rilascio parte solo a mano,
+# solo da main, con l'approvazione dell'ambiente. Quando ci sarà uno staging separato si potrà rilasciarlo da solo a ogni push.
 # Segreti per ambiente (Settings → Environments → staging / production):
 #   SAAS_SSH_HOST, SAAS_SSH_PORT, SAAS_SSH_USER, SAAS_SSH_PRIVATE_KEY, SAAS_SSH_KNOWN_HOSTS
 # L'ambiente production va protetto con l'approvazione obbligatoria.
 
 on:
-  push:
-    branches: [main]
-    paths: ["saas/**", ".github/workflows/saas-deploy.yml"]
   workflow_dispatch:
     inputs:
       environment:
         description: Dove rilasciare
         type: choice
-        options: [staging, production]
-        default: staging
+        options: [production, staging]
+        default: production
 
 permissions:
   contents: read
 
 concurrency:
-  group: saas-deploy-${{ inputs.environment || 'staging' }}
+  group: saas-deploy-${{ inputs.environment }}
   cancel-in-progress: false
 
 jobs:
@@ -57,13 +55,13 @@ jobs:
           retention-days: 7
 
   deploy:
-    name: Rilascio su ${{ inputs.environment || 'staging' }}
+    name: Rilascio su ${{ inputs.environment }}
     needs: build
     # In produzione solo da main.
-    if: (inputs.environment || 'staging') != 'production' || github.ref == 'refs/heads/main'
+    if: inputs.environment != 'production' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    environment: ${{ inputs.environment || 'staging' }}
+    environment: ${{ inputs.environment }}
     steps:
       - uses: actions/checkout@v4
         with:

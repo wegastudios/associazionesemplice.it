@@ -40,10 +40,11 @@ beforeEach(function (): void {
 
 it('crea le chiavi e cifra i dati passando dal servizio chiavi', function (): void {
     $org = $this->createOrg('Polisportiva Alfa');
-    expect($this->calls)->toBe(1); // wrap della nuova chiave
+    // wrap della nuova chiave, poi unwrap per il sigillo del registro (preparazione della contabilità)
+    expect($this->calls)->toBe(2);
 
     $person = $this->orgContext()->run($org->id, fn () => Person::create(['first_name' => 'Mario', 'last_name' => 'Rossi', 'tax_code' => 'RSSMRA80A01H501U']));
-    expect($this->calls)->toBe(2); // unwrap, poi resta in memoria
+    expect($this->calls)->toBe(2); // la chiave resta in memoria
 
     $this->orgContext()->run($org->id, function () use ($person): void {
         expect(Person::findOrFail($person->id)->tax_code)->toBe('RSSMRA80A01H501U');

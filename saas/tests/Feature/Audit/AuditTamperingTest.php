@@ -57,7 +57,7 @@ it('trova una riga cancellata nel mezzo o in fondo', function (int $seq, string 
     expect(app(ChainVerifier::class)->verify($this->org->id))->toMatchArray(['ok' => false, 'reason' => $reason]);
 })->with([
     'nel mezzo' => [2, 'numero mancante o ripetuto'],
-    'in fondo' => [4, 'righe mancanti in fondo alla catena'],
+    'in fondo' => [5, 'righe mancanti in fondo alla catena'],
 ]);
 
 it('trova una riga aggiunta con un sigillo inventato', function (): void {
