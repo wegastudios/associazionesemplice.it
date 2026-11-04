@@ -253,9 +253,9 @@ demo_step( 'attività', function () use ( &$ids ) {
 	}
 } );
 
-// 8. L'app installabile è accesa: sul telefono si vede subito l'invito a installarla.
+// 8. App installabile e QR sulla tessera accesi: sul telefono si vede subito l'invito a installarla e il codice da mostrare.
 demo_step( 'app', function () {
-	Settings::update( array( 'pwa_enabled' => 1 ) );
+	Settings::update( array( 'pwa_enabled' => 1, 'card_qr_enabled' => 1 ) );
 } );
 
 WP_CLI::success( 'Dati della demo creati.' );
