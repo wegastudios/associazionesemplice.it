@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.7
+- Corretta la barra per saltare alle sezioni dell'area soci: da telefono non allarga più la pagina
+
 ## 1.3.6
 - Area soci e app da telefono più comode: icona con l'iniziale, pagina offline con «Riprova», invito a installare l'app sotto la tessera, barra per saltare alle sezioni, pulsanti più grandi, pulsante «Vai alla tua area»
 
