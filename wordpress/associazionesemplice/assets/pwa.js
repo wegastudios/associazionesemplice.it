@@ -38,9 +38,19 @@
 	document.addEventListener('click', function (e) {
 		var b = e.target.closest ? e.target.closest('[data-asem-install]') : null;
 		if (!b || !deferred) { return; }
-		deferred.prompt();
+		var d = deferred;
+		d.prompt();
 		deferred = null;
 		b.hidden = true;
+		/* Se il sistema viene chiuso senza installare, l'invito sotto la tessera sparisce (come con «Non ora»). */
+		if (d.userChoice && d.userChoice.then) {
+			d.userChoice.then(function (r) {
+				if (r && 'accepted' !== r.outcome) {
+					$$('[data-asem-tip]').forEach(function (t) { t.hidden = true; });
+					try { window.localStorage.setItem('asemTipClosed', String(Date.now())); } catch (er) {}
+				}
+			});
+		}
 	});
 	var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone;
 	$$('[data-asem-ios]').forEach(function (n) {
