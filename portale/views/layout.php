@@ -71,7 +71,7 @@ $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 		<div class="cc-actions">
 			<button type="button" class="btn alt small" data-cc="reject">Rifiuta</button>
 			<button type="button" class="btn alt small" data-cc="custom">Personalizza</button>
-			<button type="button" class="btn small" data-cc="all">Accetta tutti</button>
+			<button type="button" class="btn alt small" data-cc="all">Accetta tutti</button>
 		</div>
 	</div>
 </div>
