@@ -81,7 +81,7 @@ final class App {
 			View::headers( 'text/html; charset=utf-8' );
 			require __DIR__ . '/../views/confronto.php';
 		} elseif ( $get && '/free' === $path ) {
-			View::render( 'free', array() );
+			View::render( 'free', array( 'title' => 'Licenza gratuita' ) );
 		} elseif ( ! $get && '/free' === $path ) {
 			$this->formLimit();
 			list( $cust, $sub ) = $this->billing->startFree( (string) $this->in( 'email' ), (string) $this->in( 'domain' ), (string) $this->in( 'name' ) );
@@ -111,7 +111,7 @@ final class App {
 		} elseif ( $get && '/grazie' === $path ) {
 			View::render( 'message', array( 'title' => 'Grazie!', 'text' => 'Appena il pagamento è confermato ti scriviamo un link per entrare nell\'area riservata e vedere la chiave di licenza.' ) );
 		} elseif ( $get && '/accedi' === $path ) {
-			View::render( 'login', array() );
+			View::render( 'login', array( 'title' => 'Area riservata' ) );
 		} elseif ( ! $get && '/accedi' === $path ) {
 			$email = strtolower( trim( (string) $this->in( 'email' ) ) );
 			if ( 'link' !== (string) $this->in( 'mode' ) && '' !== (string) $this->in( 'password' ) ) {
@@ -131,7 +131,7 @@ final class App {
 			if ( '?1' === ($_SERVER['HTTP_SEC_FETCH_USER'] ?? '') && 'navigate' === ($_SERVER['HTTP_SEC_FETCH_MODE'] ?? '') ) {
 				$this->enter( substr( $path, 7 ) );
 			} else {
-				View::render( 'enter', array( 'token' => substr( $path, 7 ) ) );
+				View::render( 'enter', array( 'title' => 'Conferma l\'accesso', 'token' => substr( $path, 7 ) ) );
 			}
 		} elseif ( ! $get && '/entra' === $path ) {
 			$this->enter( (string) $this->in( 'token' ) );
