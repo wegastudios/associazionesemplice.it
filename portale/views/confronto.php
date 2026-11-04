@@ -103,5 +103,5 @@ $fragment = ! empty( $fragment );
 	<?php if ( $promoName ) : ?><p><span class="promo-tag" style="margin:0"><?php echo e( $promoName ); ?></span> <b>Prezzi in promozione fino al <?php echo e( date( 'd/m/Y', strtotime( $promoEnd ) ) ); ?></b>: nell'ultima riga della tabella trovi il prezzo in vigore e, tra parentesi, il listino.</p><?php endif; ?>
 	<div data-confronto-inline><?php echo $html; ?></div>
 	<script src="/assets/confronto.js" defer></script>
-	<p class="actions"><a class="btn" href="/prezzi">Vedi i piani e i prezzi</a> <a class="btn alt" href="/free">Ottieni la licenza gratuita</a></p>
+	
 </div></section>

@@ -27,6 +27,11 @@ $url = function ( string $path ) use ( $base ): string { return $base . $path; }
 	<p class="fine">Nessun accesso è amministratore di WordPress: l'amministratore del plugin ha tutti i permessi di Associazione Semplice ma non gestisce il sito. Non inserire chiavi vere (Stripe, PayPal…): la demo è pubblica.</p>
 </div></section>
 
+<section class="section alt" id="scegli"><div class="wrap">
+	<div class="section-head"><h2>Ti è piaciuta? Scegli come proseguire</h2><p>Si parte dal piano gratuito e si passa al Pro quando servono incassi online o contabilità. Con la licenza gratuita puoi anche provare un Pro per qualche giorno.</p></div>
+	<?php include __DIR__ . '/_plans.php'; ?>
+</div></section>
+
 <section class="section alt"><div class="wrap" style="max-width:960px">
 	<h2>Dove andare</h2>
 	<p class="muted">I collegamenti sono tutti nella demo. Quelli «come socio» e «come segreteria» chiedono di aver fatto l'accesso con il ruolo giusto.</p>
@@ -58,6 +63,4 @@ $url = function ( string $path ) use ( $base ): string { return $base . $path; }
 	<?php endforeach; ?>
 	</tbody></table></div>
 	<p class="fine">Il presidente e il vicepresidente, con la tessera in regola, agiscono come la segreteria su tutto. Il tesoriere lavora dall'area riservata. Il volontario gestisce solo le sue attività. Lo staff verifica gli ingressi.</p>
-	<p class="actions"><a class="btn" href="/free">Ottieni la licenza gratuita</a> <a class="btn alt" href="/confronto" data-confronto>Confronto tra le versioni</a> <a class="btn alt" href="/prezzi">Vedi i piani</a></p>
-<script src="/assets/confronto.js" defer></script>
 </div></section>
