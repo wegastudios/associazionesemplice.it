@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Soci\Http\Controllers\ApplicationsController;
 use App\Modules\Soci\Http\Controllers\PeopleController;
+use App\Modules\Soci\Http\Controllers\PeopleTransferController;
 use App\Modules\Soci\Http\Controllers\PublicApplicationController;
 use App\Modules\Soci\Http\Controllers\SociExtrasController;
 use Illuminate\Support\Facades\Route;
@@ -20,6 +21,9 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale
 
     Route::middleware('can:people.edit')->group(function (): void {
         Route::get('/soci/nuovo', [PeopleController::class, 'create'])->name('people.create');
+        Route::get('/soci/importa', [PeopleTransferController::class, 'form'])->name('people.import');
+        Route::post('/soci/importa', [PeopleTransferController::class, 'import'])->name('people.import.run');
+        Route::get('/soci/modello-import.csv', [PeopleTransferController::class, 'template'])->name('people.import.template');
         Route::post('/soci', [PeopleController::class, 'store'])->name('people.store');
         Route::put('/soci/{person}', [PeopleController::class, 'update'])->whereUuid('person')->name('people.update');
         Route::post('/soci/{person}/uscita', [PeopleController::class, 'leave'])->whereUuid('person')->name('people.leave');
@@ -32,6 +36,9 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale
         Route::post('/soci/{person}/tutori/{guardian}/operativo', [SociExtrasController::class, 'operativeGuardian'])->whereUuid(['person', 'guardian'])->name('guardians.operative');
         Route::delete('/soci/{person}/tutori/{guardian}', [SociExtrasController::class, 'unlinkGuardian'])->whereUuid(['person', 'guardian'])->name('guardians.unlink');
     });
+
+    // Export con i dati sensibili: non per il commercialista; ogni export finisce nel registro.
+    Route::middleware(['can:people.export', 'throttle:10,1'])->get('/soci/esporta', [PeopleTransferController::class, 'export'])->name('people.export');
 
     // Dati sanitari: non per il commercialista.
     Route::middleware('can:health.view')->group(function (): void {

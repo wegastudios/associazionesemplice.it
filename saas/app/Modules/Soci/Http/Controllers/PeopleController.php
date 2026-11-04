@@ -75,6 +75,7 @@ final readonly class PeopleController
             'prev' => $page->previousPageUrl(),
             'activeCount' => $this->memberships->activeCount(),
             'canEdit' => $request->user()?->can('people.edit') ?? false,
+            'canExport' => $request->user()?->can('people.export') ?? false,
         ]);
     }
 

@@ -77,7 +77,7 @@ filtro, e il codice fiscale è cifrato nel database. Il ripristino da un dump fu
 | Soci: anagrafica con dati sensibili cifrati, tipi del plugin, ospiti, tessera e primo numero libero, anno sociale, tesseramento con incasso della quota in prima nota, tessere senza incasso, uscita, soci attivi verso il portale | **fatto** (2026-11-04), con le pagine del gestionale |
 | Soci: tutori dei minori (al massimo due, uno operativo), livelli con quota propria, certificati medici cifrati con file e scadenze | **fatto** (2026-11-04), con le pagine del gestionale |
 | Soci: promemoria via email di tessera e certificato in scadenza, consensi con la loro storia, domande di adesione online (modulo pubblico, esame in segreteria) | **fatto** (2026-11-04), con le pagine del gestionale |
-| Soci: import ed export | da fare |
+| Soci: import da Excel o CSV con anteprima (soci, ospiti, genitori, tutori, anni di iscrizione), export CSV ricaricabile | **fatto** (2026-11-04), con le pagine del gestionale |
 
 **Gestionale base**, in quest'ordine: contabilità (prima nota, conti, ricevute, rendiconto, chiusura), soci e
 tesseramento, attività come centri di costo, ruoli configurabili, import ed export, configurazione guidata.

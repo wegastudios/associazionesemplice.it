@@ -169,6 +169,13 @@ operatori e nessun pacchetto finché non ne ricevono.
   all'ora per associazione, campo trappola `website`, stessa risposta qualunque sia il dato. I dati del modulo sono
   cifrati in `app.applications.data_enc`. Accogliendo nasce la scheda (con il genitore, cercato per codice fiscale o
   email) e si registrano i consensi del modulo come «Online»; respingendo serve un motivo.
+- Import (`PeopleImportService`, lettura e piano in `Soci/Import`, portati dal plugin con i loro test): `.xlsx` o CSV
+  (`;`, `,` o tabulazione, UTF-8 o Windows-1252), al massimo 5 MB e 5000 righe. Prima l'anteprima, poi lo stesso file
+  si applica: chi c'è già si riconosce per tessera, email, cellulare, codice fiscale o nome e si aggiorna con i soli
+  dati presenti; le colonne con un anno diventano tessere senza incasso («Importata da file»); tutori e ospitanti
+  si cercano anche nel file. Una riga rifiutata non ferma le altre. Nel registro `people.imported`.
+- Export (`PeopleExportService`, permesso `people.export`, non per il commercialista): CSV per Excel con le colonne
+  che l'import riconosce, celle che sembrano formule precedute da un apostrofo; nel registro `export.done`.
 
 ## 10. Nuova tabella di un'associazione
 

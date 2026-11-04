@@ -3,7 +3,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import AppLayout from '../../layouts/AppLayout.vue';
 
-const props = defineProps({ q: String, type: String, types: Array, year: String, rows: Array, next: String, prev: String, activeCount: Number, canEdit: Boolean });
+const props = defineProps({ q: String, type: String, types: Array, year: String, rows: Array, next: String, prev: String, activeCount: Number, canEdit: Boolean, canExport: Boolean });
 
 const search = ref(props.q ?? '');
 let timer = null;
@@ -12,6 +12,7 @@ const onSearch = () => {
     clearTimeout(timer);
     timer = setTimeout(() => filter({ q: search.value }), 300);
 };
+const exportUrl = () => `/gestionale/soci/esporta?${new URLSearchParams({ q: search.value ?? '', tipo: props.type ?? '' })}`;
 const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text-ink';
 </script>
 
@@ -26,6 +27,8 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
             <div class="flex flex-wrap items-center gap-3 text-sm font-semibold">
                 <Link href="/gestionale/certificati" class="text-accent hover:underline">Certificati medici</Link>
                 <Link href="/gestionale/soci/livelli" class="text-accent hover:underline">Livelli</Link>
+                <Link v-if="canEdit" href="/gestionale/soci/importa" class="text-accent hover:underline">Importa</Link>
+                <a v-if="canExport" :href="exportUrl()" class="text-accent hover:underline">Esporta (CSV)</a>
                 <Link v-if="canEdit" href="/gestionale/soci/nuovo" class="rounded-lg bg-accent px-4 py-2 text-base text-accent-ink">Nuova scheda</Link>
             </div>
         </div>
