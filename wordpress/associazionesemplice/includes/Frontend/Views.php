@@ -245,14 +245,14 @@ final class Views {
 		$today = current_time( 'Y-m-d' );
 		$stat  = Plugin::activities()->status_for_person( (int) $p['id'] );
 		if ( $stat ) {
-			$html .= '<div class="asemf-table-wrap"><table class="asemf-table"><thead><tr><th>Corso</th><th>Anno</th><th>Iscrizione</th><th>Pagamenti</th></tr></thead><tbody>';
+			$html .= '<div class="asemf-table-wrap"><table class="asemf-table asemf-stack"><thead><tr><th>Corso</th><th>Anno</th><th>Iscrizione</th><th>Pagamenti</th></tr></thead><tbody>';
 			foreach ( $stat as $s ) {
 				$e     = $s['enrollment'];
 				$unpd  = $s['summary']['unpaid_months'] ? '<div class="asemf-small">Mesi da pagare: ' . esc_html( implode( ', ', array_map( function ( $m ) {
 					return self::MONTHS[ (int) substr( $m['month'], 5, 2 ) ] . ' ' . substr( $m['month'], 0, 4 );
 				}, $s['summary']['unpaid_months'] ) ) ) . '</div>' : '';
-				$html .= '<tr><td>' . esc_html( $s['activity']['name'] ) . '</td><td>' . esc_html( $s['activity']['social_year'] ) . '</td><td>'
-					. ( null === $e['end_month'] ? 'Attiva' : 'Conclusa' ) . '</td><td>' . self::pay_text( $s['summary'] ) . $unpd . '</td></tr>';
+				$html .= '<tr><td class="asemf-cell-main">' . esc_html( $s['activity']['name'] ) . '</td><td data-label="Anno">' . esc_html( $s['activity']['social_year'] ) . '</td><td data-label="Iscrizione">'
+					. ( null === $e['end_month'] ? 'Attiva' : 'Conclusa' ) . '</td><td data-label="Pagamenti">' . self::pay_text( $s['summary'] ) . $unpd . '</td></tr>';
 			}
 			$html .= '</tbody></table></div>';
 		}
