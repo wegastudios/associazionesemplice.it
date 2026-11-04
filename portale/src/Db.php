@@ -90,6 +90,7 @@ final class Db {
 			'ALTER TABLE subscriptions ADD COLUMN trial_used_at VARCHAR(19) NULL',
 			'ALTER TABLE subscriptions ADD COLUMN next_plan VARCHAR(40) NULL',
 			'ALTER TABLE subscriptions ADD COLUMN change_to VARCHAR(40) NULL',
+			'ALTER TABLE subscriptions ADD COLUMN domain_changed_at VARCHAR(19) NULL',
 		);
 		foreach ( $stmts as $sql ) {
 			try {

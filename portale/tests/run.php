@@ -128,13 +128,19 @@ check( 'dominio: cambio salvato', 'nuovo.it' === $billing->subscription( $sub['i
 check( 'dominio: cliente diverso rifiutato', null !== throwsUser( function () use ( $billing, $sub ) {
 	$billing->changeDomain( $sub['id'], 'altro', 'x.it' );
 } ) );
-$state['bind_error'] = 'BINDING_CHANGE_LIMIT';
-$msg = throwsUser( function () use ( $billing, $sub, $cust ) {
+$msgLock = throwsUser( function () use ( $billing, $sub, $cust ) {
 	$billing->changeDomain( $sub['id'], $cust['id'], 'ancora.it' );
 } );
-check( 'dominio: limite 3 cambi spiegato', null !== $msg && false !== strpos( $msg, '3 volte' ) && 'nuovo.it' === $billing->subscription( $sub['id'] )['domain'] );
+check( 'dominio: dopo un cambio il cliente è bloccato e la data di sblocco è spiegata', null !== $msgLock && false !== strpos( $msgLock, 'potrai farlo di nuovo dal' ) && 'nuovo.it' === $billing->subscription( $sub['id'] )['domain'] );
+$state['bind_error'] = 'BINDING_CHANGE_LIMIT';
+$msg = throwsUser( function () use ( $billing, $sub, $cust ) {
+	$billing->changeDomain( $sub['id'], $cust['id'], 'ancora.it', true );
+} );
+check( 'dominio: limite di sicurezza del server (3 cambi) spiegato anche al personale', null !== $msg && false !== strpos( $msg, '3 volte' ) && 'nuovo.it' === $billing->subscription( $sub['id'] )['domain'] );
 $state['bind_error'] = null;
-
+$billing->changeDomain( $sub['id'], $cust['id'], 'staff.it', true );
+check( 'dominio: il personale cambia anche con il blocco attivo', 'staff.it' === $billing->subscription( $sub['id'] )['domain'] );
+$billing->changeDomain( $sub['id'], $cust['id'], 'nuovo.it', true );
 // --- Stripe: acquisto, rinnovo, doppioni ------------------------------------
 $hooks = new Webhooks( $db, $billing );
 $send  = function ( array $event ) use ( $hooks ) {
@@ -1258,6 +1264,16 @@ $aj     = json_decode( $ar[1], true );
 check( 'prova del portale: nella risposta del rimbalzo accanto all\'attestazione di Wega, che resta com\'è', 200 === $ar[0] && 'JWT.WEGA.X' === $aj['attestation'] && ! empty( $aj['portal_attestation'] ) && null !== $verifyJwt( $aj['portal_attestation'] ) );
 Http::$transport = $transportBefore;
 Config::set( 'portal_sign_key', '' );
+
+// Blocco del dominio dopo un cambio: libero la prima volta, poi bloccato per domain_lock_days; 0 lo toglie.
+check( 'blocco dominio: mai cambiato → nessun blocco', null === Portale\Billing::domainUnlockAt( array( 'domain_changed_at' => null ) ) );
+$lockSub = array( 'domain_changed_at' => gmdate( 'Y-m-d H:i:s', time() - 10 * 86400 ) );
+check( 'blocco dominio: cambiato da 10 giorni → bloccato fino a 180 giorni dal cambio', null !== Portale\Billing::domainUnlockAt( $lockSub ) && abs( strtotime( Portale\Billing::domainUnlockAt( $lockSub ) . ' UTC' ) - ( time() + 170 * 86400 ) ) < 5 );
+check( 'blocco dominio: cambiato da 200 giorni → di nuovo libero', null === Portale\Billing::domainUnlockAt( array( 'domain_changed_at' => gmdate( 'Y-m-d H:i:s', time() - 200 * 86400 ) ) ) );
+Config::set( 'domain_lock_days', 0 );
+check( 'blocco dominio: 0 giorni = nessun blocco', null === Portale\Billing::domainUnlockAt( $lockSub ) );
+Config::set( 'domain_lock_days', 180 );
+check( 'blocco dominio: il valore predefinito è 180 giorni e si può impostare da pannello (clamp 0-730)', 180 === Portale\Settings::limit( 'domain_lock_days' ) && 730 === Portale\Settings::clamp( 'domain_lock_days', 9999 ) && 0 === Portale\Settings::clamp( 'domain_lock_days', -5 ) );
 
 $pp = Portale\Site::publicPlans()['piani'];
 check( 'elenco pubblico dei piani: slug fissi nell\'ordine free, procontabile, profiscale', array( 'free', 'procontabile', 'profiscale' ) === array_column( $pp, 'slug' ) );

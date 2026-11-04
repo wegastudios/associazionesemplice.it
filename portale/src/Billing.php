@@ -392,8 +392,21 @@ final class Billing {
 
 	// --- Dominio, disdetta -------------------------------------------------------------------------------------------------
 
-	/** Cambio di dominio (il server consente 3 cambi ogni 30 giorni). */
-	public function changeDomain( string $subId, string $customerId, string $domainInput ): void {
+	/** Quando il cliente potrà cambiare di nuovo il dominio da solo (null = subito): il cambio è libero, poi la chiave resta legata al dominio per `domain_lock_days`. */
+	public static function domainUnlockAt( array $sub ): ?string {
+		$days = Settings::limit( 'domain_lock_days' );
+		if ( $days <= 0 || empty( $sub['domain_changed_at'] ) ) {
+			return null;
+		}
+		$until = strtotime( $sub['domain_changed_at'] . ' UTC' ) + $days * 86400;
+		return $until > time() ? gmdate( 'Y-m-d H:i:s', $until ) : null;
+	}
+
+	/**
+	 * Cambio di dominio. Il cliente lo fa da solo una volta e poi resta bloccato per `domain_lock_days` (una chiave non deve girare tra molti domini);
+	 * il personale lo cambia sempre dal pannello. Il server Wega aggiunge il proprio limite di sicurezza (3 cambi ogni 30 giorni).
+	 */
+	public function changeDomain( string $subId, string $customerId, string $domainInput, bool $byStaff = false ): void {
 		$sub = $this->subscription( $subId );
 		if ( ! $sub || $sub['customer_id'] !== $customerId || empty( $sub['license_key_enc'] ) ) {
 			throw new UserError( 'Abbonamento non trovato.' );
@@ -404,6 +417,10 @@ final class Billing {
 		}
 		if ( $domain === $sub['domain'] ) {
 			return;
+		}
+		$unlock = $byStaff ? null : self::domainUnlockAt( $sub );
+		if ( $unlock ) {
+			throw new UserError( 'Hai già cambiato dominio il ' . date_it( $sub['domain_changed_at'] ) . ': potrai farlo di nuovo dal ' . date_it( $unlock ) . '. Prima di allora, per un cambio sito vero, scrivi all\'assistenza.' );
 		}
 		$this->assertDomainFree( $domain, $customerId, $subId, ! in_array( $sub['provider'], array( 'free', 'trial' ), true ) );
 		try {
@@ -417,7 +434,7 @@ final class Billing {
 			);
 			throw new UserError( $map[ $e->errorCode ] ?? 'Non riesco a cambiare il dominio adesso: riprova tra poco.' );
 		}
-		$this->db->run( 'UPDATE subscriptions SET domain = ?, updated_at = ? WHERE id = ?', array( $domain, Db::now(), $subId ) );
+		$this->db->run( 'UPDATE subscriptions SET domain = ?, domain_changed_at = ?, updated_at = ? WHERE id = ?', array( $domain, Db::now(), Db::now(), $subId ) );
 		$this->notify( 'domain_changed', $this->subscription( $subId ), array( 'vecchio_dominio' => $sub['domain'] ) );
 	}
 
