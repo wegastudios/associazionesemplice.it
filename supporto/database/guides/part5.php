@@ -196,7 +196,7 @@ L'area soci può diventare un'**app installabile** sul telefono, con notifiche. 
 
 Insieme alle email, per comunicazioni a gruppi, avvisi dei volontari, promemoria e posti liberati dalla lista d'attesa. Chi non le ha attivate riceve solo l'email.
 
-> Per la privacy l'app **non salva mai pagine con dati personali**: offre soltanto una pagina «Sei offline», con il pulsante **«Riprova»**, e gli stili del plugin. Spegnendo l'app, scompare da sola dai dispositivi.
+> Per la privacy l'app **non salva mai pagine con dati personali**: offre soltanto una pagina «Sei offline», con il pulsante **«Riprova»**, e gli stili del plugin. Dalla versione 1.3.2 del Pro l'app **non interferisce con l'amministrazione né con l'accesso del sito**: su wp-admin e sulla pagina di login non compaiono blocchi o pagine offline. Spegnendo l'app, scompare da sola dai dispositivi.
 MD,
     ],
     [
