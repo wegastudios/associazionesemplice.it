@@ -5,7 +5,7 @@ $url = function ( string $path ) use ( $base ): string { return $base . $path; }
 	<div class="section-head" style="text-align:left;margin-bottom:28px">
 		<span class="eyebrow">Demo pubblica</span>
 		<h1 style="font-size:clamp(1.9rem,4vw,2.8rem)">Prova Associazione Semplice</h1>
-		<p>Un sito WordPress vero con il plugin gratuito e il Pro già installati e pieno di dati inventati. Clicca, inserisci, cancella: non rompi niente. Non scrivere dati veri, perché tutto si azzera ogni notte alle 4, non partono email e le password non si possono cambiare.</p>
+		<p>Un sito WordPress vero con il plugin gratuito e il Pro già installati e pieno di dati inventati. Serve soprattutto a provare le funzioni Pro. Clicca, inserisci, cancella: non rompi niente. Non scrivere dati veri, perché tutto si azzera ogni notte alle 4, non partono email e le password non si possono cambiare.</p>
 		<p><a class="btn big" href="<?php echo e( $url( '/' ) ); ?>">Apri la demo</a></p>
 	</div>
 

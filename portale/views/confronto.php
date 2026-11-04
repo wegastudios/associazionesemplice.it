@@ -46,7 +46,7 @@ foreach ( (array) Portale\Config::get( 'plans', array() ) as $code => $p ) {
 }
 $cmpData = e( json_encode( array( 'plans' => $cmpPlans ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) );
 $md = strtr( $md, array(
-	'{free_name}' => $planName( 'free', 'Free' ), '{lite_name}' => $planName( 'lite', 'Pro Contabile' ), '{full_name}' => $planName( 'full', 'Pro Fiscale' ),
+	'{free_name}' => $planName( 'free', 'Free' ), '{lite_name}' => $planName( 'lite', 'PRO Contabilità' ), '{full_name}' => $planName( 'full', 'PRO Contabilità & Fiscalità' ),
 	'{lite_month}' => $priceText( 'lite', 'month' ), '{lite_year}' => $priceText( 'lite', 'year' ),
 	'{full_month}' => $priceText( 'full', 'month' ), '{full_year}' => $priceText( 'full', 'year' ),
 ) );
