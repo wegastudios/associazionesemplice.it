@@ -81,6 +81,7 @@ foreach ( $lines as $line ) {
 	}
 }
 $close();
+$fragment = ! empty( $fragment );
 ?>
 <style>
 .cmp-wrap{overflow-x:auto;margin:8px 0 28px}
@@ -93,6 +94,9 @@ $close();
 .cmp td.no{color:#8b90a0}
 .cmp-page h2{margin-top:36px}
 </style>
+<?php if ( $fragment ) : // frammento per la demo: solo titoli e tabelle, senza intestazione né pulsanti ?>
+<div class="cmp-page"><?php echo $html; ?></div>
+<?php return; endif; ?>
 <section class="page"><div class="wrap cmp-page" style="max-width:920px">
 	<span class="eyebrow">Free, Pro Contabile e Pro Fiscale</span>
 	<h1>Confronto tra le versioni</h1>
