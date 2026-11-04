@@ -69,7 +69,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Eventi collegati alle risorse :: Corsi ed eventi collegati alle risorse, con tempi di allestimento | — | ✓ | ✓ |
 | Suggerimento dei luoghi con Google (con la tua chiave) | ✓ | ✓ | ✓ |
 | Pulsante «Non rinnova» nel corso: l'iscritto resta fino a fine periodo pagato e poi non deve più nulla; eliminando un corso si rende la quota proporzionale delle lezioni non tenute | ✓ | ✓ | ✓ |
-| Eliminando un corso, un evento o una singola iscrizione si restituisce solo il non fruito; annullamento di una data o «di questa data e delle successive» negli eventi ricorrenti | ✓ | ✓ | ✓ |
+| Restituzione del non fruito :: Eliminando un corso, un evento o una singola iscrizione si restituisce solo il non fruito; annullamento di una data o «di questa data e delle successive» negli eventi ricorrenti e nelle lezioni dei corsi | ✓ | ✓ | ✓ |
 
 ## Cassa e conti
 
