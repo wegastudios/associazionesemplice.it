@@ -258,4 +258,12 @@ class HubApiTest extends HubTestCase
         $this->newTicket($b, ['related_ticket_id' => $idA])->assertStatus(422)->assertJsonPath('error.code', 'RELATED_TICKET_NOT_FOUND');
         $this->newTicket($a, ['related_ticket_id' => $idA])->assertCreated();
     }
+
+    public function test_ticket_ids_too_large_for_an_integer_get_404_not_500(): void
+    {
+        ['token' => $token] = $this->makeSite();
+
+        $this->getJson('/api/v1/tickets/99999999999999999999', $this->bearer($token))->assertNotFound();
+        $this->patchJson('/api/v1/tickets/99999999999999999999', ['status' => 'closed'], $this->bearer($token))->assertNotFound();
+    }
 }

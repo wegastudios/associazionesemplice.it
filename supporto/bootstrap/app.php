@@ -11,6 +11,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Validation\ValidationException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -28,6 +29,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => EnsureAdmin::class,
             'site.auth' => SiteAuthenticate::class,
         ]);
+        // L'accesso si controlla PRIMA di cercare il record della rotta (/admin/ticket/{ticket}): altrimenti, senza login, un ID che esiste risponde
+        // con il reindirizzamento al login e uno che non esiste con 404, e chiunque può contare e indovinare i ticket.
+        $middleware->prependToPriorityList(SubstituteBindings::class, EnsureAdmin::class);
+        $middleware->prependToPriorityList(SubstituteBindings::class, SiteAuthenticate::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

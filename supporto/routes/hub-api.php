@@ -7,6 +7,6 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->middleware(['throttle:site-ip', 'site.auth', 'throttle:site-api'])->group(function () {
     Route::get('/rules', [HubTicketController::class, 'rules']);
     Route::post('/tickets', [HubTicketController::class, 'store']);
-    Route::get('/tickets/{ticket}', [HubTicketController::class, 'show'])->whereNumber('ticket');
-    Route::patch('/tickets/{ticket}', [HubTicketController::class, 'update'])->whereNumber('ticket');
+    Route::get('/tickets/{ticket}', [HubTicketController::class, 'show'])->where('ticket', '[0-9]{1,18}');
+    Route::patch('/tickets/{ticket}', [HubTicketController::class, 'update'])->where('ticket', '[0-9]{1,18}');
 });

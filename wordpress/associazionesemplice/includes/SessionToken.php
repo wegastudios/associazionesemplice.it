@@ -18,7 +18,7 @@ final class SessionToken {
 	}
 
 	public static function is_well_formed( string $raw ): bool {
-		return 1 === preg_match( '/^[A-Za-z0-9_-]{' . self::RAW_LENGTH . '}$/', $raw );
+		return 1 === preg_match( '/^[A-Za-z0-9_-]{' . self::RAW_LENGTH . '}$/D', $raw );
 	}
 
 	/** Impronta del token: è quella che sta nel database. */
