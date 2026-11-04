@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.6
+- Area soci e app da telefono più comode: icona con l'iniziale, pagina offline con «Riprova», invito a installare l'app sotto la tessera, barra per saltare alle sezioni, pulsanti più grandi, pulsante «Vai alla tua area»
+
 ## 1.3.5
 - Se un corso viene eliminato a metà mese, del mese già pagato si restituisce la quota delle lezioni non ancora tenute
 - Nuovo pulsante «Non rinnova» nell'iscrizione a un corso: resta iscritto fino alla fine del periodo pagato e poi non deve più nulla, senza restituzioni
