@@ -51,6 +51,42 @@ final class LessonExceptions {
 		self::save( $activity_id, $date, self::CANCEL, '', '', '', $note );
 	}
 
+	/**
+	 * Annulla questa lezione e le successive dello stesso giorno della settimana, fino alla fine del corso (o dell'anno sociale).
+	 * Le lezioni passate non si toccano.
+	 *
+	 * @return int quante lezioni annullate
+	 * @throws \InvalidArgumentException
+	 */
+	public static function cancel_from( int $activity_id, string $date, string $note = '' ): int {
+		$a = Plugin::activities()->get( $activity_id );
+		if ( ! $a || ActivityKind::COURSE !== $a['kind'] ) {
+			throw new \InvalidArgumentException( 'Le lezioni si annullano o spostano per un corso.' );
+		}
+		if ( ! self::valid_date( $date ) ) {
+			throw new \InvalidArgumentException( 'Data della lezione non valida.' );
+		}
+		$last = ! empty( $a['ends_on'] ) ? (string) $a['ends_on'] : SocialYear::from_label( (string) $a['social_year'], Settings::start_month() )->end()->format( 'Y-m-d' );
+		$last = min( $last, gmdate( 'Y-m-d', strtotime( $date . ' +400 days' ) ) );
+		$day  = (int) ( new \DateTimeImmutable( $date ) )->format( 'N' );
+		$all  = array( $date );
+		foreach ( ActivityService::slots( $a ) as $s ) {
+			if ( (int) $s['day'] !== $day ) {
+				continue;
+			}
+			$lo = max( $date, (string) ( $s['from'] ?: $date ) );
+			$hi = min( $last, (string) ( $s['until'] ?: $last ) );
+			foreach ( Schedule::weekly_dates( $lo, $hi, $day ) as $d ) {
+				$all[] = $d;
+			}
+		}
+		$all = array_values( array_unique( $all ) );
+		foreach ( $all as $d ) {
+			self::cancel( $activity_id, $d, $note );
+		}
+		return count( $all );
+	}
+
 	/** Sposta una lezione a un altro giorno (e, se serve, orario). @throws \InvalidArgumentException */
 	public static function move( int $activity_id, string $date, string $new_date, string $start = '', string $end = '', string $note = '' ): void {
 		if ( ! self::valid_date( $new_date ) ) {

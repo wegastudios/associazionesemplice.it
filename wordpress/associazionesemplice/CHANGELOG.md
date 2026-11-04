@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.10
+- Nei corsi si può annullare una lezione e tutte le successive dello stesso giorno (le passate restano)
+
 ## 1.3.9
 - Da telefono: la Cassa non ripete più i pulsanti e l'avviso di fine anno sta dopo le cifre; la Rubrica soci è a schede compatte
 
