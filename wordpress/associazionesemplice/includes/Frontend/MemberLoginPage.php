@@ -206,7 +206,10 @@ final class MemberLoginPage {
 		$session = MemberSession::current();
 		if ( $session && MemberSession::session_person() ) {
 			$p     = Plugin::people()->get( (int) $session['person_id'] );
+			$area  = (int) Settings::get( 'member_area_page_id' ) ? (string) get_permalink( (int) Settings::get( 'member_area_page_id' ) ) : '';
+			list( , $btn ) = self::style();
 			$body .= '<div class="n">Sei dentro</div><p>' . esc_html( trim( (string) ( $p['first_name'] ?? '' ) . ' ' . (string) ( $p['last_name'] ?? '' ) ) ) . '</p>'
+				. ( '' !== $area ? '<p><a href="' . esc_url( $area ) . '" style="' . $btn . ';display:block;text-align:center;text-decoration:none;box-sizing:border-box">Vai alla tua area</a></p>' : '' )
 				. self::form( 'logout', '', 'Esci', true ) . $gap
 				. '<div class="n">Cambia la password</div>'
 				. self::form( 'password', self::field( 'Password attuale', 'current_password', 'password', 'current-password' ) . self::field( 'Nuova password (almeno 8 caratteri)', 'password', 'password', 'new-password', '', ' minlength="8"' ) . self::field( 'Ripeti la password', 'password2', 'password', 'new-password', '', ' minlength="8"' ), 'Salva la password', true ) . $gap

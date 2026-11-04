@@ -182,3 +182,24 @@
 .asemf-conv-head { display: flex; gap: .8rem; align-items: flex-start; }
 .asemf-conv-logo { width: 56px; height: 56px; object-fit: contain; flex: 0 0 auto; border-radius: 6px; background: #fff; }
 .asemf-conv-code { font-size: 1.15em; letter-spacing: .04em; }
+
+/* Telefono: barra di salto alle sezioni, invito all'app e tocchi da 44 px */
+.asemf-jump { display: none; }
+.asemf-tip { border: 1px solid var(--asemf-accent); border-radius: var(--asemf-radius); background: var(--asemf-soft); padding: .8rem 1.1rem; margin: 1rem 0; }
+.asemf-tip p { margin: 0 0 .5rem; }
+.asemf-tip .asemf-tip-actions { margin: 0; display: flex; gap: .5rem; flex-wrap: wrap; }
+.asemf-tip[hidden], .asemf-tip [hidden] { display: none; }
+.asemf-section[id] { scroll-margin-top: 4.5rem; }
+@media (max-width: 700px) {
+	.asemf-jump { display: block; position: sticky; top: 0; z-index: 20; margin: 0 -1px 1rem; background: var(--asemf-bg, #fff); border-bottom: 1px solid var(--asemf-line); }
+	.asemf-jump ul { display: flex; gap: .5rem; list-style: none; margin: 0; padding: .5rem 0; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+	.asemf-jump ul::-webkit-scrollbar { display: none; }
+	.asemf-jump a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 1rem; border: 1px solid var(--asemf-line); border-radius: 999px; text-decoration: none; color: inherit; white-space: nowrap; }
+	.asemf-jump a:active { background: var(--asemf-soft); }
+	.asemf .asemf-btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+	.asemf-area a, .asemf-section a, .asemf-section button { min-height: 44px; }
+	.asemf-section a:not(.asemf-btn) { display: inline-flex; align-items: center; }
+	.asemf-section p a:not(.asemf-btn), .asemf-section li a:not(.asemf-btn), .asemf-section dd a { display: inline; min-height: 0; padding: .6em 0; }
+	.asemf-section input:not([type=checkbox]):not([type=radio]), .asemf-section select, .asemf-section textarea { min-height: 44px; font-size: 16px; } /* 16 px: iOS non zooma nei campi */
+	.asemf-print-wrap { display: flex; gap: .5rem; flex-wrap: wrap; } .asemf-print-wrap .asemf-btn { flex: 1 1 8rem; }
+}
