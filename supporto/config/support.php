@@ -48,7 +48,7 @@ return [
     // Nomi dei piani nei testi delle guide: si cambiano qui (o da .env) e si rilancia il seeder, mai a mano nei testi
     'plan_names' => [
         'contabile' => env('SUPPORT_PLAN_CONTABILE', 'PRO Contabilità'),
-        'fiscale' => env('SUPPORT_PLAN_FISCALE', 'PRO Contabilità & Fiscale'),
+        'fiscale' => env('SUPPORT_PLAN_FISCALE', 'PRO Contabilità & Fiscalità'),
     ],
 
     // Validita del link inviato al cliente per seguire il ticket
