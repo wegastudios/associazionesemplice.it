@@ -83,6 +83,7 @@ final readonly class LedgerController
                 'method' => $t->method->label(),
                 'description' => $t->description,
                 'receipt' => $t->receipt_id !== null && isset($receipts[$t->receipt_id]) ? $receipts[$t->receipt_id]->label() : null,
+                'receipt_id' => $t->receipt_id,
                 'voided' => $t->voided_at !== null,
                 'void_reason' => $t->void_reason,
                 'activity_id' => $t->activity_id,

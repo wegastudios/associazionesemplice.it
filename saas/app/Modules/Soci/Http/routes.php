@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Soci\Http\Controllers\ApplicationsController;
+use App\Modules\Soci\Http\Controllers\MemberBookController;
 use App\Modules\Soci\Http\Controllers\PeopleController;
 use App\Modules\Soci\Http\Controllers\PeopleTransferController;
 use App\Modules\Soci\Http\Controllers\PublicApplicationController;
@@ -14,6 +15,7 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale
         Route::get('/soci', [PeopleController::class, 'index'])->name('people');
         Route::get('/soci/cerca', [PeopleController::class, 'lookup'])->name('people.lookup');
         Route::get('/soci/livelli', [SociExtrasController::class, 'levels'])->name('levels');
+        Route::get('/soci/libro', [MemberBookController::class, 'index'])->name('member-book');
         Route::get('/soci/{person}', [PeopleController::class, 'show'])->whereUuid('person')->name('people.show');
         Route::get('/domande', [ApplicationsController::class, 'index'])->name('applications');
         Route::get('/domande/{application}', [ApplicationsController::class, 'show'])->whereUuid('application')->name('applications.show');
@@ -38,7 +40,11 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale
     });
 
     // Export con i dati sensibili: non per il commercialista; ogni export finisce nel registro.
-    Route::middleware(['can:people.export', 'throttle:10,1'])->get('/soci/esporta', [PeopleTransferController::class, 'export'])->name('people.export');
+    Route::middleware(['can:people.export', 'throttle:10,1'])->group(function (): void {
+        Route::get('/soci/esporta', [PeopleTransferController::class, 'export'])->name('people.export');
+        Route::get('/soci/libro.pdf', [MemberBookController::class, 'pdf'])->name('member-book.pdf');
+        Route::get('/soci/libro.csv', [MemberBookController::class, 'csv'])->name('member-book.csv');
+    });
 
     // Dati sanitari: non per il commercialista.
     Route::middleware('can:health.view')->group(function (): void {

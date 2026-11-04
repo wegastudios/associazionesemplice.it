@@ -73,7 +73,9 @@ filtro, e il codice fiscale è cifrato nel database. Il ripristino da un dump fu
 | Parte | Stato |
 |---|---|
 | Contabilità: conti, categorie, esercizi, prima nota con storno, ricevute numerate, rendiconto per cassa, chiusura | **fatto** (2026-11-04), con le pagine del gestionale |
-| Contabilità: ricevute in PDF, fondi, budget, verifica di cassa, import da banca | da fare |
+| Contabilità: ricevute in PDF (intestate al genitore per i minori, nota sulla detrazione), stampa e invio per email | **fatto** (2026-11-04) |
+| Contabilità: fondi, budget, verifica di cassa, import da banca, import della prima nota | da fare |
+| Soci: libro soci (ordine di ingresso, ammissione, cessazione, ultima quota), stampa PDF ed export CSV | **fatto** (2026-11-04) |
 | Soci: anagrafica con dati sensibili cifrati, tipi del plugin, ospiti, tessera e primo numero libero, anno sociale, tesseramento con incasso della quota in prima nota, tessere senza incasso, uscita, soci attivi verso il portale | **fatto** (2026-11-04), con le pagine del gestionale |
 | Soci: tutori dei minori (al massimo due, uno operativo), livelli con quota propria, certificati medici cifrati con file e scadenze | **fatto** (2026-11-04), con le pagine del gestionale |
 | Soci: promemoria via email di tessera e certificato in scadenza, consensi con la loro storia, domande di adesione online (modulo pubblico, esame in segreteria) | **fatto** (2026-11-04), con le pagine del gestionale |

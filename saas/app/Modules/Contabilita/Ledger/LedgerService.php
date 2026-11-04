@@ -254,7 +254,7 @@ final readonly class LedgerService implements Ledger
             ->where('t.activity_id', $activityId)
             ->orderByDesc('t.tx_date')->orderByDesc('t.created_at')->orderByDesc('t.id')
             ->limit(500)
-            ->get(['t.id', 't.tx_date', 't.type', 't.amount_cents', 'c.name as category', 't.person_id', 't.description', 't.voided_at', 'r.number', 'r.year']);
+            ->get(['t.id', 't.tx_date', 't.type', 't.amount_cents', 'c.name as category', 't.person_id', 't.description', 't.voided_at', 't.receipt_id', 'r.number', 'r.year']);
 
         return array_values($rows->map(static fn (object $r): array => [
             'id' => is_string($r->id ?? null) ? $r->id : '',
@@ -265,6 +265,7 @@ final readonly class LedgerService implements Ledger
             'person_id' => is_string($r->person_id ?? null) ? $r->person_id : null,
             'description' => is_string($r->description ?? null) ? $r->description : '',
             'receipt' => is_numeric($r->number ?? null) && is_numeric($r->year ?? null) ? $r->number.'/'.$r->year : null,
+            'receipt_id' => is_string($r->receipt_id ?? null) ? $r->receipt_id : null,
             'voided' => ($r->voided_at ?? null) !== null,
         ])->all());
     }

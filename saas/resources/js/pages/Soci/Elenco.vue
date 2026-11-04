@@ -26,6 +26,7 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
             </div>
             <div class="flex flex-wrap items-center gap-3 text-sm font-semibold">
                 <Link href="/gestionale/certificati" class="text-accent hover:underline">Certificati medici</Link>
+                <Link href="/gestionale/soci/libro" class="text-accent hover:underline">Libro soci</Link>
                 <Link href="/gestionale/soci/livelli" class="text-accent hover:underline">Livelli</Link>
                 <Link v-if="canEdit" href="/gestionale/soci/importa" class="text-accent hover:underline">Importa</Link>
                 <a v-if="canExport" :href="exportUrl()" class="text-accent hover:underline">Esporta (CSV)</a>

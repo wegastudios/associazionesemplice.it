@@ -191,6 +191,9 @@ operatori e nessun pacchetto finché non ne ricevono.
   si cercano anche nel file. Una riga rifiutata non ferma le altre. Nel registro `people.imported`.
 - Export (`PeopleExportService`, permesso `people.export`, non per il commercialista): CSV per Excel con le colonne
   che l'import riconosce, celle che sembrano formule precedute da un apostrofo; nel registro `export.done`.
+- Libro soci (`MemberBookService`, `/gestionale/soci/libro`): soci (non ospiti né genitori) in ordine di ingresso, con
+  domanda e ammissione (dalle domande online), cessazione, ultima quota incassata e tutore. PDF e CSV con
+  `people.export`, nel registro `member_book.exported`. L'uscita non può essere nel futuro né prima dell'ingresso.
 
 ## 9 bis. Attività
 
@@ -203,6 +206,14 @@ operatori e nessun pacchetto finché non ne ricevono.
 - Situazione dei contributi calcolata dagli incassi non stornati con mese di competenza: stornare un incasso lo toglie.
 - Permessi: vedere `people.view`; attività e iscrizioni `people.edit`; incassi `people.edit` e `accounting.edit`;
   spese e cambio dell'attività di un movimento `accounting.edit`.
+
+## 9 ter. Documenti e ricevute
+
+- PDF senza librerie: `Documenti\Contracts\Pdf` (dal plugin; A4 verticale o orizzontale, testo, linee, rettangoli).
+- Ricevute (`Contabilita\Receipts\ReceiptPdf`, `/gestionale/ricevute/{id}.pdf`, invio con `/invia`): intestazione con i
+  dati dell'ente della configurazione, chi ha pagato con il codice fiscale; per un minore il genitore (`ReceiptRules`,
+  dal plugin con i suoi test), con la nota sulla detrazione dai 5 ai 18 anni. I dati delle persone arrivano da
+  `Soci\Contracts\People`. Le ricevute stornate non si stampano. Scarico e invio nel registro.
 
 ## 10. Nuova tabella di un'associazione
 

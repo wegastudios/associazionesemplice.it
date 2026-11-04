@@ -36,7 +36,7 @@ interface Ledger
     /**
      * Movimenti di un'attività, dal più recente.
      *
-     * @return list<array{id: string, date: string, type: string, cents: int, category: string, person_id: string|null, description: string, receipt: string|null, voided: bool}>
+     * @return list<array{id: string, date: string, type: string, cents: int, category: string, person_id: string|null, description: string, receipt: string|null, receipt_id: string|null, voided: bool}>
      */
     public function activityMovements(string $activityId): array;
 

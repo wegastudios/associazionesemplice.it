@@ -157,7 +157,7 @@ const label = 'space-y-1 text-sm';
                     <tbody>
                         <tr v-for="m in activity.movements" :key="m.id" class="border-t border-line" :class="m.voided ? 'text-muted line-through' : ''">
                             <td class="whitespace-nowrap py-2 pr-3 tabular-nums">{{ m.date }}</td>
-                            <td class="py-2 pr-3">{{ m.description || m.category }}<span v-if="m.person" class="text-muted"> · {{ m.person }}</span><span v-if="m.receipt" class="ml-1 rounded bg-surface px-1.5 py-0.5 text-xs">ricevuta {{ m.receipt }}</span></td>
+                            <td class="py-2 pr-3">{{ m.description || m.category }}<span v-if="m.person" class="text-muted"> · {{ m.person }}</span><a v-if="m.receipt && !m.voided" :href="`/gestionale/ricevute/${m.receipt_id}.pdf`" target="_blank" class="ml-1 rounded bg-surface px-1.5 py-0.5 text-xs font-semibold text-accent hover:underline">ricevuta {{ m.receipt }}</a><span v-else-if="m.receipt" class="ml-1 rounded bg-surface px-1.5 py-0.5 text-xs">ricevuta {{ m.receipt }}</span></td>
                             <td class="py-2 pr-3 text-muted">{{ m.category }}</td>
                             <td class="whitespace-nowrap py-2 text-right font-semibold tabular-nums">{{ m.amount }}</td>
                         </tr>

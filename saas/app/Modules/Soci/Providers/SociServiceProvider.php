@@ -7,7 +7,9 @@ namespace App\Modules\Soci\Providers;
 use App\Modules\Core\Contracts\SetupStep;
 use App\Modules\Soci\Console\SendRemindersCommand;
 use App\Modules\Soci\Contracts\Members;
+use App\Modules\Soci\Contracts\People;
 use App\Modules\Soci\Services\MembershipService;
+use App\Modules\Soci\Services\PeopleDirectory;
 use App\Modules\Soci\Setup\ApplicationsStep;
 use App\Modules\Soci\Setup\MembershipStep;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -22,6 +24,7 @@ final class SociServiceProvider extends ServiceProvider
     {
         $this->app->tag([MembershipStep::class, ApplicationsStep::class], SetupStep::TAG);
         $this->app->bind(Members::class, MembershipService::class);
+        $this->app->bind(People::class, PeopleDirectory::class);
     }
 
     public function boot(): void

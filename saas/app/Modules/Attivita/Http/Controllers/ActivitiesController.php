@@ -218,6 +218,7 @@ final readonly class ActivitiesController
                     'person' => $m['person_id'] === null ? null : ($names[$m['person_id']] ?? null),
                     'description' => $m['description'],
                     'receipt' => $m['receipt'],
+                    'receipt_id' => $m['receipt_id'],
                     'voided' => $m['voided'],
                 ], $movements),
             ],

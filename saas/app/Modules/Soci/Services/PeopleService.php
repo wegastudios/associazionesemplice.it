@@ -52,7 +52,14 @@ final readonly class PeopleService
         if (! Age::isValidDate($date)) {
             throw new PeopleError(['La data di uscita non è valida.']);
         }
+        if ($date > now()->toDateString()) {
+            throw new PeopleError(['L\'uscita non può essere nel futuro.']);
+        }
         $person = Person::query()->findOrFail($id);
+        $joined = $person->joined_on?->format('Y-m-d');
+        if ($joined !== null && $date < $joined) {
+            throw new PeopleError(['L\'uscita non può essere prima dell\'ingresso ('.$person->joined_on?->format('d/m/Y').').']);
+        }
         $person->fill(['left_on' => $date, 'left_reason' => mb_substr(trim($reason), 0, 190)])->save();
 
         return $person;

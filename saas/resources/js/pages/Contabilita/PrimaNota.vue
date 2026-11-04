@@ -27,6 +27,7 @@ const expenseCategories = computed(() => props.categories.filter((c) => c.expens
 const mode = ref(null);
 
 const filter = (changes) => router.get('/gestionale/prima-nota', { anno: props.year, conto: props.account, attivita: props.activity, ...changes }, { preserveState: true });
+const sendReceipt = (r) => router.post(`/gestionale/ricevute/${r.receipt_id}/invia`, {}, { preserveScroll: true });
 const setActivity = (r, id) => router.post(`/gestionale/prima-nota/${r.id}/attivita`, { activity_id: id || null }, { preserveScroll: true });
 
 const income = useForm({
@@ -202,7 +203,11 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
                         <td class="whitespace-nowrap px-4 py-3 tabular-nums">{{ r.date }}</td>
                         <td class="px-4 py-3">
                             {{ r.description || r.type_label }}
-                            <span v-if="r.receipt" class="ml-1 rounded bg-surface px-1.5 py-0.5 text-xs no-underline">ricevuta {{ r.receipt }}</span>
+                            <span v-if="r.receipt" class="ml-1 inline-flex gap-2 rounded bg-surface px-1.5 py-0.5 text-xs no-underline">
+                                <a v-if="!r.voided" :href="`/gestionale/ricevute/${r.receipt_id}.pdf`" target="_blank" class="font-semibold text-accent hover:underline">ricevuta {{ r.receipt }}</a>
+                                <template v-else>ricevuta {{ r.receipt }}</template>
+                                <button v-if="canEdit && !r.voided" type="button" class="text-accent hover:underline" @click="sendReceipt(r)">invia</button>
+                            </span>
                             <span v-if="r.voided" class="block text-xs no-underline">Stornato: {{ r.void_reason }}</span>
                         </td>
                         <td class="px-4 py-3">
