@@ -1,6 +1,6 @@
 Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso, **—** significa non incluso.
 
-**{piano_contabile}** comprende tutte le funzioni Pro tranne la parte fiscale. **{piano_fiscale}** comprende tutto. Il piano gratuito è completo per gestire soci, attività e prima nota, e resta gratuito per sempre.
+**{piano_contabile}** comprende tutte le funzioni Pro tranne la parte fiscale. **{piano_fiscale}** comprende tutto. Il piano gratuito è completo per gestire soci, attività e prima nota, e resta gratuito.
 
 ## Soci e tessere
 
@@ -155,8 +155,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | | Free | {piano_contabile} | {piano_fiscale} |
 |---|---|---|---|
 | Chiave di licenza | Gratuita e facoltativa | Obbligatoria | Obbligatoria |
-| Prova gratuita di Pro per 30 giorni (una volta sola) | ✓ | — | — |
-| Prezzo | 0 € per sempre | 8 € al mese o 80 € all'anno | 12 € al mese o 100 € all'anno |
+| Prova gratis 30 giorni (una volta sola) | ✓ | — | — |
+| Prezzo | 0 € | 8 € al mese o 80 € all'anno | 12 € al mese o 100 € all'anno |
 
 > I prezzi e i piani sono sempre aggiornati nella sezione **Prezzi** di [associazionesemplice.it](https://associazionesemplice.it). Con una licenza non in regola Pro torna alle funzioni di base, senza toccare i dati.
 

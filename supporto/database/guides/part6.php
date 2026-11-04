@@ -74,7 +74,7 @@ MD,
         'body' => <<<'MD'
 No. Il plugin gratuito funziona sempre, anche senza chiave: nessuna funzione di base dipende dalla licenza.
 
-La **chiave gratuita** è facoltativa e abilita i servizi collegati, come la prova di Pro e l'avviso degli aggiornamenti. Si richiede da [associazionesemplice.it/free](https://associazionesemplice.it/free); vedi [Richiedere la licenza gratuita](guida:richiedere-la-licenza-gratuita).
+La **chiave gratuita** è facoltativa e abilita i servizi collegati, come la prova di Pro e l'avviso degli aggiornamenti. Crea un account che dà accesso al supporto e alle demo dei piani Pro. Si richiede da [associazionesemplice.it/free](https://associazionesemplice.it/free); vedi [Richiedere la licenza gratuita](guida:richiedere-la-licenza-gratuita).
 MD,
     ],
     [

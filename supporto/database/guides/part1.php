@@ -182,7 +182,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free
 
-Il plugin gratuito funziona sempre, anche senza chiave: nessuna funzione di base dipende dalla licenza. La **chiave gratuita** è facoltativa e abilita i servizi collegati, come la prova Pro e l'avviso degli aggiornamenti.
+Il plugin gratuito funziona sempre, anche senza chiave: nessuna funzione di base dipende dalla licenza. La **chiave gratuita** è facoltativa e abilita i servizi collegati, come la prova Pro e l'avviso degli aggiornamenti. Crea un account che dà accesso al supporto e alle demo dei piani Pro.
 
 ## Cosa fare
 
@@ -234,7 +234,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-## Provare Pro gratis
+## Prova gratis 30 giorni
 
 Se hai già la licenza gratuita, puoi provare un piano Pro **per 30 giorni**, una volta sola, dall'area riservata del sito associazionesemplice.it.
 

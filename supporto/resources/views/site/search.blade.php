@@ -2,7 +2,7 @@
 @section('title', 'Ricerca')
 @section('content')
     <p><a href="{{ route('help.index') }}">← Centro assistenza</a></p>
-    <h1>Risultati per "{{ $q }}"</h1>
+    <h1>Risultati per «{{ $q }}»</h1>
     <div class="card">
         <ul>
             @forelse ($results as $article)
