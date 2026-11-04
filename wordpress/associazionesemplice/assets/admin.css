@@ -76,3 +76,23 @@
 	.asem-pl-head{display:none}
 	#wpbody-content input.regular-text,#wpbody-content input.large-text,#wpbody-content textarea.large-text{max-width:100%;box-sizing:border-box}
 }
+
+/* Telefono: Cassa senza pulsanti ripetuti (le schede in alto li hanno già) e Rubrica a schede compatte, una per persona */
+@media (max-width:782px){
+	.asem-quick{display:none}
+	#wpbody-content table.widefat.asem-cards:not(.wp-list-table){display:block;overflow:visible;border:0;background:transparent;box-shadow:none}
+	table.asem-cards thead,table.asem-cards tbody{display:block}
+	table.asem-cards thead tr{display:flex;flex-wrap:wrap;gap:.25rem .75rem;padding:0 0 .5rem}
+	table.asem-cards thead th{display:none;border:0;padding:0}
+	table.asem-cards thead th:has(a){display:block}
+	table.asem-cards thead th a{display:inline-flex;align-items:center;min-height:44px}
+	table.asem-cards tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 .75rem;align-items:center;background:#fff;border:1px solid #c3c4c7;border-radius:8px;margin:0 0 .6rem;padding:.35rem .9rem .6rem}
+	table.asem-cards tbody td{display:block;border:0;padding:.1rem 0;grid-column:1 / -1}
+	table.asem-cards tbody td[data-label]::before{content:attr(data-label) " ";color:#50575e}
+	table.asem-cards tbody td:empty{display:none}
+	table.asem-cards tbody td.asem-card-name{grid-column:1;grid-row:1;font-size:1.1em}
+	table.asem-cards tbody td.asem-card-open{grid-column:2;grid-row:1}
+	table.asem-cards tbody td.asem-card-open .button{min-height:44px;display:inline-flex;align-items:center}
+	table.asem-cards tbody td[data-label="Tessera"]{grid-row:2;grid-column:1 / -1}
+	table.asem-cards tbody td[colspan]{display:block}
+}

@@ -64,7 +64,7 @@ final class PeoplePage {
 			Ui::form_close();
 		}
 		echo '<p class="description">' . count( $rows ) . ' persone.</p>';
-		echo wp_kses( '<table class="widefat striped"><thead><tr>' . self::sort_th( 'Tessera', 'card', $by, $dir, $keep ) . self::sort_th( 'Nome', 'name', $by, $dir, $keep ) . self::sort_th( 'Tipo', 'type', $by, $dir, $keep ) . '<th>Contatti</th><th>Stato</th><th></th></tr></thead><tbody>', Html::allowed() );
+		echo wp_kses( '<table class="widefat striped asem-cards"><thead><tr>' . self::sort_th( 'Tessera', 'card', $by, $dir, $keep ) . self::sort_th( 'Nome', 'name', $by, $dir, $keep ) . self::sort_th( 'Tipo', 'type', $by, $dir, $keep ) . '<th>Contatti</th><th>Stato</th><th></th></tr></thead><tbody>', Html::allowed() );
 		if ( ! $rows ) {
 			echo '<tr><td colspan="6">Nessuna persona trovata.</td></tr>';
 		}
@@ -83,10 +83,12 @@ final class PeoplePage {
 			if ( MemberType::is_member( $p['type'] ) && ! \AssociazioneSemplice\PeopleService::has_access( $p ) ) {
 				$state .= '<br>' . self::invite_link( $p );
 			}
-			echo '<tr><td>' . esc_html( (string) $p['card_number'] ?: '—' ) . '</td>';
-			echo '<td><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '"><strong>' . esc_html( $p['last_name'] . ' ' . $p['first_name'] ) . '</strong></a></td>';
-			echo wp_kses( '<td>' . esc_html( \AssociazioneSemplice\Levels::label( $p ) ) . '</td><td>' . ( '' !== (string) $p['email'] ? esc_html( (string) $p['email'] ) . '<br>' : '' ) . Ui::contact_links( $p ) . '</td><td>' . $state . '</td>', Html::allowed() );
-			echo '<td><a class="button button-small" href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '">Apri</a></td></tr>';
+			echo '<tr><td data-label="Tessera">' . esc_html( (string) $p['card_number'] ?: '—' ) . '</td>';
+			echo '<td class="asem-card-name"><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '"><strong>' . esc_html( $p['last_name'] . ' ' . $p['first_name'] ) . '</strong></a></td>';
+			echo '<td data-label="Tipo">' . esc_html( \AssociazioneSemplice\Levels::label( $p ) ) . '</td>'; // data-label: da telefono la riga diventa una scheda e ogni dato porta la sua etichetta
+			echo '<td data-label="Contatti">' . wp_kses( ( '' !== (string) $p['email'] ? esc_html( (string) $p['email'] ) . '<br>' : '' ) . Ui::contact_links( $p ), Html::allowed() ) . '</td>';
+			echo '<td data-label="Stato">' . wp_kses( $state, Html::allowed() ) . '</td>';
+			echo '<td class="asem-card-open"><a class="button button-small" href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '">Apri</a></td></tr>';
 		}
 		echo '</tbody></table>';
 		Ui::footer();
