@@ -150,15 +150,20 @@ dedicato al builder.
 - Controllo: log strutturati, tracciamento degli errori (Sentry, regione UE), monitoraggio di disponibilità, log delle
   query lente, obiettivo p95 sotto i 200 ms.
 
-## 11. Contratto con il portale (da definire con la sessione del portale)
+## 11. Contratto con il portale
+
+Definito in [CONTRATTO_PORTALE.md](CONTRATTO_PORTALE.md); lato SaaS fatto (`app/Modules/Portale`), lato portale da
+sviluppare nella sessione del portale.
 
 | Direzione | Cosa |
 |---|---|
-| portale → SaaS | diritti firmati di un'associazione (piano, fascia, pacchetti, operatori, scadenza), a ogni cambio e su richiesta |
-| SaaS → portale | conteggio dei soci attivi e degli operatori (per la fascia), consumi di fatture elettroniche |
-| SaaS → portale | invio e ricezione delle fatture elettroniche tramite il ponte SDI |
-| SaaS → portale | accesso unico per "Gestisci abbonamento" |
-| portale → SaaS | attribuzione del partner a un'associazione (codice o link) |
+| portale → SaaS | creazione dell'associazione e invito del titolare (`POST /api/portale/v1/orgs`) |
+| portale → SaaS | diritti firmati (stato, scadenza, soci, operatori, pacchetti, partner) a ogni cambio (`PUT …/entitlements`) |
+| SaaS → portale | consumi giornalieri: soci, operatori, fatture elettroniche (`POST /api/saas/v1/usage`) |
+| SaaS → portale | accesso unico «Gestisci abbonamento» per il titolare (`/saas/accedi?t=…`, 60 secondi) |
+| SaaS → portale | fatture elettroniche tramite il ponte SDI: fase 2 |
+
+Tutto con JWT EdDSA di vita breve, come le attestazioni delle licenze, con chiavi separate nei due sensi.
 
 ## 12. Decisioni prese
 

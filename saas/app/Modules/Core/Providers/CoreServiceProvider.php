@@ -9,8 +9,10 @@ use App\Modules\Core\Console\InviteOperatorCommand;
 use App\Modules\Core\Console\MigrateAllCommand;
 use App\Modules\Core\Contracts\DatabaseNames;
 use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Core\Contracts\OrgDirectory;
 use App\Modules\Core\Database\DatabaseRegistry;
 use App\Modules\Core\Org\DatabaseOrgContext;
+use App\Modules\Core\Org\DatabaseOrgDirectory;
 use Illuminate\Database\Schema\Grammars\PostgresGrammar;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
@@ -24,6 +26,7 @@ final class CoreServiceProvider extends ServiceProvider
     {
         $this->app->singleton(DatabaseRegistry::class);
         $this->app->singleton(DatabaseNames::class, DatabaseRegistry::class);
+        $this->app->singleton(OrgDirectory::class, DatabaseOrgDirectory::class);
         $this->app->singleton(OrgContext::class, DatabaseOrgContext::class);
     }
 

@@ -6,6 +6,7 @@ use App\Modules\Audit\Providers\AuditServiceProvider;
 use App\Modules\Cifratura\Providers\CifraturaServiceProvider;
 use App\Modules\Core\Providers\AuthServiceProvider;
 use App\Modules\Core\Providers\CoreServiceProvider;
+use App\Modules\Portale\Providers\PortaleServiceProvider;
 use App\Providers\AppServiceProvider;
 
 return [
@@ -14,4 +15,5 @@ return [
     AuthServiceProvider::class,
     CifraturaServiceProvider::class,
     AuditServiceProvider::class,
+    PortaleServiceProvider::class,
 ];

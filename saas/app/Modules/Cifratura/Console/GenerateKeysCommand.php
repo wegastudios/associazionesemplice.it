@@ -31,6 +31,14 @@ final class GenerateKeysCommand extends Command
         $this->line('Chiave privata del SaaS (ambiente del SaaS: SAAS_KEY_SERVICE_SIGNING_KEY):');
         $this->line('  '.base64_encode(sodium_crypto_sign_secretkey($pair)));
         $this->newLine();
+        $seed = random_bytes(SODIUM_CRYPTO_SIGN_SEEDBYTES);
+        $public = sodium_crypto_sign_publickey(sodium_crypto_sign_seed_keypair($seed));
+        $x = rtrim(strtr(base64_encode($public), '+/', '-_'), '=');
+        $this->line('Chiave del SaaS verso il portale (ambiente del SaaS: SAAS_PORTAL_SIGNING_KEY):');
+        $this->line('  '.base64_encode($seed));
+        $this->line('Da fissare nel portale (kid e chiave pubblica x):');
+        $this->line('  saas-'.substr(hash('sha256', $x), 0, 8).'='.$x);
+        $this->newLine();
         $this->warn('Conserva una copia offline della chiave principale: senza, i dati cifrati non si aprono più.');
 
         return self::SUCCESS;

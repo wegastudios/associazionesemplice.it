@@ -7,10 +7,12 @@ namespace App\Modules\Core\Access;
 use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Core\Auth\InvitationNotification;
 use App\Modules\Core\Contracts\Operator;
+use App\Modules\Core\Contracts\OperatorLimitReached;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Models\Org;
 use App\Modules\Core\Models\User;
+use App\Modules\Portale\Contracts\Entitlements;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\Passwords\PasswordBroker;
 use Illuminate\Database\DatabaseManager;
@@ -33,6 +35,7 @@ final readonly class OrgMembers
         private Memberships $memberships,
         private OrgContext $context,
         private AuditLog $audit,
+        private Entitlements $entitlements,
     ) {}
 
     public function invite(Org $org, string $email, string $name, OrgRole $role, ?Operator $by): User
@@ -42,6 +45,9 @@ final readonly class OrgMembers
         $email = Str::lower(trim($email));
         if (filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
             throw new InvalidArgumentException('Email non valida.');
+        }
+        if ($by !== null) {
+            $this->assertOperatorAvailable($org, $email);
         }
 
         return $this->db->connection('pgsql')->transaction(function () use ($org, $email, $name, $role): User {
@@ -100,6 +106,24 @@ final readonly class OrgMembers
     private function audit(Org $org, string $action, string $userId, array $details): void
     {
         $this->context->run($org->id, fn () => $this->audit->record($action, 'core.users', $userId, $details));
+    }
+
+    /**
+     * Gli operatori sono un limite dell'abbonamento (operatori aggiuntivi a pagamento). Vale per gli inviti fatti
+     * dall'associazione con un abbonamento sul portale; il primo titolare, gli interventi dell'assistenza (senza $by)
+     * e le associazioni create a mano (pilota) non sono limitati.
+     */
+    private function assertOperatorAvailable(Org $org, string $email): void
+    {
+        if ($this->db->connection('pgsql')->table('core.orgs')->where('id', $org->id)->value('portal_ref') === null) {
+            return;
+        }
+
+        $table = $this->db->connection('pgsql')->table('core.org_users as m')->where('m.org_id', $org->id);
+        $already = (clone $table)->join('core.users as u', 'u.id', '=', 'm.user_id')->where('u.email', $email)->exists();
+        if (! $already && $table->count() >= $this->entitlements->for($org->id)->operators) {
+            throw new OperatorLimitReached('Hai raggiunto il numero di operatori del tuo abbonamento: aggiungine uno dal portale.');
+        }
     }
 
     private function authorize(Org $org, OrgRole $role, ?Operator $by): void

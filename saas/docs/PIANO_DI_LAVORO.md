@@ -45,7 +45,8 @@ Ordine consigliato. Ogni passo si chiude con i suoi test.
 | 4. Accesso | **fatto** (2026-11-04): Fortify, verifica in due passaggi obbligatoria, ruoli e permessi, scelta dell'associazione, inviti. Passkey e ruoli configurabili più avanti |
 | 5. Cifratura | **fatto** (2026-11-04): chiavi per associazione, campi cifrati con indice di ricerca, file cifrati, servizio chiavi separato, distruzione delle chiavi |
 | 6. Registro delle azioni | **fatto** (2026-11-04): catena sigillata per associazione, partizioni mensili, letture dei dati sanitari, eventi di sicurezza, verifica notturna |
-| 7–8 | da fare |
+| 7. Contratto con il portale | **definito e fatto lato SaaS** (2026-11-04): [CONTRATTO_PORTALE.md](CONTRATTO_PORTALE.md). Lato portale: da passare alla sessione Portale e pagamenti |
+| 8. Rilascio | da fare |
 
 1. **Scheletro**: Laravel 13 in `saas/`, moduli in `app/Modules/`, Pest, PHPStan al massimo, Pint, test di architettura,
    `.github/workflows/saas.yml`.
