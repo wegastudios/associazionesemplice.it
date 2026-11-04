@@ -104,6 +104,16 @@ final class Site {
 		return $flip[ $slug ] ?? $slug;
 	}
 
+	/** Elenco pubblico dei piani per altri siti (supporto): slug fisso e nome commerciale del pannello (Prezzi → «Nome sul sito»). Nessun prezzo né dato riservato. */
+	public static function publicPlans(): array {
+		$out = array();
+		foreach ( array( 'free' => 'Free', 'lite' => 'Pro Contabile', 'full' => 'Pro Fiscale' ) as $code => $fallback ) {
+			$name  = trim( (string) Config::get( 'plans.' . $code . '.label', '' ) );
+			$out[] = array( 'slug' => self::slug( $code ), 'nome' => '' !== $name ? $name : $fallback );
+		}
+		return array( 'piani' => $out );
+	}
+
 	/** Frase breve per ogni piano nei riepiloghi. */
 	public static function blurb( string $code ): string {
 		$b = array(

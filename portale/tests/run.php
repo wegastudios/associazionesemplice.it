@@ -1259,5 +1259,11 @@ check( 'prova del portale: nella risposta del rimbalzo accanto all\'attestazione
 Http::$transport = $transportBefore;
 Config::set( 'portal_sign_key', '' );
 
+$pp = Portale\Site::publicPlans()['piani'];
+check( 'elenco pubblico dei piani: slug fissi nell\'ordine free, procontabile, profiscale', array( 'free', 'procontabile', 'profiscale' ) === array_column( $pp, 'slug' ) );
+Config::set( 'plans.lite.label', 'Nome nuovo' );
+check( 'elenco pubblico dei piani: il nome segue il pannello e gli slug restano', 'Nome nuovo' === Portale\Site::publicPlans()['piani'][1]['nome'] && 'procontabile' === Portale\Site::publicPlans()['piani'][1]['slug'] );
+check( 'elenco pubblico dei piani: nessun prezzo né altri dati', array( 'slug', 'nome' ) === array_keys( $pp[0] ) );
+
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );
