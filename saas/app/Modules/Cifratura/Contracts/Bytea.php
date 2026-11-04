@@ -20,7 +20,8 @@ final class Bytea
     public static function decode(mixed $value): string
     {
         if (is_resource($value)) {
-            $value = stream_get_contents($value);
+            // Lo stesso stream si rilegge ogni volta che si accede al campo: si riparte dall'inizio.
+            $value = stream_get_contents($value, -1, 0);
         }
         if (! is_string($value)) {
             throw new UnexpectedValueException('Valore binario non valido.');

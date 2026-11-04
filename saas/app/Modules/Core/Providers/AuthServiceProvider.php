@@ -14,8 +14,10 @@ use App\Modules\Core\Auth\SamePasswordResetLinkResponse;
 use App\Modules\Core\Contracts\Ability;
 use App\Modules\Core\Contracts\CurrentOperator;
 use App\Modules\Core\Models\User;
+use Illuminate\Auth\Events\Lockout;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -62,14 +64,14 @@ final class AuthServiceProvider extends ServiceProvider
             $email = Str::lower($request->string(Fortify::username())->toString());
 
             return [
-                Limit::perMinute(5)->by($email.'|'.$request->ip()),
-                Limit::perMinute(20)->by('ip|'.$request->ip()),
+                Limit::perMinute(5)->by($email.'|'.$request->ip())->response(self::lockout(...)),
+                Limit::perMinute(20)->by('ip|'.$request->ip())->response(self::lockout(...)),
             ];
         });
         RateLimiter::for('two-factor', static function (Request $request): Limit {
             $id = $request->session()->get('login.id');
 
-            return Limit::perMinute(5)->by('2fa|'.(is_string($id) ? $id : $request->ip()));
+            return Limit::perMinute(5)->by('2fa|'.(is_string($id) ? $id : $request->ip()))->response(self::lockout(...));
         });
 
         // Permessi degli operatori nell'associazione corrente: Gate::allows('people.edit').
@@ -82,5 +84,17 @@ final class AuthServiceProvider extends ServiceProvider
         }
 
         $this->loadRoutesFrom(dirname(__DIR__).'/Http/routes.php');
+    }
+
+    /**
+     * Troppi tentativi: 429 e un evento Lockout, che finisce negli eventi di sicurezza.
+     *
+     * @param  array<string, string>  $headers
+     */
+    private static function lockout(Request $request, array $headers): Response
+    {
+        event(new Lockout($request));
+
+        return response('Troppi tentativi. Riprova tra un minuto.', 429, $headers);
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Http\Middleware;
 
+use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Core\Access\Memberships;
 use App\Modules\Core\Contracts\CurrentOperator;
 use App\Modules\Core\Contracts\OrgContext;
@@ -25,6 +26,7 @@ final readonly class IdentifyOperatorOrg
         private Memberships $memberships,
         private OrgContext $context,
         private CurrentOperator $operator,
+        private AuditLog $audit,
     ) {}
 
     /** @param  Closure(Request): Response  $next */
@@ -37,6 +39,7 @@ final readonly class IdentifyOperatorOrg
 
         $chosen = $request->session()->get(self::SESSION_KEY);
         $operator = is_string($chosen) ? $this->memberships->find($user->id, $chosen) : null;
+        $opened = false;
 
         if ($operator === null) {
             $request->session()->forget(self::SESSION_KEY);
@@ -50,10 +53,16 @@ final readonly class IdentifyOperatorOrg
 
             $operator = $all[0];
             $request->session()->put(self::SESSION_KEY, $operator->orgId);
+            $opened = true;
         }
 
         $this->context->enter($operator->orgId);
         $this->operator->set($operator);
+
+        // Si annota quando un operatore apre l'associazione, non ogni pagina.
+        if ($opened || $request->session()->pull('operator_org_opened') === true) {
+            $this->audit->record('org.opened', null, null, ['role' => $operator->role->value]);
+        }
 
         try {
             return $next($request);

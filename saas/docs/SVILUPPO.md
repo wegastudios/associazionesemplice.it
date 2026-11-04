@@ -110,7 +110,25 @@ return app(EncryptedFiles::class)->download($orgId, $stored);  // dopo il contro
 - Il servizio chiavi ha la sua cartella, `keyservice/`, senza dipendenze: si copia sull'altro account con
   `config.ini` fuori dalla cartella pubblica ([keyservice/README.md](../keyservice/README.md)).
 
-## 7. Nuova tabella di un'associazione
+## 7. Registro delle azioni
+
+Modulo `Audit`; regole in [DATABASE.md](DATABASE.md) §7.
+
+```php
+final class Person extends OrgModel
+{
+    use Audited;   // creazione, modifica, cancellazione e ripristino, con i nomi dei campi
+}
+
+app(AuditLog::class)->record('export.done', 'app.people', null, ['rows' => 120, 'format' => 'csv']);
+```
+
+- Si scrive solo dentro un'associazione (OrgContext), nella stessa transazione della modifica.
+- Azioni nel formato `oggetto.azione` (`person.updated`, `operator.invited`, `health.read`).
+- I campi sanitari si marcano `Encrypted::class.':health'`: le letture finiscono nel registro da sole.
+- Cron: `saas:audit:partitions` il primo del mese, `saas:audit:verify` ogni notte (già nello scheduler).
+
+## 8. Nuova tabella di un'associazione
 
 Ogni tabella di `app`, `audit` e `sites`:
 
@@ -122,13 +140,13 @@ Ogni tabella di `app`, `audit` e `sites`:
 I test in `tests/Feature/Core/SchemaRulesTest.php` controllano queste regole su tutte le tabelle presenti nel database:
 una tabella nuova che non le rispetta li fa fallire. Ogni tabella aggiunge comunque il suo test di separazione.
 
-## 8. Database dedicati
+## 9. Database dedicati
 
 L'elenco è un file JSON fuori dal repository e fuori dalla cartella pubblica (`SAAS_DEDICATED_DB_FILE`), con il nome del
 database e, se si usano ruoli separati, le loro credenziali (formato in `Core\Database\DatabaseRegistry`). In
 `core.orgs.database` si scrive il nome del dedicato; `null` vuol dire database condiviso. `saas:migrate` li migra tutti.
 
-## 9. Composer dal cloud di Claude
+## 10. Composer dal cloud di Claude
 
 Nelle sessioni cloud il proxy blocca gli zip di GitHub: Composer ripiega sui sorgenti git, più lento. `phpstan/phpstan`
 esiste solo come zip; si scarica il suo repository con git e si mette l'archivio nella cache di Composer

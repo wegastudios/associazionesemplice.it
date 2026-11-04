@@ -7,6 +7,7 @@ namespace App\Modules\Core\Providers;
 use App\Modules\Core\Console\CreateOrgCommand;
 use App\Modules\Core\Console\InviteOperatorCommand;
 use App\Modules\Core\Console\MigrateAllCommand;
+use App\Modules\Core\Contracts\DatabaseNames;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Database\DatabaseRegistry;
 use App\Modules\Core\Org\DatabaseOrgContext;
@@ -22,6 +23,7 @@ final class CoreServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(DatabaseRegistry::class);
+        $this->app->singleton(DatabaseNames::class, DatabaseRegistry::class);
         $this->app->singleton(OrgContext::class, DatabaseOrgContext::class);
     }
 

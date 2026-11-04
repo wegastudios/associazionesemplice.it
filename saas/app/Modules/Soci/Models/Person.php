@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Soci\Models;
 
+use App\Modules\Audit\Contracts\Audited;
 use App\Modules\Cifratura\Contracts\Encrypted;
 use App\Modules\Cifratura\Contracts\HasEncryptedFields;
 use App\Modules\Core\Contracts\OrgModel;
@@ -35,6 +36,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 final class Person extends OrgModel
 {
+    use Audited;
     use HasEncryptedFields;
     use SoftDeletes;
 

@@ -10,6 +10,8 @@ use App\Modules\Cifratura\Contracts\EncryptedFiles;
 use App\Modules\Cifratura\Contracts\FieldCipher;
 use App\Modules\Cifratura\Contracts\KeyVault;
 use App\Modules\Cifratura\Contracts\OrgKeys;
+use App\Modules\Cifratura\Contracts\Sealer;
+use App\Modules\Cifratura\Crypto\HmacSealer;
 use App\Modules\Cifratura\Crypto\SodiumFieldCipher;
 use App\Modules\Cifratura\Files\SecretStreamFiles;
 use App\Modules\Cifratura\Keys\KeyCache;
@@ -47,6 +49,7 @@ final class CifraturaServiceProvider extends ServiceProvider
         $this->app->singleton(KeyRing::class);
         $this->app->singleton(OrgKeys::class, KeyRing::class);
         $this->app->singleton(FieldCipher::class, SodiumFieldCipher::class);
+        $this->app->singleton(Sealer::class, HmacSealer::class);
         $this->app->singleton(EncryptedFiles::class, static fn (Application $app): EncryptedFiles => new SecretStreamFiles(
             Storage::disk('org_files'),
             $app->make(KeyRing::class),

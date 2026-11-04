@@ -19,6 +19,7 @@ use LogicException;
  *   'tax_code'   => Encrypted::class.':index=taxcode',
  *   'birth_date' => Encrypted::class.':date',
  *   'address'    => Encrypted::class.':json',
+ *   'diagnosis'  => Encrypted::class.':health',          // dato sanitario: anche le letture vanno nel registro
  *
  * Il testo in chiaro non tocca mai il database. Si cerca con HasEncryptedFields::scopeWhereEncrypted().
  *
@@ -30,11 +31,15 @@ final class Encrypted implements CastsAttributes
 
     private string $type = 'string';
 
+    private bool $health = false;
+
     public function __construct(string ...$options)
     {
         foreach ($options as $option) {
             if (str_starts_with($option, 'index=')) {
                 $this->index = Normalizer::from(substr($option, 6));
+            } elseif ($option === 'health') {
+                $this->health = true;
             } elseif (in_array($option, ['string', 'date', 'json'], true)) {
                 $this->type = $option;
             } else {
@@ -56,7 +61,13 @@ final class Encrypted implements CastsAttributes
             return null;
         }
 
-        $plain = self::cipher()->decrypt(self::orgId($attributes), self::field($model, $key), Bytea::decode($stored));
+        $orgId = self::orgId($attributes);
+        $plain = self::cipher()->decrypt($orgId, self::field($model, $key), Bytea::decode($stored));
+
+        if ($this->health) {
+            $id = $attributes['id'] ?? null;
+            event(new SensitiveFieldRead($orgId, $model->getTable(), $key, is_string($id) ? $id : null));
+        }
 
         return match ($this->type) {
             'date' => CarbonImmutable::createFromFormat('!Y-m-d', $plain) ?: throw new DecryptionFailed('Data non valida.'),

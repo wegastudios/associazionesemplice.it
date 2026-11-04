@@ -41,6 +41,7 @@ final readonly class OrgSwitchController
         $operator = $this->memberships->find($user->id, $org) ?? abort(404);
 
         $request->session()->put(IdentifyOperatorOrg::SESSION_KEY, $operator->orgId);
+        $request->session()->put('operator_org_opened', true);
         // Nuovo identificativo di sessione a ogni cambio di associazione.
         $request->session()->regenerate();
 

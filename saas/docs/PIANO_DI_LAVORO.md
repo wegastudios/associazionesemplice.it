@@ -44,7 +44,8 @@ Ordine consigliato. Ogni passo si chiude con i suoi test.
 | 3. Separazione tra associazioni | **fatto** il motore (contesto, connessioni, RLS, richieste, code, database dedicati); dall'utente con il passo 4; dal dominio (area soci e sito) con quei pacchetti |
 | 4. Accesso | **fatto** (2026-11-04): Fortify, verifica in due passaggi obbligatoria, ruoli e permessi, scelta dell'associazione, inviti. Passkey e ruoli configurabili più avanti |
 | 5. Cifratura | **fatto** (2026-11-04): chiavi per associazione, campi cifrati con indice di ricerca, file cifrati, servizio chiavi separato, distruzione delle chiavi |
-| 6–8 | da fare |
+| 6. Registro delle azioni | **fatto** (2026-11-04): catena sigillata per associazione, partizioni mensili, letture dei dati sanitari, eventi di sicurezza, verifica notturna |
+| 7–8 | da fare |
 
 1. **Scheletro**: Laravel 13 in `saas/`, moduli in `app/Modules/`, Pest, PHPStan al massimo, Pint, test di architettura,
    `.github/workflows/saas.yml`.

@@ -157,9 +157,24 @@ Si cifra nell'applicazione con `sodium`: la chiave non entra mai nel database.
 
 ## 7. Registro delle azioni e GDPR
 
-- `audit.log` **solo in aggiunta** (l'applicazione ha solo `INSERT` e `SELECT`), partizionato per mese.
-- Ogni riga contiene l'hash della precedente della stessa associazione: un'alterazione rompe la catena.
-- Registra anche **le letture** dei dati sanitari, non solo le modifiche.
+- `audit.log` **solo in aggiunta**: l'applicazione ha solo `INSERT` e `SELECT`; un trigger rifiuta modifiche e
+  cancellazioni anche al proprietario. Partizionato per mese (`audit.log_AAAA_MM`, più una partizione predefinita);
+  le partizioni si preparano in anticipo con `saas:audit:partitions`, ogni mese da cron. Ogni partizione ha la sua RLS.
+- **Catena sigillata**: ogni riga ha un numero progressivo per associazione e il sigillo
+  `HMAC(chiave del registro, sigillo precedente · forma canonica della riga)`. La chiave del registro è derivata da quella
+  dell'associazione, quindi sta dietro il servizio chiavi: chi altera il database senza la chiave non riesce a
+  ricostruire una catena valida. `audit.heads` tiene la testa e, bloccata con `FOR UPDATE`, serializza le scritture
+  della stessa associazione.
+- **Verifica**: `saas:audit:verify` (ogni notte da cron) ricalcola la catena e indica il primo punto rotto: riga
+  modificata, tolta, aggiunta o testa non corrispondente.
+- **Cosa si registra**: creazione, modifica, cancellazione e ripristino delle schede (`Audit\Contracts\Audited`, con
+  i nomi dei campi), inviti e ruoli degli operatori, apertura dell'associazione da parte di un operatore, e **le
+  letture** dei dati sanitari (campi `Encrypted::class.':health'`, una riga per scheda e campo in ogni richiesta).
+- **Mai valori personali nel registro**: chi (utente o sistema), cosa, su quale scheda, quali campi, da quale indirizzo.
+  I dettagli ammettono solo testi brevi, interi, booleani e liste.
+- **Eventi di sicurezza** degli utenti (accessi riusciti e falliti, blocchi, uscite, password, verifica in due
+  passaggi): `core.security_events` nel database centrale, solo in aggiunta, senza catena. Per gli accessi falliti
+  con un'email sconosciuta non si salva l'email.
 - **Cancellazione su richiesta**: i dati anagrafici vengono resi anonimi (`anonymized_at`), i movimenti restano per
   l'obbligo di conservazione decennale (art. 2220 c.c.).
 

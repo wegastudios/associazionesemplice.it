@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Access;
 
+use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Core\Auth\InvitationNotification;
 use App\Modules\Core\Contracts\Operator;
+use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Models\Org;
 use App\Modules\Core\Models\User;
@@ -29,6 +31,8 @@ final readonly class OrgMembers
         private DatabaseManager $db,
         private PasswordBroker $passwords,
         private Memberships $memberships,
+        private OrgContext $context,
+        private AuditLog $audit,
     ) {}
 
     public function invite(Org $org, string $email, string $name, OrgRole $role, ?Operator $by): User
@@ -60,6 +64,7 @@ final readonly class OrgMembers
                 ['role', 'updated_at'],
             );
 
+            $this->audit($org, 'operator.invited', $user->id, ['role' => $role->value, 'new_user' => $isNew]);
             $user->notify(new InvitationNotification($org->name, $isNew ? $this->passwords->createToken($user) : null));
 
             return $user;
@@ -76,6 +81,7 @@ final readonly class OrgMembers
         $this->db->connection('pgsql')->table('core.org_users')
             ->where('org_id', $org->id)->where('user_id', $userId)
             ->update(['role' => $role->value, 'updated_at' => now()]);
+        $this->audit($org, 'operator.role_changed', $userId, ['from' => $current->role->value, 'to' => $role->value]);
     }
 
     public function remove(Org $org, string $userId, Operator $by): void
@@ -87,6 +93,13 @@ final readonly class OrgMembers
         $this->db->connection('pgsql')->table('core.org_users')
             ->where('org_id', $org->id)->where('user_id', $userId)
             ->delete();
+        $this->audit($org, 'operator.removed', $userId, ['role' => $current->role->value]);
+    }
+
+    /** @param  array<string, scalar|null>  $details */
+    private function audit(Org $org, string $action, string $userId, array $details): void
+    {
+        $this->context->run($org->id, fn () => $this->audit->record($action, 'core.users', $userId, $details));
     }
 
     private function authorize(Org $org, OrgRole $role, ?Operator $by): void

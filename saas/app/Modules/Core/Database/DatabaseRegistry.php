@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Database;
 
+use App\Modules\Core\Contracts\DatabaseNames;
 use Illuminate\Contracts\Config\Repository as Config;
 use InvalidArgumentException;
 use RuntimeException;
@@ -21,7 +22,7 @@ use RuntimeException;
  * Le chiavi mancanti si prendono dal database condiviso: sullo stesso server bastano il nome del
  * database e, se si vogliono ruoli separati, le loro credenziali.
  */
-final class DatabaseRegistry
+final class DatabaseRegistry implements DatabaseNames
 {
     public const SHARED = 'shared';
 

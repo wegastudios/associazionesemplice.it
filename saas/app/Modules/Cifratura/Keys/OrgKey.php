@@ -8,7 +8,7 @@ use SensitiveParameter;
 
 /**
  * Chiave dati di un'associazione, in chiaro solo in memoria. Da lei si derivano sottochiavi separate per i campi,
- * per le impronte di ricerca e per i file: una non serve a ricavare le altre.
+ * per le impronte di ricerca, per i file e per il sigillo del registro: una non serve a ricavare le altre.
  */
 final readonly class OrgKey
 {
@@ -32,6 +32,11 @@ final readonly class OrgKey
     public function fileKey(): string
     {
         return $this->derive(3);
+    }
+
+    public function sealKey(): string
+    {
+        return $this->derive(4);
     }
 
     private function derive(int $id): string
