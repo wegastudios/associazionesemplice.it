@@ -39,6 +39,8 @@ check( 'dominio: schema, www, percorso e porta', 'esempio.it' === Domain::normal
 check( 'dominio: sottodominio resta', 'staging.esempio.it' === Domain::normalize( 'staging.esempio.it' ) );
 check( 'dominio: IP rifiutato', '' === Domain::normalize( '192.168.1.5' ) );
 check( 'dominio: wildcard rifiutato', '' === Domain::normalize( '*.esempio.it' ) );
+check( 'dominio: numeri tipo 0x7f.1 rifiutati', '' === Domain::forLicense( '0x7f.1' ) && '' === Domain::forLicense( '10.1' ) && 'esempio.it' === Domain::forLicense( 'esempio.it' ) );
+check( 'versione: a capo finale rifiutato', ! Portale\Releases::validVersion( "1.3.8\n" ) && Portale\Releases::validVersion( '1.3.8' ) );
 check( 'dominio: senza punto rifiutato', '' === Domain::normalize( 'localhost' ) );
 check( 'dominio: spazi e punti finali', 'esempio.it' === Domain::normalize( '  esempio.it. ' ) );
 
@@ -278,6 +280,7 @@ foreach ( array_slice( $calls, $n ) as $c ) {
 	$created += false !== strpos( $c[1], '/licenses' ) ? 1 : 0;
 }
 check( 'primo pagamento: emissione già in corso, nessuna seconda licenza', 0 === $created && Portale\Billing::CLAIM === $billing->subscription( $cl['id'] )['license_id'] );
+check( 'primo pagamento: dal webhook l\'emissione in corso dà errore da riprovare', null !== ( function () use ( $billing, $cl ) { try { $billing->completePayment( $cl['id'], 'pi_claim', null, true ); } catch ( \RuntimeException $e ) { return $e; } return null; } )() );
 $db->run( 'UPDATE subscriptions SET updated_at = ? WHERE id = ?', array( gmdate( 'Y-m-d H:i:s', time() - 3600 ), $cl['id'] ) );
 $billing->completePayment( $cl['id'], 'pi_claim' );
 $cl2 = $billing->subscription( $cl['id'] );

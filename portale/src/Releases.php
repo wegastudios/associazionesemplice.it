@@ -125,7 +125,7 @@ final class Releases {
 
 	/** Numero di versione ammesso: x.y.z oppure x.y (es. 1.1.14, 1.2). */
 	public static function validVersion( string $v ): bool {
-		return (bool) preg_match( '/^\d+\.\d+(\.\d+)?$/', $v );
+		return (bool) preg_match( '/^\d+\.\d+(\.\d+)?$/D', $v );
 	}
 
 	/** Numero di versione dall'intestazione del file principale del plugin («Version: 1.2.3»). */

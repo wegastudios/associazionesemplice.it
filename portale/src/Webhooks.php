@@ -34,9 +34,9 @@ final class Webhooks {
 					// Con i pagamenti non immediati (addebito SEPA e simili) la sessione si completa prima dell'incasso: la licenza si emette
 					// solo a pagamento ricevuto («paid») o senza importo da pagare («no_payment_required»); altrimenti si aspetta l'esito asincrono.
 					if ( 'subscription' === ( $o['mode'] ?? '' ) && in_array( $o['payment_status'] ?? '', array( 'paid', 'no_payment_required' ), true ) ) {
-						$this->billing->completePayment( (string) $o['client_reference_id'], (string) ( $o['subscription'] ?? '' ), (string) ( $o['customer'] ?? '' ) ?: null );
+						$this->billing->completePayment( (string) $o['client_reference_id'], (string) ( $o['subscription'] ?? '' ), (string) ( $o['customer'] ?? '' ) ?: null, true );
 					} elseif ( 'payment' === ( $o['mode'] ?? '' ) && 'paid' === ( $o['payment_status'] ?? '' ) ) {
-						$this->billing->completePayment( (string) $o['client_reference_id'], (string) ( $o['payment_intent'] ?? '' ) ?: null );
+						$this->billing->completePayment( (string) $o['client_reference_id'], (string) ( $o['payment_intent'] ?? '' ) ?: null, null, true );
 					}
 					break;
 				case 'invoice.paid':
@@ -89,13 +89,13 @@ final class Webhooks {
 			switch ( $ev['event_type'] ) {
 				case 'BILLING.SUBSCRIPTION.ACTIVATED':
 					if ( ! empty( $r['custom_id'] ) ) {
-						$this->billing->completePayment( (string) $r['custom_id'], (string) ( $r['id'] ?? '' ) );
+						$this->billing->completePayment( (string) $r['custom_id'], (string) ( $r['id'] ?? '' ), null, true );
 					}
 					break;
 				case 'PAYMENT.CAPTURE.COMPLETED':
 					// Pagamento singolo: normalmente già registrato al ritorno del cliente; qui è la rete di sicurezza.
 					if ( ! empty( $r['custom_id'] ) ) {
-						$this->billing->completePayment( (string) $r['custom_id'] );
+						$this->billing->completePayment( (string) $r['custom_id'], null, null, true );
 					}
 					break;
 				case 'PAYMENT.SALE.COMPLETED':
@@ -105,7 +105,7 @@ final class Webhooks {
 					}
 					break;
 				case 'BILLING.SUBSCRIPTION.PAYMENT.FAILED':
-					$sub = $this->billing->byProviderRef( 'paypal', (string) ( $r['id'] ?? '' ) );
+					$sub = $this->billing->byProviderRef( 'paypal', (string) ( $r['id'] ?? '' ), null, true );
 					if ( $sub && 'canceled' !== $sub['status'] ) {
 						$this->billing->setStatus( $sub['id'], 'past_due' );
 						$this->billing->notify( 'payment_failed', $sub );
@@ -114,7 +114,7 @@ final class Webhooks {
 				case 'BILLING.SUBSCRIPTION.CANCELLED':
 				case 'BILLING.SUBSCRIPTION.EXPIRED':
 				case 'BILLING.SUBSCRIPTION.SUSPENDED':
-					$sub = $this->billing->byProviderRef( 'paypal', (string) ( $r['id'] ?? '' ) );
+					$sub = $this->billing->byProviderRef( 'paypal', (string) ( $r['id'] ?? '' ), null, true );
 					if ( $sub ) {
 						$this->billing->setStatus( $sub['id'], 'canceled' );
 						if ( ! $sub['cancel_at_period_end'] ) {

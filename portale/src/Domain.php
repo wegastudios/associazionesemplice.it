@@ -79,6 +79,7 @@ final class Domain {
 
 	/** Almeno due etichette alfanumeriche (con trattino interno); i suffissi pubblici li rifiuta il server. */
 	private static function ascii_ok( string $d ): bool {
-		return strlen( $d ) <= 253 && (bool) preg_match( '/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/', $d );
+		// L'ultima etichetta (suffisso) contiene sempre una lettera: così «0x7f.1» o «10.1» non passano per domini.
+		return strlen( $d ) <= 253 && (bool) preg_match( '/\.[a-z0-9-]*[a-z][a-z0-9-]*$/', $d ) && (bool) preg_match( '/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/', $d );
 	}
 }
