@@ -58,17 +58,17 @@ demo_step( 'pagine', function () {
 				. '<!-- wp:paragraph --><p>' . esc_html( $text ) . '</p><!-- /wp:paragraph -->' . $extra
 				. '<!-- wp:buttons --><div class="wp-block-buttons">' . $buttons . '</div><!-- /wp:buttons --></div><!-- /wp:group --></div><!-- /wp:column -->';
 		};
-		$cred = function ( string $user, string $pass ): string {
-			return '<!-- wp:html --><p class="asem-cred">Utente <code>' . esc_html( $user ) . '</code><br>Password <code>' . esc_html( $pass ) . '</code></p><!-- /wp:html -->';
+		$cred = function ( string $user, string $pass, string $label = 'Utente' ): string {
+			return '<!-- wp:html --><p class="asem-cred">' . esc_html( $label ) . ' <code>' . esc_html( $user ) . '</code><br>Password <code>' . esc_html( $pass ) . '</code></p><!-- /wp:html -->';
 		};
 		$content = '<!-- wp:group {"className":"asem-hero","align":"wide","layout":{"type":"constrained"}} --><div class="wp-block-group alignwide asem-hero">'
 			. '<!-- wp:heading {"level":1} --><h1 class="wp-block-heading">Prova Associazione Semplice</h1><!-- /wp:heading -->'
 			. '<!-- wp:paragraph --><p>Una demo per provare le funzioni del Pro: un sito WordPress vero con il plugin gratuito e il Pro già installati, pieno di dati inventati. Clicca, inserisci, cancella: non rompi niente. Tutto si azzera ogni notte alle 4 e non parte nessuna email.</p><!-- /wp:paragraph -->'
-			. '<!-- wp:buttons --><div class="wp-block-buttons">' . $btn( 'Entra come segreteria', wp_login_url( admin_url( 'admin.php?page=asem' ) ) ) . $btn( 'Entra come socio', wp_login_url( $url( 'area' ) ), true ) . '</div><!-- /wp:buttons --></div><!-- /wp:group -->'
+			. '<!-- wp:buttons --><div class="wp-block-buttons">' . $btn( 'Entra come segreteria', wp_login_url( admin_url( 'admin.php?page=asem' ) ) ) . $btn( 'Entra come socio', \AssociazioneSemplice\Frontend\MemberLoginPage::url(), true ) . '</div><!-- /wp:buttons --></div><!-- /wp:group -->'
 			. '<!-- wp:spacer {"height":"36px"} --><div style="height:36px" aria-hidden="true" class="wp-block-spacer"></div><!-- /wp:spacer -->'
 			. '<!-- wp:columns {"align":"wide"} --><div class="wp-block-columns alignwide">'
 			. $card( 'Senza entrare', 'Guarda cosa vede chi visita il sito dell\'associazione: l\'elenco di corsi ed eventi e la domanda di adesione online.', '', $btn( 'Attività ed eventi', $url( 'attivita' ) ) . $btn( 'Diventa socio', $url( 'adesione' ), true ) )
-			. $card( 'Come socio', 'La tessera con QR, le prenotazioni, i pagamenti e i propri dati: l\'area riservata che ogni socio ha sul sito.', $cred( 'socio', 'Socio-Demo-2026' ), $btn( 'Area soci', $url( 'area' ) ) )
+			. $card( 'Come socio', 'La tessera con QR, le prenotazioni, i pagamenti e i propri dati: l\'area riservata che ogni socio ha sul sito.', $cred( 'socio@demo.invalid', 'Socio-Demo-2026', 'Email' ), $btn( 'Area soci', $url( 'area' ) ) )
 			. $card( 'Come segreteria', 'Soci, incassi, spese, attività e registri: il lavoro di ogni giorno, dal pannello o dal sito.', $cred( 'segreteria', 'Segreteria-Demo-2026' ), $btn( 'Bacheca', admin_url( 'admin.php?page=asem' ) ) . $btn( 'Area segreteria', $url( 'segreteria' ), true ) )
 			. $card( 'Come amministratore del plugin', 'Tutte le impostazioni di Associazione Semplice. Qui puoi scaricare una copia dei tuoi dati e ricaricarla il giorno dopo, per provare a lungo.', $cred( 'amministratore', 'Amministratore-Demo-2026' ), $btn( 'Copia di sicurezza', admin_url( 'admin.php?page=asem-backup' ) ) . $btn( 'Impostazioni', admin_url( 'admin.php?page=asem-settings' ), true ) )
 			. '</div><!-- /wp:columns -->'
@@ -147,7 +147,9 @@ $add    = function ( string $first, string $last, string $type, ?string $email, 
 $y = (int) gmdate( 'Y' );
 demo_step( 'soci', function () use ( $add, $y ) {
 	$add( 'Laura', 'Demo', 'ordinary', 'segreteria@demo.invalid', 'Roma', ( $y - 3 ) . '-09-10' );
-	$add( 'Mario', 'Demo', 'ordinary', 'socio@demo.invalid', 'Roma', ( $y - 1 ) . '-10-02' );
+	$mario = $add( 'Mario', 'Demo', 'ordinary', 'socio@demo.invalid', 'Roma', ( $y - 1 ) . '-10-02' );
+	// Dal plugin 1.3 il socio entra con email e password della sua scheda (non è più un utente WordPress): senza questa riga l'accesso si perde a ogni azzeramento.
+	\AssociazioneSemplice\MemberLogin::set_password( (int) $mario, DEMO_PASS_SOCIO );
 	$list = array(
 		array( 'Anna', 'Verdi', 'founder', 'Roma', ( $y - 5 ) . '-09-01' ), array( 'Marco', 'Bianchi', 'founder', 'Roma', ( $y - 5 ) . '-09-01' ),
 		array( 'Luca', 'Neri', 'ordinary', 'Frascati', ( $y - 2 ) . '-10-15' ), array( 'Sara', 'Gallo', 'ordinary', 'Roma', ( $y - 2 ) . '-11-03' ),

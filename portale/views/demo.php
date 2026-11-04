@@ -17,10 +17,10 @@ $url = function ( string $path ) use ( $base ): string { return $base . $path; }
 		<div class="feature">
 			<h3>Come <?php echo e( strtolower( $a['role'] ) ); ?></h3>
 			<p style="margin-bottom:12px"><?php echo e( $a['note'] ); ?></p>
-			<div class="keybox" style="margin-bottom:8px"><span class="muted small">Utente</span> <code><?php echo e( $a['user'] ); ?></code><button class="btn alt small" type="button" data-copy="<?php echo e( $a['user'] ); ?>">Copia</button></div>
+			<div class="keybox" style="margin-bottom:8px"><span class="muted small"><?php echo e( $a['label'] ?? 'Utente' ); ?></span> <code><?php echo e( $a['user'] ); ?></code><button class="btn alt small" type="button" data-copy="<?php echo e( $a['user'] ); ?>">Copia</button></div>
 			<div class="keybox" style="margin-bottom:14px"><span class="muted small">Password</span> <code><?php echo e( $a['password'] ); ?></code><button class="btn alt small" type="button" data-copy="<?php echo e( $a['password'] ); ?>">Copia</button></div>
 			<ul class="small" style="margin:0 0 16px;padding-left:18px"><?php foreach ( $a['what'] as $w ) : ?><li><?php echo e( $w ); ?></li><?php endforeach; ?></ul>
-			<a class="btn block" href="<?php echo e( $url( '/wp-login.php?redirect_to=' . rawurlencode( $base . $a['start'] ) ) ); ?>">Entra come <?php echo e( strtolower( $a['role'] ) ); ?></a>
+			<a class="btn block" href="<?php echo e( $url( $a['login'] ?? '/wp-login.php?redirect_to=' . rawurlencode( $base . $a['start'] ) ) ); ?>">Entra come <?php echo e( strtolower( $a['role'] ) ); ?></a>
 		</div>
 	<?php endforeach; ?>
 	</div>
