@@ -18,10 +18,9 @@ final class MoneyPage {
 
 	public static function render(): void {
 		Ui::header( 'Cassa' );
-		do_action( 'asem_yearend_alert' ); // un'estensione mostra qui le verifiche di fine anno fiscale
 		$year = Settings::social_year();
 		$r    = Plugin::reports()->social_year( $year );
-		echo '<p><a class="button button-primary" href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Nuovo incasso</a> <a class="button" href="' . esc_url( Ui::url( 'asem-bookdesk' ) ) . '">Prenota</a> '
+		echo '<p class="asem-quick"><a class="button button-primary" href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Nuovo incasso</a> <a class="button" href="' . esc_url( Ui::url( 'asem-bookdesk' ) ) . '">Prenota</a> '
 			. ( \AssociazioneSemplice\Edition::has( 'funds' ) ? '<a class="button" href="' . esc_url( Ui::url( 'asem-group' ) ) . '">Cassa per più persone</a> ' : '' )
 			. '<a class="button" href="' . esc_url( Ui::url( 'asem-expense' ) ) . '">Nuova spesa</a>'
 			. ( Modules::on( 'accounts' ) ? ' <a class="button" href="' . esc_url( Ui::url( 'asem-transfer' ) ) . '">Giroconto</a>' : '' ) . '</p>';
@@ -43,6 +42,7 @@ final class MoneyPage {
 			. '<tr><td>Entrate</td><td>' . Ui::money( $r['total_income'] ) . '</td></tr><tr><td>Uscite</td><td>' . Ui::money( $r['total_expense'] ) . '</td></tr>'
 			. '<tr><td><strong>Resta all\'ente</strong></td><td><strong>' . Ui::money( $r['result'] ) . '</strong></td></tr></table>', Html::allowed() );
 		echo '<p class="description">Per cassa: conta quando i soldi entrano ed escono, nell\'anno sociale. La contabilità per anno solare è in Contabilità.</p></div></div>';
+		do_action( 'asem_yearend_alert' ); // un'estensione mostra qui le verifiche di fine anno fiscale: dopo le cifre, che sono ciò che si cerca per primo
 
 		// Ultimi movimenti
 		$to   = current_time( 'Y-m-d' );
