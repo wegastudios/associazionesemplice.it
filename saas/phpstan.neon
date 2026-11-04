@@ -5,6 +5,8 @@ parameters:
     level: max
     paths:
         - app
+        - keyservice/src
+        - keyservice/public
         - bootstrap/app.php
         - config
         - routes

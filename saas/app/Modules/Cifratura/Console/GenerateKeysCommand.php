@@ -1,0 +1,38 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Cifratura\Console;
+
+use Illuminate\Console\Command;
+use Symfony\Component\Console\Attribute\AsCommand;
+
+/**
+ * Genera le chiavi per una nuova installazione. Stampa a video e non salva nulla: le chiavi vanno copiate a mano
+ * nel posto giusto (mai nel repository, mai in chat).
+ */
+#[AsCommand(name: 'saas:keys:generate')]
+final class GenerateKeysCommand extends Command
+{
+    protected $signature = 'saas:keys:generate';
+
+    protected $description = 'Genera chiave principale e coppia di chiavi per il servizio chiavi';
+
+    public function handle(): int
+    {
+        $pair = sodium_crypto_sign_keypair();
+
+        $this->line('Chiave principale (servizio chiavi: master_key; ripiego locale: SAAS_MASTER_KEY):');
+        $this->line('  '.base64_encode(random_bytes(32)));
+        $this->newLine();
+        $this->line('Chiave pubblica del SaaS (servizio chiavi: client_public_key):');
+        $this->line('  '.base64_encode(sodium_crypto_sign_publickey($pair)));
+        $this->newLine();
+        $this->line('Chiave privata del SaaS (ambiente del SaaS: SAAS_KEY_SERVICE_SIGNING_KEY):');
+        $this->line('  '.base64_encode(sodium_crypto_sign_secretkey($pair)));
+        $this->newLine();
+        $this->warn('Conserva una copia offline della chiave principale: senza, i dati cifrati non si aprono più.');
+
+        return self::SUCCESS;
+    }
+}

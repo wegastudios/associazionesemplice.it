@@ -15,7 +15,7 @@ it('dichiara i tipi stretti in ogni file PHP', function (): void {
     $base = dirname(__DIR__, 2);
     $missing = [];
 
-    foreach (['app', 'bootstrap', 'config', 'routes', 'tests'] as $dir) {
+    foreach (['app', 'bootstrap', 'config', 'keyservice', 'routes', 'tests'] as $dir) {
         $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator("{$base}/{$dir}", FilesystemIterator::SKIP_DOTS));
         foreach ($iterator as $file) {
             if (! $file instanceof SplFileInfo || $file->getExtension() !== 'php' || str_contains($file->getPathname(), '/bootstrap/cache/')) {

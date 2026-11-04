@@ -36,6 +36,10 @@
         <env name="DB_URL" value=""/>
         <env name="SAAS_DEDICATED_DB_FILE" value=""/>
         <env name="TEST_DEDICATED_DATABASE" value="as_test_dedicato"/>
+        <!-- Chiave principale finta, solo per i test. -->
+        <env name="SAAS_KEY_VAULT" value="local"/>
+        <env name="SAAS_MASTER_KEY" value="dGVzdC1zb2xvLXBlci1pLXRlc3QtMzItYnl0ZXMtISE="/>
+        <env name="SAAS_FILES_ROOT" value="storage/framework/testing/org-files"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

@@ -32,6 +32,21 @@ return [
 
     'disks' => [
 
+        // File delle associazioni, già cifrati (Cifratura\Files): fuori dalla cartella pubblica, mai serviti
+        // direttamente dal server web.
+        'org_files' => [
+            'driver' => 'local',
+            'root' => (static function (): string {
+                $root = env('SAAS_FILES_ROOT');
+
+                return is_string($root) && $root !== '' ? (str_starts_with($root, '/') ? $root : base_path($root)) : storage_path('app/org-files');
+            })(),
+            'visibility' => 'private',
+            'serve' => false,
+            'throw' => true,
+            'report' => false,
+        ],
+
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),

@@ -113,11 +113,16 @@ saas/app/Modules/
 
 ## 7. Chiavi di cifratura
 
-- La chiave principale sta su un **servizio chiavi** in un account cPanel separato. Il SaaS gli chiede di sbloccare la
-  chiave dati di un'associazione, autenticandosi con firma e lista di IP.
-- La chiave sbloccata resta **solo in memoria** (APCu) per pochi minuti: mai su disco, mai in Redis.
-- Ripiego se APCu non è disponibile: chiave principale nel file d'ambiente fuori dalla cartella pubblica. Da verificare
-  sul server.
+- La chiave principale sta sul **servizio chiavi** (`saas/keyservice/`), in un account cPanel separato, solo HTTPS. Il
+  SaaS gli chiede di cifrare o decifrare la chiave dati di un'associazione: richieste firmate con Ed25519 (il servizio
+  ha solo la chiave pubblica), con ora e nonce contro le ripetizioni, da indirizzi ammessi. Il servizio registra ogni
+  operazione (associazione, indirizzo), mai le chiavi.
+- La chiave sbloccata resta **solo in memoria**: nel processo e, se c'è APCu, per 5 minuti. Mai su disco, mai in Redis.
+  Senza APCu si fa una chiamata al servizio per richiesta che usa dati cifrati.
+- Se il servizio non risponde, i dati cifrati restano chiusi: l'errore non contiene dettagli.
+- Ripiego (`SAAS_KEY_VAULT=local`): chiave principale nel file d'ambiente fuori dalla cartella pubblica. Protegge i dump
+  del database, non chi entra nell'account del SaaS. Si usa in sviluppo e nei test.
+- Le chiavi si generano con `php artisan saas:keys:generate`; della chiave principale va tenuta una copia offline.
 
 ## 8. File
 

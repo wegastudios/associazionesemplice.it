@@ -120,16 +120,30 @@ Si cifra nell'applicazione con `sodium`: la chiave non entra mai nel database.
 |---|---|
 | codice fiscale, data e luogo di nascita, indirizzo, telefono, IBAN, documenti d'identità, certificati medici (tipo, medico, file), dati dei tutori dei minori | nome, cognome, email, numero tessera |
 
+- **Algoritmi** (libsodium): campi con XChaCha20-Poly1305; impronte di ricerca con BLAKE2b con chiave; file con
+  secretstream XChaCha20-Poly1305 a blocchi da 64 KiB; chiavi dati cifrate con XChaCha20-Poly1305.
+- **Ogni testo cifrato è legato** all'associazione, al campo (`app.people.tax_code`) e alla versione della chiave
+  (dato autenticato): copiato in un'altra associazione o in un altro campo non si apre. Formato: `0x01` · versione della
+  chiave · nonce · testo cifrato. Due cifrature dello stesso valore sono diverse.
 - **Ricerca esatta sui campi cifrati**: accanto al valore cifrato (`tax_code_enc bytea`) si salva un **blind index**
-  (`tax_code_bidx bytea`, HMAC del valore normalizzato con una chiave dell'associazione). Serve per cercare un codice
-  fiscale esatto e per `UNIQUE (org_id, tax_code_bidx)`.
+  (`tax_code_bidx bytea`, impronta del valore normalizzato con una chiave dell'associazione). Serve per cercare un codice
+  fiscale esatto e per `UNIQUE (org_id, tax_code_bidx)`. Lo stesso codice fiscale ha impronte diverse in associazioni
+  diverse. Le impronte usano sempre la prima versione della chiave: una rotazione non le cambia.
+- Le colonne binarie si scrivono nel formato esadecimale di PostgreSQL (`Cifratura\Contracts\Bytea`): PDO manderebbe
+  i byte come testo.
 - **Gerarchia delle chiavi**:
-  - chiave principale fuori dal database, su un account separato;
-  - una chiave dati per associazione (`core.org_keys`), salvata cifrata con la chiave principale;
-  - un database dedicato ha la sua chiave;
-  - cancellare un'associazione = distruggere la sua chiave.
-- **File allegati**: fuori dal database e fuori dalla cartella pubblica, cifrati con la chiave dell'associazione. Nel
-  database restano nome, dimensione, tipo e impronta SHA-256.
+  - chiave principale sul **servizio chiavi**, un account separato (`saas/keyservice/`); ripiego: nel file d'ambiente;
+  - una chiave dati per associazione (`core.org_keys`, con versione), salvata cifrata con la chiave principale e legata
+    all'associazione; da lei si derivano sottochiavi separate per campi, impronte e file;
+  - ogni associazione ha la sua chiave, anche con il database dedicato (la chiave resta nel database centrale);
+  - il ruolo dell'applicazione legge e aggiunge chiavi, non le modifica né le cancella;
+  - cancellare un'associazione = distruggere la sua chiave (`saas:keys:destroy`, solo per associazioni già
+    cancellate, con il ruolo proprietario): i dati cifrati, anche nei backup, non si aprono più.
+- **File allegati**: fuori dal database e fuori dalla cartella pubblica (disco `org_files`), cifrati con la chiave
+  dell'associazione e legati al loro percorso. Nel database restano nome, dimensione, tipo e impronta SHA-256, che si
+  ricontrolla alla lettura. Si scaricano solo come allegato, senza cache.
+- **Limite**: sui campi cifrati non si fanno ricerche parziali, ordinamenti o filtri per intervallo (per esempio l'età
+  dalla data di nascita). Se serviranno, si aggiunge un dato derivato in chiaro e meno preciso, deciso caso per caso.
 
 ## 6. Prima nota immutabile
 

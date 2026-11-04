@@ -15,7 +15,8 @@ Nessuno: la fase 0 si può iniziare in locale.
 | DPA (art. 28) e sub-responsabili di SupportHost: il link ricevuto era un articolo di blog | Luca | **ultimo passo**, subito prima dei dati veri |
 | Conferma di PostgreSQL 16 sul server con `SELECT version();` | prima prova sul database | aggiornamento comunicato, non verificato |
 | Spazio esterno in UE per i dump orari cifrati | da scegliere | da fare |
-| APCu disponibile sul piano (serve al servizio chiavi, [ARCHITETTURA.md](ARCHITETTURA.md) §7) | sessione del portale, via SSH | da verificare |
+| APCu disponibile sul piano (senza, una chiamata al servizio chiavi per richiesta, [ARCHITETTURA.md](ARCHITETTURA.md) §7) | sessione del portale, via SSH | da verificare |
+| Account cPanel separato per il servizio chiavi, con sottodominio HTTPS | Luca | da creare |
 | Estensione PHP `redis` da attivare in cPanel | Luca | da fare |
 | Sub-account di staging | Luca | da creare |
 | DPA del SaaS verso i clienti, valutazione d'impatto (DPIA), informativa | consulente privacy | da fare |
@@ -42,7 +43,8 @@ Ordine consigliato. Ogni passo si chiude con i suoi test.
 | 2. Database | **fatto** (2026-11-04) |
 | 3. Separazione tra associazioni | **fatto** il motore (contesto, connessioni, RLS, richieste, code, database dedicati); dall'utente con il passo 4; dal dominio (area soci e sito) con quei pacchetti |
 | 4. Accesso | **fatto** (2026-11-04): Fortify, verifica in due passaggi obbligatoria, ruoli e permessi, scelta dell'associazione, inviti. Passkey e ruoli configurabili più avanti |
-| 5–8 | da fare |
+| 5. Cifratura | **fatto** (2026-11-04): chiavi per associazione, campi cifrati con indice di ricerca, file cifrati, servizio chiavi separato, distruzione delle chiavi |
+| 6–8 | da fare |
 
 1. **Scheletro**: Laravel 13 in `saas/`, moduli in `app/Modules/`, Pest, PHPStan al massimo, Pint, test di architettura,
    `.github/workflows/saas.yml`.

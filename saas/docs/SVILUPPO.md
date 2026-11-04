@@ -11,6 +11,7 @@ cd saas
 sudo -u postgres scripts/db-locale.sh   # ruoli as_owner e as_app, database as_central, as_test, as_test_dedicato
 composer install
 cp .env.example .env && php artisan key:generate
+php artisan saas:keys:generate           # copia la chiave principale in SAAS_MASTER_KEY
 php artisan saas:migrate                 # migrazioni su tutti i database
 npm install && npm run build             # CSS e JavaScript (Vue, Tailwind)
 composer check                           # Pint, PHPStan al massimo, Pest
@@ -81,7 +82,35 @@ Regole:
 I permessi dei soci sui propri dati (area soci) non passano dai ruoli: derivano dai dati, come `Access` nel plugin, e
 arrivano con il modulo Soci. I ruoli configurabili per segretari e consiglieri sono della fase 1.
 
-## 6. Nuova tabella di un'associazione
+## 6. Cifratura
+
+Modulo `Cifratura`; regole in [DATABASE.md](DATABASE.md) §5, chiavi in [ARCHITETTURA.md](ARCHITETTURA.md) §7.
+
+```php
+// Modello: l'attributo tax_code vive nelle colonne tax_code_enc e tax_code_bidx (bytea).
+protected function casts(): array
+{
+    return [
+        'tax_code'   => Encrypted::class.':index=taxcode', // con indice di ricerca (taxcode, iban, phone, text)
+        'birth_date' => Encrypted::class.':date',
+        'address'    => Encrypted::class.':json',
+        'phone'      => Encrypted::class,
+    ];
+}
+
+Person::whereEncrypted('tax_code', 'rss mra 80a01 h501u');   // ricerca esatta, normalizzata
+
+// File: cifrati sul disco org_files; nel database si salvano i campi di StoredFile.
+$stored = app(EncryptedFiles::class)->store($orgId, $upload->getRealPath(), $upload->getClientOriginalName(), $mime);
+return app(EncryptedFiles::class)->download($orgId, $stored);  // dopo il controllo dei permessi
+```
+
+- I campi `*_enc` e `*_bidx` vanno in `$hidden` del modello.
+- Un campo cifrato si legge solo dentro la sua associazione (OrgContext): altrimenti errore.
+- Il servizio chiavi ha la sua cartella, `keyservice/`, senza dipendenze: si copia sull'altro account con
+  `config.ini` fuori dalla cartella pubblica ([keyservice/README.md](../keyservice/README.md)).
+
+## 7. Nuova tabella di un'associazione
 
 Ogni tabella di `app`, `audit` e `sites`:
 
@@ -93,13 +122,13 @@ Ogni tabella di `app`, `audit` e `sites`:
 I test in `tests/Feature/Core/SchemaRulesTest.php` controllano queste regole su tutte le tabelle presenti nel database:
 una tabella nuova che non le rispetta li fa fallire. Ogni tabella aggiunge comunque il suo test di separazione.
 
-## 7. Database dedicati
+## 8. Database dedicati
 
 L'elenco è un file JSON fuori dal repository e fuori dalla cartella pubblica (`SAAS_DEDICATED_DB_FILE`), con il nome del
 database e, se si usano ruoli separati, le loro credenziali (formato in `Core\Database\DatabaseRegistry`). In
 `core.orgs.database` si scrive il nome del dedicato; `null` vuol dire database condiviso. `saas:migrate` li migra tutti.
 
-## 8. Composer dal cloud di Claude
+## 9. Composer dal cloud di Claude
 
 Nelle sessioni cloud il proxy blocca gli zip di GitHub: Composer ripiega sui sorgenti git, più lento. `phpstan/phpstan`
 esiste solo come zip; si scarica il suo repository con git e si mette l'archivio nella cache di Composer

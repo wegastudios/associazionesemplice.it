@@ -1,0 +1,14 @@
+; Configurazione del servizio chiavi. Copiare in config.ini (fuori dalla cartella pubblica), permessi 600.
+; Le chiavi si generano dal SaaS con: php artisan saas:keys:generate
+
+; Chiave principale, base64 di 32 byte. Si custodisce anche offline: senza, nessun dato cifrato si apre più.
+master_key = ""
+
+; Chiave pubblica Ed25519 del SaaS (base64). La privata sta solo nell'ambiente del SaaS.
+client_public_key = ""
+
+; Indirizzi del SaaS ammessi, separati da virgole.
+allowed_ips = ""
+
+; log_file = "/home/account/keyservice/storage/keyservice.log"
+; nonce_dir = "/home/account/keyservice/storage/nonces"
