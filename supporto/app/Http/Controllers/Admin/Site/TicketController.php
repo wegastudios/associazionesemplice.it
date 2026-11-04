@@ -24,7 +24,9 @@ class TicketController extends Controller
             'priority' => 'nullable|integer|between:0,4',
             'q' => 'nullable|string|max:100',
             'pending' => 'nullable|boolean',
+            'order' => 'nullable|in:urgency,oldest,newest,activity',
         ]);
+        $order = $filters['order'] ?? 'urgency';
 
         $tickets = SupportTicket::query()->with('topic')
             ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
@@ -38,12 +40,17 @@ class TicketController extends Controller
                     }
                 });
             })
-            ->orderByDesc('priority')->orderByDesc('last_activity_at')
+            ->when($order === 'urgency', fn ($q) => $q->orderByDesc('priority')->orderBy('created_at'))
+            ->when($order === 'oldest', fn ($q) => $q->orderBy('created_at'))
+            ->when($order === 'newest', fn ($q) => $q->orderByDesc('created_at'))
+            ->when($order === 'activity', fn ($q) => $q->orderByDesc('last_activity_at'))
+            ->orderBy('id')
             ->paginate(30)->withQueryString();
 
         return view('admin.site.tickets.index', [
             'tickets' => $tickets,
             'filters' => $filters,
+            'order' => $order,
             'pendingCount' => SupportTicket::query()->whereNull('hub_id')->count(),
             'labels' => config('support.priority_labels'),
         ]);

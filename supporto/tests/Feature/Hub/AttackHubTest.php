@@ -2,13 +2,13 @@
 
 namespace Tests\Feature\Hub;
 
-use App\Models\Site;
 use Illuminate\Support\Str;
 use Tests\HubTestCase;
 
 class AttackHubTest extends HubTestCase
 {
-    private function mk(string $token, array $d = []) {
+    private function mk(string $token, array $d = [])
+    {
         return $this->postJson('/api/v1/tickets', $d + ['request_uuid' => (string) Str::uuid(), 'subject' => 'S', 'customer_name' => 'M', 'customer_email' => 'm@example.com'], $this->bearer($token));
     }
 
@@ -40,7 +40,7 @@ class AttackHubTest extends HubTestCase
         $tid = $rb2->json('data.id');
         $this->assertDatabaseHas('tickets', ['id' => $tid, 'site_id' => $sb->id]);
         $this->assertDatabaseMissing('tickets', ['id' => $ida, 'status' => 'closed']);
-        foreach (["/api/v1/tickets/$ida", "/api/v1/tickets/0", "/api/v1/tickets/-1", "/api/v1/tickets/abc", "/api/v1/tickets/1%20OR%201=1", "/api/v1/tickets/99999999999999999999"] as $u) {
+        foreach (["/api/v1/tickets/$ida", '/api/v1/tickets/0', '/api/v1/tickets/-1', '/api/v1/tickets/abc', '/api/v1/tickets/1%20OR%201=1', '/api/v1/tickets/99999999999999999999'] as $u) {
             $r = $this->getJson($u, $this->bearer($b));
             $this->assertContains($r->getStatusCode(), [404, 422], $u.' => '.$r->getStatusCode());
         }
@@ -54,7 +54,7 @@ class AttackHubTest extends HubTestCase
             ['customer_name' => str_repeat('é', 400)], ['priority' => '1; DROP TABLE tickets'], ['priority' => -1], ['priority' => 99], ['priority' => 1.5], ['priority' => []],
             ['topic' => str_repeat('t', 500)], ['plan' => ['x']], ['related_ticket_id' => 'abc'], ['related_ticket_id' => 0], ['related_ticket_id' => 9999999999999999999],
             ['privacy_accepted_at' => 'ieri'], ['privacy_accepted_at' => '9999-99-99'], ['privacy_version' => str_repeat('v', 100)], ['request_uuid' => 'non-uuid'], ['request_uuid' => ''],
-            ['subject' => "<script>alert(1)</script>"], ['subject' => "\u{202e}rtl\u{0000}nul"],
+            ['subject' => '<script>alert(1)</script>'], ['subject' => "\u{202e}rtl\u{0000}nul"],
         ];
         foreach ($payloads as $p) {
             $r = $this->mk($t, $p);
@@ -80,11 +80,15 @@ class AttackHubTest extends HubTestCase
         ['token' => $t] = $this->makeSite();
         $r = $this->mk($t)->assertCreated();
         $keys = array_keys($r->json('data'));
-        foreach (['site_id', 'customer_email', 'customer_name', 'request_uuid', 'secret_hash', 'password'] as $k) { $this->assertNotContains($k, $keys, "campo interno esposto: $k"); }
+        foreach (['site_id', 'customer_email', 'customer_name', 'request_uuid', 'secret_hash', 'password'] as $k) {
+            $this->assertNotContains($k, $keys, "campo interno esposto: $k");
+        }
     }
 
     public function test_hub_routes_do_not_expose_the_site_ones(): void
     {
-        foreach (['/ticket/nuovo', '/sso', '/i-miei-ticket', '/cerca'] as $u) { $this->assertSame(404, $this->get($u)->getStatusCode(), $u); }
+        foreach (['/ticket/nuovo', '/sso', '/i-miei-ticket', '/cerca'] as $u) {
+            $this->assertSame(404, $this->get($u)->getStatusCode(), $u);
+        }
     }
 }

@@ -14,7 +14,7 @@
                 <ul>@foreach ($topic->sections as $section)<li>{{ $section->name }} <span class="muted">({{ $section->articles_count }})</span></li>@endforeach</ul>
             </section>
         @empty
-            <p class="muted">Non trovi una guida? Scrivici: ti rispondiamo noi.</p>
+            <p class="muted">Non trovi una guida? Scrivici: la risposta arriva per email.</p>
         @endforelse
     </div>
     <p class="card">Non trovi quello che cerchi? <a class="btn" href="{{ route('ticket.create') }}">Apri una richiesta</a></p>

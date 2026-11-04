@@ -2,11 +2,15 @@
 
 namespace Tests\Feature\Site;
 
+use App\Models\SupportTicket;
 use App\Models\User;
-use App\Services\Site\SsoToken;
 use App\Services\Site\CustomerLink;
+use App\Services\Site\HumanCheck;
+use App\Services\Site\SsoToken;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Tests\SiteTestCase;
 
 class AttackSiteTest extends SiteTestCase
@@ -20,13 +24,19 @@ class AttackSiteTest extends SiteTestCase
         Cache::flush();
     }
 
-    private function b(string $x): string { return rtrim(strtr(base64_encode($x), '+/', '-_'), '='); }
+    private function b(string $x): string
+    {
+        return rtrim(strtr(base64_encode($x), '+/', '-_'), '=');
+    }
 
     private function token(array $o = [], ?string $secret = null, ?array $drop = null): string
     {
         $claims = $o + ['v' => 1, 'iss' => 'https://portale.test', 'aud' => 'https://supporto.test', 'sub' => 'staff@example.it', 'role' => 'support', 'iat' => time(), 'exp' => time() + 60, 'jti' => bin2hex(random_bytes(16))];
-        foreach ($drop ?? [] as $k) { unset($claims[$k]); }
+        foreach ($drop ?? [] as $k) {
+            unset($claims[$k]);
+        }
         $p = $this->b(json_encode($claims));
+
         return $p.'.'.$this->b(hash_hmac('sha256', $p, $secret ?? self::SECRET, true));
     }
 
@@ -56,7 +66,8 @@ class AttackSiteTest extends SiteTestCase
         $t = $this->token();
         [$p, $s] = explode('.', $t);
         for ($i = 0; $i < strlen($s); $i += 7) {
-            $s2 = $s; $s2[$i] = $s2[$i] === 'A' ? 'B' : 'A';
+            $s2 = $s;
+            $s2[$i] = $s2[$i] === 'A' ? 'B' : 'A';
             $this->assertNull(SsoToken::verify($p.'.'.$s2));
         }
         // payload alterato con la firma vecchia
@@ -98,10 +109,14 @@ class AttackSiteTest extends SiteTestCase
     {
         $n = 0;
         foreach (Route::getRoutes() as $r) {
-            if (! str_starts_with($r->uri(), 'admin') || in_array($r->uri(), ['admin/login', 'admin/password-dimenticata', 'admin/nuova-password', 'admin/nuova-password/{token}'], true)) { continue; }
+            if (! str_starts_with($r->uri(), 'admin') || in_array($r->uri(), ['admin/login', 'admin/password-dimenticata', 'admin/nuova-password', 'admin/nuova-password/{token}'], true)) {
+                continue;
+            }
             $uri = preg_replace('/\{[^}]+\}/', '1', $r->uri());
             foreach ($r->methods() as $m) {
-                if ($m === 'HEAD') { continue; }
+                if ($m === 'HEAD') {
+                    continue;
+                }
                 $resp = $this->call($m, '/'.$uri);
                 $this->assertContains($resp->getStatusCode(), [302, 401, 403, 419], "$m /$uri risponde ".$resp->getStatusCode().' senza login');
                 $n++;
@@ -122,7 +137,7 @@ class AttackSiteTest extends SiteTestCase
     {
         $this->fakeHub();
         $a = $this->makeTicket(['hub_id' => 94000001]);
-        $b = $this->makeTicket(['hub_id' => 94000002, 'request_uuid' => (string) \Illuminate\Support\Str::uuid(), 'customer_email' => 'altro@example.com']);
+        $b = $this->makeTicket(['hub_id' => 94000002, 'request_uuid' => (string) Str::uuid(), 'customer_email' => 'altro@example.com']);
         $urlA = CustomerLink::show($a);
         $this->get($urlA)->assertOk();
         $this->get(str_replace('94000001', '94000002', $urlA))->assertForbidden();           // id cambiato, firma di A
@@ -154,14 +169,14 @@ class AttackSiteTest extends SiteTestCase
     public function test_mass_assignment_on_public_ticket_form_is_ignored(): void
     {
         $this->fakeHub(94000555);
-        \Illuminate\Support\Facades\Mail::fake();
+        Mail::fake();
         $this->withSession(['customer' => ['email' => 'cli@example.it', 'name' => 'Cliente', 'plan_id' => null, 'at' => now()->timestamp]]);
         $this->post('/ticket', [
-            'privacy_accepted' => '1', 'form_token' => app(\App\Services\Site\HumanCheck::class)->issue(now()->subSeconds(30)),
+            'privacy_accepted' => '1', 'form_token' => app(HumanCheck::class)->issue(now()->subSeconds(30)),
             'customer_name' => 'X', 'customer_email' => 'vittima@example.com', 'subject' => 'Prova', 'body' => 'Corpo del messaggio lungo',
             'status' => 'closed', 'hub_id' => 1, 'id' => 999, 'priority' => 4, 'created_at' => '2000-01-01',
         ]);
-        $t = \App\Models\SupportTicket::firstOrFail();
+        $t = SupportTicket::firstOrFail();
         $this->assertSame('cli@example.it', $t->customer_email, 'email non falsificabile dal modulo');
         $this->assertSame('Cliente', $t->customer_name);
         $this->assertNotSame('closed', $t->status);
@@ -173,9 +188,9 @@ class AttackSiteTest extends SiteTestCase
     public function test_mine_lists_only_own_tickets_and_case_insensitive_email_does_not_leak(): void
     {
         $this->makeTicket(['hub_id' => 94000010, 'customer_email' => 'cli@example.it', 'subject' => 'MIO']);
-        $this->makeTicket(['hub_id' => 94000011, 'request_uuid' => (string) \Illuminate\Support\Str::uuid(), 'customer_email' => 'altro@example.it', 'subject' => 'ALTRUI']);
-        $this->makeTicket(['hub_id' => 94000012, 'request_uuid' => (string) \Illuminate\Support\Str::uuid(), 'customer_email' => 'cli@example.it.evil.com', 'subject' => 'ALTRUI2']);
-        $this->makeTicket(['hub_id' => 94000013, 'request_uuid' => (string) \Illuminate\Support\Str::uuid(), 'customer_email' => '%@example.it', 'subject' => 'JOLLY']);
+        $this->makeTicket(['hub_id' => 94000011, 'request_uuid' => (string) Str::uuid(), 'customer_email' => 'altro@example.it', 'subject' => 'ALTRUI']);
+        $this->makeTicket(['hub_id' => 94000012, 'request_uuid' => (string) Str::uuid(), 'customer_email' => 'cli@example.it.evil.com', 'subject' => 'ALTRUI2']);
+        $this->makeTicket(['hub_id' => 94000013, 'request_uuid' => (string) Str::uuid(), 'customer_email' => '%@example.it', 'subject' => 'JOLLY']);
         $this->get('/sso?t='.$this->token(['role' => 'customer', 'sub' => 'cli@example.it']));
         $r = $this->get('/i-miei-ticket')->assertOk()->assertSee('MIO');
         $r->assertDontSee('ALTRUI')->assertDontSee('JOLLY');
@@ -197,7 +212,9 @@ class AttackSiteTest extends SiteTestCase
         $unknown = $this->post('/admin/login', ['email' => 'nessuno@example.it', 'password' => 'x'])->assertSessionHasErrors('email');
         $known = $this->post('/admin/login', ['email' => 'adm@example.it', 'password' => 'x'])->assertSessionHasErrors('email');
         $this->assertSame(session('errors')->get('email'), ['Credenziali non valide.'], 'stesso messaggio per email nota');
-        for ($i = 0; $i < 6; $i++) { $this->post('/admin/login', ['email' => 'adm@example.it', 'password' => 'no'.$i]); }
+        for ($i = 0; $i < 6; $i++) {
+            $this->post('/admin/login', ['email' => 'adm@example.it', 'password' => 'no'.$i]);
+        }
         $this->post('/admin/login', ['email' => 'adm@example.it', 'password' => 'Giusta-123456'])->assertSessionHasErrors('email');
         $this->assertGuest();
     }

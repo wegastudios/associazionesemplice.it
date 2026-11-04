@@ -2,11 +2,14 @@
 
 namespace Tests\Feature\Site;
 
+use App\Mail\CustomerRepliedForStaff;
+use App\Mail\NewTicketForStaff;
 use App\Mail\StaffReplied;
 use App\Mail\TicketReceived;
 use App\Models\Plan;
 use App\Models\SupportTicket;
 use App\Models\Topic;
+use App\Models\User;
 use App\Services\Site\CustomerLink;
 use App\Services\Site\HumanCheck;
 use App\Services\Site\TicketRegistrar;
@@ -68,6 +71,22 @@ class PublicTicketTest extends SiteTestCase
                 && $request['plan'] === 'Pro'
                 && ! isset($request['id'])
                 && $request->hasHeader('Authorization', 'Bearer wsc_test.segreto');
+        });
+    }
+
+    public function test_staff_gets_an_email_with_the_urgency_in_the_subject(): void
+    {
+        Mail::fake();
+        $this->fakeHub(94000124);
+        User::factory()->create(['email' => 'staff@example.com']);
+
+        $this->post('/ticket', $this->form())->assertRedirect();
+
+        Mail::assertQueued(NewTicketForStaff::class, function ($m) {
+            return $m->hasTo('staff@example.com')
+                && $m->envelope()->subject === '[Urgenza: Normale] Non riesco ad accedere'
+                && str_contains($m->render(), 'Mario Rossi')
+                && str_contains($m->render(), 'Non riesco ad accedere');
         });
     }
 
@@ -254,6 +273,19 @@ class PublicTicketTest extends SiteTestCase
 
         $this->assertSame('open', $ticket->refresh()->status);
         $this->assertSame(2, $ticket->messages()->count());
+    }
+
+    public function test_staff_gets_an_email_when_the_customer_replies(): void
+    {
+        Mail::fake();
+        $this->fakeHub();
+        User::factory()->create(['email' => 'staff@example.com']);
+        $ticket = $this->makeTicket(['status' => 'pending', 'priority' => 3]);
+
+        $this->post(CustomerLink::reply($ticket), ['body' => 'Ecco altri dettagli.'])->assertRedirect();
+
+        Mail::assertQueued(CustomerRepliedForStaff::class, fn ($m) => $m->hasTo('staff@example.com')
+            && $m->envelope()->subject === '[Urgenza: Alta] Risposta del cliente: Non riesco ad accedere');
     }
 
     public function test_reply_without_signature_is_refused(): void

@@ -15,6 +15,15 @@
             <select id="priority" name="priority"><option value="">Tutte</option>@foreach ($labels as $level => $label)<option value="{{ $level }}" @selected(isset($filters['priority']) && (string) $filters['priority'] === (string) $level)>{{ $level }} · {{ $label }}</option>@endforeach</select>
         </div>
         <div>
+            <label for="order">Ordina per</label>
+            <select id="order" name="order">
+                <option value="urgency" @selected($order === 'urgency')>Urgenza, poi chi è arrivato prima</option>
+                <option value="oldest" @selected($order === 'oldest')>Data di arrivo: i più vecchi prima</option>
+                <option value="newest" @selected($order === 'newest')>Data di arrivo: i più recenti prima</option>
+                <option value="activity" @selected($order === 'activity')>Ultima attività</option>
+            </select>
+        </div>
+        <div>
             <label for="q">Cerca (numero, oggetto, email)</label>
             <input id="q" name="q" value="{{ $filters['q'] ?? '' }}">
         </div>
@@ -22,7 +31,7 @@
     </form>
     <div class="card tablewrap">
         <table>
-            <thead><tr><th>Numero</th><th>Oggetto</th><th>Cliente</th><th>Priorità</th><th>Stato</th><th>Ultima attività</th></tr></thead>
+            <thead><tr><th>Numero</th><th>Oggetto</th><th>Cliente</th><th>Priorità</th><th>Stato</th><th>Arrivato il</th><th>Ultima attività</th></tr></thead>
             <tbody>
             @forelse ($tickets as $t)
                 <tr>
@@ -31,10 +40,11 @@
                     <td>{{ $t->customer_name }}<br><span class="muted">{{ $t->customer_email }}</span></td>
                     <td>{{ $t->priority }} · {{ $labels[$t->priority] ?? '' }}</td>
                     <td>{{ $t->status }}</td>
+                    <td>{{ $t->created_at?->format('d/m/Y H:i') }}</td>
                     <td>{{ $t->last_activity_at?->format('d/m/Y H:i') }}</td>
                 </tr>
             @empty
-                <tr><td colspan="6" class="muted">Nessun ticket.</td></tr>
+                <tr><td colspan="7" class="muted">Nessun ticket.</td></tr>
             @endforelse
             </tbody>
         </table>

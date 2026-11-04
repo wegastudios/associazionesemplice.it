@@ -20,7 +20,7 @@ class TicketReceived extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: "Abbiamo ricevuto la tua richiesta n. {$this->ticket->hub_id}");
+        return new Envelope(subject: "Richiesta n. {$this->ticket->hub_id} ricevuta");
     }
 
     public function content(): Content
