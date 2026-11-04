@@ -33,6 +33,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Funzione | {free_name} | {lite_name} | {full_name} |
 |---|---|---|---|
 | Area riservata dei soci (tessera, attività, avvisi, profilo) | ✓ | ✓ | ✓ |
+| App sul telefono :: App installabile e notifiche, con icona dell'associazione, pagina offline con «Riprova» e invito a installarla sotto la tessera | — | ✓ | ✓ |
 | Primo accesso e approvazione della segreteria | ✓ | ✓ | ✓ |
 | Domanda di adesione online per chi non è ancora socio, con approvazione, tessera e link per la password | ✓ | ✓ | ✓ |
 | Minori con uno o due genitori o tutori: area riservata del genitore con tessera, prenotazioni, pagamenti e avvisi del minore, regolamento e privacy accettati per suo conto | ✓ | ✓ | ✓ |
@@ -139,7 +140,6 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Promemoria automatici per email (tessera, corsi, eventi) | ✓ | ✓ | ✓ |
 | Registro della posta in uscita e invio di una email di prova | ✓ | ✓ | ✓ |
 | Comunicazioni a gruppi di soci :: Comunicazioni a gruppi di soci con storico degli invii | — | ✓ | ✓ |
-| App e notifiche :: App installabile sul telefono e notifiche | — | ✓ | ✓ |
 
 ## Personalizzazione e sicurezza dei dati
 
