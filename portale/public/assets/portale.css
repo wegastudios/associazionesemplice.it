@@ -224,6 +224,7 @@ input[type=number]:focus { border-color: var(--brand); outline: none; box-shadow
 .cc-text { margin: 0 0 14px; font-size: .95rem; } .cc-prefs { display: flex; flex-wrap: wrap; gap: 4px 22px; margin: 0 0 14px; } .cc-prefs[hidden] { display: none; }
 .cc-prefs .check { margin: 6px 0; font-weight: 600; font-size: .93rem; }
 .cc-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+.cc-actions .btn { min-width: 9.5rem; min-height: 44px; } /* i tre pulsanti hanno lo stesso peso: scegliere «Rifiuta» costa quanto «Accetta tutti» */
 @media (max-width: 520px) { .cc-actions .btn { flex: 1 1 100%; } }
 .legal h2 { font-size: 1.25rem; margin: 1.8em 0 .5em; } .legal p, .legal li { color: var(--muted); } .legal ul { padding-left: 1.2em; } .legal strong { color: var(--fg); }
 .site-footer a[data-cc-open] { cursor: pointer; }
