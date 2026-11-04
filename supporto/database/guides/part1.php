@@ -188,7 +188,7 @@ Il plugin gratuito funziona sempre, anche senza chiave: nessuna funzione di base
 
 1. Vai su [associazionesemplice.it/free](https://associazionesemplice.it/free).
 2. Inserisci la tua email e il dominio del sito (per esempio `miaassociazione.it`).
-3. Controlla la posta: ti arriva un link per confermare l'email e ricevere la chiave.
+3. Controlla la posta: ti arriva un link per confermare l'email. La chiave arriva **dopo la conferma**.
 4. Apri il link ed entra nell'area riservata: lì vedi la chiave.
 5. In WordPress vai in **Impostazioni → Licenza**, incolla la chiave e salva.
 
@@ -197,6 +197,10 @@ Il plugin gratuito funziona sempre, anche senza chiave: nessuna funzione di base
 Una volta al giorno, e quando salvi la chiave o premi **Controlla adesso**, il plugin invia al server delle licenze solo la chiave e il nome del dominio, per confermare che siano validi. Nessun dato dei soci e nessun contenuto del sito viene inviato.
 
 > Una chiave vale per **un solo dominio**. I sottodomini sono domini diversi.
+
+## Durata e rinnovo
+
+La chiave gratuita si **rinnova da sola** poco prima della scadenza, finché la usi: serve almeno un accesso recente, cioè una verifica dal plugin o il tuo ingresso nell'area riservata. Se per un po' non usi il plugin né entri nell'area riservata, la chiave scade. Il plugin gratuito continua a funzionare anche senza chiave.
 MD,
     ],
     [
