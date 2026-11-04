@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.9
+- Da telefono: la Cassa non ripete più i pulsanti e l'avviso di fine anno sta dopo le cifre; la Rubrica soci è a schede compatte
+
 ## 1.3.8
 - Corretta la barra per saltare alle sezioni dell'area soci: non finisce più sotto l'intestazione fissa del tema
 
