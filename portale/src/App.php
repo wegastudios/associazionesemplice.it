@@ -75,6 +75,11 @@ final class App {
 			View::render( 'demo', array( 'title' => 'Prova la demo', 'accounts' => Demo::accounts(), 'links' => Demo::links(), 'matrix' => Demo::roles(), 'notes' => Demo::roleNotes(), 'base' => Demo::url() ) );
 		} elseif ( $get && '/confronto' === $path ) {
 			View::render( 'confronto', array( 'title' => 'Confronto tra le versioni' ) );
+		} elseif ( $get && '/confronto-demo' === $path ) {
+			// Stessa tabella di /confronto, senza pagina intorno: la legge la demo e la mostra nella sua home.
+			$fragment = true;
+			View::headers( 'text/html; charset=utf-8' );
+			require __DIR__ . '/../views/confronto.php';
 		} elseif ( $get && '/free' === $path ) {
 			View::render( 'free', array() );
 		} elseif ( ! $get && '/free' === $path ) {
