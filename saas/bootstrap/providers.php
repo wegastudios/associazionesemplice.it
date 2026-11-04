@@ -9,6 +9,7 @@ use App\Modules\Contabilita\Providers\ContabilitaServiceProvider;
 use App\Modules\Core\Providers\AuthServiceProvider;
 use App\Modules\Core\Providers\CoreServiceProvider;
 use App\Modules\Portale\Providers\PortaleServiceProvider;
+use App\Modules\Soci\Providers\SociServiceProvider;
 use App\Providers\AppServiceProvider;
 
 return [
@@ -20,4 +21,5 @@ return [
     PortaleServiceProvider::class,
     BackupServiceProvider::class,
     ContabilitaServiceProvider::class,
+    SociServiceProvider::class,
 ];

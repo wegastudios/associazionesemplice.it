@@ -143,7 +143,18 @@ $e->limit(Package::Resources, 'hourly.tier'); // limite del pacchetto
 Le associazioni create a mano (pilota, `saas:org:create`) non hanno abbonamento sul portale: niente limite di
 operatori e nessun pacchetto finché non ne ricevono.
 
-## 9. Nuova tabella di un'associazione
+## 9. Soci e tesseramento
+
+- Regole portate dal plugin in `app/Modules/Soci/Rules` (`TaxCode`, `Age`, `Phone`, `Iban`, `SocialYear`,
+  `PersonRules`) con i loro casi di test; i tipi di persona in `Soci\Contracts\MemberType`.
+- Una tessera nasce dall'incasso della quota (`MembershipService::renewWithPayment`: movimento in prima nota con
+  ricevuta e tessera insieme) o senza incasso con un motivo. Vale se lei e l'incasso non sono stornati: la vista
+  `app.valid_memberships` lo calcola, quindi stornare la quota toglie la tessera da sé.
+- Il fondatore è sempre in regola. I soci attivi (`Soci\Contracts\Members`) sono quelli che il SaaS comunica al portale.
+- Impostazioni del tesseramento in `app.settings` (`Core\Contracts\OrgSettings`): mese di inizio dell'anno sociale e
+  quota associativa.
+
+## 10. Nuova tabella di un'associazione
 
 Ogni tabella di `app`, `audit` e `sites`:
 
@@ -155,13 +166,13 @@ Ogni tabella di `app`, `audit` e `sites`:
 I test in `tests/Feature/Core/SchemaRulesTest.php` controllano queste regole su tutte le tabelle presenti nel database:
 una tabella nuova che non le rispetta li fa fallire. Ogni tabella aggiunge comunque il suo test di separazione.
 
-## 10. Database dedicati
+## 11. Database dedicati
 
 L'elenco è un file JSON fuori dal repository e fuori dalla cartella pubblica (`SAAS_DEDICATED_DB_FILE`), con il nome del
 database e, se si usano ruoli separati, le loro credenziali (formato in `Core\Database\DatabaseRegistry`). In
 `core.orgs.database` si scrive il nome del dedicato; `null` vuol dire database condiviso. `saas:migrate` li migra tutti.
 
-## 11. Composer dal cloud di Claude
+## 12. Composer dal cloud di Claude
 
 Nelle sessioni cloud il proxy blocca gli zip di GitHub: Composer ripiega sui sorgenti git, più lento. `phpstan/phpstan`
 esiste solo come zip; si scarica il suo repository con git e si mette l'archivio nella cache di Composer

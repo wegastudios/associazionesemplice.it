@@ -24,4 +24,10 @@ interface Ledger
 
     /** @return array<string, int> id del conto => saldo in centesimi */
     public function balances(): array;
+
+    /** Prima categoria attiva di quella natura (per esempio la quota associativa), o null. */
+    public function categoryFor(CategoryKind $kind): ?string;
+
+    /** @return list<array{id: string, name: string}> conti aperti, nell'ordine scelto dall'associazione */
+    public function openAccounts(): array;
 }

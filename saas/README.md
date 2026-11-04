@@ -4,7 +4,7 @@ Gestionale online per associazioni, con pacchetti aggiuntivi: area soci, risorse
 dall'AI, fattura elettronica. Il plugin WordPress resta un prodotto a sé: la differenza è dove stanno i dati e
 l'assistenza.
 
-**Stato:** fase 0 completata; fase 1 iniziata con la contabilità ([piano di lavoro](docs/PIANO_DI_LAVORO.md)). Ci sono lo scheletro Laravel 13, il database
+**Stato:** fase 0 completata; fase 1 in corso (contabilità e soci fatti) ([piano di lavoro](docs/PIANO_DI_LAVORO.md)). Ci sono lo scheletro Laravel 13, il database
 con i due ruoli, la separazione tra associazioni, l'accesso con la verifica in due passaggi e la cifratura con il servizio chiavi e il
 registro delle azioni, il lato SaaS del contratto con il portale e il rilascio con i backup, tutti con i loro test. Avvio in locale: [SVILUPPO.md](docs/SVILUPPO.md).
 

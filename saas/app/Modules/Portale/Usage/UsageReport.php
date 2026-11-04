@@ -7,6 +7,7 @@ namespace App\Modules\Portale\Usage;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Portale\Jwt\EdDsaJwt;
 use App\Modules\Portale\PortalConfig;
+use App\Modules\Soci\Contracts\Members;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Str;
@@ -16,7 +17,7 @@ use RuntimeException;
  * Consumi per la fatturazione del portale (fascia di soci, operatori, fatture elettroniche), una volta al giorno.
  * Solo numeri, nessun dato personale.
  *
- * «Soci» oggi sono le schede attive in anagrafica: con il modulo Soci diventeranno i soci con tessera valida.
+ * «Soci» sono i soci attivi: con la tessera valida oggi, o fondatori (Soci\Contracts\Members).
  */
 final readonly class UsageReport
 {
@@ -25,6 +26,7 @@ final readonly class UsageReport
         private OrgContext $context,
         private PortalConfig $config,
         private Factory $http,
+        private Members $members,
     ) {}
 
     /** @return list<array{org_id: string, ref: string, members: int, operators: int, einvoices_year: int}> */
@@ -39,8 +41,7 @@ final readonly class UsageReport
             if (! is_string($org->id) || ! is_string($org->portal_ref)) {
                 continue;
             }
-            $members = $this->context->run($org->id, fn () => $this->db->connection($this->context->require()->connection)
-                ->table('app.people')->whereNull('deleted_at')->count());
+            $members = $this->context->run($org->id, fn (): int => $this->members->activeCount());
             $rows[] = [
                 'org_id' => $org->id,
                 'ref' => $org->portal_ref,

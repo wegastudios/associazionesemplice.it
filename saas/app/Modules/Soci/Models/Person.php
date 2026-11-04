@@ -8,6 +8,7 @@ use App\Modules\Audit\Contracts\Audited;
 use App\Modules\Cifratura\Contracts\Encrypted;
 use App\Modules\Cifratura\Contracts\HasEncryptedFields;
 use App\Modules\Core\Contracts\OrgModel;
+use App\Modules\Soci\Contracts\MemberType;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -28,6 +29,15 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property array<string, mixed>|null $address
  * @property string|null $phone
  * @property string|null $iban
+ * @property string|null $notes
+ * @property MemberType $type
+ * @property string|null $level_id
+ * @property string|null $host_person_id
+ * @property CarbonImmutable|null $joined_on
+ * @property CarbonImmutable|null $left_on
+ * @property string|null $left_reason
+ * @property CarbonImmutable|null $suspended_at
+ * @property CarbonImmutable|null $anonymized_at
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property CarbonImmutable|null $deleted_at
@@ -45,12 +55,13 @@ final class Person extends OrgModel
     /** @var list<string> */
     protected $fillable = [
         'first_name', 'last_name', 'email', 'card_number', 'user_id',
-        'tax_code', 'birth_date', 'birth_place', 'address', 'phone', 'iban',
+        'tax_code', 'birth_date', 'birth_place', 'address', 'phone', 'iban', 'notes',
+        'type', 'level_id', 'host_person_id', 'joined_on', 'left_on', 'left_reason',
     ];
 
     /** @var list<string> */
     protected $hidden = [
-        'tax_code_enc', 'tax_code_bidx', 'birth_date_enc', 'birth_place_enc', 'address_enc', 'phone_enc', 'iban_enc',
+        'tax_code_enc', 'tax_code_bidx', 'birth_date_enc', 'birth_place_enc', 'address_enc', 'phone_enc', 'iban_enc', 'notes_enc',
     ];
 
     /** @return array<string, string> */
@@ -63,6 +74,17 @@ final class Person extends OrgModel
             'address' => Encrypted::class.':json',
             'phone' => Encrypted::class,
             'iban' => Encrypted::class,
+            'notes' => Encrypted::class,
+            'type' => MemberType::class,
+            'joined_on' => 'immutable_date',
+            'left_on' => 'immutable_date',
+            'suspended_at' => 'immutable_datetime',
+            'anonymized_at' => 'immutable_datetime',
         ];
+    }
+
+    public function fullName(): string
+    {
+        return trim($this->first_name.' '.$this->last_name);
     }
 }

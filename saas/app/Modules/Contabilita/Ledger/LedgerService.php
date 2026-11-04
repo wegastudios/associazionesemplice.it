@@ -213,6 +213,26 @@ final readonly class LedgerService implements Ledger
         return $out;
     }
 
+    public function categoryFor(CategoryKind $kind): ?string
+    {
+        $id = $this->connection()->table('app.categories')->where('kind', $kind->value)->whereNull('deleted_at')
+            ->orderBy('sort_order')->value('id');
+
+        return is_string($id) ? $id : null;
+    }
+
+    public function openAccounts(): array
+    {
+        $out = [];
+        foreach ($this->connection()->table('app.accounts')->whereNull('closed_at')->orderBy('sort_order')->orderBy('name')->get(['id', 'name']) as $row) {
+            if (is_string($row->id ?? null) && is_string($row->name ?? null)) {
+                $out[] = ['id' => $row->id, 'name' => $row->name];
+            }
+        }
+
+        return $out;
+    }
+
     /**
      * Saldo ricalcolato da zero dalla prima nota (per le verifiche: deve coincidere con balances()).
      *

@@ -91,6 +91,7 @@ final readonly class LedgerController
             'account_id' => ['required', 'uuid'],
             'method' => ['nullable', Rule::in(PaymentMethod::values())],
             'receipt' => ['boolean'],
+            'person_id' => ['nullable', 'uuid'],
             'document_ref' => ['nullable', 'string', 'max:80'],
             'lines' => ['required', 'array', 'min:1', 'max:20'],
             'lines.*.category_id' => ['required', 'uuid'],
@@ -117,7 +118,7 @@ final readonly class LedgerController
                 Input::string($data, 'account_id'),
                 $lines,
                 $method === null ? null : PaymentMethod::from($method),
-                null,
+                Input::optionalString($data, 'person_id'),
                 Input::bool($data, 'receipt', true),
                 Input::optionalString($data, 'document_ref'),
             ));

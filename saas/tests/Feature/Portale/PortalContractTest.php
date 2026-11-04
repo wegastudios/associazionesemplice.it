@@ -160,11 +160,13 @@ it('limita gli inviti al numero di operatori dell\'abbonamento', function (): vo
 it('manda al portale solo i numeri di ogni associazione, firmati dal SaaS', function (): void {
     $alfa = ($this->provision)()->json('org_id');
     $beta = ($this->provision)(['ref' => 'sub_999', 'org' => ['name' => 'Beta', 'slug' => 'circolo-beta']])->json('org_id');
+    // Soci attivi: i fondatori contano sempre; una scheda senza tessera no.
     $this->orgContext()->run($alfa, function (): void {
-        Person::create(['first_name' => 'Mario', 'last_name' => 'Rossi', 'tax_code' => 'RSSMRA80A01H501U']);
-        Person::create(['first_name' => 'Maria', 'last_name' => 'Rossi']);
+        Person::create(['type' => 'founder', 'first_name' => 'Mario', 'last_name' => 'Rossi', 'tax_code' => 'RSSMRA80A01H501U']);
+        Person::create(['type' => 'founder', 'first_name' => 'Maria', 'last_name' => 'Rossi']);
+        Person::create(['first_name' => 'Senza', 'last_name' => 'Tessera']);
     });
-    $this->orgContext()->run($beta, fn () => Person::create(['first_name' => 'Bruno', 'last_name' => 'Bianchi']));
+    $this->orgContext()->run($beta, fn () => Person::create(['type' => 'founder', 'first_name' => 'Bruno', 'last_name' => 'Bianchi']));
 
     $sent = null;
     Http::fake(['https://portale.example.test/api/saas/v1/usage' => function (HttpRequest $request) use (&$sent) {

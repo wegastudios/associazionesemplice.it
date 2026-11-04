@@ -2,6 +2,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import AppLayout from '../../layouts/AppLayout.vue';
+import PersonPicker from '../../components/PersonPicker.vue';
 
 const props = defineProps({
     year: Number,
@@ -30,6 +31,7 @@ const income = useForm({
     account_id: openAccounts.value[0]?.id ?? '',
     method: '',
     receipt: true,
+    person_id: '',
     document_ref: '',
     lines: [{ category_id: incomeCategories.value[0]?.id ?? '', amount: '', description: '', competence_month: '' }],
 });
@@ -114,6 +116,10 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
                 <label class="space-y-1 text-sm"><span class="font-semibold">Modalità</span>
                     <select v-model="income.method" :class="field"><option value="">Quella del conto</option><option v-for="m in methods" :key="m.value" :value="m.value">{{ m.label }}</option></select></label>
                 <label class="flex items-end gap-2 pb-2 text-sm"><input v-model="income.receipt" type="checkbox" class="size-4 accent-indaco" /> Emetti la ricevuta</label>
+            </div>
+            <div class="space-y-1 text-sm">
+                <label for="payer" class="font-semibold">Chi paga (facoltativo)</label>
+                <PersonPicker id="payer" v-model="income.person_id" />
             </div>
             <fieldset v-for="(line, i) in income.lines" :key="i" class="grid gap-3 rounded-lg border border-line p-3 sm:grid-cols-[2fr_1fr_2fr_1fr_auto]">
                 <legend class="px-1 text-sm font-semibold">Voce {{ i + 1 }}</legend>
