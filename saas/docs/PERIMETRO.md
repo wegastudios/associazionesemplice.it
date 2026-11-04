@@ -1,16 +1,17 @@
 # SaaS: perimetro del lancio e pacchetti
 
 Cosa entra nella prima versione del SaaS e come si divide in pacchetti. Lo schema del database è in
-[SAAS_DATABASE.md](SAAS_DATABASE.md).
+[DATABASE.md](DATABASE.md).
 
 ## 0. Il principio
 
 Chi cerca un **gestionale**, e non un plugin, ha esigenze diverse: **la contabilità non è un optional** ed è il cuore
 del prodotto, insieme a ruoli e accessi degli operatori. L'area soci è invece un pacchetto: senza un sito, il gestionale
-serve poco ai soci. Biglietteria, gestione risorse e simili sono interventi successivi.
+serve poco ai soci. Le risorse sono un pacchetto al lancio, perché per i circoli sono il cuore dell'attività; biglietteria
+e simili sono interventi successivi.
 
-Si vendono due offerte: **gestionale online** e **gestionale online + sito**. Il plugin WordPress resta com'è e si
-distingue per dove stanno i dati (sullo spazio del cliente, invece che sul nostro).
+Si vende il **gestionale online**, con i pacchetti che servono (area soci, risorse, sito…). Il plugin WordPress resta
+com'è e si distingue per dove stanno i dati (sullo spazio del cliente, invece che sul nostro) e per l'assistenza.
 
 ## 1. Concorrenza (analisi del 2026-11-03)
 
@@ -40,10 +41,11 @@ Fonti: [TeamSystem Terzo Settore in Cloud](https://www.teamsystem.com/associazio
 
 ## 2. Fondamenta (prima di qualunque modulo)
 
-- Separazione tra associazioni, cifratura dei campi, registro delle azioni ([SAAS_DATABASE.md](SAAS_DATABASE.md)).
+- Separazione tra associazioni, cifratura dei campi, registro delle azioni ([DATABASE.md](DATABASE.md)).
 - Accesso con verifica in due passaggi per gli operatori; permessi derivati dai dati.
 - Migrazioni su tutti i database (condiviso e dedicati); dump orari cifrati.
-- Abbonamento e fatturazione (Stripe Billing): prova gratuita, fascia di soci, pacchetti.
+- Abbonamento e fatturazione **tramite il portale**, che invia al SaaS i diritti firmati
+  ([ARCHITETTURA.md](ARCHITETTURA.md) §1): prova gratuita, scaglioni di soci, pacchetti.
 - Configurazione guidata al primo accesso.
 - Import da Excel e CSV (soci, prima nota); esportazione completa dei dati.
 
@@ -170,7 +172,7 @@ verso il cliente).
   qualche giorno. La demo attuale del plugin non si tocca.
 - Niente piano gratuito nel SaaS, solo la prova (regole al §7.1): il gratuito resta il plugin.
 
-## 7.1 Struttura dei piani (prezzi da definire)
+## 7.1 Struttura dei piani
 
 **Concorrenza verticale per circoli**: Playtomic Manager (campi; secondo un concorrente circa 59–279 €/mese più il 4%
 sulle prenotazioni, dato non verificato), [Harba](https://harba.co/pricing) (porti e yacht club: 2.700 €/anno più
@@ -178,7 +180,7 @@ sulle prenotazioni, dato non verificato), [Harba](https://harba.co/pricing) (por
 più dei gestionali per associazioni e non gestiscono soci e contabilità da ente non profit. **Noi niente commissioni
 sulle prenotazioni.**
 
-**Base: Gestionale** (§3), prezzo per **fascia di soci** (tesserati attivi nell'anno). In più rispetto al §3: domanda
+**Base: Gestionale** (§3), prezzo a **scaglioni di soci** (tesserati attivi nell'anno). In più rispetto al §3: domanda
 di adesione online tramite link pubblico, email di servizio (ricevute, rinnovi, scadenze dei certificati), ricezione
 delle fatture passive via SDI per chi ha partita IVA, con un limite d'uso ragionevole.
 
@@ -186,8 +188,8 @@ delle fatture passive via SDI per chi ha partita IVA, con un limite d'uso ragion
 
 | Pacchetto | Contenuto | Criterio di prezzo |
 |---|---|---|
-| Area soci e pagamenti | PWA, tessera QR e wallet, profilo, iscrizioni e rinnovi online, prenotazione eventi, pagamenti, notifiche push | fascia di soci |
-| Risorse e prenotazioni | impianti, sale, posti barca, postazioni; tariffe soci e non soci; liste d'attesa; calendario di occupazione | **numero di risorse, pesato per modalità di prenotazione** (sotto) |
+| Area soci e pagamenti | PWA, tessera QR e wallet, profilo, iscrizioni e rinnovi online, prenotazione eventi, pagamenti, notifiche push | scaglioni di soci |
+| Risorse e prenotazioni | impianti, sale, posti barca, postazioni; tariffe soci e non soci; liste d'attesa; calendario di occupazione | **numero di risorse per tipologia**, versione Web o Interna (sotto) |
 | Sito | builder AI, sottodominio, rigenerazioni mensili incluse | fisso |
 | Fattura elettronica | 50 fatture emesse all'anno, conservazione | fisso, più ricariche |
 | Comunicazioni | email di massa e newsletter, avvisi di gruppo, SMS | fisso, SMS a consumo |
@@ -196,8 +198,8 @@ delle fatture passive via SDI per chi ha partita IVA, con un limite d'uso ragion
 | Sport | affiliazioni e tesseramenti con federazioni ed enti di promozione, registro safeguarding, compensi dei collaboratori sportivi (da sviluppare) | fisso |
 
 **Risorse: il peso dipende da quanto lavorano, non da quante sono.** Quattro campi da tennis generano molte più
-prenotazioni e scritture di 200 posti barca assegnati una volta l'anno. Il criterio è quindi la **modalità di
-prenotazione** di ogni risorsa:
+prenotazioni e scritture di 200 posti barca assegnati una volta l'anno. Il criterio è quindi la **tipologia** di ogni
+risorsa:
 
 | Tipologia | Esempi | Movimento | Primo scaglione |
 |---|---|---|---|
@@ -209,8 +211,6 @@ La tipologia è **il modo in cui la risorsa si vende**, non la risorsa in sé: u
 il circolo può venderne anche 3 a giornata o a ore, e allora quei 3 contano come giornalieri o orari. Per usare la
 stessa sala in più fasce della giornata (colazione, pranzo, cena) si comprano 3 risorse giornaliere. Un circolo con
 più tipologie somma i loro scaglioni.
-
-Una stessa risorsa conta nella modalità in cui è usata; un circolo con entrambe somma i due scaglioni.
 
 **Extra e consumi**: operatori aggiuntivi (segretari e consiglieri con permessi configurabili), dominio personalizzato,
 database dedicato, ricariche di fatture elettroniche, SMS e rigenerazioni del sito.
@@ -343,19 +343,21 @@ si aggiungerebbe come risorsa giornaliera.
 |---|---|---|---|---|---|---|
 | Listino | 15 € | 29 € | 9 € | 53 € | 45 € | 98 € |
 | Tre pacchetti con il 25% | | | | 39,75 € | 45 € | 84,75 € |
-| **Bundle con Comunicazioni come terzo** | (15 + 29) − 15% = 37,40 € | | **5 €** | **42,40 €** | 45 € | **87,40 €** |
+| Regola del bundle, terzo a 5 € | (15 + 29) − 15% = 37,40 € | | **5 €** | 42,40 € | 45 € | 87,40 € |
 | Solo i primi due, con il 15% | | | | 37,40 € | 45 € | 82,40 € |
 
-Con la Fattura elettronica (7 €) come terzo pacchetto il bundle costa uguale: 87,40 €. **Il terzo pacchetto entra
-sempre per 5 € in più**, e conviene soprattutto quando il suo listino è alto: con un terzo pacchetto da 19 € (Sito,
-Contabilità avanzata) il risparmio rispetto al 25% è di circa 5–7 €. Le offerte già composte (Associazione, Associazione con sito, Sportiva, Circolo) restano come **combinazioni
-proposte** in vetrina, con questi sconti già applicati.
+Qui il cliente paga **84,75 €**, il calcolo più favorevole. La regola del terzo a 5 € conviene solo con un terzo
+pacchetto dal listino alto: con uno da 19 € (per esempio Contabilità avanzata) il bundle costa 42,40 € sui pacchetti
+contro i 47,25 € del 25%. Con un terzo da 7 o 9 € vale il 25%.
+
+Le offerte già composte (Associazione, Associazione con sito, Sportiva, Circolo) restano come **combinazioni proposte**
+in vetrina, con questi sconti già applicati.
 
 | Profilo | Composizione | Listino | Con sconto |
 |---|---|---|---|
 | APS, 40 soci | base + Area soci | 20 € | **20 €** (un solo pacchetto) |
-| APS, 120 soci | base + Area soci + Sito | 55,80 € | **48,90 €** (25% su Area soci e Sito) |
-| ASD, 300 soci | base + Area soci + Sport | 80 € | **75,35 €** (15% su due pacchetti) |
+| APS, 120 soci | base + Area soci + Sito | 55,80 € | **48,75 €** (25% su Area soci e Sito) |
+| ASD, 300 soci | base + Area soci + Sport | 80 € | **75,65 €** (15% su due pacchetti) |
 | Circolo tennis, 250 soci, 4 campi prenotabili online | base + Area soci + Risorse Web + Fattura elettronica | 96 € | **83,25 €** (25% su tre pacchetti) |
 | Lo stesso circolo **con il sito** | + Sito: scatta il trio web | 115 € | **83,50 €** (50% sul trio, Fattura elettronica piena) |
 | Circolo nautico, 200 soci, 120 posti barca gestiti in segreteria | base + Area soci + Risorse stagionali Interna + Fattura elettronica | 76,50 € | **67,13 €** (25% su tre pacchetti) |
@@ -413,13 +415,16 @@ aggiunge ai dati che già passa con l'accesso unico (lavoro delle sessioni del p
 
 ### Programma partner
 
-- **15%** ricorrente su tutto ciò che fatturiamo all'associazione; **20%** oltre i 10 clienti attivi. Vale per SaaS e
-  licenze del plugin.
-- **Soglia di liquidazione**: 15 € × 24 mesi × 15% = 54 € → **55 €**.
+- **Proposta, da confermare: 15%** ricorrente su tutto ciò che fatturiamo all'associazione; **20%** oltre i 10 clienti
+  attivi. Vale per SaaS e licenze del plugin.
+- **Soglia di liquidazione**, con quella proposta: 15 € × 24 mesi × 15% = 54 € → **55 €**.
 
 ## 8. Domande aperte
 
-1. Programma partner: percentuale ed eventuali scaglioni (§5.2).
+1. Programma partner: percentuale ed eventuali scaglioni (§5.2, §7.2).
+2. Promo da applicare sopra il listino: lancio, associazioni pilota, enti nati da poco, passaggio dal plugin al SaaS.
+3. Nome unico dei piani Pro del plugin (§7.2), da usare anche nel SaaS.
+4. Scaglioni delle risorse giornaliere (§7.2): proposti, da confermare.
 
 Decise: fattura elettronica come primo addon dopo il lancio (§5.1); **Sito e Area soci sono due pacchetti separati**,
 perché l'area soci non serve a tutti; **3 operatori inclusi** più aggiuntivi a pagamento (§3); programma partner

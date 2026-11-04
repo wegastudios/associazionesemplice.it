@@ -1,0 +1,60 @@
+# SaaS: cosa si porta dal plugin
+
+Il plugin è il punto di partenza per le regole, non per il codice di interfaccia. I file sono in
+`wordpress/associazionesemplice/includes/`, i test in `wordpress/associazionesemplice/tests/unit/`.
+
+## Come si porta una classe
+
+| Tipo | Come riconoscerlo | Cosa fare |
+|---|---|---|
+| **Regole pure** | nessuna chiamata a WordPress o al database | si copia nel modulo con i suoi test; cambiano solo namespace e tipi. Si toglie la riga `defined( 'ABSPATH' )` |
+| **Servizi** | usano `$wpdb`, opzioni, hook | si riscrivono su Eloquent e sul nuovo schema, tenendo la logica e i casi di test |
+| **Da sostituire** | legati a WordPress o a WooCommerce | non si portano: Laravel o il portale fanno lo stesso lavoro |
+
+Le classi elencate come regole pure sono state controllate il 2026-11-04 cercando chiamate a WordPress e a `Db::`: non
+ne hanno. Alcune però usano altre classi del plugin (`Rules` e `Fiscal`, per esempio, si appoggiano a `MemberType`,
+`Settings`, `Limits` o `Terms`): quelle dipendenze vanno sciolte durante il porting. L'assegnazione a un modulo e i test corrispondenti si basano sui nomi dei file: vanno confermati aprendo ogni
+classe. Le regole sono copiate e non condivise ([ARCHITETTURA.md](ARCHITETTURA.md) §2): le correzioni fiscali vanno
+riportate nei due progetti.
+
+## Fase 1
+
+| Modulo | Regole pure | Servizi da riscrivere | Test da riusare |
+|---|---|---|---|
+| **Contabilità** | `Money`, `Fiscal`, `PaymentCalc`, `Pricing`, `FundShare`, `BudgetRules`, `BalanceWatchRules`, `CreditRules`, `RefundRules`, `AttachmentRules`, `SocialYear` | `LedgerService`, `LedgerImport`, `Receipts`, `Statement`, `ReportService`, `FundService`, `FundYears`, `FundReconciliation`, `FiscalYears`, `ExpenseFunds`, `Budget`, `BalanceWatch`, `Bank`, `Discrepancies`, `YearEndCheck`, `Credits`, `Refunds`, `Attachments` | `FiscalTest`, `FundShareTest`, `FundYearsTest`, `BalanceWatchRulesTest`, `CreditRulesTest`, `AttachmentRulesTest`, `LedgerImportTest`, `ReceiptMinorTest`, `BankLimitsTest` |
+| **Soci** | `Rules`, `Age`, `TaxCode`, `Phone`, `Iban`, `ApplicationRules`, `ConsentRules`, `CertificateRules`, `ExpiryRules`, `DocumentRules` | `PeopleService`, `MemberQuery`, `MemberBook`, `MemberType`, `Levels`, `Guardians`, `Applications`, `Consents`, `Certificates`, `Documents`, `ImportService`, `PeopleCsv` | `PeopleRulesTest`, `AgeTest`, `PhoneTest`, `ApplicationRulesTest`, `GuardiansRulesTest`, `MemberTypeGuardianTest`, `PeopleBirthGuardianTest`, `PeopleCsvYearsTest`, `PeopleGuestsImportTest`, `IncompleteCardsTest` |
+| **Attività** | `CancelPolicy`, `Schedule`, `Ics` | `ActivityService`, `ActivityKind`, `ActivityCopy`, `Attendance`, `Calendar`, `LessonExceptions`, `Waitlist`, `PriceLists` | `ActivityTest`, `ActivityCopyTest`, `CancelPolicyTest`, `ScheduleTest`, `IcsTest`, `LessonExceptionsTest` |
+| **Core** | — | `Access`, `AccessRequests`, `Audit`, `MembershipRoles`, `BoardRole`, `Visibility`, `Terms`, `Texts` | `AccessTest`, `AccessRolesTest`, `AccessBookTest`, `VisibilityTest`, `TermsTest`, `TextsTest` |
+| **Import ed export** | `Xlsx`, `SheetReader` | `ImportService`, `LedgerImport`, `Backup` (diventa esportazione completa) | `XlsxTest` |
+| **Documenti** | `Pdf`, `QrCode` | `CardLayout`, `CardToken` | `PdfTest`, `QrCodeTest`, `CardLayoutTest`, `CardTokenTest` |
+| **Area soci** | `SatispayRules`, `KlarnaRules` | `PaymentService`, `PaymentItems`, `Gateways`, `StripeApi`, `StripeWebhook`, `PayPalApi`, `SatispayApi`, `SumUpApi`, `OfflinePayments`, `Pwa`, `Push`, `WebPush`, `ActivationToken`, `Rest/`, `Frontend/` | `OnlinePaymentsTest`, `PaymentsConfigTest`, `PaymentFeesSumUpTest`, `PaymentQuarterlyTest`, `WebPushTest`, `ActivationTokenTest` |
+| **Risorse** | `ResourceRules`, `LoanRules` | `Resources`, `ResourceGate`, `Holds`, `Inventory` | `ResourceRulesTest`, `ResourceGateTest` |
+
+Le **tre tipologie di risorsa** (oraria, giornaliera, stagionale) e le versioni Web e Interna sono nuove: vanno
+confrontate con `ResourceRules` prima di progettare il modulo.
+
+## Fasi successive
+
+| Modulo | Regole pure | Servizi da riscrivere |
+|---|---|---|
+| Comunicazioni | `SmsRules`, `NewsletterRules` | `Broadcasts`, `Notices`, `Reminders`, `StaffReminders`, `Sms`, `BrevoSms`, `TwilioSms`, `Newsletter`, `BrevoNewsletter`, `MailchimpNewsletter` |
+| Vita associativa | `AssemblyRules`, `PollRules` | `Assemblies`, `Polls`, `Minutes` |
+| Sport | `AffiliationRules` | `Affiliations`, `SportCatalog`, `Insurance` |
+| Altri | `ConventionRules` | `Conventions`, `FivePerMille`, `Wallet`, `ApplePass`, `GoogleWallet`, `DoorSales`, `Donations` |
+
+I test dei blocchi sono in `BlockBRulesTest`, `BlockCRulesTest`, `BlockDRulesTest`, `BlockERulesTest`, `BlockFRulesTest`.
+
+## Da non portare
+
+| Cosa | Perché |
+|---|---|
+| `Install`, `ProSchema`, `Db` | sostituiti dalle migrazioni e dallo schema in [DATABASE.md](DATABASE.md); le tabelle restano il riferimento dei dati |
+| `Plugin`, `Modules`, `Edition`, `ProBoot`, `ProBlock*`, `Admin/`, `Settings`, `Html`, `Flash`, `Pages`, `Areas` | struttura e interfaccia WordPress |
+| `License`, `LicenseClient`, `LicensePolicy`, `LicenseRules`, `Updater`, `UpdateCheck` | nel SaaS valgono i diritti firmati dal portale |
+| `WooBridge`, `WooLinks`, `WpAllImport`, `TribeImport`, `MailPoetNewsletter` | integrazioni con plugin WordPress |
+| `Secrets`, `ClientIp` | si usa la cifratura del modulo dedicato; si riscrivono su Laravel |
+
+## Da costruire da zero
+
+Separazione tra associazioni, servizio chiavi, cifratura dei campi, generatore di siti, diritti dal portale, area
+Studio per i commercialisti, sconti e conteggi per i pacchetti, fattura elettronica, compensi sportivi.

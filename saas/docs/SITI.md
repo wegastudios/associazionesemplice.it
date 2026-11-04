@@ -1,8 +1,8 @@
 # SaaS: builder dei siti
 
 Il pacchetto **Sito**: un sito generato interamente dall'AI. Il cliente non ha strumenti grafici: tocca solo **testi
-e allegati**, e può guidare l'AI a parole. Architettura generale in [SAAS_ARCHITETTURA.md](SAAS_ARCHITETTURA.md),
-pacchetti in [SAAS_PERIMETRO.md](SAAS_PERIMETRO.md).
+e allegati**, e può guidare l'AI a parole. Architettura generale in [ARCHITETTURA.md](ARCHITETTURA.md),
+pacchetti in [PERIMETRO.md](PERIMETRO.md).
 
 ## 1. Il principio: l'AI compila una specifica, non scrive HTML
 
@@ -115,7 +115,7 @@ questionario e i dati.
 | Circolo nautico o balneare | posti barca, postazioni spiaggia e solarium, corsi (vela…), regate ed eventi, ristorante, diventa socio | Prenota |
 
 I profili con impianti, posti barca e postazioni usano il pacchetto **Risorse e prenotazioni**, anticipato al lancio
-per questi circoli ([SAAS_PERIMETRO.md](SAAS_PERIMETRO.md) §4). Senza quel pacchetto il sito li mostra con una
+per questi circoli ([PERIMETRO.md](PERIMETRO.md) §4). Senza quel pacchetto il sito li mostra con una
 richiesta di informazioni.
 
 ## 4. Il gestionale tiene il sito aggiornato

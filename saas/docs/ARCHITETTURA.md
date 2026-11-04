@@ -1,7 +1,7 @@
 # SaaS: architettura dell'applicazione
 
-Come è fatto il SaaS e come si collega a ciò che esiste già. Database in [SAAS_DATABASE.md](SAAS_DATABASE.md),
-perimetro e pacchetti in [SAAS_PERIMETRO.md](SAAS_PERIMETRO.md).
+Come è fatto il SaaS e come si collega a ciò che esiste già. Database in [DATABASE.md](DATABASE.md),
+perimetro e pacchetti in [PERIMETRO.md](PERIMETRO.md).
 
 ## 1. Due sistemi
 
@@ -89,9 +89,9 @@ saas/app/Modules/
 1. L'indirizzo individua l'associazione: dalla sessione e dall'utente per gli operatori, dal sottodominio o dal
    dominio proprio per i soci.
 2. La connessione si sceglie da `core.orgs`: database condiviso o dedicato.
-3. All'inizio di ogni richiesta e di ogni lavoro in coda si imposta `app.org_id`; **a fine richiesta si azzera**,
-   perché con le connessioni persistenti resterebbe alla richiesta successiva. Senza `app.org_id` la Row-Level Security
-   non mostra nulla: l'errore va sempre dal lato sicuro.
+3. All'inizio di ogni richiesta e di ogni lavoro in coda si imposta `app.org_id` con `set_config`; **a fine richiesta
+   si azzera**, perché con le connessioni persistenti resterebbe alla richiesta successiva. Senza `app.org_id` la
+   Row-Level Security non mostra nulla: l'errore va sempre dal lato sicuro (policy in [DATABASE.md](DATABASE.md) §3).
 4. Permessi derivati dai dati (come `Access` nel plugin), con ruoli configurabili per segretari e consiglieri.
 
 ## 5. Interfaccia

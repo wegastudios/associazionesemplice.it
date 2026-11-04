@@ -30,6 +30,13 @@ Priorità, in quest'ordine: **1. sicurezza dei dati personali e fiscali · 2. ve
 `app.people` collegate (`people.user_id`), che prende il posto di `wp_user_id`. I permessi restano derivati dai dati,
 come oggi in `Access`.
 
+**`core` esiste solo nel database centrale.** I database dedicati contengono `app`, `audit` e `sites`, più una piccola
+tabella locale `app.orgs` con l'associazione stessa. Una chiave esterna non può attraversare due database, quindi:
+- le tabelle di `app`, `audit` e `sites` puntano a `app.orgs`, presente anche nel database condiviso;
+- i riferimenti a `core.users` (`people.user_id`, `created_by`) sono **senza chiave esterna**: li controlla
+  l'applicazione;
+- le migrazioni sono di due tipi: `core` solo sul database centrale, le altre su tutti i database.
+
 ## 2. Chiavi primarie: UUIDv7
 
 - Tutte le tabelle hanno `id uuid` **UUIDv7** (ordinato nel tempo, quindi efficiente per gli indici), generato da Laravel.
@@ -43,8 +50,10 @@ come oggi in `Access`.
 
 1. **`org_id` in ogni tabella di `app`, `audit` e `sites`**, sempre prima colonna di chiavi e indici.
 2. **Chiavi esterne composte**: il database impedisce che un dato dell'associazione A punti a un dato dell'associazione B.
-3. **Row-Level Security forzata** su ogni tabella, con `SET LOCAL app.org_id` all'inizio della transazione di ogni
-   richiesta (`SET LOCAL` vale solo per la transazione, quindi è sicuro anche con connessioni riusate).
+3. **Row-Level Security forzata** su ogni tabella. All'inizio di ogni richiesta e di ogni lavoro in coda
+   l'applicazione esegue `set_config('app.org_id', <id>, false)`, e a fine richiesta la azzera. Si imposta sempre
+   all'inizio, così una connessione persistente non porta mai con sé l'associazione precedente. Le policy usano
+   `NULLIF(current_setting('app.org_id', true), '')`: se manca, nessuna riga è visibile e la richiesta non va in errore.
 
 Ruoli Postgres:
 
@@ -57,7 +66,7 @@ Esempio:
 
 ```sql
 CREATE TABLE app.people (
-  org_id      uuid        NOT NULL REFERENCES core.orgs(id),
+  org_id      uuid        NOT NULL REFERENCES app.orgs(id),
   id          uuid        NOT NULL,
   first_name  text        NOT NULL,
   last_name   text        NOT NULL,
@@ -85,8 +94,8 @@ CREATE TABLE app.transactions (
 ALTER TABLE app.transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app.transactions FORCE ROW LEVEL SECURITY;
 CREATE POLICY org_isolation ON app.transactions
-  USING      (org_id = current_setting('app.org_id')::uuid)
-  WITH CHECK (org_id = current_setting('app.org_id')::uuid);
+  USING      (org_id = NULLIF(current_setting('app.org_id', true), '')::uuid)
+  WITH CHECK (org_id = NULLIF(current_setting('app.org_id', true), '')::uuid);
 ```
 
 (Prova della RLS con `FORCE` e `set_config` fatta sul server SupportHost il 2026-11-02: funziona.)
