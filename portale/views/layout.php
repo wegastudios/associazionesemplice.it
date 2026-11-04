@@ -6,6 +6,7 @@ $path   = \Portale\Site::path();
 $market = \Portale\Site::isMarketing( $path );
 $band   = $market ? \Portale\Site::band( $path ) : null;
 $bar    = $market ? \Portale\Site::bar( $path ) : array();
+$home   = rtrim( (string) \Portale\Config::get( 'base_url', '' ), '/' ) . '/'; // il logo riporta sempre alla home del dominio principale
 $area   = $logged ? '/account' : '/accedi';
 $items  = array( array( 'Funzioni', '/funzioni' ), array( 'Domande', '/domande' ), array( 'Supporto', $support_href ) );
 $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
@@ -24,7 +25,7 @@ $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 <body<?php echo $bar ? ' class="has-bar"' : ''; ?>>
 <a class="skip" href="#main">Vai al contenuto</a>
 <header class="site-header"><div class="wrap">
-	<a class="logo" href="/" aria-label="Associazione Semplice"><picture class="logo-full"><source media="(prefers-color-scheme: dark)" srcset="/assets/brand/logo-orizzontale-negativo.svg?v=<?php echo e( $v ); ?>"><img src="/assets/brand/logo-orizzontale-colore.svg?v=<?php echo e( $v ); ?>" alt="Associazione Semplice" width="143" height="52"></picture><picture class="logo-sym"><source media="(prefers-color-scheme: dark)" srcset="/assets/brand/simbolo-negativo.svg?v=<?php echo e( $v ); ?>"><img src="/assets/brand/simbolo-colore.svg?v=<?php echo e( $v ); ?>" alt="Associazione Semplice" width="40" height="40"></picture></a>
+	<a class="logo" href="<?php echo e( $home ); ?>" aria-label="Associazione Semplice"><picture class="logo-full"><source media="(prefers-color-scheme: dark)" srcset="/assets/brand/logo-orizzontale-negativo.svg?v=<?php echo e( $v ); ?>"><img src="/assets/brand/logo-orizzontale-colore.svg?v=<?php echo e( $v ); ?>" alt="Associazione Semplice" width="143" height="52"></picture><picture class="logo-sym"><source media="(prefers-color-scheme: dark)" srcset="/assets/brand/simbolo-negativo.svg?v=<?php echo e( $v ); ?>"><img src="/assets/brand/simbolo-colore.svg?v=<?php echo e( $v ); ?>" alt="Associazione Semplice" width="40" height="40"></picture></a>
 	<nav class="nav" aria-label="Principale">
 		<?php foreach ( $items as $it ) : ?><a href="<?php echo e( $it[1] ); ?>"<?php echo $path === $it[1] ? ' aria-current="page"' : ''; ?>><?php echo e( $it[0] ); ?></a><?php endforeach; ?>
 		<?php if ( ! empty( $_SESSION['staff'] ) ) : ?><a href="/admin">Gestione</a><?php endif; ?>
