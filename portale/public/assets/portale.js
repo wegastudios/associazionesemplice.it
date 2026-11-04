@@ -116,3 +116,10 @@
 		if (ev.key === 'Escape') { closeAll(null); }
 	});
 })();
+
+// Barra in basso da telefono: si nasconde quando in pagina c'è già la fascia di chiusura con gli stessi inviti.
+(function () {
+	var bar = document.querySelector('.bar'), band = document.querySelector('.closing .cta-band');
+	if (!bar || !band || !('IntersectionObserver' in window)) { return; }
+	new IntersectionObserver(function (en) { bar.hidden = en[0].isIntersecting; }, { threshold: 0.35 }).observe(band);
+})();

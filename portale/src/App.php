@@ -72,7 +72,7 @@ final class App {
 		} elseif ( $get && '/domande' === $path ) {
 			View::render( 'faq', array( 'title' => 'Domande frequenti' ) );
 		} elseif ( $get && '/prova' === $path ) {
-			View::render( 'demo', array( 'title' => 'Prova la demo', 'accounts' => Demo::accounts(), 'links' => Demo::links(), 'matrix' => Demo::roles(), 'notes' => Demo::roleNotes(), 'base' => Demo::url() ) );
+			View::render( 'demo', array( 'title' => 'Prova la demo', 'plans' => Config::get( 'plans', array() ), 'accounts' => Demo::accounts(), 'links' => Demo::links(), 'matrix' => Demo::roles(), 'notes' => Demo::roleNotes(), 'base' => Demo::url() ) );
 		} elseif ( $get && '/confronto' === $path ) {
 			View::render( 'confronto', array( 'title' => 'Confronto tra le versioni' ) );
 		} elseif ( $get && '/confronto-demo' === $path ) {
@@ -91,7 +91,7 @@ final class App {
 			$this->sendLink( $cust, $this->auth->issue( $cust['id'], $sub['id'] ), 'free_confirm', array( 'dominio' => $sub['domain'] ) );
 			View::render( 'message', array( 'title' => 'Controlla la posta', 'text' => 'Ti abbiamo scritto un link per confermare l\'email e ricevere la chiave.' ) );
 		} elseif ( $get && '/acquista' === $path ) {
-			$plan   = (string) ( $_GET['plan'] ?? '' );
+			$plan   = Site::code( (string) ( $_GET['plan'] ?? '' ) );
 			$period = (string) ( $_GET['period'] ?? '' );
 			$price  = Config::price( $plan, $period );
 			if ( ! $price ) {

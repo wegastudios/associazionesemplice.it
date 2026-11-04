@@ -5,8 +5,8 @@
 		<h1>La segreteria della tua associazione, finalmente semplice.</h1>
 		<p class="lead">Soci, eventi, prima nota e privacy in un unico plugin per il tuo sito WordPress. Si parte gratis; i pagamenti online e la contabilità arrivano quando servono.</p>
 		<div class="hero-cta">
-			<a class="btn big" href="/free">Ottieni la licenza gratuita</a>
-			<a class="btn alt big" href="/prova">Prova la demo</a>
+			<a class="btn big" href="/prova">Prova la demo</a>
+			<a class="btn alt big" href="/free">Ottieni la licenza gratuita</a>
 		</div>
 		<ul class="ticks"><li>Gratis, senza scadenza</li><li>Dati sempre tuoi</li><li>In italiano</li></ul>
 	</div>
@@ -19,7 +19,17 @@
 		<div class="mock-row"><span class="avatar">LN</span><div><b>Luca Neri</b><span>Quota annuale 2026</span></div><span class="pill bad">Scaduta</span></div>
 	</div>
 </div></section>
+
 <section class="section alt"><div class="wrap">
+	<div class="section-head"><h2>Tutto quello che serve a una segreteria</h2><p>Poche schermate, parole chiare, niente da imparare a memoria.</p></div>
+	<div class="grid-3">
+	<?php foreach ( Portale\Site::features() as $f ) : ?>
+		<a class="feature link" href="/funzioni"><div class="ico"><?php echo icon( $f[0] ); ?></div><h3><?php echo e( $f[1] ); ?></h3><p><?php echo e( $f[2] ); ?></p><span class="more">Scopri le funzioni</span></a>
+	<?php endforeach; ?>
+	</div>
+</div></section>
+
+<section class="section"><div class="wrap">
 	<div class="section-head"><h2>Si parte in tre passi</h2></div>
 	<div class="steps">
 		<div class="step"><h3>Chiedi la chiave</h3><p>Inserisci email e dominio del sito: la licenza gratuita arriva subito, nella tua area riservata.</p></div>
@@ -27,17 +37,18 @@
 		<div class="step"><h3>Cresci quando vuoi</h3><p>Ti servono incassi online o contabilità? Passi al Pro dall'area riservata, senza reinstallare nulla.</p></div>
 	</div>
 </div></section>
+
 <section class="section alt"><div class="wrap">
-	<div class="grid-3">
-		<a class="feature" href="/funzioni" style="text-decoration:none;color:inherit"><div class="ico"><?php echo icon( 'book' ); ?></div><h3>Cosa fa</h3><p>Soci, eventi, prima nota e privacy: le funzioni una per una.</p></a>
-		<a class="feature" href="/prezzi" style="text-decoration:none;color:inherit"><div class="ico"><?php echo icon( 'card' ); ?></div><h3>Quanto costa</h3><p>Gratis per partire; i piani Pro quando servono incassi online e contabilità.</p></a>
-		<a class="feature" href="/prova" style="text-decoration:none;color:inherit"><div class="ico"><?php echo icon( 'globe' ); ?></div><h3>Provalo subito</h3><p>Una demo già piena di dati inventati: entra come segreteria o come socio.</p></a>
-	</div>
+	<div class="section-head"><h2>Tre piani, parti da quello gratuito</h2><p>Il piano gratuito resta gratuito. I piani Pro si rinnovano da soli e si disdicono in autonomia.</p></div>
+	<?php include __DIR__ . '/_plans.php'; ?>
 </div></section>
+
 <section class="section"><div class="wrap">
-	<div class="cta-band">
-		<h2>Metti ordine nella tua associazione oggi</h2>
-		<p>La licenza gratuita arriva in due minuti. Il resto, quando ti serve.</p>
-		<a class="btn big" href="/free">Ottieni la licenza gratuita</a>
+	<div class="section-head"><h2>Le domande più comuni</h2></div>
+	<div class="faq">
+	<?php foreach ( array_slice( Portale\Site::faq(), 0, 3 ) as $q ) : ?>
+		<details><summary><?php echo e( $q[0] ); ?></summary><p><?php echo e( $q[1] ); ?></p></details>
+	<?php endforeach; ?>
 	</div>
+	<p class="fine center"><a href="/domande">Leggi tutte le domande</a></p>
 </div></section>

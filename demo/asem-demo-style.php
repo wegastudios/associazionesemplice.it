@@ -57,7 +57,7 @@ add_action( 'wp_head', function () {
 
 // Il titolo del sito nell'intestazione diventa il logo.
 add_filter( 'render_block_core/site-title', function ( $html ) {
-	return '<p class="wp-block-site-title"><a href="' . esc_url( home_url( '/' ) ) . '" rel="home"><img class="asem-logo" src="' . esc_url( asem_demo_asset( 'logo.svg' ) ) . '" alt="' . esc_attr( get_bloginfo( 'name' ) ) . '"></a></p>';
+	return '<p class="wp-block-site-title"><a href="https://associazionesemplice.it/" rel="home"><img class="asem-logo" src="' . esc_url( asem_demo_asset( 'logo.svg' ) ) . '" alt="' . esc_attr( get_bloginfo( 'name' ) ) . '"></a></p>';
 } );
 
 // Piè di pagina: una riga sola (quello di serie non serve).
@@ -100,4 +100,12 @@ add_action( 'admin_head', function () {
 .wp-core-ui .button-primary{background:#1f218c;border-color:#1f218c;border-radius:8px}
 .wp-core-ui .button-primary:hover{background:#15176b;border-color:#15176b}
 </style>'; // phpcs:ignore WordPress.Security.EscapeOutput
+} );
+
+// Il logo, sul sito e nell'accesso, riporta sempre alla home del dominio principale (non alla home della demo né a WordPress.org).
+add_filter( 'login_headerurl', function () {
+	return 'https://associazionesemplice.it/';
+} );
+add_filter( 'login_headertext', function () {
+	return 'Associazione Semplice';
 } );
