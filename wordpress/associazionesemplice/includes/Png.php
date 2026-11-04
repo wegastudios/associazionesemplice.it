@@ -48,24 +48,48 @@ final class Png {
 			$ch = 'A';
 		}
 		$bg   = chr( $rgb[0] ) . chr( $rgb[1] ) . chr( $rgb[2] );
-		$fg   = self::is_light( $rgb ) ? "\x1d\x23\x27" : "\xff\xff\xff";
+		$fgc  = self::is_light( $rgb ) ? array( 0x1d, 0x23, 0x27 ) : array( 255, 255, 255 );
+		$fg   = chr( $fgc[0] ) . chr( $fgc[1] ) . chr( $fgc[2] );
 		$cell = max( 1, (int) floor( 0.42 * $size / 7 ) );
 		$left = (int) floor( ( $size - 5 * $cell ) / 2 );
 		$top  = (int) floor( ( $size - 7 * $cell ) / 2 );
-		$raw  = '';
-		$rows = explode( ' ', self::FONT[ $ch ] );
-		for ( $y = 0; $y < $size; $y++ ) {
-			$gy  = $y >= $top && $y < $top + 7 * $cell ? (int) floor( ( $y - $top ) / $cell ) : -1;
-			$row = str_repeat( $bg, $left );
-			if ( $gy < 0 ) {
-				$row = str_repeat( $bg, $size );
-			} else {
-				for ( $gx = 0; $gx < 5; $gx++ ) {
-					$row .= str_repeat( '1' === $rows[ $gy ][ $gx ] ? $fg : $bg, $cell );
-				}
-				$row .= str_repeat( $bg, $size - $left - 5 * $cell );
+		$grid = array();
+		foreach ( explode( ' ', self::FONT[ $ch ] ) as $r => $bits ) {
+			for ( $c = 0; $c < 5; $c++ ) {
+				$grid[ $r ][ $c ] = '1' === $bits[ $c ] ? 1.0 : 0.0;
 			}
-			$raw .= "\0" . $row;
+		}
+		// Interpolazione tra le celle e bordo sfumato: l'iniziale ha gli angoli arrotondati invece dei quadrettoni.
+		$x0     = max( 0, $left - $cell );
+		$x1     = min( $size, $left + 6 * $cell );
+		$bg_row = "\0" . str_repeat( $bg, $size );
+		$raw    = '';
+		for ( $y = 0; $y < $size; $y++ ) {
+			if ( $y < $top - $cell || $y >= $top + 8 * $cell ) {
+				$raw .= $bg_row;
+				continue;
+			}
+			$v  = ( $y + 0.5 - $top ) / $cell - 0.5;
+			$r0 = (int) floor( $v );
+			$fv = $v - $r0;
+			$row = str_repeat( $bg, $x0 );
+			for ( $x = $x0; $x < $x1; $x++ ) {
+				$u   = ( $x + 0.5 - $left ) / $cell - 0.5;
+				$c0  = (int) floor( $u );
+				$fu  = $u - $c0;
+				$val = ( ( $grid[ $r0 ][ $c0 ] ?? 0.0 ) * ( 1 - $fu ) + ( $grid[ $r0 ][ $c0 + 1 ] ?? 0.0 ) * $fu ) * ( 1 - $fv )
+					+ ( ( $grid[ $r0 + 1 ][ $c0 ] ?? 0.0 ) * ( 1 - $fu ) + ( $grid[ $r0 + 1 ][ $c0 + 1 ] ?? 0.0 ) * $fu ) * $fv;
+				$t   = min( 1.0, max( 0.0, ( $val - 0.35 ) / 0.3 ) );
+				$a   = $t * $t * ( 3 - 2 * $t );
+				if ( $a <= 0.0 ) {
+					$row .= $bg;
+				} elseif ( $a >= 1.0 ) {
+					$row .= $fg;
+				} else {
+					$row .= chr( (int) round( $rgb[0] * ( 1 - $a ) + $fgc[0] * $a ) ) . chr( (int) round( $rgb[1] * ( 1 - $a ) + $fgc[1] * $a ) ) . chr( (int) round( $rgb[2] * ( 1 - $a ) + $fgc[2] * $a ) );
+				}
+			}
+			$raw .= "\0" . $row . str_repeat( $bg, $size - $x1 );
 		}
 		return "\x89PNG\r\n\x1a\n"
 			. self::chunk( 'IHDR', pack( 'NNCCCCC', $size, $size, 8, 2, 0, 0, 0 ) )
