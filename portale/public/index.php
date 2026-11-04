@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/../src/bootstrap.php';
 
+header_remove( 'X-Powered-By' ); // non si espone la versione di PHP
 $file = __DIR__ . '/../config.php';
 if ( ! is_file( $file ) ) {
 	http_response_code( 500 );

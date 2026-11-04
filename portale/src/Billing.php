@@ -285,7 +285,7 @@ final class Billing {
 	 * Un pagamento è andato a buon fine (webhook o ritorno dal provider): emette la licenza e avvisa il cliente.
 	 * Se era il rinnovo di una licenza esistente, la rinnova e lascia la chiave com'è. Ripetibile senza effetti.
 	 */
-	public function completePayment( string $subId, ?string $providerRef = null, ?string $providerCustomer = null ): void {
+	public function completePayment( string $subId, ?string $providerRef = null, ?string $providerCustomer = null, bool $retryIfBusy = false ): void {
 		$sub = $this->subscription( $subId );
 		if ( ! $sub ) {
 			throw new UserError( 'Abbonamento sconosciuto.' );
@@ -309,6 +309,10 @@ final class Billing {
 		}
 		$this->issued = false;
 		$sub          = $this->activate( $subId, $providerRef, $providerCustomer );
+		if ( $retryIfBusy && ! $this->issued && self::CLAIM === ( $sub['license_id'] ?? '' ) ) {
+			// Un altro processo sta ancora emettendo la licenza: il webhook risponde con errore e il provider riprova (poi è un no-op).
+			throw new \RuntimeException( 'Emissione della licenza già in corso: da riprovare.' );
+		}
 		if ( $this->issued && ! empty( $sub['license_id'] ) ) {
 			$this->welcome( $sub );
 		}
