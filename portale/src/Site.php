@@ -24,6 +24,22 @@ final class Site {
 		return in_array( $path, self::MARKETING, true );
 	}
 
+	/** Descrizione per i motori di ricerca, una per pagina di presentazione (le altre usano quella generale). */
+	public static function description( string $path ): string {
+		$d = array(
+			'/'          => 'Plugin WordPress per associazioni italiane: libro soci, tessere, eventi e corsi, prima nota e privacy. Gratuito, con piani Pro per pagamenti online e contabilità.',
+			'/funzioni'  => 'Libro soci, eventi e corsi, prima nota, privacy e area riservata dei soci: quello che serve alla segreteria di un\'associazione, dentro il tuo sito WordPress.',
+			'/prova'     => 'La demo di Associazione Semplice: un sito WordPress con il plugin e il Pro già installati e dati inventati. Entri come segreteria, socio o amministratore, senza installare nulla.',
+			'/prezzi'    => 'Il plugin è gratuito; i piani Pro aggiungono pagamenti online, contabilità e parte fiscale. Rinnovo mensile o annuale, si disdice dall\'area riservata.',
+			'/confronto' => 'Funzione per funzione, cosa include la versione gratuita e cosa aggiungono i piani Pro: soci, eventi, cassa, pagamenti online, contabilità e fiscalità.',
+			'/domande'   => 'Le risposte alle domande più comuni su Associazione Semplice: licenza e dominio, passaggio al Pro, rinnovo, pagamenti e cosa succede ai tuoi dati.',
+			'/free'      => 'Ottieni la licenza gratuita di Associazione Semplice: crei il tuo account e accedi al supporto. Non serve la carta di credito.',
+			'/accedi'    => 'Area riservata di Associazione Semplice: chiave di licenza, dominio, pacchetti da scaricare, cambio di piano e disdetta.',
+			'/plugin'    => 'Cos\'è Associazione Semplice, il plugin WordPress per le piccole associazioni italiane: cosa include il gratuito, cosa aggiunge il Pro e cosa contatta.',
+		);
+		return $d[ $path ] ?? 'Soci, eventi, prima nota e privacy per la tua associazione. Plugin WordPress gratuito, con piani Pro per pagamenti online e contabilità.';
+	}
+
 	/** Funzioni in vetrina: icona, titolo, testo (home e /funzioni). */
 	public static function features(): array {
 		return array(
