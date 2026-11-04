@@ -14,7 +14,7 @@ $copy = array(
 		'Importazione ed esportazione degli elenchi',
 		'Copia di sicurezza dei dati',
 	) ),
-	'lite' => array( 'tagline' => 'Tutto il gratuito, più incassi online e comunicazione ai soci. Senza la parte fiscale.', 'tag' => 'Il più scelto', 'lead' => 'Tutto il Free, più:', 'features' => array(
+	'lite' => array( 'tagline' => 'Tutto il gratuito, più incassi online e comunicazione ai soci. Senza la parte fiscale.', 'tag' => 'Per gli incassi online', 'lead' => 'Tutto il Free, più:', 'features' => array(
 		'Pagamenti online con carta, PayPal e WooCommerce',
 		'Più livelli di socio, quote diverse e nucleo familiare',
 		'Conti multipli, fondi e giroconti',
@@ -26,7 +26,7 @@ $copy = array(
 		'Tessera in Apple Wallet e Google Wallet',
 		'Testi personalizzabili e lingue',
 	) ),
-	'full' => array( 'tagline' => 'Per chi vuole anche la parte fiscale dell\'ente.', 'lead' => 'Tutto il Pro Contabile, più:', 'features' => array(
+	'full' => array( 'tagline' => 'Per chi vuole anche la parte fiscale dell\'ente.', 'lead' => 'Tutto il piano precedente, più:', 'features' => array(
 		'IVA su quote, attività, incassi e spese',
 		'5 per mille con rendiconto sull\'utilizzo',
 		'Rendiconto per cassa per il commercialista',
@@ -43,7 +43,7 @@ foreach ( $plans as $p ) {
 }
 ?>
 <section class="section pricing" id="prezzi" data-period="year"><div class="wrap">
-	<div class="section-head"><h1 style="font-size:clamp(1.9rem,4vw,2.8rem)">Prezzi chiari, disdici quando vuoi</h1><p>Il piano gratuito resta gratuito. I piani Pro si rinnovano da soli e si cambiano o si disdicono in autonomia.</p></div>
+	<div class="section-head"><h1 style="font-size:clamp(1.9rem,4vw,2.8rem)">Prezzi chiari, disdici quando vuoi</h1><p>Il piano gratuito resta gratuito. I piani Pro si rinnovano da soli, ogni mese o ogni anno, e si disdicono quando vuoi dall'area riservata.</p></div>
 	<div class="seg" role="group" aria-label="Periodo di fatturazione">
 		<button type="button" data-period="month" aria-pressed="false">Mensile</button>
 		<button type="button" data-period="year" aria-pressed="true">Annuale<?php echo $save > 0 ? ' <span class="save">-' . (int) $save . '%</span>' : ''; ?></button>
@@ -66,7 +66,7 @@ foreach ( $plans as $p ) {
 			<h3><?php echo e( $p['label'] ); ?></h3>
 			<p class="for"><?php echo e( $p['tagline'] ?? $c['tagline'] ); ?></p>
 			<?php if ( 'free' === $code ) : ?>
-				<div class="price"><b>0 €</b><span>per sempre</span></div><div class="price-note">Serve solo la licenza gratuita</div>
+				<div class="price"><b>0 €</b><span>senza scadenza</span></div><div class="price-note">Serve solo la licenza gratuita</div>
 			<?php else : ?>
 				<?php $promoName = Portale\Settings::promoNow(); $lm = Portale\Settings::listCents( $code, 'month' ); $ly = Portale\Settings::listCents( $code, 'year' ); if ( $promoName && ( $lm || $ly ) ) : ?><div class="promo-tag"><?php echo e( $promoName ); ?></div><?php endif; ?>
 				<?php if ( $m ) : ?><div class="only-month"><div class="price"><?php if ( $lm ) : ?><s class="was"><?php echo e( $euro( $lm ) ); ?></s> <?php endif; ?><b><?php echo e( $euro( $m ) ); ?></b><span>al mese</span></div><div class="price-note">Rinnovo mensile, senza vincoli</div></div><?php endif; ?>
@@ -82,6 +82,6 @@ foreach ( $plans as $p ) {
 		</div>
 	<?php endforeach; ?>
 	</div>
-	<?php if ( ! empty( $trial ) ) : ?><p class="fine" style="font-weight:600;color:var(--fg)">Hai già la licenza gratuita? Prova il piano Pro gratis per <?php echo (int) $trial; ?> giorni dall'area riservata, una volta sola.</p><?php endif; ?>
+	<?php if ( ! empty( $trial ) ) : ?><p class="fine" style="font-weight:600;color:var(--fg)">Hai già la licenza gratuita? Prova gratis <?php echo e( (string) \Portale\Config::get( 'plans.' . \Portale\Config::get( 'trial_plan', 'full' ) . '.label', 'il piano Pro' ) ); ?> per <?php echo (int) $trial; ?> giorni dall'area riservata, una volta sola: nessuna carta, nessun addebito alla fine.</p><?php endif; ?>
 	<p class="fine"><a href="/confronto">Confronta tutte le funzioni delle tre versioni</a>. Prezzi in euro. Pagamento sicuro con Stripe o PayPal. Ogni licenza è legata a un dominio, modificabile dall'area riservata.</p>
 </div></section>
