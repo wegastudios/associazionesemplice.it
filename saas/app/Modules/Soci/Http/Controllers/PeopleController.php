@@ -10,11 +10,14 @@ use App\Modules\Contabilita\Contracts\Money;
 use App\Modules\Contabilita\Contracts\PaymentMethod;
 use App\Modules\Core\Contracts\Input;
 use App\Modules\Core\Contracts\OrgSettings;
+use App\Modules\Soci\Contracts\CertificateKind;
 use App\Modules\Soci\Contracts\MemberType;
 use App\Modules\Soci\Contracts\PeopleError;
 use App\Modules\Soci\Models\MemberLevel;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Rules\Age;
+use App\Modules\Soci\Services\CertificateService;
+use App\Modules\Soci\Services\GuardianService;
 use App\Modules\Soci\Services\MembershipService;
 use App\Modules\Soci\Services\PeopleService;
 use Closure;
@@ -34,6 +37,8 @@ final readonly class PeopleController
         private MembershipService $memberships,
         private Ledger $ledger,
         private OrgSettings $settings,
+        private GuardianService $guardians,
+        private CertificateService $certificates,
     ) {}
 
     public function index(Request $request): Response
@@ -182,6 +187,7 @@ final readonly class PeopleController
         $data = Input::of($request->validate([
             'start_month' => ['required', 'integer', 'between:1,12'],
             'fee' => ['nullable', 'string', 'max:20'],
+            'warn_days' => ['nullable', 'integer', 'between:1,365'],
         ]));
         $fee = Input::optionalString($data, 'fee');
         $cents = $fee === null ? 0 : Money::parse($fee);
@@ -190,6 +196,7 @@ final readonly class PeopleController
         }
         $this->settings->set(MembershipService::START_MONTH, (int) $request->integer('start_month'));
         $this->settings->set(MembershipService::DEFAULT_FEE, $cents);
+        $this->settings->set(CertificateService::WARN_DAYS, $request->integer('warn_days', 30));
 
         return back()->with('status', 'Impostazioni del tesseramento salvate.');
     }
@@ -221,6 +228,10 @@ final readonly class PeopleController
                 'active' => $this->memberships->isActive($person->id),
                 'memberships' => $this->memberships->history($person->id),
                 'fee' => Money::plain($this->memberships->feeFor($person)),
+                'guardians' => $this->guardians->of($person->id),
+                'dependents' => $this->guardians->dependentsOf($person->id),
+                // I dati sanitari si aprono (e si annotano nel registro) solo per chi li può vedere.
+                'certificates' => $request->user()?->can('health.view') === true ? $this->certificates->forPerson($person->id) : null,
             ],
             'firstFreeCard' => $this->people->firstFreeCard(),
             'types' => self::types(),
@@ -231,7 +242,9 @@ final readonly class PeopleController
             'settings' => [
                 'start_month' => $this->memberships->startMonth(),
                 'fee' => Money::plain($this->settings->int(MembershipService::DEFAULT_FEE, 0)),
+                'warn_days' => $this->certificates->warnDays(),
             ],
+            'certificateKinds' => array_map(static fn (CertificateKind $k): array => ['value' => $k->value, 'label' => $k->label()], CertificateKind::cases()),
             'canEdit' => $request->user()?->can('people.edit') ?? false,
             'canSettings' => $request->user()?->can('org.settings') ?? false,
         ]);

@@ -23,7 +23,11 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
                 <h1 class="text-2xl font-bold">Soci</h1>
                 <p class="text-sm text-muted">{{ activeCount }} soci attivi · anno sociale {{ year }}</p>
             </div>
-            <Link v-if="canEdit" href="/gestionale/soci/nuovo" class="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink">Nuova scheda</Link>
+            <div class="flex flex-wrap items-center gap-3 text-sm font-semibold">
+                <Link href="/gestionale/certificati" class="text-accent hover:underline">Certificati medici</Link>
+                <Link href="/gestionale/soci/livelli" class="text-accent hover:underline">Livelli</Link>
+                <Link v-if="canEdit" href="/gestionale/soci/nuovo" class="rounded-lg bg-accent px-4 py-2 text-base text-accent-ink">Nuova scheda</Link>
+            </div>
         </div>
 
         <div class="mb-4 grid gap-3 sm:grid-cols-[2fr_1fr]">

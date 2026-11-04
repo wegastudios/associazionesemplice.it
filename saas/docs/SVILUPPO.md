@@ -151,6 +151,11 @@ operatori e nessun pacchetto finché non ne ricevono.
   ricevuta e tessera insieme) o senza incasso con un motivo. Vale se lei e l'incasso non sono stornati: la vista
   `app.valid_memberships` lo calcola, quindi stornare la quota toglie la tessera da sé.
 - Il fondatore è sempre in regola. I soci attivi (`Soci\Contracts\Members`) sono quelli che il SaaS comunica al portale.
+- Tutori (`GuardianService`, regole in `GuardianRules`): al massimo due; il primo è l'operativo (deve poter entrare e
+  avere l'email), togliendolo l'operativo passa all'altro.
+- Certificati medici (`CertificateService`): tipo, medico e nome del file cifrati e marcati `health`, file cifrato;
+  ogni lettura e ogni scarico finiscono nel registro. Solo chi ha `health.view` (non il commercialista) li vede.
+  L'elenco delle scadenze usa solo le date, senza aprire i dati sanitari.
 - Impostazioni del tesseramento in `app.settings` (`Core\Contracts\OrgSettings`): mese di inizio dell'anno sociale e
   quota associativa.
 

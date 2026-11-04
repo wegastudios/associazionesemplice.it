@@ -17,6 +17,7 @@ it('assegna i permessi per ruolo', function (Ability $ability, array $allowed): 
     [Ability::ViewAudit, [OrgRole::Owner, OrgRole::Admin]],
     [Ability::EditPeople, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator]],
     [Ability::EditAccounting, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator]],
+    [Ability::ViewHealth, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator]],
     [Ability::ViewPeople, OrgRole::cases()],
     [Ability::ViewAccounting, OrgRole::cases()],
 ]);

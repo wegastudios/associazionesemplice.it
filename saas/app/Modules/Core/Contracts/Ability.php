@@ -19,6 +19,8 @@ enum Ability: string
     case ManageOperators = 'org.operators';
     case ViewPeople = 'people.view';
     case EditPeople = 'people.edit';
+    /** Dati sanitari (certificati medici): non per il commercialista. */
+    case ViewHealth = 'health.view';
     case ViewAccounting = 'accounting.view';
     case EditAccounting = 'accounting.edit';
     case CloseFiscalYear = 'accounting.close';
@@ -30,7 +32,7 @@ enum Ability: string
         return match ($this) {
             self::ManageSubscription => $role === OrgRole::Owner,
             self::ManageSettings, self::ManageOperators, self::CloseFiscalYear, self::ViewAudit => in_array($role, [OrgRole::Owner, OrgRole::Admin], true),
-            self::EditPeople, self::EditAccounting => in_array($role, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator], true),
+            self::EditPeople, self::EditAccounting, self::ViewHealth => in_array($role, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator], true),
             self::ViewPeople, self::ViewAccounting => true,
         };
     }

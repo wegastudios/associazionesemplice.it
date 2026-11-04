@@ -6,7 +6,7 @@ import PersonPicker from '../../components/PersonPicker.vue';
 
 const props = defineProps({
     person: Object, firstFreeCard: String, types: Array, levels: Array, accounts: Array,
-    socialYear: Object, settings: Object, canEdit: Boolean, canSettings: Boolean,
+    socialYear: Object, settings: Object, certificateKinds: Array, canEdit: Boolean, canSettings: Boolean,
 });
 
 const p = props.person ?? {};
@@ -27,7 +27,18 @@ const submitGrant = () => grant.post(`/gestionale/soci/${props.person.id}/tesser
 const revoke = (id) => router.post(`/gestionale/tessere/${id}/togli`, {}, { preserveScroll: true });
 const leave = useForm({ date: today, reason: '' });
 const submitLeave = () => leave.post(`/gestionale/soci/${props.person.id}/uscita`, { preserveScroll: true });
-const settingsForm = useForm({ start_month: props.settings.start_month, fee: props.settings.fee });
+const settingsForm = useForm({ start_month: props.settings.start_month, fee: props.settings.fee, warn_days: props.settings.warn_days });
+
+const guardianForm = useForm({ guardian_id: '' });
+const linkGuardian = () => guardianForm.post(`/gestionale/soci/${props.person.id}/tutori`, { preserveScroll: true, onSuccess: () => guardianForm.reset() });
+const makeOperative = (g) => router.post(`/gestionale/soci/${props.person.id}/tutori/${g.id}/operativo`, {}, { preserveScroll: true });
+const unlinkGuardian = (g) => router.delete(`/gestionale/soci/${props.person.id}/tutori/${g.id}`, { preserveScroll: true });
+
+const nextYear = (d) => { const x = new Date(d); x.setFullYear(x.getFullYear() + 1); return x.toISOString().slice(0, 10); };
+const certForm = useForm({ kind: 'non_agonistic', issued_on: today, expires_on: nextYear(today), doctor: '', file: null });
+const addCert = () => certForm.post(`/gestionale/soci/${props.person.id}/certificati`, { preserveScroll: true, forceFormData: true, onSuccess: () => certForm.reset() });
+const deleteCert = (c) => router.delete(`/gestionale/certificati/${c.id}`, { preserveScroll: true });
+const certBadge = { valid: 'bg-salvia/15', expiring: 'bg-giallo/25', expired: 'bg-danger/15 text-danger', none: 'bg-surface' };
 const submitSettings = () => settingsForm.post('/gestionale/soci/impostazioni', { preserveScroll: true });
 const months = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
 
@@ -87,8 +98,8 @@ const label = 'space-y-1 text-sm';
             <button v-if="canEdit" type="submit" class="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" :disabled="form.processing">{{ person ? 'Salva la scheda' : 'Crea la scheda' }}</button>
         </form>
 
-        <template v-if="person && !isGuest && person.type !== 'guardian'">
-            <section class="mt-6 rounded-2xl border border-line bg-card p-5">
+        <template v-if="person">
+            <section v-if="!isGuest && person.type !== 'guardian'" class="mt-6 rounded-2xl border border-line bg-card p-5">
                 <h2 class="mb-3 text-lg font-bold">Tesseramento</h2>
                 <p v-if="person.type === 'founder'" class="text-sm">Socio fondatore: la tessera è sempre rinnovata.</p>
                 <table v-if="person.memberships.length" class="mb-4 w-full text-sm">
@@ -117,6 +128,61 @@ const label = 'space-y-1 text-sm';
                 </form>
             </section>
 
+            <section v-if="person.certificates" class="mt-6 rounded-2xl border border-line bg-card p-5">
+                <div class="mb-3 flex flex-wrap items-center gap-3">
+                    <h2 class="text-lg font-bold">Certificato medico</h2>
+                    <span class="rounded px-2 py-0.5 text-sm font-semibold" :class="certBadge[person.certificates.status]">{{ person.certificates.label }}</span>
+                </div>
+                <p class="mb-3 text-sm text-muted">Dato sanitario: è cifrato e ogni consultazione resta nel registro delle azioni.</p>
+                <table v-if="person.certificates.items.length" class="mb-4 w-full text-sm">
+                    <thead class="text-left text-muted"><tr><th class="py-2">Tipo</th><th class="py-2">Medico</th><th class="py-2">Rilascio</th><th class="py-2">Scadenza</th><th class="py-2"></th></tr></thead>
+                    <tbody>
+                        <tr v-for="c in person.certificates.items" :key="c.id" class="border-t border-line" :class="c.current ? 'font-semibold' : 'text-muted'">
+                            <td class="py-2">{{ c.kind }}</td><td class="py-2">{{ c.doctor ?? '' }}</td><td class="py-2">{{ c.issued_on }}</td><td class="py-2">{{ c.expires_on }}</td>
+                            <td class="space-x-3 py-2 text-right">
+                                <a v-if="c.has_file" :href="`/gestionale/certificati/${c.id}/file`" class="text-accent hover:underline">Scarica</a>
+                                <button v-if="canEdit" type="button" class="text-danger hover:underline" @click="deleteCert(c)">Togli</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <form v-if="canEdit" class="grid gap-3 sm:grid-cols-5" @submit.prevent="addCert">
+                    <label :class="label"><span class="font-semibold">Tipo</span>
+                        <select v-model="certForm.kind" :class="field"><option v-for="k in certificateKinds" :key="k.value" :value="k.value">{{ k.label }}</option></select></label>
+                    <label :class="label"><span class="font-semibold">Rilascio</span><input v-model="certForm.issued_on" type="date" :class="field" required @change="certForm.expires_on = nextYear(certForm.issued_on)" /></label>
+                    <label :class="label"><span class="font-semibold">Scadenza</span><input v-model="certForm.expires_on" type="date" :class="field" required /></label>
+                    <label :class="label"><span class="font-semibold">Medico</span><input v-model="certForm.doctor" :class="field" /></label>
+                    <label :class="label"><span class="font-semibold">File (PDF o foto)</span><input type="file" accept="application/pdf,image/jpeg,image/png" class="block w-full text-sm" @input="certForm.file = $event.target.files[0]" /></label>
+                    <div class="sm:col-span-5"><button type="submit" class="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" :disabled="certForm.processing">Registra il certificato</button></div>
+                    <p v-if="certForm.errors.file || certForm.errors.expires_on" class="text-sm text-danger sm:col-span-5">{{ certForm.errors.file || certForm.errors.expires_on }}</p>
+                </form>
+            </section>
+
+            <section v-if="person.minor || person.guardians.length" class="mt-6 rounded-2xl border border-line bg-card p-5">
+                <h2 class="mb-3 text-lg font-bold">Genitori o tutori</h2>
+                <p v-if="!person.guardians.length" class="mb-3 text-sm text-muted">Nessun tutore collegato. Il tutore operativo segue il minore nell'area soci.</p>
+                <ul class="mb-4 space-y-2 text-sm">
+                    <li v-for="g in person.guardians" :key="g.id" class="flex flex-wrap items-center gap-3">
+                        <Link :href="`/gestionale/soci/${g.id}`" class="font-semibold text-accent hover:underline">{{ g.name }}</Link>
+                        <span class="text-muted">{{ g.email ?? 'senza email' }}</span>
+                        <span v-if="g.operative" class="rounded bg-salvia/15 px-2 py-0.5">operativo</span>
+                        <template v-if="canEdit">
+                            <button v-if="!g.operative" type="button" class="text-accent hover:underline" @click="makeOperative(g)">Rendi operativo</button>
+                            <button type="button" class="text-danger hover:underline" @click="unlinkGuardian(g)">Scollega</button>
+                        </template>
+                    </li>
+                </ul>
+                <form v-if="canEdit && person.guardians.length < 2" class="flex flex-wrap items-end gap-3" @submit.prevent="linkGuardian">
+                    <div class="min-w-64 flex-1 space-y-1 text-sm"><label for="guardian" class="font-semibold">Collega un genitore o tutore</label><PersonPicker id="guardian" v-model="guardianForm.guardian_id" /></div>
+                    <button type="submit" class="rounded-lg border border-line px-4 py-2 font-semibold" :disabled="!guardianForm.guardian_id">Collega</button>
+                </form>
+            </section>
+
+            <section v-if="person.dependents.length" class="mt-6 rounded-2xl border border-line bg-card p-5">
+                <h2 class="mb-3 text-lg font-bold">È genitore o tutore di</h2>
+                <ul class="space-y-1 text-sm"><li v-for="d in person.dependents" :key="d.id"><Link :href="`/gestionale/soci/${d.id}`" class="font-semibold text-accent hover:underline">{{ d.name }}</Link></li></ul>
+            </section>
+
             <section v-if="canEdit && !person.left_on" class="mt-6 rounded-2xl border border-line bg-card p-5">
                 <h2 class="mb-3 text-lg font-bold">Uscita dall'associazione</h2>
                 <form class="flex flex-wrap items-end gap-3" @submit.prevent="submitLeave">
@@ -133,6 +199,7 @@ const label = 'space-y-1 text-sm';
                 <label :class="label"><span class="font-semibold">L'anno sociale inizia a</span>
                     <select v-model="settingsForm.start_month" :class="field"><option v-for="(m, i) in months" :key="m" :value="i + 1">{{ m }}</option></select></label>
                 <label :class="label"><span class="font-semibold">Quota associativa</span><input v-model="settingsForm.fee" inputmode="decimal" :class="field" /></label>
+                <label :class="label"><span class="font-semibold">Preavviso certificati (giorni)</span><input v-model="settingsForm.warn_days" type="number" min="1" max="365" :class="field" /></label>
                 <button type="submit" class="rounded-lg border border-line px-4 py-2 font-semibold">Salva</button>
             </form>
         </section>
