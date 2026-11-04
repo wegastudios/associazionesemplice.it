@@ -32,6 +32,23 @@ return [
 
     'disks' => [
 
+        // Spazio dei backup: in produzione esterno e in UE (SFTP, per esempio uno Storage Box), in locale su disco.
+        'backups' => env('SAAS_BACKUP_DRIVER', 'local') === 'sftp' ? [
+            'driver' => 'sftp',
+            'host' => env('SAAS_BACKUP_SFTP_HOST'),
+            'port' => (int) env('SAAS_BACKUP_SFTP_PORT', 22),
+            'username' => env('SAAS_BACKUP_SFTP_USERNAME'),
+            'privateKey' => env('SAAS_BACKUP_SFTP_KEY_PATH'),
+            'hostFingerprint' => env('SAAS_BACKUP_SFTP_FINGERPRINT'),
+            'root' => env('SAAS_BACKUP_SFTP_ROOT', '/backups'),
+            'timeout' => 30,
+            'throw' => true,
+        ] : [
+            'driver' => 'local',
+            'root' => env('SAAS_BACKUP_LOCAL_ROOT', storage_path('app/backups')),
+            'throw' => true,
+        ],
+
         // File delle associazioni, già cifrati (Cifratura\Files): fuori dalla cartella pubblica, mai serviti
         // direttamente dal server web.
         'org_files' => [

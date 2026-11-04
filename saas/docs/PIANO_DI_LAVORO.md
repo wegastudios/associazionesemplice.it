@@ -14,11 +14,12 @@ Nessuno: la fase 0 si può iniziare in locale.
 |---|---|---|
 | DPA (art. 28) e sub-responsabili di SupportHost: il link ricevuto era un articolo di blog | Luca | **ultimo passo**, subito prima dei dati veri |
 | Conferma di PostgreSQL 16 sul server con `SELECT version();` | prima prova sul database | aggiornamento comunicato, non verificato |
-| Spazio esterno in UE per i dump orari cifrati | da scegliere | da fare |
+| Spazio esterno in UE per i dump orari cifrati (SFTP) | da scegliere | da fare |
+| `pg_dump`/`pg_restore` 16 sul server (c'è solo il client 13) | SupportHost | da chiedere |
 | APCu disponibile sul piano (senza, una chiamata al servizio chiavi per richiesta, [ARCHITETTURA.md](ARCHITETTURA.md) §7) | sessione del portale, via SSH | da verificare |
 | Account cPanel separato per il servizio chiavi, con sottodominio HTTPS | Luca | da creare |
 | Estensione PHP `redis` da attivare in cPanel | Luca | da fare |
-| Sub-account di staging | Luca | da creare |
+| Sub-account di staging, con database e tre utenti PostgreSQL | Luca | da creare |
 | DPA del SaaS verso i clienti, valutazione d'impatto (DPIA), informativa | consulente privacy | da fare |
 | Penetration test esterno | fornitore da scegliere | prima del lancio |
 
@@ -46,7 +47,7 @@ Ordine consigliato. Ogni passo si chiude con i suoi test.
 | 5. Cifratura | **fatto** (2026-11-04): chiavi per associazione, campi cifrati con indice di ricerca, file cifrati, servizio chiavi separato, distruzione delle chiavi |
 | 6. Registro delle azioni | **fatto** (2026-11-04): catena sigillata per associazione, partizioni mensili, letture dei dati sanitari, eventi di sicurezza, verifica notturna |
 | 7. Contratto con il portale | **definito e fatto lato SaaS** (2026-11-04): [CONTRATTO_PORTALE.md](CONTRATTO_PORTALE.md). Lato portale: da passare alla sessione Portale e pagamenti |
-| 8. Rilascio | da fare |
+| 8. Rilascio | **fatto in locale e in CI** (2026-11-04): pacchetto, rilascio con ritorno automatico, cron e code, dump orari cifrati con prova di ripristino ([RILASCIO.md](RILASCIO.md)). Su staging dopo i prerequisiti di RILASCIO.md §4 |
 
 1. **Scheletro**: Laravel 13 in `saas/`, moduli in `app/Modules/`, Pest, PHPStan al massimo, Pint, test di architettura,
    `.github/workflows/saas.yml`.

@@ -12,4 +12,7 @@ interface DatabaseNames
 
     /** Connessione del proprietario: solo manutenzione dello schema (migrazioni, partizioni). */
     public function ownerConnection(?string $name): string;
+
+    /** Connessione del ruolo dei backup: sola lettura, ammessa dalle policy. */
+    public function backupConnection(?string $name): string;
 }

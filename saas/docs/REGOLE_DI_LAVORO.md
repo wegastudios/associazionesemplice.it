@@ -27,7 +27,7 @@ indicare chi vende (per esempio sulle fatture). Colori, logo e carattere sono in
 - Nessun segreto nel repository, nei log o in chat: password, chiavi e token solo in file d'ambiente fuori dalla
   cartella pubblica.
 - Ogni tabella di `app`, `audit` e `sites` ha `org_id`, chiavi esterne composte e Row-Level Security forzata.
-- Il ruolo dell'applicazione non è proprietario delle tabelle e non ha `BYPASSRLS`.
+- Il ruolo dell'applicazione non è proprietario delle tabelle e non ha `BYPASSRLS`. Il ruolo dei backup legge e basta.
 - Ogni nuova tabella ha il suo test di separazione tra associazioni.
 - I campi sensibili si cifrano prima del salvataggio ([DATABASE.md](DATABASE.md) §5).
 - La prima nota non si modifica e non si cancella: si storna.

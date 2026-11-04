@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Core\Providers;
 
 use App\Modules\Core\Console\CreateOrgCommand;
+use App\Modules\Core\Console\HealthCommand;
 use App\Modules\Core\Console\InviteOperatorCommand;
 use App\Modules\Core\Console\MigrateAllCommand;
 use App\Modules\Core\Contracts\DatabaseNames;
@@ -13,6 +14,7 @@ use App\Modules\Core\Contracts\OrgDirectory;
 use App\Modules\Core\Database\DatabaseRegistry;
 use App\Modules\Core\Org\DatabaseOrgContext;
 use App\Modules\Core\Org\DatabaseOrgDirectory;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Database\Schema\Grammars\PostgresGrammar;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
@@ -45,7 +47,15 @@ final class CoreServiceProvider extends ServiceProvider
         Event::listen(JobFailed::class, $reset);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([MigrateAllCommand::class, CreateOrgCommand::class, InviteOperatorCommand::class]);
+            $this->commands([MigrateAllCommand::class, CreateOrgCommand::class, InviteOperatorCommand::class, HealthCommand::class]);
+
+            // Code su Postgres: un lavoratore a giro di cron, che si ferma quando la coda è vuota o dopo 50 secondi
+            // (sul server non ci sono processi sempre attivi).
+            $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
+                $schedule->command('queue:work --stop-when-empty --max-time=50 --tries=3')
+                    ->everyMinute()->withoutOverlapping(5)->runInBackground();
+                $schedule->command('queue:prune-failed --hours=720')->dailyAt('05:47');
+            });
         }
     }
 }

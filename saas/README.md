@@ -4,9 +4,9 @@ Gestionale online per associazioni, con pacchetti aggiuntivi: area soci, risorse
 dall'AI, fattura elettronica. Il plugin WordPress resta un prodotto a sé: la differenza è dove stanno i dati e
 l'assistenza.
 
-**Stato:** fase 0 in corso ([piano di lavoro](docs/PIANO_DI_LAVORO.md)). Ci sono lo scheletro Laravel 13, il database
+**Stato:** fase 0 completata in locale e in CI; manca solo la messa su staging ([piano di lavoro](docs/PIANO_DI_LAVORO.md)). Ci sono lo scheletro Laravel 13, il database
 con i due ruoli, la separazione tra associazioni, l'accesso con la verifica in due passaggi e la cifratura con il servizio chiavi e il
-registro delle azioni e il lato SaaS del contratto con il portale, tutti con i loro test. Avvio in locale: [SVILUPPO.md](docs/SVILUPPO.md).
+registro delle azioni, il lato SaaS del contratto con il portale e il rilascio con i backup, tutti con i loro test. Avvio in locale: [SVILUPPO.md](docs/SVILUPPO.md).
 
 Priorità, in quest'ordine: **1. sicurezza dei dati personali e fiscali · 2. velocità**.
 
@@ -17,6 +17,7 @@ Priorità, in quest'ordine: **1. sicurezza dei dati personali e fiscali · 2. ve
 | [PIANO_DI_LAVORO.md](docs/PIANO_DI_LAVORO.md) | **Inizia da qui**: prerequisiti, fasi, primo traguardo |
 | [REGOLE_DI_LAVORO.md](docs/REGOLE_DI_LAVORO.md) | Regole per chi sviluppa: sessioni, sicurezza, marchio, qualità |
 | [SVILUPPO.md](docs/SVILUPPO.md) | Avvio in locale, ruoli del database, moduli, come si aggiunge una tabella |
+| [RILASCIO.md](docs/RILASCIO.md) | Server, rilascio da GitHub Actions, cron e code, backup cifrati e ripristino |
 | [CONTRATTO_PORTALE.md](docs/CONTRATTO_PORTALE.md) | Contratto con il portale: diritti firmati, consumi, accesso unico (per la sessione del portale) |
 | [ARCHITETTURA.md](docs/ARCHITETTURA.md) | Portale e SaaS, moduli, domini, code, chiavi, ambienti, contratto con il portale |
 | [DATABASE.md](docs/DATABASE.md) | Hosting verificato, schemi, separazione tra associazioni, cifratura, prima nota immutabile |

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Audit\Providers\AuditServiceProvider;
+use App\Modules\Backup\Providers\BackupServiceProvider;
 use App\Modules\Cifratura\Providers\CifraturaServiceProvider;
 use App\Modules\Core\Providers\AuthServiceProvider;
 use App\Modules\Core\Providers\CoreServiceProvider;
@@ -16,4 +17,5 @@ return [
     CifraturaServiceProvider::class,
     AuditServiceProvider::class,
     PortaleServiceProvider::class,
+    BackupServiceProvider::class,
 ];

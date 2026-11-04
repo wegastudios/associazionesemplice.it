@@ -56,7 +56,7 @@ final class DatabaseRegistry implements DatabaseNames
             return $this->sharedAppConnection();
         }
 
-        return $this->register($name, owner: false);
+        return $this->register($name, 'app');
     }
 
     /** Connessione del proprietario, solo per le migrazioni. */
@@ -67,7 +67,18 @@ final class DatabaseRegistry implements DatabaseNames
             return $this->sharedOwnerConnection();
         }
 
-        return $this->register($name, owner: true);
+        return $this->register($name, 'owner');
+    }
+
+    /** Connessione del ruolo dei backup (sola lettura), per pg_dump. */
+    public function backupConnection(?string $name): string
+    {
+        $name ??= self::SHARED;
+        if ($name === self::SHARED) {
+            return 'pgsql_backup';
+        }
+
+        return $this->register($name, 'backup');
     }
 
     /**
@@ -81,8 +92,8 @@ final class DatabaseRegistry implements DatabaseNames
         $this->dedicated();
         $this->dedicated[$name] = $settings;
 
-        foreach ([false, true] as $owner) {
-            $this->config->set('database.connections.'.$this->connectionName($name, $owner), null);
+        foreach (['app', 'owner', 'backup'] as $kind) {
+            $this->config->set('database.connections.'.$this->connectionName($name, $kind), null);
         }
     }
 
@@ -96,13 +107,18 @@ final class DatabaseRegistry implements DatabaseNames
         return $this->configString('saas.db.owner_connection');
     }
 
-    private function register(string $name, bool $owner): string
+    /** @param  'app'|'owner'|'backup'  $kind */
+    private function register(string $name, string $kind): string
     {
         $settings = $this->dedicated()[$name] ?? throw new InvalidArgumentException("Database dedicato sconosciuto: {$name}");
-        $connection = $this->connectionName($name, $owner);
+        $connection = $this->connectionName($name, $kind);
 
         if ($this->config->get('database.connections.'.$connection) === null) {
-            $base = $this->config->get('database.connections.'.($owner ? $this->sharedOwnerConnection() : $this->sharedAppConnection()));
+            $base = $this->config->get('database.connections.'.match ($kind) {
+                'app' => $this->sharedAppConnection(),
+                'owner' => $this->sharedOwnerConnection(),
+                'backup' => 'pgsql_backup',
+            });
             if (! is_array($base)) {
                 throw new RuntimeException('Connessione condivisa non configurata.');
             }
@@ -113,8 +129,12 @@ final class DatabaseRegistry implements DatabaseNames
                 'host' => $settings['host'] ?? null,
                 'port' => $settings['port'] ?? null,
                 'database' => $settings['database'] ?? null,
-                'username' => $owner ? ($settings['owner_username'] ?? null) : ($settings['username'] ?? null),
-                'password' => $owner ? ($settings['owner_password'] ?? null) : ($settings['password'] ?? null),
+                'username' => $settings[match ($kind) {
+                    'app' => 'username', 'owner' => 'owner_username', 'backup' => 'backup_username'
+                }] ?? null,
+                'password' => $settings[match ($kind) {
+                    'app' => 'password', 'owner' => 'owner_password', 'backup' => 'backup_password'
+                }] ?? null,
             ], static fn (mixed $value): bool => $value !== null);
 
             if (! isset($overrides['database'])) {
@@ -123,15 +143,16 @@ final class DatabaseRegistry implements DatabaseNames
 
             $this->config->set('database.connections.'.$connection, array_merge($base, $overrides, [
                 'app_role' => $appRole,
+                'backup_role' => $settings['backup_username'] ?? ($this->config->get('database.connections.pgsql_backup.username')),
             ]));
         }
 
         return $connection;
     }
 
-    private function connectionName(string $name, bool $owner): string
+    private function connectionName(string $name, string $kind): string
     {
-        return 'org_db_'.$name.($owner ? '_owner' : '');
+        return 'org_db_'.$name.($kind === 'app' ? '' : '_'.$kind);
     }
 
     /** @return array<string, array<string, mixed>> */

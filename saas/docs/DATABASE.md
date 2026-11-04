@@ -59,8 +59,9 @@ Ruoli Postgres:
 
 | Ruolo | Uso | Permessi |
 |---|---|---|
-| proprietario (migrazioni) | `php artisan migrate` | proprietario delle tabelle; anche lui soggetto alla RLS (`FORCE`) |
+| proprietario (migrazioni) | `php artisan saas:migrate` | proprietario delle tabelle; anche lui soggetto alla RLS (`FORCE`) |
 | applicazione | richieste web e code | solo i permessi necessari, tabella per tabella; mai `BYPASSRLS` né superuser |
+| backup | `pg_dump` (`saas:backup:dump`) | solo `SELECT`; le policy lo ammettono in lettura (`OR current_user = '<ruolo dei backup>'`), mai in scrittura |
 
 Esempio:
 
@@ -186,8 +187,8 @@ Si cifra nell'applicazione con `sodium`: la chiave non entra mai nel database.
   (solo `core`) e `Database/Migrations/Org` (tutti i database); dettagli in [SVILUPPO.md](SVILUPPO.md).
 - Modifiche in due tempi: prima si **aggiunge** il nuovo, poi si **toglie** il vecchio. Nessun fermo durante gli
   aggiornamenti.
-- **Dump orario** per database, cifrato prima di uscire dal server, su uno spazio esterno in UE. Prova di ripristino
-  periodica.
+- **Dump orario** per database, cifrato prima di uscire dal server con la chiave pubblica dei backup, su uno spazio
+  esterno in UE. Prova di ripristino ogni settimana sullo staging ([RILASCIO.md](RILASCIO.md) §3).
 
 ## 9. Moduli (dalle 64 tabelle del plugin)
 

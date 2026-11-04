@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Audit\Log;
 
+use App\Modules\Core\Contracts\OrgSchema;
 use DateTimeInterface;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Carbon;
@@ -39,8 +40,6 @@ final class Partitions
         }
 
         $owner->statement("CREATE TABLE {$table} PARTITION OF audit.log {$bounds}");
-        $owner->statement("ALTER TABLE {$table} ENABLE ROW LEVEL SECURITY");
-        $owner->statement("ALTER TABLE {$table} FORCE ROW LEVEL SECURITY");
-        $owner->statement("CREATE POLICY org_isolation ON {$table} USING (org_id = NULLIF(current_setting('app.org_id', true), '')::uuid) WITH CHECK (org_id = NULLIF(current_setting('app.org_id', true), '')::uuid)");
+        OrgSchema::secure($owner, $table);
     }
 }

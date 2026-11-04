@@ -68,6 +68,36 @@ return [
             'application_name' => 'associazionesemplice-migrazioni',
             // Ruolo a cui le migrazioni concedono i permessi (OrgSchema::grant).
             'app_role' => env('DB_USERNAME', 'as_app'),
+            // Ruolo dei backup: sola lettura, ammesso dalle policy (OrgSchema::secure).
+            'backup_role' => env('DB_BACKUP_USERNAME', 'as_backup'),
+        ],
+
+        // Sola lettura per pg_dump (saas:backup:dump). Mai nelle richieste.
+        'pgsql_backup' => [
+            'driver' => 'pgsql',
+            'host' => env('DB_HOST', '127.0.0.1'),
+            'port' => env('DB_PORT', '5432'),
+            'database' => env('DB_DATABASE', 'as_central'),
+            'username' => env('DB_BACKUP_USERNAME', 'as_backup'),
+            'password' => env('DB_BACKUP_PASSWORD', ''),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'search_path' => 'public',
+            'sslmode' => env('DB_SSLMODE', 'prefer'),
+        ],
+
+        // Database di prova per il ripristino (saas:backup:restore-test): si svuota a ogni prova.
+        'pgsql_restore' => [
+            'driver' => 'pgsql',
+            'host' => env('DB_RESTORE_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('DB_RESTORE_PORT', env('DB_PORT', '5432')),
+            'database' => env('DB_RESTORE_DATABASE', 'as_restore'),
+            'username' => env('DB_RESTORE_USERNAME', env('DB_OWNER_USERNAME', 'as_owner')),
+            'password' => env('DB_RESTORE_PASSWORD', env('DB_OWNER_PASSWORD', '')),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'search_path' => 'public',
+            'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
 
     ],

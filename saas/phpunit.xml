@@ -33,6 +33,9 @@
         <env name="DB_PASSWORD" value="app-locale"/>
         <env name="DB_OWNER_USERNAME" value="as_owner"/>
         <env name="DB_OWNER_PASSWORD" value="owner-locale"/>
+        <env name="DB_BACKUP_USERNAME" value="as_backup"/>
+        <env name="DB_BACKUP_PASSWORD" value="backup-locale"/>
+        <env name="DB_RESTORE_DATABASE" value="as_test_restore"/>
         <env name="DB_URL" value=""/>
         <env name="SAAS_DEDICATED_DB_FILE" value=""/>
         <env name="TEST_DEDICATED_DATABASE" value="as_test_dedicato"/>

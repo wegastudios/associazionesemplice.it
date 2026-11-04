@@ -37,4 +37,13 @@ return [
         'grace_days' => 15,
     ],
 
+    // Dump orari cifrati (docs/RILASCIO.md). Sul server solo la chiave pubblica; la coppia completa solo dove si fa
+    // la prova di ripristino (staging).
+    'backup' => [
+        'public_key' => env('SAAS_BACKUP_PUBLIC_KEY'),
+        'secret_key' => env('SAAS_BACKUP_SECRET_KEY'),
+        'pg_dump' => env('SAAS_PG_DUMP', 'pg_dump'),
+        'pg_restore' => env('SAAS_PG_RESTORE', 'pg_restore'),
+    ],
+
 ];

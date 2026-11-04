@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Contracts;
 
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use RuntimeException;
@@ -28,15 +29,40 @@ final class OrgSchema
     public static function isolate(string $table, string $orgColumn = 'org_id'): void
     {
         self::assertTable($table);
+        self::secure(DB::connection(), $table, $orgColumn);
+    }
+
+    /**
+     * RLS forzata e policy su una tabella, con la connessione data (anche fuori dalle migrazioni: partizioni).
+     * In lettura passa anche il ruolo dei backup (sola lettura, nessun permesso di scrittura): pg_dump deve vedere tutte
+     * le righe e su cPanel non esiste un ruolo con BYPASSRLS.
+     */
+    public static function secure(ConnectionInterface $connection, string $table, string $orgColumn = 'org_id'): void
+    {
+        self::assertTable($table);
+        [$using, $check] = self::conditions($connection, $orgColumn);
+
+        $connection->statement("ALTER TABLE {$table} ENABLE ROW LEVEL SECURITY");
+        $connection->statement("ALTER TABLE {$table} FORCE ROW LEVEL SECURITY");
+        $connection->statement("CREATE POLICY org_isolation ON {$table} USING ({$using}) WITH CHECK ({$check})");
+    }
+
+    /** @return array{0: string, 1: string} condizione di lettura e di scrittura */
+    public static function conditions(ConnectionInterface $connection, string $orgColumn = 'org_id'): array
+    {
         if (preg_match('/^[a-z_]+$/', $orgColumn) !== 1) {
             throw new InvalidArgumentException('Colonna non valida.');
         }
+        $check = "{$orgColumn} = NULLIF(current_setting('app.org_id', true), '')::uuid";
+        $backup = self::role($connection, 'backup_role');
 
-        $condition = "{$orgColumn} = NULLIF(current_setting('app.org_id', true), '')::uuid";
+        return ["{$check} OR current_user = '{$backup}'", $check];
+    }
 
-        DB::statement("ALTER TABLE {$table} ENABLE ROW LEVEL SECURITY");
-        DB::statement("ALTER TABLE {$table} FORCE ROW LEVEL SECURITY");
-        DB::statement("CREATE POLICY org_isolation ON {$table} USING ({$condition}) WITH CHECK ({$condition})");
+    /** Ruolo dei backup, già quotato per l'SQL. */
+    public static function backupRole(): string
+    {
+        return '"'.self::role(DB::connection(), 'backup_role').'"';
     }
 
     /**
@@ -59,12 +85,17 @@ final class OrgSchema
     /** Ruolo dell'applicazione, già quotato per l'SQL. */
     public static function appRole(): string
     {
-        $role = DB::connection()->getConfig('app_role');
+        return '"'.self::role(DB::connection(), 'app_role').'"';
+    }
+
+    private static function role(ConnectionInterface $connection, string $key): string
+    {
+        $role = method_exists($connection, 'getConfig') ? $connection->getConfig($key) : null;
         if (! is_string($role) || preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $role) !== 1) {
-            throw new RuntimeException('Ruolo dell\'applicazione non configurato sulla connessione delle migrazioni.');
+            throw new RuntimeException("Ruolo {$key} non configurato sulla connessione del proprietario.");
         }
 
-        return '"'.$role.'"';
+        return $role;
     }
 
     private static function assertTable(string $table): void

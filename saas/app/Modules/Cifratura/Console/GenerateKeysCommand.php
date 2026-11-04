@@ -39,7 +39,13 @@ final class GenerateKeysCommand extends Command
         $this->line('Da fissare nel portale (kid e chiave pubblica x):');
         $this->line('  saas-'.substr(hash('sha256', $x), 0, 8).'='.$x);
         $this->newLine();
-        $this->warn('Conserva una copia offline della chiave principale: senza, i dati cifrati non si aprono più.');
+        $box = sodium_crypto_box_keypair();
+        $this->line('Backup, chiave pubblica (server: SAAS_BACKUP_PUBLIC_KEY):');
+        $this->line('  '.base64_encode(sodium_crypto_box_publickey($box)));
+        $this->line('Backup, coppia completa (solo staging e copia offline: SAAS_BACKUP_SECRET_KEY):');
+        $this->line('  '.base64_encode($box));
+        $this->newLine();
+        $this->warn('Conserva una copia offline della chiave principale e della coppia dei backup: senza, dati cifrati e backup non si aprono più.');
 
         return self::SUCCESS;
     }
