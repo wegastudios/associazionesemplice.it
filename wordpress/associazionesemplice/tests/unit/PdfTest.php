@@ -49,4 +49,46 @@ final class PdfTest extends TestCase {
 		$pdf->text( 50.5, 60.25, 'x' );
 		$this->assertMatchesRegularExpression( '/ 50\.50 \d+\.\d{2} Td/', $pdf->output() );
 	}
+
+	/** Un PNG minuscolo: $rows è l'elenco delle righe già con il byte del filtro (0). */
+	private static function png( int $w, int $h, int $color_type, string $raw ): string {
+		$chunk = function ( string $type, string $data ): string {
+			return pack( 'N', strlen( $data ) ) . $type . $data . pack( 'N', crc32( $type . $data ) );
+		};
+		return "\x89PNG\r\n\x1a\n" . $chunk( 'IHDR', pack( 'NNCCCCC', $w, $h, 8, $color_type, 0, 0, 0 ) ) . $chunk( 'IDAT', gzcompress( $raw ) ) . $chunk( 'IEND', '' );
+	}
+
+	public function test_png_without_transparency_is_embedded_as_is(): void {
+		$img = Pdf::load_image( self::png( 2, 1, 2, "\x00\xFF\x00\x00\x00\xFF\x00" ) );
+		$this->assertNotNull( $img );
+		$this->assertSame( '/DeviceRGB', $img['cs'] );
+		$this->assertArrayNotHasKey( 'smask', $img );
+	}
+
+	public function test_png_with_transparency_splits_colour_and_alpha(): void {
+		$img = Pdf::load_image( self::png( 2, 1, 6, "\x00\xFF\x00\x00\x80\x00\x00\xFF\xFF" ) );
+		$this->assertNotNull( $img );
+		$this->assertSame( "\xFF\x00\x00\x00\x00\xFF", gzuncompress( $img['data'] ) );
+		$this->assertSame( "\x80\xFF", gzuncompress( $img['smask']['data'] ) );
+	}
+
+	public function test_unknown_images_are_refused_and_documents_with_images_stay_consistent(): void {
+		$this->assertNull( Pdf::load_image( 'non è un\'immagine' ) );
+		$pdf = new Pdf();
+		$pdf->image( Pdf::load_image( self::png( 2, 1, 6, "\x00\xFF\x00\x00\x80\x00\x00\xFF\xFF" ) ), 50, 50, 100, 50 );
+		$pdf->color( '#ff0000' );
+		$pdf->text( 60, 80, 'Rosso' );
+		$pdf->color( '' );
+		$pdf->text( 60, 100, 'Nero' );
+		$out = $pdf->output();
+		$this->assertStringContainsString( '/XObject', $out );
+		$this->assertStringContainsString( '/SMask', $out );
+		$this->assertStringContainsString( '1.000 0.000 0.000 rg', $out );
+		preg_match( '/startxref\n(\d+)\n/', $out, $m );
+		$this->assertSame( 'xref', substr( $out, (int) $m[1], 4 ) );
+		preg_match_all( '/^(\d{10}) 00000 n $/m', $out, $offs );
+		foreach ( $offs[1] as $i => $off ) {
+			$this->assertSame( ( $i + 1 ) . ' 0 obj', substr( $out, (int) $off, strlen( ( $i + 1 ) . ' 0 obj' ) ) );
+		}
+	}
 }

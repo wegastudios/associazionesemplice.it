@@ -104,7 +104,7 @@ class LedgerService {
 
 	/** Conto "Stripe" / "PayPal" in cui entrano gli incassi online (creato al primo pagamento). */
 	public function online_account( string $provider ): int {
-		$names = array( 'paypal' => 'PayPal', 'woocommerce' => 'WooCommerce' );
+		$names = (array) apply_filters( 'asem_online_account_names', array( 'paypal' => 'PayPal', 'sumup' => 'SumUp', 'woocommerce' => 'WooCommerce' ) ); // un'estensione con altri metodi online aggiunge il nome del suo conto
 		$name  = $names[ $provider ] ?? 'Stripe';
 		foreach ( $this->accounts() as $a ) {
 			if ( $a['name'] === $name ) {
@@ -282,6 +282,9 @@ class LedgerService {
 			if ( ! empty( $l['competence_month'] ) && ! preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/', $l['competence_month'] ) ) {
 				throw new \InvalidArgumentException( "Voce $n: mese di competenza non valido." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
+			if ( ! empty( $l['reservation_id'] ) && ! apply_filters( 'asem_reservation_active', false, (int) $l['reservation_id'] ) ) {
+				throw new \InvalidArgumentException( "Voce $n: la prenotazione della risorsa non è più attiva." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			}
 			$activity_id = ! empty( $l['activity_id'] ) ? (int) $l['activity_id'] : null;
 			$session_id  = ! empty( $l['session_id'] ) ? (int) $l['session_id'] : null;
 			$activity    = $activity_id ? Plugin::activities()->get( $activity_id ) : null;
@@ -312,8 +315,8 @@ class LedgerService {
 				if ( ! $person ) {
 					throw new \InvalidArgumentException( "Voce $n: la quota associativa richiede di indicare il socio." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
-				if ( MemberType::GUEST === $person['type'] ) {
-					throw new \InvalidArgumentException( "Voce $n: un ospite non è socio e non paga la quota associativa." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				if ( ! MemberType::is_member( $person['type'] ) ) {
+					throw new \InvalidArgumentException( "Voce $n: un ospite o un genitore/tutore non è socio e non paga la quota associativa." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				if ( MemberType::is_auto_renewed( $person['type'] ) ) {
 					throw new \InvalidArgumentException( "Voce $n: il socio fondatore ha la tessera sempre rinnovata." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
@@ -343,7 +346,7 @@ class LedgerService {
 				if ( null !== $vat_rate && Fiscal::EXCLUDED === (string) ( $l['vat_mode'] ?? '' ) ) {
 					$cents = Fiscal::gross_from_input( $cents, $vat_rate, Fiscal::EXCLUDED ); // importo scritto IVA esclusa: si incassa con l'IVA
 				}
-				$prepared[] = array( 'vat_rate' => $vat_rate, 'cat' => $cat, 'cents' => $cents, 'discount' => $discount, 'activity_id' => $activity_id, 'session_id' => $session_id, 'social_year' => $social_year, 'free_year' => $free_year, 'person' => $person, 'line' => $l );
+				$prepared[] = array( 'vat_rate' => $vat_rate, 'cat' => $cat, 'cents' => $cents, 'discount' => $discount, 'activity_id' => $activity_id, 'session_id' => $session_id, 'reservation_id' => ! empty( $l['reservation_id'] ) ? (int) $l['reservation_id'] : null, 'social_year' => $social_year, 'free_year' => $free_year, 'person' => $person, 'line' => $l );
 		}
 
 		$receipt_id = wp_generate_uuid4();
@@ -360,6 +363,7 @@ class LedgerService {
 							'category_id'      => (int) $p['cat']['id'],
 							'activity_id'      => $p['activity_id'],
 							'session_id'       => $p['session_id'],
+							'reservation_id'   => $p['reservation_id'],
 							'person_id'        => $p['person'] ? (int) $p['person']['id'] : null,
 							'payer_person_id'  => $payer && $p['person'] && (int) $payer['id'] !== (int) $p['person']['id'] ? (int) $payer['id'] : null,
 							'description'      => mb_substr( (string) ( $p['line']['description'] ?? '' ) . ( $p['discount'] > 0 ? ' · sconto ' . Money::format( $p['discount'] ) . ( '' !== trim( (string) ( $p['line']['discount_note'] ?? '' ) ) ? ' (' . trim( (string) $p['line']['discount_note'] ) . ')' : '' ) : '' ), 0, 255 ),
@@ -373,15 +377,24 @@ class LedgerService {
 						)
 					);
 					if ( 'membership' === $p['cat']['kind'] ) {
-						Plugin::people()->set_membership( (int) $p['person']['id'], $p['social_year'], true, 'payment', $tx_id );
-						if ( ! empty( $p['free_year'] ) ) {
-							Plugin::people()->set_membership( (int) $p['person']['id'], (string) $p['free_year'], true, 'promo', $tx_id ); // anno in corso in omaggio (se si annulla l'incasso, salta anche questo)
+						$missing = Plugin::people()->membership_missing( $p['person'], (string) $p['social_year'] ); // quota a rate: la tessera arriva al saldo (se il limite è attivo)
+						if ( $missing > 0 ) {
+							Audit::log( 'membership.partial', 'person', (int) $p['person']['id'], array( 'social_year' => $p['social_year'], 'missing_cents' => $missing, 'transaction' => $tx_id ) );
+						} else {
+							Plugin::people()->set_membership( (int) $p['person']['id'], $p['social_year'], true, 'payment', $tx_id );
+							if ( ! empty( $p['free_year'] ) ) {
+								Plugin::people()->set_membership( (int) $p['person']['id'], (string) $p['free_year'], true, 'promo', $tx_id ); // anno in corso in omaggio (se si annulla l'incasso, salta anche questo)
+							}
 						}
+					}
+					if ( ! empty( $p['reservation_id'] ) ) {
+						do_action( 'asem_reservation_receipt', $tx_id, (int) $p['reservation_id'], (int) $p['cents'], $date ); // un'estensione accantona la quota di una risorsa
 					}
 					if ( $p['activity_id'] ) {
 						$activity = Plugin::activities()->get( (int) $p['activity_id'] );
 						if ( $activity ) {
-							Plugin::funds()->attribute( $tx_id, $activity, $p['cents'], $date ); // quota per il rimborso del volontario (se prevista)
+							$booking = $p['session_id'] && $p['person'] ? Plugin::activities()->booking( (int) $p['session_id'], (int) $p['person']['id'] ) : null;
+							Plugin::funds()->attribute( $tx_id, $activity, $p['cents'], $date, PriceLists::fund_override( $booking, (int) $p['cents'] ) ); // quota per il rimborso del volontario (se prevista); ospiti: vedi PriceLists
 						}
 					}
 				}
@@ -408,7 +421,7 @@ class LedgerService {
 		}
 		$vat_rate = Fiscal::vat_applies() && array_key_exists( 'vat_rate', $d ) ? Fiscal::clean_rate( $d['vat_rate'] ) : null;
 		$d['amount_cents'] = Fiscal::gross_from_input( (int) $d['amount_cents'], $vat_rate, (string) ( $d['vat_mode'] ?? '' ) ); // se l'importo è scritto IVA esclusa si paga con l'IVA
-		return $this->insert_tx(
+		$tx_id = $this->insert_tx(
 			array(
 				'vat_rate'     => $vat_rate,
 				'vat_cents'    => Fiscal::vat_of( (int) $d['amount_cents'], $vat_rate ),
@@ -424,6 +437,8 @@ class LedgerService {
 				'document_ref' => ! empty( $d['document_ref'] ) ? mb_substr( trim( $d['document_ref'] ), 0, 80 ) : null,
 			)
 		);
+		do_action( 'asem_expense_recorded', $tx_id, $d ); // un'estensione può collegare la spesa ai fondi (i documenti arrivano dopo: vedi `asem_attachments_added`)
+		return $tx_id;
 	}
 
 	/** Giroconto tra due conti (versamento contanti in banca, accredito POS...). */
@@ -473,6 +488,7 @@ class LedgerService {
 				foreach ( $ids as $id ) {
 					$this->db()->update( $tbl, array( 'voided_at' => Db::now(), 'void_reason' => $reason ), array( 'id' => $id ) );
 					Plugin::people()->remove_membership_of_transaction( $id );
+					Plugin::people()->recheck_membership_after_void( $id );
 					Audit::log( 'tx.voided', 'transaction', $id, array( 'reason' => $reason ) );
 				}
 			}

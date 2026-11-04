@@ -4,7 +4,7 @@
 		<input type="hidden" name="csrf" value="<?php echo e( Portale\App::csrf() ); ?>">
 		<div class="card2">
 			<h2>Script di monitoraggio</h2>
-			<p class="muted">Incolla qui gli snippet di Google Analytics, Meta Pixel, Matomo o simili. Se scegli una categoria diversa da «Necessari», lo script <b>parte solo dopo il consenso</b> del visitatore e il banner dei cookie compare da solo. Se non c'è nessuno script non necessario, il banner non serve e non viene mostrato.</p>
+			<p style="margin:0 0 8px"><?php echo tip( "Incolla gli snippet di Google Analytics, Meta Pixel, Matomo o simili. Se scegli una categoria diversa da «Necessari», lo script parte **solo dopo il consenso** del visitatore e il banner dei cookie compare da solo. Se non c'è nessuno script non necessario, il banner non serve e non viene mostrato.", 'Script e consenso' ); ?></p>
 			<label for="head" style="margin-top:0">Nell'header (prima di &lt;/head&gt;)</label>
 			<textarea class="mono" id="head" name="head" rows="7" spellcheck="false" placeholder="&lt;script async src=&quot;https://…&quot;&gt;&lt;/script&gt;"><?php echo e( $t['head'] ); ?></textarea>
 			<label for="head_cat">Categoria di consenso</label>

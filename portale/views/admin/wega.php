@@ -5,7 +5,6 @@ foreach ( $rows as $r ) {
 }
 ?>
 <section class="admin"><div class="wrap">
-	<p class="muted">Le licenze che il server Wega ha emesso per questo portale, confrontate con quelle del portale. L'elenco non contiene le chiavi: le licenze importate non mostrano la chiave al cliente (si legge dal pannello Wega).</p>
 	<?php if ( $error ) : ?>
 		<div class="card2"><h2>Elenco non disponibile</h2><p><?php echo e( $error ); ?></p></div>
 	<?php else : ?>

@@ -18,6 +18,7 @@ final class AccountingPage {
 
 	public static function render(): void {
 		Ui::header( 'Contabilità' );
+		WatchPage::box_html(); // bilancio provvisorio e avvisi (Pro Fiscale)
 		$cur = FiscalYears::current();
 		$fy  = FiscalYears::get( $cur );
 		echo '<div class="asem-grid"><div class="asem-card"><h2>Anno solare ' . (int) $cur . '</h2>';

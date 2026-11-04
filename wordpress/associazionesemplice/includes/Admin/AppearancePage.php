@@ -4,6 +4,7 @@ namespace AssociazioneSemplice\Admin;
 use AssociazioneSemplice\CardLayout;
 use AssociazioneSemplice\Frontend\Assets;
 use AssociazioneSemplice\Settings;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -25,6 +26,8 @@ final class AppearancePage {
 		$sec    = Assets::secondary( $acc );
 		$logo   = Assets::logo_url();
 		echo '<h2>Tessera</h2><input type="hidden" name="card_present" value="1">';
+		echo '<p><label><strong>Testo libero sulla tessera</strong> <input type="text" name="card_text" value="' . esc_attr( (string) $s['card_text'] ) . '" maxlength="160" class="regular-text" placeholder="Es. Tessera valida con documento d\'identità"></label><br>'
+			. '<span class="description">Facoltativo, uguale per tutti i soci. Sulla tessera standard compare sotto il tipo di socio; sulla personalizzata lo posizioni tu (voce «Testo libero»). Sulla tessera compaiono anche il tipo di socio e gli incarichi (consiglio e staff) di ciascuno. Il socio la scarica in PDF dalla sua area e la segreteria dalla sua scheda.</span></p>';
 		echo '<p><label><input type="radio" name="card_mode" value="standard"' . checked( CardLayout::MODE_STANDARD === $mode, true, false ) . '> <strong>Tessera standard</strong>: bianca, con il logo e i testi nel colore principale.</label><br>'
 			. '<label><input type="radio" name="card_mode" value="image"' . checked( CardLayout::MODE_IMAGE === $mode, true, false ) . '> <strong>Tessera personalizzata</strong>: scegli le misure e trascina logo, nome, numero, scadenza e QR dove vuoi, sulla tessera generata dal sito oppure su un\'immagine tua.</label></p>';
 		echo '<div id="asem-card-image"><h3>Misure</h3><p>'
@@ -58,11 +61,11 @@ final class AppearancePage {
 		foreach ( CardLayout::FIELDS as $k => $label ) {
 			$f     = $layout[ $k ];
 			$boxed = in_array( $k, CardLayout::BOXED, true );
-			echo '<tr><td>' . esc_html( $label ) . '</td>'
+			echo wp_kses( '<tr><td>' . esc_html( $label ) . '</td>'
 				. '<td><input type="hidden" name="layout[' . esc_attr( $k ) . '][show]" value="0"><input type="checkbox" name="layout[' . esc_attr( $k ) . '][show]" value="1"' . checked( ! empty( $f['show'] ), true, false ) . '></td>'
 				. '<td><input type="number" step="any" min="1" max="' . ( $boxed ? 100 : 40 ) . '" name="layout[' . esc_attr( $k ) . '][size]" value="' . (float) $f['size'] . '" style="width:70px">' . ( $boxed ? ' <span class="description">% larghezza</span>' : '' ) . '</td>'
 				. '<td>' . ( $boxed ? '—' : '<input type="color" name="layout[' . esc_attr( $k ) . '][color]" value="' . esc_attr( $f['color'] ) . '">' ) . '</td>'
-				. '<td>x <input type="number" step="any" min="0" max="100" name="layout[' . esc_attr( $k ) . '][x]" value="' . (float) $f['x'] . '" style="width:70px"> y <input type="number" step="any" min="0" max="100" name="layout[' . esc_attr( $k ) . '][y]" value="' . (float) $f['y'] . '" style="width:70px"></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				. '<td>x <input type="number" step="any" min="0" max="100" name="layout[' . esc_attr( $k ) . '][x]" value="' . (float) $f['x'] . '" style="width:70px"> y <input type="number" step="any" min="0" max="100" name="layout[' . esc_attr( $k ) . '][y]" value="' . (float) $f['y'] . '" style="width:70px"></td></tr>', Html::allowed() );
 		}
 		echo '</tbody></table><p class="description">Per logo e QR la dimensione è la larghezza in percentuale della tessera; per i testi è la grandezza delle lettere (percentuale della larghezza). La tessera si stampa uguale a come la vedi qui.</p>'
 			. '<p><button type="submit" class="button button-primary" id="asem-card-save">Salva la tessera</button></p></div>';
@@ -117,21 +120,21 @@ final class AppearancePage {
 			} catch ( \InvalidArgumentException $e ) {
 				$qr = '';
 			}
-			echo '<h2>Anteprima della tessera</h2><p class="description">È la tessera salvata: ' . esc_html( (string) CardLayout::dims()['w'] ) . ' × ' . esc_html( (string) CardLayout::dims()['h'] ) . ' cm. I soci la vedono così e la stampano con queste misure.</p>'
-				. '<div style="--asemf-accent:' . esc_attr( $acc ) . ';--asemf-accent-2:' . esc_attr( $sec ) . '">' . CardLayout::html( $samples['name'], $samples['number'], $samples['valid'], $qr ) . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto da CardLayout
+			echo wp_kses( '<h2>Anteprima della tessera</h2><p class="description">È la tessera salvata: ' . esc_html( (string) CardLayout::dims()['w'] ) . ' × ' . esc_html( (string) CardLayout::dims()['h'] ) . ' cm. I soci la vedono così e la stampano con queste misure.</p>'
+				. '<div style="--asemf-accent:' . esc_attr( $acc ) . ';--asemf-accent-2:' . esc_attr( $sec ) . '">' . CardLayout::html( $samples['name'], $samples['number'], $samples['valid'], $qr, array( 'type' => $samples['type'], 'roles' => $samples['roles'], 'text' => $samples['text'] ) ) . '</div>', Html::allowed() );
 		} else {
-		echo '<h2>Anteprima della tessera</h2><div style="max-width:380px;border-radius:14px;padding:20px 24px;background:#fff;color:' . esc_attr( $acc ) . ';border:2px solid ' . esc_attr( $acc ) . ';border-top:8px solid ' . esc_attr( $sec ) . '">'
+		echo wp_kses( '<h2>Anteprima della tessera</h2><div style="max-width:380px;border-radius:14px;padding:20px 24px;background:#fff;color:' . esc_attr( $acc ) . ';border:2px solid ' . esc_attr( $acc ) . ';border-top:8px solid ' . esc_attr( $sec ) . '">'
 			. ( '' !== $logo ? '<img src="' . esc_url( $logo ) . '" alt="" style="display:block;max-height:52px;max-width:190px;margin:0 0 10px">' : '' )
 			. '<div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase">' . esc_html( (string) Settings::get( 'association_name' ) ) . '</div>'
 			. '<div style="font-size:24px;font-weight:700;margin-top:6px">Nome Cognome</div><div style="opacity:.9">Socio ordinario</div>'
 			. '<div style="display:flex;gap:32px;margin-top:14px"><div><div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;opacity:.8">Tessera n.</div><div style="font-size:20px;font-weight:600">123</div></div>'
-			. '<div><div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;opacity:.8">Valida fino al</div><div style="font-size:20px;font-weight:600">31/12/' . ( (int) current_time( 'Y' ) + 1 ) . '</div></div></div></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<div><div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;opacity:.8">Valida fino al</div><div style="font-size:20px;font-weight:600">31/12/' . ( (int) current_time( 'Y' ) + 1 ) . '</div></div></div></div>', Html::allowed() );
 		}
-		echo '<script>(function(){var pick=document.getElementById("asem-logo-pick"),clr=document.getElementById("asem-logo-clear"),id=document.getElementById("asem-logo-id"),pv=document.getElementById("asem-logo-preview"),f;'
+		Ui::inline_js( '(function(){var pick=document.getElementById("asem-logo-pick"),clr=document.getElementById("asem-logo-clear"),id=document.getElementById("asem-logo-id"),pv=document.getElementById("asem-logo-preview"),f;'
 			. 'if(!pick){return;}'
 			. 'pick.addEventListener("click",function(e){e.preventDefault();if(!window.wp||!wp.media){window.alert("La libreria media non è disponibile: ricarica la pagina.");return;}if(!f){f=wp.media({title:"Logo dell\'ente",button:{text:"Usa questo logo"},library:{type:"image"},multiple:false});'
 			. 'f.on("select",function(){var a=f.state().get("selection").first().toJSON();id.value=a.id;var u=(a.sizes&&a.sizes.medium)?a.sizes.medium.url:a.url;pv.innerHTML="<img src=\""+u+"\" alt=\"\" style=\"max-height:56px;max-width:220px;display:block\">";clr.style.display="";});}f.open();});'
-			. 'clr.addEventListener("click",function(e){e.preventDefault();id.value="0";pv.innerHTML="<span class=\"description\">Sarà usato il logo del sito dopo il salvataggio</span>";clr.style.display="none";});})();</script>';
+			. 'clr.addEventListener("click",function(e){e.preventDefault();id.value="0";pv.innerHTML="<span class=\"description\">Sarà usato il logo del sito dopo il salvataggio</span>";clr.style.display="none";});})();' );
 		Ui::footer();
 	}
 }

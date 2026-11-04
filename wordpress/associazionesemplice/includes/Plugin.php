@@ -36,17 +36,12 @@ final class Plugin {
 				}
 			);
 		}
+		MailLog::register();     // registro dell'esito delle email spedite
 		self::schedule_jobs();   // lavori periodici: la classe si carica solo quando il lavoro parte
 		self::lazy_admin_post(); // download e azioni di admin-post: la classe si carica solo per quell'azione
 		// Parti che servono solo se la funzione è presente e in uso: altrimenti nemmeno si caricano.
 		if ( defined( 'PMXI_VERSION' ) || class_exists( 'PMXI_Plugin', false ) ) {
 			WpAllImport::register(); // compatibilità con WP All Import (area di appoggio)
-		}
-		if ( Edition::has( 'pwa' ) && Settings::get( 'pwa_enabled' ) ) {
-			Pwa::register(); // app installabile e notifiche
-		}
-		if ( Edition::installed( 'payments' ) && class_exists( 'WooCommerce', false ) ) {
-			add_action( 'plugins_loaded', array( WooBridge::class, 'register' ), 20 ); // compatibilità con WooCommerce
 		}
 		if ( is_admin() ) {
 			Admin\Admin::init();
@@ -61,12 +56,11 @@ final class Plugin {
 		$jobs = array(
 			'asem_release_holds'          => array( 'hourly', 900, 'Holds', 'release_expired', '' ),
 			'asem_send_reminders'         => array( 'daily', 600, 'Reminders', 'run', '' ),
-			'asem_broadcast_batch'        => array( '', 0, 'Broadcasts', 'process_all', 'broadcasts' ),
 			'asem_purge_backups'          => array( 'hourly', 1200, 'Backup', 'purge_old', '' ),
-			'asem_license_check'          => array( 'daily', 1800, 'License', 'cron', '' ),
-			'asem_update_check'           => array( 'hourly', 2400, 'UpdateCheck', 'cron', '' ),
-			'asem_check_pending_payments' => array( 'hourly', 300, 'PaymentService', 'check_pending_job', 'payments' ),
+			'asem_purge_audit'            => array( 'daily', 1800, 'Audit', 'purge_old', '' ),
+			'asem_purge_member_sessions'  => array( 'daily', 2400, 'MemberSession', 'purge_expired', '' ),
 		);
+		$jobs = (array) apply_filters( 'asem_scheduled_jobs', $jobs ); // un'estensione aggiunge i suoi lavori periodici
 		foreach ( $jobs as $hook => $j ) {
 			if ( '' !== $j[4] && ! Edition::installed( $j[4] ) ) {
 				continue;
@@ -82,13 +76,16 @@ final class Plugin {
 	const ADMIN_POST = array(
 		'asem_backup'          => 'Backup',
 		'asem_backup_saved'    => 'Backup',
-		'asem_receipt'         => 'Receipts',
-		'asem_statement'       => 'Receipts',
 		'asem_privacy_export'  => 'Privacy',
-		'asem_export_texts'    => 'TextsEngine',
-		'asem_wallet_apple'    => 'Wallet',
 		'asem_doc'             => 'Docs',
+		'asem_document'        => 'Documents',
+		'asem_item_file'       => 'Inventory',
 	);
+
+	/** Azioni di admin-post con la classe che le gestisce, comprese quelle di un'estensione (filtro `asem_admin_post_classes`). */
+	private static function admin_post_classes(): array {
+		return (array) apply_filters( 'asem_admin_post_classes', self::ADMIN_POST );
+	}
 
 	private static function lazy_admin_post(): void {
 		add_action(
@@ -105,15 +102,46 @@ final class Plugin {
 
 	/** Carica e registra la classe che gestisce un'azione di admin-post. @return bool true se l'azione è una di quelle gestite così */
 	public static function load_for_action( string $action ): bool {
-		if ( ! isset( self::ADMIN_POST[ $action ] ) ) {
+		$classes = self::admin_post_classes();
+		if ( ! isset( $classes[ $action ] ) ) {
 			return false;
 		}
-		$class = __NAMESPACE__ . '\\' . self::ADMIN_POST[ $action ];
+		$class = __NAMESPACE__ . '\\' . $classes[ $action ];
 		if ( ! class_exists( $class ) ) { // la funzione non è in questa edizione
 			return false;
 		}
 		$class::register();
 		return true;
+	}
+
+	/** Campi delle password: non si ripuliscono (come fa WordPress), si usano solo per wp_set_password() o per cifrarli. */
+	const VERBATIM_FIELDS = array( 'password', 'password2', 'pass1', 'pass2', 'apple_password' );
+
+	/**
+	 * I dati di un modulo ($_POST) senza le barre aggiunte da WordPress e già ripuliti: gli indirizzi (_back, *_url) con esc_url_raw(),
+	 * ogni altro testo con sanitize_textarea_field() (niente tag, UTF-8 valido, a capo conservati per i testi su più righe). Ogni gestore
+	 * poi valida i suoi campi con la funzione adatta (email, numero, data, valori ammessi…). Fanno eccezione solo le password, che non vanno alterate.
+	 */
+	public static function post_data(): array {
+		$out = array();
+		foreach ( (array) wp_unslash( $_POST ) as $key => $value ) { // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- il nonce lo controlla il chiamante; ogni valore è ripulito qui sotto
+			$name = strtolower( (string) $key );
+			if ( in_array( $name, self::VERBATIM_FIELDS, true ) ) {
+				$out[ $key ] = is_string( $value ) ? wp_kses_no_null( (string) wp_check_invalid_utf8( $value ) ) : '';
+				continue;
+			}
+			$is_url      = '_back' === $name || '_wp_http_referer' === $name || '_url' === substr( $name, -4 );
+			$out[ $key ] = map_deep(
+				$value,
+				static function ( $v ) use ( $is_url ) {
+					if ( ! is_string( $v ) ) {
+						return $v;
+					}
+					return $is_url ? esc_url_raw( $v ) : sanitize_textarea_field( $v );
+				}
+			);
+		}
+		return $out;
 	}
 
 	/** Versione di un file in assets/: cambia a ogni aggiornamento, così il browser non tiene in cache script e stili vecchi. */
@@ -138,17 +166,14 @@ final class Plugin {
 		return self::$services['funds'] ?? ( self::$services['funds'] = new FundService() );
 	}
 
-	/** Servizio dei pagamenti: quello online delle funzioni avanzate se c'è, altrimenti solo l'elenco di ciò che c'è da pagare. */
-	/**
-	 * Il motore dei pagamenti online per chiudere quelli già avviati (webhook, ritorno dal gateway, controllo periodico), anche se la licenza è
-	 * scaduta: i soldi in arrivo vanno registrati comunque. Nuovi pagamenti no (vedi {@see Plugin::payments()}).
-	 */
-	public static function payments_engine(): PaymentService {
-		return self::$services['payments_engine'] ?? ( self::$services['payments_engine'] = new PaymentService() );
-	}
-
+	/** Servizio dei pagamenti: quello online di un'estensione (filtro `asem_payments_service`) se c'è, altrimenti solo l'elenco di ciò che c'è da pagare. */
 	public static function payments(): OfflinePayments {
-		return Edition::has( 'payments' ) ? self::payments_engine() : ( self::$services['offline_payments'] ?? ( self::$services['offline_payments'] = new OfflinePayments() ) );
+		$offline = self::$services['offline_payments'] ?? ( self::$services['offline_payments'] = new OfflinePayments() );
+		if ( ! Edition::has( 'payments' ) ) {
+			return $offline;
+		}
+		$svc = apply_filters( 'asem_payments_service', $offline );
+		return $svc instanceof OfflinePayments ? $svc : $offline;
 	}
 
 	public static function reports(): ReportService {

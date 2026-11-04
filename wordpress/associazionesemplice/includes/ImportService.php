@@ -58,7 +58,7 @@ final class ImportService {
 		$out = array( 'people' => null, 'ledger' => null, 'ignored' => $ignored );
 		if ( $people_rows ) {
 			$default = MemberType::is_member( (string) ( $opts['default_type'] ?? '' ) ) ? $opts['default_type'] : MemberType::ORDINARY;
-			$out['people'] = array( 'plan' => PeopleCsv::plan( $people_rows, self::existing_people(), $default ) );
+			$out['people'] = array( 'plan' => PeopleCsv::plan( $people_rows, self::existing_people(), $default, array( 'guest_phone_required' => Limits::flag( 'guest_phone_required' ), 'guest_host_required' => Limits::flag( 'guest_host_required' ) ) ) );
 		}
 		if ( $ledger_rows ) {
 			$plan             = LedgerImport::plan( $ledger_rows, self::ledger_context( $ledger_rows, (int) ( $opts['default_account_id'] ?? 0 ), $people_rows ) );
@@ -161,6 +161,7 @@ final class ImportService {
 		$created = 0;
 		$updated = 0;
 		$failed  = array();
+		$links   = array();
 		$order   = array();
 		foreach ( $plan as $row ) {
 			if ( 'error' === $row['action'] ) {
@@ -180,13 +181,25 @@ final class ImportService {
 						$data[ $to ] = $r[ $from ];
 					}
 				}
+				if ( ! empty( $r['notes'] ) ) {
+					$data['notes'] = $r['notes']; // ad es. gli eventi passati a cui l'ospite ha già partecipato
+				}
+				if ( ! empty( $r['since'] ) ) {
+					$data['joined_on'] = $r['since']; // anno (o data) di iscrizione
+				}
+				if ( ! empty( $r['birth'] ) ) {
+					$data['birth_date'] = $r['birth'];
+				}
+				if ( 1 === $pass && isset( $r['prior'] ) && null !== $r['prior'] ) {
+					$data['prior_visits'] = (int) $r['prior']; // volte già venuto prima di usare il programma
+				}
 				try {
 					if ( 1 === $pass ) {
 						$host = ! empty( $row['host_id'] ) ? (int) $row['host_id'] : self::find_host( (string) $row['host_text'] );
-						if ( ! $host ) {
+						if ( ! $host && ( '' !== trim( (string) $row['host_text'] ) || Limits::flag( 'guest_host_required' ) ) ) {
 							throw new \InvalidArgumentException( 'socio ospitante "' . $row['host_text'] . '" non trovato' );
 						}
-						$data['host_person_id'] = $host;
+						$data['host_person_id'] = $host ?: '';
 					}
 					if ( 'create' === $row['action'] ) {
 						$data['type'] = $row['type'];
@@ -207,8 +220,11 @@ final class ImportService {
 						$people->update( $id, $data );
 						$updated++;
 						if ( $before ) {
-							$track['people_updated'][ $id ] = array_intersect_key( $before, array_flip( array( 'first_name', 'last_name', 'email', 'phone', 'tax_code', 'address', 'zip', 'city', 'province', 'card_number', 'type', 'host_person_id' ) ) );
+							$track['people_updated'][ $id ] = array_intersect_key( $before, array_flip( array( 'first_name', 'last_name', 'email', 'phone', 'tax_code', 'address', 'zip', 'city', 'province', 'card_number', 'type', 'host_person_id', 'notes', 'joined_on', 'prior_visits', 'birth_date' ) ) );
 						}
+					}
+					if ( ! empty( $r['guardian'] ) ) {
+						$links[] = array( $id, (string) $r['guardian'], ( $r['sheet'] ? $r['sheet'] . ' ' : '' ) . 'riga ' . $r['line'] );
 					}
 					$person = $people->get( $id );
 					if ( $mark && $person && in_array( $person['type'], array( MemberType::ORDINARY, MemberType::VOLUNTEER ), true ) ) {
@@ -218,9 +234,33 @@ final class ImportService {
 							$track['memberships'][] = array( $id, $year );
 						}
 					}
+					if ( $person && ! empty( $r['years'] ) && in_array( $person['type'], array( MemberType::ORDINARY, MemberType::VOLUNTEER ), true ) ) {
+						foreach ( $r['years'] as $y ) { // anni di iscrizione indicati nelle colonne del file (2024, 2025… oppure «ANNO CORRENTE» e «ANNO SCORSO»)
+							$y = '@current' === $y ? $year : ( '@previous' === $y ? Settings::membership_year()->previous()->label() : $y );
+							$y_had = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = %d AND social_year = %s AND deleted_at IS NULL', $id, (string) $y ) );
+							$people->set_membership( $id, (string) $y, true, 'import' );
+							if ( ! $y_had ) {
+								$track['memberships'][] = array( $id, (string) $y );
+							}
+						}
+					}
 				} catch ( \InvalidArgumentException $e ) {
 					$failed[] = ( $r['sheet'] ? $r['sheet'] . ' ' : '' ) . 'riga ' . $r['line'] . ': ' . $e->getMessage();
 				}
+			}
+		}
+		foreach ( $links as $l ) { // i tutori si cercano alla fine: possono essere nello stesso file
+			try {
+				$g = Guardians::find_by_ref( $l[1] );
+				if ( ! $g ) {
+					throw new \InvalidArgumentException( 'tutore "' . $l[1] . '" non trovato o ambiguo (indica la tessera o l\'email)' );
+				}
+				if ( ! Guardians::is_guardian_of( (int) $g['id'], (int) $l[0] ) ) {
+					Guardians::link( (int) $l[0], (int) $g['id'] );
+					$track['guardians'][] = array( (int) $l[0], (int) $g['id'] );
+				}
+			} catch ( \InvalidArgumentException $e ) {
+				$failed[] = $l[2] . ': ' . $e->getMessage();
 			}
 		}
 		Audit::log( 'import.applied', 'people', null, array( 'created' => $created, 'updated' => $updated, 'failed' => count( $failed ) ) );
@@ -303,7 +343,7 @@ final class ImportService {
 				foreach ( $plan as $p ) { // importando gli anni precedenti, gli anni solari che mancano si creano (aperti); uno chiuso resta chiuso e blocca l'import
 					$when = (string) ( $p['data']['date'] ?? '' );
 					if ( preg_match( '/^(\d{4})-\d{2}-\d{2}$/', $when, $ym ) && (int) $ym[1] >= 2000 && (int) $ym[1] <= 2100 ) {
-						FiscalYears::ensure( (int) $ym[1] );
+						FiscalYears::ensure( FiscalYears::year_of( $when ) );
 					}
 				}
 				foreach ( $plan as $p ) {
@@ -463,6 +503,11 @@ final class ImportService {
 			} catch ( \InvalidArgumentException $e ) { // persona eliminata nel frattempo
 				continue;
 			}
+		}
+
+		// 2b. Tutori collegati dall'import
+		foreach ( (array) ( $data['guardians'] ?? array() ) as $g ) {
+			Guardians::unlink( (int) $g[0], (int) $g[1] );
 		}
 
 		// 3. Soci aggiornati: si rimettono i dati di prima

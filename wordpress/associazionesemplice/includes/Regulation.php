@@ -35,7 +35,8 @@ final class Regulation {
 		return self::enabled() && MemberType::is_member( (string) $p['type'] );
 	}
 
-	public static function accept( int $person_id, string $source = 'web' ): void {
+	/** @param int|null $by il tutore che accetta per conto di un minore (null = accetta la persona stessa) */
+	public static function accept( int $person_id, string $source = 'web', ?int $by = null ): void {
 		$p = Plugin::people()->get( $person_id );
 		if ( ! $p ) {
 			throw new \InvalidArgumentException( 'Persona non trovata.' );
@@ -43,12 +44,12 @@ final class Regulation {
 		if ( ! isset( self::SOURCES[ $source ] ) ) {
 			throw new \InvalidArgumentException( 'Modalità non valida.' );
 		}
-		Db::db()->update( Db::t( 'people' ), array( 'rules_accepted_at' => Db::now(), 'rules_accepted_version' => self::version(), 'rules_accepted_source' => $source ), array( 'id' => $person_id ) );
-		Audit::log( 'rules.accepted', 'person', $person_id, array( 'version' => self::version(), 'source' => $source ) );
+		Db::db()->update( Db::t( 'people' ), array( 'rules_accepted_at' => Db::now(), 'rules_accepted_version' => self::version(), 'rules_accepted_source' => $source, 'rules_accepted_by' => $by && $by !== $person_id ? $by : null ), array( 'id' => $person_id ) );
+		Audit::log( 'rules.accepted', 'person', $person_id, array( 'version' => self::version(), 'source' => $source ) + ( $by && $by !== $person_id ? array( 'by' => $by ) : array() ) );
 	}
 
 	public static function clear( int $person_id ): void {
-		Db::db()->update( Db::t( 'people' ), array( 'rules_accepted_at' => null, 'rules_accepted_version' => null, 'rules_accepted_source' => null ), array( 'id' => $person_id ) );
+		Db::db()->update( Db::t( 'people' ), array( 'rules_accepted_at' => null, 'rules_accepted_version' => null, 'rules_accepted_source' => null, 'rules_accepted_by' => null ), array( 'id' => $person_id ) );
 		Audit::log( 'rules.cleared', 'person', $person_id );
 	}
 

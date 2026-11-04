@@ -25,7 +25,13 @@ final class Activation {
 		return wp_salt( 'auth' ) . '|activate';
 	}
 
-	/** Link di attivazione di un socio (valido 30 giorni da adesso). */
+	/** Per quanto vale il link, a parole: «24 ore» se la validità è di un giorno, altrimenti «N giorni». */
+	public static function validity_text(): string {
+		$d = Limits::get( 'activation_days' );
+		return 1 === $d ? '24 ore' : $d . ' giorni';
+	}
+
+	/** Link di attivazione di un socio (valido per il tempo scelto nei Limiti, 24 ore di default). */
 	public static function url( int $person_id, ?int $now = null ): string {
 		$exp = ( $now ?? time() ) + Limits::get( 'activation_days' ) * DAY_IN_SECONDS;
 		return add_query_arg( 'asem_activate', ActivationToken::param( $person_id, $exp, self::secret() ), home_url( '/' ) );
@@ -35,7 +41,7 @@ final class Activation {
 	public static function invite_text( array $person ): string {
 		$assoc = (string) Settings::get( 'association_name' );
 		return 'Ciao ' . $person['first_name'] . ', sei stato/a registrato/a come socio/a' . ( '' !== $assoc ? ' di ' . $assoc : '' ) . '. '
-			. 'Attiva il tuo accesso all\'area riservata da questo link (vale ' . Limits::get( 'activation_days' ) . ' giorni): ' . self::url( (int) $person['id'] );
+			. 'Attiva il tuo accesso all\'area riservata da questo link (vale ' . self::validity_text() . '): ' . self::url( (int) $person['id'] );
 	}
 
 	/** @return array status (ok|invalid|expired|done|suspended), person */
@@ -48,10 +54,10 @@ final class Activation {
 			return array( 'status' => 'suspended', 'person' => null );
 		}
 		$p = Plugin::people()->get( ActivationToken::parse( $param )[0] );
-		if ( ! $p || ! \AssociazioneSemplice\MemberType::is_member( $p['type'] ) ) {
+		if ( ! $p || ! \AssociazioneSemplice\MemberType::can_login( $p['type'] ) || ! empty( $p['application_status'] ) ) { // una domanda non ancora approvata non attiva nessun accesso
 			return array( 'status' => 'invalid', 'person' => null );
 		}
-		return array( 'status' => ! empty( $p['wp_user_id'] ) ? 'done' : 'ok', 'person' => $p );
+		return array( 'status' => \AssociazioneSemplice\PeopleService::has_access( $p ) ? 'done' : 'ok', 'person' => $p );
 	}
 
 	private static function message( string $status ): string {
@@ -59,7 +65,9 @@ final class Activation {
 			case 'expired':
 				return 'Il link è scaduto: chiedi alla segreteria di mandartene uno nuovo.';
 			case 'done':
-				return 'Il tuo accesso è già attivo: entra con la tua email e, se hai dimenticato la password, usa "Password dimenticata".';
+				return ! \AssociazioneSemplice\MemberSession::wp_users_wanted()
+					? 'Il tuo accesso è già attivo: entra con la tua email e la tua password; se l\'hai dimenticata, nella pagina di accesso puoi riceverne una nuova.'
+					: 'Il tuo accesso è già attivo: entra con la tua email e, se hai dimenticato la password, usa "Password dimenticata".';
 			case 'suspended':
 				return 'Il servizio è temporaneamente sospeso. Riprova più tardi.';
 		}
@@ -136,7 +144,7 @@ final class Activation {
 		if ( \AssociazioneSemplice\Regulation::enabled() ) {
 			\AssociazioneSemplice\Regulation::accept( (int) $r['person']['id'], 'web' );
 		}
-		return array( 'ok' => true, 'user_id' => $uid );
+		return array( 'ok' => true, 'user_id' => $uid, 'person_id' => (int) $r['person']['id'] );
 	}
 
 	public static function page( string $param, array $post = array(), string $error = '' ): string {
@@ -149,10 +157,10 @@ final class Activation {
 		$input = 'width:100%;box-sizing:border-box;padding:10px;font-size:16px;margin:4px 0 12px;border:1px solid #8c8f94;border-radius:8px';
 		$need  = Limits::flag( 'profile_required' );
 		$body  = ( '' !== $error ? '<div class="w" style="color:#b32d2e">' . esc_html( $error ) . '</div>' : '' )
-			. '<div class="n">Ciao ' . esc_html( $p['first_name'] ) . '!</div><p>Scegli l\'email e la password con cui entrerai nell\'area riservata.</p>'
+			. '<div class="n">Ciao ' . esc_html( $p['first_name'] ) . '!</div><p>' . ( ! \AssociazioneSemplice\MemberSession::wp_users_wanted() ? 'Scegli la tua password: con email e password entrerai nell\'area riservata. Se la dimentichi, potrai riceverne una nuova per email.' : 'Scegli l\'email e la password con cui entrerai nell\'area riservata.' ) . '</p>'
 			. '<form method="post" action="' . esc_url( add_query_arg( 'asem_activate', $param, home_url( '/' ) ) ) . '" autocomplete="on">'
 			. '<input type="hidden" name="asem_activate_go" value="1">' . wp_nonce_field( 'asem_activate_' . (int) $p['id'], '_asem_nonce', false, false )
-			. '<label>La tua email<input style="' . $input . '" type="email" name="email" value="' . esc_attr( (string) ( $post['email'] ?? '' ) ) . '" required autocomplete="email"></label>'
+			. '<label>La tua email<input style="' . $input . '" type="email" name="email" value="' . esc_attr( (string) ( $post['email'] ?? $p['email'] ?? '' ) ) . '" required autocomplete="email"></label>'
 			. '<label>Il tuo cellulare<input style="' . $input . '" type="tel" name="phone" value="' . esc_attr( (string) ( $post['phone'] ?? $p['phone'] ?? '' ) ) . '" required autocomplete="tel"></label>'
 			. '<p class="a" style="margin:4px 0 8px">I tuoi dati' . ( $need ? ' (obbligatori)' : '' ) . ': servono per le ricevute e per verificare che sei proprio tu.</p>'
 			. '<label>Codice fiscale<input style="' . $input . '" type="text" name="tax_code" maxlength="16" ' . ( $need ? 'required ' : '' ) . 'autocomplete="off" value="' . esc_attr( (string) ( $post['tax_code'] ?? '' ) ) . '"></label>'
@@ -175,21 +183,25 @@ final class Activation {
 		$param = sanitize_text_field( wp_unslash( $_GET['asem_activate'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
 		$post  = array();
 		$error = '';
-		if ( 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' ) && isset( $_POST['asem_activate_go'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- valore verificato e ripulito da chi lo usa
-			$post    = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification
+		if ( isset( $_SERVER['REQUEST_METHOD'], $_POST['asem_activate_go'] ) && 'POST' === sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification -- il nonce si controlla qui sotto
+			$post    = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
 			$parsed  = ActivationToken::parse( $param );
-			$rl_key  = 'asem_act_' . md5( (string) ( $_SERVER['REMOTE_ADDR'] ?? '' ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- valore verificato e ripulito da chi lo usa
+			$rl_key  = 'asem_act_' . md5( \AssociazioneSemplice\ClientIp::get() );
 			$tries   = (int) get_transient( $rl_key );
 			if ( $tries >= Limits::get( 'activation_per_ip' ) ) {
 				$error = 'Troppi tentativi: riprova tra qualche minuto.';
-			} elseif ( ! $parsed || ! wp_verify_nonce( (string) ( $post['_asem_nonce'] ?? '' ), 'asem_activate_' . $parsed[0] ) ) {
+			} elseif ( ! $parsed || ! wp_verify_nonce( sanitize_text_field( (string) ( $post['_asem_nonce'] ?? '' ) ), 'asem_activate_' . $parsed[0] ) ) {
 				$error = 'Sessione scaduta: riprova.';
 			} else {
 				set_transient( $rl_key, $tries + 1, HOUR_IN_SECONDS );
 				$res = self::complete( $param, $post );
 				if ( $res['ok'] ) {
-					wp_set_current_user( (int) $res['user_id'] );
-					wp_set_auth_cookie( (int) $res['user_id'], true );
+					if ( (int) $res['user_id'] > 0 ) {
+						wp_set_current_user( (int) $res['user_id'] );
+						wp_set_auth_cookie( (int) $res['user_id'], true );
+					} else { // accesso proprio: nessun utente WordPress, si apre la sessione dei soci
+						\AssociazioneSemplice\MemberLogin::open( (int) $res['person_id'], 'activation' );
+					}
 					$page = (int) Settings::get( 'member_area_page_id' );
 					$url  = $page ? (string) get_permalink( $page ) : home_url( '/' );
 					wp_safe_redirect( \AssociazioneSemplice\Flash::url( $url, 'asemf', 'Accesso attivato: benvenuto/a!' ) );
@@ -199,7 +211,7 @@ final class Activation {
 			}
 		}
 		CardVerify::send_headers();
-		echo self::page( $param, $post, $error ); // phpcs:ignore WordPress.Security.EscapeOutput -- già escapato in page()
+		CardVerify::output( self::page( $param, $post, $error ) );
 		exit;
 	}
 }

@@ -64,9 +64,12 @@ final class Restrict {
 	public static function context( ?int $user_id = null, array $required_activity_ids = array() ): array {
 		$uid    = $user_id ?? get_current_user_id();
 		$person = $uid > 0 ? Access::person_for_user( $uid ) : null;
+		if ( null === $user_id && $uid <= 0 ) {
+			$person = \AssociazioneSemplice\MemberSession::session_person(); // chi è entrato con l'accesso proprio (senza utente WordPress)
+		}
 		$ctx    = array(
 			'is_admin'              => Access::is_admin_user( $uid ),
-			'logged_in'             => $uid > 0,
+			'logged_in'             => $uid > 0 || null !== $person,
 			'member_area_allowed'   => Edition::allows( 'member_area' ),
 			'active_member'         => false,
 			'person_type'           => $person ? $person['type'] : null,
@@ -97,9 +100,14 @@ final class Restrict {
 
 	/** Indirizzo della pagina corrente (per tornarci dopo il login). */
 	public static function current_url(): string {
-		$host = isset( $_SERVER['HTTP_HOST'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ) ) : '';
-		$uri  = isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
-		return '' === $host ? home_url( '/' ) : set_url_scheme( '//' . $host . $uri );
+		$uri = isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+		$uri = '' !== $uri && '/' === $uri[0] && 0 !== strpos( $uri, '//' ) ? esc_url_raw( $uri ) : ''; // solo un percorso del sito
+		$p   = wp_parse_url( home_url( '/' ) );
+		if ( '' === $uri || empty( $p['host'] ) ) {
+			return home_url( '/' );
+		}
+		// L'indirizzo del sito, non l'intestazione Host della richiesta (la può scrivere chi fa la richiesta e finire in link e cache).
+		return ( $p['scheme'] ?? 'https' ) . '://' . $p['host'] . ( isset( $p['port'] ) ? ':' . $p['port'] : '' ) . $uri;
 	}
 	// ---------- Messaggio al posto del contenuto ----------
 
@@ -121,9 +129,9 @@ final class Restrict {
 		$reason = Visibility::denial_reason( $ctx );
 		if ( '' !== $custom_message ) {
 			$text = $custom_message;
-		} elseif ( '' !== (string) Settings::get( 'gate_message' ) && 'license' !== $reason ) {
+		} elseif ( '' !== (string) Settings::get( 'gate_message' ) && 'suspended' !== $reason ) {
 			$text = (string) Settings::get( 'gate_message' );
-		} elseif ( 'license' === $reason ) {
+		} elseif ( 'suspended' === $reason ) {
 			$text = 'Questo contenuto non è al momento disponibile.';
 		} elseif ( Visibility::ACTIVITY === $rule && $activity_ids ) {
 			$text = 'Contenuto riservato ai soci iscritti a: ' . implode( ', ', self::activity_names( $activity_ids ) ) . '.';
@@ -207,7 +215,7 @@ final class Restrict {
 		}
 		echo '</select><p class="description">Vedono il contenuto gli iscritti (o prenotati) a una qualsiasi delle attività scelte e chi le tiene.</p></div>';
 		echo '<p class="description">Gli amministratori vedono sempre tutto.</p>';
-		echo '<script>(function(){var box=document.getElementById("asem-access-activities");if(!box){return;}var radios=document.querySelectorAll("input[name=asem_access]");function u(){var v="";radios.forEach(function(r){if(r.checked){v=r.value;}});box.style.display=v==="activity"?"":"none";}radios.forEach(function(r){r.addEventListener("change",u);});u();})();</script>';
+		\AssociazioneSemplice\Admin\Ui::inline_js( '(function(){var box=document.getElementById("asem-access-activities");if(!box){return;}var radios=document.querySelectorAll("input[name=asem_access]");function u(){var v="";radios.forEach(function(r){if(r.checked){v=r.value;}});box.style.display=v==="activity"?"":"none";}radios.forEach(function(r){r.addEventListener("change",u);});u();})();' );
 	}
 
 	public static function save_meta_box( int $post_id, \WP_Post $post ): void {
@@ -243,7 +251,7 @@ final class Restrict {
 			return;
 		}
 		list( $rule, $ids ) = self::rule_of( (int) $post_id );
-		echo Visibility::PUBLIC_ === $rule ? '—' : '🔒 ' . esc_html( Visibility::short_label( $rule, self::activity_names( $ids ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo Visibility::PUBLIC_ === $rule ? '—' : '🔒 ' . esc_html( Visibility::short_label( $rule, self::activity_names( $ids ) ) );
 	}
 
 	// ---------- Parti di pagina: shortcode, blocco, widget ----------

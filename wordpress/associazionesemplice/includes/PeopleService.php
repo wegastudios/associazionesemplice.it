@@ -35,7 +35,7 @@ class PeopleService {
 
 	public function find_by_email( string $email, ?int $except_id = null ): ?array {
 		$row = $this->db()->get_row(
-			$this->db()->prepare( 'SELECT * FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND LOWER(email) = LOWER(%s) AND id <> %d LIMIT 1', $email, (int) $except_id ),
+			$this->db()->prepare( 'SELECT * FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND email = %s AND id <> %d LIMIT 1', strtolower( trim( $email ) ), (int) $except_id ), // le email si salvano in minuscolo: il confronto usa l'indice
 			ARRAY_A
 		);
 		return $row ?: null;
@@ -61,6 +61,11 @@ class PeopleService {
 		$db    = $this->db();
 		$today = Db::today();
 		$where = array( 'p.deleted_at IS NULL', 'p.anonymized_at IS NULL' ); // le persone anonimizzate non compaiono più negli elenchi
+		if ( empty( $f['applications'] ) ) {
+			$where[] = 'p.application_status IS NULL'; // chi ha chiesto di aderire e non è ancora stato approvato non è nell'anagrafica
+		} else {
+			$where[] = 'p.application_status = \'requested\'';
+		}
 		$args  = array( $today );
 		if ( ! empty( $f['type'] ) ) {
 			$where[] = 'p.type = %s';
@@ -93,6 +98,9 @@ class PeopleService {
 						if ( 'noconsent' === $f['status'] ) {
 							return empty( $r['privacy_consent_at'] );
 						}
+						if ( ! MemberType::is_member( $r['type'] ) && 'noaccess' !== $f['status'] ) {
+							return false; // ospiti e genitori/tutori non hanno la tessera
+						}
 						if ( MemberType::GUEST === $r['type'] ) {
 							return false;
 						}
@@ -113,6 +121,16 @@ class PeopleService {
 
 	public function guests_of( int $member_id ): array {
 		return $this->search( array( 'host_id' => $member_id ) );
+	}
+
+	/** I minori (e i ragazzi ancora collegati) di cui il socio è tutore. */
+	public function dependents_of( int $guardian_id ): array {
+		return Guardians::dependents_of( $guardian_id );
+	}
+
+	/** Chi un socio gestisce dalla sua area: i suoi ospiti e le persone di cui è tutore. */
+	public function managed_by( int $member_id ): array {
+		return array_merge( $this->guests_of( $member_id ), $this->dependents_of( $member_id ) );
 	}
 
 	public function active_until( int $person_id, ?string $date = null ): ?string {
@@ -368,19 +386,34 @@ class PeopleService {
 			'email'          => null === $t( 'email' ) ? null : strtolower( $t( 'email' ) ),
 			'phone'          => $t( 'phone' ),
 			'tax_code'       => null === $t( 'tax_code' ) ? null : strtoupper( str_replace( ' ', '', $t( 'tax_code' ) ) ),
+			'birth_date'     => null === $t( 'birth_date' ) ? null : ( Age::parse( (string) $t( 'birth_date' ) ) ?? (string) $t( 'birth_date' ) ),
+			'birth_place'    => $t( 'birth_place' ),
 			'address'        => $t( 'address' ),
 			'zip'            => $t( 'zip' ),
 			'city'           => $t( 'city' ),
 			'province'       => null === $t( 'province' ) ? null : strtoupper( $t( 'province' ) ),
 			'host_person_id' => ! empty( $d['host_person_id'] ) ? (int) $d['host_person_id'] : null,
 			'joined_on'      => $t( 'joined_on' ),
+			'approved_on'    => $t( 'approved_on' ),
 			'notes'          => $t( 'notes' ),
+			'prior_visits'   => max( 0, min( 9999, (int) ( $d['prior_visits'] ?? 0 ) ) ),
+			'image_consent'  => isset( $d['image_consent'] ) && in_array( (string) $d['image_consent'], array( '0', '1' ), true ) ? (int) $d['image_consent'] : null,
+			'affiliation_role' => MembershipRoles::is_valid( $d['affiliation_role'] ?? null ) ? (string) $d['affiliation_role'] : null,
 		);
+	}
+
+	/** Chi risponde della liberatoria immagini: per un minore il tutore che opera sul sito, per un maggiorenne nessuno (è lui). */
+	private function image_consent_giver( array $person ): ?int {
+		if ( ! Age::is_minor( $person['birth_date'] ?? null, Db::today() ) ) {
+			return null;
+		}
+		$g = Guardians::operative_of( (int) $person['id'] );
+		return $g ? (int) $g['id'] : null;
 	}
 
 	private function assert_valid( array $d, ?int $except_id ): void {
 		$host   = $d['host_person_id'] ? $this->get( (int) $d['host_person_id'] ) : null;
-		$errors = Rules::validate_person( $d, $host );
+		$errors = Rules::validate_person( $d, $host, array( 'phone' => ! Limits::flag( 'guest_phone_required' ), 'host' => ! Limits::flag( 'guest_host_required' ) ) );
 		if ( $errors ) {
 			throw new \InvalidArgumentException( implode( ' ', $errors ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
@@ -407,7 +440,7 @@ class PeopleService {
 		$this->assert_valid( $d, null );
 
 		$user_id = null;
-		if ( MemberType::is_member( $d['type'] ) && null !== $d['email'] ) { // senza email: nessun utente finché il socio non si attiva col suo link
+		if ( MemberType::can_login( $d['type'] ) && null !== $d['email'] && MemberSession::wp_users_wanted() ) { // senza email: nessun utente finché il socio non si attiva col suo link; con l'accesso proprio i soci semplici non hanno un utente WordPress, salvo scelta dell'amministratore
 			$user_id = $this->ensure_wp_user( $d, null );
 		}
 		$now = Db::now();
@@ -421,14 +454,20 @@ class PeopleService {
 				'last_name'      => $d['last_name'],
 				'email'          => $d['email'],
 				'phone'          => $d['phone'],
-				'tax_code'       => $d['tax_code'],
+				'tax_code'       => $d['tax_code'], 'birth_date' => $d['birth_date'],
+				'birth_place'    => $d['birth_place'],
 				'address'        => $d['address'],
 				'zip'            => $d['zip'],
 				'city'           => $d['city'],
 				'province'       => $d['province'],
 				'host_person_id' => $d['host_person_id'],
 				'joined_on'      => $d['joined_on'] ?: Db::today(),
+				'approved_on'    => $d['approved_on'],
 				'notes'          => $d['notes'],
+				'prior_visits'   => $d['prior_visits'],
+				'affiliation_role' => $d['affiliation_role'],
+				'image_consent'  => $d['image_consent'],
+				'image_consent_at' => null === $d['image_consent'] ? null : $now,
 				'created_at'     => $now,
 				'updated_at'     => $now,
 			)
@@ -452,11 +491,14 @@ class PeopleService {
 	 */
 	public function activate( int $id, string $email, string $phone, string $password ): int {
 		$p = $this->get( $id );
-		if ( ! $p || ! MemberType::is_member( $p['type'] ) ) {
+		if ( ! $p || ! MemberType::can_login( $p['type'] ) ) {
 			throw new \InvalidArgumentException( 'Socio non trovato.' );
 		}
 		if ( ! empty( $p['wp_user_id'] ) ) {
 			throw new \InvalidArgumentException( 'L\'accesso è già attivo.' );
+		}
+		if ( ! MemberSession::wp_users_wanted() ) {
+			return $this->activate_own( $p, $email, $phone, $password );
 		}
 		$email = strtolower( trim( $email ) );
 		if ( ! filter_var( $email, FILTER_VALIDATE_EMAIL ) ) {
@@ -481,6 +523,106 @@ class PeopleService {
 		return $uid;
 	}
 
+	/**
+	 * Attivazione con l'accesso proprio: email e cellulare sulla scheda, nessun utente WordPress. La password è obbligatoria (si sceglie qui).
+	 *
+	 * @return int 0: nessun utente WordPress
+	 */
+	private function activate_own( array $p, string $email, string $phone, string $password ): int {
+		$id    = (int) $p['id'];
+		$email = strtolower( trim( $email ) );
+		if ( ! filter_var( $email, FILTER_VALIDATE_EMAIL ) ) {
+			throw new \InvalidArgumentException( 'Inserisci un indirizzo email valido.' );
+		}
+		if ( ! Phone::is_valid( $phone ) ) {
+			throw new \InvalidArgumentException( 'Inserisci il tuo numero di cellulare.' );
+		}
+		$problem = MemberPassword::problem( $password ); // la password si sceglie subito, è obbligatoria
+		if ( '' !== $problem ) {
+			throw new \InvalidArgumentException( $problem ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$this->update( $id, array( 'email' => $email, 'phone' => trim( $phone ) ) );
+		$err = MemberLogin::set_password( $id, $password );
+		if ( '' !== $err ) {
+			throw new \InvalidArgumentException( $err ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		Audit::log( 'person.activated', 'person', $id, array( 'own' => true ) );
+		return 0;
+	}
+
+	/**
+	 * Chi ha un potere (segreteria, tesoriere, staff) lavora con un utente WordPress: lo si crea (o si collega quello con la stessa email)
+	 * solo quando il potere viene dato. I soci semplici non ne hanno.
+	 *
+	 * @return int id dell'utente WordPress
+	 */
+	public function ensure_user( int $id ): int {
+		$p = $this->get( $id );
+		if ( ! $p || ! MemberType::can_login( $p['type'] ) ) {
+			throw new \InvalidArgumentException( 'Socio non trovato.' );
+		}
+		if ( ! empty( $p['wp_user_id'] ) ) {
+			return (int) $p['wp_user_id'];
+		}
+		if ( '' === trim( (string) $p['email'] ) ) {
+			throw new \InvalidArgumentException( 'Prima inserisci l\'email nella scheda: serve per l\'accesso.' );
+		}
+		$uid = $this->ensure_wp_user( $this->normalize( $p ), $id );
+		$this->db()->update( Db::t( 'people' ), array( 'wp_user_id' => $uid, 'updated_at' => Db::now() ), array( 'id' => $id ) );
+		Audit::log( 'person.wp_user_created', 'person', $id );
+		return $uid;
+	}
+
+	/**
+	 * Un socio che non ha più poteri torna all'accesso con link: l'utente WordPress si elimina. Lo decide l'amministratore, sempre caso per caso.
+	 * Non si elimina un utente che ha ancora poteri, scritto contenuti o fatto ordini nel negozio: serve a loro.
+	 *
+	 * @throws \InvalidArgumentException con il motivo per cui non si può
+	 */
+	public function release_wp_user( int $id ): void {
+		$p   = $this->get( $id );
+		$uid = $p ? (int) $p['wp_user_id'] : 0;
+		if ( ! $p || $uid <= 0 ) {
+			throw new \InvalidArgumentException( 'Questo socio non ha un utente WordPress.' );
+		}
+		if ( ! MemberSession::enabled() ) {
+			throw new \InvalidArgumentException( 'L\'accesso con link è spento (Impostazioni → Tecniche → Limiti e soglie): accendilo prima.' );
+		}
+		if ( '' === trim( (string) $p['email'] ) ) {
+			throw new \InvalidArgumentException( 'Prima inserisci la sua email nella scheda: il link di accesso arriva lì.' );
+		}
+		if ( Access::has_powers( $uid ) ) {
+			throw new \InvalidArgumentException( 'Ha ancora dei poteri (segreteria, presidente o vicepresidente, tesoriere, staff o altri ruoli del sito): toglili prima.' );
+		}
+		if ( get_userdata( $uid ) ) {
+			if ( count_user_posts( $uid, 'any' ) > 0 ) {
+				throw new \InvalidArgumentException( 'L\'utente ha scritto contenuti sul sito: non si elimina da qui.' );
+			}
+			if ( function_exists( 'wc_get_customer_order_count' ) && (int) wc_get_customer_order_count( $uid ) > 0 ) {
+				throw new \InvalidArgumentException( 'L\'utente ha ordini nel negozio WooCommerce: resta, serve allo storico degli ordini.' );
+			}
+			\WP_Session_Tokens::get_instance( $uid )->destroy_all();
+			require_once ABSPATH . 'wp-admin/includes/user.php';
+			if ( ! wp_delete_user( $uid ) ) {
+				throw new \InvalidArgumentException( 'Non è stato possibile eliminare l\'utente WordPress.' );
+			}
+		}
+		$this->db()->update( Db::t( 'people' ), array( 'wp_user_id' => null, 'updated_at' => Db::now() ), array( 'id' => $id ) );
+		do_action( 'asem_member_access_forgotten', $id, $uid ); // le funzioni avanzate tolgono ciò che avevano legato all'utente (ad esempio le notifiche)
+		Audit::log( 'person.wp_user_released', 'person', $id );
+	}
+
+	/**
+	 * Il socio ha un accesso: un utente WordPress oppure, quando i soci entrano con l'accesso proprio (cioè non si creano utenti WordPress),
+	 * l'email con cui riceve il link. Con la scelta «anche un utente WordPress» chi non ce l'ha deve ancora attivarsi dal link.
+	 */
+	public static function has_access( array $p ): bool {
+		if ( ! empty( $p['wp_user_id'] ) ) {
+			return true;
+		}
+		return ! MemberSession::wp_users_wanted() && MemberType::can_login( (string) $p['type'] ) && '' !== trim( (string) $p['email'] ) && empty( $p['application_status'] );
+	}
+
 	/** Persone (soci e ospiti) con lo stesso cellulare, comunque sia scritto (+39, spazi, trattini). */
 	public function find_by_phone( string $raw, ?int $except_id = null ): array {
 		if ( ! Phone::is_valid( $raw ) ) {
@@ -488,8 +630,10 @@ class PeopleService {
 		}
 		$key = Phone::key( $raw );
 		$out = array();
-		foreach ( $this->search() as $p ) {
-			if ( (int) $p['id'] !== (int) $except_id && ! empty( $p['phone'] ) && Phone::key( (string) $p['phone'] ) === $key ) {
+		// Solo chi ha un cellulare, senza le sottointerrogazioni dell'elenco completo: la ricerca è chiamata anche da pagine pubbliche.
+		$rows = $this->db()->get_results( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE deleted_at IS NULL AND anonymized_at IS NULL AND application_status IS NULL AND phone IS NOT NULL AND phone <> ''", ARRAY_A ) ?: array();
+		foreach ( $rows as $p ) {
+			if ( (int) $p['id'] !== (int) $except_id && Phone::key( (string) $p['phone'] ) === $key ) {
 				$out[] = $p;
 			}
 		}
@@ -557,6 +701,9 @@ class PeopleService {
 		$acts   = Plugin::activities();
 		$guests = $this->search( array( 'type' => MemberType::GUEST ) );
 		$counts = $acts->participation_counts( array_column( $guests, 'id' ) );
+		foreach ( $guests as $g ) { // le volte già venuto prima di usare il programma (da scheda o da importazione) si sommano a quelle registrate
+			$counts[ (int) $g['id'] ] = (int) ( $counts[ (int) $g['id'] ] ?? 0 ) + (int) ( $g['prior_visits'] ?? 0 );
+		}
 		$limit  = $acts->guest_limit();
 		$by_key = array();
 		foreach ( $guests as $g ) {
@@ -614,9 +761,9 @@ class PeopleService {
 		$this->assert_valid( $d, $id );
 
 		$user_id = $current['wp_user_id'] ? (int) $current['wp_user_id'] : null;
-		if ( MemberType::is_member( $d['type'] ) ) {
+		if ( MemberType::can_login( $d['type'] ) ) {
 			if ( null === $user_id ) {
-				if ( null !== $d['email'] ) {
+				if ( null !== $d['email'] && MemberSession::wp_users_wanted() ) {
 					$user_id = $this->ensure_wp_user( $d, $id ); // ad es. ospite diventato socio, o socio che ha dato l'email
 				}
 			} else {
@@ -634,14 +781,21 @@ class PeopleService {
 				'last_name'      => $d['last_name'],
 				'email'          => $d['email'],
 				'phone'          => $d['phone'],
-				'tax_code'       => $d['tax_code'],
+				'tax_code'       => $d['tax_code'], 'birth_date' => $d['birth_date'],
+				'birth_place'    => $d['birth_place'],
 				'address'        => $d['address'],
 				'zip'            => $d['zip'],
 				'city'           => $d['city'],
 				'province'       => $d['province'],
 				'host_person_id' => $d['host_person_id'],
 				'joined_on'      => $d['joined_on'] ?: $current['joined_on'],
+				'approved_on'    => $d['approved_on'],
 				'notes'          => $d['notes'],
+				'prior_visits'   => $d['prior_visits'],
+				'affiliation_role' => $d['affiliation_role'],
+				'image_consent'  => $d['image_consent'],
+				'image_consent_at' => $d['image_consent'] === ( null === $current['image_consent'] ? null : (int) $current['image_consent'] ) ? $current['image_consent_at'] : ( null === $d['image_consent'] ? null : Db::now() ),
+				'image_consent_by' => $d['image_consent'] === ( null === $current['image_consent'] ? null : (int) $current['image_consent'] ) ? $current['image_consent_by'] : $this->image_consent_giver( $current ),
 				'updated_at'     => Db::now(),
 			),
 			array( 'id' => $id )
@@ -709,6 +863,8 @@ class PeopleService {
 			array( 'deleted_at' => Db::now(), 'card_number' => null, 'wp_user_id' => null ),
 			array( 'id' => $id )
 		);
+		Guardians::forget( $id );
+		MemberSession::forget_person( $id ); // sessioni, password e codici di accesso proprio
 		Audit::log( 'person.deleted', 'person', $id, array( 'type' => $p['type'] ) );
 	}
 
@@ -723,7 +879,11 @@ class PeopleService {
 			if ( $linked ) {
 				throw new \InvalidArgumentException( 'L\'utente WordPress con questa email è già collegato a un altro socio.' );
 			}
-			return (int) $existing->ID; // si collega l'utente esistente senza cambiargli il ruolo
+			if ( array_diff( (array) $existing->roles, array( 'subscriber', 'customer', Plugin::ROLE_MEMBER ) ) && ! current_user_can( Plugin::CAP ) ) {
+				throw new \InvalidArgumentException( 'Con questa email esiste già un utente del sito con altri ruoli (ad esempio redattore o amministratore): solo un amministratore può collegarlo a un socio.' );
+			}
+			$this->secure_existing_user( $existing ); // si collega l'utente esistente senza cambiargli il ruolo
+			return (int) $existing->ID;
 		}
 		$uid = wp_insert_user(
 			array(
@@ -742,6 +902,19 @@ class PeopleService {
 		return (int) $uid;
 	}
 
+	/**
+	 * Collegare a un socio un utente WordPress già esistente con la stessa email: se l'utente ha solo ruoli da semplice visitatore (iscritto da solo al
+	 * sito, cliente del negozio) non si può sapere chi ha scelto la sua password. Si cambia con una casuale e si chiudono gli accessi aperti: il socio
+	 * entra col «Primo accesso» (il link va all'email del socio). Chi ha altri ruoli (amministratori, segreteria…) non si tocca.
+	 */
+	private function secure_existing_user( \WP_User $user ): void {
+		if ( $user->roles && ! array_diff( $user->roles, array( 'subscriber', 'customer' ) ) ) {
+			wp_set_password( wp_generate_password( 32 ), (int) $user->ID );
+			\WP_Session_Tokens::get_instance( (int) $user->ID )->destroy_all();
+			Audit::log( 'person.wp_user_secured', 'user', (int) $user->ID );
+		}
+	}
+
 	private function unique_login( string $email ): string {
 		$base  = sanitize_user( $email, true );
 		$login = $base;
@@ -752,6 +925,18 @@ class PeopleService {
 		return $login;
 	}
 
+	/**
+	 * Chi ha una carica (presidente, vicepresidente), è tesoriere o staff dell'ente ha più poteri di un socio: la segreteria non può spostare la sua email
+	 * di accesso (con «Password dimenticata» si entrerebbe al suo posto). Solo un amministratore, o la persona stessa, la cambia.
+	 */
+	private function email_change_needs_admin( \WP_User $user ): bool {
+		if ( get_current_user_id() === (int) $user->ID || current_user_can( Plugin::CAP ) ) {
+			return false;
+		}
+		$uid = (int) $user->ID;
+		return Access::is_board_operator( $uid ) || Access::is_treasurer( $uid ) || Access::is_entity_staff( $uid );
+	}
+
 	/** Allinea email e nome dell'utente WordPress, ma solo se è un utente "solo socio" (mai admin o altri ruoli). */
 	private function sync_wp_user( int $user_id, array $d ): void {
 		$user = get_userdata( $user_id );
@@ -759,7 +944,7 @@ class PeopleService {
 			return;
 		}
 		$args = array( 'ID' => $user_id, 'first_name' => $d['first_name'], 'last_name' => $d['last_name'], 'display_name' => trim( $d['first_name'] . ' ' . $d['last_name'] ) );
-		if ( null !== $d['email'] && strtolower( $user->user_email ) !== $d['email'] ) {
+		if ( null !== $d['email'] && strtolower( $user->user_email ) !== $d['email'] && ! $this->email_change_needs_admin( $user ) ) {
 			$args['user_email'] = $d['email'];
 		}
 		$res = wp_update_user( $args );
@@ -803,8 +988,8 @@ class PeopleService {
 		if ( ! $p ) {
 			throw new \InvalidArgumentException( 'Persona non trovata.' );
 		}
-		if ( MemberType::GUEST === $p['type'] ) {
-			throw new \InvalidArgumentException( 'Gli ospiti non sono soci: non hanno iscrizione.' );
+		if ( ! MemberType::is_member( $p['type'] ) ) {
+			throw new \InvalidArgumentException( MemberType::GUARDIAN === $p['type'] ? 'Un genitore o tutore non è un socio: non ha iscrizione né tessera.' : 'Gli ospiti non sono soci: non hanno iscrizione.' );
 		}
 		if ( MemberType::is_auto_renewed( $p['type'] ) ) {
 			throw new \InvalidArgumentException( 'Il socio fondatore ha la tessera sempre rinnovata.' );
@@ -848,6 +1033,29 @@ class PeopleService {
 		return array( 'year' => $year, 'free' => $free );
 	}
 
+	/** Quanto copre ciò che è stato incassato per la quota associativa di un anno della tessera (movimenti non annullati, sconti compresi). */
+	public function membership_paid( int $person_id, string $year_label ): int {
+		return (int) $this->db()->get_var(
+			$this->db()->prepare(
+				'SELECT COALESCE(SUM(t.amount_cents + t.discount_cents), 0) FROM ' . Db::t( 'transactions' ) . ' t JOIN ' . Db::t( 'categories' ) . " c ON c.id = t.category_id WHERE t.person_id = %d AND t.social_year = %s AND t.type = 'income' AND t.voided_at IS NULL AND c.kind = 'membership'", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nomi tabella interni
+				$person_id,
+				$year_label
+			)
+		);
+	}
+
+	/**
+	 * Quanto manca per completare la quota di quell'anno quando si paga a rate («tessera solo al saldo» attivo e almeno un versamento già fatto); altrimenti 0.
+	 */
+	public function membership_missing( array $person, string $year_label ): int {
+		if ( ! Limits::flag( 'membership_on_balance' ) ) {
+			return 0;
+		}
+		$fee  = Levels::fee_for( $person );
+		$paid = $this->membership_paid( (int) $person['id'], $year_label );
+		return $fee > 0 && $paid > 0 ? max( 0, $fee - $paid ) : 0;
+	}
+
 	/** Annulla l'iscrizione nata da un incasso (usato quando si annulla il movimento). */
 	public function remove_membership_of_transaction( int $tx_id ): void {
 		$row = $this->db()->get_row( $this->db()->prepare( 'SELECT person_id, social_year FROM ' . Db::t( 'memberships' ) . ' WHERE transaction_id = %d AND deleted_at IS NULL', $tx_id ), ARRAY_A );
@@ -856,5 +1064,18 @@ class PeopleService {
 		}
 		$this->db()->update( Db::t( 'memberships' ), array( 'deleted_at' => Db::now() ), array( 'transaction_id' => $tx_id ) );
 		Audit::log( 'membership.removed', 'person', (int) $row['person_id'], array( 'social_year' => $row['social_year'], 'source' => 'void', 'transaction' => $tx_id ) );
+	}
+
+	/** Dopo l'annullamento di un versamento: se la quota dell'anno non è più completa, la tessera data al saldo decade. */
+	public function recheck_membership_after_void( int $tx_id ): void {
+		$row = $this->db()->get_row( $this->db()->prepare( 'SELECT t.person_id, t.social_year FROM ' . Db::t( 'transactions' ) . ' t JOIN ' . Db::t( 'categories' ) . " c ON c.id = t.category_id WHERE t.id = %d AND c.kind = 'membership' AND t.person_id IS NOT NULL", $tx_id ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nomi tabella interni
+		$p   = $row ? $this->get( (int) $row['person_id'] ) : null;
+		if ( ! $p || '' === (string) $row['social_year'] || ! $this->has_membership( (int) $p['id'], (string) $row['social_year'] ) ) {
+			return;
+		}
+		if ( $this->membership_missing( $p, (string) $row['social_year'] ) > 0 ) {
+			$this->db()->update( Db::t( 'memberships' ), array( 'deleted_at' => Db::now() ), array( 'person_id' => (int) $p['id'], 'social_year' => (string) $row['social_year'] ) );
+			Audit::log( 'membership.removed', 'person', (int) $p['id'], array( 'social_year' => $row['social_year'], 'source' => 'void_partial', 'transaction' => $tx_id ) );
+		}
 	}
 }

@@ -3,6 +3,7 @@ namespace AssociazioneSemplice\Admin;
 
 use AssociazioneSemplice\Backup;
 use AssociazioneSemplice\Reset;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -54,7 +55,7 @@ final class ResetPage {
 
 		echo '<h3>Conferma</h3>';
 		Ui::form_open( 'asem_reset_all', Ui::url( 'asem-reset', array( 'step' => 2, 'mode' => $mode, 'users' => $users ? 1 : 0 ) ) );
-		echo Ui::hidden( 'mode', $mode ) . Ui::hidden( 'users', $users ? 1 : 0 ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( Ui::hidden( 'mode', $mode ) . Ui::hidden( 'users', $users ? 1 : 0 ), Html::allowed() );
 		echo '<p><label><input type="checkbox" name="confirm" value="1"> Ho letto e ho capito: i dati verranno cancellati per sempre.</label></p>';
 		echo '<p><label>Scrivi <strong>' . esc_html( Reset::PHRASE ) . '</strong> per confermare:<br><input type="text" name="phrase" class="regular-text" autocomplete="off"></label></p>';
 		echo '<p><label>La tua password di amministratore:<br><input type="password" name="password" class="regular-text" autocomplete="current-password"></label></p>';

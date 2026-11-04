@@ -66,13 +66,13 @@ final class Visibility {
 		return false;
 	}
 
-	/** Perché è negato (per scegliere il messaggio): 'login' | 'license' | 'rule'. */
+	/** Perché è negato (per scegliere il messaggio): 'login' | 'suspended' | 'rule'. */
 	public static function denial_reason( array $ctx ): string {
 		if ( empty( $ctx['logged_in'] ) ) {
 			return 'login';
 		}
 		if ( empty( $ctx['member_area_allowed'] ) ) {
-			return 'license';
+			return 'suspended';
 		}
 		return 'rule';
 	}

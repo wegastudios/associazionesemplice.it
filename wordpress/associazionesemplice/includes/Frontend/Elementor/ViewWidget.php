@@ -5,6 +5,7 @@ use AssociazioneSemplice\ActivityKind;
 use AssociazioneSemplice\Frontend\Shortcodes;
 use Elementor\Controls_Manager;
 use Elementor\Widget_Base;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -59,6 +60,6 @@ class ViewWidget extends Widget_Base {
 				$atts[ $k ] = (string) $s[ $k ];
 			}
 		}
-		echo Shortcodes::render_view( (string) ( $s['view'] ?? 'area_soci' ), $atts ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( Shortcodes::render_view( (string) ( $s['view'] ?? 'area_soci' ), $atts ), Html::allowed() );
 	}
 }

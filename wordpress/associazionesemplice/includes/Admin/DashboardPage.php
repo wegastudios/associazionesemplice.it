@@ -5,6 +5,7 @@ use AssociazioneSemplice\MemberType;
 use AssociazioneSemplice\Money;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Settings;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -19,70 +20,65 @@ final class DashboardPage {
 		$name     = (string) Settings::get( 'association_name' );
 
 		Ui::header( 'Associazione Semplice' . ( $name ? ' — ' . $name : '' ) );
+		echo '<img class="asem-logo" src="' . esc_url( ASEM_URL . 'assets/brand/logo-orizzontale.png' ) . '" width="150" height="55" alt="Associazione Semplice">';
 		echo '<p>'
 			. '<a class="button button-primary" href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Nuovo incasso</a> '
 			. ( \AssociazioneSemplice\Edition::has( 'funds' ) ? '<a class="button" href="' . esc_url( Ui::url( 'asem-group' ) ) . '">Cassa per più persone</a> ' : '' )
 			. '<a class="button" href="' . esc_url( Ui::url( 'asem-expense' ) ) . '">Nuova spesa</a> '
 			. '<a class="button" href="' . esc_url( Ui::url( 'asem-person', array( 'type' => 'ordinary' ) ) ) . '">Nuovo socio</a>' . ( \AssociazioneSemplice\Modules::on( 'activities' ) ? ' <a class="button" href="' . esc_url( Ui::url( 'asem-calendar' ) ) . '">Calendario</a>' : '' ) . '</p>';
+		echo '<p class="description">Il tuo account su associazionesemplice.it: <a href="' . esc_url( (string) apply_filters( 'asem_portal_account_url', 'https://associazionesemplice.it/account' ) ) . '" target="_blank" rel="noopener">Area riservata</a> (licenza, dominio, pagamenti, download) · <a href="' . esc_url( (string) apply_filters( 'asem_portal_support_url', 'https://associazionesemplice.it/supporto/accedi' ) ) . '" target="_blank" rel="noopener">Supporto</a></p>';
 
 		echo '<div class="asem-grid"><div class="asem-card"><h2>Disponibilità reale</h2>';
-		echo '<p class="asem-big">' . Ui::money( $avail['available'] ) . '</p><p class="description">Saldi dei conti meno i fondi accantonati per i rimborsi.</p><table class="asem-kv">'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<p class="asem-big">' . Ui::money( $avail['available'] ) . '</p><p class="description">Saldi dei conti meno i fondi accantonati per i rimborsi.</p><table class="asem-kv">', Html::allowed() );
 		foreach ( $balances as $b ) {
-			echo '<tr><td>' . esc_html( $b['name'] ) . '</td><td>' . Ui::money( $b['balance'] ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( '<tr><td>' . esc_html( $b['name'] ) . '</td><td>' . Ui::money( $b['balance'] ) . '</td></tr>', Html::allowed() );
 		}
-		echo '<tr><td><strong>Totale saldi</strong></td><td><strong>' . Ui::money( $avail['accounts'] ) . '</strong></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<tr><td><strong>Totale saldi</strong></td><td><strong>' . Ui::money( $avail['accounts'] ) . '</strong></td></tr>', Html::allowed() );
 		foreach ( $funds as $f ) {
-			echo '<tr><td>− ' . esc_html( $f['name'] ) . '</td><td>' . Ui::money( $f['balance'] ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( '<tr><td>− ' . esc_html( $f['name'] ) . '</td><td>' . Ui::money( $f['balance'] ) . '</td></tr>', Html::allowed() );
 		}
-		echo '</table>' . ( \AssociazioneSemplice\Edition::has( 'funds' ) ? '<p><a href="' . esc_url( Ui::url( 'asem-accounts' ) ) . '">Conti, fondi e verifica saldi →</a></p>' : '' ) . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '</table>' . ( \AssociazioneSemplice\Edition::has( 'funds' ) ? '<p><a href="' . esc_url( Ui::url( 'asem-accounts' ) ) . '">Conti, fondi e verifica saldi →</a></p>' : '' ) . '</div>', Html::allowed() );
 
 		echo '<div class="asem-card"><h2>Anno sociale ' . esc_html( $year->label() ) . '</h2><table class="asem-kv">';
 		foreach ( MemberType::member_types() as $t ) {
 			echo '<tr><td>' . esc_html( MemberType::label( $t ) ) . '</td><td>' . (int) ( $r['members_by_type'][ $t ] ?? 0 ) . '</td></tr>';
 		}
-		echo '<tr><td>Entrate</td><td>' . Ui::money( $r['total_income'] ) . '</td></tr><tr><td>Uscite</td><td>' . Ui::money( $r['total_expense'] ) . '</td></tr>' // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<tr><td><strong>Resta all\'associazione</strong></td><td><strong>' . Ui::money( $r['result'] ) . '</strong></td></tr></table></div></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<tr><td>Entrate</td><td>' . Ui::money( $r['total_income'] ) . '</td></tr><tr><td>Uscite</td><td>' . Ui::money( $r['total_expense'] ) . '</td></tr>'
+			. '<tr><td><strong>Resta all\'associazione</strong></td><td><strong>' . Ui::money( $r['result'] ) . '</strong></td></tr></table></div></div>', Html::allowed() );
 
 		if ( current_user_can( \AssociazioneSemplice\Plugin::CAP ) ) { // promemoria della copia di sicurezza (solo amministratori)
 			$bk = \AssociazioneSemplice\Backup::last();
 			if ( ! $bk || time() - $bk > 30 * DAY_IN_SECONDS ) {
-				echo Dismiss::html( 'backup', 'warning', ( $bk ? 'L\'ultima copia di sicurezza dei dati risale a più di 30 giorni fa.' : 'Non hai ancora scaricato una copia di sicurezza dei dati.' ) . ' <a href="' . esc_url( Ui::url( 'asem-backup' ) ) . '">Scaricala ora</a>.', 14 ); // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( Dismiss::html( 'backup', 'warning', ( $bk ? 'L\'ultima copia di sicurezza dei dati risale a più di 30 giorni fa.' : 'Non hai ancora scaricato una copia di sicurezza dei dati.' ) . ' <a href="' . esc_url( Ui::url( 'asem-backup' ) ) . '">Scaricala ora</a>.', 14 ), Html::allowed() );
 			}
 		}
-		if ( \AssociazioneSemplice\Edition::has( 'insurance' ) && \AssociazioneSemplice\Settings::insurance_association() ) {
-			$rc = \AssociazioneSemplice\AssocPolicies::rc_status();
-			if ( \AssociazioneSemplice\Insurance::VALID !== $rc ) {
-				$msg = array( \AssociazioneSemplice\Insurance::NONE => 'non risulta nessuna polizza di responsabilità civile dell\'associazione', \AssociazioneSemplice\Insurance::EXPIRED => 'la polizza di responsabilità civile dell\'associazione è scaduta', \AssociazioneSemplice\Insurance::EXPIRING => 'la polizza di responsabilità civile dell\'associazione sta per scadere' );
-				echo Dismiss::html( 'insurance-rc-' . $rc, 'warning', 'Assicurazione: ' . esc_html( $msg[ $rc ] ) . '. <a href="' . esc_url( Ui::url( 'asem-volunteers' ) ) . '">Apri le assicurazioni</a>.', 7 ); // phpcs:ignore WordPress.Security.EscapeOutput
-			}
+		$mail_fail = current_user_can( \AssociazioneSemplice\Plugin::CAP ) ? \AssociazioneSemplice\MailLog::failures() : 0;
+		if ( $mail_fail > 0 ) {
+			echo wp_kses( Dismiss::html( 'mail-fail-' . $mail_fail, 'warning', '<strong>Alcune email non sono partite</strong> negli ultimi giorni (' . (int) $mail_fail . '). <a href="' . esc_url( Ui::url( 'asem-tech' ) ) . '">Vedi perché e prova l\'invio</a>.', 3 ), Html::allowed() );
 		}
 		if ( current_user_can( \AssociazioneSemplice\Plugin::CAP ) && '' === trim( (string) \AssociazioneSemplice\Settings::get( 'association_name' ) ) ) {
-			echo Dismiss::html( 'entity-name', 'info', '<strong>Manca il nome dell\'ente.</strong> Compare su ricevute, tessere e messaggi ai soci: inseriscilo in <a href="' . esc_url( Ui::url( 'asem-entity' ) ) . '">Impostazioni → Dati e fiscalità</a>.', 7 ); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Dismiss::html( 'entity-name', 'info', '<strong>Manca il nome dell\'ente.</strong> Compare su ricevute, tessere e messaggi ai soci: inseriscilo in <a href="' . esc_url( Ui::url( 'asem-entity' ) ) . '">Impostazioni → Dati e fiscalità</a>.', 7 ), Html::allowed() );
 		}
 		if ( current_user_can( \AssociazioneSemplice\Plugin::CAP ) && \AssociazioneSemplice\Wizard::pending() ) {
-			echo Dismiss::html( 'wizard', 'info', '<strong>Benvenuto.</strong> Configura il plugin in pochi minuti: ente, quote, pagamenti e pagine del sito. <a class="button button-primary" href="' . esc_url( Ui::url( 'asem-wizard' ) ) . '">Avvia la configurazione guidata</a>', 3 ); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Dismiss::html( 'wizard', 'info', '<strong>Benvenuto.</strong> Configura il plugin in pochi minuti: ente, quote, pagamenti e pagine del sito. <a class="button button-primary" href="' . esc_url( Ui::url( 'asem-wizard' ) ) . '">Avvia la configurazione guidata</a>', 3 ), Html::allowed() );
 		}
 		if ( \AssociazioneSemplice\Guide::show_banner( get_current_user_id() ) ) {
 			$gp = \AssociazioneSemplice\Guide::progress();
-			echo Dismiss::html( 'guide', 'info', 'Configurazione iniziale: ' . (int) $gp['done'] . ' passi su ' . (int) $gp['total'] . '. <a href="' . esc_url( Ui::url( 'asem-guide' ) ) . '">Apri la guida</a>.', 7 ); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Dismiss::html( 'guide', 'info', 'Configurazione iniziale: ' . (int) $gp['done'] . ' passi su ' . (int) $gp['total'] . '. <a href="' . esc_url( Ui::url( 'asem-guide' ) ) . '">Apri la guida</a>.', 7 ), Html::allowed() );
 		}
-		if ( \AssociazioneSemplice\Edition::has( 'fivepm' ) && \AssociazioneSemplice\FivePerMille::enabled() ) {
-			$fp = \AssociazioneSemplice\FivePerMille::alerts();
-			if ( $fp ) {
-				echo Dismiss::html( 'fivepm-' . count( $fp ), 'warning', '5x1000: ' . count( $fp ) . ( 1 === count( $fp ) ? ' contributo ha il rendiconto sull\'utilizzo scaduto o in scadenza' : ' contributi hanno il rendiconto sull\'utilizzo scaduto o in scadenza' ) . '. <a href="' . esc_url( Ui::url( 'asem-fivepm' ) ) . '">Apri il 5x1000</a>.', 7 ); // phpcs:ignore WordPress.Security.EscapeOutput
-			}
-		}
-		$ins = \AssociazioneSemplice\Edition::has( 'insurance' ) && \AssociazioneSemplice\Settings::insurance_volunteers() ? \AssociazioneSemplice\Insurance::counts() : array( 'none' => 0, 'expired' => 0, 'expiring' => 0 );
-		if ( $ins['none'] + $ins['expired'] + $ins['expiring'] > 0 ) {
-			echo Dismiss::html( 'insurance-vol-' . ( $ins['none'] + $ins['expired'] ) . '-' . $ins['expiring'], 'warning', 'Assicurazione dei volontari: ' // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto
-				. (int) ( $ins[ \AssociazioneSemplice\Insurance::NONE ] + $ins[ \AssociazioneSemplice\Insurance::EXPIRED ] ) . ' senza copertura valida, ' . (int) $ins[ \AssociazioneSemplice\Insurance::EXPIRING ] . ' in scadenza. '
-				. '<a href="' . esc_url( Ui::url( 'asem-volunteers' ) ) . '">Apri il registro</a>.', 7 ); // phpcs:ignore WordPress.Security.EscapeOutput
-		}
+		do_action( 'asem_dashboard_alerts' ); // le estensioni aggiungono i loro avvisi
 		self::quick_cash();
 		self::quick_enroll();
 		self::payments_due();
 		self::renewals();
 		self::expected_guests();
+
+		self::applications();
+		self::adults_to_invite();
+		self::incomplete_cards();
+		self::overdue_loans();
+		ConventionsPage::dashboard_card();
+		do_action( 'asem_dashboard_cards' ); // le estensioni aggiungono qui le loro schede
 
 		$requests = \AssociazioneSemplice\AccessRequests::pending();
 		if ( $requests ) {
@@ -102,12 +98,12 @@ final class DashboardPage {
 				}
 				if ( 'change' === $rq['kind'] ) {
 					Ui::form_open( 'asem_access_approve', Ui::url( 'asem' ), false, 'asem-inline' );
-					echo Ui::hidden( 'id', $rq['id'] ) . '<button class="button button-small">Approva e manda il link</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+					echo wp_kses( Ui::hidden( 'id', $rq['id'] ) . '<button class="button button-small">Approva e manda il link</button>', Html::allowed() );
 					Ui::form_close();
 					echo ' ';
 				}
 				Ui::form_open( 'asem_access_done', Ui::url( 'asem' ), false, 'asem-inline' );
-				echo Ui::hidden( 'id', $rq['id'] ) . '<button class="button-link">' . ( 'change' === $rq['kind'] ? 'rifiuta' : 'fatto' ) . '</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( Ui::hidden( 'id', $rq['id'] ) . '<button class="button-link">' . ( 'change' === $rq['kind'] ? 'rifiuta' : 'fatto' ) . '</button>', Html::allowed() );
 				Ui::form_close();
 				echo '</li>';
 			}
@@ -128,12 +124,98 @@ final class DashboardPage {
 		if ( ! empty( $r['activities'] ) ) {
 			echo '<h2>Attività</h2><div class="asem-grid">';
 			foreach ( $r['activities'] as $a ) {
-				echo '<div class="asem-card"><h3><a href="' . esc_url( Ui::url( 'asem-activity', array( 'id' => $a['activity']['id'] ) ) ) . '">' . esc_html( $a['activity']['name'] ) . '</a></h3>'
-					. '<p>' . (int) $a['participants'] . ' iscritti · resta ' . Ui::money( $a['margin'] ) . '</p></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( '<div class="asem-card"><h3><a href="' . esc_url( Ui::url( 'asem-activity', array( 'id' => $a['activity']['id'] ) ) ) . '">' . esc_html( $a['activity']['name'] ) . '</a></h3>'
+					. '<p>' . (int) $a['participants'] . ' iscritti · resta ' . Ui::money( $a['margin'] ) . '</p></div>', Html::allowed() );
 			}
 			echo '</div>';
 		}
 		Ui::footer();
+	}
+
+	/** Domande di adesione dal sito: Approva (si assegna la tessera, si propone la successiva) o Rifiuta. */
+	private static function applications(): void {
+		$apps = \AssociazioneSemplice\Applications::pending();
+		if ( ! $apps ) {
+			return;
+		}
+		echo '<div class="asem-card" id="asem-applications"><h2>Domande di adesione (' . count( $apps ) . ')</h2><p class="description">Dal modulo «Diventa socio» del sito. Approvando assegni il numero di tessera: il nuovo socio riceve il link per scegliere la password (per un minore, il genitore). Rifiutando, la domanda sparisce; una quota pagata online resta «da rimborsare».</p><ul>';
+		foreach ( $apps as $a ) {
+			$age   = \AssociazioneSemplice\Age::years( $a['birth_date'] ?? null, \AssociazioneSemplice\Db::today() );
+			$minor = ! empty( $a['guardian'] );
+			echo '<li style="margin-bottom:14px"><strong>' . esc_html( $a['first_name'] . ' ' . $a['last_name'] ) . '</strong> <span class="description">' . esc_html( MemberType::label( $a['type'] ) )
+				. ' · nato/a il ' . esc_html( \AssociazioneSemplice\Age::display( $a['birth_date'] ?? null ) ) . ( null !== $age ? ' (' . (int) $age . ' anni)' : '' )
+				. ( ! empty( $a['email'] ) ? ' · ' . esc_html( (string) $a['email'] ) : '' ) . ( ! empty( $a['phone'] ) ? ' · ' . esc_html( (string) $a['phone'] ) : '' )
+				. ' · ' . esc_html( mysql2date( 'd/m H:i', (string) $a['application_at'] ) ) . '</span>';
+			if ( $minor ) {
+				$g = $a['guardian'];
+				echo '<br><span class="description">Genitore/tutore: <strong>' . esc_html( trim( $g['first_name'] . ' ' . $g['last_name'] ) ) . '</strong> · ' . esc_html( (string) $g['email'] ) . ' · ' . esc_html( (string) $g['phone'] ) . ' · ha accettato regolamento e privacy a nome del minore</span>';
+			}
+			if ( $a['fee_cents'] > 0 ) {
+				echo wp_kses( '<br><span class="description">Quota ' . Ui::money( (int) $a['fee_cents'] ) . ' — ' . ( $a['paid'] ? '<strong>pagata online</strong> (' . Ui::money( (int) $a['paid']['cents'] ) . ')' : 'da pagare in sede' ) . '</span>', Html::allowed() );
+			}
+			echo '<br>';
+			Ui::form_open( 'asem_application_approve', Ui::url( 'asem' ), false, 'asem-inline' );
+			echo wp_kses( Ui::hidden( 'id', $a['id'] ) . '<label>Tessera n. <input type="text" name="card_number" value="' . esc_attr( (string) $a['suggested_card'] ) . '" size="8"></label> <button class="button button-primary button-small">Approva</button>', Html::allowed() );
+			Ui::form_close();
+			echo ' ';
+			Ui::form_open( 'asem_application_reject', Ui::url( 'asem' ), false, 'asem-inline' );
+			echo wp_kses( Ui::hidden( 'id', $a['id'] ) . '<button class="button button-small" data-confirm="Rifiutare la domanda?">Rifiuta</button>', Html::allowed() );
+			Ui::form_close();
+			echo '</li>';
+		}
+		echo '</ul></div>';
+	}
+
+	/** Beni in prestito il cui rientro è scaduto. */
+	private static function overdue_loans(): void {
+		$late = \AssociazioneSemplice\Inventory::overdue();
+		if ( ! $late ) {
+			return;
+		}
+		echo '<div class="asem-card" id="asem-loans-late"><h2>Prestiti da recuperare (' . count( $late ) . ')</h2><p class="description">Il rientro previsto è passato. Quando il bene torna, registra il rientro dall\'Inventario.</p><ul>';
+		foreach ( array_slice( $late, 0, 10 ) as $l ) {
+			echo '<li><a href="' . esc_url( Ui::url( 'asem-inventory', array( 'view' => (int) $l['item_id'] ) ) ) . '">' . esc_html( $l['item_name'] ) . '</a> <span class="description">a ' . esc_html( $l['person_name'] ) . ' · previsto il '
+				. esc_html( ( new \DateTimeImmutable( $l['due_on'] ) )->format( 'd/m/Y' ) ) . ' · ' . (int) $l['days_late'] . ' giorni di ritardo</span></li>';
+		}
+		echo '</ul><p><a href="' . esc_url( Ui::url( 'asem-inventory', array( 'tab' => 'loans' ) ) ) . '">Tutti i prestiti →</a></p></div>';
+	}
+
+	/** Soci con la scheda incompleta: cosa manca, con il link per completarla. */
+	private static function incomplete_cards(): void {
+		$list = \AssociazioneSemplice\IncompleteCards::all();
+		if ( ! $list ) {
+			return;
+		}
+		echo '<div class="asem-card" id="asem-incomplete"><h2>Schede da completare (' . count( $list ) . ')</h2><p class="description">Mancano dati utili per il libro soci, le ricevute e le tessere degli enti di promozione. Apri la scheda per completarla.</p><ul>';
+		foreach ( array_slice( $list, 0, 20 ) as $x ) {
+			$p = $x['person'];
+			echo '<li><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '">' . esc_html( $p['first_name'] . ' ' . $p['last_name'] ) . '</a> <span class="description">manca: ' . esc_html( implode( ', ', $x['missing'] ) ) . '</span></li>';
+		}
+		if ( count( $list ) > 20 ) {
+			echo '<li class="description">…e altre ' . ( count( $list ) - 20 ) . '.</li>';
+		}
+		echo '</ul></div>';
+	}
+
+	/** Ragazzi ancora collegati a un tutore che hanno compiuto 18 anni: da invitare a creare il loro accesso. */
+	private static function adults_to_invite(): void {
+		$list = \AssociazioneSemplice\Guardians::adults_to_invite();
+		if ( ! $list ) {
+			return;
+		}
+		echo '<div class="asem-card"><h2>Maggiorenni da invitare (' . count( $list ) . ')</h2><p class="description">Hanno compiuto 18 anni e hanno ancora il tutore al loro posto. Invitali a creare il loro accesso (serve la loro email). Il collegamento col tutore resta finché non lo togli dalla scheda.</p><ul>';
+		foreach ( array_slice( $list, 0, 20 ) as $p ) {
+			echo '<li><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '">' . esc_html( $p['first_name'] . ' ' . $p['last_name'] ) . '</a> <span class="description">maggiorenne dal ' . esc_html( \AssociazioneSemplice\Age::display( (string) $p['adult_on'] ) ) . '</span> ';
+			if ( ! empty( $p['email'] ) ) {
+				Ui::form_open( 'asem_adult_invite', Ui::url( 'asem' ), false, 'asem-inline' );
+				echo wp_kses( Ui::hidden( 'id', $p['id'] ) . '<button class="button button-small">Invita a creare l\'accesso</button>', Html::allowed() );
+				Ui::form_close();
+			} else {
+				echo '<span class="description">manca l\'email: <a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '">aggiungila nella scheda</a></span>';
+			}
+			echo '</li>';
+		}
+		echo '</ul></div>';
 	}
 
 	/** Cassa rapida: un incasso o una spesa semplici in pochi campi (per il resto c'è la Contabilità). */
@@ -162,12 +244,12 @@ final class DashboardPage {
 		echo '<div class="asem-card"><h2>Cassa rapida</h2>';
 		Ui::form_open( 'asem_quick_cash', Ui::url( 'asem' ) );
 		echo '<div data-asem-change data-types="' . esc_attr( wp_json_encode( $account_types ) ) . '" data-income="' . esc_attr( wp_json_encode( $income_ids ) ) . '">';
-		echo '<p><select name="category_id" required>' . Ui::options( $cats, null ) . '</select> ' // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<p><select name="category_id" required>' . Ui::options( $cats, null ) . '</select> '
 			. '<input type="text" name="amount" inputmode="decimal" placeholder="0,00" size="8" required> € </p>'
 			. '<p><input type="text" name="description" class="regular-text" placeholder="Descrizione" required></p>'
-			. '<p>Sul conto <select name="account_id">' . Ui::options( $accounts, $default ? $default['id'] : null ) . '</select></p>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<p>Sul conto <select name="account_id">' . Ui::options( $accounts, $default ? $default['id'] : null ) . '</select></p>'
 			. '<div class="asem-cashbox" style="display:none"><p>Contanti ricevuti <input type="text" class="asem-tendered" inputmode="decimal" placeholder="importo esatto" size="8"> € <span class="asem-quick"></span></p><p class="asem-change-out"></p></div></div>'
-			. '<p><button class="button button-primary">Registra</button> <a href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Incasso completo (quote, attività)</a> · <a href="' . esc_url( Ui::url( 'asem-expense' ) ) . '">Spesa completa</a></p>';
+			. '<p><button class="button button-primary">Registra</button> <a href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Incasso completo (quote, attività)</a> · <a href="' . esc_url( Ui::url( 'asem-expense' ) ) . '">Spesa completa</a></p>', Html::allowed() );
 		Ui::form_close();
 		echo '</div>';
 	}
@@ -190,9 +272,9 @@ final class DashboardPage {
 			return;
 		}
 		Ui::form_open( 'asem_quick_enroll', Ui::url( 'asem' ) );
-		echo '<p>' . Ui::person_select( 'person_id', Plugin::people()->search(), null, '— chi si iscrive —' ) . '</p>' // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<p><select name="target" required>' . Ui::options( $targets, null, '— a cosa —' ) . '</select></p>' // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<p><button class="button button-primary">Iscrivi</button> <a href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Poi incassa il contributo →</a></p>';
+		echo wp_kses( '<p>' . Ui::person_select( 'person_id', Plugin::people()->search(), null, '— chi si iscrive —' ) . '</p>'
+			. '<p><select name="target" required>' . Ui::options( $targets, null, '— a cosa —' ) . '</select></p>'
+			. '<p><button class="button button-primary">Iscrivi</button> <a href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Poi incassa il contributo →</a></p>', Html::allowed() );
 		Ui::form_close();
 		echo '</div>';
 	}
@@ -212,7 +294,11 @@ final class DashboardPage {
 			if ( $until && $until >= $today ) {
 				return null; // tessera valida
 			}
-			$plan = $people->membership_plan( (int) $p['id'], $today );
+			$plan    = $people->membership_plan( (int) $p['id'], $today );
+			$missing = $people->membership_missing( $p, $plan['year'] ); // quota a rate: manca solo il residuo
+			if ( $missing > 0 ) {
+				return array( 'Quota associativa ' . $plan['year'] . ' (versati ' . \AssociazioneSemplice\Money::format( $fee - $missing ) . ' su ' . \AssociazioneSemplice\Money::format( $fee ) . ')', $missing );
+			}
 			return array( 'Quota associativa ' . $plan['year'] . ( $plan['free'] ? ' (' . $plan['free'] . ' in omaggio)' : '' ), $fee );
 		};
 		$add = function ( array $p, string $what, int $cents ) use ( &$by ) {
@@ -258,10 +344,10 @@ final class DashboardPage {
 		echo '<div class="asem-card"><h2>Pagamenti da incassare (' . count( $rows ) . ')</h2><p class="description">Quote dei nuovi soci o con la tessera non valida, mensilità dei corsi (dovute dalla prima lezione del mese) e contributi non ancora versati.</p><ul>';
 		foreach ( array_slice( $rows, 0, 12 ) as $r ) {
 			$p = $r['person'];
-			echo '<li><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '">' . esc_html( $p['first_name'] . ' ' . $p['last_name'] ) . '</a> <span class="description">' . esc_html( implode( ' + ', $r['what'] ) ) . '</span> <strong>' . esc_html( Money::format( (int) $r['cents'] ) ) . '</strong> '
-				. '<a class="button button-small" href="' . esc_url( Ui::url( 'asem-income', array( 'person_id' => $p['id'], 'due' => 1 ) ) ) . '">Incassa</a> ' . Ui::contact_links( $p ) . '</li>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( '<li><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '">' . esc_html( $p['first_name'] . ' ' . $p['last_name'] ) . '</a> <span class="description">' . esc_html( implode( ' + ', $r['what'] ) ) . '</span> <strong>' . esc_html( Money::format( (int) $r['cents'] ) ) . '</strong> '
+				. '<a class="button button-small" href="' . esc_url( Ui::url( 'asem-income', array( 'person_id' => $p['id'], 'due' => 1 ) ) ) . '">Incassa</a> ' . Ui::contact_links( $p ) . '</li>', Html::allowed() );
 		}
-		echo '</ul>' . ( count( $rows ) > 12 ? '<p class="description">… e altri ' . ( count( $rows ) - 12 ) . '.</p>' : '' ) . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
+		echo wp_kses( '</ul>' . ( count( $rows ) > 12 ? '<p class="description">… e altri ' . ( count( $rows ) - 12 ) . '.</p>' : '' ) . '</div>', Html::allowed() );
 	}
 
 	/** Soci che non hanno rinnovato (tessera scaduta) o stanno per scadere (30 giorni): si incassa il rinnovo o si sospende il socio. */
@@ -286,16 +372,16 @@ final class DashboardPage {
 		echo '<div class="asem-card"><h2>Soci da rinnovare (' . count( $list ) . ')</h2><p class="description">Tessera scaduta o in scadenza entro 30 giorni. Un socio con la tessera scaduta non può prenotare: incassa il rinnovo oppure sospendilo (diventa inattivo, finché non rinnova).</p><ul>';
 		foreach ( array_slice( $list, 0, 10 ) as $p ) {
 			$expired = $p['active_until'] < $today;
-			echo '<li><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '">' . esc_html( $p['first_name'] . ' ' . $p['last_name'] ) . '</a> <span class="description">'
+			echo wp_kses( '<li><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '">' . esc_html( $p['first_name'] . ' ' . $p['last_name'] ) . '</a> <span class="description">'
 				. ( $expired ? 'scaduta il ' : 'scade il ' ) . esc_html( Ui::date( $p['active_until'] ) ) . '</span> '
-				. '<a class="button button-small" href="' . esc_url( Ui::url( 'asem-income', array( 'person_id' => $p['id'], 'due' => 1 ) ) ) . '">Incassa</a> '; // phpcs:ignore WordPress.Security.EscapeOutput
+				. '<a class="button button-small" href="' . esc_url( Ui::url( 'asem-income', array( 'person_id' => $p['id'], 'due' => 1 ) ) ) . '">Incassa</a> ', Html::allowed() );
 			if ( $expired ) {
 				Ui::form_open( 'asem_suspend_member', Ui::url( 'asem' ), false, 'asem-inline' );
-				echo Ui::hidden( 'id', $p['id'] ) . '<button class="button button-small" data-confirm="Sospendere ' . esc_attr( $p['first_name'] . ' ' . $p['last_name'] ) . '? Diventa inattivo finché non rinnova.">Sospendi</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( Ui::hidden( 'id', $p['id'] ) . '<button class="button button-small" data-confirm="Sospendere ' . esc_attr( $p['first_name'] . ' ' . $p['last_name'] ) . '? Diventa inattivo finché non rinnova.">Sospendi</button>', Html::allowed() );
 				Ui::form_close();
 				echo ' ';
 			}
-			echo Ui::contact_links( $p ) . '</li>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::contact_links( $p ) . '</li>', Html::allowed() );
 		}
 		echo '</ul>' . ( count( $list ) > 10 ? '<p><a href="' . esc_url( Ui::url( 'asem-people', array( 'status' => 'inactive' ) ) ) . '">Vedi tutti →</a></p>' : '' ) . '</div>';
 	}
@@ -318,8 +404,8 @@ final class DashboardPage {
 		echo '<div class="asem-card"><h2>Ospiti attesi che dovrebbero iscriversi (' . count( $rows ) . ')</h2><p class="description">Prenotati ai prossimi eventi, hanno già raggiunto la soglia di partecipazioni per i non soci.</p><ul>';
 		foreach ( $rows as $r ) {
 			$b = $r['booking'];
-			echo '<li><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $b['person_id'] ) ) ) . '">' . esc_html( $b['first_name'] . ' ' . $b['last_name'] ) . '</a> <span class="description">a '
-				. esc_html( $r['session']['activity_name'] ) . ' il ' . esc_html( Ui::date( $r['session']['session_date'] ) ) . ' · ' . (int) $r['overview']['total'] . ' partecipazioni</span> ' . Ui::contact_links( $b ) . '</li>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( '<li><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $b['person_id'] ) ) ) . '">' . esc_html( $b['first_name'] . ' ' . $b['last_name'] ) . '</a> <span class="description">a '
+				. esc_html( $r['session']['activity_name'] ) . ' il ' . esc_html( Ui::date( $r['session']['session_date'] ) ) . ' · ' . (int) $r['overview']['total'] . ' partecipazioni</span> ' . Ui::contact_links( $b ) . '</li>', Html::allowed() );
 		}
 		echo '</ul></div>';
 	}

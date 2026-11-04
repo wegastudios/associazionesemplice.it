@@ -11,7 +11,7 @@ final class Settings {
 	const LIMITS = array(
 		'duration_month' => array( 31, 28, 62, 'Giorni di validità della licenza a ogni pagamento mensile. Se alzi: il cliente ha più margine ma una disdetta o un mancato pagamento lascia la licenza attiva più a lungo. Se abbassi: un pagamento in ritardo la fa scadere prima.' ),
 		'duration_year'  => array( 366, 360, 400, 'Giorni di validità a ogni pagamento annuale. Stesso compromesso del mensile.' ),
-		'duration_free'  => array( 3650, 30, 3650, 'Giorni di validità della licenza gratuita. Se abbassi: le licenze gratuite scadono prima e vanno rinnovate (a mano).' ),
+		'duration_free'  => array( 30, 30, 3650, 'Giorni di validità della licenza gratuita: alla scadenza si rinnova da sola solo dopo un accesso recente (vedi «Rinnovo gratuito: giorni senza accessi»), altrimenti scade. Se alzi: una licenza abbandonata resta valida più a lungo prima di scadere. Se abbassi: nessun effetto sulle licenze in uso, ma il rinnovo automatico scatta più spesso (minimo 30).' ),
 		'renew_window'   => array( 5, 1, 30, 'Un pagamento PayPal conta come rinnovo solo negli ultimi N giorni di validità. Se alzi: un primo pagamento tardivo potrebbe contare due volte. Se abbassi: un rinnovo anticipato di PayPal potrebbe non essere registrato.' ),
 		'reminder_days'  => array( 14, 0, 60, 'Giorni prima della scadenza in cui parte l\'email «licenza in scadenza» (0 = non inviare). Se alzi: più tempo ai clienti ma più email. Se abbassi: meno margine per rinnovare.' ),
 		'trial_days'     => array( 30, 1, 90, 'Giorni di prova gratuita del piano Pro, una sola volta per licenza gratuita. Se alzi: più clienti si convincono ma lo stesso dominio usa il Pro gratis più a lungo. Se abbassi: la prova può essere troppo breve per valutare il piano.' ),
@@ -19,6 +19,13 @@ final class Settings {
 	'proxy_key'      => array( 20, 3, 200, 'Verifiche accettate ogni ora per la stessa chiave. Se alzi: più controlli manuali consentiti. Se abbassi: chi preme spesso «Controlla adesso» può essere respinto per un po\x27.' ),
 	'releases_keep' => array( 10, 3, 50, 'Quante versioni di ciascun plugin restano scaricabili per tornare indietro; le più vecchie si cancellano dal server a ogni nuova pubblicazione. Se alzi: più possibilità di tornare indietro ma più spazio e più vecchie versioni (con eventuali difetti) ancora in giro. Se abbassi: meno scelta se una versione nuova dà problemi.' ),
 	'download_day'  => array( 10, 1, 200, 'Scarichi dei pacchetti per cliente ogni 24 ore. Se alzi: più comodo per chi gestisce molti siti, ma un account condiviso può far circolare il plugin. Se abbassi: più protezione, ma chi aggiorna molti siti può restare bloccato fino al giorno dopo.' ),
+	'update_link_ttl' => array( 600, 60, 3600, "Per quanti secondi vale l'indirizzo di scarico firmato che il plugin riceve per aggiornarsi da WordPress. Se alzi: aggiornamenti più tolleranti su server lenti ma un indirizzo intercettato resta utile più a lungo. Se abbassi: più sicuro, ma uno scarico lento può fallire e va ripetuto." ),
+	'session_hours' => array( 12, 1, 168, "Dopo quante ore senza attività si chiude da sola la sessione di accesso (clienti e gestione). Se alzi: più comodo, ma un computer lasciato incustodito o una scheda dimenticata restano abilitati più a lungo. Se abbassi: più sicuro, ma bisogna rientrare più spesso." ),
+	'form_ip'       => array( 10, 3, 200, "Richieste dei moduli pubblici (licenza gratuita, acquisto, link di accesso) accettate da un singolo indirizzo IP ogni ora. Se alzi: reti condivise con molti utenti passano più facilmente, ma è più facile inviare email a indirizzi altrui o riempire il database. Se abbassi: più protezione, ma più persone dietro lo stesso indirizzo possono essere respinte." ),
+	'pending_hold_hours' => array( 48, 1, 720, "Per quante ore una richiesta di licenza o di acquisto non completata (in attesa) tiene occupato il dominio. Se alzi: un pagamento lento si completa comunque, ma chi prenota un dominio altrui lo blocca più a lungo. Se abbassi: i domini si liberano prima, ma un pagamento tardivo può trovare il dominio già preso." ),
+	'free_inactive_days' => array( 30, 7, 365, 'Una licenza gratuita si rinnova da sola alla scadenza solo se negli ultimi N giorni c\x27è stato un accesso (una verifica dal plugin o l\x27ingresso del cliente); altrimenti scade. Se alzi: restano attive più a lungo anche siti abbandonati. Se abbassi: chi usa il plugin ma non lo apre da tempo rischia di perdere la licenza.' ),
+	'free_renew_ahead' => array( 2, 0, 14, 'Quanti giorni prima della scadenza si rinnova la licenza gratuita. Se alzi: nessun buco ma la licenza si allunga prima del necessario. Se abbassi (0 = alla scadenza): un ritardo del lavoro giornaliero può lasciarla scadere per qualche ora.' ),
+	'domain_lock_days' => array( 180, 0, 730, 'Giorni in cui il dominio resta bloccato dopo un cambio fatto dal cliente (0 = nessun blocco). Il primo cambio è libero; il personale può sempre cambiarlo dal pannello. Se alzi: una chiave si condivide meno tra domini diversi, ma chi ha un cambio sito vero deve scrivere all\x27assistenza più spesso. Se abbassi: più libertà ai clienti, ma una stessa chiave si può far girare su più domini a turno.' ),
 	'password_min'  => array( 10, 8, 64, 'Lunghezza minima della password dei clienti. Se alzi: password più difficili da indovinare ma più clienti ricorrono al link per email. Se abbassi: più comodo ma più esposto a tentativi di indovinare.' ),
 	'login_fails'   => array( 5, 3, 30, 'Errori di password consentiti per email ogni ora, poi l\x27accesso con password si ferma (resta il link per email); per lo stesso indirizzo IP il limite è 4 volte tanto. Se alzi: meno clienti respinti per un errore, ma più tentativi possibili per chi prova a indovinare. Se abbassi: più protezione, ma chi sbaglia spesso resta fuori per un\x27ora.' ),
 	);
@@ -32,6 +39,7 @@ final class Settings {
 			}
 		}
 		Config::set( 'plans', $plans );
+		Config::set( 'promo', self::read( $db, 'promo' ) );
 
 		$g = self::read( $db, 'general' );
 		self::apply( 'duration_days.month', $g, 'duration_month' );
@@ -44,7 +52,14 @@ final class Settings {
 		self::apply( 'proxy_per_key', $g, 'proxy_key' );
 		self::apply( 'releases_keep', $g, 'releases_keep' );
 		self::apply( 'download_day', $g, 'download_day' );
+		self::apply( 'update_link_ttl', $g, 'update_link_ttl' );
+		self::apply( 'form_ip', $g, 'form_ip' );
+		self::apply( 'session_hours', $g, 'session_hours' );
+		self::apply( 'pending_hold_hours', $g, 'pending_hold_hours' );
 		self::apply( 'password_min', $g, 'password_min' );
+		self::apply( 'free_inactive_days', $g, 'free_inactive_days' );
+		self::apply( 'free_renew_ahead', $g, 'free_renew_ahead' );
+		self::apply( 'domain_lock_days', $g, 'domain_lock_days' );
 		self::apply( 'login_fails', $g, 'login_fails' );
 		if ( array_key_exists( 'trial_enabled', $g ) ) {
 			Config::set( 'trial_enabled', (bool) $g['trial_enabled'] );
@@ -75,7 +90,7 @@ final class Settings {
 
 	/** Valore corrente di un limite (da config o da pannello) dentro i margini consentiti. */
 	public static function limit( string $key ): int {
-		$paths = array( 'duration_month' => 'duration_days.month', 'duration_year' => 'duration_days.year', 'duration_free' => 'duration_days.free', 'renew_window' => 'renew_window_days', 'reminder_days' => 'reminder_days', 'trial_days' => 'trial_days', 'proxy_ip' => 'proxy_per_ip', 'proxy_key' => 'proxy_per_key', 'releases_keep' => 'releases_keep', 'download_day' => 'download_day', 'password_min' => 'password_min', 'login_fails' => 'login_fails' );
+		$paths = array( 'duration_month' => 'duration_days.month', 'duration_year' => 'duration_days.year', 'duration_free' => 'duration_days.free', 'renew_window' => 'renew_window_days', 'reminder_days' => 'reminder_days', 'trial_days' => 'trial_days', 'proxy_ip' => 'proxy_per_ip', 'proxy_key' => 'proxy_per_key', 'releases_keep' => 'releases_keep', 'download_day' => 'download_day', 'update_link_ttl' => 'update_link_ttl', 'form_ip' => 'form_ip', 'session_hours' => 'session_hours', 'pending_hold_hours' => 'pending_hold_hours', 'password_min' => 'password_min', 'login_fails' => 'login_fails', 'free_inactive_days' => 'free_inactive_days', 'free_renew_ahead' => 'free_renew_ahead', 'domain_lock_days' => 'domain_lock_days' );
 		$v     = Config::get( $paths[ $key ], null );
 		return self::clamp( $key, null === $v ? self::LIMITS[ $key ][0] : $v );
 	}
@@ -149,18 +164,86 @@ final class Settings {
 				$stripe = trim( (string) ( $in[ 'stripe_' . $p ] ?? '' ) );
 				$paypal = trim( (string) ( $in[ 'paypal_' . $p ] ?? '' ) );
 				if ( '' !== $stripe && ! preg_match( '/^price_[A-Za-z0-9]{6,100}$/', $stripe ) ) {
-					throw new UserError( 'Il prezzo Stripe deve iniziare con «price_».' );
+					$prefix = 0 === strpos( $stripe, 'prod_' ) ? ' Quello che hai scritto è l\'ID di un prodotto (prod_…): serve invece l\'ID del prezzo.' : '';
+					throw new UserError( 'Nel campo Stripe (' . ( 'year' === $p ? 'annuale' : 'mensile' ) . ') va l\'ID del prezzo ricorrente, che inizia con «price_» (per esempio price_1Abc…); hai scritto «' . mb_substr( $stripe, 0, 24 ) . '».' . $prefix . ' Lo trovi su Stripe → Catalogo prodotti → il prodotto → il prezzo → «ID API». Non vanno bene l\'importo, un link di pagamento o la chiave segreta. Se non hai già un prezzo tuo, lascia il campo vuoto: si crea da solo.' );
 				}
 				if ( '' !== $paypal && ! preg_match( '/^P-[A-Za-z0-9]{6,100}$/', $paypal ) ) {
-					throw new UserError( 'Il piano PayPal deve iniziare con «P-».' );
+					throw new UserError( 'Nel campo PayPal (' . ( 'year' === $p ? 'annuale' : 'mensile' ) . ') va l\'ID del piano di abbonamento, che inizia con «P-»; hai scritto «' . mb_substr( $paypal, 0, 24 ) . '». Lo trovi su PayPal tra i piani di fatturazione dell\'abbonamento. Se non hai già un piano tuo, lascia il campo vuoto: si crea da solo.' );
 				}
-				$over['prices'][ $p ] = array( 'cents' => (int) round( (float) $euro * 100 ), 'stripe_price' => $stripe, 'paypal_plan' => $paypal, 'once' => ! empty( $in[ 'once_' . $p ] ) );
+				$list = str_replace( ',', '.', trim( (string) ( $in[ 'list_' . $p ] ?? '' ) ) );
+				if ( '' !== $list && ( ! is_numeric( $list ) || $list < 0 || $list > 10000 ) ) {
+					throw new UserError( 'Prezzo di listino non valido: scrivi un importo in euro, per esempio 99.' );
+				}
+				$over['prices'][ $p ] = array( 'cents' => (int) round( (float) $euro * 100 ), 'list_cents' => '' === $list ? 0 : (int) round( (float) $list * 100 ), 'stripe_price' => $stripe, 'paypal_plan' => $paypal, 'once' => ! empty( $in[ 'once_' . $p ] ) );
 			}
 		}
 		$all          = self::read( $db, 'plans' );
 		$all[ $code ] = $over;
 		self::write( $db, 'plans', $all );
 		return $over;
+	}
+
+	/**
+	 * Piani e prodotto PayPal creati in automatico: si ricordano per modalità (reale/prova), importo e periodo, così il portale
+	 * non ne crea uno nuovo a ogni acquisto. Chiavi: «product» oppure «cents-interval».
+	 */
+	public static function paypalAuto( Db $db, string $key ): ?string {
+		$all = self::read( $db, 'paypal_auto' );
+		$k   = ( Config::get( 'paypal.live' ) ? 'live:' : 'sandbox:' ) . $key;
+		return isset( $all[ $k ] ) && is_string( $all[ $k ] ) && '' !== $all[ $k ] ? $all[ $k ] : null;
+	}
+
+	public static function savePaypalAuto( Db $db, string $key, string $id ): void {
+		$all = self::read( $db, 'paypal_auto' );
+		$all[ ( Config::get( 'paypal.live' ) ? 'live:' : 'sandbox:' ) . $key ] = $id;
+		self::write( $db, 'paypal_auto', $all );
+	}
+
+	/**
+	 * Promozione in vetrina (per esempio Black Friday): nome, inizio e fine. Mostra il prezzo di listino barrato accanto a quello in vigore
+	 * (che è anche quello che si incassa); finita la promo la vetrina torna a mostrare solo il prezzo normale.
+	 */
+	public static function savePromo( Db $db, array $in ): void {
+		$label = mb_substr( trim( preg_replace( '/\s+/', ' ', (string) ( $in['promo_label'] ?? '' ) ) ), 0, 40 );
+		$date  = function ( $v ) {
+			$v = trim( (string) $v );
+			if ( '' !== $v && ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $v ) || false === strtotime( $v ) ) ) {
+				throw new UserError( 'Data non valida: usa il formato aaaa-mm-gg.' );
+			}
+			return $v;
+		};
+		$start = $date( $in['promo_start'] ?? '' );
+		$end   = $date( $in['promo_end'] ?? '' );
+		if ( '' !== $label && '' === $end ) {
+			throw new UserError( 'Per la promozione serve la data di fine.' );
+		}
+		if ( '' !== $start && '' !== $end && $start > $end ) {
+			throw new UserError( 'La data di inizio è dopo quella di fine.' );
+		}
+		self::write( $db, 'promo', '' === $label ? array() : array( 'label' => $label, 'start' => $start, 'end' => $end ) );
+	}
+
+	/** La promozione è in corso adesso (ora italiana)? @return string|null il nome della promo, o null */
+	public static function promoNow( ?int $now = null ): ?string {
+		$p = (array) Config::get( 'promo', array() );
+		if ( empty( $p['label'] ) || empty( $p['end'] ) ) {
+			return null;
+		}
+		$tz    = new \DateTimeZone( 'Europe/Rome' );
+		$now   = $now ?? time();
+		$end   = ( new \DateTime( $p['end'] . ' 23:59:59', $tz ) )->getTimestamp();
+		$start = ! empty( $p['start'] ) ? ( new \DateTime( $p['start'] . ' 00:00:00', $tz ) )->getTimestamp() : 0;
+		return ( $now >= $start && $now <= $end ) ? (string) $p['label'] : null;
+	}
+
+	/** Prezzo di listino da mostrare barrato per un piano e un periodo: solo durante la promo e se più alto del prezzo in vigore. */
+	public static function listCents( string $plan, string $period, ?int $now = null ): ?int {
+		if ( null === self::promoNow( $now ) ) {
+			return null;
+		}
+		$list = (int) Config::get( 'plans.' . $plan . '.prices.' . $period . '.list_cents', 0 );
+		$cur  = (int) Config::get( 'plans.' . $plan . '.prices.' . $period . '.cents', 0 );
+		return $list > $cur ? $list : null;
 	}
 
 	public static function mergePlan( array $base, array $over ): array {
@@ -181,36 +264,123 @@ final class Settings {
 
 	// --- Chiavi dei servizi (cifrate nel database) ---------------------------------------------------------------
 
-	/** Campo => [percorso in Config, controllo del formato, etichetta]. */
+	/**
+	 * Campo => [percorso in Config, controllo del formato, messaggio, modalità]. Stripe e PayPal hanno due gruppi di credenziali:
+	 * reale (nome base) e di prova (suffisso `_test`, per PayPal il sandbox); la casella «modalità reale» sceglie quale usare.
+	 */
 	const SECRETS = array(
-		'stripe_secret'  => array( 'stripe.secret_key', '/^(sk|rk)_(test|live)_[A-Za-z0-9]{10,200}$/', 'La chiave segreta Stripe deve iniziare con «sk_test_» o «sk_live_».' ),
-		'stripe_webhook' => array( 'stripe.webhook_secret', '/^whsec_[A-Za-z0-9]{10,200}$/', 'Il segreto del webhook Stripe deve iniziare con «whsec_».' ),
-		'paypal_client'  => array( 'paypal.client_id', '/^[A-Za-z0-9_-]{20,200}$/', 'Il Client ID PayPal non sembra valido.' ),
-		'paypal_secret'  => array( 'paypal.secret', '/^[A-Za-z0-9_-]{20,300}$/', 'Il segreto PayPal non sembra valido.' ),
-		'paypal_webhook' => array( 'paypal.webhook_id', '/^[A-Za-z0-9]{10,60}$/', 'L\'ID del webhook PayPal non sembra valido.' ),
-		'wega_token'     => array( 'wega.token', '/^wic_[a-f0-9]{8,}\.[A-Za-z0-9_-]{20,}$/', 'Il token Wega deve avere la forma «wic_…».«segreto».' ),
+		'stripe_secret'       => array( 'stripe.secret_key', '/^(sk|rk)_live_[A-Za-z0-9]{10,200}$/', 'La chiave segreta reale di Stripe deve iniziare con «sk_live_».', 'live' ),
+		'stripe_secret_test'  => array( 'stripe.secret_key', '/^(sk|rk)_test_[A-Za-z0-9]{10,200}$/', 'La chiave segreta di prova di Stripe deve iniziare con «sk_test_».', 'test' ),
+		'stripe_webhook'      => array( 'stripe.webhook_secret', '/^whsec_[A-Za-z0-9]{10,200}$/', 'Il segreto del webhook Stripe deve iniziare con «whsec_».', 'live' ),
+		'stripe_webhook_test' => array( 'stripe.webhook_secret', '/^whsec_[A-Za-z0-9]{10,200}$/', 'Il segreto del webhook Stripe deve iniziare con «whsec_».', 'test' ),
+		'paypal_client'       => array( 'paypal.client_id', '/^[A-Za-z0-9_-]{20,200}$/', 'Il Client ID PayPal non sembra valido.', 'live' ),
+		'paypal_client_test'  => array( 'paypal.client_id', '/^[A-Za-z0-9_-]{20,200}$/', 'Il Client ID PayPal non sembra valido.', 'test' ),
+		'paypal_secret'       => array( 'paypal.secret', '/^[A-Za-z0-9_-]{20,300}$/', 'Il segreto PayPal non sembra valido.', 'live' ),
+		'paypal_secret_test'  => array( 'paypal.secret', '/^[A-Za-z0-9_-]{20,300}$/', 'Il segreto PayPal non sembra valido.', 'test' ),
+		'paypal_webhook'      => array( 'paypal.webhook_id', '/^[A-Za-z0-9]{10,60}$/', "L'ID del webhook PayPal non sembra valido.", 'live' ),
+		'paypal_webhook_test' => array( 'paypal.webhook_id', '/^[A-Za-z0-9]{10,60}$/', "L'ID del webhook PayPal non sembra valido.", 'test' ),
+		'wega_token'          => array( 'wega.token', '/^wic_[a-f0-9]{8,}\.[A-Za-z0-9_-]{20,}$/', 'Il token Wega deve avere la forma «wic_…».«segreto».', '' ),
 	);
 
-	/** @var array valori presenti in config.php prima di applicare quelli del pannello */
+	/** @var array percorso => valore presente in config.php prima di applicare quelli del pannello */
 	private static $fromFile = array();
 
+	/** Modalità reale (true) o di prova (false) del servizio `stripe` o `paypal`; senza una scelta salvata vale la prova. */
+	private static function liveOf( string $service ): bool {
+		return (bool) Config::get( $service . '.live', false );
+	}
+
+	public static function stripeLive(): bool {
+		return self::liveOf( 'stripe' );
+	}
+
+	/** Nome del campo che vale ora per un percorso di Config (reale o di prova a seconda della modalità). */
+	private static function activeField( string $path ): ?string {
+		foreach ( self::SECRETS as $k => $def ) {
+			if ( $def[0] === $path && ( '' === $def[3] || ( 'live' === $def[3] ) === self::liveOf( 0 === strpos( $path, 'stripe.' ) ? 'stripe' : 'paypal' ) ) ) {
+				return $k;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Prima dei due gruppi di credenziali c'era un solo gruppo: si assegna alla modalità a cui apparteneva
+	 * (chiave Stripe sk_test_ → prova; PayPal con sandbox attivo → prova) e si fissa la modalità scelta. Una volta sola.
+	 */
+	private static function migrate( Db $db ): void {
+		$pay = self::read( $db, 'payments' );
+		if ( ! empty( $pay['dual'] ) ) {
+			return;
+		}
+		$sealed = self::read( $db, 'secrets' );
+		$open   = function ( $k ) use ( $sealed ) {
+			try {
+				return ! empty( $sealed[ $k ] ) ? Secrets::open( (string) $sealed[ $k ] ) : '';
+			} catch ( \Throwable $e ) {
+				return '';
+			}
+		};
+		$sk = $open( 'stripe_secret' );
+		if ( preg_match( '/^(sk|rk)_test_/', $sk ) ) {
+			foreach ( array( 'stripe_secret', 'stripe_webhook' ) as $k ) {
+				if ( isset( $sealed[ $k ] ) ) {
+					$sealed[ $k . '_test' ] = $sealed[ $k ];
+					unset( $sealed[ $k ] );
+				}
+			}
+		}
+		if ( ! array_key_exists( 'stripe_live', $pay ) && '' !== $sk ) {
+			$pay['stripe_live'] = ! preg_match( '/^(sk|rk)_test_/', $sk );
+		}
+		if ( empty( $pay['paypal_live'] ) ) {
+			foreach ( array( 'paypal_client', 'paypal_secret', 'paypal_webhook' ) as $k ) {
+				if ( isset( $sealed[ $k ] ) ) {
+					$sealed[ $k . '_test' ] = $sealed[ $k ];
+					unset( $sealed[ $k ] );
+				}
+			}
+		}
+		$pay['dual'] = true;
+		self::write( $db, 'secrets', $sealed );
+		self::write( $db, 'payments', $pay );
+	}
+
 	private static function loadSecrets( Db $db ): void {
+		self::migrate( $db );
+		$pay = self::read( $db, 'payments' );
+		foreach ( array( 'paypal', 'stripe' ) as $svc ) {
+			if ( array_key_exists( $svc . '_live', $pay ) ) {
+				Config::set( $svc . '.live', (bool) $pay[ $svc . '_live' ] );
+			}
+		}
 		$sealed = self::read( $db, 'secrets' );
 		foreach ( self::SECRETS as $k => $def ) {
-			if ( ! isset( self::$fromFile[ $k ] ) ) {
-				self::$fromFile[ $k ] = (string) Config::get( $def[0], '' );
+			if ( ! isset( self::$fromFile[ $def[0] ] ) ) {
+				self::$fromFile[ $def[0] ] = (string) Config::get( $def[0], '' );
 			}
+		}
+		foreach ( array_unique( array_column( self::SECRETS, 0 ) ) as $path ) {
+			$k = self::activeField( $path );
+			if ( null === $k ) {
+				continue;
+			}
+			$val = '';
 			if ( ! empty( $sealed[ $k ] ) ) {
 				try {
-					Config::set( $def[0], Secrets::open( (string) $sealed[ $k ] ) );
+					$val = Secrets::open( (string) $sealed[ $k ] );
 				} catch ( \Throwable $e ) {
 					error_log( '[portale] chiave «' . $k . '» non leggibile: ' . $e->getMessage() );
 				}
 			}
-		}
-		$pay = self::read( $db, 'payments' );
-		if ( array_key_exists( 'paypal_live', $pay ) ) {
-			Config::set( 'paypal.live', (bool) $pay['paypal_live'] );
+			if ( '' === $val && 'stripe.secret_key' === $path ) {
+				// Il valore di config.php vale solo se corrisponde alla modalità scelta.
+				$f   = self::$fromFile[ $path ];
+				$val = ( '' !== $f && (bool) preg_match( '/^(sk|rk)_live_/', $f ) === self::stripeLive() ) ? $f : '';
+			} elseif ( '' === $val ) {
+				$val = self::$fromFile[ $path ];
+			}
+			Config::set( $path, $val );
 		}
 	}
 
@@ -226,15 +396,22 @@ final class Settings {
 				$val = '';
 			}
 			$fromPanel = '' !== $val;
-			$val       = $fromPanel ? $val : ( self::$fromFile[ $k ] ?? '' );
+			// config.php ha un solo valore per voce: conta per il gruppo della modalità in uso.
+			if ( ! $fromPanel && self::activeField( $def[0] ) === $k ) {
+				$val = self::$fromFile[ $def[0] ] ?? '';
+				if ( 'stripe.secret_key' === $def[0] && '' !== $val && (bool) preg_match( '/^(sk|rk)_live_/', $val ) !== self::stripeLive() ) {
+					$val = '';
+				}
+			}
 			$out[ $k ] = array( 'set' => '' !== $val, 'mask' => '' !== $val ? '••••' . substr( $val, -4 ) : '', 'source' => $fromPanel ? 'pannello' : ( '' !== $val ? 'config.php' : '' ) );
 		}
-		$out['paypal_live'] = (bool) Config::get( 'paypal.live', false );
+		$out['paypal_live'] = self::liveOf( 'paypal' );
+		$out['stripe_live'] = self::stripeLive();
 		return $out;
 	}
-
 	/** Salva le chiavi dal modulo: vuoto = non cambia, «rimuovi» = cancella. @return array nomi dei campi cambiati */
 	public static function saveSecrets( Db $db, array $in ): array {
+		self::migrate( $db );
 		$sealed  = self::read( $db, 'secrets' );
 		$changed = array();
 		foreach ( self::SECRETS as $k => $def ) {
@@ -252,8 +429,14 @@ final class Settings {
 		}
 		self::write( $db, 'secrets', $sealed );
 		// La modalità PayPal si cambia solo dal modulo PayPal (che manda anche questo campo nascosto).
+		$pay = self::read( $db, 'payments' );
+		if ( isset( $in['stripe_live_present'] ) ) {
+			$pay['stripe_live'] = ! empty( $in['stripe_live'] );
+			self::write( $db, 'payments', $pay );
+		}
 		if ( isset( $in['paypal_live_present'] ) ) {
-			self::write( $db, 'payments', array( 'paypal_live' => ! empty( $in['paypal_live'] ) ) );
+			$pay['paypal_live'] = ! empty( $in['paypal_live'] );
+			self::write( $db, 'payments', $pay );
 		}
 		return $changed;
 	}
@@ -280,7 +463,7 @@ final class Settings {
 		self::write( $db, 'legal', array(
 			'titolare' => $t( 'titolare', 160 ), 'indirizzo' => $t( 'indirizzo', 240 ), 'piva' => $t( 'piva', 40 ),
 			'email' => ( '' === $email || filter_var( $email, FILTER_VALIDATE_EMAIL ) ) ? $email : '',
-			'privacy_body' => $t( 'privacy_body', 30000 ), 'cookie_body' => $t( 'cookie_body', 30000 ),
+			'privacy_body' => $t( 'privacy_body', 30000 ), 'cookie_body' => $t( 'cookie_body', 30000 ), 'terms_body' => $t( 'terms_body', 30000 ),
 		) );
 	}
 

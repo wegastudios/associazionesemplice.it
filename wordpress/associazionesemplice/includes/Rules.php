@@ -11,7 +11,7 @@ final class Rules {
 	 * @param array|null $host persona ospitante (con almeno 'type'), solo per gli ospiti
 	 * @return string[] messaggi di errore (vuoto = valido)
 	 */
-	public static function validate_person( array $d, ?array $host = null ): array {
+	public static function validate_person( array $d, ?array $host = null, array $relax = array() ): array {
 		$errors = array();
 		$type   = (string) ( $d['type'] ?? '' );
 		if ( ! MemberType::is_valid( $type ) ) {
@@ -37,6 +37,14 @@ final class Rules {
 				$errors[] = 'La data di ingresso non è valida.';
 			}
 		}
+		$birth = trim( (string) ( $d['birth_date'] ?? '' ) );
+		if ( '' !== $birth ) {
+			if ( ! Age::is_valid_date( $birth ) ) {
+				$errors[] = 'La data di nascita non è valida.';
+			} elseif ( $birth > gmdate( 'Y-m-d' ) ) {
+				$errors[] = 'La data di nascita è nel futuro.';
+			}
+		}
 		foreach ( array( 'first_name' => array( 'Il nome', 120 ), 'last_name' => array( 'Il cognome', 120 ), 'email' => array( 'L\'email', 190 ), 'phone' => array( 'Il cellulare', 60 ), 'tax_code' => array( 'Il codice fiscale', 32 ), 'address' => array( 'L\'indirizzo', 190 ), 'zip' => array( 'Il CAP', 12 ), 'city' => array( 'Il comune', 100 ), 'province' => array( 'La provincia', 5 ) ) as $field => $lim ) {
 			if ( mb_strlen( trim( (string) ( $d[ $field ] ?? '' ) ), 'UTF-8' ) > $lim[1] ) {
 				$errors[] = $lim[0] . ' è troppo lungo (al massimo ' . $lim[1] . ' caratteri).';
@@ -50,13 +58,15 @@ final class Rules {
 		if ( MemberType::GUEST === $type && '' !== $card ) {
 			$errors[] = 'Gli ospiti non hanno il numero di tessera.';
 		}
-		if ( MemberType::GUEST === $type && ! Phone::is_valid( (string) ( $d['phone'] ?? '' ) ) ) {
+		if ( MemberType::GUEST === $type && empty( $relax['phone'] ) && ! Phone::is_valid( (string) ( $d['phone'] ?? '' ) ) ) {
 			$errors[] = 'Il numero di cellulare è obbligatorio per gli ospiti (serve a riconoscerli ed evitare doppioni, e a contattarli su WhatsApp).';
 		}
 
 		if ( MemberType::requires_host( $type ) ) {
 			if ( empty( $d['host_person_id'] ) ) {
-				$errors[] = 'Un ospite deve essere collegato al socio che lo ospita.';
+				if ( empty( $relax['host'] ) ) {
+					$errors[] = 'Un ospite deve essere collegato al socio che lo ospita.';
+				}
 			} elseif ( null === $host || ! MemberType::is_member( (string) ( $host['type'] ?? '' ) ) ) {
 				$errors[] = 'Il socio ospitante non è valido (deve essere un socio, non un altro ospite).';
 			}

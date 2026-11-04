@@ -34,7 +34,7 @@ final class Views {
 		return self::DAYS[ (int) gmdate( 'w', $t ) ] . ' ' . (int) gmdate( 'j', $t ) . ' ' . self::MONTHS[ (int) gmdate( 'n', $t ) ] . ' ' . gmdate( 'Y', $t );
 	}
 
-	private static function d( ?string $ymd ): string {
+	public static function d( ?string $ymd ): string {
 		return $ymd ? esc_html( ( new \DateTimeImmutable( $ymd ) )->format( 'd/m/Y' ) ) : '—';
 	}
 
@@ -79,11 +79,11 @@ final class Views {
 	/**
 	 * @param array[] $buttons se indicati sostituiscono il pulsante unico: ciascuno con value (inviato come "provider") e label
 	 */
-	private static function form( string $action, string $fields_html, string $button, bool $confirm = false, string $class = '', bool $multipart = false, array $buttons = array() ): string {
+	public static function form( string $action, string $fields_html, string $button, bool $confirm = false, string $class = '', bool $multipart = false, array $buttons = array() ): string {
 		$html  = '<form class="asemf-form ' . esc_attr( $class ) . '" method="post"' . ( $multipart ? ' enctype="multipart/form-data"' : '' ) . ' action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		$html .= '<input type="hidden" name="action" value="' . esc_attr( $action ) . '">';
 		$html .= '<input type="hidden" name="_back" value="' . esc_url( Restrict::current_url() ) . '">';
-		$html .= wp_nonce_field( $action, '_wpnonce', false, false );
+		$html .= \AssociazioneSemplice\Csrf::field( $action );
 		$html .= $fields_html;
 		if ( $buttons ) {
 			foreach ( $buttons as $b ) {
@@ -95,7 +95,7 @@ final class Views {
 		return $html;
 	}
 
-	private static function hidden( string $name, $value ): string {
+	public static function hidden( string $name, $value ): string {
 		return '<input type="hidden" name="' . esc_attr( $name ) . '" value="' . esc_attr( (string) $value ) . '">';
 	}
 
@@ -103,27 +103,54 @@ final class Views {
 
 	public static function login_prompt(): string {
 		Assets::enqueue();
+		if ( \AssociazioneSemplice\MemberSession::enabled() && ! \AssociazioneSemplice\MemberSession::wp_users_wanted() ) { // i soci non sono utenti WordPress: email e password propri
+			$back = Restrict::current_url();
+			$own  = MemberLoginPage::url();
+			return self::wrap(
+				'<div class="asemf-card"><h3>Area riservata ai soci</h3><p>Accedi per vedere la tessera, le tue attività e prenotarti agli eventi.</p>'
+				. MemberLoginPage::inline_login( $back )
+				. '<p class="asemf-small"><a href="' . esc_url( add_query_arg( '_back', rawurlencode( $back ), $own ) ) . '">Password dimenticata?</a> · <a href="' . esc_url( add_query_arg( '_back', rawurlencode( $back ), $own ) ) . '">Entra con un link o un codice via email</a> · <strong><a href="' . esc_url( FirstAccess::url() ) . '">Primo accesso</a></strong></p>'
+				. '<p class="asemf-small">Segreteria e staff: <a href="' . esc_url( wp_login_url( $back ) ) . '">accedi da qui</a>.</p></div>'
+			);
+		}
 		$form = wp_login_form( array( 'echo' => false, 'redirect' => Restrict::current_url(), 'label_username' => 'Email o nome utente', 'label_log_in' => 'Accedi' ) );
 		return self::wrap(
 			'<div class="asemf-card"><h3>Area riservata ai soci</h3><p>Accedi per vedere la tua tessera, le tue attività e prenotarti agli eventi.</p>'
-			. $form . '<p class="asemf-small"><strong><a href="' . esc_url( FirstAccess::url() ) . '">Primo accesso</a></strong> (non hai ancora una password) · <a href="' . esc_url( wp_lostpassword_url( Restrict::current_url() ) ) . '">Password dimenticata?</a></p></div>'
+			. $form . '<p class="asemf-small"><strong><a href="' . esc_url( FirstAccess::url() ) . '">Primo accesso</a></strong> (non hai ancora una password) · <a href="' . esc_url( wp_lostpassword_url( Restrict::current_url() ) ) . '">Password dimenticata?</a></p>'
+			. ( \AssociazioneSemplice\MemberSession::enabled() ? '<p class="asemf-small"><strong><a href="' . esc_url( MemberLoginPage::url() ) . '">Entra con un link o un codice via email</a></strong>, senza password.</p>' : '' ) . '</div>'
 		);
 	}
 
+	/**
+	 * Questa pagina cambia con i posti, i prenotati o chi la guarda: non va nella cache di pagina (ne avrebbe dati vecchi, a volte per giorni).
+	 * Vale per i plugin di cache che rispettano la costante standard e per LiteSpeed (azione apposita).
+	 */
+	public static function no_cache(): void {
+		if ( ! defined( 'DONOTCACHEPAGE' ) ) {
+			define( 'DONOTCACHEPAGE', true ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- costante standard dei plugin di cache
+		}
+		do_action( 'litespeed_control_set_nocache', 'Associazione Semplice: posti e prenotazioni' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- azione di LiteSpeed Cache
+		if ( ! headers_sent() ) {
+			nocache_headers();
+		}
+	}
+
 	/** Esegue $fn( persona ) solo se l'utente è collegato e ha una scheda socio; altrimenti mostra il messaggio giusto. */
-	private static function with_person( callable $fn, string $class = '' ): string {
-		if ( ! is_user_logged_in() ) {
+	public static function with_person( callable $fn, string $class = '' ): string {
+		if ( ! \AssociazioneSemplice\MemberSession::logged_in() ) {
+			if ( \AssociazioneSemplice\MemberSession::pending_setup() ) { // entrato ma senza password: prima la sceglie
+				self::no_cache();
+				return self::wrap( '<div class="asemf-card"><h3>Scegli la tua password</h3><p>Per continuare devi scegliere la tua password.</p><p><a class="asemf-btn wp-element-button" href="' . esc_url( add_query_arg( '_back', rawurlencode( Restrict::current_url() ), MemberLoginPage::url() ) ) . '">Scegli la password</a></p></div>' );
+			}
 			return self::login_prompt();
 		}
-		if ( ! defined( 'DONOTCACHEPAGE' ) ) {
-			define( 'DONOTCACHEPAGE', true ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- costante standard dei plugin di cache: dati personali mai nella cache di pagina
-		}
-		$uid      = get_current_user_id();
+		self::no_cache();
+		$uid      = get_current_user_id(); // 0 per chi è entrato con l'accesso proprio
 		$is_admin = Access::is_admin_user( $uid );
 		if ( ! $is_admin && ! Edition::allows( 'member_area' ) ) {
 			return self::wrap( self::notice( 'Servizio temporaneamente sospeso. Contatta l\'associazione.', 'asemf-err' ) );
 		}
-		$person = Access::person_for_user( $uid );
+		$person = Access::current_person();
 		if ( ! $person ) {
 			return self::wrap( self::notice( $is_admin
 				? 'Sei amministratore del sito e non hai una scheda socio collegata: qui i soci vedono i propri dati.'
@@ -135,33 +162,36 @@ final class Views {
 	// ---------- Sezioni dell'area soci ----------
 
 	public static function section_card( array $p ): string {
-		if ( ! Settings::get( 'card_enabled' ) ) {
+		if ( ! Settings::get( 'card_enabled' ) || MemberType::GUARDIAN === $p['type'] ) {
 			return ''; // tessera digitale spenta nelle impostazioni
 		}
 		$people = Plugin::people();
-		$until  = MemberType::GUEST === $p['type'] ? null : $people->active_until( (int) $p['id'] );
-		$active = MemberType::GUEST !== $p['type'] && $people->is_active_member( (int) $p['id'] ); // un socio sospeso o uscito non ha la tessera valida, come al controllo con il QR
+		$until  = ! MemberType::is_member( $p['type'] ) ? null : $people->active_until( (int) $p['id'] );
+		$active = MemberType::is_member( $p['type'] ) && $people->is_active_member( (int) $p['id'] ); // un socio sospeso o uscito non ha la tessera valida, come al controllo con il QR
 		$assoc  = (string) Settings::get( 'association_name' );
 		$valid  = MemberType::is_auto_renewed( $p['type'] ) ? 'Sempre rinnovata' : ( $until ? self::d( $until ) : '—' );
 		if ( \AssociazioneSemplice\CardLayout::active() ) { // tessera su un'immagine dell'associazione, con i dati posizionati sopra
 			$when = MemberType::is_auto_renewed( $p['type'] ) ? 'Sempre rinnovata' : ( $until ? 'Valida fino al ' . self::d( $until ) : '' );
 			return '<section class="asemf-section">'
-				. \AssociazioneSemplice\CardLayout::html( trim( $p['first_name'] . ' ' . $p['last_name'] ), '' !== (string) $p['card_number'] ? 'N. ' . $p['card_number'] : '', $when, self::card_qr_svg( $p ) )
+				. \AssociazioneSemplice\CardLayout::html( trim( $p['first_name'] . ' ' . $p['last_name'] ), '' !== (string) $p['card_number'] ? 'N. ' . $p['card_number'] : '', $when, self::card_qr_svg( $p ), \AssociazioneSemplice\CardLayout::extras( $p ) )
 				. ( $active ? '' : '<p><span class="asemf-badge asemf-badge-bad">Tessera scaduta</span></p>' ) // sulla tessera stampabile compare solo se non è in regola
-				. ( \AssociazioneSemplice\Edition::has( 'wallet' ) ? \AssociazioneSemplice\Wallet::buttons( $p ) : '' )
-				. '<p class="asemf-print-wrap"><button type="button" class="asemf-btn asemf-print-card">Stampa la tessera</button></p></section>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				. (string) apply_filters( 'asem_card_extra', '', $p )
+				. '<p class="asemf-print-wrap"><button type="button" class="asemf-btn asemf-print-card">Stampa la tessera</button> <a class="asemf-btn" target="_blank" rel="noopener" href="' . esc_url( \AssociazioneSemplice\CardLayout::pdf_url( (int) $p['id'] ) ) . '">Scarica il PDF</a></p></section>';
 		}
+		$ex = \AssociazioneSemplice\CardLayout::extras( $p );
 		$logo = Assets::logo_url();
 		return '<section class="asemf-section"><div class="asemf-memcard">'
 			. ( '' !== $logo ? '<img class="asemf-memcard-logo" src="' . esc_url( $logo ) . '" alt="' . esc_attr( $assoc ) . '">' : '' )
 			. ( '' !== $assoc ? '<div class="asemf-memcard-assoc">' . esc_html( $assoc ) . '</div>' : '' )
 			. '<div class="asemf-memcard-name">' . esc_html( trim( $p['first_name'] . ' ' . $p['last_name'] ) ) . '</div>'
-			. '<div class="asemf-memcard-type">' . esc_html( \AssociazioneSemplice\Levels::label( $p ) ) . '</div>'
+			. '<div class="asemf-memcard-type">' . esc_html( $ex['type'] ) . '</div>'
+			. ( '' !== $ex['roles'] ? '<div class="asemf-memcard-roles">' . esc_html( $ex['roles'] ) . '</div>' : '' )
+			. ( '' !== $ex['text'] ? '<div class="asemf-memcard-text">' . esc_html( $ex['text'] ) . '</div>' : '' )
 			. '<dl class="asemf-memcard-data"><div><dt>Tessera n.</dt><dd>' . esc_html( (string) ( $p['card_number'] ?: '—' ) ) . '</dd></div>'
-			. '<div><dt>Valida fino al</dt><dd>' . $valid . '</dd></div></dl>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<div><dt>Valida fino al</dt><dd>' . $valid . '</dd></div></dl>'
 			. ( $active ? '' : '<span class="asemf-badge asemf-badge-bad">Tessera scaduta</span>' )
-			. self::card_qr( $p ) . ( \AssociazioneSemplice\Edition::has( 'wallet' ) ? \AssociazioneSemplice\Wallet::buttons( $p ) : '' )
-			. '</div><p class="asemf-print-wrap"><button type="button" class="asemf-btn asemf-print-card">Stampa la tessera</button></p></section>';
+			. self::card_qr( $p ) . (string) apply_filters( 'asem_card_extra', '', $p )
+			. '</div><p class="asemf-print-wrap"><button type="button" class="asemf-btn asemf-print-card">Stampa la tessera</button> <a class="asemf-btn" target="_blank" rel="noopener" href="' . esc_url( \AssociazioneSemplice\CardLayout::pdf_url( (int) $p['id'] ) ) . '">Scarica il PDF</a></p></section>';
 	}
 
 	/** Solo il disegno del QR della tessera (vuoto se il QR è spento o il socio non è un socio). */
@@ -222,7 +252,7 @@ final class Views {
 					return self::MONTHS[ (int) substr( $m['month'], 5, 2 ) ] . ' ' . substr( $m['month'], 0, 4 );
 				}, $s['summary']['unpaid_months'] ) ) ) . '</div>' : '';
 				$html .= '<tr><td>' . esc_html( $s['activity']['name'] ) . '</td><td>' . esc_html( $s['activity']['social_year'] ) . '</td><td>'
-					. ( null === $e['end_month'] ? 'Attiva' : 'Conclusa' ) . '</td><td>' . self::pay_text( $s['summary'] ) . $unpd . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+					. ( null === $e['end_month'] ? 'Attiva' : 'Conclusa' ) . '</td><td>' . self::pay_text( $s['summary'] ) . $unpd . '</td></tr>';
 			}
 			$html .= '</tbody></table></div>';
 		}
@@ -244,7 +274,7 @@ final class Views {
 			foreach ( $upcoming as $b ) {
 				$html .= '<li><div><strong>' . esc_html( $b['activity_name'] ) . '</strong><div class="asemf-small">' . esc_html( self::date_long( $b['session_date'] ) )
 					. ( $b['start_time'] ? ' · ore ' . esc_html( $b['start_time'] ) : '' ) . ( $b['location'] ? ' · ' . esc_html( $b['location'] ) : '' ) . '</div>'
-					. '<div class="asemf-small">Contributo ' . esc_html( Money::format( (int) $b['fee_due_cents'] ) ) . ' · ' . self::booking_pay( $b ) . '</div></div>' // phpcs:ignore WordPress.Security.EscapeOutput
+					. '<div class="asemf-small">Contributo ' . esc_html( Money::format( (int) $b['fee_due_cents'] ) ) . ' · ' . self::booking_pay( $b ) . '</div></div>'
 					. self::ticket_qr( $b ) . self::booking_controls( $b, $p ) . '</li>';
 			}
 			$html .= '</ul>';
@@ -301,7 +331,7 @@ final class Views {
 			$html .= '<div class="asemf-small asemf-muted">' . esc_html( $ev['message'] ) . '</div>';
 		}
 		if ( $ev['can_transfer'] ) {
-			$pool    = array_merge( array( $actor ), Plugin::people()->guests_of( (int) $actor['id'] ) );
+			$pool    = array_merge( array( $actor ), Plugin::people()->managed_by( (int) $actor['id'] ) );
 			$options = '';
 			foreach ( $pool as $cand ) {
 				if ( (int) $cand['id'] === $pid || $svc->has_active_booking( $sid, (int) $cand['id'] ) ) {
@@ -357,7 +387,7 @@ final class Views {
 			$notes    = array();
 			foreach ( $pay->providers() as $g ) { // un pulsante per ogni metodo attivo, con le diciture scelte dall'amministratore
 				$buttons[] = array( 'value' => $g, 'label' => PaymentConfig::label( $g, $all ) );
-				$notes[]   = PaymentConfig::note( $g, $all );
+				$notes[]   = trim( PaymentConfig::note( $g, $all ) . ' ' . PaymentConfig::fee_note( $all, $g ) ); // se il metodo ribalta la commissione, il socio lo legge prima di pagare
 			}
 			$html .= self::form( 'asem_front_pay', $fields, '', false, '', false, $buttons );
 			foreach ( array_filter( $notes ) as $n ) {
@@ -398,6 +428,10 @@ final class Views {
 		$pend  = count( \AssociazioneSemplice\AccessRequests::pending() );
 		$links = array( array( 'asem-people', 'Soci e ospiti', true ), array( 'asem-person', 'Nuovo socio', true ), array( 'asem-messages', 'Comunicazioni', \AssociazioneSemplice\Modules::on( 'messages' ) ), array( 'asem-activities', 'Corsi ed eventi', \AssociazioneSemplice\Modules::on( 'activities' ) ), array( 'asem-money', 'Cassa', \AssociazioneSemplice\Modules::on( 'ledger' ) ), array( 'asem-book', 'Libro soci e registri', \AssociazioneSemplice\Modules::on( 'book' ) ), array( 'asem', 'Bacheca', true ) );
 		$html  = '<section class="asemf-section asemf-secretary"><h3>Segreteria</h3>';
+		$apps  = \AssociazioneSemplice\Applications::pending_count();
+		if ( $apps > 0 ) {
+			$html .= '<p><strong>' . (int) $apps . ( 1 === $apps ? ' domanda di adesione' : ' domande di adesione' ) . '</strong> da approvare: si approvano dalla <a href="' . $url( 'asem' ) . '">Bacheca</a>.</p>';
+		}
 		$html .= '<p>' . ( $pend > 0 ? '<strong>' . (int) $pend . ( 1 === $pend ? ' richiesta di accesso' : ' richieste di accesso' ) . '</strong> da evadere: si evadono dalla <a href="' . $url( 'asem' ) . '">Bacheca</a>.' : 'Nessuna richiesta di accesso da evadere.' ) . '</p><p class="asemf-small asemf-muted">Da qui si arriva alle funzioni di gestione.</p><p class="asemf-actions">';
 		foreach ( $links as $l ) {
 			if ( $l[2] ) {
@@ -423,7 +457,7 @@ final class Views {
 			. '<div class="asemf-fields"><label>Email (facoltativa) <input type="email" name="email" autocomplete="off"></label><label>Cellulare (facoltativo) <input type="tel" name="phone" autocomplete="off"></label>'
 			. '<label>Tipo di socio <select name="level_id">' . $opts . '</select></label></div>';
 		return '<section class="asemf-section asemf-new-member"><h3>Nuova iscrizione</h3><p class="asemf-small asemf-muted">Registra un nuovo socio: bastano nome e cognome, i dati restanti si completano dopo. La quota si incassa qui sotto.</p>'
-			. self::form( 'asem_front_new_member', $fields, 'Iscrivi' ) . '</section>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			. self::form( 'asem_front_new_member', $fields, 'Iscrivi' ) . '</section>';
 	}
 
 	/** Incassi del tesoriere: una persona, un conto e fino a tre voci (quota associativa, eventi, altre entrate). Il resto lo calcola la contabilità. */
@@ -465,46 +499,9 @@ final class Views {
 		$fields = '<div class="asemf-fields"><label>Chi paga <select name="person_id" required>' . $people . '</select></label>'
 			. '<label>Sul conto <select name="account_id">' . $accounts . '</select></label></div>' . $rows;
 		return '<section class="asemf-section asemf-collect"><h3>Incassa</h3><p class="asemf-small asemf-muted">Quota associativa, eventi, corsi e altre entrate. Per le quote l\'anno viene calcolato automaticamente.</p>'
-			. self::form( 'asem_front_collect', $fields, 'Registra l\'incasso' ) . '</section>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			. self::form( 'asem_front_collect', $fields, 'Registra l\'incasso' ) . '</section>';
 	}
 
-	/** Cassa per più persone del tesoriere: chi paga salda quote, eventi e corsi per sé e per altri (anche nuovi ospiti). Importo vuoto = importo standard. */
-	private static function section_group(): string {
-		if ( ! \AssociazioneSemplice\Edition::has( 'funds' ) || ! current_user_can( 'asem_collect', 0 ) ) {
-			return '';
-		}
-		$ledger = Plugin::ledger();
-		$opt    = '<option value="">— scegli —</option>';
-		foreach ( Plugin::people()->search() as $p ) {
-			$opt .= '<option value="' . (int) $p['id'] . '">' . esc_html( trim( $p['last_name'] . ' ' . $p['first_name'] ) ) . '</option>';
-		}
-		$accounts = '';
-		foreach ( $ledger->accounts() as $a ) {
-			$accounts .= '<option value="' . (int) $a['id'] . '">' . esc_html( $a['name'] ) . '</option>';
-		}
-		$what = '<option value="">— niente —</option><option value="m">Quota associativa</option><optgroup label="Eventi">';
-		foreach ( Plugin::activities()->upcoming_sessions( 40 ) as $s ) {
-			$what .= '<option value="s:' . (int) $s['id'] . '">' . esc_html( $s['activity_name'] . ' · ' . self::d( $s['session_date'] ) ) . '</option>';
-		}
-		$what .= '</optgroup><optgroup label="Corsi (mese in corso)">';
-		foreach ( Plugin::activities()->for_year( Settings::social_year()->label() ) as $a ) {
-			if ( ActivityKind::COURSE === $a['kind'] ) {
-				$what .= '<option value="k:' . (int) $a['id'] . '">' . esc_html( $a['name'] ) . '</option>';
-			}
-		}
-		$what .= '</optgroup>';
-		$rows = '';
-		for ( $i = 0; $i < 6; $i++ ) {
-			$rows .= '<div class="asemf-fields"><label>Persona <select name="rows[' . $i . '][person]">' . $opt . '</select></label>'
-				. '<label>oppure nuovo ospite <input type="text" name="rows[' . $i . '][first]" placeholder="Nome"> <input type="text" name="rows[' . $i . '][last]" placeholder="Cognome"> <input type="tel" name="rows[' . $i . '][phone]" placeholder="Cellulare"></label>'
-				. '<label>Cosa <select name="rows[' . $i . '][what]">' . $what . '</select></label>'
-				. '<label>Importo (€) <input type="text" name="rows[' . $i . '][amount]" inputmode="decimal" placeholder="standard"></label></div>';
-		}
-		$fields = '<div class="asemf-fields"><label>Chi paga <select name="payer_id" required>' . $opt . '</select></label><label>Sul conto <select name="account_id">' . $accounts . '</select></label></div>' . $rows;
-		return '<section class="asemf-section asemf-collect"><details><summary><h3 style="display:inline">Cassa per più persone</h3></summary>'
-			. '<p class="asemf-small asemf-muted">Una persona paga per sé e per altri: un solo incasso. Ogni riga è una persona (o un nuovo ospite) con una voce; la stessa persona può comparire in più righe. Gli ospiti nuovi sono ospiti di chi paga. Un evento si può pagare anche per un socio con la tessera scaduta; per un corso la tessera deve essere in regola (o rinnovata nello stesso incasso).</p>'
-			. self::form( 'asem_front_group', $fields, 'Registra l\'incasso' ) . '</details></section>'; // phpcs:ignore WordPress.Security.EscapeOutput
-	}
 
 	public static function section_expenses( array $p ): string {
 		if ( ! current_user_can( 'asem_add_expense', 0 ) ) {
@@ -521,7 +518,7 @@ final class Views {
 		foreach ( $ledger->accounts() as $a ) {
 			$accounts[ (int) $a['id'] ] = $a['name'];
 		}
-		$methods = array_diff_key( Labels::methods(), array( 'stripe' => 1, 'paypal' => 1, 'woocommerce' => 1 ) );
+		$methods = array_diff_key( Labels::methods(), array_fill_keys( \AssociazioneSemplice\ActivityReset::online_methods(), 1 ) );
 		$acts    = array();
 		foreach ( Plugin::activities()->for_year( Settings::social_year()->label() ) as $a ) {
 			$acts[ (int) $a['id'] ] = $a['name'];
@@ -537,9 +534,9 @@ final class Views {
 		$fields = '<div class="asemf-fields">'
 			. '<label>Data <input type="date" name="date" value="' . esc_attr( current_time( 'Y-m-d' ) ) . '" max="' . esc_attr( current_time( 'Y-m-d' ) ) . '" required></label>'
 			. '<label>Importo (€) <input type="text" name="amount" inputmode="decimal" placeholder="0,00" required></label>'
-			. '<label>Voce <select name="category_id" required>' . $opts( $cats, null, '— scegli —' ) . '</select></label>' // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<label>Dal conto <select name="account_id">' . $opts( $accounts, $default ? $default['id'] : null ) . '</select></label>' // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<label>Attività <select name="activity_id">' . $opts( $acts, null, 'Nessuna (costo generale)' ) . '</select></label>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<label>Voce <select name="category_id" required>' . $opts( $cats, null, '— scegli —' ) . '</select></label>'
+			. '<label>Dal conto <select name="account_id">' . $opts( $accounts, $default ? $default['id'] : null ) . '</select></label>'
+			. '<label>Attività <select name="activity_id">' . $opts( $acts, null, 'Nessuna (costo generale)' ) . '</select></label>'
 			. '<label>Descrizione <input type="text" name="description" maxlength="255"></label>'
 			. '<label>N. fattura / scontrino <input type="text" name="document_ref" maxlength="80"></label>'
 			. '</div>' . self::doc_inputs();
@@ -564,7 +561,7 @@ final class Views {
 			}
 			$html .= '</ul>';
 		}
-		return self::section_new_member() . self::section_collect() . self::section_group() . $html . '</section>';
+		return self::section_new_member() . self::section_collect() . (string) apply_filters( 'asem_treasurer_sections', '' ) . $html . '</section>';
 	}
 
 	/** Scelta dei documenti: file dal telefono o dal computer, oppure scatto con la fotocamera. */
@@ -605,13 +602,56 @@ final class Views {
 				}
 				$status = '<div class="asemf-small asemf-muted">Partecipazioni: ' . (int) $st['count']
 					. ( $seen ? ' (' . esc_html( implode( ', ', $seen ) ) . ')' : '' ) . '</div>';
-				$html .= '<li><div><strong>' . esc_html( $g['first_name'] . ' ' . $g['last_name'] ) . '</strong>' . $status . $tickets . '</div></li>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				$html .= '<li><div><strong>' . esc_html( $g['first_name'] . ' ' . $g['last_name'] ) . '</strong>' . $status . $tickets . '</div></li>';
 			}
 			$html .= '</ul>';
 		}
 		$fields = '<div class="asemf-fields"><label>Nome <input type="text" name="first_name" required></label><label>Cognome <input type="text" name="last_name" required></label>'
 			. '<label>Email (facoltativa) <input type="email" name="email"></label><label>Cellulare (obbligatorio) <input type="tel" name="phone" required placeholder="333 1234567" inputmode="tel"></label></div>';
 		return $html . '<details class="asemf-details"><summary>Aggiungi un ospite</summary>' . self::form( 'asem_front_add_guest', $fields, 'Aggiungi ospite' ) . '</details></section>';
+	}
+
+	/**
+	 * I minori di cui il socio è tutore: per ognuno la tessera, le attività e, finché mancano, il regolamento e la privacy da accettare per suo conto.
+	 * I pagamenti da fare per loro compaiono insieme a quelli del tutore, in «Pagamenti».
+	 */
+	public static function section_minors( array $p ): string {
+		if ( ! MemberType::can_login( $p['type'] ) ) {
+			return '';
+		}
+		$wards = Plugin::people()->dependents_of( (int) $p['id'] );
+		if ( ! $wards ) {
+			return '';
+		}
+		$html = '<section class="asemf-section"><h3>I miei figli</h3><p class="asemf-muted">Sei il tutore di queste persone: vedi la loro tessera e le attività, le prenoti agli eventi e paghi per loro. Le email che li riguardano arrivano anche a te.</p></section>';
+		foreach ( $wards as $m ) {
+			$name  = trim( $m['first_name'] . ' ' . $m['last_name'] );
+			$adult = ! \AssociazioneSemplice\Age::is_minor( $m['birth_date'] ?? null, current_time( 'Y-m-d' ) ) && ! empty( $m['birth_date'] );
+			$html .= '<section class="asemf-section"><h3>' . esc_html( $name ) . '</h3>'
+				. ( $adult ? '<p class="asemf-small asemf-muted">Ha compiuto 18 anni: può avere un suo accesso. Chiedi alla segreteria di invitarlo; finché il collegamento resta, continui a vedere i suoi dati.</p>' : '' )
+				. '</section>';
+			$html .= self::ward_accept_box( $p, $m );
+			$html .= self::section_card( $m );
+			$html .= str_replace( '<h3>Le mie attività</h3>', '<h3>Attività di ' . esc_html( $m['first_name'] ) . '</h3>', self::section_activities( $m ) );
+		}
+		return $html;
+	}
+
+	/** Casella per accettare, a nome del minore, il regolamento e la privacy ancora mancanti. */
+	private static function ward_accept_box( array $guardian, array $m ): string {
+		$fields = '';
+		if ( \AssociazioneSemplice\Regulation::applies_to( $m ) && ! \AssociazioneSemplice\Regulation::accepted( $m ) ) {
+			$title   = mb_strtolower( \AssociazioneSemplice\Regulation::title(), 'UTF-8' );
+			$fields .= \AssociazioneSemplice\Regulation::box_html() . '<label><input type="checkbox" name="rules_ok" value="1"> Ho letto e accetto il ' . esc_html( $title ) . ' per conto di ' . esc_html( $m['first_name'] ) . '.</label>';
+		}
+		if ( ! \AssociazioneSemplice\Privacy::has_consent( $m ) ) {
+			$fields .= '<p><label><input type="checkbox" name="privacy_ok" value="1"> Ho letto l\'<a href="' . esc_url( (string) Settings::get( 'privacy_url' ) ) . '" target="_blank" rel="noopener">informativa privacy</a> e acconsento al trattamento dei dati di ' . esc_html( $m['first_name'] ) . '.</label></p>';
+		}
+		if ( '' === $fields ) {
+			return '';
+		}
+		return '<section class="asemf-section asemf-rules-box"><h3>Da accettare per conto di ' . esc_html( $m['first_name'] ) . '</h3>'
+			. self::form( 'asem_front_accept_for', self::hidden( 'person_id', $m['id'] ) . $fields, 'Accetto' ) . '</section>';
 	}
 
 	/** Avviso in cima all'area: il profilo va completato (indirizzo e codice fiscale) prima di prenotare e pagare. Vuoto se non serve. */
@@ -732,54 +772,7 @@ final class Views {
 		return '<p class="' . $cls . '"><strong>' . ( 0 === $seat['free'] ? 'Posti esauriti · lista d’attesa' : 'Posti liberi: ' . (int) $seat['free'] ) . '</strong> <span class="asemf-small asemf-muted">(' . (int) $seat['taken'] . ' prenotati su ' . (int) $seat['capacity'] . ')</span>' . ( $wait ? ' <span class="asemf-small asemf-muted">· in lista d\'attesa: ' . (int) $wait . '</span>' : '' ) . '</p>';
 	}
 
-	private static function door_form( array $s, array $a ): string {
-		if ( ! \AssociazioneSemplice\Edition::has( 'door_sales' ) || ! current_user_can( 'asem_door_cash', (int) $a['id'] ) || ! empty( $s['cancelled_at'] ) ) {
-			return '';
-		}
-		$seat = Plugin::activities()->seats( (int) $s['id'] );
-		if ( 0 === $seat['free'] ) {
-			return '<p class="asemf-small asemf-muted">Posti esauriti: nessun ingresso sul posto possibile.</p>';
-		}
-		$all = '<option value="">— scegli il socio —</option>';
-		foreach ( Plugin::people()->search() as $p ) {
-			if ( MemberType::is_member( $p['type'] ) ) {
-				$all .= '<option value="' . (int) $p['id'] . '">' . esc_html( trim( $p['last_name'] . ' ' . $p['first_name'] ) ) . '</option>';
-			}
-		}
-		$accs = '';
-		foreach ( Plugin::ledger()->accounts() as $acc ) {
-			if ( in_array( $acc['type'], array( 'cash', 'pos' ), true ) ) {
-				$accs .= '<option value="' . (int) $acc['id'] . '">' . esc_html( $acc['name'] ) . '</option>';
-			}
-		}
-		$ids = self::hidden( 'session_id', $s['id'] );
-		return '<details class="asemf-door"><summary><strong>＋ Ingresso sul posto</strong> <span class="asemf-small asemf-muted">socio non prenotato (biglietto socio: ' . esc_html( Money::format( Plugin::activities()->fee_for( $a, MemberType::ORDINARY ) ) ) . ')</span></summary>'
-			. self::form(
-				'asem_front_door',
-				$ids . '<label>Socio <select name="person_id" required>' . $all . '</select></label>'
-				. '<label><input type="checkbox" name="pay" value="1" checked> Incassa il biglietto</label>'
-				. ( '' !== $accs ? '<label>Pagamento <select name="account_id">' . $accs . '</select></label>' : '' ),
-				'Prenota, incassa e registra l\'ingresso',
-				true
-			) . self::door_group_form( $s, $all, $accs ) . '</details>'; // phpcs:ignore WordPress.Security.EscapeOutput
-	}
 
-	/** Cassa per più persone sul posto: un socio paga il biglietto per sé e per altri soci (importi calcolati dal sito). */
-	private static function door_group_form( array $s, string $members_options, string $accounts_options ): string {
-		if ( '' === $accounts_options ) {
-			return '';
-		}
-		$rows = '';
-		for ( $i = 0; $i < 6; $i++ ) {
-			$rows .= '<label>Socio ' . ( $i + 1 ) . ' <select name="rows[' . $i . '][person]">' . $members_options . '</select></label>';
-		}
-		$fields = self::hidden( 'session_id', $s['id'] )
-			. '<label>Chi paga <select name="payer_id" required>' . $members_options . '</select></label>'
-			. '<label>Pagamento <select name="account_id">' . $accounts_options . '</select></label>'
-			. '<p class="asemf-small asemf-muted">Scegli i soci per cui paga (può includere anche sé stesso): ognuno viene prenotato, l\'importo del biglietto è calcolato automaticamente e l\'incasso è unico.</p>' . $rows;
-		return '<details class="asemf-door-group"><summary><strong>＋ Un socio paga per più soci</strong></summary>'
-			. self::form( 'asem_front_door_group', $fields, 'Prenota e incassa per tutti', true ) . '</details>';
-	}
 
 	private static function checkin_detail( array $s, array $a ): string {
 		$svc      = Plugin::activities();
@@ -819,7 +812,7 @@ final class Views {
 			$name = trim( $b['first_name'] . ' ' . $b['last_name'] );
 			$list .= '<li class="asemf-booked" data-name="' . esc_attr( Text::normalize( $name ) ) . '" data-state="' . ( $in ? 'in' : 'out' ) . '"><div><strong>' . esc_html( $name ) . '</strong>'
 				. '<div class="asemf-small asemf-muted">' . esc_html( MemberType::GUEST === $b['type'] ? 'Ospite' . $host : MemberType::label( $b['type'] ) ) . '</div>'
-				. ( MemberType::GUEST === $b['type'] ? self::guest_note( $gov[ (int) $b['person_id'] ] ?? null ) : '' ) . $pay . '</div><div class="asemf-checkin-act">' . $act . '</div></li>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				. ( MemberType::GUEST === $b['type'] ? self::guest_note( $gov[ (int) $b['person_id'] ] ?? null ) : '' ) . $pay . '</div><div class="asemf-checkin-act">' . $act . '</div></li>';
 		}
 		$can_scan = Settings::tickets_enabled() && ! empty( $a['booking_qr'] ) && $s['session_date'] === $today;
 		$scan     = '';
@@ -833,13 +826,13 @@ final class Views {
 			. ( $s['location'] ? ' · ' . esc_html( $s['location'] ) : '' ) . '</p>'
 			. '<dl class="asemf-dl asemf-counts"><div><dt>Prenotati</dt><dd>' . (int) $booked . ( null === $s['capacity'] ? '' : ' / ' . (int) $s['capacity'] ) . '</dd></div><div><dt>Presenti</dt><dd>' . (int) $present . '</dd></div>'
 			. '<div><dt>Da registrare</dt><dd>' . (int) ( $booked - $present ) . '</dd></div><div><dt>Contributo da versare</dt><dd>' . (int) $unpaid . '</dd></div></dl>'
-			. ( $s['session_date'] !== $today ? '<p class="asemf-small asemf-muted">Gli ingressi si registrano nel giorno dell\'evento.</p>' : '' ) . self::seats_html( $s ) . $scan . self::door_form( $s, $a ) . self::notice_form( $a, (int) $s['id'] );
+			. ( $s['session_date'] !== $today ? '<p class="asemf-small asemf-muted">Gli ingressi si registrano nel giorno dell\'evento.</p>' : '' ) . self::seats_html( $s ) . $scan . (string) apply_filters( 'asem_checkin_extra', '', $s, $a ) . self::notice_form( $a, (int) $s['id'] );
 		if ( ! $booked ) {
 			return $html . '<p class="asemf-muted">Nessuna prenotazione.</p></section>';
 		}
 		return $html . '<div class="asemf-checkin-tools"><input type="search" class="asemf-search" placeholder="Cerca per nome" aria-label="Cerca per nome">'
 			. '<span class="asemf-filters"><button type="button" class="asemf-chip is-on" data-filter="all">Tutti</button><button type="button" class="asemf-chip" data-filter="out">Da registrare</button><button type="button" class="asemf-chip" data-filter="in">Presenti</button></span></div>'
-			. '<ul class="asemf-list asemf-booked-list">' . $list . '</ul>' // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<ul class="asemf-list asemf-booked-list">' . $list . '</ul>'
 			. ( $cancel ? '<p class="asemf-small asemf-muted">' . (int) $cancel . ' prenotazioni annullate non sono in elenco.</p>' : '' ) . '</section>';
 	}
 
@@ -1034,7 +1027,12 @@ final class Views {
 	);
 
 	/** Sezioni della parte «Il mio spazio»: tutto ciò che riguarda il socio come persona. */
-	const MY_SECTIONS = array( 'regolamento', 'tessera', 'attivita', 'calendario', 'avvisi', 'pagamenti', 'ospiti', 'profilo', 'ricevute', 'app' );
+	const MY_SECTIONS = array( 'regolamento', 'tessera', 'attivita', 'calendario', 'avvisi', 'pagamenti', 'ospiti', 'minori', 'votazioni', 'documenti', 'convenzioni', 'profilo' );
+
+	/** Sezioni dell'area soci, nell'ordine in cui compaiono (un'estensione aggiunge le sue con il filtro `asem_my_sections`). */
+	private static function my_sections(): array {
+		return (array) apply_filters( 'asem_my_sections', self::MY_SECTIONS );
+	}
 
 	/** @return array<string,string> le parti che questa persona può usare (chiave => titolo), sempre con «Il mio spazio» per prima */
 	public static function panes_for( array $p ): array {
@@ -1086,11 +1084,43 @@ final class Views {
 				return self::section_volunteer( $p, 'event' ) . self::section_checkin( $p );
 		}
 		$html = self::section_complete( $p );
-		foreach ( self::MY_SECTIONS as $s ) {
-			$fn    = array( 'tessera' => 'section_card', 'attivita' => 'section_activities', 'calendario' => 'section_calendar', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests', 'profilo' => 'section_profile', 'regolamento' => 'section_rules', 'app' => 'section_app', 'ricevute' => 'section_receipts', 'avvisi' => 'section_notices' )[ $s ];
-			$html .= self::$fn( $p );
+		foreach ( self::my_sections() as $s ) {
+			$map = array( 'tessera' => 'section_card', 'attivita' => 'section_activities', 'calendario' => 'section_calendar', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests', 'minori' => 'section_minors', 'profilo' => 'section_profile', 'regolamento' => 'section_rules', 'avvisi' => 'section_notices' );
+			$html .= isset( $map[ $s ] ) ? self::{$map[ $s ]}( $p ) : (string) apply_filters( 'asem_area_section', '', $s, $p );
+			if ( 'tessera' === $s ) {
+				$html .= (string) apply_filters( 'asem_after_card', '' ); // invito all'app (Pro)
+			}
 		}
-		return $html;
+		return self::jump_nav( $html );
+	}
+
+	/**
+	 * «Il mio spazio» è una colonna lunga: da telefono una barra fissa in alto porta alle sezioni (titoli h3 delle sezioni già disegnate; sotto 4 sezioni non serve).
+	 */
+	private static function jump_nav( string $html ): string {
+		$n     = 0;
+		$items = array();
+		$html  = (string) preg_replace_callback(
+			'#<section class="(asemf-section[^"]*)">(\s*<h3>(.*?)</h3>)?#s',
+			function ( $m ) use ( &$n, &$items ) {
+				if ( empty( $m[3] ) || false !== strpos( $m[1], 'asemf-complete' ) ) {
+					return $m[0];
+				}
+				$n++;
+				$id      = 'asemf-s' . $n;
+				$items[] = array( $id, wp_strip_all_tags( $m[3] ) );
+				return '<section id="' . $id . '" class="' . $m[1] . '">' . $m[2];
+			},
+			$html
+		);
+		if ( count( $items ) < 5 ) {
+			return $html;
+		}
+		$nav = '<nav class="asemf-jump" aria-label="Vai a una sezione"><ul>';
+		foreach ( $items as $it ) {
+			$nav .= '<li><a href="#' . esc_attr( $it[0] ) . '">' . esc_html( $it[1] ) . '</a></li>';
+		}
+		return $nav . '</ul></nav>' . $html;
 	}
 
 	/** L'area riservata con il piccolo menu laterale: «Il mio spazio» e, per chi ha il ruolo, Segreteria, Gestione corsi e Gestione eventi. */
@@ -1110,7 +1140,7 @@ final class Views {
 			$nav .= '</ul></nav>';
 		}
 		return '<div class="asemf-hello">Ciao <strong>' . esc_html( $p['first_name'] ) . '</strong></div><div class="asemf-layout' . ( '' === $nav ? ' asemf-nonav' : '' ) . '">' . $nav
-			. '<div class="asemf-area asemf-pane-' . esc_attr( $pane ) . '">' . self::pane_html( $pane, $p ) . '</div></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<div class="asemf-area asemf-pane-' . esc_attr( $pane ) . '">' . self::pane_html( $pane, $p ) . '</div></div>';
 	}
 
 	public static function area( array $atts = array() ): string {
@@ -1122,8 +1152,8 @@ final class Views {
 		return self::with_person(
 			function ( $p ) use ( $sections ) {
 				$map  = array(
-					'tessera'    => 'section_card', 'attivita' => 'section_activities', 'calendario' => 'section_calendar', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests',
-					'profilo'    => 'section_profile', 'regolamento' => 'section_rules', 'app' => 'section_app', 'ricevute' => 'section_receipts', 'volontario' => 'section_volunteer', 'spese' => 'section_expenses', 'ingressi' => 'section_checkin', 'avvisi' => 'section_notices',
+					'tessera'    => 'section_card', 'attivita' => 'section_activities', 'calendario' => 'section_calendar', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests', 'minori' => 'section_minors',
+					'profilo'    => 'section_profile', 'regolamento' => 'section_rules', 'volontario' => 'section_volunteer', 'spese' => 'section_expenses', 'ingressi' => 'section_checkin', 'avvisi' => 'section_notices',
 				);
 				$html = '<div class="asemf-hello">Ciao <strong>' . esc_html( $p['first_name'] ) . '</strong></div><div class="asemf-area">';
 				if ( ! in_array( 'profilo', $sections, true ) ) {
@@ -1132,6 +1162,8 @@ final class Views {
 				foreach ( $sections as $s ) {
 					if ( isset( $map[ $s ] ) ) {
 						$html .= self::{$map[ $s ]}( $p );
+					} else {
+						$html .= (string) apply_filters( 'asem_area_section', '', $s, $p ); // sezioni di un'estensione
 					}
 				}
 				return $html . '</div>';
@@ -1148,36 +1180,19 @@ final class Views {
 		return self::with_person( array( __CLASS__, 'section_activities' ) );
 	}
 
+
+
+
+
+
 	public static function guests(): string {
 		return self::with_person( array( __CLASS__, 'section_guests' ) );
 	}
 
-	/** Le mie ricevute: scarico dei PDF (anche per gli ospiti che ho pagato) e attestazione annuale. */
-	public static function section_receipts( array $p ): string {
-		if ( ! \AssociazioneSemplice\Edition::has( 'receipts' ) ) {
-			return '';
-		}
-		$pid   = (int) $p['id'];
-		$mine  = \AssociazioneSemplice\Receipts::list_for_payer( $pid, 15 );
-		$years = \AssociazioneSemplice\Receipts::years_for_payer( $pid );
-		if ( ! $mine && ! $years ) {
-			return '<section class="asemf-section"><h3>Le mie ricevute</h3><p class="asemf-muted">Nessun pagamento registrato finora.</p></section>';
-		}
-		$html = '<section class="asemf-section"><h3>Le mie ricevute</h3>';
-		if ( $years ) {
-			$html .= '<p>';
-			foreach ( $years as $y ) {
-				$html .= '<a class="asemf-btn" target="_blank" href="' . esc_url( \AssociazioneSemplice\Receipts::statement_url( $pid, (int) $y ) ) . '">Attestazione ' . (int) $y . '</a> ';
-			}
-			$html .= '</p><p class="asemf-small asemf-muted">L\'attestazione riepiloga tutti i versamenti dell\'anno (utile per la dichiarazione dei redditi).</p>';
-		}
-		$html .= '<ul class="asemf-list">';
-		foreach ( $mine as $r ) {
-			$html .= '<li><div><strong>' . esc_html( self::d( $r['date'] ) ) . '</strong> · ' . esc_html( $r['what'] ) . '</div><div>' . esc_html( Money::format( (int) $r['cents'] ) )
-				. ' <a class="asemf-btn" target="_blank" href="' . esc_url( \AssociazioneSemplice\Receipts::url( $r['key'] ) ) . '">Ricevuta PDF</a></div></li>';
-		}
-		return $html . '</ul></section>';
+	public static function minors(): string {
+		return self::with_person( array( __CLASS__, 'section_minors' ) );
 	}
+
 
 	/** Regolamento da accettare (compare in cima all'area finché il socio non lo accetta). */
 	public static function section_rules( array $p ): string {
@@ -1189,18 +1204,9 @@ final class Views {
 		$fields = \AssociazioneSemplice\Regulation::box_html() . '<label><input type="checkbox" name="rules_ok" value="1" required> Ho letto e accetto il ' . esc_html( mb_strtolower( $title, 'UTF-8' ) ) . '.</label>';
 		return '<section class="asemf-section asemf-rules-box"><h3>' . esc_html( $title ) . '</h3>' . $redo
 			. ( ! empty( Settings::get( 'rules_block_booking' ) ) ? '<p class="asemf-small asemf-muted">Finché non lo accetti non puoi prenotare eventi e attività.</p>' : '' )
-			. self::form( 'asem_front_accept_rules', $fields, 'Accetto' ) . '</section>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			. self::form( 'asem_front_accept_rules', $fields, 'Accetto' ) . '</section>';
 	}
 
-	/** Messaggio pubblico del 5x1000 con il codice fiscale dell'associazione (vuoto se spento o senza codice fiscale). */
-	public static function five_per_mille(): string {
-		if ( ! \AssociazioneSemplice\Edition::has( 'fivepm' ) || ! \AssociazioneSemplice\FivePerMille::enabled() || '' === trim( (string) Settings::get( 'tax_code' ) ) ) {
-			return '';
-		}
-		$name = trim( (string) Settings::get( 'association_name' ) );
-		return '<section class="asemf-section asemf-fivepm"><h3>5x1000' . ( '' !== $name ? ' a ' . esc_html( $name ) : '' ) . '</h3><p>' . esc_html( \AssociazioneSemplice\FivePerMille::text() ) . '</p>'
-			. '<p class="asemf-small">Codice fiscale: <strong>' . esc_html( (string) Settings::get( 'tax_code' ) ) . '</strong></p></section>';
-	}
 
 	/** Coordinate per il bonifico per chiunque (ad esempio una pagina di donazioni): niente causale personale. Vuoto se il bonifico non è attivo. */
 	public static function bank_public(): string {
@@ -1214,59 +1220,47 @@ final class Views {
 	/** Informativa sul trattamento dei dati personali, compilata con i dati dell'ente (pubblica, per chiunque). */
 	public static function privacy_notice(): string {
 		Assets::enqueue();
-		return '<section class="asemf-section asemf-privacy-wrap">' . \AssociazioneSemplice\PrivacyNotice::html() . '</section>'; // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto da PrivacyNotice
+		return '<section class="asemf-section asemf-privacy-wrap">' . \AssociazioneSemplice\PrivacyNotice::html() . '</section>';
 	}
 
-	/** Modulo di donazione: porta il donatore alla pagina di PayPal già compilata (spento finché non si imposta il conto PayPal). */
-	public static function donate(): string {
-		if ( ! \AssociazioneSemplice\Donations::enabled() ) {
-			return '';
+	/**
+	 * Modulo di donazione con il pulsante PayPal. Senza `id` è la raccolta generale; con `id` è una raccolta creata in Donazioni (titolo, importi
+	 * e testo suoi). Se PayPal non è configurato ai visitatori non compare niente; chi gestisce vede un avviso che spiega perché.
+	 */
+	public static function donate( array $atts = array() ): string {
+		$id = (int) ( $atts['id'] ?? 0 );
+		$c  = $id > 0 ? \AssociazioneSemplice\Donations::campaign( $id ) : null;
+		if ( ! \AssociazioneSemplice\Donations::enabled() || ( $id > 0 && ( ! $c || empty( $c['active'] ) ) ) ) {
+			if ( ! current_user_can( \AssociazioneSemplice\Plugin::CAP ) ) {
+				return '';
+			}
+			$why = ! \AssociazioneSemplice\Donations::enabled() ? \AssociazioneSemplice\Donations::disclaimer() : ( $c ? 'Questa raccolta è spenta.' : 'Questa raccolta non esiste più.' );
+			return '<p class="asemf-small asemf-muted"><em>Donazioni (lo vedi solo tu): ' . esc_html( $why ) . '</em></p>';
 		}
 		Assets::enqueue();
-		$amounts = \AssociazioneSemplice\Donations::amounts();
+		$amounts = $c ? \AssociazioneSemplice\Donations::campaign_amounts( $c ) : \AssociazioneSemplice\Donations::amounts();
+		$purpose = $c ? \AssociazioneSemplice\Donations::campaign_purpose( $c ) : \AssociazioneSemplice\Donations::purpose();
 		$select  = '<label>Importo <select name="amount">';
 		foreach ( $amounts as $a ) {
 			$select .= '<option value="' . esc_attr( \AssociazioneSemplice\Donations::paypal_amount( $a ) ) . '">' . esc_html( $a ) . ' €</option>';
 		}
 		$select .= '<option value="">Un altro importo (lo scegli su PayPal)</option></select></label>';
-		return '<section class="asemf-section asemf-donate"><h3>' . esc_html( \AssociazioneSemplice\Donations::purpose() ) . '</h3>'
+		return '<section class="asemf-section asemf-donate"><h3>' . esc_html( $purpose ) . '</h3>'
+			. ( $c && '' !== $c['note'] ? '<p>' . esc_html( $c['note'] ) . '</p>' : '' )
 			. '<form method="post" action="' . esc_url( \AssociazioneSemplice\Donations::URL ) . '" target="_blank" rel="noopener">'
 			. '<input type="hidden" name="business" value="' . esc_attr( \AssociazioneSemplice\Donations::account() ) . '">'
-			. '<input type="hidden" name="item_name" value="' . esc_attr( \AssociazioneSemplice\Donations::purpose() ) . '">'
+			. '<input type="hidden" name="item_name" value="' . esc_attr( $purpose ) . '">'
 			. '<input type="hidden" name="currency_code" value="EUR"><input type="hidden" name="no_recurring" value="1">'
 			. '<p>' . $select . '</p><p><button type="submit" class="asemf-btn wp-element-button">Dona con PayPal</button></p>'
-			. '<p class="asemf-small asemf-muted">Il pagamento avviene sul sito di PayPal: qui non passa nessun dato di pagamento.</p></form></section>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			. '<p class="asemf-small asemf-muted">Il pagamento avviene sul sito di PayPal: qui non passa nessun dato di pagamento.</p></form></section>';
 	}
 
-	/** App installabile e notifiche: si vede solo se l'app è accesa nelle impostazioni. */
-	public static function section_app( array $p ): string {
-		if ( ! \AssociazioneSemplice\Edition::has( 'pwa' ) || ! \AssociazioneSemplice\Pwa::enabled() ) {
-			return '';
-		}
-		$push = \AssociazioneSemplice\Push::enabled();
-		$html = '<section class="asemf-section asemf-app"><h3>App e notifiche</h3>'
-			. '<p class="asemf-small asemf-muted">Aggiungi ' . esc_html( \AssociazioneSemplice\Pwa::app_name() ) . ' alla schermata Home del telefono: si apre come un\'app, con la tessera sempre a portata di mano.</p>'
-			. '<p><button type="button" class="asemf-btn" data-asem-install hidden>Installa l\'app</button></p>'
-			. '<p class="asemf-small asemf-muted" data-asem-ios hidden>Su iPhone: tocca <strong>Condividi</strong> e poi <strong>Aggiungi alla schermata Home</strong>.</p>';
-		if ( $push ) {
-			$html .= '<div data-asem-push><p class="asemf-small asemf-muted">Ricevi sul telefono gli avvisi dei corsi e degli eventi, i promemoria e le comunicazioni dell\'associazione.</p>'
-				. '<p><button type="button" class="asemf-btn" data-asem-push-on>Attiva le notifiche su questo dispositivo</button> <button type="button" class="asemf-btn asemf-btn-ghost" data-asem-push-off hidden>Disattiva le notifiche</button></p>'
-				. '<p class="asemf-small asemf-muted" data-asem-push-msg></p></div>';
-		}
-		return $html . '</section>';
-	}
 
-	public static function app(): string {
-		return self::with_person( array( __CLASS__, 'section_app' ) );
-	}
 
 	public static function rules(): string {
 		return self::with_person( array( __CLASS__, 'section_rules' ) );
 	}
 
-	public static function receipts(): string {
-		return self::with_person( array( __CLASS__, 'section_receipts' ) );
-	}
 
 	public static function profile(): string {
 		return self::with_person( array( __CLASS__, 'section_profile' ) );
@@ -1284,7 +1278,7 @@ final class Views {
 
 	/** Chi sta guardando e chi può prenotare (sé stesso e i propri ospiti). */
 	private static function booking_context(): array {
-		$ctx = array( 'logged' => is_user_logged_in(), 'can_book' => false, 'people' => array(), 'suspended' => false );
+		$ctx = array( 'logged' => \AssociazioneSemplice\MemberSession::logged_in(), 'can_book' => false, 'people' => array(), 'suspended' => false );
 		if ( ! $ctx['logged'] ) {
 			return $ctx;
 		}
@@ -1293,10 +1287,20 @@ final class Views {
 			return $ctx;
 		}
 		$p = Access::current_person();
-		if ( $p && MemberType::is_member( $p['type'] ) ) {
+		if ( $p && MemberType::can_login( $p['type'] ) ) {
 			$ctx['actor']    = $p;
-			$ctx['can_book'] = Plugin::people()->is_active_member( (int) $p['id'] );
-			$ctx['people']   = array_merge( array( $p ), Plugin::people()->guests_of( (int) $p['id'] ) );
+			$people = Plugin::people();
+			$list   = array();
+			if ( $people->is_active_member( (int) $p['id'] ) ) {
+				$list = array_merge( array( $p ), $people->guests_of( (int) $p['id'] ) );
+			}
+			foreach ( $people->dependents_of( (int) $p['id'] ) as $m ) { // chi ha il tutore prenota con la tessera del minore, non con la propria
+				if ( $people->is_active_member( (int) $m['id'] ) ) {
+					$list[] = $m;
+				}
+			}
+			$ctx['can_book'] = array() !== $list;
+			$ctx['people']   = $list;
 		}
 		return $ctx;
 	}
@@ -1360,6 +1364,14 @@ final class Views {
 				} else {
 					$fields .= self::hidden( 'person_id', $free[0]['id'] );
 				}
+				$lists = \AssociazioneSemplice\PriceLists::for_activity( $activity );
+				if ( $lists ) {
+					$fields .= '<select name="price_list" aria-label="Listino">';
+					foreach ( $lists as $l ) {
+						$fields .= '<option value="' . esc_attr( $l['key'] ) . '">' . esc_html( $l['label'] . ' — ' . Money::format( $l['cents'] ) ) . '</option>';
+					}
+					$fields .= '</select>';
+				}
 				$html .= self::form( 'asem_front_book', self::hidden( 'session_id', $s['id'] ) . $fields, 'Prenotati', false, 'asemf-inline' );
 			}
 		} elseif ( ! empty( $ctx['actor'] ) ) {
@@ -1373,6 +1385,7 @@ final class Views {
 	 * e il pulsante per prenotarsi (soci con tessera valida, anche per i propri ospiti).
 	 */
 	public static function activities( array $atts = array() ): string {
+		self::no_cache();
 		$svc   = Plugin::activities();
 		$label = ! empty( $atts['anno'] ) ? (string) $atts['anno'] : Settings::social_year()->label();
 		$kind  = self::kind_from_text( (string) ( $atts['tipo'] ?? '' ) );
@@ -1431,6 +1444,7 @@ final class Views {
 
 	/** Le prossime date di tutti gli eventi, in ordine di data. */
 	public static function upcoming( array $atts = array() ): string {
+		self::no_cache();
 		$rows = Plugin::activities()->upcoming_sessions( max( 1, min( 50, (int) ( $atts['limite'] ?? 5 ) ) ) );
 		if ( ! $rows ) {
 			return self::wrap( '<p class="asemf-muted">Nessun evento in programma.</p>' );
@@ -1440,7 +1454,7 @@ final class Views {
 		$html  = '<ul class="asemf-list asemf-upcoming">';
 		foreach ( $rows as $s ) {
 			if ( $book ) {
-				$html .= self::session_row( $s, array_merge( $s, array( 'id' => $s['activity_id'] ) ), $ctx, '<div class="asemf-evt">' . esc_html( $s['activity_name'] ) . '</div>' ); // phpcs:ignore WordPress.Security.EscapeOutput
+				$html .= self::session_row( $s, array_merge( $s, array( 'id' => $s['activity_id'] ) ), $ctx, '<div class="asemf-evt">' . esc_html( $s['activity_name'] ) . '</div>' );
 			} else {
 				$html .= '<li><div><div class="asemf-evt">' . esc_html( $s['activity_name'] ) . '</div><strong>' . esc_html( self::date_long( $s['session_date'] ) ) . ( $s['start_time'] ? ' · ore ' . esc_html( $s['start_time'] ) : '' ) . '</strong>'
 					. ( $s['location'] ? '<div class="asemf-small">' . esc_html( $s['location'] ) . '</div>' : '' ) . '</div></li>';

@@ -49,7 +49,7 @@ final class UpdateCheck {
 
 	/** Il controllo è attivo: scelta fatta dall'amministratore, chiave di licenza inserita, sito non locale. */
 	public static function enabled(): bool {
-		return 1 === Limits::get( 'update_notice' ) && '' !== License::key() && ! LicenseClient::is_local();
+		return 1 === Limits::get( 'update_notice' ) && Edition::pro_present() && '' !== License::key() && ! LicenseClient::is_local();
 	}
 
 	/** Ultimo esito salvato. @return array{checked_at:?string,error:string,free?:array,pro?:array} */
@@ -96,7 +96,7 @@ final class UpdateCheck {
 		}
 		$l   = self::latest();
 		$out = array();
-		$set = array( 'free' => array( 'Associazione Semplice', defined( 'ASEM_VERSION' ) ? (string) ASEM_VERSION : '' ) );
+		$set = array();
 		if ( Edition::pro_present() && defined( 'ASEM_PRO_VERSION' ) ) {
 			$set['pro'] = array( 'Associazione Semplice Pro', (string) ASEM_PRO_VERSION );
 		}
@@ -108,8 +108,33 @@ final class UpdateCheck {
 		return $out;
 	}
 
-	/** Dove si scarica: l'indirizzo indicato dal portale (https), altrimenti l'area clienti. */
+	/** Frase per le impostazioni e per l'esito di «Controlla adesso»: ultime versioni note e data dell'ultimo controllo. */
+	public static function summary(): string {
+		if ( 1 !== Limits::get( 'update_notice' ) ) {
+			return 'Avviso aggiornamenti spento (Impostazioni → Tecniche → Limiti e soglie).';
+		}
+		$l = self::latest();
+		if ( ! $l['checked_at'] ) {
+			return 'Aggiornamenti: non ancora controllati.';
+		}
+		$when = mysql2date( 'd/m/Y H:i', (string) $l['checked_at'] );
+		if ( '' !== (string) $l['error'] ) {
+			return 'Aggiornamenti: ultimo controllo del ' . $when . ' non riuscito (' . $l['error'] . ').';
+		}
+		$pending = self::pending();
+		if ( $pending ) {
+			return 'Aggiornamenti: disponibile ' . implode( ', ', array_map( function ( $u ) {
+				return $u['label'] . ' ' . $u['latest'] . ' (hai la ' . $u['installed'] . ')';
+			}, $pending ) ) . '. Controllato il ' . $when . '.';
+		}
+		return 'Aggiornamenti: sei all\'ultima versione. Controllato il ' . $when . '.';
+	}
+
+	/** Dove si scarica: l'indirizzo indicato dal portale solo se è https e del sito del portale, altrimenti l'area clienti. */
 	public static function download_url( array $u ): string {
-		return '' !== $u['url'] ? $u['url'] : (string) apply_filters( 'asem_license_portal_url', 'https://associazionesemplice.it/accedi' );
+		$home = 'https://associazionesemplice.it/accedi';
+		$host = strtolower( (string) wp_parse_url( $u['url'], PHP_URL_HOST ) );
+		$ours = strtolower( (string) wp_parse_url( self::API, PHP_URL_HOST ) );
+		return '' !== $u['url'] && 0 === strpos( $u['url'], 'https://' ) && '' !== $host && $host === $ours ? $u['url'] : (string) apply_filters( 'asem_license_portal_url', $home );
 	}
 }

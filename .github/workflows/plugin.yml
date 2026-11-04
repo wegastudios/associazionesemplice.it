@@ -60,25 +60,6 @@ jobs:
           done
           exit $fail
 
-  smoke:
-    name: Smoke test on real WordPress
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: wordpress
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Start WordPress (wp-env)
-        run: npx --yes @wordpress/env start
-      - name: Run smoke test
-        run: npx --yes @wordpress/env run cli wp eval-file wp-content/plugins/associazionesemplice/tests/smoke.php
-      - name: Debug log
-        if: failure()
-        run: npx --yes @wordpress/env run cli sh -c 'cat wp-content/debug.log 2>/dev/null | tail -50 || true'
-
   free:
     name: Free edition (without the advanced files)
     runs-on: ubuntu-latest
@@ -136,18 +117,20 @@ jobs:
         run: npx --yes @wordpress/env run cli sh -c 'cat wp-content/debug.log 2>/dev/null | tail -50 || true'
 
   package:
-    name: Installable zips (free and Pro)
-    needs: [unit, smoke, free, split]
+    name: Installable zips (WordPress.org and Pro)
+    needs: [unit, free, split]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Build the packages
         run: bash wordpress/build.sh wordpress/dist
+      - name: The free package has no trace of the Pro functions
+        run: bash wordpress/check-free-clean.sh --strict
       - uses: actions/upload-artifact@v4
         with:
           name: associazionesemplice-packages
           path: |
-            wordpress/dist/associazionesemplice-free.zip
+            wordpress/dist/associazionesemplice.zip
             wordpress/dist/associazionesemplice-pro.zip
 
   plugincheck:
@@ -162,3 +145,17 @@ jobs:
         uses: WordPress/plugin-check-action@v1
         with:
           build-dir: wordpress/dist/free/associazionesemplice
+
+  prostatic:
+    name: Pro static check (Plugin Check rules)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          tools: composer
+      - name: Build the packages
+        run: bash wordpress/build.sh wordpress/dist
+      - name: Pro package against the Plugin Check security rules (new findings fail)
+        run: bash wordpress/check-pro-static.sh wordpress/dist/pro/associazionesemplice-pro

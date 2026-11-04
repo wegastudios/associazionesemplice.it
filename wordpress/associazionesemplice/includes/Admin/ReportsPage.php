@@ -1,6 +1,7 @@
 <?php
 namespace AssociazioneSemplice\Admin;
 
+use AssociazioneSemplice\FiscalYears;
 use AssociazioneSemplice\MemberType;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Settings;
@@ -18,6 +19,7 @@ final class ReportsPage {
 		$fiscal = \AssociazioneSemplice\Edition::has( 'fiscal' ); // l'anno solare per il commercialista è della licenza fiscale
 		$mode   = in_array( $mode, array( 'social', 'solar' ), true ) && ( $fiscal || 'solar' !== $mode ) ? $mode : 'liquidity';
 		Ui::header( 'Report' );
+		WatchPage::box_html(); // bilancio provvisorio e avvisi (Pro Fiscale)
 		$tabs = array( 'liquidity' => 'Conti e liquidità', 'social' => 'Anno sociale (attività)' ) + ( $fiscal ? array( 'solar' => 'Anno solare (commercialista)' ) : array() );
 		echo '<h2 class="nav-tab-wrapper">';
 		foreach ( $tabs as $key => $label ) {
@@ -83,11 +85,10 @@ final class ReportsPage {
 	}
 
 	private static function solar(): void {
-		$year = Ui::get_int( 'year', (int) current_time( 'Y' ) );
-		$from = sprintf( '%04d-01-01', $year );
-		$to   = sprintf( '%04d-12-31', $year );
+		$year = Ui::get_int( 'year', FiscalYears::current() );
+		list( $from, $to ) = FiscalYears::range( $year );
 		$r    = Plugin::reports()->period( $from, $to );
-		self::nav( 'solar', $year, 'Anno ' . $year );
+		self::nav( 'solar', $year, ( 1 === FiscalYears::start_month() ? 'Anno ' : 'Esercizio ' ) . FiscalYears::label( $year ) );
 		$fy = \AssociazioneSemplice\FiscalYears::get( $year );
 		echo '<p>' . ( $fy ? ( 'open' === $fy['status'] ? '<span class="asem-ok">Anno aperto</span>' : '<strong class="asem-warn">Anno chiuso</strong>' ) : '<span class="description">Anno non creato</span>' ) . ' · <a href="' . esc_url( Ui::url( 'asem-years' ) ) . '">Anni solari</a></p>';
 		echo '<p>' . Exports::link( 'period', array( 'from' => $from, 'to' => $to ), 'Esporta rendiconto (CSV)' ) . ' ' . Exports::link( 'ledger', array( 'from' => $from, 'to' => $to ), 'Esporta prima nota (CSV)' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput

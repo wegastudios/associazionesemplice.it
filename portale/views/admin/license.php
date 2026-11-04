@@ -12,6 +12,9 @@ $id    = e( $sub['id'] );
 		<?php if ( $key ) : ?>
 			<label style="margin-top:0">Chiave di licenza</label>
 			<div class="keybox"><code><?php echo e( $key ); ?></code><button class="btn alt small" type="button" data-copy="<?php echo e( $key ); ?>">Copia</button></div>
+		<?php elseif ( ! empty( $sub['license_id'] ) ) : ?>
+			<p class="muted">Il portale non conserva la chiave di questa licenza (importata da Wega o persa).</p>
+			<form method="post" action="/admin/licenze/<?php echo $id; ?>/chiave"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><button class="btn alt small" type="submit">Recupera la chiave da Wega</button></form>
 		<?php endif; ?>
 		<div class="sep"></div>
 		<dl class="dl">
@@ -46,7 +49,6 @@ $id    = e( $sub['id'] );
 		<div class="sep"></div>
 		<form method="post" action="/admin/licenze/<?php echo $id; ?>/rinnova" onsubmit="return confirm('Aggiungere un periodo alla licenza?')">
 			<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>">
-			<p class="muted" style="margin:0 0 10px">Aggiunge alla scadenza un periodo (la durata della licenza), senza incasso: per regali, rimborsi o accordi fuori dal portale.</p>
 			<label class="check" style="margin-top:0"><input type="checkbox" name="notify" value="1"> Avvisa il cliente con l'email «Rinnovo ricevuto»</label>
 			<div class="row-actions"><button class="btn alt" type="submit">Rinnova di un periodo</button></div>
 		</form>

@@ -6,11 +6,22 @@ final class Stripe {
 
 	const API = 'https://api.stripe.com/v1';
 
-	/** @return string indirizzo del pagamento ospitato da Stripe */
-	public static function checkoutUrl( string $subscriptionId, string $email, string $priceId ): string {
-		$r = self::call( 'POST', '/checkout/sessions', array(
+	/**
+	 * @param int    $cents    importo, usato quando non c'è un prezzo già creato su Stripe (il prezzo ricorrente si crea da solo)
+	 * @param string $interval `month` o `year`
+	 * @return string indirizzo del pagamento ospitato da Stripe
+	 */
+	public static function checkoutUrl( string $subscriptionId, string $email, string $priceId, int $cents = 0, string $interval = 'month', string $name = '' ): string {
+		$line = '' !== $priceId
+			? array( 'line_items[0][price]' => $priceId )
+			: array(
+				'line_items[0][price_data][currency]'            => 'eur',
+				'line_items[0][price_data][unit_amount]'         => $cents,
+				'line_items[0][price_data][recurring][interval]' => 'year' === $interval ? 'year' : 'month',
+				'line_items[0][price_data][product_data][name]'  => '' !== $name ? $name : 'Associazione Semplice',
+			);
+		$r = self::call( 'POST', '/checkout/sessions', $line + array(
 			'mode'                                 => 'subscription',
-			'line_items[0][price]'                 => $priceId,
 			'line_items[0][quantity]'              => 1,
 			'customer_email'                       => $email,
 			'client_reference_id'                  => $subscriptionId,
@@ -42,6 +53,30 @@ final class Stripe {
 			throw new \RuntimeException( 'Stripe non ha restituito l\'indirizzo di pagamento.' );
 		}
 		return (string) $r['url'];
+	}
+
+	/** Cambia il prezzo di un abbonamento dal prossimo addebito, senza calcoli proporzionali né addebiti immediati (la differenza si incassa a parte). */
+	public static function switchPrice( string $stripeSubscription, string $priceId, int $cents = 0, string $interval = 'month' ): void {
+		$sub  = self::call( 'GET', '/subscriptions/' . rawurlencode( $stripeSubscription ), array() );
+		$item = (string) ( $sub['items']['data'][0]['id'] ?? '' );
+		if ( '' === $priceId && $cents > 0 && ! empty( $sub['items']['data'][0]['price']['product'] ) ) {
+			// Nessun prezzo creato a mano: se ne crea uno con l'importo del piano, sullo stesso prodotto dell'abbonamento.
+			$new     = self::call( 'POST', '/prices', array(
+				'currency'           => 'eur',
+				'unit_amount'        => $cents,
+				'recurring[interval]' => 'year' === $interval ? 'year' : 'month',
+				'product'            => (string) $sub['items']['data'][0]['price']['product'],
+			) );
+			$priceId = (string) ( $new['id'] ?? '' );
+		}
+		if ( '' === $item || '' === $priceId ) {
+			throw new \RuntimeException( 'Stripe: abbonamento o prezzo non trovato per il cambio piano.' );
+		}
+		self::call( 'POST', '/subscriptions/' . rawurlencode( $stripeSubscription ), array(
+			'items[0][id]'       => $item,
+			'items[0][price]'    => $priceId,
+			'proration_behavior' => 'none',
+		) );
 	}
 
 	public static function portalUrl( string $stripeCustomer ): string {
@@ -86,6 +121,9 @@ final class Stripe {
 	}
 
 	private static function call( string $method, string $path, array $form ): array {
+		if ( null !== Config::get( 'stripe.live', null ) && Settings::stripeLive() !== (bool) preg_match( '/^(sk|rk)_live_/', (string) Config::get( 'stripe.secret_key', '' ) ) ) {
+			throw new UserError( 'La modalità di Stripe scelta in Pagamenti non corrisponde alla chiave inserita: correggila prima di incassare.' );
+		}
 		$headers = array( 'Authorization: Bearer ' . Config::get( 'stripe.secret_key' ), 'Content-Type: application/x-www-form-urlencoded' );
 		list( $status, $raw ) = Http::send( $method, self::API . $path, $headers, http_build_query( $form ) );
 		$data = json_decode( $raw, true );

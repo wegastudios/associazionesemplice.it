@@ -5,6 +5,7 @@ use AssociazioneSemplice\Labels;
 use AssociazioneSemplice\MemberType;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Settings;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -16,6 +17,32 @@ final class IncomePage {
 
 	public static function register_ajax(): void {
 		add_action( 'wp_ajax_asem_person_context', array( __CLASS__, 'ajax_context' ) );
+		add_action( 'wp_ajax_asem_quick_person', array( __CLASS__, 'ajax_new_person' ) );
+	}
+
+	/** Nuova persona creata dal modulo di incasso senza lasciare la pagina: nome, cognome e, se servono, email e cellulare. */
+	public static function ajax_new_person(): void {
+		check_ajax_referer( 'asem_income', 'nonce' );
+		if ( ! current_user_can( Plugin::CAP_OPS ) ) {
+			wp_send_json_error( 'Non autorizzato', 403 );
+		}
+		$in   = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
+		$type = 'guest' === (string) ( $in['type'] ?? '' ) ? MemberType::GUEST : MemberType::ORDINARY;
+		try {
+			$id = Plugin::people()->create(
+				array(
+					'type'       => $type,
+					'first_name' => sanitize_text_field( (string) ( $in['first_name'] ?? '' ) ),
+					'last_name'  => sanitize_text_field( (string) ( $in['last_name'] ?? '' ) ),
+					'email'      => sanitize_email( (string) ( $in['email'] ?? '' ) ),
+					'phone'      => sanitize_text_field( (string) ( $in['phone'] ?? '' ) ),
+				)
+			);
+		} catch ( \InvalidArgumentException $e ) {
+			wp_send_json_error( $e->getMessage(), 400 );
+		}
+		$p = Plugin::people()->get( $id );
+		wp_send_json_success( array( 'id' => $id, 'label' => $p ? Ui::person_label( $p ) : '' ) );
 	}
 
 	/** Contesto di una persona per l'incasso: tessera, attività a cui è iscritta e primo mese da pagare. */
@@ -24,7 +51,7 @@ final class IncomePage {
 		if ( ! current_user_can( Plugin::CAP_OPS ) ) {
 			wp_send_json_error( 'Non autorizzato', 403 );
 		}
-		$person = Plugin::people()->get( (int) ( $_POST['person_id'] ?? 0 ) ); // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- valore verificato e ripulito da chi lo usa
+		$person = Plugin::people()->get( isset( $_POST['person_id'] ) ? absint( $_POST['person_id'] ) : 0 ); // phpcs:ignore WordPress.Security.NonceVerification
 		$date   = isset( $_POST['date'] ) ? sanitize_text_field( wp_unslash( $_POST['date'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
 		if ( ! preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $date, $dm ) || ! checkdate( (int) $dm[2], (int) $dm[3], (int) $dm[1] ) ) {
 			$date = current_time( 'Y-m-d' ); // data mancante o non valida: oggi
@@ -33,7 +60,7 @@ final class IncomePage {
 			wp_send_json_success( array( 'person' => null ) );
 		}
 		$sy    = Settings::social_year( $date )->label();
-		$until = MemberType::GUEST === $person['type'] ? null : Plugin::people()->active_until( (int) $person['id'], $date );
+		$until = ! MemberType::is_member( $person['type'] ) ? null : Plugin::people()->active_until( (int) $person['id'], $date );
 		$acts  = array();
 		foreach ( Plugin::activities()->active_activity_ids( (int) $person['id'] ) as $aid ) {
 			$a = Plugin::activities()->get( $aid );
@@ -61,11 +88,15 @@ final class IncomePage {
 				}
 			}
 		}
+		$m_plan    = Plugin::people()->membership_plan( (int) $person['id'], $date );
+		$m_missing = Plugin::people()->membership_missing( $person, $m_plan['year'] );
+		$m_paid    = $m_missing > 0 ? Plugin::people()->membership_paid( (int) $person['id'], $m_plan['year'] ) : 0;
 		wp_send_json_success(
 			array(
 				'person'           => array( 'id' => (int) $person['id'], 'type' => $person['type'], 'type_label' => \AssociazioneSemplice\Levels::label( $person ) ),
 				'is_guest'         => MemberType::GUEST === $person['type'],
-				'is_founder'       => MemberType::is_auto_renewed( $person['type'] ),
+				'is_member'        => MemberType::is_member( $person['type'] ),
+				'is_founder'       =>MemberType::is_auto_renewed( $person['type'] ),
 				'active_until'     => $until,
 				'needs_membership' => in_array( $person['type'], array( MemberType::ORDINARY, MemberType::VOLUNTEER ), true ) && ( ! $until || $until < $date ),
 				'social_year'      => $sy,
@@ -74,7 +105,9 @@ final class IncomePage {
 				'dues'             => $dues,
 				'membership'       => Plugin::people()->membership_plan( (int) $person['id'], $date ),
 				'suspended'        => Plugin::people()->is_suspended( (int) $person['id'] ),
-				'membership_fee'   => \AssociazioneSemplice\Levels::fee_for( $person ),
+				'membership_fee'   => $m_missing > 0 ? $m_missing : \AssociazioneSemplice\Levels::fee_for( $person ), // a rate: si precompila il residuo
+				'membership_paid'  => $m_paid,
+				'membership_missing' => $m_missing,
 			)
 		);
 	}
@@ -112,10 +145,11 @@ final class IncomePage {
 			'yearEnd'       => Settings::membership_year( $today )->end()->format( 'Y-m-d' ),
 			'autofill'      => 1 === Ui::get_int( 'due' ),
 			'accountTypes'  => $account_types,
+			'guests'        => Settings::guests_enabled() ? 1 : 0,
 		);
 
 		Ui::header( 'Nuovo incasso' );
-		echo '<script type="application/json" id="asem-income-data">' . wp_json_encode( $data, JSON_HEX_TAG | JSON_HEX_AMP ) . '</script>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		wp_print_inline_script_tag( (string) wp_json_encode( $data, JSON_HEX_TAG | JSON_HEX_AMP ), array( 'type' => 'application/json', 'id' => 'asem-income-data' ) );
 		Ui::form_open( 'asem_save_income', Ui::url( 'asem-income' ), false, 'asem-income' );
 		echo '<table class="form-table asem-form"><tbody>';
 		echo '<tr><th>Data</th><td><input type="date" name="date" id="asem-date" value="' . esc_attr( $today ) . '" required></td></tr>';
@@ -124,10 +158,10 @@ final class IncomePage {
 		foreach ( $accounts as $a ) {
 			$acc_map[ $a['id'] ] = $a['name'];
 		}
-		echo '<select name="account_id" id="asem-account">' . Ui::options( $acc_map, $default_account ? $default_account['id'] : null ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<tr><th>Da chi</th><td>' . Ui::person_select( 'person_id', Plugin::people()->search(), Ui::get_int( 'person_id' ) ?: null, '— nessuno / anonimo —', 'asem-person-select' ) // phpcs:ignore WordPress.Security.EscapeOutput
-			. ' <a href="' . esc_url( Ui::url( 'asem-person', array( 'type' => 'ordinary' ) ) ) . '" target="_blank">+ nuovo socio</a>'
-			. '<div id="asem-person-info" class="asem-info"></div></td></tr>';
+		echo wp_kses( '<select name="account_id" id="asem-account">' . Ui::options( $acc_map, $default_account ? $default_account['id'] : null ) . '</select></td></tr>', Html::allowed() );
+		echo wp_kses( '<tr><th>Da chi</th><td>' . Ui::person_select( 'person_id', Plugin::people()->search(), Ui::get_int( 'person_id' ) ?: null, '— nessuno / anonimo —', 'asem-person-select' )
+			. ' <button type="button" class="button" id="asem-new-person">+ nuovo socio</button>'
+			. '<div id="asem-person-info" class="asem-info"></div></td></tr>', Html::allowed() );
 		echo '</tbody></table>';
 
 		echo '<h2>Voci</h2><div id="asem-lines"></div>';
@@ -143,7 +177,7 @@ final class IncomePage {
 			. '<p id="asem-quick"></p><p id="asem-change" class="asem-change"></p></div>';
 		$vat = Ui::vat_row( null, \AssociazioneSemplice\Fiscal::default_mode(), 'Gli importi', true );
 		if ( '' !== $vat ) {
-			echo '<table class="form-table"><tbody>' . $vat . '</tbody></table>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( '<table class="form-table"><tbody>' . $vat . '</tbody></table>', Html::allowed() );
 		}
 		echo '<p><label>N. ricevuta (facoltativo) <input type="text" name="document_ref" maxlength="80"></label></p>';
 		submit_button( 'Registra incasso' );

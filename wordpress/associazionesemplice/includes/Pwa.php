@@ -22,8 +22,11 @@ final class Pwa {
 		add_action( 'init', array( __CLASS__, 'maybe_serve' ), 0 );
 		add_action( 'wp_head', array( __CLASS__, 'print_head' ), 1 );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue' ) );
+		add_action( 'asem_member_access_forgotten', array( __CLASS__, 'forget_member' ), 10, 2 ); // eliminando la persona si tolgono le sue notifiche
 		add_action( 'wp_ajax_asem_push_subscribe', array( __CLASS__, 'ajax_subscribe' ) );
 		add_action( 'wp_ajax_asem_push_unsubscribe', array( __CLASS__, 'ajax_unsubscribe' ) );
+		add_action( 'wp_ajax_nopriv_asem_push_subscribe', array( __CLASS__, 'ajax_subscribe' ) ); // chi è entrato con l'accesso proprio non è un utente WordPress
+		add_action( 'wp_ajax_nopriv_asem_push_unsubscribe', array( __CLASS__, 'ajax_unsubscribe' ) );
 	}
 
 	// ---------- Indirizzi ----------
@@ -86,7 +89,7 @@ final class Pwa {
 			default:
 				$size = 'asem-icon-512.png' === $route ? 512 : 192;
 				$rgb  = Png::rgb( self::theme_color() );
-				return array( 'status' => 200, 'type' => 'image/png', 'body' => Png::solid( $size, $size, $rgb[0], $rgb[1], $rgb[2] ), 'headers' => array( 'Cache-Control' => 'public, max-age=86400' ) );
+				return array( 'status' => 200, 'type' => 'image/png', 'body' => Png::initial( $size, $rgb, self::app_name() ), 'headers' => array( 'Cache-Control' => 'public, max-age=86400' ) );
 		}
 	}
 
@@ -127,11 +130,15 @@ final class Pwa {
 		$meta  = $id > 0 ? wp_get_attachment_metadata( $id ) : null;
 		$w     = is_array( $meta ) && ! empty( $meta['width'] ) ? (int) $meta['width'] : 0;
 		$h     = is_array( $meta ) && ! empty( $meta['height'] ) ? (int) $meta['height'] : 0;
+		// L'icona generata dal plugin ha il carattere nella zona sicura: può essere ritagliata (maskable) da Android senza perdere nulla.
+		$own   = $id > 0 && wp_get_attachment_url( $id );
+		$site  = function_exists( 'get_site_icon_url' ) ? get_site_icon_url( 192 ) : '';
+		$mask  = ! $own && '' === $site ? 'any maskable' : 'any';
 		$icons = $w >= 192 && $h >= 192
 			? array( array( 'src' => self::icon_url( 512 ), 'sizes' => $w . 'x' . $h, 'type' => 'image/png', 'purpose' => 'any' ) )
 			: array(
-				array( 'src' => self::icon_url( 192 ), 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any' ),
-				array( 'src' => self::icon_url( 512 ), 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any' ),
+				array( 'src' => self::icon_url( 192 ), 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => $mask ),
+				array( 'src' => self::icon_url( 512 ), 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => $mask ),
 			);
 		return array(
 			'name'             => self::app_name(),
@@ -174,6 +181,7 @@ self.addEventListener('fetch', function (e) {
 	if (req.method !== 'GET') { return; }
 	var url = new URL(req.url);
 	if (req.mode === 'navigate') {
+		if (url.pathname.indexOf('/wp-admin') !== -1 || url.pathname.indexOf('wp-login.php') !== -1) { return; } // il gestionale e l'accesso a WordPress non sono l'app dei soci: errori e attese restano quelli del browser
 		e.respondWith(fetch(req).catch(function () { return caches.match(OFFLINE); }));
 		return;
 	}
@@ -221,9 +229,9 @@ JS;
 		$name = esc_html( self::app_name() );
 		$col  = esc_attr( self::theme_color() );
 		return '<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sei offline</title>'
-			. '<style>body{font-family:system-ui,sans-serif;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;color:#1d2327}'
-			. 'h1{font-size:1.4rem;margin:.2em 0}p{color:#50575e}.dot{width:56px;height:56px;border-radius:50%;background:' . $col . ';margin:0 auto 16px}</style></head>'
-			. '<body><main><div class="dot"></div><h1>Sei offline</h1><p>' . $name . ' ha bisogno di una connessione per mostrarti i tuoi dati. Riprova non appena sei di nuovo online.</p></main></body></html>';
+			. '</head><body style="font-family:system-ui,sans-serif;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;color:#1d2327">'
+			. '<main><img src="' . esc_url( self::icon_url( 192 ) ) . '" alt="" width="72" height="72" style="border-radius:16px;margin:0 auto 16px;display:block"><h1 style="font-size:1.4rem;margin:.2em 0">Sei offline</h1><p style="color:#50575e;max-width:30em">' . $name . ' ha bisogno di una connessione per mostrarti i tuoi dati. Appena sei di nuovo online puoi riprovare.</p>'
+			. '<button type="button" onclick="location.reload()" style="margin-top:12px;min-height:48px;padding:0 28px;border:0;border-radius:10px;background:' . $col . ';color:' . ( Png::is_light( Png::rgb( self::theme_color() ) ) ? '#1d2327' : '#fff' ) . ';font:inherit;font-weight:600">Riprova</button></main></body></html>';
 	}
 
 	// ---------- Pagine del sito ----------
@@ -252,9 +260,9 @@ JS;
 				'sw'    => self::url( 'asem-sw.js' ),
 				'scope' => home_url( '/' ),
 				'ajax'  => admin_url( 'admin-ajax.php' ),
-				'nonce' => is_user_logged_in() ? wp_create_nonce( 'asem_push' ) : '',
-				'push'  => Push::enabled() && is_user_logged_in(),
-				'vapid' => Push::enabled() && is_user_logged_in() ? Push::public_key() : '',
+				'nonce' => MemberSession::logged_in() ? Csrf::create( 'asem_push' ) : '',
+				'push'  => Push::enabled() && MemberSession::logged_in(),
+				'vapid' => Push::enabled() && MemberSession::logged_in() ? Push::public_key() : '',
 			)
 		);
 	}
@@ -262,11 +270,11 @@ JS;
 	// ---------- Dispositivi ----------
 
 	private static function ajax_guard(): int {
-		check_ajax_referer( 'asem_push', 'nonce' );
-		if ( ! is_user_logged_in() || ! Push::enabled() ) {
+		Csrf::check_ajax( 'asem_push', 'nonce' );
+		if ( ! MemberSession::logged_in() || ! Push::enabled() ) {
 			wp_send_json_error( array( 'message' => 'Le notifiche non sono attive.' ), 403 );
 		}
-		return get_current_user_id();
+		return MemberSession::actor_key(); // l'utente WordPress oppure, con l'accesso proprio, il numero legato alla persona
 	}
 
 	public static function ajax_subscribe(): void {
@@ -287,5 +295,10 @@ JS;
 		$uid = self::ajax_guard();
 		Push::unsubscribe( $uid, (string) wp_unslash( $_POST['endpoint'] ?? '' ) ); // phpcs:ignore WordPress.Security
 		wp_send_json_success( array( 'subscribed' => false ) );
+	}
+
+	/** Toglie le notifiche di chi entrava con l'accesso proprio quando la persona viene eliminata o anonimizzata. */
+	public static function forget_member( int $person_id, int $actor_key ): void {
+		Push::unsubscribe_all( $actor_key );
 	}
 }

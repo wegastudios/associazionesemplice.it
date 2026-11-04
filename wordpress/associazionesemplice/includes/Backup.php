@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
 final class Backup {
 
 	const OPT_LAST   = 'asem_backup_last';
-	const OPT_NAMES  = array( 'asem_texts', 'asem_card_salt', 'asem_ical_salt', 'asem_access_requests' );
+	const OPT_NAMES  = array( 'asem_texts', 'asem_access_requests', 'asem_convention_categories' );
 	const KEEP       = 3;
 	const CHUNK      = 1000;
 	const MAX_ENTRY  = 1073741824; // 1 GB per file dentro lo zip
@@ -81,7 +81,11 @@ final class Backup {
 		$prefix = $db->prefix . 'asem_';
 		$out    = array();
 		foreach ( $db->get_col( $db->prepare( 'SHOW TABLES LIKE %s', $db->esc_like( $prefix ) . '%' ) ) ?: array() as $t ) {
-			$out[] = substr( (string) $t, strlen( $db->prefix ) );
+			$name = substr( (string) $t, strlen( $db->prefix ) );
+			if ( in_array( $name, array( 'asem_member_sessions', 'asem_member_challenges' ), true ) ) {
+				continue; // sessioni e codici di accesso non vanno nelle copie: un ripristino non deve riaprire accessi già chiusi
+			}
+			$out[] = $name;
 		}
 		sort( $out );
 		return $out;
@@ -89,9 +93,10 @@ final class Backup {
 
 	private static function settings_payload(): array {
 		$s = Settings::all();
-		foreach ( Settings::SECRET_KEYS as $k ) {
+		foreach ( Settings::secret_keys() as $k ) {
 			unset( $s[ $k ] ); // le chiavi dei gateway restano sul sito
 		}
+		unset( $s['license_key'] ); // la chiave di licenza è di questo sito: una copia vecchia non la sovrascrive
 		$opts = array();
 		foreach ( self::OPT_NAMES as $n ) {
 			$opts[ $n ] = get_option( $n, null );
@@ -301,9 +306,10 @@ final class Backup {
 		$p   = $raw ? json_decode( $raw, true ) : null;
 		if ( is_array( $p ) ) {
 			$new = is_array( $p['settings'] ?? null ) ? $p['settings'] : array();
-			foreach ( Settings::SECRET_KEYS as $k ) {
+			foreach ( Settings::secret_keys() as $k ) {
 				unset( $new[ $k ] ); // le chiavi segrete restano quelle del sito (e Settings::update le lascia com'è)
 			}
+			unset( $new['license_key'] ); // la chiave di licenza resta quella del sito
 			Settings::update( $new ); // passa dai controlli delle impostazioni: una copia modificata non può inserire valori fuori regola
 			foreach ( self::OPT_NAMES as $n ) {
 				if ( isset( $p['options'][ $n ] ) && null !== $p['options'][ $n ] ) {
@@ -342,6 +348,16 @@ final class Backup {
 	}
 
 	private static function send_zip( string $path, string $filename, bool $delete ): void {
+		if ( $delete ) { // anche se il browser interrompe lo scarico la copia temporanea, con tutti i dati dei soci, non resta sul disco
+			ignore_user_abort( true );
+			register_shutdown_function(
+				function () use ( $path ) {
+					if ( is_file( $path ) ) {
+						wp_delete_file( $path );
+					}
+				}
+			);
+		}
 		while ( ob_get_level() ) {
 			ob_end_clean();
 		}
@@ -362,7 +378,7 @@ final class Backup {
 			wp_die( 'Non autorizzato.', 403 );
 		}
 		check_admin_referer( 'asem_backup' );
-		$with = isset( $_GET['files'] ) && '1' === (string) $_GET['files']; // phpcs:ignore WordPress.Security
+		$with = isset( $_GET['files'] ) && 1 === absint( $_GET['files'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- nonce controllato sopra con check_admin_referer()
 		try {
 			$path = self::export( $with );
 		} catch ( \RuntimeException $e ) {

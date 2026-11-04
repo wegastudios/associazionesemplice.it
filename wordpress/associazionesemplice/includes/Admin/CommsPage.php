@@ -5,15 +5,16 @@ use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Privacy;
 use AssociazioneSemplice\Reminders;
 use AssociazioneSemplice\Settings;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Impostazioni → Promemoria, privacy, regolamento e ricevute. */
+/** Impostazioni → Promemoria, privacy e regolamento. */
 final class CommsPage {
 
 	public static function render(): void {
 		$s = Settings::all();
-		Ui::header( 'Promemoria, privacy, regolamento e ricevute' );
+		Ui::header( (string) apply_filters( 'asem_comms_page_title', 'Promemoria, privacy e regolamento' ) );
 		Ui::form_open( 'asem_save_comms', Ui::url( 'asem-comms' ) );
 		echo '<h2>Promemoria per email</h2><p class="description">Ogni giorno il sito invia i promemoria ai soci. Sono disattivati finché non li attivi. Chi non ha un indirizzo email (un ospite) riceve il messaggio tramite il socio che lo ospita; ogni promemoria viene inviato una sola volta.</p>';
 		echo '<table class="form-table"><tbody>';
@@ -22,11 +23,15 @@ final class CommsPage {
 			. '— avvisa <input type="number" min="1" max="120" name="reminders_membership_days" value="' . (int) $s['reminders_membership_days'] . '" style="width:70px"> giorni prima</td></tr>';
 		echo '<tr><th>Mensilità dei corsi</th><td><label><input type="checkbox" name="reminders_dues" value="1"' . checked( ! empty( $s['reminders_dues'] ), true, false ) . '> Rinnovo dei corsi mensili</label> <span class="description">Dopo l\'ultima lezione del mese si ricorda a chi non ha ancora pagato il mese dopo (i corsi si rinnovano a inizio mese). Senza orari di lezione, dal 25 del mese. Un messaggio per persona, corso e mese.</span></td></tr>';
 		echo '<tr><th>Eventi</th><td><label><input type="checkbox" name="reminders_events" value="1"' . checked( ! empty( $s['reminders_events'] ), true, false ) . '> Promemoria il giorno prima a chi è prenotato</label></td></tr>';
+		echo '<tr><th>Votazioni</th><td><label><input type="checkbox" name="reminders_polls" value="1"' . checked( ! empty( $s['reminders_polls'] ), true, false ) . '> Avviso di apertura e promemoria prima della chiusura</label> <span class="description">Solo per le votazioni con «Avvisa i soci per email» e solo a chi non ha ancora votato.</span></td></tr>';
+		echo '<tr><th>Prestiti</th><td><label><input type="checkbox" name="reminders_loans" value="1"' . checked( ! empty( $s['reminders_loans'] ), true, false ) . '> Rientro scaduto di un bene in prestito</label></td></tr>';
 		echo '</tbody></table>';
 
 		echo '<h2>Privacy</h2><table class="form-table"><tbody>';
 		echo '<tr><th>Pagina dell\'informativa</th><td><input type="url" name="privacy_url" value="' . esc_attr( (string) $s['privacy_url'] ) . '" class="regular-text" placeholder="https://…/privacy">'
 			. '<p class="description">Se la indichi, chi attiva il proprio accesso deve accettarla e il consenso viene registrato. Per gli altri soci registri il consenso dalla loro scheda (modulo cartaceo, a voce…).</p></td></tr>';
+		echo '<tr><th>Altri cookie del sito</th><td><textarea name="privacy_extra_cookies" rows="4" class="large-text" placeholder="_ga — statistiche anonime di Google Analytics">' . esc_textarea( (string) $s['privacy_extra_cookies'] ) . '</textarea>'
+			. '<p class="description">Il plugin dichiara da solo i suoi cookie. Se il sito ne usa altri (statistiche, mappe, video, negozio…), scrivili qui, uno per riga, con il nome e a cosa servono: compariranno nell\'informativa. Per sapere quali cookie usa davvero il tuo sito puoi servirti di uno scanner esterno. I cookie non tecnici richiedono il consenso dei visitatori.</p></td></tr>';
 		echo '<tr><th>Email per la privacy</th><td><input type="email" name="privacy_email" value="' . esc_attr( (string) $s['privacy_email'] ) . '" class="regular-text" placeholder="privacy@…">'
 			. '<p class="description">L\'indirizzo a cui scrivere per esercitare i diritti: compare nell\'informativa. Se lo lasci vuoto si usa la PEC dell\'ente.</p></td></tr>';
 		echo '<tr><th>Ex soci da anonimizzare</th><td>dopo <input type="number" min="1" max="30" name="privacy_retention_years" value="' . (int) $s['privacy_retention_years'] . '" style="width:70px"> anni di inattività<p class="description">Tempo oltre il quale proponi di togliere i dati personali di chi non partecipa più. Decidi tu caso per caso: i movimenti contabili restano.</p></td></tr>';
@@ -40,11 +45,7 @@ final class CommsPage {
 		echo '<tr><th>Versione</th><td><input type="text" name="rules_version" value="' . esc_attr( (string) $s['rules_version'] ) . '" maxlength="20" style="width:120px"><p class="description">Quando modifichi il regolamento cambia la versione (ad esempio 2): tutti i soci dovranno accettarlo di nuovo.</p></td></tr>';
 		echo '<tr><th>Prenotazioni</th><td><label><input type="checkbox" name="rules_block_booking" value="1"' . checked( ! empty( $s['rules_block_booking'] ), true, false ) . '> Senza accettazione il socio non può prenotare</label></td></tr>';
 		echo '</tbody></table>';
-
-		echo '<h2>Ricevute</h2><table class="form-table"><tbody>';
-		echo '<tr><th>Riga in fondo alla ricevuta</th><td><textarea name="receipt_footer" rows="2" class="large-text" maxlength="300">' . esc_textarea( (string) $s['receipt_footer'] ) . '</textarea>'
-			. '<p class="description">Facoltativa: ad esempio il riferimento normativo che il tuo consulente ti indica per le quote associative. Le ricevute le trovi accanto a ogni incasso della Prima nota e nella scheda del socio; i soci le scaricano dalla loro area.</p></td></tr>';
-		echo '</tbody></table>';
+		do_action( 'asem_comms_sections', $s ); // le estensioni aggiungono qui le loro sezioni
 		submit_button( 'Salva' );
 		Ui::form_close();
 
@@ -60,12 +61,12 @@ final class CommsPage {
 		Ui::form_open( 'asem_create_privacy_page', Ui::url( 'asem-comms' ), false, 'asem-inline' );
 		echo '<button class="button">Crea la pagina «Informativa privacy» sul sito</button>';
 		Ui::form_close();
-		echo '</p><details><summary><strong>Anteprima dell\'informativa</strong></summary><div style="max-width:820px;background:#fff;padding:12px 20px;border:1px solid #c3c4c7">' . \AssociazioneSemplice\PrivacyNotice::html() . '</div></details>'; // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto da PrivacyNotice
+		echo wp_kses( '</p><details><summary><strong>Anteprima dell\'informativa</strong></summary><div style="max-width:820px;background:#fff;padding:12px 20px;border:1px solid #c3c4c7">' . \AssociazioneSemplice\PrivacyNotice::html() . '</div></details>', Html::allowed() );
 
 		// Promemoria: anteprima e invio manuale
 		echo '<h2>Promemoria di oggi</h2>';
 		$prev = Reminders::run( null, false );
-		echo '<p>Da mandare adesso: <strong>' . (int) $prev['membership'] . '</strong> per la tessera · <strong>' . (int) $prev['dues'] . '</strong> per le mensilità · <strong>' . (int) $prev['events'] . '</strong> per gli eventi di domani. ';
+		echo '<p>Da mandare adesso: <strong>' . (int) $prev['membership'] . '</strong> per la tessera · <strong>' . (int) $prev['dues'] . '</strong> per le mensilità · <strong>' . (int) $prev['events'] . '</strong> per gli eventi di domani · <strong>' . (int) $prev['polls'] . '</strong> per le votazioni · <strong>' . (int) $prev['loans'] . '</strong> per i prestiti scaduti. ';
 		$last = Reminders::last_run();
 		echo $last ? '<span class="description">Ultimo invio: ' . esc_html( mysql2date( 'd/m/Y H:i', $last['at'] ) ) . '.</span>' : '<span class="description">Nessun invio finora.</span>';
 		echo '</p>';
@@ -89,7 +90,7 @@ final class CommsPage {
 			foreach ( $cands as $c ) {
 				echo '<li><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $c['id'] ) ) ) . '">' . esc_html( $c['name'] ) . '</a> <span class="description">ultima attività ' . esc_html( Ui::date( $c['last_seen'] ) ) . '</span> ';
 				Ui::form_open( 'asem_privacy_anonymize', Ui::url( 'asem-comms' ), false, 'asem-inline' );
-				echo Ui::hidden( 'id', $c['id'] ) . '<button class="button button-small" data-confirm="Anonimizzare ' . esc_attr( $c['name'] ) . '? I suoi dati personali vengono tolti e non si possono recuperare.">Anonimizza</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				echo wp_kses( Ui::hidden( 'id', $c['id'] ) . '<button class="button button-small" data-confirm="Anonimizzare ' . esc_attr( $c['name'] ) . '? I suoi dati personali vengono tolti e non si possono recuperare.">Anonimizza</button>', Html::allowed() );
 				Ui::form_close();
 				echo '</li>';
 			}

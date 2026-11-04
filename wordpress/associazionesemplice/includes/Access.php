@@ -47,14 +47,15 @@ final class Access {
 		}
 		$me = (int) $actor['id'];
 		switch ( $ability ) {
-			case 'asem_view_person':
 			case 'asem_edit_own_profile':
-			case 'asem_view_payments':
 				return (int) ( $ctx['person_id'] ?? 0 ) === $me;
+			case 'asem_view_person':
+			case 'asem_view_payments':
+				return (int) ( $ctx['person_id'] ?? 0 ) === $me || ! empty( $ctx['is_guardian'] );
 			case 'asem_add_guest':
 				return (int) ( $ctx['person_id'] ?? 0 ) === $me && MemberType::is_member( (string) $actor['type'] );
 			case 'asem_book_for':
-				return MemberType::is_member( (string) $actor['type'] ) && ( (int) ( $ctx['person_id'] ?? 0 ) === $me || (int) ( $ctx['host_person_id'] ?? 0 ) === $me );
+				return MemberType::can_login( (string) $actor['type'] ) && ( (int) ( $ctx['person_id'] ?? 0 ) === $me || (int) ( $ctx['host_person_id'] ?? 0 ) === $me || ! empty( $ctx['is_guardian'] ) );
 			case 'asem_manage_event':
 				return MemberType::is_member( (string) $actor['type'] ) && ( self::is_instructor( $actor, $ctx ) || ! empty( $ctx['is_staff'] ) || ! empty( $ctx['is_entity_staff'] ) ); // referente, staff dell'evento o staff dell'ente (su tutti gli eventi)
 			case 'asem_door_cash': // referente, staff dell'evento con l'incasso abilitato, tesoriere (vendita degli eventi)
@@ -119,6 +120,10 @@ final class Access {
 		if ( ! in_array( $cap, self::ABILITIES, true ) ) {
 			return $caps;
 		}
+		if ( 0 === (int) $user_id ) { // nessun utente WordPress: vale l'accesso proprio dei soci, se c'è
+			$p = MemberSession::session_person();
+			return $p && Edition::allows( 'member_area' ) && self::person_can( $p, 0, $cap, (int) ( $args[0] ?? 0 ) ) ? array( 'exist' ) : array( 'do_not_allow' );
+		}
 		return self::user_can( (int) $user_id, $cap, (int) ( $args[0] ?? 0 ) ) ? array( 'exist' ) : array( 'do_not_allow' );
 	}
 
@@ -134,8 +139,9 @@ final class Access {
 		return $row ?: null;
 	}
 
+	/** Chi sta navigando: la persona dell'utente WordPress collegato oppure, senza utente, quella dell'accesso proprio. */
 	public static function current_person(): ?array {
-		return self::person_for_user( get_current_user_id() );
+		return is_user_logged_in() ? self::person_for_user( get_current_user_id() ) : MemberSession::session_person();
 	}
 
 	const TREASURER_META = 'asem_treasurer';
@@ -153,6 +159,31 @@ final class Access {
 		}
 	}
 
+	/**
+	 * L'utente corrente può aprire questo documento dell'archivio? La segreteria sempre; il pubblico i documenti «Pubblico»;
+	 * i soci in regola anche quelli «Soci». Ogni download passa da qui.
+	 */
+	public static function can_read_document( array $doc ): bool {
+		$uid    = get_current_user_id();
+		$staff  = $uid > 0 && self::is_admin_user( $uid );
+		$member = false;
+		if ( ! $staff && DocumentRules::MEMBERS === (string) $doc['visibility'] ) {
+			$actor  = self::current_person();
+			$member = $actor && MemberType::is_member( (string) $actor['type'] ) && Plugin::people()->is_active_member( (int) $actor['id'] );
+		}
+		return DocumentRules::can_read( (string) $doc['visibility'], $staff, (bool) $member );
+	}
+
+	/** L'utente WordPress ha dei poteri oltre a quelli di un socio: segreteria, presidente o vicepresidente, tesoriere, staff dell'ente, altri ruoli. */
+	public static function has_powers( int $user_id ): bool {
+		$u = $user_id > 0 ? get_userdata( $user_id ) : false;
+		if ( ! $u ) {
+			return false;
+		}
+		return (bool) array_diff( (array) $u->roles, array( Plugin::ROLE_MEMBER, 'subscriber' ) )
+			|| user_can( $u, Plugin::CAP_OPS ) || self::is_board_operator( $user_id ) || self::is_treasurer( $user_id ) || self::is_entity_staff( $user_id );
+	}
+
 	public static function is_admin_user( int $user_id ): bool {
 		return $user_id > 0 && user_can( $user_id, Plugin::CAP_OPS );
 	}
@@ -166,11 +197,21 @@ final class Access {
 		if ( ! Edition::allows( 'member_area' ) ) {
 			return false;
 		}
-		$actor = self::person_for_user( $user_id );
+		return self::person_can( self::person_for_user( $user_id ), $user_id, $ability, $object_id );
+	}
+
+	/**
+	 * Il permesso di una persona (senza amministratori e senza controllo della licenza: li fa user_can). $user_id è l'utente WordPress
+	 * collegato, 0 per chi è entrato con l'accesso proprio: tesoriere e staff dell'ente sono scelte sull'utente WordPress, quindi senza utente non valgono.
+	 */
+	public static function person_can( ?array $actor, int $user_id, string $ability, int $object_id ): bool {
 		if ( ! $actor ) {
 			return false;
 		}
 		$ctx = array( 'person_id' => $object_id );
+		if ( in_array( $ability, array( 'asem_view_person', 'asem_view_payments', 'asem_book_for' ), true ) ) {
+			$ctx['is_guardian'] = Guardians::is_guardian_of( (int) $actor['id'], $object_id ); // il tutore agisce per le persone di cui risponde
+		}
 		if ( in_array( $ability, array( 'asem_add_expense', 'asem_collect', 'asem_register_member' ), true ) ) {
 			$ctx['is_treasurer'] = self::is_treasurer( $user_id );
 		}

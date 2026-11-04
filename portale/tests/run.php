@@ -2,7 +2,7 @@
 // Prove del portale senza dipendenze: php tests/run.php (esce con codice 1 se qualcosa fallisce).
 require __DIR__ . '/../src/bootstrap.php';
 
-use Portale\{Billing, Config, Db, Domain, Http, Mailer, Stripe, UserError, WegaClient, WegaException, Webhooks};
+use Portale\{Billing, Config, Db, Domain, Http, Mailer, Releases, Stripe, UserError, WegaClient, WegaException, Webhooks};
 
 $fails = 0;
 function check( string $name, bool $ok ): void {
@@ -25,7 +25,7 @@ Config::load( array(
 	'base_url' => 'https://portale.test', 'app_key' => base64_encode( str_repeat( 'k', 32 ) ),
 	'stripe' => array( 'secret_key' => 'sk_test', 'webhook_secret' => 'whsec_test' ),
 	'paypal' => array( 'live' => false, 'client_id' => 'id', 'secret' => 's', 'webhook_id' => 'WH1' ),
-	'duration_days' => array( 'month' => 31, 'year' => 366, 'free' => 3650 ), 'renew_window_days' => 5,
+	'duration_days' => array( 'month' => 31, 'year' => 366, 'free' => 30 ), 'renew_window_days' => 5,
 	'plans' => array(
 		'free' => array( 'label' => 'Free', 'plan_name' => 'Free', 'prices' => array() ),
 		'full' => array( 'label' => 'Pro Full', 'plan_name' => 'Pro Full', 'prices' => array(
@@ -39,6 +39,8 @@ check( 'dominio: schema, www, percorso e porta', 'esempio.it' === Domain::normal
 check( 'dominio: sottodominio resta', 'staging.esempio.it' === Domain::normalize( 'staging.esempio.it' ) );
 check( 'dominio: IP rifiutato', '' === Domain::normalize( '192.168.1.5' ) );
 check( 'dominio: wildcard rifiutato', '' === Domain::normalize( '*.esempio.it' ) );
+check( 'dominio: numeri tipo 0x7f.1 rifiutati', '' === Domain::forLicense( '0x7f.1' ) && '' === Domain::forLicense( '10.1' ) && 'esempio.it' === Domain::forLicense( 'esempio.it' ) );
+check( 'versione: a capo finale rifiutato', ! Portale\Releases::validVersion( "1.3.8\n" ) && Portale\Releases::validVersion( '1.3.8' ) );
 check( 'dominio: senza punto rifiutato', '' === Domain::normalize( 'localhost' ) );
 check( 'dominio: spazi e punti finali', 'esempio.it' === Domain::normalize( '  esempio.it. ' ) );
 
@@ -115,7 +117,7 @@ foreach ( $calls as $c ) {
 		$create = $c[2];
 	}
 }
-check( 'free: licenza tipo 3 con dominio e riferimento idempotente', $create && 3 === $create['type'] && 'mia-associazione.it' === $create['domain'] && 'sub-' . $sub['id'] === $create['external_ref'] && 3650 === $create['duration_days'] && 'Free' === $create['plan_name'] );
+check( 'free: licenza tipo 3 con dominio e riferimento idempotente', $create && 3 === $create['type'] && 'mia-associazione.it' === $create['domain'] && 'sub-' . $sub['id'] === $create['external_ref'] && 30 === $create['duration_days'] && 'Free' === $create['plan_name'] );
 check( 'free: attiva e scadenza salvata', 'active' === $active['status'] && '2027-01-01 00:00:00' === $active['expires_at'] );
 check( 'free: chiave cifrata nel database', false === strpos( $active['license_key_enc'], 'WEGA-AAAA' ) && 'WEGA-AAAA' === Portale\Secrets::open( $active['license_key_enc'] ) );
 $n = count( $calls );
@@ -128,13 +130,19 @@ check( 'dominio: cambio salvato', 'nuovo.it' === $billing->subscription( $sub['i
 check( 'dominio: cliente diverso rifiutato', null !== throwsUser( function () use ( $billing, $sub ) {
 	$billing->changeDomain( $sub['id'], 'altro', 'x.it' );
 } ) );
-$state['bind_error'] = 'BINDING_CHANGE_LIMIT';
-$msg = throwsUser( function () use ( $billing, $sub, $cust ) {
+$msgLock = throwsUser( function () use ( $billing, $sub, $cust ) {
 	$billing->changeDomain( $sub['id'], $cust['id'], 'ancora.it' );
 } );
-check( 'dominio: limite 3 cambi spiegato', null !== $msg && false !== strpos( $msg, '3 volte' ) && 'nuovo.it' === $billing->subscription( $sub['id'] )['domain'] );
+check( 'dominio: dopo un cambio il cliente è bloccato e la data di sblocco è spiegata', null !== $msgLock && false !== strpos( $msgLock, 'potrai farlo di nuovo dal' ) && 'nuovo.it' === $billing->subscription( $sub['id'] )['domain'] );
+$state['bind_error'] = 'BINDING_CHANGE_LIMIT';
+$msg = throwsUser( function () use ( $billing, $sub, $cust ) {
+	$billing->changeDomain( $sub['id'], $cust['id'], 'ancora.it', true );
+} );
+check( 'dominio: limite di sicurezza del server (3 cambi) spiegato anche al personale', null !== $msg && false !== strpos( $msg, '3 volte' ) && 'nuovo.it' === $billing->subscription( $sub['id'] )['domain'] );
 $state['bind_error'] = null;
-
+$billing->changeDomain( $sub['id'], $cust['id'], 'staff.it', true );
+check( 'dominio: il personale cambia anche con il blocco attivo', 'staff.it' === $billing->subscription( $sub['id'] )['domain'] );
+$billing->changeDomain( $sub['id'], $cust['id'], 'nuovo.it', true );
 // --- Stripe: acquisto, rinnovo, doppioni ------------------------------------
 $hooks = new Webhooks( $db, $billing );
 $send  = function ( array $event ) use ( $hooks ) {
@@ -146,7 +154,7 @@ $c2 = $billing->customer( 'bruno@esempio.it' );
 $db->run( "INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, created_at, updated_at) VALUES ('s2', ?, 'full', 'year', 'stripe', 'pending', 'bruno.it', ?, ?)", array( $c2['id'], Db::now(), Db::now() ) );
 $mails = array();
 check( 'stripe: firma errata rifiutata', 400 === $hooks->stripe( '{"id":"e","type":"x"}', 't=1,v1=00' ) );
-check( 'stripe: checkout completato', 200 === $send( array( 'id' => 'evt_a', 'type' => 'checkout.session.completed', 'data' => array( 'object' => array( 'mode' => 'subscription', 'client_reference_id' => 's2', 'subscription' => 'sub_9', 'customer' => 'cus_9' ) ) ) ) );
+check( 'stripe: checkout completato', 200 === $send( array( 'id' => 'evt_a', 'type' => 'checkout.session.completed', 'data' => array( 'object' => array( 'mode' => 'subscription', 'payment_status' => 'paid', 'client_reference_id' => 's2', 'subscription' => 'sub_9', 'customer' => 'cus_9' ) ) ) ) );
 $s2 = $billing->subscription( 's2' );
 check( 'stripe: attivo con riferimenti del provider', 'active' === $s2['status'] && 'sub_9' === $s2['provider_ref'] && 'cus_9' === $s2['provider_customer'] );
 check( 'stripe: email con il link inviata una volta', 1 === count( $mails ) && 'bruno@esempio.it' === $mails[0][0] && false !== strpos( $mails[0][2], 'https://portale.test/entra/' ) );
@@ -209,7 +217,7 @@ check( 'impostazioni: id Stripe non valido rifiutato', null !== throwsUser( func
 Portale\Settings::saveGeneral( $db, array( 'duration_month' => 9999, 'reminder_days' => -4, 'trial_days' => 0, 'trial_plan' => 'free', 'indexable' => '' ) );
 Portale\Settings::load( $db );
 check( 'impostazioni: limiti sempre dentro i margini', 62 === Portale\Settings::limit( 'duration_month' ) && 0 === Portale\Settings::limit( 'reminder_days' ) && 1 === Portale\Settings::limit( 'trial_days' ) && 'full' === Config::get( 'trial_plan' ) && false === Config::get( 'indexable' ) );
-Portale\Settings::saveGeneral( $db, array( 'trial_days' => 30, 'trial_plan' => 'full', 'trial_enabled' => '1', 'duration_month' => 31, 'reminder_days' => 14, 'duration_year' => 366, 'duration_free' => 3650, 'renew_window' => 5 ) );
+Portale\Settings::saveGeneral( $db, array( 'trial_days' => 30, 'trial_plan' => 'full', 'trial_enabled' => '1', 'duration_month' => 31, 'reminder_days' => 14, 'duration_year' => 366, 'duration_free' => 30, 'renew_window' => 5 ) );
 Portale\Settings::load( $db );
 check( 'impostazioni: ripristino dei valori', 31 === Portale\Settings::limit( 'duration_month' ) && 14 === Portale\Settings::limit( 'reminder_days' ) && 30 === Portale\Settings::limit( 'trial_days' ) );
 
@@ -220,7 +228,8 @@ $noOnce = $price;
 $noOnce['once'] = false;
 check( 'pagamenti: senza «singolo» restano i ricorrenti', array( array( 'stripe', 'recurring' ), array( 'paypal', 'recurring' ) ) === $billing->methods( $noOnce ) );
 $noIds = array( 'cents' => 500 );
-check( 'pagamenti: senza id restano i singoli', array( array( 'stripe', 'once' ), array( 'paypal', 'once' ) ) === $billing->methods( $noIds ) );
+check( 'pagamenti: senza id il rinnovo automatico si crea da solo, e restano i singoli', array( array( 'stripe', 'recurring' ), array( 'paypal', 'recurring' ), array( 'stripe', 'once' ), array( 'paypal', 'once' ) ) === $billing->methods( $noIds ) );
+check( 'pagamenti: senza importo non si vende', array() === $billing->methods( array() ) );
 check( 'pagamenti: modo non disponibile rifiutato', null !== throwsUser( function () use ( $billing ) {
 	$billing->startPaid( 'dora@esempio.it', 'dora.it', 'full', 'year', 'stripe', 'strano' );
 } ) );
@@ -260,6 +269,22 @@ foreach ( array_slice( $calls, $n ) as $c ) {
 	$renews += false !== strpos( $c[1], '/licenses/renew' ) ? 1 : 0;
 }
 check( 'rinnovo singolo: un solo rinnovo anche se arriva due volte', 1 === $renews && 'merged' === $billing->subscription( $rn['id'] )['status'] );
+// Primo pagamento: se un altro processo sta già emettendo la licenza (segnaposto recente) non se ne crea una seconda.
+$billing->startPaid( 'dora@esempio.it', 'Claim.it', 'full', 'year', 'stripe', 'once' );
+$cl = $db->one( "SELECT * FROM subscriptions WHERE domain = 'claim.it'" );
+$db->run( 'UPDATE subscriptions SET license_id = ?, updated_at = ? WHERE id = ?', array( Portale\Billing::CLAIM, Portale\Db::now(), $cl['id'] ) );
+$n = count( $calls );
+$billing->completePayment( $cl['id'], 'pi_claim' );
+$created = 0;
+foreach ( array_slice( $calls, $n ) as $c ) {
+	$created += false !== strpos( $c[1], '/licenses' ) ? 1 : 0;
+}
+check( 'primo pagamento: emissione già in corso, nessuna seconda licenza', 0 === $created && Portale\Billing::CLAIM === $billing->subscription( $cl['id'] )['license_id'] );
+check( 'primo pagamento: dal webhook l\'emissione in corso dà errore da riprovare', null !== ( function () use ( $billing, $cl ) { try { $billing->completePayment( $cl['id'], 'pi_claim', null, true ); } catch ( \RuntimeException $e ) { return $e; } return null; } )() );
+$db->run( 'UPDATE subscriptions SET updated_at = ? WHERE id = ?', array( gmdate( 'Y-m-d H:i:s', time() - 3600 ), $cl['id'] ) );
+$billing->completePayment( $cl['id'], 'pi_claim' );
+$cl2 = $billing->subscription( $cl['id'] );
+check( 'primo pagamento: segnaposto abbandonato, la licenza viene emessa', 'active' === $cl2['status'] && Portale\Billing::CLAIM !== $cl2['license_id'] && ! empty( $cl2['license_key_enc'] ) );
 check( 'rinnovo singolo: non compare tra le licenze del cliente', 1 === count( array_filter( $billing->forCustomer( $ds['customer_id'] ), function ( $s ) { return 'dora.it' === $s['domain']; } ) ) );
 
 // Pagamento singolo con PayPal: ordine e ricorrente.
@@ -339,23 +364,23 @@ check( 'robots: segnali di non indicizzazione di default', false === Config::get
 
 // --- Chiavi dal pannello ----------------------------------------------------------------------------------------------------------
 $tokenOk = 'wic_3c6d8003fdd2b68f.d5S6nSoypyWsa5RmmMPApIHcrhCf5d_rB1Pr_6ftmO13bJlM';
-$changed = Portale\Settings::saveSecrets( $db, array( 'stripe_secret' => ' sk_test_abcdefghij1234567890 ', 'wega_token' => $tokenOk, 'paypal_live_present' => '1', 'paypal_live' => '1' ) );
+$changed = Portale\Settings::saveSecrets( $db, array( 'stripe_secret_test' => ' sk_test_abcdefghij1234567890 ', 'wega_token' => $tokenOk, 'paypal_live_present' => '1', 'paypal_live' => '1' ) );
 Portale\Settings::load( $db );
-check( 'chiavi: salvate e applicate alla configurazione', array( 'stripe_secret', 'wega_token' ) === $changed && 'sk_test_abcdefghij1234567890' === Config::get( 'stripe.secret_key' ) && $tokenOk === Config::get( 'wega.token' ) && true === Config::get( 'paypal.live' ) );
+check( 'chiavi: salvate e applicate alla configurazione', array( 'stripe_secret_test', 'wega_token' ) === $changed && 'sk_test_abcdefghij1234567890' === Config::get( 'stripe.secret_key' ) && $tokenOk === Config::get( 'wega.token' ) && true === Config::get( 'paypal.live' ) );
 $raw = $db->one( "SELECT val FROM settings WHERE name = 'secrets'" )['val'];
 check( 'chiavi: nel database restano cifrate', false === strpos( $raw, 'sk_test_' ) && false === strpos( $raw, 'wic_3c6d' ) );
 $st = Portale\Settings::secretsStatus( $db );
-check( 'chiavi: si vedono solo gli ultimi caratteri', '••••7890' === $st['stripe_secret']['mask'] && 'pannello' === $st['stripe_secret']['source'] && 'config.php' === $st['paypal_secret']['source'] );
+check( 'chiavi: si vedono solo gli ultimi caratteri', '••••7890' === $st['stripe_secret_test']['mask'] && 'pannello' === $st['stripe_secret_test']['source'] && 'config.php' === $st['paypal_secret']['source'] );
 check( 'chiavi: formato sbagliato rifiutato', null !== throwsUser( function () use ( $db ) {
 	Portale\Settings::saveSecrets( $db, array( 'stripe_secret' => 'non-una-chiave' ) );
 } ) && null !== throwsUser( function () use ( $db ) {
 	Portale\Settings::saveSecrets( $db, array( 'wega_token' => 'sbagliato' ) );
 } ) );
-Portale\Settings::saveSecrets( $db, array( 'stripe_webhook' => 'whsec_abcdefghijklmnop' ) );
+Portale\Settings::saveSecrets( $db, array( 'stripe_webhook_test' => 'whsec_abcdefghijklmnop' ) );
 Portale\Settings::load( $db );
 check( 'chiavi: un modulo non cancella le altre né la modalità PayPal', 'sk_test_abcdefghij1234567890' === Config::get( 'stripe.secret_key' ) && 'whsec_abcdefghijklmnop' === Config::get( 'stripe.webhook_secret' ) && true === Config::get( 'paypal.live' ) );
-Portale\Settings::saveSecrets( $db, array( 'remove_stripe_webhook' => '1' ) );
-check( 'chiavi: rimozione', ! Portale\Settings::secretsStatus( $db )['stripe_webhook']['set'] || 'config.php' === Portale\Settings::secretsStatus( $db )['stripe_webhook']['source'] );
+Portale\Settings::saveSecrets( $db, array( 'remove_stripe_webhook_test' => '1' ) );
+check( 'chiavi: rimozione', ! Portale\Settings::secretsStatus( $db )['stripe_webhook_test']['set'] || 'config.php' === Portale\Settings::secretsStatus( $db )['stripe_webhook_test']['source'] );
 
 // Prova dei collegamenti (server finto).
 $prev = Http::$transport;
@@ -518,7 +543,7 @@ if ( class_exists( 'ZipArchive' ) ) {
 	check( 'scarico: il giorno dopo si riparte', is_file( Portale\Releases::authorize( $rdb, 'c1', false, array( $pro ), 'pro', '1.1.4', $now + 90000 ) ) );
 	check( 'scarico: amministratore senza limiti né licenza', is_file( Portale\Releases::authorize( $rdb, 'c9', true, array(), 'pro', '1.1.4', $now ) ) );
 	check( 'pacchetti: versione letta dall\'intestazione', '1.2.3' === Portale\Releases::headerVersion( "<?php\n/**\n * Version:           1.2.3\n */" ) );
-	check( 'pacchetti: Stable tag non scambiato per Version', '' === Portale\Releases::headerVersion( "Stable tag: 1.2.3\nVersion: 1.2" ) );
+	check( 'pacchetti: Stable tag non scambiato per Version', '' === Portale\Releases::headerVersion( "Stable tag: 1.2.3\nRequires at least: 6.0" ) );
 }
 
 // --- Accesso con password -----------------------------------------------------------------
@@ -542,6 +567,30 @@ for ( $i = 0; $i < 6; $i++ ) {
 }
 check( 'password: dopo 5 errori si blocca anche con la password giusta', false !== strpos( (string) throwsUser( function () use ( $auth ) { $auth->loginWithPassword( 'socio@esempio.it', 'una password lunga abbastanza', '9.9.9.6' ); } ), 'Troppi tentativi' ) );
 check( 'password: il blocco scade con l\'ora', 'c1' === $auth->loginWithPassword( 'socio@esempio.it', 'una password lunga abbastanza', '9.9.9.6', time() + 7200 )['id'] );
+
+// Revisione di sicurezza: tentativi riservati prima del controllo, impronta finta dello stesso costo
+$dm = new ReflectionMethod( Portale\Auth::class, 'dummy_hash' );
+$dm->setAccessible( true );
+check( 'password: l\'impronta finta ha lo stesso costo di quelle vere (i tempi non rivelano chi è cliente)', password_get_info( (string) $dm->invoke( null ) )['options']['cost'] === password_get_info( password_hash( 'x', PASSWORD_DEFAULT ) )['options']['cost'] && ! password_verify( 'qualunque', (string) $dm->invoke( null ) ) );
+check( 'password: una password enorme non viene nemmeno controllata', null !== throwsUser( function () use ( $auth ) { $auth->loginWithPassword( 'socio@esempio.it', str_repeat( 'a', 2000 ), '9.9.9.20' ); } ) );
+$rdb = new Db( new PDO( 'sqlite::memory:' ) );
+$rdb->migrate();
+$took = 0;
+for ( $i = 0; $i < 6; $i++ ) {
+	$took += Portale\RateLimit::take( $rdb, 'prova', '2026110100', 3, 1793000000 ) ? 1 : 0;
+}
+check( 'limite: al massimo tre posti in un\'ora, anche con tante richieste', 3 === $took );
+Portale\RateLimit::give_back( $rdb, 'prova', '2026110100' );
+check( 'limite: un posto restituito si può riusare, un solo posto', Portale\RateLimit::take( $rdb, 'prova', '2026110100', 3, 1793000000 ) && ! Portale\RateLimit::take( $rdb, 'prova', '2026110100', 3, 1793000000 ) );
+$mdb = new Db( new PDO( 'sqlite::memory:' ) );
+$mdb->migrate();
+$mdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'c9', 'ok@esempio.it', Db::now() ) );
+$mauth = new Portale\Auth( $mdb );
+$mauth->setPassword( 'c9', 'una password lunga abbastanza', 'ok@esempio.it' );
+for ( $i = 0; $i < 3; $i++ ) {
+	$mauth->loginWithPassword( 'ok@esempio.it', 'una password lunga abbastanza', '8.8.8.8' );
+}
+check( 'password: gli accessi riusciti non consumano il limite dell\'indirizzo', 'c9' === $mauth->loginWithPassword( 'ok@esempio.it', 'una password lunga abbastanza', '8.8.8.8' )['id'] && 0 === (int) ( $mdb->one( 'SELECT n FROM rate_limits WHERE bucket = ?', array( 'login:i:' . hash( 'sha256', '8.8.8.8' ) ) )['n'] ?? 0 ) );
 
 // --- Eliminazione di clienti e licenze --------------------------------------------------------
 $ddb = new Db( new PDO( 'sqlite::memory:' ) );

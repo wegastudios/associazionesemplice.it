@@ -4,38 +4,61 @@ namespace AssociazioneSemplice;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Client del server delle licenze Wega (https://license.wegastudios.com/api/v1).
- *
- * Il plugin controlla la chiave **solo con `POST /licenses/validate`**, con una credenziale che ha il solo permesso di verifica
- * (`licenses:validate`): non può emettere né rinnovare licenze, quindi è innocua anche se visibile. La credenziale si definisce con la
- * costante `ASEM_LICENSE_TOKEN` o con il filtro `asem_license_token`; finché non c'è la verifica resta in «standby» (tutto consentito).
+ * Client delle licenze. Il plugin non parla direttamente col server Wega: controlla la chiave col portale di Associazione Semplice
+ * (`POST https://associazionesemplice.it/api/license/validate`), che la verifica con Wega e restituisce la risposta di Wega invariata, con
+ * l'attestazione firmata. Nessuna credenziale nel plugin. La licenza vale per il dominio registrato e per tutti i suoi sottodomini e
+ * sottocartelle (siti di prova compresi). Sui siti locali la verifica non c'è e resta lo stato «standby» (tutto consentito).
  *
  * Le parti pure (domini, livelli, interpretazione della risposta, firma dell'attestazione) non usano WordPress e si provano con PHPUnit.
  */
 final class LicenseClient {
 
-	const API    = 'https://license.wegastudios.com/api/v1';
+	const API    = 'https://associazionesemplice.it/api/license';
+	/** Emittente dell'attestazione: resta quello di Wega, che firma; il portale non firma niente. */
 	const ISSUER = 'https://license.wegastudios.com';
 
-	const OPT_JWKS = 'asem_license_jwks';
+	/**
+	 * Chiavi pubbliche con cui Wega firma le attestazioni (kid => chiave Ed25519, base64url). Sono scritte nel plugin e non si leggono dal portale:
+	 * chi controlla il portale (o la connessione) non può farsi riconoscere un piano. Per cambiare chiave serve una nuova versione del plugin, che
+	 * può già portare quella successiva accanto alla corrente.
+	 */
+	const PINNED_KEYS = array(
+		'k20261015-4304ed' => '1J6fs2yrHCTTa5w1Mt1JnuDwO7zkjyRiiERm3gESdsQ',
+	);
+
+	/** Emittente del piano firmato: è il portale a decidere il livello della licenza (Wega custodisce nome, date e chiave). */
+	const PORTAL_ISSUER = 'https://associazionesemplice.it';
+
+	/**
+	 * Chiavi pubbliche con cui il portale firma il piano (kid => chiave Ed25519, base64url), scritte nel plugin come quelle di Wega: il livello della
+	 * licenza lo decide solo il portale (vedi `portal_decides_plan()`).
+	 */
+	const PINNED_PORTAL_KEYS = array(
+		'portale-51db047c' => 'hpbmCcpzb_qleyYCjW9vmN2YGZsimb74gQT-BIva7i8',
+	);
+
+	/** Solo per i test (con ASEM_TESTING): forza «sito locale» sì/no. @var bool|null */
+	private static $local_override = null;
 
 	public static function api(): string {
-		return rtrim( (string) apply_filters( 'asem_license_api', self::API ), '/' );
+		return rtrim( self::API, '/' );
 	}
 
-	public static function token(): string {
-		$default = defined( 'ASEM_LICENSE_TOKEN' ) ? (string) ASEM_LICENSE_TOKEN : '';
-		return trim( (string) apply_filters( 'asem_license_token', $default ) );
+	/** Sposta il sito tra locale e non locale nei test. Senza la costante ASEM_TESTING non fa niente. */
+	public static function set_local_override( ?bool $v ): void {
+		if ( defined( 'ASEM_TESTING' ) && ASEM_TESTING ) {
+			self::$local_override = $v;
+		}
 	}
 
 	/** Sito di sviluppo (localhost, *.local, *.test, indirizzi IP): non richiede licenza e non occupa un dominio. */
 	public static function is_local(): bool {
-		return (bool) apply_filters( 'asem_license_is_local', LicenseRules::is_local( home_url() ) );
+		return null !== self::$local_override ? self::$local_override : LicenseRules::is_local( home_url() );
 	}
 
-	/** La verifica con il server è attiva: c'è la credenziale e il sito non è locale. */
+	/** La verifica con il portale è attiva: il sito non è locale. */
 	public static function enabled(): bool {
-		return '' !== self::token() && ! self::is_local();
+		return ! self::is_local();
 	}
 
 	/**
@@ -127,10 +150,10 @@ final class LicenseClient {
 	 */
 	public static function validate( string $key, string $domain ) {
 		$res = wp_remote_post(
-			self::api() . '/licenses/validate',
+			self::api() . '/validate',
 			array(
 				'timeout' => 15,
-				'headers' => array( 'Authorization' => 'Bearer ' . self::token(), 'Content-Type' => 'application/json', 'Accept' => 'application/json' ),
+				'headers' => array( 'Content-Type' => 'application/json', 'Accept' => 'application/json' ),
 				'body'    => wp_json_encode( array( 'license_key' => $key, 'domain' => $domain ) ),
 			)
 		);
@@ -139,9 +162,6 @@ final class LicenseClient {
 		}
 		$code = (int) wp_remote_retrieve_response_code( $res );
 		$body = json_decode( (string) wp_remote_retrieve_body( $res ), true );
-		if ( 401 === $code ) {
-			return new \WP_Error( 'asem_license_auth', 'Il plugin non è autorizzato a verificare le licenze (credenziale rifiutata).' );
-		}
 		if ( 429 === $code || $code >= 500 || 0 === $code ) {
 			return new \WP_Error( 'asem_license_unavailable', 'Il server delle licenze non è disponibile adesso (codice ' . $code . ').' );
 		}
@@ -154,22 +174,57 @@ final class LicenseClient {
 		return $body;
 	}
 
-	/** Chiavi pubbliche del server (JWKS), tenute in memoria 12 ore. @return array|null */
-	public static function jwks(): ?array {
-		$cached = get_transient( self::OPT_JWKS );
-		if ( is_array( $cached ) && isset( $cached['keys'] ) ) {
-			return $cached;
+	/** Chiavi pubbliche di Wega (formato JWKS): quelle scritte nel plugin. Nei test si possono sostituire con la costante ASEM_LICENSE_JWKS (con ASEM_TESTING). */
+	public static function jwks(): array {
+		if ( defined( 'ASEM_TESTING' ) && ASEM_TESTING && defined( 'ASEM_LICENSE_JWKS' ) ) {
+			$doc = json_decode( (string) ASEM_LICENSE_JWKS, true );
+			if ( is_array( $doc ) && isset( $doc['keys'] ) ) {
+				return $doc;
+			}
 		}
-		$res = wp_remote_get( preg_replace( '#/api/v1$#', '', self::api() ) . '/.well-known/jwks.json', array( 'timeout' => 10, 'headers' => array( 'Accept' => 'application/json' ) ) );
-		if ( is_wp_error( $res ) || 200 !== (int) wp_remote_retrieve_response_code( $res ) ) {
+		$keys = array();
+		foreach ( self::PINNED_KEYS as $kid => $x ) {
+			$keys[] = array( 'kty' => 'OKP', 'crv' => 'Ed25519', 'kid' => $kid, 'x' => $x, 'use' => 'sig', 'alg' => 'EdDSA' );
+		}
+		return array( 'keys' => $keys );
+	}
+
+	/** Chiavi pubbliche del portale (JWKS): quelle scritte nel plugin. Nei test si possono sostituire con ASEM_PORTAL_JWKS (con ASEM_TESTING). */
+	public static function portal_jwks(): array {
+		if ( defined( 'ASEM_TESTING' ) && ASEM_TESTING && defined( 'ASEM_PORTAL_JWKS' ) ) {
+			$doc = json_decode( (string) ASEM_PORTAL_JWKS, true );
+			if ( is_array( $doc ) && isset( $doc['keys'] ) ) {
+				return $doc;
+			}
+		}
+		$keys = array();
+		foreach ( self::PINNED_PORTAL_KEYS as $kid => $x ) {
+			$keys[] = array( 'kty' => 'OKP', 'crv' => 'Ed25519', 'kid' => $kid, 'x' => $x, 'use' => 'sig', 'alg' => 'EdDSA' );
+		}
+		return array( 'keys' => $keys );
+	}
+
+	/**
+	 * Il piano lo decide solo il portale? Vero da quando il plugin porta la chiave del portale: da lì il livello non si ricava più dal nome del piano
+	 * su Wega (che può cambiare senza toccare la validità della licenza) e una licenza valida senza la prova del portale non si accetta.
+	 * Nei test si accende con ASEM_PORTAL_STRICT (con ASEM_TESTING).
+	 */
+	public static function portal_decides_plan(): bool {
+		return array() !== self::PINNED_PORTAL_KEYS || ( defined( 'ASEM_TESTING' ) && ASEM_TESTING && defined( 'ASEM_PORTAL_STRICT' ) && ASEM_PORTAL_STRICT );
+	}
+
+	/**
+	 * Il livello della licenza (free, lite, accounting, fiscal) dichiarato nella prova firmata dal portale, se la prova regge: firma, emittente,
+	 * prodotto, dominio e scadenza come per quella di Wega. Altrimenti null (portale senza chiave, prova assente o non valida).
+	 */
+	public static function portal_plan( string $jwt, string $audience, ?string $domain, ?int $now = null, int $leeway = 0, ?array $jwks = null ): ?string {
+		$jwks = $jwks ?? self::portal_jwks();
+		if ( '' === $jwt || empty( $jwks['keys'] ) ) {
 			return null;
 		}
-		$doc = json_decode( (string) wp_remote_retrieve_body( $res ), true );
-		if ( ! is_array( $doc ) || ! isset( $doc['keys'] ) || ! is_array( $doc['keys'] ) ) {
-			return null;
-		}
-		set_transient( self::OPT_JWKS, $doc, 12 * HOUR_IN_SECONDS );
-		return $doc;
+		$claims = self::verify_attestation( $jwt, $jwks, self::PORTAL_ISSUER, $audience, $domain, $now, $leeway );
+		$plan   = is_array( $claims ) ? (string) ( $claims['plan'] ?? '' ) : '';
+		return in_array( $plan, License::PLANS, true ) ? $plan : null;
 	}
 
 	private static function b64d( string $s ): string {
@@ -186,7 +241,7 @@ final class LicenseClient {
 	 * @param string|null $domain  dominio atteso (`bid`), null per le licenze senza dominio
 	 * @return array|null le dichiarazioni (claim) se valida, altrimenti null
 	 */
-	public static function verify_attestation( string $jwt, ?array $jwks, string $issuer, string $audience, ?string $domain, ?int $now = null ): ?array {
+	public static function verify_attestation( string $jwt, ?array $jwks, string $issuer, string $audience, ?string $domain, ?int $now = null, int $leeway = 0 ): ?array {
 		$parts = explode( '.', $jwt );
 		if ( 3 !== count( $parts ) || ! $jwks || ! function_exists( 'sodium_crypto_sign_verify_detached' ) ) {
 			return null;
@@ -211,10 +266,11 @@ final class LicenseClient {
 		if ( ( $claims['iss'] ?? '' ) !== $issuer || ! in_array( $audience, (array) $aud, true ) ) {
 			return null;
 		}
-		if ( ! isset( $claims['exp'] ) || (int) $claims['exp'] <= $now || ( isset( $claims['nbf'] ) && (int) $claims['nbf'] > $now + 60 ) ) {
+		if ( ! isset( $claims['exp'] ) || (int) $claims['exp'] + $leeway <= $now || ( isset( $claims['nbf'] ) && (int) $claims['nbf'] > $now + 60 ) ) {
 			return null;
 		}
-		if ( null !== $domain && ( $claims['bid'] ?? '' ) !== $domain ) {
+		// `bid` è il dominio registrato della licenza: vale anche per i suoi sottodomini (siti di prova).
+		if ( null !== $domain && ! LicenseRules::same_domain( (string) ( $claims['bid'] ?? '' ), $domain ) ) {
 			return null;
 		}
 		return $claims;

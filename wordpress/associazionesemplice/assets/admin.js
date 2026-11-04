@@ -56,6 +56,30 @@
 		if (t && !window.confirm(t.getAttribute('data-confirm'))) { e.preventDefault(); }
 	});
 
+	/* Campi da copiare (link, shortcode): un clic seleziona tutto il testo */
+	document.addEventListener('click', function (e) {
+		var t = e.target.closest ? e.target.closest('[data-asem-select]') : null;
+		if (t && t.select) { t.select(); }
+	});
+
+	/* Pulsante «Copia»: mette il testo negli appunti */
+	document.addEventListener('click', function (e) {
+		var b = e.target.closest ? e.target.closest('[data-asem-copy]') : null;
+		if (!b) { return; }
+		var prev = b.previousElementSibling;
+		if (prev && prev.select) { prev.select(); }
+		if (navigator.clipboard) {
+			navigator.clipboard.writeText(b.getAttribute('data-asem-copy') || '');
+			b.textContent = 'Copiato';
+		}
+	});
+
+	/* Filtri che si applicano appena si cambia la scelta */
+	document.addEventListener('change', function (e) {
+		var t = e.target.closest ? e.target.closest('[data-asem-autosubmit]') : null;
+		if (t && t.form) { t.form.submit(); }
+	});
+
 	/* Elenchi lunghi: campo di testo che filtra la select collegata */
 	$$('.asem-filter').forEach(function (inp) {
 		var sel = $(inp.getAttribute('data-target'));
@@ -78,9 +102,9 @@
 	var typeSel = $('#asem-type');
 	if (typeSel) {
 		var hints = {
-			founder: 'Socio fondatore: tessera sempre rinnovata (scadenza a lungo termine, vedi Impostazioni). Email obbligatoria.',
-			ordinary: 'Socio ordinario: tessera valida per anno sociale, si rinnova con la quota associativa. Email obbligatoria.',
-			volunteer: 'Socio e volontario: come l\'ordinario, e può tenere le attività. Email obbligatoria.',
+			founder: 'Socio fondatore: tessera sempre rinnovata (scadenza a lungo termine, vedi Impostazioni). Email facoltativa: con l\'email ha subito l\'accesso all\'area riservata.',
+			ordinary: 'Socio ordinario: tessera valida fino al 31 dicembre, si rinnova con la quota associativa. Email facoltativa: con l\'email ha subito l\'accesso all\'area riservata.',
+			volunteer: 'Socio e volontario: come l\'ordinario, e può tenere le attività. Email facoltativa: con l\'email ha subito l\'accesso all\'area riservata.',
 			guest: 'Ospite: non è socio, partecipa alle attività tramite il socio che lo ospita. Non ha tessera.'
 		};
 		var applyType = function () {
@@ -109,8 +133,10 @@
 	if (payProvider) {
 		var applyProvider = function () {
 			var p = payProvider.value;
-			$$('.asem-pay-stripe').forEach(function (r) { r.style.display = (p === 'stripe' || p === 'stripe_paypal') ? '' : 'none'; });
-			$$('.asem-pay-paypal').forEach(function (r) { r.style.display = (p === 'paypal' || p === 'stripe_paypal') ? '' : 'none'; });
+			var has = function (g) { return p.split('_').indexOf(g) >= 0; };
+			$$('.asem-pay-stripe').forEach(function (r) { r.style.display = has('stripe') ? '' : 'none'; });
+			$$('.asem-pay-paypal').forEach(function (r) { r.style.display = has('paypal') ? '' : 'none'; });
+			$$('.asem-pay-sumup').forEach(function (r) { r.style.display = has('sumup') ? '' : 'none'; });
 			$$('.asem-pay-woocommerce').forEach(function (r) { r.style.display = p === 'woocommerce' ? '' : 'none'; });
 		};
 		payProvider.addEventListener('change', applyProvider);
@@ -313,7 +339,7 @@
 					addLine(b, { kind: 'course', title: c.name + ' · ' + G.month, activity_id: c.id, month: G.month, amount: plain(fee(c, b.type)) });
 				});
 				bar.appendChild(evSel); bar.appendChild(document.createTextNode(' ')); bar.appendChild(coSel);
-				if (!b.isNew && b.type !== 'guest' && b.type !== 'founder' && G.cats.membership) {
+				if (!b.isNew && b.ctx && b.ctx.is_member && !b.ctx.is_founder && G.cats.membership) {
 					var mb = el('button', { type: 'button', 'class': 'button', text: '+ Quota associativa' });
 					mb.addEventListener('click', function () { addLine(b, { kind: 'membership', title: 'Quota associativa', amount: plain(b.ctx && b.ctx.membership_fee != null ? b.ctx.membership_fee : G.membershipFee) }); });
 					bar.appendChild(document.createTextNode(' ')); bar.appendChild(mb);
@@ -430,7 +456,7 @@
 	var DENOMS = [50000, 20000, 10000, 5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5, 2, 1];
 
 	function catByKind(kind) { return D.categories.filter(function (c) { return c.kind === kind; })[0]; }
-	function addLine(l) { l.key = ++seq; lines.push(l); render(); }
+	function addLine(l) { l.key = ++seq; if (l.kind === 'activity_fee' && l.due == null) { l.due = parseMoney(l.amount) || 0; } lines.push(l); render(); }
 
 	function render() {
 		box.innerHTML = '';
@@ -449,8 +475,17 @@
 				row.appendChild(el('span', { 'class': 'description', text: l.note || 'tessera fino al 31 dicembre' }));
 			}
 			var amt = el('input', { type: 'text', name: n + '[amount]', inputmode: 'decimal', value: l.amount, size: '8', 'aria-label': 'Importo' });
-			amt.addEventListener('input', function () { l.amount = amt.value; update(); });
+			var acc = el('span', { 'class': 'description asem-acc', text: '' });
+			var descIn = null;
+			function setAcc() {
+				var a = parseMoney(l.amount) || 0, rest = (l.due || 0) - a - (parseMoney(l.discount) || 0);
+				var isAcc = l.kind === 'activity_fee' && l.due > 0 && a > 0 && rest > 0;
+				acc.textContent = isAcc ? ' acconto: resta ' + eur(rest) : '';
+				if (descIn) { descIn.value = l.title + (isAcc ? ' (acconto)' : ''); }
+			}
+			amt.addEventListener('input', function () { l.amount = amt.value; setAcc(); update(); });
 			row.appendChild(amt); row.appendChild(el('span', { text: '€' }));
+			row.appendChild(acc);
 			// Sconto, promozione o arrotondamento: la voce conta come pagata per intero anche se si incassa meno
 			var disc = el('input', { type: 'text', name: n + '[discount]', inputmode: 'decimal', value: l.discount || '', size: '6', placeholder: 'sconto', 'aria-label': 'Sconto' });
 			disc.addEventListener('input', function () {
@@ -471,6 +506,7 @@
 			[['category_id', l.category], ['activity_id', l.activity || ''], ['session_id', l.session || ''], ['competence_month', l.month || ''], ['description', l.title]].forEach(function (p) {
 				row.appendChild(el('input', { type: 'hidden', name: n + '[' + p[0] + ']', value: p[1] }));
 			});
+			descIn = row.lastChild; setAcc();
 			var rm = el('button', { type: 'button', 'class': 'button button-link-delete', text: 'Rimuovi' });
 			rm.addEventListener('click', function () { lines.splice(i, 1); render(); });
 			row.appendChild(rm);
@@ -594,7 +630,7 @@
 			if (ctx.is_guest) { txt += ' · non è socio: paga solo le attività'; }
 			else if (ctx.is_founder) { txt += ' · tessera sempre rinnovata'; }
 			else if (ctx.suspended) { txt += ' · ⚠ socio sospeso (inattivo): riattivalo dalla sua scheda prima di incassare'; info.className = 'asem-info asem-info-warn'; }
-			else if (ctx.needs_membership) { txt += ' · ⚠ tessera non valida: serve la quota associativa'; info.className = 'asem-info asem-info-warn'; }
+			else if (ctx.needs_membership) { txt += ctx.membership_missing > 0 ? ' · ⚠ quota associativa versata in parte (' + (ctx.membership_paid / 100).toFixed(2).replace('.', ',') + ' €): mancano ' + (ctx.membership_missing / 100).toFixed(2).replace('.', ',') + ' € per la tessera' : ' · ⚠ tessera non valida: serve la quota associativa'; info.className = 'asem-info asem-info-warn'; }
 			else { txt += ' · tessera valida fino al ' + ctx.active_until.split('-').reverse().join('/'); }
 			info.textContent = txt;
 		});
@@ -602,6 +638,57 @@
 	$('#asem-person-select').addEventListener('change', loadContext);
 	$('#asem-date').addEventListener('change', loadContext);
 	if ($('#asem-person-select').value) { loadContext(); }
+
+	/* Nuovo socio dal modulo di incasso: popup, senza lasciare la pagina né perdere le voci già inserite */
+	var newBtn = $('#asem-new-person');
+	if (newBtn) {
+		newBtn.addEventListener('click', function () {
+			var bg = el('div', { 'class': 'asem-modal-bg', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Nuovo socio' });
+			var box = el('div', { 'class': 'asem-modal' });
+			box.appendChild(el('h2', { text: 'Nuovo socio' }));
+			var err = el('p', { 'class': 'asem-neg', text: '' });
+			var fields = {};
+			[['first_name', 'Nome', true], ['last_name', 'Cognome', true], ['email', 'Email (facoltativa)', false], ['phone', 'Cellulare (facoltativo)', false]].forEach(function (f) {
+				var inp = el('input', { type: f[0] === 'email' ? 'email' : 'text', 'class': 'regular-text', autocomplete: 'off' });
+				fields[f[0]] = inp;
+				var lab = el('label', { text: f[1] + ' ' }); lab.appendChild(inp);
+				box.appendChild(el('p')).appendChild(lab);
+			});
+			var type = null;
+			if (D.guests) {
+				type = el('select');
+				type.appendChild(el('option', { value: 'ordinary', text: 'Socio' }));
+				type.appendChild(el('option', { value: 'guest', text: 'Ospite (non socio)' }));
+				var tl = el('label', { text: 'Tipo ' }); tl.appendChild(type);
+				box.appendChild(el('p')).appendChild(tl);
+			}
+			box.appendChild(err);
+			var save = el('button', { type: 'button', 'class': 'button button-primary', text: 'Aggiungi e seleziona' });
+			var cancel = el('button', { type: 'button', 'class': 'button', text: 'Annulla' });
+			var bar = el('p'); bar.appendChild(save); bar.appendChild(document.createTextNode(' ')); bar.appendChild(cancel);
+			box.appendChild(bar); bg.appendChild(box); document.body.appendChild(bg);
+			fields.first_name.focus();
+			function close() { if (bg.parentNode) { bg.parentNode.removeChild(bg); } }
+			cancel.addEventListener('click', close);
+			bg.addEventListener('keydown', function (e) { if (e.key === 'Escape') { close(); } });
+			save.addEventListener('click', function () {
+				var fd = new FormData();
+				fd.append('action', 'asem_quick_person'); fd.append('nonce', D.nonce);
+				Object.keys(fields).forEach(function (k) { fd.append(k, fields[k].value); });
+				if (type) { fd.append('type', type.value); }
+				save.disabled = true; err.textContent = '';
+				fetch(D.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: fd }).then(function (r) { return r.json(); }).then(function (res) {
+					save.disabled = false;
+					if (!res.success) { err.textContent = typeof res.data === 'string' ? res.data : 'Non è stato possibile aggiungere la persona.'; return; }
+					var sel = $('#asem-person-select');
+					sel.appendChild(el('option', { value: res.data.id, text: res.data.label }));
+					sel.value = String(res.data.id);
+					sel.dispatchEvent(new Event('change'));
+					close();
+				}, function () { save.disabled = false; err.textContent = 'Connessione non riuscita: riprova.'; });
+			});
+		});
+	}
 
 	/* Modalità di pagamento: propone il conto giusto */
 	$('#asem-account').addEventListener('change', update);	$('#asem-tendered').addEventListener('input', update);

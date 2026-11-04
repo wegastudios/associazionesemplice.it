@@ -3,6 +3,7 @@ namespace AssociazioneSemplice\Admin;
 
 use AssociazioneSemplice\Money;
 use AssociazioneSemplice\PaymentCalc;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -38,9 +39,18 @@ final class Ui {
 
 	public static function header( string $title, string $actions_html = '' ): void {
 		\AssociazioneSemplice\Texts::start_admin_buffer(); // testi personalizzati anche in amministrazione
-		echo '<div class="wrap asem"><h1 class="wp-heading-inline">' . esc_html( $title ) . '</h1> ' . $actions_html . '<hr class="wp-header-end">'; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo Admin::tabs( isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '' ); // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.EscapeOutput
+		echo wp_kses( '<div class="wrap asem"><h1 class="wp-heading-inline">' . esc_html( $title ) . '</h1> ' . $actions_html . '<hr class="wp-header-end">', Html::allowed() );
+		echo wp_kses( Admin::tabs( isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '' ), Html::allowed() ); // phpcs:ignore WordPress.Security.NonceVerification
 		self::notices();
+	}
+
+	/** Piccolo script di una pagina, accodato con le funzioni di WordPress (parte nel piè di pagina, a pagina costruita). */
+	public static function inline_js( string $js ): void {
+		static $n = 0;
+		$handle = 'asem-inline-' . ( ++$n );
+		wp_register_script( $handle, false, array(), ASEM_VERSION, true );
+		wp_enqueue_script( $handle );
+		wp_add_inline_script( $handle, $js );
 	}
 
 	public static function footer(): void {
@@ -73,13 +83,13 @@ final class Ui {
 	 * @param array<string,scalar> $fields campi nascosti
 	 */
 	public static function confirm_button( string $action, string $back_url, array $fields, string $label, string $confirm_text, string $style = '' ): string {
-		$html = '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline" onsubmit="return confirm(' . esc_attr( wp_json_encode( $confirm_text ) ) . ');">'
+		$html = '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline">'
 			. '<input type="hidden" name="action" value="' . esc_attr( $action ) . '"><input type="hidden" name="_back" value="' . esc_url( $back_url ) . '">'
 			. wp_nonce_field( $action, '_wpnonce', true, false );
 		foreach ( $fields as $k => $v ) {
 			$html .= '<input type="hidden" name="' . esc_attr( (string) $k ) . '" value="' . esc_attr( (string) $v ) . '">';
 		}
-		return $html . '<button class="button button-small"' . ( '' !== $style ? ' style="' . esc_attr( $style ) . '"' : '' ) . '>' . esc_html( $label ) . '</button></form>';
+		return $html . '<button class="button button-small" data-confirm="' . esc_attr( $confirm_text ) . '"' . ( '' !== $style ? ' style="' . esc_attr( $style ) . '"' : '' ) . '>' . esc_html( $label ) . '</button></form>';
 	}
 
 	public static function form_close(): void {
@@ -94,7 +104,7 @@ final class Ui {
 	 * @param string $what       a cosa si riferisce («Contributo», «Importo»…)
 	 */
 	public static function vat_row( ?int $rate, string $mode, string $what = 'Gli importi', bool $auto = false ): string {
-		return \AssociazioneSemplice\Edition::has( 'vat' ) ? VatFields::row( $rate, $mode, $what, $auto ) : ''; // senza la funzione «IVA» i moduli non mostrano nulla di fiscale
+		return (string) apply_filters( 'asem_vat_row', '', $rate, $mode, $what, $auto ); // senza un'estensione fiscale i moduli non mostrano nulla di fiscale
 	}
 
 	/** Il modulo ha lasciato l'aliquota su «Automatica»? */
@@ -104,7 +114,7 @@ final class Ui {
 
 	/** Aliquota e modo letti da un modulo con {@see Ui::vat_row()}: [aliquota|null, 'incl'|'escl']. */
 	public static function vat_input( array $p ): array {
-		return \AssociazioneSemplice\Edition::has( 'vat' ) ? VatFields::input( $p ) : array( null, \AssociazioneSemplice\Fiscal::INCLUDED );
+		return (array) apply_filters( 'asem_vat_input', array( null, \AssociazioneSemplice\Fiscal::INCLUDED ), $p );
 	}
 
 	public static function hidden( string $name, $value ): string {

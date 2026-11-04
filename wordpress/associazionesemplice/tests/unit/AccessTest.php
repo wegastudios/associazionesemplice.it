@@ -29,6 +29,17 @@ final class AccessTest extends TestCase {
 		}
 	}
 
+	public function test_a_guardian_acts_for_the_minor_but_does_not_edit_the_profile(): void {
+		$me = $this->person( 7, 'ordinary' );
+		foreach ( array( 'asem_view_person', 'asem_view_payments', 'asem_book_for' ) as $a ) {
+			$this->assertTrue( Access::decide( $a, false, $me, array( 'person_id' => 8, 'is_guardian' => true ) ), $a );
+			$this->assertFalse( Access::decide( $a, false, $me, array( 'person_id' => 8, 'is_guardian' => false ) ), $a );
+		}
+		$this->assertFalse( Access::decide( 'asem_edit_own_profile', false, $me, array( 'person_id' => 8, 'is_guardian' => true ) ), 'il profilo del minore lo cura la segreteria' );
+		$this->assertFalse( Access::decide( 'asem_add_guest', false, $me, array( 'person_id' => 8, 'is_guardian' => true ) ) );
+		$this->assertFalse( Access::decide( 'asem_book_for', false, $this->person( 7, 'guest' ), array( 'person_id' => 8, 'is_guardian' => true ) ), 'un ospite non prenota' );
+	}
+
 	public function test_only_members_can_add_guests_for_themselves(): void {
 		$this->assertTrue( Access::decide( 'asem_add_guest', false, $this->person( 7, 'ordinary' ), array( 'person_id' => 7 ) ) );
 		$this->assertTrue( Access::decide( 'asem_add_guest', false, $this->person( 7, 'founder' ), array( 'person_id' => 7 ) ) );

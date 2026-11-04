@@ -1,4 +1,4 @@
-<?php /** @var array $subs @var string $email @var array $trial @var int $trial_days @var string $trial_label @var Portale\Billing $billing @var bool $is_admin @var array $releases @var bool $has_password @var bool $via_link @var string $flash */
+<?php /** @var array $subs @var string $email @var array $trial @var int $trial_days @var string $trial_label @var Portale\Billing $billing @var bool $is_admin @var array $releases @var string $name @var bool $has_password @var bool $via_link @var string $flash */
 $csrf = Portale\App::csrf();
 ?>
 <section class="page"><div class="wrap" style="max-width:860px">
@@ -11,6 +11,15 @@ $csrf = Portale\App::csrf();
 		</div>
 	</div>
 	<?php if ( ! empty( $flash ) ) : ?><div class="flash" role="status"><?php echo e( $flash ); ?></div><?php endif; ?>
+	<div class="sub">
+		<div class="sub-top"><h2>Il tuo nome</h2></div>
+		<form method="post" action="/account/nome" class="domain-form" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+			<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>">
+			<div style="flex:1;min-width:220px"><label for="acc-name" style="margin-top:0">Nome e cognome</label><input id="acc-name" type="text" name="name" value="<?php echo e( $name ?? '' ); ?>" maxlength="150" autocomplete="name" placeholder="Come vuoi essere chiamato"></div>
+			<button class="btn alt" type="submit">Salva</button>
+		</form>
+		<p class="hint">Lo useremo nelle richieste di supporto, che si aprono già con il tuo nome e la tua email.</p>
+	</div>
 	<div class="sub">
 		<div class="sub-top"><h2>Password</h2><?php if ( $has_password ) : ?><span class="badge">Impostata</span><?php else : ?><span class="badge warn">Da impostare</span><?php endif; ?></div>
 		<?php if ( ! $has_password ) : ?><p class="muted small" style="margin:0 0 6px">Scegli una password per entrare con email e password, senza aspettare il link.</p><?php endif; ?>
@@ -26,7 +35,7 @@ $csrf = Portale\App::csrf();
 	</div>
 	<?php if ( ! $subs ) : ?>
 		<div class="sub empty"><div class="ico" style="margin:0 auto 16px"><?php echo icon( 'key' ); ?></div><h2>Nessuna licenza, per ora</h2><p class="muted">Parti dal piano gratuito oppure scegli un piano Pro.</p>
-		<a class="btn" href="/free">Licenza gratuita</a> <a class="btn alt" href="/#prezzi">Vedi i piani</a></div>
+		<a class="btn" href="/free">Licenza gratuita</a> <a class="btn alt" href="/prezzi">Vedi i piani</a></div>
 	<?php endif; ?>
 	<?php if ( ! empty( $releases ) ) : ?>
 	<div class="sub">
@@ -40,6 +49,7 @@ $csrf = Portale\App::csrf();
 			</details>
 			<?php endif; ?>
 		<?php endforeach; ?>
+		<p class="hint"><b>Aggiorna sempre insieme il plugin gratuito e il Pro:</b> se ne aggiorni uno solo, WordPress mostra un avviso finché non aggiorni anche l'altro. Il gratuito si aggiorna caricando lo zip da qui; il Pro si aggiorna direttamente da WordPress.</p>
 		<p class="hint">I pacchetti si scaricano solo da qui, con la licenza in regola. Carica lo zip da WordPress: Plugin → Aggiungi nuovo → Carica plugin. Per tornare indietro disattiva e sostituisci il plugin con la versione precedente (i dati restano).</p>
 	</div>
 	<?php endif; ?>
@@ -73,6 +83,28 @@ $csrf = Portale\App::csrf();
 		</div>
 		<?php endif; ?>
 
+		<?php
+		$pc_reason = in_array( $s['provider'], array( 'stripe', 'paypal' ), true ) && $key ? $billing->planChange()->reason( $s ) : 'no';
+		$pc_opts   = null === $pc_reason ? $billing->planChange()->options( $s ) : array();
+		$pc_next   = ! empty( $s['next_plan'] ) ? (string) Portale\Config::get( 'plans.' . $s['next_plan'] . '.label', $s['next_plan'] ) : '';
+		?>
+		<?php if ( $pc_next ) : ?>
+		<div class="trial-box">
+			<p><b>Dal prossimo rinnovo passi a <?php echo e( $pc_next ); ?></b><br><span class="muted small">Fino al <?php echo e( date( 'd/m/Y', $exp ) ); ?> la licenza resta com'è; poi cambiano piano e prezzo. La chiave non cambia.</span></p>
+			<form method="post" action="/account/piano-annulla" style="display:flex;gap:8px;flex-wrap:wrap"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="id" value="<?php echo e( $s['id'] ); ?>"><button class="btn alt small" type="submit">Annulla il cambio</button></form>
+		</div>
+		<?php elseif ( $pc_opts ) : ?>
+		<div class="trial-box">
+			<p><b>Cambia piano</b><br><span class="muted small">La chiave e la scadenza (<?php echo e( date( 'd/m/Y', $exp ) ); ?>) non cambiano. Passando a un piano superiore paghi ora solo la differenza fino alla scadenza; passando a uno inferiore il cambio vale dal prossimo rinnovo.</span></p>
+			<?php foreach ( $pc_opts as $o ) : ?>
+			<form method="post" action="<?php echo $o['up'] ? '/account/piano' : '/account/piano-programma'; ?>" style="margin-top:8px"<?php if ( ! $o['up'] ) : ?> onsubmit="<?php echo js_confirm( 'Dal prossimo rinnovo la licenza passa a ' . $o['label'] . ': le funzioni in più si disattivano, i dati restano. Confermi?' ); ?>"<?php endif; ?>><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="id" value="<?php echo e( $s['id'] ); ?>"><input type="hidden" name="to" value="<?php echo e( $o['plan'] ); ?>">
+				<button class="btn <?php echo $o['up'] ? '' : 'alt'; ?>" type="submit"><?php echo $o['up'] ? 'Passa a ' . e( $o['label'] ) . ' · paghi ' . e( number_format( $o['pay'] / 100, 2, ',', '.' ) ) . ' € ora' : 'Passa a ' . e( $o['label'] ) . ' dal prossimo rinnovo'; ?></button></form>
+			<?php endforeach; ?>
+		</div>
+		<?php elseif ( is_string( $pc_reason ) && 'no' !== $pc_reason && 'paypal' === $s['provider'] && $rec ) : ?>
+		<p class="hint"><?php echo e( $pc_reason ); ?></p>
+		<?php endif; ?>
+
 		<?php if ( in_array( $s['provider'], array( 'stripe', 'paypal' ), true ) && ! $rec && $key ) : ?>
 		<div class="trial-box">
 			<p><b>Rinnova <?php echo 'year' === $s['period'] ? 'per un altro anno' : 'per un altro mese'; ?></b><br><span class="muted small">Pagamento singolo: la chiave resta la stessa, la scadenza si sposta in avanti.</span></p>
@@ -82,7 +114,9 @@ $csrf = Portale\App::csrf();
 		<?php endif; ?>
 
 		<div class="actions">
-			<?php if ( $key ) : ?>
+			<?php $lockUntil = $key ? Portale\Billing::domainUnlockAt( $s ) : null; if ( $key && $lockUntil ) : ?>
+			<p class="hint" style="margin:0">Dominio cambiato il <?php echo e( date_it( $s["domain_changed_at"] ) ); ?>: potrai cambiarlo di nuovo dal <?php echo e( date_it( $lockUntil ) ); ?>. Per un cambio sito vero prima di quella data, scrivi all'assistenza.</p>
+			<?php elseif ( $key ) : ?>
 			<form class="domain-form" method="post" action="/account/dominio">
 				<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="id" value="<?php echo e( $s['id'] ); ?>">
 				<div><label for="d<?php echo e( $s['id'] ); ?>">Cambia dominio</label>
@@ -97,7 +131,8 @@ $csrf = Portale\App::csrf();
 			<form method="post" action="/account/annulla" onsubmit="return confirm('Disdire il rinnovo automatico? La licenza resta valida fino alla scadenza.')"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="id" value="<?php echo e( $s['id'] ); ?>"><button class="btn danger" type="submit">Disdici il rinnovo</button></form>
 			<?php endif; ?>
 		</div>
-		<p class="hint">Il vecchio dominio smette di funzionare al controllo successivo. Puoi cambiarlo fino a 3 volte ogni 30 giorni.</p>
+		<?php if ( $key ) : ?><p class="hint"><b>Siti di prova inclusi.</b> La licenza vale per il dominio registrato <b><?php echo e( $s['domain'] ); ?></b> e per tutti i suoi sottodomini e sottocartelle: puoi usarla anche su <code>staging.<?php echo e( $s['domain'] ); ?></code>, <code>test.<?php echo e( $s['domain'] ); ?></code>, <code>clone.<?php echo e( $s['domain'] ); ?></code> oppure <code><?php echo e( $s['domain'] ); ?>/staging</code>, con la stessa chiave e senza cambiare nulla.</p><?php endif; ?>
+		<p class="hint">Il vecchio dominio smette di funzionare al controllo successivo. Il cambio è libero, ma dopo averlo fatto la chiave resta legata al nuovo dominio per <?php echo (int) Portale\Settings::limit( 'domain_lock_days' ); ?> giorni: poi puoi cambiarlo di nuovo.</p>
 	</div>
 	<?php endforeach; ?>
 </div></section>

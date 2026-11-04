@@ -23,7 +23,7 @@ final class Guide {
 		return array(
 			array( 'key' => 'identity', 'title' => 'Denominazione e codice fiscale', 'done' => '' !== trim( (string) Settings::get( 'association_name' ) ) && '' !== trim( (string) Settings::get( 'tax_code' ) ), 'page' => 'asem-entity', 'hint' => 'Compaiono su ricevute, tessere e documenti.' ),
 			array( 'key' => 'fee', 'title' => 'Quota associativa e anno sociale', 'done' => (int) Settings::get( 'membership_fee_cents' ) > 0, 'page' => 'asem-settings', 'hint' => 'La quota proposta negli incassi e il mese in cui inizia l\'anno sociale. Puoi definire livelli con quote diverse.' ),
-			array( 'key' => 'members', 'title' => 'Inserisci i soci', 'done' => self::count( 'people', "deleted_at IS NULL AND type <> 'guest'" ) >= 2, 'page' => 'asem-import', 'hint' => 'Uno alla volta dalla Rubrica o tutti insieme importando un file Excel/CSV.' ),
+			array( 'key' => 'members', 'title' => 'Inserisci i soci', 'done' => self::count( 'people', "deleted_at IS NULL AND type NOT IN ('guest','guardian')" ) >= 2, 'page' => 'asem-import', 'hint' => 'Uno alla volta dalla Rubrica o tutti insieme importando un file Excel/CSV.' ),
 			array( 'key' => 'president', 'title' => 'Assegna il presidente', 'done' => $president, 'page' => 'asem-people', 'hint' => 'Dalla scheda di un socio, nel riquadro «Consiglio direttivo»: compare sulle ricevute.' ),
 			array( 'key' => 'area', 'title' => 'Crea l\'area riservata sul sito', 'done' => (int) Settings::get( 'member_area_page_id' ) > 0, 'page' => 'asem-settings', 'hint' => 'La sezione «Pagine del sito e shortcode» crea le pagine per soci e volontari.' ),
 			array( 'key' => 'activity', 'title' => 'Crea il primo corso o evento', 'done' => self::count( 'activities', 'deleted_at IS NULL' ) > 0, 'page' => 'asem-activities', 'hint' => 'Con date, contributo e, se serve, posti e prenotazioni.' ),
@@ -31,20 +31,14 @@ final class Guide {
 		);
 	}
 
-	/** Funzioni facoltative, spente di default. @return array[] title, on, page, hint */
+	/** Funzioni facoltative, spente di default (un'estensione aggiunge le sue con il filtro `asem_guide_options`). @return array[] title, on, page, hint */
 	public static function options(): array {
 		$list = array(
-			array( 'title' => 'Pagamenti online', 'on' => PaymentConfig::NONE !== (string) Settings::get( 'payment_provider' ), 'page' => 'asem-payments', 'hint' => 'Carta, PayPal e altri metodi dall\'area soci.' ),
-			array( 'title' => 'Tessera con QR e Wallet', 'on' => Settings::card_qr_enabled(), 'page' => 'asem-card', 'hint' => 'QR della tessera e biglietti degli eventi.' ),
+			array( 'title' => 'Tessera con QR', 'on' => Settings::card_qr_enabled(), 'page' => 'asem-card', 'hint' => 'QR della tessera e biglietti degli eventi.' ),
 			array( 'title' => 'Promemoria automatici', 'on' => (bool) Settings::get( 'reminders_enabled' ), 'page' => 'asem-comms', 'hint' => 'Tessera in scadenza, mensilità dei corsi, eventi.' ),
 			array( 'title' => 'Regolamento da accettare', 'on' => (bool) Settings::get( 'rules_enabled' ), 'page' => 'asem-comms', 'hint' => 'I soci lo accettano all\'iscrizione e a ogni aggiornamento.' ),
-			array( 'title' => 'Assicurazioni', 'on' => Settings::insurance_volunteers() || Settings::insurance_association(), 'page' => 'asem-volunteers', 'hint' => 'Polizze dell\'associazione e dei volontari, con le scadenze.' ),
-			array( 'title' => '5x1000', 'on' => Edition::has( 'fivepm' ) && FivePerMille::enabled(), 'page' => 'asem-fivepm', 'hint' => 'Messaggio con il codice fiscale e rendiconto dei contributi.' ),
-			array( 'title' => 'Lingua del sito', 'on' => Edition::has( 'texts' ) && Languages::current() !== Languages::DEFAULT_CODE, 'page' => 'asem-texts', 'hint' => 'Testi in un\'altra lingua, con i pacchetti di traduzione.' ),
 		);
-		return array_values( array_filter( $list, function ( $o ) { // le funzioni che questa edizione non ha non si propongono
-			return ! in_array( $o['page'], Edition::missing_pages(), true );
-		} ) );
+		return array_values( (array) apply_filters( 'asem_guide_options', $list ) );
 	}
 
 	/** @return array{done:int,total:int} */

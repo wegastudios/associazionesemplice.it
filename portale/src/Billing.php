@@ -26,9 +26,21 @@ final class Billing {
 
 	// --- Lettura ------------------------------------------------------------------------------------------------
 
+	/** Cambio di piano (upgrade subito, downgrade al rinnovo). */
+	public function planChange(): PlanChange {
+		return new PlanChange( $this->db, $this );
+	}
+
+	/**
+	 * Solo indirizzi «semplici»: filter_var accetta anche la parte prima della chiocciola tra virgolette (con virgole, apici, parentesi, @),
+	 * che certi server di posta leggono in modo diverso e che finirebbe in pagine e messaggi del pannello.
+	 */
+	public static function validEmail( string $email ): bool {
+		return strlen( $email ) <= 190 && false !== filter_var( $email, FILTER_VALIDATE_EMAIL ) && ! preg_match( '/["\s,;<>()\[\]\\\\]/', $email );
+	}
 	public function customer( string $email ): array {
 		$email = strtolower( trim( $email ) );
-		if ( ! filter_var( $email, FILTER_VALIDATE_EMAIL ) || strlen( $email ) > 190 ) {
+		if ( ! self::validEmail( $email ) ) {
 			throw new UserError( 'Indirizzo email non valido.' );
 		}
 		$c = $this->db->one( 'SELECT * FROM customers WHERE email = ?', array( $email ) );
@@ -67,10 +79,10 @@ final class Billing {
 		$stripe = '' !== (string) Config::get( 'stripe.secret_key', '' );
 		$paypal = '' !== (string) Config::get( 'paypal.client_id', '' ) && '' !== (string) Config::get( 'paypal.secret', '' );
 		$once   = false !== ( $price['once'] ?? true );
-		if ( $stripe && ! empty( $price['stripe_price'] ) ) {
+		if ( $stripe && ( ! empty( $price['stripe_price'] ) || ! empty( $price['cents'] ) ) ) {
 			$out[] = array( 'stripe', 'recurring' );
 		}
-		if ( $paypal && ! empty( $price['paypal_plan'] ) ) {
+		if ( $paypal && ( ! empty( $price['paypal_plan'] ) || ! empty( $price['cents'] ) ) ) {
 			$out[] = array( 'paypal', 'recurring' );
 		}
 		if ( $stripe && $once ) {
@@ -82,13 +94,27 @@ final class Billing {
 		return $out;
 	}
 
+	/** Nome del cliente (per precompilare il supporto): spazi ripuliti, niente caratteri di controllo, al massimo 150 caratteri. */
+	public static function cleanName( string $name ): string {
+		$name = (string) preg_replace( '/[\x00-\x1f\x7f]+/u', ' ', $name );
+		return mb_substr( trim( (string) preg_replace( '/\s+/u', ' ', $name ) ), 0, 150 );
+	}
+
+	public function setName( string $customerId, string $name ): void {
+		$this->db->run( 'UPDATE customers SET name = ? WHERE id = ?', array( '' === self::cleanName( $name ) ? null : self::cleanName( $name ), $customerId ) );
+	}
+
 	// --- Creazione ----------------------------------------------------------------------------------------------
 
 	/** Un dominio può avere un solo abbonamento attivo o in attesa, e di un solo cliente (la chiave della licenza è riservata). */
-	private function assertDomainFree( string $domain, string $customerId, ?string $exceptId = null ): void {
-		$row = $this->db->one(
-			"SELECT id FROM subscriptions WHERE domain = ? AND customer_id <> ? AND status IN ('pending','active','past_due') AND id <> ?",
-			array( $domain, $customerId, (string) $exceptId )
+	private function assertDomainFree( string $domain, string $customerId, ?string $exceptId = null, bool $paid = false ): void {
+		// Una richiesta mai completata (in attesa) tiene il dominio solo per «pending_hold_hours»: altrimenti chiunque potrebbe prenotare
+		// per sempre il dominio di un altro. Chi paga non è bloccato da una licenza gratuita o di prova altrui (non prova la proprietà del dominio).
+		$hold = gmdate( 'Y-m-d H:i:s', time() - Settings::limit( 'pending_hold_hours' ) * 3600 );
+		$row  = $this->db->one(
+			"SELECT id FROM subscriptions WHERE domain = ? AND customer_id <> ? AND id <> ? AND ( status IN ('active','past_due') OR ( status = 'pending' AND created_at >= ? ) )"
+			. ( $paid ? " AND provider NOT IN ('free','trial')" : '' ),
+			array( $domain, $customerId, (string) $exceptId, $hold )
 		);
 		if ( $row ) {
 			throw new UserError( 'Questo dominio risulta già registrato da un altro indirizzo email.' );
@@ -107,19 +133,23 @@ final class Billing {
 		return $sub;
 	}
 
-	private function create( string $email, string $domainInput, string $plan, string $period, string $provider, string $mode ): array {
-		$domain = Domain::normalize( $domainInput );
+	private function create( string $email, string $domainInput, string $plan, string $period, string $provider, string $mode, ?string $name = null ): array {
+		$domain = Domain::forLicense( $domainInput );
 		if ( '' === $domain ) {
 			throw new UserError( 'Dominio non valido: scrivi per esempio «miaassociazione.it», senza http:// e senza indirizzi IP.' );
 		}
 		$cust = $this->customer( $email );
-		$this->assertDomainFree( $domain, $cust['id'] );
+		// Il nome dai moduli pubblici vale solo per un cliente nuovo (senza licenze né nome): su un indirizzo già usato lo cambia soltanto chi è entrato in /account.
+		if ( null !== $name && '' !== trim( $name ) && empty( $cust['name'] ) && ! $this->db->one( 'SELECT 1 AS x FROM subscriptions WHERE customer_id = ?', array( $cust['id'] ) ) ) {
+			$this->setName( $cust['id'], $name );
+		}
+		$this->assertDomainFree( $domain, $cust['id'], null, ! in_array( $provider, array( 'free', 'trial' ), true ) );
 		return array( 'customer' => $cust, 'sub' => $this->insertSub( $cust['id'], $plan, $period, $provider, $domain, $mode ) );
 	}
 
 	/** Licenza gratuita: si attiva solo dopo la conferma dell'email (link). @return array [customer, sub] */
-	public function startFree( string $email, string $domain ): array {
-		$r = $this->create( $email, $domain, 'free', 'free', 'free', 'once' );
+	public function startFree( string $email, string $domain, ?string $name = null ): array {
+		$r = $this->create( $email, $domain, 'free', 'free', 'free', 'once', $name );
 		return array( $r['customer'], $r['sub'] );
 	}
 
@@ -129,12 +159,12 @@ final class Billing {
 	 * @param string $mode `recurring` (rinnovo automatico) oppure `once` (pagamento singolo, nessun rinnovo)
 	 * @return string indirizzo a cui mandare il cliente per pagare
 	 */
-	public function startPaid( string $email, string $domain, string $plan, string $period, string $provider, string $mode = 'recurring' ): string {
+	public function startPaid( string $email, string $domain, string $plan, string $period, string $provider, string $mode = 'recurring', ?string $name = null ): string {
 		$price = Config::price( $plan, $period );
 		if ( 'free' === $plan || ! $price || ! in_array( array( $provider, $mode ), $this->methods( $price ), true ) ) {
 			throw new UserError( 'Questo metodo di pagamento non è disponibile per il piano scelto.' );
 		}
-		$r = $this->create( $email, $domain, $plan, $period, $provider, $mode );
+		$r = $this->create( $email, $domain, $plan, $period, $provider, $mode, $name );
 		return $this->checkoutUrl( $r['sub'], $r['customer']['email'], $price, $provider, $mode );
 	}
 
@@ -144,21 +174,43 @@ final class Billing {
 		if ( ! $old || $old['customer_id'] !== $customerId || empty( $old['license_key_enc'] ) || $this->isRecurring( $old ) || ! in_array( $old['provider'], array( 'stripe', 'paypal' ), true ) ) {
 			throw new UserError( 'Questa licenza non si può rinnovare da qui.' );
 		}
-		$price = Config::price( $old['plan_code'], $old['period'] );
+		// Con un downgrade programmato il rinnovo è già al prezzo del piano nuovo.
+		$plan  = ! empty( $old['next_plan'] ) ? (string) $old['next_plan'] : (string) $old['plan_code'];
+		$price = Config::price( $plan, $old['period'] );
 		if ( ! $price || ! in_array( array( $provider, 'once' ), $this->methods( $price ), true ) ) {
 			throw new UserError( 'Questo metodo di pagamento non è disponibile.' );
 		}
 		$cust = $this->db->one( 'SELECT email FROM customers WHERE id = ?', array( $customerId ) );
-		$sub  = $this->insertSub( $customerId, $old['plan_code'], $old['period'], $provider, $old['domain'], 'once', $old['id'] );
+		$sub  = $this->insertSub( $customerId, $plan, $old['period'], $provider, $old['domain'], 'once', $old['id'] );
 		return $this->checkoutUrl( $sub, (string) $cust['email'], $price, $provider, 'once' );
+	}
+
+	/** Piano PayPal da usare: quello scritto nel pannello, altrimenti uno creato da solo (e ricordato) con l'importo del piano. */
+	private function paypalPlan( array $price, string $period, string $label ): string {
+		if ( ! empty( $price['paypal_plan'] ) ) {
+			return (string) $price['paypal_plan'];
+		}
+		$key  = (int) $price['cents'] . '-' . $period;
+		$have = Settings::paypalAuto( $this->db, $key );
+		if ( $have ) {
+			return $have;
+		}
+		$product = Settings::paypalAuto( $this->db, 'product' );
+		if ( ! $product ) {
+			$product = PayPal::createProduct( 'Associazione Semplice' );
+			Settings::savePaypalAuto( $this->db, 'product', $product );
+		}
+		$plan = PayPal::createPlan( $product, (int) $price['cents'], $period, 'Associazione Semplice · ' . $label );
+		Settings::savePaypalAuto( $this->db, $key, $plan );
+		return $plan;
 	}
 
 	private function checkoutUrl( array $sub, string $email, array $price, string $provider, string $mode ): string {
 		$label = (string) Config::get( 'plans.' . $sub['plan_code'] . '.label', $sub['plan_code'] ) . ( 'year' === $sub['period'] ? ' · 1 anno' : ' · 1 mese' );
 		if ( 'recurring' === $mode ) {
 			return 'stripe' === $provider
-				? Stripe::checkoutUrl( $sub['id'], $email, (string) $price['stripe_price'] )
-				: PayPal::approvalUrl( $sub['id'], $email, (string) $price['paypal_plan'] );
+				? Stripe::checkoutUrl( $sub['id'], $email, (string) ( $price['stripe_price'] ?? '' ), (int) $price['cents'], $sub['period'], $label )
+				: PayPal::approvalUrl( $sub['id'], $email, $this->paypalPlan( $price, $sub['period'], $label ) );
 		}
 		if ( 'stripe' === $provider ) {
 			return Stripe::oneTimeUrl( $sub['id'], $email, (int) $price['cents'], $label );
@@ -181,6 +233,12 @@ final class Billing {
 	 * @param int|null    $days   durata se diversa da quella del periodo (prova, emissione manuale)
 	 * @param string|null $extRef riferimento univoco per il server licenze
 	 */
+	/** Segnaposto in license_id mentre un processo sta emettendo la licenza (dopo 10 minuti si considera abbandonato). */
+	const CLAIM = 'in-emissione';
+
+	/** Vero se l'ultima activate() ha emesso davvero una licenza: serve a mandare una sola email di benvenuto. */
+	private $issued = false;
+
 	public function activate( string $subId, ?string $providerRef = null, ?string $providerCustomer = null, ?int $days = null, ?string $extRef = null ): array {
 		$sub = $this->subscription( $subId );
 		if ( ! $sub ) {
@@ -189,23 +247,37 @@ final class Billing {
 		if ( $providerRef ) {
 			$this->db->run( 'UPDATE subscriptions SET provider_ref = ?, provider_customer = COALESCE(?, provider_customer) WHERE id = ?', array( $providerRef, $providerCustomer, $subId ) );
 		}
-		if ( ! empty( $sub['license_id'] ) ) {
+		if ( ! empty( $sub['license_id'] ) && self::CLAIM !== $sub['license_id'] ) {
 			$this->db->run( "UPDATE subscriptions SET status = 'active', updated_at = ? WHERE id = ? AND status <> 'canceled'", array( Db::now(), $subId ) );
 			return $this->subscription( $subId );
 		}
-		$cust = $this->db->one( 'SELECT email FROM customers WHERE id = ?', array( $sub['customer_id'] ) );
-		$lic  = $this->wega->createLicense( array(
-			'type'          => 3,
-			'plan_name'     => (string) Config::get( 'plans.' . $sub['plan_code'] . '.plan_name', $sub['plan_code'] ),
-			'customer_id'   => $cust['email'],
-			'duration_days' => max( 1, min( 3650, $days ?? $this->days( $sub['period'] ) ) ),
-			'domain'        => $sub['domain'],
-			'external_ref'  => $extRef ?? 'sub-' . $sub['id'],
-		) );
+		// Un solo processo emette la licenza: chi vince il segnaposto chiama il server, gli altri non fanno nulla.
+		$claim = $this->db->run(
+			"UPDATE subscriptions SET license_id = ?, updated_at = ? WHERE id = ? AND (license_id IS NULL OR license_id = '' OR (license_id = ? AND updated_at < ?))",
+			array( self::CLAIM, Db::now(), $subId, self::CLAIM, gmdate( 'Y-m-d H:i:s', time() - 600 ) )
+		);
+		if ( 1 !== $claim->rowCount() ) {
+			return $this->subscription( $subId );
+		}
+		try {
+			$cust = $this->db->one( 'SELECT email FROM customers WHERE id = ?', array( $sub['customer_id'] ) );
+			$lic  = $this->wega->createLicense( array(
+				'type'          => 3,
+				'plan_name'     => (string) Config::get( 'plans.' . $sub['plan_code'] . '.plan_name', $sub['plan_code'] ),
+				'customer_id'   => $cust['email'],
+				'duration_days' => max( 1, min( 3650, $days ?? $this->days( $sub['period'] ) ) ),
+				'domain'        => $sub['domain'],
+				'external_ref'  => $extRef ?? 'sub-' . $sub['id'],
+			) );
+		} catch ( \Throwable $e ) {
+			$this->db->run( 'UPDATE subscriptions SET license_id = NULL WHERE id = ? AND license_id = ?', array( $subId, self::CLAIM ) );
+			throw $e;
+		}
 		$this->db->run(
 			"UPDATE subscriptions SET status = 'active', license_id = ?, license_key_enc = ?, expires_at = ?, updated_at = ? WHERE id = ?",
 			array( (string) $lic['license_id'], Secrets::seal( (string) $lic['license_key'] ), $this->date( $lic['expires_at'] ?? null ), Db::now(), $subId )
 		);
+		$this->issued = true;
 		return $this->subscription( $subId );
 	}
 
@@ -213,7 +285,7 @@ final class Billing {
 	 * Un pagamento è andato a buon fine (webhook o ritorno dal provider): emette la licenza e avvisa il cliente.
 	 * Se era il rinnovo di una licenza esistente, la rinnova e lascia la chiave com'è. Ripetibile senza effetti.
 	 */
-	public function completePayment( string $subId, ?string $providerRef = null, ?string $providerCustomer = null ): void {
+	public function completePayment( string $subId, ?string $providerRef = null, ?string $providerCustomer = null, bool $retryIfBusy = false ): void {
 		$sub = $this->subscription( $subId );
 		if ( ! $sub ) {
 			throw new UserError( 'Abbonamento sconosciuto.' );
@@ -223,7 +295,11 @@ final class Billing {
 			$st = $this->db->run( "UPDATE subscriptions SET status = 'merged', provider_ref = COALESCE(?, provider_ref), updated_at = ? WHERE id = ? AND status = 'pending'", array( $providerRef, Db::now(), $subId ) );
 			if ( 1 === $st->rowCount() ) {
 				try {
-					$this->renew( (string) $sub['renews'] );
+					if ( ! empty( $sub['change_to'] ) ) {
+						$this->planChange()->applyUpgrade( $sub );
+					} else {
+						$this->renew( (string) $sub['renews'] );
+					}
 				} catch ( \Throwable $e ) {
 					$this->db->run( "UPDATE subscriptions SET status = 'pending' WHERE id = ?", array( $subId ) );
 					throw $e;
@@ -231,9 +307,13 @@ final class Billing {
 			}
 			return;
 		}
-		$first = empty( $sub['license_id'] );
-		$sub   = $this->activate( $subId, $providerRef, $providerCustomer );
-		if ( $first && ! empty( $sub['license_id'] ) ) {
+		$this->issued = false;
+		$sub          = $this->activate( $subId, $providerRef, $providerCustomer );
+		if ( $retryIfBusy && ! $this->issued && self::CLAIM === ( $sub['license_id'] ?? '' ) ) {
+			// Un altro processo sta ancora emettendo la licenza: il webhook risponde con errore e il provider riprova (poi è un no-op).
+			throw new \RuntimeException( 'Emissione della licenza già in corso: da riprovare.' );
+		}
+		if ( $this->issued && ! empty( $sub['license_id'] ) ) {
 			$this->welcome( $sub );
 		}
 	}
@@ -264,6 +344,7 @@ final class Billing {
 		}
 		$lic = $this->wega->renew( Secrets::open( $sub['license_key_enc'] ) );
 		$this->db->run( "UPDATE subscriptions SET status = 'active', expires_at = ?, updated_at = ? WHERE id = ?", array( $this->date( $lic['expires_at'] ?? null ), Db::now(), $subId ) );
+		$this->planChange()->applyScheduled( $sub );
 		if ( $notify ) {
 			$this->notify( 'renewed', $this->subscription( $subId ) );
 		}
@@ -335,20 +416,37 @@ final class Billing {
 
 	// --- Dominio, disdetta -------------------------------------------------------------------------------------------------
 
-	/** Cambio di dominio (il server consente 3 cambi ogni 30 giorni). */
-	public function changeDomain( string $subId, string $customerId, string $domainInput ): void {
+	/** Quando il cliente potrà cambiare di nuovo il dominio da solo (null = subito): il cambio è libero, poi la chiave resta legata al dominio per `domain_lock_days`. */
+	public static function domainUnlockAt( array $sub ): ?string {
+		$days = Settings::limit( 'domain_lock_days' );
+		if ( $days <= 0 || empty( $sub['domain_changed_at'] ) ) {
+			return null;
+		}
+		$until = strtotime( $sub['domain_changed_at'] . ' UTC' ) + $days * 86400;
+		return $until > time() ? gmdate( 'Y-m-d H:i:s', $until ) : null;
+	}
+
+	/**
+	 * Cambio di dominio. Il cliente lo fa da solo una volta e poi resta bloccato per `domain_lock_days` (una chiave non deve girare tra molti domini);
+	 * il personale lo cambia sempre dal pannello. Il server Wega aggiunge il proprio limite di sicurezza (3 cambi ogni 30 giorni).
+	 */
+	public function changeDomain( string $subId, string $customerId, string $domainInput, bool $byStaff = false ): void {
 		$sub = $this->subscription( $subId );
 		if ( ! $sub || $sub['customer_id'] !== $customerId || empty( $sub['license_key_enc'] ) ) {
 			throw new UserError( 'Abbonamento non trovato.' );
 		}
-		$domain = Domain::normalize( $domainInput );
+		$domain = Domain::forLicense( $domainInput );
 		if ( '' === $domain ) {
 			throw new UserError( 'Dominio non valido.' );
 		}
 		if ( $domain === $sub['domain'] ) {
 			return;
 		}
-		$this->assertDomainFree( $domain, $customerId, $subId );
+		$unlock = $byStaff ? null : self::domainUnlockAt( $sub );
+		if ( $unlock ) {
+			throw new UserError( 'Hai già cambiato dominio il ' . date_it( $sub['domain_changed_at'] ) . ': potrai farlo di nuovo dal ' . date_it( $unlock ) . '. Prima di allora, per un cambio sito vero, scrivi all\'assistenza.' );
+		}
+		$this->assertDomainFree( $domain, $customerId, $subId, ! in_array( $sub['provider'], array( 'free', 'trial' ), true ) );
 		try {
 			$this->wega->changeDomain( (string) $sub['license_id'], Secrets::open( $sub['license_key_enc'] ), $domain );
 		} catch ( WegaException $e ) {
@@ -360,7 +458,7 @@ final class Billing {
 			);
 			throw new UserError( $map[ $e->errorCode ] ?? 'Non riesco a cambiare il dominio adesso: riprova tra poco.' );
 		}
-		$this->db->run( 'UPDATE subscriptions SET domain = ?, updated_at = ? WHERE id = ?', array( $domain, Db::now(), $subId ) );
+		$this->db->run( 'UPDATE subscriptions SET domain = ?, domain_changed_at = ?, updated_at = ? WHERE id = ?', array( $domain, Db::now(), Db::now(), $subId ) );
 		$this->notify( 'domain_changed', $this->subscription( $subId ), array( 'vecchio_dominio' => $sub['domain'] ) );
 	}
 
@@ -428,6 +526,62 @@ final class Billing {
 		return false === $t ? null : gmdate( 'Y-m-d H:i:s', $t );
 	}
 
+	// --- Rinnovo automatico delle licenze gratuite ----------------------------------------------------------------
+
+	/** Registra un accesso (verifica dal plugin o ingresso del cliente) sulla licenza con questo id Wega. */
+	public function touch( string $licenseId, ?int $now = null ): void {
+		$this->db->run( 'UPDATE subscriptions SET last_seen_at = ? WHERE license_id = ?', array( gmdate( 'Y-m-d H:i:s', $now ?? time() ), $licenseId ) );
+	}
+
+	public function touchCustomer( string $customerId, ?int $now = null ): void {
+		$this->db->run( 'UPDATE subscriptions SET last_seen_at = ? WHERE customer_id = ?', array( gmdate( 'Y-m-d H:i:s', $now ?? time() ), $customerId ) );
+	}
+
+	/**
+	 * Rinnova le licenze gratuite in scadenza (entro «free_renew_ahead» giorni), salvo quelle senza accessi da più di «free_inactive_days»:
+	 * per accesso si intende una verifica dal plugin o l'ingresso del cliente (se mai avvenuto, vale la data di emissione). Le inattive scadono.
+	 * Un errore di Wega su una licenza non ferma le altre. @return array [rinnovate, lasciate scadere]
+	 */
+	public function autoRenewFree( ?int $now = null ): array {
+		$now   = $now ?? time();
+		$rows  = $this->db->all(
+			"SELECT * FROM subscriptions WHERE provider = 'free' AND status = 'active' AND license_key_enc IS NOT NULL AND expires_at IS NOT NULL AND expires_at <= ?",
+			array( gmdate( 'Y-m-d H:i:s', $now + Settings::limit( 'free_renew_ahead' ) * 86400 ) )
+		);
+		$limit = $now - Settings::limit( 'free_inactive_days' ) * 86400;
+		$done  = 0;
+		$lapse = 0;
+		foreach ( $rows as $s ) {
+			$seen = strtotime( ( $s['last_seen_at'] ?: $s['created_at'] ) . ' UTC' );
+			if ( $seen < $limit ) {
+				++$lapse;
+				continue;
+			}
+			try {
+				if ( $this->renew( $s['id'], null, $now, false ) ) {
+					++$done;
+				}
+			} catch ( WegaException $e ) {
+				error_log( '[portale] rinnovo gratuito ' . $s['id'] . ': ' . $e->errorCode . ' ' . $e->httpStatus );
+			}
+		}
+		return array( $done, $lapse );
+	}
+
+	/** Rilegge da Wega la chiave di una licenza del portale che non la conserva (importata o persa) e la salva cifrata. */
+	public function recoverKey( string $subId ): bool {
+		$sub = $this->subscription( $subId );
+		if ( ! $sub || empty( $sub['license_id'] ) || ! empty( $sub['license_key_enc'] ) ) {
+			return false;
+		}
+		$key = $this->wega->licenseKey( (string) $sub['license_id'] );
+		if ( '' === $key ) {
+			return false;
+		}
+		$this->db->run( 'UPDATE subscriptions SET license_key_enc = ?, updated_at = ? WHERE id = ?', array( Secrets::seal( $key ), Db::now(), $subId ) );
+		return true;
+	}
+
 	// --- Specchio su Wega ----------------------------------------------------------------------------------------------
 
 	/**
@@ -453,7 +607,8 @@ final class Billing {
 			if ( in_array( $e->httpStatus, array( 404, 405, 501 ), true ) ) {
 				return 'Wega non offre ancora questa operazione: la modifica non è stata riflessa sul server licenze.';
 			}
-			throw new UserError( 'Il server licenze non ha accettato la modifica (' . $e->errorCode . ', HTTP ' . $e->httpStatus . '): non è cambiato nulla. Riprova.' );
+			error_log( '[portale] modifica licenza rifiutata: ' . $e->errorCode . ' HTTP ' . $e->httpStatus );
+			throw new UserError( 'Non è stato possibile completare la modifica: non è cambiato nulla. Riprova tra qualche minuto.' );
 		}
 	}
 

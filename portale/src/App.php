@@ -24,7 +24,7 @@ final class App {
 				$this->webhook( $path );
 				return;
 			}
-			if ( 0 === strpos( $path, '/api/license/' ) || '/.well-known/jwks.json' === $path ) {
+			if ( 0 === strpos( $path, '/api/license/' ) || 0 === strpos( $path, '/api/plugin/' ) || '/.well-known/jwks.json' === $path ) {
 				$this->licenseApi( $method, $path );
 				return;
 			}
@@ -32,6 +32,7 @@ final class App {
 				throw new UserError( 'Sessione scaduta: ricarica la pagina e riprova.' );
 			}
 			$this->route( $method, $path );
+			$this->finish();
 		} catch ( UserError $e ) {
 			http_response_code( 422 );
 			View::render( 'message', array( 'title' => 'Non è andata a buon fine', 'text' => $e->getMessage() ) );
@@ -39,8 +40,8 @@ final class App {
 			error_log( '[portale] wega ' . $e->errorCode . ' ' . $e->httpStatus . ' ' . $e->getMessage() );
 			http_response_code( 502 );
 			// Alla gestione si mostra la causa vera; ai clienti un messaggio generico.
-			$detail = ! empty( $_SESSION['admin'] ) ? ' Risposta del server licenze: ' . $e->errorCode . ' (HTTP ' . $e->httpStatus . ') ' . $e->getMessage() : '';
-			View::render( 'message', array( 'title' => 'Server licenze non disponibile', 'text' => 'Non è stato possibile completare l\'operazione con il server licenze: riprova tra qualche minuto.' . $detail ) );
+			$detail = ( ! empty( $_SESSION['customer'] ) && Staff::ADMIN === Staff::role( $this->db, $this->customerEmail( (string) $_SESSION['customer'] ) ) ) ?' Risposta del server licenze: ' . $e->errorCode . ' (HTTP ' . $e->httpStatus . ') ' . $e->getMessage() : '';
+			View::render( 'message', array( 'title' => 'Servizio momentaneamente non disponibile', 'text' => 'Non è stato possibile completare l\'operazione con il server licenze: riprova tra qualche minuto.' . $detail ) );
 		} catch ( \Throwable $e ) {
 			error_log( '[portale] ' . $e->getMessage() );
 			http_response_code( 500 );
@@ -54,23 +55,50 @@ final class App {
 			( new Admin( $this->db, $this->billing, $this->customerId() ) )->handle( $method, $path );
 		} elseif ( $get && '/' === $path ) {
 			View::render( 'home', array( 'plans' => Config::get( 'plans', array() ), 'trial' => Config::get( 'trial_enabled', true ) ? Settings::limit( 'trial_days' ) : 0 ) );
+		} elseif ( $get && '/api/piani' === $path ) {
+			// Nomi dei piani per il sito di supporto: sola lettura, senza prezzi né dati riservati.
+			header( 'Content-Type: application/json; charset=utf-8' );
+			View::security();
+			header( 'X-Robots-Tag: noindex' );
+			header( 'Cache-Control: public, max-age=300' );
+			echo json_encode( Site::publicPlans(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
 		} elseif ( $get && '/robots.txt' === $path ) {
 			View::headers( 'text/plain; charset=utf-8' );
-			echo Config::get( 'indexable', false ) ? "User-agent: *\nAllow: /\nDisallow: /account\nDisallow: /admin\nDisallow: /scarica\nDisallow: /entra\n" : "User-agent: *\nDisallow: /\n";
+			echo Config::get( 'indexable', false ) ? "User-agent: *\nAllow: /\nDisallow: /account\nDisallow: /admin\nDisallow: /api\nDisallow: /scarica\nDisallow: /entra\n" : "User-agent: *\nDisallow: /\n";
 		} elseif ( $get && isset( Legal::PAGES[ ltrim( $path, '/' ) ] ) ) {
 			$slug = ltrim( $path, '/' );
 			View::render( 'legal', array( 'title' => Legal::PAGES[ $slug ][0], 'html' => Legal::html( Legal::body( $slug ) ) ) );
+		} elseif ( $get && '/plugin' === $path ) {
+			View::render( 'legal', array( 'title' => 'Il plugin Associazione Semplice', 'html' => Legal::html( (string) file_get_contents( __DIR__ . '/../content/plugin.md' ) ) ) );
+		} elseif ( $get && '/piani' === $path ) {
+			header( 'Location: /prezzi', true, 301 );
+		} elseif ( $get && '/prezzi' === $path ) {
+			View::render( 'pricing', array( 'title' => 'Prezzi', 'plans' => Config::get( 'plans', array() ), 'trial' => Config::get( 'trial_enabled', true ) ? Settings::limit( 'trial_days' ) : 0 ) );
+		} elseif ( $get && '/funzioni' === $path ) {
+			View::render( 'features', array( 'title' => 'Funzioni' ) );
+		} elseif ( $get && '/domande' === $path ) {
+			View::render( 'faq', array( 'title' => 'Domande frequenti' ) );
+		} elseif ( $get && '/prova' === $path ) {
+			View::render( 'demo', array( 'title' => 'Prova la demo', 'plans' => Config::get( 'plans', array() ), 'accounts' => Demo::accounts(), 'links' => Demo::links(), 'matrix' => Demo::roles(), 'notes' => Demo::roleNotes(), 'base' => Demo::url() ) );
+		} elseif ( $get && '/confronto' === $path ) {
+			View::render( 'confronto', array( 'title' => 'Confronto tra le versioni' ) );
+		} elseif ( $get && '/confronto-demo' === $path ) {
+			// Stessa tabella di /confronto, senza pagina intorno: la legge la demo e la mostra nella sua home.
+			$fragment = true;
+			View::headers( 'text/html; charset=utf-8' );
+			require __DIR__ . '/../views/confronto.php';
 		} elseif ( $get && '/free' === $path ) {
-			View::render( 'free', array() );
+			View::render( 'free', array( 'title' => 'Licenza gratuita' ) );
 		} elseif ( ! $get && '/free' === $path ) {
-			list( $cust, $sub ) = $this->billing->startFree( (string) $this->in( 'email' ), (string) $this->in( 'domain' ) );
+			$this->formLimit();
+			list( $cust, $sub ) = $this->billing->startFree( (string) $this->in( 'email' ), (string) $this->in( 'domain' ), (string) $this->in( 'name' ) );
 			if ( ! $this->auth->canIssue( $cust['id'] ) ) {
 				throw new UserError( 'Hai richiesto troppi link: riprova tra un po\'.' );
 			}
 			$this->sendLink( $cust, $this->auth->issue( $cust['id'], $sub['id'] ), 'free_confirm', array( 'dominio' => $sub['domain'] ) );
 			View::render( 'message', array( 'title' => 'Controlla la posta', 'text' => 'Ti abbiamo scritto un link per confermare l\'email e ricevere la chiave.' ) );
 		} elseif ( $get && '/acquista' === $path ) {
-			$plan   = (string) ( $_GET['plan'] ?? '' );
+			$plan   = Site::code( (string) ( $_GET['plan'] ?? '' ) );
 			$period = (string) ( $_GET['period'] ?? '' );
 			$price  = Config::price( $plan, $period );
 			if ( ! $price ) {
@@ -81,21 +109,23 @@ final class App {
 				'methods' => $this->billing->methods( $price ), 'days' => Settings::limit( 'year' === $period ? 'duration_year' : 'duration_month' ),
 			) );
 		} elseif ( ! $get && '/acquista' === $path ) {
+			$this->formLimit();
 			list( $provider, $mode ) = array_pad( explode( ':', (string) $this->in( 'method' ), 2 ), 2, '' );
-			$url = $this->billing->startPaid( (string) $this->in( 'email' ), (string) $this->in( 'domain' ), (string) $this->in( 'plan' ), (string) $this->in( 'period' ), $provider, $mode );
+			$url = $this->billing->startPaid( (string) $this->in( 'email' ), (string) $this->in( 'domain' ), (string) $this->in( 'plan' ), (string) $this->in( 'period' ), $provider, $mode, (string) $this->in( 'name' ) );
 			header( 'Location: ' . $url, true, 303 );
 		} elseif ( $get && '/paypal/ritorno' === $path ) {
 			$this->paypalReturn( (string) ( $_GET['token'] ?? '' ) );
 		} elseif ( $get && '/grazie' === $path ) {
 			View::render( 'message', array( 'title' => 'Grazie!', 'text' => 'Appena il pagamento è confermato ti scriviamo un link per entrare nell\'area riservata e vedere la chiave di licenza.' ) );
 		} elseif ( $get && '/accedi' === $path ) {
-			View::render( 'login', array() );
+			View::render( 'login', array( 'title' => 'Area riservata' ) );
 		} elseif ( ! $get && '/accedi' === $path ) {
 			$email = strtolower( trim( (string) $this->in( 'email' ) ) );
 			if ( 'link' !== (string) $this->in( 'mode' ) && '' !== (string) $this->in( 'password' ) ) {
 				$this->startSession( $this->auth->loginWithPassword( $email, (string) $this->in( 'password' ), $this->clientIp() ), false );
 				return;
 			}
+			$this->formLimit();
 			$cust = $this->db->one( 'SELECT * FROM customers WHERE email = ?', array( $email ) );
 			// Stessa risposta se l'email non esiste: non si rivela chi è cliente.
 			if ( $cust && $this->auth->canIssue( $cust['id'] ) ) {
@@ -108,7 +138,7 @@ final class App {
 			if ( '?1' === ($_SERVER['HTTP_SEC_FETCH_USER'] ?? '') && 'navigate' === ($_SERVER['HTTP_SEC_FETCH_MODE'] ?? '') ) {
 				$this->enter( substr( $path, 7 ) );
 			} else {
-				View::render( 'enter', array( 'token' => substr( $path, 7 ) ) );
+				View::render( 'enter', array( 'title' => 'Conferma l\'accesso', 'token' => substr( $path, 7 ) ) );
 			}
 		} elseif ( ! $get && '/entra' === $path ) {
 			$this->enter( (string) $this->in( 'token' ) );
@@ -120,6 +150,10 @@ final class App {
 			header( 'Location: ' . SupportSso::url( $this->db, $this->customerEmail( $this->customerId() ) ), true, 303 );
 		} elseif ( $get && '/account' === $path ) {
 			$this->account();
+		} elseif ( ! $get && '/account/nome' === $path ) {
+			$this->billing->setName( $this->customerId(), (string) $this->in( 'name' ) );
+			$_SESSION['acc_flash'] = 'Nome salvato: comparirà anche nelle richieste di supporto.';
+			header( 'Location: /account', true, 303 );
 		} elseif ( ! $get && '/account/password' === $path ) {
 			$this->changePassword();
 		} elseif ( ! $get && '/account/dominio' === $path ) {
@@ -134,6 +168,17 @@ final class App {
 		} elseif ( ! $get && '/account/rinnova' === $path ) {
 			$url = $this->billing->startRenewal( (string) $this->in( 'id' ), $this->customerId(), (string) $this->in( 'provider' ) );
 			header( 'Location: ' . $url, true, 303 );
+		} elseif ( ! $get && '/account/piano' === $path ) {
+			$url = $this->billing->planChange()->startUpgrade( (string) $this->in( 'id' ), $this->customerId(), (string) $this->in( 'to' ) );
+			header( 'Location: ' . $url, true, 303 );
+		} elseif ( ! $get && '/account/piano-programma' === $path ) {
+			$this->billing->planChange()->scheduleDowngrade( (string) $this->in( 'id' ), $this->customerId(), (string) $this->in( 'to' ) );
+			$_SESSION['acc_flash'] = 'Cambio piano programmato: la licenza passa al piano scelto dal prossimo rinnovo.';
+			header( 'Location: /account', true, 303 );
+		} elseif ( ! $get && '/account/piano-annulla' === $path ) {
+			$this->billing->planChange()->cancelScheduled( (string) $this->in( 'id' ), $this->customerId() );
+			$_SESSION['acc_flash'] = 'Cambio piano annullato: la licenza resta com\'è.';
+			header( 'Location: /account', true, 303 );
 		} elseif ( ! $get && '/account/fatturazione' === $path ) {
 			$sub = $this->billing->subscription( (string) $this->in( 'id' ) );
 			if ( ! $sub || $sub['customer_id'] !== $this->customerId() || empty( $sub['provider_customer'] ) || 'stripe' !== $sub['provider'] ) {
@@ -167,7 +212,9 @@ final class App {
 	/** Apre la sessione del cliente; entrando dal link per email la password si può impostare senza digitare la vecchia. */
 	private function startSession( array $cust, bool $viaLink ): void {
 		session_regenerate_id( true );
+		unset( $_SESSION['csrf'] ); // nuovo token dopo l'accesso
 		$_SESSION['customer'] = $cust['id'];
+		$this->billing->touchCustomer( (string) $cust['id'] );
 		$_SESSION['via_link'] = $viaLink;
 		$role                = Staff::role( $this->db, (string) $cust['email'] ) ?? '';
 		$_SESSION['staff']    = $role;
@@ -176,8 +223,7 @@ final class App {
 	}
 
 	private function clientIp(): string {
-		$ip = Config::get( 'trust_forwarded_for', false ) ? trim( explode( ',', (string) ( $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '' ) )[0] ) : '';
-		return '' !== $ip ? $ip : (string) ( $_SERVER['REMOTE_ADDR'] ?? '' );
+		return ClientIp::from( $_SERVER, (bool) Config::get( 'trust_forwarded_for', false ), (int) Config::get( 'forwarded_hops', 1 ) );
 	}
 
 	private function changePassword(): void {
@@ -197,10 +243,11 @@ final class App {
 	private function download( string $path ): void {
 		$cid   = $this->customerId();
 		$parts = explode( '/', trim( substr( $path, 9 ), '/' ) );
-		if ( 2 !== count( $parts ) || ! isset( Releases::PRODUCTS[ $parts[0] ] ) || ! preg_match( '/^d+.d+.d+$/', $parts[1] ) ) {
+		if ( 2 !== count( $parts ) || ! isset( Releases::PRODUCTS[ $parts[0] ] ) || ! Releases::validVersion( $parts[1] ) ) {
 			throw new UserError( 'Questa versione non è disponibile.' );
 		}
-		$file = Releases::authorize( $this->db, $cid, ! empty( $_SESSION['admin'] ), $this->billing->forCustomer( $cid ), $parts[0], $parts[1] );
+		// Il ruolo si rilegge dall'email a ogni richiesta: chi non è più amministratore non conserva i privilegi nella sessione già aperta.
+		$file = Releases::authorize( $this->db, $cid, Staff::ADMIN === Staff::role( $this->db, $this->customerEmail( $cid ) ), $this->billing->forCustomer( $cid ), $parts[0], $parts[1] );
 		Releases::stream( $file, $parts[0], $parts[1] );
 	}
 
@@ -214,7 +261,7 @@ final class App {
 		$flash = (string) ( $_SESSION['acc_flash'] ?? '' );
 		unset( $_SESSION['acc_flash'] );
 		View::render( 'account', array(
-			'has_password' => $this->auth->hasPassword( $cid ), 'via_link' => ! empty( $_SESSION['via_link'] ), 'flash' => $flash,
+			'name' => (string) ( $this->db->one( 'SELECT name FROM customers WHERE id = ?', array( $cid ) )['name'] ?? '' ), 'has_password' => $this->auth->hasPassword( $cid ), 'via_link' => ! empty( $_SESSION['via_link'] ), 'flash' => $flash,
 			'subs' => $subs, 'email' => $this->customerEmail( $cid ), 'trial' => $trial, 'trial_days' => Settings::limit( 'trial_days' ),
 			'trial_label' => (string) Config::get( 'plans.' . Config::get( 'trial_plan', 'full' ) . '.label', 'Pro' ),
 			'billing' => $this->billing, 'is_admin' => ! empty( $_SESSION['staff'] ),
@@ -242,6 +289,18 @@ final class App {
 		$proxy = new LicenseProxy( $this->db, $this->billing->wega() );
 		if ( 'POST' === $method && '/api/license/validate' === $path ) {
 			$res = $proxy->validate( (string) substr( (string) file_get_contents( 'php://input' ), 0, 4096 ), $this->clientIp() );
+		} elseif ( 'GET' === $method && '/api/plugin/latest' === $path ) {
+			$res = $proxy->latest( $this->clientIp() );
+		} elseif ( 'POST' === $method && '/api/plugin/update' === $path ) {
+			$res = PluginUpdates::check( $this->db, $proxy, (string) substr( (string) file_get_contents( 'php://input' ), 0, 4096 ), $this->clientIp() );
+		} elseif ( 'GET' === $method && '/api/plugin/package' === $path ) {
+			// Scarico dello zip con indirizzo firmato (nessun accesso richiesto, ma il token dura pochi minuti).
+			list( $code, $file, $prod, $ver ) = PluginUpdates::package( $this->db, (string) ( $_GET['t'] ?? '' ) );
+			if ( 200 === $code && $proxy->hit( 'package', $this->clientIp() ) ) {
+				Releases::stream( $file, $prod, $ver );
+				return;
+			}
+			$res = array( 200 === $code ? 429 : $code, (string) json_encode( array( 'error' => array( 'code' => 'PACKAGE', 'message' => 200 === $code ? 'Troppe richieste: riprova più tardi.' : $file ) ) ), array() );
 		} elseif ( 'GET' === $method && '/.well-known/jwks.json' === $path ) {
 			$res = $proxy->jwks();
 		} else {
@@ -249,6 +308,7 @@ final class App {
 		}
 		http_response_code( $res[0] );
 		header( 'Content-Type: application/json; charset=utf-8' );
+		View::security();
 		header( 'X-Robots-Tag: noindex' );
 		foreach ( $res[2] as $h ) {
 			header( $h );
@@ -275,8 +335,35 @@ final class App {
 		http_response_code( $code );
 	}
 
+	/** @var callable[] email da mandare dopo che la risposta è stata consegnata */
+	private $after = array();
+
 	private function sendLink( array $cust, string $token, string $event, array $vars = array() ): void {
-		Emails::send( $this->db, $event, $cust['email'], $vars + array( 'link' => rtrim( (string) Config::get( 'base_url' ), '/' ) . '/entra/' . $token ) );
+		// L'email parte a risposta consegnata: il tempo di risposta non dice se l'indirizzo è di un cliente.
+		$this->after[] = function () use ( $cust, $token, $event, $vars ) {
+			Emails::send( $this->db, $event, $cust['email'], $vars + array( 'link' => rtrim( (string) Config::get( 'base_url' ), '/' ) . '/entra/' . $token ) );
+		};
+	}
+
+	/** Consegna la risposta e poi manda le email in coda. */
+	private function finish(): void {
+		if ( ! $this->after ) {
+			return;
+		}
+		if ( function_exists( 'fastcgi_finish_request' ) ) {
+			fastcgi_finish_request();
+		} else {
+			flush();
+		}
+		$jobs        = $this->after;
+		$this->after = array();
+		foreach ( $jobs as $job ) {
+			try {
+				$job();
+			} catch ( \Throwable $e ) {
+				error_log( '[portale] email non inviata: ' . $e->getMessage() );
+			}
+		}
 	}
 
 	/** @return mixed */

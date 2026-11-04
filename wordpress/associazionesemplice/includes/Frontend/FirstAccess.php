@@ -19,6 +19,7 @@ defined( 'ABSPATH' ) || exit;
 final class FirstAccess {
 
 	const MAX_PER_HOUR = 10;
+	const MESSAGE_OWN  = 'Richiesta ricevuta. Se sei un socio ti abbiamo scritto all\'email indicata: apri il link per entrare (controlla anche la posta indesiderata). Altrimenti ti contatta la segreteria su WhatsApp.';
 	const MESSAGE      = 'Richiesta ricevuta. Se sei un socio ti abbiamo scritto all\'email indicata: apri il messaggio e scegli la tua password (controlla anche la posta indesiderata). Altrimenti ti contatta la segreteria su WhatsApp.';
 
 	public static function register(): void {
@@ -32,6 +33,9 @@ final class FirstAccess {
 
 	/** Avviso sopra il modulo di accesso di WordPress. */
 	public static function login_message( $message ) {
+		if ( \AssociazioneSemplice\MemberSession::enabled() && ! \AssociazioneSemplice\MemberSession::wp_users_wanted() ) { // i soci non sono utenti del sito: questa pagina è per chi lo gestisce
+			return (string) $message . '<p class="message">Questa pagina è per la segreteria e per chi gestisce il sito. Sei un socio? <a href="' . esc_url( \AssociazioneSemplice\Frontend\MemberLoginPage::url() ) . '"><strong>Entra nell\'area soci</strong></a></p>';
+		}
 		return (string) $message . '<p class="message">Sei un socio e non hai ancora una password? <a href="' . esc_url( self::url() ) . '"><strong>Primo accesso</strong></a></p>';
 	}
 
@@ -45,7 +49,7 @@ final class FirstAccess {
 		$email = trim( $email );
 		$user  = '' !== $email && is_email( $email ) ? get_user_by( 'email', $email ) : false;
 		if ( ! $user ) {
-			return false;
+			return ! \AssociazioneSemplice\MemberSession::wp_users_wanted() && \AssociazioneSemplice\MemberLogin::request( $email ); // senza utente WordPress: link e codice per l'accesso proprio
 		}
 		// Non più di qualche email all'ora allo stesso indirizzo: nessuno può inondare di messaggi la casella di un socio (la risposta del sito resta uguale).
 		$mail_key = 'asem_fa_m_' . md5( strtolower( $user->user_email ) );
@@ -53,9 +57,8 @@ final class FirstAccess {
 		if ( $sent >= Limits::get( 'first_access_per_email' ) ) {
 			return false;
 		}
-		set_transient( $mail_key, $sent + 1, HOUR_IN_SECONDS );
 		$person = \AssociazioneSemplice\Access::person_for_user( (int) $user->ID );
-		if ( ! $person || ! MemberType::is_member( $person['type'] ) || user_can( $user, Plugin::CAP_OPS ) ) {
+		if ( ! $person || ! MemberType::can_login( $person['type'] ) || user_can( $user, Plugin::CAP_OPS ) ) {
 			return false; // solo i soci (mai gli amministratori)
 		}
 		$key = get_password_reset_key( $user );
@@ -70,7 +73,11 @@ final class FirstAccess {
 		$link  = network_site_url( 'wp-login.php?action=rp&key=' . $key . '&login=' . rawurlencode( $user->user_login ), 'login' );
 		$text  = 'Ciao ' . $person['first_name'] . ",\n\necco il link per il tuo primo accesso" . ( '' !== $assoc ? ' a ' . $assoc : '' ) . ":\n\n" . $link
 			. "\n\nApri il link, scegli la tua password e poi entra con questa email. Il link vale 24 ore: se scade, ripeti il \"Primo accesso\" dal sito.\n\nSe non hai chiesto tu questo messaggio, ignoralo.";
-		return (bool) \AssociazioneSemplice\Texts::mail( $user->user_email, 'Primo accesso' . ( '' !== $assoc ? ' — ' . $assoc : '' ), $text );
+		$ok = (bool) \AssociazioneSemplice\Texts::mail( $user->user_email, 'Primo accesso' . ( '' !== $assoc ? ' — ' . $assoc : '' ), $text );
+		if ( $ok ) { // il limite conta i messaggi partiti davvero: se la posta del sito non funziona il socio può riprovare senza restare bloccato
+			set_transient( $mail_key, $sent + 1, HOUR_IN_SECONDS );
+		}
+		return $ok;
 	}
 
 	/**
@@ -98,9 +105,9 @@ final class FirstAccess {
 
 		// 1. L'email è già di un socio: caso sicuro, il link va a quell'indirizzo.
 		$by_mail = $people->find_by_email( strtolower( $email ) );
-		if ( $by_mail && MemberType::is_member( $by_mail['type'] ) ) {
-			if ( empty( $by_mail['wp_user_id'] ) ) {
-				$people->update( (int) $by_mail['id'], array() ); // crea l'utente che mancava
+		if ( $by_mail && MemberType::can_login( $by_mail['type'] ) && empty( $by_mail['application_status'] ) ) { // chi ha solo chiesto di iscriversi non è ancora socio
+			if ( empty( $by_mail['wp_user_id'] ) && \AssociazioneSemplice\MemberSession::wp_users_wanted() ) {
+				$people->update( (int) $by_mail['id'], array() ); // crea l'utente che mancava (con l'accesso proprio non serve: il link va all'email)
 			}
 			return self::request( $email ) ? 'emailed' : 'none';
 		}
@@ -130,10 +137,21 @@ final class FirstAccess {
 		if ( ! $r || 'change' !== $r['kind'] || ! $r['person_id'] ) {
 			throw new \InvalidArgumentException( 'Richiesta non trovata.' );
 		}
+		$before = Plugin::people()->get( (int) $r['person_id'] );
 		Plugin::people()->update( (int) $r['person_id'], array( 'email' => strtolower( $r['email'] ) ) );
 		Audit::log( 'person.email_changed_by_request', 'person', (int) $r['person_id'] );
 		AccessRequests::remove( $request_id );
 		self::request( $r['email'] );
+		// L'indirizzo di prima viene avvisato: se la richiesta non era del socio, se ne accorge e scrive alla segreteria.
+		$old = $before && ! empty( $before['email'] ) ? strtolower( (string) $before['email'] ) : '';
+		if ( '' !== $old && is_email( $old ) && $old !== strtolower( $r['email'] ) ) {
+			$assoc = (string) Settings::get( 'association_name' );
+			\AssociazioneSemplice\Texts::mail(
+				$old,
+				'Email di accesso cambiata' . ( '' !== $assoc ? ' — ' . $assoc : '' ),
+				'Ciao ' . $before['first_name'] . ",\n\nsu richiesta, l'email del tuo accesso" . ( '' !== $assoc ? ' a ' . $assoc : '' ) . " è stata cambiata: da questo indirizzo non entrerai più.\n\nSe non l'hai chiesta tu, scrivi subito alla segreteria."
+			);
+		}
 	}
 
 	public static function page( string $message = '', array $post = array(), string $error = '' ): string {
@@ -144,11 +162,11 @@ final class FirstAccess {
 		};
 		$body = ( '' !== $message ? '<div class="w" style="color:#1a7f37">' . esc_html( $message ) . '</div>' : '' )
 			. ( '' !== $error ? '<div class="w" style="color:#b32d2e">' . esc_html( $error ) . '</div>' : '' )
-			. '<div class="n">Primo accesso</div><p>Indica i tuoi dati: ti mandiamo il link per scegliere la password. ' . ( 'invite' === Settings::get( 'join_mode' ) ? 'L\'accesso è riservato a chi è già iscritto: l\'iscrizione si fa su presentazione, rivolgendosi alla segreteria.' : 'Se non ti riconosciamo, la richiesta arriva alla segreteria, che ti scrive su WhatsApp.' ) . '</p>'
+			. '<div class="n">Primo accesso</div><p>Indica i tuoi dati: ' . ( ! \AssociazioneSemplice\MemberSession::wp_users_wanted() ? 'ti mandiamo il link per entrare e scegliere la tua password. ' : 'ti mandiamo il link per scegliere la password. ' ) . ( 'invite' === Settings::get( 'join_mode' ) ? 'L\'accesso è riservato a chi è già iscritto: l\'iscrizione si fa su presentazione, rivolgendosi alla segreteria.' : 'Se non ti riconosciamo, la richiesta arriva alla segreteria, che ti scrive su WhatsApp.' ) . '</p>'
 			. '<form method="post" action="' . esc_url( self::url() ) . '">' . wp_nonce_field( 'asem_first_access', '_asem_nonce', false, false ) . '<input type="hidden" name="asem_first_go" value="1">'
 			. $field( 'Nome e cognome', 'name', 'text', 'name' ) . $field( 'La tua email', 'email', 'email', 'email' ) . $field( 'Il tuo cellulare', 'phone', 'tel', 'tel' )
 			. '<button type="submit" style="width:100%;padding:14px;font-size:18px;border:0;border-radius:10px;cursor:pointer;background:' . esc_attr( $accent ) . ';color:#fff">Mandami il link</button></form>'
-			. '<p style="margin-top:14px"><a href="' . esc_url( wp_login_url() ) . '">← Torna all\'accesso</a></p>';
+			. '<p style="margin-top:14px"><a href="' . esc_url( ! \AssociazioneSemplice\MemberSession::wp_users_wanted() ? MemberLoginPage::url() : wp_login_url() ) . '">← Torna all\'accesso</a></p>';
 		return CardVerify::layout( 'Primo accesso', $accent, $body );
 	}
 
@@ -159,26 +177,26 @@ final class FirstAccess {
 		$message = '';
 		$error   = '';
 		$post    = array();
-		if ( 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' ) && isset( $_POST['asem_first_go'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- valore verificato e ripulito da chi lo usa
-			$post   = array_map( 'sanitize_text_field', wp_unslash( $_POST ) ); // phpcs:ignore WordPress.Security.NonceVerification
-			$rl_key = 'asem_fa_' . md5( (string) ( $_SERVER['REMOTE_ADDR'] ?? '' ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized, WordPress.Security.ValidatedSanitizedInput.MissingUnslash -- valore verificato e ripulito da chi lo usa
+		if ( isset( $_SERVER['REQUEST_METHOD'], $_POST['asem_first_go'] ) && 'POST' === sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification -- il nonce si controlla qui sotto
+			$post   = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
+			$rl_key = 'asem_fa_' . md5( \AssociazioneSemplice\ClientIp::get() );
 			$tries  = (int) get_transient( $rl_key );
 			if ( $tries >= Limits::get( 'first_access_per_ip' ) ) {
 				$error = 'Troppi tentativi: riprova tra qualche minuto.';
-			} elseif ( ! wp_verify_nonce( (string) ( $post['_asem_nonce'] ?? '' ), 'asem_first_access' ) ) {
+			} elseif ( ! wp_verify_nonce( sanitize_text_field( (string) ( $post['_asem_nonce'] ?? '' ) ), 'asem_first_access' ) ) {
 				$error = 'Sessione scaduta: riprova.';
 			} else {
 				set_transient( $rl_key, $tries + 1, HOUR_IN_SECONDS );
 				if ( 'invalid' === self::submit( (string) ( $post['name'] ?? '' ), (string) ( $post['email'] ?? '' ), (string) ( $post['phone'] ?? '' ) ) ) {
 					$error = 'Controlla i dati: servono nome e cognome, un\'email valida e il numero di cellulare.';
 				} else {
-					$message = self::MESSAGE; // sempre la stessa risposta: non si scopre chi è socio
+					$message = \AssociazioneSemplice\MemberSession::enabled() ? self::MESSAGE_OWN : self::MESSAGE; // sempre la stessa risposta: non si scopre chi è socio
 					$post    = array();
 				}
 			}
 		}
 		CardVerify::send_headers();
-		echo self::page( $message, $post, $error ); // phpcs:ignore WordPress.Security.EscapeOutput -- già escapato in page()
+		CardVerify::output( self::page( $message, $post, $error ) );
 		exit;
 	}
 }

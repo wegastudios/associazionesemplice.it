@@ -11,15 +11,16 @@ final class Pages {
 	/** Area di ogni pagina (vedi Areas). */
 	const AREA = array(
 		'area' => 'soci', 'calendario' => 'soci', 'volontari' => 'eventi', 'ingressi' => 'eventi', 'attivita' => 'pubblico',
-		'bonifico' => 'pubblico', 'privacy' => 'pubblico', 'cinquemille' => 'pubblico', 'segreteria' => 'segreteria', 'tesoriere' => 'tesoriere',
+		'bonifico' => 'pubblico', 'privacy' => 'pubblico', 'adesione' => 'pubblico', 'segreteria' => 'segreteria', 'tesoriere' => 'tesoriere',
 	);
 
 	/** @return array<string,array> area => [chiave pagina => definizione], nell'ordine delle aree */
 	public static function by_area(): array {
 		$out = array();
-		foreach ( array_keys( Areas::GROUPS ) as $area ) {
+		$areas = (array) apply_filters( 'asem_page_areas', self::AREA );
+		foreach ( array_keys( Areas::groups() ) as $area ) {
 			foreach ( self::defs() as $key => $d ) {
-				if ( ( self::AREA[ $key ] ?? '' ) === $area ) {
+				if ( ( $areas[ $key ] ?? '' ) === $area ) {
 					$out[ $area ][ $key ] = $d;
 				}
 			}
@@ -29,18 +30,19 @@ final class Pages {
 
 	/** Chiave => titolo, shortcode, accesso riservato (meta della pagina), descrizione, predefinita. */
 	public static function defs(): array {
-		return array(
+		$defs = array(
 			'area'      => array( 'title' => 'Area soci', 'content' => '[associazionesemplice_area_soci]', 'access' => '', 'hint' => 'Tessera, attività, pagamenti, ospiti e profilo dei soci: è la pagina principale.', 'default' => true ),
 			'volontari' => array( 'title' => 'Area volontari', 'content' => '[associazionesemplice_area_volontari]', 'access' => 'volunteers', 'hint' => 'Le attività di cui i volontari sono referenti (visibile solo a loro).', 'default' => true ),
 			'attivita'  => array( 'title' => 'Attività ed eventi', 'content' => '[associazionesemplice_attivita]', 'access' => '', 'hint' => 'L\'elenco pubblico di corsi ed eventi, con la prenotazione.', 'default' => true ),
 			'calendario' => array( 'title' => 'Calendario', 'content' => '[associazionesemplice_calendario]', 'access' => 'members', 'hint' => 'Il calendario di corsi ed eventi per i soli soci.', 'default' => false ),
 			'privacy'   => array( 'title' => 'Informativa privacy', 'content' => '[associazionesemplice_privacy]', 'access' => '', 'hint' => 'L\'informativa sul trattamento dei dati personali, compilata con i dati dell\'ente (si aggiorna da sola).', 'default' => true ),
 			'bonifico'  => array( 'title' => 'Dona con bonifico', 'content' => '[associazionesemplice_bonifico]', 'access' => '', 'hint' => 'Le coordinate bancarie per chi vuole sostenere l\'associazione (servono il bonifico attivo e almeno un IBAN).', 'default' => false ),
+			'adesione'  => array( 'title' => 'Diventa socio', 'content' => '[associazionesemplice_adesione]', 'access' => '', 'hint' => 'La domanda di adesione online per chi non è ancora socio: la segreteria la approva dalla Bacheca.', 'default' => false ),
 			'segreteria' => array( 'title' => 'Area segreteria', 'content' => '[associazionesemplice_segreteria]', 'access' => '', 'hint' => 'Il punto d\'ingresso di chi lavora con la segreteria (anche presidente e vicepresidente): richieste di accesso e collegamenti alla gestione.', 'default' => false ),
 			'tesoriere' => array( 'title' => 'Area tesoriere', 'content' => '[associazionesemplice_tesoriere]', 'access' => '', 'hint' => 'Per il tesoriere: incassi, spese con foto dello scontrino, nuove iscrizioni e vendita degli eventi.', 'default' => false ),
 			'ingressi'  => array( 'title' => 'Ingressi agli eventi', 'content' => '[associazionesemplice_ingressi]', 'access' => '', 'hint' => 'Per responsabili e staff: prenotati, QR e registrazione degli ingressi.', 'default' => false ),
-			'cinquemille' => array( 'title' => '5x1000', 'content' => '[associazionesemplice_cinquepermille]', 'access' => '', 'hint' => 'Il messaggio con il codice fiscale per il 5x1000 (serve la funzione attiva).', 'default' => false ),
 		);
+		return (array) apply_filters( 'asem_page_defs', $defs ); // un'estensione aggiunge le sue pagine
 	}
 
 	/** @return array<string,int> pagine già create (chiave => id), solo quelle ancora esistenti */
@@ -52,6 +54,12 @@ final class Pages {
 			}
 		}
 		return $out;
+	}
+
+	/** La pagina più vecchia (non nel cestino) il cui contenuto è esattamente lo shortcode indicato, o 0. */
+	private static function find_by_content( string $content ): int {
+		global $wpdb;
+		return (int) $wpdb->get_var( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} WHERE post_type = 'page' AND post_status IN ('publish','draft','pending','private') AND post_content = %s ORDER BY ID ASC LIMIT 1", $content ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 	}
 
 	/**
@@ -69,7 +77,18 @@ final class Pages {
 			if ( ! isset( $defs[ $key ] ) || isset( $have[ $key ] ) ) {
 				continue;
 			}
-			$d  = $defs[ $key ];
+			$d      = $defs[ $key ];
+			$reused = self::find_by_content( (string) $d['content'] ); // dopo un ripristino di fabbrica le pagine create dalla procedura restano: si riprendono, non si duplicano
+			if ( $reused ) {
+				$saved[ $key ] = $reused;
+				if ( '' !== $d['access'] && '' === (string) get_post_meta( $reused, '_asem_access', true ) ) {
+					update_post_meta( $reused, '_asem_access', $d['access'] );
+				}
+				if ( 'area' === $key ) {
+					self::add_to_menu( $reused );
+				}
+				continue;
+			}
 			$id = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => $d['title'], 'post_content' => $d['content'] ) );
 			if ( $id && ! is_wp_error( $id ) ) {
 				$saved[ $key ] = (int) $id;

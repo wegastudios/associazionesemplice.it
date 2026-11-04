@@ -138,3 +138,74 @@
 		window.print();
 	});
 })();
+
+/* Incasso crediti: lo schermo dello staff con il QR si aggiorna da solo quando il socio paga */
+(function () {
+	var box = document.querySelector('[data-asemf-credit-poll]');
+	if (!box || !window.fetch) { return; }
+	var url = box.getAttribute('data-url'), out = box.querySelector('.asemf-credit-status');
+	function tick() {
+		fetch(url, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
+			out.textContent = d.message;
+			box.setAttribute('data-state', d.state);
+			if (d.state === 'ok') { setTimeout(tick, 2000); }
+		}).catch(function () { setTimeout(tick, 4000); });
+	}
+	if (box.getAttribute('data-state') === 'ok') { setTimeout(tick, 2000); }
+})();
+
+/* Domanda di adesione: chi ha meno di 18 anni indica anche il genitore o tutore (il blocco compare solo in quel caso). */
+(function () {
+	'use strict';
+	function adult(birth) {
+		var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(birth || '');
+		if (!m) { return null; }
+		var now = new Date(), age = now.getFullYear() - parseInt(m[1], 10);
+		if (now.getMonth() + 1 < parseInt(m[2], 10) || (now.getMonth() + 1 === parseInt(m[2], 10) && now.getDate() < parseInt(m[3], 10))) { age--; }
+		return age >= 18;
+	}
+	function sync(form) {
+		var box = form.querySelector('[data-asemf-guardian]'), birth = form.querySelector('[data-asemf-birth]');
+		if (!box || !birth) { return; }
+		var a = adult(birth.value);
+		box.hidden = a === true;
+		form.querySelectorAll('[data-asemf-adult-required]').forEach(function (i) { i.required = (a === true); }); // chi ha 18 anni o più deve dare email e cellulare, per un minore bastano quelli del genitore
+	}
+	document.addEventListener('change', function (e) {
+		var form = e.target && e.target.closest ? e.target.closest('.asemf-apply form') : null;
+		if (form && e.target.matches('[data-asemf-birth]')) { sync(form); }
+	});
+	document.addEventListener('DOMContentLoaded', function () {
+		document.querySelectorAll('.asemf-apply form').forEach(sync);
+	});
+})();
+
+// Barra di salto dell'area soci: sta sotto l'intestazione fissa del tema (se c'è), altrimenti in cima.
+(function () {
+	'use strict';
+	var bar = document.querySelector('.asemf-jump');
+	if (!bar) { return; }
+	function headerBottom() {
+		var el = document.elementFromPoint(Math.round(window.innerWidth / 2), 2);
+		while (el && el !== document.body && el !== document.documentElement) {
+			if (!bar.contains(el)) {
+				var pos = window.getComputedStyle(el).position;
+				if (pos === 'fixed' || pos === 'sticky') { return Math.max(0, Math.round(el.getBoundingClientRect().bottom)); }
+			}
+			el = el.parentElement;
+		}
+		return 0;
+	}
+	var busy = false;
+	function place() {
+		busy = false;
+		var off = headerBottom();
+		bar.style.top = off + 'px';
+		document.documentElement.style.setProperty('--asemf-off', (off + bar.offsetHeight) + 'px');
+	}
+	function ask() { if (!busy) { busy = true; window.requestAnimationFrame(place); } }
+	window.addEventListener('scroll', ask, { passive: true });
+	window.addEventListener('resize', ask);
+	window.addEventListener('load', ask);
+	ask();
+})();

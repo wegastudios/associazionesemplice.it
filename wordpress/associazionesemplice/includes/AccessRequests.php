@@ -15,6 +15,7 @@ final class AccessRequests {
 	const OPTION = 'asem_access_requests';
 	const MAX    = 200;
 	const KINDS  = array( 'unknown', 'change', 'review' );
+	const MAX_CHANGE_PER_PERSON = 3; // richieste di cambio email in coda per lo stesso socio
 
 	/** @return array<string,array> id => voce */
 	public static function all(): array {
@@ -38,7 +39,23 @@ final class AccessRequests {
 		uasort( $all, function ( $a, $b ) {
 			return $b['at'] <=> $a['at'];
 		} );
-		update_option( self::OPTION, array_slice( $all, 0, Limits::get( 'access_requests_max' ), true ), false );
+		// Chi riempie la coda con richieste false non deve spingere fuori quelle vere: i non riconosciuti hanno un tetto a parte e, per ogni socio,
+		// si tengono poche richieste di cambio email (le più recenti).
+		$max         = Limits::get( 'access_requests_max' );
+		$unknown_max = min( Limits::get( 'access_requests_unknown_max' ), max( 1, $max - 1 ) );
+		$kept        = array();
+		$unknown     = 0;
+		$per_person  = array();
+		foreach ( $all as $k => $v ) {
+			if ( 'unknown' === $v['kind'] && ++$unknown > $unknown_max ) {
+				continue;
+			}
+			if ( 'change' === $v['kind'] && ( $per_person[ $v['person_id'] ] = ( $per_person[ $v['person_id'] ] ?? 0 ) + 1 ) > self::MAX_CHANGE_PER_PERSON ) {
+				continue;
+			}
+			$kept[ $k ] = $v;
+		}
+		update_option( self::OPTION, array_slice( $kept, 0, $max, true ), false );
 		return $id;
 	}
 

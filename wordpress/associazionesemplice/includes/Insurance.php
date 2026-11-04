@@ -109,6 +109,9 @@ final class Insurance {
 		) ?: array();
 		$out = array();
 		foreach ( $rows as $p ) {
+			if ( ! empty( $p['application_status'] ) ) {
+				continue; // chi ha solo chiesto di iscriversi non è ancora un volontario
+			}
 			$pol = self::db()->get_row(
 				self::db()->prepare( 'SELECT * FROM ' . Db::t( 'insurance' ) . ' WHERE person_id = %d AND valid_from <= %s ORDER BY valid_to DESC, id DESC LIMIT 1', (int) $p['id'], $today ),
 				ARRAY_A

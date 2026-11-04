@@ -35,3 +35,64 @@
 .asem .asem-shot { cursor: pointer; }
 .asem .asem-doc-info { margin-left: 8px; }
 .asem .asem-tabs { margin: 12px 0 16px; }
+
+/* Marchio ufficiale: indaco #1F218C, verde salvia #5F8579, giallo #EFCA5C */
+.asem { --asem-brand: #1F218C; --asem-sage: #5F8579; --asem-yellow: #EFCA5C; }
+.asem .asem-logo { float: right; margin: 0 0 8px 16px; width: 150px; height: auto; }
+.asem .asem-card > h2:first-child { border-left: 4px solid var(--asem-brand); padding-left: 10px; }
+
+.asem-modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.asem-modal { background: #fff; border-radius: 6px; padding: 20px 24px; max-width: 460px; width: 100%; max-height: 90vh; overflow: auto; box-shadow: 0 8px 30px rgba(0,0,0,.3); }
+.asem-modal h2 { margin-top: 0; }
+.asem-modal label { display: block; }
+.asem-modal input.regular-text { width: 100%; max-width: none; }
+
+/* Configurazione guidata */
+.asem-wizard:not(.asem-wiz-js) [data-wiz=back],.asem-wizard:not(.asem-wiz-js) [data-wiz=next],.asem-wizard:not(.asem-wiz-js) .asem-wiz-count{display:none}
+.asem-wiz-step{max-width:820px}
+.asem-wiz-more{margin:12px 0}
+.asem-wiz-stepper{margin:10px 0 18px;max-width:820px}
+.asem-wiz-where{display:block;font-weight:600;margin-bottom:6px;min-height:1.4em}
+.asem-wiz-stepper ol{display:flex;gap:6px;list-style:none;margin:0;padding:0}
+.asem-wiz-stepper li{flex:1;font-size:12px;color:#646970;border-top:4px solid #dcdcde;padding-top:5px}
+.asem-wiz-stepper li.done{border-color:#2271b1;color:#1d2327}
+.asem-wiz-stepper li.current{border-color:#2271b1;color:#1d2327;font-weight:600}
+.asem-wiz-dot{display:none}
+.asem-wizard:not(.asem-wiz-js) .asem-wiz-stepper{display:none}
+.asem-wiz-more>summary{cursor:pointer;color:#2271b1}
+
+/* Listini di un evento: tre colonne su schermo largo, impilati su schermo stretto */
+.asem-pl{display:grid;gap:8px;max-width:560px}
+.asem-pl-row{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) 90px;gap:8px;align-items:center}
+.asem-pl-head{font-weight:600}
+.asem-pl-price{display:flex;align-items:center;gap:4px}
+.asem-pl-price input{min-width:0;width:100%}
+
+/* Schermi stretti: le tabelle larghe scorrono da sole, la pagina resta ferma */
+@media (max-width:782px){
+	#wpbody-content table.widefat:not(.wp-list-table){display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+	.asem-pl-row{grid-template-columns:minmax(0,1fr) 90px}
+	.asem-pl-row .asem-pl-name{grid-column:1 / -1}
+	.asem-pl-head{display:none}
+	#wpbody-content input.regular-text,#wpbody-content input.large-text,#wpbody-content textarea.large-text{max-width:100%;box-sizing:border-box}
+}
+
+/* Telefono: Cassa senza pulsanti ripetuti (le schede in alto li hanno già) e Rubrica a schede compatte, una per persona */
+@media (max-width:782px){
+	.asem-quick{display:none}
+	#wpbody-content table.widefat.asem-cards:not(.wp-list-table){display:block;overflow:visible;border:0;background:transparent;box-shadow:none}
+	table.asem-cards thead,table.asem-cards tbody{display:block}
+	table.asem-cards thead tr{display:flex;flex-wrap:wrap;gap:.25rem .75rem;padding:0 0 .5rem}
+	table.asem-cards thead th{display:none;border:0;padding:0}
+	table.asem-cards thead th:has(a){display:block}
+	table.asem-cards thead th a{display:inline-flex;align-items:center;min-height:44px}
+	table.asem-cards tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 .75rem;align-items:center;background:#fff;border:1px solid #c3c4c7;border-radius:8px;margin:0 0 .6rem;padding:.35rem .9rem .6rem}
+	table.asem-cards tbody td{display:block;border:0;padding:.1rem 0;grid-column:1 / -1}
+	table.asem-cards tbody td[data-label]::before{content:attr(data-label) " ";color:#50575e}
+	table.asem-cards tbody td:empty{display:none}
+	table.asem-cards tbody td.asem-card-name{grid-column:1;grid-row:1;font-size:1.1em}
+	table.asem-cards tbody td.asem-card-open{grid-column:2;grid-row:1}
+	table.asem-cards tbody td.asem-card-open .button{min-height:44px;display:inline-flex;align-items:center}
+	table.asem-cards tbody td[data-label="Tessera"]{grid-row:2;grid-column:1 / -1}
+	table.asem-cards tbody td[colspan]{display:block}
+}

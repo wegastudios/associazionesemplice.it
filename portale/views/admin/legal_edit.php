@@ -6,7 +6,6 @@ $val = function ( string $k ) use ( $legal ) { return e( $legal[ $k ] ?? '' ); }
 		<input type="hidden" name="csrf" value="<?php echo e( Portale\App::csrf() ); ?>">
 		<div class="card2">
 			<h2>Titolare del trattamento</h2>
-			<p class="muted">Questi dati compaiono nelle informative al posto di {titolare}, {indirizzo}, {piva} ed {email}.</p>
 			<div class="form-grid two">
 				<div><label for="titolare" style="margin-top:0">Ragione sociale</label><input id="titolare" type="text" name="titolare" value="<?php echo $val( 'titolare' ); ?>" placeholder="<?php echo e( $vars['titolare'] ); ?>"></div>
 				<div><label for="piva" style="margin-top:0">Partita IVA / codice fiscale</label><input id="piva" type="text" name="piva" value="<?php echo $val( 'piva' ); ?>" placeholder="P.IVA …"></div>

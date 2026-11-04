@@ -70,6 +70,9 @@ class ActivityService {
 				'instructor_person_id' => $d['instructor_person_id'],
 				'fee_cents'            => $d['fee_cents'],
 				'guest_fee_cents'      => $d['guest_fee_cents'],
+				'price_lists'          => $d['price_lists'],
+				'sport'                => $d['sport'],
+				'discipline'           => $d['discipline'],
 				'vat_rate'             => $d['vat_rate'],
 				'hold_hours'           => ActivityKind::uses_sessions( $d['kind'] ) ? $d['hold_hours'] : 0,
 				'cancellable'          => ActivityKind::uses_sessions( $d['kind'] ) ? $d['cancellable'] : 0,
@@ -116,6 +119,9 @@ class ActivityService {
 				'instructor_person_id' => $d['instructor_person_id'],
 				'fee_cents'            => $d['fee_cents'],
 				'guest_fee_cents'      => $d['guest_fee_cents'],
+				'price_lists'          => $d['price_lists'],
+				'sport'                => $d['sport'],
+				'discipline'           => $d['discipline'],
 				'vat_rate'             => $d['vat_rate'],
 				'hold_hours'           => ActivityKind::uses_sessions( $d['kind'] ) ? $d['hold_hours'] : 0,
 				'cancellable'          => ActivityKind::uses_sessions( $current['kind'] ) ? $d['cancellable'] : 0,
@@ -254,6 +260,9 @@ class ActivityService {
 			'instructor_person_id' => ! empty( $in['instructor_person_id'] ) ? (int) $in['instructor_person_id'] : null,
 			'fee_cents'            => (int) ( $in['fee_cents'] ?? 0 ),
 			'guest_fee_cents'      => $guest,
+			'price_lists'          => PriceLists::encode( PriceLists::clean( $in['price_lists'] ?? null ) ),
+			'sport'                => SportCatalog::clean( (string) ( $in['sport'] ?? '' ) ),
+			'discipline'           => '' === trim( (string) ( $in['discipline'] ?? '' ) ) ? null : mb_substr( trim( wp_strip_all_tags( (string) $in['discipline'] ) ), 0, 120 ),
 			'vat_rate'             => Fiscal::clean_rate( $in['vat_rate'] ?? null ),
 			'hold_hours'           => max( 0, min( 720, (int) ( $in['hold_hours'] ?? 0 ) ) ),
 			'cancellable'          => ! empty( $in['cancellable'] ) ? 1 : 0,
@@ -262,7 +271,7 @@ class ActivityService {
 			'lesson_weekday'       => $weekly ? $weekly[0]['day'] : 0,
 			'slots'                => $slots,
 			'lesson_slots'         => $slots ? wp_json_encode( $slots ) : null,
-			'billing'              => isset( $in['billing'] ) && 'once' === $in['billing'] ? 'once' : 'monthly',
+			'billing'              => isset( $in['billing'] ) && in_array( $in['billing'], array( 'once', 'quarterly' ), true ) ? (string) $in['billing'] : 'monthly',
 			'lesson_start'        => $weekly ? $weekly[0]['start'] : null,
 			'lesson_end'          => $weekly ? $weekly[0]['end'] : null,
 			'location'            => isset( $in['location'] ) && '' !== trim( (string) $in['location'] ) ? mb_substr( trim( (string) $in['location'] ), 0, 190 ) : null,
@@ -392,7 +401,16 @@ class ActivityService {
 		}
 		$n = $this->normalize_session( $s );
 		$this->validate_session( $n );
+		$this->assert_dates_free( $activity_id, array( array( 'date' => $n['session_date'], 'start' => $n['start_time'], 'end' => $n['end_time'] ) ) );
 		return $this->insert_session( $activity_id, $n );
+	}
+
+	/** Le estensioni (risorse) possono rifiutare date che si sovrappongono a qualcosa. @throws \InvalidArgumentException */
+	private function assert_dates_free( int $activity_id, array $dates ): void {
+		$errors = (array) apply_filters( 'asem_session_errors', array(), $activity_id, $dates );
+		if ( $errors ) {
+			throw new \InvalidArgumentException( esc_html( implode( ' ', array_map( 'strval', $errors ) ) ) );
+		}
 	}
 
 	public function update_session( int $session_id, array $s ): void {
@@ -405,6 +423,9 @@ class ActivityService {
 		$act = $this->get( (int) $cur['activity_id'] );
 		if ( $act && $n['session_date'] !== (string) $cur['session_date'] ) { // si controlla solo se la data cambia: le date già presenti non bloccano altre modifiche
 			self::assert_in_social_year( (string) $act['social_year'], (string) $n['session_date'], 'La data dell\'evento' );
+		}
+		if ( $n['session_date'] !== (string) $cur['session_date'] || $n['start_time'] !== $cur['start_time'] || $n['end_time'] !== $cur['end_time'] ) { // si controlla solo se cambia quando si tiene
+			$this->assert_dates_free( (int) $cur['activity_id'], array( array( 'date' => $n['session_date'], 'start' => $n['start_time'], 'end' => $n['end_time'] ) ) );
 		}
 		$this->db()->update( Db::t( 'sessions' ), $n, array( 'id' => $session_id ) );
 		Audit::log( 'session.updated', 'activity', (int) $cur['activity_id'], array( 'session' => $session_id ) );
@@ -433,6 +454,9 @@ class ActivityService {
 		foreach ( $this->sessions( $activity_id ) as $s ) {
 			$have[ $s['session_date'] . '|' . (string) $s['start_time'] ] = true;
 		}
+		$this->assert_dates_free( $activity_id, array_values( array_filter( $dates, function ( $d ) use ( $have ) {
+			return ! isset( $have[ $d['date'] . '|' . (string) $d['start'] ] );
+		} ) ) );
 		$made = 0;
 		foreach ( $dates as $d ) {
 			if ( isset( $have[ $d['date'] . '|' . (string) $d['start'] ] ) ) {
@@ -463,7 +487,14 @@ class ActivityService {
 			throw new \InvalidArgumentException( 'La data finale è prima di quella iniziale.' );
 		}
 		$existing = array_column( $this->sessions( $activity_id ), 'session_date' );
-		$made     = 0;
+		$new      = array();
+		for ( $c = $d; $c <= $end && count( $new ) < 121; $c = $c->modify( '+7 days' ) ) {
+			if ( ! in_array( $c->format( 'Y-m-d' ), $existing, true ) ) {
+				$new[] = array( 'date' => $c->format( 'Y-m-d' ), 'start' => $time, 'end' => null );
+			}
+		}
+		$this->assert_dates_free( $activity_id, $new );
+		$made = 0;
 		while ( $d <= $end ) {
 			if ( $made >= 120 ) {
 				throw new \InvalidArgumentException( 'Troppe date in una volta (massimo 120): accorcia il periodo.' );
@@ -479,19 +510,29 @@ class ActivityService {
 	}
 
 	/** Annulla una data. Le prenotazioni restano ma non contano più; eventuali pagamenti vanno rimborsati a mano. */
-	public function cancel_session( int $session_id ): void {
+	public function cancel_session( int $session_id, bool $and_future = false ): int {
 		$s = $this->session( $session_id );
 		if ( ! $s ) {
 			throw new \InvalidArgumentException( 'Data non trovata.' );
 		}
 		$this->db()->update( Db::t( 'sessions' ), array( 'cancelled_at' => Db::now() ), array( 'id' => $session_id ) );
-		Audit::log( 'session.cancelled', 'activity', (int) $s['activity_id'], array( 'session' => $session_id ) );
+		$n = 1;
+		if ( $and_future ) { // questa e le successive; le date passate non si toccano
+			$more = (int) $this->db()->query( $this->db()->prepare( 'UPDATE ' . Db::t( 'sessions' ) . ' SET cancelled_at = %s WHERE activity_id = %d AND session_date > %s AND cancelled_at IS NULL', Db::now(), (int) $s['activity_id'], (string) $s['session_date'] ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- tabella interna, valori preparati
+			$n   += $more;
+		}
+		Audit::log( 'session.cancelled', 'activity', (int) $s['activity_id'], array( 'session' => $session_id, 'future' => $and_future ? $n - 1 : 0 ) );
+		return $n;
 	}
 
 	// ---------- Prenotazioni ----------
 
-	/** Prenota una persona a una data. Il contributo dovuto è fissato adesso (socio o ospite). */
-	public function book( int $session_id, int $person_id ): int {
+	/**
+	 * Prenota una persona a una data. Il contributo dovuto è fissato adesso (socio o ospite, oppure il listino scelto).
+	 *
+	 * @param array $opt price_list (chiave del listino), guest_of (PriceLists::GUEST_*: solo segreteria), use_package (true = scala un ingresso da un pacchetto già pagato)
+	 */
+	public function book( int $session_id, int $person_id, array $opt = array() ): int {
 		$s = $this->session( $session_id );
 		if ( ! $s || $s['cancelled_at'] ) {
 			throw new \InvalidArgumentException( 'Data non disponibile (inesistente o annullata).' );
@@ -508,7 +549,7 @@ class ActivityService {
 		// Posti e doppie prenotazioni: controllo e scrittura sotto blocco, così due richieste insieme non superano la capienza.
 		list( $id, $fee ) = Db::with_lock(
 			'asem_book_' . $session_id,
-			function () use ( $tbl, $s, $a, $person, $session_id, $person_id ) {
+			function () use ( $tbl, $s, $a, $person, $session_id, $person_id, $opt ) {
 				$existing = $this->db()->get_row( $this->db()->prepare( "SELECT * FROM $tbl WHERE session_id = %d AND person_id = %d", $session_id, $person_id ), ARRAY_A );
 				if ( $existing && 'booked' === $existing['status'] ) {
 					throw new \InvalidArgumentException( 'Questa persona è già prenotata a questa data.' );
@@ -519,12 +560,13 @@ class ActivityService {
 						throw new \InvalidArgumentException( 'Posti esauriti per questa data (' . (int) $s['capacity'] . ').' );
 					}
 				}
-				$fee = $this->fee_for( $a, $person['type'] );
+				$price = $this->price_data( $a, $person, $opt );
+				$fee   = $price['fee_due_cents'];
 				if ( $existing ) {
-					$this->db()->update( $tbl, array( 'status' => 'booked', 'fee_due_cents' => $fee, 'cancelled_at' => null, 'transferred_to' => null, 'transferred_from' => null ), array( 'id' => (int) $existing['id'] ) );
+					$this->db()->update( $tbl, array_merge( $price, array( 'status' => 'booked', 'cancelled_at' => null, 'transferred_to' => null, 'transferred_from' => null ) ), array( 'id' => (int) $existing['id'] ) );
 					return array( (int) $existing['id'], $fee );
 				}
-				if ( ! $this->db()->insert( $tbl, array( 'session_id' => $session_id, 'person_id' => $person_id, 'status' => 'booked', 'fee_due_cents' => $fee, 'created_at' => Db::now() ) ) ) {
+				if ( ! $this->db()->insert( $tbl, array_merge( $price, array( 'session_id' => $session_id, 'person_id' => $person_id, 'status' => 'booked', 'created_at' => Db::now() ) ) ) ) {
 					throw new \InvalidArgumentException( 'Prenotazione non riuscita: riprova.' );
 				}
 				return array( (int) $this->db()->insert_id, $fee );
@@ -532,6 +574,70 @@ class ActivityService {
 		);
 		Audit::log( 'booking.created', 'activity', (int) $a['id'], array( 'session' => $session_id, 'person_id' => $person_id, 'fee' => $fee ) );
 		return $id;
+	}
+
+	/** Ingressi già usati di un pacchetto (la prenotazione che l'ha pagato conta come uno). */
+	public function package_used( int $paying_booking_id ): int {
+		$tbl = Db::t( 'bookings' );
+		return 1 + (int) $this->db()->get_var( $this->db()->prepare( "SELECT COUNT(*) FROM $tbl WHERE package_of = %d AND status = 'booked'", $paying_booking_id ) );
+	}
+
+	/** Pacchetti pagati da una persona per un'attività con ingressi ancora disponibili: [{id, label, left}]. */
+	public function open_packages( int $person_id, int $activity_id ): array {
+		$b   = Db::t( 'bookings' );
+		$s   = Db::t( 'sessions' );
+		$out = array();
+		$rows = $this->db()->get_results(
+			$this->db()->prepare( "SELECT b.id, b.price_list, b.package_entries FROM $b b JOIN $s s ON s.id = b.session_id WHERE b.person_id = %d AND s.activity_id = %d AND b.status = 'booked' AND b.package_entries > 1 ORDER BY b.id", $person_id, $activity_id ),
+			ARRAY_A
+		) ?: array();
+		$a = $this->get( $activity_id );
+		foreach ( $rows as $r ) {
+			$left = (int) $r['package_entries'] - $this->package_used( (int) $r['id'] );
+			if ( $left > 0 ) {
+				$l     = $a ? PriceLists::find( $a, (string) $r['price_list'] ) : null;
+				$out[] = array( 'id' => (int) $r['id'], 'label' => $l ? $l['label'] : 'Pacchetto', 'left' => $left );
+			}
+		}
+		return $out;
+	}
+
+	/** Campi di prezzo di una prenotazione: listino, ospite della segreteria, pacchetto. */
+	private function price_data( array $a, array $person, array $opt ): array {
+		$out = array( 'fee_due_cents' => 0, 'price_list' => null, 'guest_of' => null, 'waived_cents' => 0, 'package_entries' => 0, 'package_of' => null );
+		if ( ! empty( $opt['use_package'] ) ) {
+			$pk = $this->open_packages( (int) $person['id'], (int) $a['id'] );
+			if ( ! $pk ) {
+				throw new \InvalidArgumentException( 'Questa persona non ha un pacchetto con ingressi disponibili per questa attività.' );
+			}
+			$out['package_of'] = $pk[0]['id'];
+			$out['price_list'] = $this->db()->get_var( $this->db()->prepare( 'SELECT price_list FROM ' . Db::t( 'bookings' ) . ' WHERE id = %d', $pk[0]['id'] ) );
+			return $out;
+		}
+		$price   = $this->fee_for( $a, $person['type'] );
+		$entries = 0;
+		$key     = (string) ( $opt['price_list'] ?? '' );
+		if ( '' !== $key ) {
+			$list = PriceLists::find( $a, $key );
+			if ( ! $list ) {
+				throw new \InvalidArgumentException( 'Listino non trovato per questa attività.' );
+			}
+			list( $price, $entries ) = PriceLists::price( $list );
+			$out['price_list']       = $key;
+			$out['package_entries']  = $entries > 1 ? $entries : 0;
+		}
+		$guest = (string) ( $opt['guest_of'] ?? '' );
+		if ( '' !== $guest ) {
+			if ( ! isset( PriceLists::guest_kinds()[ $guest ] ) ) {
+				throw new \InvalidArgumentException( 'Tipo di ospite non valido.' );
+			}
+			$g                   = PriceLists::guest_due( $a, $price, $guest );
+			$price               = $g['due'];
+			$out['guest_of']     = $guest;
+			$out['waived_cents'] = $g['waived'];
+		}
+		$out['fee_due_cents'] = $price;
+		return $out;
 	}
 
 	/** Annulla la prenotazione. Gli eventuali pagamenti restano registrati (rimborso a mano). */
@@ -971,6 +1077,53 @@ class ActivityService {
 		Audit::log( 'activity.enrolled', 'activity', $activity_id, array( 'person_id' => $person_id, 'from' => $start_month ) );
 	}
 
+	/**
+	 * La variante del contributo (listino) e la nota libera di un'iscrizione: la sceglie la segreteria, il socio paga la quota base.
+	 *
+	 * @throws \InvalidArgumentException
+	 */
+	public function set_enrollment_price( int $activity_id, int $person_id, string $price_list, string $note = '' ): void {
+		$a = $this->get( $activity_id );
+		if ( ! $a || ActivityKind::COURSE !== $a['kind'] ) {
+			throw new \InvalidArgumentException( 'Le varianti del contributo valgono per i corsi.' );
+		}
+		$price_list = sanitize_key( $price_list );
+		if ( '' !== $price_list && ! PriceLists::find( $a, $price_list ) ) {
+			throw new \InvalidArgumentException( 'Variante del contributo non trovata: controlla i listini del corso.' );
+		}
+		$n = $this->db()->update(
+			Db::t( 'enrollments' ),
+			array( 'price_list' => '' === $price_list ? null : $price_list, 'fee_note' => '' === trim( $note ) ? null : mb_substr( trim( $note ), 0, 190 ) ),
+			array( 'activity_id' => $activity_id, 'person_id' => $person_id )
+		);
+		if ( false === $n ) {
+			throw new \InvalidArgumentException( 'Impossibile salvare la variante (errore del database).' );
+		}
+		Audit::log( 'activity.fee_variant', 'activity', $activity_id, array( 'person_id' => $person_id, 'price_list' => $price_list ) );
+	}
+
+	/**
+	 * «Non rinnova»: l'iscritto resta nel corso fino alla fine del periodo già pagato (o del mese in corso) e dopo non deve più nulla.
+	 * Non si restituisce niente: il periodo pagato è fruito.
+	 *
+	 * @return string ultimo mese dovuto (YYYY-MM)
+	 */
+	public function stop_renewal( int $activity_id, int $person_id ): string {
+		$last = substr( Db::today(), 0, 7 );
+		foreach ( $this->status_for_activity( $activity_id ) as $row ) {
+			if ( (int) $row['enrollment']['person_id'] !== $person_id ) {
+				continue;
+			}
+			foreach ( (array) ( $row['summary']['months'] ?? array() ) as $mo ) {
+				if ( (int) $mo['paid'] > 0 && (string) $mo['month'] > $last ) {
+					$last = (string) $mo['month']; // pagato in anticipo: resta fino a quel mese
+				}
+			}
+		}
+		$this->cancel( $activity_id, $person_id, $last );
+		return $last;
+	}
+
 	/** Cancella da un corso: $last_month è l'ultimo mese ancora dovuto. I pagamenti restano registrati. */
 	public function cancel( int $activity_id, int $person_id, string $last_month ): void {
 		$this->assert_month( $last_month );
@@ -1023,6 +1176,10 @@ class ActivityService {
 
 	private function summarize( array $activity, array $enrollment, array $paid_by_month, string $person_type ): array {
 		$fee = $this->fee_for( $activity, $person_type );
+		if ( ! empty( $enrollment['price_list'] ) ) { // variante scelta dalla segreteria per questa iscrizione (2° corso, famiglia, attività parziale…)
+			$list = PriceLists::find( $activity, (string) $enrollment['price_list'] );
+			$fee  = $list ? (int) $list['cents'] : $fee;
+		}
 		if ( 'once' === ( $activity['billing'] ?? 'monthly' ) ) {
 			return PaymentCalc::compute_once( $fee, $enrollment['start_month'], $enrollment['end_month'], $paid_by_month );
 		}
@@ -1039,7 +1196,8 @@ class ActivityService {
 			SocialYear::from_label( $activity['social_year'], Settings::start_month() ),
 			$paid_by_month,
 			self::slot_days( $activity ),
-			Db::today()
+			Db::today(),
+			'quarterly' === ( $activity['billing'] ?? 'monthly' ) ? 3 : 1
 		);
 	}
 
@@ -1084,7 +1242,7 @@ class ActivityService {
 		}
 		$rows = $this->db()->get_results(
 			$this->db()->prepare(
-				'SELECT e.*, a.name AS activity_name, a.social_year, a.kind, a.fee_cents, a.guest_fee_cents, a.lesson_weekday, a.lesson_slots, a.billing, a.ends_on FROM ' . Db::t( 'enrollments' ) . ' e '
+				'SELECT e.*, a.name AS activity_name, a.social_year, a.kind, a.fee_cents, a.guest_fee_cents, a.lesson_weekday, a.lesson_slots, a.billing, a.price_lists, a.ends_on FROM ' . Db::t( 'enrollments' ) . ' e '
 				. 'JOIN ' . Db::t( 'activities' ) . ' a ON a.id = e.activity_id AND a.deleted_at IS NULL WHERE e.person_id = %d ORDER BY a.social_year DESC, a.name',
 				$person_id
 			),
@@ -1095,7 +1253,7 @@ class ActivityService {
 		foreach ( $rows as $e ) {
 			$activity = array(
 				'id' => $e['activity_id'], 'name' => $e['activity_name'], 'social_year' => $e['social_year'], 'kind' => $e['kind'],
-				'fee_cents' => $e['fee_cents'], 'guest_fee_cents' => $e['guest_fee_cents'], 'lesson_weekday' => $e['lesson_weekday'], 'lesson_slots' => $e['lesson_slots'], 'billing' => $e['billing'], 'ends_on' => $e['ends_on'],
+				'fee_cents' => $e['fee_cents'], 'guest_fee_cents' => $e['guest_fee_cents'], 'lesson_weekday' => $e['lesson_weekday'], 'lesson_slots' => $e['lesson_slots'], 'billing' => $e['billing'], 'price_lists' => $e['price_lists'], 'ends_on' => $e['ends_on'],
 			);
 			$out[]    = array(
 				'enrollment' => $e,
@@ -1144,6 +1302,18 @@ class ActivityService {
 	/** Tutte le attività (per le liste di scelta), dalle più recenti. */
 	public function all_for_select(): array {
 		return $this->db()->get_results( 'SELECT id, name, social_year, kind FROM ' . Db::t( 'activities' ) . ' WHERE deleted_at IS NULL ORDER BY social_year DESC, name', ARRAY_A ) ?: array();
+	}
+
+	/** Date non annullate di un giorno, con i dati dell'attività. */
+	public function sessions_on( string $date ): array {
+		return $this->db()->get_results(
+			$this->db()->prepare(
+				'SELECT s.*, a.name AS activity_name, a.kind, a.fee_cents, a.guest_fee_cents FROM ' . Db::t( 'sessions' ) . ' s JOIN ' . Db::t( 'activities' ) . ' a ON a.id = s.activity_id AND a.deleted_at IS NULL '
+				. 'WHERE s.cancelled_at IS NULL AND s.session_date = %s ORDER BY s.start_time, s.id',
+				$date
+			),
+			ARRAY_A
+		) ?: array();
 	}
 
 	/** Prossime date non annullate (da oggi), con i dati dell'attività e i posti occupati. */

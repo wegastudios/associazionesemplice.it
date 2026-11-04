@@ -46,6 +46,22 @@ final class Secrets {
 		return false === $plain ? null : $plain;
 	}
 
+	/**
+	 * I «salt» di wp-config.php che servono da chiave sono mancanti, di esempio o troppo corti? In tal caso WordPress ne genera di suoi e li salva nel
+	 * database: un dump del database conterrebbe anche la chiave per decifrare le chiavi dei gateway.
+	 *
+	 * @param string|null $key  valore di AUTH_KEY (null = non definita)
+	 * @param string|null $salt valore di AUTH_SALT (null = non definita)
+	 */
+	public static function salts_weak( ?string $key, ?string $salt ): bool {
+		foreach ( array( $key, $salt ) as $v ) {
+			if ( null === $v || strlen( $v ) < 32 || false !== stripos( $v, 'put your unique phrase here' ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	/** "sk_test_51Habcdef" => "••••cdef" (per mostrare che una chiave c'è, senza rivelarla). */
 	public static function mask( string $plain ): string {
 		return '' === $plain ? '' : '••••' . substr( $plain, -4 );

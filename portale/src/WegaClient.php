@@ -12,6 +12,12 @@ final class WegaClient {
 	public function __construct( string $baseUrl, string $token ) {
 		$this->base  = rtrim( $baseUrl, '/' );
 		$this->token = $token;
+		// Se il DNS non risolve il nome del server licenze (accaduto per nameserver incoerenti), si riprova una volta sull'IP noto.
+		$ip   = (string) Config::get( 'wega.fallback_ip', '65.108.75.89' );
+		$host = (string) parse_url( $this->base, PHP_URL_HOST );
+		if ( '' !== $ip && '' !== $host ) {
+			Http::$fallback[ $host ] = $ip;
+		}
 	}
 
 	/** Chiede una chiave. `external_ref` rende la richiesta idempotente. @return array dati con license_key, license_id, expires_at… */
@@ -46,17 +52,28 @@ final class WegaClient {
 		return $this->request( 'PUT', '/licenses/' . rawurlencode( $licenseId ) . '/binding', array( 'license_key' => $licenseKey, 'identity' => $newDomain ) )['data'];
 	}
 
-	/** Operazioni di stato sulla licenza (percorsi provvisori: da allineare a quelli pubblicati da Wega). */
+	/** Operazioni di stato sulla licenza (scope licenses:manage). */
 	public function suspend( string $licenseId ): array {
-		return $this->request( 'POST', '/licenses/' . rawurlencode( $licenseId ) . '/suspend', array() );
+		return $this->request( 'POST', '/licenses/' . rawurlencode( $licenseId ) . '/suspend', array( 'reason' => 'portale' ) );
 	}
 
 	public function restore( string $licenseId ): array {
-		return $this->request( 'POST', '/licenses/' . rawurlencode( $licenseId ) . '/restore', array() );
+		return $this->request( 'POST', '/licenses/' . rawurlencode( $licenseId ) . '/restore', array( 'reason' => 'portale' ) );
 	}
 
 	public function revoke( string $licenseId ): array {
-		return $this->request( 'POST', '/licenses/' . rawurlencode( $licenseId ) . '/revoke', array() );
+		return $this->request( 'POST', '/licenses/' . rawurlencode( $licenseId ) . '/revoke', array( 'reason' => 'portale' ) );
+	}
+
+	/** Chiave di una licenza già emessa (scope licenses:reveal-key, ogni lettura è registrata da Wega): serve a ripristinare il portale. */
+	public function licenseKey( string $licenseId ): string {
+		$r = $this->request( 'GET', '/licenses/' . rawurlencode( $licenseId ) . '/key' );
+		return (string) ( $r['data']['license_key'] ?? '' );
+	}
+
+	/** Modifica campi della licenza (customer_id, plan_name, expires_at, duration_days, domain…; scope licenses:manage). */
+	public function patch( string $licenseId, array $fields ): array {
+		return $this->request( 'PATCH', '/licenses/' . rawurlencode( $licenseId ), $fields );
 	}
 
 	/** Elenco delle licenze del portale (richiede lo scope licenses:list). @return array [elementi, cursore successivo o null] */
@@ -64,6 +81,29 @@ final class WegaClient {
 		$q = '?limit=' . max( 1, min( 200, $limit ) ) . ( null !== $cursor ? '&cursor=' . rawurlencode( $cursor ) : '' );
 		$r = $this->request( 'GET', '/licenses' . $q );
 		return array( (array) ( $r['data'] ?? array() ), isset( $r['next_cursor'] ) && '' !== $r['next_cursor'] ? (string) $r['next_cursor'] : null );
+	}
+
+	/**
+	 * Custodia di un file già cifrato nel «vault» di Wega (scope vault:store; massimo 5 MB, 20 MB per portale; il contenuto non si scarica via API).
+	 * @return array dati del file custodito: id, name, size, sha256, stored_at
+	 */
+	public function vaultStore( string $name, string $content ): array {
+		$boundary = 'asem' . bin2hex( random_bytes( 12 ) );
+		$body     = "--$boundary\r\nContent-Disposition: form-data; name=\"name\"\r\n\r\n$name\r\n"
+			. "--$boundary\r\nContent-Disposition: form-data; name=\"file\"; filename=\"" . str_replace( array( '"', "\r", "\n" ), '', $name ) . "\"\r\nContent-Type: application/octet-stream\r\n\r\n$content\r\n--$boundary--\r\n";
+		$headers  = array( 'Authorization: Bearer ' . $this->token, 'Accept: application/json', 'Content-Type: multipart/form-data; boundary=' . $boundary );
+		list( $status, $raw ) = Http::send( 'POST', $this->base . '/vault', $headers, $body );
+		$data = json_decode( $raw, true );
+		if ( $status < 200 || $status >= 300 || ! is_array( $data ) ) {
+			$err = is_array( $data ) && isset( $data['error'] ) && is_array( $data['error'] ) ? $data['error'] : array();
+			throw new WegaException( (string) ( $err['message'] ?? 'Vault non raggiungibile.' ), (string) ( $err['code'] ?? ( 0 === $status ? 'NETWORK' : 'ERROR' ) ), $status );
+		}
+		return (array) ( $data['data'] ?? array() );
+	}
+
+	/** Metadati dei file custoditi (mai il contenuto). */
+	public function vaultList(): array {
+		return $this->request( 'GET', '/vault' );
 	}
 
 	/** Chiavi pubbliche di Wega (nessun token: sono pubbliche). @return array [codice HTTP, corpo] */

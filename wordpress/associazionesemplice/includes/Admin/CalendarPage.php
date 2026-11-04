@@ -70,7 +70,7 @@ final class CalendarPage {
 		submit_button( 'Salva', 'primary', 'submit', false );
 		Ui::form_close();
 		if ( $on ) {
-			echo '<p>Indirizzo del calendario:<br><input type="text" readonly class="large-text" value="' . esc_attr( Calendar::feed_url() ) . '" onclick="this.select()"></p>'
+			echo '<p>Indirizzo del calendario:<br><input type="text" readonly class="large-text" value="' . esc_attr( Calendar::feed_url() ) . '" data-asem-select></p>'
 				. '<ol class="description"><li>In Google Calendar (da computer) apri <em>Altri calendari → + → Da URL</em>.</li><li>Incolla l\'indirizzo qui sopra e conferma.</li>'
 				. '<li>Funziona anche con Apple Calendar, Outlook e Thunderbird (iscrizione a un calendario da indirizzo).</li></ol>'
 				. '<p class="description">È un collegamento <strong>in sola lettura</strong>: le modifiche si fanno qui e Google le aggiorna da solo, di solito entro qualche ora (a volte fino a un giorno).</p>';

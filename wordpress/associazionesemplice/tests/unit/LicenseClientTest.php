@@ -90,6 +90,16 @@ final class LicenseClientTest extends TestCase {
 		$this->assertSame( 'esempio.it', $c['bid'] );
 	}
 
+	public function test_attestation_covers_subdomains_of_the_licensed_domain(): void {
+		list( $jwt, $jwks ) = $this->make( $this->claims() ); // bid = esempio.it
+		foreach ( array( 'staging.esempio.it', 'clone.staging.esempio.it', 'esempio.it', 'www.esempio.it' ) as $d ) {
+			$this->assertIsArray( C::verify_attestation( $jwt, $jwks, C::ISSUER, 'associazionesemplice', $d, 1800000000 ), $d );
+		}
+		foreach ( array( 'esempio.com', 'altroesempio.it', 'esempio.it.evil.com' ) as $d ) {
+			$this->assertNull( C::verify_attestation( $jwt, $jwks, C::ISSUER, 'associazionesemplice', $d, 1800000000 ), $d );
+		}
+	}
+
 	public function test_attestation_rejects_wrong_audience_issuer_domain_and_time(): void {
 		list( $jwt, $jwks ) = $this->make( $this->claims() );
 		$now = 1800000000;
@@ -125,5 +135,63 @@ final class LicenseClientTest extends TestCase {
 		list( $jwt )        = $this->make( $this->claims() );
 		list( , $foreign )  = $this->make( $this->claims() ); // un'altra coppia di chiavi con lo stesso kid
 		$this->assertNull( C::verify_attestation( $jwt, $foreign, C::ISSUER, 'associazionesemplice', 'esempio.it', 1800000000 ) );
+	}
+
+	public function test_expired_attestation_is_accepted_only_within_the_leeway(): void {
+		list( $jwt, $jwks ) = $this->make( $this->claims( array( 'exp' => 1800000000 ) ) );
+		$this->assertNull( C::verify_attestation( $jwt, $jwks, C::ISSUER, 'associazionesemplice', 'esempio.it', 1800000100 ) );
+		$this->assertIsArray( C::verify_attestation( $jwt, $jwks, C::ISSUER, 'associazionesemplice', 'esempio.it', 1800000100, 200 ) );
+		$this->assertNull( C::verify_attestation( $jwt, $jwks, C::ISSUER, 'associazionesemplice', 'esempio.it', 1800000300, 200 ) );
+	}
+
+	public function test_signing_keys_are_pinned_in_the_plugin(): void {
+		$doc = C::jwks();
+		$this->assertNotEmpty( $doc['keys'] );
+		foreach ( $doc['keys'] as $k ) {
+			$this->assertSame( 'OKP', $k['kty'] );
+			$this->assertSame( 'Ed25519', $k['crv'] );
+			$this->assertSame( 32, strlen( base64_decode( strtr( $k['x'], '-_', '+/' ) . '=' ) ), 'chiave Ed25519 da 32 byte' );
+		}
+		$this->assertArrayHasKey( 'k20261015-4304ed', C::PINNED_KEYS );
+	}
+
+	// --- Piano firmato dal portale ----------------------------------------------------------------------------------
+
+	private function portal_claims( array $over = array() ): array {
+		return $over + array( 'iss' => C::PORTAL_ISSUER, 'aud' => 'associazionesemplice', 'exp' => 2000000000, 'bid' => 'esempio.it', 'plan' => 'accounting' );
+	}
+
+	public function test_portal_plan_is_read_from_the_signed_proof(): void {
+		foreach ( array( 'free', 'lite', 'accounting', 'fiscal' ) as $plan ) {
+			list( $jwt, $jwks ) = $this->make( $this->portal_claims( array( 'plan' => $plan ) ) );
+			$this->assertSame( $plan, C::portal_plan( $jwt, 'associazionesemplice', 'esempio.it', 1800000000, 0, $jwks ), $plan );
+		}
+	}
+
+	public function test_portal_plan_is_refused_when_the_proof_does_not_hold(): void {
+		list( $jwt, $jwks ) = $this->make( $this->portal_claims() );
+		$now = 1800000000;
+		$this->assertNull( C::portal_plan( $jwt, 'altro-prodotto', 'esempio.it', $now, 0, $jwks ), 'prodotto diverso' );
+		$this->assertNull( C::portal_plan( $jwt, 'associazionesemplice', 'altro.it', $now, 0, $jwks ), 'dominio diverso' );
+		$this->assertNull( C::portal_plan( $jwt, 'associazionesemplice', 'esempio.it', 2100000000, 0, $jwks ), 'scaduta' );
+		$this->assertNull( C::portal_plan( '', 'associazionesemplice', 'esempio.it', $now, 0, $jwks ), 'assente' );
+		$this->assertNull( C::portal_plan( $jwt, 'associazionesemplice', 'esempio.it', $now, 0, array( 'keys' => array() ) ), 'senza chiavi non ci si fida' );
+		list( $wega ) = $this->make( $this->claims( array( 'plan' => 'fiscal' ) ) ); // firmata con l'emittente di Wega: non vale come piano del portale
+		list( , $jwks2 ) = $this->make( $this->claims() );
+		$this->assertNull( C::portal_plan( $wega, 'associazionesemplice', 'esempio.it', $now, 0, $jwks2 ), 'emittente sbagliato' );
+		list( $bad, $jwks3 ) = $this->make( $this->portal_claims( array( 'plan' => 'platino' ) ) );
+		$this->assertNull( C::portal_plan( $bad, 'associazionesemplice', 'esempio.it', $now, 0, $jwks3 ), 'livello inventato' );
+		list( $nop, $jwks4 ) = $this->make( array_diff_key( $this->portal_claims(), array( 'plan' => 1 ) ) );
+		$this->assertNull( C::portal_plan( $nop, 'associazionesemplice', 'esempio.it', $now, 0, $jwks4 ), 'senza livello' );
+	}
+
+	public function test_pinned_portal_key_is_well_formed_and_the_portal_decides_the_plan(): void {
+		$this->assertNotEmpty( C::PINNED_PORTAL_KEYS );
+		foreach ( C::PINNED_PORTAL_KEYS as $kid => $x ) {
+			$this->assertNotSame( '', $kid );
+			$this->assertSame( 32, strlen( base64_decode( strtr( $x, '-_', '+/' ) . '=' ) ), 'chiave Ed25519 da 32 byte' );
+		}
+		$this->assertTrue( C::portal_decides_plan() );
+		$this->assertSame( array_keys( C::PINNED_PORTAL_KEYS ), array_column( C::portal_jwks()['keys'], 'kid' ) );
 	}
 }

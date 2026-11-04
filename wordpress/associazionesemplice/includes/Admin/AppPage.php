@@ -29,7 +29,7 @@ final class AppPage {
 			. 'breve: <input type="text" name="pwa_short_name" value="' . esc_attr( (string) Settings::get( 'pwa_short_name' ) ) . '" size="12" maxlength="12" placeholder="' . esc_attr( Pwa::short_name() ) . '"><p class="description">Vuoto = denominazione dell\'associazione. Il nome breve sta sotto l\'icona.</p></td></tr>';
 		$icon = (int) Settings::get( 'pwa_icon_id' );
 		echo '<tr><th>Icona</th><td>' . ( $icon ? '<img src="' . esc_url( Pwa::icon_url( 192 ) ) . '" alt="" width="64" height="64" style="vertical-align:middle;border-radius:12px"> <label><input type="checkbox" name="pwa_icon_remove" value="1"> togli</label><br>' : '' )
-			. '<input type="file" name="pwa_icon" accept="image/png"><p class="description">PNG quadrato, almeno 192 pixel (meglio 512×512). Senza icona si usa l\'icona del sito o un quadrato del colore d\'accento.</p></td></tr>';
+			. '<input type="file" name="pwa_icon" accept="image/png"><p class="description">PNG quadrato, almeno 192 pixel (meglio 512×512). Senza icona si usa l\'icona del sito o un quadrato del colore d\'accento con l\'iniziale dell\'associazione.</p></td></tr>';
 		echo '</tbody></table><p><button class="button button-primary">Salva</button></p>';
 		Ui::form_close();
 

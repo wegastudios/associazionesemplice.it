@@ -2,3 +2,15 @@
 RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule ^ index.php [L]
+
+# Font e logo: compressi e in cache a lungo (i nomi dei file portano il ?v= della versione).
+<IfModule mod_deflate.c>
+	AddOutputFilterByType DEFLATE font/ttf application/x-font-ttf image/svg+xml text/css application/javascript
+</IfModule>
+<IfModule mod_expires.c>
+	ExpiresActive On
+	ExpiresByType font/ttf "access plus 1 year"
+	ExpiresByType application/x-font-ttf "access plus 1 year"
+	ExpiresByType image/svg+xml "access plus 1 month"
+	ExpiresByType image/png "access plus 1 month"
+</IfModule>

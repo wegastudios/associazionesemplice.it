@@ -26,8 +26,60 @@ final class Domain {
 		return self::ascii_ok( $d ) ? $d : '';
 	}
 
+
+	/** @var array|null regole della Public Suffix List (ICANN e privati), caricate alla prima richiesta */
+	private static $psl = null;
+
+	private static function rules(): array {
+		if ( null === self::$psl ) {
+			self::$psl = require __DIR__ . '/PublicSuffixData.php';
+		}
+		return self::$psl;
+	}
+
+	/**
+	 * Quante etichette (da destra) formano il suffisso pubblico, con l'algoritmo della Public Suffix List: un'eccezione («!x.y») prevale su tutto,
+	 * poi vale la regola più lunga (anche con «*.»), altrimenti l'ultima etichetta.
+	 *
+	 * @param string[] $labels
+	 */
+	public static function suffixLength( array $labels ): int {
+		$rules = self::rules();
+		$n     = count( $labels );
+		for ( $i = 0; $i < $n; $i++ ) {
+			if ( isset( $rules[ '!' . implode( '.', array_slice( $labels, $i ) ) ] ) ) {
+				return $n - $i - 1;
+			}
+		}
+		for ( $i = 0; $i < $n; $i++ ) {
+			if ( isset( $rules[ implode( '.', array_slice( $labels, $i ) ) ] ) || ( $i + 1 < $n && isset( $rules[ '*.' . implode( '.', array_slice( $labels, $i + 1 ) ) ] ) ) ) {
+				return $n - $i;
+			}
+		}
+		return 1;
+	}
+
+	/**
+	 * Dominio registrabile: suffisso pubblico più una etichetta («staging.esempio.it» → «esempio.it», «www.esempio.co.uk» → «esempio.co.uk»,
+	 * «sito.altervista.org» resta sé stesso). La licenza vale per lui e per tutti i suoi sottodomini. Un dominio che è già un suffisso pubblico non è valido.
+	 */
+	public static function registrable( string $normalized ): string {
+		if ( '' === $normalized ) {
+			return '';
+		}
+		$labels = explode( '.', $normalized );
+		$len    = self::suffixLength( $labels );
+		return $len >= count( $labels ) ? '' : implode( '.', array_slice( $labels, -( $len + 1 ) ) );
+	}
+
+	/** Dominio a cui si lega una licenza partendo da quello che scrive il cliente (valido, oppure stringa vuota). */
+	public static function forLicense( string $input ): string {
+		return self::registrable( self::normalize( $input ) );
+	}
+
 	/** Almeno due etichette alfanumeriche (con trattino interno); i suffissi pubblici li rifiuta il server. */
 	private static function ascii_ok( string $d ): bool {
-		return strlen( $d ) <= 253 && (bool) preg_match( '/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/', $d );
+		// L'ultima etichetta (suffisso) contiene sempre una lettera: così «0x7f.1» o «10.1» non passano per domini.
+		return strlen( $d ) <= 253 && (bool) preg_match( '/\.[a-z0-9-]*[a-z][a-z0-9-]*$/', $d ) && (bool) preg_match( '/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/', $d );
 	}
 }

@@ -10,13 +10,16 @@ final class Front {
 		Shortcodes::register();
 		Restrict::register();
 		Actions::register();
-		if ( \AssociazioneSemplice\Edition::installed( 'payments' ) ) {
-			PayReturn::register();
-		}
+		BlockBViews::register();
+		BlockFViews::register();
+		do_action( 'asem_front_init' ); // le estensioni registrano qui le loro parti del sito
 		CardVerify::register();
+		CardPdf::register();
 		TicketVerify::register();
 		Activation::register();
 		FirstAccess::register();
+		MemberLoginPage::register();
+		Application::register();
 		\AssociazioneSemplice\Calendar::register();
 		Blocks::register();
 		ElementorSupport::register();

@@ -3,6 +3,7 @@ namespace AssociazioneSemplice\Admin;
 
 use AssociazioneSemplice\ActivityReset;
 use AssociazioneSemplice\Money;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -51,11 +52,14 @@ final class DeleteActivityPage {
 			echo '<ul style="list-style:disc;margin-left:20px"><li><strong>' . (int) $p['income']['count'] . ' incassi</strong> per ' . esc_html( Money::format( (int) $p['income']['cents'] ) )
 				. ( $p['income']['online_cents'] > 0 ? ' (di cui ' . esc_html( Money::format( (int) $p['income']['online_cents'] ) ) . ' pagati online)' : '' ) . '</li>'
 				. '<li>' . (int) $p['expense']['count'] . ' spese per ' . esc_html( Money::format( (int) $p['expense']['cents'] ) ) . '</li></ul>';
+			if ( $p['income_fruited']['count'] ) {
+				echo '<p class="description"><strong>' . (int) $p['income_fruited']['count'] . ' di questi incassi (' . esc_html( Money::format( (int) $p['income_fruited']['cents'] ) ) . ') riguardano date o mesi già svolti</strong>: restano in prima nota così come sono e non vengono restituiti né annullati. Restituzione e annullamento valgono solo per ciò che non è ancora stato fruito.</p>';
+			}
 		}
 
 		if ( ActivityReset::activity_is_free( $id ) ) { // nessun movimento in prima nota: una sola conferma (il pulsante)
 			Ui::form_open( 'asem_delete_activity', $back );
-			echo Ui::hidden( 'id', $id ); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::hidden( 'id', $id ), Html::allowed() );
 			if ( $p['recipients'] > 0 ) {
 				echo '<p><label><input type="checkbox" name="notify" value="1" checked> Avvisa per email le ' . (int) $p['recipients'] . ' persone prenotate o iscritte con un indirizzo email</label></p>';
 			}
@@ -92,7 +96,7 @@ final class DeleteActivityPage {
 		$id                       = (int) $p['activity']['id'];
 		list( $mode, $notify, $void_costs ) = self::choices();
 		$blockers                 = ActivityReset::blockers( $id, $mode, $void_costs );
-		$inc                      = ActivityReset::REFUND === $mode ? array_merge( $p['income'], $p['income_open'] ) : $p['income']; // si restituisce solo ciò che non è già stato restituito
+		$inc                      = ActivityReset::REFUND === $mode ? array_merge( $p['income_void'], $p['income_open'] ) : $p['income_void']; // si restituisce solo ciò che non è già stato restituito, e né si restituisce né si annulla ciò che è già stato fruito
 
 		echo '<div class="notice notice-warning inline" style="padding:12px 16px"><h3 style="margin-top:0">Cosa succede alla prima nota</h3>';
 		if ( ! $inc['count'] && ! ( $void_costs && $p['expense']['count'] ) ) {
@@ -126,7 +130,7 @@ final class DeleteActivityPage {
 
 		echo '<h3>Conferma</h3>';
 		Ui::form_open( 'asem_delete_activity', self::review_url( $id, $mode, $notify, $void_costs ) );
-		echo Ui::hidden( 'id', $id ) . Ui::hidden( 'mode', $mode ) . Ui::hidden( 'notify', $notify ? 1 : 0 ) . Ui::hidden( 'void_costs', $void_costs ? 1 : 0 ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( Ui::hidden( 'id', $id ) . Ui::hidden( 'mode', $mode ) . Ui::hidden( 'notify', $notify ? 1 : 0 ) . Ui::hidden( 'void_costs', $void_costs ? 1 : 0 ), Html::allowed() );
 		echo '<p><label><input type="checkbox" name="confirm" value="1"> Ho letto e ho capito: l\'eliminazione è definitiva e non si può annullare.</label></p>';
 		echo '<p><label>Per confermare scrivi il nome dell\'evento: <strong>' . esc_html( (string) $p['activity']['name'] ) . '</strong><br><input type="text" name="typed" class="regular-text" autocomplete="off"></label></p>';
 		echo '<p><button class="button button-primary" style="background:#b32d2e;border-color:#b32d2e">Elimina definitivamente</button> '

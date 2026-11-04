@@ -91,6 +91,9 @@ final class Admin {
 		} elseif ( 'prezzi' === $a ) {
 			if ( $get ) {
 				$this->show( 'prices', 'prezzi', array( 'plans' => Config::get( 'plans', array() ) ) );
+			} elseif ( 'promo' === $b ) {
+				Settings::savePromo( $this->db, $_POST );
+				$this->done( 'promo', 'Promozione salvata.', '/admin/prezzi' );
 			} elseif ( '' !== $b ) {
 				$this->savePlan( $b );
 			} else {
@@ -262,7 +265,7 @@ final class Admin {
 				$this->done( 'renew', 'Licenza ' . $sub['domain'] . ' rinnovata di un periodo.', $to, $id );
 				break;
 			case 'dominio':
-				$this->billing->changeDomain( $id, $sub['customer_id'], (string) ( $_POST['domain'] ?? '' ) );
+				$this->billing->changeDomain( $id, $sub['customer_id'], (string) ( $_POST['domain'] ?? '' ), true );
 				$this->done( 'domain', $sub['domain'] . ' → ' . Domain::normalize( (string) ( $_POST['domain'] ?? '' ) ), $to, $id );
 				break;
 			case 'disdici':
@@ -281,6 +284,12 @@ final class Admin {
 			case 'elimina':
 				$deleted = $this->billing->deleteSubscription( $id );
 				$this->done( 'sub_delete', 'Licenza di ' . $sub['domain'] . ' eliminata dal portale.' . ( ! empty( $deleted['_warning'] ) ? ' ' . $deleted['_warning'] : '' ), '/admin/licenze', $id );
+				break;
+			case 'chiave':
+				if ( ! $this->billing->recoverKey( $id ) ) {
+					throw new UserError( 'Non risulta nessuna chiave da recuperare per questa licenza.' );
+				}
+				$this->done( 'key_recover', 'Chiave di ' . $sub['domain'] . ' recuperata da Wega.', $to, $id );
 				break;
 			case 'nota':
 				$this->db->run( 'UPDATE subscriptions SET note = ? WHERE id = ?', array( mb_substr( trim( (string) ( $_POST['note'] ?? '' ) ), 0, 255 ), $id ) );
@@ -429,7 +438,7 @@ final class Admin {
 	private function sampleVars(): array {
 		return array(
 			'link' => rtrim( (string) Config::get( 'base_url' ), '/' ) . '/entra/ESEMPIO', 'dominio' => 'miaassociazione.it', 'vecchio_dominio' => 'vecchio-sito.it',
-			'piano' => 'Pro Full', 'scadenza' => date( 'd/m/Y', time() + 30 * 86400 ), 'email' => $this->email,
+			'piano' => 'Pro Fiscale', 'nuovo_piano' => 'Pro Contabile', 'scadenza' => date( 'd/m/Y', time() + 30 * 86400 ), 'email' => $this->email,
 			'account_url' => rtrim( (string) Config::get( 'base_url' ), '/' ) . '/account',
 		);
 	}

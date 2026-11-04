@@ -79,11 +79,18 @@ final class Db {
 			'CREATE TABLE IF NOT EXISTS staff (email VARCHAR(190) PRIMARY KEY, role VARCHAR(10) NOT NULL, created_at VARCHAR(19) NOT NULL)',
 			// Colonne aggiunte dopo la prima versione: se esistono già l'errore si ignora.
 			'ALTER TABLE customers ADD COLUMN password_hash VARCHAR(255) NULL',
+			'ALTER TABLE subscriptions ADD COLUMN last_seen_at VARCHAR(19) NULL',
+			'ALTER TABLE customers ADD COLUMN name VARCHAR(150) NULL',
+			'ALTER TABLE releases ADD COLUMN signature VARCHAR(120) NULL',
+			'ALTER TABLE releases ADD COLUMN kid VARCHAR(40) NULL',
 			'ALTER TABLE subscriptions ADD COLUMN reminded_for VARCHAR(19) NULL',
 			'ALTER TABLE subscriptions ADD COLUMN note VARCHAR(255) NULL',
 			'ALTER TABLE subscriptions ADD COLUMN mode VARCHAR(10) NULL',
 			'ALTER TABLE subscriptions ADD COLUMN renews VARCHAR(32) NULL',
 			'ALTER TABLE subscriptions ADD COLUMN trial_used_at VARCHAR(19) NULL',
+			'ALTER TABLE subscriptions ADD COLUMN next_plan VARCHAR(40) NULL',
+			'ALTER TABLE subscriptions ADD COLUMN change_to VARCHAR(40) NULL',
+			'ALTER TABLE subscriptions ADD COLUMN domain_changed_at VARCHAR(19) NULL',
 		);
 		foreach ( $stmts as $sql ) {
 			try {

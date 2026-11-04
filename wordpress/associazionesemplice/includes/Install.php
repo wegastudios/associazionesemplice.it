@@ -6,10 +6,9 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '36';
+	const DB_VERSION        = '52';
 
 	public static function activate(): void {
-		Legacy::run(); // installazione con il vecchio nome (APSemplice): i dati passano al nuovo
 		self::create_tables();
 		self::add_roles_and_caps();
 		self::seed();
@@ -23,7 +22,6 @@ final class Install {
 
 	/** Esegue gli aggiornamenti dello schema se il plugin è stato aggiornato senza riattivarlo. */
 	public static function maybe_upgrade(): void {
-		Legacy::run();
 		$old = (string) get_option( self::DB_VERSION_OPTION, '' );
 		if ( $old !== self::DB_VERSION ) {
 			self::activate();
@@ -33,10 +31,28 @@ final class Install {
 			if ( '' !== $old && version_compare( $old, '17', '<' ) ) {
 				self::migrate_membership_years();
 			}
+			if ( '' !== $old && version_compare( $old, '45', '<' ) ) {
+				self::migrate_operative_guardians();
+			}
 			if ( '' !== $old && version_compare( $old, '3', '<' ) ) {
 				// Dalla v3 il contributo di un'attività è `fee_cents` (per i corsi resta "al mese").
 				Db::db()->query( 'UPDATE ' . Db::t( 'activities' ) . ' SET fee_cents = monthly_fee_cents WHERE fee_cents = 0 AND monthly_fee_cents > 0' );
 			}
+		}
+	}
+
+	/** Dalla v45 di due tutori ne opera uno solo sul sito: dove prima ce n'erano due resta operativo il primo collegato. */
+	public static function migrate_operative_guardians(): void {
+		$db   = Db::db();
+		$tbl  = Db::t( 'guardians' );
+		$rows = $db->get_results( "SELECT id, person_id FROM $tbl ORDER BY id", ARRAY_A ) ?: array();
+		$seen = array();
+		foreach ( $rows as $r ) {
+			$k = (int) $r['person_id'];
+			if ( isset( $seen[ $k ] ) ) {
+				$db->update( $tbl, array( 'is_operative' => 0 ), array( 'id' => (int) $r['id'] ) );
+			}
+			$seen[ $k ] = true;
 		}
 	}
 
@@ -118,6 +134,8 @@ final class Install {
   email varchar(190) DEFAULT NULL,
   phone varchar(60) DEFAULT NULL,
   tax_code varchar(32) DEFAULT NULL,
+  birth_date date DEFAULT NULL,
+  birth_place varchar(120) DEFAULT NULL,
   address varchar(190) DEFAULT NULL,
   zip varchar(12) DEFAULT NULL,
   city varchar(100) DEFAULT NULL,
@@ -125,6 +143,7 @@ final class Install {
   profile_due tinyint(1) NOT NULL DEFAULT 0,
   host_person_id bigint(20) unsigned DEFAULT NULL,
   joined_on date DEFAULT NULL,
+  approved_on date DEFAULT NULL,
   suspended_at datetime DEFAULT NULL,
   board_role varchar(20) DEFAULT NULL,
   level_id bigint(20) unsigned DEFAULT NULL,
@@ -137,6 +156,16 @@ final class Install {
   rules_accepted_at datetime DEFAULT NULL,
   rules_accepted_version varchar(20) DEFAULT NULL,
   rules_accepted_source varchar(20) DEFAULT NULL,
+  rules_accepted_by bigint(20) unsigned DEFAULT NULL,
+  privacy_consent_by bigint(20) unsigned DEFAULT NULL,
+  application_status varchar(12) DEFAULT NULL,
+  application_at datetime DEFAULT NULL,
+  application_data text,
+  image_consent tinyint(1) DEFAULT NULL,
+  image_consent_at datetime DEFAULT NULL,
+  image_consent_by bigint(20) unsigned DEFAULT NULL,
+  affiliation_role varchar(20) DEFAULT NULL,
+  prior_visits int(10) unsigned NOT NULL DEFAULT 0,
   notes text,
   created_at datetime NOT NULL,
   updated_at datetime NOT NULL,
@@ -144,9 +173,21 @@ final class Install {
   PRIMARY KEY  (id),
   UNIQUE KEY card_number (card_number),
   UNIQUE KEY wp_user_id (wp_user_id),
+  KEY email (email),
   KEY type (type),
   KEY host_person_id (host_person_id),
   KEY family_head_id (family_head_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}guardians (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  person_id bigint(20) unsigned NOT NULL,
+  guardian_person_id bigint(20) unsigned NOT NULL,
+  is_operative tinyint(1) NOT NULL DEFAULT 1,
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY person_guardian (person_id,guardian_person_id),
+  KEY guardian_person_id (guardian_person_id)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}minutes (
@@ -165,85 +206,6 @@ final class Install {
   deleted_at datetime DEFAULT NULL,
   PRIMARY KEY  (id),
   KEY kind_date (kind,meeting_date)
-) $c;";
-
-		$tables[] = "CREATE TABLE {$p}insurance (
-  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-  person_id bigint(20) unsigned NOT NULL,
-  company varchar(120) NOT NULL,
-  policy_no varchar(80) DEFAULT NULL,
-  valid_from date NOT NULL,
-  valid_to date NOT NULL,
-  notes varchar(255) DEFAULT NULL,
-  created_at datetime NOT NULL,
-  PRIMARY KEY  (id),
-  KEY person_id (person_id)
-) $c;";
-
-		$tables[] = "CREATE TABLE {$p}assoc_policies (
-  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-  kind varchar(20) NOT NULL,
-  company varchar(120) NOT NULL,
-  policy_no varchar(80) DEFAULT NULL,
-  valid_from date NOT NULL,
-  valid_to date NOT NULL,
-  premium_cents bigint(20) DEFAULT NULL,
-  coverage varchar(255) DEFAULT NULL,
-  created_at datetime NOT NULL,
-  PRIMARY KEY  (id),
-  KEY kind (kind)
-) $c;";
-
-		$tables[] = "CREATE TABLE {$p}fivepm (
-  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-  year smallint(5) unsigned NOT NULL,
-  amount_cents bigint(20) NOT NULL,
-  choices int(11) NOT NULL DEFAULT 0,
-  received_on date NOT NULL,
-  reported_on date DEFAULT NULL,
-  report_notes text,
-  created_at datetime NOT NULL,
-  PRIMARY KEY  (id),
-  UNIQUE KEY year (year)
-) $c;";
-
-		$tables[] = "CREATE TABLE {$p}woo_links (
-  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-  kind varchar(12) NOT NULL,
-  ref_id bigint(20) unsigned NOT NULL,
-  product_id bigint(20) unsigned NOT NULL,
-  created_at datetime NOT NULL,
-  PRIMARY KEY  (id),
-  UNIQUE KEY kind_ref (kind,ref_id)
-) $c;";
-
-		$tables[] = "CREATE TABLE {$p}push_subs (
-  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-  user_id bigint(20) unsigned NOT NULL,
-  endpoint text NOT NULL,
-  endpoint_hash char(40) NOT NULL,
-  p256dh varchar(140) NOT NULL,
-  auth varchar(40) NOT NULL,
-  ua varchar(190) DEFAULT NULL,
-  failures int(11) NOT NULL DEFAULT 0,
-  created_at datetime NOT NULL,
-  last_ok_at datetime DEFAULT NULL,
-  PRIMARY KEY  (id),
-  UNIQUE KEY endpoint_hash (endpoint_hash),
-  KEY user_id (user_id)
-) $c;";
-
-		$tables[] = "CREATE TABLE {$p}attendance (
-  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-  activity_id bigint(20) unsigned NOT NULL,
-  lesson_date date NOT NULL,
-  person_id bigint(20) unsigned NOT NULL,
-  present tinyint(1) NOT NULL DEFAULT 1,
-  marked_by bigint(20) unsigned DEFAULT NULL,
-  marked_at datetime NOT NULL,
-  PRIMARY KEY  (id),
-  UNIQUE KEY lesson_person (activity_id,lesson_date,person_id),
-  KEY person_id (person_id)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}member_levels (
@@ -334,6 +296,7 @@ final class Install {
   kind varchar(20) NOT NULL DEFAULT 'course',
   fee_cents bigint(20) NOT NULL DEFAULT 0,
   guest_fee_cents bigint(20) DEFAULT NULL,
+  price_lists text,
   hold_hours smallint(5) unsigned NOT NULL DEFAULT 0,
   vat_rate tinyint(3) DEFAULT NULL,
   cancellable tinyint(1) NOT NULL DEFAULT 0,
@@ -341,7 +304,9 @@ final class Install {
   booking_qr tinyint(1) NOT NULL DEFAULT 0,
   lesson_weekday tinyint(1) NOT NULL DEFAULT 0,
   lesson_slots text,
-  billing varchar(8) NOT NULL DEFAULT 'monthly',
+  billing varchar(12) NOT NULL DEFAULT 'monthly',
+  sport varchar(60) DEFAULT NULL,
+  discipline varchar(120) DEFAULT NULL,
   lesson_start char(5) DEFAULT NULL,
   lesson_end char(5) DEFAULT NULL,
   location varchar(190) DEFAULT NULL,
@@ -349,6 +314,10 @@ final class Install {
   ends_on date DEFAULT NULL,
   fund_mode varchar(8) NOT NULL DEFAULT '',
   fund_value bigint(20) NOT NULL DEFAULT 0,
+  resource_id bigint(20) unsigned DEFAULT NULL,
+  credit_price int(11) DEFAULT NULL,
+  setup_before_min int(11) DEFAULT NULL,
+  setup_after_min int(11) DEFAULT NULL,
   notes text,
   created_at datetime NOT NULL,
   deleted_at datetime DEFAULT NULL,
@@ -362,6 +331,8 @@ final class Install {
   person_id bigint(20) unsigned NOT NULL,
   start_month char(7) NOT NULL,
   end_month char(7) DEFAULT NULL,
+  price_list varchar(30) DEFAULT NULL,
+  fee_note varchar(190) DEFAULT NULL,
   created_at datetime NOT NULL,
   PRIMARY KEY  (id),
   UNIQUE KEY activity_person (activity_id,person_id),
@@ -380,6 +351,7 @@ final class Install {
   person_id bigint(20) unsigned DEFAULT NULL,
   description varchar(255) NOT NULL DEFAULT '',
   session_id bigint(20) unsigned DEFAULT NULL,
+  reservation_id bigint(20) unsigned DEFAULT NULL,
   competence_month char(7) DEFAULT NULL,
   social_year varchar(12) DEFAULT NULL,
   document_ref varchar(80) DEFAULT NULL,
@@ -402,7 +374,8 @@ final class Install {
   KEY receipt_id (receipt_id),
   KEY import_batch (import_batch),
   KEY transfer_id (transfer_id),
-  KEY session_id (session_id)
+  KEY session_id (session_id),
+  KEY reservation_id (reservation_id)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}cash_counts (
@@ -435,12 +408,32 @@ final class Install {
   KEY session_date (session_date)
 ) $c;";
 
+		$tables[] = "CREATE TABLE {$p}lesson_exceptions (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  activity_id bigint(20) unsigned NOT NULL,
+  lesson_date date NOT NULL,
+  action varchar(8) NOT NULL,
+  new_date date DEFAULT NULL,
+  new_start char(5) DEFAULT NULL,
+  new_end char(5) DEFAULT NULL,
+  note varchar(190) DEFAULT NULL,
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY activity_lesson (activity_id,lesson_date),
+  KEY new_date (new_date)
+) $c;";
+
 		$tables[] = "CREATE TABLE {$p}bookings (
   id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   session_id bigint(20) unsigned NOT NULL,
   person_id bigint(20) unsigned NOT NULL,
   status varchar(12) NOT NULL DEFAULT 'booked',
   fee_due_cents bigint(20) NOT NULL DEFAULT 0,
+  price_list varchar(40) DEFAULT NULL,
+  guest_of varchar(12) DEFAULT NULL,
+  waived_cents bigint(20) NOT NULL DEFAULT 0,
+  package_entries smallint(5) unsigned NOT NULL DEFAULT 0,
+  package_of bigint(20) unsigned DEFAULT NULL,
   transferred_to bigint(20) unsigned DEFAULT NULL,
   transferred_from bigint(20) unsigned DEFAULT NULL,
   created_at datetime NOT NULL,
@@ -461,36 +454,6 @@ final class Install {
   PRIMARY KEY  (id),
   UNIQUE KEY activity_person (activity_id,person_id),
   KEY person_id (person_id)
-) $c;";
-
-		$tables[] = "CREATE TABLE {$p}broadcasts (
-  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-  subject varchar(190) NOT NULL,
-  body text NOT NULL,
-  audience varchar(40) NOT NULL,
-  audience_ref bigint(20) unsigned DEFAULT NULL,
-  status varchar(12) NOT NULL DEFAULT 'sending',
-  total int(10) unsigned NOT NULL DEFAULT 0,
-  sent int(10) unsigned NOT NULL DEFAULT 0,
-  failed int(10) unsigned NOT NULL DEFAULT 0,
-  created_by bigint(20) unsigned DEFAULT NULL,
-  created_at datetime NOT NULL,
-  finished_at datetime DEFAULT NULL,
-  PRIMARY KEY  (id),
-  KEY status (status)
-) $c;";
-
-		$tables[] = "CREATE TABLE {$p}broadcast_rcpt (
-  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-  broadcast_id bigint(20) unsigned NOT NULL,
-  person_id bigint(20) unsigned DEFAULT NULL,
-  email varchar(190) NOT NULL,
-  name varchar(120) NOT NULL DEFAULT '',
-  status varchar(10) NOT NULL DEFAULT 'queued',
-  sent_at datetime DEFAULT NULL,
-  error varchar(190) DEFAULT NULL,
-  PRIMARY KEY  (id),
-  KEY broadcast_status (broadcast_id,status)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}waitlist (
@@ -517,18 +480,6 @@ final class Install {
   KEY sent_at (sent_at)
 ) $c;";
 
-		$tables[] = "CREATE TABLE {$p}receipts (
-  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-  receipt_key varchar(40) NOT NULL,
-  year smallint(5) unsigned NOT NULL,
-  number int(10) unsigned NOT NULL,
-  issued_at datetime NOT NULL,
-  issued_by bigint(20) unsigned DEFAULT NULL,
-  PRIMARY KEY  (id),
-  UNIQUE KEY receipt_key (receipt_key),
-  UNIQUE KEY year_number (year,number)
-) $c;";
-
 		$tables[] = "CREATE TABLE {$p}notices (
   id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   activity_id bigint(20) unsigned NOT NULL,
@@ -543,31 +494,6 @@ final class Install {
   PRIMARY KEY  (id),
   KEY activity_id (activity_id),
   KEY created_at (created_at)
-) $c;";
-
-		$tables[] = "CREATE TABLE {$p}payments (
-  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-  public_id varchar(40) NOT NULL,
-  provider varchar(12) NOT NULL,
-  status varchar(16) NOT NULL DEFAULT 'created',
-  amount_cents bigint(20) NOT NULL,
-  currency char(3) NOT NULL DEFAULT 'EUR',
-  payer_person_id bigint(20) unsigned NOT NULL,
-  payer_user_id bigint(20) unsigned NOT NULL,
-  items longtext NOT NULL,
-  provider_ref varchar(120) DEFAULT NULL,
-  provider_payment_id varchar(120) DEFAULT NULL,
-  allocated_cents bigint(20) NOT NULL DEFAULT 0,
-  review tinyint(1) NOT NULL DEFAULT 0,
-  error varchar(255) DEFAULT NULL,
-  created_at datetime NOT NULL,
-  updated_at datetime NOT NULL,
-  paid_at datetime DEFAULT NULL,
-  PRIMARY KEY  (id),
-  UNIQUE KEY public_id (public_id),
-  KEY provider_ref (provider_ref),
-  KEY status (status),
-  KEY payer_person_id (payer_person_id)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}attachments (
@@ -613,6 +539,186 @@ final class Install {
   KEY action (action)
 ) $c;";
 
+		$tables[] = "CREATE TABLE {$p}polls (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  kind varchar(10) NOT NULL DEFAULT 'vote',
+  title varchar(190) NOT NULL,
+  question text,
+  multiple tinyint(1) NOT NULL DEFAULT 0,
+  max_choices smallint(5) unsigned NOT NULL DEFAULT 0,
+  secret tinyint(1) NOT NULL DEFAULT 0,
+  audience varchar(10) NOT NULL DEFAULT 'members',
+  activity_id bigint(20) unsigned DEFAULT NULL,
+  opens_at datetime NOT NULL,
+  closes_at datetime NOT NULL,
+  show_results tinyint(1) NOT NULL DEFAULT 0,
+  notify tinyint(1) NOT NULL DEFAULT 0,
+  created_by bigint(20) unsigned DEFAULT NULL,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  deleted_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY opens_closes (opens_at,closes_at)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}poll_options (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  poll_id bigint(20) unsigned NOT NULL,
+  label varchar(190) NOT NULL,
+  sort_order int(11) NOT NULL DEFAULT 0,
+  votes int(11) NOT NULL DEFAULT 0,
+  PRIMARY KEY  (id),
+  KEY poll_id (poll_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}poll_voters (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  poll_id bigint(20) unsigned NOT NULL,
+  person_id bigint(20) unsigned NOT NULL,
+  voted_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY poll_person (poll_id,person_id),
+  KEY person_id (person_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}poll_votes (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  poll_id bigint(20) unsigned NOT NULL,
+  option_id bigint(20) unsigned NOT NULL,
+  person_id bigint(20) unsigned DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY poll_option (poll_id,option_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}items (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  name varchar(190) NOT NULL,
+  category varchar(80) NOT NULL DEFAULT '',
+  code varchar(60) DEFAULT NULL,
+  quantity int(11) NOT NULL DEFAULT 1,
+  state varchar(10) NOT NULL DEFAULT 'good',
+  location varchar(190) NOT NULL DEFAULT '',
+  value_cents bigint(20) DEFAULT NULL,
+  purchased_on date DEFAULT NULL,
+  notes text,
+  file_name varchar(190) DEFAULT NULL,
+  file_stored varchar(64) DEFAULT NULL,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  deleted_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY code (code)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}loans (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  item_id bigint(20) unsigned NOT NULL,
+  person_id bigint(20) unsigned NOT NULL,
+  quantity int(11) NOT NULL DEFAULT 1,
+  lent_on date NOT NULL,
+  due_on date NOT NULL,
+  returned_on date DEFAULT NULL,
+  notes_out varchar(255) NOT NULL DEFAULT '',
+  notes_in varchar(255) NOT NULL DEFAULT '',
+  created_by bigint(20) unsigned DEFAULT NULL,
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  KEY item_id (item_id),
+  KEY person_id (person_id),
+  KEY due_on (due_on)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}documents (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  title varchar(190) NOT NULL,
+  category varchar(80) NOT NULL DEFAULT '',
+  doc_date date DEFAULT NULL,
+  visibility varchar(10) NOT NULL DEFAULT 'staff',
+  description varchar(255) NOT NULL DEFAULT '',
+  file_name varchar(190) NOT NULL,
+  file_stored varchar(64) NOT NULL,
+  file_size bigint(20) unsigned NOT NULL DEFAULT 0,
+  uploaded_by bigint(20) unsigned DEFAULT NULL,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  deleted_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY visibility (visibility)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}conventions (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  name varchar(190) NOT NULL,
+  category varchar(80) NOT NULL DEFAULT '',
+  benefit varchar(500) NOT NULL DEFAULT '',
+  terms text,
+  valid_from date DEFAULT NULL,
+  valid_to date DEFAULT NULL,
+  address varchar(190) NOT NULL DEFAULT '',
+  phone varchar(40) NOT NULL DEFAULT '',
+  email varchar(190) NOT NULL DEFAULT '',
+  website varchar(255) NOT NULL DEFAULT '',
+  logo_id bigint(20) unsigned DEFAULT NULL,
+  audience varchar(10) NOT NULL DEFAULT 'all',
+  types varchar(120) NOT NULL DEFAULT '',
+  is_public tinyint(1) NOT NULL DEFAULT 0,
+  code varchar(60) NOT NULL DEFAULT '',
+  announced_at datetime DEFAULT NULL,
+  archived_at datetime DEFAULT NULL,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  deleted_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY category (category),
+  KEY valid_to (valid_to)
+) $c;";
+
+		// Accesso proprio dei soci (senza utente WordPress). Orari in UTC; nel database restano solo impronte, mai token o codici in chiaro.
+		$tables[] = "CREATE TABLE {$p}member_auth (
+  person_id bigint(20) unsigned NOT NULL,
+  login_email varchar(190) NOT NULL,
+  pass_hash varchar(255) DEFAULT NULL,
+  must_reset tinyint(1) unsigned NOT NULL DEFAULT 0,
+  failed_count smallint(5) unsigned NOT NULL DEFAULT 0,
+  locked_until datetime DEFAULT NULL,
+  created_at datetime NOT NULL,
+  last_login_at datetime DEFAULT NULL,
+  PRIMARY KEY  (person_id),
+  UNIQUE KEY login_email (login_email)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}member_sessions (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  token_hash char(64) NOT NULL,
+  person_id bigint(20) unsigned NOT NULL,
+  created_at datetime NOT NULL,
+  last_seen datetime NOT NULL,
+  expires_at datetime NOT NULL,
+  ip_hash char(32) NOT NULL DEFAULT '',
+  ua_hash char(32) NOT NULL DEFAULT '',
+  PRIMARY KEY  (id),
+  UNIQUE KEY token_hash (token_hash),
+  KEY person_id (person_id),
+  KEY expires_at (expires_at)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}member_challenges (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  person_id bigint(20) unsigned NOT NULL,
+  kind varchar(8) NOT NULL DEFAULT 'login',
+  token_hash char(64) NOT NULL,
+  code_hash char(64) NOT NULL,
+  attempts tinyint(3) unsigned NOT NULL DEFAULT 0,
+  created_at datetime NOT NULL,
+  expires_at datetime NOT NULL,
+  used_at datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY token_hash (token_hash),
+  KEY person_id (person_id),
+  KEY expires_at (expires_at)
+) $c;";
+
+		$tables = (array) apply_filters( 'asem_schema_tables', $tables, $p, $c ); // le estensioni aggiungono le loro tabelle
 		foreach ( $tables as $sql ) {
 			dbDelta( $sql );
 		}

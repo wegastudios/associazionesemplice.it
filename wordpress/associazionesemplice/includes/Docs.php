@@ -17,15 +17,36 @@ final class Docs {
 		add_action( 'admin_post_asem_doc', array( __CLASS__, 'handle' ) );
 	}
 
+	/**
+	 * Le tessere dei soci su fogli A4 con più tessere per foglio, da stampare e ritagliare (i posti che restano sono modelli vuoti).
+	 *
+	 * @param string $filter filtro del libro soci ('' = i soci in carica)
+	 * @param int    $per    tessere per foglio (0 = quante ne stanno)
+	 * @throws \InvalidArgumentException
+	 */
+	public static function cards( string $filter = '', int $per = 0 ): array {
+		$people = array();
+		foreach ( MemberBook::rows( '' === $filter ? MemberBook::IN_FORCE : $filter ) as $r ) {
+			$p = Plugin::people()->get( (int) $r['id'] );
+			if ( $p && MemberType::is_member( $p['type'] ) ) {
+				$people[] = $p;
+			}
+		}
+		if ( ! $people ) {
+			throw new \InvalidArgumentException( 'Nessun socio per cui stampare la tessera.' );
+		}
+		return array( 'body' => CardLayout::pdf_sheets( $people, max( 0, $per ) ), 'filename' => 'tessere.pdf', 'mime' => 'application/pdf' );
+	}
+
 	public static function url( string $what, array $args = array(), string $format = 'pdf' ): string {
 		return wp_nonce_url( add_query_arg( array_merge( array( 'action' => 'asem_doc', 'what' => $what, 'format' => $format ), $args ), admin_url( 'admin-post.php' ) ), 'asem_doc' );
 	}
 
-	private static function d( ?string $ymd ): string {
+	public static function d( ?string $ymd ): string {
 		return $ymd ? ( new \DateTimeImmutable( $ymd ) )->format( 'd/m/Y' ) : '';
 	}
 
-	private static function fit( string $s, float $w, float $size, bool $bold = false ): string {
+	public static function fit( string $s, float $w, float $size, bool $bold = false ): string {
 		if ( Pdf::width( $s, $size, $bold ) <= $w ) {
 			return $s;
 		}
@@ -35,7 +56,7 @@ final class Docs {
 		return $s . '…';
 	}
 
-	private static function csv_line( array $cells ): string {
+	public static function csv_line( array $cells ): string {
 		$out = array();
 		foreach ( $cells as $c ) {
 			$v     = Admin\Exports::neutralize( null === $c ? '' : (string) $c );
@@ -44,7 +65,7 @@ final class Docs {
 		return implode( ';', $out ) . "\r\n";
 	}
 
-	private static function csv( array $cols, array $rows ): string {
+	public static function csv( array $cols, array $rows ): string {
 		$s = self::csv_line( array_column( $cols, 'label' ) );
 		foreach ( $rows as $r ) {
 			$s .= self::csv_line( $r );
@@ -52,7 +73,7 @@ final class Docs {
 		return "\xEF\xBB\xBF" . $s;
 	}
 
-	private static function president(): string {
+	public static function president(): string {
 		foreach ( Plugin::people()->board() as $b ) {
 			if ( BoardRole::PRESIDENT === $b['board_role'] ) {
 				return trim( $b['first_name'] . ' ' . $b['last_name'] );
@@ -62,7 +83,7 @@ final class Docs {
 	}
 
 	/** Intestazione dell'associazione, titolo e sottotitolo. @return float la y da cui continuare */
-	private static function head( Pdf $pdf, string $title, string $subtitle = '' ): float {
+	public static function head( Pdf $pdf, string $title, string $subtitle = '' ): float {
 		$name = (string) Settings::get( 'association_name' );
 		$cf   = (string) Settings::get( 'tax_code' );
 		$pdf->text( self::LEFT, 56, '' !== $name ? $name : 'Associazione', 15, true );
@@ -85,7 +106,7 @@ final class Docs {
 	 * @param array[] $cols [label, w (punti), align L|R|C]
 	 * @param array[] $rows celle di testo
 	 */
-	private static function table_pdf( string $title, string $subtitle, array $cols, array $rows, string $foot = '' ): string {
+	public static function table_pdf( string $title, string $subtitle, array $cols, array $rows, string $foot = '' ): string {
 		Pdf::$filter = array( Texts::class, 'plain' );
 		$pdf         = new Pdf();
 		$y           = self::head( $pdf, $title, $subtitle );
@@ -135,17 +156,66 @@ final class Docs {
 	// ---------- Libro soci ----------
 
 	private static function book_cols(): array {
-		return array(
-			array( 'label' => 'N.', 'w' => 26, 'align' => 'R' ), array( 'label' => 'Cognome e nome', 'w' => 135 ), array( 'label' => 'Codice fiscale', 'w' => 98 ),
-			array( 'label' => 'Livello', 'w' => 80 ), array( 'label' => 'Ingresso', 'w' => 56 ), array( 'label' => 'Cessazione', 'w' => 100 ),
+		$labels = array( 'N.', 'Cognome e nome', 'Codice fiscale', 'Data di nascita', 'Luogo di nascita', 'Residenza', 'Email', 'Telefono', 'Data domanda', 'Data delibera', 'Ingresso', 'Ultima quota versata', 'Anno della quota', 'Cessazione (recesso/esclusione)', 'Motivo', 'Genitore o tutore firmatario', 'Livello' );
+		return array_map(
+			function ( $l ) {
+				return array( 'label' => $l, 'w' => 60 );
+			},
+			$labels
 		);
 	}
 
 	private static function book_rows( array $rows ): array {
 		$out = array();
 		foreach ( $rows as $r ) {
-			$out[] = array( (string) $r['n'], $r['name'], $r['tax_code'], $r['level'], self::d( $r['joined_on'] ), $r['left_on'] ? self::d( $r['left_on'] ) . ( '' !== $r['left_reason'] ? ' · ' . $r['left_reason'] : '' ) : '' );
+			$out[] = array(
+				(string) $r['n'], $r['name'], $r['tax_code'], '' !== $r['birth_date'] ? self::d( $r['birth_date'] ) : '', $r['birth_place'], $r['residence'], $r['email'], $r['phone'],
+				self::d( $r['applied_on'] ), self::d( $r['approved_on'] ), self::d( $r['joined_on'] ), $r['fee_cents'] > 0 ? Money::format( $r['fee_cents'] ) : '', $r['fee_year'],
+				$r['left_on'] ? self::d( $r['left_on'] ) : '', $r['left_reason'], $r['guardian'], $r['level'],
+			);
 		}
+		return $out;
+	}
+
+	/** Libro soci in PDF: ogni socio occupa tre righe (anagrafica, recapiti, date e quota), perché i dati richiesti non stanno su una riga sola. */
+	private static function book_pdf( array $rows, string $subtitle ): string {
+		Pdf::$filter = array( Texts::class, 'plain' );
+		$pdf         = new Pdf();
+		$y           = self::head( $pdf, 'LIBRO DEI SOCI', $subtitle );
+		$w           = self::RIGHT - self::LEFT;
+		foreach ( $rows as $i => $r ) {
+			if ( $y + 40 > self::BOTTOM ) {
+				$pdf->add_page();
+				$y = 60.0;
+			}
+			if ( 0 === $i % 2 ) {
+				$pdf->rect( self::LEFT, $y - 9, $w, 38, 0.97 );
+			}
+			$born = trim( ( '' !== $r['birth_date'] ? 'nato/a il ' . self::d( $r['birth_date'] ) : '' ) . ( '' !== $r['birth_place'] ? ' a ' . $r['birth_place'] : '' ) );
+			$pdf->text( self::LEFT + 3, $y, self::fit( $r['n'] . '. ' . $r['name'] . ( '' !== $r['tax_code'] ? ' · CF ' . $r['tax_code'] : '' ), 240, 8, true ), 8, true );
+			$pdf->text( self::LEFT + 250, $y, self::fit( $born, $w - 253, 8 ), 8 );
+			$y += 12;
+			$pdf->text( self::LEFT + 3, $y, self::fit( ( '' !== $r['residence'] ? 'Residenza: ' . $r['residence'] : '' ), 300, 8 ), 8 );
+			$pdf->text( self::LEFT + 310, $y, self::fit( trim( $r['email'] . ( '' !== $r['phone'] ? ' · ' . $r['phone'] : '' ) ), $w - 313, 8 ), 8 );
+			$y += 12;
+			$parts = array( 'Domanda ' . self::d( $r['applied_on'] ), 'Delibera ' . self::d( $r['approved_on'] ), 'Ingresso ' . self::d( $r['joined_on'] ) );
+			if ( $r['fee_cents'] > 0 ) {
+				$parts[] = 'Quota ' . Money::format( $r['fee_cents'] ) . ( '' !== $r['fee_year'] ? ' (' . $r['fee_year'] . ')' : '' );
+			}
+			if ( $r['left_on'] ) {
+				$parts[] = 'Cessato il ' . self::d( $r['left_on'] ) . ( '' !== $r['left_reason'] ? ' · ' . $r['left_reason'] : '' );
+			}
+			if ( '' !== $r['guardian'] ) {
+				$parts[] = 'Tutore ' . $r['guardian'];
+			}
+			$pdf->text( self::LEFT + 3, $y, self::fit( implode( ' · ', $parts ), $w - 6, 8 ), 8 );
+			$y += 18;
+		}
+		if ( ! $rows ) {
+			$pdf->text( self::LEFT + 3, $y, 'Nessun dato.', 9 );
+		}
+		$out         = $pdf->output();
+		Pdf::$filter = null;
 		return $out;
 	}
 
@@ -159,83 +229,7 @@ final class Docs {
 			return array( 'body' => self::csv( self::book_cols(), $cells ), 'filename' => 'libro-soci.csv', 'mime' => 'text/csv; charset=utf-8' );
 		}
 		$sub = 'Aggiornato al ' . self::d( Db::today() ) . ' · ' . count( $all ) . ' soci iscritti, ' . $active . ' in carica';
-		return array( 'body' => self::table_pdf( 'LIBRO DEI SOCI', $sub, self::book_cols(), $cells ), 'filename' => 'libro-soci.pdf', 'mime' => 'application/pdf' );
-	}
-
-	// ---------- Registro volontari e assicurazione ----------
-
-	private static function vol_cols(): array {
-		return array(
-			array( 'label' => 'Cognome e nome', 'w' => 140 ), array( 'label' => 'Codice fiscale', 'w' => 96 ), array( 'label' => 'Compagnia', 'w' => 90 ),
-			array( 'label' => 'Polizza', 'w' => 66 ), array( 'label' => 'Copertura fino al', 'w' => 52 ), array( 'label' => 'Stato', 'w' => 51 ),
-		);
-	}
-
-	/** @return array{body:string,filename:string,mime:string} */
-	public static function volunteers( string $format = 'pdf' ): array {
-		$labels = Insurance::status_labels();
-		$cells  = array();
-		foreach ( Insurance::register() as $r ) {
-			$p       = $r['person'];
-			$pol     = $r['policy'];
-			$cells[] = array( trim( $p['last_name'] . ' ' . $p['first_name'] ), (string) $p['tax_code'], $pol ? (string) $pol['company'] : '', $pol ? (string) $pol['policy_no'] : '', $pol ? self::d( $pol['valid_to'] ) : '', $labels[ $r['status'] ] );
-		}
-		if ( 'csv' === $format ) {
-			return array( 'body' => self::csv( self::vol_cols(), $cells ), 'filename' => 'registro-volontari.csv', 'mime' => 'text/csv; charset=utf-8' );
-		}
-		$sub = 'Aggiornato al ' . self::d( Db::today() ) . ' · ' . count( $cells ) . ' volontari';
-		return array( 'body' => self::table_pdf( 'REGISTRO DEI VOLONTARI E ASSICURAZIONE', $sub, self::vol_cols(), $cells ), 'filename' => 'registro-volontari.pdf', 'mime' => 'application/pdf' );
-	}
-
-	// ---------- Registro presenze ----------
-
-	/** @return array{body:string,filename:string,mime:string} @throws \InvalidArgumentException */
-	public static function attendance( int $activity_id, string $from, string $to, string $format = 'pdf' ): array {
-		$a = Plugin::activities()->get( $activity_id );
-		if ( ! $a ) {
-			throw new \InvalidArgumentException( 'Attività non trovata.' );
-		}
-		foreach ( array( $from, $to ) as $day ) {
-			if ( ! preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $day, $m ) || ! checkdate( (int) $m[2], (int) $m[3], (int) $m[1] ) ) {
-				throw new \InvalidArgumentException( 'Indica il periodo (dal / al).' );
-			}
-		}
-		$s     = Attendance::summary( $activity_id, $from, $to );
-		$dates = $s['dates'];
-		$matrix = count( $dates ) <= 10;
-		$cols  = array( array( 'label' => 'Cognome e nome', 'w' => $matrix ? 125 : 255 ) );
-		if ( $matrix ) {
-			foreach ( $dates as $d ) {
-				$cols[] = array( 'label' => substr( $d, 8, 2 ) . '/' . substr( $d, 5, 2 ), 'w' => 33, 'align' => 'C' );
-			}
-			$cols[] = array( 'label' => 'Presenze', 'w' => 40, 'align' => 'R' );
-		} else {
-			$cols[] = array( 'label' => 'Presenze', 'w' => 80, 'align' => 'R' );
-			$cols[] = array( 'label' => 'Lezioni', 'w' => 80, 'align' => 'R' );
-			$cols[] = array( 'label' => '%', 'w' => 80, 'align' => 'R' );
-		}
-		$cells = array();
-		foreach ( $s['people'] as $p ) {
-			$row = array( trim( $p['last_name'] . ' ' . $p['first_name'] ) );
-			if ( $matrix ) {
-				foreach ( $dates as $d ) {
-					$row[] = isset( $p['by_date'][ $d ] ) ? ( $p['by_date'][ $d ] ? 'P' : 'A' ) : '';
-				}
-				$row[] = $p['presenze'] . '/' . $p['totale'];
-			} else {
-				$row[] = (string) $p['presenze'];
-				$row[] = (string) $p['totale'];
-				$row[] = $p['totale'] ? (string) round( 100 * $p['presenze'] / $p['totale'] ) . '%' : '';
-			}
-			$cells[] = $row;
-		}
-		$slug = sanitize_title( (string) $a['name'] );
-		if ( 'csv' === $format ) {
-			$csv_cols = $cols;
-			return array( 'body' => self::csv( $csv_cols, $cells ), 'filename' => 'presenze-' . $slug . '.csv', 'mime' => 'text/csv; charset=utf-8' );
-		}
-		$sub = $a['name'] . ' · dal ' . self::d( $from ) . ' al ' . self::d( $to ) . ' · ' . count( $dates ) . ' lezioni registrate';
-		return array( 'body' => self::table_pdf( 'REGISTRO PRESENZE', $sub, $cols, $cells, 'P = presente, A = assente.' ), 'filename' => 'presenze-' . $slug . '.pdf', 'mime' => 'application/pdf' );
+		return array( 'body' => self::book_pdf( $rows, $sub ), 'filename' => 'libro-soci.pdf', 'mime' => 'application/pdf' );
 	}
 
 	// ---------- Verbale ----------
@@ -296,117 +290,81 @@ final class Docs {
 		return array( 'body' => $out, 'filename' => 'verbale-' . str_replace( '/', '-', $m['number'] ) . '-' . $m['kind'] . '.pdf', 'mime' => 'application/pdf' );
 	}
 
-	// ---------- Rendiconto ----------
+	// ---------- Risultati di una votazione ----------
 
-	/** @return array{body:string,filename:string,mime:string} */
-	public static function statement( int $year ): array {
-		if ( $year < 2000 || $year > (int) substr( Db::today(), 0, 4 ) + 1 ) {
-			throw new \InvalidArgumentException( 'Anno non valido.' );
+	/** Verbale (PDF) o tabella (CSV) dei risultati. @return array{body:string,filename:string,mime:string} @throws \InvalidArgumentException */
+	public static function poll( int $id, string $format = 'pdf' ): array {
+		$poll = Polls::get( $id );
+		if ( ! $poll ) {
+			throw new \InvalidArgumentException( 'Votazione non trovata.' );
 		}
-		$s = Statement::data( $year );
+		if ( $poll['secret'] && PollRules::CLOSED !== $poll['status'] ) { // a voto aperto i conteggi parziali, confrontati tra un download e l'altro, rivelerebbero le scelte
+			throw new \InvalidArgumentException( 'Nel voto segreto i risultati si scaricano a votazione chiusa.' );
+		}
+		$res  = Polls::results( $id, true );
+		$slug = 'risultati-votazione-' . $id;
+		if ( 'csv' === $format ) {
+			$rows = array();
+			foreach ( $res['options'] as $o ) {
+				$rows[] = array( $o['label'], $o['count'], $o['percent'] . '%', implode( ', ', $o['names'] ) );
+			}
+			$cols = array( array( 'label' => 'Risposta' ), array( 'label' => 'Voti' ), array( 'label' => 'Sul totale dei votanti' ), array( 'label' => $poll['secret'] ? 'Chi ha scelto (voto segreto: non registrato)' : 'Chi ha scelto' ) );
+			return array( 'body' => self::csv( $cols, $rows ), 'filename' => $slug . '.csv', 'mime' => 'text/csv; charset=utf-8' );
+		}
 		Pdf::$filter = array( Texts::class, 'plain' );
 		$pdf         = new Pdf();
-		$y           = self::head( $pdf, 'RENDICONTO PER CASSA — ANNO ' . $year, 'Entrate e uscite dal 1° gennaio al 31 dicembre ' . $year . ', con il confronto con l\'anno ' . ( $year - 1 ) );
-		$cx          = self::RIGHT - 3;
-		$px          = self::RIGHT - 3 - 85;
-		$ensure      = function ( float $need ) use ( $pdf, &$y ) {
-			if ( $y + $need > self::BOTTOM ) {
-				$pdf->add_page();
-				$y = 60.0;
-			}
-		};
-		$colhead     = function () use ( $pdf, &$y, $cx, $px, $year ) {
-			$pdf->rect( self::LEFT, $y - 11, self::RIGHT - self::LEFT, 17 );
-			$pdf->text( $px, $y + 1, (string) ( $year - 1 ), 8, true, 'R' );
-			$pdf->text( $cx, $y + 1, (string) $year, 8, true, 'R' );
-			$y += 20;
-		};
-		$section = function ( string $label, array $groups, array $total ) use ( $pdf, &$y, $cx, $px, $ensure, $colhead ) {
-			$ensure( 50 );
-			$pdf->text( self::LEFT + 3, $y + 1, $label, 10, true );
-			$colhead();
-			foreach ( $groups as $g ) {
-				$ensure( 30 );
-				$pdf->text( self::LEFT + 3, $y, self::fit( $g['group'], 330, 9, true ), 9, true );
-				$pdf->text( $px, $y, Money::format( $g['prev'] ), 9, true, 'R' );
-				$pdf->text( $cx, $y, Money::format( $g['cur'] ), 9, true, 'R' );
-				$y += 13;
-				foreach ( $g['lines'] as $l ) {
-					$ensure( 14 );
-					$pdf->text( self::LEFT + 14, $y, self::fit( $l['name'], 320, 8 ), 8 );
-					$pdf->text( $px, $y, Money::format( $l['prev'] ), 8, false, 'R' );
-					$pdf->text( $cx, $y, Money::format( $l['cur'] ), 8, false, 'R' );
-					$y += 12;
-				}
-				$y += 3;
-			}
-			$ensure( 20 );
-			$pdf->line( self::LEFT, $y - 8, self::RIGHT, $y - 8 );
-			$pdf->text( self::LEFT + 3, $y + 3, 'Totale', 9, true );
-			$pdf->text( $px, $y + 3, Money::format( $total['prev'] ), 9, true, 'R' );
-			$pdf->text( $cx, $y + 3, Money::format( $total['cur'] ), 9, true, 'R' );
-			$y += 24;
-		};
-		$section( 'ENTRATE', $s['income'], $s['total_income'] );
-		$section( 'USCITE', $s['expenses'], $s['total_expense'] );
-		$ensure( 40 );
-		$pdf->rect( self::LEFT, $y - 11, self::RIGHT - self::LEFT, 19, 0.9 );
-		$pdf->text( self::LEFT + 3, $y + 2, $s['result']['cur'] >= 0 ? 'AVANZO DI GESTIONE' : 'DISAVANZO DI GESTIONE', 10, true );
-		$pdf->text( $px, $y + 2, Money::format( $s['result']['prev'] ), 10, true, 'R' );
-		$pdf->text( $cx, $y + 2, Money::format( $s['result']['cur'] ), 10, true, 'R' );
-		$y += 34;
-
-		$ensure( 60 );
-		$pdf->text( self::LEFT + 3, $y, 'CASSA E CONTI', 10, true );
-		$pdf->rect( self::LEFT, $y + 5, self::RIGHT - self::LEFT, 17 );
-		$pdf->text( $px, $y + 17, 'Iniziale', 8, true, 'R' );
-		$pdf->text( $cx, $y + 17, 'Finale', 8, true, 'R' );
-		$y += 36;
-		foreach ( $s['accounts'] as $a ) {
-			$ensure( 14 );
-			$pdf->text( self::LEFT + 14, $y, self::fit( $a['name'], 320, 8 ), 8 );
-			$pdf->text( $px, $y, Money::format( $a['opening'] ), 8, false, 'R' );
-			$pdf->text( $cx, $y, Money::format( $a['closing'] ), 8, false, 'R' );
-			$y += 12;
-		}
-		$pdf->line( self::LEFT, $y - 6, self::RIGHT, $y - 6 );
-		$pdf->text( self::LEFT + 3, $y + 5, 'Totale', 9, true );
-		$pdf->text( $px, $y + 5, Money::format( $s['opening_total'] ), 9, true, 'R' );
-		$pdf->text( $cx, $y + 5, Money::format( $s['closing_total'] ), 9, true, 'R' );
-		$y += 20;
-		if ( 0 !== $s['funds_total'] ) {
-			$ensure( 30 );
-			$pdf->text( self::LEFT + 14, $y, 'di cui accantonato nei fondi (rimborsi ai volontari)', 8 );
-			$pdf->text( $cx, $y, Money::format( $s['funds_total'] ), 8, false, 'R' );
-			$y += 12;
-			$pdf->text( self::LEFT + 14, $y, 'Disponibilità effettiva', 8, true );
-			$pdf->text( $cx, $y, Money::format( $s['available'] ), 8, true, 'R' );
-			$y += 12;
-		}
-		$y += 10;
-		if ( '' !== $s['notes'] ) {
-			$ensure( 40 );
-			$pdf->text( self::LEFT + 3, $y, 'RELAZIONE SULL\'ANDAMENTO DELLA GESTIONE', 10, true );
-			$y += 16;
-			foreach ( preg_split( "/\r\n|\n|\r/", $s['notes'] ) ?: array() as $para ) {
-				foreach ( '' === trim( $para ) ? array( '' ) : Pdf::wrap( $para, self::RIGHT - self::LEFT, 9 ) as $line ) {
-					$ensure( 14 );
-					$pdf->text( self::LEFT + 3, $y, $line, 9 );
-					$y += 12;
+		$y           = self::head( $pdf, 'VERBALE DEI RISULTATI — ' . mb_strtoupper( PollRules::kinds()[ $poll['kind'] ] ), $poll['title'] );
+		$w           = self::RIGHT - self::LEFT;
+		$put         = function ( string $text, float $size = 10, bool $bold = false ) use ( $pdf, &$y, $w ) {
+			foreach ( preg_split( "/\r\n|\n|\r/", $text ) ?: array( '' ) as $para ) {
+				foreach ( '' === trim( $para ) ? array( '' ) : Pdf::wrap( $para, $w, $size, $bold ) as $line ) {
+					if ( $y > self::BOTTOM ) {
+						$pdf->add_page();
+						$y = 60.0;
+					}
+					$pdf->text( self::LEFT, $y, $line, $size, $bold );
+					$y += $size + 4;
 				}
 			}
+		};
+		$fmt = function ( string $dt ): string {
+			return mysql2date( 'd/m/Y H:i', $dt );
+		};
+		if ( '' !== (string) $poll['question'] ) {
+			$put( (string) $poll['question'] );
+			$y += 6;
+		}
+		$aud = PollRules::AUDIENCE_ACTIVITY === $poll['audience'] ? 'iscritti all\'attività «' . ( Plugin::activities()->get( (int) $poll['activity_id'] )['name'] ?? '' ) . '»' : 'tutti i soci in regola';
+		$put( 'Votazione aperta dal ' . $fmt( $poll['opens_at'] ) . ' al ' . $fmt( $poll['closes_at'] ) . '. Hanno diritto al voto: ' . $aud . '.' );
+		$put( ( $poll['secret'] ? 'Voto segreto: si è registrato chi ha votato, non cosa ha scelto. ' : 'Voto palese. ' ) . ( $poll['multiple'] ? 'Si potevano scegliere più risposte' . ( $poll['max_choices'] ? ' (al massimo ' . (int) $poll['max_choices'] . ')' : '' ) . '.' : 'Si sceglieva una sola risposta.' ) );
+		$put( 'Hanno votato ' . $res['voters'] . ' soci su ' . $res['eligible'] . ' con diritto al voto.' );
+		$y += 8;
+		$put( 'Risultati', 10, true );
+		foreach ( $res['options'] as $o ) {
+			$put( $o['label'] . ': ' . $o['count'] . ' voti (' . $o['percent'] . '%)' . ( in_array( $o['id'], $res['winners'], true ) ? ' — più votata' : '' ) );
+			if ( $o['names'] ) {
+				$put( '   ' . implode( ', ', $o['names'] ), 9 );
+			}
+		}
+		if ( PollRules::CLOSED !== $poll['status'] ) {
 			$y += 8;
+			$put( 'Attenzione: la votazione non è ancora chiusa, i risultati sono provvisori.', 9, true );
 		}
-		$ensure( 70 );
+		$y += 8;
+		$put( 'Documento generato il ' . self::d( Db::today() ) . '.', 9 );
 		$y += 24;
+		if ( $y > self::BOTTOM - 40 ) {
+			$pdf->add_page();
+			$y = 80.0;
+		}
 		$pdf->line( self::LEFT, $y + 24, self::LEFT + 170, $y + 24 );
-		$pdf->text( self::LEFT, $y + 37, 'Il Tesoriere', 9 );
+		$pdf->text( self::LEFT, $y + 37, 'Il Segretario', 9 );
 		$pdf->line( self::RIGHT - 170, $y + 24, self::RIGHT, $y + 24 );
 		$pres = self::president();
 		$pdf->text( self::RIGHT, $y + 37, 'Il Presidente' . ( '' !== $pres ? ' ' . $pres : '' ), 9, false, 'R' );
 		$out         = $pdf->output();
 		Pdf::$filter = null;
-		return array( 'body' => $out, 'filename' => 'rendiconto-' . $year . '.pdf', 'mime' => 'application/pdf' );
+		return array( 'body' => $out, 'filename' => $slug . '.pdf', 'mime' => 'application/pdf' );
 	}
 
 	// ---------- Download ----------
@@ -420,7 +378,7 @@ final class Docs {
 		header( 'X-Content-Type-Options: nosniff' );
 		header( ( 0 === strpos( $doc['mime'], 'text/csv' ) ? 'Content-Disposition: attachment' : 'Content-Disposition: inline' ) . '; filename="' . preg_replace( '/[^A-Za-z0-9._-]+/', '_', $doc['filename'] ) . '"' );
 		header( 'Content-Length: ' . strlen( $doc['body'] ) );
-		echo $doc['body']; // phpcs:ignore WordPress.Security.EscapeOutput -- file
+		Download::bytes( (string) $doc['body'] );
 		exit;
 	}
 
@@ -432,35 +390,37 @@ final class Docs {
 		if ( ! Edition::allows( 'export' ) ) {
 			wp_die( 'L\'esportazione dei dati è sospesa perché la licenza di Associazione Semplice non risulta in regola.', 'Licenza non in regola', array( 'response' => 402, 'back_link' => true ) );
 		}
-		$g      = wp_unslash( $_GET ); // phpcs:ignore WordPress.Security.NonceVerification
+		$g      = (array) map_deep( wp_unslash( $_GET ), 'sanitize_text_field' ); // phpcs:ignore WordPress.Security.NonceVerification -- nonce controllato sopra con check_admin_referer()
 		$what   = (string) ( $g['what'] ?? '' );
 		$format = 'csv' === ( $g['format'] ?? '' ) ? 'csv' : 'pdf';
-		$needs  = array( 'volunteers' => 'insurance', 'attendance' => 'insurance', 'statement' => 'fiscal' ); // documenti delle funzioni avanzate
-		if ( isset( $needs[ $what ] ) && ! Edition::has( $needs[ $what ] ) ) {
-			wp_die( 'Questo documento non è disponibile in questa edizione.', 403 );
-		}
 		try {
 			switch ( $what ) {
 				case 'book':
 					$doc = self::book( (string) ( $g['filter'] ?? '' ), $format );
 					break;
-				case 'volunteers':
-					$doc = self::volunteers( $format );
-					break;
-				case 'attendance':
-					$doc = self::attendance( (int) ( $g['activity'] ?? 0 ), (string) ( $g['from'] ?? '' ), (string) ( $g['to'] ?? '' ), $format );
+				case 'cards':
+					$doc = self::cards( (string) ( $g['filter'] ?? '' ), (int) ( $g['per'] ?? 0 ) );
 					break;
 				case 'minute':
 					$doc = self::minute( (int) ( $g['id'] ?? 0 ) );
 					break;
-				case 'statement':
-					$doc = self::statement( (int) ( $g['year'] ?? 0 ) );
-					break;
 				case 'privacy':
 					$doc = PrivacyNotice::pdf();
 					break;
+				case 'poll':
+					$doc = self::poll( (int) ( $g['id'] ?? 0 ), $format );
+					break;
+				case 'items':
+					$doc = array( 'body' => Inventory::items_csv(), 'filename' => 'inventario.csv', 'mime' => 'text/csv; charset=utf-8' );
+					break;
+				case 'loans':
+					$doc = array( 'body' => Inventory::loans_csv(), 'filename' => 'prestiti.csv', 'mime' => 'text/csv; charset=utf-8' );
+					break;
 				default:
-					wp_die( 'Documento non valido.', 400 );
+					$doc = apply_filters( 'asem_document', null, $what, $g, $format ); // le estensioni forniscono altri documenti
+					if ( ! is_array( $doc ) ) {
+						wp_die( 'Documento non valido.', 400 );
+					}
 			}
 		} catch ( \InvalidArgumentException $e ) {
 			wp_die( esc_html( $e->getMessage() ), 404 );

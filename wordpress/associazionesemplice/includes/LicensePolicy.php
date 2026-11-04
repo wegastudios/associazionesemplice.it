@@ -23,6 +23,7 @@ final class LicensePolicy {
 	const STATUS_UNPAID     = 'unpaid';      // pagamento mancante o scaduto
 	const STATUS_UNLICENSED = 'unlicensed';  // dominio rimosso dalla licenza o chiave non valida
 	const STATUS_NOKEY      = 'nokey';       // verifica attiva ma nessuna chiave inserita: valgono le funzioni di base
+	const STATUS_UNVERIFIED = 'unverified';  // la licenza non si riesce a verificare da troppo tempo (o la prova salvata non è valida)
 
 	const POPUP_NONE     = 'none';
 	const POPUP_CLOSABLE = 'closable';
@@ -30,7 +31,7 @@ final class LicensePolicy {
 
 	/** @return string[] stati che attivano le restrizioni */
 	public static function penalized_statuses(): array {
-		return array( self::STATUS_UNPAID, self::STATUS_UNLICENSED );
+		return array( self::STATUS_UNPAID, self::STATUS_UNLICENSED, self::STATUS_UNVERIFIED );
 	}
 
 	/**
@@ -59,6 +60,9 @@ final class LicensePolicy {
 
 	/** Testo del popup per lo stato. */
 	public static function message( string $status ): string {
+		if ( self::STATUS_UNVERIFIED === $status ) {
+			return 'Non è stato possibile verificare la licenza di Associazione Semplice da troppo tempo: controlla che il sito raggiunga associazionesemplice.it, poi premi «Controlla adesso» in Impostazioni → Licenza.';
+		}
 		if ( self::STATUS_UNLICENSED === $status ) {
 			return 'Questo sito non risulta più associato a una licenza valida di Associazione Semplice.';
 		}

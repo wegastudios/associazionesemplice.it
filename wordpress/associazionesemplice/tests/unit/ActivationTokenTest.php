@@ -25,4 +25,11 @@ final class ActivationTokenTest extends TestCase {
 		$p = T::param( 12, 2000000000, 'segreto' );
 		$this->assertSame( 'invalid', T::check( str_replace( '2000000000', '2999999999', $p ), 'segreto', 1900000000 ) );
 	}
+
+	public function test_a_link_for_one_purpose_does_not_work_for_another(): void {
+		$p = T::param( 12, 2000000000, 'segreto', 'applypay' );
+		$this->assertSame( 'ok', T::check( $p, 'segreto', 1900000000, 'applypay' ) );
+		$this->assertSame( 'invalid', T::check( $p, 'segreto', 1900000000 ), 'non è un link di attivazione' );
+		$this->assertSame( 'invalid', T::check( T::param( 12, 2000000000, 'segreto' ), 'segreto', 1900000000, 'applypay' ), 'e viceversa' );
+	}
 }

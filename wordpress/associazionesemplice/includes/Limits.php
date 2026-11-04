@@ -17,6 +17,7 @@ final class Limits {
 		'pagamenti'     => 'Pagamenti online',
 		'dati'          => 'Importazioni, allegati e copie di sicurezza',
 		'soci'          => 'Soci e scadenze',
+		'bilancio'      => 'Bilancio, avvisi e fondi',
 	);
 
 	/** @var array|null */
@@ -79,20 +80,26 @@ final class Limits {
 			'Chi usa più dispositivi non riuscirà ad attivarli tutti.'
 		);
 
-		$add(
-			'update_notice', 'comunicazioni', 'Avviso «ci sono aggiornamenti» di Associazione Semplice', 'flag', 1, 0, 1,
-			'Con una chiave di licenza inserita (anche la gratuita), il plugin chiede al portale di Associazione Semplice qual è l\'ultima versione e mostra un avviso chiudibile alla segreteria e agli amministratori quando ne esiste una più recente. Non invia la chiave né dati del sito.',
-			'Il sito fa una richiesta al portale di tanto in tanto (solo per leggere l\'ultima versione, senza inviare dati) e mostra l\'avviso: rischi trascurabili.',
-			'Se lo disattivi il plugin non contatta più il portale per le versioni e non vedrai l\'avviso: dovrai controllare a mano nell\'area clienti, con il rischio di restare su versioni vecchie, senza correzioni di sicurezza.'
-		);
-		$add(
-			'update_check_hours', 'comunicazioni', 'Ogni quante ore cercare nuove versioni', 'ore', 24, 6, 168,
-			'Ogni quante ore il plugin chiede al portale l\'ultima versione disponibile (solo se l\'avviso è attivo).',
-			'Con intervalli lunghi l\'avviso arriva con qualche giorno di ritardo.',
-			'Intervalli brevi appesantiscono inutilmente il portale e il tuo sito senza vantaggi: le versioni escono di rado.'
-		);
 
+		$add(
+			'donate_max_campaigns', 'comunicazioni', 'Raccolte di donazioni, al massimo', 'raccolte', 20, 1, 100,
+			'Quante raccolte di donazioni (ciascuna con il suo shortcode) si possono creare.',
+			'Troppe raccolte rendono difficile ritrovare quella giusta e appesantiscono l\'elenco; non c\'è altro rischio.',
+			'Se ne hai già più del limite restano tutte, ma non puoi crearne altre finché non ne elimini.'
+		);
 		// ---------- Accessi e sicurezza ----------
+		$add(
+			'trust_proxy_headers', 'accesso', 'Leggere l\'indirizzo del visitatore dal proxy (Cloudflare, bilanciatore)', 'flag', 0, 0, 1,
+			'Per i limiti «per connessione» (primo accesso, attivazione dell\'accesso) il sito conta i tentativi per indirizzo. Dietro un proxy tutti i visitatori hanno lo stesso indirizzo e uno solo può bloccare gli altri: con questa scelta si legge l\'indirizzo inoltrato dal proxy.',
+			'Accendilo solo se il sito è davvero dietro un proxy che aggiunge l\'indirizzo del visitatore: altrimenti chiunque può scrivere un indirizzo finto e aggirare i limiti.',
+			'Spento (consigliato se non usi un proxy): il limite conta l\'indirizzo della connessione. Dietro un proxy un solo visitatore può esaurirlo per tutti.'
+		);
+		$add(
+			'access_requests_unknown_max', 'accesso', 'Richieste di accesso da sconosciuti conservate, al massimo', 'richieste', 50, 5, 500,
+			'Quante richieste del «Primo accesso» di persone non riconosciute si tengono in coda. Le altre (cambio email, accessi da controllare) hanno posto a parte e non vengono mai spinte fuori da queste.',
+			'Chi vuole riempire la coda di richieste false mette in difficoltà la segreteria, ma non può cancellare le richieste dei soci.',
+			'Se ricevi molte richieste vere di non soci, le più vecchie vengono scartate prima che tu le veda.'
+		);
 		$add(
 			'first_access_per_ip', 'accesso', 'Richieste di «Primo accesso» per connessione, in un\'ora', 'richieste', 10, 1, 1000,
 			'Quante volte la stessa connessione può usare il modulo di primo accesso. Impedisce di provare a scoprire chi è socio e di riempire di email le caselle dei soci.',
@@ -112,16 +119,34 @@ final class Limits {
 			'Un valore basso può bloccare chi sbaglia a digitare più volte; il blocco passa da solo dopo un\'ora.'
 		);
 		$add(
-			'activation_days', 'accesso', 'Validità del link di attivazione', 'giorni', 30, 1, 180,
-			'Per quanti giorni resta valido il link di attivazione inviato (ad esempio su WhatsApp) ai soci registrati dalla segreteria.',
-			'Un link che resta valido a lungo può essere usato da altri se viene inoltrato o se il telefono è condiviso. Per attivare l\'accesso serve comunque il codice fiscale.',
-			'Più sicuro, ma la segreteria dovrà rimandare il link ai soci che non lo aprono in tempo.'
+			'activation_days', 'accesso', 'Validità del link di attivazione', 'giorni', 1, 1, 180,
+			'Per quanti giorni resta valido (1 = 24 ore) il link di attivazione inviato (ad esempio su WhatsApp) ai soci registrati dalla segreteria.',
+			'Un link che resta valido a lungo (anche i 30 giorni di prima) può essere usato da altri se viene inoltrato o se il telefono è condiviso. Per attivare l\'accesso serve comunque il codice fiscale.',
+			'Più sicuro, ma la segreteria dovrà rimandare il link ai soci che non lo aprono in tempo: con 24 ore, chi non lo apre entro il giorno dopo ne riceve uno nuovo.'
+		);
+		$add(
+			'apply_per_ip', 'accesso', 'Domande di adesione per connessione, in un\'ora', 'domande', 5, 1, 200,
+			'Quante domande di adesione online può inviare la stessa connessione. Impedisce di riempire la segreteria di domande false.',
+			'Se il sito è dietro un servizio di protezione (CDN, proxy) tutti i visitatori possono apparire con lo stesso indirizzo: in quel caso va alzato. Un valore alto facilita le domande in massa.',
+			'Più protezione, ma una sede con un solo wifi pubblico (ad esempio un open day) può esaurire il limite: alzalo per l\'occasione.'
+		);
+		$add(
+			'applications_max', 'accesso', 'Domande di adesione in attesa, al massimo', 'domande', 200, 10, 5000,
+			'Quante domande di adesione possono aspettare insieme una risposta della segreteria. Oltre questo numero le nuove domande non vengono registrate finché non ne approvi o rifiuti qualcuna.',
+			'Chi vuole intasare la Bacheca con domande false può farlo più a lungo prima di essere fermato.',
+			'Se ricevi molte domande vere e non le lavori in tempo, le nuove vengono scartate: chi le ha inviate non lo sa.'
 		);
 		$add(
 			'profile_required', 'accesso', 'Indirizzo e codice fiscale obbligatori per chi attiva l\'accesso dal sito', 'flag', 1, 0, 1,
 			'Chi attiva da solo il proprio accesso (dal link ricevuto o dal «Primo accesso») deve completare il profilo con indirizzo e codice fiscale. Se la segreteria aveva già registrato il codice fiscale, deve coincidere: è un secondo controllo che impedisce di attivare l\'accesso di un altro socio con un link ricevuto per errore. L\'iscrizione fatta dalla segreteria resta snella: questi dati non sono obbligatori.',
 			'Se lo disattivi i soci possono attivarsi senza dati: ricevute e attestazioni risultano incomplete e viene meno il controllo del codice fiscale sull\'attivazione.',
 			'Mantienilo attivo: è il comportamento consigliato.'
+		);
+		$add(
+			'member_sessions', 'accesso', 'Accesso dei soci indipendente da WordPress', 'flag', 1, 0, 1,
+			'I soci entrano con un accesso proprio (email e password; recupero e accesso senza password con un link via email) e non hanno bisogno di un utente WordPress. Spento, i soci tornano a entrare con un utente WordPress come prima.',
+			'Acceso, il sito usa un cookie tecnico di sessione («asem_s») e scrive ai soci per mandare il link di accesso. Se la posta del sito non funziona i soci non ricevono il link: provala prima.',
+			'Spento: i soci hanno un utente WordPress e un\'unica password sul sito, come nelle versioni precedenti.'
 		);
 		$add(
 			'profile_gate', 'accesso', 'Blocca prenotazioni e pagamenti finché il profilo è incompleto', 'flag', 1, 0, 1,
@@ -195,6 +220,13 @@ final class Limits {
 			'Fatture in PDF molto pesanti potrebbero essere rifiutate.'
 		);
 		$add(
+			'audit_keep_months', 'dati', 'Per quanto tempo si conserva il registro azioni', 'mesi', 18, 6, 120,
+			'Dopo questo tempo le righe più vecchie del registro azioni (chi ha fatto cosa) vengono cancellate da sole, ogni giorno.',
+			'Si può risalire a più indietro per capire chi ha fatto cosa, ma la tabella cresce e occupa più spazio nel database del sito.',
+			'Il database resta più leggero, ma non si potrà più controllare chi ha fatto cosa prima di quel limite.'
+		);
+
+		$add(
 			'backup_keep', 'dati', 'Copie di sicurezza fatte prima dei ripristini', 'copie', 3, 1, 30,
 			'Quante copie del sito, fatte in automatico prima di un ripristino, restano sul server.',
 			'Ogni copia contiene tutti i dati del sito (e gli allegati): più copie significano più spazio occupato e più dati personali conservati in un posto solo.',
@@ -209,6 +241,30 @@ final class Limits {
 		);
 		// ---------- Soci ----------
 		$add(
+			'guest_phone_required', 'soci', 'Cellulare obbligatorio per gli ospiti', 'flag', 1, 0, 1,
+			'Un ospite non si registra senza cellulare: è il dato che serve a riconoscerlo (anche se viene da soci diversi) e a contattarlo su WhatsApp.',
+			'Mantienilo attivo: è il comportamento consigliato.',
+			'Gli ospiti senza cellulare si distinguono solo per nome e cognome: più facile creare doppioni, e il contatore delle volte già venuto può dividersi su più schede. Utile per importare uno storico di ospiti di cui non hai il numero.'
+		);
+		$add(
+			'guest_host_required', 'soci', 'Socio ospitante obbligatorio per gli ospiti', 'flag', 1, 0, 1,
+			'Un ospite si registra sempre come ospite di un socio (chi lo ha portato).',
+			'Mantienilo attivo: è il comportamento consigliato.',
+			'Si possono registrare ospiti senza dire chi li ha portati: si perde l\'elenco degli ospiti di ciascun socio. Utile per importare uno storico di ospiti.'
+		);
+		$add(
+			'membership_on_balance', 'soci', 'Tessera valida solo quando la quota è saldata', 'flag', 1, 0, 1,
+			'La quota associativa si può versare a rate (ad esempio 20 su 25): il programma mostra quanto manca e dà la tessera solo quando la somma raggiunge la quota.',
+			'Attivo: un socio che versa meno della quota non ha la tessera finché non salda. Va bene per chi vuole il saldo completo prima dell\'iscrizione.',
+			'Spento: basta un versamento qualsiasi, anche parziale, per avere la tessera (come nelle versioni precedenti) e il residuo non viene seguito.'
+		);
+		$add(
+			'guardian_until_adult', 'soci', 'Il tutore smette di agire per chi compie 18 anni', 'flag', 1, 0, 1,
+			'Ai 18 anni il genitore o tutore collegato non vede più i dati del ragazzo, non prenota e non paga per lui e non riceve più le sue email, anche se il ragazzo non ha ancora un accesso suo. Il collegamento resta registrato e il ragazzo si invita a creare il suo accesso.',
+			'Acceso: è il comportamento consigliato, perché un maggiorenne decide da sé sui propri dati. Il ragazzo senza accesso proprio non ha nessuno che prenoti o paghi per lui finché non lo crea.',
+			'Spento: il tutore continua a gestire il ragazzo anche dopo i 18 anni, finché un amministratore non toglie il collegamento (è il comportamento delle versioni precedenti): il tutore vede e può esportare i dati di una persona adulta senza il suo consenso.'
+		);
+		$add(
 			'suspend_after_months', 'soci', 'Mesi di tessera scaduta prima di proporre la sospensione', 'mesi', 8, 1, 60,
 			'Dopo quanti mesi dalla scadenza compare il pulsante per sospendere in blocco i soci che non hanno rinnovato.',
 			'I soci che non rinnovano restano «attivi» più a lungo nelle liste e nei conteggi.',
@@ -221,6 +277,7 @@ final class Limits {
 			'Chi non legge subito l\'email può perdere il promemoria.'
 		);
 
+		$d = function_exists( 'apply_filters' ) ? apply_filters( 'asem_limits_defs', $d ) : $d; // un'estensione può aggiungere i suoi limiti
 		self::$defs = $d;
 		return $d;
 	}

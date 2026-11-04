@@ -56,7 +56,7 @@ final class AttachmentRules {
 
 	/** Nome sul disco: casuale (32 caratteri esadecimali) e senza estensione, quindi non indovinabile né eseguibile. */
 	public static function stored_name( string $random_hex ): string {
-		return preg_match( '/^[0-9a-f]{32}$/', $random_hex ) ? $random_hex : '';
+		return preg_match( '/^[0-9a-f]{32}$/D', $random_hex ) ? $random_hex : '';
 	}
 
 	public static function format_size( int $bytes ): string {

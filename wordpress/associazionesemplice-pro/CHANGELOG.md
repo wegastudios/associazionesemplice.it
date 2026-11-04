@@ -1,0 +1,118 @@
+# Novità di Associazione Semplice Pro
+
+Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
+
+## 1.3.2
+- L'app non intercetta più l'amministrazione e l'accesso del sito; testo della pagina App più chiaro
+
+## 1.3.1
+- App più curata: icona con l'iniziale, pagina offline con «Riprova» e invito a installarla sotto la tessera
+
+## 1.3.0
+- Lo staff di un evento con l'incasso abilitato può addebitare crediti con il QR anche se entra con il link, senza utente WordPress
+- Se un secondo ordine del negozio risulta pagato per lo stesso pagamento, compare tra i pagamenti da controllare e il riferimento del primo incasso non si perde
+- Esce insieme al gratuito 1.3.0 (stesso livello di compatibilità: funziona anche con il gratuito 1.2.51 o successivo)
+
+## 1.1.41
+- Crediti, risorse e notifiche funzionano anche per i soci che entrano con il link, senza utente WordPress
+- Richiede il gratuito 1.2.51 o successivo
+
+## 1.1.40
+- Il pulsante per annullare l'approvazione di una differenza di fine anno si chiama «Revoca l'approvazione»
+
+## 1.1.39
+- Le spese si attribuiscono da sole ai fondi giusti
+- Il volontario usa solo i suoi fondi e, se supera, resta in credito
+- Le differenze di fine anno si controllano una per una e si approvano a mano
+- Nuovo elenco dei volontari in credito in Cassa e in Bacheca
+
+## 1.1.38
+- Pro Fiscale: le spese documentate si attribuiscono ai fondi dei rimborsi (anche divise su due fondi), con gli elenchi delle spese non rimborsate e dei fondi non documentati.
+- Pro Fiscale: avvisi di bilancio quando le spese superano gli incassi o l'utile è eccessivo.
+- Pro Fiscale: bilancio provvisorio sempre aggiornato al mese concluso, con l'andamento del mese in corso e lo storico mensile.
+- Pro Fiscale: prospetto dei rimborsi per persona e avviso di discrepanze nei mesi prima della fine dell'anno fiscale.
+- Pro Fiscale: mese di inizio dell'anno fiscale separato da quello dell'anno sociale.
+- Richiede il gratuito 1.2.47 o successivo.
+
+## 1.1.37
+- Affiliazioni: tutti gli enti di promozione riconosciuti dal CONI, campo «discipline», e nel file per i portali degli enti le colonne Sport e Disciplina; il tipo di tessera di ripiego è il tipo di tesseramento della scheda.
+- Richiede il gratuito 1.2.45 o successivo.
+
+## 1.1.36
+- Il registro presenze ha una seconda vista a calendario (le date in orizzontale, le persone in verticale) e tiene conto delle lezioni annullate o spostate.
+- Richiede il gratuito 1.2.43 o successivo.
+
+## 1.1.35
+- Le ricevute dei minori sono intestate al genitore che opera (o a chi ha pagato), con i codici fiscali dei genitori e del ragazzo e, dai 5 ai 18 anni, l'indicazione se il pagamento è tracciato (detrazione delle spese sportive).
+
+## 1.1.34
+- Compatibile con il gratuito 1.2.39: aggiorna insieme gratuito e Pro.
+
+## 1.1.33
+- Il livello della licenza (Gratuito, Contabile, Pro Full) lo decide solo il portale con una prova firmata: se un piano cambia nome la licenza resta valida e il livello non cambia.
+
+## 1.1.32
+- Rafforzamenti di sicurezza condivisi con il gratuito (indirizzo del visitatore, ricevute, avvisi dello staff, collegamento degli utenti).
+
+## 1.1.31
+- Salvando la chiave di licenza non compare più «Errore imprevisto»
+- Il periodo di attesa della licenza non si allunga più cambiando la data
+
+## 1.1.30
+- L'elenco delle integrazioni cita tutti i metodi di pagamento online (Stripe, PayPal, SumUp, Satispay e Klarna).
+- Gli avvisi dicono «1 avviso inviato» al singolare.
+
+## 1.1.29
+- Corretto: con il Pro attivo la scheda «Convenzioni» tra i Registri era sparita.
+
+## 1.1.28
+- Nuovi SMS ai soci (Brevo o Twilio) con coda, nuovi tentativi, registro e crediti residui; copia SMS degli avvisi automatici, spenta di partenza.
+- Newsletter sincronizzata con Brevo, Mailchimp o MailPoet, solo per chi ha dato il consenso; chi lo ritira o cambia indirizzo esce da solo.
+- Consensi per SMS e newsletter nella scheda del socio e in «Le mie comunicazioni» nell'area soci, compresi nell'esportazione privacy.
+- Nuovo pagamento con Satispay e Klarna tramite Stripe (da 35 € a 10.000 €).
+- Richiede il gratuito 1.2.31 o successivo.
+
+## 1.1.27
+- Nuove assemblee e deleghe: convocazione via email, presenze, deleghe tra soci, numero legale e verbale già compilato.
+- Nuovo bilancio preventivo per categoria, confrontato con quello che è successo davvero (Pro Contabile e Fiscale).
+- Nuovi rimborsi spese ai volontari: spesa documentata, autocertificazione e chilometrico, con approvazione, pagamento e registrazione in prima nota.
+
+## 1.1.26
+- Risorse: promemoria prima della prenotazione e voce di prima nota per ogni risorsa.
+- Risorse: nuovo report di occupazione e richieste di assegnazione dai soci per le risorse libere.
+- Risorse: ingresso con il QR della prenotazione, registrato dalla segreteria.
+
+## 1.1.25
+- Nuovo registro dei certificati medici: file riservato alla segreteria, scadenze, promemoria, avvisi in Bacheca e nell'area soci.
+- Nuove affiliazioni agli enti con le tessere dei soci, una alla volta o in blocco, ed elenco da caricare sui portali degli enti.
+- Richiede il gratuito 1.2.29 o successivo.
+
+## 1.1.24
+- Le commissioni di incasso partono dalle tariffe standard pubblicate da Stripe, PayPal e SumUp. Puoi cambiarle o svuotarle dalle impostazioni dei pagamenti.
+
+## 1.1.23
+- Nuovo metodo di pagamento: SumUp. Il socio paga su una pagina sicura di SumUp e l'incasso entra in prima nota da solo.
+- Commissioni di incasso per ogni metodo: se vuoi, la spesa stimata si registra da sola in prima nota a ogni pagamento, e la commissione si può ribaltare su chi paga (spento di partenza).
+- Aggiorna insieme ad Associazione Semplice 1.2.26.
+
+## 1.1.22
+- Pagamento online della quota quando si chiede di iscriversi (carta o PayPal): se la domanda viene rifiutata la somma resta da rimborsare.
+- Aggiorna insieme ad Associazione Semplice 1.2.25.
+
+## 1.1.21
+- Aggiornamento tecnico insieme ad Associazione Semplice 1.2.23: pagine e moduli più sicuri e compatibili.
+
+## 1.1.20
+- Risorse: una risorsa non può più essere occupata due volte. Collegare un corso o un evento, aggiungere o spostare date con un'occupazione già presa (allestimenti compresi) viene rifiutato.
+- Le sovrapposizioni già presenti non cambiano da sole: compaiono in Bacheca e vanno sistemate a mano.
+- Aggiorna insieme ad Associazione Semplice 1.2.22.
+
+## 1.1.19
+- Risorse: allestimento prima e dopo corsi ed eventi, che si somma a quello della risorsa; un evento ha 3 ore prima e dopo se non indichi altro, un corso nessuna.
+- Un evento deve dire quale risorsa occupa; quelli già salvati la scelgono alla prima modifica.
+- Aggiorna insieme ad Associazione Semplice 1.2.21.
+
+## 1.1.18
+- Funziona con la nuova versione di Associazione Semplice (1.2.19): aggiorna entrambi i plugin.
+- Gli anni solari ora sono anche nella versione gratuita; qui restano la tabella dei fondi da rimborsare per anno e le voci in Contabilità.
+- In prenotazione la segreteria può indicare un «ospite dell'associazione» o un «ospite del volontario»: lo sconto sulla loro parte si calcola da solo e il fondo del volontario non si alimenta quando ospita lui.

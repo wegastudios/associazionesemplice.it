@@ -23,7 +23,7 @@ final class Reset {
 	const PHRASE = 'AZZERA TUTTO';
 
 	/** Opzioni del plugin che il ripristino di fabbrica cancella. */
-	const FACTORY_OPTIONS = array( 'asem_settings', 'asem_texts', 'asem_pages', 'asem_access_requests', 'asem_wizard_status', 'asem_backup_last' );
+	const FACTORY_OPTIONS = array( 'asem_settings', 'asem_texts', 'asem_pages', 'asem_access_requests', 'asem_wizard_status', 'asem_backup_last', 'asem_convention_categories' );
 
 	private static function db(): \wpdb {
 		return Db::db();
@@ -61,7 +61,7 @@ final class Reset {
 			}
 		}
 		return array(
-			'people'       => $n( 'people', "deleted_at IS NULL AND type <> 'guest'" ),
+			'people'       => $n( 'people', "deleted_at IS NULL AND type NOT IN ('guest','guardian')" ),
 			'guests'       => $n( 'people', "deleted_at IS NULL AND type = 'guest'" ),
 			'activities'   => $n( 'activities' ),
 			'transactions' => $n( 'transactions', 'voided_at IS NULL' ),
@@ -123,6 +123,7 @@ final class Reset {
 			delete_metadata( 'user', 0, $meta, '', true );
 		}
 		delete_metadata( 'post', 0, '_asem_access_activities', '', true );
+		delete_option( Guardians::INVITED_OPTION ); // riferimenti a persone che non ci sono più
 
 		if ( self::FACTORY === $mode ) {
 			foreach ( self::FACTORY_OPTIONS as $o ) {

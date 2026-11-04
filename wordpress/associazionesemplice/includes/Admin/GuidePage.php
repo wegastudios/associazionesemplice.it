@@ -2,6 +2,7 @@
 namespace AssociazioneSemplice\Admin;
 
 use AssociazioneSemplice\Guide;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -45,9 +46,9 @@ final class GuidePage {
 		$uid = get_current_user_id();
 		Ui::form_open( 'asem_guide_dismiss', Ui::url( 'asem-guide' ), false, 'asem-inline' );
 		if ( Guide::dismissed( $uid ) ) {
-			echo Ui::hidden( 'on', '0' ) . '<p><button class="button">Mostra di nuovo l\'avviso in Bacheca</button></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::hidden( 'on', '0' ) . '<p><button class="button">Mostra di nuovo l\'avviso in Bacheca</button></p>', Html::allowed() );
 		} else {
-			echo Ui::hidden( 'on', '1' ) . '<p><button class="button">Nascondi l\'avviso in Bacheca</button></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			echo wp_kses( Ui::hidden( 'on', '1' ) . '<p><button class="button">Nascondi l\'avviso in Bacheca</button></p>', Html::allowed() );
 		}
 		Ui::form_close();
 		Ui::footer();

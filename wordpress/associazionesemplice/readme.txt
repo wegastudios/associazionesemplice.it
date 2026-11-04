@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.14
+Stable tag: 1.3.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -30,13 +30,7 @@ Advanced features (online payments, several accounts and funds, accounting and r
 
 == External services ==
 
-The plugin works fully on its own. It contacts an external service only if you enter a license key (optional, see below) and for the optional features described after it.
-
-= License service (optional) =
-If you enter a license key in Settings, once a day (and when you save the key or press "Check now") the plugin sends the key and your site's domain name to the license server of Wega Studios (license.wegastudios.com) to confirm that the key is valid for that domain, and receives the plan and its expiry date. No member data, no content and no other information is sent. The free license is free and is requested from https://associazionesemplice.it/free; without a key all the basic features keep working. The check is active only when the plugin is configured with the service credential and is never done on local development sites. Terms and privacy: https://associazionesemplice.it/privacy
-
-= Update notice (optional) =
-If you have entered a license key (the free one is enough), at most once every 24 hours (configurable in Settings, can be turned off) the plugin asks the website associazionesemplice.it for the latest plugin version numbers (https://associazionesemplice.it/api/plugin/latest) and shows a dismissible notice to administrators when a newer version exists. The request carries no license key, no member data and no information about your site. It is never done on local development sites. Terms and privacy: https://associazionesemplice.it/privacy
+The plugin works fully on its own and contacts no external service by default. The optional features that involve a third party are described below.
 
 = PayPal donations (optional) =
 If you turn on donations, your website shows a form whose button opens PayPal's donation page (www.paypal.com/donate) in the visitor's browser, with the PayPal account, the purpose and the chosen amount you set. Nothing is sent from your server to PayPal. Terms: https://www.paypal.com/legalhub - Privacy: https://www.paypal.com/privacy
@@ -62,6 +56,223 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.3.9 =
+* Phones: Money page without repeated buttons and year-end notice after the figures; member book as compact cards.
+
+= 1.3.8 =
+* Fix: the section jump bar of the member area is no longer hidden by a sticky theme header.
+
+= 1.3.7 =
+* Fix: the section jump bar of the member area no longer widens the page on phones.
+
+= 1.3.6 =
+* App and member area on phones: generated app icon with initial, offline page with retry, install invitation under the card (Pro), section jump bar, 44px touch targets.
+
+= 1.3.5 =
+* Deleting a course now refunds only the unused share of a month already partly held; added a Non rinnova button that ends an enrollment after the paid period.
+
+= 1.3.4 =
+* Cancelling a single registration now only refunds or voids what was not yet used; used payments stay in the ledger, with any remaining debt or credit shown.
+
+= 1.3.3 =
+* Plugin Check: the session cookie is now sanitized before its format is checked (no warnings left).
+
+= 1.3.2 =
+* Deleting an event or course refunds or voids only what has not been used yet; recurring events can be cancelled for one date or from a date onwards.
+
+= 1.3.1 =
+* wp-login.php no longer offers first access when members sign in on their own; it points members to the members area.
+
+= 1.3.0 =
+* Version 1.3: members' own sign-in (no WordPress user needed) is complete. Free and Pro are released together as 1.3.0.
+* Security review: sign-in attempts are counted atomically (parallel requests cannot exceed the limit), wrong codes are capped per person across requests, response time no longer reveals whether an email belongs to a member (emails are sent after the response), changing a password requires the current one, very long passwords are refused, repeated requests no longer invalidate the link already emailed, injected HTML can no longer redirect a form (formaction) or the page (meta refresh).
+* Members-only pages and the REST "me" endpoint now recognise members signed in with their own access.
+* Event staff with cash enabled can charge credits with the QR even without a WordPress user; a second paid shop order for the same payment is flagged for review instead of silently overwriting the first reference.
+* Faster: the people table has an index on the email, the email lookup uses it, and the phone lookup no longer loads the full member list.
+
+= 1.2.52 =
+* Members sign in with email and a password they choose on first entry (required; the members area stays closed until then). Forgotten password: an emailed link signs in but forces a new password before browsing; changing the password signs out the other devices. Signing in with an emailed link or code, without a password, is still available.
+* The privacy notice now covers sign-in to the members area and the technical cookie "asem_s"; Settings > Communications and privacy lets you list other site cookies, which appear in the notice.
+
+= 1.2.51 =
+* Member sign-in with an emailed link or code (password optional) is on by default: new members no longer get a WordPress user. A WordPress user is created only when a member is given a role (secretary, treasurer, staff). Members who already have a WordPress user keep signing in with WordPress.
+* Administrators can still choose to create a WordPress user for every member (Settings > Member sign-in, or the setup wizard, which explains pros and cons and notes WooCommerce). Only first name, last name and email are passed to WordPress or WooCommerce.
+* When a member loses their last role, the member page offers to switch them to link sign-in (administrator's decision; the WordPress user is deleted only if it has no content or shop orders).
+* Member pages, forms, downloads, payments, REST and push notifications now also work for members signed in without a WordPress user. Still off by default: nothing changes until the setting is turned on.
+
+= 1.2.50 =
+* Groundwork for member sign-in that does not need a WordPress user: three new tables, link/code/password login page and a daily cleanup. Off by default (Settings > Technical > Limits, "Member sign-in independent of WordPress"): nothing changes until an administrator turns it on. When on, it sets a "asem_s" session cookie (HttpOnly, SameSite=Lax) and sends sign-in links by email.
+
+= 1.2.49 =
+* Hooks and options for the Pro expense-to-fund attribution (beneficiary selection, form rows).
+
+= 1.2.48 =
+* Sports in the activity menu are managed by the administrator: add, import a list, remove, restore the base CONI list; activities accept any sensible sport.
+
+= 1.2.47 =
+* Fiscal year start month separate from the social year (used by the Pro Fiscale plan); hooks for the Pro budget watch.
+
+= 1.2.46 =
+* Sport list: added Chess, Dynamic sport shooting and Equestrian tourism.
+
+= 1.2.45 =
+* Activities with a sport (CONI list) and free discipline; affiliation bodies list extended to all CONI-recognised promotion bodies.
+
+= 1.2.44 =
+* Course fee variants: describe variants (name and price) on the course and assign them at enrolment with a free note.
+
+= 1.2.43 =
+* Single lessons of a course can be cancelled or moved with a notice to enrolled people; quarterly course payment.
+
+= 1.2.42 =
+* Photo/video release, membership type, receipts for minors addressed to the operating parent, 'Incomplete cards' alerts.
+
+= 1.2.41 =
+* Members register with application and approval dates, birthplace, residence and last fee; up to two guardians with one operating on the site; smoother enrolment flow; 'Re-run' link in the activity list.
+
+= 1.2.40 =
+* Internal cleanup of the payment filter wrapper (Plugin Check dynamic hook name notice).
+
+= 1.2.39 =
+* Code cleanup for the WordPress.org review: all output is escaped through an allow-list, no inline event handlers, request data sanitised on entry.
+
+= 1.2.38 =
+* Guardians: at 18 the guardian's permissions switch off, even if the young person has no login yet.
+
+= 1.2.37 =
+* Security hardening: visitor IP behind Cloudflare, login redirect, receipt temp files, guest statements, staff notices, user linking, salt check.
+
+= 1.2.36 =
+* Fix: after a factory reset the setup wizard reuses the existing pages instead of creating duplicates; clearer card validity wording.
+
+= 1.2.35 =
+* Security: the license level comes from the signed proof, unknown levels or states no longer unlock features.
+
+= 1.2.34 =
+* Security: backups no longer carry the license key or QR/calendar salts and clean up their temporary file; staff cannot move the sign-in email of treasurers or board members; secret-ballot results stay hidden until the vote closes; votes cannot be reopened after they close; custom terms are stripped of HTML.
+
+= 1.2.33 =
+* Setup wizard: choosing 'anyone can ask to join' also turns on the online membership application.
+
+= 1.2.32 =
+* Fix: wide fields no longer overflow on narrow screens; singular wording in notices.
+
+= 1.2.31 =
+* Internal extension points needed by Pro 1.1.28.
+
+= 1.2.30 =
+* Member discounts ("Convenzioni"): partner offers shown to members with a valid card, optional public list, notify button, expiring card and CSV export.
+* Membership fee can be paid in instalments: shows what is missing and grants the card on full payment (configurable).
+
+= 1.2.29 =
+* Internal changes needed by Pro 1.1.25 (reminders, exports, private file download).
+
+= 1.2.28 =
+* Action log: kept for 18 months by default (adjustable), daily cleanup, size status and a Free space button.
+
+= 1.2.27 =
+* Polls and secret ballots, inventory and loans, private document archive.
+
+= 1.2.26 =
+* Payment methods: costs of collecting (fixed and/or percentage) per method, with an optional pass-on to the payer (off by default) and the SumUp method in the settings and ledger.
+
+= 1.2.25 =
+* Online membership applications (shortcode, approved or refused by the secretariat), minors with parents or guardians who are not members, membership valid from payment, invitation for parents.
+
+= 1.2.24 =
+* Small screens: wide admin tables scroll by themselves, price lists lay out in a grid, help text about the email is correct, member area sections fit narrow phones; event lists and seat counts are no longer served stale by page caches.
+
+= 1.2.23 =
+* Review fixes for WordPress.org: scripts and styles are enqueued, form data is cleaned on arrival, attachments are saved with the WordPress upload functions, and the old APSemplice migration is removed.
+
+= 1.2.22 =
+* New hook before adding or moving event dates so add-ons can refuse overlaps.
+
+= 1.2.21 =
+* New check point before saving an activity and set-up time fields (before and after) for activities; existing events must be linked to a resource the first time they are edited.
+
+= 1.2.20 =
+* Dashboard widgets in the WordPress admin home: items to work on and this week's events and courses, with shortcuts to the main functions.
+
+= 1.2.19 =
+* Calendar years (opening and closing) are now in the free plugin too, with a dashboard reminder from September; the association/volunteer guest option only shows with the volunteer share.
+
+= 1.2.18 =
+* Price lists for events (individual, group, packages of 4) and secretariat bookings as association guest or volunteer guest, with the automatic discount and without feeding the volunteer fund.
+
+= 1.2.17 =
+* Outgoing mail log and test email (with a warning on the dashboard when messages do not leave); the first-access limit only counts messages actually sent; copy button for the WhatsApp message; new Cash > Book page to book events and courses by date or by item; the cash form shows when a payment is a deposit.
+
+= 1.2.16 =
+* Funds: a new method lets add-ons set aside the share of a payment made with prepaid credits.
+
+= 1.2.15 =
+* New hook point so that add-ons can set aside a share of a payment into a fund.
+
+= 1.2.14 =
+* Texts reviewed: clearer messages, author shown as Associazione Semplice; the readme no longer describes the license service (it now belongs to the Pro add-on).
+
+= 1.2.13 =
+* Member book: generate the membership cards of all members as A4 sheets with several cards per page (empty positions stay as blank templates), ready to print and cut.
+
+= 1.2.12 =
+* Add a new member from the cash form without leaving the page; the card can show member type, board and staff roles and a free text, and can be downloaded as a PDF for printing; Appearance, Bank and Donations keep the settings tabs.
+
+= 1.2.11 =
+* The free plugin no longer contains any code of the Pro add-on: if you use the Pro add-on, update both together.
+* Run events and courses again: a new "Riproponi" box on every event and course creates a new edition in a new date or social year with the same data. Import events from The Events Calendar, courses included (Tools > From The Events Calendar).
+
+= 1.2.10 =
+* Cleaner structure: the license and the updates of the Pro add-on are now handled by the add-on itself.
+
+= 1.2.9 =
+* Bookable resources phase 2 (waiting list, rates, hold times) and prepaid credits charged live by QR in the member area; schema 39.
+
+= 1.2.8 =
+* The account activation link now lasts 24 hours by default (Limits: 'Validity of the activation link', 1 to 180 days); the message and the member card say so.
+
+= 1.2.7 =
+* Security: the first-access limits can read the visitor's address behind a proxy (new limit), requests from unknown people have their own cap and cannot push real ones out, the old email is told when a change is approved; an existing website user with a visitor-only role who is linked to a member gets a new random password; the update-notice download link must belong to the portal.
+
+= 1.2.6 =
+* Bookable resources (courts, rooms, boat berths, parking spaces, lockers): new tables and the members' resources view; the management pages come with the Pro add-on.
+
+= 1.2.5 =
+* License domain: the complete Public Suffix List (the same copy as the portal) decides which domain a license covers, so customers sharing a host such as altervista.org no longer share a license.
+
+= 1.2.4 =
+* License security: The license signing keys are built into the plugin and a valid license needs the signed proof; the plan level comes from the signed part; the Pro features are suspended when the proof is missing, tampered with or too old (new limits: days offline, days before the first check).
+
+= 1.2.3 =
+* One free package for everyone (WordPress.org and the portal): the direct updater and the update notice now belong to the Pro add-on; the free plugin no longer contacts the portal for versions.
+
+= 1.2.2 =
+* Official brand: new admin menu icon, logo in the dashboard and brand colours in the plugin screens.
+
+= 1.2.1 =
+* Direct updates from WordPress (Dashboard → Updates) for the package downloaded from the portal; the WordPress.org package does not contain the updater.
+
+= 1.2 =
+* Donations: every collection you create gets its own shortcode (with a Copy button) and a ready PayPal button; clear notice that donations only work when PayPal is configured.
+
+= 1.1.20 =
+* Members list: sort by card number (numeric, people without a card last), name and member type; click the column header again to reverse.
+
+= 1.1.19 =
+* Import: membership years from year columns (2024, 2025… or ANNO CORRENTE / ANNO SCORSO), 'Anno di iscrizione', 'N. Telefono'; guests get a 'Venute' counter (added to the registered participations) and notes for past events. New limits let you register guests without a mobile number or a host (for importing a history); both rules stay on by default.
+
+= 1.1.18 =
+* Member import: columns titled with a year (2023, 2024…) record the actual membership years; 'N. Telefono' is recognised as the phone column.
+
+= 1.1.17 =
+* Settings → License: 'Check now' also looks for new plugin versions (skipping the wait between checks) and shows the latest known versions and the date of the last check.
+
+= 1.1.16 =
+* Dashboard: links to your associazionesemplice.it account area and to support.
+
+= 1.1.15 =
+* License check now goes through the Associazione Semplice website (no credential in the plugin); a license covers the registered domain and all its subdomains and subfolders (staging and test sites included).
 
 = 1.1.14 =
 * Update notice: with a license key entered, the plugin asks the Associazione Semplice website for the latest versions and shows a dismissible notice when a newer one exists (can be turned off or tuned in Settings, no data is sent).

@@ -18,12 +18,12 @@ final class Emails {
 			'login_link' => array(
 				'label' => 'Link di accesso', 'when' => 'Il cliente chiede di entrare nell\'area riservata.', 'vars' => array( 'link', 'email' ),
 				'subject' => 'Il tuo accesso ad Associazione Semplice',
-				'body' => "Ciao,\nper entrare nell'area riservata apri questo link entro 15 minuti:\n\n{link}\n\nSe non sei stato tu, ignora questo messaggio.",
+				'body' => "Ciao,\nper entrare nell'area riservata apri questo link entro 15 minuti:\n\n{link}\n\nSe non hai fatto tu questa richiesta, ignora questo messaggio.",
 			),
 			'free_confirm' => array(
 				'label' => 'Conferma licenza gratuita', 'when' => 'Dopo la richiesta della licenza gratuita: serve a confermare l\'email.', 'vars' => array( 'link', 'dominio', 'email' ),
 				'subject' => 'Conferma la tua licenza gratuita',
-				'body' => "Ciao,\nper attivare la licenza gratuita di Associazione Semplice per {dominio} apri questo link entro 15 minuti:\n\n{link}\n\nSe non sei stato tu, ignora questo messaggio.",
+				'body' => "Ciao,\nper attivare la licenza gratuita di Associazione Semplice per {dominio} apri questo link entro 15 minuti:\n\n{link}\n\nSe non hai fatto tu questa richiesta, ignora questo messaggio.",
 			),
 			'welcome' => array(
 				'label' => 'Abbonamento attivo', 'when' => 'Subito dopo il primo pagamento riuscito.', 'vars' => array( 'link', 'dominio', 'piano', 'scadenza', 'email' ),
@@ -43,7 +43,22 @@ final class Emails {
 			'canceled' => array(
 				'label' => 'Disdetta registrata', 'when' => 'Il cliente disdice il rinnovo, o il provider annulla l\'abbonamento.', 'vars' => array( 'dominio', 'piano', 'scadenza', 'account_url', 'email' ),
 				'subject' => 'Disdetta registrata per {dominio}',
-				'body' => "Abbiamo registrato la disdetta del piano {piano} per {dominio}. La licenza resta valida fino al {scadenza}.\n\nSe cambi idea puoi riattivarla da qui:\n{account_url}",
+				'body' => "Abbiamo registrato la disdetta del piano {piano} per {dominio}. La licenza resta valida fino al {scadenza}.\n\nSe cambi idea puoi scegliere di nuovo un piano dall'area riservata:\n{account_url}",
+			),
+			'plan_upgraded' => array(
+				'label' => 'Piano cambiato (upgrade)', 'when' => 'Il cliente passa a un piano superiore e paga la differenza.', 'vars' => array( 'dominio', 'piano', 'scadenza', 'account_url', 'email' ),
+				'subject' => 'Piano aggiornato per {dominio}',
+				'body' => "Il pagamento della differenza è andato a buon fine: la licenza per {dominio} ora è {piano}.\nLa chiave e la scadenza ({scadenza}) non cambiano: le nuove funzioni compaiono al prossimo controllo del plugin.\n\n{account_url}",
+			),
+			'plan_downgrade_scheduled' => array(
+				'label' => 'Cambio piano programmato (downgrade)', 'when' => 'Il cliente sceglie un piano più economico dal prossimo rinnovo.', 'vars' => array( 'dominio', 'piano', 'nuovo_piano', 'scadenza', 'account_url', 'email' ),
+				'subject' => 'Cambio piano programmato per {dominio}',
+				'body' => "Abbiamo registrato il passaggio a {nuovo_piano} per {dominio}.\nFino al {scadenza} la licenza resta {piano}; dal rinnovo successivo cambia piano e prezzo. Puoi annullare il cambio dall'area riservata prima della scadenza.\n\n{account_url}",
+			),
+			'plan_downgraded' => array(
+				'label' => 'Piano cambiato (downgrade)', 'when' => 'Dopo il rinnovo, la licenza passa al piano più economico scelto.', 'vars' => array( 'dominio', 'piano', 'scadenza', 'account_url', 'email' ),
+				'subject' => 'Ora il piano di {dominio} è {piano}',
+				'body' => "Con il rinnovo la licenza per {dominio} è passata a {piano}, come avevi chiesto.\nLa chiave non cambia; le funzioni dei piani superiori si disattivano, i dati restano. Prossima scadenza: {scadenza}.\n\n{account_url}",
 			),
 			'expiring' => array(
 				'label' => 'Licenza in scadenza', 'when' => 'Qualche giorno prima della scadenza di una licenza senza rinnovo automatico.', 'vars' => array( 'dominio', 'piano', 'scadenza', 'account_url', 'email' ),
@@ -63,7 +78,7 @@ final class Emails {
 			'domain_changed' => array(
 				'label' => 'Dominio cambiato', 'when' => 'Il dominio di una licenza viene cambiato.', 'vars' => array( 'dominio', 'vecchio_dominio', 'piano', 'account_url', 'email' ),
 				'subject' => 'Dominio aggiornato: {dominio}',
-				'body' => "Il dominio della licenza {piano} è passato da {vecchio_dominio} a {dominio}.\nIl vecchio dominio smette di funzionare al prossimo controllo.\n\nSe non sei stato tu, scrivici subito.\n{account_url}",
+				'body' => "Il dominio della licenza {piano} è passato da {vecchio_dominio} a {dominio}.\nIl vecchio dominio smette di funzionare al prossimo controllo.\n\nSe non hai fatto tu questa richiesta, scrivici subito.\n{account_url}",
 			),
 		);
 	}

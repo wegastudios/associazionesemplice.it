@@ -1,0 +1,66 @@
+<?php /** @var array $accounts @var array $links @var array $matrix @var array $notes @var string $base */
+$url = function ( string $path ) use ( $base ): string { return $base . $path; };
+?>
+<section class="section"><div class="wrap" style="max-width:960px">
+	<div class="section-head" style="text-align:left;margin-bottom:28px">
+		<span class="eyebrow">Demo pubblica</span>
+		<h1 style="font-size:clamp(1.9rem,4vw,2.8rem)">Prova Associazione Semplice</h1>
+		<p>Un sito WordPress vero con il plugin gratuito e il Pro già installati e pieno di dati inventati. Serve soprattutto a provare le funzioni Pro. Clicca, inserisci, cancella: non rompi niente. Non scrivere dati veri, perché tutto si azzera ogni notte alle 4, non partono email e le password non si possono cambiare.</p>
+		<p><a class="btn big" href="<?php echo e( $url( '/' ) ); ?>">Apri la demo</a></p>
+	</div>
+
+	<h2>Come entrare</h2>
+	<p class="muted">Tre accessi di prova: scegli il ruolo che vuoi vedere. Per cambiare ruolo usa «Esci» nella barra blu in fondo alla pagina e poi entra con un altro.</p>
+	<p class="feature" style="margin:0 0 20px"><b>Vuoi provare per più giorni?</b> La demo si azzera ogni notte alle 4, ma con l'accesso «amministratore del plugin» puoi scaricare una copia dei tuoi dati da <i>Copia di sicurezza</i> («Scarica la copia dei dati») e ricaricarla il giorno dopo con «Ripristina dalla copia»: ritrovi tutto com'era.</p>
+	<div class="grid-3" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));margin-bottom:12px">
+	<?php foreach ( $accounts as $a ) : ?>
+		<div class="feature">
+			<h3>Come <?php echo e( strtolower( $a['role'] ) ); ?></h3>
+			<p style="margin-bottom:12px"><?php echo e( $a['note'] ); ?></p>
+			<div class="keybox" style="margin-bottom:8px"><span class="muted small"><?php echo e( $a['label'] ?? 'Utente' ); ?></span> <code><?php echo e( $a['user'] ); ?></code><button class="btn alt small" type="button" data-copy="<?php echo e( $a['user'] ); ?>">Copia</button></div>
+			<div class="keybox" style="margin-bottom:14px"><span class="muted small">Password</span> <code><?php echo e( $a['password'] ); ?></code><button class="btn alt small" type="button" data-copy="<?php echo e( $a['password'] ); ?>">Copia</button></div>
+			<ul class="small" style="margin:0 0 16px;padding-left:18px"><?php foreach ( $a['what'] as $w ) : ?><li><?php echo e( $w ); ?></li><?php endforeach; ?></ul>
+			<a class="btn block" href="<?php echo e( $url( $a['login'] ?? '/wp-login.php?redirect_to=' . rawurlencode( $base . $a['start'] ) ) ); ?>">Entra come <?php echo e( strtolower( $a['role'] ) ); ?></a>
+		</div>
+	<?php endforeach; ?>
+	</div>
+	<p class="fine">Nessun accesso è amministratore di WordPress: l'amministratore del plugin ha tutti i permessi di Associazione Semplice ma non gestisce il sito. Non inserire chiavi vere (Stripe, PayPal…): la demo è pubblica.</p>
+</div></section>
+
+<section class="section alt" id="scegli"><div class="wrap">
+	<div class="section-head"><h2>Ti è piaciuta? Scegli come proseguire</h2><p>Si parte dal piano gratuito e si passa al Pro quando servono incassi online o contabilità. Con la licenza gratuita puoi anche provare un Pro per qualche giorno.</p></div>
+	<?php include __DIR__ . '/_plans.php'; ?>
+</div></section>
+
+<section class="section alt"><div class="wrap" style="max-width:960px">
+	<h2>Dove andare</h2>
+	<p class="muted">I collegamenti sono tutti nella demo. Quelli «come socio» e «come segreteria» chiedono di aver fatto l'accesso con il ruolo giusto.</p>
+	<?php foreach ( $links as $group => $rows ) : ?>
+		<h3 style="margin-top:22px"><?php echo e( $group ); ?></h3>
+		<div class="tbl-wrap"><table class="tbl"><tbody>
+		<?php foreach ( $rows as $r ) : ?>
+			<tr><td style="width:34%"><a href="<?php echo e( $url( $r[1] ) ); ?>"><?php echo e( $r[0] ); ?></a></td><td class="muted"><?php echo e( $r[2] ); ?></td></tr>
+		<?php endforeach; ?>
+		</tbody></table></div>
+	<?php endforeach; ?>
+</div></section>
+
+<section class="section"><div class="wrap" style="max-width:960px">
+	<h2>I ruoli del plugin</h2>
+	<p class="muted">I permessi non dipendono dai ruoli di WordPress ma dai dati dei soci: una carica o un incarico dà accesso solo a ciò che serve. Nella demo trovi la segreteria e il socio; gli altri ruoli ci sono nel plugin e si assegnano dalla scheda del socio.</p>
+	<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Ruolo</th><th>Cosa fa</th><th>Nella demo</th></tr></thead><tbody>
+	<?php foreach ( $notes as $n ) : ?>
+		<tr><td style="white-space:nowrap"><b><?php echo e( $n[0] ); ?></b></td><td class="muted"><?php echo e( $n[1] ); ?></td><td><?php echo $n[2] ? '✓' : '—'; ?></td></tr>
+	<?php endforeach; ?>
+	</tbody></table></div>
+
+	<h3 style="margin-top:32px">Chi può fare cosa</h3>
+	<div class="tbl-wrap"><table class="tbl"><thead><tr><th></th>
+	<?php foreach ( $matrix['columns'] as $c ) : ?><th><?php echo e( $c ); ?></th><?php endforeach; ?>
+	</tr></thead><tbody>
+	<?php foreach ( $matrix['rows'] as $label => $cells ) : ?>
+		<tr><td><b><?php echo e( $label ); ?></b></td><?php foreach ( $cells as $c ) : ?><td style="text-align:center"><?php echo e( $c ); ?></td><?php endforeach; ?></tr>
+	<?php endforeach; ?>
+	</tbody></table></div>
+	<p class="fine">Il presidente e il vicepresidente, con la tessera in regola, agiscono come la segreteria su tutto. Il tesoriere lavora dall'area riservata. Il volontario gestisce solo le sue attività. Lo staff verifica gli ingressi.</p>
+</div></section>

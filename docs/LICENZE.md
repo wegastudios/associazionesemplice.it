@@ -1,34 +1,33 @@
-# Licenze: una chiave, un dominio
+# Licenze: una chiave, un dominio (e i suoi sottodomini)
 
-**Stato: client pronto, in standby finché non c'è la credenziale di verifica.** Il plugin controlla la chiave con il server licenze Wega
-(`https://license.wegastudios.com/api/v1`, specifica in `https://license.wegastudios.com/docs/wega-license.pdf`); le chiavi si vendono e si gestiscono
-dal portale (`portale/`, vedi `docs/PORTALE.md`).
+**Stato: attiva.** Il plugin controlla la chiave col portale (`https://associazionesemplice.it/api/license/validate`), che la verifica con il server licenze Wega e restituisce la risposta di Wega invariata, attestazione firmata compresa. Nel plugin non c'è nessuna credenziale (`ASEM_LICENSE_TOKEN` non esiste più). Specifica di Wega: `https://license.wegastudios.com/docs/wega-license.pdf`; le chiavi si vendono e si gestiscono dal portale (`portale/`, vedi `docs/PORTALE.md`).
 
 ## Principio
 
 - Il **plugin gratuito funziona sempre**, anche senza chiave: nessuna funzione di base dipende dalla licenza (regola di WordPress.org).
 - La **chiave gratuita** (Free) è facoltativa e si chiede dal portale; abilita i servizi collegati (prova Pro, avvisi di aggiornamento).
 - Con il **plugin Pro** le funzioni dipendono dal piano della chiave: Free (nessuna funzione Pro), **Pro Lite** (senza contabilità), **Pro Full** (tutto).
-- Ogni chiave è legata a **un dominio** (tipo 3 del server): minuscolo, punycode, senza `www`, schema, porta e percorso; i sottodomini sono domini diversi.
-  Il dominio si cambia dall'area riservata del portale (3 cambi ogni 30 giorni). I siti locali (`localhost`, `*.local`, `*.test`, indirizzi IP) non richiedono licenza.
+- Ogni chiave è legata a **un dominio registrato**: la licenza vale per quel dominio e per **tutti i suoi sottodomini e sottocartelle** (`staging.esempio.it`, `test.esempio.it`, `esempio.it/staging`); il portale riduce il dominio del sito al dominio registrabile (`LicenseRules::registrable_domain`, suffissi tipo `co.uk` compresi) prima di chiederlo a Wega, e il plugin confronta l'attestazione (`bid`) allo stesso modo (`LicenseRules::same_domain`).
+  Il dominio si cambia dall'area riservata del portale: il cambio è libero, poi la chiave resta bloccata per 180 giorni (Impostazioni del portale → «Blocco del dominio»); con l'assistenza il personale lo cambia sempre. Il server Wega applica solo un limite di sicurezza (3 cambi ogni 30 giorni). I siti locali (`localhost`, `*.local`, `*.test`, indirizzi IP) non richiedono licenza.
 
 ## Livelli
 
 | Piano (`plan_name` del server) | Livello nel plugin | Funzioni Pro |
 |---|---|---|
 | contiene «Free» | `free` | nessuna |
-| contiene «Lite» | `lite` | tutte tranne contabilità (`Edition::ACCOUNTING`: conti e fondi, report, ricevute) e fiscali (`Edition::FISCAL`: IVA, 5 per mille, anni solari e rendiconto) |
+| contiene «Lite» | `lite` | tutte tranne contabilità (`Edition::ACCOUNTING`: conti e fondi, report, ricevute) e fiscali (`Edition::FISCAL`: IVA, 5 per mille, anni solari, rendiconto, controllo di bilancio e fondi documentati) |
 | contiene «Full» o «Fiscale» | `fiscal` | tutte |
 | «contabile» (vecchio livello) | `accounting` | tutte tranne le fiscali |
 | altro (piano a pagamento non riconosciuto) | `lite` | come Lite |
 
 Il nome del piano si sceglie nel pannello del portale (Piani e prezzi): deve contenere Free, Lite o Full. Il mapping è in `LicenseClient::plan_from_name()`.
 
+**Chi decide il livello (dalla versione che porta la chiave del portale).** Wega custodisce il nome, le date e la chiave e dice solo se la licenza è valida per quel dominio; il significato del piano (che cosa sblocca «Free», «Pro Contabile»…) lo conosce solo il portale, dalla sua tabella piani. Il portale aggiunge alla risposta di verifica `portal_attestation`: un JWT EdDSA (iss `https://associazionesemplice.it`, aud = `product_code`, `bid` = dominio, `plan` ∈ `free|lite|accounting|fiscal`, `exp`) firmato con la sua chiave, la cui parte pubblica è scritta nel plugin (`LicenseClient::PINNED_PORTAL_KEYS`). Da quando c è la chiave, il plugin non legge più il nome del piano su Wega: il livello viene solo dalla prova del portale (una licenza valida senza prova non aggiorna lo stato; una prova salvata che non regge vale gratuito; subito dopo l aggiornamento del plugin, finché non ne è salvata una, vale per poco la parte firmata da Wega e un controllo immediato porta quella del portale). Se un piano cambia nome su Wega la licenza resta valida e il livello non cambia.
+
 ## Verifica
 
-- Una volta al giorno (WP-Cron `asem_license_check`), al salvataggio della chiave e con «Controlla adesso» in Impostazioni → Licenza: `POST /licenses/validate` con `license_key` e `domain`.
-- **Credenziale**: un token del server con il **solo** permesso `licenses:validate` (non emette né rinnova licenze, quindi può stare nel plugin). Si imposta con la costante
-  `ASEM_LICENSE_TOKEN` (in `associazionesemplice.php`) o con il filtro `asem_license_token`. Finché non c'è la verifica non è attiva e vale lo stato `standby` (tutto consentito).
+- Una volta al giorno (WP-Cron `asem_license_check`), al salvataggio della chiave e con «Controlla adesso» in Impostazioni → Licenza: `POST /api/license/validate` del portale con `license_key` e `domain`.
+- **Nessuna credenziale nel plugin**: la verifica passa dal portale (`LicenseClient::API`), che parla con Wega. Le chiavi pubbliche per la firma (JWKS) si leggono dal portale (`LicenseClient::JWKS_URL`); l'emittente (`iss`) dell'attestazione resta quello di Wega. Sui siti locali la verifica non c'è e vale lo stato `standby` (tutto consentito).
 - Risposta → stato (`LicenseClient::interpret()`): `valid` ⇒ `active` con livello e scadenza (`IN_GRACE` = ancora attiva, con invito a rinnovare);
   `EXPIRED` e `SUSPENDED` ⇒ `unpaid`; `REVOKED`, `DOMAIN_MISMATCH`, `LICENSE_NOT_FOUND`, `PENDING` ⇒ `unlicensed`.
 - **Attestazione**: la risposta valida porta un JWT firmato EdDSA; il plugin ne verifica firma (chiavi pubbliche da `/.well-known/jwks.json`, 12 ore in cache), emittente, destinatario
@@ -60,8 +59,12 @@ al portale `GET https://associazionesemplice.it/api/plugin/latest` (filtro `asem
 - Si spegne da Impostazioni → Tecniche → Limiti e soglie (`update_notice`, `update_check_hours`, con spiegazione dei rischi).
 - Readme: sezione «Update notice» tra i servizi esterni. Quando il gratuito sarà su WordPress.org gli aggiornamenti li dà WordPress: l'avviso resta utile solo per il Pro.
 
+## Aggiornamento diretto da WordPress
+
+`Updater` (solo nel pacchetto scaricato dal portale; elencato in `tests/portal-files.txt`, quindi **assente** nel pacchetto per WordPress.org, dove aggiorna WordPress.org): ogni 12 ore o più (`update_check_hours`) chiede al portale `POST /api/plugin/update` con `{"product":"free"|"pro","version","domain"}` (il Pro aggiunge `license_key`) e mette la nuova versione tra gli aggiornamenti di WordPress (Bacheca → Aggiornamenti, pagina Plugin, «Visualizza i dettagli»). Il pacchetto firmato dal portale vale pochi minuti: nell'elenco c'è un segnaposto (`asem-portal://free|pro`) e l'indirizzo vero si chiede di nuovo al clic su «Aggiorna» (`upgrader_pre_download`); si scarica solo da un indirizzo https dello stesso sito del portale. Errori, 403 (licenza Pro non in regola) e 429 non cambiano nulla: restano le ultime versioni note. Si spegne con il limite `portal_updates`. `build.sh` produce tre zip: gratuito del portale, gratuito per WordPress.org (senza `Updater`), Pro.
+
 ## Da fare
 
-1. Creare sul server Wega la credenziale **solo-verifica** e inserirla come `ASEM_LICENSE_TOKEN`.
+1. (fatto) Verifica tramite il portale, senza credenziali nel plugin.
 2. Endpoint `GET /api/plugin/latest` nel portale (il plugin lo usa già) e attivazione della prova Pro dal plugin.
 3. Se serve ritirare il limite di 2 installazioni dello schema precedente: la regola è ora quella del server (un dominio per chiave); `LicenseRules` mantiene solo le utilità sui domini.

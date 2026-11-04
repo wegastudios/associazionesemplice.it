@@ -45,4 +45,18 @@ final class VersionTest extends TestCase {
 		$this->assertNotEmpty( $pa[1] ?? '' );
 		$this->assertSame( $fa[1] ?? '', $pa[1] ?? 'x', 'ASEM_API e ASEM_PRO_API coincidono' );
 	}
+
+	/** Il log delle novità (CHANGELOG.md) di ogni plugin parte dalla versione in corso: la voce più recente è la versione installata, in italiano semplice. */
+	public function test_changelog_log_matches_the_current_version(): void {
+		$root = dirname( __DIR__, 3 );
+		foreach ( array( 'associazionesemplice' => 'associazionesemplice.php', 'associazionesemplice-pro' => 'associazionesemplice-pro.php' ) as $dir => $file ) {
+			$main = (string) file_get_contents( $root . '/' . $dir . '/' . $file );
+			preg_match( '/^\s*\*\s*Version:\s*(\S+)/m', $main, $v );
+			$log = (string) file_get_contents( $root . '/' . $dir . '/CHANGELOG.md' );
+			$this->assertNotSame( '', $log, "$dir: manca CHANGELOG.md" );
+			preg_match( '/^## (\d+\.\d+\.\d+)\s*$/m', $log, $top );
+			$this->assertSame( $v[1], $top[1] ?? '', "$dir: la prima voce del log deve essere la versione {$v[1]}" );
+			$this->assertMatchesRegularExpression( '/^## ' . preg_quote( $v[1], '/' ) . '\s*\r?\n- /m', $log, "$dir: la voce {$v[1]} ha almeno una riga" );
+		}
+	}
 }

@@ -15,16 +15,9 @@ final class Receipts {
 	const MONTHS = array( 1 => 'gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre' );
 
 	public static function register(): void {
-		add_action( 'admin_post_asem_receipt', array( __CLASS__, 'handle_receipt' ) );
-		add_action( 'admin_post_asem_statement', array( __CLASS__, 'handle_statement' ) );
-		foreach ( array( 'asem_receipt', 'asem_statement' ) as $a ) {
-			add_action(
-				'admin_post_nopriv_' . $a,
-				function () {
-					wp_safe_redirect( wp_login_url( home_url( '/' ) ) );
-					exit;
-				}
-			);
+		foreach ( array( 'asem_receipt' => 'handle_receipt', 'asem_statement' => 'handle_statement' ) as $a => $m ) {
+			add_action( 'admin_post_' . $a, array( __CLASS__, $m ) );
+			add_action( 'admin_post_nopriv_' . $a, Csrf::nopriv( array( __CLASS__, $m ), array( Csrf::class, 'to_login' ) ) );
 		}
 	}
 
@@ -124,20 +117,20 @@ final class Receipts {
 			return true;
 		}
 		$payer = self::payer( $rows );
-		return $payer && current_user_can( 'asem_book_for', (int) $payer['id'] );
+		return $payer && current_user_can( 'asem_view_payments', (int) $payer['id'] ); // solo l'interessato o il suo tutore: l'ospitante non vede codice fiscale e pagamenti di un ospite
 	}
 
 	public static function can_statement( int $person_id ): bool {
-		return $person_id > 0 && ( current_user_can( Plugin::CAP_OPS ) || current_user_can( 'asem_book_for', $person_id ) );
+		return $person_id > 0 && ( current_user_can( Plugin::CAP_OPS ) || current_user_can( 'asem_view_payments', $person_id ) );
 	}
 
 	public static function url( string $key ): string {
 		$key = self::clean_key( $key );
-		return wp_nonce_url( add_query_arg( array( 'action' => 'asem_receipt', 'key' => $key ), admin_url( 'admin-post.php' ) ), 'asem_receipt_' . $key );
+		return Csrf::url( add_query_arg( array( 'action' => 'asem_receipt', 'key' => $key ), admin_url( 'admin-post.php' ) ), 'asem_receipt_' . $key );
 	}
 
 	public static function statement_url( int $person_id, int $year ): string {
-		return wp_nonce_url( add_query_arg( array( 'action' => 'asem_statement', 'person' => $person_id, 'year' => $year ), admin_url( 'admin-post.php' ) ), 'asem_statement_' . $person_id . '_' . $year );
+		return Csrf::url( add_query_arg( array( 'action' => 'asem_statement', 'person' => $person_id, 'year' => $year ), admin_url( 'admin-post.php' ) ), 'asem_statement_' . $person_id . '_' . $year );
 	}
 
 	// ---------- Numerazione ----------
@@ -253,6 +246,56 @@ final class Receipts {
 
 	// ---------- Ricevuta ----------
 
+	/** Metodi di pagamento tracciabili (valgono per la detrazione); contanti e «altro» no. */
+	const TRACKED_METHODS = array( 'bank_transfer', 'pos', 'check', 'stripe', 'paypal', 'sumup', 'woocommerce' );
+
+	/**
+	 * La ricevuta di un minore va intestata a un genitore: chi opera sul sito (o chi ha pagato, se è un genitore), con i codici fiscali di tutti i genitori
+	 * e, per i ragazzi dai 5 ai 18 anni, l'indicazione se il pagamento è tracciato (serve per la detrazione delle spese sportive).
+	 *
+	 * @param array|null $payer     chi ha pagato
+	 * @param array|null $ward      a chi si riferisce il pagamento
+	 * @param array      $guardians i genitori o tutori del minore (con is_operative)
+	 * @param string     $method_label  come si chiama il metodo di pagamento
+	 * @param string[]   $kinds     tipi di voce della ricevuta (category_kind)
+	 * @return array{holder:?array,lines:string[],note:string}
+	 */
+	public static function minor_block( ?array $payer, ?array $ward, array $guardians, string $date, string $method, string $method_label, array $kinds ): array {
+		$none = array( 'holder' => $payer, 'lines' => array(), 'note' => '' );
+		if ( ! $ward || ! $guardians || ! Age::is_minor( $ward['birth_date'] ?? null, $date ) ) {
+			return $none;
+		}
+		$holder = $guardians[0];
+		foreach ( $guardians as $g ) {
+			if ( ! empty( $g['is_operative'] ) ) {
+				$holder = $g;
+				break;
+			}
+		}
+		if ( $payer ) {
+			foreach ( $guardians as $g ) {
+				if ( (int) $g['id'] === (int) $payer['id'] ) {
+					$holder = $g; // ha pagato l'altro genitore: la ricevuta è sua
+				}
+			}
+		}
+		$lines = array();
+		foreach ( $guardians as $g ) {
+			if ( (int) $g['id'] !== (int) $holder['id'] ) {
+				$lines[] = 'Altro genitore o tutore: ' . trim( $g['first_name'] . ' ' . $g['last_name'] ) . ' — C.F. ' . ( ! empty( $g['tax_code'] ) ? $g['tax_code'] : 'non indicato' );
+			}
+		}
+		$lines[] = 'Per conto di ' . trim( $ward['first_name'] . ' ' . $ward['last_name'] ) . ' — C.F. ' . ( ! empty( $ward['tax_code'] ) ? $ward['tax_code'] : 'non indicato' ) . ', nato/a il ' . Age::display( $ward['birth_date'] );
+		$note  = '';
+		$years = Age::years( $ward['birth_date'], $date );
+		if ( null !== $years && $years >= 5 && $years <= 18 && array_intersect( $kinds, array( 'activity_fee', 'membership' ) ) ) {
+			$note = in_array( $method, self::TRACKED_METHODS, true )
+				? 'Pagamento tracciato (' . $method_label . '): idoneo alla detrazione delle spese sportive per ragazzi dai 5 ai 18 anni (art. 15, c. 1, lett. i-quinquies, TUIR).'
+				: 'Pagamento non tracciato (' . $method_label . '): non consente la detrazione delle spese sportive per ragazzi dai 5 ai 18 anni.';
+		}
+		return array( 'holder' => $holder, 'lines' => $lines, 'note' => $note );
+	}
+
 	/** @return array pdf (byte), filename, number (stringa N/AAAA), payer (persona o null)
 	 *  @throws \InvalidArgumentException */
 	public static function build( string $key ): array {
@@ -277,12 +320,22 @@ final class Receipts {
 		$y += 30;
 		$pdf->text( 50, $y, 'Ricevuto da', 9 );
 		$y += 15;
-		if ( $payer ) {
-			$pdf->text( 50, $y, Plugin::people()->full_name( $payer ), 12, true );
+		$ward_id = (int) $rows[0]['person_id'];
+		$ward    = $ward_id ? Plugin::people()->get( $ward_id ) : $payer;
+		$minor   = self::minor_block( $payer, $ward, $ward ? Guardians::of( (int) $ward['id'] ) : array(), $date, (string) $rows[0]['method'], Labels::methods()[ (string) $rows[0]['method'] ] ?? (string) $rows[0]['method'], $kinds );
+		$holder  = $minor['holder'];
+		if ( $holder ) {
+			$pdf->text( 50, $y, Plugin::people()->full_name( $holder ), 12, true );
 			$y += 15;
-			if ( ! empty( $payer['tax_code'] ) ) {
-				$pdf->text( 50, $y, 'Codice fiscale: ' . $payer['tax_code'], 10 );
+			if ( ! empty( $holder['tax_code'] ) ) {
+				$pdf->text( 50, $y, 'Codice fiscale: ' . $holder['tax_code'], 10 );
 				$y += 14;
+			}
+			foreach ( $minor['lines'] as $line ) {
+				foreach ( Pdf::wrap( $line, Pdf::W - 100, 10 ) as $l ) {
+					$pdf->text( 50, $y, $l, 10 );
+					$y += 14;
+				}
 			}
 		} else {
 			$pdf->text( 50, $y, '—', 12 );
@@ -322,6 +375,12 @@ final class Receipts {
 		if ( ! empty( $rows[0]['document_ref'] ) ) {
 			$y += 14;
 			$pdf->text( 56, $y, 'Riferimento: ' . $rows[0]['document_ref'], 10 );
+		}
+		if ( '' !== $minor['note'] ) {
+			foreach ( Pdf::wrap( $minor['note'], Pdf::W - 112, 10 ) as $l ) {
+				$y += 14;
+				$pdf->text( 56, $y, $l, 10 );
+			}
 		}
 		$y += 60;
 		$pdf->text( Pdf::W - 60, $y, 'Per l\'associazione', 10, false, 'R' );
@@ -438,13 +497,22 @@ final class Receipts {
 			$host = Plugin::people()->get( (int) $payer['host_person_id'] );
 			$to   = $host && ! empty( $host['email'] ) ? (string) $host['email'] : '';
 		}
+		if ( '' === $to && $payer && class_exists( Guardians::class ) ) { // un minore senza email: la ricevuta va al tutore
+			foreach ( Guardians::recipients( $payer ) as $g ) {
+				$to = (string) $g['email'];
+				break;
+			}
+		}
 		if ( '' === $to || ! is_email( $to ) ) {
 			throw new \InvalidArgumentException( 'Chi ha pagato non ha un indirizzo email (né il socio che lo ospita).' );
 		}
-		$tmp = wp_tempnam( 'asem-ricevuta' );
-		$dst = dirname( $tmp ) . '/' . $r['filename'];
+		$dir = trailingslashit( get_temp_dir() ) . 'asem-' . bin2hex( random_bytes( 12 ) ); // cartella con nome casuale: il PDF (nome e cognome, codice fiscale) non è indovinabile né sostituibile da altri
+		if ( ! wp_mkdir_p( $dir ) ) {
+			throw new \InvalidArgumentException( 'Impossibile preparare la ricevuta: controlla i permessi della cartella temporanea.' );
+		}
+		chmod( $dir, 0700 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod
+		$dst = $dir . '/' . $r['filename'];
 		file_put_contents( $dst, $r['pdf'] );
-		wp_delete_file( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
 		$assoc = (string) Settings::get( 'association_name' );
 		$ok    = \AssociazioneSemplice\Texts::mail(
 			$to,
@@ -454,6 +522,7 @@ final class Receipts {
 			array( $dst )
 		);
 		wp_delete_file( $dst ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+		@rmdir( $dir ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, WordPress.WP.AlternativeFunctions.file_system_operations_rmdir
 		if ( ! $ok ) {
 			throw new \InvalidArgumentException( 'Invio non riuscito: controlla la posta in uscita del sito.' );
 		}
@@ -477,7 +546,7 @@ final class Receipts {
 
 	public static function handle_receipt(): void {
 		$key = isset( $_GET['key'] ) ? self::clean_key( sanitize_text_field( wp_unslash( $_GET['key'] ) ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
-		check_admin_referer( 'asem_receipt_' . $key );
+		Csrf::check( 'asem_receipt_' . $key );
 		if ( ! self::can_view( $key ) ) {
 			wp_die( 'Non autorizzato.', 403 );
 		}
@@ -492,7 +561,7 @@ final class Receipts {
 	public static function handle_statement(): void {
 		$pid  = isset( $_GET['person'] ) ? (int) $_GET['person'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
 		$year = isset( $_GET['year'] ) ? (int) $_GET['year'] : 0; // phpcs:ignore WordPress.Security.NonceVerification
-		check_admin_referer( 'asem_statement_' . $pid . '_' . $year );
+		Csrf::check( 'asem_statement_' . $pid . '_' . $year );
 		if ( ! self::can_statement( $pid ) ) {
 			wp_die( 'Non autorizzato.', 403 );
 		}

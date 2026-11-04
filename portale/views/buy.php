@@ -11,7 +11,7 @@ $names = array(
 	<div class="panel">
 		<span class="eyebrow">Piano <?php echo e( $label ); ?></span>
 		<h1>Completa l'acquisto</h1>
-		<div class="summary"><span><?php echo e( $label ); ?> · <?php echo $year ? 'annuale' : 'mensile'; ?></span><b><?php echo e( money( $price['cents'] ) ); ?> <small class="muted"><?php echo $year ? '/ anno' : '/ mese'; ?></small></b></div>
+		<div class="summary"><span><?php echo e( $label ); ?> · <?php echo $year ? 'annuale' : 'mensile'; ?></span><b><?php $lc = Portale\Settings::listCents( $plan, $period ); echo $lc ? '<s class="was">' . e( money( $lc ) ) . '</s> ' : ''; echo e( money( $price['cents'] ) ); ?> <small class="muted"><?php echo $year ? '/ anno' : '/ mese'; ?></small></b></div>
 		<?php if ( ! $methods ) : ?>
 			<p class="muted">Questo piano non è ancora acquistabile: riprova tra poco o <a href="mailto:info@associazionesemplice.it">scrivici</a>.</p>
 		<?php else : ?>
@@ -20,6 +20,8 @@ $names = array(
 			<input type="hidden" name="plan" value="<?php echo e( $plan ); ?>"><input type="hidden" name="period" value="<?php echo e( $period ); ?>">
 			<label for="email">La tua email</label>
 			<input id="email" type="email" name="email" placeholder="segreteria@miaassociazione.it" autocomplete="email" required>
+			<label for="name">Il tuo nome <span class="muted">(facoltativo)</span></label>
+			<input id="name" type="text" name="name" autocomplete="name" maxlength="150" placeholder="Nome e cognome">
 			<label for="domain">Indirizzo del sito WordPress</label>
 			<input id="domain" type="text" name="domain" placeholder="miaassociazione.it" autocapitalize="none" spellcheck="false" required>
 			<p class="hint">La licenza sarà legata a questo dominio; potrai cambiarlo in seguito.</p>
@@ -29,7 +31,7 @@ $names = array(
 				<label><input type="radio" name="method" value="<?php echo e( $k ); ?>"<?php echo $first ? ' checked' : ''; ?>><span><?php echo e( $names[ $k ][0] ); ?><small class="muted" style="display:block;font-weight:400"><?php echo e( $names[ $k ][1] ); ?></small></span></label>
 			<?php $first = false; endforeach; ?>
 			</div>
-			<button class="btn big block" type="submit">Vai al pagamento sicuro</button>
+			<button class="btn big block" type="submit">Ordina e paga</button>
 		</form>
 		<?php endif; ?>
 	</div>
@@ -40,6 +42,6 @@ $names = array(
 			<li><?php echo icon( 'mail' ); ?><div><b>Ricevi un'email</b>Con il link per entrare nell'area riservata.</div></li>
 			<li><?php echo icon( 'key' ); ?><div><b>Trovi la chiave</b>Incolla la chiave nel plugin e le funzioni Pro si attivano.</div></li>
 		</ul>
-		<p class="muted small"><a href="/#prezzi">Confronta di nuovo i piani</a></p>
+		<p class="muted small"><a href="/prezzi">Confronta di nuovo i piani</a></p>
 	</div>
 </div></section>

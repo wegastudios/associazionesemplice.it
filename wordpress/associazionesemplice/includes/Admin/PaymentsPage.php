@@ -7,6 +7,7 @@ use AssociazioneSemplice\Money;
 use AssociazioneSemplice\PaymentConfig;
 use AssociazioneSemplice\PaymentItems;
 use AssociazioneSemplice\Plugin;
+use AssociazioneSemplice\SatispayRules;
 use AssociazioneSemplice\Settings;
 
 defined( 'ABSPATH' ) || exit;
@@ -21,10 +22,30 @@ final class PaymentsPage {
 
 	/** Righe di personalizzazione di un metodo di pagamento: dicitura del pulsante e nota sotto il pulsante. */
 	private static function label_rows( string $gateway, string $name, array $s, string $class, string $hint ): string {
-		return '<tr class="' . esc_attr( $class ) . '"><th>' . esc_html( $name ) . ' — pulsante</th><td><input type="text" name="pay_label_' . esc_attr( $gateway ) . '" value="' . esc_attr( (string) $s[ 'pay_label_' . $gateway ] ) . '" class="regular-text" maxlength="60" placeholder="' . esc_attr( PaymentConfig::DEFAULT_LABELS[ $gateway ] ) . '"> '
-			. '<p class="description">La scritta del pulsante che vedono i soci. Vuoto = «' . esc_html( PaymentConfig::DEFAULT_LABELS[ $gateway ] ) . '».' . ( '' !== $hint ? ' ' . esc_html( $hint ) : '' ) . '</p></td></tr>'
+		return '<tr class="' . esc_attr( $class ) . '"><th>' . esc_html( $name ) . ' — pulsante</th><td><input type="text" name="pay_label_' . esc_attr( $gateway ) . '" value="' . esc_attr( (string) $s[ 'pay_label_' . $gateway ] ) . '" class="regular-text" maxlength="60" placeholder="' . esc_attr( PaymentConfig::default_labels()[ $gateway ] ) . '"> '
+			. '<p class="description">La scritta del pulsante che vedono i soci. Vuoto = «' . esc_html( PaymentConfig::default_labels()[ $gateway ] ) . '».' . ( '' !== $hint ? ' ' . esc_html( $hint ) : '' ) . '</p></td></tr>'
 			. '<tr class="' . esc_attr( $class ) . '"><th>' . esc_html( $name ) . ' — nota</th><td><input type="text" name="pay_note_' . esc_attr( $gateway ) . '" value="' . esc_attr( (string) $s[ 'pay_note_' . $gateway ] ) . '" class="large-text" maxlength="300" placeholder="' . esc_attr( PaymentConfig::note( $gateway ) ) . '">'
 			. '<p class="description">La frase sotto il pulsante. Vuoto = la frase standard.</p></td></tr>';
+	}
+
+	/** Costi di incasso di un metodo: commissione fissa e/o percentuale, e se ribaltarla sull'operazione (spento di default). */
+	private static function fee_rows( string $gateway, string $name, array $s, string $class ): string {
+		$fixed = (int) ( $s[ 'pay_fee_fixed_' . $gateway ] ?? 0 );
+		$pct   = (int) ( $s[ 'pay_fee_pct_' . $gateway ] ?? 0 );
+		return '<tr class="' . esc_attr( $class ) . '"><th>' . esc_html( $name ) . ' — commissioni</th><td>'
+			. 'fissa <input type="text" name="pay_fee_fixed_' . esc_attr( $gateway ) . '" value="' . esc_attr( $fixed > 0 ? Money::plain( $fixed ) : '' ) . '" size="5" inputmode="decimal" placeholder="0,25"> € '
+			. '+ <input type="text" name="pay_fee_pct_' . esc_attr( $gateway ) . '" value="' . esc_attr( $pct > 0 ? rtrim( rtrim( number_format( $pct / 100, 2, ',', '' ), '0' ), ',' ) : '' ) . '" size="4" inputmode="decimal" placeholder="1,5"> % per ogni pagamento'
+			. '<p class="description">Quanto ti costa incassare con questo metodo. I valori di partenza sono le tariffe standard pubblicate dal gestore (carte europee standard per Stripe, vendite nazionali per PayPal, pagamenti online per SumUp): confrontali con il tuo contratto. Svuota i campi se non vuoi indicarli.</p>'
+			. '<label><input type="checkbox" name="pay_fee_pass_' . esc_attr( $gateway ) . '" value="1"' . checked( ! empty( $s[ 'pay_fee_pass_' . $gateway ] ), true, false ) . '> Ribalta la commissione su chi paga, in automatico</label>'
+			. '<p class="description">Con la spunta il totale da pagare aumenta di quanto serve a coprire la commissione e il socio la vede indicata sotto il pulsante. <strong>Attenzione:</strong> in Italia e nell\'Unione europea è vietato far pagare un supplemento a chi paga con carta (e con alcuni bonifici/addebiti) se è un consumatore (direttiva PSD2, D.Lgs. 11/2010): la spunta è spenta di partenza e usarla è una scelta e una responsabilità dell\'associazione. Se non sei sicuro lasciala spenta.</p></td></tr>';
+	}
+
+	/** Stato del collegamento a Satispay (mai la chiave: solo se c'è). */
+	private static function satispay_status( array $s ): string {
+		$ok = '' !== trim( (string) ( $s['satispay_key_id'] ?? '' ) ) && Settings::has_secret( 'satispay_private_key' ) && ! Settings::secret_unreadable( 'satispay_private_key' );
+		return $ok
+			? '<p><strong>Collegato</strong> (chiave ' . esc_html( \AssociazioneSemplice\Secrets::mask( (string) $s['satispay_key_id'] ) ) . ').</p>'
+			: '<p class="asem-warn">Non ancora collegato.</p>';
 	}
 
 	/** Impostazioni dei pagamenti online (spenti di default: "Nessuno"). */
@@ -39,18 +60,36 @@ final class PaymentsPage {
 			. 'Con Stripe o PayPal i soci pagano su una <strong>pagina ospitata dal gateway</strong> (i dati della carta non passano dal sito) e l\'incasso entra da solo in prima nota sul conto "Stripe" o "PayPal". Prima di usarli in produzione verifica il funzionamento con le chiavi di prova.</p></td></tr>';
 		echo self::label_rows( PaymentConfig::STRIPE, 'Stripe', $s, 'asem-pay-stripe', 'Ad esempio «Paga con carta».' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo self::label_rows( PaymentConfig::PAYPAL, 'PayPal', $s, 'asem-pay-paypal', 'Se il tuo account PayPal offre il pagamento a rate puoi scrivere ad esempio «Paga a rate con PayPal» e spiegare nella nota come funziona.' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo self::label_rows( PaymentConfig::SUMUP, 'SumUp', $s, 'asem-pay-sumup', 'Ad esempio «Paga con carta (SumUp)».' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo self::label_rows( SatispayRules::ID, 'Satispay', $s, 'asem-pay-satispay', 'Ad esempio «Paga con Satispay».' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo self::label_rows( PaymentConfig::WOOCOMMERCE, 'Negozio', $s, 'asem-pay-woocommerce', '' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo SettingsPage::gateway_row( 'stripe_mode', 'Stripe — modalità', $s, 'select', array( 'test' => 'Prova (test)', 'live' => 'Reale (live)' ), 'asem-pay-stripe' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo SettingsPage::gateway_row( 'stripe_publishable_key', 'Stripe — chiave pubblicabile', $s, 'text', array(), 'asem-pay-stripe', 'pk_test_… / pk_live_…' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo SettingsPage::secret_row( 'stripe_secret_key', 'Stripe — chiave segreta', 'asem-pay-stripe', 'sk_test_… / sk_live_… (o rk_… con restrizioni)' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo SettingsPage::secret_row( 'stripe_webhook_secret', 'Stripe — segreto del webhook', 'asem-pay-stripe', 'whsec_… (da Stripe → Sviluppatori → Webhook)' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<tr class="asem-pay-stripe"><th>Indirizzo del webhook</th><td><code>' . esc_html( rest_url( 'associazionesemplice/v1/webhooks/stripe' ) ) . '</code><p class="description">In Stripe (Sviluppatori → Webhook) aggiungi questo indirizzo con gli eventi <code>checkout.session.completed</code>, <code>checkout.session.async_payment_succeeded</code> e <code>checkout.session.expired</code>, poi incolla qui il segreto <code>whsec_…</code>. È una rete di sicurezza: il pagamento si conferma anche quando il socio torna sul sito e con un controllo automatico ogni ora.</p></td></tr>';
+		echo '<tr class="asem-pay-stripe"><th>Klarna</th><td><label><input type="checkbox" name="stripe_klarna" value="1"' . checked( ! empty( $s['stripe_klarna'] ), true, false ) . '> Offri anche Klarna (paga dopo o a rate) nella pagina di pagamento di Stripe</label>'
+			. '<p class="description">Klarna passa da Stripe: va attivato anche nel tuo account Stripe (Impostazioni → Metodi di pagamento). <strong>Attenzione:</strong> con Klarna acceso il sito elenca a mano i metodi della pagina di pagamento (carta e Klarna), quindi gli altri metodi che hai attivato nel pannello di Stripe (ad esempio Link) non compaiono finché Klarna è acceso.Si offre solo per pagamenti in euro, da ' . esc_html( Money::format( \AssociazioneSemplice\KlarnaRules::MIN_CENTS ) ) . ' a ' . esc_html( Money::format( \AssociazioneSemplice\KlarnaRules::MAX_CENTS ) ) . ' e quando il socio ha un indirizzo email; negli altri casi resta la sola carta. '
+			. 'Nel webhook di Stripe aggiungi anche <code>checkout.session.async_payment_failed</code>, per chiudere i pagamenti differiti non riusciti.</p></td></tr>';
 		echo '<tr class="asem-pay-paypal"><th>Conferma dei pagamenti</th><td><p class="description">PayPal non richiede configurazioni aggiuntive: il pagamento si conferma quando il socio torna sul sito e con un controllo automatico ogni ora.</p></td></tr>';
 		echo SettingsPage::gateway_row( 'paypal_mode', 'PayPal — modalità', $s, 'select', array( 'sandbox' => 'Prova (sandbox)', 'live' => 'Reale (live)' ), 'asem-pay-paypal' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo SettingsPage::gateway_row( 'paypal_client_id', 'PayPal — Client ID', $s, 'text', array(), 'asem-pay-paypal', '' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo SettingsPage::secret_row( 'paypal_client_secret', 'PayPal — Client Secret', 'asem-pay-paypal', '' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo SettingsPage::gateway_row( 'sumup_merchant_code', 'SumUp — codice commerciante', $s, 'text', array(), 'asem-pay-sumup', 'MABCD123 (da SumUp → Profilo)' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo SettingsPage::secret_row( 'sumup_api_key', 'SumUp — chiave API', 'asem-pay-sumup', 'sup_sk_… (da SumUp → Sviluppatori → Chiavi API)' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<tr class="asem-pay-sumup"><th>Conferma dei pagamenti</th><td><p class="description">SumUp non richiede webhook: il pagamento si conferma quando il socio torna sul sito e con un controllo automatico ogni ora.</p></td></tr>';
+		echo SettingsPage::gateway_row( 'satispay_mode', 'Satispay — modalità', $s, 'select', array( 'sandbox' => 'Prova (sandbox)', 'live' => 'Reale (live)' ), 'asem-pay-satispay' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<tr class="asem-pay-satispay"><th>Satispay — collegamento</th><td>';
+		echo self::satispay_status( $s ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<p class="description">In Satispay Business (Sviluppatori → Chiavi API) genera un <strong>codice di attivazione</strong> monouso, incollalo nel riquadro «Collega Satispay» qui sotto e premi il pulsante: il sito crea da solo la chiave di firma e la conserva cifrata. Scegli prima la modalità (prova o reale) e salva.</p></td></tr>';
+		echo '<tr class="asem-pay-satispay"><th>Conferma dei pagamenti</th><td><code>' . esc_html( rest_url( 'associazionesemplice/v1/webhooks/satispay' ) ) . '</code><p class="description">Satispay avvisa questo indirizzo a pagamento concluso (lo indichiamo noi a ogni pagamento, non devi configurarlo). Il sito non crede all\'avviso: rilegge lo stato del pagamento da Satispay con una richiesta firmata. In più c\'è il controllo automatico ogni ora.</p></td></tr>';
+		echo self::fee_rows( PaymentConfig::STRIPE, 'Stripe', $s, 'asem-pay-stripe' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo self::fee_rows( PaymentConfig::PAYPAL, 'PayPal', $s, 'asem-pay-paypal' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo self::fee_rows( PaymentConfig::SUMUP, 'SumUp', $s, 'asem-pay-sumup' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo self::fee_rows( SatispayRules::ID, 'Satispay', $s, 'asem-pay-satispay' ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<tr><th>Commissioni in prima nota</th><td><label><input type="checkbox" name="pay_fee_book" value="1"' . checked( ! empty( $s['pay_fee_book'] ), true, false ) . '> Registra come spesa la commissione stimata a ogni incasso online</label><p class="description">A ogni pagamento confermato si registra la spesa «Commissione di incasso» calcolata dai valori che hai indicato sopra (fissa + percentuale sul totale addebitato), sul conto del metodo usato. È una stima: quando arriva l\'estratto conto del gestore correggi la spesa se la cifra vera è diversa. Non vale per le domande di adesione.</p></td></tr>';
 		if ( PaymentConfig::NONE !== $s['payment_provider'] ) {
-			$check = PaymentConfig::validate( Settings::payment_config() );
+			$check = PaymentConfig::validate( \AssociazioneSemplice\ProSettings::payment_config() );
 			foreach ( $check['errors'] as $e ) {
 				echo '<tr><th></th><td class="asem-neg">⚠ ' . esc_html( $e ) . '</td></tr>';
 			}
@@ -60,7 +99,10 @@ final class PaymentsPage {
 		}
 		echo '<tr><th>Sicurezza delle chiavi</th><td><p class="description">Le chiavi segrete sono salvate <strong>cifrate</strong> nel database e non vengono mai mostrate né scritte nel registro azioni: si inseriscono qui e basta, senza toccare file. '
 			. 'La cifratura è legata a questo sito: se copi il database su un altro sito (ad esempio lo staging) le chiavi non vi sono leggibili e vanno reinserite. Questo impedisce a un sito di prova di usare per errore le chiavi reali. Usa le chiavi di prova finché non hai verificato il funzionamento.</p></td></tr>';
-		foreach ( \AssociazioneSemplice\Settings::SECRET_KEYS as $sk ) {
+		if ( \AssociazioneSemplice\Secrets::salts_weak( defined( 'AUTH_KEY' ) ? (string) AUTH_KEY : null, defined( 'AUTH_SALT' ) ? (string) AUTH_SALT : null ) ) {
+			echo '<tr><th></th><td class="asem-warn">⚠ I codici di sicurezza di <code>wp-config.php</code> (AUTH_KEY e AUTH_SALT) mancano o sono quelli di esempio: la cifratura delle chiavi qui sopra è più debole. Generane di nuovi su <a href="https://api.wordpress.org/secret-key/1.1/salt/" target="_blank" rel="noopener">api.wordpress.org/secret-key</a> e incollali in <code>wp-config.php</code>; poi reinserisci le chiavi.</td></tr>';
+		}
+		foreach ( \AssociazioneSemplice\Settings::secret_keys() as $sk ) {
 			if ( Settings::secret_unreadable( $sk ) ) {
 				echo '<tr><th></th><td class="asem-warn">⚠ Una chiave è salvata ma non è leggibile su questo sito: reinseriscila.</td></tr>';
 				break;
@@ -69,12 +111,17 @@ final class PaymentsPage {
 		echo '</tbody></table>';
 		submit_button( 'Salva' );
 		Ui::form_close();
-		echo '<h2>Prova di connessione</h2><p class="description">Usa le chiavi già salvate (salva prima le impostazioni). Non muove denaro: Stripe legge il saldo, PayPal chiede un token di accesso.</p><div style="display:flex;gap:12px;flex-wrap:wrap">';
-		foreach ( array( PaymentConfig::STRIPE => 'Verifica connessione Stripe', PaymentConfig::PAYPAL => 'Verifica connessione PayPal' ) as $prov => $label ) {
+		echo '<h2>Prova di connessione</h2><p class="description">Usa le chiavi già salvate (salva prima le impostazioni). Non muove denaro: Stripe legge il saldo, PayPal chiede un token di accesso, SumUp legge il profilo dell\'account.</p><div style="display:flex;gap:12px;flex-wrap:wrap">';
+		foreach ( array( PaymentConfig::STRIPE => 'Verifica connessione Stripe', PaymentConfig::PAYPAL => 'Verifica connessione PayPal', PaymentConfig::SUMUP => 'Verifica connessione SumUp', SatispayRules::ID => 'Verifica connessione Satispay' ) as $prov => $label ) {
 			Ui::form_open( 'asem_test_gateway', Ui::url( 'asem-payments' ) );
 			echo Ui::hidden( 'provider', $prov ) . '<button class="button">' . esc_html( $label ) . '</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			Ui::form_close();
 		}
+		echo '<h2>Collega Satispay</h2><p class="description">Incolla il codice di attivazione monouso che trovi in Satispay Business (Sviluppatori → Chiavi API). Il sito crea la chiave di firma, la registra presso Satispay e la conserva cifrata; il codice non viene salvato. Il collegamento usa la modalità (prova o reale) già salvata più sopra.</p>';
+		Ui::form_open( 'asem_satispay_connect', Ui::url( 'asem-payments' ) );
+		echo '<p><input type="text" name="token" class="regular-text" autocomplete="off" placeholder="Codice di attivazione" maxlength="40"> <button class="button">Collega Satispay</button></p>';
+		Ui::form_close();
+		Ui::inline_js( "(function(){var s=document.getElementById('asem-pay-provider');if(!s){return;}var f=function(){var on=s.value.split('_').indexOf('satispay')>=0;document.querySelectorAll('.asem-pay-satispay').forEach(function(r){r.style.display=on?'':'none';});};s.addEventListener('change',f);f();})();" );
 		echo '</div>';
 		echo '</div>';
 	}
@@ -98,7 +145,7 @@ final class PaymentsPage {
 		echo '<p><button class="button">Verifica i pagamenti in sospeso</button> <span class="description">Interroga il gateway sui pagamenti non ancora confermati (lo fa già da solo ogni ora).</span></p>';
 		Ui::form_close();
 
-		echo '<table class="widefat striped"><thead><tr><th>Data</th><th>Chi ha pagato</th><th>Gateway</th><th>Importo</th><th>Stato</th><th>Voci</th><th></th></tr></thead><tbody>';
+		echo '<table class="widefat striped"><thead><tr><th>Data</th><th>Chi ha pagato</th><th>Metodo</th><th>Importo</th><th>Stato</th><th>Voci</th><th></th></tr></thead><tbody>';
 		if ( ! $rows ) {
 			echo '<tr><td colspan="7">Nessun pagamento.</td></tr>';
 		}
@@ -111,9 +158,14 @@ final class PaymentsPage {
 				$state = '<span class="asem-neg">' . $state . '</span>';
 			}
 			echo '<tr><td>' . esc_html( mysql2date( 'd/m/Y H:i', $r['created_at'] ) ) . '</td><td>' . esc_html( (string) $r['payer_name'] ) . '</td>'
-				. '<td>' . esc_html( array( 'paypal' => 'PayPal', 'woocommerce' => 'WooCommerce' )[ $r['provider'] ] ?? 'Stripe' ) . '</td><td>' . esc_html( Money::format( (int) $r['amount_cents'] ) ) . '</td><td>' . $state // phpcs:ignore WordPress.Security.EscapeOutput
-				. ( $r['review'] ? '<br><strong class="asem-warn">⚠ da controllare</strong>' : '' ) . ( $r['error'] ? '<br><span class="description">' . esc_html( $r['error'] ) . '</span>' : '' ) . '</td>'
+				. '<td>' . esc_html( array( 'paypal' => 'PayPal', 'sumup' => 'SumUp', 'satispay' => 'Satispay', 'woocommerce' => 'WooCommerce' )[ $r['provider'] ] ?? 'Stripe' ) . '</td><td>' . esc_html( Money::format( (int) $r['amount_cents'] ) ) . '</td><td>' . $state // phpcs:ignore WordPress.Security.EscapeOutput
+				. ( $r['review'] ? '<br><strong class="asem-warn">⚠ da controllare</strong>' : '' ) . ( ! empty( $r['refund_due'] ) ? '<br><strong class="asem-neg">↩ da rimborsare</strong> <span class="description">(domanda di adesione rifiutata: restituisci la quota dal pannello del gateway)</span>' : '' ) . ( $r['error'] ? '<br><span class="description">' . esc_html( $r['error'] ) . '</span>' : '' ) . '</td>'
 				. '<td>' . esc_html( implode( '; ', $items ) ) . '<br><span class="description">' . esc_html( (string) $r['provider_ref'] ) . '</span></td><td>';
+			if ( ! empty( $r['refund_due'] ) ) {
+				Ui::form_open( 'asem_payment_refunded', Ui::url( 'asem-payments' ) );
+				echo Ui::hidden( 'id', $r['id'] ) . '<button class="button button-small">Rimborsato</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
+				Ui::form_close();
+			}
 			if ( $r['review'] ) {
 				Ui::form_open( 'asem_payment_reviewed', Ui::url( 'asem-payments' ) );
 				echo Ui::hidden( 'id', $r['id'] ) . '<button class="button button-small">Controllato</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
@@ -123,7 +175,7 @@ final class PaymentsPage {
 		}
 		echo '</tbody></table>';
 		echo '<p class="description">I pagamenti riusciti sono già in <a href="' . esc_url( Ui::url( 'asem-ledger' ) ) . '">Prima nota</a> sul conto "Stripe" o "PayPal". '
-			. 'Le commissioni del gateway e il trasferimento sul conto corrente (payout) si registrano a mano con una spesa e un giroconto. I rimborsi si fanno dal pannello del gateway e si registrano come spesa. I bonifici arrivati sul conto si registrano a mano da «Nuovo incasso».</p>';
+			. 'Le commissioni del gateway si registrano da sole come spesa stimata (se lo hai scelto più sopra); il trasferimento sul conto corrente (payout) si registra a mano con un giroconto. I rimborsi si fanno dal pannello del gateway e si registrano come spesa. I bonifici arrivati sul conto si registrano a mano da «Nuovo incasso».</p>';
 		Ui::footer();
 	}
 }

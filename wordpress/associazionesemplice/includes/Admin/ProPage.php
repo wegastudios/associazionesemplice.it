@@ -31,6 +31,7 @@ final class ProPage {
 				array( 'vat', 'IVA', 'Aliquote su quote, attività e incassi, importi con IVA compresa o esclusa e IVA contenuta in ogni movimento.' ),
 				array( 'fivepm', '5 per mille', 'Messaggio con il codice fiscale, contributi ricevuti e scadenze del rendiconto sull\'utilizzo.' ),
 				array( 'fiscal', 'Anni solari e rendiconto', 'Apertura e chiusura degli anni contabili, rendiconto per cassa e prima nota per il commercialista.' ),
+				array( 'watch', 'Controllo di bilancio e fondi', 'Bilancio provvisorio sempre aggiornato al mese concluso, avvisi su spese non coperte e utile eccessivo, storico mensile, spese documentate attribuite ai fondi dei volontari e inizio dell\'anno fiscale a scelta.' ),
 			),
 		);
 	}
@@ -58,7 +59,7 @@ final class ProPage {
 			}
 			echo '</tbody></table></div>';
 		}
-		echo '<p><a class="button button-primary" href="' . esc_url( Edition::pro_url() ) . '" target="_blank" rel="noopener">Scopri Associazione Semplice Pro</a> <span class="description">Si apre il sito di Wega Studios.</span></p>';
+		echo '<p><a class="button button-primary" href="' . esc_url( Edition::pro_url() ) . '" target="_blank" rel="noopener">Scopri Associazione Semplice Pro</a></p>';
 		echo '<p class="description">Pro Lite comprende pagamenti online, quote diverse, comunicazioni, app e Wallet; Pro Full aggiunge la contabilità (conti e fondi, report, ricevute), l\'IVA, il 5 per mille e gli anni solari per il commercialista.</p>';
 		Ui::footer();
 	}

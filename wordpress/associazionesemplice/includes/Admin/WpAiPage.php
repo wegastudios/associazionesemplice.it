@@ -5,6 +5,7 @@ use AssociazioneSemplice\MemberType;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Settings;
 use AssociazioneSemplice\WpAllImport;
+use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -22,7 +23,7 @@ final class WpAiPage {
 	public static function render(): void {
 		Ui::header( 'Import con WP All Import', '<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-import' ) ) . '">← Import da Excel/CSV</a>' );
 		$active = defined( 'PMXI_VERSION' ) || class_exists( 'PMXI_Plugin' );
-		echo '<div class="notice notice-' . ( $active ? 'success' : 'info' ) . ' inline"><p>' . ( $active ? 'WP All Import è attivo su questo sito.' : 'WP All Import non risulta attivo. Se non lo usi, l\'import da <a href="' . esc_url( Ui::url( 'asem-import' ) ) . '">Excel/CSV</a> fa già tutto.' ) . '</p></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<div class="notice notice-' . ( $active ? 'success' : 'info' ) . ' inline"><p>' . ( $active ? 'WP All Import è attivo su questo sito.' : 'WP All Import non risulta attivo. Se non lo usi, l\'import da <a href="' . esc_url( Ui::url( 'asem-import' ) ) . '">Excel/CSV</a> fa già tutto.' ) . '</p></div>', Html::allowed() );
 
 		echo '<div class="asem-card"><h2>Come si fa</h2><ol>'
 			. '<li>In <strong>All Import → Nuova importazione</strong> carica il tuo file (Excel, CSV, XML, anche da indirizzo web o Google Fogli).</li>'
@@ -49,12 +50,12 @@ final class WpAiPage {
 		}
 		echo '<div class="asem-card"><h2>Impostazioni dell\'import</h2>';
 		Ui::form_open( 'asem_save_wpai', Ui::url( 'asem-wpai' ) );
-		echo '<table class="form-table"><tbody>'
-			. '<tr><th>Tipo di socio se manca</th><td><select name="default_type">' . Ui::options( $types, (string) Settings::get( 'wpai_default_type' ) ) . '</select></td></tr>' // phpcs:ignore WordPress.Security.EscapeOutput
-			. '<tr><th>Conto se manca</th><td><select name="default_account_id">' . Ui::options( $accounts, (int) Settings::get( 'wpai_default_account_id' ) ?: null, '— nessuno —' ) . '</select></td></tr>' // phpcs:ignore WordPress.Security.EscapeOutput
+		echo wp_kses( '<table class="form-table"><tbody>'
+			. '<tr><th>Tipo di socio se manca</th><td><select name="default_type">' . Ui::options( $types, (string) Settings::get( 'wpai_default_type' ) ) . '</select></td></tr>'
+			. '<tr><th>Conto se manca</th><td><select name="default_account_id">' . Ui::options( $accounts, (int) Settings::get( 'wpai_default_account_id' ) ?: null, '— nessuno —' ) . '</select></td></tr>'
 			. '<tr><th>Saldi attuali</th><td><label><input type="checkbox" name="keep_balances" value="1"' . checked( (int) Settings::get( 'wpai_keep_balances' ), 1, false ) . '> Non cambiare i saldi attuali dei conti (consigliato per anni passati)</label></td></tr>'
 			. '<tr><th>Iscrizione</th><td><label><input type="checkbox" name="mark_members" value="1"' . checked( (int) Settings::get( 'wpai_mark_members' ), 1, false ) . '> Segna i soci importati come iscritti all\'anno ' . esc_html( Settings::membership_year()->label() ) . '</label></td></tr>'
-			. '</tbody></table>';
+			. '</tbody></table>', Html::allowed() );
 		submit_button( 'Salva' );
 		Ui::form_close();
 		echo '</div>';

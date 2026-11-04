@@ -56,6 +56,24 @@ final class PaymentCalc {
 		);
 	}
 
+	/** Mesi interi da $a a $b ("YYYY-MM"), negativi se $b viene prima. */
+	public static function months_between( string $a, string $b ): int {
+		return ( (int) substr( $b, 0, 4 ) - (int) substr( $a, 0, 4 ) ) * 12 + ( (int) substr( $b, 5, 2 ) - (int) substr( $a, 5, 2 ) );
+	}
+
+	/** Porta i versamenti dei mesi di ogni periodo (da $start, di $step mesi) sul mese in cui il periodo comincia. */
+	public static function group_by_period( array $paid_by_month, string $start, int $step ): array {
+		$out = array();
+		foreach ( $paid_by_month as $m => $cents ) {
+			$d = self::months_between( $start, (string) $m );
+			if ( $d >= 0 ) {
+				$m = ( new \DateTimeImmutable( $start . '-01' ) )->modify( '+' . ( $d - $d % $step ) . ' months' )->format( 'Y-m' );
+			}
+			$out[ $m ] = ( $out[ $m ] ?? 0 ) + (int) $cents;
+		}
+		return $out;
+	}
+
 	/**
 	 * Mesi dovuti = da $start fino a $end (se cancellato) o fino al mese corrente, dentro l'anno sociale.
 	 * I pagamenti sono attribuiti al mese di competenza.
@@ -70,12 +88,15 @@ final class PaymentCalc {
 	 * @param string|null $today_date  data di oggi "YYYY-MM-DD" (serve solo con il giorno della lezione)
 	 * @return array ['months'=>[...], 'total_due', 'total_paid', 'balance', 'regular', 'unpaid_months'=>[...]]
 	 */
-	public static function compute( int $fee, string $start, ?string $end, string $today, SocialYear $year, array $paid_by_month, $weekday = 0, ?string $today_date = null ): array {
+	public static function compute( int $fee, string $start, ?string $end, string $today, SocialYear $year, array $paid_by_month, $weekday = 0, ?string $today_date = null, int $step = 1 ): array {
 		$last_due = ( null === $end ) ? $today : min( $end, $today );
 		$months   = array();
 		$upcoming = null;
+		if ( $step > 1 ) {
+			$paid_by_month = self::group_by_period( $paid_by_month, $start, $step ); // quota a trimestre: un versamento vale per il periodo, qualunque mese sia indicato
+		}
 		foreach ( $year->months() as $m ) {
-			$in_range = $m >= $start && $m <= $last_due;
+			$in_range = $m >= $start && $m <= $last_due && ( $step <= 1 || 0 === self::months_between( $start, $m ) % $step ); // con la quota a periodo è dovuta solo all'inizio di ogni periodo
 			$from     = self::first_lesson( $m, $weekday );
 			$has_days = array_filter( array_map( 'intval', (array) $weekday ) );
 			$reached  = null === $today_date || ! $has_days || $m < $today || $from <= $today_date;

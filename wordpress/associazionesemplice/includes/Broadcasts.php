@@ -161,6 +161,15 @@ final class Broadcasts {
 		return array( 'list' => $list, 'no_email' => $no );
 	}
 
+	/**
+	 * Destinatari degli SMS: chi ha un numero valido e il consenso agli SMS, senza doppioni.
+	 *
+	 * @return array{list:array[],no_phone:int,no_consent:int} list: person_id, phone, name
+	 */
+	public static function sms_recipients( string $audience, int $ref = 0 ): array {
+		return Sms::recipients_from( self::people_of( $audience, $ref ) );
+	}
+
 	// ---------- Invio ----------
 
 	private static function text_for( string $body, string $name ): string {
@@ -170,45 +179,72 @@ final class Broadcasts {
 	}
 
 	/**
-	 * Crea la comunicazione e manda il primo gruppo di email; il resto continua in background.
+	 * Crea la comunicazione e manda il primo gruppo di messaggi; il resto continua in background.
+	 * I canali sono `email` e/o `sms` (l'SMS solo con la funzione SMS, un fornitore configurato e il consenso di ogni destinatario).
 	 *
+	 * @param string[] $channels
 	 * @return int id della comunicazione
 	 * @throws \InvalidArgumentException
 	 */
-	public static function create( string $subject, string $body, string $audience, int $ref = 0 ): int {
+	public static function create( string $subject, string $body, string $audience, int $ref = 0, array $channels = array( 'email' ) ): int {
 		if ( ! Edition::has( 'broadcasts' ) ) {
 			throw new \InvalidArgumentException( Edition::missing_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
+		$channels = array_values( array_intersect( array( 'email', 'sms' ), array_map( 'strval', $channels ) ) );
+		if ( ! $channels ) {
+			throw new \InvalidArgumentException( 'Scegli almeno un canale: email o SMS.' );
+		}
+		$use_email = in_array( 'email', $channels, true );
+		$use_sms   = in_array( 'sms', $channels, true );
+		if ( $use_sms && ! Sms::available() ) {
+			throw new \InvalidArgumentException( 'Gli SMS non sono disponibili: scegli e configura un fornitore in Strumenti → Integrazioni.' );
+		}
 		$subject = trim( (string) preg_replace( '/\s+/', ' ', $subject ) ); // una sola riga: niente a capo nell'oggetto
 		$body    = trim( str_replace( "\r\n", "\n", $body ) );
-		if ( '' === $subject || '' === $body ) {
+		if ( '' === $body || ( $use_email && '' === $subject ) ) {
 			throw new \InvalidArgumentException( 'Scrivi l\'oggetto e il testo del messaggio.' );
+		}
+		if ( '' === $subject ) {
+			$subject = SmsRules::truncate( 'SMS: ' . preg_replace( '/\s+/', ' ', $body ), 60 ); // solo SMS: serve un titolo per lo storico
 		}
 		if ( mb_strlen( $subject ) > self::MAX_SUBJ || mb_strlen( $body ) > self::MAX_BODY ) {
 			throw new \InvalidArgumentException( 'Messaggio troppo lungo: oggetto fino a ' . self::MAX_SUBJ . ' caratteri, testo fino a ' . self::MAX_BODY . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		if ( $use_sms && null !== SmsRules::check_text( $body ) ) {
+			throw new \InvalidArgumentException( (string) SmsRules::check_text( $body ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$db    = self::db();
 		$today = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'broadcasts' ) . ' WHERE created_at >= %s', gmdate( 'Y-m-d H:i:s', strtotime( Db::now() . ' -1 day' ) ) ) );
 		if ( $today >= Limits::get( 'broadcast_per_day' ) ) {
 			throw new \InvalidArgumentException( 'Sono già state inviate ' . Limits::get( 'broadcast_per_day' ) . ' comunicazioni nelle ultime 24 ore: aspetta un po\'.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
-		$r = self::recipients( $audience, $ref );
-		if ( ! $r['list'] ) {
-			throw new \InvalidArgumentException( 'Nessun destinatario con un indirizzo email in questo gruppo.' );
+		$r   = $use_email ? self::recipients( $audience, $ref ) : array( 'list' => array(), 'no_email' => 0 );
+		$sms = $use_sms ? self::sms_recipients( $audience, $ref ) : array( 'list' => array(), 'no_phone' => 0, 'no_consent' => 0 );
+		if ( ! $r['list'] && ! $sms['list'] ) {
+			throw new \InvalidArgumentException( $use_sms && ! $use_email ? 'Nessun destinatario con un numero valido e il consenso agli SMS in questo gruppo.' : 'Nessun destinatario con un indirizzo email in questo gruppo.' );
 		}
 		$db->insert(
 			Db::t( 'broadcasts' ),
 			array(
-				'subject' => $subject, 'body' => $body, 'audience' => mb_substr( $audience, 0, 40 ), 'audience_ref' => $ref ?: null, 'status' => 'sending', 'total' => count( $r['list'] ),
-				'sent' => 0, 'failed' => 0, 'created_by' => get_current_user_id() ?: null, 'created_at' => Db::now(),
+				'subject' => $subject, 'body' => $body, 'audience' => mb_substr( $audience, 0, 40 ), 'audience_ref' => $ref ?: null, 'status' => $r['list'] ? 'sending' : 'done', 'total' => count( $r['list'] ),
+				'sent' => 0, 'failed' => 0, 'created_by' => get_current_user_id() ?: null, 'created_at' => Db::now(), 'finished_at' => $r['list'] ? null : Db::now(),
 			)
 		);
 		$id = (int) $db->insert_id;
 		foreach ( $r['list'] as $x ) {
 			$db->insert( Db::t( 'broadcast_rcpt' ), array( 'broadcast_id' => $id, 'person_id' => $x['person_id'], 'email' => mb_substr( $x['email'], 0, 190 ), 'name' => mb_substr( $x['name'], 0, 120 ), 'status' => 'queued' ) );
 		}
-		Audit::log( 'broadcast.created', 'broadcast', $id, array( 'audience' => $audience, 'recipients' => count( $r['list'] ) ) ); // senza il testo
-		self::process( $id );
+		$assoc = (string) Settings::get( 'association_name' );
+		foreach ( $sms['list'] as $x ) {
+			Sms::enqueue( $x['person_id'], $x['phone'], $x['name'], SmsRules::personalize( $body, (string) strtok( $x['name'], ' ' ), $assoc ), 'broadcast', $id );
+		}
+		Audit::log( 'broadcast.created', 'broadcast', $id, array( 'audience' => $audience, 'recipients' => count( $r['list'] ), 'sms' => count( $sms['list'] ) ) ); // senza il testo
+		if ( $r['list'] ) {
+			self::process( $id );
+		}
+		if ( $sms['list'] ) {
+			Sms::process( null, $id );
+		}
 		return $id;
 	}
 

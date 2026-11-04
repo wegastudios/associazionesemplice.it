@@ -29,9 +29,9 @@
 .asemf-bad { color: var(--asemf-bad); font-weight: 600; }
 
 /* Struttura */
-.asemf-area { display: grid; gap: 1.5rem; }
+.asemf-area { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
 .asemf-hello { font-size: 1.1em; margin-bottom: .75rem; }
-.asemf-section { border: 1px solid var(--asemf-line); border-radius: var(--asemf-radius); padding: 1rem 1.25rem; }
+.asemf-section { border: 1px solid var(--asemf-line); border-radius: var(--asemf-radius); padding: 1rem 1.25rem; box-sizing: border-box; max-width: 100%; min-width: 0; }
 .asemf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 1rem; }
 .asemf-card { border: 1px solid var(--asemf-line); border-radius: var(--asemf-radius); padding: 1rem 1.25rem; background: var(--asemf-soft); }
 .asemf-card h3 { margin-top: .4em; }
@@ -172,4 +172,34 @@
 	.asemf-sidenav { position: static; }
 	.asemf-sidenav ul { display: flex; flex-wrap: wrap; }
 	.asemf-sidenav li + li { border-top: 0; border-left: 1px solid var(--asemf-line); }
+}
+.asemf-memcard-roles { font-size: .9em; opacity: .9; margin-top: .2em; }
+.asemf-memcard-text { font-size: .9em; margin-top: .4em; font-style: italic; }
+
+/* Convenzioni */
+.asemf-conv-filter { margin: .5rem 0 1rem; display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.asemf-conv-list > li { display: block; }
+.asemf-conv-head { display: flex; gap: .8rem; align-items: flex-start; }
+.asemf-conv-logo { width: 56px; height: 56px; object-fit: contain; flex: 0 0 auto; border-radius: 6px; background: #fff; }
+.asemf-conv-code { font-size: 1.15em; letter-spacing: .04em; }
+
+/* Telefono: barra di salto alle sezioni, invito all'app e tocchi da 44 px */
+.asemf-jump { display: none; min-width: 0; max-width: 100%; }
+.asemf-tip { border: 1px solid var(--asemf-accent); border-radius: var(--asemf-radius); background: var(--asemf-soft); padding: .8rem 1.1rem; margin: 1rem 0; }
+.asemf-tip p { margin: 0 0 .5rem; }
+.asemf-tip .asemf-tip-actions { margin: 0; display: flex; gap: .5rem; flex-wrap: wrap; }
+.asemf-tip[hidden], .asemf-tip [hidden] { display: none; }
+.asemf-section[id] { scroll-margin-top: calc(var(--asemf-off, 0px) + .75rem); }
+@media (max-width: 700px) {
+	.asemf-jump { display: block; position: sticky; top: 0; z-index: 20; margin: 0 -1px 1rem; background: var(--asemf-bg, #fff); border-bottom: 1px solid var(--asemf-line); }
+	.asemf-jump ul { display: flex; gap: .5rem; list-style: none; margin: 0; padding: .5rem 0; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+	.asemf-jump ul::-webkit-scrollbar { display: none; }
+	.asemf-jump a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 1rem; border: 1px solid var(--asemf-line); border-radius: 999px; text-decoration: none; color: inherit; white-space: nowrap; }
+	.asemf-jump a:active { background: var(--asemf-soft); }
+	.asemf .asemf-btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+	.asemf-area a, .asemf-section a, .asemf-section button { min-height: 44px; }
+	.asemf-section a:not(.asemf-btn) { display: inline-flex; align-items: center; }
+	.asemf-section p a:not(.asemf-btn), .asemf-section li a:not(.asemf-btn), .asemf-section dd a { display: inline; min-height: 0; padding: .6em 0; }
+	.asemf-section input:not([type=checkbox]):not([type=radio]), .asemf-section select, .asemf-section textarea { min-height: 44px; font-size: 16px; } /* 16 px: iOS non zooma nei campi */
+	.asemf-print-wrap { display: flex; gap: .5rem; flex-wrap: wrap; } .asemf-print-wrap .asemf-btn { flex: 1 1 8rem; }
 }

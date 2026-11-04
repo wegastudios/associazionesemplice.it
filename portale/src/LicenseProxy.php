@@ -45,11 +45,17 @@ final class LicenseProxy {
 		$ck  = hash( 'sha256', $key . '|' . $dom );
 		$hit = $this->db->one( 'SELECT body, at FROM proxy_cache WHERE k = ?', array( $ck ) );
 		if ( $hit && $now - (int) strtotime( $hit['at'] . ' UTC' ) < self::CACHE_TTL ) {
+			$this->seen( (string) $hit['body'], $now );
 			return array( 200, (string) $hit['body'], array() );
 		}
 
 		try {
-			$data = $this->wega->validate( $key, $dom );
+			// La licenza è legata al dominio registrabile e vale per tutti i suoi sottodomini (staging, test, clone…).
+			$reg  = Domain::registrable( $dom );
+			$data = $this->wega->validate( $key, $reg );
+			if ( empty( $data['valid'] ) && 'DOMAIN_MISMATCH' === ( $data['reason_code'] ?? '' ) && $reg !== $dom ) {
+				$data = $this->wega->validate( $key, $dom ); // licenze legate a un sottodominio esatto (emesse prima)
+			}
 		} catch ( WegaException $e ) {
 			// Errori del client (4xx) si girano com'erano; rete e server diventano 502, così il plugin tiene lo stato precedente.
 			if ( $e->httpStatus >= 400 && $e->httpStatus < 500 && 429 !== $e->httpStatus && 401 !== $e->httpStatus && 403 !== $e->httpStatus ) {
@@ -59,10 +65,36 @@ final class LicenseProxy {
 			return $this->error( 502, 'UPSTREAM', 'Server licenze non raggiungibile.' );
 		}
 
+		// Il livello lo decide e lo firma il portale (tabella dei piani e degli acquisti), non il nome del piano scritto su Wega.
+		$portal = PortalAttestation::forResponse( $this->db, $data, $now );
+		if ( null !== $portal ) {
+			$data['portal_attestation'] = $portal;
+		}
 		$body = (string) json_encode( $data );
+		$this->seen( $body, $now );
 		$this->db->run( 'DELETE FROM proxy_cache WHERE k = ?', array( $ck ) );
 		$this->db->run( 'INSERT INTO proxy_cache (k, body, at) VALUES (?,?,?)', array( $ck, $body, gmdate( 'Y-m-d H:i:s', $now ) ) );
 		return array( 200, $body, array() );
+	}
+
+	/**
+	 * Ultime versioni pubblicate dei plugin, per l'avviso «ci sono aggiornamenti». Pubblico: il plugin non manda né chiave né dati del sito.
+	 * Il link porta all'accesso (gli zip non hanno indirizzi pubblici). @return array [codice, corpo JSON, intestazioni]
+	 */
+	public function latest( string $ip, ?int $now = null ): array {
+		$now = $now ?? time();
+		if ( ! $this->allow( 'plugin:' . hash( 'sha256', $ip ), gmdate( 'YmdH', $now ), Settings::limit( 'proxy_ip' ), $now ) ) {
+			return $this->error( 429, 'RATE_LIMITED', 'Troppe richieste: riprova più tardi.', array( 'Retry-After: 3600' ) );
+		}
+		$url = rtrim( (string) Config::get( 'base_url', 'https://associazionesemplice.it' ), '/' ) . '/accedi';
+		$out = array();
+		foreach ( array_keys( Releases::PRODUCTS ) as $p ) {
+			$all = Releases::all( $this->db, $p );
+			if ( $all ) {
+				$out[ $p ] = array( 'version' => $all[0]['version'], 'url' => $url );
+			}
+		}
+		return array( 200, (string) json_encode( (object) $out ), array( 'Cache-Control: public, max-age=300' ) );
 	}
 
 	/** Chiavi pubbliche di Wega, in cache; se Wega non risponde si usa l'ultima copia. @return array [codice, corpo, intestazioni] */
@@ -85,19 +117,26 @@ final class LicenseProxy {
 		return $this->error( 502, 'UPSTREAM', 'Chiavi non disponibili.' );
 	}
 
+	/** Una verifica valida conta come accesso: serve al rinnovo automatico delle licenze gratuite. */
+	private function seen( string $body, int $now ): void {
+		$j = json_decode( $body, true );
+		if ( is_array( $j ) && ! empty( $j['valid'] ) && ! empty( $j['license_id'] ) ) {
+			$this->db->run( 'UPDATE subscriptions SET last_seen_at = ? WHERE license_id = ?', array( gmdate( 'Y-m-d H:i:s', $now ), (string) $j['license_id'] ) );
+		}
+	}
+
 	/** Conta una richiesta nella finestra oraria; false se supera il limite. */
+	/** Conta una richiesta pubblica (aggiornamenti, ecc.) per IP nella finestra oraria; false se supera il limite delle verifiche. */
+	public function hit( string $kind, string $ip, ?int $now = null ): bool {
+		$now = $now ?? time();
+		return $this->allow( $kind . ':' . hash( 'sha256', $ip ), gmdate( 'YmdH', $now ), Settings::limit( 'proxy_ip' ), $now );
+	}
+
 	private function allow( string $bucket, string $hour, int $max, int $ref ): bool {
 		$this->db->run( 'DELETE FROM rate_limits WHERE hour < ?', array( gmdate( 'YmdH', $ref - 7200 ) ) );
-		$row = $this->db->one( 'SELECT n FROM rate_limits WHERE bucket = ? AND hour = ?', array( $bucket, $hour ) );
-		if ( ! $row ) {
-			$this->db->run( 'INSERT INTO rate_limits (bucket, hour, n) VALUES (?,?,1)', array( $bucket, $hour ) );
-			return true;
-		}
-		if ( (int) $row['n'] >= $max ) {
-			return false;
-		}
-		$this->db->run( 'UPDATE rate_limits SET n = n + 1 WHERE bucket = ? AND hour = ?', array( $bucket, $hour ) );
-		return true;
+		// La memoria delle verifiche non cresce all'infinito (le chiavi pubbliche si rileggono comunque).
+		$this->db->run( "DELETE FROM proxy_cache WHERE at < ? AND k <> 'jwks'", array( gmdate( 'Y-m-d H:i:s', $ref - 86400 ) ) );
+		return RateLimit::take( $this->db, $bucket, $hour, $max, $ref ); // conteggio atomico: richieste parallele non superano il limite
 	}
 
 	private function error( int $status, string $code, string $message, array $headers = array() ): array {

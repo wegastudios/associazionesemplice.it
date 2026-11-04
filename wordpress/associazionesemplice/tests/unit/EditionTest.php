@@ -8,11 +8,22 @@ final class EditionTest extends TestCase {
 		$this->assertFalse( Edition::has( 'nonexistent' ) );
 	}
 
-	public function test_features_map_points_to_existing_files_in_the_full_code(): void {
-		foreach ( Edition::FEATURES as $feature => $file ) {
-			$this->assertNotNull( Edition::locate( $file ), $feature . ' (' . $file . ')' );
-			$this->assertTrue( Edition::has( $feature ) );
-		}
+	public function test_a_registered_feature_exists_only_if_its_file_does(): void {
+		$dir = sys_get_temp_dir() . '/asem-edition-reg-' . bin2hex( random_bytes( 4 ) );
+		mkdir( $dir . '/includes', 0777, true );
+		file_put_contents( $dir . '/includes/Feat.php', '<?php' );
+		Edition::add_dir( $dir . '/includes' );
+		$this->assertFalse( Edition::pro_present() && Edition::has( 'zz_feature' ), 'prima di registrare non c\'è' );
+		Edition::register( array( 'zz_feature' => 'Feat.php', 'zz_missing' => 'Nope.php' ), array( 'zz_feature' => array( 'asem-zz' ), 'zz_missing' => array( 'asem-zz-missing' ) ), array( 'zz_feature' => array( 'asem_zz_action' ) ) );
+		$this->assertTrue( Edition::pro_present() );
+		$this->assertTrue( Edition::has( 'zz_feature' ) );
+		$this->assertFalse( Edition::has( 'zz_missing' ) );
+		$this->assertSame( array( 'asem_zz_action' ), Edition::actions()['zz_feature'] );
+		$this->assertContains( 'asem-zz-missing', Edition::missing_pages() );
+		$this->assertNotContains( 'asem-zz', Edition::missing_pages() );
+		unlink( $dir . '/includes/Feat.php' );
+		rmdir( $dir . '/includes' );
+		rmdir( $dir );
 	}
 
 	public function test_extra_directory_is_searched_for_classes(): void {

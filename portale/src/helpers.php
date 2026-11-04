@@ -5,7 +5,7 @@
 function sub_status( array $s ): array {
 	$exp = ! empty( $s['expires_at'] ) ? strtotime( $s['expires_at'] . ' UTC' ) : 0;
 	if ( 'canceled' === $s['status'] ) {
-		return array( 'Annullato', 'warn' );
+		return array( 'Annullata', 'warn' );
 	}
 	if ( 'merged' === $s['status'] ) {
 		return array( 'Rinnovo registrato', '' );
@@ -30,7 +30,7 @@ function sub_kind( array $s ): string {
 		case 'trial':
 			return 'Prova';
 		case 'manual':
-			return 'Manuale';
+			return 'Assegnata manualmente';
 	}
 	$who = 'stripe' === $s['provider'] ? 'Carta' : 'PayPal';
 	return $who . ' · ' . ( 'once' === ( $s['mode'] ?? 'recurring' ) ? 'singolo' : ( 'year' === $s['period'] ? 'annuale ricorrente' : 'mensile ricorrente' ) );
@@ -43,4 +43,25 @@ function money( $cents ): string {
 
 function date_it( ?string $utc ): string {
 	return $utc ? date( 'd/m/Y', strtotime( $utc . ' UTC' ) ) : '—';
+}
+
+/**
+ * Gestore `onsubmit` che chiede conferma. Il messaggio può contenere dati (email, domini): va passato come stringa JavaScript
+ * vera (json_encode) e poi come attributo HTML; e() da solo non basta, perché il browser decodifica &#039; prima di eseguire lo script.
+ */
+function js_confirm( string $message ): string {
+	return e( 'return confirm(' . json_encode( $message, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT ) . ')' );
+}
+
+/**
+ * Fumetto di aiuto: un piccolo «?» che apre una nuvoletta con la spiegazione (clic o tastiera; si chiude con Esc o fuori).
+ * Il testo è semplice: **grassetto** e a capo con una riga vuota; tutto il resto viene reso innocuo.
+ */
+function tip( string $text, string $title = '' ): string {
+	$body = preg_replace( '/\*\*(.+?)\*\*/s', '<strong>$1</strong>', e( $text ) );
+	$body = preg_replace( '/\n{2,}/', '</p><p>', trim( $body ) );
+	static $n = 0;
+	++$n;
+	return '<span class="tip"><button type="button" class="tip-btn" aria-label="Spiegazione: ' . e( $title ?: 'aiuto' ) . '" aria-expanded="false" aria-controls="tip' . $n . '">?</button>'
+		. '<span class="tip-bubble" id="tip' . $n . '" role="note" hidden>' . ( '' !== $title ? '<b class="tip-title">' . e( $title ) . '</b>' : '' ) . '<p>' . $body . '</p></span></span>';
 }

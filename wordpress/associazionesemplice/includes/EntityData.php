@@ -24,18 +24,6 @@ final class EntityData {
 		};
 		$vals = array();
 
-		if ( Edition::has( 'texts' ) && ( $has( 'entity_type' ) || $has( 'member_term' ) ) ) { // tipo di ente e termini: funzione di Associazione Semplice Pro
-			$ent = mb_strtolower( trim( $txt( 'entity_type' ) ), 'UTF-8' );
-			$mem = mb_strtolower( trim( $txt( 'member_term' ) ), 'UTF-8' );
-			if ( ! isset( Terms::entity_types( (string) Settings::get( 'entity_types_custom' ) )[ $ent ] ) ) {
-				throw new \InvalidArgumentException( 'Scegli un tipo di ente dall\'elenco.' );
-			}
-			if ( ! isset( Terms::member_terms( (string) Settings::get( 'member_terms_custom' ) )[ $mem ] ) ) {
-				throw new \InvalidArgumentException( 'Scegli un termine per chi partecipa dall\'elenco.' );
-			}
-			$vals['entity_type'] = $ent;
-			$vals['member_term'] = $mem;
-		}
 		foreach ( array( 'association_name', 'runts_number', 'legal_address', 'legal_zip', 'legal_city', 'legal_province' ) as $k ) {
 			if ( $has( $k ) ) {
 				$vals[ $k ] = $txt( $k );
@@ -58,20 +46,6 @@ final class EntityData {
 			}
 			$vals['pec'] = $pec;
 		}
-		if ( $has( 'has_vat' ) ) { // la partita IVA e tutto ciò che ne dipende si legge insieme
-			$on = ! empty( $p['has_vat'] );
-			$vat = Fiscal::normalize_vat( $txt( 'vat_number' ) );
-			if ( $on && ! Fiscal::is_valid_vat( $vat ) ) {
-				throw new \InvalidArgumentException( 'La partita IVA non è valida: sono 11 cifre, l\'ultima è di controllo.' );
-			}
-			$vals['has_vat']             = $on ? 1 : 0;
-			$vals['vat_number']          = $on ? $vat : '';
-			$vals['fiscal_regime']       = $txt( 'fiscal_regime' );
-			$vals['vat_default_rate']    = (int) ( $p['vat_default_rate'] ?? 22 );
-			$vals['vat_prices_mode']     = $txt( 'vat_prices_mode' );
-			$vals['vat_membership_rate'] = $on ? ( $p['vat_membership_rate'] ?? '' ) : '';
-			$vals['sdi_code']            = $txt( 'sdi_code' );
-		}
-		return $vals;
+		return (array) apply_filters( 'asem_entity_values', $vals, $p, $full ); // le estensioni leggono e controllano i loro campi
 	}
 }

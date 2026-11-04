@@ -22,7 +22,15 @@ final class Notices {
 
 	/** Chi può inviare avvisi per un'attività: il referente, chi gestisce l'evento, gli amministratori. */
 	public static function can_send( int $activity_id ): bool {
-		return current_user_can( 'asem_notify_activity', $activity_id ) || current_user_can( 'asem_manage_event', $activity_id );
+		if ( current_user_can( 'asem_notify_activity', $activity_id ) ) {
+			return true;
+		}
+		if ( ! current_user_can( 'asem_manage_event', $activity_id ) ) {
+			return false;
+		}
+		// Lo staff dell'ente verifica gli ingressi di tutti gli eventi, ma gli avvisi li manda solo a quelli di cui è anche staff dell'evento.
+		$me = Access::current_person();
+		return ! Access::is_entity_staff( get_current_user_id() ) || ( $me && Plugin::activities()->is_staff( $activity_id, (int) $me['id'] ) );
 	}
 
 	/**
@@ -65,8 +73,10 @@ final class Notices {
 	 * @return array[] ['email' => , 'name' => ]
 	 */
 	public static function recipients( int $activity_id, ?int $session_id = null ): array {
-		$out = array();
-		foreach ( self::participants( $activity_id, $session_id ) as $p ) {
+		$out          = array();
+		$participants = self::participants( $activity_id, $session_id );
+		$guardians    = Guardians::map_for( array_column( $participants, 'id' ) ); // i tutori di tutti i partecipanti in una sola interrogazione
+		foreach ( $participants as $p ) {
 			$email = (string) $p['email'];
 			$name  = trim( $p['first_name'] . ' ' . $p['last_name'] );
 			if ( '' === $email && MemberType::GUEST === $p['type'] && ! empty( $p['host_person_id'] ) ) {
@@ -78,6 +88,11 @@ final class Notices {
 			}
 			if ( '' !== $email && is_email( $email ) ) {
 				$out[ Text::lower( $email ) ] = array( 'email' => $email, 'name' => $name );
+			}
+			foreach ( Guardians::recipients( $p, $guardians[ (int) $p['id'] ] ?? array() ) as $g ) { // di un minore ricevono l'avviso anche i tutori
+				if ( '' !== $g['about'] ) {
+					$out[ Text::lower( $g['email'] ) ] = array( 'email' => $g['email'], 'name' => $g['name'] );
+				}
 			}
 		}
 		return array_values( $out );
@@ -142,9 +157,7 @@ final class Notices {
 			if ( \AssociazioneSemplice\Texts::mail( $r['email'], ( '' !== $assoc ? '[' . $assoc . '] ' : '' ) . $a['name'] . ': ' . $subject, $text ) ) {
 				$sent++;
 			}
-			if ( Edition::has( 'pwa' ) ) { // notifica sul telefono, se l'app c'è
-				\AssociazioneSemplice\Push::notify_email( (string) $r['email'], $a['name'] . ': ' . $subject, $body );
-			}
+			do_action( 'asem_notify_email', (string) $r['email'], $a['name'] . ': ' . $subject, $body ); // notifica sul telefono, se un'estensione la gestisce
 		}
 		$db->update( Db::t( 'notices' ), array( 'emailed' => $sent ), array( 'id' => $id ) );
 		Audit::log( 'notice.sent', 'activity', $activity_id, array( 'notice' => $id, 'recipients' => count( $rcpt ), 'emailed' => $sent ) ); // senza il testo
@@ -164,7 +177,7 @@ final class Notices {
 	 */
 	public static function board( int $person_id, int $limit = 10 ): array {
 		$people = array( $person_id );
-		foreach ( Plugin::people()->guests_of( $person_id ) as $g ) {
+		foreach ( Plugin::people()->managed_by( $person_id ) as $g ) {
 			$people[] = (int) $g['id'];
 		}
 		$acts  = array();

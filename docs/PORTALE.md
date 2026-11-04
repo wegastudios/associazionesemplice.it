@@ -20,7 +20,7 @@ I giorni in più rispetto al periodo (31/366) coprono i ritardi di pagamento; il
 
 - Licenza free: `/free` (email + dominio) → email con link → conferma → la chiave compare in `/account`. La licenza si emette solo dopo la conferma.
 - Acquisto: `/acquista?plan=full&period=year` → Stripe Checkout o PayPal → webhook → licenza emessa → email con il link per vedere la chiave.
-- Area riservata `/account`: chiave, scadenza, **cambio dominio** (`PUT /licenses/{id}/binding`, max 3 ogni 30 giorni), disdetta del rinnovo, carta e fatture (portale Stripe).
+- Area riservata `/account`: chiave, scadenza, **cambio dominio** (`PUT /licenses/{id}/binding`; il cambio è libero, poi la chiave resta bloccata `domain_lock_days` giorni, 180 di default, regola del portale; il personale può sempre cambiarlo dal pannello; Wega aggiunge solo il suo limite di sicurezza di 3 cambi ogni 30 giorni), disdetta del rinnovo, carta e fatture (portale Stripe).
 - Accesso: **email e password** (`/accedi`). Il link per email (monouso, 15 minuti; apre una pagina con pulsante così gli antispam non lo consumano) resta per il primo accesso e per la password dimenticata: entrando dal link si sceglie la password dall'area riservata senza digitare la vecchia. Password salvata come impronta bcrypt (con pre-impronta SHA-256: nessun limite di 72 byte), minimo 10 caratteri e dopo 5 errori/ora per email (4 volte tanto per IP) l'accesso con password si ferma; i limiti sono in Impostazioni → «Accesso dei clienti». Stesso errore per email sconosciuta e password sbagliata.
 
 ## Pagamenti: ricorrenti, singoli, prova
@@ -66,7 +66,7 @@ Da fare:
 1. Creare su Stripe i prezzi ricorrenti e su PayPal i piani, poi compilare `stripe_price` / `paypal_plan` (da `config.php` o da `/admin/prezzi`); token Wega con scope `licenses:create`, `licenses:read`, `licenses:change-binding` e tipo 3 abilitato.
 2. Passare il plugin al rimbalzo (vedi sotto): così non serve nessuna credenziale nel plugin. I nomi dei piani inviati al server devono contenere Free, Lite o Full.
 3. Prova su staging dei percorsi reali (acquisto, rinnovo, webhook, prova Pro) con le chiavi di test.
-4. Cambio piano (da Lite a Full) a metà periodo, rimborsi e fatturazione elettronica: non ancora gestiti.
+4. Rimborsi e fatturazione elettronica: non ancora gestiti. Cambio piano: vedi sotto (con PayPal ricorrente non è ancora automatico).
 
 ## Chiavi, cookie e pagine legali (dal pannello)
 

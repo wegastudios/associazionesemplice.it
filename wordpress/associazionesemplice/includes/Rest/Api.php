@@ -4,10 +4,10 @@ namespace AssociazioneSemplice\Rest;
 use AssociazioneSemplice\Access;
 use AssociazioneSemplice\ActivityKind;
 use AssociazioneSemplice\Edition;
+use AssociazioneSemplice\MemberSession;
 use AssociazioneSemplice\MemberType;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Settings;
-use AssociazioneSemplice\StripeWebhook;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -29,9 +29,7 @@ final class Api {
 			return self::guard();
 		};
 		self::event_routes( $logged_in );
-		if ( Edition::installed( 'payments' ) ) {
-			register_rest_route( self::NS, '/webhooks/stripe', array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'stripe_webhook' ), 'permission_callback' => '__return_true' ) );
-		}
+		do_action( 'asem_rest_routes', self::NS, $logged_in ); // un'estensione registra qui le sue rotte
 		register_rest_route( self::NS, '/me', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'me' ), 'permission_callback' => $logged_in ) );
 		register_rest_route( self::NS, '/me/activities', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'my_activities' ), 'permission_callback' => $logged_in ) );
 		register_rest_route(
@@ -65,11 +63,18 @@ final class Api {
 	 * @return true|false|\WP_Error
 	 */
 	private static function guard( ?string $ability = null, int $object_id = 0 ) {
-		if ( ! is_user_logged_in() ) {
+		if ( ! MemberSession::logged_in() ) {
 			return false;
 		}
+		// Con l'accesso proprio le richieste che modificano qualcosa devono portare il token della sessione (intestazione X-ASEM-CSRF).
+		if ( MemberSession::is_own_session() && ! in_array( isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) ) : 'GET', array( 'GET', 'HEAD' ), true ) ) {
+			$tok = isset( $_SERVER['HTTP_X_ASEM_CSRF'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_ASEM_CSRF'] ) ) : '';
+			if ( ! MemberSession::check_csrf( 'rest', $tok ) ) {
+				return false;
+			}
+		}
 		if ( ! Access::is_admin_user( get_current_user_id() ) && ! Edition::allows( 'member_area' ) ) {
-			return new \WP_Error( 'asem_license_required', 'Servizio sospeso: la licenza dell\'associazione non risulta attiva.', array( 'status' => 403 ) );
+			return new \WP_Error( 'asem_suspended', 'Servizio sospeso.', array( 'status' => 403 ) );
 		}
 		return null === $ability ? true : current_user_can( $ability, $object_id );
 	}
@@ -103,7 +108,7 @@ final class Api {
 	}
 
 	public static function my_bookings() {
-		$person = Access::person_for_user( get_current_user_id() );
+		$person = Access::current_person();
 		if ( ! $person ) {
 			return new \WP_Error( 'asem_no_person', 'Questo utente non è collegato a un socio.', array( 'status' => 404 ) );
 		}
@@ -154,26 +159,12 @@ final class Api {
 		return rest_ensure_response( array( 'session' => array( 'id' => (int) $s['id'], 'date' => $s['session_date'], 'activity_id' => (int) $s['activity_id'] ), 'bookings' => $rows ) );
 	}
 
-	/** Webhook di Stripe: pubblico ma accettato solo con firma valida (segreto del webhook impostato nel pannello). */
-	public static function stripe_webhook( \WP_REST_Request $r ) {
-		$payload = (string) $r->get_body();
-		$secret  = Settings::secret( 'stripe_webhook_secret' );
-		if ( ! StripeWebhook::verify( $payload, (string) $r->get_header( 'stripe-signature' ), $secret, time() ) ) {
-			return new \WP_Error( 'asem_bad_signature', 'Firma non valida.', array( 'status' => 400 ) );
-		}
-		$event = json_decode( $payload, true );
-		if ( ! is_array( $event ) ) {
-			return new \WP_Error( 'asem_bad_payload', 'Contenuto non valido.', array( 'status' => 400 ) );
-		}
-		return rest_ensure_response( array( 'received' => true, 'result' => Plugin::payments_engine()->handle_stripe_event( $event ) ) );
-	}
-
 	// ---------- Forme di output ----------
 
 	/** Scheda di una persona con la validità della tessera. */
 	private static function shape_person( array $p, bool $with_contacts = true ): array {
 		$people = Plugin::people();
-		$until  = MemberType::GUEST === $p['type'] ? null : $people->active_until( (int) $p['id'] );
+		$until  = ! MemberType::is_member( $p['type'] ) ? null : $people->active_until( (int) $p['id'] );
 		$out    = array(
 			'id'           => (int) $p['id'],
 			'type'         => $p['type'],
@@ -213,10 +204,11 @@ final class Api {
 
 	public static function me() {
 		$user   = wp_get_current_user();
-		$person = Access::person_for_user( (int) $user->ID );
+		$person = Access::current_person(); // l'utente WordPress collegato oppure la persona dell'accesso proprio
+		$name   = (int) $user->ID > 0 ? $user->display_name : ( $person ? trim( $person['first_name'] . ' ' . $person['last_name'] ) : '' );
 		return rest_ensure_response(
 			array(
-				'user'        => array( 'id' => (int) $user->ID, 'name' => $user->display_name ),
+				'user'        => array( 'id' => (int) $user->ID, 'name' => $name ),
 				'is_admin'    => Access::is_admin_user( (int) $user->ID ),
 				'person'      => $person ? self::shape_person( $person ) : null,
 				'is_volunteer' => $person && MemberType::can_teach( $person['type'] ),
@@ -227,7 +219,7 @@ final class Api {
 	}
 
 	public static function my_activities() {
-		$person = Access::person_for_user( get_current_user_id() );
+		$person = Access::current_person();
 		if ( ! $person ) {
 			return new \WP_Error( 'asem_no_person', 'Questo utente non è collegato a un socio.', array( 'status' => 404 ) );
 		}

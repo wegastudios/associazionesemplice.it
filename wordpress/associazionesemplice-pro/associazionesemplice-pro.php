@@ -3,7 +3,7 @@
  * Plugin Name:       Associazione Semplice Pro
  * Description:       Funzioni avanzate per Associazione Semplice: pagamenti online, conti e fondi, contabilità e report, registri, comunicazioni, app e Wallet. Richiede Associazione Semplice.
  * Plugin URI:        https://associazionesemplice.it
- * Version:           1.1.5
+ * Version:           1.3.2
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Requires Plugins:  associazionesemplice
@@ -15,8 +15,8 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ASEM_PRO_VERSION', '1.1.5' );
-define( 'ASEM_PRO_API', 1 ); // livello di compatibilità richiesto: deve coincidere con ASEM_API di Associazione Semplice
+define( 'ASEM_PRO_VERSION', '1.3.2' );
+define( 'ASEM_PRO_API', 16 ); // livello di compatibilità richiesto: deve coincidere con ASEM_API di Associazione Semplice
 define( 'ASEM_PRO_DIR', plugin_dir_path( __FILE__ ) );
 
 /**
@@ -42,6 +42,8 @@ register_activation_hook(
 	function () {
 		if ( '' === asem_pro_problem() ) {
 			\AssociazioneSemplice\Edition::add_dir( plugin_dir_path( __FILE__ ) . 'includes' );
+			\AssociazioneSemplice\ProBoot::init(); // le funzioni devono essere dichiarate prima di creare i loro dati di partenza
+			\AssociazioneSemplice\ProSchema::create(); // le tabelle delle funzioni aggiuntive
 			\AssociazioneSemplice\Install::seed();
 		}
 	}
@@ -67,6 +69,19 @@ add_action(
 			return;
 		}
 		\AssociazioneSemplice\Edition::add_dir( ASEM_PRO_DIR . 'includes' );
+		if ( '' === \AssociazioneSemplice\Edition::mismatch() ) {
+			\AssociazioneSemplice\ProBoot::init(); // dichiara le funzioni e si aggancia ai punti di estensione
+		}
 	},
 	5 // prima che Associazione Semplice si avvii (priorità 10)
+);
+
+// Alla disattivazione si tolgono i lavori periodici della licenza e degli aggiornamenti.
+register_deactivation_hook(
+	__FILE__,
+	function () {
+		foreach ( array( 'asem_license_check', 'asem_update_check', 'asem_license_resync' ) as $hook ) {
+			wp_clear_scheduled_hook( $hook );
+		}
+	}
 );

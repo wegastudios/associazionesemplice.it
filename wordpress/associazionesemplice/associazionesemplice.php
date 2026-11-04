@@ -1,22 +1,21 @@
 <?php
 /**
  * Plugin Name:       Associazione Semplice
- * Description:       Gestione di soci, attività, prima nota, cassa e bilancio per associazioni di promozione sociale (APS).
+ * Description:       Soci, eventi e corsi, prima nota e privacy per le associazioni del Terzo settore (APS ed ETS).
  * Plugin URI:        https://associazionesemplice.it
- * Version:           1.1.14
+ * Version:           1.3.9
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Wega Studios
- * Author URI:        https://www.wegastudios.com
- * Domain Path:       /languages
+ * Author URI:        https://profiles.wordpress.org/wegastudios/
  * License:           GPL-2.0-or-later
  * Text Domain:       associazionesemplice
  */
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'ASEM_VERSION', '1.1.14' );
-define( 'ASEM_API', 1 ); // livello di compatibilità con Associazione Semplice Pro: cambia solo se cambia ciò che i due plugin si scambiano
+define( 'ASEM_VERSION', '1.3.9' );
+define( 'ASEM_API', 16 ); // livello di compatibilità con Associazione Semplice Pro: cambia solo se cambia ciò che i due plugin si scambiano
 define( 'ASEM_FILE', __FILE__ );
 define( 'ASEM_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ASEM_URL', plugin_dir_url( __FILE__ ) );
@@ -47,7 +46,5 @@ register_deactivation_hook(
 	__FILE__,
 	function () {
 		wp_clear_scheduled_hook( 'asem_check_pending_payments' );
-		wp_clear_scheduled_hook( 'asem_license_check' );
-		wp_clear_scheduled_hook( 'asem_update_check' );
 	}
 );

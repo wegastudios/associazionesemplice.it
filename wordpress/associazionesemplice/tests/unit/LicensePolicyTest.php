@@ -46,4 +46,11 @@ final class LicensePolicyTest extends TestCase {
 		$this->assertContains( 'export', License::FEATURES );
 		$this->assertContains( 'member_area', License::FEATURES );
 	}
+
+	public function test_unverified_license_suspends_pro_features_with_its_own_message(): void {
+		$this->assertContains( P::STATUS_UNVERIFIED, P::penalized_statuses() );
+		$r = P::evaluate( P::STATUS_UNVERIFIED, '2026-10-01', '2026-10-20' );
+		$this->assertSame( License::FEATURES, $r['blocked'] );
+		$this->assertStringContainsString( 'verificare', P::message( P::STATUS_UNVERIFIED ) );
+	}
 }
