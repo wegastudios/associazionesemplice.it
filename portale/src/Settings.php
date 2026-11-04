@@ -11,7 +11,7 @@ final class Settings {
 	const LIMITS = array(
 		'duration_month' => array( 31, 28, 62, 'Giorni di validità della licenza a ogni pagamento mensile. Se alzi: il cliente ha più margine ma una disdetta o un mancato pagamento lascia la licenza attiva più a lungo. Se abbassi: un pagamento in ritardo la fa scadere prima.' ),
 		'duration_year'  => array( 366, 360, 400, 'Giorni di validità a ogni pagamento annuale. Stesso compromesso del mensile.' ),
-		'duration_free'  => array( 3650, 30, 3650, 'Giorni di validità della licenza gratuita. Se abbassi: le licenze gratuite scadono prima e vanno rinnovate (a mano).' ),
+		'duration_free'  => array( 30, 30, 3650, 'Giorni di validità della licenza gratuita: alla scadenza si rinnova da sola solo dopo un accesso recente (vedi «Rinnovo gratuito: giorni senza accessi»), altrimenti scade. Se alzi: una licenza abbandonata resta valida più a lungo prima di scadere. Se abbassi: nessun effetto sulle licenze in uso, ma il rinnovo automatico scatta più spesso (minimo 30).' ),
 		'renew_window'   => array( 5, 1, 30, 'Un pagamento PayPal conta come rinnovo solo negli ultimi N giorni di validità. Se alzi: un primo pagamento tardivo potrebbe contare due volte. Se abbassi: un rinnovo anticipato di PayPal potrebbe non essere registrato.' ),
 		'reminder_days'  => array( 14, 0, 60, 'Giorni prima della scadenza in cui parte l\'email «licenza in scadenza» (0 = non inviare). Se alzi: più tempo ai clienti ma più email. Se abbassi: meno margine per rinnovare.' ),
 		'trial_days'     => array( 30, 1, 90, 'Giorni di prova gratuita del piano Pro, una sola volta per licenza gratuita. Se alzi: più clienti si convincono ma lo stesso dominio usa il Pro gratis più a lungo. Se abbassi: la prova può essere troppo breve per valutare il piano.' ),
