@@ -55,6 +55,13 @@ final class App {
 			( new Admin( $this->db, $this->billing, $this->customerId() ) )->handle( $method, $path );
 		} elseif ( $get && '/' === $path ) {
 			View::render( 'home', array( 'plans' => Config::get( 'plans', array() ), 'trial' => Config::get( 'trial_enabled', true ) ? Settings::limit( 'trial_days' ) : 0 ) );
+		} elseif ( $get && '/api/piani' === $path ) {
+			// Nomi dei piani per il sito di supporto: sola lettura, senza prezzi né dati riservati.
+			header( 'Content-Type: application/json; charset=utf-8' );
+			View::security();
+			header( 'X-Robots-Tag: noindex' );
+			header( 'Cache-Control: public, max-age=300' );
+			echo json_encode( Site::publicPlans(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
 		} elseif ( $get && '/robots.txt' === $path ) {
 			View::headers( 'text/plain; charset=utf-8' );
 			echo Config::get( 'indexable', false ) ? "User-agent: *\nAllow: /\nDisallow: /account\nDisallow: /admin\nDisallow: /api\nDisallow: /scarica\nDisallow: /entra\n" : "User-agent: *\nDisallow: /\n";
