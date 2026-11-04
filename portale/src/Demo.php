@@ -3,7 +3,7 @@ namespace Portale;
 
 /**
  * La demo pubblica del plugin (WordPress vero in `associazionesemplice.it/demo/`): indirizzi, accessi di prova e ruoli, per la pagina `/prova`.
- * Le credenziali sono pubbliche di proposito; i due utenti e i dati si ricreano ogni notte (vedi docs/PORTALE.md, «Demo pubblica»).
+ * Le credenziali sono pubbliche di proposito; gli utenti (il socio no: ha solo email e password dell'accesso proprio) e i dati si ricreano ogni notte (vedi docs/PORTALE.md, «Demo pubblica»).
  * Qui non c'è e non ci sarà mai un utente amministratore.
  */
 final class Demo {
@@ -23,7 +23,7 @@ final class Demo {
 			array(
 				'user' => 'socio@demo.invalid', 'label' => 'Email', 'password' => 'Socio-Demo-2026', 'role' => 'Socio', 'start' => '/area-soci/', 'login' => '/?asem_member_login=1',
 				'what' => array( 'Tessera con QR', 'Prenotazioni a corsi ed eventi', 'Pagamenti e quote', 'I propri dati e gli ospiti' ),
-				'note' => 'Usa l\'area riservata sul sito, come farebbe un socio vero: non entra mai nel pannello di WordPress.',
+				'note' => 'Non è un utente WordPress: entra dalla pagina «Accesso soci» con email e password e usa l\'area riservata del sito, come farebbe un socio vero.',
 			),
 			array(
 				'user' => 'amministratore', 'password' => 'Amministratore-Demo-2026', 'role' => 'Amministratore del plugin', 'start' => '/wp-admin/admin.php?page=asem-backup',
