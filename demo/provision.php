@@ -137,7 +137,7 @@ $ids    = array();
 $add    = function ( string $first, string $last, string $type, ?string $email, string $city, string $joined, ?string $phone = null ) use ( $people, &$ids ) {
 	$id = $people->create( array(
 		'type' => $type, 'first_name' => $first, 'last_name' => $last, 'email' => $email, 'phone' => $phone,
-		'city' => $city, 'province' => 'RM', 'joined_on' => $joined,
+		'city' => $city, 'province' => 'RM', 'joined_on' => $joined, 'card_number' => $people->next_free_card(),
 	) );
 	$ids[ $first . ' ' . $last ] = $id;
 	return $id;
@@ -173,8 +173,8 @@ $ledger = Plugin::ledger();
 demo_step( 'quote incassate', function () use ( $ledger, &$ids ) {
 	$cat  = $ledger->category_id_of_kind( 'membership' );
 	$acc  = $ledger->default_account_for( 'cash' );
-	$days = 40;
-	foreach ( array( 'Laura Demo', 'Mario Demo', 'Luca Neri', 'Sara Gallo', 'Paolo Ferri', 'Elena Conti', 'Marta Serra', 'Chiara Moretti' ) as $n ) { // i fondatori hanno la tessera sempre rinnovata
+	$days = 50;
+	foreach ( array( 'Laura Demo', 'Mario Demo', 'Luca Neri', 'Sara Gallo', 'Paolo Ferri', 'Elena Conti', 'Marta Serra', 'Chiara Moretti', 'Davide Greco', 'Franco Riva', 'Giorgio Fontana', 'Irene Costa' ) as $n ) { // i fondatori hanno la tessera sempre rinnovata
 		if ( empty( $ids[ $n ] ) || ! $acc || ! $cat ) {
 			continue;
 		}
@@ -188,28 +188,72 @@ demo_step( 'quote incassate', function () use ( $ledger, &$ids ) {
 		}
 	}
 } );
+demo_step( 'donazioni', function () use ( $ledger ) {
+	$acc = $ledger->default_account_for( 'cash' );
+	$cat = $ledger->category_id_of_kind( 'donation' );
+	if ( ! $acc || ! $cat ) {
+		return;
+	}
+	foreach ( array( array( 30, 10000, 'Erogazione liberale' ), array( 14, 5000, 'Offerta alla cena di raccolta fondi' ) ) as $d ) {
+		$ledger->record_receipt( array(
+			'date' => gmdate( 'Y-m-d', time() - $d[0] * 86400 ), 'account_id' => (int) $acc['id'], 'method' => 'cash',
+			'lines' => array( array( 'category_id' => $cat, 'amount_cents' => $d[1], 'description' => $d[2] ) ),
+		) );
+	}
+} );
 demo_step( 'spese', function () use ( $ledger ) {
 	$acc = $ledger->default_account_for( 'cash' );
 	$cat = $ledger->category_id_of_kind( 'general_cost' );
 	if ( ! $acc || ! $cat ) {
 		return;
 	}
-	foreach ( array( array( 35, 12500, 'Affitto sala per la riunione' ), array( 20, 4800, 'Materiale di cancelleria' ), array( 8, 9000, 'Assicurazione dei volontari' ) ) as $s ) {
+	foreach ( array( array( 35, 12500, 'Affitto sala per la riunione' ), array( 20, 4800, 'Materiale di cancelleria' ), array( 8, 6000, 'Assicurazione dei volontari' ) ) as $s ) {
 		$ledger->record_expense( array( 'date' => gmdate( 'Y-m-d', time() - $s[0] * 86400 ), 'account_id' => (int) $acc['id'], 'method' => 'cash', 'category_id' => $cat, 'amount_cents' => $s[1], 'description' => $s[2] ) );
 	}
 } );
 
-// 7. Un corso e due eventi
+// 7. Un corso e due eventi, con iscritti e prenotazioni: chi prova vede subito elenchi, posti e importi da incassare.
 demo_step( 'attività', function () use ( &$ids ) {
 	$act  = Plugin::activities();
 	$year = Settings::membership_year( gmdate( 'Y-m-d' ) )->label();
-	$act->create( array( 'name' => 'Corso di fotografia', 'social_year' => $year, 'kind' => 'course', 'instructor_person_id' => $ids['Paolo Ferri'] ?? null, 'fee_cents' => 2500 ) );
+	$mario = $ids['Mario Demo'] ?? 0;
+	$course = $act->create( array( 'name' => 'Corso di fotografia', 'social_year' => $year, 'kind' => 'course', 'instructor_person_id' => $ids['Paolo Ferri'] ?? null, 'fee_cents' => 2500 ) );
+	$month  = gmdate( 'Y-m' );
+	foreach ( array( 'Mario Demo', 'Elena Conti', 'Davide Greco', 'Marta Serra', 'Irene Costa' ) as $n ) {
+		if ( ! empty( $ids[ $n ] ) ) {
+			try {
+				$act->enroll( (int) $course, (int) $ids[ $n ], $month );
+			} catch ( \Throwable $e ) {
+				WP_CLI::warning( 'iscrizione ' . $n . ': ' . $e->getMessage() );
+			}
+		}
+	}
+	$guests = array(
+		'Cena sociale' => array( 'Mario Demo', 'Anna Verdi', 'Marco Bianchi', 'Luca Neri', 'Sara Gallo', 'Elena Conti', 'Franco Riva', 'Giorgio Fontana' ),
+		'Gita al lago' => array( 'Anna Verdi', 'Paolo Ferri', 'Chiara Moretti', 'Irene Costa' ),
+	);
 	foreach ( array( array( 'Cena sociale', 12, 1500, 60 ), array( 'Gita al lago', 26, 1000, 30 ) ) as $e ) {
-		$act->create( array(
+		$aid = $act->create( array(
 			'name' => $e[0], 'social_year' => $year, 'kind' => 'event', 'instructor_person_id' => $ids['Chiara Moretti'] ?? null, 'fee_cents' => $e[2],
 			'session' => array( 'session_date' => gmdate( 'Y-m-d', time() + $e[1] * 86400 ), 'start_time' => '20:00', 'location' => 'Sede dell\'associazione', 'capacity' => $e[3] ),
 		) );
+		foreach ( $act->sessions( (int) $aid ) as $s ) {
+			foreach ( $guests[ $e[0] ] as $n ) {
+				if ( ! empty( $ids[ $n ] ) ) {
+					try {
+						$act->book( (int) $s['id'], (int) $ids[ $n ] );
+					} catch ( \Throwable $ex ) {
+						WP_CLI::warning( 'prenotazione ' . $n . ': ' . $ex->getMessage() );
+					}
+				}
+			}
+		}
 	}
+} );
+
+// 8. App installabile e QR sulla tessera accesi: sul telefono si vede subito l'invito a installarla e il codice da mostrare.
+demo_step( 'app', function () {
+	Settings::update( array( 'pwa_enabled' => 1, 'card_qr_enabled' => 1 ) );
 } );
 
 WP_CLI::success( 'Dati della demo creati.' );
