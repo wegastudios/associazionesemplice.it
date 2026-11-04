@@ -256,4 +256,28 @@ demo_step( 'app', function () {
 	Settings::update( array( 'pwa_enabled' => 1, 'card_qr_enabled' => 1 ) );
 } );
 
+
+// 9. Risorse prenotabili e crediti: un campo, una sala, una prenotazione di Mario e un po' di crediti, così le due funzioni non sono vuote.
+demo_step( 'risorse e crediti', function () use ( &$ids ) {
+	if ( ! \AssociazioneSemplice\Edition::has( 'resources' ) ) {
+		return;
+	}
+	$court = \AssociazioneSemplice\Resources::save( 0, array( 'name' => 'Campo da tennis', 'category' => 'court', 'mode' => 'slot', 'open_time' => '08:00', 'close_time' => '22:00', 'slot_minutes' => 60, 'min_slots' => 1, 'max_slots' => 2, 'fee_cents' => 800, 'guests_max' => 1, 'guest_fee_cents' => 200, 'max_per_person' => 2, 'advance_days' => 30 ) );
+	\AssociazioneSemplice\Resources::save( 0, array( 'name' => 'Sala riunioni', 'category' => 'room', 'mode' => 'slot', 'open_time' => '09:00', 'close_time' => '21:00', 'slot_minutes' => 60, 'min_slots' => 1, 'max_slots' => 4, 'fee_cents' => 0, 'advance_days' => 60 ) );
+	$day = gmdate( 'Y-m-d', time() + 3 * 86400 );
+	if ( ! empty( $ids['Mario Demo'] ) ) {
+		\AssociazioneSemplice\Resources::book_slot( (int) $court, (int) $ids['Mario Demo'], $day, '18:00', 1 );
+	}
+	if ( ! empty( $ids['Elena Conti'] ) ) {
+		\AssociazioneSemplice\Resources::book_slot( (int) $court, (int) $ids['Elena Conti'], $day, '19:00', 1 );
+	}
+	if ( \AssociazioneSemplice\Edition::has( 'credits' ) ) {
+		foreach ( array( 'Mario Demo' => 10, 'Elena Conti' => 5, 'Sara Gallo' => 5 ) as $n => $c ) {
+			if ( ! empty( $ids[ $n ] ) ) {
+				\AssociazioneSemplice\Credits::adjust( (int) $ids[ $n ], $c, 'Crediti di benvenuto' );
+			}
+		}
+	}
+} );
+
 WP_CLI::success( 'Dati della demo creati.' );
