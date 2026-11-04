@@ -101,6 +101,9 @@ Trattiamo i dati per fornirti la licenza, gestire il tuo abbonamento, inviarti l
 ## A chi li comunichiamo
 Solo a fornitori che ci permettono di erogare il servizio: Stripe e PayPal per i pagamenti, il servizio di gestione delle licenze e il sistema centrale di assistenza di Wega Studios (che registra le richieste di supporto e assegna loro il numero), il fornitore di hosting e di posta. Non vendiamo i tuoi dati.
 
+## Il plugin sul tuo sito: verifica della licenza e aggiornamenti
+Il plugin gratuito non invia nulla al nostro server. Il plugin Pro, per funzionare, contatta ogni giorno questo sito per verificare la licenza e, almeno ogni 12 ore, per sapere se esiste un aggiornamento. In queste richieste inviamo solo la chiave di licenza, l'indirizzo del sito (dominio) e il numero di versione del plugin. Non inviamo dati dei soci, dei pagamenti dell'associazione né altri contenuti del tuo sito. Per limitare gli abusi conserviamo per breve tempo l'indirizzo IP da cui arrivano le richieste e il numero di richieste. L'aggiornamento diretto si può spegnere dalle impostazioni del plugin e il pacchetto scaricato è firmato: il plugin lo controlla prima di installarlo.
+
 ## Per quanto tempo li conserviamo
 Le richieste di supporto e le relative risposte si conservano per la durata del rapporto e per il tempo necessario a gestire eventuali ulteriori richieste; si cancellano su richiesta. Gli altri dati si conservano per tutta la durata del rapporto e, dopo, per il tempo richiesto dalla legge per le scritture contabili e fiscali (di norma 10 anni). I dati di accesso inutilizzati si cancellano su richiesta.
 

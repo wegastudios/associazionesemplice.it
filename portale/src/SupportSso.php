@@ -27,9 +27,9 @@ final class SupportSso {
 		return Staff::role( $db, $email ) ?? 'customer';
 	}
 
-	public static function token( string $email, string $role, ?int $now = null ): string {
+	public static function token( string $email, string $role, ?int $now = null, array $extra = array() ): string {
 		$now     = $now ?? time();
-		$payload = self::b64( (string) json_encode( array(
+		$payload = self::b64( (string) json_encode( $extra + array(
 			'v'    => 1,
 			'iss'  => rtrim( (string) Config::get( 'base_url' ), '/' ),
 			'aud'  => self::supportUrl(),
@@ -42,12 +42,39 @@ final class SupportSso {
 		return $payload . '.' . self::b64( hash_hmac( 'sha256', $payload, (string) Config::get( 'support.sso_secret', '' ), true ) );
 	}
 
+	/**
+	 * Claim facoltativi per precompilare il modulo del supporto: `plan` = «Pro» se ha una licenza a pagamento (o di prova) in regola, «Free» se ha
+	 * solo licenze gratuite in regola, assente altrimenti; `name` = nome del cliente se lo conosciamo (max 150 caratteri).
+	 */
+	public static function claimsFor( ?Db $db, string $email ): array {
+		if ( null === $db ) {
+			return array();
+		}
+		$out  = array();
+		$cust = $db->one( 'SELECT name FROM customers WHERE email = ?', array( strtolower( trim( $email ) ) ) );
+		if ( $cust && '' !== trim( (string) $cust['name'] ) ) {
+			$out['name'] = mb_substr( trim( (string) $cust['name'] ), 0, 150 );
+		}
+		$rows = $db->all( 'SELECT s.* FROM subscriptions s JOIN customers c ON c.id = s.customer_id WHERE c.email = ?', array( strtolower( trim( $email ) ) ) );
+		$plan = null;
+		foreach ( $rows as $r ) {
+			if ( 'Attiva' !== sub_status( $r )[0] ) {
+				continue;
+			}
+			if ( 'free' !== $r['plan_code'] ) {
+				return $out + array( 'plan' => 'Pro' );
+			}
+			$plan = 'Free';
+		}
+		return null === $plan ? $out : $out + array( 'plan' => $plan );
+	}
+
 	/** Indirizzo a cui mandare la persona: con l'accesso unico configurato porta il token, altrimenti la home del supporto. */
 	public static function url( ?Db $db, string $email ): string {
 		if ( ! self::enabled() ) {
 			return self::supportUrl();
 		}
-		return self::supportUrl() . '/sso?t=' . rawurlencode( self::token( $email, self::roleFor( $db, $email ) ) );
+		return self::supportUrl() . '/sso?t=' . rawurlencode( self::token( $email, self::roleFor( $db, $email ), null, self::claimsFor( $db, $email ) ) );
 	}
 
 	private static function b64( string $raw ): string {
