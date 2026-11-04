@@ -1,0 +1,65 @@
+@import 'tailwindcss';
+
+@source '../views/**/*.blade.php';
+@source '../js/**/*.vue';
+
+/* Montserrat (OFL), ospitato da noi: nessuna richiesta a servizi esterni. */
+@font-face {
+    font-family: 'Montserrat';
+    font-weight: 500;
+    font-display: swap;
+    src: url('/assets/fonts/Montserrat-Medium.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Montserrat';
+    font-weight: 600;
+    font-display: swap;
+    src: url('/assets/fonts/Montserrat-SemiBold.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Montserrat';
+    font-weight: 700;
+    font-display: swap;
+    src: url('/assets/fonts/Montserrat-Bold.ttf') format('truetype');
+}
+
+/* Colori del marchio (docs/brand/README.md). */
+@theme {
+    --font-sans: 'Montserrat', ui-sans-serif, system-ui, sans-serif;
+    --color-indaco: #1f218c;
+    --color-indaco-chiaro: #a6a9ff;
+    --color-salvia: #5f8579;
+    --color-salvia-chiaro: #86ab9d;
+    --color-giallo: #efca5c;
+
+    --color-surface: #f6f7fb;
+    --color-card: #ffffff;
+    --color-ink: #1b1d33;
+    --color-muted: #5b5e75;
+    --color-line: #dcdfea;
+    --color-accent: var(--color-indaco);
+    --color-accent-ink: #ffffff;
+    --color-danger: #b42318;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --color-surface: #11122a;
+        --color-card: #1b1d3d;
+        --color-ink: #eceefa;
+        --color-muted: #a9acc6;
+        --color-line: #2f3260;
+        --color-accent: var(--color-indaco-chiaro);
+        --color-accent-ink: #11122a;
+        --color-danger: #ff8a80;
+    }
+}
+
+html,
+body {
+    height: 100%;
+}
+
+body {
+    font-weight: 500;
+}

@@ -1,0 +1,68 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Portale;
+
+use App\Modules\Portale\Jwt\EdDsaJwt;
+use Illuminate\Contracts\Config\Repository;
+use RuntimeException;
+
+/** Indirizzi, chiavi pubbliche fissate del portale e chiave di firma del SaaS (config/saas.php, sezione portal). */
+final readonly class PortalConfig
+{
+    public const AUDIENCE = 'associazionesemplice-saas';
+
+    public function __construct(private Repository $config) {}
+
+    /** Indirizzo del portale, che è anche l'emittente dei suoi token. */
+    public function portalUrl(): string
+    {
+        return rtrim($this->string('saas.portal.url'), '/');
+    }
+
+    /** Emittente dei token del SaaS e destinatario di quelli del portale. */
+    public function saasUrl(): string
+    {
+        return rtrim($this->string('app.url'), '/');
+    }
+
+    /** @return array<string, string> kid => chiave pubblica base64url */
+    public function portalKeys(): array
+    {
+        $keys = [];
+        $configured = $this->config->get('saas.portal.public_keys', '');
+        foreach (explode(',', is_string($configured) ? $configured : '') as $pair) {
+            [$kid, $x] = array_pad(explode('=', trim($pair), 2), 2, '');
+            if ($kid !== '' && strlen(EdDsaJwt::unb64($x)) === SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES) {
+                $keys[$kid] = $x;
+            }
+        }
+
+        return $keys;
+    }
+
+    /** Seme (32 byte) della chiave con cui il SaaS firma verso il portale. */
+    public function signingSeed(): string
+    {
+        $seed = base64_decode($this->string('saas.portal.signing_key'), true);
+
+        return $seed !== false && strlen($seed) === SODIUM_CRYPTO_SIGN_SEEDBYTES
+            ? $seed
+            : throw new RuntimeException('SAAS_PORTAL_SIGNING_KEY non valida.');
+    }
+
+    public function graceDays(): int
+    {
+        $days = $this->config->get('saas.portal.grace_days', 15);
+
+        return is_int($days) && $days >= 0 ? $days : 15;
+    }
+
+    private function string(string $key): string
+    {
+        $value = $this->config->get($key);
+
+        return is_string($value) && $value !== '' ? $value : throw new RuntimeException("Configurazione mancante: {$key}");
+    }
+}

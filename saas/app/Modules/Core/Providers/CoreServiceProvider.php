@@ -1,0 +1,64 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Core\Providers;
+
+use App\Modules\Core\Console\CreateOrgCommand;
+use App\Modules\Core\Console\HealthCommand;
+use App\Modules\Core\Console\InviteOperatorCommand;
+use App\Modules\Core\Console\MigrateAllCommand;
+use App\Modules\Core\Contracts\DatabaseNames;
+use App\Modules\Core\Contracts\DataExport;
+use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Core\Contracts\OrgDirectory;
+use App\Modules\Core\Database\DatabaseRegistry;
+use App\Modules\Core\Export\CoreDataExport;
+use App\Modules\Core\Org\DatabaseOrgContext;
+use App\Modules\Core\Org\DatabaseOrgDirectory;
+use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Database\Schema\Grammars\PostgresGrammar;
+use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Queue\Events\JobProcessed;
+use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\ServiceProvider;
+
+final class CoreServiceProvider extends ServiceProvider
+{
+    public function register(): void
+    {
+        $this->app->tag([CoreDataExport::class], DataExport::TAG);
+        $this->app->singleton(DatabaseRegistry::class);
+        $this->app->singleton(DatabaseNames::class, DatabaseRegistry::class);
+        $this->app->singleton(OrgDirectory::class, DatabaseOrgDirectory::class);
+        $this->app->singleton(OrgContext::class, DatabaseOrgContext::class);
+    }
+
+    public function boot(): void
+    {
+        // Email e slug senza distinzione tra maiuscole e minuscole: $table->addColumn('citext', 'email').
+        PostgresGrammar::macro('typeCitext', fn (): string => 'citext');
+
+        // Ogni lavoro in coda parte e finisce senza associazione: la imposta il lavoro stesso
+        // (RunInOrgContext), così il lavoro precedente non lascia nulla al successivo.
+        $reset = function (): void {
+            $this->app->make(OrgContext::class)->leave();
+        };
+        Event::listen(JobProcessing::class, $reset);
+        Event::listen(JobProcessed::class, $reset);
+        Event::listen(JobFailed::class, $reset);
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([MigrateAllCommand::class, CreateOrgCommand::class, InviteOperatorCommand::class, HealthCommand::class]);
+
+            // Code su Postgres: un lavoratore a giro di cron, che si ferma quando la coda è vuota o dopo 50 secondi
+            // (sul server non ci sono processi sempre attivi).
+            $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
+                $schedule->command('queue:work --stop-when-empty --max-time=50 --tries=3')
+                    ->everyMinute()->withoutOverlapping(5)->runInBackground();
+                $schedule->command('queue:prune-failed --hours=720')->dailyAt('05:47');
+            });
+        }
+    }
+}

@@ -1,0 +1,104 @@
+name: SaaS · rilascio
+
+# Rilascio del SaaS (saas/docs/RILASCIO.md). Per ora c'è un solo ambiente (produzione): il rilascio parte solo a mano,
+# solo da main, con l'approvazione dell'ambiente. Quando ci sarà uno staging separato si potrà rilasciarlo da solo a ogni push.
+# Segreti per ambiente (Settings → Environments → staging / production):
+#   SAAS_SSH_HOST, SAAS_SSH_PORT, SAAS_SSH_USER, SAAS_SSH_PRIVATE_KEY, SAAS_SSH_KNOWN_HOSTS
+# L'ambiente production va protetto con l'approvazione obbligatoria.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Dove rilasciare
+        type: choice
+        options: [production, staging]
+        default: production
+
+permissions:
+  contents: read
+
+concurrency:
+  group: saas-deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    uses: ./.github/workflows/saas.yml
+
+  build:
+    name: Pacchetto
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: saas
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: pdo_pgsql, pgsql, sodium, intl, mbstring, redis
+          coverage: none
+          tools: composer:v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: saas/package-lock.json
+      - run: deploy/build.sh "$RUNNER_TEMP/out"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: saas-package
+          path: ${{ runner.temp }}/out/
+          retention-days: 7
+
+  deploy:
+    name: Rilascio su ${{ inputs.environment }}
+    needs: build
+    # In produzione solo da main.
+    if: inputs.environment != 'production' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: saas/deploy
+      - uses: actions/download-artifact@v4
+        with:
+          name: saas-package
+          path: out
+      - name: Segreti presenti
+        env:
+          HOST: ${{ secrets.SAAS_SSH_HOST }}
+          KEY: ${{ secrets.SAAS_SSH_PRIVATE_KEY }}
+          KNOWN: ${{ secrets.SAAS_SSH_KNOWN_HOSTS }}
+        run: |
+          if [ -z "$HOST" ] || [ -z "$KEY" ] || [ -z "$KNOWN" ]; then
+            echo "::error::Segreti SSH dell'ambiente mancanti: vedi saas/docs/RILASCIO.md."
+            exit 1
+          fi
+      - name: Chiave SSH
+        env:
+          KEY: ${{ secrets.SAAS_SSH_PRIVATE_KEY }}
+          KNOWN: ${{ secrets.SAAS_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$KNOWN" > ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
+      - name: Invio e rilascio
+        env:
+          HOST: ${{ secrets.SAAS_SSH_HOST }}
+          PORT: ${{ secrets.SAAS_SSH_PORT || '22' }}
+          SSH_USER: ${{ secrets.SAAS_SSH_USER }}
+        run: |
+          PKG="$(ls out/saas-*.tar.gz)"; NAME="$(basename "$PKG")"; SUM="$(cat "$PKG.sha256")"
+          SSH=(ssh -i ~/.ssh/deploy -p "$PORT" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$SSH_USER@$HOST")
+          "${SSH[@]}" 'mkdir -p ~/saas/incoming'
+          "${SSH[@]}" "cat > ~/saas/incoming/$NAME" < "$PKG"
+          "${SSH[@]}" "bash -s -- ~/saas/incoming/$NAME $SUM" < saas/deploy/remote.sh
+      - name: Pulizia
+        if: always()
+        run: rm -f ~/.ssh/deploy
