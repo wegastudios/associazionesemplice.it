@@ -19,9 +19,20 @@ it('assegna i permessi per ruolo', function (Ability $ability, array $allowed): 
     [Ability::ExportPeople, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator]],
     [Ability::EditAccounting, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator]],
     [Ability::ViewHealth, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator]],
-    [Ability::ViewPeople, OrgRole::cases()],
-    [Ability::ViewAccounting, OrgRole::cases()],
+    [Ability::ViewPeople, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator, OrgRole::Accountant]],
+    [Ability::ViewAccounting, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator, OrgRole::Accountant]],
 ]);
+
+it('dà ai ruoli personalizzati solo i permessi scelti, con quelli che presuppongono', function (): void {
+    expect(Ability::normalize(['accounting.close', 'org.settings', 'boh', 'people.export']))
+        ->toBe([Ability::ViewPeople, Ability::ExportPeople, Ability::ViewAccounting, Ability::EditAccounting, Ability::CloseFiscalYear])
+        ->and(Ability::assignable())->not->toContain(Ability::ManageSubscription, Ability::ManageSettings, Ability::ManageOperators)
+        ->and(OrgRole::Admin->canAssign(OrgRole::Custom))->toBeTrue()
+        ->and(OrgRole::Custom->canAssign(OrgRole::Custom))->toBeFalse();
+
+    $op = new App\Modules\Core\Contracts\Operator('u', 'o', 'Org', OrgRole::Custom, 'r', 'Consigliere', [Ability::ViewPeople]);
+    expect($op->can(Ability::ViewPeople))->toBeTrue()->and($op->can(Ability::ViewAccounting))->toBeFalse()->and($op->roleLabel())->toBe('Consigliere');
+});
 
 it('fa assegnare i ruoli solo a chi ne ha titolo', function (): void {
     expect(OrgRole::Owner->canAssign(OrgRole::Owner))->toBeTrue()

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Core\Http\Controllers\DashboardController;
+use App\Modules\Core\Http\Controllers\OperatorsController;
 use App\Modules\Core\Http\Controllers\OrgSwitchController;
 use App\Modules\Core\Http\Controllers\TwoFactorSetupController;
 use Illuminate\Support\Facades\Route;
@@ -27,6 +28,17 @@ Route::middleware('web')->group(function (): void {
 
         Route::middleware('operator')->prefix('gestionale')->group(function (): void {
             Route::get('/', DashboardController::class)->name('dashboard');
+
+            // Operatori e ruoli personalizzati: titolare e amministratore.
+            Route::middleware('can:org.operators')->group(function (): void {
+                Route::get('/operatori', [OperatorsController::class, 'index'])->name('operators');
+                Route::post('/operatori', [OperatorsController::class, 'invite'])->middleware('throttle:20,1')->name('operators.invite');
+                Route::put('/operatori/{user}', [OperatorsController::class, 'update'])->whereUuid('user')->name('operators.update');
+                Route::delete('/operatori/{user}', [OperatorsController::class, 'remove'])->whereUuid('user')->name('operators.remove');
+                Route::post('/ruoli', [OperatorsController::class, 'saveRole'])->name('roles.store');
+                Route::put('/ruoli/{role}', [OperatorsController::class, 'saveRole'])->whereUuid('role')->name('roles.update');
+                Route::delete('/ruoli/{role}', [OperatorsController::class, 'deleteRole'])->whereUuid('role')->name('roles.delete');
+            });
         });
     });
 });

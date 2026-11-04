@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Http\Middleware;
 
+use App\Modules\Core\Contracts\Ability;
 use App\Modules\Core\Contracts\CurrentOperator;
 use App\Modules\Core\Models\User;
 use Illuminate\Http\Request;
@@ -33,7 +34,9 @@ final class HandleInertiaRequests extends Middleware
                 return $operator === null ? null : [
                     'id' => $operator->orgId,
                     'name' => $operator->orgName,
-                    'role' => $operator->role->label(),
+                    'role' => $operator->roleLabel(),
+                    // Per mostrare solo le sezioni permesse; i controlli veri restano nelle rotte.
+                    'can' => array_values(array_map(static fn (Ability $a): string => $a->value, array_filter(Ability::cases(), $operator->can(...)))),
                 ];
             },
             'flash' => [

@@ -9,15 +9,17 @@ const org = computed(() => page.props.org);
 const status = computed(() => page.props.flash?.status);
 const error = computed(() => page.props.errors?.ledger);
 
-const sections = [
+const all = [
     { href: '/gestionale', label: 'Riepilogo' },
-    { href: '/gestionale/soci', label: 'Soci' },
-    { href: '/gestionale/domande', label: 'Domande' },
-    { href: '/gestionale/attivita', label: 'Attività' },
-    { href: '/gestionale/prima-nota', label: 'Prima nota' },
-    { href: '/gestionale/conti', label: 'Conti' },
-    { href: '/gestionale/rendiconto', label: 'Rendiconto' },
+    { href: '/gestionale/soci', label: 'Soci', can: 'people.view' },
+    { href: '/gestionale/domande', label: 'Domande', can: 'people.view' },
+    { href: '/gestionale/attivita', label: 'Attività', can: 'people.view' },
+    { href: '/gestionale/prima-nota', label: 'Prima nota', can: 'accounting.view' },
+    { href: '/gestionale/conti', label: 'Conti', can: 'accounting.view' },
+    { href: '/gestionale/rendiconto', label: 'Rendiconto', can: 'accounting.view' },
+    { href: '/gestionale/operatori', label: 'Operatori', can: 'org.operators' },
 ];
+const sections = computed(() => all.filter((s) => !s.can || (org.value?.can ?? []).includes(s.can)));
 const current = (href) => (href === '/gestionale' ? page.url === href : page.url.startsWith(href));
 </script>
 

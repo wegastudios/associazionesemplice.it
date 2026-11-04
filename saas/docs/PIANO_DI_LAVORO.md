@@ -43,7 +43,7 @@ Ordine consigliato. Ogni passo si chiude con i suoi test.
 | 1. Scheletro | **fatto** (2026-11-04) |
 | 2. Database | **fatto** (2026-11-04) |
 | 3. Separazione tra associazioni | **fatto** il motore (contesto, connessioni, RLS, richieste, code, database dedicati); dall'utente con il passo 4; dal dominio (area soci e sito) con quei pacchetti |
-| 4. Accesso | **fatto** (2026-11-04): Fortify, verifica in due passaggi obbligatoria, ruoli e permessi, scelta dell'associazione, inviti. Passkey e ruoli configurabili più avanti |
+| 4. Accesso | **fatto** (2026-11-04): Fortify, verifica in due passaggi obbligatoria, ruoli e permessi, scelta dell'associazione, inviti. Passkey più avanti; ruoli configurabili fatti in fase 1 |
 | 5. Cifratura | **fatto** (2026-11-04): chiavi per associazione, campi cifrati con indice di ricerca, file cifrati, servizio chiavi separato, distruzione delle chiavi |
 | 6. Registro delle azioni | **fatto** (2026-11-04): catena sigillata per associazione, partizioni mensili, letture dei dati sanitari, eventi di sicurezza, verifica notturna |
 | 7. Contratto con il portale | **definito e fatto lato SaaS** (2026-11-04): [CONTRATTO_PORTALE.md](CONTRATTO_PORTALE.md). Lato portale: da passare alla sessione Portale e pagamenti |
@@ -78,6 +78,7 @@ filtro, e il codice fiscale è cifrato nel database. Il ripristino da un dump fu
 | Soci: tutori dei minori (al massimo due, uno operativo), livelli con quota propria, certificati medici cifrati con file e scadenze | **fatto** (2026-11-04), con le pagine del gestionale |
 | Soci: promemoria via email di tessera e certificato in scadenza, consensi con la loro storia, domande di adesione online (modulo pubblico, esame in segreteria) | **fatto** (2026-11-04), con le pagine del gestionale |
 | Attività come centri di costo: corsi (contributo mensile, trimestrale o unico, giorni delle lezioni) ed eventi, iscrizioni dalla segreteria, situazione dei contributi, incassi con ricevuta e spese legati all'attività, bilancio per attività, attività sui movimenti della prima nota | **fatto** (2026-11-04), con le pagine del gestionale |
+| Ruoli configurabili: ruoli personalizzati con nome e permessi scelti, pagina Operatori (inviti, cambio di ruolo, rimozione), menu secondo i permessi | **fatto** (2026-11-04) |
 | Attività: eventi ricorrenti con le date, prenotazioni, presenze, lista d'attesa, listini, calendario | da fare |
 | Soci: import da Excel o CSV con anteprima (soci, ospiti, genitori, tutori, anni di iscrizione), export CSV ricaricabile | **fatto** (2026-11-04), con le pagine del gestionale |
 

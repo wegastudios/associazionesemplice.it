@@ -62,9 +62,9 @@ Un test di architettura fallisce se un modulo usa qualcosa di un altro modulo fu
 |---|---|
 | Accesso, password, verifica in due passaggi | Laravel Fortify, pagine Inertia in `resources/js/pages/Auth` e `Account`; configurazione in `config/fortify.php` |
 | Indirizzi | `/accesso`, `/esci`, `/password-dimenticata`, `/reimposta-password`, `/conferma-password`, `/verifica-accesso`, `/account/verifica-in-due-passaggi` |
-| Ruoli | `Core\Contracts\OrgRole`: titolare, amministratore, segreteria, commercialista (`core.org_users`) |
+| Ruoli | `Core\Contracts\OrgRole`: titolare, amministratore, segreteria, commercialista (`core.org_users`), più i ruoli personalizzati (`custom`, nome e permessi in `core.org_roles`) |
 | Permessi | `Core\Contracts\Ability`, regola pura `Ability::allows()`; nelle rotte `can:people.edit`, nel codice `Gate::allows(...)` |
-| Inviti | `Core\Access\OrgMembers` (`invite`, `changeRole`, `remove`) e i comandi `saas:org:create`, `saas:operator:invite` |
+| Inviti | `Core\Access\OrgMembers` (`invite`, `changeRole`, `remove`, `saveRole`, `deleteRole`), pagina `/gestionale/operatori` (`org.operators`) e i comandi `saas:org:create`, `saas:operator:invite` |
 
 Regole:
 
@@ -79,8 +79,13 @@ Regole:
 - sessione cifrata, cookie solo HTTPS, Content-Security-Policy senza script esterni, pagine con dati non in cache,
   cronologia di Inertia cifrata, strumenti di sviluppo di Inertia spenti.
 
+Ruoli personalizzati (segretari, consiglieri, tesorieri): li crea titolare o amministratore con i permessi di
+`Ability::assignable()` (tutti tranne abbonamento, impostazioni e operatori); `Ability::normalize()` aggiunge quelli
+presupposti (chi modifica vede). Valgono dalla richiesta successiva; un ruolo si elimina solo se nessuno lo ha. Nessuno
+cambia il proprio ruolo né si toglie da solo. Il menu del gestionale mostra solo le sezioni permesse (`org.can`).
+
 I permessi dei soci sui propri dati (area soci) non passano dai ruoli: derivano dai dati, come `Access` nel plugin, e
-arrivano con il modulo Soci. I ruoli configurabili per segretari e consiglieri sono della fase 1.
+arrivano con il modulo Soci.
 
 ## 6. Cifratura
 
