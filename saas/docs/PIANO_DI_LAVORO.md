@@ -12,9 +12,8 @@ Nessuno: la fase 0 si può iniziare in locale.
 
 | Cosa | Chi | Stato |
 |---|---|---|
-| DPA (art. 28) e sub-responsabili di SupportHost: il link ricevuto era un articolo di blog | Luca | richiesto, risposta da verificare |
+| DPA (art. 28) e sub-responsabili di SupportHost: il link ricevuto era un articolo di blog | Luca | **ultimo passo**, subito prima dei dati veri |
 | Conferma di PostgreSQL 16 sul server con `SELECT version();` | prima prova sul database | aggiornamento comunicato, non verificato |
-| Database di prova `associazionesemp_associazionesemp_test` e utente `associazionesemp_retest`: la password è passata in chat, va cambiata o il database cancellato | Luca | da fare |
 | Spazio esterno in UE per i dump orari cifrati | da scegliere | da fare |
 | APCu disponibile sul piano (serve al servizio chiavi, [ARCHITETTURA.md](ARCHITETTURA.md) §7) | sessione del portale, via SSH | da verificare |
 | Estensione PHP `redis` da attivare in cPanel | Luca | da fare |
