@@ -189,7 +189,7 @@
 .asemf-tip p { margin: 0 0 .5rem; }
 .asemf-tip .asemf-tip-actions { margin: 0; display: flex; gap: .5rem; flex-wrap: wrap; }
 .asemf-tip[hidden], .asemf-tip [hidden] { display: none; }
-.asemf-section[id] { scroll-margin-top: 4.5rem; }
+.asemf-section[id] { scroll-margin-top: calc(var(--asemf-off, 0px) + .75rem); }
 @media (max-width: 700px) {
 	.asemf-jump { display: block; position: sticky; top: 0; z-index: 20; margin: 0 -1px 1rem; background: var(--asemf-bg, #fff); border-bottom: 1px solid var(--asemf-line); }
 	.asemf-jump ul { display: flex; gap: .5rem; list-style: none; margin: 0; padding: .5rem 0; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }

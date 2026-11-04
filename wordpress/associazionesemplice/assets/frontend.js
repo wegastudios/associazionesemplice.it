@@ -179,3 +179,33 @@
 		document.querySelectorAll('.asemf-apply form').forEach(sync);
 	});
 })();
+
+// Barra di salto dell'area soci: sta sotto l'intestazione fissa del tema (se c'è), altrimenti in cima.
+(function () {
+	'use strict';
+	var bar = document.querySelector('.asemf-jump');
+	if (!bar) { return; }
+	function headerBottom() {
+		var el = document.elementFromPoint(Math.round(window.innerWidth / 2), 2);
+		while (el && el !== document.body && el !== document.documentElement) {
+			if (!bar.contains(el)) {
+				var pos = window.getComputedStyle(el).position;
+				if (pos === 'fixed' || pos === 'sticky') { return Math.max(0, Math.round(el.getBoundingClientRect().bottom)); }
+			}
+			el = el.parentElement;
+		}
+		return 0;
+	}
+	var busy = false;
+	function place() {
+		busy = false;
+		var off = headerBottom();
+		bar.style.top = off + 'px';
+		document.documentElement.style.setProperty('--asemf-off', (off + bar.offsetHeight) + 'px');
+	}
+	function ask() { if (!busy) { busy = true; window.requestAnimationFrame(place); } }
+	window.addEventListener('scroll', ask, { passive: true });
+	window.addEventListener('resize', ask);
+	window.addEventListener('load', ask);
+	ask();
+})();
