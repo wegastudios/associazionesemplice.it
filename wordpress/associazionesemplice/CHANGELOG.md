@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.12
+- Da telefono, nell'area soci la tabella delle attività diventa una scheda per riga (i pagamenti non restano fuori schermo) e il pulsante secondario ha il contorno
+
 ## 1.3.11
 - Da telefono le schede in cima alle pagine di amministrazione stanno su una riga che scorre
 
