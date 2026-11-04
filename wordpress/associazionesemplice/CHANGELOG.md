@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.8
+- Corretta la barra per saltare alle sezioni dell'area soci: non finisce più sotto l'intestazione fissa del tema
+
 ## 1.3.7
 - Corretta la barra per saltare alle sezioni dell'area soci: da telefono non allarga più la pagina
 
