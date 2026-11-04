@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Demo di Associazione Semplice
- * Description: Protezioni della demo pubblica: nessuna email in uscita, profili e password dei due utenti di prova bloccati, nessun caricamento di file, avviso in ogni pagina.
+ * Description: Protezioni della demo pubblica: nessuna email in uscita, profili e password degli utenti e del socio di prova bloccati, nessun caricamento di file, avviso in ogni pagina.
  */
 defined( 'ABSPATH' ) || exit;
 
@@ -18,6 +18,12 @@ add_filter( 'send_email_change_email', '__return_false' );
 add_action( 'password_reset', function () {
 	wp_die( 'Nella demo la password non si può cambiare.', '', array( 'response' => 403 ) );
 } );
+// Soci (accesso proprio, senza utente WordPress): la password e il recupero sono bloccati, come per gli utenti WordPress. Nessuna email esce comunque.
+add_action( 'template_redirect', function () {
+	if ( isset( $_GET['asem_member_login'], $_POST['asem_ml_do'] ) && in_array( sanitize_key( wp_unslash( $_POST['asem_ml_do'] ) ), array( 'password', 'recover' ), true ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+		wp_die( 'Nella demo la password non si può cambiare né recuperare.', '', array( 'response' => 403, 'back_link' => true ) );
+	}
+}, 0 );
 add_action( 'init', function () {
 	if ( ! is_user_logged_in() || empty( $_POST ) ) { // phpcs:ignore WordPress.Security.NonceVerification
 		return;
