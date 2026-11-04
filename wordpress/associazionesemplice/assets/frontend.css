@@ -203,3 +203,18 @@
 	.asemf-section input:not([type=checkbox]):not([type=radio]), .asemf-section select, .asemf-section textarea { min-height: 44px; font-size: 16px; } /* 16 px: iOS non zooma nei campi */
 	.asemf-print-wrap { display: flex; gap: .5rem; flex-wrap: wrap; } .asemf-print-wrap .asemf-btn { flex: 1 1 8rem; }
 }
+
+/* Pulsante secondario («Non ora», «Disattiva le notifiche»): contorno, non pieno, così il primario si distingue */
+.asemf .asemf-btn.asemf-btn-ghost { background: transparent; color: var(--asemf-accent); }
+.asemf .asemf-btn.asemf-btn-ghost:hover { background: var(--asemf-soft); filter: none; }
+
+/* Telefono: la tabella delle attività diventa una scheda per riga (la colonna dei pagamenti non resta fuori schermo) */
+@media (max-width: 600px) {
+	.asemf-table-wrap { overflow-x: visible; }
+	.asemf-table.asemf-stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+	.asemf-table.asemf-stack, .asemf-table.asemf-stack tbody, .asemf-table.asemf-stack tr, .asemf-table.asemf-stack td { display: block; width: 100%; box-sizing: border-box; }
+	.asemf-table.asemf-stack tr { border-bottom: 1px solid var(--asemf-line); padding: .6rem 0; }
+	.asemf-table.asemf-stack td { border: 0; padding: .15rem 0; }
+	.asemf-table.asemf-stack td.asemf-cell-main { font-weight: 600; font-size: 1.05em; }
+	.asemf-table.asemf-stack td[data-label]::before { content: attr(data-label) ": "; color: var(--asemf-muted, #50575e); }
+}
