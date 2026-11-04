@@ -132,10 +132,30 @@ demo_step( 'ruolo e utente amministratore del plugin', function () use ( $mk_use
 } );
 
 // 4. Persone: le due di prova (collegate agli utenti per email) e dei soci inventati
+/** Dati anagrafici inventati per i soci della demo: codice fiscale di forma valida (lettera di controllo calcolata), nascita e residenza. */
+function demo_profile( string $first, string $last, int $n ): array {
+	$cons = function ( string $s ): string { return strtoupper( substr( preg_replace( '/[^BCDFGHJKLMNPQRSTVWXYZ]/i', '', $s ) . 'XXX', 0, 3 ) ); };
+	$year = 1960 + ( $n * 7 ) % 40;
+	$day  = 1 + ( $n * 5 ) % 27;
+	$base = $cons( $last ) . $cons( $first ) . sprintf( '%02d', $year % 100 ) . 'M' . sprintf( '%02d', $day ) . 'H501';
+	$code = $base;
+	foreach ( range( 'A', 'Z' ) as $c ) {
+		if ( \AssociazioneSemplice\TaxCode::is_valid( $base . $c ) ) {
+			$code = $base . $c;
+			break;
+		}
+	}
+	return array(
+		'tax_code' => $code, 'birth_date' => sprintf( '%d-08-%02d', $year, $day ), 'birth_place' => 'Roma', 'province' => 'RM',
+		'address' => 'Via dei Fori ' . ( 1 + $n ), 'zip' => '00100',
+		'phone' => '+39 06 555' . sprintf( '%04d', 1000 + $n * 37 ),
+	);
+}
+
 $people = Plugin::people();
 $ids    = array();
-$add    = function ( string $first, string $last, string $type, ?string $email, string $city, string $joined, ?string $phone = null ) use ( $people, &$ids ) {
-	$id = $people->create( array(
+$add    = function ( string $first, string $last, string $type, ?string $email, string $city, string $joined, ?string $phone = null, bool $full = false ) use ( $people, &$ids ) {
+	$id = $people->create( ( $full ? demo_profile( $first, $last, count( $ids ) + 1 ) : array() ) + array(
 		'type' => $type, 'first_name' => $first, 'last_name' => $last, 'email' => $email, 'phone' => $phone,
 		'city' => $city, 'province' => 'RM', 'joined_on' => $joined, 'card_number' => $people->next_free_card(),
 	) );
@@ -144,8 +164,8 @@ $add    = function ( string $first, string $last, string $type, ?string $email, 
 };
 $y = (int) gmdate( 'Y' );
 demo_step( 'soci', function () use ( $add, $y ) {
-	$add( 'Laura', 'Demo', 'ordinary', 'segreteria@demo.invalid', 'Roma', ( $y - 3 ) . '-09-10' );
-	$mario = $add( 'Mario', 'Demo', 'ordinary', 'socio@demo.invalid', 'Roma', ( $y - 1 ) . '-10-02' );
+	$add( 'Laura', 'Demo', 'ordinary', 'segreteria@demo.invalid', 'Roma', ( $y - 3 ) . '-09-10', null, true );
+	$mario = $add( 'Mario', 'Demo', 'ordinary', 'socio@demo.invalid', 'Roma', ( $y - 1 ) . '-10-02', null, true );
 	// Dal plugin 1.3 il socio entra con email e password della sua scheda (non è più un utente WordPress): senza questa riga l'accesso si perde a ogni azzeramento.
 	\AssociazioneSemplice\MemberLogin::set_password( (int) $mario, DEMO_PASS_SOCIO );
 	$list = array(
@@ -157,7 +177,7 @@ demo_step( 'soci', function () use ( $add, $y ) {
 		array( 'Giorgio', 'Fontana', 'ordinary', 'Roma', gmdate( 'Y' ) . '-02-14' ), array( 'Irene', 'Costa', 'ordinary', 'Roma', gmdate( 'Y' ) . '-03-22' ),
 	);
 	foreach ( $list as $r ) {
-		$add( $r[0], $r[1], $r[2], null, $r[3], $r[4] );
+		$add( $r[0], $r[1], $r[2], null, $r[3], $r[4], null, ! in_array( $r[1], array( 'Fontana', 'Costa' ), true ) ); // gli ultimi due iscritti restano da completare: la Bacheca mostra l'avviso
 	}
 } );
 
