@@ -181,6 +181,7 @@ self.addEventListener('fetch', function (e) {
 	if (req.method !== 'GET') { return; }
 	var url = new URL(req.url);
 	if (req.mode === 'navigate') {
+		if (url.pathname.indexOf('/wp-admin') !== -1 || url.pathname.indexOf('wp-login.php') !== -1) { return; } // il gestionale e l'accesso a WordPress non sono l'app dei soci: errori e attese restano quelli del browser
 		e.respondWith(fetch(req).catch(function () { return caches.match(OFFLINE); }));
 		return;
 	}

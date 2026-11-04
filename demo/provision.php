@@ -207,7 +207,7 @@ demo_step( 'spese', function () use ( $ledger ) {
 	if ( ! $acc || ! $cat ) {
 		return;
 	}
-	foreach ( array( array( 35, 12500, 'Affitto sala per la riunione' ), array( 20, 4800, 'Materiale di cancelleria' ), array( 8, 6000, 'Assicurazione dei volontari' ) ) as $s ) {
+	foreach ( array( array( 35, 12500, 'Affitto sala per la riunione' ), array( 20, 4800, 'Materiale di cancelleria' ), array( 8, 6000, 'Assicurazione dei volontari' ), array( 22, 9500, 'Noleggio attrezzatura per il corso' ), array( 5, 3800, 'Rinfresco dopo la riunione' ) ) as $s ) {
 		$ledger->record_expense( array( 'date' => gmdate( 'Y-m-d', time() - $s[0] * 86400 ), 'account_id' => (int) $acc['id'], 'method' => 'cash', 'category_id' => $cat, 'amount_cents' => $s[1], 'description' => $s[2] ) );
 	}
 } );
