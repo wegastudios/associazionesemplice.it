@@ -1088,20 +1088,10 @@ final class Views {
 			$map = array( 'tessera' => 'section_card', 'attivita' => 'section_activities', 'calendario' => 'section_calendar', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests', 'minori' => 'section_minors', 'profilo' => 'section_profile', 'regolamento' => 'section_rules', 'avvisi' => 'section_notices' );
 			$html .= isset( $map[ $s ] ) ? self::{$map[ $s ]}( $p ) : (string) apply_filters( 'asem_area_section', '', $s, $p );
 			if ( 'tessera' === $s ) {
-				$html .= self::install_tip();
+				$html .= (string) apply_filters( 'asem_after_card', '' ); // invito all'app (Pro)
 			}
 		}
 		return self::jump_nav( $html );
-	}
-
-	/** Invito a installare l'app, subito sotto la tessera: lo mostra pwa.js solo dove l'installazione è possibile e se non è stato chiuso. */
-	private static function install_tip(): string {
-		if ( ! class_exists( '\AssociazioneSemplice\Pwa' ) || ! Edition::has( 'pwa' ) || ! \AssociazioneSemplice\Pwa::enabled() ) {
-			return '';
-		}
-		return '<div class="asemf-tip" data-asem-tip hidden><p><strong>Tieni la tessera sempre con te.</strong> <span data-asem-tip-android>Aggiungi ' . esc_html( \AssociazioneSemplice\Pwa::app_name() ) . ' alla schermata Home: si apre come un\'app.</span>'
-			. '<span data-asem-tip-ios hidden>Su iPhone tocca <strong>Condividi</strong> e poi <strong>Aggiungi alla schermata Home</strong>.</span></p>'
-			. '<p class="asemf-tip-actions"><button type="button" class="asemf-btn" data-asem-install hidden>Installa l\'app</button> <button type="button" class="asemf-btn asemf-btn-ghost" data-asem-tip-close>Non ora</button></p></div>';
 	}
 
 	/**
