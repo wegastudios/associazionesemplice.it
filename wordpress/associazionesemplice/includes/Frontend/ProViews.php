@@ -24,6 +24,7 @@ final class ProViews {
 		add_filter( 'asem_my_sections', array( __CLASS__, 'my_sections' ) );
 		add_filter( 'asem_area_section', array( __CLASS__, 'area_section' ), 10, 3 );
 		add_filter( 'asem_card_extra', array( __CLASS__, 'card_extra' ), 10, 2 );
+		add_filter( 'asem_after_card', array( __CLASS__, 'install_tip' ) );
 		add_filter( 'asem_checkin_extra', array( __CLASS__, 'checkin_extra' ), 10, 3 );
 		add_filter( 'asem_treasurer_sections', array( __CLASS__, 'treasurer_sections' ) );
 	}
@@ -156,6 +157,16 @@ final class ProViews {
 				return self::section_app( $p );
 		}
 		return $html;
+	}
+
+	/** Invito a installare l'app, subito sotto la tessera: lo mostra pwa.js solo dove l'installazione è possibile e se non è stato chiuso. */
+	public static function install_tip( $html ) {
+		if ( ! \AssociazioneSemplice\Edition::has( 'pwa' ) || ! \AssociazioneSemplice\Pwa::enabled() ) {
+			return $html;
+		}
+		return $html . '<div class="asemf-tip" data-asem-tip hidden><p><strong>Tieni la tessera sempre con te.</strong> <span data-asem-tip-android>Aggiungi ' . esc_html( \AssociazioneSemplice\Pwa::app_name() ) . ' alla schermata Home: si apre come un\'app.</span>'
+			. '<span data-asem-tip-ios hidden>Su iPhone tocca <strong>Condividi</strong> e poi <strong>Aggiungi alla schermata Home</strong>.</span></p>'
+			. '<p class="asemf-tip-actions"><button type="button" class="asemf-btn" data-asem-install hidden>Installa l\'app</button> <button type="button" class="asemf-btn asemf-btn-ghost" data-asem-tip-close>Non ora</button></p></div>';
 	}
 
 	/** Pulsanti Wallet sotto la tessera. */

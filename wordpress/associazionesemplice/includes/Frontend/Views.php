@@ -1087,8 +1087,40 @@ final class Views {
 		foreach ( self::my_sections() as $s ) {
 			$map = array( 'tessera' => 'section_card', 'attivita' => 'section_activities', 'calendario' => 'section_calendar', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests', 'minori' => 'section_minors', 'profilo' => 'section_profile', 'regolamento' => 'section_rules', 'avvisi' => 'section_notices' );
 			$html .= isset( $map[ $s ] ) ? self::{$map[ $s ]}( $p ) : (string) apply_filters( 'asem_area_section', '', $s, $p );
+			if ( 'tessera' === $s ) {
+				$html .= (string) apply_filters( 'asem_after_card', '' ); // invito all'app (Pro)
+			}
 		}
-		return $html;
+		return self::jump_nav( $html );
+	}
+
+	/**
+	 * «Il mio spazio» è una colonna lunga: da telefono una barra fissa in alto porta alle sezioni (titoli h3 delle sezioni già disegnate; sotto 4 sezioni non serve).
+	 */
+	private static function jump_nav( string $html ): string {
+		$n     = 0;
+		$items = array();
+		$html  = (string) preg_replace_callback(
+			'#<section class="(asemf-section[^"]*)">(\s*<h3>(.*?)</h3>)?#s',
+			function ( $m ) use ( &$n, &$items ) {
+				if ( empty( $m[3] ) || false !== strpos( $m[1], 'asemf-complete' ) ) {
+					return $m[0];
+				}
+				$n++;
+				$id      = 'asemf-s' . $n;
+				$items[] = array( $id, wp_strip_all_tags( $m[3] ) );
+				return '<section id="' . $id . '" class="' . $m[1] . '">' . $m[2];
+			},
+			$html
+		);
+		if ( count( $items ) < 5 ) {
+			return $html;
+		}
+		$nav = '<nav class="asemf-jump" aria-label="Vai a una sezione"><ul>';
+		foreach ( $items as $it ) {
+			$nav .= '<li><a href="#' . esc_attr( $it[0] ) . '">' . esc_html( $it[1] ) . '</a></li>';
+		}
+		return $nav . '</ul></nav>' . $html;
 	}
 
 	/** L'area riservata con il piccolo menu laterale: «Il mio spazio» e, per chi ha il ruolo, Segreteria, Gestione corsi e Gestione eventi. */

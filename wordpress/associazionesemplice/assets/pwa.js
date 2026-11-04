@@ -101,3 +101,32 @@
 	}
 	$$('[data-asem-push]').forEach(init);
 })();
+
+/* Invito a installare l'app sotto la tessera: solo se si può installare (o su iPhone), mai nell'app già installata, e per 30 giorni dopo «Non ora». */
+(function () {
+	var tips = document.querySelectorAll('[data-asem-tip]');
+	if (!tips.length) { return; }
+	var KEY = 'asemTipClosed', now = Date.now();
+	var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone;
+	var closed = 0;
+	try { closed = parseInt(window.localStorage.getItem(KEY) || '0', 10); } catch (e) {}
+	if (standalone || (closed && now - closed < 30 * 864e5)) { return; }
+	var ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+	function show() {
+		tips.forEach(function (t) {
+			t.hidden = false;
+			var a = t.querySelector('[data-asem-tip-android]'), i = t.querySelector('[data-asem-tip-ios]');
+			if (a) { a.hidden = ios; }
+			if (i) { i.hidden = !ios; }
+		});
+	}
+	if (ios) { show(); }
+	window.addEventListener('beforeinstallprompt', show);
+	window.addEventListener('appinstalled', function () { tips.forEach(function (t) { t.hidden = true; }); });
+	document.addEventListener('click', function (e) {
+		var c = e.target.closest ? e.target.closest('[data-asem-tip-close]') : null;
+		if (!c) { return; }
+		tips.forEach(function (t) { t.hidden = true; });
+		try { window.localStorage.setItem(KEY, String(now)); } catch (er) {}
+	});
+}());

@@ -89,7 +89,7 @@ final class Pwa {
 			default:
 				$size = 'asem-icon-512.png' === $route ? 512 : 192;
 				$rgb  = Png::rgb( self::theme_color() );
-				return array( 'status' => 200, 'type' => 'image/png', 'body' => Png::solid( $size, $size, $rgb[0], $rgb[1], $rgb[2] ), 'headers' => array( 'Cache-Control' => 'public, max-age=86400' ) );
+				return array( 'status' => 200, 'type' => 'image/png', 'body' => Png::initial( $size, $rgb, self::app_name() ), 'headers' => array( 'Cache-Control' => 'public, max-age=86400' ) );
 		}
 	}
 
@@ -130,11 +130,15 @@ final class Pwa {
 		$meta  = $id > 0 ? wp_get_attachment_metadata( $id ) : null;
 		$w     = is_array( $meta ) && ! empty( $meta['width'] ) ? (int) $meta['width'] : 0;
 		$h     = is_array( $meta ) && ! empty( $meta['height'] ) ? (int) $meta['height'] : 0;
+		// L'icona generata dal plugin ha il carattere nella zona sicura: può essere ritagliata (maskable) da Android senza perdere nulla.
+		$own   = $id > 0 && wp_get_attachment_url( $id );
+		$site  = function_exists( 'get_site_icon_url' ) ? get_site_icon_url( 192 ) : '';
+		$mask  = ! $own && '' === $site ? 'any maskable' : 'any';
 		$icons = $w >= 192 && $h >= 192
 			? array( array( 'src' => self::icon_url( 512 ), 'sizes' => $w . 'x' . $h, 'type' => 'image/png', 'purpose' => 'any' ) )
 			: array(
-				array( 'src' => self::icon_url( 192 ), 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any' ),
-				array( 'src' => self::icon_url( 512 ), 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any' ),
+				array( 'src' => self::icon_url( 192 ), 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => $mask ),
+				array( 'src' => self::icon_url( 512 ), 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => $mask ),
 			);
 		return array(
 			'name'             => self::app_name(),
@@ -225,7 +229,8 @@ JS;
 		$col  = esc_attr( self::theme_color() );
 		return '<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sei offline</title>'
 			. '</head><body style="font-family:system-ui,sans-serif;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;color:#1d2327">'
-			. '<main><div style="width:56px;height:56px;border-radius:50%;background:' . $col . ';margin:0 auto 16px"></div><h1 style="font-size:1.4rem;margin:.2em 0">Sei offline</h1><p style="color:#50575e">' . $name . ' ha bisogno di una connessione per mostrarti i tuoi dati. Riprova non appena sei di nuovo online.</p></main></body></html>';
+			. '<main><img src="' . esc_url( self::icon_url( 192 ) ) . '" alt="" width="72" height="72" style="border-radius:16px;margin:0 auto 16px;display:block"><h1 style="font-size:1.4rem;margin:.2em 0">Sei offline</h1><p style="color:#50575e;max-width:30em">' . $name . ' ha bisogno di una connessione per mostrarti i tuoi dati. Appena sei di nuovo online puoi riprovare.</p>'
+			. '<button type="button" onclick="location.reload()" style="margin-top:12px;min-height:48px;padding:0 28px;border:0;border-radius:10px;background:' . $col . ';color:' . ( Png::is_light( Png::rgb( self::theme_color() ) ) ? '#1d2327' : '#fff' ) . ';font:inherit;font-weight:600">Riprova</button></main></body></html>';
 	}
 
 	// ---------- Pagine del sito ----------
