@@ -6,10 +6,12 @@ namespace Tests\Concerns;
 
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgRole;
+use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Core\Database\DatabaseRegistry;
 use App\Modules\Core\Models\Org;
 use App\Modules\Core\Models\User;
 use App\Modules\Core\Org\OrgProvisioner;
+use App\Modules\Core\Org\SetupWizard;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -66,11 +68,16 @@ trait UsesSaasDatabase
         DB::connection($registry->ownerConnection(self::DEDICATED))->statement('TRUNCATE app.orgs CASCADE');
     }
 
-    protected function createOrg(string $name, ?string $database = null): Org
+    /** Associazione di prova; la configurazione guidata è già fatta, salvo $setupDone = false. */
+    protected function createOrg(string $name, ?string $database = null, bool $setupDone = true): Org
     {
         $slug = Str::slug($name).'-'.Str::lower(Str::random(6));
+        $org = $this->app->make(OrgProvisioner::class)->create($name, $slug, $database);
+        if ($setupDone) {
+            $this->orgContext()->run($org->id, fn () => $this->app->make(OrgSettings::class)->set(SetupWizard::STATUS, SetupWizard::DONE));
+        }
 
-        return $this->app->make(OrgProvisioner::class)->create($name, $slug, $database);
+        return $org;
     }
 
     public const PASSWORD = 'una-password-di-prova-lunga';

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Core\Http\Controllers\DashboardController;
 use App\Modules\Core\Http\Controllers\OperatorsController;
 use App\Modules\Core\Http\Controllers\OrgSwitchController;
+use App\Modules\Core\Http\Controllers\SetupController;
 use App\Modules\Core\Http\Controllers\TwoFactorSetupController;
 use Illuminate\Support\Facades\Route;
 
@@ -28,6 +29,13 @@ Route::middleware('web')->group(function (): void {
 
         Route::middleware('operator')->prefix('gestionale')->group(function (): void {
             Route::get('/', DashboardController::class)->name('dashboard');
+
+            // Configurazione guidata: titolare e amministratore.
+            Route::middleware('can:org.settings')->group(function (): void {
+                Route::get('/configurazione', [SetupController::class, 'show'])->name('setup');
+                Route::post('/configurazione', [SetupController::class, 'save'])->name('setup.save');
+                Route::post('/configurazione/rimanda', [SetupController::class, 'skip'])->name('setup.skip');
+            });
 
             // Operatori e ruoli personalizzati: titolare e amministratore.
             Route::middleware('can:org.operators')->group(function (): void {

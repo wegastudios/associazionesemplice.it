@@ -106,6 +106,7 @@ it('sospende e riapre l\'associazione secondo lo stato dell\'abbonamento', funct
     $this->actingAs($owner)->get('/gestionale')->assertRedirect('/associazioni');
 
     $put(2, 'active')->assertOk();
+    $this->get('/gestionale')->assertRedirect('/gestionale/configurazione'); // associazione nuova: la configurazione guidata
     $this->get('/gestionale')->assertOk();
 
     $put(3, 'cancelled')->assertOk();

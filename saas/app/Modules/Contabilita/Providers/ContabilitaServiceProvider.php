@@ -7,7 +7,10 @@ namespace App\Modules\Contabilita\Providers;
 use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Ledger\LedgerService;
 use App\Modules\Contabilita\Listeners\SeedAccounting;
+use App\Modules\Contabilita\Setup\AccountsStep;
+use App\Modules\Contabilita\Setup\EntityStep;
 use App\Modules\Core\Contracts\OrgCreated;
+use App\Modules\Core\Contracts\SetupStep;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
@@ -15,6 +18,7 @@ final class ContabilitaServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->tag([EntityStep::class, AccountsStep::class], SetupStep::TAG);
         $this->app->bind(Ledger::class, LedgerService::class);
     }
 

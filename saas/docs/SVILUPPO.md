@@ -148,6 +148,16 @@ $e->limit(Package::Resources, 'hourly.tier'); // limite del pacchetto
 Le associazioni create a mano (pilota, `saas:org:create`) non hanno abbonamento sul portale: niente limite di
 operatori e nessun pacchetto finché non ne ricevono.
 
+## 8 bis. Configurazione guidata
+
+- `Core\Org\SetupWizard`, pagina `/gestionale/configurazione` (`org.settings`). Al primo accesso il riepilogo la apre
+  da solo, una volta per sessione, finché non è completata o rimandata (`core.setup_status` in `app.settings`).
+- I passi li forniscono i moduli: una classe che implementa `Core\Contracts\SetupStep`, registrata con
+  `$this->app->tag([...], SetupStep::TAG)` nel provider. Si controllano tutti prima di salvare; se un passo ha errori
+  non si salva nulla. Oggi: `Contabilita\Setup\EntityStep` (dati dell'ente, `ente.*`), `Soci\Setup\MembershipStep`,
+  `Contabilita\Setup\AccountsStep`, `Soci\Setup\ApplicationsStep`.
+- Nei test le associazioni nascono con la configurazione già fatta (`createOrg(..., setupDone: false)` per provarla).
+
 ## 9. Soci e tesseramento
 
 - Regole portate dal plugin in `app/Modules/Soci/Rules` (`TaxCode`, `Age`, `Phone`, `Iban`, `SocialYear`,

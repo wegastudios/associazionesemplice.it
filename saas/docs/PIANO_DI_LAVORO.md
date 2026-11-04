@@ -78,6 +78,7 @@ filtro, e il codice fiscale è cifrato nel database. Il ripristino da un dump fu
 | Soci: tutori dei minori (al massimo due, uno operativo), livelli con quota propria, certificati medici cifrati con file e scadenze | **fatto** (2026-11-04), con le pagine del gestionale |
 | Soci: promemoria via email di tessera e certificato in scadenza, consensi con la loro storia, domande di adesione online (modulo pubblico, esame in segreteria) | **fatto** (2026-11-04), con le pagine del gestionale |
 | Attività come centri di costo: corsi (contributo mensile, trimestrale o unico, giorni delle lezioni) ed eventi, iscrizioni dalla segreteria, situazione dei contributi, incassi con ricevuta e spese legati all'attività, bilancio per attività, attività sui movimenti della prima nota | **fatto** (2026-11-04), con le pagine del gestionale |
+| Configurazione guidata al primo accesso: dati dell'ente (codice fiscale e partita IVA controllati), anno sociale e quota, saldi di partenza e conto in banca, domande online e promemoria, salvati insieme; si rimanda e si riapre dal riepilogo | **fatto** (2026-11-04) |
 | Ruoli configurabili: ruoli personalizzati con nome e permessi scelti, pagina Operatori (inviti, cambio di ruolo, rimozione), menu secondo i permessi | **fatto** (2026-11-04) |
 | Attività: eventi ricorrenti con le date, prenotazioni, presenze, lista d'attesa, listini, calendario | da fare |
 | Soci: import da Excel o CSV con anteprima (soci, ospiti, genitori, tutori, anni di iscrizione), export CSV ricaricabile | **fatto** (2026-11-04), con le pagine del gestionale |
