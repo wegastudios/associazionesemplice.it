@@ -114,7 +114,9 @@ $csrf = Portale\App::csrf();
 		<?php endif; ?>
 
 		<div class="actions">
-			<?php if ( $key ) : ?>
+			<?php $lockUntil = $key ? Portale\Billing::domainUnlockAt( $s ) : null; if ( $key && $lockUntil ) : ?>
+			<p class="hint" style="margin:0">Dominio cambiato il <?php echo e( date_it( $s["domain_changed_at"] ) ); ?>: potrai cambiarlo di nuovo dal <?php echo e( date_it( $lockUntil ) ); ?>. Per un cambio sito vero prima di quella data, scrivi all'assistenza.</p>
+			<?php elseif ( $key ) : ?>
 			<form class="domain-form" method="post" action="/account/dominio">
 				<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="id" value="<?php echo e( $s['id'] ); ?>">
 				<div><label for="d<?php echo e( $s['id'] ); ?>">Cambia dominio</label>
@@ -130,7 +132,7 @@ $csrf = Portale\App::csrf();
 			<?php endif; ?>
 		</div>
 		<?php if ( $key ) : ?><p class="hint"><b>Siti di prova inclusi.</b> La licenza vale per il dominio registrato <b><?php echo e( $s['domain'] ); ?></b> e per tutti i suoi sottodomini e sottocartelle: puoi usarla anche su <code>staging.<?php echo e( $s['domain'] ); ?></code>, <code>test.<?php echo e( $s['domain'] ); ?></code>, <code>clone.<?php echo e( $s['domain'] ); ?></code> oppure <code><?php echo e( $s['domain'] ); ?>/staging</code>, con la stessa chiave e senza cambiare nulla.</p><?php endif; ?>
-		<p class="hint">Il vecchio dominio smette di funzionare al controllo successivo. Puoi cambiarlo fino a 3 volte ogni 30 giorni.</p>
+		<p class="hint">Il vecchio dominio smette di funzionare al controllo successivo. Il cambio è libero, ma dopo averlo fatto la chiave resta legata al nuovo dominio per <?php echo (int) Portale\Settings::limit( 'domain_lock_days' ); ?> giorni: poi puoi cambiarlo di nuovo.</p>
 	</div>
 	<?php endforeach; ?>
 </div></section>

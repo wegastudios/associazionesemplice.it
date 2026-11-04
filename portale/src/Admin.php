@@ -265,7 +265,7 @@ final class Admin {
 				$this->done( 'renew', 'Licenza ' . $sub['domain'] . ' rinnovata di un periodo.', $to, $id );
 				break;
 			case 'dominio':
-				$this->billing->changeDomain( $id, $sub['customer_id'], (string) ( $_POST['domain'] ?? '' ) );
+				$this->billing->changeDomain( $id, $sub['customer_id'], (string) ( $_POST['domain'] ?? '' ), true );
 				$this->done( 'domain', $sub['domain'] . ' → ' . Domain::normalize( (string) ( $_POST['domain'] ?? '' ) ), $to, $id );
 				break;
 			case 'disdici':

@@ -56,7 +56,7 @@ final class Site {
 	public static function faq(): array {
 		return array(
 			array( 'Devo pagare per usare Associazione Semplice?', 'No. Il plugin è gratuito e resta tale. La licenza gratuita è facoltativa: è legata al dominio del tuo sito e dà accesso al supporto e alle demo dei piani Pro. La ricevi appena confermi la tua email.' ),
-			array( 'Cosa significa «licenza legata a un dominio»?', 'La chiave funziona sul sito per cui l\'hai richiesta. Se cambi indirizzo, lo aggiorni tu dall\'area riservata (fino a 3 volte ogni 30 giorni), senza scrivere a nessuno.' ),
+			array( 'Cosa significa «licenza legata a un dominio»?', 'La chiave funziona sul sito per cui l\'hai richiesta. Se cambi indirizzo, lo aggiorni tu dall\'area riservata, senza scrivere a nessuno. Dopo un cambio la chiave resta legata al nuovo dominio per ' . Settings::limit( 'domain_lock_days' ) . ' giorni; per un cambio sito urgente prima di allora ti aiuta l\'assistenza. I sottodomini di prova (staging, test…) funzionano già con la stessa chiave.' ),
 			array( 'Posso passare dal gratuito al Pro più avanti?', 'Sì, in qualsiasi momento. I dati restano dove sono: si attivano soltanto le funzioni in più.' ),
 			array( 'Come funziona il rinnovo?', 'Il rinnovo è automatico, mensile o annuale a scelta. Puoi disdire quando vuoi dall\'area riservata: la licenza resta valida fino alla scadenza già pagata.' ),
 			array( 'Cosa succede se un pagamento non va a buon fine?', 'Hai alcuni giorni di tolleranza. I tuoi dati non vengono mai cancellati: se la licenza scade, tornano disponibili le funzioni di base.' ),

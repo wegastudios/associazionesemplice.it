@@ -25,6 +25,7 @@ final class Settings {
 	'pending_hold_hours' => array( 48, 1, 720, "Per quante ore una richiesta di licenza o di acquisto non completata (in attesa) tiene occupato il dominio. Se alzi: un pagamento lento si completa comunque, ma chi prenota un dominio altrui lo blocca più a lungo. Se abbassi: i domini si liberano prima, ma un pagamento tardivo può trovare il dominio già preso." ),
 	'free_inactive_days' => array( 30, 7, 365, 'Una licenza gratuita si rinnova da sola alla scadenza solo se negli ultimi N giorni c\x27è stato un accesso (una verifica dal plugin o l\x27ingresso del cliente); altrimenti scade. Se alzi: restano attive più a lungo anche siti abbandonati. Se abbassi: chi usa il plugin ma non lo apre da tempo rischia di perdere la licenza.' ),
 	'free_renew_ahead' => array( 2, 0, 14, 'Quanti giorni prima della scadenza si rinnova la licenza gratuita. Se alzi: nessun buco ma la licenza si allunga prima del necessario. Se abbassi (0 = alla scadenza): un ritardo del lavoro giornaliero può lasciarla scadere per qualche ora.' ),
+	'domain_lock_days' => array( 180, 0, 730, 'Giorni in cui il dominio resta bloccato dopo un cambio fatto dal cliente (0 = nessun blocco). Il primo cambio è libero; il personale può sempre cambiarlo dal pannello. Se alzi: una chiave si condivide meno tra domini diversi, ma chi ha un cambio sito vero deve scrivere all\x27assistenza più spesso. Se abbassi: più libertà ai clienti, ma una stessa chiave si può far girare su più domini a turno.' ),
 	'password_min'  => array( 10, 8, 64, 'Lunghezza minima della password dei clienti. Se alzi: password più difficili da indovinare ma più clienti ricorrono al link per email. Se abbassi: più comodo ma più esposto a tentativi di indovinare.' ),
 	'login_fails'   => array( 5, 3, 30, 'Errori di password consentiti per email ogni ora, poi l\x27accesso con password si ferma (resta il link per email); per lo stesso indirizzo IP il limite è 4 volte tanto. Se alzi: meno clienti respinti per un errore, ma più tentativi possibili per chi prova a indovinare. Se abbassi: più protezione, ma chi sbaglia spesso resta fuori per un\x27ora.' ),
 	);
@@ -58,6 +59,7 @@ final class Settings {
 		self::apply( 'password_min', $g, 'password_min' );
 		self::apply( 'free_inactive_days', $g, 'free_inactive_days' );
 		self::apply( 'free_renew_ahead', $g, 'free_renew_ahead' );
+		self::apply( 'domain_lock_days', $g, 'domain_lock_days' );
 		self::apply( 'login_fails', $g, 'login_fails' );
 		if ( array_key_exists( 'trial_enabled', $g ) ) {
 			Config::set( 'trial_enabled', (bool) $g['trial_enabled'] );
@@ -88,7 +90,7 @@ final class Settings {
 
 	/** Valore corrente di un limite (da config o da pannello) dentro i margini consentiti. */
 	public static function limit( string $key ): int {
-		$paths = array( 'duration_month' => 'duration_days.month', 'duration_year' => 'duration_days.year', 'duration_free' => 'duration_days.free', 'renew_window' => 'renew_window_days', 'reminder_days' => 'reminder_days', 'trial_days' => 'trial_days', 'proxy_ip' => 'proxy_per_ip', 'proxy_key' => 'proxy_per_key', 'releases_keep' => 'releases_keep', 'download_day' => 'download_day', 'update_link_ttl' => 'update_link_ttl', 'form_ip' => 'form_ip', 'session_hours' => 'session_hours', 'pending_hold_hours' => 'pending_hold_hours', 'password_min' => 'password_min', 'login_fails' => 'login_fails', 'free_inactive_days' => 'free_inactive_days', 'free_renew_ahead' => 'free_renew_ahead' );
+		$paths = array( 'duration_month' => 'duration_days.month', 'duration_year' => 'duration_days.year', 'duration_free' => 'duration_days.free', 'renew_window' => 'renew_window_days', 'reminder_days' => 'reminder_days', 'trial_days' => 'trial_days', 'proxy_ip' => 'proxy_per_ip', 'proxy_key' => 'proxy_per_key', 'releases_keep' => 'releases_keep', 'download_day' => 'download_day', 'update_link_ttl' => 'update_link_ttl', 'form_ip' => 'form_ip', 'session_hours' => 'session_hours', 'pending_hold_hours' => 'pending_hold_hours', 'password_min' => 'password_min', 'login_fails' => 'login_fails', 'free_inactive_days' => 'free_inactive_days', 'free_renew_ahead' => 'free_renew_ahead', 'domain_lock_days' => 'domain_lock_days' );
 		$v     = Config::get( $paths[ $key ], null );
 		return self::clamp( $key, null === $v ? self::LIMITS[ $key ][0] : $v );
 	}

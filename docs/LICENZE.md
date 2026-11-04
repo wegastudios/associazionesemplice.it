@@ -8,7 +8,7 @@
 - La **chiave gratuita** (Free) è facoltativa e si chiede dal portale; abilita i servizi collegati (prova Pro, avvisi di aggiornamento).
 - Con il **plugin Pro** le funzioni dipendono dal piano della chiave: Free (nessuna funzione Pro), **Pro Lite** (senza contabilità), **Pro Full** (tutto).
 - Ogni chiave è legata a **un dominio registrato**: la licenza vale per quel dominio e per **tutti i suoi sottodomini e sottocartelle** (`staging.esempio.it`, `test.esempio.it`, `esempio.it/staging`); il portale riduce il dominio del sito al dominio registrabile (`LicenseRules::registrable_domain`, suffissi tipo `co.uk` compresi) prima di chiederlo a Wega, e il plugin confronta l'attestazione (`bid`) allo stesso modo (`LicenseRules::same_domain`).
-  Il dominio si cambia dall'area riservata del portale (3 cambi ogni 30 giorni). I siti locali (`localhost`, `*.local`, `*.test`, indirizzi IP) non richiedono licenza.
+  Il dominio si cambia dall'area riservata del portale: il cambio è libero, poi la chiave resta bloccata per 180 giorni (Impostazioni del portale → «Blocco del dominio»); con l'assistenza il personale lo cambia sempre. Il server Wega applica solo un limite di sicurezza (3 cambi ogni 30 giorni). I siti locali (`localhost`, `*.local`, `*.test`, indirizzi IP) non richiedono licenza.
 
 ## Livelli
 
