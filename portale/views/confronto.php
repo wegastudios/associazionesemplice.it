@@ -18,7 +18,35 @@ $priceText = function ( string $code, string $period ): string {
 	return money( $c ) . ( $l ? ' (listino ' . money( $l ) . ')' : '' );
 };
 $md = (string) file_get_contents( __DIR__ . '/../content/confronto.md' );
+// Nomi dei piani sempre quelli del pannello (Prezzi → «Nome sul sito»); i nomi scritti a mano nel testo sono segnaposto.
+$planName = function ( string $code, string $fallback ): string {
+	$n = trim( (string) Portale\Config::get( 'plans.' . $code . '.label', '' ) );
+	return '' !== $n ? $n : $fallback;
+};
+// Dati dei piani per l'intestazione fissa del confronto (nome, prezzo, pulsante): li legge confronto.js dall'attributo data-cmp.
+$cmpBase = rtrim( (string) Portale\Config::get( 'base_url', '' ), '/' );
+$cmpPlans = array();
+foreach ( (array) Portale\Config::get( 'plans', array() ) as $code => $p ) {
+	if ( false === ( $p['visible'] ?? true ) ) {
+		continue;
+	}
+	$y = (int) ( $p['prices']['year']['cents'] ?? 0 );
+	$m = (int) ( $p['prices']['month']['cents'] ?? 0 );
+	$ly = $y ? (int) Portale\Settings::listCents( $code, 'year' ) : 0;
+	$row = array( 'code' => $code, 'name' => $planName( $code, (string) $code ), 'hot' => 'lite' === $code, 'blurb' => Portale\Site::blurb( $code ) );
+	if ( 'free' === $code || ! $y ) {
+		$row += array( 'price' => '0 €', 'per' => 'per sempre', 'alt' => 'Serve solo la licenza gratuita', 'url' => $cmpBase . '/free', 'cta' => 'Inizia gratis' );
+	} else {
+		$row += array( 'price' => money( $y ), 'per' => 'all\'anno', 'alt' => $m ? 'oppure ' . money( $m ) . ' al mese' : '', 'url' => $cmpBase . '/acquista?plan=' . Portale\Site::slug( $code ) . '&period=year', 'cta' => 'Scegli' );
+		if ( $ly && $ly > $y ) {
+			$row['was'] = money( $ly );
+		}
+	}
+	$cmpPlans[] = $row;
+}
+$cmpData = e( json_encode( array( 'plans' => $cmpPlans ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) );
 $md = strtr( $md, array(
+	'{free_name}' => $planName( 'free', 'Free' ), '{lite_name}' => $planName( 'lite', 'Pro Contabile' ), '{full_name}' => $planName( 'full', 'Pro Fiscale' ),
 	'{lite_month}' => $priceText( 'lite', 'month' ), '{lite_year}' => $priceText( 'lite', 'year' ),
 	'{full_month}' => $priceText( 'full', 'month' ), '{full_year}' => $priceText( 'full', 'year' ),
 ) );
@@ -95,13 +123,13 @@ $fragment = ! empty( $fragment );
 .cmp-page h2{margin-top:36px}
 </style>
 <?php if ( $fragment ) : // frammento per la demo: solo titoli e tabelle, senza intestazione né pulsanti ?>
-<div class="cmp-page"><?php echo $html; ?></div>
+<div class="cmp-page" data-cmp="<?php echo $cmpData; ?>"><?php echo $html; ?></div>
 <?php return; endif; ?>
 <section class="page"><div class="wrap cmp-page" style="max-width:920px">
-	<span class="eyebrow">Free, Pro Contabile e Pro Fiscale</span>
+	<span class="eyebrow">Cosa cambia tra i piani</span>
 	<h1>Confronto tra le versioni</h1>
-	<?php if ( $promoName ) : ?><p><span class="promo-tag" style="margin:0"><?php echo e( $promoName ); ?></span> <b>Prezzi in promozione fino al <?php echo e( date( 'd/m/Y', strtotime( $promoEnd ) ) ); ?></b>: nell'ultima riga della tabella trovi il prezzo in vigore e, tra parentesi, il listino.</p><?php endif; ?>
-	<div data-confronto-inline><?php echo $html; ?></div>
+	<?php if ( $promoName ) : ?><p><span class="promo-tag" style="margin:0"><?php echo e( $promoName ); ?></span> <b>Prezzi in promozione fino al <?php echo e( date( 'd/m/Y', strtotime( $promoEnd ) ) ); ?></b>: nell'intestazione di ogni piano trovi il prezzo in vigore e il listino barrato.</p><?php endif; ?>
+	<div data-confronto-inline data-cmp="<?php echo $cmpData; ?>"><?php echo $html; ?></div>
 	<script src="/assets/confronto.js" defer></script>
 	
 </div></section>
