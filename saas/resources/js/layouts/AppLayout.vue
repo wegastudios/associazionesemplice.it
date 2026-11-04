@@ -12,6 +12,7 @@ const error = computed(() => page.props.errors?.ledger);
 const sections = [
     { href: '/gestionale', label: 'Riepilogo' },
     { href: '/gestionale/soci', label: 'Soci' },
+    { href: '/gestionale/domande', label: 'Domande' },
     { href: '/gestionale/prima-nota', label: 'Prima nota' },
     { href: '/gestionale/conti', label: 'Conti' },
     { href: '/gestionale/rendiconto', label: 'Rendiconto' },

@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Modules\Soci\Http\Controllers\ApplicationsController;
 use App\Modules\Soci\Http\Controllers\PeopleController;
+use App\Modules\Soci\Http\Controllers\PublicApplicationController;
 use App\Modules\Soci\Http\Controllers\SociExtrasController;
 use Illuminate\Support\Facades\Route;
 
@@ -12,6 +14,8 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale
         Route::get('/soci/cerca', [PeopleController::class, 'lookup'])->name('people.lookup');
         Route::get('/soci/livelli', [SociExtrasController::class, 'levels'])->name('levels');
         Route::get('/soci/{person}', [PeopleController::class, 'show'])->whereUuid('person')->name('people.show');
+        Route::get('/domande', [ApplicationsController::class, 'index'])->name('applications');
+        Route::get('/domande/{application}', [ApplicationsController::class, 'show'])->whereUuid('application')->name('applications.show');
     });
 
     Route::middleware('can:people.edit')->group(function (): void {
@@ -21,6 +25,9 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale
         Route::post('/soci/{person}/uscita', [PeopleController::class, 'leave'])->whereUuid('person')->name('people.leave');
         Route::post('/soci/{person}/tessera-manuale', [PeopleController::class, 'grant'])->whereUuid('person')->name('people.grant');
         Route::post('/tessere/{membership}/togli', [PeopleController::class, 'revoke'])->whereUuid('membership')->name('memberships.revoke');
+        Route::post('/soci/{person}/consensi', [PeopleController::class, 'consent'])->whereUuid('person')->name('people.consent');
+        Route::post('/domande/{application}/accogli', [ApplicationsController::class, 'approve'])->whereUuid('application')->name('applications.approve');
+        Route::post('/domande/{application}/respingi', [ApplicationsController::class, 'reject'])->whereUuid('application')->name('applications.reject');
         Route::post('/soci/{person}/tutori', [SociExtrasController::class, 'linkGuardian'])->whereUuid('person')->name('guardians.link');
         Route::post('/soci/{person}/tutori/{guardian}/operativo', [SociExtrasController::class, 'operativeGuardian'])->whereUuid(['person', 'guardian'])->name('guardians.operative');
         Route::delete('/soci/{person}/tutori/{guardian}', [SociExtrasController::class, 'unlinkGuardian'])->whereUuid(['person', 'guardian'])->name('guardians.unlink');
@@ -42,7 +49,14 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale
 
     Route::middleware('can:org.settings')->group(function (): void {
         Route::post('/soci/impostazioni', [PeopleController::class, 'settings'])->name('people.settings');
+        Route::post('/domande/impostazioni', [ApplicationsController::class, 'settings'])->name('applications.settings');
         Route::post('/soci/livelli', [SociExtrasController::class, 'storeLevel'])->name('levels.store');
         Route::put('/soci/livelli/{level}', [SociExtrasController::class, 'updateLevel'])->whereUuid('level')->name('levels.update');
     });
+});
+
+// Domanda di adesione pubblica, senza accesso: pochi invii per indirizzo e per associazione.
+Route::middleware('web')->group(function (): void {
+    Route::get('/adesione/{slug}', [PublicApplicationController::class, 'show'])->name('application.form');
+    Route::post('/adesione/{slug}', [PublicApplicationController::class, 'store'])->middleware('throttle:applications')->name('application.submit');
 });

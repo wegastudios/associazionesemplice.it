@@ -11,12 +11,15 @@ use App\Modules\Contabilita\Contracts\PaymentMethod;
 use App\Modules\Core\Contracts\Input;
 use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Soci\Contracts\CertificateKind;
+use App\Modules\Soci\Contracts\ConsentChannel;
+use App\Modules\Soci\Contracts\ConsentSource;
 use App\Modules\Soci\Contracts\MemberType;
 use App\Modules\Soci\Contracts\PeopleError;
 use App\Modules\Soci\Models\MemberLevel;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Rules\Age;
 use App\Modules\Soci\Services\CertificateService;
+use App\Modules\Soci\Services\ConsentService;
 use App\Modules\Soci\Services\GuardianService;
 use App\Modules\Soci\Services\MembershipService;
 use App\Modules\Soci\Services\PeopleService;
@@ -39,6 +42,7 @@ final readonly class PeopleController
         private OrgSettings $settings,
         private GuardianService $guardians,
         private CertificateService $certificates,
+        private ConsentService $consents,
     ) {}
 
     public function index(Request $request): Response
@@ -151,6 +155,27 @@ final readonly class PeopleController
         });
     }
 
+    /** Consenso dato o revocato in segreteria (modulo cartaceo, a voce): per un minore lo dà il genitore o tutore. */
+    public function consent(Request $request, string $person): RedirectResponse
+    {
+        $data = Input::of($request->validate([
+            'channel' => ['required', Rule::enum(ConsentChannel::class)],
+            'granted' => ['required', 'boolean'],
+            'source' => ['required', Rule::in([ConsentSource::Paper->value, ConsentSource::Oral->value, ConsentSource::Admin->value])],
+            'given_by' => ['nullable', 'uuid'],
+        ]));
+        $p = Person::query()->findOrFail($person);
+        $givenBy = Input::optionalString($data, 'given_by');
+        if ($givenBy !== null && ! in_array($givenBy, array_column($this->guardians->of($p->id), 'id'), true)) {
+            throw ValidationException::withMessages(['ledger' => 'Il consenso per un minore lo dà uno dei suoi tutori.']);
+        }
+        $channel = ConsentChannel::from(Input::string($data, 'channel'));
+        $granted = $request->boolean('granted');
+        $this->consents->set($p->id, $channel, $granted, ConsentSource::from(Input::string($data, 'source')), $givenBy);
+
+        return back()->with('status', $channel->label().': '.($granted ? 'consenso registrato.' : 'consenso revocato.'));
+    }
+
     public function leave(Request $request, string $person): RedirectResponse
     {
         $data = Input::of($request->validate([
@@ -230,6 +255,7 @@ final readonly class PeopleController
                 'fee' => Money::plain($this->memberships->feeFor($person)),
                 'guardians' => $this->guardians->of($person->id),
                 'dependents' => $this->guardians->dependentsOf($person->id),
+                'consents' => $this->consents->current($person->id),
                 // I dati sanitari si aprono (e si annotano nel registro) solo per chi li può vedere.
                 'certificates' => $request->user()?->can('health.view') === true ? $this->certificates->forPerson($person->id) : null,
             ],
@@ -244,6 +270,8 @@ final readonly class PeopleController
                 'fee' => Money::plain($this->settings->int(MembershipService::DEFAULT_FEE, 0)),
                 'warn_days' => $this->certificates->warnDays(),
             ],
+            'consentChannels' => array_map(static fn (ConsentChannel $c): array => ['value' => $c->value, 'label' => $c->label()], ConsentChannel::cases()),
+            'consentSources' => array_map(static fn (ConsentSource $c): array => ['value' => $c->value, 'label' => $c->label()], [ConsentSource::Paper, ConsentSource::Oral, ConsentSource::Admin]),
             'certificateKinds' => array_map(static fn (CertificateKind $k): array => ['value' => $k->value, 'label' => $k->label()], CertificateKind::cases()),
             'canEdit' => $request->user()?->can('people.edit') ?? false,
             'canSettings' => $request->user()?->can('org.settings') ?? false,

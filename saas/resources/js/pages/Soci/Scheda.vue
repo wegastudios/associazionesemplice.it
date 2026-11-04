@@ -6,7 +6,7 @@ import PersonPicker from '../../components/PersonPicker.vue';
 
 const props = defineProps({
     person: Object, firstFreeCard: String, types: Array, levels: Array, accounts: Array,
-    socialYear: Object, settings: Object, certificateKinds: Array, canEdit: Boolean, canSettings: Boolean,
+    socialYear: Object, settings: Object, certificateKinds: Array, consentChannels: Array, consentSources: Array, canEdit: Boolean, canSettings: Boolean,
 });
 
 const p = props.person ?? {};
@@ -39,6 +39,13 @@ const certForm = useForm({ kind: 'non_agonistic', issued_on: today, expires_on: 
 const addCert = () => certForm.post(`/gestionale/soci/${props.person.id}/certificati`, { preserveScroll: true, forceFormData: true, onSuccess: () => certForm.reset() });
 const deleteCert = (c) => router.delete(`/gestionale/certificati/${c.id}`, { preserveScroll: true });
 const certBadge = { valid: 'bg-salvia/15', expiring: 'bg-giallo/25', expired: 'bg-danger/15 text-danger', none: 'bg-surface' };
+const consentForm = useForm({ channel: '', granted: true, source: 'paper', given_by: '' });
+const setConsent = (channel, granted) => {
+    consentForm.channel = channel;
+    consentForm.granted = granted;
+    if (props.person.minor && !consentForm.given_by) consentForm.given_by = props.person.guardians.find((g) => g.operative)?.id ?? '';
+    consentForm.transform((d) => ({ ...d, given_by: d.given_by || null })).post(`/gestionale/soci/${props.person.id}/consensi`, { preserveScroll: true });
+};
 const submitSettings = () => settingsForm.post('/gestionale/soci/impostazioni', { preserveScroll: true });
 const months = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
 
@@ -176,6 +183,35 @@ const label = 'space-y-1 text-sm';
                     <div class="min-w-64 flex-1 space-y-1 text-sm"><label for="guardian" class="font-semibold">Collega un genitore o tutore</label><PersonPicker id="guardian" v-model="guardianForm.guardian_id" /></div>
                     <button type="submit" class="rounded-lg border border-line px-4 py-2 font-semibold" :disabled="!guardianForm.guardian_id">Collega</button>
                 </form>
+            </section>
+
+            <section class="mt-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="consents-title">
+                <h2 id="consents-title" class="mb-3 text-lg font-bold">Consensi</h2>
+                <div v-if="canEdit" class="mb-4 flex flex-wrap gap-3 text-sm">
+                    <label class="space-y-1"><span class="block">Come è stato dato</span>
+                        <select v-model="consentForm.source" class="rounded-lg border border-line bg-card px-3 py-2"><option v-for="s in consentSources" :key="s.value" :value="s.value">{{ s.label }}</option></select>
+                    </label>
+                    <label v-if="person.minor" class="space-y-1"><span class="block">Dato da</span>
+                        <select v-model="consentForm.given_by" class="rounded-lg border border-line bg-card px-3 py-2">
+                            <option value="">scegli il genitore o tutore</option>
+                            <option v-for="g in person.guardians" :key="g.id" :value="g.id">{{ g.name }}</option>
+                        </select>
+                    </label>
+                </div>
+                <ul class="divide-y divide-line text-sm">
+                    <li v-for="c in consentChannels" :key="c.value" class="flex flex-wrap items-center gap-3 py-2">
+                        <span class="min-w-48 font-semibold">{{ c.label }}</span>
+                        <template v-if="person.consents[c.value]">
+                            <span :class="person.consents[c.value].granted ? 'rounded bg-salvia/15 px-2 py-0.5' : 'rounded bg-surface px-2 py-0.5'">{{ person.consents[c.value].granted ? 'dato' : 'revocato' }}</span>
+                            <span class="text-muted">{{ person.consents[c.value].at }} · {{ person.consents[c.value].source }}<template v-if="person.consents[c.value].given_by"> · da {{ person.consents[c.value].given_by }}</template></span>
+                        </template>
+                        <span v-else class="text-muted">non registrato</span>
+                        <span v-if="canEdit" class="ml-auto flex gap-3">
+                            <button v-if="!person.consents[c.value]?.granted" type="button" class="text-accent hover:underline" :disabled="consentForm.processing" @click="setConsent(c.value, true)">Registra consenso</button>
+                            <button v-else type="button" class="text-danger hover:underline" :disabled="consentForm.processing" @click="setConsent(c.value, false)">Revoca</button>
+                        </span>
+                    </li>
+                </ul>
             </section>
 
             <section v-if="person.dependents.length" class="mt-6 rounded-2xl border border-line bg-card p-5">

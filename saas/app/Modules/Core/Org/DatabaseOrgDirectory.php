@@ -48,6 +48,32 @@ final readonly class DatabaseOrgDirectory implements OrgDirectory
         return Org::withTrashed()->where('slug', $slug)->exists();
     }
 
+    public function activeBySlug(string $slug): ?array
+    {
+        if (preg_match('/^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/', $slug) !== 1) {
+            return null;
+        }
+        $org = $this->db->connection('pgsql')->table('core.orgs')->where('slug', $slug)->where('status', 'active')
+            ->whereNull('deleted_at')->first(['id', 'name']);
+
+        return $org !== null && is_string($org->id ?? null) && is_string($org->name ?? null) ? ['id' => $org->id, 'name' => $org->name] : null;
+    }
+
+    public function slug(string $orgId): ?string
+    {
+        $slug = $this->db->connection('pgsql')->table('core.orgs')->where('id', $orgId)->value('slug');
+
+        return is_string($slug) ? $slug : null;
+    }
+
+    public function activeIds(): array
+    {
+        return array_values(array_filter(
+            $this->db->connection('pgsql')->table('core.orgs')->where('status', 'active')->whereNull('deleted_at')->orderBy('id')->pluck('id')->all(),
+            is_string(...),
+        ));
+    }
+
     public function setStatus(string $orgId, string $status): void
     {
         $this->db->connection('pgsql')->table('core.orgs')->where('id', $orgId)->update(['status' => $status, 'updated_at' => now()]);

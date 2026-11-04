@@ -16,6 +16,19 @@ interface OrgDirectory
 
     public function slugTaken(string $slug): bool;
 
+    /**
+     * Associazione attiva con questo indirizzo (pagine pubbliche, come la domanda di adesione); null se non c'è o è
+     * sospesa o chiusa.
+     *
+     * @return array{id: string, name: string}|null
+     */
+    public function activeBySlug(string $slug): ?array;
+
+    public function slug(string $orgId): ?string;
+
+    /** @return list<string> gli id delle associazioni attive (lavori notturni) */
+    public function activeIds(): array;
+
     /** @param  'active'|'suspended'|'closed'  $status */
     public function setStatus(string $orgId, string $status): void;
 }

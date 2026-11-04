@@ -158,6 +158,17 @@ operatori e nessun pacchetto finché non ne ricevono.
   L'elenco delle scadenze usa solo le date, senza aprire i dati sanitari.
 - Impostazioni del tesseramento in `app.settings` (`Core\Contracts\OrgSettings`): mese di inizio dell'anno sociale e
   quota associativa.
+- Consensi (`ConsentService`, canali in `Soci\Contracts\ConsentChannel`): ogni consenso o revoca è un evento in
+  `app.consent_events`, che non si modifica; lo stato è l'ultimo evento (vista `app.current_consents`). Per un minore
+  lo dà un suo tutore.
+- Promemoria (`ReminderService`, comando `saas:reminders:send` ogni mattina, `--dry-run` per contare): tessera e
+  certificato in scadenza o scaduti da meno di 30 giorni, al socio o al tutore operativo del minore. Uno solo per
+  persona, tipo e scadenza (`app.reminders`, prenotato prima dell'invio). Si accendono nelle impostazioni delle domande.
+- Domande di adesione (`ApplicationService`, regole in `ApplicationRules` dal plugin): modulo pubblico
+  `/adesione/{indirizzo}` solo se l'associazione è attiva e le ha accese; 5 invii al minuto per indirizzo IP e 50
+  all'ora per associazione, campo trappola `website`, stessa risposta qualunque sia il dato. I dati del modulo sono
+  cifrati in `app.applications.data_enc`. Accogliendo nasce la scheda (con il genitore, cercato per codice fiscale o
+  email) e si registrano i consensi del modulo come «Online»; respingendo serve un motivo.
 
 ## 10. Nuova tabella di un'associazione
 
