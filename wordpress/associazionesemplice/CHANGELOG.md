@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.11
+- Da telefono le schede in cima alle pagine di amministrazione stanno su una riga che scorre
+
 ## 1.3.10
 - Nei corsi si può annullare una lezione e tutte le successive dello stesso giorno (le passate restano)
 
