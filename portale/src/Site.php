@@ -122,12 +122,18 @@ final class Site {
 		return $flip[ $slug ] ?? $slug;
 	}
 
+	/** Nome pubblico di un piano: quello del pannello (Prezzi → «Nome sul sito»), altrimenti uno di riserva. */
+	public static function planName( string $code ): string {
+		$fallback = array( 'free' => 'Free', 'lite' => 'PRO Contabilità', 'full' => 'PRO Contabilità & Fiscalità' );
+		$name     = trim( (string) Config::get( 'plans.' . $code . '.label', '' ) );
+		return '' !== $name ? $name : ( $fallback[ $code ] ?? $code );
+	}
+
 	/** Elenco pubblico dei piani per altri siti (supporto): slug fisso e nome commerciale del pannello (Prezzi → «Nome sul sito»). Nessun prezzo né dato riservato. */
 	public static function publicPlans(): array {
 		$out = array();
-		foreach ( array( 'free' => 'Free', 'lite' => 'Pro Contabile', 'full' => 'Pro Fiscale' ) as $code => $fallback ) {
-			$name  = trim( (string) Config::get( 'plans.' . $code . '.label', '' ) );
-			$out[] = array( 'slug' => self::slug( $code ), 'nome' => '' !== $name ? $name : $fallback );
+		foreach ( array( 'free', 'lite', 'full' ) as $code ) {
+			$out[] = array( 'slug' => self::slug( $code ), 'nome' => self::planName( $code ) );
 		}
 		return array( 'piani' => $out );
 	}

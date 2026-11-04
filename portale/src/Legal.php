@@ -21,6 +21,8 @@ final class Legal {
 			'piva'      => $none( 'piva', '' ),
 			'email'     => $none( 'email', 'info@associazionesemplice.it' ),
 			'sito'      => 'associazionesemplice.it',
+			'piano_lite' => Site::planName( 'lite' ),
+			'piano_full' => Site::planName( 'full' ),
 		);
 	}
 
@@ -133,7 +135,7 @@ Il servizio di licenze, aggiornamenti e area riservata di Associazione Semplice 
 
 ## Che cosa include
 - **Licenza gratuita:** abilita i servizi collegati del plugin gratuito per un dominio. È gratuita, senza scadenza fissa, e si rinnova da sola finché usi il servizio.
-- **Piani Pro (Pro Contabile e Pro Fiscale):** abilitano le funzioni del plugin Pro per un dominio, per il periodo pagato (un mese o un anno), con rinnovo automatico o pagamento singolo secondo la scelta fatta all'acquisto.
+- **Piani Pro ({piano_lite} e {piano_full}):** abilitano le funzioni del plugin Pro per un dominio, per il periodo pagato (un mese o un anno), con rinnovo automatico o pagamento singolo secondo la scelta fatta all'acquisto.
 - **Area riservata:** per vedere la chiave, cambiare il dominio, scaricare i pacchetti, cambiare piano e disdire.
 
 ## Licenza e dominio

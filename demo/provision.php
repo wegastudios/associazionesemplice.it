@@ -63,7 +63,7 @@ demo_step( 'pagine', function () {
 		};
 		$content = '<!-- wp:group {"className":"asem-hero","align":"wide","layout":{"type":"constrained"}} --><div class="wp-block-group alignwide asem-hero">'
 			. '<!-- wp:heading {"level":1} --><h1 class="wp-block-heading">Prova Associazione Semplice</h1><!-- /wp:heading -->'
-			. '<!-- wp:paragraph --><p>Un sito WordPress vero con il plugin gratuito e il Pro già installati, pieno di dati inventati. Clicca, inserisci, cancella: non rompi niente. Tutto si azzera ogni notte e non parte nessuna email.</p><!-- /wp:paragraph -->'
+			. '<!-- wp:paragraph --><p>Una demo per provare le funzioni del Pro: un sito WordPress vero con il plugin gratuito e il Pro già installati, pieno di dati inventati. Clicca, inserisci, cancella: non rompi niente. Tutto si azzera ogni notte alle 4 e non parte nessuna email.</p><!-- /wp:paragraph -->'
 			. '<!-- wp:buttons --><div class="wp-block-buttons">' . $btn( 'Entra come segreteria', wp_login_url( admin_url( 'admin.php?page=asem' ) ) ) . $btn( 'Entra come socio', wp_login_url( $url( 'area' ) ), true ) . '</div><!-- /wp:buttons --></div><!-- /wp:group -->'
 			. '<!-- wp:spacer {"height":"36px"} --><div style="height:36px" aria-hidden="true" class="wp-block-spacer"></div><!-- /wp:spacer -->'
 			. '<!-- wp:columns {"align":"wide"} --><div class="wp-block-columns alignwide">'
@@ -73,7 +73,8 @@ demo_step( 'pagine', function () {
 			. $card( 'Come amministratore del plugin', 'Tutte le impostazioni di Associazione Semplice. Qui puoi scaricare una copia dei tuoi dati e ricaricarla il giorno dopo, per provare a lungo.', $cred( 'amministratore', 'Amministratore-Demo-2026' ), $btn( 'Copia di sicurezza', admin_url( 'admin.php?page=asem-backup' ) ) . $btn( 'Impostazioni', admin_url( 'admin.php?page=asem-settings' ), true ) )
 			. '</div><!-- /wp:columns -->'
 			. '<!-- wp:shortcode -->[asem_demo_confronto]<!-- /wp:shortcode -->'
-			. '<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center">Per i ruoli del plugin, i collegamenti e il confronto con le versioni: <a href="https://associazionesemplice.it/prova">associazionesemplice.it/prova</a></p><!-- /wp:paragraph -->';
+			. '<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center">Per i ruoli del plugin, i collegamenti e il confronto con le versioni: <a href="https://associazionesemplice.it/prova">associazionesemplice.it/prova</a></p><!-- /wp:paragraph -->'
+			. '<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center"><strong>Ti è piaciuta?</strong> <a href="https://associazionesemplice.it/free">Ottieni la licenza gratuita</a>: crei il tuo account, accedi al supporto e alle demo dei piani Pro.</p><!-- /wp:paragraph -->';
 		$home = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Demo di Associazione Semplice', 'post_name' => 'demo', 'post_content' => $content ) );
 		// Menu del sito: solo ciò che serve a chi prova.
 		$nav = '';

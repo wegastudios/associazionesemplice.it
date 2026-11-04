@@ -70,12 +70,13 @@ add_filter( 'wp_robots', function ( $robots ) {
 } );
 $asem_demo_note = 'Questa è una <strong>demo pubblica</strong> di Associazione Semplice: i dati sono inventati, non vengono inviate email e tutto si azzera ogni notte alle 4.';
 // Uscire dalla demo: un collegamento sempre in vista (per cambiare accesso, da segreteria a socio e viceversa) che riporta alla pagina iniziale.
-$asem_demo_exit = function (): string {
+$asem_demo_cta = ' · <a href="https://associazionesemplice.it/free" style="color:inherit;font-weight:700">Ottieni la licenza gratuita</a>';
+$asem_demo_exit = function () use ( $asem_demo_cta ): string {
 	if ( ! is_user_logged_in() ) {
-		return ' <a href="' . esc_url( wp_login_url( home_url( '/' ) ) ) . '" style="color:inherit;font-weight:700">Entra</a>';
+		return ' <a href="' . esc_url( wp_login_url( home_url( '/' ) ) ) . '" style="color:inherit;font-weight:700">Entra</a>' . $asem_demo_cta;
 	}
 	$u = wp_get_current_user();
-	return ' Sei entrato come <strong>' . esc_html( $u->user_login ) . '</strong> · <a href="' . esc_url( wp_logout_url( home_url( '/' ) ) ) . '" style="color:inherit;font-weight:700">Esci</a>';
+	return ' Sei entrato come <strong>' . esc_html( $u->user_login ) . '</strong> · <a href="' . esc_url( wp_logout_url( home_url( '/' ) ) ) . '" style="color:inherit;font-weight:700">Esci</a>' . $asem_demo_cta;
 };
 add_action( 'admin_notices', function () use ( $asem_demo_note, $asem_demo_exit ) {
 	echo '<div class="notice notice-info"><p>' . wp_kses( $asem_demo_note, array( 'strong' => array() ) ) . wp_kses( $asem_demo_exit(), array( 'strong' => array(), 'a' => array( 'href' => array(), 'style' => array() ) ) ) . '</p></div>';
@@ -99,8 +100,8 @@ add_action( 'login_form_logout', function () {
 	exit;
 }, 1 );
 
-// Confronto Free / Pro Contabile / Pro Fiscale: un pulsante che apre il popup a schede. Lo script e il contenuto li dà il portale (stessa fonte di /confronto), quindi sono sempre aggiornati.
+// Confronto tra le versioni: un pulsante che apre il popup a schede. Lo script e il contenuto li dà il portale (stessa fonte di /confronto), quindi sono sempre aggiornati.
 add_shortcode( 'asem_demo_confronto', function () {
-	return '<p class="has-text-align-center"><a class="wp-block-button__link wp-element-button" href="https://associazionesemplice.it/confronto" data-confronto>Confronta le versioni: Free, Pro Contabile e Pro Fiscale</a></p>'
+	return '<p class="has-text-align-center"><a class="wp-block-button__link wp-element-button" href="https://associazionesemplice.it/confronto" data-confronto>Confronta le versioni del plugin</a></p>'
 		. '<script src="https://associazionesemplice.it/assets/confronto.js" defer></script>';
 } );
