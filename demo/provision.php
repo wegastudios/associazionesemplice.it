@@ -72,7 +72,6 @@ demo_step( 'pagine', function () {
 			. $card( 'Come segreteria', 'Soci, incassi, spese, attività e registri: il lavoro di ogni giorno, dal pannello o dal sito.', $cred( 'segreteria', 'Segreteria-Demo-2026' ), $btn( 'Bacheca', admin_url( 'admin.php?page=asem' ) ) . $btn( 'Area segreteria', $url( 'segreteria' ), true ) )
 			. $card( 'Come amministratore del plugin', 'Tutte le impostazioni di Associazione Semplice. Qui puoi scaricare una copia dei tuoi dati e ricaricarla il giorno dopo, per provare a lungo.', $cred( 'amministratore', 'Amministratore-Demo-2026' ), $btn( 'Copia di sicurezza', admin_url( 'admin.php?page=asem-backup' ) ) . $btn( 'Impostazioni', admin_url( 'admin.php?page=asem-settings' ), true ) )
 			. '</div><!-- /wp:columns -->'
-			. '<!-- wp:heading {"className":"asem-confronto-titolo"} --><h2 class="wp-block-heading asem-confronto-titolo">Confronto tra le versioni</h2><!-- /wp:heading -->'
 			. '<!-- wp:shortcode -->[asem_demo_confronto]<!-- /wp:shortcode -->'
 			. '<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center">Per i ruoli del plugin, i collegamenti e il confronto con le versioni: <a href="https://associazionesemplice.it/prova">associazionesemplice.it/prova</a></p><!-- /wp:paragraph -->';
 		$home = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Demo di Associazione Semplice', 'post_name' => 'demo', 'post_content' => $content ) );
