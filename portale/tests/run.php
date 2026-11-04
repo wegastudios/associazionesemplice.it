@@ -267,6 +267,21 @@ foreach ( array_slice( $calls, $n ) as $c ) {
 	$renews += false !== strpos( $c[1], '/licenses/renew' ) ? 1 : 0;
 }
 check( 'rinnovo singolo: un solo rinnovo anche se arriva due volte', 1 === $renews && 'merged' === $billing->subscription( $rn['id'] )['status'] );
+// Primo pagamento: se un altro processo sta già emettendo la licenza (segnaposto recente) non se ne crea una seconda.
+$billing->startPaid( 'dora@esempio.it', 'Claim.it', 'full', 'year', 'stripe', 'once' );
+$cl = $db->one( "SELECT * FROM subscriptions WHERE domain = 'claim.it'" );
+$db->run( 'UPDATE subscriptions SET license_id = ?, updated_at = ? WHERE id = ?', array( Portale\Billing::CLAIM, Portale\Db::now(), $cl['id'] ) );
+$n = count( $calls );
+$billing->completePayment( $cl['id'], 'pi_claim' );
+$created = 0;
+foreach ( array_slice( $calls, $n ) as $c ) {
+	$created += false !== strpos( $c[1], '/licenses' ) ? 1 : 0;
+}
+check( 'primo pagamento: emissione già in corso, nessuna seconda licenza', 0 === $created && Portale\Billing::CLAIM === $billing->subscription( $cl['id'] )['license_id'] );
+$db->run( 'UPDATE subscriptions SET updated_at = ? WHERE id = ?', array( gmdate( 'Y-m-d H:i:s', time() - 3600 ), $cl['id'] ) );
+$billing->completePayment( $cl['id'], 'pi_claim' );
+$cl2 = $billing->subscription( $cl['id'] );
+check( 'primo pagamento: segnaposto abbandonato, la licenza viene emessa', 'active' === $cl2['status'] && Portale\Billing::CLAIM !== $cl2['license_id'] && ! empty( $cl2['license_key_enc'] ) );
 check( 'rinnovo singolo: non compare tra le licenze del cliente', 1 === count( array_filter( $billing->forCustomer( $ds['customer_id'] ), function ( $s ) { return 'dora.it' === $s['domain']; } ) ) );
 
 // Pagamento singolo con PayPal: ordine e ricorrente.
