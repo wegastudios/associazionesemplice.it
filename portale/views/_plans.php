@@ -12,7 +12,7 @@ $euro = function ( $c ) { return number_format( $c / 100, ( $c % 100 ) ? 2 : 0, 
 		<h3><?php echo e( $p['label'] ); ?></h3>
 		<?php if ( 'free' === $code || ! $y ) : ?>
 			<div class="price"><b>0 €</b><span>senza scadenza</span></div>
-			<p class="price-note">Serve solo la licenza gratuita</p>
+			<p class="price-note">La licenza gratuita è facoltativa</p>
 		<?php else : ?>
 			<div class="price"><b><?php echo e( $euro( $y ) ); ?></b><span>all'anno</span></div>
 			<p class="price-note"><?php echo $m ? 'oppure ' . e( $euro( $m ) ) . ' al mese' : '&nbsp;'; ?></p>

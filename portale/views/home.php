@@ -2,13 +2,13 @@
 <section class="hero"><div class="wrap hero-grid">
 	<div>
 		<span class="eyebrow">Plugin WordPress per associazioni</span>
-		<h1>La segreteria della tua associazione, finalmente semplice.</h1>
-		<p class="lead">Soci, eventi, prima nota e privacy in un unico plugin per il tuo sito WordPress. Si parte gratis; i pagamenti online e la contabilità arrivano quando servono.</p>
+		<h1>Soci, eventi e cassa della tua associazione, finalmente in ordine.</h1>
+		<p class="lead">Un plugin per il tuo sito WordPress: libro soci, eventi e corsi, prima nota e privacy. Il gratuito basta per cominciare; incassi online e contabilità si aggiungono con il Pro.</p>
 		<div class="hero-cta">
 			<a class="btn big" href="/prova">Prova la demo</a>
 			<a class="btn alt big" href="/free">Ottieni la licenza gratuita</a>
 		</div>
-		<ul class="ticks"><li>Gratis, senza scadenza</li><li>Dati sempre tuoi</li><li>In italiano</li></ul>
+		<ul class="ticks"><li>Plugin gratuito</li><li>I dati restano sul tuo sito</li><li>In italiano</li></ul>
 	</div>
 	<div class="mock" aria-hidden="true">
 		<div class="mock-bar"><i></i><i></i><i></i></div>
@@ -32,7 +32,7 @@
 <section class="section"><div class="wrap">
 	<div class="section-head"><h2>Si parte in tre passi</h2></div>
 	<div class="steps">
-		<div class="step"><h3>Chiedi la chiave</h3><p>Inserisci email e dominio del sito: la licenza gratuita arriva subito, nella tua area riservata.</p></div>
+		<div class="step"><h3>Ottieni la licenza gratuita</h3><p>Inserisci email e dominio del sito: crei il tuo account, accedi al supporto e alle demo dei piani Pro e ricevi la chiave. Il plugin funziona anche senza.</p></div>
 		<div class="step"><h3>Installa il plugin</h3><p>Lo installi da WordPress, incolli la chiave e la procedura guidata ti accompagna con poche domande.</p></div>
 		<div class="step"><h3>Cresci quando vuoi</h3><p>Ti servono incassi online o contabilità? Passi al Pro dall'area riservata, senza reinstallare nulla.</p></div>
 	</div>

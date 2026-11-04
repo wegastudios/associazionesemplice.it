@@ -66,7 +66,7 @@ foreach ( $plans as $p ) {
 			<h3><?php echo e( $p['label'] ); ?></h3>
 			<p class="for"><?php echo e( $p['tagline'] ?? $c['tagline'] ); ?></p>
 			<?php if ( 'free' === $code ) : ?>
-				<div class="price"><b>0 €</b><span>senza scadenza</span></div><div class="price-note">Serve solo la licenza gratuita</div>
+				<div class="price"><b>0 €</b><span>senza scadenza</span></div><div class="price-note">La licenza gratuita è facoltativa</div>
 			<?php else : ?>
 				<?php $promoName = Portale\Settings::promoNow(); $lm = Portale\Settings::listCents( $code, 'month' ); $ly = Portale\Settings::listCents( $code, 'year' ); if ( $promoName && ( $lm || $ly ) ) : ?><div class="promo-tag"><?php echo e( $promoName ); ?></div><?php endif; ?>
 				<?php if ( $m ) : ?><div class="only-month"><div class="price"><?php if ( $lm ) : ?><s class="was"><?php echo e( $euro( $lm ) ); ?></s> <?php endif; ?><b><?php echo e( $euro( $m ) ); ?></b><span>al mese</span></div><div class="price-note">Rinnovo mensile, senza vincoli</div></div><?php endif; ?>
