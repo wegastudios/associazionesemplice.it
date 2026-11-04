@@ -667,6 +667,10 @@ final class Actions {
 			\AssociazioneSemplice\LessonExceptions::move( $id, $date, (string) ( $p['new_date'] ?? '' ), (string) ( $p['new_start'] ?? '' ), (string) ( $p['new_end'] ?? '' ), $note );
 			$msg  = 'Lezione spostata al ' . Ui::date( (string) $p['new_date'] ) . '.';
 			$text = 'La lezione di ' . ( $a ? $a['name'] : 'corso' ) . ' del ' . Ui::date( $date ) . ' è spostata al ' . Ui::date( (string) $p['new_date'] ) . ( '' !== trim( (string) ( $p['new_start'] ?? '' ) ) ? ' alle ' . trim( (string) $p['new_start'] ) : '' ) . ( '' !== trim( $note ) ? ' (' . trim( $note ) . ')' : '' ) . '.';
+		} elseif ( 'cancel_from' === ( $p['mode'] ?? '' ) ) {
+			$n    = \AssociazioneSemplice\LessonExceptions::cancel_from( $id, $date, $note );
+			$msg  = $n . ( 1 === $n ? ' lezione annullata' : ' lezioni annullate' ) . ' (questa e le successive; le passate restano).';
+			$text = 'Le lezioni di ' . ( $a ? $a['name'] : 'corso' ) . ' dal ' . Ui::date( $date ) . ' in poi sono annullate' . ( '' !== trim( $note ) ? ' (' . trim( $note ) . ')' : '' ) . '.';
 		} else {
 			\AssociazioneSemplice\LessonExceptions::cancel( $id, $date, $note );
 			$msg  = 'Lezione annullata.';

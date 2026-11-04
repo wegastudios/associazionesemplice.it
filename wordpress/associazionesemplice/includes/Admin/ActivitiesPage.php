@@ -270,7 +270,7 @@ final class ActivitiesPage {
 			echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'date', $o['date'] ), Html::allowed() );
 			echo '<p><strong>' . esc_html( Ui::date( $o['date'] ) ) . '</strong>' . ( $o['start'] ? ' ore ' . esc_html( (string) $o['start'] ) : '' ) . ' · <input type="text" name="note" placeholder="Motivo (facoltativo)" size="22"> '
 				. '<label><input type="checkbox" name="notify" value="1" checked> avvisa gli iscritti</label> '
-				. '<button class="button" name="mode" value="cancel">Annulla la lezione</button><br>Sposta a <input type="date" name="new_date"> dalle <input type="time" name="new_start"> alle <input type="time" name="new_end"> <button class="button" name="mode" value="move">Sposta</button></p>';
+				. '<button class="button" name="mode" value="cancel">Annulla solo questa lezione</button> <button class="button" name="mode" value="cancel_from">Annulla questa lezione e le successive</button><br>Sposta a <input type="date" name="new_date"> dalle <input type="time" name="new_start"> alle <input type="time" name="new_end"> <button class="button" name="mode" value="move">Sposta</button></p>';
 			Ui::form_close();
 		}
 		if ( $ex ) {
