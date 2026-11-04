@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.2
+- L'app non intercetta più l'amministrazione e l'accesso del sito; testo della pagina App più chiaro
+
 ## 1.3.1
 - App più curata: icona con l'iniziale, pagina offline con «Riprova» e invito a installarla sotto la tessera
 
