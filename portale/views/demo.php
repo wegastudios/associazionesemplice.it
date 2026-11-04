@@ -58,5 +58,6 @@ $url = function ( string $path ) use ( $base ): string { return $base . $path; }
 	<?php endforeach; ?>
 	</tbody></table></div>
 	<p class="fine">Il presidente e il vicepresidente, con la tessera in regola, agiscono come la segreteria su tutto. Il tesoriere lavora dall'area riservata. Il volontario gestisce solo le sue attività. Lo staff verifica gli ingressi.</p>
-	<p class="actions"><a class="btn" href="/free">Ottieni la licenza gratuita</a> <a class="btn alt" href="/confronto">Confronto tra le versioni</a> <a class="btn alt" href="/prezzi">Vedi i piani</a></p>
+	<p class="actions"><a class="btn" href="/free">Ottieni la licenza gratuita</a> <a class="btn alt" href="/confronto" data-confronto>Confronto tra le versioni</a> <a class="btn alt" href="/prezzi">Vedi i piani</a></p>
+<script src="/assets/confronto.js" defer></script>
 </div></section>

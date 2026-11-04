@@ -99,18 +99,8 @@ add_action( 'login_form_logout', function () {
 	exit;
 }, 1 );
 
-// Tabella di confronto Free / Pro Contabile / Pro Fiscale: la legge dal portale (stessa fonte di /confronto, quindi sempre aggiornata) e la tiene in memoria un'ora.
+// Confronto Free / Pro Contabile / Pro Fiscale: un pulsante che apre il popup a schede. Lo script e il contenuto li dà il portale (stessa fonte di /confronto), quindi sono sempre aggiornati.
 add_shortcode( 'asem_demo_confronto', function () {
-	$html = get_transient( 'asem_demo_confronto' );
-	if ( false === $html ) {
-		$res  = wp_remote_get( 'https://associazionesemplice.it/confronto-demo', array( 'timeout' => 8 ) );
-		$html = ( ! is_wp_error( $res ) && 200 === (int) wp_remote_retrieve_response_code( $res ) ) ? (string) wp_remote_retrieve_body( $res ) : '';
-		if ( '' !== $html ) {
-			set_transient( 'asem_demo_confronto', $html, HOUR_IN_SECONDS );
-		}
-	}
-	if ( '' === $html ) {
-		return '<p><a href="https://associazionesemplice.it/confronto">Confronto tra le versioni</a></p>';
-	}
-	return '<div class="asem-confronto">' . $html . '</div>';
+	return '<p class="has-text-align-center"><a class="wp-block-button__link wp-element-button" href="https://associazionesemplice.it/confronto" data-confronto>Confronta le versioni: Free, Pro Contabile e Pro Fiscale</a></p>'
+		. '<script src="https://associazionesemplice.it/assets/confronto.js" defer></script>';
 } );
