@@ -105,9 +105,113 @@ Il pannello `/admin` ha cinque sezioni, ciascuna con le sue schede: **Cruscotto*
 
 Gestione → Clienti → **Da Wega** elenca le licenze che il server Wega ha emesso per il portale (`GET /licenses`, scope `licenses:list`, **ancora da realizzare lato Wega**: richiesta in `docs/WEGA-richiesta-elenco-licenze.md`), le confronta con il database e permette di **importare** quelle mancanti (una o tutte). L'elenco non contiene le chiavi: le licenze importate non mostrano la chiave al cliente. Non sono importabili (con il motivo in tabella) le licenze con cliente che non è un'email, piano sconosciuto al portale o dominio già di un altro cliente. In fondo, le licenze del portale che Wega non elenca. Finché Wega non offre l'elenco la pagina lo dice (404/403) senza errori.
 
+## Rinnovo automatico delle licenze gratuite
+
+Il lavoro giornaliero (`bin/cron.php`) rinnova (`POST /licenses/renew`, senza email) le licenze **gratuite** che scadono entro «giorni di anticipo» (default 2), **salvo** quelle senza accessi da più di «giorni senza accessi» (default 30): quelle scadono. «Accesso» = una verifica valida dal plugin (passa dal rimbalzo) o l'ingresso del cliente nell'area riservata; se non c'è mai stato, vale la data di emissione. Entrambi i limiti sono in Impostazioni (con i rischi). Le licenze a pagamento e di prova non sono toccate; un errore di Wega su una licenza non ferma le altre. La data dell'ultimo accesso è nella colonna `last_seen_at`.
+
+## Avviso «ci sono aggiornamenti» (per il plugin)
+
+`GET /api/plugin/latest`, pubblico e senza autenticazione: `{"free":{"version":"1.1.14","url":"https://…/accedi"},"pro":{…}}`, con l'ultima versione pubblicata in Versioni per ciascun prodotto (un prodotto senza versioni è omesso). Il link porta alla pagina di accesso: gli zip non hanno indirizzi pubblici. Cache pubblica di 5 minuti e lo stesso limite per IP delle verifiche (`/api/license/validate`). Il plugin non manda né chiave né dati del sito.
+
+## Specchio su Wega (percorsi definitivi)
+
+Wega è la copia di sicurezza delle licenze: ogni cambiamento del portale si riflette su Wega. Scope `licenses:manage` e `licenses:reveal-key` (assegnati ai portali esistenti). Usati dal portale: `POST /licenses/{id}/suspend|restore|revoke` (stato annullato/ripristinato e eliminazione di licenze e clienti), `GET /licenses/{id}/key` (recupero della chiave di una licenza che il portale non conserva: pulsante «Recupera la chiave da Wega» nel dettaglio e automatico all'importazione da Wega), `PATCH /licenses/{id}` (disponibile nel client per scadenza, cliente, piano, dominio). Un errore vero di Wega blocca l'operazione (nulla cambia nel portale); se l'operazione non esiste (404/405) si prosegue con un avviso.
 ## Staff e accesso unico al supporto
 
 - **Staff** (`/admin/staff`, tabella `staff`): due ruoli. *Amministratore* entra nella gestione del portale e nell'amministrazione del supporto; *Solo supporto* entra solo nell'amministrazione del sito di supporto, mai in `/admin`. Gli indirizzi in `admins` di `config.php` restano amministratori e non si cambiano dal pannello. Aggiungere un indirizzo crea anche il cliente, così la persona entra col link per email.
 - **Link «Supporto»** (menu e piè di pagina): da connessi porta a `/supporto/accedi`, che manda al sito di supporto con un token firmato; senza `support.sso_secret` (almeno 32 caratteri, in `config.php`) porta alla home del supporto.
 - **Contratto del token** (lato sito di supporto, ancora da realizzare): `{support.url}/sso?t=<payload>.<firma>`, con `payload` = base64url del JSON `{v:1, iss, aud, sub:email, role: admin|support|customer, iat, exp = iat+60s, jti}` e `firma` = base64url(HMAC-SHA256(payload, segreto)). Il sito deve verificare firma, `aud`, `exp` e usare il `jti` una sola volta. `admin` e `support` aprono l'amministrazione (ticket da lavorare); `customer` mostra FAQ e i ticket con quell'email. L'email è già verificata dal portale.
 - **Ruolo «Solo supporto»** nel portale: entra in `/admin` ma vede solo Licenze e Clienti. Può rinnovare di un periodo, cambiare dominio, disdire, sospendere/riattivare e annotare le licenze. Non può emettere né eliminare licenze o clienti, e non ha accesso a piani e prezzi, versioni, pagamenti, email, pagine, impostazioni, registro, Da Wega e Staff.
+
+## Ritorno al supporto dopo l'accesso
+
+Se `/supporto/accedi` trova la persona non connessa, ricorda la destinazione fissa (`$_SESSION['after_login'] = '/supporto/accedi'`, mai presa dall'indirizzo: nessun redirect aperto) e la manda a `/accedi`. Dopo l'accesso (password o link per email) `startSession` la riporta lì e il token dell'accesso unico (60 secondi) si genera solo a quel punto; senza destinazione ricordata si va a `/account` o `/admin` come prima.
+
+## Gratuito unico e aggiornamento diretto solo per il Pro
+
+Dalla 1.2.3 il gratuito è **un solo pacchetto** per tutti, quello per WordPress.org (senza aggiornatore): nel portale il prodotto resta «free» e lo zip da caricare in Versioni è `associazionesemplice.zip` (il Pro è `associazionesemplice-pro.zip`; nomi uguali in build, CI e radice del repository, `release.sh` li legge da `wordpress/dist/`). L'aggiornamento diretto da WordPress (`POST /api/plugin/update`) lo usa **solo il Pro**, con chiave e dominio; per il gratuito l'endpoint resta disponibile ma il plugin non lo chiama. `/api/plugin/latest` resta per gli avvisi. Ultimi caricati: gratuito 1.2.3, Pro 1.1.6.
+
+## Revisione di sicurezza (17–19 ottobre 2026)
+
+Corretto: intestazioni (`X-Content-Type-Options`, `Permissions-Policy`, CSP minima `object-src 'none'; base-uri 'self'; frame-ancestors 'none'`, oltre a HSTS e X-Frame-Options); le API, i webhook e le chiavi pubbliche non aprono più la sessione (niente cookie né file per ogni chiamata); sessioni in modalità rigida e con scadenza per inattività (`session_hours`, default 12); limite orario per IP sui moduli pubblici (licenza gratuita, acquisto, link di accesso: `form_ip`, default 10); i pagamenti Stripe non immediati (SEPA e simili) emettono la licenza solo a incasso avvenuto (`payment_status` paid o no_payment_required, evento `checkout.session.async_payment_succeeded`); una richiesta mai completata tiene occupato il dominio solo `pending_hold_hours` (48) e chi paga non è bloccato da una licenza gratuita o di prova altrui; il ruolo amministratore si rilegge dall'email anche per scarichi e dettagli degli errori (niente privilegi residui nella sessione); `deploy.sh` controlla la sintassi su una cartella d'appoggio e, se c'è un errore, non tocca il sito in funzione.
+
+Verificato senza problemi: firme dei webhook (Stripe HMAC con tolleranza, PayPal con verifica dell'API), un solo trattamento per evento, query tutte preparate, escape dell'HTML, CSRF su ogni modulo, cookie `Secure`/`HttpOnly`/`SameSite`, nessun file sensibile raggiungibile dal web, token degli scarichi firmati e a scadenza breve, percorsi dei pacchetti validati, nessuna verifica dei certificati disattivata.
+
+Da decidere / configurare (non risolvibile solo nel codice):
+- **Proprietà del dominio**: oggi chiunque può registrare una licenza gratuita per un dominio non suo (serve solo un'email). Con la modifica sopra non blocca più gli acquisti, ma può occupare il dominio per la licenza gratuita. Una verifica vera richiede un controllo (record DNS TXT o file) da scegliere.
+- **PayPal**: l'evento `BILLING.SUBSCRIPTION.ACTIVATED` emette la licenza; se il primo addebito dovesse fallire dopo l'approvazione il cliente avrebbe la licenza fino alla scadenza. Alternativa: emettere solo con `PAYMENT.SALE.COMPLETED`.
+- **Ruolo «solo supporto»** può rinnovare di un periodo una licenza senza pagamento (e rileggere le chiavi): scegliere se limitarlo.
+- Dashboard Stripe: abilitare solo i metodi di pagamento voluti e l'evento `checkout.session.async_payment_succeeded` sul webhook.
+
+## Seconda revisione di sicurezza (28 ottobre 2026)
+
+Riletti tutti i file di `portale/src`, le viste e gli script; le correzioni della prima revisione reggono.
+
+Corretto:
+- **Script nel pannello (alta)**: la conferma «Elimina» di clienti, staff, licenze, versioni e cambio piano metteva email o nomi dentro una stringa JavaScript con il solo `e()`. Il browser decodifica `&#039;` prima di eseguire lo script, e il controllo email di PHP accetta anche `"x');...//"@esempio.it` e `x'+setTimeout`…`+'@esempio.it`: chi si iscriveva con un indirizzo del genere poteva far eseguire codice nella sessione dell'amministratore al clic su «Elimina». Ora tutte le conferme passano da `js_confirm()` (JSON, mai concatenazione).
+- **Email accettate**: `Billing::validEmail()` rifiuta la parte locale tra virgolette (virgole, parentesi, chiocciole): certi server di posta la leggono in modo diverso e finisce in pagine e messaggi. Vale per iscrizioni, acquisti, staff e importazione da Wega.
+- **Limiti aggirabili dietro proxy**: con `trust_forwarded_for` si leggeva la prima voce di `X-Forwarded-For`, che sceglie chi chiama (un indirizzo diverso a ogni tentativo azzerava tutti i limiti). Ora `ClientIp` legge da destra (`forwarded_hops`, default 1) e accetta solo indirizzi validi. Con l'opzione spenta (default) non cambia nulla.
+
+Regola per chi scrive le pagine: un dato dentro un attributo `on…` o dentro uno script va sempre da `json_encode`, mai da `e()`.
+
+Resta da decidere (invariato): proprietà del dominio, evento PayPal che emette la licenza, ruolo «solo supporto» (rinnovo gratuito e lettura delle chiavi). Annotati e non toccati: l'ingresso con un solo clic dal link per email (`/entra/…`: un sito terzo può far entrare un visitatore nell'account di chi ha un link valido, effetto trascurabile) e le due `DELETE` a ogni richiesta pubblica dei limiti orari (costo minimo, nessun rischio di sicurezza).
+
+## Demo pubblica (`associazionesemplice.it/demo/`)
+
+WordPress vero con il gratuito e il Pro attivi, nella cartella `~/public_html/demo` del server del portale (database `associazionesemp_demo`). Le credenziali sono pubbliche e stanno nella pagina `/plugin` del portale: utenti `segreteria` (ruolo Segreteria) e `amministratore` (ruolo `asem_demo_admin` «Amministratore del plugin»: permessi `asem_manage` e `asem_operate`, quindi tutte le pagine del plugin, ma nessun permesso di WordPress su plugin, temi, utenti o impostazioni; nella demo è l'unico che scarica e ricarica la copia di sicurezza, per provare per più giorni; la chiave di licenza è nascosta e non si cambia, e un avviso dice di non inserire chiavi vere). Il socio di prova non è un utente WordPress: è la persona Mario Demo con email `socio@demo.invalid` e password impostata da `provision.php` (accesso proprio, pagina `/?asem_member_login=1`); password e recupero sono bloccati dal mu-plugin. Nessun utente `administrator` di WordPress: quello d'installazione (`setup_tmp`) si toglie a ogni azzeramento, e per la manutenzione si usa `wp` da riga di comando.
+
+File in `demo/` (copiati sul server in `~/demo-provision/`, il mu-plugin in `wp-content/mu-plugins/`):
+- `update.sh` porta i due plugin alle ultime versioni pubblicate (vedi sotto).
+- `reset.sh` azzera tutto: database pulito, installazione, plugin attivi, dati inventati. Da lanciare ogni notte alle 4 (`0 4 * * * bash ~/demo-provision/reset.sh >> ~/logs/demo-reset.log 2>&1`, da mettere in cPanel → Cron Jobs).
+- `provision.php` crea ente, pagine, utenti, 14 soci inventati, quote, spese, un corso e due eventi. Si lancia con `wp eval-file`.
+- `asem-demo-style.php` (mu-plugin) e `assets/` (carattere e logo del portale, copiati in `wp-content/mu-plugins/asem-demo-assets/`): aspetto del sito, dell'accesso e del pannello nei colori del marchio. La pagina iniziale e il menu li crea `provision.php`. Le credenziali pubbliche compaiono in `portale/src/Demo.php`, `provision.php` (home) e nell'accesso (`asem-demo-style.php`): se cambiano, vanno cambiate tutte e tre.
+- `asem-demo.php` (mu-plugin): nessuna email in uscita, profili e password bloccati (anche cambio e recupero della password del socio di prova, che accede con email e password senza utente WordPress), nessun file caricato, noindex, avviso in ogni pagina, la segreteria entra nella Bacheca del plugin.
+
+Licenza: finché la verifica del plugin è in «standby» valgono tutte le funzioni e non serve nessuna chiave. Quando la verifica si attiva serve una licenza Pro Fiscale per il dominio `associazionesemplice.it` (emissione manuale da `/admin/licenze/nuova`), da mettere in `~/.demo_key` (`provision.php` la legge).
+
+Aggiornamento dei plugin: `update.sh` installa nella demo le ultime versioni pubblicate sul portale (le legge da `~/portale/data/releases`, prima il gratuito, poi il Pro). Parte da solo in fondo a `portale/release.sh` a ogni pubblicazione e a ogni azzeramento notturno; non serve fare altro.
+
+## Livello della licenza firmato dal portale
+
+Wega resta la fonte di nome, date e chiave; il **livello** (gratuito, contabile, Pro Full) lo decide e lo firma il portale. `/api/license/validate` aggiunge alla risposta di Wega il campo `portal_attestation`: un JWT EdDSA (intestazione `{alg: EdDSA, kid}`) con `iss` (indirizzo del portale), `aud` (`product_code` di Wega), `bid` (dominio registrato), `sub` (id licenza), `plan` (`free`, `lite`, `accounting` o `fiscal`), `iat` e `exp` (14 giorni). Si firma per **ogni** licenza che Wega dice valida: se il portale non la conosce, l'ha annullata o il piano non ha un livello, la prova c'è lo stesso con livello `free` (il plugin non guarda il nome del piano su Wega e senza la nostra prova non accetterebbe la licenza); non si firma una licenza non valida. Anche l'aggiornamento diretto del Pro (`/api/plugin/update`) usa questo livello. Il livello viene dal codice del piano del portale (tabella `subscriptions`) (`free` → free, `lite` = Pro Contabile → accounting, `full` = Pro Fiscale → fiscal; si cambia con `plan_levels` in `config.php`), mai dal nome su Wega.
+
+Chiave: `data/portal-sign.key` sul server (base64 di 32 byte, permessi 600, fuori dalla cartella pubblica e dal repository) oppure `portal_sign_key` in `config.php`. Si crea con `php bin/portal-key.php`, che stampa solo `kid` e chiave pubblica (`x`) da fissare nel plugin; la privata non si stampa mai. Finché la chiave non c'è il campo non compare e il plugin usa il livello dell'attestazione di Wega. Una chiave sul server vale quanto il database: chi entra nel server potrebbe firmare un livello a piacere (come potrebbe già cambiare i piani). Per cambiare chiave: nuovo `kid` nel plugin, poi sostituire il file.
+
+## Pacchetti firmati (aggiornamento diretto)
+
+L'aggiornamento diretto offre **solo versioni firmate**. La firma è Ed25519 sul messaggio `prodotto|versione|sha256` (UTF-8, sha256 in esadecimale minuscolo dello zip), in base64url senza padding; il plugin verifica impronta e firma con la chiave pubblica del `kid` prima di installare (`POST /api/plugin/update` risponde con `sha256`, `signature`, `kid`).
+
+- **Chiave pubblica** (in `Releases::SIGNING_KEYS`): `pkg-2026-10-85dce7` = `ld_4NilmHT-TtaH8vUw_YGq7eEt4a0e4L4YAxSzP6oI`.
+- **Chiave privata**: solo sul computer di chi pubblica, `~/.asem/pacchetti-ed25519.pem` (identificativo in `…kid`), **mai sul server e mai nel repository**: va conservata anche in un secondo luogo sicuro (se si perde non si possono firmare nuove versioni e tocca ruotare la chiave con un rilascio del plugin).
+- `bash portale/release.sh free|pro|both` firma e carica; `bash portale/release.sh sign free|pro VERSIONE` firma una versione già pubblicata (serve lo zip in `wordpress/dist`); il pannello Versioni mostra «firmata / non firmata» e un caricamento dal pannello resta senza firma (disponibile per lo scarico dall'area riservata, ma non per l'aggiornamento diretto).
+- **Rotazione**: si aggiunge la nuova chiave pubblica a `SIGNING_KEYS` (e al plugin, che deve conoscerle entrambe) prima di firmare con la nuova.
+
+## Dominio registrabile: Public Suffix List completa
+
+`Domain::registrable()` usa la Public Suffix List **completa** (sezioni ICANN e PRIVATE) con l'algoritmo ufficiale (eccezioni «!», regole «*.», regola più lunga): `staging.esempio.it` → `esempio.it`, `www.esempio.co.uk` → `esempio.co.uk`, ma `sito.altervista.org` o `utente.github.io` restano sé stessi, così i clienti di uno stesso ospite non condividono la licenza. Un dominio che è già un suffisso pubblico non è valido. Dati: `portale/src/PublicSuffixData.php` (generato da `public_suffix_list.dat`, scaricato il 2026-10-19, 338207 byte, 10398 regole in punycode; licenza della lista MPL 2.0). Il plugin usa la stessa copia.
+
+## Cambio di piano (upgrade e downgrade)
+
+Dall'area riservata (`/account`), su una licenza acquistata con carta o PayPal, attiva e non disdetta (`src/PlanChange.php`):
+- **Upgrade** (piano più caro, stesso periodo): paga subito la differenza `(nuovo − vecchio) × giorni residui / giorni del periodo` (minimo 0,50 €, quello di Stripe) con un pagamento singolo; a pagamento riuscito il tipo di licenza cambia su Wega (`PATCH plan_name`), la **chiave e la scadenza restano le stesse**; su Stripe ricorrente anche il prezzo dei rinnovi passa al piano nuovo (senza proporzioni né addebiti immediati). Ripetibile senza effetti: se un passaggio esterno fallisce il webhook ritenta.
+- **Downgrade** (piano più economico): programmato (`next_plan`). La licenza resta com'è fino alla scadenza pagata; al rinnovo (`Billing::renew`) cambia tipo su Wega e prezzo. Su Stripe ricorrente il prezzo del prossimo addebito cambia subito alla programmazione; con pagamento singolo il rinnovo è già proposto al prezzo nuovo. Si può annullare prima del rinnovo.
+- Email: `plan_upgraded`, `plan_downgrade_scheduled`, `plan_downgraded` (modificabili da `/admin/email`).
+- **Non gestito**: PayPal ricorrente (il cambio di prezzo richiede una nuova approvazione del cliente su PayPal: per ora «scrivici dal supporto»), licenze manuali/di prova, passaggio tra periodi (mese ↔ anno), rimborsi. Se al rinnovo Wega non risponde al cambio di tipo, l'errore finisce nel log (`[portale] downgrade: …`) e il tipo va allineato dalla gestione.
+
+## Prezzi e piani creati al volo
+Basta l'importo del piano (da `/admin/prezzi`): il rinnovo automatico non richiede di preparare prezzi su Stripe o piani su PayPal. **Stripe:** il Checkout in modalità abbonamento usa un prezzo in linea (`price_data` con `recurring.interval`); nei cambi piano di un abbonamento Stripe il nuovo prezzo si crea con `POST /prices` sullo stesso prodotto. **PayPal:** al primo acquisto si crea un prodotto («Associazione Semplice») e un piano per ogni coppia importo/periodo (`/v1/billing/plans`), ricordati in `settings.paypal_auto` (separati tra reale e sandbox) e riusati. I campi «Stripe · prezzo ricorrente» e «PayPal · piano ricorrente» restano come scelta facoltativa per usare prezzi già esistenti. Gli abbonamenti già attivi non cambiano: restano al prezzo con cui sono stati creati.
+
+## Sito pubblico: guida a provare e acquistare (novembre 2026)
+- **Un solo punto del layout.** `portale/views/layout.php` genera menu, barra in basso da telefono e fascia di chiusura; i contenuti (funzioni, domande, tappe, inviti, testi brevi dei piani) stanno in `portale/src/Site.php`. Le pagine di presentazione sono elencate in `Site::MARKETING`: solo lì compaiono fascia e barra.
+- **Menu:** «Prova la demo» (primario) e «Prezzi» (secondario) in evidenza; «Area riservata» discreto. Da telefono: pulsante «Menu» con tutte le voci e barra in basso con due scorciatoie (`Site::bar`), nascosta quando la fascia di chiusura è in vista.
+- **Percorso a tappe:** Funzioni → Demo → Prezzi → Licenza. Ogni pagina ha il suo «Prossimo passo» in `Site::band` (anche `/domande`, `/free`, `/accedi`, `/plugin`).
+- **Home più ricca** (funzioni con link, tre piani in sintesi da `views/_plans.php`, tre domande scelte); `/prova` ha il blocco «Ti è piaciuta?» con la scelta del piano (stesso partial).
+- **Nomi dei piani:** i testi leggono il nome dal pannello (Prezzi → «Nome sul sito»). Slug fissi `procontabile` e `profiscale` negli indirizzi (`/acquista?plan=…`, `Site::SLUGS`); i codici interni `lite`/`full` restano e i vecchi link funzionano ancora.
+- **Logo:** il logo riporta sempre alla home del dominio principale (`base_url`), anche nella demo (`demo/asem-demo-style.php`: sito e pagina di accesso). Il sito di supporto ha il suo logo verso il centro assistenza: da allineare dalla sessione Supporto.
+
+## Confronto tra le versioni: schede a differenze (novembre 2026)
+- **Un solo script** (`portale/public/assets/confronto.js`) per `/confronto`, per il popup (`data-confronto`) e per la home della demo; legge `/confronto-demo`, che parte da `portale/content/confronto.md`. Nessuna copia della tabella.
+- **Di default solo le funzioni che differiscono** tra i piani; le righe uguali in tutti i piani stanno dietro «Mostra anche le funzioni comuni». La ricerca cerca anche tra le comuni. Intestazione fissa con nome, prezzo (con listino barrato in promozione) e pulsante di ogni piano; da telefono un selettore di piano e una colonna per volta. Il filtro per area è una fila di pulsanti.
+- **Righe a due livelli:** nel testo `Titolo breve :: dettaglio`; il dettaglio si apre con il «+». Senza `::`, un titolo oltre 70 caratteri viene diviso in automatico alla prima virgola, parentesi o due punti (il testo intero resta come dettaglio).
+- **Nomi dei piani:** nelle tabelle e nei testi di `confronto.md` si scrivono i segnaposto `{free_name}`, `{lite_name}`, `{full_name}` (nome dal pannello, Prezzi → «Nome sul sito»); i prezzi `{lite_month}`… restano. Nome, prezzo e pulsanti dell'intestazione arrivano in un attributo `data-cmp` (JSON) generato da `views/confronto.php`.
+- **Formato di `confronto.md`:** invariati i titoli `##` e le tabelle `| Funzione | piano | piano | piano |`; la riga «Prezzo» non compare più (il prezzo è nell'intestazione). Chi aggiorna il file (sessione Portale e pagamenti; Supporto per la tabella gemella) usa `::` per i titoli brevi delle nuove righe.
