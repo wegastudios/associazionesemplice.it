@@ -36,7 +36,7 @@ class GuideContentTest extends SiteTestCase
 
         $table = $faq->firstWhere('slug', 'free-pro-contabile-e-pro-fiscale-a-confronto');
         $this->assertNotNull($table);
-        $this->assertStringContainsString('| Funzione | Free | Pro Contabile | Pro Fiscale |', $table->body);
+        $this->assertStringContainsString('| Funzione | Free | PRO Contabilità | PRO Contabilità & Fiscale |', $table->body);
     }
 
     public function test_every_guide_reference_points_to_an_existing_guide(): void
@@ -81,7 +81,7 @@ class GuideContentTest extends SiteTestCase
 
         $this->get('/articoli/'.$table->id)
             ->assertOk()
-            ->assertSee('<th>Pro Contabile</th>', false)
+            ->assertSee('<th>PRO Contabilità</th>', false)
             ->assertSee('<a href="'.route('help.article', $target->id).'">Passare a Pro, provarlo e rinnovare</a>', false);
     }
 

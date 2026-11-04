@@ -1,12 +1,12 @@
 <?php
 
-// Guide: anno fiscale, spese e fondi, bilancio provvisorio e verifiche di fine anno (Pro Fiscale, Pro 1.1.38).
+// Guide: anno fiscale, spese e fondi, bilancio provvisorio e verifiche di fine anno ({piano_fiscale}, Pro 1.1.38).
 return [
     [
         'topic' => 'plugin-pro', 'section' => 'Contabilità e adempimenti', 'slug' => 'inizio-dell-anno-fiscale',
         'title' => 'Impostare il mese di inizio dell\'anno fiscale',
         'body' => <<<'MD'
-> Disponibile in: Pro Fiscale (da Pro 1.1.38, con il plugin gratuito 1.2.47: aggiorna insieme gratuito e Pro; novità fino al Pro 1.1.39)
+> Disponibile in: {piano_fiscale} (da Pro 1.1.38, con il plugin gratuito 1.2.47: aggiorna insieme gratuito e Pro; novità fino al Pro 1.1.39)
 
 Per molte associazioni l'esercizio non coincide con l'anno solare. Dal Pro 1.1.38 puoi indicare il **mese di inizio dell'anno fiscale** separatamente da quello dell'anno sociale.
 
@@ -30,7 +30,7 @@ Le **tessere** restano per **anno solare** e scadono il 31 dicembre. Restano cos
 
 ## Da sapere
 
-- Funziona solo con il **Pro Fiscale**: senza la licenza gli anni tornano solari.
+- Funziona solo con il **{piano_fiscale}**: senza la licenza gli anni tornano solari.
 - **Cambiando il mese gli anni si ricreano** per contenere i movimenti: conviene farlo **a inizio esercizio**.
 MD,
     ],
@@ -38,7 +38,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Contabilità e adempimenti', 'slug' => 'spese-documentate-e-fondi-dei-rimborsi',
         'title' => 'Spese documentate e fondi: l\'attribuzione automatica',
         'body' => <<<'MD'
-> Disponibile in: Pro Fiscale (da Pro 1.1.38, con il plugin gratuito 1.2.47: aggiorna insieme gratuito e Pro; novità fino al Pro 1.1.39)
+> Disponibile in: {piano_fiscale} (da Pro 1.1.38, con il plugin gratuito 1.2.47: aggiorna insieme gratuito e Pro; novità fino al Pro 1.1.39)
 
 Quando registri una **spesa con scontrino o fattura**, il plugin la attribuisce da solo al fondo dei rimborsi che ha **accantonato ma non ha ancora spese a supporto**. L'attribuzione si vede sempre e si può correggere.
 
@@ -92,9 +92,9 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Contabilità e adempimenti', 'slug' => 'bilancio-provvisorio-e-avvisi-di-bilancio',
         'title' => 'Bilancio provvisorio, avvisi di bilancio e storico mensile',
         'body' => <<<'MD'
-> Disponibile in: Pro Fiscale (da Pro 1.1.38, con il plugin gratuito 1.2.47: aggiorna insieme gratuito e Pro; novità fino al Pro 1.1.39)
+> Disponibile in: {piano_fiscale} (da Pro 1.1.38, con il plugin gratuito 1.2.47: aggiorna insieme gratuito e Pro; novità fino al Pro 1.1.39)
 
-Con il Pro Fiscale hai sempre sott'occhio come sta andando l'anno fiscale.
+Con il {piano_fiscale} hai sempre sott'occhio come sta andando l'anno fiscale.
 
 ## Il bilancio provvisorio
 
@@ -135,7 +135,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Contabilità e adempimenti', 'slug' => 'verifiche-di-fine-anno-e-chiusura',
         'title' => 'Verifiche di fine anno fiscale e chiusura dell\'anno',
         'body' => <<<'MD'
-> Disponibile in: Pro Fiscale (da Pro 1.1.38, con il plugin gratuito 1.2.47: aggiorna insieme gratuito e Pro; novità fino al Pro 1.1.39)
+> Disponibile in: {piano_fiscale} (da Pro 1.1.38, con il plugin gratuito 1.2.47: aggiorna insieme gratuito e Pro; novità fino al Pro 1.1.39)
 
 Prima della fine dell'anno fiscale il plugin ti avvisa se ci sono **discrepanze**, per esempio rimborsi senza spese documentate a copertura, e può **fermare la chiusura** finché non le sistemi. L'avviso compare **solo se ci sono discrepanze**, senza messaggi verdi.
 

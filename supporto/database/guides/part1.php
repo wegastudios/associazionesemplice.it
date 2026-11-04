@@ -6,7 +6,7 @@ return [
         'topic' => 'installazione', 'section' => 'Primi passi', 'slug' => 'installare-e-attivare-il-plugin',
         'title' => 'Installare e attivare il plugin',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 Associazione Semplice si installa come qualsiasi plugin di WordPress. Ti servono un sito WordPress 6.0 o successivo e PHP 7.4 o successivo.
 
@@ -33,7 +33,7 @@ MD,
         'topic' => 'installazione', 'section' => 'Primi passi', 'slug' => 'completare-la-configurazione-guidata',
         'title' => 'Completare la configurazione guidata',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 La configurazione guidata è una procedura a domande che prepara il plugin per la tua associazione. Poche domande indispensabili: i dettagli stanno in **Più dettagli**, da aprire solo se servono. Ogni risposta si può cambiare in seguito dalle Impostazioni.
 
@@ -62,7 +62,7 @@ MD,
         'topic' => 'installazione', 'section' => 'Primi passi', 'slug' => 'creare-le-pagine-del-sito',
         'title' => 'Creare le pagine del sito (area soci, ingressi, tesoriere)',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale (alcune pagine usano funzioni Pro)
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale} (alcune pagine usano funzioni Pro)
 
 Le schermate per i soci e per chi lavora sul campo sono pagine normali del tuo sito, che mostrano contenuti del plugin tramite **shortcode**, **blocchi** o **widget Elementor**. Le pagine riservate controllano i permessi di chi le apre.
 
@@ -95,7 +95,7 @@ MD,
         'topic' => 'installazione', 'section' => 'Primi passi', 'slug' => 'installare-associazione-semplice-pro',
         'title' => 'Installare Associazione Semplice Pro',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale
+> Disponibile in: {piano_contabile}, {piano_fiscale}
 
 Associazione Semplice Pro è un plugin a parte, che si aggiunge a quello gratuito. Il plugin gratuito deve restare installato e attivo.
 
@@ -118,14 +118,14 @@ Dopo il controllo compaiono nel menu le funzioni incluse nel tuo piano.
 
 Il plugin gratuito e Pro hanno numeri di versione diversi, ma **vanno aggiornati insieme**: con un plugin gratuito vecchio, il Pro nuovo si sospende e mostra un avviso. Aggiorna prima il gratuito, poi Pro; se il sito segnala che i due non sono compatibili, aggiorna entrambi all'ultima versione.
 
-> Se cambi piano (per esempio da Pro Contabile a Pro Fiscale) non devi reinstallare nulla: dopo il controllo della licenza compaiono le funzioni in più.
+> Se cambi piano (per esempio da {piano_contabile} a {piano_fiscale}) non devi reinstallare nulla: dopo il controllo della licenza compaiono le funzioni in più.
 MD,
     ],
     [
         'topic' => 'installazione', 'section' => 'Manutenzione', 'slug' => 'copia-di-sicurezza-e-ripristino',
         'title' => 'Fare una copia di sicurezza e ripristinarla',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 La copia di sicurezza è un file ZIP con tutti i dati del plugin: soci, attività, prima nota, registri e impostazioni (senza le chiavi segrete dei pagamenti). Puoi aggiungere anche gli allegati. Solo gli amministratori possono farla.
 
@@ -156,7 +156,7 @@ MD,
         'topic' => 'installazione', 'section' => 'Manutenzione', 'slug' => 'azzerare-i-dati-e-ripartire',
         'title' => 'Azzerare i dati e ripartire da zero',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 Serve, per esempio, dopo le prove prima di iniziare davvero. Solo gli amministratori possono farlo ed è un'operazione che **non si può annullare**.
 
@@ -203,7 +203,7 @@ MD,
         'topic' => 'licenza', 'section' => 'Chiave e piani', 'slug' => 'inserire-e-controllare-la-chiave',
         'title' => 'Inserire la chiave e controllarne lo stato',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 ## Inserire la chiave
 
@@ -232,7 +232,7 @@ MD,
         'topic' => 'licenza', 'section' => 'Chiave e piani', 'slug' => 'passare-a-pro-e-rinnovare',
         'title' => 'Passare a Pro, provarlo e rinnovare',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 ## Provare Pro gratis
 
@@ -250,14 +250,14 @@ Se hai già la licenza gratuita, puoi provare un piano Pro **per 30 giorni**, un
 
 I piani si rinnovano da soli. Dall'area riservata puoi rinnovare, cambiare piano, aggiornare i dati di fatturazione o disdire il rinnovo in autonomia. Se non rinnovi, alla scadenza il plugin torna alle funzioni di base senza toccare i tuoi dati.
 
-> I prezzi e le funzioni dei piani sono sempre aggiornati nella pagina [associazionesemplice.it](https://associazionesemplice.it). Per il confronto completo vedi [Free, Pro Contabile e Pro Fiscale a confronto](guida:free-pro-contabile-e-pro-fiscale-a-confronto).
+> I prezzi e le funzioni dei piani sono sempre aggiornati nella pagina [associazionesemplice.it](https://associazionesemplice.it). Per il confronto completo vedi [Free, {piano_contabile} e {piano_fiscale} a confronto](guida:free-pro-contabile-e-pro-fiscale-a-confronto).
 MD,
     ],
     [
         'topic' => 'licenza', 'section' => 'Chiave e piani', 'slug' => 'cambiare-il-dominio-della-licenza',
         'title' => 'Cambiare il dominio della licenza',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 Ogni licenza è legata a un dominio. Se sposti il sito su un indirizzo nuovo, aggiorna il dominio della licenza.
 

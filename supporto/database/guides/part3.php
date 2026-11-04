@@ -6,7 +6,7 @@ return [
         'topic' => 'corsi-ed-eventi', 'section' => 'Attività', 'slug' => 'creare-un-corso',
         'title' => 'Creare un corso',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 Un corso ha lezioni che si ripetono ogni settimana. Gli iscritti pagano **ogni mese** (rinnovo mensile) oppure **una volta sola** (pagamento unico).
 
@@ -124,7 +124,7 @@ MD,
         'topic' => 'corsi-ed-eventi', 'section' => 'Attività', 'slug' => 'creare-un-evento',
         'title' => 'Creare un evento',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 Un evento ha una o più date e, se vuoi, posti limitati e un contributo.
 
@@ -165,7 +165,7 @@ MD,
         'topic' => 'corsi-ed-eventi', 'section' => 'Attività', 'slug' => 'lista-d-attesa-e-tolleranza-sul-pagamento',
         'title' => 'Posti limitati, lista d\'attesa e tolleranza sul pagamento',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 ## Lista d'attesa
 
@@ -191,7 +191,7 @@ MD,
         'topic' => 'corsi-ed-eventi', 'section' => 'Attività', 'slug' => 'calendario-e-google-calendar',
         'title' => 'Calendario del sito e Google Calendar',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 ## Il calendario per i soci
 
@@ -214,7 +214,7 @@ MD,
         'topic' => 'corsi-ed-eventi', 'section' => 'Attività', 'slug' => 'listini-e-pacchetti-per-eventi-e-corsi',
         'title' => 'Listini e pacchetti di ingressi per eventi e corsi a date',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale (dalla versione 1.2.18 del plugin)
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale} (dalla versione 1.2.18 del plugin)
 
 Con i **listini** la stessa attività può avere prezzi diversi, per esempio *Individuale*, *Di gruppo* o *Pacchetto 4 ingressi*. Chi prenota sceglie il listino che gli interessa.
 
@@ -244,7 +244,7 @@ MD,
         'topic' => 'corsi-ed-eventi', 'section' => 'Ingressi e comunicazioni', 'slug' => 'registrare-gli-ingressi',
         'title' => 'Registrare gli ingressi a un evento',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale (incasso sul posto: Pro)
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale} (incasso sul posto: Pro)
 
 Chi gestisce un evento può registrare chi entra direttamente dal telefono, senza accedere all'amministrazione.
 
@@ -276,7 +276,7 @@ MD,
         'topic' => 'corsi-ed-eventi', 'section' => 'Ingressi e comunicazioni', 'slug' => 'inviare-un-avviso-agli-iscritti',
         'title' => 'Inviare un avviso agli iscritti di un\'attività',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 Chi tiene un'attività (referente), chi gestisce un evento e gli amministratori possono inviare un avviso a tutti gli iscritti di quell'attività.
 
@@ -305,7 +305,7 @@ MD,
         'topic' => 'corsi-ed-eventi', 'section' => 'Ingressi e comunicazioni', 'slug' => 'comunicazioni-a-gruppi',
         'title' => 'Scrivere a un gruppo di soci con le Comunicazioni',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale
+> Disponibile in: {piano_contabile}, {piano_fiscale}
 
 Le Comunicazioni inviano un messaggio email a un gruppo, con anteprima dei destinatari e storico degli invii. Sono disponibili anche alla segreteria.
 

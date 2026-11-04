@@ -4,7 +4,7 @@
 return [
     [
         'topic' => 'domande-frequenti', 'section' => 'Free e Pro', 'slug' => 'free-pro-contabile-e-pro-fiscale-a-confronto',
-        'title' => 'Free, Pro Contabile e Pro Fiscale a confronto: cosa include ogni versione?',
+        'title' => 'Free, {piano_contabile} e {piano_fiscale} a confronto: cosa include ogni versione?',
         'body' => file_get_contents(__DIR__.'/confronto.md'),
     ],
     [
@@ -21,7 +21,7 @@ Il plugin gratuito contiene tutto il nucleo per gestire una piccola associazione
 - **Ruoli**: presidente, vicepresidente, tesoriere, consiglieri e segreteria, con permessi separati.
 - **Copia di sicurezza** e azzeramento dei dati.
 
-Funziona anche con **Elementor** e **WP All Import**. Per il confronto completo vedi [Free, Pro Contabile e Pro Fiscale a confronto](guida:free-pro-contabile-e-pro-fiscale-a-confronto).
+Funziona anche con **Elementor** e **WP All Import**. Per il confronto completo vedi [Free, {piano_contabile} e {piano_fiscale} a confronto](guida:free-pro-contabile-e-pro-fiscale-a-confronto).
 MD,
     ],
     [
@@ -37,18 +37,18 @@ Pro è un plugin a parte, che si aggiunge a quello gratuito e ne estende le funz
 - **Comunicazioni a gruppi**, app installabile con notifiche e tessera nel wallet del telefono.
 - **Incasso sul posto** agli eventi, assicurazioni dei volontari e presenze.
 - **Personalizzazione** di testi, tipo di ente e lingue.
-- Con **Pro Fiscale** anche IVA, 5 per mille e rendiconto per cassa.
+- Con **{piano_fiscale}** anche IVA, 5 per mille e rendiconto per cassa.
 
 Leggi [Installare Associazione Semplice Pro](guida:installare-associazione-semplice-pro) per i passi di installazione.
 MD,
     ],
     [
         'topic' => 'domande-frequenti', 'section' => 'Free e Pro', 'slug' => 'differenza-tra-contabile-e-fiscale',
-        'title' => 'Che differenza c\'è tra Pro Contabile e Pro Fiscale?',
+        'title' => 'Che differenza c\'è tra {piano_contabile} e {piano_fiscale}?',
         'body' => <<<'MD'
-**Pro Contabile** comprende tutte le funzioni Pro tranne quelle fiscali: pagamenti online, livelli di socio, conti e fondi, ricevute, report, comunicazioni, app, wallet, incasso sul posto, assicurazioni, presenze e personalizzazione dei testi.
+**{piano_contabile}** comprende tutte le funzioni Pro tranne quelle fiscali: pagamenti online, livelli di socio, conti e fondi, ricevute, report, comunicazioni, app, wallet, incasso sul posto, assicurazioni, presenze e personalizzazione dei testi.
 
-**Pro Fiscale** aggiunge la parte fiscale:
+**{piano_fiscale}** aggiunge la parte fiscale:
 
 - l'**IVA** su quote, attività, incassi e spese;
 - il **5 per mille** con il registro dei contributi e il rendiconto sull'utilizzo;
@@ -56,7 +56,7 @@ MD,
 
 L'apertura e la chiusura degli anni solari sono incluse anche nel piano gratuito.
 
-Se la tua associazione non ha partita IVA e un commercialista che richiede questi documenti, Pro Contabile è di solito sufficiente. Puoi passare da un piano all'altro dall'area riservata, senza reinstallare nulla.
+Se la tua associazione non ha partita IVA e un commercialista che richiede questi documenti, {piano_contabile} è di solito sufficiente. Puoi passare da un piano all'altro dall'area riservata, senza reinstallare nulla.
 MD,
     ],
     [
@@ -208,7 +208,7 @@ MD,
         'topic' => 'domande-frequenti', 'section' => 'Uso quotidiano', 'slug' => 'come-emettere-una-ricevuta',
         'title' => 'Come emetto una ricevuta per un pagamento?',
         'body' => <<<'MD'
-Con **Pro Contabile** o **Pro Fiscale** ogni incasso ha una **ricevuta in PDF**, numerata (N/AAAA) e con il nome dell'associazione. La trovi in **Cassa → Prima nota**: puoi scaricarla o inviarla per email a chi ha pagato. Con i pagamenti online il socio la riceve da solo.
+Con **{piano_contabile}** o **{piano_fiscale}** ogni incasso ha una **ricevuta in PDF**, numerata (N/AAAA) e con il nome dell'associazione. La trovi in **Cassa → Prima nota**: puoi scaricarla o inviarla per email a chi ha pagato. Con i pagamenti online il socio la riceve da solo.
 
 Vedi [Ricevute in PDF e attestazione annuale](guida:ricevute-in-pdf).
 MD,
@@ -217,7 +217,7 @@ MD,
         'topic' => 'domande-frequenti', 'section' => 'Uso quotidiano', 'slug' => 'gestione-iva',
         'title' => 'Il plugin gestisce l\'IVA?',
         'body' => <<<'MD'
-Sì, a un livello minimo pensato per chi ha un commercialista che completa i quadri, con **Pro Fiscale**. Se l'ente ha la partita IVA puoi indicare regime, aliquota e se gli importi sono IVA compresa o esclusa; ogni incasso e spesa registra aliquota e IVA contenuta, e l'esportazione per il commercialista le include.
+Sì, a un livello minimo pensato per chi ha un commercialista che completa i quadri, con **{piano_fiscale}**. Se l'ente ha la partita IVA puoi indicare regime, aliquota e se gli importi sono IVA compresa o esclusa; ogni incasso e spesa registra aliquota e IVA contenuta, e l'esportazione per il commercialista le include.
 
 Senza partita IVA non compare nulla di fiscale. In regime forfettario l'IVA non si applica. Vedi [IVA su quote, attività, incassi e spese](guida:iva-su-quote-e-incassi).
 MD,
@@ -226,7 +226,7 @@ MD,
         'topic' => 'domande-frequenti', 'section' => 'Uso quotidiano', 'slug' => 'gestione-cinque-per-mille',
         'title' => 'Posso gestire il 5 per mille?',
         'body' => <<<'MD'
-Sì, con **Pro Fiscale**. Puoi mostrare ai soci il messaggio per chiedere la firma con il codice fiscale dell'associazione, preparare il promemoria nelle Comunicazioni e tenere il registro dei contributi ricevuti. Il plugin calcola la scadenza del **rendiconto sull'utilizzo** (12 mesi dall'accredito) e ti avvisa in Bacheca.
+Sì, con **{piano_fiscale}**. Puoi mostrare ai soci il messaggio per chiedere la firma con il codice fiscale dell'associazione, preparare il promemoria nelle Comunicazioni e tenere il registro dei contributi ricevuti. Il plugin calcola la scadenza del **rendiconto sull'utilizzo** (12 mesi dall'accredito) e ti avvisa in Bacheca.
 
 Vedi [Gestire il 5 per mille](guida:cinque-per-mille).
 MD,

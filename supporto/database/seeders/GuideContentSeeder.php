@@ -22,7 +22,7 @@ class GuideContentSeeder extends Seeder
         'corsi-ed-eventi' => ['Corsi ed eventi', 'Creare corsi ed eventi, ingressi, avvisi e comunicazioni.'],
         'pagamenti' => ['Pagamenti', 'Incassi, spese, prima nota, pagamenti online e ricevute.'],
         'plugin-pro' => ['Plugin Pro', 'Conti e fondi, fiscalità, registri, app, wallet e personalizzazione.'],
-        'domande-frequenti' => ['Domande frequenti', 'Le risposte rapide, con il confronto tra Free, Pro Contabile e Pro Fiscale.'],
+        'domande-frequenti' => ['Domande frequenti', 'Le risposte rapide, con il confronto tra Free, {piano_contabile} e {piano_fiscale}.'],
         'altro' => ['Altro', 'Privacy e dati personali.'],
     ];
 
@@ -38,7 +38,7 @@ class GuideContentSeeder extends Seeder
         foreach (self::TOPICS as $slug => [$name, $description]) {
             $topics[$slug] = Topic::query()->updateOrCreate(
                 ['slug' => $slug],
-                ['name' => $name, 'description' => $description, 'sort' => $sort++, 'is_public' => true],
+                ['name' => $name, 'description' => $this->planNames($description), 'sort' => $sort++, 'is_public' => true],
             );
         }
 
@@ -55,9 +55,18 @@ class GuideContentSeeder extends Seeder
 
             Article::query()->updateOrCreate(
                 ['section_id' => $section->id, 'slug' => $guide['slug']],
-                ['title' => $guide['title'], 'body' => trim($guide['body']), 'is_published' => true],
+                ['title' => $this->planNames($guide['title']), 'body' => $this->planNames(trim($guide['body'])), 'is_published' => true],
             );
         }
+    }
+
+    /** Sostituisce {piano_contabile} e {piano_fiscale} con i nomi in config('support.plan_names'). */
+    private function planNames(string $text): string
+    {
+        return strtr($text, [
+            '{piano_contabile}' => (string) config('support.plan_names.contabile'),
+            '{piano_fiscale}' => (string) config('support.plan_names.fiscale'),
+        ]);
     }
 
     /** @return array<int, array{topic: string, section: string, slug: string, title: string, body: string}> */

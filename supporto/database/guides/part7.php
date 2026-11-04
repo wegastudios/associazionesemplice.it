@@ -6,7 +6,7 @@ return [
         'topic' => 'installazione', 'section' => 'Manutenzione', 'slug' => 'bacheca-da-lavorare-ed-eventi-della-settimana',
         'title' => 'Usare la Bacheca: cosa c\'è da lavorare e gli eventi della settimana',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale (dalla versione 1.2.20 del plugin)
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale} (dalla versione 1.2.20 del plugin)
 
 Appena entri nella **Bacheca di WordPress** (la pagina iniziale di `wp-admin`) trovi due riquadri con ciò che ti serve oggi. Li vedono gli amministratori, la segreteria e i consiglieri con accesso operativo.
 
@@ -45,7 +45,7 @@ MD,
         'topic' => 'installazione', 'section' => 'Manutenzione', 'slug' => 'leggere-le-novita-di-ogni-versione',
         'title' => 'Leggere le novità di ogni versione',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 Ogni plugin ha un **elenco delle novità** (il *changelog*), scritto in italiano semplice: ti dice cosa è stato aggiunto, cambiato o corretto in ogni versione.
 
@@ -70,7 +70,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Risorse e spazi', 'slug' => 'creare-e-gestire-le-risorse',
         'title' => 'Creare e gestire le risorse: campi, sale, posti auto e armadietti',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale
+> Disponibile in: {piano_contabile}, {piano_fiscale}
 
 Una **risorsa** è un bene che i soci possono prenotare o ricevere in uso: un campo da gioco, una sala, un posto barca, un posto auto, un armadietto. Una risorsa è **esclusiva**: o è libera o è occupata. Non c'è una capienza, perché ospita una prenotazione alla volta.
 
@@ -105,7 +105,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Risorse e spazi', 'slug' => 'prenotare-una-risorsa',
         'title' => 'Prenotare una risorsa: cosa possono fare i soci',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale
+> Disponibile in: {piano_contabile}, {piano_fiscale}
 
 Le risorse a fasce orarie si prenotano dall'**area riservata**. La prenotazione è del socio che la fa.
 
@@ -140,7 +140,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Risorse e spazi', 'slug' => 'collegare-attivita-e-risorse-con-allestimento',
         'title' => 'Collegare un corso o un evento a una risorsa e indicare l\'allestimento',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale (aggiorna insieme il plugin gratuito e Pro)
+> Disponibile in: {piano_contabile}, {piano_fiscale} (aggiorna insieme il plugin gratuito e Pro)
 
 Quando un corso o un evento si svolge in una sala o su un campo, collegalo alla risorsa: le sue date **occupano** la risorsa e i soci non possono prenotarla in quegli orari.
 

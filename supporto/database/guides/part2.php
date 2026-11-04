@@ -6,7 +6,7 @@ return [
         'topic' => 'soci-e-tessere', 'section' => 'Soci', 'slug' => 'importare-i-soci-da-excel-o-csv',
         'title' => 'Importare i soci da Excel o CSV',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 Se hai già un elenco di soci, non devi riscriverlo: puoi importarlo da un file Excel (`.xlsx`) o CSV. Prima di salvare vedi sempre un'anteprima.
 
@@ -36,7 +36,7 @@ MD,
         'topic' => 'soci-e-tessere', 'section' => 'Soci', 'slug' => 'iscrivere-un-socio-e-rinnovare-la-tessera',
         'title' => 'Iscrivere un socio e rinnovare la tessera',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale (livelli di socio e quote diverse: Pro)
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale} (livelli di socio e quote diverse: Pro)
 
 ## Iscrivere un nuovo socio
 
@@ -84,7 +84,7 @@ MD,
         'topic' => 'soci-e-tessere', 'section' => 'Soci', 'slug' => 'gestire-gli-ospiti',
         'title' => 'Gestire gli ospiti e le partecipazioni',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 Ai non soci è consentito partecipare solo poche volte: oltre, anche per ragioni assicurative, dovrebbero iscriversi. Il plugin **non blocca nessuno**: tiene il conto e ti aiuta ad accorgertene.
 
@@ -109,7 +109,7 @@ Se l'ente non li accetta (**Impostazioni → Soci e quote**), non se ne registra
 
 ## Ospiti dell'associazione e ospiti del volontario
 
-> Disponibile in: Pro Contabile e Pro Fiscale (compare in prenotazione solo con il Pro, perché si calcola sulla quota del volontario). Solo per amministratori, segreteria e consiglieri con accesso operativo, mai per il socio.
+> Disponibile in: {piano_contabile} e {piano_fiscale} (compare in prenotazione solo con il Pro, perché si calcola sulla quota del volontario). Solo per amministratori, segreteria e consiglieri con accesso operativo, mai per il socio.
 
 Quando un evento ha una quota per il rimborso del volontario, puoi segnare un ospite in due modi:
 
@@ -123,7 +123,7 @@ MD,
         'topic' => 'soci-e-tessere', 'section' => 'Soci', 'slug' => 'assegnare-ruoli-e-permessi',
         'title' => 'Assegnare ruoli e permessi (segreteria, tesoriere, staff)',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 I permessi derivano dai dati della persona, non solo dai ruoli di WordPress. Si assegnano dalla **scheda del socio**.
 
@@ -153,7 +153,7 @@ MD,
         'topic' => 'soci-e-tessere', 'section' => 'Soci', 'slug' => 'attivare-il-qr-della-tessera',
         'title' => 'Attivare il QR della tessera e dei biglietti',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 Il QR permette di verificare al volo una tessera o una prenotazione, anche a chi non ha accesso al sito. È facoltativo ed è spento di default.
 
@@ -182,7 +182,7 @@ MD,
         'topic' => 'soci-e-tessere', 'section' => 'Soci', 'slug' => 'personalizzare-la-tessera',
         'title' => 'Personalizzare la tessera',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 La tessera standard è bianca e stampabile, con il logo e i testi nei colori della tua associazione. Puoi anche disegnarla tu.
 
@@ -209,7 +209,7 @@ MD,
         'topic' => 'soci-e-tessere', 'section' => 'Area riservata', 'slug' => 'area-riservata-dei-soci',
         'title' => 'Creare l\'area riservata dei soci',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 L'area riservata è la pagina dove ogni socio trova il suo spazio: tessera, attività, pagamenti, ospiti, profilo, avvisi e calendario.
 
@@ -237,7 +237,7 @@ MD,
         'topic' => 'soci-e-tessere', 'section' => 'Area riservata', 'slug' => 'primo-accesso-e-soci-senza-email',
         'title' => 'Primo accesso dei soci e soci senza email',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 ## Come entra un socio la prima volta
 
@@ -272,7 +272,7 @@ MD,
         'topic' => 'soci-e-tessere', 'section' => 'Area riservata', 'slug' => 'accesso-dei-soci-link-codice-o-utente-wordpress',
         'title' => 'Come entrano i soci: link, codice o utente WordPress',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale (dal gratuito 1.2.51 e dal Pro 1.1.41)
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale} (dal gratuito 1.2.51 e dal Pro 1.1.41)
 
 ## Come entra un socio
 

@@ -12,7 +12,7 @@
 <body>
 <header class="site">
     <div class="bar">
-        <a class="logo" href="{{ route('admin.home') }}" aria-label="Associazione Semplice · Supporto, vai ai ticket">@include("partials.logo", ["h" => 38])</a>
+        <a class="logo" href="{{ config('support.sso.portal') }}/" aria-label="Associazione Semplice, vai alla home del sito">@include("partials.logo", ["h" => 38])</a>
         @auth
             <nav aria-label="Navigazione principale">
                 @if (config('support.role') === 'hub')

@@ -6,7 +6,7 @@ return [
         'topic' => 'altro', 'section' => 'Registri', 'slug' => 'votazioni-e-sondaggi',
         'title' => 'Far votare i soci: votazioni e sondaggi',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 Con le votazioni i soci decidono, o danno un parere, senza fogli e riunioni. La segreteria, il presidente, il vicepresidente e gli amministratori le gestiscono da **Registri → Votazioni**, accanto a Libro soci e Verbali.
 
@@ -65,7 +65,7 @@ MD,
         'topic' => 'altro', 'section' => 'Registri', 'slug' => 'inventario-e-prestiti',
         'title' => 'Tenere l\'inventario dei beni e i prestiti ai soci',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 L'**Inventario** è il registro di ciò che l'associazione possiede (casse, proiettore, tavoli…) e ti dice chi ha cosa in prestito. Lo trovi in **Registri → Inventario**.
 
@@ -111,7 +111,7 @@ MD,
         'topic' => 'altro', 'section' => 'Registri', 'slug' => 'archivio-documenti',
         'title' => 'Archiviare i documenti e decidere chi li vede',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 L'**Archivio documenti** raccoglie in un posto solo statuto, regolamenti, verbali firmati e moduli, e ti fa decidere chi può leggerli. Lo trovi in **Registri → Documenti**.
 
@@ -146,7 +146,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Registri', 'slug' => 'certificati-medici-sportivi',
         'title' => 'Tenere i certificati medici sportivi dei soci',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale (da Pro 1.1.25; richiede il plugin gratuito 1.2.29, aggiorna insieme gratuito e Pro)
+> Disponibile in: {piano_contabile}, {piano_fiscale} (da Pro 1.1.25; richiede il plugin gratuito 1.2.29, aggiorna insieme gratuito e Pro)
 
 Il registro dei **certificati medici** ti dice chi ha il certificato in regola, chi è in scadenza, chi è scaduto e chi non lo ha mai portato, tra gli iscritti alle attività che lo richiedono. Lo trovi in **Registri → Certificati medici**, accanto a Libro soci e Verbali. Lo usano segreteria, presidente, vicepresidente e amministratori. Senza Pro, o con la licenza non in regola, la voce sparisce.
 
@@ -191,7 +191,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Registri', 'slug' => 'affiliazioni-agli-enti',
         'title' => 'Gestire le affiliazioni agli enti e le tessere dei soci',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale (da Pro 1.1.25; richiede il plugin gratuito 1.2.29, aggiorna insieme gratuito e Pro)
+> Disponibile in: {piano_contabile}, {piano_fiscale} (da Pro 1.1.25; richiede il plugin gratuito 1.2.29, aggiorna insieme gratuito e Pro)
 
 In **Registri → Affiliazioni** tieni i codici di affiliazione dell'associazione agli enti di promozione sportiva, le tessere dei soci e i file da caricare sui portali degli enti.
 
@@ -242,7 +242,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Risorse e spazi', 'slug' => 'risorse-promemoria-qr-occupazione-richieste',
         'title' => 'Risorse: promemoria, QR d\'ingresso, report di occupazione e richieste dei soci',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale (da Pro 1.1.26; plugin gratuito invariato)
+> Disponibile in: {piano_contabile}, {piano_fiscale} (da Pro 1.1.26; plugin gratuito invariato)
 
 Queste funzioni completano le [risorse](guida:creare-e-gestire-le-risorse): le impostazioni stanno nella scheda di ciascuna risorsa.
 
@@ -289,7 +289,7 @@ MD,
         'topic' => 'soci-e-tessere', 'section' => 'Area riservata', 'slug' => 'convenzioni-per-i-soci',
         'title' => 'Offrire ai soci sconti e vantaggi: le convenzioni',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 Le **convenzioni** raccolgono in un posto solo gli sconti e i vantaggi che negozi, palestre, teatri e altri enti partner riservano ai soci, e li mostrano ai soci giusti nell'area riservata. Le trovi in **Associazione Semplice → Registri → Convenzioni**. Le gestiscono segreteria, presidente, vicepresidente e amministratori. Non ci sono impostazioni da attivare.
 
@@ -351,7 +351,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Comunicazione', 'slug' => 'sms-ai-soci-e-consensi',
         'title' => 'Mandare SMS ai soci e gestire i consensi',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale (da Pro 1.1.28, che richiede il plugin gratuito 1.2.31: aggiorna insieme gratuito e Pro; non nel plugin gratuito)
+> Disponibile in: {piano_contabile}, {piano_fiscale} (da Pro 1.1.28, che richiede il plugin gratuito 1.2.31: aggiorna insieme gratuito e Pro; non nel plugin gratuito)
 
 Oltre alle email puoi scrivere ai soci per **SMS**, con il fornitore che preferisci. Il costo degli SMS è quello del fornitore scelto.
 
@@ -394,7 +394,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Comunicazione', 'slug' => 'newsletter-con-brevo-mailchimp-o-mailpoet',
         'title' => 'Collegare la newsletter: Brevo, Mailchimp o MailPoet',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale (da Pro 1.1.28, che richiede il plugin gratuito 1.2.31: aggiorna insieme gratuito e Pro; non nel plugin gratuito)
+> Disponibile in: {piano_contabile}, {piano_fiscale} (da Pro 1.1.28, che richiede il plugin gratuito 1.2.31: aggiorna insieme gratuito e Pro; non nel plugin gratuito)
 
 Il sito tiene **allineata la lista** della tua newsletter con i soci che hanno dato il consenso. **La newsletter si scrive e si invia dal servizio che scegli**, non dal plugin.
 
@@ -426,7 +426,7 @@ MD,
         'topic' => 'pagamenti', 'section' => 'Pagamenti online', 'slug' => 'attivare-satispay-e-klarna',
         'title' => 'Attivare Satispay e Klarna',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale (da Pro 1.1.28, che richiede il plugin gratuito 1.2.31: aggiorna insieme gratuito e Pro; non nel plugin gratuito)
+> Disponibile in: {piano_contabile}, {piano_fiscale} (da Pro 1.1.28, che richiede il plugin gratuito 1.2.31: aggiorna insieme gratuito e Pro; non nel plugin gratuito)
 
 Due metodi in più per i pagamenti online. Il resto della configurazione è in [Attivare i pagamenti online con Stripe o PayPal](guida:attivare-stripe-o-paypal).
 
@@ -460,7 +460,7 @@ MD,
         'topic' => 'soci-e-tessere', 'section' => 'Soci', 'slug' => 'libro-soci-completo',
         'title' => 'Il libro soci completo: dati, PDF e CSV',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale (dalla versione 1.2.41 del plugin gratuito)
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale} (dalla versione 1.2.41 del plugin gratuito)
 
 Il **libro soci** è il registro ufficiale delle persone iscritte, in **Registri → Libro soci**. Dalla versione 1.2.41 è completo: per ogni socio riporta
 
@@ -490,7 +490,7 @@ MD,
         'topic' => 'altro', 'section' => 'Registri', 'slug' => 'registro-azioni-e-spazio-occupato',
         'title' => 'Registro azioni: controllare lo spazio e liberarlo',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale (dalla versione 1.2.28 del plugin gratuito)
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale} (dalla versione 1.2.28 del plugin gratuito)
 
 Il **registro azioni** tiene traccia di ciò che si fa nel plugin (chi ha cambiato cosa e quando). Col tempo occupa spazio nel database: ora puoi vedere quanto e liberarlo.
 

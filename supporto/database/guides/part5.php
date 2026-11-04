@@ -6,7 +6,7 @@ return [
         'topic' => 'plugin-pro', 'section' => 'Contabilità e adempimenti', 'slug' => 'conti-fondi-e-giroconti',
         'title' => 'Conti, fondi e giroconti',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale
+> Disponibile in: {piano_contabile}, {piano_fiscale}
 
 Con Pro puoi tenere più conti (cassa contanti, banca, carta, Stripe, PayPal…) e accantonare **fondi**, per esempio per il rimborso dei volontari.
 
@@ -38,7 +38,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Contabilità e adempimenti', 'slug' => 'rendiconto-per-cassa-e-report',
         'title' => 'Rendiconto per cassa e report dell\'anno',
         'body' => <<<'MD'
-> Disponibile in: Report: Pro Contabile e Pro Fiscale. Rendiconto per cassa: Pro Fiscale.
+> Disponibile in: Report: {piano_contabile} e {piano_fiscale}. Rendiconto per cassa: {piano_fiscale}.
 
 Questa parte serve a chi deve preparare i documenti per il commercialista. L'apertura e la chiusura dell'anno solare sono invece disponibili in tutte le versioni: vedi [Aprire e chiudere gli anni solari](guida:aprire-e-chiudere-gli-anni-solari).
 
@@ -60,7 +60,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Contabilità e adempimenti', 'slug' => 'iva-su-quote-e-incassi',
         'title' => 'IVA su quote, attività, incassi e spese',
         'body' => <<<'MD'
-> Disponibile in: Pro Fiscale
+> Disponibile in: {piano_fiscale}
 
 Se l'ente ha la partita IVA, il plugin la gestisce a un livello minimo, pensato per chi ha un commercialista che completa i quadri. Senza partita IVA non compare nulla di fiscale.
 
@@ -89,7 +89,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Contabilità e adempimenti', 'slug' => 'cinque-per-mille',
         'title' => 'Gestire il 5 per mille',
         'body' => <<<'MD'
-> Disponibile in: Pro Fiscale
+> Disponibile in: {piano_fiscale}
 
 Il 5 per mille è spento di default e lo attiva un amministratore.
 
@@ -115,7 +115,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Contabilità e adempimenti', 'slug' => 'assicurazioni-e-presenze',
         'title' => 'Assicurazioni dei volontari e registro delle presenze',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale
+> Disponibile in: {piano_contabile}, {piano_fiscale}
 
 Nel menu **Registri** trovi gli elenchi da tenere in ordine. Gli elenchi si scaricano in PDF e CSV.
 
@@ -142,7 +142,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Contabilità e adempimenti', 'slug' => 'livelli-di-socio-e-nucleo-familiare',
         'title' => 'Livelli di socio, quote differenziate e nucleo familiare',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale
+> Disponibile in: {piano_contabile}, {piano_fiscale}
 
 Con il plugin gratuito c'è una sola quota (con l'opzione socio fondatore). Con Pro puoi avere più tipi di socio, ognuno con la sua quota.
 
@@ -171,7 +171,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'App, Wallet e testi', 'slug' => 'app-installabile-e-notifiche',
         'title' => 'App installabile e notifiche sul telefono',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale
+> Disponibile in: {piano_contabile}, {piano_fiscale}
 
 L'area soci può diventare un'**app installabile** sul telefono, con notifiche. Non è un'app dello store: si installa dal browser.
 
@@ -203,7 +203,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'App, Wallet e testi', 'slug' => 'tessera-nel-wallet',
         'title' => 'La tessera in Apple Wallet e Google Wallet',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale
+> Disponibile in: {piano_contabile}, {piano_fiscale}
 
 Il socio può salvare la tessera nel wallet del telefono. Il sito non contatta mai Apple o Google: la tessera Apple è un file firmato sul tuo sito, quella Google un indirizzo firmato.
 
@@ -227,7 +227,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'App, Wallet e testi', 'slug' => 'personalizzare-testi-e-lingue',
         'title' => 'Personalizzare i testi, il tipo di ente e le lingue',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale
+> Disponibile in: {piano_contabile}, {piano_fiscale}
 
 Con Pro puoi cambiare i testi mostrati da pagine, email e PDF, scegliere come chiamare le cose («associazione» o «comitato», «socio» o «tesserato») e aggiungere altre lingue.
 
@@ -255,7 +255,7 @@ MD,
         'topic' => 'altro', 'section' => 'Privacy e dati personali', 'slug' => 'informativa-privacy-e-consensi',
         'title' => 'Informativa privacy e consensi dei soci',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 Il plugin compila da solo l'informativa sulla privacy con i dati della tua associazione. È un **modello**: fallo verificare dal tuo consulente.
 
@@ -287,7 +287,7 @@ MD,
         'topic' => 'altro', 'section' => 'Privacy e dati personali', 'slug' => 'anonimizzare-un-ex-socio-e-scaricare-i-dati',
         'title' => 'Anonimizzare un ex socio e scaricare i propri dati',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 ## Scaricare i dati di una persona
 

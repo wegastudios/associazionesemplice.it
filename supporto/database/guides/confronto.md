@@ -1,10 +1,10 @@
 Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso, **—** significa non incluso.
 
-**Pro Contabile** comprende tutte le funzioni Pro tranne la parte fiscale. **Pro Fiscale** comprende tutto. Il piano gratuito è completo per gestire soci, attività e prima nota, e resta gratuito per sempre.
+**{piano_contabile}** comprende tutte le funzioni Pro tranne la parte fiscale. **{piano_fiscale}** comprende tutto. Il piano gratuito è completo per gestire soci, attività e prima nota, e resta gratuito per sempre.
 
 ## Soci e tessere
 
-| Funzione | Free | Pro Contabile | Pro Fiscale |
+| Funzione | Free | {piano_contabile} | {piano_fiscale} |
 |---|---|---|---|
 | Libro soci con numerazione progressiva e cessazioni | ✓ | ✓ | ✓ |
 | Libro soci completo: date di domanda e delibera, luogo di nascita, residenza, contatti, ultima quota, recesso e tutore, con PDF e CSV | ✓ | ✓ | ✓ |
@@ -28,7 +28,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 
 ## Area riservata e permessi
 
-| Funzione | Free | Pro Contabile | Pro Fiscale |
+| Funzione | Free | {piano_contabile} | {piano_fiscale} |
 |---|---|---|---|
 | Area riservata dei soci (tessera, attività, avvisi, profilo) | ✓ | ✓ | ✓ |
 | Primo accesso e approvazione della segreteria | ✓ | ✓ | ✓ |
@@ -45,7 +45,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 
 ## Corsi ed eventi
 
-| Funzione | Free | Pro Contabile | Pro Fiscale |
+| Funzione | Free | {piano_contabile} | {piano_fiscale} |
 |---|---|---|---|
 | Corsi con rinnovo mensile, trimestrale o pagamento unico | ✓ | ✓ | ✓ |
 | Lezioni di un corso annullate o spostate, con avviso agli iscritti | ✓ | ✓ | ✓ |
@@ -70,7 +70,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 
 ## Cassa e conti
 
-| Funzione | Free | Pro Contabile | Pro Fiscale |
+| Funzione | Free | {piano_contabile} | {piano_fiscale} |
 |---|---|---|---|
 | Prima nota con cassa unica | ✓ | ✓ | ✓ |
 | Incassi con calcolo del resto | ✓ | ✓ | ✓ |
@@ -98,7 +98,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 
 ## Parte fiscale
 
-| Funzione | Free | Pro Contabile | Pro Fiscale |
+| Funzione | Free | {piano_contabile} | {piano_fiscale} |
 |---|---|---|---|
 | IVA su quote, attività, incassi e spese | — | — | ✓ |
 | 5 per mille e rendiconto sull'utilizzo | — | — | ✓ |
@@ -111,7 +111,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 
 ## Registri e privacy
 
-| Funzione | Free | Pro Contabile | Pro Fiscale |
+| Funzione | Free | {piano_contabile} | {piano_fiscale} |
 |---|---|---|---|
 | Verbali di assemblea e consiglio con PDF | ✓ | ✓ | ✓ |
 | Assemblee: convocazione per email, presenze, deleghe, numero legale e verbale compilato | — | ✓ | ✓ |
@@ -128,7 +128,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 
 ## Comunicazione
 
-| Funzione | Free | Pro Contabile | Pro Fiscale |
+| Funzione | Free | {piano_contabile} | {piano_fiscale} |
 |---|---|---|---|
 | Avvisi agli iscritti di un'attività | ✓ | ✓ | ✓ |
 | Promemoria automatici per email (tessera, corsi, eventi) | ✓ | ✓ | ✓ |
@@ -140,7 +140,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 
 ## Personalizzazione e sicurezza dei dati
 
-| Funzione | Free | Pro Contabile | Pro Fiscale |
+| Funzione | Free | {piano_contabile} | {piano_fiscale} |
 |---|---|---|---|
 | Colori e logo dell'associazione | ✓ | ✓ | ✓ |
 | Novità di ogni versione in italiano semplice (changelog) | ✓ | ✓ | ✓ |
@@ -152,7 +152,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 
 ## Licenza e prezzo
 
-| | Free | Pro Contabile | Pro Fiscale |
+| | Free | {piano_contabile} | {piano_fiscale} |
 |---|---|---|---|
 | Chiave di licenza | Gratuita e facoltativa | Obbligatoria | Obbligatoria |
 | Prova gratuita di Pro per 30 giorni (una volta sola) | ✓ | — | — |
@@ -162,8 +162,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 
 ## Passare da una versione all'altra
 
-- **Da Free a Pro Contabile**: si aggiungono pagamenti online, livelli di socio, conti e fondi, ricevute, comunicazioni, app, wallet e personalizzazione dei testi.
-- **Da Pro Contabile a Pro Fiscale**: si aggiungono IVA, 5 per mille e rendiconto per cassa.
+- **Da Free a {piano_contabile}**: si aggiungono pagamenti online, livelli di socio, conti e fondi, ricevute, comunicazioni, app, wallet e personalizzazione dei testi.
+- **Da {piano_contabile} a {piano_fiscale}**: si aggiungono IVA, 5 per mille e rendiconto per cassa.
 - **Non si reinstalla nulla** (se hai già Pro): cambia la chiave di licenza e compaiono le funzioni in più. Se la licenza scade, il plugin torna alle funzioni di base e i dati restano intatti.
 
 Per i passi concreti leggi [Passare a Pro, provarlo e rinnovare](guida:passare-a-pro-e-rinnovare) e [Installare Associazione Semplice Pro](guida:installare-associazione-semplice-pro).

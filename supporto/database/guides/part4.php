@@ -6,7 +6,7 @@ return [
         'topic' => 'pagamenti', 'section' => 'Incassi e spese', 'slug' => 'registrare-un-incasso',
         'title' => 'Registrare un incasso',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale (cassa per più persone e IVA: Pro)
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale} (cassa per più persone e IVA: Pro)
 
 Ogni versamento (quota, mensilità, contributo di un evento, donazione) entra nella **prima nota**. Importi e voci vengono sempre ricalcolati dal sistema.
 
@@ -35,7 +35,7 @@ MD,
         'topic' => 'pagamenti', 'section' => 'Incassi e spese', 'slug' => 'registrare-una-spesa-con-allegato',
         'title' => 'Registrare una spesa con lo scontrino allegato',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 ## Cosa fare
 
@@ -62,7 +62,7 @@ MD,
         'topic' => 'pagamenti', 'section' => 'Incassi e spese', 'slug' => 'aprire-e-chiudere-gli-anni-solari',
         'title' => 'Aprire e chiudere gli anni solari',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale (dalla versione 1.2.19 del plugin)
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale} (dalla versione 1.2.19 del plugin)
 
 La tessera dura l'anno solare e la prima nota si organizza per anno solare: per questo l'apertura e la chiusura dell'anno sono disponibili in tutte le versioni. Solo gli amministratori possono aprire, chiudere e riaprire un anno.
 
@@ -86,14 +86,14 @@ La quota va all'anno solare più recente creato. Un socio che ha già l'anno in 
 
 ## Con Pro
 
-Con Pro Contabile e Pro Fiscale la stessa pagina è raggiungibile anche da **Contabilità** e mostra la tabella dei **fondi da rimborsare per anno**. Report e rendiconto per cassa restano funzioni Pro (vedi [Rendiconto per cassa e report dell'anno](guida:rendiconto-per-cassa-e-report)).
+Con {piano_contabile} e {piano_fiscale} la stessa pagina è raggiungibile anche da **Contabilità** e mostra la tabella dei **fondi da rimborsare per anno**. Report e rendiconto per cassa restano funzioni Pro (vedi [Rendiconto per cassa e report dell'anno](guida:rendiconto-per-cassa-e-report)).
 MD,
     ],
     [
         'topic' => 'pagamenti', 'section' => 'Incassi e spese', 'slug' => 'importare-ed-esportare-la-prima-nota',
         'title' => 'Importare ed esportare la prima nota',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 ## Esportare
 
@@ -122,7 +122,7 @@ MD,
         'topic' => 'pagamenti', 'section' => 'Incassi e spese', 'slug' => 'donazioni-con-paypal',
         'title' => 'Ricevere donazioni con PayPal',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 Il modulo donazioni porta chi dona sulla pagina di donazione di PayPal. Dal tuo server non parte nessuna richiesta verso PayPal: il pulsante si apre direttamente nel browser del visitatore.
 
@@ -143,7 +143,7 @@ MD,
         'topic' => 'pagamenti', 'section' => 'Pagamenti online', 'slug' => 'attivare-stripe-o-paypal',
         'title' => 'Attivare i pagamenti online con Stripe o PayPal',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale
+> Disponibile in: {piano_contabile}, {piano_fiscale}
 
 I soci pagano quote, mensilità e contributi direttamente dall'area riservata. I dati della carta **non passano mai dal tuo sito**: il socio paga su una pagina ospitata da Stripe o da PayPal.
 
@@ -175,7 +175,7 @@ MD,
         'topic' => 'pagamenti', 'section' => 'Pagamenti online', 'slug' => 'attivare-sumup',
         'title' => 'Attivare i pagamenti online con SumUp',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale (dalla versione 1.2.26 del plugin gratuito e 1.1.23 di Pro: aggiornali insieme)
+> Disponibile in: {piano_contabile}, {piano_fiscale} (dalla versione 1.2.26 del plugin gratuito e 1.1.23 di Pro: aggiornali insieme)
 
 SumUp è un altro metodo di pagamento online. Il socio paga su una **pagina sicura di SumUp**: i dati della carta non passano mai dal tuo sito. Si può usare da solo o **insieme a Stripe e PayPal**.
 
@@ -207,7 +207,7 @@ MD,
         'topic' => 'pagamenti', 'section' => 'Pagamenti online', 'slug' => 'commissioni-di-incasso',
         'title' => 'Commissioni di incasso sui pagamenti online',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale (dalla versione 1.2.26 del plugin gratuito e 1.1.23 di Pro)
+> Disponibile in: {piano_contabile}, {piano_fiscale} (dalla versione 1.2.26 del plugin gratuito e 1.1.23 di Pro)
 
 Ogni gateway trattiene una commissione su ciascun pagamento. Il plugin ti aiuta a tenerne conto in prima nota e, se vuoi, a ribaltarla su chi paga.
 
@@ -246,7 +246,7 @@ MD,
         'topic' => 'pagamenti', 'section' => 'Pagamenti online', 'slug' => 'controllare-un-pagamento-non-abbinato',
         'title' => 'Controllare un pagamento «da controllare» o non abbinato',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale
+> Disponibile in: {piano_contabile}, {piano_fiscale}
 
 A volte un pagamento online non coincide con quello che il sistema si aspettava, per esempio perché l'importo è diverso o la prenotazione è stata annullata nel frattempo. In questi casi i soldi entrano comunque, come **«pagamento online non abbinato»**, e il pagamento è segnato **da controllare**.
 
@@ -271,7 +271,7 @@ MD,
         'topic' => 'pagamenti', 'section' => 'Pagamenti online', 'slug' => 'ricevute-in-pdf',
         'title' => 'Ricevute in PDF e attestazione annuale',
         'body' => <<<'MD'
-> Disponibile in: Pro Contabile, Pro Fiscale
+> Disponibile in: {piano_contabile}, {piano_fiscale}
 
 Ogni incasso può avere una **ricevuta in PDF**, numerata e con il nome dell'associazione.
 

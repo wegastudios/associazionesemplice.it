@@ -11,7 +11,7 @@
 <body>
 <header class="site">
     <div class="bar">
-        <a class="logo" href="{{ route('help.index') }}" aria-label="{{ config('app.name') }}, vai al centro assistenza">@include("partials.logo", ["h" => 38])</a>
+        <a class="logo" href="{{ config('support.sso.portal') }}/" aria-label="Associazione Semplice, vai alla home del sito">@include("partials.logo", ["h" => 38])</a>
         <nav aria-label="Navigazione principale">
             <a href="{{ route('help.index') }}" @if (request()->routeIs('help.*')) aria-current="page" @endif>Centro assistenza</a>
             <a href="{{ route('ticket.create') }}" @if (request()->routeIs('ticket.create')) aria-current="page" @endif>Apri una richiesta</a>

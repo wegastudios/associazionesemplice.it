@@ -6,7 +6,7 @@ return [
         'topic' => 'soci-e-tessere', 'section' => 'Soci', 'slug' => 'domanda-di-adesione-online',
         'title' => 'Ricevere le domande di adesione online',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale (dalla versione 1.2.25 del plugin; aggiorna insieme gratuito e Pro). Il pagamento online della quota alla domanda richiede Pro.
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale} (dalla versione 1.2.25 del plugin; aggiorna insieme gratuito e Pro). Il pagamento online della quota alla domanda richiede Pro.
 
 Chi vuole iscriversi compila un modulo sul tuo sito e la segreteria lo **approva o lo rifiuta**. Non c'è nessuna iscrizione automatica: decidi sempre tu.
 
@@ -52,7 +52,7 @@ MD,
         'topic' => 'soci-e-tessere', 'section' => 'Soci', 'slug' => 'minori-con-genitori-o-tutori',
         'title' => 'Iscrivere i minori con genitori o tutori',
         'body' => <<<'MD'
-> Disponibile in: Free, Pro Contabile, Pro Fiscale (dalla versione 1.2.25 del plugin)
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale} (dalla versione 1.2.25 del plugin)
 
 Un minore si registra con **uno o due genitori o tutori**, anche non soci e senza email. Sul sito però **opera uno solo, il primo**: è lui che gestisce per il minore tessera, prenotazioni, pagamenti e avvisi. Aggiornando alla 1.2.41, per i minori già registrati resta operativo il primo tutore già collegato. Nel **libro soci** il minore eredita le date (domanda, delibera) del tutore che opera.
 
