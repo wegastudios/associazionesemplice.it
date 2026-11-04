@@ -122,9 +122,7 @@ $mk_user = function ( string $login, string $email, string $name, string $role, 
 demo_step( 'utente segreteria', function () use ( $mk_user ) {
 	$mk_user( 'segreteria', 'segreteria@demo.invalid', 'Laura Demo (segreteria)', Plugin::ROLE_SECRETARY, DEMO_PASS_SEGRETERIA );
 } );
-demo_step( 'utente socio', function () use ( $mk_user ) {
-	$mk_user( 'socio', 'socio@demo.invalid', 'Mario Demo (socio)', Plugin::ROLE_MEMBER, DEMO_PASS_SOCIO );
-} );
+// Il socio di prova NON ha un utente WordPress: se l'avesse, collegato per email, la persona non potrebbe entrare con l'accesso proprio (vedi 4.).
 // Amministratore del plugin: tutti i permessi di Associazione Semplice (impostazioni, copia di sicurezza, ruoli, registro) ma non è un amministratore di WordPress:
 // niente plugin, temi, utenti o impostazioni del sito. Mai il ruolo «administrator».
 demo_step( 'ruolo e utente amministratore del plugin', function () use ( $mk_user ) {
