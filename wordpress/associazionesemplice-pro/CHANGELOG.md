@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.1
+- App più curata: icona con l'iniziale, pagina offline con «Riprova» e invito a installarla sotto la tessera
+
 ## 1.3.0
 - Lo staff di un evento con l'incasso abilitato può addebitare crediti con il QR anche se entra con il link, senza utente WordPress
 - Se un secondo ordine del negozio risulta pagato per lo stesso pagamento, compare tra i pagamenti da controllare e il riferimento del primo incasso non si perde
