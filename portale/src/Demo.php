@@ -21,7 +21,7 @@ final class Demo {
 				'note' => 'Lavora nel pannello di WordPress. Non vede le impostazioni, i pagamenti online né la copia di sicurezza: sono dell\'amministratore del sito.',
 			),
 			array(
-				'user' => 'socio', 'password' => 'Socio-Demo-2026', 'role' => 'Socio', 'start' => '/area-soci/',
+				'user' => 'socio@demo.invalid', 'label' => 'Email', 'password' => 'Socio-Demo-2026', 'role' => 'Socio', 'start' => '/area-soci/', 'login' => '/?asem_member_login=1',
 				'what' => array( 'Tessera con QR', 'Prenotazioni a corsi ed eventi', 'Pagamenti e quote', 'I propri dati e gli ospiti' ),
 				'note' => 'Usa l\'area riservata sul sito, come farebbe un socio vero: non entra mai nel pannello di WordPress.',
 			),
