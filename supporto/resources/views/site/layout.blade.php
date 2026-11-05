@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
     <meta name="theme-color" content="#1f218c">
+    <meta name="description" content="@yield('description', 'Guide e assistenza per Associazione Semplice: installazione, licenza, soci e tessere, corsi ed eventi, pagamenti.')">
     <title>@yield('title', 'Centro assistenza') · {{ config('app.name') }}</title>
     @include('partials.brand')
 </head>

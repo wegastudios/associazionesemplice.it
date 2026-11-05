@@ -3,7 +3,7 @@
 @section('content')
     <h1>Come possiamo aiutarti?</h1>
     <form method="get" action="{{ route('help.search') }}" class="card actions" role="search">
-        <div style="flex:1;min-width:220px"><label for="q" style="margin-top:0">Cerca nelle guide</label><input id="q" name="q" type="search" minlength="2" required></div>
+        <div style="flex:1;min-width:220px"><label for="q" style="margin-top:0">Cerca nelle guide</label><input id="q" name="q" type="search" minlength="2" required placeholder="Per esempio: password, tessera, rinnovo" autocomplete="off"></div>
         <button type="submit">Cerca</button>
     </form>
     <div class="row">
@@ -11,11 +11,11 @@
             <section class="card">
                 <h2 style="margin-top:0"><a href="{{ route('help.topic', $topic->slug) }}">{{ $topic->name }}</a></h2>
                 @if ($topic->description)<p class="muted">{{ $topic->description }}</p>@endif
-                <ul>@foreach ($topic->sections as $section)<li>{{ $section->name }} <span class="muted">({{ $section->articles_count }})</span></li>@endforeach</ul>
+                <ul>@foreach ($topic->sections as $section)<li><a href="{{ route('help.topic', $topic->slug) }}#sezione-{{ $section->id }}">{{ $section->name }}</a> <span class="muted">({{ $section->articles_count }})</span></li>@endforeach</ul>
             </section>
         @empty
             <p class="muted">Non trovi una guida? Scrivici: la risposta arriva per email.</p>
         @endforelse
     </div>
-    <p class="card">Non trovi quello che cerchi? <a class="btn" href="{{ route('ticket.create') }}">Apri una richiesta</a></p>
+    <div class="card"><p style="margin-top:0">Non trovi quello che cerchi? Scrivici: ti rispondiamo per email.</p><p style="margin-bottom:0"><a class="btn" href="{{ route('ticket.create') }}">Apri una richiesta</a></p><p class="muted" style="margin-bottom:0">Per scrivere al supporto entri con l'email della tua licenza: al primo accesso ti mandiamo un link.</p></div>
 @endsection
