@@ -19,6 +19,11 @@ Sub-account cPanel del reseller (produzione `associazionesemplice`, staging a pa
 
 - **Cartella pubblica** del sottodominio `app.associazionesemplice.it` (cPanel → Domini): `saas/current/public`.
   Tutto il resto è fuori dal web.
+- **Area soci** (pacchetto Area soci): `https://<slug>.associazionesemplice.it/area`. Serve un **sottodominio jolly**
+  `*.associazionesemplice.it` con la stessa cartella pubblica `saas/current/public` e il certificato jolly (AutoSSL
+  con validazione DNS), e nel `.env` `SAAS_MEMBERS_DOMAIN=associazionesemplice.it` (è anche il valore predefinito).
+  I nomi riservati (`app`, `www`, `portale`…) non diventano mai associazioni; un sottodominio senza associazione
+  attiva con il pacchetto risponde 404. Le email di accesso dei soci partono con la posta della piattaforma.
 - **Cron**, una sola riga (la aggiunge il rilascio):
   `* * * * * cd ~/saas/current && /usr/local/bin/php artisan schedule:run >> ~/saas/shared/storage/logs/cron.log 2>&1`.
   Lo scheduler fa il resto:

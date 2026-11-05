@@ -41,6 +41,8 @@
         <env name="TEST_DEDICATED_DATABASE" value="as_test_dedicato"/>
         <!-- Chiave principale finta, solo per i test. -->
         <env name="SAAS_KEY_VAULT" value="local"/>
+        <env name="SAAS_MEMBERS_DOMAIN" value="associazionesemplice.it"/>
+        <env name="APP_URL" value="http://localhost"/>
         <env name="SAAS_MASTER_KEY" value="dGVzdC1zb2xvLXBlci1pLXRlc3QtMzItYnl0ZXMtISE="/>
         <env name="SAAS_FILES_ROOT" value="storage/framework/testing/org-files"/>
         <env name="MAIL_MAILER" value="array"/>

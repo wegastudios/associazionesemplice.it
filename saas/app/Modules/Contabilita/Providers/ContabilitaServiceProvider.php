@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Modules\Contabilita\Providers;
 
 use App\Modules\Contabilita\Contracts\Ledger;
+use App\Modules\Contabilita\Contracts\MemberReceipts;
 use App\Modules\Contabilita\Export\ContabilitaDataExport;
 use App\Modules\Contabilita\Ledger\LedgerService;
 use App\Modules\Contabilita\Listeners\SeedAccounting;
+use App\Modules\Contabilita\Receipts\MemberReceiptsService;
 use App\Modules\Contabilita\Setup\AccountsStep;
 use App\Modules\Contabilita\Setup\EntityStep;
 use App\Modules\Core\Contracts\DataExport;
@@ -23,6 +25,7 @@ final class ContabilitaServiceProvider extends ServiceProvider
         $this->app->tag([ContabilitaDataExport::class], DataExport::TAG);
         $this->app->tag([EntityStep::class, AccountsStep::class], SetupStep::TAG);
         $this->app->bind(Ledger::class, LedgerService::class);
+        $this->app->bind(MemberReceipts::class, MemberReceiptsService::class);
     }
 
     public function boot(): void

@@ -239,6 +239,28 @@ operatori e nessun pacchetto finché non ne ricevono.
 - Permessi: vedere `people.view`; risorse, prenotazioni, blocchi e lista d'attesa `people.edit`; incassi anche
   `accounting.edit`. Prenotazione e pagamento online dei soci arriveranno con l'Area soci.
 
+## 9 quinquies. Area soci (pacchetto, passo 1)
+
+- Modulo `AreaSoci`. L'associazione si riconosce dal sottodominio: rotte su `{org}.<saas.members_domain>/area`,
+  middleware `member-org` (associazione attiva con il pacchetto `member_area`, altrimenti 404). In locale
+  `SAAS_MEMBERS_DOMAIN=localhost` e si apre `http://<slug>.localhost:8000/area`; nei test il dominio è fissato in
+  `phpunit.xml`.
+- Accesso senza password (dal `MemberSession` del plugin): l'email riceve link e codice a 6 cifre (15 minuti, una
+  volta sola, 5 tentativi); per chi non ha email la segreteria prepara dalla scheda un link valido 7 giorni da
+  mandare su WhatsApp. Sessioni in `app.member_sessions`, cookie `as_socio` (path `/area`, HttpOnly, SameSite Lax),
+  30 giorni senza uso o 90 dall'accesso; «esci da tutti i dispositivi» per il socio e per la segreteria. Nel database
+  solo impronte sha256 di link, codici e token. Limiti di frequenza per indirizzo IP e per email.
+- Le schede visibili: la propria e quelle dei minori di cui si è tutori (si sceglie in alto). Pagine: tessera con QR
+  (link firmato `/area/verifica/{persona}` che dice solo se la tessera è valida oggi), profilo con telefono e indirizzo
+  modificabili, quote delle attività e ricevute in PDF, eventi dei prossimi 60 giorni con prenotazione, lista
+  d'attesa e annullamento fino al giorno prima (contributo da pagare in segreteria).
+- Gli altri moduli espongono ai soci solo contratti: `Soci\Contracts\MemberProfiles`,
+  `Contabilita\Contracts\MemberReceipts`, `Attivita\Contracts\MemberActivities`. QR senza librerie in
+  `Documenti\Contracts\QrCode` (dal plugin, con i suoi test).
+- Registro: le azioni dei soci hanno `actor_type = 'member'` e `actor_id` = la persona (`Audit\Contracts\ActingMember`).
+- Prossimi passi: pagamenti online (Stripe, PayPal con le chiavi dell'associazione) e prenotazione delle risorse Web;
+  poi app installabile (PWA), notifiche e wallet.
+
 ## 9 ter. Documenti e ricevute
 
 - PDF senza librerie: `Documenti\Contracts\Pdf` (dal plugin; A4 verticale o orizzontale, testo, linee, rettangoli).

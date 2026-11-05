@@ -97,8 +97,10 @@ saas/app/Modules/
 ## 5. Interfaccia
 
 - **Gestionale**: Inertia + **Vue 3** + Tailwind 4. Compilazione con Vite su GitHub Actions (sul server non c'è Node).
-- **Area soci**: PWA leggera su API REST versionata (`/api/v1`), token Sanctum. La stessa API serve i blocchi
-  dinamici del sito e le integrazioni future.
+- **Area soci**: pagine Inertia + Vue sul sottodominio dell'associazione (`/area`), con un accesso proprio dei soci
+  (link o codice per email, sessione con cookie dedicato) e pensate prima di tutto per il telefono; diventeranno PWA
+  installabile. L'API REST versionata (`/api/v1`, token) arriverà con i blocchi dinamici del sito e le integrazioni:
+  scelta fatta al passo 1 dell'area soci per non scrivere due volte le stesse pagine.
 - **Accesso**: Laravel Fortify. Verifica in due passaggi (TOTP) obbligatoria per gli operatori; passkey come passo
   successivo.
 
