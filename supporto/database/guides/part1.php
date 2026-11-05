@@ -136,7 +136,7 @@ La copia di sicurezza è un file ZIP con tutti i dati del plugin: soci, attivit�
 3. Premi il pulsante per creare la copia e scarica il file.
 4. Conservalo in un posto sicuro, fuori dal sito.
 
-Se l'ultima copia è vecchia, la Bacheca te lo ricorda.
+Se l'ultima copia ha più di 30 giorni, la Bacheca te lo ricorda.
 
 ## Ripristinare
 
