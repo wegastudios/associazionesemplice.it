@@ -17,7 +17,7 @@ beforeEach(function (): void {
         'org' => ['name' => 'Polisportiva Alfa', 'slug' => 'polisportiva-alfa'],
         'owner' => ['email' => 'titolare@example.com', 'name' => 'Anna Rossi'],
     ])])->json('org_id');
-    $this->postJson("/api/portale/v1/orgs/{$this->orgId}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($this->orgId, 'sub_123', 1))])->assertOk();
+    $this->putJson("/api/portale/v1/orgs/{$this->orgId}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($this->orgId, 'sub_123', 1))])->assertOk();
 
     $this->read = fn (string $path, array $claims = []) => $this->postJson("/api/portale/v1/admin/{$path}", ['token' => portalToken($this->portal, 'admin_read', $claims + ['act' => 'staff@example.com', 'scope' => 'read'])]);
     $this->write = fn (string $path, array $claims) => $this->postJson("/api/portale/v1/admin/{$path}", ['token' => portalToken($this->portal, 'admin_write', $claims + ['act' => 'staff@example.com', 'scope' => 'write'])]);
