@@ -145,9 +145,9 @@ final class App {
 		} elseif ( $get && 0 === strpos( $path, '/scarica/' ) ) {
 			$this->download( $path );
 		} elseif ( $get && ( '/saas' === $path || 0 === strpos( $path, '/saas/' ) ) ) {
-			// Scorciatoia verso l'amministrazione del SaaS: indirizzo fisso (mai da parametri), reindirizzamento temporaneo.
+			// Amministrazione della piattaforma SaaS: sta nella gestione del portale (serve l'accesso dello staff), destinazione fissa.
 			header( 'Cache-Control: no-store' );
-			header( 'Location: ' . rtrim( (string) Config::get( 'saas_admin_url', 'https://app.associazionesemplice.it/admin/piattaforma' ), '/' ), true, 302 );
+			header( 'Location: /admin/piattaforma', true, 303 );
 		} elseif ( $get && '/supporto/accedi' === $path ) {
 			// Accesso unico al sito di supporto: serve aver fatto l'accesso qui; il ruolo (admin, solo supporto, cliente) si legge dall'email.
 			header( 'Cache-Control: no-store' );

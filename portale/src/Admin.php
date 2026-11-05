@@ -45,7 +45,7 @@ final class Admin {
 		if ( 'licenze' === $a ) {
 			return 'nuova' !== $b && 'elimina' !== $c;
 		}
-		return 'clienti' === $a && $get;
+		return ( 'clienti' === $a || 'piattaforma' === $a ) && $get;
 	}
 
 	public function handle( string $method, string $path ): void {
@@ -82,6 +82,8 @@ final class Admin {
 			}
 		} elseif ( 'wega' === $a ) {
 			$this->wegaSync( $get );
+		} elseif ( 'piattaforma' === $a ) {
+			$this->platform( $get, $b, $c );
 		} elseif ( 'staff' === $a ) {
 			$this->staff( $get, $b, $c );
 		} elseif ( 'clienti' === $a && $get ) {
@@ -355,6 +357,45 @@ final class Admin {
 	}
 
 	/** Staff: elenco, aggiunta/cambio ruolo (POST /admin/staff) e rimozione (POST /admin/staff/rimuovi). */
+	/** Amministrazione della piattaforma SaaS: associazioni e operatori letti dal SaaS (solo numeri e dati degli operatori); il ruolo «solo supporto» legge soltanto. */
+	private function platform( bool $get, string $b, string $c ): void {
+		$base = array( 'saas_ready' => SaasClient::enabled() );
+		if ( $get && '' === $b ) {
+			$data = array( 'orgs' => array(), 'total' => 0, 'error' => '' );
+			$f    = array( 'q' => (string) ( $_GET['q'] ?? '' ), 'status' => (string) ( $_GET['status'] ?? '' ), 'page' => (int) ( $_GET['page'] ?? 1 ) );
+			try {
+				$r    = SaasClient::orgs( $this->email, $f );
+				$data = array( 'orgs' => (array) ( $r['orgs'] ?? array() ), 'total' => (int) ( $r['total'] ?? 0 ), 'error' => '' );
+			} catch ( UserError $e ) {
+				$data['error'] = $e->getMessage();
+			}
+			$this->show( 'platform', 'piattaforma', $base + $data + array( 'f' => $f ) );
+		} elseif ( $get && '' !== $b && 'utenti' !== $b ) {
+			$org = array();
+			$ops = array();
+			$err = '';
+			try {
+				$org = SaasClient::org( $this->email, $b );
+				$ops = (array) ( SaasClient::operators( $this->email, $b )['operators'] ?? array() );
+			} catch ( UserError $e ) {
+				$err = $e->getMessage();
+			}
+			$this->show( 'platform_org', 'piattaforma', $base + array( 'org' => $org, 'ops' => $ops, 'org_id' => $b, 'error' => $err, 'can_write' => Staff::ADMIN === $this->role ) );
+		} elseif ( ! $get && 'utenti' === $b && '' !== $c ) {
+			if ( Staff::ADMIN !== $this->role ) {
+				http_response_code( 403 );
+				throw new UserError( 'Solo gli amministratori possono disattivare o riattivare gli utenti.' );
+			}
+			$disabled = '1' === (string) ( $_POST['disabled'] ?? '' );
+			$orgId    = (string) ( $_POST['org'] ?? '' );
+			SaasClient::setUserDisabled( $this->email, $c, $disabled, (string) ( $_POST['reason'] ?? '' ) );
+			$to = preg_match( '/^[A-Za-z0-9-]{8,64}$/', $orgId ) ? '/admin/piattaforma/' . $orgId : '/admin/piattaforma';
+			$this->done( 'saas_user_state', $disabled ? 'Utente disattivato.' : 'Utente riattivato.', $to, $c );
+		} else {
+			$this->notFound();
+		}
+	}
+
 	private function staff( bool $get, string $b, string $c ): void {
 		if ( $get && '' === $b ) {
 			$this->show( 'staff', 'staff', array( 'rows' => Staff::all( $this->db ), 'labels' => Staff::LABELS, 'sso' => SupportSso::enabled(), 'support_url' => SupportSso::supportUrl() ) );
