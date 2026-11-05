@@ -118,7 +118,7 @@ final class App {
 		} elseif ( $get && '/grazie' === $path ) {
 			View::render( 'message', array( 'title' => 'Grazie!', 'text' => 'Appena il pagamento è confermato ti scriviamo un link per entrare nell\'area riservata e vedere la chiave di licenza.' ) );
 		} elseif ( $get && '/accedi' === $path ) {
-			View::render( 'login', array( 'title' => 'Area riservata' ) );
+			View::render( 'login', array( 'title' => 'Area riservata', 'for_support' => '/supporto/accedi' === ( $_SESSION['after_login'] ?? '' ) ) );
 		} elseif ( ! $get && '/accedi' === $path ) {
 			$email = strtolower( trim( (string) $this->in( 'email' ) ) );
 			if ( 'link' !== (string) $this->in( 'mode' ) && '' !== (string) $this->in( 'password' ) ) {
