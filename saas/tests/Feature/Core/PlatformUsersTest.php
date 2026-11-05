@@ -8,9 +8,8 @@ use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
 // Nomi e indirizzi inventati.
-function platformAdmin(mixed $test, string $email = 'admin@example.com'): User
+function platformAdmin(mixed $test, User $user): User
 {
-    $user = $test->createUser($email, twoFactor: true);
     DB::table('core.users')->where('id', $user->id)->update(['platform_admin' => true]);
     $admin = $user->fresh() ?? $user;
     $test->actingAs($admin)->withSession(['auth.password_confirmed_at' => time()]);
@@ -26,7 +25,7 @@ it('elenca utenti e associazioni con ruoli e stato, solo agli amministratori del
     $this->actingAs($anna)->withSession(['auth.password_confirmed_at' => time()])
         ->get('/admin/piattaforma/utenti')->assertForbidden();
 
-    platformAdmin($this);
+    platformAdmin($this, $this->createUser('admin@example.com', twoFactor: true));
     $this->get('/admin/piattaforma/utenti')->assertOk()->assertInertia(fn (Assert $page) => $page
         ->component('Admin/Utenti')
         ->has('users', 2)
@@ -40,7 +39,7 @@ it('elenca utenti e associazioni con ruoli e stato, solo agli amministratori del
 
 it('disattiva e riattiva un utente, registra l\'azione e non lascia disattivare se stessi', function (): void {
     $anna = $this->createUser('anna@example.com', twoFactor: true);
-    $admin = platformAdmin($this);
+    $admin = platformAdmin($this, $this->createUser('admin@example.com', twoFactor: true));
 
     $this->post("/admin/piattaforma/utenti/{$anna->id}/disattiva")->assertSessionHas('status');
     expect(DB::table('core.users')->where('id', $anna->id)->value('disabled_at'))->not->toBeNull()
@@ -65,7 +64,7 @@ it('un utente disattivato perde la sessione alla prima richiesta', function (): 
 
 it('sospende e riattiva un\'associazione, ma non una chiusa', function (): void {
     $org = $this->createOrg('Polisportiva Alfa');
-    platformAdmin($this);
+    platformAdmin($this, $this->createUser('admin@example.com', twoFactor: true));
 
     $this->post("/admin/piattaforma/associazioni/{$org->id}/stato", ['status' => 'suspended'])->assertSessionHas('status');
     expect(DB::table('core.orgs')->where('id', $org->id)->value('status'))->toBe('suspended');
