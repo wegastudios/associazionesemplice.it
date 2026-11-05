@@ -8,6 +8,7 @@ use App\Modules\Portale\Console\SendUsageCommand;
 use App\Modules\Portale\Console\SuspendExpiredCommand;
 use App\Modules\Portale\Contracts\Entitlements;
 use App\Modules\Portale\Entitlements\EntitlementReader;
+use App\Modules\Portale\Http\Controllers\AdminApiController;
 use App\Modules\Portale\Http\Controllers\PortalApiController;
 use App\Modules\Portale\Http\Controllers\SubscriptionSsoController;
 use App\Modules\Portale\Http\Middleware\RequirePackage;
@@ -36,6 +37,12 @@ final class PortaleServiceProvider extends ServiceProvider
         Route::prefix('api/portale/v1')->middleware('throttle:portal-api')->group(function (): void {
             Route::post('/orgs', [PortalApiController::class, 'provision']);
             Route::put('/orgs/{org}/entitlements', [PortalApiController::class, 'entitlements'])->whereUuid('org');
+
+            // Amministrazione della piattaforma (§2.3): letture e disattivazione utenti.
+            Route::post('/admin/orgs', [AdminApiController::class, 'orgs']);
+            Route::post('/admin/orgs/{org}', [AdminApiController::class, 'org'])->whereUuid('org');
+            Route::post('/admin/orgs/{org}/operators', [AdminApiController::class, 'operators'])->whereUuid('org');
+            Route::post('/admin/users/{user}/state', [AdminApiController::class, 'userState'])->whereUuid('user');
         });
 
         Route::middleware(['web', 'auth', 'two-factor', 'operator', 'can:org.subscription'])

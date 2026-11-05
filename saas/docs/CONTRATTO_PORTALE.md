@@ -173,7 +173,7 @@ usa **una volta sola** (ripetere la stessa richiesta con un `jti` nuovo è comun
   { "org_id": "<uuid>", "ref": "sub_123", "name": "Polisportiva Alfa", "slug": "polisportiva-alfa",
     "status": "active", "rev": 7, "created_at": "2026-11-04",
     "operators": { "active": 2, "disabled": 1, "limit": 3 },
-    "members": 142, "members_limit": 150, "storage_used_mb": 310, "storage_limit_gb": 5 } ] }
+    "members": 142, "members_limit": 150, "storage_limit_gb": 5 } ] }
 ```
 
 `POST /api/portale/v1/admin/orgs/{org_id}` — dettaglio: gli stessi campi più `packages` (come ricevuti nei diritti),
@@ -199,7 +199,7 @@ certificati, tutori, iscrizioni, movimenti e ricevute, consensi, contenuto dei f
 segreti della verifica in due passaggi. Passano solo: numeri (soci, operatori, spazio), stato, e per gli operatori
 nome, email, ruolo e stato dell'accesso.
 
-**Non disponibile in v1**: «ultimo accesso» (il SaaS non lo registra; si può aggiungere con una colonna, se serve).
+**Non disponibile in v1**: «ultimo accesso» e spazio usato (il SaaS non li registra; si possono aggiungere se servono). Il limite di spazio (`storage_limit_gb`) c’è.
 
 **Chi può usare l'interfaccia** è deciso dal portale: solo lo staff amministratore, con un ruolo «solo lettura» che
 firma token `scope: read`. Il SaaS non conosce i ruoli del portale: si fida della firma e del `scope`, e registra
