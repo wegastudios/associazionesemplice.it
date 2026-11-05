@@ -40,7 +40,7 @@ it('annota creazione, modifica e cancellazione con i nomi dei campi, mai i valor
         ->and(json_decode($rows[1]->details, true)['fields'])->toBe(['phone']);
 
     $all = (string) json_encode(array_map(static fn (object $r): array => array_diff_key((array) $r, ['hash' => 0]), $rows));
-    expect($all)->not->toContain('Mario')->not->toContain('Rossi')->not->toContain('RSSMRA')->not->toContain('333');
+    expect($all)->not->toContain('Mario')->not->toContain('Rossi')->not->toContain('RSSMRA')->not->toContain('1234567'); // il numero, non «333»: comparirebbe a caso in UUID e date
 });
 
 it('tiene una catena per associazione che si verifica', function (): void {

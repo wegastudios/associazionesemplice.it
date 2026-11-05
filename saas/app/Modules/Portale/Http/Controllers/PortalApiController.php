@@ -24,6 +24,11 @@ final readonly class PortalApiController
 
     public function provision(Request $request): JsonResponse
     {
+        // Senza servizio chiavi la piattaforma è solo di prova: niente associazioni vere dal portale.
+        if (config('saas.crypto.trial') === true) {
+            return self::error(503, 'key_service_not_configured');
+        }
+
         return $this->guard($request, function (string $token): JsonResponse {
             $result = $this->sync->provision($token);
 

@@ -18,6 +18,7 @@ use SensitiveParameter;
  * @property string $id
  * @property string $name
  * @property string $email
+ * @property bool $platform_admin
  * @property string $password
  * @property string|null $two_factor_secret
  * @property string|null $two_factor_recovery_codes
@@ -47,6 +48,7 @@ final class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'immutable_datetime',
+            'platform_admin' => 'boolean',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'immutable_datetime',
         ];
