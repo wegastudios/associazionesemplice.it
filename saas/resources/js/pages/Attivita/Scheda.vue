@@ -9,10 +9,11 @@ const props = defineProps({
 });
 
 const a = props.activity ?? {};
+const today = new Date().toISOString().slice(0, 10);
 const form = useForm({
     name: a.name ?? '', kind: a.kind ?? 'course', social_year: a.social_year ?? props.years[0], billing: a.billing ?? 'monthly',
     fee: a.fee ?? '', guest_fee: a.guest_fee ?? '', instructor_person_id: a.instructor_person_id ?? '', weekdays: a.weekdays ?? [],
-    starts_on: a.starts_on ?? '', ends_on: a.ends_on ?? '', location: a.location ?? '', notes: a.notes ?? '',
+    starts_on: a.starts_on ?? '', ends_on: a.ends_on ?? '', location: a.location ?? '', notes: a.notes ?? '', price_lists: a.price_lists ?? '',
 });
 const clean = (d) => ({ ...d, instructor_person_id: d.instructor_person_id || null, starts_on: d.starts_on || null, ends_on: d.ends_on || null });
 const save = () => (props.activity
@@ -20,8 +21,12 @@ const save = () => (props.activity
     : form.transform(clean).post('/gestionale/attivita'));
 const days = ['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom'];
 const isCourse = computed(() => form.kind === 'course');
+const isBookable = computed(() => form.kind === 'recurring');
 
-const today = new Date().toISOString().slice(0, 10);
+const dates = useForm({ from: today, to: '', weekly: false, start: '', end: '', location: a.location ?? '', capacity: '' });
+const submitDates = () => dates.transform((d) => ({ ...d, to: d.weekly ? d.to || null : null, capacity: d.capacity || null, start: d.start || null, end: d.end || null }))
+    .post(`/gestionale/attivita/${props.activity.id}/date`, { preserveScroll: true, onSuccess: () => dates.reset('to', 'weekly') });
+
 const enroll = useForm({ person_id: '', start_month: '' });
 const submitEnroll = () => enroll.transform((d) => ({ ...d, start_month: d.start_month || null }))
     .post(`/gestionale/attivita/${props.activity.id}/iscrizioni`, { preserveScroll: true, onSuccess: () => enroll.reset() });
@@ -71,7 +76,7 @@ const label = 'space-y-1 text-sm';
                 <label v-if="isCourse" :class="label"><span class="font-semibold">Contributo</span><select v-model="form.billing" :class="field"><option v-for="b in billings" :key="b.value" :value="b.value">{{ b.label }}</option></select></label>
                 <label :class="label"><span class="font-semibold">Importo per i soci</span><input v-model="form.fee" inputmode="decimal" placeholder="0 = gratuita" :class="field" /></label>
                 <label :class="label"><span class="font-semibold">Importo per gli ospiti</span><input v-model="form.guest_fee" inputmode="decimal" placeholder="vuoto = come i soci" :class="field" /></label>
-                <label :class="label"><span class="font-semibold">{{ isCourse ? 'Inizio' : 'Data' }}</span><input v-model="form.starts_on" type="date" :class="field" :required="!isCourse" /></label>
+                <label v-if="!isBookable" :class="label"><span class="font-semibold">{{ isCourse ? 'Inizio' : 'Data' }}</span><input v-model="form.starts_on" type="date" :class="field" :required="!isCourse" /></label>
                 <label v-if="isCourse" :class="label"><span class="font-semibold">Fine</span><input v-model="form.ends_on" type="date" :class="field" /></label>
                 <div v-if="isCourse" :class="[label, 'sm:col-span-2']">
                     <span class="font-semibold">Giorni delle lezioni</span>
@@ -83,6 +88,10 @@ const label = 'space-y-1 text-sm';
                     <p v-if="activity?.instructor_name && form.instructor_person_id === activity.instructor_person_id" class="text-muted">{{ activity.instructor_name }} <button v-if="canEdit" type="button" class="ml-2 text-danger hover:underline" @click="form.instructor_person_id = ''">togli</button></p>
                     <PersonPicker v-else id="instructor" v-model="form.instructor_person_id" />
                 </div>
+                <label v-if="isBookable" :class="[label, 'sm:col-span-3']"><span class="font-semibold">Listini</span>
+                    <textarea v-model="form.price_lists" rows="2" :class="field" placeholder="Ingresso singolo 10,00&#10;Pacchetto 5 ingressi 40 x5" />
+                    <span class="text-muted">Facoltativi, uno per riga: nome e prezzo; per un pacchetto «x» e gli ingressi. Senza listino vale l'importo per i soci o per gli ospiti.</span>
+                    <span v-if="form.errors.price_lists" class="text-danger">{{ form.errors.price_lists }}</span></label>
                 <label :class="[label, 'sm:col-span-3']"><span class="font-semibold">Note</span><textarea v-model="form.notes" rows="2" :class="field" maxlength="2000" /></label>
             </fieldset>
             <div v-if="canEdit" class="mt-4 flex flex-wrap gap-3">
@@ -91,8 +100,37 @@ const label = 'space-y-1 text-sm';
             </div>
         </form>
 
+        <p v-if="activity" class="mt-4 flex flex-wrap gap-4 text-sm">
+            <Link :href="`/gestionale/attivita/${activity.id}/presenze`" class="font-semibold text-accent hover:underline">Registro presenze</Link>
+            <Link href="/gestionale/calendario" class="font-semibold text-accent hover:underline">Calendario</Link>
+        </p>
+
+        <section v-if="activity && activity.bookable" class="mt-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="dates-title">
+            <h2 id="dates-title" class="mb-3 text-lg font-bold">Date</h2>
+            <p v-if="!activity.sessions.length" class="mb-3 text-sm text-muted">Nessuna data: aggiungi la prima.</p>
+            <ul class="divide-y divide-line text-sm">
+                <li v-for="d in activity.sessions" :key="d.id" class="flex flex-wrap items-center gap-3 py-2" :class="d.cancelled ? 'text-muted line-through' : ''">
+                    <Link :href="`/gestionale/attivita/date/${d.id}`" class="font-semibold text-accent hover:underline">{{ d.label }}<template v-if="d.start"> · {{ d.start }}<template v-if="d.end">–{{ d.end }}</template></template></Link>
+                    <span v-if="d.location" class="text-muted">{{ d.location }}</span>
+                    <span v-if="!d.cancelled" :class="['rounded px-2 py-0.5', d.free === 0 ? 'bg-danger/15 text-danger' : 'bg-surface']">{{ d.taken }} prenotati<template v-if="d.capacity"> su {{ d.capacity }}</template></span>
+                    <span v-if="d.waiting" class="text-muted">{{ d.waiting }} in attesa</span>
+                    <span v-if="d.cancelled">annullata</span>
+                </li>
+            </ul>
+            <form v-if="canEdit && !activity.archived" class="mt-4 grid gap-3 rounded-lg border border-line p-3 sm:grid-cols-4" @submit.prevent="submitDates">
+                <label :class="label"><span class="font-semibold">Data</span><input v-model="dates.from" type="date" :class="field" required /></label>
+                <label class="flex items-center gap-2 self-end pb-2 text-sm"><input v-model="dates.weekly" type="checkbox" /> ogni settimana</label>
+                <label v-if="dates.weekly" :class="label"><span class="font-semibold">Fino al</span><input v-model="dates.to" type="date" :class="field" required /></label>
+                <label :class="label"><span class="font-semibold">Dalle</span><input v-model="dates.start" type="time" :class="field" /></label>
+                <label :class="label"><span class="font-semibold">Alle</span><input v-model="dates.end" type="time" :class="field" /></label>
+                <label :class="label"><span class="font-semibold">Posti</span><input v-model="dates.capacity" type="number" min="1" :class="field" placeholder="senza limite" /></label>
+                <label :class="[label, 'sm:col-span-2']"><span class="font-semibold">Luogo</span><input v-model="dates.location" :class="field" maxlength="190" /></label>
+                <div class="sm:col-span-4"><button type="submit" class="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" :disabled="dates.processing">Aggiungi {{ dates.weekly ? 'le date' : 'la data' }}</button></div>
+            </form>
+        </section>
+
         <template v-if="activity">
-            <section class="mt-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="enrolled-title">
+            <section v-if="!activity.bookable" class="mt-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="enrolled-title">
                 <h2 id="enrolled-title" class="mb-3 text-lg font-bold">Iscritti</h2>
                 <p v-if="!activity.enrollments.length" class="mb-3 text-sm text-muted">Nessun iscritto.</p>
                 <ul class="divide-y divide-line text-sm">

@@ -28,6 +28,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
  * @property string|null $location
  * @property string|null $notes
  * @property CarbonImmutable|null $archived_at
+ * @property list<array{key: string, label: string, cents: int, entries: int}> $price_lists
  */
 final class Activity extends OrgModel
 {
@@ -38,7 +39,7 @@ final class Activity extends OrgModel
     /** @var list<string> */
     protected $fillable = [
         'name', 'kind', 'social_year', 'billing', 'fee_cents', 'guest_fee_cents', 'instructor_person_id', 'weekdays',
-        'starts_on', 'ends_on', 'location', 'notes',
+        'starts_on', 'ends_on', 'location', 'notes', 'price_lists',
     ];
 
     /** @return array<string, string> */
@@ -52,6 +53,7 @@ final class Activity extends OrgModel
             'starts_on' => 'immutable_date',
             'ends_on' => 'immutable_date',
             'archived_at' => 'immutable_datetime',
+            'price_lists' => 'array',
         ];
     }
 
