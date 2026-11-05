@@ -78,6 +78,10 @@ final class HealthCommand extends Command
             $this->warn('nota  '.(is_string($warning) ? $warning : ''));
         }
 
+        if (config('saas.auth.require_two_factor') === false) {
+            $this->warn('nota  Verifica in due passaggi SPENTA (SAAS_REQUIRE_TWO_FACTOR=false): solo sviluppo, dati inventati.');
+        }
+
         return $failed === 0 ? self::SUCCESS : self::FAILURE;
     }
 

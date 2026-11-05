@@ -85,3 +85,16 @@ it('non si attiva senza conferma della password', function (): void {
     $this->actingAs($user)->post('/user/two-factor-authentication')->assertRedirect('/conferma-password');
     expect($user->fresh()?->two_factor_secret)->toBeNull();
 });
+
+it('con l\'obbligo spento (solo sviluppo) il gestionale si apre anche senza verifica in due passaggi', function (): void {
+    $user = $this->createUser('anna@example.com');
+    $org = $this->createOrg('Polisportiva Alfa');
+    $this->addOperator($org, $user);
+
+    $this->actingAs($user)->get('/gestionale')->assertRedirect('/account/verifica-in-due-passaggi');
+
+    config(['saas.auth.require_two_factor' => false]);
+
+    $response = $this->actingAs($user)->get('/gestionale');
+    expect((string) $response->headers->get('Location'))->not->toContain('verifica-in-due-passaggi');
+});

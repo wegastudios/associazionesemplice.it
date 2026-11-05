@@ -14,6 +14,12 @@ return [
         'dedicated_file' => env('SAAS_DEDICATED_DB_FILE'),
     ],
 
+    'auth' => [
+        // Verifica in due passaggi obbligatoria per chi è operatore. Si spegne SOLO in sviluppo, con dati inventati
+        // (SAAS_REQUIRE_TWO_FACTOR=false nel file d'ambiente): saas:health lo segnala finché è spenta.
+        'require_two_factor' => (bool) env('SAAS_REQUIRE_TWO_FACTOR', true),
+    ],
+
     'crypto' => [
         // remote = servizio chiavi su un account separato (produzione); local = chiave principale nel file
         // d'ambiente (sviluppo, test e ripiego).
