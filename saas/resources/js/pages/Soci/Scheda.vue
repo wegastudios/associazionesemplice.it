@@ -1,6 +1,6 @@
 <script setup>
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 import AppLayout from '../../layouts/AppLayout.vue';
 import PersonPicker from '../../components/PersonPicker.vue';
 
@@ -17,6 +17,26 @@ const form = useForm({
     level_id: p.level_id ?? '', host_person_id: '', joined_on: p.joined_on ?? '',
 });
 const isGuest = computed(() => form.type === 'guest');
+
+// Area soci: link d'accesso preparato dalla segreteria (per chi non ha email: si manda su WhatsApp).
+const page = usePage();
+const memberArea = computed(() => (page.props.org?.packages ?? []).includes('member_area') && props.person && props.person.type !== 'guest');
+const accessLink = ref('');
+const accessError = ref('');
+const accessDone = ref('');
+const xsrf = () => decodeURIComponent(document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN='))?.split('=')[1] ?? '');
+const memberPost = async (what) => {
+    accessError.value = '';
+    accessDone.value = '';
+    const res = await fetch(`/gestionale/soci/${props.person.id}/area-soci/${what}`, {
+        method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'X-XSRF-TOKEN': xsrf() },
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) accessError.value = json.error ?? 'Non è stato possibile.';
+    else if (what === 'link') accessLink.value = json.link;
+    else accessDone.value = `Accessi chiusi: ${json.closed}.`;
+};
+const copyLink = () => navigator.clipboard?.writeText(accessLink.value);
 const save = () => (props.person ? form.put(`/gestionale/soci/${props.person.id}`, { preserveScroll: true }) : form.post('/gestionale/soci'));
 
 const today = new Date().toISOString().slice(0, 10);
@@ -217,6 +237,21 @@ const label = 'space-y-1 text-sm';
             <section v-if="person.dependents.length" class="mt-6 rounded-2xl border border-line bg-card p-5">
                 <h2 class="mb-3 text-lg font-bold">È genitore o tutore di</h2>
                 <ul class="space-y-1 text-sm"><li v-for="d in person.dependents" :key="d.id"><Link :href="`/gestionale/soci/${d.id}`" class="font-semibold text-accent hover:underline">{{ d.name }}</Link></li></ul>
+            </section>
+
+            <section v-if="canEdit && memberArea" class="mt-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="area-title">
+                <h2 id="area-title" class="mb-2 text-lg font-bold">Area soci</h2>
+                <p class="mb-3 text-sm text-muted">Con l'email entra da solo: riceve un link e un codice. Senza email, prepara un link d'accesso (vale 7 giorni, una volta sola) e mandalo su WhatsApp.</p>
+                <div class="flex flex-wrap gap-3 text-sm">
+                    <button type="button" class="rounded-lg border border-line px-4 py-2 font-semibold" @click="memberPost('link')">Prepara il link d'accesso</button>
+                    <button type="button" class="rounded-lg border border-line px-4 py-2 font-semibold text-danger" @click="memberPost('esci')">Chiudi i suoi accessi</button>
+                </div>
+                <div v-if="accessLink" class="mt-3 flex flex-wrap items-center gap-2">
+                    <input :value="accessLink" readonly class="min-w-64 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm" aria-label="Link d'accesso" @focus="$event.target.select()" />
+                    <button type="button" class="rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-accent-ink" @click="copyLink">Copia</button>
+                </div>
+                <p v-if="accessError" class="mt-2 text-sm text-danger" role="alert">{{ accessError }}</p>
+                <p v-if="accessDone" class="mt-2 text-sm" role="status">{{ accessDone }}</p>
             </section>
 
             <section v-if="canEdit && !person.left_on" class="mt-6 rounded-2xl border border-line bg-card p-5">

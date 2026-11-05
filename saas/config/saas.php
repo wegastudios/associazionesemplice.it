@@ -26,6 +26,10 @@ return [
         'cache_ttl' => 300,
     ],
 
+    // Area soci: https://<slug>.<members_domain>/area (docs/ARCHITETTURA.md §3). In locale si usa per esempio
+    // «localhost»: i browser portano <slug>.localhost sul computer stesso.
+    'members_domain' => env('SAAS_MEMBERS_DOMAIN', 'associazionesemplice.it'),
+
     // Contratto con il portale (docs/CONTRATTO_PORTALE.md).
     'portal' => [
         'url' => env('SAAS_PORTAL_URL', 'https://associazionesemplice.it'),

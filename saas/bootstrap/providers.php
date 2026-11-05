@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\AreaSoci\Providers\AreaSociServiceProvider;
 use App\Modules\Attivita\Providers\AttivitaServiceProvider;
 use App\Modules\Audit\Providers\AuditServiceProvider;
 use App\Modules\Backup\Providers\BackupServiceProvider;
@@ -26,4 +27,5 @@ return [
     SociServiceProvider::class,
     AttivitaServiceProvider::class,
     RisorseServiceProvider::class,
+    AreaSociServiceProvider::class,
 ];

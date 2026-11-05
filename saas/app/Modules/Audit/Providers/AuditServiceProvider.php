@@ -6,6 +6,7 @@ namespace App\Modules\Audit\Providers;
 
 use App\Modules\Audit\Console\AuditPartitionsCommand;
 use App\Modules\Audit\Console\VerifyAuditCommand;
+use App\Modules\Audit\Contracts\ActingMember;
 use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Audit\Contracts\SecurityLog;
 use App\Modules\Audit\Export\AuditDataExport;
@@ -25,6 +26,7 @@ final class AuditServiceProvider extends ServiceProvider
     {
         $this->app->tag([AuditDataExport::class], DataExport::TAG);
         $this->app->singleton(AuditLog::class, ChainedAuditLog::class);
+        $this->app->singleton(ActingMember::class);
         $this->app->singleton(SecurityLog::class, DatabaseSecurityLog::class);
         $this->app->scoped(RecordSensitiveReads::class);
     }
