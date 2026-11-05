@@ -17,6 +17,6 @@ class Section extends Model
 
     public function articles(): HasMany
     {
-        return $this->hasMany(Article::class)->orderBy('title');
+        return $this->hasMany(Article::class)->orderBy('id');
     }
 }

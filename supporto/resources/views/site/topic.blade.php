@@ -5,7 +5,7 @@
     <h1>{{ $topic->name }}</h1>
     @if ($topic->description)<p class="muted">{{ $topic->description }}</p>@endif
     @foreach ($topic->sections as $section)
-        <section class="card">
+        <section class="card" id="sezione-{{ $section->id }}">
             <h2 style="margin-top:0">{{ $section->name }}</h2>
             <ul>
                 @forelse ($section->articles as $article)

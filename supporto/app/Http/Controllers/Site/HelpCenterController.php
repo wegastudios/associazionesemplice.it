@@ -45,7 +45,17 @@ class HelpCenterController extends Controller
             ->where('is_published', true)
             ->whereHas('section.topic', fn ($t) => $t->where('is_public', true))
             ->where(fn ($w) => $w->where('title', 'like', "%{$escaped}%")->orWhere('body', 'like', "%{$escaped}%"))
-            ->with('section.topic')->orderBy('title')->limit(30)->get();
+            ->with('section.topic')->limit(60)->get()
+            ->map(function (Article $a) use ($q) {
+                $plain = trim((string) preg_replace('/\s+/', ' ', strip_tags(str_replace(['**', '__', '#', '`', '|'], ' ', (string) $a->body))));
+                $pos = mb_stripos($plain, $q);
+                $a->search_score = (mb_stripos($a->title, $q) !== false ? 100 : 0) + min(20, mb_substr_count(mb_strtolower($plain), mb_strtolower($q)));
+                $a->search_snippet = $pos === false ? '' : (($pos > 60 ? '…' : '').mb_substr($plain, max(0, $pos - 60), 170).'…');
+
+                return $a;
+            })
+            ->sort(fn ($a, $b) => [$b->search_score, $a->title] <=> [$a->search_score, $b->title])
+            ->take(30)->values();
 
         return view('site.search', ['q' => $q, 'results' => $results]);
     }

@@ -94,6 +94,14 @@
     .docs-nav ul { list-style:none; margin:0; padding:0; }
     .docs-nav a { display:block; padding:6px 10px; border-radius:6px; text-decoration:none; color:var(--ink); }
     .docs-nav a[aria-current="page"] { background:var(--yellow-soft); border:1px solid var(--line); border-left:5px solid var(--yellow); font-weight:600; color:var(--link); }
+     (max-width:640px) {
+        .bar { gap:4px 12px; padding:8px 16px; }
+        .bar nav { flex:1 1 100%; flex-wrap:nowrap; overflow-x:auto; gap:4px; scrollbar-width:none; }
+        .bar nav a, .bar nav button { flex:none; white-space:nowrap; display:inline-flex; align-items:center; min-height:44px; padding:0 8px; }
+        main a:not(.btn) { padding-block:2px; }
+        main li { margin-bottom:6px; }
+        .btn, button { min-height:44px; }
+    }
     @media (max-width:800px) { .docs-layout { grid-template-columns:1fr; } .docs-nav { position:static; } dl { grid-template-columns:1fr; } dt { margin-top:8px; } }
     @media (max-width:640px) { dl { grid-template-columns:1fr; } dt { margin-top:8px; } }
 </style>
