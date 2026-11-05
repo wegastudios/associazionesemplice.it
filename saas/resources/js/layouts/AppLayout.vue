@@ -14,12 +14,13 @@ const all = [
     { href: '/gestionale/soci', label: 'Soci', can: 'people.view' },
     { href: '/gestionale/domande', label: 'Domande', can: 'people.view' },
     { href: '/gestionale/attivita', label: 'Attività', can: 'people.view' },
+    { href: '/gestionale/risorse', label: 'Risorse', can: 'people.view', pkg: 'resources' },
     { href: '/gestionale/prima-nota', label: 'Prima nota', can: 'accounting.view' },
     { href: '/gestionale/conti', label: 'Conti', can: 'accounting.view' },
     { href: '/gestionale/rendiconto', label: 'Rendiconto', can: 'accounting.view' },
     { href: '/gestionale/operatori', label: 'Operatori', can: 'org.operators' },
 ];
-const sections = computed(() => all.filter((s) => !s.can || (org.value?.can ?? []).includes(s.can)));
+const sections = computed(() => all.filter((s) => (!s.can || (org.value?.can ?? []).includes(s.can)) && (!s.pkg || (org.value?.packages ?? []).includes(s.pkg))));
 const current = (href) => (href === '/gestionale' ? page.url === href : page.url.startsWith(href));
 </script>
 
