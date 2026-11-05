@@ -3,6 +3,8 @@
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
 ## 1.3.13
+- Il calendario dell'evento si vede anche per giorno (utile con gli slot) e parte dalla settimana.
+- Quando prenoti per una persona vedi subito se ha pacchetti attivi da scalare e quanti ingressi restano.
 - Nella pagina di un evento c'è un calendario da guardare, a mese o a settimana, accanto ai dati: toccando una data si aprono le sue prenotazioni.
 - Per chi ha un pacchetto di giornate già pagato, la segreteria vede ora chi ha ancora ingressi e quanti.
 - Per un POS fisico o un conto che trattiene una commissione puoi indicare il costo di incasso (fisso e percentuale): a ogni incasso compare la spesa in prima nota.

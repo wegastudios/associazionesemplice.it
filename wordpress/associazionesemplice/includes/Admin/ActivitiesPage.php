@@ -259,13 +259,19 @@ final class ActivitiesPage {
 				$first = $s['session_date']; // di partenza si mostra il periodo della prossima data
 			}
 		}
-		$view = 'week' === Ui::get_str( 'cal' ) ? 'week' : 'month';
+		$view = in_array( Ui::get_str( 'cal' ), array( 'month', 'day' ), true ) ? Ui::get_str( 'cal' ) : 'week'; // di partenza la settimana
 		$ref  = Ui::get_str( 'cal_date' );
 		if ( ! preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $ref, $m ) || ! checkdate( (int) $m[2], (int) $m[3], (int) $m[1] ) ) {
 			$ref = '' !== $first ? $first : ( $by ? array_key_last( $by ) : $today );
 		}
 		$d = new \DateTimeImmutable( $ref );
-		if ( 'week' === $view ) {
+		if ( 'day' === $view ) {
+			$from = $d;
+			$to   = $d;
+			$prev = $d->modify( '-1 day' );
+			$next = $d->modify( '+1 day' );
+			$head = wp_date( 'l j F Y', $d->getTimestamp() );
+		} elseif ( 'week' === $view ) {
 			$from = $d->modify( 'monday this week' );
 			$to   = $from->modify( '+6 days' );
 			$prev = $d->modify( '-7 days' );
@@ -287,15 +293,18 @@ final class ActivitiesPage {
 			. '<a class="button" href="' . esc_url( $link( $view, $prev->format( 'Y-m-d' ) ) ) . '">←</a> <strong>' . esc_html( $head ) . '</strong> '
 			. '<a class="button" href="' . esc_url( $link( $view, $next->format( 'Y-m-d' ) ) ) . '">→</a> '
 			. '<span class="asem-cal-views"><a class="button' . ( 'month' === $view ? ' button-primary' : '' ) . '" href="' . esc_url( $link( 'month', $ref ) ) . '">Mese</a> '
-			. '<a class="button' . ( 'week' === $view ? ' button-primary' : '' ) . '" href="' . esc_url( $link( 'week', $ref ) ) . '">Settimana</a></span></p>'
+			. '<a class="button' . ( 'week' === $view ? ' button-primary' : '' ) . '" href="' . esc_url( $link( 'week', $ref ) ) . '">Settimana</a> '
+			. '<a class="button' . ( 'day' === $view ? ' button-primary' : '' ) . '" href="' . esc_url( $link( 'day', $ref ) ) . '">Giorno</a></span></p>'
 			. '<table class="asem-cal-grid"><thead><tr>';
-		foreach ( array( 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom' ) as $n ) {
+		$names = array( 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom' );
+		$cols  = 'day' === $view ? 1 : 7;
+		foreach ( 'day' === $view ? array( $names[ (int) $from->format( 'N' ) - 1 ] ) : $names as $n ) {
 			$html .= '<th>' . $n . '</th>';
 		}
 		$html .= '</tr></thead><tbody>';
 		for ( $day = $from, $col = 0; $day <= $to; $day = $day->modify( '+1 day' ), $col++ ) {
 			$key = $day->format( 'Y-m-d' );
-			if ( 0 === $col % 7 ) {
+			if ( 0 === $col % $cols ) {
 				$html .= '<tr>';
 			}
 			$other = 'month' === $view && $day->format( 'm' ) !== $m1->format( 'm' );
@@ -308,7 +317,7 @@ final class ActivitiesPage {
 					. esc_html( ( $s['start_time'] ? substr( (string) $s['start_time'], 0, 5 ) . ' ' : '' ) . $count ) . '</a>';
 			}
 			$html .= '</td>';
-			if ( 6 === $col % 7 ) {
+			if ( $cols - 1 === $col % $cols ) {
 				$html .= '</tr>';
 			}
 		}
@@ -519,6 +528,8 @@ final class ActivitiesPage {
 				$html .= '<label><input type="checkbox" name="use_package" value="1"> usa ' . esc_html( $pk[0]['label'] ) . ' (' . (int) $pk[0]['left'] . ' rimasti)</label> ';
 			} elseif ( ! $person_id ) {
 				$html .= '<label><input type="checkbox" name="use_package" value="1"> dal pacchetto già pagato</label> <span class="description">(chi ne ha uno è nella lista «Pacchetti già pagati» sopra)</span> ';
+			} else {
+				$html .= '<span class="description">nessun pacchetto attivo da scalare</span> ';
 			}
 		}
 		if ( ! \AssociazioneSemplice\Edition::has( 'funds' ) ) {

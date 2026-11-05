@@ -58,7 +58,7 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 == Changelog ==
 
 = 1.3.13 =
-* Event pages: visual month/week calendar next to the activity data, with the paid packages left per person; per-account collection cost (fixed + percentage) for physical POS terminals; resources paid in advance can be booked and settled at the desk when no online payment is active; the site menu no longer gets a second Area riservata entry.
+* Event pages: visual month/week/day calendar next to the activity data, with the paid packages left per person; per-account collection cost (fixed + percentage) for physical POS terminals; resources paid in advance can be booked and settled at the desk when no online payment is active; the site menu no longer gets a second Area riservata entry.
 
 = 1.3.12 =
 * Phones: the activities table in the member area becomes one card per row, so payments no longer fall off screen; secondary button has an outline.
