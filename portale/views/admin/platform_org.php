@@ -7,7 +7,7 @@
 		<p class="muted"><?php echo e( (string) ( $org['slug'] ?? '' ) ); ?> · stato <strong><?php echo e( (string) ( $org['status'] ?? '' ) ); ?></strong><?php echo ! empty( $org['until'] ) ? ' · pagata fino al ' . e( (string) $org['until'] ) : ''; ?><?php echo ! empty( $org['partner'] ) ? ' · partner ' . e( (string) $org['partner'] ) : ''; ?></p>
 		<ul>
 			<li>Soci: <?php echo (int) ( $org['members'] ?? 0 ); ?> su <?php echo (int) ( $org['members_limit'] ?? 0 ); ?></li>
-			<li>Spazio: <?php echo (int) ( $org['storage_used_mb'] ?? 0 ); ?> MB su <?php echo (int) ( $org['storage_limit_gb'] ?? 0 ); ?> GB</li>
+			<li>Spazio: <?php echo isset( $org['storage_used_mb'] ) ? (int) $org['storage_used_mb'] . ' MB su ' : 'fino a '; ?><?php echo (int) ( $org['storage_limit_gb'] ?? 0 ); ?> GB</li>
 			<li>Pacchetti attivi: <?php echo e( implode( ', ', array_keys( (array) ( $org['packages'] ?? array() ) ) ) ?: 'nessuno' ); ?></li>
 			<li>Ultimi diritti applicati: revisione <?php echo (int) ( $org['rev'] ?? 0 ); ?></li>
 		</ul>

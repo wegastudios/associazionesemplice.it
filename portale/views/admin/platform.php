@@ -15,7 +15,7 @@
 			<td><?php echo e( (string) ( $o['status'] ?? '' ) ); ?></td>
 			<td><?php echo (int) ( $op['active'] ?? 0 ); ?> attivi<?php echo ! empty( $op['disabled'] ) ? ' · ' . (int) $op['disabled'] . ' disattivati' : ''; ?> (limite <?php echo (int) ( $op['limit'] ?? 0 ); ?>)</td>
 			<td><?php echo (int) ( $o['members'] ?? 0 ); ?> / <?php echo (int) ( $o['members_limit'] ?? 0 ); ?></td>
-			<td><?php echo (int) ( $o['storage_used_mb'] ?? 0 ); ?> MB / <?php echo (int) ( $o['storage_limit_gb'] ?? 0 ); ?> GB</td>
+			<td><?php echo isset( $o['storage_used_mb'] ) ? (int) $o['storage_used_mb'] . ' MB su ' : 'fino a '; ?><?php echo (int) ( $o['storage_limit_gb'] ?? 0 ); ?> GB</td>
 			<td><?php echo e( (string) ( $o['created_at'] ?? '' ) ); ?></td>
 		</tr>
 	<?php endforeach; ?>
