@@ -37,36 +37,36 @@ final readonly class PlatformUsersController
             ->orderBy('o.name')
             ->get(['m.user_id', 'm.role', 'o.name as org_name', 'o.status as org_status']);
         foreach ($rows as $r) {
-            $memberships[(string) $r->user_id][] = ['org' => (string) $r->org_name, 'role' => (string) $r->role, 'status' => (string) $r->org_status];
+            $memberships[self::str($r->user_id)][] = ['org' => self::str($r->org_name), 'role' => self::str($r->role), 'status' => self::str($r->org_status)];
         }
 
         $users = [];
         foreach ($db->table('core.users')->orderBy('created_at')->get(['id', 'name', 'email', 'platform_admin', 'two_factor_confirmed_at', 'disabled_at', 'created_at']) as $u) {
             $users[] = [
-                'id' => (string) $u->id,
-                'name' => (string) $u->name,
-                'email' => (string) $u->email,
+                'id' => self::str($u->id),
+                'name' => self::str($u->name),
+                'email' => self::str($u->email),
                 'platform_admin' => (bool) $u->platform_admin,
                 'two_factor' => $u->two_factor_confirmed_at !== null,
                 'disabled' => $u->disabled_at !== null,
-                'created_at' => $u->created_at === null ? null : substr((string) $u->created_at, 0, 10),
-                'orgs' => $memberships[(string) $u->id] ?? [],
+                'created_at' => $u->created_at === null ? null : substr(self::str($u->created_at), 0, 10),
+                'orgs' => $memberships[self::str($u->id)] ?? [],
             ];
         }
 
         $counts = [];
         foreach ($db->table('core.org_users')->selectRaw('org_id, count(*) as n')->groupBy('org_id')->get() as $c) {
-            $counts[(string) $c->org_id] = (int) $c->n;
+            $counts[self::str($c->org_id)] = self::int($c->n);
         }
         $orgs = [];
         foreach ($db->table('core.orgs')->whereNull('deleted_at')->orderBy('name')->get(['id', 'name', 'slug', 'status', 'created_at']) as $o) {
             $orgs[] = [
-                'id' => (string) $o->id,
-                'name' => (string) $o->name,
-                'slug' => (string) $o->slug,
-                'status' => (string) $o->status,
-                'operators' => $counts[(string) $o->id] ?? 0,
-                'created_at' => $o->created_at === null ? null : substr((string) $o->created_at, 0, 10),
+                'id' => self::str($o->id),
+                'name' => self::str($o->name),
+                'slug' => self::str($o->slug),
+                'status' => self::str($o->status),
+                'operators' => $counts[self::str($o->id)] ?? 0,
+                'created_at' => $o->created_at === null ? null : substr(self::str($o->created_at), 0, 10),
             ];
         }
 
@@ -78,13 +78,13 @@ final readonly class PlatformUsersController
         $target = User::query()->findOrFail($user);
         $actor = $request->user();
 
-        if ($actor !== null && (string) $actor->getAuthIdentifier() === $target->id) {
+        if ($actor !== null && self::str($actor->getAuthIdentifier()) === $target->id) {
             return back()->withErrors(['users' => 'Non puoi disattivare il tuo utente.']);
         }
 
         $target->disabled_at = now();
         $target->save();
-        $this->log->record('platform.user_disabled', $actor === null ? null : (string) $actor->getAuthIdentifier(), ['user' => $target->id]);
+        $this->log->record('platform.user_disabled', $actor === null ? null : self::str($actor->getAuthIdentifier()), ['user' => $target->id]);
 
         return back()->with('status', "Utente {$target->email} disattivato: non può più entrare.");
     }
@@ -94,7 +94,7 @@ final readonly class PlatformUsersController
         $target = User::query()->findOrFail($user);
         $target->disabled_at = null;
         $target->save();
-        $this->log->record('platform.user_enabled', $request->user() === null ? null : (string) $request->user()->getAuthIdentifier(), ['user' => $target->id]);
+        $this->log->record('platform.user_enabled', $request->user() === null ? null : self::str($request->user()->getAuthIdentifier()), ['user' => $target->id]);
 
         return back()->with('status', "Utente {$target->email} riattivato.");
     }
@@ -110,8 +110,20 @@ final readonly class PlatformUsersController
         }
 
         $this->orgs->setStatus($org, $status);
-        $this->log->record('platform.org_status', $request->user() === null ? null : (string) $request->user()->getAuthIdentifier(), ['org' => $org, 'status' => $status]);
+        $this->log->record('platform.org_status', $request->user() === null ? null : self::str($request->user()->getAuthIdentifier()), ['org' => $org, 'status' => $status]);
 
-        return back()->with('status', $status === 'suspended' ? "Associazione «{$row->name}» sospesa." : "Associazione «{$row->name}» riattivata. Se ha un abbonamento scaduto sul portale, può essere sospesa di nuovo alla prossima sincronizzazione.");
+        $name = self::str($row->name);
+
+        return back()->with('status', $status === 'suspended' ? "Associazione «{$name}» sospesa." : "Associazione «{$name}» riattivata. Se ha un abbonamento scaduto sul portale, può essere sospesa di nuovo alla prossima sincronizzazione.");
+    }
+
+    private static function str(mixed $value): string
+    {
+        return is_scalar($value) ? (string) $value : '';
+    }
+
+    private static function int(mixed $value): int
+    {
+        return is_numeric($value) ? (int) $value : 0;
     }
 }
