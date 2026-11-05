@@ -258,8 +258,18 @@ operatori e nessun pacchetto finché non ne ricevono.
   `Contabilita\Contracts\MemberReceipts`, `Attivita\Contracts\MemberActivities`. QR senza librerie in
   `Documenti\Contracts\QrCode` (dal plugin, con i suoi test).
 - Registro: le azioni dei soci hanno `actor_type = 'member'` e `actor_id` = la persona (`Audit\Contracts\ActingMember`).
-- Prossimi passi: pagamenti online (Stripe, PayPal con le chiavi dell'associazione) e prenotazione delle risorse Web;
-  poi app installabile (PWA), notifiche e wallet.
+- Passo 2, pagamenti online: ogni modulo fornisce le sue voci dovute con `Core\Contracts\PayableDues` (tag
+  `saas.payable-dues`): quota associativa (Soci), mensilità e contributi dei corsi ed eventi con prenotazione
+  (Attività), prenotazioni delle risorse (Risorse). Il browser manda solo le chiavi; importi ricalcolati sul server.
+  `AreaSoci\Payments\OnlinePayments` crea il pagamento (Stripe Checkout o PayPal Orders v2, dal plugin) con le chiavi
+  dell'associazione in `app.payment_settings` (cifrate con la sua chiave, mai rimandate al browser), conferma al
+  ritorno e con il webhook firmato di Stripe (`/area/webhook/stripe` sul sottodominio), registra ogni voce in prima
+  nota con la sua ricevuta una volta sola (riga bloccata); importo diverso o voce non più dovuta = «da controllare»
+  per la segreteria. Gestionale: `/gestionale/pagamenti-online` (impostazioni con `org.settings` e conferma della
+  password, elenco con `accounting.view`). Nei test Stripe e PayPal sono simulati con `Http::fake`.
+- Risorse Web: il socio prenota dall'area soci le risorse a ore e a giornata delle tipologie che il pacchetto ha con
+  `web: true` (`Risorse\Contracts\MemberResources`), con anticipo e niente passato; annulla le sue future non pagate.
+- Prossimo passo: app installabile (PWA), notifiche e tessera nel wallet.
 
 ## 9 ter. Documenti e ricevute
 

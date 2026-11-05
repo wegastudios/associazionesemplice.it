@@ -1,5 +1,5 @@
 <script setup>
-import { Head } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 import MemberLayout from '../../layouts/MemberLayout.vue';
 
 defineProps({ details: Object, enrollments: Array, receipts: Array, member: Object });
@@ -8,7 +8,10 @@ defineProps({ details: Object, enrollments: Array, receipts: Array, member: Obje
 <template>
     <Head title="Quote e ricevute" />
     <MemberLayout>
-        <h1 class="mb-4 text-2xl font-bold">Quote e ricevute</h1>
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h1 class="text-2xl font-bold">Quote e ricevute</h1>
+            <Link href="/area/paga" class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-ink">Paga online</Link>
+        </div>
         <section class="mb-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="a">
             <h2 id="a" class="mb-3 text-lg font-bold">Corsi e attività</h2>
             <p v-if="!enrollments.length" class="text-sm text-muted">Nessuna iscrizione.</p>

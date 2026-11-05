@@ -58,9 +58,14 @@ final readonly class ReservationService
      * @param  Booking  $in
      * @return list<string> le prenotazioni create
      */
-    public function book(string $resourceId, array $in, ?string $userId): array
+    public function book(string $resourceId, array $in, ?string $userId, bool $bySelf = false): array
     {
         $res = $this->resources->find($resourceId);
+        // Il socio dall'area soci: niente passato, rispetta l'anticipo, una volta sola, mai le stagionali.
+        $backdate = ! $bySelf;
+        if ($bySelf && $res->typology === Typology::Seasonal) {
+            throw new ResourceError('Le risorse stagionali le assegna la segreteria.');
+        }
         if ($res->archived_at !== null) {
             throw new ResourceError('La risorsa è archiviata: riattivala per prenotarla.');
         }
@@ -80,14 +85,14 @@ final readonly class ReservationService
         $ranges = [];
         switch ($res->typology) {
             case Typology::Hourly:
-                $weeks = max(1, min(self::MAX_WEEKS, (int) ($in['weeks'] ?? 1)));
+                $weeks = $bySelf ? 1 : max(1, min(self::MAX_WEEKS, (int) ($in['weeks'] ?? 1)));
                 foreach (ResourceRules::seriesDates($date, $weeks) as $day) {
-                    [$s, $e] = ResourceRules::slotRange($rules, $day, (string) ($in['start'] ?? ''), $units, $now, true);
+                    [$s, $e] = ResourceRules::slotRange($rules, $day, (string) ($in['start'] ?? ''), $units, $now, $backdate);
                     $ranges[] = [$s, $e, ResourceRules::fee($rules, $units, count($guests), $s, $member, $services)];
                 }
                 break;
             case Typology::Daily:
-                [$s, $e] = ResourceRules::dayRange($rules, $date, $units, $now, true);
+                [$s, $e] = ResourceRules::dayRange($rules, $date, $units, $now, $backdate);
                 $ranges[] = [$s, $e, ResourceRules::fee($rules, $units, count($guests), $s, $member, $services)];
                 break;
             case Typology::Seasonal:

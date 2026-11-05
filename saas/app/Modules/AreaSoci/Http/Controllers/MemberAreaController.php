@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\AreaSoci\Http\Controllers;
 
 use App\Modules\AreaSoci\Services\CurrentMember;
+use App\Modules\AreaSoci\Services\MemberPage;
 use App\Modules\Attivita\Contracts\ActivityError;
 use App\Modules\Attivita\Contracts\MemberActivities;
 use App\Modules\Contabilita\Contracts\MemberReceipts;
@@ -30,6 +31,7 @@ final readonly class MemberAreaController
 
     public function __construct(
         private CurrentMember $current,
+        private MemberPage $memberPage,
         private MemberProfiles $profiles,
         private MemberReceipts $receipts,
         private MemberActivities $activities,
@@ -102,7 +104,7 @@ final readonly class MemberAreaController
 
     public function book(string $session): RedirectResponse
     {
-        return $this->attempt(fn () => $this->activities->book($session, $this->current->active()), 'Prenotazione registrata: il contributo si paga in segreteria.');
+        return $this->attempt(fn () => $this->activities->book($session, $this->current->active()), 'Prenotazione registrata: il contributo si paga in segreteria o da «Paga».');
     }
 
     public function cancel(string $booking): RedirectResponse
@@ -133,11 +135,7 @@ final readonly class MemberAreaController
     /** @param  array<string, mixed>  $props */
     private function page(string $component, array $props): Response
     {
-        $m = $this->current->require();
-
-        return Inertia::render($component, $props + [
-            'member' => ['org' => $m['org_name'], 'active' => $m['active'], 'profiles' => $m['profiles']],
-        ]);
+        return Inertia::render($component, $props + ['member' => $this->memberPage->props()]);
     }
 
     /** @param  callable(): mixed  $action */
