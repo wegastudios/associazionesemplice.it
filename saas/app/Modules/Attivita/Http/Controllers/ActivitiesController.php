@@ -9,7 +9,9 @@ use App\Modules\Attivita\Contracts\ActivityKind;
 use App\Modules\Attivita\Contracts\Billing;
 use App\Modules\Attivita\Models\Activity;
 use App\Modules\Attivita\Rules\PaymentCalc;
+use App\Modules\Attivita\Rules\SessionRules;
 use App\Modules\Attivita\Services\ActivityService;
+use App\Modules\Attivita\Services\SessionService;
 use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Contabilita\Contracts\Money;
@@ -29,6 +31,7 @@ final readonly class ActivitiesController
 {
     public function __construct(
         private ActivityService $activities,
+        private SessionService $sessions,
         private Ledger $ledger,
         private DatabaseManager $db,
     ) {}
@@ -185,6 +188,9 @@ final readonly class ActivitiesController
                 'location' => $activity->location,
                 'notes' => $activity->notes,
                 'archived' => $activity->archived_at !== null,
+                'bookable' => $activity->kind->usesSessions(),
+                'price_lists' => SessionRules::priceListsText($activity->price_lists),
+                'sessions' => $activity->kind->usesSessions() ? array_map(static fn (array $x): array => $x + ['label' => SessionsController::dayLabel($x['date'])], $this->sessions->sessions($activity)) : [],
                 'monthly' => $activity->kind === ActivityKind::Course && $activity->billing !== Billing::Once,
                 'months' => array_map(static fn (string $m): array => ['value' => $m, 'label' => ActivityService::monthLabel($m)], $year['months'] ?? []),
                 'totals' => [
@@ -249,7 +255,13 @@ final readonly class ActivitiesController
             'ends_on' => ['nullable', 'date_format:Y-m-d'],
             'location' => ['nullable', 'string', 'max:190'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'price_lists' => ['nullable', 'string', 'max:2000'],
         ]));
+        try {
+            $lists = SessionRules::parsePriceLists(Input::optionalString($data, 'price_lists') ?? '');
+        } catch (ActivityError $e) {
+            throw ValidationException::withMessages(['price_lists' => $e->getMessage()]);
+        }
 
         return [
             'name' => trim(Input::string($data, 'name')),
@@ -264,6 +276,7 @@ final readonly class ActivitiesController
             'ends_on' => Input::optionalString($data, 'ends_on'),
             'location' => Input::optionalString($data, 'location'),
             'notes' => Input::optionalString($data, 'notes'),
+            'price_lists' => $lists,
         ];
     }
 

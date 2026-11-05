@@ -18,6 +18,7 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
                 <label class="space-y-1"><span class="block font-semibold">Anno sociale</span>
                     <select :class="field" :value="year" @change="router.get('/gestionale/attivita', { anno: $event.target.value })"><option v-for="y in years" :key="y" :value="y">{{ y }}</option></select>
                 </label>
+                <Link href="/gestionale/calendario" class="rounded-lg border border-line px-4 py-2 text-base font-semibold">Calendario</Link>
                 <Link v-if="canEdit" href="/gestionale/attivita/nuova" class="rounded-lg bg-accent px-4 py-2 text-base font-semibold text-accent-ink">Nuova attività</Link>
             </div>
         </div>

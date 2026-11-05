@@ -79,6 +79,14 @@ final readonly class ActivityService implements Activities
                 $participants[$r->activity_id] = is_numeric($r->n ?? null) ? (int) $r->n : 0;
             }
         }
+        // Eventi con prenotazioni: chi ha almeno una prenotazione attiva.
+        foreach ($this->connection()->table('app.session_bookings as b')->join('app.activity_sessions as s', 's.id', '=', 'b.session_id')
+            ->whereIn('s.activity_id', $ids)->where('b.status', 'booked')->whereNull('s.cancelled_at')
+            ->groupBy('s.activity_id')->selectRaw('s.activity_id, count(DISTINCT b.person_id) AS n')->get() as $r) {
+            if (is_string($r->activity_id ?? null)) {
+                $participants[$r->activity_id] = is_numeric($r->n ?? null) ? (int) $r->n : 0;
+            }
+        }
 
         return array_values($activities->map(static fn (Activity $a): array => [
             'id' => $a->id,
@@ -117,7 +125,7 @@ final readonly class ActivityService implements Activities
         if ($this->members->socialYearInfo($data['social_year']) === null) {
             throw new ActivityError('Anno sociale non valido.');
         }
-        if (($data['kind'] ?? null) === ActivityKind::Event->value) {
+        if (in_array($data['kind'] ?? null, [ActivityKind::Event->value, ActivityKind::Recurring->value], true)) {
             $data['billing'] = Billing::Once->value;
         }
         $instructor = is_string($data['instructor_person_id'] ?? null) ? $this->person($data['instructor_person_id']) : null;
@@ -147,6 +155,9 @@ final readonly class ActivityService implements Activities
         $activity = $this->find($activityId);
         if ($activity->archived_at !== null) {
             throw new ActivityError('L\'attività è archiviata.');
+        }
+        if ($activity->kind->usesSessions()) {
+            throw new ActivityError('A un evento con prenotazioni ci si prenota alle singole date.');
         }
         $person = $this->person($personId) ?? throw new ActivityError('Persona non trovata.');
         if ($person['type'] === MemberType::Guardian->value) {

@@ -207,6 +207,18 @@ operatori e nessun pacchetto finché non ne ricevono.
 - Permessi: vedere `people.view`; attività e iscrizioni `people.edit`; incassi `people.edit` e `accounting.edit`;
   spese e cambio dell'attività di un movimento `accounting.edit`.
 
+- Eventi con prenotazioni (`recurring`): date in `app.activity_sessions` (orario, luogo, posti), prenotazioni alla
+  singola data in `app.session_bookings` con il dovuto fissato alla prenotazione: contributo soci/ospiti, oppure un
+  listino (`activities.price_lists`, testo «Pacchetto 5 ingressi 40 x5»); un pacchetto copre più ingressi, usati con
+  `package_of`. I posti si controllano con la data bloccata (`FOR UPDATE`). Lista d'attesa in `app.session_waitlist`:
+  annullamenti e posti in più fanno entrare da soli i primi. Incassi con ricevuta legati all'attività
+  (`app.booking_payments`, pagato = movimenti non stornati). Gli eventi singoli restano a iscrizione.
+- Presenze (`app.attendance`): lezioni dei corsi dai giorni della settimana nel periodo del corso, data dell'evento,
+  date non annullate degli eventi con prenotazioni; si registrano a lezione fatta. Calendario settimanale
+  `/gestionale/calendario`. Regole in `Attivita/Rules/SessionRules` con i loro test.
+- Da fare: lezioni annullate o spostate dei corsi, avviso email a chi entra dalla lista d'attesa, prenotazione online
+  dei soci (con l'Area soci).
+
 ## 9 quater. Risorse e prenotazioni (pacchetto)
 
 - Modulo `Risorse`, rotte dietro `package:resources` (senza pacchetto 403; il menu mostra «Risorse» solo con il
