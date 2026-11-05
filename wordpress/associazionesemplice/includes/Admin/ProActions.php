@@ -315,6 +315,8 @@ final class ProActions {
 
 	public static function update_account( array $p ): array {
 		Plugin::ledger()->update_account( (int) ( $p['id'] ?? 0 ), (string) ( $p['name'] ?? '' ), (string) ( $p['type'] ?? '' ), Money::parse( $p['opening'] ?? '' ) ?? 0 );
+		$pct = (float) str_replace( ',', '.', sanitize_text_field( (string) ( $p['fee_pct'] ?? '' ) ) );
+		Plugin::ledger()->set_account_fee( (int) ( $p['id'] ?? 0 ), Money::parse( sanitize_text_field( (string) ( $p['fee_fixed'] ?? '' ) ) ) ?? 0, (int) round( max( 0, min( 25, $pct ) ) * 100 ) );
 		return array( Ui::url( 'asem-accounts' ), 'Conto aggiornato: i saldi sono stati ricalcolati.' );
 	}
 

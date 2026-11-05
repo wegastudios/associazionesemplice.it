@@ -93,8 +93,8 @@ final class CreditRulesTest extends TestCase {
 	public function test_credits_are_an_extra_way_to_pay_a_resource(): void {
 		$this->assertSame( array( 'credits', 'desk' ), R::pay_options( R::PAY_DESK, true, 1000, 3 ) );
 		$this->assertSame( array( 'credits', 'online', 'desk' ), R::pay_options( R::PAY_CHOICE, true, 1000, 3 ) );
-		$this->assertSame( array( 'credits' ), R::pay_options( R::PAY_UPFRONT, false, 1000, 3 ), 'con i crediti si prenota anche senza pagamenti online' );
-		$this->assertSame( array(), R::pay_options( R::PAY_UPFRONT, false, 1000, 0 ) );
+		$this->assertSame( array( 'credits', 'desk' ), R::pay_options( R::PAY_UPFRONT, false, 1000, 3 ), 'con i crediti si prenota anche senza pagamenti online (o si salda in segreteria)' );
+		$this->assertSame( array( 'desk' ), R::pay_options( R::PAY_UPFRONT, false, 1000, 0 ) );
 		$this->assertSame( array( 'free' ), R::pay_options( R::PAY_UPFRONT, true, 0, 3 ), 'gratuita: niente da pagare, nemmeno in crediti' );
 	}
 }

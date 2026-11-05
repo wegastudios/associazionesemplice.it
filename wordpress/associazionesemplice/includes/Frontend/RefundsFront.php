@@ -12,11 +12,16 @@ use AssociazioneSemplice\Refunds;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Area soci (Pro): i rimborsi spese del volontario, con la richiesta di un nuovo rimborso. Ci vede solo chi è socio o volontario. */
+/** Area soci (Pro): i rimborsi spese del volontario, con la richiesta di un nuovo rimborso. Ci vedono solo i volontari: per gli altri soci le spese le gestisce la segreteria. */
 final class RefundsFront {
 
+	/** Solo i volontari chiedono rimborsi dall'area soci. */
+	private static function allowed( array $p ): bool {
+		return MemberType::VOLUNTEER === (string) $p['type'];
+	}
+
 	public static function section( array $p ): string {
-		if ( ! Edition::has( 'refunds' ) || ! MemberType::is_member( (string) $p['type'] ) ) {
+		if ( ! Edition::has( 'refunds' ) || ! self::allowed( $p ) ) {
 			return '';
 		}
 		Assets::enqueue();
@@ -62,7 +67,7 @@ final class RefundsFront {
 		return Views::with_person(
 			function ( $p ) {
 				$html = self::section( $p );
-				return '' !== $html ? $html : '<div class="asemf-notice">I rimborsi spese sono riservati a soci e volontari.</div>';
+				return '' !== $html ? $html : '<div class="asemf-notice">I rimborsi spese sono riservati ai volontari. Per le spese sostenute come socio rivolgiti alla segreteria.</div>';
 			}
 		);
 	}
@@ -72,6 +77,9 @@ final class RefundsFront {
 			throw new \InvalidArgumentException( Edition::missing_message( 'refunds' ) );
 		}
 		$actor = Actions::actor();
+		if ( ! self::allowed( $actor ) ) {
+			throw new \InvalidArgumentException( 'I rimborsi spese sono riservati ai volontari: per le altre spese rivolgiti alla segreteria.' );
+		}
 		Refunds::request( (int) $actor['id'], $post, Documents::prepare_upload( 'file' ), get_current_user_id() ?: null );
 		return 'Richiesta inviata. La segreteria la esamina e ti avvisa per email.';
 	}

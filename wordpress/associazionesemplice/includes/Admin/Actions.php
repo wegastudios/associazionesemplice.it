@@ -954,6 +954,7 @@ final class Actions {
 				'lines'        => $lines,
 			)
 		);
+		Plugin::ledger()->book_account_fee( (int) ( $p['account_id'] ?? 0 ), (string) ( $p['date'] ?? '' ), (int) array_sum( array_column( $lines, 'amount_cents' ) ), (string) ( $p['method'] ?? '' ), (string) ( $p['document_ref'] ?? '' ) ); // costo del POS o del conto, se impostato
 		return array( Ui::url( 'asem-ledger' ), $n > 1 ? "Incasso registrato ($n voci)." : 'Incasso registrato.' );
 	}
 

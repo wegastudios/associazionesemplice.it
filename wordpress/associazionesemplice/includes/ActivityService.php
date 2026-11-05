@@ -582,6 +582,51 @@ class ActivityService {
 		return 1 + (int) $this->db()->get_var( $this->db()->prepare( "SELECT COUNT(*) FROM $tbl WHERE package_of = %d AND status = 'booked'", $paying_booking_id ) );
 	}
 
+	/**
+	 * Chi ha un pacchetto pagato con ingressi ancora disponibili per un'attività: [{person_id, name, label, left, total}], per cognome.
+	 * Serve alla segreteria per vedere, mentre prenota, chi ha giornate già pagate.
+	 */
+	public function packages_overview( int $activity_id ): array {
+		$b   = Db::t( 'bookings' );
+		$s   = Db::t( 'sessions' );
+		$p   = Db::t( 'people' );
+		$ids = $this->db()->get_col(
+			$this->db()->prepare( "SELECT DISTINCT b.person_id FROM $b b JOIN $s s ON s.id = b.session_id WHERE s.activity_id = %d AND b.status = 'booked' AND b.package_entries > 1", $activity_id )
+		) ?: array();
+		$out = array();
+		foreach ( $ids as $pid ) {
+			$person = $this->db()->get_row( $this->db()->prepare( "SELECT first_name, last_name FROM $p WHERE id = %d", (int) $pid ), ARRAY_A );
+			foreach ( $this->open_packages( (int) $pid, $activity_id ) as $pk ) {
+				$total = (int) $this->db()->get_var( $this->db()->prepare( "SELECT package_entries FROM $b WHERE id = %d", (int) $pk['id'] ) );
+				$out[] = array( 'person_id' => (int) $pid, 'name' => $person ? trim( $person['first_name'] . ' ' . $person['last_name'] ) : '', 'label' => $pk['label'], 'left' => (int) $pk['left'], 'total' => $total );
+			}
+		}
+		usort(
+			$out,
+			function ( $a, $c ) {
+				return strcasecmp( $a['name'], $c['name'] );
+			}
+		);
+		return $out;
+	}
+
+	/** Tutti i pacchetti pagati di una persona con ingressi ancora disponibili, di ogni attività: [{activity_id, activity_name, label, left, total}]. */
+	public function person_packages( int $person_id ): array {
+		$b   = Db::t( 'bookings' );
+		$s   = Db::t( 'sessions' );
+		$ids = $this->db()->get_col(
+			$this->db()->prepare( "SELECT DISTINCT s.activity_id FROM $b b JOIN $s s ON s.id = b.session_id WHERE b.person_id = %d AND b.status = 'booked' AND b.package_entries > 1", $person_id )
+		) ?: array();
+		$out = array();
+		foreach ( $ids as $aid ) {
+			$a = $this->get( (int) $aid );
+			foreach ( $this->open_packages( $person_id, (int) $aid ) as $pk ) {
+				$out[] = array( 'activity_id' => (int) $aid, 'activity_name' => $a ? $a['name'] : '', 'label' => $pk['label'], 'left' => (int) $pk['left'], 'total' => (int) $this->db()->get_var( $this->db()->prepare( "SELECT package_entries FROM $b WHERE id = %d", (int) $pk['id'] ) ) );
+			}
+		}
+		return $out;
+	}
+
 	/** Pacchetti pagati da una persona per un'attività con ingressi ancora disponibili: [{id, label, left}]. */
 	public function open_packages( int $person_id, int $activity_id ): array {
 		$b   = Db::t( 'bookings' );

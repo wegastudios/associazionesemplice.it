@@ -226,7 +226,9 @@ final class ActivitiesPage {
 		echo '<p class="description">' . esc_html( ActivityKind::labels()[ $activity['kind'] ] ?? $activity['kind'] ) . ' · ' . esc_html( self::fee_text( $activity ) ) . '</p>';
 		echo '<div class="asem-cols"><div class="asem-col">';
 		if ( ActivityKind::uses_sessions( $activity['kind'] ) ) {
-			self::sessions_left( $activity, $back );
+			self::sessions_calendar( $activity ); // il calendario sta in alto a sinistra, accanto ai dati dell'attività
+			self::sessions_list( $activity, $back ); // le date e le prenotazioni restano nella stessa colonna, sotto il calendario
+			self::sessions_left( $activity, $back ); // riepilogo, staff e aggiunta di date
 		} else {
 			self::course_left( $activity, $year, $back );
 			self::course_enrolled( $activity, $year, $back ); // gli iscritti restano nella prima colonna, sotto il modulo di iscrizione
@@ -242,11 +244,93 @@ final class ActivitiesPage {
 		self::copy_card( $activity );
 		self::delete_card( $activity );
 		echo '</div></div>';
-
-		if ( ActivityKind::uses_sessions( $activity['kind'] ) ) {
-			self::sessions_list( $activity, $back );
-		}
 		Ui::footer();
+	}
+
+	/** Calendario visuale delle date di un evento, a mese o a settimana (a scelta). Ogni data porta alla sua riga con le prenotazioni. */
+	private static function sessions_calendar( array $activity ): void {
+		$id    = (int) $activity['id'];
+		$today = current_time( 'Y-m-d' );
+		$by    = array();
+		$first = '';
+		foreach ( Plugin::activities()->sessions( $id ) as $s ) {
+			$by[ $s['session_date'] ][] = $s;
+			if ( '' === $first && empty( $s['cancelled_at'] ) && $s['session_date'] >= $today ) {
+				$first = $s['session_date']; // di partenza si mostra il periodo della prossima data
+			}
+		}
+		$view = in_array( Ui::get_str( 'cal' ), array( 'month', 'day' ), true ) ? Ui::get_str( 'cal' ) : 'week'; // di partenza la settimana
+		$ref  = Ui::get_str( 'cal_date' );
+		if ( ! preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $ref, $m ) || ! checkdate( (int) $m[2], (int) $m[3], (int) $m[1] ) ) {
+			$ref = '' !== $first ? $first : ( $by ? array_key_last( $by ) : $today );
+		}
+		$d = new \DateTimeImmutable( $ref );
+		if ( 'day' === $view ) {
+			$from = $d;
+			$to   = $d;
+			$prev = $d->modify( '-1 day' );
+			$next = $d->modify( '+1 day' );
+			$head = wp_date( 'l j F Y', $d->getTimestamp() );
+		} elseif ( 'week' === $view ) {
+			$from = $d->modify( 'monday this week' );
+			$to   = $from->modify( '+6 days' );
+			$prev = $d->modify( '-7 days' );
+			$next = $d->modify( '+7 days' );
+			$head = wp_date( 'j M', $from->getTimestamp() ) . ' – ' . wp_date( 'j M Y', $to->getTimestamp() );
+		} else {
+			$m1   = $d->modify( 'first day of this month' );
+			$from = $m1->modify( 'monday this week' );
+			$end  = $m1->modify( 'last day of this month' );
+			$to   = $end->modify( 'sunday this week' );
+			$prev = $m1->modify( '-1 month' );
+			$next = $m1->modify( '+1 month' );
+			$head = wp_date( 'F Y', $m1->getTimestamp() );
+		}
+		$link = function ( string $v, string $date ) use ( $id ) {
+			return Ui::url( 'asem-activity', array( 'id' => $id, 'cal' => $v, 'cal_date' => $date ) );
+		};
+		$html  = '<div class="asem-card asem-cal"><h2>Calendario delle date</h2><p class="asem-cal-nav">'
+			. '<a class="button" href="' . esc_url( $link( $view, $prev->format( 'Y-m-d' ) ) ) . '">←</a> <strong>' . esc_html( $head ) . '</strong> '
+			. '<a class="button" href="' . esc_url( $link( $view, $next->format( 'Y-m-d' ) ) ) . '">→</a> '
+			. '<span class="asem-cal-views"><a class="button' . ( 'month' === $view ? ' button-primary' : '' ) . '" href="' . esc_url( $link( 'month', $ref ) ) . '">Mese</a> '
+			. '<a class="button' . ( 'week' === $view ? ' button-primary' : '' ) . '" href="' . esc_url( $link( 'week', $ref ) ) . '">Settimana</a> '
+			. '<a class="button' . ( 'day' === $view ? ' button-primary' : '' ) . '" href="' . esc_url( $link( 'day', $ref ) ) . '">Giorno</a></span></p>'
+			. '<table class="asem-cal-grid"><thead><tr>';
+		$names = array( 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom' );
+		$cols  = 'day' === $view ? 1 : 7;
+		foreach ( 'day' === $view ? array( $names[ (int) $from->format( 'N' ) - 1 ] ) : $names as $n ) {
+			$html .= '<th>' . $n . '</th>';
+		}
+		$html .= '</tr></thead><tbody>';
+		for ( $day = $from, $col = 0; $day <= $to; $day = $day->modify( '+1 day' ), $col++ ) {
+			$key = $day->format( 'Y-m-d' );
+			if ( 0 === $col % $cols ) {
+				$html .= '<tr>';
+			}
+			$other = 'month' === $view && $day->format( 'm' ) !== $m1->format( 'm' );
+			$html .= '<td class="asem-cal-day' . ( $other ? ' asem-cal-other' : '' ) . ( $key === $today ? ' asem-cal-today' : '' ) . '"><span class="asem-cal-n">' . (int) $day->format( 'j' ) . '</span>';
+			foreach ( $by[ $key ] ?? array() as $s ) {
+				$seat   = Plugin::activities()->seats( (int) $s['id'] );
+				$count  = (int) $seat['taken'] . ( null === $seat['capacity'] ? '' : '/' . (int) $seat['capacity'] );
+				$full   = null !== $seat['free'] && 0 === $seat['free'];
+				$html  .= '<a class="asem-cal-s' . ( ! empty( $s['cancelled_at'] ) ? ' asem-cal-off' : ( $full ? ' asem-cal-full' : '' ) ) . '" href="#asem-sess-' . (int) $s['id'] . '">'
+					. esc_html( ( $s['start_time'] ? substr( (string) $s['start_time'], 0, 5 ) . ' ' : '' ) . $count ) . '</a>';
+			}
+			$html .= '</td>';
+			if ( $cols - 1 === $col % $cols ) {
+				$html .= '</tr>';
+			}
+		}
+		$html .= '</tbody></table><p class="description">Il numero è quante persone sono prenotate (su quanti posti). Tocca una data per aprirne le prenotazioni qui sotto.</p>';
+		$pk    = Plugin::activities()->packages_overview( $id );
+		if ( $pk ) {
+			$html .= '<details class="asem-detail"><summary><strong>Pacchetti già pagati con ingressi residui (' . count( $pk ) . ')</strong></summary><table class="widefat striped"><thead><tr><th>Persona</th><th>Pacchetto</th><th>Ingressi rimasti</th></tr></thead><tbody>';
+			foreach ( $pk as $r ) {
+				$html .= '<tr><td><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $r['person_id'] ) ) ) . '">' . esc_html( $r['name'] ) . '</a></td><td>' . esc_html( $r['label'] ) . '</td><td>' . (int) $r['left'] . ' su ' . (int) $r['total'] . '</td></tr>';
+			}
+			$html .= '</tbody></table></details>';
+		}
+		echo wp_kses( $html . '</div>', Html::allowed() );
 	}
 
 	/** Collegamenti al calendario di questa attività (e a quello di tutte). */
@@ -443,7 +527,9 @@ final class ActivitiesPage {
 			if ( $pk ) {
 				$html .= '<label><input type="checkbox" name="use_package" value="1"> usa ' . esc_html( $pk[0]['label'] ) . ' (' . (int) $pk[0]['left'] . ' rimasti)</label> ';
 			} elseif ( ! $person_id ) {
-				$html .= '<label><input type="checkbox" name="use_package" value="1"> dal pacchetto già pagato</label> ';
+				$html .= '<label><input type="checkbox" name="use_package" value="1"> dal pacchetto già pagato</label> <span class="description">(chi ne ha uno è nella lista «Pacchetti già pagati» sopra)</span> ';
+			} else {
+				$html .= '<span class="description">nessun pacchetto attivo da scalare</span> ';
 			}
 		}
 		if ( ! \AssociazioneSemplice\Edition::has( 'funds' ) ) {
@@ -811,7 +897,7 @@ final class ActivitiesPage {
 			}
 			$cap   = null === $s['capacity'] ? null : (int) $s['capacity'];
 			$title = Ui::date( $s['session_date'] ) . ( $s['start_time'] ? ' · ore ' . esc_html( $s['start_time'] ) : '' ) . ( $s['location'] ? ' · ' . esc_html( $s['location'] ) : '' );
-			echo wp_kses( '<details class="asem-detail"' . ( ActivityKind::EVENT === $activity['kind'] ? ' open' : '' ) . '><summary><strong>' . $title . '</strong> — '
+			echo wp_kses( '<details class="asem-detail" id="asem-sess-' . (int) $s['id'] . '"' . ( ActivityKind::EVENT === $activity['kind'] ? ' open' : '' ) . '><summary><strong>' . $title . '</strong> — '
 				. count( $booked ) . ( null === $cap ? ' prenotati' : ' / ' . $cap . ' posti (' . max( 0, $cap - count( $booked ) ) . ' liberi)' ) . ( $cancelled ? ' <span class="asem-neg">· ANNULLATA</span>' : '' ) . '</summary>', Html::allowed() );
 
 			$queue = \AssociazioneSemplice\Waitlist::waiting( (int) $s['id'] );

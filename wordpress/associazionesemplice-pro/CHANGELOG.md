@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.3
+- Nell'area soci i rimborsi spese li vedono e li chiedono solo i volontari: per gli altri soci le spese le gestisce la segreteria.
+- Nella scheda di un conto puoi indicare il costo di incasso (per esempio di un POS fisico): gli incassi sul posto lo registrano come spesa.
+
 ## 1.3.2
 - L'app non intercetta più l'amministrazione e l'accesso del sito; testo della pagina App più chiaro
 
