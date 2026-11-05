@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.4
+- Nell'area soci la voce «Rimborsi» non compare più ai soci che non sono volontari: nemmeno nel menu.
+
 ## 1.3.3
 - Nell'area soci i rimborsi spese li vedono e li chiedono solo i volontari: per gli altri soci le spese le gestisce la segreteria.
 - Nella scheda di un conto puoi indicare il costo di incasso (per esempio di un POS fisico): gli incassi sul posto lo registrano come spesa.

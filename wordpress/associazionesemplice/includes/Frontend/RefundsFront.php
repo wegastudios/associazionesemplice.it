@@ -16,8 +16,8 @@ defined( 'ABSPATH' ) || exit;
 final class RefundsFront {
 
 	/** Solo i volontari chiedono rimborsi dall'area soci. */
-	private static function allowed( array $p ): bool {
-		return MemberType::VOLUNTEER === (string) $p['type'];
+	public static function allowed( array $p ): bool {
+		return isset( $p['type'] ) && MemberType::VOLUNTEER === (string) $p['type'];
 	}
 
 	public static function section( array $p ): string {
@@ -67,7 +67,7 @@ final class RefundsFront {
 		return Views::with_person(
 			function ( $p ) {
 				$html = self::section( $p );
-				return '' !== $html ? $html : '<div class="asemf-notice">I rimborsi spese sono riservati ai volontari. Per le spese sostenute come socio rivolgiti alla segreteria.</div>';
+				return $html; // chi non è volontario non vede nulla
 			}
 		);
 	}
