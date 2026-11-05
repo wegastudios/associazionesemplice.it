@@ -17,6 +17,10 @@ Con Pro puoi tenere più conti (cassa contanti, banca, carta, Stripe, PayPal…)
 3. Per **chiudere** un conto il saldo deve essere zero: prima sposta i soldi con un giroconto. I conti chiusi non accettano movimenti, ma restano nei rendiconti dei periodi in cui hanno lavorato.
 4. Puoi riaprire un conto chiuso.
 
+## Costo di incasso
+
+Per ogni conto puoi indicare un **costo di incasso** fisso più una percentuale, per esempio per un **POS fisico**. A ogni incasso in segreteria o sul posto su quel conto, il plugin registra anche la **spesa** corrispondente in prima nota. Per gli incassi online le tariffe si impostano in **Pagamenti online**.
+
 ## Spostare denaro tra conti
 
 1. Vai in **Cassa → Giroconto**.

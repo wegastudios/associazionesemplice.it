@@ -217,7 +217,7 @@ L'area riservata è la pagina dove ogni socio trova il suo spazio: tessera, atti
 
 1. La configurazione guidata crea la pagina **Area soci**: se non l'hai fatto, riaprila da **Strumenti → Configurazione guidata**.
 2. In alternativa crea una pagina e inserisci lo shortcode `[associazionesemplice_area_soci]` oppure il blocco **Associazione Semplice**.
-3. Pubblica e aggiungi la pagina al menu. La voce **Area riservata** compare da sola.
+3. Pubblica e aggiungi la pagina al menu. La voce **Area riservata** compare da sola; se la pagina è già in un altro menu, non compare una seconda voce.
 
 ## Cosa vede ciascuno
 

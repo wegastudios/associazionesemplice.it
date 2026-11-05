@@ -145,6 +145,10 @@ Un evento ha una o più date e, se vuoi, posti limitati e un contributo.
 - Le date già presenti non si duplicano.
 - Per più date, usa l'evento ricorrente.
 
+## La pagina dell'evento
+
+La pagina dell'evento mostra un **calendario a settimana** (di partenza), **a mese** o **a giorno**, con le righe delle date sotto.
+
 ## Chi lo gestisce
 
 Nella scheda c'è **Gestori dell'evento**: i soci o volontari indicati possono, dall'area riservata, vedere i prenotati e registrare gli ingressi solo per quell'evento (vedi [Registrare gli ingressi a un evento](guida:registrare-gli-ingressi)).
@@ -237,6 +241,8 @@ Un listino con un solo ingresso è una prenotazione normale; un listino con più
 1. Il pacchetto si **paga sulla prima prenotazione**.
 2. Le altre date si prenotano con **usa pacchetto**: non c'è altro da pagare.
 3. Gli ingressi del pacchetto si consumano a ogni prenotazione.
+
+Per sapere a chi restano ingressi: nell'evento trovi l'elenco **«Pacchetti già pagati con ingressi residui»**; in **Cassa → Prenota**, scelta la persona, un riquadro mostra i suoi **pacchetti attivi** (oppure «nessun pacchetto attivo»).
 
 > I listini non valgono per i **corsi a mensilità**: lì il contributo resta quello mensile del corso (vedi [Creare un corso](guida:creare-un-corso)).
 MD,

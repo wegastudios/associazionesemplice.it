@@ -88,7 +88,7 @@ Gli elenchi pubblici di attività ed eventi e i posti liberi non restano più «
 2. Aggiungi il blocco **Associazione Semplice** (o il widget Elementor con lo stesso nome) e scegli la vista dall'elenco, ordinato per area.
 3. Pubblica la pagina e aggiungila al menu del sito.
 
-La voce **Area riservata** si aggiunge al menu di navigazione quando crei la pagina «Area soci».
+La voce **Area riservata** si aggiunge al menu di navigazione quando crei la pagina «Area soci» (non si duplica se la pagina è già in un altro menu).
 MD,
     ],
     [

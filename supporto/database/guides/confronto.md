@@ -56,6 +56,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Ingressi: elenco prenotati e registrazione | ✓ | ✓ | ✓ |
 | Biglietti con QR per le prenotazioni | ✓ | ✓ | ✓ |
 | Listini per eventi e corsi a date (individuale, di gruppo, pacchetti di ingressi) | ✓ | ✓ | ✓ |
+| Pagina evento con calendario a settimana, mese o giorno; elenco dei pacchetti già pagati con ingressi residui | ✓ | ✓ | ✓ |
 | Incasso sul posto durante gli eventi | — | ✓ | ✓ |
 | Risorse a fasce orarie (campi, sale) con tariffe, ospiti e regole di prenotazione | — | ✓ | ✓ |
 | Risorse assegnate a periodo (posti auto, armadietti, posti barca) con lista d'attesa | — | ✓ | ✓ |
@@ -85,6 +86,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Satispay e Klarna (tramite Stripe) tra i metodi di pagamento online | — | ✓ | ✓ |
 | Commissioni di incasso per metodo: stima in prima nota da tariffe standard modificabili e ribaltamento opzionale | — | ✓ | ✓ |
 | Conti multipli, giroconti e cassa per più persone | — | ✓ | ✓ |
+| Costo di incasso (fisso più percentuale) per conto, per esempio POS, con la spesa registrata a ogni incasso | — | ✓ | ✓ |
 | Fondi accantonati (per esempio rimborso dei volontari) | — | ✓ | ✓ |
 | Bilancio preventivo per categoria, confrontato con la prima nota e approvato | — | ✓ | ✓ |
 | Rimborsi ai volontari: richiesta dall'area soci, approvazione, pagamento e registrazione in prima nota | — | ✓ | ✓ |
