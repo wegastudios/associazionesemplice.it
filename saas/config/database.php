@@ -48,6 +48,9 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            // Stesso fuso dell'applicazione (config/app.php, Europe/Rome come il server): se i due fusi differiscono, Laravel scrive
+            // gli orari senza indicare il fuso e PostgreSQL li legge in un altro: gli orari slittano e i link di reimpostazione scadono subito.
+            'timezone' => env('APP_TIMEZONE', 'Europe/Rome'),
             'application_name' => 'associazionesemplice',
         ],
 
@@ -65,6 +68,7 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            'timezone' => env('APP_TIMEZONE', 'Europe/Rome'),
             'application_name' => 'associazionesemplice-migrazioni',
             // Ruolo a cui le migrazioni concedono i permessi (OrgSchema::grant).
             'app_role' => env('DB_USERNAME', 'as_app'),
@@ -84,6 +88,7 @@ return [
             'prefix' => '',
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            'timezone' => env('APP_TIMEZONE', 'Europe/Rome'),
         ],
 
         // Database di prova per il ripristino (saas:backup:restore-test): si svuota a ogni prova.
@@ -98,6 +103,7 @@ return [
             'prefix' => '',
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            'timezone' => env('APP_TIMEZONE', 'Europe/Rome'),
         ],
 
     ],
