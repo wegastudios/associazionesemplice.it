@@ -20,6 +20,11 @@ final class EnsureTwoFactorConfirmed
     {
         $user = $request->user();
 
+        // Solo sviluppo con dati inventati: obbligo spento dal file d'ambiente (config/saas.php, saas:health lo segnala).
+        if ($user instanceof User && config('saas.auth.require_two_factor') === false) {
+            return $next($request);
+        }
+
         if ($user instanceof User && $user->hasConfirmedTwoFactor()) {
             return $next($request);
         }
