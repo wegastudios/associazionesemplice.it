@@ -17,6 +17,7 @@ const all = [
     { href: '/gestionale/risorse', label: 'Risorse', can: 'people.view', pkg: 'resources' },
     { href: '/gestionale/prima-nota', label: 'Prima nota', can: 'accounting.view' },
     { href: '/gestionale/conti', label: 'Conti', can: 'accounting.view' },
+    { href: '/gestionale/pagamenti-online', label: 'Pagamenti online', can: 'accounting.view', pkg: 'member_area' },
     { href: '/gestionale/rendiconto', label: 'Rendiconto', can: 'accounting.view' },
     { href: '/gestionale/operatori', label: 'Operatori', can: 'org.operators' },
 ];

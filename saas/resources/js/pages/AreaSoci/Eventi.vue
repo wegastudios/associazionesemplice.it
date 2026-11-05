@@ -11,7 +11,7 @@ const cancel = (e) => confirm(`Annullare la prenotazione a ${e.activity} di ${e.
     <Head title="Eventi" />
     <MemberLayout>
         <h1 class="mb-1 text-2xl font-bold">Eventi</h1>
-        <p class="mb-4 text-sm text-muted">Le date dei prossimi due mesi. Il contributo si paga in segreteria.</p>
+        <p class="mb-4 text-sm text-muted">Le date dei prossimi due mesi. Il contributo si paga in segreteria o online da «Paga».</p>
         <p v-if="!events.length" class="rounded-2xl border border-line bg-card p-6 text-center text-muted">Nessun evento in programma.</p>
         <ul class="space-y-3">
             <li v-for="e in events" :key="e.session_id" class="rounded-2xl border border-line bg-card p-4">
@@ -25,7 +25,7 @@ const cancel = (e) => confirm(`Annullare la prenotazione a ${e.activity} di ${e.
                     <div class="flex flex-col items-end gap-2 text-sm">
                         <template v-if="e.booking_id">
                             <span class="rounded-full bg-salvia/15 px-3 py-1 font-semibold">Prenotato</span>
-                            <span v-if="e.due > 0" class="text-xs text-muted">da pagare in segreteria</span>
+                            <span v-if="e.due > 0" class="text-xs text-muted">da pagare in segreteria o in «Paga»</span>
                             <button v-if="e.cancellable" type="button" class="text-danger hover:underline" @click="cancel(e)">Annulla</button>
                             <span v-else class="text-xs text-muted">per annullare scrivi alla segreteria</span>
                         </template>
