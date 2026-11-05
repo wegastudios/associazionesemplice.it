@@ -21,11 +21,11 @@ Un corso ha lezioni che si ripetono ogni settimana. Gli iscritti pagano **ogni m
 
 ## Riproporre un'attività
 
-Per una nuova edizione di un corso o di un evento già fatto, nell'**elenco delle attività** usa il collegamento **«Riproponi»**: apre la sezione **«Riproponi»** della scheda dell'attività (dalla versione 1.2.41 del plugin gratuito). Crea una **nuova edizione** con gli stessi dati: contributi, referente, regole, note, luogo e staff. **Iscrizioni, prenotazioni e incassi non si copiano**: la nuova attività parte vuota.
+Per una nuova edizione di un corso o di un evento già fatto, nell'**elenco delle attività** usa il collegamento **«Riproponi»**: apre la sezione **«Riproponi»** della scheda dell'attività. Crea una **nuova edizione** con gli stessi dati: contributi, referente, regole, note, luogo e staff. **Iscrizioni, prenotazioni e incassi non si copiano**: la nuova attività parte vuota.
 
 ## Sport e disciplina
 
-Dalla versione 1.2.45 del plugin gratuito ogni attività ha uno **sport** e una **disciplina**, entrambi **facoltativi**. Valgono per **tutti i tipi di attività**: corsi, eventi e ricorrenti.
+Ogni attività ha uno **sport** e una **disciplina**, entrambi **facoltativi**. Valgono per **tutti i tipi di attività**: corsi, eventi e ricorrenti.
 
 1. Compili la riga **«Sport e disciplina»** nel modulo **«Nuova attività»** (da **Corsi ed eventi**) oppure, per un'attività esistente, nella scheda **«Dati dell'attività»**.
 2. Nel menu **«Sport»** scegli dall'**elenco di sport basato sull'elenco CONI** (o lascia «— nessuno —»).
@@ -34,7 +34,7 @@ Dalla versione 1.2.45 del plugin gratuito ogni attività ha uno **sport** e una 
 
 ### L'elenco degli sport
 
-Dalla versione 1.2.48 l'elenco lo gestisce l'**amministratore** (non la segreteria), dal riquadro **«Sport disponibili»** in fondo all'elenco delle attività, in **Corsi ed eventi**. Puoi:
+L'elenco lo gestisce l'**amministratore** (non la segreteria), dal riquadro **«Sport disponibili»** in fondo all'elenco delle attività, in **Corsi ed eventi**. Puoi:
 
 - **aggiungere** uno sport;
 - **importare** un elenco, uno per riga o separati da «;»;
@@ -49,11 +49,11 @@ Con Pro questi dati finiscono nel file per i portali degli enti: le colonne **Sp
 
 - **Rinnovo mensile**: il corso si rinnova da solo ogni mese finché l'iscritto non viene «disdetto». La mensilità è dovuta dalla prima lezione del mese; prima risulta «in arrivo», poi «da pagare». Senza giorno indicato è dovuta dal 1°.
 - **Pagamento unico**: la quota è il totale (per esempio «10 incontri a 120 €»), dovuta all'iscrizione e versabile anche a rate. Se l'iscrizione viene cancellata prima di qualunque pagamento, non è dovuto nulla.
-- **Pagamento trimestrale** (dalla versione 1.2.43 del plugin gratuito): oltre a «una tantum» e «rinnovo mensile» puoi scegliere il pagamento del corso a trimestre. I **promemoria mensili** saltano i corsi trimestrali.
+- **Pagamento trimestrale**: oltre a «una tantum» e «rinnovo mensile» puoi scegliere il pagamento del corso a trimestre. I **promemoria mensili** saltano i corsi trimestrali.
 
 ## Varianti del contributo
 
-Dalla versione 1.2.44 del plugin gratuito puoi descrivere liberamente delle **varianti del contributo** di un **corso** (non degli eventi), per esempio «Secondo corso -25%», «Famiglia» o «Solo il sabato», e assegnarle a mano agli iscritti. Sono facoltative. **Gli sconti non sono automatici**: la variante è un prezzo alternativo che scegli tu.
+Puoi descrivere liberamente delle **varianti del contributo** di un **corso** (non degli eventi), per esempio «Secondo corso -25%», «Famiglia» o «Solo il sabato», e assegnarle a mano agli iscritti. Sono facoltative. **Gli sconti non sono automatici**: la variante è un prezzo alternativo che scegli tu.
 
 ### Creare le varianti
 
@@ -82,7 +82,7 @@ Dopo, nell'elenco degli iscritti, accanto a ogni persona trovi lo stesso menu co
 
 ## Quando un iscritto smette di venire
 
-Chi smette di venire a un corso ha **già fruito** del periodo pagato: **non si restituisce nulla**. Dalla versione 1.3.5, nella scheda del corso, accanto all'iscrizione attiva trovi il pulsante **«Non rinnova»**:
+Chi smette di venire a un corso ha **già fruito** del periodo pagato: **non si restituisce nulla**. Nella scheda del corso, accanto all'iscrizione attiva trovi il pulsante **«Non rinnova»**:
 
 - l'iscritto **resta nel corso** fino alla fine del periodo già pagato (o del mese in corso);
 - poi **non deve più nulla**: non diventa debitore dei rinnovi successivi;
@@ -101,7 +101,7 @@ Il **non fruito** si restituisce quando è l'organizzazione a non poter più far
 
 ## Annullare o spostare una lezione
 
-Dalla versione 1.2.43 le **singole lezioni** di un corso si possono **annullare** o **spostare**, per esempio per una festività o per il maltempo.
+Le **singole lezioni** di un corso si possono **annullare** o **spostare**, per esempio per una festività o per il maltempo.
 
 1. Vai in **Corsi ed eventi** e apri il corso.
 2. Apri la scheda **«Date delle lezioni»**: compaiono le lezioni dei **prossimi 60 giorni**, ciascuna con data e ora. Se non ce ne sono, leggi «Nessuna lezione nei prossimi 60 giorni».
@@ -109,7 +109,7 @@ Dalla versione 1.2.43 le **singole lezioni** di un corso si possono **annullare*
 4. Lascia la spunta **«avvisa gli iscritti»**, attiva di partenza, se vuoi che ricevano un avviso.
 5. Scegli come procedere:
    - **Annulla solo questa lezione**: premi il pulsante;
-   - **Annulla questa lezione e le successive** (dalla versione 1.3.10): annulla quella data e tutte le successive dello stesso giorno della settimana, fino alla fine del corso o dell'anno sociale. Le lezioni passate non si toccano;
+   - **Annulla questa lezione e le successive**: annulla quella data e tutte le successive dello stesso giorno della settimana, fino alla fine del corso o dell'anno sociale. Le lezioni passate non si toccano;
    - **Sposta**: indica la nuova data in **«Sposta a»** (l'ora di inizio e di fine sono facoltative) e premi **Sposta**.
 
 Con la spunta gli iscritti ricevono un avviso come «La lezione di … del … è annullata» o «è spostata al …». L'avviso parte solo se chi opera può mandare avvisi per quel corso: se non parte, l'annullamento o lo spostamento resta comunque e il messaggio te lo dice.
@@ -118,7 +118,7 @@ Sotto trovi **«Lezioni cambiate»**, con quelle annullate o spostate, il motivo
 
 ## Gli iscritti
 
-Nella scheda del corso gli iscritti stanno sotto il modulo di iscrizione. Accanto a chi deve versare c'è **Paga**, che apre l'incasso già compilato. Dalla versione 1.2.41, nel modulo di iscrizione hai due pulsanti in più: **«Salva e prossimo inserimento»** iscrive la persona e resta sulla stessa pagina, pronta per iscrivere quella dopo; **«Iscrivi e vai alla cassa»** la iscrive e apre l'incasso già compilato, se c'è qualcosa da pagare (altrimenti resta lì). Per togliere chi non è più iscritto usa **Togli dall'elenco** (solo chi non ha incassi registrati).
+Nella scheda del corso gli iscritti stanno sotto il modulo di iscrizione. Accanto a chi deve versare c'è **Paga**, che apre l'incasso già compilato. Nel modulo di iscrizione hai due pulsanti in più: **«Salva e prossimo inserimento»** iscrive la persona e resta sulla stessa pagina, pronta per iscrivere quella dopo; **«Iscrivi e vai alla cassa»** la iscrive e apre l'incasso già compilato, se c'è qualcosa da pagare (altrimenti resta lì). Per togliere chi non è più iscritto usa **Togli dall'elenco** (solo chi non ha incassi registrati).
 MD,
     ],
     [
@@ -153,9 +153,9 @@ Nella scheda c'è **Gestori dell'evento**: i soci o volontari indicati possono, 
 
 Solo gli amministratori possono eliminare un evento, dal pulsante **Elimina l'evento** nella scheda. Se ci sono incassi la procedura chiede cosa fare delle somme (restituirle o annullarle) e una doppia conferma; se non ci sono, basta una conferma semplice.
 
-Dalla versione 1.3.2 del plugin gratuito, eliminando un **evento** o un **corso**, il rimborso o l'annullamento riguardano **solo il non fruito**. Gli incassi legati a **date già svolte**, o a **mesi con almeno una lezione già svolta**, restano in prima nota e non vengono restituiti né annullati. Per esempio, per un corso tenuto a ottobre e annullato a novembre, ottobre resta e novembre si restituisce. La pagina di eliminazione ti mostra **quanti incassi restano**.
+Eliminando un **evento** o un **corso**, il rimborso o l'annullamento riguardano **solo il non fruito**. Gli incassi legati a **date già svolte**, o a **mesi con almeno una lezione già svolta**, restano in prima nota e non vengono restituiti né annullati. Per esempio, per un corso tenuto a ottobre e annullato a novembre, ottobre resta e novembre si restituisce. La pagina di eliminazione ti mostra **quanti incassi restano**.
 
-Dalla versione 1.3.4 vale lo stesso anche cancellando una **singola iscrizione** (a una data di un evento o a un corso): si restituisce o si annulla solo il non fruito, e gli incassi già fruiti (data passata, mese con almeno una lezione svolta) restano in prima nota. Per la parte fruita la pagina e il messaggio finale ti dicono **quanto manca** (resta da incassare) oppure **quanto avanza** (credito da restituire a mano).
+Vale lo stesso anche cancellando una **singola iscrizione** (a una data di un evento o a un corso): si restituisce o si annulla solo il non fruito, e gli incassi già fruiti (data passata, mese con almeno una lezione svolta) restano in prima nota. Per la parte fruita la pagina e il messaggio finale ti dicono **quanto manca** (resta da incassare) oppure **quanto avanza** (credito da restituire a mano).
 
 ## Annullare una data di un evento ricorrente
 
@@ -215,7 +215,7 @@ MD,
         'topic' => 'corsi-ed-eventi', 'section' => 'Attività', 'slug' => 'listini-e-pacchetti-per-eventi-e-corsi',
         'title' => 'Listini e pacchetti di ingressi per eventi e corsi a date',
         'body' => <<<'MD'
-> Disponibile in: Free, {piano_contabile}, {piano_fiscale} (dalla versione 1.2.18 del plugin)
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 Con i **listini** la stessa attività può avere prezzi diversi, per esempio *Individuale*, *Di gruppo* o *Pacchetto 4 ingressi*. Chi prenota sceglie il listino che gli interessa.
 
@@ -264,7 +264,7 @@ Chi gestisce un evento può registrare chi entra direttamente dal telefono, senz
 
 Un biglietto già usato risulta «Ingresso già registrato»: una copia del QR non entra due volte. Se il contributo non è versato, lo vedi subito.
 
-Con **Pro** (dalla 1.3.0), se per l'evento è **abilitato l'incasso**, lo **staff dell'evento** può anche **addebitare crediti** al socio con il QR, **senza che serva un utente WordPress**.
+Con **Pro**, se per l'evento è **abilitato l'incasso**, lo **staff dell'evento** può anche **addebitare crediti** al socio con il QR, **senza che serva un utente WordPress**.
 
 ## Da sapere
 

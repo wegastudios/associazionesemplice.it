@@ -131,7 +131,7 @@ Dalle **Impostazioni → Assicurazioni** puoi accendere, separatamente:
 1. In **Registri → Presenze** scegli la lezione di un corso o la data di un evento.
 2. A lezione fatta, segna chi c'era: la prima volta sono tutti presenti, togli gli assenti.
 3. Il riepilogo per periodo mostra presenze, lezioni e percentuale; il PDF è a matrice (fino a 10 lezioni) o riepilogativo.
-4. Dal Pro 1.1.36 (con il gratuito 1.2.43) c'è una **seconda vista a calendario**, con le **date in orizzontale** e le **persone in verticale**. Le lezioni annullate o spostate (vedi [Creare un corso](guida:creare-un-corso)) sono tenute in conto.
+4. C'è una **seconda vista a calendario**, con le **date in orizzontale** e le **persone in verticale**. Le lezioni annullate o spostate (vedi [Creare un corso](guida:creare-un-corso)) sono tenute in conto.
 
 ## Altri registri
 
@@ -189,14 +189,14 @@ L'area soci può diventare un'**app installabile** sul telefono, con notifiche. 
 ## Cosa fa il socio
 
 1. Nell'area soci apre la sezione **App e notifiche**.
-2. Preme **Installa l'app** (su iPhone segue le istruzioni per la schermata Home). Dalla versione 1.3.6 (gratuito) e 1.3.1 (Pro) l'invito a installarla compare anche **sotto la tessera**.
+2. Preme **Installa l'app** (su iPhone segue le istruzioni per la schermata Home). L'invito a installarla compare anche **sotto la tessera**.
 3. Attiva le notifiche con un tocco, su ogni dispositivo.
 
 ## Quando arrivano le notifiche
 
 Insieme alle email, per comunicazioni a gruppi, avvisi dei volontari, promemoria e posti liberati dalla lista d'attesa. Chi non le ha attivate riceve solo l'email.
 
-> Per la privacy l'app **non salva mai pagine con dati personali**: offre soltanto una pagina «Sei offline», con il pulsante **«Riprova»**, e gli stili del plugin. Dalla versione 1.3.2 del Pro l'app **non interferisce con l'amministrazione né con l'accesso del sito**: su wp-admin e sulla pagina di login non compaiono blocchi o pagine offline. Spegnendo l'app, scompare da sola dai dispositivi.
+> Per la privacy l'app **non salva mai pagine con dati personali**: offre soltanto una pagina «Sei offline», con il pulsante **«Riprova»**, e gli stili del plugin. L'app **non interferisce con l'amministrazione né con l'accesso del sito**: su wp-admin e sulla pagina di login non compaiono blocchi o pagine offline. Spegnendo l'app, scompare da sola dai dispositivi.
 MD,
     ],
     [
@@ -267,7 +267,7 @@ Il plugin compila da solo l'informativa sulla privacy con i dati della tua assoc
 
 Il responsabile del trattamento è il presidente; in mancanza, il socio con il ruolo di segreteria. L'informativa cita Stripe, PayPal, Wallet e notifiche solo se sono attivi.
 
-Dalla versione 1.2.52 l'informativa dichiara anche l'accesso dei soci: il cookie tecnico **«asem_s»** (non richiede consenso; dura 30 giorni senza uso e al massimo 90), la password conservata solo come **impronta cifrata**, i link e i codici validi **15 minuti** e il blocco crescente dopo i tentativi sbagliati.
+L'informativa dichiara anche l'accesso dei soci: il cookie tecnico **«asem_s»** (non richiede consenso; dura 30 giorni senza uso e al massimo 90), la password conservata solo come **impronta cifrata**, i link e i codici validi **15 minuti** e il blocco crescente dopo i tentativi sbagliati.
 
 In **Comunicazioni e privacy** trovi l'impostazione **«Altri cookie del sito»**: scrivi una riga per cookie nella forma «nome — a cosa serve» (al massimo 30) e compaiono nell'informativa. Ricorda che i cookie **non tecnici** richiedono il consenso dei visitatori (provvedimento 231 del 10 giugno 2021 del Garante).
 
@@ -275,7 +275,7 @@ In **Comunicazioni e privacy** trovi l'impostazione **«Altri cookie del sito»*
 
 - Nella **scheda persona** registri quando e come è stato dato il consenso: cartaceo, sul sito, a voce, importato.
 - Nella Rubrica usi il filtro **Senza consenso privacy** per trovare chi manca.
-- Dalla versione 1.2.42 la scheda del socio ha anche la **liberatoria per foto e video**, che si chiede pure nel modulo di domanda online. Per i **minori** risponde il genitore o tutore che opera.
+- La scheda del socio ha anche la **liberatoria per foto e video**, che si chiede pure nel modulo di domanda online. Per i **minori** risponde il genitore o tutore che opera.
 - Se indichi la pagina dell'informativa, chi attiva il proprio accesso deve accettarla e il consenso si registra da solo.
 
 ## Regolamento

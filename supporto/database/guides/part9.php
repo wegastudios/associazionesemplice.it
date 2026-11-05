@@ -37,7 +37,7 @@ Dall'**area riservata**, nella sezione **«Votazioni e sondaggi»**. Si vota **u
 ## Risultati
 
 - Nel **voto palese** la segreteria li vede quando vuole, anche a votazione aperta (in quel caso sono provvisori).
-- Nel **voto segreto**, finché la votazione è **aperta** non si vedono né i conteggi né l'elenco dei votanti, e non si possono scaricare i risultati: compaiono alla **chiusura** (dalla versione 1.2.34 del plugin gratuito).
+- Nel **voto segreto**, finché la votazione è **aperta** non si vedono né i conteggi né l'elenco dei votanti, e non si possono scaricare i risultati: compaiono alla **chiusura**.
 - I soci li vedono **solo dopo la chiusura** e solo se hai spuntato **«Dopo la chiusura i soci vedono i risultati»**.
 - Puoi scaricare il **verbale dei risultati in PDF**, con lo spazio per le firme di segretario e presidente, e la tabella in **CSV**. Il PDF è un documento di supporto: il verbale dell'assemblea resta quello di **Registri → Verbali**.
 
@@ -146,7 +146,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Registri', 'slug' => 'certificati-medici-sportivi',
         'title' => 'Tenere i certificati medici sportivi dei soci',
         'body' => <<<'MD'
-> Disponibile in: {piano_contabile}, {piano_fiscale} (da Pro 1.1.25; richiede il plugin gratuito 1.2.29, aggiorna insieme gratuito e Pro)
+> Disponibile in: {piano_contabile}, {piano_fiscale} (aggiorna insieme gratuito e Pro)
 
 Il registro dei **certificati medici** ti dice chi ha il certificato in regola, chi è in scadenza, chi è scaduto e chi non lo ha mai portato, tra gli iscritti alle attività che lo richiedono. Lo trovi in **Registri → Certificati medici**, accanto a Libro soci e Verbali. Lo usano segreteria, presidente, vicepresidente e amministratori. Senza Pro, o con la licenza non in regola, la voce sparisce.
 
@@ -191,7 +191,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Registri', 'slug' => 'affiliazioni-agli-enti',
         'title' => 'Gestire le affiliazioni agli enti e le tessere dei soci',
         'body' => <<<'MD'
-> Disponibile in: {piano_contabile}, {piano_fiscale} (da Pro 1.1.25; richiede il plugin gratuito 1.2.29, aggiorna insieme gratuito e Pro)
+> Disponibile in: {piano_contabile}, {piano_fiscale} (aggiorna insieme gratuito e Pro)
 
 In **Registri → Affiliazioni** tieni i codici di affiliazione dell'associazione agli enti di promozione sportiva, le tessere dei soci e i file da caricare sui portali degli enti.
 
@@ -222,7 +222,7 @@ Tutori e ospiti non sono soci: non si tesserano.
 Filtra l'elenco per ente, stagione, stato e attività.
 
 - **Esporta l'elenco (CSV)**: scarica l'elenco con numeri, costi e stato.
-- **File per il portale dell'ente (CSV)**: scarica nome, cognome, codice fiscale, data e luogo di nascita, sesso, indirizzo, email, telefono, tipo di tessera e, dal Pro 1.1.37, **Sport** e **Disciplina**, ricavati dai corsi e dagli eventi a cui la persona partecipa. Se manca il tipo di tessera, usa il **tipo di tesseramento** della scheda del socio.
+- **File per il portale dell'ente (CSV)**: scarica nome, cognome, codice fiscale, data e luogo di nascita, sesso, indirizzo, email, telefono, tipo di tessera e **Sport** e **Disciplina**, ricavati dai corsi e dagli eventi a cui la persona partecipa. Se manca il tipo di tessera, usa il **tipo di tesseramento** della scheda del socio.
 
 > **Controlla il file prima di caricarlo.** Il sito non conserva luogo di nascita e sesso: li ricava dal codice fiscale, e il luogo è il **codice catastale** (per esempio H501), non il nome del comune.
 
@@ -242,7 +242,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Risorse e spazi', 'slug' => 'risorse-promemoria-qr-occupazione-richieste',
         'title' => 'Risorse: promemoria, QR d\'ingresso, report di occupazione e richieste dei soci',
         'body' => <<<'MD'
-> Disponibile in: {piano_contabile}, {piano_fiscale} (da Pro 1.1.26; plugin gratuito invariato)
+> Disponibile in: {piano_contabile}, {piano_fiscale}
 
 Queste funzioni completano le [risorse](guida:creare-e-gestire-le-risorse): le impostazioni stanno nella scheda di ciascuna risorsa.
 
@@ -351,7 +351,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Comunicazione', 'slug' => 'sms-ai-soci-e-consensi',
         'title' => 'Mandare SMS ai soci e gestire i consensi',
         'body' => <<<'MD'
-> Disponibile in: {piano_contabile}, {piano_fiscale} (da Pro 1.1.28, che richiede il plugin gratuito 1.2.31: aggiorna insieme gratuito e Pro; non nel plugin gratuito)
+> Disponibile in: {piano_contabile}, {piano_fiscale} (aggiorna insieme gratuito e Pro; non nel plugin gratuito)
 
 Oltre alle email puoi scrivere ai soci per **SMS**, con il fornitore che preferisci. Il costo degli SMS è quello del fornitore scelto.
 
@@ -394,7 +394,7 @@ MD,
         'topic' => 'plugin-pro', 'section' => 'Comunicazione', 'slug' => 'newsletter-con-brevo-mailchimp-o-mailpoet',
         'title' => 'Collegare la newsletter: Brevo, Mailchimp o MailPoet',
         'body' => <<<'MD'
-> Disponibile in: {piano_contabile}, {piano_fiscale} (da Pro 1.1.28, che richiede il plugin gratuito 1.2.31: aggiorna insieme gratuito e Pro; non nel plugin gratuito)
+> Disponibile in: {piano_contabile}, {piano_fiscale} (aggiorna insieme gratuito e Pro; non nel plugin gratuito)
 
 Il sito tiene **allineata la lista** della tua newsletter con i soci che hanno dato il consenso. **La newsletter si scrive e si invia dal servizio che scegli**, non dal plugin.
 
@@ -426,7 +426,7 @@ MD,
         'topic' => 'pagamenti', 'section' => 'Pagamenti online', 'slug' => 'attivare-satispay-e-klarna',
         'title' => 'Attivare Satispay e Klarna',
         'body' => <<<'MD'
-> Disponibile in: {piano_contabile}, {piano_fiscale} (da Pro 1.1.28, che richiede il plugin gratuito 1.2.31: aggiorna insieme gratuito e Pro; non nel plugin gratuito)
+> Disponibile in: {piano_contabile}, {piano_fiscale} (aggiorna insieme gratuito e Pro; non nel plugin gratuito)
 
 Due metodi in più per i pagamenti online. Il resto della configurazione è in [Attivare i pagamenti online con Stripe o PayPal](guida:attivare-stripe-o-paypal).
 
@@ -460,9 +460,9 @@ MD,
         'topic' => 'soci-e-tessere', 'section' => 'Soci', 'slug' => 'libro-soci-completo',
         'title' => 'Il libro soci completo: dati, PDF e CSV',
         'body' => <<<'MD'
-> Disponibile in: Free, {piano_contabile}, {piano_fiscale} (dalla versione 1.2.41 del plugin gratuito)
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-Il **libro soci** è il registro ufficiale delle persone iscritte, in **Registri → Libro soci**. Dalla versione 1.2.41 è completo: per ogni socio riporta
+Il **libro soci** è il registro ufficiale delle persone iscritte, in **Registri → Libro soci**. È completo: per ogni socio riporta
 
 - la **data della domanda** e la **data della delibera**;
 - il **luogo di nascita** e la **residenza**;
@@ -473,7 +473,7 @@ Il **libro soci** è il registro ufficiale delle persone iscritte, in **Registri
 
 Lo scarichi in **PDF** e in **CSV**.
 
-Dalla versione 1.2.42 nella scheda del socio trovi anche il **tipo di tesseramento** (atleta, istruttore, dirigente…), che compare nell'**esportazione dei soci**, e la **liberatoria per foto e video**. In **Bacheca** e nel riquadro **Da lavorare** l'avviso **«Schede da completare»** ti ricorda i soci a cui mancano dei dati.
+Nella scheda del socio trovi anche il **tipo di tesseramento** (atleta, istruttore, dirigente…), che compare nell'**esportazione dei soci**, e la **liberatoria per foto e video**. In **Bacheca** e nel riquadro **Da lavorare** l'avviso **«Schede da completare»** ti ricorda i soci a cui mancano dei dati.
 
 ## Tenerlo completo
 
@@ -490,7 +490,7 @@ MD,
         'topic' => 'altro', 'section' => 'Registri', 'slug' => 'registro-azioni-e-spazio-occupato',
         'title' => 'Registro azioni: controllare lo spazio e liberarlo',
         'body' => <<<'MD'
-> Disponibile in: Free, {piano_contabile}, {piano_fiscale} (dalla versione 1.2.28 del plugin gratuito)
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 Il **registro azioni** tiene traccia di ciò che si fa nel plugin (chi ha cambiato cosa e quando). Col tempo occupa spazio nel database: ora puoi vedere quanto e liberarlo.
 

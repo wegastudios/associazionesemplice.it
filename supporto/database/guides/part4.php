@@ -62,7 +62,7 @@ MD,
         'topic' => 'pagamenti', 'section' => 'Incassi e spese', 'slug' => 'aprire-e-chiudere-gli-anni-solari',
         'title' => 'Aprire e chiudere gli anni solari',
         'body' => <<<'MD'
-> Disponibile in: Free, {piano_contabile}, {piano_fiscale} (dalla versione 1.2.19 del plugin)
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 La tessera dura l'anno solare e la prima nota si organizza per anno solare: per questo l'apertura e la chiusura dell'anno sono disponibili in tutte le versioni. Solo gli amministratori possono aprire, chiudere e riaprire un anno.
 
@@ -151,7 +151,7 @@ I soci pagano quote, mensilità e contributi direttamente dall'area riservata. I
 
 Ti serve un account **Stripe** o **PayPal Business** dell'associazione. Le chiavi si copiano dal pannello del fornitore.
 
-Se in **Impostazioni → Pagamenti online** compare un avviso sulle **chiavi di sicurezza di WordPress** (`AUTH_KEY` e `AUTH_SALT`) mancanti o di esempio, fai sostituire quei valori nel file `wp-config.php` dal tuo fornitore di hosting o da chi segue il sito (avviso dalla versione 1.2.37).
+Se in **Impostazioni → Pagamenti online** compare un avviso sulle **chiavi di sicurezza di WordPress** (`AUTH_KEY` e `AUTH_SALT`) mancanti o di esempio, fai sostituire quei valori nel file `wp-config.php` dal tuo fornitore di hosting o da chi segue il sito.
 
 ## Cosa fare
 
@@ -175,7 +175,7 @@ MD,
         'topic' => 'pagamenti', 'section' => 'Pagamenti online', 'slug' => 'attivare-sumup',
         'title' => 'Attivare i pagamenti online con SumUp',
         'body' => <<<'MD'
-> Disponibile in: {piano_contabile}, {piano_fiscale} (dalla versione 1.2.26 del plugin gratuito e 1.1.23 di Pro: aggiornali insieme)
+> Disponibile in: {piano_contabile}, {piano_fiscale} (aggiorna insieme gratuito e Pro)
 
 SumUp è un altro metodo di pagamento online. Il socio paga su una **pagina sicura di SumUp**: i dati della carta non passano mai dal tuo sito. Si può usare da solo o **insieme a Stripe e PayPal**.
 
@@ -207,23 +207,23 @@ MD,
         'topic' => 'pagamenti', 'section' => 'Pagamenti online', 'slug' => 'commissioni-di-incasso',
         'title' => 'Commissioni di incasso sui pagamenti online',
         'body' => <<<'MD'
-> Disponibile in: {piano_contabile}, {piano_fiscale} (dalla versione 1.2.26 del plugin gratuito e 1.1.23 di Pro)
+> Disponibile in: {piano_contabile}, {piano_fiscale}
 
 Ogni gateway trattiene una commissione su ciascun pagamento. Il plugin ti aiuta a tenerne conto in prima nota e, se vuoi, a ribaltarla su chi paga.
 
 ## Indicare la commissione
 
 1. Vai in **Impostazioni → Pagamenti online**.
-2. Per ogni metodo (**Stripe**, **PayPal**, **SumUp** e, da Pro 1.1.28, **Satispay**) indica la commissione: una **cifra fissa**, una **percentuale**, oppure **entrambe**.
+2. Per ogni metodo (**Stripe**, **PayPal**, **SumUp** e **Satispay**) indica la commissione: una **cifra fissa**, una **percentuale**, oppure **entrambe**.
 
-Dalla versione 1.1.24 di Pro i campi partono già compilati con le **tariffe standard**:
+I campi partono già compilati con le **tariffe standard**:
 
 | Metodo | Commissione di partenza |
 |---|---|
 | Stripe | 1,5% + 0,25 € |
 | PayPal | 3,40% + 0,35 € |
 | SumUp | 2,5% |
-| Satispay (da Pro 1.1.28) | 0,20 € fissi, 0% |
+| Satispay | 0,20 € fissi, 0% |
 
 Sono valori di partenza: **modificali** se il tuo contratto ha condizioni diverse, oppure **svuota** i campi se non vuoi stimare la commissione. Le tariffe applicate dal gateway possono cambiare: controlla sempre il tuo contratto.
 
@@ -264,7 +264,7 @@ Premi il pulsante di controllo nella pagina **Pagamenti online**: il plugin inte
 
 ## Con WooCommerce
 
-Se usi WooCommerce, quando l'ordine passa a «in lavorazione» o «completato» l'incasso entra in prima nota una sola volta; se l'importo è diverso entra come «non abbinato». Gli ordini senza voci di Associazione Semplice non vengono toccati. Dalla versione 1.3.0, se per lo stesso pagamento viene pagato un **secondo ordine**, non si incassa due volte: il secondo finisce in **«da controllare»**.
+Se usi WooCommerce, quando l'ordine passa a «in lavorazione» o «completato» l'incasso entra in prima nota una sola volta; se l'importo è diverso entra come «non abbinato». Gli ordini senza voci di Associazione Semplice non vengono toccati. Se per lo stesso pagamento viene pagato un **secondo ordine**, non si incassa due volte: il secondo finisce in **«da controllare»**.
 MD,
     ],
     [
@@ -292,7 +292,7 @@ Un incasso annullato non ha ricevuta.
 
 ## Ricevute dei minori
 
-Dal Pro 1.1.35 (che richiede il gratuito 1.2.42) la ricevuta di un minore è **intestata al genitore o tutore che opera**, o a quello che ha pagato. Riporta i **codici fiscali** di tutti i genitori e del ragazzo e, per i **5-18 anni**, l'indicazione di **pagamento tracciato o non tracciato**: serve per la detrazione delle spese sportive.
+La ricevuta di un minore è **intestata al genitore o tutore che opera**, o a quello che ha pagato. Riporta i **codici fiscali** di tutti i genitori e del ragazzo e, per i **5-18 anni**, l'indicazione di **pagamento tracciato o non tracciato**: serve per la detrazione delle spese sportive.
 
 Sono **tracciabili** bonifico, POS, assegno, Stripe, PayPal, SumUp e WooCommerce. **Non** sono tracciabili i **contanti** e il metodo «altro».
 
@@ -302,7 +302,7 @@ Dalla scheda persona (o dall'area soci) si può ottenere l'**attestazione annual
 
 ## Area soci
 
-Con lo shortcode `[associazionesemplice_ricevute]` (già incluso nell'area soci) il socio vede l'elenco e scarica le ricevute. Le vedono solo chi ha pagato e gli amministratori. Dalla versione 1.2.37 del plugin gratuito la ricevuta o il rendiconto di un **ospite** lo scaricano solo l'ospite, il suo tutore e la segreteria, **non** chi lo ospita; le ricevute dei pagamenti fatti dall'ospitante restano sue.
+Con lo shortcode `[associazionesemplice_ricevute]` (già incluso nell'area soci) il socio vede l'elenco e scarica le ricevute. Le vedono solo chi ha pagato e gli amministratori. La ricevuta o il rendiconto di un **ospite** lo scaricano solo l'ospite, il suo tutore e la segreteria, **non** chi lo ospita; le ricevute dei pagamenti fatti dall'ospitante restano sue.
 
 ## Impostazioni
 

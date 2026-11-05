@@ -43,7 +43,7 @@ Parte da sola alla prima attivazione. Puoi riaprirla quando vuoi da **Strumenti 
 
 ## Le sezioni
 
-1. **Ente**: nome, tipo di ente, come chiamare chi partecipa (socio, tesserato…), se accetti ospiti e chi può iscriversi. Dalla versione 1.2.33 del plugin gratuito, scegliendo **«Chiunque può chiedere di iscriversi»** si accende anche la **domanda di adesione online** (pagina **«Diventa socio»**), mentre **«Solo su presentazione»** la spegne. Chi ha già configurato non cambia nulla finché non riapre la procedura guidata. Nei dettagli trovi codice fiscale, inizio dell'anno sociale e sede.
+1. **Ente**: nome, tipo di ente, come chiamare chi partecipa (socio, tesserato…), se accetti ospiti e chi può iscriversi. Scegliendo **«Chiunque può chiedere di iscriversi»** si accende anche la **domanda di adesione online** (pagina **«Diventa socio»**), mentre **«Solo su presentazione»** la spegne. Chi ha già configurato non cambia nulla finché non riapre la procedura guidata. Nei dettagli trovi codice fiscale, inizio dell'anno sociale e sede.
 2. **Partita IVA**: rispondi sì o no. Se sì, inserisci numero e regime.
 3. **Cosa ti serve**: scegli le parti che userai, per esempio corsi ed eventi, prima nota, libro soci e verbali. Una parte che spegni sparisce dal menu, ma i dati non vengono toccati.
 4. **Quota associativa** e, nei dettagli, altri tipi di socio.
@@ -80,7 +80,7 @@ La configurazione guidata propone e crea le pagine per area, solo quelle che ser
 
 ## Se usi un plugin di cache
 
-Gli elenchi pubblici di attività ed eventi e i posti liberi non restano più «vecchi» nella cache delle pagine (per esempio con LiteSpeed). Se avevi già pagine in cache prima dell'aggiornamento alla versione 1.2.24, **svuota la cache una volta** dal plugin di cache.
+Gli elenchi pubblici di attività ed eventi e i posti liberi non restano più «vecchi» nella cache delle pagine (per esempio con LiteSpeed). Se hai pagine in cache, **svuota la cache una volta** dal plugin di cache dopo aver aggiornato il plugin.
 
 ## Creare una pagina a mano
 
@@ -136,14 +136,14 @@ La copia di sicurezza è un file ZIP con tutti i dati del plugin: soci, attivit�
 3. Premi il pulsante per creare la copia e scarica il file.
 4. Conservalo in un posto sicuro, fuori dal sito.
 
-Se l'ultima copia ha più di 30 giorni, la Bacheca te lo ricorda.
+Se l'ultima copia è vecchia, la Bacheca te lo ricorda.
 
 ## Ripristinare
 
 > Il ripristino funziona sullo stesso sito e sostituisce i dati del plugin con quelli della copia, **tutto o niente**.
 
 1. Nella stessa pagina scegli **Ripristina** e seleziona il file.
-2. Prima di sostituire i dati, il plugin salva sul sito una copia dello stato attuale (ne tiene tre, scaricabili).
+2. Prima di sostituire i dati, il plugin salva sul sito una copia dello stato attuale (ne tiene alcune, scaricabili).
 3. Conferma. A operazione finita controlla soci e prima nota.
 
 ## Da sapere
@@ -162,14 +162,14 @@ Serve, per esempio, dopo le prove prima di iniziare davvero. Solo gli amministra
 
 ## Prima di cominciare
 
-Il sito non conserva copie dei dati cancellati, per rispetto della privacy. Prima di azzerare devi **scaricare una copia completa con gli allegati** (vale un'ora): senza lo scarico l'azzeramento non parte. Conservala tu.
+Il sito non conserva copie dei dati cancellati, per rispetto della privacy. Prima di azzerare devi **scaricare una copia completa con gli allegati** (vale poco tempo): senza lo scarico l'azzeramento non parte. Conservala tu.
 
 ## Cosa fare
 
 1. Vai in **Impostazioni → Sistema → Azzeramento dati**.
 2. Scegli cosa azzerare e guarda l'anteprima di ciò che c'è:
    - **Solo i dati**: soci, ospiti, attività, prima nota, registri, pagamenti, comunicazioni, ricevute e allegati. Restano impostazioni, testi, pagine e registro azioni.
-   - **Ripristino di fabbrica**: cancella anche impostazioni e testi e riapre la configurazione guidata. Dalla versione 1.2.36 del plugin gratuito la procedura **riprende le pagine già create** invece di duplicarle.
+   - **Ripristino di fabbrica**: cancella anche impostazioni e testi e riapre la configurazione guidata. La procedura **riprende le pagine già create** invece di duplicarle.
 3. Se vuoi, elimina anche gli accessi dei soci (gli utenti WordPress con solo il ruolo «Socio»: mai amministratori o altri utenti).
 4. Nel riepilogo conferma con la spunta, scrivi la frase **AZZERA TUTTO** e inserisci la tua password.
 
@@ -196,7 +196,7 @@ Il plugin gratuito funziona sempre, anche senza chiave: nessuna funzione di base
 
 Una volta al giorno, e quando salvi la chiave o premi **Controlla adesso**, il plugin invia al server delle licenze solo la chiave e il nome del dominio, per confermare che siano validi. Nessun dato dei soci e nessun contenuto del sito viene inviato.
 
-> Una chiave vale per **un solo dominio**. I sottodomini sono domini diversi.
+> Una chiave vale per il **dominio registrato** e per **tutti i suoi sottodomini e sottocartelle** (staging, test, copie di prova).
 
 ## Durata e rinnovo
 
@@ -275,7 +275,7 @@ Ogni licenza è legata a un dominio. Se sposti il sito su un indirizzo nuovo, ag
 
 ## Limiti
 
-- Puoi cambiare dominio **3 volte ogni 30 giorni**.
+- Il **primo cambio è libero**. Dopo un cambio la chiave resta legata al nuovo dominio per un po' di giorni (lo vedi nell'area riservata); se ti serve prima, apri una richiesta.
 - Il dominio viene normalizzato: minuscolo, senza `www`, senza schema, porta e percorso.
 - Un dominio già usato da un'altra licenza non può essere assegnato.
 
