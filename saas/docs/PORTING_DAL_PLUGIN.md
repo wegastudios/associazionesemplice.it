@@ -58,3 +58,17 @@ I test dei blocchi sono in `BlockBRulesTest`, `BlockCRulesTest`, `BlockDRulesTes
 
 Separazione tra associazioni, servizio chiavi, cifratura dei campi, generatore di siti, diritti dal portale, area
 Studio per i commercialisti, sconti e conteggi per i pacchetti, fattura elettronica, compensi sportivi.
+
+## Regole del plugin da applicare quando si costruisce il modulo (plugin gratuito 1.3.13, Pro 1.3.3, API 17)
+
+Questi modi di funzionare sono già nel plugin e confermati dal titolare. Nel SaaS i moduli interessati non esistono
+ancora: la regola si applica quando il modulo viene scritto, non dopo.
+
+| Dove | Regola |
+|---|---|
+| Area soci, rimborsi spese | Chiedere un rimborso è permesso solo ai soci volontari. Il pulsante compare solo a loro e la richiesta di un altro tipo di socio è rifiutata anche lato server. |
+| Contabilità, conti | Ogni conto ha un costo di incasso: quota fissa `fee_fixed_cents` (massimo 2000, cioè 20 €) e percentuale `fee_bp` in punti base (massimo 2500, cioè 25%). A ogni incasso di segreteria o sul posto si registra una spesa «costo generale» pari a fisso + importo × `fee_bp` / 10000. Gli incassi online restano con le tariffe del gateway. |
+| Risorse, opzioni di pagamento | Con la modalità «pagamento online in anticipo» e nessun pagamento online attivo l'opzione è `desk`: la risorsa si prenota e si salda in segreteria, invece di non avere alcuna opzione. |
+| Attività, segreteria | I pacchetti pagati con ingressi residui sono mostrati in segreteria (panoramica dei pacchetti e pacchetti della persona). |
+| Sito, menu | Il menu non riceve la voce «Area riservata» se la pagina è già in un qualsiasi menu. Verifica richiesta: una voce nel menu desktop e una nel menu mobile. |
+| Eventi, calendario | Vista settimana, mese e giorno. |
