@@ -48,6 +48,9 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            // Sempre UTC: Laravel scrive gli orari in UTC senza il fuso e il server può averne un altro (a SupportHost è
+            // Europe/Rome): senza questo gli orari slittano e i link di reimpostazione risultano già scaduti.
+            'timezone' => 'UTC',
             'application_name' => 'associazionesemplice',
         ],
 
@@ -65,6 +68,7 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            'timezone' => 'UTC',
             'application_name' => 'associazionesemplice-migrazioni',
             // Ruolo a cui le migrazioni concedono i permessi (OrgSchema::grant).
             'app_role' => env('DB_USERNAME', 'as_app'),
@@ -84,6 +88,7 @@ return [
             'prefix' => '',
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            'timezone' => 'UTC',
         ],
 
         // Database di prova per il ripristino (saas:backup:restore-test): si svuota a ogni prova.
@@ -98,6 +103,7 @@ return [
             'prefix' => '',
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            'timezone' => 'UTC',
         ],
 
     ],
