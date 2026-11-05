@@ -47,6 +47,17 @@ interface Ledger
      */
     public function activityPayments(string $activityId): array;
 
+    /**
+     * Importi dei movimenti indicati che non sono stornati (per sapere quanto è stato pagato davvero).
+     *
+     * @param  list<string>  $transactionIds
+     * @return array<string, int> id del movimento => centesimi
+     */
+    public function liveAmounts(array $transactionIds): array;
+
+    /** @return list<array{id: string, name: string}> categorie attive per gli incassi (senza la rettifica di cassa) */
+    public function incomeCategories(): array;
+
     /** @return array<string, int> id del conto => saldo in centesimi */
     public function balances(): array;
 

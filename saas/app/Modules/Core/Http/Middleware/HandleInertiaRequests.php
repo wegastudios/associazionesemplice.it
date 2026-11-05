@@ -7,6 +7,8 @@ namespace App\Modules\Core\Http\Middleware;
 use App\Modules\Core\Contracts\Ability;
 use App\Modules\Core\Contracts\CurrentOperator;
 use App\Modules\Core\Models\User;
+use App\Modules\Portale\Contracts\Entitlements;
+use App\Modules\Portale\Contracts\Package;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -37,6 +39,9 @@ final class HandleInertiaRequests extends Middleware
                     'role' => $operator->roleLabel(),
                     // Per mostrare solo le sezioni permesse; i controlli veri restano nelle rotte.
                     'can' => array_values(array_map(static fn (Ability $a): string => $a->value, array_filter(Ability::cases(), $operator->can(...)))),
+                    // I pacchetti attivi, per le sezioni che ne dipendono (Risorse).
+                    'packages' => array_values(array_map(static fn (Package $p): string => $p->value,
+                        array_filter(Package::cases(), app(Entitlements::class)->for($operator->orgId)->has(...)))),
                 ];
             },
             'flash' => [

@@ -287,6 +287,35 @@ final readonly class LedgerService implements Ledger
         return $out;
     }
 
+    public function liveAmounts(array $transactionIds): array
+    {
+        $out = [];
+        if ($transactionIds === []) {
+            return $out;
+        }
+        foreach ($this->connection()->table('app.transactions')->whereIn('id', $transactionIds)->whereNull('voided_at')->get(['id', 'amount_cents']) as $row) {
+            if (is_string($row->id ?? null) && is_numeric($row->amount_cents ?? null)) {
+                $out[$row->id] = (int) $row->amount_cents;
+            }
+        }
+
+        return $out;
+    }
+
+    public function incomeCategories(): array
+    {
+        $kinds = array_map(static fn (CategoryKind $k): string => $k->value,
+            array_values(array_filter(CategoryKind::cases(), static fn (CategoryKind $k): bool => $k->isIncome() && $k !== CategoryKind::Adjustment)));
+        $out = [];
+        foreach ($this->connection()->table('app.categories')->whereIn('kind', $kinds)->whereNull('deleted_at')->orderBy('sort_order')->get(['id', 'name']) as $row) {
+            if (is_string($row->id ?? null) && is_string($row->name ?? null)) {
+                $out[] = ['id' => $row->id, 'name' => $row->name];
+            }
+        }
+
+        return $out;
+    }
+
     public function balances(): array
     {
         $out = [];

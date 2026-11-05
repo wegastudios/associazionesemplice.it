@@ -207,6 +207,26 @@ operatori e nessun pacchetto finché non ne ricevono.
 - Permessi: vedere `people.view`; attività e iscrizioni `people.edit`; incassi `people.edit` e `accounting.edit`;
   spese e cambio dell'attività di un movimento `accounting.edit`.
 
+## 9 quater. Risorse e prenotazioni (pacchetto)
+
+- Modulo `Risorse`, rotte dietro `package:resources` (senza pacchetto 403; il menu mostra «Risorse» solo con il
+  pacchetto, dai `org.packages` condivisi con le pagine). Tipologia = come si vende la risorsa: `hourly`, `daily`,
+  `seasonal` (`Risorse\Contracts\Typology`). Il numero di risorse attive per tipologia è limitato da
+  `Entitlements::limit(Package::Resources, '<tipologia>.tier')`; una tipologia assente dal pacchetto non si crea.
+- Tabelle: `app.resources`, `app.reservations` (prenotazioni e blocchi; orari locali `timestamp` nel fuso
+  Europe/Rome), `app.reservation_payments` (legame con i movimenti della prima nota), `app.resource_waitlist`.
+  Le sovrapposizioni le impedisce un vincolo `EXCLUDE USING gist` (estensione `btree_gist`) sulle prenotazioni
+  attive; il servizio controlla prima per dare il messaggio giusto (quale giorno, blocco o prenotazione).
+- Regole dal plugin in `Risorse/Rules/ResourceRules` (fasce, giornate, stagioni, ospiti, tariffe a fasce, tariffa non
+  soci, servizi aggiuntivi) con i casi di test portati.
+- Socio = tessera valida alla data (`Members::isActive`): paga la tariffa soci; altri la tariffa non soci se c'è. Si
+  prenota anche per un esterno (solo nome). Stagionali solo a persone dell'anagrafica, con lista d'attesa che si chiude
+  da sola all'assegnazione.
+- Incassi con `Ledger::recordIncome` (voce della risorsa o «Altre entrate», ricevuta se chi paga è in anagrafica);
+  il pagato è la somma dei movimenti non stornati (`Ledger::liveAmounts`).
+- Permessi: vedere `people.view`; risorse, prenotazioni, blocchi e lista d'attesa `people.edit`; incassi anche
+  `accounting.edit`. Prenotazione e pagamento online dei soci arriveranno con l'Area soci.
+
 ## 9 ter. Documenti e ricevute
 
 - PDF senza librerie: `Documenti\Contracts\Pdf` (dal plugin; A4 verticale o orizzontale, testo, linee, rettangoli).
