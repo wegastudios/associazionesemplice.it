@@ -3,7 +3,7 @@
 @section('content')
     <h1>Come possiamo aiutarti?</h1>
     <form method="get" action="{{ route('help.search') }}" class="card actions" role="search">
-        <div style="flex:1;min-width:220px"><label for="q" style="margin-top:0">Cerca nelle guide</label><input id="q" name="q" type="search" minlength="2" required placeholder="Per esempio: password, tessera, rinnovo" autocomplete="off"></div>
+        <div style="flex:1;min-width:220px"><label for="q" style="margin-top:0">Cerca nelle guide</label><input id="q" name="q" type="search" minlength="2" required placeholder="Es. password, tessera" autocomplete="off"></div>
         <button type="submit">Cerca</button>
     </form>
     <div class="row">
