@@ -6,7 +6,7 @@ return [
         'topic' => 'installazione', 'section' => 'Manutenzione', 'slug' => 'bacheca-da-lavorare-ed-eventi-della-settimana',
         'title' => 'Usare la Bacheca: cosa c\'è da lavorare e gli eventi della settimana',
         'body' => <<<'MD'
-> Disponibile in: Free, {piano_contabile}, {piano_fiscale} (dalla versione 1.2.20 del plugin)
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 Appena entri nella **Bacheca di WordPress** (la pagina iniziale di `wp-admin`) trovi due riquadri con ciò che ti serve oggi. Li vedono gli amministratori, la segreteria e i consiglieri con accesso operativo.
 
@@ -17,7 +17,7 @@ Il riquadro elenca le cose che aspettano te:
 - **richieste di accesso** da controllare (i soci che hanno chiesto di entrare);
 - **soci da rinnovare**, con tessera scaduta o in scadenza;
 - **ospiti da invitare** a iscriversi;
-- **schede da completare**: soci in carica a cui mancano dei dati (dalla versione 1.2.42 del plugin gratuito; l'avviso compare anche nella Bacheca di Associazione Semplice, con l'elenco e il contatore). Per ogni scheda il plugin controlla codice fiscale, data e luogo di nascita e residenza (indirizzo **e** comune). Per un **minorenne** serve almeno un genitore o tutore, con l'email del tutore che opera sul sito e il codice fiscale di ciascun genitore; per un maggiorenne (o senza data di nascita) serve almeno **email o telefono**. L'elenco mostra le voci mancanti scheda per scheda. Ospiti, genitori non soci, soci receduti o anonimizzati e domande in attesa non sono controllati, e la liberatoria non conta perché è facoltativa;
+- **schede da completare**: soci in carica a cui mancano dei dati (l'avviso compare anche nella Bacheca di Associazione Semplice, con l'elenco e il contatore). Per ogni scheda il plugin controlla codice fiscale, data e luogo di nascita e residenza (indirizzo **e** comune). Per un **minorenne** serve almeno un genitore o tutore, con l'email del tutore che opera sul sito e il codice fiscale di ciascun genitore; per un maggiorenne (o senza data di nascita) serve almeno **email o telefono**. L'elenco mostra le voci mancanti scheda per scheda. Ospiti, genitori non soci, soci receduti o anonimizzati e domande in attesa non sono controllati, e la liberatoria non conta perché è facoltativa;
 - **email non partite** (solo per l'amministratore).
 
 Ogni voce ha un collegamento che porta alla pagina giusta. In fondo trovi il collegamento alla **Bacheca di Associazione Semplice**, con il quadro completo.
@@ -174,7 +174,7 @@ Serve a lasciare libera la sala per preparare e riordinare. Ci sono due livelli,
 
 ## Sovrapposizioni
 
-Una risorsa non può essere occupata due volte. Dalla versione 1.2.23 del plugin gratuito e 1.1.21 di Pro (aggiornali insieme):
+Una risorsa non può essere occupata due volte. Il plugin lo impedisce così:
 
 - se **colleghi** un corso o un evento a una risorsa, oppure **aggiungi o sposti** delle date che si sovrappongono a un'altra attività (**allestimenti compresi**), il salvataggio viene **rifiutato** con un messaggio che dice **con cosa si sovrappone**;
 - per correggere, collega l'attività a un'altra risorsa, oppure aggiungi o sposta le date.

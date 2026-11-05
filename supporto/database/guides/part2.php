@@ -44,7 +44,7 @@ MD,
 2. Registra la quota associativa dalla scheda del socio o dall'incasso: se il socio ha la tessera non valida, la quota si inserisce da sola in qualunque incasso.
 3. La tessera si attiva quando la quota è **saldata** (vedi «Quota pagata a rate» più sotto).
 
-Dalla versione 1.2.51 (gratuito) e 1.1.41 (Pro) i nuovi soci **non hanno più un utente WordPress**: entrano nell'area riservata con **email e password** (obbligatoria, la scelgono alla prima entrata); il link o codice ricevuto per email resta come opzione. L'utente WordPress nasce **solo quando si dà un potere** al socio (segreteria, tesoriere, staff). Chi ha già un utente WordPress continua a entrare da WordPress. Se esiste già un utente con l'email del socio, viene collegato senza cambiargli ruolo. Dalla versione 1.2.37, se quell'utente ha **altri ruoli** (redattore, amministratore…) la segreteria vede un errore: **solo un amministratore** può collegarlo.
+I nuovi soci **non hanno più un utente WordPress**: entrano nell'area riservata con **email e password** (obbligatoria, la scelgono alla prima entrata); il link o codice ricevuto per email resta come opzione. L'utente WordPress nasce **solo quando si dà un potere** al socio (segreteria, tesoriere, staff). Chi ha già un utente WordPress continua a entrare da WordPress. Se esiste già un utente con l'email del socio, viene collegato senza cambiargli ruolo. Se quell'utente ha **altri ruoli** (redattore, amministratore…) la segreteria vede un errore: **solo un amministratore** può collegarlo.
 
 Se preferisci un utente WordPress per ogni socio (per esempio per usare WooCommerce con il loro account), vedi [Come entrano i soci: link, codice o utente WordPress](guida:accesso-dei-soci-link-codice-o-utente-wordpress).
 
@@ -60,7 +60,7 @@ La tessera dura l'anno solare e **scade sempre il 31 dicembre**, per tutti trann
 
 ## Quota pagata a rate
 
-Dalla versione 1.2.30 del plugin gratuito un socio può versare la quota in più volte.
+Un socio può versare la quota in più volte.
 
 - Se versa **meno della quota** (per esempio 20 su 25), nella scheda del socio vedi **«versati 20 su 25, mancano 5»** con il pulsante **Incassa il saldo**. Lo stesso avviso compare in **Pagamenti da incassare**.
 - L'incasso si apre **già compilato con il residuo**, e il **pagamento online** propone il saldo.
@@ -134,7 +134,7 @@ I permessi derivano dai dati della persona, non solo dai ruoli di WordPress. Si 
 - **Presidente e vicepresidente**: agiscono come la segreteria finché la carica e la tessera sono valide.
 - **Tesoriere**: dall'area riservata incassa, registra le spese, iscrive nuovi soci e vende gli eventi. Non vede comunicazioni né impostazioni.
 - **Volontario**: non gestisce soldi; per le attività di cui è referente gestisce avvisi agli iscritti, staff e ingressi.
-- **Staff dell'ente**: verifica gli ingressi di tutti gli eventi, ma manda avvisi solo agli iscritti degli eventi di cui è staff (dalla versione 1.2.37 del plugin gratuito).
+- **Staff dell'ente**: verifica gli ingressi di tutti gli eventi, ma manda avvisi solo agli iscritti degli eventi di cui è staff.
 - **Staff dell'evento**: verifica gli ingressi di quell'evento e, se abilitato, incassa il biglietto sul posto.
 - **Socio**: i propri dati, la tessera, le prenotazioni e i pagamenti.
 
@@ -248,7 +248,7 @@ Nella pagina di accesso e nell'area riservata c'è il link **Primo accesso**.
 2. Se l'email è già quella di un socio, gli arriva il link per scegliere la password.
 3. Se non c'è corrispondenza sull'email, la richiesta arriva alla segreteria.
 
-Dalla 1.2.51 il socio può anche entrare con un **link o un codice** che riceve per email, senza password; dalla 1.2.52 la password però è **obbligatoria** e va scelta alla prima entrata. Vedi [Come entrano i soci: link, codice o utente WordPress](guida:accesso-dei-soci-link-codice-o-utente-wordpress).
+Il socio può anche entrare con un **link o un codice** che riceve per email, senza password; la password però è **obbligatoria** e va scelta alla prima entrata. Vedi [Come entrano i soci: link, codice o utente WordPress](guida:accesso-dei-soci-link-codice-o-utente-wordpress).
 
 La risposta mostrata al socio è sempre la stessa, così non si scopre chi è socio e chi no. Ogni indirizzo IP può fare 10 tentativi l'ora.
 
@@ -273,11 +273,11 @@ MD,
         'topic' => 'soci-e-tessere', 'section' => 'Area riservata', 'slug' => 'accesso-dei-soci-link-codice-o-utente-wordpress',
         'title' => 'Come entrano i soci: link, codice o utente WordPress',
         'body' => <<<'MD'
-> Disponibile in: Free, {piano_contabile}, {piano_fiscale} (dal gratuito 1.2.51 e dal Pro 1.1.41)
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
 ## Come entra un socio
 
-I nuovi soci **non hanno un utente WordPress**. Entrano nell'area riservata con **email e password**. La password è **obbligatoria** (dal gratuito 1.2.52): il socio la sceglie **alla prima entrata** o quando attiva l'accesso dal link; finché non l'ha scelta l'area riservata resta chiusa. Chi era stato creato con la 1.2.51 senza password la sceglie alla prossima entrata.
+I nuovi soci **non hanno un utente WordPress**. Entrano nell'area riservata con **email e password**. La password è **obbligatoria**: il socio la sceglie **alla prima entrata** o quando attiva l'accesso dal link; finché non l'ha scelta l'area riservata resta chiusa.
 
 Il **link** o il **codice** ricevuto per email restano come opzione, per entrare senza password. Per questo **la posta del sito deve funzionare**: link, codici e recupero password arrivano per email. Prova l'invio prima di aprire l'area ai soci.
 
@@ -310,7 +310,7 @@ Il sito usa un **cookie tecnico «asem_s»** per tenere aperto l'accesso dei soc
 
 ## Aggiornamento
 
-Gratuito e Pro 1.3.0 escono insieme e vanno aggiornati insieme. Crediti, risorse e notifiche push funzionano anche per i soci senza utente WordPress, e lo staff di un evento con l'incasso abilitato può addebitare crediti con il QR anche senza utente WordPress. La ricerca dei soci per cellulare è più veloce.
+Gratuito e Pro vanno aggiornati insieme. Crediti, risorse e notifiche push funzionano anche per i soci senza utente WordPress, e lo staff di un evento con l'incasso abilitato può addebitare crediti con il QR anche senza utente WordPress. La ricerca dei soci per cellulare è più veloce.
 MD,
     ],
 ];

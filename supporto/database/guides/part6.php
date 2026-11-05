@@ -95,9 +95,9 @@ MD,
         'topic' => 'domande-frequenti', 'section' => 'Licenza e dati', 'slug' => 'una-licenza-su-piu-siti',
         'title' => 'Posso usare una licenza su più siti?',
         'body' => <<<'MD'
-No: ogni licenza è legata a **un solo dominio**. I sottodomini contano come domini diversi (`miaassociazione.it` e `soci.miaassociazione.it` sono due domini).
+No: ogni licenza è legata a **un solo dominio**. La licenza vale per il dominio registrato e per tutti i suoi sottodomini: `miaassociazione.it` e `soci.miaassociazione.it` usano la stessa chiave.
 
-Se sposti il sito puoi cambiare il dominio della licenza dall'area riservata: sono consentiti **3 cambi ogni 30 giorni**. Vedi [Cambiare il dominio della licenza](guida:cambiare-il-dominio-della-licenza). I siti locali o di prova (`localhost`, `*.local`, `*.test`, indirizzi IP) non richiedono licenza.
+Se sposti il sito puoi cambiare il dominio della licenza dall'area riservata: il primo cambio è libero; dopo un cambio la chiave resta legata al nuovo dominio per un po' di giorni (lo vedi nell'area riservata) e, se ti serve prima, puoi aprire una richiesta. Vedi [Cambiare il dominio della licenza](guida:cambiare-il-dominio-della-licenza). I siti locali o di prova (`localhost`, `*.local`, `*.test`, indirizzi IP) non richiedono licenza.
 MD,
     ],
     [
@@ -235,7 +235,7 @@ MD,
         'topic' => 'domande-frequenti', 'section' => 'Uso quotidiano', 'slug' => 'come-fare-la-copia-di-sicurezza',
         'title' => 'Come faccio una copia di sicurezza dei dati?',
         'body' => <<<'MD'
-Da **Impostazioni → Tecniche → Copia di sicurezza** scarichi un file ZIP con tutti i dati del plugin (e, se vuoi, gli allegati). Il ripristino sostituisce i dati con quelli della copia, tutto o niente, dopo aver salvato lo stato precedente. Se l'ultima copia ha più di 30 giorni, la Bacheca te lo ricorda.
+Da **Impostazioni → Tecniche → Copia di sicurezza** scarichi un file ZIP con tutti i dati del plugin (e, se vuoi, gli allegati). Il ripristino sostituisce i dati con quelli della copia, tutto o niente, dopo aver salvato lo stato precedente. Se l'ultima copia è vecchia, la Bacheca te lo ricorda.
 
 È disponibile in tutte le versioni. Vedi [Fare una copia di sicurezza e ripristinarla](guida:copia-di-sicurezza-e-ripristino).
 MD,

@@ -156,7 +156,6 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 |---|---|---|---|
 | Chiave di licenza | Gratuita e facoltativa | Obbligatoria | Obbligatoria |
 | Prova gratis 30 giorni (una volta sola) | ✓ | — | — |
-| Prezzo | 0 € | 8 € al mese o 80 € all'anno | 12 € al mese o 100 € all'anno |
 
 > I prezzi e i piani sono sempre aggiornati nella sezione **Prezzi** di [associazionesemplice.it](https://associazionesemplice.it). Con una licenza non in regola Pro torna alle funzioni di base, senza toccare i dati.
 
