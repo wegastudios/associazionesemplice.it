@@ -102,8 +102,8 @@ Il volontario (o socio) lo chiede dall'**area riservata**, sezione **«Rimborsi 
 
 ## I tre tipi
 
-- **Spesa documentata**: serve lo scontrino o la fattura, in PDF o foto.
-- **Autocertificazione**: fino a **10 € al giorno** e **150 € al mese** per volontario. Vale solo se l'**assemblea ha deliberato** i tipi di spesa.
+- **Spesa documentata**: serve lo scontrino o la fattura, in PDF o foto. **Non ha un tetto**: i limiti qui sotto riguardano solo l'autocertificazione.
+- **Autocertificazione**: fino a **10 € al giorno** e **150 € al mese** per volontario (sono i limiti di legge, fissi nel plugin). Vale solo se l'**assemblea ha deliberato** i tipi di spesa.
 - **Chilometrico**: compare solo se in **Cassa → Rimborsi → Impostazioni** hai indicato la **tariffa al chilometro**. L'importo si calcola da solo.
 
 ## Approvare, rifiutare, pagare
