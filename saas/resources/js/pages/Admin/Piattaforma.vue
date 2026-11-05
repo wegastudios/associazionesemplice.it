@@ -33,6 +33,7 @@ const input = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
             <div class="mx-auto flex max-w-4xl items-center gap-4 px-4 py-3">
                 <BrandLogo />
                 <p class="flex-1 font-bold">Amministrazione della piattaforma</p>
+                <Link href="/admin/piattaforma/utenti" class="text-sm font-semibold text-accent hover:underline">Utenti e associazioni</Link>
                 <Link href="/associazioni" class="text-sm font-semibold text-accent hover:underline">Associazioni</Link>
                 <Link href="/esci" method="post" as="button" class="text-sm font-semibold text-accent hover:underline">Esci</Link>
             </div>
