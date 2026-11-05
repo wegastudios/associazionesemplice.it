@@ -135,6 +135,76 @@ dell'associazione.
 
 Errore di rete o 5xx: il portale **ritenta** (per esempio dopo 1, 5, 30 minuti, poi ogni ora) finché ottiene 200 o 409.
 
+### 2.3 Amministrazione della piattaforma (proposta v1.1, da confermare)
+
+Divisione dei compiti, decisa dalla titolare: **`app.associazionesemplice.it` è solo il gestionale delle singole
+associazioni** (nessuna pagina di amministrazione della piattaforma). L'amministrazione (contratto, upgrade, limiti,
+piani, utenti attivi e non) sta sul portale, in `associazionesemplice.it/saas`, e **chiama il SaaS con queste
+richieste firmate**. Il SaaS non ha un'interfaccia per gli amministratori della piattaforma.
+
+**Dove vivono i dati**
+
+| Cosa | Dove | Come cambia |
+|---|---|---|
+| Piani, pacchetti, limiti (soci, operatori, spazio, risorse…), stato dell'abbonamento | **portale** (unica fonte) | l'amministratore li cambia sul portale; il portale manda i diritti (2.2) con `rev + 1`. Il SaaS non ha scritture dirette sui limiti |
+| Sospensione e riattivazione di un'associazione | portale | con `status: "suspended"` / `"active"` nei diritti (2.2); non c'è un endpoint a parte |
+| Utenti (operatori): elenco, disattivazione e riattivazione | **SaaS** | richieste qui sotto |
+| Impostazioni tecniche (posta, backup, servizio chiavi, cache) | file d'ambiente del server | non sono esposte a nessuna interfaccia |
+
+**Autenticazione**: come §1 (JWT EdDSA, chiave del portale, `exp − iat` ≤ 600, `aud` `associazionesemplice-saas`),
+con in più due claim obbligatori:
+
+| Claim | Valore |
+|---|---|
+| `act` | l'amministratore che ha chiesto l'operazione (email o id dello staff del portale): finisce nel registro del SaaS accanto all'azione |
+| `scope` | `read` o `write`. Un token `read` non può mai eseguire una scrittura (`403 scope`) |
+
+Corpo sempre `{"token": "<JWT>"}`, tutte `POST` (il token non sta mai nell'indirizzo). Il `jti` di un token `write` si
+usa **una volta sola** (ripetere la stessa richiesta con un `jti` nuovo è comunque innocuo: le scritture sono
+«imposta a questo valore»). Limite: 120 richieste al minuto. Errori `{"error": "<codice>"}`: `invalid_token` (401),
+`scope` (403), `unknown_org` · `unknown_user` (404), `invalid_claims` (422), `replayed` (409).
+
+**Letture** (`typ: "admin_read"`, `scope: "read"`):
+
+`POST /api/portale/v1/admin/orgs` — elenco. Claim opzionali: `q` (nome o indirizzo), `status`, `page`, `per_page` (≤ 100).
+
+```json
+{ "page": 1, "per_page": 50, "total": 1, "orgs": [
+  { "org_id": "<uuid>", "ref": "sub_123", "name": "Polisportiva Alfa", "slug": "polisportiva-alfa",
+    "status": "active", "rev": 7, "created_at": "2026-11-04",
+    "operators": { "active": 2, "disabled": 1, "limit": 3 },
+    "members": 142, "members_limit": 150, "storage_limit_gb": 5 } ] }
+```
+
+`POST /api/portale/v1/admin/orgs/{org_id}` — dettaglio: gli stessi campi più `packages` (come ricevuti nei diritti),
+`until`, `partner`, ultima `rev` applicata e data.
+
+`POST /api/portale/v1/admin/orgs/{org_id}/operators` — operatori dell'associazione:
+
+```json
+{ "operators": [
+  { "user_id": "<uuid>", "name": "Anna Rossi", "email": "titolare@example.com", "role": "owner",
+    "disabled": false, "two_factor": true, "created_at": "2026-11-04" } ] }
+```
+
+**Scrittura** (`typ: "admin_write"`, `scope: "write"`):
+
+`POST /api/portale/v1/admin/users/{user_id}/state` con claim `disabled: true|false` (e `reason`, testo libero fino a
+200 caratteri, solo per il registro) → `200 {"user_id": "…", "disabled": true}`. Un utente disattivato non entra più
+e le sue sessioni si chiudono alla richiesta successiva. L'utente è globale: se è operatore in più associazioni, vale
+per tutte (il dettaglio lo dice).
+
+**Cosa NON arriva mai al portale**: dati dei soci (anagrafica, codice fiscale, contatti, residenza), dati sanitari e
+certificati, tutori, iscrizioni, movimenti e ricevute, consensi, contenuto dei file, chiavi di cifratura, password,
+segreti della verifica in due passaggi. Passano solo: numeri (soci, operatori, spazio), stato, e per gli operatori
+nome, email, ruolo e stato dell'accesso.
+
+**Non disponibile in v1**: «ultimo accesso» e spazio usato (il SaaS non li registra; si possono aggiungere se servono). Il limite di spazio (`storage_limit_gb`) c’è.
+
+**Chi può usare l'interfaccia** è deciso dal portale: solo lo staff amministratore, con un ruolo «solo lettura» che
+firma token `scope: read`. Il SaaS non conosce i ruoli del portale: si fida della firma e del `scope`, e registra
+`act` per ogni scrittura.
+
 ## 3. SaaS → portale
 
 ### 3.1 Consumi
@@ -191,4 +261,5 @@ Come per il supporto, la destinazione è fissa: niente indirizzi di ritorno pres
 3. Piani e pacchetti del SaaS nel listino (PERIMETRO.md §7.2), con `ref` stabile per abbonamento e `rev` per i diritti.
 4. Alla prima attivazione: 2.1, salvare `org_id`, poi 2.2. A ogni cambio: 2.2 con `rev + 1`, con ritento.
 5. Endpoint 3.1 (consumi) e pagina 3.2 (`/saas/accedi`).
-6. Prove contro lo staging del SaaS; i test del SaaS in `tests/Feature/Portale` mostrano richieste e risposte esatte.
+6. Amministrazione in `/saas` (§2.3), solo dopo la conferma della titolare.
+7. Prove contro lo staging del SaaS; i test del SaaS in `tests/Feature/Portale` mostrano richieste e risposte esatte.
