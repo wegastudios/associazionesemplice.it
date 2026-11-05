@@ -103,3 +103,17 @@
 	.asem .asem-tabs::-webkit-scrollbar{display:none}
 	.asem .asem-tabs .nav-tab{flex:none;float:none;margin:0;white-space:nowrap;min-height:44px;display:inline-flex;align-items:center}
 }
+
+/* Calendario delle date di un evento (mese o settimana) */
+.asem .asem-cal-nav { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.asem .asem-cal-views { margin-left: auto; }
+.asem .asem-cal-grid { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.asem .asem-cal-grid th { font-weight: 600; padding: 4px; text-align: center; background: #f6f7f7; border: 1px solid #dcdcde; }
+.asem .asem-cal-day { vertical-align: top; height: 72px; padding: 3px; border: 1px solid #dcdcde; }
+.asem .asem-cal-other { background: #f6f7f7; color: #8c8f94; }
+.asem .asem-cal-today { background: #fcf9e8; }
+.asem .asem-cal-n { display: block; font-size: 12px; color: #50575e; }
+.asem .asem-cal-s { display: block; margin-top: 2px; padding: 2px 4px; font-size: 12px; line-height: 1.3; border-radius: 3px; background: #e6f0fa; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.asem .asem-cal-full { background: #fbeaea; color: #b32d2e; }
+.asem .asem-cal-off { background: #f0f0f1; color: #8c8f94; text-decoration: line-through; }
+@media (max-width: 600px) { .asem .asem-cal-day { height: 56px; } .asem .asem-cal-s { font-size: 11px; padding: 1px 2px; } }

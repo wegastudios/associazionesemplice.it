@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.12
+Stable tag: 1.3.13
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,9 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.3.13 =
+* Event pages: visual month/week calendar next to the activity data, with the paid packages left per person; per-account collection cost (fixed + percentage) for physical POS terminals; resources paid in advance can be booked and settled at the desk when no online payment is active; the site menu no longer gets a second Area riservata entry.
 
 = 1.3.12 =
 * Phones: the activities table in the member area becomes one card per row, so payments no longer fall off screen; secondary button has an outline.

@@ -165,7 +165,7 @@ final class ResourceRulesTest extends TestCase {
 
 	public function test_upfront_resources_need_online_payments(): void {
 		$this->assertSame( array( 'online' ), R::pay_options( R::PAY_UPFRONT, true, 1000 ) );
-		$this->assertSame( array(), R::pay_options( R::PAY_UPFRONT, false, 1000 ), 'senza pagamenti online non si prenota' );
+		$this->assertSame( array( 'desk' ), R::pay_options( R::PAY_UPFRONT, false, 1000 ), 'senza pagamenti online si prenota lo stesso: si paga in segreteria' );
 	}
 
 	public function test_the_member_chooses_when_the_rule_says_so(): void {

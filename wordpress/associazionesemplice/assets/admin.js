@@ -889,3 +889,16 @@ window.asemPlacesInit = function () {
 		});
 	});
 })();
+
+/* Calendario delle date di un evento: toccando una data si apre la sua riga con le prenotazioni */
+(function () {
+	'use strict';
+	function openTarget() {
+		var h = window.location.hash;
+		if (h.indexOf('#asem-sess-') !== 0) { return; }
+		var d = document.getElementById(h.slice(1));
+		if (d && d.tagName === 'DETAILS') { d.open = true; d.scrollIntoView({ block: 'start' }); }
+	}
+	document.addEventListener('DOMContentLoaded', openTarget);
+	window.addEventListener('hashchange', openTarget);
+})();

@@ -257,7 +257,7 @@ final class ResourceRules {
 		}
 		switch ( $mode ) {
 			case self::PAY_UPFRONT:
-				$base = $online_available ? array( 'online' ) : array();
+				$base = $online_available ? array( 'online' ) : array( 'desk' ); // senza mezzi di pagamento online si prenota comunque: il contributo si salda in segreteria
 				break;
 			case self::PAY_CHOICE:
 				$base = $online_available ? array( 'online', 'desk' ) : array( 'desk' );

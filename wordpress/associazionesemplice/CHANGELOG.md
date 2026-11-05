@@ -2,6 +2,13 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.13
+- Nella pagina di un evento c'è un calendario da guardare, a mese o a settimana, accanto ai dati: toccando una data si aprono le sue prenotazioni.
+- Per chi ha un pacchetto di giornate già pagato, la segreteria vede ora chi ha ancora ingressi e quanti.
+- Per un POS fisico o un conto che trattiene una commissione puoi indicare il costo di incasso (fisso e percentuale): a ogni incasso compare la spesa in prima nota.
+- Senza pagamenti online attivi, una risorsa da pagare in anticipo si prenota lo stesso e il contributo si salda in segreteria.
+- Nel menu del sito «Area riservata» non compare più due volte.
+
 ## 1.3.12
 - Da telefono, nell'area soci la tabella delle attività diventa una scheda per riga (i pagamenti non restano fuori schermo) e il pulsante secondario ha il contorno
 
