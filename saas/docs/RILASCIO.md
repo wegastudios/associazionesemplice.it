@@ -9,7 +9,7 @@ Sub-account cPanel del reseller (produzione `associazionesemplice`, staging a pa
 
 ```
 ~/saas/
-  releases/20261104104457-e34d23686c/   una cartella per versione (si tengono le ultime 5)
+  releases/20261104104457-e34d23686c/   una cartella per versione (si tengono le ultime 5) (la cartella releases è 711: il web server deve attraversarla)
   current -> releases/…                 versione in uso
   shared/.env                           configurazione (permessi 600), da deploy/env.server.example
   shared/dedicated-dbs.json             database dedicati (se ce ne sono)

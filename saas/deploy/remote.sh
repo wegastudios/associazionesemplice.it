@@ -22,6 +22,9 @@ RELEASE="$BASE/releases/$(date -u +%Y%m%d%H%M%S)-$REV"
 mkdir -p "$BASE/releases" "$BASE/shared/storage/app/org-files" "$BASE/shared/storage/app/tmp" "$BASE/shared/storage/logs" \
          "$BASE/shared/storage/framework/cache" "$BASE/shared/storage/framework/sessions" "$BASE/shared/storage/framework/views"
 chmod 700 "$BASE/shared/storage/app/org-files" "$BASE/shared/storage/app/tmp"
+# Il web server (altro utente) deve attraversare releases/ per servire public/ della versione in uso; senza questo,
+# il sottodominio risponde 404 anche ai file statici. Solo attraversamento: l'elenco delle versioni resta chiuso.
+chmod 711 "$BASE/releases"
 chmod 600 "$BASE/shared/.env"
 
 mkdir -p "$RELEASE"
