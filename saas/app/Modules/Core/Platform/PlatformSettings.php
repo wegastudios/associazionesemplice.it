@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Platform;
 
+use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Contracts\Encryption\Encrypter;
 use Illuminate\Database\DatabaseManager;
@@ -46,8 +47,14 @@ final readonly class PlatformSettings
 
     public function __construct(
         private DatabaseManager $db,
-        private Encrypter $encrypter,
+        private Container $container,
     ) {}
+
+    /** Risolto solo quando serve: senza APP_KEY (composer install, build) l'avvio dell'applicazione non deve fallire. */
+    private function encrypter(): Encrypter
+    {
+        return $this->container->make(Encrypter::class);
+    }
 
     /** @return array<string, string> tutte le impostazioni presenti, in chiaro (solo per applicarle) */
     public function all(): array
@@ -58,7 +65,7 @@ final readonly class PlatformSettings
                 continue;
             }
             try {
-                $value = $this->encrypter->decryptString($row->value_enc);
+                $value = $this->encrypter()->decryptString($row->value_enc);
             } catch (DecryptException) {
                 continue; // chiave dell'applicazione cambiata: il valore non vale più
             }
@@ -121,7 +128,7 @@ final readonly class PlatformSettings
 
                 continue;
             }
-            (clone $table)->upsert([['key' => $key, 'value_enc' => $this->encrypter->encryptString($value), 'updated_by' => $userId, 'updated_at' => now()]], ['key'], ['value_enc', 'updated_by', 'updated_at']);
+            (clone $table)->upsert([['key' => $key, 'value_enc' => $this->encrypter()->encryptString($value), 'updated_by' => $userId, 'updated_at' => now()]], ['key'], ['value_enc', 'updated_by', 'updated_at']);
             $changed[] = $key;
         }
 
