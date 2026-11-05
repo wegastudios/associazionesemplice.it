@@ -72,6 +72,12 @@ final class HealthCommand extends Command
             }
         }
 
+        // I ripieghi in uso (posta nel log, cache sul database, chiave locale…) non sono errori, ma vanno visti.
+        $warnings = config('saas.platform_warnings');
+        foreach (is_array($warnings) ? $warnings : [] as $warning) {
+            $this->warn('nota  '.(is_string($warning) ? $warning : ''));
+        }
+
         return $failed === 0 ? self::SUCCESS : self::FAILURE;
     }
 

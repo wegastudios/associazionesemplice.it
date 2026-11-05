@@ -1,9 +1,10 @@
 <script setup>
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import GuestLayout from '../../layouts/GuestLayout.vue';
 
 defineProps({ orgs: { type: Array, required: true } });
 
+const admin = usePage().props.auth?.user?.platform_admin === true;
 const choose = (id) => router.post(`/associazioni/${id}`);
 </script>
 
@@ -28,6 +29,7 @@ const choose = (id) => router.post(`/associazioni/${id}`);
                 Chiedi a chi gestisce la tua associazione di invitarti, oppure controlla lo stato dell'abbonamento.
             </p>
         </div>
+        <p v-if="admin" class="mt-6 text-center text-sm"><Link href="/admin/piattaforma" class="font-semibold text-accent hover:underline">Amministrazione della piattaforma</Link></p>
         <p class="mt-6 text-center text-sm">
             <Link href="/esci" method="post" as="button" class="font-semibold text-accent hover:underline">Esci</Link>
         </p>

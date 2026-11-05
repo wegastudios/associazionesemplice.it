@@ -31,6 +31,24 @@ Sub-account cPanel del reseller (produzione `associazionesemplice`, staging a pa
 | ogni mese, il 1° | `saas:audit:partitions` 02:13 |
 | ogni settimana, lunedì | `saas:backup:restore-test` 06:17 (solo staging, con la chiave privata dei backup) |
 
+### Impostazioni dall'amministrazione
+
+Posta (SMTP), spazio dei backup (SFTP, con il testo della chiave privata), servizio chiavi e cache si impostano anche
+da **`/admin/piattaforma`**, oltre che da `shared/.env`: i valori stanno in `core.platform_settings`, cifrati con
+`APP_KEY` (cambiando `APP_KEY` vanno reinseriti), e all'avvio prendono il posto di quelli del file. Ogni sezione ha un
+pulsante di prova; nel registro di sicurezza finiscono i nomi delle impostazioni cambiate, mai i valori.
+L'amministratore della piattaforma si nomina sul server: `php artisan saas:admin:grant email` (`--revoke` per
+togliere); entra con la verifica in due passaggi e la conferma della password.
+
+Ripieghi automatici (`saas:health` li mostra come note, la pagina come avvisi):
+
+| Manca | Cosa succede |
+|---|---|
+| Redis (estensione o socket) | cache sul database (`core.cache`) |
+| server SMTP | le email finiscono nel log |
+| server SFTP dei backup | i dump restano in `shared/storage/app/backups` |
+| servizio chiavi (indirizzo e chiave di firma) | chiave principale locale (`SAAS_MASTER_KEY`): piattaforma **di prova**, il portale riceve 503 `key_service_not_configured` e non crea associazioni; quelle di prova si creano con `saas:org:create` |
+
 ## 2. Rilascio
 
 `.github/workflows/saas-deploy.yml`:

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Core\Http\Middleware\EnsurePlatformAdmin;
 use App\Modules\Core\Http\Middleware\EnsureTwoFactorConfirmed;
 use App\Modules\Core\Http\Middleware\HandleInertiaRequests;
 use App\Modules\Core\Http\Middleware\IdentifyOperatorOrg;
@@ -30,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'two-factor' => EnsureTwoFactorConfirmed::class,
             'operator' => IdentifyOperatorOrg::class,
+            'platform-admin' => EnsurePlatformAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -8,6 +8,7 @@ use App\Modules\Core\Console\CreateOrgCommand;
 use App\Modules\Core\Console\HealthCommand;
 use App\Modules\Core\Console\InviteOperatorCommand;
 use App\Modules\Core\Console\MigrateAllCommand;
+use App\Modules\Core\Console\PlatformAdminCommand;
 use App\Modules\Core\Contracts\DatabaseNames;
 use App\Modules\Core\Contracts\DataExport;
 use App\Modules\Core\Contracts\OrgContext;
@@ -16,6 +17,7 @@ use App\Modules\Core\Database\DatabaseRegistry;
 use App\Modules\Core\Export\CoreDataExport;
 use App\Modules\Core\Org\DatabaseOrgContext;
 use App\Modules\Core\Org\DatabaseOrgDirectory;
+use App\Modules\Core\Platform\PlatformConfig;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Database\Schema\Grammars\PostgresGrammar;
 use Illuminate\Queue\Events\JobFailed;
@@ -37,6 +39,12 @@ final class CoreServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Impostazioni della piattaforma (posta, backup, servizio chiavi, cache) al posto del file d'ambiente, con i ripieghi.
+        // Nei test no: ogni applicazione di prova aprirebbe una connessione in più (i test la chiamano da sé).
+        if (! $this->app->runningUnitTests()) {
+            $this->app->make(PlatformConfig::class)->apply();
+        }
+
         // Email e slug senza distinzione tra maiuscole e minuscole: $table->addColumn('citext', 'email').
         PostgresGrammar::macro('typeCitext', fn (): string => 'citext');
 
@@ -50,7 +58,7 @@ final class CoreServiceProvider extends ServiceProvider
         Event::listen(JobFailed::class, $reset);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([MigrateAllCommand::class, CreateOrgCommand::class, InviteOperatorCommand::class, HealthCommand::class]);
+            $this->commands([MigrateAllCommand::class, CreateOrgCommand::class, InviteOperatorCommand::class, HealthCommand::class, PlatformAdminCommand::class]);
 
             // Code su Postgres: un lavoratore a giro di cron, che si ferma quando la coda è vuota o dopo 50 secondi
             // (sul server non ci sono processi sempre attivi).

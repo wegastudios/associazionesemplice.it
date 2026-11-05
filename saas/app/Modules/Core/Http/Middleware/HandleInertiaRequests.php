@@ -25,7 +25,7 @@ final class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $user instanceof User ? ['name' => $user->name, 'email' => $user->email] : null,
+                'user' => $user instanceof User ? ['name' => $user->name, 'email' => $user->email, 'platform_admin' => $user->platform_admin] : null,
             ],
             // Funzione: si valuta quando la pagina viene preparata, dopo che il gestionale ha scelto l'associazione.
             'org' => static function (): ?array {
