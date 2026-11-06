@@ -241,12 +241,6 @@ final class Limits {
 		);
 		// ---------- Soci ----------
 		$add(
-			'price_lists_max', 'soci', 'Prezzi (listini) per evento o corso', 'listini', 30, 4, 100,
-			'Quanti prezzi diversi si possono definire su un evento o su un corso (per esempio intero, ridotto, studenti, pacchetti). Nel modulo ne vedi solo quelli che servono e ne aggiungi uno alla volta.',
-			'Più prezzi danno più scelta alla segreteria ma rendono più lunga la scelta in prenotazione e più facile sbagliare listino.',
-			'Con pochi prezzi il modulo resta semplice, ma un evento con molte tariffe non le contiene tutte.'
-		);
-		$add(
 			'guest_phone_required', 'soci', 'Cellulare obbligatorio per gli ospiti', 'flag', 1, 0, 1,
 			'Un ospite non si registra senza cellulare: è il dato che serve a riconoscerlo (anche se viene da soci diversi) e a contattarlo su WhatsApp.',
 			'Mantienilo attivo: è il comportamento consigliato.',

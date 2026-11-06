@@ -2,14 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
-## 1.3.17
-- Nel modulo «Prenota» di un evento, scelto il socio, la casella del pacchetto dice quale pacchetto ha e quanti ingressi gli restano. L'ingresso si scala già alla prenotazione.
-
-## 1.3.16
-- Eventi e corsi: i prezzi non sono più quattro fissi, ne aggiungi quanti servono e puoi cambiare il massimo dalle impostazioni.
-- Il numero massimo di prezzi per attività si cambia da Impostazioni → Limiti.
-
 ## 1.3.15
+- Nel modulo «Prenota» di un evento, scelto il socio, la casella del pacchetto dice quale pacchetto ha e quanti ingressi gli restano. L'ingresso si scala già alla prenotazione.
+- Eventi e corsi: i prezzi non sono più quattro fissi, ne aggiungi quanti servono (uno o più, senza limite).
 - Da telefono i moduli nelle schede (conti, attività) vanno su una colonna e non escono più dalla scheda.
 - Negli eventi ricorrenti la scheda diventa «Aggiungi o elimina date»: se un giorno è di festa, elimini quella data dall'elenco. Il pulsante «Annulla solo questa data» resta anche nella riga della data.
 - Nella pagina di un evento il riepilogo sta prima del calendario. Il calendario ha due viste, mese (di partenza) e giorno; nella vista giorno scegli la data con il selettore, scritta come 06/11/2026. La vista settimana è tolta.
