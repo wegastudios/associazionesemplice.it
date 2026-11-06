@@ -3,7 +3,7 @@ defineProps({ message: { type: String, default: null } });
 </script>
 
 <template>
-    <p v-if="message" class="rounded-lg border border-salvia/40 bg-salvia/10 px-3 py-2 text-sm font-semibold" role="status">
+    <p v-if="message" class="rounded-xl border border-salvia/30 bg-ok-soft px-4 py-3 text-sm font-semibold text-ok-ink" role="status">
         {{ message }}
     </p>
 </template>

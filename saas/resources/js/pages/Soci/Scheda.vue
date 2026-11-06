@@ -1,6 +1,8 @@
 <script setup>
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+import Avatar from '../../components/ui/Avatar.vue';
+import { ChevronLeft } from '../../components/ui/icons.js';
 import AppLayout from '../../layouts/AppLayout.vue';
 import PersonPicker from '../../components/PersonPicker.vue';
 
@@ -17,6 +19,18 @@ const form = useForm({
     level_id: p.level_id ?? '', host_person_id: '', joined_on: p.joined_on ?? '',
 });
 const isGuest = computed(() => form.type === 'guest');
+const tab = ref('dati');
+const tabs = computed(() => {
+    const p = props.person;
+    if (!p) return [];
+    const list = [{ key: 'dati', label: 'Dati' }];
+    if (!isGuest.value && p.type !== 'guardian') list.push({ key: 'tessera', label: 'Tessera' });
+    if (p.certificates) list.push({ key: 'salute', label: 'Certificato' });
+    if (p.minor || p.guardians.length || p.dependents.length) list.push({ key: 'famiglia', label: 'Famiglia' });
+    list.push({ key: 'consensi', label: 'Consensi' });
+    if ((props.canEdit && memberArea.value) || (props.canEdit && !p.left_on)) list.push({ key: 'altro', label: 'Altro' });
+    return list;
+});
 
 // Area soci: link d'accesso preparato dalla segreteria (per chi non ha email: si manda su WhatsApp).
 const page = usePage();
@@ -69,23 +83,35 @@ const setConsent = (channel, granted) => {
 const submitSettings = () => settingsForm.post('/gestionale/soci/impostazioni', { preserveScroll: true });
 const months = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
 
-const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text-ink disabled:opacity-70';
+const field = 'field';
 const label = 'space-y-1 text-sm';
 </script>
 
 <template>
     <Head :title="person ? `${person.last_name} ${person.first_name}` : 'Nuova scheda'" />
     <AppLayout>
-        <p class="mb-2 text-sm"><Link href="/gestionale/soci" class="font-semibold text-accent hover:underline">← Soci</Link></p>
-        <div class="mb-6 flex flex-wrap items-center gap-3">
-            <h1 class="text-2xl font-bold">{{ person ? `${person.first_name} ${person.last_name}` : 'Nuova scheda' }}</h1>
-            <span v-if="person?.left_on" class="rounded bg-surface px-2 py-0.5 text-sm">Uscito il {{ person.left_on }}</span>
-            <span v-else-if="person?.active" class="rounded bg-salvia/15 px-2 py-0.5 text-sm font-semibold">In regola</span>
-            <span v-else-if="person" class="rounded bg-giallo/20 px-2 py-0.5 text-sm">Senza tessera valida</span>
-            <span v-if="person?.minor" class="rounded bg-surface px-2 py-0.5 text-sm">Minorenne</span>
+        <Link href="/gestionale/soci" class="-ml-1 mb-1 inline-flex min-h-9 items-center gap-0.5 rounded-lg pr-2 text-sm font-semibold text-accent hover:underline"><ChevronLeft class="size-4" aria-hidden="true" />Soci</Link>
+        <div class="mb-4 flex items-center gap-4">
+            <Avatar v-if="person" :name="`${person.first_name} ${person.last_name}`" size="lg" />
+            <div class="min-w-0 flex-1">
+                <h1 class="page-title">{{ person ? `${person.first_name} ${person.last_name}` : 'Nuova scheda' }}</h1>
+                <p v-if="person" class="mt-1.5 flex flex-wrap gap-1.5">
+                    <span v-if="person.left_on" class="badge badge-neutral">Uscito il {{ person.left_on }}</span>
+                    <span v-else-if="person.active" class="badge badge-ok">In regola</span>
+                    <span v-else class="badge badge-warn">Senza tessera valida</span>
+                    <span v-if="person.minor" class="badge badge-neutral">Minorenne</span>
+                </p>
+            </div>
         </div>
 
-        <form class="space-y-6 rounded-2xl border border-line bg-card p-5" @submit.prevent="save">
+        <!-- Sezioni della scheda: una alla volta, così sul telefono la pagina resta corta. -->
+        <nav v-if="person" class="sticky top-14 z-20 -mx-4 mb-4 flex gap-2 overflow-x-auto bg-surface/95 px-4 py-2 backdrop-blur lg:top-0 lg:mx-0 lg:px-0" aria-label="Sezioni della scheda">
+            <button v-for="t in tabs" :key="t.key" type="button" :aria-pressed="tab === t.key"
+                :class="['inline-flex min-h-10 shrink-0 items-center rounded-full border px-4 text-sm font-semibold transition-colors', tab === t.key ? 'border-accent bg-accent text-accent-ink' : 'border-line bg-card text-ink hover:bg-surface']"
+                @click="tab = t.key">{{ t.label }}</button>
+        </nav>
+
+        <form v-show="!person || tab === 'dati'" class="space-y-6 card p-4 sm:p-5" @submit.prevent="save">
             <fieldset :disabled="!canEdit" class="grid gap-4 sm:grid-cols-3">
                 <legend class="mb-2 text-lg font-bold">Dati principali</legend>
                 <label :class="label"><span class="font-semibold">Tipo</span>
@@ -122,23 +148,23 @@ const label = 'space-y-1 text-sm';
             <ul v-if="Object.keys(form.errors).length" class="space-y-1 text-sm font-semibold text-danger" role="alert">
                 <li v-for="(e, k) in form.errors" :key="k">{{ e }}</li>
             </ul>
-            <button v-if="canEdit" type="submit" class="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" :disabled="form.processing">{{ person ? 'Salva la scheda' : 'Crea la scheda' }}</button>
+            <button v-if="canEdit" type="submit" class="btn btn-primary" :disabled="form.processing">{{ person ? 'Salva la scheda' : 'Crea la scheda' }}</button>
         </form>
 
         <template v-if="person">
-            <section v-if="!isGuest && person.type !== 'guardian'" class="mt-6 rounded-2xl border border-line bg-card p-5">
+            <section v-if="!isGuest && person.type !== 'guardian'" v-show="tab === 'tessera'" class="card p-4 sm:p-5">
                 <h2 class="mb-3 text-lg font-bold">Tesseramento</h2>
                 <p v-if="person.type === 'founder'" class="text-sm">Socio fondatore: la tessera è sempre rinnovata.</p>
-                <table v-if="person.memberships.length" class="mb-4 w-full text-sm">
-                    <thead class="text-left text-muted"><tr><th class="py-2">Anno sociale</th><th class="py-2">Valida fino al</th><th class="py-2">Origine</th><th class="py-2"></th></tr></thead>
-                    <tbody>
-                        <tr v-for="m in person.memberships" :key="m.id" class="border-t border-line" :class="m.valid ? '' : 'text-muted line-through'">
-                            <td class="py-2">{{ m.social_year }}</td><td class="py-2">{{ m.valid_to }}</td>
-                            <td class="py-2">{{ { payment: 'quota incassata', manual: 'senza incasso', import: 'importata', founder: 'fondatore' }[m.source] }}</td>
-                            <td class="py-2 text-right"><button v-if="canEdit && m.valid && m.source !== 'payment'" type="button" class="font-semibold text-accent" @click="revoke(m.id)">Togli</button></td>
-                        </tr>
-                    </tbody>
-                </table>
+                <ul v-if="person.memberships.length" class="list-group mb-4">
+                    <li v-for="m in person.memberships" :key="m.id" class="list-row" :class="m.valid ? '' : 'opacity-60'">
+                        <span class="min-w-0 flex-1">
+                            <span class="block font-semibold" :class="m.valid ? '' : 'line-through'">Anno sociale {{ m.social_year }}</span>
+                            <span class="caption block">fino al {{ m.valid_to }} – {{ { payment: 'quota incassata', manual: 'senza incasso', import: 'importata', founder: 'fondatore' }[m.source] }}</span>
+                        </span>
+                        <span v-if="m.valid" class="badge badge-ok">Valida</span><span v-else class="badge badge-neutral">Tolta</span>
+                        <button v-if="canEdit && m.valid && m.source !== 'payment'" type="button" class="btn btn-ghost btn-sm" @click="revoke(m.id)">Togli</button>
+                    </li>
+                </ul>
                 <form v-if="canEdit && person.type !== 'founder' && !person.left_on" class="grid gap-3 sm:grid-cols-5" @submit.prevent="submitRenew">
                     <label :class="label"><span class="font-semibold">Anno sociale</span>
                         <select v-model="renew.social_year" :class="field"><option :value="socialYear.current">{{ socialYear.current }}</option><option :value="socialYear.next">{{ socialYear.next }}</option></select></label>
@@ -146,16 +172,16 @@ const label = 'space-y-1 text-sm';
                     <label :class="label"><span class="font-semibold">Data</span><input v-model="renew.date" type="date" :class="field" required /></label>
                     <label :class="label"><span class="font-semibold">Conto</span>
                         <select v-model="renew.account_id" :class="field"><option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option></select></label>
-                    <div class="flex items-end"><button type="submit" class="w-full rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" :disabled="renew.processing">Incassa e rinnova</button></div>
+                    <div class="flex items-end"><button type="submit" class="btn-block btn btn-primary" :disabled="renew.processing">Incassa e rinnova</button></div>
                     <p class="text-sm text-muted sm:col-span-5">L'incasso va in prima nota con la ricevuta; stornandolo la tessera non vale più.</p>
                 </form>
                 <form v-if="canEdit && person.type !== 'founder' && !person.left_on" class="mt-4 flex flex-wrap items-end gap-3 border-t border-line pt-4" @submit.prevent="submitGrant">
                     <label :class="label" class="min-w-64 flex-1"><span class="font-semibold">Tessera senza incasso: motivo</span><input v-model="grant.reason" required placeholder="es. socio onorario" :class="field" /></label>
-                    <button type="submit" class="rounded-lg border border-line px-4 py-2 font-semibold">Registra la tessera {{ grant.social_year }}</button>
+                    <button type="submit" class="btn btn-secondary">Registra la tessera {{ grant.social_year }}</button>
                 </form>
             </section>
 
-            <section v-if="person.certificates" class="mt-6 rounded-2xl border border-line bg-card p-5">
+            <section v-if="person.certificates" v-show="tab === 'salute'" class="card p-4 sm:p-5">
                 <div class="mb-3 flex flex-wrap items-center gap-3">
                     <h2 class="text-lg font-bold">Certificato medico</h2>
                     <span class="rounded px-2 py-0.5 text-sm font-semibold" :class="certBadge[person.certificates.status]">{{ person.certificates.label }}</span>
@@ -180,12 +206,12 @@ const label = 'space-y-1 text-sm';
                     <label :class="label"><span class="font-semibold">Scadenza</span><input v-model="certForm.expires_on" type="date" :class="field" required /></label>
                     <label :class="label"><span class="font-semibold">Medico</span><input v-model="certForm.doctor" :class="field" /></label>
                     <label :class="label"><span class="font-semibold">File (PDF o foto)</span><input type="file" accept="application/pdf,image/jpeg,image/png" class="block w-full text-sm" @input="certForm.file = $event.target.files[0]" /></label>
-                    <div class="sm:col-span-5"><button type="submit" class="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" :disabled="certForm.processing">Registra il certificato</button></div>
+                    <div class="sm:col-span-5"><button type="submit" class="btn btn-primary" :disabled="certForm.processing">Registra il certificato</button></div>
                     <p v-if="certForm.errors.file || certForm.errors.expires_on" class="text-sm text-danger sm:col-span-5">{{ certForm.errors.file || certForm.errors.expires_on }}</p>
                 </form>
             </section>
 
-            <section v-if="person.minor || person.guardians.length" class="mt-6 rounded-2xl border border-line bg-card p-5">
+            <section v-if="person.minor || person.guardians.length" v-show="tab === 'famiglia'" class="mb-4 card p-4 sm:p-5">
                 <h2 class="mb-3 text-lg font-bold">Genitori o tutori</h2>
                 <p v-if="!person.guardians.length" class="mb-3 text-sm text-muted">Nessun tutore collegato. Il tutore operativo segue il minore nell'area soci.</p>
                 <ul class="mb-4 space-y-2 text-sm">
@@ -201,18 +227,18 @@ const label = 'space-y-1 text-sm';
                 </ul>
                 <form v-if="canEdit && person.guardians.length < 2" class="flex flex-wrap items-end gap-3" @submit.prevent="linkGuardian">
                     <div class="min-w-64 flex-1 space-y-1 text-sm"><label for="guardian" class="font-semibold">Collega un genitore o tutore</label><PersonPicker id="guardian" v-model="guardianForm.guardian_id" /></div>
-                    <button type="submit" class="rounded-lg border border-line px-4 py-2 font-semibold" :disabled="!guardianForm.guardian_id">Collega</button>
+                    <button type="submit" class="btn btn-secondary" :disabled="!guardianForm.guardian_id">Collega</button>
                 </form>
             </section>
 
-            <section class="mt-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="consents-title">
+            <section v-show="tab === 'consensi'" class="card p-4 sm:p-5" aria-labelledby="consents-title">
                 <h2 id="consents-title" class="mb-3 text-lg font-bold">Consensi</h2>
                 <div v-if="canEdit" class="mb-4 flex flex-wrap gap-3 text-sm">
                     <label class="space-y-1"><span class="block">Come è stato dato</span>
-                        <select v-model="consentForm.source" class="rounded-lg border border-line bg-card px-3 py-2"><option v-for="s in consentSources" :key="s.value" :value="s.value">{{ s.label }}</option></select>
+                        <select v-model="consentForm.source" class="field w-auto"><option v-for="s in consentSources" :key="s.value" :value="s.value">{{ s.label }}</option></select>
                     </label>
                     <label v-if="person.minor" class="space-y-1"><span class="block">Dato da</span>
-                        <select v-model="consentForm.given_by" class="rounded-lg border border-line bg-card px-3 py-2">
+                        <select v-model="consentForm.given_by" class="field w-auto">
                             <option value="">scegli il genitore o tutore</option>
                             <option v-for="g in person.guardians" :key="g.id" :value="g.id">{{ g.name }}</option>
                         </select>
@@ -234,44 +260,44 @@ const label = 'space-y-1 text-sm';
                 </ul>
             </section>
 
-            <section v-if="person.dependents.length" class="mt-6 rounded-2xl border border-line bg-card p-5">
+            <section v-if="person.dependents.length" v-show="tab === 'famiglia'" class="card p-4 sm:p-5">
                 <h2 class="mb-3 text-lg font-bold">È genitore o tutore di</h2>
                 <ul class="space-y-1 text-sm"><li v-for="d in person.dependents" :key="d.id"><Link :href="`/gestionale/soci/${d.id}`" class="font-semibold text-accent hover:underline">{{ d.name }}</Link></li></ul>
             </section>
 
-            <section v-if="canEdit && memberArea" class="mt-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="area-title">
+            <section v-if="canEdit && memberArea" v-show="tab === 'altro'" class="mb-4 card p-4 sm:p-5" aria-labelledby="area-title">
                 <h2 id="area-title" class="mb-2 text-lg font-bold">Area soci</h2>
                 <p class="mb-3 text-sm text-muted">Con l'email entra da solo: riceve un link e un codice. Senza email, prepara un link d'accesso (vale 7 giorni, una volta sola) e mandalo su WhatsApp.</p>
                 <div class="flex flex-wrap gap-3 text-sm">
-                    <button type="button" class="rounded-lg border border-line px-4 py-2 font-semibold" @click="memberPost('link')">Prepara il link d'accesso</button>
-                    <button type="button" class="rounded-lg border border-line px-4 py-2 font-semibold text-danger" @click="memberPost('esci')">Chiudi i suoi accessi</button>
+                    <button type="button" class="btn btn-secondary" @click="memberPost('link')">Prepara il link d'accesso</button>
+                    <button type="button" class="btn btn-danger" @click="memberPost('esci')">Chiudi i suoi accessi</button>
                 </div>
                 <div v-if="accessLink" class="mt-3 flex flex-wrap items-center gap-2">
                     <input :value="accessLink" readonly class="min-w-64 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm" aria-label="Link d'accesso" @focus="$event.target.select()" />
-                    <button type="button" class="rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-accent-ink" @click="copyLink">Copia</button>
+                    <button type="button" class="btn btn-primary btn-sm" @click="copyLink">Copia</button>
                 </div>
                 <p v-if="accessError" class="mt-2 text-sm text-danger" role="alert">{{ accessError }}</p>
                 <p v-if="accessDone" class="mt-2 text-sm" role="status">{{ accessDone }}</p>
             </section>
 
-            <section v-if="canEdit && !person.left_on" class="mt-6 rounded-2xl border border-line bg-card p-5">
+            <section v-if="canEdit && !person.left_on" v-show="tab === 'altro'" class="card p-4 sm:p-5">
                 <h2 class="mb-3 text-lg font-bold">Uscita dall'associazione</h2>
                 <form class="flex flex-wrap items-end gap-3" @submit.prevent="submitLeave">
                     <label :class="label"><span class="font-semibold">Data</span><input v-model="leave.date" type="date" :class="field" required /></label>
                     <label :class="label" class="min-w-64 flex-1"><span class="font-semibold">Motivo (facoltativo)</span><input v-model="leave.reason" :class="field" /></label>
-                    <button type="submit" class="rounded-lg border border-line px-4 py-2 font-semibold">Registra l'uscita</button>
+                    <button type="submit" class="btn btn-secondary">Registra l'uscita</button>
                 </form>
             </section>
         </template>
 
-        <section v-if="canSettings && !person" class="mt-6 rounded-2xl border border-line bg-card p-5">
+        <section v-if="canSettings && !person" class="mt-6 card p-4 sm:p-5">
             <h2 class="mb-3 text-lg font-bold">Impostazioni del tesseramento</h2>
             <form class="flex flex-wrap items-end gap-3" @submit.prevent="submitSettings">
                 <label :class="label"><span class="font-semibold">L'anno sociale inizia a</span>
                     <select v-model="settingsForm.start_month" :class="field"><option v-for="(m, i) in months" :key="m" :value="i + 1">{{ m }}</option></select></label>
                 <label :class="label"><span class="font-semibold">Quota associativa</span><input v-model="settingsForm.fee" inputmode="decimal" :class="field" /></label>
                 <label :class="label"><span class="font-semibold">Preavviso certificati (giorni)</span><input v-model="settingsForm.warn_days" type="number" min="1" max="365" :class="field" /></label>
-                <button type="submit" class="rounded-lg border border-line px-4 py-2 font-semibold">Salva</button>
+                <button type="submit" class="btn btn-secondary">Salva</button>
             </form>
         </section>
     </AppLayout>

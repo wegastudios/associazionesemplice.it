@@ -7,7 +7,7 @@ const props = defineProps({ pending: Array, decided: Array, firstFreeCard: Strin
 const settingsForm = useForm({ ...props.settings });
 const saveSettings = () => settingsForm.post('/gestionale/domande/impostazioni', { preserveScroll: true });
 const status = { approved: 'accolta', rejected: 'respinta' };
-const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text-ink';
+const field = 'field';
 </script>
 
 <template>
@@ -15,7 +15,7 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
     <AppLayout>
         <h1 class="mb-4 text-2xl font-bold">Domande di adesione</h1>
 
-        <section class="rounded-2xl border border-line bg-card p-5" aria-labelledby="pending-title">
+        <section class="card p-4 sm:p-5" aria-labelledby="pending-title">
             <h2 id="pending-title" class="mb-3 text-lg font-bold">Da esaminare</h2>
             <p v-if="!pending.length" class="text-sm text-muted">Nessuna domanda in attesa.</p>
             <ul v-else class="divide-y divide-line text-sm">
@@ -27,7 +27,7 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
             </ul>
         </section>
 
-        <section v-if="decided.length" class="mt-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="decided-title">
+        <section v-if="decided.length" class="mt-6 card p-4 sm:p-5" aria-labelledby="decided-title">
             <h2 id="decided-title" class="mb-3 text-lg font-bold">Decise di recente</h2>
             <ul class="divide-y divide-line text-sm">
                 <li v-for="a in decided" :key="a.id" class="flex flex-wrap items-center gap-3 py-2">
@@ -40,7 +40,7 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
             </ul>
         </section>
 
-        <section v-if="canSettings" class="mt-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="settings-title">
+        <section v-if="canSettings" class="mt-6 card p-4 sm:p-5" aria-labelledby="settings-title">
             <h2 id="settings-title" class="mb-3 text-lg font-bold">Domande online e promemoria</h2>
             <form class="grid gap-4 text-sm sm:grid-cols-2" @submit.prevent="saveSettings">
                 <label class="flex items-center gap-2 sm:col-span-2"><input v-model="settingsForm.applications_enabled" type="checkbox" /> Accetta domande di adesione online</label>
@@ -50,7 +50,7 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
                 <label class="space-y-1"><span class="block font-semibold">Indirizzo del regolamento</span><input v-model="settingsForm.rules_url" type="url" placeholder="https://" :class="field" /><span v-if="settingsForm.errors.rules_url" class="text-danger">{{ settingsForm.errors.rules_url }}</span></label>
                 <label class="flex items-center gap-2 sm:col-span-2"><input v-model="settingsForm.reminders_enabled" type="checkbox" /> Manda per email i promemoria di tessera e certificato medico in scadenza</label>
                 <label class="space-y-1"><span class="block font-semibold">Giorni di preavviso per la tessera</span><input v-model.number="settingsForm.reminders_days" type="number" min="1" max="365" :class="field" /></label>
-                <div class="sm:col-span-2"><button type="submit" class="rounded-lg bg-accent px-4 py-2 font-semibold text-white" :disabled="settingsForm.processing">Salva</button></div>
+                <div class="sm:col-span-2"><button type="submit" class="btn btn-primary" :disabled="settingsForm.processing">Salva</button></div>
             </form>
         </section>
     </AppLayout>

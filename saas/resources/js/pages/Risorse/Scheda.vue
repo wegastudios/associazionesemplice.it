@@ -89,7 +89,7 @@ const wait = useForm({ person_id: '', note: '' });
 const submitWait = () => wait.post(`/gestionale/risorse/${props.resource.id}/attesa`, { preserveScroll: true, onSuccess: () => wait.reset() });
 const leave = (w) => router.post(`/gestionale/risorse/${props.resource.id}/attesa/${w.person_id}/esci`, {}, { preserveScroll: true });
 
-const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text-ink disabled:opacity-70';
+const field = 'field';
 const label = 'space-y-1 text-sm';
 </script>
 
@@ -103,13 +103,13 @@ const label = 'space-y-1 text-sm';
         </div>
 
         <template v-if="resource && !resource.archived">
-            <section v-if="resource.typology === 'hourly'" class="mb-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="grid-title">
+            <section v-if="resource.typology === 'hourly'" class="mb-6 card p-4 sm:p-5" aria-labelledby="grid-title">
                 <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
                     <h2 id="grid-title" class="text-lg font-bold">Fasce del giorno</h2>
                     <div class="flex items-center gap-2 text-sm">
-                        <button type="button" class="rounded-lg border border-line px-3 py-2" aria-label="Giorno prima" @click="shift(-1)">←</button>
-                        <input type="date" :value="date" class="rounded-lg border border-line bg-card px-3 py-2" aria-label="Giorno" @change="goDay($event.target.value)" />
-                        <button type="button" class="rounded-lg border border-line px-3 py-2" aria-label="Giorno dopo" @click="shift(1)">→</button>
+                        <button type="button" class="field w-auto" aria-label="Giorno prima" @click="shift(-1)">←</button>
+                        <input type="date" :value="date" class="field w-auto" aria-label="Giorno" @change="goDay($event.target.value)" />
+                        <button type="button" class="field w-auto" aria-label="Giorno dopo" @click="shift(1)">→</button>
                     </div>
                 </div>
                 <div class="grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
@@ -122,7 +122,7 @@ const label = 'space-y-1 text-sm';
                 </div>
             </section>
 
-            <section v-if="canEdit" class="mb-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="book-title">
+            <section v-if="canEdit" class="mb-6 card p-4 sm:p-5" aria-labelledby="book-title">
                 <h2 id="book-title" class="mb-3 text-lg font-bold">{{ resource.typology === 'seasonal' ? 'Assegna per una stagione' : 'Nuova prenotazione' }}</h2>
                 <form class="grid gap-3 sm:grid-cols-4" @submit.prevent="submitBook">
                     <div class="flex flex-wrap gap-4 text-sm sm:col-span-4">
@@ -146,7 +146,7 @@ const label = 'space-y-1 text-sm';
                     </div>
                     <label :class="[label, 'sm:col-span-2']"><span class="font-semibold">Note</span><input v-model="book.note" :class="field" maxlength="255" /></label>
                     <div class="flex flex-wrap items-center gap-3 sm:col-span-4">
-                        <button type="submit" class="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" :disabled="book.processing">{{ resource.typology === 'seasonal' ? 'Assegna' : 'Prenota' }}</button>
+                        <button type="submit" class="btn btn-primary" :disabled="book.processing">{{ resource.typology === 'seasonal' ? 'Assegna' : 'Prenota' }}</button>
                         <span v-if="quote" class="text-sm">Dovuto: <strong class="tabular-nums">{{ quote }}</strong><template v-if="book.weeks > 1"> a settimana</template></span>
                         <span v-else-if="quoteError" class="text-sm text-danger">{{ quoteError }}</span>
                         <span class="text-sm text-muted">Chi ha la tessera valida paga la tariffa soci.</span>
@@ -155,7 +155,7 @@ const label = 'space-y-1 text-sm';
             </section>
         </template>
 
-        <section v-if="resource" class="mb-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="next-title">
+        <section v-if="resource" class="mb-6 card p-4 sm:p-5" aria-labelledby="next-title">
             <h2 id="next-title" class="mb-3 text-lg font-bold">{{ resource.typology === 'seasonal' ? 'Assegnazioni' : 'Prossime prenotazioni' }}</h2>
             <p v-if="!resource.upcoming.length" class="text-sm text-muted">Nessuna.</p>
             <ul class="divide-y divide-line text-sm">
@@ -185,8 +185,8 @@ const label = 'space-y-1 text-sm';
                         <label :class="label"><span class="font-semibold">Conto</span><select v-model="pay.account_id" :class="field"><option v-for="ac in accounts" :key="ac.id" :value="ac.id">{{ ac.name }}</option></select></label>
                         <label :class="label"><span class="font-semibold">Modalità</span><select v-model="pay.method" :class="field"><option value="">Quella del conto</option><option v-for="m in methods" :key="m.value" :value="m.value">{{ m.label }}</option></select></label>
                         <div class="flex gap-3 sm:col-span-4">
-                            <button type="submit" class="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" :disabled="pay.processing">Registra l'incasso</button>
-                            <button type="button" class="rounded-lg border border-line px-4 py-2" @click="paying = null">Annulla</button>
+                            <button type="submit" class="btn btn-primary" :disabled="pay.processing">Registra l'incasso</button>
+                            <button type="button" class="btn btn-secondary" @click="paying = null">Annulla</button>
                             <span class="self-center text-sm text-muted">Va in prima nota, con ricevuta se chi paga è in anagrafica.</span>
                         </div>
                     </form>
@@ -194,7 +194,7 @@ const label = 'space-y-1 text-sm';
             </ul>
         </section>
 
-        <section v-if="resource && resource.typology === 'seasonal'" class="mb-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="wait-title">
+        <section v-if="resource && resource.typology === 'seasonal'" class="mb-6 card p-4 sm:p-5" aria-labelledby="wait-title">
             <h2 id="wait-title" class="mb-3 text-lg font-bold">Lista d'attesa</h2>
             <p v-if="!resource.waitlist.length" class="mb-3 text-sm text-muted">Nessuno in attesa.</p>
             <ol class="mb-3 list-decimal space-y-1 pl-5 text-sm">
@@ -207,23 +207,23 @@ const label = 'space-y-1 text-sm';
             <form v-if="canEdit" class="flex flex-wrap items-end gap-3" @submit.prevent="submitWait">
                 <div class="min-w-64 flex-1 space-y-1 text-sm"><label for="wait-person" class="font-semibold">Aggiungi in lista</label><PersonPicker id="wait-person" v-model="wait.person_id" /></div>
                 <label class="space-y-1 text-sm"><span class="block font-semibold">Note</span><input v-model="wait.note" :class="field" maxlength="255" placeholder="es. barca 8 m" /></label>
-                <button type="submit" class="rounded-lg border border-line px-4 py-2 font-semibold" :disabled="!wait.person_id || wait.processing">Aggiungi</button>
+                <button type="submit" class="btn btn-secondary" :disabled="!wait.person_id || wait.processing">Aggiungi</button>
             </form>
             <p class="mt-2 text-xs text-muted">Quando la risorsa viene assegnata a chi è in lista, esce dalla lista da sola.</p>
         </section>
 
-        <section v-if="resource && canEdit && !resource.archived" class="mb-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="block-title">
+        <section v-if="resource && canEdit && !resource.archived" class="mb-6 card p-4 sm:p-5" aria-labelledby="block-title">
             <h2 id="block-title" class="mb-3 text-lg font-bold">Blocca la risorsa</h2>
             <form class="grid gap-3 sm:grid-cols-4" @submit.prevent="submitBlock">
                 <label :class="label"><span class="font-semibold">Dal</span><input v-model="block.from" type="datetime-local" :class="field" required /></label>
                 <label :class="label"><span class="font-semibold">Al</span><input v-model="block.to" type="datetime-local" :class="field" required /></label>
                 <label :class="[label, 'sm:col-span-2']"><span class="font-semibold">Motivo</span><input v-model="block.note" :class="field" maxlength="255" placeholder="es. manutenzione, torneo, chiusura" /></label>
-                <div class="sm:col-span-4"><button type="submit" class="rounded-lg border border-line px-4 py-2 font-semibold" :disabled="block.processing">Blocca</button>
+                <div class="sm:col-span-4"><button type="submit" class="btn btn-secondary" :disabled="block.processing">Blocca</button>
                     <span class="ml-3 text-sm text-muted">Non si blocca un periodo con prenotazioni: annullale prima.</span></div>
             </form>
         </section>
 
-        <form class="rounded-2xl border border-line bg-card p-5" @submit.prevent="save">
+        <form class="card p-4 sm:p-5" @submit.prevent="save">
             <h2 v-if="resource" class="mb-3 text-lg font-bold">Impostazioni</h2>
             <fieldset :disabled="!canEdit" class="grid gap-4 sm:grid-cols-3">
                 <label :class="[label, 'sm:col-span-2']"><span class="font-semibold">Nome</span><input v-model="form.name" :class="field" required maxlength="160" placeholder="es. Campo 1, Sala feste, Posto barca 12" /></label>
@@ -253,8 +253,8 @@ const label = 'space-y-1 text-sm';
                 <label :class="[label, 'sm:col-span-3']"><span class="font-semibold">Descrizione</span><textarea v-model="form.description" rows="2" :class="field" maxlength="2000" /></label>
             </fieldset>
             <div v-if="canEdit" class="mt-4 flex flex-wrap gap-3">
-                <button type="submit" class="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" :disabled="form.processing">{{ resource ? 'Salva' : 'Crea la risorsa' }}</button>
-                <button v-if="resource" type="button" class="rounded-lg border border-line px-4 py-2 font-semibold" @click="archive(!resource.archived)">{{ resource.archived ? 'Riattiva' : 'Archivia' }}</button>
+                <button type="submit" class="btn btn-primary" :disabled="form.processing">{{ resource ? 'Salva' : 'Crea la risorsa' }}</button>
+                <button v-if="resource" type="button" class="btn btn-secondary" @click="archive(!resource.archived)">{{ resource.archived ? 'Riattiva' : 'Archivia' }}</button>
             </div>
         </form>
     </AppLayout>

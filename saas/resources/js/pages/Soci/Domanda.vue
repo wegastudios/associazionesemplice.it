@@ -11,7 +11,7 @@ const approve = () => approveForm.post(`/gestionale/domande/${props.application.
 const reject = () => rejectForm.post(`/gestionale/domande/${props.application.id}/respingi`);
 const date = (iso) => (iso ? iso.split('-').reverse().join('/') : '');
 const yes = (v) => (v ? 'sì' : 'no');
-const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text-ink';
+const field = 'field';
 </script>
 
 <template>
@@ -21,7 +21,7 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
         <h1 class="mb-1 text-2xl font-bold">{{ d.last_name }} {{ d.first_name }}</h1>
         <p class="mb-4 text-sm text-muted">Arrivata il {{ application.submitted }} · {{ application.type }}<template v-if="application.minor"> · minore</template></p>
 
-        <section class="rounded-2xl border border-line bg-card p-5">
+        <section class="card p-4 sm:p-5">
             <dl class="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
                 <div><dt class="text-muted">Data di nascita</dt><dd>{{ date(d.birth_date) }}<template v-if="d.birth_place"> · {{ d.birth_place }}</template></dd></div>
                 <div><dt class="text-muted">Codice fiscale</dt><dd>{{ d.tax_code }}</dd></div>
@@ -44,16 +44,16 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
         </section>
 
         <div v-if="application.status === 'pending' && canEdit" class="mt-6 grid gap-6 sm:grid-cols-2">
-            <form class="space-y-3 rounded-2xl border border-line bg-card p-5 text-sm" @submit.prevent="approve">
+            <form class="space-y-3 card p-4 sm:p-5 text-sm" @submit.prevent="approve">
                 <h2 class="text-lg font-bold">Accogli</h2>
                 <label class="block space-y-1"><span class="font-semibold">Numero di tessera</span><input v-model="approveForm.card_number" :class="field" maxlength="40" /></label>
-                <button type="submit" class="rounded-lg bg-accent px-4 py-2 font-semibold text-white" :disabled="approveForm.processing">Accogli e crea la scheda</button>
+                <button type="submit" class="btn btn-primary" :disabled="approveForm.processing">Accogli e crea la scheda</button>
             </form>
-            <form class="space-y-3 rounded-2xl border border-line bg-card p-5 text-sm" @submit.prevent="reject">
+            <form class="space-y-3 card p-4 sm:p-5 text-sm" @submit.prevent="reject">
                 <h2 class="text-lg font-bold">Respingi</h2>
                 <label class="block space-y-1"><span class="font-semibold">Motivo</span><input v-model="rejectForm.reason" :class="field" maxlength="200" required /></label>
                 <p v-if="rejectForm.errors.reason" class="text-danger">{{ rejectForm.errors.reason }}</p>
-                <button type="submit" class="rounded-lg border border-line px-4 py-2 font-semibold text-danger" :disabled="rejectForm.processing || !rejectForm.reason.trim()">Respingi</button>
+                <button type="submit" class="btn btn-danger" :disabled="rejectForm.processing || !rejectForm.reason.trim()">Respingi</button>
             </form>
         </div>
         <p v-else-if="application.status !== 'pending'" class="mt-6 text-sm">Domanda {{ application.status === 'approved' ? 'accolta' : 'respinta' }}<template v-if="application.reason">: {{ application.reason }}</template>.

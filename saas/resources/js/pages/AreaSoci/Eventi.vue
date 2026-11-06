@@ -12,9 +12,9 @@ const cancel = (e) => confirm(`Annullare la prenotazione a ${e.activity} di ${e.
     <MemberLayout>
         <h1 class="mb-1 text-2xl font-bold">Eventi</h1>
         <p class="mb-4 text-sm text-muted">Le date dei prossimi due mesi. Il contributo si paga in segreteria o online da «Paga».</p>
-        <p v-if="!events.length" class="rounded-2xl border border-line bg-card p-6 text-center text-muted">Nessun evento in programma.</p>
+        <p v-if="!events.length" class="card p-5 sm:p-6 text-center text-muted">Nessun evento in programma.</p>
         <ul class="space-y-3">
-            <li v-for="e in events" :key="e.session_id" class="rounded-2xl border border-line bg-card p-4">
+            <li v-for="e in events" :key="e.session_id" class="card p-4">
                 <div class="flex flex-wrap items-start gap-3">
                     <div class="min-w-0 flex-1">
                         <p class="font-bold">{{ e.activity }}</p>
@@ -30,8 +30,8 @@ const cancel = (e) => confirm(`Annullare la prenotazione a ${e.activity} di ${e.
                             <span v-else class="text-xs text-muted">per annullare scrivi alla segreteria</span>
                         </template>
                         <span v-else-if="e.waiting" class="rounded-full bg-surface px-3 py-1">In lista d'attesa</span>
-                        <button v-else-if="e.free === 0" type="button" class="rounded-lg border border-line px-4 py-2 font-semibold" @click="post(`/area/eventi/${e.session_id}/attesa`)">Lista d'attesa</button>
-                        <button v-else type="button" class="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" @click="post(`/area/eventi/${e.session_id}/prenota`)">Prenota</button>
+                        <button v-else-if="e.free === 0" type="button" class="btn btn-secondary" @click="post(`/area/eventi/${e.session_id}/attesa`)">Lista d'attesa</button>
+                        <button v-else type="button" class="btn btn-primary" @click="post(`/area/eventi/${e.session_id}/prenota`)">Prenota</button>
                     </div>
                 </div>
             </li>

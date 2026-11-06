@@ -42,7 +42,7 @@ const saveRole = () => (editing.value === 'new'
 const deleteRole = (r) => router.delete(`/gestionale/ruoli/${r.id}`, { preserveScroll: true });
 const abilityLabel = (v) => props.abilities.find((a) => a.value === v)?.label ?? v;
 
-const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text-ink';
+const field = 'field';
 </script>
 
 <template>
@@ -51,7 +51,7 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
         <h1 class="mb-1 text-2xl font-bold">Operatori e ruoli</h1>
         <p class="mb-6 text-sm text-muted">Chi entra nel gestionale e cosa può fare. Ogni operatore entra con la verifica in due passaggi.</p>
 
-        <section class="rounded-2xl border border-line bg-card p-5" aria-labelledby="ops-title">
+        <section class="card p-4 sm:p-5" aria-labelledby="ops-title">
             <h2 id="ops-title" class="mb-3 text-lg font-bold">Operatori</h2>
             <ul class="divide-y divide-line text-sm">
                 <li v-for="o in operators" :key="o.user_id" class="flex flex-wrap items-center gap-3 py-3">
@@ -59,7 +59,7 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
                         <p class="font-semibold">{{ o.name }}<span v-if="o.me" class="ml-1 text-muted">(tu)</span></p>
                         <p class="text-muted">{{ o.email }}<span v-if="!o.two_factor"> · non ha ancora attivato l'accesso</span></p>
                     </div>
-                    <select v-if="o.editable" :value="valueOf(o)" class="rounded-lg border border-line bg-card px-3 py-2" :aria-label="`Ruolo di ${o.name}`" @change="changeRole(o, $event.target.value)">
+                    <select v-if="o.editable" :value="valueOf(o)" class="field w-auto" :aria-label="`Ruolo di ${o.name}`" @change="changeRole(o, $event.target.value)">
                         <option v-for="c in choices" :key="c.value" :value="c.value">{{ c.label }}</option>
                     </select>
                     <span v-else class="rounded bg-surface px-2 py-1">{{ o.role_label }}</span>
@@ -71,15 +71,15 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
                 <label class="space-y-1"><span class="block font-semibold">Email</span><input v-model="invite.email" type="email" :class="field" required /></label>
                 <label class="space-y-1"><span class="block font-semibold">Ruolo</span>
                     <select v-model="invite.choice" :class="field"><option v-for="c in choices" :key="c.value" :value="c.value">{{ c.label }}</option></select></label>
-                <button type="submit" class="self-end rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" :disabled="invite.processing">Invita</button>
+                <button type="submit" class="self-end btn btn-primary" :disabled="invite.processing">Invita</button>
                 <p v-if="invite.errors.email" class="text-danger sm:col-span-4">{{ invite.errors.email }}</p>
             </form>
         </section>
 
-        <section class="mt-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="roles-title">
+        <section class="mt-6 card p-4 sm:p-5" aria-labelledby="roles-title">
             <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <h2 id="roles-title" class="text-lg font-bold">Ruoli dell'associazione</h2>
-                <button v-if="editing === null" type="button" class="rounded-lg border border-line px-3 py-2 text-sm font-semibold" @click="startRole(null)">Nuovo ruolo</button>
+                <button v-if="editing === null" type="button" class="btn btn-secondary btn-sm" @click="startRole(null)">Nuovo ruolo</button>
             </div>
             <p class="mb-3 text-sm text-muted">Per segretari, consiglieri, tesorieri… con i permessi che scegli. Abbonamento, impostazioni e operatori restano a titolare e amministratore.</p>
 
@@ -91,8 +91,8 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
                     </div>
                 </fieldset>
                 <div class="flex gap-3">
-                    <button type="submit" class="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" :disabled="role.processing">Salva il ruolo</button>
-                    <button type="button" class="rounded-lg border border-line px-4 py-2" @click="editing = null">Annulla</button>
+                    <button type="submit" class="btn btn-primary" :disabled="role.processing">Salva il ruolo</button>
+                    <button type="button" class="btn btn-secondary" @click="editing = null">Annulla</button>
                 </div>
             </form>
 
@@ -112,7 +112,7 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
             </ul>
         </section>
 
-        <section class="mt-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="fixed-title">
+        <section class="mt-6 card p-4 sm:p-5" aria-labelledby="fixed-title">
             <h2 id="fixed-title" class="mb-3 text-lg font-bold">Ruoli fissi</h2>
             <dl class="space-y-2 text-sm">
                 <div v-for="r in fixedRoles" :key="r.value"><dt class="font-semibold">{{ r.label }}</dt><dd class="text-muted">{{ r.abilities.join(' · ') }}</dd></div>

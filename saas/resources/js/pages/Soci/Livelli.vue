@@ -8,7 +8,7 @@ const form = useForm({ name: '', base_type: 'ordinary', fee: '' });
 const create = () => form.post('/gestionale/soci/livelli', { preserveScroll: true, onSuccess: () => form.reset() });
 const edits = props.levels.map((l) => useForm({ name: l.name, base_type: l.base, fee: l.fee, active: l.active }));
 const save = (i) => edits[i].put(`/gestionale/soci/livelli/${props.levels[i].id}`, { preserveScroll: true });
-const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text-ink disabled:opacity-70';
+const field = 'field';
 </script>
 
 <template>
@@ -20,24 +20,24 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
 
         <div class="mb-8 space-y-3">
             <p v-if="!levels.length" class="text-sm text-muted">Nessun livello.</p>
-            <form v-for="(l, i) in levels" :key="l.id" class="grid gap-3 rounded-2xl border border-line bg-card p-4 sm:grid-cols-[2fr_1.5fr_1fr_auto_auto]" @submit.prevent="save(i)">
+            <form v-for="(l, i) in levels" :key="l.id" class="grid gap-3 card p-4 sm:grid-cols-[2fr_1.5fr_1fr_auto_auto]" @submit.prevent="save(i)">
                 <fieldset :disabled="!canEdit" class="contents">
                     <input v-model="edits[i].name" :class="field" aria-label="Nome" />
                     <select v-model="edits[i].base_type" :class="field" aria-label="Base"><option v-for="b in bases" :key="b.value" :value="b.value">{{ b.label }}</option></select>
                     <input v-model="edits[i].fee" inputmode="decimal" placeholder="Quota" :class="field" aria-label="Quota" />
                     <label class="flex items-center gap-2 text-sm"><input v-model="edits[i].active" type="checkbox" class="size-4 accent-indaco" /> attivo</label>
-                    <button v-if="canEdit" type="submit" class="rounded-lg border border-line px-3 py-2 text-sm font-semibold">Salva</button>
+                    <button v-if="canEdit" type="submit" class="btn btn-secondary btn-sm">Salva</button>
                 </fieldset>
                 <p class="text-xs text-muted sm:col-span-5">{{ l.people }} soci con questo livello</p>
             </form>
         </div>
 
-        <form v-if="canEdit" class="grid gap-3 rounded-2xl border border-line bg-card p-5 sm:grid-cols-[2fr_1.5fr_1fr_auto]" @submit.prevent="create">
+        <form v-if="canEdit" class="grid gap-3 card p-4 sm:p-5 sm:grid-cols-[2fr_1.5fr_1fr_auto]" @submit.prevent="create">
             <h2 class="text-lg font-bold sm:col-span-4">Nuovo livello</h2>
             <input v-model="form.name" required placeholder="Nome" :class="field" aria-label="Nome del nuovo livello" />
             <select v-model="form.base_type" :class="field" aria-label="Base del nuovo livello"><option v-for="b in bases" :key="b.value" :value="b.value">{{ b.label }}</option></select>
             <input v-model="form.fee" inputmode="decimal" placeholder="Quota (facoltativa)" :class="field" aria-label="Quota del nuovo livello" />
-            <button type="submit" class="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" :disabled="form.processing">Crea</button>
+            <button type="submit" class="btn btn-primary" :disabled="form.processing">Crea</button>
         </form>
     </AppLayout>
 </template>

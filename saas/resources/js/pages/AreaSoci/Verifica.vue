@@ -7,7 +7,7 @@ defineProps({ orgName: String, card: Object });
 <template>
     <Head title="Verifica della tessera" />
     <main class="flex min-h-full items-center justify-center px-4 py-12">
-        <section class="w-full max-w-sm rounded-2xl border border-line bg-card p-6 text-center shadow-sm" aria-labelledby="t">
+        <section class="w-full max-w-sm card p-5 sm:p-6 text-center shadow-sm" aria-labelledby="t">
             <p class="text-sm text-muted">{{ orgName }}</p>
             <h1 id="t" class="sr-only">Verifica della tessera</h1>
             <template v-if="card">

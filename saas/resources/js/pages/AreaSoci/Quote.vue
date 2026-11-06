@@ -10,9 +10,9 @@ defineProps({ details: Object, enrollments: Array, receipts: Array, member: Obje
     <MemberLayout>
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h1 class="text-2xl font-bold">Quote e ricevute</h1>
-            <Link href="/area/paga" class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-ink">Paga online</Link>
+            <Link href="/area/paga" class="btn btn-primary">Paga online</Link>
         </div>
-        <section class="mb-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="a">
+        <section class="mb-6 card p-4 sm:p-5" aria-labelledby="a">
             <h2 id="a" class="mb-3 text-lg font-bold">Corsi e attività</h2>
             <p v-if="!enrollments.length" class="text-sm text-muted">Nessuna iscrizione.</p>
             <ul class="divide-y divide-line text-sm">
@@ -25,7 +25,7 @@ defineProps({ details: Object, enrollments: Array, receipts: Array, member: Obje
                 </li>
             </ul>
         </section>
-        <section class="rounded-2xl border border-line bg-card p-5" aria-labelledby="r">
+        <section class="card p-4 sm:p-5" aria-labelledby="r">
             <h2 id="r" class="mb-3 text-lg font-bold">Ricevute</h2>
             <p v-if="!receipts.length" class="text-sm text-muted">Nessuna ricevuta.</p>
             <ul class="divide-y divide-line text-sm">

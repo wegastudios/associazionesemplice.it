@@ -49,7 +49,7 @@ const submitSpend = () => spend.transform((d) => ({ ...d, method: d.method || nu
 const archive = (archived) => router.post(`/gestionale/attivita/${props.activity.id}/archivia`, { archived }, { preserveScroll: true });
 const monthLabel = (m) => props.activity.months.find((x) => x.value === m)?.label ?? m;
 
-const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text-ink disabled:opacity-70';
+const field = 'field';
 const label = 'space-y-1 text-sm';
 </script>
 
@@ -63,12 +63,12 @@ const label = 'space-y-1 text-sm';
         </div>
 
         <section v-if="activity" class="mb-6 grid gap-3 sm:grid-cols-3" aria-label="Bilancio dell'attività">
-            <div class="rounded-2xl border border-line bg-card p-4"><p class="text-sm text-muted">Entrate</p><p class="text-xl font-bold tabular-nums">{{ activity.totals.income }}</p></div>
-            <div class="rounded-2xl border border-line bg-card p-4"><p class="text-sm text-muted">Uscite</p><p class="text-xl font-bold tabular-nums">{{ activity.totals.expense }}</p></div>
-            <div class="rounded-2xl border border-line bg-card p-4"><p class="text-sm text-muted">Risultato</p><p class="text-xl font-bold tabular-nums" :class="activity.totals.negative ? 'text-danger' : ''">{{ activity.totals.balance }}</p></div>
+            <div class="card p-4"><p class="text-sm text-muted">Entrate</p><p class="text-xl font-bold tabular-nums">{{ activity.totals.income }}</p></div>
+            <div class="card p-4"><p class="text-sm text-muted">Uscite</p><p class="text-xl font-bold tabular-nums">{{ activity.totals.expense }}</p></div>
+            <div class="card p-4"><p class="text-sm text-muted">Risultato</p><p class="text-xl font-bold tabular-nums" :class="activity.totals.negative ? 'text-danger' : ''">{{ activity.totals.balance }}</p></div>
         </section>
 
-        <form class="rounded-2xl border border-line bg-card p-5" @submit.prevent="save">
+        <form class="card p-4 sm:p-5" @submit.prevent="save">
             <fieldset :disabled="!canEdit" class="grid gap-4 sm:grid-cols-3">
                 <label :class="[label, 'sm:col-span-2']"><span class="font-semibold">Nome</span><input v-model="form.name" :class="field" required maxlength="160" /></label>
                 <label :class="label"><span class="font-semibold">Anno sociale</span><select v-model="form.social_year" :class="field"><option v-for="y in years" :key="y" :value="y">{{ y }}</option></select></label>
@@ -95,8 +95,8 @@ const label = 'space-y-1 text-sm';
                 <label :class="[label, 'sm:col-span-3']"><span class="font-semibold">Note</span><textarea v-model="form.notes" rows="2" :class="field" maxlength="2000" /></label>
             </fieldset>
             <div v-if="canEdit" class="mt-4 flex flex-wrap gap-3">
-                <button type="submit" class="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" :disabled="form.processing">{{ activity ? 'Salva' : 'Crea l\'attività' }}</button>
-                <button v-if="activity" type="button" class="rounded-lg border border-line px-4 py-2 font-semibold" @click="archive(!activity.archived)">{{ activity.archived ? 'Riapri' : 'Archivia' }}</button>
+                <button type="submit" class="btn btn-primary" :disabled="form.processing">{{ activity ? 'Salva' : 'Crea l\'attività' }}</button>
+                <button v-if="activity" type="button" class="btn btn-secondary" @click="archive(!activity.archived)">{{ activity.archived ? 'Riapri' : 'Archivia' }}</button>
             </div>
         </form>
 
@@ -105,7 +105,7 @@ const label = 'space-y-1 text-sm';
             <Link href="/gestionale/calendario" class="font-semibold text-accent hover:underline">Calendario</Link>
         </p>
 
-        <section v-if="activity && activity.bookable" class="mt-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="dates-title">
+        <section v-if="activity && activity.bookable" class="mt-6 card p-4 sm:p-5" aria-labelledby="dates-title">
             <h2 id="dates-title" class="mb-3 text-lg font-bold">Date</h2>
             <p v-if="!activity.sessions.length" class="mb-3 text-sm text-muted">Nessuna data: aggiungi la prima.</p>
             <ul class="divide-y divide-line text-sm">
@@ -125,12 +125,12 @@ const label = 'space-y-1 text-sm';
                 <label :class="label"><span class="font-semibold">Alle</span><input v-model="dates.end" type="time" :class="field" /></label>
                 <label :class="label"><span class="font-semibold">Posti</span><input v-model="dates.capacity" type="number" min="1" :class="field" placeholder="senza limite" /></label>
                 <label :class="[label, 'sm:col-span-2']"><span class="font-semibold">Luogo</span><input v-model="dates.location" :class="field" maxlength="190" /></label>
-                <div class="sm:col-span-4"><button type="submit" class="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" :disabled="dates.processing">Aggiungi {{ dates.weekly ? 'le date' : 'la data' }}</button></div>
+                <div class="sm:col-span-4"><button type="submit" class="btn btn-primary" :disabled="dates.processing">Aggiungi {{ dates.weekly ? 'le date' : 'la data' }}</button></div>
             </form>
         </section>
 
         <template v-if="activity">
-            <section v-if="!activity.bookable" class="mt-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="enrolled-title">
+            <section v-if="!activity.bookable" class="mt-6 card p-4 sm:p-5" aria-labelledby="enrolled-title">
                 <h2 id="enrolled-title" class="mb-3 text-lg font-bold">Iscritti</h2>
                 <p v-if="!activity.enrollments.length" class="mb-3 text-sm text-muted">Nessun iscritto.</p>
                 <ul class="divide-y divide-line text-sm">
@@ -158,8 +158,8 @@ const label = 'space-y-1 text-sm';
                             <label :class="label"><span class="font-semibold">Conto</span><select v-model="pay.account_id" :class="field"><option v-for="ac in accounts" :key="ac.id" :value="ac.id">{{ ac.name }}</option></select></label>
                             <label :class="label"><span class="font-semibold">Modalità</span><select v-model="pay.method" :class="field"><option value="">Quella del conto</option><option v-for="m in methods" :key="m.value" :value="m.value">{{ m.label }}</option></select></label>
                             <div class="flex gap-3 sm:col-span-4">
-                                <button type="submit" class="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" :disabled="pay.processing">Incassa con ricevuta</button>
-                                <button type="button" class="rounded-lg border border-line px-4 py-2" @click="paying = null">Annulla</button>
+                                <button type="submit" class="btn btn-primary" :disabled="pay.processing">Incassa con ricevuta</button>
+                                <button type="button" class="btn btn-secondary" @click="paying = null">Annulla</button>
                             </div>
                         </form>
                     </li>
@@ -168,11 +168,11 @@ const label = 'space-y-1 text-sm';
                     <div class="min-w-64 flex-1 space-y-1 text-sm"><label for="enroll-person" class="font-semibold">Iscrivi una persona</label><PersonPicker id="enroll-person" v-model="enroll.person_id" /></div>
                     <label v-if="activity.monthly" class="space-y-1 text-sm"><span class="block font-semibold">Dal mese</span>
                         <select v-model="enroll.start_month" :class="field"><option value="">questo mese</option><option v-for="m in activity.months" :key="m.value" :value="m.value">{{ m.label }}</option></select></label>
-                    <button type="submit" class="rounded-lg border border-line px-4 py-2 font-semibold" :disabled="!enroll.person_id || enroll.processing">Iscrivi</button>
+                    <button type="submit" class="btn btn-secondary" :disabled="!enroll.person_id || enroll.processing">Iscrivi</button>
                 </form>
             </section>
 
-            <section v-if="canAccounting" class="mt-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="spend-title">
+            <section v-if="canAccounting" class="mt-6 card p-4 sm:p-5" aria-labelledby="spend-title">
                 <h2 id="spend-title" class="mb-3 text-lg font-bold">Registra una spesa dell'attività</h2>
                 <form class="grid gap-3 sm:grid-cols-3" @submit.prevent="submitSpend">
                     <label :class="label"><span class="font-semibold">Importo</span><input v-model="spend.amount" inputmode="decimal" :class="field" required /></label>
@@ -180,12 +180,12 @@ const label = 'space-y-1 text-sm';
                     <label :class="label"><span class="font-semibold">Conto</span><select v-model="spend.account_id" :class="field"><option v-for="ac in accounts" :key="ac.id" :value="ac.id">{{ ac.name }}</option></select></label>
                     <label :class="[label, 'sm:col-span-2']"><span class="font-semibold">Descrizione</span><input v-model="spend.description" :class="field" placeholder="es. affitto palestra ottobre" /></label>
                     <label :class="label"><span class="font-semibold">Documento</span><input v-model="spend.document_ref" :class="field" placeholder="n. fattura o scontrino" /></label>
-                    <div class="sm:col-span-3"><button type="submit" class="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" :disabled="spend.processing">Registra la spesa</button>
+                    <div class="sm:col-span-3"><button type="submit" class="btn btn-primary" :disabled="spend.processing">Registra la spesa</button>
                         <span class="ml-3 text-sm text-muted">Va in prima nota come «Costo attività». Altri movimenti si collegano all'attività dalla prima nota.</span></div>
                 </form>
             </section>
 
-            <section class="mt-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="moves-title">
+            <section class="mt-6 card p-4 sm:p-5" aria-labelledby="moves-title">
                 <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
                     <h2 id="moves-title" class="text-lg font-bold">Movimenti</h2>
                     <Link :href="`/gestionale/prima-nota?attivita=${activity.id}`" class="text-sm font-semibold text-accent hover:underline">Apri in prima nota</Link>

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Soci\Providers;
 
 use App\Modules\Core\Contracts\DataExport;
+use App\Modules\Core\Contracts\HomeWidget;
 use App\Modules\Core\Contracts\PayableDues;
 use App\Modules\Core\Contracts\SetupStep;
 use App\Modules\Soci\Console\SendRemindersCommand;
@@ -12,6 +13,7 @@ use App\Modules\Soci\Contracts\MemberProfiles;
 use App\Modules\Soci\Contracts\Members;
 use App\Modules\Soci\Contracts\People;
 use App\Modules\Soci\Export\SociDataExport;
+use App\Modules\Soci\Home\SociHome;
 use App\Modules\Soci\Payments\MembershipDues;
 use App\Modules\Soci\Services\MemberProfilesService;
 use App\Modules\Soci\Services\MembershipService;
@@ -28,6 +30,7 @@ final class SociServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->tag([SociHome::class], HomeWidget::TAG);
         $this->app->tag([SociDataExport::class], DataExport::TAG);
         $this->app->tag([MembershipDues::class], PayableDues::TAG);
         $this->app->tag([MembershipStep::class, ApplicationsStep::class], SetupStep::TAG);

@@ -76,6 +76,11 @@ Regole:
 - password di almeno 12 caratteri, in produzione anche il controllo sulle violazioni note; 5 tentativi al minuto per
   email e indirizzo, 5 per il codice; conferma della password valida 15 minuti;
 - «Password dimenticata» risponde allo stesso modo che l'email esista o no;
+- **«Ricordami» vero**: senza la spunta l'accesso finisce quando si chiude il browser (`SESSION_EXPIRE_ON_CLOSE=true`) e
+  comunque dopo 2 ore senza attività; con la spunta il dispositivo resta riconosciuto 30 giorni (`auth.guards.web.remember`);
+- **cookie solo per il suo indirizzo**: nome proprio (`as_gestionale`, in produzione `__Host-as_gestionale`), senza
+  `Domain`: non lo ricevono né il portale (`associazionesemplice.it`, che ha una sessione sua) né i sottodomini dei
+  soci. Gestionale, portale e area soci hanno quindi sessioni **separate**: entrare in uno non fa entrare negli altri;
 - sessione cifrata, cookie solo HTTPS, Content-Security-Policy senza script esterni, pagine con dati non in cache,
   cronologia di Inertia cifrata, strumenti di sviluppo di Inertia spenti.
 
@@ -238,6 +243,14 @@ operatori e nessun pacchetto finché non ne ricevono.
   il pagato è la somma dei movimenti non stornati (`Ledger::liveAmounts`).
 - Permessi: vedere `people.view`; risorse, prenotazioni, blocchi e lista d'attesa `people.edit`; incassi anche
   `accounting.edit`. Prenotazione e pagamento online dei soci arriveranno con l'Area soci.
+
+## 9 sexies. Interfaccia
+
+Piano, principi e componenti in [DESIGN.md](DESIGN.md). In pratica: telefono prima; pulsanti e campi con le classi
+`btn`/`field` di `resources/css/app.css` (mai stringhe di utilità ripetute); fogli dal basso (`ui/Sheet`) per moduli e
+scelte; elenchi (`list-group`) al posto delle tabelle; la Home raccoglie da ogni modulo cosa c'è da fare e cosa
+succede oggi con il contratto `Core\Contracts\HomeWidget` (tag `saas.home-widgets`, voci `HomeItem`), per quello che
+l'operatore può vedere.
 
 ## 9 quinquies. Area soci (pacchetto, passo 1)
 

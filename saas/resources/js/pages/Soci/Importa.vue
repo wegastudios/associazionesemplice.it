@@ -11,7 +11,7 @@ const send = (apply) => {
 };
 const badge = { create: 'bg-salvia/15', update: 'bg-surface', error: 'bg-danger/15 text-danger' };
 const label = { create: 'nuova', update: 'aggiorna', error: 'errore' };
-const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text-ink';
+const field = 'field';
 </script>
 
 <template>
@@ -20,7 +20,7 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
         <p class="mb-2 text-sm"><Link href="/gestionale/soci" class="text-accent hover:underline">← Soci</Link></p>
         <h1 class="mb-4 text-2xl font-bold">Importa soci da Excel o CSV</h1>
 
-        <section v-if="result" class="mb-6 rounded-2xl border border-line bg-card p-5" role="status">
+        <section v-if="result" class="mb-6 card p-4 sm:p-5" role="status">
             <h2 class="mb-2 text-lg font-bold">Import completato</h2>
             <p>{{ result.created }} schede nuove, {{ result.updated }} aggiornate, {{ result.memberships }} tessere registrate, {{ result.guardians }} tutori collegati.</p>
             <template v-if="result.failed.length">
@@ -30,7 +30,7 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
             <p class="mt-3"><Link href="/gestionale/soci" class="font-semibold text-accent hover:underline">Vai all'elenco</Link></p>
         </section>
 
-        <section class="rounded-2xl border border-line bg-card p-5">
+        <section class="card p-4 sm:p-5">
             <p class="mb-3 text-sm text-muted">Servono almeno le colonne <strong>Nome</strong> e <strong>Cognome</strong>, e per ogni persona l'email, il cellulare o il numero di tessera. Si riconoscono anche:</p>
             <p class="mb-4 text-sm">{{ columns.join(' · ') }}. <a href="/gestionale/soci/modello-import.csv" class="font-semibold text-accent hover:underline">Scarica il modello</a></p>
             <p class="mb-4 text-sm text-muted">Chi è già in anagrafica (stessa tessera, email, cellulare, codice fiscale o nome) viene aggiornato con i soli dati presenti nel file. Prima vedi l'anteprima: nulla si salva finché non confermi.</p>
@@ -43,11 +43,11 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
                     <select v-model="form.default_type" :class="field"><option v-for="t in types" :key="t.value" :value="t.value">{{ t.label }}</option></select>
                 </label>
                 <label class="flex items-center gap-2 self-end"><input v-model="form.mark_current" type="checkbox" /> Registra a tutti i soci la tessera dell'anno in corso (senza incasso)</label>
-                <div class="sm:col-span-2"><button type="submit" class="rounded-lg border border-line px-4 py-2 font-semibold" :disabled="!form.file || form.processing">Mostra l'anteprima</button></div>
+                <div class="sm:col-span-2"><button type="submit" class="btn btn-secondary" :disabled="!form.file || form.processing">Mostra l'anteprima</button></div>
             </form>
         </section>
 
-        <section v-if="preview" class="mt-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="preview-title">
+        <section v-if="preview" class="mt-6 card p-4 sm:p-5" aria-labelledby="preview-title">
             <h2 id="preview-title" class="mb-2 text-lg font-bold">Anteprima</h2>
             <p class="mb-3 text-sm">{{ preview.create }} nuove · {{ preview.update }} da aggiornare · {{ preview.error }} con errori<template v-if="preview.sheets.length > 1"> · fogli: {{ preview.sheets.join(', ') }}</template></p>
             <div class="max-h-[28rem] overflow-auto">
@@ -61,7 +61,7 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
                     </tbody>
                 </table>
             </div>
-            <button type="button" class="mt-4 rounded-lg bg-accent px-4 py-2 font-semibold text-white" :disabled="form.processing || !(preview.create + preview.update)" @click="send(true)">
+            <button type="button" class="mt-4 btn btn-primary" :disabled="form.processing || !(preview.create + preview.update)" @click="send(true)">
                 Importa {{ preview.create + preview.update }} righe
             </button>
             <p v-if="preview.error" class="mt-2 text-sm text-muted">Le righe con errori si saltano: correggile nel file e ricaricalo quando vuoi.</p>

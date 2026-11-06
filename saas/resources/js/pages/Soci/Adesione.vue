@@ -31,12 +31,12 @@ const submit = () => form.post(`/adesione/${props.org.slug}`, { preserveScroll: 
         <h1 class="text-2xl font-bold">Domanda di adesione</h1>
         <p class="mb-6 text-muted">{{ org.name }}</p>
 
-        <section v-if="sent" class="rounded-2xl border border-line bg-card p-6" role="status">
+        <section v-if="sent" class="card p-5 sm:p-6" role="status">
             <h2 class="mb-2 text-lg font-bold">Grazie, la domanda è arrivata.</h2>
             <p>La segreteria la esamina e ti risponde per email. Se non trovi la conferma, guarda nella posta indesiderata.</p>
         </section>
 
-        <form v-else class="space-y-6 rounded-2xl border border-line bg-card p-6" novalidate @submit.prevent="submit">
+        <form v-else class="space-y-6 card p-5 sm:p-6" novalidate @submit.prevent="submit">
             <div v-if="errors.length" id="form-errors" tabindex="-1" class="rounded-lg border border-danger/40 bg-danger/10 p-4 text-sm" role="alert">
                 <p class="mb-1 font-semibold">Controlla questi punti:</p>
                 <ul class="list-disc pl-5"><li v-for="e in errors" :key="e">{{ e }}</li></ul>
@@ -51,7 +51,7 @@ const submit = () => form.post(`/adesione/${props.org.slug}`, { preserveScroll: 
                 <FormField id="birth_place" label="Luogo di nascita"><TextInput id="birth_place" v-model="form.birth_place" /></FormField>
                 <FormField id="tax_code" label="Codice fiscale"><TextInput id="tax_code" v-model="form.tax_code" autocapitalize="characters" maxlength="16" required /></FormField>
                 <FormField id="type" label="Tipo di socio">
-                    <select id="type" v-model="form.type" class="block w-full rounded-lg border border-line bg-card px-3 py-2.5 text-base">
+                    <select id="type" v-model="form.type" class="field">
                         <option v-for="t in types" :key="t.value" :value="t.value">{{ t.label }}</option>
                     </select>
                 </FormField>

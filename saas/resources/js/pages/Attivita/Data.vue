@@ -28,7 +28,7 @@ const pay = useForm({ account_id: props.accounts[0]?.id ?? '', date: props.today
 const submitPay = () => pay.transform((d) => ({ ...d, amount: d.amount || null, method: d.method || null }))
     .post(`/gestionale/attivita/prenotazioni/${paying.value}/incassa`, { preserveScroll: true, onSuccess: () => { paying.value = null; } });
 
-const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text-ink';
+const field = 'field';
 const label = 'space-y-1 text-sm';
 const states = { free: 'gratuita', paid: 'pagata', partial: 'pagata in parte', unpaid: 'da pagare' };
 </script>
@@ -46,7 +46,7 @@ const states = { free: 'gratuita', paid: 'pagata', partial: 'pagata in parte', u
             · <Link :href="`/gestionale/attivita/${activity.id}/presenze?mese=${session.date.slice(0, 7)}&giorno=${session.date}`" class="font-semibold text-accent hover:underline">presenze</Link>
         </p>
 
-        <section class="mb-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="bk-title">
+        <section class="mb-6 card p-4 sm:p-5" aria-labelledby="bk-title">
             <h2 id="bk-title" class="mb-3 text-lg font-bold">Prenotati</h2>
             <p v-if="!bookings.length" class="mb-3 text-sm text-muted">Nessuna prenotazione.</p>
             <ul class="divide-y divide-line text-sm">
@@ -69,8 +69,8 @@ const states = { free: 'gratuita', paid: 'pagata', partial: 'pagata in parte', u
                         <label :class="label"><span class="font-semibold">Conto</span><select v-model="pay.account_id" :class="field"><option v-for="ac in accounts" :key="ac.id" :value="ac.id">{{ ac.name }}</option></select></label>
                         <label :class="label"><span class="font-semibold">Modalità</span><select v-model="pay.method" :class="field"><option value="">Quella del conto</option><option v-for="m in methods" :key="m.value" :value="m.value">{{ m.label }}</option></select></label>
                         <div class="flex gap-3 sm:col-span-4">
-                            <button type="submit" class="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" :disabled="pay.processing">Incassa con ricevuta</button>
-                            <button type="button" class="rounded-lg border border-line px-4 py-2" @click="paying = null">Annulla</button>
+                            <button type="submit" class="btn btn-primary" :disabled="pay.processing">Incassa con ricevuta</button>
+                            <button type="button" class="btn btn-secondary" @click="paying = null">Annulla</button>
                         </div>
                     </form>
                 </li>
@@ -83,12 +83,12 @@ const states = { free: 'gratuita', paid: 'pagata', partial: 'pagata in parte', u
                         <option v-for="l in priceLists" :key="l.key" :value="l.key">{{ l.label }}</option>
                         <option value="_package">Un ingresso da un pacchetto già preso</option>
                     </select></label>
-                <button type="submit" class="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" :disabled="!book.person_id || book.processing || session.free === 0">Prenota</button>
+                <button type="submit" class="btn btn-primary" :disabled="!book.person_id || book.processing || session.free === 0">Prenota</button>
                 <span v-if="session.free === 0" class="text-sm text-danger">Posti esauriti: usa la lista d'attesa.</span>
             </form>
         </section>
 
-        <section v-if="session.capacity" class="mb-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="wl-title">
+        <section v-if="session.capacity" class="mb-6 card p-4 sm:p-5" aria-labelledby="wl-title">
             <h2 id="wl-title" class="mb-3 text-lg font-bold">Lista d'attesa</h2>
             <p v-if="!waitlist.length" class="mb-3 text-sm text-muted">Nessuno in attesa.</p>
             <ol class="mb-3 list-decimal space-y-1 pl-5 text-sm">
@@ -97,12 +97,12 @@ const states = { free: 'gratuita', paid: 'pagata', partial: 'pagata in parte', u
             </ol>
             <form v-if="canEdit && session.free === 0 && !session.cancelled" class="flex flex-wrap items-end gap-3" @submit.prevent="submitWait">
                 <div class="min-w-64 flex-1 space-y-1 text-sm"><label for="wl-person" class="font-semibold">Metti in lista</label><PersonPicker id="wl-person" v-model="wait.person_id" /></div>
-                <button type="submit" class="rounded-lg border border-line px-4 py-2 font-semibold" :disabled="!wait.person_id || wait.processing">Aggiungi</button>
+                <button type="submit" class="btn btn-secondary" :disabled="!wait.person_id || wait.processing">Aggiungi</button>
             </form>
             <p class="mt-2 text-xs text-muted">Quando si libera un posto (un annullamento o più posti) entra da solo il primo della lista, al contributo normale.</p>
         </section>
 
-        <section v-if="canEdit && !session.cancelled" class="rounded-2xl border border-line bg-card p-5" aria-labelledby="ed-title">
+        <section v-if="canEdit && !session.cancelled" class="card p-4 sm:p-5" aria-labelledby="ed-title">
             <h2 id="ed-title" class="mb-3 text-lg font-bold">Modifica la data</h2>
             <form class="grid gap-3 sm:grid-cols-4" @submit.prevent="submitEdit">
                 <label :class="label"><span class="font-semibold">Dalle</span><input v-model="edit.start" type="time" :class="field" /></label>
@@ -110,9 +110,9 @@ const states = { free: 'gratuita', paid: 'pagata', partial: 'pagata in parte', u
                 <label :class="label"><span class="font-semibold">Posti</span><input v-model="edit.capacity" type="number" min="1" :class="field" placeholder="senza limite" /></label>
                 <label :class="label"><span class="font-semibold">Luogo</span><input v-model="edit.location" :class="field" maxlength="190" /></label>
                 <div class="flex flex-wrap gap-3 sm:col-span-4">
-                    <button type="submit" class="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" :disabled="edit.processing">Salva</button>
-                    <button type="button" class="rounded-lg border border-line px-4 py-2 text-danger" @click="cancelSession(false)">Annulla la data</button>
-                    <button type="button" class="rounded-lg border border-line px-4 py-2 text-danger" @click="cancelSession(true)">Annulla questa e le successive</button>
+                    <button type="submit" class="btn btn-primary" :disabled="edit.processing">Salva</button>
+                    <button type="button" class="btn btn-danger" @click="cancelSession(false)">Annulla la data</button>
+                    <button type="button" class="btn btn-danger" @click="cancelSession(true)">Annulla questa e le successive</button>
                 </div>
             </form>
         </section>
