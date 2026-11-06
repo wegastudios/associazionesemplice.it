@@ -226,9 +226,10 @@ final class ActivitiesPage {
 		echo '<p class="description">' . esc_html( ActivityKind::labels()[ $activity['kind'] ] ?? $activity['kind'] ) . ' · ' . esc_html( self::fee_text( $activity ) ) . '</p>';
 		echo '<div class="asem-cols"><div class="asem-col">';
 		if ( ActivityKind::uses_sessions( $activity['kind'] ) ) {
-			self::sessions_calendar( $activity ); // il calendario sta in alto a sinistra, accanto ai dati dell'attività
+			self::sessions_summary( $activity ); // il riepilogo sta prima del calendario
+			self::sessions_calendar( $activity );
 			self::sessions_list( $activity, $back ); // le date e le prenotazioni restano nella stessa colonna, sotto il calendario
-			self::sessions_left( $activity, $back ); // riepilogo, staff e aggiunta di date
+			self::sessions_left( $activity, $back ); // staff e aggiunta di date
 		} else {
 			self::course_left( $activity, $year, $back );
 			self::course_enrolled( $activity, $year, $back ); // gli iscritti restano nella prima colonna, sotto il modulo di iscrizione
@@ -259,7 +260,7 @@ final class ActivitiesPage {
 				$first = $s['session_date']; // di partenza si mostra il periodo della prossima data
 			}
 		}
-		$view = in_array( Ui::get_str( 'cal' ), array( 'month', 'day' ), true ) ? Ui::get_str( 'cal' ) : 'week'; // di partenza la settimana
+		$view = 'day' === Ui::get_str( 'cal' ) ? 'day' : 'month'; // di partenza il mese
 		$ref  = Ui::get_str( 'cal_date' );
 		if ( ! preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $ref, $m ) || ! checkdate( (int) $m[2], (int) $m[3], (int) $m[1] ) ) {
 			$ref = '' !== $first ? $first : ( $by ? array_key_last( $by ) : $today );
@@ -271,12 +272,6 @@ final class ActivitiesPage {
 			$prev = $d->modify( '-1 day' );
 			$next = $d->modify( '+1 day' );
 			$head = wp_date( 'l j F Y', $d->getTimestamp() );
-		} elseif ( 'week' === $view ) {
-			$from = $d->modify( 'monday this week' );
-			$to   = $from->modify( '+6 days' );
-			$prev = $d->modify( '-7 days' );
-			$next = $d->modify( '+7 days' );
-			$head = wp_date( 'j M', $from->getTimestamp() ) . ' – ' . wp_date( 'j M Y', $to->getTimestamp() );
 		} else {
 			$m1   = $d->modify( 'first day of this month' );
 			$from = $m1->modify( 'monday this week' );
@@ -293,9 +288,12 @@ final class ActivitiesPage {
 			. '<a class="button" aria-label="Periodo precedente" href="' . esc_url( $link( $view, $prev->format( 'Y-m-d' ) ) ) . '">←</a> <strong>' . esc_html( $head ) . '</strong> '
 			. '<a class="button" aria-label="Periodo successivo" href="' . esc_url( $link( $view, $next->format( 'Y-m-d' ) ) ) . '">→</a> '
 			. '<span class="asem-cal-views"><a class="button' . ( 'day' === $view ? ' button-primary' : '' ) . '" href="' . esc_url( $link( 'day', $ref ) ) . '">Giorno</a> '
-			. '<a class="button' . ( 'week' === $view ? ' button-primary' : '' ) . '" href="' . esc_url( $link( 'week', $ref ) ) . '">Settimana</a> '
-			. '<a class="button' . ( 'month' === $view ? ' button-primary' : '' ) . '" href="' . esc_url( $link( 'month', $ref ) ) . '">Mese</a></span></p>'
-			. '<table class="asem-cal-grid"><thead><tr>';
+			. '<a class="button' . ( 'month' === $view ? ' button-primary' : '' ) . '" href="' . esc_url( $link( 'month', $ref ) ) . '">Mese</a></span></p>';
+		if ( 'day' === $view ) { // per cambiare giorno si sceglie la data (selettore del calendario, scritta come gg/mm/aaaa)
+			$html .= '<form method="get" action="' . esc_url( admin_url( 'admin.php' ) ) . '" class="asem-cal-pick"><input type="hidden" name="page" value="asem-activity"><input type="hidden" name="id" value="' . $id . '"><input type="hidden" name="cal" value="day">'
+				. '<label>Vai al giorno <input type="date" name="cal_date" value="' . esc_attr( $ref ) . '" required></label> <button class="button">Vai</button></form>';
+		}
+		$html .= '<table class="asem-cal-grid"><thead><tr>';
 		$names = array( 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom' );
 		$cols  = 'day' === $view ? 1 : 7;
 		foreach ( 'day' === $view ? array( $names[ (int) $from->format( 'N' ) - 1 ] ) : $names as $n ) {
@@ -735,7 +733,7 @@ final class ActivitiesPage {
 
 	// ---------- Eventi (una tantum e ricorrenti) ----------
 
-	private static function sessions_left( array $activity, string $back ): void {
+	private static function sessions_summary( array $activity ): void {
 		$id       = (int) $activity['id'];
 		$sessions = Plugin::activities()->sessions( $id );
 		$due      = 0;
@@ -755,11 +753,39 @@ final class ActivitiesPage {
 			. '<tr><td>Date</td><td>' . count( $sessions ) . '</td></tr><tr><td>Partecipanti (persone distinte)</td><td>' . (int) Plugin::activities()->active_participants( $id ) . '</td></tr>'
 			. '<tr><td>Contributi dovuti dalle prenotazioni</td><td>' . Ui::money( $due ) . '</td></tr><tr><td>Incassati</td><td>' . Ui::money( $paid ) . '</td></tr>'
 			. '<tr><td><strong>Ancora da incassare</strong></td><td><strong>' . Ui::money( $due - $paid ) . '</strong></td></tr></table></div>', Html::allowed() );
+	}
+
+	/** Eventi: staff e, per i ricorrenti, aggiunta di nuove date. */
+	private static function sessions_left( array $activity, string $back ): void {
+		$id = (int) $activity['id'];
 
 		self::staff_card( $activity, $back );
 
 		if ( ActivityKind::RECURRING === $activity['kind'] ) {
-			echo '<div class="asem-card"><h2>Aggiungi date</h2>';
+			echo '<div class="asem-card"><h2>Aggiungi o elimina date</h2>';
+			$upcoming = array_values(
+				array_filter(
+					Plugin::activities()->sessions( $id ),
+					function ( $s ) {
+						return empty( $s['cancelled_at'] ) && $s['session_date'] >= current_time( 'Y-m-d' );
+					}
+				)
+			);
+			echo '<h3>Elimina una data</h3><p class="description">Per un giorno di festa o di pausa: la data sparisce dal calendario e le prenotazioni non contano più. I pagamenti già ricevuti per quella data vanno rimborsati a mano.</p>';
+			if ( ! $upcoming ) {
+				echo '<p class="description">Non ci sono date future.</p>';
+			} else {
+				echo '<ul class="asem-dates">';
+				foreach ( $upcoming as $s ) {
+					echo '<li>';
+					Ui::form_open( 'asem_cancel_session', $back, false, 'asem-confirm asem-inline' );
+					echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ) . esc_html( Ui::date( $s['session_date'] ) . ( $s['start_time'] ? ' · ore ' . substr( (string) $s['start_time'], 0, 5 ) : '' ) ) . ' <button class="button button-small" data-confirm="Eliminare la data del ' . esc_attr( Ui::date( $s['session_date'] ) ) . '? Le prenotazioni non contano più; i pagamenti già ricevuti vanno rimborsati a mano.">Elimina</button>', Html::allowed() );
+					Ui::form_close();
+					echo '</li>';
+				}
+				echo '</ul>';
+			}
+			echo '<h3>Aggiungi date</h3>';
 			Ui::form_open( 'asem_add_dates', $back );
 			echo wp_kses( Ui::hidden( 'activity_id', $id ) . self::when_builder(), Html::allowed() );
 			echo '<p>Luogo <input type="text" name="location"> posti <input type="number" min="1" name="capacity" class="small-text"> <span class="description">(per le date che aggiungi; posti vuoti = nessun limite)</span></p>'

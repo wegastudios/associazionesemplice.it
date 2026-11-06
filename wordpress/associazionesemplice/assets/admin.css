@@ -117,3 +117,16 @@
 .asem .asem-cal-full { background: #fbeaea; color: #b32d2e; }
 .asem .asem-cal-off { background: #f0f0f1; color: #8c8f94; text-decoration: line-through; }
 @media (max-width: 600px) { .asem .asem-cal-day { height: 56px; } .asem .asem-cal-s { font-size: 11px; padding: 1px 2px; } }
+
+/* Telefono: i moduli dentro le schede (conti, attività) vanno a colonna e non escono dalla scheda */
+@media (max-width:782px){
+	.asem .asem-card{max-width:100%;box-sizing:border-box;overflow-wrap:anywhere}
+	.asem .asem-card .form-table,.asem .asem-card .form-table tbody,.asem .asem-card .form-table tr,.asem .asem-card .form-table th,.asem .asem-card .form-table td{display:block;width:100%;box-sizing:border-box;padding-left:0;padding-right:0}
+	.asem .asem-card .form-table th{padding-bottom:2px}
+	.asem .asem-card .form-table input[type=text],.asem .asem-card .form-table select{max-width:100%;box-sizing:border-box}
+	.asem .asem-card .form-table input[type=text][size]{width:auto;max-width:45%}
+	.asem .asem-card .form-table .description{margin-top:6px}
+}
+.asem .asem-cal-pick { margin: 6px 0 10px; }
+.asem .asem-dates { margin: 6px 0 12px; max-height: 260px; overflow-y: auto; }
+.asem .asem-dates li { margin: 0; padding: 4px 0; border-bottom: 1px solid #f0f0f1; }
