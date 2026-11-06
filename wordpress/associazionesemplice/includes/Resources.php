@@ -1065,6 +1065,83 @@ final class Resources {
 		return self::window_conflicts( $resource_id, $mine, $activity_id );
 	}
 
+	/**
+	 * Cambio di risorsa di un'attività: ciò che sulla nuova risorsa si sovrappone alle sue date (prenotazioni dei soci e altre attività, prossimi 120 giorni)
+	 * passa alla risorsa che si libera, cioè quella di prima. Le altre attività si spostano per intero (la risorsa è una per attività), le prenotazioni
+	 * dei soci una per una; i blocchi della risorsa non si spostano. Tutto o niente: se anche solo una cosa non entra nella risorsa di prima,
+	 * non si sposta nulla.
+	 *
+	 * @return array{moved:string[],blocked:string[]}
+	 */
+	public static function move_conflicts( int $activity_id, int $new_rid, int $old_rid ): array {
+		$out   = array( 'moved' => array(), 'blocked' => array() );
+		$old   = self::get( $old_rid );
+		$today = Db::today();
+		$to    = gmdate( 'Y-m-d', strtotime( $today . ' +120 days' ) );
+		if ( ! $old || ResourceRules::SLOT !== $old['mode'] || $new_rid === $old_rid ) {
+			$out['blocked'][] = 'la risorsa di prima non è più una risorsa a fasce orarie';
+			return $out;
+		}
+		$mine = array_values( array_filter( self::activity_busy( $new_rid, $today, $to ), function ( $w ) use ( $activity_id ) {
+			return (int) $w['activity_id'] === $activity_id;
+		} ) );
+		$res_ids = array();
+		$act_ids = array();
+		foreach ( $mine as $w ) {
+			foreach ( self::between( $new_rid, $w['starts'], $w['ends'] ) as $r ) {
+				if ( ResourceRules::KIND_BLOCK === $r['kind'] ) {
+					$out['blocked'][] = 'un blocco della risorsa (' . mysql2date( 'd/m/Y', (string) $r['starts_at'] ) . ') non si può spostare';
+				} else {
+					$res_ids[ (int) $r['id'] ] = $r;
+				}
+			}
+			foreach ( self::activity_busy( $new_rid, substr( $w['starts'], 0, 10 ), substr( $w['ends'], 0, 10 ) ) as $x ) {
+				if ( (int) $x['activity_id'] !== $activity_id && ResourceRules::overlaps( $w['starts'], $w['ends'], $x['starts'], $x['ends'] ) ) {
+					$act_ids[ (int) $x['activity_id'] ] = $x['title'];
+				}
+			}
+		}
+		if ( $out['blocked'] ) {
+			return $out;
+		}
+		$undo_acts = array();
+		$undo_res  = array();
+		$db        = self::db();
+		foreach ( $act_ids as $aid => $title ) { // prima le altre attività: poi le prenotazioni vedono anche loro sulla risorsa di prima
+			$was = self::activity_link( $aid );
+			$db->update( Db::t( 'activities' ), array( 'resource_id' => $old_rid ), array( 'id' => $aid ) );
+			$undo_acts[ $aid ] = $was;
+			if ( self::activity_overlaps( $aid, $old_rid ) ) {
+				$out['blocked'][] = '«' . $title . '» non entra sulla risorsa di prima (si sovrappone a qualcosa)';
+			} else {
+				$out['moved'][] = '«' . $title . '» (tutte le sue date)';
+			}
+		}
+		if ( ! $out['blocked'] ) {
+			foreach ( $res_ids as $rid => $r ) {
+				if ( self::between( $old_rid, (string) $r['starts_at'], (string) ( $r['ends_at'] ?: '9999-12-31 00:00:00' ) ) || self::window_conflicts( $old_rid, array( array( 'starts' => (string) $r['starts_at'], 'ends' => (string) ( $r['ends_at'] ?: '9999-12-31 00:00:00' ) ) ), -1 ) ) {
+					$out['blocked'][] = 'la prenotazione di ' . trim( $r['first_name'] . ' ' . $r['last_name'] ) . ' del ' . mysql2date( 'd/m/Y \a\l\l\e H:i', (string) $r['starts_at'] ) . ' non entra sulla risorsa di prima';
+					break;
+				}
+				$db->update( Db::t( 'reservations' ), array( 'resource_id' => $old_rid ), array( 'id' => $rid ) );
+				$undo_res[] = $rid;
+				$out['moved'][] = 'la prenotazione di ' . trim( $r['first_name'] . ' ' . $r['last_name'] ) . ' del ' . mysql2date( 'd/m/Y \a\l\l\e H:i', (string) $r['starts_at'] );
+			}
+		}
+		if ( $out['blocked'] ) { // niente di spostato
+			foreach ( $undo_acts as $aid => $was ) {
+				$db->update( Db::t( 'activities' ), array( 'resource_id' => $was ), array( 'id' => $aid ) );
+			}
+			foreach ( $undo_res as $rid ) {
+				$db->update( Db::t( 'reservations' ), array( 'resource_id' => $new_rid ), array( 'id' => $rid ) );
+			}
+			$out['moved'] = array();
+			return $out;
+		}
+		Audit::log( 'activity.resource_moved', 'activity', $activity_id, array( 'from' => $new_rid, 'to' => $old_rid, 'activities' => array_keys( $act_ids ), 'reservations' => array_keys( $res_ids ) ) );
+		return $out;
+	}
+
 	/** Tutte le sovrapposizioni già presenti sulle risorse a fasce (prossimi 120 giorni), da sistemare a mano. @return string[] "Risorsa: descrizione" */
 	public static function existing_overlaps(): array {
 		$out = array();

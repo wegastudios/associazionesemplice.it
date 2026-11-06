@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.7
+- Se cambi la risorsa di un'attività e la nuova è già occupata negli stessi orari, vedi cosa si sovrappone e il cambio non viene applicato.
+- Spuntando «Sposta sulla risorsa di prima ciò che si sovrappone», le prenotazioni e le altre attività che si sovrappongono passano alla risorsa che si libera; se lì non entrano, non si sposta niente.
+
 ## 1.3.6
 - Anche i corsi indicano la risorsa che usano, così i calendari si incrociano e una risorsa già impegnata non risulta libera.
 - Nuova scelta «Occupa la risorsa solo dove ci sono prenotazioni»: per le attività a fasce, gli orari senza prenotazioni restano liberi.
