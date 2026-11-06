@@ -58,8 +58,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Calendario interno e pubblicazione su Google Calendar, Apple e Outlook | ✓ | ✓ | ✓ |
 | Ingressi: elenco prenotati e registrazione | ✓ | ✓ | ✓ |
 | Biglietti con QR per le prenotazioni | ✓ | ✓ | ✓ |
-| Listini per eventi e corsi a date (individuale, di gruppo, pacchetti di ingressi) | ✓ | ✓ | ✓ |
-| Calendario dell'evento :: Giorno, settimana, mese, e pacchetti con ingressi ancora da usare | ✓ | ✓ | ✓ |
+| Listini :: Quanti prezzi vuoi per eventi e corsi a date: individuale, di gruppo, pacchetti di ingressi | ✓ | ✓ | ✓ |
+| Calendario dell'evento :: Mese e giorno, con selettore della data, e pacchetti con ingressi ancora da usare | ✓ | ✓ | ✓ |
 | Incasso sul posto agli eventi :: Incasso sul posto durante gli eventi | — | ✓ | ✓ |
 | Prenotazione di campi e sale :: Risorse a fasce orarie (campi, sale) con tariffe, ospiti e regole di prenotazione | — | ✓ | ✓ |
 | Posti auto, armadietti e posti barca :: Risorse assegnate a periodo (posti auto, armadietti, posti barca) con lista d'attesa | — | ✓ | ✓ |
@@ -67,7 +67,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Promemoria delle prenotazioni :: Promemoria prima della prenotazione di una risorsa | — | ✓ | ✓ |
 | Ingresso con il QR della prenotazione | — | ✓ | ✓ |
 | Report di occupazione :: Report di occupazione delle risorse | — | ✓ | ✓ |
-| Eventi collegati alle risorse :: Corsi ed eventi collegati alle risorse, con tempi di allestimento | — | ✓ | ✓ |
+| Corsi ed eventi e risorse :: Anche «fuori sede», con tempi di allestimento e fasce occupate solo dove ci sono prenotazioni | — | ✓ | ✓ |
 | Suggerimento dei luoghi con Google (con la tua chiave) | ✓ | ✓ | ✓ |
 | Pulsante «Non rinnova» nel corso: l'iscritto resta fino a fine periodo pagato e poi non deve più nulla; eliminando un corso si rende la quota proporzionale delle lezioni non tenute | ✓ | ✓ | ✓ |
 | Restituzioni :: Eliminando un corso, un evento o una singola iscrizione si restituisce solo ciò che non è ancora stato fatto; si può annullare una data o «questa data e le successive» (eventi ricorrenti e lezioni dei corsi) | ✓ | ✓ | ✓ |
