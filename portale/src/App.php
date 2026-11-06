@@ -51,8 +51,13 @@ final class App {
 
 	private function route( string $method, string $path ): void {
 		$get = 'GET' === $method;
-		if ( 0 === strpos( $path, '/admin' ) ) {
+		if ( 0 === strpos( $path, '/admin/piattaforma' ) ) {
+			// Vecchio indirizzo: la gestione del SaaS ora sta in /saas, con menu e permessi propri.
+			header( 'Location: /saas', true, 301 );
+		} elseif ( 0 === strpos( $path, '/admin' ) ) {
 			( new Admin( $this->db, $this->billing, $this->customerId() ) )->handle( $method, $path );
+		} elseif ( '/saas' === $path || 0 === strpos( $path, '/saas/' ) ) {
+			( new Platform( $this->db, $this->customerId() ) )->handle( $method, $path );
 		} elseif ( $get && '/' === $path ) {
 			View::render( 'home', array( 'plans' => Config::get( 'plans', array() ), 'trial' => Config::get( 'trial_enabled', true ) ? Settings::limit( 'trial_days' ) : 0 ) );
 		} elseif ( $get && '/api/piani' === $path ) {
@@ -64,7 +69,7 @@ final class App {
 			echo json_encode( Site::publicPlans(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
 		} elseif ( $get && '/robots.txt' === $path ) {
 			View::headers( 'text/plain; charset=utf-8' );
-			echo Config::get( 'indexable', false ) ? "User-agent: *\nAllow: /\nDisallow: /account\nDisallow: /admin\nDisallow: /api\nDisallow: /scarica\nDisallow: /entra\n" : "User-agent: *\nDisallow: /\n";
+			echo Config::get( 'indexable', false ) ? "User-agent: *\nAllow: /\nDisallow: /account\nDisallow: /admin\nDisallow: /saas\nDisallow: /api\nDisallow: /scarica\nDisallow: /entra\n" : "User-agent: *\nDisallow: /\n";
 		} elseif ( $get && isset( Legal::PAGES[ ltrim( $path, '/' ) ] ) ) {
 			$slug = ltrim( $path, '/' );
 			View::render( 'legal', array( 'title' => Legal::PAGES[ $slug ][0], 'html' => Legal::html( Legal::body( $slug ) ) ) );
@@ -144,10 +149,6 @@ final class App {
 			$this->enter( (string) $this->in( 'token' ) );
 		} elseif ( $get && 0 === strpos( $path, '/scarica/' ) ) {
 			$this->download( $path );
-		} elseif ( $get && ( '/saas' === $path || 0 === strpos( $path, '/saas/' ) ) ) {
-			// Amministrazione della piattaforma SaaS: sta nella gestione del portale (serve l'accesso dello staff), destinazione fissa.
-			header( 'Cache-Control: no-store' );
-			header( 'Location: /admin/piattaforma', true, 303 );
 		} elseif ( $get && '/supporto/accedi' === $path ) {
 			// Accesso unico al sito di supporto: serve aver fatto l'accesso qui; il ruolo (admin, solo supporto, cliente) si legge dall'email.
 			header( 'Cache-Control: no-store' );
@@ -227,7 +228,7 @@ final class App {
 		$role                = Staff::role( $this->db, (string) $cust['email'] ) ?? '';
 		$_SESSION['staff']    = $role;
 		$_SESSION['admin']    = Staff::ADMIN === $role;
-		$to = '' !== $role ? '/admin' : '/account';
+		$to = '' !== $role ? '/admin' : ( '' !== Staff::saas( $this->db, (string) $cust['email'] ) ? '/saas' : '/account' );
 		if ( '/supporto/accedi' === ( $_SESSION['after_login'] ?? '' ) ) {
 			$to = '/supporto/accedi';
 		}

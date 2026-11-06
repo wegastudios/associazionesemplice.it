@@ -4,7 +4,6 @@ $sections = array(
 	'cruscotto'    => array( 'Cruscotto', array( 'cruscotto' => array( '/admin', 'Cruscotto' ) ) ),
 	'piani'        => array( 'Piani', array( 'prezzi' => array( '/admin/prezzi', 'Piani e prezzi' ), 'versioni' => array( '/admin/versioni', 'Versioni del plugin' ) ) ),
 	'clienti'      => array( 'Clienti', array( 'licenze' => array( '/admin/licenze', 'Licenze' ), 'clienti' => array( '/admin/clienti', 'Clienti e domini' ), 'wega' => array( '/admin/wega', 'Da Wega' ), 'staff' => array( '/admin/staff', 'Staff e supporto' ) ) ),
-	'piattaforma'  => array( 'Piattaforma', array( 'piattaforma' => array( '/admin/piattaforma', 'Associazioni (SaaS)' ) ) ),
 	'impostazioni' => array( 'Impostazioni', array( 'impostazioni' => array( '/admin/impostazioni', 'Generali' ), 'pagamenti' => array( '/admin/pagamenti', 'Pagamenti' ), 'email' => array( '/admin/email', 'Email' ), 'registro' => array( '/admin/registro', 'Registro' ) ) ),
 	'pagine'       => array( 'Pagine', array( 'legale' => array( '/admin/legale', 'Privacy e cookie' ), 'cookie' => array( '/admin/cookie', 'Script e consenso' ) ) ),
 );
@@ -20,7 +19,7 @@ foreach ( $sections as $sk => $sec ) {
 }
 ?>
 <div class="wrap" style="padding-top:28px">
-<div class="admin-top"><h1>Gestione</h1><span class="muted small"><?php echo e( $admin_email ); ?> · <a href="/account">La mia area cliente</a> · <a href="<?php echo e( Portale\SupportSso::enabled() ? '/supporto/accedi' : Portale\SupportSso::supportUrl() ); ?>">Supporto</a></span></div>
+<div class="admin-top"><h1>Gestione</h1><span class="muted small"><?php echo e( $admin_email ); ?> · <?php if ( ! empty( $has_saas ) ) : ?><a href="/saas">Piattaforma SaaS</a> · <?php endif; ?><a href="/account">La mia area cliente</a> · <a href="<?php echo e( Portale\SupportSso::enabled() ? '/supporto/accedi' : Portale\SupportSso::supportUrl() ); ?>">Supporto</a></span></div>
 <nav class="tabs" aria-label="Gestione">
 <?php foreach ( $sections as $sk => $sec ) : $first = array_values( $sec[1] )[0]; ?><a href="<?php echo e( $first[0] ); ?>"<?php echo $sk === $current ? ' aria-current="page"' : ''; ?>><?php echo e( $sec[0] ); ?></a><?php endforeach; ?>
 </nav>
