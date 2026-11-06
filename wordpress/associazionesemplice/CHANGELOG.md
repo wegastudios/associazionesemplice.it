@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.17
+- Nel modulo «Prenota» di un evento, scelto il socio, la casella del pacchetto dice quale pacchetto ha e quanti ingressi gli restano. L'ingresso si scala già alla prenotazione.
+
 ## 1.3.16
 - Eventi e corsi: i prezzi non sono più quattro fissi, ne aggiungi quanti servono e puoi cambiare il massimo dalle impostazioni.
 - Il numero massimo di prezzi per attività si cambia da Impostazioni → Limiti.
