@@ -6586,7 +6586,11 @@ for ( $pl_i = 1; $pl_i <= 6; $pl_i++ ) {
 	$pl_six[] = array( 'label' => 'Prezzo ' . $pl_i, 'cents' => 1000 * $pl_i, 'entries' => 1 );
 }
 asem_ok( 6 === count( \AssociazioneSemplice\PriceLists::clean( $pl_six ) ) && 1 === count( \AssociazioneSemplice\PriceLists::clean( array_slice( $pl_six, 0, 1 ) ) ), 'listini: sei prezzi o uno solo, il numero non è fisso' );
-asem_ok( \AssociazioneSemplice\PriceLists::max() >= 4, 'listini: il massimo è un limite configurabile' );
+$pl_many = array();
+for ( $pl_i = 1; $pl_i <= 500; $pl_i++ ) {
+	$pl_many[] = array( 'label' => 'Ingresso ' . $pl_i, 'cents' => 100 * $pl_i, 'entries' => 1 );
+}
+asem_ok( 500 === count( \AssociazioneSemplice\PriceLists::clean( $pl_many ) ), 'listini: nessun limite pratico, anche 500 prezzi' );
 \AssociazioneSemplice\Resources::set_activity_slot_mode( $pl_act, true );
 asem_ok( \AssociazioneSemplice\Resources::activity_slot_mode( $pl_act ), 'risorse: la modalità «occupa solo con prenotazioni» si ricorda' );
 \AssociazioneSemplice\Resources::set_activity_slot_mode( $pl_act, false );
