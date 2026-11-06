@@ -67,8 +67,8 @@ ancora: la regola si applica quando il modulo viene scritto, non dopo.
 | Dove | Regola |
 |---|---|
 | Area soci, rimborsi spese | Un socio ordinario può avere diritto a un rimborso (per esempio ha anticipato il vino per una cena), ma non lo inserisce da solo dall'area soci: lo fa la segreteria, che lo registra. Dall'area soci chiedono il rimborso solo i volontari: per gli altri la voce «Rimborsi» non esiste (tolta dalle sezioni dell'area soci e la pagina non stampa nulla) e la richiesta è rifiutata anche lato server (Pro 1.3.4). |
-| Contabilità, conti | Ogni conto ha un costo di incasso: quota fissa `fee_fixed_cents` (massimo 2000, cioè 20 €) e percentuale `fee_bp` in punti base (massimo 2500, cioè 25%). A ogni incasso di segreteria o sul posto si registra una spesa «costo generale» pari a fisso + importo × `fee_bp` / 10000. Gli incassi online restano con le tariffe del gateway. |
+| Contabilità, conti | Ogni conto ha una «Commissione di incasso» (nell'interfaccia; prima «Costo di incasso»): quota fissa `fee_fixed_cents` (massimo 2000, cioè 20 €) e percentuale `fee_bp` in punti base (massimo 2500, cioè 25%). A ogni incasso di segreteria o sul posto si registra una spesa «costo generale» che in prima nota si legge «Commissione di incasso (stima) — <conto>» pari a fisso + importo × `fee_bp` / 10000. Gli incassi online restano con le tariffe del gateway. |
 | Risorse, opzioni di pagamento | Con la modalità «pagamento online in anticipo» e nessun pagamento online attivo l'opzione è `desk`: la risorsa si prenota e si salda in segreteria, invece di non avere alcuna opzione. |
 | Attività, segreteria | I pacchetti pagati con ingressi residui sono mostrati in segreteria (panoramica dei pacchetti e pacchetti della persona). |
 | Sito, menu | Il menu non riceve la voce «Area riservata» se la pagina è già in un qualsiasi menu. Verifica richiesta: una voce nel menu desktop e una nel menu mobile. |
-| Eventi, calendario | Vista settimana, mese e giorno. |
+| Eventi, calendario | Viste Giorno / Settimana / Mese, di partenza la settimana (plugin gratuito 1.3.14 / Pro 1.3.5). |
