@@ -58,7 +58,7 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 == Changelog ==
 
 = 1.3.15 =
-* Phone layout: forms inside cards (accounts, activities) stack in one column; event page: summary above the calendar, month and day views only (day view has a date picker).
+* Phone layout: forms inside cards (accounts, activities) stack in one column; event page: summary above the calendar, month and day views only (day view has a date picker); recurring events: "Add or remove dates" lists the upcoming dates so a holiday can be removed.
 
 = 1.3.14 =
 * Clearer wording in the event calendar, packages and account collection fee; dead payment error removed.

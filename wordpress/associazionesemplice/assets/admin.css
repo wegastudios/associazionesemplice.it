@@ -128,3 +128,5 @@
 	.asem .asem-card .form-table .description{margin-top:6px}
 }
 .asem .asem-cal-pick { margin: 6px 0 10px; }
+.asem .asem-dates { margin: 6px 0 12px; max-height: 260px; overflow-y: auto; }
+.asem .asem-dates li { margin: 0; padding: 4px 0; border-bottom: 1px solid #f0f0f1; }

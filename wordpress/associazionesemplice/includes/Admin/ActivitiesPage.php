@@ -762,7 +762,30 @@ final class ActivitiesPage {
 		self::staff_card( $activity, $back );
 
 		if ( ActivityKind::RECURRING === $activity['kind'] ) {
-			echo '<div class="asem-card"><h2>Aggiungi date</h2>';
+			echo '<div class="asem-card"><h2>Aggiungi o elimina date</h2>';
+			$upcoming = array_values(
+				array_filter(
+					Plugin::activities()->sessions( $id ),
+					function ( $s ) {
+						return empty( $s['cancelled_at'] ) && $s['session_date'] >= current_time( 'Y-m-d' );
+					}
+				)
+			);
+			echo '<h3>Elimina una data</h3><p class="description">Per un giorno di festa o di pausa: la data sparisce dal calendario e le prenotazioni non contano più. I pagamenti già ricevuti per quella data vanno rimborsati a mano.</p>';
+			if ( ! $upcoming ) {
+				echo '<p class="description">Non ci sono date future.</p>';
+			} else {
+				echo '<ul class="asem-dates">';
+				foreach ( $upcoming as $s ) {
+					echo '<li>';
+					Ui::form_open( 'asem_cancel_session', $back, false, 'asem-confirm asem-inline' );
+					echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ) . esc_html( Ui::date( $s['session_date'] ) . ( $s['start_time'] ? ' · ore ' . substr( (string) $s['start_time'], 0, 5 ) : '' ) ) . ' <button class="button button-small" data-confirm="Eliminare la data del ' . esc_attr( Ui::date( $s['session_date'] ) ) . '? Le prenotazioni non contano più; i pagamenti già ricevuti vanno rimborsati a mano.">Elimina</button>', Html::allowed() );
+					Ui::form_close();
+					echo '</li>';
+				}
+				echo '</ul>';
+			}
+			echo '<h3>Aggiungi date</h3>';
 			Ui::form_open( 'asem_add_dates', $back );
 			echo wp_kses( Ui::hidden( 'activity_id', $id ) . self::when_builder(), Html::allowed() );
 			echo '<p>Luogo <input type="text" name="location"> posti <input type="number" min="1" name="capacity" class="small-text"> <span class="description">(per le date che aggiungi; posti vuoti = nessun limite)</span></p>'
