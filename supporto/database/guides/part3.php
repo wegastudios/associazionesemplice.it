@@ -82,22 +82,22 @@ Dopo, nell'elenco degli iscritti, accanto a ogni persona trovi lo stesso menu co
 
 ## Quando un iscritto smette di venire
 
-Chi smette di venire a un corso ha **già fruito** del periodo pagato: **non si restituisce nulla**. Nella scheda del corso, accanto all'iscrizione attiva trovi il pulsante **«Non rinnova»**:
+Chi smette di venire a un corso ha già usufruito del periodo che ha pagato: **non si restituisce nulla**. Nella scheda del corso, accanto all'iscrizione attiva, c'è il pulsante **«Non rinnova»**:
 
 - l'iscritto **resta nel corso** fino alla fine del periodo già pagato (o del mese in corso);
-- poi **non deve più nulla**: non diventa debitore dei rinnovi successivi;
+- poi **non deve più nulla**, nemmeno i rinnovi successivi;
 - **non viene tolto** dal corso.
 
 **«Disdici il rinnovo»**, con la scelta del mese, resta per i casi particolari.
 
 ## Quando è l'associazione a non poter più tenere il corso
 
-Il **non fruito** si restituisce quando è l'organizzazione a non poter più fare l'attività (per esempio l'insegnante non può più tenere il corso). Eliminando il corso:
+Si restituisce ciò che non è stato ancora fatto quando è l'associazione a non poter più tenere l'attività (per esempio l'insegnante non può più fare il corso). Eliminando il corso:
 
-- un mese pagato per intero ma svolto a metà rende la quota delle **lezioni non ancora tenute**, in proporzione alle lezioni del mese: con un mese da 60 €, 4 lezioni e 2 già tenute, si rendono **30 €**;
-- i mesi **già interamente svolti** restano;
+- un mese pagato per intero ma fatto a metà: si rende la quota delle **lezioni non ancora tenute**. Esempio: mese da 60 €, 4 lezioni, 2 già tenute: si rendono **30 €**;
+- i mesi **già svolti per intero** restano incassati;
 - i mesi **senza lezioni svolte** si rendono per intero;
-- con **«annulla gli incassi»** un mese in parte svolto **resta com'è**: si può rendere solo con la **restituzione**.
+- con **«annulla gli incassi»** un mese fatto a metà **resta com'è**: si può rendere solo con la **restituzione**.
 
 ## Annullare o spostare una lezione
 
@@ -145,9 +145,9 @@ Un evento ha una o più date e, se vuoi, posti limitati e un contributo.
 - Le date già presenti non si duplicano.
 - Per più date, usa l'evento ricorrente.
 
-## La pagina dell'evento
+## Il calendario dell'evento
 
-La pagina dell'evento mostra un **calendario a settimana** (di partenza), **a mese** o **a giorno**, con le righe delle date sotto.
+Nella pagina dell'evento trovi il **Calendario dell'evento**. Lo vedi per **Giorno**, **Settimana** (di partenza) o **Mese**. Sotto ci sono le righe con le date.
 
 ## Chi lo gestisce
 
@@ -157,9 +157,9 @@ Nella scheda c'è **Gestori dell'evento**: i soci o volontari indicati possono, 
 
 Solo gli amministratori possono eliminare un evento, dal pulsante **Elimina l'evento** nella scheda. Se ci sono incassi la procedura chiede cosa fare delle somme (restituirle o annullarle) e una doppia conferma; se non ci sono, basta una conferma semplice.
 
-Eliminando un **evento** o un **corso**, il rimborso o l'annullamento riguardano **solo il non fruito**. Gli incassi legati a **date già svolte**, o a **mesi con almeno una lezione già svolta**, restano in prima nota e non vengono restituiti né annullati. Per esempio, per un corso tenuto a ottobre e annullato a novembre, ottobre resta e novembre si restituisce. La pagina di eliminazione ti mostra **quanti incassi restano**.
+Eliminando un **evento** o un **corso**, il rimborso o l'annullamento riguardano **solo ciò che non è ancora stato fatto**. Gli incassi di **date già svolte**, o di **mesi con almeno una lezione già svolta**, restano in prima nota: non vengono restituiti né annullati. Per esempio, per un corso tenuto a ottobre e annullato a novembre, ottobre resta e novembre si restituisce. La pagina di eliminazione ti mostra **quanti incassi restano**.
 
-Vale lo stesso anche cancellando una **singola iscrizione** (a una data di un evento o a un corso): si restituisce o si annulla solo il non fruito, e gli incassi già fruiti (data passata, mese con almeno una lezione svolta) restano in prima nota. Per la parte fruita la pagina e il messaggio finale ti dicono **quanto manca** (resta da incassare) oppure **quanto avanza** (credito da restituire a mano).
+Vale lo stesso se cancelli una **singola iscrizione** (a una data di un evento o a un corso): si restituisce o si annulla solo ciò che non è ancora stato fatto. Gli incassi di date passate, o di mesi con almeno una lezione svolta, restano in prima nota. Per la parte già fatta la pagina e il messaggio finale ti dicono **quanto manca** (da incassare) oppure **quanto avanza** (da restituire a mano).
 
 ## Annullare una data di un evento ricorrente
 
@@ -242,7 +242,10 @@ Un listino con un solo ingresso è una prenotazione normale; un listino con più
 2. Le altre date si prenotano con **usa pacchetto**: non c'è altro da pagare.
 3. Gli ingressi del pacchetto si consumano a ogni prenotazione.
 
-Per sapere a chi restano ingressi: nell'evento trovi l'elenco **«Pacchetti già pagati con ingressi residui»**; in **Cassa → Prenota**, scelta la persona, un riquadro mostra i suoi **pacchetti attivi** (oppure «nessun pacchetto attivo»).
+Per vedere a chi restano ingressi:
+
+- nella pagina dell'evento c'è **«Pacchetti con ingressi ancora da usare»**, con quanti ingressi restano a ciascuno;
+- in **Cassa → Prenota**, scelta la persona, vedi i suoi **«Pacchetti di …»**.
 
 > I listini non valgono per i **corsi a mensilità**: lì il contributo resta quello mensile del corso (vedi [Creare un corso](guida:creare-un-corso)).
 MD,
