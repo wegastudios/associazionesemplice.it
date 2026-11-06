@@ -242,7 +242,7 @@ final class Resources {
 	public static function activity_busy( int $resource_id, string $from, string $to ): array {
 		$res  = self::get( $resource_id );
 		$acts = array();
-		foreach ( self::db()->get_results( self::db()->prepare( 'SELECT id, kind, setup_before_min, setup_after_min FROM ' . Db::t( 'activities' ) . ' WHERE resource_id = %d AND deleted_at IS NULL', $resource_id ), ARRAY_A ) ?: array() as $a ) {
+		foreach ( self::db()->get_results( self::db()->prepare( 'SELECT id, kind, setup_before_min, setup_after_min, occupy_on_booking FROM ' . Db::t( 'activities' ) . ' WHERE resource_id = %d AND deleted_at IS NULL', $resource_id ), ARRAY_A ) ?: array() as $a ) {
 			$acts[ (int) $a['id'] ] = $a;
 		}
 		$out = array();
@@ -255,6 +255,9 @@ final class Resources {
 			if ( ! $a ) {
 				continue;
 			}
+			if ( ! empty( $a['occupy_on_booking'] ) && (int) ( $o['session_id'] ?? 0 ) > 0 && ! self::session_has_bookings( (int) $o['session_id'] ) ) {
+				continue; // attività a fasce: la risorsa è occupata solo dalle fasce con prenotazioni vere
+			}
 			$before = ResourceRules::setup_total( (int) $res['setup_before_min'], null === $a['setup_before_min'] ? null : (int) $a['setup_before_min'], (string) $a['kind'] );
 			$after  = ResourceRules::setup_total( (int) $res['setup_after_min'], null === $a['setup_after_min'] ? null : (int) $a['setup_after_min'], (string) $a['kind'] );
 			$w      = ResourceRules::busy_window( (string) $o['date'], $o['start'] ?: null, $o['end'] ?: null, $before, $after );
@@ -263,6 +266,39 @@ final class Resources {
 		return $out;
 	}
 
+
+	/** Una data di un evento ha almeno una prenotazione valida. */
+	private static function session_has_bookings( int $session_id ): bool {
+		return (int) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) . " WHERE session_id = %d AND status = 'booked'", $session_id ) ) > 0;
+	}
+
+	/** Attività «a fasce»: la risorsa è occupata solo dalle date con prenotazioni. Si imposta dal modulo dell'attività. */
+	public static function set_activity_slot_mode( int $activity_id, bool $on ): void {
+		self::db()->update( Db::t( 'activities' ), array( 'occupy_on_booking' => $on ? 1 : 0 ), array( 'id' => $activity_id ) );
+		Audit::log( 'activity.slot_mode', 'activity', $activity_id, array( 'on' => $on ) );
+	}
+
+	public static function activity_slot_mode( int $activity_id ): bool {
+		return (bool) self::db()->get_var( self::db()->prepare( 'SELECT occupy_on_booking FROM ' . Db::t( 'activities' ) . ' WHERE id = %d', $activity_id ) );
+	}
+
+	/**
+	 * Prima di una prenotazione a una data di un'attività a fasce: la fascia (allestimenti compresi) non deve sovrapporsi a una prenotazione della
+	 * risorsa né a un'altra attività. @return string messaggio, vuoto se tutto libero
+	 */
+	public static function booking_conflict( int $session_id ): string {
+		$s = self::db()->get_row( self::db()->prepare( 'SELECT * FROM ' . Db::t( 'sessions' ) . ' WHERE id = %d', $session_id ), ARRAY_A );
+		if ( ! $s ) {
+			return '';
+		}
+		$activity_id = (int) $s['activity_id'];
+		$rid         = self::activity_link( $activity_id );
+		if ( ! $rid || ! self::activity_slot_mode( $activity_id ) ) {
+			return '';
+		}
+		$over = self::dates_overlaps( $activity_id, array( array( 'date' => $s['session_date'], 'start' => $s['start_time'] ?: null, 'end' => $s['end_time'] ?: null ) ) );
+		return $over ? 'Questa fascia non è disponibile: la risorsa è già occupata da ' . implode( '; ', array_slice( $over, 0, 3 ) ) . '.' : '';
+	}
 
 	/** La griglia di un giorno: per ogni fascia, libera oppure la prenotazione (o l'attività) che la occupa. */
 	public static function day_grid( array $res, string $date ): array {

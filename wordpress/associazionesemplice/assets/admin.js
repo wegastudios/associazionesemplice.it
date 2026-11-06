@@ -902,3 +902,28 @@ window.asemPlacesInit = function () {
 	document.addEventListener('DOMContentLoaded', openTarget);
 	window.addEventListener('hashchange', openTarget);
 })();
+
+/* Listini di eventi e corsi: il pulsante aggiunge una riga vuota, fino al limite scelto nelle Impostazioni */
+(function () {
+	'use strict';
+	document.addEventListener('click', function (ev) {
+		var btn = ev.target.closest ? ev.target.closest('.asem-pl-add') : null;
+		if (!btn) { return; }
+		ev.preventDefault();
+		var box = btn.parentNode.previousElementSibling;
+		if (!box || !box.classList.contains('asem-pl')) { return; }
+		var rows = box.querySelectorAll('.asem-pl-row:not(.asem-pl-head)');
+		var max = parseInt(box.getAttribute('data-max') || '30', 10);
+		if (!rows.length || rows.length >= max) { if (rows.length >= max) { btn.disabled = true; } return; }
+		var clone = rows[rows.length - 1].cloneNode(true);
+		var idx = rows.length;
+		clone.querySelectorAll('input').forEach(function (inp) {
+			inp.name = inp.name.replace(/\[\d+\]/, '[' + idx + ']');
+			if (inp.type === 'number') { inp.value = '1'; } else if (inp.type !== 'hidden' || /pl_key/.test(inp.name)) { inp.value = ''; }
+			if (/pl_entries/.test(inp.name) && inp.type === 'hidden') { inp.value = '1'; }
+		});
+		box.appendChild(clone);
+		var first = clone.querySelector('.asem-pl-name'); if (first) { first.focus(); }
+		if (rows.length + 1 >= max) { btn.disabled = true; }
+	});
+})();

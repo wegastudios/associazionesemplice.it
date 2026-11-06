@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.15
+Stable tag: 1.3.16
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,9 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
 == Changelog ==
+
+= 1.3.16 =
+* Event and course prices are no longer limited to four: add as many as you need. Courses must name the resource they use, and activities by time slot can occupy the resource only where there are bookings.
 
 = 1.3.15 =
 * Phone layout: forms inside cards (accounts, activities) stack in one column; event page: summary above the calendar, month and day views only (day view has a date picker); recurring events: "Add or remove dates" lists the upcoming dates so a holiday can be removed.

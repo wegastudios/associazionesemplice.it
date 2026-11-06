@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '53';
+	const DB_VERSION        = '54';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -320,6 +320,7 @@ final class Install {
   credit_price int(11) DEFAULT NULL,
   setup_before_min int(11) DEFAULT NULL,
   setup_after_min int(11) DEFAULT NULL,
+  occupy_on_booking tinyint(1) NOT NULL DEFAULT 0,
   notes text,
   created_at datetime NOT NULL,
   deleted_at datetime DEFAULT NULL,

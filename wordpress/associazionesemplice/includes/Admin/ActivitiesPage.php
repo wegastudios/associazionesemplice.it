@@ -543,6 +543,27 @@ final class ActivitiesPage {
 		return $html . '</select>';
 	}
 
+	/** Una riga del listino (nome, prezzo, ingressi per gli eventi). */
+	private static function price_row( int $i, array $l, bool $course ): string {
+		return '<div class="asem-pl-row"><input type="hidden" name="pl_key[' . $i . ']" value="' . esc_attr( (string) ( $l['key'] ?? '' ) ) . '">'
+			. ( $course ? '<input type="hidden" name="pl_entries[' . $i . ']" value="1">' : '' )
+			. '<input type="text" class="asem-pl-name" name="pl_label[' . $i . ']" value="' . esc_attr( $l['label'] ) . '" placeholder="' . ( $course ? 'es. Secondo corso -10%, Famiglia, Solo il sabato' : 'es. Intero, Ridotto, Pacchetto 4' ) . '" maxlength="60" aria-label="' . ( $course ? 'Nome della variante' : 'Nome del listino' ) . '">'
+			. '<span class="asem-pl-price"><input type="text" name="pl_price[' . $i . ']" size="7" value="' . esc_attr( '' === $l['label'] ? '' : Money::plain( (int) $l['cents'] ) ) . '" aria-label="Prezzo in euro"> €</span>'
+			. ( $course ? '' : '<input type="number" name="pl_entries[' . $i . ']" min="1" max="50" value="' . (int) $l['entries'] . '" aria-label="Ingressi">' )
+			. '</div>';
+	}
+
+	/** Le righe dei listini: quelle già scritte più una vuota; il pulsante ne aggiunge altre, fino al limite scelto in Impostazioni. */
+	private static function price_rows( array $activity, bool $course ): string {
+		$lists = array_slice( PriceLists::for_activity( $activity ), 0, PriceLists::max() );
+		$lists = array_merge( $lists, array( array( 'label' => '', 'cents' => 0, 'entries' => 1 ) ) );
+		$rows  = $course ? '<div class="asem-pl-row asem-pl-head"><span>Variante</span><span>Prezzo</span></div>' : '<div class="asem-pl-row asem-pl-head"><span>Nome</span><span>Prezzo</span><span>Ingressi</span></div>';
+		foreach ( $lists as $i => $l ) {
+			$rows .= self::price_row( (int) $i, $l, $course );
+		}
+		return '<div class="asem-pl" data-max="' . (int) PriceLists::max() . '">' . $rows . '</div><p><button type="button" class="button asem-pl-add">+ Aggiungi un prezzo</button></p>';
+	}
+
 	/** Righe del modulo con i listini dell'attività (nome, prezzo, ingressi). */
 	private static function price_list_row( array $activity ): string {
 		if ( ActivityKind::COURSE === $activity['kind'] ) {
@@ -551,17 +572,8 @@ final class ActivitiesPage {
 		if ( ! ActivityKind::uses_sessions( $activity['kind'] ) ) {
 			return '';
 		}
-		$lists = PriceLists::for_activity( $activity );
-		$lists = array_pad( $lists, max( 4, count( $lists ) + 1 ), array( 'label' => '', 'cents' => 0, 'entries' => 1 ) );
-		$rows  = '<div class="asem-pl-row asem-pl-head"><span>Nome</span><span>Prezzo</span><span>Ingressi</span></div>';
-		foreach ( array_slice( $lists, 0, PriceLists::MAX ) as $i => $l ) {
-			$rows .= '<div class="asem-pl-row"><input type="hidden" name="pl_key[' . (int) $i . ']" value="' . esc_attr( (string) ( $l['key'] ?? '' ) ) . '">'
-				. '<input type="text" class="asem-pl-name" name="pl_label[' . (int) $i . ']" value="' . esc_attr( $l['label'] ) . '" placeholder="es. Individuale" maxlength="60" aria-label="Nome del listino">'
-				. '<span class="asem-pl-price"><input type="text" name="pl_price[' . (int) $i . ']" size="7" value="' . esc_attr( '' === $l['label'] ? '' : Money::plain( (int) $l['cents'] ) ) . '" aria-label="Prezzo in euro"> €</span>'
-				. '<input type="number" name="pl_entries[' . (int) $i . ']" min="1" max="50" value="' . (int) $l['entries'] . '" aria-label="Ingressi"></div>';
-		}
-		return '<tr><th>Listini</th><td><div class="asem-pl">' . $rows . '</div>'
-			. '<p class="description">Facoltativi: ad esempio Individuale, Di gruppo, Pacchetto 4 individuale, Pacchetto 4 di gruppo. In prenotazione la segreteria sceglie il listino; con 4 ingressi il prezzo del pacchetto si paga una volta e le altre date si prenotano «dal pacchetto» senza altro da pagare. Righe vuote ignorate; senza listini vale il contributo sopra.</p></td></tr>';
+		return '<tr><th>Listini</th><td>' . self::price_rows( $activity, false )
+			. '<p class="description">Facoltativi: ad esempio Intero, Ridotto, Studenti, Pacchetto 4. Scrivi solo quelli che servono e aggiungine altri col pulsante. In prenotazione la segreteria sceglie il listino; con 4 ingressi il prezzo del pacchetto si paga una volta e le altre date si prenotano «dal pacchetto» senza altro da pagare. Senza listini vale il contributo sopra.</p></td></tr>';
 	}
 
 	/** Il menu delle varianti del contributo di un corso (la quota base è la prima voce). */
@@ -590,15 +602,7 @@ final class ActivitiesPage {
 
 	/** Corsi: varianti del contributo (nome libero e prezzo per ogni periodo di pagamento) che la segreteria assegna all'iscrizione. */
 	private static function course_variants_row( array $activity ): string {
-		$lists = PriceLists::for_activity( $activity );
-		$lists = array_pad( $lists, max( 3, count( $lists ) + 1 ), array( 'label' => '', 'cents' => 0, 'entries' => 1 ) );
-		$rows  = '<div class="asem-pl-row asem-pl-head"><span>Variante</span><span>Prezzo</span></div>';
-		foreach ( array_slice( $lists, 0, PriceLists::MAX ) as $i => $l ) {
-			$rows .= '<div class="asem-pl-row"><input type="hidden" name="pl_key[' . (int) $i . ']" value="' . esc_attr( (string) ( $l['key'] ?? '' ) ) . '"><input type="hidden" name="pl_entries[' . (int) $i . ']" value="1">'
-				. '<input type="text" class="asem-pl-name" name="pl_label[' . (int) $i . ']" value="' . esc_attr( $l['label'] ) . '" placeholder="es. Secondo corso -10%, Famiglia, Solo il sabato" maxlength="60" aria-label="Nome della variante">'
-				. '<span class="asem-pl-price"><input type="text" name="pl_price[' . (int) $i . ']" size="7" value="' . esc_attr( '' === $l['label'] ? '' : Money::plain( (int) $l['cents'] ) ) . '" aria-label="Prezzo in euro"> €</span></div>';
-		}
-		return '<tr><th>Varianti del contributo</th><td><div class="asem-pl">' . $rows . '</div>'
+		return '<tr><th>Varianti del contributo</th><td>' . self::price_rows( $activity, true )
 			. '<p class="description">Facoltative e descritte come vuoi: sconto per più corsi, attività parziale, più familiari iscritti. Il prezzo è quello di ogni periodo di pagamento del corso. Le assegna la segreteria all\'iscrizione di una persona; chi si iscrive da solo paga il contributo sopra.</p></td></tr>';
 	}
 
