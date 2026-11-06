@@ -255,7 +255,7 @@ final readonly class ActivitiesController
             'ends_on' => ['nullable', 'date_format:Y-m-d'],
             'location' => ['nullable', 'string', 'max:190'],
             'notes' => ['nullable', 'string', 'max:2000'],
-            'price_lists' => ['nullable', 'string', 'max:2000'],
+            'price_lists' => ['nullable', 'string', 'max:200000'],
         ]));
         try {
             $lists = SessionRules::parsePriceLists(Input::optionalString($data, 'price_lists') ?? '');

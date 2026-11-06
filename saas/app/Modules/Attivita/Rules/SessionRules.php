@@ -16,8 +16,6 @@ final class SessionRules
 {
     public const MAX_DATES = 120;
 
-    public const MAX_LISTS = 8;
-
     /**
      * I giorni della settimana $weekday (1 = lunedì … 7 = domenica) tra due date comprese.
      *
@@ -117,15 +115,12 @@ final class SessionRules
             $label = trim($m[1]);
             $key = substr(trim((string) preg_replace('/[^a-z0-9]+/', '_', mb_strtolower(self::ascii($label))), '_'), 0, 30);
             $key = $key === '' ? 'l'.(count($out) + 1) : $key;
-            while (isset($out[$key])) {
-                $key .= 'x';
+            $base = $key;
+            for ($i = 2; isset($out[$key]); $i++) {
+                $key = substr($base, 0, 30).'_'.$i;
             }
             $out[$key] = ['key' => $key, 'label' => $label, 'cents' => (int) round((float) str_replace(',', '.', $m[2]) * 100), 'entries' => $entries];
         }
-        if (count($out) > self::MAX_LISTS) {
-            throw new ActivityError('Al massimo '.self::MAX_LISTS.' listini.');
-        }
-
         return array_values($out);
     }
 
