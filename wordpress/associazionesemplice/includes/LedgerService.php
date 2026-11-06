@@ -76,7 +76,7 @@ class LedgerService {
 	}
 
 	/**
-	 * Costo di incasso del conto (per esempio un POS fisico): fisso in centesimi + percentuale in punti base (150 = 1,50%).
+	 * Commissione di incasso del conto (per esempio un POS fisico): fisso in centesimi + percentuale in punti base (150 = 1,50%).
 	 * Se è impostato, a ogni incasso registrato in segreteria o sul posto su quel conto si registra in prima nota la spesa corrispondente.
 	 */
 	public function set_account_fee( int $id, int $fixed_cents, int $bp ): void {
@@ -107,7 +107,7 @@ class LedgerService {
 					'method'       => $method,
 					'category_id'  => $this->category_id_of_kind( 'general_cost' ),
 					'amount_cents' => $fee,
-					'description'  => 'Costo di incasso (stima) — ' . $acc['name'],
+					'description'  => 'Commissione di incasso (stima) — ' . $acc['name'],
 					'document_ref' => $ref,
 				)
 			);

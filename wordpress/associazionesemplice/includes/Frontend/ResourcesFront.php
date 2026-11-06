@@ -84,10 +84,7 @@ final class ResourcesFront {
 		list( $fee, $res ) = Resources::quote( $rid, $date, $start, $slots, $guests );
 		$online  = Edition::has( 'payments' ) && Plugin::payments()->enabled();
 		$options = ResourceRules::pay_options( (string) $res['pay_mode'], $online, $fee, Resources::credit_price( $res, $slots ) );
-		if ( ! $options ) {
-			throw new \InvalidArgumentException( 'Questa risorsa si paga online in anticipo, ma i pagamenti online non sono attivi: contatta la segreteria.' );
-		}
-		$pay = (string) ( $post['pay'] ?? '' );
+		$pay = (string) ( $post['pay'] ?? '' ); // pay_options dà sempre almeno una via (senza pagamenti online, la segreteria)
 		if ( array( 'free' ) === $options ) {
 			$pay = 'free';
 		} elseif ( 1 === count( $options ) ) {

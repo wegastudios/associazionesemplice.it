@@ -3,7 +3,7 @@ Contributors: wegastudios
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.4
+Stable tag: 1.3.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -23,11 +23,14 @@ The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, 
 
 == Changelog ==
 
+= 1.3.5 =
+* Clearer wording for the account collection fee.
+
 = 1.3.4 =
 * Member area: the expense refunds entry disappears from the menu and shortcode for members who are not volunteers.
 
 = 1.3.3 =
-* Member area: expense refunds are for volunteers only; collection cost of physical POS accounts; desk sales book the account's collection cost.
+* Member area: expense refunds are for volunteers only; collection fee on accounts such as a physical POS, booked for desk sales.
 
 = 1.3.2 =
 * The app service worker no longer intercepts wp-admin and login; App page text.

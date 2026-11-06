@@ -2,12 +2,15 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.5
+- Testi più chiari per la commissione di incasso dei conti.
+
 ## 1.3.4
-- Nell'area soci la voce «Rimborsi» non compare più ai soci che non sono volontari: nemmeno nel menu.
+- Nell'area soci la voce «Rimborsi» la vedono solo i volontari: gli altri soci non vedono niente, nemmeno nel menu.
 
 ## 1.3.3
-- Nell'area soci i rimborsi spese li vedono e li chiedono solo i volontari: per gli altri soci le spese le gestisce la segreteria.
-- Nella scheda di un conto puoi indicare il costo di incasso (per esempio di un POS fisico): gli incassi sul posto lo registrano come spesa.
+- Nell'area soci i rimborsi spese li chiedono solo i volontari; per gli altri soci le spese le gestisce la segreteria.
+- Su un conto puoi indicare la commissione di incasso (per esempio di un POS fisico): gli incassi sul posto la registrano come spesa.
 
 ## 1.3.2
 - L'app non intercetta più l'amministrazione e l'accesso del sito; testo della pagina App più chiaro

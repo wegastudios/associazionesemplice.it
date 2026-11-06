@@ -2,14 +2,15 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.14
+- Testi più chiari nel calendario dell'evento, nei pacchetti e nella commissione di incasso dei conti.
+
 ## 1.3.13
-- Il calendario dell'evento si vede anche per giorno (utile con gli slot) e parte dalla settimana.
-- Quando prenoti per una persona vedi subito se ha pacchetti attivi da scalare e quanti ingressi restano.
-- Nella pagina di un evento c'è un calendario da guardare, a mese o a settimana, accanto ai dati: toccando una data si aprono le sue prenotazioni.
-- Per chi ha un pacchetto di giornate già pagato, la segreteria vede ora chi ha ancora ingressi e quanti.
-- Per un POS fisico o un conto che trattiene una commissione puoi indicare il costo di incasso (fisso e percentuale): a ogni incasso compare la spesa in prima nota.
-- Senza pagamenti online attivi, una risorsa da pagare in anticipo si prenota lo stesso e il contributo si salda in segreteria.
-- Nel menu del sito «Area riservata» non compare più due volte.
+- Nella pagina di un evento c'è un calendario con le date, da vedere per giorno, settimana o mese. Toccando una data si aprono le sue prenotazioni.
+- La segreteria vede chi ha un pacchetto con ingressi ancora da usare, e quanti ne restano: nella pagina dell'evento e, per la persona scelta, in Cassa → Prenota.
+- Su un conto (per esempio un POS fisico) puoi indicare la commissione di incasso, fissa e in percentuale: a ogni incasso la spesa va in prima nota.
+- Se non c'è nessun pagamento online, una risorsa da pagare in anticipo si prenota lo stesso e il contributo si salda in segreteria.
+- Nel menu del sito la voce «Area riservata» non compare più due volte.
 
 ## 1.3.12
 - Da telefono, nell'area soci la tabella delle attività diventa una scheda per riga (i pagamenti non restano fuori schermo) e il pulsante secondario ha il contorno

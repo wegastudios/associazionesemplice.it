@@ -289,12 +289,12 @@ final class ActivitiesPage {
 		$link = function ( string $v, string $date ) use ( $id ) {
 			return Ui::url( 'asem-activity', array( 'id' => $id, 'cal' => $v, 'cal_date' => $date ) );
 		};
-		$html  = '<div class="asem-card asem-cal"><h2>Calendario delle date</h2><p class="asem-cal-nav">'
-			. '<a class="button" href="' . esc_url( $link( $view, $prev->format( 'Y-m-d' ) ) ) . '">←</a> <strong>' . esc_html( $head ) . '</strong> '
-			. '<a class="button" href="' . esc_url( $link( $view, $next->format( 'Y-m-d' ) ) ) . '">→</a> '
-			. '<span class="asem-cal-views"><a class="button' . ( 'month' === $view ? ' button-primary' : '' ) . '" href="' . esc_url( $link( 'month', $ref ) ) . '">Mese</a> '
+		$html  = '<div class="asem-card asem-cal"><h2>Calendario dell\'evento</h2><p class="asem-cal-nav">'
+			. '<a class="button" aria-label="Periodo precedente" href="' . esc_url( $link( $view, $prev->format( 'Y-m-d' ) ) ) . '">←</a> <strong>' . esc_html( $head ) . '</strong> '
+			. '<a class="button" aria-label="Periodo successivo" href="' . esc_url( $link( $view, $next->format( 'Y-m-d' ) ) ) . '">→</a> '
+			. '<span class="asem-cal-views"><a class="button' . ( 'day' === $view ? ' button-primary' : '' ) . '" href="' . esc_url( $link( 'day', $ref ) ) . '">Giorno</a> '
 			. '<a class="button' . ( 'week' === $view ? ' button-primary' : '' ) . '" href="' . esc_url( $link( 'week', $ref ) ) . '">Settimana</a> '
-			. '<a class="button' . ( 'day' === $view ? ' button-primary' : '' ) . '" href="' . esc_url( $link( 'day', $ref ) ) . '">Giorno</a></span></p>'
+			. '<a class="button' . ( 'month' === $view ? ' button-primary' : '' ) . '" href="' . esc_url( $link( 'month', $ref ) ) . '">Mese</a></span></p>'
 			. '<table class="asem-cal-grid"><thead><tr>';
 		$names = array( 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom' );
 		$cols  = 'day' === $view ? 1 : 7;
@@ -316,15 +316,18 @@ final class ActivitiesPage {
 				$html  .= '<a class="asem-cal-s' . ( ! empty( $s['cancelled_at'] ) ? ' asem-cal-off' : ( $full ? ' asem-cal-full' : '' ) ) . '" href="#asem-sess-' . (int) $s['id'] . '">'
 					. esc_html( ( $s['start_time'] ? substr( (string) $s['start_time'], 0, 5 ) . ' ' : '' ) . $count ) . '</a>';
 			}
+			if ( 'day' === $view && empty( $by[ $key ] ) ) {
+				$html .= '<span class="description">Nessuna data in questo giorno.</span>';
+			}
 			$html .= '</td>';
 			if ( $cols - 1 === $col % $cols ) {
 				$html .= '</tr>';
 			}
 		}
-		$html .= '</tbody></table><p class="description">Il numero è quante persone sono prenotate (su quanti posti). Tocca una data per aprirne le prenotazioni qui sotto.</p>';
+		$html .= '</tbody></table><p class="description">Accanto all\'orario: persone prenotate e posti totali. Tocca una data per vedere le prenotazioni.</p>';
 		$pk    = Plugin::activities()->packages_overview( $id );
 		if ( $pk ) {
-			$html .= '<details class="asem-detail"><summary><strong>Pacchetti già pagati con ingressi residui (' . count( $pk ) . ')</strong></summary><table class="widefat striped"><thead><tr><th>Persona</th><th>Pacchetto</th><th>Ingressi rimasti</th></tr></thead><tbody>';
+			$html .= '<details class="asem-detail"><summary><strong>Pacchetti con ingressi ancora da usare (' . count( $pk ) . ')</strong></summary><table class="widefat striped"><thead><tr><th>Persona</th><th>Pacchetto</th><th>Ingressi rimasti</th></tr></thead><tbody>';
 			foreach ( $pk as $r ) {
 				$html .= '<tr><td><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $r['person_id'] ) ) ) . '">' . esc_html( $r['name'] ) . '</a></td><td>' . esc_html( $r['label'] ) . '</td><td>' . (int) $r['left'] . ' su ' . (int) $r['total'] . '</td></tr>';
 			}
@@ -527,9 +530,9 @@ final class ActivitiesPage {
 			if ( $pk ) {
 				$html .= '<label><input type="checkbox" name="use_package" value="1"> usa ' . esc_html( $pk[0]['label'] ) . ' (' . (int) $pk[0]['left'] . ' rimasti)</label> ';
 			} elseif ( ! $person_id ) {
-				$html .= '<label><input type="checkbox" name="use_package" value="1"> dal pacchetto già pagato</label> <span class="description">(chi ne ha uno è nella lista «Pacchetti già pagati» sopra)</span> ';
+				$html .= '<label><input type="checkbox" name="use_package" value="1"> usa un pacchetto già pagato</label> ';
 			} else {
-				$html .= '<span class="description">nessun pacchetto attivo da scalare</span> ';
+				$html .= '<span class="description">nessun pacchetto attivo</span> ';
 			}
 		}
 		if ( ! \AssociazioneSemplice\Edition::has( 'funds' ) ) {
