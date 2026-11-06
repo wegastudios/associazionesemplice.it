@@ -903,6 +903,29 @@ window.asemPlacesInit = function () {
 	window.addEventListener('hashchange', openTarget);
 })();
 
+/* Modulo «Prenota»: scelto il socio, la casella del pacchetto dice quale pacchetto ha e quanti ingressi gli restano */
+(function () {
+	'use strict';
+	document.addEventListener('change', function (ev) {
+		var sel = ev.target;
+		if (!sel || sel.name !== 'person_id' || !sel.form) { return; }
+		var lab = sel.form.querySelector('.asem-use-pk');
+		if (!lab) { return; }
+		var map = {};
+		try { map = JSON.parse(lab.getAttribute('data-packages') || '{}'); } catch (e) { map = {}; }
+		var txt = lab.querySelector('span'), box = lab.querySelector('input');
+		var pk = sel.value && map[sel.value] ? map[sel.value].split('|') : null;
+		if (pk) {
+			txt.textContent = 'usa ' + pk[0] + ' (' + pk[1] + ' rimasti)';
+			box.disabled = false;
+		} else {
+			txt.textContent = sel.value ? 'nessun pacchetto attivo' : 'usa un pacchetto già pagato';
+			box.checked = false;
+			box.disabled = !!sel.value;
+		}
+	});
+})();
+
 /* Listini di eventi e corsi: il pulsante aggiunge una riga vuota, fino al limite scelto nelle Impostazioni */
 (function () {
 	'use strict';

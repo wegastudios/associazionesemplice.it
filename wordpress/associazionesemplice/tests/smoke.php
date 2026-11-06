@@ -6631,6 +6631,7 @@ $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['i
 asem_ok( 1625 === $pl_fund(), 'listini: chi paga il listino normale alimenta il fondo con la quota ordinaria (25%)' );
 asem_ok( null !== asem_throws( function () use ( $acts, $pl_sess, $pl_a ) { $acts->book( $pl_sess[1], $pl_a, array( 'price_list' => 'inesistente' ) ); } ), 'listini: un listino che non esiste è rifiutato' );
 asem_ok( '' !== \AssociazioneSemplice\PriceLists::booking_label( $pl_a_row, $pl_g ) && false !== strpos( \AssociazioneSemplice\PriceLists::booking_label( $pl_a_row, $pl_g ), 'ospite dell\'associazione' ), 'listini: l\'etichetta della prenotazione dice listino e ospite' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Admin\ActivitiesPage::booking_fields( $pl_a_row, 0 ), 'asem-use-pk' ) && false !== strpos( \AssociazioneSemplice\Admin\ActivitiesPage::booking_fields( $pl_a_row, 0 ), 'data-packages' ), 'prenota: la casella del pacchetto porta i pacchetti dei soci, per dire gli ingressi rimasti appena scegli la persona' );
 $pl_html = asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Ospite del volontario', array( 'id' => (string) $pl_act ) );
 asem_ok( false !== strpos( $pl_html, 'name="guest_of"' ), 'listini: la scheda evento offre listino e ospite nella prenotazione' );
 

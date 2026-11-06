@@ -528,7 +528,14 @@ final class ActivitiesPage {
 			if ( $pk ) {
 				$html .= '<label><input type="checkbox" name="use_package" value="1"> usa ' . esc_html( $pk[0]['label'] ) . ' (' . (int) $pk[0]['left'] . ' rimasti)</label> ';
 			} elseif ( ! $person_id ) {
-				$html .= '<label><input type="checkbox" name="use_package" value="1"> usa un pacchetto già pagato</label> ';
+				// Persona non ancora scelta: la scritta si aggiorna (admin.js) appena la scegli, con il pacchetto e gli ingressi rimasti.
+				$map = array();
+				foreach ( Plugin::activities()->packages_overview( (int) $activity['id'] ) as $r ) {
+					if ( ! isset( $map[ $r['person_id'] ] ) ) {
+						$map[ $r['person_id'] ] = $r['label'] . '|' . $r['left'];
+					}
+				}
+				$html .= '<label class="asem-use-pk" data-packages="' . esc_attr( (string) wp_json_encode( (object) $map ) ) . '"><input type="checkbox" name="use_package" value="1"> <span>usa un pacchetto già pagato</span></label> ';
 			} else {
 				$html .= '<span class="description">nessun pacchetto attivo</span> ';
 			}
