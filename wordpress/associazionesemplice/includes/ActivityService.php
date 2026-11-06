@@ -542,6 +542,10 @@ class ActivityService {
 		if ( ! $a || ! $person ) {
 			throw new \InvalidArgumentException( 'Attività o persona non trovata.' );
 		}
+		$conflict = (string) apply_filters( 'asem_booking_errors', '', $session_id, $person_id ); // un'estensione (risorse) può rifiutare una fascia occupata da altro
+		if ( '' !== $conflict ) {
+			throw new \InvalidArgumentException( $conflict ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
 		if ( null !== $s['capacity'] && (int) ( $a['hold_hours'] ?? 0 ) > 0 ) {
 			Holds::release_expired( $session_id ); // prima di dire «posti esauriti» si liberano le prenotazioni non pagate entro la tolleranza
 		}

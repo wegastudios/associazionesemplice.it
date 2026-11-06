@@ -6164,7 +6164,7 @@ $RS::link_activity( $su_e, 0 );
 asem_ok( 0 === $RS::activity_link( $su_e ) && null === $RS::activity_resource( $su_e ), 'risorse: «nessuna risorsa» (fuori sede) si ricorda ed è diverso da «non indicata»' );
 $su_pd = '\AssociazioneSemplice\ProData';
 asem_ok( 1 === count( $su_pd::activity_errors( array(), 'event', array( 'resource_id' => '' ) ) ) && 1 === count( $su_pd::activity_errors( array(), 'recurring', array( 'resource_id' => '' ) ) ), 'risorse: un evento deve dire quale risorsa occupa' );
-asem_ok( 0 === count( $su_pd::activity_errors( array(), 'event', array( 'resource_id' => 'none' ) ) ) && 0 === count( $su_pd::activity_errors( array(), 'event', array( 'resource_id' => (string) $su_res ) ) ) && 0 === count( $su_pd::activity_errors( array(), 'course', array( 'resource_id' => '' ) ) ) && 0 === count( $su_pd::activity_errors( array(), 'event', array() ) ), 'risorse: «fuori sede» o una risorsa bastano; i corsi e i moduli senza il campo no' );
+asem_ok( 0 === count( $su_pd::activity_errors( array(), 'event', array( 'resource_id' => 'none' ) ) ) && 0 === count( $su_pd::activity_errors( array(), 'event', array( 'resource_id' => (string) $su_res ) ) ) && 1 === count( $su_pd::activity_errors( array(), 'course', array( 'resource_id' => '' ) ) ) && 0 === count( $su_pd::activity_errors( array(), 'event', array() ) ), 'risorse: «fuori sede» o una risorsa bastano; anche i corsi; i moduli senza il campo no' );
 asem_ok( 1 === count( $su_pd::activity_errors( array(), 'event', array( 'resource_id' => 'none', 'setup_before' => 'boh' ) ) ), 'risorse: un allestimento dell\'attività scritto male è segnalato' );
 // riproporre mantiene risorsa e allestimento
 $RS::link_activity( $su_e, $su_res );
@@ -6581,6 +6581,16 @@ $pl_lists = array(
 $pl_act   = $acts->create( array( 'name' => 'Laboratorio a listino', 'social_year' => $sy_label, 'kind' => 'recurring', 'fee_cents' => 4000, 'instructor_person_id' => $pl_vol, 'fund_mode' => 'percent', 'fund_value' => 2500, 'price_lists' => $pl_lists ) );
 $pl_a_row = $acts->get( $pl_act );
 asem_ok( 4 === count( \AssociazioneSemplice\PriceLists::for_activity( $pl_a_row ) ) && null !== \AssociazioneSemplice\PriceLists::find( $pl_a_row, 'pacchetto_4_di_gruppo' ), 'listini: i quattro listini restano sull\'attività con una chiave dal nome' );
+$pl_six = array();
+for ( $pl_i = 1; $pl_i <= 6; $pl_i++ ) {
+	$pl_six[] = array( 'label' => 'Prezzo ' . $pl_i, 'cents' => 1000 * $pl_i, 'entries' => 1 );
+}
+asem_ok( 6 === count( \AssociazioneSemplice\PriceLists::clean( $pl_six ) ) && 1 === count( \AssociazioneSemplice\PriceLists::clean( array_slice( $pl_six, 0, 1 ) ) ), 'listini: sei prezzi o uno solo, il numero non è fisso' );
+asem_ok( \AssociazioneSemplice\PriceLists::max() >= 4, 'listini: il massimo è un limite configurabile' );
+\AssociazioneSemplice\Resources::set_activity_slot_mode( $pl_act, true );
+asem_ok( \AssociazioneSemplice\Resources::activity_slot_mode( $pl_act ), 'risorse: la modalità «occupa solo con prenotazioni» si ricorda' );
+\AssociazioneSemplice\Resources::set_activity_slot_mode( $pl_act, false );
+asem_ok( ! \AssociazioneSemplice\Resources::activity_slot_mode( $pl_act ), 'risorse: la modalità a fasce si può togliere' );
 $pl_sess = array();
 for ( $i = 3; $i <= 6; $i++ ) {
 	$pl_sess[] = $acts->add_session( $pl_act, array( 'session_date' => gmdate( 'Y-m-d', strtotime( current_time( 'Y-m-d' ) . ' +' . $i . ' days' ) ), 'start_time' => '18:00', 'end_time' => '20:00' ) );

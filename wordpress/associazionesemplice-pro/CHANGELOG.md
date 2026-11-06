@@ -2,6 +2,11 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.6
+- Anche i corsi indicano la risorsa che usano, così i calendari si incrociano e una risorsa già impegnata non risulta libera.
+- Nuova scelta «Occupa la risorsa solo dove ci sono prenotazioni»: per le attività a fasce, gli orari senza prenotazioni restano liberi.
+- Una fascia già occupata da un'altra attività non si può prenotare.
+
 ## 1.3.5
 - Testi più chiari per la commissione di incasso dei conti.
 

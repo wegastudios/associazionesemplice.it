@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.16
+- Eventi e corsi: i prezzi non sono più quattro fissi, ne aggiungi quanti servono e puoi cambiare il massimo dalle impostazioni.
+- Il numero massimo di prezzi per attività si cambia da Impostazioni → Limiti.
+
 ## 1.3.15
 - Da telefono i moduli nelle schede (conti, attività) vanno su una colonna e non escono più dalla scheda.
 - Negli eventi ricorrenti la scheda diventa «Aggiungi o elimina date»: se un giorno è di festa, elimini quella data dall'elenco. Il pulsante «Annulla solo questa data» resta anche nella riga della data.
