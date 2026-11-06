@@ -144,10 +144,22 @@ final class ProData {
 			$link = Resources::activity_link( $activity_id );
 			$over = $link ? Resources::activity_overlaps( $activity_id, $link ) : array();
 			$new  = array_diff_key( $over, $old_over );
+			$swap = $new && $old_link && $link && $old_link !== $link; // cambio di risorsa con sovrapposizioni: si può proporre di spostarle su quella di prima
+			$why  = '';
+			if ( $swap && ! empty( $p['move_conflicts'] ) ) {
+				$moved = Resources::move_conflicts( $activity_id, $link, $old_link );
+				if ( ! $moved['blocked'] ) {
+					$notes[] = ' Sulla risorsa di prima sono passati: ' . implode( '; ', $moved['moved'] ) . '.';
+					$over    = Resources::activity_overlaps( $activity_id, $link );
+					$new     = array_diff_key( $over, $old_over );
+				} else {
+					$why = ' Non ho spostato nulla: ' . implode( '; ', $moved['blocked'] ) . '.';
+				}
+			}
 			if ( $new ) { // niente sovrapposizioni nuove: risorsa e allestimento tornano com'erano
 				Resources::set_activity_setup( $activity_id, null === $old_setup['setup_before_min'] ? null : (int) $old_setup['setup_before_min'], null === $old_setup['setup_after_min'] ? null : (int) $old_setup['setup_after_min'] );
 				Resources::link_activity( $activity_id, $old_link );
-				throw new \InvalidArgumentException( esc_html( 'Non posso salvare: la risorsa risulterebbe occupata due volte. Si sovrappone a ' . implode( '; ', array_slice( array_values( $new ), 0, 5 ) ) . '. Risorsa e allestimento sono rimasti come prima (gli altri dati sono stati salvati): cambia orari, risorsa o allestimento.' ) );
+				throw new \InvalidArgumentException( esc_html( 'Non posso salvare: la risorsa risulterebbe occupata due volte. Si sovrappone a ' . implode( '; ', array_slice( array_values( $new ), 0, 5 ) ) . '.' . $why . ' Risorsa e allestimento sono rimasti come prima (gli altri dati sono stati salvati): cambia orari, risorsa o allestimento' . ( $swap && '' === $why ? ', oppure spunta «Sposta sulla risorsa di prima ciò che si sovrappone» e salva di nuovo.' : '.' ) ) );
 			}
 			if ( $over ) { // quelle già presenti non si toccano: si segnalano e vanno sistemate a mano
 				$notes[] = ' Attenzione: restano ' . count( $over ) . ( 1 === count( $over ) ? ' sovrapposizione già presente' : ' sovrapposizioni già presenti' ) . ' sulla risorsa (prossimi 120 giorni): vanno sistemate a mano.';

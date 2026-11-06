@@ -6166,6 +6166,27 @@ $su_pd = '\AssociazioneSemplice\ProData';
 asem_ok( 1 === count( $su_pd::activity_errors( array(), 'event', array( 'resource_id' => '' ) ) ) && 1 === count( $su_pd::activity_errors( array(), 'recurring', array( 'resource_id' => '' ) ) ), 'risorse: un evento deve dire quale risorsa occupa' );
 asem_ok( 0 === count( $su_pd::activity_errors( array(), 'event', array( 'resource_id' => 'none' ) ) ) && 0 === count( $su_pd::activity_errors( array(), 'event', array( 'resource_id' => (string) $su_res ) ) ) && 1 === count( $su_pd::activity_errors( array(), 'course', array( 'resource_id' => '' ) ) ) && 0 === count( $su_pd::activity_errors( array(), 'event', array() ) ), 'risorse: «fuori sede» o una risorsa bastano; anche i corsi; i moduli senza il campo no' );
 asem_ok( 1 === count( $su_pd::activity_errors( array(), 'event', array( 'resource_id' => 'none', 'setup_before' => 'boh' ) ) ), 'risorse: un allestimento dell\'attività scritto male è segnalato' );
+// cambio di risorsa: ciò che si sovrappone passa alla risorsa di prima, tutto o niente
+$mv_def  = array( 'category' => 'room', 'mode' => 'slot', 'open_time' => '06:00', 'close_time' => '23:00', 'slot_minutes' => 60, 'fee_cents' => 0 );
+$mv_old  = $RS::save( 0, array( 'name' => 'Sala di prima' ) + $mv_def );
+$mv_new  = $RS::save( 0, array( 'name' => 'Sala nuova' ) + $mv_def );
+$mv_day  = gmdate( 'Y-m-d', strtotime( $today . ' +20 days' ) );
+$mv_e    = $acts->create( array( 'name' => 'Incontro da spostare', 'social_year' => Settings::social_year( $mv_day )->label(), 'kind' => 'event', 'session' => array( 'session_date' => $mv_day, 'start_time' => '15:00', 'end_time' => '16:00' ) ) );
+$RS::set_activity_setup( $mv_e, 0, 0 );
+$RS::link_activity( $mv_e, $mv_old );
+$mv_r1   = $RS::book_slot( $mv_new, $rs_m1, $mv_day, '15:00', 1, array(), true );
+$RS::link_activity( $mv_e, $mv_new );
+asem_ok( 1 === count( $RS::activity_overlaps( $mv_e, $mv_new ) ), 'risorse: cambiando risorsa la prenotazione già presente si sovrappone' );
+$mv = $RS::move_conflicts( $mv_e, $mv_new, $mv_old );
+asem_ok( ! $mv['blocked'] && 1 === count( $mv['moved'] ) && (int) $RS::reservation( $mv_r1 )['resource_id'] === $mv_old && ! $RS::activity_overlaps( $mv_e, $mv_new ), 'risorse: ciò che si sovrappone passa alla risorsa di prima' );
+$mv_day2 = gmdate( 'Y-m-d', strtotime( $today . ' +21 days' ) );
+$mv_r2   = $RS::book_slot( $mv_new, $rs_m1, $mv_day2, '15:00', 1, array(), true );
+$mv_r3   = $RS::book_slot( $mv_old, $rs_m2, $mv_day2, '15:00', 1, array(), true );
+$mv_e2   = $acts->create( array( 'name' => 'Secondo incontro', 'social_year' => Settings::social_year( $mv_day2 )->label(), 'kind' => 'event', 'session' => array( 'session_date' => $mv_day2, 'start_time' => '15:00', 'end_time' => '16:00' ) ) );
+$RS::set_activity_setup( $mv_e2, 0, 0 );
+$RS::link_activity( $mv_e2, $mv_new );
+$mv2 = $RS::move_conflicts( $mv_e2, $mv_new, $mv_old );
+asem_ok( 1 === count( $mv2['blocked'] ) && ! $mv2['moved'] && (int) $RS::reservation( $mv_r2 )['resource_id'] === $mv_new, 'risorse: se sulla risorsa di prima non entra, non si sposta niente' );
 // riproporre mantiene risorsa e allestimento
 $RS::link_activity( $su_e, $su_res );
 $RS::set_activity_setup( $su_e, 60, 0 );
