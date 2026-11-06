@@ -51,10 +51,7 @@ final class App {
 
 	private function route( string $method, string $path ): void {
 		$get = 'GET' === $method;
-		if ( 0 === strpos( $path, '/admin/piattaforma' ) ) {
-			// Vecchio indirizzo: la gestione del SaaS ora sta in /saas, con menu e permessi propri.
-			header( 'Location: /saas', true, 301 );
-		} elseif ( 0 === strpos( $path, '/admin' ) ) {
+		if ( 0 === strpos( $path, '/admin' ) ) {
 			( new Admin( $this->db, $this->billing, $this->customerId() ) )->handle( $method, $path );
 		} elseif ( '/saas' === $path || 0 === strpos( $path, '/saas/' ) ) {
 			( new Platform( $this->db, $this->customerId() ) )->handle( $method, $path );
