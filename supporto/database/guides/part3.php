@@ -143,11 +143,11 @@ Un evento ha una o più date e, se vuoi, posti limitati e un contributo.
 
 - Tutte le date di un evento devono cadere nell'**anno sociale** dell'attività, altrimenti il salvataggio viene rifiutato e non resta nulla a metà.
 - Le date già presenti non si duplicano.
-- Per più date, usa l'evento ricorrente.
+- Per più date, usa l'evento ricorrente. In un evento ricorrente puoi aggiungere o togliere date con **«Aggiungi o elimina date»**.
 
 ## Il calendario dell'evento
 
-Nella pagina dell'evento trovi il **Calendario dell'evento**. Lo vedi per **Giorno**, **Settimana** (di partenza) o **Mese**. Sotto ci sono le righe con le date.
+Nella pagina dell'evento trovi il **Calendario dell'evento**. Lo vedi per **Mese** o per **Giorno**, e un selettore ti porta alla data che vuoi. Sotto ci sono le righe con le date.
 
 ## Chi lo gestisce
 
@@ -226,7 +226,7 @@ Con i **listini** la stessa attività può avere prezzi diversi, per esempio *In
 ## Creare i listini
 
 1. Apri la **scheda dell'attività** (evento o corso a date) da **Attività**.
-2. Nella riga **Listini** aggiungi una riga per ogni listino con **nome**, **prezzo** e numero di **ingressi**.
+2. Nella riga **Listini** aggiungi un prezzo per ogni listino con **nome**, **prezzo** e numero di **ingressi**. Premi **«+ Aggiungi un prezzo»** per averne altri: uno o più prezzi, quanti ne servono.
 3. Salva.
 
 Un listino con un solo ingresso è una prenotazione normale; un listino con più ingressi è un **pacchetto**.
@@ -240,7 +240,7 @@ Un listino con un solo ingresso è una prenotazione normale; un listino con più
 
 1. Il pacchetto si **paga sulla prima prenotazione**.
 2. Le altre date si prenotano con **usa pacchetto**: non c'è altro da pagare.
-3. Gli ingressi del pacchetto si consumano a ogni prenotazione.
+3. Gli ingressi del pacchetto si consumano a ogni prenotazione. Nel modulo **«Prenota»** di un evento, scelto il socio, la casella dice quale pacchetto ha e quanti ingressi restano: l'ingresso si scala già alla prenotazione.
 
 Per vedere a chi restano ingressi:
 
