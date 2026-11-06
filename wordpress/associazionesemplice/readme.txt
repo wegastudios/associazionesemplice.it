@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.17
+Stable tag: 1.3.15
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -57,13 +57,8 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 
 == Changelog ==
 
-= 1.3.17 =
-* Booking form: once you pick the member, the package checkbox shows which package they have and how many entries are left.
-
-= 1.3.16 =
-* Event and course prices are no longer limited to four: add as many as you need. Courses must name the resource they use, and activities by time slot can occupy the resource only where there are bookings.
-
 = 1.3.15 =
+* Booking form: once you pick the member, the package checkbox shows the package and the entries left. Event and course prices are no longer limited to four. Courses must name the resource they use; activities by time slot can occupy the resource only where there are bookings.
 * Phone layout: forms inside cards (accounts, activities) stack in one column; event page: summary above the calendar, month and day views only (day view has a date picker); recurring events: "Add or remove dates" lists the upcoming dates so a holiday can be removed.
 
 = 1.3.14 =
