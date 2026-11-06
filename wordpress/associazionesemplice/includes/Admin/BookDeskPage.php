@@ -148,16 +148,16 @@ final class BookDeskPage {
 			echo '<p class="description">Scegli una persona per poter prenotare; intanto puoi guardare cosa è disponibile.</p>';
 		} else {
 			echo '<p><strong>' . esc_html( trim( $person['first_name'] . ' ' . $person['last_name'] ) ) . '</strong> · ' . esc_html( Levels::label( $person ) ) . '</p>';
-		if ( $person ) { // pacchetti già pagati: la segreteria vede subito se c'è qualcosa da scalare
+		if ( $person ) { // la segreteria vede subito se la persona ha pacchetti con ingressi da usare
 			$pkgs = Plugin::activities()->person_packages( (int) $person['id'] );
 			if ( $pkgs ) {
 				$li = '';
 				foreach ( $pkgs as $pk ) {
 					$li .= '<li>' . esc_html( $pk['activity_name'] . ' — ' . $pk['label'] ) . ': <strong>' . (int) $pk['left'] . ' ingressi rimasti</strong> su ' . (int) $pk['total'] . '</li>';
 				}
-				echo wp_kses( '<div class="notice notice-info inline"><p><strong>Pacchetti attivi di ' . esc_html( trim( $person['first_name'] . ' ' . $person['last_name'] ) ) . '</strong></p><ul style="list-style:disc;margin-left:20px">' . $li . '</ul></div>', Html::allowed() );
+				echo wp_kses( '<div class="notice notice-info inline"><p><strong>Pacchetti di ' . esc_html( trim( $person['first_name'] . ' ' . $person['last_name'] ) ) . '</strong></p><ul style="list-style:disc;margin-left:20px">' . $li . '</ul></div>', Html::allowed() );
 			} else {
-				echo '<p class="description">' . esc_html( trim( $person['first_name'] . ' ' . $person['last_name'] ) ) . ' non ha pacchetti attivi da scalare.</p>';
+				echo '<p class="description">' . esc_html( trim( $person['first_name'] . ' ' . $person['last_name'] ) ) . ' non ha pacchetti attivi.</p>';
 			}
 		}
 		}

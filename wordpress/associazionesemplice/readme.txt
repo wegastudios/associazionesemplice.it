@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.13
+Stable tag: 1.3.14
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -57,8 +57,11 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 
 == Changelog ==
 
+= 1.3.14 =
+* Clearer wording in the event calendar, packages and account collection fee; dead payment error removed.
+
 = 1.3.13 =
-* Event pages: visual month/week/day calendar next to the activity data, with the paid packages left per person; per-account collection cost (fixed + percentage) for physical POS terminals; resources paid in advance can be booked and settled at the desk when no online payment is active; the site menu no longer gets a second Area riservata entry.
+* Event pages: a day/week/month calendar of the dates, with the packages that still have entries left (also in Cash → Book); per-account collection fee (fixed + percentage) for physical POS terminals; resources paid in advance can be booked and settled at the desk when no online payment is active; no second "Area riservata" entry in the site menu.
 
 = 1.3.12 =
 * Phones: the activities table in the member area becomes one card per row, so payments no longer fall off screen; secondary button has an outline.

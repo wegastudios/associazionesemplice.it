@@ -33,9 +33,9 @@ final class AccountsPage {
 			. '<tr><th>Nome</th><td><input type="text" name="name" class="regular-text" required value="' . esc_attr( $a['name'] ) . '"></td></tr>'
 			. '<tr><th>Tipo</th><td><select name="type">' . Ui::options( Labels::account_types(), $a['type'] ) . '</select></td></tr>' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<tr><th>Saldo di partenza</th><td><input type="text" name="opening" inputmode="decimal" value="' . esc_attr( Money::plain( (int) $a['opening_cents'] ) ) . '"> €<p class="description">È il saldo da cui parte il conto, prima dei movimenti registrati: il saldo attuale si ricalcola.</p></td></tr>'
-			. '<tr><th>Costo di incasso</th><td>fisso <input type="text" name="fee_fixed" size="5" inputmode="decimal" placeholder="0,10" value="' . esc_attr( (int) $a['fee_fixed_cents'] > 0 ? Money::plain( (int) $a['fee_fixed_cents'] ) : '' ) . '"> € '
-			. '+ <input type="text" name="fee_pct" size="4" inputmode="decimal" placeholder="1,5" value="' . esc_attr( (int) $a['fee_bp'] > 0 ? rtrim( rtrim( number_format( (int) $a['fee_bp'] / 100, 2, ',', '' ), '0' ), ',' ) : '' ) . '"> % per ogni incasso'
-			. '<p class="description">Per un POS fisico o un conto che trattiene una commissione. A ogni incasso registrato su questo conto (in segreteria o sul posto) compare in prima nota la spesa corrispondente. Gli incassi online hanno le loro tariffe in «Pagamenti online». Lascia vuoto se non c\'è nessun costo.</p></td></tr>'
+			. '<tr><th>Commissione di incasso</th><td>fisso <input type="text" name="fee_fixed" size="5" inputmode="decimal" placeholder="0,10" value="' . esc_attr( (int) $a['fee_fixed_cents'] > 0 ? Money::plain( (int) $a['fee_fixed_cents'] ) : '' ) . '"> € '
+			. '+ <input type="text" name="fee_pct" size="4" inputmode="decimal" placeholder="1,5" value="' . esc_attr( (int) $a['fee_bp'] > 0 ? rtrim( rtrim( number_format( (int) $a['fee_bp'] / 100, 2, ',', '' ), '0' ), ',' ) : '' ) . '"> % su ogni incasso'
+			. '<p class="description">Per un POS fisico o un conto che trattiene una commissione. A ogni incasso su questo conto, in segreteria o sul posto, la spesa va in prima nota in automatico. Gli incassi online hanno le loro tariffe in «Pagamenti online». Vuoto = nessuna commissione.</p></td></tr>'
 			. '</tbody></table>';
 		submit_button( 'Salva', 'secondary', 'submit', false );
 		Ui::form_close();
