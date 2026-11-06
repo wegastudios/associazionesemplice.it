@@ -59,7 +59,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Ingressi: elenco prenotati e registrazione | ✓ | ✓ | ✓ |
 | Biglietti con QR per le prenotazioni | ✓ | ✓ | ✓ |
 | Listini per eventi e corsi a date (individuale, di gruppo, pacchetti di ingressi) | ✓ | ✓ | ✓ |
-| Pagina evento :: Calendario a settimana, mese o giorno, ed elenco dei pacchetti già pagati con ingressi residui | ✓ | ✓ | ✓ |
+| Calendario dell'evento :: Giorno, settimana, mese, e pacchetti con ingressi ancora da usare | ✓ | ✓ | ✓ |
 | Incasso sul posto agli eventi :: Incasso sul posto durante gli eventi | — | ✓ | ✓ |
 | Prenotazione di campi e sale :: Risorse a fasce orarie (campi, sale) con tariffe, ospiti e regole di prenotazione | — | ✓ | ✓ |
 | Posti auto, armadietti e posti barca :: Risorse assegnate a periodo (posti auto, armadietti, posti barca) con lista d'attesa | — | ✓ | ✓ |
@@ -70,7 +70,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Eventi collegati alle risorse :: Corsi ed eventi collegati alle risorse, con tempi di allestimento | — | ✓ | ✓ |
 | Suggerimento dei luoghi con Google (con la tua chiave) | ✓ | ✓ | ✓ |
 | Pulsante «Non rinnova» nel corso: l'iscritto resta fino a fine periodo pagato e poi non deve più nulla; eliminando un corso si rende la quota proporzionale delle lezioni non tenute | ✓ | ✓ | ✓ |
-| Restituzione del non fruito :: Eliminando un corso, un evento o una singola iscrizione si restituisce solo il non fruito; annullamento di una data o «di questa data e delle successive» negli eventi ricorrenti e nelle lezioni dei corsi | ✓ | ✓ | ✓ |
+| Restituzioni :: Eliminando un corso, un evento o una singola iscrizione si restituisce solo ciò che non è ancora stato fatto; si può annullare una data o «questa data e le successive» (eventi ricorrenti e lezioni dei corsi) | ✓ | ✓ | ✓ |
 
 ## Cassa e conti
 
@@ -92,7 +92,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Commissioni di incasso :: Commissioni di incasso per metodo: stima in prima nota da tariffe standard modificabili e ribaltamento opzionale | — | ✓ | ✓ |
 | Quota online dalla domanda di adesione :: Pagamento online della quota dalla domanda di adesione | — | ✓ | ✓ |
 | Conti multipli e cassa condivisa :: Conti multipli, giroconti e cassa per più persone | — | ✓ | ✓ |
-| Costo di incasso :: Costo fisso più percentuale per conto, per esempio POS, con la spesa registrata a ogni incasso | — | ✓ | ✓ |
+| Commissione di incasso :: Sul conto, fissa più percentuale, per esempio POS: a ogni incasso la spesa va in prima nota | — | ✓ | ✓ |
 | Fondi accantonati :: Fondi accantonati (per esempio rimborso dei volontari) | — | ✓ | ✓ |
 | Quota di risorsa accantonata in un fondo :: Risorse con quota accantonata in un fondo a ogni pagamento (anche in crediti) | — | ✓ | ✓ |
 | Voce di prima nota per risorsa :: Voce di prima nota per ogni risorsa, separata nei report | — | ✓ | ✓ |
