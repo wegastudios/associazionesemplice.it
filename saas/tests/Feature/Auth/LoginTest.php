@@ -100,3 +100,22 @@ it('manda chi non è collegato alla pagina di accesso', function (): void {
     $this->get('/account/verifica-in-due-passaggi')->assertRedirect('/accesso');
     $this->getJson('/gestionale')->assertUnauthorized();
 });
+
+it('senza «ricordami» l\'accesso finisce con il browser, con «ricordami» dura 30 giorni', function (): void {
+    $this->createUser('anna@example.com');
+    $cookies = static fn ($response): array => collect($response->headers->getCookies())->mapWithKeys(static fn ($c): array => [$c->getName() => $c->getExpiresTime()])->all();
+
+    $without = $cookies($this->post('/accesso', ['email' => 'anna@example.com', 'password' => $this::PASSWORD]));
+    expect($without)->toHaveKey('as_gestionale')->and($without['as_gestionale'])->toBe(0)
+        ->and(array_filter(array_keys($without), static fn (string $n): bool => str_starts_with($n, 'remember_')))->toBe([]);
+
+    $this->post('/esci');
+    $with = $cookies($this->post('/accesso', ['email' => 'anna@example.com', 'password' => $this::PASSWORD, 'remember' => true]));
+    $recaller = array_values(array_filter(array_keys($with), static fn (string $n): bool => str_starts_with($n, 'remember_')));
+    expect($recaller)->toHaveCount(1)->and($with['as_gestionale'])->toBe(0)
+        ->and($with[$recaller[0]])->toBeGreaterThan(time() + 29 * 86400)->toBeLessThan(time() + 31 * 86400);
+});
+
+it('il cookie del gestionale ha un nome proprio e vale solo per il suo indirizzo', function (): void {
+    expect(config('session.cookie'))->toBe('as_gestionale')->and(config('session.domain'))->toBeNull();
+});

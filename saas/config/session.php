@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use Illuminate\Support\Str;
-
 return [
 
     /*
@@ -36,7 +34,8 @@ return [
 
     'lifetime' => (int) env('SESSION_LIFETIME', 120),
 
-    'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
+    // Senza «ricordami» l'accesso finisce quando si chiude il browser (e comunque dopo `lifetime` minuti senza attività).
+    'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', true),
 
     /*
     |--------------------------------------------------------------------------
@@ -129,10 +128,9 @@ return [
     |
     */
 
-    'cookie' => env(
-        'SESSION_COOKIE',
-        Str::slug((string) env('APP_NAME', 'laravel')).'-session'
-    ),
+    // Nome proprio del cookie del gestionale: in produzione «__Host-as_gestionale» (vedi deploy/env.server.example), che il
+    // browser accetta solo con Secure, percorso «/» e senza Domain, cioè valido per questo indirizzo e basta.
+    'cookie' => env('SESSION_COOKIE', 'as_gestionale'),
 
     /*
     |--------------------------------------------------------------------------

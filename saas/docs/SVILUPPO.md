@@ -76,6 +76,11 @@ Regole:
 - password di almeno 12 caratteri, in produzione anche il controllo sulle violazioni note; 5 tentativi al minuto per
   email e indirizzo, 5 per il codice; conferma della password valida 15 minuti;
 - «Password dimenticata» risponde allo stesso modo che l'email esista o no;
+- **«Ricordami» vero**: senza la spunta l'accesso finisce quando si chiude il browser (`SESSION_EXPIRE_ON_CLOSE=true`) e
+  comunque dopo 2 ore senza attività; con la spunta il dispositivo resta riconosciuto 30 giorni (`auth.guards.web.remember`);
+- **cookie solo per il suo indirizzo**: nome proprio (`as_gestionale`, in produzione `__Host-as_gestionale`), senza
+  `Domain`: non lo ricevono né il portale (`associazionesemplice.it`, che ha una sessione sua) né i sottodomini dei
+  soci. Gestionale, portale e area soci hanno quindi sessioni **separate**: entrare in uno non fa entrare negli altri;
 - sessione cifrata, cookie solo HTTPS, Content-Security-Policy senza script esterni, pagine con dati non in cache,
   cronologia di Inertia cifrata, strumenti di sviluppo di Inertia spenti.
 
