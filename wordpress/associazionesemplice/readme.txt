@@ -58,13 +58,13 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 == Changelog ==
 
 = 1.3.15 =
-* Phone layout: forms inside cards (accounts, activities) stack in one column instead of running off the card.
+* Phone layout: forms inside cards (accounts, activities) stack in one column; event page: summary above the calendar, month and day views only (day view has a date picker).
 
 = 1.3.14 =
 * Clearer wording in the event calendar, packages and account collection fee; dead payment error removed.
 
 = 1.3.13 =
-* Event pages: a day/week/month calendar of the dates, with the packages that still have entries left (also in Cash → Book); per-account collection fee (fixed + percentage) for physical POS terminals; resources paid in advance can be booked and settled at the desk when no online payment is active; no second "Area riservata" entry in the site menu.
+* Event pages: a day/month calendar of the dates, with the packages that still have entries left (also in Cash → Book); per-account collection fee (fixed + percentage) for physical POS terminals; resources paid in advance can be booked and settled at the desk when no online payment is active; no second "Area riservata" entry in the site menu.
 
 = 1.3.12 =
 * Phones: the activities table in the member area becomes one card per row, so payments no longer fall off screen; secondary button has an outline.
