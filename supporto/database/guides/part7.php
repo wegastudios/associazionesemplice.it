@@ -153,9 +153,13 @@ Quando un corso o un evento si svolge in una sala o su un campo, collegalo alla 
 3. Salva.
 
 - Un **evento deve indicare** la risorsa oppure scegliere **«Nessuna risorsa (evento fuori sede)»**.
-- Per un **corso** la scelta è facoltativa.
+- Anche per un **corso** va indicata la risorsa, oppure **«Nessuna risorsa (fuori sede)»**: così i calendari si incrociano.
 - Si possono scegliere solo risorse **a fasce orarie**.
 - Gli eventi già salvati scelgono la risorsa alla prima modifica.
+
+## Occupare la risorsa solo quando serve
+
+Per le attività a fasce c'è la casella **«Occupa la risorsa solo dove ci sono prenotazioni»**. Se la spunti, gli orari senza prenotazioni restano liberi. Una fascia già occupata altrove non si può prenotare.
 
 Nel calendario del giorno leggi **«Attività: …»** sulla fascia occupata e **«Allestimento per: …»** sul tempo di preparazione.
 
