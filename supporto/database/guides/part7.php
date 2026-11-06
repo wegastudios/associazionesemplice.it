@@ -96,6 +96,8 @@ Sulla scheda della risorsa imposti anche:
 - le regole di **annullamento**;
 - il **pagamento**, anche in crediti.
 
+Se una risorsa è da **pagare online in anticipo** ma i pagamenti online non sono attivi, resta **prenotabile** e il contributo si salda in segreteria.
+
 ## Chi può usare il menu Risorse
 
 Lo usano gli amministratori e chi opera (segreteria e consiglieri con accesso operativo). Per i permessi vedi [Assegnare ruoli e permessi](guida:assegnare-ruoli-e-permessi).

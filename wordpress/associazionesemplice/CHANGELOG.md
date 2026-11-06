@@ -2,6 +2,28 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.17
+- Nel modulo «Prenota» di un evento, scelto il socio, la casella del pacchetto dice quale pacchetto ha e quanti ingressi gli restano. L'ingresso si scala già alla prenotazione.
+
+## 1.3.16
+- Eventi e corsi: i prezzi non sono più quattro fissi, ne aggiungi quanti servono e puoi cambiare il massimo dalle impostazioni.
+- Il numero massimo di prezzi per attività si cambia da Impostazioni → Limiti.
+
+## 1.3.15
+- Da telefono i moduli nelle schede (conti, attività) vanno su una colonna e non escono più dalla scheda.
+- Negli eventi ricorrenti la scheda diventa «Aggiungi o elimina date»: se un giorno è di festa, elimini quella data dall'elenco. Il pulsante «Annulla solo questa data» resta anche nella riga della data.
+- Nella pagina di un evento il riepilogo sta prima del calendario. Il calendario ha due viste, mese (di partenza) e giorno; nella vista giorno scegli la data con il selettore, scritta come 06/11/2026. La vista settimana è tolta.
+
+## 1.3.14
+- Testi più chiari nel calendario dell'evento, nei pacchetti e nella commissione di incasso dei conti.
+
+## 1.3.13
+- Nella pagina di un evento c'è un calendario con le date, da vedere per mese o per giorno. Toccando una data si aprono le sue prenotazioni.
+- La segreteria vede chi ha un pacchetto con ingressi ancora da usare, e quanti ne restano: nella pagina dell'evento e, per la persona scelta, in Cassa → Prenota.
+- Su un conto (per esempio un POS fisico) puoi indicare la commissione di incasso, fissa e in percentuale: a ogni incasso la spesa va in prima nota.
+- Se non c'è nessun pagamento online, una risorsa da pagare in anticipo si prenota lo stesso e il contributo si salda in segreteria.
+- Nel menu del sito la voce «Area riservata» non compare più due volte.
+
 ## 1.3.12
 - Da telefono, nell'area soci la tabella delle attività diventa una scheda per riga (i pagamenti non restano fuori schermo) e il pulsante secondario ha il contorno
 

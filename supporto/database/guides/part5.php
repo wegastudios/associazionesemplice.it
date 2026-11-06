@@ -17,6 +17,10 @@ Con Pro puoi tenere più conti (cassa contanti, banca, carta, Stripe, PayPal…)
 3. Per **chiudere** un conto il saldo deve essere zero: prima sposta i soldi con un giroconto. I conti chiusi non accettano movimenti, ma restano nei rendiconti dei periodi in cui hanno lavorato.
 4. Puoi riaprire un conto chiuso.
 
+## Commissione di incasso
+
+Su un conto, per esempio un POS fisico, puoi indicare la **commissione di incasso**: una cifra fissa più una percentuale. A ogni incasso la spesa va in prima nota. Per gli incassi online le tariffe sono in **Pagamenti online**.
+
 ## Spostare denaro tra conti
 
 1. Vai in **Cassa → Giroconto**.

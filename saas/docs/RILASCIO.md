@@ -36,16 +36,17 @@ Sub-account cPanel del reseller (produzione `associazionesemplice`, staging a pa
 | ogni mese, il 1° | `saas:audit:partitions` 02:13 |
 | ogni settimana, lunedì | `saas:backup:restore-test` 06:17 (solo staging, con la chiave privata dei backup) |
 
-### Impostazioni dall'amministrazione
+### Impostazioni tecniche
 
-Posta (SMTP), spazio dei backup (SFTP, con il testo della chiave privata), servizio chiavi e cache si impostano anche
-da **`/admin/piattaforma`**, oltre che da `shared/.env`: i valori stanno in `core.platform_settings`, cifrati con
-`APP_KEY` (cambiando `APP_KEY` vanno reinseriti), e all'avvio prendono il posto di quelli del file. Ogni sezione ha un
-pulsante di prova; nel registro di sicurezza finiscono i nomi delle impostazioni cambiate, mai i valori.
-L'amministratore della piattaforma si nomina sul server: `php artisan saas:admin:grant email` (`--revoke` per
-togliere); entra con la verifica in due passaggi e la conferma della password.
+Posta (SMTP), spazio dei backup (SFTP), servizio chiavi e cache si impostano **solo da `shared/.env`** sul server: il
+SaaS (`app.associazionesemplice.it`) è solo il gestionale delle singole associazioni e non ha pagine di
+amministrazione della piattaforma. Contratto, upgrade, limiti, piani e utenti attivi e non si gestiscono dal portale
+(`associazionesemplice.it/saas`), che parla con il SaaS con richieste firmate ([CONTRATTO_PORTALE.md](CONTRATTO_PORTALE.md) §2.3).
 
-Ripieghi automatici (`saas:health` li mostra come note, la pagina come avvisi):
+(`core.platform_settings` e `PlatformSettings` restano nel codice, ma senza pagina nessuno li scrive: le impostazioni
+valgono quelle del file d'ambiente.)
+
+Ripieghi automatici (`saas:health` li mostra come note):
 
 | Manca | Cosa succede |
 |---|---|

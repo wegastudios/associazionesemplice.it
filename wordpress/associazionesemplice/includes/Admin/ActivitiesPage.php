@@ -226,7 +226,10 @@ final class ActivitiesPage {
 		echo '<p class="description">' . esc_html( ActivityKind::labels()[ $activity['kind'] ] ?? $activity['kind'] ) . ' · ' . esc_html( self::fee_text( $activity ) ) . '</p>';
 		echo '<div class="asem-cols"><div class="asem-col">';
 		if ( ActivityKind::uses_sessions( $activity['kind'] ) ) {
-			self::sessions_left( $activity, $back );
+			self::sessions_summary( $activity ); // il riepilogo sta prima del calendario
+			self::sessions_calendar( $activity );
+			self::sessions_list( $activity, $back ); // le date e le prenotazioni restano nella stessa colonna, sotto il calendario
+			self::sessions_left( $activity, $back ); // staff e aggiunta di date
 		} else {
 			self::course_left( $activity, $year, $back );
 			self::course_enrolled( $activity, $year, $back ); // gli iscritti restano nella prima colonna, sotto il modulo di iscrizione
@@ -242,11 +245,93 @@ final class ActivitiesPage {
 		self::copy_card( $activity );
 		self::delete_card( $activity );
 		echo '</div></div>';
-
-		if ( ActivityKind::uses_sessions( $activity['kind'] ) ) {
-			self::sessions_list( $activity, $back );
-		}
 		Ui::footer();
+	}
+
+	/** Calendario visuale delle date di un evento, a mese o a settimana (a scelta). Ogni data porta alla sua riga con le prenotazioni. */
+	private static function sessions_calendar( array $activity ): void {
+		$id    = (int) $activity['id'];
+		$today = current_time( 'Y-m-d' );
+		$by    = array();
+		$first = '';
+		foreach ( Plugin::activities()->sessions( $id ) as $s ) {
+			$by[ $s['session_date'] ][] = $s;
+			if ( '' === $first && empty( $s['cancelled_at'] ) && $s['session_date'] >= $today ) {
+				$first = $s['session_date']; // di partenza si mostra il periodo della prossima data
+			}
+		}
+		$view = 'day' === Ui::get_str( 'cal' ) ? 'day' : 'month'; // di partenza il mese
+		$ref  = Ui::get_str( 'cal_date' );
+		if ( ! preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $ref, $m ) || ! checkdate( (int) $m[2], (int) $m[3], (int) $m[1] ) ) {
+			$ref = '' !== $first ? $first : ( $by ? array_key_last( $by ) : $today );
+		}
+		$d = new \DateTimeImmutable( $ref );
+		if ( 'day' === $view ) {
+			$from = $d;
+			$to   = $d;
+			$prev = $d->modify( '-1 day' );
+			$next = $d->modify( '+1 day' );
+			$head = wp_date( 'l j F Y', $d->getTimestamp() );
+		} else {
+			$m1   = $d->modify( 'first day of this month' );
+			$from = $m1->modify( 'monday this week' );
+			$end  = $m1->modify( 'last day of this month' );
+			$to   = $end->modify( 'sunday this week' );
+			$prev = $m1->modify( '-1 month' );
+			$next = $m1->modify( '+1 month' );
+			$head = wp_date( 'F Y', $m1->getTimestamp() );
+		}
+		$link = function ( string $v, string $date ) use ( $id ) {
+			return Ui::url( 'asem-activity', array( 'id' => $id, 'cal' => $v, 'cal_date' => $date ) );
+		};
+		$html  = '<div class="asem-card asem-cal"><h2>Calendario dell\'evento</h2><p class="asem-cal-nav">'
+			. '<a class="button" aria-label="Periodo precedente" href="' . esc_url( $link( $view, $prev->format( 'Y-m-d' ) ) ) . '">←</a> <strong>' . esc_html( $head ) . '</strong> '
+			. '<a class="button" aria-label="Periodo successivo" href="' . esc_url( $link( $view, $next->format( 'Y-m-d' ) ) ) . '">→</a> '
+			. '<span class="asem-cal-views"><a class="button' . ( 'day' === $view ? ' button-primary' : '' ) . '" href="' . esc_url( $link( 'day', $ref ) ) . '">Giorno</a> '
+			. '<a class="button' . ( 'month' === $view ? ' button-primary' : '' ) . '" href="' . esc_url( $link( 'month', $ref ) ) . '">Mese</a></span></p>';
+		if ( 'day' === $view ) { // per cambiare giorno si sceglie la data (selettore del calendario, scritta come gg/mm/aaaa)
+			$html .= '<form method="get" action="' . esc_url( admin_url( 'admin.php' ) ) . '" class="asem-cal-pick"><input type="hidden" name="page" value="asem-activity"><input type="hidden" name="id" value="' . $id . '"><input type="hidden" name="cal" value="day">'
+				. '<label>Vai al giorno <input type="date" name="cal_date" value="' . esc_attr( $ref ) . '" required></label> <button class="button">Vai</button></form>';
+		}
+		$html .= '<table class="asem-cal-grid"><thead><tr>';
+		$names = array( 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom' );
+		$cols  = 'day' === $view ? 1 : 7;
+		foreach ( 'day' === $view ? array( $names[ (int) $from->format( 'N' ) - 1 ] ) : $names as $n ) {
+			$html .= '<th>' . $n . '</th>';
+		}
+		$html .= '</tr></thead><tbody>';
+		for ( $day = $from, $col = 0; $day <= $to; $day = $day->modify( '+1 day' ), $col++ ) {
+			$key = $day->format( 'Y-m-d' );
+			if ( 0 === $col % $cols ) {
+				$html .= '<tr>';
+			}
+			$other = 'month' === $view && $day->format( 'm' ) !== $m1->format( 'm' );
+			$html .= '<td class="asem-cal-day' . ( $other ? ' asem-cal-other' : '' ) . ( $key === $today ? ' asem-cal-today' : '' ) . '"><span class="asem-cal-n">' . (int) $day->format( 'j' ) . '</span>';
+			foreach ( $by[ $key ] ?? array() as $s ) {
+				$seat   = Plugin::activities()->seats( (int) $s['id'] );
+				$count  = (int) $seat['taken'] . ( null === $seat['capacity'] ? '' : '/' . (int) $seat['capacity'] );
+				$full   = null !== $seat['free'] && 0 === $seat['free'];
+				$html  .= '<a class="asem-cal-s' . ( ! empty( $s['cancelled_at'] ) ? ' asem-cal-off' : ( $full ? ' asem-cal-full' : '' ) ) . '" href="#asem-sess-' . (int) $s['id'] . '">'
+					. esc_html( ( $s['start_time'] ? substr( (string) $s['start_time'], 0, 5 ) . ' ' : '' ) . $count ) . '</a>';
+			}
+			if ( 'day' === $view && empty( $by[ $key ] ) ) {
+				$html .= '<span class="description">Nessuna data in questo giorno.</span>';
+			}
+			$html .= '</td>';
+			if ( $cols - 1 === $col % $cols ) {
+				$html .= '</tr>';
+			}
+		}
+		$html .= '</tbody></table><p class="description">Accanto all\'orario: persone prenotate e posti totali. Tocca una data per vedere le prenotazioni.</p>';
+		$pk    = Plugin::activities()->packages_overview( $id );
+		if ( $pk ) {
+			$html .= '<details class="asem-detail"><summary><strong>Pacchetti con ingressi ancora da usare (' . count( $pk ) . ')</strong></summary><table class="widefat striped"><thead><tr><th>Persona</th><th>Pacchetto</th><th>Ingressi rimasti</th></tr></thead><tbody>';
+			foreach ( $pk as $r ) {
+				$html .= '<tr><td><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $r['person_id'] ) ) ) . '">' . esc_html( $r['name'] ) . '</a></td><td>' . esc_html( $r['label'] ) . '</td><td>' . (int) $r['left'] . ' su ' . (int) $r['total'] . '</td></tr>';
+			}
+			$html .= '</tbody></table></details>';
+		}
+		echo wp_kses( $html . '</div>', Html::allowed() );
 	}
 
 	/** Collegamenti al calendario di questa attività (e a quello di tutte). */
@@ -443,7 +528,16 @@ final class ActivitiesPage {
 			if ( $pk ) {
 				$html .= '<label><input type="checkbox" name="use_package" value="1"> usa ' . esc_html( $pk[0]['label'] ) . ' (' . (int) $pk[0]['left'] . ' rimasti)</label> ';
 			} elseif ( ! $person_id ) {
-				$html .= '<label><input type="checkbox" name="use_package" value="1"> dal pacchetto già pagato</label> ';
+				// Persona non ancora scelta: la scritta si aggiorna (admin.js) appena la scegli, con il pacchetto e gli ingressi rimasti.
+				$map = array();
+				foreach ( Plugin::activities()->packages_overview( (int) $activity['id'] ) as $r ) {
+					if ( ! isset( $map[ $r['person_id'] ] ) ) {
+						$map[ $r['person_id'] ] = $r['label'] . '|' . $r['left'];
+					}
+				}
+				$html .= '<label class="asem-use-pk" data-packages="' . esc_attr( (string) wp_json_encode( (object) $map ) ) . '"><input type="checkbox" name="use_package" value="1"> <span>usa un pacchetto già pagato</span></label> ';
+			} else {
+				$html .= '<span class="description">nessun pacchetto attivo</span> ';
 			}
 		}
 		if ( ! \AssociazioneSemplice\Edition::has( 'funds' ) ) {
@@ -456,6 +550,27 @@ final class ActivitiesPage {
 		return $html . '</select>';
 	}
 
+	/** Una riga del listino (nome, prezzo, ingressi per gli eventi). */
+	private static function price_row( int $i, array $l, bool $course ): string {
+		return '<div class="asem-pl-row"><input type="hidden" name="pl_key[' . $i . ']" value="' . esc_attr( (string) ( $l['key'] ?? '' ) ) . '">'
+			. ( $course ? '<input type="hidden" name="pl_entries[' . $i . ']" value="1">' : '' )
+			. '<input type="text" class="asem-pl-name" name="pl_label[' . $i . ']" value="' . esc_attr( $l['label'] ) . '" placeholder="' . ( $course ? 'es. Secondo corso -10%, Famiglia, Solo il sabato' : 'es. Intero, Ridotto, Pacchetto 4' ) . '" maxlength="60" aria-label="' . ( $course ? 'Nome della variante' : 'Nome del listino' ) . '">'
+			. '<span class="asem-pl-price"><input type="text" name="pl_price[' . $i . ']" size="7" value="' . esc_attr( '' === $l['label'] ? '' : Money::plain( (int) $l['cents'] ) ) . '" aria-label="Prezzo in euro"> €</span>'
+			. ( $course ? '' : '<input type="number" name="pl_entries[' . $i . ']" min="1" max="50" value="' . (int) $l['entries'] . '" aria-label="Ingressi">' )
+			. '</div>';
+	}
+
+	/** Le righe dei listini: quelle già scritte più una vuota; il pulsante ne aggiunge altre, fino al limite scelto in Impostazioni. */
+	private static function price_rows( array $activity, bool $course ): string {
+		$lists = array_slice( PriceLists::for_activity( $activity ), 0, PriceLists::max() );
+		$lists = array_merge( $lists, array( array( 'label' => '', 'cents' => 0, 'entries' => 1 ) ) );
+		$rows  = $course ? '<div class="asem-pl-row asem-pl-head"><span>Variante</span><span>Prezzo</span></div>' : '<div class="asem-pl-row asem-pl-head"><span>Nome</span><span>Prezzo</span><span>Ingressi</span></div>';
+		foreach ( $lists as $i => $l ) {
+			$rows .= self::price_row( (int) $i, $l, $course );
+		}
+		return '<div class="asem-pl" data-max="' . (int) PriceLists::max() . '">' . $rows . '</div><p><button type="button" class="button asem-pl-add">+ Aggiungi un prezzo</button></p>';
+	}
+
 	/** Righe del modulo con i listini dell'attività (nome, prezzo, ingressi). */
 	private static function price_list_row( array $activity ): string {
 		if ( ActivityKind::COURSE === $activity['kind'] ) {
@@ -464,17 +579,8 @@ final class ActivitiesPage {
 		if ( ! ActivityKind::uses_sessions( $activity['kind'] ) ) {
 			return '';
 		}
-		$lists = PriceLists::for_activity( $activity );
-		$lists = array_pad( $lists, max( 4, count( $lists ) + 1 ), array( 'label' => '', 'cents' => 0, 'entries' => 1 ) );
-		$rows  = '<div class="asem-pl-row asem-pl-head"><span>Nome</span><span>Prezzo</span><span>Ingressi</span></div>';
-		foreach ( array_slice( $lists, 0, PriceLists::MAX ) as $i => $l ) {
-			$rows .= '<div class="asem-pl-row"><input type="hidden" name="pl_key[' . (int) $i . ']" value="' . esc_attr( (string) ( $l['key'] ?? '' ) ) . '">'
-				. '<input type="text" class="asem-pl-name" name="pl_label[' . (int) $i . ']" value="' . esc_attr( $l['label'] ) . '" placeholder="es. Individuale" maxlength="60" aria-label="Nome del listino">'
-				. '<span class="asem-pl-price"><input type="text" name="pl_price[' . (int) $i . ']" size="7" value="' . esc_attr( '' === $l['label'] ? '' : Money::plain( (int) $l['cents'] ) ) . '" aria-label="Prezzo in euro"> €</span>'
-				. '<input type="number" name="pl_entries[' . (int) $i . ']" min="1" max="50" value="' . (int) $l['entries'] . '" aria-label="Ingressi"></div>';
-		}
-		return '<tr><th>Listini</th><td><div class="asem-pl">' . $rows . '</div>'
-			. '<p class="description">Facoltativi: ad esempio Individuale, Di gruppo, Pacchetto 4 individuale, Pacchetto 4 di gruppo. In prenotazione la segreteria sceglie il listino; con 4 ingressi il prezzo del pacchetto si paga una volta e le altre date si prenotano «dal pacchetto» senza altro da pagare. Righe vuote ignorate; senza listini vale il contributo sopra.</p></td></tr>';
+		return '<tr><th>Listini</th><td>' . self::price_rows( $activity, false )
+			. '<p class="description">Facoltativi: ad esempio Intero, Ridotto, Studenti, Pacchetto 4. Scrivi solo quelli che servono e aggiungine altri col pulsante. In prenotazione la segreteria sceglie il listino; con 4 ingressi il prezzo del pacchetto si paga una volta e le altre date si prenotano «dal pacchetto» senza altro da pagare. Senza listini vale il contributo sopra.</p></td></tr>';
 	}
 
 	/** Il menu delle varianti del contributo di un corso (la quota base è la prima voce). */
@@ -503,15 +609,7 @@ final class ActivitiesPage {
 
 	/** Corsi: varianti del contributo (nome libero e prezzo per ogni periodo di pagamento) che la segreteria assegna all'iscrizione. */
 	private static function course_variants_row( array $activity ): string {
-		$lists = PriceLists::for_activity( $activity );
-		$lists = array_pad( $lists, max( 3, count( $lists ) + 1 ), array( 'label' => '', 'cents' => 0, 'entries' => 1 ) );
-		$rows  = '<div class="asem-pl-row asem-pl-head"><span>Variante</span><span>Prezzo</span></div>';
-		foreach ( array_slice( $lists, 0, PriceLists::MAX ) as $i => $l ) {
-			$rows .= '<div class="asem-pl-row"><input type="hidden" name="pl_key[' . (int) $i . ']" value="' . esc_attr( (string) ( $l['key'] ?? '' ) ) . '"><input type="hidden" name="pl_entries[' . (int) $i . ']" value="1">'
-				. '<input type="text" class="asem-pl-name" name="pl_label[' . (int) $i . ']" value="' . esc_attr( $l['label'] ) . '" placeholder="es. Secondo corso -10%, Famiglia, Solo il sabato" maxlength="60" aria-label="Nome della variante">'
-				. '<span class="asem-pl-price"><input type="text" name="pl_price[' . (int) $i . ']" size="7" value="' . esc_attr( '' === $l['label'] ? '' : Money::plain( (int) $l['cents'] ) ) . '" aria-label="Prezzo in euro"> €</span></div>';
-		}
-		return '<tr><th>Varianti del contributo</th><td><div class="asem-pl">' . $rows . '</div>'
+		return '<tr><th>Varianti del contributo</th><td>' . self::price_rows( $activity, true )
 			. '<p class="description">Facoltative e descritte come vuoi: sconto per più corsi, attività parziale, più familiari iscritti. Il prezzo è quello di ogni periodo di pagamento del corso. Le assegna la segreteria all\'iscrizione di una persona; chi si iscrive da solo paga il contributo sopra.</p></td></tr>';
 	}
 
@@ -646,7 +744,7 @@ final class ActivitiesPage {
 
 	// ---------- Eventi (una tantum e ricorrenti) ----------
 
-	private static function sessions_left( array $activity, string $back ): void {
+	private static function sessions_summary( array $activity ): void {
 		$id       = (int) $activity['id'];
 		$sessions = Plugin::activities()->sessions( $id );
 		$due      = 0;
@@ -666,11 +764,39 @@ final class ActivitiesPage {
 			. '<tr><td>Date</td><td>' . count( $sessions ) . '</td></tr><tr><td>Partecipanti (persone distinte)</td><td>' . (int) Plugin::activities()->active_participants( $id ) . '</td></tr>'
 			. '<tr><td>Contributi dovuti dalle prenotazioni</td><td>' . Ui::money( $due ) . '</td></tr><tr><td>Incassati</td><td>' . Ui::money( $paid ) . '</td></tr>'
 			. '<tr><td><strong>Ancora da incassare</strong></td><td><strong>' . Ui::money( $due - $paid ) . '</strong></td></tr></table></div>', Html::allowed() );
+	}
+
+	/** Eventi: staff e, per i ricorrenti, aggiunta di nuove date. */
+	private static function sessions_left( array $activity, string $back ): void {
+		$id = (int) $activity['id'];
 
 		self::staff_card( $activity, $back );
 
 		if ( ActivityKind::RECURRING === $activity['kind'] ) {
-			echo '<div class="asem-card"><h2>Aggiungi date</h2>';
+			echo '<div class="asem-card"><h2>Aggiungi o elimina date</h2>';
+			$upcoming = array_values(
+				array_filter(
+					Plugin::activities()->sessions( $id ),
+					function ( $s ) {
+						return empty( $s['cancelled_at'] ) && $s['session_date'] >= current_time( 'Y-m-d' );
+					}
+				)
+			);
+			echo '<h3>Elimina una data</h3><p class="description">Per un giorno di festa o di pausa: la data sparisce dal calendario e le prenotazioni non contano più. I pagamenti già ricevuti per quella data vanno rimborsati a mano.</p>';
+			if ( ! $upcoming ) {
+				echo '<p class="description">Non ci sono date future.</p>';
+			} else {
+				echo '<ul class="asem-dates">';
+				foreach ( $upcoming as $s ) {
+					echo '<li>';
+					Ui::form_open( 'asem_cancel_session', $back, false, 'asem-confirm asem-inline' );
+					echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ) . esc_html( Ui::date( $s['session_date'] ) . ( $s['start_time'] ? ' · ore ' . substr( (string) $s['start_time'], 0, 5 ) : '' ) ) . ' <button class="button button-small" data-confirm="Eliminare la data del ' . esc_attr( Ui::date( $s['session_date'] ) ) . '? Le prenotazioni non contano più; i pagamenti già ricevuti vanno rimborsati a mano.">Elimina</button>', Html::allowed() );
+					Ui::form_close();
+					echo '</li>';
+				}
+				echo '</ul>';
+			}
+			echo '<h3>Aggiungi date</h3>';
 			Ui::form_open( 'asem_add_dates', $back );
 			echo wp_kses( Ui::hidden( 'activity_id', $id ) . self::when_builder(), Html::allowed() );
 			echo '<p>Luogo <input type="text" name="location"> posti <input type="number" min="1" name="capacity" class="small-text"> <span class="description">(per le date che aggiungi; posti vuoti = nessun limite)</span></p>'
@@ -811,7 +937,7 @@ final class ActivitiesPage {
 			}
 			$cap   = null === $s['capacity'] ? null : (int) $s['capacity'];
 			$title = Ui::date( $s['session_date'] ) . ( $s['start_time'] ? ' · ore ' . esc_html( $s['start_time'] ) : '' ) . ( $s['location'] ? ' · ' . esc_html( $s['location'] ) : '' );
-			echo wp_kses( '<details class="asem-detail"' . ( ActivityKind::EVENT === $activity['kind'] ? ' open' : '' ) . '><summary><strong>' . $title . '</strong> — '
+			echo wp_kses( '<details class="asem-detail" id="asem-sess-' . (int) $s['id'] . '"' . ( ActivityKind::EVENT === $activity['kind'] ? ' open' : '' ) . '><summary><strong>' . $title . '</strong> — '
 				. count( $booked ) . ( null === $cap ? ' prenotati' : ' / ' . $cap . ' posti (' . max( 0, $cap - count( $booked ) ) . ' liberi)' ) . ( $cancelled ? ' <span class="asem-neg">· ANNULLATA</span>' : '' ) . '</summary>', Html::allowed() );
 
 			$queue = \AssociazioneSemplice\Waitlist::waiting( (int) $s['id'] );

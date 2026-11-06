@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Modules\Core\Http\Middleware\EnsurePlatformAdmin;
 use App\Modules\Core\Http\Middleware\EnsureTwoFactorConfirmed;
+use App\Modules\Core\Http\Middleware\EnsureUserActive;
 use App\Modules\Core\Http\Middleware\HandleInertiaRequests;
 use App\Modules\Core\Http\Middleware\IdentifyOperatorOrg;
 use App\Modules\Core\Http\Middleware\ResetOrgContext;
@@ -23,7 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend(ResetOrgContext::class);
         $middleware->append(SecurityHeaders::class);
 
-        $middleware->web(append: [HandleInertiaRequests::class]);
+        $middleware->web(append: [EnsureUserActive::class, HandleInertiaRequests::class]);
         $middleware->encryptCookies();
         $middleware->redirectGuestsTo('/accesso');
         $middleware->redirectUsersTo('/gestionale');
@@ -31,7 +31,6 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'two-factor' => EnsureTwoFactorConfirmed::class,
             'operator' => IdentifyOperatorOrg::class,
-            'platform-admin' => EnsurePlatformAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

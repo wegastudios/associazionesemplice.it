@@ -6,7 +6,6 @@ use App\Modules\Core\Http\Controllers\DashboardController;
 use App\Modules\Core\Http\Controllers\ExportController;
 use App\Modules\Core\Http\Controllers\OperatorsController;
 use App\Modules\Core\Http\Controllers\OrgSwitchController;
-use App\Modules\Core\Http\Controllers\PlatformController;
 use App\Modules\Core\Http\Controllers\SetupController;
 use App\Modules\Core\Http\Controllers\TwoFactorSetupController;
 use Illuminate\Support\Facades\Route;
@@ -28,12 +27,6 @@ Route::middleware('web')->group(function (): void {
     Route::middleware(['auth', 'two-factor'])->group(function (): void {
         Route::get('/associazioni', [OrgSwitchController::class, 'index'])->name('orgs.choose');
 
-        // Amministrazione della piattaforma: posta, backup, servizio chiavi, cache.
-        Route::middleware(['platform-admin', 'password.confirm'])->prefix('admin/piattaforma')->group(function (): void {
-            Route::get('/', [PlatformController::class, 'show'])->name('platform');
-            Route::post('/{section}', [PlatformController::class, 'save'])->whereIn('section', ['mail', 'backup', 'keys', 'cache'])->name('platform.save');
-            Route::post('/{section}/prova', [PlatformController::class, 'test'])->whereIn('section', ['mail', 'backup', 'keys', 'cache'])->middleware('throttle:10,1')->name('platform.test');
-        });
         Route::post('/associazioni/{org}', [OrgSwitchController::class, 'store'])->whereUuid('org')->name('orgs.switch');
 
         Route::middleware('operator')->prefix('gestionale')->group(function (): void {

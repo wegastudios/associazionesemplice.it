@@ -14,7 +14,12 @@ final class PriceLists {
 
 	const GUEST_ASSOC     = 'association';
 	const GUEST_VOLUNTEER = 'volunteer';
-	const MAX             = 8;
+	const MAX             = 30; // valore di partenza: il limite in uso si cambia da Impostazioni → Limiti (`price_lists_max`)
+
+	/** Quanti listini al massimo può avere un'attività (limite configurabile). */
+	public static function max(): int {
+		return class_exists( __NAMESPACE__ . '\Limits' ) && function_exists( 'get_option' ) ? Limits::get( 'price_lists_max' ) : self::MAX;
+	}
 
 	public static function guest_kinds(): array {
 		return array(
@@ -55,7 +60,7 @@ final class PriceLists {
 				'entries' => max( 1, min( 50, (int) ( $r['entries'] ?? 1 ) ) ),
 			);
 		}
-		return array_slice( array_values( $out ), 0, self::MAX );
+		return array_slice( array_values( $out ), 0, self::max() );
 	}
 
 	public static function encode( array $lists ): ?string {

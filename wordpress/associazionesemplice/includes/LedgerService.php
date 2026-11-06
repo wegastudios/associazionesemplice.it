@@ -75,6 +75,49 @@ class LedgerService {
 		Audit::log( 'account.updated', 'account', $id, $details );
 	}
 
+	/**
+	 * Commissione di incasso del conto (per esempio un POS fisico): fisso in centesimi + percentuale in punti base (150 = 1,50%).
+	 * Se è impostato, a ogni incasso registrato in segreteria o sul posto su quel conto si registra in prima nota la spesa corrispondente.
+	 */
+	public function set_account_fee( int $id, int $fixed_cents, int $bp ): void {
+		if ( ! $this->account_any( $id ) ) {
+			throw new \InvalidArgumentException( 'Conto non trovato.' );
+		}
+		$fixed_cents = max( 0, min( 2000, $fixed_cents ) );
+		$bp          = max( 0, min( 2500, $bp ) );
+		$this->db()->update( Db::t( 'accounts' ), array( 'fee_fixed_cents' => $fixed_cents, 'fee_bp' => $bp ), array( 'id' => $id ) );
+		Audit::log( 'account.fee_set', 'account', $id, array( 'fixed_cents' => $fixed_cents, 'bp' => $bp ) );
+	}
+
+	/** Registra come spesa il costo di incasso del conto sull'importo incassato; 0 se il conto non ne ha. Non blocca mai l'incasso già fatto. */
+	public function book_account_fee( int $account_id, string $date, int $charged_cents, string $method, string $ref = '' ): int {
+		$acc = $this->account_any( $account_id );
+		if ( ! $acc ) {
+			return 0;
+		}
+		$fee = PaymentConfig::fee_cents( $charged_cents, (int) ( $acc['fee_fixed_cents'] ?? 0 ), (int) ( $acc['fee_bp'] ?? 0 ) );
+		if ( $fee <= 0 ) {
+			return 0;
+		}
+		try {
+			$this->record_expense(
+				array(
+					'date'         => $date,
+					'account_id'   => $account_id,
+					'method'       => $method,
+					'category_id'  => $this->category_id_of_kind( 'general_cost' ),
+					'amount_cents' => $fee,
+					'description'  => 'Commissione di incasso (stima) — ' . $acc['name'],
+					'document_ref' => $ref,
+				)
+			);
+			return $fee;
+		} catch ( \Throwable $e ) {
+			Audit::log( 'account.fee_failed', 'account', $account_id, array( 'error' => mb_substr( $e->getMessage(), 0, 120 ) ) );
+			return 0;
+		}
+	}
+
 	/** Chiude un conto: deve essere a zero (altrimenti sposta prima i soldi con un giroconto). */
 	public function close_account( int $id ): void {
 		$acc = $this->account( $id );

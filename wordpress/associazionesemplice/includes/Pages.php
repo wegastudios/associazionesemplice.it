@@ -140,9 +140,12 @@ final class Pages {
 		if ( ! $menu_id ) {
 			return false;
 		}
-		foreach ( (array) wp_get_nav_menu_items( $menu_id ) as $item ) {
-			if ( (int) $item->object_id === $page_id && 'page' === $item->object ) {
-				return true;
+		$menus = wp_get_nav_menus();
+		foreach ( (array) $menus as $m ) { // già in un menu qualsiasi (anche quello per il telefono): non si aggiunge una seconda voce
+			foreach ( (array) wp_get_nav_menu_items( (int) $m->term_id ) as $item ) {
+				if ( (int) $item->object_id === $page_id && 'page' === $item->object ) {
+					return true;
+				}
 			}
 		}
 		$id = wp_update_nav_menu_item(

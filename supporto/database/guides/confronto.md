@@ -56,6 +56,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Ingressi: elenco prenotati e registrazione | ✓ | ✓ | ✓ |
 | Biglietti con QR per le prenotazioni | ✓ | ✓ | ✓ |
 | Listini per eventi e corsi a date (individuale, di gruppo, pacchetti di ingressi) | ✓ | ✓ | ✓ |
+| Calendario dell'evento (giorno, settimana, mese) e pacchetti con ingressi ancora da usare | ✓ | ✓ | ✓ |
 | Incasso sul posto durante gli eventi | — | ✓ | ✓ |
 | Risorse a fasce orarie (campi, sale) con tariffe, ospiti e regole di prenotazione | — | ✓ | ✓ |
 | Risorse assegnate a periodo (posti auto, armadietti, posti barca) con lista d'attesa | — | ✓ | ✓ |
@@ -66,7 +67,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Corsi ed eventi collegati alle risorse, con tempi di allestimento | — | ✓ | ✓ |
 | Suggerimento dei luoghi con Google (con la tua chiave) | ✓ | ✓ | ✓ |
 | Pulsante «Non rinnova» nel corso: l'iscritto resta fino a fine periodo pagato e poi non deve più nulla; eliminando un corso si rende la quota proporzionale delle lezioni non tenute | ✓ | ✓ | ✓ |
-| Eliminando un corso, un evento o una singola iscrizione si restituisce solo il non fruito; annullamento di una data o «di questa data e delle successive» negli eventi ricorrenti e nelle lezioni dei corsi | ✓ | ✓ | ✓ |
+| Eliminando un corso, un evento o una singola iscrizione si restituisce solo ciò che non è ancora stato fatto; si può annullare una data o «questa data e le successive» (eventi ricorrenti e lezioni dei corsi) | ✓ | ✓ | ✓ |
 
 ## Cassa e conti
 
@@ -85,6 +86,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Satispay e Klarna (tramite Stripe) tra i metodi di pagamento online | — | ✓ | ✓ |
 | Commissioni di incasso per metodo: stima in prima nota da tariffe standard modificabili e ribaltamento opzionale | — | ✓ | ✓ |
 | Conti multipli, giroconti e cassa per più persone | — | ✓ | ✓ |
+| Commissione di incasso sul conto (fissa più percentuale), per esempio POS: a ogni incasso la spesa va in prima nota | — | ✓ | ✓ |
 | Fondi accantonati (per esempio rimborso dei volontari) | — | ✓ | ✓ |
 | Bilancio preventivo per categoria, confrontato con la prima nota e approvato | — | ✓ | ✓ |
 | Rimborsi ai volontari: richiesta dall'area soci, approvazione, pagamento e registrazione in prima nota | — | ✓ | ✓ |

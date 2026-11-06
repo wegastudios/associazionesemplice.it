@@ -81,6 +81,7 @@ final class DoorSales {
 								'lines' => array( array( 'category_id' => $ledger->category_id_of_kind( 'activity_fee' ), 'amount_cents' => $due, 'activity_id' => $aid, 'session_id' => $sid ) ),
 							)
 						);
+						$ledger->book_account_fee( (int) ( $p['account_id'] ?? 0 ), current_time( 'Y-m-d' ), $due, (string) ( $p['method'] ?? '' ) ); // costo del POS o del conto, se impostato
 						$parts[] = 'incassati ' . Money::format( $due );
 					} else {
 						$parts[] = 'nulla da incassare';

@@ -7,8 +7,10 @@ namespace App\Modules\Core\Platform;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Contracts\Encryption\Encrypter;
+use Illuminate\Contracts\Encryption\StringEncrypter;
 use Illuminate\Database\DatabaseManager;
 use InvalidArgumentException;
+use RuntimeException;
 
 /**
  * Impostazioni della piattaforma nel database centrale, cifrate con la chiave dell'applicazione. Ognuna, se c'è, prende
@@ -51,9 +53,11 @@ final readonly class PlatformSettings
     ) {}
 
     /** Risolto solo quando serve: senza APP_KEY (composer install, build) l'avvio dell'applicazione non deve fallire. */
-    private function encrypter(): Encrypter
+    private function encrypter(): StringEncrypter
     {
-        return $this->container->make(Encrypter::class);
+        $encrypter = $this->container->make(Encrypter::class);
+
+        return $encrypter instanceof StringEncrypter ? $encrypter : throw new RuntimeException('Cifratura non disponibile.');
     }
 
     /** @return array<string, string> tutte le impostazioni presenti, in chiaro (solo per applicarle) */

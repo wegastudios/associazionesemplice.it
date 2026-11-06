@@ -794,6 +794,21 @@ check( 'staff: ruolo non valido rifiutato', null !== throwsUser( function () use
 check( 'staff: admin di config.php non modificabile', null !== throwsUser( function () use ( $tdb, $tbil ) { Portale\Staff::set( $tdb, $tbil, 'capo@esempio.it', 'support' ); } ) );
 Portale\Staff::remove( $tdb, 'aiuto@esempio.it' );
 check( 'staff: rimosso', null === Portale\Staff::role( $tdb, 'aiuto@esempio.it' ) );
+// Permessi separati per area: plugin e SaaS.
+check( 'staff: admin di config.php è anche amministratore SaaS', 'admin' === Portale\Staff::saas( $tdb, 'capo@esempio.it' ) );
+check( 'staff: sconosciuto senza accesso SaaS', '' === Portale\Staff::saas( $tdb, 'altro@esempio.it' ) );
+Portale\Staff::set( $tdb, $tbil, 'solo.saas@esempio.it', 'none', 'support' );
+check( 'staff: solo SaaS (nessun accesso al plugin)', null === Portale\Staff::role( $tdb, 'solo.saas@esempio.it' ) && 'support' === Portale\Staff::saas( $tdb, 'solo.saas@esempio.it' ) );
+Portale\Staff::set( $tdb, $tbil, 'solo.plugin@esempio.it', 'support' );
+check( 'staff: solo plugin (nessun accesso al SaaS)', 'support' === Portale\Staff::role( $tdb, 'solo.plugin@esempio.it' ) && '' === Portale\Staff::saas( $tdb, 'solo.plugin@esempio.it' ) );
+Portale\Staff::set( $tdb, $tbil, 'solo.plugin@esempio.it', 'support', 'admin' );
+Portale\Staff::set( $tdb, $tbil, 'solo.plugin@esempio.it', 'admin' );
+check( 'staff: cambiare il plugin non toglie il livello SaaS', 'admin' === Portale\Staff::role( $tdb, 'solo.plugin@esempio.it' ) && 'admin' === Portale\Staff::saas( $tdb, 'solo.plugin@esempio.it' ) );
+check( 'staff: serve almeno un accesso', null !== throwsUser( function () use ( $tdb, $tbil ) { Portale\Staff::set( $tdb, $tbil, 'nessuno@esempio.it', 'none', '' ); } ) );
+check( 'staff: livello SaaS non valido rifiutato', null !== throwsUser( function () use ( $tdb, $tbil ) { Portale\Staff::set( $tdb, $tbil, 'x@esempio.it', 'support', 'root' ); } ) );
+foreach ( array( 'solo.saas@esempio.it', 'solo.plugin@esempio.it' ) as $rm ) {
+	Portale\Staff::remove( $tdb, $rm );
+}
 Config::set( 'base_url', 'https://portale.test' );
 Config::set( 'support', array( 'url' => 'https://supporto.test/', 'sso_secret' => str_repeat( 's', 40 ) ) );
 check( 'sso: attivo con segreto lungo, indirizzo senza barra finale', Portale\SupportSso::enabled() && 'https://supporto.test' === Portale\SupportSso::supportUrl() );
@@ -1299,5 +1314,35 @@ Config::set( 'plans.lite.label', 'Nome nuovo' );
 check( 'elenco pubblico dei piani: il nome segue il pannello e gli slug restano', 'Nome nuovo' === Portale\Site::publicPlans()['piani'][1]['nome'] && 'procontabile' === Portale\Site::publicPlans()['piani'][1]['slug'] );
 check( 'elenco pubblico dei piani: nessun prezzo né altri dati', array( 'slug', 'nome' ) === array_keys( $pp[0] ) );
 
+
+// Amministrazione della piattaforma SaaS: richieste firmate (contratto §2.3), su trasporto simulato.
+$prevTransport = Http::$transport;
+Config::set( 'saas_sign_key', '' );
+Config::set( 'saas_sign_key_file', '/nonesiste/saas.key' );
+check( 'saas: senza chiave di firma nessuna richiesta', ! Portale\SaasClient::enabled() && null !== throwsUser( function () { Portale\SaasClient::orgs( 'staff@esempio.it' ); } ) );
+Config::set( 'saas_sign_key', base64_encode( str_repeat( 's', 32 ) ) );
+$saasSeen = array();
+Http::$transport = function ( $m, $u, $h, $b ) use ( &$saasSeen ) {
+	$saasSeen = array( $m, $u, json_decode( (string) $b, true ) );
+	return array( 200, '{"page":1,"per_page":50,"total":0,"orgs":[]}' );
+};
+$r = Portale\SaasClient::orgs( 'staff@esempio.it', array( 'q' => ' alfa ', 'status' => 'active', 'page' => 0, 'per_page' => 999 ) );
+$parts = explode( '.', (string) $saasSeen[2]['token'] );
+$cl    = json_decode( (string) base64_decode( strtr( $parts[1], '-_', '+/' ) ), true );
+$hd    = json_decode( (string) base64_decode( strtr( $parts[0], '-_', '+/' ) ), true );
+check( 'saas: elenco con POST verso l\'indirizzo del contratto', 'POST' === $saasSeen[0] && 'https://app.associazionesemplice.it/api/portale/v1/admin/orgs' === $saasSeen[1] && 0 === $r['total'] );
+check( 'saas: token EdDSA con claim del contratto (aud, typ, scope read, act, vita 60 s, jti)', 'EdDSA' === $hd['alg'] && 'associazionesemplice-saas' === $cl['aud'] && 'admin_read' === $cl['typ'] && 'read' === $cl['scope'] && 'staff@esempio.it' === $cl['act'] && 60 === $cl['exp'] - $cl['iat'] && 32 === strlen( $cl['jti'] ) );
+check( 'saas: filtri ripuliti (q senza spazi, pagina almeno 1, massimo 100 per pagina)', 'alfa' === $cl['q'] && 'active' === $cl['status'] && 1 === $cl['page'] && 100 === $cl['per_page'] );
+$sigOk = sodium_crypto_sign_verify_detached( (string) base64_decode( strtr( $parts[2], '-_', '+/' ) ), $parts[0] . '.' . $parts[1], sodium_crypto_sign_publickey( sodium_crypto_sign_seed_keypair( str_repeat( 's', 32 ) ) ) );
+check( 'saas: la firma si verifica con la chiave pubblica del portale verso il SaaS', $sigOk && Portale\SaasClient::publicKey() === rtrim( strtr( base64_encode( sodium_crypto_sign_publickey( sodium_crypto_sign_seed_keypair( str_repeat( 's', 32 ) ) ) ), '+/', '-_' ), '=' ) );
+Portale\SaasClient::setUserDisabled( 'staff@esempio.it', '11111111-2222-3333-4444-555555555555', true, str_repeat( 'x', 300 ) );
+$wc = json_decode( (string) base64_decode( strtr( explode( '.', (string) $saasSeen[2]['token'] )[1], '-_', '+/' ) ), true );
+check( 'saas: disattivazione = token write, indirizzo dell\'utente, motivo troncato a 200', 'admin_write' === $wc['typ'] && 'write' === $wc['scope'] && true === $wc['disabled'] && 200 === strlen( $wc['reason'] ) && false !== strpos( $saasSeen[1], '/admin/users/11111111-2222-3333-4444-555555555555/state' ) );
+check( 'saas: identificativo non valido rifiutato (niente percorsi strani)', null !== throwsUser( function () { Portale\SaasClient::org( 'staff@esempio.it', '../../x' ); } ) );
+Http::$transport = function () { return array( 403, '{"error":"scope"}' ); };
+check( 'saas: errore del SaaS tradotto in messaggio chiaro', 'Questa operazione richiede il permesso di scrittura.' === throwsUser( function () { Portale\SaasClient::setUserDisabled( 'a@esempio.it', '11111111-2222-3333-4444-555555555555', true ); } ) );
+Http::$transport = function () { return array( 0, '' ); };
+check( 'saas: SaaS non raggiungibile', 'Il SaaS non risponde: riprova tra poco.' === throwsUser( function () { Portale\SaasClient::orgs( 'a@esempio.it' ); } ) );
+Http::$transport = $prevTransport;
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );

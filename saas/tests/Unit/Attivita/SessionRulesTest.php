@@ -39,8 +39,19 @@ it('legge i listini e i pacchetti dal modulo e li riscrive uguali', function ():
         ->and(S::parsePriceLists(S::priceListsText($lists)))->toBe($lists)
         ->and(S::findList($lists, 'ridotto')['cents'] ?? null)->toBe(750)
         ->and(S::findList($lists, 'boh'))->toBeNull()
-        ->and(array_column(S::parsePriceLists("Città 5\nCittà 6"), 'key'))->toBe(['citta', 'cittax'])
+        ->and(array_column(S::parsePriceLists("Città 5\nCittà 6"), 'key'))->toBe(['citta', 'citta_2'])
         ->and(fn () => S::parsePriceLists('Gratis'))->toThrow(ActivityError::class, 'riga 1')
         ->and(fn () => S::parsePriceLists('Pacchetto 40 x99'))->toThrow(ActivityError::class, '50 ingressi')
         ->and(S::free(10, 4))->toBe(6)->and(S::free(3, 5))->toBe(0)->and(S::free(null, 5))->toBeNull();
+});
+
+it('non mette limiti al numero di listini (500 ingressi a prezzo crescente)', function (): void {
+    $text = implode("\n", array_map(static fn (int $n): string => 'Ingresso '.$n.' '.(10 + $n), range(1, 500)));
+    $lists = S::parsePriceLists($text);
+
+    expect($lists)->toHaveCount(500)
+        ->and(count(array_unique(array_column($lists, 'key'))))->toBe(500)
+        ->and($lists[499]['cents'])->toBe(51000)
+        ->and(S::parsePriceLists(S::priceListsText($lists)))->toBe($lists)
+        ->and(count(S::parsePriceLists(str_repeat("Posto 5\n", 600))))->toBe(600);
 });

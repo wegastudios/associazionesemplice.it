@@ -889,3 +889,64 @@ window.asemPlacesInit = function () {
 		});
 	});
 })();
+
+/* Calendario delle date di un evento: toccando una data si apre la sua riga con le prenotazioni */
+(function () {
+	'use strict';
+	function openTarget() {
+		var h = window.location.hash;
+		if (h.indexOf('#asem-sess-') !== 0) { return; }
+		var d = document.getElementById(h.slice(1));
+		if (d && d.tagName === 'DETAILS') { d.open = true; d.scrollIntoView({ block: 'start' }); }
+	}
+	document.addEventListener('DOMContentLoaded', openTarget);
+	window.addEventListener('hashchange', openTarget);
+})();
+
+/* Modulo «Prenota»: scelto il socio, la casella del pacchetto dice quale pacchetto ha e quanti ingressi gli restano */
+(function () {
+	'use strict';
+	document.addEventListener('change', function (ev) {
+		var sel = ev.target;
+		if (!sel || sel.name !== 'person_id' || !sel.form) { return; }
+		var lab = sel.form.querySelector('.asem-use-pk');
+		if (!lab) { return; }
+		var map = {};
+		try { map = JSON.parse(lab.getAttribute('data-packages') || '{}'); } catch (e) { map = {}; }
+		var txt = lab.querySelector('span'), box = lab.querySelector('input');
+		var pk = sel.value && map[sel.value] ? map[sel.value].split('|') : null;
+		if (pk) {
+			txt.textContent = 'usa ' + pk[0] + ' (' + pk[1] + ' rimasti)';
+			box.disabled = false;
+		} else {
+			txt.textContent = sel.value ? 'nessun pacchetto attivo' : 'usa un pacchetto già pagato';
+			box.checked = false;
+			box.disabled = !!sel.value;
+		}
+	});
+})();
+
+/* Listini di eventi e corsi: il pulsante aggiunge una riga vuota, fino al limite scelto nelle Impostazioni */
+(function () {
+	'use strict';
+	document.addEventListener('click', function (ev) {
+		var btn = ev.target.closest ? ev.target.closest('.asem-pl-add') : null;
+		if (!btn) { return; }
+		ev.preventDefault();
+		var box = btn.parentNode.previousElementSibling;
+		if (!box || !box.classList.contains('asem-pl')) { return; }
+		var rows = box.querySelectorAll('.asem-pl-row:not(.asem-pl-head)');
+		var max = parseInt(box.getAttribute('data-max') || '30', 10);
+		if (!rows.length || rows.length >= max) { if (rows.length >= max) { btn.disabled = true; } return; }
+		var clone = rows[rows.length - 1].cloneNode(true);
+		var idx = rows.length;
+		clone.querySelectorAll('input').forEach(function (inp) {
+			inp.name = inp.name.replace(/\[\d+\]/, '[' + idx + ']');
+			if (inp.type === 'number') { inp.value = '1'; } else if (inp.type !== 'hidden' || /pl_key/.test(inp.name)) { inp.value = ''; }
+			if (/pl_entries/.test(inp.name) && inp.type === 'hidden') { inp.value = '1'; }
+		});
+		box.appendChild(clone);
+		var first = clone.querySelector('.asem-pl-name'); if (first) { first.focus(); }
+		if (rows.length + 1 >= max) { btn.disabled = true; }
+	});
+})();

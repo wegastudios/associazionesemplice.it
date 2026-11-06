@@ -19,6 +19,7 @@ final class ProData {
 		add_filter( 'asem_activity_saved', array( __CLASS__, 'activity_saved' ), 10, 3 );
 		add_filter( 'asem_activity_errors', array( __CLASS__, 'activity_errors' ), 10, 3 );
 		add_filter( 'asem_session_errors', array( __CLASS__, 'session_errors' ), 10, 3 );
+		add_filter( 'asem_booking_errors', array( __CLASS__, 'booking_errors' ), 10, 3 );
 		add_filter( 'asem_wizard_next', array( __CLASS__, 'wizard_next' ), 10, 2 );
 		add_filter( 'asem_activity_form_rows', array( __CLASS__, 'activity_form_rows' ), 10, 2 );
 		add_filter( 'asem_entity_values', array( __CLASS__, 'entity_values' ), 10, 3 );
@@ -137,6 +138,7 @@ final class ProData {
 		if ( Edition::has( 'resources' ) && array_key_exists( 'resource_id', $p ) ) {
 			$raw = trim( (string) $p['resource_id'] ); // vuoto = non indicata, «none» = nessuna risorsa (evento fuori sede)
 			Resources::link_activity( $activity_id, 'none' === $raw ? 0 : ( '' === $raw ? null : (int) $raw ) );
+			Resources::set_activity_slot_mode( $activity_id, ! empty( $p['occupy_on_booking'] ) );
 		}
 		if ( $res_on ) {
 			$link = Resources::activity_link( $activity_id );
@@ -165,10 +167,10 @@ final class ProData {
 		if ( ! Edition::has( 'resources' ) || ! array_key_exists( 'resource_id', $p ) ) {
 			return $errors;
 		}
-		if ( in_array( $kind, array( 'event', 'recurring' ), true ) && '' === trim( (string) $p['resource_id'] ) ) {
+		if ( in_array( $kind, array( 'event', 'recurring', 'course' ), true ) && '' === trim( (string) $p['resource_id'] ) ) {
 			foreach ( Resources::all() as $r ) {
 				if ( ResourceRules::SLOT === $r['mode'] ) {
-					$errors[] = 'Indica quale risorsa occupa l\'evento, oppure «Nessuna risorsa (evento fuori sede)».';
+					$errors[] = 'Indica quale risorsa occupa l\'attività, anche se ce n\'è una sola (serve a non sovrapporre le date), oppure «Nessuna risorsa (fuori sede)».';
 					break;
 				}
 			}
@@ -186,9 +188,17 @@ final class ProData {
 		return $errors;
 	}
 
+	/** Prenotazione di una fascia di un'attività «a fasce»: non si prenota se la risorsa è occupata in quell'orario da altro. */
+	public static function booking_errors( string $error, int $session_id, int $person_id ): string {
+		if ( '' !== $error || ! Edition::has( 'resources' ) ) {
+			return $error;
+		}
+		return Resources::booking_conflict( $session_id );
+	}
+
 	/** Date nuove o spostate di un corso o evento: non possono sovrapporsi (allestimenti compresi) a prenotazioni o ad altre attività sulla risorsa. */
 	public static function session_errors( array $errors, int $activity_id, array $dates ): array {
-		if ( ! Edition::has( 'resources' ) || ! $dates ) {
+		if ( ! Edition::has( 'resources' ) || ! $dates || Resources::activity_slot_mode( $activity_id ) ) { // un'attività a fasce occupa la risorsa solo con prenotazioni vere: si controlla alla prenotazione
 			return $errors;
 		}
 		$over = Resources::dates_overlaps( $activity_id, $dates );

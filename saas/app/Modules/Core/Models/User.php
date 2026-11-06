@@ -19,6 +19,7 @@ use SensitiveParameter;
  * @property string $name
  * @property string $email
  * @property bool $platform_admin
+ * @property \Carbon\CarbonImmutable|null $disabled_at
  * @property string $password
  * @property string|null $two_factor_secret
  * @property string|null $two_factor_recovery_codes
@@ -49,6 +50,7 @@ final class User extends Authenticatable
         return [
             'email_verified_at' => 'immutable_datetime',
             'platform_admin' => 'boolean',
+            'disabled_at' => 'immutable_datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'immutable_datetime',
         ];

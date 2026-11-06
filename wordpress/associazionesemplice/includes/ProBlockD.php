@@ -90,7 +90,7 @@ final class ProBlockD {
 	/** Le assemblee compaiono dopo le votazioni, i rimborsi dopo i pagamenti. */
 	public static function my_sections( array $sections ): array {
 		foreach ( self::SECTIONS as $key => $row ) {
-			if ( ! Edition::has( $row[0] ) ) {
+			if ( ! Edition::has( $row[0] ) || ( 'rimborsi' === $key && ! Frontend\RefundsFront::allowed( Access::current_person() ?: array() ) ) ) { // i rimborsi spese compaiono nel menu solo ai volontari
 				continue;
 			}
 			$out = array();

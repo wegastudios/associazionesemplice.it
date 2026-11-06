@@ -354,13 +354,13 @@ final class Admin {
 		$this->done( 'wega_import', $done . ' licenze importate da Wega' . ( $skip ? ', ' . $skip . ' saltate' : '' ) . '.', '/admin/wega' );
 	}
 
-	/** Staff: elenco, aggiunta/cambio ruolo (POST /admin/staff) e rimozione (POST /admin/staff/rimuovi). */
+	/** Staff: elenco, aggiunta/cambio permessi (POST /admin/staff) e rimozione (POST /admin/staff/rimuovi). */
 	private function staff( bool $get, string $b, string $c ): void {
 		if ( $get && '' === $b ) {
-			$this->show( 'staff', 'staff', array( 'rows' => Staff::all( $this->db ), 'labels' => Staff::LABELS, 'sso' => SupportSso::enabled(), 'support_url' => SupportSso::supportUrl() ) );
+			$this->show( 'staff', 'staff', array( 'rows' => Staff::all( $this->db ), 'labels' => Staff::LABELS, 'saas_labels' => Staff::SAAS_LABELS, 'sso' => SupportSso::enabled(), 'support_url' => SupportSso::supportUrl() ) );
 		} elseif ( ! $get && '' === $b ) {
-			$email = Staff::set( $this->db, $this->billing, (string) ( $_POST['email'] ?? '' ), (string) ( $_POST['role'] ?? '' ) );
-			$this->done( 'staff_set', $email . ' · ' . Staff::LABELS[ (string) $_POST['role'] ], '/admin/staff' );
+			$email = Staff::set( $this->db, $this->billing, (string) ( $_POST['email'] ?? '' ), (string) ( $_POST['role'] ?? '' ), (string) ( $_POST['saas'] ?? '' ) );
+			$this->done( 'staff_set', $email . ' · plugin: ' . ( Staff::LABELS[ (string) $_POST['role'] ] ?? 'nessun accesso' ) . ' · SaaS: ' . ( Staff::SAAS_LABELS[ (string) $_POST['saas'] ] ?? 'nessun accesso' ), '/admin/staff' );
 		} elseif ( ! $get && 'rimuovi' === $b ) {
 			$email = strtolower( trim( (string) ( $_POST['email'] ?? '' ) ) );
 			if ( $email === strtolower( $this->email ) ) {
@@ -455,7 +455,7 @@ final class Admin {
 	}
 
 	private function show( string $view, string $nav, array $vars = array() ): void {
-		View::render( 'admin/' . $view, $vars + array( 'nav' => $nav, 'flash' => $this->flash(), 'admin_email' => $this->email, 'role' => $this->role ) );
+		View::render( 'admin/' . $view, $vars + array( 'nav' => $nav, 'flash' => $this->flash(), 'admin_email' => $this->email, 'role' => $this->role, 'has_saas' => '' !== Staff::saas( $this->db, $this->email ) ) );
 	}
 
 	private function flash(): string {

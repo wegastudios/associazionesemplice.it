@@ -98,7 +98,7 @@ I rimborsi ti fanno gestire le richieste dei volontari dall'approvazione al paga
 
 ## Chi chiede il rimborso
 
-Il volontario (o socio) lo chiede dall'**area riservata**, sezione **«Rimborsi spese»** (anche con lo shortcode `[associazionesemplice_rimborsi]`). La segreteria può registrare una richiesta per lui da **Cassa → Rimborsi**. Tutori e ospiti non sono soci e non chiedono rimborsi.
+Il **volontario** lo chiede dall'**area riservata**, sezione **«Rimborsi spese»** (anche con lo shortcode `[associazionesemplice_rimborsi]`). La segreteria può registrare una richiesta per lui da **Cassa → Rimborsi**. La voce compare solo ai volontari: gli altri soci non vedono nulla e le spese le gestisce la segreteria. Tutori e ospiti non sono soci e non chiedono rimborsi.
 
 ## I tre tipi
 

@@ -837,6 +837,11 @@ set_theme_mod( 'nav_menu_locations', array( 'primary' => $nm_id ) );
 asem_ok( \AssociazioneSemplice\Pages::add_to_menu( $nm_page ) && \AssociazioneSemplice\Pages::add_to_menu( $nm_page ), 'menu del sito: la voce «Area riservata» si aggiunge' );
 $nm_items = wp_get_nav_menu_items( $nm_id );
 asem_ok( 1 === count( $nm_items ) && 'Area riservata' === $nm_items[0]->title && (int) $nm_items[0]->object_id === $nm_page, 'menu del sito: una sola voce «Area riservata», verso la pagina dell\'area' );
+$nm_id2   = (int) wp_create_nav_menu( 'Menu telefono prova' );
+$nm_page2 = (int) wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Pagina area telefono' ) );
+wp_update_nav_menu_item( $nm_id2, 0, array( 'menu-item-title' => 'Area', 'menu-item-object' => 'page', 'menu-item-object-id' => $nm_page2, 'menu-item-type' => 'post_type', 'menu-item-status' => 'publish' ) );
+asem_ok( \AssociazioneSemplice\Pages::add_to_menu( $nm_page2 ) && 1 === count( wp_get_nav_menu_items( $nm_id ) ) && 1 === count( wp_get_nav_menu_items( $nm_id2 ) ), 'menu del sito: se la pagina è già in un altro menu (telefono) non si aggiunge una seconda voce' );
+wp_delete_nav_menu( $nm_id2 );
 wp_delete_nav_menu( $nm_id );
 set_theme_mod( 'nav_menu_locations', array() );
 asem_ok( ! \AssociazioneSemplice\Places::enabled() && '' === \AssociazioneSemplice\Places::script_url(), 'ricerca dei luoghi: spenta di default' );
@@ -3538,6 +3543,14 @@ asem_render( array( Admin\PeoplePage::class, 'render_list' ), 'Contatti' );
 wp_set_current_user( 1 );
 $bank_id = $ledger->add_account( 'Conto banca prova', 'bank', 0 );
 $pos_id  = $ledger->add_account( 'POS prova', 'pos', 0 );
+asem_ok( 0 === $ledger->book_account_fee( $pos_id, $today, 10000, 'pos' ), 'conto senza costo di incasso: nessuna spesa registrata' );
+$ledger->set_account_fee( $pos_id, 10, 150 );
+asem_ok( 160 === $ledger->book_account_fee( $pos_id, $today, 10000, 'pos', 'prova' ), 'POS fisico: costo di incasso 0,10 € + 1,5% → 1,60 € di spesa in prima nota' );
+asem_ok( 160 === (int) $wpdb->get_var( 'SELECT amount_cents FROM ' . Db::t( 'transactions' ) . " WHERE type = 'expense' AND account_id = " . (int) $pos_id . ' ORDER BY id DESC LIMIT 1' ), 'POS fisico: la spesa del costo di incasso è sul conto del POS' );
+$ledger->set_account_fee( $pos_id, 99999, 99999 );
+$pos_acc = $ledger->account_any( $pos_id );
+asem_ok( 2000 === (int) $pos_acc['fee_fixed_cents'] && 2500 === (int) $pos_acc['fee_bp'], 'costo di incasso del conto: limiti massimi' );
+$ledger->set_account_fee( $pos_id, 0, 0 );
 $method_of = function ( int $tx ) use ( $wpdb ) {
 	return $wpdb->get_var( 'SELECT method FROM ' . Db::t( 'transactions' ) . ' WHERE id = ' . $tx );
 };
@@ -6151,7 +6164,7 @@ $RS::link_activity( $su_e, 0 );
 asem_ok( 0 === $RS::activity_link( $su_e ) && null === $RS::activity_resource( $su_e ), 'risorse: «nessuna risorsa» (fuori sede) si ricorda ed è diverso da «non indicata»' );
 $su_pd = '\AssociazioneSemplice\ProData';
 asem_ok( 1 === count( $su_pd::activity_errors( array(), 'event', array( 'resource_id' => '' ) ) ) && 1 === count( $su_pd::activity_errors( array(), 'recurring', array( 'resource_id' => '' ) ) ), 'risorse: un evento deve dire quale risorsa occupa' );
-asem_ok( 0 === count( $su_pd::activity_errors( array(), 'event', array( 'resource_id' => 'none' ) ) ) && 0 === count( $su_pd::activity_errors( array(), 'event', array( 'resource_id' => (string) $su_res ) ) ) && 0 === count( $su_pd::activity_errors( array(), 'course', array( 'resource_id' => '' ) ) ) && 0 === count( $su_pd::activity_errors( array(), 'event', array() ) ), 'risorse: «fuori sede» o una risorsa bastano; i corsi e i moduli senza il campo no' );
+asem_ok( 0 === count( $su_pd::activity_errors( array(), 'event', array( 'resource_id' => 'none' ) ) ) && 0 === count( $su_pd::activity_errors( array(), 'event', array( 'resource_id' => (string) $su_res ) ) ) && 1 === count( $su_pd::activity_errors( array(), 'course', array( 'resource_id' => '' ) ) ) && 0 === count( $su_pd::activity_errors( array(), 'event', array() ) ), 'risorse: «fuori sede» o una risorsa bastano; anche i corsi; i moduli senza il campo no' );
 asem_ok( 1 === count( $su_pd::activity_errors( array(), 'event', array( 'resource_id' => 'none', 'setup_before' => 'boh' ) ) ), 'risorse: un allestimento dell\'attività scritto male è segnalato' );
 // riproporre mantiene risorsa e allestimento
 $RS::link_activity( $su_e, $su_res );
@@ -6568,6 +6581,16 @@ $pl_lists = array(
 $pl_act   = $acts->create( array( 'name' => 'Laboratorio a listino', 'social_year' => $sy_label, 'kind' => 'recurring', 'fee_cents' => 4000, 'instructor_person_id' => $pl_vol, 'fund_mode' => 'percent', 'fund_value' => 2500, 'price_lists' => $pl_lists ) );
 $pl_a_row = $acts->get( $pl_act );
 asem_ok( 4 === count( \AssociazioneSemplice\PriceLists::for_activity( $pl_a_row ) ) && null !== \AssociazioneSemplice\PriceLists::find( $pl_a_row, 'pacchetto_4_di_gruppo' ), 'listini: i quattro listini restano sull\'attività con una chiave dal nome' );
+$pl_six = array();
+for ( $pl_i = 1; $pl_i <= 6; $pl_i++ ) {
+	$pl_six[] = array( 'label' => 'Prezzo ' . $pl_i, 'cents' => 1000 * $pl_i, 'entries' => 1 );
+}
+asem_ok( 6 === count( \AssociazioneSemplice\PriceLists::clean( $pl_six ) ) && 1 === count( \AssociazioneSemplice\PriceLists::clean( array_slice( $pl_six, 0, 1 ) ) ), 'listini: sei prezzi o uno solo, il numero non è fisso' );
+asem_ok( \AssociazioneSemplice\PriceLists::max() >= 4, 'listini: il massimo è un limite configurabile' );
+\AssociazioneSemplice\Resources::set_activity_slot_mode( $pl_act, true );
+asem_ok( \AssociazioneSemplice\Resources::activity_slot_mode( $pl_act ), 'risorse: la modalità «occupa solo con prenotazioni» si ricorda' );
+\AssociazioneSemplice\Resources::set_activity_slot_mode( $pl_act, false );
+asem_ok( ! \AssociazioneSemplice\Resources::activity_slot_mode( $pl_act ), 'risorse: la modalità a fasce si può togliere' );
 $pl_sess = array();
 for ( $i = 3; $i <= 6; $i++ ) {
 	$pl_sess[] = $acts->add_session( $pl_act, array( 'session_date' => gmdate( 'Y-m-d', strtotime( current_time( 'Y-m-d' ) . ' +' . $i . ' days' ) ), 'start_time' => '18:00', 'end_time' => '20:00' ) );
@@ -6608,6 +6631,7 @@ $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['i
 asem_ok( 1625 === $pl_fund(), 'listini: chi paga il listino normale alimenta il fondo con la quota ordinaria (25%)' );
 asem_ok( null !== asem_throws( function () use ( $acts, $pl_sess, $pl_a ) { $acts->book( $pl_sess[1], $pl_a, array( 'price_list' => 'inesistente' ) ); } ), 'listini: un listino che non esiste è rifiutato' );
 asem_ok( '' !== \AssociazioneSemplice\PriceLists::booking_label( $pl_a_row, $pl_g ) && false !== strpos( \AssociazioneSemplice\PriceLists::booking_label( $pl_a_row, $pl_g ), 'ospite dell\'associazione' ), 'listini: l\'etichetta della prenotazione dice listino e ospite' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Admin\ActivitiesPage::booking_fields( $pl_a_row, 0 ), 'asem-use-pk' ) && false !== strpos( \AssociazioneSemplice\Admin\ActivitiesPage::booking_fields( $pl_a_row, 0 ), 'data-packages' ), 'prenota: la casella del pacchetto porta i pacchetti dei soci, per dire gli ingressi rimasti appena scegli la persona' );
 $pl_html = asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Ospite del volontario', array( 'id' => (string) $pl_act ) );
 asem_ok( false !== strpos( $pl_html, 'name="guest_of"' ), 'listini: la scheda evento offre listino e ospite nella prenotazione' );
 
