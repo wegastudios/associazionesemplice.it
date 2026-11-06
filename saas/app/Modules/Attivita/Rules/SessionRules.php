@@ -121,6 +121,7 @@ final class SessionRules
             }
             $out[$key] = ['key' => $key, 'label' => $label, 'cents' => (int) round((float) str_replace(',', '.', $m[2]) * 100), 'entries' => $entries];
         }
+
         return array_values($out);
     }
 
