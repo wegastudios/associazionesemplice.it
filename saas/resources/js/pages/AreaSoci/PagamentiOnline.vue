@@ -11,7 +11,7 @@ const form = useForm({
 const save = () => form.transform((d) => ({ ...d, account_id: d.account_id || null })).put('/gestionale/pagamenti-online', { preserveScroll: true, onSuccess: () => form.reset('stripe_secret', 'stripe_webhook', 'paypal_secret', 'forget') });
 const test = (p) => router.post(`/gestionale/pagamenti-online/prova/${p}`, {}, { preserveScroll: true });
 const reviewed = (p) => router.post(`/gestionale/pagamenti-online/${p.id}/controllato`, {}, { preserveScroll: true });
-const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text-ink disabled:opacity-70';
+const field = 'field';
 const states = { created: 'avviato', pending: 'in attesa', settled: 'registrato', review: 'da controllare', failed: 'non riuscito', cancelled: 'annullato' };
 </script>
 
@@ -21,7 +21,7 @@ const states = { created: 'avviato', pending: 'in attesa', settled: 'registrato'
         <h1 class="mb-1 text-2xl font-bold">Pagamenti online</h1>
         <p class="mb-6 text-sm text-muted">I soci pagano dall'area soci con il conto Stripe o PayPal dell'associazione: i soldi arrivano a voi, senza commissioni nostre. Ogni pagamento va da solo in prima nota con la ricevuta.</p>
 
-        <form v-if="canSettings" class="mb-6 rounded-2xl border border-line bg-card p-5" @submit.prevent="save">
+        <form v-if="canSettings" class="mb-6 card p-4 sm:p-5" @submit.prevent="save">
             <h2 class="mb-3 text-lg font-bold">Conti</h2>
             <label class="mb-4 block max-w-sm space-y-1 text-sm"><span class="font-semibold">Conto della prima nota per gli incassi online</span>
                 <select v-model="form.account_id" :class="field"><option value="">scegli</option><option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option></select>
@@ -52,12 +52,12 @@ const states = { created: 'avviato', pending: 'in attesa', settled: 'registrato'
             </div>
             <p v-for="(e, k) in form.errors" :key="k" class="mt-2 text-sm text-danger" role="alert">{{ e }}</p>
             <div class="mt-4 flex flex-wrap items-center gap-3">
-                <button type="submit" class="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" :disabled="form.processing">Salva</button>
+                <button type="submit" class="btn btn-primary" :disabled="form.processing">Salva</button>
                 <span class="text-sm text-muted">Pronti per i soci: {{ s.ready.length ? s.ready.join(', ') : 'nessuno' }}. Le chiavi sono cifrate e non si rileggono.</span>
             </div>
         </form>
 
-        <section class="overflow-x-auto rounded-2xl border border-line bg-card p-5" aria-labelledby="l">
+        <section class="card overflow-x-auto p-5" aria-labelledby="l">
             <h2 id="l" class="mb-3 text-lg font-bold">Pagamenti dei soci</h2>
             <p v-if="!payments.length" class="text-sm text-muted">Nessun pagamento online.</p>
             <table v-else class="w-full text-sm">

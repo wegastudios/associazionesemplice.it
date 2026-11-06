@@ -8,7 +8,7 @@ const reopen = useForm({ reason: '' });
 const close = () => router.post(`/gestionale/esercizi/${props.statement.year}/chiudi`, {}, { preserveScroll: true });
 const submitReopen = () => reopen.post(`/gestionale/esercizi/${props.statement.year}/riapri`, { preserveScroll: true, onSuccess: () => reopen.reset() });
 const go = (year) => router.get(`/gestionale/rendiconto/${year}`);
-const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text-ink';
+const field = 'field';
 </script>
 
 <template>
@@ -28,7 +28,7 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
         </div>
 
         <div class="grid gap-6 lg:grid-cols-2">
-            <section v-for="side in [['Entrate', statement.income, statement.totals.income], ['Uscite', statement.expense, statement.totals.expense]]" :key="side[0]" class="rounded-2xl border border-line bg-card p-5">
+            <section v-for="side in [['Entrate', statement.income, statement.totals.income], ['Uscite', statement.expense, statement.totals.expense]]" :key="side[0]" class="card p-4 sm:p-5">
                 <h2 class="mb-3 text-lg font-bold">{{ side[0] }}</h2>
                 <p v-if="!side[1].length" class="text-sm text-muted">Nessun movimento.</p>
                 <table v-else class="w-full text-sm">
@@ -43,9 +43,9 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
             </section>
         </div>
 
-        <p class="mt-6 rounded-2xl border border-line bg-card p-5 text-lg font-bold">Avanzo / disavanzo: <span class="tabular-nums">{{ statement.totals.result }}</span></p>
+        <p class="mt-6 card p-4 sm:p-5 text-lg font-bold">Avanzo / disavanzo: <span class="tabular-nums">{{ statement.totals.result }}</span></p>
 
-        <section class="mt-6 rounded-2xl border border-line bg-card p-5">
+        <section class="mt-6 card p-4 sm:p-5">
             <h2 class="mb-3 text-lg font-bold">Conti</h2>
             <table class="w-full text-sm">
                 <thead class="text-left text-muted"><tr><th class="py-2">Conto</th><th class="py-2 text-right">Inizio esercizio</th><th class="py-2 text-right">Fine esercizio</th></tr></thead>
@@ -57,15 +57,15 @@ const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
             </table>
         </section>
 
-        <section v-if="canClose" class="mt-6 rounded-2xl border border-line bg-card p-5">
+        <section v-if="canClose" class="mt-6 card p-4 sm:p-5">
             <h2 class="mb-3 text-lg font-bold">Chiusura dell'esercizio</h2>
             <template v-if="statement.status === 'open'">
                 <p class="mb-3 text-sm text-muted">Con l'esercizio chiuso non si registrano né si stornano movimenti con date al suo interno.</p>
-                <button type="button" class="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" @click="close">Chiudi l'esercizio {{ statement.year }}</button>
+                <button type="button" class="btn btn-primary" @click="close">Chiudi l'esercizio {{ statement.year }}</button>
             </template>
             <form v-else class="flex flex-wrap items-end gap-3" @submit.prevent="submitReopen">
                 <label class="min-w-64 flex-1 space-y-1 text-sm"><span class="font-semibold">Motivo della riapertura</span><input v-model="reopen.reason" required :class="field" /></label>
-                <button type="submit" class="rounded-lg border border-line px-4 py-2 font-semibold">Riapri l'esercizio</button>
+                <button type="submit" class="btn btn-secondary">Riapri l'esercizio</button>
             </form>
         </section>
     </AppLayout>

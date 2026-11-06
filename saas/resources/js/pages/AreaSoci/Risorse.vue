@@ -13,7 +13,7 @@ const book = (start) => {
     form.post(`/area/risorse/${props.chosen}/prenota`, { preserveScroll: true, onSuccess: () => form.reset('guests') });
 };
 const cancel = (x) => confirm(`Annullare ${x.resource} (${x.when})?`) && router.post(`/area/risorse/prenotazioni/${x.id}/annulla`, {}, { preserveScroll: true });
-const field = 'rounded-lg border border-line bg-card px-3 py-2 text-ink';
+const field = 'field w-auto';
 </script>
 
 <template>
@@ -24,7 +24,7 @@ const field = 'rounded-lg border border-line bg-card px-3 py-2 text-ink';
             <button v-for="r in resources" :key="r.id" type="button" class="rounded-full border px-3 py-1"
                 :class="r.id === chosen ? 'border-accent bg-accent text-accent-ink' : 'border-line bg-card'" :aria-pressed="r.id === chosen" @click="go({ risorsa: r.id })">{{ r.name }}</button>
         </div>
-        <section v-if="res" class="mb-6 rounded-2xl border border-line bg-card p-4">
+        <section v-if="res" class="mb-6 card p-4">
             <div class="mb-3 flex flex-wrap items-end justify-between gap-3">
                 <div>
                     <h2 class="text-lg font-bold">{{ res.name }}</h2>
@@ -48,11 +48,11 @@ const field = 'rounded-lg border border-line bg-card px-3 py-2 text-ink';
             </div>
             <div v-else class="flex flex-wrap items-center gap-3 text-sm">
                 <span :class="dayFree ? '' : 'text-danger'">{{ dayFree ? 'Libera in questo giorno' : 'Occupata in questo giorno' }}</span>
-                <button v-if="dayFree" type="button" class="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" :disabled="form.processing" @click="book(null)">Prenota il giorno</button>
+                <button v-if="dayFree" type="button" class="btn btn-primary" :disabled="form.processing" @click="book(null)">Prenota il giorno</button>
             </div>
             <p class="mt-3 text-xs text-muted">Tocca una fascia libera per prenotarla. Il prezzo è quello dei soci con la tessera valida.</p>
         </section>
-        <section class="rounded-2xl border border-line bg-card p-4" aria-labelledby="m">
+        <section class="card p-4" aria-labelledby="m">
             <h2 id="m" class="mb-2 text-lg font-bold">Le tue prenotazioni</h2>
             <p v-if="!mine.length" class="text-sm text-muted">Nessuna.</p>
             <ul class="divide-y divide-line text-sm">

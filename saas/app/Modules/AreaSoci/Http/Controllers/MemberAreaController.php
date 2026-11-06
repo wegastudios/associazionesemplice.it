@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\AreaSoci\Http\Controllers;
 
+use App\Modules\AreaSoci\Payments\OnlinePayments;
 use App\Modules\AreaSoci\Services\CurrentMember;
 use App\Modules\AreaSoci\Services\MemberPage;
 use App\Modules\Attivita\Contracts\ActivityError;
@@ -35,6 +36,7 @@ final readonly class MemberAreaController
         private MemberProfiles $profiles,
         private MemberReceipts $receipts,
         private MemberActivities $activities,
+        private OnlinePayments $payments,
     ) {}
 
     public function card(Request $request): Response
@@ -42,8 +44,11 @@ final readonly class MemberAreaController
         $card = $this->profiles->card($this->current->active()) ?? abort(404);
         $verify = $card['member'] ? URL::signedRoute('member.verify', ['org' => $this->current->require()['org_slug'], 'person' => $card['id']]) : null;
 
+        $dues = $this->payments->dues($this->current->ids());
+
         return $this->page('AreaSoci/Tessera', [
             'card' => $card,
+            'due' => $dues === [] ? null : ['count' => count($dues), 'total' => Money::format((int) array_sum(array_column($dues, 'amount_cents')))],
             'qr' => $verify === null ? null : QrCode::svg($verify, 4, 'Codice QR della tessera'),
         ]);
     }

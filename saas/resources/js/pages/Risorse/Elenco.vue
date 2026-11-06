@@ -14,20 +14,20 @@ defineProps({ archived: Boolean, limits: Array, rows: Array, canEdit: Boolean })
                 <p class="text-sm text-muted">Campi, sale, posti barca e postazioni: si prenotano a ore, a giornata o per una stagione.</p>
             </div>
             <div class="flex flex-wrap items-center gap-3 text-sm">
-                <Link href="/gestionale/risorse/calendario" class="rounded-lg border border-line px-4 py-2 text-base font-semibold">Calendario</Link>
-                <Link v-if="canEdit" href="/gestionale/risorse/nuova" class="rounded-lg bg-accent px-4 py-2 text-base font-semibold text-accent-ink">Nuova risorsa</Link>
+                <Link href="/gestionale/risorse/calendario" class="btn btn-secondary">Calendario</Link>
+                <Link v-if="canEdit" href="/gestionale/risorse/nuova" class="btn btn-primary">Nuova risorsa</Link>
             </div>
         </div>
 
         <section class="mb-6 grid gap-3 sm:grid-cols-3" aria-label="Risorse del pacchetto">
-            <div v-for="l in limits" :key="l.value" class="rounded-2xl border border-line bg-card p-4">
+            <div v-for="l in limits" :key="l.value" class="card p-4">
                 <p class="text-sm text-muted">{{ l.label }}</p>
                 <p class="text-xl font-bold tabular-nums">{{ l.used }}<span v-if="l.tier !== null" class="text-base font-normal text-muted"> su {{ l.tier }}</span></p>
                 <p v-if="l.tier === null" class="text-xs text-muted">non comprese nel pacchetto</p>
             </div>
         </section>
 
-        <div class="overflow-x-auto rounded-2xl border border-line bg-card">
+        <div class="card overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="text-left text-muted">
                     <tr>

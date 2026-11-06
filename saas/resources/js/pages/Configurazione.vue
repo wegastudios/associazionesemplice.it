@@ -15,7 +15,7 @@ const save = () => form.post('/gestionale/configurazione', { preserveScroll: tru
 const skip = () => router.post('/gestionale/configurazione/rimanda');
 
 const months = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
-const field = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text-ink';
+const field = 'field';
 const label = 'space-y-1 text-sm';
 const has = (k) => props.steps.some((s) => s.key === k);
 const title = (k) => props.steps.find((s) => s.key === k)?.title;
@@ -28,7 +28,7 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
         <p class="mb-6 text-sm text-muted">Le impostazioni principali in una pagina: compila quello che sai, il resto si cambia dopo. Si salva tutto insieme.</p>
 
         <form class="space-y-6" novalidate @submit.prevent="save">
-            <section v-if="has('ente')" class="rounded-2xl border border-line bg-card p-5" aria-labelledby="s-ente">
+            <section v-if="has('ente')" class="card p-4 sm:p-5" aria-labelledby="s-ente">
                 <h2 id="s-ente" class="mb-3 text-lg font-bold">1. {{ title('ente') }}</h2>
                 <p v-if="form.errors['steps.ente']" class="mb-3 text-sm font-semibold text-danger" role="alert">{{ form.errors['steps.ente'] }}</p>
                 <div class="grid gap-4 sm:grid-cols-3">
@@ -47,7 +47,7 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
                 </div>
             </section>
 
-            <section v-if="has('tesseramento')" class="rounded-2xl border border-line bg-card p-5" aria-labelledby="s-tess">
+            <section v-if="has('tesseramento')" class="card p-4 sm:p-5" aria-labelledby="s-tess">
                 <h2 id="s-tess" class="mb-3 text-lg font-bold">2. {{ title('tesseramento') }}</h2>
                 <p v-if="form.errors['steps.tesseramento']" class="mb-3 text-sm font-semibold text-danger" role="alert">{{ form.errors['steps.tesseramento'] }}</p>
                 <div class="grid gap-4 sm:grid-cols-3">
@@ -58,7 +58,7 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
                 <p class="mt-2 text-sm text-muted">Con inizio a gennaio l'anno sociale coincide con quello solare («2026»); altrimenti è a cavallo («2025/2026»).</p>
             </section>
 
-            <section v-if="has('conti')" class="rounded-2xl border border-line bg-card p-5" aria-labelledby="s-conti">
+            <section v-if="has('conti')" class="card p-4 sm:p-5" aria-labelledby="s-conti">
                 <h2 id="s-conti" class="mb-3 text-lg font-bold">3. {{ title('conti') }}</h2>
                 <p v-if="form.errors['steps.conti']" class="mb-3 text-sm font-semibold text-danger" role="alert">{{ form.errors['steps.conti'] }}</p>
                 <div class="grid gap-4 sm:grid-cols-3">
@@ -68,7 +68,7 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
                 </div>
             </section>
 
-            <section v-if="has('soci')" class="rounded-2xl border border-line bg-card p-5" aria-labelledby="s-soci">
+            <section v-if="has('soci')" class="card p-4 sm:p-5" aria-labelledby="s-soci">
                 <h2 id="s-soci" class="mb-3 text-lg font-bold">4. {{ title('soci') }}</h2>
                 <p v-if="form.errors['steps.soci']" class="mb-3 text-sm font-semibold text-danger" role="alert">{{ form.errors['steps.soci'] }}</p>
                 <div class="grid gap-3 text-sm sm:grid-cols-2">
@@ -82,11 +82,11 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
 
             <div class="flex flex-wrap items-center gap-3">
                 <button type="submit" class="rounded-lg bg-accent px-5 py-2.5 font-semibold text-accent-ink" :disabled="form.processing">Salva la configurazione</button>
-                <button v-if="!status" type="button" class="rounded-lg border border-line px-4 py-2.5 font-semibold" @click="skip">Più tardi</button>
+                <button v-if="!status" type="button" class="btn btn-secondary" @click="skip">Più tardi</button>
             </div>
         </form>
 
-        <section class="mt-8 rounded-2xl border border-line bg-card p-5">
+        <section class="mt-8 card p-4 sm:p-5">
             <h2 class="mb-2 text-lg font-bold">E poi</h2>
             <ul class="list-disc space-y-1 pl-5 text-sm">
                 <li v-if="can.people"><Link href="/gestionale/soci/importa" class="font-semibold text-accent hover:underline">Importa i soci</Link> da Excel o CSV.</li>

@@ -23,7 +23,7 @@
     src: url('/assets/fonts/Montserrat-Bold.ttf') format('truetype');
 }
 
-/* Colori del marchio (docs/brand/README.md). */
+/* Colori del marchio (docs/brand/README.md) e del sistema (docs/DESIGN.md). */
 @theme {
     --font-sans: 'Montserrat', ui-sans-serif, system-ui, sans-serif;
     --color-indaco: #1f218c;
@@ -32,14 +32,26 @@
     --color-salvia-chiaro: #86ab9d;
     --color-giallo: #efca5c;
 
-    --color-surface: #f6f7fb;
+    --color-surface: #f5f6fa;
     --color-card: #ffffff;
-    --color-ink: #1b1d33;
-    --color-muted: #5b5e75;
-    --color-line: #dcdfea;
+    --color-ink: #181a2e;
+    --color-muted: #5d6078;
+    --color-line: #e2e5ee;
     --color-accent: var(--color-indaco);
     --color-accent-ink: #ffffff;
     --color-danger: #b42318;
+
+    /* Stati: fondo chiaro e testo con contrasto di almeno 4,5:1. Il colore non è mai l'unico segnale. */
+    --color-ok-soft: #e6efeb;
+    --color-ok-ink: #3d6256;
+    --color-warn-soft: #fcf3d3;
+    --color-warn-ink: #6b4f00;
+    --color-danger-soft: #fdecea;
+    --color-info-soft: #e8e9fb;
+    --color-info-ink: #1f218c;
+
+    --shadow-sheet: 0 -8px 30px rgb(24 26 46 / 0.16);
+    --shadow-bar: 0 -1px 0 rgb(24 26 46 / 0.06), 0 -6px 20px rgb(24 26 46 / 0.05);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -52,6 +64,15 @@
         --color-accent: var(--color-indaco-chiaro);
         --color-accent-ink: #11122a;
         --color-danger: #ff8a80;
+        --color-ok-soft: #1f3a31;
+        --color-ok-ink: #a8cfc0;
+        --color-warn-soft: #3d3410;
+        --color-warn-ink: #efca5c;
+        --color-danger-soft: #3b1b1b;
+        --color-info-soft: #26285a;
+        --color-info-ink: #a6a9ff;
+        --shadow-sheet: 0 -8px 30px rgb(0 0 0 / 0.5);
+        --shadow-bar: 0 -1px 0 rgb(255 255 255 / 0.06);
     }
 }
 
@@ -60,6 +81,160 @@ body {
     height: 100%;
 }
 
+html {
+    -webkit-text-size-adjust: 100%;
+    scroll-padding-bottom: 6rem;
+}
+
 body {
+    font-size: 15px;
+    line-height: 1.5;
     font-weight: 500;
+    -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
+button,
+a,
+summary,
+[role='button'] {
+    touch-action: manipulation;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Classi semantiche: le pagine usano queste, non stringhe di utilità ripetute. */
+@layer components {
+    .btn {
+        @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[15px] font-semibold leading-5 transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+    }
+    .btn-primary {
+        @apply bg-accent text-accent-ink hover:brightness-110 active:brightness-95;
+    }
+    .btn-secondary {
+        @apply border border-line bg-card text-ink hover:bg-surface active:bg-surface;
+    }
+    .btn-ghost {
+        @apply text-accent hover:bg-accent/10 active:bg-accent/15;
+    }
+    .btn-danger {
+        @apply border border-danger/40 bg-card text-danger hover:bg-danger-soft;
+    }
+    .btn-sm {
+        @apply min-h-9 rounded-lg px-3 py-1.5 text-sm;
+    }
+    .btn-block {
+        @apply w-full;
+    }
+
+    .field {
+        @apply block min-h-12 w-full rounded-xl border border-line bg-card px-3.5 py-2.5 text-base text-ink placeholder:text-muted/70 focus:border-accent focus:outline-2 focus:outline-offset-0 focus:outline-accent/30 disabled:opacity-70 aria-[invalid=true]:border-danger;
+    }
+    textarea.field {
+        @apply min-h-24 leading-6;
+    }
+    select.field {
+        @apply appearance-none bg-no-repeat pr-10;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235d6078' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+        background-position: right 0.9rem center;
+    }
+    input[type='date'].field,
+    input[type='time'].field,
+    input[type='datetime-local'].field {
+        @apply min-w-0 appearance-none;
+    }
+    input[type='checkbox'],
+    input[type='radio'] {
+        @apply size-5 shrink-0 accent-accent;
+    }
+
+    .card {
+        @apply rounded-2xl border border-line bg-card;
+    }
+    /* Un gruppo di righe: un solo riquadro, righe separate da un filetto. */
+    .list-group {
+        @apply divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card;
+    }
+    .list-row {
+        @apply flex min-h-14 items-center gap-3 px-4 py-3;
+    }
+    a.list-row,
+    button.list-row {
+        @apply w-full text-left transition-colors hover:bg-surface active:bg-surface;
+    }
+
+    .badge {
+        @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[13px] font-semibold leading-5;
+    }
+    .badge-ok {
+        @apply bg-ok-soft text-ok-ink;
+    }
+    .badge-warn {
+        @apply bg-warn-soft text-warn-ink;
+    }
+    .badge-danger {
+        @apply bg-danger-soft text-danger;
+    }
+    .badge-info {
+        @apply bg-info-soft text-info-ink;
+    }
+    .badge-neutral {
+        @apply bg-surface text-muted;
+    }
+
+    .page-title {
+        @apply text-2xl font-bold leading-[1.25];
+    }
+    .section-title {
+        @apply text-[17px] font-semibold leading-6;
+    }
+    .caption {
+        @apply text-[13px] leading-[18px] text-muted;
+    }
+}
+
+/* Fogli dal basso e avvisi: il movimento mostra solo cosa è cambiato. */
+.sheet-enter-active,
+.sheet-leave-active {
+    transition: opacity 0.18s ease;
+}
+.sheet-enter-active .sheet-panel,
+.sheet-leave-active .sheet-panel {
+    transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.sheet-enter-from,
+.sheet-leave-to {
+    opacity: 0;
+}
+.sheet-enter-from .sheet-panel,
+.sheet-leave-to .sheet-panel {
+    transform: translateY(100%);
+}
+@media (min-width: 768px) {
+    .sheet-enter-from .sheet-panel,
+    .sheet-leave-to .sheet-panel {
+        transform: translateY(12px) scale(0.98);
+    }
+}
+.toast-enter-active,
+.toast-leave-active {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.toast-enter-from,
+.toast-leave-to {
+    opacity: 0;
+    transform: translateY(8px);
 }

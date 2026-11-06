@@ -22,13 +22,13 @@ const q = () => (props.filter ? `?stato=${props.filter}` : '');
                         @click="router.get('/gestionale/soci/libro', f.value ? { stato: f.value } : {}, { preserveScroll: true })">{{ f.label }}</button>
                 </nav>
                 <template v-if="canExport">
-                    <a :href="`/gestionale/soci/libro.pdf${q()}`" target="_blank" class="rounded-lg bg-accent px-4 py-2 text-accent-ink">Stampa (PDF)</a>
+                    <a :href="`/gestionale/soci/libro.pdf${q()}`" target="_blank" class="btn btn-primary">Stampa (PDF)</a>
                     <a :href="`/gestionale/soci/libro.csv${q()}`" class="text-accent hover:underline">CSV</a>
                 </template>
             </div>
         </div>
 
-        <div class="overflow-x-auto rounded-2xl border border-line bg-card">
+        <div class="card overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="text-left text-muted">
                     <tr>

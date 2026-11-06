@@ -244,6 +244,14 @@ operatori e nessun pacchetto finché non ne ricevono.
 - Permessi: vedere `people.view`; risorse, prenotazioni, blocchi e lista d'attesa `people.edit`; incassi anche
   `accounting.edit`. Prenotazione e pagamento online dei soci arriveranno con l'Area soci.
 
+## 9 sexies. Interfaccia
+
+Piano, principi e componenti in [DESIGN.md](DESIGN.md). In pratica: telefono prima; pulsanti e campi con le classi
+`btn`/`field` di `resources/css/app.css` (mai stringhe di utilità ripetute); fogli dal basso (`ui/Sheet`) per moduli e
+scelte; elenchi (`list-group`) al posto delle tabelle; la Home raccoglie da ogni modulo cosa c'è da fare e cosa
+succede oggi con il contratto `Core\Contracts\HomeWidget` (tag `saas.home-widgets`, voci `HomeItem`), per quello che
+l'operatore può vedere.
+
 ## 9 quinquies. Area soci (pacchetto, passo 1)
 
 - Modulo `AreaSoci`. L'associazione si riconosce dal sottodominio: rotte su `{org}.<saas.members_domain>/area`,

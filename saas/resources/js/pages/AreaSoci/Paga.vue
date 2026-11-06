@@ -22,11 +22,11 @@ const pay = (provider) => {
     <Head title="Paga online" />
     <MemberLayout>
         <h1 class="mb-4 text-2xl font-bold">Paga online</h1>
-        <p v-if="!dues.length" class="mb-6 rounded-2xl border border-line bg-card p-6 text-center text-muted">Non hai niente da pagare. 🎉</p>
+        <p v-if="!dues.length" class="mb-6 card p-5 sm:p-6 text-center text-muted">Non hai niente da pagare. 🎉</p>
         <template v-else>
-            <p v-if="!providers.length" class="mb-4 rounded-lg border border-line bg-card px-3 py-2 text-sm">L'associazione non ha ancora attivato i pagamenti online: puoi pagare in segreteria.</p>
+            <p v-if="!providers.length" class="mb-4 field w-auto text-sm">L'associazione non ha ancora attivato i pagamenti online: puoi pagare in segreteria.</p>
             <form class="mb-6 space-y-4" @submit.prevent>
-                <section v-for="(items, g) in groups" :key="g" class="rounded-2xl border border-line bg-card p-4">
+                <section v-for="(items, g) in groups" :key="g" class="card p-4">
                     <h2 class="mb-2 font-bold">{{ g }}</h2>
                     <label v-for="d in items" :key="d.key" class="flex items-center gap-3 border-t border-line py-2 text-sm first:border-t-0">
                         <input v-model="form.keys" type="checkbox" :value="d.key" :disabled="!providers.length" />
@@ -34,7 +34,7 @@ const pay = (provider) => {
                         <span class="font-semibold tabular-nums">{{ d.amount_label }}</span>
                     </label>
                 </section>
-                <div v-if="providers.length" class="sticky bottom-16 rounded-2xl border border-line bg-card p-4 shadow-sm sm:bottom-2">
+                <div v-if="providers.length" class="sticky bottom-16 card p-4 shadow-sm sm:bottom-2">
                     <p class="mb-3 flex justify-between text-lg font-bold"><span>Totale</span><span class="tabular-nums">{{ euro(total) }}</span></p>
                     <div class="flex flex-wrap gap-3">
                         <button v-if="providers.includes('stripe')" type="button" class="flex-1 rounded-lg bg-accent px-4 py-3 font-semibold text-accent-ink" :disabled="!form.keys.length || form.processing" @click="pay('stripe')">Paga con carta</button>
@@ -44,7 +44,7 @@ const pay = (provider) => {
                 </div>
             </form>
         </template>
-        <section v-if="history.length" class="rounded-2xl border border-line bg-card p-5" aria-labelledby="h">
+        <section v-if="history.length" class="card p-4 sm:p-5" aria-labelledby="h">
             <h2 id="h" class="mb-3 text-lg font-bold">Pagamenti online</h2>
             <ul class="divide-y divide-line text-sm">
                 <li v-for="p in history" :key="p.id" class="py-2">

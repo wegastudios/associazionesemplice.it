@@ -5,7 +5,7 @@ import AppLayout from '../../layouts/AppLayout.vue';
 const props = defineProps({ date: String, previous: String, next: String, days: Array, dayLabel: String, hourly: Array, daily: Array, seasonal: Array });
 const go = (d) => router.get('/gestionale/risorse/calendario', { giorno: d }, { preserveScroll: true });
 const cell = (c) => (c.busy ? (c.block ? 'bg-muted/20 text-muted' : 'bg-accent/15') : 'bg-salvia/10');
-const field = 'rounded-lg border border-line bg-card px-3 py-2 text-ink';
+const field = 'field w-auto';
 </script>
 
 <template>
@@ -18,15 +18,15 @@ const field = 'rounded-lg border border-line bg-card px-3 py-2 text-ink';
                 <p class="text-sm text-muted">Occupazione di {{ dayLabel }}. Per prenotare apri la risorsa.</p>
             </div>
             <div class="flex flex-wrap items-center gap-2 text-sm">
-                <button type="button" class="rounded-lg border border-line px-3 py-2" aria-label="Giorno prima" @click="go(previous)">←</button>
+                <button type="button" class="field w-auto" aria-label="Giorno prima" @click="go(previous)">←</button>
                 <input type="date" :value="date" :class="field" aria-label="Giorno" @change="go($event.target.value)" />
-                <button type="button" class="rounded-lg border border-line px-3 py-2" aria-label="Giorno dopo" @click="go(next)">→</button>
+                <button type="button" class="field w-auto" aria-label="Giorno dopo" @click="go(next)">→</button>
             </div>
         </div>
 
-        <p v-if="!hourly.length && !daily.length && !seasonal.length" class="rounded-2xl border border-line bg-card p-6 text-center text-muted">Nessuna risorsa attiva.</p>
+        <p v-if="!hourly.length && !daily.length && !seasonal.length" class="card p-5 sm:p-6 text-center text-muted">Nessuna risorsa attiva.</p>
 
-        <section v-if="hourly.length" class="mb-6 rounded-2xl border border-line bg-card p-5" aria-labelledby="h-title">
+        <section v-if="hourly.length" class="mb-6 card p-4 sm:p-5" aria-labelledby="h-title">
             <h2 id="h-title" class="mb-3 text-lg font-bold">A ore</h2>
             <div v-for="r in hourly" :key="r.id" class="mb-4">
                 <Link :href="`/gestionale/risorse/${r.id}?giorno=${date}`" class="font-semibold text-accent hover:underline">{{ r.name }}</Link>
@@ -38,7 +38,7 @@ const field = 'rounded-lg border border-line bg-card px-3 py-2 text-ink';
             </div>
         </section>
 
-        <section v-if="daily.length" class="mb-6 overflow-x-auto rounded-2xl border border-line bg-card p-5" aria-labelledby="d-title">
+        <section v-if="daily.length" class="mb-6 card overflow-x-auto p-5" aria-labelledby="d-title">
             <h2 id="d-title" class="mb-3 text-lg font-bold">A giornata, nei prossimi 14 giorni</h2>
             <table class="w-full text-xs">
                 <thead><tr><th class="py-1 pr-2 text-left font-semibold">Risorsa</th><th v-for="d in days" :key="d.date" class="px-1 py-1 font-semibold text-muted">{{ d.label }}</th></tr></thead>
@@ -51,7 +51,7 @@ const field = 'rounded-lg border border-line bg-card px-3 py-2 text-ink';
             </table>
         </section>
 
-        <section v-if="seasonal.length" class="rounded-2xl border border-line bg-card p-5" aria-labelledby="s-title">
+        <section v-if="seasonal.length" class="card p-4 sm:p-5" aria-labelledby="s-title">
             <h2 id="s-title" class="mb-3 text-lg font-bold">A stagione</h2>
             <ul class="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
                 <li v-for="r in seasonal" :key="r.id" :class="['rounded-lg px-3 py-2', cell(r)]">

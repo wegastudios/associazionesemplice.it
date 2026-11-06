@@ -23,7 +23,7 @@ const forms = Object.fromEntries(sections.map((s) => {
 const keysOf = (s) => Object.entries(props.settings).filter(([k]) => k.startsWith(`${s}.`));
 const save = (s) => forms[s].post(`/admin/piattaforma/${s}`, { preserveScroll: true, onSuccess: () => { forms[s].clear = []; } });
 const test = (s) => router.post(`/admin/piattaforma/${s}/prova`, {}, { preserveScroll: true });
-const input = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text-ink';
+const input = 'field';
 </script>
 
 <template>
@@ -46,7 +46,7 @@ const input = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
             </section>
             <p class="mb-6 text-sm text-muted">Ogni valore qui prende il posto di quello del file d'ambiente sul server. I segreti si salvano cifrati e non si rileggono: un campo segreto lasciato vuoto resta com'è.</p>
 
-            <section v-for="s in sections" :key="s.key" class="mb-6 rounded-2xl border border-line bg-card p-5" :aria-labelledby="`s-${s.key}`">
+            <section v-for="s in sections" :key="s.key" class="mb-6 card p-4 sm:p-5" :aria-labelledby="`s-${s.key}`">
                 <div class="mb-1 flex flex-wrap items-center gap-3">
                     <h2 :id="`s-${s.key}`" class="text-lg font-bold">{{ s.title }}</h2>
                     <span class="rounded bg-surface px-2 py-0.5 text-xs">ora: {{ effective[s.key] }}</span>
@@ -60,8 +60,8 @@ const input = 'block w-full rounded-lg border border-line bg-card px-3 py-2 text
                         <label v-if="v.secret && v.set" class="flex items-center gap-2 text-xs text-muted"><input v-model="forms[s.key].clear" type="checkbox" :value="field(k)" /> togli</label>
                     </label>
                     <div class="flex flex-wrap gap-3 sm:col-span-2">
-                        <button type="submit" class="rounded-lg bg-accent px-4 py-2 font-semibold text-accent-ink" :disabled="forms[s.key].processing">Salva</button>
-                        <button type="button" class="rounded-lg border border-line px-4 py-2 font-semibold" @click="test(s.key)">{{ s.key === 'mail' ? 'Manda un\'email di prova' : 'Prova' }}</button>
+                        <button type="submit" class="btn btn-primary" :disabled="forms[s.key].processing">Salva</button>
+                        <button type="button" class="btn btn-secondary" @click="test(s.key)">{{ s.key === 'mail' ? 'Manda un\'email di prova' : 'Prova' }}</button>
                     </div>
                 </form>
             </section>

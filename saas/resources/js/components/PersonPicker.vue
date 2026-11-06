@@ -46,7 +46,7 @@ const clear = () => {
     <div class="relative">
         <div class="flex gap-2">
             <input :id="props.id" v-model="query" type="search" autocomplete="off" :placeholder="props.placeholder"
-                class="block w-full rounded-lg border border-line bg-card px-3 py-2 text-ink" role="combobox"
+                class="field" role="combobox"
                 :aria-expanded="results.length > 0" :aria-controls="`${props.id}-list`" />
             <button v-if="model" type="button" class="text-sm font-semibold text-accent" @click="clear">Togli</button>
         </div>

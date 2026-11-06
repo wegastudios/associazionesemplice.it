@@ -17,7 +17,7 @@ const badge = { valid: 'bg-salvia/15', expiring: 'bg-giallo/25', expired: 'bg-da
             <button v-for="f in filters" :key="f[0]" type="button" class="rounded-lg border border-line px-3 py-1.5"
                 :class="filter === f[0] ? 'bg-accent text-accent-ink' : 'bg-card'" @click="router.get('/gestionale/certificati', { stato: f[0] })">{{ f[1] }}</button>
         </div>
-        <div class="overflow-x-auto rounded-2xl border border-line bg-card">
+        <div class="card overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="text-left text-muted"><tr><th class="px-4 py-3">Tessera</th><th class="px-4 py-3">Socio</th><th class="px-4 py-3">Scadenza</th><th class="px-4 py-3">Stato</th></tr></thead>
                 <tbody>

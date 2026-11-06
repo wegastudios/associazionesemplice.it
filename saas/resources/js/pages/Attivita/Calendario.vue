@@ -16,13 +16,13 @@ const go = (d) => router.get('/gestionale/calendario', { dal: d }, { preserveScr
                 <p class="text-sm text-muted">Lezioni dei corsi, eventi e date con prenotazione, per sette giorni.</p>
             </div>
             <div class="flex items-center gap-2 text-sm">
-                <button type="button" class="rounded-lg border border-line px-3 py-2" aria-label="Settimana prima" @click="go(previous)">←</button>
-                <input type="date" :value="from" class="rounded-lg border border-line bg-card px-3 py-2" aria-label="Dal giorno" @change="go($event.target.value)" />
-                <button type="button" class="rounded-lg border border-line px-3 py-2" aria-label="Settimana dopo" @click="go(next)">→</button>
+                <button type="button" class="field w-auto" aria-label="Settimana prima" @click="go(previous)">←</button>
+                <input type="date" :value="from" class="field w-auto" aria-label="Dal giorno" @change="go($event.target.value)" />
+                <button type="button" class="field w-auto" aria-label="Settimana dopo" @click="go(next)">→</button>
             </div>
         </div>
         <div class="space-y-3">
-            <section v-for="d in days" :key="d.date" class="rounded-2xl border border-line bg-card p-4" :aria-label="d.label">
+            <section v-for="d in days" :key="d.date" class="card p-4" :aria-label="d.label">
                 <h2 class="mb-2 font-bold first-letter:uppercase">{{ d.label }}</h2>
                 <p v-if="!d.items.length" class="text-sm text-muted">Niente in programma.</p>
                 <ul class="space-y-1 text-sm">
