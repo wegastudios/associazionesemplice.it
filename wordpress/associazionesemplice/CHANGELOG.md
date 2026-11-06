@@ -2,6 +2,9 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.15
+- Da telefono i moduli nelle schede (conti, attività) vanno su una colonna e non escono più dalla scheda.
+
 ## 1.3.14
 - Testi più chiari nel calendario dell'evento, nei pacchetti e nella commissione di incasso dei conti.
 
