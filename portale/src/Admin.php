@@ -45,7 +45,7 @@ final class Admin {
 		if ( 'licenze' === $a ) {
 			return 'nuova' !== $b && 'elimina' !== $c;
 		}
-		return ( 'clienti' === $a || 'piattaforma' === $a ) && $get;
+		return 'clienti' === $a && $get;
 	}
 
 	public function handle( string $method, string $path ): void {
@@ -82,8 +82,6 @@ final class Admin {
 			}
 		} elseif ( 'wega' === $a ) {
 			$this->wegaSync( $get );
-		} elseif ( 'piattaforma' === $a ) {
-			$this->platform( $get, $b, $c );
 		} elseif ( 'staff' === $a ) {
 			$this->staff( $get, $b, $c );
 		} elseif ( 'clienti' === $a && $get ) {
@@ -356,52 +354,13 @@ final class Admin {
 		$this->done( 'wega_import', $done . ' licenze importate da Wega' . ( $skip ? ', ' . $skip . ' saltate' : '' ) . '.', '/admin/wega' );
 	}
 
-	/** Staff: elenco, aggiunta/cambio ruolo (POST /admin/staff) e rimozione (POST /admin/staff/rimuovi). */
-	/** Amministrazione della piattaforma SaaS: associazioni e operatori letti dal SaaS (solo numeri e dati degli operatori); il ruolo «solo supporto» legge soltanto. */
-	private function platform( bool $get, string $b, string $c ): void {
-		$base = array( 'saas_ready' => SaasClient::enabled() );
-		if ( $get && '' === $b ) {
-			$data = array( 'orgs' => array(), 'total' => 0, 'error' => '' );
-			$f    = array( 'q' => (string) ( $_GET['q'] ?? '' ), 'status' => (string) ( $_GET['status'] ?? '' ), 'page' => (int) ( $_GET['page'] ?? 1 ) );
-			try {
-				$r    = SaasClient::orgs( $this->email, $f );
-				$data = array( 'orgs' => (array) ( $r['orgs'] ?? array() ), 'total' => (int) ( $r['total'] ?? 0 ), 'error' => '' );
-			} catch ( UserError $e ) {
-				$data['error'] = $e->getMessage();
-			}
-			$this->show( 'platform', 'piattaforma', $base + $data + array( 'f' => $f ) );
-		} elseif ( $get && '' !== $b && 'utenti' !== $b ) {
-			$org = array();
-			$ops = array();
-			$err = '';
-			try {
-				$org = SaasClient::org( $this->email, $b );
-				$ops = (array) ( SaasClient::operators( $this->email, $b )['operators'] ?? array() );
-			} catch ( UserError $e ) {
-				$err = $e->getMessage();
-			}
-			$this->show( 'platform_org', 'piattaforma', $base + array( 'org' => $org, 'ops' => $ops, 'org_id' => $b, 'error' => $err, 'can_write' => Staff::ADMIN === $this->role ) );
-		} elseif ( ! $get && 'utenti' === $b && '' !== $c ) {
-			if ( Staff::ADMIN !== $this->role ) {
-				http_response_code( 403 );
-				throw new UserError( 'Solo gli amministratori possono disattivare o riattivare gli utenti.' );
-			}
-			$disabled = '1' === (string) ( $_POST['disabled'] ?? '' );
-			$orgId    = (string) ( $_POST['org'] ?? '' );
-			SaasClient::setUserDisabled( $this->email, $c, $disabled, (string) ( $_POST['reason'] ?? '' ) );
-			$to = preg_match( '/^[A-Za-z0-9-]{8,64}$/', $orgId ) ? '/admin/piattaforma/' . $orgId : '/admin/piattaforma';
-			$this->done( 'saas_user_state', $disabled ? 'Utente disattivato.' : 'Utente riattivato.', $to, $c );
-		} else {
-			$this->notFound();
-		}
-	}
-
+	/** Staff: elenco, aggiunta/cambio permessi (POST /admin/staff) e rimozione (POST /admin/staff/rimuovi). */
 	private function staff( bool $get, string $b, string $c ): void {
 		if ( $get && '' === $b ) {
-			$this->show( 'staff', 'staff', array( 'rows' => Staff::all( $this->db ), 'labels' => Staff::LABELS, 'sso' => SupportSso::enabled(), 'support_url' => SupportSso::supportUrl() ) );
+			$this->show( 'staff', 'staff', array( 'rows' => Staff::all( $this->db ), 'labels' => Staff::LABELS, 'saas_labels' => Staff::SAAS_LABELS, 'sso' => SupportSso::enabled(), 'support_url' => SupportSso::supportUrl() ) );
 		} elseif ( ! $get && '' === $b ) {
-			$email = Staff::set( $this->db, $this->billing, (string) ( $_POST['email'] ?? '' ), (string) ( $_POST['role'] ?? '' ) );
-			$this->done( 'staff_set', $email . ' · ' . Staff::LABELS[ (string) $_POST['role'] ], '/admin/staff' );
+			$email = Staff::set( $this->db, $this->billing, (string) ( $_POST['email'] ?? '' ), (string) ( $_POST['role'] ?? '' ), (string) ( $_POST['saas'] ?? '' ) );
+			$this->done( 'staff_set', $email . ' · plugin: ' . ( Staff::LABELS[ (string) $_POST['role'] ] ?? 'nessun accesso' ) . ' · SaaS: ' . ( Staff::SAAS_LABELS[ (string) $_POST['saas'] ] ?? 'nessun accesso' ), '/admin/staff' );
 		} elseif ( ! $get && 'rimuovi' === $b ) {
 			$email = strtolower( trim( (string) ( $_POST['email'] ?? '' ) ) );
 			if ( $email === strtolower( $this->email ) ) {
@@ -496,7 +455,7 @@ final class Admin {
 	}
 
 	private function show( string $view, string $nav, array $vars = array() ): void {
-		View::render( 'admin/' . $view, $vars + array( 'nav' => $nav, 'flash' => $this->flash(), 'admin_email' => $this->email, 'role' => $this->role ) );
+		View::render( 'admin/' . $view, $vars + array( 'nav' => $nav, 'flash' => $this->flash(), 'admin_email' => $this->email, 'role' => $this->role, 'has_saas' => '' !== Staff::saas( $this->db, $this->email ) ) );
 	}
 
 	private function flash(): string {

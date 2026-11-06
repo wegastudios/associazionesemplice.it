@@ -1,6 +1,6 @@
 <?php /** @var array $org @var array $ops @var string $org_id @var string $error @var bool $can_write */ include __DIR__ . '/_nav.php'; $csrf = Portale\App::csrf(); ?>
 <section class="admin"><div class="wrap">
-	<p><a href="/admin/piattaforma">← Tutte le associazioni</a></p>
+	<p><a href="/saas">← Tutte le associazioni</a></p>
 	<?php if ( $error ) : ?><p class="flash" role="alert"><?php echo e( $error ); ?></p><?php endif; ?>
 	<?php if ( $org ) : ?>
 		<h2><?php echo e( (string) ( $org['name'] ?? '' ) ); ?></h2>
@@ -22,7 +22,7 @@
 			<td><?php echo $off ? 'Disattivato' : 'Attivo'; ?></td>
 			<td><?php echo ! empty( $u['two_factor'] ) ? 'Sì' : 'No'; ?></td>
 			<td><?php if ( $can_write ) : ?>
-				<form method="post" action="/admin/piattaforma/utenti/<?php echo e( (string) ( $u['user_id'] ?? '' ) ); ?>" onsubmit="<?php echo js_confirm( ( $off ? 'Riattivare ' : 'Disattivare ' ) . (string) ( $u['email'] ?? '' ) . '? Vale in tutte le associazioni in cui è operatore.' ); ?>">
+				<form method="post" action="/saas/utenti/<?php echo e( (string) ( $u['user_id'] ?? '' ) ); ?>" onsubmit="<?php echo js_confirm( ( $off ? 'Riattivare ' : 'Disattivare ' ) . (string) ( $u['email'] ?? '' ) . '? Vale in tutte le associazioni in cui è operatore.' ); ?>">
 					<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>">
 					<input type="hidden" name="org" value="<?php echo e( $org_id ); ?>">
 					<input type="hidden" name="disabled" value="<?php echo $off ? '0' : '1'; ?>">
@@ -33,5 +33,5 @@
 	<?php endforeach; ?>
 	<?php if ( ! $ops && ! $error ) : ?><tr><td colspan="6" class="muted">Nessun operatore.</td></tr><?php endif; ?>
 	</tbody></table></div>
-	<?php if ( ! $can_write ) : ?><p class="muted small">Con il ruolo «solo supporto» la scheda è in sola lettura.</p><?php endif; ?>
+	<?php if ( ! $can_write ) : ?><p class="muted small">Con il livello «solo supporto» la scheda è in sola lettura.</p><?php endif; ?>
 </div></section>

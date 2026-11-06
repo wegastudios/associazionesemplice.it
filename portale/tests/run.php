@@ -794,6 +794,21 @@ check( 'staff: ruolo non valido rifiutato', null !== throwsUser( function () use
 check( 'staff: admin di config.php non modificabile', null !== throwsUser( function () use ( $tdb, $tbil ) { Portale\Staff::set( $tdb, $tbil, 'capo@esempio.it', 'support' ); } ) );
 Portale\Staff::remove( $tdb, 'aiuto@esempio.it' );
 check( 'staff: rimosso', null === Portale\Staff::role( $tdb, 'aiuto@esempio.it' ) );
+// Permessi separati per area: plugin e SaaS.
+check( 'staff: admin di config.php è anche amministratore SaaS', 'admin' === Portale\Staff::saas( $tdb, 'capo@esempio.it' ) );
+check( 'staff: sconosciuto senza accesso SaaS', '' === Portale\Staff::saas( $tdb, 'altro@esempio.it' ) );
+Portale\Staff::set( $tdb, $tbil, 'solo.saas@esempio.it', 'none', 'support' );
+check( 'staff: solo SaaS (nessun accesso al plugin)', null === Portale\Staff::role( $tdb, 'solo.saas@esempio.it' ) && 'support' === Portale\Staff::saas( $tdb, 'solo.saas@esempio.it' ) );
+Portale\Staff::set( $tdb, $tbil, 'solo.plugin@esempio.it', 'support' );
+check( 'staff: solo plugin (nessun accesso al SaaS)', 'support' === Portale\Staff::role( $tdb, 'solo.plugin@esempio.it' ) && '' === Portale\Staff::saas( $tdb, 'solo.plugin@esempio.it' ) );
+Portale\Staff::set( $tdb, $tbil, 'solo.plugin@esempio.it', 'support', 'admin' );
+Portale\Staff::set( $tdb, $tbil, 'solo.plugin@esempio.it', 'admin' );
+check( 'staff: cambiare il plugin non toglie il livello SaaS', 'admin' === Portale\Staff::role( $tdb, 'solo.plugin@esempio.it' ) && 'admin' === Portale\Staff::saas( $tdb, 'solo.plugin@esempio.it' ) );
+check( 'staff: serve almeno un accesso', null !== throwsUser( function () use ( $tdb, $tbil ) { Portale\Staff::set( $tdb, $tbil, 'nessuno@esempio.it', 'none', '' ); } ) );
+check( 'staff: livello SaaS non valido rifiutato', null !== throwsUser( function () use ( $tdb, $tbil ) { Portale\Staff::set( $tdb, $tbil, 'x@esempio.it', 'support', 'root' ); } ) );
+foreach ( array( 'solo.saas@esempio.it', 'solo.plugin@esempio.it' ) as $rm ) {
+	Portale\Staff::remove( $tdb, $rm );
+}
 Config::set( 'base_url', 'https://portale.test' );
 Config::set( 'support', array( 'url' => 'https://supporto.test/', 'sso_secret' => str_repeat( 's', 40 ) ) );
 check( 'sso: attivo con segreto lungo, indirizzo senza barra finale', Portale\SupportSso::enabled() && 'https://supporto.test' === Portale\SupportSso::supportUrl() );
