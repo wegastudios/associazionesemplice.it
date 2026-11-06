@@ -226,7 +226,7 @@ Con i **listini** la stessa attività può avere prezzi diversi, per esempio *In
 ## Creare i listini
 
 1. Apri la **scheda dell'attività** (evento o corso a date) da **Attività**.
-2. Nella riga **Listini** aggiungi un prezzo per ogni listino con **nome**, **prezzo** e numero di **ingressi**. Premi **«+ Aggiungi un prezzo»** per averne altri: anche uno solo va bene. Il massimo si cambia da **Impostazioni → Limiti**.
+2. Nella riga **Listini** aggiungi un prezzo per ogni listino con **nome**, **prezzo** e numero di **ingressi**. Premi **«+ Aggiungi un prezzo»** per averne altri: uno o più prezzi, quanti ne servono.
 3. Salva.
 
 Un listino con un solo ingresso è una prenotazione normale; un listino con più ingressi è un **pacchetto**.
