@@ -164,19 +164,32 @@ final class Documents {
 
 	// ---------- Apertura (solo con permesso) ----------
 
+	/** Link per aprire un documento: per quelli non pubblici porta un nonce, controllato da handle_download(). */
 	public static function url( int $id ): string {
-		return add_query_arg( array( 'action' => self::ACTION, 'id' => $id ), admin_url( 'admin-post.php' ) );
+		$args = array( 'action' => self::ACTION, 'id' => $id );
+		$doc  = self::get( $id );
+		if ( ! $doc || DocumentRules::PUBLIC !== (string) $doc['visibility'] ) {
+			$args[ Csrf::FIELD ] = Csrf::create( self::ACTION . '_' . $id ); // nonce di WordPress o token della sessione del socio
+		}
+		return add_query_arg( $args, admin_url( 'admin-post.php' ) );
 	}
 
 	public static function handle_download(): void {
-		$id  = isset( $_GET['id'] ) ? (int) $_GET['id'] : 0; // phpcs:ignore WordPress.Security.NonceVerification -- sola lettura: il controllo è il permesso sul documento
+		$id  = isset( $_GET['id'] ) ? absint( $_GET['id'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification -- il nonce si controlla qui sotto per i documenti non pubblici (quelli pubblici si aprono da chiunque)
 		$doc = self::get( $id );
 		if ( ! $doc ) {
 			wp_die( 'Documento non trovato.', 404 );
 		}
+		if ( DocumentRules::PUBLIC !== (string) $doc['visibility'] ) {
+			$nonce = isset( $_GET[ Csrf::FIELD ] ) ? sanitize_text_field( wp_unslash( $_GET[ Csrf::FIELD ] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification -- è il nonce stesso, controllato subito sotto
+			if ( ! Csrf::verify( $nonce, self::ACTION . '_' . $id ) ) {
+				wp_die( 'Il link è scaduto: torna alla pagina e apri di nuovo il documento.', 'Link scaduto', array( 'response' => 403, 'back_link' => true ) );
+			}
+		}
 		if ( ! Access::can_read_document( $doc ) ) {
-			if ( ! MemberSession::logged_in() ) {
-				wp_safe_redirect( wp_login_url( self::url( $id ) ) );
+			if ( ! MemberSession::logged_in() ) { // dopo l'accesso si torna all'area riservata (il link aveva il nonce di chi non era entrato)
+				$page = (int) Settings::get( 'member_area_page_id' );
+				wp_safe_redirect( wp_login_url( $page ? (string) get_permalink( $page ) : home_url( '/' ) ) );
 				exit;
 			}
 			wp_die( 'Non hai il permesso di aprire questo documento.', 403 );

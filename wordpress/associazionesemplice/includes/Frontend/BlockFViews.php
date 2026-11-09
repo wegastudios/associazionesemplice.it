@@ -8,24 +8,13 @@ use AssociazioneSemplice\Plugin;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Viste delle convenzioni: per i soci in regola (area riservata, `[convenzioni_soci]`) e l'elenco pubblico (`[convenzioni]`). */
+/** Viste delle convenzioni: per i soci in regola (area riservata, `[associazionesemplice_convenzioni_soci]`) e l'elenco pubblico (`[associazionesemplice_convenzioni]`). */
 final class BlockFViews {
 
 	public static function register(): void {
 		add_filter( 'asem_area_section', array( __CLASS__, 'area_section' ), 10, 3 );
-		// Nomi brevi degli shortcode, oltre a quelli con il prefisso [associazionesemplice_…]
-		add_shortcode( 'convenzioni_soci', array( __CLASS__, 'shortcode_members' ) );
-		add_shortcode( 'convenzioni', array( __CLASS__, 'shortcode_public' ) );
-	}
-
-	/** @param mixed $atts */
-	public static function shortcode_members( $atts = array() ): string {
-		return Shortcodes::render_view( 'convenzioni_soci', (array) $atts );
-	}
-
-	/** @param mixed $atts */
-	public static function shortcode_public( $atts = array() ): string {
-		return Shortcodes::render_view( 'convenzioni', (array) $atts );
+		// Gli shortcode sono solo quelli con il prefisso: [associazionesemplice_convenzioni_soci] e [associazionesemplice_convenzioni]
+		// (registrati da Shortcodes). I vecchi nomi brevi nelle pagine li aggiorna Install::migrate_short_shortcodes().
 	}
 
 	/** Sezione dell'area soci aggiunta da questo blocco. */
@@ -129,7 +118,7 @@ final class BlockFViews {
 		return $html . '</ul></section>';
 	}
 
-	/** Shortcode `[convenzioni_soci]`: serve l'accesso. */
+	/** Shortcode `[associazionesemplice_convenzioni_soci]`: serve l'accesso. */
 	public static function members(): string {
 		return Views::with_person(
 			function ( $p ) {

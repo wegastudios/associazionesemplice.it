@@ -142,7 +142,7 @@ final class ResourcesFront {
 	// ---------- Vista ----------
 
 	private static function form( string $action, string $fields, string $button, string $class = 'asemf-inline', bool $confirm = false ): string {
-		return '<form class="asemf-form ' . esc_attr( $class ) . '" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"' . ( $confirm ? ' onsubmit="return confirm(\'Confermi?\');"' : '' ) . '>'
+		return '<form class="asemf-form ' . esc_attr( $class ) . '" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"' . ( $confirm ? ' data-asemf-confirm="Confermi?"' : '' ) . '>'
 			. '<input type="hidden" name="action" value="' . esc_attr( $action ) . '"><input type="hidden" name="_back" value="' . esc_url( Restrict::current_url() ) . '">'
 			. \AssociazioneSemplice\Csrf::field( $action ) . $fields . '<button class="asemf-btn">' . esc_html( $button ) . '</button></form>';
 	}

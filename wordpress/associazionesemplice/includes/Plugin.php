@@ -124,24 +124,43 @@ final class Plugin {
 	 */
 	public static function post_data(): array {
 		$out = array();
-		foreach ( (array) wp_unslash( $_POST ) as $key => $value ) { // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- il nonce lo controlla il chiamante; ogni valore è ripulito qui sotto
-			$name = strtolower( (string) $key );
-			if ( in_array( $name, self::VERBATIM_FIELDS, true ) ) {
-				$out[ $key ] = is_string( $value ) ? wp_kses_no_null( (string) wp_check_invalid_utf8( $value ) ) : '';
+		foreach ( (array) wp_unslash( $_POST ) as $key => $value ) { // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- il nonce lo controlla il chiamante; chiavi e valori sono ripuliti qui sotto
+			$name = sanitize_key( (string) $key );
+			if ( '' === $name ) {
 				continue;
 			}
-			$is_url      = '_back' === $name || '_wp_http_referer' === $name || '_url' === substr( $name, -4 );
-			$out[ $key ] = map_deep(
-				$value,
-				static function ( $v ) use ( $is_url ) {
-					if ( ! is_string( $v ) ) {
-						return $v;
-					}
-					return $is_url ? esc_url_raw( $v ) : sanitize_textarea_field( $v );
-				}
-			);
+			if ( in_array( $name, self::VERBATIM_FIELDS, true ) ) {
+				$out[ $name ] = is_string( $value ) ? wp_kses_no_null( (string) wp_check_invalid_utf8( $value ) ) : '';
+				continue;
+			}
+			$is_url       = '_back' === $name || '_wp_http_referer' === $name || '_url' === substr( $name, -4 );
+			$out[ $name ] = self::clean_value( $value, $is_url );
 		}
 		return $out;
+	}
+
+	/**
+	 * Un valore del modulo ripulito; negli elenchi (campi come `righe[3][importo]`) anche le chiavi, a ogni livello:
+	 * numeri interi o testo con sanitize_key().
+	 *
+	 * @param mixed $value
+	 * @return mixed
+	 */
+	private static function clean_value( $value, bool $is_url ) {
+		if ( is_array( $value ) ) {
+			$out = array();
+			foreach ( $value as $k => $v ) {
+				$k = is_int( $k ) ? $k : sanitize_key( (string) $k );
+				if ( '' !== $k ) {
+					$out[ $k ] = self::clean_value( $v, $is_url );
+				}
+			}
+			return $out;
+		}
+		if ( ! is_string( $value ) ) {
+			return $value;
+		}
+		return $is_url ? esc_url_raw( $value ) : sanitize_textarea_field( $value );
 	}
 
 	/** Versione di un file in assets/: cambia a ogni aggiornamento, così il browser non tiene in cache script e stili vecchi. */

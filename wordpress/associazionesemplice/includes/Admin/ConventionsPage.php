@@ -22,7 +22,7 @@ final class ConventionsPage {
 		$state  = Ui::get_str( 'state' );
 		$labels = ConventionRules::status_labels();
 		Ui::header( 'Convenzioni', '<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-conventions', array( 'new' => 1 ) ) ) . '">Nuova convenzione</a>' );
-		echo '<p class="description">Sconti e vantaggi di esercenti ed enti partner per i soci. I soci in regola con la tessera vedono quelle valide oggi nell\'area riservata (sezione «Convenzioni», o lo shortcode <code>[convenzioni_soci]</code>). Per mostrare sul sito quelle segnate «pubbliche» usa lo shortcode <code>[convenzioni]</code>. Una convenzione scaduta o archiviata sparisce dall\'area soci ma resta qui.</p>';
+		echo '<p class="description">Sconti e vantaggi di esercenti ed enti partner per i soci. I soci in regola con la tessera vedono quelle valide oggi nell\'area riservata (sezione «Convenzioni», o lo shortcode <code>[associazionesemplice_convenzioni_soci]</code>). Per mostrare sul sito quelle segnate «pubbliche» usa lo shortcode <code>[associazionesemplice_convenzioni]</code>. Una convenzione scaduta o archiviata sparisce dall\'area soci ma resta qui.</p>';
 		$cats = Conventions::categories();
 		echo wp_kses( '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-conventions"><select name="category">' . Ui::options( array_combine( $cats, $cats ), $cat, 'Tutte le categorie' ) . '</select> '
 			. '<select name="state">' . Ui::options( $labels, $state, 'Tutti gli stati' ) . '</select> <button class="button">Filtra</button> '
@@ -102,7 +102,7 @@ final class ConventionsPage {
 			echo '<label style="margin-right:12px"><input type="checkbox" name="types[]" value="' . esc_attr( $t ) . '"' . checked( in_array( $t, $chosen, true ), true, false ) . '> ' . esc_html( MemberType::label( $t ) ) . '</label>';
 		}
 		echo '<p class="description">Gli ospiti e i genitori o tutori che non sono soci non vedono mai le convenzioni.</p></td></tr>';
-		echo '<tr><th>Visibile anche al pubblico</th><td><label><input type="checkbox" name="is_public" value="1"' . checked( ! empty( $c['is_public'] ), true, false ) . '> Mostra nome, logo, categoria e vantaggio sul sito (shortcode <code>[convenzioni]</code>)</label><p class="description">Il codice e le condizioni restano riservati ai soci.</p></td></tr>';
+		echo '<tr><th>Visibile anche al pubblico</th><td><label><input type="checkbox" name="is_public" value="1"' . checked( ! empty( $c['is_public'] ), true, false ) . '> Mostra nome, logo, categoria e vantaggio sul sito (shortcode <code>[associazionesemplice_convenzioni]</code>)</label><p class="description">Il codice e le condizioni restano riservati ai soci.</p></td></tr>';
 		echo '<tr><th>Codice convenzione</th><td><input type="text" name="code" value="' . esc_attr( $v( 'code' ) ) . '" class="regular-text" maxlength="60"><p class="description">Facoltativo: il socio lo mostra all\'esercente.</p></td></tr>';
 		echo '</tbody></table>';
 		submit_button( $c ? 'Salva' : 'Aggiungi la convenzione' );

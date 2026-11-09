@@ -8,6 +8,14 @@
 		}
 	});
 
+	// Moduli che chiedono conferma all'invio (non al clic su un campo)
+	document.addEventListener('submit', function (e) {
+		var f = e.target;
+		if (f && f.getAttribute && f.hasAttribute('data-asemf-confirm') && !window.confirm(f.getAttribute('data-asemf-confirm') || 'Confermi?')) {
+			e.preventDefault();
+		}
+	});
+
 	// Coordinate bancarie: pulsante «Copia» (negli appunti; se il browser non lo consente si seleziona il testo)
 	document.addEventListener('click', function (e) {
 		var b = e.target && e.target.closest ? e.target.closest('[data-asemf-copy]') : null;

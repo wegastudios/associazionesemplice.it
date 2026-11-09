@@ -22,6 +22,9 @@ final class Install {
 
 	/** Esegue gli aggiornamenti dello schema se il plugin è stato aggiornato senza riattivarlo. */
 	public static function maybe_upgrade(): void {
+		if ( ! get_option( self::SHORTCODES_OPTION ) ) {
+			self::migrate_short_shortcodes();
+		}
 		$old = (string) get_option( self::DB_VERSION_OPTION, '' );
 		if ( $old !== self::DB_VERSION ) {
 			self::activate();
@@ -39,6 +42,40 @@ final class Install {
 				Db::db()->query( 'UPDATE ' . Db::t( 'activities' ) . ' SET fee_cents = monthly_fee_cents WHERE fee_cents = 0 AND monthly_fee_cents > 0' );
 			}
 		}
+	}
+
+	/** Opzione che segna fatta la sostituzione degli shortcode brevi. */
+	const SHORTCODES_OPTION = 'asem_short_shortcodes_done';
+
+	/**
+	 * Gli shortcode hanno tutti il prefisso del plugin: i vecchi nomi brevi `[convenzioni_soci]` e `[convenzioni]` (senza prefisso, tolti)
+	 * diventano `[associazionesemplice_convenzioni_soci]` e `[associazionesemplice_convenzioni]` nei contenuti e nelle pagine di Elementor.
+	 * Una volta sola per sito. @return int righe aggiornate
+	 */
+	public static function migrate_short_shortcodes(): int {
+		global $wpdb;
+		$pairs = array(
+			'[convenzioni_soci' => '[associazionesemplice_convenzioni_soci',
+			'[convenzioni]'     => '[associazionesemplice_convenzioni]',
+			'[convenzioni '     => '[associazionesemplice_convenzioni ',
+		);
+		$n   = 0;
+		$ids = array();
+		foreach ( $pairs as $from => $to ) {
+			$like = '%' . $wpdb->esc_like( $from ) . '%';
+			$ids  = array_merge(
+				$ids,
+				(array) $wpdb->get_col( $wpdb->prepare( "SELECT ID FROM {$wpdb->posts} WHERE post_content LIKE %s", $like ) ), // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- aggiornamento una tantum
+				(array) $wpdb->get_col( $wpdb->prepare( "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_elementor_data' AND meta_value LIKE %s", $like ) ) // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- aggiornamento una tantum
+			);
+			$n += (int) $wpdb->query( $wpdb->prepare( "UPDATE {$wpdb->posts} SET post_content = REPLACE( post_content, %s, %s ) WHERE post_content LIKE %s", $from, $to, $like ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- aggiornamento una tantum
+			$n += (int) $wpdb->query( $wpdb->prepare( "UPDATE {$wpdb->postmeta} SET meta_value = REPLACE( meta_value, %s, %s ) WHERE meta_key = '_elementor_data' AND meta_value LIKE %s", $from, $to, $like ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- aggiornamento una tantum
+		}
+		foreach ( array_unique( array_map( 'intval', $ids ) ) as $id ) {
+			clean_post_cache( $id );
+		}
+		update_option( self::SHORTCODES_OPTION, 1 );
+		return $n;
 	}
 
 	/** Dalla v45 di due tutori ne opera uno solo sul sito: dove prima ce n'erano due resta operativo il primo collegato. */

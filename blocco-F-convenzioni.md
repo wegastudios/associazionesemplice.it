@@ -31,13 +31,13 @@ Nella Bacheca compare il riquadro **«Convenzioni in scadenza»** con quelle che
 
 ## Cosa vedono i soci
 
-- **Nell'area riservata**, sezione **Convenzioni** (oppure con lo shortcode `[convenzioni_soci]` in una pagina): vedono le convenzioni in corso che spettano a loro. Serve essere un socio con la **tessera valida oggi** e del tipo previsto. Un socio sospeso, con la tessera scaduta o uscito non le vede. **Gli ospiti e i genitori o tutori che non sono soci non le vedono**: i tutori non le vedono nemmeno per i figli minori.
+- **Nell'area riservata**, sezione **Convenzioni** (oppure con lo shortcode `[associazionesemplice_convenzioni_soci]` in una pagina): vedono le convenzioni in corso che spettano a loro. Serve essere un socio con la **tessera valida oggi** e del tipo previsto. Un socio sospeso, con la tessera scaduta o uscito non le vede. **Gli ospiti e i genitori o tutori che non sono soci non le vedono**: i tutori non le vedono nemmeno per i figli minori.
 - Si può filtrare per **categoria**.
 - Aprendo «Come usarla» il socio trova il **codice convenzione** (se c'è), le **condizioni**, i contatti dell'esercente e la riga per farsi riconoscere: **nome e cognome, numero di tessera e scadenza del tesseramento**. Può mostrarla all'esercente insieme alla tessera digitale.
 
 ## Elenco pubblico sul sito
 
-Lo shortcode **`[convenzioni]`** mostra a tutti le convenzioni segnate «Visibile anche al pubblico» e in corso: nome, logo, categoria e vantaggio in breve. Per una sola categoria: `[convenzioni categoria="Sport e benessere"]`. **Non** mostra il codice, le condizioni né i contatti. Gli stessi shortcode esistono anche con il prefisso: `[associazionesemplice_convenzioni]` e `[associazionesemplice_convenzioni_soci]`.
+Lo shortcode **`[associazionesemplice_convenzioni]`** mostra a tutti le convenzioni segnate «Visibile anche al pubblico» e in corso: nome, logo, categoria e vantaggio in breve. Per una sola categoria: `[convenzioni categoria="Sport e benessere"]`. **Non** mostra il codice, le condizioni né i contatti. Gli stessi shortcode esistono anche con il prefisso: `[associazionesemplice_convenzioni]` e `[associazionesemplice_convenzioni_soci]`.
 
 Le pagine con questi shortcode non vengono messe nella cache di pagina, così le convenzioni scadute non restano visibili.
 
