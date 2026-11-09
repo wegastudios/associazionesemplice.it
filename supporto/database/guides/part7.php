@@ -185,6 +185,8 @@ Una risorsa non può essere occupata due volte. Il plugin lo impedisce così:
 - se **colleghi** un corso o un evento a una risorsa, oppure **aggiungi o sposti** delle date che si sovrappongono a un'altra attività (**allestimenti compresi**), il salvataggio viene **rifiutato** con un messaggio che dice **con cosa si sovrappone**;
 - per correggere, collega l'attività a un'altra risorsa, oppure aggiungi o sposta le date.
 
+Quando cambi la risorsa di un'attività già occupata nelle stesse date, vedi **cosa si sovrappone** e il cambio **non viene applicato**. Se spunti **«Sposta sulla risorsa di prima ciò che si sovrappone»**, le prenotazioni e le altre attività (queste per intero) passano alla risorsa che si libera. Il cambio è **tutto o niente**: se qualcosa non si può spostare, non cambia nulla.
+
 Le sovrapposizioni **già presenti** prima dell'aggiornamento non cambiano da sole: in Bacheca compare l'avviso **«Risorse occupate due volte»** e vanno sistemate a mano, modificando le date o la risorsa di una delle due attività.
 
 > L'allestimento della risorsa non vale intorno alle prenotazioni dei soci: vale solo per le attività.

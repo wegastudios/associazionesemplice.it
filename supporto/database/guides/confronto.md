@@ -65,6 +65,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Ingresso con il QR della prenotazione | — | ✓ | ✓ |
 | Report di occupazione delle risorse | — | ✓ | ✓ |
 | Corsi ed eventi collegati alle risorse (anche «fuori sede»), con tempi di allestimento e fasce occupate solo dove ci sono prenotazioni | — | ✓ | ✓ |
+| Cambio di risorsa con elenco di ciò che si sovrappone, e spostamento di prenotazioni e attività sulla risorsa che si libera (tutto o niente) | — | ✓ | ✓ |
 | Suggerimento dei luoghi con Google (con la tua chiave) | ✓ | ✓ | ✓ |
 | Pulsante «Non rinnova» nel corso: l'iscritto resta fino a fine periodo pagato e poi non deve più nulla; eliminando un corso si rende la quota proporzionale delle lezioni non tenute | ✓ | ✓ | ✓ |
 | Eliminando un corso, un evento o una singola iscrizione si restituisce solo ciò che non è ancora stato fatto; si può annullare una data o «questa data e le successive» (eventi ricorrenti e lezioni dei corsi) | ✓ | ✓ | ✓ |
