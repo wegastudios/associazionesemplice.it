@@ -5,7 +5,7 @@ import AppLayout from '../../layouts/AppLayout.vue';
 import PersonPicker from '../../components/PersonPicker.vue';
 
 const props = defineProps({
-    activity: Object, kinds: Array, billings: Array, years: Array, accounts: Array, methods: Array, canEdit: Boolean, canAccounting: Boolean,
+    activity: Object, resources: Array, kinds: Array, billings: Array, years: Array, accounts: Array, methods: Array, canEdit: Boolean, canAccounting: Boolean,
 });
 
 const a = props.activity ?? {};
@@ -14,7 +14,11 @@ const form = useForm({
     name: a.name ?? '', kind: a.kind ?? 'course', social_year: a.social_year ?? props.years[0], billing: a.billing ?? 'monthly',
     fee: a.fee ?? '', guest_fee: a.guest_fee ?? '', instructor_person_id: a.instructor_person_id ?? '', weekdays: a.weekdays ?? [],
     starts_on: a.starts_on ?? '', ends_on: a.ends_on ?? '', location: a.location ?? '', notes: a.notes ?? '', price_lists: a.price_lists ?? '',
+    resource: a.resource ?? '', occupy_on_booking: a.occupy_on_booking ?? false, move_conflicts: false,
 });
+// Cambio di risorsa con sovrapposizioni: o si lascia tutto com'è, o si spostano gli slot occupati sulla risorsa che si libera.
+const keepResource = () => { form.resource = a.resource ?? ''; form.clearErrors(); };
+const saveMoving = () => { form.move_conflicts = true; save(); form.move_conflicts = false; };
 const clean = (d) => ({ ...d, instructor_person_id: d.instructor_person_id || null, starts_on: d.starts_on || null, ends_on: d.ends_on || null });
 const save = () => (props.activity
     ? form.transform(clean).put(`/gestionale/attivita/${props.activity.id}`, { preserveScroll: true })
@@ -84,6 +88,22 @@ const label = 'space-y-1 text-sm';
                     <span class="text-muted">Il mese è dovuto dalla prima lezione del mese.</span>
                 </div>
                 <label :class="label"><span class="font-semibold">Luogo</span><input v-model="form.location" :class="field" maxlength="190" /></label>
+                <div :class="[label, 'sm:col-span-2']">
+                    <label class="flex flex-col gap-1"><span class="font-semibold">Dove si svolge (risorsa)</span>
+                        <select v-model="form.resource" :class="field" required>
+                            <option value="" disabled>Scegli…</option>
+                            <option value="none">Nessuna (fuori sede)</option>
+                            <option v-for="r in resources" :key="r.id" :value="r.id">{{ r.name }}</option>
+                        </select></label>
+                    <span class="text-muted">Serve a sapere quando la risorsa è libera: più attività sulla stessa risorsa ne condividono il calendario.</span>
+                    <span v-if="form.errors.resource" class="text-danger">{{ form.errors.resource }}</span>
+                    <div v-if="form.errors.resource && form.errors.resource_movable !== undefined" class="flex flex-wrap gap-3 pt-1">
+                        <button type="button" class="btn" @click="keepResource">Lascia tutto invariato</button>
+                        <button v-if="form.errors.resource_movable === '1'" type="button" class="btn btn-primary" @click="saveMoving">Sposta gli slot occupati sulla risorsa che si libera</button>
+                    </div>
+                </div>
+                <label :class="label"><span class="flex items-center gap-2"><input v-model="form.occupy_on_booking" type="checkbox" /> <span class="font-semibold">Occupa la risorsa solo se prenotata</span></span>
+                    <span class="text-muted">Le date senza prenotazioni lasciano libera la risorsa; una prenotazione su una fascia occupata altrove viene rifiutata.</span></label>
                 <div :class="[label, 'sm:col-span-2']"><label for="instructor" class="font-semibold">Referente (socio volontario)</label>
                     <p v-if="activity?.instructor_name && form.instructor_person_id === activity.instructor_person_id" class="text-muted">{{ activity.instructor_name }} <button v-if="canEdit" type="button" class="ml-2 text-danger hover:underline" @click="form.instructor_person_id = ''">togli</button></p>
                     <PersonPicker v-else id="instructor" v-model="form.instructor_person_id" />

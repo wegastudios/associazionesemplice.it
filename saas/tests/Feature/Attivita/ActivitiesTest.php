@@ -154,7 +154,7 @@ it('mostra le pagine e rispetta i permessi', function (): void {
     [$cash, $anna] = $this->orgContext()->run($this->org->id, fn () => [Account::query()->sole()->id, Person::create(['first_name' => 'Anna', 'last_name' => 'Rossi'])->id]);
     $year = now()->format('Y');
 
-    $this->actingAs($op)->post('/gestionale/attivita', ['name' => 'Yoga', 'kind' => 'course', 'social_year' => $year, 'billing' => 'monthly', 'fee' => '30,00', 'weekdays' => [2]])
+    $this->actingAs($op)->post('/gestionale/attivita', ['name' => 'Yoga', 'kind' => 'course', 'social_year' => $year, 'billing' => 'monthly', 'fee' => '30,00', 'weekdays' => [2], 'resource' => 'none'])
         ->assertRedirect()->assertSessionHas('status', 'Attività creata.');
     $id = $this->orgContext()->run($this->org->id, fn () => Activity::query()->sole()->id);
 

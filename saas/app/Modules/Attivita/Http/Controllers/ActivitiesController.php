@@ -7,6 +7,7 @@ namespace App\Modules\Attivita\Http\Controllers;
 use App\Modules\Attivita\Contracts\ActivityError;
 use App\Modules\Attivita\Contracts\ActivityKind;
 use App\Modules\Attivita\Contracts\Billing;
+use App\Modules\Attivita\Contracts\ResourceChangeConflict;
 use App\Modules\Attivita\Models\Activity;
 use App\Modules\Attivita\Rules\PaymentCalc;
 use App\Modules\Attivita\Rules\SessionRules;
@@ -17,10 +18,12 @@ use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Contabilita\Contracts\Money;
 use App\Modules\Contabilita\Contracts\PaymentMethod;
 use App\Modules\Core\Contracts\Input;
+use App\Modules\Risorse\Contracts\ResourceBookings;
 use Closure;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -33,6 +36,7 @@ final readonly class ActivitiesController
         private ActivityService $activities,
         private SessionService $sessions,
         private Ledger $ledger,
+        private ResourceBookings $resourceList,
         private DatabaseManager $db,
     ) {}
 
@@ -90,7 +94,14 @@ final readonly class ActivitiesController
     {
         $data = $this->validated($request);
 
-        return $this->attempt(fn (): RedirectResponse => $this->done(fn () => $this->activities->save($activity, $data), 'Attività salvata.'));
+        $move = $request->boolean('move_conflicts');
+
+        try {
+            return $this->attempt(fn (): RedirectResponse => $this->done(fn () => $this->activities->save($activity, $data, $move), 'Attività salvata.'));
+        } catch (ResourceChangeConflict $e) {
+            // Il modulo mostra l'elenco e propone: lasciare tutto com'è, oppure (se si può) spostare gli slot occupati sulla risorsa che si libera.
+            throw ValidationException::withMessages(['resource' => $e->getMessage(), 'resource_movable' => $e->movable ? '1' : '0']);
+        }
     }
 
     public function archive(Request $request, string $activity): RedirectResponse
@@ -190,6 +201,8 @@ final readonly class ActivitiesController
                 'archived' => $activity->archived_at !== null,
                 'bookable' => $activity->kind->usesSessions(),
                 'price_lists' => SessionRules::priceListsText($activity->price_lists),
+                'resource' => $activity->no_resource ? 'none' : ($activity->resource_id ?? ''),
+                'occupy_on_booking' => $activity->occupy_on_booking,
                 'sessions' => $activity->kind->usesSessions() ? array_map(static fn (array $x): array => $x + ['label' => SessionsController::dayLabel($x['date'])], $this->sessions->sessions($activity)) : [],
                 'monthly' => $activity->kind === ActivityKind::Course && $activity->billing !== Billing::Once,
                 'months' => array_map(static fn (string $m): array => ['value' => $m, 'label' => ActivityService::monthLabel($m)], $year['months'] ?? []),
@@ -228,6 +241,7 @@ final readonly class ActivitiesController
                     'voided' => $m['voided'],
                 ], $movements),
             ],
+            'resources' => $this->resourceList->options(),
             'kinds' => array_map(static fn (ActivityKind $k): array => ['value' => $k->value, 'label' => $k->label()], ActivityKind::cases()),
             'billings' => array_map(static fn (Billing $b): array => ['value' => $b->value, 'label' => $b->label()], Billing::cases()),
             'years' => $this->activities->years(),
@@ -256,7 +270,13 @@ final readonly class ActivitiesController
             'location' => ['nullable', 'string', 'max:190'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'price_lists' => ['nullable', 'string', 'max:200000'],
+            'resource' => ['required', 'string', 'max:40'],
+            'occupy_on_booking' => ['boolean'],
         ]));
+        $resource = Input::string($data, 'resource');
+        if ($resource !== 'none' && ! Str::isUuid($resource)) {
+            throw ValidationException::withMessages(['resource' => 'Scegli dove si svolge: una risorsa, oppure «Nessuna (fuori sede)».']);
+        }
         try {
             $lists = SessionRules::parsePriceLists(Input::optionalString($data, 'price_lists') ?? '');
         } catch (ActivityError $e) {
@@ -277,6 +297,9 @@ final readonly class ActivitiesController
             'location' => Input::optionalString($data, 'location'),
             'notes' => Input::optionalString($data, 'notes'),
             'price_lists' => $lists,
+            'resource_id' => $resource === 'none' ? null : $resource,
+            'no_resource' => $resource === 'none',
+            'occupy_on_booking' => (bool) ($data['occupy_on_booking'] ?? false),
         ];
     }
 

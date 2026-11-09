@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Risorse\Services;
 
+use App\Modules\Attivita\Contracts\ActivityOccupancy;
 use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Contabilita\Contracts\CategoryKind;
 use App\Modules\Contabilita\Contracts\Income;
@@ -44,6 +45,7 @@ final readonly class ReservationService
         private Members $members,
         private Ledger $ledger,
         private AuditLog $audit,
+        private ActivityOccupancy $occupancy,
     ) {}
 
     /** Adesso, nel fuso dell'associazione, come testo confrontabile. */
@@ -350,6 +352,10 @@ final readonly class ReservationService
                 $busy = $q->first();
                 if ($busy !== null) {
                     throw new ResourceError(self::busyMessage($res, $s, $busy));
+                }
+                $activity = $this->occupancy->busy($res->id, $s, $e ?? ResourceBookingsService::FAR)[0] ?? null;
+                if ($activity !== null) {
+                    throw new ResourceError('La risorsa è occupata dall\'attività «'.$activity['label'].'» il '.date('d/m/Y \a\l\l\e H:i', (int) strtotime($activity['from'])).'.');
                 }
             }
             $series = count($ranges) > 1 ? Str::uuid7()->toString() : null;
