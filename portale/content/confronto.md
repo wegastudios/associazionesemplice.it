@@ -68,6 +68,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Ingresso con il QR della prenotazione | — | ✓ | ✓ |
 | Report di occupazione :: Report di occupazione delle risorse | — | ✓ | ✓ |
 | Corsi ed eventi e risorse :: Anche «fuori sede», con tempi di allestimento e fasce occupate solo dove ci sono prenotazioni | — | ✓ | ✓ |
+| Cambio di risorsa con controllo delle sovrapposizioni :: Cambiando la risorsa di un'attività già occupata nelle stesse date si vede cosa si sovrappone e il cambio non si applica; spuntando «Sposta sulla risorsa di prima ciò che si sovrappone», prenotazioni e altre attività passano alla risorsa liberata, tutto o niente | — | ✓ | ✓ |
 | Suggerimento dei luoghi con Google (con la tua chiave) | ✓ | ✓ | ✓ |
 | Pulsante «Non rinnova» nel corso: l'iscritto resta fino a fine periodo pagato e poi non deve più nulla; eliminando un corso si rende la quota proporzionale delle lezioni non tenute | ✓ | ✓ | ✓ |
 | Restituzioni :: Eliminando un corso, un evento o una singola iscrizione si restituisce solo ciò che non è ancora stato fatto; si può annullare una data o «questa data e le successive» (eventi ricorrenti e lezioni dei corsi) | ✓ | ✓ | ✓ |
