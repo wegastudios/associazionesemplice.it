@@ -151,6 +151,7 @@ final class IncomePage {
 		Ui::header( 'Nuovo incasso' );
 		wp_print_inline_script_tag( (string) wp_json_encode( $data, JSON_HEX_TAG | JSON_HEX_AMP ), array( 'type' => 'application/json', 'id' => 'asem-income-data' ) );
 		Ui::form_open( 'asem_save_income', Ui::url( 'asem-income' ), false, 'asem-income' );
+		echo Ui::is_new() ? '<h2 class="asem-form-section">Chi paga e dove</h2>' : '';
 		echo '<table class="form-table asem-form"><tbody>';
 		echo '<tr><th>Data</th><td><input type="date" name="date" id="asem-date" value="' . esc_attr( $today ) . '" required></td></tr>';
 		echo '<tr><th>Conto</th><td>';
@@ -164,7 +165,7 @@ final class IncomePage {
 			. '<div id="asem-person-info" class="asem-info"></div></td></tr>', Html::allowed() );
 		echo '</tbody></table>';
 
-		echo '<h2>Voci</h2><div id="asem-lines"></div>';
+		echo '<h2' . ( Ui::is_new() ? ' class="asem-form-section"' : '' ) . '>Voci</h2><div id="asem-lines"></div>';
 		echo '<p class="asem-addbar">'
 			. '<button type="button" class="button" id="asem-add-membership">+ Quota associativa</button> '
 			. '<select id="asem-add-activity-select"><option value="">+ Mensilità corso…</option></select> '

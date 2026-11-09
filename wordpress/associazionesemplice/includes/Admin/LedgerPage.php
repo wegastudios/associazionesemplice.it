@@ -63,7 +63,7 @@ final class LedgerPage {
 			. '<select name="account" data-asem-autosubmit>' . Ui::options( $accounts, $acc ?: null, 'Tutti i conti' ) . '</select></form></p>', Html::allowed() );
 		echo wp_kses( '<p>Entrate <strong>' . Ui::money( $income ) . '</strong> · Uscite <strong>' . Ui::money( $expense ) . '</strong></p>', Html::allowed() );
 
-		echo '<table class="widefat striped"><thead><tr><th>Data</th><th>Voce</th><th>Persona</th><th>Conto</th><th>Importo</th><th></th></tr></thead><tbody>';
+		echo '<table class="widefat striped asem-ledger"><thead><tr><th>Data</th><th>Voce</th><th>Persona</th><th>Conto</th><th>Importo</th><th></th></tr></thead><tbody>';
 		if ( ! $rows ) {
 			echo '<tr><td colspan="6">Nessun movimento.</td></tr>';
 		}

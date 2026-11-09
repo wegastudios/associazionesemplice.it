@@ -268,3 +268,23 @@
 .asem-sheet-actions .button { justify-content: flex-start; }
 @media (min-width: 783px) { .asem-sheet { margin: auto; border-radius: 24px; } }
 .asem-sheet h2 { margin-top: 0; }
+
+/* Soldi: importi con cifre allineate; movimenti come righe sul telefono */
+.asem.asem-ui td.asem-ok, .asem.asem-ui td.asem-neg { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+.asem.asem-ui .asem-total strong, .asem.asem-ui .asem-change { font-variant-numeric: tabular-nums; }
+.asem.asem-ui .asem-total { font-size: 18px; }
+.asem.asem-ui #asem-cash { background: var(--asem-card); }
+@media (max-width: 782px) {
+	#wpbody-content .asem.asem-ui table.widefat.asem-ledger:not(.wp-list-table) { display: block; background: var(--asem-card); border: 1px solid var(--asem-line); border-radius: var(--asem-r-group); overflow: hidden; }
+	.asem.asem-ui table.asem-ledger thead { display: none; }
+	.asem.asem-ui table.asem-ledger tbody { display: block; }
+	.asem.asem-ui table.asem-ledger tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; padding: 12px 16px; background: transparent; }
+	.asem.asem-ui table.asem-ledger tbody tr + tr { border-top: 1px solid var(--asem-line); }
+	.asem.asem-ui table.asem-ledger tbody td { display: block; grid-column: 1; border: 0; padding: 1px 0; min-width: 0; overflow-wrap: anywhere; }
+	.asem.asem-ui table.asem-ledger tbody td:first-child { font-size: 13px; color: var(--asem-muted); }
+	.asem.asem-ui table.asem-ledger tbody td:nth-child(2) { font-size: 15px; }
+	.asem.asem-ui table.asem-ledger:not(.asem-ledger-short) tbody td:nth-child(5) { grid-column: 2; grid-row: 1 / span 3; align-self: start; text-align: right; font-size: 16px; }
+	.asem.asem-ui table.asem-ledger-short tbody td:nth-child(4) { grid-column: 2; grid-row: 1 / span 3; align-self: start; text-align: right; font-size: 16px; }
+	.asem.asem-ui table.asem-ledger:not(.asem-ledger-short) tbody td:nth-child(6) { grid-column: 1 / -1; padding-top: 8px; }
+	.asem.asem-ui table.asem-ledger tbody td[colspan] { grid-column: 1 / -1; }
+}

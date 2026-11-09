@@ -52,7 +52,7 @@ final class MoneyPage {
 		if ( ! $rows ) {
 			echo '<p class="description">Nessun movimento negli ultimi 60 giorni.</p>';
 		} else {
-			echo '<table class="widefat striped"><thead><tr><th>Data</th><th>Voce</th><th>Conto</th><th>Importo</th></tr></thead><tbody>';
+			echo '<table class="widefat striped asem-ledger asem-ledger-short"><thead><tr><th>Data</th><th>Voce</th><th>Conto</th><th>Importo</th></tr></thead><tbody>';
 			foreach ( $rows as $m ) {
 				$sign = Labels::sign( $m['type'] ) > 0 ? '+' : '−';
 				echo wp_kses( '<tr><td>' . Ui::date( $m['tx_date'] ) . '</td><td>' . esc_html( Labels::is_transfer( $m['type'] ) ? 'Giroconto' : $m['category_name'] ) . ( '' !== (string) $m['person_name'] && ' ' !== $m['person_name'] ? ' <span class="description">' . esc_html( trim( (string) $m['person_name'] ) ) . '</span>' : '' ) . '</td>'
