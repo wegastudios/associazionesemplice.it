@@ -8,10 +8,12 @@ use App\Modules\Core\Contracts\DataExport;
 use App\Modules\Core\Contracts\HomeWidget;
 use App\Modules\Core\Contracts\PayableDues;
 use App\Modules\Risorse\Contracts\MemberResources;
+use App\Modules\Risorse\Contracts\ResourceBookings;
 use App\Modules\Risorse\Export\RisorseDataExport;
 use App\Modules\Risorse\Home\ResourcesHome;
 use App\Modules\Risorse\Payments\ReservationDues;
 use App\Modules\Risorse\Services\MemberResourcesService;
+use App\Modules\Risorse\Services\ResourceBookingsService;
 use Illuminate\Support\ServiceProvider;
 
 final class RisorseServiceProvider extends ServiceProvider
@@ -22,6 +24,7 @@ final class RisorseServiceProvider extends ServiceProvider
         $this->app->tag([RisorseDataExport::class], DataExport::TAG);
         $this->app->tag([ReservationDues::class], PayableDues::TAG);
         $this->app->bind(MemberResources::class, MemberResourcesService::class);
+        $this->app->bind(ResourceBookings::class, ResourceBookingsService::class);
     }
 
     public function boot(): void

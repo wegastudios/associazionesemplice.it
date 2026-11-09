@@ -145,7 +145,7 @@ it('mostra date, prenotazioni, presenze e calendario nelle pagine', function ():
     $op = $this->createUser('seg@example.com', twoFactor: true);
     $this->addOperator($this->org, $op, OrgRole::Operator);
     $this->actingAs($op);
-    $this->post('/gestionale/attivita', ['name' => 'Gite', 'kind' => 'recurring', 'social_year' => now()->format('Y'), 'fee' => '12,00',
+    $this->post('/gestionale/attivita', ['name' => 'Gite', 'kind' => 'recurring', 'social_year' => now()->format('Y'), 'fee' => '12,00', 'resource' => 'none',
         'price_lists' => "Singolo 12\nTessera 5 gite 50 x5"])->assertRedirect();
     [$id, $person] = $this->orgContext()->run($this->org->id, fn (): array => [(string) DB::table('app.activities')->value('id'),
         Person::create(['first_name' => 'Anna', 'last_name' => 'Rossi'])->id]);

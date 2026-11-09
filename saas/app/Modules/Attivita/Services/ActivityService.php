@@ -7,9 +7,13 @@ namespace App\Modules\Attivita\Services;
 use App\Modules\Attivita\Contracts\Activities;
 use App\Modules\Attivita\Contracts\ActivityError;
 use App\Modules\Attivita\Contracts\ActivityKind;
+use App\Modules\Attivita\Contracts\ActivityOccupancy;
 use App\Modules\Attivita\Contracts\Billing;
+use App\Modules\Attivita\Contracts\ResourceChangeConflict;
 use App\Modules\Attivita\Models\Activity;
+use App\Modules\Attivita\Models\ActivitySession;
 use App\Modules\Attivita\Models\Enrollment;
+use App\Modules\Attivita\Models\SessionBooking;
 use App\Modules\Attivita\Rules\ActivityRules;
 use App\Modules\Attivita\Rules\PaymentCalc;
 use App\Modules\Attivita\Rules\Pricing;
@@ -20,6 +24,8 @@ use App\Modules\Contabilita\Contracts\IncomeLine;
 use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Contracts\PaymentMethod;
 use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Risorse\Contracts\ResourceBookings;
+use App\Modules\Risorse\Contracts\ResourceError;
 use App\Modules\Soci\Contracts\Members;
 use App\Modules\Soci\Contracts\MemberType;
 use Illuminate\Database\ConnectionInterface;
@@ -41,6 +47,8 @@ final readonly class ActivityService implements Activities
         private OrgContext $context,
         private Ledger $ledger,
         private Members $members,
+        private ResourceBookings $resources,
+        private ActivityOccupancy $occupancy,
     ) {}
 
     public function options(): array
@@ -117,8 +125,12 @@ final readonly class ActivityService implements Activities
         return $activity ?? throw new ActivityError('Attività non trovata.');
     }
 
-    /** @param  array<string, mixed>  $data */
-    public function save(?string $id, array $data): Activity
+    /**
+     * @param  array<string, mixed>  $data
+     *
+     * @throws ResourceChangeConflict se cambiando la risorsa alcune date future si sovrappongono (e $moveConflicts è falso)
+     */
+    public function save(?string $id, array $data, bool $moveConflicts = false): Activity
     {
         $activity = $id === null ? new Activity : $this->find($id);
         $data['social_year'] = is_string($data['social_year'] ?? null) ? $data['social_year'] : $this->members->socialYearLabel();
@@ -136,10 +148,71 @@ final readonly class ActivityService implements Activities
         if ($errors !== []) {
             throw new ActivityError(implode(' ', $errors));
         }
+        $resourceId = null;
+        if (array_key_exists('resource_id', $data) || array_key_exists('no_resource', $data)) {
+            $resourceId = is_string($data['resource_id'] ?? null) && $data['resource_id'] !== '' ? $data['resource_id'] : null;
+            $data['resource_id'] = $resourceId;
+            $data['no_resource'] = $resourceId === null && ($data['no_resource'] ?? false) === true;
+            if ($resourceId !== null && ! isset($this->resources->names([$resourceId])[$resourceId])) {
+                throw new ActivityError('Risorsa non trovata.');
+            }
+        }
         $activity->fill(array_intersect_key($data, array_flip($activity->getFillable())));
-        $activity->save();
 
-        return $activity;
+        return $this->connection()->transaction(function () use ($activity, $resourceId, $moveConflicts, $id): Activity {
+            if ($id !== null && $resourceId !== null && $activity->isDirty('resource_id')) {
+                $this->settleResourceChange($activity, $activity->getOriginal('resource_id'), $resourceId, $moveConflicts);
+            }
+            $activity->save();
+
+            return $activity;
+        });
+    }
+
+    /**
+     * Cambiando risorsa si ricontrollano le date future con orario: se sulla nuova risorsa c'è già qualcosa si segnala
+     * (ResourceChangeConflict). Con $move le prenotazioni in conflitto passano sulla risorsa che si libera; le date di
+     * altre attività non si spostano da qui.
+     */
+    private function settleResourceChange(Activity $activity, mixed $oldId, string $newId, bool $move): void
+    {
+        $old = is_string($oldId) && $oldId !== '' ? $oldId : null;
+        $texts = [];
+        $reservationIds = [];
+        $blocked = false;
+        $sessions = ActivitySession::query()->where('activity_id', $activity->id)->whereNull('cancelled_at')
+            ->where('session_date', '>=', now()->toDateString())->whereNotNull('start_time')->whereNotNull('end_time')->orderBy('session_date')->orderBy('start_time')->get();
+        foreach ($sessions as $s) {
+            if ($activity->occupy_on_booking && ! SessionBooking::query()->where('session_id', $s->id)->where('status', 'booked')->exists()) {
+                continue;
+            }
+            $day = $s->session_date->format('Y-m-d');
+            $from = $day.' '.$s->start_time.':00';
+            $to = $day.' '.$s->end_time.':00';
+            $when = date('d/m/Y', (int) strtotime($day)).' '.$s->start_time;
+            foreach ($this->resources->busy($newId, $from, $to) as $r) {
+                $texts[] = $when.': c\'è una '.$r['label'];
+                $reservationIds[] = $r['id'];
+            }
+            foreach ($this->occupancy->busy($newId, $from, $to) as $o) {
+                $texts[] = $when.': c\'è l\'attività «'.$o['label'].'»';
+                $blocked = true;
+            }
+        }
+        if ($texts === []) {
+            return;
+        }
+        if (! $move) {
+            throw new ResourceChangeConflict($texts, ! $blocked && $old !== null);
+        }
+        if ($blocked || $old === null) {
+            throw new ActivityError('Non si possono spostare: '.implode('; ', $texts).'.');
+        }
+        try {
+            $this->resources->move(array_values(array_unique($reservationIds)), $old);
+        } catch (ResourceError $e) {
+            throw new ActivityError($e->getMessage());
+        }
     }
 
     public function archive(string $id, bool $archived): void

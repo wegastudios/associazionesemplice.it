@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Attivita\Services;
 
 use App\Modules\Attivita\Contracts\ActivityError;
+use App\Modules\Attivita\Contracts\ActivityOccupancy;
 use App\Modules\Attivita\Models\Activity;
 use App\Modules\Attivita\Models\ActivitySession;
 use App\Modules\Attivita\Models\SessionBooking;
@@ -17,6 +18,7 @@ use App\Modules\Contabilita\Contracts\IncomeLine;
 use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Contracts\PaymentMethod;
 use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Risorse\Contracts\ResourceBookings;
 use App\Modules\Soci\Contracts\MemberType;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
@@ -37,7 +39,32 @@ final readonly class SessionService
         private ActivityService $activities,
         private Ledger $ledger,
         private AuditLog $audit,
+        private ResourceBookings $resources,
+        private ActivityOccupancy $occupancy,
     ) {}
+
+    /**
+     * Rifiuta una data con orario che si sovrappone a una prenotazione della risorsa dell'attività o a una data di
+     * un'altra attività sulla stessa risorsa. Senza risorsa o senza orario non c'è niente da controllare.
+     */
+    private function assertFree(Activity $activity, string $date, ?string $start, ?string $end, ?string $exceptSessionId = null): void
+    {
+        if ($activity->resource_id === null || $start === null || $end === null) {
+            return;
+        }
+        $from = $date.' '.$start.':00';
+        $to = $date.' '.$end.':00';
+        $what = $this->resources->busy($activity->resource_id, $from, $to)[0]['label'] ?? null;
+        $what = $what !== null ? 'una '.$what : null;
+        if ($what === null) {
+            $other = $this->occupancy->busy($activity->resource_id, $from, $to, $exceptSessionId)[0]['label'] ?? null;
+            $what = $other !== null ? 'l\'attività «'.$other.'»' : null;
+        }
+        if ($what !== null) {
+            $name = $this->resources->names([$activity->resource_id])[$activity->resource_id] ?? 'La risorsa';
+            throw new ActivityError($name.' è occupata il '.date('d/m/Y', (int) strtotime($date)).' dalle '.$start.' alle '.$end.': c\'è '.$what.'.');
+        }
+    }
 
     /**
      * Le date di un'attività con i posti presi e la lista d'attesa.
@@ -92,6 +119,13 @@ final readonly class SessionService
         foreach (ActivitySession::query()->where('activity_id', $activity->id)->get(['session_date', 'start_time']) as $s) {
             $have[$s->session_date->format('Y-m-d').'|'.($s->start_time ?? '')] = true;
         }
+        if (! $activity->occupy_on_booking) {
+            foreach ($dates as $d) {
+                if (! isset($have[$d.'|'.($start ?? '')])) {
+                    $this->assertFree($activity, $d, $start, $end);
+                }
+            }
+        }
         $made = 0;
         $this->connection()->transaction(function () use ($dates, $have, $activity, $start, $end, $location, $capacity, &$made): void {
             foreach ($dates as $d) {
@@ -121,6 +155,10 @@ final readonly class SessionService
         $end = SessionRules::time($end);
         if ($start !== null && $end !== null && $end <= $start) {
             throw new ActivityError('L\'ora di fine deve essere dopo quella di inizio.');
+        }
+        $activity = $this->activities->find($s->activity_id);
+        if (! $activity->occupy_on_booking) {
+            $this->assertFree($activity, $s->session_date->format('Y-m-d'), $start, $end, $s->id);
         }
         $taken = $this->taken($s->id);
         if ($capacity !== null && $capacity < max(1, $taken)) {
@@ -161,6 +199,10 @@ final readonly class SessionService
             $activity = $this->activities->find($s->activity_id);
             if ($activity->archived_at !== null) {
                 throw new ActivityError('L\'attività è archiviata.');
+            }
+            if ($activity->occupy_on_booking) {
+                // La data occupa la risorsa solo da quando ha prenotazioni: se la fascia è già occupata altrove si rifiuta.
+                $this->assertFree($activity, $s->session_date->format('Y-m-d'), $s->start_time, $s->end_time, $s->id);
             }
             $person = $this->person($personId) ?? throw new ActivityError('Persona non trovata.');
             if ($person['type'] === MemberType::Guardian->value) {
