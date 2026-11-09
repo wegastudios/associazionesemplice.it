@@ -100,6 +100,8 @@ const label = 'space-y-1 text-sm';
                     <div v-if="form.errors.resource && form.errors.resource_movable !== undefined" class="flex flex-wrap gap-3 pt-1">
                         <button type="button" class="btn" @click="keepResource">Lascia tutto invariato</button>
                         <button v-if="form.errors.resource_movable === '1'" type="button" class="btn btn-primary" @click="saveMoving">Sposta gli slot occupati sulla risorsa che si libera</button>
+                        <span v-if="form.errors.resource_movable === '1'" class="text-muted basis-full">Si spostano solo le prenotazioni e le attività future, non il passato; i blocchi della risorsa non si spostano. Una attività in conflitto passa per intero sulla risorsa di prima.</span>
+                        <span v-else class="text-muted basis-full">Con un blocco della risorsa in mezzo non si può spostare: togli il blocco o lascia tutto invariato.</span>
                     </div>
                 </div>
                 <label :class="label"><span class="flex items-center gap-2"><input v-model="form.occupy_on_booking" type="checkbox" /> <span class="font-semibold">Occupa la risorsa solo se prenotata</span></span>

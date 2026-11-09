@@ -19,7 +19,7 @@ interface ResourceBookings
     /**
      * Prenotazioni e blocchi attivi della risorsa che si sovrappongono all'intervallo [$from, $to) (testo «Y-m-d H:i:s»).
      *
-     * @return list<array{id: string, from: string, to: string|null, label: string}>
+     * @return list<array{id: string, kind: string, from: string, to: string|null, label: string}>
      */
     public function busy(string $resourceId, string $from, string $to): array;
 
