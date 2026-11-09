@@ -2,6 +2,12 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.16
+- Nuovo aspetto: elenchi a righe sul telefono, scheda socio a sezioni, foglio «Altro» nell'elenco soci, prima nota e incasso più leggibili, tessera a carta e barra in basso nell'area soci. Se preferisci la grafica di prima, da Impostazioni → Aspetto puoi tornarci.
+- Il link di attivazione abilita l'accesso ma non fa entrare da solo: il socio torna all'area riservata e accede.
+- Più sicurezza: contenuti filtrati, link dei documenti protetti, copie di sicurezza più ordinate.
+- Tolti gli shortcode brevi [convenzioni] e [convenzioni_soci]: usa quelli con il prefisso associazionesemplice_.
+
 ## 1.3.15
 - Nel modulo «Prenota» di un evento, scelto il socio, la casella del pacchetto dice quale pacchetto ha e quanti ingressi gli restano. L'ingresso si scala già alla prenotazione.
 - Eventi e corsi: i prezzi non sono più quattro fissi, ne aggiungi quanti servono (uno o più, senza limite).
