@@ -87,9 +87,25 @@ final readonly class GuardianService
                 throw new PeopleError(['Collegamento inesistente.']);
             }
             if ($was === true) {
-                $other = $this->table()->where('person_id', $personId)->orderBy('created_at')->value('guardian_person_id');
-                if (is_string($other)) {
-                    $this->table()->where('person_id', $personId)->where('guardian_person_id', $other)->update(['is_operative' => true]);
+                // Passa a operare il primo tutore rimasto che sia idoneo (maggiorenne, con email, non il minore stesso): uno
+                // non idoneo non viene promosso, e senza tutori idonei nessuno opera finché non ne arriva uno.
+                $minor = Person::query()->find($personId);
+                $remaining = $this->table()->where('person_id', $personId)->orderBy('created_at')->pluck('guardian_person_id');
+                foreach ($remaining as $other) {
+                    $guardian = is_string($other) ? Person::query()->find($other) : null;
+                    if ($minor === null || $guardian === null) {
+                        continue;
+                    }
+                    $errors = GuardianRules::validate(
+                        ['id' => $minor->id, 'birth_date' => $minor->birth_date?->format('Y-m-d')],
+                        ['id' => $guardian->id, 'type' => $guardian->type, 'email' => $guardian->email, 'birth_date' => $guardian->birth_date?->format('Y-m-d')],
+                        0,
+                        now()->toDateString(),
+                    );
+                    if ($errors === []) {
+                        $this->table()->where('person_id', $personId)->where('guardian_person_id', $guardian->id)->update(['is_operative' => true]);
+                        break;
+                    }
                 }
             }
             $this->audit->record('guardian.unlinked', 'app.people', $personId);

@@ -29,11 +29,26 @@ final class Csv
         return $csv;
     }
 
-    /** Una cella che Excel leggerebbe come formula (=, +, -, @ non seguiti da cifre) si apre con un apostrofo. */
+    /**
+     * Una cella che Excel leggerebbe come formula (=, +, -, @ non seguiti da cifre, anche nella forma a larghezza intera
+     * «＝» e anche dopo spazi o caratteri invisibili) si apre con un apostrofo.
+     */
     public static function cell(string|int|null $v): string
     {
         $v = (string) ($v ?? '');
-        if ($v !== '' && (in_array($v[0], ['=', '@', "\t", "\r"], true) || (in_array($v[0], ['+', '-'], true) && preg_match('/^[+-][\d\s().,]+$/', $v) !== 1))) {
+        if ($v === '') {
+            return $v;
+        }
+        // Spazi, a capo e caratteri invisibili all'inizio non fermano Excel: si guarda il primo carattere che conta.
+        $lead = preg_replace('/^[\s\p{Z}\p{Cc}\p{Cf}]+/u', '', $v);
+        $lead = $lead ?? $v;
+        // Le forme a larghezza intera (＝ ＋ － ＠) si trattano come quelle normali.
+        $lead = strtr($lead, ['＝' => '=', '＋' => '+', '－' => '-', '＠' => '@']);
+        if ($lead === '') {
+            return $v;
+        }
+        if (in_array($lead[0], ['=', '@'], true) || in_array($v[0], ["\t", "\r"], true)
+            || (in_array($lead[0], ['+', '-'], true) && preg_match('/^[+-][\d\s().,]+$/', $lead) !== 1)) {
             return "'".$v;
         }
 
