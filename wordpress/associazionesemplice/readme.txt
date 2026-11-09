@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.16
+Stable tag: 1.3.17
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -60,6 +60,9 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 The interface uses the Montserrat typeface (SIL Open Font License 1.1, copy in `assets/fonts/OFL.txt`) and icons from Lucide (ISC license, https://lucide.dev), both bundled with the plugin; nothing is loaded from external servers.
 
 == Changelog ==
+
+= 1.3.17 =
+* Security hardening from an audit: guardian links, profile form only via POST, attachment folder protection checked, spreadsheet export formulas neutralised.
 
 = 1.3.16 =
 * New look for the admin and the members area (cards, rows on phones, bottom bar, membership card), switchable back in Settings → Appearance. Fixes from the WordPress.org review: activation link no longer logs in by itself, output filtered, download links protected, short convenzioni shortcodes removed.
