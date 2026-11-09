@@ -8,8 +8,8 @@ Stato di partenza: gratuito 1.3.15, Pro 1.3.6 (API 18), pubblicati.
 
 - Il plugin ha **due superfici** con regole diverse. Dentro **wp-admin** si ridisegnano solo i contenuti delle pagine (`.wrap.asem`); menu, barra e colori di WordPress restano. Sul **sito** (area riservata, blocchi, shortcode) lo stile si adotta quasi per intero, ma il tema può sovrascrivere caratteri e margini.
 - Il lavoro è quasi tutto **CSS con variabili** (prefisso `--asem-` in admin, `--asemf-` sul sito) più qualche piccolo helper PHP per i pezzi che il CSS da solo non sa fare (avatar con iniziali, icone, badge, fogli).
-- **Decisione del titolare (6 novembre 2026): un solo rilascio, 1.4, a lavoro finito.** Niente rilasci intermedi del gratuito: si lavora su un'installazione di prova (staging, §6) e si pubblica una volta sola. Il Pro esce con la sua numerazione solo se cambiano file Pro.
-- **Nuovo aspetto per tutti, con una via di ritorno temporanea**: in 1.4 la grafica nuova è quella predefinita per tutti (anche per chi aggiorna). Resta per poco un interruttore (**Impostazioni → Aspetto → «Torna alla grafica precedente»**) che rimette le vecchie regole; poi, in un rilascio successivo, si toglie insieme al vecchio CSS.
+- **Decisione del titolare (6 novembre 2026): un solo rilascio, 1.3.16, a lavoro finito.** Niente rilasci intermedi del gratuito: si lavora su un'installazione di prova (staging, §6) e si pubblica una volta sola. Il Pro esce con la sua numerazione solo se cambiano file Pro.
+- **Nuovo aspetto per tutti, con una via di ritorno temporanea**: in 1.3.16 la grafica nuova è quella predefinita per tutti (anche per chi aggiorna). Resta per poco un interruttore (**Impostazioni → Aspetto → «Torna alla grafica precedente»**) che rimette le vecchie regole; poi, in un rilascio successivo, si toglie insieme al vecchio CSS.
 - Vale per i due plugin insieme: il CSS è nel gratuito e il Pro lo eredita. Il Pro si rilascia solo quando cambiano file elencati in `tests/pro-files.txt` (pagine Conti, Rendiconto, Pagamenti, Cassa di gruppo…).
 
 ## 2. Cosa è fattibile in WordPress e cosa no
@@ -68,7 +68,7 @@ I passi sono in ordine; ogni passo è un blocco di lavoro con le proprie verific
 
 - **File toccati**: `assets/admin.css` (blocco nuovo in testa, tutto sotto `.asem-ui`), `assets/frontend.css` (blocco nuovo sotto `.asemf-ui`), nuovi `assets/fonts/Montserrat-{Medium,SemiBold,Bold}.woff2` + `OFL.txt`, `includes/Icons.php` (SVG Lucide in linea), `includes/Admin/Ui.php` (helper `Ui::avatar`, `Ui::badge`, `Ui::icon`, `Ui::list_row`, `Ui::group_open/close`, `Ui::sheet`), `includes/Admin/Admin.php` (classe `asem-ui` sul contenitore se l'interruttore è acceso), `includes/Settings.php` + pagina Aspetto (interruttore), `includes/Html.php` (`svg`/`path` consentiti), `docs/CREDITI.md`, `readme.txt` (OFL).
 - **Cosa cambia**: variabili `--asem-accent: #1F218C`, `--asem-ok/warn/danger` e relative `-soft`, `--asem-bg/ink/muted/line`, raggi `--asem-r-field: 12px`, `--asem-r-group: 16px`, `--asem-r-sheet: 24px`. Classi `.asem-btn` (e stile dei `.button` di WP **solo dentro** `.asem-ui`: primario pieno indaco, secondario con filetto, pericolo rosso), campi (48 px, 16 px, filetto, focus), `.asem-badge-ok|warn|danger|info|neutral`, `.asem-group` + `.asem-row`, `.asem-title/.asem-section/.asem-caption`, `.asem-empty`, `.asem-sheet`. Nulla di questo cambia l'aspetto finché l'interruttore è spento.
-- **Interruttore**: durante lo sviluppo su staging l'interruttore serve per confrontare vecchio e nuovo; in 1.4 diventa «Torna alla grafica precedente» (predefinito: nuovo).
+- **Interruttore**: durante lo sviluppo su staging l'interruttore serve per confrontare vecchio e nuovo; in 1.3.16 diventa «Torna alla grafica precedente» (predefinito: nuovo).
 - **Rischio**: **medio**. WordPress ha regole forti sui campi e sui pulsanti: i selettori vanno scritti con la specificità giusta, mai con `!important` sparso. Rischio secondario: file font troppo pesanti o non caricati su alcuni host (`font-display: swap` e carattere di ripiego di sistema già nell'elenco).
 - **Verifica**: `tests/ui-kit.html` a tre larghezze; test di contrasto; Tab sul kit; Plugin Check (font, SVG); interruttore spento = pagine identiche ai «prima».
 - **Fattibile/no**: tutto fattibile; la barra e il menu di WP non cambiano.
@@ -115,17 +115,17 @@ I passi sono in ordine; ogni passo è un blocco di lavoro con le proprie verific
 ### Passo 7: Accensione per tutti e pulizia
 
 - **File**: `Settings.php` (predefinito acceso), `admin.css`/`frontend.css`, documentazione.
-- **Cosa cambia**: nuovo aspetto **predefinito per tutti** (installazioni nuove ed esistenti) già in 1.4. L'interruttore «Torna alla grafica precedente» resta solo per un breve periodo e si toglie, con il vecchio CSS, in un rilascio successivo. Si tolgono gli stili in linea rimasti e le regole morte. Un avviso dismissibile dopo l'aggiornamento spiega cosa è cambiato e dove si torna indietro.
+- **Cosa cambia**: nuovo aspetto **predefinito per tutti** (installazioni nuove ed esistenti) già in 1.3.16. L'interruttore «Torna alla grafica precedente» resta solo per un breve periodo e si toglie, con il vecchio CSS, in un rilascio successivo. Si tolgono gli stili in linea rimasti e le regole morte. Un avviso dismissibile dopo l'aggiornamento spiega cosa è cambiato e dove si torna indietro.
 - **Rischio**: medio: chi aggiorna vede tutto cambiare insieme. Mitigato dalla prova lunga su staging e dall'interruttore di ritorno.
 - **Verifica**: aggiornamento da 1.3.15 con dati reali di una copia dello staging; interruttore di ritorno acceso e spento; backup/ripristino invariati.
 
 ## 6. Staging e rilascio unico
 
-**Un solo rilascio: gratuito 1.4**, a lavoro finito. I passi 1–7 si sviluppano e si provano su un'**installazione di staging** (WordPress separato dalla demo pubblica, con dati inventati, mai dati veri), senza numeri di versione intermedi. Il numero 1.4 si consuma solo alla pubblicazione. Il Pro esce con la sua numerazione (prossimo 1.x) solo se cambiano file elencati in `tests/pro-files.txt` (pagine Conti, Rendiconto, Pagamenti, Cassa di gruppo…), nello stesso momento.
+**Un solo rilascio: gratuito 1.3.16 (Pro 1.3.7)**, a lavoro finito. I passi 1–7 si sviluppano e si provano su un'**installazione di staging** (WordPress separato dalla demo pubblica, con dati inventati, mai dati veri), senza numeri di versione intermedi. Il numero 1.3.16 si consuma solo alla pubblicazione. Il Pro esce con la sua numerazione (prossimo 1.x) solo se cambiano file elencati in `tests/pro-files.txt` (pagine Conti, Rendiconto, Pagamenti, Cassa di gruppo…), nello stesso momento.
 
 - **Staging**: il codice del ramo di lavoro si copia sull'installazione di prova a ogni passo (zip da `wordpress/build.sh`, installato a mano o con uno script come `demo/update.sh` ma da cartella locale, non dal Portale). Non è la demo: la demo resta quella pubblica e si aggiorna solo a rilascio fatto, senza `reset.sh`.
-- **Ordine di lavoro**: passi 1 → 7 come sopra, ognuno con le sue verifiche su staging; prima di 1.4, giro completo di tutte le pagine a 390/768/1280, tastiera e contrasto.
-- **Rilascio 1.4** (flusso del progetto: `bump.sh`, PR, CI verde, Plugin Check a zero avvisi per gratuito **e** Pro, zip, cartella principale su `main`, file TEST su OneDrive, demo aggiornata con `update.sh`; la pubblicazione sul Portale solo con un «sì» scritto). Nuovo aspetto per tutti, con «Torna alla grafica precedente» per un periodo breve, poi un rilascio successivo toglie interruttore e vecchio CSS.
+- **Ordine di lavoro**: passi 1 → 7 come sopra, ognuno con le sue verifiche su staging; prima di 1.3.16, giro completo di tutte le pagine a 390/768/1280, tastiera e contrasto.
+- **Rilascio 1.3.16** (flusso del progetto: `bump.sh`, PR, CI verde, Plugin Check a zero avvisi per gratuito **e** Pro, zip, cartella principale su `main`, file TEST su OneDrive, demo aggiornata con `update.sh`; la pubblicazione sul Portale solo con un «sì» scritto). Nuovo aspetto per tutti, con «Torna alla grafica precedente» per un periodo breve, poi un rilascio successivo toglie interruttore e vecchio CSS.
 - **Compatibilità Pro/gratuito**: se un nuovo helper in `Ui` è usato da file Pro, si valuta il numero di **API** richiesto dal Pro (oggi 18); un Pro nuovo su un gratuito vecchio non deve rompersi, al massimo mostrare l'aspetto di prima.
 - **Rischio del rilascio unico**: tante modifiche insieme. Si compensa con la prova lunga su staging e il kit `tests/ui-kit.html`; l'impegno complessivo è lo stesso dei passi, solo senza i punti di controllo pubblici intermedi.
 
@@ -142,7 +142,7 @@ A ogni rilascio che cambia **regole** (non solo aspetto): Portale, Supporto e Sa
 1. **D1. Colore sul sito.** *Deciso:* si eredita il colore del sito in cui si è; indaco solo come ripiego se il sito non ne ha uno. Nessuna scelta nuova in Aspetto.
 2. **D2. Montserrat sul sito.** *Deciso:* sul sito solo su tessera e titoli del nostro riquadro; il corpo del testo resta quello del tema. In admin sempre Montserrat.
 3. **D3. Barra in basso in wp-admin.** *Chiarimento:* non è una barra che esiste oggi; è una barra di navigazione fissa in basso (come nel SaaS: Home, Soci, Attività, Soldi, Altro) più il pulsante «Nuovo» sempre in vista. In wp-admin non si fa: menu e barra di WordPress non si toccano. Resta il menu di WordPress com'è e il pulsante «Nuovo…» primario in cima a ogni elenco. La barra in basso si fa solo nell'area soci sul sito.
-4. **D4. Rilasci.** *Deciso:* un solo rilascio, 1.4; nuovo aspetto predefinito per tutti, con «Torna alla grafica precedente» solo per poco, poi tolto. Vale come regola generale (§10).
+4. **D4. Rilasci.** *Deciso:* un solo rilascio, 1.3.16; nuovo aspetto predefinito per tutti, con «Torna alla grafica precedente» solo per poco, poi tolto. Vale come regola generale (§10).
 5. **D5. Ordine.** *Deciso:* come nel §5, con Soci e Incassi per primi, poi l'area riservata.
 6. **D6. Carattere.** *Deciso:* woff2 solo latino (Medium, SemiBold, Bold), OFL, crediti in `readme.txt` e `docs/CREDITI.md`.
 
@@ -150,7 +150,7 @@ A ogni rilascio che cambia **regole** (non solo aspetto): Portale, Supporto e Sa
 
 - **Barra in basso e barra laterale in wp-admin**: si scontrano con menu e barra di WordPress, che non si cambiano.
 - **Tailwind o Node nel plugin**: due strumenti da mantenere per un plugin che oggi non ne ha nessuno; il CSS semplice con variabili basta.
-- **Rilasci intermedi del gratuito** (1.3.16–1.3.19): scartati dal titolare; un solo 1.4 a cose fatte, con staging per le prove.
+- **Rilasci intermedi del gratuito** (1.3.16–1.3.19): scartati dal titolare; un solo 1.3.16 a cose fatte, con staging per le prove.
 - **Caricare Montserrat da Google Fonts**: richieste esterne e dati verso terzi; si ospita nel plugin.
 - **Tema scuro automatico sul sito**: su un sito chiaro scurirebbe i riquadri a caso.
 
@@ -158,7 +158,7 @@ A ogni rilascio che cambia **regole** (non solo aspetto): Portale, Supporto e Sa
 
 Regola decisa dal titolare: non si pubblica una versione numerata a ogni piccola modifica. Per essere professionali:
 
-- **Si raggruppa il lavoro**: un rilascio per un insieme coerente di cose (come 1.4 per il restyle), non uno per correzione. Le piccole correzioni aspettano il rilascio successivo, salvo urgenze (sicurezza, dati sbagliati).
-- **Registro delle novità utile e corto** (`CHANGELOG.md` e `readme.txt`): oggi sono 225 righe con un elenco lungo per ogni 1.3.x. Da 1.4: per ogni rilascio un titolo e **al massimo 5–7 righe** nel linguaggio di chi usa il programma (cosa puoi fare di nuovo, cosa è cambiato di visibile), senza dettagli tecnici; le versioni 1.3.x si riuniscono in un'unica voce «1.3.x (storico)» con i punti principali.
+- **Si raggruppa il lavoro**: un rilascio per un insieme coerente di cose (come 1.3.16 per il restyle), non uno per correzione. Le piccole correzioni aspettano il rilascio successivo, salvo urgenze (sicurezza, dati sbagliati).
+- **Registro delle novità utile e corto** (`CHANGELOG.md` e `readme.txt`): oggi sono 225 righe con un elenco lungo per ogni 1.3.x. Da 1.3.16: per ogni rilascio un titolo e **al massimo 5–7 righe** nel linguaggio di chi usa il programma (cosa puoi fare di nuovo, cosa è cambiato di visibile), senza dettagli tecnici; le versioni 1.3.x si riuniscono in un'unica voce «1.3.x (storico)» con i punti principali.
 - **Un solo numero aperto** finché non si pubblica (regola già in vigore); i numeri non si consumano su rami di lavoro.
 - Il Pro segue lo stesso criterio: esce solo con il gratuito, o quando serve davvero.
