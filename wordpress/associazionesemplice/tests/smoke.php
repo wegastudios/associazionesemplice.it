@@ -6717,11 +6717,12 @@ asem_ok( false !== strpos( (string) ( $mn_names[ $mn_kid ] ?? '' ), 'Marta Madre
 asem_ok( \AssociazioneSemplice\Guardians::is_guardian_of( $mn_dad, $mn_kid ) && ! \AssociazioneSemplice\Guardians::is_guardian_of( $mn_mum, $mn_kid ) && (int) \AssociazioneSemplice\Guardians::operative_of( $mn_kid )['id'] === $mn_dad, 'tutore: si sceglie chi opera sul sito' );
 \AssociazioneSemplice\Guardians::set_operative( $mn_kid, $mn_mum );
 // togliere il tutore operativo non promuove chi non potrebbe operare (senza email): il minore resta senza tutore operativo
-$mn_kid2 = $people->create( array( 'type' => 'ordinary', 'card_number' => 'mn7', 'first_name' => 'Kid', 'last_name' => 'Secondo', 'birth_date' => gmdate( 'Y-m-d', strtotime( '-9 years' ) ) ) );
+$mn_kid2 = $people->create( array( 'type' => 'ordinary', 'card_number' => 'mn-g1', 'first_name' => 'Kid', 'last_name' => 'Secondo', 'birth_date' => gmdate( 'Y-m-d', strtotime( '-9 years' ) ) ) );
 \AssociazioneSemplice\Guardians::link( $mn_kid2, $mn_mum );
 \AssociazioneSemplice\Guardians::link( $mn_kid2, $mn_noem );
 \AssociazioneSemplice\Guardians::unlink( $mn_kid2, $mn_mum );
 asem_ok( ! \AssociazioneSemplice\Guardians::operative_of( $mn_kid2 ) && ! \AssociazioneSemplice\Guardians::is_guardian_of( $mn_noem, $mn_kid2 ), 'tutore: tolto chi opera, il rimasto senza email non viene promosso' );
+$people->delete( $mn_kid2 ); // non resta: i controlli seguenti contano minori e promemoria
 
 // permessi del tutore
 $mn_mum_u  = (int) $people->get( $mn_mum )['wp_user_id'];
