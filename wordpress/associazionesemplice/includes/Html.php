@@ -33,6 +33,7 @@ final class Html {
 		'dd'         => array(),
 		'del'        => array( 'datetime' ),
 		'details'    => array( 'open', 'name' ),
+		'dialog'     => array( 'open' ),
 		'div'        => array(),
 		'dl'         => array(),
 		'dt'         => array(),

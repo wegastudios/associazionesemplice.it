@@ -950,3 +950,21 @@ window.asemPlacesInit = function () {
 		if (rows.length + 1 >= max) { btn.disabled = true; }
 	});
 })();
+
+/* Fogli (<dialog class="asem-sheet">): si aprono dal pulsante con data-asem-sheet, si chiudono con «Chiudi», Esc o un clic fuori */
+(function () {
+	document.addEventListener('click', function (e) {
+		var open = e.target.closest ? e.target.closest('[data-asem-sheet]') : null;
+		if (open) {
+			var d = document.getElementById(open.getAttribute('data-asem-sheet'));
+			if (d && d.showModal) { d.showModal(); }
+			return;
+		}
+		if (e.target.closest && e.target.closest('[data-asem-close]')) {
+			var s = e.target.closest('dialog');
+			if (s) { s.close(); }
+			return;
+		}
+		if (e.target.tagName === 'DIALOG' && e.target.classList.contains('asem-sheet')) { e.target.close(); }
+	});
+}());
