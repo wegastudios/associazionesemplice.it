@@ -28,6 +28,10 @@ final class DashboardPage {
 			. '<a class="button" href="' . esc_url( Ui::url( 'asem-person', array( 'type' => 'ordinary' ) ) ) . '">Nuovo socio</a>' . ( \AssociazioneSemplice\Modules::on( 'activities' ) ? ' <a class="button" href="' . esc_url( Ui::url( 'asem-calendar' ) ) . '">Calendario</a>' : '' ) . '</p>';
 		echo '<p class="description">Il tuo account su associazionesemplice.it: <a href="' . esc_url( (string) apply_filters( 'asem_portal_account_url', 'https://associazionesemplice.it/account' ) ) . '" target="_blank" rel="noopener">Area riservata</a> (licenza, dominio, pagamenti, download) · <a href="' . esc_url( (string) apply_filters( 'asem_portal_support_url', 'https://associazionesemplice.it/supporto/accedi' ) ) . '" target="_blank" rel="noopener">Supporto</a></p>';
 
+		$new_ui = Ui::is_new(); // nel nuovo aspetto le cose da fare vengono prima dei numeri
+		if ( $new_ui ) {
+			ob_start();
+		}
 		echo '<div class="asem-grid"><div class="asem-card"><h2>Disponibilità reale</h2>';
 		echo wp_kses( '<p class="asem-big">' . Ui::money( $avail['available'] ) . '</p><p class="description">Saldi dei conti meno i fondi accantonati per i rimborsi.</p><table class="asem-kv">', Html::allowed() );
 		foreach ( $balances as $b ) {
@@ -46,6 +50,7 @@ final class DashboardPage {
 		echo wp_kses( '<tr><td>Entrate</td><td>' . Ui::money( $r['total_income'] ) . '</td></tr><tr><td>Uscite</td><td>' . Ui::money( $r['total_expense'] ) . '</td></tr>'
 			. '<tr><td><strong>Resta all\'associazione</strong></td><td><strong>' . Ui::money( $r['result'] ) . '</strong></td></tr></table></div></div>', Html::allowed() );
 
+		$figures = $new_ui ? (string) ob_get_clean() : '';
 		if ( current_user_can( \AssociazioneSemplice\Plugin::CAP ) ) { // promemoria della copia di sicurezza (solo amministratori)
 			$bk = \AssociazioneSemplice\Backup::last();
 			if ( ! $bk || time() - $bk > 30 * DAY_IN_SECONDS ) {
@@ -67,8 +72,12 @@ final class DashboardPage {
 			echo wp_kses( Dismiss::html( 'guide', 'info', 'Configurazione iniziale: ' . (int) $gp['done'] . ' passi su ' . (int) $gp['total'] . '. <a href="' . esc_url( Ui::url( 'asem-guide' ) ) . '">Apri la guida</a>.', 7 ), Html::allowed() );
 		}
 		do_action( 'asem_dashboard_alerts' ); // le estensioni aggiungono i loro avvisi
-		self::quick_cash();
-		self::quick_enroll();
+		if ( $new_ui ) {
+			ob_start();
+		} else {
+			self::quick_cash();
+			self::quick_enroll();
+		}
 		self::payments_due();
 		self::renewals();
 		self::expected_guests();
@@ -119,6 +128,17 @@ final class DashboardPage {
 					. ( $ov['twins'] ? ' (registrato più volte)' : '' ) . '</span></li>';
 			}
 			echo '</ul><p><a href="' . esc_url( Ui::url( 'asem-people', array( 'type' => 'guest', 'at_limit' => 1 ) ) ) . '">Vedi tutti →</a></p></div>';
+		}
+
+		if ( $new_ui ) { // prima le cose da fare, poi gli strumenti rapidi e i numeri
+			$todo = trim( (string) ob_get_clean() );
+			echo '<h2 class="asem-section-title">Da fare</h2>';
+			echo '' !== $todo
+				? '<div class="asem-todo">' . wp_kses( $todo, Html::allowed() ) . '</div>'
+				: '<div class="asem-empty"><p><strong>Tutto in ordine</strong></p><p class="description">Non c\'è niente da fare adesso. Registra un incasso o aggiungi un socio quando ti serve.</p></div>';
+			self::quick_cash();
+			self::quick_enroll();
+			echo wp_kses( $figures, Html::allowed() );
 		}
 
 		if ( ! empty( $r['activities'] ) ) {

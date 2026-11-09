@@ -165,4 +165,4 @@ Regola decisa dal titolare: non si pubblica una versione numerata a ogni piccola
 
 ## 11. Stato (novembre 2026)
 
-Passi 1–7 realizzati nella PR 395: token e classi (`.asem-ui`, `.asemf`), Montserrat e icone, elenco e scheda soci, foglio «Altro», prima nota e incasso, area riservata (tessera a carta, barra in basso), schede e avvisi. Non fatti: cruscotto come elenco di cose da fare, elenchi a righe nelle altre pagine (Attività, Risorse, Certificati…), woff2 ridotto al posto dei TTF. Il numero di versione lo assegna chi pubblica.
+Passi 1–7 realizzati nella PR 395, completati con la PR 400: font woff2 ridotti, cruscotto con «Da fare» in cima (poi strumenti rapidi e numeri), elenchi a righe sul telefono in Risorse e Certificati, schermata vuota in Attività.

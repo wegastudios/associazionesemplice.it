@@ -154,7 +154,9 @@ final class ActivitiesPage {
 			. '<a class="button" href="' . esc_url( Ui::url( 'asem-activities', array( 'year' => $sy_start + 1 ) ) ) . '">' . esc_html( $year->next()->label() ) . ' ›</a></p>';
 
 		if ( ! $report['activities'] ) {
-			echo '<p>Nessuna attività in questo anno sociale. Creane una qui sotto.</p>';
+			echo Ui::is_new()
+				? '<div class="asem-empty"><p><strong>Ancora nessuna attività in questo anno sociale</strong></p><p class="description">Crea la prima con il modulo «Nuova attività» qui sotto: un corso, un evento o un evento ricorrente.</p><a class="button button-primary" href="#asem-new-activity">Crea un\'attività</a></div>'
+				: '<p>Nessuna attività in questo anno sociale. Creane una qui sotto.</p>';
 		}
 		echo '<div class="asem-grid">';
 		foreach ( $report['activities'] as $s ) {
@@ -183,7 +185,7 @@ final class ActivitiesPage {
 
 		self::sports_card();
 		$volunteers = Plugin::people()->search( array( 'type' => MemberType::VOLUNTEER ) );
-		echo '<div class="asem-card"><h2>Nuova attività</h2>';
+		echo '<div class="asem-card" id="asem-new-activity"><h2>Nuova attività</h2>';
 		Ui::form_open( 'asem_save_activity', $back );
 		echo wp_kses( Ui::hidden( 'social_year', $year->label() ), Html::allowed() );
 		echo '<table class="form-table asem-form"><tbody>';

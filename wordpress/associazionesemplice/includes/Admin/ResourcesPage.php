@@ -81,15 +81,15 @@ final class ResourcesPage {
 		if ( ! $all ) {
 			echo '<p>Nessuna risorsa. <a href="' . esc_url( Ui::url( 'asem-resource' ) ) . '">Crea la prima.</a></p>';
 		} else {
-			echo '<table class="widefat striped"><thead><tr><th>Nome</th><th>Tipo</th><th>Prenotazione</th><th>Tariffa</th><th>Ospiti</th><th>Prossime</th></tr></thead><tbody>';
+			echo '<table class="widefat striped asem-rows"><thead><tr><th>Nome</th><th>Tipo</th><th>Prenotazione</th><th>Tariffa</th><th>Ospiti</th><th>Prossime</th></tr></thead><tbody>';
 			foreach ( $all as $r ) {
 				$next = Resources::upcoming( (int) $r['id'], 50 );
 				echo '<tr><td><a href="' . esc_url( Ui::url( 'asem-resource', array( 'id' => $r['id'] ) ) ) . '"><strong>' . esc_html( $r['name'] ) . '</strong></a>' . ( (int) $r['active'] ? '' : ' <span class="description">(non prenotabile)</span>' ) . '</td>'
-					. '<td>' . esc_html( ResourceRules::categories()[ $r['category'] ] ?? $r['category'] ) . '</td>'
-					. '<td>' . ( ResourceRules::SLOT === $r['mode'] ? 'A fasce di ' . (int) $r['slot_minutes'] . ' min' : 'Assegnazione' ) . '</td>'
-					. '<td>' . ( (int) $r['fee_cents'] > 0 ? Ui::money( (int) $r['fee_cents'] ) . ( ResourceRules::SLOT === $r['mode'] ? ' a fascia' : ' a periodo' ) : 'gratuita' ) . '</td>' // phpcs:ignore WordPress.Security.EscapeOutput
-					. '<td>' . ( (int) $r['guests_max'] > 0 ? 'fino a ' . (int) $r['guests_max'] : 'no' ) . '</td>'
-					. '<td>' . count( $next ) . '</td></tr>';
+					. '<td data-label="Tipo">' . esc_html( ResourceRules::categories()[ $r['category'] ] ?? $r['category'] ) . '</td>'
+					. '<td data-label="Prenotazione">' . ( ResourceRules::SLOT === $r['mode'] ? 'A fasce di ' . (int) $r['slot_minutes'] . ' min' : 'Assegnazione' ) . '</td>'
+					. '<td data-label="Tariffa">' . ( (int) $r['fee_cents'] > 0 ? Ui::money( (int) $r['fee_cents'] ) . ( ResourceRules::SLOT === $r['mode'] ? ' a fascia' : ' a periodo' ) : 'gratuita' ) . '</td>' // phpcs:ignore WordPress.Security.EscapeOutput
+					. '<td data-label="Ospiti">' . ( (int) $r['guests_max'] > 0 ? 'fino a ' . (int) $r['guests_max'] : 'no' ) . '</td>'
+					. '<td data-label="Prossime">' . count( $next ) . '</td></tr>';
 			}
 			echo '</tbody></table>';
 		}

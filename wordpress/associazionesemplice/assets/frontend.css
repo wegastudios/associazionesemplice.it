@@ -225,8 +225,8 @@
    di prima: i colori scelti in Aspetto (stile in linea) continuano a vincere.
    Il colore d'accento resta quello del sito; l'indaco serve solo se il sito non ne ha uno.
    ========================================================================== */
-@font-face { font-family: 'Montserrat'; font-weight: 600; font-display: swap; src: url('fonts/Montserrat-SemiBold.ttf') format('truetype'); }
-@font-face { font-family: 'Montserrat'; font-weight: 700; font-display: swap; src: url('fonts/Montserrat-Bold.ttf') format('truetype'); }
+@font-face { font-family: 'Montserrat'; font-weight: 600; font-display: swap; src: url('fonts/Montserrat-SemiBold.woff2') format('woff2'); }
+@font-face { font-family: 'Montserrat'; font-weight: 700; font-display: swap; src: url('fonts/Montserrat-Bold.woff2') format('woff2'); }
 
 :where(body:not(.asem-classic)) .asemf {
 	--asemf-accent: var(--e-global-color-primary, var(--wp--preset--color--primary, #1F218C));
