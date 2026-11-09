@@ -60,7 +60,7 @@ final class CertificatesPage {
 			. '<button class="button">Filtra</button> <a class="button" href="' . esc_url( BlockCExports::url( 'asem_cert_csv', $args ) ) . '">Esporta (CSV)</a></form>'; // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto
 
 		$rows = Certificates::rows( $filter, $act, $all );
-		echo '<table class="widefat striped"><thead><tr><th>Socio</th><th>Stato</th><th>Tipo</th><th>Scade il</th><th>Giorni</th><th>Attività che lo richiedono</th><th></th></tr></thead><tbody>';
+		echo '<table class="widefat striped asem-rows"><thead><tr><th>Socio</th><th>Stato</th><th>Tipo</th><th>Scade il</th><th>Giorni</th><th>Attività che lo richiedono</th><th></th></tr></thead><tbody>';
 		if ( ! $rows ) {
 			echo '<tr><td colspan="7">' . ( $activities || $all ? 'Nessun socio con questi criteri.' : 'Nessuna attività richiede il certificato: attivalo nel modulo dell\'attività (riga «Certificato medico»), oppure scegli «tutti i soci attivi».' ) . '</td></tr>';
 		}
@@ -69,10 +69,10 @@ final class CertificatesPage {
 			$c = $r['cert'];
 			echo '<tr><td><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => (int) $p['id'] ) ) ) . '">' . esc_html( trim( $p['last_name'] . ' ' . $p['first_name'] ) ) . '</a></td>'
 				. '<td>' . self::badge( $r['status'] ) . '</td>' // phpcs:ignore WordPress.Security.EscapeOutput -- html già protetto
-				. '<td>' . ( $c ? esc_html( CertificateRules::kinds()[ $c['kind'] ] ?? $c['kind'] ) : '—' ) . '</td>'
-				. '<td>' . self::date( $c ? (string) $c['expires_on'] : null ) . '</td>' // phpcs:ignore WordPress.Security.EscapeOutput
-				. '<td>' . ( null === $r['days_left'] ? '—' : (int) $r['days_left'] ) . '</td>'
-				. '<td>' . esc_html( implode( ', ', $r['activities'] ) ) . '</td>'
+				. '<td data-label="Tipo">' . ( $c ? esc_html( CertificateRules::kinds()[ $c['kind'] ] ?? $c['kind'] ) : '—' ) . '</td>'
+				. '<td data-label="Scade il">' . self::date( $c ? (string) $c['expires_on'] : null ) . '</td>' // phpcs:ignore WordPress.Security.EscapeOutput
+				. '<td data-label="Giorni">' . ( null === $r['days_left'] ? '—' : (int) $r['days_left'] ) . '</td>'
+				. '<td data-label="Attività">' . esc_html( implode( ', ', $r['activities'] ) ) . '</td>'
 				. '<td><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => (int) $p['id'] ) ) ) . '#asem-medical">Apri la scheda</a></td></tr>';
 		}
 		echo '</tbody></table>';
