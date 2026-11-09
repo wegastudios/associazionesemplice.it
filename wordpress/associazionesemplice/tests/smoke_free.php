@@ -341,11 +341,6 @@ $cf_pub = \AssociazioneSemplice\Frontend\Shortcodes::render_view( 'convenzioni' 
 free_ok( false !== strpos( $cf_pub, 'Palestra Forma' ) && false !== strpos( $cf_pub, 'Sconto del 10%' ) && false === strpos( $cf_pub, 'FORMA-SOCI-10' ) && false === strpos( $cf_pub, 'Non cumulabile' ) && false === strpos( $cf_pub, 'Bar Scaduto' ) && false === strpos( $cf_pub, 'Cinema Archiviato' ) && false === strpos( $cf_pub, 'Libreria Solo Volontari' ), 'convenzioni: l\'elenco pubblico mostra solo le pubbliche valide, senza codice né condizioni' );
 free_ok( false === strpos( \AssociazioneSemplice\Frontend\Shortcodes::render_view( 'convenzioni', array( 'categoria' => 'Cultura' ) ), 'Palestra Forma' ), 'convenzioni: il filtro per categoria dello shortcode pubblico' );
 free_ok( shortcode_exists( 'associazionesemplice_convenzioni' ) && shortcode_exists( 'associazionesemplice_convenzioni_soci' ) && ! shortcode_exists( 'convenzioni' ) && ! shortcode_exists( 'convenzioni_soci' ) && isset( \AssociazioneSemplice\Frontend\Shortcodes::views()['convenzioni'] ), 'convenzioni: solo gli shortcode con il prefisso (niente [convenzioni] e [convenzioni_soci])' );
-$cf_page = wp_insert_post( array( 'post_title' => 'Convenzioni vecchie', 'post_status' => 'publish', 'post_type' => 'page', 'post_content' => "[convenzioni_soci]\n[convenzioni categoria=\"Sport\"]\n[convenzioni]" ) );
-delete_option( \AssociazioneSemplice\Install::SHORTCODES_OPTION );
-\AssociazioneSemplice\Install::maybe_upgrade();
-free_ok( "[associazionesemplice_convenzioni_soci]\n[associazionesemplice_convenzioni categoria=\"Sport\"]\n[associazionesemplice_convenzioni]" === get_post_field( 'post_content', $cf_page ) && get_option( \AssociazioneSemplice\Install::SHORTCODES_OPTION ), 'convenzioni: i vecchi shortcode brevi nelle pagine diventano quelli con il prefisso, una volta sola' );
-wp_delete_post( $cf_page, true );
 $cf_sec = \AssociazioneSemplice\Frontend\BlockFViews::section_members( $people->get( $bb_a ) );
 free_ok( false !== strpos( $cf_sec, 'Palestra Forma' ) && false !== strpos( $cf_sec, 'FORMA-SOCI-10' ) && false !== strpos( $cf_sec, 'Vera Votante' ) && false !== strpos( $cf_sec, 'Non cumulabile' ) && false === strpos( $cf_sec, 'LIBRI-VOL' ), 'convenzioni: l\'area soci mostra codice, condizioni e i dati per farsi riconoscere' );
 wp_set_current_user( $bb_user );

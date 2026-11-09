@@ -14,7 +14,7 @@ final class BlockFViews {
 	public static function register(): void {
 		add_filter( 'asem_area_section', array( __CLASS__, 'area_section' ), 10, 3 );
 		// Gli shortcode sono solo quelli con il prefisso: [associazionesemplice_convenzioni_soci] e [associazionesemplice_convenzioni]
-		// (registrati da Shortcodes). I vecchi nomi brevi nelle pagine li aggiorna Install::migrate_short_shortcodes().
+		// (registrati da Shortcodes).
 	}
 
 	/** Sezione dell'area soci aggiunta da questo blocco. */
