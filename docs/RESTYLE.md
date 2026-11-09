@@ -8,8 +8,8 @@ Stato di partenza: gratuito 1.3.15, Pro 1.3.6 (API 18), pubblicati.
 
 - Il plugin ha **due superfici** con regole diverse. Dentro **wp-admin** si ridisegnano solo i contenuti delle pagine (`.wrap.asem`); menu, barra e colori di WordPress restano. Sul **sito** (area riservata, blocchi, shortcode) lo stile si adotta quasi per intero, ma il tema può sovrascrivere caratteri e margini.
 - Il lavoro è quasi tutto **CSS con variabili** (prefisso `--asem-` in admin, `--asemf-` sul sito) più qualche piccolo helper PHP per i pezzi che il CSS da solo non sa fare (avatar con iniziali, icone, badge, fogli).
-- **Nessuna rottura**: il nuovo aspetto nasce dietro un interruttore (**Impostazioni → Aspetto → «Nuovo aspetto»**), spento per chi ha già il plugin finché non è completo; poi si accende per tutti per un rilascio e le vecchie regole restano un'altra versione come ripiego.
-- **Quattro rilasci del gratuito (1.3.16 → 1.3.19) e due del Pro (1.3.7, 1.3.8)**, un solo numero aperto alla volta. Dettaglio al §6.
+- **Decisione del titolare (6 novembre 2026): un solo rilascio, 1.4, a lavoro finito.** Niente rilasci intermedi del gratuito: si lavora su un'installazione di prova (staging, §6) e si pubblica una volta sola. Il Pro esce con la sua numerazione solo se cambiano file Pro.
+- **Nuovo aspetto per tutti, con una via di ritorno temporanea**: in 1.4 la grafica nuova è quella predefinita per tutti (anche per chi aggiorna). Resta per poco un interruttore (**Impostazioni → Aspetto → «Torna alla grafica precedente»**) che rimette le vecchie regole; poi, in un rilascio successivo, si toglie insieme al vecchio CSS.
 - Vale per i due plugin insieme: il CSS è nel gratuito e il Pro lo eredita. Il Pro si rilascia solo quando cambiano file elencati in `tests/pro-files.txt` (pagine Conti, Rendiconto, Pagamenti, Cassa di gruppo…).
 
 ## 2. Cosa è fattibile in WordPress e cosa no
@@ -68,6 +68,7 @@ I passi sono in ordine; ogni passo è un blocco di lavoro con le proprie verific
 
 - **File toccati**: `assets/admin.css` (blocco nuovo in testa, tutto sotto `.asem-ui`), `assets/frontend.css` (blocco nuovo sotto `.asemf-ui`), nuovi `assets/fonts/Montserrat-{Medium,SemiBold,Bold}.woff2` + `OFL.txt`, `includes/Icons.php` (SVG Lucide in linea), `includes/Admin/Ui.php` (helper `Ui::avatar`, `Ui::badge`, `Ui::icon`, `Ui::list_row`, `Ui::group_open/close`, `Ui::sheet`), `includes/Admin/Admin.php` (classe `asem-ui` sul contenitore se l'interruttore è acceso), `includes/Settings.php` + pagina Aspetto (interruttore), `includes/Html.php` (`svg`/`path` consentiti), `docs/CREDITI.md`, `readme.txt` (OFL).
 - **Cosa cambia**: variabili `--asem-accent: #1F218C`, `--asem-ok/warn/danger` e relative `-soft`, `--asem-bg/ink/muted/line`, raggi `--asem-r-field: 12px`, `--asem-r-group: 16px`, `--asem-r-sheet: 24px`. Classi `.asem-btn` (e stile dei `.button` di WP **solo dentro** `.asem-ui`: primario pieno indaco, secondario con filetto, pericolo rosso), campi (48 px, 16 px, filetto, focus), `.asem-badge-ok|warn|danger|info|neutral`, `.asem-group` + `.asem-row`, `.asem-title/.asem-section/.asem-caption`, `.asem-empty`, `.asem-sheet`. Nulla di questo cambia l'aspetto finché l'interruttore è spento.
+- **Interruttore**: durante lo sviluppo su staging l'interruttore serve per confrontare vecchio e nuovo; in 1.4 diventa «Torna alla grafica precedente» (predefinito: nuovo).
 - **Rischio**: **medio**. WordPress ha regole forti sui campi e sui pulsanti: i selettori vanno scritti con la specificità giusta, mai con `!important` sparso. Rischio secondario: file font troppo pesanti o non caricati su alcuni host (`font-display: swap` e carattere di ripiego di sistema già nell'elenco).
 - **Verifica**: `tests/ui-kit.html` a tre larghezze; test di contrasto; Tab sul kit; Plugin Check (font, SVG); interruttore spento = pagine identiche ai «prima».
 - **Fattibile/no**: tutto fattibile; la barra e il menu di WP non cambiano.
@@ -114,24 +115,19 @@ I passi sono in ordine; ogni passo è un blocco di lavoro con le proprie verific
 ### Passo 7: Accensione per tutti e pulizia
 
 - **File**: `Settings.php` (predefinito acceso), `admin.css`/`frontend.css`, documentazione.
-- **Cosa cambia**: per le installazioni nuove l'interruttore nasce acceso; per le esistenti si propone con un avviso dismissibile («Nuovo aspetto disponibile, prova») e un rilascio dopo diventa predefinito. Si tolgono gli stili in linea rimasti e le regole morte. Il ripiego resta spegnibile da Aspetto per una versione e poi si valuta di toglierlo.
-- **Rischio**: basso (è già stato provato per tre rilasci), ma è il momento in cui chi non ha seguito lo vede: serve un avviso chiaro e il modo di tornare indietro.
-- **Verifica**: aggiornamento da 1.3.18 con dati reali di una copia; interruttore spento e acceso; backup/ripristino invariati.
+- **Cosa cambia**: nuovo aspetto **predefinito per tutti** (installazioni nuove ed esistenti) già in 1.4. L'interruttore «Torna alla grafica precedente» resta solo per un breve periodo e si toglie, con il vecchio CSS, in un rilascio successivo. Si tolgono gli stili in linea rimasti e le regole morte. Un avviso dismissibile dopo l'aggiornamento spiega cosa è cambiato e dove si torna indietro.
+- **Rischio**: medio: chi aggiorna vede tutto cambiare insieme. Mitigato dalla prova lunga su staging e dall'interruttore di ritorno.
+- **Verifica**: aggiornamento da 1.3.15 con dati reali di una copia dello staging; interruttore di ritorno acceso e spento; backup/ripristino invariati.
 
-## 6. Rilasci proposti
+## 6. Staging e rilascio unico
 
-Un solo numero aperto per volta; ogni rilascio segue il flusso del progetto (`bump.sh`, PR, CI verde, Plugin Check a zero avvisi per gratuito **e** Pro, zip, cartella principale su `main`, file TEST su OneDrive, demo aggiornata con `update.sh` e **mai** `reset.sh` senza chiedere; la pubblicazione sul Portale solo con un «sì» scritto).
+**Un solo rilascio: gratuito 1.4**, a lavoro finito. I passi 1–7 si sviluppano e si provano su un'**installazione di staging** (WordPress separato dalla demo pubblica, con dati inventati, mai dati veri), senza numeri di versione intermedi. Il numero 1.4 si consuma solo alla pubblicazione. Il Pro esce con la sua numerazione (prossimo 1.x) solo se cambiano file elencati in `tests/pro-files.txt` (pagine Conti, Rendiconto, Pagamenti, Cassa di gruppo…), nello stesso momento.
 
-| Rilascio | Contenuto | Visibile? | Pro |
-|---|---|---|---|
-| **Gratuito 1.3.16** | Passi 1 + 2: fondamenta, interruttore, Soci | solo con l'interruttore acceso (spento di default) | nessun rilascio (il Pro eredita il CSS) |
-| **Gratuito 1.3.17 + Pro 1.3.7** | Passo 3 (incassi e prima nota) + passo 4 (area riservata) | interruttore | Pro 1.3.7 per le pagine Pro dei soldi |
-| **Gratuito 1.3.18 + Pro 1.3.8** | Passi 5 e 6 (blocchi, resto dell'amministrazione) | interruttore | Pro 1.3.8 per Conti, Rendiconto, report |
-| **Gratuito 1.3.19** | Passo 7: acceso per tutti, pulizia | sì, per tutti | solo se serve |
-
-Stima di impegno: 1.3.16 la più lunga (fondamenta + kit di prova), 1.3.17 la più delicata (soldi + tema), 1.3.18 la più lunga per numero di pagine, 1.3.19 breve. Se il titolare preferisce meno rilasci si può unire 1.3.18 e 1.3.19 a costo di accendere il nuovo aspetto con meno prove.
-
-Se in un rilascio nel mezzo spunta un nuovo helper in `Ui` usato da file Pro, si valuta il numero di **API** del gratuito richiesto dal Pro (oggi 18): un Pro nuovo su un gratuito vecchio non deve rompersi, al massimo mostrare l'aspetto di prima.
+- **Staging**: il codice del ramo di lavoro si copia sull'installazione di prova a ogni passo (zip da `wordpress/build.sh`, installato a mano o con uno script come `demo/update.sh` ma da cartella locale, non dal Portale). Non è la demo: la demo resta quella pubblica e si aggiorna solo a rilascio fatto, senza `reset.sh`.
+- **Ordine di lavoro**: passi 1 → 7 come sopra, ognuno con le sue verifiche su staging; prima di 1.4, giro completo di tutte le pagine a 390/768/1280, tastiera e contrasto.
+- **Rilascio 1.4** (flusso del progetto: `bump.sh`, PR, CI verde, Plugin Check a zero avvisi per gratuito **e** Pro, zip, cartella principale su `main`, file TEST su OneDrive, demo aggiornata con `update.sh`; la pubblicazione sul Portale solo con un «sì» scritto). Nuovo aspetto per tutti, con «Torna alla grafica precedente» per un periodo breve, poi un rilascio successivo toglie interruttore e vecchio CSS.
+- **Compatibilità Pro/gratuito**: se un nuovo helper in `Ui` è usato da file Pro, si valuta il numero di **API** richiesto dal Pro (oggi 18); un Pro nuovo su un gratuito vecchio non deve rompersi, al massimo mostrare l'aspetto di prima.
+- **Rischio del rilascio unico**: tante modifiche insieme. Si compensa con la prova lunga su staging e il kit `tests/ui-kit.html`; l'impegno complessivo è lo stesso dei passi, solo senza i punti di controllo pubblici intermedi.
 
 ## 7. Cosa si comunica alle altre sessioni
 
@@ -146,7 +142,7 @@ A ogni rilascio che cambia **regole** (non solo aspetto): Portale, Supporto e Sa
 1. **D1. Colore sul sito.** Il front oggi segue il colore principale del tema (`--asemf-accent`). Con il nuovo stile: **(a)** resta «segui il sito» di default e l'indaco è una scelta in Aspetto; **(b)** indaco di default per le installazioni nuove, «segui il sito» per quelle esistenti. *Proposta: (b).*
 2. **D2. Montserrat sul sito.** Il tema decide il carattere; imporre il nostro dà coerenza di marchio ma cozza con temi che hanno già il loro. *Proposta: sul sito Montserrat solo su tessera e titoli del nostro riquadro; il corpo del testo resta quello del tema. In admin sempre Montserrat.*
 3. **D3. Pulsante «Nuovo» e barra in basso in wp-admin.** Non fattibili senza toccare menu e barra di WordPress. *Proposta: nessuna barra in admin; «Nuovo…» primario in cima a ogni elenco.*
-4. **D4. Interruttore e tempi.** *Proposta:* nuovo aspetto spento di default fino a 1.3.18, acceso per tutti in 1.3.19 con possibilità di tornare indietro per una versione.
+4. **D4. Interruttore e tempi.** *Deciso:* un solo rilascio, 1.4; nuovo aspetto predefinito per tutti, con «Torna alla grafica precedente» solo per poco, poi tolto.
 5. **D5. Una pagina alla volta o tutto insieme.** *Proposta:* come nel §6, con Soci e Incassi per primi perché sono i gesti di ogni giorno, e l'area riservata subito dopo.
 6. **D6. Dimensione del font.** woff2 ridotto al latino (Medium, SemiBold, Bold): ≈ 80 KB in tutto nel pacchetto. Va bene per WordPress.org? *Proposta: sì; OFL ammessa, crediti in `readme.txt`.*
 
@@ -154,6 +150,6 @@ A ogni rilascio che cambia **regole** (non solo aspetto): Portale, Supporto e Sa
 
 - **Barra in basso e barra laterale in wp-admin**: si scontrano con menu e barra di WordPress, che non si cambiano.
 - **Tailwind o Node nel plugin**: due strumenti da mantenere per un plugin che oggi non ne ha nessuno; il CSS semplice con variabili basta.
-- **Rifare tutte le pagine in un solo rilascio**: troppo rischio sui soldi e sul tema del sito; meglio l'interruttore e i passi.
+- **Rilasci intermedi del gratuito** (1.3.16–1.3.19): scartati dal titolare; un solo 1.4 a cose fatte, con staging per le prove.
 - **Caricare Montserrat da Google Fonts**: richieste esterne e dati verso terzi; si ospita nel plugin.
 - **Tema scuro automatico sul sito**: su un sito chiaro scurirebbe i riquadri a caso.
