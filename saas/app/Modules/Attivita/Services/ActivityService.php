@@ -191,7 +191,7 @@ final readonly class ActivityService implements Activities
             $to = $day.' '.$s->end_time.':00';
             $when = date('d/m/Y', (int) strtotime($day)).' '.$s->start_time;
             foreach ($this->resources->busy($newId, $from, $to) as $r) {
-                $texts[] = $when.': c\'è una '.$r['label'];
+                $texts[] = $when.': c\'è '.$r['label'];
                 $reservationIds[] = $r['id'];
             }
             foreach ($this->occupancy->busy($newId, $from, $to) as $o) {

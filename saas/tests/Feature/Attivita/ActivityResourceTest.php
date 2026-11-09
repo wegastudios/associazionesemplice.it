@@ -62,7 +62,7 @@ it('una prenotazione della risorsa e una data di attività non si sovrappongono,
         $res->block($court, $this->day.' 10:00', $this->day.' 11:00', 'Manutenzione', null);
 
         $s = app(SessionService::class);
-        expect(fn () => $s->addDates($a->id, $this->day, null, false, '10:30', '11:30', null, 4))->toThrow(ActivityError::class, 'prenotazione')
+        expect(fn () => $s->addDates($a->id, $this->day, null, false, '10:30', '11:30', null, 4))->toThrow(ActivityError::class, 'blocco')
             ->and($s->addDates($a->id, $this->day, null, false, '12:00', '13:00', null, 4))->toBe(1)
             ->and(fn () => $res->block($court, $this->day.' 12:30', $this->day.' 13:30', null, null))->toThrow(ResourceError::class, 'occupata dall\'attività «Tennis»');
     });
@@ -132,7 +132,7 @@ it('cambiando risorsa segnala le sovrapposizioni e si risolve lasciando tutto o 
 
         // Il cambio non si applica e si dice che cosa si sovrappone.
         try {
-            $svc->save($a->id, ['resource_id' => $new, 'no_resource' => false]);
+            $svc->save($a->id, change($a, $new));
             $thrown = null;
         } catch (ResourceChangeConflict $e) {
             $thrown = $e;
@@ -141,7 +141,7 @@ it('cambiando risorsa segnala le sovrapposizioni e si risolve lasciando tutto o 
             ->and(Activity::query()->find($a->id)->resource_id)->toBe($old);
 
         // Spostando, il blocco passa alla risorsa che si libera e la risorsa dell'attività cambia.
-        $svc->save($a->id, ['resource_id' => $new, 'no_resource' => false], true);
+        $svc->save($a->id, change($a, $new), true);
         expect(Activity::query()->find($a->id)->resource_id)->toBe($new)
             ->and(app(ReservationService::class)->find($block)->resource_id)->toBe($old);
     });
@@ -158,18 +158,18 @@ it('non sposta se la sovrapposizione è con un\'altra attività', function (): v
         $s->addDates($other->id, $this->day, null, false, '18:00', '19:00', null, 4);
 
         try {
-            app(ActivityService::class)->save($a->id, ['resource_id' => $new, 'no_resource' => false]);
+            app(ActivityService::class)->save($a->id, change($a, $new));
             $thrown = null;
         } catch (ResourceChangeConflict $e) {
             $thrown = $e;
         }
         expect($thrown?->movable)->toBeFalse()
-            ->and(fn () => app(ActivityService::class)->save($a->id, ['resource_id' => $new, 'no_resource' => false], true))->toThrow(ActivityError::class, 'Non si possono spostare');
+            ->and(fn () => app(ActivityService::class)->save($a->id, change($a, $new), true))->toThrow(ActivityError::class, 'Non si possono spostare');
     });
 });
 
 it('chiede la risorsa dal modulo: una risorsa o «Nessuna»', function (): void {
-    $op = $this->createUser('anna@example.com');
+    $op = $this->createUser('anna@example.com', twoFactor: true);
     $this->addOperator($this->org, $op, App\Modules\Core\Contracts\OrgRole::Owner);
     $this->actingAs($op);
     $base = ['name' => 'Yoga', 'kind' => 'course', 'social_year' => now()->format('Y'), 'billing' => 'monthly', 'fee' => '30,00'];
@@ -178,3 +178,9 @@ it('chiede la risorsa dal modulo: una risorsa o «Nessuna»', function (): void 
     $this->post('/gestionale/attivita', $base + ['resource' => 'boh'])->assertSessionHasErrors('resource');
     $this->post('/gestionale/attivita', $base + ['resource' => 'none'])->assertSessionHasNoErrors();
 });
+
+/** I dati completi di un'attività con un'altra risorsa (il salvataggio valida tutti i campi). */
+function change(Activity $a, string $resourceId): array
+{
+    return ['name' => $a->name, 'kind' => $a->kind->value, 'social_year' => $a->social_year, 'fee_cents' => $a->fee_cents, 'resource_id' => $resourceId, 'no_resource' => false];
+}

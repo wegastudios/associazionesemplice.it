@@ -55,10 +55,10 @@ final readonly class SessionService
         $from = $date.' '.$start.':00';
         $to = $date.' '.$end.':00';
         $what = $this->resources->busy($activity->resource_id, $from, $to)[0]['label'] ?? null;
-        $what = $what !== null ? 'una '.$what : null;
+        $what = $what !== null ? 'già '.$what : null;
         if ($what === null) {
             $other = $this->occupancy->busy($activity->resource_id, $from, $to, $exceptSessionId)[0]['label'] ?? null;
-            $what = $other !== null ? 'l\'attività «'.$other.'»' : null;
+            $what = $other !== null ? 'già l\'attività «'.$other.'»' : null;
         }
         if ($what !== null) {
             $name = $this->resources->names([$activity->resource_id])[$activity->resource_id] ?? 'La risorsa';

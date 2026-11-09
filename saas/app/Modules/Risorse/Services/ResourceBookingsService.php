@@ -57,7 +57,7 @@ final readonly class ResourceBookingsService implements ResourceBookings
                 'id' => $r->id,
                 'from' => self::text($r->starts_at),
                 'to' => $r->ends_at === null ? null : self::text($r->ends_at),
-                'label' => $r->kind === 'block' ? 'blocco'.($r->note !== null && $r->note !== '' ? ' ('.$r->note.')' : '') : 'prenotazione',
+                'label' => $r->kind === 'block' ? 'un blocco'.($r->note !== null && $r->note !== '' ? ' ('.$r->note.')' : '') : 'una prenotazione',
             ];
         }
 
@@ -74,7 +74,7 @@ final readonly class ResourceBookingsService implements ResourceBookings
                 foreach (Reservation::query()->whereIn('id', $ids)->where('status', 'booked')->get() as $r) {
                     foreach ($this->busy($toResourceId, self::text($r->starts_at), $r->ends_at === null ? self::FAR : self::text($r->ends_at)) as $other) {
                         if ($other['id'] !== $r->id) {
-                            throw new ResourceError('Anche sulla risorsa che si libera c\'è già una '.$other['label'].' il '.date('d/m/Y \a\l\l\e H:i', (int) strtotime($other['from'])).'.');
+                            throw new ResourceError('Anche sulla risorsa che si libera c\'è già '.$other['label'].' il '.date('d/m/Y \a\l\l\e H:i', (int) strtotime($other['from'])).'.');
                         }
                     }
                     $r->resource_id = $toResourceId;
