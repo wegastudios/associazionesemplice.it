@@ -130,3 +130,112 @@
 .asem .asem-cal-pick { margin: 6px 0 10px; }
 .asem .asem-dates { margin: 6px 0 12px; max-height: 260px; overflow-y: auto; }
 .asem .asem-dates li { margin: 0; padding: 4px 0; border-bottom: 1px solid #f0f0f1; }
+
+/* ==========================================================================
+   Nuovo aspetto (stile del gestionale SaaS, docs/RESTYLE.md). Tutto sotto .asem-ui:
+   non tocca menu, barra né stili di WordPress fuori dalle nostre pagine.
+   Si rimette la grafica di prima da Impostazioni → Aspetto (classe assente).
+   ========================================================================== */
+@font-face { font-family: 'Montserrat'; font-weight: 500; font-display: swap; src: url('fonts/Montserrat-Medium.ttf') format('truetype'); }
+@font-face { font-family: 'Montserrat'; font-weight: 600; font-display: swap; src: url('fonts/Montserrat-SemiBold.ttf') format('truetype'); }
+@font-face { font-family: 'Montserrat'; font-weight: 700; font-display: swap; src: url('fonts/Montserrat-Bold.ttf') format('truetype'); }
+
+.asem.asem-ui {
+	--asem-accent: #1F218C;
+	--asem-accent-ink: #fff;
+	--asem-bg: #F5F6FA;
+	--asem-card: #fff;
+	--asem-ink: #181A2E;
+	--asem-muted: #5D6078;
+	--asem-line: #E2E5EE;
+	--asem-ok-soft: #E6EFEB;
+	--asem-ok-ink: #3D6256;
+	--asem-warn-soft: #FCF3D3;
+	--asem-warn-ink: #6B4F00;
+	--asem-danger: #B42318;
+	--asem-danger-soft: #FDECEA;
+	--asem-info-soft: #E8E9FB;
+	--asem-r-field: 12px;
+	--asem-r-group: 16px;
+	--asem-r-sheet: 24px;
+	font-family: Montserrat, system-ui, -apple-system, "Segoe UI", sans-serif;
+	font-weight: 500;
+	font-size: 15px;
+	line-height: 1.5;
+	color: var(--asem-ink);
+}
+.asem.asem-ui h1 { font-size: 24px; line-height: 1.25; font-weight: 700; color: var(--asem-ink); }
+.asem.asem-ui h2 { font-size: 17px; line-height: 1.4; font-weight: 600; color: var(--asem-ink); }
+.asem.asem-ui .description, .asem.asem-ui .asem-caption { font-size: 13px; line-height: 1.4; color: var(--asem-muted); }
+.asem.asem-ui a { color: var(--asem-accent); }
+.asem.asem-ui :focus-visible { outline: 2px solid var(--asem-accent); outline-offset: 2px; box-shadow: none; }
+
+/* Pulsanti: i .button di WordPress, ridisegnati solo qui dentro */
+.asem.asem-ui .button, .asem.asem-ui .page-title-action {
+	display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+	min-height: 44px; padding: 0 16px; border-radius: var(--asem-r-field);
+	border: 1px solid var(--asem-line); background: var(--asem-card); color: var(--asem-ink);
+	font: inherit; font-weight: 600; line-height: 1.2; text-decoration: none; box-shadow: none; vertical-align: middle;
+}
+.asem.asem-ui .button:hover, .asem.asem-ui .page-title-action:hover { background: var(--asem-bg); color: var(--asem-ink); border-color: var(--asem-line); }
+.asem.asem-ui .button-primary, .asem.asem-ui .page-title-action { background: var(--asem-accent); border-color: var(--asem-accent); color: var(--asem-accent-ink); }
+.asem.asem-ui .button-primary:hover, .asem.asem-ui .page-title-action:hover { background: var(--asem-accent); border-color: var(--asem-accent); color: var(--asem-accent-ink); filter: brightness(1.12); }
+.asem.asem-ui .button-small { min-height: 36px; padding: 0 12px; font-size: 14px; }
+.asem.asem-ui .button[disabled], .asem.asem-ui .button.disabled { opacity: .5; cursor: not-allowed; }
+
+/* Campi: 48 px, testo 16, bordo e fuoco chiari */
+.asem.asem-ui input[type=text], .asem.asem-ui input[type=email], .asem.asem-ui input[type=password], .asem.asem-ui input[type=number],
+.asem.asem-ui input[type=search], .asem.asem-ui input[type=tel], .asem.asem-ui input[type=url], .asem.asem-ui input[type=date],
+.asem.asem-ui input[type=time], .asem.asem-ui input[type=datetime-local], .asem.asem-ui select, .asem.asem-ui textarea {
+	min-height: 48px; padding: 8px 14px; border: 1px solid #8A8EA8; border-radius: var(--asem-r-field);
+	background-color: var(--asem-card); color: var(--asem-ink); font: inherit; font-size: 16px; box-shadow: none;
+}
+.asem.asem-ui textarea { min-height: 96px; line-height: 1.5; }
+.asem.asem-ui input:focus, .asem.asem-ui select:focus, .asem.asem-ui textarea:focus { border-color: var(--asem-accent); outline: 2px solid var(--asem-accent); outline-offset: 0; box-shadow: none; }
+.asem.asem-ui input[type=checkbox], .asem.asem-ui input[type=radio] { accent-color: var(--asem-accent); }
+
+/* Riquadri e gruppi di righe: un riquadro, molte righe separate da una linea; niente ombre */
+.asem.asem-ui .asem-card, .asem.asem-ui .asem-detail, .asem.asem-ui .asem-line { border-color: var(--asem-line); border-radius: var(--asem-r-group); box-shadow: none; }
+.asem.asem-ui .asem-card > h2:first-child { border-left: 0; padding-left: 0; }
+.asem.asem-ui .asem-group { background: var(--asem-card); border: 1px solid var(--asem-line); border-radius: var(--asem-r-group); margin: 12px 0; padding: 0; list-style: none; overflow: hidden; }
+.asem.asem-ui .asem-row { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 12px 16px; margin: 0; color: inherit; text-decoration: none; }
+.asem.asem-ui .asem-row + .asem-row, .asem.asem-ui .asem-group > li + li > .asem-row { border-top: 1px solid var(--asem-line); }
+.asem.asem-ui a.asem-row:hover { background: var(--asem-bg); }
+.asem.asem-ui .asem-row-main { flex: 1; min-width: 0; }
+.asem.asem-ui .asem-row-title { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.asem.asem-ui .asem-row-detail { display: block; font-size: 13px; line-height: 1.4; color: var(--asem-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.asem.asem-ui .asem-row-value { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+
+/* Etichette di stato: fondo chiaro, testo scuro, sempre con la parola */
+.asem.asem-ui .asem-badge { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 2px 10px; font-size: 13px; font-weight: 600; line-height: 20px; white-space: nowrap; }
+.asem.asem-ui .asem-badge-ok { background: var(--asem-ok-soft); color: var(--asem-ok-ink); }
+.asem.asem-ui .asem-badge-warn { background: var(--asem-warn-soft); color: var(--asem-warn-ink); }
+.asem.asem-ui .asem-badge-danger { background: var(--asem-danger-soft); color: var(--asem-danger); }
+.asem.asem-ui .asem-badge-info { background: var(--asem-info-soft); color: var(--asem-accent); }
+.asem.asem-ui .asem-badge-neutral { background: var(--asem-bg); color: var(--asem-muted); }
+
+/* Avatar con le iniziali (tre colori del marchio, sempre lo stesso per la stessa persona) */
+.asem.asem-ui .asem-avatar { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; font-size: 14px; font-weight: 700; }
+.asem.asem-ui .asem-av-0 { background: var(--asem-info-soft); color: var(--asem-accent); }
+.asem.asem-ui .asem-av-1 { background: var(--asem-ok-soft); color: var(--asem-ok-ink); }
+.asem.asem-ui .asem-av-2 { background: var(--asem-warn-soft); color: var(--asem-warn-ink); }
+
+/* Icone */
+.asem .asem-icon { width: 20px; height: 20px; flex: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; vertical-align: -4px; }
+
+/* Schermata vuota: dice cosa fare dopo */
+.asem.asem-ui .asem-empty { text-align: center; padding: 32px 16px; background: var(--asem-card); border: 1px solid var(--asem-line); border-radius: var(--asem-r-group); margin: 12px 0; }
+
+/* Stati con parola e non solo colore (le classi di oggi, con colori a contrasto) */
+.asem.asem-ui .asem-ok { color: var(--asem-ok-ink); }
+.asem.asem-ui .asem-neg { color: var(--asem-danger); }
+.asem.asem-ui .asem-warn { color: var(--asem-warn-ink); }
+
+/* Foglio dal basso (<dialog class="asem-sheet">) */
+.asem-sheet { border: 0; padding: 20px 16px 24px; border-radius: 24px 24px 0 0; max-width: 560px; width: 100%; margin: auto auto 0; box-shadow: 0 -8px 30px rgba(24, 26, 46, .16); }
+.asem-sheet::backdrop { background: rgba(24, 26, 46, .45); }
+
+/* Movimento spento per chi lo chiede */
+@media (prefers-reduced-motion: reduce) {
+	.asem.asem-ui *, .asem.asem-ui *::before, .asem.asem-ui *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}

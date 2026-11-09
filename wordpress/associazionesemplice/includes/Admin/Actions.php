@@ -1273,6 +1273,7 @@ final class Actions {
 			'logo_id'         => max( 0, $logo ),
 			'accent_color'    => $color( 'primary_custom', 'accent_color' ),
 			'secondary_color' => $color( 'secondary_custom', 'secondary_color' ),
+			'ui_classic'      => empty( $p['ui_classic'] ) ? 0 : 1,
 		);
 		if ( ! empty( $p['card_present'] ) ) { // sezione «Tessera»: standard oppure su un'immagine propria
 			$bg = (int) ( $p['card_bg_id'] ?? 0 );

@@ -101,6 +101,8 @@ final class AppearancePage {
 		echo '<tr><th>Colore secondario</th><td><label><input type="checkbox" name="secondary_custom" value="1"' . checked( $s_own, true, false ) . '> Personalizza</label> '
 			. '<input type="color" name="secondary_color" value="' . esc_attr( $s_own ? (string) $s['secondary_color'] : Assets::secondary( Assets::accent( '#2271b1' ) ) ) . '">'
 			. '<p class="description">Filetto in alto sulla tessera e passaggio del mouse sui pulsanti. Senza spunta si usa il colore secondario del sito' . ( '' !== $site_s ? ' (ora: <code>' . esc_html( $site_s ) . '</code>)' : ' (non rilevato: il filetto ha il colore principale)' ) . '.</p></td></tr>';
+		echo '<tr><th>Grafica</th><td><input type="hidden" name="ui_classic" value="0"><label><input type="checkbox" name="ui_classic" value="1"' . checked( ! empty( $s['ui_classic'] ), true, false ) . '> Torna alla grafica precedente</label>'
+			. '<p class="description">Le pagine di amministrazione hanno un aspetto nuovo. Se qualcosa non ti torna puoi rimettere la grafica di prima: resta disponibile ancora per poco.</p></td></tr>';
 		echo '</tbody></table>';
 		self::card_section( $s );
 		submit_button( 'Salva' );
