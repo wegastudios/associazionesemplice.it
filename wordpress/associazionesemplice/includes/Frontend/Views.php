@@ -1113,7 +1113,7 @@ final class Views {
 		return 'chevron-right';
 	}
 	/**
-	 * «Il mio spazio» è una colonna lunga: da telefono una barra fissa in alto porta alle sezioni (titoli h3 delle sezioni già disegnate; sotto 4 sezioni non serve).
+	 * «Il mio spazio» è una colonna lunga: da telefono una barra fissa in basso (icona e parola) porta alle sezioni (titoli h3 delle sezioni già disegnate; sotto 4 sezioni non serve).
 	 */
 	private static function jump_nav( string $html ): string {
 		$n     = 0;

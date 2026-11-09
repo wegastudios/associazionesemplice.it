@@ -162,3 +162,7 @@ Regola decisa dal titolare: non si pubblica una versione numerata a ogni piccola
 - **Registro delle novità utile e corto** (`CHANGELOG.md` e `readme.txt`): oggi sono 225 righe con un elenco lungo per ogni 1.3.x. Da 1.3.16: per ogni rilascio un titolo e **al massimo 5–7 righe** nel linguaggio di chi usa il programma (cosa puoi fare di nuovo, cosa è cambiato di visibile), senza dettagli tecnici; le versioni 1.3.x si riuniscono in un'unica voce «1.3.x (storico)» con i punti principali.
 - **Un solo numero aperto** finché non si pubblica (regola già in vigore); i numeri non si consumano su rami di lavoro.
 - Il Pro segue lo stesso criterio: esce solo con il gratuito, o quando serve davvero.
+
+## 11. Stato (novembre 2026)
+
+Passi 1–7 realizzati nella PR 395: token e classi (`.asem-ui`, `.asemf`), Montserrat e icone, elenco e scheda soci, foglio «Altro», prima nota e incasso, area riservata (tessera a carta, barra in basso), schede e avvisi. Non fatti: cruscotto come elenco di cose da fare, elenchi a righe nelle altre pagine (Attività, Risorse, Certificati…), woff2 ridotto al posto dei TTF. Il numero di versione lo assegna chi pubblica.

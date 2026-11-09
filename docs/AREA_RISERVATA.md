@@ -1,5 +1,7 @@
 # Area riservata, shortcode e contenuti riservati
 
+> **Aspetto.** Dal rilascio del restyle l'area soci ha lo stile nuovo (carta della tessera nel colore del sito, barra in basso su telefono, campi e pulsanti più grandi). Il colore resta quello del sito; «Torna alla grafica precedente» in Impostazioni → Aspetto rimette il vecchio stile (sul sito serve che il tema stampi `body_class()`).
+
 Soci e volontari lavorano **sul sito**, non in wp-admin. Le viste si inseriscono con qualunque builder; il plugin dà i contenuti,
 il builder decide colonne, spazi e sfondi. Lo stile (`assets/frontend.css`) eredita font e colori del tema.
 
