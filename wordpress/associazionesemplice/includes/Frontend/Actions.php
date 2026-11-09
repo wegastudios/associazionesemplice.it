@@ -87,6 +87,10 @@ final class Actions {
 		}
 		foreach ( self::MAP as $action => $method ) {
 			$run = function () use ( $action, $method ) {
+				// Il profilo si salva solo con l'invio di un modulo: con un GET i campi arriverebbero vuoti e verrebbero cancellati.
+				if ( 'asem_front_profile' === $action && 'POST' !== strtoupper( (string) ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+					wp_die( esc_html( 'Metodo non consentito.' ), '', array( 'response' => 405 ) );
+				}
 				\AssociazioneSemplice\Csrf::check( $action );
 				$post = \AssociazioneSemplice\Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
 				$back = self::back_url( $post );
