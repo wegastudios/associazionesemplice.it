@@ -193,7 +193,7 @@ it('una data senza orari occupa il giorno intero', function (): void {
         $s = app(SessionService::class);
 
         expect($s->addDates($tennis->id, $this->day, null, false, null, null, null, null))->toBe(1)
-            ->and(fn () => $s->addDates($volley->id, $this->day, null, false, '21:00', '22:00', null, 4))->toThrow(ActivityError::class, 'tutto il giorno')
+            ->and(fn () => $s->addDates($volley->id, $this->day, null, false, '21:00', '22:00', null, 4))->toThrow(ActivityError::class, 'già l'attività «Torneo»')
             ->and(fn () => app(ReservationService::class)->block($court, $this->day.' 09:00', $this->day.' 10:00', null, null))->toThrow(ResourceError::class, 'occupata dall\'attività «Torneo»')
             ->and(app(ReservationService::class)->block($court, date('Y-m-d', strtotime($this->day.' +1 day')).' 09:00', date('Y-m-d', strtotime($this->day.' +1 day')).' 10:00', null, null))->toBeString();
     });
