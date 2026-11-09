@@ -55,3 +55,15 @@ it('non mette limiti al numero di listini (500 ingressi a prezzo crescente)', fu
         ->and(S::parsePriceLists(S::priceListsText($lists)))->toBe($lists)
         ->and(count(S::parsePriceLists(str_repeat("Posto 5\n", 600))))->toBe(600);
 });
+
+it('una data senza orari occupa il giorno intero e un corso i giorni delle sue lezioni', function (): void {
+    expect(S::slot('2026-11-12', '18:00', '19:00'))->toBe(['2026-11-12 18:00:00', '2026-11-12 19:00:00'])
+        ->and(S::slot('2026-11-12', null, null))->toBe(['2026-11-12 00:00:00', '2026-11-13 00:00:00'])
+        ->and(S::slot('2026-12-31', '20:00', null))->toBe(['2026-12-31 20:00:00', '2027-01-01 00:00:00'])
+        // martedì e giovedì tra il 2026-11-02 (lunedì) e il 2026-11-15
+        ->and(S::courseDays([2, 4], '2026-11-02', '2026-11-15', '2026-11-01'))->toBe(['2026-11-03', '2026-11-05', '2026-11-10', '2026-11-12'])
+        ->and(S::courseDays([2, 4], '2026-11-02', '2026-11-15', '2026-11-11'))->toBe(['2026-11-12'])
+        ->and(S::courseDays([2], null, null, '2026-11-01'))->toBe([])
+        ->and(S::courseDays([], '2026-11-02', null, '2026-11-01'))->toBe([])
+        ->and(count(S::courseDays([1], '2026-01-01', null, '2026-01-01', 30)))->toBe(4);
+});

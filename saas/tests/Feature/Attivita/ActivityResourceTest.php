@@ -184,3 +184,33 @@ function change(Activity $a, string $resourceId): array
 {
     return ['name' => $a->name, 'kind' => $a->kind->value, 'social_year' => $a->social_year, 'fee_cents' => $a->fee_cents, 'resource_id' => $resourceId, 'no_resource' => false];
 }
+
+it('una data senza orari occupa il giorno intero', function (): void {
+    $this->orgContext()->run($this->org->id, function (): void {
+        $court = room('Campo 1');
+        $tennis = activityOn('Torneo', $court);
+        $volley = activityOn('Pallavolo', $court);
+        $s = app(SessionService::class);
+
+        expect($s->addDates($tennis->id, $this->day, null, false, null, null, null, null))->toBe(1)
+            ->and(fn () => $s->addDates($volley->id, $this->day, null, false, '21:00', '22:00', null, 4))->toThrow(ActivityError::class, 'già l\'attività «Torneo»')
+            ->and(fn () => app(ReservationService::class)->block($court, $this->day.' 09:00', $this->day.' 10:00', null, null))->toThrow(ResourceError::class, 'occupata dall\'attività «Torneo»')
+            ->and(app(ReservationService::class)->block($court, date('Y-m-d', strtotime($this->day.' +1 day')).' 09:00', date('Y-m-d', strtotime($this->day.' +1 day')).' 10:00', null, null))->toBeString();
+    });
+});
+
+it('un corso occupa la risorsa per intero nei giorni delle sue lezioni', function (): void {
+    $this->orgContext()->run($this->org->id, function (): void {
+        $room = room('Sala A');
+        $weekday = (int) date('N', (int) strtotime($this->day));
+        $course = fn (string $name) => activityOn($name, $room, ['kind' => 'course', 'billing' => 'monthly', 'weekdays' => [$weekday], 'starts_on' => $this->day, 'ends_on' => date('Y-m-d', strtotime($this->day.' +14 days'))]);
+
+        $course('Yoga');
+        expect(fn () => $course('Pilates'))->toThrow(ActivityError::class, 'giorni delle lezioni')
+            ->and(fn () => app(ReservationService::class)->block($room, $this->day.' 18:00', $this->day.' 19:00', null, null))->toThrow(ResourceError::class, 'occupata dall\'attività «Yoga»');
+
+        // Un altro giorno della settimana è libero.
+        $other = date('Y-m-d', strtotime($this->day.' +1 day'));
+        expect(app(ReservationService::class)->block($room, $other.' 18:00', $other.' 19:00', null, null))->toBeString();
+    });
+});

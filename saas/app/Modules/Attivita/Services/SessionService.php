@@ -49,11 +49,12 @@ final readonly class SessionService
      */
     private function assertFree(Activity $activity, string $date, ?string $start, ?string $end, ?string $exceptSessionId = null): void
     {
-        if ($activity->resource_id === null || $start === null || $end === null) {
+        if ($activity->resource_id === null) {
             return;
         }
-        $from = $date.' '.$start.':00';
-        $to = $date.' '.$end.':00';
+        // Senza orari la data occupa il giorno intero.
+        [$from, $to] = SessionRules::slot($date, $start, $end);
+        $when = $start === null && $end === null ? 'tutto il giorno' : 'dalle '.($start ?? '00:00').' alle '.($end ?? '24:00');
         $what = $this->resources->busy($activity->resource_id, $from, $to)[0]['label'] ?? null;
         $what = $what !== null ? 'già '.$what : null;
         if ($what === null) {
@@ -62,7 +63,7 @@ final readonly class SessionService
         }
         if ($what !== null) {
             $name = $this->resources->names([$activity->resource_id])[$activity->resource_id] ?? 'La risorsa';
-            throw new ActivityError($name.' è occupata il '.date('d/m/Y', (int) strtotime($date)).' dalle '.$start.' alle '.$end.': c\'è '.$what.'.');
+            throw new ActivityError($name.' è occupata il '.date('d/m/Y', (int) strtotime($date)).' '.$when.': c\'è '.$what.'.');
         }
     }
 
