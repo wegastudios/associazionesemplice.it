@@ -55,6 +55,7 @@ final readonly class ResourceBookingsService implements ResourceBookings
         foreach ($rows as $r) {
             $out[] = [
                 'id' => $r->id,
+                'kind' => $r->kind,
                 'from' => self::text($r->starts_at),
                 'to' => $r->ends_at === null ? null : self::text($r->ends_at),
                 'label' => $r->kind === 'block' ? 'un blocco'.($r->note !== null && $r->note !== '' ? ' ('.$r->note.')' : '') : 'una prenotazione',

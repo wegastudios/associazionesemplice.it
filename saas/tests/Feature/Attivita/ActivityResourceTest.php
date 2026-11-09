@@ -121,33 +121,40 @@ it('una data prenotata occupa la risorsa e la blocca a chi la vuole prenotare', 
     });
 });
 
-it('cambiando risorsa segnala le sovrapposizioni e si risolve lasciando tutto o spostando le prenotazioni', function (): void {
+function conflict(callable $change): ?ResourceChangeConflict
+{
+    try {
+        $change();
+    } catch (ResourceChangeConflict $e) {
+        return $e;
+    }
+
+    return null;
+}
+
+it('cambiando risorsa segnala le sovrapposizioni; spostando, le prenotazioni dei soci vanno sulla risorsa di prima', function (): void {
     $this->orgContext()->run($this->org->id, function (): void {
         $old = room('Sala A');
         $new = room('Sala B');
         $a = activityOn('Yoga', $old);
         app(SessionService::class)->addDates($a->id, $this->day, null, false, '18:00', '19:00', null, 4);
-        $block = app(ReservationService::class)->block($new, $this->day.' 18:00', $this->day.' 19:00', 'Torneo', null);
+        $res = app(ReservationService::class);
+        $booking = $res->book($new, ['holder_name' => 'Gino Bianchi', 'date' => $this->day, 'start' => '18:00', 'units' => 1], null)[0];
         $svc = app(ActivityService::class);
 
         // Il cambio non si applica e si dice che cosa si sovrappone.
-        try {
-            $svc->save($a->id, change($a, $new));
-            $thrown = null;
-        } catch (ResourceChangeConflict $e) {
-            $thrown = $e;
-        }
-        expect($thrown)->not->toBeNull()->and($thrown->movable)->toBeTrue()->and($thrown->conflicts)->toHaveCount(1)
+        $e = conflict(fn () => $svc->save($a->id, change($a, $new)));
+        expect($e)->not->toBeNull()->and($e->movable)->toBeTrue()->and($e->conflicts)->toHaveCount(1)
             ->and(Activity::query()->find($a->id)->resource_id)->toBe($old);
 
-        // Spostando, il blocco passa alla risorsa che si libera e la risorsa dell'attività cambia.
+        // Spostando, la prenotazione passa alla risorsa che si libera e la risorsa dell'attività cambia.
         $svc->save($a->id, change($a, $new), true);
         expect(Activity::query()->find($a->id)->resource_id)->toBe($new)
-            ->and(app(ReservationService::class)->find($block)->resource_id)->toBe($old);
+            ->and($res->find($booking)->resource_id)->toBe($old);
     });
 });
 
-it('non sposta se la sovrapposizione è con un\'altra attività', function (): void {
+it('spostando, passano per intero anche le altre attività in conflitto', function (): void {
     $this->orgContext()->run($this->org->id, function (): void {
         $old = room('Sala A');
         $new = room('Sala B');
@@ -156,15 +163,29 @@ it('non sposta se la sovrapposizione è con un\'altra attività', function (): v
         $other = activityOn('Danza', $new);
         $s->addDates($a->id, $this->day, null, false, '18:00', '19:00', null, 4);
         $s->addDates($other->id, $this->day, null, false, '18:00', '19:00', null, 4);
+        $svc = app(ActivityService::class);
 
-        try {
-            app(ActivityService::class)->save($a->id, change($a, $new));
-            $thrown = null;
-        } catch (ResourceChangeConflict $e) {
-            $thrown = $e;
-        }
-        expect($thrown?->movable)->toBeFalse()
-            ->and(fn () => app(ActivityService::class)->save($a->id, change($a, $new), true))->toThrow(ActivityError::class, 'Non si possono spostare');
+        expect(conflict(fn () => $svc->save($a->id, change($a, $new)))?->movable)->toBeTrue();
+
+        $svc->save($a->id, change($a, $new), true);
+        expect(Activity::query()->find($a->id)->resource_id)->toBe($new)
+            ->and(Activity::query()->find($other->id)->resource_id)->toBe($old);
+    });
+});
+
+it('i blocchi di risorsa non si spostano: il cambio resta fermo', function (): void {
+    $this->orgContext()->run($this->org->id, function (): void {
+        $old = room('Sala A');
+        $new = room('Sala B');
+        $a = activityOn('Yoga', $old);
+        app(SessionService::class)->addDates($a->id, $this->day, null, false, '18:00', '19:00', null, 4);
+        $block = app(ReservationService::class)->block($new, $this->day.' 18:00', $this->day.' 19:00', 'Torneo', null);
+        $svc = app(ActivityService::class);
+
+        expect(conflict(fn () => $svc->save($a->id, change($a, $new)))?->movable)->toBeFalse()
+            ->and(fn () => $svc->save($a->id, change($a, $new), true))->toThrow(ActivityError::class, 'Non si possono spostare')
+            ->and(Activity::query()->find($a->id)->resource_id)->toBe($old)
+            ->and(app(ReservationService::class)->find($block)->resource_id)->toBe($new);
     });
 });
 

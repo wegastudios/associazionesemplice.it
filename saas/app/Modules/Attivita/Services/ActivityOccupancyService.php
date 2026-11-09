@@ -33,7 +33,7 @@ final readonly class ActivityOccupancyService implements ActivityOccupancy
         return $out;
     }
 
-    /** @return list<array{id: string, from: string, to: string, label: string}> */
+    /** @return list<array{id: string, activity_id: string, from: string, to: string, label: string}> */
     private function sessions(string $resourceId, string $from, string $to, ?string $exceptSessionId, ?string $exceptActivityId): array
     {
         $q = $this->db->connection('pgsql')->table('app.activity_sessions as s')
@@ -50,17 +50,17 @@ final readonly class ActivityOccupancyService implements ActivityOccupancy
         }
 
         $out = [];
-        foreach ($q->orderBy('s.session_date')->orderBy('s.start_time')->get(['s.id', 's.session_date', 's.start_time', 's.end_time', 'a.name']) as $r) {
+        foreach ($q->orderBy('s.session_date')->orderBy('s.start_time')->get(['s.id', 'a.id as activity_id', 's.session_date', 's.start_time', 's.end_time', 'a.name']) as $r) {
             $start = is_scalar($r->start_time) ? (string) $r->start_time : null;
             $end = is_scalar($r->end_time) ? (string) $r->end_time : null;
             [$f, $t] = SessionRules::slot(substr(self::text($r->session_date), 0, 10), $start, $end);
-            $out[] = ['id' => self::text($r->id), 'from' => $f, 'to' => $t, 'label' => self::text($r->name)];
+            $out[] = ['id' => self::text($r->id), 'activity_id' => self::text($r->activity_id), 'from' => $f, 'to' => $t, 'label' => self::text($r->name)];
         }
 
         return $out;
     }
 
-    /** @return list<array{id: string, from: string, to: string, label: string}> */
+    /** @return list<array{id: string, activity_id: string, from: string, to: string, label: string}> */
     private function courses(string $resourceId, string $from, string $to, ?string $exceptActivityId): array
     {
         $first = substr($from, 0, 10);
@@ -82,7 +82,7 @@ final readonly class ActivityOccupancyService implements ActivityOccupancy
             foreach (SessionRules::courseDays($weekdays, substr(self::text($a->starts_on), 0, 10), $ends, $first, self::COURSE_HORIZON_DAYS) as $day) {
                 if ($day <= $last) {
                     [$f, $t] = SessionRules::slot($day, null, null);
-                    $out[] = ['id' => self::text($a->id), 'from' => $f, 'to' => $t, 'label' => self::text($a->name)];
+                    $out[] = ['id' => self::text($a->id), 'activity_id' => self::text($a->id), 'from' => $f, 'to' => $t, 'label' => self::text($a->name)];
                 }
             }
         }

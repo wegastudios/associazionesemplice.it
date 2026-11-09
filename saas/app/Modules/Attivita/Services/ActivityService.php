@@ -161,12 +161,17 @@ final readonly class ActivityService implements Activities
         $activity->fill(array_intersect_key($data, array_flip($activity->getFillable())));
 
         return $this->connection()->transaction(function () use ($activity, $resourceId, $moveConflicts, $id): Activity {
+            $plan = null;
             if ($id !== null && $resourceId !== null && $activity->isDirty('resource_id')) {
-                $this->settleResourceChange($activity, $activity->getOriginal('resource_id'), $resourceId, $moveConflicts);
+                $plan = $this->settleResourceChange($activity, $activity->getOriginal('resource_id'), $resourceId, $moveConflicts);
             } elseif ($resourceId !== null && ($id === null || $activity->isDirty(['kind', 'weekdays', 'starts_on', 'ends_on']))) {
                 $this->assertCourseFree($activity);
             }
             $activity->save();
+            if ($plan !== null) {
+                // Prima l'attività lascia la risorsa di prima, poi ci passano gli elementi in conflitto: tutto o niente.
+                $this->swapOntoOldResource($plan);
+            }
 
             return $activity;
         });
@@ -227,28 +232,36 @@ final readonly class ActivityService implements Activities
     }
 
     /**
-     * Cambiando risorsa si ricontrollano le date future (e i giorni delle lezioni di un corso): se sulla nuova risorsa c'è già qualcosa si segnala
-     * (ResourceChangeConflict). Con $move le prenotazioni in conflitto passano sulla risorsa che si libera; le date di
-     * altre attività non si spostano da qui.
+     * Cambiando risorsa si ricontrollano le date future (e i giorni delle lezioni di un corso): se sulla nuova risorsa c'è
+     * già qualcosa si segnala (ResourceChangeConflict). Con $move si prepara lo scambio: le prenotazioni dei soci in
+     * conflitto e le altre attività (per intero, la risorsa è per attività) passano sulla risorsa che si libera. I blocchi
+     * di risorsa non si spostano. Si guarda e si sposta solo il futuro: le prenotazioni passate restano dove sono.
+     *
+     * @return array{old: string, reservations: array<string, array{0: string, 1: string}>, activities: list<string>}|null
      */
-    private function settleResourceChange(Activity $activity, mixed $oldId, string $newId, bool $move): void
+    private function settleResourceChange(Activity $activity, mixed $oldId, string $newId, bool $move): ?array
     {
         $old = is_string($oldId) && $oldId !== '' ? $oldId : null;
         $texts = [];
-        $reservationIds = [];
+        $reservations = [];
+        $activities = [];
         $blocked = false;
         foreach ($this->occupiedSlots($activity) as [$from, $to, $when]) {
             foreach ($this->resources->busy($newId, $from, $to) as $r) {
                 $texts[] = $when.': c\'è '.$r['label'];
-                $reservationIds[] = $r['id'];
+                if ($r['kind'] === 'block') {
+                    $blocked = true;
+                } else {
+                    $reservations[$r['id']] = [$r['from'], $r['to'] ?? '9999-12-31 00:00:00'];
+                }
             }
             foreach ($this->occupancy->busy($newId, $from, $to) as $o) {
                 $texts[] = $when.': c\'è l\'attività «'.$o['label'].'»';
-                $blocked = true;
+                $activities[$o['activity_id']] = $o['activity_id'];
             }
         }
         if ($texts === []) {
-            return;
+            return null;
         }
         if (! $move) {
             throw new ResourceChangeConflict($texts, ! $blocked && $old !== null);
@@ -256,10 +269,42 @@ final readonly class ActivityService implements Activities
         if ($blocked || $old === null) {
             throw new ActivityError('Non si possono spostare: '.implode('; ', $texts).'.');
         }
+
+        return ['old' => $old, 'reservations' => $reservations, 'activities' => array_values($activities)];
+    }
+
+    /**
+     * Sposta sulla risorsa di prima le prenotazioni e le attività in conflitto (già ricontrollate sulla nuova risorsa).
+     * Se anche lì c'è un conflitto, lancia: la transazione annulla tutto.
+     *
+     * @param  array{old: string, reservations: array<string, array{0: string, 1: string}>, activities: list<string>}  $plan
+     */
+    private function swapOntoOldResource(array $plan): void
+    {
+        $old = $plan['old'];
+        foreach ($plan['reservations'] as [$from, $to]) {
+            $other = $this->occupancy->busy($old, $from, $to)[0]['label'] ?? null;
+            if ($other !== null) {
+                throw new ActivityError('Sulla risorsa di prima c\'è già l\'attività «'.$other.'»: non si sposta niente.');
+            }
+        }
         try {
-            $this->resources->move(array_values(array_unique($reservationIds)), $old);
+            $this->resources->move(array_keys($plan['reservations']), $old);
         } catch (ResourceError $e) {
             throw new ActivityError($e->getMessage());
+        }
+        foreach ($plan['activities'] as $activityId) {
+            $moved = $this->find($activityId);
+            foreach ($this->occupiedSlots($moved) as [$from, $to, $when]) {
+                $busy = $this->resources->busy($old, $from, $to)[0]['label'] ?? null;
+                $busy ??= ($o = $this->occupancy->busy($old, $from, $to, null, $moved->id)[0] ?? null) === null ? null : 'l\'attività «'.$o['label'].'»';
+                if ($busy !== null) {
+                    throw new ActivityError('«'.$moved->name.'» non si sposta: '.$when.' sulla risorsa di prima c\'è già '.$busy.'. Non si sposta niente.');
+                }
+            }
+            $moved->resource_id = $old;
+            $moved->no_resource = false;
+            $moved->save();
         }
     }
 
