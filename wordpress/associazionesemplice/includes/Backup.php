@@ -56,9 +56,11 @@ final class Backup {
 		foreach ( glob( self::dir() . '/*.zip' ) ?: array() as $f ) {
 			if ( preg_match( '/^prima-del-ripristino-(\d{8}-\d{6})\.zip$/', basename( $f ), $m ) ) { // copie fatte da versioni precedenti, con il nome prevedibile
 				$new = dirname( $f ) . '/prima-del-ripristino-' . $m[1] . '-' . bin2hex( random_bytes( 8 ) ) . '.zip';
-				if ( @rename( $f, $new ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors, WordPress.WP.AlternativeFunctions.rename_rename -- lettura/scrittura in streaming di file grandi
-					$f = $new;
+				if ( ! @rename( $f, $new ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors, WordPress.WP.AlternativeFunctions.rename_rename -- lettura/scrittura in streaming di file grandi
+					wp_delete_file( $f ); // un nome prevedibile non deve restare nella cartella: se non si può rinominare, la copia si cancella
+					continue;
 				}
+				$f = $new;
 			}
 			$out[] = array( 'name' => basename( $f ), 'size' => (int) filesize( $f ), 'time' => (int) filemtime( $f ) );
 		}

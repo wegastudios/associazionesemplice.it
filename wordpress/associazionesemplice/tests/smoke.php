@@ -7376,7 +7376,7 @@ $bf_c = \AssociazioneSemplice\Conventions::save( 0, array( 'name' => 'Teatro Ape
 asem_ok( 1 === count( \AssociazioneSemplice\Conventions::for_person( $people->get( $bf_m ) ) ) && ! \AssociazioneSemplice\Conventions::for_person( $people->get( $bf_x ) ), 'convenzioni: le vede solo chi ha la tessera valida' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Shortcodes::render_view( 'convenzioni' ), 'Teatro Aperto' ) && false === strpos( \AssociazioneSemplice\Frontend\Shortcodes::render_view( 'convenzioni' ), 'TEATRO-26' ), 'convenzioni: elenco pubblico senza codice' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\BlockFViews::section_members( $people->get( $bf_m ) ), 'TEATRO-26' ), 'convenzioni: area soci con il codice' );
-asem_ok( has_action( 'admin_post_asem_convention_save' ) && shortcode_exists( 'convenzioni' ), 'convenzioni: azioni e shortcode presenti anche con il Pro' );
+asem_ok( has_action( 'admin_post_asem_convention_save' ) && shortcode_exists( 'associazionesemplice_convenzioni' ) && ! shortcode_exists( 'convenzioni' ), 'convenzioni: azioni e shortcode presenti anche con il Pro' );
 \AssociazioneSemplice\Conventions::delete( $bf_c );
 
 // ---------- Blocco E: SMS, newsletter, Satispay e Klarna (con il Pro attivo) ----------

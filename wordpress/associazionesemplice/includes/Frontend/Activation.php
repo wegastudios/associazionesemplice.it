@@ -196,15 +196,11 @@ final class Activation {
 				set_transient( $rl_key, $tries + 1, HOUR_IN_SECONDS );
 				$res = self::complete( $param, $post );
 				if ( $res['ok'] ) {
-					if ( (int) $res['user_id'] > 0 ) {
-						wp_set_current_user( (int) $res['user_id'] );
-						wp_set_auth_cookie( (int) $res['user_id'], true );
-					} else { // accesso proprio: nessun utente WordPress, si apre la sessione dei soci
-						\AssociazioneSemplice\MemberLogin::open( (int) $res['person_id'], 'activation' );
-					}
+					// Il link attiva l'accesso ma non fa entrare: si entra dal modulo dell'area riservata con email e password,
+					// così valgono i controlli sull'accesso di WordPress e dei plugin di sicurezza.
 					$page = (int) Settings::get( 'member_area_page_id' );
 					$url  = $page ? (string) get_permalink( $page ) : home_url( '/' );
-					wp_safe_redirect( \AssociazioneSemplice\Flash::url( $url, 'asemf', 'Accesso attivato: benvenuto/a!' ) );
+					wp_safe_redirect( \AssociazioneSemplice\Flash::url( $url, 'asemf', 'Accesso attivato: ora entra con la tua email e la password che hai scelto.' ) );
 					exit;
 				}
 				$error = $res['error'];

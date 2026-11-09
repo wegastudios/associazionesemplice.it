@@ -306,6 +306,9 @@ free_ok( false !== strpos( \AssociazioneSemplice\Frontend\BlockBViews::section_p
 wp_set_current_user( 0 );
 free_ok( \AssociazioneSemplice\Access::can_read_document( \AssociazioneSemplice\Documents::get( $bb_d_pub ) ) && ! \AssociazioneSemplice\Access::can_read_document( \AssociazioneSemplice\Documents::get( $bb_d_mem ) ), 'documenti: chi non ha fatto l\'accesso apre solo i pubblici' );
 $bb_pub = \AssociazioneSemplice\Frontend\Shortcodes::render_view( 'documenti' );
+parse_str( (string) wp_parse_url( \AssociazioneSemplice\Documents::url( $bb_d_pub ), PHP_URL_QUERY ), $bb_q_pub );
+parse_str( (string) wp_parse_url( \AssociazioneSemplice\Documents::url( $bb_d_mem ), PHP_URL_QUERY ), $bb_q_mem );
+free_ok( ! isset( $bb_q_pub['_wpnonce'] ) && ! empty( $bb_q_mem['_wpnonce'] ) && wp_verify_nonce( $bb_q_mem['_wpnonce'], \AssociazioneSemplice\Documents::ACTION . '_' . $bb_d_mem ), 'documenti: il link di un documento non pubblico porta il nonce, quello pubblico no' );
 free_ok( false !== strpos( $bb_pub, 'Statuto pubblico' ) && false === strpos( $bb_pub, 'Modulo soci' ) && false === strpos( $bb_pub, 'Verbale interno' ), 'documenti: lo shortcode pubblico mostra solo i documenti pubblici' );
 wp_set_current_user( $admin->ID );
 
@@ -337,7 +340,7 @@ free_ok( ! \AssociazioneSemplice\Conventions::for_person( $people->get( $bb_b ) 
 $cf_pub = \AssociazioneSemplice\Frontend\Shortcodes::render_view( 'convenzioni' );
 free_ok( false !== strpos( $cf_pub, 'Palestra Forma' ) && false !== strpos( $cf_pub, 'Sconto del 10%' ) && false === strpos( $cf_pub, 'FORMA-SOCI-10' ) && false === strpos( $cf_pub, 'Non cumulabile' ) && false === strpos( $cf_pub, 'Bar Scaduto' ) && false === strpos( $cf_pub, 'Cinema Archiviato' ) && false === strpos( $cf_pub, 'Libreria Solo Volontari' ), 'convenzioni: l\'elenco pubblico mostra solo le pubbliche valide, senza codice né condizioni' );
 free_ok( false === strpos( \AssociazioneSemplice\Frontend\Shortcodes::render_view( 'convenzioni', array( 'categoria' => 'Cultura' ) ), 'Palestra Forma' ), 'convenzioni: il filtro per categoria dello shortcode pubblico' );
-free_ok( shortcode_exists( 'convenzioni' ) && shortcode_exists( 'convenzioni_soci' ) && isset( \AssociazioneSemplice\Frontend\Shortcodes::views()['convenzioni'] ), 'convenzioni: gli shortcode [convenzioni] e [convenzioni_soci] esistono' );
+free_ok( shortcode_exists( 'associazionesemplice_convenzioni' ) && shortcode_exists( 'associazionesemplice_convenzioni_soci' ) && ! shortcode_exists( 'convenzioni' ) && ! shortcode_exists( 'convenzioni_soci' ) && isset( \AssociazioneSemplice\Frontend\Shortcodes::views()['convenzioni'] ), 'convenzioni: solo gli shortcode con il prefisso (niente [convenzioni] e [convenzioni_soci])' );
 $cf_sec = \AssociazioneSemplice\Frontend\BlockFViews::section_members( $people->get( $bb_a ) );
 free_ok( false !== strpos( $cf_sec, 'Palestra Forma' ) && false !== strpos( $cf_sec, 'FORMA-SOCI-10' ) && false !== strpos( $cf_sec, 'Vera Votante' ) && false !== strpos( $cf_sec, 'Non cumulabile' ) && false === strpos( $cf_sec, 'LIBRI-VOL' ), 'convenzioni: l\'area soci mostra codice, condizioni e i dati per farsi riconoscere' );
 wp_set_current_user( $bb_user );
@@ -379,6 +382,12 @@ free_ok( ! in_array( 'assemblee', \AssociazioneSemplice\Areas::groups()['soci'][
 free_ok( ! has_action( 'admin_post_asem_assembly_save' ) && ! has_action( 'admin_post_asem_front_proxy' ), 'senza il Pro le azioni delle assemblee non sono registrate' );
 
 free_ok( array( 'none', 'woocommerce', 'stripe', 'paypal', 'stripe_paypal', 'sumup', 'stripe_sumup', 'paypal_sumup', 'stripe_paypal_sumup' ) === array_keys( \AssociazioneSemplice\PaymentConfig::providers() ) && array( 'stripe', 'paypal', 'sumup' ) === \AssociazioneSemplice\PaymentConfig::fee_gateways() && array() === \AssociazioneSemplice\PaymentConfig::gateways_of( 'satispay' ), 'pagamenti: senza le funzioni avanzate le scelte sono le nove di sempre, nessun Satispay' );
+$pd_saved = $_POST;
+$_POST    = array( 'Nome' => '<b>Ada</b>', 'righe' => array( 'Prima Riga!' => array( 'Importo"x' => '5' ), 3 => 'tre' ), '_back' => 'https://example.com/a b', 'password' => ' <segreta> ' );
+$pd       = \AssociazioneSemplice\Plugin::post_data();
+free_ok( array( 'nome', 'righe', '_back', 'password' ) === array_keys( $pd ) && array( 'primariga', 3 ) === array_keys( $pd['righe'] ) && array( 'importox' ) === array_keys( $pd['righe']['primariga'] ) && 'Ada' === $pd['nome'] && ' <segreta> ' === $pd['password'] && false === strpos( $pd['_back'], ' ' ), 'dati dei moduli: chiavi ripulite a ogni livello, valori ripuliti, password intatte' );
+$_POST = $pd_saved;
+
 free_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Edizione gratuita: tutti i controlli sono passati.' );

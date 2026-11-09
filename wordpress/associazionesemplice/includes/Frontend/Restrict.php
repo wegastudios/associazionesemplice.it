@@ -146,7 +146,7 @@ final class Restrict {
 			$html .= '<p><a class="asemf-btn wp-element-button" href="' . esc_url( $url ) . '">Accedi</a></p>';
 		}
 		$html .= '</div>';
-		return (string) apply_filters( 'asem_gate_html', \AssociazioneSemplice\Texts::html( $html ), $rule, $activity_ids );
+		return wp_kses( (string) apply_filters( 'asem_gate_html', \AssociazioneSemplice\Texts::html( $html ), $rule, $activity_ids ), \AssociazioneSemplice\Html::allowed() ); // esce dal filtro the_content, dallo shortcode e dal blocco: sempre filtrato
 	}
 
 	// ---------- Filtri sul contenuto ----------

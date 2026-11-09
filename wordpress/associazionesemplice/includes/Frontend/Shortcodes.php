@@ -68,8 +68,15 @@ final class Shortcodes {
 		}
 	}
 
-	/** Disegna una vista. Usato da shortcode, blocco e widget. */
+	/**
+	 * Disegna una vista. Usato da shortcode, blocco e widget: l'HTML, comprese le viste di un'estensione, esce sempre da
+	 * wp_kses() con l'elenco di {@see \AssociazioneSemplice\Html::allowed()}.
+	 */
 	public static function render_view( string $view, array $atts = array() ): string {
+		return wp_kses( self::build_view( $view, $atts ), \AssociazioneSemplice\Html::allowed() );
+	}
+
+	private static function build_view( string $view, array $atts = array() ): string {
 		switch ( $view ) {
 			case 'area_soci':
 				return Views::area( shortcode_atts( array( 'sezioni' => '' ), $atts ) );
