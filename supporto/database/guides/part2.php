@@ -44,6 +44,8 @@ MD,
 2. Registra la quota associativa dalla scheda del socio o dall'incasso: se il socio ha la tessera non valida, la quota si inserisce da sola in qualunque incasso.
 3. La tessera si attiva quando la quota è **saldata** (vedi «Quota pagata a rate» più sotto).
 
+La scheda del socio è divisa in sezioni. Nell'elenco dei soci, il foglio **«Altro»** raccoglie le azioni meno usate. Anche la prima nota e l'incasso sono più leggibili, soprattutto da telefono.
+
 I nuovi soci **non hanno più un utente WordPress**: entrano nell'area riservata con **email e password** (obbligatoria, la scelgono alla prima entrata); il link o codice ricevuto per email resta come opzione. L'utente WordPress nasce **solo quando si dà un potere** al socio (segreteria, tesoriere, staff). Chi ha già un utente WordPress continua a entrare da WordPress. Se esiste già un utente con l'email del socio, viene collegato senza cambiargli ruolo. Se quell'utente ha **altri ruoli** (redattore, amministratore…) la segreteria vede un errore: **solo un amministratore** può collegarlo.
 
 Se preferisci un utente WordPress per ogni socio (per esempio per usare WooCommerce con il loro account), vedi [Come entrano i soci: link, codice o utente WordPress](guida:accesso-dei-soci-link-codice-o-utente-wordpress).
@@ -228,6 +230,7 @@ L'area riservata è la pagina dove ogni socio trova il suo spazio: tessera, atti
 ## Aspetto e contenuti
 
 - Il colore d'accento è quello scelto in **Impostazioni → Aspetto**.
+- L'area soci ha un aspetto pensato per il telefono: elenchi a righe, tessera a carta e barra in basso. Da **Impostazioni → Aspetto** puoi tornare alla grafica precedente.
 - Il messaggio mostrato a chi non ha i permessi si cambia dalle impostazioni.
 - Con l'attributo `sezioni` dello shortcode puoi tornare all'elenco piatto, senza menu laterale.
 
@@ -245,7 +248,7 @@ MD,
 Nella pagina di accesso e nell'area riservata c'è il link **Primo accesso**.
 
 1. Il socio indica nome, email e cellulare.
-2. Se l'email è già quella di un socio, gli arriva il link per scegliere la password.
+2. Se l'email è già quella di un socio, gli arriva il link per scegliere la password. Il link abilita l'accesso ma **non fa entrare da solo**: il socio torna all'area riservata ed entra con le sue credenziali.
 3. Se non c'è corrispondenza sull'email, la richiesta arriva alla segreteria.
 
 Il socio può anche entrare con un **link o un codice** che riceve per email, senza password; la password però è **obbligatoria** e va scelta alla prima entrata. Vedi [Come entrano i soci: link, codice o utente WordPress](guida:accesso-dei-soci-link-codice-o-utente-wordpress).
