@@ -38,8 +38,9 @@ it('collega fino a due tutori, il primo operativo, e passa l\'operativo all\'alt
         ->and(fn () => $g->setOperative($this->minor->id, $this->papa->id))->toThrow(PeopleError::class, 'email')
         ->and($g->dependentsOf($this->mamma->id))->toBe([['id' => $this->minor->id, 'name' => 'Luca Rossi']]);
 
+    // Il papà non ha email: non è idoneo a operare, quindi dopo lo scollegamento della mamma non opera nessuno.
     $g->unlink($this->minor->id, $this->mamma->id);
-    expect($g->of($this->minor->id))->toBe([['id' => $this->papa->id, 'name' => 'Marco Rossi', 'email' => null, 'operative' => true]])
+    expect($g->of($this->minor->id))->toBe([['id' => $this->papa->id, 'name' => 'Marco Rossi', 'email' => null, 'operative' => false]])
         ->and(DB::table('audit.log')->whereIn('action', ['guardian.linked', 'guardian.unlinked'])->count())->toBe(3);
 });
 
