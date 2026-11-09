@@ -136,9 +136,9 @@
    non tocca menu, barra né stili di WordPress fuori dalle nostre pagine.
    Si rimette la grafica di prima da Impostazioni → Aspetto (classe assente).
    ========================================================================== */
-@font-face { font-family: 'Montserrat'; font-weight: 500; font-display: swap; src: url('fonts/Montserrat-Medium.ttf') format('truetype'); }
-@font-face { font-family: 'Montserrat'; font-weight: 600; font-display: swap; src: url('fonts/Montserrat-SemiBold.ttf') format('truetype'); }
-@font-face { font-family: 'Montserrat'; font-weight: 700; font-display: swap; src: url('fonts/Montserrat-Bold.ttf') format('truetype'); }
+@font-face { font-family: 'Montserrat'; font-weight: 500; font-display: swap; src: url('fonts/Montserrat-Medium.woff2') format('woff2'); }
+@font-face { font-family: 'Montserrat'; font-weight: 600; font-display: swap; src: url('fonts/Montserrat-SemiBold.woff2') format('woff2'); }
+@font-face { font-family: 'Montserrat'; font-weight: 700; font-display: swap; src: url('fonts/Montserrat-Bold.woff2') format('woff2'); }
 
 .asem.asem-ui {
 	--asem-accent: #1F218C;

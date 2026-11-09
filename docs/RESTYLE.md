@@ -165,4 +165,4 @@ Regola decisa dal titolare: non si pubblica una versione numerata a ogni piccola
 
 ## 11. Stato (novembre 2026)
 
-Passi 1–7 realizzati nella PR 395: token e classi (`.asem-ui`, `.asemf`), Montserrat e icone, elenco e scheda soci, foglio «Altro», prima nota e incasso, area riservata (tessera a carta, barra in basso), schede e avvisi. Non fatti: cruscotto come elenco di cose da fare, elenchi a righe nelle altre pagine (Attività, Risorse, Certificati…), woff2 ridotto al posto dei TTF. Il numero di versione lo assegna chi pubblica.
+Passi 1–7 realizzati nella PR 395: token e classi (`.asem-ui`, `.asemf`), Montserrat e icone, elenco e scheda soci, foglio «Altro», prima nota e incasso, area riservata (tessera a carta, barra in basso), schede e avvisi. Non fatti: cruscotto come elenco di cose da fare, elenchi a righe nelle altre pagine (Attività, Risorse, Certificati…), (fatto: woff2 ridotti al latino, ≈ 18 KB l'uno). Il numero di versione lo assegna chi pubblica.
