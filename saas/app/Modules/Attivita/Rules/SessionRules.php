@@ -56,6 +56,43 @@ final class SessionRules
     }
 
     /**
+     * L'intervallo che una data occupa: dall'ora di inizio a quella di fine; senza orari (o con la sola ora di inizio)
+     * occupa il giorno intero (la sola ora di inizio vale fino a fine giornata).
+     *
+     * @return array{0: string, 1: string} «Y-m-d H:i:s» di inizio e fine
+     */
+    public static function slot(string $date, ?string $start, ?string $end): array
+    {
+        $to = $end === null ? date('Y-m-d', (int) strtotime($date.' +1 day')).' 00:00:00' : $date.' '.$end.':00';
+
+        return [$date.' '.($start ?? '00:00').':00', $to];
+    }
+
+    /**
+     * I giorni in cui un corso senza orari occupa la sua risorsa (giorno intero): quelli delle sue lezioni tra l'inizio e la
+     * fine del corso, da $from per al massimo $horizonDays giorni. Un corso senza data di inizio non occupa niente.
+     *
+     * @param  list<int>  $weekdays  1 = lunedì … 7 = domenica
+     * @return list<string>
+     */
+    public static function courseDays(array $weekdays, ?string $startsOn, ?string $endsOn, string $from, int $horizonDays = 370): array
+    {
+        if ($weekdays === [] || $startsOn === null) {
+            return [];
+        }
+        $first = max($from, $startsOn);
+        $last = min($endsOn ?? '9999-12-31', date('Y-m-d', (int) strtotime($from.' +'.$horizonDays.' days')));
+        $out = [];
+        for ($t = (int) strtotime($first); $t <= (int) strtotime($last); $t = (int) strtotime(date('Y-m-d', $t).' +1 day')) {
+            if (in_array((int) date('N', $t), $weekdays, true)) {
+                $out[] = date('Y-m-d', $t);
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * Le date da creare: una sola, oppure ogni settimana da $from a $to (al massimo MAX_DATES).
      *
      * @return list<string>

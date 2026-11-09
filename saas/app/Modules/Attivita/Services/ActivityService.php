@@ -17,6 +17,7 @@ use App\Modules\Attivita\Models\SessionBooking;
 use App\Modules\Attivita\Rules\ActivityRules;
 use App\Modules\Attivita\Rules\PaymentCalc;
 use App\Modules\Attivita\Rules\Pricing;
+use App\Modules\Attivita\Rules\SessionRules;
 use App\Modules\Contabilita\Contracts\CategoryKind;
 use App\Modules\Contabilita\Contracts\Expense;
 use App\Modules\Contabilita\Contracts\Income;
@@ -162,6 +163,8 @@ final readonly class ActivityService implements Activities
         return $this->connection()->transaction(function () use ($activity, $resourceId, $moveConflicts, $id): Activity {
             if ($id !== null && $resourceId !== null && $activity->isDirty('resource_id')) {
                 $this->settleResourceChange($activity, $activity->getOriginal('resource_id'), $resourceId, $moveConflicts);
+            } elseif ($resourceId !== null && ($id === null || $activity->isDirty(['kind', 'weekdays', 'starts_on', 'ends_on']))) {
+                $this->assertCourseFree($activity);
             }
             $activity->save();
 
@@ -170,7 +173,61 @@ final readonly class ActivityService implements Activities
     }
 
     /**
-     * Cambiando risorsa si ricontrollano le date future con orario: se sulla nuova risorsa c'è già qualcosa si segnala
+     * Gli intervalli futuri in cui l'attività occupa la sua risorsa: le sue date (senza orari = giorno intero; con «occupa
+     * solo se prenotata» solo quelle prenotate) e, per un corso, i giorni delle lezioni (giorno intero).
+     *
+     * @return list<array{0: string, 1: string, 2: string}> inizio, fine e come si legge nei messaggi
+     */
+    private function occupiedSlots(Activity $activity): array
+    {
+        $today = now()->toDateString();
+        $out = [];
+        if ($activity->id !== null) {
+            $sessions = ActivitySession::query()->where('activity_id', $activity->id)->whereNull('cancelled_at')->where('session_date', '>=', $today)
+                ->orderBy('session_date')->orderBy('start_time')->get();
+            foreach ($sessions as $s) {
+                if ($activity->occupy_on_booking && ! SessionBooking::query()->where('session_id', $s->id)->where('status', 'booked')->exists()) {
+                    continue;
+                }
+                $day = $s->session_date->format('Y-m-d');
+                [$from, $to] = SessionRules::slot($day, $s->start_time, $s->end_time);
+                $out[] = [$from, $to, date('d/m/Y', (int) strtotime($day)).($s->start_time === null ? ' (giorno intero)' : ' '.$s->start_time)];
+            }
+        }
+        if ($activity->kind === ActivityKind::Course) {
+            foreach (SessionRules::courseDays($activity->weekdays, $activity->starts_on?->format('Y-m-d'), $activity->ends_on?->format('Y-m-d'), $today) as $day) {
+                [$from, $to] = SessionRules::slot($day, null, null);
+                $out[] = [$from, $to, date('d/m/Y', (int) strtotime($day)).' (giorno intero)'];
+            }
+        }
+
+        return $out;
+    }
+
+    /** Un corso senza orari occupa la risorsa nei giorni delle sue lezioni: si rifiuta se è già occupata. */
+    private function assertCourseFree(Activity $activity): void
+    {
+        if ($activity->kind !== ActivityKind::Course || $activity->resource_id === null) {
+            return;
+        }
+        $found = [];
+        foreach ($this->occupiedSlots($activity) as [$from, $to, $when]) {
+            $busy = $this->resources->busy($activity->resource_id, $from, $to)[0]['label'] ?? null;
+            $busy ??= ($o = $this->occupancy->busy($activity->resource_id, $from, $to, null, $activity->id)[0] ?? null) === null ? null : 'l\'attività «'.$o['label'].'»';
+            if ($busy !== null) {
+                $found[] = $when.': c\'è '.$busy;
+            }
+            if (count($found) >= 5) {
+                break;
+            }
+        }
+        if ($found !== []) {
+            throw new ActivityError('La risorsa è già occupata nei giorni delle lezioni: '.implode('; ', $found).'.');
+        }
+    }
+
+    /**
+     * Cambiando risorsa si ricontrollano le date future (e i giorni delle lezioni di un corso): se sulla nuova risorsa c'è già qualcosa si segnala
      * (ResourceChangeConflict). Con $move le prenotazioni in conflitto passano sulla risorsa che si libera; le date di
      * altre attività non si spostano da qui.
      */
@@ -180,16 +237,7 @@ final readonly class ActivityService implements Activities
         $texts = [];
         $reservationIds = [];
         $blocked = false;
-        $sessions = ActivitySession::query()->where('activity_id', $activity->id)->whereNull('cancelled_at')
-            ->where('session_date', '>=', now()->toDateString())->whereNotNull('start_time')->whereNotNull('end_time')->orderBy('session_date')->orderBy('start_time')->get();
-        foreach ($sessions as $s) {
-            if ($activity->occupy_on_booking && ! SessionBooking::query()->where('session_id', $s->id)->where('status', 'booked')->exists()) {
-                continue;
-            }
-            $day = $s->session_date->format('Y-m-d');
-            $from = $day.' '.$s->start_time.':00';
-            $to = $day.' '.$s->end_time.':00';
-            $when = date('d/m/Y', (int) strtotime($day)).' '.$s->start_time;
+        foreach ($this->occupiedSlots($activity) as [$from, $to, $when]) {
             foreach ($this->resources->busy($newId, $from, $to) as $r) {
                 $texts[] = $when.': c\'è '.$r['label'];
                 $reservationIds[] = $r['id'];
