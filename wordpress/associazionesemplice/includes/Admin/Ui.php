@@ -78,6 +78,24 @@ final class Ui {
 		}
 		return '<span class="asem-avatar asem-av-' . ( abs( crc32( mb_strtolower( $name ) ) ) % 3 ) . '" aria-hidden="true">' . esc_html( '' !== $ini ? $ini : '?' ) . '</span>';
 	}
+
+	/** Il nuovo aspetto è attivo? (si spegne da Impostazioni → Aspetto: «Torna alla grafica precedente») */
+	public static function is_new(): bool {
+		return ! \AssociazioneSemplice\Settings::get( 'ui_classic' );
+	}
+
+	/**
+	 * Stato di una riga: etichetta con fondo chiaro nel nuovo aspetto, testo colorato nella grafica precedente. Il testo è già escapato da chi chiama o è solo testo.
+	 *
+	 * @param string $kind ok | warn | danger | neutral
+	 */
+	public static function state( string $kind, string $label ): string {
+		if ( self::is_new() ) {
+			return self::badge( $kind, $label );
+		}
+		$old = array( 'ok' => 'asem-ok', 'warn' => 'asem-warn', 'danger' => 'asem-neg' );
+		return '<span class="' . ( $old[ $kind ] ?? '' ) . '">' . esc_html( $label ) . '</span>';
+	}
 	public static function footer(): void {
 		echo '</div>';
 	}

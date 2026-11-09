@@ -239,3 +239,23 @@
 @media (prefers-reduced-motion: reduce) {
 	.asem.asem-ui *, .asem.asem-ui *::before, .asem.asem-ui *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+/* Soci: filtri a tutta larghezza, azioni in cima (la prima piena, le altre con il contorno), elenco come gruppo di righe sul telefono */
+.asem.asem-ui .page-title-action ~ .page-title-action { background: var(--asem-card); border-color: var(--asem-line); color: var(--asem-ink); }
+.asem.asem-ui .asem-card-name .asem-avatar { width: 32px; height: 32px; font-size: 12px; margin-right: 8px; vertical-align: middle; }
+.asem.asem-ui .asem-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.asem.asem-ui .asem-filters input[type=search] { flex: 1 1 260px; min-width: 0; }
+.asem.asem-ui table.widefat { border-color: var(--asem-line); border-radius: var(--asem-r-group); box-shadow: none; overflow: hidden; border-collapse: separate; border-spacing: 0; }
+.asem.asem-ui table.widefat thead th { color: var(--asem-muted); font-weight: 600; font-size: 13px; border-bottom: 1px solid var(--asem-line); }
+.asem.asem-ui table.widefat.striped > tbody > :nth-child(odd) { background: var(--asem-card); }
+.asem.asem-ui table.widefat td { border-bottom: 1px solid var(--asem-line); vertical-align: middle; }
+@media (max-width: 782px) {
+	#wpbody-content .asem.asem-ui table.widefat.asem-cards:not(.wp-list-table) { display: block; background: var(--asem-card); border: 1px solid var(--asem-line); border-radius: var(--asem-r-group); overflow: hidden; }
+	.asem.asem-ui table.asem-cards tbody tr { background: transparent; border: 0; border-radius: 0; margin: 0; padding: 12px 16px; }
+	.asem.asem-ui table.asem-cards tbody tr + tr { border-top: 1px solid var(--asem-line); }
+	.asem.asem-ui table.asem-cards tbody td { border: 0; }
+	.asem.asem-ui table.asem-cards tbody td.asem-card-name { display: flex; align-items: center; font-size: 15px; }
+	.asem.asem-ui table.asem-cards tbody td[data-label]::before { color: var(--asem-muted); font-size: 13px; }
+	.asem.asem-ui table.asem-cards thead tr { padding-bottom: 8px; }
+	.asem.asem-ui .asem-filters select, .asem.asem-ui .asem-filters .button { flex: 1 1 100%; }
+}

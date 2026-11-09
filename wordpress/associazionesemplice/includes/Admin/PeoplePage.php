@@ -72,19 +72,19 @@ final class PeoplePage {
 			if ( MemberType::GUEST === $p['type'] ) {
 				$state = 'Ospite di ' . esc_html( (string) $p['host_name'] ) . '<br>' . self::guest_badge( $gov[ (int) $p['id'] ] ?? null );
 			} elseif ( ! empty( $p['suspended_at'] ) ) {
-				$state = '<span class="asem-warn">Sospeso (inattivo)</span>';
+				$state = Ui::state( 'warn', 'Sospeso (inattivo)' );
 			} elseif ( ! empty( $p['active_until'] ) && $p['active_until'] >= $today ) {
-				$state = '<span class="asem-ok">Valida fino al ' . Ui::date( $p['active_until'] ) . '</span>';
+				$state = Ui::state( 'ok', 'Valida fino al ' . Ui::date( $p['active_until'] ) );
 			} elseif ( ! empty( $p['active_until'] ) ) {
-				$state = '<span class="asem-neg">Scaduta il ' . Ui::date( $p['active_until'] ) . '</span>';
+				$state = Ui::state( 'danger', 'Scaduta il ' . Ui::date( $p['active_until'] ) );
 			} else {
-				$state = '<span class="asem-neg">Non iscritto</span>';
+				$state = Ui::state( 'danger', 'Non iscritto' );
 			}
 			if ( MemberType::is_member( $p['type'] ) && ! \AssociazioneSemplice\PeopleService::has_access( $p ) ) {
 				$state .= '<br>' . self::invite_link( $p );
 			}
 			echo '<tr><td data-label="Tessera">' . esc_html( (string) $p['card_number'] ?: '—' ) . '</td>';
-			echo '<td class="asem-card-name"><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '"><strong>' . esc_html( $p['last_name'] . ' ' . $p['first_name'] ) . '</strong></a></td>';
+			echo wp_kses( '<td class="asem-card-name">' . ( Ui::is_new() ? Ui::avatar( $p['first_name'] . ' ' . $p['last_name'] ) . ' ' : '' ) . '<a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '"><strong>' . esc_html( $p['last_name'] . ' ' . $p['first_name'] ) . '</strong></a></td>', Html::allowed() );
 			echo '<td data-label="Tipo">' . esc_html( \AssociazioneSemplice\Levels::label( $p ) ) . '</td>'; // data-label: da telefono la riga diventa una scheda e ogni dato porta la sua etichetta
 			echo '<td data-label="Contatti">' . wp_kses( ( '' !== (string) $p['email'] ? esc_html( (string) $p['email'] ) . '<br>' : '' ) . Ui::contact_links( $p ), Html::allowed() ) . '</td>';
 			echo '<td data-label="Stato">' . wp_kses( $state, Html::allowed() ) . '</td>';
