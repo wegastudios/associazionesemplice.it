@@ -39,7 +39,7 @@ final class Ui {
 
 	public static function header( string $title, string $actions_html = '' ): void {
 		\AssociazioneSemplice\Texts::start_admin_buffer(); // testi personalizzati anche in amministrazione
-		echo wp_kses( '<div class="wrap asem"><h1 class="wp-heading-inline">' . esc_html( $title ) . '</h1> ' . $actions_html . '<hr class="wp-header-end">', Html::allowed() );
+		echo wp_kses( '<div class="wrap asem' . ( \AssociazioneSemplice\Settings::get( 'ui_classic' ) ? '' : ' asem-ui' ) . '"><h1 class="wp-heading-inline">' . esc_html( $title ) . '</h1> ' . $actions_html . '<hr class="wp-header-end">', Html::allowed() );
 		echo wp_kses( Admin::tabs( isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '' ), Html::allowed() ); // phpcs:ignore WordPress.Security.NonceVerification
 		self::notices();
 	}
@@ -53,6 +53,49 @@ final class Ui {
 		wp_add_inline_script( $handle, $js );
 	}
 
+
+	/** Icona in linea decorativa (vedi {@see \AssociazioneSemplice\Icons}). */
+	public static function icon( string $name ): string {
+		return \AssociazioneSemplice\Icons::svg( $name );
+	}
+
+	/**
+	 * Etichetta di stato: fondo chiaro, testo scuro e sempre una parola (il colore da solo non basta).
+	 *
+	 * @param string $kind ok | warn | danger | info | neutral
+	 */
+	public static function badge( string $kind, string $label ): string {
+		$kind = in_array( $kind, array( 'ok', 'warn', 'danger', 'info', 'neutral' ), true ) ? $kind : 'neutral';
+		return '<span class="asem-badge asem-badge-' . $kind . '">' . esc_html( $label ) . '</span>';
+	}
+
+	/** Cerchio con le iniziali; il colore (uno dei tre del marchio) è sempre lo stesso per lo stesso nome. */
+	public static function avatar( string $name ): string {
+		$words = preg_split( '/\s+/u', trim( $name ), -1, PREG_SPLIT_NO_EMPTY );
+		$ini   = '';
+		foreach ( array_slice( (array) $words, 0, 2 ) as $w ) {
+			$ini .= mb_strtoupper( mb_substr( $w, 0, 1 ) );
+		}
+		return '<span class="asem-avatar asem-av-' . ( abs( crc32( mb_strtolower( $name ) ) ) % 3 ) . '" aria-hidden="true">' . esc_html( '' !== $ini ? $ini : '?' ) . '</span>';
+	}
+
+	/** Il nuovo aspetto è attivo? (si spegne da Impostazioni → Aspetto: «Torna alla grafica precedente») */
+	public static function is_new(): bool {
+		return ! \AssociazioneSemplice\Settings::get( 'ui_classic' );
+	}
+
+	/**
+	 * Stato di una riga: etichetta con fondo chiaro nel nuovo aspetto, testo colorato nella grafica precedente. Il testo è già escapato da chi chiama o è solo testo.
+	 *
+	 * @param string $kind ok | warn | danger | neutral
+	 */
+	public static function state( string $kind, string $label ): string {
+		if ( self::is_new() ) {
+			return self::badge( $kind, $label );
+		}
+		$old = array( 'ok' => 'asem-ok', 'warn' => 'asem-warn', 'danger' => 'asem-neg' );
+		return '<span class="' . ( $old[ $kind ] ?? '' ) . '">' . esc_html( $label ) . '</span>';
+	}
 	public static function footer(): void {
 		echo '</div>';
 	}

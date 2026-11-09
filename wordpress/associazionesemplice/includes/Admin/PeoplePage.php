@@ -29,13 +29,28 @@ final class PeoplePage {
 		$keep   = array_filter( array( 'q' => $q, 'type' => $type, 'status' => $status, 'at_limit' => $at_limit ? '1' : '' ), 'strlen' );
 		$today  = current_time( 'Y-m-d' );
 
+		$new_ui = Ui::is_new();
+		$guest_link = \AssociazioneSemplice\Settings::guests_enabled() ? '<a class="button" href="' . esc_url( Ui::url( 'asem-person', array( 'type' => 'guest' ) ) ) . '">Nuovo ospite</a>' : '';
 		Ui::header(
 			'Soci e ospiti',
-			'<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-person', array( 'type' => 'ordinary' ) ) ) . '">Nuovo socio</a> '
-			. ( \AssociazioneSemplice\Settings::guests_enabled() ? '<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-person', array( 'type' => 'guest' ) ) ) . '">Nuovo ospite</a> ' : '' )
-			. '<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-import' ) ) . '">Importa da Excel/CSV</a> '
-			. Exports::link( 'people', array(), 'Esporta CSV' )
+			$new_ui
+				? '<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-person', array( 'type' => 'ordinary' ) ) ) . '">Nuovo socio</a> '
+					. '<button type="button" class="button asem-more" data-asem-sheet="asem-people-more">' . Ui::icon( 'ellipsis' ) . ' Altro</button>'
+				: '<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-person', array( 'type' => 'ordinary' ) ) ) . '">Nuovo socio</a> '
+					. ( \AssociazioneSemplice\Settings::guests_enabled() ? '<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-person', array( 'type' => 'guest' ) ) ) . '">Nuovo ospite</a> ' : '' )
+					. '<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-import' ) ) . '">Importa da Excel/CSV</a> '
+					. Exports::link( 'people', array(), 'Esporta CSV' )
 		);
+		if ( $new_ui ) { // le azioni meno frequenti stanno in un foglio: dal basso sul telefono, al centro sul computer
+			echo wp_kses(
+				'<dialog class="asem-sheet" id="asem-people-more" aria-labelledby="asem-people-more-t"><h2 id="asem-people-more-t">Altre azioni</h2><div class="asem-sheet-actions">'
+				. $guest_link
+				. '<a class="button" href="' . esc_url( Ui::url( 'asem-import' ) ) . '">Importa da Excel/CSV</a>'
+				. Exports::link( 'people', array(), 'Esporta CSV' )
+				. '</div><p><button type="button" class="button" data-asem-close>Chiudi</button></p></dialog>',
+				Html::allowed()
+			);
+		}
 
 		$board = Plugin::people()->board();
 		if ( $board ) {
@@ -72,19 +87,19 @@ final class PeoplePage {
 			if ( MemberType::GUEST === $p['type'] ) {
 				$state = 'Ospite di ' . esc_html( (string) $p['host_name'] ) . '<br>' . self::guest_badge( $gov[ (int) $p['id'] ] ?? null );
 			} elseif ( ! empty( $p['suspended_at'] ) ) {
-				$state = '<span class="asem-warn">Sospeso (inattivo)</span>';
+				$state = Ui::state( 'warn', 'Sospeso (inattivo)' );
 			} elseif ( ! empty( $p['active_until'] ) && $p['active_until'] >= $today ) {
-				$state = '<span class="asem-ok">Valida fino al ' . Ui::date( $p['active_until'] ) . '</span>';
+				$state = Ui::state( 'ok', 'Valida fino al ' . Ui::date( $p['active_until'] ) );
 			} elseif ( ! empty( $p['active_until'] ) ) {
-				$state = '<span class="asem-neg">Scaduta il ' . Ui::date( $p['active_until'] ) . '</span>';
+				$state = Ui::state( 'danger', 'Scaduta il ' . Ui::date( $p['active_until'] ) );
 			} else {
-				$state = '<span class="asem-neg">Non iscritto</span>';
+				$state = Ui::state( 'danger', 'Non iscritto' );
 			}
 			if ( MemberType::is_member( $p['type'] ) && ! \AssociazioneSemplice\PeopleService::has_access( $p ) ) {
 				$state .= '<br>' . self::invite_link( $p );
 			}
 			echo '<tr><td data-label="Tessera">' . esc_html( (string) $p['card_number'] ?: '—' ) . '</td>';
-			echo '<td class="asem-card-name"><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '"><strong>' . esc_html( $p['last_name'] . ' ' . $p['first_name'] ) . '</strong></a></td>';
+			echo wp_kses( '<td class="asem-card-name">' . ( Ui::is_new() ? Ui::avatar( $p['first_name'] . ' ' . $p['last_name'] ) . ' ' : '' ) . '<a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '"><strong>' . esc_html( $p['last_name'] . ' ' . $p['first_name'] ) . '</strong></a></td>', Html::allowed() );
 			echo '<td data-label="Tipo">' . esc_html( \AssociazioneSemplice\Levels::label( $p ) ) . '</td>'; // data-label: da telefono la riga diventa una scheda e ogni dato porta la sua etichetta
 			echo '<td data-label="Contatti">' . wp_kses( ( '' !== (string) $p['email'] ? esc_html( (string) $p['email'] ) . '<br>' : '' ) . Ui::contact_links( $p ), Html::allowed() ) . '</td>';
 			echo '<td data-label="Stato">' . wp_kses( $state, Html::allowed() ) . '</td>';
@@ -94,6 +109,13 @@ final class PeoplePage {
 		Ui::footer();
 	}
 
+
+	/** Titolo di una sezione del modulo (nuovo aspetto): chiude la tabella e ne apre un'altra, i campi restano nello stesso modulo. */
+	private static function form_section( string $title ): void {
+		if ( Ui::is_new() ) {
+			echo '</tbody></table><h2 class="asem-form-section">' . esc_html( $title ) . '</h2><table class="form-table asem-form"><tbody>';
+		}
+	}
 	/** Ordina l'elenco per tessera (numerica, vuote in fondo), nome o tipo (come appare, a parità per nome). Senza criterio resta l'ordine per cognome e nome. */
 	public static function sort_rows( array $rows, string $by, string $dir = 'asc' ): array {
 		if ( ! in_array( $by, array( 'card', 'name', 'type' ), true ) ) {
@@ -158,6 +180,7 @@ final class PeoplePage {
 		echo '<div class="asem-cols"><div class="asem-col">';
 		Ui::form_open( 'asem_save_person', $back );
 		echo wp_kses( Ui::hidden( 'id', $id ), Html::allowed() );
+		echo Ui::is_new() ? '<h2 class="asem-form-section">Chi è</h2>' : '';
 		echo '<table class="form-table asem-form"><tbody>';
 		echo wp_kses( '<tr><th>Tipo</th><td><select name="type" id="asem-type">' . Ui::options( MemberType::labels(), $type ) . '</select>', Html::allowed() );
 		echo '<p class="description" id="asem-type-hint"></p></td></tr>';
@@ -191,9 +214,11 @@ final class PeoplePage {
 			. '<p class="description">Assegnata a mano, univoca, modificabile.</p></td></tr>';
 		echo '<tr><th>Nome *</th><td><input type="text" name="first_name" value="' . esc_attr( $val( 'first_name' ) ) . '" class="regular-text" required></td></tr>';
 		echo '<tr><th>Cognome *</th><td><input type="text" name="last_name" value="' . esc_attr( $val( 'last_name' ) ) . '" class="regular-text" required></td></tr>';
+		self::form_section( 'Contatti' );
 		echo '<tr><th>Email</th><td><input type="email" name="email" id="asem-email" value="' . esc_attr( $val( 'email' ) ) . '" class="regular-text">'
 			. '<p class="description asem-email-note">Facoltativa: con l\'email il socio ha subito il suo accesso all\'area riservata. Senza email il socio si registra lo stesso (meglio se con cellulare o numero di tessera) e si attiva dopo con un link da mandare su WhatsApp.</p></td></tr>';
 		echo '<tr><th>' . ( MemberType::GUEST === $type ? 'Cellulare' : 'Telefono' ) . '</th><td><input type="text" name="phone" value="' . esc_attr( $val( 'phone' ) ) . '" class="regular-text"' . ( MemberType::GUEST === $type ? ' required placeholder="333 1234567"' : '' ) . '>' . ( MemberType::GUEST === $type ? '<p class="description">Obbligatorio per gli ospiti: è il dato che serve a riconoscerli (anche se si registrano da soci diversi) e a contattarli su WhatsApp.</p>' : '' ) . '</td></tr>';
+		self::form_section( 'Dati anagrafici' );
 		echo '<tr><th>Codice fiscale</th><td><input type="text" name="tax_code" value="' . esc_attr( $val( 'tax_code' ) ) . '" class="regular-text"><p class="description">Facoltativo per l\'iscrizione fatta dalla segreteria. Se lo scrivi, chi attiva da solo il proprio accesso dovrà riscriverlo uguale (un controllo in più sull\'identità).</p></td></tr>';
 		$birth = $val( 'birth_date' );
 		$minor = '' !== $birth && \AssociazioneSemplice\Age::is_minor( $birth, current_time( 'Y-m-d' ) );
@@ -226,9 +251,11 @@ final class PeoplePage {
 			}
 			echo '</td></tr>';
 		}
+		self::form_section( 'Indirizzo' );
 		echo '<tr><th>Indirizzo</th><td><input type="text" name="address" value="' . esc_attr( $val( 'address' ) ) . '" class="regular-text" maxlength="190" placeholder="Via e numero"> '
 			. 'CAP <input type="text" name="zip" value="' . esc_attr( $val( 'zip' ) ) . '" size="7" maxlength="12"> Comune <input type="text" name="city" value="' . esc_attr( $val( 'city' ) ) . '" maxlength="100"> Prov. <input type="text" name="province" value="' . esc_attr( $val( 'province' ) ) . '" size="3" maxlength="5">'
 			. '<p class="description">Facoltativo per l\'iscrizione fatta dalla segreteria; chi si attiva dal sito deve inserirlo.</p></td></tr>';
+		self::form_section( 'Iscrizione' );
 		echo '<tr><th>Data di ingresso</th><td><input type="date" name="joined_on" value="' . esc_attr( $val( 'joined_on' ) ?: current_time( 'Y-m-d' ) ) . '"></td></tr>';
 		if ( MemberType::is_member( $type ) ) {
 			echo '<tr><th>Data della delibera</th><td><input type="date" name="approved_on" value="' . esc_attr( $val( 'approved_on' ) ) . '"><p class="description">Quando il consiglio direttivo ha accettato la domanda (per un minore vale la stessa data). Se la lasci vuota, il libro dei soci riporta la data di ingresso; con una domanda online si compila da sola all\'approvazione.</p></td></tr>';
@@ -241,6 +268,7 @@ final class PeoplePage {
 				. '<p class="description">Come va comunicato all\'ente di promozione sportiva (atleta, istruttore, dirigente…).</p></td></tr>', Html::allowed() );
 		}
 		echo '<tr class="asem-row-host"><th>Volte già venuto</th><td><input type="number" name="prior_visits" min="0" max="9999" value="' . (int) $val( 'prior_visits' ) . '" class="small-text"><p class="description">Quante volte è già venuto prima di usare il programma: si somma alle partecipazioni registrate qui e conta per la soglia dell\'invito a iscriversi. Gli eventi passati puoi segnarli nelle note.</p></td></tr>';
+		self::form_section( 'Note' );
 		echo '<tr><th>Note</th><td><textarea name="notes" rows="3" class="large-text">' . esc_textarea( $val( 'notes' ) ) . '</textarea></td></tr>';
 		echo '</tbody></table>';
 		submit_button( $p ? 'Salva' : 'Crea' );

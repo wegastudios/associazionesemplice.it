@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kit dello stile (prova, non entra nel pacchetto)</title>
+<link rel="stylesheet" href="../assets/admin.css">
+<style>body{margin:0;background:#f0f0f1;font-family:system-ui} #wpbody-content{padding:10px 16px} table{width:100%;border-collapse:collapse} th,td{padding:8px 10px;text-align:left}
+.button{cursor:pointer} .page-title-action{padding:0 16px}</style></head>
+<body><div id="wpbody-content">
+<div class="wrap asem asem-ui">
+<h1 class="wp-heading-inline">Soci e ospiti</h1>
+<a class="page-title-action" href="#">Nuovo socio</a> <a class="page-title-action" href="#">Importa da Excel/CSV</a>
+<form class="asem-filters"><input type="search" placeholder="Cerca per nome, tessera, email o codice fiscale"> <select><option>Tutti i tipi</option></select> <button class="button">Filtra</button></form>
+<p class="description">3 persone.</p>
+<table class="widefat striped asem-cards"><thead><tr><th>Tessera</th><th>Nome</th><th>Tipo</th><th>Contatti</th><th>Stato</th><th></th></tr></thead><tbody>
+<tr><td data-label="Tessera">124</td><td class="asem-card-name"><span class="asem-avatar asem-av-0">MR</span> <a href="#"><strong>Rossi Maria</strong></a></td><td data-label="Tipo">Socio ordinario</td><td data-label="Contatti">maria@esempio.it</td><td data-label="Stato"><span class="asem-badge asem-badge-ok">Valida fino al 31/12/2026</span></td><td class="asem-card-open"><a class="button button-small" href="#">Apri</a></td></tr>
+<tr><td data-label="Tessera">125</td><td class="asem-card-name"><span class="asem-avatar asem-av-1">LB</span> <a href="#"><strong>Bianchi Luca</strong></a></td><td data-label="Tipo">Socio volontario</td><td data-label="Contatti">luca@esempio.it</td><td data-label="Stato"><span class="asem-badge asem-badge-danger">Scaduta il 30/06/2026</span></td><td class="asem-card-open"><a class="button button-small" href="#">Apri</a></td></tr>
+<tr><td data-label="Tessera">—</td><td class="asem-card-name"><span class="asem-avatar asem-av-2">GV</span> <a href="#"><strong>Verdi Giulia</strong></a></td><td data-label="Tipo">Ospite</td><td data-label="Contatti"></td><td data-label="Stato"><span class="asem-badge asem-badge-warn">Sospeso (inattivo)</span></td><td class="asem-card-open"><a class="button button-small" href="#">Apri</a></td></tr>
+</tbody></table>
+<div class="asem-empty"><p><strong>Ancora nessun socio</strong></p><p class="description">Aggiungi il primo socio o importa l'elenco da Excel.</p><a class="button button-primary" href="#">Nuovo socio</a></div>
+</div></div></body></html>

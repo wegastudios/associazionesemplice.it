@@ -55,6 +55,10 @@ Yes, from a CSV or Excel file, with a preview before confirming.
 = Where do the donations go? =
 Straight to the PayPal account you enter in the settings. They are recorded in the cash book by hand.
 
+== Credits ==
+
+The interface uses the Montserrat typeface (SIL Open Font License 1.1, copy in `assets/fonts/OFL.txt`) and icons from Lucide (ISC license, https://lucide.dev), both bundled with the plugin; nothing is loaded from external servers.
+
 == Changelog ==
 
 = 1.3.15 =
