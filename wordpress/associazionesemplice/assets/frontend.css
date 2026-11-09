@@ -218,3 +218,76 @@
 	.asemf-table.asemf-stack td.asemf-cell-main { font-weight: 600; font-size: 1.05em; }
 	.asemf-table.asemf-stack td[data-label]::before { content: attr(data-label) ": "; color: var(--asemf-muted, #50575e); }
 }
+
+/* ==========================================================================
+   Nuovo aspetto (docs/RESTYLE.md). Vale se il sito non ha la classe asem-classic sul body
+   («Torna alla grafica precedente» in Impostazioni → Aspetto). :where() tiene la specificità
+   di prima: i colori scelti in Aspetto (stile in linea) continuano a vincere.
+   Il colore d'accento resta quello del sito; l'indaco serve solo se il sito non ne ha uno.
+   ========================================================================== */
+@font-face { font-family: 'Montserrat'; font-weight: 600; font-display: swap; src: url('fonts/Montserrat-SemiBold.ttf') format('truetype'); }
+@font-face { font-family: 'Montserrat'; font-weight: 700; font-display: swap; src: url('fonts/Montserrat-Bold.ttf') format('truetype'); }
+
+:where(body:not(.asem-classic)) .asemf {
+	--asemf-accent: var(--e-global-color-primary, var(--wp--preset--color--primary, #1F218C));
+	--asemf-radius: 16px;
+	--asemf-ink: #181A2E;
+	--asemf-muted: #5D6078;
+	--asemf-line: #E2E5EE;
+	--asemf-ok: #3D6256;
+	--asemf-warn: #6B4F00;
+	--asemf-bad: #B42318;
+}
+:where(body:not(.asem-classic)) .asemf :focus-visible { outline: 2px solid var(--asemf-accent); outline-offset: 2px; }
+:where(body:not(.asem-classic)) .asem-icon { width: 22px; height: 22px; flex: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Riquadri: carta bianca con il suo testo, leggibile su un sito chiaro o scuro */
+:where(body:not(.asem-classic)) .asemf .asemf-section { background: #fff; color: var(--asemf-ink); border-color: var(--asemf-line); border-radius: 16px; }
+:where(body:not(.asem-classic)) .asemf .asemf-card { background: #F5F6FA; color: var(--asemf-ink); border-color: var(--asemf-line); border-radius: 16px; }
+:where(body:not(.asem-classic)) .asemf .asemf-section > h3 { font-family: Montserrat, system-ui, sans-serif; font-weight: 700; font-size: 1.15em; }
+:where(body:not(.asem-classic)) .asemf .asemf-list > li { min-height: 56px; padding: .75rem 0; border-color: var(--asemf-line); }
+:where(body:not(.asem-classic)) .asemf .asemf-table th, :where(body:not(.asem-classic)) .asemf .asemf-table td { border-color: var(--asemf-line); }
+
+/* Pulsanti e campi */
+:where(body:not(.asem-classic)) .asemf .asemf-btn { min-height: 44px; padding: 0 1.1em; border-radius: 12px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }
+:where(body:not(.asem-classic)) .asemf .asemf-btn.asemf-btn-ghost { color: var(--asemf-accent); }
+:where(body:not(.asem-classic)) .asemf input[type="text"], :where(body:not(.asem-classic)) .asemf input[type="email"], :where(body:not(.asem-classic)) .asemf input[type="password"], :where(body:not(.asem-classic)) .asemf select {
+	min-height: 48px; padding: .5em .8em; border: 1px solid #8A8EA8; border-radius: 12px; background: #fff; color: var(--asemf-ink); font-size: 16px;
+}
+:where(body:not(.asem-classic)) .asemf input:focus, :where(body:not(.asem-classic)) .asemf select:focus { border-color: var(--asemf-accent); }
+:where(body:not(.asem-classic)) .asemf-section a:not(.asemf-btn) { color: var(--asemf-accent); }
+
+/* Stati: fondo chiaro, testo scuro, sempre con la parola */
+:where(body:not(.asem-classic)) .asemf .asemf-badge { border: 0; padding: .15em .7em; font-weight: 600; background: #F5F6FA; color: var(--asemf-muted); }
+:where(body:not(.asem-classic)) .asemf .asemf-badge-ok { background: #E6EFEB; color: #3D6256; }
+:where(body:not(.asem-classic)) .asemf .asemf-badge-bad { background: #FDECEA; color: #B42318; }
+:where(body:not(.asem-classic)) .asemf .asemf-notice { border-radius: 12px; border-color: var(--asemf-line); }
+:where(body:not(.asem-classic)) .asemf .asemf-notice.asemf-ok { background: #E6EFEB; color: #3D6256; border-color: transparent; }
+:where(body:not(.asem-classic)) .asemf .asemf-notice.asemf-err { background: #FDECEA; color: #B42318; border-color: transparent; }
+
+/* Tessera: carta nel colore del sito (indaco se il sito non ne ha uno), testo a contrasto, QR su pannello bianco */
+:where(body:not(.asem-classic)) .asemf .asemf-memcard:not(.asemf-memcard-img) {
+	background: var(--asemf-accent); color: var(--asemf-accent-text); border: 0; border-radius: 24px; padding: 1.5rem 1.5rem 1.25rem; max-width: 440px;
+}
+:where(body:not(.asem-classic)) .asemf .asemf-memcard:not(.asemf-memcard-img) .asemf-small { color: inherit; opacity: .85; }
+:where(body:not(.asem-classic)) .asemf .asemf-memcard:not(.asemf-memcard-img) .asemf-memcard-name { font-family: Montserrat, system-ui, sans-serif; font-weight: 700; font-size: 1.6em; }
+:where(body:not(.asem-classic)) .asemf .asemf-memcard-qr svg { width: 200px; height: 200px; padding: 12px; border-radius: 16px; background: #fff; }
+
+/* Telefono: barra in basso con le sezioni (icona e parola), al posto della barra di salto in alto */
+@media (max-width: 700px) {
+	:where(body:not(.asem-classic)) .asemf:has(.asemf-jump) { padding-bottom: 5.5rem; }
+	:where(body:not(.asem-classic)) .asemf-jump {
+		position: fixed; left: 0; right: 0; bottom: 0; top: auto !important; z-index: 9999; margin: 0; background: #fff; border-top: 1px solid #E2E5EE; border-bottom: 0;
+		padding-bottom: env(safe-area-inset-bottom); box-shadow: 0 -6px 20px rgba(24, 26, 46, .08);
+	}
+	:where(body:not(.asem-classic)) .asemf-jump ul { justify-content: space-around; gap: .25rem; padding: .35rem .5rem; }
+	:where(body:not(.asem-classic)) .asemf-jump a {
+		flex-direction: column; justify-content: center; gap: 2px; min-width: 64px; min-height: 52px; padding: .3rem .6rem; border: 0; border-radius: 12px;
+		font-size: 12px; font-weight: 600; line-height: 1.2; color: #5D6078;
+	}
+	:where(body:not(.asem-classic)) .asemf-jump a:active, :where(body:not(.asem-classic)) .asemf-jump a:focus-visible { background: #F5F6FA; color: var(--asemf-accent, #1F218C); }
+}
+@media (prefers-reduced-motion: reduce) {
+	:where(body:not(.asem-classic)) .asemf * { transition-duration: .01ms !important; animation-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+:where(body:not(.asem-classic)) .asemf .asemf-section:has(> .asemf-memcard:not(.asemf-memcard-img)) { background: transparent; border: 0; padding: 0; }

@@ -1094,6 +1094,24 @@ final class Views {
 		return self::jump_nav( $html );
 	}
 
+
+	/** Icona della voce della barra: dal titolo della sezione (tessera, attività, pagamenti, profilo…). */
+	private static function jump_icon( string $title ): string {
+		$t = function_exists( 'mb_strtolower' ) ? mb_strtolower( $title ) : strtolower( $title );
+		if ( false !== strpos( $t, 'tessera' ) ) {
+			return 'id-card';
+		}
+		if ( preg_match( '/attivit|event|corsi|prenot/u', $t ) ) {
+			return 'calendar';
+		}
+		if ( preg_match( '/pagam|quot|ricevut|credit|contribut/u', $t ) ) {
+			return 'wallet';
+		}
+		if ( preg_match( '/profil|dati|ospit|famil/u', $t ) ) {
+			return 'user-round';
+		}
+		return 'chevron-right';
+	}
 	/**
 	 * «Il mio spazio» è una colonna lunga: da telefono una barra fissa in alto porta alle sezioni (titoli h3 delle sezioni già disegnate; sotto 4 sezioni non serve).
 	 */
@@ -1118,7 +1136,7 @@ final class Views {
 		}
 		$nav = '<nav class="asemf-jump" aria-label="Vai a una sezione"><ul>';
 		foreach ( $items as $it ) {
-			$nav .= '<li><a href="#' . esc_attr( $it[0] ) . '">' . esc_html( $it[1] ) . '</a></li>';
+			$nav .= '<li><a href="#' . esc_attr( $it[0] ) . '">' . \AssociazioneSemplice\Icons::svg( self::jump_icon( $it[1] ) ) . '<span>' . esc_html( $it[1] ) . '</span></a></li>';
 		}
 		return $nav . '</ul></nav>' . $html;
 	}

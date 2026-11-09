@@ -288,3 +288,24 @@
 	.asem.asem-ui table.asem-ledger:not(.asem-ledger-short) tbody td:nth-child(6) { grid-column: 1 / -1; padding-top: 8px; }
 	.asem.asem-ui table.asem-ledger tbody td[colspan] { grid-column: 1 / -1; }
 }
+
+/* Il resto delle pagine: schede in cima, avvisi, riquadri e colonne con lo stesso stile */
+.asem.asem-ui .nav-tab-wrapper { border-bottom: 1px solid var(--asem-line); }
+.asem.asem-ui .nav-tab { border: 0; border-radius: var(--asem-r-field) var(--asem-r-field) 0 0; background: transparent; color: var(--asem-muted); font-weight: 600; margin: 0 4px 0 0; padding: 10px 14px; box-shadow: none; }
+.asem.asem-ui .nav-tab:hover { background: var(--asem-info-soft); color: var(--asem-accent); }
+.asem.asem-ui .nav-tab-active, .asem.asem-ui .nav-tab-active:hover { background: var(--asem-card); color: var(--asem-accent); box-shadow: inset 0 -3px 0 var(--asem-accent); }
+.asem.asem-ui .notice { border-radius: var(--asem-r-field); box-shadow: none; border-width: 1px; border-left-width: 4px; }
+.asem.asem-ui .notice-success { background: var(--asem-ok-soft); border-color: var(--asem-ok-ink); color: var(--asem-ok-ink); }
+.asem.asem-ui .notice-error { background: var(--asem-danger-soft); border-color: var(--asem-danger); color: var(--asem-danger); }
+.asem.asem-ui .notice-warning { background: var(--asem-warn-soft); border-color: var(--asem-warn-ink); color: var(--asem-warn-ink); }
+.asem.asem-ui .asem-card { background: var(--asem-card); padding: 4px 20px 16px; }
+.asem.asem-ui .asem-big { font-variant-numeric: tabular-nums; font-weight: 700; }
+.asem.asem-ui .asem-info.asem-info-warn { color: var(--asem-warn-ink); }
+.asem.asem-ui details > summary { min-height: 36px; display: list-item; }
+@media (max-width: 782px) {
+	.asem.asem-ui .asem-cols { gap: 0; }
+	.asem.asem-ui .asem-col { flex-basis: 100%; min-width: 0; }
+	.asem.asem-ui .asem-card { padding: 4px 16px 14px; }
+	.asem.asem-ui .nav-tab { border-radius: 999px; background: var(--asem-card); border: 1px solid var(--asem-line); box-shadow: none; }
+	.asem.asem-ui .nav-tab-active, .asem.asem-ui .nav-tab-active:hover { background: var(--asem-accent); color: var(--asem-accent-ink); border-color: var(--asem-accent); box-shadow: none; }
+}
