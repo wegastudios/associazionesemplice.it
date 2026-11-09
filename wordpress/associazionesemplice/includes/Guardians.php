@@ -91,7 +91,7 @@ final class Guardians {
 		}
 		return (bool) self::db()->get_var(
 			self::db()->prepare(
-				'SELECT COUNT(*) FROM ' . Db::t( 'guardians' ) . ' g JOIN ' . Db::t( 'people' ) . ' p ON p.id = g.person_id WHERE g.guardian_person_id = %d AND g.person_id = %d AND g.is_operative = 1 AND ( p.birth_date IS NULL OR p.birth_date > %s )',
+				'SELECT COUNT(*) FROM ' . Db::t( 'guardians' ) . ' g JOIN ' . Db::t( 'people' ) . ' p ON p.id = g.person_id WHERE g.guardian_person_id = %d AND g.person_id = %d AND g.is_operative = 1 AND p.deleted_at IS NULL AND p.application_status IS NULL AND ( p.birth_date IS NULL OR p.birth_date > %s )',
 				$guardian_id,
 				$person_id,
 				self::minor_after()
@@ -177,14 +177,23 @@ final class Guardians {
 		if ( ! in_array( $guardian_id, $ids, true ) ) {
 			throw new \InvalidArgumentException( 'Prima collega questa persona come tutore.' );
 		}
-		$g = Plugin::people()->get( $guardian_id );
-		$e = $g ? self::validate( (array) Plugin::people()->get( $person_id ), $g, 0, Db::today(), true ) : array( 'Persona non trovata.' );
+		$e = self::operative_errors( $person_id, $guardian_id );
 		if ( $e ) {
 			throw new \InvalidArgumentException( implode( ' ', $e ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		self::db()->update( Db::t( 'guardians' ), array( 'is_operative' => 0 ), array( 'person_id' => $person_id ) );
 		self::db()->update( Db::t( 'guardians' ), array( 'is_operative' => 1 ), array( 'person_id' => $person_id, 'guardian_person_id' => $guardian_id ) );
 		Audit::log( 'guardian.operative', 'person', $person_id, array( 'guardian' => $guardian_id ) );
+	}
+
+	/** Un tutore può operare sul sito per quel minore? Stessi controlli per la scelta manuale e per la promozione dopo un unlink. @return string[] errori (vuoto = idoneo) */
+	private static function operative_errors( int $person_id, int $guardian_id ): array {
+		$g = Plugin::people()->get( $guardian_id );
+		$p = Plugin::people()->get( $person_id );
+		if ( ! $g || ! $p ) {
+			return array( 'Persona non trovata.' );
+		}
+		return self::validate( (array) $p, $g, 0, Db::today(), true );
 	}
 
 	/** Per tutti i minori il tutore che opera sul sito: id minore => id tutore. @return array<int,int> */
@@ -211,9 +220,11 @@ final class Guardians {
 		$was = self::operative_of( $person_id );
 		$n   = self::db()->delete( Db::t( 'guardians' ), array( 'person_id' => $person_id, 'guardian_person_id' => $guardian_id ) );
 		if ( $n && $was && (int) $was['id'] === $guardian_id ) { // tolto chi operava: passa all'altro rimasto
-			$rest = self::of( $person_id );
-			if ( $rest ) {
-				self::db()->update( Db::t( 'guardians' ), array( 'is_operative' => 1 ), array( 'person_id' => $person_id, 'guardian_person_id' => (int) $rest[0]['id'] ) );
+			foreach ( self::of( $person_id ) as $cand ) { // il primo rimasto che può davvero operare; se nessuno può, il minore resta senza tutore operativo (l'altro resta censito)
+				if ( ! self::operative_errors( $person_id, (int) $cand['id'] ) ) {
+					self::db()->update( Db::t( 'guardians' ), array( 'is_operative' => 1 ), array( 'person_id' => $person_id, 'guardian_person_id' => (int) $cand['id'] ) );
+					break;
+				}
 			}
 		}
 		if ( $n ) {

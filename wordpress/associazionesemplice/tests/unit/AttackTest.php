@@ -148,7 +148,7 @@ final class AttackTest extends TestCase {
 	// ---------- CSV / calendario ----------
 
 	public function test_csv_formula_injection_is_neutralised(): void {
-		foreach ( array( '=1+1', '=cmd|\' /C calc\'!A0', '+SUM(1)', '-2+3', '@SUM(1)', "\t=1", "\r=1", '=HYPERLINK("http://evil","x")', '-cmd|x', '+cmd', '@import' ) as $v ) {
+		foreach ( array( '=1+1', '=cmd|\' /C calc\'!A0', '+SUM(1)', '-2+3', '@SUM(1)', "\t=1", "\r=1", '=HYPERLINK("http://evil","x")', '-cmd|x', '+cmd', '@import', ' =1+1', "  +SUM(1)", "\xC2\xA0=1+1", "\xE2\x80\x8B=1+1", "\xEF\xBB\xBF=1+1", "\n=1+1", "\xEF\xBC\x9D1+1" ) as $v ) {
 			$n = Exports::neutralize( $v );
 			$this->assertSame( "'", substr( $n, 0, 1 ), 'formula non neutralizzata: ' . json_encode( $v ) );
 		}

@@ -31,7 +31,10 @@ final class Exports {
 	 * un apice davanti. I numeri (importi, anche negativi, e numeri di telefono con il +) restano com'è.
 	 */
 	public static function neutralize( string $v ): string {
-		if ( '' === $v || ! preg_match( '/^[=+\-@\t\r]/', $v ) || preg_match( '/^[+\-]?[0-9., ]+$/', $v ) ) {
+		// Il controllo guarda il primo carattere "vero": spazi e caratteri invisibili davanti non devono nascondere il segno.
+		$t = preg_replace( '/^[ \n\0\x0B\x{00A0}\x{200B}\x{FEFF}]+/u', '', $v );
+		$t = null === $t ? $v : $t; // testo non UTF-8: si controlla com'è
+		if ( '' === $t || ! preg_match( '/^[=+\-@\t\r\x{FF1D}]/u', $t ) && ! preg_match( '/^[=+\-@\t\r]/', $t ) || preg_match( '/^[+\-]?[0-9., ]+$/', $v ) ) {
 			return $v;
 		}
 		return "'" . $v;
