@@ -26,7 +26,7 @@ Stato di partenza: gratuito 1.3.15, Pro 1.3.6 (API 18), pubblicati.
 | Barra in basso dell'area soci (Tessera, Eventi, Prenota, Quote, Profilo) | **Sì, con cautela** | Sostituisce sul telefono la barra di salto `asemf-jump`. Rischi: footer fissi e banner cookie del tema. Si usa `position: fixed` con `env(safe-area-inset-bottom)`, spazio in fondo al contenitore e ripiego sulla barra attuale se il tema dichiara già un elemento fisso in basso (non rilevabile con certezza: interruttore in Aspetto). |
 | Tessera come carta indaco con testo bianco e QR su pannello bianco | **Sì** | `.asemf-memcard` ha già colori da impostazioni; si aggiunge la variante «Carta» e si lascia la tessera su immagine propria (`CardLayout`) com'è. Stampa invariata. |
 | Tema scuro | **Admin: no. Sito: isole coerenti** | WordPress non ha tema scuro. Sul sito i riquadri nuovi dichiarano da soli sfondo e testo (come la tessera), così restano leggibili su un tema chiaro o scuro; niente `prefers-color-scheme` automatico, che su un sito chiaro scurirebbe i riquadri. |
-| Colore principale | **Admin: indaco fisso. Sito: a scelta** | Il front oggi segue il colore del tema/Elementor (`--asemf-accent`). Nel nuovo stile resta una scelta: «segui il sito» (come ora) oppure «indaco Associazione Semplice» (D1). In admin l'indaco è fisso, a prescindere dallo schema colori scelto dall'utente in WP. |
+| Colore principale | **Admin: indaco fisso. Sito: eredita il colore del sito** | *Deciso (D1).* Sul sito l'accento resta quello del tema/Elementor (`--asemf-accent`, come oggi); l'indaco `#1F218C` è solo il ripiego quando il sito non ne dichiara uno (oggi sarebbe un blu neutro). In admin l'indaco è fisso, a prescindere dallo schema colori scelto dall'utente in WP. |
 | Animazioni di ingresso, sfumature, ombre su riquadri | **Non si fanno** | Come nel SaaS. Ombra solo su fogli e barra in basso. |
 | Tailwind, Node, build | **No** | CSS semplice a mano, un file per superficie, nessun passaggio di compilazione. |
 
@@ -139,12 +139,12 @@ A ogni rilascio che cambia **regole** (non solo aspetto): Portale, Supporto e Sa
 
 ## 8. Decisioni per il titolare
 
-1. **D1. Colore sul sito.** Il front oggi segue il colore principale del tema (`--asemf-accent`). Con il nuovo stile: **(a)** resta «segui il sito» di default e l'indaco è una scelta in Aspetto; **(b)** indaco di default per le installazioni nuove, «segui il sito» per quelle esistenti. *Proposta: (b).*
-2. **D2. Montserrat sul sito.** Il tema decide il carattere; imporre il nostro dà coerenza di marchio ma cozza con temi che hanno già il loro. *Proposta: sul sito Montserrat solo su tessera e titoli del nostro riquadro; il corpo del testo resta quello del tema. In admin sempre Montserrat.*
-3. **D3. Pulsante «Nuovo» e barra in basso in wp-admin.** Non fattibili senza toccare menu e barra di WordPress. *Proposta: nessuna barra in admin; «Nuovo…» primario in cima a ogni elenco.*
-4. **D4. Interruttore e tempi.** *Deciso:* un solo rilascio, 1.4; nuovo aspetto predefinito per tutti, con «Torna alla grafica precedente» solo per poco, poi tolto.
-5. **D5. Una pagina alla volta o tutto insieme.** *Proposta:* come nel §6, con Soci e Incassi per primi perché sono i gesti di ogni giorno, e l'area riservata subito dopo.
-6. **D6. Dimensione del font.** woff2 ridotto al latino (Medium, SemiBold, Bold): ≈ 80 KB in tutto nel pacchetto. Va bene per WordPress.org? *Proposta: sì; OFL ammessa, crediti in `readme.txt`.*
+1. **D1. Colore sul sito.** *Deciso:* si eredita il colore del sito in cui si è; indaco solo come ripiego se il sito non ne ha uno. Nessuna scelta nuova in Aspetto.
+2. **D2. Montserrat sul sito.** *Deciso:* sul sito solo su tessera e titoli del nostro riquadro; il corpo del testo resta quello del tema. In admin sempre Montserrat.
+3. **D3. Barra in basso in wp-admin.** *Chiarimento:* non è una barra che esiste oggi; è una barra di navigazione fissa in basso (come nel SaaS: Home, Soci, Attività, Soldi, Altro) più il pulsante «Nuovo» sempre in vista. In wp-admin non si fa: menu e barra di WordPress non si toccano. Resta il menu di WordPress com'è e il pulsante «Nuovo…» primario in cima a ogni elenco. La barra in basso si fa solo nell'area soci sul sito.
+4. **D4. Rilasci.** *Deciso:* un solo rilascio, 1.4; nuovo aspetto predefinito per tutti, con «Torna alla grafica precedente» solo per poco, poi tolto. Vale come regola generale (§10).
+5. **D5. Ordine.** *Deciso:* come nel §5, con Soci e Incassi per primi, poi l'area riservata.
+6. **D6. Carattere.** *Deciso:* woff2 solo latino (Medium, SemiBold, Bold), OFL, crediti in `readme.txt` e `docs/CREDITI.md`.
 
 ## 9. Cosa è stato scartato
 
@@ -153,3 +153,12 @@ A ogni rilascio che cambia **regole** (non solo aspetto): Portale, Supporto e Sa
 - **Rilasci intermedi del gratuito** (1.3.16–1.3.19): scartati dal titolare; un solo 1.4 a cose fatte, con staging per le prove.
 - **Caricare Montserrat da Google Fonts**: richieste esterne e dati verso terzi; si ospita nel plugin.
 - **Tema scuro automatico sul sito**: su un sito chiaro scurirebbe i riquadri a caso.
+
+## 10. Meno rilasci, registro delle novità breve
+
+Regola decisa dal titolare: non si pubblica una versione numerata a ogni piccola modifica. Per essere professionali:
+
+- **Si raggruppa il lavoro**: un rilascio per un insieme coerente di cose (come 1.4 per il restyle), non uno per correzione. Le piccole correzioni aspettano il rilascio successivo, salvo urgenze (sicurezza, dati sbagliati).
+- **Registro delle novità utile e corto** (`CHANGELOG.md` e `readme.txt`): oggi sono 225 righe con un elenco lungo per ogni 1.3.x. Da 1.4: per ogni rilascio un titolo e **al massimo 5–7 righe** nel linguaggio di chi usa il programma (cosa puoi fare di nuovo, cosa è cambiato di visibile), senza dettagli tecnici; le versioni 1.3.x si riuniscono in un'unica voce «1.3.x (storico)» con i punti principali.
+- **Un solo numero aperto** finché non si pubblica (regola già in vigore); i numeri non si consumano su rami di lavoro.
+- Il Pro segue lo stesso criterio: esce solo con il gratuito, o quando serve davvero.
