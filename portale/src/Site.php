@@ -13,7 +13,7 @@ final class Site {
 	);
 
 	/** Pagine di presentazione: solo qui compaiono la fascia di chiusura e la barra in basso da telefono. */
-	const MARKETING = array( '/', '/funzioni', '/prova', '/prezzi', '/confronto', '/domande', '/free', '/accedi', '/plugin' );
+	const MARKETING = array( '/', '/funzioni', '/prova', '/prezzi', '/confronto', '/domande', '/free', '/accedi', '/plugin', '/saas', '/wordpress' );
 
 	public static function path(): string {
 		$p = (string) parse_url( (string) ( $_SERVER['REQUEST_URI'] ?? '/' ), PHP_URL_PATH );
@@ -35,6 +35,8 @@ final class Site {
 			'/domande'   => 'Le risposte alle domande più comuni su Associazione Semplice: licenza e dominio, passaggio al Pro, rinnovo, pagamenti e cosa succede ai tuoi dati.',
 			'/free'      => 'Ottieni la licenza gratuita di Associazione Semplice: crei il tuo account e accedi al supporto. Non serve la carta di credito.',
 			'/accedi'    => 'Area riservata di Associazione Semplice: chiave di licenza, dominio, pacchetti da scaricare, cambio di piano e disdetta.',
+			'/saas'      => 'Il gestionale online di Associazione Semplice: soci, quote, attività e prima nota dal browser, con l\'area riservata dei soci su un indirizzo dedicato alla tua associazione.',
+			'/wordpress' => 'Il plugin WordPress di Associazione Semplice: presentazione, novità di ogni versione e demo.',
 			'/plugin'    => 'Cos\'è Associazione Semplice, il plugin WordPress per le piccole associazioni italiane: cosa include il gratuito, cosa aggiunge il Pro e cosa contatta.',
 		);
 		return $d[ $path ] ?? 'Soci, eventi, prima nota e privacy per la tua associazione. Plugin WordPress gratuito, con piani Pro per pagamenti online e contabilità.';
@@ -83,6 +85,8 @@ final class Site {
 			'/domande'   => array( 0, 'Vuoi vedere come funziona?', 'La demo risponde meglio di qualsiasi spiegazione: provala senza registrarti.', $demo, $plans ),
 			'/free'      => array( 4, 'Vuoi guardarti intorno prima?', 'Puoi provare la demo e leggere i prezzi: la licenza gratuita ti aspetta quando vuoi.', $demo, $plans ),
 			'/accedi'    => array( 0, 'Non hai ancora una licenza?', 'La licenza gratuita arriva appena confermi la tua email. Se vuoi prima vedere il programma, c\'è la demo.', $free, $demo ),
+			'/saas'      => array( 0, 'Vuoi vedere i piani?', 'Prezzi e confronto tra le versioni, con rinnovo mensile o annuale.', $plans, array( 'Confronta le versioni', '/confronto' ) ),
+			'/wordpress' => array( 0, 'Vuoi provarlo?', 'Una demo con dati inventati: entri come segreteria o come socio e clicchi dove vuoi.', $demo, $plans ),
 			'/plugin'    => array( 3, 'Pronto a installarlo?', 'Chiedi la licenza gratuita: incolli la chiave nel plugin e la procedura guidata fa il resto.', $free, $plans ),
 		);
 		if ( ! isset( $map[ $path ] ) ) {

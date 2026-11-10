@@ -1355,5 +1355,82 @@ foreach ( glob( __DIR__ . '/../views/wordpress-admin/*.php' ) as $f ) {
 	$badLinks += preg_match_all( '#(?:href|action)="/admin#', (string) file_get_contents( $f ) );
 }
 check( 'plugin: le viste puntano tutte a /wordpress/admin', 0 === $badLinks );
+// --- Indirizzi delle sezioni /saas e /wordpress -----------------------------
+use Portale\Sections;
+Config::set( 'saas_admin_url', '' );
+check( 'sezioni: /saas/accedi diventa /account/da-gestionale con lo stesso token', array( 301, '/account/da-gestionale?t=abc' ) === Sections::legacy( 'GET', '/saas/accedi', 't=abc' ) );
+check( 'sezioni: /saas/accedi con POST conserva il metodo (308)', 308 === Sections::legacy( 'POST', '/saas/accedi', '' )[0] );
+check( 'sezioni: /saas/admin va all\'amministrazione del SaaS (temporaneo)', array( 302, 'https://app.associazionesemplice.it/admin' ) === Sections::legacy( 'GET', '/saas/admin', '' ) );
+check( 'sezioni: /saas/admin/percorso mantiene il resto e la query', array( 302, 'https://app.associazionesemplice.it/admin/associazioni?q=a' ) === Sections::legacy( 'GET', '/saas/admin/associazioni', 'q=a' ) );
+Config::set( 'saas_admin_url', 'http://non-sicuro.test/admin' );
+check( 'sezioni: indirizzo di amministrazione non https ignorato', 'https://app.associazionesemplice.it/admin' === Sections::saasAdminUrl() );
+Config::set( 'saas_admin_url', 'https://gestione.esempio.it/admin/' );
+check( 'sezioni: indirizzo di amministrazione configurabile', 'https://gestione.esempio.it/admin/x' === Sections::legacy( 'GET', '/saas/admin/x', '' )[1] );
+check( 'sezioni: vecchia pagina di un\'associazione → /saas/admin (301)', array( 301, '/saas/admin' ) === Sections::legacy( 'GET', '/saas/11111111-2222-3333-4444-555555555555', '' ) );
+check( 'sezioni: vecchio /saas/utenti/… → /saas/admin (308 per POST)', array( 308, '/saas/admin' ) === Sections::legacy( 'POST', '/saas/utenti/abc', '' ) );
+check( 'sezioni: /saas e /wordpress sono contenuti, non redirect', null === Sections::legacy( 'GET', '/saas', '' ) && null === Sections::legacy( 'GET', '/wordpress/changelog', '' ) );
+check( 'sezioni: pagine di contenuto', 'saas_section' === Sections::view( '/saas' ) && 'wordpress_section' === Sections::view( '/wordpress' ) && 'wordpress_changelog' === Sections::view( '/wordpress/changelog' ) && null === Sections::view( '/saas/admin' ) );
+
+// --- Catalogo del SaaS: calcolo dei prezzi, firma, anti-rollback ------------------
+use Portale\{Catalog, PriceCalculator, PortalAttestation};
+$cases = json_decode( (string) file_get_contents( __DIR__ . '/fixtures/catalogo-casi.json' ), true );
+$calcOk = true;
+foreach ( array( 'members_tiers', 'members_tiers_year' ) as $g ) {
+	foreach ( $cases[ $g ]['cases'] as $c ) {
+		$calcOk = $calcOk && PriceCalculator::members( $cases[ $g ]['price'], $c['members'] ) === $c['cents'];
+	}
+}
+foreach ( array( 'step_tiers', 'step_tiers_closed' ) as $g ) {
+	foreach ( $cases[ $g ]['cases'] as $c ) {
+		$calcOk = $calcOk && PriceCalculator::steps( $cases[ $g ]['price'], $c['quantity'] ) === $c['cents'];
+	}
+}
+foreach ( $cases['vat'] as $c ) {
+	$calcOk = $calcOk && PriceCalculator::vat( $c['net'], $c['percent'] ) === $c['vat'];
+}
+check( 'prezzi: casi comuni con il SaaS (soci, anno, fasce, IVA)', $calcOk );
+check( 'prezzi: net() per tipo di prezzo', 1500 === PriceCalculator::net( array( 'kind' => 'flat', 'amount_cents' => 1500 ) ) && 3300 === PriceCalculator::net( $cases['members_tiers']['price'], 150 ) && null === PriceCalculator::net( array( 'kind' => 'altro' ) ) );
+
+$cseed = str_repeat( 'c', 32 );
+Config::set( 'saas_public_keys', array( PortalAttestation::kid( $cseed ) => PortalAttestation::publicKey( $cseed ) ) );
+$cdoc = function ( int $rev ) {
+	return (string) json_encode( array( 'schema' => 'catalogo/v1', 'product' => 'saas', 'rev' => $rev, 'features' => array( array( 'id' => 'members', 'text' => 'Soci', 'group' => 'Base' ) ),
+		'plans' => array( array( 'code' => 'gestionale', 'plan_version' => 1, 'name' => 'Gestionale', 'order' => 1, 'visible' => true, 'features' => array( 'members' => array( 'state' => 'included' ) ), 'prices' => array( $GLOBALS['cases']['members_tiers']['price'] ) ) ) ) );
+};
+$csign = function ( string $body, int $rev, array $over = array(), string $typ = 'catalog', int $now = 1000000 ) use ( $cseed ) {
+	return PortalAttestation::sign( $over + array( 'iss' => 'https://app.associazionesemplice.it', 'aud' => 'https://portale.test', 'typ' => $typ, 'iat' => $now, 'exp' => $now + 600, 'jti' => bin2hex( random_bytes( 8 ) ), 'rev' => $rev, 'sha256' => hash( 'sha256', $body ) ), $cseed );
+};
+$cdb = new Db( new PDO( "sqlite::memory:" ) );
+$cdb->migrate();
+$b1 = $cdoc( 5 );
+check( 'catalogo: firma e impronta valide → salvato', '' === Catalog::accept( $cdb, $b1, $csign( $b1, 5 ), '"e5"', 1000000 ) && 5 === Catalog::stored( $cdb, 1000000 )['rev'] );
+check( 'catalogo: corpo alterato rifiutato (impronta)', '' !== Catalog::accept( $cdb, $cdoc( 6 ) . ' ', $csign( $b1, 6 ), '', 1000000 ) );
+check( 'catalogo: rev più vecchia rifiutata (anti-rollback)', 'rev più vecchia di quella salvata' === Catalog::accept( $cdb, $cdoc( 4 ), $csign( $cdoc( 4 ), 4 ), '', 1000000 ) );
+check( 'catalogo: stessa rev con contenuto diverso rifiutata', '' !== Catalog::accept( $cdb, str_replace( 'Soci', 'Altro', $b1 ), $csign( str_replace( 'Soci', 'Altro', $b1 ), 5 ), '', 1000000 ) );
+check( 'catalogo: firma con altra chiave rifiutata', '' !== Catalog::accept( $cdb, $cdoc( 7 ), PortalAttestation::sign( array( 'iss' => 'https://app.associazionesemplice.it', 'aud' => 'https://portale.test', 'typ' => 'catalog', 'iat' => 1000000, 'exp' => 1000600, 'jti' => 'x', 'rev' => 7, 'sha256' => hash( 'sha256', $cdoc( 7 ) ) ), str_repeat( 'z', 32 ) ), '', 1000000 ) );
+check( 'catalogo: tipo, destinatario e vita lunga rifiutati', null === Catalog::verifyToken( $csign( $b1, 5, array(), 'usage' ), 'catalog', 1000000 ) && null === Catalog::verifyToken( $csign( $b1, 5, array( 'aud' => 'altro' ) ), 'catalog', 1000000 ) && null === Catalog::verifyToken( $csign( $b1, 5, array( 'exp' => 1001000 ) ), 'catalog', 1000000 ) && null === Catalog::verifyToken( $csign( $b1, 5 ), 'catalog', 1002000 ) );
+check( 'catalogo: rev nuova accettata', '' === Catalog::accept( $cdb, $cdoc( 6 ), $csign( $cdoc( 6 ), 6 ), '"e6"', 1000100 ) && 6 === Catalog::stored( $cdb, 1000100 )['rev'] );
+check( 'catalogo: da ricontrollare dopo 10 minuti', ! Catalog::stored( $cdb, 1000100 )['stale'] && Catalog::stored( $cdb, 1000100 + 700 )['stale'] );
+$cplan = Catalog::plans( Catalog::stored( $cdb )['doc'] )[0];
+check( 'catalogo: «da» il prezzo con i soci della base, mensile e annuale', array( 1500, 22 ) === Catalog::from( $cplan, 'month' ) && null === Catalog::from( $cplan, 'year' ) );
+
+$cn = PortalAttestation::sign( array( 'iss' => 'https://app.associazionesemplice.it', 'aud' => 'https://portale.test', 'typ' => 'catalog_changed', 'iat' => 1000000, 'exp' => 1000060, 'jti' => 'jti-1', 'rev' => 7 ), $cseed );
+check( 'catalogo: avviso firmato accettato una volta sola', Catalog::notify( $cdb, (string) json_encode( array( 'token' => $cn ) ), 1000000 ) && ! Catalog::notify( $cdb, (string) json_encode( array( 'token' => $cn ) ), 1000000 ) && ! Catalog::notify( $cdb, '{"token":"x.y.z"}', 1000000 ) );
+
+$cprev = Http::$transport;
+$cb7 = $cdoc( 7 );
+$cseen = array();
+Http::$transport = function ( $m, $u, $h ) use ( &$cseen, $cb7, $csign ) {
+	$cseen = array( $m, $u, $h );
+	return array( 200, $cb7, array( 'x-catalog-signature' => $csign( $cb7, 7, array(), 'catalog', time() ), 'etag' => '"e7"' ) );
+};
+check( 'catalogo: scarico con If-None-Match e firma nell\'intestazione', 'updated' === Catalog::refresh( $cdb ) && 'GET' === $cseen[0] && 'https://app.associazionesemplice.it/api/catalogo/v1' === $cseen[1] && in_array( 'If-None-Match: "e6"', $cseen[2], true ) && 7 === Catalog::stored( $cdb )['rev'] );
+Http::$transport = function () { return array( 304, '' ); };
+check( 'catalogo: 304 lascia la copia e la rinfresca', 'unchanged' === Catalog::refresh( $cdb ) && 7 === Catalog::stored( $cdb )['rev'] );
+Http::$transport = function () { return array( 0, '' ); };
+check( 'catalogo: SaaS non raggiungibile → resta l\'ultima copia', 0 === strpos( Catalog::refresh( $cdb ), 'error' ) && 7 === Catalog::stored( $cdb )['rev'] );
+Http::$transport = $cprev;
+Config::set( 'saas_public_keys', array() );
+check( 'catalogo: senza chiavi fissate non si scarica niente', 'off' === Catalog::refresh( $cdb ) && ! Catalog::needsRefresh( $cdb ) );
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );
