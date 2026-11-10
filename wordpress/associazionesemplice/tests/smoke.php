@@ -7996,7 +7996,7 @@ asem_ok( 1 === (int) $ms_rem['remember'] && (int) $ms_rem['span'] >= 29 * DAY_IN
 MemberSession::destroy_all( $ms_p );
 MemberSession::start( $ms_p );
 $ms_rem = $wpdb->get_row( $wpdb->prepare( 'SELECT remember, UNIX_TIMESTAMP(expires_at) - UNIX_TIMESTAMP(created_at) AS span FROM ' . Db::t( 'member_sessions' ) . ' WHERE person_id = %d', $ms_p ), ARRAY_A );
-asem_ok( 0 === (int) $ms_rem['remember'] && (int) $ms_rem['span'] <= AssociazioneSempliceimits::get( 'member_session_hours' ) * HOUR_IN_SECONDS + 5, 'ricordami: senza la spunta (link, codice) la sessione è breve' );
+asem_ok( 0 === (int) $ms_rem['remember'] && (int) $ms_rem['span'] <= \AssociazioneSemplice\Limits::get( 'member_session_hours' ) * HOUR_IN_SECONDS + 5, 'ricordami: senza la spunta (link, codice) la sessione è breve' );
 Settings::update( array( 'limits' => array( 'member_session_hours' => 2 ) ) );
 asem_ok( 2 * HOUR_IN_SECONDS === MemberSession::idle_seconds( false ) && 30 * DAY_IN_SECONDS === MemberSession::idle_seconds( true ), 'ricordami: la durata breve si cambia dai Limiti' );
 Settings::update( array( 'limits' => array( 'member_session_hours' => 12 ) ) );
