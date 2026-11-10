@@ -102,9 +102,66 @@ final class ClaimsValidator
                 'web' => self::bool(self::object($kind, 'resources')['web'] ?? null, 'resources.web'),
             ], $limits),
             Package::EInvoice => ['yearly' => self::int($limits['yearly'] ?? null, 'einvoice.yearly', 0, 1_000_000)],
-            Package::CustomDomain => ['domain' => self::domain($limits['domain'] ?? null)],
+            // Nella v2 il dominio si imposta a parte (domain.set): il pacchetto può esserci senza.
+            Package::CustomDomain => isset($limits['domain']) ? ['domain' => self::domain($limits['domain'])] : [],
             default => [],
         };
+    }
+
+    /**
+     * Abbonamento v2 (CONTRATTO_PORTALE.md §3.2): il fatto commerciale; i limiti li ricava il SaaS dal piano.
+     *
+     * @param  array<string, mixed>  $claims
+     * @return array{sub: string, ref: string, rev: int, status: string, until: string, trial_ends: string|null, plan: string, plan_version: int, members: int, addons: list<array{code: string, qty: int}>, promo: string|null, price_cents: int|null, partner: string|null}
+     */
+    public static function subscription(array $claims): array
+    {
+        $unknown = array_diff(array_keys($claims), ['iss', 'aud', 'typ', 'iat', 'exp', 'jti', 'sub', 'ref', 'rev', 'status', 'until', 'trial_ends', 'plan', 'plan_version', 'members', 'addons', 'promo', 'price_cents', 'partner']);
+        if ($unknown !== []) {
+            throw new InvalidArgumentException('campo sconosciuto: '.implode(', ', array_map('strval', $unknown)));
+        }
+        $base = self::entitlements($claims + ['operators' => 1, 'storage_gb' => 0, 'packages' => []]);
+        $plan = $claims['plan'] ?? null;
+        if (! is_string($plan) || preg_match('/^[a-z][a-z0-9_]{1,39}$/', $plan) !== 1) {
+            throw new InvalidArgumentException('plan non valido');
+        }
+        $addons = [];
+        $list = $claims['addons'] ?? [];
+        if (! is_array($list) || ! array_is_list($list) || count($list) > 50) {
+            throw new InvalidArgumentException('addons non valido');
+        }
+        foreach ($list as $item) {
+            $addon = self::object($item, 'addons');
+            $code = $addon['code'] ?? null;
+            if (! is_string($code) || preg_match('/^[a-z][a-z0-9_]{1,39}$/', $code) !== 1) {
+                throw new InvalidArgumentException('addons.code non valido');
+            }
+            if (array_diff(array_keys($addon), ['code', 'qty']) !== []) {
+                throw new InvalidArgumentException('addons: campo sconosciuto');
+            }
+            $addons[] = ['code' => $code, 'qty' => self::int($addon['qty'] ?? null, 'addons.qty', 1, 1000)];
+        }
+        $promo = $claims['promo'] ?? null;
+        if ($promo !== null && (! is_string($promo) || preg_match('/^[A-Z0-9_-]{2,40}$/', $promo) !== 1)) {
+            throw new InvalidArgumentException('promo non valida');
+        }
+        $price = $claims['price_cents'] ?? null;
+
+        return [
+            'sub' => $base['sub'],
+            'ref' => $base['ref'],
+            'rev' => $base['rev'],
+            'status' => $base['status'],
+            'until' => $base['until'],
+            'trial_ends' => $base['trial_ends'],
+            'plan' => $plan,
+            'plan_version' => self::int($claims['plan_version'] ?? null, 'plan_version', 1, 100_000),
+            'members' => $base['members'],
+            'addons' => $addons,
+            'promo' => $promo,
+            'price_cents' => $price === null ? null : self::int($price, 'price_cents', 0, 100_000_000),
+            'partner' => $base['partner'],
+        ];
     }
 
     /** @return array<string, mixed> */

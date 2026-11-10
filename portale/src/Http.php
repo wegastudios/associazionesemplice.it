@@ -10,13 +10,27 @@ final class Http {
 	/** @var array nome server → indirizzo IP da usare solo se la risoluzione del nome fallisce (CURLE_COULDNT_RESOLVE_HOST) */
 	public static $fallback = array();
 
+	/** @var array intestazioni (nome minuscolo → valore) dell'ultima risposta; il trasporto dei test può darle come terzo elemento */
+	public static $lastHeaders = array();
+
 	/** @return array [codice HTTP, corpo] */
 	public static function send( string $method, string $url, array $headers = array(), ?string $body = null ): array {
 		if ( null !== self::$transport ) {
-			return call_user_func( self::$transport, $method, $url, $headers, $body );
+			$r                 = call_user_func( self::$transport, $method, $url, $headers, $body );
+			self::$lastHeaders = isset( $r[2] ) && is_array( $r[2] ) ? $r[2] : array();
+			return array( $r[0], $r[1] );
 		}
+		self::$lastHeaders = array();
+		$seen              = array();
 		$ch = curl_init( $url );
 		curl_setopt_array( $ch, array(
+			CURLOPT_HEADERFUNCTION => function ( $c, $line ) use ( &$seen ) {
+				$p = explode( ':', $line, 2 );
+				if ( 2 === count( $p ) ) {
+					$seen[ strtolower( trim( $p[0] ) ) ] = trim( $p[1] );
+				}
+				return strlen( $line );
+			},
 			CURLOPT_CUSTOMREQUEST  => $method,
 			CURLOPT_HTTPHEADER     => $headers,
 			CURLOPT_RETURNTRANSFER => true,
@@ -36,6 +50,7 @@ final class Http {
 		}
 		$status = (int) curl_getinfo( $ch, CURLINFO_HTTP_CODE );
 		curl_close( $ch );
+		self::$lastHeaders = $seen;
 		return array( $status, false === $raw ? '' : (string) $raw );
 	}
 

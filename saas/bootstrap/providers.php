@@ -10,6 +10,7 @@ use App\Modules\Cifratura\Providers\CifraturaServiceProvider;
 use App\Modules\Contabilita\Providers\ContabilitaServiceProvider;
 use App\Modules\Core\Providers\AuthServiceProvider;
 use App\Modules\Core\Providers\CoreServiceProvider;
+use App\Modules\Piattaforma\Providers\PiattaformaServiceProvider;
 use App\Modules\Portale\Providers\PortaleServiceProvider;
 use App\Modules\Risorse\Providers\RisorseServiceProvider;
 use App\Modules\Soci\Providers\SociServiceProvider;
@@ -21,6 +22,7 @@ return [
     AuthServiceProvider::class,
     CifraturaServiceProvider::class,
     AuditServiceProvider::class,
+    PiattaformaServiceProvider::class,
     PortaleServiceProvider::class,
     BackupServiceProvider::class,
     ContabilitaServiceProvider::class,

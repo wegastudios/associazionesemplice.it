@@ -218,3 +218,25 @@ Basta l'importo del piano (da `/wordpress/admin/prezzi`): il rinnovo automatico 
 - **Righe a due livelli:** nel testo `Titolo breve :: dettaglio`; il dettaglio si apre con il «+». Senza `::`, un titolo oltre 70 caratteri viene diviso in automatico alla prima virgola, parentesi o due punti (il testo intero resta come dettaglio).
 - **Nomi dei piani:** nelle tabelle e nei testi di `confronto.md` si scrivono i segnaposto `{free_name}`, `{lite_name}`, `{full_name}` (nome dal pannello, Prezzi → «Nome sul sito»); i prezzi `{lite_month}`… restano. Nome, prezzo e pulsanti dell'intestazione arrivano in un attributo `data-cmp` (JSON) generato da `views/confronto.php`.
 - **Formato di `confronto.md`:** invariati i titoli `##` e le tabelle `| Funzione | piano | piano | piano |`; la riga «Prezzo» non compare più (il prezzo è nell'intestazione). Chi aggiorna il file (sessione Portale e pagamenti; Supporto per la tabella gemella) usa `::` per i titoli brevi delle nuove righe.
+
+## Indirizzi del sito e sezioni di contenuti (novembre 2026)
+
+Schema di [ARCHITETTURA_DOMINI.md](ARCHITETTURA_DOMINI.md) §2. Il portale **vende e racconta**; l'amministrazione di ciascun prodotto non è sua.
+
+- **`/saas`** e **`/wordpress`**: sezioni di contenuti (`views/saas_section.php`, `views/wordpress_section.php`); **`/wordpress/changelog`** legge le versioni pubblicate in Versioni (`Releases::all`) e le novità dal `CHANGELOG.md` dello zip (`Sections::releases`). Le pagine sono indicizzabili (`robots.txt` esclude solo `/saas/admin`).
+- **`/saas/admin`**: amministrazione del SaaS, codice di `saas/`. Se il server non la serve già sotto il dominio principale (prova di fattibilità, §3.3), il portale reindirizza (302, finché la decisione non è presa) a `saas_admin_url` di `config.php` (default `https://app.associazionesemplice.it/admin`), conservando percorso e query.
+- **Vecchi indirizzi** (`src/Sections.php`, provato in `tests/run.php`): `/saas/accedi?t=…` → `/account/da-gestionale?t=…` (301; 308 per POST); `/saas/<id associazione>` e `/saas/utenti/…` (la vecchia gestione delle associazioni dal portale, ritirata: contratto v1 §2.3 cade) → `/saas/admin`. `/admin` → `/wordpress/admin` è nel confine del plugin (`portale/src/Plugin`).
+- **Rimossa** la vecchia gestione SaaS del portale (`Platform`, `views/saas/`): l'amministrazione ora è del SaaS. `SaasClient` resta per le chiamate firmate che servono all'acquisto e all'area clienti.
+- **`/account/da-gestionale`**: nuovo indirizzo dell'accesso «Gestisci abbonamento» dal gestionale. Per ora rimanda alla pagina di accesso; accetterà il token firmato (contratto §3.2) con il passo di acquisto e abbonamenti.
+- Dopo l'accesso, chi ha un livello SaaS nello staff e non quello del plugin va a `/saas/admin`.
+
+## Catalogo del SaaS: listino e confronto generati (novembre 2026)
+
+Il portale **legge** piani, caratteristiche e prezzi del SaaS dal suo catalogo (`catalogo/v1`, contratto `saas/docs/CONTRATTO_PORTALE.md` §2) e non ha un listino SaaS proprio: ogni modifica si fa in `/saas/admin`.
+
+- **Lettura** (`src/Catalog.php`): `GET {saas_api_url}/api/catalogo/v1` con `If-None-Match`. La risposta vale solo se `X-Catalog-Signature` (JWT EdDSA, `typ: catalog`, claim `rev` e `sha256` dei byte ricevuti) torna con una chiave di `saas_public_keys` (`config.php`, `kid => x`). **Anti-rollback**: una `rev` più vecchia di quella salvata, o la stessa `rev` con contenuto diverso, si rifiuta. L'ultima copia valida sta nella tabella `catalog` e serve anche se il SaaS non risponde.
+- **Quando si aggiorna:** la prima visita a `/saas` dopo 10 minuti dall'ultimo controllo ricarica il catalogo *dopo* aver consegnato la pagina (il visitatore non aspetta); l'avviso firmato `POST /api/saas/v1/catalog-changed` (`typ: catalog_changed`, `jti` monouso nella tabella `seen_jti`) lo forza subito.
+- **Pagina `/saas`:** schede dei piani («da X € al mese + IVA», prova gratuita) e **tabella di confronto** costruita dalle `features` del catalogo (`views/_catalog_saas.php`): nessun prezzo o funzione scritti a mano. Senza chiavi fissate o senza catalogo salvato la sezione dice «a breve».
+- **Prezzi** (`src/PriceCalculator.php`): stesse regole del SaaS (centesimi IVA esclusa, scaglioni marginali sui soci, IVA una sola volta sul totale, metà in su); casi comuni in `tests/fixtures/catalogo-casi.json` (copia di `saas/tests/Fixtures/catalogo-casi.json`: se cambia lì, va ricopiata).
+- Il confronto del **plugin** resta `content/confronto.md` finché il plugin non espone il suo catalogo (passo 4, sessione portale-plugin); la regola «tabella confronto sempre aggiornata» vale per entrambi.
+- Da fare: pagina staff con `rev` e «aggiornato il…», `promo.check`, carrello (passo 6).

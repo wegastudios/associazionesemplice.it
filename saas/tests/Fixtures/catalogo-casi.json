@@ -1,0 +1,43 @@
+{
+  "note": "Casi comuni a SaaS e portale per il calcolo dei prezzi (CONTRATTO_PORTALE.md §2.1). Importi in centesimi, IVA esclusa.",
+  "members_tiers": {
+    "price": { "period": "month", "kind": "members_tiers", "vat_percent": 22, "base_members": 50, "base_cents": 1500, "months_billed": 1,
+      "tiers": [ { "up_to": 150, "unit_cents": 18 }, { "up_to": 400, "unit_cents": 12 }, { "up_to": null, "unit_cents": 6 } ] },
+    "cases": [
+      { "members": 1, "cents": 1500 },
+      { "members": 50, "cents": 1500 },
+      { "members": 51, "cents": 1518 },
+      { "members": 100, "cents": 2400 },
+      { "members": 150, "cents": 3300 },
+      { "members": 151, "cents": 3312 },
+      { "members": 250, "cents": 4500 },
+      { "members": 400, "cents": 6300 },
+      { "members": 401, "cents": 6306 },
+      { "members": 1000, "cents": 9900 },
+      { "members": 2500, "cents": 18900 }
+    ]
+  },
+  "members_tiers_year": {
+    "price": { "period": "year", "kind": "members_tiers", "vat_percent": 22, "base_members": 50, "base_cents": 1500, "months_billed": 10,
+      "tiers": [ { "up_to": 150, "unit_cents": 18 }, { "up_to": 400, "unit_cents": 12 }, { "up_to": null, "unit_cents": 6 } ] },
+    "cases": [ { "members": 50, "cents": 15000 }, { "members": 150, "cents": 33000 } ]
+  },
+  "step_tiers": {
+    "price": { "period": "month", "kind": "step_tiers", "vat_percent": 22,
+      "steps": [ { "up_to": 2, "amount_cents": 1900 }, { "up_to": 5, "amount_cents": 2900 }, { "up_to": 10, "amount_cents": 4500 }, { "up_to": null, "amount_cents": 6900 } ] },
+    "cases": [ { "quantity": 1, "cents": 1900 }, { "quantity": 2, "cents": 1900 }, { "quantity": 3, "cents": 2900 }, { "quantity": 10, "cents": 4500 }, { "quantity": 11, "cents": 6900 }, { "quantity": 500, "cents": 6900 } ]
+  },
+  "step_tiers_closed": {
+    "price": { "period": "month", "kind": "step_tiers", "vat_percent": 22,
+      "steps": [ { "up_to": 50, "amount_cents": 1900 }, { "up_to": 400, "amount_cents": 5900 } ] },
+    "cases": [ { "quantity": 400, "cents": 5900 }, { "quantity": 401, "cents": null } ]
+  },
+  "vat": [
+    { "net": 0, "percent": 22, "vat": 0 },
+    { "net": 1, "percent": 22, "vat": 0 },
+    { "net": 3, "percent": 22, "vat": 1 },
+    { "net": 25, "percent": 22, "vat": 6 },
+    { "net": 3300, "percent": 22, "vat": 726 },
+    { "net": 1518, "percent": 22, "vat": 334 }
+  ]
+}

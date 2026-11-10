@@ -1,0 +1,236 @@
+<?php
+namespace Portale;
+
+/**
+ * Catalogo dei prodotti (piani, prezzi, promozioni), letto dal portale e mai scritto: la fonte è l'amministrazione di ciascun prodotto
+ * (docs/ARCHITETTURA_DOMINI.md §4, saas/docs/CONTRATTO_PORTALE.md §2).
+ *
+ * - Si scarica da `saas_catalog_url` (default: `{saas_api_url}/api/catalogo/v1`) con `If-None-Match`; la risposta è valida solo se la firma
+ *   EdDSA dell'intestazione `X-Catalog-Signature` torna con una chiave fissata in `saas_public_keys` (kid => x) e l'impronta sha256 coincide con i byte ricevuti.
+ * - Anti-rollback: una `rev` minore dell'ultima salvata si rifiuta; con la stessa `rev` il corpo deve essere identico.
+ * - L'ultima copia valida resta salvata (tabella `catalog`) e serve se il prodotto non risponde.
+ * - Il portale ricarica ogni 10 minuti e quando riceve l'avviso firmato `catalog_changed` (/api/saas/v1/catalog-changed).
+ */
+final class Catalog {
+
+	const SAAS = 'saas';
+	/** Secondi dopo i quali la copia salvata si ricontrolla. */
+	const TTL = 600;
+
+	/** @return array<string,string> kid => chiave pubblica (base64url) del SaaS */
+	public static function keys(): array {
+		$out = array();
+		foreach ( (array) Config::get( 'saas_public_keys', array() ) as $kid => $x ) {
+			if ( is_string( $kid ) && is_string( $x ) && '' !== $kid && '' !== $x ) {
+				$out[ $kid ] = $x;
+			}
+		}
+		return $out;
+	}
+
+	public static function enabled(): bool {
+		return function_exists( 'sodium_crypto_sign_verify_detached' ) && array() !== self::keys();
+	}
+
+	public static function url(): string {
+		$u = trim( (string) Config::get( 'saas_catalog_url', '' ) );
+		return '' !== $u ? $u : SaasClient::baseUrl() . '/api/catalogo/v1';
+	}
+
+	/** Indirizzo con cui il SaaS firma (claim `iss`). */
+	public static function issuer(): string {
+		return SaasClient::baseUrl();
+	}
+
+	/**
+	 * Verifica un JWT del SaaS: firma, kid, emittente, destinatario (il portale), tipo e date (vita massima 600 s, tolleranza 60 s).
+	 * @return array|null i claim, o null se qualcosa non torna
+	 */
+	public static function verifyToken( string $jwt, string $typ, ?int $now = null ): ?array {
+		$now = $now ?? time();
+		$p   = explode( '.', $jwt );
+		if ( 3 !== count( $p ) || strlen( $jwt ) > 4096 || ! function_exists( 'sodium_crypto_sign_verify_detached' ) ) {
+			return null;
+		}
+		$h = json_decode( self::unb64( $p[0] ), true );
+		$c = json_decode( self::unb64( $p[1] ), true );
+		if ( ! is_array( $h ) || ! is_array( $c ) || 'EdDSA' !== ( $h['alg'] ?? '' ) || ! is_string( $h['kid'] ?? null ) ) {
+			return null;
+		}
+		$keys = self::keys();
+		if ( ! isset( $keys[ $h['kid'] ] ) ) {
+			return null;
+		}
+		$pub = self::unb64( $keys[ $h['kid'] ] );
+		$sig = self::unb64( $p[2] );
+		if ( SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES !== strlen( $pub ) || SODIUM_CRYPTO_SIGN_BYTES !== strlen( $sig ) || ! sodium_crypto_sign_verify_detached( $sig, $p[0] . '.' . $p[1], $pub ) ) {
+			return null;
+		}
+		$aud = rtrim( (string) Config::get( 'base_url', '' ), '/' );
+		if ( ( $c['iss'] ?? '' ) !== self::issuer() || ( $c['aud'] ?? '' ) !== $aud || ( $c['typ'] ?? '' ) !== $typ ) {
+			return null;
+		}
+		$iat = $c['iat'] ?? null;
+		$exp = $c['exp'] ?? null;
+		if ( ! is_int( $iat ) || ! is_int( $exp ) || $exp - $iat > 600 || $iat > $now + 60 || $exp < $now - 60 || ! is_string( $c['jti'] ?? null ) || '' === $c['jti'] ) {
+			return null;
+		}
+		return $c;
+	}
+
+	/**
+	 * Controlla e salva una risposta del catalogo. @return string '' se salvata, altrimenti il motivo del rifiuto
+	 */
+	public static function accept( Db $db, string $body, string $signature, string $etag, ?int $now = null ): string {
+		$now = $now ?? time();
+		$c   = self::verifyToken( $signature, 'catalog', $now );
+		if ( ! $c ) {
+			return 'firma non valida';
+		}
+		$hash = hash( 'sha256', $body );
+		if ( ! is_string( $c['sha256'] ?? null ) || ! hash_equals( $hash, strtolower( $c['sha256'] ) ) ) {
+			return 'impronta diversa dal corpo';
+		}
+		$doc = json_decode( $body, true );
+		if ( ! is_array( $doc ) || 'catalogo/v1' !== ( $doc['schema'] ?? '' ) || self::SAAS !== ( $doc['product'] ?? '' ) || ! is_int( $doc['rev'] ?? null ) || ! is_array( $doc['plans'] ?? null ) || ! is_array( $doc['features'] ?? null ) ) {
+			return 'documento non valido';
+		}
+		if ( ( $c['rev'] ?? null ) !== $doc['rev'] ) {
+			return 'rev diversa dalla firma';
+		}
+		$old = $db->one( 'SELECT rev, body FROM catalog WHERE product = ?', array( self::SAAS ) );
+		if ( $old && $doc['rev'] < (int) $old['rev'] ) {
+			return 'rev più vecchia di quella salvata';
+		}
+		if ( $old && $doc['rev'] === (int) $old['rev'] && hash( 'sha256', (string) $old['body'] ) !== $hash ) {
+			return 'stessa rev con contenuto diverso';
+		}
+		$at = gmdate( 'Y-m-d H:i:s', $now );
+		if ( $old ) {
+			$db->run( 'UPDATE catalog SET rev = ?, etag = ?, body = ?, fetched_at = ?, checked_at = ? WHERE product = ?', array( $doc['rev'], $etag, $body, $at, $at, self::SAAS ) );
+		} else {
+			$db->run( 'INSERT INTO catalog (product, rev, etag, body, fetched_at, checked_at) VALUES (?,?,?,?,?,?)', array( self::SAAS, $doc['rev'], $etag, $body, $at, $at ) );
+		}
+		return '';
+	}
+
+	/** Scarica il catalogo se serve. @return string updated | unchanged | error: motivo | off */
+	public static function refresh( Db $db, ?int $now = null ): string {
+		if ( ! self::enabled() ) {
+			return 'off';
+		}
+		$now = $now ?? time();
+		$row = $db->one( 'SELECT etag FROM catalog WHERE product = ?', array( self::SAAS ) );
+		$h   = array( 'Accept: application/json' );
+		if ( $row && '' !== (string) $row['etag'] ) {
+			$h[] = 'If-None-Match: ' . $row['etag'];
+		}
+		$res = Http::send( 'GET', self::url(), $h );
+		if ( 304 === $res[0] && $row ) {
+			$db->run( 'UPDATE catalog SET checked_at = ? WHERE product = ?', array( gmdate( 'Y-m-d H:i:s', $now ), self::SAAS ) );
+			return 'unchanged';
+		}
+		if ( 200 !== $res[0] ) {
+			return 'error: il SaaS ha risposto ' . $res[0];
+		}
+		$hd  = Http::$lastHeaders;
+		$why = self::accept( $db, $res[1], (string) ( $hd['x-catalog-signature'] ?? '' ), trim( (string) ( $hd['etag'] ?? '' ) ), $now );
+		if ( '' !== $why ) {
+			error_log( '[portale] catalogo rifiutato: ' . $why );
+			return 'error: ' . $why;
+		}
+		return 'updated';
+	}
+
+	/** Catalogo salvato: documento, rev, quando è stato scaricato e se va ricontrollato. @return array|null */
+	public static function stored( Db $db, ?int $now = null ): ?array {
+		$row = $db->one( 'SELECT * FROM catalog WHERE product = ?', array( self::SAAS ) );
+		$doc = $row ? json_decode( (string) $row['body'], true ) : null;
+		if ( ! is_array( $doc ) ) {
+			return null;
+		}
+		return array(
+			'doc'        => $doc,
+			'rev'        => (int) $row['rev'],
+			'fetched_at' => (string) $row['fetched_at'],
+			'checked_at' => (string) $row['checked_at'],
+			'stale'      => strtotime( (string) $row['checked_at'] . ' UTC' ) < ( $now ?? time() ) - self::TTL,
+		);
+	}
+
+	/** Vero se conviene ricontrollare (nessuna copia, oppure più vecchia di 10 minuti). */
+	public static function needsRefresh( Db $db, ?int $now = null ): bool {
+		if ( ! self::enabled() ) {
+			return false;
+		}
+		$s = self::stored( $db, $now );
+		return ! $s || $s['stale'];
+	}
+
+	/**
+	 * Avviso firmato `catalog_changed`: vale se la firma torna e il `jti` è nuovo. @return bool
+	 */
+	public static function notify( Db $db, string $payload, ?int $now = null ): bool {
+		$now = $now ?? time();
+		$b   = json_decode( $payload, true );
+		$c   = is_array( $b ) && is_string( $b['token'] ?? null ) ? self::verifyToken( $b['token'], 'catalog_changed', $now ) : null;
+		if ( ! $c ) {
+			return false;
+		}
+		$db->run( 'DELETE FROM seen_jti WHERE exp < ?', array( $now - 3600 ) );
+		try {
+			$db->run( 'INSERT INTO seen_jti (jti, exp) VALUES (?,?)', array( substr( $c['jti'], 0, 64 ), (int) $c['exp'] ) );
+		} catch ( \PDOException $e ) {
+			return false; // già usato
+		}
+		return true;
+	}
+
+	/** Piani visibili, in ordine. */
+	public static function plans( array $doc ): array {
+		$plans = array_values( array_filter( (array) ( $doc['plans'] ?? array() ), function ( $p ) {
+			return is_array( $p ) && false !== ( $p['visible'] ?? true );
+		} ) );
+		usort( $plans, function ( $a, $b ) {
+			return (int) ( $a['order'] ?? 0 ) <=> (int) ( $b['order'] ?? 0 );
+		} );
+		return $plans;
+	}
+
+	/** Prezzo di un piano per periodo (month|year): il primo con quel periodo. @return array|null */
+	public static function price( array $plan, string $period ): ?array {
+		foreach ( (array) ( $plan['prices'] ?? array() ) as $p ) {
+			if ( is_array( $p ) && ( $p['period'] ?? '' ) === $period ) {
+				return $p;
+			}
+		}
+		return null;
+	}
+
+	/** Importo da mostrare «da …» (imponibile) per il periodo, alla quantità minima. @return array|null [net, vat_percent] */
+	public static function from( array $plan, string $period ): ?array {
+		$price = self::price( $plan, $period );
+		if ( ! $price ) {
+			return null;
+		}
+		$q   = 'members_tiers' === ( $price['kind'] ?? '' ) ? (int) ( $price['base_members'] ?? 1 ) : 1;
+		$net = PriceCalculator::net( $price, max( 1, $q ) );
+		return null === $net ? null : array( $net, (int) ( $price['vat_percent'] ?? 0 ) );
+	}
+
+	/** Righe della tabella di confronto: gruppo → [funzione → per piano state/text]. */
+	public static function comparison( array $doc ): array {
+		$groups = array();
+		foreach ( (array) $doc['features'] as $f ) {
+			if ( is_array( $f ) && is_string( $f['id'] ?? null ) ) {
+				$groups[ (string) ( $f['group'] ?? '' ) ][] = $f;
+			}
+		}
+		return $groups;
+	}
+
+	private static function unb64( string $s ): string {
+		$r = base64_decode( strtr( $s, '-_', '+/' ), true );
+		return false === $r ? '' : $r;
+	}
+}
