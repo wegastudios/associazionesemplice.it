@@ -85,7 +85,8 @@ final readonly class CatalogPublisher
             }
             // Una pubblicazione alla volta: la riga della bozza e l'ultima revisione fanno da blocco.
             $connection->table('core.catalog_draft')->where('id', 1)->lockForUpdate()->first();
-            $current = (int) $connection->table('core.catalog_revisions')->max('rev');
+            $max = $connection->table('core.catalog_revisions')->max('rev');
+            $current = is_numeric($max) ? (int) $max : 0;
             $currentRev = max($current, $this->catalog->published()->rev);
 
             $next = $currentRev + 1;
