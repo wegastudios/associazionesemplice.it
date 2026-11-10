@@ -66,7 +66,7 @@ final class CoreServiceProvider extends ServiceProvider
                 $schedule->command('queue:work --stop-when-empty --max-time=50 --tries=3')
                     ->everyMinute()->withoutOverlapping(5)->runInBackground();
                 $schedule->command('queue:prune-failed --hours=720')->dailyAt('05:47');
-                if (config('saas.demo.enabled') && ! $this->app->environment('production')) {
+                if (config('saas.demo.enabled') && ! app()->environment('production')) {
                     $schedule->command('saas:demo:reset')->dailyAt('03:30')->withoutOverlapping(30);
                 }
             });
