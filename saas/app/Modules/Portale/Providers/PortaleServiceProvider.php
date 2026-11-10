@@ -46,6 +46,10 @@ final class PortaleServiceProvider extends ServiceProvider
             Route::post('/admin/users/{user}/state', [AdminApiController::class, 'userState'])->whereUuid('user');
         });
 
+        // Abbonamento v2: il SaaS ricava i limiti dal piano (CONTRATTO_PORTALE.md §3.2).
+        Route::put('api/portale/v2/orgs/{org}/subscription', [PortalApiController::class, 'subscription'])
+            ->whereUuid('org')->middleware('throttle:portal-api');
+
         // Catalogo pubblico e firmato: piani, prezzi e promozioni che il portale legge (§2).
         Route::get('api/catalogo/v1', CatalogController::class)->middleware('throttle:portal-api');
 

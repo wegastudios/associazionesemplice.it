@@ -7,6 +7,9 @@ namespace App\Modules\Portale\Entitlements;
 use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgDirectory;
+use App\Modules\Piattaforma\Contracts\PlanLimits;
+use App\Modules\Piattaforma\Contracts\UnknownAddon;
+use App\Modules\Piattaforma\Contracts\UnknownPlan;
 use App\Modules\Portale\Jwt\EdDsaJwt;
 use App\Modules\Portale\PortalConfig;
 use Carbon\CarbonImmutable;
@@ -24,6 +27,7 @@ final readonly class PortalSync
         private OrgDirectory $orgs,
         private OrgContext $context,
         private AuditLog $audit,
+        private PlanLimits $limits,
     ) {}
 
     /**
@@ -56,13 +60,68 @@ final readonly class PortalSync
     {
         $raw = $this->verify($token, 'entitlements');
         $claims = ClaimsValidator::entitlements($raw);
+        $this->checkOrg($claims['sub'], $claims['ref'], $orgId);
 
-        if (($orgId !== null && $orgId !== $claims['sub']) || $this->orgs->portalRef($claims['sub']) !== $claims['ref']) {
+        $this->store($claims, $raw, $token, []);
+
+        return $claims['rev'];
+    }
+
+    /**
+     * Applica un abbonamento v2: dal piano e dagli addon ricava operatori, spazio e pacchetti, e li salva come i diritti
+     * v1 (stessa tabella, stessa serie di revisioni), così il resto del SaaS non cambia. Piano o addon sconosciuti
+     * non applicano nulla.
+     *
+     * @return array{rev: int, plan: string, plan_version: int}
+     *
+     * @throws UnknownPlan
+     * @throws UnknownAddon
+     */
+    public function applySubscription(string $token, ?string $orgId = null): array
+    {
+        $raw = $this->verify($token, 'subscription');
+        $c = ClaimsValidator::subscription($raw);
+        $this->checkOrg($c['sub'], $c['ref'], $orgId);
+
+        $limits = $this->limits->resolve($c['plan'], $c['plan_version'], $c['addons'], $c['members']);
+        $claims = [
+            'sub' => $c['sub'],
+            'ref' => $c['ref'],
+            'rev' => $c['rev'],
+            'status' => $c['status'],
+            'until' => $c['until'],
+            'trial_ends' => $c['trial_ends'],
+            'members' => $c['members'],
+            'operators' => max(1, $limits['operators']),
+            'storage_gb' => $limits['storage_gb'],
+            'packages' => $limits['packages'],
+            'partner' => $c['partner'],
+        ];
+        // Controllo finale con le stesse regole dei diritti v1 (pacchetti e limiti ammessi).
+        $checked = ClaimsValidator::entitlements($claims);
+        $stored = $claims + ['subscription' => ['plan' => $c['plan'], 'plan_version' => $c['plan_version'], 'addons' => $c['addons'], 'promo' => $c['promo'], 'price_cents' => $c['price_cents']]];
+
+        $this->store($checked, $stored, $token, ['plan' => $c['plan'], 'plan_version' => $c['plan_version']]);
+
+        return ['rev' => $c['rev'], 'plan' => $c['plan'], 'plan_version' => $c['plan_version']];
+    }
+
+    private function checkOrg(string $sub, string $ref, ?string $orgId): void
+    {
+        if (($orgId !== null && $orgId !== $sub) || $this->orgs->portalRef($sub) !== $ref) {
             throw new UnknownOrg;
         }
+    }
 
+    /**
+     * @param  array{sub: string, ref: string, rev: int, status: string, until: string, trial_ends: string|null, members: int, operators: int, storage_gb: int, packages: array<string, array<string, mixed>>, partner: string|null}  $claims
+     * @param  array<string, mixed>  $raw  ciò che si conserva
+     * @param  array<string, mixed>  $auditExtra
+     */
+    private function store(array $claims, array $raw, string $token, array $auditExtra): void
+    {
         $connection = $this->db->connection('pgsql');
-        $connection->transaction(function () use ($connection, $claims, $raw, $token): void {
+        $connection->transaction(function () use ($connection, $claims, $raw, $token, $auditExtra): void {
             $current = $connection->table('core.org_entitlements')->where('org_id', $claims['sub'])->lockForUpdate()->value('rev');
             $current = is_numeric($current) ? (int) $current : 0;
             if ($claims['rev'] <= $current) {
@@ -89,10 +148,9 @@ final readonly class PortalSync
                 'until' => $claims['until'],
                 'operators' => $claims['operators'],
                 'packages' => $packages,
-            ]));
+            ] + $auditExtra));
         });
-
-        return $claims['rev'];
+    }
     }
 
     /**

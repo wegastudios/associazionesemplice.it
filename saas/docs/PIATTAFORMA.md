@@ -12,7 +12,7 @@ manca e le scelte prese**; si aggiorna a ogni PR del modulo.
 | 3 | Catalogo da file di configurazione + `GET /api/catalogo/v1` firmato | **fatto** (PR 1) |
 | 3 bis | Catalogo dal database, versione del piano immutabile | da fare (con il passo 5) |
 | 5 | `/saas/admin`: staff, 2FA, editor con bozza e «Pubblica», associazioni, utenti, registro | da fare |
-| 6 | Ricezione di `subscription`, `409 unknown_plan`, limiti dal piano | da fare (subito dopo la PR 1) |
+| 6 | Ricezione di `subscription`, `409 unknown_plan`, limiti dal piano | **fatto** (PR 2) |
 | 7 | `admin_hop` | da fare, dopo il passo 5 |
 | 9 | Demo `demoapp.associazionesemplice.it` | da fare |
 

@@ -338,3 +338,8 @@ Modulo `Piattaforma` ([PIATTAFORMA.md](PIATTAFORMA.md)). I piani, i pacchetti, i
   `plan_version` per il piano toccato (mai modificare una versione già venduta) e `rev` + 1.
 - `Piattaforma\Contracts\Catalog::published()` è l'unico modo di leggere il catalogo dal resto del codice.
 - Il catalogo non contiene mai dati di associazioni o persone (c'è un test).
+- **Abbonamento v2** (`PUT /api/portale/v2/orgs/{org}/subscription`): `PortalSync::applySubscription` ricava operatori, spazio e
+  pacchetti dalla `plan_version` e dagli addon con `Piattaforma\Contracts\PlanLimits` e li salva come i diritti v1
+  (`core.org_entitlements`, `claims` con in più la chiave `subscription`): `Entitlements` e tutto il resto restano uguali.
+  `409 unknown_plan` / `unknown_addon` non applicano nulla. La serie delle `rev` è la stessa dei diritti v1; una `rev`
+  non crescente è già una ripetizione innocua, quindi per la `subscription` non serve tenere i `jti` usati.
