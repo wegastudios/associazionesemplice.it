@@ -92,6 +92,13 @@ final class Db {
 			'ALTER TABLE subscriptions ADD COLUMN next_plan VARCHAR(40) NULL',
 			'ALTER TABLE subscriptions ADD COLUMN change_to VARCHAR(40) NULL',
 			'ALTER TABLE subscriptions ADD COLUMN domain_changed_at VARCHAR(19) NULL',
+			// Staff dell'amministrazione del plugin (/wordpress/admin): tabella propria. Primo tempo: si copia da `staff`, che resta
+			// come ripiego in lettura; il secondo tempo (togliere la colonna `role` vecchia) solo dopo la verifica in produzione.
+			'CREATE TABLE IF NOT EXISTS plugin_staff (
+				email VARCHAR(190) PRIMARY KEY, role VARCHAR(10) NOT NULL, created_at VARCHAR(19) NOT NULL,
+				totp_secret_enc TEXT NULL, mfa_at VARCHAR(19) NULL)',
+			"INSERT INTO plugin_staff (email, role, created_at) SELECT email, role, created_at FROM staff
+				WHERE role IN ('admin','support') AND email NOT IN (SELECT email FROM plugin_staff)",
 		);
 		foreach ( $stmts as $sql ) {
 			try {

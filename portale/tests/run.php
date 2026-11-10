@@ -1355,6 +1355,22 @@ foreach ( glob( __DIR__ . '/../views/wordpress-admin/*.php' ) as $f ) {
 	$badLinks += preg_match_all( '#(?:href|action)="/admin#', (string) file_get_contents( $f ) );
 }
 check( 'plugin: le viste puntano tutte a /wordpress/admin', 0 === $badLinks );
+// Staff del plugin in tabella propria (plugin_staff) e migrazione in due tempi
+$sdb = new Db( new PDO( 'sqlite::memory:' ) );
+$sdb->migrate();
+$sdb->run( 'INSERT INTO staff (email, role, saas, created_at) VALUES (?,?,?,?)', array( 'vecchio@esempio.it', 'support', 'admin', Db::now() ) );
+$sdb->run( 'INSERT INTO staff (email, role, saas, created_at) VALUES (?,?,?,?)', array( 'solosaas@esempio.it', 'none', 'admin', Db::now() ) );
+check( 'plugin staff: prima della copia il ruolo si legge ancora dalla tabella vecchia', 'support' === Portale\Plugin\Staff::role( $sdb, 'vecchio@esempio.it' ) );
+$sdb->migrate(); // la migrazione si può ripetere
+check( 'plugin staff: la migrazione copia chi ha un ruolo nel plugin, non chi ha solo il SaaS', 'support' === (string) $sdb->one( 'SELECT role FROM plugin_staff WHERE email = ?', array( 'vecchio@esempio.it' ) )['role'] && null === $sdb->one( 'SELECT 1 AS x FROM plugin_staff WHERE email = ?', array( 'solosaas@esempio.it' ) ) );
+check( 'plugin staff: chi ha solo il SaaS non entra nel plugin', null === Portale\Plugin\Staff::role( $sdb, 'solosaas@esempio.it' ) );
+Portale\Plugin\Staff::put( $sdb, 'vecchio@esempio.it', 'admin' );
+check( 'plugin staff: il ruolo nuovo vince su quello della tabella vecchia', 'admin' === Portale\Staff::role( $sdb, 'vecchio@esempio.it' ) );
+$sbil = new Billing( $sdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+Portale\Staff::set( $sdb, $sbil, 'vecchio@esempio.it', 'none' ); // toglie il plugin, tiene il SaaS
+$sdb->migrate();
+check( 'plugin staff: tolto il ruolo non rivive né dal ripiego né da una nuova migrazione', null === Portale\Staff::role( $sdb, 'vecchio@esempio.it' ) && 'admin' === Portale\Staff::saas( $sdb, 'vecchio@esempio.it' ) );
+
 // Catalogo del plugin (interfaccia Catalog, formato catalogo/v1)
 $cat    = new Portale\Plugin\ConfigCatalog( 3 );
 $catDoc = $cat->document();

@@ -22,20 +22,8 @@ final class Staff {
 
 	/** @return string|null admin, support oppure null se l'indirizzo non ha accesso alla gestione del plugin */
 	public static function role( ?Db $db, string $email ): ?string {
-		$email = strtolower( trim( $email ) );
-		if ( '' === $email ) {
-			return null;
-		}
-		if ( self::isConfigAdmin( $email ) ) {
-			return self::ADMIN;
-		}
-		if ( $db ) {
-			$row = $db->one( 'SELECT role FROM staff WHERE email = ?', array( $email ) );
-			if ( $row && isset( self::LABELS[ $row['role'] ] ) ) {
-				return (string) $row['role'];
-			}
-		}
-		return null;
+		// Il ruolo nel plugin vive nello spazio del plugin (tabella `plugin_staff`).
+		return Plugin\Staff::role( $db, $email );
 	}
 
 	/** @return string admin, support oppure '' se l'indirizzo non ha accesso alla gestione del SaaS */
@@ -56,7 +44,7 @@ final class Staff {
 		return '';
 	}
 
-	private static function isConfigAdmin( string $email ): bool {
+	public static function isConfigAdmin( string $email ): bool {
 		foreach ( (array) Config::get( 'admins', array() ) as $a ) {
 			if ( strtolower( trim( (string) $a ) ) === $email ) {
 				return true;
@@ -76,7 +64,7 @@ final class Staff {
 		}
 		foreach ( $db->all( 'SELECT email, role, saas, created_at FROM staff ORDER BY email' ) as $r ) {
 			if ( ! isset( $out[ $r['email'] ] ) ) {
-				$out[ $r['email'] ] = array( 'email' => $r['email'], 'role' => $r['role'], 'saas' => (string) $r['saas'], 'locked' => false, 'created_at' => $r['created_at'] );
+				$out[ $r['email'] ] = array( 'email' => $r['email'], 'role' => Plugin\Staff::role( $db, $r['email'] ) ?? self::NONE, 'saas' => (string) $r['saas'], 'locked' => false, 'created_at' => $r['created_at'] );
 			}
 		}
 		return array_values( $out );
@@ -109,6 +97,7 @@ final class Staff {
 		} else {
 			$db->run( 'INSERT INTO staff (email, role, saas, created_at) VALUES (?,?,?,?)', array( $email, $role, $new, Db::now() ) );
 		}
+		Plugin\Staff::put( $db, $email, $role ); // il ruolo nel plugin sta nella tabella del plugin
 		return $email;
 	}
 
@@ -117,6 +106,7 @@ final class Staff {
 		$email = strtolower( trim( $email ) );
 		if ( $db->one( 'SELECT 1 AS x FROM staff WHERE email = ?', array( $email ) ) ) {
 			$db->run( 'DELETE FROM staff WHERE email = ?', array( $email ) );
+			Plugin\Staff::remove( $db, $email );
 			return;
 		}
 		throw new UserError( 'Indirizzo non presente nello staff (o amministratore da config.php).' );
