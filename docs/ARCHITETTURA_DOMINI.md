@@ -268,8 +268,10 @@ su quelle due parti** finché il contratto v2 non è scritto.
 | `top` (assistenza **Top**) | piani a pagamento con assistenza top | 24 ore | lunedì–sabato | prioritaria, in cima alla coda |
 
 - Il tempo è di **prima risposta**, non di risoluzione, ed è un obiettivo di servizio, non una promessa contrattuale.
-- Le ore si contano **solo nei giorni coperti** (un ticket del venerdì sera per `free` ha risposta entro mercoledì: ore dei giorni
-  di servizio); le festività nazionali non contano. *(Da confermare questa lettura.)*
+- **Confermato dalla titolare (10/11/2026):** le 48 ore sono **lavorative**, contate dall'apertura del ticket e **solo nei giorni
+  coperti** dal livello (`free`: lunedì–venerdì; `paid` e `top`: lunedì–sabato), senza domeniche e senza festività nazionali.
+  Esempio `free`: ticket aperto venerdì alle 18:00 → risposta entro martedì alle 18:00 (restano 6 ore di venerdì, poi
+  24 di lunedì e 18 di martedì).
 - **Scelta per piano:** chi crea un piano a pagamento nell'editor del catalogo (`/saas/admin`, `/wordpress/admin`) sceglie se ha
   assistenza Standard o Top (campo `support_level` obbligatorio); i piani gratuiti sono sempre `free`. Oggi, per plugin e SaaS: il
   piano a pagamento più basso è Standard, l'altro è Top. I nomi da mostrare ai clienti: «Gratuita», «Standard», «Top».
@@ -361,5 +363,4 @@ Deciso anche: lancio del catalogo (10/11/2026) e assistenza per piano scelta all
 
 Ancora da fare:
 - Prova di fattibilità dell'indirizzo `/saas/admin` (sessione portale-saas).
-- Conferma della lettura dei tempi di assistenza (§7: ore contate solo nei giorni coperti, festivi esclusi).
 - Valore giusto di `domain_lock_days` sul server (120 o 180).
