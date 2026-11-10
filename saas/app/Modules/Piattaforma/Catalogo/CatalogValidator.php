@@ -211,7 +211,7 @@ final class CatalogValidator
             $p = self::object($item, "{$name}.{$i}", ['period', 'kind', 'vat_percent', 'amount_cents', 'base_members', 'base_cents', 'tiers', 'months_billed', 'steps']);
             $period = $p['period'] ?? null;
             $kind = $p['kind'] ?? null;
-            if (! in_array($period, ['month', 'year'], true) || ! is_string($period)) {
+            if (! in_array($period, ['month', 'year'], true)) {
                 throw new InvalidArgumentException("{$name}.{$i}.period non valido");
             }
             if (! is_string($kind) || ! in_array($kind, self::PRICE_KINDS, true)) {
