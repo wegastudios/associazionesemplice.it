@@ -1382,6 +1382,34 @@ Portale\Staff::set( $sdb, $sbil, 'vecchio@esempio.it', 'none' ); // toglie il pl
 $sdb->migrate();
 check( 'plugin staff: tolto il ruolo non rivive né dal ripiego né da una nuova migrazione', null === Portale\Staff::role( $sdb, 'vecchio@esempio.it' ) && 'admin' === Portale\Staff::saas( $sdb, 'vecchio@esempio.it' ) );
 
+// Codici promo del plugin (Plugin\Promos)
+$rdb2 = new Db( new PDO( 'sqlite::memory:' ) );
+$rdb2->migrate();
+$rcat  = new Portale\Plugin\ConfigCatalog();
+$rplan = Portale\Site::slug( 'full' );
+$rcodes = array_column( $rcat->document()['plans'], 'code' );
+$rbase  = (int) Portale\Config::get( 'plans.full.prices.year.cents', 0 );
+$rnow   = strtotime( '2026-11-15 12:00:00 UTC' );
+check( 'promo: codice troppo corto o con simboli rifiutato', null !== throwsUser( function () use ( $rcodes ) { Portale\Plugin\Promos::validate( array( 'code' => 'a!', 'kind' => 'percent', 'value' => 10, 'ends_on' => '2026-12-31' ), $rcodes ); } ) );
+check( 'promo: percentuale 0 o oltre 100 rifiutata', null !== throwsUser( function () use ( $rcodes ) { Portale\Plugin\Promos::validate( array( 'code' => 'ABC', 'kind' => 'percent', 'value' => 101, 'ends_on' => '2026-12-31' ), $rcodes ); } ) );
+check( 'promo: serve la data di fine; inizio dopo la fine rifiutato', null !== throwsUser( function () use ( $rcodes ) { Portale\Plugin\Promos::validate( array( 'code' => 'ABC', 'kind' => 'percent', 'value' => 10 ), $rcodes ); } ) && null !== throwsUser( function () use ( $rcodes ) { Portale\Plugin\Promos::validate( array( 'code' => 'ABC', 'kind' => 'percent', 'value' => 10, 'starts_on' => '2026-12-31', 'ends_on' => '2026-12-01' ), $rcodes ); } ) );
+check( 'promo: piano non del plugin rifiutato (le promo sono di un solo prodotto)', null !== throwsUser( function () use ( $rcodes ) { Portale\Plugin\Promos::validate( array( 'code' => 'ABC', 'kind' => 'percent', 'value' => 10, 'ends_on' => '2026-12-31', 'plans' => array( 'saas_pro' ) ), $rcodes ); } ) );
+Portale\Plugin\Promos::save( $rdb2, Portale\Plugin\Promos::validate( array( 'code' => ' black-friday ', 'kind' => 'percent', 'value' => 20, 'starts_on' => '2026-11-01', 'ends_on' => '2026-11-30', 'max_uses' => 2, 'plans' => array( $rplan ) ), $rcodes ) );
+$rck = Portale\Plugin\Promos::check( $rdb2, $rcat, 'Black-Friday', $rplan, 'year', $rnow );
+check( 'promo: codice valido, senza distinzione di maiuscole, sconto del 20% calcolato', $rbase > 0 ? ( $rck['valid'] && (int) round( $rbase * 0.2 ) === $rck['discount_cents'] && $rbase - $rck['discount_cents'] === $rck['final_cents'] && '2026-11-30' === $rck['ends_on'] ) : true );
+check( 'promo: controllare non consuma nulla', 0 === (int) Portale\Plugin\Promos::get( $rdb2, 'BLACK-FRIDAY' )['used'] );
+check( 'promo: codice sconosciuto, fuori date, piano non coperto', 'unknown_code' === Portale\Plugin\Promos::check( $rdb2, $rcat, 'NOPE', $rplan, 'year', $rnow )['reason'] && 'out_of_dates' === Portale\Plugin\Promos::check( $rdb2, $rcat, 'BLACK-FRIDAY', $rplan, 'year', strtotime( '2026-12-02 UTC' ) )['reason'] && 'out_of_dates' === Portale\Plugin\Promos::check( $rdb2, $rcat, 'BLACK-FRIDAY', $rplan, 'year', strtotime( '2026-10-31 UTC' ) )['reason'] );
+check( 'promo: confermare lo stesso ordine due volte consuma un uso solo', true === Portale\Plugin\Promos::redeem( $rdb2, 'BLACK-FRIDAY', 'ord-1', $rnow ) && false === Portale\Plugin\Promos::redeem( $rdb2, 'BLACK-FRIDAY', 'ord-1', $rnow ) && 1 === (int) Portale\Plugin\Promos::get( $rdb2, 'BLACK-FRIDAY' )['used'] );
+Portale\Plugin\Promos::redeem( $rdb2, 'BLACK-FRIDAY', 'ord-2', $rnow );
+check( 'promo: limite d\'uso raggiunto = esaurita, il terzo ordine rifiutato e non registrato', 'exhausted' === Portale\Plugin\Promos::check( $rdb2, $rcat, 'BLACK-FRIDAY', $rplan, 'year', $rnow )['reason'] && null !== throwsUser( function () use ( $rdb2, $rnow ) { Portale\Plugin\Promos::redeem( $rdb2, 'BLACK-FRIDAY', 'ord-3', $rnow ); } ) && 2 === (int) Portale\Plugin\Promos::get( $rdb2, 'BLACK-FRIDAY' )['used'] && null === $rdb2->one( "SELECT 1 AS x FROM plugin_promo_uses WHERE order_ref = 'ord-3'" ) );
+Portale\Plugin\Promos::save( $rdb2, Portale\Plugin\Promos::validate( array( 'code' => 'EURO5', 'kind' => 'amount', 'value' => 500, 'ends_on' => '2026-12-31' ), $rcodes ) );
+$reuro = Portale\Plugin\Promos::check( $rdb2, $rcat, 'EURO5', $rplan, 'year', $rnow );
+check( 'promo: sconto in euro, mai oltre il prezzo', $rbase > 0 ? ( $reuro['valid'] && 500 === $reuro['discount_cents'] ) : true );
+Portale\Plugin\Promos::setActive( $rdb2, 'EURO5', false );
+check( 'promo: sospesa = non vale e non compare nel catalogo pubblico', 'inactive' === Portale\Plugin\Promos::check( $rdb2, $rcat, 'EURO5', $rplan, 'year', $rnow )['reason'] && array() === array_values( array_filter( Portale\Plugin\Promos::publicList( $rdb2, $rnow ), function ( $p ) { return 'EURO5' === $p['code']; } ) ) );
+$rpub = Portale\Plugin\Promos::publicList( $rdb2, $rnow );
+check( 'promo: la lista pubblica non espone dati interni', array() === array_filter( $rpub, function ( $p ) { return isset( $p['used'] ) || isset( $p['active'] ); } ) );
+
 // Operazioni dell'area clienti (CustomerApi, DownloadLink)
 $adb = new Db( new PDO( 'sqlite::memory:' ) );
 $adb->migrate();

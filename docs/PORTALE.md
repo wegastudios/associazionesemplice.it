@@ -266,6 +266,11 @@ Sezione **Piani → Catalogo**, solo per gli amministratori. Cosa si decide qui:
 - **Cosa NON c'è qui (per ora):** nomi e prezzi restano in «Piani e prezzi» (il catalogo li legge da lì in tempo reale) finché il negozio non passa dal catalogo; le promozioni; la firma EdDSA.
 - **Nessun effetto prima del primo «Pubblica».** Finché non si pubblica niente, `GET /wordpress/api/catalogo/v1` risponde come prima (dalla configurazione). Classi: `Plugin\CatalogStore` (bozza, controlli, pubblicazione), `Plugin\DbCatalog` (lettura per il portale), `Plugin\ConfigCatalog` (base viva: nomi e prezzi).
 
+### Codici promo del plugin (`/wordpress/admin/codici-promo`)
+
+Decisione 10/11/2026: una promo è **sempre di un prodotto** e vale solo per i suoi piani (nessuna offerta combinata plugin + SaaS). Qui si creano codici con sconto in percentuale (1–100) o in euro, piani validi (nessuno = tutti), date (la fine è obbligatoria, ora italiana, compresa), limite d'uso e stato (sospendi/riattiva). Le promozioni sono dati vivi: non passano da bozza/Pubblica e quelle attive compaiono in `promos[]` del catalogo pubblico (senza dati interni, con gli usi rimasti).
+
+Per il negozio (in processo, `Plugin\Promos`): `check($db,$catalogo,$codice,$piano,$periodo)` risponde «vale?» con sconto, importo finale e scadenza **senza consumare nulla** (motivi: `unknown_code`, `unknown_plan`, `inactive`, `out_of_dates`, `exhausted`, `plan_not_covered`); `redeem($db,$codice,$ordine)` conferma l'uso a pagamento riuscito, **una volta sola per ordine** (richiamarla con lo stesso ordine non consuma altro; se nel frattempo il codice si è esaurito: errore `exhausted` e niente viene registrato). Non ancora: promo automatiche senza codice e cumulabilità (c'è un solo codice per ordine). L'aggancio dal carrello lo fa portale-vendita; la vecchia promozione «in vetrina» (prezzo barrato) resta in «Piani e prezzi».
 ### Firma del catalogo (EdDSA)
 
 `GET /wordpress/api/catalogo/v1` porta l'intestazione `X-Catalog-Signature: alg="EdDSA", kid="catalogo-plugin-xxxxxxxx", sig="…"`: firma Ed25519 sui **byte esatti** del corpo. Chi legge il catalogo (il negozio, altri siti) fissa la chiave pubblica e rifiuta ciò che non torna (`Plugin\CatalogSigner::verify`).
