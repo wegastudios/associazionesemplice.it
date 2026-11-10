@@ -359,6 +359,9 @@ Prese dalla titolare il 10/11/2026:
    Il codice ha 180 come valore predefinito; la titolare ricorda 120: da verificare nelle impostazioni del pannello (§5 bis).
 7. **Livelli di assistenza** `free` (48 ore, lun–ven), `paid` (48 ore, lun–sab, prioritario), `top` (24 ore, lun–sab, prioritario) (§7).
 
+8. **Fattura elettronica nel plugin:** ci sarà, tramite un ponte con la piattaforma, solo nei piani del plugin con contabilità; si mostra nelle tabelle solo quando esiste. Dove vive il ponte (portale o SaaS) è da progettare: oggi il contratto lo prevede nel portale (§4, fase 2).
+9. **Nessuna migrazione plugin↔gestionale:** non c'è un automatismo; chi vuole l'altro prodotto lo sottoscrive e lascia scadere quello che non usa più; i casi diversi si gestiscono a mano. Niente offerte combinate.
+
 Deciso anche: lancio del catalogo (10/11/2026) e assistenza per piano scelta alla creazione (§7).
 
 Ancora da fare:

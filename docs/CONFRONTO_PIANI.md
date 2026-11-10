@@ -19,7 +19,7 @@ La tabella 1 è nuova e va nella home di vendita. Le altre due esistono già in 
 ## 2. Tabella 1: guida alla scelta (bozza dei contenuti)
 
 Testo sopra: «Tutti e due gestiscono soci, tessere, prima nota, corsi ed eventi. Cambia **dove stanno i dati** e **chi si occupa
-dell'installazione**.» Le celle `{…}` si riempiono dal catalogo; le righe segnate ★ vanno **verificate** prima di pubblicare
+dell'installazione**.» Le celle `{…}` si riempiono dal catalogo; la riga segnata ★ va **verificata** prima di pubblicare
 (non le ho potute confermare dai documenti).
 
 | | Plugin WordPress | Gestionale online |
@@ -34,7 +34,7 @@ dell'installazione**.» Le celle `{…}` si riempiono dal catalogo; le righe seg
 | **Area soci** (tessera, prenotazioni) | ✓ area riservata nel tuo sito | pacchetto «Area soci e pagamenti» · {addon:member_area} |
 | **Pagamenti online** (Stripe, PayPal) | con Pro | con il pacchetto Area soci |
 | **Risorse e prenotazioni** (campi, sale) | con Pro | pacchetto «Risorse e prenotazioni» · {addon:resources_hourly_web} |
-| **Fattura elettronica** | ★ non prevista | pacchetto · {addon:einvoice} |
+| **Fattura elettronica** | tramite il ponte con la piattaforma, **solo nei piani con contabilità** (in arrivo: si mostra solo quando esiste) | pacchetto · {addon:einvoice} |
 | **Rendiconto per cassa e parte fiscale** | Pro Fiscale | ★ da verificare (base o «Contabilità avanzata») |
 | **Operatori / utenti** | ruoli di WordPress | {plan:gestionale.operators} |
 | **Verifica in due passaggi** | quella di WordPress | obbligatoria per tutti gli operatori |
@@ -43,7 +43,7 @@ dell'installazione**.» Le celle `{…}` si riempiono dal catalogo; le righe seg
 | **Prova gratuita** | Pro: 30 giorni | {plan:gestionale.trial_days} giorni |
 | **Prezzo** | Gratuito per sempre; Pro da {plugin:lite.month_price} al mese | da {plan:gestionale.base_price} al mese fino a 50 soci, poi a scaglioni |
 | **Assistenza** | {support:free}, {support:paid} o {support:top} secondo il piano | {support:paid} o {support:top} secondo il piano |
-| **Passare dall'uno all'altro** | ★ da definire (migrazione prevista, non ancora disponibile) | ★ idem |
+| **Passare dall'uno all'altro** | nessun passaggio automatico: sottoscrivi l'altro e lasci scadere quello che non usi più; casi particolari a mano, scrivendo all'assistenza | idem |
 
 Sotto la tabella, due pulsanti affiancati: «Guarda il plugin» → `/wordpress`, «Guarda il gestionale» → `/saas`; e «Provali»: demo
 del plugin (`/demo`) e demo del gestionale (`demoapp.associazionesemplice.it`). Non ci sono offerte combinate.
@@ -120,7 +120,7 @@ mensile e annuale: è un'idea di progetto, da realizzare dopo la tabella.
 
 ## 7. Da verificare prima di pubblicare
 
-1. Le righe ★ della tabella 1 (fattura elettronica del plugin, parte fiscale del gestionale, passaggio tra i due).
+1. La riga ★ rimasta della tabella 1 (parte fiscale del gestionale: base o «Contabilità avanzata»). Sul resto la titolare ha deciso il 10/11/2026: la fattura elettronica del plugin passa dal ponte e solo nei piani con contabilità; tra plugin e gestionale non c'è migrazione, chi cambia sottoscrive il nuovo e lascia scadere il vecchio.
 2. Il nome pubblico dei piani del plugin (Pro Contabile, Pro Fiscale) e i prezzi dal catalogo del plugin (la vetrina del portale ha
    5 € / 48 € e 12 € / 119 € in `config.example.php`, ma il listino vero sta nelle impostazioni di produzione).
 3. Che la parte fiscale (IVA, 5 per mille, rendiconto per cassa) sia davvero in «Contabilità avanzata» o nella base del gestionale
