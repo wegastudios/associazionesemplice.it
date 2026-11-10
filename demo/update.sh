@@ -10,7 +10,8 @@ for p in free:associazionesemplice pro:associazionesemplice-pro; do
 	prod="${p%%:*}"; slug="${p##*:}"; v="$(latest "$prod")"
 	[ -n "$v" ] || { echo "Nessuna versione pubblicata per $prod"; continue; }
 	cur="$(wp plugin get "$slug" --field=version 2>/dev/null || true)"
-	if [ "$cur" != "$v" ]; then
+	# Si installa solo se manca o se la pubblicata è PIÙ NUOVA: una build di main non ancora pubblicata (numero più alto) non va mai ritirata.
+	if [ -z "$cur" ] || { [ "$cur" != "$v" ] && [ "$(printf '%s\n%s\n' "$cur" "$v" | sort -V | tail -1)" = "$v" ]; }; then
 		wp plugin install "$R/$prod/$v.zip" --force --activate >/dev/null
 		echo "$slug: ${cur:-nuovo} -> $v"
 	fi
