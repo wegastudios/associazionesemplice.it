@@ -15,13 +15,14 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Pagina di accesso dei soci senza utente WordPress. Si entra con email e password. Chi non ricorda la password riceve un link che fa
- * entrare ma obbliga a sceglierne una nuova prima di navigare; chi preferisce può entrare senza password con un link o un codice via email.
+ * entrare ma obbliga a sceglierne una nuova prima di navigare («Password dimenticata?» apre la schermata «Reimposta la password»); chi preferisce
+ * può entrare senza password con «Mandami il link» (il codice a 6 cifre dell'email serve a chi non può aprire il link da quel dispositivo).
  * La password va scelta alla prima entrata. Con l'accesso proprio spento la pagina non esiste.
  * Gli indirizzi sono ?asem_member_login=1 (pagina) e ?asem_ml=… (link dell'email).
  */
 final class MemberLoginPage {
 
-	const SENT = 'Se l\'email è di un socio ti abbiamo scritto: apri il link oppure scrivi qui sotto il codice a 6 cifre (controlla anche la posta indesiderata).';
+	const SENT = 'Se l\'email è di un socio ti abbiamo scritto: apri il link che trovi nell\'email (controlla anche la posta indesiderata).';
 	const FAIL = 'Email, codice o password non corretti, oppure troppi tentativi: riprova tra qualche minuto.';
 
 	public static function register(): void {
@@ -74,6 +75,9 @@ final class MemberLoginPage {
 		$step = '';
 		$mail = '';
 		$back = isset( $_GET['_back'] ) ? esc_url_raw( wp_unslash( $_GET['_back'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+		if ( isset( $_GET['asem_ml_reset'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification -- solo mostra la schermata «Reimposta la password»
+			$step = 'reset';
+		}
 		$post = isset( $_SERVER['REQUEST_METHOD'], $_POST['asem_ml_do'] ) && 'POST' === sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
 		$do   = $post ? sanitize_key( self::post( 'asem_ml_do' ) ) : '';
 		if ( $post && '' !== self::post( '_back' ) ) {
@@ -122,7 +126,7 @@ final class MemberLoginPage {
 			} elseif ( 'request' === $do || 'recover' === $do ) {
 				MemberLogin::request( self::post( 'email' ), 'recover' === $do ? 'reset' : 'login' );
 				$msg  = self::SENT; // sempre la stessa risposta: non si scopre chi è socio
-				$step = 'code';
+				$step = 'recover' === $do ? 'reset_code' : 'code';
 				$mail = self::post( 'email' );
 			} elseif ( 'code' === $do || 'password_login' === $do || 'token' === $do ) {
 				$who = 'code' === $do ? MemberLogin::login_with_code( self::post( 'email' ), self::post( 'code' ) )
@@ -228,16 +232,43 @@ final class MemberLoginPage {
 				. '<button type="submit" style="' . self::style()[1] . '">Entra</button></form>';
 			return CardVerify::layout( 'Accesso', Assets::accent( '#2271b1' ), $body );
 		}
-		$body .= '<div class="n">Accesso soci</div>'
-			. self::form( 'password_login', self::field( 'Email', 'email', 'email', 'username', $mail ) . self::field( 'Password', 'password', 'password', 'current-password' ), 'Entra', false, $back )
-			. $gap . '<div class="n">Non ricordi la password?</div><p>Scrivi la tua email: ti mandiamo un link che ti fa scegliere una nuova password.</p>'
-			. self::form( 'recover', self::field( 'La tua email', 'email', 'email', 'email', $mail ), 'Mandami il link per reimpostarla', false, $back )
-			. $gap . '<div class="n">Preferisci entrare senza password?</div><p>Ti mandiamo un link e un codice per email.</p>'
-			. self::form( 'request', self::field( 'La tua email', 'email', 'email', 'email', $mail ), 'Mandami un link o un codice', false, $back );
-		if ( 'code' === $step ) {
-			$body .= $gap . '<div class="n">Hai il codice?</div>'
-				. self::form( 'code', self::field( 'Email', 'email', 'email', 'email', $mail ) . self::field( 'Codice a 6 cifre', 'code', 'text', 'one-time-code', '', ' inputmode="numeric" pattern="[0-9]{6}" maxlength="6"' ), 'Entra con il codice', false, $back );
+		// Il codice si mostra solo dopo aver chiesto il link: serve a chi non può aprirlo da questo dispositivo.
+		$code_box = 'code' === $step || 'reset_code' === $step
+			? $gap . '<div class="n">Non riesci ad aprire il link da questo dispositivo?</div><p>Scrivi qui il codice a 6 cifre che trovi nell\'email.</p>'
+				. self::form( 'code', self::field( 'Email', 'email', 'email', 'email', $mail ) . self::field( 'Codice a 6 cifre', 'code', 'text', 'one-time-code', '', ' inputmode="numeric" pattern="[0-9]{6}" maxlength="6"' ), 'Entra con il codice', false, $back )
+			: '';
+		if ( 'reset' === $step || 'reset_code' === $step ) { // «Password dimenticata?»: una schermata sola, con la sola email
+			$body .= '<div class="n">Reimposta la password</div><p>Scrivi la tua email: ti mandiamo un link che ti fa scegliere una nuova password.</p>'
+				. self::form( 'recover', self::field( 'Email', 'email', 'email', 'username', $mail ), 'Mandami il link per reimpostarla', false, $back )
+				. $code_box
+				. '<p style="margin:18px 0 0"><a href="' . esc_url( '' !== $back ? add_query_arg( '_back', rawurlencode( $back ), self::url() ) : self::url() ) . '">Torna all\'accesso</a></p>';
+			return CardVerify::layout( 'Reimposta la password', Assets::accent( '#2271b1' ), $body );
 		}
+		$reset_url = add_query_arg( 'asem_ml_reset', '1', self::url() );
+		if ( '' !== $back ) {
+			$reset_url = add_query_arg( '_back', rawurlencode( $back ), $reset_url );
+		}
+		$body .= '<div class="n">Accesso soci</div>' . self::login_form( $mail, $back )
+			. '<p style="margin:14px 0 0"><a href="' . esc_url( $reset_url ) . '">Password dimenticata?</a></p>'
+			. $code_box;
 		return CardVerify::layout( 'Accesso soci', Assets::accent( '#2271b1' ), $body );
+	}
+
+	/**
+	 * Schermata di accesso: un solo campo email e un solo campo password, con due pulsanti affiancati (impilati a tutta larghezza da telefono):
+	 * «Entra» con la password e «Mandami il link» per entrare senza password. Il primo pulsante è quello dell'invio con la tastiera.
+	 */
+	private static function login_form( string $mail, string $back ): string {
+		list( $input, $btn ) = self::style();
+		$main = str_replace( 'width:100%;', '', $btn ) . ';flex:1 1 200px;min-height:48px';
+		$alt  = str_replace( 'width:100%;', '', $btn ) . ';flex:1 1 200px;min-height:48px;background:#fff;color:' . Assets::accent( '#2271b1' ) . ';border:2px solid ' . Assets::accent( '#2271b1' );
+		return '<form method="post" action="' . esc_url( self::url() ) . '">' . wp_nonce_field( 'asem_member_login', '_asem_nonce', false, false )
+			. ( '' !== $back ? '<input type="hidden" name="_back" value="' . esc_url( $back ) . '">' : '' )
+			. self::field( 'Email', 'email', 'email', 'username', $mail )
+			. '<label>Password<input style="' . $input . '" type="password" name="password" autocomplete="current-password"></label>'
+			. '<div style="display:flex;flex-wrap:wrap;gap:10px">'
+			. '<button type="submit" name="asem_ml_do" value="password_login" style="' . $main . '">Entra</button>'
+			. '<button type="submit" name="asem_ml_do" value="request" formnovalidate style="' . $alt . '">Mandami il link</button></div>'
+			. '<p style="font-size:14px;color:#50575e;margin:10px 0 0">Con «Mandami il link» entri senza password: ti scriviamo un link per email.</p></form>';
 	}
 }

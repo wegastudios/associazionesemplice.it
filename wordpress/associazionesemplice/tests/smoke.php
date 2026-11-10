@@ -8011,6 +8011,12 @@ $ml_pull = function () use ( &$ml_mail ) {
 	$m = (string) end( $ml_mail )['message'];
 	return array( 1 === preg_match( '/asem_ml=([A-Za-z0-9_-]{43})/', $m, $a ) ? $a[1] : '', 1 === preg_match( '/codice[^\d]*(\d{6})/', $m, $b ) ? $b[1] : '' );
 };
+$ml_main  = \AssociazioneSemplice\Frontend\MemberLoginPage::page( '', '', '', '', '' );
+$ml_reset = \AssociazioneSemplice\Frontend\MemberLoginPage::page( '', '', '', 'reset', '' );
+$ml_code  = \AssociazioneSemplice\Frontend\MemberLoginPage::page( '', '', '', 'code', 'socio@example.org' );
+asem_ok( false !== strpos( $ml_main, 'value="password_login"' ) && false !== strpos( $ml_main, 'value="request"' ) && 1 === substr_count( $ml_main, 'type="password"' ) && 1 === substr_count( $ml_main, 'name="email"' ) && false !== strpos( $ml_main, 'Password dimenticata?' ) && false === strpos( $ml_main, 'codice a 6 cifre' ), 'pagina di accesso: un campo email e uno password, due pulsanti, «Password dimenticata?» e nessun codice finché non chiedi il link' );
+asem_ok( false !== strpos( $ml_reset, 'Reimposta la password' ) && false !== strpos( $ml_reset, 'value="recover"' ) && false === strpos( $ml_reset, 'type="password"' ), 'pagina di accesso: «Password dimenticata?» apre una schermata con la sola email' );
+asem_ok( false !== strpos( $ml_code, 'codice a 6 cifre' ) && false !== strpos( $ml_code, 'name="code"' ), 'pagina di accesso: il campo del codice compare dopo aver chiesto il link' );
 asem_ok( ! MemberLogin::request( 'nessuno@example.org' ) && ! $ml_mail, 'accesso proprio: un\'email sconosciuta non riceve niente' );
 asem_ok( MemberLogin::request( $ml_addr ) && 1 === count( $ml_mail ), 'accesso proprio: a un socio arriva una email con link e codice' );
 list( $ml_tok, $ml_code ) = $ml_pull();
