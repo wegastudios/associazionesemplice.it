@@ -53,8 +53,13 @@ final class App {
 		$get = 'GET' === $method;
 		if ( 0 === strpos( $path, '/admin' ) ) {
 			( new Admin( $this->db, $this->billing, $this->customerId() ) )->handle( $method, $path );
-		} elseif ( '/saas' === $path || 0 === strpos( $path, '/saas/' ) ) {
-			( new Platform( $this->db, $this->customerId() ) )->handle( $method, $path );
+		} elseif ( ( $legacy = Sections::legacy( $method, $path, (string) ( $_SERVER['QUERY_STRING'] ?? '' ) ) ) ) {
+			// Vecchi indirizzi di /saas: accesso dal gestionale, vecchia gestione delle associazioni, /saas/admin (vedi {@see Sections}).
+			header( 'Location: ' . $legacy[1], true, $legacy[0] );
+		} elseif ( $get && Sections::view( $path ) ) {
+			// Sezioni di contenuti /saas e /wordpress (l'amministrazione di ciascun prodotto vive sotto /admin).
+			$view = (string) Sections::view( $path );
+			View::render( $view, array( 'title' => 'wordpress_changelog' === $view ? 'Novità del plugin' : ( 'saas_section' === $view ? 'Il gestionale online' : 'Il plugin per WordPress' ), 'releases' => 'wordpress_changelog' === $view ? Sections::releases( $this->db ) : array() ) );
 		} elseif ( $get && '/' === $path ) {
 			View::render( 'home', array( 'plans' => Config::get( 'plans', array() ), 'trial' => Config::get( 'trial_enabled', true ) ? Settings::limit( 'trial_days' ) : 0 ) );
 		} elseif ( $get && '/api/piani' === $path ) {
@@ -66,7 +71,7 @@ final class App {
 			echo json_encode( Site::publicPlans(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
 		} elseif ( $get && '/robots.txt' === $path ) {
 			View::headers( 'text/plain; charset=utf-8' );
-			echo Config::get( 'indexable', false ) ? "User-agent: *\nAllow: /\nDisallow: /account\nDisallow: /admin\nDisallow: /saas\nDisallow: /api\nDisallow: /scarica\nDisallow: /entra\n" : "User-agent: *\nDisallow: /\n";
+			echo Config::get( 'indexable', false ) ? "User-agent: *\nAllow: /\nDisallow: /account\nDisallow: /admin\nDisallow: /saas/admin\nDisallow: /api\nDisallow: /scarica\nDisallow: /entra\n" : "User-agent: *\nDisallow: /\n";
 		} elseif ( $get && isset( Legal::PAGES[ ltrim( $path, '/' ) ] ) ) {
 			$slug = ltrim( $path, '/' );
 			View::render( 'legal', array( 'title' => Legal::PAGES[ $slug ][0], 'html' => Legal::html( Legal::body( $slug ) ) ) );
@@ -156,6 +161,10 @@ final class App {
 			header( 'Location: ' . SupportSso::url( $this->db, $this->customerEmail( $this->customerId() ) ), true, 303 );
 		} elseif ( $get && '/account' === $path ) {
 			$this->account();
+		} elseif ( $get && '/account/da-gestionale' === $path ) {
+			// «Gestisci abbonamento» dal gestionale (contratto §3.2). Il token si accetta con il passo «acquisto»; fino ad allora si passa dall'accesso normale.
+			header( 'Cache-Control: no-store' );
+			header( 'Location: /accedi', true, 303 );
 		} elseif ( ! $get && '/account/nome' === $path ) {
 			$this->billing->setName( $this->customerId(), (string) $this->in( 'name' ) );
 			$_SESSION['acc_flash'] = 'Nome salvato: comparirà anche nelle richieste di supporto.';
@@ -225,7 +234,7 @@ final class App {
 		$role                = Staff::role( $this->db, (string) $cust['email'] ) ?? '';
 		$_SESSION['staff']    = $role;
 		$_SESSION['admin']    = Staff::ADMIN === $role;
-		$to = '' !== $role ? '/admin' : ( '' !== Staff::saas( $this->db, (string) $cust['email'] ) ? '/saas' : '/account' );
+		$to = '' !== $role ? '/admin' : ( '' !== Staff::saas( $this->db, (string) $cust['email'] ) ? '/saas/admin' : '/account' );
 		if ( '/supporto/accedi' === ( $_SESSION['after_login'] ?? '' ) ) {
 			$to = '/supporto/accedi';
 		}

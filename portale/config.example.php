@@ -64,4 +64,7 @@ return array(
 			),
 		),
 	),
+
+	// Dove portare chi apre /saas/admin se il server non lo serve già sotto il dominio principale (docs/ARCHITETTURA_DOMINI.md §3.3).
+	'saas_admin_url' => 'https://app.associazionesemplice.it/admin',
 );

@@ -1344,5 +1344,21 @@ check( 'saas: errore del SaaS tradotto in messaggio chiaro', 'Questa operazione 
 Http::$transport = function () { return array( 0, '' ); };
 check( 'saas: SaaS non raggiungibile', 'Il SaaS non risponde: riprova tra poco.' === throwsUser( function () { Portale\SaasClient::orgs( 'a@esempio.it' ); } ) );
 Http::$transport = $prevTransport;
+
+// --- Indirizzi delle sezioni /saas e /wordpress -----------------------------
+use Portale\Sections;
+Config::set( 'saas_admin_url', '' );
+check( 'sezioni: /saas/accedi diventa /account/da-gestionale con lo stesso token', array( 301, '/account/da-gestionale?t=abc' ) === Sections::legacy( 'GET', '/saas/accedi', 't=abc' ) );
+check( 'sezioni: /saas/accedi con POST conserva il metodo (308)', 308 === Sections::legacy( 'POST', '/saas/accedi', '' )[0] );
+check( 'sezioni: /saas/admin va all\'amministrazione del SaaS (temporaneo)', array( 302, 'https://app.associazionesemplice.it/admin' ) === Sections::legacy( 'GET', '/saas/admin', '' ) );
+check( 'sezioni: /saas/admin/percorso mantiene il resto e la query', array( 302, 'https://app.associazionesemplice.it/admin/associazioni?q=a' ) === Sections::legacy( 'GET', '/saas/admin/associazioni', 'q=a' ) );
+Config::set( 'saas_admin_url', 'http://non-sicuro.test/admin' );
+check( 'sezioni: indirizzo di amministrazione non https ignorato', 'https://app.associazionesemplice.it/admin' === Sections::saasAdminUrl() );
+Config::set( 'saas_admin_url', 'https://gestione.esempio.it/admin/' );
+check( 'sezioni: indirizzo di amministrazione configurabile', 'https://gestione.esempio.it/admin/x' === Sections::legacy( 'GET', '/saas/admin/x', '' )[1] );
+check( 'sezioni: vecchia pagina di un\'associazione → /saas/admin (301)', array( 301, '/saas/admin' ) === Sections::legacy( 'GET', '/saas/11111111-2222-3333-4444-555555555555', '' ) );
+check( 'sezioni: vecchio /saas/utenti/… → /saas/admin (308 per POST)', array( 308, '/saas/admin' ) === Sections::legacy( 'POST', '/saas/utenti/abc', '' ) );
+check( 'sezioni: /saas e /wordpress sono contenuti, non redirect', null === Sections::legacy( 'GET', '/saas', '' ) && null === Sections::legacy( 'GET', '/wordpress/changelog', '' ) );
+check( 'sezioni: pagine di contenuto', 'saas_section' === Sections::view( '/saas' ) && 'wordpress_section' === Sections::view( '/wordpress' ) && 'wordpress_changelog' === Sections::view( '/wordpress/changelog' ) && null === Sections::view( '/saas/admin' ) );
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );
