@@ -104,7 +104,7 @@ Il corpo non cambia finché non cambia la `rev`; la firma si rifà a ogni rispos
   "features": [ { "id": "member_area", "text": "Area soci e pagamenti online", "group": "Pacchetti" } ],
   "plans": [ {
     "code": "gestionale", "plan_version": 1, "name": "Gestionale", "audience": "Associazioni, APS, ODV",
-    "order": 1, "visible": true, "support_level": "standard", "trial_days": 30,
+    "order": 1, "visible": true, "support_level": "paid", "trial_days": 30,
     "features": { "member_area": { "state": "excluded" }, "operators": { "state": "limit", "text": "1 incluso" } },
     "limits": { "members": null, "operators": 1, "storage_mb_per_member": 5, "storage_mb_min": 250 },
     "prices": [ { "period": "month", "kind": "members_tiers", "vat_percent": 22,
@@ -130,7 +130,7 @@ Il corpo non cambia finché non cambia la `rev`; la firma si rifà a ogni rispos
 | `prices[]` | `period` `month` o `year`; `vat_percent` intero; importi **sempre in centesimi interi**. `kind`: `flat` (`amount_cents`), `members_tiers` (`base_members` soci compresi nel `base_cents`, poi `tiers[]` con `up_to` e `unit_cents` per socio al mese; ultimo `up_to` = `null`; `months_billed` per l'annuale, p. es. 10) oppure `step_tiers` (`steps[]` con `up_to` e `amount_cents`, scatto per fascia; l'ultimo `up_to` `null` = «oltre») |
 | `addons[]` | `code` stabile, `kind`: `package` (attiva un pacchetto: `grants.package` e i suoi limiti), `operators` (`grants.operators` per unità), `storage` (`grants.storage_gb` per unità), `domain`, `dedicated_db`, `recharge`. Quello che l'addon concede è in `grants` |
 | `promos[]` | solo le **attive**: `code` (o `null` = automatica), `name`, `discount` (`{"type":"percent","value":20}` o `{"type":"amount_cents","value":500}`), `plans[]` (codici) o `null` = tutti, `valid_from`, `valid_to` (date), `max_uses`, `stackable` |
-| `support_level` | `base`, `standard`, `priority` (segnaposto, ARCHITETTURA_DOMINI §7) |
+| `support_level` | enum `free`, `paid`, `top` (tempi di risposta in ARCHITETTURA_DOMINI §7). Le promo sono sempre di un prodotto: nessuna offerta combinata tra prodotti |
 
 Il portale **non mostra e non incassa mai** un prezzo che non viene dal catalogo. Se il catalogo non risponde usa
 l'ultimo salvato per le pagine di vendita, segnando «aggiornato il …» nel pannello staff; **per acquistare** serve il

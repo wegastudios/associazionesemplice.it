@@ -7,7 +7,7 @@ namespace App\Modules\Piattaforma\Http\Controllers;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\View\View;
 
-/** Pagine di sola lettura dell'amministrazione: riepilogo, associazioni, registro delle azioni. */
+/** Pagine di sola lettura dell'amministrazione: riepilogo e registro delle azioni. */
 final readonly class AdminConsoleController
 {
     public function __construct(private DatabaseManager $db) {}
@@ -17,19 +17,8 @@ final readonly class AdminConsoleController
         $db = $this->db->connection('pgsql');
 
         return view('admin.home', [
-            'orgs' => $db->table('core.orgs')->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status')->all(),
             'staff' => $db->table('core.platform_staff')->whereNull('disabled_at')->count(),
         ]);
-    }
-
-    public function orgs(): View
-    {
-        $rows = $this->db->connection('pgsql')->table('core.orgs as o')
-            ->leftJoin('core.org_entitlements as e', 'e.org_id', '=', 'o.id')
-            ->orderByDesc('o.created_at')->limit(200)
-            ->get(['o.name', 'o.slug', 'o.status', 'o.created_at', 'e.status as subscription', 'e.until', 'e.rev']);
-
-        return view('admin.orgs', ['orgs' => $rows]);
     }
 
     public function audit(): View

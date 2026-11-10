@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Piattaforma\Providers;
 
 use App\Modules\Piattaforma\Catalogo\CatalogPlanLimits;
-use App\Modules\Piattaforma\Catalogo\ConfigCatalog;
+use App\Modules\Piattaforma\Catalogo\DbCatalog;
 use App\Modules\Piattaforma\Console\CreateStaffCommand;
 use App\Modules\Piattaforma\Console\ResetStaffTwoFactorCommand;
 use App\Modules\Piattaforma\Contracts\Catalog;
@@ -23,7 +23,8 @@ final class PiattaformaServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->singleton(Catalog::class, ConfigCatalog::class);
+        $this->app->singleton(DbCatalog::class);
+        $this->app->singleton(Catalog::class, DbCatalog::class);
         $this->app->singleton(PlanLimits::class, CatalogPlanLimits::class);
     }
 

@@ -42,6 +42,11 @@ it('rifiuta campi sconosciuti, importi non interi e testo con HTML', function (a
 
         return $c;
     }]],
+    'livello di supporto vecchio' => [['apply' => function (array $c): array {
+        $c['plans'][0]['support_level'] = 'standard';
+
+        return $c;
+    }]],
     'piano senza caratteristiche' => [['apply' => function (array $c): array {
         $c['plans'][0]['features'] = [];
 

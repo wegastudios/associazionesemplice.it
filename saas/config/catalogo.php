@@ -75,7 +75,7 @@ return [
             'audience' => 'Associazioni, APS, ODV e società sportive',
             'order' => 1,
             'visible' => true,
-            'support_level' => 'standard',
+            'support_level' => 'paid',
             'trial_days' => 30,
             'features' => [
                 'members' => ['state' => 'included'],

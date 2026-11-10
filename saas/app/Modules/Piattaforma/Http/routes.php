@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Piattaforma\Http\Controllers\AdminCatalogController;
 use App\Modules\Piattaforma\Http\Controllers\AdminConsoleController;
 use App\Modules\Piattaforma\Http\Controllers\AdminLoginController;
 use App\Modules\Piattaforma\Http\Middleware\UsePlatformSession;
@@ -22,7 +23,13 @@ Route::middleware('web')->prefix(UsePlatformSession::path())->group(function ():
 
     Route::middleware('platform.staff')->group(function (): void {
         Route::get('/', [AdminConsoleController::class, 'home'])->name('platform.home');
-        Route::get('associazioni', [AdminConsoleController::class, 'orgs'])->name('platform.orgs');
+        Route::get('catalogo', [AdminCatalogController::class, 'show'])->name('platform.catalog');
+        Route::get('catalogo/bozza', [AdminCatalogController::class, 'draft'])->name('platform.catalog.draft');
+        Route::middleware('platform.staff:write')->group(function (): void {
+            Route::post('catalogo/bozza', [AdminCatalogController::class, 'save'])->name('platform.catalog.save');
+            Route::post('catalogo/scarta', [AdminCatalogController::class, 'discard'])->name('platform.catalog.discard');
+            Route::post('catalogo/pubblica', [AdminCatalogController::class, 'publish'])->middleware('throttle:10,1')->name('platform.catalog.publish');
+        });
         Route::get('registro', [AdminConsoleController::class, 'audit'])->name('platform.audit');
         Route::post('esci', [AdminLoginController::class, 'logout'])->name('platform.logout');
     });

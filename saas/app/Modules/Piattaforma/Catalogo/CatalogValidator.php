@@ -13,7 +13,7 @@ use InvalidArgumentException;
  */
 final class CatalogValidator
 {
-    private const SUPPORT = ['base', 'standard', 'priority'];
+    private const SUPPORT = ['free', 'paid', 'top'];
 
     private const STATES = ['included', 'limit', 'excluded'];
 
@@ -50,6 +50,20 @@ final class CatalogValidator
             'addons' => $addons,
             'promos' => self::promos($input['promos'] ?? [], $planCodes),
         ];
+    }
+
+    /**
+     * Il documento pubblicato senza i campi che mette il sistema (`schema`, `product`): la forma che si modifica e si
+     * rimanda al validatore.
+     *
+     * @param  array<string, mixed>  $document
+     * @return array<string, mixed>
+     */
+    public static function input(array $document): array
+    {
+        unset($document['schema'], $document['product']);
+
+        return $document;
     }
 
     /**
