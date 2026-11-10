@@ -127,6 +127,8 @@ la tessera è la prima schermata e resta leggibile con il telefono girato a met�
 | 5 | Attività, Risorse, Domande, Operatori, Conti, Rendiconto, Certificati, Libro soci: elenchi al posto delle tabelle sul telefono, moduli in sezioni | da fare |
 | 6 | Area soci: barra in basso con icone, tessera come carta indaco, avviso dei pagamenti da fare | **fatto**; resta Paga/Quote/Eventi/Prenota sugli stessi componenti |
 | 7 | Verifica: screenshot a 360, 390, 768 e 1280 px, tastiera, contrasto, «riduci movimento» | a ogni passo |
+| 8 | Specifica del passo 5: [DESIGN_PASSO_5.md](DESIGN_PASSO_5.md) | progettata, da sviluppare |
+| 9 | Area soci passo 3 (app installabile, avvisi, wallet): [DESIGN_AREA_SOCI_PASSO_3.md](DESIGN_AREA_SOCI_PASSO_3.md) | progettata, da sviluppare |
 
 Regola per ogni pagina nuova: si disegna prima a 390 px; si controlla poi a 768 e a 1280.
 

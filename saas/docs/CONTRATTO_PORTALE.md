@@ -1,5 +1,9 @@
 # Contratto tra portale e SaaS
 
+> **In revisione (principio confermato il 10/11/2026):** [../../docs/ARCHITETTURA_DOMINI.md](../../docs/ARCHITETTURA_DOMINI.md)
+> porta i piani, i prezzi e le promo nei prodotti (il portale li legge), sostituisce §2.2 con una notifica di abbonamento
+> (v2) e fa cadere §2.3. **Non sviluppare** lato portale §2.2 (diritti calcolati) e §2.3 finché non c'è la v2.
+
 Come si parlano il portale (`portale/`, centro commerciale: clienti, abbonamenti, pagamenti, partner) e il SaaS
 (`saas/`, il gestionale). Il lato SaaS è fatto e provato (`app/Modules/Portale`, test in `tests/Feature/Portale`);
 **il lato portale lo sviluppa la sessione Portale e pagamenti**, seguendo questo documento. Versione del contratto:
