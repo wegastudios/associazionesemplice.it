@@ -68,6 +68,9 @@ final class Admin {
 		if ( 'licenze' === $a ) {
 			return 'nuova' !== $b && 'elimina' !== $c;
 		}
+		if ( 'sicurezza' === $a ) {
+			return true; // ognuno gestisce la propria verifica in due passaggi
+		}
 		return 'clienti' === $a && $get;
 	}
 
@@ -77,6 +80,16 @@ final class Admin {
 		$a   = $p[0] ?? '';
 		$b   = $p[1] ?? '';
 		$c   = $p[2] ?? '';
+
+		// Verifica in due passaggi: opzionale, solo per chi l'ha attivata per sé. Senza codice recente si vede solo la pagina «verifica».
+		if ( Mfa::enabled( $this->db, $this->email ) && ! Mfa::sessionOk( $this->email ) ) {
+			if ( 'verifica' !== $a ) {
+				header( 'Location: ' . self::BASE . '/verifica', true, 303 );
+				return;
+			}
+			$this->mfaVerify( $get );
+			return;
+		}
 
 		if ( Staff::SUPPORT === $this->role ) {
 			if ( '' === $a ) {
@@ -179,6 +192,10 @@ final class Admin {
 				$row = Releases::add( $this->db, (string) ( $_POST['product'] ?? '' ), (string) $f['tmp_name'], (string) ( $_POST['note'] ?? '' ), $this->email );
 				$this->done( 'release_add', 'Versione ' . $row['version'] . ' pubblicata.', '/wordpress/admin/versioni' );
 			}
+		} elseif ( 'sicurezza' === $a ) {
+			$this->security( $get, $b );
+		} elseif ( 'verifica' === $a ) {
+			header( 'Location: ' . self::BASE, true, 303 ); // già verificato (o non serve)
 		} elseif ( 'registro' === $a && $get ) {
 			$this->show( 'audit', 'registro', array( 'rows' => Audit::recent( $this->db, 200 ) ) );
 		} else {
@@ -464,6 +481,51 @@ final class Admin {
 			'piano' => 'Pro Fiscale', 'nuovo_piano' => 'Pro Contabile', 'scadenza' => date( 'd/m/Y', time() + 30 * 86400 ), 'email' => $this->email,
 			'account_url' => rtrim( (string) Config::get( 'base_url' ), '/' ) . '/account',
 		);
+	}
+
+	// --- Verifica in due passaggi (opzionale, per persona) ----------------------------------------------------------------------
+
+	/** Pagina «inserisci il codice» per chi ha la verifica attiva. */
+	private function mfaVerify( bool $get ): void {
+		if ( ! $get ) {
+			if ( Mfa::check( $this->db, $this->email, (string) ( $_POST['code'] ?? '' ) ) ) {
+				Mfa::markSession( $this->email );
+				Audit::log( $this->db, $this->email, 'mfa_ok', 'Verifica in due passaggi superata.' );
+				header( 'Location: ' . self::BASE, true, 303 );
+				return;
+			}
+			Audit::log( $this->db, $this->email, 'mfa_fail', 'Codice errato.' );
+			$_SESSION['flash'] = 'Codice non corretto.';
+			header( 'Location: ' . self::BASE . '/verifica', true, 303 );
+			return;
+		}
+		View::render( 'wordpress-admin/mfa_verify', array( 'flash' => $this->flash(), 'admin_email' => $this->email ) );
+	}
+
+	/** «Sicurezza»: ognuno attiva o spegne la verifica per sé. */
+	private function security( bool $get, string $b ): void {
+		$on = Mfa::enabled( $this->db, $this->email );
+		if ( $get ) {
+			$secret = '';
+			if ( ! $on ) {
+				if ( empty( $_SESSION['plugin_mfa_pending'] ) ) {
+					$_SESSION['plugin_mfa_pending'] = Totp::generate();
+				}
+				$secret = (string) $_SESSION['plugin_mfa_pending'];
+			}
+			$this->show( 'security', 'sicurezza', array( 'on' => $on, 'secret' => $secret, 'uri' => '' !== $secret ? Totp::uri( $secret, $this->email ) : '' ) );
+		} elseif ( 'attiva' === $b && ! $on ) {
+			Mfa::enable( $this->db, $this->email, (string) ( $_SESSION['plugin_mfa_pending'] ?? '' ), (string) ( $_POST['code'] ?? '' ) );
+			unset( $_SESSION['plugin_mfa_pending'] );
+			Mfa::markSession( $this->email );
+			$this->done( 'mfa_on', 'Verifica in due passaggi attivata per ' . $this->email . '.', self::BASE . '/sicurezza' );
+		} elseif ( 'spegni' === $b && $on ) {
+			Mfa::disable( $this->db, $this->email, (string) ( $_POST['code'] ?? '' ) );
+			unset( $_SESSION['plugin_mfa'] );
+			$this->done( 'mfa_off', 'Verifica in due passaggi spenta per ' . $this->email . '.', self::BASE . '/sicurezza' );
+		} else {
+			$this->notFound();
+		}
 	}
 
 	// --- Utilità ------------------------------------------------------------------------------------------------------------
