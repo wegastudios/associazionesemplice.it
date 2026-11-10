@@ -47,8 +47,17 @@ final class MemberSession {
 		return $p && empty( $p['deleted_at'] ) && empty( $p['anonymized_at'] ) && empty( $p['application_status'] ) && MemberType::can_login( (string) $p['type'] );
 	}
 
-	/** Apre una sessione per la persona e mette il cookie. @return string il token (anche se il cookie non si può scrivere) */
-	public static function start( int $person_id ): string {
+	/** Dopo quanto senza usarla scade la sessione: 30 giorni con «Ricordami», altrimenti la durata breve dei Limiti (ore). */
+	public static function idle_seconds( bool $remember ): int {
+		return $remember ? self::IDLE_DAYS * DAY_IN_SECONDS : Limits::get( 'member_session_hours' ) * HOUR_IN_SECONDS;
+	}
+
+	/**
+	 * Apre una sessione per la persona e mette il cookie.
+	 * @param bool $remember solo l'accesso con password lo offre: il link e il codice aprono sempre una sessione breve
+	 * @return string il token (anche se il cookie non si può scrivere)
+	 */
+	public static function start( int $person_id, bool $remember = false ): string {
 		$raw = SessionToken::generate();
 		$now = time();
 		Db::db()->insert(
@@ -58,12 +67,13 @@ final class MemberSession {
 				'person_id'  => $person_id,
 				'created_at' => self::utc( $now ),
 				'last_seen'  => self::utc( $now ),
-				'expires_at' => self::utc( $now + self::IDLE_DAYS * DAY_IN_SECONDS ),
+				'expires_at' => self::utc( $now + self::idle_seconds( $remember ) ),
+				'remember'   => $remember ? 1 : 0,
 				'ip_hash'    => substr( hash_hmac( 'sha256', ClientIp::get(), self::secret() ), 0, 32 ),
 				'ua_hash'    => substr( hash_hmac( 'sha256', isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '', self::secret() ), 0, 32 ),
 			)
 		);
-		self::set_cookie( $raw, $now + self::IDLE_DAYS * DAY_IN_SECONDS );
+		self::set_cookie( $raw, $remember ? $now + self::IDLE_DAYS * DAY_IN_SECONDS : 0 ); // senza «Ricordami» il cookie vale finché si tiene aperto il browser
 		$_COOKIE[ self::COOKIE ] = $raw;
 		self::$current           = null;
 		self::flush();
@@ -111,7 +121,7 @@ final class MemberSession {
 			return null;
 		}
 		if ( strtotime( $row['last_seen'] . ' UTC' ) < $now - self::TOUCH_SECONDS ) { // la sessione si rinnova usandola
-			$exp = self::utc( min( $now + self::IDLE_DAYS * DAY_IN_SECONDS, strtotime( $row['created_at'] . ' UTC' ) + self::MAX_DAYS * DAY_IN_SECONDS ) );
+			$exp = self::utc( min( $now + self::idle_seconds( ! empty( $row['remember'] ) ), strtotime( $row['created_at'] . ' UTC' ) + self::MAX_DAYS * DAY_IN_SECONDS ) );
 			$db->update( $tbl, array( 'last_seen' => self::utc( $now ), 'expires_at' => $exp ), array( 'id' => (int) $row['id'] ) );
 		}
 		self::$current = $row;

@@ -125,6 +125,12 @@ final class Limits {
 			'Più sicuro, ma la segreteria dovrà rimandare il link ai soci che non lo aprono in tempo: con 24 ore, chi non lo apre entro il giorno dopo ne riceve uno nuovo.'
 		);
 		$add(
+			'member_session_hours', 'accesso', 'Durata dell\'accesso dei soci senza «Ricordami»', 'ore', 12, 1, 168,
+			'Per quante ore, senza usare l\'area riservata, resta aperto l\'accesso di un socio che è entrato con un link, con un codice o con la password senza spuntare «Ricordami». Chi spunta «Ricordami» (solo con la password) resta entrato 30 giorni.',
+			'Più comodo, ma su un dispositivo condiviso o lasciato aperto un\'altra persona può restare dentro all\'area del socio più a lungo.',
+			'Più sicuro sui dispositivi condivisi, ma i soci dovranno rifare l\'accesso più spesso.'
+		);
+		$add(
 			'apply_per_ip', 'accesso', 'Domande di adesione per connessione, in un\'ora', 'domande', 5, 1, 200,
 			'Quante domande di adesione online può inviare la stessa connessione. Impedisce di riempire la segreteria di domande false.',
 			'Se il sito è dietro un servizio di protezione (CDN, proxy) tutti i visitatori possono apparire con lo stesso indirizzo: in quel caso va alzato. Un valore alto facilita le domande in massa.',
