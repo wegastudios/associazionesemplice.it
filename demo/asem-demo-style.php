@@ -85,7 +85,9 @@ add_filter( 'login_headertext', function () {
 	return get_bloginfo( 'name' );
 } );
 add_filter( 'login_message', function ( $m ) {
-	return $m . '<p class="message">Accessi di prova: <strong>segreteria</strong> / Segreteria-Demo-2026 · <strong>socio@demo.invalid</strong> / Socio-Demo-2026 (accesso soci dalla home della demo) · <strong>amministratore</strong> / Amministratore-Demo-2026</p>';
+	$member = class_exists( '\AssociazioneSemplice\Frontend\MemberLoginPage' ) ? esc_url( \AssociazioneSemplice\Frontend\MemberLoginPage::url() ) : '';
+	return $m . '<p class="message">Accessi di prova: <strong>segreteria</strong> / Segreteria-Demo-2026 · <strong>amministratore</strong> / Amministratore-Demo-2026</p>'
+		. ( '' !== $member ? '<p class="message">Per entrare come socio non si passa da qui: usa l\'<a href="' . $member . '">accesso soci</a>.</p>' : '' );
 } );
 
 // Pannello: barra e menu nei colori del marchio.
@@ -109,3 +111,35 @@ add_filter( 'login_headerurl', function () {
 add_filter( 'login_headertext', function () {
 	return 'Associazione Semplice';
 } );
+
+// Dati di accesso di prova nelle pagine di accesso del sito: soci (pagina «Accesso soci» e area soci) e segreteria (area segreteria).
+function asem_demo_cred_box( string $title, string $user_label, string $user, string $pass ): string {
+	return '<div class="asem-cred" style="background:#e7e8f7;border-radius:14px;padding:14px 16px;margin:0 0 18px;font-size:.95rem;color:#14172e"><strong>' . esc_html( $title ) . '</strong><br>'
+		. esc_html( $user_label ) . ' <code style="font-weight:700;background:#fff;border-radius:8px;padding:2px 8px">' . esc_html( $user ) . '</code><br>Password <code style="font-weight:700;background:#fff;border-radius:8px;padding:2px 8px">' . esc_html( $pass ) . '</code></div>';
+}
+function asem_demo_member_box(): string {
+	return asem_demo_cred_box( 'Demo: accesso di prova come socio', 'Email', 'socio@demo.invalid', 'Socio-Demo-2026' );
+}
+add_action( 'template_redirect', function () {
+	if ( ! isset( $_GET['asem_member_login'] ) || ( class_exists( '\AssociazioneSemplice\MemberSession' ) && \AssociazioneSemplice\MemberSession::current() ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+		return;
+	}
+	ob_start( function ( $html ) {
+		$pos = strpos( $html, '<form' );
+		return false === $pos ? $html : substr( $html, 0, $pos ) . asem_demo_member_box() . substr( $html, $pos );
+	} );
+}, 0 );
+add_filter( 'the_content', function ( $content ) {
+	if ( ! is_page() || ! class_exists( '\AssociazioneSemplice\Pages' ) ) {
+		return $content;
+	}
+	$have = \AssociazioneSemplice\Pages::existing();
+	$id   = get_queried_object_id();
+	if ( isset( $have['segreteria'] ) && (int) $have['segreteria'] === $id && ! is_user_logged_in() ) {
+		return asem_demo_cred_box( 'Demo: accesso di prova come segreteria', 'Utente', 'segreteria', 'Segreteria-Demo-2026' ) . $content;
+	}
+	if ( isset( $have['area'] ) && (int) $have['area'] === $id && class_exists( '\AssociazioneSemplice\MemberSession' ) && ! \AssociazioneSemplice\MemberSession::current() && ! is_user_logged_in() ) {
+		return asem_demo_member_box() . $content;
+	}
+	return $content;
+}, 5 );
