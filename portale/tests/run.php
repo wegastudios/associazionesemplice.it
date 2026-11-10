@@ -1432,6 +1432,32 @@ Portale\Plugin\Mfa::disable( $mdb, 'persona@esempio.it', Portale\Plugin\Totp::co
 check( 'mfa: spenta di nuovo con un codice valido', ! Portale\Plugin\Mfa::enabled( $mdb, 'persona@esempio.it' ) );
 $_SESSION = $prevSession;
 
+// Notifica di abbonamento (Plugin\SubscriptionNotice)
+$ndb   = new Db( new PDO( 'sqlite::memory:' ) );
+$ndb->migrate();
+$ncalls = array();
+$nprev  = Http::$transport;
+Http::$transport = function ( $method, $url, $headers, $body ) use ( &$ncalls ) {
+	$ncalls[] = array( $method, $url, (string) $body );
+	return array( 200, '{"data":{"expires_at":"2027-03-31T23:59:59Z"}}' );
+};
+$nbil = new Billing( $ndb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+$ncus = $nbil->customer( 'notifica@esempio.it' );
+$ndb->run( "INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, license_id, license_key_enc, expires_at, created_at, updated_at) VALUES ('n1',?, 'lite','year','stripe','active','notifica.it','L-1',?, '2026-12-01 00:00:00', ?, ?)", array( $ncus['id'], Portale\Secrets::seal( 'KEY-N' ), Db::now(), Db::now() ) );
+$ncat = new Portale\Plugin\ConfigCatalog( 1 );
+$nmsg = array( 'ref' => 'n1', 'rev' => 1, 'plan' => Portale\Site::slug( 'full' ), 'plan_version' => 1, 'until' => '2027-03-31', 'sites' => 3 );
+check( 'notifica: piano sconosciuto = errore e nessuna modifica', null !== throwsUser( function () use ( $ndb, $nbil, $ncat, $nmsg ) { Portale\Plugin\SubscriptionNotice::apply( $ndb, $nbil, $ncat, array( 'plan' => 'inventato' ) + $nmsg ); } ) && 'lite' === $ndb->one( "SELECT plan_code FROM subscriptions WHERE id = 'n1'" )['plan_code'] && 0 === count( $ncalls ) );
+check( 'notifica: versione del piano sconosciuta = nessuna modifica', null !== throwsUser( function () use ( $ndb, $nbil, $ncat, $nmsg ) { Portale\Plugin\SubscriptionNotice::apply( $ndb, $nbil, $ncat, array( 'plan_version' => 99 ) + $nmsg ); } ) && 0 === count( $ncalls ) );
+check( 'notifica: messaggio incompleto rifiutato', null !== throwsUser( function () use ( $ndb, $nbil, $ncat ) { Portale\Plugin\SubscriptionNotice::apply( $ndb, $nbil, $ncat, array( 'ref' => 'n1' ) ); } ) && null !== throwsUser( function () use ( $ndb, $nbil, $ncat, $nmsg ) { Portale\Plugin\SubscriptionNotice::apply( $ndb, $nbil, $ncat, array( 'until' => '31/03/2027' ) + $nmsg ); } ) );
+check( 'notifica: licenza inesistente rifiutata', null !== throwsUser( function () use ( $ndb, $nbil, $ncat, $nmsg ) { Portale\Plugin\SubscriptionNotice::apply( $ndb, $nbil, $ncat, array( 'ref' => 'zzz' ) + $nmsg ); } ) );
+check( 'notifica: applicata', 'applied' === Portale\Plugin\SubscriptionNotice::apply( $ndb, $nbil, $ncat, $nmsg ) );
+$nrow = $ndb->one( "SELECT * FROM subscriptions WHERE id = 'n1'" );
+check( 'notifica: piano, versione, siti, revisione e scadenza salvati', 'full' === $nrow['plan_code'] && 1 === (int) $nrow['plan_version'] && 3 === (int) $nrow['sites_allowed'] && 1 === (int) $nrow['notice_rev'] && '2027-03-31 23:59:59' === $nrow['expires_at'] );
+check( 'notifica: il server licenze riceve nome piano e scadenza', 1 === count( $ncalls ) && 'PATCH' === $ncalls[0][0] && false !== strpos( $ncalls[0][2], '2027-03-31T23:59:59Z' ) && false !== strpos( $ncalls[0][2], 'plan_name' ) );
+check( 'notifica: revisione già applicata o più vecchia = ignorata, nessuna chiamata', 'stale' === Portale\Plugin\SubscriptionNotice::apply( $ndb, $nbil, $ncat, array( 'sites' => 9 ) + $nmsg ) && 1 === count( $ncalls ) && 3 === (int) $ndb->one( "SELECT sites_allowed FROM subscriptions WHERE id = 'n1'" )['sites_allowed'] );
+check( 'notifica: revisione più nuova applicata', 'applied' === Portale\Plugin\SubscriptionNotice::apply( $ndb, $nbil, $ncat, array( 'rev' => 2, 'sites' => 5 ) + $nmsg ) && 5 === (int) $ndb->one( "SELECT sites_allowed FROM subscriptions WHERE id = 'n1'" )['sites_allowed'] );
+Http::$transport = $nprev;
+
 // Catalogo del plugin (interfaccia Catalog, formato catalogo/v1)
 $cat    = new Portale\Plugin\ConfigCatalog( 3 );
 $catDoc = $cat->document();

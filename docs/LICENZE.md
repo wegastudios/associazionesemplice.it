@@ -83,3 +83,17 @@ La nuova area clienti (`/account`, portale-vendita) non interroga le tabelle del
 Regola di scarico: licenza in regola = qualsiasi versione conservata del prodotto (il Pro solo con piano diverso dal gratuito); licenza scaduta o con pagamento non riuscito = **solo l'ultima versione uscita prima della scadenza**. Limite giornaliero `download_day` per cliente, come sempre.
 
 Non ancora fatti: limite «cambi di dominio all'anno» dal catalogo (oggi vale il blocco in giorni) e la ricezione della notifica di abbonamento (`plan`, `plan_version`, `until`, siti).
+
+## Notifica di abbonamento (negozio → plugin)
+
+`Portale\Plugin\SubscriptionNotice::apply($db, $billing, $catalogo, $messaggio)` sostituisce i prezzi e i diritti calcolati nel negozio: il negozio comunica solo il fatto commerciale, il plugin ricava il resto dal proprio catalogo (ARCHITETTURA_DOMINI §5). Chiamata in processo (stessa applicazione).
+
+| Campo | Significato |
+|---|---|
+| `ref` | id della licenza |
+| `rev` | numero crescente per licenza: un messaggio con `rev` ≤ all'ultimo applicato è ignorato (`stale`), così le consegne ripetute o fuori ordine non fanno danni |
+| `plan`, `plan_version` | piano (slug del catalogo) e sua versione; se il catalogo non li conosce: errore `unknown_plan` e **nessuna modifica** |
+| `until` | scadenza `YYYY-MM-DD` (fino alle 23:59:59 UTC) |
+| `sites` | siti ammessi, ≥ 1 (oggi registrato in `subscriptions.sites_allowed`, non ancora imposto: una licenza resta legata a un dominio) |
+
+Ordine: prima il server licenze (nome del piano e scadenza), poi il database locale; se il server licenze non risponde l'errore sale e il negozio ritenta. Nuove colonne in `subscriptions`: `plan_version`, `sites_allowed`, `notice_rev`. Il negozio la chiamerà al posto del calcolo dei prezzi: l'aggancio lo fa portale-vendita.
