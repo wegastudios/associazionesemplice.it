@@ -310,3 +310,14 @@ input[type=number]:focus { border-color: var(--brand); outline: none; box-shadow
 @media (max-width: 480px) { .band-actions .btn { width: 100%; } .journey { font-size: .78rem; } }
 .bar[hidden] { display: none !important; }
 @media (max-width: 640px) { .linklike { display: inline-block; padding: 10px 0; min-height: 44px; box-sizing: border-box; } }
+
+/* Due prodotti nelle stesse pagine (prezzi, confronto): navigazione e separazione visiva */
+.product-nav{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:12px 16px 0}
+.product-nav a{display:inline-block;padding:8px 16px;border:1px solid var(--line,#d9dbe8);border-radius:999px;font-weight:600;text-decoration:none}
+.product-saas{border-top:1px solid var(--line,#d9dbe8);margin-top:32px;scroll-margin-top:72px}
+.pricing{scroll-margin-top:72px}
+.product-saas .cmp{width:100%;border-collapse:collapse;margin-top:16px}
+.product-saas .cmp th,.product-saas .cmp td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:center}
+.product-saas .cmp th[scope=row]{text-align:left;font-weight:500}
+.product-saas .cmp th[scope=colgroup]{text-align:left;background:var(--surface-2)}
+.cmp-wrap{overflow-x:auto}
