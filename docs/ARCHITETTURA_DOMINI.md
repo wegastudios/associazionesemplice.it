@@ -110,7 +110,7 @@ Pubblico, senza dati personali, cacheabile; risposta firmata (`ETag` e firma EdD
 | `features[]` | elenco delle caratteristiche con `id` stabile e testo; per ogni piano: `incluso` / `limite` / `non incluso`. Da qui il portale costruisce da solo la **tabella di confronto** |
 | `prices[]` | per piano: periodicità, importo in centesimi, IVA, valuta; più le regole di variazione (fasce di soci, operatori aggiuntivi, ricariche) |
 | `promos[]` | promozioni **attive**: codice (o automatica), cosa sconta, su quali piani, dal-al, limite d'uso, cumulabilità |
-| `support_level` | per piano: livello di assistenza (base/standard/prioritario), per il supporto (§7) |
+| `support_level` | per piano: livello di assistenza (`free`, `paid`, `top`), per il supporto (§7) |
 | `limits` | limiti numerici leggibili dal prodotto stesso, usati poi per i diritti (§5) |
 
 Regole:
@@ -263,15 +263,18 @@ su quelle due parti** finché il contratto v2 non è scritto.
 
 | Livello (codice) | Chi | Prima risposta entro | Giorni coperti | Priorità |
 |---|---|---|---|---|
-| `free` | piani gratuiti | 48 ore | lunedì–venerdì | normale |
-| `paid` | piani a pagamento «base» | 48 ore | lunedì–sabato | prioritaria rispetto al gratuito |
-| `top` | piani a pagamento «top» | 24 ore | lunedì–sabato | prioritaria, in cima alla coda |
+| `free` | **piani gratuiti** (la «base») | 48 ore | lunedì–venerdì | normale |
+| `paid` (assistenza **Standard**) | piani a pagamento con assistenza standard | 48 ore | lunedì–sabato | prioritaria rispetto al gratuito |
+| `top` (assistenza **Top**) | piani a pagamento con assistenza top | 24 ore | lunedì–sabato | prioritaria, in cima alla coda |
 
 - Il tempo è di **prima risposta**, non di risoluzione, ed è un obiettivo di servizio, non una promessa contrattuale.
-- Le ore si contano **solo nei giorni coperti** (un ticket del venerdì sera per `free` ha risposta entro mercoledì: ore dei giorni
-  di servizio); le festività nazionali non contano. *(Da confermare questa lettura.)*
-- Quali piani sono «base» e quali «top» si decide quando si definiscono i piani a pagamento: nel catalogo basta indicare
-  `support_level` per piano. I nomi da mostrare ai clienti si decidono dopo.
+- **Confermato dalla titolare (10/11/2026):** le 48 ore sono **lavorative**, contate dall'apertura del ticket e **solo nei giorni
+  coperti** dal livello (`free`: lunedì–venerdì; `paid` e `top`: lunedì–sabato), senza domeniche e senza festività nazionali.
+  Esempio `free`: ticket aperto venerdì alle 18:00 → risposta entro martedì alle 18:00 (restano 6 ore di venerdì, poi
+  24 di lunedì e 18 di martedì).
+- **Scelta per piano:** chi crea un piano a pagamento nell'editor del catalogo (`/saas/admin`, `/wordpress/admin`) sceglie se ha
+  assistenza Standard o Top (campo `support_level` obbligatorio); i piani gratuiti sono sempre `free`. Oggi, per plugin e SaaS: il
+  piano a pagamento più basso è Standard, l'altro è Top. I nomi da mostrare ai clienti: «Gratuita», «Standard», «Top».
 - Il supporto mostra allo staff, ordinata per livello e per tempo residuo, la coda con la scadenza della prima risposta, e al
   cliente l'etichetta («Assistenza prioritaria» per `paid` e `top`).
 - Un cliente con più prodotti prende il livello più alto tra quelli attivi **del prodotto del ticket**.
@@ -356,8 +359,8 @@ Prese dalla titolare il 10/11/2026:
    Il codice ha 180 come valore predefinito; la titolare ricorda 120: da verificare nelle impostazioni del pannello (§5 bis).
 7. **Livelli di assistenza** `free` (48 ore, lun–ven), `paid` (48 ore, lun–sab, prioritario), `top` (24 ore, lun–sab, prioritario) (§7).
 
+Deciso anche: lancio del catalogo (10/11/2026) e assistenza per piano scelta alla creazione (§7).
+
 Ancora da fare:
 - Prova di fattibilità dell'indirizzo `/saas/admin` (sessione portale-saas).
-- Conferma della lettura dei tempi di assistenza (§7: ore contate solo nei giorni coperti, festivi esclusi).
-- Quali piani sono `paid` e quali `top`; i nomi da mostrare ai clienti.
 - Valore giusto di `domain_lock_days` sul server (120 o 180).

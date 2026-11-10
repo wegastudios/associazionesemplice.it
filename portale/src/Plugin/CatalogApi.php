@@ -20,6 +20,10 @@ final class CatalogApi {
 		header( 'X-Robots-Tag: noindex' );
 		header( 'Cache-Control: public, max-age=300' );
 		header( 'ETag: ' . $etag );
+		$sig = CatalogSigner::header( $body );
+		if ( null !== $sig ) {
+			header( 'X-Catalog-Signature: ' . $sig );
+		}
 		if ( ( $_SERVER['HTTP_IF_NONE_MATCH'] ?? '' ) === $etag ) {
 			http_response_code( 304 );
 			return;

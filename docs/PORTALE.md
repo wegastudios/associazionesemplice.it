@@ -244,7 +244,17 @@ Il portale **legge** piani, caratteristiche e prezzi del SaaS dal suo catalogo (
 
 ## Accesso unico al supporto: elenco dei piani (v2)
 
-Il token dell'accesso unico (HMAC, `src/SupportSso.php`) porta, se il cliente ha licenze, `v: 2` e `plans: [{product, plan, support_level, status}]` (al massimo 20 voci, senza prezzi né dati di soci): `product` `plugin|saas`; `plan` lo slug fisso (`free`, `procontabile`, `profiscale`); `support_level` `base|standard|priority` (oggi sempre `base`: lo dichiareranno i cataloghi); `status` `active|trial|past_due|cancelled`. Senza licenze il token resta `v: 1`. Il supporto verifica firma, `aud` e `exp` prima di leggere `plans` e ignora i valori sconosciuti. Gli abbonamenti SaaS compariranno con il passo 6.
+Il token dell'accesso unico (HMAC, `src/SupportSso.php`) porta, se il cliente ha licenze, `v: 2` e `plans: [{product, plan, support_level, status}]` (al massimo 20 voci, senza prezzi né dati di soci): `product` `plugin|saas`; `plan` lo slug fisso (`free`, `procontabile`, `profiscale`); `support_level` `free|paid|top` (dal catalogo del prodotto; etichette per i clienti «Gratuita», «Standard», «Top»); `status` `active|trial|past_due|cancelled`. Senza licenze il token resta `v: 1`. Il supporto verifica firma, `aud` e `exp` prima di leggere `plans` e ignora i valori sconosciuti. Gli abbonamenti SaaS compariranno con il passo 6.
+
+## Acquisto del SaaS: preventivo, ordine e coda verso il SaaS (novembre 2026)
+
+Fondamenta del passo 6 (nessuna pagina pubblica ancora: il pagamento arriva nel passo successivo).
+
+- **Preventivo** (`src/Quote.php`): dal catalogo corrente e solo da lì. Piano + periodo + soci (+ addon, + promo) → righe, imponibile, sconto, IVA una sola volta sul totale (centesimi, metà in su), `plan_version` e `rev`. Lo sconto percentuale o a importo si applica all'imponibile e non lo porta mai sotto zero.
+- **Ordine** (`src/Orders.php`, tabella `orders`): `open` ricarica il catalogo (senza risposta valida non si vende) e fissa nell'ordine prezzo, `plan_version`, regole di prezzo e `rev`. `confirm`, prima di incassare, ricontrolla la `rev`: se è cambiata ricalcola l'istantanea e, se il totale è diverso, mostra «I prezzi sono stati aggiornati: il nuovo totale è …» e chiede di confermare di nuovo. I rinnovi restano sull'istantanea dell'ordine.
+- **Client del contratto v2** (`SaasClient`): `provision` (§3.1), `subscription` (§3.2, `PUT`), `promoCheck` e `promoRedeem` (§3.3). Token firmati di 60 secondi con `jti` monouso.
+- **Coda** (`src/Outbox.php`, tabella `saas_outbox`, `bin/saas-outbox.php`): le `subscription` si accodano e si ritentano dopo 1, 5, 30 minuti, poi ogni ora, finché 200 o 409 `stale_revision`; con `unknown_plan` si ricarica il catalogo. Senza chiave di firma i messaggi restano in coda. `deploy.sh` aggiunge al crontab `*/5 * * * *` per lo script.
+- Da fare: pagina d'acquisto, pagamento (Stripe/PayPal), `promo.check` nel carrello, `promo.redeem` al pagamento, invio della `subscription` alla conferma, creazione dell'associazione (§3.1) alla prima attivazione, fatture.
 
 ## Catalogo del plugin: bozza e «Pubblica» (`/wordpress/admin/catalogo`)
 
@@ -261,3 +271,10 @@ Sezione **Piani → Catalogo**, solo per gli amministratori. Cosa si decide qui:
 Decisione 10/11/2026: una promo è **sempre di un prodotto** e vale solo per i suoi piani (nessuna offerta combinata plugin + SaaS). Qui si creano codici con sconto in percentuale (1–100) o in euro, piani validi (nessuno = tutti), date (la fine è obbligatoria, ora italiana, compresa), limite d'uso e stato (sospendi/riattiva). Le promozioni sono dati vivi: non passano da bozza/Pubblica e quelle attive compaiono in `promos[]` del catalogo pubblico (senza dati interni, con gli usi rimasti).
 
 Per il negozio (in processo, `Plugin\Promos`): `check($db,$catalogo,$codice,$piano,$periodo)` risponde «vale?» con sconto, importo finale e scadenza **senza consumare nulla** (motivi: `unknown_code`, `unknown_plan`, `inactive`, `out_of_dates`, `exhausted`, `plan_not_covered`); `redeem($db,$codice,$ordine)` conferma l'uso a pagamento riuscito, **una volta sola per ordine** (richiamarla con lo stesso ordine non consuma altro; se nel frattempo il codice si è esaurito: errore `exhausted` e niente viene registrato). Non ancora: promo automatiche senza codice e cumulabilità (c'è un solo codice per ordine). L'aggancio dal carrello lo fa portale-vendita; la vecchia promozione «in vetrina» (prezzo barrato) resta in «Piani e prezzi».
+### Firma del catalogo (EdDSA)
+
+`GET /wordpress/api/catalogo/v1` porta l'intestazione `X-Catalog-Signature: alg="EdDSA", kid="catalogo-plugin-xxxxxxxx", sig="…"`: firma Ed25519 sui **byte esatti** del corpo. Chi legge il catalogo (il negozio, altri siti) fissa la chiave pubblica e rifiuta ciò che non torna (`Plugin\CatalogSigner::verify`).
+
+- **Chiave nuova e separata** da quelle delle licenze (`portal-sign.key`), del contratto col SaaS (`saas-sign.key`) e da quella futura di `admin_hop`. Sta fuori dal repository in `data/catalog-sign.key` (permessi 600) o in `catalog_sign_key` di `config.php`.
+- **Creazione:** `php bin/catalog-key.php` sul server (crea se manca, stampa SOLO `kid` e chiave pubblica `x`; `--show` per rileggerli). Prima del primo uso la chiave non esiste: finché manca, il catalogo si serve non firmato (l'ETag resta). Creare la chiave e comunicare `x` ai lettori è un passo di rilascio, da fare con il via della titolare.
+- **Rotazione:** nuovo file, nuovo `kid`; il `kid` nell'intestazione dice con quale chiave verificare.

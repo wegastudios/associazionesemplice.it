@@ -64,6 +64,54 @@ final class SaasClient {
 		return self::call( 'admin/users/' . self::id( $userId ) . '/state', 'admin_write', 'write', $act, array( 'disabled' => $disabled, 'reason' => mb_substr( $reason, 0, 200 ) ) );
 	}
 
+	/**
+	 * Richiesta firmata del contratto v2 (senza `act` né `scope`). Vita del token 60 secondi, `jti` monouso.
+	 * @return array [codice HTTP (0 = rete), corpo decodificato]
+	 */
+	public static function request( string $method, string $path, string $typ, array $claims, ?int $now = null ): array {
+		if ( ! self::enabled() ) {
+			throw new UserError( 'Il collegamento con il SaaS non è ancora configurato sul portale (manca la chiave di firma verso il SaaS).' );
+		}
+		$now   = $now ?? time();
+		$token = PortalAttestation::sign( $claims + array(
+			'iss' => rtrim( (string) Config::get( 'base_url', 'https://associazionesemplice.it' ), '/' ),
+			'aud' => self::AUD,
+			'typ' => $typ,
+			'iat' => $now,
+			'exp' => $now + 60,
+			'jti' => bin2hex( random_bytes( 16 ) ),
+		), self::seed() );
+		$res = Http::send( $method, self::baseUrl() . $path, array( 'Content-Type: application/json', 'Accept: application/json' ), (string) json_encode( array( 'token' => $token ) ) );
+		$out = json_decode( $res[1], true );
+		return array( $res[0], is_array( $out ) ? $out : array() );
+	}
+
+	/** Crea l'associazione (contratto §3.1); ripetibile: lo stesso `ref` risponde 200 con lo stesso `org_id`. */
+	public static function provision( string $ref, string $name, string $slug, string $ownerEmail, string $ownerName, ?int $now = null ): array {
+		return self::request( 'POST', '/api/portale/v1/orgs', 'provision', array(
+			'ref' => $ref, 'org' => array( 'name' => $name, 'slug' => $slug ), 'owner' => array( 'email' => $ownerEmail, 'name' => $ownerName ),
+		), $now );
+	}
+
+	/** Abbonamento (contratto §3.2): solo il fatto commerciale; i limiti li ricava il SaaS dalla `plan_version`. */
+	public static function subscription( string $orgId, array $claims, ?int $now = null ): array {
+		return self::request( 'PUT', '/api/portale/v2/orgs/' . self::id( $orgId ) . '/subscription', 'subscription', array( 'sub' => $orgId ) + $claims, $now );
+	}
+
+	/** «Vale?» (contratto §3.3): non consuma niente. */
+	public static function promoCheck( string $code, string $plan, int $planVersion, string $period, ?string $ref = null, ?int $now = null ): array {
+		$c = array( 'code' => mb_substr( $code, 0, 40 ), 'plan' => $plan, 'plan_version' => $planVersion, 'period' => $period );
+		if ( null !== $ref && '' !== $ref ) {
+			$c['ref'] = $ref;
+		}
+		return self::request( 'POST', '/api/portale/v2/promo/check', 'promo_check', $c, $now );
+	}
+
+	/** Consuma la promo al pagamento riuscito: una volta sola per ordine (idempotente). */
+	public static function promoRedeem( string $code, string $orderId, string $ref, ?int $now = null ): array {
+		return self::request( 'POST', '/api/portale/v2/promo/redeem', 'promo_redeem', array( 'code' => mb_substr( $code, 0, 40 ), 'order' => $orderId, 'ref' => $ref ), $now );
+	}
+
 	/** Gli identificativi sono UUID: niente altro finisce nell'indirizzo. */
 	private static function id( string $id ): string {
 		if ( ! preg_match( '/^[A-Za-z0-9-]{8,64}$/', $id ) ) {

@@ -840,7 +840,7 @@ check( 'sso: licenza a pagamento in regola → piano Pro', array( 'plan' => 'Pro
 check( 'sso: licenza scaduta o sconosciuto → nessun piano', array() === Portale\SupportSso::claimsFor( $cdb, 'scaduto@esempio.it' ) && array() === Portale\SupportSso::claimsFor( $cdb, 'nessuno@esempio.it' ) );
 $proPlans = Portale\SupportSso::plansFor( $cdb, 'pro@esempio.it' );
 usort( $proPlans, function ( $a, $b ) { return strcmp( $a['plan'], $b['plan'] ); } );
-check( 'sso v2: piani del cliente (prodotto, slug, livello base, stato)', array( array( 'product' => 'plugin', 'plan' => 'free', 'support_level' => 'base', 'status' => 'active' ), array( 'product' => 'plugin', 'plan' => 'profiscale', 'support_level' => 'base', 'status' => 'active' ) ) === $proPlans );
+check( 'sso v2: piani del cliente (prodotto, slug, livello dal catalogo, stato)', array( array( 'product' => 'plugin', 'plan' => 'free', 'support_level' => 'free', 'status' => 'active' ), array( 'product' => 'plugin', 'plan' => 'profiscale', 'support_level' => 'paid', 'status' => 'active' ) ) === $proPlans );
 check( 'sso v2: licenza scaduta → cancelled; sconosciuto → nessun piano', 'cancelled' === Portale\SupportSso::plansFor( $cdb, 'scaduto@esempio.it' )[0]['status'] && array() === Portale\SupportSso::plansFor( $cdb, 'nessuno@esempio.it' ) && array() === Portale\SupportSso::plansFor( null, 'pro@esempio.it' ) );
 Config::set( 'support.sso_secret', str_repeat( 's', 40 ) );
 parse_str( (string) parse_url( Portale\SupportSso::url( $cdb, 'pro@esempio.it' ), PHP_URL_QUERY ), $q2 );
@@ -1471,6 +1471,21 @@ Portale\Plugin\Mfa::disable( $mdb, 'persona@esempio.it', Portale\Plugin\Totp::co
 check( 'mfa: spenta di nuovo con un codice valido', ! Portale\Plugin\Mfa::enabled( $mdb, 'persona@esempio.it' ) );
 $_SESSION = $prevSession;
 
+// Firma EdDSA del catalogo (chiave separata)
+if ( function_exists( 'sodium_crypto_sign_detached' ) ) {
+	$gseed  = str_repeat( 'g', SODIUM_CRYPTO_SIGN_SEEDBYTES );
+	$gother = str_repeat( 'h', SODIUM_CRYPTO_SIGN_SEEDBYTES );
+	$gpub   = Portale\Plugin\CatalogSigner::publicKey( $gseed );
+	$gbody  = (string) json_encode( ( new Portale\Plugin\ConfigCatalog() )->document() );
+	$ghead  = (string) Portale\Plugin\CatalogSigner::header( $gbody, $gseed );
+	check( 'firma catalogo: kid proprio e chiave pubblica di 32 byte', 0 === strpos( Portale\Plugin\CatalogSigner::kid( $gseed ), 'catalogo-plugin-' ) && 32 === strlen( (string) base64_decode( strtr( $gpub, '-_', '+/' ) ) ) );
+	check( 'firma catalogo: l\'intestazione contiene algoritmo, kid e firma', false !== strpos( $ghead, 'alg="EdDSA"' ) && false !== strpos( $ghead, 'kid="' . Portale\Plugin\CatalogSigner::kid( $gseed ) . '"' ) );
+	check( 'firma catalogo: si verifica con la chiave pubblica', Portale\Plugin\CatalogSigner::verify( $gbody, $ghead, $gpub ) );
+	check( 'firma catalogo: corpo alterato rifiutato', ! Portale\Plugin\CatalogSigner::verify( $gbody . ' ', $ghead, $gpub ) && ! Portale\Plugin\CatalogSigner::verify( str_replace( '"plugin"', '"saas"', $gbody ), $ghead, $gpub ) );
+	check( 'firma catalogo: altra chiave rifiutata, intestazione rotta rifiutata', ! Portale\Plugin\CatalogSigner::verify( $gbody, $ghead, Portale\Plugin\CatalogSigner::publicKey( $gother ) ) && ! Portale\Plugin\CatalogSigner::verify( $gbody, 'sig="xx"', $gpub ) && ! Portale\Plugin\CatalogSigner::verify( $gbody, '', $gpub ) );
+	check( 'firma catalogo: senza chiave configurata non si firma', null === Portale\Plugin\CatalogSigner::header( $gbody, '' ) || ! Portale\Plugin\CatalogSigner::enabled() );
+}
+
 // Notifica di abbonamento (Plugin\SubscriptionNotice)
 $ndb   = new Db( new PDO( 'sqlite::memory:' ) );
 $ndb->migrate();
@@ -1496,6 +1511,37 @@ check( 'notifica: il server licenze riceve nome piano e scadenza', 1 === count( 
 check( 'notifica: revisione già applicata o più vecchia = ignorata, nessuna chiamata', 'stale' === Portale\Plugin\SubscriptionNotice::apply( $ndb, $nbil, $ncat, array( 'sites' => 9 ) + $nmsg ) && 1 === count( $ncalls ) && 3 === (int) $ndb->one( "SELECT sites_allowed FROM subscriptions WHERE id = 'n1'" )['sites_allowed'] );
 check( 'notifica: revisione più nuova applicata', 'applied' === Portale\Plugin\SubscriptionNotice::apply( $ndb, $nbil, $ncat, array( 'rev' => 2, 'sites' => 5 ) + $nmsg ) && 5 === (int) $ndb->one( "SELECT sites_allowed FROM subscriptions WHERE id = 'n1'" )['sites_allowed'] );
 Http::$transport = $nprev;
+
+// Downgrade bloccato dai limiti del piano di arrivo (Plugin\Downgrade)
+$wdb = new Db( new PDO( 'sqlite::memory:' ) );
+$wdb->migrate();
+$wbase  = ( new Portale\Plugin\ConfigCatalog() )->document();
+$wcodes = array_column( $wbase['plans'], 'code' );
+$wfull  = Portale\Site::slug( 'full' );
+$wfree  = Portale\Site::slug( 'free' );
+$wd     = Portale\Plugin\CatalogStore::draft( $wdb );
+$wd['features'] = array( array( 'id' => 'soci', 'text' => 'Anagrafica soci' ) );
+foreach ( $wcodes as $wc ) {
+	$wd['matrix'][ $wc ]['soci'] = array( 'state' => 'included', 'note' => '' );
+}
+$wd['plans'][ $wfree ]['sites'] = 1; // il piano gratuito ammette 1 sito
+Portale\Plugin\CatalogStore::saveDraft( $wdb, $wd, 'staff@esempio.it' );
+Portale\Plugin\CatalogStore::publish( $wdb, $wbase, 'staff@esempio.it' );
+$wcat = new Portale\Plugin\DbCatalog( $wdb );
+$wnow = strtotime( '2026-09-01 UTC' );
+$wsub = function ( string $id, string $exp, string $status = 'active' ) use ( $wdb ) {
+	$wdb->run( 'INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, expires_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)', array( $id, 'cW', 'full', 'year', 'stripe', $status, $id . '.it', $exp, Db::now(), Db::now() ) );
+	return $wdb->one( 'SELECT * FROM subscriptions WHERE id = ?', array( $id ) );
+};
+$w1 = $wsub( 'w1', '2027-01-01 00:00:00' );
+check( 'downgrade: con un solo sito attivo il passaggio a un piano da 1 sito è possibile', array() === Portale\Plugin\Downgrade::blockers( $wdb, $wcat, $w1, 'free', $wnow ) );
+$wsub( 'w2', '2027-02-01 00:00:00' );
+$wsub( 'w3', '2026-01-01 00:00:00' ); // scaduta: non conta
+$wsub( 'w4', '2027-02-01 00:00:00', 'canceled' ); // annullata: non conta
+check( 'downgrade: licenze scadute o annullate non contano come siti in uso', 2 === Portale\Plugin\Downgrade::activeSites( $wdb, 'cW', 'full', $wnow ) );
+$wb = Portale\Plugin\Downgrade::blockers( $wdb, $wcat, $w1, 'free', $wnow );
+check( 'downgrade: con più siti attivi di quelli ammessi è bloccato, con motivo chiaro', 1 === count( $wb ) && false !== strpos( $wb[0], '2 siti attivi' ) && false !== strpos( $wb[0], 'ne ammette 1' ) );
+check( 'downgrade: piano di arrivo senza limite di siti = nessun blocco', array() === Portale\Plugin\Downgrade::blockers( $wdb, $wcat, $w1, 'full', $wnow ) && array() === Portale\Plugin\Downgrade::blockers( $wdb, $wcat, $w1, 'inesistente', $wnow ) );
 
 // Editor del catalogo: bozza, validazione, pubblicazione, versioni dei piani
 $kdb = new Db( new PDO( 'sqlite::memory:' ) );
@@ -1646,5 +1692,77 @@ check( 'catalogo: SaaS non raggiungibile → resta l\'ultima copia', 0 === strpo
 Http::$transport = $cprev;
 Config::set( 'saas_public_keys', array() );
 check( 'catalogo: senza chiavi fissate non si scarica niente', 'off' === Catalog::refresh( $cdb ) && ! Catalog::needsRefresh( $cdb ) );
+
+// --- Acquisto SaaS: preventivo, ordine con istantanea, coda verso il SaaS ----------
+use Portale\{Quote, Orders, Outbox};
+$qdoc = json_decode( (string) json_encode( array(
+	'schema' => 'catalogo/v1', 'product' => 'saas', 'rev' => 7, 'currency' => 'EUR', 'features' => array(),
+	'plans' => array( array( 'code' => 'gestionale', 'plan_version' => 3, 'name' => 'Gestionale', 'order' => 1, 'visible' => true, 'prices' => array( $cases['members_tiers']['price'], $cases['members_tiers_year']['price'] ) ) ),
+	'addons' => array( array( 'code' => 'operators_extra', 'visible' => true, 'prices' => array( array( 'period' => 'month', 'kind' => 'flat', 'amount_cents' => 300, 'vat_percent' => 22 ) ) ) ),
+) ), true );
+$q150 = Quote::build( $qdoc, 'gestionale', 'month', 150 );
+check( 'preventivo: 150 soci = 3300 + IVA 726 = 4026, versione e rev nell\'istantanea', 3300 === $q150['net'] && 726 === $q150['vat'] && 4026 === $q150['total'] && 3 === $q150['plan_version'] && 7 === $q150['rev'] );
+$qa = Quote::build( $qdoc, 'gestionale', 'month', 150, array( 'operators_extra' => 2 ) );
+check( 'preventivo: addon fisso per unità (2 x 300)', 3900 === $qa['net'] && 2 === $qa['lines'][1]['qty'] && 600 === $qa['lines'][1]['net'] );
+$qp = Quote::build( $qdoc, 'gestionale', 'month', 150, array(), array( 'code' => 'P20', 'discount' => array( 'type' => 'percent', 'value' => 20 ) ) );
+check( 'preventivo: sconto 20% sull\'imponibile, IVA sul netto scontato', 660 === $qp['discount'] && 2640 === $qp['net'] && 581 === $qp['vat'] && 'P20' === $qp['promo'] );
+$qf = Quote::build( $qdoc, 'gestionale', 'month', 150, array(), array( 'code' => 'X', 'discount' => array( 'type' => 'amount_cents', 'value' => 99999 ) ) );
+check( 'preventivo: sconto a importo mai oltre il totale', 0 === $qf['net'] && 0 === $qf['total'] );
+check( 'preventivo: annuale = 10 mensilità, piano o addon sconosciuti rifiutati', 33000 === Quote::build( $qdoc, 'gestionale', 'year', 150 )['net'] && null !== throwsUser( function () use ( $qdoc ) { Quote::build( $qdoc, 'altro', 'month', 10 ); } ) && null !== throwsUser( function () use ( $qdoc ) { Quote::build( $qdoc, 'gestionale', 'month', 10, array( 'zzz' => 1 ) ); } ) );
+
+$oseed = str_repeat( 'o', 32 );
+Config::set( 'saas_public_keys', array( PortalAttestation::kid( $oseed ) => PortalAttestation::publicKey( $oseed ) ) );
+$odb = new Db( new PDO( 'sqlite::memory:' ) );
+$odb->migrate();
+$mkcat = function ( int $rev, int $base ) use ( $qdoc ) {
+	$d        = $qdoc;
+	$d['rev'] = $rev;
+	$d['plans'][0]['prices'][0]['base_cents'] = $base;
+	return (string) json_encode( $d );
+};
+$serve = function ( string $body, int $rev ) use ( $oseed ) {
+	Http::$transport = function () use ( $body, $rev, $oseed ) {
+		$sig = PortalAttestation::sign( array( 'iss' => 'https://app.associazionesemplice.it', 'aud' => 'https://portale.test', 'typ' => 'catalog', 'iat' => time(), 'exp' => time() + 600, 'jti' => 'j' . $rev, 'rev' => $rev, 'sha256' => hash( 'sha256', $body ) ), $oseed );
+		return array( 200, $body, array( 'x-catalog-signature' => $sig, 'etag' => '"r' . $rev . '"' ) );
+	};
+};
+$serve( $mkcat( 7, 1500 ), 7 );
+$ord = Orders::open( $odb, 'cust1', 'gestionale', 'month', 150 );
+check( 'ordine: prezzo e plan_version fissati nell\'istantanea', 4026 === $ord['total'] && 3 === (int) Orders::get( $odb, $ord['id'] )['plan_version'] && 7 === (int) Orders::get( $odb, $ord['id'] )['catalog_rev'] );
+check( 'ordine: catalogo invariato → si può incassare', 'pending' === Orders::confirm( $odb, $ord['id'] )['status'] );
+$serve( $mkcat( 8, 1500 ), 8 );
+$o2 = Orders::confirm( $odb, $ord['id'] );
+check( 'ordine: rev cambiata ma stesso totale → ricalcolato in silenzio', 8 === (int) $o2['catalog_rev'] );
+$serve( $mkcat( 9, 2000 ), 9 );
+$msg = throwsUser( function () use ( $odb, $ord ) { Orders::confirm( $odb, $ord['id'] ); } );
+check( 'ordine: prezzi cambiati → avviso con il nuovo totale e nuova istantanea', null !== $msg && false !== strpos( $msg, 'I prezzi sono stati aggiornati' ) && 9 === (int) Orders::get( $odb, $ord['id'] )['catalog_rev'] && 3800 === Orders::get( $odb, $ord['id'] )['quote']['net'] );
+Http::$transport = function () { return array( 0, '' ); };
+$odb2 = new Db( new PDO( 'sqlite::memory:' ) );
+$odb2->migrate();
+check( 'ordine: senza catalogo corrente non si vende', null !== throwsUser( function () use ( $odb2 ) { Orders::open( $odb2, 'cust1', 'gestionale', 'month', 50 ); } ) );
+
+Config::set( 'saas_sign_key', base64_encode( str_repeat( 's', 32 ) ) );
+$sentMsgs = array();
+Http::$transport = function ( $m, $u, $h, $b ) use ( &$sentMsgs ) {
+	$sentMsgs[] = array( $m, $u, json_decode( (string) $b, true ) );
+	return array( 200, '{"org_id":"11111111-2222-3333-4444-555555555555","rev":1}' );
+};
+$oid = '11111111-2222-3333-4444-555555555555';
+Outbox::enqueue( $odb, $oid, array( 'ref' => 'sub_1', 'rev' => 1, 'status' => 'active', 'until' => '2026-12-31', 'plan' => 'gestionale', 'plan_version' => 3, 'members' => 150, 'price_cents' => 4026 ), 1000 );
+check( 'coda: subscription con PUT verso l\'indirizzo del contratto', array( 1, 0 ) === Outbox::run( $odb, 1000 ) && 'PUT' === $sentMsgs[0][0] && 'https://app.associazionesemplice.it/api/portale/v2/orgs/' . $oid . '/subscription' === $sentMsgs[0][1] );
+$scl = json_decode( (string) base64_decode( strtr( explode( '.', (string) $sentMsgs[0][2]['token'] )[1], '-_', '+/' ) ), true );
+check( 'coda: claim firmati (sub, plan_version, vita 60 s, aud del SaaS)', 'subscription' === $scl['typ'] && $oid === $scl['sub'] && 3 === $scl['plan_version'] && 60 === $scl['exp'] - $scl['iat'] && 'associazionesemplice-saas' === $scl['aud'] );
+check( 'coda: messaggio già inviato non si rimanda', array( 0, 0 ) === Outbox::run( $odb, 5000 ) );
+Http::$transport = function () { return array( 503, '' ); };
+Outbox::enqueue( $odb, $oid, array( 'ref' => 'sub_1', 'rev' => 2, 'status' => 'active', 'plan' => 'gestionale', 'plan_version' => 3 ), 2000 );
+check( 'coda: errore 5xx → ritento dopo 1 minuto, non prima', array( 0, 1 ) === Outbox::run( $odb, 2000 ) && array( 0, 0 ) === Outbox::run( $odb, 2030 ) );
+Http::$transport = function () { return array( 409, '{"error":"stale_revision"}' ); };
+check( 'coda: 409 stale_revision = già applicata → chiusa', array( 1, 0 ) === Outbox::run( $odb, 2100 ) );
+Config::set( 'saas_sign_key', '' );
+Config::set( 'saas_sign_key_file', '/nonesiste/saas.key' );
+Outbox::enqueue( $odb, $oid, array( 'ref' => 'sub_1', 'rev' => 3 ), 3000 );
+check( 'coda: senza chiave di firma il messaggio resta in coda (nessun errore)', array( 0, 1 ) === Outbox::run( $odb, 3000 ) );
+Http::$transport = $prevTransport;
+Config::set( 'saas_public_keys', array() );
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );
