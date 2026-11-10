@@ -280,7 +280,9 @@ su quelle due parti** finché il contratto v2 non è scritto.
 - Un cliente con più prodotti prende il livello più alto tra quelli attivi **del prodotto del ticket**.
 - Licenza o abbonamento sospesi o scaduti: livello `free`.
 
-## 8. Passare da un'amministrazione all'altra
+> **Superato (10/11/2026):** vedi [UTENTI_E_ACCESSI.md](UTENTI_E_ACCESSI.md): un solo elenco staff nel portale, ruoli per area e accesso unico. Il testo qui sotto è solo storico.
+
+## 8. Passare da un'amministrazione all'altra (superato)
 
 Chi ha un ruolo sia in `/wordpress/admin` sia in `/saas/admin` vede in **entrambe** un collegamento «Passa a …» in
 alto, **solo se ha davvero il ruolo nell'altra**; chi non lo ha non vede nulla.
