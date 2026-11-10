@@ -116,7 +116,7 @@ final readonly class PortalSync
     /**
      * @param  array{sub: string, ref: string, rev: int, status: string, until: string, trial_ends: string|null, members: int, operators: int, storage_gb: int, packages: array<string, array<string, mixed>>, partner: string|null}  $claims
      * @param  array<string, mixed>  $raw  ciò che si conserva
-     * @param  array<string, mixed>  $auditExtra
+     * @param  array<string, int|string>  $auditExtra
      */
     private function store(array $claims, array $raw, string $token, array $auditExtra): void
     {

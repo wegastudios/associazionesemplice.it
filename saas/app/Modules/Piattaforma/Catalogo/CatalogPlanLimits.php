@@ -29,7 +29,7 @@ final readonly class CatalogPlanLimits implements PlanLimits
         $storageGb = intdiv($storageMb + 1023, 1024);
         $packages = [];
         foreach (is_array($limits['packages'] ?? null) ? $limits['packages'] : [] as $code => $packageLimits) {
-            $packages[(string) $code] = is_array($packageLimits) ? $packageLimits : [];
+            $packages[(string) $code] = self::map($packageLimits);
         }
 
         foreach ($addons as $requested) {
@@ -45,12 +45,22 @@ final readonly class CatalogPlanLimits implements PlanLimits
                 default => null,
             };
             if ($package !== null) {
-                $extra = is_array($grants['limits'] ?? null) ? $grants['limits'] : [];
-                $packages[$package] = array_replace_recursive($packages[$package] ?? [], $extra);
+                $packages[$package] = self::map(array_replace_recursive($packages[$package] ?? [], self::map($grants['limits'] ?? null)));
             }
         }
 
         return ['operators' => $operators, 'storage_gb' => $storageGb, 'packages' => $packages];
+    }
+
+    /** @return array<string, mixed> */
+    private static function map(mixed $value): array
+    {
+        $out = [];
+        foreach (is_array($value) ? $value : [] as $key => $item) {
+            $out[(string) $key] = $item;
+        }
+
+        return $out;
     }
 
     private static function int(mixed $value): int
