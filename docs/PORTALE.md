@@ -226,3 +226,14 @@ Schema di [ARCHITETTURA_DOMINI.md](ARCHITETTURA_DOMINI.md) §2. Il portale **ven
 - **Rimossa** la vecchia gestione SaaS del portale (`Platform`, `views/saas/`): l'amministrazione ora è del SaaS. `SaasClient` resta per le chiamate firmate che servono all'acquisto e all'area clienti.
 - **`/account/da-gestionale`**: nuovo indirizzo dell'accesso «Gestisci abbonamento» dal gestionale. Per ora rimanda alla pagina di accesso; accetterà il token firmato (contratto §3.2) con il passo di acquisto e abbonamenti.
 - Dopo l'accesso, chi ha un livello SaaS nello staff e non quello del plugin va a `/saas/admin`.
+
+## Catalogo del SaaS: listino e confronto generati (novembre 2026)
+
+Il portale **legge** piani, caratteristiche e prezzi del SaaS dal suo catalogo (`catalogo/v1`, contratto `saas/docs/CONTRATTO_PORTALE.md` §2) e non ha un listino SaaS proprio: ogni modifica si fa in `/saas/admin`.
+
+- **Lettura** (`src/Catalog.php`): `GET {saas_api_url}/api/catalogo/v1` con `If-None-Match`. La risposta vale solo se `X-Catalog-Signature` (JWT EdDSA, `typ: catalog`, claim `rev` e `sha256` dei byte ricevuti) torna con una chiave di `saas_public_keys` (`config.php`, `kid => x`). **Anti-rollback**: una `rev` più vecchia di quella salvata, o la stessa `rev` con contenuto diverso, si rifiuta. L'ultima copia valida sta nella tabella `catalog` e serve anche se il SaaS non risponde.
+- **Quando si aggiorna:** la prima visita a `/saas` dopo 10 minuti dall'ultimo controllo ricarica il catalogo *dopo* aver consegnato la pagina (il visitatore non aspetta); l'avviso firmato `POST /api/saas/v1/catalog-changed` (`typ: catalog_changed`, `jti` monouso nella tabella `seen_jti`) lo forza subito.
+- **Pagina `/saas`:** schede dei piani («da X € al mese + IVA», prova gratuita) e **tabella di confronto** costruita dalle `features` del catalogo (`views/_catalog_saas.php`): nessun prezzo o funzione scritti a mano. Senza chiavi fissate o senza catalogo salvato la sezione dice «a breve».
+- **Prezzi** (`src/PriceCalculator.php`): stesse regole del SaaS (centesimi IVA esclusa, scaglioni marginali sui soci, IVA una sola volta sul totale, metà in su); casi comuni in `tests/fixtures/catalogo-casi.json` (copia di `saas/tests/Fixtures/catalogo-casi.json`: se cambia lì, va ricopiata).
+- Il confronto del **plugin** resta `content/confronto.md` finché il plugin non espone il suo catalogo (passo 4, sessione portale-plugin); la regola «tabella confronto sempre aggiornata» vale per entrambi.
+- Da fare: pagina staff con `rev` e «aggiornato il…», `promo.check`, carrello (passo 6).
