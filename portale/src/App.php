@@ -46,6 +46,17 @@ final class App {
 				Plugin\CatalogApi::serve( new Plugin\ConfigCatalog() );
 				return;
 			}
+			if ( 'GET' === $method && Plugin\DownloadLink::PATH === $path ) {
+				// Scarico con collegamento firmato di 5 minuti legato alla licenza (nessun accesso: il diritto è nel token e si ricontrolla qui).
+				list( $code, $file, $prod, $ver ) = Plugin\DownloadLink::resolve( $this->db, (string) ( $_GET['t'] ?? '' ) );
+				if ( 200 === $code ) {
+					Releases::stream( $file, $prod, $ver );
+					return;
+				}
+				http_response_code( $code );
+				View::render( 'message', array( 'title' => 'Scarico non disponibile', 'text' => $file ) );
+				return;
+			}
 			if ( 'POST' === $method && ! $this->csrfOk() ) {
 				throw new UserError( 'Sessione scaduta: ricarica la pagina e riprova.' );
 			}

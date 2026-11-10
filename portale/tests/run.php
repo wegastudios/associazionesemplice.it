@@ -1371,6 +1371,38 @@ Portale\Staff::set( $sdb, $sbil, 'vecchio@esempio.it', 'none' ); // toglie il pl
 $sdb->migrate();
 check( 'plugin staff: tolto il ruolo non rivive né dal ripiego né da una nuova migrazione', null === Portale\Staff::role( $sdb, 'vecchio@esempio.it' ) && 'admin' === Portale\Staff::saas( $sdb, 'vecchio@esempio.it' ) );
 
+// Operazioni dell'area clienti (CustomerApi, DownloadLink)
+$adb = new Db( new PDO( 'sqlite::memory:' ) );
+$adb->migrate();
+$abil = new Billing( $adb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+foreach ( array( '1.0.0' => '2026-01-01 00:00:00', '1.1.0' => '2026-03-01 00:00:00', '1.2.0' => '2026-06-01 00:00:00' ) as $ver => $at ) {
+	foreach ( array( 'free', 'pro' ) as $prd ) {
+		$adb->run( 'INSERT INTO releases (product, version, size, sha256, created_at) VALUES (?,?,?,?,?)', array( $prd, $ver, 1, str_repeat( 'a', 64 ), $at ) );
+	}
+}
+$mk = function ( string $id, string $cid, string $plan, string $status, string $exp ) use ( $adb ) {
+	$adb->run( 'INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, expires_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)', array( $id, $cid, $plan, 'year', 'stripe', $status, $id . '.it', $exp, Db::now(), Db::now() ) );
+	return $adb->one( 'SELECT * FROM subscriptions WHERE id = ?', array( $id ) );
+};
+$now    = strtotime( '2026-09-01 00:00:00 UTC' );
+$okSub  = $mk( 'ok', 'cA', 'full', 'active', '2027-01-01 00:00:00' );
+$oldSub = $mk( 'old', 'cA', 'full', 'active', '2026-04-01 00:00:00' ); // scaduta il 1/4: l'ultima uscita prima è la 1.1.0
+$frSub  = $mk( 'fr', 'cA', 'free', 'active', '2027-01-01 00:00:00' );
+check( 'download: licenza in regola scarica qualunque versione', null !== Portale\Plugin\DownloadLink::allowed( $adb, $okSub, 'pro', '1.0.0', $now ) );
+check( 'download: licenza scaduta solo l\'ultima versione precedente alla scadenza', null !== Portale\Plugin\DownloadLink::allowed( $adb, $oldSub, 'pro', '1.1.0', $now ) && null === Portale\Plugin\DownloadLink::allowed( $adb, $oldSub, 'pro', '1.2.0', $now ) && null === Portale\Plugin\DownloadLink::allowed( $adb, $oldSub, 'pro', '1.0.0', $now ) );
+check( 'download: licenza gratuita non scarica il Pro', null === Portale\Plugin\DownloadLink::allowed( $adb, $frSub, 'pro', '1.0.0', $now ) && null !== Portale\Plugin\DownloadLink::allowed( $adb, $frSub, 'free', '1.0.0', $now ) );
+$link = Portale\Plugin\DownloadLink::create( $adb, $okSub, 'pro', '1.2.0', $now );
+check( 'download: il collegamento punta a /wordpress/scarica con token', 0 === strpos( $link, 'https://portale.test/wordpress/scarica?t=' ) );
+$tok = (string) substr( $link, strpos( $link, 't=' ) + 2 );
+check( 'download: token scaduto dopo 5 minuti', 410 === Portale\Plugin\DownloadLink::resolve( $adb, $tok, $now + 301 )[0] );
+check( 'download: token alterato rifiutato', 403 === Portale\Plugin\DownloadLink::resolve( $adb, $tok . 'x', $now )[0] && 403 === Portale\Plugin\DownloadLink::resolve( $adb, 'a.b', $now )[0] );
+check( 'download: licenza non scaricabile = nessun collegamento', null !== throwsUser( function () use ( $adb, $oldSub, $now ) { Portale\Plugin\DownloadLink::create( $adb, $oldSub, 'pro', '1.2.0', $now ); } ) );
+$capi = new Portale\Plugin\CustomerApi( $adb, $abil );
+check( 'area clienti: license.sites elenca solo le licenze del cliente, senza chiave', 3 === count( $capi->sites( 'cA' ) ) && 0 === count( $capi->sites( 'altro' ) ) && ! array_key_exists( 'license_key_enc', $capi->sites( 'cA' )[0] ) );
+check( 'area clienti: licenza di un altro cliente = non trovata', null !== throwsUser( function () use ( $capi ) { $capi->domainCheck( 'altro', 'ok', 'nuovo.it' ); } ) && null !== throwsUser( function () use ( $capi ) { $capi->downloadLink( 'altro', 'ok', 'free' ); } ) );
+check( 'area clienti: domain.check non modifica nulla e segnala dominio uguale/non valido', false === $capi->domainCheck( 'cA', 'ok', 'ok.it' )['ok'] && false === $capi->domainCheck( 'cA', 'ok', '' )['ok'] && 'ok.it' === $adb->one( 'SELECT domain FROM subscriptions WHERE id = ?', array( 'ok' ) )['domain'] );
+check( 'area clienti: domain.check dà ok per un dominio libero', true === $capi->domainCheck( 'cA', 'ok', 'nuovo-sito.it' )['ok'] );
+
 // Catalogo del plugin (interfaccia Catalog, formato catalogo/v1)
 $cat    = new Portale\Plugin\ConfigCatalog( 3 );
 $catDoc = $cat->document();
