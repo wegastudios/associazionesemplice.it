@@ -1443,6 +1443,21 @@ Portale\Plugin\Mfa::disable( $mdb, 'persona@esempio.it', Portale\Plugin\Totp::co
 check( 'mfa: spenta di nuovo con un codice valido', ! Portale\Plugin\Mfa::enabled( $mdb, 'persona@esempio.it' ) );
 $_SESSION = $prevSession;
 
+// Firma EdDSA del catalogo (chiave separata)
+if ( function_exists( 'sodium_crypto_sign_detached' ) ) {
+	$gseed  = str_repeat( 'g', SODIUM_CRYPTO_SIGN_SEEDBYTES );
+	$gother = str_repeat( 'h', SODIUM_CRYPTO_SIGN_SEEDBYTES );
+	$gpub   = Portale\Plugin\CatalogSigner::publicKey( $gseed );
+	$gbody  = (string) json_encode( ( new Portale\Plugin\ConfigCatalog() )->document() );
+	$ghead  = (string) Portale\Plugin\CatalogSigner::header( $gbody, $gseed );
+	check( 'firma catalogo: kid proprio e chiave pubblica di 32 byte', 0 === strpos( Portale\Plugin\CatalogSigner::kid( $gseed ), 'catalogo-plugin-' ) && 32 === strlen( (string) base64_decode( strtr( $gpub, '-_', '+/' ) ) ) );
+	check( 'firma catalogo: l\'intestazione contiene algoritmo, kid e firma', false !== strpos( $ghead, 'alg="EdDSA"' ) && false !== strpos( $ghead, 'kid="' . Portale\Plugin\CatalogSigner::kid( $gseed ) . '"' ) );
+	check( 'firma catalogo: si verifica con la chiave pubblica', Portale\Plugin\CatalogSigner::verify( $gbody, $ghead, $gpub ) );
+	check( 'firma catalogo: corpo alterato rifiutato', ! Portale\Plugin\CatalogSigner::verify( $gbody . ' ', $ghead, $gpub ) && ! Portale\Plugin\CatalogSigner::verify( str_replace( '"plugin"', '"saas"', $gbody ), $ghead, $gpub ) );
+	check( 'firma catalogo: altra chiave rifiutata, intestazione rotta rifiutata', ! Portale\Plugin\CatalogSigner::verify( $gbody, $ghead, Portale\Plugin\CatalogSigner::publicKey( $gother ) ) && ! Portale\Plugin\CatalogSigner::verify( $gbody, 'sig="xx"', $gpub ) && ! Portale\Plugin\CatalogSigner::verify( $gbody, '', $gpub ) );
+	check( 'firma catalogo: senza chiave configurata non si firma', null === Portale\Plugin\CatalogSigner::header( $gbody, '' ) || ! Portale\Plugin\CatalogSigner::enabled() );
+}
+
 // Notifica di abbonamento (Plugin\SubscriptionNotice)
 $ndb   = new Db( new PDO( 'sqlite::memory:' ) );
 $ndb->migrate();

@@ -265,3 +265,11 @@ Sezione **Piani → Catalogo**, solo per gli amministratori. Cosa si decide qui:
 - **Controlli prima di pubblicare:** codici caratteristica validi e unici, testi senza HTML (max 160), livello di assistenza valido, siti 1–1000, almeno una caratteristica per ogni piano visibile, almeno un piano visibile.
 - **Cosa NON c'è qui (per ora):** nomi e prezzi restano in «Piani e prezzi» (il catalogo li legge da lì in tempo reale) finché il negozio non passa dal catalogo; le promozioni; la firma EdDSA.
 - **Nessun effetto prima del primo «Pubblica».** Finché non si pubblica niente, `GET /wordpress/api/catalogo/v1` risponde come prima (dalla configurazione). Classi: `Plugin\CatalogStore` (bozza, controlli, pubblicazione), `Plugin\DbCatalog` (lettura per il portale), `Plugin\ConfigCatalog` (base viva: nomi e prezzi).
+
+### Firma del catalogo (EdDSA)
+
+`GET /wordpress/api/catalogo/v1` porta l'intestazione `X-Catalog-Signature: alg="EdDSA", kid="catalogo-plugin-xxxxxxxx", sig="…"`: firma Ed25519 sui **byte esatti** del corpo. Chi legge il catalogo (il negozio, altri siti) fissa la chiave pubblica e rifiuta ciò che non torna (`Plugin\CatalogSigner::verify`).
+
+- **Chiave nuova e separata** da quelle delle licenze (`portal-sign.key`), del contratto col SaaS (`saas-sign.key`) e da quella futura di `admin_hop`. Sta fuori dal repository in `data/catalog-sign.key` (permessi 600) o in `catalog_sign_key` di `config.php`.
+- **Creazione:** `php bin/catalog-key.php` sul server (crea se manca, stampa SOLO `kid` e chiave pubblica `x`; `--show` per rileggerli). Prima del primo uso la chiave non esiste: finché manca, il catalogo si serve non firmato (l'ETag resta). Creare la chiave e comunicare `x` ai lettori è un passo di rilascio, da fare con il via della titolare.
+- **Rotazione:** nuovo file, nuovo `kid`; il `kid` nell'intestazione dice con quale chiave verificare.
