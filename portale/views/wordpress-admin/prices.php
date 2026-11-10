@@ -4,7 +4,7 @@ $eur  = function ( $c ) { return null === $c ? '' : number_format( $c / 100, 2, 
 ?>
 <section class="admin"><div class="wrap" style="max-width:900px">
 	<?php $promo = (array) Portale\Config::get( 'promo', array() ); $promoOn = Portale\Settings::promoNow(); ?>
-	<form class="card2" method="post" action="/admin/prezzi/promo">
+	<form class="card2" method="post" action="/wordpress/admin/prezzi/promo">
 		<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>">
 		<h2>Promozione in vetrina <span class="badge <?php echo $promoOn ? 'ok' : ''; ?>"><?php echo $promoOn ? 'in corso' : ( ! empty( $promo['label'] ) ? 'non in corso' : 'spenta' ); ?></span></h2>
 		<div class="form-grid">
@@ -17,7 +17,7 @@ $eur  = function ( $c ) { return null === $c ? '' : number_format( $c / 100, 2, 
 	<?php foreach ( $plans as $code => $p ) :
 		$paid = 'free' !== $code;
 	?>
-	<form class="card2 plan-edit" id="<?php echo e( $code ); ?>" method="post" action="/admin/prezzi/<?php echo e( $code ); ?>">
+	<form class="card2 plan-edit" id="<?php echo e( $code ); ?>" method="post" action="/wordpress/admin/prezzi/<?php echo e( $code ); ?>">
 		<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>">
 		<h2><?php echo e( $p['label'] ); ?> <span class="muted small">codice «<?php echo e( $code ); ?>»</span></h2>
 		<div class="form-grid two">

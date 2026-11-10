@@ -5,7 +5,7 @@ $csrf = Portale\App::csrf();
 	<div class="account-head">
 		<div><h1>Le tue licenze</h1><div class="muted"><?php echo e( $email ); ?></div></div>
 		<div style="display:flex;gap:10px;flex-wrap:wrap">
-			<?php if ( $is_admin ) : ?><a class="btn small" href="/admin">Gestione</a><?php endif; ?>
+			<?php if ( $is_admin ) : ?><a class="btn small" href="/wordpress/admin">Gestione</a><?php endif; ?>
 			<a class="btn small" href="<?php echo e( Portale\SupportSso::enabled() ? '/supporto/accedi' : Portale\SupportSso::supportUrl() ); ?>">Supporto</a>
 			<form method="post" action="/esci"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><button class="btn alt small" type="submit">Esci</button></form>
 		</div>

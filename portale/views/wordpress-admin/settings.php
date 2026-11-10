@@ -9,7 +9,7 @@ $names = array(
 );
 ?>
 <section class="admin"><div class="wrap" style="max-width:820px">
-	<form method="post" action="/admin/impostazioni">
+	<form method="post" action="/wordpress/admin/impostazioni">
 		<input type="hidden" name="csrf" value="<?php echo e( Portale\App::csrf() ); ?>">
 		<div class="card2">
 			<h2>Prova Pro gratuita</h2>
@@ -67,6 +67,6 @@ $names = array(
 		<p><span class="status-dot<?php echo $cfg['wega'] ? '' : ' off'; ?>"></span>Server licenze Wega</p>
 		<p><span class="status-dot<?php echo $cfg['stripe'] ? '' : ' off'; ?>"></span>Stripe</p>
 		<p style="margin:0"><span class="status-dot<?php echo $cfg['paypal'] ? '' : ' off'; ?>"></span>PayPal</p>
-		<p class="hint">Le chiavi si inseriscono in <a href="/admin/pagamenti">Pagamenti</a>.</p>
+		<p class="hint">Le chiavi si inseriscono in <a href="/wordpress/admin/pagamenti">Pagamenti</a>.</p>
 	</div>
 </div></section>

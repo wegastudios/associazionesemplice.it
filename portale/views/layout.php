@@ -28,7 +28,7 @@ $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 	<a class="logo" href="<?php echo e( $home ); ?>" aria-label="Associazione Semplice"><picture class="logo-full"><source media="(prefers-color-scheme: dark)" srcset="/assets/brand/logo-orizzontale-negativo.svg?v=<?php echo e( $v ); ?>"><img src="/assets/brand/logo-orizzontale-colore.svg?v=<?php echo e( $v ); ?>" alt="Associazione Semplice" width="143" height="52"></picture><picture class="logo-sym"><source media="(prefers-color-scheme: dark)" srcset="/assets/brand/simbolo-negativo.svg?v=<?php echo e( $v ); ?>"><img src="/assets/brand/simbolo-colore.svg?v=<?php echo e( $v ); ?>" alt="Associazione Semplice" width="40" height="40"></picture></a>
 	<nav class="nav" aria-label="Principale">
 		<?php foreach ( $items as $it ) : ?><a href="<?php echo e( $it[1] ); ?>"<?php echo $path === $it[1] ? ' aria-current="page"' : ''; ?>><?php echo e( $it[0] ); ?></a><?php endforeach; ?>
-		<?php if ( ! empty( $_SESSION['staff'] ) ) : ?><a href="/admin">Gestione</a><?php endif; ?>
+		<?php if ( ! empty( $_SESSION['staff'] ) ) : ?><a href="/wordpress/admin">Gestione</a><?php endif; ?>
 		<a class="btn alt small" href="/prezzi"<?php echo '/prezzi' === $path ? ' aria-current="page"' : ''; ?>>Prezzi</a>
 		<a class="btn small" href="/prova"<?php echo '/prova' === $path ? ' aria-current="page"' : ''; ?>>Prova la demo</a>
 		<a class="nav-area" href="<?php echo e( $area ); ?>"><?php echo icon( 'user' ); ?>Area riservata</a>
@@ -37,7 +37,7 @@ $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 		<summary aria-label="Menu"><?php echo icon( 'menu' ); ?><span>Menu</span></summary>
 		<div class="menu-panel">
 			<a href="/funzioni">Funzioni</a><a href="/prova">Prova la demo</a><a href="/prezzi">Prezzi</a><a href="/confronto">Confronto versioni</a><a href="/domande">Domande</a><a href="<?php echo e( $support_href ); ?>">Supporto</a>
-			<?php if ( ! empty( $_SESSION['staff'] ) ) : ?><a href="/admin">Gestione</a><?php endif; ?>
+			<?php if ( ! empty( $_SESSION['staff'] ) ) : ?><a href="/wordpress/admin">Gestione</a><?php endif; ?>
 			<a class="menu-area" href="<?php echo e( $area ); ?>"><?php echo icon( 'user' ); ?>Area riservata</a>
 		</div>
 	</details>

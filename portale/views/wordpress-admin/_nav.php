@@ -1,11 +1,11 @@
 <?php /** @var string $nav @var string $flash @var string $admin_email */
 // Sezioni della gestione: ognuna ha le sue schede. $nav è la scheda corrente.
 $sections = array(
-	'cruscotto'    => array( 'Cruscotto', array( 'cruscotto' => array( '/admin', 'Cruscotto' ) ) ),
-	'piani'        => array( 'Piani', array( 'prezzi' => array( '/admin/prezzi', 'Piani e prezzi' ), 'versioni' => array( '/admin/versioni', 'Versioni del plugin' ) ) ),
-	'clienti'      => array( 'Clienti', array( 'licenze' => array( '/admin/licenze', 'Licenze' ), 'clienti' => array( '/admin/clienti', 'Clienti e domini' ), 'wega' => array( '/admin/wega', 'Da Wega' ), 'staff' => array( '/admin/staff', 'Staff e supporto' ) ) ),
-	'impostazioni' => array( 'Impostazioni', array( 'impostazioni' => array( '/admin/impostazioni', 'Generali' ), 'pagamenti' => array( '/admin/pagamenti', 'Pagamenti' ), 'email' => array( '/admin/email', 'Email' ), 'registro' => array( '/admin/registro', 'Registro' ) ) ),
-	'pagine'       => array( 'Pagine', array( 'legale' => array( '/admin/legale', 'Privacy e cookie' ), 'cookie' => array( '/admin/cookie', 'Script e consenso' ) ) ),
+	'cruscotto'    => array( 'Cruscotto', array( 'cruscotto' => array( '/wordpress/admin', 'Cruscotto' ) ) ),
+	'piani'        => array( 'Piani', array( 'prezzi' => array( '/wordpress/admin/prezzi', 'Piani e prezzi' ), 'versioni' => array( '/wordpress/admin/versioni', 'Versioni del plugin' ) ) ),
+	'clienti'      => array( 'Clienti', array( 'licenze' => array( '/wordpress/admin/licenze', 'Licenze' ), 'clienti' => array( '/wordpress/admin/clienti', 'Clienti e domini' ), 'wega' => array( '/wordpress/admin/wega', 'Da Wega' ), 'staff' => array( '/wordpress/admin/staff', 'Staff e supporto' ) ) ),
+	'impostazioni' => array( 'Impostazioni', array( 'impostazioni' => array( '/wordpress/admin/impostazioni', 'Generali' ), 'pagamenti' => array( '/wordpress/admin/pagamenti', 'Pagamenti' ), 'email' => array( '/wordpress/admin/email', 'Email' ), 'registro' => array( '/wordpress/admin/registro', 'Registro' ) ) ),
+	'pagine'       => array( 'Pagine', array( 'legale' => array( '/wordpress/admin/legale', 'Privacy e cookie' ), 'cookie' => array( '/wordpress/admin/cookie', 'Script e consenso' ) ) ),
 );
 if ( Portale\Staff::SUPPORT === ( $role ?? "" ) ) {
 	unset( $sections["cruscotto"], $sections["piani"], $sections["impostazioni"], $sections["pagine"] );

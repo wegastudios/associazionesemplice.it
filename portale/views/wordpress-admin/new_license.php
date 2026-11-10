@@ -2,7 +2,7 @@
 <section class="admin"><div class="wrap" style="max-width:720px">
 	<div class="card2">
 		<h2>Emetti una licenza a mano</h2>
-		<form method="post" action="/admin/licenze/nuova">
+		<form method="post" action="/wordpress/admin/licenze/nuova">
 			<input type="hidden" name="csrf" value="<?php echo e( Portale\App::csrf() ); ?>">
 			<div class="form-grid two">
 				<div><label for="email">Email del cliente</label><input id="email" type="email" name="email" required></div>
@@ -12,7 +12,7 @@
 			</div>
 			<label for="note">Nota interna</label><input id="note" type="text" name="note" maxlength="255" placeholder="Per esempio: regalo, partner, prova estesa">
 			<label class="check"><input type="checkbox" name="notify" value="1" checked> Manda l'email «Abbonamento attivo» con il link per vedere la chiave</label>
-			<div class="row-actions"><button class="btn" type="submit">Emetti la licenza</button><a class="btn alt" href="/admin/licenze">Annulla</a></div>
+			<div class="row-actions"><button class="btn" type="submit">Emetti la licenza</button><a class="btn alt" href="/wordpress/admin/licenze">Annulla</a></div>
 		</form>
 	</div>
 </div></section>
