@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Piattaforma\Models\PlatformStaff;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Laravel\Fortify\Fortify;
 use PragmaRX\Google2FA\Google2FA;
@@ -95,6 +96,8 @@ it('chiude la sessione quando la persona viene disattivata', function (): void {
     $this->get('/admin')->assertOk();
 
     $staff->forceFill(['disabled_at' => now()])->save();
+    // Nei test l'applicazione resta la stessa tra due richieste: la guardia va azzerata come farebbe una richiesta nuova.
+    Auth::forgetGuards();
 
     $this->get('/admin')->assertRedirect('/admin/accesso');
 });
