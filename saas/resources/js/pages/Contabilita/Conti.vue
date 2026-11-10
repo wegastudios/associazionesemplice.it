@@ -1,8 +1,14 @@
 <script setup>
 import { Head, router, useForm } from '@inertiajs/vue3';
+import { reactive } from 'vue';
 import AppLayout from '../../layouts/AppLayout.vue';
 
-defineProps({ accounts: Array, types: Array, canEdit: Boolean });
+const props = defineProps({ accounts: Array, types: Array, canEdit: Boolean });
+
+// Commissione di incasso per conto: quota fissa in euro e percentuale, trattenute a ogni incasso di segreteria o sul posto.
+const fees = reactive({});
+const fee = (a) => (fees[a.id] ??= { fee_fixed: a.fee_fixed, fee_percent: a.fee_percent });
+const saveFee = (a) => router.post(`/gestionale/conti/${a.id}/commissione`, fee(a), { preserveScroll: true });
 
 const form = useForm({ name: '', type: 'bank', opening: '' });
 const submit = () => form.post('/gestionale/conti', { preserveScroll: true, onSuccess: () => form.reset() });
@@ -17,7 +23,7 @@ const field = 'field';
         <div class="mb-8 card overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="text-left text-muted">
-                    <tr><th class="px-4 py-3">Conto</th><th class="px-4 py-3">Tipo</th><th class="px-4 py-3 text-right">Saldo iniziale</th><th class="px-4 py-3 text-right">Saldo</th><th class="px-4 py-3"><span class="sr-only">Azioni</span></th></tr>
+                    <tr><th class="px-4 py-3">Conto</th><th class="px-4 py-3">Tipo</th><th class="px-4 py-3 text-right">Saldo iniziale</th><th class="px-4 py-3 text-right">Saldo</th><th class="px-4 py-3">Commissione di incasso</th><th class="px-4 py-3"><span class="sr-only">Azioni</span></th></tr>
                 </thead>
                 <tbody>
                     <tr v-for="a in accounts" :key="a.id" class="border-t border-line" :class="a.open ? '' : 'text-muted'">
@@ -25,6 +31,14 @@ const field = 'field';
                         <td class="px-4 py-3">{{ a.type }}</td>
                         <td class="px-4 py-3 text-right tabular-nums">{{ a.opening }}</td>
                         <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ a.balance }}</td>
+                        <td class="px-4 py-3">
+                            <form v-if="canEdit" class="flex flex-wrap items-center gap-1" @submit.prevent="saveFee(a)">
+                                <input v-model="fee(a).fee_fixed" inputmode="decimal" :class="field" class="w-20" aria-label="Quota fissa in euro" placeholder="0,00" /> € +
+                                <input v-model="fee(a).fee_percent" inputmode="decimal" :class="field" class="w-16" aria-label="Percentuale" placeholder="0" /> %
+                                <button type="submit" class="ml-1 font-semibold text-accent hover:underline">Salva</button>
+                            </form>
+                            <span v-else>{{ a.fee_fixed }} € + {{ a.fee_percent }}%</span>
+                        </td>
                         <td class="px-4 py-3 text-right"><button v-if="canEdit" type="button" class="font-semibold text-accent hover:underline" @click="toggle(a)">{{ a.open ? 'Chiudi' : 'Riapri' }}</button></td>
                     </tr>
                 </tbody>

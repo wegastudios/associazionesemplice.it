@@ -126,7 +126,7 @@ final readonly class LedgerImportService
                     $acc = $account($d['account_id'], $d['new_account'], $d['new_account_type']);
                     if ($d['type'] === 'income') {
                         $this->ledger->recordIncome(new Income($date, $acc, [new IncomeLine((string) $str($d['category_id']), $cents, (string) $str($d['description']), $str($d['month']))],
-                            $method, $str($d['person_id']), false, $str($d['ref']), $str($d['activity_id'])));
+                            $method, $str($d['person_id']), false, $str($d['ref']), $str($d['activity_id']), accountFee: false));
                         $res['income']++;
                     } else {
                         $this->ledger->recordExpense(new Expense($date, $acc, (string) $str($d['category_id']), $cents, $method, (string) $str($d['description']),

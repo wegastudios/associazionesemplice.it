@@ -28,6 +28,7 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale
         Route::post('/prima-nota/{transaction}/attivita', [LedgerController::class, 'activity'])->whereUuid('transaction')->name('ledger.activity');
         Route::post('/prima-nota/{transaction}/storno', [LedgerController::class, 'void'])->whereUuid('transaction')->name('ledger.void');
         Route::post('/conti', [AccountsController::class, 'store'])->name('accounts.store');
+        Route::post('/conti/{account}/commissione', [AccountsController::class, 'fee'])->whereUuid('account')->name('accounts.fee');
         Route::post('/conti/{account}/chiudi', [AccountsController::class, 'close'])->whereUuid('account')->name('accounts.close');
         Route::post('/conti/{account}/riapri', [AccountsController::class, 'reopen'])->whereUuid('account')->name('accounts.reopen');
     });

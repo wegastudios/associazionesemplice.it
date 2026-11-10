@@ -15,6 +15,8 @@ use Carbon\CarbonImmutable;
  * @property string $type
  * @property int $opening_cents
  * @property int $sort_order
+ * @property int $fee_fixed_cents
+ * @property int $fee_bp
  * @property CarbonImmutable|null $closed_at
  */
 final class Account extends OrgModel
@@ -24,11 +26,11 @@ final class Account extends OrgModel
     protected $table = 'app.accounts';
 
     /** @var list<string> */
-    protected $fillable = ['name', 'type', 'opening_cents', 'sort_order'];
+    protected $fillable = ['name', 'type', 'opening_cents', 'sort_order', 'fee_fixed_cents', 'fee_bp'];
 
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['opening_cents' => 'integer', 'sort_order' => 'integer', 'closed_at' => 'immutable_datetime'];
+        return ['opening_cents' => 'integer', 'sort_order' => 'integer', 'fee_fixed_cents' => 'integer', 'fee_bp' => 'integer', 'closed_at' => 'immutable_datetime'];
     }
 }
