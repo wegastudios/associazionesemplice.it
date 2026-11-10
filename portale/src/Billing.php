@@ -107,7 +107,7 @@ final class Billing {
 	// --- Creazione ----------------------------------------------------------------------------------------------
 
 	/** Un dominio può avere un solo abbonamento attivo o in attesa, e di un solo cliente (la chiave della licenza è riservata). */
-	private function assertDomainFree( string $domain, string $customerId, ?string $exceptId = null, bool $paid = false ): void {
+	public function assertDomainFree( string $domain, string $customerId, ?string $exceptId = null, bool $paid = false ): void {
 		// Una richiesta mai completata (in attesa) tiene il dominio solo per «pending_hold_hours»: altrimenti chiunque potrebbe prenotare
 		// per sempre il dominio di un altro. Chi paga non è bloccato da una licenza gratuita o di prova altrui (non prova la proprietà del dominio).
 		$hold = gmdate( 'Y-m-d H:i:s', time() - Settings::limit( 'pending_hold_hours' ) * 3600 );

@@ -68,3 +68,18 @@ al portale `GET https://associazionesemplice.it/api/plugin/latest` (filtro `asem
 1. (fatto) Verifica tramite il portale, senza credenziali nel plugin.
 2. Endpoint `GET /api/plugin/latest` nel portale (il plugin lo usa già) e attivazione della prova Pro dal plugin.
 3. Se serve ritirare il limite di 2 installazioni dello schema precedente: la regola è ora quella del server (un dominio per chiave); `LicenseRules` mantiene solo le utilità sui domini.
+
+## Operazioni per l'area clienti (`Portale\Plugin\CustomerApi`)
+
+La nuova area clienti (`/account`, portale-vendita) non interroga le tabelle delle licenze: chiama solo questa classe, che controlla ogni volta che la licenza sia del cliente autenticato.
+
+| Operazione | Metodo | Note |
+|---|---|---|
+| `license.sites` | `sites($cliente)` | domini, piano (slug), stato, scadenza, quando si potrà cambiare dominio, prodotti scaricabili. Mai la chiave |
+| `domain.check` | `domainCheck($cliente,$licenza,$dominio)` | prova senza modificare: valido, libero, non in blocco |
+| `domain.set` | `domainSet(...)` | usa `Billing::changeDomain` (primo cambio libero, poi blocco `domain_lock_days`, limite del server licenze) |
+| `download.link` | `downloadLink($cliente,$licenza,$prodotto,[$versione])` | collegamento firmato **5 minuti** su `/wordpress/scarica?t=…`, legato alla licenza; il diritto si ricontrolla allo scarico |
+
+Regola di scarico: licenza in regola = qualsiasi versione conservata del prodotto (il Pro solo con piano diverso dal gratuito); licenza scaduta o con pagamento non riuscito = **solo l'ultima versione uscita prima della scadenza**. Limite giornaliero `download_day` per cliente, come sempre.
+
+Non ancora fatti: limite «cambi di dominio all'anno» dal catalogo (oggi vale il blocco in giorni) e la ricezione della notifica di abbonamento (`plan`, `plan_version`, `until`, siti).
