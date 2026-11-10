@@ -1557,5 +1557,77 @@ check( 'catalogo: SaaS non raggiungibile → resta l\'ultima copia', 0 === strpo
 Http::$transport = $cprev;
 Config::set( 'saas_public_keys', array() );
 check( 'catalogo: senza chiavi fissate non si scarica niente', 'off' === Catalog::refresh( $cdb ) && ! Catalog::needsRefresh( $cdb ) );
+
+// --- Acquisto SaaS: preventivo, ordine con istantanea, coda verso il SaaS ----------
+use Portale\{Quote, Orders, Outbox};
+$qdoc = json_decode( (string) json_encode( array(
+	'schema' => 'catalogo/v1', 'product' => 'saas', 'rev' => 7, 'currency' => 'EUR', 'features' => array(),
+	'plans' => array( array( 'code' => 'gestionale', 'plan_version' => 3, 'name' => 'Gestionale', 'order' => 1, 'visible' => true, 'prices' => array( $cases['members_tiers']['price'], $cases['members_tiers_year']['price'] ) ) ),
+	'addons' => array( array( 'code' => 'operators_extra', 'visible' => true, 'prices' => array( array( 'period' => 'month', 'kind' => 'flat', 'amount_cents' => 300, 'vat_percent' => 22 ) ) ) ),
+) ), true );
+$q150 = Quote::build( $qdoc, 'gestionale', 'month', 150 );
+check( 'preventivo: 150 soci = 3300 + IVA 726 = 4026, versione e rev nell\'istantanea', 3300 === $q150['net'] && 726 === $q150['vat'] && 4026 === $q150['total'] && 3 === $q150['plan_version'] && 7 === $q150['rev'] );
+$qa = Quote::build( $qdoc, 'gestionale', 'month', 150, array( 'operators_extra' => 2 ) );
+check( 'preventivo: addon fisso per unità (2 x 300)', 3900 === $qa['net'] && 2 === $qa['lines'][1]['qty'] && 600 === $qa['lines'][1]['net'] );
+$qp = Quote::build( $qdoc, 'gestionale', 'month', 150, array(), array( 'code' => 'P20', 'discount' => array( 'type' => 'percent', 'value' => 20 ) ) );
+check( 'preventivo: sconto 20% sull\'imponibile, IVA sul netto scontato', 660 === $qp['discount'] && 2640 === $qp['net'] && 581 === $qp['vat'] && 'P20' === $qp['promo'] );
+$qf = Quote::build( $qdoc, 'gestionale', 'month', 150, array(), array( 'code' => 'X', 'discount' => array( 'type' => 'amount_cents', 'value' => 99999 ) ) );
+check( 'preventivo: sconto a importo mai oltre il totale', 0 === $qf['net'] && 0 === $qf['total'] );
+check( 'preventivo: annuale = 10 mensilità, piano o addon sconosciuti rifiutati', 33000 === Quote::build( $qdoc, 'gestionale', 'year', 150 )['net'] && null !== throwsUser( function () use ( $qdoc ) { Quote::build( $qdoc, 'altro', 'month', 10 ); } ) && null !== throwsUser( function () use ( $qdoc ) { Quote::build( $qdoc, 'gestionale', 'month', 10, array( 'zzz' => 1 ) ); } ) );
+
+$oseed = str_repeat( 'o', 32 );
+Config::set( 'saas_public_keys', array( PortalAttestation::kid( $oseed ) => PortalAttestation::publicKey( $oseed ) ) );
+$odb = new Db( new PDO( 'sqlite::memory:' ) );
+$odb->migrate();
+$mkcat = function ( int $rev, int $base ) use ( $qdoc ) {
+	$d        = $qdoc;
+	$d['rev'] = $rev;
+	$d['plans'][0]['prices'][0]['base_cents'] = $base;
+	return (string) json_encode( $d );
+};
+$serve = function ( string $body, int $rev ) use ( $oseed ) {
+	Http::$transport = function () use ( $body, $rev, $oseed ) {
+		$sig = PortalAttestation::sign( array( 'iss' => 'https://app.associazionesemplice.it', 'aud' => 'https://portale.test', 'typ' => 'catalog', 'iat' => time(), 'exp' => time() + 600, 'jti' => 'j' . $rev, 'rev' => $rev, 'sha256' => hash( 'sha256', $body ) ), $oseed );
+		return array( 200, $body, array( 'x-catalog-signature' => $sig, 'etag' => '"r' . $rev . '"' ) );
+	};
+};
+$serve( $mkcat( 7, 1500 ), 7 );
+$ord = Orders::open( $odb, 'cust1', 'gestionale', 'month', 150 );
+check( 'ordine: prezzo e plan_version fissati nell\'istantanea', 4026 === $ord['total'] && 3 === (int) Orders::get( $odb, $ord['id'] )['plan_version'] && 7 === (int) Orders::get( $odb, $ord['id'] )['catalog_rev'] );
+check( 'ordine: catalogo invariato → si può incassare', 'pending' === Orders::confirm( $odb, $ord['id'] )['status'] );
+$serve( $mkcat( 8, 1500 ), 8 );
+$o2 = Orders::confirm( $odb, $ord['id'] );
+check( 'ordine: rev cambiata ma stesso totale → ricalcolato in silenzio', 8 === (int) $o2['catalog_rev'] );
+$serve( $mkcat( 9, 2000 ), 9 );
+$msg = throwsUser( function () use ( $odb, $ord ) { Orders::confirm( $odb, $ord['id'] ); } );
+check( 'ordine: prezzi cambiati → avviso con il nuovo totale e nuova istantanea', null !== $msg && false !== strpos( $msg, 'I prezzi sono stati aggiornati' ) && 9 === (int) Orders::get( $odb, $ord['id'] )['catalog_rev'] && 3800 === Orders::get( $odb, $ord['id'] )['quote']['net'] );
+Http::$transport = function () { return array( 0, '' ); };
+$odb2 = new Db( new PDO( 'sqlite::memory:' ) );
+$odb2->migrate();
+check( 'ordine: senza catalogo corrente non si vende', null !== throwsUser( function () use ( $odb2 ) { Orders::open( $odb2, 'cust1', 'gestionale', 'month', 50 ); } ) );
+
+Config::set( 'saas_sign_key', base64_encode( str_repeat( 's', 32 ) ) );
+$sentMsgs = array();
+Http::$transport = function ( $m, $u, $h, $b ) use ( &$sentMsgs ) {
+	$sentMsgs[] = array( $m, $u, json_decode( (string) $b, true ) );
+	return array( 200, '{"org_id":"11111111-2222-3333-4444-555555555555","rev":1}' );
+};
+$oid = '11111111-2222-3333-4444-555555555555';
+Outbox::enqueue( $odb, $oid, array( 'ref' => 'sub_1', 'rev' => 1, 'status' => 'active', 'until' => '2026-12-31', 'plan' => 'gestionale', 'plan_version' => 3, 'members' => 150, 'price_cents' => 4026 ), 1000 );
+check( 'coda: subscription con PUT verso l\'indirizzo del contratto', array( 1, 0 ) === Outbox::run( $odb, 1000 ) && 'PUT' === $sentMsgs[0][0] && 'https://app.associazionesemplice.it/api/portale/v2/orgs/' . $oid . '/subscription' === $sentMsgs[0][1] );
+$scl = json_decode( (string) base64_decode( strtr( explode( '.', (string) $sentMsgs[0][2]['token'] )[1], '-_', '+/' ) ), true );
+check( 'coda: claim firmati (sub, plan_version, vita 60 s, aud del SaaS)', 'subscription' === $scl['typ'] && $oid === $scl['sub'] && 3 === $scl['plan_version'] && 60 === $scl['exp'] - $scl['iat'] && 'associazionesemplice-saas' === $scl['aud'] );
+check( 'coda: messaggio già inviato non si rimanda', array( 0, 0 ) === Outbox::run( $odb, 5000 ) );
+Http::$transport = function () { return array( 503, '' ); };
+Outbox::enqueue( $odb, $oid, array( 'ref' => 'sub_1', 'rev' => 2, 'status' => 'active', 'plan' => 'gestionale', 'plan_version' => 3 ), 2000 );
+check( 'coda: errore 5xx → ritento dopo 1 minuto, non prima', array( 0, 1 ) === Outbox::run( $odb, 2000 ) && array( 0, 0 ) === Outbox::run( $odb, 2030 ) );
+Http::$transport = function () { return array( 409, '{"error":"stale_revision"}' ); };
+check( 'coda: 409 stale_revision = già applicata → chiusa', array( 1, 0 ) === Outbox::run( $odb, 2100 ) );
+Config::set( 'saas_sign_key', '' );
+Config::set( 'saas_sign_key_file', '/nonesiste/saas.key' );
+Outbox::enqueue( $odb, $oid, array( 'ref' => 'sub_1', 'rev' => 3 ), 3000 );
+check( 'coda: senza chiave di firma il messaggio resta in coda (nessun errore)', array( 0, 1 ) === Outbox::run( $odb, 3000 ) );
+Http::$transport = $prevTransport;
+Config::set( 'saas_public_keys', array() );
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );
