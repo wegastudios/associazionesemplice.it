@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Pagina di accesso dei soci senza utente WordPress. Si entra con email e password. Chi non ricorda la password riceve un link che fa
  * entrare ma obbliga a sceglierne una nuova prima di navigare («Password dimenticata?» apre la schermata «Reimposta la password»); chi preferisce
- * può entrare senza password con «Mandami il link» (il codice a 6 cifre dell'email serve a chi non può aprire il link da quel dispositivo).
+ * può entrare senza password con «Mandami un link» (il codice a 6 cifre dell'email serve a chi non può aprire il link da quel dispositivo).
  * La password va scelta alla prima entrata. Con l'accesso proprio spento la pagina non esiste.
  * Gli indirizzi sono ?asem_member_login=1 (pagina) e ?asem_ml=… (link dell'email).
  */
@@ -256,7 +256,7 @@ final class MemberLoginPage {
 
 	/**
 	 * Schermata di accesso: un solo campo email e un solo campo password, con due pulsanti affiancati (impilati a tutta larghezza da telefono):
-	 * «Entra» con la password e «Mandami il link» per entrare senza password. Il primo pulsante è quello dell'invio con la tastiera.
+	 * «Entra» con la password e «Mandami un link» per entrare senza password. Il primo pulsante è quello dell'invio con la tastiera.
 	 */
 	private static function login_form( string $mail, string $back ): string {
 		list( $input, $btn ) = self::style();
@@ -268,7 +268,7 @@ final class MemberLoginPage {
 			. '<label>Password<input style="' . $input . '" type="password" name="password" autocomplete="current-password"></label>'
 			. '<div style="display:flex;flex-wrap:wrap;gap:10px">'
 			. '<button type="submit" name="asem_ml_do" value="password_login" style="' . $main . '">Entra</button>'
-			. '<button type="submit" name="asem_ml_do" value="request" formnovalidate style="' . $alt . '">Mandami il link</button></div>'
-			. '<p style="font-size:14px;color:#50575e;margin:10px 0 0">Con «Mandami il link» entri senza password: ti scriviamo un link per email.</p></form>';
+			. '<button type="submit" name="asem_ml_do" value="request" formnovalidate style="' . $alt . '">Mandami un link</button></div>'
+			. '<p style="font-size:14px;color:#50575e;margin:10px 0 0">Con «Mandami un link» entri senza password: riceverai in email un link valido ' . (int) ( MemberLogin::TTL_SECONDS / 60 ) . ' minuti, con quello potrai entrare.</p></form>';
 	}
 }
