@@ -166,24 +166,24 @@ class PublicTicketTest extends SiteTestCase
         $this->fakeHub(94000200);
         Mail::fake();
         $this->withSession(['customer' => ['email' => 'mario@example.com', 'name' => null, 'plan_id' => null, 'at' => now()->timestamp, 'plans' => [
-            ['product' => 'plugin', 'plan' => 'procontabile', 'support_level' => 'standard', 'status' => 'active'],
-            ['product' => 'saas', 'plan' => 'studio', 'support_level' => 'priority', 'status' => 'active'],
+            ['product' => 'plugin', 'plan' => 'procontabile', 'support_level' => 'paid', 'status' => 'active'],
+            ['product' => 'saas', 'plan' => 'studio', 'support_level' => 'top', 'status' => 'active'],
         ]]]);
 
         $this->post('/ticket', $this->form(['product' => 'plugin']))->assertSessionHasNoErrors();
 
         $t = SupportTicket::firstOrFail();
-        $this->assertSame(['plugin', 'procontabile', 'standard'], [$t->product, $t->plan_slug, $t->support_level]);
+        $this->assertSame(['plugin', 'procontabile', 'paid'], [$t->product, $t->plan_slug, $t->support_level]);
 
         // Per fatturazione e account conta il livello piu alto tra i prodotti attivi
         $this->post('/ticket', $this->form(['product' => 'billing']));
-        $this->assertSame(['studio', 'priority'], [SupportTicket::where('product', 'billing')->value('plan_slug'), SupportTicket::where('product', 'billing')->value('support_level')]);
+        $this->assertSame(['studio', 'top'], [SupportTicket::where('product', 'billing')->value('plan_slug'), SupportTicket::where('product', 'billing')->value('support_level')]);
     }
 
     public function test_inactive_plan_counts_as_base_level_and_missing_plans_leave_fields_empty(): void
     {
-        $this->assertSame(['plan_slug' => 'procontabile', 'support_level' => 'base'], ProductPlans::pick([
-            ['product' => 'plugin', 'plan' => 'procontabile', 'support_level' => 'priority', 'status' => 'suspended'],
+        $this->assertSame(['plan_slug' => 'procontabile', 'support_level' => 'free'], ProductPlans::pick([
+            ['product' => 'plugin', 'plan' => 'procontabile', 'support_level' => 'top', 'status' => 'suspended'],
         ], 'plugin'));
         $this->assertSame(['plan_slug' => null, 'support_level' => null], ProductPlans::pick([], 'saas'));
     }

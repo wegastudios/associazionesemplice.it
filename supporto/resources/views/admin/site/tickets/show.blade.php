@@ -17,7 +17,7 @@
                 <dt>Argomento</dt><dd>{{ $ticket->topic?->name ?? '—' }}</dd>
                 <dt>Prodotto</dt><dd>{{ \App\Support\ProductPlans::PRODUCTS[$ticket->product] ?? '—' }}</dd>
                 <dt>Piano</dt><dd>{{ $ticket->plan?->name ?? '—' }}@if ($ticket->plan_slug) <span class="muted">({{ $ticket->plan_slug }})</span>@endif</dd>
-                <dt>Livello di assistenza</dt><dd>{{ $ticket->support_level ?? '—' }}</dd>
+                <dt>Livello di assistenza</dt><dd>{{ $ticket->support_level ? (\App\Support\ProductPlans::LEVEL_LABELS[\App\Support\ProductPlans::level($ticket->support_level)]) : '—' }}</dd>
                 <dt>Aperto</dt><dd>{{ $ticket->created_at->format('d/m/Y H:i') }}</dd>
                 <dt>Privacy</dt><dd>@if ($ticket->privacy_accepted_at)accettata il {{ $ticket->privacy_accepted_at->format('d/m/Y H:i') }} (informativa v{{ $ticket->privacy_version }})@else<span class="muted">non registrata</span>@endif</dd>
                 @if ($ticket->related_hub_id)<dt>Collegato a</dt><dd>{{ $ticket->related_hub_id }}</dd>@endif
