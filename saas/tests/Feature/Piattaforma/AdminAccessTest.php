@@ -2,12 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Modules\Piattaforma\Models\PlatformStaff;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Laravel\Fortify\Fortify;
-use PragmaRX\Google2FA\Google2FA;
 
 require_once __DIR__.'/StaffHelpers.php';
 
