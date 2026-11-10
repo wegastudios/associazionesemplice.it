@@ -37,12 +37,13 @@ final readonly class AdminLoginController
 
     public function login(Request $request): RedirectResponse
     {
-        $data = $request->validate(['email' => ['required', 'email', 'max:254'], 'password' => ['required', 'string', 'max:200']]);
-        $staff = PlatformStaff::query()->where('email', $data['email'])->first();
+        $request->validate(['email' => ['required', 'email', 'max:254'], 'password' => ['required', 'string', 'max:200']]);
+        $password = $request->string('password')->toString();
+        $staff = PlatformStaff::query()->where('email', $request->string('email')->toString())->first();
 
         // Stesso messaggio con email sconosciuta, password sbagliata o persona disattivata; il controllo della
         // password si fa comunque (contro un hash finto) per non rivelare quali email esistono dal tempo di risposta.
-        $ok = Hash::check($data['password'], $staff?->password ?? Hash::make('non-esiste'));
+        $ok = Hash::check($password, $staff->password ?? Hash::make('non-esiste'));
         if ($staff === null || ! $ok || $staff->disabled_at !== null) {
             $this->audit->record('staff.login_failed', $staff?->id, null, [], $request);
 
@@ -109,10 +110,11 @@ final readonly class AdminLoginController
 
     private function checkCode(Request $request, PlatformStaff $staff, bool $confirm = false): RedirectResponse
     {
-        $data = $request->validate(['code' => ['required', 'string', 'regex:/^\d{6}$/']]);
+        $request->validate(['code' => ['required', 'string', 'regex:/^\d{6}$/']]);
+        $code = $request->string('code')->toString();
         $secret = Fortify::currentEncrypter()->decrypt((string) $staff->two_factor_secret);
 
-        if (! is_string($secret) || ! $this->totp->verify($secret, $data['code'])) {
+        if (! is_string($secret) || ! $this->totp->verify($secret, $code)) {
             $this->audit->record('staff.code_failed', $staff->id, null, [], $request);
 
             return back()->withErrors(['code' => 'Codice non valido.']);
