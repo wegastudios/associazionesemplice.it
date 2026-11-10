@@ -1355,5 +1355,15 @@ foreach ( glob( __DIR__ . '/../views/wordpress-admin/*.php' ) as $f ) {
 	$badLinks += preg_match_all( '#(?:href|action)="/admin#', (string) file_get_contents( $f ) );
 }
 check( 'plugin: le viste puntano tutte a /wordpress/admin', 0 === $badLinks );
+// Catalogo del plugin (interfaccia Catalog, formato catalogo/v1)
+$cat    = new Portale\Plugin\ConfigCatalog( 3 );
+$catDoc = $cat->document();
+check( 'catalogo: schema, prodotto e rev', 'catalogo/v1' === $catDoc['schema'] && 'plugin' === $catDoc['product'] && 3 === $catDoc['rev'] );
+check( 'catalogo: un piano per ogni piano di config, con slug stabili', count( (array) Portale\Config::get( 'plans', array() ) ) === count( $catDoc['plans'] ) && null !== $cat->plan( Portale\Site::slug( 'full' ) ) );
+check( 'catalogo: piano inesistente = null', null === $cat->plan( 'inesistente' ) && null === $cat->price( 'inesistente', 'year' ) );
+$fullCents = (int) Portale\Config::get( 'plans.full.prices.year.cents', 0 );
+check( 'catalogo: prezzo in centesimi interi identico a config', $fullCents > 0 ? ( array( 'cents' => $fullCents, 'currency' => 'EUR' ) === $cat->price( Portale\Site::slug( 'full' ), 'year' ) ) : true );
+list( $catBody, $catEtag ) = Portale\Plugin\CatalogApi::render( $cat );
+check( 'catalogo: JSON valido e ETag stabile', is_array( json_decode( $catBody, true ) ) && $catEtag === Portale\Plugin\CatalogApi::render( $cat )[1] );
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );

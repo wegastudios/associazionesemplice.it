@@ -28,6 +28,10 @@ final class App {
 				$this->licenseApi( $method, $path );
 				return;
 			}
+			if ( 'GET' === $method && Plugin\CatalogApi::PATH === $path ) {
+				Plugin\CatalogApi::serve( new Plugin\ConfigCatalog() );
+				return;
+			}
 			if ( 'POST' === $method && ! $this->csrfOk() ) {
 				throw new UserError( 'Sessione scaduta: ricarica la pagina e riprova.' );
 			}
