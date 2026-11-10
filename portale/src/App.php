@@ -24,6 +24,20 @@ final class App {
 				$this->webhook( $path );
 				return;
 			}
+			if ( 'POST' === $method && '/api/saas/v1/catalog-changed' === $path ) {
+				// Avviso firmato del SaaS (contratto §4.2): senza sessione né CSRF, vale la firma. Il catalogo si scarica a risposta consegnata.
+				$ok = Catalog::notify( $this->db, (string) substr( (string) file_get_contents( 'php://input' ), 0, 4096 ) );
+				http_response_code( $ok ? 200 : 401 );
+				header( 'Content-Type: application/json; charset=utf-8' );
+				echo $ok ? '{"ok":true}' : '{"error":"invalid_token"}';
+				if ( $ok ) {
+					$this->after[] = function () {
+						Catalog::refresh( $this->db );
+					};
+					$this->finish();
+				}
+				return;
+			}
 			if ( 0 === strpos( $path, '/api/license/' ) || 0 === strpos( $path, '/api/plugin/' ) || '/.well-known/jwks.json' === $path ) {
 				$this->licenseApi( $method, $path );
 				return;
@@ -59,7 +73,13 @@ final class App {
 		} elseif ( $get && Sections::view( $path ) ) {
 			// Sezioni di contenuti /saas e /wordpress (l'amministrazione di ciascun prodotto vive sotto /admin).
 			$view = (string) Sections::view( $path );
-			View::render( $view, array( 'title' => 'wordpress_changelog' === $view ? 'Novità del plugin' : ( 'saas_section' === $view ? 'Il gestionale online' : 'Il plugin per WordPress' ), 'releases' => 'wordpress_changelog' === $view ? Sections::releases( $this->db ) : array() ) );
+			if ( 'saas_section' === $view && Catalog::needsRefresh( $this->db ) ) {
+				// Il listino viene dal catalogo del SaaS: si ricontrolla a risposta consegnata, la pagina usa l'ultima copia salvata.
+				$this->after[] = function () {
+					Catalog::refresh( $this->db );
+				};
+			}
+			View::render( $view, array( 'title' => 'wordpress_changelog' === $view ? 'Novità del plugin' : ( 'saas_section' === $view ? 'Il gestionale online' : 'Il plugin per WordPress' ), 'releases' => 'wordpress_changelog' === $view ? Sections::releases( $this->db ) : array(), 'catalog' => 'saas_section' === $view ? Catalog::stored( $this->db ) : null ) );
 		} elseif ( $get && '/' === $path ) {
 			View::render( 'home', array( 'plans' => Config::get( 'plans', array() ), 'trial' => Config::get( 'trial_enabled', true ) ? Settings::limit( 'trial_days' ) : 0 ) );
 		} elseif ( $get && '/api/piani' === $path ) {
