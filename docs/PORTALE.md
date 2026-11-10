@@ -244,7 +244,7 @@ Il portale **legge** piani, caratteristiche e prezzi del SaaS dal suo catalogo (
 
 ## Accesso unico al supporto: elenco dei piani (v2)
 
-Il token dell'accesso unico (HMAC, `src/SupportSso.php`) porta, se il cliente ha licenze, `v: 2` e `plans: [{product, plan, support_level, status}]` (al massimo 20 voci, senza prezzi né dati di soci): `product` `plugin|saas`; `plan` lo slug fisso (`free`, `procontabile`, `profiscale`); `support_level` `base|standard|priority` (oggi sempre `base`: lo dichiareranno i cataloghi); `status` `active|trial|past_due|cancelled`. Senza licenze il token resta `v: 1`. Il supporto verifica firma, `aud` e `exp` prima di leggere `plans` e ignora i valori sconosciuti. Gli abbonamenti SaaS compariranno con il passo 6.
+Il token dell'accesso unico (HMAC, `src/SupportSso.php`) porta, se il cliente ha licenze, `v: 2` e `plans: [{product, plan, support_level, status}]` (al massimo 20 voci, senza prezzi né dati di soci): `product` `plugin|saas`; `plan` lo slug fisso (`free`, `procontabile`, `profiscale`); `support_level` `free|paid|top` (dal catalogo del prodotto; etichette per i clienti «Gratuita», «Standard», «Top»); `status` `active|trial|past_due|cancelled`. Senza licenze il token resta `v: 1`. Il supporto verifica firma, `aud` e `exp` prima di leggere `plans` e ignora i valori sconosciuti. Gli abbonamenti SaaS compariranno con il passo 6.
 
 ## Acquisto del SaaS: preventivo, ordine e coda verso il SaaS (novembre 2026)
 
