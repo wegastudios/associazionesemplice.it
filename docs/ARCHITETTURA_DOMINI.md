@@ -20,6 +20,7 @@ Cosa cambia rispetto a oggi: ora il listino e i diritti (pacchetti, limiti) sono
 | Indirizzo | A cosa serve | Chi lo realizza |
 |---|---|---|
 | `associazionesemplice.it` | **Vendita di tutto**: home, listino, confronto, acquisto, area clienti (abbonamenti, fatture, licenze), partner | sessione Portale |
+| `associazionesemplice.it/account` | **area riservata unica dei clienti**: tutti gli abbonamenti (SaaS e plugin), fatture, pagamenti, download del plugin, upgrade, downgrade, cambio dominio (§5 bis) | sessione Portale |
 | `associazionesemplice.it/saas` | approfondimenti sul SaaS (cosa fa, per chi, novità, domande frequenti) | Portale (contenuti) |
 | `associazionesemplice.it/saas/admin` | **controllo del SaaS**: piani, prezzi, promo, associazioni, utenti, stato | SaaS |
 | `app.associazionesemplice.it` | **l'app** (gestionale delle associazioni). Nessuna pagina di vendita, nessun'amministrazione di piattaforma | SaaS |
@@ -161,6 +162,66 @@ PUT /api/portale/v2/orgs/{org_id}/subscription    (SaaS)
   interfaccia): l'amministrazione ora è del SaaS (§3.3 e §8). Restano gli endpoint di sola lettura che al portale servono per l'area
   clienti (stato dell'associazione, consumi).
 
+## 5 bis. Area riservata unica dei clienti
+
+Un cliente ha **un solo accesso** (portale, `/account`) per tutto ciò che ha comprato, qualunque prodotto. Non esistono aree
+clienti separate per SaaS e plugin. L'area è del portale; **le operazioni sul prodotto le esegue il prodotto**, il portale le
+chiede e incassa.
+
+### Pagine
+
+| Pagina | Contenuto |
+|---|---|
+| **Panoramica** | una carta per abbonamento: prodotto, piano, stato (attivo, in prova, pagamento non riuscito, in scadenza), prossimo rinnovo e importo; avvisi da fare («Pagamento da controllare», «Licenza in scadenza tra 12 giorni») |
+| **Abbonamento** (una pagina per ciascuno) | piano e addon, consumi (soci, operatori, spazio) dai consumi del SaaS, rinnovo, **cambia piano**, **disdici**, storico delle modifiche |
+| **Plugin** | licenze: chiave (mascherata, con «Copia»), **siti attivi e domini**, **cambia dominio**, **scarica l'ultima versione** e le precedenti, link al changelog di `/wordpress`; per il piano gratuito il rimando a WordPress.org |
+| **SaaS** | associazioni: «Apri il gestionale» (collegamento a `app.`), dominio personalizzato (stato: in verifica, attivo, errore con istruzioni), consumi e limiti |
+| **Fatturazione** | dati fiscali, metodi di pagamento, fatture e ricevute da scaricare, ponte SDI |
+| **Persone** | altri utenti dell'account con un ruolo: intestatario (tutto), amministrativo (fatture e pagamenti), tecnico (domini, download, licenze); nessuno vede i dati dei soci |
+| **Assistenza** | accesso al supporto (collegamento unico, §7), ticket aperti |
+
+Su telefono: stessi principi di [DESIGN.md](../saas/docs/DESIGN.md) (elenchi, fogli dal basso, un'azione principale per schermata).
+
+### Cambio di piano (upgrade e downgrade)
+
+1. Il cliente sceglie il nuovo piano **dal catalogo** (mai da un elenco proprio del portale).
+2. Il portale chiede al prodotto: `plan_change.check` con `ref` e `to_plan` → `{allowed, blockers[], effects[]}`. Il prodotto
+   dice se si può e perché no, in italiano chiaro («Hai 180 soci e il piano ne ammette 150»).
+3. **Upgrade:** subito; il portale calcola il conguaglio (proporzionale ai giorni residui), incassa, poi manda `subscription`
+   (§5) con la nuova `plan_version`.
+4. **Downgrade:** **alla scadenza del periodo pagato**, non subito; è messo in programma e visibile («Dal 01/01 passi a
+   Pro Contabile») e annullabile finché non scatta. Il prodotto lo blocca se i dati superano i limiti del piano più basso
+   (nessun dato si cancella mai; il cliente deve prima rientrare nei limiti).
+5. Ogni cambio finisce nel registro del portale e in quello del prodotto.
+
+### Dominio
+
+- **Plugin:** la licenza è legata a uno o più domini. Il cambio lo valida il server licenze (modulo plugin): dominio
+  raggiungibile, non già usato da un'altra licenza, entro il numero di cambi ammessi all'anno dal piano (`domain_changes` nel
+  catalogo). Il cliente vede l'esito subito; il vecchio dominio si disattiva alla prima verifica del plugin.
+- **SaaS, dominio personalizzato** (pacchetto): il cliente scrive il dominio, il SaaS verifica il DNS e attiva il
+  certificato; lo stato torna nella pagina. L'indirizzo `slug.associazionesemplice.it` **non** si cambia da qui (resta stabile):
+  eventuali eccezioni passano dal supporto.
+
+### Download del plugin
+
+Solo per licenza Pro attiva; il collegamento è **firmato, a vita breve (5 minuti) e legato alla licenza**; l'archivio lo serve il modulo plugin.
+Elenco versioni dal catalogo versioni, con data e link al changelog. Licenza scaduta: si scarica ancora l'ultima versione rilasciata
+**prima** della scadenza, non le successive.
+
+### Sicurezza
+
+- Operazioni che toccano soldi o accesso (cambia piano, disdici, cambia dominio, cambia metodo di pagamento, aggiungi una
+  persona) chiedono di nuovo la password o il codice a due passaggi se l'ultima conferma ha più di 15 minuti.
+- Ogni cliente vede solo i **propri** abbonamenti; ogni richiesta ricontrolla di chi è l'abbonamento (`ref`).
+- Disdetta: a fine periodo, mai immediata; per il SaaS la pagina ricorda l'esportazione completa e per quanto tempo restano i dati.
+
+### Cosa serve al contratto v2
+
+Oltre a catalogo e `subscription` (§4–5), il prodotto espone al portale, con richieste firmate: `plan_change.check`,
+`domain.check` e `domain.set`, `license.sites` (elenco siti attivi), `download.link` (collegamento firmato). Tutte monouso
+nel `jti` come il resto del contratto.
+
 ## 6. Impatto sul contratto
 
 [CONTRATTO_PORTALE.md](../saas/docs/CONTRATTO_PORTALE.md) passa a **v2**:
@@ -254,6 +315,7 @@ La demo del plugin resta in `associazionesemplice.it/demo`.
 | 4 | Catalogo del plugin dietro l'interfaccia `Catalog`; confine logico `portale/src/Plugin` e `/wordpress/admin` | Portale (spazio plugin) | 2 |
 | 5 | Amministrazione del SaaS `/saas/admin`: staff, 2FA, editor del catalogo con bozza/pubblicazione, elenco associazioni, disattivazione utenti | SaaS | 3 + prova di fattibilità §3.3 |
 | 6 | Acquisto con istantanea del prezzo e `subscription` al posto dei diritti; promo | Portale, SaaS | 3, 5 |
+| 6 bis | Area clienti unica (§5 bis): panoramica, pagina per abbonamento, cambio piano con `plan_change.check`, domini, download firmato | Portale (+ SaaS e plugin per le richieste) | 6 |
 | 7 | Passaggio tra le due amministrazioni (§8) | Portale e SaaS | 4, 5 |
 | 8 | Supporto: campi prodotto/piano, argomenti per prodotto, `plans` nell'accesso unico | Supporto, Portale | 3 |
 | 9 | Demo del SaaS (§9) | SaaS | 5 (per i pacchetti) |
@@ -269,4 +331,6 @@ I passi 1, 2 e 8 si possono iniziare subito e in parallelo; il resto segue.
 3. **Piani del plugin** (§3.2): per ora nello stesso codice del portale con confine logico: va bene finché il plugin non ha un backend suo?
 4. **Promo**: possono valere su più prodotti insieme (pacchetto plugin + SaaS)? Questo documento le tiene per prodotto;
    un'offerta combinata richiederebbe un livello sopra, da progettare a parte.
-5. **Livelli di assistenza** (§7): base/standard/prioritario sono segnaposto; i nomi veri si decidono quando si definiscono i piani.
+5. **Downgrade e disdetta** (§5 bis): proposta = il downgrade vale a fine periodo e si blocca se i dati superano i limiti;
+   la disdetta vale a fine periodo. Va bene? E quanti cambi di dominio all'anno per la licenza del plugin (proposta: 2)?
+6. **Livelli di assistenza** (§7): base/standard/prioritario sono segnaposto; i nomi veri si decidono quando si definiscono i piani.
