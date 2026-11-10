@@ -1469,6 +1469,37 @@ check( 'notifica: revisione già applicata o più vecchia = ignorata, nessuna ch
 check( 'notifica: revisione più nuova applicata', 'applied' === Portale\Plugin\SubscriptionNotice::apply( $ndb, $nbil, $ncat, array( 'rev' => 2, 'sites' => 5 ) + $nmsg ) && 5 === (int) $ndb->one( "SELECT sites_allowed FROM subscriptions WHERE id = 'n1'" )['sites_allowed'] );
 Http::$transport = $nprev;
 
+// Downgrade bloccato dai limiti del piano di arrivo (Plugin\Downgrade)
+$wdb = new Db( new PDO( 'sqlite::memory:' ) );
+$wdb->migrate();
+$wbase  = ( new Portale\Plugin\ConfigCatalog() )->document();
+$wcodes = array_column( $wbase['plans'], 'code' );
+$wfull  = Portale\Site::slug( 'full' );
+$wfree  = Portale\Site::slug( 'free' );
+$wd     = Portale\Plugin\CatalogStore::draft( $wdb );
+$wd['features'] = array( array( 'id' => 'soci', 'text' => 'Anagrafica soci' ) );
+foreach ( $wcodes as $wc ) {
+	$wd['matrix'][ $wc ]['soci'] = array( 'state' => 'included', 'note' => '' );
+}
+$wd['plans'][ $wfree ]['sites'] = 1; // il piano gratuito ammette 1 sito
+Portale\Plugin\CatalogStore::saveDraft( $wdb, $wd, 'staff@esempio.it' );
+Portale\Plugin\CatalogStore::publish( $wdb, $wbase, 'staff@esempio.it' );
+$wcat = new Portale\Plugin\DbCatalog( $wdb );
+$wnow = strtotime( '2026-09-01 UTC' );
+$wsub = function ( string $id, string $exp, string $status = 'active' ) use ( $wdb ) {
+	$wdb->run( 'INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, expires_at, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)', array( $id, 'cW', 'full', 'year', 'stripe', $status, $id . '.it', $exp, Db::now(), Db::now() ) );
+	return $wdb->one( 'SELECT * FROM subscriptions WHERE id = ?', array( $id ) );
+};
+$w1 = $wsub( 'w1', '2027-01-01 00:00:00' );
+check( 'downgrade: con un solo sito attivo il passaggio a un piano da 1 sito è possibile', array() === Portale\Plugin\Downgrade::blockers( $wdb, $wcat, $w1, 'free', $wnow ) );
+$wsub( 'w2', '2027-02-01 00:00:00' );
+$wsub( 'w3', '2026-01-01 00:00:00' ); // scaduta: non conta
+$wsub( 'w4', '2027-02-01 00:00:00', 'canceled' ); // annullata: non conta
+check( 'downgrade: licenze scadute o annullate non contano come siti in uso', 2 === Portale\Plugin\Downgrade::activeSites( $wdb, 'cW', 'full', $wnow ) );
+$wb = Portale\Plugin\Downgrade::blockers( $wdb, $wcat, $w1, 'free', $wnow );
+check( 'downgrade: con più siti attivi di quelli ammessi è bloccato, con motivo chiaro', 1 === count( $wb ) && false !== strpos( $wb[0], '2 siti attivi' ) && false !== strpos( $wb[0], 'ne ammette 1' ) );
+check( 'downgrade: piano di arrivo senza limite di siti = nessun blocco', array() === Portale\Plugin\Downgrade::blockers( $wdb, $wcat, $w1, 'full', $wnow ) && array() === Portale\Plugin\Downgrade::blockers( $wdb, $wcat, $w1, 'inesistente', $wnow ) );
+
 // Editor del catalogo: bozza, validazione, pubblicazione, versioni dei piani
 $kdb = new Db( new PDO( 'sqlite::memory:' ) );
 $kdb->migrate();

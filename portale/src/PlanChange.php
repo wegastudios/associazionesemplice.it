@@ -72,6 +72,11 @@ final class PlanChange {
 			}
 			$up  = (int) $p['cents'] > (int) $cur['cents'];
 			$row = array( 'plan' => $code, 'label' => (string) Config::get( 'plans.' . $code . '.label', $code ), 'up' => $up, 'price' => (int) $p['cents'] );
+			if ( ! $up ) {
+				// Se il downgrade è bloccato dai limiti del piano di arrivo, il motivo accompagna l'opzione (la vista può mostrarlo).
+				$why            = Plugin\Downgrade::blockers( $this->db, new Plugin\DbCatalog( $this->db ), $sub, $code );
+				$row['blocked'] = $why ? implode( ' ', $why ) : null;
+			}
 			if ( $up ) {
 				$row['pay'] = self::diffCents( (int) $cur['cents'], (int) $p['cents'], (string) $sub['expires_at'], $this->periodDays( $sub['period'] ) );
 			}
@@ -136,6 +141,11 @@ final class PlanChange {
 	/** Downgrade: la licenza cambia tipo al prossimo rinnovo; su Stripe il prezzo del prossimo addebito è già quello nuovo. */
 	public function scheduleDowngrade( string $subId, string $customerId, string $toPlan ): void {
 		list( $sub, $opt ) = $this->mine( $subId, $customerId, $toPlan, false );
+		// Downgrade bloccato se i siti in uso superano quelli ammessi dal piano di arrivo (catalogo del plugin).
+		$blocked = Plugin\Downgrade::blockers( $this->db, new Plugin\DbCatalog( $this->db ), $sub, $toPlan );
+		if ( $blocked ) {
+			throw new UserError( implode( ' ', $blocked ) );
+		}
 		$this->switchProviderPrice( $sub, $toPlan );
 		$this->db->run( 'UPDATE subscriptions SET next_plan = ?, updated_at = ? WHERE id = ?', array( $toPlan, Db::now(), $sub['id'] ) );
 		$this->billing->notify( 'plan_downgrade_scheduled', $this->billing->subscription( $sub['id'] ), array( 'nuovo_piano' => $opt['label'] ) );
