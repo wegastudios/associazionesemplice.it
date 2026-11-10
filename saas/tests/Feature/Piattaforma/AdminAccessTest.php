@@ -36,7 +36,7 @@ it('rimanda all\'accesso chi non è entrato', function (): void {
     $this->get('/admin')->assertRedirect('/admin/accesso');
     $this->get('/admin/associazioni')->assertRedirect('/admin/accesso');
     $this->get('/admin/registro')->assertRedirect('/admin/accesso');
-    $this->get('/admin/accesso')->assertOk()->assertSee('Accesso all\'amministrazione');
+    $this->get('/admin/accesso')->assertOk()->assertSee('Accesso all\'amministrazione', false);
 });
 
 it('dà lo stesso errore con email sconosciuta, password sbagliata o persona disattivata', function (): void {

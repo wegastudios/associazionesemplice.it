@@ -46,6 +46,12 @@ final class PlatformStaff extends Authenticatable
         ];
     }
 
+    /** Nessun «ricordami» per lo staff: la tabella non ha il campo. */
+    public function getRememberTokenName(): string
+    {
+        return '';
+    }
+
     public function canWrite(): bool
     {
         return $this->role === 'admin';

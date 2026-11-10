@@ -25,12 +25,18 @@ final class RequirePlatformStaff
         $staff = $guard->user();
         $mfaAt = $request->session()->get('platform.mfa_at');
 
-        if (! $staff instanceof PlatformStaff || $staff->disabled_at !== null
-            || ! is_int($mfaAt) || time() - $mfaAt > self::MFA_VALID_SECONDS) {
+        $login = '/'.UsePlatformSession::path().'/accesso';
+
+        // Chi non è entrato (magari è a metà dell'accesso) viene solo rimandato; chi era dentro e non ha più i
+        // requisiti (disattivato, verifica scaduta) perde la sessione.
+        if (! $staff instanceof PlatformStaff) {
+            return redirect($login);
+        }
+        if ($staff->disabled_at !== null || ! is_int($mfaAt) || time() - $mfaAt > self::MFA_VALID_SECONDS) {
             $guard->logout();
             $request->session()->invalidate();
 
-            return redirect('/'.UsePlatformSession::path().'/accesso');
+            return redirect($login);
         }
 
         abort_if($mode === 'write' && ! $staff->canWrite(), 403, 'Il tuo ruolo è di sola lettura.');
