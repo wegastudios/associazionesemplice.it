@@ -53,6 +53,20 @@ final class CatalogValidator
     }
 
     /**
+     * Il documento pubblicato senza i campi che mette il sistema (`schema`, `product`): la forma che si modifica e si
+     * rimanda al validatore.
+     *
+     * @param  array<string, mixed>  $document
+     * @return array<string, mixed>
+     */
+    public static function input(array $document): array
+    {
+        unset($document['schema'], $document['product']);
+
+        return $document;
+    }
+
+    /**
      * @return array<string, array{id: string, text: string, group: string}>
      */
     private static function features(mixed $value): array

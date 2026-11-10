@@ -33,6 +33,7 @@
         <span class="grow">Associazione Semplice · Amministrazione</span>
         <a href="{{ route('platform.home') }}">Riepilogo</a>
         <a href="{{ route('platform.orgs') }}">Associazioni</a>
+        <a href="{{ route('platform.catalog') }}">Catalogo</a>
         <a href="{{ route('platform.audit') }}">Registro</a>
         <form method="post" action="{{ route('platform.logout') }}">@csrf<button type="submit">Esci</button></form>
     </header>

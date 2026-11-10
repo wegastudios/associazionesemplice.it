@@ -9,29 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Laravel\Fortify\Fortify;
 use PragmaRX\Google2FA\Google2FA;
 
-const STAFF_PASSWORD = 'una-password-di-prova-lunga';
-
-function makeStaff(string $email = 'staff@example.test', string $role = 'admin', bool $twoFactor = true): PlatformStaff
-{
-    $staff = new PlatformStaff;
-    $staff->forceFill(['email' => $email, 'name' => 'Staff di prova', 'role' => $role, 'password' => STAFF_PASSWORD]);
-    if ($twoFactor) {
-        $staff->forceFill([
-            'two_factor_secret' => Fortify::currentEncrypter()->encrypt((new Google2FA)->generateSecretKey()),
-            'two_factor_confirmed_at' => now(),
-        ]);
-    }
-    $staff->save();
-
-    return $staff->refresh();
-}
-
-function staffCode(PlatformStaff $staff): string
-{
-    $secret = Fortify::currentEncrypter()->decrypt((string) $staff->fresh()?->two_factor_secret);
-
-    return (new Google2FA)->getCurrentOtp(is_string($secret) ? $secret : '');
-}
+require_once __DIR__.'/StaffHelpers.php';
 
 it('rimanda all\'accesso chi non è entrato', function (): void {
     $this->get('/admin')->assertRedirect('/admin/accesso');

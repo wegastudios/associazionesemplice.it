@@ -29,4 +29,9 @@ final class ConfigCatalog implements Catalog
 
         return $this->cache;
     }
+
+    public function plan(string $code, int $version): ?array
+    {
+        return $this->published()->plan($code, $version);
+    }
 }
