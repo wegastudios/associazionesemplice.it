@@ -85,9 +85,8 @@ add_filter( 'login_headertext', function () {
 	return get_bloginfo( 'name' );
 } );
 add_filter( 'login_message', function ( $m ) {
-	$member = class_exists( '\AssociazioneSemplice\Frontend\MemberLoginPage' ) ? esc_url( \AssociazioneSemplice\Frontend\MemberLoginPage::url() ) : '';
-	return $m . '<p class="message">Accessi di prova: <strong>segreteria</strong> / Segreteria-Demo-2026 · <strong>amministratore</strong> / Amministratore-Demo-2026</p>'
-		. ( '' !== $member ? '<p class="message">Per entrare come socio non si passa da qui: usa l\'<a href="' . $member . '">accesso soci</a>.</p>' : '' );
+	// Il rinvio all'accesso dei soci lo mostra già il plugin sotto questo avviso.
+	return $m . '<p class="message">Accessi di prova: <strong>segreteria</strong> / Segreteria-Demo-2026 · <strong>amministratore</strong> / Amministratore-Demo-2026</p>';
 } );
 
 // Pannello: barra e menu nei colori del marchio.
