@@ -8,6 +8,8 @@ use App\Modules\Core\Http\Middleware\HandleInertiaRequests;
 use App\Modules\Core\Http\Middleware\IdentifyOperatorOrg;
 use App\Modules\Core\Http\Middleware\ResetOrgContext;
 use App\Modules\Core\Http\Middleware\SecurityHeaders;
+use App\Modules\Piattaforma\Http\Middleware\UsePlatformSession;
+use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -23,7 +25,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend(ResetOrgContext::class);
         $middleware->append(SecurityHeaders::class);
 
-        $middleware->web(append: [EnsureUserActive::class, HandleInertiaRequests::class]);
+        // Sotto il percorso dell'amministrazione la sessione ha cookie, percorso e guardia propri: va prima di tutto.
+        $middleware->web(prepend: [UsePlatformSession::class], append: [EnsureUserActive::class, HandleInertiaRequests::class]);
+        $middleware->prependToPriorityList(before: EncryptCookies::class, prepend: UsePlatformSession::class);
         $middleware->encryptCookies();
         $middleware->redirectGuestsTo('/accesso');
         $middleware->redirectUsersTo('/gestionale');

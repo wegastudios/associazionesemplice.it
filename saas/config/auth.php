@@ -44,6 +44,11 @@ return [
             // «Ricordami su questo dispositivo»: 30 giorni (in minuti). Senza la spunta l'accesso finisce con il browser.
             'remember' => 60 * 24 * 30,
         ],
+        // Staff dell'amministrazione della piattaforma: altra tabella, altra sessione, niente «ricordami».
+        'platform' => [
+            'driver' => 'session',
+            'provider' => 'platform_staff',
+        ],
     ],
 
     /*
@@ -67,6 +72,10 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', App\Modules\Core\Models\User::class),
+        ],
+        'platform_staff' => [
+            'driver' => 'eloquent',
+            'model' => App\Modules\Piattaforma\Models\PlatformStaff::class,
         ],
 
         // 'users' => [

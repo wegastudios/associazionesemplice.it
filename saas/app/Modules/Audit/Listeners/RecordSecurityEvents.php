@@ -23,6 +23,9 @@ use Laravel\Fortify\Events\TwoFactorAuthenticationFailed;
 /** Accessi, tentativi falliti, password e verifica in due passaggi finiscono in core.security_events. */
 final readonly class RecordSecurityEvents
 {
+    /** Lo staff della piattaforma ha il suo registro (core.platform_audit): qui solo gli operatori. */
+    private const PLATFORM_GUARD = 'platform';
+
     public function __construct(private SecurityLog $log) {}
 
     /** @return array<class-string, string> */
@@ -46,11 +49,19 @@ final readonly class RecordSecurityEvents
 
     public function login(Login $event): void
     {
+        if ($event->guard === self::PLATFORM_GUARD) {
+            return;
+        }
+
         $this->log->record('auth.login', self::id($event->user), ['remember' => $event->remember]);
     }
 
     public function failed(Failed $event): void
     {
+        if ($event->guard === self::PLATFORM_GUARD) {
+            return;
+        }
+
         // Utente sconosciuto: niente email nel registro, solo l'indirizzo di provenienza.
         $this->log->record('auth.failed', self::id($event->user));
     }
@@ -62,6 +73,10 @@ final readonly class RecordSecurityEvents
 
     public function logout(Logout $event): void
     {
+        if ($event->guard === self::PLATFORM_GUARD) {
+            return;
+        }
+
         $this->log->record('auth.logout', self::id($event->user));
     }
 
