@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Piattaforma\Catalogo\DbCatalog;
 use App\Modules\Piattaforma\Contracts\Catalog;
 use App\Modules\Portale\Jwt\EdDsaJwt;
 
@@ -45,6 +46,7 @@ it('non contiene dati personali né riferimenti ad associazioni', function (): v
 it('rifiuta di pubblicare un catalogo non valido', function (): void {
     config(['catalogo.plans' => []]);
     app()->forgetInstance(Catalog::class);
+    app()->forgetInstance(DbCatalog::class);
 
     expect(fn () => app(Catalog::class)->published())->toThrow(InvalidArgumentException::class);
 });

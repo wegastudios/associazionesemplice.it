@@ -100,6 +100,9 @@ final class Db {
 			'ALTER TABLE subscriptions ADD COLUMN plan_version INTEGER NULL',
 			'ALTER TABLE subscriptions ADD COLUMN sites_allowed INTEGER NULL',
 			'ALTER TABLE subscriptions ADD COLUMN notice_rev INTEGER NULL',
+			// Catalogo del plugin: bozza unica e revisioni pubblicate immutabili.
+			'CREATE TABLE IF NOT EXISTS plugin_catalog_draft (id INTEGER PRIMARY KEY, doc TEXT NOT NULL, updated_at VARCHAR(19) NOT NULL, updated_by VARCHAR(190) NOT NULL)',
+			'CREATE TABLE IF NOT EXISTS plugin_catalog_revs (rev INTEGER PRIMARY KEY, doc TEXT NOT NULL, at VARCHAR(19) NOT NULL, actor VARCHAR(190) NOT NULL)',
 			// Staff dell'amministrazione del plugin (/wordpress/admin): tabella propria. Primo tempo: si copia da `staff`, che resta
 			// come ripiego in lettura; il secondo tempo (togliere la colonna `role` vecchia) solo dopo la verifica in produzione.
 			'CREATE TABLE IF NOT EXISTS plugin_staff (

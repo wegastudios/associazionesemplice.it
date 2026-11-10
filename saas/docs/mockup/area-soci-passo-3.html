@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Area soci passo 3: schermi</title>
+<style>
+/* Mockup statico: stessi colori e misure di saas/resources/css/app.css e docs/DESIGN.md. Non è codice di produzione. */
+@font-face{font-family:Montserrat;font-weight:500;src:url('../../public/assets/fonts/Montserrat-Medium.ttf')}
+@font-face{font-family:Montserrat;font-weight:600;src:url('../../public/assets/fonts/Montserrat-SemiBold.ttf')}
+@font-face{font-family:Montserrat;font-weight:700;src:url('../../public/assets/fonts/Montserrat-Bold.ttf')}
+:root{--indaco:#1f218c;--indaco-chiaro:#a6a9ff;--salvia:#5f8579;--giallo:#efca5c;--surface:#f5f6fa;--card:#fff;--ink:#181a2e;--muted:#5d6078;--line:#e2e5ee;--accent:#1f218c;--accent-ink:#fff;--danger:#b42318;--ok-soft:#e6efeb;--ok-ink:#3d6256;--warn-soft:#fcf3d3;--warn-ink:#6b4f00;--danger-soft:#fdecea;--info-soft:#e8e9fb;--info-ink:#1f218c}
+.dark{--surface:#11122a;--card:#1b1d3d;--ink:#eceefa;--muted:#a9acc6;--line:#2f3260;--accent:#a6a9ff;--accent-ink:#11122a;--danger:#ff8a80;--ok-soft:#1f3a31;--ok-ink:#a8cfc0;--warn-soft:#3d3410;--warn-ink:#efca5c;--danger-soft:#3b1b1b;--info-soft:#26285a;--info-ink:#a6a9ff}
+*{box-sizing:border-box}
+body{margin:0;background:#dfe2ec;color:#181a2e;font:500 15px/1.5 Montserrat,system-ui,sans-serif;padding:24px 16px 64px}
+h1{font-size:24px;line-height:30px;margin:0 0 4px}
+.lead{max-width:760px;color:#5d6078;margin:0 0 28px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:36px 24px;align-items:start}
+figure{margin:0}
+figcaption{max-width:390px;margin:10px 0 0;font-size:13px;line-height:18px;color:#5d6078}
+figcaption b{display:block;color:#181a2e;font-size:15px;line-height:22px;font-weight:700}
+.phone{width:390px;min-height:640px;background:var(--surface);color:var(--ink);border-radius:28px;border:1px solid var(--line);overflow:hidden;position:relative;display:flex;flex-direction:column}
+.top{height:56px;flex:none;display:flex;align-items:center;gap:12px;padding:0 16px;background:var(--card);border-bottom:1px solid var(--line)}
+.top .sym{width:32px;height:32px;border-radius:9px;background:var(--indaco);display:grid;place-items:center}
+.top .name{flex:1;min-width:0}
+.top .name b{display:block;font-size:15px;line-height:20px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .name span,.cap{font-size:13px;line-height:18px;color:var(--muted)}
+.iconbtn{position:relative;width:44px;height:44px;border-radius:12px;display:grid;place-items:center;color:var(--ink)}
+.iconbtn .dot{position:absolute;top:9px;right:10px;width:10px;height:10px;border-radius:50%;background:var(--danger);border:2px solid var(--card)}
+main{flex:1;padding:16px;display:flex;flex-direction:column;gap:12px}
+.bar{flex:none;display:grid;grid-template-columns:repeat(5,1fr);background:var(--card);border-top:1px solid var(--line);box-shadow:0 -6px 20px rgb(24 26 46/.05);padding-bottom:8px}
+.bar div{min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:600;color:var(--muted)}
+.bar .on{color:var(--accent)}
+svg{display:block;flex:none}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;border-radius:12px;padding:10px 16px;font:600 15px/20px Montserrat,sans-serif;border:0}
+.btn.p{background:var(--accent);color:var(--accent-ink)}
+.btn.s{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+.btn.g{background:transparent;color:var(--accent)}
+.btn.sm{min-height:36px;border-radius:10px;padding:6px 12px;font-size:14px}
+.btn.block{width:100%}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+.group{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.row{min-height:56px;display:flex;align-items:center;gap:12px;padding:10px 16px}
+.row+.row{border-top:1px solid var(--line)}
+.row .t{flex:1;min-width:0}
+.row .t b{display:block;font-weight:600;line-height:20px}
+.badge{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:2px 10px;font-size:13px;line-height:18px;font-weight:600}
+.ok{background:var(--ok-soft);color:var(--ok-ink)}.warn{background:var(--warn-soft);color:var(--warn-ink)}.neutral{background:var(--surface);color:var(--muted);border:1px solid var(--line)}.info{background:var(--info-soft);color:var(--info-ink)}
+.strip{display:flex;align-items:center;gap:12px;padding:10px 16px;font-size:14px;line-height:20px;font-weight:600}
+.strip.upd{background:var(--info-soft);color:var(--info-ink)}
+.strip.off{background:var(--warn-soft);color:var(--warn-ink)}
+.tessera{background:var(--indaco);color:#fff;border-radius:24px;padding:24px;max-width:330px;width:100%;margin:0 auto}
+.tessera h2{margin:24px 0 4px;font-size:24px;line-height:30px}
+.tessera .sub{font-size:14px;color:rgb(255 255 255/.85)}
+.tessera .pill{display:inline-block;margin-top:16px;border-radius:999px;padding:4px 12px;font-size:14px;font-weight:700;background:#fff;color:#3d6256}
+.tessera .pill.y{background:var(--giallo);color:#6b4f00}
+.qr{margin:20px auto 0;width:200px;height:200px;background:#fff;border-radius:16px;padding:12px}
+.qr i{display:block;width:100%;height:100%;background:
+ conic-gradient(#181a2e 25%,#fff 0 50%,#181a2e 0 75%,#fff 0) 0 0/20px 20px;opacity:.85}
+.qr.dim i{opacity:.4}
+.sheetwrap{position:absolute;inset:0;background:rgb(24 26 46/.45);display:flex;flex-direction:column;justify-content:flex-end}
+.sheet{background:var(--card);border-radius:24px 24px 0 0;box-shadow:0 -8px 30px rgb(24 26 46/.16);padding:12px 16px 24px}
+.sheet .grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 12px}
+.sheet h3{margin:0 0 4px;font-size:17px;line-height:24px;font-weight:600}
+.step{display:flex;gap:12px;align-items:flex-start;padding:12px 0}
+.step+.step{border-top:1px solid var(--line)}
+.step .n{width:28px;height:28px;border-radius:50%;background:var(--info-soft);color:var(--info-ink);display:grid;place-items:center;font-weight:700;flex:none}
+.step .ill{margin-top:8px;border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:10px 12px;display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600}
+.sw{width:52px;height:32px;border-radius:16px;background:var(--line);position:relative;flex:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgb(0 0 0/.3)}
+.sw.on{background:var(--accent)}.sw.on::after{left:23px}
+.sw.on::before{content:"Sì";position:absolute;left:9px;top:5px;font-size:12px;font-weight:700;color:var(--accent-ink)}
+.sw:not(.on)::before{content:"No";position:absolute;right:8px;top:5px;font-size:12px;font-weight:700;color:var(--muted)}
+.field{display:block;width:100%;min-height:48px;border:1px solid var(--line);border-radius:12px;background:var(--card);padding:12px;font:500 16px/22px Montserrat,sans-serif;color:var(--ink)}
+.lab{font-weight:600;margin:0 0 4px;display:block}
+.hint{font-size:13px;line-height:18px;color:var(--muted)}
+.chips{display:flex;gap:8px}
+.chip{min-height:40px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:0 16px;display:inline-flex;align-items:center;font-weight:600;font-size:14px}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.notif{border-radius:16px;background:rgb(255 255 255/.92);color:#181a2e;padding:12px;display:flex;gap:10px;box-shadow:0 4px 16px rgb(0 0 0/.15);font-size:14px;line-height:19px}
+.lock{background:linear-gradient(160deg,#2b2e8f,#11122a);min-height:640px;padding:48px 16px;justify-content:center}
+.lock .clock{text-align:center;color:#fff;font-size:64px;line-height:70px;font-weight:700;margin-bottom:28px}
+.lock .app{width:36px;height:36px;border-radius:9px;background:var(--indaco);display:grid;place-items:center;flex:none}
+.ann{font-size:12px;color:#5d6078;margin:6px 0 0;max-width:390px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:center}
+</style>
+</head>
+<body>
+<h1>Area soci, passo 3: schermi</h1>
+<p class="lead">Disegni di riferimento per <code>saas/docs/DESIGN_AREA_SOCI_PASSO_3.md</code>. Misure e colori sono quelli del sistema (DESIGN.md): bersagli da 44 px, campi a 16 px, raggio 12/16/24, ogni stato con una parola. Il wallet (3c) è rimandato e non è disegnato; al suo posto ci sono bacheca e comunicazione della segreteria (§2.7 e §2.8).</p>
+
+<div class="grid">
+
+<!-- 1. Icona maschera -->
+<figure>
+<div class="card" style="width:390px">
+  <div class="two">
+    <div>
+      <svg width="170" height="170" viewBox="0 0 512 512" role="img" aria-label="Icona maschera 512 px">
+        <rect width="512" height="512" fill="#1f218c"/>
+        <circle cx="256" cy="256" r="205" fill="none" stroke="#a6a9ff" stroke-width="3" stroke-dasharray="10 8"/>
+        <g transform="translate(256 256)" fill="#fff"><circle r="70"/><rect x="-14" y="-170" width="28" height="70" rx="14"/><rect x="-14" y="100" width="28" height="70" rx="14"/><rect x="-170" y="-14" width="70" height="28" rx="14"/><rect x="100" y="-14" width="70" height="28" rx="14"/></g>
+      </svg>
+      <p class="hint" style="margin:6px 0 0">Il tratteggio è la zona sicura (cerchio al 80 %), non fa parte dell'icona.</p>
+    </div>
+    <div style="display:grid;gap:14px;justify-items:start">
+      <div style="display:flex;gap:12px;align-items:end">
+        <svg width="96" height="96" viewBox="0 0 512 512" style="border-radius:22px;overflow:hidden"><rect width="512" height="512" fill="#1f218c"/><g transform="translate(256 256)" fill="#fff"><circle r="70"/><rect x="-14" y="-170" width="28" height="70" rx="14"/><rect x="-14" y="100" width="28" height="70" rx="14"/><rect x="-170" y="-14" width="70" height="28" rx="14"/><rect x="100" y="-14" width="70" height="28" rx="14"/></g></svg>
+        <svg width="48" height="48" viewBox="0 0 512 512" style="border-radius:50%;overflow:hidden"><rect width="512" height="512" fill="#1f218c"/><g transform="translate(256 256)" fill="#fff"><circle r="70"/><rect x="-14" y="-170" width="28" height="70" rx="14"/><rect x="-14" y="100" width="28" height="70" rx="14"/><rect x="-170" y="-14" width="70" height="28" rx="14"/><rect x="100" y="-14" width="70" height="28" rx="14"/></g></svg>
+      </div>
+      <span class="hint">iPhone (96 px) e Android tondo (48 px)</span>
+    </div>
+  </div>
+</div>
+<figcaption><b>1. Icona maschera 512</b>Segnaposto: il simbolo vero è <code>public/assets/brand/simbolo-negativo.svg</code> bianco su indaco, centrato nel cerchio sicuro (80 %). Si controlla a 48 px tondo.</figcaption>
+</figure>
+
+<!-- 2. Invito installazione -->
+<figure>
+<div class="phone">
+  <div class="top"><div class="sym"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="4"/></svg></div><div class="name"><b>Polisportiva Alfa</b><span>Area soci</span></div>
+    <div class="iconbtn"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="dot"></span></div>
+    <button class="btn g sm">Esci</button></div>
+  <main>
+    <div class="card" style="display:flex;gap:12px">
+      <svg width="40" height="40" viewBox="0 0 512 512" style="border-radius:10px;flex:none"><rect width="512" height="512" fill="#1f218c"/><g transform="translate(256 256)" fill="#fff"><circle r="70"/><rect x="-14" y="-170" width="28" height="70" rx="14"/><rect x="-14" y="100" width="28" height="70" rx="14"/><rect x="-170" y="-14" width="70" height="28" rx="14"/><rect x="100" y="-14" width="70" height="28" rx="14"/></g></svg>
+      <div><b style="display:block;font-weight:600">Tieni la tessera sul telefono</b><span class="cap">Si apre con un tocco, anche senza campo.</span>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn p sm">Aggiungi alla Home</button><button class="btn g sm">Non ora</button></div></div>
+    </div>
+    <div class="tessera"><div class="sub" style="font-weight:600">Polisportiva Alfa</div><h2>Anna Rossi</h2><div class="sub">Socia, tessera n. 125</div><span class="pill">In regola 2026, fino al 31/08/2027</span><div class="qr"><i></i></div></div>
+  </main>
+  <div class="bar"><div class="on">Tessera</div><div>Eventi</div><div>Prenota</div><div>Quote</div><div>Profilo</div></div>
+</div>
+<figcaption><b>2. Invito a installare</b>Dopo il secondo accesso riuscito, in cima alla Tessera. Bordo filetto, non giallo (non è un problema). «Non ora» la nasconde 30 giorni. La campanella ha il puntino rosso con le notifiche non lette.</figcaption>
+</figure>
+
+<!-- 3. Sheet iPhone -->
+<figure>
+<div class="phone">
+  <div class="top"><div class="sym"></div><div class="name"><b>Polisportiva Alfa</b><span>Area soci</span></div></div>
+  <main><div class="card" style="height:120px"></div><div class="card" style="height:240px"></div></main>
+  <div class="sheetwrap"><div class="sheet">
+    <div class="grab"></div>
+    <h3>Aggiungi alla Home</h3><p class="hint" style="margin:0 0 4px">Tre passi in Safari. Poi l'icona è sul telefono come le altre app.</p>
+    <div class="step"><span class="n">1</span><div><b style="font-weight:600">Tocca Condividi</b><div class="ill"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1f218c" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M5 11v9h14v-9"/></svg>in basso, al centro</div></div></div>
+    <div class="step"><span class="n">2</span><div><b style="font-weight:600">Scegli «Aggiungi alla schermata Home»</b><div class="ill"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1f218c" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/></svg>scorri l'elenco se non la vedi</div></div></div>
+    <div class="step"><span class="n">3</span><div><b style="font-weight:600">Tocca «Aggiungi»</b><div class="ill">in alto a destra</div></div></div>
+    <button class="btn s block" style="margin-top:8px">Fatto</button>
+  </div></div>
+</div>
+<figcaption><b>3. Foglio per iPhone</b>Tre passi con un disegno ciascuno. Per ora riquadri descrittivi: la sessione sviluppo li sostituisce con le illustrazioni vere di Safari. Su Android il pulsante usa invece l'installazione del browser.</figcaption>
+</figure>
+
+<!-- 4. Avvisi sheet -->
+<figure>
+<div class="phone">
+  <div class="top"><div class="sym"></div><div class="name"><b>Polisportiva Alfa</b><span>Area soci</span></div></div>
+  <main><div class="card" style="height:80px"></div><div class="group"><div class="row">Sul tuo telefono</div></div></main>
+  <div class="sheetwrap"><div class="sheet">
+    <div class="grab"></div>
+    <h3>Avvisi sul telefono</h3>
+    <div class="row" style="padding-left:0;padding-right:0"><div class="t"><b>Attivi su questo telefono</b><span class="cap">Pixel 8, Chrome</span></div><span class="sw on"></span></div>
+    <p class="cap" style="margin:8px 0 0;font-weight:600">Cosa vuoi ricevere</p>
+    <div class="row" style="padding-left:0;padding-right:0"><div class="t"><b>Scadenze di tessera e certificato</b></div><span class="sw on"></span></div>
+    <div class="row" style="padding-left:0;padding-right:0"><div class="t"><b>Pagamenti e ricevute</b></div><span class="sw on"></span></div>
+    <div class="row" style="padding-left:0;padding-right:0"><div class="t"><b>Prenotazioni ed eventi</b></div><span class="sw on"></span></div>
+    <div class="row" style="padding-left:0;padding-right:0"><div class="t"><b>Comunicazioni dell'associazione</b></div><span class="sw on"></span></div>
+    <div class="row" style="padding-left:0;padding-right:0"><div class="t"><b>Mostra i dettagli nell'avviso</b><span class="cap">Con i dettagli, nome e importi sono visibili anche a schermo bloccato.</span></div><span class="sw"></span></div>
+    <p class="cap" style="margin:8px 0 4px;font-weight:600">I tuoi telefoni</p>
+    <div class="row" style="padding-left:0;padding-right:0"><div class="t"><b>Pixel 8, Chrome</b><span class="cap">attivo dal 02/11</span></div><button class="btn s sm">Disattiva</button></div>
+  </div></div>
+</div>
+<figcaption><b>4. Avvisi (impostazioni)</b>Interruttori da 52×32 con la parola Sì/No dentro. «Mostra i dettagli» spento all'inizio. Se il telefono blocca il permesso, la prima riga dice «Bloccati dal telefono» al posto dell'interruttore e spiega dove riattivarli.</figcaption>
+</figure>
+
+<!-- 5. Strisce -->
+<figure>
+<div class="phone" style="min-height:420px">
+  <div class="strip upd"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg><span style="flex:1">Aggiornamento pronto.</span><button class="btn p sm">Aggiorna</button></div>
+  <div class="top"><div class="sym"></div><div class="name"><b>Polisportiva Alfa</b><span>Area soci</span></div></div>
+  <main><div class="card" style="height:90px"></div></main>
+  <div style="flex:none;margin-top:8px"></div>
+  <div class="strip off"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M2 8.8a15 15 0 0 1 4.2-2.6M10.7 5.1A15 15 0 0 1 22 8.8M5 12.9a10 10 0 0 1 5.2-2.8M13.8 10a10 10 0 0 1 5.2 2.9M12 20h.01"/></svg><span>Sei senza connessione. Alcune pagine non si aprono.</span></div>
+</div>
+<figcaption><b>5. Strisce di stato</b>In alto «Aggiornamento pronto» (azzurra, non ricarica da sola). In basso, sopra la barra, «Sei senza connessione» (gialla, con parole e icona). Sparisce da sola al ritorno della rete.</figcaption>
+</figure>
+
+<!-- 6. Tessera offline -->
+<figure>
+<div class="phone">
+  <div class="strip off"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M12 20h.01"/></svg><span>Sei senza connessione</span></div>
+  <div class="top"><div class="sym"></div><div class="name"><b>Polisportiva Alfa</b><span>Area soci</span></div></div>
+  <main>
+    <div class="tessera"><div class="sub" style="font-weight:600">Polisportiva Alfa</div><h2>Anna Rossi</h2><div class="sub">Socia, tessera n. 125</div>
+      <span class="pill y">Salvata il 14/11 alle 18:32</span>
+      <div class="qr"><i></i></div>
+      <p style="margin:12px 0 0;font-size:13px;line-height:18px;text-align:center;color:rgb(255 255 255/.85)">Collegati per controllare se la tessera è ancora in regola.</p></div>
+  </main>
+  <div class="bar"><div class="on">Tessera</div><div>Eventi</div><div>Prenota</div><div>Quote</div><div>Profilo</div></div>
+</div>
+<figcaption><b>6. Tessera senza rete</b>La copia salvata non dice mai «In regola»: il badge diventa giallo con la data. Il QR resta leggibile. Eventi e altre voci mostrano «Serve la connessione». Si cancella con «Esci».</figcaption>
+</figure>
+
+<!-- 7. Bacheca -->
+<figure>
+<div class="phone">
+  <div class="top"><div class="sym"></div><div class="name"><b>Avvisi</b><span>Polisportiva Alfa</span></div><button class="btn g sm">Segna tutte come lette</button></div>
+  <main>
+    <div class="chips"><span class="chip on">Io</span><span class="chip">Luca</span></div>
+    <div class="group">
+      <div class="row"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1f218c" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h18M5 6h14l2 4v10H3V10z"/></svg><div class="t"><b>Pagamento ricevuto</b><span class="cap" style="display:block">15,00 € per Yoga del lunedì. Ricevuta disponibile.</span></div><span class="cap" style="flex:none">oggi</span><span class="badge info" style="padding:0;width:10px;height:10px"></span></div>
+      <div class="row"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6b4f00" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg><div class="t"><b>La tessera scade il 31/08</b><span class="cap" style="display:block">Rinnovala in segreteria o dalle Quote.</span></div><span class="cap" style="flex:none">ieri</span><span class="badge info" style="padding:0;width:10px;height:10px"></span></div>
+      <div class="row"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5d6078" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><div class="t"><b>Cena sociale spostata a sabato</b><span class="cap" style="display:block">Dalla segreteria. Alle 20:30 come sempre.</span></div><span class="cap" style="flex:none">12 nov</span></div>
+      <div class="row"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3d6256" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><div class="t"><b>Posto liberato: Torneo di dicembre</b><span class="cap" style="display:block">Hai tempo fino al giorno prima per annullare.</span></div><span class="cap" style="flex:none">8 nov</span></div>
+    </div>
+  </main>
+  <div class="bar"><div>Tessera</div><div>Eventi</div><div>Prenota</div><div>Quote</div><div>Profilo</div></div>
+</div>
+<figcaption><b>7. Bacheca «Avvisi»</b>Si apre dalla campanella. Riga: icona della famiglia, titolo, prima riga, data relativa, pallino se non letta (il numero dei non letti è nell'etichetta per lo screen reader). Mostra il testo completo: dentro l'app la riservatezza non riguarda lo schermo bloccato.</figcaption>
+</figure>
+
+<!-- 8. Blocco schermo -->
+<figure>
+<div class="phone lock">
+  <div class="clock">9:41</div>
+  <div style="display:grid;gap:10px">
+    <div class="notif"><div class="app"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="4"/></svg></div><div><b>Polisportiva Alfa</b><br>Hai una scadenza da controllare</div></div>
+    <div class="notif"><div class="app"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="4"/></svg></div><div><b>Polisportiva Alfa</b><br>Pagamento ricevuto</div></div>
+  </div>
+  <p style="color:rgb(255 255 255/.8);font-size:13px;line-height:18px;margin:16px 4px 0">Con i dettagli attivi: «La tessera di Anna scade il 31/08».</p>
+</div>
+<figcaption><b>8. Avvisi a schermo bloccato</b>Titolo sempre il nome dell'associazione. Il testo predefinito è generico: niente nomi, importi né la parola «certificato».</figcaption>
+</figure>
+
+<!-- 9. Nuova comunicazione -->
+<figure>
+<div class="phone">
+  <div class="top"><div class="sym"></div><div class="name"><b>Nuova comunicazione</b><span>Passo 2 di 4: cosa scrivi</span></div></div>
+  <main>
+    <div>
+      <span class="lab">Titolo</span>
+      <div class="field">Cena sociale spostata</div>
+      <span class="hint" style="float:right">22 / 50</span>
+    </div>
+    <div style="clear:both">
+      <span class="lab">Testo</span>
+      <div class="field" style="min-height:120px">Sabato 22 alle 20:30, stessa sala. Chi non può più venire lo segni sul calendario.</div>
+      <span class="hint" style="float:right">92 / 280</span>
+    </div>
+    <div class="card" style="background:var(--warn-soft);border-color:transparent;color:var(--warn-ink);font-size:14px;line-height:20px;font-weight:600;clear:both">Il testo si legge anche a schermo bloccato. Non scrivere dati personali, sanitari o importi di una persona.</div>
+    <div>
+      <span class="lab">Cosa succede quando tocca</span>
+      <div class="field">Apri «Eventi»</div>
+    </div>
+    <div class="card" style="font-size:14px;line-height:20px"><b style="font-weight:600">Lo riceveranno 84 persone</b><br>Sul telefono: 51. Solo in bacheca ed email: 33. <u>7 non raggiungibili</u></div>
+    <div style="display:flex;gap:8px"><button class="btn s" style="flex:1">Indietro</button><button class="btn p" style="flex:2">Continua</button></div>
+  </main>
+</div>
+<figcaption><b>9. Comunicazione della segreteria</b>Gestionale, foglio a passi: A chi · Cosa scrivi · Quando · Controlla e invia. Ultimo passo: anteprima come sul telefono e pulsante «Invia a 84 persone» (con il numero vero). Sopra 50 persone una conferma in più: «Non si può ritirare dopo l'invio».</figcaption>
+</figure>
+
+<!-- 10. Profilo: sezione Sul tuo telefono, scuro -->
+<figure>
+<div class="phone dark">
+  <div class="top"><div class="sym"></div><div class="name"><b>Profilo</b><span>Polisportiva Alfa</span></div></div>
+  <main>
+    <div class="cap" style="font-weight:600;margin-top:4px">Sul tuo telefono</div>
+    <div class="group">
+      <div class="row"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M12 18h.01"/></svg><div class="t"><b>App</b></div><span class="badge ok">Installata</span></div>
+      <div class="row"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><div class="t"><b>Avvisi</b></div><span class="badge warn">Da attivare</span></div>
+    </div>
+    <div class="card" style="display:flex;align-items:center;gap:12px"><div class="t" style="flex:1"><b style="font-weight:600">Avvisi sul telefono</b><span class="cap" style="display:block">Scadenze, pagamenti e prenotazioni.</span></div><button class="btn p sm">Attiva</button></div>
+  </main>
+  <div class="bar"><div>Tessera</div><div>Eventi</div><div>Prenota</div><div>Quote</div><div class="on">Profilo</div></div>
+</div>
+<figcaption><b>10. Profilo, tema scuro</b>Sezione «Sul tuo telefono»: una riga per cosa, stato a destra con la parola. Mostrata in scuro per controllare i contrasti (stesse regole del tema chiaro).</figcaption>
+</figure>
+
+</div>
+</body>
+</html>

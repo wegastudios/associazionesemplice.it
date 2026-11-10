@@ -20,8 +20,7 @@ final readonly class CatalogPlanLimits implements PlanLimits
 
     public function resolve(string $plan, int $version, array $addons, int $members): array
     {
-        $published = $this->catalog->published();
-        $found = $published->plan($plan, $version) ?? throw new UnknownPlan("{$plan}@{$version}");
+        $found = $this->catalog->plan($plan, $version) ?? throw new UnknownPlan("{$plan}@{$version}");
         $limits = is_array($found['limits'] ?? null) ? $found['limits'] : [];
 
         $operators = self::int($limits['operators'] ?? null);
@@ -33,7 +32,7 @@ final readonly class CatalogPlanLimits implements PlanLimits
         }
 
         foreach ($addons as $requested) {
-            $addon = $published->addon($requested['code']) ?? throw new UnknownAddon($requested['code']);
+            $addon = $this->catalog->published()->addon($requested['code']) ?? throw new UnknownAddon($requested['code']);
             $grants = is_array($addon['grants'] ?? null) ? $addon['grants'] : [];
             $operators += self::int($grants['operators'] ?? null) * $requested['qty'];
             $storageGb += self::int($grants['storage_gb'] ?? null) * $requested['qty'];
