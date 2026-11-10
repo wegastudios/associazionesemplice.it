@@ -1,14 +1,16 @@
 <?php /** Listino e confronto del SaaS, generati dal catalogo letto dal portale (mai prezzi scritti a mano). @var array|null $catalog */
 if ( empty( $catalog ) ) : ?>
-<div class="panel" id="prezzi"><h2>Piani e prezzi</h2><p>I piani del gestionale online saranno qui a breve.</p></div>
+<div class="panel" id="prezzi-saas"><h2>Gestionale online</h2><p>I piani del gestionale online saranno qui a breve.</p></div>
 <?php return; endif;
 $doc    = $catalog['doc'];
 $plans  = Portale\Catalog::plans( $doc );
 $groups = Portale\Catalog::comparison( $doc );
+$show_cards = $show_cards ?? true; // /prezzi: solo le schede; /confronto: solo la tabella; /saas: entrambe
+$show_table = $show_table ?? true;
 ?>
-<section class="section" id="prezzi"><div class="wrap">
-	<div class="section-head"><h2>Piani e prezzi</h2><p>Importi IVA esclusa. Il prezzo cresce con i soci: nessun limite blocca la segreteria.</p></div>
-	<div class="plans">
+<section class="section product-saas" id="prezzi-saas"><div class="wrap">
+	<div class="section-head"><span class="eyebrow">Gestionale online</span><h2>Piani e prezzi</h2><p>Importi IVA esclusa. Il prezzo cresce con i soci: nessun limite blocca la segreteria.</p></div>
+	<?php if ( $show_cards ) : ?><div class="plans">
 	<?php foreach ( $plans as $p ) :
 		$m = Portale\Catalog::from( $p, 'month' );
 		$y = Portale\Catalog::from( $p, 'year' );
@@ -21,8 +23,8 @@ $groups = Portale\Catalog::comparison( $doc );
 			<?php if ( ! empty( $p['trial_days'] ) ) : ?><p class="fine">Prova gratuita di <?php echo (int) $p['trial_days']; ?> giorni, senza carta.</p><?php endif; ?>
 		</div>
 	<?php endforeach; ?>
-	</div>
-	<?php if ( $plans ) : ?>
+	</div><?php endif; ?>
+	<?php if ( $show_table && $plans ) : ?>
 	<div class="cmp-wrap"><table class="cmp"><thead><tr><th scope="col">Funzione</th><?php foreach ( $plans as $p ) : ?><th scope="col"><?php echo e( (string) $p['name'] ); ?></th><?php endforeach; ?></tr></thead><tbody>
 	<?php foreach ( $groups as $g => $feats ) : ?>
 		<?php if ( '' !== $g ) : ?><tr><th colspan="<?php echo count( $plans ) + 1; ?>" scope="colgroup"><?php echo e( (string) $g ); ?></th></tr><?php endif; ?>

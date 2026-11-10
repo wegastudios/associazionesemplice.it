@@ -77,13 +77,7 @@ final class App {
 		} elseif ( $get && Sections::view( $path ) ) {
 			// Sezioni di contenuti /saas e /wordpress (l'amministrazione di ciascun prodotto vive sotto /admin).
 			$view = (string) Sections::view( $path );
-			if ( 'saas_section' === $view && Catalog::needsRefresh( $this->db ) ) {
-				// Il listino viene dal catalogo del SaaS: si ricontrolla a risposta consegnata, la pagina usa l'ultima copia salvata.
-				$this->after[] = function () {
-					Catalog::refresh( $this->db );
-				};
-			}
-			View::render( $view, array( 'title' => 'wordpress_changelog' === $view ? 'Novità del plugin' : ( 'saas_section' === $view ? 'Il gestionale online' : 'Il plugin per WordPress' ), 'releases' => 'wordpress_changelog' === $view ? Sections::releases( $this->db ) : array(), 'catalog' => 'saas_section' === $view ? Catalog::stored( $this->db ) : null ) );
+			View::render( $view, array( 'title' => 'wordpress_changelog' === $view ? 'Novità del plugin' : ( 'saas_section' === $view ? 'Il gestionale online' : 'Il plugin per WordPress' ), 'releases' => 'wordpress_changelog' === $view ? Sections::releases( $this->db ) : array(), 'catalog' => 'saas_section' === $view ? $this->saasCatalog() : null ) );
 		} elseif ( $get && '/' === $path ) {
 			View::render( 'home', array( 'plans' => Config::get( 'plans', array() ), 'trial' => Config::get( 'trial_enabled', true ) ? Settings::limit( 'trial_days' ) : 0 ) );
 		} elseif ( $get && '/api/piani' === $path ) {
@@ -104,7 +98,7 @@ final class App {
 		} elseif ( $get && '/piani' === $path ) {
 			header( 'Location: /prezzi', true, 301 );
 		} elseif ( $get && '/prezzi' === $path ) {
-			View::render( 'pricing', array( 'title' => 'Prezzi', 'plans' => Config::get( 'plans', array() ), 'trial' => Config::get( 'trial_enabled', true ) ? Settings::limit( 'trial_days' ) : 0 ) );
+			View::render( 'pricing', array( 'catalog' => $this->saasCatalog(), 'title' => 'Prezzi', 'plans' => Config::get( 'plans', array() ), 'trial' => Config::get( 'trial_enabled', true ) ? Settings::limit( 'trial_days' ) : 0 ) );
 		} elseif ( $get && '/funzioni' === $path ) {
 			View::render( 'features', array( 'title' => 'Funzioni' ) );
 		} elseif ( $get && '/domande' === $path ) {
@@ -112,7 +106,7 @@ final class App {
 		} elseif ( $get && '/prova' === $path ) {
 			View::render( 'demo', array( 'title' => 'Prova la demo', 'plans' => Config::get( 'plans', array() ), 'accounts' => Demo::accounts(), 'links' => Demo::links(), 'matrix' => Demo::roles(), 'notes' => Demo::roleNotes(), 'base' => Demo::url() ) );
 		} elseif ( $get && '/confronto' === $path ) {
-			View::render( 'confronto', array( 'title' => 'Confronto tra le versioni' ) );
+			View::render( 'confronto', array( 'catalog' => $this->saasCatalog(), 'title' => 'Confronto tra le versioni' ) );
 		} elseif ( $get && '/confronto-demo' === $path ) {
 			// Stessa tabella di /confronto, senza pagina intorno: la legge la demo e la mostra nella sua home.
 			$fragment = true;
@@ -232,6 +226,16 @@ final class App {
 			http_response_code( 404 );
 			View::render( 'message', array( 'title' => 'Pagina non trovata', 'text' => 'Questa pagina non esiste.' ) );
 		}
+	}
+
+	/** Ultima copia salvata del catalogo del SaaS (listino e confronto); se è vecchia di oltre 10 minuti si ricarica a risposta consegnata. */
+	private function saasCatalog(): ?array {
+		if ( Catalog::needsRefresh( $this->db ) ) {
+			$this->after[] = function () {
+				Catalog::refresh( $this->db );
+			};
+		}
+		return Catalog::stored( $this->db );
 	}
 
 	private function enter( string $token ): void {

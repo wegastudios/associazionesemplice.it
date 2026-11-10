@@ -133,3 +133,4 @@ $fragment = ! empty( $fragment );
 	<script src="/assets/confronto.js" defer></script>
 	
 </div></section>
+<?php $show_cards = false; $show_table = true; include __DIR__ . "/_catalog_saas.php"; ?>

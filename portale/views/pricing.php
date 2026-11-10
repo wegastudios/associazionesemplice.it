@@ -42,7 +42,9 @@ foreach ( $plans as $p ) {
 	}
 }
 ?>
+<nav class="product-nav" aria-label="Prodotti"><a href="#prezzi">Plugin per WordPress</a><a href="#prezzi-saas">Gestionale online</a></nav>
 <section class="section pricing" id="prezzi" data-period="year"><div class="wrap">
+	<span class="eyebrow">Plugin per WordPress</span>
 	<div class="section-head"><h1 style="font-size:clamp(1.9rem,4vw,2.8rem)">Prezzi chiari, disdici quando vuoi</h1><p>Il piano gratuito resta gratuito. I piani Pro si rinnovano da soli, ogni mese o ogni anno, e si disdicono quando vuoi dall'area riservata.</p></div>
 	<div class="seg" role="group" aria-label="Periodo di fatturazione">
 		<button type="button" data-period="month" aria-pressed="false">Mensile</button>
@@ -85,3 +87,4 @@ foreach ( $plans as $p ) {
 	<?php if ( ! empty( $trial ) ) : ?><p class="fine" style="font-weight:600;color:var(--fg)">Hai già la licenza gratuita? Prova gratis <?php echo e( (string) \Portale\Config::get( 'plans.' . \Portale\Config::get( 'trial_plan', 'full' ) . '.label', 'il piano Pro' ) ); ?> per <?php echo (int) $trial; ?> giorni dall'area riservata, una volta sola: nessuna carta, nessun addebito alla fine.</p><?php endif; ?>
 	<p class="fine"><a href="/confronto">Confronta tutte le funzioni delle tre versioni</a>. Prezzi in euro. Pagamento sicuro con Stripe o PayPal. Ogni licenza è legata a un dominio, modificabile dall'area riservata.</p>
 </div></section>
+<?php $show_table = false; include __DIR__ . "/_catalog_saas.php"; ?>
