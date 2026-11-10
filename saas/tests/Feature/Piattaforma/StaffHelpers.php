@@ -30,7 +30,6 @@ function staffCode(PlatformStaff $staff): string
     return (new Google2FA)->getCurrentOtp(is_string($secret) ? $secret : '');
 }
 
-
 /** Entra come lo staff indicato (password e codice a due passaggi). */
 function loginStaff(Tests\TestCase $test, PlatformStaff $staff): void
 {
