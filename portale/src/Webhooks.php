@@ -34,7 +34,10 @@ final class Webhooks {
 					// Con i pagamenti non immediati (addebito SEPA e simili) la sessione si completa prima dell'incasso: la licenza si emette
 					// solo a pagamento ricevuto («paid») o senza importo da pagare («no_payment_required»); altrimenti si aspetta l'esito asincrono.
 					if ( 'subscription' === ( $o['mode'] ?? '' ) && in_array( $o['payment_status'] ?? '', array( 'paid', 'no_payment_required' ), true ) ) {
-						$this->billing->completePayment( (string) $o['client_reference_id'], (string) ( $o['subscription'] ?? '' ), (string) ( $o['customer'] ?? '' ) ?: null, true );
+						$ref = (string) $o['client_reference_id'];
+						if ( ! SaasCheckout::paid( $this->db, $ref, (string) ( $o['subscription'] ?? '' ) ?: null, (string) ( $o['customer'] ?? '' ) ?: null ) ) {
+							$this->billing->completePayment( $ref, (string) ( $o['subscription'] ?? '' ), (string) ( $o['customer'] ?? '' ) ?: null, true );
+						}
 					} elseif ( 'payment' === ( $o['mode'] ?? '' ) && 'paid' === ( $o['payment_status'] ?? '' ) ) {
 						$this->billing->completePayment( (string) $o['client_reference_id'], (string) ( $o['payment_intent'] ?? '' ) ?: null, null, true );
 					}
@@ -42,14 +45,20 @@ final class Webhooks {
 				case 'invoice.paid':
 					// Il primo pagamento è già coperto dall'attivazione; i successivi sono rinnovi.
 					if ( 'subscription_cycle' === ( $o['billing_reason'] ?? '' ) ) {
-						$sub = $this->billing->byProviderRef( 'stripe', (string) ( $o['subscription'] ?? '' ) );
+						if ( SaasCheckout::event( $this->db, 'stripe', (string) ( $o['subscription'] ?? '' ), 'renewed' ) ) {
+							break;
+						}
+						$sub =$this->billing->byProviderRef( 'stripe', (string) ( $o['subscription'] ?? '' ) );
 						if ( $sub ) {
 							$this->billing->renew( $sub['id'] );
 						}
 					}
 					break;
 				case 'invoice.payment_failed':
-					$sub = $this->billing->byProviderRef( 'stripe', (string) ( $o['subscription'] ?? '' ) );
+					if ( SaasCheckout::event( $this->db, 'stripe', (string) ( $o['subscription'] ?? '' ), 'failed' ) ) {
+						break;
+					}
+					$sub =$this->billing->byProviderRef( 'stripe', (string) ( $o['subscription'] ?? '' ) );
 					if ( $sub && 'canceled' !== $sub['status'] ) {
 						$this->billing->setStatus( $sub['id'], 'past_due' );
 						$this->billing->notify( 'payment_failed', $sub );
@@ -62,7 +71,10 @@ final class Webhooks {
 					}
 					break;
 				case 'customer.subscription.deleted':
-					$sub = $this->billing->byProviderRef( 'stripe', (string) ( $o['id'] ?? '' ) );
+					if ( SaasCheckout::event( $this->db, 'stripe', (string) ( $o['id'] ?? '' ), 'cancelled' ) ) {
+						break;
+					}
+					$sub =$this->billing->byProviderRef( 'stripe', (string) ( $o['id'] ?? '' ) );
 					if ( $sub ) {
 						$this->billing->setStatus( $sub['id'], 'canceled' );
 						// Se il cliente aveva già disdetto ha già ricevuto l'email: avviso solo le chiusure decise dal provider.
@@ -88,7 +100,7 @@ final class Webhooks {
 			$r = $ev['resource'] ?? array();
 			switch ( $ev['event_type'] ) {
 				case 'BILLING.SUBSCRIPTION.ACTIVATED':
-					if ( ! empty( $r['custom_id'] ) ) {
+					if ( ! empty( $r['custom_id'] ) && ! SaasCheckout::paid( $this->db, (string) $r['custom_id'], (string) ( $r['id'] ?? '' ) ?: null ) ) {
 						$this->billing->completePayment( (string) $r['custom_id'], (string) ( $r['id'] ?? '' ), null, true );
 					}
 					break;
@@ -99,13 +111,19 @@ final class Webhooks {
 					}
 					break;
 				case 'PAYMENT.SALE.COMPLETED':
-					$sub = $this->billing->byProviderRef( 'paypal', (string) ( $r['billing_agreement_id'] ?? '' ) );
+					if ( SaasCheckout::event( $this->db, 'paypal', (string) ( $r['billing_agreement_id'] ?? '' ), 'renewed' ) ) {
+						break;
+					}
+					$sub =$this->billing->byProviderRef( 'paypal', (string) ( $r['billing_agreement_id'] ?? '' ) );
 					if ( $sub ) {
 						$this->billing->renew( $sub['id'], Settings::limit( 'renew_window' ) );
 					}
 					break;
 				case 'BILLING.SUBSCRIPTION.PAYMENT.FAILED':
-					$sub = $this->billing->byProviderRef( 'paypal', (string) ( $r['id'] ?? '' ), null, true );
+					if ( SaasCheckout::event( $this->db, 'paypal', (string) ( $r['id'] ?? '' ), 'failed' ) ) {
+						break;
+					}
+					$sub =$this->billing->byProviderRef( 'paypal', (string) ( $r['id'] ?? '' ), null, true );
 					if ( $sub && 'canceled' !== $sub['status'] ) {
 						$this->billing->setStatus( $sub['id'], 'past_due' );
 						$this->billing->notify( 'payment_failed', $sub );
@@ -114,7 +132,10 @@ final class Webhooks {
 				case 'BILLING.SUBSCRIPTION.CANCELLED':
 				case 'BILLING.SUBSCRIPTION.EXPIRED':
 				case 'BILLING.SUBSCRIPTION.SUSPENDED':
-					$sub = $this->billing->byProviderRef( 'paypal', (string) ( $r['id'] ?? '' ), null, true );
+					if ( SaasCheckout::event( $this->db, 'paypal', (string) ( $r['id'] ?? '' ), 'cancelled' ) ) {
+						break;
+					}
+					$sub =$this->billing->byProviderRef( 'paypal', (string) ( $r['id'] ?? '' ), null, true );
 					if ( $sub ) {
 						$this->billing->setStatus( $sub['id'], 'canceled' );
 						if ( ! $sub['cancel_at_period_end'] ) {

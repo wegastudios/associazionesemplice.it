@@ -21,6 +21,7 @@ $show_table = $show_table ?? true;
 			<?php if ( $m ) : ?><p class="price"><?php echo $members ? 'da ' : ''; ?><strong><?php echo e( money( $m[0] ) ); ?></strong> al mese + IVA</p><?php endif; ?>
 			<?php if ( $y ) : ?><p class="fine"><?php echo $members ? 'da ' : ''; ?><?php echo e( money( $y[0] ) ); ?> all'anno + IVA</p><?php endif; ?>
 			<?php if ( ! empty( $p['trial_days'] ) ) : ?><p class="fine">Prova gratuita di <?php echo (int) $p['trial_days']; ?> giorni, senza carta.</p><?php endif; ?>
+			<p><a class="btn" href="/saas/acquista?plan=<?php echo e( rawurlencode( (string) $p['code'] ) ); ?>">Scegli <?php echo e( (string) $p['name'] ); ?></a></p>
 		</div>
 	<?php endforeach; ?>
 	</div><?php endif; ?>

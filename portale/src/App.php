@@ -127,6 +127,8 @@ final class App {
 			$fragment = true;
 			View::headers( 'text/html; charset=utf-8' );
 			require __DIR__ . '/../views/confronto.php';
+		} elseif ( '/saas/acquista' === $path ) {
+			$this->saasBuy( $get );
 		} elseif ( $get && '/free' === $path ) {
 			View::render( 'free', array( 'title' => 'Licenza gratuita' ) );
 		} elseif ( ! $get && '/free' === $path ) {
@@ -338,6 +340,44 @@ final class App {
 			'billing' => $this->billing, 'is_admin' => ! empty( $_SESSION['staff'] ),
 			'releases' => array_combine( Releases::entitled( $subs ), array_map( function ( $p ) { return Releases::all( $this->db, $p ); }, Releases::entitled( $subs ) ) ) ?: array(),
 		) );
+	}
+
+	/**
+	 * Acquisto del gestionale: «Calcola» mostra il totale dal listino di adesso (e controlla il codice promo); «Ordina e paga» apre l'ordine
+	 * e manda al pagamento. Se tra le due cose il listino cambia, il cliente rivede il nuovo totale e conferma di nuovo.
+	 */
+	private function saasBuy( bool $get ): void {
+		$cat = $this->saasCatalog();
+		$in  = $get ? $_GET : $_POST;
+		$v   = array(
+			'plan' => Site::code( (string) ( $in['plan'] ?? '' ) ), 'period' => 'year' === ( $in['period'] ?? '' ) ? 'year' : 'month',
+			'members' => max( 1, (int) ( $in['members'] ?? 50 ) ), 'addons' => SaasCheckout::cleanAddons( (array) ( $in['addons'] ?? array() ) ),
+			'promo' => mb_substr( trim( (string) ( $in['promo'] ?? '' ) ), 0, 40 ), 'email' => trim( (string) ( $in['email'] ?? '' ) ),
+			'name' => trim( (string) ( $in['name'] ?? '' ) ), 'org_name' => trim( (string) ( $in['org_name'] ?? '' ) ),
+			'slug' => strtolower( trim( (string) ( $in['slug'] ?? '' ) ) ), 'provider' => (string) ( $in['provider'] ?? '' ),
+		);
+		if ( '' === $v['slug'] && '' !== $v['org_name'] ) {
+			$v['slug'] = SaasCheckout::slugFrom( $v['org_name'] );
+		}
+		$quote = null;
+		$error = '';
+		if ( ! $get ) {
+			$this->formLimit();
+			if ( 'pay' === (string) $this->in( 'step' ) ) {
+				$url = SaasCheckout::start( $this->db, $this->billing, $v + array( 'seen_total' => $_POST['seen_total'] ?? '' ) );
+				header( 'Location: ' . $url, true, 303 );
+				return;
+			}
+		}
+		if ( $cat && '' !== $v['plan'] ) {
+			try {
+				$promo = SaasCheckout::promo( $v['promo'], $v['plan'], (int) ( Quote::build( $cat['doc'], $v['plan'], $v['period'], $v['members'], $v['addons'] )['plan_version'] ), $v['period'] );
+				$quote = Quote::build( $cat['doc'], $v['plan'], $v['period'], $v['members'], $v['addons'], $promo );
+			} catch ( UserError $e ) {
+				$error = $e->getMessage();
+			}
+		}
+		View::render( 'saas_buy', array( 'title' => 'Prendi il gestionale', 'doc' => $cat ? $cat['doc'] : null, 'v' => $v, 'quote' => $quote, 'error' => $error, 'providers' => SaasCheckout::providers() ) );
 	}
 
 	/** Il cliente torna da PayPal dopo aver approvato un pagamento singolo: qui si incassa l'ordine. */

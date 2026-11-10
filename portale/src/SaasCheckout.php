@@ -1,0 +1,249 @@
+<?php
+namespace Portale;
+
+/**
+ * Acquisto del gestionale (SaaS): dal modulo al pagamento, e dal pagamento riuscito al SaaS.
+ *
+ *  1. {@see start()}  — ricalcola il prezzo dal catalogo corrente, controlla l'eventuale codice promo (`promo.check`), apre l'ordine
+ *     (prezzo e `plan_version` fissati) e manda il cliente a pagare su Stripe o PayPal (abbonamento con rinnovo automatico).
+ *  2. {@see paid()}   — al pagamento riuscito (webhook): crea l'associazione (`provision`, ripetibile), consuma la promo (`promo.redeem`,
+ *     una volta per ordine) e mette in coda `subscription` per il SaaS. Ripetibile senza effetti doppi.
+ *  3. {@see event()}  — rinnovo, pagamento non riuscito, disdetta: nuovo `subscription` con `rev` crescente.
+ */
+final class SaasCheckout {
+
+	const ACTIVE = 'active';
+
+	/** Sottodominio proposto dal nome dell'associazione: minuscole, cifre e trattini, 3–40 caratteri. */
+	public static function slugFrom( string $name ): string {
+		$s = strtolower( (string) preg_replace( '/[^A-Za-z0-9]+/', '-', (string) iconv( 'UTF-8', 'ASCII//TRANSLIT//IGNORE', $name ) ) );
+		$s = trim( substr( trim( $s, '-' ), 0, 40 ), '-' );
+		return $s;
+	}
+
+	public static function validSlug( string $slug ): bool {
+		return 1 === preg_match( '/^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/', $slug ) && false === strpos( $slug, '--' );
+	}
+
+	/** Metodi di pagamento attivi per il gestionale: sempre con rinnovo automatico. @return string[] stripe|paypal */
+	public static function providers(): array {
+		$out = array();
+		if ( '' !== (string) Config::get( 'stripe.secret_key', '' ) ) {
+			$out[] = 'stripe';
+		}
+		if ( '' !== (string) Config::get( 'paypal.client_id', '' ) && '' !== (string) Config::get( 'paypal.secret', '' ) ) {
+			$out[] = 'paypal';
+		}
+		return $out;
+	}
+
+	/**
+	 * Codice promo: «vale?» al SaaS (non consuma nulla).
+	 * @return array|null null se il codice è vuoto; altrimenti ['code', 'discount']
+	 * @throws UserError se non vale
+	 */
+	public static function promo( string $code, string $plan, int $planVersion, string $period ): ?array {
+		$code = strtoupper( trim( $code ) );
+		if ( '' === $code ) {
+			return null;
+		}
+		list( $status, $res ) = SaasClient::promoCheck( $code, $plan, $planVersion, $period );
+		if ( 200 !== $status ) {
+			throw new UserError( 'Non riusciamo a controllare il codice in questo momento: riprova tra poco o procedi senza.' );
+		}
+		if ( empty( $res['valid'] ) || empty( $res['discount']['type'] ) ) {
+			$why = array(
+				'expired' => 'Questo codice è scaduto.', 'wrong_plan' => 'Questo codice non vale per il piano scelto.',
+				'exhausted' => 'Questo codice è stato usato troppe volte.',
+			);
+			throw new UserError( $why[ (string) ( $res['reason'] ?? '' ) ] ?? 'Codice non valido.' );
+		}
+		return array( 'code' => $code, 'discount' => array( 'type' => (string) $res['discount']['type'], 'value' => (int) ( $res['discount']['value'] ?? 0 ) ) );
+	}
+
+	/**
+	 * Apre l'ordine e restituisce l'indirizzo del pagamento.
+	 *
+	 * @param array $in email, name, org_name, slug, plan, period, members, addons [code => qty], promo, provider, seen_total (centesimi, quello mostrato al cliente)
+	 * @throws UserError
+	 */
+	public static function start( Db $db, Billing $billing, array $in, ?int $now = null ): string {
+		$provider = (string) ( $in['provider'] ?? '' );
+		if ( ! in_array( $provider, self::providers(), true ) ) {
+			throw new UserError( 'Questo metodo di pagamento non è disponibile.' );
+		}
+		$orgName = Billing::cleanName( (string) ( $in['org_name'] ?? '' ) );
+		$slug    = strtolower( trim( (string) ( $in['slug'] ?? '' ) ) );
+		if ( mb_strlen( $orgName ) < 2 ) {
+			throw new UserError( 'Scrivi il nome dell\'associazione.' );
+		}
+		if ( ! self::validSlug( $slug ) ) {
+			throw new UserError( 'L\'indirizzo scelto non è valido: usa da 3 a 40 tra lettere minuscole, cifre e trattini.' );
+		}
+		$cust    = $billing->customer( (string) ( $in['email'] ?? '' ) );
+		$plan    = (string) ( $in['plan'] ?? '' );
+		$period  = (string) ( $in['period'] ?? '' );
+		$members = (int) ( $in['members'] ?? 0 );
+		$addons  = self::cleanAddons( (array) ( $in['addons'] ?? array() ) );
+
+		$cat   = Orders::catalog( $db, $now );
+		$base  = Quote::build( $cat['doc'], $plan, $period, $members, $addons );
+		$promo = self::promo( (string) ( $in['promo'] ?? '' ), $plan, $base['plan_version'], $period );
+		$order = Orders::open( $db, $cust['id'], $plan, $period, $members, $addons, $promo, $now );
+		$seen  = isset( $in['seen_total'] ) && '' !== $in['seen_total'] ? (int) $in['seen_total'] : null;
+		if ( null !== $seen && $seen !== $order['total'] ) {
+			$db->run( 'DELETE FROM orders WHERE id = ?', array( $order['id'] ) );
+			throw new UserError( 'I prezzi sono stati aggiornati: il nuovo totale è ' . money( $order['total'] ) . ' (IVA inclusa). Controlla e conferma di nuovo.' );
+		}
+		if ( $order['total'] < 100 ) {
+			$db->run( 'DELETE FROM orders WHERE id = ?', array( $order['id'] ) );
+			throw new UserError( 'Con questo codice il totale è troppo basso per il pagamento online: scrivici e lo sistemiamo.' );
+		}
+		$ref = 'o' . $order['id'];
+		$db->run( 'INSERT INTO saas_orgs (ref, customer_id, name, slug, rev, created_at) VALUES (?,?,?,?,0,?)', array( $ref, $cust['id'], $orgName, $slug, gmdate( 'Y-m-d H:i:s', $now ?? time() ) ) );
+		$db->run( 'UPDATE orders SET org_ref = ?, provider = ? WHERE id = ?', array( $ref, $provider, $order['id'] ) );
+		if ( '' !== trim( (string) ( $in['name'] ?? '' ) ) ) {
+			$billing->setName( $cust['id'], (string) $in['name'] );
+		}
+
+		$planName = $plan;
+		foreach ( Catalog::plans( $cat['doc'] ) as $p ) {
+			if ( ( $p['code'] ?? '' ) === $plan ) {
+				$planName = (string) ( $p['name'] ?? $plan );
+			}
+		}
+		$label = 'Associazione Semplice · ' . $planName . ( 'year' === $period ? ' · annuale' : ' · mensile' );
+		if ( 'stripe' === $provider ) {
+			return Stripe::checkoutUrl( $order['id'], $cust['email'], '', $order['total'], $period, $label );
+		}
+		return PayPal::approvalUrl( $order['id'], $cust['email'], $billing->paypalPlan( array( 'cents' => $order['total'] ), $period, $label ) );
+	}
+
+	/**
+	 * Pagamento riuscito. @return bool falso se l'identificativo non è un ordine del gestionale (allora è affare delle licenze del plugin)
+	 * @throws \RuntimeException con errore da ritentare (il provider riconsegna il webhook)
+	 */
+	public static function paid( Db $db, string $orderId, ?string $providerRef = null, ?string $providerCustomer = null, ?int $now = null ): bool {
+		$o = Orders::get( $db, $orderId );
+		if ( ! $o || 'saas' !== $o['product'] ) {
+			return false;
+		}
+		$at = gmdate( 'Y-m-d H:i:s', $now ?? time() );
+		$db->run(
+			"UPDATE orders SET status = 'paid', provider_ref = COALESCE(?, provider_ref), provider_customer = COALESCE(?, provider_customer), paid_at = ?, updated_at = ? WHERE id = ? AND status = 'pending'",
+			array( $providerRef, $providerCustomer, $at, $at, $orderId )
+		);
+		$o = (array) Orders::get( $db, $orderId );
+		if ( 'paid' !== $o['status'] ) {
+			return true; // già attivato: consegna ripetuta
+		}
+		$org = $db->one( 'SELECT * FROM saas_orgs WHERE ref = ?', array( $o['org_ref'] ) );
+		if ( ! $org ) {
+			throw new \RuntimeException( 'Ordine senza associazione: ' . $orderId );
+		}
+		if ( empty( $org['org_id'] ) ) {
+			$org = self::provision( $db, $org, $now );
+		}
+		$promo = (string) ( $o['quote']['promo'] ?? '' );
+		if ( '' !== $promo ) {
+			list( $code ) = SaasClient::promoRedeem( $promo, $o['id'], (string) $org['ref'], $now );
+			if ( 0 === $code || $code >= 500 ) {
+				throw new \RuntimeException( 'promo.redeem non riuscita (' . $code . '): da riprovare.' );
+			}
+			// Esaurita nel frattempo (409): il cliente ha già pagato lo sconto che gli avevamo promesso, non si blocca nulla.
+		}
+		self::push( $db, $o, $org, 'active', self::until( (string) $o['period'], $now ), $now );
+		$db->run( "UPDATE orders SET status = ?, updated_at = ? WHERE id = ? AND status = 'paid'", array( self::ACTIVE, $at, $orderId ) );
+		return true;
+	}
+
+	/**
+	 * Novità del provider su un abbonamento già attivo: renewed | failed | cancelled.
+	 * @return bool falso se il riferimento non è di un ordine del gestionale
+	 */
+	public static function event( Db $db, string $provider, string $providerRef, string $kind, ?int $now = null ): bool {
+		if ( '' === $providerRef ) {
+			return false;
+		}
+		$row = $db->one( "SELECT id FROM orders WHERE product = 'saas' AND provider = ? AND provider_ref = ?", array( $provider, $providerRef ) );
+		if ( ! $row ) {
+			return false;
+		}
+		$o = (array) Orders::get( $db, (string) $row['id'] );
+		if ( self::ACTIVE !== $o['status'] ) {
+			return true; // il pagamento iniziale non è ancora concluso: la consegna successiva penserà a tutto
+		}
+		$org = $db->one( 'SELECT * FROM saas_orgs WHERE ref = ?', array( $o['org_ref'] ) );
+		if ( ! $org || empty( $org['org_id'] ) ) {
+			return true;
+		}
+		if ( 'renewed' === $kind ) {
+			self::push( $db, $o, $org, 'active', self::until( (string) $o['period'], $now ), $now );
+		} elseif ( 'failed' === $kind ) {
+			self::push( $db, $o, $org, 'past_due', self::lastUntil( $db, (string) $org['org_id'] ) ?? self::until( (string) $o['period'], $now ), $now );
+		} elseif ( 'cancelled' === $kind ) {
+			self::push( $db, $o, $org, 'cancelled', self::lastUntil( $db, (string) $org['org_id'] ) ?? gmdate( 'Y-m-d', $now ?? time() ), $now );
+		}
+		return true;
+	}
+
+	/** Crea l'associazione sul SaaS; se il sottodominio è già preso ne prova uno con un suffisso. */
+	private static function provision( Db $db, array $org, ?int $now ): array {
+		$cust = (array) $db->one( 'SELECT email, name FROM customers WHERE id = ?', array( $org['customer_id'] ) );
+		$slug = (string) $org['slug'];
+		for ( $i = 0; $i < 3; $i++ ) {
+			list( $code, $res ) = SaasClient::provision( (string) $org['ref'], (string) $org['name'], $slug, (string) $cust['email'], (string) ( $cust['name'] ?? '' ) ?: (string) $cust['email'], $now );
+			if ( in_array( $code, array( 200, 201 ), true ) && ! empty( $res['org_id'] ) ) {
+				$db->run( 'UPDATE saas_orgs SET org_id = ?, slug = ? WHERE ref = ?', array( (string) $res['org_id'], $slug, $org['ref'] ) );
+				return array( 'org_id' => (string) $res['org_id'], 'slug' => $slug ) + $org;
+			}
+			if ( 409 === $code && 'slug_taken' === ( $res['error'] ?? '' ) ) {
+				$slug = substr( (string) $org['slug'], 0, 35 ) . '-' . substr( bin2hex( random_bytes( 2 ) ), 0, 4 );
+				continue;
+			}
+			throw new \RuntimeException( 'provision non riuscita (' . $code . '): da riprovare.' );
+		}
+		throw new \RuntimeException( 'provision: sottodominio non assegnabile.' );
+	}
+
+	/** Mette in coda `subscription` con la `rev` successiva dell'associazione. */
+	private static function push( Db $db, array $o, array $org, string $status, string $until, ?int $now ): void {
+		$db->run( 'UPDATE saas_orgs SET rev = rev + 1 WHERE ref = ?', array( $org['ref'] ) );
+		$rev    = (int) ( $db->one( 'SELECT rev FROM saas_orgs WHERE ref = ?', array( $org['ref'] ) )['rev'] ?? 1 );
+		$addons = array();
+		foreach ( array_slice( (array) ( $o['quote']['lines'] ?? array() ), 1 ) as $l ) {
+			$addons[] = array( 'code' => (string) $l['code'], 'qty' => (int) $l['qty'] );
+		}
+		$claims = array(
+			'ref' => (string) $org['ref'], 'rev' => $rev, 'status' => $status, 'until' => $until, 'trial_ends' => null,
+			'plan' => (string) $o['plan'], 'plan_version' => (int) $o['plan_version'], 'members' => (int) $o['members'], 'addons' => $addons,
+			'price_cents' => (int) ( $o['quote']['net'] ?? 0 ),
+		);
+		if ( ! empty( $o['quote']['promo'] ) ) {
+			$claims['promo'] = (string) $o['quote']['promo'];
+		}
+		Outbox::enqueue( $db, (string) $org['org_id'], $claims, $now );
+	}
+
+	private static function until( string $period, ?int $now ): string {
+		return gmdate( 'Y-m-d', strtotime( 'year' === $period ? '+1 year' : '+1 month', $now ?? time() ) );
+	}
+
+	private static function lastUntil( Db $db, string $orgId ): ?string {
+		$r = $db->one( 'SELECT body FROM saas_outbox WHERE org_id = ? ORDER BY rev DESC LIMIT 1', array( $orgId ) );
+		$u = $r ? ( (array) json_decode( (string) $r['body'], true ) )['until'] ?? null : null;
+		return is_string( $u ) && '' !== $u ? $u : null;
+	}
+
+	/** Quantità dei componenti scelti: solo codici validi e interi positivi. */
+	public static function cleanAddons( array $raw ): array {
+		$out = array();
+		foreach ( $raw as $code => $qty ) {
+			$qty = (int) $qty;
+			if ( is_string( $code ) && 1 === preg_match( '/^[a-z0-9_]{1,40}$/', $code ) && $qty > 0 ) {
+				$out[ $code ] = min( 1000, $qty );
+			}
+		}
+		return $out;
+	}
+}

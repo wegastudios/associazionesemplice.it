@@ -1781,6 +1781,92 @@ Config::set( 'saas_sign_key', '' );
 Config::set( 'saas_sign_key_file', '/nonesiste/saas.key' );
 Outbox::enqueue( $odb, $oid, array( 'ref' => 'sub_1', 'rev' => 3 ), 3000 );
 check( 'coda: senza chiave di firma il messaggio resta in coda (nessun errore)', array( 0, 1 ) === Outbox::run( $odb, 3000 ) );
+// --- Acquisto SaaS: pagina, promo, pagamento, creazione associazione, subscription ----------
+use Portale\SaasCheckout;
+Config::set( 'saas_sign_key', base64_encode( str_repeat( 's', 32 ) ) );
+Config::set( 'stripe.secret_key', 'sk_test_abc' );
+Config::set( 'base_url', 'https://portale.test' );
+$cdb = new Db( new PDO( 'sqlite::memory:' ) );
+$cdb->migrate();
+$cbill  = new Billing( $cdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+$ccat   = $mkcat( 7, 1500 );
+$cseen  = array();
+$promoOk = true;
+$provCode = 201;
+$cnet = function ( string $m, string $u, $h, $b ) use ( &$cseen, $ccat, $oseed, &$promoOk, &$provCode ) {
+	if ( false !== strpos( $u, 'catalogo/v1' ) ) {
+		$sig = PortalAttestation::sign( array( 'iss' => 'https://app.associazionesemplice.it', 'aud' => 'https://portale.test', 'typ' => 'catalog', 'iat' => time(), 'exp' => time() + 600, 'jti' => 'jc' . count( $cseen ), 'rev' => 7, 'sha256' => hash( 'sha256', $ccat ) ), $oseed );
+		return array( 200, $ccat, array( 'x-catalog-signature' => $sig, 'etag' => '"r7"' ) );
+	}
+	if ( false !== strpos( $u, 'stripe.com' ) ) {
+		$cseen[] = array( 'stripe', $b );
+		return array( 200, '{"url":"https://checkout.stripe.test/s1"}' );
+	}
+	$body = json_decode( (string) $b, true );
+	$cl   = isset( $body['token'] ) ? json_decode( (string) base64_decode( strtr( explode( '.', (string) $body['token'] )[1], '-_', '+/' ) ), true ) : array();
+	$cseen[] = array( $cl['typ'] ?? '', $cl, $u );
+	switch ( $cl['typ'] ?? '' ) {
+		case 'promo_check':
+			return array( 200, json_encode( $promoOk && 'PRIMAVERA' === $cl['code'] ? array( 'valid' => true, 'discount' => array( 'type' => 'percent', 'value' => 20 ) ) : array( 'valid' => false, 'reason' => 'expired' ) ) );
+		case 'promo_redeem':
+			return array( 200, '{"redeemed":true}' );
+		case 'provision':
+			return array( $provCode, $provCode >= 400 ? '{"error":"slug_taken"}' : '{"org_id":"aaaaaaaa-bbbb-cccc-dddd-000000000001","created":true}' );
+	}
+	return array( 200, '{}' );
+};
+Http::$transport = $cnet;
+check( 'slug proposto dal nome: minuscole, trattini, niente accenti', 'circolo-san-giorgio' === SaasCheckout::slugFrom( 'Circolo San Giorgio!' ) && SaasCheckout::validSlug( 'circolo-san-giorgio' ) && ! SaasCheckout::validSlug( '-ab' ) && ! SaasCheckout::validSlug( 'a--b' ) );
+check( 'promo: codice valido → sconto dal SaaS; scaduto → messaggio', 20 === SaasCheckout::promo( 'primavera', 'gestionale', 3, 'month' )['discount']['value'] && null === SaasCheckout::promo( '', 'gestionale', 3, 'month' ) && false !== strpos( (string) throwsUser( function () { SaasCheckout::promo( 'ZZZ', 'gestionale', 3, 'month' ); } ), 'scaduto' ) );
+$form = array( 'email' => 'Anna@Esempio.it', 'name' => 'Anna', 'org_name' => 'Circolo San Giorgio', 'slug' => 'circolo-san-giorgio', 'plan' => 'gestionale', 'period' => 'month', 'members' => 150, 'addons' => array(), 'promo' => 'PRIMAVERA', 'provider' => 'stripe' );
+$cseen = array();
+check( 'acquisto: totale visto diverso dal listino → si rivede il prezzo, nessun ordine aperto', null !== throwsUser( function () use ( $cdb, $cbill, $form ) { SaasCheckout::start( $cdb, $cbill, $form + array( 'seen_total' => 1 ) ); } ) && 0 === (int) $cdb->one( 'SELECT COUNT(*) n FROM orders' )['n'] );
+$url = SaasCheckout::start( $cdb, $cbill, $form + array( 'seen_total' => 3221 ) );
+$ord = $cdb->one( 'SELECT * FROM orders' );
+$stripeForm = array();
+foreach ( $cseen as $c ) {
+	if ( 'stripe' === $c[0] ) {
+		parse_str( (string) $c[1], $stripeForm );
+	}
+}
+check( 'acquisto: Stripe con importo del preventivo (3300 - 20% + IVA = 3221)', 'https://checkout.stripe.test/s1' === $url && '3221' === (string) ( $stripeForm['line_items'][0]['price_data']['unit_amount'] ?? '' ) && $ord['id'] === $stripeForm['client_reference_id'] );
+check( 'acquisto: ordine con istantanea, associazione e metodo', 'pending' === $ord['status'] && 3 === (int) $ord['plan_version'] && 'stripe' === $ord['provider'] && 1 === (int) $cdb->one( 'SELECT COUNT(*) n FROM saas_orgs WHERE ref = ?', array( $ord['org_ref'] ) )['n'] );
+$cseen = array();
+check( 'pagamento: id che non è un ordine del gestionale → non è affar nostro', false === SaasCheckout::paid( $cdb, 'nonesiste', 'sub_1', 'cus_1' ) );
+check( 'pagamento riuscito: associazione creata, promo consumata, subscription in coda', true === SaasCheckout::paid( $cdb, $ord['id'], 'sub_1', 'cus_1', 1000 ) );
+$types = array_map( function ( $c ) { return $c[0]; }, $cseen );
+check( 'pagamento: provision → promo_redeem, una volta', array( 'provision', 'promo_redeem' ) === $types );
+$prov = $cseen[0][1];
+check( 'provision: ref stabile, nome, sottodominio e titolare', $ord['org_ref'] === $prov['ref'] && 'Circolo San Giorgio' === $prov['org']['name'] && 'circolo-san-giorgio' === $prov['org']['slug'] && 'anna@esempio.it' === $prov['owner']['email'] );
+$qrow = json_decode( (string) $cdb->one( 'SELECT body FROM saas_outbox' )['body'], true );
+check( 'subscription in coda: rev 1, plan_version dell\'ordine, scadenza, promo e prezzo netto', 1 === $qrow['rev'] && 'active' === $qrow['status'] && 3 === $qrow['plan_version'] && 150 === $qrow['members'] && 'PRIMAVERA' === $qrow['promo'] && 2640 === $qrow['price_cents'] && gmdate( 'Y-m-d', strtotime( '+1 month', 1000 ) ) === $qrow['until'] && $ord['org_ref'] === $qrow['ref'] );
+$cseen = array();
+SaasCheckout::paid( $cdb, $ord['id'], 'sub_1', 'cus_1', 1100 );
+check( 'pagamento ripetuto (webhook doppio): nessun effetto in più', array() === $cseen && 1 === (int) $cdb->one( 'SELECT COUNT(*) n FROM saas_outbox' )['n'] && 'active' === $cdb->one( 'SELECT status FROM orders' )['status'] );
+check( 'rinnovo: nuova subscription con rev 2 e scadenza spostata', true === SaasCheckout::event( $cdb, 'stripe', 'sub_1', 'renewed', 5000000 ) && 2 === json_decode( (string) $cdb->one( 'SELECT body FROM saas_outbox WHERE rev = 2' )['body'], true )['rev'] );
+SaasCheckout::event( $cdb, 'stripe', 'sub_1', 'failed', 5000100 );
+$pd = json_decode( (string) $cdb->one( 'SELECT body FROM saas_outbox WHERE rev = 3' )['body'], true );
+check( 'pagamento non riuscito: past_due, scadenza invariata', 'past_due' === $pd['status'] && gmdate( 'Y-m-d', strtotime( '+1 month', 5000000 ) ) === $pd['until'] );
+SaasCheckout::event( $cdb, 'stripe', 'sub_1', 'cancelled', 5000200 );
+check( 'disdetta: cancelled; riferimento sconosciuto → non è nostro', 'cancelled' === json_decode( (string) $cdb->one( 'SELECT body FROM saas_outbox WHERE rev = 4' )['body'], true )['status'] && false === SaasCheckout::event( $cdb, 'stripe', 'altro', 'renewed' ) );
+// Sottodominio già preso: ne prova un altro; provision fallita: l'ordine resta «paid» e il webhook riprova.
+$provCode = 409;
+$f2 = array( 'promo' => '', 'org_name' => 'Altro Circolo', 'slug' => 'altro' ) + $form;
+SaasCheckout::start( $cdb, $cbill, $f2 );
+$o2 = $cdb->one( "SELECT * FROM orders WHERE status = 'pending'" );
+$err = null;
+try {
+	SaasCheckout::paid( $cdb, $o2['id'], 'sub_2', 'cus_1', 6000 );
+} catch ( \RuntimeException $e ) {
+	$err = $e->getMessage();
+}
+check( 'provision senza esito → eccezione da ritentare, ordine pagato ma non attivo', null !== $err && 'paid' === $cdb->one( 'SELECT status FROM orders WHERE id = ?', array( $o2['id'] ) )['status'] );
+$provCode = 201;
+SaasCheckout::paid( $cdb, $o2['id'], 'sub_2', 'cus_1', 6100 );
+check( 'ritento riuscito: ordine attivo con subscription in coda', 'active' === $cdb->one( 'SELECT status FROM orders WHERE id = ?', array( $o2['id'] ) )['status'] && 5 === (int) $cdb->one( 'SELECT COUNT(*) n FROM saas_outbox' )['n'] );
+Config::set( 'stripe.secret_key', '' );
+check( 'senza provider di pagamento non si apre l\'ordine', null !== throwsUser( function () use ( $cdb, $cbill, $form ) { SaasCheckout::start( $cdb, $cbill, $form ); } ) );
+
 Http::$transport = $prevTransport;
 Config::set( 'saas_public_keys', array() );
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
