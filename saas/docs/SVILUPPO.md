@@ -328,3 +328,13 @@ database e, se si usano ruoli separati, le loro credenziali (formato in `Core\Da
 Nelle sessioni cloud il proxy blocca gli zip di GitHub: Composer ripiega sui sorgenti git, più lento. `phpstan/phpstan`
 esiste solo come zip; si scarica il suo repository con git e si mette l'archivio nella cache di Composer
 (`~/.cache/composer/files/phpstan/phpstan/<sha1 dell'URL>.zip`). In locale e in GitHub Actions non serve.
+
+## 13. Catalogo e piattaforma
+
+Modulo `Piattaforma` ([PIATTAFORMA.md](PIATTAFORMA.md)). I piani, i pacchetti, i prezzi e le promo del SaaS si definiscono
+**qui**, non nel portale: il portale li legge da `GET /api/catalogo/v1` ([CONTRATTO_PORTALE.md](CONTRATTO_PORTALE.md) §2).
+
+- Contenuto iniziale in `config/catalogo.php`; `CatalogValidator` lo controlla a ogni lettura. Per cambiarlo: nuova
+  `plan_version` per il piano toccato (mai modificare una versione già venduta) e `rev` + 1.
+- `Piattaforma\Contracts\Catalog::published()` è l'unico modo di leggere il catalogo dal resto del codice.
+- Il catalogo non contiene mai dati di associazioni o persone (c'è un test).
