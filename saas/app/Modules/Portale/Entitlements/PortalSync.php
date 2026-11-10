@@ -151,7 +151,6 @@ final readonly class PortalSync
             ] + $auditExtra));
         });
     }
-    }
 
     /**
      * Sospende le associazioni con l'abbonamento scaduto da più dei giorni di tolleranza, anche se il portale non lo
