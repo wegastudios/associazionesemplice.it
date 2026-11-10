@@ -187,3 +187,12 @@ it('mostra in segreteria solo i pacchetti pagati con ingressi residui', function
         expect($s->paidPackages($a->id))->toBe([]);
     });
 });
+
+it('mostra il calendario a giorno, a settimana e a mese', function (): void {
+    $op = $this->createUser('cal@example.com', twoFactor: true);
+    $this->addOperator($this->org, $op, OrgRole::Operator);
+    $this->actingAs($op);
+    $this->get('/gestionale/calendario?dal=2026-11-12&vista=giorno')->assertOk()->assertInertia(fn (Assert $page) => $page->where('view', 'giorno')->has('days', 1));
+    $this->get('/gestionale/calendario?dal=2026-11-12')->assertOk()->assertInertia(fn (Assert $page) => $page->where('view', 'settimana')->has('days', 7)->where('from', '2026-11-12'));
+    $this->get('/gestionale/calendario?dal=2026-11-12&vista=mese')->assertOk()->assertInertia(fn (Assert $page) => $page->where('view', 'mese')->has('days', 30)->where('from', '2026-11-01')->where('next', '2026-12-01'));
+});

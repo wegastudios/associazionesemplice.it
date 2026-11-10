@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Attivita\Http\Controllers;
 
 use App\Modules\Attivita\Contracts\ActivityError;
+use App\Modules\Attivita\Rules\CalendarView;
 use App\Modules\Attivita\Services\ActivityService;
 use App\Modules\Attivita\Services\AttendanceService;
 use App\Modules\Attivita\Services\SessionService;
@@ -237,23 +238,24 @@ final readonly class SessionsController
         });
     }
 
-    /** Una settimana di lezioni e date, da $dal. */
+    /** Lezioni e date in vista giorno, settimana (da $dal) o mese. */
     public function calendar(Request $request): Response
     {
         $from = $request->string('dal')->toString();
         $from = preg_match('/^\d{4}-\d{2}-\d{2}$/', $from) === 1 && strtotime($from) !== false ? $from : now('Europe/Rome')->toDateString();
-        $to = date('Y-m-d', (int) strtotime($from.' +6 days'));
-        $items = $this->attendance->calendar($from, $to);
+        $view = CalendarView::normalize($request->string('vista')->toString());
+        $range = CalendarView::range($view, $from);
+        $items = $this->attendance->calendar($range['from'], $range['to']);
         $days = [];
-        for ($i = 0; $i < 7; $i++) {
-            $d = date('Y-m-d', (int) strtotime($from.' +'.$i.' days'));
+        for ($d = $range['from']; $d <= $range['to']; $d = date('Y-m-d', (int) strtotime($d.' +1 day'))) {
             $days[] = ['date' => $d, 'label' => self::dayLabel($d), 'items' => array_values(array_filter($items, static fn (array $x): bool => $x['date'] === $d))];
         }
 
         return Inertia::render('Attivita/Calendario', [
-            'from' => $from,
-            'previous' => date('Y-m-d', (int) strtotime($from.' -7 days')),
-            'next' => date('Y-m-d', (int) strtotime($from.' +7 days')),
+            'view' => $view,
+            'from' => $range['from'],
+            'previous' => $range['previous'],
+            'next' => $range['next'],
             'days' => $days,
         ]);
     }
