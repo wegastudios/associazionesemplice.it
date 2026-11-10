@@ -67,19 +67,30 @@ final class CatalogValidator
     }
 
     /**
-     * @return array<string, array{id: string, text: string, group: string}>
+     * @return array<string, array{id: string, text: string, group: string, compare?: string}>
      */
     private static function features(mixed $value): array
     {
         $list = self::list($value, 'features', 1);
         $out = [];
+        $compare = [];
         foreach ($list as $i => $item) {
-            $f = self::object($item, "features.{$i}", ['id', 'text', 'group']);
+            $f = self::object($item, "features.{$i}", ['id', 'text', 'group', 'compare']);
             $id = self::code($f['id'] ?? null, "features.{$i}.id", 40);
             if (isset($out[$id])) {
                 throw new InvalidArgumentException("caratteristica duplicata: {$id}");
             }
             $out[$id] = ['id' => $id, 'text' => self::text($f['text'] ?? null, "features.{$id}.text", 160), 'group' => self::text($f['group'] ?? null, "features.{$id}.group", 60)];
+            // `compare`: chiave stabile per allineare la riga con il catalogo del plugin nelle tabelle di confronto
+            // (facoltativa, unica nel catalogo; chi non ha corrispondenza la omette).
+            if (array_key_exists('compare', $f)) {
+                $key = self::code($f['compare'], "features.{$id}.compare", 40);
+                if (isset($compare[$key])) {
+                    throw new InvalidArgumentException("features.{$id}.compare duplicato: {$key}");
+                }
+                $compare[$key] = true;
+                $out[$id]['compare'] = $key;
+            }
         }
 
         return $out;

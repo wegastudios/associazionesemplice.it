@@ -54,10 +54,10 @@ Fonti: [TeamSystem Terzo Settore in Cloud](https://www.teamsystem.com/associazio
 **Contabilità**
 - prima nota, conti (cassa, banca, carte), categorie sul modello ETS;
 - ricevute numerate senza buchi, comprese quelle per i minori intestate al genitore;
-- rendiconto per cassa ETS, chiusura dell'esercizio;
+- chiusura dell'esercizio;
 - fondi e rimborsi ai volontari, preventivo, alert di bilancio;
 - allegati alle spese; import dell'estratto conto da CSV con riconciliazione;
-- IVA e corrispettivi, regime L.398 per le sportive.
+- la parte fiscale (IVA e corrispettivi, regime L.398 per le sportive, 5 per mille, rendiconto per cassa ETS) **non è nella base**: sta in Contabilità avanzata (decisione della titolare, 10/11/2026);
 
 **Ruoli e accessi**
 - **3 operatori inclusi**: presidente, vicepresidente, tesoriere;
@@ -193,7 +193,7 @@ delle fatture passive via SDI per chi ha partita IVA, con un limite d'uso ragion
 | Sito | builder AI, sottodominio, rigenerazioni mensili incluse | fisso |
 | Fattura elettronica | 50 fatture emesse all'anno, conservazione | fisso, più ricariche |
 | Comunicazioni | email di massa e newsletter, avvisi di gruppo, SMS | fisso, SMS a consumo |
-| Contabilità avanzata | partita doppia, competenza, stato patrimoniale e rendiconto gestionale ETS | fisso |
+| Contabilità avanzata | partita doppia, competenza, stato patrimoniale e rendiconto gestionale ETS; **parte fiscale**: IVA e corrispettivi, L.398, 5 per mille, rendiconto per cassa | fisso |
 | Vita associativa | assemblee, deleghe, votazioni online, verbali, libri sociali | fisso |
 | Sport | affiliazioni e tesseramenti con federazioni ed enti di promozione, registro safeguarding, compensi dei collaboratori sportivi (da sviluppare) | fisso |
 
