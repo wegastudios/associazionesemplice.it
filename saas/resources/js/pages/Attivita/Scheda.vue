@@ -127,6 +127,18 @@ const label = 'space-y-1 text-sm';
             <Link href="/gestionale/calendario" class="font-semibold text-accent hover:underline">Calendario</Link>
         </p>
 
+        <section v-if="activity && activity.bookable && activity.packages.length" class="mt-6 card p-4 sm:p-5" aria-labelledby="packs-title">
+            <h2 id="packs-title" class="mb-1 text-lg font-bold">Pacchetti con ingressi residui</h2>
+            <p class="mb-3 text-sm text-muted">Pacchetti già pagati con ingressi ancora da usare. Per scalarne uno, prenota la persona a una data scegliendo «Un ingresso da un pacchetto già preso».</p>
+            <ul class="divide-y divide-line text-sm">
+                <li v-for="p in activity.packages" :key="p.id" class="flex flex-wrap items-center gap-3 py-2">
+                    <Link :href="`/gestionale/soci/${p.person_id}`" class="font-semibold text-accent hover:underline">{{ p.name }}</Link>
+                    <span class="text-muted">{{ p.label }}</span>
+                    <span class="rounded bg-surface px-2 py-0.5">{{ p.left }} {{ p.left === 1 ? 'ingresso rimasto' : 'ingressi rimasti' }} su {{ p.entries }}</span>
+                </li>
+            </ul>
+        </section>
+
         <section v-if="activity && activity.bookable" class="mt-6 card p-4 sm:p-5" aria-labelledby="dates-title">
             <h2 id="dates-title" class="mb-3 text-lg font-bold">Date</h2>
             <p v-if="!activity.sessions.length" class="mb-3 text-sm text-muted">Nessuna data: aggiungi la prima.</p>

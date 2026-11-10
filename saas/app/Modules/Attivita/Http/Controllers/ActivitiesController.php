@@ -204,6 +204,7 @@ final readonly class ActivitiesController
                 'resource' => $activity->no_resource ? 'none' : ($activity->resource_id ?? ''),
                 'occupy_on_booking' => $activity->occupy_on_booking,
                 'sessions' => $activity->kind->usesSessions() ? array_map(static fn (array $x): array => $x + ['label' => SessionsController::dayLabel($x['date'])], $this->sessions->sessions($activity)) : [],
+                'packages' => $activity->kind->usesSessions() ? $this->sessions->paidPackages($activity->id) : [],
                 'monthly' => $activity->kind === ActivityKind::Course && $activity->billing !== Billing::Once,
                 'months' => array_map(static fn (string $m): array => ['value' => $m, 'label' => ActivityService::monthLabel($m)], $year['months'] ?? []),
                 'totals' => [

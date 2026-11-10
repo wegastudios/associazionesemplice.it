@@ -315,6 +315,38 @@ final readonly class SessionService
         return $out;
     }
 
+    /**
+     * Panoramica per la segreteria: i pacchetti dell'attività già pagati che hanno ancora ingressi, il più vecchio per primo.
+     *
+     * @return list<array{id: string, person_id: string, name: string, label: string, left: int, entries: int}>
+     */
+    public function paidPackages(string $activityId): array
+    {
+        $activity = $this->activities->find($activityId);
+        $rows = SessionBooking::query()->join('app.activity_sessions as s', 's.id', '=', 'app.session_bookings.session_id')
+            ->where('s.activity_id', $activity->id)->where('app.session_bookings.status', 'booked')
+            ->where('app.session_bookings.package_entries', '>', 1)->orderBy('app.session_bookings.created_at')->get(['app.session_bookings.*']);
+        $ids = array_values($rows->map(static fn (SessionBooking $b): string => $b->id)->all());
+        $used = $this->packageUsed($ids);
+        $paid = $this->paid($ids);
+        $people = $this->people(array_values(array_unique($rows->map(static fn (SessionBooking $b): string => $b->person_id)->all())));
+        $out = [];
+        foreach ($rows as $b) {
+            $left = $b->package_entries - ($used[$b->id] ?? 1);
+            $state = Pricing::state($b->fee_due_cents, $paid[$b->id] ?? 0);
+            if ($left <= 0 || ! in_array($state, [Pricing::PAID, Pricing::FREE], true) || ! isset($people[$b->person_id])) {
+                continue;
+            }
+            $out[] = [
+                'id' => $b->id, 'person_id' => $b->person_id, 'name' => $people[$b->person_id]['name'],
+                'label' => SessionRules::findList($activity->price_lists, (string) $b->price_list)['label'] ?? 'Pacchetto',
+                'left' => $left, 'entries' => $b->package_entries,
+            ];
+        }
+
+        return $out;
+    }
+
     /** In lista d'attesa per una data piena. */
     public function waitlistJoin(string $sessionId, string $personId): void
     {
