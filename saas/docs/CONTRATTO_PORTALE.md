@@ -1,18 +1,32 @@
-# Contratto tra portale e SaaS
+# Contratto tra portale e SaaS (v2)
 
-> **In revisione (principio confermato il 10/11/2026):** [../../docs/ARCHITETTURA_DOMINI.md](../../docs/ARCHITETTURA_DOMINI.md)
-> porta i piani, i prezzi e le promo nei prodotti (il portale li legge), sostituisce §2.2 con una notifica di abbonamento
-> (v2) e fa cadere §2.3. **Non sviluppare** lato portale §2.2 (diritti calcolati) e §2.3 finché non c'è la v2.
+> **Stato: bozza v2 scritta dalla sessione Portale SaaS il 10/11/2026, da rivedere con la sessione portale-vendita.**
+> Diventa «firmato» quando la sessione portale-vendita risponde nella nota condivisa (cartella delle note di sessione)
+> con le sue osservazioni risolte. Le parti già realizzate nel SaaS sono marcate **[fatto]**.
+> Fondamento: [../../docs/ARCHITETTURA_DOMINI.md](../../docs/ARCHITETTURA_DOMINI.md) (§4 catalogo, §5 e §5 bis `subscription`
+> e area clienti, §8 passaggio tra amministrazioni).
 
-Come si parlano il portale (`portale/`, centro commerciale: clienti, abbonamenti, pagamenti, partner) e il SaaS
-(`saas/`, il gestionale). Il lato SaaS è fatto e provato (`app/Modules/Portale`, test in `tests/Feature/Portale`);
-**il lato portale lo sviluppa la sessione Portale e pagamenti**, seguendo questo documento. Versione del contratto:
-**v1** (negli indirizzi).
+Come si parlano il portale (`portale/`: vendita, clienti, abbonamenti, pagamenti, partner) e il SaaS (`saas/`, il
+gestionale e la sua amministrazione).
 
-Principio: il SaaS non parla con Stripe o PayPal e non decide nulla sui prezzi. Riceve dal portale **diritti firmati**
-e gli restituisce **numeri firmati**. Nessun dato personale dei soci passa dal SaaS al portale.
+**Principio (deciso il 10/11/2026): il portale vende, il prodotto decide.** Piani, caratteristiche, limiti, prezzi e
+promozioni del SaaS si definiscono **solo** in `/saas/admin`. Il portale li **legge** dal catalogo, incassa e comunica al
+SaaS soltanto il **fatto commerciale** («questo abbonamento ha comprato questo piano»). Il SaaS ricava da sé i limiti
+dalla versione del piano. Nessun dato personale dei soci passa dal SaaS al portale.
 
-## 1. Token
+## 0. Cosa cambia rispetto alla v1
+
+| Parte della v1 | Nella v2 |
+|---|---|
+| §1 Token e chiavi | **invariati** (si aggiungono solo nuovi valori di `typ`, §1) |
+| §2.1 Creazione dell'associazione | **invariata** (`/api/portale/v1/orgs`) |
+| §2.2 Diritti calcolati dal portale (`entitlements`) | **sostituiti** da `subscription` (§3.2). L'endpoint v1 resta attivo come **transitorio** finché il portale non ha migrato; poi si toglie (§8) |
+| §2.3 Amministrazione dal portale (liste, disattivazione utenti) | **cancellata**: l'amministrazione sta in `/saas/admin`. Restano solo le letture dell'area clienti (§3.6). Le rotte `admin/*` della v1 si tolgono quando `/saas/admin` è in linea |
+| §3.1 Consumi | **invariati** |
+| §3.2 Accesso «Gestisci abbonamento» | invariato, cambia solo l'indirizzo di arrivo nel portale: `https://associazionesemplice.it/account/da-gestionale?t=<JWT>` (prima `/saas/accedi`) |
+| Nuovo | catalogo (§2), `promo.check` e `promo.redeem` (§3.3), `plan_change.check` (§3.4), `domain.check` e `domain.set` (§3.5), `catalogo.changed` (§4.2), `admin_hop` (§5) |
+
+## 1. Token (invariati) e tipi di messaggio
 
 Tutto viaggia come JWT EdDSA (Ed25519), **lo stesso formato dell'attestazione delle licenze**
 (`portale/src/PortalAttestation.php`): intestazione `{"typ":"JWT","alg":"EdDSA","kid":"…"}`, base64url senza `=`,
@@ -24,246 +38,276 @@ Claim sempre presenti:
 |---|---|
 | `iss` | chi firma: portale `https://associazionesemplice.it`, SaaS `https://app.associazionesemplice.it` |
 | `aud` | verso il SaaS: `associazionesemplice-saas`; verso il portale: l'indirizzo del portale |
-| `typ` | tipo del messaggio (sotto); un token di un tipo non vale per un altro |
-| `iat`, `exp` | secondi Unix; **`exp − iat` al massimo 600** (SSO: 60); tolleranza sull'orologio 60 secondi |
-| `jti` | identificativo casuale, per i registri (e per l'SSO: una volta sola) |
+| `typ` | tipo del messaggio (tabella sotto); un token di un tipo non vale per un altro |
+| `iat`, `exp` | secondi Unix; **`exp − iat` al massimo 600** (SSO e `admin_hop`: 60); tolleranza sull'orologio 60 secondi |
+| `jti` | identificativo casuale, per i registri; **monouso** (una sola volta) per tutte le richieste che cambiano qualcosa, per l'SSO e per `admin_hop` |
 
 Si rifiuta: `alg` diverso da `EdDSA`, `kid` non fissato, firma, emittente, destinatario o tipo sbagliati, token scaduto,
 emesso nel futuro o con vita più lunga del massimo, qualunque campo sconosciuto o fuori misura.
+
+| `typ` | Direzione | Dove |
+|---|---|---|
+| `provision` | portale → SaaS | §3.1 |
+| `entitlements` (transitorio) | portale → SaaS | v1, §8 |
+| `subscription` | portale → SaaS | §3.2 |
+| `promo_check`, `promo_redeem` | portale → SaaS | §3.3 |
+| `plan_change_check` | portale → SaaS | §3.4 |
+| `domain_check`, `domain_set` | portale → SaaS | §3.5 |
+| `org_status` | portale → SaaS | §3.6 |
+| `catalog` | SaaS → portale (intestazione della risposta del catalogo) | §2 |
+| `catalog_changed` | SaaS → portale | §4.2 |
+| `usage` | SaaS → portale | §4.1 |
+| `sso` | SaaS → portale | §4.3 |
+| `admin_hop` | tra le due amministrazioni | §5 |
 
 ### Chiavi
 
 | Chiave | Chi la tiene | Chi ha la parte pubblica |
 |---|---|---|
-| **Portale → SaaS** (nuova, separata da quella delle licenze) | portale, per esempio `data/saas-sign.key` (seme di 32 byte in base64, permessi 600, fuori dal repository) | SaaS: `SAAS_PORTAL_PUBLIC_KEYS="kid=x"` (più chiavi separate da virgole, per la rotazione) |
-| **SaaS → portale** | SaaS: `SAAS_PORTAL_SIGNING_KEY` | portale: kid `saas-…` e `x`, in `config.php` |
+| **Portale → SaaS** (separata da quella delle licenze) | portale, per esempio `data/saas-sign.key` (seme di 32 byte in base64, permessi 600, fuori dal repository) | SaaS: `SAAS_PORTAL_PUBLIC_KEYS="kid=x"` (più chiavi separate da virgole, per la rotazione) |
+| **SaaS → portale** (firma di catalogo, consumi, SSO, avvisi) | SaaS: `SAAS_PORTAL_SIGNING_KEY` | portale: kid `saas-…` e `x`, in `config.php` |
+| **`admin_hop`** (§5) | ciascuna amministrazione, una chiave sua | l'altra |
 
 Il `kid` si calcola come nel portale: prefisso, poi le prime 8 cifre di `sha256(x)` con `x` = chiave pubblica in
 base64url. `php artisan saas:keys:generate` stampa la coppia del SaaS con il suo `kid=x`.
 **Rotazione**: si aggiunge la nuova chiave pubblica dall'altra parte, poi si comincia a firmare con la nuova, poi si
 toglie la vecchia.
 
-## 2. Portale → SaaS
+## 2. Il catalogo: SaaS → portale, lettura **[fatto]**
 
-Corpo sempre `{"token": "<JWT>"}`, `Content-Type: application/json`. Nessun cookie, nessuna sessione, nessun CSRF: vale
-solo la firma. Limite: 120 richieste al minuto per indirizzo. Errori: `{"error": "<codice>"}`.
+`GET https://app.associazionesemplice.it/api/catalogo/v1`
 
-### 2.1 Creazione dell'associazione
+Pubblico (nessun accesso, nessun cookie), **senza dati personali**, cacheabile. Il portale lo scarica ogni 10 minuti e a
+ogni avviso `catalogo.changed` (§4.2), e salva l'ultima copia valida.
 
-`POST https://app.associazionesemplice.it/api/portale/v1/orgs` — `typ: "provision"`
+Intestazioni della risposta:
+
+| Intestazione | Valore |
+|---|---|
+| `Content-Type` | `application/json; charset=utf-8` |
+| `ETag` | `"<sha256 esadecimale del corpo>"`; con `If-None-Match` uguale la risposta è `304` senza corpo |
+| `Cache-Control` | `public, max-age=300` |
+| `X-Catalog-Signature` | JWT EdDSA del SaaS, `typ: "catalog"`, `aud` = indirizzo del portale, vita 600 s, claim `rev` e `sha256` (impronta **dei byte esatti del corpo**). Il portale verifica firma e impronta prima di fidarsi |
+
+Il corpo non cambia finché non cambia la `rev`; la firma si rifà a ogni risposta (vita breve) sugli stessi byte.
+
+### Documento `catalogo/v1`
 
 ```json
 {
-  "ref": "sub_123",
-  "org":   { "name": "Polisportiva Alfa", "slug": "polisportiva-alfa" },
-  "owner": { "email": "titolare@example.com", "name": "Anna Rossi" }
+  "schema": "catalogo/v1",
+  "product": "saas",
+  "name": "Associazione Semplice · Gestionale",
+  "description": "Il gestionale per associazioni e circoli.",
+  "rev": 1,
+  "published_at": "2026-11-10",
+  "currency": "EUR",
+  "features": [ { "id": "member_area", "text": "Area soci e pagamenti online", "group": "Pacchetti" } ],
+  "plans": [ {
+    "code": "gestionale", "plan_version": 1, "name": "Gestionale", "audience": "Associazioni, APS, ODV",
+    "order": 1, "visible": true, "support_level": "standard", "trial_days": 30,
+    "features": { "member_area": { "state": "excluded" }, "operators": { "state": "limit", "text": "1 incluso" } },
+    "limits": { "members": null, "operators": 1, "storage_mb_per_member": 5, "storage_mb_min": 250 },
+    "prices": [ { "period": "month", "kind": "members_tiers", "vat_percent": 22,
+                  "base_members": 50, "base_cents": 1500,
+                  "tiers": [ { "up_to": 150, "unit_cents": 18 }, { "up_to": 400, "unit_cents": 12 }, { "up_to": null, "unit_cents": 6 } ] },
+                { "period": "year", "kind": "members_tiers", "months_billed": 10, "vat_percent": 22, "…": "…" } ]
+  } ],
+  "addons": [ {
+    "code": "operators_extra", "name": "Operatore aggiuntivo", "kind": "operators", "visible": true,
+    "grants": { "operators": 1 },
+    "prices": [ { "period": "month", "kind": "flat", "amount_cents": 300, "vat_percent": 22 } ]
+  } ],
+  "promos": []
 }
 ```
 
+| Parte | Regole |
+|---|---|
+| `rev` | intero crescente: cambia a **ogni** pubblicazione |
+| `features[]` | `id` stabile (`[a-z0-9_]{1,40}`), `text` senza HTML, `group` per il raggruppamento nella tabella. Per ogni piano `features` dice `state`: `included`, `limit` (con `text`) o `excluded`. Da qui il portale costruisce da solo la tabella di confronto |
+| `plans[]` | `code` stabile (`[a-z0-9_]{2,40}`), `plan_version` intero **immutabile**: una modifica crea la versione successiva, quella vecchia resta valida per chi l'ha comprata e **non compare più nel catalogo** (il portale la tiene nelle istantanee degli ordini). `visible: false` = non si vende ma esiste |
+| `limits` (piano) | `members` (tetto soci, `null` = nessuno: il prezzo cresce a scaglioni), `operators` inclusi, `storage_mb_per_member` e `storage_mb_min`; **`packages`**: pacchetti inclusi nel piano, con i loro limiti (stesse chiavi dei diritti v1: `resources.hourly.tier` ecc.) |
+| `prices[]` | `period` `month` o `year`; `vat_percent` intero; importi **sempre in centesimi interi**. `kind`: `flat` (`amount_cents`), `members_tiers` (`base_members` soci compresi nel `base_cents`, poi `tiers[]` con `up_to` e `unit_cents` per socio al mese; ultimo `up_to` = `null`; `months_billed` per l'annuale, p. es. 10) oppure `step_tiers` (`steps[]` con `up_to` e `amount_cents`, scatto per fascia; l'ultimo `up_to` `null` = «oltre») |
+| `addons[]` | `code` stabile, `kind`: `package` (attiva un pacchetto: `grants.package` e i suoi limiti), `operators` (`grants.operators` per unità), `storage` (`grants.storage_gb` per unità), `domain`, `dedicated_db`, `recharge`. Quello che l'addon concede è in `grants` |
+| `promos[]` | solo le **attive**: `code` (o `null` = automatica), `name`, `discount` (`{"type":"percent","value":20}` o `{"type":"amount_cents","value":500}`), `plans[]` (codici) o `null` = tutti, `valid_from`, `valid_to` (date), `max_uses`, `stackable` |
+| `support_level` | `base`, `standard`, `priority` (segnaposto, ARCHITETTURA_DOMINI §7) |
+
+Il portale **non mostra e non incassa mai** un prezzo che non viene dal catalogo. Se il catalogo non risponde usa
+l'ultimo salvato per le pagine di vendita, segnando «aggiornato il …» nel pannello staff; **per acquistare** serve il
+catalogo corrente: all'apertura del carrello chiede la `rev` (con `If-None-Match`) e la confronta con quella
+dell'ordine. Se è cambiata mentre il cliente decideva, lo dice e ricalcola prima di incassare.
+
+Cosa fa il portale al posto del SaaS: **solo** il calcolo dell'importo dalle regole `prices[]` (stesso algoritmo per le
+fasce di soci: test comuni nei due progetti con i valori in `saas/tests/Fixtures/catalogo-casi.json`, da fare).
+
+## 3. Portale → SaaS
+
+Corpo sempre `{"token": "<JWT>"}`, `Content-Type: application/json`. Nessun cookie, nessuna sessione, nessun CSRF: vale
+solo la firma. Limite: 120 richieste al minuto per indirizzo. Errori: `{"error": "<codice>"}`; i token sono sempre in
+un `POST`/`PUT` col corpo, mai nell'indirizzo.
+
+Codici comuni: `400 missing_token` · `401 invalid_token` · `404 unknown_org` · `409 replayed` (`jti` già usato) ·
+`422 invalid_claims` (con `detail`).
+
+### 3.1 Creazione dell'associazione **[fatto, invariata]**
+
+`POST /api/portale/v1/orgs` — `typ: "provision"` — claim `ref`, `org {name, slug}`, `owner {email, name}`.
+
 - `ref`: identificativo dell'abbonamento nel portale (`[A-Za-z0-9_-]{1,64}`), stabile. Lega per sempre l'associazione
   all'abbonamento.
-- `slug`: il sottodominio (`polisportiva-alfa.associazionesemplice.it`): minuscole, cifre, trattini, 3–40 caratteri.
-  Il portale lo propone e controlla i nomi riservati (ARCHITETTURA.md §3); il SaaS ricontrolla il formato e l'unicità.
-- Il SaaS crea l'associazione con la sua chiave di cifratura e manda al titolare l'invito a scegliere la password.
+- `slug`: sottodominio (`polisportiva-alfa.associazionesemplice.it`), minuscole, cifre, trattini, 3–40 caratteri.
+- Risposte: `201 {"org_id","created":true}`, `200 {"org_id","created":false}` (stesso `ref`: **la richiesta si può
+  ripetere senza effetti**), `409 slug_taken`, `503 key_service_not_configured` (piattaforma di prova).
 
-| Risposta | Quando |
-|---|---|
-| `201 {"org_id": "<uuid>", "created": true}` | creata |
-| `200 {"org_id": "<uuid>", "created": false}` | quel `ref` esisteva già: **la richiesta si può ripetere senza effetti** |
-| `409 {"error": "slug_taken"}` | sottodominio già usato da un'altra associazione |
-| `401 invalid_token` · `422 invalid_claims` · `400 missing_token` | |
+Subito dopo il portale manda `subscription` (§3.2). Finché non arriva, l'associazione ha solo la base e un operatore.
 
-Il portale salva `org_id` accanto all'abbonamento e subito dopo manda i diritti (2.2). Finché non arrivano,
-l'associazione ha solo la base e un operatore.
+### 3.2 Abbonamento
 
-### 2.2 Diritti
-
-`PUT https://app.associazionesemplice.it/api/portale/v1/orgs/{org_id}/entitlements` — `typ: "entitlements"`
+`PUT https://app.associazionesemplice.it/api/portale/v2/orgs/{org_id}/subscription` — `typ: "subscription"`
 
 ```json
 {
-  "sub": "<org_id>",
-  "ref": "sub_123",
-  "rev": 7,
-  "status": "active",
-  "until": "2026-12-31",
-  "trial_ends": null,
+  "sub": "<org_id>", "ref": "sub_123", "rev": 7,
+  "status": "active", "until": "2026-12-31", "trial_ends": null,
+  "plan": "gestionale", "plan_version": 1,
   "members": 150,
-  "operators": 3,
-  "storage_gb": 5,
-  "packages": {
-    "member_area": {},
-    "resources": { "hourly": { "tier": 5, "web": true }, "seasonal": { "tier": 150, "web": false } },
-    "site": {},
-    "custom_domain": { "domain": "www.polisportivaalfa.it" },
-    "dedicated_db": {},
-    "einvoice": { "yearly": 50 },
-    "communications": {},
-    "advanced_accounting": {},
-    "association_life": {},
-    "sport": {}
-  },
-  "partner": "STUDIO-ROSSI"
+  "addons": [ { "code": "operators_extra", "qty": 2 }, { "code": "member_area", "qty": 1 } ],
+  "promo": "PRIMAVERA", "price_cents": 29000, "partner": "STUDIO-ROSSI"
 }
 ```
 
 | Campo | Significato |
 |---|---|
-| `sub`, `ref` | associazione e abbonamento: devono coincidere con l'indirizzo e con quanto creato in 2.1, altrimenti `404 unknown_org` |
-| `rev` | revisione, **crescente per associazione**: il SaaS applica solo una revisione maggiore dell'ultima (`409 stale_revision` con `current_rev`) |
-| `status` | `trial`, `active`, `past_due` (pagamento non riuscito, ancora aperta), `suspended`, `cancelled` |
-| `until` | fine del periodo pagato (o della prova). Dopo `until` + **15 giorni** senza diritti nuovi, il SaaS sospende da sé |
-| `trial_ends` | fine della prova, se in prova |
-| `members` | fascia di soci acquistata (informativa: il prezzo lo calcola il portale dai consumi, §3) |
-| `operators` | operatori ammessi in tutto (inclusi + aggiuntivi). Il SaaS blocca gli inviti oltre questo numero |
-| `storage_gb` | spazio per i file |
-| `packages` | solo i pacchetti attivi, con i loro limiti; un pacchetto assente non è attivo |
-| `partner` | codice del partner che ha portato il cliente (`[A-Za-z0-9_-]{1,40}`), o `null` |
+| `sub`, `ref` | associazione e abbonamento: devono coincidere con l'indirizzo e con quanto creato in 3.1, altrimenti `404 unknown_org` |
+| `rev` | revisione **crescente per associazione**, la stessa numerazione dei diritti v1: si applica solo una `rev` maggiore dell'ultima (`409 stale_revision` con `current_rev`) |
+| `status`, `until`, `trial_ends`, `partner` | **invariati rispetto alla v1** (stati `trial`, `active`, `past_due`, `suspended`, `cancelled`; dopo `until` + 15 giorni il SaaS sospende da sé) |
+| `plan`, `plan_version` | codice e versione **del catalogo**. Se il SaaS non conosce quella versione: **`409 unknown_plan`, nulla viene applicato** (il portale deve ricaricare il catalogo e riprovare) |
+| `members` | fascia di soci acquistata (informativa: il prezzo lo calcola il portale dai consumi, §4.1) |
+| `addons[]` | `code` di un addon del catalogo e `qty` ≥ 1. Codice sconosciuto → `409 unknown_addon` |
+| `promo`, `price_cents` | informativi, per il registro del SaaS (il SaaS non ricalcola i prezzi) |
 
-Limiti ammessi per pacchetto (nient'altro): `resources` → `hourly`, `daily`, `seasonal`, ciascuno
-`{tier: intero, web: bool}` (`web: false` = versione Interna); `einvoice` → `yearly`; `custom_domain` → `domain`;
-gli altri → `{}`.
+**I limiti non arrivano più dal portale.** Il SaaS li ricava dalla `plan_version` (campo `limits` del piano) sommando ciò
+che concedono gli addon (`grants` × `qty`):
 
-Effetto nel SaaS:
+- operatori ammessi = `limits.operators` del piano + Σ `grants.operators` × `qty`;
+- spazio = `max(storage_mb_min, soci × storage_mb_per_member)` + Σ `grants.storage_gb`;
+- pacchetti attivi = quelli del piano (`limits.packages`) + quelli degli addon `package`, con i loro limiti.
 
-| `status` | Associazione |
-|---|---|
-| `trial`, `active`, `past_due` | aperta (sospesa se `until` è passato da più di 15 giorni) |
-| `suspended` | sospesa: il gestionale non si apre |
-| `cancelled` | chiusa |
+Il risultato si salva come i diritti v1 (stesso `Entitlements`), quindi tutto il resto del SaaS non cambia. Ogni cambio
+finisce nel registro delle azioni dell'associazione (`subscription.updated`: piano, versione, `rev`, stato).
 
-Il portale manda i diritti **a ogni cambio** (acquisto, rinnovo, cambio di piano o di pacchetti, pagamento non
-riuscito, disdetta, scadenza della prova) e può rimandarli quando vuole: con la stessa `rev` la risposta è 409 e non
-cambia nulla. Risposta: `200 {"org_id": "…", "rev": 7}`. Ogni cambio finisce nel registro delle azioni
-dell'associazione.
+Le associazioni **create a mano** (pilota, `saas:org:create`) non hanno abbonamento: valgono i limiti di base finché non
+ne ricevono uno, e una `subscription` le tratta come qualunque altra.
 
-Errore di rete o 5xx: il portale **ritenta** (per esempio dopo 1, 5, 30 minuti, poi ogni ora) finché ottiene 200 o 409.
+Risposta: `200 {"org_id", "rev", "plan", "plan_version"}`. Errore di rete o 5xx: il portale **ritenta** (1, 5, 30 minuti,
+poi ogni ora) finché ottiene 200, 409 `stale_revision` (già applicata) o `unknown_plan` (poi ricarica il catalogo).
 
-### 2.3 Amministrazione della piattaforma (proposta v1.1, da confermare)
+### 3.3 Promozioni
 
-Divisione dei compiti, decisa dalla titolare: **`app.associazionesemplice.it` è solo il gestionale delle singole
-associazioni** (nessuna pagina di amministrazione della piattaforma). L'amministrazione (contratto, upgrade, limiti,
-piani, utenti attivi e non) sta sul portale, in `associazionesemplice.it/saas`, e **chiama il SaaS con queste
-richieste firmate**. Il SaaS non ha un'interfaccia per gli amministratori della piattaforma.
-
-**Dove vivono i dati**
-
-| Cosa | Dove | Come cambia |
-|---|---|---|
-| Piani, pacchetti, limiti (soci, operatori, spazio, risorse…), stato dell'abbonamento | **portale** (unica fonte) | l'amministratore li cambia sul portale; il portale manda i diritti (2.2) con `rev + 1`. Il SaaS non ha scritture dirette sui limiti |
-| Sospensione e riattivazione di un'associazione | portale | con `status: "suspended"` / `"active"` nei diritti (2.2); non c'è un endpoint a parte |
-| Utenti (operatori): elenco, disattivazione e riattivazione | **SaaS** | richieste qui sotto |
-| Impostazioni tecniche (posta, backup, servizio chiavi, cache) | file d'ambiente del server | non sono esposte a nessuna interfaccia |
-
-**Autenticazione**: come §1 (JWT EdDSA, chiave del portale, `exp − iat` ≤ 600, `aud` `associazionesemplice-saas`),
-con in più due claim obbligatori:
-
-| Claim | Valore |
-|---|---|
-| `act` | l'amministratore che ha chiesto l'operazione (email o id dello staff del portale): finisce nel registro del SaaS accanto all'azione |
-| `scope` | `read` o `write`. Un token `read` non può mai eseguire una scrittura (`403 scope`) |
-
-Corpo sempre `{"token": "<JWT>"}`, tutte `POST` (il token non sta mai nell'indirizzo). Il `jti` di un token `write` si
-usa **una volta sola** (ripetere la stessa richiesta con un `jti` nuovo è comunque innocuo: le scritture sono
-«imposta a questo valore»). Limite: 120 richieste al minuto. Errori `{"error": "<codice>"}`: `invalid_token` (401),
-`scope` (403), `unknown_org` · `unknown_user` (404), `invalid_claims` (422), `replayed` (409).
-
-**Letture** (`typ: "admin_read"`, `scope: "read"`):
-
-`POST /api/portale/v1/admin/orgs` — elenco. Claim opzionali: `q` (nome o indirizzo), `status`, `page`, `per_page` (≤ 100).
+`POST /api/portale/v2/promo/check` — `typ: "promo_check"` — claim `code`, `plan`, `plan_version`, `period`
+(`month`/`year`), `ref` (opzionale, abbonamento esistente):
 
 ```json
-{ "page": 1, "per_page": 50, "total": 1, "orgs": [
-  { "org_id": "<uuid>", "ref": "sub_123", "name": "Polisportiva Alfa", "slug": "polisportiva-alfa",
-    "status": "active", "rev": 7, "created_at": "2026-11-04",
-    "operators": { "active": 2, "disabled": 1, "limit": 3 },
-    "members": 142, "members_limit": 150, "storage_limit_gb": 5 } ] }
+{ "valid": true, "discount": { "type": "percent", "value": 20 }, "valid_to": "2026-12-31", "applies_to": ["gestionale"], "stackable": false }
 ```
 
-`POST /api/portale/v1/admin/orgs/{org_id}` — dettaglio: gli stessi campi più `packages` (come ricevuti nei diritti),
-`until`, `partner`, ultima `rev` applicata e data.
+Non valido: `{"valid": false, "reason": "expired"|"unknown"|"wrong_plan"|"exhausted"}` (con `200`: non è un errore del
+protocollo). **Non consuma nulla.**
 
-`POST /api/portale/v1/admin/orgs/{org_id}/operators` — operatori dell'associazione:
+`POST /api/portale/v2/promo/redeem` — `typ: "promo_redeem"` — claim `code`, `order` (identificativo dell'ordine nel
+portale, `[A-Za-z0-9_-]{1,64}`), `ref`. **Una volta sola per `order`**: ripetuta restituisce lo stesso esito. Si chiama
+al pagamento riuscito. Risposta `200 {"redeemed": true, "uses_left": 41}` o `409 exhausted`.
+
+### 3.4 Cambio di piano
+
+`POST /api/portale/v2/orgs/{org_id}/plan-change/check` — `typ: "plan_change_check"` — claim `ref`, `to_plan`,
+`to_plan_version`:
 
 ```json
-{ "operators": [
-  { "user_id": "<uuid>", "name": "Anna Rossi", "email": "titolare@example.com", "role": "owner",
-    "disabled": false, "two_factor": true, "created_at": "2026-11-04" } ] }
+{ "allowed": false, "blockers": ["Hai 180 soci e il piano ne ammette 150"], "effects": ["Si perde il pacchetto Sito"] }
 ```
 
-**Scrittura** (`typ: "admin_write"`, `scope: "write"`):
+Testi in italiano chiaro, senza dati dei soci (solo numeri). Il downgrade vale a fine periodo (decide il portale);
+questa richiesta dice solo se i dati rientrano nei limiti del piano più basso. Nessun dato si cancella mai.
 
-`POST /api/portale/v1/admin/users/{user_id}/state` con claim `disabled: true|false` (e `reason`, testo libero fino a
-200 caratteri, solo per il registro) → `200 {"user_id": "…", "disabled": true}`. Un utente disattivato non entra più
-e le sue sessioni si chiudono alla richiesta successiva. L'utente è globale: se è operatore in più associazioni, vale
-per tutte (il dettaglio lo dice).
+### 3.5 Dominio personalizzato (pacchetto `custom_domain`)
 
-**Cosa NON arriva mai al portale**: dati dei soci (anagrafica, codice fiscale, contatti, residenza), dati sanitari e
-certificati, tutori, iscrizioni, movimenti e ricevute, consensi, contenuto dei file, chiavi di cifratura, password,
-segreti della verifica in due passaggi. Passano solo: numeri (soci, operatori, spazio), stato, e per gli operatori
-nome, email, ruolo e stato dell'accesso.
+- `POST /api/portale/v2/orgs/{org_id}/domain/check` — `typ: "domain_check"` — claim `ref`, `domain`: formato valido, non
+  già di un'altra associazione, non nostro. Risposta `{"ok": true}` o `{"ok": false, "reason": "invalid"|"taken"|"reserved"|"no_package"}`.
+- `POST /api/portale/v2/orgs/{org_id}/domain/set` — `typ: "domain_set"` — claim `ref`, `domain` (o `null` per toglierlo):
+  salva e restituisce lo stato `{"domain", "state": "pending"|"active"|"error", "dns": [{"type":"CNAME","name":"…","value":"…"}], "message": "…"}`.
+  Il SaaS verifica il DNS e attiva il certificato; lo stato si rilegge con `org_status` (§3.6). `slug.associazionesemplice.it` non si cambia da qui.
 
-**Non disponibile in v1**: «ultimo accesso» e spazio usato (il SaaS non li registra; si possono aggiungere se servono). Il limite di spazio (`storage_limit_gb`) c’è.
+### 3.6 Stato per l'area clienti
 
-**Chi può usare l'interfaccia** è deciso dal portale: solo lo staff amministratore, con un ruolo «solo lettura» che
-firma token `scope: read`. Il SaaS non conosce i ruoli del portale: si fida della firma e del `scope`, e registra
-`act` per ogni scrittura.
-
-## 3. SaaS → portale
-
-### 3.1 Consumi
-
-`POST https://associazionesemplice.it/api/saas/v1/usage` con `{"token": …}`, `typ: "usage"`, firmato dal SaaS.
-Una volta al giorno (04:23) e a richiesta (`php artisan saas:portal:usage`).
+`POST /api/portale/v2/orgs/{org_id}/status` — `typ: "org_status"` — claim `ref`:
 
 ```json
-{
-  "date": "2026-11-04",
-  "orgs": [
-    { "org_id": "<uuid>", "ref": "sub_123", "members": 142, "operators": 3, "einvoices_year": 0 }
-  ]
-}
+{ "org_id": "<uuid>", "status": "active", "plan": "gestionale", "plan_version": 1, "rev": 7,
+  "members": 142, "members_limit": null, "operators": { "active": 2, "limit": 3 }, "storage_limit_gb": 5,
+  "packages": ["member_area"], "domain": { "name": "www.polisportivaalfa.it", "state": "active" } }
 ```
 
-- Solo numeri: nessun nome, email o dato dei soci.
-- `members`: oggi le schede attive in anagrafica; con il modulo Soci saranno i soci con tessera valida (stesso campo).
-- `einvoices_year`: fatture elettroniche emesse nell'anno solare (0 finché non c'è il pacchetto, fase 2).
-- Il portale risponde `200` se ha salvato; con un altro codice il SaaS riprova al giro successivo.
-- Il portale usa i numeri per la fascia di soci, gli operatori aggiuntivi e le ricariche di fatture.
+Solo numeri e stato; nessun nome di operatore o socio. Sostituisce le letture `admin/*` della v1.
 
-### 3.2 Accesso unico «Gestisci abbonamento»
+## 4. SaaS → portale
 
-Dal gestionale, il titolare (solo lui: permesso `org.subscription`) va su
-`https://associazionesemplice.it/saas/accedi?t=<JWT>`, `typ: "sso"`, vita **60 secondi**:
+### 4.1 Consumi **[fatto, invariati]**
 
-```json
-{ "sub": "titolare@example.com", "org_id": "<uuid>", "ref": "sub_123", "role": "owner" }
-```
+`POST https://associazionesemplice.it/api/saas/v1/usage` con `{"token": …}`, `typ: "usage"`, una volta al giorno (04:23)
+e a richiesta (`php artisan saas:portal:usage`). Corpo: `date` e `orgs[]` con `org_id`, `ref`, `members`, `operators`,
+`einvoices_year`. Solo numeri. Il portale risponde `200` se ha salvato; altrimenti il SaaS riprova al giro successivo.
 
-Il portale deve:
+### 4.2 Avviso di catalogo cambiato
 
-1. verificare firma (chiave del SaaS), `iss`, `aud` (il proprio indirizzo), `typ`, scadenza;
-2. usare il `jti` **una volta sola** (tenerlo per almeno 2 minuti);
-3. controllare che `ref` sia un suo abbonamento e che l'email `sub` sia quella del cliente intestatario: se no, mandare
-   alla pagina di accesso normale, senza dire perché;
-4. aprire la sessione del cliente e portarlo alla pagina dell'abbonamento di quella associazione.
+`POST https://associazionesemplice.it/api/saas/v1/catalog-changed` — `typ: "catalog_changed"` — claim `rev`. Il SaaS lo
+manda **alla pubblicazione** di una nuova `rev` dal pannello; il portale risponde `200` e scarica il catalogo (§2) entro
+un minuto. Se il portale non risponde, la pubblicazione **riesce lo stesso** (il portale ricarica comunque ogni 10 minuti)
+e l'avviso si ritenta; l'esito sta nel registro dell'amministrazione.
 
-Come per il supporto, la destinazione è fissa: niente indirizzi di ritorno presi dalla richiesta.
+### 4.3 Accesso unico «Gestisci abbonamento» **[fatto, cambia l'arrivo]**
 
-## 4. Da definire più avanti
+Dal gestionale il titolare (permesso `org.subscription`) va su
+`https://associazionesemplice.it/account/da-gestionale?t=<JWT>`, `typ: "sso"`, vita **60 secondi**, claim `sub` (email),
+`org_id`, `ref`, `role`. Il portale verifica firma, `iss`, `aud`, `typ`, scadenza; usa il `jti` una volta sola (tenuto 2
+minuti); controlla che `ref` sia un suo abbonamento e che `sub` sia l'intestatario (se no: accesso normale, senza dire
+perché); apre la sessione e porta alla pagina di quell'abbonamento. Destinazione fissa: niente indirizzi di ritorno dalla richiesta.
 
-| Cosa | Quando |
-|---|---|
-| Fattura elettronica tramite il ponte SDI del portale (invio, esiti, fatture passive) | fase 2, con il pacchetto |
-| Richiesta dei diritti dal SaaS (`POST /api/saas/v1/entitlements`, per riallinearsi dopo un guasto) | quando serve; per ora basta il ritento del portale |
-| Migrazione di un'associazione dal plugin al SaaS e ritorno | fase 4 |
+## 5. Passaggio tra le amministrazioni (`admin_hop`)
 
-## 5. Lista di lavoro per la sessione del portale
+Come ARCHITETTURA_DOMINI §8: JWT `typ: "admin_hop"`, 60 secondi, `jti` monouso, `sub` email, `mfa: true`, `from`/`aud`,
+inviato con POST da una pagina intermedia; l'amministrazione di arrivo cerca l'email nei **propri** utenti staff (il
+ruolo non viene mai dal token) e chiede il codice a due passaggi se `mfa` non è vero o l'ultima verifica ha più di 8
+ore. Chiave Ed25519 propria per ciascuna amministrazione. Il dettaglio degli indirizzi (`POST /saas/admin/hop` e
+`POST /wordpress/admin/hop`) si fissa con la sessione portale-plugin quando entrambe hanno la loro amministrazione.
 
-1. Chiave Ed25519 nuova per il SaaS (come `bin/portal-key.php`), fuori dal repository; dare al SaaS `kid=x`.
-2. Fissare in `config.php` la chiave pubblica del SaaS (`saas-…=x`).
-3. Piani e pacchetti del SaaS nel listino (PERIMETRO.md §7.2), con `ref` stabile per abbonamento e `rev` per i diritti.
-4. Alla prima attivazione: 2.1, salvare `org_id`, poi 2.2. A ogni cambio: 2.2 con `rev + 1`, con ritento.
-5. Endpoint 3.1 (consumi) e pagina 3.2 (`/saas/accedi`).
-6. Amministrazione in `/saas` (§2.3), solo dopo la conferma della titolare.
-7. Prove contro lo staging del SaaS; i test del SaaS in `tests/Feature/Portale` mostrano richieste e risposte esatte.
+## 6. Cosa non arriva mai al portale
+
+Dati dei soci (anagrafica, codice fiscale, contatti, residenza), dati sanitari e certificati, tutori, iscrizioni,
+movimenti e ricevute, consensi, contenuto dei file, chiavi di cifratura, password, segreti della verifica in due
+passaggi, nomi ed email degli operatori. Passano solo numeri (soci, operatori, spazio), stato e codici di piano.
+
+## 7. Prove e test comuni
+
+- I test del SaaS (`saas/tests/Feature/Portale`, `…/Piattaforma`) mostrano richieste e risposte esatte.
+- Valori di prova condivisi tra i due progetti (calcolo delle fasce, casi di `subscription`): `saas/tests/Fixtures/`.
+- Prima di ogni rilascio che tocca il contratto: prova del portale contro lo staging del SaaS.
+
+## 8. Migrazione dalla v1
+
+1. SaaS: catalogo in linea (§2), `subscription` accettata (§3.2), `entitlements` v1 ancora accettato.
+2. Portale: legge il catalogo, manda `subscription` al posto di `entitlements`; scrive nel registro quando passa.
+3. SaaS: l'endpoint `entitlements` v1 risponde `410 gone` un mese dopo che il portale ha migrato **tutti** gli abbonamenti;
+   le rotte `admin/*` della v1 si tolgono quando `/saas/admin` è in linea.
+4. La `rev` è una sola serie per associazione, così un messaggio v1 vecchio non sovrascrive uno v2 nuovo.
+
+## 9. Lista di lavoro per la sessione del portale
+
+1. Chiave Ed25519 nuova per il SaaS (come `bin/portal-key.php`), fuori dal repository; dare al SaaS `kid=x`; fissare in
+   `config.php` la chiave pubblica del SaaS.
+2. Lettore del catalogo (§2): cache, verifica `X-Catalog-Signature`, `If-None-Match`, endpoint `catalog-changed` (§4.2).
+3. Listino, pagina di confronto e carrello dal catalogo; istantanea di `plan`/`plan_version`/prezzo nell'ordine.
+4. Alla prima attivazione: 3.1, salvare `org_id`, poi `subscription` (3.2) con `rev + 1` a ogni cambio, con ritento.
+5. `promo.check` / `promo.redeem`, `plan_change.check`, `domain.check` / `domain.set`, `org_status`.
+6. Endpoint consumi (4.1) e pagina `/account/da-gestionale` (4.3).
