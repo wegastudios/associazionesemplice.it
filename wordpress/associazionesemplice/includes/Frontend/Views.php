@@ -109,7 +109,7 @@ final class Views {
 			return self::wrap(
 				'<div class="asemf-card"><h3>Area riservata ai soci</h3><p>Accedi per vedere la tessera, le tue attività e prenotarti agli eventi.</p>'
 				. MemberLoginPage::inline_login( $back )
-				. '<p class="asemf-small"><a href="' . esc_url( add_query_arg( '_back', rawurlencode( $back ), $own ) ) . '">Password dimenticata?</a> · <a href="' . esc_url( add_query_arg( '_back', rawurlencode( $back ), $own ) ) . '">Entra con un link o un codice via email</a> · <strong><a href="' . esc_url( FirstAccess::url() ) . '">Primo accesso</a></strong></p>'
+				. '<p class="asemf-small"><a href="' . esc_url( add_query_arg( array( 'asem_ml_reset' => '1', '_back' => rawurlencode( $back ) ), $own ) ) . '">Password dimenticata?</a> · <a href="' . esc_url( add_query_arg( '_back', rawurlencode( $back ), $own ) ) . '">Entra con un link via email</a> · <strong><a href="' . esc_url( FirstAccess::url() ) . '">Primo accesso</a></strong></p>'
 				. '<p class="asemf-small">Segreteria e staff: <a href="' . esc_url( wp_login_url( $back ) ) . '">accedi da qui</a>.</p></div>'
 			);
 		}
@@ -117,7 +117,7 @@ final class Views {
 		return self::wrap(
 			'<div class="asemf-card"><h3>Area riservata ai soci</h3><p>Accedi per vedere la tua tessera, le tue attività e prenotarti agli eventi.</p>'
 			. $form . '<p class="asemf-small"><strong><a href="' . esc_url( FirstAccess::url() ) . '">Primo accesso</a></strong> (non hai ancora una password) · <a href="' . esc_url( wp_lostpassword_url( Restrict::current_url() ) ) . '">Password dimenticata?</a></p>'
-			. ( \AssociazioneSemplice\MemberSession::enabled() ? '<p class="asemf-small"><strong><a href="' . esc_url( MemberLoginPage::url() ) . '">Entra con un link o un codice via email</a></strong>, senza password.</p>' : '' ) . '</div>'
+			. ( \AssociazioneSemplice\MemberSession::enabled() ? '<p class="asemf-small"><strong><a href="' . esc_url( MemberLoginPage::url() ) . '">Entra con un link via email</a></strong>, senza password.</p>' : '' ) . '</div>'
 		);
 	}
 
