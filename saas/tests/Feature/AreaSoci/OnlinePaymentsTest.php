@@ -157,7 +157,11 @@ it('fa prenotare le risorse Web e le mette tra le voci da pagare', function (): 
 
     $member()->get($this->host.'/area/risorse?giorno='.$day)->assertOk()->assertInertia(fn (Assert $page) => $page->component('AreaSoci/Risorse')
         ->has('slots', 14)->where('member.resources', true));
-    $member()->post($this->host.'/area/risorse/'.$court->id.'/prenota', ['date' => $day, 'start' => '18:00', 'units' => 1])->assertSessionHas('status');
+    // Senza pagamenti online attivi si prenota lo stesso e il messaggio rimanda solo alla segreteria.
+    expect($this->orgContext()->run($this->org->id, fn () => app(OnlinePayments::class)->providers()))->toBe([]);
+    $member()->post($this->host.'/area/risorse/'.$court->id.'/prenota', ['date' => $day, 'start' => '18:00', 'units' => 1])
+        ->assertSessionHas('status', 'Prenotazione registrata: puoi pagarla in segreteria.');
+    $member()->get($this->host.'/area/risorse?giorno='.$day)->assertInertia(fn (Assert $page) => $page->where('online', false));
     $member()->post($this->host.'/area/risorse/'.$court->id.'/prenota', ['date' => $day, 'start' => '18:00'])->assertSessionHasErrors('ledger');
     $member()->post($this->host.'/area/risorse/'.$court->id.'/prenota', ['date' => now('Europe/Rome')->addDays(30)->toDateString(), 'start' => '18:00'])->assertSessionHasErrors('ledger');
     $member()->post($this->host.'/area/risorse/'.$court->id.'/prenota', ['date' => now('Europe/Rome')->subDay()->toDateString(), 'start' => '18:00'])->assertSessionHasErrors('ledger');

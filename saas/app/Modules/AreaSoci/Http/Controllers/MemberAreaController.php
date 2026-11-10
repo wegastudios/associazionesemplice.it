@@ -101,6 +101,7 @@ final readonly class MemberAreaController
     public function events(): Response
     {
         return $this->page('AreaSoci/Eventi', [
+            'online' => $this->payments->providers() !== [],
             'events' => array_map(fn (array $e): array => $e + [
                 'label' => $this->dayLabel($e['date']), 'fee_label' => Money::format($e['fee']), 'due' => max(0, $e['fee'] - $e['paid']),
             ], $this->activities->upcoming($this->current->active())),
@@ -109,7 +110,7 @@ final readonly class MemberAreaController
 
     public function book(string $session): RedirectResponse
     {
-        return $this->attempt(fn () => $this->activities->book($session, $this->current->active()), 'Prenotazione registrata: il contributo si paga in segreteria o da «Paga».');
+        return $this->attempt(fn () => $this->activities->book($session, $this->current->active()), $this->payments->providers() === [] ? 'Prenotazione registrata: il contributo si paga in segreteria.' : 'Prenotazione registrata: il contributo si paga in segreteria o da «Paga».');
     }
 
     public function cancel(string $booking): RedirectResponse

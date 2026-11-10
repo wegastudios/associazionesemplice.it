@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\AreaSoci\Http\Controllers;
 
+use App\Modules\AreaSoci\Payments\OnlinePayments;
 use App\Modules\AreaSoci\Services\CurrentMember;
 use App\Modules\AreaSoci\Services\MemberPage;
 use App\Modules\Contabilita\Contracts\Money;
@@ -23,6 +24,7 @@ final readonly class MemberResourcesController
         private MemberResources $resources,
         private CurrentMember $current,
         private MemberPage $memberPage,
+        private OnlinePayments $payments,
     ) {}
 
     public function index(Request $request): Response
@@ -49,6 +51,7 @@ final readonly class MemberResourcesController
             'chosen' => $chosen['id'],
             'date' => $date,
             'today' => $today,
+            'online' => $this->payments->providers() !== [],
             'slots' => array_map(static fn (array $s): array => $s + ['price_label' => Money::format($s['price'])], $this->resources->slots($chosen['id'], $date)),
             'dayFree' => $chosen['typology'] === 'daily' ? $this->resources->dayFree($chosen['id'], $date) : null,
             'mine' => array_map(static fn (array $x): array => $x + [
@@ -78,7 +81,7 @@ final readonly class MemberResourcesController
             throw ValidationException::withMessages(['ledger' => $e->getMessage()]);
         }
 
-        return back()->with('status', 'Prenotazione registrata: puoi pagarla da «Paga» o in segreteria.');
+        return back()->with('status', $this->payments->providers() === [] ? 'Prenotazione registrata: puoi pagarla in segreteria.' : 'Prenotazione registrata: puoi pagarla da «Paga» o in segreteria.');
     }
 
     public function cancel(string $reservation): RedirectResponse

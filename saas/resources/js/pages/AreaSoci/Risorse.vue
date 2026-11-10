@@ -3,7 +3,7 @@ import { Head, router, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import MemberLayout from '../../layouts/MemberLayout.vue';
 
-const props = defineProps({ member: Object, resources: Array, chosen: String, date: String, today: String, slots: Array, dayFree: Boolean, mine: Array });
+const props = defineProps({ member: Object, resources: Array, chosen: String, date: String, today: String, slots: Array, dayFree: Boolean, mine: Array, online: Boolean });
 const res = computed(() => props.resources.find((r) => r.id === props.chosen));
 const go = (q) => router.get('/area/risorse', { risorsa: props.chosen, giorno: props.date, ...q }, { preserveScroll: true });
 const form = useForm({ date: props.date, start: '', units: 1, guests: '' });
