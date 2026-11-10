@@ -52,6 +52,7 @@ class SsoController extends Controller
             'email' => $claims['sub'],
             'name' => $claims['name'],
             'plan_id' => $plan?->id,
+            'plans' => $claims['plans'],
             'at' => now()->timestamp,
         ]);
 

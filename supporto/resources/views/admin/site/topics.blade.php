@@ -6,6 +6,7 @@
         @csrf
         <div><label for="name">Nuovo argomento</label><input id="name" name="name" maxlength="120" required></div>
         <div><label for="description">Descrizione</label><input id="description" name="description" maxlength="1000"></div>
+        <div><label for="product">Prodotto</label><select id="product" name="product"><option value="">Per tutti</option><option value="plugin">Plugin</option><option value="saas">SaaS</option></select></div>
         <div><label for="sort">Ordine</label><input id="sort" name="sort" type="number" min="0" value="0"></div>
         <div><label><input type="checkbox" name="is_public" value="1" checked> Visibile al pubblico</label></div>
         <div><button type="submit">Aggiungi</button></div>
@@ -17,6 +18,7 @@
                 @csrf
                 <div><label>Nome<input name="name" value="{{ $topic->name }}" maxlength="120" required></label></div>
                 <div><label>Descrizione<input name="description" value="{{ $topic->description }}" maxlength="1000"></label></div>
+                <div><label>Prodotto<select name="product"><option value="">Per tutti</option><option value="plugin" @selected($topic->product === 'plugin')>Plugin</option><option value="saas" @selected($topic->product === 'saas')>SaaS</option></select></label></div>
                 <div><label>Ordine<input name="sort" type="number" min="0" value="{{ $topic->sort }}"></label></div>
                 <div><label><input type="checkbox" name="is_public" value="1" @checked($topic->is_public)> Pubblico</label></div>
                 <div><button class="secondary" type="submit">Salva</button></div>

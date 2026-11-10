@@ -34,6 +34,24 @@ class SsoAndSecurityTest extends SiteTestCase
         return $payload.'.'.$b(hash_hmac('sha256', $payload, $secret ?? self::SECRET, true));
     }
 
+    public function test_v2_token_carries_a_sanitized_plans_list_and_v1_still_works(): void
+    {
+        $this->assertSame([], SsoToken::verify($this->token(['role' => 'customer']))['plans']);
+
+        $plans = [
+            ['product' => 'plugin', 'plan' => 'profiscale', 'support_level' => 'priority', 'status' => 'active'],
+            ['product' => 'saas', 'plan' => 'x', 'support_level' => 'platino', 'status' => 'strano'],
+            ['product' => 'altro', 'plan' => 'y', 'support_level' => 'base', 'status' => 'active'],
+            'non-una-voce',
+        ];
+        $got = SsoToken::verify($this->token(['v' => 2, 'role' => 'customer', 'plans' => $plans]))['plans'];
+
+        $this->assertCount(2, $got);
+        $this->assertSame('priority', $got[0]['support_level']);
+        $this->assertSame(['base', 'cancelled'], [$got[1]['support_level'], $got[1]['status']]);
+        $this->assertNull(SsoToken::verify($this->token(['v' => 3])), 'formato sconosciuto');
+    }
+
     public function test_valid_token_is_accepted_once(): void
     {
         $t = $this->token();

@@ -12,8 +12,10 @@ use App\Services\Site\CustomerLink;
 use App\Services\Site\HubClient;
 use App\Services\Site\HumanCheck;
 use App\Services\Site\TicketService;
+use App\Support\ProductPlans;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /** Modulo ticket pubblico e pagina del ticket per il cliente (link firmato). */
@@ -62,6 +64,7 @@ class PublicTicketController extends Controller
             'customer_email' => 'required|email|max:190',
             'subject' => 'required|string|max:200',
             'body' => 'required|string|min:10|max:10000',
+            'product' => ['required', Rule::in(array_keys(ProductPlans::PRODUCTS))],
             'topic_id' => 'nullable|integer|exists:topics,id',
             'plan_id' => 'nullable|integer|exists:plans,id',
             'related_hub_id' => 'nullable|integer|min:1',
@@ -78,6 +81,14 @@ class PublicTicketController extends Controller
             }
             $data['plan_id'] = $customer['plan_id'] ?? null;
         }
+
+        // L'argomento deve essere del prodotto scelto o «Per tutti»
+        if (! empty($data['topic_id']) && ! Topic::query()->whereKey($data['topic_id'])
+            ->where(fn ($q) => $q->whereNull('product')->orWhere('product', $data['product']))->exists()) {
+            return back()->withInput($request->except(HumanCheck::TOKEN_FIELD))->withErrors(['topic_id' => 'L\'argomento scelto non riguarda questo prodotto.']);
+        }
+        // Piano e livello di assistenza vengono dal portale (accesso unico), non dal modulo
+        $data += ProductPlans::pick((array) ($request->session()->get('customer.plans') ?? []), $data['product']);
 
         $ticket = $tickets->open([
             ...$data,
