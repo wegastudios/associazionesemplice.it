@@ -130,7 +130,7 @@ final class MemberLoginPage {
 				$mail = self::post( 'email' );
 			} elseif ( 'code' === $do || 'password_login' === $do || 'token' === $do ) {
 				$who = 'code' === $do ? MemberLogin::login_with_code( self::post( 'email' ), self::post( 'code' ) )
-					: ( 'token' === $do ? MemberLogin::login_with_token( $token ) : MemberLogin::login_with_password( self::post( 'email' ), self::post( 'password' ) ) );
+					: ( 'token' === $do ? MemberLogin::login_with_token( $token ) : MemberLogin::login_with_password( self::post( 'email' ), self::post( 'password' ), '' !== self::post( 'remember' ) ) );
 				if ( $who ) {
 					wp_safe_redirect( 'password_login' === $do ? self::after_url( $back ) : ( '' !== $back ? add_query_arg( '_back', rawurlencode( $back ), self::url() ) : self::url() ), 303 ); // dal link o dal codice si passa dalla pagina: se manca la password lì si sceglie, poi si torna da dove si veniva
 					exit;
@@ -266,6 +266,7 @@ final class MemberLoginPage {
 			. ( '' !== $back ? '<input type="hidden" name="_back" value="' . esc_url( $back ) . '">' : '' )
 			. self::field( 'Email', 'email', 'email', 'username', $mail )
 			. '<label>Password<input style="' . $input . '" type="password" name="password" autocomplete="current-password"></label>'
+			. '<label style="display:flex;align-items:center;gap:8px;margin:0 0 12px;font-weight:400"><input type="checkbox" name="remember" value="1" style="width:auto;margin:0">Ricordami su questo dispositivo</label>'
 			. '<div style="display:flex;flex-wrap:wrap;gap:10px">'
 			. '<button type="submit" name="asem_ml_do" value="password_login" style="' . $main . '">Entra</button>'
 			. '<button type="submit" name="asem_ml_do" value="request" formnovalidate style="' . $alt . '">Mandami un link</button></div>'

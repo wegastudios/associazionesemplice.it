@@ -162,9 +162,9 @@ final class MemberLogin {
 	}
 
 	/** Apre la sessione di una persona già riconosciuta (ad esempio dopo l'attivazione dal link della segreteria). */
-	public static function open( int $person_id, string $how ): int {
+	public static function open( int $person_id, string $how, bool $remember = false ): int {
 		MemberSession::destroy(); // il token cambia a ogni accesso
-		MemberSession::start( $person_id );
+		MemberSession::start( $person_id, $remember );
 		Db::db()->update( Db::t( 'member_auth' ), array( 'last_login_at' => self::now() ), array( 'person_id' => $person_id ) );
 		Audit::log( 'member.login', 'person', $person_id, array( 'how' => $how ) );
 		return $person_id;
@@ -213,7 +213,7 @@ final class MemberLogin {
 	}
 
 	/** Entra con email e password. Blocco progressivo per account dopo gli errori di fila. */
-	public static function login_with_password( string $email, string $password ): ?int {
+	public static function login_with_password( string $email, string $password, bool $remember = false ): ?int {
 		if ( ! MemberSession::enabled() || strlen( $password ) > self::MAX_PASSWORD_BYTES ) {
 			return null;
 		}
@@ -245,7 +245,7 @@ final class MemberLogin {
 			$upd['pass_hash'] = MemberPassword::make( $password );
 		}
 		$db->update( $tbl, $upd, array( 'person_id' => (int) $p['id'] ) );
-		return self::open( (int) $p['id'], 'password' );
+		return self::open( (int) $p['id'], 'password', $remember );
 	}
 
 	/** Impronta finta (creata una volta sola) per spendere lo stesso tempo anche quando l'email non è di un socio. */

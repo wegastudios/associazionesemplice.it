@@ -7990,6 +7990,18 @@ asem_ok( MemberSession::purge_expired() >= 1 && 0 === (int) $wpdb->get_var( $wpd
 MemberSession::start( $ms_p );
 MemberSession::start( $ms_p );
 asem_ok( 2 === MemberSession::destroy_all( $ms_p ), 'accesso proprio: «esci da tutti i dispositivi» chiude ogni sessione' );
+MemberSession::start( $ms_p, true );
+$ms_rem = $wpdb->get_row( $wpdb->prepare( 'SELECT remember, UNIX_TIMESTAMP(expires_at) - UNIX_TIMESTAMP(created_at) AS span FROM ' . Db::t( 'member_sessions' ) . ' WHERE person_id = %d', $ms_p ), ARRAY_A );
+asem_ok( 1 === (int) $ms_rem['remember'] && (int) $ms_rem['span'] >= 29 * DAY_IN_SECONDS, 'ricordami: con la spunta la sessione dura 30 giorni' );
+MemberSession::destroy_all( $ms_p );
+MemberSession::start( $ms_p );
+$ms_rem = $wpdb->get_row( $wpdb->prepare( 'SELECT remember, UNIX_TIMESTAMP(expires_at) - UNIX_TIMESTAMP(created_at) AS span FROM ' . Db::t( 'member_sessions' ) . ' WHERE person_id = %d', $ms_p ), ARRAY_A );
+asem_ok( 0 === (int) $ms_rem['remember'] && (int) $ms_rem['span'] <= Limits::get( 'member_session_hours' ) * HOUR_IN_SECONDS + 5, 'ricordami: senza la spunta (link, codice) la sessione è breve' );
+Settings::update( array( 'limits' => array( 'member_session_hours' => 2 ) ) );
+asem_ok( 2 * HOUR_IN_SECONDS === MemberSession::idle_seconds( false ) && 30 * DAY_IN_SECONDS === MemberSession::idle_seconds( true ), 'ricordami: la durata breve si cambia dai Limiti' );
+Settings::update( array( 'limits' => array( 'member_session_hours' => 12 ) ) );
+MemberSession::destroy_all( $ms_p );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\MemberLoginPage::page( '', '', '', '', '' ), 'name="remember"' ), 'ricordami: la schermata di accesso offre la spunta' );
 MemberSession::start( $ms_p );
 MemberSession::forget_person( $ms_p );
 asem_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_sessions' ) . ' WHERE person_id = ' . $ms_p ) + (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = ' . $ms_p ), 'accesso proprio: eliminando la persona spariscono sessioni e password' );
