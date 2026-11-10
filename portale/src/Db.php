@@ -81,6 +81,13 @@ final class Db {
 			'CREATE TABLE IF NOT EXISTS orders (id VARCHAR(32) PRIMARY KEY, customer_id VARCHAR(32) NOT NULL, product VARCHAR(12) NOT NULL, plan VARCHAR(40) NOT NULL, plan_version INTEGER NOT NULL, period VARCHAR(8) NOT NULL, members INTEGER NOT NULL, catalog_rev INTEGER NOT NULL, quote TEXT NOT NULL, status VARCHAR(12) NOT NULL, created_at VARCHAR(19) NOT NULL, updated_at VARCHAR(19) NOT NULL)',
 			'CREATE TABLE IF NOT EXISTS saas_outbox (id VARCHAR(32) PRIMARY KEY, org_id VARCHAR(64) NOT NULL, rev INTEGER NOT NULL, body TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, next_at VARCHAR(19) NOT NULL, done_at VARCHAR(19) NULL, last_error VARCHAR(120) NULL, created_at VARCHAR(19) NOT NULL)',
 			'CREATE TABLE IF NOT EXISTS seen_jti (jti VARCHAR(64) PRIMARY KEY, exp INTEGER NOT NULL)',
+			// Associazioni del SaaS create dal portale: `ref` è l'identificativo stabile mandato al SaaS, `rev` cresce a ogni messaggio `subscription`.
+			'CREATE TABLE IF NOT EXISTS saas_orgs (ref VARCHAR(64) PRIMARY KEY, customer_id VARCHAR(32) NOT NULL, org_id VARCHAR(64) NULL, name VARCHAR(150) NOT NULL, slug VARCHAR(40) NOT NULL, rev INTEGER NOT NULL DEFAULT 0, created_at VARCHAR(19) NOT NULL)',
+			'ALTER TABLE orders ADD COLUMN org_ref VARCHAR(64) NULL',
+			'ALTER TABLE orders ADD COLUMN provider VARCHAR(12) NULL',
+			'ALTER TABLE orders ADD COLUMN provider_ref VARCHAR(120) NULL',
+			'ALTER TABLE orders ADD COLUMN provider_customer VARCHAR(120) NULL',
+			'ALTER TABLE orders ADD COLUMN paid_at VARCHAR(19) NULL',
 			// Colonne aggiunte dopo la prima versione: se esistono già l'errore si ignora.
 			"ALTER TABLE staff ADD COLUMN saas VARCHAR(10) NOT NULL DEFAULT ''",
 			'ALTER TABLE customers ADD COLUMN password_hash VARCHAR(255) NULL',

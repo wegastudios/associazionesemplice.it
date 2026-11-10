@@ -186,7 +186,7 @@ final class Billing {
 	}
 
 	/** Piano PayPal da usare: quello scritto nel pannello, altrimenti uno creato da solo (e ricordato) con l'importo del piano. */
-	private function paypalPlan( array $price, string $period, string $label ): string {
+	public function paypalPlan( array $price, string $period, string $label ): string {
 		if ( ! empty( $price['paypal_plan'] ) ) {
 			return (string) $price['paypal_plan'];
 		}

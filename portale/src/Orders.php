@@ -58,6 +58,12 @@ final class Orders {
 		return $o;
 	}
 
+	/** Catalogo corrente (ricaricato ora) per calcolare un preventivo. @return array ['rev', 'doc', …] @throws UserError */
+	public static function catalog( Db $db, ?int $now = null ): array {
+		self::currentCatalog( $db, $now );
+		return (array) Catalog::stored( $db, $now );
+	}
+
 	/** Per acquistare serve il catalogo corrente: lo si ricarica ora; senza risposta valida non si vende. @throws UserError */
 	private static function currentCatalog( Db $db, ?int $now ): void {
 		$r = Catalog::refresh( $db, $now );
