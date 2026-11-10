@@ -45,7 +45,7 @@ final class SubscriptionNotice {
 			throw new UserError( 'unknown_subscription: licenza non trovata.' );
 		}
 		$known = $catalog->plan( $plan );
-		if ( ! $known || (int) $known['plan_version'] !== $ver ) {
+		if ( ! $known || $ver > (int) $known['plan_version'] ) { // le versioni passate restano valide per chi le ha già comprate
 			throw new UserError( 'unknown_plan: piano o versione del piano sconosciuti, non applico nulla.' );
 		}
 		$code = Site::code( $plan );

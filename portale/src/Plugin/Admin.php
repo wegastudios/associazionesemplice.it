@@ -192,6 +192,8 @@ final class Admin {
 				$row = Releases::add( $this->db, (string) ( $_POST['product'] ?? '' ), (string) $f['tmp_name'], (string) ( $_POST['note'] ?? '' ), $this->email );
 				$this->done( 'release_add', 'Versione ' . $row['version'] . ' pubblicata.', '/wordpress/admin/versioni' );
 			}
+		} elseif ( 'catalogo' === $a ) {
+			$this->catalog( $get, $b );
 		} elseif ( 'sicurezza' === $a ) {
 			$this->security( $get, $b );
 		} elseif ( 'verifica' === $a ) {
@@ -481,6 +483,64 @@ final class Admin {
 			'piano' => 'Pro Fiscale', 'nuovo_piano' => 'Pro Contabile', 'scadenza' => date( 'd/m/Y', time() + 30 * 86400 ), 'email' => $this->email,
 			'account_url' => rtrim( (string) Config::get( 'base_url' ), '/' ) . '/account',
 		);
+	}
+
+	// --- Catalogo del plugin: bozza e «Pubblica» -------------------------------------------------------------------------------
+
+	private function catalog( bool $get, string $b ): void {
+		$base  = ( new ConfigCatalog() )->document();
+		$codes = array_column( $base['plans'], 'code' );
+		if ( $get ) {
+			$draft = CatalogStore::draft( $this->db );
+			$this->show( 'catalog', 'catalogo', array(
+				'draft'     => $draft,
+				'has_draft' => CatalogStore::hasDraft( $this->db ),
+				'plans'     => $base['plans'],
+				'errors'    => CatalogStore::validate( $draft, $codes ),
+				'published' => CatalogStore::published( $this->db ),
+				'history'   => CatalogStore::history( $this->db ),
+				'levels'    => ConfigCatalog::SUPPORT_LEVELS,
+			) );
+			return;
+		}
+		$to    = self::BASE . '/catalogo';
+		$draft = CatalogStore::draft( $this->db );
+		if ( 'caratteristiche' === $b ) {
+			list( $list, $errs ) = CatalogStore::parseFeatures( (string) ( $_POST['features'] ?? '' ) );
+			if ( $errs ) {
+				throw new UserError( implode( ' ', $errs ) );
+			}
+			$draft['features'] = $list;
+			CatalogStore::saveDraft( $this->db, $draft, $this->email );
+			$this->done( 'catalog_features', 'Caratteristiche salvate nella bozza (' . count( $list ) . ').', $to );
+		} elseif ( 'piani' === $b ) {
+			foreach ( $codes as $code ) {
+				$in = (array) ( $_POST['plan'][ $code ] ?? array() );
+				$draft['plans'][ $code ] = array(
+					'audience'      => (string) ( $in['audience'] ?? '' ),
+					'visible'       => ! empty( $in['visible'] ),
+					'order'         => (int) ( $in['order'] ?? 0 ),
+					'support_level' => (string) ( $in['support_level'] ?? '' ),
+					'sites'         => $in['sites'] ?? null,
+				);
+				foreach ( $draft['features'] as $f ) {
+					$draft['matrix'][ $code ][ $f['id'] ] = array(
+						'state' => (string) ( $_POST['cell'][ $code ][ $f['id'] ] ?? 'excluded' ),
+						'note'  => (string) ( $_POST['note'][ $code ][ $f['id'] ] ?? '' ),
+					);
+				}
+			}
+			CatalogStore::saveDraft( $this->db, $draft, $this->email );
+			$this->done( 'catalog_plans', 'Piani salvati nella bozza.', $to );
+		} elseif ( 'pubblica' === $b ) {
+			$rev = CatalogStore::publish( $this->db, $base, $this->email );
+			$this->done( 'catalog_publish', 'Catalogo pubblicato: revisione ' . $rev . '.', $to );
+		} elseif ( 'scarta' === $b ) {
+			CatalogStore::discard( $this->db );
+			$this->done( 'catalog_discard', 'Bozza scartata.', $to );
+		} else {
+			$this->notFound();
+		}
 	}
 
 	// --- Verifica in due passaggi (opzionale, per persona) ----------------------------------------------------------------------
