@@ -221,3 +221,6 @@ Nuove per il SaaS: schema `core` (associazioni, utenti, ruoli, abbonamenti, chia
    più basso non ancora usato nell'associazione (riempie anche i buchi). Unicità garantita dal database:
    `UNIQUE (org_id, card_number)` sulle schede non cancellate.
 4. **Chiavi primarie UUIDv7** (§2).
+- **Tabelle di piattaforma** (`core.platform_staff`, `core.platform_audit`): non sono dati di un'associazione, quindi senza
+  `org_id` e senza RLS, nello schema `core`. Il registro (`platform_audit`) concede al ruolo dell'applicazione solo `SELECT`
+  e `INSERT`; lo staff non è collegato a `core.users` (altra persona, altro accesso). Un test lo verifica.

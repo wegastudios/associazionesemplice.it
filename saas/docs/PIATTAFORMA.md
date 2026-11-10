@@ -8,10 +8,10 @@ manca e le scelte prese**; si aggiorna a ogni PR del modulo.
 
 | # (piano §10) | Cosa | Stato |
 |---|---|---|
-| 2 | Contratto v2 | scritto; **in attesa della revisione della sessione portale-vendita** |
+| 2 | Contratto v2 | scritto; ok di portale-vendita (PR 425); restano campi plugin e `admin_hop` con portale-plugin |
 | 3 | Catalogo da file di configurazione + `GET /api/catalogo/v1` firmato | **fatto** (PR 1) |
 | 3 bis | Catalogo dal database, versione del piano immutabile | da fare (con il passo 5) |
-| 5 | `/saas/admin`: staff, 2FA, editor con bozza e «Pubblica», associazioni, utenti, registro | da fare |
+| 5 | `/saas/admin`: staff, 2FA, editor con bozza e «Pubblica», associazioni, utenti, registro | accesso, riepilogo, associazioni e registro **fatti** (PR 3); editor e utenti da fare |
 | 6 | Ricezione di `subscription`, `409 unknown_plan`, limiti dal piano | **fatto** (PR 2) |
 | 7 | `admin_hop` | da fare, dopo il passo 5 |
 | 9 | Demo `demoapp.associazionesemplice.it` | da fare |
@@ -54,3 +54,21 @@ Da fare **sul server** (accesso SSH: sessione Portale e pagamenti) prima di cost
 
 L'esito si scrive qui prima della prima riga di codice dell'amministrazione. Per costruire non serve: in sviluppo e nei
 test l'amministrazione sta su `/admin` e il prefisso è una sola costante (`config('saas.admin_path')`).
+
+## 5. Amministrazione: accesso (PR 3)
+
+- **Staff proprio**: `core.platform_staff` (ruoli `admin` e `readonly`) e `core.platform_audit` (registro: il ruolo
+  dell'applicazione può solo aggiungere righe). Sono tabelle **di piattaforma**: niente `org_id`, schema `core`, nessuna RLS;
+  la separazione dagli operatori è di tabella, guardia (`platform`) e sessione, non di riga.
+- **Sessione propria**: sotto `config('saas.admin_path')` (`admin`; dietro il proxy `saas/admin`) il middleware
+  `UsePlatformSession` usa il cookie `as_admin` (in produzione `__Secure-as_admin`) con `Path` uguale al percorso,
+  `SameSite=Strict`, scadenza alla chiusura del browser e dopo 60 minuti, e la guardia `platform`.
+- **Accesso**: email e password, poi codice a due passaggi **obbligatorio per tutti** (alla prima volta si attiva con il QR).
+  Finché il codice non è giusto la persona non è autenticata (sta «in attesa» nella sessione per 10 minuti). Il segreto
+  confermato non si sostituisce dalla pagina. Dopo 8 ore la verifica si ripete. Limiti: 5 tentativi al minuto per
+  email+indirizzo, 20 per indirizzo, 5 codici al minuto. Stesso messaggio per email sconosciuta, password sbagliata o
+  persona disattivata. Nemmeno in sviluppo si spegne (`SAAS_REQUIRE_TWO_FACTOR` riguarda solo gli operatori).
+- **Staff**: nasce solo da riga di comando: `php artisan saas:admin:create email "Nome" --role=admin|readonly` (password
+  casuale mostrata una volta); telefono perso: `php artisan saas:admin:reset-2fa email`.
+- **Pagine** (sola lettura, Blade senza JavaScript): riepilogo, associazioni, registro. Seguono: editor del catalogo con
+  bozza e «Pubblica», disattivazione utenti, gestione dello staff, `admin_hop`.
