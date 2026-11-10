@@ -91,7 +91,7 @@ final class CatalogStore {
 				'audience'      => trim( (string) ( $p['audience'] ?? '' ) ),
 				'visible'       => ! empty( $p['visible'] ),
 				'order'         => (int) ( $p['order'] ?? 0 ),
-				'support_level' => (string) ( $p['support_level'] ?? 'paid' ),
+				'support_level' => '' !== (string) ( $p['support_level'] ?? '' ) ? (string) $p['support_level'] : ( 'free' === (string) $code ? 'free' : 'paid' ), // non scelto = Standard
 				'sites'         => ( null === $sites || '' === $sites ) ? null : (int) $sites,
 			);
 		}

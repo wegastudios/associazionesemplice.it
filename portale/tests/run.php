@@ -1613,7 +1613,7 @@ check( 'catalogo: livelli di assistenza free/paid/top (gratuito = free, a pagame
 check( 'assistenza: tra i piani a pagamento il più economico è Standard, gli altri Top; il gratuito resta free', 'full' === Portale\Plugin\ConfigCatalog::standardPlan( array( 'free' => array(), 'a' => array( 'prices' => array( 'year' => array( 'cents' => 9000 ) ) ), 'full' => array( 'prices' => array( 'year' => array( 'cents' => 4800 ) ) ) ) ) );
 $sd = array( 'plans' => array( 'free' => array( 'audience' => '', 'visible' => true, 'order' => 1, 'support_level' => 'paid', 'sites' => null ), 'pro' => array( 'audience' => '', 'visible' => true, 'order' => 2, 'support_level' => '', 'sites' => null ) ), 'features' => array( array( 'id' => 'soci', 'text' => 'Soci' ) ), 'matrix' => array( 'free' => array( 'soci' => array( 'state' => 'included', 'note' => '' ) ), 'pro' => array( 'soci' => array( 'state' => 'included', 'note' => '' ) ) ) );
 $sdN = Portale\Plugin\CatalogStore::normalize( $sd );
-check( 'assistenza: free non può essere altro che Gratuita, un piano a pagamento deve scegliere Standard o Top', 2 === count( Portale\Plugin\CatalogStore::validate( $sdN, array( 'free', 'pro' ) ) ) );
+check( 'assistenza: free non può essere altro che Gratuita, un piano a pagamento senza scelta vale Standard', 1 === count( Portale\Plugin\CatalogStore::validate( $sdN, array( 'free', 'pro' ) ) ) );
 $sdN['plans']['free']['support_level'] = 'free';
 $sdN['plans']['pro']['support_level']  = 'free';
 check( 'assistenza: un piano a pagamento non può essere «free»', 1 === count( Portale\Plugin\CatalogStore::validate( $sdN, array( 'free', 'pro' ) ) ) );
@@ -1626,9 +1626,7 @@ check( 'confronto: chiave compare sconosciuta rifiutata', 1 === count( Portale\P
 $imp = Portale\Plugin\ConfrontoImport::parse( (string) file_get_contents( __DIR__ . '/../content/confronto.md' ), array( 'free', 'procontabile', 'profiscale' ) );
 $impIds = array_column( $imp['features'], 'id' );
 check( 'confronto: importate le righe di confronto.md con codici validi e unici', count( $imp['features'] ) > 100 && count( $impIds ) === count( array_unique( $impIds ) ) && 0 === count( array_filter( $impIds, function ( $i ) { return 1 !== preg_match( '/^[a-z0-9_]{2,40}$/', $i ); } ) ) );
-if ( ! isset( $imp['matrix']['procontabile']['iva'] ) ) { echo 'DEBUG ', json_encode( array_slice( $impIds, 0, 5 ) ), ' ', json_encode( array_keys( $imp['matrix'] ) ), ' ', json_encode( array_slice( array_keys( $imp['matrix']['free'] ?? array() ), -5 ) ), "
-"; }
-check( 'confronto: stato per piano (IVA solo nel Fiscale, libro soci in tutti)', 'excluded' === $imp['matrix']['procontabile']['iva'] && 'included' === $imp['matrix']['profiscale']['iva'] && 'included' === $imp['matrix']['free']['prima_nota_con_cassa_unica'] );
+check( 'confronto: stato per piano (IVA solo nel Fiscale, libro soci in tutti)', 'excluded' === $imp['matrix']['procontabile']['iva']['state'] && 'included' === $imp['matrix']['profiscale']['iva']['state'] && 'included' === $imp['matrix']['free']['prima_nota_con_cassa_unica']['state'] );
 check( 'confronto: importazione ripetibile (stessi codici)', $imp === Portale\Plugin\ConfrontoImport::parse( (string) file_get_contents( __DIR__ . '/../content/confronto.md' ), array( 'free', 'procontabile', 'profiscale' ) ) );
 check( 'confronto: testi entro 160 caratteri e righe con prezzi escluse', 0 === count( array_filter( $imp['features'], function ( $f ) { return mb_strlen( $f['text'] ) > 160; } ) ) && ! in_array( 'prezzo', $impIds, true ) );
 check( 'catalogo: piano inesistente = null',null === $cat->plan( 'inesistente' ) && null === $cat->price( 'inesistente', 'year' ) );
