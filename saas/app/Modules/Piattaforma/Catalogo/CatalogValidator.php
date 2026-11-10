@@ -13,7 +13,7 @@ use InvalidArgumentException;
  */
 final class CatalogValidator
 {
-    private const SUPPORT = ['base', 'standard', 'priority'];
+    private const SUPPORT = ['free', 'paid', 'top'];
 
     private const STATES = ['included', 'limit', 'excluded'];
 

@@ -10,7 +10,6 @@ require_once __DIR__.'/StaffHelpers.php';
 
 it('rimanda all\'accesso chi non è entrato', function (): void {
     $this->get('/admin')->assertRedirect('/admin/accesso');
-    $this->get('/admin/associazioni')->assertRedirect('/admin/accesso');
     $this->get('/admin/registro')->assertRedirect('/admin/accesso');
     $this->get('/admin/accesso')->assertOk()->assertSee('Accesso all\'amministrazione', false);
 });
@@ -37,7 +36,8 @@ it('entra solo dopo la password e il codice, con un cookie proprio', function ()
 
     $response = $this->post('/admin/verifica', ['code' => staffCode($staff)])->assertRedirect('/admin');
     $this->get('/admin')->assertOk()->assertSee('Riepilogo');
-    $this->get('/admin/associazioni')->assertOk();
+    // L'admin gestisce solo la vendita: associazioni e utenti stanno nell'app.
+    $this->get('/admin/associazioni')->assertNotFound();
     $this->get('/admin/registro')->assertOk()->assertSee('staff.login');
 
     // Cookie con nome e percorso propri: non quello del gestionale.

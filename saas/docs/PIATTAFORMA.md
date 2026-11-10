@@ -11,7 +11,7 @@ manca e le scelte prese**; si aggiorna a ogni PR del modulo.
 | 2 | Contratto v2 | scritto; ok di portale-vendita (PR 425); restano campi plugin e `admin_hop` con portale-plugin |
 | 3 | Catalogo da file di configurazione + `GET /api/catalogo/v1` firmato | **fatto** (PR 1) |
 | 3 bis | Catalogo dal database, versione del piano immutabile | da fare (con il passo 5) |
-| 5 | `/saas/admin`: staff, 2FA, editor con bozza e «Pubblica», associazioni, utenti, registro | accesso, riepilogo, associazioni e registro **fatti** (PR 3); editor e utenti da fare |
+| 5 | `/saas/admin`: staff, 2FA, editor con bozza e «Pubblica», registro. **Solo la vendita** (decisione 10/11/2026): niente elenco associazioni, utenti o disattivazioni, che stanno nell'app | accesso, riepilogo, registro ed editor del catalogo **fatti**; gestione staff e `admin_hop` da fare |
 | 6 | Ricezione di `subscription`, `409 unknown_plan`, limiti dal piano | **fatto** (PR 2) |
 | 7 | `admin_hop` | da fare, dopo il passo 5 |
 | 9 | Demo `demoapp.associazionesemplice.it` | da fare |
@@ -70,5 +70,5 @@ test l'amministrazione sta su `/admin` e il prefisso è una sola costante (`conf
   persona disattivata. Nemmeno in sviluppo si spegne (`SAAS_REQUIRE_TWO_FACTOR` riguarda solo gli operatori).
 - **Staff**: nasce solo da riga di comando: `php artisan saas:admin:create email "Nome" --role=admin|readonly` (password
   casuale mostrata una volta); telefono perso: `php artisan saas:admin:reset-2fa email`.
-- **Pagine** (sola lettura, Blade senza JavaScript): riepilogo, associazioni, registro. Seguono: editor del catalogo con
-  bozza e «Pubblica», disattivazione utenti, gestione dello staff, `admin_hop`.
+- **Pagine** (sola lettura, Blade senza JavaScript): riepilogo, catalogo (bozza e «Pubblica»), registro. Seguono: gestione dello
+  staff, `admin_hop`. L'admin non mostra né modifica associazioni, operatori, soci o utenti: è solo la parte di vendita.

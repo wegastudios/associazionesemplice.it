@@ -23,7 +23,6 @@ Route::middleware('web')->prefix(UsePlatformSession::path())->group(function ():
 
     Route::middleware('platform.staff')->group(function (): void {
         Route::get('/', [AdminConsoleController::class, 'home'])->name('platform.home');
-        Route::get('associazioni', [AdminConsoleController::class, 'orgs'])->name('platform.orgs');
         Route::get('catalogo', [AdminCatalogController::class, 'show'])->name('platform.catalog');
         Route::get('catalogo/bozza', [AdminCatalogController::class, 'draft'])->name('platform.catalog.draft');
         Route::middleware('platform.staff:write')->group(function (): void {
