@@ -512,6 +512,13 @@ final class Admin {
 			if ( $errs ) {
 				throw new UserError( implode( ' ', $errs ) );
 			}
+			$old = array();
+			foreach ( $draft['features'] as $f ) {
+				$old[ $f['id'] ] = $f;
+			}
+			foreach ( $list as $i => $f ) {
+				$list[ $i ]['detail'] = $old[ $f['id'] ]['detail'] ?? '';
+			}
 			$draft['features'] = $list;
 			CatalogStore::saveDraft( $this->db, $draft, $this->email );
 			$this->done( 'catalog_features', 'Caratteristiche salvate nella bozza (' . count( $list ) . ').', $to );
@@ -534,6 +541,12 @@ final class Admin {
 			}
 			CatalogStore::saveDraft( $this->db, $draft, $this->email );
 			$this->done( 'catalog_plans', 'Piani salvati nella bozza.', $to );
+		} elseif ( 'importa-confronto' === $b ) {
+			$imp               = ConfrontoImport::parse( (string) file_get_contents( dirname( __DIR__, 2 ) . '/content/confronto.md' ), $codes );
+			$draft['features'] = $imp['features'];
+			$draft['matrix']   = $imp['matrix'];
+			CatalogStore::saveDraft( $this->db, $draft, $this->email );
+			$this->done( 'catalog_import', 'Importate ' . count( $imp['features'] ) . ' caratteristiche dal confronto nella bozza.', $to );
 		} elseif ( 'pubblica' === $b ) {
 			$rev = CatalogStore::publish( $this->db, $base, $this->email );
 			$this->done( 'catalog_publish', 'Catalogo pubblicato: revisione ' . $rev . '.', $to );
