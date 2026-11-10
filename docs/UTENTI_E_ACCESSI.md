@@ -143,8 +143,10 @@ portale è irraggiungibile le aree **non** si aprono (nessuna sessione nuova), t
 Ordine: 1) directory centrale e migrazione della titolare, 2) token e accesso al SaaS, 3) supporto, 4) pagine «Utenti»,
 5) riconferma periodica, registro e avvisi, 6) spegnimento degli accessi locali.
 
-## 10. Da confermare
+## 10. Confermato (10/11/2026)
 
-1. I nomi dei livelli: **admin / vendita / supporto** (WordPress e SaaS) e **admin / agente** (Supporto).
-2. L'indirizzo dell'accesso staff (proposta: `associazionesemplice.it/staff/accedi`).
-3. Il caso «portale irraggiungibile»: va bene che nessuno entri nelle aree finché non torna, salvo l'accesso di emergenza della titolare?
+La titolare ha confermato tutti e tre i punti:
+
+1. Nomi dei livelli: **admin / vendita / supporto** (WordPress e SaaS) e **admin / agente** (Supporto).
+2. Indirizzo dell'accesso staff: `associazionesemplice.it/staff/accedi`.
+3. Portale irraggiungibile: nessuno entra nelle aree finché non torna, salvo l'accesso di emergenza della sola titolare dal server.
