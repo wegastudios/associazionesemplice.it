@@ -38,7 +38,7 @@ final class Sections {
 			$rest = substr( $path, strlen( '/saas/admin' ) );
 			return array( $get ? 302 : 307, self::saasAdminUrl() . $rest . $qs );
 		}
-		if ( 0 === strpos( $path, '/saas/utenti/' ) || preg_match( '#^/saas/[A-Za-z0-9-]{8,64}$#', $path ) ) {
+		if ( 0 === strpos( $path, '/saas/utenti/' ) || preg_match( '#^/saas/[0-9A-Fa-f-]{8,64}$#', $path ) ) {
 			// Vecchia gestione delle associazioni dal portale (contratto v1 §2.3, ritirata): ora è l'amministrazione del SaaS.
 			return array( $get ? 301 : 308, '/saas/admin' );
 		}
