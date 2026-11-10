@@ -1,8 +1,7 @@
 # Contratto tra portale e SaaS (v2)
 
-> **Stato: bozza v2 scritta dalla sessione Portale SaaS il 10/11/2026, da rivedere con la sessione portale-vendita.**
-> Diventa «firmato» quando la sessione portale-vendita risponde nella nota condivisa (cartella delle note di sessione)
-> con le sue osservazioni risolte. Le parti già realizzate nel SaaS sono marcate **[fatto]**.
+> **Stato: v2 scritta dalla sessione Portale SaaS il 10/11/2026; la sessione portale-vendita ha dato l'ok con 8
+> osservazioni, recepite in §2.1.** Resta da concordare con portale-plugin il formato dei campi plugin e `admin_hop`. Le parti già realizzate nel SaaS sono marcate **[fatto]**.
 > Fondamento: [../../docs/ARCHITETTURA_DOMINI.md](../../docs/ARCHITETTURA_DOMINI.md) (§4 catalogo, §5 e §5 bis `subscription`
 > e area clienti, §8 passaggio tra amministrazioni).
 
@@ -138,8 +137,39 @@ l'ultimo salvato per le pagine di vendita, segnando «aggiornato il …» nel pa
 catalogo corrente: all'apertura del carrello chiede la `rev` (con `If-None-Match`) e la confronta con quella
 dell'ordine. Se è cambiata mentre il cliente decideva, lo dice e ricalcola prima di incassare.
 
-Cosa fa il portale al posto del SaaS: **solo** il calcolo dell'importo dalle regole `prices[]` (stesso algoritmo per le
-fasce di soci: test comuni nei due progetti con i valori in `saas/tests/Fixtures/catalogo-casi.json`, da fare).
+### 2.1 Regole di calcolo dei prezzi (concordate con il portale, 10/11/2026)
+
+Il portale calcola l'importo dalle regole `prices[]`; il SaaS non ricalcola (`price_cents` della `subscription` è
+informativo). Implementazione di riferimento: `Piattaforma\Catalogo\PriceCalculator`; **casi comuni** (soci = base,
+= `up_to`, +1, anno, fasce a scatto, IVA) in `saas/tests/Fixtures/catalogo-casi.json`, da usare tali e quali nei test
+del portale.
+
+- Tutti gli importi del catalogo sono in **centesimi, IVA esclusa**. Si sommano gli imponibili di tutte le voci
+  dell'ordine **senza arrotondare** (sono interi); l'IVA si calcola **una sola volta sul totale** e si arrotonda al
+  centesimo più vicino, metà in su (`intdiv(netto × % × 2 + 100, 200)`). Il portale addebita imponibile + IVA.
+- `members_tiers`: `base_members` soci sono compresi in `base_cents`. Ogni socio oltre costa il `unit_cents` della
+  fascia in cui cade (**scaglioni marginali**, come le aliquote IRPEF). `up_to` è il **numero totale di soci** in cui la
+  fascia finisce (non la sua ampiezza); la prima fascia parte da `base_members` e deve finire oltre; l'ultima è `null`
+  (= «oltre»). Importo mensile = `base_cents` + Σ (soci nella fascia × `unit_cents`). Importo del periodo = mensile ×
+  `months_billed` (annuale = 10 mensilità). Esempio: 150 soci = 1500 + 100 × 18 = 3300.
+- `step_tiers`: l'importo della prima fascia con `quantità ≤ up_to`. Oltre l'ultima fascia chiusa (nessuna aperta) il
+  prezzo **non è a listino**: il portale non lo vende (preventivo).
+- `flat`: l'importo, per periodo.
+- **Soci all'acquisto**: alla prima attivazione il cliente dichiara la fascia (o parte dalla base); poi il prezzo si
+  ricalcola dai consumi (§4.1) al rinnovo. **Il SaaS non blocca mai per superamento dei soci**: cresce solo il prezzo
+  (`limits.members` è `null` nel piano iniziale).
+- **Rinnovi**: un abbonamento resta sulla `plan_version` e sulle regole `prices[]` del suo ordine anche se quella
+  versione esce dal catalogo; il portale conserva l'istantanea delle regole nell'ordine. Il catalogo elenca solo le
+  versioni **in vendita**, ma **il SaaS conosce tutte le versioni mai pubblicate** (archivio): `409 unknown_plan` solo
+  per una versione mai esistita.
+- **Anti-rollback**: il portale rifiuta un catalogo con `rev` minore dell'ultimo salvato e con firma o impronta non
+  valide, e mostra nel pannello staff `rev` e «aggiornato il …». Il SaaS non fa mai scendere la `rev`.
+- **Prova** (`trial_days`): **senza metodo di pagamento**. L'abbonamento nasce `status: trial` con `trial_ends`; alla fine,
+  senza pagamento, il portale manda `suspended`.
+- **Plugin**: il plugin usa lo stesso `catalogo/v1` con `product: "plugin"`; i campi propri delle licenze
+  (`domain_changes` all'anno, siti ammessi, `download`) li definiscono la sessione portale-plugin e il suo contratto; il
+  formato qui sopra non cambia (campi aggiuntivi solo nel piano plugin).
+- **Promo**: nessun minimo di spesa per ora; se servirà, `promo_check` avrà un `amount_cents` opzionale.
 
 ## 3. Portale → SaaS
 

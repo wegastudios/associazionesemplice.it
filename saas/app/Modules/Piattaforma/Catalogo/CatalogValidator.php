@@ -217,6 +217,10 @@ final class CatalogValidator
             if (! is_string($kind) || ! in_array($kind, self::PRICE_KINDS, true)) {
                 throw new InvalidArgumentException("{$name}.{$i}.kind non valido");
             }
+            if ($kind === 'members_tiers' && is_array($p['tiers'] ?? null) && is_array($p['tiers'][0] ?? null)
+                && is_int($p['tiers'][0]['up_to'] ?? null) && is_int($p['base_members'] ?? null) && $p['tiers'][0]['up_to'] <= $p['base_members']) {
+                throw new InvalidArgumentException("{$name}.{$i}: la prima fascia deve finire oltre i soci compresi nella base");
+            }
             $base = ['period' => $period, 'kind' => $kind, 'vat_percent' => self::int($p['vat_percent'] ?? null, "{$name}.{$i}.vat_percent", 0, 100)];
             $out[] = $base + match ($kind) {
                 'flat' => ['amount_cents' => self::cents($p['amount_cents'] ?? null, "{$name}.{$i}.amount_cents")],
