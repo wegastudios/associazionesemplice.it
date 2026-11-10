@@ -10,6 +10,9 @@ use Portale\Site;
  */
 final class ConfigCatalog implements Catalog {
 
+	/** Livelli di assistenza (decisione 10/11/2026; tempi di risposta in ARCHITETTURA_DOMINI §7). Di base: gratuito = free, a pagamento = paid. */
+	const SUPPORT_LEVELS = array( 'free', 'paid', 'top' );
+
 	/** @var int */
 	private $rev;
 
@@ -31,7 +34,7 @@ final class ConfigCatalog implements Catalog {
 				'audience'      => (string) ( $p['description'] ?? '' ),
 				'order'         => ++$order,
 				'visible'       => false !== ( $p['visible'] ?? true ),
-				'support_level' => 'base',
+				'support_level' => in_array( $p['support_level'] ?? '', self::SUPPORT_LEVELS, true ) ? (string) $p['support_level'] : ( 'free' === $key ? 'free' : 'paid' ),
 				'limits'        => (object) array(),
 			);
 			foreach ( (array) ( $p['prices'] ?? array() ) as $period => $pr ) {

@@ -82,7 +82,7 @@ La nuova area clienti (`/account`, portale-vendita) non interroga le tabelle del
 
 Regola di scarico: licenza in regola = qualsiasi versione conservata del prodotto (il Pro solo con piano diverso dal gratuito); licenza scaduta o con pagamento non riuscito = **solo l'ultima versione uscita prima della scadenza**. Limite giornaliero `download_day` per cliente, come sempre.
 
-Non ancora fatti: limite «cambi di dominio all'anno» dal catalogo (oggi vale il blocco in giorni) e la ricezione della notifica di abbonamento (`plan`, `plan_version`, `until`, siti).
+Non ancora fatto: l'aggancio dal negozio alla notifica di abbonamento (lo fa portale-vendita). Il cambio di dominio NON ha un numero di cambi all'anno nel catalogo: vale la regola esistente (`Billing::domainUnlockAt`, impostazione `domain_lock_days` di `/wordpress/admin/impostazioni`: primo cambio libero, poi blocco di N giorni, il personale può sempre cambiare); `domain.check` e `domain.set` usano la stessa regola. Livelli di assistenza del catalogo: `free`, `paid`, `top`.
 
 ## Notifica di abbonamento (negozio → plugin)
 
