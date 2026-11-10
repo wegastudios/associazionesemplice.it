@@ -97,3 +97,7 @@ Non ancora fatto: l'aggancio dal negozio alla notifica di abbonamento (lo fa por
 | `sites` | siti ammessi, ≥ 1 (oggi registrato in `subscriptions.sites_allowed`, non ancora imposto: una licenza resta legata a un dominio) |
 
 Ordine: prima il server licenze (nome del piano e scadenza), poi il database locale; se il server licenze non risponde l'errore sale e il negozio ritenta. Nuove colonne in `subscriptions`: `plan_version`, `sites_allowed`, `notice_rev`. Il negozio la chiamerà al posto del calcolo dei prezzi: l'aggancio lo fa portale-vendita.
+
+## Downgrade bloccato dai limiti
+
+Decisione 10/11/2026: downgrade e disdetta a **fine periodo** (già così: `PlanChange::scheduleDowngrade`), e il downgrade è **bloccato se l'uso supera i limiti** del piano di arrivo. Per il plugin il limite del catalogo è «siti ammessi» (`limits.sites`, si imposta in `/wordpress/admin/catalogo`): `Plugin\Downgrade::blockers()` conta le licenze **attive** (non scadute, non annullate) del cliente con il piano attuale; se sono più dei siti ammessi dal piano di arrivo, la programmazione del passaggio viene rifiutata con un messaggio che dice quanti siti ci sono e quanti ne ammette il nuovo piano (e `PlanChange::options()` lo riporta nel campo `blocked` delle opzioni di downgrade). Un piano di arrivo senza limite di siti non blocca mai. Il blocco guarda il catalogo **pubblicato**: finché non si pubblica un limite, il comportamento è quello di prima.
