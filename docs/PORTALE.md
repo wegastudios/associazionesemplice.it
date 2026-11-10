@@ -240,3 +240,7 @@ Il portale **legge** piani, caratteristiche e prezzi del SaaS dal suo catalogo (
 - Il confronto del **plugin** resta `content/confronto.md` finché il plugin non espone il suo catalogo (passo 4, sessione portale-plugin); la regola «tabella confronto sempre aggiornata» vale per entrambi.
 - Da fare: pagina staff con `rev` e «aggiornato il…», `promo.check`, carrello (passo 6).
 - **Due prodotti, stesse pagine** (decisione della titolare, 10/11/2026): `/prezzi` mostra le schede del plugin e, sotto, quelle del gestionale online dal catalogo; `/confronto` la tabella del plugin e sotto quella del gestionale. I due prodotti si distinguono con un'etichetta (`eyebrow`), la navigazione `product-nav` in cima a `/prezzi` e un filetto di separazione; `/saas` e `/wordpress` restano approfondimenti brevi. Il partial `views/_catalog_saas.php` si include con `$show_cards` / `$show_table`.
+
+## Accesso unico al supporto: elenco dei piani (v2)
+
+Il token dell'accesso unico (HMAC, `src/SupportSso.php`) porta, se il cliente ha licenze, `v: 2` e `plans: [{product, plan, support_level, status}]` (al massimo 20 voci, senza prezzi né dati di soci): `product` `plugin|saas`; `plan` lo slug fisso (`free`, `procontabile`, `profiscale`); `support_level` `base|standard|priority` (oggi sempre `base`: lo dichiareranno i cataloghi); `status` `active|trial|past_due|cancelled`. Senza licenze il token resta `v: 1`. Il supporto verifica firma, `aud` e `exp` prima di leggere `plans` e ignora i valori sconosciuti. Gli abbonamenti SaaS compariranno con il passo 6.

@@ -6,8 +6,8 @@ namespace Portale;
  * di supporto con un token firmato e a vita brevissima. Il sito di supporto verifica la firma con lo stesso segreto.
  *
  * Token: base64url(payload JSON) . "." . base64url(HMAC-SHA256(payload_base64url, segreto))
- * Payload: { v:1, iss: base_url del portale, aud: url del sito di supporto, sub: email, role: admin|support|customer,
- *            iat, exp (iat + 60 s), jti: id casuale da usare una sola volta }
+ * Payload: { v:1 (v:2 se porta `plans`), iss: base_url del portale, aud: url del sito di supporto, sub: email, role: admin|support|customer,
+ *            iat, exp (iat + 60 s), jti: id casuale da usare una sola volta, plans?: [{product, plan, support_level, status}] }
  * Indirizzo: {support.url}/sso?t=<token>
  */
 final class SupportSso {
@@ -69,12 +69,49 @@ final class SupportSso {
 		return null === $plan ? $out : $out + array( 'plan' => $plan );
 	}
 
+	/**
+	 * Elenco dei piani del cliente per il supporto (accesso unico v2): [{product, plan, support_level, status}], al massimo 20 voci, senza prezzi né dati di soci.
+	 * `product` è plugin|saas; `plan` lo slug fisso del piano; `support_level` base|standard|priority (base finché i cataloghi non lo dichiarano);
+	 * `status` active|trial|past_due|cancelled. Le richieste mai concluse e i rinnovi già registrati non compaiono.
+	 */
+	public static function plansFor( ?Db $db, string $email ): array {
+		if ( null === $db ) {
+			return array();
+		}
+		$out  = array();
+		$seen = array();
+		$rows = $db->all( 'SELECT s.* FROM subscriptions s JOIN customers c ON c.id = s.customer_id WHERE c.email = ? ORDER BY s.created_at', array( strtolower( trim( $email ) ) ) );
+		foreach ( $rows as $r ) {
+			$label  = sub_status( $r )[0];
+			$status = array( 'Attiva' => 'active', 'Pagamento non riuscito' => 'past_due', 'Scaduta' => 'cancelled', 'Annullata' => 'cancelled' )[ $label ] ?? '';
+			if ( '' === $status ) {
+				continue;
+			}
+			if ( 'active' === $status && 'trial' === $r['provider'] ) {
+				$status = 'trial';
+			}
+			$entry = array( 'product' => 'plugin', 'plan' => Site::slug( (string) $r['plan_code'] ), 'support_level' => 'base', 'status' => $status );
+			$key   = implode( '|', $entry );
+			if ( ! isset( $seen[ $key ] ) && count( $out ) < 20 ) {
+				$seen[ $key ] = true;
+				$out[]        = $entry;
+			}
+		}
+		return $out;
+	}
+
 	/** Indirizzo a cui mandare la persona: con l'accesso unico configurato porta il token, altrimenti la home del supporto. */
 	public static function url( ?Db $db, string $email ): string {
 		if ( ! self::enabled() ) {
 			return self::supportUrl();
 		}
-		return self::supportUrl() . '/sso?t=' . rawurlencode( self::token( $email, self::roleFor( $db, $email ), null, self::claimsFor( $db, $email ) ) );
+		return self::supportUrl() . '/sso?t=' . rawurlencode( self::token( $email, self::roleFor( $db, $email ), null, self::claimsFor( $db, $email ) + self::plansClaims( $db, $email ) ) );
+	}
+
+	/** Claim dell'accesso unico v2: i piani, con v:2; senza piani il token resta v:1. */
+	private static function plansClaims( ?Db $db, string $email ): array {
+		$plans = self::plansFor( $db, $email );
+		return $plans ? array( 'v' => 2, 'plans' => $plans ) : array();
 	}
 
 	private static function b64( string $raw ): string {
