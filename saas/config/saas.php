@@ -40,6 +40,17 @@ return [
     // portale sarà `saas/admin`, con `ASSET_URL` e `APP_URL` coerenti.
     'admin_path' => env('SAAS_ADMIN_PATH', 'admin'),
 
+    // Ambiente demo (docs/PIATTAFORMA.md §6): acceso solo sul server demo (APP_ENV=demo), mai in produzione.
+    // `saas:demo:reset` cancella il database e lo ricrea con dati finti; gli accessi sono pubblici per ruolo.
+    'demo' => [
+        'enabled' => (bool) env('SAAS_DEMO', false),
+        'org_name' => 'Polisportiva Demo',
+        'org_slug' => 'polisportiva-demo',
+        // Password pubblica degli utenti di prova (titolare@, segreteria@, commercialista@ su mail_domain).
+        'password' => env('SAAS_DEMO_PASSWORD', 'demo-demo-demo-2026'),
+        'mail_domain' => env('SAAS_DEMO_MAIL_DOMAIN', 'demo.associazionesemplice.it'),
+    ],
+
     // Contratto con il portale (docs/CONTRATTO_PORTALE.md).
     'portal' => [
         'url' => env('SAAS_PORTAL_URL', 'https://associazionesemplice.it'),
