@@ -840,7 +840,7 @@ check( 'sso: licenza a pagamento in regola → piano Pro', array( 'plan' => 'Pro
 check( 'sso: licenza scaduta o sconosciuto → nessun piano', array() === Portale\SupportSso::claimsFor( $cdb, 'scaduto@esempio.it' ) && array() === Portale\SupportSso::claimsFor( $cdb, 'nessuno@esempio.it' ) );
 $proPlans = Portale\SupportSso::plansFor( $cdb, 'pro@esempio.it' );
 usort( $proPlans, function ( $a, $b ) { return strcmp( $a['plan'], $b['plan'] ); } );
-check( 'sso v2: piani del cliente (prodotto, slug, livello base, stato)', array( array( 'product' => 'plugin', 'plan' => 'free', 'support_level' => 'base', 'status' => 'active' ), array( 'product' => 'plugin', 'plan' => 'profiscale', 'support_level' => 'base', 'status' => 'active' ) ) === $proPlans );
+check( 'sso v2: piani del cliente (prodotto, slug, livello dal catalogo, stato)', array( array( 'product' => 'plugin', 'plan' => 'free', 'support_level' => 'free', 'status' => 'active' ), array( 'product' => 'plugin', 'plan' => 'profiscale', 'support_level' => 'paid', 'status' => 'active' ) ) === $proPlans );
 check( 'sso v2: licenza scaduta → cancelled; sconosciuto → nessun piano', 'cancelled' === Portale\SupportSso::plansFor( $cdb, 'scaduto@esempio.it' )[0]['status'] && array() === Portale\SupportSso::plansFor( $cdb, 'nessuno@esempio.it' ) && array() === Portale\SupportSso::plansFor( null, 'pro@esempio.it' ) );
 Config::set( 'support.sso_secret', str_repeat( 's', 40 ) );
 parse_str( (string) parse_url( Portale\SupportSso::url( $cdb, 'pro@esempio.it' ), PHP_URL_QUERY ), $q2 );

@@ -71,7 +71,7 @@ final class SupportSso {
 
 	/**
 	 * Elenco dei piani del cliente per il supporto (accesso unico v2): [{product, plan, support_level, status}], al massimo 20 voci, senza prezzi né dati di soci.
-	 * `product` è plugin|saas; `plan` lo slug fisso del piano; `support_level` base|standard|priority (base finché i cataloghi non lo dichiarano);
+	 * `product` è plugin|saas; `plan` lo slug fisso del piano; `support_level` free|paid|top (dal catalogo del prodotto);
 	 * `status` active|trial|past_due|cancelled. Le richieste mai concluse e i rinnovi già registrati non compaiono.
 	 */
 	public static function plansFor( ?Db $db, string $email ): array {
@@ -90,7 +90,8 @@ final class SupportSso {
 			if ( 'active' === $status && 'trial' === $r['provider'] ) {
 				$status = 'trial';
 			}
-			$entry = array( 'product' => 'plugin', 'plan' => Site::slug( (string) $r['plan_code'] ), 'support_level' => 'base', 'status' => $status );
+			$slug  = Site::slug( (string) $r['plan_code'] );
+			$entry = array( 'product' => 'plugin', 'plan' => $slug, 'support_level' => self::levelOf( $db, $slug ), 'status' => $status );
 			$key   = implode( '|', $entry );
 			if ( ! isset( $seen[ $key ] ) && count( $out ) < 20 ) {
 				$seen[ $key ] = true;
@@ -106,6 +107,13 @@ final class SupportSso {
 			return self::supportUrl();
 		}
 		return self::supportUrl() . '/sso?t=' . rawurlencode( self::token( $email, self::roleFor( $db, $email ), null, self::claimsFor( $db, $email ) + self::plansClaims( $db, $email ) ) );
+	}
+
+	/** Livello di assistenza del piano dal catalogo del plugin (free|paid|top); piano nascosto o sconosciuto: free per il gratuito, altrimenti paid. */
+	private static function levelOf( Db $db, string $slug ): string {
+		$plan = ( new Plugin\DbCatalog( $db ) )->plan( $slug );
+		$lvl  = is_array( $plan ) ? (string) ( $plan['support_level'] ?? '' ) : '';
+		return in_array( $lvl, Plugin\ConfigCatalog::SUPPORT_LEVELS, true ) ? $lvl : ( 'free' === $slug ? 'free' : 'paid' );
 	}
 
 	/** Claim dell'accesso unico v2: i piani, con v:2; senza piani il token resta v:1. */
