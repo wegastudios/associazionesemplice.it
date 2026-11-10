@@ -245,3 +245,13 @@ Il portale **legge** piani, caratteristiche e prezzi del SaaS dal suo catalogo (
 ## Accesso unico al supporto: elenco dei piani (v2)
 
 Il token dell'accesso unico (HMAC, `src/SupportSso.php`) porta, se il cliente ha licenze, `v: 2` e `plans: [{product, plan, support_level, status}]` (al massimo 20 voci, senza prezzi né dati di soci): `product` `plugin|saas`; `plan` lo slug fisso (`free`, `procontabile`, `profiscale`); `support_level` `base|standard|priority` (oggi sempre `base`: lo dichiareranno i cataloghi); `status` `active|trial|past_due|cancelled`. Senza licenze il token resta `v: 1`. Il supporto verifica firma, `aud` e `exp` prima di leggere `plans` e ignora i valori sconosciuti. Gli abbonamenti SaaS compariranno con il passo 6.
+
+## Catalogo del plugin: bozza e «Pubblica» (`/wordpress/admin/catalogo`)
+
+Sezione **Piani → Catalogo**, solo per gli amministratori. Cosa si decide qui: a chi è rivolto ogni piano, visibilità e ordine, livello di assistenza (`free`/`paid`/`top`), siti ammessi, elenco delle caratteristiche e, per ogni piano, se ciascuna è inclusa, con limite (con nota) o non inclusa.
+
+- **Bozza e pubblicazione.** Le modifiche vanno nella bozza (`plugin_catalog_draft`, una sola) e non le vede nessuno. «Pubblica» crea una **revisione immutabile** (`plugin_catalog_revs`, numero crescente) e svuota la bozza; «Scarta» la butta. Ogni azione è nel registro con chi l'ha fatta.
+- **Versione del piano.** `plan_version` sale di uno solo per i piani il cui contenuto è cambiato; le versioni passate restano valide per chi le ha già comprate (la notifica di abbonamento accetta qualunque versione ≤ quella corrente).
+- **Controlli prima di pubblicare:** codici caratteristica validi e unici, testi senza HTML (max 160), livello di assistenza valido, siti 1–1000, almeno una caratteristica per ogni piano visibile, almeno un piano visibile.
+- **Cosa NON c'è qui (per ora):** nomi e prezzi restano in «Piani e prezzi» (il catalogo li legge da lì in tempo reale) finché il negozio non passa dal catalogo; le promozioni; la firma EdDSA.
+- **Nessun effetto prima del primo «Pubblica».** Finché non si pubblica niente, `GET /wordpress/api/catalogo/v1` risponde come prima (dalla configurazione). Classi: `Plugin\CatalogStore` (bozza, controlli, pubblicazione), `Plugin\DbCatalog` (lettura per il portale), `Plugin\ConfigCatalog` (base viva: nomi e prezzi).

@@ -43,7 +43,7 @@ final class App {
 				return;
 			}
 			if ( 'GET' === $method && Plugin\CatalogApi::PATH === $path ) {
-				Plugin\CatalogApi::serve( new Plugin\ConfigCatalog() );
+				Plugin\CatalogApi::serve( new Plugin\DbCatalog( $this->db ) );
 				return;
 			}
 			if ( 'GET' === $method && Plugin\DownloadLink::PATH === $path ) {

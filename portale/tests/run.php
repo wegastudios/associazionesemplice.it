@@ -1469,6 +1469,67 @@ check( 'notifica: revisione già applicata o più vecchia = ignorata, nessuna ch
 check( 'notifica: revisione più nuova applicata', 'applied' === Portale\Plugin\SubscriptionNotice::apply( $ndb, $nbil, $ncat, array( 'rev' => 2, 'sites' => 5 ) + $nmsg ) && 5 === (int) $ndb->one( "SELECT sites_allowed FROM subscriptions WHERE id = 'n1'" )['sites_allowed'] );
 Http::$transport = $nprev;
 
+// Editor del catalogo: bozza, validazione, pubblicazione, versioni dei piani
+$kdb = new Db( new PDO( 'sqlite::memory:' ) );
+$kdb->migrate();
+$kbase  = ( new Portale\Plugin\ConfigCatalog() )->document();
+$kcodes = array_column( $kbase['plans'], 'code' );
+$kfull  = Portale\Site::slug( 'full' );
+$kcat   = new Portale\Plugin\DbCatalog( $kdb );
+check( 'catalogo editor: senza pubblicazioni il catalogo è quello della configurazione', null === Portale\Plugin\CatalogStore::published( $kdb ) && $kcat->document()['plans'] == $kbase['plans'] );
+$kd = Portale\Plugin\CatalogStore::draft( $kdb );
+check( 'catalogo editor: la bozza parte dai piani di oggi', array_keys( $kd['plans'] ) === $kcodes && array() === $kd['features'] );
+check( 'catalogo editor: nessuna bozza salvata finché non si salva', ! Portale\Plugin\CatalogStore::hasDraft( $kdb ) );
+check( 'catalogo editor: piano visibile senza caratteristiche non pubblicabile', null !== throwsUser( function () use ( $kdb, $kbase ) { Portale\Plugin\CatalogStore::publish( $kdb, $kbase, 'staff@esempio.it' ); } ) );
+list( $kfeat, $kerr ) = Portale\Plugin\CatalogStore::parseFeatures( "soci | Anagrafica soci\nprima_nota | Prima nota\n\n" );
+check( 'catalogo editor: righe «codice | testo» lette', array() === $kerr && 2 === count( $kfeat ) && 'prima_nota' === $kfeat[1]['id'] );
+check( 'catalogo editor: riga senza separatore segnalata', array() !== Portale\Plugin\CatalogStore::parseFeatures( 'solo testo' )[1] );
+$kd['features'] = $kfeat;
+foreach ( $kcodes as $kc ) {
+	$kd['matrix'][ $kc ]['soci']       = array( 'state' => 'included', 'note' => '' );
+	$kd['matrix'][ $kc ]['prima_nota'] = array( 'state' => $kc === $kfull ? 'included' : 'excluded', 'note' => '' );
+}
+$kd['plans'][ $kfull ]['support_level'] = 'top';
+check( 'catalogo editor: bozza valida', array() === Portale\Plugin\CatalogStore::validate( $kd, $kcodes ) );
+$kbad = $kd;
+$kbad['features'][0]['id'] = 'Soci!';
+$kbad['plans'][ $kfull ]['support_level'] = 'oro';
+$kbad['plans'][ $kfull ]['sites'] = 5000;
+$kbad['features'][1]['text'] = '<b>x</b>';
+check( 'catalogo editor: codice, livello, siti e HTML non validi segnalati', count( Portale\Plugin\CatalogStore::validate( $kbad, $kcodes ) ) >= 4 );
+$knone = $kd;
+foreach ( $knone['plans'] as $kc => $kp ) {
+	$knone['plans'][ $kc ]['visible'] = false;
+}
+check( 'catalogo editor: deve restare visibile almeno un piano', in_array( 'Deve restare visibile almeno un piano.', Portale\Plugin\CatalogStore::validate( $knone, $kcodes ), true ) );
+Portale\Plugin\CatalogStore::saveDraft( $kdb, $kd, 'staff@esempio.it' );
+check( 'catalogo editor: bozza salvata ma non ancora visibile al portale', Portale\Plugin\CatalogStore::hasDraft( $kdb ) && null === Portale\Plugin\CatalogStore::published( $kdb ) && array() === $kcat->document()['features'] );
+check( 'catalogo editor: pubblicazione = revisione 1', 1 === Portale\Plugin\CatalogStore::publish( $kdb, $kbase, 'staff@esempio.it' ) && ! Portale\Plugin\CatalogStore::hasDraft( $kdb ) );
+$kdoc = $kcat->document();
+$kplan = null;
+foreach ( $kdoc['plans'] as $kp ) {
+	if ( $kp['code'] === $kfull ) {
+		$kplan = $kp;
+	}
+}
+check( 'catalogo editor: il portale legge la revisione pubblicata (rev, livello, caratteristiche)', 1 === $kdoc['rev'] && 'top' === $kplan['support_level'] && 1 === $kplan['plan_version'] && 2 === count( $kdoc['features'] ) && 'included' === $kdoc['features'][1]['plans'][ $kfull ]['state'] );
+check( 'catalogo editor: i prezzi restano quelli vivi della configurazione', $kdoc['prices'] === $kbase['prices'] );
+// Ripubblicare senza cambiare nulla: nuova revisione, versioni dei piani invariate
+Portale\Plugin\CatalogStore::saveDraft( $kdb, Portale\Plugin\CatalogStore::draft( $kdb ), 'staff@esempio.it' );
+check( 'catalogo editor: ripubblicare senza modifiche = revisione 2, plan_version invariata', 2 === Portale\Plugin\CatalogStore::publish( $kdb, $kbase, 'staff@esempio.it' ) && 1 === (int) array_values( array_filter( $kcat->document()['plans'], function ( $p ) use ( $kfull ) { return $p['code'] === $kfull; } ) )[0]['plan_version'] );
+// Cambiando un piano la sua versione sale; l'altro resta com'è
+$k2 = Portale\Plugin\CatalogStore::draft( $kdb );
+$k2['matrix'][ $kfull ]['soci'] = array( 'state' => 'limit', 'note' => 'fino a 500 soci' );
+Portale\Plugin\CatalogStore::saveDraft( $kdb, $k2, 'staff@esempio.it' );
+Portale\Plugin\CatalogStore::publish( $kdb, $kbase, 'staff@esempio.it' );
+$kv = array();
+foreach ( $kcat->document()['plans'] as $kp ) {
+	$kv[ $kp['code'] ] = $kp['plan_version'];
+}
+check( 'catalogo editor: cambia un piano = la sua plan_version sale, quelle degli altri no', 2 === $kv[ $kfull ] && count( $kcodes ) === 1 + count( array_filter( $kv, function ( $v ) { return 1 === $v; } ) ) );
+check( 'catalogo editor: revisioni conservate in elenco', 3 === count( Portale\Plugin\CatalogStore::history( $kdb ) ) );
+check( 'catalogo editor: scartare la bozza', ( Portale\Plugin\CatalogStore::saveDraft( $kdb, $k2, 'x' ) || true ) && ( Portale\Plugin\CatalogStore::discard( $kdb ) || true ) && ! Portale\Plugin\CatalogStore::hasDraft( $kdb ) );
+
 // Catalogo del plugin (interfaccia Catalog, formato catalogo/v1)
 $cat    = new Portale\Plugin\ConfigCatalog( 3 );
 $catDoc = $cat->document();
