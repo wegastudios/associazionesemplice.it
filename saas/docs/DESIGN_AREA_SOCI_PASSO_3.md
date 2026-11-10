@@ -300,15 +300,13 @@ Sulla Tessera, sotto la carta, **un solo pulsante** adatto al telefono: sui disp
 ufficiali (marchio): le regole di Apple e Google vietano di ridisegnarli. In Profilo, riga «Wallet» con stato («Aggiunta» non si può
 sapere in modo affidabile: la riga dice solo «Aggiungi»).
 
-## 4. Disegni da produrre (prima del codice)
+## 4. Disegni
 
-1. Icona maschera 512 e controllo a 48 px.
-2. Carta d'invito all'installazione (chiara e scura).
-3. `Sheet` d'installazione per iPhone: tre passi illustrati.
-4. `Sheet` «Avvisi» come in §2.4, con stato «bloccati dal telefono».
-5. Striscia «Aggiornamento pronto» e striscia «Sei senza connessione».
-6. Tessera offline (badge giallo «Salvata il…»).
-7. Anteprima del pass wallet (fronte), in chiaro e scuro.
+Schermi di riferimento in [mockup/area-soci-passo-3.html](mockup/area-soci-passo-3.html) (si apre nel browser; stessi colori e
+misure dell'app, anche tema scuro): icona maschera, invito a installare, foglio per iPhone, impostazioni degli avvisi, strisce
+di stato, tessera senza rete, bacheca «Avvisi», avvisi a schermo bloccato, nuova comunicazione della segreteria, sezione
+«Sul tuo telefono» in scuro. L'anteprima del pass wallet non c'è: la 3c è rimandata. I riquadri del foglio per iPhone sono
+descrittivi: le illustrazioni vere di Safari le fa lo sviluppo.
 
 ## 5. Decisioni che spettano al titolare (non all'implementazione)
 
