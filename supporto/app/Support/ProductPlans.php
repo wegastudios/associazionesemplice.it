@@ -7,7 +7,20 @@ class ProductPlans
 {
     public const PRODUCTS = ['plugin' => 'Plugin', 'saas' => 'SaaS', 'billing' => 'Fatturazione e account'];
 
-    public const LEVELS = ['base' => 0, 'standard' => 1, 'priority' => 2];
+    /** Livelli di assistenza: free, paid, top (etichette ai clienti: Gratuita, Standard, Top). */
+    public const LEVELS = ['free' => 0, 'paid' => 1, 'top' => 2];
+
+    public const LEVEL_LABELS = ['free' => 'Gratuita', 'paid' => 'Standard', 'top' => 'Top'];
+
+    /** Vocabolario precedente del portale, accettato durante la transizione. */
+    private const LEVEL_ALIASES = ['base' => 'free', 'standard' => 'paid', 'priority' => 'top'];
+
+    public static function level(mixed $value): string
+    {
+        $value = is_string($value) ? (self::LEVEL_ALIASES[$value] ?? $value) : null;
+
+        return isset(self::LEVELS[$value]) ? $value : 'free';
+    }
 
     public const STATUSES = ['active', 'trial', 'past_due', 'suspended', 'cancelled'];
 
@@ -26,7 +39,7 @@ class ProductPlans
                 continue;
             }
             $active = in_array($p['status'], ['active', 'trial'], true);
-            $rank = ($active ? 10 : 0) + self::LEVELS[$p['support_level']];
+            $rank = ($active ? 10 : 0) + self::LEVELS[self::level($p['support_level'])];
             if ($best === null || $rank > $best[0]) {
                 $best = [$rank, $p, $active];
             }
@@ -35,11 +48,11 @@ class ProductPlans
             return ['plan_slug' => null, 'support_level' => null];
         }
 
-        return ['plan_slug' => $best[1]['plan'], 'support_level' => $best[2] ? $best[1]['support_level'] : 'base'];
+        return ['plan_slug' => $best[1]['plan'], 'support_level' => $best[2] ? self::level($best[1]['support_level']) : 'free'];
     }
 
     /**
-     * Elenco `plans` del token: voci non valide scartate, valori sconosciuti ridotti (livello base, stato non attivo), massimo 20.
+     * Elenco `plans` del token: voci non valide scartate, valori sconosciuti ridotti (livello gratuito, stato non attivo), massimo 20.
      *
      * @return array<int, array{product: string, plan: string, support_level: string, status: string}>
      */
@@ -57,7 +70,7 @@ class ProductPlans
             $out[] = [
                 'product' => $p['product'],
                 'plan' => $p['plan'],
-                'support_level' => isset(self::LEVELS[$p['support_level'] ?? null]) ? $p['support_level'] : 'base',
+                'support_level' => self::level($p['support_level'] ?? null),
                 'status' => in_array($p['status'] ?? null, self::STATUSES, true) ? $p['status'] : 'cancelled',
             ];
         }

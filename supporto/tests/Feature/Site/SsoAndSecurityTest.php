@@ -5,6 +5,7 @@ namespace Tests\Feature\Site;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\Site\SsoToken;
+use App\Support\ProductPlans;
 use Illuminate\Support\Facades\Cache;
 use Tests\SiteTestCase;
 
@@ -47,9 +48,16 @@ class SsoAndSecurityTest extends SiteTestCase
         $got = SsoToken::verify($this->token(['v' => 2, 'role' => 'customer', 'plans' => $plans]))['plans'];
 
         $this->assertCount(2, $got);
-        $this->assertSame('priority', $got[0]['support_level']);
-        $this->assertSame(['base', 'cancelled'], [$got[1]['support_level'], $got[1]['status']]);
+        $this->assertSame('top', $got[0]['support_level'], 'priority è il vecchio nome di top');
+        $this->assertSame(['free', 'cancelled'], [$got[1]['support_level'], $got[1]['status']]);
         $this->assertNull(SsoToken::verify($this->token(['v' => 3])), 'formato sconosciuto');
+
+        // Vocabolario dei livelli: free|paid|top, con i vecchi nomi accettati e convertiti
+        $levels = array_column(ProductPlans::sanitize(array_map(
+            fn ($l) => ['product' => 'plugin', 'plan' => 'p', 'support_level' => $l, 'status' => 'active'],
+            ['free', 'paid', 'top', 'base', 'standard', 'priority', 'altro'],
+        )), 'support_level');
+        $this->assertSame(['free', 'paid', 'top', 'free', 'paid', 'top', 'free'], $levels);
     }
 
     public function test_valid_token_is_accepted_once(): void
