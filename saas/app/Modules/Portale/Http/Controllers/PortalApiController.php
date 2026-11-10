@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Portale\Http\Controllers;
 
+use App\Modules\Piattaforma\Contracts\UnknownAddon;
+use App\Modules\Piattaforma\Contracts\UnknownPlan;
 use App\Modules\Portale\Entitlements\PortalSync;
 use App\Modules\Portale\Entitlements\SlugTaken;
 use App\Modules\Portale\Entitlements\StaleEntitlements;
@@ -45,6 +47,16 @@ final readonly class PortalApiController
         });
     }
 
+    /** Abbonamento v2 (CONTRATTO_PORTALE.md §3.2): al posto dei diritti calcolati dal portale. */
+    public function subscription(Request $request, string $org): JsonResponse
+    {
+        return $this->guard($request, function (string $token) use ($org): JsonResponse {
+            $result = $this->sync->applySubscription($token, $org);
+
+            return new JsonResponse(['org_id' => $org] + $result);
+        });
+    }
+
     /** @param  Closure(string): JsonResponse  $action */
     private function guard(Request $request, Closure $action): JsonResponse
     {
@@ -61,6 +73,10 @@ final readonly class PortalApiController
             return new JsonResponse(['error' => 'stale_revision', 'current_rev' => $e->current], 409);
         } catch (SlugTaken) {
             return self::error(409, 'slug_taken');
+        } catch (UnknownPlan) {
+            return self::error(409, 'unknown_plan');
+        } catch (UnknownAddon) {
+            return self::error(409, 'unknown_addon');
         } catch (UnknownOrg) {
             return self::error(404, 'unknown_org');
         } catch (InvalidArgumentException $e) {

@@ -9,6 +9,7 @@ use App\Modules\Portale\Console\SuspendExpiredCommand;
 use App\Modules\Portale\Contracts\Entitlements;
 use App\Modules\Portale\Entitlements\EntitlementReader;
 use App\Modules\Portale\Http\Controllers\AdminApiController;
+use App\Modules\Portale\Http\Controllers\CatalogController;
 use App\Modules\Portale\Http\Controllers\PortalApiController;
 use App\Modules\Portale\Http\Controllers\SubscriptionSsoController;
 use App\Modules\Portale\Http\Middleware\RequirePackage;
@@ -44,6 +45,13 @@ final class PortaleServiceProvider extends ServiceProvider
             Route::post('/admin/orgs/{org}/operators', [AdminApiController::class, 'operators'])->whereUuid('org');
             Route::post('/admin/users/{user}/state', [AdminApiController::class, 'userState'])->whereUuid('user');
         });
+
+        // Abbonamento v2: il SaaS ricava i limiti dal piano (CONTRATTO_PORTALE.md §3.2).
+        Route::put('api/portale/v2/orgs/{org}/subscription', [PortalApiController::class, 'subscription'])
+            ->whereUuid('org')->middleware('throttle:portal-api');
+
+        // Catalogo pubblico e firmato: piani, prezzi e promozioni che il portale legge (§2).
+        Route::get('api/catalogo/v1', CatalogController::class)->middleware('throttle:portal-api');
 
         Route::middleware(['web', 'auth', 'two-factor', 'operator', 'can:org.subscription'])
             ->get('/gestionale/abbonamento', SubscriptionSsoController::class)
