@@ -10,7 +10,7 @@ Chi prende il plugin non prende il SaaS: sono **alternative**. Quindi serve una 
 | # | Tabella | Dove | Colonne | Da dove arriva |
 |---|---|---|---|---|
 | 1 | **Plugin o gestionale online?** (guida alla scelta) | `associazionesemplice.it/confronto` | Plugin · Gestionale online | testo del portale + celle riempite dal catalogo |
-| 2 | **Confronto dei piani del plugin** (oggi `portale/content/confronto.md`) | `associazionesemplice.it/wordpress/confronto` (e il popup della demo `/confronto-demo`, invariato) | Gratuito · Pro Contabile · Pro Fiscale | catalogo del plugin (`features`, `plans`, `prices`) |
+| 2 | **Confronto dei piani del plugin** (oggi `portale/content/confronto.md`) | `associazionesemplice.it/wordpress/confronto` (e il popup della demo `/confronto-demo`, invariato) | Gratuito · Contabilità · Contabilità & Fiscale | catalogo del plugin (`features`, `plans`, `prices`) |
 | 3 | **Cosa comprende il gestionale e i suoi pacchetti** | `associazionesemplice.it/saas/prezzi` | base · un pacchetto per riga con il prezzo | catalogo del SaaS (`features`, `addons`, `prices`) |
 
 La tabella 1 è nuova e va nella home di vendita. Le altre due esistono già in forma diversa e si generano dal catalogo, non a mano
@@ -34,8 +34,8 @@ dell'installazione**.» Le celle `{…}` si riempiono dal catalogo; la riga segn
 | **Area soci** (tessera, prenotazioni) | ✓ area riservata nel tuo sito | pacchetto «Area soci e pagamenti» · {addon:member_area} |
 | **Pagamenti online** (Stripe, PayPal) | con Pro | con il pacchetto Area soci |
 | **Risorse e prenotazioni** (campi, sale) | con Pro | pacchetto «Risorse e prenotazioni» · {addon:resources_hourly_web} |
-| **Fattura elettronica** | tramite il ponte con la piattaforma, **solo nei piani con contabilità** (in arrivo: si mostra solo quando esiste) | pacchetto · {addon:einvoice} |
-| **Rendiconto per cassa e parte fiscale** | Pro Fiscale | ★ da verificare (base o «Contabilità avanzata») |
+| **Fattura elettronica** | tramite il ponte con la piattaforma, **solo nel piano «Contabilità & Fiscale»** (in arrivo: si mostra solo quando esiste) | pacchetto · {addon:einvoice} |
+| **Rendiconto per cassa e parte fiscale** | piano «Contabilità & Fiscale» | ★ da verificare (base o «Contabilità avanzata») |
 | **Operatori / utenti** | ruoli di WordPress | {plan:gestionale.operators} |
 | **Verifica in due passaggi** | quella di WordPress | obbligatoria per tutti gli operatori |
 | **Sito dell'associazione** | il tuo WordPress | pacchetto «Sito» · {addon:site} |
@@ -120,8 +120,8 @@ mensile e annuale: è un'idea di progetto, da realizzare dopo la tabella.
 
 ## 7. Da verificare prima di pubblicare
 
-1. La riga ★ rimasta della tabella 1 (parte fiscale del gestionale: base o «Contabilità avanzata»). Sul resto la titolare ha deciso il 10/11/2026: la fattura elettronica del plugin passa dal ponte e solo nei piani con contabilità; tra plugin e gestionale non c'è migrazione, chi cambia sottoscrive il nuovo e lascia scadere il vecchio.
-2. Il nome pubblico dei piani del plugin (Pro Contabile, Pro Fiscale) e i prezzi dal catalogo del plugin (la vetrina del portale ha
+1. La riga ★ rimasta della tabella 1 (parte fiscale del gestionale: base o «Contabilità avanzata»). Sul resto la titolare ha deciso il 10/11/2026: la fattura elettronica del plugin passa dal ponte e solo nel piano «Contabilità & Fiscale»; tra plugin e gestionale non c'è migrazione, chi cambia sottoscrive il nuovo e lascia scadere il vecchio.
+2. I nomi pubblici dei piani del plugin: «Contabilità» (Pro Contabile) e «Contabilità & Fiscale» (Pro Fiscale); nelle tabelle si usano solo questi e i prezzi dal catalogo del plugin (la vetrina del portale ha
    5 € / 48 € e 12 € / 119 € in `config.example.php`, ma il listino vero sta nelle impostazioni di produzione).
 3. Che la parte fiscale (IVA, 5 per mille, rendiconto per cassa) sia davvero in «Contabilità avanzata» o nella base del gestionale
    (`saas/docs/PERIMETRO.md` §3 e `saas/config/catalogo.php` non coincidono del tutto).
