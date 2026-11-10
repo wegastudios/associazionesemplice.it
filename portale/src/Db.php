@@ -120,6 +120,22 @@ final class Db {
 				totp_secret_enc TEXT NULL, mfa_at VARCHAR(19) NULL)',
 			"INSERT INTO plugin_staff (email, role, created_at) SELECT email, role, created_at FROM staff
 				WHERE role IN ('admin','support') AND email NOT IN (SELECT email FROM plugin_staff)",
+			// Elenco centrale dello staff (docs/UTENTI_E_ACCESSI.md §6). Primo tempo: si aggiunge e si copia, le tabelle vecchie restano.
+			'CREATE TABLE IF NOT EXISTS staff_people (
+				id VARCHAR(32) PRIMARY KEY, email VARCHAR(190) NOT NULL UNIQUE, name VARCHAR(120) NOT NULL DEFAULT \'\', active INTEGER NOT NULL DEFAULT 1,
+				totp_secret_enc TEXT NULL, mfa_at VARCHAR(19) NULL, recovery_json TEXT NULL, last_login_at VARCHAR(19) NULL, created_at VARCHAR(19) NOT NULL)',
+			'CREATE TABLE IF NOT EXISTS staff_roles (
+				person_id VARCHAR(32) NOT NULL, area VARCHAR(12) NOT NULL, level VARCHAR(12) NOT NULL, granted_by VARCHAR(190) NOT NULL DEFAULT \'\',
+				granted_at VARCHAR(19) NOT NULL, PRIMARY KEY (person_id, area))',
+			'CREATE TABLE IF NOT EXISTS staff_invites (
+				id VARCHAR(32) PRIMARY KEY, token_hash VARCHAR(64) NOT NULL UNIQUE, email VARCHAR(190) NOT NULL, area VARCHAR(12) NOT NULL, level VARCHAR(12) NOT NULL,
+				expires_at VARCHAR(19) NOT NULL, used_at VARCHAR(19) NULL, created_by VARCHAR(190) NOT NULL, created_at VARCHAR(19) NOT NULL)',
+			'CREATE TABLE IF NOT EXISTS staff_sessions (
+				sid VARCHAR(32) PRIMARY KEY, person_id VARCHAR(32) NOT NULL, created_at VARCHAR(19) NOT NULL, last_used_at VARCHAR(19) NOT NULL,
+				ip VARCHAR(45) NOT NULL DEFAULT \'\', mfa_at VARCHAR(19) NULL, revoked_at VARCHAR(19) NULL)',
+			'CREATE TABLE IF NOT EXISTS staff_audit (
+				id VARCHAR(32) PRIMARY KEY, at VARCHAR(19) NOT NULL, actor VARCHAR(190) NOT NULL, target VARCHAR(190) NOT NULL DEFAULT \'\',
+				action VARCHAR(40) NOT NULL, detail VARCHAR(500) NOT NULL DEFAULT \'\', ip VARCHAR(45) NOT NULL DEFAULT \'\')',
 		);
 		foreach ( $stmts as $sql ) {
 			try {
@@ -130,6 +146,12 @@ final class Db {
 					throw $e;
 				}
 			}
+		}
+		// Staff: copia (ripetibile) degli accessi di oggi nell'elenco centrale; le tabelle vecchie non si toccano.
+		try {
+			Plugin\Directory::importLegacy( $this );
+		} catch ( \Throwable $e ) {
+			error_log( '[portale] elenco staff: copia non riuscita (' . $e->getMessage() . ')' );
 		}
 	}
 
