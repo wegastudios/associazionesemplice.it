@@ -217,3 +217,30 @@ it('non tocca i movimenti di un\'altra associazione', function (): void {
 
     expect(Transaction::query()->findOrFail($id)->voided_at)->toBeNull();
 });
+
+it('registra la commissione di incasso del conto come costo generale, solo se il conto ne ha una', function (): void {
+    $donation = ($this->cat)(CategoryKind::Donation);
+    $this->ledger->recordIncome(income($this->bank->id, [new IncomeLine($donation, 10000)]));
+    expect(Transaction::query()->where('type', 'expense')->count())->toBe(0);
+
+    app(AccountService::class)->setFee($this->bank->id, 25, 150);
+    $this->ledger->recordIncome(income($this->bank->id, [new IncomeLine($donation, 10000)]));
+    $fee = Transaction::query()->where('type', 'expense')->sole();
+
+    expect($fee->amount_cents)->toBe(175)
+        ->and($fee->account_id)->toBe($this->bank->id)
+        ->and($fee->description)->toBe('Commissione di incasso (stima) — Conto corrente')
+        ->and(Category::query()->find($fee->category_id)->kind->value)->toBe('general_cost');
+
+    // L'import dello storico non aggiunge commissioni.
+    $this->ledger->recordIncome(new Income(now()->toDateString(), $this->bank->id, [new IncomeLine($donation, 10000)], null, null, false, null, null, false));
+    expect(Transaction::query()->where('type', 'expense')->count())->toBe(1);
+});
+
+it('la commissione ha limiti: al massimo 20 euro e 25 per cento', function (): void {
+    $accounts = app(AccountService::class);
+
+    expect(fn () => $accounts->setFee($this->bank->id, 2001, 0))->toThrow(LedgerError::class)
+        ->and(fn () => $accounts->setFee($this->bank->id, 0, 2501))->toThrow(LedgerError::class)
+        ->and($accounts->setFee($this->bank->id, 2000, 2500)->fee_bp)->toBe(2500);
+});

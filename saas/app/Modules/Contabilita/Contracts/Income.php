@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Contabilita\Contracts;
 
-/** Incasso: una o più voci, un solo conto e una sola modalità; con $receipt riceve il numero di ricevuta. $activityId è il centro di costo. */
+/** Incasso: una o più voci, un solo conto e una sola modalità; con $receipt riceve il numero di ricevuta. $activityId è il centro di costo. Con $accountFee (di norma) si registra anche la commissione di incasso del conto, se ne ha una; l'import dello storico non la aggiunge. */
 final readonly class Income
 {
     /** @param  list<IncomeLine>  $lines */
@@ -17,5 +17,6 @@ final readonly class Income
         public bool $receipt = true,
         public ?string $documentRef = null,
         public ?string $activityId = null,
+        public bool $accountFee = true,
     ) {}
 }

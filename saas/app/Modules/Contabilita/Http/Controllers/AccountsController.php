@@ -36,6 +36,8 @@ final readonly class AccountsController
                 'type' => AccountType::from($a->type)->label(),
                 'opening' => Money::format($a->opening_cents),
                 'balance' => Money::format($balances[$a->id] ?? 0),
+                'fee_fixed' => Money::plain($a->fee_fixed_cents),
+                'fee_percent' => rtrim(rtrim(number_format($a->fee_bp / 100, 2, ',', ''), '0'), ','),
                 'open' => $a->closed_at === null,
             ])->values(),
             'types' => array_map(static fn (AccountType $t): array => ['value' => $t->value, 'label' => $t->label()], AccountType::cases()),
@@ -57,6 +59,27 @@ final readonly class AccountsController
         }
 
         return $this->attempt(fn () => $this->accounts->create(Input::string($data, 'name'), AccountType::from(Input::string($data, 'type')), $opening), 'Conto creato.');
+    }
+
+    /** Commissione di incasso del conto: quota fissa in euro e percentuale (es. «0,50» e «1,5»). */
+    public function fee(Request $request, string $account): RedirectResponse
+    {
+        $data = Input::of($request->validate([
+            'fee_fixed' => ['nullable', 'string', 'max:20'],
+            'fee_percent' => ['nullable', 'string', 'max:10'],
+        ]));
+        $fixedRaw = Input::optionalString($data, 'fee_fixed');
+        $fixed = $fixedRaw === null ? 0 : Money::parse($fixedRaw);
+        if ($fixed === null) {
+            throw ValidationException::withMessages(['fee_fixed' => 'Importo non valido.']);
+        }
+        $percentRaw = Input::optionalString($data, 'fee_percent');
+        $percent = $percentRaw === null ? 0.0 : (is_numeric(str_replace(',', '.', $percentRaw)) ? (float) str_replace(',', '.', $percentRaw) : null);
+        if ($percent === null) {
+            throw ValidationException::withMessages(['fee_percent' => 'Percentuale non valida.']);
+        }
+
+        return $this->attempt(fn () => $this->accounts->setFee($account, $fixed, (int) round($percent * 100)), 'Commissione di incasso salvata.');
     }
 
     public function close(string $account): RedirectResponse

@@ -13,6 +13,8 @@ use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Contabilita\Contracts\PaymentMethod;
 use App\Modules\Contabilita\Contracts\TxType;
+use App\Modules\Contabilita\Models\Account;
+use App\Modules\Contabilita\Rules\CollectionFee;
 use App\Modules\Contabilita\Rules\Vat;
 use App\Modules\Core\Contracts\OrgContext;
 use Closure;
@@ -112,8 +114,42 @@ final readonly class LedgerService implements Ledger
                 'receipt' => $receiptLabel,
             ]);
 
+            if ($income->accountFee) {
+                $this->bookCollectionFee($income->date, $year, $income->accountId, array_sum(array_map(static fn ($l): int => $l->amountCents, $lines)), $method);
+            }
+
             return ['receipt_id' => $receiptId, 'receipt' => $receiptLabel, 'transactions' => $ids];
         });
+    }
+
+    /**
+     * La commissione di incasso del conto (quota fissa più percentuale) come spesa «costo generale» sullo stesso conto: è una
+     * stima, la cifra vera la dice l'estratto conto. Senza commissione sul conto, o senza la categoria, non fa niente.
+     */
+    private function bookCollectionFee(string $date, int $year, string $accountId, int $totalCents, PaymentMethod $method): void
+    {
+        $account = Account::query()->find($accountId);
+        if ($account === null) {
+            return;
+        }
+        $fee = CollectionFee::cents($totalCents, $account->fee_fixed_cents, $account->fee_bp);
+        $category = $this->categoryFor(CategoryKind::GeneralCost);
+        if ($fee <= 0 || $category === null) {
+            return;
+        }
+        $id = $this->insert([
+            'tx_date' => $date,
+            'fiscal_year' => $year,
+            'type' => TxType::Expense->value,
+            'amount_cents' => $fee,
+            'account_id' => $accountId,
+            'method' => $method->value,
+            'category_id' => $category,
+            'description' => self::text('Commissione di incasso (stima) — '.$account->name, 255),
+            'vat_rate' => null,
+            'vat_cents' => 0,
+        ]);
+        $this->audit->record('ledger.collection_fee', 'app.transactions', $id, ['cents' => $fee]);
     }
 
     public function recordExpense(Expense $expense): string

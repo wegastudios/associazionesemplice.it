@@ -8,6 +8,7 @@ use App\Modules\Contabilita\Contracts\AccountType;
 use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Contabilita\Contracts\Money;
 use App\Modules\Contabilita\Models\Account;
+use App\Modules\Contabilita\Rules\CollectionFee;
 
 /** Conti (cassa, banca, POS…). Un conto con saldo diverso da zero non si chiude: prima un giroconto. */
 final readonly class AccountService
@@ -31,6 +32,19 @@ final readonly class AccountService
     {
         $account = Account::query()->findOrFail($id);
         $account->fill(['name' => self::name($name), 'type' => $type->value, 'opening_cents' => $openingCents])->save();
+
+        return $account;
+    }
+
+    /** Imposta la commissione di incasso del conto: quota fissa in centesimi (al massimo 20 €) e percentuale in punti base (al massimo 25%). */
+    public function setFee(string $id, int $fixedCents, int $bp): Account
+    {
+        $errors = CollectionFee::validate($fixedCents, $bp);
+        if ($errors !== []) {
+            throw new LedgerError(implode(' ', $errors));
+        }
+        $account = Account::query()->find($id) ?? throw new LedgerError('Conto non trovato.');
+        $account->fill(['fee_fixed_cents' => $fixedCents, 'fee_bp' => $bp])->save();
 
         return $account;
     }
