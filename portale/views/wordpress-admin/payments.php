@@ -18,7 +18,7 @@ $field = function ( string $name, string $label, string $placeholder, string $hi
 	<?php elseif ( '' !== $hint ) : ?><p class="hint"><?php echo e( $hint ); ?></p><?php endif;
 };
 $test = function ( string $which ) use ( $csrf ) { ?>
-	<form method="post" action="/admin/pagamenti/prova/<?php echo e( $which ); ?>" style="display:inline"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><button class="btn alt" type="submit">Prova il collegamento</button></form>
+	<form method="post" action="/wordpress/admin/pagamenti/prova/<?php echo e( $which ); ?>" style="display:inline"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><button class="btn alt" type="submit">Prova il collegamento</button></form>
 <?php };
 $group = function ( bool $live, bool $active, callable $inner ) {
 	?>
@@ -29,7 +29,7 @@ $group = function ( bool $live, bool $active, callable $inner ) {
 ?>
 <section class="admin"><div class="wrap" style="max-width:820px">
 
-	<form class="card2" method="post" action="/admin/pagamenti">
+	<form class="card2" method="post" action="/wordpress/admin/pagamenti">
 		<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="stripe_live_present" value="1">
 		<h2>Stripe</h2>
 		<p class="muted small" style="margin-top:0">Dove trovare le credenziali: <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener">chiavi API reali</a> · <a href="https://dashboard.stripe.com/test/apikeys" target="_blank" rel="noopener">chiavi API di prova</a> · <a href="https://dashboard.stripe.com/webhooks" target="_blank" rel="noopener">webhook reali</a> · <a href="https://dashboard.stripe.com/test/webhooks" target="_blank" rel="noopener">webhook di prova</a> · <a href="https://docs.stripe.com/keys" target="_blank" rel="noopener">istruzioni di Stripe</a>. Per provare senza incassi veri usa le credenziali di prova (carta 4242 4242 4242 4242).</p>
@@ -51,7 +51,7 @@ $group = function ( bool $live, bool $active, callable $inner ) {
 	</form>
 	<div style="margin:-8px 0 20px"><?php $test( 'stripe' ); ?></div>
 
-	<form class="card2" method="post" action="/admin/pagamenti">
+	<form class="card2" method="post" action="/wordpress/admin/pagamenti">
 		<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="paypal_live_present" value="1">
 		<h2>PayPal</h2>
 		<p class="muted small" style="margin-top:0">Dove trovare le credenziali: <a href="https://developer.paypal.com/dashboard/applications/live" target="_blank" rel="noopener">app reali</a> · <a href="https://developer.paypal.com/dashboard/applications/sandbox" target="_blank" rel="noopener">app sandbox</a> (crea un'app e copia Client ID e segreto) · <a href="https://developer.paypal.com/api/rest/" target="_blank" rel="noopener">istruzioni di PayPal</a>. Per il sandbox servono anche gli <a href="https://developer.paypal.com/dashboard/accounts" target="_blank" rel="noopener">account di prova</a> (venditore e acquirente).</p>
@@ -75,7 +75,7 @@ $group = function ( bool $live, bool $active, callable $inner ) {
 	</form>
 	<div style="margin:-8px 0 20px"><?php $test( 'paypal' ); ?></div>
 
-	<form class="card2" method="post" action="/admin/pagamenti">
+	<form class="card2" method="post" action="/wordpress/admin/pagamenti">
 		<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>">
 		<h2>Server licenze Wega <?php if ( $s['wega_token']['set'] ) : ?><span class="badge">collegato</span><?php else : ?><span class="badge warn">da collegare</span><?php endif; ?></h2>
 		<p class="muted small" style="margin-top:0">Dove trovare le credenziali: <a href="https://license.wegastudios.com/admin/portali" target="_blank" rel="noopener">pannello Wega → Portali</a> (apri il portale e usa «Ruota» per ottenere un nuovo token, si vede una sola volta; il precedente resta valido 24 ore) · <a href="https://license.wegastudios.com/docs/wega-license.pdf" target="_blank" rel="noopener">documentazione API</a>.</p>

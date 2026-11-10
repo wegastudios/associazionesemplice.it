@@ -2,7 +2,7 @@
 $val = function ( string $k ) use ( $legal ) { return e( $legal[ $k ] ?? '' ); };
 ?>
 <section class="admin"><div class="wrap" style="max-width:820px">
-	<form method="post" action="/admin/legale">
+	<form method="post" action="/wordpress/admin/legale">
 		<input type="hidden" name="csrf" value="<?php echo e( Portale\App::csrf() ); ?>">
 		<div class="card2">
 			<h2>Titolare del trattamento</h2>

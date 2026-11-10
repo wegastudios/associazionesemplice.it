@@ -1,6 +1,6 @@
 <?php /** @var array $t @var array $cats */ include __DIR__ . '/_nav.php'; ?>
 <section class="admin"><div class="wrap" style="max-width:820px">
-	<form method="post" action="/admin/cookie">
+	<form method="post" action="/wordpress/admin/cookie">
 		<input type="hidden" name="csrf" value="<?php echo e( Portale\App::csrf() ); ?>">
 		<div class="card2">
 			<h2>Script di monitoraggio</h2>

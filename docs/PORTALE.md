@@ -30,7 +30,9 @@ I giorni in più rispetto al periodo (31/366) coprono i ritardi di pagamento; il
 - **Prova Pro**: chi ha una licenza gratuita attiva può provare un piano Pro per N giorni (default 30), **una sola volta per licenza gratuita** e una sola volta per dominio (`trial_used_at` e `external_ref` idempotente sul server Wega). La prova è una licenza separata con una chiave sua: il cliente la incolla al posto di quella gratuita e a fine prova rimette la gratuita o passa al Pro.
 - **Emissione manuale** dal pannello: regali e accordi fuori portale, senza pagamento.
 
-## Pannello di gestione (`/admin`)
+## Pannello di gestione (`/wordpress/admin`)
+
+> **Confine logico (10/11/2026).** Secondo [ARCHITETTURA_DOMINI.md](ARCHITETTURA_DOMINI.md) §3.2 il lato server del plugin (licenze, piani, prezzi, versioni) è uno spazio proprio: codice in `portale/src/Plugin/`, viste in `portale/views/wordpress-admin/`, rotte sotto `/wordpress/admin`. Il vecchio `/admin` risponde con redirect permanente 301 (308 per i POST) alla stessa pagina nuova, query compresa. Il negozio e l'area clienti non devono interrogare le tabelle dei piani: passeranno da un'interfaccia `Catalog` (passi successivi). Lo spazio lo segue la sessione «Portale plugin».
 
 Stesso accesso dei clienti (link per email), riservato agli indirizzi in `admins` di `config.php`; ogni richiesta ricontrolla l'indirizzo e ogni modifica va nel registro.
 
@@ -60,19 +62,19 @@ firme dei webhook verificate (Stripe HMAC con tolleranza 5 minuti; PayPal con `v
 
 ## Stato e da fare
 
-Fatto: vendita (Stripe e PayPal, ricorrente e singolo), licenze Wega, area cliente, prova Pro, pannello `/admin` (cruscotto, licenze, clienti, piani e prezzi, email, impostazioni, registro, pagamenti, cookie e script, pagine legali), cron degli avvisi, client nel plugin (`docs/LICENZE.md`).
+Fatto: vendita (Stripe e PayPal, ricorrente e singolo), licenze Wega, area cliente, prova Pro, pannello `/wordpress/admin` (cruscotto, licenze, clienti, piani e prezzi, email, impostazioni, registro, pagamenti, cookie e script, pagine legali), cron degli avvisi, client nel plugin (`docs/LICENZE.md`).
 
 Da fare:
-1. Creare su Stripe i prezzi ricorrenti e su PayPal i piani, poi compilare `stripe_price` / `paypal_plan` (da `config.php` o da `/admin/prezzi`); token Wega con scope `licenses:create`, `licenses:read`, `licenses:change-binding` e tipo 3 abilitato.
+1. Creare su Stripe i prezzi ricorrenti e su PayPal i piani, poi compilare `stripe_price` / `paypal_plan` (da `config.php` o da `/wordpress/admin/prezzi`); token Wega con scope `licenses:create`, `licenses:read`, `licenses:change-binding` e tipo 3 abilitato.
 2. Passare il plugin al rimbalzo (vedi sotto): così non serve nessuna credenziale nel plugin. I nomi dei piani inviati al server devono contenere Free, Lite o Full.
 3. Prova su staging dei percorsi reali (acquisto, rinnovo, webhook, prova Pro) con le chiavi di test.
 4. Rimborsi e fatturazione elettronica: non ancora gestiti. Cambio piano: vedi sotto (con PayPal ricorrente non è ancora automatico).
 
 ## Chiavi, cookie e pagine legali (dal pannello)
 
-- **Pagamenti** (`/admin/pagamenti`): token Wega, chiavi Stripe e PayPal si inseriscono da qui. Sono **cifrate** nel database con `app_key` (che resta in `config.php`), si vedono solo gli ultimi 4 caratteri, un campo vuoto non cambia nulla; le chiavi del pannello hanno la precedenza su `config.php`. Ogni servizio ha «Prova il collegamento» e la pagina mostra gli indirizzi dei webhook e gli eventi da selezionare.
-- **Cookie e script** (`/admin/cookie`): spazio per gli script di monitoraggio nell'header e nel footer, ciascuno con la sua categoria di consenso (statistiche, marketing, necessari). Gli script non necessari stanno in `<template>` e partono solo dopo il consenso (`assets/portale.js`); il banner compare solo se esiste uno script che richiede consenso; cambiando gli script a tutti viene richiesta di nuovo la scelta. Cookie della scelta: `asem_cc`, 6 mesi.
-- **Pagine legali** (`/admin/legale`): `/privacy` e `/cookie` con testi di base modificabili e dati del titolare. Sono un modello: vanno verificati da un consulente.
+- **Pagamenti** (`/wordpress/admin/pagamenti`): token Wega, chiavi Stripe e PayPal si inseriscono da qui. Sono **cifrate** nel database con `app_key` (che resta in `config.php`), si vedono solo gli ultimi 4 caratteri, un campo vuoto non cambia nulla; le chiavi del pannello hanno la precedenza su `config.php`. Ogni servizio ha «Prova il collegamento» e la pagina mostra gli indirizzi dei webhook e gli eventi da selezionare.
+- **Cookie e script** (`/wordpress/admin/cookie`): spazio per gli script di monitoraggio nell'header e nel footer, ciascuno con la sua categoria di consenso (statistiche, marketing, necessari). Gli script non necessari stanno in `<template>` e partono solo dopo il consenso (`assets/portale.js`); il banner compare solo se esiste uno script che richiede consenso; cambiando gli script a tutti viene richiesta di nuovo la scelta. Cookie della scelta: `asem_cc`, 6 mesi.
+- **Pagine legali** (`/wordpress/admin/legale`): `/privacy` e `/cookie` con testi di base modificabili e dati del titolare. Sono un modello: vanno verificati da un consulente.
 
 ## Rimbalzo delle verifiche del plugin
 
@@ -91,12 +93,12 @@ Il portale ospita gli zip del plugin gratuito e del Pro (`Releases`). Restano on
 - **Nessun link pubblico.** I file stanno in `data/releases/{free,pro}/VERSIONE.zip`, fuori dalla cartella pubblica. Si scaricano solo da `/scarica/{free|pro}/{versione}` con accesso eseguito (link per email) e licenza in regola: gratuito con qualunque licenza attiva, Pro con un piano a pagamento o di prova attivo (scaduta o pagamento non riuscito = niente). Il percorso è escluso da `robots.txt`, la risposta è `no-store` e `noindex`.
 - **Limite di scarichi** per cliente ogni 24 ore (default 10, 1–200, in Impostazioni con i rischi); la gestione non ha limiti. Ogni scarico è registrato (tabella `downloads`).
 - L'area cliente (`/account`) mostra «Scarica il plugin» con l'ultima versione e, in un menu a comparsa, le precedenti.
-- **Pubblicare una versione**: `bash wordpress/build.sh` poi `bash portale/release.sh free|pro|both ["nota"]` (carica via ssh e lancia `bin/release.php`), oppure dal pannello **Versioni** (`/admin/versioni`, richiede l'estensione `zip` di PHP e `upload_max_filesize` sufficiente). Il numero di versione si legge dall'intestazione del plugin dentro lo zip; una versione già presente non si sovrascrive.
+- **Pubblicare una versione**: `bash wordpress/build.sh` poi `bash portale/release.sh free|pro|both ["nota"]` (carica via ssh e lancia `bin/release.php`), oppure dal pannello **Versioni** (`/wordpress/admin/versioni`, richiede l'estensione `zip` di PHP e `upload_max_filesize` sufficiente). Il numero di versione si legge dall'intestazione del plugin dentro lo zip; una versione già presente non si sovrascrive.
 - Caricate il 2026-10-16: gratuito 1.1.11, Pro 1.1.4.
 
 ## Gestione a sezioni e eliminazioni
 
-Il pannello `/admin` ha cinque sezioni, ciascuna con le sue schede: **Cruscotto**; **Piani** (piani e prezzi, versioni del plugin); **Clienti** (licenze, clienti e domini); **Impostazioni** (generali, pagamenti, email, registro); **Pagine** (privacy e cookie, script e consenso).
+Il pannello `/wordpress/admin` ha cinque sezioni, ciascuna con le sue schede: **Cruscotto**; **Piani** (piani e prezzi, versioni del plugin); **Clienti** (licenze, clienti e domini); **Impostazioni** (generali, pagamenti, email, registro); **Pagine** (privacy e cookie, script e consenso).
 
 - L'elenco **Licenze** mostra anche quelle «in attesa» (pagamenti mai conclusi), che prima restavano invisibili ma occupavano il dominio (messaggio «dominio già registrato da un altro indirizzo email»). Filtro «In attesa» incluso.
 - **Elimina licenza** (elenco e dettaglio) e **Elimina cliente** (scheda Clienti e domini, con elenco dei domini): tolgono dal portale email, domini, licenze, link di accesso e registro scarichi, così email e dominio tornano usabili. Si rifiuta se resta un rinnovo automatico attivo su Stripe/PayPal (prima va disdetto) e non si può eliminare il proprio account. **Il server Wega e i provider non vengono toccati**: la licenza resta su Wega com'è.
@@ -118,14 +120,14 @@ Il lavoro giornaliero (`bin/cron.php`) rinnova (`POST /licenses/renew`, senza em
 Wega è la copia di sicurezza delle licenze: ogni cambiamento del portale si riflette su Wega. Scope `licenses:manage` e `licenses:reveal-key` (assegnati ai portali esistenti). Usati dal portale: `POST /licenses/{id}/suspend|restore|revoke` (stato annullato/ripristinato e eliminazione di licenze e clienti), `GET /licenses/{id}/key` (recupero della chiave di una licenza che il portale non conserva: pulsante «Recupera la chiave da Wega» nel dettaglio e automatico all'importazione da Wega), `PATCH /licenses/{id}` (disponibile nel client per scadenza, cliente, piano, dominio). Un errore vero di Wega blocca l'operazione (nulla cambia nel portale); se l'operazione non esiste (404/405) si prosegue con un avviso.
 ## Staff e accesso unico al supporto
 
-- **Staff** (`/admin/staff`, tabella `staff`): due ruoli. *Amministratore* entra nella gestione del portale e nell'amministrazione del supporto; *Solo supporto* entra solo nell'amministrazione del sito di supporto, mai in `/admin`. Gli indirizzi in `admins` di `config.php` restano amministratori e non si cambiano dal pannello. Aggiungere un indirizzo crea anche il cliente, così la persona entra col link per email.
+- **Staff** (`/wordpress/admin/staff`, tabella `staff`): due ruoli. *Amministratore* entra nella gestione del portale e nell'amministrazione del supporto; *Solo supporto* entra solo nell'amministrazione del sito di supporto, mai in `/wordpress/admin`. Gli indirizzi in `admins` di `config.php` restano amministratori e non si cambiano dal pannello. Aggiungere un indirizzo crea anche il cliente, così la persona entra col link per email.
 - **Link «Supporto»** (menu e piè di pagina): da connessi porta a `/supporto/accedi`, che manda al sito di supporto con un token firmato; senza `support.sso_secret` (almeno 32 caratteri, in `config.php`) porta alla home del supporto.
 - **Contratto del token** (lato sito di supporto, ancora da realizzare): `{support.url}/sso?t=<payload>.<firma>`, con `payload` = base64url del JSON `{v:1, iss, aud, sub:email, role: admin|support|customer, iat, exp = iat+60s, jti}` e `firma` = base64url(HMAC-SHA256(payload, segreto)). Il sito deve verificare firma, `aud`, `exp` e usare il `jti` una sola volta. `admin` e `support` aprono l'amministrazione (ticket da lavorare); `customer` mostra FAQ e i ticket con quell'email. L'email è già verificata dal portale.
-- **Ruolo «Solo supporto»** nel portale: entra in `/admin` ma vede solo Licenze e Clienti. Può rinnovare di un periodo, cambiare dominio, disdire, sospendere/riattivare e annotare le licenze. Non può emettere né eliminare licenze o clienti, e non ha accesso a piani e prezzi, versioni, pagamenti, email, pagine, impostazioni, registro, Da Wega e Staff.
+- **Ruolo «Solo supporto»** nel portale: entra in `/wordpress/admin` ma vede solo Licenze e Clienti. Può rinnovare di un periodo, cambiare dominio, disdire, sospendere/riattivare e annotare le licenze. Non può emettere né eliminare licenze o clienti, e non ha accesso a piani e prezzi, versioni, pagamenti, email, pagine, impostazioni, registro, Da Wega e Staff.
 
 ## Ritorno al supporto dopo l'accesso
 
-Se `/supporto/accedi` trova la persona non connessa, ricorda la destinazione fissa (`$_SESSION['after_login'] = '/supporto/accedi'`, mai presa dall'indirizzo: nessun redirect aperto) e la manda a `/accedi`. Dopo l'accesso (password o link per email) `startSession` la riporta lì e il token dell'accesso unico (60 secondi) si genera solo a quel punto; senza destinazione ricordata si va a `/account` o `/admin` come prima.
+Se `/supporto/accedi` trova la persona non connessa, ricorda la destinazione fissa (`$_SESSION['after_login'] = '/supporto/accedi'`, mai presa dall'indirizzo: nessun redirect aperto) e la manda a `/accedi`. Dopo l'accesso (password o link per email) `startSession` la riporta lì e il token dell'accesso unico (60 secondi) si genera solo a quel punto; senza destinazione ricordata si va a `/account` o `/wordpress/admin` come prima.
 
 ## Gratuito unico e aggiornamento diretto solo per il Pro
 
@@ -167,7 +169,7 @@ File in `demo/` (copiati sul server in `~/demo-provision/`, il mu-plugin in `wp-
 - `asem-demo-style.php` (mu-plugin) e `assets/` (carattere e logo del portale, copiati in `wp-content/mu-plugins/asem-demo-assets/`): aspetto del sito, dell'accesso e del pannello nei colori del marchio. La pagina iniziale e il menu li crea `provision.php`. Le credenziali pubbliche compaiono in `portale/src/Demo.php`, `provision.php` (home) e nell'accesso (`asem-demo-style.php`): se cambiano, vanno cambiate tutte e tre.
 - `asem-demo.php` (mu-plugin): nessuna email in uscita, profili e password bloccati (anche cambio e recupero della password del socio di prova, che accede con email e password senza utente WordPress), nessun file caricato, noindex, avviso in ogni pagina, la segreteria entra nella Bacheca del plugin.
 
-Licenza: finché la verifica del plugin è in «standby» valgono tutte le funzioni e non serve nessuna chiave. Quando la verifica si attiva serve una licenza Pro Fiscale per il dominio `associazionesemplice.it` (emissione manuale da `/admin/licenze/nuova`), da mettere in `~/.demo_key` (`provision.php` la legge).
+Licenza: finché la verifica del plugin è in «standby» valgono tutte le funzioni e non serve nessuna chiave. Quando la verifica si attiva serve una licenza Pro Fiscale per il dominio `associazionesemplice.it` (emissione manuale da `/wordpress/admin/licenze/nuova`), da mettere in `~/.demo_key` (`provision.php` la legge).
 
 Aggiornamento dei plugin: `update.sh` installa nella demo le ultime versioni pubblicate sul portale (le legge da `~/portale/data/releases`, prima il gratuito, poi il Pro). Parte da solo in fondo a `portale/release.sh` a ogni pubblicazione e a ogni azzeramento notturno; non serve fare altro.
 
@@ -195,11 +197,11 @@ L'aggiornamento diretto offre **solo versioni firmate**. La firma è Ed25519 sul
 Dall'area riservata (`/account`), su una licenza acquistata con carta o PayPal, attiva e non disdetta (`src/PlanChange.php`):
 - **Upgrade** (piano più caro, stesso periodo): paga subito la differenza `(nuovo − vecchio) × giorni residui / giorni del periodo` (minimo 0,50 €, quello di Stripe) con un pagamento singolo; a pagamento riuscito il tipo di licenza cambia su Wega (`PATCH plan_name`), la **chiave e la scadenza restano le stesse**; su Stripe ricorrente anche il prezzo dei rinnovi passa al piano nuovo (senza proporzioni né addebiti immediati). Ripetibile senza effetti: se un passaggio esterno fallisce il webhook ritenta.
 - **Downgrade** (piano più economico): programmato (`next_plan`). La licenza resta com'è fino alla scadenza pagata; al rinnovo (`Billing::renew`) cambia tipo su Wega e prezzo. Su Stripe ricorrente il prezzo del prossimo addebito cambia subito alla programmazione; con pagamento singolo il rinnovo è già proposto al prezzo nuovo. Si può annullare prima del rinnovo.
-- Email: `plan_upgraded`, `plan_downgrade_scheduled`, `plan_downgraded` (modificabili da `/admin/email`).
+- Email: `plan_upgraded`, `plan_downgrade_scheduled`, `plan_downgraded` (modificabili da `/wordpress/admin/email`).
 - **Non gestito**: PayPal ricorrente (il cambio di prezzo richiede una nuova approvazione del cliente su PayPal: per ora «scrivici dal supporto»), licenze manuali/di prova, passaggio tra periodi (mese ↔ anno), rimborsi. Se al rinnovo Wega non risponde al cambio di tipo, l'errore finisce nel log (`[portale] downgrade: …`) e il tipo va allineato dalla gestione.
 
 ## Prezzi e piani creati al volo
-Basta l'importo del piano (da `/admin/prezzi`): il rinnovo automatico non richiede di preparare prezzi su Stripe o piani su PayPal. **Stripe:** il Checkout in modalità abbonamento usa un prezzo in linea (`price_data` con `recurring.interval`); nei cambi piano di un abbonamento Stripe il nuovo prezzo si crea con `POST /prices` sullo stesso prodotto. **PayPal:** al primo acquisto si crea un prodotto («Associazione Semplice») e un piano per ogni coppia importo/periodo (`/v1/billing/plans`), ricordati in `settings.paypal_auto` (separati tra reale e sandbox) e riusati. I campi «Stripe · prezzo ricorrente» e «PayPal · piano ricorrente» restano come scelta facoltativa per usare prezzi già esistenti. Gli abbonamenti già attivi non cambiano: restano al prezzo con cui sono stati creati.
+Basta l'importo del piano (da `/wordpress/admin/prezzi`): il rinnovo automatico non richiede di preparare prezzi su Stripe o piani su PayPal. **Stripe:** il Checkout in modalità abbonamento usa un prezzo in linea (`price_data` con `recurring.interval`); nei cambi piano di un abbonamento Stripe il nuovo prezzo si crea con `POST /prices` sullo stesso prodotto. **PayPal:** al primo acquisto si crea un prodotto («Associazione Semplice») e un piano per ogni coppia importo/periodo (`/v1/billing/plans`), ricordati in `settings.paypal_auto` (separati tra reale e sandbox) e riusati. I campi «Stripe · prezzo ricorrente» e «PayPal · piano ricorrente» restano come scelta facoltativa per usare prezzi già esistenti. Gli abbonamenti già attivi non cambiano: restano al prezzo con cui sono stati creati.
 
 ## Sito pubblico: guida a provare e acquistare (novembre 2026)
 - **Un solo punto del layout.** `portale/views/layout.php` genera menu, barra in basso da telefono e fascia di chiusura; i contenuti (funzioni, domande, tappe, inviti, testi brevi dei piani) stanno in `portale/src/Site.php`. Le pagine di presentazione sono elencate in `Site::MARKETING`: solo lì compaiono fascia e barra.

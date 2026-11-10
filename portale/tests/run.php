@@ -357,7 +357,7 @@ check( 'email: oggetto senza a capo (niente iniezione di intestazioni)', false =
 
 // --- Pannello: chi può entrare --------------------------------------------------------------------------------------------------
 Config::set( 'admins', array( 'Io@Esempio.it' ) );
-check( 'admin: riconosciuto senza badare alle maiuscole', Portale\Admin::isAdminEmail( 'io@esempio.it' ) && ! Portale\Admin::isAdminEmail( 'altro@esempio.it' ) && ! Portale\Admin::isAdminEmail( '' ) );
+check( 'admin: riconosciuto senza badare alle maiuscole', Portale\Plugin\Admin::isAdminEmail( 'io@esempio.it' ) && ! Portale\Plugin\Admin::isAdminEmail( 'altro@esempio.it' ) && ! Portale\Plugin\Admin::isAdminEmail( '' ) );
 Portale\Audit::log( $db, 'io@esempio.it', 'prova', 'dettaglio' );
 check( 'registro: azione salvata', 'prova' === Portale\Audit::recent( $db, 5 )[0]['action'] );
 check( 'robots: segnali di non indicizzazione di default', false === Config::get( 'indexable', false ) );
@@ -786,10 +786,10 @@ Config::set( 'admins', array( 'Capo@Esempio.it' ) );
 check( 'staff: admin di config.php', 'admin' === Portale\Staff::role( $tdb, 'capo@esempio.it' ) );
 check( 'staff: sconosciuto senza ruolo', null === Portale\Staff::role( $tdb, 'altro@esempio.it' ) );
 Portale\Staff::set( $tdb, $tbil, ' Aiuto@Esempio.it ', 'support' );
-check( 'staff: solo supporto non è amministratore', 'support' === Portale\Staff::role( $tdb, 'aiuto@esempio.it' ) && ! Portale\Admin::isAdminEmail( 'aiuto@esempio.it', $tdb ) );
+check( 'staff: solo supporto non è amministratore', 'support' === Portale\Staff::role( $tdb, 'aiuto@esempio.it' ) && ! Portale\Plugin\Admin::isAdminEmail( 'aiuto@esempio.it', $tdb ) );
 check( 'staff: crea anche il cliente per poter entrare', 1 === (int) $tdb->one( 'SELECT COUNT(*) AS n FROM customers WHERE email = ?', array( 'aiuto@esempio.it' ) )['n'] );
 Portale\Staff::set( $tdb, $tbil, 'aiuto@esempio.it', 'admin' );
-check( 'staff: cambio ruolo a admin', Portale\Admin::isAdminEmail( 'aiuto@esempio.it', $tdb ) && 2 === count( Portale\Staff::all( $tdb ) ) );
+check( 'staff: cambio ruolo a admin', Portale\Plugin\Admin::isAdminEmail( 'aiuto@esempio.it', $tdb ) && 2 === count( Portale\Staff::all( $tdb ) ) );
 check( 'staff: ruolo non valido rifiutato', null !== throwsUser( function () use ( $tdb, $tbil ) { Portale\Staff::set( $tdb, $tbil, 'x@esempio.it', 'root' ); } ) );
 check( 'staff: admin di config.php non modificabile', null !== throwsUser( function () use ( $tdb, $tbil ) { Portale\Staff::set( $tdb, $tbil, 'capo@esempio.it', 'support' ); } ) );
 Portale\Staff::remove( $tdb, 'aiuto@esempio.it' );
@@ -1344,5 +1344,16 @@ check( 'saas: errore del SaaS tradotto in messaggio chiaro', 'Questa operazione 
 Http::$transport = function () { return array( 0, '' ); };
 check( 'saas: SaaS non raggiungibile', 'Il SaaS non risponde: riprova tra poco.' === throwsUser( function () { Portale\SaasClient::orgs( 'a@esempio.it' ); } ) );
 Http::$transport = $prevTransport;
+
+// --- Confine logico del plugin: /wordpress/admin (docs/ARCHITETTURA_DOMINI.md §3.2) ------------------------------------------------
+check( 'plugin: l\'amministrazione sta sotto /wordpress/admin', '/wordpress/admin' === Portale\Plugin\Admin::BASE );
+check( 'plugin: le viste stanno in views/wordpress-admin e non più in views/admin', is_file( __DIR__ . '/../views/wordpress-admin/_nav.php' ) && ! is_dir( __DIR__ . '/../views/admin' ) );
+$pluginSrc = (string) file_get_contents( __DIR__ . '/../src/Plugin/Admin.php' );
+check( 'plugin: nessun indirizzo «/admin» scritto a mano nel codice dell\'amministrazione', 0 === preg_match( '#[\'"]/admin#', $pluginSrc ) );
+$badLinks = 0;
+foreach ( glob( __DIR__ . '/../views/wordpress-admin/*.php' ) as $f ) {
+	$badLinks += preg_match_all( '#(?:href|action)="/admin#', (string) file_get_contents( $f ) );
+}
+check( 'plugin: le viste puntano tutte a /wordpress/admin', 0 === $badLinks );
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );

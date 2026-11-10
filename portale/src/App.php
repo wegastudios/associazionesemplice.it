@@ -51,8 +51,12 @@ final class App {
 
 	private function route( string $method, string $path ): void {
 		$get = 'GET' === $method;
-		if ( 0 === strpos( $path, '/admin' ) ) {
-			( new Admin( $this->db, $this->billing, $this->customerId() ) )->handle( $method, $path );
+		if ( '/admin' === $path || 0 === strpos( $path, '/admin/' ) ) {
+			// Vecchio indirizzo dell'amministrazione del plugin: ora vive sotto /wordpress/admin (301; 308 per i POST, che conservano il metodo).
+			$qs = (string) ( $_SERVER['QUERY_STRING'] ?? '' );
+			header( 'Location: ' . Plugin\Admin::BASE . substr( $path, 6 ) . ( '' !== $qs ? '?' . $qs : '' ), true, $get ? 301 : 308 );
+		} elseif ( Plugin\Admin::BASE === $path || 0 === strpos( $path, Plugin\Admin::BASE . '/' ) ) {
+			( new Plugin\Admin( $this->db, $this->billing, $this->customerId() ) )->handle( $method, $path );
 		} elseif ( '/saas' === $path || 0 === strpos( $path, '/saas/' ) ) {
 			( new Platform( $this->db, $this->customerId() ) )->handle( $method, $path );
 		} elseif ( $get && '/' === $path ) {
@@ -66,7 +70,7 @@ final class App {
 			echo json_encode( Site::publicPlans(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
 		} elseif ( $get && '/robots.txt' === $path ) {
 			View::headers( 'text/plain; charset=utf-8' );
-			echo Config::get( 'indexable', false ) ? "User-agent: *\nAllow: /\nDisallow: /account\nDisallow: /admin\nDisallow: /saas\nDisallow: /api\nDisallow: /scarica\nDisallow: /entra\n" : "User-agent: *\nDisallow: /\n";
+			echo Config::get( 'indexable', false ) ? "User-agent: *\nAllow: /\nDisallow: /account\nDisallow: /admin\nDisallow: /wordpress/admin\nDisallow: /saas\nDisallow: /api\nDisallow: /scarica\nDisallow: /entra\n" : "User-agent: *\nDisallow: /\n";
 		} elseif ( $get && isset( Legal::PAGES[ ltrim( $path, '/' ) ] ) ) {
 			$slug = ltrim( $path, '/' );
 			View::render( 'legal', array( 'title' => Legal::PAGES[ $slug ][0], 'html' => Legal::html( Legal::body( $slug ) ) ) );
@@ -225,7 +229,7 @@ final class App {
 		$role                = Staff::role( $this->db, (string) $cust['email'] ) ?? '';
 		$_SESSION['staff']    = $role;
 		$_SESSION['admin']    = Staff::ADMIN === $role;
-		$to = '' !== $role ? '/admin' : ( '' !== Staff::saas( $this->db, (string) $cust['email'] ) ? '/saas' : '/account' );
+		$to = '' !== $role ? Plugin\Admin::BASE : ( '' !== Staff::saas( $this->db, (string) $cust['email'] ) ? '/saas' : '/account' );
 		if ( '/supporto/accedi' === ( $_SESSION['after_login'] ?? '' ) ) {
 			$to = '/supporto/accedi';
 		}

@@ -5,7 +5,7 @@ $csrf = Portale\App::csrf();
 	<div class="card2">
 		<h2>Carica una versione</h2>
 		<p style="margin:0 0 8px"><?php echo tip( 'Carica lo zip costruito con build.sh: il numero di versione si legge dal pacchetto. Restano online le ultime ' . (int) $keep . " versioni di ciascun plugin (il numero si cambia in Impostazioni). I file stanno fuori dalla cartella pubblica e si scaricano solo dall'area cliente, con licenza in regola.", 'Come funzionano le versioni' ); ?></p>
-		<form method="post" action="/admin/versioni" enctype="multipart/form-data">
+		<form method="post" action="/wordpress/admin/versioni" enctype="multipart/form-data">
 			<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>">
 			<div class="form-grid two">
 				<div><label for="product">Plugin</label><select class="field" id="product" name="product"><?php foreach ( Portale\Releases::PRODUCTS as $k => $p ) : ?><option value="<?php echo e( $k ); ?>"><?php echo e( $p[1] ); ?></option><?php endforeach; ?></select></div>
@@ -22,7 +22,7 @@ $csrf = Portale\App::csrf();
 		<?php foreach ( $rows[ $k ] as $i => $r ) : ?>
 			<tr><td><b><?php echo e( $r['version'] ); ?></b><?php echo 0 === $i ? ' <span class="badge">ultima</span>' : ''; ?></td><td><?php echo e( $r['created_at'] ); ?></td><td><?php echo e( number_format( $r['size'] / 1024, 0, ',', '.' ) ); ?> KB</td><td><?php echo ! empty( $r['signature'] ) ? '<span class="badge" title="' . e( $r['kid'] ) . '">firmata</span>' : '<span class="badge warn" title="Senza firma il Pro non si aggiorna da WordPress">non firmata</span>'; ?></td><td><?php echo e( (string) $r['note'] ); ?></td>
 			<td style="white-space:nowrap"><a class="btn alt small" href="/scarica/<?php echo e( $k ); ?>/<?php echo e( $r['version'] ); ?>">Scarica</a>
-			<form method="post" action="/admin/versioni/elimina" style="display:inline" onsubmit="<?php echo js_confirm( 'Eliminare per sempre la versione ' . $r['version'] . '?' ); ?>"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="product" value="<?php echo e( $k ); ?>"><input type="hidden" name="version" value="<?php echo e( $r['version'] ); ?>"><button class="btn danger small" type="submit">Elimina</button></form></td></tr>
+			<form method="post" action="/wordpress/admin/versioni/elimina" style="display:inline" onsubmit="<?php echo js_confirm( 'Eliminare per sempre la versione ' . $r['version'] . '?' ); ?>"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="product" value="<?php echo e( $k ); ?>"><input type="hidden" name="version" value="<?php echo e( $r['version'] ); ?>"><button class="btn danger small" type="submit">Elimina</button></form></td></tr>
 		<?php endforeach; ?>
 		<?php if ( ! $rows[ $k ] ) : ?><tr><td colspan="6" class="muted">Nessuna versione caricata.</td></tr><?php endif; ?>
 		</tbody></table></div>

@@ -7,7 +7,7 @@ if ( ! $cfg['stripe'] ) { $missing[] = 'Stripe (chiave segreta e segreto del web
 if ( ! $cfg['paypal'] ) { $missing[] = 'PayPal (client, segreto e ID del webhook)'; }
 ?>
 <section class="admin"><div class="wrap">
-	<?php if ( $missing ) : ?><div class="card2" style="border-color:var(--accent)"><h2>Da completare</h2><p class="muted" style="margin:0 0 10px"><?php echo e( implode( ' · ', $missing ) ); ?></p><a class="btn small" href="/admin/pagamenti">Inserisci le chiavi</a></div><?php endif; ?>
+	<?php if ( $missing ) : ?><div class="card2" style="border-color:var(--accent)"><h2>Da completare</h2><p class="muted" style="margin:0 0 10px"><?php echo e( implode( ' · ', $missing ) ); ?></p><a class="btn small" href="/wordpress/admin/pagamenti">Inserisci le chiavi</a></div><?php endif; ?>
 	<div class="stats">
 		<div class="stat"><b><?php echo (int) $active; ?></b><span>Licenze attive</span></div>
 		<div class="stat"><b><?php echo (int) $paying; ?></b><span>Abbonamenti a pagamento</span></div>
@@ -22,11 +22,11 @@ if ( ! $cfg['paypal'] ) { $missing[] = 'PayPal (client, segreto e ID del webhook
 		<?php if ( ! $recent ) : ?><p class="muted">Nessuna licenza emessa per ora.</p><?php else : ?>
 		<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Cliente</th><th>Dominio</th><th>Piano</th><th>Tipo</th><th>Stato</th><th>Scade</th></tr></thead><tbody>
 		<?php foreach ( $recent as $s ) : $st = sub_status( $s ); ?>
-			<tr><td><?php echo e( $s['email'] ); ?></td><td><a href="/admin/licenze/<?php echo e( $s['id'] ); ?>"><?php echo e( $s['domain'] ); ?></a></td>
+			<tr><td><?php echo e( $s['email'] ); ?></td><td><a href="/wordpress/admin/licenze/<?php echo e( $s['id'] ); ?>"><?php echo e( $s['domain'] ); ?></a></td>
 			<td><?php echo e( Portale\Config::get( 'plans.' . $s['plan_code'] . '.label', $s['plan_code'] ) ); ?></td><td><?php echo e( sub_kind( $s ) ); ?></td>
 			<td><span class="badge <?php echo e( $st[1] ); ?>"><?php echo e( $st[0] ); ?></span></td><td><?php echo e( date_it( $s['expires_at'] ) ); ?></td></tr>
 		<?php endforeach; ?></tbody></table></div>
 		<?php endif; ?>
 	</div>
-	<div class="row-actions"><a class="btn" href="/admin/licenze/nuova">Emetti una licenza</a><a class="btn alt" href="/admin/licenze">Tutte le licenze</a></div>
+	<div class="row-actions"><a class="btn" href="/wordpress/admin/licenze/nuova">Emetti una licenza</a><a class="btn alt" href="/wordpress/admin/licenze">Tutte le licenze</a></div>
 </div></section>

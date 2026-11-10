@@ -1,11 +1,34 @@
 <?php
-namespace Portale;
+namespace Portale\Plugin;
+
+use Portale\Audit;
+use Portale\Billing;
+use Portale\Config;
+use Portale\Connections;
+use Portale\Db;
+use Portale\Domain;
+use Portale\Emails;
+use Portale\Legal;
+use Portale\Releases;
+use Portale\Secrets;
+use Portale\Settings;
+use Portale\Staff;
+use Portale\SupportSso;
+use Portale\Tracking;
+use Portale\UserError;
+use Portale\View;
+use Portale\WegaClient;
+use Portale\WegaException;
+use Portale\WegaSync;
 
 /**
  * Pannello di gestione: stesso accesso dei clienti (link per email), ma solo per gli indirizzi elencati in `admins` di config.php.
  * Ogni richiesta ricontrolla l'indirizzo; ogni modifica finisce nel registro.
  */
 final class Admin {
+
+	/** Radice dell'amministrazione del plugin (confine logico: tabelle, ruoli, menu e rotte propri). Prima era «/admin». */
+	const BASE = '/wordpress/admin';
 
 	/** @var Db */
 	private $db;
@@ -50,7 +73,7 @@ final class Admin {
 
 	public function handle( string $method, string $path ): void {
 		$get = 'GET' === $method;
-		$p   = explode( '/', trim( substr( $path, 6 ), '/' ) ); // dopo «/admin»
+		$p   = explode( '/', trim( substr( $path, strlen( self::BASE ) ), '/' ) ); // dopo «/wordpress/admin»
 		$a   = $p[0] ?? '';
 		$b   = $p[1] ?? '';
 		$c   = $p[2] ?? '';
@@ -93,7 +116,7 @@ final class Admin {
 				$this->show( 'prices', 'prezzi', array( 'plans' => Config::get( 'plans', array() ) ) );
 			} elseif ( 'promo' === $b ) {
 				Settings::savePromo( $this->db, $_POST );
-				$this->done( 'promo', 'Promozione salvata.', '/admin/prezzi' );
+				$this->done( 'promo', 'Promozione salvata.', '/wordpress/admin/prezzi' );
 			} elseif ( '' !== $b ) {
 				$this->savePlan( $b );
 			} else {
@@ -112,31 +135,31 @@ final class Admin {
 				$this->show( 'settings', 'impostazioni', array( 'g' => Settings::general(), 'limits' => Settings::LIMITS, 'plans' => Config::get( 'plans', array() ), 'cfg' => $this->configStatus() ) );
 			} else {
 				Settings::saveGeneral( $this->db, $_POST );
-				$this->done( 'settings', 'Impostazioni salvate.', '/admin/impostazioni' );
+				$this->done( 'settings', 'Impostazioni salvate.', '/wordpress/admin/impostazioni' );
 			}
 		} elseif ( 'pagamenti' === $a ) {
 			if ( $get ) {
 				$this->show( 'payments', 'pagamenti', array( 's' => Settings::secretsStatus( $this->db ), 'base' => rtrim( (string) Config::get( 'base_url' ), '/' ) ) );
 			} elseif ( 'prova' === $b ) {
 				list( $ok, $msg ) = Connections::test( $c );
-				$this->done( 'test_' . $c, ( $ok ? '✓ ' : '✗ ' ) . $msg, '/admin/pagamenti' );
+				$this->done( 'test_' . $c, ( $ok ? '✓ ' : '✗ ' ) . $msg, '/wordpress/admin/pagamenti' );
 			} else {
 				$changed = Settings::saveSecrets( $this->db, $_POST );
-				$this->done( 'secrets', $changed ? 'Chiavi salvate (' . implode( ', ', $changed ) . ').' : 'Impostazioni di pagamento salvate.', '/admin/pagamenti' );
+				$this->done( 'secrets', $changed ? 'Chiavi salvate (' . implode( ', ', $changed ) . ').' : 'Impostazioni di pagamento salvate.', '/wordpress/admin/pagamenti' );
 			}
 		} elseif ( 'cookie' === $a ) {
 			if ( $get ) {
 				$this->show( 'cookies', 'cookie', array( 't' => Tracking::conf(), 'cats' => Tracking::CATEGORIES ) );
 			} else {
 				Settings::saveTracking( $this->db, $_POST );
-				$this->done( 'tracking', 'Cookie e script salvati.', '/admin/cookie' );
+				$this->done( 'tracking', 'Cookie e script salvati.', '/wordpress/admin/cookie' );
 			}
 		} elseif ( 'legale' === $a ) {
 			if ( $get ) {
 				$this->show( 'legal_edit', 'legale', array( 'vars' => Legal::vars(), 'legal' => (array) Config::get( 'legal', array() ) ) );
 			} else {
 				Settings::saveLegal( $this->db, $_POST );
-				$this->done( 'legal', 'Pagine legali salvate.', '/admin/legale' );
+				$this->done( 'legal', 'Pagine legali salvate.', '/wordpress/admin/legale' );
 			}
 		} elseif ( 'versioni' === $a ) {
 			if ( $get ) {
@@ -147,14 +170,14 @@ final class Admin {
 				$this->show( 'releases', 'versioni', array( 'rows' => $rows, 'keep' => Settings::limit( 'releases_keep' ) ) );
 			} elseif ( 'elimina' === $b ) {
 				Releases::remove( $this->db, (string) ( $_POST['product'] ?? '' ), (string) ( $_POST['version'] ?? '' ), $this->email );
-				$this->done( 'release_remove', 'Versione eliminata.', '/admin/versioni' );
+				$this->done( 'release_remove', 'Versione eliminata.', '/wordpress/admin/versioni' );
 			} else {
 				$f = $_FILES['package'] ?? null;
 				if ( ! $f || UPLOAD_ERR_OK !== (int) $f['error'] || ! is_uploaded_file( (string) $f['tmp_name'] ) ) {
 					throw new UserError( 'Caricamento non riuscito: scegli lo zip del plugin (controlla anche il limite di upload_max_filesize del server).' );
 				}
 				$row = Releases::add( $this->db, (string) ( $_POST['product'] ?? '' ), (string) $f['tmp_name'], (string) ( $_POST['note'] ?? '' ), $this->email );
-				$this->done( 'release_add', 'Versione ' . $row['version'] . ' pubblicata.', '/admin/versioni' );
+				$this->done( 'release_add', 'Versione ' . $row['version'] . ' pubblicata.', '/wordpress/admin/versioni' );
 			}
 		} elseif ( 'registro' === $a && $get ) {
 			$this->show( 'audit', 'registro', array( 'rows' => Audit::recent( $this->db, 200 ) ) );
@@ -256,7 +279,7 @@ final class Admin {
 
 	private function licenseAction( string $id, string $action ): void {
 		$sub = $this->sub( $id );
-		$to  = '/admin/licenze/' . $id;
+		$to  = '/wordpress/admin/licenze/' . $id;
 		switch ( $action ) {
 			case 'rinnova':
 				if ( ! $this->billing->renew( $id, null, null, ! empty( $_POST['notify'] ) ) ) {
@@ -283,7 +306,7 @@ final class Admin {
 				break;
 			case 'elimina':
 				$deleted = $this->billing->deleteSubscription( $id );
-				$this->done( 'sub_delete', 'Licenza di ' . $sub['domain'] . ' eliminata dal portale.' . ( ! empty( $deleted['_warning'] ) ? ' ' . $deleted['_warning'] : '' ), '/admin/licenze', $id );
+				$this->done( 'sub_delete', 'Licenza di ' . $sub['domain'] . ' eliminata dal portale.' . ( ! empty( $deleted['_warning'] ) ? ' ' . $deleted['_warning'] : '' ), '/wordpress/admin/licenze', $id );
 				break;
 			case 'chiave':
 				if ( ! $this->billing->recoverKey( $id ) ) {
@@ -306,7 +329,7 @@ final class Admin {
 			(string) ( $_POST['email'] ?? '' ), (string) ( $_POST['domain'] ?? '' ), (string) ( $_POST['plan'] ?? '' ), $days,
 			(string) ( $_POST['note'] ?? '' ), ! empty( $_POST['notify'] )
 		);
-		$this->done( 'issue', $sub['domain'] . ' · ' . $sub['plan_code'] . ' · ' . $days . ' giorni', '/admin/licenze/' . $sub['id'], $sub['id'] );
+		$this->done( 'issue', $sub['domain'] . ' · ' . $sub['plan_code'] . ' · ' . $days . ' giorni', '/wordpress/admin/licenze/' . $sub['id'], $sub['id'] );
 	}
 
 	private function customers(): void {
@@ -351,7 +374,7 @@ final class Admin {
 				++$skip;
 			}
 		}
-		$this->done( 'wega_import', $done . ' licenze importate da Wega' . ( $skip ? ', ' . $skip . ' saltate' : '' ) . '.', '/admin/wega' );
+		$this->done( 'wega_import', $done . ' licenze importate da Wega' . ( $skip ? ', ' . $skip . ' saltate' : '' ) . '.', '/wordpress/admin/wega' );
 	}
 
 	/** Staff: elenco, aggiunta/cambio permessi (POST /admin/staff) e rimozione (POST /admin/staff/rimuovi). */
@@ -360,14 +383,14 @@ final class Admin {
 			$this->show( 'staff', 'staff', array( 'rows' => Staff::all( $this->db ), 'labels' => Staff::LABELS, 'saas_labels' => Staff::SAAS_LABELS, 'sso' => SupportSso::enabled(), 'support_url' => SupportSso::supportUrl() ) );
 		} elseif ( ! $get && '' === $b ) {
 			$email = Staff::set( $this->db, $this->billing, (string) ( $_POST['email'] ?? '' ), (string) ( $_POST['role'] ?? '' ), (string) ( $_POST['saas'] ?? '' ) );
-			$this->done( 'staff_set', $email . ' · plugin: ' . ( Staff::LABELS[ (string) $_POST['role'] ] ?? 'nessun accesso' ) . ' · SaaS: ' . ( Staff::SAAS_LABELS[ (string) $_POST['saas'] ] ?? 'nessun accesso' ), '/admin/staff' );
+			$this->done( 'staff_set', $email . ' · plugin: ' . ( Staff::LABELS[ (string) $_POST['role'] ] ?? 'nessun accesso' ) . ' · SaaS: ' . ( Staff::SAAS_LABELS[ (string) $_POST['saas'] ] ?? 'nessun accesso' ), '/wordpress/admin/staff' );
 		} elseif ( ! $get && 'rimuovi' === $b ) {
 			$email = strtolower( trim( (string) ( $_POST['email'] ?? '' ) ) );
 			if ( $email === strtolower( $this->email ) ) {
 				throw new UserError( 'Non puoi togliere te stesso dallo staff.' );
 			}
 			Staff::remove( $this->db, $email );
-			$this->done( 'staff_remove', $email . ' tolto dallo staff.', '/admin/staff' );
+			$this->done( 'staff_remove', $email . ' tolto dallo staff.', '/wordpress/admin/staff' );
 		} else {
 			$this->notFound();
 		}
@@ -383,12 +406,12 @@ final class Admin {
 			throw new UserError( 'Non puoi eliminare il tuo stesso account mentre sei dentro.' );
 		}
 		$n = $this->billing->deleteCustomer( $id );
-		$this->done( 'customer_delete', 'Cliente ' . $c['email'] . ' eliminato (' . $n . ' licenze).' . ( $this->billing->warning ? ' ' . $this->billing->warning : '' ), '/admin/clienti' );
+		$this->done( 'customer_delete', 'Cliente ' . $c['email'] . ' eliminato (' . $n . ' licenze).' . ( $this->billing->warning ? ' ' . $this->billing->warning : '' ), '/wordpress/admin/clienti' );
 	}
 
 	private function savePlan( string $code ): void {
 		Settings::savePlan( $this->db, $code, $_POST );
-		$this->done( 'plan', 'Piano «' . $code . '» salvato.', '/admin/prezzi#' . $code );
+		$this->done( 'plan', 'Piano «' . $code . '» salvato.', '/wordpress/admin/prezzi#' . $code );
 	}
 
 	private function emails(): void {
@@ -413,7 +436,7 @@ final class Admin {
 			$this->notFound();
 			return;
 		}
-		$to = '/admin/email/' . $event;
+		$to = '/wordpress/admin/email/' . $event;
 		if ( isset( $_POST['reset'] ) ) {
 			Emails::reset( $this->db, $event );
 			$this->done( 'email_reset', 'Modello «' . $event . '» ripristinato.', $to );
@@ -455,7 +478,7 @@ final class Admin {
 	}
 
 	private function show( string $view, string $nav, array $vars = array() ): void {
-		View::render( 'admin/' . $view, $vars + array( 'nav' => $nav, 'flash' => $this->flash(), 'admin_email' => $this->email, 'role' => $this->role, 'has_saas' => '' !== Staff::saas( $this->db, $this->email ) ) );
+		View::render( 'wordpress-admin/' . $view, $vars + array( 'nav' => $nav, 'flash' => $this->flash(), 'admin_email' => $this->email, 'role' => $this->role, 'has_saas' => '' !== Staff::saas( $this->db, $this->email ) ) );
 	}
 
 	private function flash(): string {

@@ -3,7 +3,7 @@
 $tabs = array( 'associazioni' => array( '/saas', 'Associazioni' ) );
 ?>
 <div class="wrap" style="padding-top:28px">
-<div class="admin-top"><h1>Piattaforma SaaS</h1><span class="muted small"><?php echo e( $admin_email ); ?><?php if ( $has_plugin ) : ?> · <a href="/admin">Gestione plugin</a><?php endif; ?> · <a href="/account">La mia area cliente</a></span></div>
+<div class="admin-top"><h1>Piattaforma SaaS</h1><span class="muted small"><?php echo e( $admin_email ); ?><?php if ( $has_plugin ) : ?> · <a href="/wordpress/admin">Gestione plugin</a><?php endif; ?> · <a href="/account">La mia area cliente</a></span></div>
 <nav class="tabs" aria-label="Piattaforma SaaS">
 <?php foreach ( $tabs as $k => $t ) : ?><a href="<?php echo e( $t[0] ); ?>"<?php echo $k === $nav ? ' aria-current="page"' : ''; ?>><?php echo e( $t[1] ); ?></a><?php endforeach; ?>
 </nav>
