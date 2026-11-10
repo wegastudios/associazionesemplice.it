@@ -5,7 +5,9 @@ Specifica di progetto per la sessione di sviluppo. Contesto: [SVILUPPO.md](SVILU
 `AreaSoci/Profilo.vue`, `AreaSoci/Accesso.vue`.
 
 Tre parti indipendenti, da rilasciare in quest'ordine: **3a** app installabile, **3b** avvisi sul telefono, **3c** tessera
-nel wallet. La 3c richiede decisioni e costi del titolare del progetto (§5).
+nel wallet. **Decisioni del titolare (§5):** la 3c è **rimandata** (Apple Wallet non interessa per ora, Google Wallet si
+apre più avanti); gli avvisi (3b) sono indispensabili e si progettano subito, comprese le comunicazioni della segreteria (§2.8);
+il codice nel link di accesso per chi non ha email è approvato.
 
 ## 0. Cosa sa già l'area soci (vincoli da rispettare)
 
@@ -101,8 +103,9 @@ Safari e non l'app. Quindi:
   link è citato per secondo («Apri la mail, copia il codice e scrivilo qui»);
 - il campo codice usa `inputmode="numeric"`, `autocomplete="one-time-code"` (iOS lo propone dalla tastiera);
 - l'email del codice ha il codice **in grande in cima**, prima del pulsante del link;
-- anche l'invito di WhatsApp della segreteria deve riportare il codice accanto al link. **Da decidere con lo sviluppo:**
-  oggi quel link è senza codice.
+- anche l'invito di WhatsApp della segreteria riporta il codice accanto al link (**approvato**; oggi il link è senza
+  codice). Il messaggio da copiare diventa: «Ciao {nome}, ecco il tuo accesso all'area soci di {associazione}: {link}.
+  Se usi l'app, scrivi questo codice: {codice}. Vale 7 giorni.» Il codice resta a uso singolo e con 5 tentativi.
 - Una volta dentro, la sessione dura 30 giorni senza uso: non si chiede un nuovo accesso a ogni apertura.
 
 ### 1.7 Dettagli di schermata
@@ -116,8 +119,9 @@ Safari e non l'app. Quindi:
 
 ### 2.1 Principio
 
-Gli avvisi servono a **ricordare e informare di servizio**, non a fare promozione. Niente messaggi di massa della
-segreteria in questo passo (richiederebbero il consenso `ConsentChannel` e un'altra schermata di scrittura).
+Gli avvisi servono a **ricordare e informare di servizio**, non a fare promozione. Sono di due famiglie: **automatici**
+(§2.3, generati dal sistema) e **comunicazioni della segreteria** (§2.8, scritte da una persona). Entrambi passano dallo
+stesso canale, dalle stesse impostazioni del socio e dalla stessa bacheca (§2.7).
 
 ### 2.2 Quando si chiede il permesso
 
@@ -156,6 +160,7 @@ Cosa vuoi ricevere
 [ ● ] Scadenze di tessera e certificato
 [ ● ] Pagamenti e ricevute
 [ ● ] Prenotazioni ed eventi
+[ ● ] Comunicazioni dell'associazione
 [ ○ ] Mostra i dettagli nell'avviso
       Con i dettagli, nome e importi sono visibili anche a schermo bloccato.
 
@@ -184,13 +189,82 @@ I tuoi telefoni
 
 - `app.push_subscriptions`: persona, indirizzo di consegna e chiavi **cifrati** (sono segreti), impronta per
   l'unicità, etichetta del dispositivo, creata il, ultimo invio, revocata il.
-- `app.notification_preferences`: persona, tre categorie, dettagli sì/no.
+- `app.notification_preferences`: persona, quattro categorie (scadenze, pagamenti, prenotazioni, comunicazioni), dettagli sì/no.
+- `app.notifications`: la voce della bacheca (§2.7) per ogni avviso automatico o comunicazione, per persona (e scheda del minore), con letta il.
 - Registro (`actor_type = member`): `push.subscribed`, `push.unsubscribed`, `push.preferences_changed`.
 - Coda: lavoro `OrgScopedJob` con solo identificativi; l'invio e il testo si compongono nel lavoro.
 - Chiavi VAPID per ambiente nel file d'ambiente del server, **mai** nel repository. Libreria di invio: da vagliare con il
   controllo delle dipendenze.
 
-## 3. Parte 3c: tessera nel wallet
+### 2.7 Bacheca «Avvisi» nell'area soci
+
+Un avviso sul telefono si può perdere (silenziato, cancellato, permesso negato). Ogni avviso, automatico o della
+segreteria, è quindi anche una **voce nella bacheca**, che funziona anche senza app e senza permesso.
+
+- Accesso: **campanella** nell'intestazione dell'area, a sinistra di «Esci», con un puntino (e il numero dei non letti
+  scritto per esteso nell'etichetta per lo screen reader) quando c'è qualcosa di nuovo. Non si aggiunge una sesta voce
+  alla barra in basso (ne ha già cinque).
+- Pagina `/area/avvisi`: `list-group` dal più recente, 60 giorni. Riga: icona della famiglia, titolo, prima riga del testo,
+  data relativa («oggi», «ieri», «12 nov»), pallino se non letta. Tocco = dettaglio in `Sheet` con testo completo e, se
+  c'è, il pulsante dell'azione («Vai al pagamento», «Apri la prenotazione»).
+- Si segna come letta all'apertura del dettaglio; «Segna tutte come lette» in cima.
+- Per un tutore, la riga dice «Per {nome del minore}» sotto il titolo; l'elenco si filtra con le stesse pastiglie
+  «Io / {minore}» già presenti nell'area.
+- Vuoto: «Nessun avviso. Quando l'associazione ti scrive o c'è una scadenza, la trovi qui.»
+- La bacheca mostra il testo **con** i dettagli: nella bacheca si è già dentro l'app, la riservatezza riguarda solo il blocco
+  schermo.
+
+### 2.8 Comunicazioni della segreteria
+
+Da questa parte la segreteria scrive ai soci. È indispensabile, ma è anche l'unico punto in cui una persona può mandare
+un messaggio a molti: le regole sotto servono a tenerlo di servizio e non di promozione.
+
+**Gestionale:** pagina `/gestionale/comunicazioni` (voce in «Altro» → Persone; permesso nuovo `communications.send`,
+assegnabile ai ruoli personalizzati, non al commercialista) con l'elenco degli invii passati e il pulsante «Nuova
+comunicazione», che apre un foglio a passi (telefono) o una pagina a sezioni (da `lg`):
+
+1. **A chi.** Scelta unica con `Segmented`/elenco di opzioni:
+   - Tutti i soci in regola
+   - Soci con la tessera in scadenza o scaduta
+   - Iscritti a un'attività (si sceglie quale)
+   - Prenotati a una data di un evento (si sceglie quale)
+   - Una persona sola (con `PersonPicker`)
+   Sotto, **sempre il conteggio prima dell'invio**: «Lo riceveranno 84 persone. Sul telefono: 51. Solo in bacheca ed
+   email: 33.» Chi non ha un tutore operativo o un'email né un telefono è nominato in un elenco apribile («7 persone non
+   raggiungibili»).
+2. **Cosa scrivi.** Titolo (massimo 50 caratteri), testo (massimo 280; i primi 90 compaiono nell'avviso sul telefono),
+   azione facoltativa scelta da un elenco fisso (apri Eventi, apri una prenotazione, apri Quote) — niente indirizzi liberi.
+   Avvertenza fissa sopra il campo: «Il testo si legge anche a schermo bloccato. Non scrivere dati personali, sanitari o
+   importi di una persona.» Contatore dei caratteri visibile.
+3. **Quando.** «Subito» o «Programma» (data e ora, non prima di un'ora da adesso, non nelle fasce di silenzio).
+4. **Controlla e invia.** Anteprima dell'avviso come appare sul telefono (con il nome dell'associazione come titolo) e
+   riepilogo del conteggio; pulsante **«Invia a 84 persone»** (testo con il numero vero, mai solo «Invia»); un'ulteriore
+   conferma solo sopra le 50 persone (`Sheet` con la frase «Non si può ritirare dopo l'invio»).
+
+**Regole:**
+- Una comunicazione inviata **non si modifica né si cancella**; si può solo mandarne una di rettifica. Quella programmata
+  si può annullare fino all'orario.
+- Limiti per associazione: 2 comunicazioni al giorno e 8 alla settimana; sopra, il pulsante spiega perché è bloccato.
+- Il socio le riceve se non ha spento «Comunicazioni dell'associazione» (quarta categoria, acceso di default perché è
+  servizio; la segreteria non può forzarlo). Chi l'ha spento le trova comunque in bacheca, senza avviso.
+- **Email di riserva** solo se la persona ha il consenso al canale email in `Soci\Contracts\ConsentChannel`; senza, solo
+  bacheca e telefono.
+- Niente allegati, niente immagini, niente link liberi (riduce phishing e spam).
+- I soci usciti o sospesi non le ricevono, salvo «Una persona sola».
+- Il minore non riceve: il messaggio va al tutore operativo, con «Per {nome}» solo nella bacheca.
+
+**Dati e registro:**
+- `app.announcements`: autore, destinatari scelti (tipo e riferimento), titolo, testo, azione, programmato per, inviato il, annullato il.
+- `app.announcement_deliveries`: una riga per persona e canale (telefono, bacheca, email), con esito e letta il; è la base del conteggio e della bacheca.
+- Registro (`actor_type` operatore): `announcement.created`, `announcement.sent`, `announcement.cancelled`, con numero di destinatari, mai con il testo dei destinatari.
+- Test: separazione tra associazioni, il commercialista non può inviare, i limiti giornalieri, l'esclusione dei sospesi e dei minori.
+
+**Cosa non c'è in questo passo:** risposte dei soci, sondaggi, immagini, invii a gruppi liberi. Se serviranno, sono un passo a parte.
+
+## 3. Parte 3c: tessera nel wallet — RIMANDATA
+
+Per decisione del titolare: Apple Wallet non interessa per ora, Google Wallet si apre più avanti. Questa sezione resta
+come riferimento e **non va sviluppata ora**. Quando si riprende: prima Google Wallet, poi eventualmente Apple.
 
 ### 3.1 Obiettivo
 
@@ -238,15 +312,15 @@ sapere in modo affidabile: la riga dice solo «Aggiungi»).
 
 ## 5. Decisioni che spettano al titolare (non all'implementazione)
 
-| Tema | Domanda | Perché conta |
+| Tema | Decisione | Stato |
 |---|---|---|
-| Apple Wallet | Aprire un account Apple Developer (circa 99 USD l'anno) per il certificato dei pass? | Senza, solo Google Wallet |
-| Google Wallet | Creare un account emittente Google Wallet (gratuito) con chiave di servizio? | Serve per firmare i pass |
-| Emittente | Pass emessi da **Associazione Semplice** (un solo certificato, nome dell'associazione sul pass) o uno per associazione? | Il primo è fattibile subito, il secondo no |
-| Avvisi | Confermi che in questo passo non ci sono messaggi di massa della segreteria? | Evita consensi e moderazione |
-| Link WhatsApp | Aggiungere il codice al link di accesso per chi non ha email? | Serve per l'app su iPhone |
+| Apple Wallet | Non interessa per ora | deciso |
+| Google Wallet | Si apre l'account più avanti | rimandato |
+| Emittente dei pass | Un solo emittente (Associazione Semplice) con il nome dell'associazione sul pass, oppure uno per associazione | da spiegare e decidere quando si riprende la 3c |
+| Avvisi | Indispensabili: si progettano subito, comprese le comunicazioni della segreteria (§2.8) | deciso |
+| Link WhatsApp | Il codice si aggiunge al link di accesso | approvato |
 
-Le prime quattro vanno decise prima di iniziare 3c; 3a e 3b non dipendono da esse.
+3a e 3b non dipendono da nessuna decisione aperta.
 
 ## 6. Controlli di accettazione
 
@@ -263,8 +337,10 @@ Le prime quattro vanno decise prima di iniziare 3c; 3a e 3b non dipendono da ess
 
 1. 3a: manifest, icone, service worker con le sole risorse statiche, pagina senza rete, invito a installare.
 2. 3a: copia offline della tessera (con cancellazione all'uscita) e accesso con codice nell'app.
-3. 3b: tabelle, sottoscrizione, impostazioni; poi gli avvisi uno alla volta partendo da «pagamento ricevuto» e «posto liberato».
-4. 3b: promemoria di scadenza sul nuovo canale, con la regola «un solo canale».
-5. 3c: dopo le decisioni di §5, prima Google Wallet, poi Apple Wallet.
+3. 3b: tabelle (sottoscrizioni, preferenze, avvisi/consegne), bacheca `/area/avvisi` con campanella (funziona anche senza telefono).
+4. 3b: sottoscrizione push e impostazioni; poi gli avvisi automatici uno alla volta partendo da «pagamento ricevuto» e «posto liberato».
+5. 3b: promemoria di scadenza sul nuovo canale, con la regola «un solo canale».
+6. 3b: comunicazioni della segreteria (§2.8), con permesso `communications.send`, conteggio, limiti e programmazione.
+7. 3c rimandata: non sviluppare.
 
 Aggiornare [DESIGN.md](DESIGN.md) §6 e [SVILUPPO.md](SVILUPPO.md) §9 quinquies solo a lavoro finito.
