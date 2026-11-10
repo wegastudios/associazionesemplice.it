@@ -57,6 +57,16 @@ it('rifiuta campi sconosciuti, importi non interi e testo con HTML', function (a
 
         return $c;
     }]],
+    'compare con maiuscole' => [['apply' => function (array $c): array {
+        $c['features'][0]['compare'] = 'Members';
+
+        return $c;
+    }]],
+    'compare duplicato' => [['apply' => function (array $c): array {
+        $c['features'][1]['compare'] = $c['features'][0]['compare'];
+
+        return $c;
+    }]],
     'fasce che non crescono' => [['apply' => function (array $c): array {
         $c['plans'][0]['prices'][0]['tiers'][1]['up_to'] = 100;
 
