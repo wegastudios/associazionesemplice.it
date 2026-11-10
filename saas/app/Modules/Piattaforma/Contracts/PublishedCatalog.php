@@ -20,6 +20,36 @@ final readonly class PublishedCatalog
     }
 
     /**
+     * Una versione di un piano, o null se non è mai stata pubblicata.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function plan(string $code, int $version): ?array
+    {
+        foreach (is_array($this->document['plans'] ?? null) ? $this->document['plans'] : [] as $plan) {
+            if (is_array($plan) && ($plan['code'] ?? null) === $code && ($plan['plan_version'] ?? null) === $version) {
+                /** @var array<string, mixed> $plan */
+                return $plan;
+            }
+        }
+
+        return null;
+    }
+
+    /** @return array<string, mixed>|null */
+    public function addon(string $code): ?array
+    {
+        foreach (is_array($this->document['addons'] ?? null) ? $this->document['addons'] : [] as $addon) {
+            if (is_array($addon) && ($addon['code'] ?? null) === $code) {
+                /** @var array<string, mixed> $addon */
+                return $addon;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Versione e codice di ogni piano del catalogo: serve a chi riceve un abbonamento per sapere se la conosce.
      *
      * @return list<array{code: string, plan_version: int}>

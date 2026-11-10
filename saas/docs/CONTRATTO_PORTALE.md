@@ -230,7 +230,8 @@ finisce nel registro delle azioni dell'associazione (`subscription.updated`: pia
 Le associazioni **create a mano** (pilota, `saas:org:create`) non hanno abbonamento: valgono i limiti di base finché non
 ne ricevono uno, e una `subscription` le tratta come qualunque altra.
 
-Risposta: `200 {"org_id", "rev", "plan", "plan_version"}`. Errore di rete o 5xx: il portale **ritenta** (1, 5, 30 minuti,
+Per la `subscription` non si tengono i `jti` usati: una ripetizione ha una `rev` non maggiore ed è già rifiutata con `409
+stale_revision` senza effetti. Risposta: `200 {"org_id", "rev", "plan", "plan_version"}`. Errore di rete o 5xx: il portale **ritenta** (1, 5, 30 minuti,
 poi ogni ora) finché ottiene 200, 409 `stale_revision` (già applicata) o `unknown_plan` (poi ricarica il catalogo).
 
 ### 3.3 Promozioni
