@@ -1,9 +1,14 @@
 <script setup>
+import { computed } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 
-defineProps({ from: String, previous: String, next: String, days: Array });
-const go = (d) => router.get('/gestionale/calendario', { dal: d }, { preserveScroll: true });
+const props = defineProps({ view: String, from: String, previous: String, next: String, days: Array });
+const views = [['giorno', 'Giorno'], ['settimana', 'Settimana'], ['mese', 'Mese']];
+const go = (d, view = props.view) => router.get('/gestionale/calendario', { dal: d, vista: view }, { preserveScroll: true });
+const period = computed(() => ({ giorno: 'per un giorno', settimana: 'per sette giorni', mese: 'per un mese' })[props.view]);
+const prev = computed(() => ({ giorno: 'Giorno prima', settimana: 'Settimana prima', mese: 'Mese prima' })[props.view]);
+const nextLabel = computed(() => ({ giorno: 'Giorno dopo', settimana: 'Settimana dopo', mese: 'Mese dopo' })[props.view]);
 </script>
 
 <template>
@@ -13,12 +18,15 @@ const go = (d) => router.get('/gestionale/calendario', { dal: d }, { preserveScr
         <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-bold">Calendario</h1>
-                <p class="text-sm text-muted">Lezioni dei corsi, eventi e date con prenotazione, per sette giorni.</p>
+                <p class="text-sm text-muted">Lezioni dei corsi, eventi e date con prenotazione, {{ period }}.</p>
             </div>
-            <div class="flex items-center gap-2 text-sm">
-                <button type="button" class="field w-auto" aria-label="Settimana prima" @click="go(previous)">←</button>
+            <div class="flex flex-wrap items-center gap-2 text-sm">
+                <div class="flex overflow-hidden rounded-lg border border-line" role="group" aria-label="Vista">
+                    <button v-for="v in views" :key="v[0]" type="button" class="px-3 py-2" :class="view === v[0] ? 'bg-accent font-semibold text-accent-ink' : 'bg-card'" :aria-pressed="view === v[0]" @click="go(from, v[0])">{{ v[1] }}</button>
+                </div>
+                <button type="button" class="field w-auto" :aria-label="prev" @click="go(previous)">←</button>
                 <input type="date" :value="from" class="field w-auto" aria-label="Dal giorno" @change="go($event.target.value)" />
-                <button type="button" class="field w-auto" aria-label="Settimana dopo" @click="go(next)">→</button>
+                <button type="button" class="field w-auto" :aria-label="nextLabel" @click="go(next)">→</button>
             </div>
         </div>
         <div class="space-y-3">
