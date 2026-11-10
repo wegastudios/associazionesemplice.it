@@ -77,6 +77,8 @@ final class Db {
 			'CREATE TABLE IF NOT EXISTS downloads (id VARCHAR(32) PRIMARY KEY, customer_id VARCHAR(32) NOT NULL, at VARCHAR(19) NOT NULL, product VARCHAR(8) NOT NULL, version VARCHAR(20) NOT NULL)',
 			'CREATE INDEX idx_dl_customer ON downloads (customer_id, at)',
 			'CREATE TABLE IF NOT EXISTS staff (email VARCHAR(190) PRIMARY KEY, role VARCHAR(10) NOT NULL, created_at VARCHAR(19) NOT NULL)',
+			'CREATE TABLE IF NOT EXISTS catalog (product VARCHAR(12) PRIMARY KEY, rev INTEGER NOT NULL, etag VARCHAR(80) NULL, body TEXT NOT NULL, fetched_at VARCHAR(19) NOT NULL, checked_at VARCHAR(19) NOT NULL)',
+			'CREATE TABLE IF NOT EXISTS seen_jti (jti VARCHAR(64) PRIMARY KEY, exp INTEGER NOT NULL)',
 			// Colonne aggiunte dopo la prima versione: se esistono già l'errore si ignora.
 			"ALTER TABLE staff ADD COLUMN saas VARCHAR(10) NOT NULL DEFAULT ''",
 			'ALTER TABLE customers ADD COLUMN password_hash VARCHAR(255) NULL',
