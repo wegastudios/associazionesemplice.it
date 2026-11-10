@@ -87,7 +87,20 @@ final readonly class CatalogPublisher
             $connection->table('core.catalog_draft')->where('id', 1)->lockForUpdate()->first();
             $max = $connection->table('core.catalog_revisions')->max('rev');
             $current = is_numeric($max) ? (int) $max : 0;
-            $currentRev = max($current, $this->catalog->published()->rev);
+            if ($current === 0) {
+                // Alla prima pubblicazione il contenuto iniziale (config/catalogo.php) diventa la revisione di
+                // partenza: da qui in poi anche le sue versioni dei piani sono immutabili e restano note.
+                $initial = $this->catalog->published();
+                $connection->table('core.catalog_revisions')->insert([
+                    'rev' => $initial->rev,
+                    'document' => $initial->json(),
+                    'published_by' => $staffId,
+                    'note' => 'Contenuto iniziale',
+                    'published_at' => now(),
+                ]);
+                $current = $initial->rev;
+            }
+            $currentRev = $current;
 
             $next = $currentRev + 1;
             $input = $this->draft();
