@@ -246,6 +246,16 @@ Il portale **legge** piani, caratteristiche e prezzi del SaaS dal suo catalogo (
 
 Il token dell'accesso unico (HMAC, `src/SupportSso.php`) porta, se il cliente ha licenze, `v: 2` e `plans: [{product, plan, support_level, status}]` (al massimo 20 voci, senza prezzi né dati di soci): `product` `plugin|saas`; `plan` lo slug fisso (`free`, `procontabile`, `profiscale`); `support_level` `base|standard|priority` (oggi sempre `base`: lo dichiareranno i cataloghi); `status` `active|trial|past_due|cancelled`. Senza licenze il token resta `v: 1`. Il supporto verifica firma, `aud` e `exp` prima di leggere `plans` e ignora i valori sconosciuti. Gli abbonamenti SaaS compariranno con il passo 6.
 
+## Acquisto del SaaS: preventivo, ordine e coda verso il SaaS (novembre 2026)
+
+Fondamenta del passo 6 (nessuna pagina pubblica ancora: il pagamento arriva nel passo successivo).
+
+- **Preventivo** (`src/Quote.php`): dal catalogo corrente e solo da lì. Piano + periodo + soci (+ addon, + promo) → righe, imponibile, sconto, IVA una sola volta sul totale (centesimi, metà in su), `plan_version` e `rev`. Lo sconto percentuale o a importo si applica all'imponibile e non lo porta mai sotto zero.
+- **Ordine** (`src/Orders.php`, tabella `orders`): `open` ricarica il catalogo (senza risposta valida non si vende) e fissa nell'ordine prezzo, `plan_version`, regole di prezzo e `rev`. `confirm`, prima di incassare, ricontrolla la `rev`: se è cambiata ricalcola l'istantanea e, se il totale è diverso, mostra «I prezzi sono stati aggiornati: il nuovo totale è …» e chiede di confermare di nuovo. I rinnovi restano sull'istantanea dell'ordine.
+- **Client del contratto v2** (`SaasClient`): `provision` (§3.1), `subscription` (§3.2, `PUT`), `promoCheck` e `promoRedeem` (§3.3). Token firmati di 60 secondi con `jti` monouso.
+- **Coda** (`src/Outbox.php`, tabella `saas_outbox`, `bin/saas-outbox.php`): le `subscription` si accodano e si ritentano dopo 1, 5, 30 minuti, poi ogni ora, finché 200 o 409 `stale_revision`; con `unknown_plan` si ricarica il catalogo. Senza chiave di firma i messaggi restano in coda. `deploy.sh` aggiunge al crontab `*/5 * * * *` per lo script.
+- Da fare: pagina d'acquisto, pagamento (Stripe/PayPal), `promo.check` nel carrello, `promo.redeem` al pagamento, invio della `subscription` alla conferma, creazione dell'associazione (§3.1) alla prima attivazione, fatture.
+
 ## Catalogo del plugin: bozza e «Pubblica» (`/wordpress/admin/catalogo`)
 
 Sezione **Piani → Catalogo**, solo per gli amministratori. Cosa si decide qui: a chi è rivolto ogni piano, visibilità e ordine, livello di assistenza (`free`/`paid`/`top`), siti ammessi, elenco delle caratteristiche e, per ogni piano, se ciascuna è inclusa, con limite (con nota) o non inclusa.
