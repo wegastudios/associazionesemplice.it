@@ -165,3 +165,25 @@ it('mostra date, prenotazioni, presenze e calendario nelle pagine', function ():
     $b = (string) $this->orgContext()->run($this->org->id, fn () => DB::table('app.session_bookings')->value('id'));
     $this->post("/gestionale/attivita/prenotazioni/{$b}/annulla")->assertSessionHas('status', 'Prenotazione annullata.');
 });
+
+it('mostra in segreteria solo i pacchetti pagati con ingressi residui', function (): void {
+    $this->orgContext()->run($this->org->id, function (): void {
+        $s = app(SessionService::class);
+        $a = recurring();
+        $s->addDates($a->id, $this->day, date('Y-m-d', (int) strtotime($this->day.' +21 days')), true, null, null, null, null);
+        $dates = array_column($s->sessions($a), 'id');
+        $p = Person::create(['first_name' => 'Lucia', 'last_name' => 'Neri']);
+        $pack = $s->book($dates[0], $p->id, 'pacchetto_3_uscite');
+
+        // Finché non è pagato non compare.
+        expect($s->paidPackages($a->id))->toBe([]);
+
+        $s->collect($pack->id, Account::query()->sole()->id, now()->toDateString(), null, null);
+        expect($s->paidPackages($a->id))->toBe([['id' => $pack->id, 'person_id' => $p->id, 'name' => 'Neri Lucia', 'label' => 'Pacchetto 3 uscite', 'left' => 2, 'entries' => 3]]);
+
+        // Esauriti gli ingressi, sparisce.
+        $s->book($dates[1], $p->id, null, true);
+        $s->book($dates[2], $p->id, null, true);
+        expect($s->paidPackages($a->id))->toBe([]);
+    });
+});
