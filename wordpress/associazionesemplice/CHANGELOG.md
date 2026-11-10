@@ -2,6 +2,11 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.18
+- Accesso soci più semplice: una sola schermata con password o link via email
+- Con la password puoi spuntare «Ricordami» e restare entrato 30 giorni
+- Con il link o il codice l'accesso dura meno (12 ore, si cambia dai Limiti)
+
 ## 1.3.17
 - Più sicurezza dopo una revisione: collegamenti tra tutore e minore più rigorosi, il modulo del profilo accetta solo l'invio normale, la protezione della cartella degli allegati viene controllata, negli elenchi esportati le formule non vengono eseguite.
 
