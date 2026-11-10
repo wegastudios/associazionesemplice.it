@@ -1403,6 +1403,35 @@ check( 'area clienti: licenza di un altro cliente = non trovata', null !== throw
 check( 'area clienti: domain.check non modifica nulla e segnala dominio uguale/non valido', false === $capi->domainCheck( 'cA', 'ok', 'ok.it' )['ok'] && false === $capi->domainCheck( 'cA', 'ok', '' )['ok'] && 'ok.it' === $adb->one( 'SELECT domain FROM subscriptions WHERE id = ?', array( 'ok' ) )['domain'] );
 check( 'area clienti: domain.check dà ok per un dominio libero', true === $capi->domainCheck( 'cA', 'ok', 'nuovo-sito.it' )['ok'] );
 
+// Verifica in due passaggi opzionale (TOTP, per persona)
+$rfc = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ'; // "12345678901234567890" in base32 (vettori RFC 6238)
+check( 'totp: vettori RFC 6238 (SHA-1, 6 cifre)', '287082' === Portale\Plugin\Totp::code( $rfc, 59 ) && '081804' === Portale\Plugin\Totp::code( $rfc, 1111111109 ) && '005924' === Portale\Plugin\Totp::code( $rfc, 1234567890 ) );
+check( 'totp: base32 va e torna', '12345678901234567890' === Portale\Plugin\Totp::decode32( $rfc ) && $rfc === Portale\Plugin\Totp::base32( '12345678901234567890' ) );
+check( 'totp: tolleranza di 30 secondi, non di più; formato rigoroso', Portale\Plugin\Totp::verify( $rfc, '287082', 59 + 30 ) && ! Portale\Plugin\Totp::verify( $rfc, '287082', 59 + 90 ) && ! Portale\Plugin\Totp::verify( $rfc, '28708', 59 ) && ! Portale\Plugin\Totp::verify( $rfc, 'abcdef', 59 ) );
+$mdb = new Db( new PDO( 'sqlite::memory:' ) );
+$mdb->migrate();
+$mbil = new Billing( $mdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+Portale\Staff::set( $mdb, $mbil, 'persona@esempio.it', 'admin' );
+Portale\Staff::set( $mdb, $mbil, 'altra@esempio.it', 'support' );
+check( 'mfa: di base è spenta per tutti', ! Portale\Plugin\Mfa::enabled( $mdb, 'persona@esempio.it' ) && ! Portale\Plugin\Mfa::enabled( $mdb, 'altra@esempio.it' ) );
+$now = 1700000000;
+$prevSession = $_SESSION ?? array();
+$_SESSION = array();
+check( 'mfa: attivazione con codice sbagliato rifiutata', null !== throwsUser( function () use ( $mdb, $rfc, $now ) { Portale\Plugin\Mfa::enable( $mdb, 'persona@esempio.it', $rfc, '000000', $now ); } ) && ! Portale\Plugin\Mfa::enabled( $mdb, 'persona@esempio.it' ) );
+Portale\Plugin\Mfa::enable( $mdb, 'persona@esempio.it', $rfc, Portale\Plugin\Totp::code( $rfc, $now ), $now );
+check( 'mfa: ognuno sceglie per sé (attiva per una persona, non per l\'altra)', Portale\Plugin\Mfa::enabled( $mdb, 'persona@esempio.it' ) && ! Portale\Plugin\Mfa::enabled( $mdb, 'altra@esempio.it' ) );
+check( 'mfa: il segreto nel database è cifrato', false === strpos( (string) $mdb->one( 'SELECT totp_secret_enc FROM plugin_staff WHERE email = ?', array( 'persona@esempio.it' ) )['totp_secret_enc'], $rfc ) );
+check( 'mfa: il ruolo non cambia attivando la verifica', 'admin' === Portale\Plugin\Staff::role( $mdb, 'persona@esempio.it' ) );
+$_SESSION = array();
+check( 'mfa: sessione senza codice non è verificata', ! Portale\Plugin\Mfa::sessionOk( 'persona@esempio.it', $now ) );
+Portale\Plugin\Mfa::markSession( 'Persona@esempio.it', $now );
+check( 'mfa: sessione verificata per 8 ore, solo per quell\'indirizzo', Portale\Plugin\Mfa::sessionOk( 'persona@esempio.it', $now + 3600 ) && ! Portale\Plugin\Mfa::sessionOk( 'altra@esempio.it', $now + 3600 ) && ! Portale\Plugin\Mfa::sessionOk( 'persona@esempio.it', $now + 8 * 3600 + 1 ) );
+check( 'mfa: codice giusto accettato, sbagliato no', Portale\Plugin\Mfa::check( $mdb, 'persona@esempio.it', Portale\Plugin\Totp::code( $rfc, $now ), $now ) && ! Portale\Plugin\Mfa::check( $mdb, 'persona@esempio.it', '111111', $now ) );
+check( 'mfa: spegnere richiede un codice valido', null !== throwsUser( function () use ( $mdb, $now ) { Portale\Plugin\Mfa::disable( $mdb, 'persona@esempio.it', '222222', $now ); } ) && Portale\Plugin\Mfa::enabled( $mdb, 'persona@esempio.it' ) );
+Portale\Plugin\Mfa::disable( $mdb, 'persona@esempio.it', Portale\Plugin\Totp::code( $rfc, $now + 3600 ), $now + 3600 );
+check( 'mfa: spenta di nuovo con un codice valido', ! Portale\Plugin\Mfa::enabled( $mdb, 'persona@esempio.it' ) );
+$_SESSION = $prevSession;
+
 // Catalogo del plugin (interfaccia Catalog, formato catalogo/v1)
 $cat    = new Portale\Plugin\ConfigCatalog( 3 );
 $catDoc = $cat->document();
