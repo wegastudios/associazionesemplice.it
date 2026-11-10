@@ -1,8 +1,8 @@
 <?php /** @var array $draft @var bool $has_draft @var array $plans @var array $errors @var ?array $published @var array $history @var string[] $levels */ include __DIR__ . '/_nav.php';
 $csrf   = Portale\App::csrf();
 $states = array( 'included' => 'Incluso', 'limit' => 'Con limite', 'excluded' => 'Non incluso' );
-$levelN = array( 'free' => 'Gratuita', 'paid' => 'A pagamento', 'top' => 'Prioritaria' );
-$lines  = implode( "\n", array_map( function ( $f ) { return $f['id'] . ' | ' . $f['text']; }, $draft['features'] ) );
+$levelN = array( 'free' => 'Gratuita', 'paid' => 'Standard', 'top' => 'Top' );
+$lines  = implode( "\n", array_map( function ( $f ) { return $f['id'] . ' | ' . $f['text'] . ( '' !== $f['group'] . $f['compare'] ? ' | ' . $f['group'] . ( '' !== $f['compare'] ? ' | ' . $f['compare'] : '' ) : '' ); }, $draft['features'] ) );
 ?>
 <section class="admin"><div class="wrap" style="max-width:980px">
 	<h2>Catalogo del plugin <span class="badge <?php echo $has_draft ? '' : 'ok'; ?>"><?php echo $has_draft ? 'bozza non pubblicata' : 'bozza uguale al pubblicato'; ?></span></h2>
@@ -13,9 +13,16 @@ $lines  = implode( "\n", array_map( function ( $f ) { return $f['id'] . ' | ' . 
 	<form class="card2" method="post" action="/wordpress/admin/catalogo/caratteristiche">
 		<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>">
 		<h3>Caratteristiche</h3>
-		<p class="muted small">Una per riga, nel formato <code>codice | testo</code> (codice: lettere minuscole, cifre e trattino basso; testo senza HTML, fino a 160 caratteri). Il codice non va cambiato dopo la pubblicazione. Dopo il salvataggio compaiono nella tabella qui sotto.</p>
+		<p class="muted small">Una per riga, nel formato <code>codice | testo | gruppo | chiave di confronto</code> (codice: lettere minuscole, cifre e trattino basso; testo senza HTML, fino a 160 caratteri; gruppo e chiave sono facoltativi e servono alle pagine di confronto, chiavi ammesse: <?php echo e( implode( ', ', Portale\Plugin\CatalogStore::COMPARE_KEYS ) ); ?>). Il codice non va cambiato dopo la pubblicazione. Dopo il salvataggio compaiono nella tabella qui sotto.</p>
 		<textarea name="features" rows="8" style="width:100%" aria-label="Caratteristiche"><?php echo e( $lines ); ?></textarea>
 		<div class="row-actions"><button class="btn small" type="submit">Salva caratteristiche nella bozza</button></div>
+	</form>
+
+	<form class="card2" method="post" action="/wordpress/admin/catalogo/importa-confronto" onsubmit="<?php echo js_confirm( 'Sostituire caratteristiche e tabella della bozza con le righe del confronto di oggi?' ); ?>">
+		<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>">
+		<h3>Parti dal confronto di oggi</h3>
+		<p class="muted small">Carica nella bozza le righe della pagina «Confronto» (gruppi, funzioni e cosa è incluso in ogni piano) con codici stabili. Non pubblica niente.</p>
+		<div class="row-actions"><button class="btn small ghost" type="submit">Importa nella bozza</button></div>
 	</form>
 
 	<form class="card2" method="post" action="/wordpress/admin/catalogo/piani">
@@ -27,7 +34,7 @@ $lines  = implode( "\n", array_map( function ( $f ) { return $f['id'] . ' | ' . 
 			<div class="form-grid two">
 				<div><label>A chi è rivolto <input type="text" name="plan[<?php echo e( $c ); ?>][audience]" value="<?php echo e( $d['audience'] ); ?>" maxlength="200"></label></div>
 				<div><label>Livello di assistenza
-					<select name="plan[<?php echo e( $c ); ?>][support_level]"><?php foreach ( $levels as $l ) : ?><option value="<?php echo e( $l ); ?>"<?php echo $l === $d['support_level'] ? ' selected' : ''; ?>><?php echo e( $levelN[ $l ] ?? $l ); ?></option><?php endforeach; ?></select></label></div>
+					<?php if ( 'free' === $c ) : ?><input type="hidden" name="plan[free][support_level]" value="free"><input type="text" value="Gratuita" disabled aria-label="Assistenza"><?php else : ?><select name="plan[<?php echo e( $c ); ?>][support_level]" required><?php if ( ! in_array( $d['support_level'], array( 'paid', 'top' ), true ) ) : ?><option value="">Scegli…</option><?php endif; foreach ( array( 'paid', 'top' ) as $l ) : ?><option value="<?php echo e( $l ); ?>"<?php echo $l === $d['support_level'] ? ' selected' : ''; ?>><?php echo e( $levelN[ $l ] ?? $l ); ?></option><?php endforeach; ?></select><?php endif; ?></label></div>
 				<div><label>Siti ammessi (vuoto = nessun limite) <input type="number" name="plan[<?php echo e( $c ); ?>][sites]" value="<?php echo e( $d['sites'] ?? '' ); ?>" min="1" max="1000"></label></div>
 				<div><label>Ordine <input type="number" name="plan[<?php echo e( $c ); ?>][order]" value="<?php echo (int) $d['order']; ?>" min="0" max="999"></label></div>
 			</div>

@@ -25,6 +25,7 @@ final class ConfigCatalog implements Catalog {
 		$plans  = array();
 		$prices = array();
 		$order  = 0;
+		$std    = self::standardPlan( (array) Config::get( 'plans', array() ) );
 		foreach ( (array) Config::get( 'plans', array() ) as $key => $p ) {
 			$code    = Site::slug( (string) $key );
 			$plans[] = array(
@@ -34,7 +35,7 @@ final class ConfigCatalog implements Catalog {
 				'audience'      => (string) ( $p['description'] ?? '' ),
 				'order'         => ++$order,
 				'visible'       => false !== ( $p['visible'] ?? true ),
-				'support_level' => in_array( $p['support_level'] ?? '', self::SUPPORT_LEVELS, true ) ? (string) $p['support_level'] : ( 'free' === $key ? 'free' : 'paid' ),
+				'support_level' => 'free' === $key ? 'free' : ( in_array( $p['support_level'] ?? '', array( 'paid', 'top' ), true ) ? (string) $p['support_level'] : ( (string) $key === $std ? 'paid' : 'top' ) ),
 				'limits'        => (object) array(),
 			);
 			foreach ( (array) ( $p['prices'] ?? array() ) as $period => $pr ) {
@@ -54,6 +55,24 @@ final class ConfigCatalog implements Catalog {
 			'prices'   => $prices,
 			'promos'   => array(),
 		);
+	}
+
+	/** Chiave del piano a pagamento più economico: assistenza «Standard»; gli altri a pagamento sono «Top» finché il catalogo non dice altro. */
+	public static function standardPlan( array $plans ): string {
+		$best = '';
+		$low  = PHP_INT_MAX;
+		foreach ( $plans as $key => $p ) {
+			if ( 'free' === $key ) {
+				continue;
+			}
+			$pr = (array) ( $p['prices'] ?? array() );
+			$c  = isset( $pr['year']['cents'] ) ? (int) $pr['year']['cents'] : ( isset( $pr['month']['cents'] ) ? 12 * (int) $pr['month']['cents'] : PHP_INT_MAX );
+			if ( '' === $best || $c < $low ) {
+				$low  = $c;
+				$best = (string) $key;
+			}
+		}
+		return $best;
 	}
 
 	public function plan( string $code ): ?array {

@@ -60,12 +60,26 @@ final class CatalogStore {
 			);
 		}
 		foreach ( (array) ( $doc['features'] ?? array() ) as $f ) {
-			$d['features'][] = array( 'id' => (string) $f['id'], 'text' => (string) $f['text'] );
+			$d['features'][] = self::feature( (array) $f );
 			foreach ( (array) ( $f['plans'] ?? array() ) as $code => $cell ) {
 				$d['matrix'][ $code ][ $f['id'] ] = array( 'state' => (string) ( $cell['state'] ?? 'excluded' ), 'note' => (string) ( $cell['note'] ?? '' ) );
 			}
 		}
 		return self::normalize( $d );
+	}
+
+	/** Chiavi comuni per il confronto tra prodotti (stesse del catalogo del SaaS; docs/CONFRONTO_PIANI.md). */
+	const COMPARE_KEYS = array( 'members', 'ledger', 'activities', 'member_area', 'online_payments', 'resources', 'einvoice', 'fiscal', 'site', 'custom_domain', 'two_factor', 'operators', 'trial' );
+
+	/** Una caratteristica in forma canonica: codice e testo, più gruppo, chiave di confronto e dettaglio (facoltativi). */
+	public static function feature( array $f ): array {
+		return array(
+			'id'      => (string) ( $f['id'] ?? '' ),
+			'text'    => trim( (string) ( $f['text'] ?? '' ) ),
+			'group'   => trim( (string) ( $f['group'] ?? '' ) ),
+			'compare' => trim( (string) ( $f['compare'] ?? '' ) ),
+			'detail'  => trim( (string) ( $f['detail'] ?? '' ) ),
+		);
 	}
 
 	/** Forma canonica della bozza (tipi sicuri; i valori vengono controllati da {@see validate}). */
@@ -82,7 +96,7 @@ final class CatalogStore {
 			);
 		}
 		foreach ( (array) ( $d['features'] ?? array() ) as $f ) {
-			$out['features'][] = array( 'id' => (string) ( $f['id'] ?? '' ), 'text' => trim( (string) ( $f['text'] ?? '' ) ) );
+			$out['features'][] = self::feature( (array) $f );
 		}
 		foreach ( (array) ( $d['matrix'] ?? array() ) as $code => $row ) {
 			foreach ( (array) $row as $fid => $cell ) {
@@ -101,12 +115,12 @@ final class CatalogStore {
 			if ( '' === $line ) {
 				continue;
 			}
-			$parts = array_map( 'trim', explode( '|', $line, 2 ) );
-			if ( 2 !== count( $parts ) ) {
-				$errors[] = 'Riga «' . mb_substr( $line, 0, 40 ) . '»: usa il formato «codice | testo».';
+			$parts = array_map( 'trim', explode( '|', $line, 4 ) );
+			if ( count( $parts ) < 2 ) {
+				$errors[] = 'Riga «' . mb_substr( $line, 0, 40 ) . '»: usa il formato «codice | testo | gruppo | chiave di confronto» (gruppo e chiave sono facoltativi).';
 				continue;
 			}
-			$list[] = array( 'id' => $parts[0], 'text' => $parts[1] );
+			$list[] = self::feature( array( 'id' => $parts[0], 'text' => $parts[1], 'group' => $parts[2] ?? '', 'compare' => $parts[3] ?? '' ) );
 		}
 		return array( $list, $errors );
 	}
@@ -129,6 +143,12 @@ final class CatalogStore {
 			if ( '' === $f['text'] || mb_strlen( $f['text'] ) > 160 || $f['text'] !== strip_tags( $f['text'] ) || false !== strpos( $f['text'], '<' ) ) {
 				$err[] = 'Testo della caratteristica «' . $f['id'] . '»: da 1 a 160 caratteri, senza HTML.';
 			}
+			if ( '' !== $f['compare'] && ! in_array( $f['compare'], self::COMPARE_KEYS, true ) ) {
+				$err[] = 'Caratteristica «' . $f['id'] . '»: chiave di confronto «' . $f['compare'] . '» sconosciuta (valide: ' . implode( ', ', self::COMPARE_KEYS ) . ').';
+			}
+			if ( mb_strlen( $f['group'] ) > 60 || mb_strlen( $f['detail'] ) > 600 || false !== strpos( $f['group'] . $f['detail'], '<' ) ) {
+				$err[] = 'Caratteristica «' . $f['id'] . '»: gruppo al massimo 60 caratteri, dettaglio 600, senza HTML.';
+			}
 		}
 		$visible = 0;
 		foreach ( $planCodes as $code ) {
@@ -137,8 +157,12 @@ final class CatalogStore {
 				$err[] = 'Piano «' . $code . '» mancante nella bozza.';
 				continue;
 			}
-			if ( ! in_array( $p['support_level'], ConfigCatalog::SUPPORT_LEVELS, true ) ) {
-				$err[] = 'Piano «' . $code . '»: livello di assistenza non valido.';
+			if ( 'free' === $code ) {
+				if ( 'free' !== $p['support_level'] ) {
+					$err[] = 'Piano «' . $code . '»: il piano gratuito ha sempre l\'assistenza «Gratuita».';
+				}
+			} elseif ( ! in_array( $p['support_level'], array( 'paid', 'top' ), true ) ) {
+				$err[] = 'Piano «' . $code . '»: scegli l\'assistenza «Standard» o «Top».';
 			}
 			if ( $p['order'] < 0 || $p['order'] > 999 ) {
 				$err[] = 'Piano «' . $code . '»: ordine da 0 a 999.';
@@ -199,7 +223,14 @@ final class CatalogStore {
 				$c            = $d['matrix'][ $code ][ $f['id'] ] ?? array( 'state' => 'excluded', 'note' => '' );
 				$cells[ $code ] = array( 'state' => $c['state'], 'note' => $c['note'] );
 			}
-			$doc['features'][] = array( 'id' => $f['id'], 'text' => $f['text'], 'plans' => $cells );
+			$row = array( 'id' => $f['id'], 'text' => $f['text'] );
+			foreach ( array( 'group', 'compare', 'detail' ) as $k ) {
+				if ( '' !== $f[ $k ] ) {
+					$row[ $k ] = $f[ $k ];
+				}
+			}
+			$row['plans']      = $cells;
+			$doc['features'][] = $row;
 		}
 		foreach ( $doc['plans'] as $i => $p ) {
 			$e                       = $d['plans'][ $p['code'] ];
