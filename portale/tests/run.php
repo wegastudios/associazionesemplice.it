@@ -1474,6 +1474,7 @@ $cat    = new Portale\Plugin\ConfigCatalog( 3 );
 $catDoc = $cat->document();
 check( 'catalogo: schema, prodotto e rev', 'catalogo/v1' === $catDoc['schema'] && 'plugin' === $catDoc['product'] && 3 === $catDoc['rev'] );
 check( 'catalogo: un piano per ogni piano di config, con slug stabili', count( (array) Portale\Config::get( 'plans', array() ) ) === count( $catDoc['plans'] ) && null !== $cat->plan( Portale\Site::slug( 'full' ) ) );
+check( 'catalogo: livelli di assistenza free/paid/top (gratuito = free, a pagamento = paid)', 'free' === $catDoc['plans'][0]['support_level'] && 'paid' === $cat->plan( Portale\Site::slug( 'full' ) )['support_level'] && array() === array_diff( array_column( $catDoc['plans'], 'support_level' ), array( 'free', 'paid', 'top' ) ) );
 check( 'catalogo: piano inesistente = null', null === $cat->plan( 'inesistente' ) && null === $cat->price( 'inesistente', 'year' ) );
 $fullCents = (int) Portale\Config::get( 'plans.full.prices.year.cents', 0 );
 check( 'catalogo: prezzo in centesimi interi identico a config', $fullCents > 0 ? ( array( 'cents' => $fullCents, 'currency' => 'EUR' ) === $cat->price( Portale\Site::slug( 'full' ), 'year' ) ) : true );
