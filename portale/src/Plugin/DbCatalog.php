@@ -21,6 +21,7 @@ final class DbCatalog implements Catalog {
 		$pub = CatalogStore::published( $this->db );
 		$rev = (int) ( $pub['rev'] ?? 1 );
 		$doc = ( new ConfigCatalog( $rev ) )->document();
+		$doc['promos'] = Promos::publicList( $this->db ); // dati vivi: passano dal pannello «Codici promo», non da bozza/Pubblica
 		if ( ! $pub ) {
 			return $doc;
 		}

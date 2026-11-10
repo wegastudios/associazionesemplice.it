@@ -194,6 +194,8 @@ final class Admin {
 			}
 		} elseif ( 'catalogo' === $a ) {
 			$this->catalog( $get, $b );
+		} elseif ( 'codici-promo' === $a ) {
+			$this->promos( $get, $b );
 		} elseif ( 'sicurezza' === $a ) {
 			$this->security( $get, $b );
 		} elseif ( 'verifica' === $a ) {
@@ -538,6 +540,28 @@ final class Admin {
 		} elseif ( 'scarta' === $b ) {
 			CatalogStore::discard( $this->db );
 			$this->done( 'catalog_discard', 'Bozza scartata.', $to );
+		} else {
+			$this->notFound();
+		}
+	}
+
+	// --- Codici promo (sempre di un solo prodotto) -----------------------------------------------------------------------------
+
+	private function promos( bool $get, string $b ): void {
+		$codes = array_column( ( new ConfigCatalog() )->document()['plans'], 'code' );
+		$to    = self::BASE . '/codici-promo';
+		if ( $get ) {
+			$this->show( 'promos', 'codici', array( 'rows' => Promos::all( $this->db ), 'plans' => ( new ConfigCatalog() )->document()['plans'], 'edit' => Promos::get( $this->db, (string) ( $_GET['codice'] ?? '' ) ) ) );
+		} elseif ( '' === $b ) {
+			$in          = $_POST;
+			$in['value'] = 'amount' === ( $in['kind'] ?? '' ) ? (int) round( (float) str_replace( ',', '.', (string) ( $in['value'] ?? '0' ) ) * 100 ) : (int) ( $in['value'] ?? 0 );
+			$row         = Promos::validate( $in, $codes );
+			Promos::save( $this->db, $row );
+			$this->done( 'promo_save', 'Codice promo ' . $row['code'] . ' salvato.', $to, $row['code'] );
+		} elseif ( 'stato' === $b ) {
+			$on = ! empty( $_POST['active'] );
+			Promos::setActive( $this->db, (string) ( $_POST['code'] ?? '' ), $on );
+			$this->done( 'promo_state', 'Codice promo ' . strtoupper( (string) ( $_POST['code'] ?? '' ) ) . ( $on ? ' riattivato.' : ' sospeso.' ), $to );
 		} else {
 			$this->notFound();
 		}

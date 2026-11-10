@@ -2,7 +2,7 @@
 // Sezioni della gestione: ognuna ha le sue schede. $nav è la scheda corrente.
 $sections = array(
 	'cruscotto'    => array( 'Cruscotto', array( 'cruscotto' => array( '/wordpress/admin', 'Cruscotto' ) ) ),
-	'piani'        => array( 'Piani', array( 'prezzi' => array( '/wordpress/admin/prezzi', 'Piani e prezzi' ), 'catalogo' => array( '/wordpress/admin/catalogo', 'Catalogo' ), 'versioni' => array( '/wordpress/admin/versioni', 'Versioni del plugin' ) ) ),
+	'piani'        => array( 'Piani', array( 'prezzi' => array( '/wordpress/admin/prezzi', 'Piani e prezzi' ), 'catalogo' => array( '/wordpress/admin/catalogo', 'Catalogo' ), 'codici' => array( '/wordpress/admin/codici-promo', 'Codici promo' ), 'versioni' => array( '/wordpress/admin/versioni', 'Versioni del plugin' ) ) ),
 	'clienti'      => array( 'Clienti', array( 'licenze' => array( '/wordpress/admin/licenze', 'Licenze' ), 'clienti' => array( '/wordpress/admin/clienti', 'Clienti e domini' ), 'wega' => array( '/wordpress/admin/wega', 'Da Wega' ), 'staff' => array( '/wordpress/admin/staff', 'Staff e supporto' ) ) ),
 	'impostazioni' => array( 'Impostazioni', array( 'impostazioni' => array( '/wordpress/admin/impostazioni', 'Generali' ), 'pagamenti' => array( '/wordpress/admin/pagamenti', 'Pagamenti' ), 'email' => array( '/wordpress/admin/email', 'Email' ), 'registro' => array( '/wordpress/admin/registro', 'Registro' ), 'sicurezza' => array( '/wordpress/admin/sicurezza', 'Sicurezza' ) ) ),
 	'pagine'       => array( 'Pagine', array( 'legale' => array( '/wordpress/admin/legale', 'Privacy e cookie' ), 'cookie' => array( '/wordpress/admin/cookie', 'Script e consenso' ) ) ),
