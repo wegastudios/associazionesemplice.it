@@ -2,6 +2,7 @@
 
 namespace App\Services\Site;
 
+use App\Support\ProductPlans;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -10,7 +11,7 @@ use Illuminate\Support\Facades\Cache;
  */
 class SsoToken
 {
-    /** @return array{sub: string, role: string, name: ?string, plan: ?string}|null */
+    /** @return array{sub: string, role: string, name: ?string, plan: ?string, plans: array}|null */
     public static function verify(string $token, ?int $now = null): ?array
     {
         $secret = (string) config('support.sso.secret');
@@ -24,7 +25,7 @@ class SsoToken
         }
         $data = json_decode((string) base64_decode(strtr($payload, '-_', '+/')), true);
         $now ??= time();
-        if (! is_array($data) || ($data['v'] ?? null) !== 1
+        if (! is_array($data) || ! in_array($data['v'] ?? null, [1, 2], true)
             || rtrim((string) ($data['aud'] ?? ''), '/') !== rtrim((string) config('app.url'), '/')
             || rtrim((string) ($data['iss'] ?? ''), '/') !== rtrim((string) config('support.sso.portal'), '/')
             || (int) ($data['exp'] ?? 0) < $now || (int) ($data['iat'] ?? PHP_INT_MAX) > $now + 30
@@ -43,6 +44,8 @@ class SsoToken
             'role' => $data['role'],
             'name' => isset($data['name']) && is_string($data['name']) && $data['name'] !== '' ? mb_substr($data['name'], 0, 150) : null,
             'plan' => isset($data['plan']) && is_string($data['plan']) && $data['plan'] !== '' ? mb_substr($data['plan'], 0, 120) : null,
+            // Dal formato 2: piani e livelli di assistenza del cliente (senza dati di soci); senza elenco il cliente e a livello base
+            'plans' => ProductPlans::sanitize($data['plans'] ?? null),
         ];
     }
 }

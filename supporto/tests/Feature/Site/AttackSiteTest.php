@@ -43,7 +43,7 @@ class AttackSiteTest extends SiteTestCase
     public function test_sso_token_fuzz_is_all_rejected(): void
     {
         $cases = [
-            'v=2' => $this->token(['v' => 2]), 'v stringa' => $this->token(['v' => '1']),
+            'v=3' => $this->token(['v' => 3]), 'v stringa' => $this->token(['v' => '1']),
             'iat nel futuro' => $this->token(['iat' => time() + 3600, 'exp' => time() + 3700]),
             'senza jti' => $this->token([], null, ['jti']), 'jti corto' => $this->token(['jti' => 'abc']), 'jti non stringa' => $this->token(['jti' => 12345678901234567]),
             'senza aud' => $this->token([], null, ['aud']), 'senza iss' => $this->token([], null, ['iss']), 'senza sub' => $this->token([], null, ['sub']),
@@ -173,7 +173,7 @@ class AttackSiteTest extends SiteTestCase
         $this->withSession(['customer' => ['email' => 'cli@example.it', 'name' => 'Cliente', 'plan_id' => null, 'at' => now()->timestamp]]);
         $this->post('/ticket', [
             'privacy_accepted' => '1', 'form_token' => app(HumanCheck::class)->issue(now()->subSeconds(30)),
-            'customer_name' => 'X', 'customer_email' => 'vittima@example.com', 'subject' => 'Prova', 'body' => 'Corpo del messaggio lungo',
+            'product' => 'plugin', 'customer_name' => 'X', 'customer_email' => 'vittima@example.com', 'subject' => 'Prova', 'body' => 'Corpo del messaggio lungo',
             'status' => 'closed', 'hub_id' => 1, 'id' => 999, 'priority' => 4, 'created_at' => '2000-01-01',
         ]);
         $t = SupportTicket::firstOrFail();

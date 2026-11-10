@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\Site\CustomerLink;
 use App\Services\Site\HumanCheck;
 use App\Services\Site\TicketRegistrar;
+use App\Support\ProductPlans;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Crypt;
@@ -38,6 +39,7 @@ class PublicTicketTest extends SiteTestCase
             'form_token' => app(HumanCheck::class)->issue(now()->subSeconds(30)),
             'customer_name' => 'Mario Rossi',
             'customer_email' => 'Mario@Example.com',
+            'product' => 'plugin',
             'subject' => 'Non riesco ad accedere',
             'body' => 'Dopo l\'aggiornamento non entro piu nel pannello.',
         ];
@@ -157,6 +159,46 @@ class PublicTicketTest extends SiteTestCase
 
         $this->assertSame(0, SupportTicket::count());
         Http::assertNothingSent();
+    }
+
+    public function test_ticket_gets_product_plan_and_support_level_from_the_portal_session(): void
+    {
+        $this->fakeHub(94000200);
+        Mail::fake();
+        $this->withSession(['customer' => ['email' => 'mario@example.com', 'name' => null, 'plan_id' => null, 'at' => now()->timestamp, 'plans' => [
+            ['product' => 'plugin', 'plan' => 'procontabile', 'support_level' => 'standard', 'status' => 'active'],
+            ['product' => 'saas', 'plan' => 'studio', 'support_level' => 'priority', 'status' => 'active'],
+        ]]]);
+
+        $this->post('/ticket', $this->form(['product' => 'plugin']))->assertSessionHasNoErrors();
+
+        $t = SupportTicket::firstOrFail();
+        $this->assertSame(['plugin', 'procontabile', 'standard'], [$t->product, $t->plan_slug, $t->support_level]);
+
+        // Per fatturazione e account conta il livello piu alto tra i prodotti attivi
+        $this->post('/ticket', $this->form(['product' => 'billing']));
+        $this->assertSame(['studio', 'priority'], [SupportTicket::where('product', 'billing')->value('plan_slug'), SupportTicket::where('product', 'billing')->value('support_level')]);
+    }
+
+    public function test_inactive_plan_counts_as_base_level_and_missing_plans_leave_fields_empty(): void
+    {
+        $this->assertSame(['plan_slug' => 'procontabile', 'support_level' => 'base'], ProductPlans::pick([
+            ['product' => 'plugin', 'plan' => 'procontabile', 'support_level' => 'priority', 'status' => 'suspended'],
+        ], 'plugin'));
+        $this->assertSame(['plan_slug' => null, 'support_level' => null], ProductPlans::pick([], 'saas'));
+    }
+
+    public function test_topic_must_belong_to_the_chosen_product_or_be_for_everyone(): void
+    {
+        $this->fakeHub(94000201);
+        Mail::fake();
+        $saas = Topic::create(['name' => 'Editor', 'slug' => 'editor', 'product' => 'saas', 'is_public' => true]);
+        $all = Topic::create(['name' => 'Fatture', 'slug' => 'fatture', 'product' => null, 'is_public' => true]);
+
+        $this->post('/ticket', $this->form(['topic_id' => $saas->id]))->assertSessionHasErrors('topic_id');
+        $this->assertSame(0, SupportTicket::count());
+        $this->post('/ticket', $this->form(['topic_id' => $all->id]))->assertSessionHasNoErrors();
+        $this->assertSame(1, SupportTicket::count());
     }
 
     public function test_form_is_validated(): void

@@ -7,6 +7,7 @@ use App\Models\Topic;
 use App\Support\Slug;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /** Argomenti del centro assistenza (con le loro sezioni). */
@@ -48,9 +49,11 @@ class TopicController extends Controller
             'name' => 'required|string|max:120',
             'description' => 'nullable|string|max:1000',
             'sort' => 'nullable|integer|min:0|max:65000',
+            'product' => ['nullable', Rule::in(['plugin', 'saas'])],
         ]);
 
         return [
+            'product' => $data['product'] ?? null,
             'name' => $data['name'],
             'description' => $data['description'] ?? null,
             'sort' => (int) ($data['sort'] ?? 0),

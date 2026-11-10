@@ -7,8 +7,10 @@
         <button type="submit">Cerca</button>
     </form>
     <div class="row">
-        @forelse ($topics as $topic)
+        @php $productLabels = ['plugin' => 'Plugin', 'saas' => 'SaaS']; @endphp
+        @forelse ($topics->sortBy(fn ($t) => $t->product === null ? 2 : ($t->product === 'plugin' ? 0 : 1))->values() as $topic)
             <section class="card">
+                @if ($topic->product !== null && $topics->pluck('product')->unique()->count() > 1)<p class="muted" style="margin:0">{{ $productLabels[$topic->product] ?? '' }}</p>@elseif ($topic->product === null && $topics->pluck('product')->unique()->count() > 1)<p class="muted" style="margin:0">Per tutti</p>@endif
                 <h2 style="margin-top:0"><a href="{{ route('help.topic', $topic->slug) }}">{{ $topic->name }}</a></h2>
                 @if ($topic->description)<p class="muted">{{ $topic->description }}</p>@endif
                 <ul>@foreach ($topic->sections as $section)<li><a href="{{ route('help.topic', $topic->slug) }}#sezione-{{ $section->id }}">{{ $section->name }}</a> <span class="muted">({{ $section->articles_count }})</span></li>@endforeach</ul>

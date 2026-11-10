@@ -14,9 +14,11 @@
             <div><label for="customer_email">La tua email</label><input id="customer_email" name="customer_email" type="email" value="{{ $customer["email"] ?? old("customer_email") }}" maxlength="190" required @readonly(! empty($customer["email"])) @if (! empty($customer["email"])) tabindex="-1" @endif></div>
         </div>
         <div class="row">
+            <div><label for="product">Di cosa hai bisogno?</label>
+                <select id="product" name="product" required><option value="">—</option>@foreach (\App\Support\ProductPlans::PRODUCTS as $key => $label)<option value="{{ $key }}" @selected(old('product') === $key)>{{ $label }}</option>@endforeach</select></div>
             @if ($topics->isNotEmpty())
                 <div><label for="topic_id">Argomento</label>
-                    <select id="topic_id" name="topic_id"><option value="">—</option>@foreach ($topics as $t)<option value="{{ $t->id }}" @selected(old('topic_id') == $t->id)>{{ $t->name }}</option>@endforeach</select></div>
+                    <select id="topic_id" name="topic_id"><option value="">—</option>@foreach ($topics as $t)<option value="{{ $t->id }}" data-product="{{ $t->product }}" @selected(old('topic_id') == $t->id)>{{ $t->name }}@if ($t->product === null) (per tutti)@endif</option>@endforeach</select></div>
             @endif
             @if ($plans->isNotEmpty())
                 @if (! empty($customer))<div><label for="plan_name">Il tuo piano</label><input id="plan_name" value="{{ $plans->firstWhere("id", $customer["plan_id"] ?? 0)?->name ?? "Nessun piano attivo" }}" readonly tabindex="-1"><input type="hidden" name="plan_id" value="{{ $customer["plan_id"] ?? "" }}"></div>@else<div><label for="plan_id">Il tuo piano</label>
@@ -32,4 +34,20 @@
         <p class="hint">Registriamo la data della tua accettazione e la versione dell'informativa.</p>
         <p class="actions" style="margin-top:18px"><button type="submit">Invia la richiesta</button></p>
     </form>
+    {{-- Gli argomenti mostrati sono quelli del prodotto scelto, più quelli «per tutti» --}}
+    <script>
+        (function () {
+            var p = document.getElementById('product'), t = document.getElementById('topic_id');
+            if (!p || !t) return;
+            function filter() {
+                for (var i = 0; i < t.options.length; i++) {
+                    var o = t.options[i], d = o.getAttribute('data-product');
+                    var show = !o.value || !d || p.value === 'billing' ? true : d === p.value;
+                    o.hidden = !show; o.disabled = !show;
+                }
+                if (t.selectedOptions[0] && t.selectedOptions[0].disabled) t.value = '';
+            }
+            p.addEventListener('change', filter); filter();
+        })();
+    </script>
 @endsection

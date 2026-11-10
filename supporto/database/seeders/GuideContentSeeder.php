@@ -38,7 +38,7 @@ class GuideContentSeeder extends Seeder
         foreach (self::TOPICS as $slug => [$name, $description]) {
             $topics[$slug] = Topic::query()->updateOrCreate(
                 ['slug' => $slug],
-                ['name' => $name, 'description' => $this->planNames($description), 'sort' => $sort++, 'is_public' => true],
+                ['name' => $name, 'description' => $this->planNames($description), 'sort' => $sort++, 'is_public' => true, 'product' => 'plugin'],
             );
         }
 
