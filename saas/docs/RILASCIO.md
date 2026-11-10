@@ -138,3 +138,11 @@ dei file, spazio dei backup). Dall'esterno: `https://app.associazionesemplice.it
 
 Il comando `saas:backup:restore-test` fa i passi 2–3 sul database di prova: è la stessa procedura, provata ogni
 settimana.
+
+## Catalogo pubblico
+
+`GET https://app.associazionesemplice.it/api/catalogo/v1` è pubblico e firmato (nessun accesso). Sul server serve solo che
+`SAAS_PORTAL_SIGNING_KEY` e `SAAS_PORTAL_URL` siano impostate (la stessa chiave del resto del contratto). Per cambiare
+prezzi o piani oggi si modifica `config/catalogo.php` e si rilascia; con l'amministrazione (`/saas/admin`) si pubblicherà
+dal pannello senza rilascio. Dopo ogni rilascio che cambia il catalogo: `curl -sI …/api/catalogo/v1` deve mostrare il
+nuovo `ETag`. Nessun segreto in più, nessun cron nuovo.
