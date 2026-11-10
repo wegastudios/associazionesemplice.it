@@ -1,0 +1,58 @@
+name: SaaS · manutenzione server
+
+# Azioni fisse sul server del SaaS (saas/deploy/ops.sh): diagnosi in sola lettura, chiave di firma del catalogo,
+# percorso di pg_dump. Non è una shell remota: l'azione è una scelta, non un comando. Solo da main, a mano.
+# Stessi segreti del rilascio (ambiente production).
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Cosa fare
+        type: choice
+        options: [diagnosi, chiave-catalogo, percorso-pgdump]
+        default: diagnosi
+      pg_bin_dir:
+        description: Solo per percorso-pgdump, cartella dei programmi PostgreSQL 16 (es. /usr/pgsql-16/bin)
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: saas-ops
+  cancel-in-progress: false
+
+jobs:
+  ops:
+    name: ${{ inputs.action }}
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: saas/deploy
+      - name: Chiave SSH
+        env:
+          KEY: ${{ secrets.SAAS_SSH_PRIVATE_KEY }}
+          KNOWN: ${{ secrets.SAAS_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$KNOWN" > ~/.ssh/known_hosts && chmod 644 ~/.ssh/known_hosts
+      - name: Azione
+        env:
+          HOST: ${{ secrets.SAAS_SSH_HOST }}
+          PORT: ${{ secrets.SAAS_SSH_PORT || '22' }}
+          SSH_USER: ${{ secrets.SAAS_SSH_USER }}
+          ACTION: ${{ inputs.action }}
+          PG_BIN_DIR: ${{ inputs.pg_bin_dir }}
+        run: |
+          ssh -i ~/.ssh/deploy -p "$PORT" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$SSH_USER@$HOST" \
+            "bash -s -- '$ACTION' '$PG_BIN_DIR'" < saas/deploy/ops.sh
+      - name: Pulizia
+        if: always()
+        run: rm -f ~/.ssh/deploy
