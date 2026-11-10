@@ -22,11 +22,11 @@ Cosa cambia rispetto a oggi: ora il listino e i diritti (pacchetti, limiti) sono
 | `associazionesemplice.it` | **Vendita di tutto**: home, listino, confronto, acquisto, area clienti (abbonamenti, fatture, licenze), partner | sessione Portale |
 | `associazionesemplice.it/account` | **area riservata unica dei clienti**: tutti gli abbonamenti (SaaS e plugin), fatture, pagamenti, download del plugin, upgrade, downgrade, cambio dominio (§5 bis) | sessione Portale |
 | `associazionesemplice.it/saas` | approfondimenti sul SaaS (cosa fa, per chi, novità, domande frequenti) | Portale (contenuti) |
-| `associazionesemplice.it/saas/admin` | **controllo del SaaS**: piani, prezzi, promo, associazioni, utenti, stato | SaaS |
+| `associazionesemplice.it/saas/admin` | **controllo commerciale del SaaS**: abbonamenti, piani, prezzi, servizi (addon), promo per la vendita e impostazioni. **Non** gestisce le associazioni né i loro utenti: quello sta nell'app | SaaS |
 | `app.associazionesemplice.it` | **l'app** (gestionale delle associazioni). Nessuna pagina di vendita, nessun'amministrazione di piattaforma | SaaS |
 | `{slug}.associazionesemplice.it` | sito e area soci della singola associazione | SaaS |
 | `associazionesemplice.it/wordpress` | approfondimenti sul plugin: guide di installazione, **changelog**, requisiti | Portale (contenuti) |
-| `associazionesemplice.it/wordpress/admin` | **controllo del plugin**: piani/licenze, prezzi, promo, versioni, clienti con licenza | Plugin (oggi il codice sta in `portale/`, vedi §3.2) |
+| `associazionesemplice.it/wordpress/admin` | **controllo commerciale del plugin**: piani e licenze, prezzi, servizi, promo, versioni, clienti con licenza e le impostazioni del plugin (tutte nello stesso posto) | Plugin (il codice sta in `portale/`, in uno spazio separato: vedi §3.2) |
 | `supporto.associazionesemplice.it` | **un solo supporto** per SaaS e plugin | sessione supporto |
 | `associazionesemplice.it/demo` | demo del plugin (WordPress vero) — **resta dov'è** | demo |
 | `demoapp.associazionesemplice.it` | **demo del SaaS** con dati finti, azzerata ogni notte | SaaS |
@@ -70,7 +70,11 @@ Il plugin è codice dentro WordPress del cliente; il suo «lato server» (licenz
   proprio come parlerebbe con il SaaS. Nessuna query diretta alle tabelle dei piani del plugin da parte del negozio;
 - così, quando il plugin avrà un backend vero, si sposta senza toccare la vendita.
 
-### 3.3 Dove gira il codice di `/saas/admin`
+### 3.3 Cosa gestisce `/saas/admin` e dove gira il codice
+
+**Decisione della titolare (10/11/2026):** `/saas/admin` è la parte **di vendita**: abbonamenti, prezzi, servizi, promo e le
+impostazioni commerciali. Tutto il resto (associazioni, operatori, soci, dati, disattivazione di utenti) sta **nell'app**, non
+qui. Per il plugin vale lo stesso: `/wordpress/admin` contiene piani e licenze, prezzi, servizi, promo e le impostazioni.
 
 `/saas/admin` è un indirizzo del dominio principale, ma l'amministrazione del SaaS è **codice di `saas/`** (modulo nuovo
 `Piattaforma`, con staff e menu propri, non quelli degli operatori delle associazioni). Servire Laravel sotto un percorso
@@ -197,8 +201,11 @@ Su telefono: stessi principi di [DESIGN.md](../saas/docs/DESIGN.md) (elenchi, fo
 ### Dominio
 
 - **Plugin:** la licenza è legata a uno o più domini. Il cambio lo valida il server licenze (modulo plugin): dominio
-  raggiungibile, non già usato da un'altra licenza, entro il numero di cambi ammessi all'anno dal piano (`domain_changes` nel
-  catalogo). Il cliente vede l'esito subito; il vecchio dominio si disattiva alla prima verifica del plugin.
+  raggiungibile e non già usato da un'altra licenza. **Regola già in vigore nel portale** (`Billing::domainUnlockAt`,
+  impostazione `domain_lock_days`): il cambio è libero, poi la chiave resta legata al nuovo dominio per N giorni; il personale
+  può sempre cambiarlo a mano. Il valore predefinito nel codice è **180 giorni**; la titolare ricorda 120: il valore vero
+  si legge e si imposta nelle impostazioni di `/wordpress/admin` («Blocco del dominio dopo un cambio»). Il numero N non è nel
+  catalogo, è un'impostazione. Il cliente vede l'esito subito; il vecchio dominio si disattiva alla prima verifica del plugin.
 - **SaaS, dominio personalizzato** (pacchetto): il cliente scrive il dominio, il SaaS verifica il DNS e attiva il
   certificato; lo stato torna nella pagina. L'indirizzo `slug.associazionesemplice.it` **non** si cambia da qui (resta stabile):
   eventuali eccezioni passano dal supporto.
@@ -252,12 +259,23 @@ su quelle due parti** finché il contratto v2 non è scritto.
   support_level, status}]` (nessun dato di soci) così il supporto sa chi ha cosa senza un'altra chiamata.
 - Le guide restano allineate a ogni rilascio, come già stabilito.
 
-**Dopo** (da progettare quando i piani a pagamento sono attivi)
-- **Priorità di assistenza** in base a `support_level`: code separate, tempo di prima risposta dichiarato per livello
-  (obiettivi di servizio, non promesse), ordine nell'elenco dello staff, etichetta visibile al cliente
-  («Assistenza prioritaria»).
-- Regola di default: un cliente con più prodotti prende il livello più alto tra quelli attivi **del prodotto del ticket**.
-- Sospesa/scaduta la licenza o l'abbonamento: livello base.
+**Livelli di assistenza** (decisi dalla titolare il 10/11/2026; il campo `support_level` del catalogo ha questi tre valori):
+
+| Livello (codice) | Chi | Prima risposta entro | Giorni coperti | Priorità |
+|---|---|---|---|---|
+| `free` | piani gratuiti | 48 ore | lunedì–venerdì | normale |
+| `paid` | piani a pagamento «base» | 48 ore | lunedì–sabato | prioritaria rispetto al gratuito |
+| `top` | piani a pagamento «top» | 24 ore | lunedì–sabato | prioritaria, in cima alla coda |
+
+- Il tempo è di **prima risposta**, non di risoluzione, ed è un obiettivo di servizio, non una promessa contrattuale.
+- Le ore si contano **solo nei giorni coperti** (un ticket del venerdì sera per `free` ha risposta entro mercoledì: ore dei giorni
+  di servizio); le festività nazionali non contano. *(Da confermare questa lettura.)*
+- Quali piani sono «base» e quali «top» si decide quando si definiscono i piani a pagamento: nel catalogo basta indicare
+  `support_level` per piano. I nomi da mostrare ai clienti si decidono dopo.
+- Il supporto mostra allo staff, ordinata per livello e per tempo residuo, la coda con la scadenza della prima risposta, e al
+  cliente l'etichetta («Assistenza prioritaria» per `paid` e `top`).
+- Un cliente con più prodotti prende il livello più alto tra quelli attivi **del prodotto del ticket**.
+- Licenza o abbonamento sospesi o scaduti: livello `free`.
 
 ## 8. Passare da un'amministrazione all'altra
 
@@ -313,24 +331,33 @@ La demo del plugin resta in `associazionesemplice.it/demo`.
 | 2 | Contratto v2 scritto (catalogo, `subscription`, promo) | SaaS + Portale | 0 |
 | 3 | Catalogo del SaaS: formato `catalogo/v1` da un file di configurazione iniziale; il portale lo legge e mostra listino e confronto | SaaS, Portale | 2 |
 | 4 | Catalogo del plugin dietro l'interfaccia `Catalog`; confine logico `portale/src/Plugin` e `/wordpress/admin` | Portale (spazio plugin) | 2 |
-| 5 | Amministrazione del SaaS `/saas/admin`: staff, 2FA, editor del catalogo con bozza/pubblicazione, elenco associazioni, disattivazione utenti | SaaS | 3 + prova di fattibilità §3.3 |
+| 5 | Amministrazione commerciale del SaaS `/saas/admin`: staff, 2FA, editor del catalogo con bozza/pubblicazione, abbonamenti, servizi, promo, impostazioni (niente gestione di associazioni e utenti: sta nell'app) | SaaS | 3 + prova di fattibilità §3.3 |
 | 6 | Acquisto con istantanea del prezzo e `subscription` al posto dei diritti; promo | Portale, SaaS | 3, 5 |
 | 6 bis | Area clienti unica (§5 bis): panoramica, pagina per abbonamento, cambio piano con `plan_change.check`, domini, download firmato | Portale (+ SaaS e plugin per le richieste) | 6 |
 | 7 | Passaggio tra le due amministrazioni (§8) | Portale e SaaS | 4, 5 |
 | 8 | Supporto: campi prodotto/piano, argomenti per prodotto, `plans` nell'accesso unico | Supporto, Portale | 3 |
 | 9 | Demo del SaaS (§9) | SaaS | 5 (per i pacchetti) |
-| 10 | Priorità di assistenza per piano | Supporto | piani a pagamento attivi |
+| 10 | Priorità di assistenza per piano: tre livelli `free`/`paid`/`top` con tempi di §7, coda ordinata per scadenza | Supporto | piani a pagamento attivi |
 
 I passi 1, 2 e 8 si possono iniziare subito e in parallelo; il resto segue.
 
-## 11. Decisioni da prendere
+## 11. Decisioni
 
-1. ~~Conferma del rovesciamento (§1)~~ — **deciso il 10/11/2026**: catalogo nei prodotti, portale che legge. Si fermano §2.2 e §2.3 del contratto v1.
-2. **Dove gira `/saas/admin`** (§3.3): si prova il percorso sotto il dominio principale; se il server non lo permette, va bene
-   l'alternativa `app…/admin` con redirect?
-3. **Piani del plugin** (§3.2): per ora nello stesso codice del portale con confine logico: va bene finché il plugin non ha un backend suo?
-4. **Promo**: possono valere su più prodotti insieme (pacchetto plugin + SaaS)? Questo documento le tiene per prodotto;
-   un'offerta combinata richiederebbe un livello sopra, da progettare a parte.
-5. **Downgrade e disdetta** (§5 bis): proposta = il downgrade vale a fine periodo e si blocca se i dati superano i limiti;
-   la disdetta vale a fine periodo. Va bene? E quanti cambi di dominio all'anno per la licenza del plugin (proposta: 2)?
-6. **Livelli di assistenza** (§7): base/standard/prioritario sono segnaposto; i nomi veri si decidono quando si definiscono i piani.
+Prese dalla titolare il 10/11/2026:
+
+1. **Piani nei prodotti, il portale legge** (§1). Si fermano §2.2 e §2.3 del contratto v1.
+2. **`/saas/admin` è la parte di vendita** (abbonamenti, prezzi, servizi, promo, impostazioni); le associazioni e i loro utenti
+   si gestiscono nell'app (§3.3). Resta da fare la prova di fattibilità sull'indirizzo sotto il dominio principale; se non
+   regge, `app.associazionesemplice.it/admin` con redirect.
+3. **Piani del plugin** in `/wordpress/admin` insieme alle altre impostazioni, nello stesso codice del portale ma separati (§3.2).
+4. **Niente offerte combinate** tra plugin e SaaS: chi prende il plugin non prende il SaaS. Le promo sono sempre di un prodotto.
+5. **Upgrade subito, downgrade e disdetta a fine periodo**, downgrade bloccato se i dati superano i limiti (§5 bis).
+6. **Cambio dominio del plugin**: regola già in vigore (cambio libero, poi blocco di N giorni, `domain_lock_days`, impostazione).
+   Il codice ha 180 come valore predefinito; la titolare ricorda 120: da verificare nelle impostazioni del pannello (§5 bis).
+7. **Livelli di assistenza** `free` (48 ore, lun–ven), `paid` (48 ore, lun–sab, prioritario), `top` (24 ore, lun–sab, prioritario) (§7).
+
+Ancora da fare:
+- Prova di fattibilità dell'indirizzo `/saas/admin` (sessione portale-saas).
+- Conferma della lettura dei tempi di assistenza (§7: ore contate solo nei giorni coperti, festivi esclusi).
+- Quali piani sono `paid` e quali `top`; i nomi da mostrare ai clienti.
+- Valore giusto di `domain_lock_days` sul server (120 o 180).
