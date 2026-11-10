@@ -14,6 +14,11 @@
     @inertiaHead
 </head>
 <body class="min-h-full bg-surface text-ink antialiased">
+    @if (config('saas.demo.enabled') && ! app()->environment('production'))
+        <div role="status" style="background:#fff4c2;color:#4a3b00;padding:6px 12px;text-align:center;font:14px/1.4 system-ui,sans-serif">
+            Demo: i dati sono inventati e si cancellano ogni notte.
+        </div>
+    @endif
     @inertia
 </body>
 </html>

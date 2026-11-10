@@ -14,7 +14,7 @@ manca e le scelte prese**; si aggiorna a ogni PR del modulo.
 | 5 | `/saas/admin`: staff, 2FA, editor con bozza e «Pubblica», registro. **Solo la vendita** (decisione 10/11/2026): niente elenco associazioni, utenti o disattivazioni, che stanno nell'app | accesso, riepilogo, registro ed editor del catalogo **fatti**; gestione staff e `admin_hop` da fare |
 | 6 | Ricezione di `subscription`, `409 unknown_plan`, limiti dal piano | **fatto** (PR 2) |
 | 7 | `admin_hop` | da fare, dopo il passo 5 |
-| 9 | Demo `demoapp.associazionesemplice.it` | da fare |
+| 9 | Demo `demoapp.associazionesemplice.it` | comando, utenti e soci finti nella PR; altri dati e messa online da fare (§6) |
 
 ## 2. Catalogo (fatto)
 
@@ -72,3 +72,20 @@ test l'amministrazione sta su `/admin` e il prefisso è una sola costante (`conf
   casuale mostrata una volta); telefono perso: `php artisan saas:admin:reset-2fa email`.
 - **Pagine** (sola lettura, Blade senza JavaScript): riepilogo, catalogo (bozza e «Pubblica»), registro. Seguono: gestione dello
   staff, `admin_hop`. L'admin non mostra né modifica associazioni, operatori, soci o utenti: è solo la parte di vendita.
+
+## 6. Demo `demoapp.associazionesemplice.it` (in corso)
+
+Un'istanza separata del SaaS (ARCHITETTURA_DOMINI §9) con database proprio e solo dati finti.
+
+- **Dove vive**: `APP_ENV=demo` (mai `production`), `SAAS_DEMO=true`, database e utenti PostgreSQL propri. Il comando rifiuta di
+  partire se la demo è spenta o l'ambiente è la produzione: cancella tutto il database.
+- **`php artisan saas:demo:reset`**: `saas:migrate --fresh` sul database condiviso, poi crea «Polisportiva Demo»
+  (`saas.demo.org_name`), tre utenti pubblici (`titolare@`, `segreteria@`, `commercialista@` su `SAAS_DEMO_MAIL_DOMAIN`, password
+  `SAAS_DEMO_PASSWORD`, scritta anche nel pulsante «Prova la demo») e chiama i seeder dei moduli. Ogni notte alle 03:30 dallo scheduler.
+- **Dati finti dei moduli**: un modulo implementa `Core\Contracts\DemoSeeder` e si registra col tag `DemoSeeder::TAG`.
+  Fatto: soci e tessere (`Soci\Demo\DemoMembers`: codici fiscali e IBAN non validi apposta, email su dominio riservato).
+  Da fare: attività, risorse, prima nota, domande aperte, avvisi, socio di prova con area soci.
+- **Banner** in testa (`app.blade.php`) e `noindex` su tutte le pagine; nessuna statistica.
+- **Sul server demo**: `SAAS_REQUIRE_TWO_FACTOR=false` (solo lì, documentato), `MAIL_MAILER=log` (posta simulata: nessuna mail
+  esce), pagamenti simulati quando ci saranno, `SAAS_MEMBERS_DOMAIN=demoapp.associazionesemplice.it` e DNS jolly a parte.
+- **Online**: serve il via libera della titolare e l'accesso al server (sottodominio, database, cron). Non fatto.
