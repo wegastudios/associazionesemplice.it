@@ -230,7 +230,7 @@ L'area riservata è la pagina dove ogni socio trova il suo spazio: tessera, atti
 ## Aspetto e contenuti
 
 - Il colore d'accento è quello scelto in **Impostazioni → Aspetto**.
-- L'area soci ha un aspetto pensato per il telefono: elenchi a righe, tessera a carta e barra in basso. Da **Impostazioni → Aspetto** puoi tornare alla grafica precedente.
+- L'area soci ha un aspetto pensato per il telefono: elenchi a righe, tessera a carta e barra in basso.
 - Il messaggio mostrato a chi non ha i permessi si cambia dalle impostazioni.
 - Con l'attributo `sezioni` dello shortcode puoi tornare all'elenco piatto, senza menu laterale.
 
@@ -282,7 +282,9 @@ MD,
 
 I nuovi soci **non hanno un utente WordPress**. Entrano nell'area riservata con **email e password**. La password è **obbligatoria**: il socio la sceglie **alla prima entrata** o quando attiva l'accesso dal link; finché non l'ha scelta l'area riservata resta chiusa.
 
-Il **link** o il **codice** ricevuto per email restano come opzione, per entrare senza password. Per questo **la posta del sito deve funzionare**: link, codici e recupero password arrivano per email. Prova l'invio prima di aprire l'area ai soci.
+La pagina di accesso è **una sola schermata**: il socio sceglie se entrare con la **password** o con un **link** che riceve per email. Con la casella **«Ricordami»** resta collegato per **30 giorni** su quel dispositivo.
+
+Il **link** o il **codice** ricevuto per email restano come opzione, per entrare senza password. Valgono **12 ore**; il tempo si cambia da **Impostazioni → Limiti e soglie**. Per questo **la posta del sito deve funzionare**: link, codici e recupero password arrivano per email. Prova l'invio prima di aprire l'area ai soci.
 
 ## Password dimenticata
 
@@ -309,7 +311,7 @@ Quando si toglie l'ultimo potere a un socio, la scheda propone **«Passa all'acc
 
 ## Per l'informativa
 
-Il sito usa un **cookie tecnico «asem_s»** per tenere aperto l'accesso dei soci (non richiede consenso; 30 giorni senza uso, 90 al massimo). L'informativa generata dal plugin lo dichiara, insieme alla password conservata solo come impronta cifrata, ai link e codici validi 15 minuti e al blocco crescente dopo i tentativi sbagliati. Vedi [Informativa privacy e consensi dei soci](guida:informativa-privacy-e-consensi).
+Il sito usa un **cookie tecnico «asem_s»** per tenere aperto l'accesso dei soci (non richiede consenso; 30 giorni senza uso, 90 al massimo). L'informativa generata dal plugin lo dichiara, insieme alla password conservata solo come impronta cifrata, ai link e codici validi 12 ore (impostabili) e al blocco crescente dopo i tentativi sbagliati. Vedi [Informativa privacy e consensi dei soci](guida:informativa-privacy-e-consensi).
 
 ## Aggiornamento
 
