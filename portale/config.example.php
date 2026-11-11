@@ -66,7 +66,10 @@ return array(
 	),
 
 	// Dove portare chi apre /saas/admin se il server non lo serve già sotto il dominio principale (docs/ARCHITETTURA_DOMINI.md §3.3).
+	// Dove rimandare /saas/admin finché non lo serve già il SaaS sotto questo dominio; VUOTO = nessun rimando (lo serve il SaaS, il portale non si mette in mezzo).
 	'saas_admin_url' => 'https://app.associazionesemplice.it/admin',
+	// Demo pubblica del gestionale (pulsante «Prova la demo» in /saas); vuoto = nessun pulsante.
+	'saas_demo_url'  => 'https://demo.associazionesemplice.it',
 
 	// Catalogo del SaaS (piani, prezzi, promo): chiave pubblica con cui il SaaS firma, come «kid => x» (si legge con `php artisan saas:keys:generate` / dal SaaS).
 	// Senza chiavi il portale non scarica il catalogo e /saas non mostra prezzi. Indirizzo opzionale: 'saas_catalog_url' (default {saas_api_url}/api/catalogo/v1).

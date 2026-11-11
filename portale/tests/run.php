@@ -1636,7 +1636,7 @@ list( $catBody, $catEtag ) = Portale\Plugin\CatalogApi::render( $cat );
 check( 'catalogo: JSON valido e ETag stabile', is_array( json_decode( $catBody, true ) ) && $catEtag === Portale\Plugin\CatalogApi::render( $cat )[1] );
 // --- Indirizzi delle sezioni /saas e /wordpress -----------------------------
 use Portale\Sections;
-Config::set( 'saas_admin_url', '' );
+Config::set( 'saas_admin_url', 'https://app.associazionesemplice.it/admin' );
 check( 'sezioni: /saas/accedi diventa /account/da-gestionale con lo stesso token', array( 301, '/account/da-gestionale?t=abc' ) === Sections::legacy( 'GET', '/saas/accedi', 't=abc' ) );
 check( 'sezioni: /saas/accedi con POST conserva il metodo (308)', 308 === Sections::legacy( 'POST', '/saas/accedi', '' )[0] );
 check( 'sezioni: /saas/admin va all\'amministrazione del SaaS (temporaneo)', array( 302, 'https://app.associazionesemplice.it/admin' ) === Sections::legacy( 'GET', '/saas/admin', '' ) );
@@ -1648,6 +1648,7 @@ check( 'sezioni: indirizzo di amministrazione configurabile', 'https://gestione.
 check( 'sezioni: vecchia pagina di un\'associazione → /saas/admin (301)', array( 301, '/saas/admin' ) === Sections::legacy( 'GET', '/saas/11111111-2222-3333-4444-555555555555', '' ) );
 check( 'sezioni: vecchio /saas/utenti/… → /saas/admin (308 per POST)', array( 308, '/saas/admin' ) === Sections::legacy( 'POST', '/saas/utenti/abc', '' ) );
 check( 'sezioni: /saas/acquista non è un vecchio indirizzo', null === Sections::legacy( 'GET', '/saas/acquista', 'plan=gestionale' ) );
+check( 'sezioni: con saas_admin_url vuoto /saas/admin non è più rimandato (lo serve il SaaS)', ( function () { Config::set( 'saas_admin_url', '' ); $r = Sections::legacy( 'GET', '/saas/admin/utenti', '' ); Config::set( 'saas_admin_url', 'https://app.associazionesemplice.it/admin' ); return $r; } )() === null );
 check( 'sezioni: /saas e /wordpress sono contenuti, non redirect', null === Sections::legacy( 'GET', '/saas', '' ) && null === Sections::legacy( 'GET', '/wordpress/changelog', '' ) );
 check( 'sezioni: pagine di contenuto', 'saas_section' === Sections::view( '/saas' ) && 'wordpress_section' === Sections::view( '/wordpress' ) && 'wordpress_changelog' === Sections::view( '/wordpress/changelog' ) && null === Sections::view( '/saas/admin' ) );
 
