@@ -72,7 +72,7 @@ it('la verifica confronta il portale con l\'elenco e fallisce se manca qualcuno'
 
     $this->artisan('saas:import:portal-customers', ['source' => $source, '--verify' => true])->expectsOutputToContain('Verifica riuscita')->assertSuccessful();
 
-    DB::connection('pgsql_owner')->table('core.staff_people')->where('email', 'cliente.uno@example.test')->delete();
+    DB::table('core.staff_people')->where('email', 'cliente.uno@example.test')->update(['portal_customer_id' => null]);
     $this->artisan('saas:import:portal-customers', ['source' => $source, '--verify' => true])->assertFailed();
 });
 
@@ -103,14 +103,21 @@ it('un cliente senza password non entra finché non la sceglie dal recupero; un 
 });
 
 it('annulla l\'importazione: toglie i clienti creati e scollega chi c\'era già', function (): void {
-    $staffId = (string) Str::uuid7();
-    DB::table('core.staff_people')->insert(['id' => $staffId, 'email' => 'staff@example.test', 'name' => 'Staff', 'password' => Hash::make('password-dello-staff-1'), 'active' => true]);
-    $this->artisan('saas:import:portal-customers', ['source' => portalFixture()])->assertSuccessful();
+    // L'annullamento usa il ruolo proprietario, che non vede la transazione della prova: si chiude prima e si pulisce dopo.
+    DB::commit();
+    try {
+        $staffId = (string) Str::uuid7();
+        DB::table('core.staff_people')->insert(['id' => $staffId, 'email' => 'staff@example.test', 'name' => 'Staff', 'password' => Hash::make('password-dello-staff-1'), 'active' => true]);
+        $this->artisan('saas:import:portal-customers', ['source' => portalFixture()])->assertSuccessful();
 
-    $this->artisan('saas:import:portal-customers', ['source' => 'x', '--rollback' => true])->assertSuccessful();
+        $this->artisan('saas:import:portal-customers', ['source' => 'x', '--rollback' => true])->assertSuccessful();
 
-    expect(DB::table('core.staff_people')->pluck('email')->all())->toBe(['staff@example.test'])
-        ->and(DB::table('core.staff_people')->where('id', $staffId)->value('portal_customer_id'))->toBeNull();
+        expect(DB::table('core.staff_people')->pluck('email')->all())->toBe(['staff@example.test'])
+            ->and(DB::table('core.staff_people')->where('id', $staffId)->value('portal_customer_id'))->toBeNull();
+    } finally {
+        DB::connection('pgsql_owner')->statement('TRUNCATE core.staff_people CASCADE');
+        DB::beginTransaction();
+    }
 });
 
 it('rifiuta un file che non esiste', function (): void {
