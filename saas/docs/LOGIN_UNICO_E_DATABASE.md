@@ -82,3 +82,9 @@ Decisione della titolare, che prevale su quanto sopra dove diverge:
 - **Il SaaS è l'unico elenco di persone e risponde a richieste firmate** del portale: la specifica è in `IDENTITA_API.md`. Sotto `/saas/staff` restano solo le richieste tecniche tra le aree.
 - **La pagina provvisoria `/saas/staff/accedi` (§9)** è un ponte: resta finché `/accedi` del portale non la sostituisce, poi si toglie. Non viene ampliata (niente pagina di attivazione del secondo livello nel SaaS: è del profilo in `/account`).
 - Database del supporto: MySQL 8, deciso dalla sessione supporto.
+
+## 11. Avanzamento (11/11/2026, sera)
+
+- **Fatto e in produzione**: richieste firmate `identity_*` (`IDENTITA_API.md`); `/accedi`, `/twofactor`, `/account` del portale usano il SaaS (provati dalla titolare: reset password, login staff, ingresso nelle aree); ingresso di `/saas/admin` con i token del SaaS stesso (`SAAS_STAFF_SSO`); clienti importati nell'elenco unico (solo identità; ordini e licenze restano nel portale).
+- **La pagina provvisoria `/saas/staff/accedi` è tolta** (decisione della titolare): non esiste più alcuna pagina di accesso sotto `/saas`. Con `SAAS_UNIFIED_LOGIN` acceso `/saas/admin/accesso` rinvia a `associazionesemplice.it/accedi`. Restano sotto `/saas/staff` solo l'invito (scelta della prima password) e le richieste tecniche.
+- **Ancora aperti**: profilo in `/account` (portale-vendita); prova di ripristino vera dei backup (serve un database di prova e la chiave privata); importazione di ordini e licenze; spegnimento del database del portale e dei vecchi accessi, solo dopo la verifica con dati veri.
