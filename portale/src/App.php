@@ -95,7 +95,8 @@ final class App {
 				header( 'Location: ' . Plugin\StaffSso::loginUrl(), true, 303 );
 			}
 		} elseif ( Plugin\StaffSso::enabled() && Plugin\Admin::BASE . '/accedi' === $path ) {
-			$this->staffLogin( $get );
+			// Pagina unica di accesso dello staff: la serve il SaaS (nessun modulo proprio qui).
+			header( 'Location: ' . rtrim( (string) Config::get( 'base_url', 'https://associazionesemplice.it' ), '/' ) . '/saas/staff/accedi', true, 303 );
 		} elseif ( Plugin\Admin::BASE === $path || 0 === strpos( $path, Plugin\Admin::BASE . '/' ) ) {
 			// Accesso staff unico (se acceso): la sessione viene dal SaaS e si riconferma ogni 5 minuti; altrimenti l'accesso di sempre.
 			$staff = null;
