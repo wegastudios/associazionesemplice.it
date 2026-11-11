@@ -97,9 +97,6 @@ final class App {
 		} elseif ( Identity::enabled() && Plugin\Admin::BASE . '/accedi' === $path ) {
 			// Accesso unico: l'accesso è /accedi del portale.
 			header( 'Location: /accedi', true, 303 );
-		} elseif ( Plugin\StaffSso::enabled() && Plugin\Admin::BASE . '/accedi' === $path ) {
-			// Pagina provvisoria di accesso dello staff: la serve il SaaS (finché /accedi non è acceso).
-			header( 'Location: ' . rtrim( (string) Config::get( 'base_url', 'https://associazionesemplice.it' ), '/' ) . '/saas/staff/accedi', true, 303 );
 		} elseif ( Plugin\Admin::BASE === $path || 0 === strpos( $path, Plugin\Admin::BASE . '/' ) ) {
 			// Accesso staff unico (se acceso): la sessione viene dal SaaS e si riconferma ogni 5 minuti; altrimenti l'accesso di sempre.
 			$staff = null;
@@ -196,8 +193,14 @@ final class App {
 				View::render( 'identity_reset_request', array( 'title' => 'Password dimenticata' ) );
 			} else {
 				$this->formLimit();
-				Identity::resetRequest( (string) $this->in( 'email' ), $this->clientIp() );
-				View::render( 'message', array( 'title' => 'Controlla la posta', 'text' => 'Se l\'indirizzo è registrato, ti abbiamo mandato un link per scegliere una nuova password. Vale un\'ora.' ) );
+				$email = strtolower( trim( (string) $this->in( 'email' ) ) );
+				Identity::resetRequest( $email, $this->clientIp() );
+				// Chi si è registrato nel portale dopo l'importazione nel SaaS non è ancora nell'elenco unico: riceve il link di accesso del portale (da cui sceglie la password).
+				$cust = $this->db->one( 'SELECT * FROM customers WHERE email = ?', array( $email ) );
+				if ( $cust && $this->auth->canIssue( $cust['id'] ) ) {
+					$this->sendLink( $cust, $this->auth->issue( $cust['id'] ), 'login_link' );
+				}
+				View::render( 'message', array( 'title' => 'Controlla la posta', 'text' => 'Se l\'indirizzo è registrato, ti abbiamo scritto un link per scegliere una nuova password o per entrare. Vale poco: usalo subito.' ) );
 			}
 		} elseif ( Identity::enabled() && 0 === strpos( $path, '/accedi/reimposta/' ) ) {
 			$code = substr( $path, 18 );
@@ -271,11 +274,15 @@ final class App {
 		} elseif ( $get && '/supporto/accedi' === $path ) {
 			// Accesso unico al sito di supporto: serve aver fatto l'accesso qui; il ruolo (admin, solo supporto, cliente) si legge dall'email.
 			header( 'Cache-Control: no-store' );
-			if ( empty( $_SESSION['customer'] ) ) {
+			// Persona dell'elenco unico (anche senza scheda cliente): l'email è quella della sessione unica.
+			$idn = Identity::enabled() ? Identity::check() : null;
+			if ( empty( $_SESSION['customer'] ) && ! $idn ) {
 				// Non connesso: dopo l'accesso si torna qui (destinazione fissa, mai da parametri dell'indirizzo: niente redirect aperti).
 				$_SESSION['after_login'] = '/supporto/accedi';
+				header( 'Location: /accedi', true, 303 );
+				return;
 			}
-			header( 'Location: ' . SupportSso::url( $this->db, $this->customerEmail( $this->customerId() ) ), true, 303 );
+			header( 'Location: ' . SupportSso::url( $this->db, ! empty( $_SESSION['customer'] ) ? $this->customerEmail( (string) $_SESSION['customer'] ) : $idn['email'] ), true, 303 );
 		} elseif ( $get && '/account' === $path ) {
 			$this->account();
 		} elseif ( $get && '/account/da-gestionale' === $path ) {
@@ -418,7 +425,7 @@ final class App {
 				Plugin\StaffSso::receive( $this->db, $token );
 			}
 		}
-		$to = '/supporto/accedi' === ( $_SESSION['after_login'] ?? '' ) && $cust ? '/supporto/accedi' : '/account';
+		$to = '/supporto/accedi' === ( $_SESSION['after_login'] ?? '' ) ? '/supporto/accedi' : '/account';
 		unset( $_SESSION['after_login'] );
 		header( 'Location: ' . $to, true, 303 );
 	}
