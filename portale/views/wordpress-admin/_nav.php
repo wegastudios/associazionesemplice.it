@@ -12,6 +12,17 @@ if ( Portale\Staff::SUPPORT === ( $role ?? "" ) ) {
 	unset( $sections["clienti"][1]["wega"], $sections["clienti"][1]["staff"] );
 	$sections["clienti"][1]["sicurezza"] = array( '/wordpress/admin/sicurezza', 'Sicurezza' );
 }
+if ( Portale\Plugin\StaffSso::enabled() && ! empty( $_SESSION['staff_sso'] ) ) {
+	// Accesso staff unico: «Staff e supporto» diventa «Utenti» (elenco nel SaaS); il secondo fattore si gestisce là.
+	if ( isset( $sections['clienti'][1]['staff'] ) ) {
+		$sections['clienti'][1]['staff'] = array( '/wordpress/admin/utenti', 'Utenti' );
+	}
+	unset( $sections['impostazioni'][1]['sicurezza'], $sections['clienti'][1]['sicurezza'] );
+}
+if ( Portale\Plugin\Admin::SALES === ( $role ?? '' ) ) {
+	unset( $sections['cruscotto'], $sections['impostazioni'], $sections['pagine'] );
+	unset( $sections['piani'][1]['versioni'], $sections['clienti'][1]['wega'], $sections['clienti'][1]['staff'] );
+}
 $current = isset( $sections["cruscotto"] ) ? "cruscotto" : "clienti";
 foreach ( $sections as $sk => $sec ) {
 	if ( isset( $sec[1][ $nav ] ) ) {
@@ -20,7 +31,7 @@ foreach ( $sections as $sk => $sec ) {
 }
 ?>
 <div class="wrap" style="padding-top:28px">
-<div class="admin-top"><h1>Gestione</h1><span class="muted small"><?php echo e( $admin_email ); ?> · <?php if ( ! empty( $has_saas ) ) : ?><a href="/saas">Piattaforma SaaS</a> · <?php endif; ?><a href="/account">La mia area cliente</a> · <a href="<?php echo e( Portale\SupportSso::enabled() ? '/supporto/accedi' : Portale\SupportSso::supportUrl() ); ?>">Supporto</a></span></div>
+<div class="admin-top"><h1>Gestione</h1><span class="muted small"><?php echo e( $admin_email ); ?> · <?php if ( ! empty( $has_saas ) ) : ?><a href="/saas">Piattaforma SaaS</a> · <?php endif; ?><?php if ( ! empty( $_SESSION['staff_sso'] ) ) : $sso_csrf = Portale\App::csrf(); foreach ( Portale\Plugin\StaffSso::AREA_NAMES as $ak => $an ) : if ( isset( $_SESSION['staff_sso']['areas'][ $ak ] ) ) : ?><form method="post" action="/wordpress/admin/vai/<?php echo e( $ak ); ?>" style="display:inline"><input type="hidden" name="csrf" value="<?php echo e( $sso_csrf ); ?>"><button type="submit" class="linklike">Vai a <?php echo e( $an ); ?></button></form> · <?php endif; endforeach; ?><form method="post" action="/wordpress/admin/esci" style="display:inline"><input type="hidden" name="csrf" value="<?php echo e( $sso_csrf ); ?>"><button type="submit" class="linklike">Esci</button></form> · <?php endif; ?><a href="/account">La mia area cliente</a> · <a href="<?php echo e( Portale\SupportSso::enabled() ? '/supporto/accedi' : Portale\SupportSso::supportUrl() ); ?>">Supporto</a></span></div>
 <nav class="tabs" aria-label="Gestione">
 <?php foreach ( $sections as $sk => $sec ) : $first = array_values( $sec[1] )[0]; ?><a href="<?php echo e( $first[0] ); ?>"<?php echo $sk === $current ? ' aria-current="page"' : ''; ?>><?php echo e( $sec[0] ); ?></a><?php endforeach; ?>
 </nav>

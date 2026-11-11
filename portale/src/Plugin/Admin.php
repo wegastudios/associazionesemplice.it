@@ -44,12 +44,26 @@ final class Admin {
 		return Staff::ADMIN === Staff::role( $db, $email );
 	}
 
-	public function __construct( Db $db, Billing $billing, string $customerId ) {
+	/** Ruolo «vendita» dell'accesso staff unico: catalogo, prezzi, promo, licenze e clienti; non impostazioni, versioni né utenti. */
+	const SALES = 'sales';
+
+	/** @var bool sessione dell'accesso staff unico (utenti e ruoli decisi dal SaaS), non l'accesso clienti */
+	private $sso = false;
+
+	/** @param array|null $staffSession sessione dell'accesso staff unico ({@see StaffSso::current}); null = accesso di sempre */
+	public function __construct( Db $db, Billing $billing, string $customerId, ?array $staffSession = null ) {
 		$this->db      = $db;
 		$this->billing = $billing;
-		$row           = $db->one( 'SELECT email FROM customers WHERE id = ?', array( $customerId ) );
-		$this->email   = $row ? (string) $row['email'] : '';
-		$this->role = Staff::role( $db, $this->email ) ?? '';
+		if ( null !== $staffSession ) {
+			$this->sso   = true;
+			$this->email = (string) $staffSession['email'];
+			$map         = array( 'admin' => Staff::ADMIN, 'vendita' => self::SALES, 'supporto' => Staff::SUPPORT );
+			$this->role  = $map[ (string) ( $staffSession['level'] ?? '' ) ] ?? '';
+		} else {
+			$row         = $db->one( 'SELECT email FROM customers WHERE id = ?', array( $customerId ) );
+			$this->email = $row ? (string) $row['email'] : '';
+			$this->role  = Staff::role( $db, $this->email ) ?? '';
+		}
 		if ( '' === $this->role ) {
 			$_SESSION['admin'] = false;
 			$_SESSION['staff'] = '';
@@ -74,6 +88,11 @@ final class Admin {
 		return 'clienti' === $a && $get;
 	}
 
+	/** «Vendita»: catalogo, prezzi, promo, licenze e clienti. Il resto (impostazioni, versioni, pagamenti, email, pagine, registro, utenti) no. */
+	private function salesMayDo( string $a ): bool {
+		return in_array( $a, array( '', 'licenze', 'clienti', 'prezzi', 'catalogo', 'codici-promo' ), true );
+	}
+
 	public function handle( string $method, string $path ): void {
 		$get = 'GET' === $method;
 		$p   = explode( '/', trim( substr( $path, strlen( self::BASE ) ), '/' ) ); // dopo «/wordpress/admin»
@@ -82,7 +101,7 @@ final class Admin {
 		$c   = $p[2] ?? '';
 
 		// Verifica in due passaggi: opzionale, solo per chi l'ha attivata per sé. Senza codice recente si vede solo la pagina «verifica».
-		if ( Mfa::enabled( $this->db, $this->email ) && ! Mfa::sessionOk( $this->email ) ) {
+		if ( ! $this->sso && Mfa::enabled( $this->db, $this->email ) && ! Mfa::sessionOk( $this->email ) ) {
 			if ( 'verifica' !== $a ) {
 				header( 'Location: ' . self::BASE . '/verifica', true, 303 );
 				return;
@@ -91,6 +110,23 @@ final class Admin {
 			return;
 		}
 
+		if ( $this->sso && ! $get && 'esci' === $a ) {
+			StaffSso::close();
+			header( 'Location: ' . StaffSso::loginUrl(), true, 303 );
+			return;
+		}
+		if ( $this->sso && ! $get && 'vai' === $a ) {
+			$this->goTo( $b );
+			return;
+		}
+		if ( $this->sso && in_array( $a, array( 'sicurezza', 'verifica' ), true ) ) {
+			$this->notFound(); // con l'accesso unico il secondo fattore (facoltativo) si gestisce nel SaaS
+			return;
+		}
+		if ( self::SALES === $this->role && ! $this->salesMayDo( $a ) ) {
+			http_response_code( 403 );
+			throw new UserError( 'Con il ruolo «vendita» questa funzione non è disponibile.' );
+		}
 		if ( Staff::SUPPORT === $this->role ) {
 			if ( '' === $a ) {
 				header( 'Location: /admin/licenze', true, 303 );
@@ -118,6 +154,10 @@ final class Admin {
 			}
 		} elseif ( 'wega' === $a ) {
 			$this->wegaSync( $get );
+		} elseif ( 'utenti' === $a && $this->sso ) {
+			$this->users( $get, $b );
+		} elseif ( 'staff' === $a && $this->sso ) {
+			header( 'Location: ' . self::BASE . '/utenti', true, 303 );
 		} elseif ( 'staff' === $a ) {
 			$this->staff( $get, $b, $c );
 		} elseif ( 'clienti' === $a && $get ) {
@@ -399,6 +439,53 @@ final class Admin {
 	}
 
 	/** Staff: elenco, aggiunta/cambio permessi (POST /admin/staff) e rimozione (POST /admin/staff/rimuovi). */
+	/** «Vai a»: il SaaS dà il token per l'altra area (solo se ci si ha un ruolo) e il browser lo manda in POST all'indirizzo fisso dell'area. */
+	private function goTo( string $area ): void {
+		$s     = StaffSso::current();
+		$token = $s && isset( StaffSso::DEST[ $area ] ) ? StaffSso::tokenFor( $s, $area ) : null;
+		if ( null === $token ) {
+			throw new UserError( 'Non riesco ad aprire quell\'area ora: riprova tra poco.' );
+		}
+		Audit::log( $this->db, $this->email, 'staff_vai', 'Passaggio a: ' . $area );
+		View::render( 'wordpress-admin/staff_vai', array( 'action' => StaffSso::DEST[ $area ], 'token' => $token, 'name' => StaffSso::AREA_NAMES[ $area ], 'title' => 'Apertura di ' . StaffSso::AREA_NAMES[ $area ] ) );
+	}
+
+	/** Pagina «Utenti» con l'accesso staff unico: l'elenco e i ruoli stanno nel SaaS, che decide chi può cosa; qui si fanno solo le richieste. */
+	private function users( bool $get, string $b ): void {
+		if ( Staff::ADMIN !== $this->role ) {
+			http_response_code( 403 );
+			throw new UserError( 'La gestione degli utenti è riservata agli amministratori.' );
+		}
+		$errors = array(
+			'non_autorizzato'        => 'Non hai il permesso per questa operazione.',
+			'livello_troppo_alto'    => 'Non puoi assegnare un livello più alto del tuo.',
+			'ultimo_admin'           => 'Deve restare almeno un amministratore.',
+			'super_non_modificabile' => 'Questo account non si può modificare.',
+			'riconferma_richiesta'   => 'Per questa operazione riconferma prima la tua password nel SaaS e poi riprova.',
+			'dati_non_validi'        => 'Dati non validi.',
+		);
+		if ( $get && '' === $b ) {
+			list( $code, $out ) = StaffSso::people( 'list', $this->email );
+			$this->show( 'utenti', 'staff', array( 'people' => 200 === $code ? (array) ( $out['people'] ?? array() ) : array(), 'error' => 200 === $code ? '' : 'L\'elenco non è disponibile ora: riprova tra poco.' ) );
+			return;
+		}
+		$ops = array( 'invita' => 'invite', 'assegna' => 'grant', 'revoca' => 'revoke', 'disattiva' => 'deactivate' );
+		if ( $get || ! isset( $ops[ $b ] ) ) {
+			$this->notFound();
+			return;
+		}
+		$data  = array( 'email' => strtolower( trim( (string) ( $_POST['email'] ?? '' ) ) ) );
+		$level = (string) ( $_POST['level'] ?? '' );
+		if ( in_array( $b, array( 'invita', 'assegna' ), true ) ) {
+			$data['level'] = $level;
+		}
+		list( $code, $out ) = StaffSso::people( $ops[ $b ], $this->email, $data );
+		if ( 200 !== $code ) {
+			throw new UserError( $errors[ (string) ( $out['error'] ?? '' ) ] ?? 'Il SaaS non ha eseguito l\'operazione: riprova tra poco.' );
+		}
+		$this->done( 'utenti_' . $ops[ $b ], 'Fatto: ' . $b . ' per ' . $data['email'] . '.', self::BASE . '/utenti' );
+	}
+
 	private function staff( bool $get, string $b, string $c ): void {
 		if ( $get && '' === $b ) {
 			$this->show( 'staff', 'staff', array( 'rows' => Staff::all( $this->db ), 'labels' => Staff::LABELS, 'saas_labels' => Staff::SAAS_LABELS, 'sso' => SupportSso::enabled(), 'support_url' => SupportSso::supportUrl() ) );

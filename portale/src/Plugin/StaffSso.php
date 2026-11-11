@@ -221,6 +221,15 @@ final class StaffSso {
 		return self::request( 'POST', '/api/staff/v1/people/' . $op, 'staff_people', array( 'op' => $op, 'area' => self::AREA, 'act' => strtolower( mb_substr( $act, 0, 190 ) ) ) + $data, $now );
 	}
 
+	/** Dove il browser porta il token di un'altra area (POST, campo `token`): indirizzi fissi, mai presi dalla richiesta. */
+	const DEST = array(
+		'saas'     => 'https://associazionesemplice.it/saas/admin/sso',
+		'supporto' => 'https://supporto.associazionesemplice.it/staff/sso',
+	);
+
+	/** Nomi delle aree nel selettore «Vai a». */
+	const AREA_NAMES = array( 'saas' => 'SaaS', 'supporto' => 'Supporto' );
+
 	/** Dove si accede: il modulo di questa area (nessuna pagina di accesso dedicata; la password la controlla il SaaS). */
 	public static function loginUrl(): string {
 		return Admin::BASE . '/accedi';
