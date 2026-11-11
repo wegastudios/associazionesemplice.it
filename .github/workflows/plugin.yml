@@ -140,7 +140,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build the free package
-        run: bash wordpress/build.sh wordpress/dist
+        run: ASEM_WPORG=1 bash wordpress/build.sh wordpress/dist
       - name: Plugin check
         uses: WordPress/plugin-check-action@v1
         with:

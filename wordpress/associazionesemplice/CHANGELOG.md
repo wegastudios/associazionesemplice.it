@@ -7,6 +7,7 @@ Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi u
 - Con la password puoi spuntare «Ricordami» e restare entrato 30 giorni
 - Con il link o il codice l'accesso dura meno (12 ore, si cambia dai Limiti)
 - La vecchia grafica è stata tolta: resta solo il nuovo aspetto e l'opzione «Torna alla grafica precedente» non c'è più
+- Il programma si aggiorna da Bacheca → Aggiornamenti: con «Visualizza i dettagli» vedi in italiano cosa cambia prima di installare
 
 ## 1.3.17
 - Più sicurezza dopo una revisione: collegamenti tra tutore e minore più rigorosi, il modulo del profilo accetta solo l'invio normale, la protezione della cartella degli allegati viene controllata, negli elenchi esportati le formule non vengono eseguite.

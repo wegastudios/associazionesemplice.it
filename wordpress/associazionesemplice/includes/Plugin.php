@@ -37,6 +37,9 @@ final class Plugin {
 			);
 		}
 		MailLog::register();     // registro dell'esito delle email spedite
+		if ( class_exists( __NAMESPACE__ . '\Updater' ) ) { // aggiornamenti dal portale: nel pacchetto per WordPress.org non c'è (lì aggiorna WordPress.org)
+			Updater::register();
+		}
 		self::schedule_jobs();   // lavori periodici: la classe si carica solo quando il lavoro parte
 		self::lazy_admin_post(); // download e azioni di admin-post: la classe si carica solo per quell'azione
 		// Parti che servono solo se la funzione è presente e in uso: altrimenti nemmeno si caricano.

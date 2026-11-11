@@ -283,6 +283,18 @@ final class Limits {
 			'Chi non legge subito l\'email può perdere il promemoria.'
 		);
 
+		$add(
+			'update_check_hours', 'comunicazioni', 'Ogni quante ore cercare nuove versioni', 'ore', 24, 12, 168,
+			'Ogni quante ore il plugin chiede al portale l\'ultima versione disponibile (solo se l\'avviso è attivo).',
+			'Con intervalli lunghi l\'avviso arriva con qualche giorno di ritardo.',
+			'Intervalli brevi appesantiscono inutilmente il portale e il tuo sito senza vantaggi: le versioni escono di rado.'
+		);
+		$add(
+			'portal_updates', 'comunicazioni', 'Aggiornamenti diretti di Associazione Semplice e del Pro (Bacheca → Aggiornamenti)', 'flag', 1, 0, 1,
+			'Il plugin chiede al portale di Associazione Semplice se esiste una versione più nuova (al massimo ogni 12 ore) e la offre in Bacheca → Aggiornamenti, dove si installa con un clic. Il gratuito manda solo prodotto e versione; il Pro anche la chiave di licenza e il dominio.',
+			'Nessun rischio rilevante: una richiesta al portale ogni tanto.',
+			'Se lo disattivi gli aggiornamenti vanno scaricati dall\'area clienti e caricati a mano.'
+		);
 		$d = function_exists( 'apply_filters' ) ? apply_filters( 'asem_limits_defs', $d ) : $d; // un'estensione può aggiungere i suoi limiti
 		self::$defs = $d;
 		return $d;
