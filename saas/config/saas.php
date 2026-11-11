@@ -59,6 +59,19 @@ return [
         'login_url' => env('SAAS_STAFF_LOGIN_URL'),
     ],
 
+    // Il SaaS come fornitore di identità dello staff (docs/UTENTI_E_ACCESSI.md): spento finché SAAS_STAFF_ISSUER non è true.
+    'staff_issuer' => [
+        'enabled' => (bool) env('SAAS_STAFF_ISSUER', false),
+        'issuer' => env('SAAS_STAFF_ISSUER_URL', 'https://associazionesemplice.it/saas'),
+        'request_issuer' => env('SAAS_STAFF_REQUEST_ISSUER', 'https://associazionesemplice.it'),
+        // Seme Ed25519 (base64, 32 byte) della chiave staff-… che firma gli staff_sso.
+        'signing_key' => env('SAAS_STAFF_SIGNING_KEY'),
+        // Chiavi pubbliche delle aree: "kid=x@area,…" (area = wordpress|supporto).
+        'area_keys' => env('SAAS_STAFF_AREA_KEYS', ''),
+        // Email della titolare (admin di tutte le aree, sempre): solo qui, mai nel repository.
+        'super_admins' => env('SAAS_STAFF_SUPER_ADMINS', ''),
+    ],
+
     // Contratto con il portale (docs/CONTRATTO_PORTALE.md).
     'portal' => [
         'url' => env('SAAS_PORTAL_URL', 'https://associazionesemplice.it'),

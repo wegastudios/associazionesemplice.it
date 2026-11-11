@@ -44,6 +44,7 @@ final class PiattaformaServiceProvider extends ServiceProvider
         });
 
         Route::group([], __DIR__.'/../Http/routes.php');
+        Route::group([], __DIR__.'/../Http/staff_api_routes.php');
 
         if ($this->app->runningInConsole()) {
             $this->commands([CreateStaffCommand::class, ResetStaffTwoFactorCommand::class]);
