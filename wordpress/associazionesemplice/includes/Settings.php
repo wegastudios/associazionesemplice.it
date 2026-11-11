@@ -66,7 +66,6 @@ final class Settings {
 			'cancel_policy_default'   => CancelPolicy::H48, // termine predefinito per annullare gli eventi cancellabili
 			'accent_color'            => '',    // colore d'accento del front-end; vuoto = quello del tema
 			'secondary_color'         => '',    // colore secondario; vuoto = quello del sito (Elementor o tema)
-			'ui_classic'              => 0,     // 1 = grafica precedente (interruttore temporaneo); 0 = nuovo aspetto
 			'logo_id'                 => 0,     // logo dell'ente (allegato della libreria media); 0 = il logo del sito
 			'card_mode'               => 'standard', // tessera: 'standard' (bianca) oppure 'image' (su un'immagine propria)
 			'card_bg_id'              => 0,     // immagine della tessera (libreria media), facoltativa
@@ -197,7 +196,6 @@ final class Settings {
 		$clean['cancel_policy_default']   = CancelPolicy::is_valid( (string) $clean['cancel_policy_default'] ) ? (string) $clean['cancel_policy_default'] : CancelPolicy::H48;
 		$clean['accent_color']            = Color::normalize( (string) $clean['accent_color'] );
 		$clean['secondary_color']         = Color::normalize( (string) $clean['secondary_color'] );
-		$clean['ui_classic']              = empty( $clean['ui_classic'] ) ? 0 : 1;
 		$clean['logo_id']                 = max( 0, (int) $clean['logo_id'] );
 		$clean['card_mode']               = CardLayout::MODE_IMAGE === (string) $clean['card_mode'] ? CardLayout::MODE_IMAGE : CardLayout::MODE_STANDARD;
 		$clean['card_bg_id']              = max( 0, (int) $clean['card_bg_id'] );

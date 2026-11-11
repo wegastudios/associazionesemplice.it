@@ -134,7 +134,7 @@
 /* ==========================================================================
    Nuovo aspetto (stile del gestionale SaaS, docs/RESTYLE.md). Tutto sotto .asem-ui:
    non tocca menu, barra né stili di WordPress fuori dalle nostre pagine.
-   Si rimette la grafica di prima da Impostazioni → Aspetto (classe assente).
+   La vecchia grafica non esiste più: lo stile vale sempre.
    ========================================================================== */
 @font-face { font-family: 'Montserrat'; font-weight: 500; font-display: swap; src: url('fonts/Montserrat-Medium.woff2') format('woff2'); }
 @font-face { font-family: 'Montserrat'; font-weight: 600; font-display: swap; src: url('fonts/Montserrat-SemiBold.woff2') format('woff2'); }

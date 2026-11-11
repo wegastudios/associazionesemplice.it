@@ -6,12 +6,13 @@ Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi u
 - Accesso soci più semplice: una sola schermata con password o link via email
 - Con la password puoi spuntare «Ricordami» e restare entrato 30 giorni
 - Con il link o il codice l'accesso dura meno (12 ore, si cambia dai Limiti)
+- La vecchia grafica è stata tolta: resta solo il nuovo aspetto e l'opzione «Torna alla grafica precedente» non c'è più
 
 ## 1.3.17
 - Più sicurezza dopo una revisione: collegamenti tra tutore e minore più rigorosi, il modulo del profilo accetta solo l'invio normale, la protezione della cartella degli allegati viene controllata, negli elenchi esportati le formule non vengono eseguite.
 
 ## 1.3.16
-- Nuovo aspetto: elenchi a righe sul telefono, scheda socio a sezioni, foglio «Altro» nell'elenco soci, prima nota e incasso più leggibili, tessera a carta e barra in basso nell'area soci. Se preferisci la grafica di prima, da Impostazioni → Aspetto puoi tornarci.
+- Nuovo aspetto: elenchi a righe sul telefono, scheda socio a sezioni, foglio «Altro» nell'elenco soci, prima nota e incasso più leggibili, tessera a carta e barra in basso nell'area soci.
 - Anche la Bacheca e le schermate vuote hanno il nuovo stile, con il carattere Montserrat incluso nel programma (niente richieste a siti esterni).
 - Il link di attivazione abilita l'accesso ma non fa entrare da solo: il socio torna all'area riservata e accede.
 - Più sicurezza: contenuti filtrati, link dei documenti protetti, copie di sicurezza più ordinate.
