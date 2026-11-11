@@ -2145,6 +2145,35 @@ $idTok   = Identity::tokenFor( Identity::current(), 'saas' );
 check( 'identità: token per l\'area, firmato col sid', 'jwt.x.y' === $idTok && 'saas' === $idSent['c']['to'] && str_repeat( 'b', 32 ) === $idSent['c']['sid'] && null === Identity::tokenFor( Identity::current(), 'altra' ) );
 Identity::logout();
 check( 'identità: uscita revoca la sessione centrale e svuota quella del portale', 'identity_logout' === $idSent['c']['typ'] && null === Identity::current() );
+// Profilo: letture e azioni che cambiano qualcosa (sessione riconfermata subito prima)
+Identity::open( array( 'sid' => str_repeat( 'c', 32 ), 'person' => array(), 'areas' => array() ), 'm@esempio.it' );
+$idReply = array( 200, json_encode( array( 'person' => array( 'email' => 'm@esempio.it' ), 'areas' => array( 'saas' => 'admin' ), 'two_factor' => true, 'sessions' => array( array( 'id' => 'abc123', 'ip' => '1.2.3.4', 'created_at' => '2026-11-11', 'last_used_at' => '2026-11-11 10:00', 'current' => true ), 'rotta' ) ) ) );
+$idP = Identity::profile( Identity::current() );
+check( 'profilo: dati, secondo livello e sole sessioni ben formate', true === $idP['two_factor'] && 1 === count( $idP['sessions'] ) && true === $idP['sessions'][0]['current'] && 'identity_profile' === $idSent['c']['typ'] );
+$idCalls = array();
+Http::$transport = function ( $m, $u, $h, $b ) use ( &$idCalls, &$idReply ) {
+	$p = explode( '.', json_decode( (string) $b, true )['token'] ?? '' );
+	$idCalls[] = json_decode( (string) base64_decode( strtr( $p[1] ?? '', '-_', '+/' ) ), true )['typ'] ?? '';
+	return 'identity_session' === end( $idCalls ) ? array( 200, '{"valid":true,"areas":{}}' ) : $idReply;
+};
+$idReply = array( 200, '{"ok":true}' );
+$idA = Identity::act( 'password', array( 'current' => 'a', 'new' => 'b' ) );
+check( 'profilo: prima di un cambio si riconferma la sessione, poi parte la richiesta', 'ok' === $idA['status'] && array( 'identity_session', 'identity_password' ) === $idCalls );
+$idReply = array( 422, json_encode( array( 'messages' => array( 'Troppo corta.' ) ) ) );
+check( 'profilo: errori di validazione riportati', array( 'Troppo corta.' ) === Identity::act( 'password', array( 'current' => 'a', 'new' => 'b' ) )['messages'] );
+$idReply = array( 401, '{}' );
+check( 'profilo: password errata = rifiutato', 'denied' === Identity::act( '2fa-start', array( 'password' => 'x' ) )['status'] );
+$idReply = array( 200, '{"valid":false}' );
+Http::$transport = function () use ( &$idReply ) { return array( 200, '{"valid":false}' ); };
+check( 'profilo: sessione non più valida = chiusa, nessun cambio', 'closed' === Identity::act( 'password', array( 'current' => 'a', 'new' => 'b' ) )['status'] && null === Identity::current() );
+try {
+	Identity::act( 'login', array() );
+	check( 'profilo: azioni non ammesse rifiutate', false );
+} catch ( \InvalidArgumentException $e ) {
+	check( 'profilo: azioni non ammesse rifiutate', true );
+}
+Http::$transport = function ( $m, $u ) use ( &$idSent ) { $idSent['u'] = $u; return array( 200, '{"ok":true}' ); };
+check( 'profilo: conferma email dal link', true === Identity::emailConfirm( 'codice' ) && false !== strpos( $idSent['u'], '/identity/email-confirm' ) );
 Http::$transport = $idPrev;
 Config::set( 'identity', array() );
 Config::set( 'staff_area_sign_key', '' );

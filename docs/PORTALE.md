@@ -329,3 +329,5 @@ Specifica del SaaS: `saas/docs/IDENTITA_API.md`. Il portale non conserva passwor
 
 ## Grafica e UX unica (11/11/2026)
 Regola per tutti i sistemi: `docs/GRAFICA_UX.md`; valori in `docs/brand/tokens.css`. Nel portale: `portale.css` ha i valori dei token; la voce d'accesso della barra e del piede è «Accedi» / «Il mio account» (mai «Area riservata»); le pagine d'errore hanno «Torna al tuo account» e «Vai alla home»; `bin/link-check.php [indirizzo]` apre le pagine pubbliche e segue i link di barra e piede (esce con 1 se uno non risponde 200).
+
+**Profilo e sicurezza** (`/account/profilo`, con l'accesso unico acceso e la persona nell'elenco unico): password (`identity_password`: chiude le altre sessioni), email (`identity_email`: il SaaS scrive al nuovo indirizzo un link `https://associazionesemplice.it/accedi/conferma-email/<codice>`; la GET mostra solo il pulsante, la POST conferma), secondo livello (`identity_2fa_start/confirm/disable`: il QR arriva dal SaaS e non si conserva), sessioni aperte con «Chiudi» (`identity_profile`, `identity_session_revoke`). Prima di ogni cambio la sessione si riconferma al SaaS. I messaggi di errore sono quelli del SaaS.
