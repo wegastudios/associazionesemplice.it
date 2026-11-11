@@ -1896,6 +1896,36 @@ SaasAccount::cancel( $cdb, SaasAccount::mine( $cdb, $custA['id'], $ord['id'] ) )
 check( 'disdetta: a fine periodo su Stripe e ordine segnato', 1 === count( $cancelled ) && false !== strpos( $cancelled[0][1], '/subscriptions/sub_1' ) && 'true' === ( function ( $s ) { parse_str( $s, $o ); return $o['cancel_at_period_end'] ?? ''; } )( $cancelled[0][2] ) && 1 === (int) $cdb->one( 'SELECT cancel_at_period_end c FROM orders WHERE id = ?', array( $ord['id'] ) )['c'] );
 Config::set( 'stripe.secret_key', '' );
 
+// Elenco centrale dello staff (docs/UTENTI_E_ACCESSI.md): copia, livelli, super amministratore, registro
+use Portale\Plugin\Directory;
+$ddb = new Db( new PDO( 'sqlite::memory:' ) );
+$ddb->migrate();
+$ddb->run( 'INSERT INTO staff (email, role, saas, created_at) VALUES (?,?,?,?)', array( 'vecchio@esempio.it', 'support', 'admin', Db::now() ) );
+$ddb->run( 'INSERT INTO staff (email, role, saas, created_at) VALUES (?,?,?,?)', array( 'solosaas@esempio.it', 'none', 'admin', Db::now() ) );
+$ddb->migrate();
+check( 'elenco staff: la copia porta i ruoli di oggi (plugin e SaaS) con i livelli nuovi', Directory::SUPPORT === Directory::level( $ddb, 'vecchio@esempio.it', Directory::AREA_WORDPRESS ) && Directory::ADMIN === Directory::level( $ddb, 'vecchio@esempio.it', Directory::AREA_SAAS ) && Directory::ADMIN === Directory::level( $ddb, 'solosaas@esempio.it', Directory::AREA_SAAS ) && null === Directory::level( $ddb, 'solosaas@esempio.it', Directory::AREA_WORDPRESS ) );
+check( 'elenco staff: nessun ruolo nell\'area di supporto finché non lo si dà', null === Directory::level( $ddb, 'vecchio@esempio.it', Directory::AREA_SUPPORT ) && array( 'wordpress' => 'supporto', 'saas' => 'admin' ) === Directory::levels( $ddb, 'vecchio@esempio.it' ) );
+$ddb->migrate();
+check( 'elenco staff: la copia è ripetibile e non rimette un ruolo cambiato qui', 1 === (int) $ddb->one( 'SELECT COUNT(*) AS n FROM staff_people WHERE email = ?', array( 'vecchio@esempio.it' ) )['n'] );
+Directory::put( $ddb, 'vecchio@esempio.it', Directory::AREA_WORDPRESS, Directory::SALES, 'test' );
+$ddb->migrate();
+check( 'elenco staff: un livello cambiato nell\'elenco centrale resta dopo una nuova copia', Directory::SALES === Directory::level( $ddb, 'vecchio@esempio.it', Directory::AREA_WORDPRESS ) );
+check( 'elenco staff: livello non ammesso nell\'area ignorato (agente non esiste in WordPress)', ( function () use ( $ddb ) { Directory::put( $ddb, 'vecchio@esempio.it', Directory::AREA_WORDPRESS, Directory::AGENT, 'test' ); return Directory::SALES === Directory::level( $ddb, 'vecchio@esempio.it', Directory::AREA_WORDPRESS ); } )() );
+$ddb->run( 'UPDATE staff_people SET active = 0 WHERE email = ?', array( 'vecchio@esempio.it' ) );
+check( 'elenco staff: persona disattivata = nessun accesso in nessuna area', array() === Directory::levels( $ddb, 'vecchio@esempio.it' ) );
+Config::set( 'super_admins', array( 'titolare@esempio.it' ) );
+check( 'elenco staff: la super amministratrice è admin di tutte le aree anche senza righe nel database', array( 'wordpress' => 'admin', 'saas' => 'admin', 'supporto' => 'admin' ) === Directory::levels( $ddb, 'Titolare@Esempio.it' ) && null === $ddb->one( 'SELECT 1 AS x FROM staff_people WHERE email = ?', array( 'titolare@esempio.it' ) ) );
+check( 'elenco staff: compare per prima e bloccata nella pagina delle persone', 'titolare@esempio.it' === Directory::people( $ddb, 'saas' )[0]['email'] && true === Directory::people( $ddb, 'saas' )[0]['locked'] );
+Config::set( 'super_admins', array() );
+check( 'elenco staff: i gradi dei livelli (admin > vendita > supporto, admin > agente)', Directory::rank( 'saas', 'admin' ) > Directory::rank( 'saas', 'vendita' ) && Directory::rank( 'saas', 'vendita' ) > Directory::rank( 'saas', 'supporto' ) && Directory::rank( 'supporto', 'admin' ) > Directory::rank( 'supporto', 'agente' ) && 0 === Directory::rank( 'supporto', 'vendita' ) );
+Directory::audit( $ddb, 'A@esempio.it', 'b@esempio.it', 'grant', 'wordpress:admin', '203.0.113.9' );
+$aud = $ddb->one( 'SELECT actor, target, action, ip FROM staff_audit WHERE action = ?', array( 'grant' ) );
+check( 'elenco staff: il registro annota chi, a chi, cosa e da dove', 'a@esempio.it' === $aud['actor'] && 'b@esempio.it' === $aud['target'] && '203.0.113.9' === $aud['ip'] );
+$ddb->run( "DELETE FROM staff_people WHERE email = 'vecchio@esempio.it'" );
+$ddb->run( "DELETE FROM staff_roles WHERE area = 'wordpress'" );
+Directory::audit( $ddb, 'sistema', '', 'cutover' );
+$ddb->migrate();
+check( 'elenco staff: dopo il passaggio all\'accesso unico la copia dalle tabelle vecchie non si ripete', null === $ddb->one( 'SELECT 1 AS x FROM staff_people WHERE email = ?', array( 'vecchio@esempio.it' ) ) );
 Http::$transport = $prevTransport;
 Config::set( 'saas_public_keys', array() );
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
