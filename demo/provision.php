@@ -235,7 +235,7 @@ demo_step( 'spese', function () use ( $ledger ) {
 // 7. Un corso e due eventi, con iscritti e prenotazioni: chi prova vede subito elenchi, posti e importi da incassare.
 demo_step( 'attività', function () use ( &$ids ) {
 	$act  = Plugin::activities();
-	$year = Settings::membership_year( gmdate( 'Y-m-d' ) )->label();
+	$year = Settings::social_year()->label();
 	$mario = $ids['Mario Demo'] ?? 0;
 	$course = $act->create( array( 'name' => 'Corso di fotografia', 'social_year' => $year, 'kind' => 'course', 'instructor_person_id' => $ids['Paolo Ferri'] ?? null, 'fee_cents' => 2500 ) );
 	$month  = gmdate( 'Y-m' );

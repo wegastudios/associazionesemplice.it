@@ -209,7 +209,10 @@ extra_step( 'eventi sul sito', function () {
 		return;
 	}
 	$act  = Plugin::activities();
-	$year = Settings::membership_year( gmdate( 'Y-m-d' ) )->label();
+	$year = Settings::social_year()->label();
+	// Le attività di prova create prima portavano l'anno delle tessere («2026») al posto dell'anno sociale («2026/2027»): l'elenco pubblico non le trovava.
+	global $wpdb;
+	$wpdb->query( $wpdb->prepare( 'UPDATE ' . \AssociazioneSemplice\Db::t( 'activities' ) . ' SET social_year = %s WHERE social_year = %s', $year, Settings::membership_year( gmdate( 'Y-m-d' ) )->label() ) ); // phpcs:ignore WordPress.DB
 	// Locandina inventata (sfumatura con GD, se c'è); senza GD le pagine restano senza immagine.
 	$poster = function ( string $title, array $rgb ) {
 		if ( ! function_exists( 'imagecreatetruecolor' ) || ! function_exists( 'imagepng' ) ) {
