@@ -10,7 +10,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Libro soci completo: date di domanda e delibera, luogo di nascita, residenza, contatti, ultima quota, recesso e tutore, con PDF e CSV | ✓ | ✓ | ✓ |
 | Schede dei soci e collegamento all'utente WordPress | ✓ | ✓ | ✓ |
 | Addebito crediti con il QR dello staff :: Addebito di crediti con il QR da parte dello staff di un evento con incasso abilitato, anche senza utente WordPress | — | ✓ | ✓ |
-| Accesso dei soci con email e password (o link e codice via email), senza utente WordPress (utente WordPress solo per chi ha un ruolo, o per tutti se lo scegli) | ✓ | ✓ | ✓ |
+| Accesso dei soci semplificato :: Accesso dei soci in una sola schermata, con email e password o con un link via email, e «Ricordami» per 30 giorni; senza utente WordPress (utente WordPress solo per chi ha un ruolo, o per tutti se lo scegli) | ✓ | ✓ | ✓ |
 | Quota associativa unica e socio fondatore | ✓ | ✓ | ✓ |
 | Quota associativa a rate: residuo in scheda, saldo da incassare e tessera valida solo a quota saldata | ✓ | ✓ | ✓ |
 | Più livelli di socio :: Più livelli di socio con quote diverse | — | ✓ | ✓ |
@@ -150,6 +150,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 |---|---|---|---|
 | Colori e logo dell'associazione | ✓ | ✓ | ✓ |
 | Novità di ogni versione in italiano semplice (changelog) | ✓ | ✓ | ✓ |
+| Aggiornamenti diretti dal sito :: Aggiornamenti dalla Bacheca di WordPress (Bacheca → Aggiornamenti), con le novità in italiano in «Visualizza i dettagli», anche per il plugin gratuito finché non è su WordPress.org | ✓ | ✓ | ✓ |
 | Testi personalizzabili :: Testi personalizzabili, tipo di ente e termini | — | ✓ | ✓ |
 | Lingue aggiuntive :: Lingue aggiuntive (inglese incluso) | — | ✓ | ✓ |
 | Copia di sicurezza e ripristino | ✓ | ✓ | ✓ |
