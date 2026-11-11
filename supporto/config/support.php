@@ -64,6 +64,12 @@ return [
         'local_login' => (bool) env('SUPPORT_STAFF_LOCAL_LOGIN', true),
     ],
 
+    // Accesso dei CLIENTI dal SaaS (token customer_sso EdDSA, stesso emittente e destinatario dello staff). Chiavi pubbliche "kid:x" `cust-…`,
+    // separate da quelle dello staff; senza chiavi l'accesso dal SaaS e spento (resta il ripiego HMAC di 'sso').
+    'customer_sso' => [
+        'keys' => env('SUPPORT_CUSTOMER_KEYS'),
+    ],
+
     // Nomi dei piani nei testi delle guide: si cambiano qui (o da .env) e si rilancia il seeder, mai a mano nei testi
     'plan_names' => [
         'contabile' => env('SUPPORT_PLAN_CONTABILE', 'PRO Contabilità'),

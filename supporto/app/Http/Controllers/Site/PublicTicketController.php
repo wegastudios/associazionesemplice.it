@@ -76,6 +76,7 @@ class PublicTicketController extends Controller
         // Con l'accesso unico nome, email e piano vengono dal portale e non dal modulo (non modificabili)
         if (is_array($customer = $request->session()->get('customer'))) {
             $data['customer_email'] = $customer['email'];
+            $data['customer_id'] = $customer['customer_id'] ?? null;
             if ($customer['name'] !== null) {
                 $data['customer_name'] = $customer['name'];
             }

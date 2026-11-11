@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\Site\SectionController;
 use App\Http\Controllers\Admin\Site\StaffUsersController;
 use App\Http\Controllers\Admin\Site\TicketController as AdminTicketController;
 use App\Http\Controllers\Admin\Site\TopicController;
+use App\Http\Controllers\Site\CustomerSsoController;
 use App\Http\Controllers\Site\HelpCenterController;
 use App\Http\Controllers\Site\PublicTicketController;
 use App\Http\Controllers\Site\SsoController;
@@ -23,6 +24,7 @@ Route::get('/articoli/{article}', [HelpCenterController::class, 'article'])->whe
 
 // Accesso unico dal portale e area del cliente connesso
 Route::get('/sso', [SsoController::class, 'login'])->middleware('throttle:20,1')->name('sso.login');
+Route::post('/accedi/sso', [CustomerSsoController::class, 'login'])->middleware('throttle:20,1')->name('customer.sso');
 Route::post('/esci', [SsoController::class, 'logout'])->name('sso.logout');
 
 // Accesso unico dello staff: il portale manda qui la persona con una POST e un token firmato (docs/STAFF_SSO.md)
