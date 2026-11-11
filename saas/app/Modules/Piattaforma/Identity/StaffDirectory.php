@@ -20,12 +20,19 @@ final readonly class StaffDirectory
     public function authenticate(string $email, string $password): ?StaffPerson
     {
         $row = $this->db->connection('pgsql')->table('core.staff_people')->where('email', mb_strtolower($email))->first();
-        $hash = $row !== null && is_string($row->password ?? null) ? $row->password : null;
+        $hash = $row !== null && is_string($row->password ?? null) && $row->password !== '' ? $row->password : null;
+        // Cliente importato dal portale: finché non ha una password del SaaS vale l'impronta del portale (una volta sola).
+        $legacy = $row !== null && $hash === null && is_string($row->legacy_hash ?? null) && $row->legacy_hash !== '' ? $row->legacy_hash : null;
 
         // Il confronto si fa sempre, anche per chi non esiste: il tempo di risposta non rivela quali email ci sono.
-        $ok = $this->hasher->check($password, $hash ?? $this->dummyHash());
-        if ($row === null || $hash === null || ! $ok || $row->active !== true) {
+        $ok = $legacy !== null
+            ? password_verify(self::prehash($password), $legacy)
+            : $this->hasher->check($password, $hash ?? $this->dummyHash());
+        if ($row === null || ($hash === null && $legacy === null) || ! $ok || $row->active !== true) {
             return null;
+        }
+        if ($legacy !== null) {
+            $this->db->connection('pgsql')->table('core.staff_people')->where('id', $row->id)->update(['password' => $this->hasher->make($password), 'legacy_hash' => null]);
         }
 
         return new StaffPerson(self::text($row->id), self::text($row->email), self::text($row->name));
@@ -91,6 +98,12 @@ final readonly class StaffDirectory
             'ip' => $ip,
             'created_at' => now(),
         ]);
+    }
+
+    /** Il pre-hash che il portale applica prima di bcrypt (`Auth::prehash`): base64 dello sha256 binario. */
+    public static function prehash(string $password): string
+    {
+        return base64_encode(hash('sha256', $password, true));
     }
 
     private function dummyHash(): string

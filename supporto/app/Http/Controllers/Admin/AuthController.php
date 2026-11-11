@@ -19,10 +19,23 @@ class AuthController extends Controller
 {
     private const MAX_ATTEMPTS = 5;
 
+    /** Indirizzo del portale per accedere o uscire (stesso dominio dell'emittente, salvo configurazione). */
+    private function portalUrl(string $key, string $path): string
+    {
+        $issuer = (string) config('support.staff_sso.issuer');
+        $origin = parse_url($issuer, PHP_URL_SCHEME).'://'.parse_url($issuer, PHP_URL_HOST);
+
+        return (string) (config("support.staff_sso.{$key}") ?: $origin.$path);
+    }
+
     public function showLogin(): View|RedirectResponse
     {
         if (Auth::user()?->isStaff()) {
             return redirect()->route('admin.home');
+        }
+
+        if (config('support.staff_sso.portal_login')) {
+            return redirect()->away($this->portalUrl('login_url', '/accedi'));
         }
 
         return view('admin.login', [
@@ -33,6 +46,7 @@ class AuthController extends Controller
 
     public function login(Request $request, AuditLogger $audit, StaffPortal $portal, StaffSession $session): RedirectResponse
     {
+        abort_if(config('support.staff_sso.portal_login'), 404);
         $remote = (bool) config('support.staff_sso.remote_login');
         abort_unless($remote || config('support.staff_sso.local_login'), 403, 'L\'accesso con password è disattivato.');
 
@@ -96,6 +110,8 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('admin.login');
+        return config('support.staff_sso.portal_login')
+            ? redirect()->away($this->portalUrl('logout_url', '/account/esci'))
+            : redirect()->route('admin.login');
     }
 }

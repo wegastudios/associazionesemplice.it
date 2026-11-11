@@ -42,16 +42,6 @@ final class UsePlatformSession
                 'session.same_site' => 'strict',
             ]);
             Auth::shouldUse(self::GUARD);
-        } elseif ($request->is('saas/staff/*')) {
-            // L'accesso unico dello staff (/saas/staff/accedi…): cookie proprio, mai quello del gestionale.
-            config([
-                'session.cookie' => app()->isProduction() ? '__Secure-as_staff' : 'as_staff',
-                'session.path' => '/saas/staff',
-                'session.domain' => null,
-                'session.expire_on_close' => true,
-                'session.lifetime' => 120,
-                'session.same_site' => 'lax',
-            ]);
         }
 
         return $next($request);

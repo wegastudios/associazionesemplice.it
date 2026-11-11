@@ -16,7 +16,7 @@ final class Demo {
 	public static function accounts(): array {
 		return array(
 			array(
-				'user' => 'segreteria', 'password' => 'Segreteria-Demo-2026', 'role' => 'Segreteria', 'start' => '/wp-admin/admin.php?page=asem',
+				'user' => 'segreteria@demo.invalid', 'label' => 'Email', 'password' => 'Segreteria-Demo-2026', 'role' => 'Segreteria', 'start' => '/wp-admin/admin.php?page=asem',
 				'what' => array( 'Soci, ospiti e tessere', 'Incassi e spese in prima nota', 'Attività, eventi e calendario', 'Registri, verbali e privacy', 'Comunicazioni ai soci' ),
 				'note' => 'Lavora nel pannello di WordPress. Non vede le impostazioni, i pagamenti online né la copia di sicurezza: sono dell\'amministratore del sito.',
 			),
@@ -26,7 +26,7 @@ final class Demo {
 				'note' => 'Non è un utente WordPress: entra dalla pagina «Accesso soci» con email e password e usa l\'area riservata del sito, come farebbe un socio vero.',
 			),
 			array(
-				'user' => 'amministratore', 'password' => 'Amministratore-Demo-2026', 'role' => 'Amministratore del plugin', 'start' => '/wp-admin/admin.php?page=asem-backup',
+				'user' => 'amministratore@demo.invalid', 'label' => 'Email', 'password' => 'Amministratore-Demo-2026', 'role' => 'Amministratore del plugin', 'start' => '/wp-admin/admin.php?page=asem-backup',
 				'what' => array( 'Tutte le impostazioni di Associazione Semplice', 'Copia di sicurezza: scarichi i tuoi dati e li ricarichi il giorno dopo', 'Ruoli, limiti, tessera e registro delle azioni', 'Tutto quello che fa la segreteria' ),
 				'note' => 'Ha tutti i permessi del plugin ma non è un amministratore di WordPress: non installa plugin, non cambia utenti né impostazioni del sito. La chiave di licenza non si vede né si cambia.',
 			),

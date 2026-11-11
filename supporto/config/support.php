@@ -64,6 +64,11 @@ return [
         // Login nel modulo del supporto verificato dal SaaS (POST /api/staff/v1/login): email, password e codice non si salvano qui
         'remote_login' => (bool) env('SUPPORT_STAFF_REMOTE_LOGIN', false),
         'local_login' => (bool) env('SUPPORT_STAFF_LOCAL_LOGIN', true),
+        // Accesso e uscita sono del portale (/accedi, /account/esci): acceso, il supporto non ha moduli propri per password, email o secondo livello
+        // e rinvia al portale. Si accende quando /accedi del portale esiste; fino ad allora restano i moduli attuali.
+        'portal_login' => (bool) env('SUPPORT_STAFF_PORTAL_LOGIN', false),
+        'login_url' => env('SUPPORT_STAFF_LOGIN_URL'),
+        'logout_url' => env('SUPPORT_STAFF_LOGOUT_URL'),
     ],
 
     // Accesso dei CLIENTI dal SaaS (token customer_sso EdDSA, stesso emittente e destinatario dello staff). Chiavi pubbliche "kid:x" `cust-…`,

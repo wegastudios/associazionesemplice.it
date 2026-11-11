@@ -94,8 +94,12 @@ final class App {
 			} else {
 				header( 'Location: ' . Plugin\StaffSso::loginUrl(), true, 303 );
 			}
+		} elseif ( Identity::enabled() && Plugin\Admin::BASE . '/accedi' === $path ) {
+			// Accesso unico: l'accesso è /accedi del portale.
+			header( 'Location: /accedi', true, 303 );
 		} elseif ( Plugin\StaffSso::enabled() && Plugin\Admin::BASE . '/accedi' === $path ) {
-			$this->staffLogin( $get );
+			// Pagina provvisoria di accesso dello staff: la serve il SaaS (finché /accedi non è acceso).
+			header( 'Location: ' . rtrim( (string) Config::get( 'base_url', 'https://associazionesemplice.it' ), '/' ) . '/saas/staff/accedi', true, 303 );
 		} elseif ( Plugin\Admin::BASE === $path || 0 === strpos( $path, Plugin\Admin::BASE . '/' ) ) {
 			// Accesso staff unico (se acceso): la sessione viene dal SaaS e si riconferma ogni 5 minuti; altrimenti l'accesso di sempre.
 			$staff = null;
@@ -184,10 +188,46 @@ final class App {
 		} elseif ( $get && '/grazie' === $path ) {
 			View::render( 'message', array( 'title' => 'Grazie!', 'text' => 'Appena il pagamento è confermato ti scriviamo un link per entrare nell\'area riservata e trovare la chiave di licenza del plugin o l\'indirizzo del tuo gestionale.' ) );
 		} elseif ( $get && '/accedi' === $path ) {
-			View::render( 'login', array( 'title' => 'Area riservata', 'for_support' => '/supporto/accedi' === ( $_SESSION['after_login'] ?? '' ) ) );
+			View::render( 'login', array( 'title' => 'Accedi', 'for_support' => '/supporto/accedi' === ( $_SESSION['after_login'] ?? '' ), 'identity' => Identity::enabled() ) );
+		} elseif ( '/twofactor' === $path ) {
+			$this->twoFactor( $get );
+		} elseif ( Identity::enabled() && '/accedi/password-dimenticata' === $path ) {
+			if ( $get ) {
+				View::render( 'identity_reset_request', array( 'title' => 'Password dimenticata' ) );
+			} else {
+				$this->formLimit();
+				Identity::resetRequest( (string) $this->in( 'email' ), $this->clientIp() );
+				View::render( 'message', array( 'title' => 'Controlla la posta', 'text' => 'Se l\'indirizzo è registrato, ti abbiamo mandato un link per scegliere una nuova password. Vale un\'ora.' ) );
+			}
+		} elseif ( Identity::enabled() && 0 === strpos( $path, '/accedi/reimposta/' ) ) {
+			$code = substr( $path, 18 );
+			if ( 1 !== preg_match( '/^[A-Za-z0-9_-]{16,128}$/', $code ) ) {
+				throw new UserError( 'Il link non è valido o è scaduto: richiedine uno nuovo.' );
+			}
+			if ( $get ) {
+				View::render( 'identity_reset', array( 'title' => 'Nuova password', 'code' => $code, 'min' => (int) Settings::limit( 'password_min' ) ) );
+			} else {
+				$this->formLimit();
+				$pw = (string) $this->in( 'password' );
+				if ( $pw !== (string) $this->in( 'confirm' ) || mb_strlen( $pw ) < (int) Settings::limit( 'password_min' ) ) {
+					throw new UserError( 'Le due password devono coincidere ed essere lunghe almeno ' . (int) Settings::limit( 'password_min' ) . ' caratteri.' );
+				}
+				if ( 'ok' !== Identity::resetComplete( $code, $pw ) ) {
+					throw new UserError( 'Il link non è valido o è scaduto: richiedine uno nuovo.' );
+				}
+				View::render( 'message', array( 'title' => 'Password cambiata', 'text' => 'Fatto: ora puoi entrare con la nuova password. Le altre sessioni aperte sono state chiuse.' ) );
+			}
+		} elseif ( Identity::enabled() && ! $get && '/account/area' === $path ) {
+			$this->identityArea( (string) $this->in( 'to' ) );
+		} elseif ( '/account/esci' === $path ) {
+			$this->logout();
 		} elseif ( ! $get && '/accedi' === $path ) {
 			$email = strtolower( trim( (string) $this->in( 'email' ) ) );
 			if ( 'link' !== (string) $this->in( 'mode' ) && '' !== (string) $this->in( 'password' ) ) {
+				// Accesso unico (spento di default): prima l'elenco delle persone del SaaS; se non conosce l'email si prosegue con i clienti.
+				if ( Identity::enabled() && $this->identityLogin( $email, (string) $this->in( 'password' ) ) ) {
+					return;
+				}
 				$this->startSession( $this->auth->loginWithPassword( $email, (string) $this->in( 'password' ), $this->clientIp() ), false );
 				return;
 			}
@@ -280,9 +320,7 @@ final class App {
 			}
 			header( 'Location: ' . Stripe::portalUrl( $sub['provider_customer'] ), true, 303 );
 		} elseif ( ! $get && '/esci' === $path ) {
-			$_SESSION = array();
-			session_destroy();
-			header( 'Location: /', true, 303 );
+			$this->logout();
 		} else {
 			http_response_code( 404 );
 			View::render( 'message', array( 'title' => 'Pagina non trovata', 'text' => 'Questa pagina non esiste.' ) );
@@ -311,6 +349,96 @@ final class App {
 			}
 		}
 		$this->startSession( $this->db->one( 'SELECT * FROM customers WHERE id = ?', array( $t['customer_id'] ) ) ?: array( 'id' => $t['customer_id'], 'email' => '' ), true );
+	}
+
+	/** Chiude la sessione unica (il SaaS la revoca: le altre aree lo scoprono al controllo successivo) e quella del portale. */
+	private function logout(): void {
+		Identity::logout();
+		$_SESSION = array();
+		session_destroy();
+		header( 'Location: /', true, 303 );
+	}
+
+	/**
+	 * Accesso con l'elenco unico delle persone. @return bool true se la richiesta è gestita (sessione aperta, codice richiesto o errore mostrato);
+	 * false se il SaaS non conosce l'email o non risponde: si prosegue con l'accesso dei clienti.
+	 */
+	private function identityLogin( string $email, string $password ): bool {
+		$r = Identity::login( $email, $password, $this->clientIp() );
+		if ( 'ok' === $r['status'] ) {
+			$this->identityOpen( $r, $email );
+			return true;
+		}
+		if ( 'code_required' === $r['status'] ) {
+			session_regenerate_id( true );
+			$_SESSION['identity_ticket'] = array( 'ticket' => $r['ticket'], 'email' => $email, 'at' => time() );
+			header( 'Location: /twofactor', true, 303 );
+			return true;
+		}
+		if ( 'limit' === $r['status'] ) {
+			http_response_code( 429 );
+			throw new UserError( 'Troppi tentativi: aspetta un minuto e riprova.' );
+		}
+		return false;
+	}
+
+	/** Dopo la login unica: sessione centrale, eventuale scheda cliente con la stessa email, apertura della gestione del plugin se c'è il ruolo. */
+	private function identityOpen( array $ok, string $email ): void {
+		$email = strtolower( trim( $email ) );
+		session_regenerate_id( true );
+		unset( $_SESSION['csrf'], $_SESSION['identity_ticket'] );
+		Identity::open( $ok, $email );
+		$cust = $this->db->one( 'SELECT * FROM customers WHERE email = ?', array( $email ) );
+		if ( $cust ) {
+			$_SESSION['customer'] = $cust['id'];
+			$this->billing->touchCustomer( (string) $cust['id'] );
+			$_SESSION['via_link'] = false;
+		}
+		if ( isset( $ok['areas']['wordpress'] ) && Plugin\StaffSso::enabled() ) {
+			$token = Identity::tokenFor( $_SESSION['identity'], 'wordpress' );
+			if ( null !== $token ) {
+				Plugin\StaffSso::receive( $this->db, $token );
+			}
+		}
+		$to = '/supporto/accedi' === ( $_SESSION['after_login'] ?? '' ) && $cust ? '/supporto/accedi' : '/account';
+		unset( $_SESSION['after_login'] );
+		header( 'Location: ' . $to, true, 303 );
+	}
+
+	/** Il codice del secondo livello dopo email e password. */
+	private function twoFactor( bool $get ): void {
+		$t = $_SESSION['identity_ticket'] ?? null;
+		if ( ! Identity::enabled() || ! is_array( $t ) || time() - (int) $t['at'] > 300 ) {
+			unset( $_SESSION['identity_ticket'] );
+			header( 'Location: /accedi', true, 303 );
+			return;
+		}
+		if ( $get ) {
+			View::render( 'twofactor', array( 'title' => 'Codice di verifica', 'error' => '' ) );
+			return;
+		}
+		$r = Identity::code( (string) $t['ticket'], (string) $this->in( 'code' ), $this->clientIp() );
+		if ( 'ok' === $r['status'] ) {
+			$this->identityOpen( $r, (string) $t['email'] );
+			return;
+		}
+		http_response_code( 'limit' === $r['status'] ? 429 : 401 );
+		View::render( 'twofactor', array( 'title' => 'Codice di verifica', 'error' => 'limit' === $r['status'] ? 'Troppi tentativi: aspetta un minuto.' : 'Il codice non è corretto o è scaduto.' ) );
+	}
+
+	/** «Entra» in un'area dalla pagina Account: il SaaS dà il token (solo con il ruolo), il browser lo manda in POST all'indirizzo fisso dell'area. */
+	private function identityArea( string $area ): void {
+		$s = Identity::check( true );
+		if ( ! $s ) {
+			header( 'Location: /accedi', true, 303 );
+			return;
+		}
+		$dest  = array( 'wordpress' => rtrim( (string) Config::get( 'base_url', 'https://associazionesemplice.it' ), '/' ) . Plugin\Admin::BASE . '/sso' ) + Plugin\StaffSso::DEST;
+		$token = isset( $dest[ $area ], $s['areas'][ $area ] ) ? Identity::tokenFor( $s, $area ) : null;
+		if ( null === $token ) {
+			throw new UserError( 'Non riesco ad aprire quell\'area ora: riprova tra poco.' );
+		}
+		View::render( 'area_vai', array( 'action' => $dest[ $area ], 'token' => $token, 'name' => array( 'wordpress' => 'Gestione del plugin', 'saas' => 'Gestionale', 'supporto' => 'Supporto' )[ $area ], 'title' => 'Apertura' ) );
 	}
 
 	/** Apre la sessione del cliente; entrando dal link per email la password si può impostare senza digitare la vecchia. */
@@ -394,6 +522,16 @@ final class App {
 	}
 
 	private function account(): void {
+		$idn = Identity::enabled() ? Identity::check() : null;
+		if ( empty( $_SESSION['customer'] ) && Identity::enabled() ) {
+			if ( ! $idn ) {
+				header( 'Location: /accedi', true, 303 );
+				return;
+			}
+			// Persona dell'elenco unico senza scheda cliente: solo il punto d'arrivo con le sue aree.
+			View::render( 'account_staff', array( 'title' => 'Il tuo account', 'email' => $idn['email'], 'areas' => $idn['areas'] ) );
+			return;
+		}
 		$cid  = $this->customerId();
 		$subs = $this->billing->forCustomer( $cid );
 		$trial = array();
@@ -406,7 +544,7 @@ final class App {
 			'name' => (string) ( $this->db->one( 'SELECT name FROM customers WHERE id = ?', array( $cid ) )['name'] ?? '' ), 'has_password' => $this->auth->hasPassword( $cid ), 'via_link' => ! empty( $_SESSION['via_link'] ), 'flash' => $flash,
 			'subs' => $subs, 'email' => $this->customerEmail( $cid ), 'trial' => $trial, 'trial_days' => Settings::limit( 'trial_days' ),
 			'trial_label' => (string) Config::get( 'plans.' . Config::get( 'trial_plan', 'full' ) . '.label', 'Pro' ),
-			'saas' => SaasAccount::forCustomer( $this->db, $cid ), 'billing' => $this->billing, 'is_admin' => ! empty( $_SESSION['staff'] ),
+			'areas' => $idn ? $idn['areas'] : array(), 'saas' => SaasAccount::forCustomer( $this->db, $cid ), 'billing' => $this->billing, 'is_admin' => ! empty( $_SESSION['staff'] ),
 			'releases' => array_combine( Releases::entitled( $subs ), array_map( function ( $p ) { return Releases::all( $this->db, $p ); }, Releases::entitled( $subs ) ) ) ?: array(),
 		) );
 	}

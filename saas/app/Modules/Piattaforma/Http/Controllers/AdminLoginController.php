@@ -30,11 +30,26 @@ final readonly class AdminLoginController
         return '/'.UsePlatformSession::path().($path === '' ? '' : '/'.$path);
     }
 
+    /** L'accesso unico è acceso (SAAS_UNIFIED_LOGIN): l'accesso è la pagina /accedi del portale, non questo modulo. */
+    public static function unified(): bool
+    {
+        return config('saas.unified_login.enabled') === true;
+    }
+
+    /** L'indirizzo pubblico della pagina di accesso unica (portale, alla radice del dominio). */
+    public static function portalLogin(): string
+    {
+        $public = config('saas.public_url');
+        $portal = config('saas.portal.url');
+
+        return rtrim(is_string($public) && $public !== '' ? $public : (is_string($portal) ? $portal : 'https://associazionesemplice.it'), '/').'/accedi';
+    }
+
     public function show(): View|RedirectResponse
     {
-        // Con l'accesso unico acceso questa pagina non ha più un modulo proprio: rinvia.
-        if (StaffLoginController::enabled()) {
-            return redirect('/saas/staff/accedi');
+        // Con l'accesso unico acceso questa pagina non ha più un modulo proprio: rinvia a /accedi del portale.
+        if (self::unified()) {
+            return redirect()->away(self::portalLogin());
         }
 
         return Auth::guard(UsePlatformSession::GUARD)->check() ? redirect(self::url('')) : view('admin.login');
@@ -42,8 +57,8 @@ final readonly class AdminLoginController
 
     public function login(Request $request): RedirectResponse
     {
-        if (StaffLoginController::enabled()) {
-            return redirect('/saas/staff/accedi');
+        if (self::unified()) {
+            return redirect()->away(self::portalLogin());
         }
         $request->validate(['email' => ['required', 'email', 'max:254'], 'password' => ['required', 'string', 'max:200']]);
         $password = $request->string('password')->toString();

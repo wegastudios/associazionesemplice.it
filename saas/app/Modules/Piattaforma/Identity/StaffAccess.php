@@ -62,7 +62,7 @@ final readonly class StaffAccess
     }
 
     /** Manda il link per scegliere una nuova password. Non dice mai se l'email esiste (chi chiama risponde sempre allo stesso modo). */
-    public function requestReset(string $email, string $base, ?string $ip): void
+    public function requestReset(string $email, string $linkPrefix, ?string $ip): void
     {
         $email = mb_strtolower(trim($email));
         $db = $this->db->connection('pgsql');
@@ -81,7 +81,7 @@ final readonly class StaffAccess
         ]);
         $this->directory->audit('staff.password.reset_requested', is_string($row->id) ? $row->id : null, null, [], $ip);
 
-        $link = rtrim($base, '/').'/staff/reimposta/'.$code;
+        $link = $linkPrefix.$code;
         try {
             Mail::raw(
                 "Ciao,\n\nhai chiesto di scegliere una nuova password per l'accesso a Associazione Semplice. Usa questo link (vale ".self::RESET_MINUTES." minuti e si usa una volta sola):\n\n{$link}\n\nSe non l'hai chiesto tu, ignora questa email: la tua password resta quella di prima.\n",

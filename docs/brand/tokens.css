@@ -1,0 +1,33 @@
+/*
+ * Token di Associazione Semplice: UNICA fonte dei colori e delle misure per portale, supporto, gestionale e (area admin) plugin.
+ * Regola: nessun sistema inventa un colore o un raggio; li prende da qui (copia identica nel proprio CSS, o import).
+ * Valori da saas/docs/DESIGN.md (contrasto testo/sfondo ≥ 4,5:1). Documento: docs/GRAFICA_UX.md.
+ */
+:root {
+	--as-bg: #f5f6fa;          /* sfondo pagina («Carta») */
+	--as-surface: #ffffff;     /* riquadri, campi */
+	--as-ink: #181a2e;         /* testo */
+	--as-muted: #5d6078;       /* testo secondario */
+	--as-line: #e2e5ee;        /* linee e bordi */
+	--as-accent: #1f218c;      /* indaco: azione principale, voce attiva, link */
+	--as-accent-ink: #ffffff;  /* testo su indaco */
+	--as-accent-soft: #e8e9fb; /* fondo informativo */
+	--as-sage: #5f8579;        /* salvia: SOLO riempimenti e icone (testo: --as-ok-ink) */
+	--as-ok-soft: #e6efeb;  --as-ok-ink: #3d6256;
+	--as-warn: #efca5c;     --as-warn-soft: #fcf3d3; --as-warn-ink: #6b4f00;
+	--as-danger: #b42318;   --as-danger-soft: #fdecea;
+	--as-radius-control: 12px; /* pulsanti, campi */
+	--as-radius-card: 16px;    /* riquadri, gruppi di righe */
+	--as-radius-sheet: 24px;   /* fogli e finestre */
+	--as-tap: 44px;            /* bersaglio minimo; campi 48px, testo campi 16px */
+	--as-max: 64rem;           /* larghezza massima del contenuto */
+	--as-font: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+	:root {
+		--as-bg: #11122a; --as-surface: #1b1d3d; --as-ink: #eceefa; --as-muted: #a9acc6; --as-line: #2f3260;
+		--as-accent: #a6a9ff; --as-accent-ink: #11122a; --as-accent-soft: #26285a;
+		--as-sage: #86ab9d; --as-ok-soft: #1f3a31; --as-ok-ink: #a8cfc0;
+		--as-warn-soft: #3d3410; --as-warn-ink: #efca5c; --as-danger: #ff8a80; --as-danger-soft: #3b1b1b;
+	}
+}

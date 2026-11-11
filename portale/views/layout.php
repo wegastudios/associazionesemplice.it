@@ -31,14 +31,14 @@ $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 		<?php if ( ! empty( $_SESSION['staff'] ) ) : ?><a href="/wordpress/admin">Gestione</a><?php endif; ?>
 		<a class="btn alt small" href="/prezzi"<?php echo '/prezzi' === $path ? ' aria-current="page"' : ''; ?>>Prezzi</a>
 		<a class="btn small" href="/prova"<?php echo '/prova' === $path ? ' aria-current="page"' : ''; ?>>Prova la demo</a>
-		<a class="nav-area" href="<?php echo e( $area ); ?>"><?php echo icon( 'user' ); ?>Area riservata</a>
+		<a class="nav-area" href="<?php echo e( $area ); ?>"><?php echo icon( 'user' ); ?><?php echo $logged ? 'Il mio account' : 'Accedi'; ?></a>
 	</nav>
 	<details class="menu">
 		<summary aria-label="Menu"><?php echo icon( 'menu' ); ?><span>Menu</span></summary>
 		<div class="menu-panel">
 			<a href="/funzioni">Funzioni</a><a href="/prova">Prova la demo</a><a href="/prezzi">Prezzi</a><a href="/confronto">Confronto versioni</a><a href="/domande">Domande</a><a href="<?php echo e( $support_href ); ?>">Supporto</a>
 			<?php if ( ! empty( $_SESSION['staff'] ) ) : ?><a href="/wordpress/admin">Gestione</a><?php endif; ?>
-			<a class="menu-area" href="<?php echo e( $area ); ?>"><?php echo icon( 'user' ); ?>Area riservata</a>
+			<a class="menu-area" href="<?php echo e( $area ); ?>"><?php echo icon( 'user' ); ?><?php echo $logged ? 'Il mio account' : 'Accedi'; ?></a>
 		</div>
 	</details>
 </div></header>
@@ -55,7 +55,7 @@ $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 <?php endif; ?></main>
 <footer class="site-footer"><div class="wrap">
 	<div>© <?php echo date( 'Y' ); ?> Associazione Semplice</div>
-	<div><a href="/free">Licenza gratuita</a><a href="/saas">Gestionale online</a><a href="/wordpress">Plugin WordPress</a><a href="/plugin">Il plugin</a><a href="/confronto">Confronto versioni</a><a href="<?php echo e( $support_href ); ?>">Supporto</a><a href="/accedi">Area riservata</a><a href="/privacy">Privacy</a><a href="/termini">Termini</a><a href="/cookie">Cookie</a><?php if ( \Portale\Tracking::banner() ) : ?><a href="#" data-cc-open>Preferenze cookie</a><?php endif; ?></div>
+	<div><a href="/free">Licenza gratuita</a><a href="/saas">Gestionale online</a><a href="/wordpress">Plugin WordPress</a><a href="/plugin">Il plugin</a><a href="/confronto">Confronto versioni</a><a href="<?php echo e( $support_href ); ?>">Supporto</a><a href="<?php echo e( $area ); ?>"><?php echo $logged ? 'Il mio account' : 'Accedi'; ?></a><a href="/privacy">Privacy</a><a href="/termini">Termini</a><a href="/cookie">Cookie</a><?php if ( \Portale\Tracking::banner() ) : ?><a href="#" data-cc-open>Preferenze cookie</a><?php endif; ?></div>
 </div></footer>
 <?php if ( $bar ) : ?>
 <nav class="bar" aria-label="Scorciatoie"><a class="btn" href="<?php echo e( $bar[0][1] ); ?>"><?php echo e( $bar[0][0] ); ?></a><a class="btn alt" href="<?php echo e( $bar[1][1] ); ?>"><?php echo e( $bar[1][0] ); ?></a></nav>

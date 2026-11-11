@@ -86,7 +86,7 @@ add_filter( 'login_headertext', function () {
 } );
 add_filter( 'login_message', function ( $m ) {
 	// Il rinvio all'accesso dei soci lo mostra già il plugin sotto questo avviso.
-	return $m . '<p class="message">Accessi di prova: segreteria: <strong>segreteria@demo.invalid</strong> / Segreteria-Demo-2026 · amministratore: <strong>amministratore@demo.invalid</strong> / Amministratore-Demo-2026</p>';
+	return $m . '<p class="message">Accessi di prova: <strong>segreteria@demo.invalid</strong> / Segreteria-Demo-2026 · <strong>amministratore@demo.invalid</strong> / Amministratore-Demo-2026</p>';
 } );
 
 // Pannello: barra e menu nei colori del marchio.
