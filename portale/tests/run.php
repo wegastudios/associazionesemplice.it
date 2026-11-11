@@ -1648,6 +1648,7 @@ check( 'sezioni: indirizzo di amministrazione configurabile', 'https://gestione.
 check( 'sezioni: vecchia pagina di un\'associazione → /saas/admin (301)', array( 301, '/saas/admin' ) === Sections::legacy( 'GET', '/saas/11111111-2222-3333-4444-555555555555', '' ) );
 check( 'sezioni: vecchio /saas/utenti/… → /saas/admin (308 per POST)', array( 308, '/saas/admin' ) === Sections::legacy( 'POST', '/saas/utenti/abc', '' ) );
 check( 'sezioni: /saas/acquista non è un vecchio indirizzo', null === Sections::legacy( 'GET', '/saas/acquista', 'plan=gestionale' ) );
+check( 'sezioni: con saas_admin_url vuoto /saas/admin non è più rimandato (lo serve il SaaS)', ( function () { Config::set( 'saas_admin_url', '' ); $r = Sections::legacy( 'GET', '/saas/admin/utenti', '' ); Config::set( 'saas_admin_url', 'https://app.associazionesemplice.it/admin' ); return $r; } )() === null );
 check( 'sezioni: /saas e /wordpress sono contenuti, non redirect', null === Sections::legacy( 'GET', '/saas', '' ) && null === Sections::legacy( 'GET', '/wordpress/changelog', '' ) );
 check( 'sezioni: pagine di contenuto', 'saas_section' === Sections::view( '/saas' ) && 'wordpress_section' === Sections::view( '/wordpress' ) && 'wordpress_changelog' === Sections::view( '/wordpress/changelog' ) && null === Sections::view( '/saas/admin' ) );
 

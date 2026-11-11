@@ -34,6 +34,9 @@ final class Sections {
 			// «Gestisci abbonamento» dal gestionale (contratto §3.2): stesso token, nuovo indirizzo.
 			return array( $get ? 301 : 308, '/account/da-gestionale' . $qs );
 		}
+		if ( ( '/saas/admin' === $path || 0 === strpos( $path, '/saas/admin/' ) ) && '' === trim( (string) Config::get( 'saas_admin_url', 'https://app.associazionesemplice.it/admin' ) ) ) {
+			return null; // `saas_admin_url` vuoto: /saas/admin lo serve già il SaaS sotto questo dominio, il portale non si mette in mezzo.
+		}
 		if ( '/saas/admin' === $path || 0 === strpos( $path, '/saas/admin/' ) ) {
 			$rest = substr( $path, strlen( '/saas/admin' ) );
 			return array( $get ? 302 : 307, self::saasAdminUrl() . $rest . $qs );

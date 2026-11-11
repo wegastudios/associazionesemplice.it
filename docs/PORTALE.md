@@ -298,3 +298,8 @@ Per il negozio (in processo, `Plugin\Promos`): `check($db,$catalogo,$codice,$pia
 ## Elenco centrale dello staff (passo 1 di `docs/UTENTI_E_ACCESSI.md`)
 
 Tabelle nuove `staff_people`, `staff_roles`, `staff_invites`, `staff_sessions`, `staff_audit` e classe `Plugin\Directory`. In questo passo **si aggiunge soltanto**: a ogni `Db::migrate()` gli staff di oggi (`plugin_staff`, colonna `saas` di `staff`, `admins` di `config.php`) vengono copiati nell'elenco con i livelli nuovi (support → supporto); la copia è ripetibile, non rimette un livello cambiato nell'elenco e si ferma per sempre quando nel registro compare un'azione `cutover` (accesso unico in funzione). Gli accessi continuano a essere decisi da `Plugin\Staff` e dalla tabella `staff`: nessun permesso cambia. La super amministratrice sta solo in `super_admins` di `config.php` (non nel repository), è admin di tutte le aree e non ha righe nel database.
+
+### Amministrazione del SaaS sotto il dominio principale e demo del gestionale
+
+- `/saas/admin` e `/wordpress/admin` sono le due amministrazioni delle vendite, su `associazionesemplice.it`. Il rimando 302 di `/saas/admin` verso `saas_admin_url` è provvisorio: con `saas_admin_url` **vuoto** in `config.php` il portale non rimanda più (`Sections::legacy` restituisce `null`) e `/saas/admin` lo serve il SaaS. Il passaggio lo fa portale-saas sul server; al portale basta svuotare la voce al momento giusto.
+- Demo del gestionale: `saas_demo_url` (default `https://demo.associazionesemplice.it`) alimenta il pulsante «Prova la demo del gestionale» in `/saas`. La demo del plugin resta `associazionesemplice.it/demo` (`demo_url`). La riga della demo del gestionale in `/confronto` (`confronto.md`) è della sessione «Sviluppo plugin WordPress».
