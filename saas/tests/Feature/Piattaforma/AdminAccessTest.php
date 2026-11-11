@@ -48,6 +48,15 @@ it('entra solo dopo la password e il codice, con un cookie proprio', function ()
         ->and($cookies->contains(fn ($c) => $c->getName() === 'as_gestionale'))->toBeFalse();
 });
 
+it('il cookie dell\'amministrazione non porta il dominio del gestionale (serve dietro il proxy del portale)', function (): void {
+    config(['session.domain' => 'app.associazionesemplice.it']);
+    $response = $this->get('/saas/admin/accesso')->assertOk();
+
+    $cookie = collect($response->headers->getCookies())->first(fn ($c) => $c->getName() === 'as_admin');
+    expect($cookie)->not->toBeNull()
+        ->and($cookie?->getDomain())->toBeNull();
+});
+
 it('alla prima volta fa attivare il codice a due passaggi, una volta sola', function (): void {
     $staff = makeStaff('nuovo@example.test', twoFactor: false);
 

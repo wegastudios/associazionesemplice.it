@@ -40,6 +40,9 @@ return [
     // portale sarà `saas/admin`, con `ASSET_URL` e `APP_URL` coerenti.
     'admin_path' => env('SAAS_ADMIN_PATH', 'saas/admin'),
 
+    // Indirizzi da cui fidarsi degli X-Forwarded-* (il proxy del portale), separati da virgole; vuoto = nessuno.
+    'trusted_proxies' => env('SAAS_TRUSTED_PROXIES', ''),
+
     // Ambiente demo (docs/PIATTAFORMA.md §6): acceso solo sul server demo (APP_ENV=demo), mai in produzione.
     // `saas:demo:reset` cancella il database e lo ricrea con dati finti; gli accessi sono pubblici per ruolo.
     'demo' => [

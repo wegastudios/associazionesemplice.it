@@ -146,3 +146,12 @@ settimana.
 prezzi o piani oggi si modifica `config/catalogo.php` e si rilascia; con l'amministrazione (`/saas/admin`) si pubblicherà
 dal pannello senza rilascio. Dopo ogni rilascio che cambia il catalogo: `curl -sI …/api/catalogo/v1` deve mostrare il
 nuovo `ETag`. Nessun segreto in più, nessun cron nuovo.
+
+## Proxy di associazionesemplice.it/saas
+
+`/saas/admin`, `/saas/staff` e `/saas/api` sono serviti dal SaaS sotto l'indirizzo del portale: il web server del portale li inoltra a `app.associazionesemplice.it` **con lo stesso percorso** (nessuna riscrittura), aggiungendo `X-Forwarded-Host`, `-Proto` e `-For`. Tutto il resto di `/saas` resta del portale.
+
+- **Fiducia negli inoltri**: gli `X-Forwarded-*` valgono solo se la richiesta arriva da un indirizzo di `SAAS_TRUSTED_PROXIES` (nel `.env` del server, separati da virgole; vuoto = nessuno si fida, come in sviluppo). Ci va l'indirizzo da cui il server contatta se stesso, non un intervallo largo.
+- **Cookie**: l'amministrazione usa un cookie proprio (`__Secure-as_admin`, percorso `/saas/admin`) **senza dominio**, anche se `SESSION_DOMAIN` è quello del gestionale: così vale solo per `associazionesemplice.it`.
+- **`.env`**: se c'è `SAAS_ADMIN_PATH`, va tolto (il predefinito è `saas/admin`). `APP_URL` e `SESSION_DOMAIN` restano quelli del gestionale.
+- **Tornare indietro**: si ripristina la copia dell'`.htaccess` di `public_html` fatta prima del cambio e si svuota `SAAS_TRUSTED_PROXIES`; il rinvio del portale a `app./admin` torna a funzionare da solo.
