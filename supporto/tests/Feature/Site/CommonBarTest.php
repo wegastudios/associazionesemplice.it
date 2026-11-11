@@ -21,7 +21,7 @@ class CommonBarTest extends SiteTestCase
     {
         config(['support.sso.portal' => 'https://portale.test']);
 
-        $this->withSession(['customer' => ['email' => 'a@b.it', 'name' => 'A']])->get('/')
+        $this->withSession(['customer' => ['email' => 'a@b.it', 'name' => 'A', 'plan_id' => null, 'at' => now()->timestamp]])->get('/')
             ->assertSee('href="https://portale.test/account/esci"', false);
     }
 
