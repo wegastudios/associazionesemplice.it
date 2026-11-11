@@ -59,3 +59,25 @@ Il legame è il campo nascosto `_asem_activity_id`. **Date, posti e prezzo non s
 - Categorie: libere (le crea l'associazione) con alcune di partenza? Proposta: libere, nessuna di partenza.
 - Eventi a pagamento: il pulsante Prenota porta al modulo attuale (area soci per i soci, modulo ospite per gli altri)? Proposta: sì, come oggi.
 - Immagine della locandina: dimensioni consigliate e ritaglio per card e anteprime social (proposta: verticale 2:3 o orizzontale 16:9 a scelta, mostrata intera nella scheda).
+
+## Riferimento e prenotazione online (richiesta della titolare, 11/11/2026)
+
+**Modello da replicare:** il calendario di un'associazione con The Events Calendar (esempio: sognaragazzosogna.it/calendario-attivita). Elenco **per mese**, ogni riga con **badge della data**, categoria, titolo, luogo, estratto, prezzo («€15», «gratuito») e pulsante verso la scheda. Scheda con data e orario, contributo, testo, informazioni di contatto, «Salva nel tuo calendario», luogo con mappa, precedente/successivo. L'esempio prenota solo per telefono; qui la scheda deve **prenotare online**.
+
+**Prenotazione dalla scheda: la modalità dipende da come è configurato il sito.**
+
+| Situazione del sito | Cosa vede chi prenota |
+|---|---|
+| Evento senza prenotazione | solo informazioni e contatti |
+| Prenotazione gratuita o contributo da versare sul posto/con bonifico (gratuito o Pro senza pagamenti online) | **Prenota**: conferma subito, posti e lista d'attesa come oggi; il contributo risulta «da versare» e si incassa come adesso |
+| Pagamenti online configurati (Pro: Stripe, PayPal, SumUp) e l'evento ha un contributo | **Prenota e paga**: la prenotazione resta in attesa fino al pagamento (si usa la finestra di blocco già esistente, `hold_hours`) e poi si conferma |
+
+Stati del pulsante: Prenota · Prenota e paga · Entra in lista d'attesa · Esaurito · Prenotazioni chiuse · Già prenotato (con «Vedi/annulla» dall'area soci). I posti si controllano sotto blocco, come oggi.
+
+**Chi può prenotare** (da decidere, vedi sotto): il socio con accesso prenota con un clic dalla scheda (stesso modulo e regole dell'area soci: cancellazione, cambio nominativo, biglietto QR). Chi non è socio, se gli ospiti sono attivi, compila un modulo breve (nome, email, telefono, consensi, accompagnatori) e conferma dall'email; se gli ospiti non sono attivi trova il collegamento «Richiedi l'ammissione come socio».
+
+**Protezioni** della prenotazione pubblica: conferma dall'email prima di occupare il posto, limite di richieste per indirizzo, campo trappola e controllo del tempo di compilazione (niente CAPTCHA esterni), nessun dato di altri visibile, informativa privacy collegata.
+
+**Impatto sulla fase 1:** la scheda mostra il pulsante giusto leggendo la configurazione; la prenotazione da non socio e il pagamento online arrivano in una fase propria (dopo scheda ed elenco), perché toccano ospiti, pagamenti e antispam.
+
+**Da decidere in più:** la prenotazione di chi non è socio è prevista subito o solo dai soci in questa versione?
