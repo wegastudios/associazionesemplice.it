@@ -52,8 +52,34 @@ final class PlatformStaff extends Authenticatable
         return '';
     }
 
+    /** Può modificare il catalogo e il resto della vendita: amministratore e «vendita». */
     public function canWrite(): bool
     {
+        return in_array($this->role, ['admin', 'sales'], true);
+    }
+
+    /** Può gestire le persone dello staff: solo l'amministratore. */
+    public function canManageUsers(): bool
+    {
         return $this->role === 'admin';
+    }
+
+    /** Ruolo locale per un livello del portale (admin, vendita, supporto). */
+    public static function roleForLevel(string $level): string
+    {
+        return match ($level) {
+            'admin' => 'admin',
+            'vendita' => 'sales',
+            default => 'readonly',
+        };
+    }
+
+    public function level(): string
+    {
+        return match ($this->role) {
+            'admin' => 'admin',
+            'sales' => 'vendita',
+            default => 'supporto',
+        };
     }
 }

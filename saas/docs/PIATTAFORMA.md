@@ -89,3 +89,21 @@ Un'istanza separata del SaaS (ARCHITETTURA_DOMINI §9) con database proprio e so
 - **Sul server demo**: `SAAS_REQUIRE_TWO_FACTOR=false` (solo lì, documentato), `MAIL_MAILER=log` (posta simulata: nessuna mail
   esce), pagamenti simulati quando ci saranno, `SAAS_MEMBERS_DOMAIN=demoapp.associazionesemplice.it` e DNS jolly a parte.
 - **Online**: serve il via libera della titolare e l'accesso al server (sottodominio, database, cron). Non fatto.
+
+## 7. Accesso unico dello staff (docs/UTENTI_E_ACCESSI.md; formato in docs/STAFF_SSO.md)
+
+Dietro il flag `SAAS_STAFF_SSO` (spento di default; spento resta l'accesso locale della PR 433).
+
+- **Ingresso**: `POST /admin/sso` (`/saas/admin/sso` dietro il proxy), campo `token`, JWT `staff_sso` del portale: `aud`
+  `associazionesemplice-saas`, vita ≤ 60 s, `jti` monouso (tabella `core.platform_sso_tokens`, ripulita a ogni ingresso), `area`
+  `saas`, `level` `admin|vendita|supporto`, `mfa` bool (il secondo fattore è **facoltativo**, scelto da ciascuno: `mfa_at` c'è solo se
+  `mfa` è vero; non si pretende `mfa: true`). Niente CSRF (arriva da un altro sito, protetta dalla firma). Risposta: pagina che
+  porta alla home (non una redirezione: il cookie `strict` non seguirebbe un salto partito dal portale).
+- **Livelli** → ruolo locale: `admin` = `admin` (tutto, utenti compresi), `vendita` = `sales` (catalogo, prezzi, promo,
+  abbonamenti; non gli utenti), `supporto` = `readonly`. La persona nasce o si aggiorna in `core.platform_staff` con password
+  casuale che nessuno conosce; se è disattivata non entra.
+- **Sessione**: inattività massima 2 ore, durata 8; ogni 5 minuti `POST {portale}/api/staff/v1/session-check` (`staff_session_check`,
+  `sid`, `area`); sessione revocata o livello cambiato = si chiude; **due controlli falliti di fila** (portale giù) = si chiude.
+  Senza sessione si rimanda a `{portale}/staff/accedi?area=saas`.
+- **Da fare**: pagina «Utenti» (list/invite/grant/revoke/deactivate verso il portale), poi, a accesso unico funzionante,
+  spegnimento dell'accesso locale in due tempi (resta spento di default un accesso di emergenza della sola titolare).

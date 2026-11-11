@@ -51,6 +51,14 @@ return [
         'mail_domain' => env('SAAS_DEMO_MAIL_DOMAIN', 'demo.associazionesemplice.it'),
     ],
 
+    // Accesso unico dello staff (docs/UTENTI_E_ACCESSI.md): /saas/admin si apre con il token `staff_sso` del portale.
+    // Spento finché SAAS_STAFF_SSO non è true; spento resta l'accesso locale dello staff.
+    'staff_sso' => [
+        'enabled' => (bool) env('SAAS_STAFF_SSO', false),
+        // Dove mandare chi non ha sessione (vuoto = <portale>/staff/accedi?area=saas).
+        'login_url' => env('SAAS_STAFF_LOGIN_URL'),
+    ],
+
     // Contratto con il portale (docs/CONTRATTO_PORTALE.md).
     'portal' => [
         'url' => env('SAAS_PORTAL_URL', 'https://associazionesemplice.it'),

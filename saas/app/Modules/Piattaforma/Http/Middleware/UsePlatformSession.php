@@ -35,7 +35,7 @@ final class UsePlatformSession
                 'session.cookie' => app()->isProduction() ? '__Secure-as_admin' : 'as_admin',
                 'session.path' => '/'.$path,
                 'session.expire_on_close' => true,
-                'session.lifetime' => 60,
+                'session.lifetime' => 120,
                 'session.same_site' => 'strict',
             ]);
             Auth::shouldUse(self::GUARD);

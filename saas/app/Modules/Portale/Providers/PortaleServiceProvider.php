@@ -8,6 +8,7 @@ use App\Modules\Portale\Console\SendUsageCommand;
 use App\Modules\Portale\Console\SuspendExpiredCommand;
 use App\Modules\Portale\Contracts\Entitlements;
 use App\Modules\Portale\Contracts\PortalNotifier;
+use App\Modules\Portale\Contracts\StaffAccess;
 use App\Modules\Portale\Entitlements\EntitlementReader;
 use App\Modules\Portale\Http\Controllers\AdminApiController;
 use App\Modules\Portale\Http\Controllers\CatalogController;
@@ -15,6 +16,7 @@ use App\Modules\Portale\Http\Controllers\PortalApiController;
 use App\Modules\Portale\Http\Controllers\SubscriptionSsoController;
 use App\Modules\Portale\Http\Middleware\RequirePackage;
 use App\Modules\Portale\Notifications\PortalNotifications;
+use App\Modules\Portale\Staff\PortalStaffAccess;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\Request;
@@ -29,6 +31,7 @@ final class PortaleServiceProvider extends ServiceProvider
     {
         $this->app->singleton(Entitlements::class, EntitlementReader::class);
         $this->app->singleton(PortalNotifier::class, PortalNotifications::class);
+        $this->app->singleton(StaffAccess::class, PortalStaffAccess::class);
     }
 
     public function boot(Router $router): void
