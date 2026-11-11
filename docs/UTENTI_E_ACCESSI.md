@@ -75,7 +75,7 @@ vendita a Mario» lo fa con la richiesta firmata dell'utente che la sta usando, 
 
 ### Entrare
 
-- **Un'unica pagina di accesso staff** nel portale (indirizzo da fissare, p.es. `associazionesemplice.it/staff/accedi`; `/wordpress/admin` ci
+- **Nessuna pagina di accesso staff a parte (11/11/2026): si entra dall accesso già esistente di ciascuna area, che verifica l elenco unico del SaaS** (prima ipotizzata: `/staff/accedi`; `/wordpress/admin` ci
   porta se non c'è sessione). Email e password, **codice a due passaggi FACOLTATIVO, spento di default: lo attiva chi vuole, ognuno per sé** (il portale ha già
   `Totp` e `Mfa`).
 - Aprendo direttamente `/saas/admin` o il supporto senza sessione, si viene mandati all'accesso staff e **poi riportati** lì
@@ -153,5 +153,5 @@ Ordine: 1) directory centrale e migrazione della titolare, 2) token e accesso al
 La titolare ha confermato tutti e tre i punti:
 
 1. Nomi dei livelli: **admin / vendita / supporto** (WordPress e SaaS) e **admin / agente** (Supporto).
-2. Indirizzo dell'accesso staff: `associazionesemplice.it/staff/accedi`.
+2. ~~Indirizzo dell accesso staff `associazionesemplice.it/staff/accedi`~~ **Superato (11/11/2026): non serve una pagina di accesso a parte.** Gli staff hanno già i loro account: si entra dalla pagina di accesso già esistente di un area (`/wordpress/admin`, `/saas/admin`, supporto) e da lì il selettore «Vai a» porta alle altre senza altro accesso. L autenticazione usa l elenco unico nel database del SaaS.
 3. Portale irraggiungibile: nessuno entra nelle aree finché non torna, salvo l'accesso di emergenza della sola titolare dal server.
