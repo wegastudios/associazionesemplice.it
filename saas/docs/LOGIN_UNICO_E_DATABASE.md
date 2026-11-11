@@ -68,3 +68,8 @@ Oggi gli accessi sono quindi **quattro** (clienti sul portale, staff in vendita 
 ## 8. Cosa non cambia
 
 I limiti di legge e le regole del plugin; il plugin gratuito; il formato dei token; la regola che nessuna password viaggia tra aree.
+
+## 9. Avanzamento
+
+- **Passo 2 (in costruzione, nel repository, dietro il flag `SAAS_UNIFIED_LOGIN`, spento di default):** pagina unica `/saas/staff/accedi` (dietro il proxy: `associazionesemplice.it/saas/staff/accedi`), codice solo se attivo, scelta dell'area, uscita, recupero password unico (`/saas/staff/password-dimenticata`, link di un'ora, una volta sola, chiude gli accessi aperti). Con il flag acceso `/saas/admin/accesso` rinvia qui. Non c'è ancora la pagina per **attivare** il secondo livello (prossima PR): oggi lo possono avere solo le persone con il codice già impostato.
+- **Fuori da questo passo, e da concordare con portale-vendita:** `/wordpress/admin/accedi` e la pagina `/accedi` del portale devono rinviare a `/saas/staff/accedi`; l'ingresso delle aree con il token (`SAAS_STAFF_SSO`, passo 3) resta spento: finché non è acceso, il pulsante «Entra» di un'area porta a un 404.
