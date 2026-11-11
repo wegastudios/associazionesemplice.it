@@ -7,7 +7,7 @@ if ( 'cli' !== PHP_SAPI ) {
 }
 require __DIR__ . '/../src/bootstrap.php';
 Portale\Config::load( require __DIR__ . '/../config.php' );
-$db     = Portale\Db::fromConfig();
+$db     = Portale\Db::connect( (array) Portale\Config::get( 'db' ) );
 $people = array();
 $map    = array( 'admin' => 'admin', 'support' => 'supporto' );
 $put    = function ( string $email, string $area, string $level ) use ( &$people ) {
