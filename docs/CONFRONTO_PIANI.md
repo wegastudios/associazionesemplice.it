@@ -46,7 +46,7 @@ dell'installazione**.» Le celle `{…}` si riempiono dal catalogo; la riga segn
 | **Passare dall'uno all'altro** | nessun passaggio automatico: sottoscrivi l'altro e lasci scadere quello che non usi più; casi particolari a mano, scrivendo all'assistenza | idem |
 
 Sotto la tabella, due pulsanti affiancati: «Guarda il plugin» → `/wordpress`, «Guarda il gestionale» → `/saas`; e «Provali»: demo
-del plugin (`/demo`) e demo del gestionale (`demoapp.associazionesemplice.it`). Non ci sono offerte combinate.
+del plugin (`/demo`) e demo del gestionale (`demo.associazionesemplice.it`). Non ci sono offerte combinate.
 
 ### Riga «Assistenza» (da catalogo)
 

@@ -23,13 +23,13 @@ Cosa cambia rispetto a oggi: ora il listino e i diritti (pacchetti, limiti) sono
 | `associazionesemplice.it/account` | **area riservata unica dei clienti**: tutti gli abbonamenti (SaaS e plugin), fatture, pagamenti, download del plugin, upgrade, downgrade, cambio dominio (§5 bis) | sessione Portale |
 | `associazionesemplice.it/saas` | approfondimenti sul SaaS (cosa fa, per chi, novità, domande frequenti) | Portale (contenuti) |
 | `associazionesemplice.it/saas/admin` | **controllo commerciale del SaaS**: abbonamenti, piani, prezzi, servizi (addon), promo per la vendita e impostazioni. **Non** gestisce le associazioni né i loro utenti: quello sta nell'app | SaaS |
-| `app.associazionesemplice.it` | **l'app** (gestionale delle associazioni). Nessuna pagina di vendita, nessun'amministrazione di piattaforma | SaaS |
+| `app.associazionesemplice.it` | **l app** (gestionale delle associazioni). Il suo `/admin` è per i clienti e i loro utenti admin (contenuti, associazione, operatori), **non** per la vendita. Nessuna pagina di vendita, nessun amministratore di piattaforma | SaaS |
 | `{slug}.associazionesemplice.it` | sito e area soci della singola associazione | SaaS |
 | `associazionesemplice.it/wordpress` | approfondimenti sul plugin: guide di installazione, **changelog**, requisiti | Portale (contenuti) |
 | `associazionesemplice.it/wordpress/admin` | **controllo commerciale del plugin**: piani e licenze, prezzi, servizi, promo, versioni, clienti con licenza e le impostazioni del plugin (tutte nello stesso posto) | Plugin (il codice sta in `portale/`, in uno spazio separato: vedi §3.2) |
 | `supporto.associazionesemplice.it` | **un solo supporto** per SaaS e plugin | sessione supporto |
-| `associazionesemplice.it/demo` | demo del plugin (WordPress vero) — **resta dov'è** | demo |
-| `demoapp.associazionesemplice.it` | **demo del SaaS** con dati finti, azzerata ogni notte | SaaS |
+| `associazionesemplice.it/demo` | demo del plugin (WordPress vero) — **resta dov è**; se le cartelle danno problemi si sposta su `wpdemo.associazionesemplice.it` | demo |
+| `demo.associazionesemplice.it` | **demo del SaaS** con dati finti, azzerata ogni notte | SaaS |
 
 Regole sugli indirizzi:
 - Le pagine di vendita non stanno mai su `app.`; l'app non ha pagine pubbliche tranne il modulo d'adesione e l'area soci
@@ -82,8 +82,7 @@ del dominio principale dipende da cosa permette il server. **Prima prova di fatt
 
 1. reindirizzamento interno (proxy) da `associazionesemplice.it/saas/admin` all'app: l'indirizzo voluto resta;
 2. sottocartella del dominio principale con la stessa applicazione e `APP_URL`/asset con percorso;
-3. se nessuno dei due regge: l'amministrazione sta su `app.associazionesemplice.it/admin` e `/saas/admin` fa un redirect
-   permanente; cambia solo l'indirizzo che si vede, non il progetto.
+3. NON esiste un ripiego su `app.associazionesemplice.it/admin`: quell indirizzo è l amministrazione dei contenuti dell app (associazioni e operatori) e non va usato per la vendita. Se 1 e 2 non reggono si cerca un altra soluzione sul server, ma l indirizzo pubblico resta `/saas/admin`.
 
 Il cookie di sessione dell'amministrazione ha il proprio nome e percorso: **non** condiviso né con il portale né con la
 sessione degli operatori (REGOLE_DI_LAVORO, cookie solo per il suo indirizzo).
@@ -305,7 +304,7 @@ obbligatoria** per chiunque abbia un ruolo). Il passaggio non è una sessione co
 Chiavi: una coppia Ed25519 per ciascuna amministrazione (non quella delle licenze né quella del contratto), parte
 pubblica nell'altra. Rotazione come nel contratto.
 
-## 9. Demo del SaaS: `demoapp.associazionesemplice.it`
+## 9. Demo del SaaS: `demo.associazionesemplice.it`
 
 Un'istanza separata del SaaS (ambiente «demo», non lo staging, non la produzione), con database proprio e **solo dati finti**.
 
@@ -321,7 +320,7 @@ Un'istanza separata del SaaS (ambiente «demo», non lo staging, non la produzio
 | File e import | caricamenti ammessi ma piccoli (2 MB) e cancellati con l'azzeramento notturno |
 | Limiti | frequenza ridotta per indirizzo IP, 50 richieste al minuto, ricerche e import con limiti più bassi |
 | Visibilità | `noindex`, nessun cookie di tracciamento, collegato dalle pagine `/saas` del portale con il pulsante «Prova la demo» |
-| Area soci | sottodominio `polisportiva-demo.demoapp.associazionesemplice.it` (jolly a parte, `SAAS_MEMBERS_DOMAIN=demoapp.associazionesemplice.it`) |
+| Area soci | sottodominio `polisportiva-demo.demo.associazionesemplice.it` (jolly a parte, `SAAS_MEMBERS_DOMAIN=demo.associazionesemplice.it`) |
 | Aggiornamento | a ogni rilascio del SaaS, come per la demo del plugin: stesso ambiente, nuovi dati (regola «demo sempre aggiornata») |
 | Cosa non si fa | niente `reset` a metà giornata senza chiedere; niente dati importati da associazioni vere |
 
@@ -352,8 +351,8 @@ Prese dalla titolare il 10/11/2026:
 
 1. **Piani nei prodotti, il portale legge** (§1). Si fermano §2.2 e §2.3 del contratto v1.
 2. **`/saas/admin` è la parte di vendita** (abbonamenti, prezzi, servizi, promo, impostazioni); le associazioni e i loro utenti
-   si gestiscono nell'app (§3.3). Resta da fare la prova di fattibilità sull'indirizzo sotto il dominio principale; se non
-   regge, `app.associazionesemplice.it/admin` con redirect.
+   si gestiscono nell app (§3.3). L indirizzo sotto il dominio principale è FISSO (ribadito 11/11/2026): la prova di fattibilità serve solo a scegliere come servirlo (proxy o sottocartella); se non
+   reggono, si trova un altra soluzione sul server, mai `app.associazionesemplice.it/admin`.
 3. **Piani del plugin** in `/wordpress/admin` insieme alle altre impostazioni, nello stesso codice del portale ma separati (§3.2).
 4. **Niente offerte combinate** tra plugin e SaaS: chi prende il plugin non prende il SaaS. Le promo sono sempre di un prodotto.
 5. **Upgrade subito, downgrade e disdetta a fine periodo**, downgrade bloccato se i dati superano i limiti (§5 bis).
