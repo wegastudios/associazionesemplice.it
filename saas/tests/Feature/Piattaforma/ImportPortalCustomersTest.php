@@ -72,7 +72,7 @@ it('la verifica confronta il portale con l\'elenco e fallisce se manca qualcuno'
 
     $this->artisan('saas:import:portal-customers', ['source' => $source, '--verify' => true])->expectsOutputToContain('Verifica riuscita')->assertSuccessful();
 
-    DB::table('core.staff_people')->where('email', 'cliente.uno@example.test')->delete();
+    DB::connection('pgsql_owner')->table('core.staff_people')->where('email', 'cliente.uno@example.test')->delete();
     $this->artisan('saas:import:portal-customers', ['source' => $source, '--verify' => true])->assertFailed();
 });
 

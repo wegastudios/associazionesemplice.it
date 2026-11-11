@@ -34,7 +34,8 @@ final class ImportPortalCustomersCommand extends Command
         $con = $db->connection('pgsql');
 
         if ($this->option('rollback') === true) {
-            return $this->rollback($con);
+            // Le persone non si cancellano con l'accesso dell'applicazione (non ha il permesso, di proposito): l'annullamento usa il ruolo proprietario.
+            return $this->rollback($db->connection('pgsql_owner'));
         }
 
         $source = (string) $this->argument('source');
