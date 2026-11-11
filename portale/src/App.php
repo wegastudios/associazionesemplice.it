@@ -84,6 +84,15 @@ final class App {
 			// Vecchio indirizzo dell'amministrazione del plugin: ora vive sotto /wordpress/admin (301; 308 per i POST, che conservano il metodo).
 			$qs = (string) ( $_SERVER['QUERY_STRING'] ?? '' );
 			header( 'Location: ' . Plugin\Admin::BASE . substr( $path, 6 ) . ( '' !== $qs ? '?' . $qs : '' ), true, $get ? 301 : 308 );
+		} elseif ( ! $get && Plugin\Admin::BASE . '/sso' === $path ) {
+			// Accesso staff unico: la POST del selettore porta il token del SaaS (spento finché `staff_sso.enabled` non è true).
+			if ( ! Plugin\StaffSso::enabled() ) {
+				http_response_code( 404 );
+			} elseif ( Plugin\StaffSso::receive( $this->db, (string) ( $_POST['token'] ?? '' ) ) ) {
+				header( 'Location: ' . Plugin\Admin::BASE, true, 303 );
+			} else {
+				header( 'Location: ' . Plugin\StaffSso::loginUrl(), true, 303 );
+			}
 		} elseif ( Plugin\Admin::BASE === $path || 0 === strpos( $path, Plugin\Admin::BASE . '/' ) ) {
 			( new Plugin\Admin( $this->db, $this->billing, $this->customerId() ) )->handle( $method, $path );
 		} elseif ( ( $legacy = Sections::legacy( $method, $path, (string) ( $_SERVER['QUERY_STRING'] ?? '' ) ) ) ) {

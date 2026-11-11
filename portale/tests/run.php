@@ -1927,6 +1927,94 @@ $ddb->run( "DELETE FROM staff_roles WHERE area = 'wordpress'" );
 Directory::audit( $ddb, 'sistema', '', 'cutover' );
 $ddb->migrate();
 check( 'elenco staff: dopo il passaggio all\'accesso unico la copia dalle tabelle vecchie non si ripete', null === $ddb->one( 'SELECT 1 AS x FROM staff_people WHERE email = ?', array( 'vecchio@esempio.it' ) ) );
+// Accesso staff unico, lato portale (docs/STAFF_SSO.md): token del SaaS, sessione dell'area, controllo ogni 5 minuti, richieste «Utenti»
+use Portale\Plugin\StaffSso;
+$ssSeed = random_bytes( SODIUM_CRYPTO_SIGN_SEEDBYTES );
+$ssKid  = Portale\PortalAttestation::kid( $ssSeed );
+$ssNow  = 1800000000;
+$ssTok  = function ( array $over = array() ) use ( $ssSeed, $ssNow ) {
+	$c = $over + array( 'iss' => 'https://associazionesemplice.it/saas', 'aud' => 'associazionesemplice-portale', 'typ' => 'staff_sso', 'iat' => $ssNow, 'exp' => $ssNow + 60, 'jti' => bin2hex( random_bytes( 8 ) ), 'sub' => 'mario@esempio.it', 'area' => 'wordpress', 'level' => 'vendita', 'mfa' => false, 'sid' => str_repeat( 'a', 32 ), 'areas' => array( 'wordpress' => 'vendita', 'saas' => 'admin' ) );
+	return Portale\PortalAttestation::sign( $c, $ssSeed );
+};
+$ssdb = new Db( new PDO( 'sqlite::memory:' ) );
+$ssdb->migrate();
+$_SESSION = array();
+check( 'staff sso: spento di default, nessuna sessione', false === StaffSso::enabled() && false === StaffSso::receive( $ssdb, $ssTok(), $ssNow ) && ! isset( $_SESSION['staff_sso'] ) );
+Config::set( 'staff_sso', array( 'enabled' => true, 'issuer' => 'https://associazionesemplice.it/saas', 'api_url' => 'https://associazionesemplice.it/saas', 'keys' => array( $ssKid => Portale\PortalAttestation::publicKey( $ssSeed ) ) ) );
+check( 'staff sso: acceso con chiavi fissate', true === StaffSso::enabled() );
+check( 'staff sso: token valido apre la sessione con livello, sid e aree (secondo fattore non richiesto)', true === StaffSso::receive( $ssdb, $ssTok(), $ssNow ) && 'vendita' === $_SESSION['staff_sso']['level'] && 'mario@esempio.it' === $_SESSION['staff_sso']['email'] && false === $_SESSION['staff_sso']['mfa'] && 'admin' === $_SESSION['staff_sso']['areas']['saas'] );
+$ssJ = $ssTok();
+check( 'staff sso: il jti vale una volta sola', true === StaffSso::receive( $ssdb, $ssJ, $ssNow ) && false === StaffSso::receive( $ssdb, $ssJ, $ssNow ) );
+foreach ( array(
+	'destinatario sbagliato' => $ssTok( array( 'aud' => 'associazionesemplice-saas' ) ),
+	'tipo sbagliato'         => $ssTok( array( 'typ' => 'staff_session_check' ) ),
+	'area sbagliata'         => $ssTok( array( 'area' => 'saas' ) ),
+	'emittente sbagliato'    => $ssTok( array( 'iss' => 'https://altro.esempio.it' ) ),
+	'scaduto'                => $ssTok( array( 'iat' => $ssNow - 300, 'exp' => $ssNow - 200 ) ),
+	'vita oltre 60 secondi'  => $ssTok( array( 'exp' => $ssNow + 61 ) ),
+	'campo sconosciuto'      => $ssTok( array( 'extra' => 'x' ) ),
+	'livello sconosciuto'    => $ssTok( array( 'level' => 'super' ) ),
+	'email non minuscola'    => $ssTok( array( 'sub' => 'Mario@Esempio.it' ) ),
+	'sid non valido'         => $ssTok( array( 'sid' => 'xyz' ) ),
+	'mfa non booleano'       => $ssTok( array( 'mfa' => 'si' ) ),
+) as $ssWhy => $ssBad ) {
+	check( 'staff sso: rifiutato — ' . $ssWhy, null === StaffSso::verify( $ssBad, $ssNow ) );
+}
+$ssOther = random_bytes( SODIUM_CRYPTO_SIGN_SEEDBYTES );
+check( 'staff sso: rifiutato — firma di una chiave non fissata', null === StaffSso::verify( Portale\PortalAttestation::sign( array( 'iss' => 'https://associazionesemplice.it/saas', 'aud' => 'associazionesemplice-portale', 'typ' => 'staff_sso', 'iat' => $ssNow, 'exp' => $ssNow + 60, 'jti' => 'j1', 'sub' => 'mario@esempio.it', 'area' => 'wordpress', 'level' => 'admin', 'sid' => str_repeat( 'b', 32 ) ), $ssOther ), $ssNow ) );
+check( 'staff sso: rifiutato — token manomesso', null === StaffSso::verify( substr( $ssTok(), 0, -2 ) . 'AA', $ssNow ) );
+check( 'staff sso: ruoli — admin e supporto sì, vendita non ancora', 'admin' === StaffSso::roleFor( 'admin' ) && 'support' === StaffSso::roleFor( 'supporto' ) && null === StaffSso::roleFor( 'vendita' ) );
+StaffSso::receive( $ssdb, $ssTok(), $ssNow );
+check( 'staff sso: la sessione resta entro 2 ore di inattività', null !== StaffSso::current( $ssNow + 3600 ) );
+StaffSso::receive( $ssdb, $ssTok(), $ssNow );
+check( 'staff sso: oltre 2 ore di inattività si chiude', null === StaffSso::current( $ssNow + 7201 ) && ! isset( $_SESSION['staff_sso'] ) );
+StaffSso::receive( $ssdb, $ssTok(), $ssNow );
+$ssT = $ssNow;
+while ( $ssT < $ssNow + 28000 ) {
+	$ssT += 3600;
+	StaffSso::current( $ssT );
+}
+check( 'staff sso: oltre 8 ore di durata si chiude anche se attiva', null === StaffSso::current( $ssNow + 28801 ) );
+// Controllo ogni 5 minuti e richieste firmate dal portale
+Config::set( 'staff_area_sign_key', base64_encode( random_bytes( SODIUM_CRYPTO_SIGN_SEEDBYTES ) ) );
+check( 'staff sso: chiave del portale per le richieste (kid e pubblica, mai la privata)', StaffSso::signingEnabled() && '' !== StaffSso::kid() && '' !== StaffSso::publicKey() );
+$ssCalls = array();
+$ssReply = array( 200, '{"valid":true,"level":"admin"}' );
+$ssPrev  = Http::$transport;
+Http::$transport = function ( $m, $url, $h, $body ) use ( &$ssCalls, &$ssReply ) {
+	$ssCalls[] = array( $m, $url, $body );
+	return $ssReply;
+};
+StaffSso::receive( $ssdb, $ssTok(), $ssNow );
+$ssS = $_SESSION['staff_sso'];
+check( 'staff sso: prima di 5 minuti non si richiede nulla, dopo sì', false === StaffSso::due( $ssS, $ssNow + 299 ) && true === StaffSso::due( $ssS, $ssNow + 300 ) );
+$ssR = StaffSso::recheck( $ssS, $ssNow + 300 );
+check( 'staff sso: controllo — il livello nuovo si adotta subito', 'admin' === $ssR['level'] && 'POST' === $ssCalls[0][0] && 'https://associazionesemplice.it/saas/api/staff/v1/session-check' === $ssCalls[0][1] );
+$ssClaims = json_decode( base64_decode( strtr( explode( '.', json_decode( $ssCalls[0][2], true )['token'] )[1], '-_', '+/' ) ), true );
+check( 'staff sso: controllo — token firmato con tipo, sid, area e vita breve', 'staff_session_check' === $ssClaims['typ'] && str_repeat( 'a', 32 ) === $ssClaims['sid'] && 'wordpress' === $ssClaims['area'] && 60 === $ssClaims['exp'] - $ssClaims['iat'] );
+$ssReply = array( 200, '{"valid":false,"level":null}' );
+check( 'staff sso: controllo — sessione non più valida = chiusa', null === StaffSso::recheck( $_SESSION['staff_sso'], $ssNow + 600 ) && ! isset( $_SESSION['staff_sso'] ) );
+StaffSso::receive( $ssdb, $ssTok(), $ssNow );
+$ssReply = array( 0, '' );
+$ssR1 = StaffSso::recheck( $_SESSION['staff_sso'], $ssNow + 300 );
+check( 'staff sso: un controllo senza risposta non chiude', null !== $ssR1 && 1 === $ssR1['fails'] );
+check( 'staff sso: due controlli senza risposta di fila chiudono', null === StaffSso::recheck( $_SESSION['staff_sso'], $ssNow + 600 ) && ! isset( $_SESSION['staff_sso'] ) );
+StaffSso::receive( $ssdb, $ssTok(), $ssNow );
+$ssReply = array( 500, '' );
+StaffSso::recheck( $_SESSION['staff_sso'], $ssNow + 300 );
+$ssReply = array( 200, '{"valid":true,"level":"vendita"}' );
+$ssR2 = StaffSso::recheck( $_SESSION['staff_sso'], $ssNow + 600 );
+check( 'staff sso: una risposta valida azzera i fallimenti', 0 === $ssR2['fails'] );
+$ssCalls = array();
+$ssReply = array( 200, '{"ok":true}' );
+list( $ssC, $ssO ) = StaffSso::people( 'grant', 'Mario@Esempio.it', array( 'email' => 'luca@esempio.it', 'level' => 'vendita' ), $ssNow );
+$ssPc = json_decode( base64_decode( strtr( explode( '.', json_decode( $ssCalls[0][2], true )['token'] )[1], '-_', '+/' ) ), true );
+check( 'staff sso: richiesta «Utenti» — path, tipo, area, act e dati firmati', 200 === $ssC && true === $ssO['ok'] && 'https://associazionesemplice.it/saas/api/staff/v1/people/grant' === $ssCalls[0][1] && 'staff_people' === $ssPc['typ'] && 'wordpress' === $ssPc['area'] && 'mario@esempio.it' === $ssPc['act'] && 'luca@esempio.it' === $ssPc['email'] );
+check( 'staff sso: richiesta «Utenti» sconosciuta rifiutata', ( function () { try { StaffSso::people( 'elimina', 'a@b.it' ); } catch ( InvalidArgumentException $e ) { return true; } return false; } )() );
+Http::$transport = $ssPrev;
+Config::set( 'staff_sso', array() );
+Config::set( 'staff_area_sign_key', '' );
+$_SESSION = array();
 Http::$transport = $prevTransport;
 Config::set( 'saas_public_keys', array() );
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
