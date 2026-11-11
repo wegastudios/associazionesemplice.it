@@ -1636,7 +1636,7 @@ list( $catBody, $catEtag ) = Portale\Plugin\CatalogApi::render( $cat );
 check( 'catalogo: JSON valido e ETag stabile', is_array( json_decode( $catBody, true ) ) && $catEtag === Portale\Plugin\CatalogApi::render( $cat )[1] );
 // --- Indirizzi delle sezioni /saas e /wordpress -----------------------------
 use Portale\Sections;
-Config::set( 'saas_admin_url', '' );
+Config::set( 'saas_admin_url', 'https://app.associazionesemplice.it/admin' );
 check( 'sezioni: /saas/accedi diventa /account/da-gestionale con lo stesso token', array( 301, '/account/da-gestionale?t=abc' ) === Sections::legacy( 'GET', '/saas/accedi', 't=abc' ) );
 check( 'sezioni: /saas/accedi con POST conserva il metodo (308)', 308 === Sections::legacy( 'POST', '/saas/accedi', '' )[0] );
 check( 'sezioni: /saas/admin va all\'amministrazione del SaaS (temporaneo)', array( 302, 'https://app.associazionesemplice.it/admin' ) === Sections::legacy( 'GET', '/saas/admin', '' ) );
