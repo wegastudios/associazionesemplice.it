@@ -234,6 +234,9 @@ final class App {
 			} else {
 				throw new UserError( 'Il link non è valido o è scaduto: richiedine uno nuovo dal tuo profilo.' );
 			}
+		} elseif ( $get && '/account/esci' === $path ) {
+			// Link da altre aree (supporto, gestionale): una GET non chiude niente, chiede conferma (il pulsante porta il nostro token).
+			View::render( 'logout', array( 'title' => 'Esci' ) );
 		} elseif ( '/account/esci' === $path ) {
 			$this->logout();
 		} elseif ( ! $get && '/accedi' === $path ) {
