@@ -24,13 +24,13 @@ final class EdDsaJwt
      * @param  array<string, mixed>  $claims
      * @param  string  $seed  32 byte
      */
-    public static function sign(array $claims, #[SensitiveParameter] string $seed): string
+    public static function sign(array $claims, #[SensitiveParameter] string $seed, string $kidPrefix = 'portale-'): string
     {
         if (strlen($seed) !== SODIUM_CRYPTO_SIGN_SEEDBYTES) {
             throw new InvalidToken('Chiave di firma non valida.');
         }
         $pair = sodium_crypto_sign_seed_keypair($seed);
-        $head = self::b64((string) json_encode(['typ' => 'JWT', 'alg' => 'EdDSA', 'kid' => self::kid(sodium_crypto_sign_publickey($pair))]));
+        $head = self::b64((string) json_encode(['typ' => 'JWT', 'alg' => 'EdDSA', 'kid' => self::kid(sodium_crypto_sign_publickey($pair), $kidPrefix)]));
         $body = self::b64(json_encode($claims, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 
         return $head.'.'.$body.'.'.self::b64(sodium_crypto_sign_detached($head.'.'.$body, sodium_crypto_sign_secretkey($pair)));
