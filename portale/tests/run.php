@@ -2045,6 +2045,45 @@ Http::$transport = $ssPrev;
 Config::set( 'staff_sso', array() );
 Config::set( 'staff_area_sign_key', '' );
 $_SESSION = array();
+// --- Proxy in PHP verso il SaaS (/saas/admin, /saas/staff, /saas/api, /saas/vai) ----------
+use Portale\SaasProxy;
+check( 'proxy: solo i quattro prefissi, non /saas né parole che iniziano allo stesso modo', SaasProxy::handles( '/saas/admin' ) && SaasProxy::handles( '/saas/admin/utenti' ) && SaasProxy::handles( '/saas/staff' ) && SaasProxy::handles( '/saas/api/v1/x' ) && SaasProxy::handles( '/saas/vai' ) && ! SaasProxy::handles( '/saas' ) && ! SaasProxy::handles( '/saas/administrator' ) && ! SaasProxy::handles( '/saas/acquista' ) && ! SaasProxy::handles( '/account' ) );
+check( 'proxy: spento per default', false === SaasProxy::enabled() );
+$pseen = array();
+SaasProxy::$transport = function ( $m, $u, $h, $b ) use ( &$pseen ) {
+	$pseen = array( $m, $u, $h, $b );
+	return array( 302, array(
+		'Location: https://app.associazionesemplice.it/saas/admin/dashboard', 'Set-Cookie: s=1; Path=/; Domain=app.associazionesemplice.it; HttpOnly',
+		'Set-Cookie: PHPSESSID=evil; Path=/', 'Content-Type: text/html', 'Server: nginx', 'X-Powered-By: Laravel',
+	), 'corpo' );
+};
+$srv = array(
+	'REQUEST_METHOD' => 'POST', 'REQUEST_URI' => '/saas/admin/login?x=1', 'QUERY_STRING' => 'x=1', 'CONTENT_TYPE' => 'application/x-www-form-urlencoded',
+	'HTTP_COOKIE' => 'PHPSESSID=abc; laravel_session=zzz', 'HTTP_X_FORWARDED_FOR' => '6.6.6.6', 'HTTP_X_FORWARDED_HOST' => 'evil.test', 'HTTP_X_REAL_IP' => '6.6.6.6',
+);
+list( $pst, $phd, $pbody ) = SaasProxy::handle( $srv, 'a=1', '203.0.113.9' );
+check( 'proxy: stesso metodo, percorso, query e corpo verso il SaaS', 'POST' === $pseen[0] && 'https://app.associazionesemplice.it/saas/admin/login?x=1' === $pseen[1] && 'a=1' === $pseen[3] );
+check( 'proxy: il cookie di sessione del portale non esce, quello del SaaS passa', in_array( 'Cookie: laravel_session=zzz', $pseen[2], true ) && ! in_array( 'Cookie: PHPSESSID=abc; laravel_session=zzz', $pseen[2], true ) );
+$ph = implode( "\n", $pseen[2] );
+check( 'proxy: X-Forwarded-* decisi dal portale, quelli del client scartati', false !== strpos( $ph, 'X-Forwarded-For: 203.0.113.9' ) && false === strpos( $ph, '6.6.6.6' ) && false === strpos( $ph, 'evil.test' ) && false !== strpos( $ph, 'X-Forwarded-Host: portale.test' ) && false !== strpos( $ph, 'X-Forwarded-Proto: https' ) );
+$hn = array();
+foreach ( $phd as $h ) {
+	$hn[ strtolower( $h[0] ) ][] = $h[1];
+}
+check( 'proxy: status e redirect passati (non seguiti), Location sul dominio del portale', 302 === $pst && array( '/saas/admin/dashboard' ) === $hn['location'] && 'corpo' === $pbody );
+check( 'proxy: Set-Cookie senza Domain, quello di sessione del portale scartato, intestazioni interne non passate', array( 's=1; Path=/; HttpOnly' ) === $hn['set-cookie'] && ! isset( $hn['server'] ) && ! isset( $hn['x-powered-by'] ) && array( 'text/html' ) === $hn['content-type'] );
+check( 'proxy: Location verso app. fuori dai prefissi → sotto /saas; indirizzo esterno invariato', '/saas/login' === SaasProxy::rewriteLocation( 'https://app.associazionesemplice.it/login' ) && 'https://example.org/x' === SaasProxy::rewriteLocation( 'https://example.org/x' ) && '/saas/api/v1/y?z=1' === SaasProxy::rewriteLocation( '/saas/api/v1/y?z=1' ) );
+check( 'proxy: percorsi con .. (anche codificati) rifiutati senza chiamare il SaaS', ( function () use ( &$pseen ) { $pseen = array(); $a = SaasProxy::handle( array( 'REQUEST_URI' => '/saas/admin/../../etc/passwd' ), '', '1.1.1.1' )[0]; $b = SaasProxy::handle( array( 'REQUEST_URI' => '/saas/admin/%2e%2e/x' ), '', '1.1.1.1' )[0]; return 400 === $a && 400 === $b && array() === $pseen; } )() );
+SaasProxy::$transport = function () { return array( 0, array(), '' ); };
+check( 'proxy: SaaS irraggiungibile → 502 con messaggio, niente cache', 502 === SaasProxy::handle( array( 'REQUEST_URI' => '/saas/admin' ), '', '1.1.1.1' )[0] );
+SaasProxy::$transport = function () { return array( 200, array( 'Content-Type: text/html' ), 'corpo' ); };
+check( 'proxy: HEAD senza corpo', '' === SaasProxy::handle( array( 'REQUEST_METHOD' => 'HEAD', 'REQUEST_URI' => '/saas/staff' ), '', '1.1.1.1' )[2] );
+SaasProxy::$transport = null;
+Config::set( 'saas_proxy.enabled', true );
+check( 'proxy acceso: il rinvio 302 di /saas/admin verso app. non c\'è più', SaasProxy::enabled() && null === Sections::legacy( 'GET', '/saas/admin/utenti', '' ) );
+Config::set( 'saas_proxy.enabled', false );
+check( 'proxy spento: il rinvio provvisorio torna', 302 === ( Sections::legacy( 'GET', '/saas/admin', '' )[0] ?? 0 ) || null === Sections::legacy( 'GET', '/saas/admin', '' ) && '' === trim( (string) Config::get( 'saas_admin_url', 'x' ) ) );
+
 Http::$transport = $prevTransport;
 Config::set( 'saas_public_keys', array() );
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
