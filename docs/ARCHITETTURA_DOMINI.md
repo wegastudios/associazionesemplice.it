@@ -50,7 +50,7 @@ Regole sugli indirizzi:
 | Prezzi e promozioni del SaaS | **SaaS** | portale: catalogo di sola lettura |
 | Piani, licenze, prezzi, promo del plugin | **Plugin** (`/wordpress/admin`) | portale: catalogo di sola lettura |
 | Versioni e changelog del plugin | **Plugin** | portale: pagina `/wordpress/changelog` letta dal catalogo versioni |
-| Clienti, indirizzi di fatturazione, abbonamenti, pagamenti, fatture, partner e commissioni | **Portale** | i prodotti ricevono solo «chi ha comprato cosa» |
+| Clienti, indirizzi di fatturazione, abbonamenti, pagamenti, fatture, partner e commissioni | **Database del SaaS (schema `core`)**, vedi §12; il portale li usa | i prodotti ricevono solo «chi ha comprato cosa» |
 | Associazioni, operatori, soci, dati | **SaaS** | il portale riceve solo numeri (consumi) |
 | Siti con licenza, attivazioni | **Plugin** (server licenze) | portale: elenco nell'area clienti |
 | Ticket, articoli, priorità | **Supporto** | prodotti e portale: solo il collegamento |
@@ -368,3 +368,15 @@ Deciso anche: lancio del catalogo (10/11/2026) e assistenza per piano scelta all
 Ancora da fare:
 - Prova di fattibilità dell'indirizzo `/saas/admin` (sessione portale-saas).
 - Valore giusto di `domain_lock_days` sul server (120 o 180).
+
+## 12. Un solo database per tutto ciò che non è WordPress (11/11/2026)
+
+**Decisione della titolare:** tutto quello che non sta dentro WordPress va nel database del SaaS (PostgreSQL). Dentro WordPress restano solo i dati delle installazioni del plugin e di `wpdemo` (utenti, soci, ecc.), nel MySQL di ciascun sito.
+
+Nel database del SaaS, quindi, oltre all'app: gli utenti staff e i loro ruoli e sessioni ([UTENTI_E_ACCESSI.md](UTENTI_E_ACCESSI.md)), i **clienti** e i loro accessi all'area riservata, gli abbonamenti, i pagamenti, le fatture, i partner, le licenze e i domini del plugin, il catalogo e i prezzi, la parte vendita. Gli schemi sono separati: `core` per ciò che non appartiene a una singola associazione (staff, clienti, abbonamenti, catalogo…), `app` per i dati delle associazioni con la separazione per associazione. Cambia il §3.1: «Clienti, indirizzi, abbonamenti, pagamenti, fatture, partner» passano da «Portale» a «Dati del SaaS (schema `core`)»; il portale resta il sito che vende e racconta e legge/scrive quei dati.
+
+**Da progettare prima di costruire (portale-saas, con le altre sessioni):**
+1. Come il portale (PHP, oggi con il suo database) accede ai dati: richieste firmate a un'interfaccia del SaaS, oppure collegamento diretto al database con un utente a permessi minimi. Proposta: richieste firmate (nessun accesso diretto), come già per catalogo e abbonamenti.
+2. Piano di migrazione dei dati oggi nel portale (clienti, ordini, fatture, licenze, partner) in due tempi, con copia di prova e ripristino provato prima di spegnere il vecchio.
+3. Il supporto ha un database suo: va unito o resta separato? Da decidere.
+4. Backup, cifratura dei campi sensibili e registro vanno estesi ai nuovi dati prima che ci arrivino dati veri.
