@@ -271,7 +271,7 @@ Il plugin compila da solo l'informativa sulla privacy con i dati della tua assoc
 
 Il responsabile del trattamento è il presidente; in mancanza, il socio con il ruolo di segreteria. L'informativa cita Stripe, PayPal, Wallet e notifiche solo se sono attivi.
 
-L'informativa dichiara anche l'accesso dei soci: il cookie tecnico **«asem_s»** (non richiede consenso; dura 30 giorni senza uso e al massimo 90), la password conservata solo come **impronta cifrata**, i link e i codici validi **15 minuti** e il blocco crescente dopo i tentativi sbagliati.
+L'informativa dichiara anche l'accesso dei soci: il cookie tecnico **«asem_s»** (non richiede consenso; dura 30 giorni senza uso e al massimo 90), la password conservata solo come **impronta cifrata**, i link e i codici validi **12 ore** (impostabili) e il blocco crescente dopo i tentativi sbagliati.
 
 In **Comunicazioni e privacy** trovi l'impostazione **«Altri cookie del sito»**: scrivi una riga per cookie nella forma «nome — a cosa serve» (al massimo 30) e compaiono nell'informativa. Ricorda che i cookie **non tecnici** richiedono il consenso dei visitatori (provvedimento 231 del 10 giugno 2021 del Garante).
 

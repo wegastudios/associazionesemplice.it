@@ -51,14 +51,16 @@ Ogni plugin ha un **elenco delle novità** (il *changelog*), scritto in italiano
 
 ## Dove lo trovi
 
-- **Plugin gratuito**: nel file `CHANGELOG.md` incluso nel plugin e nella scheda dei dettagli del plugin in WordPress.
-- **Associazione Semplice Pro**: nei **dettagli dell'aggiornamento** del plugin, quando WordPress segnala che c'è una nuova versione. Le voci arrivano dal portale di Associazione Semplice.
+- **Plugin gratuito e Pro**: in **Bacheca → Aggiornamenti**, quando WordPress segnala che c'è una nuova versione. Premi **«Visualizza i dettagli»**: le novità compaiono **in italiano, prima di installare**. Le voci arrivano dal portale di Associazione Semplice.
+- Il plugin gratuito contiene anche il file `CHANGELOG.md` con lo stesso elenco.
+
+Se non vedi gli aggiornamenti diretti, controlla in **Impostazioni → Limiti e soglie** la voce **«Aggiornamenti diretti»**: vale per il plugin gratuito e per il Pro.
 
 ## Come aggiornare in sicurezza
 
 1. Prima di aggiornare, leggi le novità della versione nuova.
 2. Fai una [copia di sicurezza](guida:copia-di-sicurezza-e-ripristino).
-3. Aggiorna il plugin da **Plugin → Plugin installati**. Il plugin gratuito e Pro hanno numeri di versione diversi, ma **vanno aggiornati insieme**: con un plugin gratuito vecchio, il Pro nuovo si sospende e mostra un avviso. Aggiorna prima il gratuito, poi Pro.
+3. Aggiorna il plugin da **Bacheca → Aggiornamenti** (o da **Plugin → Plugin installati**). Il plugin gratuito e Pro hanno numeri di versione diversi, ma **vanno aggiornati insieme**: con un plugin gratuito vecchio, il Pro nuovo si sospende e mostra un avviso. Aggiorna prima il gratuito, poi Pro.
 4. Controlla la Bacheca di Associazione Semplice e prova un'operazione semplice, per esempio aprire la scheda di un socio.
 
 ## Avviso degli aggiornamenti
