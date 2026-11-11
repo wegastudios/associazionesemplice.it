@@ -396,3 +396,12 @@ Nel database del SaaS, quindi, oltre all'app: gli utenti staff e i loro ruoli e 
 ### 12 bis. Tre database soltanto (11/11/2026)
 
 Per ordine della titolare: **tre** database e basta. (1) **Supporto**: uno suo (il motore lo decide la sessione supporto). (2) **SaaS**: uno solo, che comprende anche le pagine di vendita e i **clienti** (oggi nel MySQL `portale`, che deve confluire qui). (3) **Demo WordPress**: uno a parte. I dati delle installazioni del plugin restano nel MySQL di ciascun sito. Lo spostamento dei clienti nel database del SaaS avviene **solo con un «sì» scritto della titolare**, dopo l'approvazione del documento unico di «Sviluppo SaaS in locale»; fino ad allora non si sposta nulla. Questo precisa e sostituisce, dove diverso, il §12.
+
+## 14. `/account` è il punto di partenza di tutti (11/11/2026)
+
+**Decisione della titolare:** dopo `/accedi` si arriva a `associazionesemplice.it/account`, e da lì parte tutto, come in ogni sistema normale.
+- **Cliente:** vede abbonamenti, licenze, fatture, download e il collegamento al supporto.
+- **Staff:** vede, in più, i collegamenti alle sole aree in cui ha un ruolo (WordPress, SaaS, Supporto) e cosa gli spetta.
+- **Tutti:** gestiscono lì il proprio profilo: password, email, attivazione del codice a due passaggi (facoltativo, `/twofactor` solo all'accesso), sessioni aperte, uscita (`/account/esci`).
+- `/accedi` è solo il login. Nessun'altra area ha pagine proprie per password, email o uscita: rinviano a `/account`.
+- Il selettore «Vai a» non è una cosa a parte: sono i collegamenti di `/account` (e un menu con gli stessi collegamenti nelle aree).
