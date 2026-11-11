@@ -380,3 +380,15 @@ Nel database del SaaS, quindi, oltre all'app: gli utenti staff e i loro ruoli e 
 2. Piano di migrazione dei dati oggi nel portale (clienti, ordini, fatture, licenze, partner) in due tempi, con copia di prova e ripristino provato prima di spegnere il vecchio.
 3. **Supporto (deciso 11/11/2026):** ticket, articoli e guide restano nel database del supporto (contenuti separati); l identità no. Il login al supporto e tutto ciò che riguarda lo staff passano dall elenco unico nel database del SaaS: i clienti usano il loro account dell area riservata (nessun account dedicato al supporto) e lo staff entra con l accesso unico. Il supporto tiene solo un riferimento alla persona, non password né anagrafica.
 4. Backup, cifratura dei campi sensibili e registro vanno estesi ai nuovi dati prima che ci arrivino dati veri.
+
+## 13. Chi segue cosa (11/11/2026)
+
+**Decisione della titolare:** le sessioni dei portali seguono il codice **solo delle pagine di vendita e dell'area riservata correlata**. Tutto ciò che è **trasversale** alle varie parti (identità e accessi, database unico, token, chiavi, server, backup, demo) lo segue **«Sviluppo SaaS in locale»**, perché il login è parte portante dell'app.
+
+| Sessione | Segue |
+|---|---|
+| **Sviluppo SaaS in locale** | identità e accessi (staff e clienti), emittente dei token, database unico e migrazioni, chiavi, passo server (proxy, configurazione), backup e prova di ripristino, demo; l'app |
+| **Portale SaaS** | vendita del SaaS in `/saas/admin` (catalogo, piani, abbonamenti, promo, contratto) |
+| **Portale plugin** | vendita del plugin in `/wordpress/admin` (piani, licenze, prezzi, versioni) |
+| **Portale vendita** | pagine di vendita e area riservata dei clienti (`/account`) |
+| **Supporto** | contenuti del supporto (ticket, guide); l'identità arriva dal SaaS |
