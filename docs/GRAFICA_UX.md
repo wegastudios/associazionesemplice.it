@@ -27,7 +27,7 @@ Stessa barra in alto, nello stesso ordine, con le stesse parole. Cambia solo il 
 
 Dentro supporto e gestionale la barra ha solo: logo, il nome del posto («Supporto», «Gestionale»), **Il mio account**. Il menu proprio del sistema (voci del gestionale, argomenti del supporto) sta sotto la barra, non dentro.
 
-- **Esci** è una sola azione ovunque: `POST https://associazionesemplice.it/account/esci` (con il token di sicurezza). Chiude la sessione unica e quindi tutte le aree. Nessun sistema ha un proprio «Esci» che chiude solo se stesso.
+- **Esci** è una sola azione ovunque: le altre aree linkano `https://associazionesemplice.it/account/esci` (una GET: mostra «Vuoi uscire?» col pulsante che fa la POST con il token del portale; nessun POST da altri domini). Chiude la sessione unica e quindi tutte le aree. Nessun sistema ha un proprio «Esci» che chiude solo se stesso.
 - **Nomi fissi** (mai sinonimi): «Il mio account» (`/account`), «Gestionale», «Supporto», «Gestione del plugin» (solo staff), piani «Contabilità» e «Contabilità & Fiscale». Il nome del fornitore interno non compare mai ai clienti.
 - Mobile: da 1024 px barra e menu laterale; sul telefono barra bassa (56 px) più barra in basso come in `DESIGN.md` §5. La barra comune non supera 56 px.
 
@@ -47,7 +47,7 @@ Dentro supporto e gestionale la barra ha solo: logo, il nome del posto («Suppor
 | Sito, listino, confronto | `https://associazionesemplice.it/` |
 | Accesso, reset password, 2FA | `/accedi`, `/accedi/password-dimenticata`, `/twofactor` |
 | Il mio account (punto d'arrivo) | `/account` |
-| Esci | `POST /account/esci` |
+| Esci | `/account/esci` (GET: conferma; POST: esce) |
 | Acquisto gestionale | `/saas/acquista?plan=` |
 | Gestione del plugin (staff) | `/wordpress/admin` |
 | Gestionale (staff e clienti) | `https://associazionesemplice.it/saas/admin` (servito dal SaaS sotto lo stesso dominio) |
