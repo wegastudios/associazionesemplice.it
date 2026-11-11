@@ -388,7 +388,8 @@ final class PublicEvents {
 	}
 
 	public static function hide_theme_poster_block( $block_content, $block ) {
-		return ( is_array( $block ) && 'core/post-featured-image' === ( $block['blockName'] ?? '' ) && is_singular( self::POST_TYPE ) ) ? '' : $block_content;
+		// Il tema mostra locandina, autore, data e categorie degli articoli: per un evento non hanno senso (la pagina ha già i suoi dati).
+		return ( is_array( $block ) && in_array( $block['blockName'] ?? '', array( 'core/post-featured-image', 'core/post-author', 'core/post-author-name', 'core/post-author-biography', 'core/post-date', 'core/post-terms' ), true ) && is_singular( self::POST_TYPE ) ) ? '' : $block_content;
 	}
 
 	/** Contenuto della pagina: locandina, dati dell'attività, descrizione, prenotazione. */
@@ -405,7 +406,7 @@ final class PublicEvents {
 		Frontend\Views::no_cache();
 		$html = '<div class="asemf asemf-event">';
 		if ( has_post_thumbnail( $post ) ) {
-			$html .= '<figure class="asemf-poster">' . get_the_post_thumbnail( $post, 'large' ) . '</figure>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			$html .= '<figure class="asemf-poster">' . wp_get_attachment_image( (int) get_post_thumbnail_id( $post ), 'large' ) . '</figure>'; // direttamente: il filtro del tema che toglie la locandina duplicata non deve toccare questa
 		}
 		$html .= '<dl class="asemf-facts">'
 			. '<div><dt>' . esc_html( ActivityKind::COURSE === $a['kind'] ? 'Quando' : 'Data e ora' ) . '</dt><dd>' . esc_html( self::when_text( $a ) ) . '</dd></div>';

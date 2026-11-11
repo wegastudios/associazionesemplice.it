@@ -204,6 +204,39 @@ extra_step( 'rimborsi', function () use ( $by_name ) {
 } );
 
 // Eventi sul sito: le pagine pubbliche degli eventi (descrizione, categoria, locandina) e qualche evento in più nei prossimi mesi.
+
+/** Locandina inventata (sfumatura con GD, se c'è); senza GD le pagine restano senza immagine. */
+function extra_poster( string $title, array $rgb ) {
+	if ( ! function_exists( 'imagecreatetruecolor' ) || ! function_exists( 'imagepng' ) ) {
+		return 0;
+	}
+	require_once ABSPATH . 'wp-admin/includes/file.php';
+	require_once ABSPATH . 'wp-admin/includes/media.php';
+	require_once ABSPATH . 'wp-admin/includes/image.php';
+	$w = 800; $h = 1200;
+	$im = imagecreatetruecolor( $w, $h );
+	for ( $y = 0; $y < $h; $y++ ) {
+		$k = $y / $h;
+		imagefilledrectangle( $im, 0, $y, $w, $y, imagecolorallocate( $im, (int) ( $rgb[0] * ( 1 - $k * .5 ) ), (int) ( $rgb[1] * ( 1 - $k * .5 ) ), (int) ( $rgb[2] * ( 1 - $k * .5 ) ) ) );
+	}
+	imagefilledellipse( $im, 400, 420, 360, 360, imagecolorallocatealpha( $im, 255, 255, 255, 90 ) );
+	// Niente controllo del tipo di file di WordPress: su alcuni server il riconoscimento del tipo non funziona e rifiuta anche i PNG appena generati.
+	ob_start();
+	imagepng( $im );
+	$bytes = (string) ob_get_clean();
+	imagedestroy( $im );
+	$up = wp_upload_bits( sanitize_title( $title ) . '.png', null, $bytes );
+	if ( ! empty( $up['error'] ) ) {
+		return 0;
+	}
+	$id = wp_insert_attachment( array( 'post_mime_type' => 'image/png', 'post_title' => $title, 'post_status' => 'inherit' ), $up['file'] );
+	if ( ! $id || is_wp_error( $id ) ) {
+		return 0;
+	}
+	wp_update_attachment_metadata( (int) $id, wp_generate_attachment_metadata( (int) $id, $up['file'] ) );
+	return (int) $id;
+}
+
 extra_step( 'eventi sul sito', function () {
 	if ( ! class_exists( '\AssociazioneSemplice\PublicEvents' ) ) {
 		return;
@@ -213,27 +246,6 @@ extra_step( 'eventi sul sito', function () {
 	// Le attività di prova create prima portavano l'anno delle tessere («2026») al posto dell'anno sociale («2026/2027»): l'elenco pubblico non le trovava.
 	global $wpdb;
 	$wpdb->query( $wpdb->prepare( 'UPDATE ' . \AssociazioneSemplice\Db::t( 'activities' ) . ' SET social_year = %s WHERE social_year = %s', $year, Settings::membership_year( gmdate( 'Y-m-d' ) )->label() ) ); // phpcs:ignore WordPress.DB
-	// Locandina inventata (sfumatura con GD, se c'è); senza GD le pagine restano senza immagine.
-	$poster = function ( string $title, array $rgb ) {
-		if ( ! function_exists( 'imagecreatetruecolor' ) || ! function_exists( 'imagepng' ) ) {
-			return 0;
-		}
-		require_once ABSPATH . 'wp-admin/includes/file.php';
-		require_once ABSPATH . 'wp-admin/includes/media.php';
-		require_once ABSPATH . 'wp-admin/includes/image.php';
-		$w = 800; $h = 1200;
-		$im = imagecreatetruecolor( $w, $h );
-		for ( $y = 0; $y < $h; $y++ ) {
-			$k = $y / $h;
-			imagefilledrectangle( $im, 0, $y, $w, $y, imagecolorallocate( $im, (int) ( $rgb[0] * ( 1 - $k * .5 ) ), (int) ( $rgb[1] * ( 1 - $k * .5 ) ), (int) ( $rgb[2] * ( 1 - $k * .5 ) ) ) );
-		}
-		imagefilledellipse( $im, 400, 420, 360, 360, imagecolorallocatealpha( $im, 255, 255, 255, 90 ) );
-		$tmp = wp_tempnam( 'locandina.png' );
-		imagepng( $im, $tmp );
-		imagedestroy( $im );
-		$id = media_handle_sideload( array( 'name' => sanitize_title( $title ) . '.png', 'tmp_name' => $tmp ), 0, $title );
-		return is_wp_error( $id ) ? 0 : (int) $id;
-	};
 	$cat = function ( string $name ) {
 		$t = term_exists( $name, \AssociazioneSemplice\PublicEvents::TAXONOMY );
 		if ( ! $t ) {
@@ -269,7 +281,7 @@ extra_step( 'eventi sul sito', function () {
 			if ( ! $pid ) {
 				continue;
 			}
-			$thumb = $poster( $name, $t[2] );
+			$thumb = extra_poster( $name, $t[2] );
 			wp_update_post( array( 'ID' => $pid, 'post_status' => 'publish', 'post_content' => $t[1], 'post_excerpt' => wp_trim_words( $t[1], 18 ) ) );
 			wp_set_object_terms( $pid, array( $cat( $t[0] ) ), \AssociazioneSemplice\PublicEvents::TAXONOMY );
 			if ( $thumb ) {
@@ -280,6 +292,23 @@ extra_step( 'eventi sul sito', function () {
 	// Pagina «Eventi» con l'elenco a card.
 	if ( ! get_page_by_path( 'eventi-in-programma' ) ) {
 		wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Eventi in programma', 'post_name' => 'eventi-in-programma', 'post_content' => '[associazionesemplice_eventi]' ) );
+	}
+} );
+
+// Locandine: le pagine degli eventi senza immagine in evidenza ne ricevono una (la prima volta il caricamento era stato rifiutato dal server).
+extra_step( 'locandine degli eventi', function () {
+	if ( ! class_exists( '\AssociazioneSemplice\PublicEvents' ) ) {
+		return;
+	}
+	$colors = array( array( 205, 92, 60 ), array( 40, 140, 160 ), array( 120, 80, 170 ), array( 200, 150, 50 ), array( 60, 150, 90 ) );
+	$i      = 0;
+	foreach ( get_posts( array( 'post_type' => \AssociazioneSemplice\PublicEvents::POST_TYPE, 'post_status' => 'publish', 'numberposts' => 50 ) ) as $p ) {
+		if ( ! has_post_thumbnail( $p ) ) {
+			$id = extra_poster( get_the_title( $p ), $colors[ $i++ % count( $colors ) ] );
+			if ( $id ) {
+				set_post_thumbnail( $p, $id );
+			}
+		}
 	}
 } );
 
