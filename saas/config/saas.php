@@ -73,6 +73,8 @@ return [
         'area_keys' => env('SAAS_STAFF_AREA_KEYS', ''),
         // Email della titolare (admin di tutte le aree, sempre): solo qui, mai nel repository.
         'super_admins' => env('SAAS_STAFF_SUPER_ADMINS', ''),
+        // Dove porta il link degli inviti (vuoto = <APP_URL>/saas): dietro il proxy del portale è https://associazionesemplice.it/saas.
+        'invite_base' => env('SAAS_STAFF_INVITE_BASE', ''),
     ],
 
     // Contratto con il portale (docs/CONTRATTO_PORTALE.md).
