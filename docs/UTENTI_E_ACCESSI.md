@@ -4,6 +4,11 @@ Specifica di progetto (decisione della titolare, 10/11/2026). **Sostituisce** il
 [ARCHITETTURA_DOMINI.md](ARCHITETTURA_DOMINI.md) («Passare da un'amministrazione all'altra», che prevedeva staff separati in
 ogni amministrazione e un collegamento `admin_hop`). Vale per `/wordpress/admin`, `/saas/admin` e `supporto.associazionesemplice.it`.
 
+
+> **Revisione dell'11/11/2026 (decisione della titolare): l'elenco unico degli utenti vive nel database del SaaS (PostgreSQL), non nel portale.**
+> Dove questo documento dice «il portale» come proprietario dell'elenco, dei ruoli, delle sessioni, dei token `staff_sso`, delle richieste `staff.*` e del registro, leggere **«il SaaS»** (schema `core`, fuori dalle regole per associazione). Il **portale** (`/wordpress/admin`, vendita, area clienti) diventa un'area come le altre: riceve il token dal SaaS, ha la sua sessione, riconferma ogni 5 minuti al SaaS e per la pagina «Utenti» chiama il SaaS. Le chiavi si invertono (il SaaS firma `staff_sso`; il portale verifica). Restano uguali livelli, regole, super amministratore (la titolare, `super_admins` in configurazione del server, mai nel repository), secondo fattore, durata delle sessioni e registro.
+> **Fuori da questo elenco:** gli utenti di `wpdemo` e quelli di ogni installazione del plugin stanno nel database di WordPress del cliente (MySQL), non qui; gli operatori delle associazioni stanno nell'app. Cambia anche la sessione di sviluppo che costruisce la directory: da portale-plugin a **portale-saas**; portale-plugin passa a essere un'area che consuma (come supporto). L'indirizzo dell'accesso staff va fissato di nuovo (la pagina deve essere servita dal SaaS ma con un indirizzo del dominio principale, come `/saas/admin`).
+
 ## 1. Principio
 
 **Una persona, un account staff, ruoli per area.** Un solo elenco di utenti staff, tre aree (WordPress, SaaS, Supporto) e per
