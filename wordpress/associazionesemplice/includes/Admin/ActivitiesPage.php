@@ -8,6 +8,7 @@ use AssociazioneSemplice\MemberType;
 use AssociazioneSemplice\Money;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\PriceLists;
+use AssociazioneSemplice\PublicEvents;
 use AssociazioneSemplice\Settings;
 use AssociazioneSemplice\SocialYear;
 use AssociazioneSemplice\Html;
@@ -235,6 +236,7 @@ final class ActivitiesPage {
 			self::course_enrolled( $activity, $year, $back ); // gli iscritti restano nella prima colonna, sotto il modulo di iscrizione
 		}
 		echo '</div><div class="asem-col">';
+		echo wp_kses( PublicEvents::activity_box( $id ), Html::allowed() );
 		self::edit_card( $activity, $back );
 		if ( ActivityKind::COURSE === $activity['kind'] ) {
 			self::lessons_card( $activity, $back );

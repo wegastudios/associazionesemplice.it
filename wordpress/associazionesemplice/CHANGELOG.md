@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.19
+- Eventi e corsi hanno una pagina pubblica sul sito, collegata all'attività e creata da sola: scrivi la descrizione e scegli la locandina, data, luogo, contributo e posti li prende dall'attività
+- Dalla pagina dell'evento i soci si prenotano e possono salvare le date nel proprio calendario
+
 ## 1.3.18
 - Accesso soci più semplice: una sola schermata con password o link via email
 - Con la password puoi spuntare «Ricordami» e restare entrato 30 giorni

@@ -290,3 +290,15 @@
 	:where(body) .asemf * { transition-duration: .01ms !important; animation-duration: .01ms !important; scroll-behavior: auto !important; }
 }
 :where(body) .asemf .asemf-section:has(> .asemf-memcard:not(.asemf-memcard-img)) { background: transparent; border: 0; padding: 0; }
+
+/* Pagina pubblica di un evento (PublicEvents): locandina, dati, descrizione e prenotazione. */
+.asemf-event { max-width: 760px; margin: 0 auto; }
+.asemf-event .asemf-poster { margin: 0 0 1.25rem; }
+.asemf-event .asemf-poster img { display: block; width: 100%; height: auto; border-radius: 16px; }
+.asemf-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .75rem; margin: 0 0 1.25rem; padding: 1rem 1.1rem; background: #F5F6FA; border-radius: 16px; }
+.asemf-facts > div { margin: 0; }
+.asemf-facts dt { font-size: .8em; text-transform: uppercase; letter-spacing: .04em; color: var(--asemf-muted, #5b6075); margin: 0 0 .15rem; }
+.asemf-facts dd { margin: 0; font-weight: 600; }
+.asemf-event-text { margin: 0 0 1.5rem; }
+.asemf-event-h { margin: 1.5rem 0 .5rem; }
+.asemf-ics { margin: 1rem 0 0; }

@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.18
+Stable tag: 1.3.19
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -60,6 +60,10 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 The interface uses the Montserrat typeface (SIL Open Font License 1.1, copy in `assets/fonts/OFL.txt`) and icons from Lucide (ISC license, https://lucide.dev), both bundled with the plugin; nothing is loaded from external servers.
 
 == Changelog ==
+
+= 1.3.19 =
+* Eventi e corsi hanno una pagina pubblica sul sito, collegata all'attività e creata da sola: scrivi la descrizione e scegli la locandina, data, luogo, contributo e posti li prende dall'attività
+* Dalla pagina dell'evento i soci si prenotano e possono salvare le date nel proprio calendario
 
 = 1.3.18 =
 * Accesso soci più semplice: una sola schermata con password o link via email

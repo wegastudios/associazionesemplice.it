@@ -96,6 +96,7 @@ class ActivityService {
 		if ( $session ) {
 			$this->insert_session( $id, $session );
 		}
+		do_action( 'asem_activity_created', $id ); // la pagina pubblica nasce da sola (PublicEvents)
 		Audit::log( 'activity.created', 'activity', $id, array( 'name' => $d['name'], 'kind' => $d['kind'] ) );
 		return $id;
 	}
@@ -142,6 +143,7 @@ class ActivityService {
 			array( 'id' => $id )
 		);
 		Audit::log( 'activity.updated', 'activity', $id );
+		do_action( 'asem_activity_updated', $id, (string) $current['name'] );
 	}
 
 	/** Compatibilità: `monthly_fee_cents` era il nome del contributo prima dei tipi di attività. */
