@@ -2,6 +2,10 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.8
+- Anche il programma gratuito ora si aggiorna da Bacheca → Aggiornamenti, insieme al Pro
+- Prima di aggiornare, con «Visualizza i dettagli» vedi in italiano cosa cambia
+
 ## 1.3.7
 - Se cambi la risorsa di un'attività e la nuova è già occupata negli stessi orari, vedi cosa si sovrappone e il cambio non viene applicato.
 - Spuntando «Sposta sulla risorsa di prima ciò che si sovrappone», le prenotazioni e le altre attività che si sovrappongono passano alla risorsa che si libera; se lì non entrano, non si sposta niente.
