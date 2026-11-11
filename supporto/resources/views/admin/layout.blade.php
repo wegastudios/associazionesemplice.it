@@ -12,34 +12,41 @@
 <body>
 <header class="site">
     <div class="bar">
-        <a class="logo" href="{{ config('support.sso.portal') }}/" aria-label="Associazione Semplice, vai alla home del sito">@include("partials.logo", ["h" => 38])</a>
+        <a class="logo" href="{{ config('support.sso.portal') }}/" aria-label="Associazione Semplice, vai alla home">@include("partials.logo", ["h" => 38])</a>
+        <span class="place">Supporto</span>
         @auth
-            <nav aria-label="Navigazione principale">
-                @if (config('support.role') === 'hub')
-                    <a href="{{ route('admin.tickets.index') }}" @if (request()->routeIs('admin.tickets.*')) aria-current="page" @endif>Casella</a>
-                    <a href="{{ route('admin.sites.index') }}" @if (request()->routeIs('admin.sites.*')) aria-current="page" @endif>Portali</a>
-                    <a href="{{ route('admin.settings.edit') }}" @if (request()->routeIs('admin.settings.*')) aria-current="page" @endif>Impostazioni</a>
-                @else
-                    <a href="{{ route('admin.tickets.index') }}" @if (request()->routeIs('admin.tickets.*')) aria-current="page" @endif>Ticket</a>
-                    @if (auth()->user()->isAdmin())
-                    <a href="{{ route('admin.topics.index') }}" @if (request()->routeIs('admin.topics.*', 'admin.sections.*')) aria-current="page" @endif>Argomenti</a>
-                    <a href="{{ route('admin.articles.index') }}" @if (request()->routeIs('admin.articles.*')) aria-current="page" @endif>Articoli</a>
-                    <a href="{{ route('admin.plans.index') }}" @if (request()->routeIs('admin.plans.*')) aria-current="page" @endif>Piani</a>
-                    <a href="{{ route('admin.hub.status') }}" @if (request()->routeIs('admin.hub.*')) aria-current="page" @endif>Hub</a>
-                    <a href="{{ route('admin.users.index') }}" @if (request()->routeIs('admin.users.*')) aria-current="page" @endif>Utenti</a>
-                    @endif
-                @endif
-                @if (auth()->user()->isAdmin())<a href="{{ route('admin.mail.edit') }}" @if (request()->routeIs('admin.mail.*')) aria-current="page" @endif>Email</a>@endif
-                <a href="{{ rtrim(config('support.sso.portal'), '/') }}/admin">Gestione licenze</a>
-            </nav>
-            @foreach (array_keys(session('staff.areas', [])) as $area)
-                @if ($area !== 'supporto')<form method="post" action="{{ route('admin.goto', $area) }}">@csrf <button class="secondary" type="submit">Vai a {{ \App\Http\Controllers\Admin\Site\StaffAreaController::AREAS[$area] ?? $area }}</button></form>@endif
-            @endforeach
-            <a class="who" href="{{ route('admin.password.edit') }}" @if (request()->routeIs('admin.password.*')) aria-current="page" @endif>{{ auth()->user()->email }}</a>
-            <form method="post" action="{{ route('admin.logout') }}">@csrf <button class="secondary" type="submit">Esci</button></form>
+            <a class="account" href="{{ config('support.sso.portal') }}/account">Il mio account</a>
+        @else
+            <a class="account" href="{{ config('support.sso.portal') }}/accedi">Accedi</a>
         @endauth
     </div>
 </header>
+@auth
+<nav class="menu" aria-label="Menu del supporto">
+    @if (config('support.role') === 'hub')
+        <a href="{{ route('admin.tickets.index') }}" @if (request()->routeIs('admin.tickets.*')) aria-current="page" @endif>Casella</a>
+        <a href="{{ route('admin.sites.index') }}" @if (request()->routeIs('admin.sites.*')) aria-current="page" @endif>Portali</a>
+        <a href="{{ route('admin.settings.edit') }}" @if (request()->routeIs('admin.settings.*')) aria-current="page" @endif>Impostazioni</a>
+    @else
+        <a href="{{ route('admin.tickets.index') }}" @if (request()->routeIs('admin.tickets.*')) aria-current="page" @endif>Ticket</a>
+        @if (auth()->user()->isAdmin())
+        <a href="{{ route('admin.topics.index') }}" @if (request()->routeIs('admin.topics.*', 'admin.sections.*')) aria-current="page" @endif>Argomenti</a>
+        <a href="{{ route('admin.articles.index') }}" @if (request()->routeIs('admin.articles.*')) aria-current="page" @endif>Articoli</a>
+        <a href="{{ route('admin.plans.index') }}" @if (request()->routeIs('admin.plans.*')) aria-current="page" @endif>Piani</a>
+        <a href="{{ route('admin.hub.status') }}" @if (request()->routeIs('admin.hub.*')) aria-current="page" @endif>Hub</a>
+        <a href="{{ route('admin.users.index') }}" @if (request()->routeIs('admin.users.*')) aria-current="page" @endif>Utenti</a>
+        @endif
+    @endif
+    @if (auth()->user()->isAdmin())<a href="{{ route('admin.mail.edit') }}" @if (request()->routeIs('admin.mail.*')) aria-current="page" @endif>Email</a>@endif
+    <a href="{{ rtrim(config('support.sso.portal'), '/') }}/wordpress/admin">Gestione del plugin</a>
+    @foreach (array_keys(session('staff.areas', [])) as $area)
+        @if ($area !== 'supporto')<form method="post" action="{{ route('admin.goto', $area) }}">@csrf <button class="secondary" type="submit">Vai a {{ \App\Http\Controllers\Admin\Site\StaffAreaController::AREAS[$area] ?? $area }}</button></form>@endif
+    @endforeach
+    @unless (session()->has('staff'))
+        <form method="post" action="{{ route('admin.logout') }}">@csrf <button class="secondary" type="submit">Esci</button></form>
+    @endunless
+</nav>
+@endauth
 <main>
     @if (session('ok'))<div class="flash" role="status">{{ session('ok') }}</div>@endif
     @if ($errors->any())
