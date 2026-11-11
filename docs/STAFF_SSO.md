@@ -20,7 +20,7 @@ Il portale lo emette quando la persona sceglie l'area nel selettore «Vai a» e 
 
 | Area | Indirizzo |
 |---|---|
-| SaaS | `https://app.associazionesemplice.it/admin/sso` |
+| SaaS | `https://associazionesemplice.it/saas/admin/sso` (l’amministrazione commerciale sta solo sotto `/saas/admin`; `app.associazionesemplice.it/admin` è un’altra cosa e non fa parte dello staff) |
 | Supporto | `https://supporto.associazionesemplice.it/staff/sso` (la sessione supporto può cambiarlo e dirmelo) |
 
 Claim: `iss` = `https://associazionesemplice.it` · `aud` = `associazionesemplice-saas` oppure `associazionesemplice-supporto` · `typ` = `staff_sso` · `iat`, `exp` (≤ 60 s) · `jti` (monouso: l'area lo ricorda fino a `exp`) · `sub` = email minuscola · `area` = `saas` | `supporto` · `level` = `admin|vendita|supporto` (SaaS) oppure `admin|agente` (Supporto) · `mfa` = bool · `mfa_at` = secondi Unix (solo se `mfa`) · `sid` = identificativo della sessione centrale (32 caratteri esadecimali).
