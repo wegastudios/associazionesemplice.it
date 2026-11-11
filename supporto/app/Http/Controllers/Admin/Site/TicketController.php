@@ -60,7 +60,7 @@ class TicketController extends Controller
     {
         return view('admin.site.tickets.show', [
             'ticket' => $ticket->load('messages', 'topic', 'plan', 'assignee'),
-            'staff' => User::query()->where('global_role', 'admin')->orderBy('name')->get(['id', 'name']),
+            'staff' => User::query()->whereIn('global_role', ['admin', 'agent'])->orderBy('name')->get(['id', 'name']),
             'allowed' => $hub->allowedPriorities(),
             'labels' => config('support.priority_labels'),
         ]);

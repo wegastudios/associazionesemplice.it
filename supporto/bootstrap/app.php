@@ -3,6 +3,7 @@
 use App\Exceptions\SupportException;
 use App\Http\Middleware\CorrelationId;
 use App\Http\Middleware\EnsureAdmin;
+use App\Http\Middleware\EnsureAdminRole;
 use App\Http\Middleware\ExpireCustomerSession;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SiteAuthenticate;
@@ -25,13 +26,17 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(prepend: [CorrelationId::class]);
         $middleware->web(append: [ExpireCustomerSession::class]);
         $middleware->append(SecurityHeaders::class);
+        // Il portale manda lo staff con una POST dal suo sito: il token firmato (monouso, 60 secondi) prende il posto del token CSRF
+        $middleware->validateCsrfTokens(except: ['staff/sso']);
         $middleware->alias([
             'admin' => EnsureAdmin::class,
+            'admin.role' => EnsureAdminRole::class,
             'site.auth' => SiteAuthenticate::class,
         ]);
         // L'accesso si controlla PRIMA di cercare il record della rotta (/admin/ticket/{ticket}): altrimenti, senza login, un ID che esiste risponde
         // con il reindirizzamento al login e uno che non esiste con 404, e chiunque può contare e indovinare i ticket.
         $middleware->prependToPriorityList(SubstituteBindings::class, EnsureAdmin::class);
+        $middleware->prependToPriorityList(SubstituteBindings::class, EnsureAdminRole::class);
         $middleware->prependToPriorityList(SubstituteBindings::class, SiteAuthenticate::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

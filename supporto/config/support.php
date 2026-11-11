@@ -45,6 +45,21 @@ return [
         'portal' => rtrim((string) env('SUPPORT_SSO_PORTAL', 'https://associazionesemplice.it'), '/'),
     ],
 
+    // Accesso unico dello STAFF: token firmato (EdDSA) emesso dal portale, vedi docs/STAFF_SSO.md.
+    // Le chiavi pubbliche del portale sono "kid:x" separate da virgola; la chiave privata del supporto sta in un file fuori dal repository
+    // (si crea con `php artisan staff:key`). Senza chiavi del portale l'accesso staff unico e spento.
+    'staff_sso' => [
+        'portal_keys' => env('SUPPORT_STAFF_PORTAL_KEYS'),
+        'audience' => 'associazionesemplice-supporto',
+        'private_key_file' => env('SUPPORT_STAFF_PRIVATE_KEY_FILE', storage_path('app/private/staff-sign.key')),
+        'idle_minutes' => 120,
+        'max_hours' => 8,
+        'check_seconds' => 300,
+        // Accesso locale dello staff (email e password): resta acceso finche l'accesso unico non e verificato, poi si spegne da .env.
+        // Spento, resta solo come accesso di emergenza della titolare, riacceso dal server.
+        'local_login' => (bool) env('SUPPORT_STAFF_LOCAL_LOGIN', true),
+    ],
+
     // Nomi dei piani nei testi delle guide: si cambiano qui (o da .env) e si rilancia il seeder, mai a mano nei testi
     'plan_names' => [
         'contabile' => env('SUPPORT_PLAN_CONTABILE', 'PRO Contabilità'),

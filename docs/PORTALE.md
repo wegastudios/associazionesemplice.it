@@ -263,6 +263,13 @@ Fondamenta del passo 6 (nessuna pagina pubblica ancora: il pagamento arriva nel 
 - **Pagamento riuscito** (`SaasCheckout::paid`, dai webhook `checkout.session.completed` di Stripe e `BILLING.SUBSCRIPTION.ACTIVATED` di PayPal): `pending → paid` con aggiornamento condizionato, poi `provision` (ripetibile; con `slug_taken` riprova con un suffisso), `promo.redeem` (una volta per ordine) e `subscription` in coda con `rev` crescente per associazione; infine `active`. Se un passo fallisce il webhook risponde errore e il provider riconsegna: i passi già fatti non si ripetono. Un identificativo che non è un ordine del gestionale passa alle licenze del plugin come prima.
 - **Rinnovi e disdetta** (`SaasCheckout::event`): rinnovo (`invoice.paid` ciclo, `PAYMENT.SALE.COMPLETED`) → `active` con nuova scadenza; pagamento fallito → `past_due` con la scadenza precedente; disdetta/chiusura → `cancelled`. Ogni cambio è una `subscription` nuova.
 
+### Il gestionale nell'area clienti (`/account`)
+
+- **Elenco** (`SaasAccount::forCustomer`): per ogni abbonamento pagato mostra associazione, piano, periodo, soci, importo (IVA inclusa), stato e scadenza dall'ultimo messaggio `subscription` in coda, e «Apri il gestionale» (`https://<slug>.associazionesemplice.it`, dominio base in `saas_tenant_domain`). Compare nello stesso `/account` delle licenze del plugin.
+- **Disdetta** (`POST /account/gestionale-disdici`): a fine periodo su Stripe, PayPal annulla l'abbonamento; il gestionale resta attivo fino alla scadenza già pagata. **Fatture e metodo di pagamento**: portale di Stripe (`/account/gestionale-fatturazione`). Ogni azione controlla che l'ordine sia del cliente in sessione.
+- **Accesso dal gestionale** (`GET /account/da-gestionale?t=<JWT>`, contratto §4.3): firma, `iss`, `aud`, tipo `sso`, vita massima 2 minuti, `jti` usato una sola volta, `ref` = una sua associazione e `sub` = l'intestatario. Apre la sessione e porta sempre a `/account#gestionale` (nessun indirizzo di ritorno dalla richiesta); se qualcosa non torna, accesso normale senza dire perché.
+- Da fare: cambio piano (`plan_change.check`), domini (`domain.check/set`), persone con ruoli, download firmato, fatture del gestionale, email di benvenuto con il link di accesso dopo l'acquisto.
+
 ## Catalogo del plugin: bozza e «Pubblica» (`/wordpress/admin/catalogo`)
 
 Sezione **Piani → Catalogo**, solo per gli amministratori. Cosa si decide qui: a chi è rivolto ogni piano, visibilità e ordine, livello di assistenza (`free`/`paid`/`top`), siti ammessi, elenco delle caratteristiche e, per ogni piano, se ciascuna è inclusa, con limite (con nota) o non inclusa.
@@ -287,3 +294,7 @@ Per il negozio (in processo, `Plugin\Promos`): `check($db,$catalogo,$codice,$pia
 - **Chiave nuova e separata** da quelle delle licenze (`portal-sign.key`), del contratto col SaaS (`saas-sign.key`) e da quella futura di `admin_hop`. Sta fuori dal repository in `data/catalog-sign.key` (permessi 600) o in `catalog_sign_key` di `config.php`.
 - **Creazione:** `php bin/catalog-key.php` sul server (crea se manca, stampa SOLO `kid` e chiave pubblica `x`; `--show` per rileggerli). Prima del primo uso la chiave non esiste: finché manca, il catalogo si serve non firmato (l'ETag resta). Creare la chiave e comunicare `x` ai lettori è un passo di rilascio, da fare con il via della titolare.
 - **Rotazione:** nuovo file, nuovo `kid`; il `kid` nell'intestazione dice con quale chiave verificare.
+
+## Elenco centrale dello staff (passo 1 di `docs/UTENTI_E_ACCESSI.md`)
+
+Tabelle nuove `staff_people`, `staff_roles`, `staff_invites`, `staff_sessions`, `staff_audit` e classe `Plugin\Directory`. In questo passo **si aggiunge soltanto**: a ogni `Db::migrate()` gli staff di oggi (`plugin_staff`, colonna `saas` di `staff`, `admins` di `config.php`) vengono copiati nell'elenco con i livelli nuovi (support → supporto); la copia è ripetibile, non rimette un livello cambiato nell'elenco e si ferma per sempre quando nel registro compare un'azione `cutover` (accesso unico in funzione). Gli accessi continuano a essere decisi da `Plugin\Staff` e dalla tabella `staff`: nessun permesso cambia. La super amministratrice sta solo in `super_admins` di `config.php` (non nel repository), è admin di tutte le aree e non ha righe nel database.
