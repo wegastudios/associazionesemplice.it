@@ -30,8 +30,14 @@ class StaffJwt
     /** @return array<string, string> kid => chiave pubblica (base64url) del portale */
     public static function portalKeys(): array
     {
+        return self::parseKeys((string) config('support.staff_sso.portal_keys'));
+    }
+
+    /** @return array<string, string> */
+    private static function parseKeys(string $list): array
+    {
         $keys = [];
-        foreach (explode(',', (string) config('support.staff_sso.portal_keys')) as $pair) {
+        foreach (explode(',', $list) as $pair) {
             [$kid, $x] = array_pad(explode(':', trim($pair), 2), 2, '');
             if ($kid !== '' && $x !== '') {
                 $keys[$kid] = $x;
@@ -83,6 +89,44 @@ class StaffJwt
         }
 
         return true;
+    }
+
+    /** @return array<string, string> kid => chiave pubblica (base64url) con cui il SaaS firma i token dei clienti (chiavi `cust-…`, separate dallo staff) */
+    public static function customerKeys(): array
+    {
+        return self::parseKeys((string) config('support.customer_sso.keys'));
+    }
+
+    /**
+     * Verifica un token customer_sso del SaaS: firma, kid dei clienti, typ, aud, iss, durata (massimo 60 secondi), uso singolo (jti).
+     * Il cliente è identificato da `sub` (id nel SaaS) ed `email`; `name` e `plans` sono facoltativi; campi sconosciuti rifiutati.
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function verifyCustomer(string $token, ?int $now = null): ?array
+    {
+        $now ??= time();
+        $claims = self::decode($token, self::customerKeys());
+        if ($claims === null || array_diff(array_keys($claims), ['iss', 'aud', 'typ', 'iat', 'exp', 'jti', 'sub', 'email', 'name', 'plans']) !== []) {
+            return null;
+        }
+        $sub = $claims['sub'] ?? null;
+        $email = $claims['email'] ?? null;
+        if (($claims['typ'] ?? null) !== 'customer_sso'
+            || ($claims['aud'] ?? null) !== config('support.staff_sso.audience')
+            || rtrim((string) ($claims['iss'] ?? ''), '/') !== rtrim((string) config('support.staff_sso.issuer'), '/')
+            || ! is_int($claims['iat'] ?? null) || ! is_int($claims['exp'] ?? null)
+            || $claims['exp'] - $claims['iat'] > 60 || $claims['exp'] < $now - self::SKEW || $claims['iat'] > $now + self::SKEW
+            || ! is_string($claims['jti'] ?? null) || strlen($claims['jti']) < 16 || strlen($claims['jti']) > 100
+            || ! (is_int($sub) || (is_string($sub) && preg_match('/^[A-Za-z0-9_-]{1,64}$/', $sub)))
+            || ! is_string($email) || ! filter_var($email, FILTER_VALIDATE_EMAIL) || $email !== mb_strtolower($email)) {
+            return null;
+        }
+        if (! Cache::add('customer:jti:'.$claims['jti'], 1, max(60, $claims['exp'] - $now + 2 * self::SKEW))) {
+            return null;
+        }
+
+        return $claims;
     }
 
     /**

@@ -27,7 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [ExpireCustomerSession::class]);
         $middleware->append(SecurityHeaders::class);
         // Il portale manda lo staff con una POST dal suo sito: il token firmato (monouso, 60 secondi) prende il posto del token CSRF
-        $middleware->validateCsrfTokens(except: ['staff/sso']);
+        $middleware->validateCsrfTokens(except: ['staff/sso', 'accedi/sso']);
         $middleware->alias([
             'admin' => EnsureAdmin::class,
             'admin.role' => EnsureAdminRole::class,

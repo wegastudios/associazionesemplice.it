@@ -42,6 +42,7 @@ class TicketService
                 'plan_id' => $data['plan_id'] ?? null,
                 'customer_name' => $data['customer_name'],
                 'customer_email' => mb_strtolower($data['customer_email']),
+                'customer_id' => $data['customer_id'] ?? null,
                 'priority' => $this->defaultPriority(),
                 'status' => 'open',
                 'related_hub_id' => $data['related_hub_id'] ?? null,

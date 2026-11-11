@@ -75,7 +75,11 @@ class SsoController extends Controller
             return redirect(rtrim((string) config('support.sso.portal'), '/').'/supporto/accedi');
         }
 
-        $tickets = SupportTicket::query()->where('customer_email', $customer['email'])->whereNotNull('hub_id')->latest('last_activity_at')->limit(100)->get();
+        $tickets = SupportTicket::query()
+            ->where(fn ($q) => isset($customer['customer_id'])
+                ? $q->where('customer_id', $customer['customer_id'])->orWhere(fn ($w) => $w->whereNull('customer_id')->where('customer_email', $customer['email']))
+                : $q->where('customer_email', $customer['email']))
+            ->whereNotNull('hub_id')->latest('last_activity_at')->limit(100)->get();
 
         return view('site.mine', [
             'customer' => $customer,
