@@ -32,11 +32,19 @@ final readonly class AdminLoginController
 
     public function show(): View|RedirectResponse
     {
+        // Con l'accesso unico acceso questa pagina non ha più un modulo proprio: rinvia.
+        if (StaffLoginController::enabled()) {
+            return redirect('/saas/staff/accedi');
+        }
+
         return Auth::guard(UsePlatformSession::GUARD)->check() ? redirect(self::url('')) : view('admin.login');
     }
 
     public function login(Request $request): RedirectResponse
     {
+        if (StaffLoginController::enabled()) {
+            return redirect('/saas/staff/accedi');
+        }
         $request->validate(['email' => ['required', 'email', 'max:254'], 'password' => ['required', 'string', 'max:200']]);
         $password = $request->string('password')->toString();
         $staff = PlatformStaff::query()->where('email', $request->string('email')->toString())->first();

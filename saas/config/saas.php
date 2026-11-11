@@ -81,6 +81,14 @@ return [
         'invite_base' => env('SAAS_STAFF_INVITE_BASE', ''),
     ],
 
+    // Accesso unico dello staff (docs/LOGIN_UNICO_E_DATABASE.md, passo 2): la pagina /saas/staff/accedi, il codice facoltativo
+    // e il recupero password. Spento (404) finché SAAS_UNIFIED_LOGIN non è true; acceso, i vecchi moduli di accesso rinviano qui.
+    'unified_login' => [
+        'enabled' => (bool) env('SAAS_UNIFIED_LOGIN', false),
+        // Dove il browser porta il token del Supporto (vuoto = l'area non compare nella scelta).
+        'support_sso_url' => env('SAAS_STAFF_SUPPORT_SSO_URL', ''),
+    ],
+
     // Contratto con il portale (docs/CONTRATTO_PORTALE.md).
     'portal' => [
         'url' => env('SAAS_PORTAL_URL', 'https://associazionesemplice.it'),
