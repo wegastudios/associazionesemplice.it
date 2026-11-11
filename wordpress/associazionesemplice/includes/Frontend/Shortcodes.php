@@ -129,7 +129,7 @@ final class Shortcodes {
 				Views::no_cache();
 				return Views::activities( shortcode_atts( array( 'anno' => '', 'tipo' => '', 'id' => '', 'date' => '5' ), $atts ) );
 			case 'eventi':
-				return \AssociazioneSemplice\PublicEvents::list_html( shortcode_atts( array( 'categoria' => '', 'limite' => '30', 'mesi' => '' ), $atts ) );
+				return \AssociazioneSemplice\PublicEvents::list_html( shortcode_atts( array( 'categoria' => '', 'limite' => '30', 'mesi' => '', 'modo' => 'elenco', 'filtri' => 'si' ), $atts ) );
 			case 'prossimi_eventi':
 				Views::no_cache();
 				return Views::upcoming( shortcode_atts( array( 'limite' => '5', 'prenotazione' => 'si' ), $atts ) );

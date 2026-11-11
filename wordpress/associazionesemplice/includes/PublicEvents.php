@@ -432,47 +432,31 @@ final class PublicEvents {
 	// ---------- Elenco pubblico a card, per mese ----------
 
 	/**
-	 * Elenco delle prossime date degli eventi pubblicati sul sito, raggruppate per mese.
+	 * Vista pubblica degli eventi sul sito: elenco a card per mese (predefinita) o calendario mensile.
 	 *
-	 * @param array $atts categoria (indirizzo della categoria), limite (date da mostrare, 1–100), mesi (quanti mesi, 1–24).
+	 * @param array $atts modo (elenco|mese), categoria (indirizzo), limite (date, 1–100), mesi (quanti mesi, 1–24), filtri (si|no).
 	 */
 	public static function list_html( array $atts = array() ): string {
 		Frontend\Views::no_cache();
+		$view = 'mese' === strtolower( (string) ( $atts['modo'] ?? '' ) ) ? 'mese' : 'elenco';
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- filtri di sola lettura sull'indirizzo della pagina
+		$cat = isset( $_GET['asem_cat'] ) ? sanitize_title( wp_unslash( (string) $_GET['asem_cat'] ) ) : sanitize_title( (string) ( $atts['categoria'] ?? '' ) );
+		$ym  = isset( $_GET['asem_mese'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['asem_mese'] ) ) : '';
+		// phpcs:enable WordPress.Security.NonceVerification.Recommended
+		$filters = 'no' !== strtolower( (string) ( $atts['filtri'] ?? 'si' ) );
+		$bar     = $filters ? self::filter_bar( $view, $cat, $ym ) : '';
+		if ( 'mese' === $view ) {
+			return Frontend\Views::shell( $bar . self::calendar( $cat, $ym ), 'asemf-events' );
+		}
 		$limit = max( 1, min( 100, (int) ( $atts['limite'] ?? 30 ) ) );
-		$cat   = sanitize_title( (string) ( $atts['categoria'] ?? '' ) );
-		$until = '';
+		$until = '9999-12-31';
 		if ( ! empty( $atts['mesi'] ) ) {
 			$until = gmdate( 'Y-m-d', strtotime( Db::today() . ' +' . max( 1, min( 24, (int) $atts['mesi'] ) ) . ' months' ) );
 		}
-		$query = array(
-			'post_type'      => self::POST_TYPE,
-			'post_status'    => 'publish',
-			'posts_per_page' => 200,
-			'no_found_rows'  => true,
-			'orderby'        => 'ID',
-			'order'          => 'ASC',
-		);
-		if ( '' !== $cat ) {
-			$query['tax_query'] = array( array( 'taxonomy' => self::TAXONOMY, 'field' => 'slug', 'terms' => $cat ) ); // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query
-		}
-		$posts = array(); // id attività => contenuto
-		foreach ( get_posts( $query ) as $p ) {
-			$aid = self::activity_of( (int) $p->ID );
-			if ( $aid && ! isset( $posts[ $aid ] ) ) {
-				$posts[ $aid ] = $p;
-			}
-		}
-		$rows = array();
-		if ( $posts ) {
-			foreach ( Plugin::activities()->upcoming_sessions( 500 ) as $s ) {
-				if ( isset( $posts[ (int) $s['activity_id'] ] ) && ( '' === $until || (string) $s['session_date'] <= $until ) ) {
-					$rows[] = $s;
-				}
-			}
-		}
-		$rows = array_slice( $rows, 0, $limit );
+		$posts = self::posts_by_activity( $cat );
+		$rows  = array_slice( self::rows( $posts, Db::today(), $until ), 0, $limit );
 		if ( ! $rows ) {
-			return Frontend\Views::shell( '<p class="asemf-muted">Nessun evento in programma.</p>', 'asemf-events' );
+			return Frontend\Views::shell( $bar . '<p class="asemf-muted">Nessun evento in programma.</p>', 'asemf-events' );
 		}
 		$html  = '';
 		$month = '';
@@ -494,7 +478,124 @@ final class PublicEvents {
 			}
 			$html .= self::card( $posts[ $aid ], $a, $s, $ts );
 		}
-		return Frontend\Views::shell( $html . '</ul>', 'asemf-events' );
+		return Frontend\Views::shell( $bar . $html . '</ul>', 'asemf-events' );
+	}
+
+	/** Contenuti pubblicati, per id dell'attività (facoltativo: solo di una categoria). @return \WP_Post[] */
+	private static function posts_by_activity( string $cat ): array {
+		$query = array(
+			'post_type'      => self::POST_TYPE,
+			'post_status'    => 'publish',
+			'posts_per_page' => 200,
+			'no_found_rows'  => true,
+			'orderby'        => 'ID',
+			'order'          => 'ASC',
+		);
+		if ( '' !== $cat ) {
+			$query['tax_query'] = array( array( 'taxonomy' => self::TAXONOMY, 'field' => 'slug', 'terms' => $cat ) ); // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query
+		}
+		$posts = array();
+		foreach ( get_posts( $query ) as $p ) {
+			$aid = self::activity_of( (int) $p->ID );
+			if ( $aid && ! isset( $posts[ $aid ] ) ) {
+				$posts[ $aid ] = $p;
+			}
+		}
+		return $posts;
+	}
+
+	/** Date non annullate degli eventi pubblicati, tra due giorni (inclusi). */
+	private static function rows( array $posts, string $from, string $to ): array {
+		if ( ! $posts ) {
+			return array();
+		}
+		return array_values(
+			array_filter(
+				Plugin::activities()->sessions_between( $from, $to, 500 ),
+				function ( $s ) use ( $posts ) {
+					return isset( $posts[ (int) $s['activity_id'] ] );
+				}
+			)
+		);
+	}
+
+	/** Indirizzo della pagina corrente con i filtri indicati. */
+	private static function view_url( array $args ): string {
+		$base = (string) get_permalink();
+		return add_query_arg( array_filter( $args, 'strlen' ), '' !== $base ? $base : home_url( '/' ) );
+	}
+
+	/** Barra dei filtri: scelta della vista e categorie. */
+	private static function filter_bar( string $view, string $cat, string $ym ): string {
+		$terms = get_terms( array( 'taxonomy' => self::TAXONOMY, 'hide_empty' => true ) );
+		$month = 'mese' === $view ? ( '' !== $ym ? $ym : wp_date( 'Y-m' ) ) : '';
+		$h     = '<nav class="asemf-filters" aria-label="Filtri degli eventi">';
+		$h    .= '<span class="asemf-filter-group">'
+			. '<a class="asemf-chip' . ( 'elenco' === $view ? ' is-on' : '' ) . '" href="' . esc_url( self::view_url( array( 'asem_cat' => $cat ) ) ) . '">Elenco</a>'
+			. '<a class="asemf-chip' . ( 'mese' === $view ? ' is-on' : '' ) . '" href="' . esc_url( self::view_url( array( 'asem_cat' => $cat, 'asem_mese' => '' !== $ym ? $ym : wp_date( 'Y-m' ) ) ) ) . '">Calendario</a></span>';
+		if ( $terms && ! is_wp_error( $terms ) ) {
+			$h .= '<span class="asemf-filter-group"><a class="asemf-chip' . ( '' === $cat ? ' is-on' : '' ) . '" href="' . esc_url( self::view_url( array( 'asem_mese' => $month ) ) ) . '">Tutte le categorie</a>';
+			foreach ( $terms as $t ) {
+				$h .= '<a class="asemf-chip' . ( $cat === $t->slug ? ' is-on' : '' ) . '" href="' . esc_url( self::view_url( array( 'asem_cat' => $t->slug, 'asem_mese' => $month ) ) ) . '">' . esc_html( $t->name ) . '</a>';
+			}
+			$h .= '</span>';
+		}
+		return $h . '</nav>';
+	}
+
+	/** Calendario di un mese (Y-m; vuoto = mese in corso): gli eventi nei giorni, su telefono solo i giorni con eventi. */
+	private static function calendar( string $cat, string $ym ): string {
+		if ( ! preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/', $ym ) ) {
+			$ym = wp_date( 'Y-m' );
+		}
+		$first = (int) strtotime( $ym . '-01 12:00:00' );
+		$days  = (int) gmdate( 't', $first );
+		$last  = $ym . '-' . sprintf( '%02d', $days );
+		$posts = self::posts_by_activity( $cat );
+		$by    = array(); // giorno => date
+		foreach ( self::rows( $posts, $ym . '-01', $last ) as $s ) {
+			$by[ (string) $s['session_date'] ][] = $s;
+		}
+		$prev = gmdate( 'Y-m', (int) strtotime( $ym . '-01 -1 month' ) );
+		$next = gmdate( 'Y-m', (int) strtotime( $ym . '-01 +1 month' ) );
+		$h    = '<div class="asemf-cal-nav"><a class="asemf-chip" href="' . esc_url( self::view_url( array( 'asem_cat' => $cat, 'asem_mese' => $prev ) ) ) . '">← ' . esc_html( ucfirst( wp_date( 'F', (int) strtotime( $prev . '-01 12:00:00' ) ) ) ) . '</a>'
+			. '<h3 class="asemf-month">' . esc_html( ucfirst( wp_date( 'F Y', $first ) ) ) . '</h3>'
+			. '<a class="asemf-chip" href="' . esc_url( self::view_url( array( 'asem_cat' => $cat, 'asem_mese' => $next ) ) ) . '">' . esc_html( ucfirst( wp_date( 'F', (int) strtotime( $next . '-01 12:00:00' ) ) ) ) . ' →</a></div>';
+		$h   .= '<table class="asemf-cal"><caption class="screen-reader-text">Eventi di ' . esc_html( wp_date( 'F Y', $first ) ) . '</caption><thead><tr>';
+		foreach ( array( 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom' ) as $d ) {
+			$h .= '<th scope="col">' . $d . '</th>';
+		}
+		$h     .= '</tr></thead><tbody>';
+		$offset = (int) gmdate( 'N', $first ) - 1;
+		$cells  = (int) ceil( ( $offset + $days ) / 7 ) * 7;
+		$today  = Db::today();
+		for ( $i = 0; $i < $cells; $i++ ) {
+			if ( 0 === $i % 7 ) {
+				$h .= '<tr>';
+			}
+			$day = $i - $offset + 1;
+			if ( $day < 1 || $day > $days ) {
+				$h .= '<td class="asemf-cal-out"></td>';
+			} else {
+				$date = $ym . '-' . sprintf( '%02d', $day );
+				$list = $by[ $date ] ?? array();
+				$cls  = 'asemf-cal-day' . ( $list ? ' has-events' : ' asemf-cal-empty' ) . ( $date === $today ? ' is-today' : '' );
+				$h   .= '<td class="' . $cls . '"><span class="asemf-cal-num">' . (int) $day . '<span class="asemf-cal-wd"> ' . esc_html( wp_date( 'D', (int) strtotime( $date . ' 12:00:00' ) ) ) . '</span></span>';
+				foreach ( $list as $s ) {
+					$p  = $posts[ (int) $s['activity_id'] ];
+					$h .= '<a class="asemf-cal-ev" href="' . esc_url( (string) get_permalink( $p ) ) . '">' . ( ! empty( $s['start_time'] ) ? '<span class="asemf-cal-time">' . esc_html( (string) $s['start_time'] ) . '</span> ' : '' ) . esc_html( get_the_title( $p ) ) . '</a>';
+				}
+				$h .= '</td>';
+			}
+			if ( 6 === $i % 7 ) {
+				$h .= '</tr>';
+			}
+		}
+		$h .= '</tbody></table>';
+		if ( ! $by ) {
+			$h .= '<p class="asemf-muted">Nessun evento in questo mese.</p>';
+		}
+		return $h;
 	}
 
 	/** Una card: badge della data, locandina, categoria, titolo, orario, luogo, contributo. */

@@ -50,13 +50,14 @@ class ViewWidget extends Widget_Base {
 		$this->add_control( 'date', array( 'label' => 'Date da mostrare per attività', 'type' => Controls_Manager::NUMBER, 'default' => 5, 'condition' => array( 'view' => 'attivita' ) ) );
 		$this->add_control( 'limite', array( 'label' => 'Numero di eventi', 'type' => Controls_Manager::NUMBER, 'default' => 5, 'condition' => array( 'view' => array( 'prossimi_eventi', 'eventi' ) ) ) );
 		$this->add_control( 'categoria', array( 'label' => 'Solo questa categoria (indirizzo, facoltativo)', 'type' => Controls_Manager::TEXT, 'condition' => array( 'view' => 'eventi' ) ) );
+		$this->add_control( 'modo', array( 'label' => 'Aspetto', 'type' => Controls_Manager::SELECT, 'options' => array( 'elenco' => 'Elenco a schede', 'mese' => 'Calendario mensile' ), 'default' => 'elenco', 'condition' => array( 'view' => 'eventi' ) ) );
 		$this->end_controls_section();
 	}
 
 	protected function render() {
 		$s    = $this->get_settings_for_display();
 		$atts = array();
-		foreach ( array( 'anno', 'tipo', 'id', 'date', 'limite', 'categoria' ) as $k ) {
+		foreach ( array( 'anno', 'tipo', 'id', 'date', 'limite', 'categoria', 'modo', 'filtri' ) as $k ) {
 			if ( isset( $s[ $k ] ) && '' !== (string) $s[ $k ] ) {
 				$atts[ $k ] = (string) $s[ $k ];
 			}

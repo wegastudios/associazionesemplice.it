@@ -42,6 +42,7 @@
 				);
 			}
 			if (v === 'eventi') {
+				controls.push(el(SelectControl, { key: 'm', label: 'Aspetto', value: a.modo || 'elenco', options: [{ value: 'elenco', label: 'Elenco a schede' }, { value: 'mese', label: 'Calendario mensile' }], onChange: function (x) { set({ modo: x }); } }));
 				controls.push(el(TextControl, { key: 'c', label: 'Solo questa categoria (indirizzo, facoltativo)', value: a.categoria, onChange: function (x) { set({ categoria: x }); } }));
 			}
 			if (v === 'prossimi_eventi' || v === 'eventi') {
