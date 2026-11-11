@@ -14,7 +14,7 @@ manca e le scelte prese**; si aggiorna a ogni PR del modulo.
 | 5 | `/saas/admin`: staff, 2FA, editor con bozza e «Pubblica», registro. **Solo la vendita** (decisione 10/11/2026): niente elenco associazioni, utenti o disattivazioni, che stanno nell'app | accesso, riepilogo, registro ed editor del catalogo **fatti**; gestione staff e `admin_hop` da fare |
 | 6 | Ricezione di `subscription`, `409 unknown_plan`, limiti dal piano | **fatto** (PR 2) |
 | 7 | `admin_hop` | da fare, dopo il passo 5 |
-| 9 | Demo `demoapp.associazionesemplice.it` | comando, utenti e soci finti nella PR; altri dati e messa online da fare (§6) |
+| 9 | Demo `demo.associazionesemplice.it` | comando, utenti e soci finti nella PR; altri dati e messa online da fare (§6) |
 
 ## 2. Catalogo (fatto)
 
@@ -50,10 +50,13 @@ Da fare **sul server** (accesso SSH: sessione Portale e pagamenti) prima di cost
    con `[P]` se `mod_proxy` è attivo su cPanel): l'indirizzo resta. Da provare: cookie con percorso `/saas/admin`,
    `X-Forwarded-*` fidati solo dal proxy, asset sotto lo stesso percorso (`ASSET_URL`), reindirizzamenti.
 2. **Sottocartella** con la stessa applicazione e `APP_URL` con percorso.
-3. Se nessuna regge: `app.associazionesemplice.it/admin` con redirect 301 da `/saas/admin` (cambia solo l'indirizzo visibile).
+3. **Nessun ripiego** (decisione della titolare, 11/11/2026): l'indirizzo che si vede e si usa è `associazionesemplice.it/saas/admin`.
+   `app.associazionesemplice.it/admin` è un'altra cosa (contenuti dell'app per clienti e utenti admin), mai la vendita: niente
+   `app./admin/accesso` per lo staff. Anche `accesso`, `esci` e `sso` stanno sotto `/saas/admin` (il token `staff_sso` va a
+   `https://associazionesemplice.it/saas/admin/sso`).
 
 L'esito si scrive qui prima della prima riga di codice dell'amministrazione. Per costruire non serve: in sviluppo e nei
-test l'amministrazione sta su `/admin` e il prefisso è una sola costante (`config('saas.admin_path')`).
+test l'amministrazione sta su `/saas/admin` e il prefisso è una sola costante (`config('saas.admin_path')`).
 
 ## 5. Amministrazione: accesso (PR 3)
 
@@ -73,7 +76,7 @@ test l'amministrazione sta su `/admin` e il prefisso è una sola costante (`conf
 - **Pagine** (sola lettura, Blade senza JavaScript): riepilogo, catalogo (bozza e «Pubblica»), registro. Seguono: gestione dello
   staff, `admin_hop`. L'admin non mostra né modifica associazioni, operatori, soci o utenti: è solo la parte di vendita.
 
-## 6. Demo `demoapp.associazionesemplice.it` (in corso)
+## 6. Demo `demo.associazionesemplice.it` (in corso)
 
 Un'istanza separata del SaaS (ARCHITETTURA_DOMINI §9) con database proprio e solo dati finti.
 
@@ -87,7 +90,7 @@ Un'istanza separata del SaaS (ARCHITETTURA_DOMINI §9) con database proprio e so
   Da fare: attività, risorse, prima nota, domande aperte, avvisi, socio di prova con area soci.
 - **Banner** in testa (`app.blade.php`) e `noindex` su tutte le pagine; nessuna statistica.
 - **Sul server demo**: `SAAS_REQUIRE_TWO_FACTOR=false` (solo lì, documentato), `MAIL_MAILER=log` (posta simulata: nessuna mail
-  esce), pagamenti simulati quando ci saranno, `SAAS_MEMBERS_DOMAIN=demoapp.associazionesemplice.it` e DNS jolly a parte.
+  esce), pagamenti simulati quando ci saranno, `SAAS_MEMBERS_DOMAIN=demo.associazionesemplice.it` (area soci demo: `polisportiva-demo.demo.associazionesemplice.it`)` e DNS jolly a parte.
 - **Online**: serve il via libera della titolare e l'accesso al server (sottodominio, database, cron). Non fatto.
 
 ## 7. Accesso unico dello staff (docs/UTENTI_E_ACCESSI.md; formato in docs/STAFF_SSO.md)
