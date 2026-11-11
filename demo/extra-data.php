@@ -267,6 +267,10 @@ extra_step( 'eventi sul sito', function () {
 	$texts['Gita di primavera']         = array( 'Gite', 'Una giornata in campagna tra passeggiata, pranzo al sacco e giochi all\'aperto. Si parte in auto condivise.', array( 70, 160, 80 ) );
 	$texts['Torneo di burraco']         = array( 'Serate', 'Una serata di carte tra soci e amici: iscrizioni aperte, premi per i primi tre.', array( 130, 70, 110 ) );
 	$texts['Cena di fine anno sociale'] = array( 'Serate', 'Una cena per chiudere l\'anno insieme, con il bilancio di quanto fatto e le prime idee per il prossimo.', array( 190, 120, 70 ) );
+	$texts['Cena di primavera']  = array( 'Serate', 'La cena di primavera dell\'associazione: menù di stagione, musica dal vivo e posti a sedere assegnati all\'arrivo.', array( 110, 150, 90 ) );
+	$texts['Gita in montagna']   = array( 'Gite', 'Una camminata facile tra i prati, adatta anche ai bambini, con pranzo al sacco e rientro nel pomeriggio.', array( 60, 120, 140 ) );
+	$texts['Concerto d\'estate'] = array( 'Musica', 'Musica all\'aperto sotto le stelle con il coro e la banda dell\'associazione. Ingresso libero, porta un cuscino.', array( 220, 130, 70 ) );
+	$texts['Mercatino di Natale'] = array( 'Solidarietà', 'Decorazioni, dolci e idee regalo preparate dai volontari: il ricavato finanzia le attività dell\'anno.', array( 170, 60, 70 ) );
 	// Date relative a oggi, ma sempre dentro l'anno sociale (un evento inizia e finisce nello stesso anno sociale): le più lontane si fermano a fine anno.
 	$last_day = Settings::social_year()->end()->format( 'Y-m-d' );
 	$more     = array(
@@ -280,14 +284,20 @@ extra_step( 'eventi sul sito', function () {
 		array( 'Concerto di primavera', 160, '21:00', 'Teatro parrocchiale', 120, 0 ),
 		array( 'Torneo di burraco', 185, '20:30', 'Sede dell\'associazione', 40, 800 ),
 		array( 'Cena di fine anno sociale', 230, '20:00', 'Sede dell\'associazione', 70, 2000 ),
+		array( 'Cena di primavera', 265, '20:00', 'Sede dell\'associazione', 70, 1800 ),
+		array( 'Gita in montagna', 300, '08:00', 'Ritrovo davanti alla sede', 30, 1500 ),
+		array( 'Concerto d\'estate', 345, '21:00', 'Giardino pubblico', 150, 0 ),
+		array( 'Mercatino di Natale', 380, '10:00', 'Piazza del paese', 0, 0 ),
 	);
 	foreach ( $more as $e ) {
-		$day     = min( gmdate( 'Y-m-d', time() + $e[1] * 86400 ), $last_day );
+		$want    = gmdate( 'Y-m-d', time() + $e[1] * 86400 );
+		$sy      = $want > $last_day ? Settings::social_year()->next() : Settings::social_year(); // oltre fine anno: anno sociale successivo
+		$day     = min( $want, $sy->end()->format( 'Y-m-d' ) );
 		$session = array( 'session_date' => $day, 'start_time' => $e[2], 'location' => $e[3] );
 		if ( $e[4] > 0 ) {
 			$session['capacity'] = $e[4];
 		}
-		$act->create( array( 'name' => $e[0], 'social_year' => $year, 'kind' => 'event', 'fee_cents' => $e[5], 'session' => $session ) );
+		$act->create( array( 'name' => $e[0], 'social_year' => $sy->label(), 'kind' => 'event', 'fee_cents' => $e[5], 'session' => $session ) );
 	}
 	foreach ( $texts as $name => $t ) {
 		foreach ( $act->all_for_select() as $a ) {
