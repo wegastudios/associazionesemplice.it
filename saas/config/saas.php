@@ -43,6 +43,10 @@ return [
     // Indirizzi da cui fidarsi degli X-Forwarded-* (il proxy del portale), separati da virgole; vuoto = nessuno.
     'trusted_proxies' => env('SAAS_TRUSTED_PROXIES', ''),
 
+    // Indirizzo pubblico di /saas/admin e /saas/staff dietro il proxy del portale (https://associazionesemplice.it): gli
+    // indirizzi scritti dal SaaS in quelle pagine partono da qui, mai dalle intestazioni della richiesta. Vuoto = nessuno.
+    'public_url' => env('SAAS_PUBLIC_URL', ''),
+
     // Ambiente demo (docs/PIATTAFORMA.md §6): acceso solo sul server demo (APP_ENV=demo), mai in produzione.
     // `saas:demo:reset` cancella il database e lo ricrea con dati finti; gli accessi sono pubblici per ruolo.
     'demo' => [

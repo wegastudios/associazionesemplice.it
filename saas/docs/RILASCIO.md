@@ -155,3 +155,5 @@ nuovo `ETag`. Nessun segreto in più, nessun cron nuovo.
 - **Cookie**: l'amministrazione usa un cookie proprio (`__Secure-as_admin`, percorso `/saas/admin`) **senza dominio**, anche se `SESSION_DOMAIN` è quello del gestionale: così vale solo per `associazionesemplice.it`.
 - **`.env`**: se c'è `SAAS_ADMIN_PATH`, va tolto (il predefinito è `saas/admin`). `APP_URL` e `SESSION_DOMAIN` restano quelli del gestionale.
 - **Tornare indietro**: si ripristina la copia dell'`.htaccess` di `public_html` fatta prima del cambio e si svuota `SAAS_TRUSTED_PROXIES`; il rinvio del portale a `app./admin` torna a funzionare da solo.
+
+**Aggiornamento (11/11/2026): `SAAS_PUBLIC_URL`.** Dietro il proxy il web server dell'app sostituisce l'indirizzo del client e il SaaS non vede l'`X-Forwarded-Host`, quindi i moduli di `/saas/admin` puntavano ad `app.` (e la CSP `form-action 'self'` li bloccava). Gli indirizzi delle pagine `/saas/admin` e `/saas/staff` ora partono da `SAAS_PUBLIC_URL` (`https://associazionesemplice.it`), un valore fisso: nessuna intestazione della richiesta può spostarli. `SAAS_TRUSTED_PROXIES` resta ma non è più necessario per questo.

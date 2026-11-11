@@ -103,3 +103,17 @@ it('non permette di modificare né cancellare il registro delle azioni', functio
 
     expect(fn () => DB::table('core.platform_audit')->update(['action' => 'staff.altro']))->toThrow(QueryException::class);
 });
+
+it('dietro il proxy del portale i moduli puntano all\'indirizzo pubblico, non a quello dell\'app né a un X-Forwarded-Host inventato', function (): void {
+    config(['saas.public_url' => 'https://associazionesemplice.it']);
+
+    $this->get('/saas/admin/accesso', ['X-Forwarded-Host' => 'attaccante.example'])->assertOk()
+        ->assertSee('action="https://associazionesemplice.it/saas/admin/accesso"', false)
+        ->assertDontSee('attaccante.example');
+});
+
+it('senza SAAS_PUBLIC_URL gli indirizzi restano quelli dell\'app', function (): void {
+    config(['saas.public_url' => '']);
+
+    $this->get('/saas/admin/accesso')->assertOk()->assertDontSee('associazionesemplice.it/saas/admin/accesso', false);
+});
