@@ -110,6 +110,15 @@ final class Admin {
 			return;
 		}
 
+		if ( $this->sso && ! $get && 'esci' === $a ) {
+			StaffSso::close();
+			header( 'Location: ' . StaffSso::loginUrl(), true, 303 );
+			return;
+		}
+		if ( $this->sso && ! $get && 'vai' === $a ) {
+			$this->goTo( $b );
+			return;
+		}
 		if ( $this->sso && in_array( $a, array( 'sicurezza', 'verifica' ), true ) ) {
 			$this->notFound(); // con l'accesso unico il secondo fattore (facoltativo) si gestisce nel SaaS
 			return;
@@ -430,6 +439,17 @@ final class Admin {
 	}
 
 	/** Staff: elenco, aggiunta/cambio permessi (POST /admin/staff) e rimozione (POST /admin/staff/rimuovi). */
+	/** «Vai a»: il SaaS dà il token per l'altra area (solo se ci si ha un ruolo) e il browser lo manda in POST all'indirizzo fisso dell'area. */
+	private function goTo( string $area ): void {
+		$s     = StaffSso::current();
+		$token = $s && isset( StaffSso::DEST[ $area ] ) ? StaffSso::tokenFor( $s, $area ) : null;
+		if ( null === $token ) {
+			throw new UserError( 'Non riesco ad aprire quell\'area ora: riprova tra poco.' );
+		}
+		Audit::log( $this->db, $this->email, 'staff_vai', 'Passaggio a: ' . $area );
+		View::render( 'wordpress-admin/staff_vai', array( 'action' => StaffSso::DEST[ $area ], 'token' => $token, 'name' => StaffSso::AREA_NAMES[ $area ], 'title' => 'Apertura di ' . StaffSso::AREA_NAMES[ $area ] ) );
+	}
+
 	/** Pagina «Utenti» con l'accesso staff unico: l'elenco e i ruoli stanno nel SaaS, che decide chi può cosa; qui si fanno solo le richieste. */
 	private function users( bool $get, string $b ): void {
 		if ( Staff::ADMIN !== $this->role ) {

@@ -57,7 +57,8 @@ final class App {
 				View::render( 'message', array( 'title' => 'Scarico non disponibile', 'text' => $file ) );
 				return;
 			}
-			if ( 'POST' === $method && ! $this->csrfOk() ) {
+			// La POST dell'accesso staff unico arriva dal SaaS (altro sito): non ha il nostro CSRF, vale il token firmato.
+			if ( 'POST' === $method && Plugin\Admin::BASE . '/sso' !== $path && ! $this->csrfOk() ) {
 				throw new UserError( 'Sessione scaduta: ricarica la pagina e riprova.' );
 			}
 			$this->route( $method, $path );

@@ -2025,6 +2025,7 @@ $ssSales->setAccessible( true );
 $ssAdm = new Portale\Plugin\Admin( $ssdb, $ssBill, '', array( 'email' => 'mario@esempio.it', 'level' => 'vendita', 'sid' => str_repeat( 'a', 32 ) ) );
 check( 'staff sso: «vendita» può catalogo, prezzi, promo, licenze e clienti', $ssSales->invoke( $ssAdm, 'catalogo' ) && $ssSales->invoke( $ssAdm, 'prezzi' ) && $ssSales->invoke( $ssAdm, 'codici-promo' ) && $ssSales->invoke( $ssAdm, 'licenze' ) && $ssSales->invoke( $ssAdm, 'clienti' ) && $ssSales->invoke( $ssAdm, '' ) );
 check( 'staff sso: «vendita» non può impostazioni, versioni, pagamenti, email, pagine, registro, utenti, Wega', ! array_filter( array( 'impostazioni', 'versioni', 'pagamenti', 'email', 'legale', 'cookie', 'registro', 'utenti', 'staff', 'wega', 'sicurezza' ), function ( $a ) use ( $ssSales, $ssAdm ) { return $ssSales->invoke( $ssAdm, $a ); } ) );
+check( 'staff sso: «Vai a» — destinazioni fisse su https, solo SaaS e Supporto', array( 'saas', 'supporto' ) === array_keys( StaffSso::DEST ) && 0 === count( array_filter( StaffSso::DEST, function ( $u ) { return 0 !== strpos( $u, 'https://' ); } ) ) );
 $_SESSION = array();
 $ssCalls = array();
 $ssReply = array( 200, json_encode( array( 'token' => $ssTok() ) ) );
