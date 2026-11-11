@@ -9,7 +9,33 @@ class StaffPortal
 {
     private function url(string $path): string
     {
-        return rtrim((string) config('support.sso.portal'), '/').'/api/staff/v1/'.$path;
+        return rtrim((string) config('support.staff_sso.issuer'), '/').'/api/staff/v1/'.$path;
+    }
+
+    /**
+     * Login dello staff verificato dal SaaS (email, password ed eventuale codice a due passaggi): in risposta un token staff_sso,
+     * che poi si verifica e si usa come tutti gli altri. Password e codice passano solo in questa richiesta firmata, mai salvati.
+     *
+     * @return string|null il token staff_sso, oppure null (credenziali errate, portale muto: l'esito è sempre generico)
+     */
+    public function login(string $email, string $password, ?string $code, ?string $ip): ?string
+    {
+        $claims = ['area' => 'supporto', 'email' => $email, 'password' => $password];
+        if ($code !== null && $code !== '') {
+            $claims['code'] = $code;
+        }
+        if ($ip !== null) {
+            $claims['ip'] = $ip;
+        }
+        try {
+            $response = Http::asForm()->timeout(8)->post($this->url('login'), ['token' => StaffJwt::sign('staff_login', $claims)]);
+        } catch (\Throwable) {
+            return null;
+        }
+        $data = $response->json();
+        $token = is_array($data) ? ($data['staff_sso'] ?? $data['token'] ?? null) : null;
+
+        return $response->ok() && is_string($token) ? $token : null;
     }
 
     /**

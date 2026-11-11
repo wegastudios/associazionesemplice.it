@@ -71,7 +71,7 @@ class StaffUsersController extends Controller
         }
         // Per dare «admin» o disattivare serve una riconferma recente: il portale la chiede di nuovo
         if (($result['body']['error'] ?? null) === 'riconferma_richiesta') {
-            return redirect(rtrim((string) config('support.sso.portal'), '/').'/staff/riconferma');
+            return redirect(rtrim((string) config('support.staff_sso.issuer'), '/').'/staff/riconferma');
         }
 
         return back()->withErrors(['staff' => $this->message($result)]);

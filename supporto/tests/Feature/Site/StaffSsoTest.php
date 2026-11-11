@@ -5,6 +5,7 @@ namespace Tests\Feature\Site;
 use App\Models\User;
 use App\Services\Staff\StaffJwt;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\SiteTestCase;
 
@@ -30,6 +31,7 @@ class StaffSsoTest extends SiteTestCase
         config([
             'app.url' => 'https://supporto.test',
             'support.sso.portal' => 'https://portale.test',
+            'support.staff_sso.issuer' => 'https://portale.test',
             'support.staff_sso.portal_keys' => 'staff-test:'.StaffJwt::b64(sodium_crypto_sign_publickey($pair)),
             'support.staff_sso.private_key_file' => $this->ourFile,
         ]);
@@ -64,7 +66,8 @@ class StaffSsoTest extends SiteTestCase
 
     public function test_valid_token_opens_a_session_with_the_level_from_the_portal(): void
     {
-        $this->post('/staff/sso', ['token' => $this->token()])->assertRedirect('/admin');
+        // Il SaaS aggiunge `areas` (area => livello) per il selettore: ammesso
+        $this->post('/staff/sso', ['token' => $this->token(['areas' => ['supporto' => 'agente', 'wordpress' => 'vendita']])])->assertRedirect('/admin');
 
         $user = User::where('email', 'agente@example.it')->firstOrFail();
         $this->assertSame('agent', $user->global_role);
@@ -94,6 +97,7 @@ class StaffSsoTest extends SiteTestCase
             'area saas' => $this->token(['area' => 'saas']),
             'livello vendita' => $this->token(['level' => 'vendita']),
             'email maiuscola' => $this->token(['sub' => 'Agente@Example.it']),
+            'areas non valide' => $this->token(['areas' => ['supporto' => ['admin']]]),
             'mfa non booleano' => $this->token(['mfa' => 'si']),
             'non un token' => 'abc.def',
         ];
@@ -158,7 +162,7 @@ class StaffSsoTest extends SiteTestCase
         $this->get('/admin/ticket')->assertOk();
 
         $this->travel(121)->minutes();
-        $this->get('/admin/ticket')->assertRedirect('https://portale.test/staff/accedi?area=supporto');
+        $this->get('/admin/ticket')->assertRedirect(route('admin.login'));
         $this->assertGuest();
     }
 
@@ -177,7 +181,7 @@ class StaffSsoTest extends SiteTestCase
         $this->assertSame('agent', User::where('email', 'agente@example.it')->value('global_role'));
 
         $this->travel(6)->minutes();
-        $this->get('/admin/ticket')->assertRedirect('https://portale.test/staff/accedi?area=supporto');
+        $this->get('/admin/ticket')->assertRedirect(route('admin.login'));
         $this->assertGuest();
         $this->assertNull(User::where('email', 'agente@example.it')->value('global_role'));
     }
@@ -190,7 +194,7 @@ class StaffSsoTest extends SiteTestCase
         $this->travel(6)->minutes();
         $this->get('/admin/ticket')->assertOk();
         $this->travel(6)->minutes();
-        $this->get('/admin/ticket')->assertRedirect('https://portale.test/staff/accedi?area=supporto');
+        $this->get('/admin/ticket')->assertRedirect(route('admin.login'));
     }
 
     public function test_local_login_can_be_switched_off(): void
@@ -198,6 +202,50 @@ class StaffSsoTest extends SiteTestCase
         config(['support.staff_sso.local_login' => false]);
 
         $this->post('/admin/login', ['email' => 'a@example.it', 'password' => 'x'])->assertForbidden();
-        $this->get('/admin/login')->assertOk()->assertSee('Entra dal portale')->assertDontSee('Password dimenticata');
+        $this->get('/admin/login')->assertOk()->assertDontSee('Password dimenticata')->assertDontSee('name="password"', false);
+    }
+
+    public function test_remote_login_checks_credentials_in_the_saas_and_opens_the_session(): void
+    {
+        config(['support.staff_sso.remote_login' => true, 'support.staff_sso.local_login' => false]);
+        Http::fake(['portale.test/api/staff/v1/login' => Http::response(['staff_sso' => $this->token(['sub' => 'capo@example.it', 'level' => 'admin'])])]);
+
+        $this->get('/admin/login')->assertOk()->assertSee('Codice a due passaggi');
+        $this->post('/admin/login', ['email' => 'Capo@Example.it', 'password' => 'segreta-lunga-1', 'code' => '123456'])->assertRedirect('/admin');
+
+        $this->assertSame('admin', User::where('email', 'capo@example.it')->value('global_role'));
+        Http::assertSent(function ($request) {
+            $claims = StaffJwt::decode((string) $request['token'], ['supporto-test' => $this->ourPublic]);
+
+            return $claims !== null && $claims['typ'] === 'staff_login' && $claims['email'] === 'capo@example.it'
+                && $claims['password'] === 'segreta-lunga-1' && $claims['code'] === '123456' && $claims['area'] === 'supporto';
+        });
+        // La password non resta da nessuna parte nel supporto
+        $this->assertSame(0, DB::table('audit_logs')->where('meta', 'like', '%segreta-lunga-1%')->count());
+    }
+
+    public function test_remote_login_refuses_with_a_generic_message_and_creates_nothing(): void
+    {
+        config(['support.staff_sso.remote_login' => true, 'support.staff_sso.local_login' => false]);
+
+        Http::fake(['portale.test/*' => Http::response(['error' => 'x'], 401)]);
+        $this->post('/admin/login', ['email' => 'x@example.it', 'password' => 'sbagliata-1234'])->assertSessionHasErrors(['email' => 'Credenziali non valide.']);
+
+        Http::fake(['portale.test/*' => Http::response('', 500)]);
+        $this->post('/admin/login', ['email' => 'x@example.it', 'password' => 'sbagliata-1234'])->assertSessionHasErrors(['email' => 'Credenziali non valide.']);
+
+        $this->assertGuest();
+        $this->assertSame(0, User::count());
+    }
+
+    public function test_emergency_local_login_still_works_when_enabled_and_the_saas_does_not_answer(): void
+    {
+        config(['support.staff_sso.remote_login' => true, 'support.staff_sso.local_login' => true]);
+        Http::fake(['portale.test/*' => Http::response('', 500)]);
+        $owner = User::factory()->create(['email' => 'titolare@example.it', 'password' => 'password-emergenza-1']);
+        $owner->forceFill(['global_role' => 'admin'])->save();
+
+        $this->post('/admin/login', ['email' => 'titolare@example.it', 'password' => 'password-emergenza-1'])->assertRedirect('/admin');
+        $this->assertAuthenticatedAs($owner);
     }
 }

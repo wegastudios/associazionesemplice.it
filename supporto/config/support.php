@@ -49,6 +49,8 @@ return [
     // Le chiavi pubbliche del portale sono "kid:x" separate da virgola; la chiave privata del supporto sta in un file fuori dal repository
     // (si crea con `php artisan staff:key`). Senza chiavi del portale l'accesso staff unico e spento.
     'staff_sso' => [
+        // Chi emette i token e risponde a riconferma e «Utenti» (oggi il SaaS, con un indirizzo del dominio principale); se manca, il portale
+        'issuer' => rtrim((string) env('SUPPORT_STAFF_ISSUER', env('SUPPORT_SSO_PORTAL', 'https://associazionesemplice.it')), '/'),
         'portal_keys' => env('SUPPORT_STAFF_PORTAL_KEYS'),
         'audience' => 'associazionesemplice-supporto',
         'private_key_file' => env('SUPPORT_STAFF_PRIVATE_KEY_FILE', storage_path('app/private/staff-sign.key')),
@@ -57,6 +59,8 @@ return [
         'check_seconds' => 300,
         // Accesso locale dello staff (email e password): resta acceso finche l'accesso unico non e verificato, poi si spegne da .env.
         // Spento, resta solo come accesso di emergenza della titolare, riacceso dal server.
+        // Login nel modulo del supporto verificato dal SaaS (POST /api/staff/v1/login): email, password e codice non si salvano qui
+        'remote_login' => (bool) env('SUPPORT_STAFF_REMOTE_LOGIN', false),
         'local_login' => (bool) env('SUPPORT_STAFF_LOCAL_LOGIN', true),
     ],
 

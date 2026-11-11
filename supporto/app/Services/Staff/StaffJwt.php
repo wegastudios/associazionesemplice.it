@@ -13,7 +13,7 @@ class StaffJwt
     private const SKEW = 60;
 
     /** @var array<int, string> claim ammessi nel token staff_sso */
-    private const SSO_CLAIMS = ['iss', 'aud', 'typ', 'iat', 'exp', 'jti', 'sub', 'area', 'level', 'mfa', 'mfa_at', 'sid'];
+    private const SSO_CLAIMS = ['iss', 'aud', 'typ', 'iat', 'exp', 'jti', 'sub', 'area', 'level', 'mfa', 'mfa_at', 'sid', 'areas'];
 
     public static function b64(string $raw): string
     {
@@ -53,14 +53,14 @@ class StaffJwt
         if ($claims === null || array_diff(array_keys($claims), self::SSO_CLAIMS) !== []) {
             return null;
         }
-        $portal = rtrim((string) config('support.sso.portal'), '/');
+        $portal = rtrim((string) config('support.staff_sso.issuer'), '/');
         if (($claims['typ'] ?? null) !== 'staff_sso'
             || ($claims['aud'] ?? null) !== config('support.staff_sso.audience')
             || rtrim((string) ($claims['iss'] ?? ''), '/') !== $portal
             || ! is_int($claims['iat'] ?? null) || ! is_int($claims['exp'] ?? null)
             || $claims['exp'] - $claims['iat'] > 60 || $claims['exp'] < $now - self::SKEW || $claims['iat'] > $now + self::SKEW
             || ! is_string($claims['jti'] ?? null) || strlen($claims['jti']) < 16 || strlen($claims['jti']) > 100
-            || ! is_bool($claims['mfa'] ?? null)) {
+            || ! is_bool($claims['mfa'] ?? null) || ! self::validAreas($claims['areas'] ?? [])) {
             return null;
         }
         if (! Cache::add('staff:jti:'.$claims['jti'], 1, max(60, $claims['exp'] - $now + 2 * self::SKEW))) {
@@ -68,6 +68,21 @@ class StaffJwt
         }
 
         return $claims;
+    }
+
+    /** `areas` (area => livello) serve al selettore «Vai a»: solo coppie di testi brevi, mai altro. */
+    private static function validAreas(mixed $areas): bool
+    {
+        if (! is_array($areas) || count($areas) > 10) {
+            return false;
+        }
+        foreach ($areas as $area => $level) {
+            if (! is_string($area) || ! preg_match('/^[a-z]{1,20}$/', $area) || ! is_string($level) || ! preg_match('/^[a-z]{1,20}$/', $level)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -112,7 +127,7 @@ class StaffJwt
         $header = self::b64(json_encode(['typ' => 'JWT', 'alg' => 'EdDSA', 'kid' => $key['kid']]));
         $payload = self::b64(json_encode([
             'iss' => rtrim((string) config('app.url'), '/'),
-            'aud' => rtrim((string) config('support.sso.portal'), '/'),
+            'aud' => rtrim((string) config('support.staff_sso.issuer'), '/'),
             'typ' => $typ,
             'iat' => $now,
             'exp' => $now + 120,
