@@ -26,6 +26,7 @@ final class PublicEvents {
 		add_action( 'asem_activity_updated', array( __CLASS__, 'activity_updated' ), 10, 2 );
 		add_action( 'asem_activity_deleted', array( __CLASS__, 'activity_deleted' ) );
 		add_filter( 'map_meta_cap', array( __CLASS__, 'protect' ), 10, 4 );
+		add_filter( 'user_has_cap', array( __CLASS__, 'grant_caps' ), 10, 4 );
 		add_filter( 'the_content', array( __CLASS__, 'content' ), 20 );
 		add_filter( 'post_thumbnail_html', array( __CLASS__, 'hide_theme_poster' ), 10, 2 );
 		add_filter( 'render_block', array( __CLASS__, 'hide_theme_poster_block' ), 10, 2 );
@@ -75,7 +76,7 @@ final class PublicEvents {
 				'exclude_from_search' => false,
 				'supports'            => array( 'title', 'editor', 'thumbnail', 'excerpt' ),
 				'rewrite'             => array( 'slug' => self::slug(), 'with_front' => false ),
-				'capability_type'     => 'post',
+				'capability_type'     => array( 'asem_evento', 'asem_eventi' ), // permessi propri: non toccano gli articoli
 				'map_meta_cap'        => true,
 				'capabilities'        => array( 'create_posts' => 'do_not_allow' ), // si creano solo dall'attività
 			)
@@ -87,6 +88,7 @@ final class PublicEvents {
 				'labels'       => array( 'name' => 'Categorie degli eventi', 'singular_name' => 'Categoria', 'menu_name' => 'Categorie' ),
 				'public'       => true,
 				'hierarchical' => true,
+				'capabilities' => array( 'manage_terms' => Plugin::CAP_OPS, 'edit_terms' => Plugin::CAP_OPS, 'delete_terms' => Plugin::CAP_OPS, 'assign_terms' => Plugin::CAP_OPS ),
 				'show_in_rest' => true,
 				'rewrite'      => array( 'slug' => self::slug() . '/categoria', 'with_front' => false ),
 			)
@@ -220,6 +222,17 @@ final class PublicEvents {
 			}
 		}
 		update_option( self::OPT_DONE, 'done', false );
+	}
+
+	/** Chi lavora sulla gestione (segreteria, tesoriere, amministratore) può scrivere le pagine degli eventi e caricare le locandine; sugli altri contenuti del sito non guadagna nulla. */
+	public static function grant_caps( $allcaps, $caps, $args, $user ) {
+		if ( empty( $allcaps[ Plugin::CAP_OPS ] ) ) {
+			return $allcaps;
+		}
+		foreach ( array( 'edit_asem_eventi', 'edit_others_asem_eventi', 'edit_published_asem_eventi', 'edit_private_asem_eventi', 'publish_asem_eventi', 'read_private_asem_eventi', 'delete_asem_eventi', 'delete_others_asem_eventi', 'delete_published_asem_eventi', 'delete_private_asem_eventi', 'upload_files' ) as $c ) {
+			$allcaps[ $c ] = true;
+		}
+		return $allcaps;
 	}
 
 	/** Nessuno crea a mano, e finché l'attività esiste la pagina non si elimina né si collega ad altro. */

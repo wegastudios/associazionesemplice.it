@@ -6,6 +6,7 @@ Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi u
 - Eventi e corsi hanno una pagina pubblica sul sito, collegata all'attività e creata da sola: scrivi la descrizione e scegli la locandina, data, luogo, contributo e posti li prende dall'attività
 - Dalla pagina dell'evento i soci si prenotano e possono salvare le date nel proprio calendario
 - Nuovo elenco degli eventi a schede, per mese, con data in evidenza e locandina: inseriscilo con lo shortcode [associazionesemplice_eventi], con il blocco «Associazione Semplice» o con Elementor
+- La segreteria può modificare le pagine degli eventi e caricare le locandine senza toccare gli altri contenuti del sito
 
 ## 1.3.18
 - Accesso soci più semplice: una sola schermata con password o link via email
