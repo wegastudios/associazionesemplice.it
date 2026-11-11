@@ -35,7 +35,7 @@ final class Identity {
 
 	/** Base dei collegamenti nelle email (reimposta password, conferma email): fissa, mai dalla richiesta. */
 	public static function linkBase( string $what ): string {
-		return rtrim( (string) Config::get( 'base_url', 'https://associazionesemplice.it' ), '/' ) . '/accedi/' . $what . '/';
+		return 'https://associazionesemplice.it/accedi/' . $what . '/'; // fisso: il SaaS accetta solo questo dominio
 	}
 
 	const ACTIONS = array( 'login', 'code', 'session', 'profile', 'password', 'email', 'email-confirm', '2fa-start', '2fa-confirm', '2fa-disable', 'sessions', 'session-revoke', 'logout', 'reset-request', 'reset-complete', 'token' );
