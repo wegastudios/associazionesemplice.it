@@ -34,6 +34,9 @@ final class UsePlatformSession
             config([
                 'session.cookie' => app()->isProduction() ? '__Secure-as_admin' : 'as_admin',
                 'session.path' => '/'.$path,
+                // Senza dominio: il cookie vale solo per l'indirizzo da cui arriva la richiesta (dietro il proxy del portale è
+                // associazionesemplice.it), anche se SESSION_DOMAIN è quello del gestionale.
+                'session.domain' => null,
                 'session.expire_on_close' => true,
                 'session.lifetime' => 120,
                 'session.same_site' => 'strict',

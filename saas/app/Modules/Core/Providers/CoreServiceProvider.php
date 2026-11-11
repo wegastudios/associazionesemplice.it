@@ -20,6 +20,8 @@ use App\Modules\Core\Org\DatabaseOrgDirectory;
 use App\Modules\Core\Platform\PlatformConfig;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Database\Schema\Grammars\PostgresGrammar;
+use Illuminate\Http\Middleware\TrustProxies;
+use Illuminate\Http\Request;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
@@ -39,6 +41,13 @@ final class CoreServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Dietro il proxy del portale gli X-Forwarded-* valgono solo da questi indirizzi (SAAS_TRUSTED_PROXIES); vuoto = nessuno.
+        $proxies = config('saas.trusted_proxies');
+        if (is_string($proxies) && $proxies !== '') {
+            TrustProxies::at(array_values(array_filter(array_map('trim', explode(',', $proxies)), static fn (string $p): bool => $p !== '')));
+            TrustProxies::withHeaders(Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_HOST | Request::HEADER_X_FORWARDED_PORT | Request::HEADER_X_FORWARDED_PROTO);
+        }
+
         // Impostazioni della piattaforma (posta, backup, servizio chiavi, cache) al posto del file d'ambiente, con i ripieghi.
         // Nei test no: ogni applicazione di prova aprirebbe una connessione in più (i test la chiamano da sé).
         if (! $this->app->runningUnitTests()) {
