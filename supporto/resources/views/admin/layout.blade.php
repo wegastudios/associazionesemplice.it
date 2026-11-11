@@ -21,12 +21,15 @@
                     <a href="{{ route('admin.settings.edit') }}" @if (request()->routeIs('admin.settings.*')) aria-current="page" @endif>Impostazioni</a>
                 @else
                     <a href="{{ route('admin.tickets.index') }}" @if (request()->routeIs('admin.tickets.*')) aria-current="page" @endif>Ticket</a>
+                    @if (auth()->user()->isAdmin())
                     <a href="{{ route('admin.topics.index') }}" @if (request()->routeIs('admin.topics.*', 'admin.sections.*')) aria-current="page" @endif>Argomenti</a>
                     <a href="{{ route('admin.articles.index') }}" @if (request()->routeIs('admin.articles.*')) aria-current="page" @endif>Articoli</a>
                     <a href="{{ route('admin.plans.index') }}" @if (request()->routeIs('admin.plans.*')) aria-current="page" @endif>Piani</a>
                     <a href="{{ route('admin.hub.status') }}" @if (request()->routeIs('admin.hub.*')) aria-current="page" @endif>Hub</a>
+                    <a href="{{ route('admin.users.index') }}" @if (request()->routeIs('admin.users.*')) aria-current="page" @endif>Utenti</a>
+                    @endif
                 @endif
-                <a href="{{ route('admin.mail.edit') }}" @if (request()->routeIs('admin.mail.*')) aria-current="page" @endif>Email</a>
+                @if (auth()->user()->isAdmin())<a href="{{ route('admin.mail.edit') }}" @if (request()->routeIs('admin.mail.*')) aria-current="page" @endif>Email</a>@endif
                 <a href="{{ rtrim(config('support.sso.portal'), '/') }}/admin">Gestione licenze</a>
             </nav>
             <a class="who" href="{{ route('admin.password.edit') }}" @if (request()->routeIs('admin.password.*')) aria-current="page" @endif>{{ auth()->user()->email }}</a>

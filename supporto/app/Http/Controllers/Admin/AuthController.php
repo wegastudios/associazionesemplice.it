@@ -18,15 +18,18 @@ class AuthController extends Controller
 
     public function showLogin(): View|RedirectResponse
     {
-        if (Auth::user()?->isAdmin()) {
+        if (Auth::user()?->isStaff()) {
             return redirect()->route('admin.home');
         }
 
-        return view('admin.login');
+        return view('admin.login', ['localLogin' => (bool) config('support.staff_sso.local_login')]);
     }
 
     public function login(Request $request, AuditLogger $audit): RedirectResponse
     {
+        // Spento l'accesso locale, lo staff entra solo dal portale
+        abort_unless(config('support.staff_sso.local_login'), 403, 'L\'accesso con password è disattivato: entra dal portale.');
+
         $data = $request->validate(['email' => 'required|email', 'password' => 'required|string']);
         $throttleKey = Str::lower($data['email']).'|'.$request->ip();
 
@@ -47,7 +50,7 @@ class AuthController extends Controller
             return $fail();
         }
 
-        if (! Auth::user()->isAdmin() || Auth::user()->sso_managed) {
+        if (! Auth::user()->isStaff() || Auth::user()->sso_managed) {
             Auth::logout();
             RateLimiter::hit($throttleKey, 300);
             $audit->record('admin.login_denied', null, ['email' => $data['email']]);

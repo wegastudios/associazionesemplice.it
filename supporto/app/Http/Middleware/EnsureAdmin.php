@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\Staff\StaffSession;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -24,14 +25,21 @@ class EnsureAdmin
             return redirect()->guest(route('admin.login'));
         }
 
-        if ($user->sso_managed && (now()->timestamp - (int) $request->session()->get('sso_staff_at', 0)) > self::SSO_STAFF_HOURS * 3600) {
+        if ($user->sso_managed && ! $request->session()->has('staff') && (now()->timestamp - (int) $request->session()->get('sso_staff_at', 0)) > self::SSO_STAFF_HOURS * 3600) {
             Auth::logout();
             $request->session()->invalidate();
 
             return redirect(rtrim((string) config('support.sso.portal'), '/').'/supporto/accedi');
         }
 
-        abort_unless($user->isAdmin(), 403, 'Accesso riservato agli amministratori.');
+        // Entrato dal portale: inattività, durata massima e riconferma ogni 5 minuti
+        if ($request->session()->has('staff') && ! app(StaffSession::class)->touch($request, $user)) {
+            app(StaffSession::class)->close($request, $user);
+
+            return redirect(rtrim((string) config('support.sso.portal'), '/').'/staff/accedi?area=supporto');
+        }
+
+        abort_unless($user->fresh()->isStaff(), 403, 'Accesso riservato allo staff.');
 
         return $next($request);
     }
