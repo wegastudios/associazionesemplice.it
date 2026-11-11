@@ -61,7 +61,7 @@ Regole fisse:
 2. Nessuno modifica il proprio livello né si toglie da solo.
 3. L'ultimo admin di un'area non si può togliere (e la titolare resta sempre).
 4. «Disattiva account» toglie tutti i ruoli e chiude le sessioni **subito**.
-5. Dare un ruolo **admin** o disattivare un utente chiede di riconfermare password e codice a due passaggi se l'ultima
+5. Dare un ruolo **admin** o disattivare un utente chiede di riconfermare la password (e il codice a due passaggi, se la persona lo ha attivato) se l'ultima
    conferma ha più di 15 minuti.
 6. Ogni invito, assegnazione, revoca, disattivazione e accesso finisce in un registro (chi, a chi, cosa, quando, indirizzo IP);
    **ogni nuovo admin e ogni accesso da un indirizzo nuovo mandano un avviso** alla titolare.
@@ -76,12 +76,12 @@ vendita a Mario» lo fa con la richiesta firmata dell'utente che la sta usando, 
 ### Entrare
 
 - **Un'unica pagina di accesso staff** nel portale (indirizzo da fissare, p.es. `associazionesemplice.it/staff/accedi`; `/wordpress/admin` ci
-  porta se non c'è sessione). Email e password, **codice a due passaggi obbligatorio** per tutti gli staff (il portale ha già
+  porta se non c'è sessione). Email e password, **codice a due passaggi FACOLTATIVO, spento di default: lo attiva chi vuole, ognuno per sé** (il portale ha già
   `Totp` e `Mfa`).
 - Aprendo direttamente `/saas/admin` o il supporto senza sessione, si viene mandati all'accesso staff e **poi riportati** lì
   (solo verso le tre aree fisse, mai a un indirizzo preso dalla richiesta).
 - Il cliente normale usa l'accesso clienti (`/account`), che resta com'è: staff e clienti non si confondono. Una persona può essere
-  entrambe le cose, ma l'accesso allo staff chiede sempre il secondo fattore.
+  entrambe le cose, ma chi ha attivato il secondo fattore lo usa anche per lo staff.
 
 ### Muoversi
 
@@ -89,12 +89,12 @@ In alto, in ogni area, un **selettore «Vai a»**: WordPress · SaaS · Supporto
 Un tocco e si è dentro, **senza altro login**:
 
 1. il portale emette un token firmato (JWT EdDSA, stesso formato del contratto §1) `typ: "staff_sso"`, vita **60 secondi**,
-   monouso (`jti`), con `sub` (email), `area` di destinazione e **livello** in quell'area, `mfa: true` e l'orario del secondo
+   monouso (`jti`), con `sub` (email), `area` di destinazione e **livello** in quell'area, `mfa` (vero solo se la persona lo ha usato in questa sessione) e, se vero, l orario del secondo
    fattore, `sid` (identificativo della sessione centrale);
 2. il browser lo manda alla destinazione con una **POST** (il token non resta nell'indirizzo né nel referer);
 3. la destinazione verifica firma, `aud`, `typ`, scadenza e `jti`, apre una **sessione propria** con quel livello e la
    destinazione è fissa (la home dell'area): nessun indirizzo di ritorno libero;
-4. se il secondo fattore ha più di 8 ore, il portale lo richiede prima di emettere il token.
+4. se la persona ha attivato il secondo fattore e l ultima verifica ha più di 8 ore, lo si richiede prima di emettere il token; chi non lo ha attivato non lo vede mai.
 
 ### Uscire e revocare
 
@@ -132,7 +132,7 @@ password né segreti del secondo fattore.
 ## 8. Cosa può andare storto (e come lo limitiamo)
 
 Un solo elenco di utenti significa un **punto unico di rischio**: un account staff rubato con più ruoli apre più aree. Perciò:
-secondo fattore obbligatorio, riconferma per le azioni che danno privilegi, sessioni corte e riconferma ogni 5 minuti, avvisi alla
+secondo fattore facoltativo (consigliato agli admin, mai imposto), riconferma della password per le azioni che danno privilegi, sessioni corte e riconferma ogni 5 minuti, avvisi alla
 titolare su ogni nuovo admin e su accessi da indirizzi nuovi, limite ai tentativi, accesso di emergenza solo da server. Se il
 portale è irraggiungibile le aree **non** si aprono (nessuna sessione nuova), tranne l'accesso di emergenza della titolare.
 
