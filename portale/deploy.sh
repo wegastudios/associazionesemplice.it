@@ -27,7 +27,8 @@ cd ~/public_html
 printf '<?php\n// Punto d'"'"'ingresso del portale: il codice sta fuori dalla cartella pubblica (~/portale).\nrequire __DIR__ . "/../portale/public/index.php";\n' > index.php
 mkdir -p assets && cp -r ../portale/public/assets/* assets/
 sed -i '/^# Sito non ancora pubblico/,$d;/^# Tutto ci/,$d' .htaccess
-{ echo; cat ../portale/public/.htaccess; } >> .htaccess
+{ echo; tr -d '\r' < ../portale/public/.htaccess; } >> .htaccess
+sed -i 's/\r$//' .htaccess # niente fine riga Windows: il server web non applicherebbe le regole
 rm -f robots.txt
 ( crontab -l 2>/dev/null | grep -q "portale/bin/cron.php" ) || ( crontab -l 2>/dev/null; echo "0 8 * * * /usr/local/bin/php $HOME/portale/bin/cron.php >> $HOME/logs/portale-cron.log 2>&1" ) | crontab -
 ( crontab -l 2>/dev/null | grep -q "portale/bin/saas-outbox.php" ) || ( crontab -l 2>/dev/null; echo "*/5 * * * * /usr/local/bin/php $HOME/portale/bin/saas-outbox.php >> $HOME/logs/portale-saas-outbox.log 2>&1" ) | crontab -
