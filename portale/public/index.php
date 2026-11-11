@@ -18,6 +18,13 @@ if ( '' !== $canonical && '' !== $reqHost && $reqHost !== $canonical && in_array
 	exit;
 }
 
+// Amministrazione e API del gestionale sotto il dominio principale: proxy verso il SaaS (spento finché `saas_proxy.enabled` non è true).
+// Va prima della sessione: queste richieste non devono creare né leggere la sessione del portale.
+if ( Portale\SaasProxy::enabled() && Portale\SaasProxy::handles( (string) parse_url( $_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH ) ) ) {
+	Portale\SaasProxy::serve( $_SERVER );
+	exit;
+}
+
 $https = ( ! empty( $_SERVER['HTTPS'] ) && 'off' !== $_SERVER['HTTPS'] ) || 'https' === ( $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '' );
 session_set_cookie_params( array( 'lifetime' => 0, 'path' => '/', 'secure' => $https, 'httponly' => true, 'samesite' => 'Lax' ) );
 // Le API per i plugin, i webhook e le chiavi pubbliche non usano la sessione: niente cookie né file di sessione per ogni chiamata (chiunque può farne molte).
