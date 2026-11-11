@@ -32,6 +32,9 @@
                 @if (auth()->user()->isAdmin())<a href="{{ route('admin.mail.edit') }}" @if (request()->routeIs('admin.mail.*')) aria-current="page" @endif>Email</a>@endif
                 <a href="{{ rtrim(config('support.sso.portal'), '/') }}/admin">Gestione licenze</a>
             </nav>
+            @foreach (array_keys(session('staff.areas', [])) as $area)
+                @if ($area !== 'supporto')<form method="post" action="{{ route('admin.goto', $area) }}">@csrf <button class="secondary" type="submit">Vai a {{ \App\Http\Controllers\Admin\Site\StaffAreaController::AREAS[$area] ?? $area }}</button></form>@endif
+            @endforeach
             <a class="who" href="{{ route('admin.password.edit') }}" @if (request()->routeIs('admin.password.*')) aria-current="page" @endif>{{ auth()->user()->email }}</a>
             <form method="post" action="{{ route('admin.logout') }}">@csrf <button class="secondary" type="submit">Esci</button></form>
         @endauth

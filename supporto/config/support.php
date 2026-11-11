@@ -53,6 +53,8 @@ return [
         'issuer' => rtrim((string) env('SUPPORT_STAFF_ISSUER', env('SUPPORT_SSO_PORTAL', 'https://associazionesemplice.it')), '/'),
         'portal_keys' => env('SUPPORT_STAFF_PORTAL_KEYS'),
         'audience' => 'associazionesemplice-supporto',
+        // Destinatario delle richieste firmate del supporto (riconferma, «Utenti», login, «Vai a»)
+        'request_audience' => 'associazionesemplice-saas',
         'private_key_file' => env('SUPPORT_STAFF_PRIVATE_KEY_FILE', storage_path('app/private/staff-sign.key')),
         'idle_minutes' => 120,
         'max_hours' => 8,

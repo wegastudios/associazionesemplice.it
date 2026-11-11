@@ -137,7 +137,7 @@ class StaffSsoTest extends SiteTestCase
             $claims = StaffJwt::decode((string) $request['token'], ['supporto-test' => $this->ourPublic]);
 
             return $claims !== null && $claims['typ'] === 'staff_people' && $claims['act'] === 'capo@example.it'
-                && $claims['area'] === 'supporto' && $claims['aud'] === 'https://portale.test' && $claims['exp'] - $claims['iat'] <= 120;
+                && $claims['area'] === 'supporto' && $claims['aud'] === 'associazionesemplice-saas' && $claims['exp'] - $claims['iat'] <= 120;
         });
     }
 
@@ -247,5 +247,47 @@ class StaffSsoTest extends SiteTestCase
 
         $this->post('/admin/login', ['email' => 'titolare@example.it', 'password' => 'password-emergenza-1'])->assertRedirect('/admin');
         $this->assertAuthenticatedAs($owner);
+    }
+
+    public function test_requests_to_the_saas_are_json_and_addressed_to_the_saas(): void
+    {
+        $this->staffLogin($this->token(['sub' => 'capo@example.it', 'level' => 'admin']));
+        Http::fake(['portale.test/api/staff/v1/people/list' => Http::response(['people' => []])]);
+
+        $this->get('/admin/utenti')->assertOk();
+
+        Http::assertSent(fn ($request) => $request->isJson() && StaffJwt::decode((string) $request['token'], ['supporto-test' => $this->ourPublic])['aud'] === 'associazionesemplice-saas'
+            && StaffJwt::decode((string) $request['token'], ['supporto-test' => $this->ourPublic])['iss'] === 'https://supporto.test');
+    }
+
+    public function test_area_selector_asks_the_saas_for_a_token_and_posts_it_to_the_other_area(): void
+    {
+        $this->staffLogin($this->token(['sub' => 'capo@example.it', 'level' => 'admin', 'areas' => ['supporto' => 'admin', 'wordpress' => 'vendita', 'altro' => 'admin']]));
+        $this->assertSame(['wordpress' => 'vendita'], session('staff.areas'));
+        Http::fake(['portale.test/api/staff/v1/token' => Http::response(['token' => 'TOKEN-PER-WORDPRESS'])]);
+
+        $this->get('/admin/ticket')->assertSee('Vai a Portale WordPress');
+
+        $response = $this->post('/admin/vai/wordpress')->assertOk()
+            ->assertSee('action="https://portale.test/wordpress/admin/sso"', false)->assertSee('TOKEN-PER-WORDPRESS');
+        $this->assertStringContainsString("form-action 'self' https://portale.test;", $response->headers->get('Content-Security-Policy'));
+
+        Http::assertSent(function ($request) {
+            $c = StaffJwt::decode((string) $request['token'], ['supporto-test' => $this->ourPublic]);
+
+            return $c['typ'] === 'staff_token' && $c['area'] === 'wordpress' && $c['sid'] === session('staff.sid');
+        });
+
+        // Aree dove non si ha un ruolo, o sconosciute: niente
+        $this->post('/admin/vai/saas')->assertNotFound();
+        $this->post('/admin/vai/altro')->assertNotFound();
+    }
+
+    public function test_selector_fails_with_a_message_when_the_saas_refuses(): void
+    {
+        $this->staffLogin($this->token(['areas' => ['saas' => 'admin']]));
+        Http::fake(['portale.test/*' => Http::response(['error' => 'x'], 403)]);
+
+        $this->post('/admin/vai/saas')->assertSessionHasErrors('staff');
     }
 }
