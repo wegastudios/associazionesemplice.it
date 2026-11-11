@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Portale\Jwt\EdDsaJwt;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -161,7 +162,13 @@ it('attiva il secondo livello, poi lo chiede all\'accesso, e si può disattivare
     $start = idCall($this, '2fa-start', ['sid' => $sid, 'password' => ID_PASSWORD])->assertOk();
     expect($start->json('secret'))->toBeString()->and($start->json('qr_svg'))->toContain('<svg');
     $secret = (string) $start->json('secret');
-    $otp = static fn (): string => (new Google2FA)->getCurrentOtp($secret);
+    // Fortify non accetta due volte lo stesso codice: nella prova si dimentica l'uso precedente, come farebbe il passare del tempo.
+    $otp = static function () use ($secret): string {
+        $code = (new Google2FA)->getCurrentOtp($secret);
+        Cache::forget('fortify.2fa_codes.'.md5($code));
+
+        return $code;
+    };
 
     // Finché non è confermato, l'accesso resta senza codice.
     idCall($this, 'login', ['email' => 'persona@example.test', 'password' => ID_PASSWORD])->assertJsonPath('status', 'ok');
