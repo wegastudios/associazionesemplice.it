@@ -193,6 +193,9 @@ final class StaffSso {
 				return null;
 			}
 			$_SESSION['staff_sso']['level']   = $out['level'];
+			if ( isset( $out['areas'] ) ) {
+				$_SESSION['staff_sso']['areas'] = self::cleanAreas( $out['areas'] );
+			}
 			$_SESSION['staff_sso']['checked'] = $now;
 			$_SESSION['staff_sso']['fails']   = 0;
 			return $_SESSION['staff_sso'];
@@ -215,12 +218,41 @@ final class StaffSso {
 		if ( ! in_array( $op, array( 'list', 'invite', 'grant', 'revoke', 'deactivate' ), true ) ) {
 			throw new \InvalidArgumentException( 'operazione sconosciuta' );
 		}
-		return self::request( 'POST', '/api/staff/v1/people/' . $op, 'staff_people', array( 'area' => self::AREA, 'act' => strtolower( mb_substr( $act, 0, 190 ) ) ) + $data, $now );
+		return self::request( 'POST', '/api/staff/v1/people/' . $op, 'staff_people', array( 'op' => $op, 'area' => self::AREA, 'act' => strtolower( mb_substr( $act, 0, 190 ) ) ) + $data, $now );
 	}
 
-	/** Indirizzo dell'accesso staff (verso le tre aree fisse, mai un indirizzo preso dalla richiesta). */
+	/** Dove si accede: il modulo di questa area (nessuna pagina di accesso dedicata; la password la controlla il SaaS). */
 	public static function loginUrl(): string {
-		return self::apiUrl() . '/staff/accedi?area=' . self::AREA;
+		return Admin::BASE . '/accedi';
+	}
+
+	/**
+	 * Accesso dal modulo dell'area: il SaaS controlla password, limiti, secondo fattore (se la persona l'ha attivato) e registro,
+	 * e risponde con un `staff_sso` per questa area. La password passa solo in questa richiesta firmata e non si salva né si registra.
+	 * @return bool true se la sessione è aperta (risposta generica altrimenti: nessun dettaglio su cosa non è andato)
+	 */
+	public static function login( Db $db, string $email, string $password, string $code, string $ip, ?int $now = null ): bool {
+		if ( ! self::enabled() || '' === $email || '' === $password ) {
+			return false;
+		}
+		$claims = array( 'email' => strtolower( mb_substr( trim( $email ), 0, 190 ) ), 'password' => $password, 'ip' => mb_substr( $ip, 0, 45 ), 'area' => self::AREA );
+		if ( '' !== $code ) {
+			$claims['code'] = mb_substr( $code, 0, 12 );
+		}
+		list( $status, $out ) = self::request( 'POST', '/api/staff/v1/login', 'staff_login', $claims, $now );
+		return 200 === $status && is_string( $out['token'] ?? null ) && self::receive( $db, $out['token'], $now );
+	}
+
+	/**
+	 * Token per passare a un'altra area (selettore «Vai a»): lo chiede il SaaS con la sessione centrale (`sid`).
+	 * @return string|null il token da mandare in POST all'altra area, o null
+	 */
+	public static function tokenFor( array $session, string $area, ?int $now = null ): ?string {
+		if ( ! in_array( $area, array( 'saas', 'supporto' ), true ) || ! isset( $session['areas'][ $area ] ) ) {
+			return null;
+		}
+		list( $status, $out ) = self::request( 'POST', '/api/staff/v1/token', 'staff_token', array( 'sid' => $session['sid'], 'area' => $area ), $now );
+		return 200 === $status && is_string( $out['token'] ?? null ) ? $out['token'] : null;
 	}
 
 	// --- Chiave del portale e richieste firmate -----------------------------------------------------------------------------

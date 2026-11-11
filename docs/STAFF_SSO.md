@@ -12,8 +12,8 @@ Opzionale, ognuno per sé, spento di default. `mfa` nel token è solo **informat
 
 | Cosa | Dove |
 |---|---|
-| Accesso staff | `/saas/staff/accedi?area=<wordpress\|saas\|supporto>` (solo questi tre valori, mai un indirizzo); riconferma password: `/saas/staff/riconferma` |
-| «Vai a» un'area | `GET /saas/staff/vai/<area>` → pagina con POST automatica del token verso l'area |
+| Accesso staff | **nessuna pagina dedicata** (decisione della titolare): ogni area ha il proprio modulo di accesso (portale: `/wordpress/admin/accedi`) e manda la richiesta firmata `POST /saas/api/staff/v1/login` (`typ` `staff_login`: `email`, `password`, `code?`, `ip`, `area`) → il SaaS controlla password, limiti, secondo fattore (solo se la persona l'ha attivato) e registro, e risponde `{"token": "<staff_sso>"}` per quell'area (o un errore generico). La sessione centrale (`sid`) vive solo lato server. Riconferma password: `/saas/staff/riconferma` |
+| «Vai a» un'area | l'area chiede `POST /saas/api/staff/v1/token` (`typ` `staff_token`: `sid`, `area`) e riceve `{"token": "<staff_sso>"}` per l'altra area; poi il browser lo manda in POST all'area di destinazione |
 | Destinazioni del token (POST, campo `token`) | `/saas/admin/sso` · **`/wordpress/admin/sso`** · `https://supporto.associazionesemplice.it/staff/sso` |
 | Richieste delle aree | `/saas/api/staff/v1/session-check` e `/saas/api/staff/v1/people/{list\|invite\|grant\|revoke\|deactivate}` |
 
