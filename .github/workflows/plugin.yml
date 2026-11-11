@@ -34,8 +34,12 @@ jobs:
       - name: PDF valid and readable (poppler)
         if: matrix.php == '8.1'
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq poppler-utils
+          # la rete del runner può avere cali brevi (DNS dei mirror): si riprova qualche volta prima di dichiarare fallito il passo
+          for i in 1 2 3 4 5; do
+            if sudo apt-get -o Acquire::Retries=5 update -qq && sudo apt-get -o Acquire::Retries=5 install -y -qq poppler-utils; then break; fi
+            [ "$i" = 5 ] && { echo "poppler non installabile dopo 5 tentativi"; exit 1; }
+            sleep $((i * 20))
+          done
           php tests/pdf_sample.php /tmp/prova.pdf
           pdfinfo /tmp/prova.pdf | tee /tmp/info.txt
           grep -q '^Pages:.*2' /tmp/info.txt
