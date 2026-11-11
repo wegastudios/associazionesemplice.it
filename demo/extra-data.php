@@ -203,5 +203,82 @@ extra_step( 'rimborsi', function () use ( $by_name ) {
 	}
 } );
 
+// Eventi sul sito: le pagine pubbliche degli eventi (descrizione, categoria, locandina) e qualche evento in più nei prossimi mesi.
+extra_step( 'eventi sul sito', function () {
+	if ( ! class_exists( '\AssociazioneSemplice\PublicEvents' ) ) {
+		return;
+	}
+	$act  = Plugin::activities();
+	$year = Settings::membership_year( gmdate( 'Y-m-d' ) )->label();
+	// Locandina inventata (sfumatura con GD, se c'è); senza GD le pagine restano senza immagine.
+	$poster = function ( string $title, array $rgb ) {
+		if ( ! function_exists( 'imagecreatetruecolor' ) || ! function_exists( 'imagepng' ) ) {
+			return 0;
+		}
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/media.php';
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+		$w = 800; $h = 1200;
+		$im = imagecreatetruecolor( $w, $h );
+		for ( $y = 0; $y < $h; $y++ ) {
+			$k = $y / $h;
+			imagefilledrectangle( $im, 0, $y, $w, $y, imagecolorallocate( $im, (int) ( $rgb[0] * ( 1 - $k * .5 ) ), (int) ( $rgb[1] * ( 1 - $k * .5 ) ), (int) ( $rgb[2] * ( 1 - $k * .5 ) ) ) );
+		}
+		imagefilledellipse( $im, 400, 420, 360, 360, imagecolorallocatealpha( $im, 255, 255, 255, 90 ) );
+		$tmp = wp_tempnam( 'locandina.png' );
+		imagepng( $im, $tmp );
+		imagedestroy( $im );
+		$id = media_handle_sideload( array( 'name' => sanitize_title( $title ) . '.png', 'tmp_name' => $tmp ), 0, $title );
+		return is_wp_error( $id ) ? 0 : (int) $id;
+	};
+	$cat = function ( string $name ) {
+		$t = term_exists( $name, \AssociazioneSemplice\PublicEvents::TAXONOMY );
+		if ( ! $t ) {
+			$t = wp_insert_term( $name, \AssociazioneSemplice\PublicEvents::TAXONOMY );
+		}
+		return is_wp_error( $t ) ? 0 : (int) $t['term_id'];
+	};
+	$texts = array(
+		'Cena sociale'    => array( 'Serate', 'Una cena tutti insieme per ritrovarci, conoscere i nuovi soci e raccontare i progetti dell\'anno. Menù fisso, con opzione vegetariana su richiesta.', array( 205, 92, 60 ) ),
+		'Gita al lago'    => array( 'Gite', 'Una giornata all\'aria aperta: passeggiata lungo la riva, pranzo al sacco e giochi per grandi e piccoli. Ritrovo davanti alla sede, si parte in auto condivise.', array( 40, 140, 160 ) ),
+		'Concerto di primavera' => array( 'Musica', 'Il coro e la banda dell\'associazione si esibiscono in un concerto a ingresso libero. Prenota il posto per essere sicuro di trovarlo.', array( 120, 80, 170 ) ),
+		'Laboratorio di cucina'  => array( 'Laboratori', 'Impariamo a fare la pasta fresca con le nostre cuoche volontarie. Si porta il grembiule, al resto pensiamo noi.', array( 200, 150, 50 ) ),
+		'Mercatino solidale'     => array( 'Solidarietà', 'Banchi di libri, giochi e oggetti usati: il ricavato sostiene i progetti dell\'associazione. Ingresso libero.', array( 60, 150, 90 ) ),
+	);
+	$more = array(
+		array( 'Concerto di primavera', 9, '21:00', 'Teatro parrocchiale', 120, 0 ),
+		array( 'Laboratorio di cucina', 35, '16:00', 'Sede dell\'associazione', 15, 1800 ),
+		array( 'Mercatino solidale', 48, '10:00', 'Piazza del paese', 0, 0 ),
+	);
+	foreach ( $more as $e ) {
+		$session = array( 'session_date' => gmdate( 'Y-m-d', time() + $e[1] * 86400 ), 'start_time' => $e[2], 'location' => $e[3] );
+		if ( $e[4] > 0 ) {
+			$session['capacity'] = $e[4];
+		}
+		$act->create( array( 'name' => $e[0], 'social_year' => $year, 'kind' => 'event', 'fee_cents' => $e[5], 'session' => $session ) );
+	}
+	foreach ( $texts as $name => $t ) {
+		foreach ( $act->all_for_select() as $a ) {
+			if ( $a['name'] !== $name ) {
+				continue;
+			}
+			$pid = \AssociazioneSemplice\PublicEvents::ensure( (int) $a['id'] );
+			if ( ! $pid ) {
+				continue;
+			}
+			$thumb = $poster( $name, $t[2] );
+			wp_update_post( array( 'ID' => $pid, 'post_status' => 'publish', 'post_content' => $t[1], 'post_excerpt' => wp_trim_words( $t[1], 18 ) ) );
+			wp_set_object_terms( $pid, array( $cat( $t[0] ) ), \AssociazioneSemplice\PublicEvents::TAXONOMY );
+			if ( $thumb ) {
+				set_post_thumbnail( $pid, $thumb );
+			}
+		}
+	}
+	// Pagina «Eventi» con l'elenco a card.
+	if ( ! get_page_by_path( 'eventi-in-programma' ) ) {
+		wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Eventi in programma', 'post_name' => 'eventi-in-programma', 'post_content' => '[associazionesemplice_eventi]' ) );
+	}
+} );
+
 update_option( 'asem_demo_extra_done', gmdate( 'c' ), false );
 WP_CLI::success( 'Dati in più della demo inseriti.' );
