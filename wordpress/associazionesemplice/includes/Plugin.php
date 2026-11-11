@@ -37,6 +37,7 @@ final class Plugin {
 			);
 		}
 		MailLog::register();     // registro dell'esito delle email spedite
+		PublicEvents::register(); // pagina pubblica di eventi e corsi (un contenuto collegato a ogni attività)
 		if ( class_exists( __NAMESPACE__ . '\Updater' ) ) { // aggiornamenti dal portale: nel pacchetto per WordPress.org non c'è (lì aggiorna WordPress.org)
 			Updater::register();
 		}

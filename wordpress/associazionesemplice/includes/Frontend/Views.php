@@ -1460,6 +1460,21 @@ final class Views {
 		return self::wrap( $html . '</div>' );
 	}
 
+	/** Le date di un evento con i posti e il modulo per prenotarsi (stesse regole dell'area soci). Per la pagina pubblica dell'evento. */
+	public static function event_booking( array $activity ): string {
+		self::no_cache();
+		$rows = Plugin::activities()->upcoming_sessions( 50, (int) $activity['id'] );
+		if ( ! $rows ) {
+			return '<p class="asemf-muted">Nessuna data in programma.</p>';
+		}
+		$ctx  = self::booking_context();
+		$html = '<h3 class="asemf-event-h">Date e prenotazione</h3><ul class="asemf-list asemf-upcoming">';
+		foreach ( $rows as $s ) {
+			$html .= self::session_row( $s, $activity, $ctx );
+		}
+		return \AssociazioneSemplice\Texts::html( self::flash() . $html . '</ul>' );
+	}
+
 	/** Le prossime date di tutti gli eventi, in ordine di data. */
 	public static function upcoming( array $atts = array() ): string {
 		self::no_cache();

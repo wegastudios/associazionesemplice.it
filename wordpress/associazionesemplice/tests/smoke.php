@@ -514,6 +514,16 @@ $event = $acts->create(
 $ev_sessions = $acts->sessions( $event );
 $sid         = (int) $ev_sessions[0]['id'];
 asem_ok( 1 === count( $ev_sessions ) && '21:00' === $ev_sessions[0]['start_time'], 'evento una tantum: una data creata' );
+
+// ---------- Pagina pubblica dell'evento: un solo contenuto per attività, creato da solo, non eliminabile ----------
+$pe_post = \AssociazioneSemplice\PublicEvents::post_of( $event );
+asem_ok( $pe_post > 0 && 'asem_evento' === get_post_type( $pe_post ) && 'draft' === get_post_status( $pe_post ) && 'Serata giochi' === get_the_title( $pe_post ) && $event === \AssociazioneSemplice\PublicEvents::activity_of( $pe_post ), 'pagina pubblica: nasce da sola, in bozza, con il titolo e il legame con l\'attività' );
+asem_ok( $pe_post === \AssociazioneSemplice\PublicEvents::ensure( $event ) && 1 === count( get_posts( array( 'post_type' => 'asem_evento', 'post_status' => 'any', 'meta_key' => '_asem_activity_id', 'meta_value' => $event, 'numberposts' => 5, 'fields' => 'ids' ) ) ), 'pagina pubblica: una sola per attività anche richiamandola' );
+$pe_type = get_post_type_object( 'asem_evento' );
+asem_ok( ! current_user_can( $pe_type->cap->create_posts ), 'pagina pubblica: non si crea a mano' );
+asem_ok( ! current_user_can( 'delete_post', $pe_post ), 'pagina pubblica: finché l\'attività esiste non si elimina' );
+$pe_a = $acts->get( $event );
+asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::when_text( $pe_a ), 'ore 21:00' ) && 'Sede' === \AssociazioneSemplice\PublicEvents::where_text( $pe_a ) && false !== strpos( \AssociazioneSemplice\PublicEvents::price_text( $pe_a ), 'Ospiti' ), 'pagina pubblica: data, luogo e contributo vengono dall\'attività' );
 asem_ok( null !== asem_throws( function () use ( $acts, $event, $ev_date ) { $acts->add_session( $event, array( 'session_date' => $ev_date ) ); } ), 'evento una tantum: una sola data' );
 asem_ok( null !== asem_throws( function () use ( $acts, $event, $ord, $month ) { $acts->enroll( $event, $ord, $month ); } ), 'agli eventi ci si prenota, non ci si iscrive per mesi' );
 
