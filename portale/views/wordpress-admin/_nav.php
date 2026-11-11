@@ -12,6 +12,17 @@ if ( Portale\Staff::SUPPORT === ( $role ?? "" ) ) {
 	unset( $sections["clienti"][1]["wega"], $sections["clienti"][1]["staff"] );
 	$sections["clienti"][1]["sicurezza"] = array( '/wordpress/admin/sicurezza', 'Sicurezza' );
 }
+if ( Portale\Plugin\StaffSso::enabled() && ! empty( $_SESSION['staff_sso'] ) ) {
+	// Accesso staff unico: «Staff e supporto» diventa «Utenti» (elenco nel SaaS); il secondo fattore si gestisce là.
+	if ( isset( $sections['clienti'][1]['staff'] ) ) {
+		$sections['clienti'][1]['staff'] = array( '/wordpress/admin/utenti', 'Utenti' );
+	}
+	unset( $sections['impostazioni'][1]['sicurezza'], $sections['clienti'][1]['sicurezza'] );
+}
+if ( Portale\Plugin\Admin::SALES === ( $role ?? '' ) ) {
+	unset( $sections['cruscotto'], $sections['impostazioni'], $sections['pagine'] );
+	unset( $sections['piani'][1]['versioni'], $sections['clienti'][1]['wega'], $sections['clienti'][1]['staff'] );
+}
 $current = isset( $sections["cruscotto"] ) ? "cruscotto" : "clienti";
 foreach ( $sections as $sk => $sec ) {
 	if ( isset( $sec[1][ $nav ] ) ) {

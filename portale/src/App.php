@@ -96,7 +96,19 @@ final class App {
 		} elseif ( Plugin\StaffSso::enabled() && Plugin\Admin::BASE . '/accedi' === $path ) {
 			$this->staffLogin( $get );
 		} elseif ( Plugin\Admin::BASE === $path || 0 === strpos( $path, Plugin\Admin::BASE . '/' ) ) {
-			( new Plugin\Admin( $this->db, $this->billing, $this->customerId() ) )->handle( $method, $path );
+			// Accesso staff unico (se acceso): la sessione viene dal SaaS e si riconferma ogni 5 minuti; altrimenti l'accesso di sempre.
+			$staff = null;
+			if ( Plugin\StaffSso::enabled() ) {
+				$staff = Plugin\StaffSso::current();
+				if ( $staff && Plugin\StaffSso::due( $staff ) ) {
+					$staff = Plugin\StaffSso::recheck( $staff );
+				}
+				if ( ! $staff ) {
+					header( 'Location: ' . Plugin\StaffSso::loginUrl(), true, 303 );
+					return;
+				}
+			}
+			( new Plugin\Admin( $this->db, $this->billing, $staff ? '' : $this->customerId(), $staff ) )->handle( $method, $path );
 		} elseif ( ( $legacy = Sections::legacy( $method, $path, (string) ( $_SERVER['QUERY_STRING'] ?? '' ) ) ) ) {
 			// Vecchi indirizzi di /saas: accesso dal gestionale, vecchia gestione delle associazioni, /saas/admin (vedi {@see Sections}).
 			header( 'Location: ' . $legacy[1], true, $legacy[0] );

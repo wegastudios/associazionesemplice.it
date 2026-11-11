@@ -2011,6 +2011,20 @@ list( $ssC, $ssO ) = StaffSso::people( 'grant', 'Mario@Esempio.it', array( 'emai
 $ssPc = json_decode( base64_decode( strtr( explode( '.', json_decode( $ssCalls[0][2], true )['token'] )[1], '-_', '+/' ) ), true );
 check( 'staff sso: richiesta «Utenti» — path, tipo, area, act e dati firmati', 200 === $ssC && true === $ssO['ok'] && 'https://associazionesemplice.it/saas/api/staff/v1/people/grant' === $ssCalls[0][1] && 'staff_people' === $ssPc['typ'] && 'wordpress' === $ssPc['area'] && 'mario@esempio.it' === $ssPc['act'] && 'luca@esempio.it' === $ssPc['email'] );
 check( 'staff sso: richiesta «Utenti» sconosciuta rifiutata', ( function () { try { StaffSso::people( 'elimina', 'a@b.it' ); } catch ( InvalidArgumentException $e ) { return true; } return false; } )() );
+// Amministrazione del plugin con la sessione dell'accesso staff unico: ruoli admin / vendita / supporto
+$ssBill = new Billing( $ssdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
+$ssRole = function ( string $level ) use ( $ssdb, $ssBill ) {
+	$_SESSION = array();
+	$adm = new Portale\Plugin\Admin( $ssdb, $ssBill, '', array( 'email' => 'mario@esempio.it', 'level' => $level, 'sid' => str_repeat( 'a', 32 ) ) );
+	return $_SESSION['staff'];
+};
+check( 'staff sso: ruoli dell\'amministrazione — admin, vendita e supporto', 'admin' === $ssRole( 'admin' ) && 'sales' === $ssRole( 'vendita' ) && 'support' === $ssRole( 'supporto' ) );
+check( 'staff sso: livello sconosciuto (p.es. agente) = nessun accesso alla gestione del plugin', null !== throwsUser( function () use ( $ssdb, $ssBill ) { new Portale\Plugin\Admin( $ssdb, $ssBill, '', array( 'email' => 'mario@esempio.it', 'level' => 'agente', 'sid' => str_repeat( 'a', 32 ) ) ); } ) );
+$ssSales = new ReflectionMethod( Portale\Plugin\Admin::class, 'salesMayDo' );
+$ssSales->setAccessible( true );
+$ssAdm = new Portale\Plugin\Admin( $ssdb, $ssBill, '', array( 'email' => 'mario@esempio.it', 'level' => 'vendita', 'sid' => str_repeat( 'a', 32 ) ) );
+check( 'staff sso: «vendita» può catalogo, prezzi, promo, licenze e clienti', $ssSales->invoke( $ssAdm, 'catalogo' ) && $ssSales->invoke( $ssAdm, 'prezzi' ) && $ssSales->invoke( $ssAdm, 'codici-promo' ) && $ssSales->invoke( $ssAdm, 'licenze' ) && $ssSales->invoke( $ssAdm, 'clienti' ) && $ssSales->invoke( $ssAdm, '' ) );
+check( 'staff sso: «vendita» non può impostazioni, versioni, pagamenti, email, pagine, registro, utenti, Wega', ! array_filter( array( 'impostazioni', 'versioni', 'pagamenti', 'email', 'legale', 'cookie', 'registro', 'utenti', 'staff', 'wega', 'sicurezza' ), function ( $a ) use ( $ssSales, $ssAdm ) { return $ssSales->invoke( $ssAdm, $a ); } ) );
 $_SESSION = array();
 $ssCalls = array();
 $ssReply = array( 200, json_encode( array( 'token' => $ssTok() ) ) );
