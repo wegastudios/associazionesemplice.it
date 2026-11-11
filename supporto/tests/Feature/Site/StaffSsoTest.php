@@ -65,7 +65,8 @@ class StaffSsoTest extends SiteTestCase
 
     public function test_valid_token_opens_a_session_with_the_level_from_the_portal(): void
     {
-        $this->post('/staff/sso', ['token' => $this->token()])->assertRedirect('/admin');
+        // Il SaaS aggiunge `areas` (area => livello) per il selettore: ammesso
+        $this->post('/staff/sso', ['token' => $this->token(['areas' => ['supporto' => 'agente', 'wordpress' => 'vendita']])])->assertRedirect('/admin');
 
         $user = User::where('email', 'agente@example.it')->firstOrFail();
         $this->assertSame('agent', $user->global_role);
@@ -95,6 +96,7 @@ class StaffSsoTest extends SiteTestCase
             'area saas' => $this->token(['area' => 'saas']),
             'livello vendita' => $this->token(['level' => 'vendita']),
             'email maiuscola' => $this->token(['sub' => 'Agente@Example.it']),
+            'areas non valide' => $this->token(['areas' => ['supporto' => ['admin']]]),
             'mfa non booleano' => $this->token(['mfa' => 'si']),
             'non un token' => 'abc.def',
         ];
