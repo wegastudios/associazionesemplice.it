@@ -12,20 +12,20 @@
 <body>
 <header class="site">
     <div class="bar">
-        <a class="logo" href="{{ config('support.sso.portal') }}/" aria-label="Associazione Semplice, vai alla home del sito">@include("partials.logo", ["h" => 38])</a>
-        <nav aria-label="Navigazione principale">
-            <a href="{{ route('help.index') }}" @if (request()->routeIs('help.*')) aria-current="page" @endif>Centro assistenza</a>
-            <a href="{{ route('ticket.create') }}" @if (request()->routeIs('ticket.create')) aria-current="page" @endif>Apri una richiesta</a>
-            <a href="{{ rtrim(config('support.sso.portal'), '/') }}/account">Area riservata</a>
-            @if (session('customer'))
-                <a href="{{ route('ticket.mine') }}" @if (request()->routeIs('ticket.mine')) aria-current="page" @endif>Le mie richieste</a>
-                <form method="post" action="{{ route('sso.logout') }}" style="margin-left:auto">@csrf<button type="submit" class="secondary">Esci</button></form>
-            @else
-                <a href="{{ rtrim(config('support.sso.portal'), '/') }}/supporto/accedi" style="margin-left:auto">Accedi</a>
-            @endif
-        </nav>
+        <a class="logo" href="{{ config('support.sso.portal') }}/" aria-label="Associazione Semplice, vai alla home">@include("partials.logo", ["h" => 38])</a>
+        <span class="place">Supporto</span>
+        @if (session('customer'))
+            <a class="account" href="{{ config('support.sso.portal') }}/account">Il mio account</a>
+        @else
+            <a class="account" href="{{ config('support.sso.portal') }}/accedi">Accedi</a>
+        @endif
     </div>
 </header>
+<nav class="menu" aria-label="Menu del supporto">
+    <a href="{{ route('help.index') }}" @if (request()->routeIs('help.*')) aria-current="page" @endif>Centro assistenza</a>
+    <a href="{{ route('ticket.create') }}" @if (request()->routeIs('ticket.create')) aria-current="page" @endif>Apri una richiesta</a>
+    @if (session('customer'))<a href="{{ route('ticket.mine') }}" @if (request()->routeIs('ticket.mine')) aria-current="page" @endif>Le mie richieste</a>@endif
+</nav>
 <main>
     @if (session('ok'))<div class="flash" role="status">{{ session('ok') }}</div>@endif
     @if ($errors->any())
@@ -35,6 +35,6 @@
     @endif
     @yield('content')
 </main>
-<footer class="site">{{ config('app.name') }} · <a href="{{ config('support.sso.portal') }}/privacy">Privacy</a> · <a href="{{ config('support.sso.portal') }}/cookie">Cookie</a> · <a href="{{ config('support.sso.portal') }}/accedi">Area riservata</a></footer>
+<footer class="site">{{ config('app.name') }} · <a href="{{ config('support.sso.portal') }}/privacy">Privacy</a> · <a href="{{ config('support.sso.portal') }}/cookie">Cookie</a> · <a href="{{ config('support.sso.portal') }}/account">Il mio account</a></footer>
 </body>
 </html>
