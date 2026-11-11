@@ -302,3 +302,48 @@
 .asemf-event-text { margin: 0 0 1.5rem; }
 .asemf-event-h { margin: 1.5rem 0 .5rem; }
 .asemf-ics { margin: 1rem 0 0; }
+
+/* Elenco eventi a card, per mese */
+.asemf-events .asemf-month { margin: 2rem 0 .75rem; font-size: 1.25rem; }
+.asemf-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; }
+.asemf-card { display: grid; grid-template-columns: 64px 1fr; gap: 1rem; padding: 1rem; border: 1px solid rgba(0,0,0,.1); border-radius: 16px; background: #fff; }
+.asemf-card.has-poster { grid-template-columns: 64px 120px 1fr; }
+.asemf-card-date { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 64px; border-radius: 12px; background: #f0f4ff; text-decoration: none; color: inherit; }
+.asemf-card-day { font-size: 1.5rem; font-weight: 700; line-height: 1; }
+.asemf-card-mon { font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; }
+.asemf-card-poster img { display: block; width: 100%; height: auto; border-radius: 10px; }
+.asemf-card-cat { font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; opacity: .7; }
+.asemf-card-title { margin: .15rem 0 .35rem; font-size: 1.15rem; }
+.asemf-card-title a { text-decoration: none; }
+.asemf-card-ex { margin: .5rem 0 0; }
+.asemf-card-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-top: .75rem; }
+.asemf-card-price { font-weight: 600; }
+@media (max-width: 600px) {
+	.asemf-card, .asemf-card.has-poster { grid-template-columns: 56px 1fr; }
+	.asemf-card-poster { grid-column: 1 / -1; grid-row: 2; }
+	.asemf-card-body { grid-column: 1 / -1; }
+}
+
+/* Filtri e calendario mensile degli eventi */
+.asemf-filters { display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; margin: 0 0 1rem; }
+.asemf-filter-group { display: flex; flex-wrap: wrap; gap: .4rem; }
+.asemf-chip { display: inline-block; padding: .35rem .8rem; border: 1px solid rgba(0,0,0,.15); border-radius: 999px; font-size: .875rem; text-decoration: none; color: inherit; }
+.asemf-chip.is-on { background: #1f2a44; border-color: #1f2a44; color: #fff; }
+.asemf-cal-nav { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin: 0 0 .75rem; }
+.asemf-cal-nav .asemf-month { margin: 0; }
+.asemf-cal { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.asemf-cal th { padding: .4rem; font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; opacity: .7; }
+.asemf-cal td { height: 96px; padding: .3rem; vertical-align: top; border: 1px solid rgba(0,0,0,.08); }
+.asemf-cal-out { background: rgba(0,0,0,.02); }
+.asemf-cal-num { display: block; font-size: .8rem; opacity: .7; }
+.asemf-cal-wd { display: none; }
+.asemf-cal-day.is-today .asemf-cal-num { font-weight: 700; opacity: 1; }
+.asemf-cal-ev { display: block; margin: .2rem 0 0; padding: .15rem .35rem; border-radius: 6px; background: #f0f4ff; font-size: .78rem; line-height: 1.25; text-decoration: none; color: inherit; }
+.asemf-cal-time { font-weight: 600; }
+@media (max-width: 700px) {
+	.asemf-cal thead, .asemf-cal-out, .asemf-cal-empty { display: none; }
+	.asemf-cal, .asemf-cal tbody, .asemf-cal tr, .asemf-cal td { display: block; width: 100%; }
+	.asemf-cal td { height: auto; border: 0; border-bottom: 1px solid rgba(0,0,0,.08); padding: .6rem 0; }
+	.asemf-cal-num { font-weight: 700; opacity: 1; font-size: 1rem; }
+	.asemf-cal-wd { display: inline; text-transform: uppercase; font-size: .75rem; opacity: .7; }
+}

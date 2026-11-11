@@ -1367,6 +1367,20 @@ class ActivityService {
 		) ?: array();
 	}
 
+	/** Date non annullate tra due giorni (inclusi), in ordine, con i dati dell'attività. */
+	public function sessions_between( string $from, string $to, int $limit = 500 ): array {
+		return $this->db()->get_results(
+			$this->db()->prepare(
+				'SELECT s.*, a.name AS activity_name, a.kind, a.fee_cents, a.guest_fee_cents FROM ' . Db::t( 'sessions' ) . ' s JOIN ' . Db::t( 'activities' ) . ' a ON a.id = s.activity_id AND a.deleted_at IS NULL '
+				. 'WHERE s.cancelled_at IS NULL AND s.session_date >= %s AND s.session_date <= %s ORDER BY s.session_date, s.start_time, s.id LIMIT %d',
+				$from,
+				$to,
+				max( 1, $limit )
+			),
+			ARRAY_A
+		) ?: array();
+	}
+
 	/** Prossime date non annullate (da oggi), con i dati dell'attività e i posti occupati. */
 	public function upcoming_sessions( int $limit = 10, ?int $activity_id = null ): array {
 		$sql  = 'SELECT s.*, a.name AS activity_name, a.kind, a.fee_cents, a.guest_fee_cents, '

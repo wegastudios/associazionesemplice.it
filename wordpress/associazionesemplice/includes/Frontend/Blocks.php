@@ -52,6 +52,9 @@ final class Blocks {
 					'id'      => array( 'type' => 'string', 'default' => '' ),
 					'date'    => array( 'type' => 'string', 'default' => '' ),
 					'limite'  => array( 'type' => 'string', 'default' => '' ),
+					'categoria' => array( 'type' => 'string', 'default' => '' ),
+					'modo'    => array( 'type' => 'string', 'default' => '' ),
+					'filtri'  => array( 'type' => 'string', 'default' => '' ),
 				),
 				'render_callback' => array( __CLASS__, 'render_view' ),
 			)

@@ -203,5 +203,148 @@ extra_step( 'rimborsi', function () use ( $by_name ) {
 	}
 } );
 
+// Eventi sul sito: le pagine pubbliche degli eventi (descrizione, categoria, locandina) e qualche evento in più nei prossimi mesi.
+
+/** Locandina inventata (sfumatura con GD, se c'è); senza GD le pagine restano senza immagine. */
+function extra_poster( string $title, array $rgb ) {
+	if ( ! function_exists( 'imagecreatetruecolor' ) || ! function_exists( 'imagepng' ) ) {
+		return 0;
+	}
+	require_once ABSPATH . 'wp-admin/includes/file.php';
+	require_once ABSPATH . 'wp-admin/includes/media.php';
+	require_once ABSPATH . 'wp-admin/includes/image.php';
+	$w = 800; $h = 1200;
+	$im = imagecreatetruecolor( $w, $h );
+	for ( $y = 0; $y < $h; $y++ ) {
+		$k = $y / $h;
+		imagefilledrectangle( $im, 0, $y, $w, $y, imagecolorallocate( $im, (int) ( $rgb[0] * ( 1 - $k * .5 ) ), (int) ( $rgb[1] * ( 1 - $k * .5 ) ), (int) ( $rgb[2] * ( 1 - $k * .5 ) ) ) );
+	}
+	imagefilledellipse( $im, 400, 420, 360, 360, imagecolorallocatealpha( $im, 255, 255, 255, 90 ) );
+	// Niente controllo del tipo di file di WordPress: su alcuni server il riconoscimento del tipo non funziona e rifiuta anche i PNG appena generati.
+	ob_start();
+	imagepng( $im );
+	$bytes = (string) ob_get_clean();
+	imagedestroy( $im );
+	$up = wp_upload_bits( sanitize_title( $title ) . '.png', null, $bytes );
+	if ( ! empty( $up['error'] ) ) {
+		return 0;
+	}
+	$id = wp_insert_attachment( array( 'post_mime_type' => 'image/png', 'post_title' => $title, 'post_status' => 'inherit' ), $up['file'] );
+	if ( ! $id || is_wp_error( $id ) ) {
+		return 0;
+	}
+	wp_update_attachment_metadata( (int) $id, wp_generate_attachment_metadata( (int) $id, $up['file'] ) );
+	return (int) $id;
+}
+
+extra_step( 'eventi sul sito', function () {
+	if ( ! class_exists( '\AssociazioneSemplice\PublicEvents' ) ) {
+		return;
+	}
+	$act  = Plugin::activities();
+	$year = Settings::social_year()->label();
+	// Le attività di prova create prima portavano l'anno delle tessere («2026») al posto dell'anno sociale («2026/2027»): l'elenco pubblico non le trovava.
+	global $wpdb;
+	$wpdb->query( $wpdb->prepare( 'UPDATE ' . \AssociazioneSemplice\Db::t( 'activities' ) . ' SET social_year = %s WHERE social_year = %s', $year, Settings::membership_year( gmdate( 'Y-m-d' ) )->label() ) ); // phpcs:ignore WordPress.DB
+	$cat = function ( string $name ) {
+		$t = term_exists( $name, \AssociazioneSemplice\PublicEvents::TAXONOMY );
+		if ( ! $t ) {
+			$t = wp_insert_term( $name, \AssociazioneSemplice\PublicEvents::TAXONOMY );
+		}
+		return is_wp_error( $t ) ? 0 : (int) $t['term_id'];
+	};
+	$texts = array(
+		'Cena sociale'    => array( 'Serate', 'Una cena tutti insieme per ritrovarci, conoscere i nuovi soci e raccontare i progetti dell\'anno. Menù fisso, con opzione vegetariana su richiesta.', array( 205, 92, 60 ) ),
+		'Gita al lago'    => array( 'Gite', 'Una giornata all\'aria aperta: passeggiata lungo la riva, pranzo al sacco e giochi per grandi e piccoli. Ritrovo davanti alla sede, si parte in auto condivise.', array( 40, 140, 160 ) ),
+		'Concerto di primavera' => array( 'Musica', 'Il coro e la banda dell\'associazione si esibiscono in un concerto a ingresso libero. Prenota il posto per essere sicuro di trovarlo.', array( 120, 80, 170 ) ),
+		'Laboratorio di cucina'  => array( 'Laboratori', 'Impariamo a fare la pasta fresca con le nostre cuoche volontarie. Si porta il grembiule, al resto pensiamo noi.', array( 200, 150, 50 ) ),
+		'Mercatino solidale'     => array( 'Solidarietà', 'Banchi di libri, giochi e oggetti usati: il ricavato sostiene i progetti dell\'associazione. Ingresso libero.', array( 60, 150, 90 ) ),
+	);
+	$texts['Concerto d\'autunno']       = array( 'Musica', 'Il coro e la banda dell\'associazione aprono la stagione con un concerto a ingresso libero. Prenota il posto per essere sicuro di trovarlo.', array( 150, 90, 60 ) );
+	$texts['Festa di Natale']           = array( 'Serate', 'Panettone, musica e la tombola dei soci: una serata per scambiarci gli auguri e conoscere i nuovi arrivati.', array( 170, 50, 60 ) );
+	$texts['Tombolata dell\'Epifania']  = array( 'Serate', 'Cartelle, premi e tanta allegria per grandi e piccoli: la tombola che chiude le feste.', array( 90, 110, 150 ) );
+	$texts['Carnevale dei bambini']     = array( 'Laboratori', 'Maschere, coriandoli e giochi per i più piccoli, con merenda offerta dall\'associazione.', array( 220, 100, 140 ) );
+	$texts['Gita di primavera']         = array( 'Gite', 'Una giornata in campagna tra passeggiata, pranzo al sacco e giochi all\'aperto. Si parte in auto condivise.', array( 70, 160, 80 ) );
+	$texts['Torneo di burraco']         = array( 'Serate', 'Una serata di carte tra soci e amici: iscrizioni aperte, premi per i primi tre.', array( 130, 70, 110 ) );
+	$texts['Cena di fine anno sociale'] = array( 'Serate', 'Una cena per chiudere l\'anno insieme, con il bilancio di quanto fatto e le prime idee per il prossimo.', array( 190, 120, 70 ) );
+	$texts['Cena di primavera']  = array( 'Serate', 'La cena di primavera dell\'associazione: menù di stagione, musica dal vivo e posti a sedere assegnati all\'arrivo.', array( 110, 150, 90 ) );
+	$texts['Gita in montagna']   = array( 'Gite', 'Una camminata facile tra i prati, adatta anche ai bambini, con pranzo al sacco e rientro nel pomeriggio.', array( 60, 120, 140 ) );
+	$texts['Concerto d\'estate'] = array( 'Musica', 'Musica all\'aperto sotto le stelle con il coro e la banda dell\'associazione. Ingresso libero, porta un cuscino.', array( 220, 130, 70 ) );
+	$texts['Mercatino di Natale'] = array( 'Solidarietà', 'Decorazioni, dolci e idee regalo preparate dai volontari: il ricavato finanzia le attività dell\'anno.', array( 170, 60, 70 ) );
+	// Date relative a oggi, ma sempre dentro l'anno sociale (un evento inizia e finisce nello stesso anno sociale): le più lontane si fermano a fine anno.
+	$last_day = Settings::social_year()->end()->format( 'Y-m-d' );
+	$more     = array(
+		array( 'Concerto d\'autunno', 9, '21:00', 'Teatro parrocchiale', 120, 0 ),
+		array( 'Laboratorio di cucina', 35, '16:00', 'Sede dell\'associazione', 15, 1800 ),
+		array( 'Mercatino solidale', 48, '10:00', 'Piazza del paese', 0, 0 ),
+		array( 'Festa di Natale', 40, '20:30', 'Sede dell\'associazione', 80, 1000 ),
+		array( 'Tombolata dell\'Epifania', 57, '16:00', 'Sede dell\'associazione', 60, 500 ),
+		array( 'Carnevale dei bambini', 95, '15:30', 'Oratorio', 50, 0 ),
+		array( 'Gita di primavera', 140, '09:00', 'Ritrovo davanti alla sede', 30, 1200 ),
+		array( 'Concerto di primavera', 160, '21:00', 'Teatro parrocchiale', 120, 0 ),
+		array( 'Torneo di burraco', 185, '20:30', 'Sede dell\'associazione', 40, 800 ),
+		array( 'Cena di fine anno sociale', 230, '20:00', 'Sede dell\'associazione', 70, 2000 ),
+		array( 'Cena di primavera', 265, '20:00', 'Sede dell\'associazione', 70, 1800 ),
+		array( 'Gita in montagna', 300, '08:00', 'Ritrovo davanti alla sede', 30, 1500 ),
+		array( 'Concerto d\'estate', 345, '21:00', 'Giardino pubblico', 150, 0 ),
+		array( 'Mercatino di Natale', 380, '10:00', 'Piazza del paese', 0, 0 ),
+	);
+	foreach ( $more as $e ) {
+		$want    = gmdate( 'Y-m-d', time() + $e[1] * 86400 );
+		$sy      = $want > $last_day ? Settings::social_year()->next() : Settings::social_year(); // oltre fine anno: anno sociale successivo
+		$day     = min( $want, $sy->end()->format( 'Y-m-d' ) );
+		$session = array( 'session_date' => $day, 'start_time' => $e[2], 'location' => $e[3] );
+		if ( $e[4] > 0 ) {
+			$session['capacity'] = $e[4];
+		}
+		$act->create( array( 'name' => $e[0], 'social_year' => $sy->label(), 'kind' => 'event', 'fee_cents' => $e[5], 'session' => $session ) );
+	}
+	foreach ( $texts as $name => $t ) {
+		foreach ( $act->all_for_select() as $a ) {
+			if ( $a['name'] !== $name ) {
+				continue;
+			}
+			$pid = \AssociazioneSemplice\PublicEvents::ensure( (int) $a['id'] );
+			if ( ! $pid ) {
+				continue;
+			}
+			$thumb = extra_poster( $name, $t[2] );
+			wp_update_post( array( 'ID' => $pid, 'post_status' => 'publish', 'post_content' => $t[1], 'post_excerpt' => wp_trim_words( $t[1], 18 ) ) );
+			wp_set_object_terms( $pid, array( $cat( $t[0] ) ), \AssociazioneSemplice\PublicEvents::TAXONOMY );
+			if ( $thumb ) {
+				set_post_thumbnail( $pid, $thumb );
+			}
+		}
+	}
+	// Pagina «Eventi» con l'elenco a card.
+	if ( ! get_page_by_path( 'eventi-in-programma' ) ) {
+		wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Eventi in programma', 'post_name' => 'eventi-in-programma', 'post_content' => '[associazionesemplice_eventi]' ) );
+	}
+} );
+
+// Locandine: le pagine degli eventi senza immagine in evidenza ne ricevono una (la prima volta il caricamento era stato rifiutato dal server).
+extra_step( 'locandine degli eventi', function () {
+	if ( ! class_exists( '\AssociazioneSemplice\PublicEvents' ) ) {
+		return;
+	}
+	$colors = array( array( 205, 92, 60 ), array( 40, 140, 160 ), array( 120, 80, 170 ), array( 200, 150, 50 ), array( 60, 150, 90 ) );
+	$i      = 0;
+	foreach ( get_posts( array( 'post_type' => \AssociazioneSemplice\PublicEvents::POST_TYPE, 'post_status' => 'publish', 'numberposts' => 50 ) ) as $p ) {
+		if ( ! has_post_thumbnail( $p ) ) {
+			$id = extra_poster( get_the_title( $p ), $colors[ $i++ % count( $colors ) ] );
+			if ( $id ) {
+				set_post_thumbnail( $p, $id );
+			}
+		}
+	}
+} );
+
+// Pagina con il calendario mensile degli eventi.
+extra_step( 'pagina calendario eventi', function () {
+	if ( ! get_page_by_path( 'calendario-eventi' ) ) {
+		wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Calendario eventi', 'post_name' => 'calendario-eventi', 'post_content' => '[associazionesemplice_eventi modo="mese"]' ) );
+	}
+} );
+
 update_option( 'asem_demo_extra_done', gmdate( 'c' ), false );
 WP_CLI::success( 'Dati in più della demo inseriti.' );
