@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Piattaforma\Identity;
 
-use AppModulesPortaleContractsStaffJwt;
+use App\Modules\Portale\Contracts\StaffJwt;
 
 /** Firma i token `staff_sso` (60 secondi, monouso) con la chiave `staff-…` del SaaS. */
 final readonly class StaffTokenIssuer

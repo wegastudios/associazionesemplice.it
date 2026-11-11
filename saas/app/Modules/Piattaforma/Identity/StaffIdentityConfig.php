@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Piattaforma\Identity;
 
-use AppModulesPortaleContractsStaffJwt;
+use App\Modules\Portale\Contracts\StaffJwt;
 use Illuminate\Contracts\Config\Repository;
 use RuntimeException;
 
