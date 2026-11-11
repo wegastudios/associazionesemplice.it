@@ -378,5 +378,5 @@ Nel database del SaaS, quindi, oltre all'app: gli utenti staff e i loro ruoli e 
 **Da progettare prima di costruire (portale-saas, con le altre sessioni):**
 1. Come il portale (PHP, oggi con il suo database) accede ai dati: richieste firmate a un'interfaccia del SaaS, oppure collegamento diretto al database con un utente a permessi minimi. Proposta: richieste firmate (nessun accesso diretto), come già per catalogo e abbonamenti.
 2. Piano di migrazione dei dati oggi nel portale (clienti, ordini, fatture, licenze, partner) in due tempi, con copia di prova e ripristino provato prima di spegnere il vecchio.
-3. Il supporto ha un database suo: va unito o resta separato? Da decidere.
+3. **Supporto (deciso 11/11/2026):** ticket, articoli e guide restano nel database del supporto (contenuti separati); l identità no. Il login al supporto e tutto ciò che riguarda lo staff passano dall elenco unico nel database del SaaS: i clienti usano il loro account dell area riservata (nessun account dedicato al supporto) e lo staff entra con l accesso unico. Il supporto tiene solo un riferimento alla persona, non password né anagrafica.
 4. Backup, cifratura dei campi sensibili e registro vanno estesi ai nuovi dati prima che ci arrivino dati veri.
