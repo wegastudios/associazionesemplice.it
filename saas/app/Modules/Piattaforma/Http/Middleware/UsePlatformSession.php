@@ -18,12 +18,12 @@ final class UsePlatformSession
 {
     public const GUARD = 'platform';
 
-    /** Percorso dell'amministrazione, senza barre ai lati (`admin`, in produzione dietro `/saas/admin`). */
+    /** Percorso dell'amministrazione, senza barre ai lati (`saas/admin`: l'area vendita sta solo su associazionesemplice.it/saas/admin, mai su app./admin che è dei clienti). */
     public static function path(): string
     {
-        $path = config('saas.admin_path', 'admin');
+        $path = config('saas.admin_path', 'saas/admin');
 
-        return trim(is_string($path) ? $path : 'admin', '/');
+        return trim(is_string($path) ? $path : 'saas/admin', '/');
     }
 
     /** @param  Closure(Request): Response  $next */

@@ -12,7 +12,7 @@ use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Route;
 
 /*
- * Amministrazione della piattaforma (/saas/admin; in sviluppo /admin). Sessione, cookie e guardia propri
+ * Amministrazione della piattaforma (sempre /saas/admin; app./admin è dei clienti). Sessione, cookie e guardia propri
  * (UsePlatformSession); lo staff è separato dagli operatori. L'accesso richiede email, password e codice a due passaggi.
  */
 
