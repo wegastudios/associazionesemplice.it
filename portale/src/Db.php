@@ -88,6 +88,7 @@ final class Db {
 			'ALTER TABLE orders ADD COLUMN provider_ref VARCHAR(120) NULL',
 			'ALTER TABLE orders ADD COLUMN provider_customer VARCHAR(120) NULL',
 			'ALTER TABLE orders ADD COLUMN paid_at VARCHAR(19) NULL',
+			'ALTER TABLE orders ADD COLUMN cancel_at_period_end INTEGER NOT NULL DEFAULT 0',
 			// Colonne aggiunte dopo la prima versione: se esistono già l'errore si ignora.
 			"ALTER TABLE staff ADD COLUMN saas VARCHAR(10) NOT NULL DEFAULT ''",
 			'ALTER TABLE customers ADD COLUMN password_hash VARCHAR(255) NULL',

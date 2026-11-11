@@ -263,6 +263,13 @@ Fondamenta del passo 6 (nessuna pagina pubblica ancora: il pagamento arriva nel 
 - **Pagamento riuscito** (`SaasCheckout::paid`, dai webhook `checkout.session.completed` di Stripe e `BILLING.SUBSCRIPTION.ACTIVATED` di PayPal): `pending → paid` con aggiornamento condizionato, poi `provision` (ripetibile; con `slug_taken` riprova con un suffisso), `promo.redeem` (una volta per ordine) e `subscription` in coda con `rev` crescente per associazione; infine `active`. Se un passo fallisce il webhook risponde errore e il provider riconsegna: i passi già fatti non si ripetono. Un identificativo che non è un ordine del gestionale passa alle licenze del plugin come prima.
 - **Rinnovi e disdetta** (`SaasCheckout::event`): rinnovo (`invoice.paid` ciclo, `PAYMENT.SALE.COMPLETED`) → `active` con nuova scadenza; pagamento fallito → `past_due` con la scadenza precedente; disdetta/chiusura → `cancelled`. Ogni cambio è una `subscription` nuova.
 
+### Il gestionale nell'area clienti (`/account`)
+
+- **Elenco** (`SaasAccount::forCustomer`): per ogni abbonamento pagato mostra associazione, piano, periodo, soci, importo (IVA inclusa), stato e scadenza dall'ultimo messaggio `subscription` in coda, e «Apri il gestionale» (`https://<slug>.associazionesemplice.it`, dominio base in `saas_tenant_domain`). Compare nello stesso `/account` delle licenze del plugin.
+- **Disdetta** (`POST /account/gestionale-disdici`): a fine periodo su Stripe, PayPal annulla l'abbonamento; il gestionale resta attivo fino alla scadenza già pagata. **Fatture e metodo di pagamento**: portale di Stripe (`/account/gestionale-fatturazione`). Ogni azione controlla che l'ordine sia del cliente in sessione.
+- **Accesso dal gestionale** (`GET /account/da-gestionale?t=<JWT>`, contratto §4.3): firma, `iss`, `aud`, tipo `sso`, vita massima 2 minuti, `jti` usato una sola volta, `ref` = una sua associazione e `sub` = l'intestatario. Apre la sessione e porta sempre a `/account#gestionale` (nessun indirizzo di ritorno dalla richiesta); se qualcosa non torna, accesso normale senza dire perché.
+- Da fare: cambio piano (`plan_change.check`), domini (`domain.check/set`), persone con ruoli, download firmato, fatture del gestionale, email di benvenuto con il link di accesso dopo l'acquisto.
+
 ## Catalogo del plugin: bozza e «Pubblica» (`/wordpress/admin/catalogo`)
 
 Sezione **Piani → Catalogo**, solo per gli amministratori. Cosa si decide qui: a chi è rivolto ogni piano, visibilità e ordine, livello di assistenza (`free`/`paid`/`top`), siti ammessi, elenco delle caratteristiche e, per ogni piano, se ciascuna è inclusa, con limite (con nota) o non inclusa.

@@ -33,7 +33,28 @@ $csrf = Portale\App::csrf();
 			<button class="btn" type="submit" style="margin-top:8px">Salva la password</button>
 		</form></details>
 	</div>
-	<?php if ( ! $subs ) : ?>
+	<?php foreach ( (array) ( $saas ?? array() ) as $g ) : $gl = Portale\SaasAccount::stateLabel( $g['state'] ); ?>
+	<div class="sub" id="<?php echo $g === reset( $saas ) ? 'gestionale' : 'gestionale-' . e( $g['id'] ); ?>">
+		<div class="sub-top"><h2>Gestionale · <?php echo e( $g['org_name'] ); ?></h2><span class="badge <?php echo e( $gl[1] ); ?>"><?php echo e( $gl[0] ); ?></span></div>
+		<div class="facts">
+			<div><span>Piano</span><b><?php echo e( $g['plan'] ); ?> · <?php echo 'year' === $g['period'] ? 'annuale' : 'mensile'; ?></b></div>
+			<div><span>Soci</span><b><?php echo (int) $g['members']; ?></b></div>
+			<div><span>Importo</span><b><?php echo e( money( $g['total'] ) ); ?> <small class="muted">IVA inclusa</small></b></div>
+			<?php if ( '' !== $g['until'] ) : ?><div><span><?php echo ! empty( $g['cancel_at_period_end'] ) ? 'Attivo fino al' : 'Prossimo rinnovo'; ?></span><b><?php echo e( date_it( $g['until'] ) ); ?></b></div><?php endif; ?>
+		</div>
+		<?php if ( 'pending' === $g['state'] ) : ?><p class="hint">Stiamo preparando il gestionale: di solito basta qualche minuto. Ricarica la pagina tra poco.</p><?php endif; ?>
+		<div class="actions">
+			<?php if ( '' !== $g['url'] && 'pending' !== $g['state'] ) : ?><a class="btn" href="<?php echo e( $g['url'] ); ?>">Apri il gestionale</a><?php endif; ?>
+			<?php if ( 'stripe' === $g['provider'] && $g['provider_customer'] ) : ?>
+			<form method="post" action="/account/gestionale-fatturazione"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="id" value="<?php echo e( $g['id'] ); ?>"><button class="btn alt" type="submit">Fatture e metodo di pagamento</button></form>
+			<?php endif; ?>
+			<?php if ( 'active' === $g['status'] && empty( $g['cancel_at_period_end'] ) && 'cancelled' !== $g['state'] ) : ?>
+			<form method="post" action="/account/gestionale-disdici" onsubmit="return confirm('Disdire il rinnovo automatico? Il gestionale resta attivo fino alla scadenza già pagata.')"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="id" value="<?php echo e( $g['id'] ); ?>"><button class="btn alt" type="submit">Disdici il rinnovo</button></form>
+			<?php endif; ?>
+		</div>
+	</div>
+	<?php endforeach; ?>
+	<?php if ( ! $subs && empty( $saas ) ) : ?>
 		<div class="sub empty"><div class="ico" style="margin:0 auto 16px"><?php echo icon( 'key' ); ?></div><h2>Nessuna licenza, per ora</h2><p class="muted">Parti dal piano gratuito oppure scegli un piano Pro.</p>
 		<a class="btn" href="/free">Licenza gratuita</a> <a class="btn alt" href="/prezzi">Vedi i piani</a></div>
 	<?php endif; ?>
