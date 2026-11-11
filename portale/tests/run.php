@@ -1868,6 +1868,34 @@ check( 'ritento riuscito: ordine attivo con subscription in coda', 'active' === 
 Config::set( 'stripe.secret_key', '' );
 check( 'senza provider di pagamento non si apre l\'ordine', null !== throwsUser( function () use ( $cdb, $cbill, $form ) { SaasCheckout::start( $cdb, $cbill, $form ); } ) );
 
+// --- Area clienti: il gestionale, accesso dal gestionale, disdetta ----------
+use Portale\SaasAccount;
+$custA = $cdb->one( "SELECT * FROM customers WHERE email = 'anna@esempio.it'" );
+$mine = array();
+foreach ( SaasAccount::forCustomer( $cdb, $custA['id'] ) as $g ) {
+	$mine[ $g['org_name'] ] = $g;
+}
+check( 'area clienti: due abbonamenti al gestionale con stato e scadenza dall\'ultimo messaggio', 2 === count( $mine ) && 'cancelled' === $mine['Circolo San Giorgio']['state'] && '' !== $mine['Circolo San Giorgio']['until'] && 'https://circolo-san-giorgio.associazionesemplice.it' === $mine['Circolo San Giorgio']['url'] );
+check( 'area clienti: un altro cliente non vede nulla e non può agire sull\'ordine', array() === SaasAccount::forCustomer( $cdb, 'altro' ) && null === SaasAccount::mine( $cdb, 'altro', $ord['id'] ) && null !== SaasAccount::mine( $cdb, $custA['id'], $ord['id'] ) );
+$ssoTok = function ( array $over = array() ) use ( $oseed, $ord ) {
+	return PortalAttestation::sign( $over + array( 'iss' => 'https://app.associazionesemplice.it', 'aud' => 'https://portale.test', 'typ' => 'sso', 'iat' => time(), 'exp' => time() + 60, 'jti' => 'sso' . bin2hex( random_bytes( 6 ) ), 'sub' => 'anna@esempio.it', 'ref' => $ord['org_ref'], 'org_id' => 'x', 'role' => 'owner' ), $oseed );
+};
+$t1 = $ssoTok();
+check( 'da-gestionale: token valido → il cliente', ( SaasAccount::ssoCustomer( $cdb, $t1 )['id'] ?? '' ) === $custA['id'] );
+check( 'da-gestionale: stesso token una seconda volta → rifiutato (jti monouso)', null === SaasAccount::ssoCustomer( $cdb, $t1 ) );
+check( 'da-gestionale: email diversa dall\'intestatario → rifiutato', null === SaasAccount::ssoCustomer( $cdb, $ssoTok( array( 'sub' => 'altra@esempio.it' ) ) ) );
+check( 'da-gestionale: riferimento sconosciuto, tipo sbagliato o scaduto → rifiutato', null === SaasAccount::ssoCustomer( $cdb, $ssoTok( array( 'ref' => 'zzz' ) ) ) && null === SaasAccount::ssoCustomer( $cdb, $ssoTok( array( 'typ' => 'catalog' ) ) ) && null === SaasAccount::ssoCustomer( $cdb, $ssoTok( array( 'iat' => time() - 900, 'exp' => time() - 800 ) ) ) );
+check( 'da-gestionale: vita oltre 2 minuti → rifiutato', null === SaasAccount::ssoCustomer( $cdb, $ssoTok( array( 'exp' => time() + 300 ) ) ) );
+Config::set( 'stripe.secret_key', 'sk_test_abc' );
+$cancelled = array();
+Http::$transport = function ( $m, $u, $h, $b ) use ( &$cancelled ) {
+	$cancelled[] = array( $m, $u, $b );
+	return array( 200, '{}' );
+};
+SaasAccount::cancel( $cdb, SaasAccount::mine( $cdb, $custA['id'], $ord['id'] ) );
+check( 'disdetta: a fine periodo su Stripe e ordine segnato', 1 === count( $cancelled ) && false !== strpos( $cancelled[0][1], '/subscriptions/sub_1' ) && 'true' === ( function ( $s ) { parse_str( $s, $o ); return $o['cancel_at_period_end'] ?? ''; } )( $cancelled[0][2] ) && 1 === (int) $cdb->one( 'SELECT cancel_at_period_end c FROM orders WHERE id = ?', array( $ord['id'] ) )['c'] );
+Config::set( 'stripe.secret_key', '' );
+
 // Elenco centrale dello staff (docs/UTENTI_E_ACCESSI.md): copia, livelli, super amministratore, registro
 use Portale\Plugin\Directory;
 $ddb = new Db( new PDO( 'sqlite::memory:' ) );

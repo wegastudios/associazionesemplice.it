@@ -158,7 +158,7 @@ final class App {
 		} elseif ( $get && '/paypal/ritorno' === $path ) {
 			$this->paypalReturn( (string) ( $_GET['token'] ?? '' ) );
 		} elseif ( $get && '/grazie' === $path ) {
-			View::render( 'message', array( 'title' => 'Grazie!', 'text' => 'Appena il pagamento è confermato ti scriviamo un link per entrare nell\'area riservata e vedere la chiave di licenza.' ) );
+			View::render( 'message', array( 'title' => 'Grazie!', 'text' => 'Appena il pagamento è confermato ti scriviamo un link per entrare nell\'area riservata e trovare la chiave di licenza del plugin o l\'indirizzo del tuo gestionale.' ) );
 		} elseif ( $get && '/accedi' === $path ) {
 			View::render( 'login', array( 'title' => 'Area riservata', 'for_support' => '/supporto/accedi' === ( $_SESSION['after_login'] ?? '' ) ) );
 		} elseif ( ! $get && '/accedi' === $path ) {
@@ -197,9 +197,29 @@ final class App {
 		} elseif ( $get && '/account' === $path ) {
 			$this->account();
 		} elseif ( $get && '/account/da-gestionale' === $path ) {
-			// «Gestisci abbonamento» dal gestionale (contratto §3.2). Il token si accetta con il passo «acquisto»; fino ad allora si passa dall'accesso normale.
+			// «Gestisci abbonamento» dal gestionale (contratto §4.3). Destinazione fissa; se qualcosa non torna si passa dall'accesso normale, senza dire perché.
 			header( 'Cache-Control: no-store' );
-			header( 'Location: /accedi', true, 303 );
+			$cust = SaasAccount::ssoCustomer( $this->db, (string) ( $_GET['t'] ?? '' ) );
+			if ( $cust ) {
+				$this->startSession( $cust, false );
+				header( 'Location: /account#gestionale', true, 303 );
+			} else {
+				header( 'Location: /accedi', true, 303 );
+			}
+		} elseif ( ! $get && '/account/gestionale-disdici' === $path ) {
+			$o = SaasAccount::mine( $this->db, $this->customerId(), (string) $this->in( 'id' ) );
+			if ( ! $o ) {
+				throw new UserError( 'Abbonamento non trovato.' );
+			}
+			SaasAccount::cancel( $this->db, $o );
+			$_SESSION['acc_flash'] = 'Rinnovo disdetto: il gestionale resta attivo fino alla scadenza già pagata.';
+			header( 'Location: /account#gestionale', true, 303 );
+		} elseif ( ! $get && '/account/gestionale-fatturazione' === $path ) {
+			$o = SaasAccount::mine( $this->db, $this->customerId(), (string) $this->in( 'id' ) );
+			if ( ! $o || 'stripe' !== $o['provider'] || empty( $o['provider_customer'] ) ) {
+				throw new UserError( 'Portale di fatturazione non disponibile per questo abbonamento.' );
+			}
+			header( 'Location: ' . Stripe::portalUrl( (string) $o['provider_customer'] ), true, 303 );
 		} elseif ( ! $get && '/account/nome' === $path ) {
 			$this->billing->setName( $this->customerId(), (string) $this->in( 'name' ) );
 			$_SESSION['acc_flash'] = 'Nome salvato: comparirà anche nelle richieste di supporto.';
@@ -337,7 +357,7 @@ final class App {
 			'name' => (string) ( $this->db->one( 'SELECT name FROM customers WHERE id = ?', array( $cid ) )['name'] ?? '' ), 'has_password' => $this->auth->hasPassword( $cid ), 'via_link' => ! empty( $_SESSION['via_link'] ), 'flash' => $flash,
 			'subs' => $subs, 'email' => $this->customerEmail( $cid ), 'trial' => $trial, 'trial_days' => Settings::limit( 'trial_days' ),
 			'trial_label' => (string) Config::get( 'plans.' . Config::get( 'trial_plan', 'full' ) . '.label', 'Pro' ),
-			'billing' => $this->billing, 'is_admin' => ! empty( $_SESSION['staff'] ),
+			'saas' => SaasAccount::forCustomer( $this->db, $cid ), 'billing' => $this->billing, 'is_admin' => ! empty( $_SESSION['staff'] ),
 			'releases' => array_combine( Releases::entitled( $subs ), array_map( function ( $p ) { return Releases::all( $this->db, $p ); }, Releases::entitled( $subs ) ) ) ?: array(),
 		) );
 	}

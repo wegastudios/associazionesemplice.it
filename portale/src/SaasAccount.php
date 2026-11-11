@@ -1,0 +1,73 @@
+<?php
+namespace Portale;
+
+/**
+ * Il gestionale nell'area clienti: elenco degli abbonamenti SaaS del cliente (`orders` pagati + `saas_orgs`), disdetta, portale di
+ * fatturazione e accesso dal gestionale (contratto §4.3: token `sso`, `jti` monouso, destinazione fissa).
+ */
+final class SaasAccount {
+
+	/** Abbonamenti al gestionale del cliente, dal più recente. Le richieste mai pagate non compaiono. */
+	public static function forCustomer( Db $db, string $customerId ): array {
+		$rows = $db->all(
+			"SELECT o.*, g.org_id, g.slug, g.name AS org_name FROM orders o JOIN saas_orgs g ON g.ref = o.org_ref
+			 WHERE o.customer_id = ? AND o.product = 'saas' AND o.status IN ('paid','active') ORDER BY o.created_at DESC",
+			array( $customerId )
+		);
+		foreach ( $rows as &$r ) {
+			$q          = (array) json_decode( (string) $r['quote'], true );
+			$last       = $r['org_id'] ? (array) json_decode( (string) ( $db->one( 'SELECT body FROM saas_outbox WHERE org_id = ? ORDER BY rev DESC LIMIT 1', array( $r['org_id'] ) )['body'] ?? '[]' ), true ) : array();
+			$r['state'] = 'paid' === $r['status'] ? 'pending' : (string) ( $last['status'] ?? 'active' );
+			$r['until'] = (string) ( $last['until'] ?? '' );
+			$r['total'] = (int) ( $q['total'] ?? 0 );
+			$r['url']   = $r['slug'] ? 'https://' . $r['slug'] . '.' . Config::get( 'saas_tenant_domain', 'associazionesemplice.it' ) : '';
+		}
+		unset( $r );
+		return $rows;
+	}
+
+	public static function stateLabel( string $state ): array {
+		return array(
+			'pending'   => array( 'In attivazione', 'warn' ), 'active' => array( 'Attivo', 'ok' ), 'trial' => array( 'In prova', 'ok' ),
+			'past_due'  => array( 'Pagamento non riuscito', 'warn' ), 'suspended' => array( 'Sospeso', 'warn' ), 'cancelled' => array( 'Annullato', 'warn' ),
+		)[ $state ] ?? array( $state, '' );
+	}
+
+	/** Ordine del cliente (per i pulsanti dell'area clienti). */
+	public static function mine( Db $db, string $customerId, string $orderId ): ?array {
+		$o = $db->one( "SELECT * FROM orders WHERE id = ? AND customer_id = ? AND product = 'saas' AND status = 'active'", array( $orderId, $customerId ) );
+		return $o ?: null;
+	}
+
+	/** Disdetta a fine periodo: il gestionale resta attivo fino alla scadenza già pagata. */
+	public static function cancel( Db $db, array $order ): void {
+		if ( 'stripe' === $order['provider'] && ! empty( $order['provider_ref'] ) ) {
+			Stripe::cancelAtPeriodEnd( (string) $order['provider_ref'] );
+		} elseif ( 'paypal' === $order['provider'] && ! empty( $order['provider_ref'] ) ) {
+			PayPal::cancel( (string) $order['provider_ref'] );
+		} else {
+			throw new UserError( 'Questo abbonamento non si può disdire da qui: scrivici.' );
+		}
+		$db->run( 'UPDATE orders SET cancel_at_period_end = 1, updated_at = ? WHERE id = ?', array( Db::now(), $order['id'] ) );
+	}
+
+	/**
+	 * Accesso dal gestionale («Gestisci abbonamento»): firma, tipo, emittente e destinatario come ogni messaggio del SaaS, `jti` usato una volta,
+	 * `ref` = un suo abbonamento e `sub` = l'intestatario. @return array|null il cliente, o null (allora si passa dall'accesso normale, senza dire perché)
+	 */
+	public static function ssoCustomer( Db $db, string $token, ?int $now = null ): ?array {
+		$now = $now ?? time();
+		$c   = Catalog::verifyToken( $token, 'sso', $now );
+		if ( ! $c || $c['exp'] - $c['iat'] > 120 || ! is_string( $c['sub'] ?? null ) || ! is_string( $c['ref'] ?? null ) ) {
+			return null;
+		}
+		$db->run( 'DELETE FROM seen_jti WHERE exp < ?', array( $now - 3600 ) );
+		try {
+			$db->run( 'INSERT INTO seen_jti (jti, exp) VALUES (?,?)', array( 'sso:' . substr( $c['jti'], 0, 58 ), (int) $c['exp'] ) );
+		} catch ( \PDOException $e ) {
+			return null;
+		}
+		$row = $db->one( 'SELECT c.* FROM saas_orgs g JOIN customers c ON c.id = g.customer_id WHERE g.ref = ? AND c.email = ?', array( $c['ref'], strtolower( trim( $c['sub'] ) ) ) );
+		return $row ?: null;
+	}
+}
