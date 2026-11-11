@@ -59,6 +59,8 @@ return [
         'check_seconds' => 300,
         // Accesso locale dello staff (email e password): resta acceso finche l'accesso unico non e verificato, poi si spegne da .env.
         // Spento, resta solo come accesso di emergenza della titolare, riacceso dal server.
+        // Login nel modulo del supporto verificato dal SaaS (POST /api/staff/v1/login): email, password e codice non si salvano qui
+        'remote_login' => (bool) env('SUPPORT_STAFF_REMOTE_LOGIN', false),
         'local_login' => (bool) env('SUPPORT_STAFF_LOCAL_LOGIN', true),
     ],
 

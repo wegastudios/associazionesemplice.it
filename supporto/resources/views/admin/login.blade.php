@@ -4,14 +4,17 @@
     <div class="card login">
         @include("partials.logo", ["h" => 64])
         <h1>Accesso amministratore</h1>
-        <p><a class="btn" href="{{ rtrim(config('support.staff_sso.issuer'), '/') }}/staff/accedi?area=supporto">Entra dal portale</a></p>
-        @if ($localLogin)
+        @if ($remoteLogin || $localLogin)
         <form method="post" action="{{ route('admin.login.attempt') }}">
             @csrf
             <label for="email">Email</label>
             <input id="email" name="email" type="email" value="{{ old('email') }}" autocomplete="username" required autofocus>
             <label for="password">Password</label>
             <input id="password" name="password" type="password" autocomplete="current-password" required>
+            @if ($remoteLogin)
+            <label for="code">Codice a due passaggi <span class="muted">(solo se lo hai attivato)</span></label>
+            <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="20">
+            @endif
             <p style="margin-top:16px"><button type="submit" style="width:100%">Entra</button></p>
             <p style="text-align:center"><a href="{{ route('admin.password.forgot') }}">Password dimenticata?</a></p>
         </form>

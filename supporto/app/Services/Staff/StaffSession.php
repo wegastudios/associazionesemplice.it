@@ -5,6 +5,7 @@ namespace App\Services\Staff;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 /**
  * Sessione locale dello staff entrato dal portale: inattività massima 2 ore, durata massima 8, riconferma al portale ogni 5 minuti.
@@ -15,6 +16,40 @@ class StaffSession
     public const LEVELS = ['admin' => 'admin', 'agente' => 'agent'];
 
     public function __construct(private readonly StaffPortal $portal) {}
+
+    /**
+     * Apre la sessione locale da un token staff_sso già verificato (firma, aud, durata, uso singolo): controlla area, livello, sid ed email,
+     * crea l'utente se manca (senza password locale) e lo fa entrare. null = token non utilizzabile.
+     *
+     * @param  array<string, mixed>  $claims
+     */
+    public function signIn(Request $request, array $claims): ?User
+    {
+        $level = $claims['level'] ?? null;
+        $sid = $claims['sid'] ?? null;
+        $email = is_string($claims['sub'] ?? null) ? $claims['sub'] : '';
+        if (($claims['area'] ?? null) !== 'supporto' || ! is_string($level) || ! isset(self::LEVELS[$level])
+            || ! is_string($sid) || ! preg_match('/^[a-f0-9]{32}$/', $sid)
+            || ! filter_var($email, FILTER_VALIDATE_EMAIL) || $email !== mb_strtolower($email)) {
+            return null;
+        }
+
+        $user = User::query()->where('email', $email)->first();
+        if ($user === null) {
+            // Nessuna password locale utilizzabile: chi è staff lo decide il SaaS
+            $user = new User(['email' => $email]);
+            $user->forceFill(['name' => Str::before($email, '@'), 'password' => Str::random(48), 'sso_managed' => true]);
+        }
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        $user->save();
+        $this->open($request, $user, $sid, $level);
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        return $user;
+    }
 
     public function open(Request $request, User $user, string $sid, string $level): void
     {
