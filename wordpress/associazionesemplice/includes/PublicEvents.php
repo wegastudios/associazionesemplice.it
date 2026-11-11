@@ -121,7 +121,6 @@ final class PublicEvents {
 				'order'            => 'ASC',
 				'numberposts'      => 5,
 				'fields'           => 'ids',
-				'suppress_filters' => true,
 			)
 		);
 		return $ids ? (int) $ids[0] : 0;
@@ -180,7 +179,6 @@ final class PublicEvents {
 				'order'            => 'ASC',
 				'numberposts'      => 20,
 				'fields'           => 'ids',
-				'suppress_filters' => true,
 			)
 		);
 		foreach ( array_slice( $ids, 1 ) as $extra ) {
