@@ -9,6 +9,7 @@ use App\Modules\Core\Http\Middleware\IdentifyOperatorOrg;
 use App\Modules\Core\Http\Middleware\ResetOrgContext;
 use App\Modules\Core\Http\Middleware\SecurityHeaders;
 use App\Modules\Piattaforma\Http\Middleware\UsePlatformSession;
+use App\Modules\Piattaforma\Http\Middleware\UsePublicStaffUrl;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -23,6 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Ogni richiesta parte senza associazione e la azzera alla fine.
         $middleware->prepend(ResetOrgContext::class);
+        // Le pagine di /saas/admin e /saas/staff scrivono gli indirizzi del portale (SAAS_PUBLIC_URL), non quello dell'app.
+        $middleware->prepend(UsePublicStaffUrl::class);
         $middleware->append(SecurityHeaders::class);
 
         // Sotto il percorso dell'amministrazione la sessione ha cookie, percorso e guardia propri: va prima di tutto.
