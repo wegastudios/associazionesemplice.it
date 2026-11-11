@@ -188,7 +188,7 @@ final class App {
 		} elseif ( $get && '/grazie' === $path ) {
 			View::render( 'message', array( 'title' => 'Grazie!', 'text' => 'Appena il pagamento è confermato ti scriviamo un link per entrare nell\'area riservata e trovare la chiave di licenza del plugin o l\'indirizzo del tuo gestionale.' ) );
 		} elseif ( $get && '/accedi' === $path ) {
-			View::render( 'login', array( 'title' => 'Area riservata', 'for_support' => '/supporto/accedi' === ( $_SESSION['after_login'] ?? '' ), 'identity' => Identity::enabled() ) );
+			View::render( 'login', array( 'title' => 'Accedi', 'for_support' => '/supporto/accedi' === ( $_SESSION['after_login'] ?? '' ), 'identity' => Identity::enabled() ) );
 		} elseif ( '/twofactor' === $path ) {
 			$this->twoFactor( $get );
 		} elseif ( Identity::enabled() && '/accedi/password-dimenticata' === $path ) {

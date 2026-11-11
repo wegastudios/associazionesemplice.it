@@ -326,3 +326,6 @@ Specifica del SaaS: `saas/docs/IDENTITA_API.md`. Il portale non conserva passwor
 - **Controllo della sessione**: `identity_session` ogni 5 minuti (e subito prima di «Entra» in un'area); revocata/scaduta = chiusa; due mancate risposte di fila = chiusa.
 - **`/account/esci`** revoca la sessione centrale (`identity_logout`) e distrugge quella del portale; anche `/esci` lo fa.
 - `/wordpress/admin/accedi` rinvia a `/accedi` quando l'accesso unico è acceso. Ancora da fare: profilo (password, email, 2FA, sessioni) in `/account`.
+
+## Grafica e UX unica (11/11/2026)
+Regola per tutti i sistemi: `docs/GRAFICA_UX.md`; valori in `docs/brand/tokens.css`. Nel portale: `portale.css` ha i valori dei token; la voce d'accesso della barra e del piede è «Accedi» / «Il mio account» (mai «Area riservata»); le pagine d'errore hanno «Torna al tuo account» e «Vai alla home»; `bin/link-check.php [indirizzo]` apre le pagine pubbliche e segue i link di barra e piede (esce con 1 se uno non risponde 200).

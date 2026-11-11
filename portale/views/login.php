@@ -1,6 +1,6 @@
 <section class="page"><div class="wrap page-narrow">
 	<div class="panel">
-		<h1>Area riservata</h1>
+		<h1>Accedi</h1>
 		<?php if ( ! empty( $for_support ) ) : ?><p class="flash" role="status">Entra per scrivere al supporto: dopo l'accesso torni subito al centro assistenza. Serve per sapere a quale licenza si riferisce la richiesta.</p><?php endif; ?>
 		<p class="muted">Entra con la tua email e la tua password.</p>
 		<form method="post" action="/accedi">
