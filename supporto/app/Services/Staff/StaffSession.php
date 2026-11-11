@@ -45,10 +45,24 @@ class StaffSession
         $request->session()->regenerateToken();
         $user->save();
         $this->open($request, $user, $sid, $level);
+        $request->session()->put('staff.areas', self::areas($claims['areas'] ?? null));
         Auth::login($user);
         $request->session()->regenerate();
 
         return $user;
+    }
+
+    /** Aree dove la persona ha un ruolo, per il selettore «Vai a»: solo saas e wordpress, con livello di sole lettere minuscole. */
+    public static function areas(mixed $areas): array
+    {
+        $out = [];
+        foreach (is_array($areas) ? $areas : [] as $area => $level) {
+            if (in_array($area, ['saas', 'wordpress'], true) && is_string($level) && preg_match('/^[a-z]{1,20}$/', $level)) {
+                $out[$area] = $level;
+            }
+        }
+
+        return $out;
     }
 
     public function open(Request $request, User $user, string $sid, string $level): void

@@ -28,12 +28,32 @@ class StaffPortal
             $claims['ip'] = $ip;
         }
         try {
-            $response = Http::asForm()->timeout(8)->post($this->url('login'), ['token' => StaffJwt::sign('staff_login', $claims)]);
+            $response = Http::asJson()->timeout(8)->post($this->url('login'), ['token' => StaffJwt::sign('staff_login', $claims)]);
         } catch (\Throwable) {
             return null;
         }
         $data = $response->json();
         $token = is_array($data) ? ($data['staff_sso'] ?? $data['token'] ?? null) : null;
+
+        return $response->ok() && is_string($token) ? $token : null;
+    }
+
+    /**
+     * «Vai a» un'altra area: chiede al SaaS un token staff_sso per quell'area, per la stessa sessione centrale.
+     *
+     * @return string|null il token, oppure null (sessione chiusa, area non consentita, SaaS muto)
+     */
+    public function areaToken(string $sid, string $area): ?string
+    {
+        try {
+            $response = Http::asJson()->timeout(8)->post($this->url('token'), [
+                'token' => StaffJwt::sign('staff_token', ['sid' => $sid, 'area' => $area]),
+            ]);
+        } catch (\Throwable) {
+            return null;
+        }
+        $data = $response->json();
+        $token = is_array($data) ? ($data['token'] ?? null) : null;
 
         return $response->ok() && is_string($token) ? $token : null;
     }
@@ -46,7 +66,7 @@ class StaffPortal
     public function checkSession(string $sid): ?array
     {
         try {
-            $response = Http::asForm()->timeout(5)->post($this->url('session-check'), [
+            $response = Http::asJson()->timeout(5)->post($this->url('session-check'), [
                 'token' => StaffJwt::sign('staff_session_check', ['sid' => $sid, 'area' => 'supporto']),
             ]);
         } catch (\Throwable) {
@@ -69,7 +89,7 @@ class StaffPortal
     public function people(string $action, string $actor, array $extra = []): array
     {
         try {
-            $response = Http::asForm()->timeout(8)->post($this->url('people/'.$action), [
+            $response = Http::asJson()->timeout(8)->post($this->url('people/'.$action), [
                 'token' => StaffJwt::sign('staff_people', ['area' => 'supporto', 'act' => $actor] + $extra),
             ]);
         } catch (\Throwable) {

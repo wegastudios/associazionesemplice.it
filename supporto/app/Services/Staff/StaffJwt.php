@@ -171,7 +171,7 @@ class StaffJwt
         $header = self::b64(json_encode(['typ' => 'JWT', 'alg' => 'EdDSA', 'kid' => $key['kid']]));
         $payload = self::b64(json_encode([
             'iss' => rtrim((string) config('app.url'), '/'),
-            'aud' => rtrim((string) config('support.staff_sso.issuer'), '/'),
+            'aud' => (string) config('support.staff_sso.request_audience'),
             'typ' => $typ,
             'iat' => $now,
             'exp' => $now + 120,

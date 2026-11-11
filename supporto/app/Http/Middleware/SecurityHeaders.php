@@ -19,7 +19,7 @@ class SecurityHeaders
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
         $response->headers->set('Cross-Origin-Opener-Policy', 'same-origin');
         // Stili in linea usati dalle pagine; nessuno script; font e immagini solo dal sito stesso
-        $response->headers->set('Content-Security-Policy', "default-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
+        $response->headers->set('Content-Security-Policy', "default-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; form-action 'self'".($request->attributes->get('csp_form_action') ? ' '.$request->attributes->get('csp_form_action') : '')."; frame-ancestors 'none'; base-uri 'none'");
         if ($request->isSecure()) {
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         }
