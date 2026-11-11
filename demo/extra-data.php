@@ -260,13 +260,30 @@ extra_step( 'eventi sul sito', function () {
 		'Laboratorio di cucina'  => array( 'Laboratori', 'Impariamo a fare la pasta fresca con le nostre cuoche volontarie. Si porta il grembiule, al resto pensiamo noi.', array( 200, 150, 50 ) ),
 		'Mercatino solidale'     => array( 'Solidarietà', 'Banchi di libri, giochi e oggetti usati: il ricavato sostiene i progetti dell\'associazione. Ingresso libero.', array( 60, 150, 90 ) ),
 	);
-	$more = array(
-		array( 'Concerto di primavera', 9, '21:00', 'Teatro parrocchiale', 120, 0 ),
+	$texts['Concerto d\'autunno']       = array( 'Musica', 'Il coro e la banda dell\'associazione aprono la stagione con un concerto a ingresso libero. Prenota il posto per essere sicuro di trovarlo.', array( 150, 90, 60 ) );
+	$texts['Festa di Natale']           = array( 'Serate', 'Panettone, musica e la tombola dei soci: una serata per scambiarci gli auguri e conoscere i nuovi arrivati.', array( 170, 50, 60 ) );
+	$texts['Tombolata dell\'Epifania']  = array( 'Serate', 'Cartelle, premi e tanta allegria per grandi e piccoli: la tombola che chiude le feste.', array( 90, 110, 150 ) );
+	$texts['Carnevale dei bambini']     = array( 'Laboratori', 'Maschere, coriandoli e giochi per i più piccoli, con merenda offerta dall\'associazione.', array( 220, 100, 140 ) );
+	$texts['Gita di primavera']         = array( 'Gite', 'Una giornata in campagna tra passeggiata, pranzo al sacco e giochi all\'aperto. Si parte in auto condivise.', array( 70, 160, 80 ) );
+	$texts['Torneo di burraco']         = array( 'Serate', 'Una serata di carte tra soci e amici: iscrizioni aperte, premi per i primi tre.', array( 130, 70, 110 ) );
+	$texts['Cena di fine anno sociale'] = array( 'Serate', 'Una cena per chiudere l\'anno insieme, con il bilancio di quanto fatto e le prime idee per il prossimo.', array( 190, 120, 70 ) );
+	// Date relative a oggi, ma sempre dentro l'anno sociale (un evento inizia e finisce nello stesso anno sociale): le più lontane si fermano a fine anno.
+	$last_day = Settings::social_year()->end()->format( 'Y-m-d' );
+	$more     = array(
+		array( 'Concerto d\'autunno', 9, '21:00', 'Teatro parrocchiale', 120, 0 ),
 		array( 'Laboratorio di cucina', 35, '16:00', 'Sede dell\'associazione', 15, 1800 ),
 		array( 'Mercatino solidale', 48, '10:00', 'Piazza del paese', 0, 0 ),
+		array( 'Festa di Natale', 40, '20:30', 'Sede dell\'associazione', 80, 1000 ),
+		array( 'Tombolata dell\'Epifania', 57, '16:00', 'Sede dell\'associazione', 60, 500 ),
+		array( 'Carnevale dei bambini', 95, '15:30', 'Oratorio', 50, 0 ),
+		array( 'Gita di primavera', 140, '09:00', 'Ritrovo davanti alla sede', 30, 1200 ),
+		array( 'Concerto di primavera', 160, '21:00', 'Teatro parrocchiale', 120, 0 ),
+		array( 'Torneo di burraco', 185, '20:30', 'Sede dell\'associazione', 40, 800 ),
+		array( 'Cena di fine anno sociale', 230, '20:00', 'Sede dell\'associazione', 70, 2000 ),
 	);
 	foreach ( $more as $e ) {
-		$session = array( 'session_date' => gmdate( 'Y-m-d', time() + $e[1] * 86400 ), 'start_time' => $e[2], 'location' => $e[3] );
+		$day     = min( gmdate( 'Y-m-d', time() + $e[1] * 86400 ), $last_day );
+		$session = array( 'session_date' => $day, 'start_time' => $e[2], 'location' => $e[3] );
 		if ( $e[4] > 0 ) {
 			$session['capacity'] = $e[4];
 		}

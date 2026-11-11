@@ -398,7 +398,7 @@ final class PublicEvents {
 		// Ciò che resta della riga «Scritto da … in …» una volta tolti autore e categorie.
 		if ( 'core/group' === ( $block['blockName'] ?? '' ) ) {
 			$text = trim( preg_replace( '/\s+/u', ' ', wp_strip_all_tags( (string) $block_content ) ) );
-			if ( '' !== $text && preg_match( '/^(scritto da|written by|di|il|in|,|\s)+$/iu', $text ) ) {
+			if ( '' !== $text && ( preg_match( '/^(scritto da|written by|di|il|in|,|\s)+$/iu', $text ) || preg_match( '/^(altri articoli|more posts|articoli correlati)\b/iu', $text ) ) ) { // anche «Altri articoli»: porterebbe a post che non c\'entrano
 				return '';
 			}
 		}
