@@ -3,20 +3,21 @@
 @font-face { font-family: "Montserrat"; font-weight: 500; font-style: normal; font-display: swap; src: url("fonts/Montserrat-Medium.ttf") format("truetype"); }
 @font-face { font-family: "Montserrat"; font-weight: 600; font-style: normal; font-display: swap; src: url("fonts/Montserrat-SemiBold.ttf") format("truetype"); }
 @font-face { font-family: "Montserrat"; font-weight: 700; font-style: normal; font-display: swap; src: url("fonts/Montserrat-Bold.ttf") format("truetype"); }
+/* Valori allineati a docs/brand/tokens.css (unica fonte; vedi docs/GRAFICA_UX.md): non cambiarli qui. */
 :root {
-	--bg: #f6f8f6; --surface: #ffffff; --surface-2: #edf2ef; --fg: #14172e; --muted: #566069; --line: #dbe3de;
-	--brand: #1f218c; --brand-2: #15176b; --brand-soft: #e7e8f7; --brand-fg: #ffffff;
+	--bg: #f5f6fa; --surface: #ffffff; --surface-2: #eef0f7; --fg: #181a2e; --muted: #5d6078; --line: #e2e5ee;
+	--brand: #1f218c; --brand-2: #15176b; --brand-soft: #e8e9fb; --brand-fg: #ffffff;
 	--sage: #5f8579; --sage-soft: #e3ece8;
-	--accent: #efca5c; --accent-soft: #fbf3d4; --danger: #b3261e; --danger-soft: #fbe4e1; --ok: #2f7a5f;
+	--accent: #efca5c; --accent-soft: #fbf3d4; --danger: #b42318; --danger-soft: #fdecea; --ok: #2f7a5f;
 	--shadow: 0 1px 2px rgba(20,23,46,.06), 0 8px 24px rgba(20,23,46,.07); --warn-fg: #7a4d08;
 	--radius: 16px; --max: 1120px;
 }
 @media (prefers-color-scheme: dark) {
 	:root {
-		--bg: #0f1311; --surface: #161c1a; --surface-2: #1c2421; --fg: #eef2f0; --muted: #a2b0aa; --line: #27322e;
-		--brand: #a6a9ff; --brand-2: #c4c6ff; --brand-soft: #1d1f4d; --brand-fg: #0c0d2b;
+		--bg: #11122a; --surface: #1b1d3d; --surface-2: #232552; --fg: #eceefa; --muted: #a9acc6; --line: #2f3260;
+		--brand: #a6a9ff; --brand-2: #c4c6ff; --brand-soft: #26285a; --brand-fg: #11122a;
 		--sage: #86ab9d; --sage-soft: #1f2e29;
-		--accent: #efca5c; --accent-soft: #3a3013; --danger: #ff8a80; --danger-soft: #3b1a17; --ok: #6fd1a6;
+		--accent: #efca5c; --accent-soft: #3a3013; --danger: #ff8a80; --danger-soft: #3b1b1b; --ok: #6fd1a6;
 		--shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35); --warn-fg: #efca5c;
 	}
 }
