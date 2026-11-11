@@ -25,8 +25,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
         Route::get('/password', [PasswordController::class, 'edit'])->name('password.edit');
         Route::post('/password', [PasswordController::class, 'update'])->name('password.update');
-        Route::get('/email', [MailSettingsController::class, 'edit'])->name('mail.edit');
-        Route::post('/email', [MailSettingsController::class, 'update'])->name('mail.update');
-        Route::post('/email/prova', [MailSettingsController::class, 'test'])->middleware('throttle:5,1')->name('mail.test');
+        Route::middleware('admin.role')->group(function () {
+            Route::get('/email', [MailSettingsController::class, 'edit'])->name('mail.edit');
+            Route::post('/email', [MailSettingsController::class, 'update'])->name('mail.update');
+            Route::post('/email/prova', [MailSettingsController::class, 'test'])->middleware('throttle:5,1')->name('mail.test');
+        });
     });
 });

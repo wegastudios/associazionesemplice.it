@@ -38,6 +38,12 @@ class User extends Authenticatable
         return $this->global_role === 'admin';
     }
 
+    /** Amministratore o agente: chi puo entrare nel pannello (l'agente risponde ai ticket e non gestisce altro). */
+    public function isStaff(): bool
+    {
+        return in_array($this->global_role, ['admin', 'agent'], true);
+    }
+
     /**
      * Get the attributes that should be cast.
      *
