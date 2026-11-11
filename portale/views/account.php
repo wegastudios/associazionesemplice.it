@@ -7,10 +7,11 @@ $csrf = Portale\App::csrf();
 		<div style="display:flex;gap:10px;flex-wrap:wrap">
 			<?php if ( $is_admin ) : ?><a class="btn small" href="/wordpress/admin">Gestione</a><?php endif; ?>
 			<a class="btn small" href="<?php echo e( Portale\SupportSso::enabled() ? '/supporto/accedi' : Portale\SupportSso::supportUrl() ); ?>">Supporto</a>
-			<form method="post" action="/esci"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><button class="btn alt small" type="submit">Esci</button></form>
+			<form method="post" action="<?php echo ! empty( $areas ) ? "/account/esci" : "/esci"; ?>"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><button class="btn alt small" type="submit">Esci</button></form>
 		</div>
 	</div>
 	<?php if ( ! empty( $flash ) ) : ?><div class="flash" role="status"><?php echo e( $flash ); ?></div><?php endif; ?>
+	<?php $areas = $areas ?? array(); include __DIR__ . "/_areas.php"; ?>
 	<div class="sub">
 		<div class="sub-top"><h2>Il tuo nome</h2></div>
 		<form method="post" action="/account/nome" class="domain-form" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
