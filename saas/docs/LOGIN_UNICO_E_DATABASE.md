@@ -73,3 +73,12 @@ I limiti di legge e le regole del plugin; il plugin gratuito; il formato dei tok
 
 - **Passo 2 (in costruzione, nel repository, dietro il flag `SAAS_UNIFIED_LOGIN`, spento di default):** pagina unica `/saas/staff/accedi` (dietro il proxy: `associazionesemplice.it/saas/staff/accedi`), codice solo se attivo, scelta dell'area, uscita, recupero password unico (`/saas/staff/password-dimenticata`, link di un'ora, una volta sola, chiude gli accessi aperti). Con il flag acceso `/saas/admin/accesso` rinvia qui. Non c'è ancora la pagina per **attivare** il secondo livello (prossima PR): oggi lo possono avere solo le persone con il codice già impostato.
 - **Fuori da questo passo, e da concordare con portale-vendita:** `/wordpress/admin/accedi` e la pagina `/accedi` del portale devono rinviare a `/saas/staff/accedi`; l'ingresso delle aree con il token (`SAAS_STAFF_SSO`, passo 3) resta spento: finché non è acceso, il pulsante «Entra» di un'area porta a un 404.
+
+## 10. Correzione del 11/11/2026 (indirizzi e chi serve le pagine)
+
+Decisione della titolare, che prevale su quanto sopra dove diverge:
+
+- **Le pagine sono del portale, alla radice di `associazionesemplice.it`**: `/accedi` (accesso e recupero password in `/accedi/password-dimenticata`), `/twofactor` (il codice, solo se attivo, facoltativo, attivabile da ognuno dal profilo), `/account` (arrivo di tutti: dati, abbonamenti, collegamenti alle sole aree in cui si ha un ruolo, profilo con password, email, secondo livello, sessioni) e `/account/esci` (chiude la sessione unica, quindi tutte le aree). **Mai sotto `/saas`.** Nessuna area ha moduli propri per password, email, secondo livello o uscita: rinviano a `/account`. Dopo l'accesso la destinazione è `/account`, salvo ritorno alla pagina voluta.
+- **Il SaaS è l'unico elenco di persone e risponde a richieste firmate** del portale: la specifica è in `IDENTITA_API.md`. Sotto `/saas/staff` restano solo le richieste tecniche tra le aree.
+- **La pagina provvisoria `/saas/staff/accedi` (§9)** è un ponte: resta finché `/accedi` del portale non la sostituisce, poi si toglie. Non viene ampliata (niente pagina di attivazione del secondo livello nel SaaS: è del profilo in `/account`).
+- Database del supporto: MySQL 8, deciso dalla sessione supporto.
