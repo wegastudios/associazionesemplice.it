@@ -35,7 +35,7 @@ final readonly class IssuerStaffAccess implements StaffAccess
         }
         $public = $this->config->get('saas.public_url');
 
-        return rtrim(is_string($public) && $public !== '' ? $public : 'https://associazionesemplice.it', '/').'/saas/staff/accedi';
+        return rtrim(is_string($public) && $public !== '' ? $public : 'https://associazionesemplice.it', '/').'/accedi';
     }
 
     public function verify(string $token): StaffGrant

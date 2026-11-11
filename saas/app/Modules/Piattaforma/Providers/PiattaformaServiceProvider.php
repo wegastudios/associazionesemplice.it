@@ -52,16 +52,9 @@ final class PiattaformaServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by('platform-code|'.(is_string($id) ? $id : (string) $request->ip()));
         });
 
-        RateLimiter::for('staff-code', static function (Request $request): Limit {
-            $id = $request->session()->get('staff.pending');
-
-            return Limit::perMinute(5)->by('staff-code|'.(is_string($id) ? $id : (string) $request->ip()));
-        });
-
         Route::group([], __DIR__.'/../Http/routes.php');
         Route::group([], __DIR__.'/../Http/staff_api_routes.php');
         Route::group([], __DIR__.'/../Http/staff_invite_routes.php');
-        Route::group([], __DIR__.'/../Http/staff_login_routes.php');
 
         if ($this->app->runningInConsole()) {
             $this->commands([CreateStaffCommand::class, InviteStaffCommand::class, ResetStaffTwoFactorCommand::class, ImportPortalCustomersCommand::class]);
