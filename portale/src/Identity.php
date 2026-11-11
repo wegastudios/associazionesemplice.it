@@ -52,7 +52,8 @@ final class Identity {
 		$now   = $now ?? time();
 		$token = PortalAttestation::sign( $data + array(
 			'iss' => rtrim( (string) Config::get( 'base_url', 'https://associazionesemplice.it' ), '/' ),
-			'aud' => self::AUD,
+			'aud'  => self::AUD,
+			'area' => 'wordpress', // una chiave vale per la sua area soltanto (AreaRequestVerifier)
 			'typ' => self::typ( $action ),
 			'iat' => $now,
 			'exp' => $now + 60,
