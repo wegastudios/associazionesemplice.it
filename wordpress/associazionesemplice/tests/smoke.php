@@ -2536,13 +2536,22 @@ if ( defined( 'ASEM_PRO_VERSION' ) ) {
 	$up_tr = \AssociazioneSemplice\Updater::inject( (object) array( 'response' => array() ) );
 	$up_bn = plugin_basename( ASEM_PRO_DIR . 'associazionesemplice-pro.php' );
 	asem_ok( isset( $up_tr->response[ $up_bn ] ) && '99.0' === $up_tr->response[ $up_bn ]->new_version && 'asem-portal://pro' === $up_tr->response[ $up_bn ]->package && 'associazionesemplice-pro' === $up_tr->response[ $up_bn ]->slug, 'aggiornamento diretto: la nuova versione del Pro compare tra gli aggiornamenti di WordPress' );
-	asem_ok( 1 === count( $up_calls ) && 'pro' === $up_calls[0]['product'] && 'ASEM-TEST-KEY' === $up_calls[0]['license_key'] && ASEM_PRO_VERSION === $up_calls[0]['version'] && 'prova-sito.it' === $up_calls[0]['domain'], 'aggiornamento diretto: il Pro manda versione, chiave e dominio (e solo lui)' );
+	$up_by = array();
+	foreach ( $up_calls as $up_c ) {
+		$up_by[ $up_c['product'] ] = $up_c;
+	}
+	asem_ok( 2 === count( $up_calls ) && isset( $up_by['pro'], $up_by['free'] ) && 'ASEM-TEST-KEY' === $up_by['pro']['license_key'] && ASEM_PRO_VERSION === $up_by['pro']['version'] && 'prova-sito.it' === $up_by['pro']['domain'], 'aggiornamento diretto: il Pro manda versione, chiave e dominio' );
+	asem_ok( ASEM_VERSION === $up_by['free']['version'] && array( 'product', 'version' ) === array_keys( $up_by['free'] ), 'aggiornamento diretto: il gratuito manda solo prodotto e versione (niente chiave né dominio)' );
+	$up_fb = plugin_basename( ASEM_FILE );
+	asem_ok( isset( $up_tr->response[ $up_fb ] ) && 'asem-portal://free' === $up_tr->response[ $up_fb ]->package && 'associazionesemplice' === $up_tr->response[ $up_fb ]->slug, 'aggiornamento diretto: anche il gratuito compare tra gli aggiornamenti di WordPress' );
 	$up_n = count( $up_calls );
 	\AssociazioneSemplice\Updater::inject( (object) array( 'response' => array() ) );
 	asem_ok( count( $up_calls ) === $up_n, 'aggiornamento diretto: dentro le 12 ore non richiede di nuovo al portale' );
 	$up_info = \AssociazioneSemplice\Updater::info( false, 'plugin_information', (object) array( 'slug' => 'associazionesemplice-pro' ) );
 	asem_ok( is_object( $up_info ) && '99.0' === $up_info->version && 'asem-portal://pro' === $up_info->download_link, 'aggiornamento diretto: scheda dei dettagli' );
-	asem_ok( false === \AssociazioneSemplice\Updater::info( false, 'plugin_information', (object) array( 'slug' => 'associazionesemplice' ) ), 'aggiornamento diretto: il gratuito non è gestito da qui' );
+	$up_info_free = \AssociazioneSemplice\Updater::info( false, 'plugin_information', (object) array( 'slug' => 'associazionesemplice' ) );
+	asem_ok( is_object( $up_info_free ) && 'asem-portal://free' === $up_info_free->download_link, 'aggiornamento diretto: scheda dei dettagli anche per il gratuito' );
+	asem_ok( false === \AssociazioneSemplice\Updater::info( false, 'plugin_information', (object) array( 'slug' => 'altro-plugin' ) ), 'aggiornamento diretto: i plugin di altri non si toccano' );
 	asem_ok( 'altro' === \AssociazioneSemplice\Updater::download( 'altro', 'https://example.com/a.zip' ), 'aggiornamento diretto: i pacchetti di altri non si toccano' );
 	$up_update = false;
 	asem_ok( is_wp_error( \AssociazioneSemplice\Updater::download( false, 'asem-portal://pro' ) ), 'aggiornamento diretto: se il portale non offre il pacchetto lo scarico dà un errore chiaro' );

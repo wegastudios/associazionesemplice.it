@@ -39,7 +39,7 @@ final class Ui {
 
 	public static function header( string $title, string $actions_html = '' ): void {
 		\AssociazioneSemplice\Texts::start_admin_buffer(); // testi personalizzati anche in amministrazione
-		echo wp_kses( '<div class="wrap asem' . ( \AssociazioneSemplice\Settings::get( 'ui_classic' ) ? '' : ' asem-ui' ) . '"><h1 class="wp-heading-inline">' . esc_html( $title ) . '</h1> ' . $actions_html . '<hr class="wp-header-end">', Html::allowed() );
+		echo wp_kses( '<div class="wrap asem asem-ui"><h1 class="wp-heading-inline">' . esc_html( $title ) . '</h1> ' . $actions_html . '<hr class="wp-header-end">', Html::allowed() );
 		echo wp_kses( Admin::tabs( isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '' ), Html::allowed() ); // phpcs:ignore WordPress.Security.NonceVerification
 		self::notices();
 	}
@@ -79,22 +79,13 @@ final class Ui {
 		return '<span class="asem-avatar asem-av-' . ( abs( crc32( mb_strtolower( $name ) ) ) % 3 ) . '" aria-hidden="true">' . esc_html( '' !== $ini ? $ini : '?' ) . '</span>';
 	}
 
-	/** Il nuovo aspetto è attivo? (si spegne da Impostazioni → Aspetto: «Torna alla grafica precedente») */
-	public static function is_new(): bool {
-		return ! \AssociazioneSemplice\Settings::get( 'ui_classic' );
-	}
-
 	/**
-	 * Stato di una riga: etichetta con fondo chiaro nel nuovo aspetto, testo colorato nella grafica precedente. Il testo è già escapato da chi chiama o è solo testo.
+	 * Stato di una riga: etichetta con fondo chiaro. Il testo è già escapato da chi chiama o è solo testo.
 	 *
 	 * @param string $kind ok | warn | danger | neutral
 	 */
 	public static function state( string $kind, string $label ): string {
-		if ( self::is_new() ) {
-			return self::badge( $kind, $label );
-		}
-		$old = array( 'ok' => 'asem-ok', 'warn' => 'asem-warn', 'danger' => 'asem-neg' );
-		return '<span class="' . ( $old[ $kind ] ?? '' ) . '">' . esc_html( $label ) . '</span>';
+		return self::badge( $kind, $label );
 	}
 	public static function footer(): void {
 		echo '</div>';

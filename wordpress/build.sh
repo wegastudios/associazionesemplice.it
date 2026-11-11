@@ -2,7 +2,7 @@
 # Costruisce i due pacchetti installabili partendo dal codice unico:
 #   dist/associazionesemplice.zip → cartella associazionesemplice/      (gratuito, per tutti: WordPress.org e portale; senza i file elencati in associazionesemplice/tests/pro-files.txt)
 #   dist/associazionesemplice-pro.zip   → cartella associazionesemplice-pro/  (quei file, che si aggiungono ad Associazione Semplice quando è attivo)
-# Uso: bash wordpress/build.sh [cartella-di-uscita]
+# Uso: [ASEM_WPORG=1] bash wordpress/build.sh [cartella-di-uscita]   (ASEM_WPORG=1: gratuito per WordPress.org, senza l'aggiornatore dal portale)
 set -euo pipefail
 root="$PWD"
 cd "$(dirname "$0")"
@@ -14,6 +14,8 @@ mkdir -p "$out/free" "$out/pro"
 cp -r associazionesemplice "$out/free/associazionesemplice"
 cp -r associazionesemplice-pro "$out/pro/associazionesemplice-pro"
 mkdir -p "$out/pro/associazionesemplice-pro/includes"
+# ASEM_WPORG=1: pacchetto per WordPress.org, senza l'aggiornatore dal portale (lì aggiorna WordPress.org)
+[ "${ASEM_WPORG:-}" = "1" ] && rm -f "$out/free/associazionesemplice/includes/Updater.php"
 rm -rf "$out/free/associazionesemplice/tests" "$out/free/associazionesemplice/vendor" "$out/free/associazionesemplice/composer.json" "$out/free/associazionesemplice/composer.lock" "$out/free/associazionesemplice/phpunit.xml.dist"
 n=0
 while IFS= read -r f; do

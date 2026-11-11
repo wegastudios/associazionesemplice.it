@@ -46,6 +46,20 @@ final class VersionTest extends TestCase {
 		$this->assertSame( $fa[1] ?? '', $pa[1] ?? 'x', 'ASEM_API e ASEM_PRO_API coincidono' );
 	}
 
+	/** Il changelog del readme.txt (quello che WordPress mostra in «Visualizza i dettagli») ha, per la versione in corso, le stesse voci italiane di CHANGELOG.md. */
+	public function test_readme_changelog_repeats_the_italian_log_of_the_current_version(): void {
+		$root = dirname( __DIR__, 3 );
+		foreach ( array( 'associazionesemplice', 'associazionesemplice-pro' ) as $dir ) {
+			$log    = str_replace( "\r", '', (string) file_get_contents( $root . '/' . $dir . '/CHANGELOG.md' ) );
+			$readme = str_replace( "\r", '', (string) file_get_contents( $root . '/' . $dir . '/readme.txt' ) );
+			preg_match( '/^## (\d+\.\d+\.\d+)\s*\n((?:- .*\n?)+)/m', $log, $l );
+			$this->assertNotEmpty( $l, "$dir: manca la voce più recente nel log" );
+			$expected = preg_replace( '/^- /m', '* ', trim( $l[2] ) );
+			preg_match( '/^= ' . preg_quote( $l[1], '/' ) . ' =\s*\n((?:\* .*\n?)+)/m', $readme, $r );
+			$this->assertSame( $expected, trim( $r[1] ?? '' ), "$dir: il changelog del readme.txt per {$l[1]} deve ripetere CHANGELOG.md (lancia wordpress/sync-readme-changelog.sh)" );
+		}
+	}
+
 	/** Il log delle novità (CHANGELOG.md) di ogni plugin parte dalla versione in corso: la voce più recente è la versione installata, in italiano semplice. */
 	public function test_changelog_log_matches_the_current_version(): void {
 		$root = dirname( __DIR__, 3 );

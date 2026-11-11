@@ -62,176 +62,243 @@ The interface uses the Montserrat typeface (SIL Open Font License 1.1, copy in `
 == Changelog ==
 
 = 1.3.18 =
-* Member login screen simplified: one form with password or emailed link, and a Remember me option for password sign-in.
+* Accesso soci più semplice: una sola schermata con password o link via email
+* Con la password puoi spuntare «Ricordami» e restare entrato 30 giorni
+* Con il link o il codice l'accesso dura meno (12 ore, si cambia dai Limiti)
+* La vecchia grafica è stata tolta: resta solo il nuovo aspetto e l'opzione «Torna alla grafica precedente» non c'è più
+* Il programma si aggiorna da Bacheca → Aggiornamenti: con «Visualizza i dettagli» vedi in italiano cosa cambia prima di installare
 
 = 1.3.17 =
-* Security hardening from an audit: guardian links, profile form only via POST, attachment folder protection checked, spreadsheet export formulas neutralised.
+* Più sicurezza dopo una revisione: collegamenti tra tutore e minore più rigorosi, il modulo del profilo accetta solo l'invio normale, la protezione della cartella degli allegati viene controllata, negli elenchi esportati le formule non vengono eseguite.
 
 = 1.3.16 =
-* New look for the admin and the members area (cards, rows on phones, bottom bar, membership card), switchable back in Settings → Appearance. Fixes from the WordPress.org review: activation link no longer logs in by itself, output filtered, download links protected, short convenzioni shortcodes removed.
+* Nuovo aspetto: elenchi a righe sul telefono, scheda socio a sezioni, foglio «Altro» nell'elenco soci, prima nota e incasso più leggibili, tessera a carta e barra in basso nell'area soci.
+* Anche la Bacheca e le schermate vuote hanno il nuovo stile, con il carattere Montserrat incluso nel programma (niente richieste a siti esterni).
+* Il link di attivazione abilita l'accesso ma non fa entrare da solo: il socio torna all'area riservata e accede.
+* Più sicurezza: contenuti filtrati, link dei documenti protetti, copie di sicurezza più ordinate.
+* Tolti gli shortcode brevi [convenzioni] e [convenzioni_soci]: usa quelli con il prefisso associazionesemplice_.
 
 = 1.3.15 =
-* Booking form: once you pick the member, the package checkbox shows the package and the entries left. Event and course prices are no longer limited to four. Courses must name the resource they use; activities by time slot can occupy the resource only where there are bookings.
-* Phone layout: forms inside cards (accounts, activities) stack in one column; event page: summary above the calendar, month and day views only (day view has a date picker); recurring events: "Add or remove dates" lists the upcoming dates so a holiday can be removed.
+* Nel modulo «Prenota» di un evento, scelto il socio, la casella del pacchetto dice quale pacchetto ha e quanti ingressi gli restano. L'ingresso si scala già alla prenotazione.
+* Eventi e corsi: i prezzi non sono più quattro fissi, ne aggiungi quanti servono (uno o più, senza limite).
+* Da telefono i moduli nelle schede (conti, attività) vanno su una colonna e non escono più dalla scheda.
+* Negli eventi ricorrenti la scheda diventa «Aggiungi o elimina date»: se un giorno è di festa, elimini quella data dall'elenco. Il pulsante «Annulla solo questa data» resta anche nella riga della data.
+* Nella pagina di un evento il riepilogo sta prima del calendario. Il calendario ha due viste, mese (di partenza) e giorno; nella vista giorno scegli la data con il selettore, scritta come 06/11/2026. La vista settimana è tolta.
 
 = 1.3.14 =
-* Clearer wording in the event calendar, packages and account collection fee; dead payment error removed.
+* Testi più chiari nel calendario dell'evento, nei pacchetti e nella commissione di incasso dei conti.
 
 = 1.3.13 =
-* Event pages: a day/month calendar of the dates, with the packages that still have entries left (also in Cash → Book); per-account collection fee (fixed + percentage) for physical POS terminals; resources paid in advance can be booked and settled at the desk when no online payment is active; no second "Area riservata" entry in the site menu.
+* Nella pagina di un evento c'è un calendario con le date, da vedere per mese o per giorno. Toccando una data si aprono le sue prenotazioni.
+* La segreteria vede chi ha un pacchetto con ingressi ancora da usare, e quanti ne restano: nella pagina dell'evento e, per la persona scelta, in Cassa → Prenota.
+* Su un conto (per esempio un POS fisico) puoi indicare la commissione di incasso, fissa e in percentuale: a ogni incasso la spesa va in prima nota.
+* Se non c'è nessun pagamento online, una risorsa da pagare in anticipo si prenota lo stesso e il contributo si salda in segreteria.
+* Nel menu del sito la voce «Area riservata» non compare più due volte.
 
 = 1.3.12 =
-* Phones: the activities table in the member area becomes one card per row, so payments no longer fall off screen; secondary button has an outline.
+* Da telefono, nell'area soci la tabella delle attività diventa una scheda per riga (i pagamenti non restano fuori schermo) e il pulsante secondario ha il contorno
 
 = 1.3.11 =
-* Phones: the tabs at the top of admin pages scroll on a single line.
+* Da telefono le schede in cima alle pagine di amministrazione stanno su una riga che scorre
 
 = 1.3.10 =
-* Courses: cancel a lesson and all the following ones of the same weekday; past lessons stay.
+* Nei corsi si può annullare una lezione e tutte le successive dello stesso giorno (le passate restano)
 
 = 1.3.9 =
-* Phones: Money page without repeated buttons and year-end notice after the figures; member book as compact cards.
+* Da telefono: la Cassa non ripete più i pulsanti e l'avviso di fine anno sta dopo le cifre; la Rubrica soci è a schede compatte
 
 = 1.3.8 =
-* Fix: the section jump bar of the member area is no longer hidden by a sticky theme header.
+* Corretta la barra per saltare alle sezioni dell'area soci: non finisce più sotto l'intestazione fissa del tema
 
 = 1.3.7 =
-* Fix: the section jump bar of the member area no longer widens the page on phones.
+* Corretta la barra per saltare alle sezioni dell'area soci: da telefono non allarga più la pagina
 
 = 1.3.6 =
-* App and member area on phones: generated app icon with initial, offline page with retry, install invitation under the card (Pro), section jump bar, 44px touch targets.
+* Area soci e app da telefono più comode: icona con l'iniziale, pagina offline con «Riprova», invito a installare l'app sotto la tessera, barra per saltare alle sezioni, pulsanti più grandi, pulsante «Vai alla tua area»
 
 = 1.3.5 =
-* Deleting a course now refunds only the unused share of a month already partly held; added a Non rinnova button that ends an enrollment after the paid period.
+* Se un corso viene eliminato a metà mese, del mese già pagato si restituisce la quota delle lezioni non ancora tenute
+* Nuovo pulsante «Non rinnova» nell'iscrizione a un corso: resta iscritto fino alla fine del periodo pagato e poi non deve più nulla, senza restituzioni
 
 = 1.3.4 =
-* Cancelling a single registration now only refunds or voids what was not yet used; used payments stay in the ledger, with any remaining debt or credit shown.
+* Cancellando una singola iscrizione si restituisce o annulla solo il non fruito: gli incassi già fruiti restano in prima nota
+* Per il fruito la pagina e il messaggio finale mostrano quanto manca (da incassare) o quanto avanza (da restituire a mano)
 
 = 1.3.3 =
-* Plugin Check: the session cookie is now sanitized before its format is checked (no warnings left).
+* Corretto l'ultimo avviso di Plugin Check (lettura del cookie di sessione dei soci): nessun cambiamento per chi usa il programma
 
 = 1.3.2 =
-* Deleting an event or course refunds or voids only what has not been used yet; recurring events can be cancelled for one date or from a date onwards.
+* Se elimini un evento o un corso, le somme si restituiscono o si annullano solo per ciò che non è ancora stato fatto: le date e i mesi già svolti restano incassati
+* Negli eventi ricorrenti puoi annullare solo una data oppure quella e le successive (le passate restano)
 
 = 1.3.1 =
-* wp-login.php no longer offers first access when members sign in on their own; it points members to the members area.
+* Nella pagina di accesso di WordPress i soci vengono indirizzati all'area soci, senza proporre il primo accesso
 
 = 1.3.0 =
-* Version 1.3: members' own sign-in (no WordPress user needed) is complete. Free and Pro are released together as 1.3.0.
-* Security review: sign-in attempts are counted atomically (parallel requests cannot exceed the limit), wrong codes are capped per person across requests, response time no longer reveals whether an email belongs to a member (emails are sent after the response), changing a password requires the current one, very long passwords are refused, repeated requests no longer invalidate the link already emailed, injected HTML can no longer redirect a form (formaction) or the page (meta refresh).
-* Members-only pages and the REST "me" endpoint now recognise members signed in with their own access.
-* Event staff with cash enabled can charge credits with the QR even without a WordPress user; a second paid shop order for the same payment is flagged for review instead of silently overwriting the first reference.
-* Faster: the people table has an index on the email, the email lookup uses it, and the phone lookup no longer loads the full member list.
+* Versione 1.3: l'accesso dei soci senza utente WordPress è completo. I soci entrano con email e password (obbligatoria alla prima entrata), con recupero tramite link e, se preferiscono, con un link o un codice senza password. Gratuito e Pro escono insieme alla 1.3.0.
+* Più sicurezza nell'accesso dei soci: i tentativi si contano senza che richieste in parallelo li aggirino, i codici sbagliati hanno un tetto per persona anche chiedendone di nuovi, il tempo di risposta non rivela più se un'email è di un socio (l'email parte dopo la risposta), per cambiare la password serve quella attuale, le password enormi sono rifiutate e chi richiede più volte il link non fa scadere quello già arrivato.
+* Un testo iniettato per errore nelle pagine non può più dirottare un modulo né mandare il visitatore su un altro sito.
+* Le pagine riservate ai soci e i dati «io» dell'applicazione riconoscono anche chi è entrato con l'accesso proprio.
+* Lo staff di un evento con l'incasso abilitato può addebitare crediti con il QR anche se non ha un utente WordPress.
+* Se un secondo ordine del negozio risulta pagato per lo stesso pagamento, la segreteria lo vede tra i pagamenti da controllare e il riferimento del primo incasso non viene perso.
+* Più veloce: l'anagrafica ha un indice sull'email e la ricerca per cellulare non carica più tutto l'elenco dei soci.
 
 = 1.2.52 =
-* Members sign in with email and a password they choose on first entry (required; the members area stays closed until then). Forgotten password: an emailed link signs in but forces a new password before browsing; changing the password signs out the other devices. Signing in with an emailed link or code, without a password, is still available.
-* The privacy notice now covers sign-in to the members area and the technical cookie "asem_s"; Settings > Communications and privacy lets you list other site cookies, which appear in the notice.
+* I soci entrano con email e password: la password si sceglie alla prima entrata ed è obbligatoria (finché non c'è, l'area riservata resta chiusa). Il modulo dell'area soci è quello con email e password.
+* «Password dimenticata»: arriva per email un link che fa entrare ma obbliga a scegliere una nuova password prima di navigare. Cambiata la password, gli altri dispositivi devono rientrare.
+* Chi preferisce può ancora entrare con un link o un codice via email, senza password.
+* All'attivazione dal link della segreteria la password si sceglie subito.
+* L'informativa privacy dichiara l'accesso all'area riservata e il cookie tecnico «asem_s»; nelle impostazioni (Comunicazioni e privacy) si possono elencare altri cookie del sito, che compaiono nell'informativa.
 
 = 1.2.51 =
-* Member sign-in with an emailed link or code (password optional) is on by default: new members no longer get a WordPress user. A WordPress user is created only when a member is given a role (secretary, treasurer, staff). Members who already have a WordPress user keep signing in with WordPress.
-* Administrators can still choose to create a WordPress user for every member (Settings > Member sign-in, or the setup wizard, which explains pros and cons and notes WooCommerce). Only first name, last name and email are passed to WordPress or WooCommerce.
-* When a member loses their last role, the member page offers to switch them to link sign-in (administrator's decision; the WordPress user is deleted only if it has no content or shop orders).
-* Member pages, forms, downloads, payments, REST and push notifications now also work for members signed in without a WordPress user. Still off by default: nothing changes until the setting is turned on.
+* L'accesso dei soci con un link o un codice via email (password facoltativa) è acceso di default: i nuovi soci non hanno più un utente WordPress. L'utente WordPress nasce solo quando a un socio si dà un potere (segreteria, tesoriere, staff). Chi ha già un utente WordPress continua a entrare da WordPress.
+* Gli amministratori possono scegliere di creare comunque anche un utente WordPress per ogni socio (Impostazioni → Accesso dei soci, oppure la configurazione guidata, dove la scelta è spiegata con vantaggi e svantaggi e con una nota se c'è WooCommerce). A WordPress e a WooCommerce passano solo nome, cognome ed email.
+* Quando a un socio si toglie l'ultimo potere, la sua scheda propone di farlo passare all'accesso con link: l'amministratore decide caso per caso e l'utente WordPress viene eliminato solo se non ha contenuti né ordini nel negozio.
+* Le pagine dei soci, i moduli, i download (ricevute, tessera PDF, wallet), i pagamenti e le notifiche funzionano anche per chi entra con l'accesso proprio. Resta spento: finché non lo accendi dai Limiti non cambia nulla.
 
 = 1.2.50 =
-* Groundwork for member sign-in that does not need a WordPress user: three new tables, link/code/password login page and a daily cleanup. Off by default (Settings > Technical > Limits, "Member sign-in independent of WordPress"): nothing changes until an administrator turns it on. When on, it sets a "asem_s" session cookie (HttpOnly, SameSite=Lax) and sends sign-in links by email.
+* Predisposto l'accesso dei soci senza bisogno di un utente WordPress: entrano con un link o un codice che arriva per email, oppure con una password facoltativa. È spento: finché l'amministratore non lo accende dai Limiti («Accesso dei soci indipendente da WordPress») non cambia nulla e i soci entrano come prima.
+* Quando sarà acceso, il sito userà un cookie tecnico di sessione («asem_s») e scriverà ai soci per mandare il link di accesso.
 
 = 1.2.49 =
-* Hooks and options for the Pro expense-to-fund attribution (beneficiary selection, form rows).
+* Nel modulo della nuova spesa il beneficiario si sceglie con più facilità e il programma può proporre l'attribuzione ai fondi.
 
 = 1.2.48 =
-* Sports in the activity menu are managed by the administrator: add, import a list, remove, restore the base CONI list; activities accept any sensible sport.
+* Gli sport del menu delle attività li gestisce l'amministratore: aggiunge, importa un elenco (uno per riga), toglie dal menu e ripristina l'elenco di base.
+* Un'attività accetta qualsiasi sport scritto in modo sensato, non solo quelli dell'elenco.
 
 = 1.2.47 =
-* Fiscal year start month separate from the social year (used by the Pro Fiscale plan); hooks for the Pro budget watch.
+* Il mese di inizio dell'anno fiscale si può scegliere separato da quello dell'anno sociale (Pro Fiscale).
 
 = 1.2.46 =
-* Sport list: added Chess, Dynamic sport shooting and Equestrian tourism.
+* Nell'elenco degli sport sono stati aggiunti Scacchi, Tiro dinamico sportivo e Turismo equestre.
 
 = 1.2.45 =
-* Activities with a sport (CONI list) and free discipline; affiliation bodies list extended to all CONI-recognised promotion bodies.
+* Le attività hanno lo sport (elenco CONI) e la disciplina dell'ente, a testo libero.
+* L'elenco degli enti per le affiliazioni comprende CONI/RAS e tutti gli enti di promozione riconosciuti dal CONI.
 
 = 1.2.44 =
-* Course fee variants: describe variants (name and price) on the course and assign them at enrolment with a free note.
+* Varianti del contributo dei corsi: descrivi le varianti (nome e prezzo, ad esempio «Secondo corso», «Famiglia», «Solo il sabato») nel corso e assegnale all'iscrizione con una nota libera: la quota dell'iscritto segue la variante.
+* Chi si iscrive da solo paga la quota base.
 
 = 1.2.43 =
-* Single lessons of a course can be cancelled or moved with a notice to enrolled people; quarterly course payment.
+* Le singole lezioni di un corso si possono annullare o spostare (festività, maltempo), con avviso agli iscritti.
+* Nuovo pagamento del corso trimestrale: i promemoria mensili saltano i corsi trimestrali.
 
 = 1.2.42 =
-* Photo/video release, membership type, receipts for minors addressed to the operating parent, 'Incomplete cards' alerts.
+* Liberatoria per foto e video nella scheda e nel modulo di domanda online (per i minori risponde il tutore che opera).
+* Tipo di tesseramento (atleta, istruttore, dirigente…) nella scheda e nell'esportazione dei soci.
+* Nuovo avviso alla segreteria «Schede da completare» in Bacheca e in «Da lavorare» di WordPress.
 
 = 1.2.41 =
-* Members register with application and approval dates, birthplace, residence and last fee; up to two guardians with one operating on the site; smoother enrolment flow; 'Re-run' link in the activity list.
+* Il libro soci è completo: data della domanda e della delibera, luogo di nascita, residenza, contatti, ultima quota, recesso e tutore (PDF e CSV).
+* Fino a due genitori o tutori per ogni minore, anche non soci e senza email: sul sito opera uno solo, il primo.
+* Il modulo di domanda online chiede anche luogo di nascita e residenza.
+* Nei corsi: «Salva e prossimo inserimento» e «Iscrivi e vai alla cassa».
+* Nell'elenco delle attività c'è il collegamento «Riproponi».
 
 = 1.2.40 =
-* Internal cleanup of the payment filter wrapper (Plugin Check dynamic hook name notice).
+* Pulizia interna del codice dei pagamenti per la revisione di WordPress.org: nessun cambiamento d'uso.
 
 = 1.2.39 =
-* Code cleanup for the WordPress.org review: all output is escaped through an allow-list, no inline event handlers, request data sanitised on entry.
+* Pulizia interna del codice per la revisione di WordPress.org: le pagine si comportano come prima.
 
 = 1.2.38 =
-* Guardians: at 18 the guardian's permissions switch off, even if the young person has no login yet.
+* A 18 anni i permessi del tutore si spengono da soli, anche se il ragazzo non ha ancora un accesso suo: il tutore non lo vede più, non paga per lui e non riceve più le sue email.
 
 = 1.2.37 =
-* Security hardening: visitor IP behind Cloudflare, login redirect, receipt temp files, guest statements, staff notices, user linking, salt check.
+* L'indirizzo del visitatore dietro Cloudflare si legge solo se la richiesta arriva davvero da Cloudflare.
+* Il link «torna alla pagina» dopo il login usa sempre l'indirizzo del sito.
+* La ricevuta mandata per email non lascia più un PDF dal nome prevedibile.
+* Il rendiconto di un ospite lo vedono l'ospite, il suo tutore e la segreteria, non chi lo ospita.
+* Lo staff dell'ente manda avvisi solo agli eventi di cui è staff.
+* Un socio con la stessa email di un utente del sito con altri ruoli lo collega solo un amministratore.
+* In Pagamenti compare un avviso se le chiavi di sicurezza di WordPress mancano o sono quelle di esempio.
 
 = 1.2.36 =
-* Fix: after a factory reset the setup wizard reuses the existing pages instead of creating duplicates; clearer card validity wording.
+* Dopo un ripristino di fabbrica la configurazione guidata riprende le pagine già presenti invece di crearne di doppie.
+* Nella scheda del socio il testo dice «tessera valida fino al 31 dicembre».
 
 = 1.2.35 =
-* Security: the license level comes from the signed proof, unknown levels or states no longer unlock features.
+* Il livello della licenza viene dalla prova firmata dal portale, non dal campo salvato
+* Un livello o uno stato di licenza sconosciuto non sblocca più le funzioni
 
 = 1.2.34 =
-* Security: backups no longer carry the license key or QR/calendar salts and clean up their temporary file; staff cannot move the sign-in email of treasurers or board members; secret-ballot results stay hidden until the vote closes; votes cannot be reopened after they close; custom terms are stripped of HTML.
+* Più sicurezza: la copia di sicurezza non contiene più la chiave di licenza né i codici dei QR e del calendario, e il file temporaneo si cancella sempre
+* La segreteria non può cambiare l'email di accesso di tesoriere, presidente e staff
+* Nel voto segreto i risultati e l'elenco di chi ha votato si vedono solo a votazione chiusa
+* Una votazione con voti non si può riaprire dopo la chiusura
+* I termini personalizzati non accettano più HTML
 
 = 1.2.33 =
-* Setup wizard: choosing 'anyone can ask to join' also turns on the online membership application.
+* Nella configurazione guidata, scegliendo «Chiunque può chiedere di iscriversi» si accende anche la domanda di adesione online (pagina «Diventa socio»).
 
 = 1.2.32 =
-* Fix: wide fields no longer overflow on narrow screens; singular wording in notices.
+* Su schermi stretti i campi lunghi delle impostazioni non escono più dalla pagina.
+* Gli avvisi dicono «1 avviso inviato» al singolare.
 
 = 1.2.31 =
-* Internal extension points needed by Pro 1.1.28.
+* Aggiornamento di compatibilità con il Pro 1.1.28: aggiorna insieme gratuito e Pro.
 
 = 1.2.30 =
-* Member discounts ("Convenzioni"): partner offers shown to members with a valid card, optional public list, notify button, expiring card and CSV export.
-* Membership fee can be paid in instalments: shows what is missing and grants the card on full payment (configurable).
+* Nuove convenzioni per i soci (Registri → Convenzioni): sconti dei partner con descrizione, validità, codice, logo e a chi si rivolgono. I soci con tessera valida le vedono nell'area riservata; un elenco pubblico è facoltativo.
+* Pulsante «Avvisa i soci» per ogni convenzione, scheda «Convenzioni in scadenza» in Bacheca ed esportazione CSV.
+* La quota associativa si può versare a rate: vedi quanto manca e la tessera arriva quando la quota è saldata (si cambia da Limiti e soglie).
+* Il saldo si incassa dalla scheda del socio o da «Pagamenti da incassare» con l'importo già pronto.
 
 = 1.2.29 =
-* Internal changes needed by Pro 1.1.25 (reminders, exports, private file download).
+* Aggiornamento di compatibilità con il Pro 1.1.25: aggiorna insieme gratuito e Pro.
 
 = 1.2.28 =
-* Action log: kept for 18 months by default (adjustable), daily cleanup, size status and a Free space button.
+* Il registro azioni si pulisce da solo: restano gli ultimi 18 mesi (si cambia da Limiti e soglie).
+* Nel registro azioni vedi quanto spazio occupa e puoi liberarlo subito con un pulsante.
 
 = 1.2.27 =
-* Polls and secret ballots, inventory and loans, private document archive.
+* Nuove votazioni e sondaggi, anche a scrutinio segreto, per tutti i soci o per chi è iscritto a un'attività.
+* Nuovo inventario dei beni con prestiti ai soci, scadenze e promemoria automatici.
+* Nuovo archivio documenti riservato: ogni file è visibile a segreteria, soci o tutti.
 
 = 1.2.26 =
-* Payment methods: costs of collecting (fixed and/or percentage) per method, with an optional pass-on to the payer (off by default) and the SumUp method in the settings and ledger.
+* Per ogni metodo di pagamento online puoi indicare quanto costa incassare (una cifra fissa e/o una percentuale) e, se vuoi, ribaltare la commissione su chi paga (spento di partenza: la legge lo vieta sulle carte dei consumatori).
+* Sotto il pulsante di pagamento il socio legge la commissione, se è a suo carico.
+* Gli incassi con SumUp entrano in prima nota sul conto SumUp.
 
 = 1.2.25 =
-* Online membership applications (shortcode, approved or refused by the secretariat), minors with parents or guardians who are not members, membership valid from payment, invitation for parents.
+* Domanda di adesione online: chi vuole iscriversi compila un modulo sul sito e la segreteria la approva o la rifiuta.
+* I minori si registrano con i genitori o i tutori: loro non sono soci e non compaiono nel libro soci, e ricevono l'invito per l'accesso.
+* La tessera vale dal momento in cui la quota è pagata online o se la quota è zero.
 
 = 1.2.24 =
-* Small screens: wide admin tables scroll by themselves, price lists lay out in a grid, help text about the email is correct, member area sections fit narrow phones; event lists and seat counts are no longer served stale by page caches.
+* Sul telefono le tabelle larghe scorrono da sole e la pagina non si sposta di lato.
+* La tabella dei listini si legge bene anche su schermi stretti.
+* Il testo di aiuto sull'email del socio ora dice che è facoltativa.
+* Le sezioni dell'area soci stanno nella larghezza del telefono.
+* Gli elenchi di attività ed eventi e i posti liberi non restano più vecchi nella cache del sito: si aggiornano subito.
 
 = 1.2.23 =
-* Review fixes for WordPress.org: scripts and styles are enqueued, form data is cleaned on arrival, attachments are saved with the WordPress upload functions, and the old APSemplice migration is removed.
+* Il programma è stato rivisto secondo le indicazioni di WordPress.org: pagine e moduli più sicuri e compatibili.
+* Tolta la migrazione dal vecchio nome APSemplice: non serve più.
 
 = 1.2.22 =
-* New hook before adding or moving event dates so add-ons can refuse overlaps.
+* Prima di aggiungere o spostare le date di un corso o di un evento il programma controlla che non si sovrappongano a qualcos'altro.
 
 = 1.2.21 =
-* New check point before saving an activity and set-up time fields (before and after) for activities; existing events must be linked to a resource the first time they are edited.
+* Prima di salvare un corso o un evento il programma controlla che la risorsa scelta sia libera.
+* Un corso o un evento può avere un tempo di allestimento prima e dopo.
+* Gli eventi già salvati senza risorsa indicata dovranno sceglierla alla prima modifica.
 
 = 1.2.20 =
-* Dashboard widgets in the WordPress admin home: items to work on and this week's events and courses, with shortcuts to the main functions.
+* Nella Bacheca di WordPress ci sono due riquadri nuovi: «Da lavorare» (richieste di accesso, soci da rinnovare, ospiti da invitare) e «Eventi e corsi della settimana», con i pulsanti per le funzioni principali.
 
 = 1.2.19 =
-* Calendar years (opening and closing) are now in the free plugin too, with a dashboard reminder from September; the association/volunteer guest option only shows with the volunteer share.
+* Gli anni solari si aprono e si chiudono anche nella versione gratuita (Cassa → Anni solari).
+* Da settembre compare un avviso in Bacheca per aprire il nuovo anno: lo puoi chiudere e ricompare a inizio mese; a dicembre resta sempre visibile.
+* Nell'elenco dei plugin l'autore è Wega Studios, con il link al suo profilo.
 
 = 1.2.18 =
-* Price lists for events (individual, group, packages of 4) and secretariat bookings as association guest or volunteer guest, with the automatic discount and without feeding the volunteer fund.
+* Eventi con più prezzi (listini): ad esempio individuale, di gruppo, pacchetto da 4 individuale e pacchetto da 4 di gruppo.
+* Con un pacchetto si paga una volta sola: le altre date si prenotano «dal pacchetto» senza altro da pagare.
+* In area riservata i soci scelgono il listino quando si prenotano.
 
 = 1.2.17 =
 * Outgoing mail log and test email (with a warning on the dashboard when messages do not leave); the first-access limit only counts messages actually sent; copy button for the WhatsApp message; new Cash > Book page to book events and courses by date or by item; the cash form shows when a payment is a deposit.

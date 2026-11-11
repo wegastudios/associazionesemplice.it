@@ -4,12 +4,12 @@ namespace AssociazioneSemplice;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Aggiornamento diretto da WordPress (Bacheca → Aggiornamenti) di Associazione Semplice Pro, che non sta su WordPress.org.
+ * Aggiornamento diretto da WordPress (Bacheca → Aggiornamenti) di Associazione Semplice e di Associazione Semplice Pro dal portale, finché il gratuito non sta su WordPress.org.
  *
- * Questo file fa parte del Pro (`tests/pro-files.txt`) e NON del gratuito, che sta su WordPress.org e si aggiorna da lì.
+ * Questo file sta nel pacchetto del portale ma NON in quello per WordPress.org (`build.sh` con `ASEM_WPORG=1` lo toglie): lì gli aggiornamenti li dà WordPress.org.
  * Ogni 12 ore o più (limite `update_check_hours`) chiede al portale l'ultima versione di ciò che è installato (`POST /api/plugin/update`) e
  * la mette nell'elenco degli aggiornamenti di WordPress. Il pacchetto firmato dal portale vale pochi minuti: per questo si chiede di nuovo
- * proprio quando si preme «Aggiorna», non si conserva. Manda la chiave di licenza e il dominio del sito.
+ * proprio quando si preme «Aggiorna», non si conserva. Il gratuito manda solo prodotto e versione; il Pro anche la chiave di licenza e il dominio.
  * Un errore del portale non cambia niente: restano le ultime versioni note.
  */
 final class Updater {
@@ -34,7 +34,34 @@ final class Updater {
 
 	/** Scelta dell'amministratore (Limiti e soglie) e sito non locale. */
 	public static function enabled(): bool {
-		return 1 === Limits::get( 'portal_updates' ) && ! LicenseClient::is_local();
+		return 1 === Limits::get( 'portal_updates' ) && ! self::is_local();
+	}
+
+	/** Sito di sviluppo (localhost, indirizzi IP, *.local, *.test…): niente richieste al portale. Il Pro può rispondere al posto del gratuito. */
+	private static function is_local(): bool {
+		$v = apply_filters( 'asem_portal_is_local', null );
+		if ( null !== $v ) {
+			return (bool) $v;
+		}
+		$h = strtolower( (string) wp_parse_url( home_url(), PHP_URL_HOST ) );
+		if ( '' === $h || false === strpos( $h, '.' ) || filter_var( $h, FILTER_VALIDATE_IP ) ) {
+			return true;
+		}
+		foreach ( array( '.localhost', '.local', '.test', '.invalid', '.example' ) as $suffix ) {
+			if ( substr( $h, -strlen( $suffix ) ) === $suffix ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Versione in forma «1.2» o «1.2.3(.4)». */
+	private static function valid_version( string $v ): bool {
+		return (bool) preg_match( '/^\d{1,3}(\.\d{1,4}){1,3}$/', $v );
+	}
+
+	private static function is_newer( string $installed, string $latest ): bool {
+		return self::valid_version( $installed ) && self::valid_version( $latest ) && version_compare( $latest, $installed, '>' );
 	}
 
 	public static function api(): string {
@@ -43,7 +70,9 @@ final class Updater {
 
 	/** I plugin installati che si aggiornano da qui. @return array<string,array{basename:string,slug:string,name:string,version:string}> */
 	public static function products(): array {
-		$out = array();
+		$out = array(
+			'free' => array( 'basename' => plugin_basename( ASEM_FILE ), 'slug' => 'associazionesemplice', 'name' => 'Associazione Semplice', 'version' => (string) ASEM_VERSION ),
+		);
 		if ( defined( 'ASEM_PRO_VERSION' ) && defined( 'ASEM_PRO_DIR' ) ) {
 			$out['pro'] = array( 'basename' => plugin_basename( ASEM_PRO_DIR . 'associazionesemplice-pro.php' ), 'slug' => 'associazionesemplice-pro', 'name' => 'Associazione Semplice Pro', 'version' => (string) ASEM_PRO_VERSION );
 		}
@@ -58,7 +87,7 @@ final class Updater {
 	 */
 	public static function parse( $body ): ?array {
 		$j = is_string( $body ) ? json_decode( $body, true ) : null;
-		if ( ! is_array( $j ) || ! isset( $j['version'] ) || ! is_string( $j['version'] ) || ! UpdateCheck::valid_version( trim( $j['version'] ) ) ) {
+		if ( ! is_array( $j ) || ! isset( $j['version'] ) || ! is_string( $j['version'] ) || ! self::valid_version( trim( $j['version'] ) ) ) {
 			return null;
 		}
 		$https = function ( $v ) {
@@ -132,9 +161,10 @@ final class Updater {
 		if ( ! isset( $all[ $product ] ) ) {
 			return null;
 		}
-		$body = array( 'product' => $product, 'version' => $all[ $product ]['version'], 'domain' => LicenseClient::normalize_domain( home_url() ) );
+		$body = array( 'product' => $product, 'version' => $all[ $product ]['version'] ); // il gratuito non manda niente del sito
 		if ( 'pro' === $product ) {
-			$key = License::key();
+			$body['domain'] = (string) apply_filters( 'asem_portal_domain', '' ); // lo dà il Pro
+			$key            = (string) apply_filters( 'asem_portal_license_key', '' ); // lo dà il Pro
 			if ( '' === $key || '' === $body['domain'] ) {
 				return null;
 			}
@@ -200,7 +230,7 @@ final class Updater {
 		}
 		$state = self::state();
 		foreach ( self::products() as $p => $info ) {
-			if ( empty( $state[ $p ]['version'] ) || ! UpdateCheck::is_newer( $info['version'], (string) $state[ $p ]['version'] ) || empty( $state[ $p ]['update'] ) ) {
+			if ( empty( $state[ $p ]['version'] ) || ! self::is_newer( $info['version'], (string) $state[ $p ]['version'] ) || empty( $state[ $p ]['update'] ) ) {
 				continue;
 			}
 			if ( ! isset( $transient->response ) || ! is_array( $transient->response ) ) {
@@ -257,12 +287,12 @@ final class Updater {
 			return $reply;
 		}
 		$p = substr( $package, strlen( self::PREFIX ) );
-		$r = 'pro' === $p ? self::ask( $p ) : null;
+		$r = isset( self::products()[ $p ] ) ? self::ask( $p ) : null;
 		if ( ! $r || empty( $r['update'] ) || '' === $r['package'] || ! self::package_is_ours( $r['package'] ) ) {
 			return new \WP_Error( 'asem_update_unavailable', 'L\'aggiornamento non è disponibile adesso dal portale di Associazione Semplice (licenza non in regola, troppe richieste o portale non raggiungibile). Riprova più tardi o scaricalo dall\'area clienti.' );
 		}
 		$installed = self::products()[ $p ]['version'] ?? '';
-		if ( '' === $installed || ! UpdateCheck::is_newer( $installed, $r['version'] ) ) { // niente passi indietro: una versione vecchia firmata non si reinstalla
+		if ( '' === $installed || ! self::is_newer( $installed, $r['version'] ) ) { // niente passi indietro: una versione vecchia firmata non si reinstalla
 			return new \WP_Error( 'asem_update_not_newer', 'La versione offerta dal portale non è più recente di quella installata.' );
 		}
 		if ( ! self::verify_signature( $p, $r['version'], $r['sha256'], $r['kid'], $r['signature'], self::PACKAGE_KEYS ) ) {

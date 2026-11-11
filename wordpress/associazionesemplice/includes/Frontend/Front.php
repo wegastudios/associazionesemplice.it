@@ -23,14 +23,5 @@ final class Front {
 		\AssociazioneSemplice\Calendar::register();
 		Blocks::register();
 		ElementorSupport::register();
-		add_filter( 'body_class', array( __CLASS__, 'body_class' ) );
-	}
-
-	/** Con «Torna alla grafica precedente» il sito non usa il nuovo stile: il foglio di stile lo capisce da questa classe. */
-	public static function body_class( array $classes ): array {
-		if ( \AssociazioneSemplice\Settings::get( 'ui_classic' ) ) {
-			$classes[] = 'asem-classic';
-		}
-		return $classes;
 	}
 }

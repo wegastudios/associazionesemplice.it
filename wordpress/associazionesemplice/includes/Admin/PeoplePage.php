@@ -29,28 +29,21 @@ final class PeoplePage {
 		$keep   = array_filter( array( 'q' => $q, 'type' => $type, 'status' => $status, 'at_limit' => $at_limit ? '1' : '' ), 'strlen' );
 		$today  = current_time( 'Y-m-d' );
 
-		$new_ui = Ui::is_new();
 		$guest_link = \AssociazioneSemplice\Settings::guests_enabled() ? '<a class="button" href="' . esc_url( Ui::url( 'asem-person', array( 'type' => 'guest' ) ) ) . '">Nuovo ospite</a>' : '';
 		Ui::header(
 			'Soci e ospiti',
-			$new_ui
-				? '<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-person', array( 'type' => 'ordinary' ) ) ) . '">Nuovo socio</a> '
-					. '<button type="button" class="button asem-more" data-asem-sheet="asem-people-more">' . Ui::icon( 'ellipsis' ) . ' Altro</button>'
-				: '<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-person', array( 'type' => 'ordinary' ) ) ) . '">Nuovo socio</a> '
-					. ( \AssociazioneSemplice\Settings::guests_enabled() ? '<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-person', array( 'type' => 'guest' ) ) ) . '">Nuovo ospite</a> ' : '' )
-					. '<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-import' ) ) . '">Importa da Excel/CSV</a> '
-					. Exports::link( 'people', array(), 'Esporta CSV' )
+			'<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-person', array( 'type' => 'ordinary' ) ) ) . '">Nuovo socio</a> '
+				. '<button type="button" class="button asem-more" data-asem-sheet="asem-people-more">' . Ui::icon( 'ellipsis' ) . ' Altro</button>'
 		);
-		if ( $new_ui ) { // le azioni meno frequenti stanno in un foglio: dal basso sul telefono, al centro sul computer
-			echo wp_kses(
-				'<dialog class="asem-sheet" id="asem-people-more" aria-labelledby="asem-people-more-t"><h2 id="asem-people-more-t">Altre azioni</h2><div class="asem-sheet-actions">'
-				. $guest_link
-				. '<a class="button" href="' . esc_url( Ui::url( 'asem-import' ) ) . '">Importa da Excel/CSV</a>'
-				. Exports::link( 'people', array(), 'Esporta CSV' )
-				. '</div><p><button type="button" class="button" data-asem-close>Chiudi</button></p></dialog>',
-				Html::allowed()
-			);
-		}
+		// le azioni meno frequenti stanno in un foglio: dal basso sul telefono, al centro sul computer
+		echo wp_kses(
+			'<dialog class="asem-sheet" id="asem-people-more" aria-labelledby="asem-people-more-t"><h2 id="asem-people-more-t">Altre azioni</h2><div class="asem-sheet-actions">'
+			. $guest_link
+			. '<a class="button" href="' . esc_url( Ui::url( 'asem-import' ) ) . '">Importa da Excel/CSV</a>'
+			. Exports::link( 'people', array(), 'Esporta CSV' )
+			. '</div><p><button type="button" class="button" data-asem-close>Chiudi</button></p></dialog>',
+			Html::allowed()
+		);
 
 		$board = Plugin::people()->board();
 		if ( $board ) {
@@ -99,7 +92,7 @@ final class PeoplePage {
 				$state .= '<br>' . self::invite_link( $p );
 			}
 			echo '<tr><td data-label="Tessera">' . esc_html( (string) $p['card_number'] ?: '—' ) . '</td>';
-			echo wp_kses( '<td class="asem-card-name">' . ( Ui::is_new() ? Ui::avatar( $p['first_name'] . ' ' . $p['last_name'] ) . ' ' : '' ) . '<a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '"><strong>' . esc_html( $p['last_name'] . ' ' . $p['first_name'] ) . '</strong></a></td>', Html::allowed() );
+			echo wp_kses( '<td class="asem-card-name">' . Ui::avatar( $p['first_name'] . ' ' . $p['last_name'] ) . ' ' . '<a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '"><strong>' . esc_html( $p['last_name'] . ' ' . $p['first_name'] ) . '</strong></a></td>', Html::allowed() );
 			echo '<td data-label="Tipo">' . esc_html( \AssociazioneSemplice\Levels::label( $p ) ) . '</td>'; // data-label: da telefono la riga diventa una scheda e ogni dato porta la sua etichetta
 			echo '<td data-label="Contatti">' . wp_kses( ( '' !== (string) $p['email'] ? esc_html( (string) $p['email'] ) . '<br>' : '' ) . Ui::contact_links( $p ), Html::allowed() ) . '</td>';
 			echo '<td data-label="Stato">' . wp_kses( $state, Html::allowed() ) . '</td>';
@@ -112,9 +105,7 @@ final class PeoplePage {
 
 	/** Titolo di una sezione del modulo (nuovo aspetto): chiude la tabella e ne apre un'altra, i campi restano nello stesso modulo. */
 	private static function form_section( string $title ): void {
-		if ( Ui::is_new() ) {
-			echo '</tbody></table><h2 class="asem-form-section">' . esc_html( $title ) . '</h2><table class="form-table asem-form"><tbody>';
-		}
+		echo '</tbody></table><h2 class="asem-form-section">' . esc_html( $title ) . '</h2><table class="form-table asem-form"><tbody>';
 	}
 	/** Ordina l'elenco per tessera (numerica, vuote in fondo), nome o tipo (come appare, a parità per nome). Senza criterio resta l'ordine per cognome e nome. */
 	public static function sort_rows( array $rows, string $by, string $dir = 'asc' ): array {
@@ -180,7 +171,7 @@ final class PeoplePage {
 		echo '<div class="asem-cols"><div class="asem-col">';
 		Ui::form_open( 'asem_save_person', $back );
 		echo wp_kses( Ui::hidden( 'id', $id ), Html::allowed() );
-		echo Ui::is_new() ? '<h2 class="asem-form-section">Chi è</h2>' : '';
+		echo '<h2 class="asem-form-section">Chi è</h2>';
 		echo '<table class="form-table asem-form"><tbody>';
 		echo wp_kses( '<tr><th>Tipo</th><td><select name="type" id="asem-type">' . Ui::options( MemberType::labels(), $type ) . '</select>', Html::allowed() );
 		echo '<p class="description" id="asem-type-hint"></p></td></tr>';

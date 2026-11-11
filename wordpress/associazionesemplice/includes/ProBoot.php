@@ -118,6 +118,9 @@ final class ProBoot {
 		add_filter( 'asem_settings_defaults', array( __CLASS__, 'settings_defaults' ) );
 		add_filter( 'asem_settings_clean', array( __CLASS__, 'settings_clean' ) );
 		add_filter( 'asem_limits_defs', array( __CLASS__, 'limits' ) );
+		add_filter( 'asem_portal_license_key', array( License::class, 'key' ) ); // l'aggiornatore (nel gratuito) manda la chiave solo per il Pro
+		add_filter( 'asem_portal_is_local', function () { return LicenseClient::is_local(); } );
+		add_filter( 'asem_portal_domain', function () { return LicenseClient::normalize_domain( home_url() ); } );
 		add_action( 'asem_settings_page_end', array( Admin\LicensePanel::class, 'render' ) );
 
 		// Azioni di amministrazione della licenza.
@@ -144,7 +147,6 @@ final class ProBoot {
 	public static function late(): void {
 		Admin\LicenseNotice::register();
 		Admin\UpdateNotice::register();
-		Updater::register();
 		if ( Edition::has( 'pwa' ) && Settings::get( 'pwa_enabled' ) ) {
 			Pwa::register(); // app installabile e notifiche
 		}
@@ -247,18 +249,6 @@ final class ProBoot {
 			'Con una chiave di licenza inserita (anche la gratuita), il plugin chiede al portale di Associazione Semplice qual è l\'ultima versione e mostra un avviso chiudibile alla segreteria e agli amministratori quando ne esiste una più recente. Non invia la chiave né dati del sito.',
 			'Il sito fa una richiesta al portale di tanto in tanto (solo per leggere l\'ultima versione, senza inviare dati) e mostra l\'avviso: rischi trascurabili.',
 			'Se lo disattivi il plugin non contatta più il portale per le versioni e non vedrai l\'avviso: dovrai controllare a mano nell\'area clienti, con il rischio di restare su versioni vecchie, senza correzioni di sicurezza.'
-		);
-		$add(
-			'update_check_hours', 'comunicazioni', 'Ogni quante ore cercare nuove versioni', 'ore', 24, 12, 168,
-			'Ogni quante ore il plugin chiede al portale l\'ultima versione disponibile (solo se l\'avviso è attivo).',
-			'Con intervalli lunghi l\'avviso arriva con qualche giorno di ritardo.',
-			'Intervalli brevi appesantiscono inutilmente il portale e il tuo sito senza vantaggi: le versioni escono di rado.'
-		);
-		$add(
-			'portal_updates', 'comunicazioni', 'Aggiornamenti diretti di Associazione Semplice Pro (Bacheca → Aggiornamenti)', 'flag', 1, 0, 1,
-			'Con il Pro installato, il plugin chiede al portale di Associazione Semplice se esiste una versione più nuova (al massimo ogni 12 ore) e la offre in Bacheca → Aggiornamenti, dove si installa con un clic. Il Pro manda la chiave di licenza e il dominio; il gratuito non manda niente di suo.',
-			'Nessun rischio rilevante: una richiesta al portale ogni tanto.',
-			'Se lo disattivi gli aggiornamenti vanno scaricati dall\'area clienti e caricati a mano.'
 		);
 		$add(
 			'license_offline_days', 'accesso', 'Giorni senza controllo della licenza riuscito, prima di sospendere le funzioni Pro', 'giorni', 7, 1, 60,
