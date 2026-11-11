@@ -173,6 +173,44 @@ final class Identity {
 		self::close();
 	}
 
+	/** Profilo della persona: dati, aree, secondo livello sì/no, sessioni aperte. Null se la sessione non vale più. */
+	public static function profile( array $s ): ?array {
+		list( $code, $out ) = self::call( 'profile', array( 'sid' => $s['sid'] ) );
+		if ( 200 !== $code || ! is_array( $out['sessions'] ?? null ) ) {
+			return null;
+		}
+		$sessions = array();
+		foreach ( $out['sessions'] as $x ) {
+			if ( is_array( $x ) && is_string( $x['id'] ?? null ) ) {
+				$sessions[] = array( 'id' => $x['id'], 'ip' => (string) ( $x['ip'] ?? '' ), 'last' => (string) ( $x['last_used_at'] ?? '' ), 'created' => (string) ( $x['created_at'] ?? '' ), 'current' => ! empty( $x['current'] ) );
+			}
+		}
+		return array( 'person' => (array) ( $out['person'] ?? array() ), 'areas' => self::cleanAreas( $out['areas'] ?? array() ), 'two_factor' => ! empty( $out['two_factor'] ), 'sessions' => $sessions );
+	}
+
+	/**
+	 * Azione che cambia qualcosa (password, email, secondo livello, chiusura di una sessione). La sessione si riconferma subito prima.
+	 * @return array `status` ok | invalid (con `messages`) | denied | limit | down | closed (sessione non più valida); `body` = risposta del SaaS
+	 */
+	public static function act( string $action, array $data ): array {
+		if ( ! in_array( $action, array( 'password', 'email', '2fa-start', '2fa-confirm', '2fa-disable', 'session-revoke' ), true ) ) {
+			throw new \InvalidArgumentException( 'azione sconosciuta' );
+		}
+		$s = self::check( true );
+		if ( ! $s ) {
+			return array( 'status' => 'closed', 'messages' => array(), 'body' => array() );
+		}
+		list( $code, $out ) = self::call( $action, array( 'sid' => $s['sid'] ) + $data );
+		$status = 200 === $code ? 'ok' : ( 422 === $code ? 'invalid' : ( 429 === $code ? 'limit' : ( 0 === $code || $code >= 500 ? 'down' : 'denied' ) ) );
+		return array( 'status' => $status, 'messages' => array_slice( array_map( 'strval', array_filter( (array) ( $out['messages'] ?? array() ), 'is_scalar' ) ), 0, 5 ), 'body' => $out );
+	}
+
+	/** Conferma del nuovo indirizzo dal link nella mail (non serve la sessione). */
+	public static function emailConfirm( string $code ): bool {
+		list( $status ) = self::call( 'email-confirm', array( 'code' => mb_substr( $code, 0, 128 ) ) );
+		return 200 === $status;
+	}
+
 	/** Chiede il link per reimpostare la password: la risposta è sempre la stessa. */
 	public static function resetRequest( string $email, string $ip ): void {
 		self::call( 'reset-request', array( 'email' => strtolower( mb_substr( trim( $email ), 0, 190 ) ), 'link_base' => self::linkBase( 'reimposta' ), 'ip' => mb_substr( $ip, 0, 45 ) ) );

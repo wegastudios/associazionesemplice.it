@@ -219,6 +219,21 @@ final class App {
 			}
 		} elseif ( Identity::enabled() && ! $get && '/account/area' === $path ) {
 			$this->identityArea( (string) $this->in( 'to' ) );
+		} elseif ( Identity::enabled() && ( '/account/profilo' === $path || 0 === strpos( $path, '/account/profilo/' ) ) ) {
+			$this->profile( $get, (string) substr( $path, 17 ) );
+		} elseif ( Identity::enabled() && 0 === strpos( $path, '/accedi/conferma-email/' ) ) {
+			// Il link arriva per email: la GET mostra solo il pulsante (gli antispam non consumano il link), la POST conferma.
+			$code = substr( $path, 23 );
+			if ( 1 !== preg_match( '/^[A-Za-z0-9_-]{16,128}$/', $code ) ) {
+				throw new UserError( 'Il link non è valido o è scaduto: richiedine uno nuovo dal tuo profilo.' );
+			}
+			if ( $get ) {
+				View::render( 'identity_email_confirm', array( 'title' => 'Conferma il nuovo indirizzo', 'code' => $code ) );
+			} elseif ( Identity::emailConfirm( $code ) ) {
+				View::render( 'message', array( 'title' => 'Indirizzo cambiato', 'text' => 'Fatto: da ora entri con il nuovo indirizzo email.' ) );
+			} else {
+				throw new UserError( 'Il link non è valido o è scaduto: richiedine uno nuovo dal tuo profilo.' );
+			}
 		} elseif ( '/account/esci' === $path ) {
 			$this->logout();
 		} elseif ( ! $get && '/accedi' === $path ) {
@@ -424,6 +439,68 @@ final class App {
 		}
 		http_response_code( 'limit' === $r['status'] ? 429 : 401 );
 		View::render( 'twofactor', array( 'title' => 'Codice di verifica', 'error' => 'limit' === $r['status'] ? 'Troppi tentativi: aspetta un minuto.' : 'Il codice non è corretto o è scaduto.' ) );
+	}
+
+	/** Profilo e sicurezza: password, email, secondo livello, sessioni aperte. Tutto lo fa il SaaS; qui si mostrano esiti e moduli. */
+	private function profile( bool $get, string $what ): void {
+		$s = Identity::check();
+		if ( ! $s ) {
+			header( 'Location: /accedi', true, 303 );
+			return;
+		}
+		$flash = '';
+		$errors = array();
+		$qr = null;
+		if ( ! $get ) {
+			$in  = function ( string $k, int $max = 1024 ): string { return mb_substr( (string) ( $_POST[ $k ] ?? '' ), 0, $max ); };
+			$min = (int) Settings::limit( 'password_min' );
+			$r   = null;
+			if ( 'password' === $what ) {
+				if ( $in( 'password' ) !== $in( 'confirm' ) || mb_strlen( $in( 'password' ) ) < $min ) {
+					$errors[] = 'Le due password devono coincidere ed essere lunghe almeno ' . $min . ' caratteri.';
+				} else {
+					$r = Identity::act( 'password', array( 'current' => $in( 'current' ), 'new' => $in( 'password' ) ) );
+					$flash = 'Password cambiata: le altre sessioni aperte sono state chiuse.';
+				}
+			} elseif ( 'email' === $what ) {
+				$r = Identity::act( 'email', array( 'password' => $in( 'password' ), 'new_email' => strtolower( trim( $in( 'new_email', 254 ) ) ), 'link_base' => Identity::linkBase( 'conferma-email' ) ) );
+				$flash = 'Ti abbiamo scritto al nuovo indirizzo: apri il link per confermare (vale un\'ora). Finché non lo apri resta valido quello di prima.';
+			} elseif ( '2fa-avvia' === $what ) {
+				$r = Identity::act( '2fa-start', array( 'password' => $in( 'password' ) ) );
+				if ( 'ok' === $r['status'] && is_string( $r['body']['secret'] ?? null ) ) {
+					$svg = (string) ( $r['body']['qr_svg'] ?? '' );
+					$qr  = array( 'secret' => $r['body']['secret'], 'svg' => 0 === strpos( $svg, '<svg' ) && ! preg_match( '/<script|\son\w+\s*=|javascript:/i', $svg ) ? $svg : '' );
+				}
+			} elseif ( '2fa-conferma' === $what ) {
+				$r = Identity::act( '2fa-confirm', array( 'code' => preg_replace( '/\s+/', '', $in( 'code', 12 ) ) ) );
+				$flash = 'Fatto: da ora, dopo la password, ti chiediamo il codice dell\'app.';
+			} elseif ( '2fa-disattiva' === $what ) {
+				$r = Identity::act( '2fa-disable', array( 'password' => $in( 'password' ), 'code' => preg_replace( '/\s+/', '', $in( 'code', 12 ) ) ) );
+				$flash = 'Secondo livello disattivato.';
+			} elseif ( 'sessione-chiudi' === $what && 1 === preg_match( '/^[A-Za-z0-9_-]{1,40}$/', $in( 'target', 40 ) ) ) {
+				$r = Identity::act( 'session-revoke', array( 'target' => $in( 'target', 40 ) ) );
+				$flash = 'Sessione chiusa.';
+			}
+			if ( $r ) {
+				if ( 'closed' === $r['status'] ) {
+					header( 'Location: /accedi', true, 303 );
+					return;
+				}
+				if ( 'ok' !== $r['status'] ) {
+					$flash = '';
+					$errors = $r['messages'] ?: array( 'limit' === $r['status'] ? 'Troppi tentativi: aspetta un minuto e riprova.' : ( 'down' === $r['status'] ? 'Il servizio non risponde: riprova tra poco.' : 'Qualcosa non torna: controlla password e codice e riprova.' ) );
+				} elseif ( null !== $qr ) {
+					$flash = '';
+				}
+			}
+		}
+		$p = Identity::profile( $s );
+		if ( ! $p ) {
+			Identity::close();
+			header( 'Location: /accedi', true, 303 );
+			return;
+		}
+		View::render( 'profile', array( 'title' => 'Profilo e sicurezza', 'p' => $p, 'email' => $s['email'], 'flash' => $flash, 'errors' => $errors, 'qr' => $qr, 'min' => (int) Settings::limit( 'password_min' ) ) );
 	}
 
 	/** «Entra» in un'area dalla pagina Account: il SaaS dà il token (solo con il ruolo), il browser lo manda in POST all'indirizzo fisso dell'area. */
