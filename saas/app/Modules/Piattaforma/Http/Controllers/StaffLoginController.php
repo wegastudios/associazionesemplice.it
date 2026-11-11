@@ -150,7 +150,7 @@ final readonly class StaffLoginController
     {
         $this->open();
         $request->validate(['email' => ['required', 'email', 'max:254']]);
-        $this->access->requestReset($request->string('email')->toString(), self::linkBase(), $request->ip());
+        $this->access->requestReset($request->string('email')->toString(), self::linkBase().'/staff/reimposta/', $request->ip());
 
         return view('staff.access', ['mode' => 'forgot_sent']);
     }
