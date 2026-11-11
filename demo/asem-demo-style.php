@@ -86,7 +86,7 @@ add_filter( 'login_headertext', function () {
 } );
 add_filter( 'login_message', function ( $m ) {
 	// Il rinvio all'accesso dei soci lo mostra già il plugin sotto questo avviso.
-	return $m . '<p class="message">Accessi di prova: <strong>segreteria</strong> / Segreteria-Demo-2026 · <strong>amministratore</strong> / Amministratore-Demo-2026</p>';
+	return $m . '<p class="message">Accessi di prova: <strong>segreteria@demo.invalid</strong> / Segreteria-Demo-2026 · <strong>amministratore@demo.invalid</strong> / Amministratore-Demo-2026</p>';
 } );
 
 // Pannello: barra e menu nei colori del marchio.
@@ -135,7 +135,7 @@ add_filter( 'the_content', function ( $content ) {
 	$have = \AssociazioneSemplice\Pages::existing();
 	$id   = get_queried_object_id();
 	if ( isset( $have['segreteria'] ) && (int) $have['segreteria'] === $id && ! is_user_logged_in() ) {
-		return asem_demo_cred_box( 'Demo: accesso di prova come segreteria', 'Utente', 'segreteria', 'Segreteria-Demo-2026' ) . $content;
+		return asem_demo_cred_box( 'Demo: accesso di prova come segreteria', 'Email', 'segreteria@demo.invalid', 'Segreteria-Demo-2026' ) . $content;
 	}
 	if ( isset( $have['area'] ) && (int) $have['area'] === $id && class_exists( '\AssociazioneSemplice\MemberSession' ) && ! \AssociazioneSemplice\MemberSession::current() && ! is_user_logged_in() ) {
 		return asem_demo_member_box() . $content;
