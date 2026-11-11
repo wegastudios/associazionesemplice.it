@@ -57,6 +57,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Biglietti con QR per le prenotazioni | ✓ | ✓ | ✓ |
 | Listini per eventi e corsi a date (quanti prezzi vuoi: individuale, di gruppo, pacchetti di ingressi) | ✓ | ✓ | ✓ |
 | Calendario dell'evento (mese e giorno, con selettore della data) e pacchetti con ingressi ancora da usare | ✓ | ✓ | ✓ |
+| Pagina pubblica di ogni evento e corso (locandina, descrizione, elenco per mese o calendario mensile, «Salva nel tuo calendario»; prenotano i soci) | ✓ | ✓ | ✓ |
 | Incasso sul posto durante gli eventi | — | ✓ | ✓ |
 | Risorse a fasce orarie (campi, sale) con tariffe, ospiti e regole di prenotazione | — | ✓ | ✓ |
 | Risorse assegnate a periodo (posti auto, armadietti, posti barca) con lista d'attesa | — | ✓ | ✓ |

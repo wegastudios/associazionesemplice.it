@@ -216,6 +216,50 @@ L'indirizzo è spento di default e si può rigenerare quando vuoi: rigenerandolo
 MD,
     ],
     [
+        'topic' => 'corsi-ed-eventi', 'section' => 'Attività', 'slug' => 'pagina-pubblica-degli-eventi-sul-sito',
+        'title' => 'La pagina pubblica degli eventi sul sito',
+        'body' => <<<'MD'
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
+
+Ogni evento e ogni corso può avere una **pagina pubblica** sul tuo sito, con locandina, descrizione e il pulsante per prenotare.
+
+## Come nasce la pagina
+
+La pagina è del tipo **«Eventi sul sito»** e nasce da sola dall'attività. Resta in **bozza** finché non la pubblichi: nessuno la vede prima.
+
+- Nella pagina scrivi la **descrizione**, carichi la **locandina** e scegli la **categoria**.
+- **Data, luogo, contributo e posti** non si scrivono lì: arrivano dall'attività e restano sempre aggiornati.
+- La **segreteria** e il **tesoriere** possono modificare le pagine e caricare le locandine.
+
+## Cosa succede se l'evento cambia
+
+- La pagina **non si elimina** finché l'evento esiste: se non la vuoi più vedere, rimettila in **bozza**.
+- Se **elimini l'evento**, la pagina va nel **cestino**.
+
+## L'elenco degli eventi
+
+Lo shortcode `[associazionesemplice_eventi]` (o il blocco, o il widget Elementor) mostra le **schede degli eventi divise per mese**. Opzioni:
+
+| Opzione | Cosa fa |
+|---|---|
+| `categoria` | mostra solo una categoria |
+| `limite` | quanti eventi mostrare |
+| `mesi` | quanti mesi mostrare |
+| `modo="elenco"` o `modo="mese"` | elenco a schede oppure **calendario mensile** |
+| `filtri="si"` o `filtri="no"` | mostra o nasconde i filtri |
+
+## Salvare nel calendario
+
+Ogni pagina ha il pulsante **«Salva nel tuo calendario»** (file `.ics`): funziona con Google Calendar, Apple Calendar e Outlook.
+
+## Prenotare dalla pagina
+
+Per ora prenotano **solo i soci**, entrando con il loro accesso. La prenotazione di chi non è socio e il pagamento online dalla pagina arriveranno più avanti.
+
+Se usi una cache delle pagine, **svuotala** dopo aver pubblicato o modificato un evento.
+MD,
+    ],
+    [
         'topic' => 'corsi-ed-eventi', 'section' => 'Attività', 'slug' => 'listini-e-pacchetti-per-eventi-e-corsi',
         'title' => 'Listini e pacchetti di ingressi per eventi e corsi a date',
         'body' => <<<'MD'
