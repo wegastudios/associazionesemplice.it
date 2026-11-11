@@ -155,3 +155,11 @@ La titolare ha confermato tutti e tre i punti:
 1. Nomi dei livelli: **admin / vendita / supporto** (WordPress e SaaS) e **admin / agente** (Supporto).
 2. ~~Indirizzo dell accesso staff `associazionesemplice.it/staff/accedi`~~ **Superato (11/11/2026): non serve una pagina di accesso a parte.** Gli staff hanno già i loro account: si entra dalla pagina di accesso già esistente di un area (`/wordpress/admin`, `/saas/admin`, supporto) e da lì il selettore «Vai a» porta alle altre senza altro accesso. L autenticazione usa l elenco unico nel database del SaaS.
 3. Portale irraggiungibile: nessuno entra nelle aree finché non torna, salvo l'accesso di emergenza della sola titolare dal server.
+
+## Invito dello staff: com'è realizzato (11/11/2026)
+
+- Tabella `core.staff_invites` (email, nome, ruoli per area, scadenza a 7 giorni, usato il, chi l'ha creato); del codice si conserva solo l'impronta SHA-256, mai il codice.
+- `php artisan saas:staff:invite <email> <nome> --role=saas:admin --role=wordpress:admin`: crea l'invito e manda per email il link; il link non si stampa (solo con `--show-link`, per i casi di emergenza).
+- Il link porta a `/saas/staff/invito/<codice>`: pagina senza sessione né cookie (il codice è il segreto), la persona sceglie da sé la password (almeno 12 caratteri). Si usa una volta sola, anche con due invii in contemporanea (riga bloccata). Nessuno vede mai la password.
+- `SAAS_STAFF_INVITE_BASE` cambia la base del link (dietro il proxy del portale: `https://associazionesemplice.it/saas`).
+- Ancora da fare: la pagina «Utenti» (invitare dal browser) e la riconferma della password per le azioni con privilegi.
