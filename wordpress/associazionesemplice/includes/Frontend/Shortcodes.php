@@ -41,6 +41,7 @@ final class Shortcodes {
 		'calendario'      => 'Calendario di corsi ed eventi (soci)',
 		'attivita'        => 'Elenco attività ed eventi (pubblico)',
 		'prossimi_eventi' => 'Prossimi eventi (pubblico)',
+		'eventi'          => 'Eventi sul sito, a card per mese (pubblico)',
 		'bonifico'        => 'Coordinate per il bonifico (pubblico, se attivo)',
 		'donazioni'       => 'Donazioni con PayPal (pubblico, se attive)',
 		'privacy'         => 'Informativa privacy (pubblico, compilata con i dati dell\'ente)',
@@ -127,6 +128,8 @@ final class Shortcodes {
 			case 'attivita':
 				Views::no_cache();
 				return Views::activities( shortcode_atts( array( 'anno' => '', 'tipo' => '', 'id' => '', 'date' => '5' ), $atts ) );
+			case 'eventi':
+				return \AssociazioneSemplice\PublicEvents::list_html( shortcode_atts( array( 'categoria' => '', 'limite' => '30', 'mesi' => '' ), $atts ) );
 			case 'prossimi_eventi':
 				Views::no_cache();
 				return Views::upcoming( shortcode_atts( array( 'limite' => '5', 'prenotazione' => 'si' ), $atts ) );

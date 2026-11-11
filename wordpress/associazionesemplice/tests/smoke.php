@@ -524,6 +524,13 @@ asem_ok( ! current_user_can( $pe_type->cap->create_posts ), 'pagina pubblica: no
 asem_ok( ! current_user_can( 'delete_post', $pe_post ), 'pagina pubblica: finché l\'attività esiste non si elimina' );
 $pe_a = $acts->get( $event );
 asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::when_text( $pe_a ), 'ore 21:00' ) && 'Sede' === \AssociazioneSemplice\PublicEvents::where_text( $pe_a ) && false !== strpos( \AssociazioneSemplice\PublicEvents::price_text( $pe_a ), 'Ospiti' ), 'pagina pubblica: data, luogo e contributo vengono dall\'attività' );
+asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::list_html(), 'Nessun evento in programma' ), 'elenco eventi: la pagina in bozza non compare' );
+wp_update_post( array( 'ID' => $pe_post, 'post_status' => 'publish' ) );
+$pe_list = \AssociazioneSemplice\PublicEvents::list_html();
+asem_ok( false !== strpos( $pe_list, 'asemf-card' ) && false !== strpos( $pe_list, 'Serata giochi' ) && false !== strpos( $pe_list, 'asemf-month' ), 'elenco eventi: la pagina pubblicata compare a card, sotto il suo mese' );
+asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::list_html( array( 'categoria' => 'inesistente' ) ), 'Nessun evento' ), 'elenco eventi: il filtro per categoria funziona' );
+asem_ok( false !== strpos( do_shortcode( '[associazionesemplice_eventi]' ), 'asemf-card' ), 'elenco eventi: lo shortcode funziona' );
+wp_update_post( array( 'ID' => $pe_post, 'post_status' => 'draft' ) );
 asem_ok( null !== asem_throws( function () use ( $acts, $event, $ev_date ) { $acts->add_session( $event, array( 'session_date' => $ev_date ) ); } ), 'evento una tantum: una sola data' );
 asem_ok( null !== asem_throws( function () use ( $acts, $event, $ord, $month ) { $acts->enroll( $event, $ord, $month ); } ), 'agli eventi ci si prenota, non ci si iscrive per mesi' );
 

@@ -416,6 +416,104 @@ final class PublicEvents {
 		return $html . '</div>';
 	}
 
+	// ---------- Elenco pubblico a card, per mese ----------
+
+	/**
+	 * Elenco delle prossime date degli eventi pubblicati sul sito, raggruppate per mese.
+	 *
+	 * @param array $atts categoria (indirizzo della categoria), limite (date da mostrare, 1–100), mesi (quanti mesi, 1–24).
+	 */
+	public static function list_html( array $atts = array() ): string {
+		Frontend\Views::no_cache();
+		$limit = max( 1, min( 100, (int) ( $atts['limite'] ?? 30 ) ) );
+		$cat   = sanitize_title( (string) ( $atts['categoria'] ?? '' ) );
+		$until = '';
+		if ( ! empty( $atts['mesi'] ) ) {
+			$until = gmdate( 'Y-m-d', strtotime( Db::today() . ' +' . max( 1, min( 24, (int) $atts['mesi'] ) ) . ' months' ) );
+		}
+		$query = array(
+			'post_type'      => self::POST_TYPE,
+			'post_status'    => 'publish',
+			'posts_per_page' => 200,
+			'no_found_rows'  => true,
+			'orderby'        => 'ID',
+			'order'          => 'ASC',
+		);
+		if ( '' !== $cat ) {
+			$query['tax_query'] = array( array( 'taxonomy' => self::TAXONOMY, 'field' => 'slug', 'terms' => $cat ) ); // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query
+		}
+		$posts = array(); // id attività => contenuto
+		foreach ( get_posts( $query ) as $p ) {
+			$aid = self::activity_of( (int) $p->ID );
+			if ( $aid && ! isset( $posts[ $aid ] ) ) {
+				$posts[ $aid ] = $p;
+			}
+		}
+		$rows = array();
+		if ( $posts ) {
+			foreach ( Plugin::activities()->upcoming_sessions( 500 ) as $s ) {
+				if ( isset( $posts[ (int) $s['activity_id'] ] ) && ( '' === $until || (string) $s['session_date'] <= $until ) ) {
+					$rows[] = $s;
+				}
+			}
+		}
+		$rows = array_slice( $rows, 0, $limit );
+		if ( ! $rows ) {
+			return Frontend\Views::shell( '<p class="asemf-muted">Nessun evento in programma.</p>', 'asemf-events' );
+		}
+		$html  = '';
+		$month = '';
+		$acts  = array();
+		foreach ( $rows as $s ) {
+			$aid = (int) $s['activity_id'];
+			if ( ! isset( $acts[ $aid ] ) ) {
+				$acts[ $aid ] = Plugin::activities()->get( $aid );
+			}
+			$a = $acts[ $aid ];
+			if ( ! $a ) {
+				continue;
+			}
+			$ts = (int) strtotime( (string) $s['session_date'] . ' 12:00:00' );
+			$m  = wp_date( 'Y-m', $ts );
+			if ( $m !== $month ) {
+				$html .= ( '' === $month ? '' : '</ul>' ) . '<h3 class="asemf-month">' . esc_html( ucfirst( wp_date( 'F Y', $ts ) ) ) . '</h3><ul class="asemf-cards">';
+				$month = $m;
+			}
+			$html .= self::card( $posts[ $aid ], $a, $s, $ts );
+		}
+		return Frontend\Views::shell( $html . '</ul>', 'asemf-events' );
+	}
+
+	/** Una card: badge della data, locandina, categoria, titolo, orario, luogo, contributo. */
+	private static function card( \WP_Post $post, array $a, array $s, int $ts ): string {
+		$url   = (string) get_permalink( $post );
+		$cats  = get_the_terms( $post, self::TAXONOMY );
+		$cat   = ( $cats && ! is_wp_error( $cats ) ) ? (string) $cats[0]->name : '';
+		$where = ! empty( $s['location'] ) ? (string) $s['location'] : (string) ( $a['location'] ?? '' );
+		$fee   = (int) $a['fee_cents'] > 0 ? Money::format( (int) $a['fee_cents'] ) : ( null !== $a['guest_fee_cents'] && (int) $a['guest_fee_cents'] > 0 ? 'Ospiti: ' . Money::format( (int) $a['guest_fee_cents'] ) : 'Gratuito' );
+		$time  = ! empty( $s['start_time'] ) ? ( ! empty( $s['end_time'] ) ? $s['start_time'] . '–' . $s['end_time'] : $s['start_time'] ) : '';
+		$h     = '<li class="asemf-card' . ( has_post_thumbnail( $post ) ? ' has-poster' : '' ) . '">';
+		$h    .= '<a class="asemf-card-date" href="' . esc_url( $url ) . '" aria-hidden="true" tabindex="-1"><span class="asemf-card-day">' . esc_html( wp_date( 'j', $ts ) ) . '</span><span class="asemf-card-mon">' . esc_html( wp_date( 'M', $ts ) ) . '</span></a>';
+		if ( has_post_thumbnail( $post ) ) {
+			$h .= '<a class="asemf-card-poster" href="' . esc_url( $url ) . '" aria-hidden="true" tabindex="-1">' . get_the_post_thumbnail( $post, 'medium' ) . '</a>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		}
+		$h .= '<div class="asemf-card-body">';
+		if ( '' !== $cat ) {
+			$h .= '<div class="asemf-card-cat">' . esc_html( $cat ) . '</div>';
+		}
+		$h .= '<h4 class="asemf-card-title"><a href="' . esc_url( $url ) . '">' . esc_html( get_the_title( $post ) ) . '</a></h4>';
+		$h .= '<div class="asemf-small">' . esc_html( ucfirst( wp_date( 'l j F', $ts ) ) . ( '' !== $time ? ' · ore ' . $time : '' ) ) . '</div>';
+		if ( '' !== $where ) {
+			$h .= '<div class="asemf-small">' . esc_html( $where ) . '</div>';
+		}
+		$ex = has_excerpt( $post ) ? get_the_excerpt( $post ) : '';
+		if ( '' !== $ex ) {
+			$h .= '<p class="asemf-card-ex">' . esc_html( wp_trim_words( $ex, 28 ) ) . '</p>';
+		}
+		$h .= '<div class="asemf-card-foot"><span class="asemf-card-price">' . esc_html( $fee ) . '</span><a class="asemf-btn wp-element-button" href="' . esc_url( $url ) . '">Dettagli e prenotazione</a></div>';
+		return $h . '</div></li>';
+	}
+
 	// ---------- Calendario (.ics) e dati strutturati ----------
 
 	/** Date prenotabili o in programma dell'evento. @return array[] */

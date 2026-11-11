@@ -38,6 +38,11 @@ final class Views {
 		return $ymd ? esc_html( ( new \DateTimeImmutable( $ymd ) )->format( 'd/m/Y' ) ) : '—';
 	}
 
+	/** Contenitore delle viste, anche per le pagine pubbliche del plugin. */
+	public static function shell( string $inner, string $class = '' ): string {
+		return self::wrap( $inner, $class );
+	}
+
 	private static function wrap( string $inner, string $class = '' ): string {
 		Assets::enqueue();
 		return \AssociazioneSemplice\Texts::html( '<div class="asemf ' . esc_attr( $class ) . '">' . self::flash() . $inner . '</div>' ); // testi personalizzati

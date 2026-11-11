@@ -41,7 +41,10 @@
 					el(TextControl, { key: 'd', label: 'Date da mostrare per attività', value: a.date, onChange: function (x) { set({ date: x }); } })
 				);
 			}
-			if (v === 'prossimi_eventi') {
+			if (v === 'eventi') {
+				controls.push(el(TextControl, { key: 'c', label: 'Solo questa categoria (indirizzo, facoltativo)', value: a.categoria, onChange: function (x) { set({ categoria: x }); } }));
+			}
+			if (v === 'prossimi_eventi' || v === 'eventi') {
 				controls.push(el(TextControl, { key: 'l', label: 'Numero di eventi', value: a.limite, onChange: function (x) { set({ limite: x }); } }));
 			}
 			return el('div', useBlockProps ? useBlockProps() : {},

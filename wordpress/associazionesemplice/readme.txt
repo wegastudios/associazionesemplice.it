@@ -64,6 +64,7 @@ The interface uses the Montserrat typeface (SIL Open Font License 1.1, copy in `
 = 1.3.19 =
 * Eventi e corsi hanno una pagina pubblica sul sito, collegata all'attività e creata da sola: scrivi la descrizione e scegli la locandina, data, luogo, contributo e posti li prende dall'attività
 * Dalla pagina dell'evento i soci si prenotano e possono salvare le date nel proprio calendario
+* Nuovo elenco degli eventi a schede, per mese, con data in evidenza e locandina: inseriscilo con lo shortcode [associazionesemplice_eventi], con il blocco «Associazione Semplice» o con Elementor
 
 = 1.3.18 =
 * Accesso soci più semplice: una sola schermata con password o link via email
