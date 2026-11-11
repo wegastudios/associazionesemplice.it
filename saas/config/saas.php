@@ -38,7 +38,7 @@ return [
 
     // Percorso dell'amministrazione della piattaforma (docs/PIATTAFORMA.md §4): `admin` qui; dietro il proxy del
     // portale sarà `saas/admin`, con `ASSET_URL` e `APP_URL` coerenti.
-    'admin_path' => env('SAAS_ADMIN_PATH', 'admin'),
+    'admin_path' => env('SAAS_ADMIN_PATH', 'saas/admin'),
 
     // Ambiente demo (docs/PIATTAFORMA.md §6): acceso solo sul server demo (APP_ENV=demo), mai in produzione.
     // `saas:demo:reset` cancella il database e lo ricrea con dati finti; gli accessi sono pubblici per ruolo.

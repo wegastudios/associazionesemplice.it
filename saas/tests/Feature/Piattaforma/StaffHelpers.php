@@ -33,6 +33,6 @@ function staffCode(PlatformStaff $staff): string
 /** Entra come lo staff indicato (password e codice a due passaggi). */
 function loginStaff(Tests\TestCase $test, PlatformStaff $staff): void
 {
-    $test->post('/admin/accesso', ['email' => $staff->email, 'password' => STAFF_PASSWORD])->assertRedirect('/admin/verifica');
-    $test->post('/admin/verifica', ['code' => staffCode($staff)])->assertRedirect('/admin');
+    $test->post('/saas/admin/accesso', ['email' => $staff->email, 'password' => STAFF_PASSWORD])->assertRedirect('/saas/admin/verifica');
+    $test->post('/saas/admin/verifica', ['code' => staffCode($staff)])->assertRedirect('/saas/admin');
 }
