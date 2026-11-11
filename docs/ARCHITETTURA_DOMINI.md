@@ -392,3 +392,7 @@ Nel database del SaaS, quindi, oltre all'app: gli utenti staff e i loro ruoli e 
 | **Portale plugin** | vendita del plugin in `/wordpress/admin` (piani, licenze, prezzi, versioni) |
 | **Portale vendita** | pagine di vendita e area riservata dei clienti (`/account`) |
 | **Supporto** | contenuti del supporto (ticket, guide); l'identità arriva dal SaaS |
+
+### 12 bis. Tre database soltanto (11/11/2026)
+
+Per ordine della titolare: **tre** database e basta. (1) **Supporto**: uno suo (il motore lo decide la sessione supporto). (2) **SaaS**: uno solo, che comprende anche le pagine di vendita e i **clienti** (oggi nel MySQL `portale`, che deve confluire qui). (3) **Demo WordPress**: uno a parte. I dati delle installazioni del plugin restano nel MySQL di ciascun sito. Lo spostamento dei clienti nel database del SaaS avviene **solo con un «sì» scritto della titolare**, dopo l'approvazione del documento unico di «Sviluppo SaaS in locale»; fino ad allora non si sposta nulla. Questo precisa e sostituisce, dove diverso, il §12.
