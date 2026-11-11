@@ -388,8 +388,21 @@ final class PublicEvents {
 	}
 
 	public static function hide_theme_poster_block( $block_content, $block ) {
+		if ( ! is_array( $block ) || ! is_singular( self::POST_TYPE ) ) {
+			return $block_content;
+		}
 		// Il tema mostra locandina, autore, data e categorie degli articoli: per un evento non hanno senso (la pagina ha già i suoi dati).
-		return ( is_array( $block ) && in_array( $block['blockName'] ?? '', array( 'core/post-featured-image', 'core/post-author', 'core/post-author-name', 'core/post-author-biography', 'core/post-date', 'core/post-terms' ), true ) && is_singular( self::POST_TYPE ) ) ? '' : $block_content;
+		if ( in_array( $block['blockName'] ?? '', array( 'core/post-featured-image', 'core/post-author', 'core/post-author-name', 'core/post-author-biography', 'core/post-date', 'core/post-terms' ), true ) ) {
+			return '';
+		}
+		// Ciò che resta della riga «Scritto da … in …» una volta tolti autore e categorie.
+		if ( 'core/group' === ( $block['blockName'] ?? '' ) ) {
+			$text = trim( preg_replace( '/\s+/u', ' ', wp_strip_all_tags( (string) $block_content ) ) );
+			if ( '' !== $text && preg_match( '/^(scritto da|written by|di|il|in|,|\s)+$/iu', $text ) ) {
+				return '';
+			}
+		}
+		return $block_content;
 	}
 
 	/** Contenuto della pagina: locandina, dati dell'attività, descrizione, prenotazione. */

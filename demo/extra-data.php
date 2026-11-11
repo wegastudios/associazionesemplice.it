@@ -312,5 +312,12 @@ extra_step( 'locandine degli eventi', function () {
 	}
 } );
 
+// Pagina con il calendario mensile degli eventi.
+extra_step( 'pagina calendario eventi', function () {
+	if ( ! get_page_by_path( 'calendario-eventi' ) ) {
+		wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Calendario eventi', 'post_name' => 'calendario-eventi', 'post_content' => '[associazionesemplice_eventi modo="mese"]' ) );
+	}
+} );
+
 update_option( 'asem_demo_extra_done', gmdate( 'c' ), false );
 WP_CLI::success( 'Dati in più della demo inseriti.' );
