@@ -69,16 +69,24 @@ const showAccount = ref(false);
 </script>
 
 <template>
-    <div class="min-h-full lg:pl-64">
-        <!-- Barra laterale: da 1024 px -->
-        <aside class="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-line bg-card lg:flex" aria-label="Menu del gestionale">
-            <div class="px-5 pb-3 pt-5">
-                <picture>
-                    <source srcset="/assets/brand/logo-orizzontale-negativo.svg" media="(prefers-color-scheme: dark)" />
-                    <img src="/assets/brand/logo-orizzontale-colore.svg" alt="Associazione Semplice" class="h-9 w-auto" />
-                </picture>
+    <div class="min-h-full pt-14 lg:pl-64">
+        <!-- Barra comune a portale, supporto e gestionale (docs/GRAFICA_UX.md §2): logo, nome del posto, Il mio account. -->
+        <div class="fixed inset-x-0 top-0 z-40 h-14 border-b border-line bg-card">
+            <div class="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4">
+                <a href="https://associazionesemplice.it/" class="flex shrink-0 items-center" aria-label="Associazione Semplice, vai alla home">
+                    <picture>
+                        <source srcset="/assets/brand/logo-orizzontale-negativo.svg" media="(prefers-color-scheme: dark)" />
+                        <img src="/assets/brand/logo-orizzontale-colore.svg" alt="" class="hidden h-8 w-auto sm:block" />
+                    </picture>
+                    <img src="/assets/brand/simbolo-colore.svg" alt="" class="size-8 sm:hidden" />
+                </a>
+                <span class="min-w-0 flex-1 truncate border-l border-line pl-3 text-[15px] font-bold">Gestionale</span>
+                <a href="https://associazionesemplice.it/account" class="inline-flex min-h-11 shrink-0 items-center rounded-xl px-2 text-[15px] font-semibold text-accent hover:bg-surface">Il mio account</a>
             </div>
-            <div v-if="org" class="px-5 pb-3">
+        </div>
+        <!-- Barra laterale: da 1024 px -->
+        <aside class="fixed bottom-0 left-0 top-14 z-30 hidden w-64 flex-col border-r border-line bg-card lg:flex" aria-label="Menu del gestionale">
+            <div v-if="org" class="px-5 pb-3 pt-5">
                 <p class="truncate font-bold">{{ org.name }}</p>
                 <p class="caption">{{ org.role }}</p>
             </div>
@@ -108,9 +116,8 @@ const showAccount = ref(false);
         </aside>
 
         <!-- Intestazione bassa: telefono e tablet -->
-        <header class="sticky top-0 z-30 border-b border-line bg-card/95 pt-[env(safe-area-inset-top)] backdrop-blur lg:hidden">
+        <header class="sticky top-14 z-30 border-b border-line bg-card/95 backdrop-blur lg:hidden">
             <div class="mx-auto flex h-14 max-w-3xl items-center gap-3 px-4">
-                <img src="/assets/brand/simbolo-colore.svg" alt="" class="size-8 shrink-0" />
                 <div v-if="org" class="min-w-0 flex-1">
                     <p class="truncate text-[15px] font-bold leading-5">{{ org.name }}</p>
                     <p class="caption truncate">{{ org.role }}</p>
