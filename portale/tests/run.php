@@ -1962,7 +1962,7 @@ foreach ( array(
 }
 $ssOther = random_bytes( SODIUM_CRYPTO_SIGN_SEEDBYTES );
 check( 'staff sso: rifiutato — firma di una chiave non fissata', null === StaffSso::verify( Portale\PortalAttestation::sign( array( 'iss' => 'https://associazionesemplice.it/saas', 'aud' => 'associazionesemplice-portale', 'typ' => 'staff_sso', 'iat' => $ssNow, 'exp' => $ssNow + 60, 'jti' => 'j1', 'sub' => 'mario@esempio.it', 'area' => 'wordpress', 'level' => 'admin', 'sid' => str_repeat( 'b', 32 ) ), $ssOther ), $ssNow ) );
-check( 'staff sso: rifiutato — token manomesso', null === StaffSso::verify( substr( $ssTok(), 0, -2 ) . 'AA', $ssNow ) );
+$ssParts = explode( '.', $ssTok() );$ssBody  = json_decode( base64_decode( strtr( $ssParts[1], '-_', '+/' ) ), true );$ssBody['level'] = 'admin';$ssParts[1] = rtrim( strtr( base64_encode( json_encode( $ssBody ) ), '+/', '-_' ), '=' );check( 'staff sso: rifiutato — contenuto manomesso con la firma originale', null === StaffSso::verify( implode( '.', $ssParts ), $ssNow ) );
 check( 'staff sso: ruoli — admin e supporto sì, vendita non ancora', 'admin' === StaffSso::roleFor( 'admin' ) && 'support' === StaffSso::roleFor( 'supporto' ) && null === StaffSso::roleFor( 'vendita' ) );
 StaffSso::receive( $ssdb, $ssTok(), $ssNow );
 check( 'staff sso: la sessione resta entro 2 ore di inattività', null !== StaffSso::current( $ssNow + 3600 ) );
