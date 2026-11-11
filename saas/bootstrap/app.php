@@ -28,8 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Sotto il percorso dell'amministrazione la sessione ha cookie, percorso e guardia propri: va prima di tutto.
         $middleware->web(prepend: [UsePlatformSession::class], append: [EnsureUserActive::class, HandleInertiaRequests::class]);
         $middleware->prependToPriorityList(before: EncryptCookies::class, prepend: UsePlatformSession::class);
-        $middleware->encryptCookies();
-        $middleware->redirectGuestsTo('/accesso');
+        $middleware->encryptCookies();        $middleware->redirectGuestsTo('/accesso');
         $middleware->redirectUsersTo('/gestionale');
 
         $middleware->alias([

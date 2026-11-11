@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
+    @stack('head')
     <title>@yield('title', 'Amministrazione') · Associazione Semplice</title>
     <style>
         :root { --bg: #f5f6fa; --fg: #1b1c33; --muted: #5b5d7a; --card: #fff; --line: #dcdeea; --brand: #3b3fa8; }

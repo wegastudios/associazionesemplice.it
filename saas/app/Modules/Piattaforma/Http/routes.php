@@ -5,7 +5,10 @@ declare(strict_types=1);
 use App\Modules\Piattaforma\Http\Controllers\AdminCatalogController;
 use App\Modules\Piattaforma\Http\Controllers\AdminConsoleController;
 use App\Modules\Piattaforma\Http\Controllers\AdminLoginController;
+use App\Modules\Piattaforma\Http\Controllers\StaffSsoController;
 use App\Modules\Piattaforma\Http\Middleware\UsePlatformSession;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -14,6 +17,10 @@ use Illuminate\Support\Facades\Route;
  */
 
 Route::middleware('web')->prefix(UsePlatformSession::path())->group(function (): void {
+    // Ingresso dal portale (accesso unico dello staff): spento finché SAAS_STAFF_SSO non è acceso; senza CSRF perché è
+    // una POST dal portale, protetta dalla firma del token.
+    Route::post('sso', [StaffSsoController::class, 'receive'])->middleware('throttle:platform-login')
+        ->withoutMiddleware([ValidateCsrfToken::class, PreventRequestForgery::class])->name('platform.sso');
     Route::get('accesso', [AdminLoginController::class, 'show'])->name('platform.login');
     Route::post('accesso', [AdminLoginController::class, 'login'])->middleware('throttle:platform-login');
     Route::get('verifica', [AdminLoginController::class, 'showVerify'])->name('platform.verify');
