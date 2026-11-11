@@ -16,6 +16,7 @@
         <span class="place">Supporto</span>
         @if (session('customer'))
             <a class="account" href="{{ config('support.sso.portal') }}/account">Il mio account</a>
+            <a href="{{ config('support.sso.portal') }}/account/esci">Esci</a>
         @else
             <a class="account" href="{{ config('support.sso.portal') }}/accedi">Accedi</a>
         @endif
