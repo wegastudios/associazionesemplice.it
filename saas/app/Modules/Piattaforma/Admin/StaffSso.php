@@ -39,7 +39,7 @@ final readonly class StaffSso
 
         $staff = PlatformStaff::query()->where('email', $grant->email)->first();
         if ($staff?->disabled_at !== null) {
-            $this->audit->record('staff.sso_denied', $staff?->id, null, ['reason' => 'disabled'], $request);
+            $this->audit->record('staff.sso_denied', $staff->id, null, ['reason' => 'disabled'], $request);
             throw new StaffAccessDenied('persona disattivata');
         }
         if ($staff === null) {

@@ -16,6 +16,7 @@ use App\Modules\Portale\Http\Controllers\PortalApiController;
 use App\Modules\Portale\Http\Controllers\SubscriptionSsoController;
 use App\Modules\Portale\Http\Middleware\RequirePackage;
 use App\Modules\Portale\Notifications\PortalNotifications;
+use App\Modules\Portale\Staff\PortalStaffAccess;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\Request;
