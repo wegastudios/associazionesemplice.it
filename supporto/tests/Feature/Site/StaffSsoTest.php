@@ -266,7 +266,7 @@ class StaffSsoTest extends SiteTestCase
         $this->assertSame(['wordpress' => 'vendita'], session('staff.areas'));
         Http::fake(['portale.test/api/staff/v1/token' => Http::response(['token' => 'TOKEN-PER-WORDPRESS'])]);
 
-        $this->get('/admin/ticket')->assertSee('Vai a Portale WordPress');
+        $this->get('/admin/ticket')->assertDontSee('Vai a Portale WordPress')->assertDontSee('>Gestionale<', false);
 
         $response = $this->post('/admin/vai/wordpress')->assertOk()
             ->assertSee('action="https://portale.test/wordpress/admin/sso"', false)->assertSee('TOKEN-PER-WORDPRESS');
@@ -289,5 +289,12 @@ class StaffSsoTest extends SiteTestCase
         Http::fake(['portale.test/*' => Http::response(['error' => 'x'], 403)]);
 
         $this->post('/admin/vai/saas')->assertSessionHasErrors('staff');
+    }
+
+    public function test_menu_links_to_the_saas_area_only_when_the_person_has_it(): void
+    {
+        $this->staffLogin($this->token(['sub' => 'capo@example.it', 'level' => 'admin', 'areas' => ['supporto' => 'admin', 'saas' => 'admin']]));
+
+        $this->get('/admin/ticket')->assertSee('href="https://portale.test/saas/admin"', false)->assertSee('Gestione del plugin');
     }
 }

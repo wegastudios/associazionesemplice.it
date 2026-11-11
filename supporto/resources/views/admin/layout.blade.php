@@ -40,9 +40,9 @@
     @endif
     @if (auth()->user()->isAdmin())<a href="{{ route('admin.mail.edit') }}" @if (request()->routeIs('admin.mail.*')) aria-current="page" @endif>Email</a>@endif
     <a href="{{ rtrim(config('support.sso.portal'), '/') }}/wordpress/admin">Gestione del plugin</a>
-    @foreach (array_keys(session('staff.areas', [])) as $area)
-        @if ($area !== 'supporto')<form method="post" action="{{ route('admin.goto', $area) }}">@csrf <button class="secondary" type="submit">Vai a {{ \App\Http\Controllers\Admin\Site\StaffAreaController::AREAS[$area] ?? $area }}</button></form>@endif
-    @endforeach
+    @if (! session()->has('staff') || isset(session('staff.areas', [])['saas']))
+        <a href="{{ rtrim(config('support.sso.portal'), '/') }}/saas/admin">Gestionale</a>
+    @endif
     @unless (session()->has('staff'))
         <form method="post" action="{{ route('admin.logout') }}">@csrf <button class="secondary" type="submit">Esci</button></form>
     @endunless
