@@ -49,6 +49,8 @@ return [
     // Le chiavi pubbliche del portale sono "kid:x" separate da virgola; la chiave privata del supporto sta in un file fuori dal repository
     // (si crea con `php artisan staff:key`). Senza chiavi del portale l'accesso staff unico e spento.
     'staff_sso' => [
+        // Chi emette i token e risponde a riconferma e «Utenti» (oggi il SaaS, con un indirizzo del dominio principale); se manca, il portale
+        'issuer' => rtrim((string) env('SUPPORT_STAFF_ISSUER', env('SUPPORT_SSO_PORTAL', 'https://associazionesemplice.it')), '/'),
         'portal_keys' => env('SUPPORT_STAFF_PORTAL_KEYS'),
         'audience' => 'associazionesemplice-supporto',
         'private_key_file' => env('SUPPORT_STAFF_PRIVATE_KEY_FILE', storage_path('app/private/staff-sign.key')),

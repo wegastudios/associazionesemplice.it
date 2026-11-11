@@ -53,7 +53,7 @@ class StaffJwt
         if ($claims === null || array_diff(array_keys($claims), self::SSO_CLAIMS) !== []) {
             return null;
         }
-        $portal = rtrim((string) config('support.sso.portal'), '/');
+        $portal = rtrim((string) config('support.staff_sso.issuer'), '/');
         if (($claims['typ'] ?? null) !== 'staff_sso'
             || ($claims['aud'] ?? null) !== config('support.staff_sso.audience')
             || rtrim((string) ($claims['iss'] ?? ''), '/') !== $portal
@@ -112,7 +112,7 @@ class StaffJwt
         $header = self::b64(json_encode(['typ' => 'JWT', 'alg' => 'EdDSA', 'kid' => $key['kid']]));
         $payload = self::b64(json_encode([
             'iss' => rtrim((string) config('app.url'), '/'),
-            'aud' => rtrim((string) config('support.sso.portal'), '/'),
+            'aud' => rtrim((string) config('support.staff_sso.issuer'), '/'),
             'typ' => $typ,
             'iat' => $now,
             'exp' => $now + 120,

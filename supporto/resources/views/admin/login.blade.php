@@ -4,7 +4,7 @@
     <div class="card login">
         @include("partials.logo", ["h" => 64])
         <h1>Accesso amministratore</h1>
-        <p><a class="btn" href="{{ rtrim(config('support.sso.portal'), '/') }}/staff/accedi?area=supporto">Entra dal portale</a></p>
+        <p><a class="btn" href="{{ rtrim(config('support.staff_sso.issuer'), '/') }}/staff/accedi?area=supporto">Entra dal portale</a></p>
         @if ($localLogin)
         <form method="post" action="{{ route('admin.login.attempt') }}">
             @csrf

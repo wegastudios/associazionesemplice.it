@@ -36,7 +36,7 @@ class EnsureAdmin
         if ($request->session()->has('staff') && ! app(StaffSession::class)->touch($request, $user)) {
             app(StaffSession::class)->close($request, $user);
 
-            return redirect(rtrim((string) config('support.sso.portal'), '/').'/staff/accedi?area=supporto');
+            return redirect(rtrim((string) config('support.staff_sso.issuer'), '/').'/staff/accedi?area=supporto');
         }
 
         abort_unless($user->fresh()->isStaff(), 403, 'Accesso riservato allo staff.');

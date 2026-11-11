@@ -9,7 +9,7 @@ class StaffPortal
 {
     private function url(string $path): string
     {
-        return rtrim((string) config('support.sso.portal'), '/').'/api/staff/v1/'.$path;
+        return rtrim((string) config('support.staff_sso.issuer'), '/').'/api/staff/v1/'.$path;
     }
 
     /**

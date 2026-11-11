@@ -30,6 +30,7 @@ class StaffSsoTest extends SiteTestCase
         config([
             'app.url' => 'https://supporto.test',
             'support.sso.portal' => 'https://portale.test',
+            'support.staff_sso.issuer' => 'https://portale.test',
             'support.staff_sso.portal_keys' => 'staff-test:'.StaffJwt::b64(sodium_crypto_sign_publickey($pair)),
             'support.staff_sso.private_key_file' => $this->ourFile,
         ]);
