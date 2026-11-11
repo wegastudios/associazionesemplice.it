@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Piattaforma\Identity;
 
 use App\Modules\Portale\Contracts\StaffAccessDenied;
-use App\Modules\Portale\Jwt\EdDsaJwt;
-use App\Modules\Portale\Jwt\InvalidToken;
-use App\Modules\Portale\PortalConfig;
+use App\Modules\Portale\Contracts\StaffJwt;
 use Illuminate\Database\DatabaseManager;
 
 /**
@@ -16,6 +14,9 @@ use Illuminate\Database\DatabaseManager;
  */
 final readonly class AreaRequestVerifier
 {
+    /** Destinatario (`aud`) delle richieste: il SaaS. */
+    public const AUDIENCE = 'associazionesemplice-saas';
+
     public function __construct(private StaffIdentityConfig $config, private DatabaseManager $db) {}
 
     /**
@@ -26,16 +27,12 @@ final readonly class AreaRequestVerifier
     public function verify(string $token, string $type): array
     {
         $keys = $this->config->areaKeys();
-        $kid = $this->kidOf($token);
+        $kid = StaffJwt::kidOf($token);
         if ($kid === null || ! isset($keys[$kid])) {
             throw new StaffAccessDenied('chiave sconosciuta');
         }
 
-        try {
-            $claims = EdDsaJwt::verify($token, [$kid => $keys[$kid]['x']], $this->config->requestIssuer(), PortalConfig::AUDIENCE, $type, time());
-        } catch (InvalidToken) {
-            throw new StaffAccessDenied('token non valido');
-        }
+        $claims = StaffJwt::verify($token, [$kid => $keys[$kid]['x']], $this->config->requestIssuer(), self::AUDIENCE, $type, time());
 
         $iat = $claims['iat'] ?? null;
         $exp = $claims['exp'] ?? null;
@@ -54,13 +51,5 @@ final readonly class AreaRequestVerifier
         }
 
         return ['area' => $keys[$kid]['area'], 'claims' => $claims];
-    }
-
-    private function kidOf(string $token): ?string
-    {
-        $decoded = json_decode(EdDsaJwt::unb64(explode('.', $token)[0]), true);
-        $kid = is_array($decoded) ? ($decoded['kid'] ?? null) : null;
-
-        return is_string($kid) ? $kid : null;
     }
 }

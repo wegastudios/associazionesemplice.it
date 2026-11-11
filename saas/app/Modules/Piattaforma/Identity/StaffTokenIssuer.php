@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Piattaforma\Identity;
 
-use App\Modules\Portale\Jwt\EdDsaJwt;
+use AppModulesPortaleContractsStaffJwt;
 
 /** Firma i token `staff_sso` (60 secondi, monouso) con la chiave `staff-…` del SaaS. */
 final readonly class StaffTokenIssuer
@@ -18,7 +18,7 @@ final readonly class StaffTokenIssuer
     {
         $now = time();
 
-        return EdDsaJwt::sign([
+        return StaffJwt::sign([
             'iss' => $this->config->issuer(),
             'aud' => StaffAreas::AUDIENCES[$area],
             'typ' => 'staff_sso',

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Piattaforma\Identity;
 
-use App\Modules\Portale\Jwt\EdDsaJwt;
+use AppModulesPortaleContractsStaffJwt;
 use Illuminate\Contracts\Config\Repository;
 use RuntimeException;
 
@@ -52,7 +52,7 @@ final readonly class StaffIdentityConfig
         foreach (explode(',', is_string($configured) ? $configured : '') as $entry) {
             [$kid, $rest] = array_pad(explode('=', trim($entry), 2), 2, '');
             [$x, $area] = array_pad(explode('@', $rest, 2), 2, '');
-            if ($kid !== '' && StaffAreas::exists($area) && strlen(EdDsaJwt::unb64($x)) === SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES) {
+            if ($kid !== '' && StaffAreas::exists($area) && StaffJwt::publicKeyLength($x) === SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES) {
                 $keys[$kid] = ['x' => $x, 'area' => $area];
             }
         }
