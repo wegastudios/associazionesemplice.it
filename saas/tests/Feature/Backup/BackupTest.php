@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Backup\Backups;
 use App\Modules\Soci\Models\Person;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -56,7 +57,8 @@ it('fa un dump cifrato e lo ripristina con le stesse righe', function (): void {
         ->and($stored)->not->toContain('Rossi')
         ->and($stored)->not->toContain('PGDMP');
 
-    $this->artisan('saas:backup:restore-test')->assertSuccessful();
+    // Se il ripristino fallisce, il messaggio del comando è nel risultato del test.
+    expect(Artisan::call('saas:backup:restore-test'))->toBe(0, Artisan::output());
 
     $restored = DB::connection('pgsql_restore')->table('app.people')->orderBy('first_name')->pluck('first_name')->all();
     expect($restored)->toBe(['Bruno', 'Maria', 'Mario']);

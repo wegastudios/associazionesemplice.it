@@ -107,7 +107,10 @@ it('senza sessione manda all\'accesso del portale solo con l\'accesso unico acce
 
 it('riconferma ogni 5 minuti e chiude se il portale dice che la sessione è revocata', function (): void {
     $this->post('/admin/sso', ['token' => ssoToken($this->portalSeed)])->assertOk();
-    Http::fake(['*/api/staff/v1/session-check' => Http::response(['valid' => true, 'level' => 'vendita'])]);
+    // Le risposte del portale, una per controllo: la prima conferma, la seconda dice «revocata».
+    Http::fake(['*/api/staff/v1/session-check' => Http::sequence()
+        ->push(['valid' => true, 'level' => 'vendita'])
+        ->push(['valid' => false, 'level' => null])]);
 
     $this->travel(2)->minutes();
     $this->get('/admin')->assertOk();
@@ -117,7 +120,6 @@ it('riconferma ogni 5 minuti e chiude se il portale dice che la sessione è revo
     $this->get('/admin')->assertOk();
     Http::assertSentCount(1);
 
-    Http::fake(['*/api/staff/v1/session-check' => Http::response(['valid' => false, 'level' => null])]);
     $this->travel(6)->minutes();
     $this->get('/admin')->assertRedirect(SSO_LOGIN);
     $this->get('/admin')->assertRedirect(SSO_LOGIN);
