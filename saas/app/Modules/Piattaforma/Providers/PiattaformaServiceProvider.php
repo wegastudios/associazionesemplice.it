@@ -12,7 +12,10 @@ use App\Modules\Piattaforma\Console\ResetStaffTwoFactorCommand;
 use App\Modules\Piattaforma\Contracts\Catalog;
 use App\Modules\Piattaforma\Contracts\PlanLimits;
 use App\Modules\Piattaforma\Http\Middleware\RequirePlatformStaff;
+use App\Modules\Piattaforma\Identity\IssuerStaffAccess;
+use App\Modules\Portale\Contracts\StaffAccess;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\RateLimiter;
@@ -27,6 +30,10 @@ final class PiattaformaServiceProvider extends ServiceProvider
         $this->app->singleton(DbCatalog::class);
         $this->app->singleton(Catalog::class, DbCatalog::class);
         $this->app->singleton(PlanLimits::class, CatalogPlanLimits::class);
+
+        // Con l'accesso unico il SaaS è l'emittente dell'identità dello staff: l'ingresso di /saas/admin si controlla qui,
+        // non più sul portale (docs/LOGIN_UNICO_E_DATABASE.md). Emittente spento = come prima.
+        $this->app->extend(StaffAccess::class, static fn (StaffAccess $portal, Application $app): StaffAccess => config('saas.staff_issuer.enabled') === true ? $app->make(IssuerStaffAccess::class) : $portal);
     }
 
     public function boot(Router $router): void

@@ -180,3 +180,36 @@ it('un link scaduto non vale e un nuovo link annulla il precedente', function ()
     $this->get('/saas/staff/reimposta/'.$code)->assertSee('Link non valido');
     expect($access->find($id)?->email)->toBe('persona@example.test');
 });
+
+it('dall\'accesso unico si entra in /saas/admin con il token firmato dal SaaS stesso, una volta sola', function (): void {
+    config(['saas.staff_sso.enabled' => true]);
+    $id = loginPerson(roles: ['saas' => 'vendita']);
+    $this->post('/saas/staff/accedi', ['email' => 'persona@example.test', 'password' => LOGIN_PASSWORD]);
+
+    $page = $this->post('/saas/staff/vai', ['area' => 'saas'])->assertOk()->getContent();
+    preg_match('/name="token" value="([^"]+)"/', (string) $page, $m);
+    $token = $m[1] ?? '';
+
+    $this->post('/saas/admin/sso', ['token' => $token])->assertOk()->assertSee('/saas/admin');
+    $this->get('/saas/admin')->assertOk();
+    expect(DB::table('core.platform_staff')->where('email', 'persona@example.test')->value('role'))->not->toBeNull();
+
+    // Monouso, e un token di un'altra area o manomesso non entra.
+    $this->post('/saas/admin/sso', ['token' => $token])->assertForbidden();
+    $this->post('/saas/admin/sso', ['token' => $token.'x'])->assertForbidden();
+
+    // Persona senza il ruolo SaaS: nessun token.
+    DB::table('core.staff_roles')->where('person_id', $id)->delete();
+    $this->post('/saas/staff/vai', ['area' => 'saas'])->assertRedirect('/saas/staff/accedi');
+});
+
+it('se la sessione centrale è chiusa il token non entra', function (): void {
+    config(['saas.staff_sso.enabled' => true]);
+    loginPerson();
+    $this->post('/saas/staff/accedi', ['email' => 'persona@example.test', 'password' => LOGIN_PASSWORD]);
+    $page = $this->post('/saas/staff/vai', ['area' => 'saas'])->getContent();
+    preg_match('/name="token" value="([^"]+)"/', (string) $page, $m);
+
+    DB::table('core.staff_sessions')->update(['revoked_at' => now()]);
+    $this->post('/saas/admin/sso', ['token' => $m[1] ?? ''])->assertForbidden();
+});
