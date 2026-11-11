@@ -84,6 +84,17 @@ final class App {
 			// Vecchio indirizzo dell'amministrazione del plugin: ora vive sotto /wordpress/admin (301; 308 per i POST, che conservano il metodo).
 			$qs = (string) ( $_SERVER['QUERY_STRING'] ?? '' );
 			header( 'Location: ' . Plugin\Admin::BASE . substr( $path, 6 ) . ( '' !== $qs ? '?' . $qs : '' ), true, $get ? 301 : 308 );
+		} elseif ( ! $get && Plugin\Admin::BASE . '/sso' === $path ) {
+			// Accesso staff unico: la POST del selettore porta il token del SaaS (spento finché `staff_sso.enabled` non è true).
+			if ( ! Plugin\StaffSso::enabled() ) {
+				http_response_code( 404 );
+			} elseif ( Plugin\StaffSso::receive( $this->db, (string) ( $_POST['token'] ?? '' ) ) ) {
+				header( 'Location: ' . Plugin\Admin::BASE, true, 303 );
+			} else {
+				header( 'Location: ' . Plugin\StaffSso::loginUrl(), true, 303 );
+			}
+		} elseif ( Plugin\StaffSso::enabled() && Plugin\Admin::BASE . '/accedi' === $path ) {
+			$this->staffLogin( $get );
 		} elseif ( Plugin\Admin::BASE === $path || 0 === strpos( $path, Plugin\Admin::BASE . '/' ) ) {
 			( new Plugin\Admin( $this->db, $this->billing, $this->customerId() ) )->handle( $method, $path );
 		} elseif ( ( $legacy = Sections::legacy( $method, $path, (string) ( $_SERVER['QUERY_STRING'] ?? '' ) ) ) ) {
@@ -313,6 +324,31 @@ final class App {
 			http_response_code( 429 );
 			throw new UserError( 'Troppe richieste da questo indirizzo: riprova tra un\'ora.' );
 		}
+	}
+
+	/** Modulo di accesso staff di /wordpress/admin: la password la controlla il SaaS (solo con l'accesso unico acceso). */
+	private function staffLogin( bool $get ): void {
+		if ( $get ) {
+			View::render( 'wordpress-admin/staff_login', array( 'error' => '', 'title' => 'Accesso alla gestione' ) );
+			return;
+		}
+		if ( ! $this->csrfOk() ) {
+			http_response_code( 403 );
+			throw new UserError( 'Sessione scaduta: ricarica la pagina e riprova.' );
+		}
+		$ip    = $this->clientIp();
+		$email = strtolower( trim( (string) ( $_POST['email'] ?? '' ) ) );
+		if ( ! RateLimit::hit( $this->db, 'staff_login_ip', $ip, 20 ) || ( '' !== $email && ! RateLimit::hit( $this->db, 'staff_login_email', $email, 8 ) ) ) {
+			http_response_code( 429 );
+			throw new UserError( 'Troppi tentativi: riprova tra un\'ora.' );
+		}
+		if ( Plugin\StaffSso::login( $this->db, $email, (string) ( $_POST['password'] ?? '' ), (string) ( $_POST['code'] ?? '' ), $ip ) ) {
+			session_regenerate_id( true );
+			header( 'Location: ' . Plugin\Admin::BASE, true, 303 );
+			return;
+		}
+		http_response_code( 401 );
+		View::render( 'wordpress-admin/staff_login', array( 'error' => 'Email, password o codice non corretti.', 'title' => 'Accesso alla gestione' ) );
 	}
 
 	private function clientIp(): string {
