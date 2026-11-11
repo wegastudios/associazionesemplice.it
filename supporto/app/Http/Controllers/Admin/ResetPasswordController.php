@@ -17,6 +17,12 @@ use Illuminate\View\View;
 /** Recupero della password dell'amministratore tramite link ricevuto per email. */
 class ResetPasswordController extends Controller
 {
+    public function __construct()
+    {
+        // Con l'accesso del portale la password non è più del supporto: niente recupero qui
+        abort_if(config('support.staff_sso.portal_login'), 404);
+    }
+
     public function request(): View
     {
         return view('admin.forgot');

@@ -45,3 +45,7 @@ L'area apre una sessione **propria** (inattività massima 2 ore, durata massima 
 | `invite`, `grant`, `revoke`, `deactivate` | `{"ok":true}` |
 
 Errori: `403 {"error":"non_autorizzato"|"livello_troppo_alto"|"ultimo_admin"|"super_non_modificabile"|"riconferma_richiesta"}`, `422 {"error":"dati_non_validi"}`. **Decide il SaaS** (UTENTI_E_ACCESSI §4): `act` deve essere admin dell'area (o la titolare), nessuno assegna un livello più alto del proprio né modifica se stesso, l'ultimo admin resta, la titolare non si tocca. `riconferma_richiesta`: l'area manda la persona a `/saas/staff/riconferma` e poi riprova.
+
+## Accesso e uscita del portale (SUPPORT_STAFF_PORTAL_LOGIN)
+
+Decisione dell'11/11/2026: accesso, secondo livello, account e uscita sono del portale (`/accedi`, `/twofactor`, `/account`, `/account/esci`). Con `SUPPORT_STAFF_PORTAL_LOGIN=true` il supporto non serve più moduli di password, recupero o secondo livello: `/admin/login` rinvia a `/accedi` (o a `SUPPORT_STAFF_LOGIN_URL`) e «Esci» chiude la sessione locale e rinvia a `/account/esci` (o `SUPPORT_STAFF_LOGOUT_URL`). Spento di default: si accende quando `/accedi` del portale esiste.
