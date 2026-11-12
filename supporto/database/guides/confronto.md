@@ -57,7 +57,12 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Biglietti con QR per le prenotazioni | ✓ | ✓ | ✓ |
 | Listini per eventi e corsi a date (quanti prezzi vuoi: individuale, di gruppo, pacchetti di ingressi) | ✓ | ✓ | ✓ |
 | Calendario dell'evento (mese e giorno, con selettore della data) e pacchetti con ingressi ancora da usare | ✓ | ✓ | ✓ |
-| Pagine pubbliche degli eventi (una pagina per ogni evento o corso con locandina e descrizione, elenco a schede per mese, calendario mensile con filtri per categoria, salvataggio nel calendario, dati strutturati per Google e prenotazione dei soci dalla pagina) | ✓ | ✓ | ✓ |
+| Pagine pubbliche degli eventi (una pagina per ogni evento o corso con locandina e descrizione, elenco a schede per mese, calendario mensile con filtri per categoria, salvataggio nel calendario, dati strutturati per Google, dove si svolge con mappa, contatti, evento precedente e successivo, condivisione e prenotazione dei soci dalla pagina) | ✓ | ✓ | ✓ |
+| Prenotazione dei non soci dal sito (modulo breve con conferma dall'email; per gli eventi a pagamento bonifico istantaneo anticipato e ricevuta alla segreteria; prenotazione automatica o su richiesta) | ✓ | ✓ | ✓ |
+| Iscrizione ai corsi dal sito (il socio con un clic, chi non è socio dal modulo; approva la segreteria) | ✓ | ✓ | ✓ |
+| Corsi nel calendario del sito con le loro lezioni, elenco, calendario e pezzi della pagina evento con shortcode, blocchi ed Elementor | ✓ | ✓ | ✓ |
+| Pulsante fisso «Scrivici su WhatsApp» con il numero della segreteria | ✓ | ✓ | ✓ |
+| Importazione da The Events Calendar con le pagine pubbliche (descrizione, immagine, categoria, organizzatore) | ✓ | ✓ | ✓ |
 | Incasso sul posto durante gli eventi | — | ✓ | ✓ |
 | Risorse a fasce orarie (campi, sale) con tariffe, ospiti e regole di prenotazione | — | ✓ | ✓ |
 | Risorse assegnate a periodo (posti auto, armadietti, posti barca) con lista d'attesa | — | ✓ | ✓ |

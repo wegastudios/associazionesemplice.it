@@ -221,7 +221,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-Ogni evento e ogni corso può avere una **pagina pubblica** sul tuo sito, con locandina, descrizione e il pulsante per prenotare.
+Ogni evento e ogni corso può avere una **pagina pubblica** sul tuo sito, con locandina, descrizione e il modo di prenotare o iscriversi.
 
 ## Come nasce la pagina
 
@@ -231,34 +231,85 @@ La pagina è del tipo **«Eventi sul sito»** e nasce da sola dall'attività. Re
 - **Data, luogo, contributo e posti** non si scrivono lì: arrivano dall'attività e restano sempre aggiornati.
 - La **segreteria** e il **tesoriere** possono modificare le pagine e caricare le locandine.
 
+## Cosa vede chi visita la pagina
+
+La pagina mostra la locandina accanto ai dati, **dove si svolge** (con il collegamento alla mappa), i **contatti** con WhatsApp ed email, il pulsante **«Salva nel tuo calendario»**, i pulsanti per **condividere**, l'evento **precedente e successivo** e il collegamento **«Tutti gli eventi»**. Gli eventi che si ripetono ogni settimana compaiono nell'elenco con **una sola scheda** («Tutti i giovedì»).
+
 ## Cosa succede se l'evento cambia
 
 - La pagina **non si elimina** finché l'evento esiste: se non la vuoi più vedere, rimettila in **bozza**.
 - Se **elimini l'evento**, la pagina va nel **cestino**.
+- Se l'evento viene **annullato**, scegli nella pagina se nasconderla o lasciarla con l'avviso «annullato».
 
-## L'elenco degli eventi
+## L'elenco e il calendario
 
-Lo shortcode `[associazionesemplice_eventi]` (o il blocco, o il widget Elementor) mostra le **schede degli eventi divise per mese**. Opzioni:
+Inserisci le viste con uno **shortcode**, con il blocco **«Associazione Semplice»** o con il widget **Elementor**.
 
-| Opzione | Cosa fa |
+| Shortcode | Cosa mostra |
 |---|---|
-| `categoria` | mostra solo una categoria |
-| `limite` | quanti eventi mostrare |
-| `mesi` | quanti mesi mostrare |
-| `modo="elenco"` o `modo="mese"` | elenco a schede oppure **calendario mensile** |
-| `filtri="si"` o `filtri="no"` | mostra o nasconde i filtri |
+| `[associazionesemplice_eventi]` | schede degli eventi divise per mese |
+| `[associazionesemplice_calendario_eventi]` | calendario mensile |
+| `[associazionesemplice_prossimi_eventi]` | i prossimi eventi |
 
-## Salvare nel calendario
+Opzioni comuni: `categoria`, `limite`, `mesi`, `modo="elenco"` o `modo="mese"`, `filtri="si"` o `filtri="no"`, e per i testi `titolo` (l'intestazione sopra la vista), `vuoto` (il messaggio quando non ci sono eventi) e `pulsante` (il testo del pulsante nelle schede). Esempio: `[associazionesemplice_eventi titolo="I nostri prossimi eventi"]`.
 
-Ogni pagina ha il pulsante **«Salva nel tuo calendario»** (file `.ics`): funziona con Google Calendar, Apple Calendar e Outlook.
+I **corsi** compaiono nel calendario con le loro **lezioni**, ciascuna con il collegamento alla pagina del corso.
 
-## Prenotare dalla pagina
+## Comporre la pagina dell'evento a modo tuo
 
-Per ora prenotano **solo i soci**, entrando con il loro accesso: il modulo e le regole sono quelli dell'area soci. La prenotazione di chi non è socio arriverà più avanti.
+La pagina ha un'impaginazione automatica. Per comporla come vuoi, inserisci nel contenuto dell'evento i **pezzi** che ti servono: `[associazionesemplice_evento_locandina]`, `[associazionesemplice_evento_dati]`, `[associazionesemplice_evento_prenotazione]`, `[associazionesemplice_evento_dove]`, `[associazionesemplice_evento_navigazione]` e `[associazionesemplice_evento_condividi]` (o i blocchi e i widget equivalenti). Appena ce n'è uno, la pagina mostra **solo il tuo layout**. Con altri costruttori di pagine (Divi, Bricks e simili) usa lo shortcode nel loro blocco «Shortcode».
+
+## WhatsApp della segreteria
+
+In **Impostazioni** scrivi il **WhatsApp della segreteria**: sul sito compare un pulsante fisso **«Scrivici su WhatsApp»**. Finché il numero manca, in amministrazione trovi un promemoria.
+
+## Se arrivi da The Events Calendar
+
+Con **Importa da The Events Calendar** si compilano anche le pagine pubbliche: descrizione, immagine, categoria, organizzatore, luogo e sito dell'evento. Le pagine restano in **bozza**; la casella **«Pubblica subito le pagine degli eventi futuri»** (spenta di default) pubblica solo quelle con una data futura. Gli eventi che si ripetono diventano **un solo evento ricorrente**. Rilanciando l'importazione non nascono doppioni e una pagina già scritta non viene toccata.
+
+Se usi una cache delle pagine, **svuotala** dopo aver pubblicato o modificato un evento. Per prenotare e iscriversi dalla pagina leggi [Prenotarsi a un evento o a un corso dal sito](guida:prenotarsi-a-un-evento-o-a-un-corso-dal-sito).
+MD,
+    ],
+    [
+        'topic' => 'corsi-ed-eventi', 'section' => 'Attività', 'slug' => 'prenotarsi-a-un-evento-o-a-un-corso-dal-sito',
+        'title' => 'Prenotarsi a un evento o a un corso dal sito',
+        'body' => <<<'MD'
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
+
+Dalla pagina pubblica di un evento o di un corso prenotano sia i **soci** sia chi **non è socio**.
+
+## Il socio
+
+Il socio **prenota con un clic**, entrando con il suo accesso: il modulo e le regole sono quelli dell'area soci.
 
 **Il pagamento non si fa nella pagina.** Il contributo risulta «da versare»: il socio lo paga dall'area soci, in **Pagamenti**, se i pagamenti online sono attivi, oppure con bonifico o contanti come sempre.
 
-Se usi una cache delle pagine, **svuotala** dopo aver pubblicato o modificato un evento.
+## Chi non è socio
+
+Chi non è socio compila un **modulo breve** e riceve una email con un collegamento da aprire **entro 24 ore** per confermare l'indirizzo. Prenota sempre un adulto, che risponde dei minori indicati come accompagnati.
+
+Per gli eventi **a pagamento** il non socio **versa in anticipo con bonifico istantaneo** e manda la **ricevuta alla segreteria** entro il termine impostato in **Impostazioni → Limiti** (24 ore se non lo cambi). Se la ricevuta non arriva, il posto si annulla. Non è un pagamento online: l'incasso lo registra la segreteria.
+
+## Le scelte per ogni evento
+
+Nella pagina dell'evento, nel riquadro **«Prenotazione online»**, scegli:
+
+- se **anche chi non è socio** può chiedere un posto dalla pagina;
+- se la prenotazione è **automatica** o **su richiesta** (la segreteria approva ogni richiesta, in ordine di arrivo);
+- quanti **posti al massimo** si possono chiedere per volta (0 = nessun limite);
+- cosa fare se l'evento viene **annullato**: nascondere la pagina oppure lasciarla con l'avviso «annullato».
+
+## Dove approva la segreteria
+
+Le richieste compaiono nella scheda dell'attività, nel riquadro **«Richieste di partecipazione»** (per i corsi **«Richieste di iscrizione»**). Approvando, il non socio viene registrato come **ospite** e iscritto.
+
+## I corsi
+
+Nella pagina del corso trovi **«Come iscriversi»**: il socio con la tessera valida chiede l'iscrizione **in un clic**, chi non è socio compila il modulo e paga in anticipo con bonifico. L'iscrizione **parte dal mese corrente**, quello dell'approvazione. Approva sempre la segreteria.
+
+## Protezioni
+
+Il modulo ha un campo trappola, un gettone firmato e un limite di richieste per indirizzo, senza CAPTCHA di terzi. Chi non è socio non ha un pannello: le disdette le gestisce la segreteria.
 MD,
     ],
     [
