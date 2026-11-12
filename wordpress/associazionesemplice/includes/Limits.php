@@ -259,6 +259,12 @@ final class Limits {
 			'Si possono registrare ospiti senza dire chi li ha portati: si perde l\'elenco degli ospiti di ciascun socio. Utile per importare uno storico di ospiti.'
 		);
 		$add(
+			'event_pay_hours', 'soci', 'Ore per il bonifico di chi prenota un evento senza essere socio', 'ore', 24, 1, 168,
+			'Chi non è socio e prenota dalla pagina dell\'evento deve pagare in anticipo con bonifico istantaneo e inviare la ricevuta alla segreteria entro questo tempo, altrimenti il posto viene cancellato.',
+			'Un tempo lungo lascia posti occupati da chi poi non paga, a scapito di chi li vorrebbe.',
+			'Un tempo troppo breve costringe a pagare di fretta; chi arriva tardi perde il posto.'
+		);
+		$add(
 			'membership_on_balance', 'soci', 'Tessera valida solo quando la quota è saldata', 'flag', 1, 0, 1,
 			'La quota associativa si può versare a rate (ad esempio 20 su 25): il programma mostra quanto manca e dà la tessera solo quando la somma raggiunge la quota.',
 			'Attivo: un socio che versa meno della quota non ha la tessera finché non salda. Va bene per chi vuole il saldo completo prima dell\'iscrizione.',

@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '55';
+	const DB_VERSION        = '56';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -446,6 +446,23 @@ final class Install {
   PRIMARY KEY  (id),
   UNIQUE KEY session_person (session_id,person_id),
   KEY person_id (person_id)
+) $c;";
+
+		$tables[] = "CREATE TABLE {$p}event_requests (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  activity_id bigint(20) unsigned NOT NULL,
+  session_id bigint(20) unsigned NOT NULL,
+  seats smallint(5) unsigned NOT NULL DEFAULT 1,
+  status varchar(12) NOT NULL DEFAULT 'new',
+  token_hash char(64) NOT NULL,
+  email varchar(190) DEFAULT NULL,
+  data longtext DEFAULT NULL,
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  deadline datetime DEFAULT NULL,
+  PRIMARY KEY  (id),
+  KEY status_created (status,created_at),
+  KEY activity_id (activity_id)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}activity_staff (

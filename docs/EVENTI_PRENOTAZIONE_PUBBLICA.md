@@ -29,3 +29,8 @@ Se i pagamenti online sono configurati e l'evento ha un contributo: la prenotazi
 
 ## Rischi e protezioni da prevedere
 Invio massivo di richieste (limite per IP/email/giorno e tetto globale), account fantasma (conferma email), enumerazione (risposta uguale), spam di email dal modulo (un solo messaggio per email e ora), dati personali minimi, informativa e consenso registrati (`Privacy::set_consent`). Plugin Check: nonce sul modulo pubblico (come l'adesione), niente richieste a servizi esterni.
+
+---
+## Stato (12/11/2026): fase 6 implementata con le risposte della titolare
+Vedi `EVENTI_DOMANDE_APERTE.md` per le decisioni. Realizzato: tabella `event_requests`, classe `EventRequests` (modulo «Non sei socio?» sulla pagina evento, conferma email entro 24 ore, prenotazione automatica o con approvazione, bonifico istantaneo entro `event_pay_hours` (Limiti, 24 ore) altrimenti posto cancellato, cancellazione dopo 30 giorni, limite partecipazioni ospiti), opzioni per evento nella pagina (ospiti, approvazione, posti per richiesta, nascondi se annullato), elenco con «Tutti i giovedì».
+Non ancora: la «richiesta di partecipazione con approvazione» per i **soci** (oggi l'opzione vale per i non soci; i soci prenotano direttamente); «Prenota e paga» online (percorso B).

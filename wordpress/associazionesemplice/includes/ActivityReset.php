@@ -399,7 +399,7 @@ final class ActivityReset {
 					$db->query( 'DELETE FROM ' . Db::t( 'bookings' ) . " WHERE session_id IN ($in)" );
 					$db->query( 'DELETE FROM ' . Db::t( 'waitlist' ) . " WHERE session_id IN ($in)" );
 				}
-				foreach ( array( 'sessions', 'enrollments', 'activity_staff', 'notices' ) as $table ) {
+				foreach ( array( 'sessions', 'enrollments', 'activity_staff', 'notices', 'event_requests' ) as $table ) {
 					$db->delete( Db::t( $table ), array( 'activity_id' => $activity_id ) );
 				}
 				do_action( 'asem_activity_deleted', $activity_id ); // le estensioni tolgono i dati collegati

@@ -17,7 +17,7 @@ function asem_uninstall_site() {
 		return;
 	}
 
-	foreach ( array( 'asem_send_reminders', 'asem_release_holds', 'asem_broadcast_batch', 'asem_check_pending_payments', 'asem_purge_backups', 'asem_purge_audit', 'asem_purge_member_sessions' ) as $hook ) {
+	foreach ( array( 'asem_send_reminders', 'asem_release_holds', 'asem_event_requests', 'asem_broadcast_batch', 'asem_check_pending_payments', 'asem_purge_backups', 'asem_purge_audit', 'asem_purge_member_sessions' ) as $hook ) {
 		wp_clear_scheduled_hook( $hook );
 	}
 
