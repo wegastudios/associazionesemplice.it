@@ -43,7 +43,7 @@ return new class extends Migration
         DB::statement('CREATE INDEX portal_orders_customer_idx ON portal.orders (customer_id)');
 
         DB::statement(<<<'SQL'
-            CREATE TABLE portal.orgs (
+            CREATE TABLE portal.saas_orgs (
                 ref text PRIMARY KEY, customer_id text NOT NULL, org_id text, name text NOT NULL, slug text NOT NULL,
                 rev integer NOT NULL DEFAULT 0, created_at varchar(19) NOT NULL
             )
@@ -63,7 +63,7 @@ return new class extends Migration
         SQL);
 
         DB::statement(<<<'SQL'
-            CREATE TABLE portal.outbox (
+            CREATE TABLE portal.saas_outbox (
                 id text PRIMARY KEY, org_id text NOT NULL, rev integer NOT NULL, body text NOT NULL, attempts integer NOT NULL DEFAULT 0,
                 next_at varchar(19) NOT NULL, done_at varchar(19), last_error text, created_at varchar(19) NOT NULL
             )

@@ -38,7 +38,7 @@ function portalDbFixture(): string
 
 function portalSchemaClean(): void
 {
-    DB::connection('pgsql_owner')->statement('TRUNCATE portal.subscriptions, portal.orders, portal.orgs, portal.outbox, portal.releases, portal.downloads, portal.settings, portal.email_templates, portal.audit, portal.events');
+    DB::connection('pgsql_owner')->statement('TRUNCATE portal.subscriptions, portal.orders, portal.saas_orgs, portal.saas_outbox, portal.releases, portal.downloads, portal.settings, portal.email_templates, portal.audit, portal.events');
 }
 
 it('importa i dati durevoli, ed è ripetibile e verificabile', function (): void {

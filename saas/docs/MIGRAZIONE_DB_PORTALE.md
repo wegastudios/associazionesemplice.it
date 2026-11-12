@@ -14,7 +14,7 @@ di Wega: il portale non le emette. Documento di riferimento: `LOGIN_UNICO_E_DATA
 | `staff`, `plugin_staff` | 0 | vecchi accessi: si scartano |
 | `subscriptions` | 3 (licenza cifrata, dominio, scadenza) | `portal.subscriptions` |
 | `orders` | 0 | `portal.orders` (vuota, scrivibile subito) |
-| `saas_orgs`, `saas_outbox` | 0 | `portal.orgs`, `portal.outbox` |
+| `saas_orgs`, `saas_outbox` | 0 | `portal.saas_orgs`, `portal.saas_outbox` |
 | `releases` (20) + file `data/releases/` | 20 | `portal.releases`; i file restano su disco, percorso nella riga |
 | `downloads` | 9 | `portal.downloads` |
 | `plugin_catalog_revs`, `plugin_catalog_draft` | 0 | già gestiti dal catalogo del SaaS (rev 2): non si importano |
