@@ -22,6 +22,7 @@ final class Actions {
 
 	const MAP = array(
 		'asem_front_book'           => 'do_book',
+		'asem_front_request'        => 'do_request',
 		'asem_front_accept_rules'   => 'do_accept_rules',
 		'asem_front_accept_for'     => 'do_accept_for',
 		'asem_front_waitlist_join'  => 'do_waitlist_join',
@@ -144,6 +145,24 @@ final class Actions {
 		if ( ! current_user_can( $ability, $object_id ) ) {
 			throw new \InvalidArgumentException( 'Non hai il permesso di fare questa operazione.' );
 		}
+	}
+
+	/** Chiede di partecipare a un evento con approvazione della segreteria (per sé o per un proprio ospite o minore). @return string messaggio */
+	public static function do_request( array $post ): string {
+		$actor     = self::actor();
+		$person_id = (int) ( $post['person_id'] ?? $actor['id'] );
+		self::assert_profile( $actor );
+		self::require_cap( 'asem_book_for', $person_id );
+		$subject = self::booking_subject( $actor, $person_id );
+		$block   = \AssociazioneSemplice\Regulation::booking_block( $subject );
+		if ( '' !== $block ) {
+			throw new \InvalidArgumentException( $block ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		if ( ! Plugin::people()->is_active_member( (int) $subject['id'] ) ) {
+			throw new \InvalidArgumentException( 'La tessera non è valida: va rinnovata per partecipare.' );
+		}
+		\AssociazioneSemplice\EventRequests::member_request( (int) ( $post['session_id'] ?? 0 ), $person_id );
+		return 'Richiesta inviata: la segreteria la esamina e ti scrive. Le richieste si esaminano nell\'ordine di arrivo.';
 	}
 
 	/** Prenota sé stessi o un proprio ospite. @return string messaggio */

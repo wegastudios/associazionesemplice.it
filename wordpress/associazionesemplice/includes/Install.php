@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '56';
+	const DB_VERSION        = '57';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -452,6 +452,7 @@ final class Install {
   id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   activity_id bigint(20) unsigned NOT NULL,
   session_id bigint(20) unsigned NOT NULL,
+  person_id bigint(20) unsigned DEFAULT NULL,
   seats smallint(5) unsigned NOT NULL DEFAULT 1,
   status varchar(12) NOT NULL DEFAULT 'new',
   token_hash char(64) NOT NULL,

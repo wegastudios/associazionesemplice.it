@@ -8362,6 +8362,16 @@ asem_ok( $er_ap['ok'] && 1 === count( $er_aw ) && ! $acts->has_active_booking( $
 asem_ok( false !== strpos( $er::admin_box( $er_c, 'http://example.test/' ), 'asem_event_request_approve' ), 'approvazione: la scheda dell\'attività mostra la richiesta' );
 $er::approve( (int) $er_aw[0]['id'] );
 asem_ok( $acts->has_active_booking( $er_sid( $er_c ), (int) $er_nr['id'] ) && ! $er::awaiting( $er_c ), 'approvazione: approvata, la persona è prenotata' );
+// Richiesta di partecipazione di un socio (evento con approvazione): in ordine di arrivo, decide la segreteria.
+$er_gid = (int) $wpdb->get_var( "SELECT id FROM $er_ppl WHERE tax_code = 'GLLPLA88H50L219H'" );
+asem_ok( null !== asem_throws( function () use ( $er, $er_sid, $er_a, $er_gid ) { $er::member_request( $er_sid( $er_a ), $er_gid ); } ), 'richiesta socio: un evento senza approvazione si prenota direttamente' );
+$er::member_request( $er_sid( $er_c ), $er_gid );
+asem_ok( $er::pending_for( $er_sid( $er_c ), $er_gid ) && ! $acts->has_active_booking( $er_sid( $er_c ), $er_gid ), 'richiesta socio: registrata, il posto non è ancora occupato' );
+asem_ok( null !== asem_throws( function () use ( $er, $er_sid, $er_c, $er_gid ) { $er::member_request( $er_sid( $er_c ), $er_gid ); } ), 'richiesta socio: una sola richiesta per data' );
+$er_aw2 = $er::awaiting( $er_c );
+asem_ok( 1 === count( $er_aw2 ) && false !== strpos( $er_aw2[0]['names'][0], '(socio)' ), 'richiesta socio: compare alla segreteria' );
+$er::approve( (int) $er_aw2[0]['id'] );
+asem_ok( $acts->has_active_booking( $er_sid( $er_c ), $er_gid ) && ! $er::pending_for( $er_sid( $er_c ), $er_gid ), 'richiesta socio: approvata, il socio è prenotato' );
 // Conservazione: le richieste vecchie si cancellano.
 $wpdb->update( $er_tbl, array( 'updated_at' => wp_date( 'Y-m-d H:i:s', time() - 40 * DAY_IN_SECONDS ) ), array( 'id' => $er_rid ) );
 $er::run();
