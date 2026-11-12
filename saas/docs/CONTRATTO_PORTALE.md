@@ -234,7 +234,7 @@ Per la `subscription` non si tengono i `jti` usati: una ripetizione ha una `rev`
 stale_revision` senza effetti. Risposta: `200 {"org_id", "rev", "plan", "plan_version"}`. Errore di rete o 5xx: il portale **ritenta** (1, 5, 30 minuti,
 poi ogni ora) finché ottiene 200, 409 `stale_revision` (già applicata) o `unknown_plan` (poi ricarica il catalogo).
 
-### 3.3 Promozioni
+### 3.3 Promozioni **[fatto]**
 
 `POST /api/portale/v2/promo/check` — `typ: "promo_check"` — claim `code`, `plan`, `plan_version`, `period`
 (`month`/`year`), `ref` (opzionale, abbonamento esistente):
@@ -250,7 +250,7 @@ protocollo). **Non consuma nulla.**
 portale, `[A-Za-z0-9_-]{1,64}`), `ref`. **Una volta sola per `order`**: ripetuta restituisce lo stesso esito. Si chiama
 al pagamento riuscito. Risposta `200 {"redeemed": true, "uses_left": 41}` o `409 exhausted`.
 
-### 3.4 Cambio di piano
+### 3.4 Cambio di piano **[fatto]**
 
 `POST /api/portale/v2/orgs/{org_id}/plan-change/check` — `typ: "plan_change_check"` — claim `ref`, `to_plan`,
 `to_plan_version`:
@@ -262,7 +262,7 @@ al pagamento riuscito. Risposta `200 {"redeemed": true, "uses_left": 41}` o `409
 Testi in italiano chiaro, senza dati dei soci (solo numeri). Il downgrade vale a fine periodo (decide il portale);
 questa richiesta dice solo se i dati rientrano nei limiti del piano più basso. Nessun dato si cancella mai.
 
-### 3.5 Dominio personalizzato (pacchetto `custom_domain`)
+### 3.5 Dominio personalizzato (pacchetto `custom_domain`) **[fatto]**
 
 - `POST /api/portale/v2/orgs/{org_id}/domain/check` — `typ: "domain_check"` — claim `ref`, `domain`: formato valido, non
   già di un'altra associazione, non nostro. Risposta `{"ok": true}` o `{"ok": false, "reason": "invalid"|"taken"|"reserved"|"no_package"}`.
@@ -270,7 +270,7 @@ questa richiesta dice solo se i dati rientrano nei limiti del piano più basso. 
   salva e restituisce lo stato `{"domain", "state": "pending"|"active"|"error", "dns": [{"type":"CNAME","name":"…","value":"…"}], "message": "…"}`.
   Il SaaS verifica il DNS e attiva il certificato; lo stato si rilegge con `org_status` (§3.6). `slug.associazionesemplice.it` non si cambia da qui.
 
-### 3.6 Stato per l'area clienti
+### 3.6 Stato per l'area clienti **[fatto]**
 
 `POST /api/portale/v2/orgs/{org_id}/status` — `typ: "org_status"` — claim `ref`:
 
@@ -342,3 +342,28 @@ passaggi, nomi ed email degli operatori. Passano solo numeri (soci, operatori, s
 4. Alla prima attivazione: 3.1, salvare `org_id`, poi `subscription` (3.2) con `rev + 1` a ogni cambio, con ritento.
 5. `promo.check` / `promo.redeem`, `plan_change.check`, `domain.check` / `domain.set`, `org_status`.
 6. Endpoint consumi (4.1) e pagina `/account/da-gestionale` (4.3).
+
+## 10. Come risponde il SaaS (dettagli di §3.3–§3.6)
+
+Tutte le richieste hanno la stessa forma di §3: corpo `{"token": …}`, firma del portale, vita breve, campi sconosciuti
+rifiutati con `422 invalid_claims`. Quelle che cambiano qualcosa (`promo_redeem`, `domain_set`) valgono **una volta sola**
+per `jti` (`409 replayed`).
+
+- **`promo_check`**: il codice si cerca (senza distinguere maiuscole) tra le promozioni attive del catalogo pubblicato.
+  Ragioni di rifiuto: `unknown`; `expired` (anche se non è ancora iniziata); `wrong_plan` (il piano non è tra quelli
+  della promozione); `exhausted` (usi finiti). Non consuma nulla.
+- **`promo_redeem`**: una riga per `order` in `core.promo_redemptions`; il conteggio è serializzato per codice. Lo stesso
+  `order` con lo stesso codice restituisce lo stesso esito (`uses_left` di allora); con un altro codice è `422`.
+  `uses_left` è `null` se la promozione non ha un massimo. Esaurita o non più valida: `409 exhausted`.
+- **`plan_change_check`**: confronta i dati attuali con il piano di arrivo (con gli stessi pacchetti aggiuntivi di oggi):
+  soci attivi oltre `limits.members`, operatori attivi oltre il limite risultante. `effects` elenca i pacchetti che si
+  perdono (col nome del catalogo). Piano o versione sconosciuti: `409 unknown_plan`.
+- **`domain_check` / `domain_set`**: ragioni `invalid` (formato), `reserved` (il dominio base del servizio e i suoi
+  sottodomini), `no_package` (l'abbonamento non ha `custom_domain`), `taken` (di un'altra associazione). `domain_set`
+  con un rifiuto risponde `409` con lo stesso corpo `{"ok": false, "reason": …}`; con `domain: null` toglie il dominio e
+  risponde `{"domain": null, "state": "removed", "dns": [], "message": …}`. Il record da creare è un `CNAME` verso
+  `<slug>.associazionesemplice.it`. Il comando orario `saas:portal:verify-domains` controlla il DNS e porta il dominio
+  a `active` (o `error`, col motivo nel messaggio). **L'emissione del certificato è del server**, non di questo codice.
+- **`org_status`**: `status` è quello dell'ultimo abbonamento ricevuto (`none` se non ne ha); `members_limit` viene dal
+  piano (`null` = senza tetto); `operators.limit` dal calcolo dei limiti; `packages` in ordine alfabetico; `domain` è
+  `null` o `{name, state}`.
