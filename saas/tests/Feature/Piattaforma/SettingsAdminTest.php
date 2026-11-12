@@ -50,6 +50,11 @@ it('solo l\'amministratore cambia le impostazioni; gli altri le vedono', functio
     expect(DB::table('core.platform_settings')->count())->toBe(0);
 });
 
-it('la barra dell\'amministrazione della vendita dice «Gestisci SaaS», non «Gestionale»', function (): void {
-    $this->get('/saas/admin')->assertOk()->assertSee('Gestisci SaaS')->assertDontSee('<span class="place">Gestionale</span>', false);
+it('ha la stessa organizzazione di /wordpress/admin: schede su due livelli e cruscotto con i numeri', function (): void {
+    $this->get('/saas/admin')->assertOk()
+        ->assertSee('Gestisci SaaS')->assertSee('Gestisci Plugin')
+        ->assertSee('class="tabs"', false)->assertSee('Piani')->assertSee('Clienti')->assertSee('Impostazioni')
+        ->assertSee('Abbonamenti attivi')->assertSee('Prossime scadenze');
+    $this->get('/saas/admin/catalogo/piani')->assertOk()->assertSee('class="tabs sub"', false)->assertSee('Promozioni')->assertSee('Pacchetti');
+    $this->get('/saas/admin/impostazioni')->assertOk()->assertSee('class="tabs sub"', false)->assertSee('Registro');
 });
