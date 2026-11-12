@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Piattaforma\Http\Controllers;
 
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
