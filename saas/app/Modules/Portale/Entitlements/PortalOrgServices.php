@@ -234,6 +234,7 @@ final readonly class PortalOrgServices
     {
         $claims = $this->db->connection('pgsql')->table('core.org_entitlements')->where('org_id', $orgId)->value('claims');
         $decoded = is_string($claims) ? json_decode($claims, true) : null;
+
         /** @var array<string, mixed> */
         return is_array($decoded) ? $decoded : [];
     }
