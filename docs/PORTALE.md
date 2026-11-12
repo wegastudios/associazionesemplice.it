@@ -341,3 +341,5 @@ Strada decisa il 12/11/2026: il cliente delega il dominio ai nostri nameserver (
 
 ## Impostazioni del portale: interruttori (`/account/impostazioni`)
 Pagina per chi ha il ruolo admin (sessione unica con `wordpress = admin`, o amministratore del portale): caselle da spuntare per le funzioni (`Switches::ALL`: «Gestisci» del gestionale e indirizzo personalizzato). Il valore salvato nel database (`settings`, nome `switches`) sostituisce quello di `config.php` a ogni avvio, vale subito, ed è nel registro. L'accesso unico e il proxy restano in `config.php` di proposito (il proxy parte prima del database; spegnere l'accesso unico potrebbe chiudere fuori tutti). Per aggiungere un interruttore: una riga in `Switches::ALL`.
+
+**«Apri il gestionale»** (12/11/2026): porta sempre a `https://app.associazionesemplice.it/gestionale` (config `saas_app_url`); `<slug>.associazionesemplice.it` (`site_url`) è il sito pubblico/area soci dell'associazione, non il gestionale. Finché gli operatori hanno il login locale (passo 6) entrano dal `/accedi` di `app.`.
