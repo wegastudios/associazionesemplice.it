@@ -140,6 +140,16 @@ final class PublicEvents {
 		return (int) get_post_meta( $post_id, self::META, true );
 	}
 
+	/** Pagina con l'elenco degli eventi: quella guidata, oppure una pagina pubblicata che contiene lo shortcode (vuoto se non c'è). */
+	public static function list_page_url(): string {
+		$id = (int) ( Pages::existing()['eventi'] ?? 0 );
+		if ( ! $id ) {
+			$found = get_posts( array( 'post_type' => 'page', 'post_status' => 'publish', 's' => 'associazionesemplice_eventi', 'numberposts' => 1, 'fields' => 'ids', 'orderby' => 'ID', 'order' => 'ASC' ) );
+			$id    = $found ? (int) $found[0] : 0;
+		}
+		return $id ? (string) get_permalink( $id ) : '';
+	}
+
 	/** Indirizzo della pagina pubblica dell'attività, se è pubblicata (altrimenti vuoto). */
 	public static function page_url( int $activity_id ): string {
 		$id = self::post_of( $activity_id );
@@ -498,8 +508,7 @@ final class PublicEvents {
 			return $content;
 		}
 		Frontend\Views::no_cache();
-		$list_id = (int) ( Pages::existing()['eventi'] ?? 0 );
-		$all     = $list_id ? (string) get_permalink( $list_id ) : '';
+		$all     = self::list_page_url();
 		$html    = '<div class="asemf asemf-event">' . ( '' !== $all ? '<p class="asemf-back"><a href="' . esc_url( $all ) . '">« Tutti gli eventi</a></p>' : '' ) . '<div class="asemf-event-head' . ( has_post_thumbnail( $post ) ? ' has-poster' : '' ) . '">';
 		if ( has_post_thumbnail( $post ) ) {
 			$html .= '<figure class="asemf-poster">' . wp_get_attachment_image( (int) get_post_thumbnail_id( $post ), 'large' ) . '</figure>'; // direttamente: il filtro del tema che toglie la locandina duplicata non deve toccare questa
