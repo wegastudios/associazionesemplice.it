@@ -86,3 +86,13 @@ Stati del pulsante: Prenota · Prenota e paga · Entra in lista d'attesa · Esau
 
 Fatto, **non ancora pubblicato** (il numero di versione e le voci del log si scrivono alla pubblicazione): locandina accanto ai dati nella scheda; pulsanti di condivisione (WhatsApp, Facebook, email: collegamenti, nessuno script); «Ti può interessare anche» (fino a 3 eventi, prima della stessa categoria); anteprima social (og:*) se non c'è un plugin SEO; pagina «Eventi» proposta dalla configurazione guidata (non preselezionata). La galleria è il blocco Galleria di WordPress dentro la descrizione (nessun codice dedicato).
 Voci del log da scrivere alla pubblicazione: «Nella pagina dell'evento: locandina accanto ai dati, pulsanti per condividere, altri eventi che possono interessare, anteprima per i social; tra le pagine della configurazione guidata c'è ora «Eventi»».
+
+## Fase 10-11 (12/11/2026): i corsi nel calendario e l'iscrizione dal sito
+
+Fatto, **non ancora pubblicato** (numero di versione e log alla pubblicazione).
+
+- I corsi con la pagina pubblicata compaiono nel **calendario** con le lezioni settimanali (e le date singole), ciascuna con il collegamento alla pagina del corso; nell'elenco degli eventi restano fuori.
+- La pagina del corso ha **«Come iscriversi»**: il **socio** con la tessera valida (o chi prenota per ospiti e minori) chiede l'iscrizione in un clic; chi **non è socio** compila un modulo breve (stessa protezione degli eventi: campo trappola, gettone firmato, limite per IP, conferma dall'email entro 24 ore, tutti i dati subito, solo maggiorenni). Chi è già socio e usa il modulo viene mandato al proprio accesso.
+- **Decisioni del proprietario (12/11/2026):** soci e non soci possono chiedere; l'iscrizione parte dal **mese corrente** (quello dell'approvazione); i non soci **pagano in anticipo con bonifico istantaneo** e inviano la ricevuta alla segreteria entro il termine dei Limiti (predefinito 24 ore), altrimenti l'**iscrizione è annullata**; i soci seguono le regole del corso (contributo mensile).
+- **Approva sempre la segreteria**, dalla scheda dell'attività («Richieste di iscrizione»), in ordine di arrivo. Approvando, il non socio è registrato come ospite e iscritto al corso; il socio è iscritto. Le richieste vivono nella tabella `event_requests` con `session_id = 0` (nessuna modifica al database).
+- Voce del log da scrivere alla pubblicazione: «I corsi compaiono nel calendario del sito con le loro lezioni; dalla pagina del corso si chiede l'iscrizione (il socio con un clic, chi non è socio dal modulo) e la segreteria approva».

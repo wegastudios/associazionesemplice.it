@@ -8372,6 +8372,36 @@ asem_ok( $er_ap['ok'] && 1 === count( $er_aw ) && ! $acts->has_active_booking( $
 asem_ok( false !== strpos( $er::admin_box( $er_c, 'http://example.test/' ), 'asem_event_request_approve' ), 'approvazione: la scheda dell\'attività mostra la richiesta' );
 $er::approve( (int) $er_aw[0]['id'] );
 asem_ok( $acts->has_active_booking( $er_sid( $er_c ), (int) $er_nr['id'] ) && ! $er::awaiting( $er_c ), 'approvazione: approvata, la persona è prenotata' );
+// Iscrizione a un corso dal sito: il socio chiede in un clic, il non socio dal modulo; approva la segreteria, si parte dal mese corrente.
+$er_course = $acts->create( array( 'name' => 'Corso di disegno', 'social_year' => $sy->label(), 'kind' => 'course', 'fee_cents' => 3000, 'guest_fee_cents' => 4000, 'lesson_weekday' => 4, 'lesson_start' => '18:00', 'lesson_end' => '19:00' ) );
+wp_update_post( array( 'ID' => \AssociazioneSemplice\PublicEvents::ensure( $er_course ), 'post_status' => 'publish' ) );
+$er_ca = $acts->get( $er_course );
+asem_ok( $er::course_open( $er_ca ) && ! $er::available( $er_ca ) && ! $er::course_open( $acts->get( $er_a ) ), 'iscrizione corso: la richiesta vale per i corsi, non per gli eventi' );
+$er_cform = \AssociazioneSemplice\Frontend\Views::course_request( $er_ca );
+asem_ok( false !== strpos( $er_cform, 'Come iscriversi' ) && false !== strpos( $er_cform, 'Invia la richiesta di iscrizione' ) && false !== strpos( $er_cform, 'Sei socio?' ), 'iscrizione corso: la pagina mostra l\'accesso dei soci e il modulo per chi non lo è' );
+$er_gid = (int) $wpdb->get_var( "SELECT id FROM $er_ppl WHERE tax_code = 'GLLPLA88H50L219H'" );
+$er::course_member_request( $er_course, $er_gid );
+asem_ok( $er::course_pending_for( $er_course, $er_gid ) && 1 === count( $er::awaiting( $er_course ) ) && ! in_array( $er_course, $acts->active_activity_ids( $er_gid ), true ), 'iscrizione corso: la richiesta del socio aspetta la segreteria' );
+asem_ok( null !== asem_throws( function () use ( $er, $er_course, $er_gid ) { $er::course_member_request( $er_course, $er_gid ); } ), 'iscrizione corso: una seconda richiesta uguale è rifiutata' );
+asem_ok( false !== strpos( $er::admin_box( $er_course, 'http://example.test/' ), 'Richieste di iscrizione' ), 'iscrizione corso: la scheda del corso mostra le richieste di iscrizione' );
+$er_cw = $er::awaiting( $er_course );
+$er::approve( (int) $er_cw[0]['id'] );
+asem_ok( in_array( $er_course, $acts->active_activity_ids( $er_gid ), true ) && ! $er::awaiting( $er_course ), 'iscrizione corso: approvata, il socio è iscritto' );
+delete_transient( 'asem_evq_em_' . md5( 'nora.pagamenti@example.com' ) );
+asem_ok( 'invalid' === $er::course_create( array_merge( $er_in_n, array( 'tax_code' => 'XXX' ) ), $er_ca )['status'], 'iscrizione corso: codice fiscale sbagliato rifiutato' );
+asem_ok( 'invalid' === $er::course_create( array_merge( $er_in_n, array( 'birth_date' => gmdate( 'Y-m-d', strtotime( '-10 years' ) ) ) ), $er_ca )['status'], 'iscrizione corso: un minorenne da solo non si iscrive' );
+asem_ok( 'ok' === $er::course_create( $er_in_n, $er_ca )['status'], 'iscrizione corso: richiesta del non socio registrata' );
+$er_cc = $er::confirm( $er_get( 'nora.pagamenti@example.com' ) );
+asem_ok( $er_cc['ok'] && 1 === count( $er::awaiting( $er_course ) ) && ! in_array( $er_course, $acts->active_activity_ids( (int) $er_nr['id'] ), true ), 'iscrizione corso: dopo la conferma dell\'email la richiesta aspetta la segreteria' );
+$er_cw = $er::awaiting( $er_course );
+$er::approve( (int) $er_cw[0]['id'] );
+$er_cmail = end( $er_mails );
+asem_ok( in_array( $er_course, $acts->active_activity_ids( (int) $er_nr['id'] ), true ) && false !== strpos( (string) $er_cmail['message'], 'bonifico istantaneo' ) && false !== strpos( (string) $er_cmail['message'], '40,00' ), 'iscrizione corso: approvata, il non socio è iscritto e riceve come pagare (contributo ospiti)' );
+$er_crid = (int) $wpdb->get_var( $wpdb->prepare( "SELECT id FROM $er_tbl WHERE status = 'booked' AND activity_id = %d ORDER BY id DESC LIMIT 1", $er_course ) );
+$wpdb->update( $er_tbl, array( 'deadline' => wp_date( 'Y-m-d H:i:s', time() - 7200 ) ), array( 'id' => $er_crid ) );
+$er::run();
+asem_ok( ! in_array( $er_course, $acts->active_activity_ids( (int) $er_nr['id'] ), true ) && 'expired' === $wpdb->get_var( $wpdb->prepare( "SELECT status FROM $er_tbl WHERE id = %d", $er_crid ) ), 'iscrizione corso: senza ricevuta entro il termine l\'iscrizione del non socio è annullata' );
+asem_ok( in_array( $er_course, $acts->active_activity_ids( $er_gid ), true ), 'iscrizione corso: l\'iscrizione del socio non si tocca' );
 // Richiesta di partecipazione di un socio (evento con approvazione): in ordine di arrivo, decide la segreteria.
 $er_gid = (int) $wpdb->get_var( "SELECT id FROM $er_ppl WHERE tax_code = 'GLLPLA88H50L219H'" );
 asem_ok( null !== asem_throws( function () use ( $er, $er_sid, $er_a, $er_gid ) { $er::member_request( $er_sid( $er_a ), $er_gid ); } ), 'richiesta socio: un evento senza approvazione si prenota direttamente' );
