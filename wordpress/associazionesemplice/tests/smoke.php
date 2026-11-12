@@ -532,6 +532,17 @@ $pe_share->setAccessible( true );
 $pe_sh = (string) $pe_share->invoke( null, get_post( $pe_post ) );
 asem_ok( false !== strpos( $pe_sh, 'wa.me' ) && false !== strpos( $pe_sh, 'facebook.com/sharer' ) && false !== strpos( $pe_sh, 'mailto:' ), 'pagina pubblica: pulsanti di condivisione (collegamenti)' );
 asem_ok( isset( \AssociazioneSemplice\Pages::defs()['eventi'] ) && 'pubblico' === ( \AssociazioneSemplice\Pages::AREA['eventi'] ?? '' ), 'pagine guidate: la pagina «Eventi» è proposta' );
+$pe_can = $acts->create( array( 'name' => 'Evento annullato di prova', 'social_year' => $sy_label, 'kind' => 'event', 'fee_cents' => 0, 'session' => array( 'session_date' => $ev_date, 'start_time' => '18:00', 'location' => 'Sede' ) ) );
+$acts->cancel_session( (int) $acts->sessions( $pe_can )[0]['id'] );
+asem_ok( 'Evento annullato' === \AssociazioneSemplice\PublicEvents::when_text( (array) $acts->get( $pe_can ) ), 'pagina pubblica: un evento annullato lo dice invece di «nessuna data»' );
+$pe_trim = new ReflectionMethod( '\AssociazioneSemplice\PublicEvents', 'trim_recurring' );
+$pe_trim->setAccessible( true );
+$pe_rows = array();
+foreach ( range( 1, 5 ) as $i ) {
+	$pe_rows[] = array( 'kind' => 'recurring', 'activity_id' => 9, 'id' => $i );
+}
+$pe_rows[] = array( 'kind' => 'event', 'activity_id' => 8, 'id' => 6 );
+asem_ok( 3 === count( $pe_trim->invoke( null, $pe_rows ) ), 'elenco eventi: di una serie ricorrente si mostrano solo le prossime due date' );
 wp_set_current_user( $pe_prev );
 $pe_a = $acts->get( $event );
 asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::when_text( $pe_a ), 'ore 21:00' ) && 'Sede' === \AssociazioneSemplice\PublicEvents::where_text( $pe_a ) && false !== strpos( \AssociazioneSemplice\PublicEvents::price_text( $pe_a ), 'Ospiti' ), 'pagina pubblica: data, luogo e contributo vengono dall\'attività' );

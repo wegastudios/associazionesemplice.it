@@ -397,5 +397,43 @@ extra_step( 'testi completi degli eventi', function () {
 	}
 } );
 
+// Un evento ricorrente (serie settimanale) e uno annullato, per vedere come si comportano elenco, calendario e pagina.
+extra_step( 'evento ricorrente e annullato', function () {
+	if ( ! class_exists( '\AssociazioneSemplice\PublicEvents' ) ) {
+		return;
+	}
+	$act  = Plugin::activities();
+	$sy   = Settings::social_year();
+	$from = gmdate( 'Y-m-d', time() + 3 * 86400 );
+	$to   = min( gmdate( 'Y-m-d', time() + 100 * 86400 ), $sy->end()->format( 'Y-m-d' ) );
+	$term = function ( string $name ) {
+		$t = term_exists( $name, \AssociazioneSemplice\PublicEvents::TAXONOMY );
+		if ( ! $t ) {
+			$t = wp_insert_term( $name, \AssociazioneSemplice\PublicEvents::TAXONOMY );
+		}
+		return is_wp_error( $t ) ? 0 : (int) $t['term_id'];
+	};
+	$publish = function ( int $aid, string $title, string $cat, string $intro, array $rgb ) use ( $term ) {
+		$pid = \AssociazioneSemplice\PublicEvents::ensure( $aid );
+		if ( ! $pid ) {
+			return;
+		}
+		wp_update_post( array( 'ID' => $pid, 'post_status' => 'publish', 'post_content' => extra_event_html( $intro, $cat, \AssociazioneSemplice\PublicEvents::where_text( (array) Plugin::activities()->get( $aid ) ) ), 'post_excerpt' => wp_trim_words( $intro, 18 ) ) );
+		wp_set_object_terms( $pid, array( $term( $cat ) ), \AssociazioneSemplice\PublicEvents::TAXONOMY );
+		$thumb = extra_poster( $title, $rgb );
+		if ( $thumb ) {
+			set_post_thumbnail( $pid, $thumb );
+		}
+	};
+	$rec = $act->create( array( 'name' => 'Serata giochi settimanale', 'social_year' => $sy->label(), 'kind' => 'recurring', 'fee_cents' => 0, 'guest_fee_cents' => 300 ) );
+	$act->generate_weekly( (int) $rec, $from, $to, '21:00', 'Sede dell\'associazione', 30 );
+	$publish( (int) $rec, 'Serata giochi settimanale', 'Serate', 'Ogni settimana ci si ritrova in sede per giochi da tavolo e carte: nessuna iscrizione fissa, prenoti la serata che ti interessa.', array( 90, 80, 160 ) );
+	$can = $act->create( array( 'name' => 'Gita al castello', 'social_year' => $sy->label(), 'kind' => 'event', 'fee_cents' => 1200, 'session' => array( 'session_date' => gmdate( 'Y-m-d', time() + 20 * 86400 ), 'start_time' => '09:00', 'location' => 'Ritrovo davanti alla sede', 'capacity' => 30 ) ) );
+	$publish( (int) $can, 'Gita al castello', 'Gite', 'Una visita guidata al castello con pranzo al sacco nel parco. Purtroppo la guida non è disponibile e la gita è stata annullata.', array( 150, 90, 90 ) );
+	foreach ( $act->sessions( (int) $can ) as $s ) {
+		$act->cancel_session( (int) $s['id'] );
+	}
+} );
+
 update_option( 'asem_demo_extra_done', gmdate( 'c' ), false );
 WP_CLI::success( 'Dati in più della demo inseriti.' );
