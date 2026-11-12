@@ -6,13 +6,17 @@ namespace App\Modules\Portale\Providers;
 
 use App\Modules\Portale\Console\SendUsageCommand;
 use App\Modules\Portale\Console\SuspendExpiredCommand;
+use App\Modules\Portale\Console\VerifyDomainsCommand;
 use App\Modules\Portale\Contracts\Entitlements;
 use App\Modules\Portale\Contracts\PortalNotifier;
 use App\Modules\Portale\Contracts\StaffAccess;
+use App\Modules\Portale\Entitlements\DomainDns;
 use App\Modules\Portale\Entitlements\EntitlementReader;
+use App\Modules\Portale\Entitlements\SystemDns;
 use App\Modules\Portale\Http\Controllers\AdminApiController;
 use App\Modules\Portale\Http\Controllers\CatalogController;
 use App\Modules\Portale\Http\Controllers\PortalApiController;
+use App\Modules\Portale\Http\Controllers\PortalServicesController;
 use App\Modules\Portale\Http\Controllers\SubscriptionSsoController;
 use App\Modules\Portale\Http\Middleware\RequirePackage;
 use App\Modules\Portale\Notifications\PortalNotifications;
@@ -32,6 +36,7 @@ final class PortaleServiceProvider extends ServiceProvider
         $this->app->singleton(Entitlements::class, EntitlementReader::class);
         $this->app->singleton(PortalNotifier::class, PortalNotifications::class);
         $this->app->singleton(StaffAccess::class, PortalStaffAccess::class);
+        $this->app->singleton(DomainDns::class, SystemDns::class);
     }
 
     public function boot(Router $router): void
@@ -56,6 +61,16 @@ final class PortaleServiceProvider extends ServiceProvider
         Route::put('api/portale/v2/orgs/{org}/subscription', [PortalApiController::class, 'subscription'])
             ->whereUuid('org')->middleware('throttle:portal-api');
 
+        // Promozioni, cambio di piano, dominio e stato (§3.3-§3.6).
+        Route::prefix('api/portale/v2')->middleware('throttle:portal-api')->group(function (): void {
+            Route::post('promo/check', [PortalServicesController::class, 'promoCheck']);
+            Route::post('promo/redeem', [PortalServicesController::class, 'promoRedeem']);
+            Route::post('orgs/{org}/plan-change/check', [PortalServicesController::class, 'planChangeCheck'])->whereUuid('org');
+            Route::post('orgs/{org}/domain/check', [PortalServicesController::class, 'domainCheck'])->whereUuid('org');
+            Route::post('orgs/{org}/domain/set', [PortalServicesController::class, 'domainSet'])->whereUuid('org');
+            Route::post('orgs/{org}/status', [PortalServicesController::class, 'status'])->whereUuid('org');
+        });
+
         // Catalogo pubblico e firmato: piani, prezzi e promozioni che il portale legge (§2).
         Route::get('api/catalogo/v1', CatalogController::class)->middleware('throttle:portal-api');
 
@@ -64,11 +79,12 @@ final class PortaleServiceProvider extends ServiceProvider
             ->name('subscription');
 
         if ($this->app->runningInConsole()) {
-            $this->commands([SendUsageCommand::class, SuspendExpiredCommand::class]);
+            $this->commands([SendUsageCommand::class, SuspendExpiredCommand::class, VerifyDomainsCommand::class]);
 
             $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
                 $schedule->command('saas:portal:usage')->dailyAt('04:23')->withoutOverlapping();
                 $schedule->command('saas:portal:suspend-expired')->dailyAt('00:41')->withoutOverlapping();
+                $schedule->command('saas:portal:verify-domains')->hourly()->withoutOverlapping();
             });
         }
     }
