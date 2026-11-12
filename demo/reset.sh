@@ -10,6 +10,7 @@ if [ "$(date +%H)" != "04" ] && [ "${1:-}" != "--forza" ]; then
 fi
 cd "$HOME/public_html/demo"
 wp db reset --yes >/dev/null
+find wp-content/uploads -mindepth 1 -delete 2>/dev/null || true # prima dei dati di prova: le locandine create da extra-data.php devono restare
 wp core install --url=https://associazionesemplice.it/demo --title="Demo di Associazione Semplice" --admin_user=setup_tmp --admin_password="$(openssl rand -hex 16)" --admin_email=info@associazionesemplice.it --skip-email >/dev/null
 wp option update blog_public 0 >/dev/null
 wp site switch-language it_IT >/dev/null 2>&1 || true
@@ -22,6 +23,5 @@ wp eval-file "$HOME/demo-provision/provision.php" --user=setup_tmp # come ammini
 wp eval-file "$HOME/demo-provision/extra-data.php" --user=setup_tmp # dati di prova in più (soci in vari stati, certificati, prestiti, domande, assemblea): servono a valutare l'aspetto su ogni area
 # Le pagine create dall'utente d'installazione passano all'amministratore del plugin prima di toglierlo (senza questo si cancellerebbero con lui).
 wp user delete setup_tmp --yes --reassign="$(wp user get amministratore --field=ID)" >/dev/null
-find wp-content/uploads -mindepth 1 -delete 2>/dev/null || true
 wp cache flush >/dev/null 2>&1 || true
 echo "$(date -Is) demo azzerata: $(wp user list --format=count) utenti"
