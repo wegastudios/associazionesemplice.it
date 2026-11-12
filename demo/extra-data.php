@@ -502,3 +502,12 @@ extra_step( 'pagina del corso di fotografia', function () {
 		set_post_thumbnail( $pid, $thumb );
 	}
 } );
+
+// Un esempio dei testi a piacere: la pagina «Eventi in programma» diventa «I nostri prossimi eventi», con il messaggio per quando non c'è nulla.
+extra_step( 'testi a piacere della pagina eventi', function () {
+	$page = get_page_by_path( 'eventi-in-programma' );
+	if ( ! $page ) {
+		return;
+	}
+	wp_update_post( array( 'ID' => $page->ID, 'post_title' => 'I nostri prossimi eventi', 'post_content' => '[associazionesemplice_eventi vuoto="Presto nuovi appuntamenti: torna a trovarci."]' ) );
+} );

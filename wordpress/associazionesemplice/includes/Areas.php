@@ -21,7 +21,7 @@ final class Areas {
 		'segreteria' => array( 'Segreteria', array( 'segreteria' ) ),
 		'tesoriere'  => array( 'Tesoriere', array( 'tesoriere' ) ),
 		'eventi'     => array( 'Eventi', array( 'area_volontari', 'ingressi' ) ),
-		'pubblico'   => array( 'Pubblico', array( 'attivita', 'prossimi_eventi', 'eventi', 'bonifico', 'donazioni', 'privacy', 'adesione', 'documenti', 'convenzioni', 'accesso' ) ),
+		'pubblico'   => array( 'Pubblico', array( 'attivita', 'prossimi_eventi', 'eventi', 'calendario_eventi', 'evento_locandina', 'evento_dati', 'evento_prenotazione', 'evento_dove', 'evento_navigazione', 'evento_condividi', 'bonifico', 'donazioni', 'privacy', 'adesione', 'documenti', 'convenzioni', 'accesso' ) ),
 	);
 
 	/** Le aree con le loro viste, comprese quelle di un'estensione (filtro `asem_areas`). */

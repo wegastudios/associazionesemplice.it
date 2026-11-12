@@ -96,3 +96,14 @@ Fatto, **non ancora pubblicato** (numero di versione e log alla pubblicazione).
 - **Decisioni del proprietario (12/11/2026):** soci e non soci possono chiedere; l'iscrizione parte dal **mese corrente** (quello dell'approvazione); i non soci **pagano in anticipo con bonifico istantaneo** e inviano la ricevuta alla segreteria entro il termine dei Limiti (predefinito 24 ore), altrimenti l'**iscrizione è annullata**; i soci seguono le regole del corso (contributo mensile).
 - **Approva sempre la segreteria**, dalla scheda dell'attività («Richieste di iscrizione»), in ordine di arrivo. Approvando, il non socio è registrato come ospite e iscritto al corso; il socio è iscritto. Le richieste vivono nella tabella `event_requests` con `session_id = 0` (nessuna modifica al database).
 - Voce del log da scrivere alla pubblicazione: «I corsi compaiono nel calendario del sito con le loro lezioni; dalla pagina del corso si chiede l'iscrizione (il socio con un clic, chi non è socio dal modulo) e la segreteria approva».
+
+## Fase 12 (12/11/2026): viste per i costruttori di pagine, pagina evento componibile
+
+Fatto, **non ancora pubblicato**. Decisione della titolare: **blocchi, widget e shortcode portano solo dati e visualizzazioni** (prossimi eventi, calendario, schede, pezzi della pagina evento); l'impaginazione è del costruttore. Integrazione vera solo per Gutenberg (blocco «Associazione Semplice») ed Elementor (widget omonimo); per ogni altro costruttore (Divi, Bricks, Beaver…) vale lo shortcode nel suo blocco «Shortcode».
+
+- **Viste:** `eventi` (schede o calendario con `modo`), `calendario_eventi` (calendario mensile a sé), `prossimi_eventi` (ora anche `categoria`).
+- **Testi a piacere:** `titolo` (intestazione sopra la vista, vuoto = nessuna), `vuoto` (messaggio senza eventi), `pulsante` (testo del pulsante nelle schede), `filtri="si|no"`. Esempio: `[associazionesemplice_eventi titolo="I nostri prossimi eventi"]`. Sono campi del blocco e controlli del widget.
+- **Pezzi della pagina evento:** `evento_locandina`, `evento_dati`, `evento_prenotazione` (date e prenotazione, o iscrizione al corso), `evento_dove`, `evento_navigazione`, `evento_condividi`; attributo `evento="ID"` per usarli fuori dalla pagina dell'evento. La descrizione è il contenuto stesso della pagina, quindi non ha un pezzo.
+- **Pagina evento editabile:** se nel contenuto dell'evento c'è uno di questi pezzi (shortcode, blocco o widget), la pagina mostra solo ciò che ha scritto il gestore; altrimenti resta l'impaginazione automatica. Filtro `asem_event_custom_layout` per le eccezioni.
+- **Demo:** la pagina «Eventi in programma» diventa «I nostri prossimi eventi» (titolo della pagina e attributo `titolo`).
+- **Guide, FAQ e confronto:** alla pubblicazione, aggiornare l'elenco shortcode e le guide del supporto.

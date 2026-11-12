@@ -10,7 +10,9 @@ defined( 'ABSPATH' ) || exit;
  *  [associazionesemplice_area_soci sezioni="tessera,attivita,ospiti,profilo,volontario"]
  *  [associazionesemplice_tessera] [associazionesemplice_mie_attivita] [associazionesemplice_ospiti] [associazionesemplice_profilo] [associazionesemplice_area_volontari]
  *  [associazionesemplice_attivita anno="2025/2026" tipo="corso|evento|ricorrente" id="12" date="5"]
- *  [associazionesemplice_prossimi_eventi limite="5" prenotazione="si|no"]
+ *  [associazionesemplice_prossimi_eventi limite="5" prenotazione="si|no" categoria="gite" titolo="I nostri prossimi eventi" vuoto="Presto nuovi eventi"]
+ *  [associazionesemplice_eventi modo="elenco|mese" categoria="" limite="30" mesi="" filtri="si|no" titolo="" vuoto="" pulsante="Scopri"]   [associazionesemplice_calendario_eventi categoria="" filtri="si|no" titolo="" vuoto=""]
+ *  Pezzi della pagina di un evento (senza impaginazione): [associazionesemplice_evento_locandina|dati|prenotazione|dove|navigazione|condividi evento="ID" titolo=""]
  *  [associazionesemplice_accesso]
  *  [associazionesemplice_riservato accesso="soci|volontari|attivita" attivita="12,13"]…[/associazionesemplice_riservato]   (vedi Restrict)
  */
@@ -42,6 +44,13 @@ final class Shortcodes {
 		'attivita'        => 'Elenco attività ed eventi (pubblico)',
 		'prossimi_eventi' => 'Prossimi eventi (pubblico)',
 		'eventi'          => 'Eventi sul sito, a card per mese (pubblico)',
+		'calendario_eventi' => 'Calendario mensile degli eventi (pubblico)',
+		'evento_locandina' => 'Evento: locandina (nella pagina di un evento, o con evento="ID")',
+		'evento_dati'     => 'Evento: quando, dove e contributo',
+		'evento_prenotazione' => 'Evento: date e prenotazione, o iscrizione al corso',
+		'evento_dove'     => 'Evento: luogo con mappa e contatti',
+		'evento_navigazione' => 'Evento: «Tutti gli eventi» e precedente/successivo',
+		'evento_condividi' => 'Evento: pulsanti di condivisione',
 		'bonifico'        => 'Coordinate per il bonifico (pubblico, se attivo)',
 		'donazioni'       => 'Donazioni con PayPal (pubblico, se attive)',
 		'privacy'         => 'Informativa privacy (pubblico, compilata con i dati dell\'ente)',
@@ -129,10 +138,19 @@ final class Shortcodes {
 				Views::no_cache();
 				return Views::activities( shortcode_atts( array( 'anno' => '', 'tipo' => '', 'id' => '', 'date' => '5' ), $atts ) );
 			case 'eventi':
-				return \AssociazioneSemplice\PublicEvents::list_html( shortcode_atts( array( 'categoria' => '', 'limite' => '30', 'mesi' => '', 'modo' => 'elenco', 'filtri' => 'si' ), $atts ) );
+				return \AssociazioneSemplice\PublicEvents::list_html( shortcode_atts( array( 'categoria' => '', 'limite' => '30', 'mesi' => '', 'modo' => 'elenco', 'filtri' => 'si', 'titolo' => '', 'vuoto' => '', 'pulsante' => '' ), $atts ) );
+			case 'calendario_eventi':
+				return \AssociazioneSemplice\PublicEvents::list_html( array_merge( shortcode_atts( array( 'categoria' => '', 'filtri' => 'si', 'titolo' => '', 'vuoto' => '' ), $atts ), array( 'modo' => 'mese' ) ) );
+			case 'evento_locandina':
+			case 'evento_dati':
+			case 'evento_prenotazione':
+			case 'evento_dove':
+			case 'evento_navigazione':
+			case 'evento_condividi':
+				return \AssociazioneSemplice\PublicEvents::part( substr( $view, 7 ), shortcode_atts( array( 'evento' => '', 'titolo' => '' ), $atts ) );
 			case 'prossimi_eventi':
 				Views::no_cache();
-				return Views::upcoming( shortcode_atts( array( 'limite' => '5', 'prenotazione' => 'si' ), $atts ) );
+				return Views::upcoming( shortcode_atts( array( 'limite' => '5', 'prenotazione' => 'si', 'categoria' => '', 'titolo' => '', 'vuoto' => '' ), $atts ) );
 			case 'bonifico':
 				return Views::bank_public();
 			case 'donazioni':
