@@ -564,6 +564,11 @@ asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::list_html( array(
 asem_ok( false !== strpos( do_shortcode( '[associazionesemplice_eventi]' ), 'asemf-card' ), 'elenco eventi: lo shortcode funziona' );
 $pe_cal = \AssociazioneSemplice\PublicEvents::list_html( array( 'modo' => 'mese' ) );
 asem_ok( false !== strpos( $pe_cal, 'asemf-cal' ) && false !== strpos( $pe_cal, 'asemf-filters' ), 'calendario eventi: la vista mensile e i filtri si disegnano' );
+$_GET['asem_vista'] = 'elenco'; // il pulsante Elenco funziona anche in una pagina che forza il calendario
+asem_ok( false === strpos( \AssociazioneSemplice\PublicEvents::list_html( array( 'modo' => 'mese' ) ), 'asemf-cal' ), 'eventi: il pulsante Elenco vale più del modo calendario della pagina' );
+$_GET['asem_vista'] = 'mese'; // e Calendario in una pagina con l'elenco
+asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::list_html(), 'asemf-cal' ), 'eventi: il pulsante Calendario vale più del modo elenco della pagina' );
+unset( $_GET['asem_vista'] );
 asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::list_html( array( 'modo' => 'mese', 'filtri' => 'no' ) ), 'asemf-cal' ) && false === strpos( \AssociazioneSemplice\PublicEvents::list_html( array( 'modo' => 'mese', 'filtri' => 'no' ) ), 'asemf-filters' ), 'calendario eventi: i filtri si possono togliere' );
 wp_update_post( array( 'ID' => $pe_post, 'post_status' => 'draft' ) );
 asem_ok( null !== asem_throws( function () use ( $acts, $event, $ev_date ) { $acts->add_session( $event, array( 'session_date' => $ev_date ) ); } ), 'evento una tantum: una sola data' );
