@@ -18,21 +18,21 @@ use Throwable;
 final class ImportPortalDbCommand extends Command
 {
     /**
-     * Per ogni tabella: chiave primaria, colonne booleane e colonne data (testo UTC → timestamptz).
+     * Per ogni tabella: chiave primaria e, se diversa, la tabella di origine. Date (stringhe UTC) e 0/1 passano tali e quali.
      *
-     * @var array<string, array{pk: list<string>, bool: list<string>, ts: list<string>, from?: string}>
+     * @var array<string, array{pk: list<string>, from?: string}>
      */
     private const TABLES = [
-        'subscriptions' => ['pk' => ['id'], 'bool' => ['cancel_at_period_end'], 'ts' => ['expires_at', 'created_at', 'updated_at', 'reminded_for', 'trial_used_at', 'last_seen_at', 'domain_changed_at']],
-        'orders' => ['pk' => ['id'], 'bool' => ['cancel_at_period_end'], 'ts' => ['created_at', 'updated_at', 'paid_at']],
-        'orgs' => ['pk' => ['ref'], 'bool' => [], 'ts' => ['created_at'], 'from' => 'saas_orgs'],
-        'outbox' => ['pk' => ['id'], 'bool' => [], 'ts' => ['next_at', 'done_at', 'created_at'], 'from' => 'saas_outbox'],
-        'releases' => ['pk' => ['product', 'version'], 'bool' => [], 'ts' => ['created_at']],
-        'downloads' => ['pk' => ['id'], 'bool' => [], 'ts' => ['at']],
-        'settings' => ['pk' => ['name'], 'bool' => [], 'ts' => []],
-        'email_templates' => ['pk' => ['event'], 'bool' => ['enabled'], 'ts' => ['updated_at']],
-        'audit' => ['pk' => ['id'], 'bool' => [], 'ts' => ['at']],
-        'events' => ['pk' => ['provider', 'event_id'], 'bool' => [], 'ts' => ['processed_at']],
+        'subscriptions' => ['pk' => ['id']],
+        'orders' => ['pk' => ['id']],
+        'orgs' => ['pk' => ['ref'], 'from' => 'saas_orgs'],
+        'outbox' => ['pk' => ['id'], 'from' => 'saas_outbox'],
+        'releases' => ['pk' => ['product', 'version']],
+        'downloads' => ['pk' => ['id']],
+        'settings' => ['pk' => ['name']],
+        'email_templates' => ['pk' => ['event']],
+        'audit' => ['pk' => ['id']],
+        'events' => ['pk' => ['provider', 'event_id']],
     ];
 
     protected $signature = 'saas:portal:import-db {source : copia del file SQLite del portale} {--dry-run : non scrive nulla, mostra i conteggi} {--verify : confronta conteggi e chiavi, senza scrivere}';
@@ -74,7 +74,7 @@ final class ImportPortalDbCommand extends Command
         return self::SUCCESS;
     }
 
-    /** @param  array{pk: list<string>, bool: list<string>, ts: list<string>, from?: string}  $def */
+    /** @param  array{pk: list<string>, from?: string}  $def */
     private function importTable(PDO $pdo, ConnectionInterface $con, string $table, array $def, bool $dry): int
     {
         $rows = $this->readRows($pdo, $def['from'] ?? $table);
@@ -86,13 +86,7 @@ final class ImportPortalDbCommand extends Command
             }
             $values = [];
             foreach ($row as $col => $raw) {
-                $v = is_scalar($raw) ? (string) $raw : null;
-                $values[$col] = match (true) {
-                    $v === null => null,
-                    in_array($col, $def['bool'], true) => $v === '1',
-                    in_array($col, $def['ts'], true) => ($v === '' ? null : $v.'+00'),
-                    default => $v,
-                };
+                $values[$col] = is_scalar($raw) ? (string) $raw : null;
             }
             $cols = array_keys($values);
             $update = array_values(array_diff($cols, $def['pk']));
