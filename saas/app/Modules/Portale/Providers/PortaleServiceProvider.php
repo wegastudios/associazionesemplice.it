@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Portale\Providers;
 
+use App\Modules\Portale\Console\ImportPortalDbCommand;
 use App\Modules\Portale\Console\SendUsageCommand;
 use App\Modules\Portale\Console\SuspendExpiredCommand;
 use App\Modules\Portale\Console\VerifyDomainsCommand;
@@ -79,7 +80,7 @@ final class PortaleServiceProvider extends ServiceProvider
             ->name('subscription');
 
         if ($this->app->runningInConsole()) {
-            $this->commands([SendUsageCommand::class, SuspendExpiredCommand::class, VerifyDomainsCommand::class]);
+            $this->commands([SendUsageCommand::class, SuspendExpiredCommand::class, VerifyDomainsCommand::class, ImportPortalDbCommand::class]);
 
             $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
                 $schedule->command('saas:portal:usage')->dailyAt('04:23')->withoutOverlapping();

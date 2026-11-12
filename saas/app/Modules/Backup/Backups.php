@@ -115,7 +115,7 @@ final readonly class Backups
             fclose($out);
 
             $target = $this->db->connection('pgsql_restore');
-            foreach (['sites', 'audit', 'app', 'core'] as $schema) {
+            foreach (['sites', 'audit', 'app', 'core', 'portal'] as $schema) {
                 $target->statement("DROP SCHEMA IF EXISTS {$schema} CASCADE");
             }
             $target->statement('DROP TABLE IF EXISTS public.migrations');
@@ -195,7 +195,7 @@ final readonly class Backups
         $tables = $connection->select(<<<'SQL'
             SELECT n.nspname || '.' || c.relname AS t
             FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-            WHERE c.relkind = 'r' AND (n.nspname IN ('core', 'app', 'audit', 'sites') OR (n.nspname = 'public' AND c.relname = 'migrations'))
+            WHERE c.relkind = 'r' AND (n.nspname IN ('core', 'app', 'audit', 'sites', 'portal') OR (n.nspname = 'public' AND c.relname = 'migrations'))
             ORDER BY 1
         SQL);
 
