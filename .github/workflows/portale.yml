@@ -28,3 +28,31 @@ jobs:
       - name: Syntax check
         run: find . -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
       - run: php tests/run.php
+
+  postgres:
+    name: Portale (PostgreSQL)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: portale
+          POSTGRES_PASSWORD: portale
+          POSTGRES_DB: portale_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U portale" --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: portale
+    env:
+      PORTALE_TEST_PG_DSN: "pgsql:host=127.0.0.1;port=5432;dbname=portale_test"
+      PORTALE_TEST_PG_USER: portale
+      PORTALE_TEST_PG_PASS: portale
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: pdo_sqlite, pdo_pgsql, sodium, curl, intl, mbstring
+      - run: php tests/run.php

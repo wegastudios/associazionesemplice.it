@@ -343,3 +343,11 @@ Strada decisa il 12/11/2026: il cliente delega il dominio ai nostri nameserver (
 Pagina per chi ha il ruolo admin (sessione unica con `wordpress = admin`, o amministratore del portale): caselle da spuntare per le funzioni (`Switches::ALL`: «Gestisci» del gestionale e indirizzo personalizzato). Il valore salvato nel database (`settings`, nome `switches`) sostituisce quello di `config.php` a ogni avvio, vale subito, ed è nel registro. L'accesso unico e il proxy restano in `config.php` di proposito (il proxy parte prima del database; spegnere l'accesso unico potrebbe chiudere fuori tutti). Per aggiungere un interruttore: una riga in `Switches::ALL`.
 
 **«Apri il gestionale»** (12/11/2026): porta sempre a `https://app.associazionesemplice.it/gestionale` (config `saas_app_url`); `<slug>.associazionesemplice.it` (`site_url`) è il sito pubblico/area soci dell'associazione, non il gestionale. Finché gli operatori hanno il login locale (passo 6) entrano dal `/accedi` di `app.`.
+
+## Database: solo PostgreSQL (decisione della titolare, 12/11/2026)
+
+Il portale non deve più avere un database SQL proprio: tutto sta su PostgreSQL, schema `portal`, ruolo `portal_app` (lo crea la sessione SaaS insieme al comando di importazione).
+- `Db::connect()` capisce il DSN `pgsql:`; opzioni `schema` (imposta `search_path`) e `pass_file` (password letta da un file fuori dal repository, mai nel `config.php`).
+- Su PostgreSQL `Db` traduce da solo `GROUP_CONCAT(x)` in `string_agg` e `LIKE` in `ILIKE`: il resto dell'SQL del portale è già comune.
+- La suite di test gira due volte in CI: SQLite in memoria (PHP 7.4/8.1/8.3) e PostgreSQL 16 (job «Portale (PostgreSQL)», variabili `PORTALE_TEST_PG_*`, uno schema nuovo per ogni database di prova).
+- Il passaggio dei dati di produzione e lo spegnimento di SQLite avvengono solo con il via libera scritto della titolare, dopo il «pronto» della sessione SaaS e una prova in parallelo.
