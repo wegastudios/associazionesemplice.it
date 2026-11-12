@@ -6,6 +6,7 @@ use App\Modules\Core\Http\Controllers\DashboardController;
 use App\Modules\Core\Http\Controllers\ExportController;
 use App\Modules\Core\Http\Controllers\OperatorsController;
 use App\Modules\Core\Http\Controllers\OrgSwitchController;
+use App\Modules\Core\Http\Controllers\ProfileController;
 use App\Modules\Core\Http\Controllers\SetupController;
 use App\Modules\Core\Http\Controllers\TwoFactorSetupController;
 use Illuminate\Support\Facades\Route;
@@ -31,6 +32,12 @@ Route::middleware('web')->group(function (): void {
 
         Route::middleware('operator')->prefix('gestionale')->group(function (): void {
             Route::get('/', DashboardController::class)->name('dashboard');
+
+            // Profilo di chi lavora: nome, email, password, due passaggi, dispositivi.
+            Route::get('/profilo', [ProfileController::class, 'show'])->name('profile');
+            Route::put('/profilo/nome', [ProfileController::class, 'name'])->name('profile.name');
+            Route::put('/profilo/email', [ProfileController::class, 'email'])->middleware('throttle:10,1')->name('profile.email');
+            Route::post('/profilo/dispositivi', [ProfileController::class, 'closeOthers'])->middleware('throttle:10,1')->name('profile.devices');
 
             // Configurazione guidata: titolare e amministratore.
             Route::middleware('can:org.settings')->group(function (): void {
