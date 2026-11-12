@@ -254,7 +254,9 @@ Ogni pagina ha il pulsante **«Salva nel tuo calendario»** (file `.ics`): funzi
 
 ## Prenotare dalla pagina
 
-Per ora prenotano **solo i soci**, entrando con il loro accesso. La prenotazione di chi non è socio e il pagamento online dalla pagina arriveranno più avanti.
+Per ora prenotano **solo i soci**, entrando con il loro accesso: il modulo e le regole sono quelli dell'area soci. La prenotazione di chi non è socio arriverà più avanti.
+
+**Il pagamento non si fa nella pagina.** Il contributo risulta «da versare»: il socio lo paga dall'area soci, in **Pagamenti**, se i pagamenti online sono attivi, oppure con bonifico o contanti come sempre.
 
 Se usi una cache delle pagine, **svuotala** dopo aver pubblicato o modificato un evento.
 MD,
