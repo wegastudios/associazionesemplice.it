@@ -23,6 +23,7 @@ final class Actions {
 	const MAP = array(
 		'asem_front_book'           => 'do_book',
 		'asem_front_request'        => 'do_request',
+		'asem_front_course_request' => 'do_course_request',
 		'asem_front_accept_rules'   => 'do_accept_rules',
 		'asem_front_accept_for'     => 'do_accept_for',
 		'asem_front_waitlist_join'  => 'do_waitlist_join',
@@ -162,6 +163,20 @@ final class Actions {
 			throw new \InvalidArgumentException( 'La tessera non è valida: va rinnovata per partecipare.' );
 		}
 		\AssociazioneSemplice\EventRequests::member_request( (int) ( $post['session_id'] ?? 0 ), $person_id );
+		return 'Richiesta inviata: la segreteria la esamina e ti scrive. Le richieste si esaminano nell\'ordine di arrivo.';
+	}
+
+	/** Chiede l'iscrizione a un corso (per sé o per un proprio ospite o minore): la segreteria approva. @return string messaggio */
+	public static function do_course_request( array $post ): string {
+		$actor     = self::actor();
+		$person_id = (int) ( $post['person_id'] ?? $actor['id'] );
+		self::assert_profile( $actor );
+		self::require_cap( 'asem_book_for', $person_id );
+		$subject = self::booking_subject( $actor, $person_id );
+		if ( ! Plugin::people()->is_active_member( (int) $subject['id'] ) ) {
+			throw new \InvalidArgumentException( 'La tessera non è valida: va rinnovata per iscriversi.' );
+		}
+		\AssociazioneSemplice\EventRequests::course_member_request( (int) ( $post['activity_id'] ?? 0 ), $person_id );
 		return 'Richiesta inviata: la segreteria la esamina e ti scrive. Le richieste si esaminano nell\'ordine di arrivo.';
 	}
 

@@ -16,3 +16,9 @@ Risposte alle domande poste al rientro. Sostituiscono le «proposte» di EVENTI_
 ## Aperto (scelte tecniche mie, da confermare quando rivedi il lavoro)
 - Tempo concesso al non socio per il bonifico istantaneo e la ricevuta: **24 ore** (modificabile dai Limiti).
 - Il «Prenota e paga» con carta/PayPal per i non soci (Pro) resta fuori da questa versione: i non soci pagano con bonifico come deciso.
+
+## Iscrizione ai corsi dal sito (risposte 12/11/2026)
+1. **Chi chiede**: **soci e non soci**. Il socio loggato in un clic; il non socio dal modulo breve.
+2. **Mese di partenza**: il **mese corrente** (quello dell'approvazione).
+3. **Pagamento**: **bonifico istantaneo anticipato** come per gli eventi dei non soci (ricevuta alla segreteria entro il termine dei Limiti, altrimenti l'iscrizione è annullata); i soci seguono le regole del corso.
+- Approva sempre la segreteria; nessuna tabella nuova (richieste con `session_id = 0`). Minorenni: per ora solo tramite la segreteria.

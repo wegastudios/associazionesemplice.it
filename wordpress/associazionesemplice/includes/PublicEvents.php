@@ -534,7 +534,7 @@ final class PublicEvents {
 			}
 			$html .= '<p class="asemf-ics"><a class="asemf-btn asemf-btn-ghost wp-element-button" href="' . esc_url( add_query_arg( 'asem_ics', '1', (string) get_permalink( $post ) ) ) . '">Salva nel tuo calendario</a></p>';
 		} else {
-			$html .= '<div class="asemf-notice" role="note"><strong>Come iscriversi</strong><br>L\'iscrizione al corso la registra la segreteria: scrivici o chiamaci con i contatti qui sotto e ti diciamo come fare (serve la tessera di socio; se non sei ancora socio, ti aiutiamo anche con quella).</div>';
+			$html .= Frontend\Views::course_request( $a ); // iscrizione al corso: richiesta del socio o modulo per chi non lo è
 		}
 		return $html . self::venue_html( $a ) . self::share_html( $post ) . self::prev_next_html( $post ) . '</div>';
 	}

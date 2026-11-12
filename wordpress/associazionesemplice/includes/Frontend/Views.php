@@ -1526,6 +1526,55 @@ final class Views {
 		return \AssociazioneSemplice\Texts::html( self::flash() . $html );
 	}
 
+	/**
+	 * Come iscriversi a un corso, per la sua pagina pubblica: il socio (o chi ne fa le veci) chiede in un clic, gli altri compilano il modulo.
+	 * La segreteria approva sempre; l'iscrizione parte dal mese corrente.
+	 */
+	public static function course_request( array $activity ): string {
+		self::no_cache();
+		if ( ! \AssociazioneSemplice\EventRequests::course_open( $activity ) ) {
+			return '';
+		}
+		$aid  = (int) $activity['id'];
+		$ctx  = self::booking_context();
+		$svc  = Plugin::activities();
+		$html = '<h3 class="asemf-event-h">Come iscriversi</h3>';
+		if ( ! empty( $ctx['can_book'] ) ) {
+			$ask = array();
+			foreach ( $ctx['people'] as $person ) {
+				if ( in_array( $aid, $svc->active_activity_ids( (int) $person['id'] ), true ) ) {
+					$html .= '<p><span class="asemf-badge asemf-badge-ok">✓ ' . esc_html( $person['first_name'] ) . ': iscritto</span></p>';
+				} elseif ( \AssociazioneSemplice\EventRequests::course_pending_for( $aid, (int) $person['id'] ) ) {
+					$html .= '<p><span class="asemf-badge">' . esc_html( $person['first_name'] ) . ': richiesta inviata, in attesa della segreteria</span></p>';
+				} else {
+					$ask[] = $person;
+				}
+			}
+			if ( $ask ) {
+				$rf = '';
+				if ( count( $ask ) > 1 ) {
+					$rf .= '<select name="person_id" aria-label="Per chi chiedi">';
+					foreach ( $ask as $person ) {
+						$rf .= '<option value="' . (int) $person['id'] . '">' . esc_html( $person['first_name'] ) . '</option>';
+					}
+					$rf .= '</select>';
+				} else {
+					$rf .= self::hidden( 'person_id', $ask[0]['id'] );
+				}
+				$html .= '<p class="asemf-small asemf-muted">La segreteria conferma la richiesta; l\'iscrizione parte dal mese corrente e il contributo segue le regole del corso.</p>'
+					. self::form( 'asem_front_course_request', self::hidden( 'activity_id', $aid ) . $rf, 'Chiedi l\'iscrizione', false, 'asemf-inline' );
+			}
+		} else {
+			$html .= '<p><a class="asemf-btn wp-element-button" href="' . esc_url( self::member_login_url() ) . '">Sei socio? Accedi per chiedere l\'iscrizione</a></p>';
+			if ( \AssociazioneSemplice\EventRequests::course_guests_open( $activity ) ) {
+				$html .= \AssociazioneSemplice\EventRequests::course_form_html( $activity );
+			} else {
+				$html .= '<p class="asemf-small asemf-muted">Per iscriverti rivolgiti alla segreteria con i contatti qui sotto.</p>';
+			}
+		}
+		return \AssociazioneSemplice\Texts::html( self::flash() . $html );
+	}
+
 	/** Le prossime date di tutti gli eventi, in ordine di data. */
 	public static function upcoming( array $atts = array() ): string {
 		self::no_cache();

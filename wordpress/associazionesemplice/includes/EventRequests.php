@@ -157,7 +157,7 @@ final class EventRequests {
 	// ---------- Invio ----------
 
 	/** @return array{errors:string[],sent:bool} */
-	private static function handle_submit( array $post, array $activity, array $opt ): array {
+	private static function handle_submit( array $post, array $activity, array $opt, bool $course = false ): array {
 		$out = array( 'errors' => array(), 'sent' => false );
 		if ( ! empty( $post['website'] ) ) {
 			$out['sent'] = true; // campo esca compilato: stessa risposta, nessuna richiesta
@@ -179,7 +179,7 @@ final class EventRequests {
 			$out['sent'] = true;
 			return $out;
 		}
-		$res = self::create( $post, $activity, $opt );
+		$res = $course ? self::course_create( $post, $activity ) : self::create( $post, $activity, $opt );
 		if ( 'invalid' === $res['status'] ) {
 			$out['errors'] = $res['errors'];
 			return $out;
@@ -334,6 +334,15 @@ final class EventRequests {
 		if ( ! $a ) {
 			return array( 'ok' => false, 'message' => 'L\'evento non esiste più.' );
 		}
+		if ( ActivityKind::COURSE === $a['kind'] ) { // l'iscrizione a un corso la approva sempre la segreteria
+			self::set( (int) $row['id'], array( 'status' => 'approval' ) );
+			Texts::mail(
+				Applications::notify_email(),
+				'Richiesta di iscrizione da approvare: ' . $a['name'] . self::assoc_suffix(),
+				'È arrivata una richiesta di iscrizione al corso «' . $a['name'] . "».\n\nApprovala o rifiutala dalla scheda dell'attività: " . admin_url( 'admin.php?page=asem-activity&id=' . (int) $a['id'] )
+			);
+			return array( 'ok' => true, 'message' => 'Email confermata. La segreteria esamina la richiesta di iscrizione e ti scrive appena è approvata, spiegandoti come pagare.' );
+		}
 		if ( PublicEvents::options( (int) $a['id'] )['approval'] ) {
 			self::set( (int) $row['id'], array( 'status' => 'approval' ) );
 			Texts::mail(
@@ -436,6 +445,9 @@ final class EventRequests {
 		$row = self::row( $id );
 		if ( ! $row || ! in_array( $row['status'], array( 'new', 'approval' ), true ) ) {
 			return array( 'ok' => false, 'message' => 'Richiesta non trovata o già lavorata.' );
+		}
+		if ( 0 === (int) $row['session_id'] ) { // richiesta di iscrizione a un corso (nessuna data)
+			return self::enroll_request( $row );
 		}
 		if ( ! empty( $row['person_id'] ) ) {
 			return self::book_member( $row );
@@ -540,6 +552,206 @@ final class EventRequests {
 		return $id;
 	}
 
+	// ---------- Iscrizione a un corso ----------
+
+	/**
+	 * Dalla pagina pubblica del corso si può chiedere l'iscrizione? Sì per ogni corso (la segreteria approva sempre).
+	 * Le richieste dei corsi stanno nella stessa tabella degli eventi, con session_id = 0.
+	 */
+	public static function course_open( array $activity ): bool {
+		return ActivityKind::COURSE === (string) $activity['kind'] && Edition::allows( 'member_area' );
+	}
+
+	/** I non soci possono chiedere l'iscrizione da un modulo? */
+	public static function course_guests_open( array $activity ): bool {
+		return self::course_open( $activity ) && Settings::guests_enabled();
+	}
+
+	/** Mese di partenza dell'iscrizione: sempre il mese corrente. */
+	private static function course_month(): string {
+		return substr( Db::today(), 0, 7 );
+	}
+
+	/** C'è già una richiesta in attesa di questa persona per questo corso? */
+	public static function course_pending_for( int $activity_id, int $person_id ): bool {
+		return (bool) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'event_requests' ) . " WHERE activity_id = %d AND session_id = 0 AND person_id = %d AND status = 'approval'", $activity_id, $person_id ) );
+	}
+
+	/** Un socio (o un suo ospite o minore) chiede l'iscrizione al corso: la segreteria le esamina nell'ordine di arrivo. @throws \InvalidArgumentException */
+	public static function course_member_request( int $activity_id, int $person_id ): void {
+		$a = Plugin::activities()->get( $activity_id );
+		$p = Plugin::people()->get( $person_id );
+		if ( ! $a || ! $p || ! self::course_open( $a ) ) {
+			throw new \InvalidArgumentException( 'Corso non disponibile.' );
+		}
+		if ( in_array( $activity_id, Plugin::activities()->active_activity_ids( $person_id ), true ) || self::course_pending_for( $activity_id, $person_id ) ) {
+			throw new \InvalidArgumentException( 'C\'è già un\'iscrizione o una richiesta per questo corso.' );
+		}
+		$now = Db::now();
+		self::db()->insert(
+			Db::t( 'event_requests' ),
+			array( 'activity_id' => $activity_id, 'session_id' => 0, 'person_id' => $person_id, 'seats' => 1, 'status' => 'approval', 'token_hash' => hash( 'sha256', wp_generate_password( 32, false, false ) ), 'created_at' => $now, 'updated_at' => $now )
+		);
+		Audit::log( 'event_request.course_member', 'activity', $activity_id, array( 'person_id' => $person_id ) );
+		Texts::mail( Applications::notify_email(), 'Richiesta di iscrizione da approvare: ' . $a['name'] . self::assoc_suffix(), "È arrivata la richiesta di iscrizione di un socio al corso «" . $a['name'] . "».\n\nEsaminala dalla scheda dell'attività: " . admin_url( 'admin.php?page=asem-activity&id=' . $activity_id ) );
+	}
+
+	/** Modulo del non socio per chiedere l'iscrizione a un corso (o l'esito, dopo l'invio). */
+	public static function course_form_html( array $activity ): string {
+		Assets::enqueue();
+		$post   = array();
+		$errors = array();
+		$sent   = false;
+		if ( 'POST' === ( isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : '' ) && isset( $_POST['asem_evreq_go'] ) && isset( $_POST['course'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification -- gettone firmato verificato in handle_submit (la pagina può essere in cache)
+			$post = Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification
+			if ( null === self::$handled ) {
+				self::$handled = self::handle_submit( $post, $activity, array(), true );
+			}
+			$errors = self::$handled['errors'];
+			$sent   = self::$handled['sent'];
+		}
+		if ( $sent ) {
+			return '<div class="asemf-notice asemf-ok" role="status">' . esc_html( self::MESSAGE ) . '</div>';
+		}
+		$html = '';
+		if ( $errors ) {
+			$html .= '<div class="asemf-notice asemf-err" role="alert"><ul style="margin:0;padding-left:1.2em">';
+			foreach ( $errors as $e ) {
+				$html .= '<li>' . esc_html( $e ) . '</li>';
+			}
+			$html .= '</ul></div>';
+		}
+		$fee  = Plugin::activities()->fee_for( $activity, MemberType::GUEST );
+		$form = '<form class="asemf-form" method="post" action="' . esc_url( Restrict::current_url() ) . '">'
+			. '<input type="hidden" name="asem_evreq_go" value="1"><input type="hidden" name="course" value="1"><input type="hidden" name="t" value="' . esc_attr( Application::make_token( time() ) ) . '">'
+			. '<div style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden" aria-hidden="true"><label>Non compilare questo campo <input type="text" name="website" value="" tabindex="-1" autocomplete="off"></label></div>'
+			. '<p class="asemf-small">I tuoi dati (chi chiede l\'iscrizione è una persona maggiorenne; per un minorenne scrivi alla segreteria):</p><div class="asemf-fields">'
+			. self::field( 'Nome', 'first_name', 'text', $post, 'given-name', true ) . self::field( 'Cognome', 'last_name', 'text', $post, 'family-name', true )
+			. self::field( 'Data di nascita', 'birth_date', 'date', $post, 'bday', true, ' max="' . esc_attr( gmdate( 'Y-m-d' ) ) . '"' ) . self::field( 'Luogo di nascita', 'birth_place', 'text', $post, 'off', false, ' maxlength="120"' )
+			. self::field( 'Codice fiscale', 'tax_code', 'text', $post, 'off', true, ' maxlength="16"' ) . self::field( 'Indirizzo di residenza', 'address', 'text', $post, 'street-address', false, ' maxlength="190"' )
+			. self::field( 'CAP', 'zip', 'text', $post, 'postal-code', false, ' maxlength="12"' ) . self::field( 'Comune', 'city', 'text', $post, 'address-level2', false, ' maxlength="100"' ) . self::field( 'Provincia', 'province', 'text', $post, 'address-level1', false, ' maxlength="5"' )
+			. self::field( 'Email', 'email', 'email', $post, 'email', true ) . self::field( 'Cellulare', 'phone', 'tel', $post, 'tel', true, ' inputmode="tel"' )
+			. '</div>';
+		$url   = (string) Settings::get( 'privacy_url' );
+		$form .= '<div class="asemf-rules-box">' . ( '' === $url ? '<div style="max-height:200px;overflow:auto;border:1px solid #c3c4c7;border-radius:8px;padding:10px 12px;margin:8px 0;background:#fff">' . PrivacyNotice::html() . '</div>' : '' )
+			. '<label class="asemf-check"><input type="checkbox" name="privacy_ok" value="1"' . checked( ! empty( $post['privacy_ok'] ), true, false ) . '> Ho letto ' . ( '' !== $url ? '<a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">l\'informativa sulla privacy</a>' : 'l\'informativa sulla privacy' ) . ' e acconsento al trattamento dei dati.</label></div>';
+		$form .= '<p class="asemf-small asemf-muted">' . ( $fee > 0 ? 'Contributo: ' . esc_html( Money::format( $fee ) ) . ' ' . ( '' === ActivityKind::fee_unit( ActivityKind::COURSE, (string) ( $activity['billing'] ?? 'monthly' ) ) ? 'al mese' : esc_html( ActivityKind::fee_unit( ActivityKind::COURSE, (string) ( $activity['billing'] ?? 'monthly' ) ) ) ) . '. Dopo l\'approvazione della segreteria ti scriviamo come pagare in anticipo con bonifico istantaneo; la ricevuta va inviata alla segreteria entro ' . (int) self::pay_hours() . ' ore, altrimenti l\'iscrizione viene annullata. ' : 'Contributo gratuito. ' )
+			. 'L\'iscrizione parte dal mese corrente ed è confermata dalla segreteria dopo la tua richiesta.</p>'
+			. '<button type="submit" class="asemf-btn wp-element-button">Invia la richiesta di iscrizione</button></form>';
+		return $html . '<section class="asemf-guest-request"><h3 class="asemf-event-h">Non sei socio?</h3><details class="asemf-guest-details"' . ( $errors || $post ? ' open' : '' ) . '><summary class="asemf-btn wp-element-button">Chiedi l\'iscrizione senza essere socio</summary><p class="asemf-small">Puoi chiedere di iscriverti al corso anche se non sei ancora socio: compila i dati qui sotto.</p>' . $form . '</details></section>';
+	}
+
+	/**
+	 * Controlla i dati e registra la richiesta di iscrizione di un non socio (in attesa della conferma dell'email).
+	 *
+	 * @return array{status:string,errors:string[]} status: invalid | ok (stessa risposta anche se non viene registrata)
+	 */
+	public static function course_create( array $in, array $activity ): array {
+		$ok  = array( 'status' => 'ok', 'errors' => array() );
+		$chk = ApplicationRules::check( array_merge( $in, array( 'type' => MemberType::ORDINARY ) ), Db::today(), false, array( MemberType::ORDINARY ) );
+		if ( $chk['minor'] ) {
+			return array( 'status' => 'invalid', 'errors' => array( 'Chi chiede l\'iscrizione deve essere maggiorenne: per un minorenne rivolgiti alla segreteria.' ) );
+		}
+		if ( $chk['errors'] ) {
+			return array( 'status' => 'invalid', 'errors' => array_values( array_unique( $chk['errors'] ) ) );
+		}
+		$p     = $chk['data'];
+		$email = $p['email'];
+		$ekey  = 'asem_evq_em_' . md5( $email );
+		if ( (int) get_transient( $ekey ) >= 3 ) {
+			return $ok; // un solo flusso di email per indirizzo
+		}
+		set_transient( $ekey, (int) get_transient( $ekey ) + 1, HOUR_IN_SECONDS );
+		$open = (int) self::db()->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'event_requests' ) . " WHERE status IN ('new','approval')" );
+		if ( $open >= Limits::get( 'applications_max' ) ) {
+			return $ok;
+		}
+		$token = wp_generate_password( 32, false, false );
+		$now   = Db::now();
+		$done  = self::db()->insert(
+			Db::t( 'event_requests' ),
+			array(
+				'activity_id' => (int) $activity['id'],
+				'session_id'  => 0,
+				'seats'       => 1,
+				'status'      => 'new',
+				'token_hash'  => hash( 'sha256', $token ),
+				'email'       => $email,
+				'data'        => wp_json_encode( array( 'people' => array( $p ), 'image_ok' => ! empty( $in['image_ok'] ) ) ),
+				'created_at'  => $now,
+				'updated_at'  => $now,
+			)
+		);
+		if ( ! $done ) {
+			return $ok;
+		}
+		$id = (int) self::db()->insert_id;
+		Texts::mail(
+			$email,
+			'Conferma la tua richiesta: ' . $activity['name'] . self::assoc_suffix(),
+			'Ciao ' . $p['first_name'] . ",\n\nhai chiesto di iscriverti al corso «" . $activity['name'] . "».\n\n"
+			. 'Per confermare che l\'indirizzo è tuo apri questo collegamento entro ' . self::CONFIRM_H . " ore:\n" . self::confirm_url( $id, $token ) . "\n\n"
+			. 'Se non sei stato tu, ignora questo messaggio: la richiesta non avrà seguito.'
+		);
+		Audit::log( 'event_request.course_received', 'activity', (int) $activity['id'] ); // niente dati personali nel registro
+		return $ok;
+	}
+
+	/**
+	 * Iscrive al corso chi ha chiesto (richiesta approvata dalla segreteria), dal mese corrente.
+	 * Il socio segue le regole del corso; il non socio è registrato come ospite e paga in anticipo con bonifico entro il termine.
+	 *
+	 * @return array{ok:bool,message:string}
+	 */
+	private static function enroll_request( array $row ): array {
+		$svc   = Plugin::activities();
+		$a     = $svc->get( (int) $row['activity_id'] );
+		$month = self::course_month();
+		if ( ! $a || ActivityKind::COURSE !== $a['kind'] ) {
+			return self::fail( $row, 'rejected', 'Il corso richiesto non è più disponibile. Scusaci: controlla i corsi sul sito o scrivi alla segreteria.' );
+		}
+		if ( ! empty( $row['person_id'] ) ) { // socio: contributo secondo le regole del corso
+			try {
+				$svc->enroll( (int) $a['id'], (int) $row['person_id'], $month );
+			} catch ( \InvalidArgumentException $e ) {
+				return array( 'ok' => false, 'message' => 'Non è stato possibile iscrivere: ' . $e->getMessage() ); // la richiesta resta in attesa
+			}
+			self::set( (int) $row['id'], array( 'status' => 'booked', 'data' => null ) );
+			$to = self::recipient( $row );
+			if ( '' !== $to ) {
+				Texts::mail( $to, 'Iscrizione accolta: ' . $a['name'] . self::assoc_suffix(), 'La tua richiesta di iscrizione al corso «' . $a['name'] . '» è stata accolta: sei iscritto dal mese corrente. Trovi il corso nella tua area.' );
+			}
+			return array( 'ok' => true, 'message' => 'Richiesta accolta: il socio è iscritto al corso.' );
+		}
+		$data = json_decode( (string) $row['data'], true );
+		$p    = is_array( $data ) && ! empty( $data['people'][0] ) ? $data['people'][0] : array();
+		if ( ! $p ) {
+			return self::fail( $row, 'rejected', 'La richiesta non è completa. Scusaci: invia di nuovo la richiesta dalla pagina del corso.' );
+		}
+		$found = self::db()->get_row( self::db()->prepare( 'SELECT * FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND tax_code = %s LIMIT 1', $p['tax_code'] ), ARRAY_A );
+		if ( $found && MemberType::GUEST !== $found['type'] ) {
+			return self::fail( $row, 'rejected', "Risulti già socio: i soci chiedono l'iscrizione al corso dal proprio accesso al sito (area soci). Per qualsiasi dubbio scrivi alla segreteria." );
+		}
+		try {
+			$pid = $found ? (int) $found['id'] : self::new_guest( $p, ! empty( $data['image_ok'] ), (string) $row['email'] );
+			$svc->enroll( (int) $a['id'], $pid, $month );
+		} catch ( \InvalidArgumentException $e ) {
+			return self::fail( $row, 'expired', 'Non è stato possibile completare l\'iscrizione (' . $e->getMessage() . '). Scusaci: scrivi alla segreteria.' );
+		}
+		$fee      = $svc->fee_for( $a, MemberType::GUEST );
+		$deadline = $fee > 0 ? wp_date( 'Y-m-d H:i:s', time() + self::pay_hours() * HOUR_IN_SECONDS ) : null;
+		self::set( (int) $row['id'], array( 'status' => 'booked', 'deadline' => $deadline, 'data' => wp_json_encode( array( 'enrollments' => array( array( 'person_id' => $pid, 'activity_id' => (int) $a['id'], 'month' => $month ) ) ) ) ) );
+		Audit::log( 'event_request.enrolled', 'activity', (int) $a['id'], array( 'person_id' => $pid ) );
+		$text = 'Ciao ' . $p['first_name'] . ",\n\nla tua richiesta di iscrizione al corso «" . $a['name'] . "» è stata accolta: sei iscritto dal mese corrente.\n\n";
+		if ( $fee > 0 ) {
+			$text .= 'Per confermare l\'iscrizione paga ' . Money::format( $fee ) . ' con bonifico istantaneo entro ' . self::pay_hours() . ' ore e invia la ricevuta alla segreteria (' . Applications::notify_email() . "), indicando il nome del corso e il tuo cognome. Se la ricevuta non arriva entro il termine l'iscrizione viene annullata.\n\n"
+				. ( Bank::enabled() ? Bank::text_block() . "\n\n" : '' );
+		}
+		$text .= 'Per ritirarti o per qualsiasi dubbio scrivi alla segreteria.';
+		Texts::mail( $row['email'], 'Iscrizione: ' . $a['name'] . self::assoc_suffix(), $text );
+		return array( 'ok' => true, 'message' => $fee > 0 ? 'Iscrizione registrata. Ti abbiamo scritto come pagare con bonifico istantaneo: la ricevuta va alla segreteria entro ' . self::pay_hours() . ' ore, altrimenti viene annullata.' : 'Iscrizione registrata: ti abbiamo scritto un\'email di riepilogo.' );
+	}
+
 	// ---------- Segreteria ----------
 
 	/** Richieste in attesa di approvazione di un'attività. @return array[] */
@@ -587,6 +799,10 @@ final class EventRequests {
 		$svc = Plugin::activities();
 		foreach ( $db->get_results( $db->prepare( "SELECT * FROM $t WHERE status = 'booked' AND deadline IS NOT NULL AND deadline <= %s", Db::now() ), ARRAY_A ) ?: array() as $r ) {
 			$d    = json_decode( (string) $r['data'], true );
+			if ( is_array( $d ) && ! empty( $d['enrollments'] ) ) { // iscrizione a un corso: se il contributo non è arrivato entro il termine l'iscrizione si annulla
+				self::release_enrollments( $r, $d['enrollments'] );
+				continue;
+			}
 			$list = is_array( $d ) && ! empty( $d['bookings'] ) ? $d['bookings'] : array();
 			$paid = false;
 			foreach ( $list as $b ) {
@@ -613,15 +829,46 @@ final class EventRequests {
 		$db->query( $db->prepare( "DELETE FROM $t WHERE updated_at < %s", wp_date( 'Y-m-d H:i:s', time() - self::KEEP_DAYS * DAY_IN_SECONDS ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- tabella interna, valori preparati
 	}
 
+	/** Termine di pagamento scaduto per una richiesta di iscrizione a un corso: pagato resta, altrimenti l'iscrizione è annullata. */
+	private static function release_enrollments( array $r, array $list ): void {
+		$svc  = Plugin::activities();
+		$db   = self::db();
+		$gone = 0;
+		foreach ( $list as $e ) {
+			$aid   = (int) $e['activity_id'];
+			$pid   = (int) $e['person_id'];
+			$month = (string) $e['month'];
+			$first = $svc->first_unpaid_month( $aid, $pid );
+			if ( null === $first || $first > $month ) {
+				continue; // il mese di partenza è pagato: l'iscrizione resta
+			}
+			$db->delete( Db::t( 'enrollments' ), array( 'activity_id' => $aid, 'person_id' => $pid ) );
+			Audit::log( 'activity.unenrolled', 'activity', $aid, array( 'person_id' => $pid, 'reason' => 'payment_deadline' ) );
+			++$gone;
+		}
+		if ( 0 === $gone ) {
+			self::set( (int) $r['id'], array( 'deadline' => null ) );
+			return;
+		}
+		self::set( (int) $r['id'], array( 'status' => 'expired', 'deadline' => null ) );
+		$a = $svc->get( (int) $r['activity_id'] );
+		if ( is_email( (string) $r['email'] ) ) {
+			Texts::mail( $r['email'], 'Iscrizione annullata' . ( $a ? ': ' . $a['name'] : '' ) . self::assoc_suffix(), "Il pagamento non è arrivato entro il termine, quindi l'iscrizione al corso è stata annullata.\n\nSe vuoi ancora iscriverti, chiedilo di nuovo dalla pagina del corso oppure scrivi alla segreteria." );
+		}
+	}
+
 	/** Riquadro per la scheda dell'attività: richieste da approvare. Già escapato; vuoto se non ce ne sono. */
 	public static function admin_box( int $activity_id, string $back ): string {
 		$rows = self::awaiting( $activity_id );
 		if ( ! $rows ) {
 			return '';
 		}
-		$h = '<div class="asem-card"><h2>Richieste di partecipazione</h2><p class="description">Persone che hanno chiesto un posto dalla pagina pubblica e confermato l\'email. Approvando si registrano come ospiti e si prenotano.</p><ul>';
+		$act    = Plugin::activities()->get( $activity_id );
+		$course = $act && ActivityKind::COURSE === $act['kind'];
+		$h      = '<div class="asem-card"><h2>' . ( $course ? 'Richieste di iscrizione' : 'Richieste di partecipazione' ) . '</h2><p class="description">'
+			. ( $course ? 'Persone che hanno chiesto l\'iscrizione al corso (i non soci dopo aver confermato l\'email). Approvando si iscrivono dal mese corrente; chi non è socio è registrato come ospite e deve pagare in anticipo con bonifico entro il termine.' : 'Persone che hanno chiesto un posto dalla pagina pubblica e confermato l\'email. Approvando si registrano come ospiti e si prenotano.' ) . '</p><ul>';
 		foreach ( $rows as $r ) {
-			$h .= '<li><strong>' . esc_html( implode( ', ', $r['names'] ) ) . '</strong> <span class="description">(' . (int) $r['seats'] . ' posti, ' . esc_html( mysql2date( 'd/m H:i', $r['created_at'] ) ) . ')</span> '
+			$h .= '<li><strong>' . esc_html( implode( ', ', $r['names'] ) ) . '</strong> <span class="description">(' . ( $course ? '' : (int) $r['seats'] . ' posti, ' ) . esc_html( mysql2date( 'd/m H:i', $r['created_at'] ) ) . ')</span> '
 				. self::admin_form( 'asem_event_request_approve', (int) $r['id'], $back, 'Approva' ) . ' ' . self::admin_form( 'asem_event_request_reject', (int) $r['id'], $back, 'Rifiuta' ) . '</li>';
 		}
 		return $h . '</ul></div>';
