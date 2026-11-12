@@ -131,9 +131,11 @@ final class EventRequests {
 			. self::field( 'CAP', 'zip', 'text', $post, 'postal-code', false, ' maxlength="12"' ) . self::field( 'Comune', 'city', 'text', $post, 'address-level2', false, ' maxlength="100"' ) . self::field( 'Provincia', 'province', 'text', $post, 'address-level1', false, ' maxlength="5"' )
 			. self::field( 'Email', 'email', 'email', $post, 'email', true ) . self::field( 'Cellulare', 'phone', 'tel', $post, 'tel', true, ' inputmode="tel"' )
 			. '</div>';
-		if ( $cap > 1 ) {
-			$form .= '<p class="asemf-small">Vuoi prenotare anche per altre persone (fino a ' . (int) ( $cap - 1 ) . ')? Scrivi i loro dati: per ognuna serve un posto. Se sono minorenni, ci pensi tu come genitore o tutore.</p>';
-			for ( $i = 1; $i < $cap; $i++ ) {
+		$ui = min( $cap, 6 ); // nel modulo al massimo 5 accompagnatori: oltre si passa dalla segreteria
+		if ( $ui > 1 ) {
+			$form .= '<details class="asemf-more"><summary>Prenoti anche per altre persone?</summary>';
+			$form .= '<p class="asemf-small">Scrivi (fino a ' . (int) ( $ui - 1 ) . ' persone) i loro dati: per ognuna serve un posto. Se sono minorenni, ci pensi tu come genitore o tutore.</p>';
+			for ( $i = 1; $i < $ui; $i++ ) {
 				$c      = isset( $post['c'][ $i ] ) && is_array( $post['c'][ $i ] ) ? $post['c'][ $i ] : array();
 				$form  .= '<details' . ( ! empty( $c['first_name'] ) ? ' open' : '' ) . '><summary>Accompagnatore ' . (int) $i . '</summary><div class="asemf-fields">';
 				foreach ( array( 'first_name' => array( 'Nome', 'text' ), 'last_name' => array( 'Cognome', 'text' ), 'birth_date' => array( 'Data di nascita', 'date' ), 'tax_code' => array( 'Codice fiscale', 'text' ) ) as $k => $def ) {
@@ -141,7 +143,7 @@ final class EventRequests {
 				}
 				$form .= '</div></details>';
 			}
-			$form .= '<label class="asemf-check"><input type="checkbox" name="guardian_ok" value="1"' . checked( ! empty( $post['guardian_ok'] ), true, false ) . '> Se tra le persone indicate ci sono minorenni, dichiaro di essere genitore o tutore e di rispondere di loro.</label>';
+			$form .= '<label class="asemf-check"><input type="checkbox" name="guardian_ok" value="1"' . checked( ! empty( $post['guardian_ok'] ), true, false ) . '> Se tra le persone indicate ci sono minorenni, dichiaro di essere genitore o tutore e di rispondere di loro.</label>'; $form .= '</details>';
 		}
 		$url   = (string) Settings::get( 'privacy_url' );
 		$form .= '<div class="asemf-rules-box">' . ( '' === $url ? '<div style="max-height:200px;overflow:auto;border:1px solid #c3c4c7;border-radius:8px;padding:10px 12px;margin:8px 0;background:#fff">' . PrivacyNotice::html() . '</div>' : '' )
@@ -149,7 +151,7 @@ final class EventRequests {
 		$form .= '<p class="asemf-small asemf-muted">' . ( $fee > 0 ? 'Contributo: ' . esc_html( Money::format( $fee ) ) . ' a persona, da pagare in anticipo con bonifico istantaneo (te lo spieghiamo nell\'email) e da inviare in ricevuta alla segreteria entro ' . (int) self::pay_hours() . ' ore dalla conferma; altrimenti il posto viene cancellato. ' : 'Partecipazione gratuita. ' )
 			. ( $opt['approval'] ? 'La partecipazione è confermata dalla segreteria dopo la tua richiesta.' : 'La prenotazione è automatica dopo la conferma dell\'email.' ) . ' Per disdire scrivi alla segreteria.</p>'
 			. '<button type="submit" class="asemf-btn wp-element-button">' . ( $opt['approval'] ? 'Invia la richiesta di partecipazione' : 'Prenota' ) . '</button></form>';
-		return $html . '<section class="asemf-guest-request"><h3 class="asemf-event-h">Non sei socio?</h3><p class="asemf-small">Puoi partecipare anche senza iscriverti: compila i dati qui sotto.</p>' . $form . '</section>';
+		return $html . '<section class="asemf-guest-request"><h3 class="asemf-event-h">Non sei socio?</h3><details class="asemf-guest-details"' . ( $errors || $post ? ' open' : '' ) . '><summary class="asemf-btn wp-element-button">Prenota senza iscriverti</summary><p class="asemf-small">Puoi partecipare anche senza essere socio: compila i dati qui sotto.</p>' . $form . '</details></section>';
 	}
 
 	// ---------- Invio ----------

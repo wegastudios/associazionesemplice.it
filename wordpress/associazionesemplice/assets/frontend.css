@@ -362,3 +362,13 @@
 
 /* Evento annullato */
 .asemf-notice-cancelled { margin: 1.25rem 0; padding: .9rem 1.1rem; border-radius: 12px; background: #fdecea; color: #b42318; }
+
+.asemf-grid .asemf-card-poster { display: block; margin-bottom: .6rem; }
+.asemf-back { margin: 0 0 .8rem; }
+.asemf-venue { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin: 1.2rem 0; padding: 1rem; border: 1px solid #dfe3ee; border-radius: 12px; }
+.asemf-prevnext { display: flex; justify-content: space-between; gap: 1rem; margin: 1.5rem 0 0; padding-top: 1rem; border-top: 1px solid #dfe3ee; }
+.asemf-prevnext span:last-child { text-align: right; }
+.asemf-guest-details > summary { list-style: none; cursor: pointer; display: inline-block; margin-bottom: .8rem; }
+.asemf-guest-details > summary::-webkit-details-marker { display: none; }
+.asemf-more { margin: .8rem 0; }
+.asemf-more > summary { cursor: pointer; font-weight: 600; }

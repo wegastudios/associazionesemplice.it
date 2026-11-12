@@ -106,6 +106,15 @@ final class Views {
 
 	// ---------- Accesso ----------
 
+	/** Dove mandare un socio che deve accedere e poi tornare qui: la pagina di accesso dei soci (se hanno l'accesso proprio) o quella di WordPress. */
+	public static function member_login_url(): string {
+		$back = Restrict::current_url();
+		if ( \AssociazioneSemplice\MemberSession::enabled() && ! \AssociazioneSemplice\MemberSession::wp_users_wanted() ) {
+			return add_query_arg( '_back', rawurlencode( $back ), MemberLoginPage::url() );
+		}
+		return wp_login_url( $back );
+	}
+
 	public static function login_prompt(): string {
 		Assets::enqueue();
 		if ( \AssociazioneSemplice\MemberSession::enabled() && ! \AssociazioneSemplice\MemberSession::wp_users_wanted() ) { // i soci non sono utenti WordPress: email e password propri
@@ -1337,7 +1346,9 @@ final class Views {
 			. ( $s['location'] ? '<div class="asemf-small">' . esc_html( $s['location'] ) . '</div>' : '' )
 			. ( null !== $cap ? '<div class="asemf-small">' . ( $full ? 'Posti esauriti · lista d’attesa' : max( 0, $cap - $booked ) . ' posti liberi' ) . '</div>' : '' ) . '</div><div class="asemf-actions">';
 		if ( ! $ctx['logged'] ) {
-			$html .= '<a class="asemf-btn wp-element-button" href="' . esc_url( wp_login_url( Restrict::current_url() ) ) . '">Accedi per prenotarti</a>';
+			if ( empty( $ctx['hide_login'] ) ) { // negli elenchi non c'è: la prenotazione si fa dalla pagina dell'evento
+				$html .= '<a class="asemf-btn asemf-btn-ghost wp-element-button" href="' . esc_url( self::member_login_url() ) . '">Sei socio? Accedi per prenotarti</a>';
+			}
 		} elseif ( ! empty( $ctx['can_book'] ) ) {
 			$free = array();
 			foreach ( $ctx['people'] as $person ) {
@@ -1454,11 +1465,15 @@ final class Views {
 			return self::wrap( '<p class="asemf-muted">Nessuna attività da mostrare.</p>' );
 		}
 		$ctx  = self::booking_context();
+		$ctx['hide_login'] = true;
 		$mine = ! empty( $ctx['actor'] ) ? $svc->person_activity_ids( (int) $ctx['actor']['id'] ) : array();
 		$html = '<div class="asemf-grid">';
 		foreach ( $list as $a ) {
-			$html .= '<article class="asemf-card"><span class="asemf-badge">' . esc_html( ActivityKind::short_label( $a['kind'] ) ) . '</span>'
-				. '<h3>' . esc_html( $a['name'] ) . '</h3><p class="asemf-small asemf-muted">' . esc_html( self::fee_text( $a ) )
+			$page   = \AssociazioneSemplice\PublicEvents::page_url( (int) $a['id'] ); // la pagina pubblica dell'attività, se c'è: locandina, descrizione, altre date
+			$poster = '' !== $page ? \AssociazioneSemplice\PublicEvents::poster( (int) $a['id'] ) : '';
+			$html  .= '<article class="asemf-card">' . ( '' !== $poster ? '<a href="' . esc_url( $page ) . '" class="asemf-card-poster" tabindex="-1" aria-hidden="true">' . $poster . '</a>' : '' )
+				. '<span class="asemf-badge">' . esc_html( ActivityKind::short_label( $a['kind'] ) ) . '</span>'
+				. '<h3>' . ( '' !== $page ? '<a href="' . esc_url( $page ) . '">' . esc_html( $a['name'] ) . '</a>' : esc_html( $a['name'] ) ) . '</h3><p class="asemf-small asemf-muted">' . esc_html( self::fee_text( $a ) )
 				. ( ! empty( $a['instructor_name'] ) ? '<br>Con ' . esc_html( $a['instructor_name'] ) : '' ) . '</p>';
 			if ( ! empty( $a['notes'] ) ) {
 				$html .= '<p>' . esc_html( $a['notes'] ) . '</p>';
@@ -1483,6 +1498,9 @@ final class Views {
 				}
 			} elseif ( in_array( (int) $a['id'], $mine, true ) ) {
 				$html .= '<p><span class="asemf-badge asemf-badge-ok">✓ Sei iscritto</span></p>';
+			}
+			if ( '' !== $page ) {
+				$html .= '<p><a class="asemf-btn asemf-btn-ghost wp-element-button" href="' . esc_url( $page ) . '">Dettagli' . ( \AssociazioneSemplice\EventRequests::available( $a ) ? ' e prenotazione' : '' ) . '</a></p>';
 			}
 			$html .= '</article>';
 		}
@@ -1516,6 +1534,7 @@ final class Views {
 			return self::wrap( '<p class="asemf-muted">Nessun evento in programma.</p>' );
 		}
 		$ctx   = self::booking_context();
+		$ctx['hide_login'] = true;
 		$book  = ! isset( $atts['prenotazione'] ) || 'no' !== strtolower( (string) $atts['prenotazione'] );
 		$html  = '<ul class="asemf-list asemf-upcoming">';
 		foreach ( $rows as $s ) {
