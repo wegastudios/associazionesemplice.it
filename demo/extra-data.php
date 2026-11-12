@@ -511,3 +511,76 @@ extra_step( 'testi a piacere della pagina eventi', function () {
 	}
 	wp_update_post( array( 'ID' => $page->ID, 'post_title' => 'I nostri prossimi eventi', 'post_content' => '[associazionesemplice_eventi vuoto="Presto nuovi appuntamenti: torna a trovarci."]' ) );
 } );
+
+// Il corso di fotografia ha una pagina scritta per un corso (non il modello degli eventi): per chi è, cosa si impara, quando, cosa portare.
+extra_step( 'testo del corso di fotografia', function () {
+	if ( ! class_exists( '\AssociazioneSemplice\PublicEvents' ) ) {
+		return;
+	}
+	$aid = (int) \AssociazioneSemplice\Db::db()->get_var( 'SELECT id FROM ' . \AssociazioneSemplice\Db::t( 'activities' ) . " WHERE name = 'Corso di fotografia' AND kind = 'course' ORDER BY id LIMIT 1" );
+	$pid = $aid ? \AssociazioneSemplice\PublicEvents::ensure( $aid ) : 0;
+	if ( ! $pid ) {
+		return;
+	}
+	$h  = '<p>' . esc_html( 'Un corso per imparare a fotografare con qualsiasi macchina, anche il telefono: composizione, luce, ritratto e un po\' di fotoritocco. Si fa una lezione a settimana, il martedì sera; le uscite fotografiche si concordano insieme.' ) . '</p>';
+	$h .= '<h2>Per chi è</h2><p>' . esc_html( 'Per chi parte da zero e per chi vuole mettere ordine in quello che sa già. Non serve un\'attrezzatura particolare ed è per le persone maggiorenni.' ) . '</p>';
+	$h .= '<h2>Cosa si impara</h2><ul>';
+	foreach ( array( 'Come funziona la luce e come usarla', 'Composizione: inquadrare, tagliare, scegliere il momento', 'Ritratto e fotografia di strada', 'Le basi del fotoritocco e come organizzare le proprie foto' ) as $row ) {
+		$h .= '<li>' . esc_html( $row ) . '</li>';
+	}
+	$h .= '</ul><h2>Quando e dove</h2><p>' . esc_html( 'Una lezione a settimana, il martedì dalle 18:30 alle 20:00, nella sede dell\'associazione. Il corso prosegue per tutto l\'anno sociale e ci si può iscrivere in qualsiasi mese.' ) . '</p>';
+	$h .= '<h2>Cosa portare</h2><p>' . esc_html( 'La tua macchina fotografica oppure il telefono, e se vuoi un quaderno per gli appunti. Il resto lo mettiamo noi.' ) . '</p>';
+	$h .= '<h2>Contributo</h2><p>' . esc_html( 'Il contributo è mensile (lo trovi nei dati qui sopra): chi si iscrive a metà anno paga dal mese in cui parte.' ) . '</p>';
+	wp_update_post( array( 'ID' => $pid, 'post_content' => $h ) );
+} );
+
+// Richieste di iscrizione al corso in attesa, per vedere la scheda «Richieste di iscrizione» della segreteria (nessuna email parte: la demo non ne invia).
+extra_step( 'richieste di iscrizione al corso', function () {
+	if ( ! class_exists( '\AssociazioneSemplice\EventRequests' ) ) {
+		return;
+	}
+	$db  = \AssociazioneSemplice\Db::db();
+	$t   = \AssociazioneSemplice\Db::t( 'event_requests' );
+	$aid = (int) $db->get_var( 'SELECT id FROM ' . \AssociazioneSemplice\Db::t( 'activities' ) . " WHERE name = 'Corso di fotografia' AND kind = 'course' ORDER BY id LIMIT 1" );
+	if ( ! $aid ) {
+		return;
+	}
+	$mute = function () {
+		return true;
+	};
+	add_filter( 'pre_wp_mail', $mute ); // gli avvisi alla segreteria non devono partire
+	// Un socio chiede l'iscrizione (il primo socio ordinario non iscritto), se non c'è già una richiesta di un socio.
+	if ( ! (int) $db->get_var( $db->prepare( "SELECT COUNT(*) FROM $t WHERE activity_id = %d AND session_id = 0 AND person_id > 0", $aid ) ) ) {
+		foreach ( Plugin::people()->search() as $p ) {
+			if ( 'ordinary' !== $p['type'] || in_array( $aid, Plugin::activities()->active_activity_ids( (int) $p['id'] ), true ) ) {
+				continue;
+			}
+			try {
+				\AssociazioneSemplice\EventRequests::course_member_request( $aid, (int) $p['id'] );
+				break;
+			} catch ( \InvalidArgumentException $e ) {
+				continue;
+			}
+		}
+	}
+	// Una persona non ancora socia ha chiesto l'iscrizione e ha già confermato l'email: attende l'esame della segreteria.
+	$email = 'chiara.prova@demo.invalid';
+	if ( ! (int) $db->get_var( $db->prepare( "SELECT COUNT(*) FROM $t WHERE activity_id = %d AND session_id = 0 AND email = %s", $aid, $email ) ) ) {
+		$now = \AssociazioneSemplice\Db::now();
+		$db->insert(
+			$t,
+			array(
+				'activity_id' => $aid,
+				'session_id'  => 0,
+				'seats'       => 1,
+				'status'      => 'approval',
+				'token_hash'  => hash( 'sha256', wp_generate_password( 32, false, false ) ),
+				'email'       => $email,
+				'data'        => wp_json_encode( array( 'people' => array( array( 'first_name' => 'Chiara', 'last_name' => 'Esempio', 'tax_code' => 'DEMOCH85D52H501X', 'birth_date' => '1985-04-12', 'birth_place' => 'Roma', 'address' => 'Via degli Esempi 1', 'zip' => '00100', 'city' => 'Roma', 'province' => 'RM', 'email' => $email ) ), 'image_ok' => false ) ),
+				'created_at'  => $now,
+				'updated_at'  => $now,
+			)
+		);
+	}
+	remove_filter( 'pre_wp_mail', $mute );
+} );
