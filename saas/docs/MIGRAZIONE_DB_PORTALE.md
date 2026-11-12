@@ -14,7 +14,7 @@ di Wega: il portale non le emette. Documento di riferimento: `LOGIN_UNICO_E_DATA
 | `staff`, `plugin_staff` | 0 | vecchi accessi: si scartano |
 | `subscriptions` | 3 (licenza cifrata, dominio, scadenza) | `portal.subscriptions` |
 | `orders` | 0 | `portal.orders` (vuota, scrivibile subito) |
-| `saas_orgs`, `saas_outbox` | 0 | `portal.orgs` (l'outbox in coda resta locale) |
+| `saas_orgs`, `saas_outbox` | 0 | `portal.orgs`, `portal.outbox` |
 | `releases` (20) + file `data/releases/` | 20 | `portal.releases`; i file restano su disco, percorso nella riga |
 | `downloads` | 9 | `portal.downloads` |
 | `plugin_catalog_revs`, `plugin_catalog_draft` | 0 | già gestiti dal catalogo del SaaS (rev 2): non si importano |
@@ -31,7 +31,7 @@ di Wega: il portale non le emette. Documento di riferimento: `LOGIN_UNICO_E_DATA
    server, con impronta verificata.
 2. **Schema** (migrazioni centrali) e **comando di import** `saas:portal:import-db`, ripetibile (upsert per id) e con
    conteggi e somme a fine corsa, come l'import clienti.
-3. **Connessione diretta**: il portale (stesso server, PostgreSQL su 127.0.0.1, `pdo_pgsql` attivo) usa un ruolo ristretto `portal_app` con diritti solo sullo schema `portal`. Niente API per query. Dati effimeri (`seen_jti`, limiti, cache, token di accesso, sessioni, outbox in coda) restano locali. Il cambio nello strato Db del portale lo fa la sessione Portale: vendita e area clienti.
+3. **Connessione diretta**: il portale (stesso server, PostgreSQL su 127.0.0.1, `pdo_pgsql` attivo) usa un ruolo ristretto `portal_app` con diritti solo sullo schema `portal`. Niente API per query. Dati effimeri (`seen_jti`, limiti, cache, token di accesso, sessioni) restano locali. Il cambio nello strato Db del portale lo fa la sessione Portale: vendita e area clienti.
 4. **Parallelo**: il portale scrive in entrambi per un periodo; confronto automatico dei conteggi.
 5. **Prova con una licenza vera** dai plugin installati (attivazione, controllo, aggiornamento, scarico), identica a prima.
 6. **Spegnimento** del vecchio file e dei vecchi accessi **solo dopo la prova e avvisando la titolare**. L'accesso
@@ -41,3 +41,12 @@ di Wega: il portale non le emette. Documento di riferimento: `LOGIN_UNICO_E_DATA
 
 Indirizzi e percorsi pubblici (`/api/license/*`, `/api/plugin/*`, `/.well-known/jwks.json`), chiavi e firme del portale,
 proxy verso Wega, pagamenti (webhook Stripe/PayPal agli stessi indirizzi).
+
+## 4. Convenzioni dello schema `portal` (per il portale)
+
+- Lo schema è il file `app/Modules/Portale/Database/Migrations/Central/2026_12_09_000100_create_portal_schema.php` (il DDL per la CI del portale).
+- Id come `text` (quelli esadecimali del portale), date come `timestamptz`; il ruolo `portal_app` ha fuso orario UTC, quindi il portale
+  legge e scrive stringhe UTC `Y-m-d H:i:s` come oggi. JSON (`quote`, `body`, `val`) come `text`, come oggi.
+- `events` ha chiave `(provider, event_id)`: l'idempotenza dei webhook è `INSERT … ON CONFLICT DO NOTHING`.
+- Credenziali del ruolo: file `~/portale/data/pg.php` (permessi 600), fuori dal repository; i valori non passano mai dalla chat.
+- Cutover dietro interruttore nel portale (sqlite → doppia scrittura con confronto → solo Postgres), a «pronto» detto da qui.
