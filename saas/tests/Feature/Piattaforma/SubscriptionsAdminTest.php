@@ -17,7 +17,6 @@ beforeEach(function (): void {
 /** @param  array<string, mixed>  $subscription */
 function subscribe(Tests\TestCase $test, string $name, string $ref, string $status, array $subscription, ?int $members = 120): void
 {
-    $org = $test->createOrg($name);
     DB::table('core.orgs')->where('id', $org->id)->update(['portal_ref' => $ref]);
     DB::table('core.org_entitlements')->insert([
         'org_id' => $org->id,
@@ -30,8 +29,8 @@ function subscribe(Tests\TestCase $test, string $name, string $ref, string $stat
 }
 
 it('elenca gli abbonamenti con piano, stato, pacchetti e promozione', function (): void {
-    subscribe($this, 'Polisportiva Alfa', 'sub_alfa', 'active', ['plan' => 'gestionale', 'plan_version' => 1, 'addons' => [['code' => 'site', 'qty' => 1], ['code' => 'operators_extra', 'qty' => 2]], 'promo' => 'AUTUNNO26', 'price_cents' => 2150]);
-    subscribe($this, 'Circolo Beta', 'sub_beta', 'trial', ['plan' => 'gestionale', 'plan_version' => 1, 'addons' => [], 'promo' => null, 'price_cents' => null]);
+    subscribe($this->createOrg('Polisportiva Alfa'), 'sub_alfa', 'active', ['plan' => 'gestionale', 'plan_version' => 1, 'addons' => [['code' => 'site', 'qty' => 1], ['code' => 'operators_extra', 'qty' => 2]], 'promo' => 'AUTUNNO26', 'price_cents' => 2150]);
+    subscribe($this->createOrg('Circolo Beta'), 'sub_beta', 'trial', ['plan' => 'gestionale', 'plan_version' => 1, 'addons' => [], 'promo' => null, 'price_cents' => null]);
 
     $this->get('/saas/admin/abbonamenti')->assertOk()
         ->assertSee('Polisportiva Alfa')->assertSee('sub_alfa')->assertSee('gestionale')->assertSee('v1')
@@ -40,8 +39,8 @@ it('elenca gli abbonamenti con piano, stato, pacchetti e promozione', function (
 });
 
 it('filtra per stato, per piano e per testo', function (): void {
-    subscribe($this, 'Polisportiva Alfa', 'sub_alfa', 'active', ['plan' => 'gestionale', 'plan_version' => 1, 'addons' => []]);
-    subscribe($this, 'Circolo Beta', 'sub_beta', 'suspended', ['plan' => 'altro', 'plan_version' => 1, 'addons' => []]);
+    subscribe($this->createOrg('Polisportiva Alfa'), 'sub_alfa', 'active', ['plan' => 'gestionale', 'plan_version' => 1, 'addons' => []]);
+    subscribe($this->createOrg('Circolo Beta'), 'sub_beta', 'suspended', ['plan' => 'altro', 'plan_version' => 1, 'addons' => []]);
 
     $this->get('/saas/admin/abbonamenti?stato=suspended')->assertOk()->assertSee('Circolo Beta')->assertDontSee('Polisportiva Alfa');
     $this->get('/saas/admin/abbonamenti?piano=gestionale')->assertOk()->assertSee('Polisportiva Alfa')->assertDontSee('Circolo Beta');
