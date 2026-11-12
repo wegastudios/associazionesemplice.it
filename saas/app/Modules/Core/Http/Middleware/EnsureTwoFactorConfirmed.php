@@ -29,6 +29,11 @@ final class EnsureTwoFactorConfirmed
             return $next($request);
         }
 
+        // Entrato dal login unico con il secondo livello già verificato (passo 6).
+        if ($user instanceof User && $request->session()->get('operator.sso_mfa') === true) {
+            return $next($request);
+        }
+
         if ($request->expectsJson()) {
             abort(403, 'Attiva la verifica in due passaggi.');
         }

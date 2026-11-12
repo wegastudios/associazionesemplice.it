@@ -46,9 +46,16 @@ final class AuthServiceProvider extends ServiceProvider
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);
 
-        Fortify::loginView(static fn () => Inertia::render('Auth/Login', [
-            'status' => session('status'),
-        ]));
+        // Con l'accesso unico degli operatori (passo 6) l'accesso è /accedi del portale, non questa pagina.
+        Fortify::loginView(static function () {
+            if (config('saas.unified_login.operators') === true) {
+                $public = config('saas.public_url');
+
+                return redirect()->away(rtrim(is_string($public) && $public !== '' ? $public : 'https://associazionesemplice.it', '/').'/accedi');
+            }
+
+            return Inertia::render('Auth/Login', ['status' => session('status')]);
+        });
         Fortify::twoFactorChallengeView(static fn () => Inertia::render('Auth/TwoFactorChallenge'));
         Fortify::requestPasswordResetLinkView(static fn () => Inertia::render('Auth/ForgotPassword', [
             'status' => session('status'),
