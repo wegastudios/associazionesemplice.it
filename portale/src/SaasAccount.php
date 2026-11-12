@@ -38,6 +38,11 @@ final class SaasAccount {
 		return true === Config::get( 'saas_v2.enabled', false ) && SaasClient::enabled();
 	}
 
+	/** Dominio personalizzato offerto ai clienti: spento (`saas_v2.domain`) finché non è deciso come si emettono i certificati sull'hosting. */
+	public static function domainEnabled(): bool {
+		return self::manageEnabled() && true === Config::get( 'saas_v2.domain', false );
+	}
+
 	/** Associazione del cliente per la pagina «Gestisci»: ordine attivo con associazione già creata. */
 	public static function org( Db $db, string $customerId, string $orderId ): ?array {
 		$o = $db->one(

@@ -462,6 +462,9 @@ final class App {
 		if ( ! $o ) {
 			throw new UserError( 'Abbonamento non trovato.' );
 		}
+		if ( in_array( $act, array( 'dominio', 'dominio-togli' ), true ) && ! SaasAccount::domainEnabled() ) {
+			throw new UserError( 'L\'indirizzo personalizzato non è ancora disponibile.' );
+		}
 		$org = (string) $o['org_id'];
 		$ref = (string) $o['org_ref'];
 		$flash = '';
