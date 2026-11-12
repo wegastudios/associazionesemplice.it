@@ -20,7 +20,7 @@ use JsonException;
  */
 final readonly class AdminCatalogController
 {
-    public function __construct(private CatalogPublisher $publisher, private Catalog $catalog) {}
+    public function __construct(private CatalogPublisher $publisher, private CatalogDraftEditor $editor, private Catalog $catalog) {}
 
     public function show(): View
     {
@@ -31,6 +31,7 @@ final readonly class AdminCatalogController
             'publishedAt' => $published->document['published_at'] ?? null,
             'plans' => $published->planVersions(),
             'hasDraft' => $this->publisher->hasDraft(),
+            'changes' => $this->editor->changes(),
             'json' => json_encode($published->document, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
         ]);
     }

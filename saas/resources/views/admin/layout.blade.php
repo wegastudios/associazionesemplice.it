@@ -28,7 +28,8 @@
         main { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
         .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; margin-bottom: 16px; }
         label { display: block; font-weight: 600; margin: 12px 0 4px; }
-        input { width: 100%; min-height: 48px; padding: 10px 12px; font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; }
+        input[type=checkbox] { width: auto; }
+        input, select, textarea { width: 100%; min-height: 48px; padding: 10px 12px; font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; }
         button.primary { margin-top: 16px; min-height: 44px; padding: 10px 18px; font: inherit; font-weight: 600; color: var(--brand-ink); background: var(--brand); border: 0; border-radius: 12px; cursor: pointer; }
         .error { color: var(--danger); margin: 6px 0 0; }
         .muted { color: var(--muted); }
@@ -37,6 +38,12 @@
         .scroll { overflow-x: auto; }
         .qr { background: #fff; display: inline-block; padding: 8px; border-radius: 12px; }
         code { word-break: break-all; }
+        select, textarea { padding: 10px 12px; font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
+        fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 12px 0; padding: 8px 14px 14px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0 12px; }
+        .inline { display: flex; align-items: center; gap: 8px; font-weight: 600; margin: 12px 0 4px; }
+        .tag { display: inline-block; font-size: 12px; border: 1px solid var(--line); border-radius: 99px; padding: 0 8px; color: var(--muted); }
+        .ok { color: #1b7a3a; }
     </style>
 </head>
 <body>
@@ -56,6 +63,9 @@
     <nav class="menu" aria-label="Sezioni">
         <span class="grow"></span>
         <a href="{{ route('platform.home') }}">Riepilogo</a>
+        <a href="{{ route('platform.plans') }}">Piani</a>
+        <a href="{{ route('platform.addons') }}">Pacchetti</a>
+        <a href="{{ route('platform.promos') }}">Promozioni</a>
         <a href="{{ route('platform.catalog') }}">Catalogo</a>
         <a href="{{ route('platform.audit') }}">Registro</a>
         @if (config('saas.unified_login.enabled') === true)
