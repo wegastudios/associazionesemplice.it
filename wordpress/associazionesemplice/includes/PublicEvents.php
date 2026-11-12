@@ -386,6 +386,7 @@ final class PublicEvents {
 		echo '<p>' . ( '' !== $where ? esc_html( $where ) : '<em>Luogo non indicato</em>' ) . '</p>';
 		echo '<p>' . esc_html( self::price_text( $a ) ) . '</p>';
 		echo '<p class="description">Date, luogo, contributo e posti si cambiano nella scheda dell\'attività: la pagina li mostra sempre aggiornati. Qui scrivi la descrizione, scegli la locandina e il riassunto.</p>';
+		echo '<p class="description"><strong>Impaginazione tua:</strong> la pagina ha un\'impaginazione automatica. Per comporla a piacere (con Gutenberg, Elementor o shortcode) inserisci nel contenuto i pezzi «Associazione Semplice» con vista <em>evento_locandina</em>, <em>evento_dati</em>, <em>evento_prenotazione</em>, <em>evento_dove</em>, <em>evento_navigazione</em> o <em>evento_condividi</em> (shortcode <code>[associazionesemplice_evento_dati]</code> e simili): da quel momento la pagina mostra solo ciò che hai scritto.</p>';
 		echo '<p><a class="button" href="' . esc_url( admin_url( 'admin.php?page=asem-activity&id=' . $aid ) ) . '">Apri l\'attività</a></p>';
 	}
 
@@ -507,36 +508,113 @@ final class PublicEvents {
 		if ( ! $a ) {
 			return $content;
 		}
+		if ( self::has_custom_layout( $post ) ) { // chi ha composto la pagina con i pezzi (blocchi, widget, shortcode) decide da solo l'impaginazione
+			return $content;
+		}
 		Frontend\Views::no_cache();
 		$all     = self::list_page_url();
 		$html    = '<div class="asemf asemf-event">' . ( '' !== $all ? '<p class="asemf-back"><a href="' . esc_url( $all ) . '">« Tutti gli eventi</a></p>' : '' ) . '<div class="asemf-event-head' . ( has_post_thumbnail( $post ) ? ' has-poster' : '' ) . '">';
-		if ( has_post_thumbnail( $post ) ) {
-			$html .= '<figure class="asemf-poster">' . wp_get_attachment_image( (int) get_post_thumbnail_id( $post ), 'large' ) . '</figure>'; // direttamente: il filtro del tema che toglie la locandina duplicata non deve toccare questa
+		$html   .= self::poster_html( $post ) . self::facts_html( $a ) . '</div>';
+		$html   .= '<div class="asemf-event-text">' . $content . '</div>';
+		return $html . self::booking_html( $a, $post ) . self::venue_html( $a ) . self::share_html( $post ) . self::prev_next_html( $post ) . '</div>';
+	}
+
+	/** Pezzi della pagina evento, ognuno una vista (shortcode `associazionesemplice_evento_*`, blocco e widget «Associazione Semplice»). */
+	const PARTS = array( 'locandina', 'dati', 'prenotazione', 'dove', 'navigazione', 'condividi' );
+
+	/**
+	 * La pagina evento usa solo ciò che ha scritto il gestore se nel suo contenuto c'è almeno uno dei pezzi:
+	 * shortcode, blocco «Associazione Semplice» con una vista `evento_*`, widget Elementor (dati salvati dal builder).
+	 */
+	private static function has_custom_layout( \WP_Post $post ): bool {
+		$custom = (bool) preg_match( '/associazionesemplice_evento_[a-z]+|"vista"\s*:\s*"evento_[a-z]+"/', (string) $post->post_content );
+		if ( ! $custom ) {
+			$el     = get_post_meta( $post->ID, '_elementor_data', true );
+			$custom = is_string( $el ) && (bool) preg_match( '/"view"\s*:\s*"evento_[a-z]+"/', $el );
 		}
-		$html .= '<dl class="asemf-facts">'
+		return (bool) apply_filters( 'asem_event_custom_layout', $custom, $post );
+	}
+
+	private static function poster_html( \WP_Post $post ): string {
+		if ( ! has_post_thumbnail( $post ) ) {
+			return '';
+		}
+		return '<figure class="asemf-poster">' . wp_get_attachment_image( (int) get_post_thumbnail_id( $post ), 'large' ) . '</figure>'; // direttamente: il filtro del tema che toglie la locandina duplicata non deve toccare questa
+	}
+
+	private static function facts_html( array $a ): string {
+		$html  = '<dl class="asemf-facts">'
 			. '<div><dt>' . esc_html( ActivityKind::COURSE === $a['kind'] ? 'Quando' : 'Data e ora' ) . '</dt><dd>' . esc_html( self::when_text( $a ) ) . '</dd></div>';
 		$where = self::where_text( $a );
 		if ( '' !== $where ) {
 			$html .= '<div><dt>Dove</dt><dd>' . esc_html( $where ) . '</dd></div>';
 		}
 		$html .= '<div><dt>Contributo</dt><dd>' . esc_html( self::price_text( $a ) ) . '</dd></div>';
-		$org = (string) Settings::get( 'association_name' );
+		$org   = (string) Settings::get( 'association_name' );
 		if ( '' !== $org ) {
 			$html .= '<div><dt>Organizza</dt><dd>' . esc_html( $org ) . '</dd></div>';
 		}
-		$html .= '</dl></div>';
-		$html .= '<div class="asemf-event-text">' . $content . '</div>';
-		if ( ActivityKind::uses_sessions( (string) $a['kind'] ) ) {
-			if ( ! self::upcoming_sessions( (int) $a['id'] ) && self::cancelled_future( (int) $a['id'] ) ) {
-				$html .= '<p class="asemf-notice asemf-notice-cancelled" role="status"><strong>Evento annullato.</strong> Ci dispiace: le date previste non si terranno. Segui le novità sul sito dell\'associazione.</p>';
-			} else {
-				$html .= Frontend\Views::event_booking( $a );
-			}
-			$html .= '<p class="asemf-ics"><a class="asemf-btn asemf-btn-ghost wp-element-button" href="' . esc_url( add_query_arg( 'asem_ics', '1', (string) get_permalink( $post ) ) ) . '">Salva nel tuo calendario</a></p>';
-		} else {
-			$html .= Frontend\Views::course_request( $a ); // iscrizione al corso: richiesta del socio o modulo per chi non lo è
+		return $html . '</dl>';
+	}
+
+	/** Date e modulo per prenotarsi (eventi) o richiesta di iscrizione (corsi). */
+	private static function booking_html( array $a, \WP_Post $post ): string {
+		if ( ! ActivityKind::uses_sessions( (string) $a['kind'] ) ) {
+			return Frontend\Views::course_request( $a ); // iscrizione al corso: richiesta del socio o modulo per chi non lo è
 		}
-		return $html . self::venue_html( $a ) . self::share_html( $post ) . self::prev_next_html( $post ) . '</div>';
+		$html = '';
+		if ( ! self::upcoming_sessions( (int) $a['id'] ) && self::cancelled_future( (int) $a['id'] ) ) {
+			$html .= '<p class="asemf-notice asemf-notice-cancelled" role="status"><strong>Evento annullato.</strong> Ci dispiace: le date previste non si terranno. Segui le novità sul sito dell\'associazione.</p>';
+		} else {
+			$html .= Frontend\Views::event_booking( $a );
+		}
+		return $html . '<p class="asemf-ics"><a class="asemf-btn asemf-btn-ghost wp-element-button" href="' . esc_url( add_query_arg( 'asem_ics', '1', (string) get_permalink( $post ) ) ) . '">Salva nel tuo calendario</a></p>';
+	}
+
+	/**
+	 * Un pezzo della pagina evento (vista `evento_<pezzo>`): solo i dati, nessuna impaginazione. L'evento è quello indicato
+	 * con `evento` (ID del contenuto) oppure quello della pagina in cui si trova.
+	 *
+	 * @param string $part uno di self::PARTS
+	 * @param array  $atts evento, titolo
+	 */
+	public static function part( string $part, array $atts = array() ): string {
+		if ( ! in_array( $part, self::PARTS, true ) ) {
+			return '';
+		}
+		$id   = (int) ( $atts['evento'] ?? 0 );
+		$id   = $id > 0 ? $id : (int) get_the_ID();
+		$post = $id > 0 ? get_post( $id ) : null;
+		if ( ! $post || self::POST_TYPE !== $post->post_type || ( 'publish' !== $post->post_status && ! current_user_can( 'edit_post', $post->ID ) ) ) {
+			return '';
+		}
+		$aid = self::activity_of( (int) $post->ID );
+		$a   = $aid ? Plugin::activities()->get( $aid ) : null;
+		if ( ! $a ) {
+			return '';
+		}
+		Frontend\Views::no_cache();
+		switch ( $part ) {
+			case 'locandina':
+				$h = self::poster_html( $post );
+				break;
+			case 'dati':
+				$h = self::facts_html( $a );
+				break;
+			case 'prenotazione':
+				$h = self::booking_html( $a, $post );
+				break;
+			case 'dove':
+				$h = self::venue_html( $a );
+				break;
+			case 'navigazione':
+				$all = self::list_page_url();
+				$h   = ( '' !== $all ? '<p class="asemf-back"><a href="' . esc_url( $all ) . '">« Tutti gli eventi</a></p>' : '' ) . self::prev_next_html( $post );
+				break;
+			default:
+				$h = self::share_html( $post );
+		}
+		return '' === $h ? '' : Frontend\Views::shell( self::title_html( $atts ) . $h, 'asemf-event' );
 	}
 
 	/** Dove e come contattarci: luogo con il collegamento alla mappa (si apre solo cliccando) e l'email della segreteria. */
@@ -678,9 +756,13 @@ final class PublicEvents {
 			$view = $pick;
 		}
 		$filters = 'no' !== strtolower( (string) ( $atts['filtri'] ?? 'si' ) );
-		$bar     = $filters ? self::filter_bar( $view, $cat, $ym ) : '';
+		$title   = self::title_html( $atts );
+		$custom  = trim( (string) ( $atts['vuoto'] ?? '' ) );
+		$empty   = '' !== $custom ? $custom : 'Nessun evento in programma.';
+		$btn     = trim( (string) ( $atts['pulsante'] ?? '' ) );
+		$bar     = $title . ( $filters ? self::filter_bar( $view, $cat, $ym ) : '' );
 		if ( 'mese' === $view ) {
-			return Frontend\Views::shell( $bar . self::calendar( $cat, $ym ), 'asemf-events' );
+			return Frontend\Views::shell( $bar . self::calendar( $cat, $ym, $custom ), 'asemf-events' );
 		}
 		$limit = max( 1, min( 100, (int) ( $atts['limite'] ?? 30 ) ) );
 		$until = '9999-12-31';
@@ -691,7 +773,7 @@ final class PublicEvents {
 		$rows  = self::trim_recurring( self::rows( $posts, Db::today(), $until ) );
 		$rows  = array_slice( $rows, 0, $limit );
 		if ( ! $rows ) {
-			return Frontend\Views::shell( $bar . '<p class="asemf-muted">Nessun evento in programma.</p>', 'asemf-events' );
+			return Frontend\Views::shell( $bar . '<p class="asemf-muted">' . esc_html( $empty ) . '</p>', 'asemf-events' );
 		}
 		$html  = '';
 		$month = '';
@@ -711,9 +793,20 @@ final class PublicEvents {
 				$html .= ( '' === $month ? '' : '</ul>' ) . '<h3 class="asemf-month">' . esc_html( ucfirst( wp_date( 'F Y', $ts ) ) ) . '</h3><ul class="asemf-cards">';
 				$month = $m;
 			}
-			$html .= self::card( $posts[ $aid ], $a, $s, $ts );
+			$html .= self::card( $posts[ $aid ], $a, $s, $ts, $btn );
 		}
 		return Frontend\Views::shell( $bar . $html . '</ul>', 'asemf-events' );
+	}
+
+	/** Intestazione facoltativa sopra una vista (attributo `titolo`): testo scelto da chi compone la pagina. */
+	public static function title_html( array $atts ): string {
+		$t = trim( (string) ( $atts['titolo'] ?? '' ) );
+		return '' === $t ? '' : '<h2 class="asemf-title">' . esc_html( $t ) . '</h2>';
+	}
+
+	/** Contenuti pubblicati (id delle attività) di una categoria o di tutte: per le viste che filtrano per categoria. @return int[] */
+	public static function activity_ids( string $cat = '' ): array {
+		return array_keys( self::posts_by_activity( sanitize_title( $cat ) ) );
 	}
 
 	/** Contenuti pubblicati, per id dell'attività (facoltativo: solo di una categoria). @return \WP_Post[] */
@@ -839,7 +932,7 @@ final class PublicEvents {
 	}
 
 	/** Calendario di un mese (Y-m; vuoto = mese in corso): gli eventi nei giorni, su telefono solo i giorni con eventi. */
-	private static function calendar( string $cat, string $ym ): string {
+	private static function calendar( string $cat, string $ym, string $empty = '' ): string {
 		if ( ! preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/', $ym ) ) {
 			$ym = wp_date( 'Y-m' );
 		}
@@ -902,7 +995,7 @@ final class PublicEvents {
 		}
 		$h .= '</tbody></table>';
 		if ( ! $by ) {
-			$h .= '<p class="asemf-muted">Nessun evento in questo mese.</p>';
+			$h .= '<p class="asemf-muted">' . esc_html( '' !== $empty ? $empty : 'Nessun evento in questo mese.' ) . '</p>';
 		}
 		return $h;
 	}
@@ -927,7 +1020,7 @@ final class PublicEvents {
 	}
 
 	/** Una card: badge della data, locandina, categoria, titolo, orario, luogo, contributo. */
-	private static function card( \WP_Post $post, array $a, array $s, int $ts ): string {
+	private static function card( \WP_Post $post, array $a, array $s, int $ts, string $button = '' ): string {
 		$url   = (string) get_permalink( $post );
 		$cats  = get_the_terms( $post, self::TAXONOMY );
 		$cat   = ( $cats && ! is_wp_error( $cats ) ) ? (string) $cats[0]->name : '';
@@ -955,7 +1048,7 @@ final class PublicEvents {
 		if ( '' !== $ex ) {
 			$h .= '<p class="asemf-card-ex">' . esc_html( wp_trim_words( $ex, 28 ) ) . '</p>';
 		}
-		$h .= '<div class="asemf-card-foot"><span class="asemf-card-price">' . esc_html( $fee ) . '</span><a class="asemf-btn wp-element-button" href="' . esc_url( $url ) . '">Dettagli e prenotazione</a></div>';
+		$h .= '<div class="asemf-card-foot"><span class="asemf-card-price">' . esc_html( $fee ) . '</span><a class="asemf-btn wp-element-button" href="' . esc_url( $url ) . '">' . esc_html( '' !== $button ? $button : 'Dettagli e prenotazione' ) . '</a></div>';
 		return $h . '</div></li>';
 	}
 

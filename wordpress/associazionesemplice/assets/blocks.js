@@ -48,6 +48,26 @@
 			if (v === 'prossimi_eventi' || v === 'eventi') {
 				controls.push(el(TextControl, { key: 'l', label: 'Numero di eventi', value: a.limite, onChange: function (x) { set({ limite: x }); } }));
 			}
+			if (v === 'prossimi_eventi' || v === 'calendario_eventi') {
+				controls.push(el(TextControl, { key: 'c2', label: 'Solo questa categoria (indirizzo, facoltativo)', value: a.categoria, onChange: function (x) { set({ categoria: x }); } }));
+			}
+			if (v === 'prossimi_eventi') {
+				controls.push(el(SelectControl, { key: 'pr', label: 'Prenotazione dalla lista', value: a.prenotazione || 'si', options: [{ value: 'si', label: 'Sì, con i pulsanti' }, { value: 'no', label: 'No, solo date e luoghi' }], onChange: function (x) { set({ prenotazione: x }); } }));
+			}
+			if (v === 'calendario_eventi' || v === 'eventi') {
+				controls.push(el(SelectControl, { key: 'f', label: 'Filtri (elenco/calendario e categorie)', value: a.filtri || 'si', options: [{ value: 'si', label: 'Mostra' }, { value: 'no', label: 'Nascondi' }], onChange: function (x) { set({ filtri: x }); } }));
+			}
+			if (v === 'eventi' || v === 'calendario_eventi' || v === 'prossimi_eventi') { // testi a piacere
+				controls.push(el(TextControl, { key: 'ti', label: 'Titolo sopra la vista (es. I nostri prossimi eventi)', value: a.titolo, onChange: function (x) { set({ titolo: x }); } }));
+				controls.push(el(TextControl, { key: 'vu', label: 'Messaggio quando non ci sono eventi', value: a.vuoto, onChange: function (x) { set({ vuoto: x }); } }));
+			}
+			if (v === 'eventi') {
+				controls.push(el(TextControl, { key: 'pu', label: 'Testo del pulsante nelle schede', value: a.pulsante, onChange: function (x) { set({ pulsante: x }); } }));
+			}
+			if (typeof v === 'string' && v.indexOf('evento_') === 0) { // pezzi della pagina di un evento
+				controls.push(el(TextControl, { key: 'ev', label: 'Evento (ID del contenuto; vuoto = quello della pagina)', value: a.evento, onChange: function (x) { set({ evento: x }); } }));
+				controls.push(el(TextControl, { key: 'et', label: 'Titolo sopra il pezzo (facoltativo)', value: a.titolo, onChange: function (x) { set({ titolo: x }); } }));
+			}
 			return el('div', useBlockProps ? useBlockProps() : {},
 				el(InspectorControls, null, el(PanelBody, { title: 'Associazione Semplice', initialOpen: true }, controls)),
 				el(ServerSideRender, { block: 'associazionesemplice/vista', attributes: a })

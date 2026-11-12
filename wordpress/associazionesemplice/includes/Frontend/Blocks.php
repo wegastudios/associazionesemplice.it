@@ -55,6 +55,11 @@ final class Blocks {
 					'categoria' => array( 'type' => 'string', 'default' => '' ),
 					'modo'    => array( 'type' => 'string', 'default' => '' ),
 					'filtri'  => array( 'type' => 'string', 'default' => '' ),
+					'titolo'  => array( 'type' => 'string', 'default' => '' ),
+					'vuoto'   => array( 'type' => 'string', 'default' => '' ),
+					'pulsante' => array( 'type' => 'string', 'default' => '' ),
+					'evento'  => array( 'type' => 'string', 'default' => '' ),
+					'prenotazione' => array( 'type' => 'string', 'default' => '' ),
 				),
 				'render_callback' => array( __CLASS__, 'render_view' ),
 			)

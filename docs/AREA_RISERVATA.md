@@ -24,7 +24,9 @@ già con gli shortcode dentro. L'Area soci diventa la pagina di arrivo dopo il l
 | `[associazionesemplice_tessera]` `[associazionesemplice_mie_attivita]` `[associazionesemplice_ospiti]` `[associazionesemplice_profilo]` | le singole sezioni, da disporre come vuoi | soci |
 | `[associazionesemplice_area_volontari]` | le attività che gestisci: iscritti (solo nomi) e prenotati per data | volontari |
 | `[associazionesemplice_attivita]` | elenco pubblico di corsi ed eventi con contributi e prossime date; filtri `tipo="corso\|evento\|ricorrente"`, `anno="2025/2026"`, `id="12"`, `date="5"` | tutti (prenota chi ha tessera valida) |
-| `[associazionesemplice_prossimi_eventi limite="5" prenotazione="si\|no"]` | le prossime date | tutti |
+| `[associazionesemplice_prossimi_eventi limite="5" prenotazione="si\|no" categoria="" titolo="" vuoto=""]` | le prossime date (titolo e messaggio a piacere) | tutti |
+| `[associazionesemplice_calendario_eventi]` | calendario mensile degli eventi | tutti |
+| `[associazionesemplice_evento_dati]`, `_locandina`, `_prenotazione`, `_dove`, `_navigazione`, `_condividi` (`evento="ID"`) | pezzi della pagina di un evento, senza impaginazione | tutti |
 | `[associazionesemplice_accesso]` | modulo di accesso (sparisce se sei già dentro) | tutti |
 
 **Dal sito i soci possono**: prenotarsi a un evento (anche per i propri ospiti, con il contributo ospiti), annullare una prenotazione di un evento non ancora passato,

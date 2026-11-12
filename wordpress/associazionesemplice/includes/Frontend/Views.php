@@ -1578,9 +1578,20 @@ final class Views {
 	/** Le prossime date di tutti gli eventi, in ordine di data. */
 	public static function upcoming( array $atts = array() ): string {
 		self::no_cache();
-		$rows = Plugin::activities()->upcoming_sessions( max( 1, min( 50, (int) ( $atts['limite'] ?? 5 ) ) ) );
+		$limit = max( 1, min( 50, (int) ( $atts['limite'] ?? 5 ) ) );
+		$cat   = sanitize_title( (string) ( $atts['categoria'] ?? '' ) );
+		if ( '' !== $cat ) { // solo gli eventi di una categoria: si cercano più date e poi si tengono quelle giuste
+			$ids  = \AssociazioneSemplice\PublicEvents::activity_ids( $cat );
+			$rows = array_slice( array_values( array_filter( Plugin::activities()->upcoming_sessions( 500 ), function ( $s ) use ( $ids ) {
+				return in_array( (int) $s['activity_id'], $ids, true );
+			} ) ), 0, $limit );
+		} else {
+			$rows = Plugin::activities()->upcoming_sessions( $limit );
+		}
+		$title = \AssociazioneSemplice\PublicEvents::title_html( $atts );
 		if ( ! $rows ) {
-			return self::wrap( '<p class="asemf-muted">Nessun evento in programma.</p>' );
+			$empty = trim( (string) ( $atts['vuoto'] ?? '' ) );
+			return self::wrap( $title . '<p class="asemf-muted">' . esc_html( '' !== $empty ? $empty : 'Nessun evento in programma.' ) . '</p>' );
 		}
 		$ctx   = self::booking_context();
 		$ctx['hide_login'] = true;
@@ -1594,7 +1605,7 @@ final class Views {
 					. ( $s['location'] ? '<div class="asemf-small">' . esc_html( $s['location'] ) . '</div>' : '' ) . '</div></li>';
 			}
 		}
-		return self::wrap( $html . '</ul>' );
+		return self::wrap( $title . $html . '</ul>' );
 	}
 
 	private static function kind_from_text( string $t ): ?string {
