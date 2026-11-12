@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Piattaforma\Http\Controllers;
 
+use App\Modules\Piattaforma\Catalogo\CatalogDraftEditor;
 use App\Modules\Piattaforma\Catalogo\CatalogPublisher;
 use App\Modules\Piattaforma\Contracts\Catalog;
 use App\Modules\Piattaforma\Models\PlatformStaff;
@@ -20,7 +21,7 @@ use JsonException;
  */
 final readonly class AdminCatalogController
 {
-    public function __construct(private CatalogPublisher $publisher, private Catalog $catalog) {}
+    public function __construct(private CatalogPublisher $publisher, private CatalogDraftEditor $editor, private Catalog $catalog) {}
 
     public function show(): View
     {
@@ -31,6 +32,7 @@ final readonly class AdminCatalogController
             'publishedAt' => $published->document['published_at'] ?? null,
             'plans' => $published->planVersions(),
             'hasDraft' => $this->publisher->hasDraft(),
+            'changes' => $this->editor->changes(),
             'json' => json_encode($published->document, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
         ]);
     }

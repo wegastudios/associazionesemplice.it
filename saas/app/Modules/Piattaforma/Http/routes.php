@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Piattaforma\Http\Controllers\AdminCatalogController;
+use App\Modules\Piattaforma\Http\Controllers\AdminCatalogEditorController;
 use App\Modules\Piattaforma\Http\Controllers\AdminConsoleController;
 use App\Modules\Piattaforma\Http\Controllers\AdminLoginController;
 use App\Modules\Piattaforma\Http\Controllers\StaffSsoController;
@@ -36,6 +37,23 @@ Route::middleware('web')->prefix(UsePlatformSession::path())->group(function ():
             Route::post('catalogo/bozza', [AdminCatalogController::class, 'save'])->name('platform.catalog.save');
             Route::post('catalogo/scarta', [AdminCatalogController::class, 'discard'])->name('platform.catalog.discard');
             Route::post('catalogo/pubblica', [AdminCatalogController::class, 'publish'])->middleware('throttle:10,1')->name('platform.catalog.publish');
+        });
+        // Editor a moduli (piani, pacchetti, promozioni): stessa bozza del JSON.
+        Route::get('catalogo/piani', [AdminCatalogEditorController::class, 'plans'])->name('platform.plans');
+        Route::get('catalogo/pacchetti', [AdminCatalogEditorController::class, 'addons'])->name('platform.addons');
+        Route::get('catalogo/promozioni', [AdminCatalogEditorController::class, 'promos'])->name('platform.promos');
+        Route::middleware('platform.staff:write')->group(function (): void {
+            Route::get('catalogo/piani/nuovo', [AdminCatalogEditorController::class, 'planNew'])->name('platform.plans.new');
+            Route::post('catalogo/piani/nuovo', [AdminCatalogEditorController::class, 'planCreate'])->name('platform.plans.create');
+            Route::get('catalogo/pacchetti/nuovo', [AdminCatalogEditorController::class, 'addonNew'])->name('platform.addons.new');
+            Route::post('catalogo/pacchetti/nuovo', [AdminCatalogEditorController::class, 'addonCreate'])->name('platform.addons.create');
+        });
+        Route::get('catalogo/piani/{code}', [AdminCatalogEditorController::class, 'planEdit'])->where('code', '[a-z][a-z0-9_]{1,39}')->name('platform.plans.edit');
+        Route::get('catalogo/pacchetti/{code}', [AdminCatalogEditorController::class, 'addonEdit'])->where('code', '[a-z][a-z0-9_]{1,39}')->name('platform.addons.edit');
+        Route::middleware('platform.staff:write')->group(function (): void {
+            Route::post('catalogo/piani/{code}', [AdminCatalogEditorController::class, 'planSave'])->where('code', '[a-z][a-z0-9_]{1,39}')->name('platform.plans.save');
+            Route::post('catalogo/pacchetti/{code}', [AdminCatalogEditorController::class, 'addonSave'])->where('code', '[a-z][a-z0-9_]{1,39}')->name('platform.addons.save');
+            Route::post('catalogo/promozioni', [AdminCatalogEditorController::class, 'promosSave'])->name('platform.promos.save');
         });
         Route::get('registro', [AdminConsoleController::class, 'audit'])->name('platform.audit');
         Route::post('esci', [AdminLoginController::class, 'logout'])->name('platform.logout');
