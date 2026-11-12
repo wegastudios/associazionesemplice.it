@@ -2177,7 +2177,7 @@ check( 'profilo: conferma email dal link', true === Identity::emailConfirm( 'cod
 Http::$transport = $idPrev;
 Config::set( 'identity', array() );
 Config::set( 'staff_area_sign_key', '' );
-use PortaleSaasClient;
+use Portale\SaasClient;
 // Contratto v2 lato portale: «Gestisci» (stato, dominio, controllo cambio piano), spento finché il SaaS non ha gli endpoint in produzione
 check( 'gestisci: spento di default', false === SaasAccount::manageEnabled() );
 Config::set( 'saas_sign_key', base64_encode( str_repeat( 's', 32 ) ) );
