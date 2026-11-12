@@ -61,6 +61,13 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Listini :: Quanti prezzi vuoi per eventi e corsi a date: individuale, di gruppo, pacchetti di ingressi | ✓ | ✓ | ✓ |
 | Calendario dell'evento :: Mese e giorno, con selettore della data, e pacchetti con ingressi ancora da usare | ✓ | ✓ | ✓ |
 | Pagine pubbliche degli eventi :: Una pagina per ogni evento o corso con locandina e descrizione, elenco a schede per mese, calendario mensile con filtri per categoria, salvataggio nel calendario (.ics), dati strutturati per Google e prenotazione dei soci direttamente dalla pagina | ✓ | ✓ | ✓ |
+| Prenotazione dal sito anche per i non soci :: Chi non è socio si prenota dal sito con un modulo breve e conferma l'indirizzo dall'email; la segreteria vede la richiesta. Per gli eventi a pagamento si versa in anticipo con bonifico istantaneo e si manda la ricevuta (non è un pagamento online) | ✓ | ✓ | ✓ |
+| Prenotazione automatica o su richiesta :: Per ogni evento scegli se la prenotazione è automatica o solo su richiesta, quanti posti si possono chiedere per volta, se ammettere gli ospiti e cosa succede se l'evento viene annullato | ✓ | ✓ | ✓ |
+| Pagina dell'evento completa :: Dove si svolge con collegamento alla mappa, contatti con WhatsApp ed email, evento precedente e successivo, locandina e pulsanti per condividere; gli eventi che si ripetono ogni settimana compaiono con una sola scheda | ✓ | ✓ | ✓ |
+| Corsi nel calendario del sito :: I corsi compaiono nel calendario con le loro lezioni; dalla pagina del corso si chiede l'iscrizione (il socio con un clic, chi non è socio dal modulo) e la segreteria approva | ✓ | ✓ | ✓ |
+| Pulsante WhatsApp della segreteria :: Scrivi il numero nelle impostazioni e sul sito compare il pulsante fisso «Scrivici su WhatsApp» | ✓ | ✓ | ✓ |
+| Blocchi, shortcode e widget Elementor per gli eventi :: Elenco a schede, calendario, prossimi eventi e i pezzi della pagina evento (locandina, dati, prenotazione, dove, precedente e successivo, condividi), con titolo, messaggio e testo del pulsante a tua scelta | ✓ | ✓ | ✓ |
+| Importazione da The Events Calendar :: Gli eventi si importano insieme alle pagine pubbliche (descrizione, immagine, categoria, organizzatore, luogo); le pagine restano in bozza e gli eventi che si ripetono diventano un solo evento ricorrente | ✓ | ✓ | ✓ |
 | Incasso sul posto agli eventi :: Incasso sul posto durante gli eventi | — | ✓ | ✓ |
 | Prenotazione di campi e sale :: Risorse a fasce orarie (campi, sale) con tariffe, ospiti e regole di prenotazione | — | ✓ | ✓ |
 | Posti auto, armadietti e posti barca :: Risorse assegnate a periodo (posti auto, armadietti, posti barca) con lista d'attesa | — | ✓ | ✓ |
