@@ -347,3 +347,15 @@
 	.asemf-cal-num { font-weight: 700; opacity: 1; font-size: 1rem; }
 	.asemf-cal-wd { display: inline; text-transform: uppercase; font-size: .75rem; opacity: .7; }
 }
+
+/* Pagina evento: locandina accanto ai dati, condivisione, eventi correlati */
+.asemf-event { max-width: 960px; }
+.asemf-event-head.has-poster { display: grid; grid-template-columns: minmax(180px, 320px) 1fr; gap: 1.5rem; align-items: start; margin-bottom: 1.5rem; }
+.asemf-event-head .asemf-poster { margin: 0; }
+.asemf-event-head .asemf-facts { margin: 0; }
+.asemf-share { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: 1.5rem 0; }
+.asemf-share-label { font-weight: 600; margin-right: .25rem; }
+@media (max-width: 700px) {
+	.asemf-event-head.has-poster { grid-template-columns: 1fr; }
+	.asemf-event-head .asemf-poster { max-width: 320px; }
+}

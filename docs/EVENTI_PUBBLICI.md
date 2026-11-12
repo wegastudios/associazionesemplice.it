@@ -81,3 +81,8 @@ Stati del pulsante: Prenota · Prenota e paga · Entra in lista d'attesa · Esau
 **Impatto sulla fase 1:** la scheda mostra il pulsante giusto leggendo la configurazione; la prenotazione da non socio e il pagamento online arrivano in una fase propria (dopo scheda ed elenco), perché toccano ospiti, pagamenti e antispam.
 
 **Da decidere in più:** la prenotazione di chi non è socio è prevista subito o solo dai soci in questa versione?
+
+## Fase 4 (11-12/11/2026): condivisione e collegati
+
+Fatto, **non ancora pubblicato** (il numero di versione e le voci del log si scrivono alla pubblicazione): locandina accanto ai dati nella scheda; pulsanti di condivisione (WhatsApp, Facebook, email: collegamenti, nessuno script); «Ti può interessare anche» (fino a 3 eventi, prima della stessa categoria); anteprima social (og:*) se non c'è un plugin SEO; pagina «Eventi» proposta dalla configurazione guidata (non preselezionata). La galleria è il blocco Galleria di WordPress dentro la descrizione (nessun codice dedicato).
+Voci del log da scrivere alla pubblicazione: «Nella pagina dell'evento: locandina accanto ai dati, pulsanti per condividere, altri eventi che possono interessare, anteprima per i social; tra le pagine della configurazione guidata c'è ora «Eventi»».
