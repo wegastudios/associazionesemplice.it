@@ -8336,7 +8336,8 @@ $er::create( array_merge( $er_in, array( 'session_id' => $er_sid( $er_c ) ) ), $
 $er::confirm( $er_get( 'elena.ospiti@example.com' ) );
 asem_ok( $acts->has_active_booking( $er_sid( $er_c ), (int) $er_el['id'] ), 'limite ospiti: dopo il limite, se gli ospiti pagano di più possono prenotare lo stesso' );
 // Chi è già socio prenota dal proprio accesso.
-$er_in_m = array_merge( $er_in, array( 'first_name' => 'Giuseppe', 'last_name' => 'Verdi', 'email' => 'gverdi.test@example.com', 'tax_code' => 'VRDGPP75B10F205B', 'birth_date' => '1975-02-10' ) );
+$people->create( array( 'type' => 'ordinary', 'first_name' => 'Gilda', 'last_name' => 'Socia', 'email' => 'gilda.socia.er@example.com', 'tax_code' => 'GLLPLA88H50L219H' ) );
+$er_in_m = array_merge( $er_in, array( 'first_name' => 'Gilda', 'last_name' => 'Socia', 'email' => 'gverdi.test@example.com', 'tax_code' => 'GLLPLA88H50L219H', 'birth_date' => '1988-06-10' ) );
 $er::create( $er_in_m, $acts->get( $er_a ), $er_o );
 $er_mc = $er::confirm( $er_get( 'gverdi.test@example.com' ) );
 asem_ok( ! $er_mc['ok'] && false !== strpos( $er_mc['message'], 'già socio' ), 'richiesta posto: chi è già socio è mandato al proprio accesso' );
