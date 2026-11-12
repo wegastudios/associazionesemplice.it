@@ -88,9 +88,10 @@ final class ImportPortalDbCommand extends Command
         return array_values($pk);
     }
 
+    /** pg_tables e non information_schema: questa nasconde le tabelle create dal ruolo del portale (non sono del proprietario). */
     private function exists(ConnectionInterface $con, string $table): bool
     {
-        return $con->selectOne("SELECT 1 AS x FROM information_schema.tables WHERE table_schema = 'portal' AND table_name = ?", [$table]) !== null;
+        return $con->selectOne("SELECT 1 AS x FROM pg_tables WHERE schemaname = 'portal' AND tablename = ?", [$table]) !== null;
     }
 
     private function importTable(PDO $pdo, ConnectionInterface $con, string $table, bool $dry): int
