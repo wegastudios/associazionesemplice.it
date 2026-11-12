@@ -47,7 +47,7 @@ final readonly class AdminSettingsController
         }
 
         if ($changed !== []) {
-            $this->audit->record('settings.updated', (string) $staff->getKey(), null, ['keys' => $changed], $request);
+            $this->audit->record('settings.updated', $staff->id, null, ['keys' => $changed], $request);
         }
 
         return redirect()->route('platform.settings')->with('status', $changed === [] ? 'Nessuna modifica.' : 'Impostazioni salvate.');

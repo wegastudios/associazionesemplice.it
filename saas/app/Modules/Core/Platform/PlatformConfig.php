@@ -75,7 +75,10 @@ final readonly class PlatformConfig
 
         // Dominio personalizzato: nameserver della delega e ore di attesa.
         if (isset($s['domains.nameservers'])) {
-            $c->set('saas.domains.nameservers', array_values(preg_split('/[\s,]+/', $s['domains.nameservers'], -1, PREG_SPLIT_NO_EMPTY) ?: []));
+            $c->set('saas.domains.nameservers', array_values(array_filter(
+                array_map('trim', explode(',', str_replace([' ', "\n", "\t"], ',', $s['domains.nameservers']))),
+                static fn (string $ns): bool => $ns !== '',
+            )));
         }
         if (isset($s['domains.delegation_hours'])) {
             $c->set('saas.domains.delegation_hours', (int) $s['domains.delegation_hours']);
