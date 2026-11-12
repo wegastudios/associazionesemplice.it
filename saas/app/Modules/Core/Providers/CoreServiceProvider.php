@@ -13,11 +13,13 @@ use App\Modules\Core\Contracts\DatabaseNames;
 use App\Modules\Core\Contracts\DataExport;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgDirectory;
+use App\Modules\Core\Contracts\PlatformSettingsStore;
 use App\Modules\Core\Database\DatabaseRegistry;
 use App\Modules\Core\Export\CoreDataExport;
 use App\Modules\Core\Org\DatabaseOrgContext;
 use App\Modules\Core\Org\DatabaseOrgDirectory;
 use App\Modules\Core\Platform\PlatformConfig;
+use App\Modules\Core\Platform\PlatformSettings;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Database\Schema\Grammars\PostgresGrammar;
 use Illuminate\Http\Middleware\TrustProxies;
@@ -36,6 +38,7 @@ final class CoreServiceProvider extends ServiceProvider
         $this->app->singleton(DatabaseRegistry::class);
         $this->app->singleton(DatabaseNames::class, DatabaseRegistry::class);
         $this->app->singleton(OrgDirectory::class, DatabaseOrgDirectory::class);
+        $this->app->singleton(PlatformSettingsStore::class, PlatformSettings::class);
         $this->app->singleton(OrgContext::class, DatabaseOrgContext::class);
     }
 

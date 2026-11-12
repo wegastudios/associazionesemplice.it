@@ -68,6 +68,7 @@
         <a href="{{ route('platform.addons') }}">Pacchetti</a>
         <a href="{{ route('platform.promos') }}">Promozioni</a>
         <a href="{{ route('platform.catalog') }}">Catalogo</a>
+        <a href="{{ route('platform.settings') }}">Impostazioni</a>
         <a href="{{ route('platform.audit') }}">Registro</a>
         @if (config('saas.unified_login.enabled') === true)
             {{-- Esci è uno solo, del portale (GET: «Vuoi uscire?»): chiude la sessione unica e quindi anche questa. --}}

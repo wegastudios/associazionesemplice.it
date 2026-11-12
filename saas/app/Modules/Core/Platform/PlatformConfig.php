@@ -73,6 +73,17 @@ final readonly class PlatformConfig
         $set('saas.crypto.service_url', $s['keys.service_url'] ?? null);
         $set('saas.crypto.signing_key', $s['keys.signing_key'] ?? null);
 
+        // Dominio personalizzato: nameserver della delega e ore di attesa.
+        if (isset($s['domains.nameservers'])) {
+            $c->set('saas.domains.nameservers', array_values(array_filter(
+                array_map('trim', explode(',', str_replace([' ', "\n", "\t"], ',', $s['domains.nameservers']))),
+                static fn (string $ns): bool => $ns !== '',
+            )));
+        }
+        if (isset($s['domains.delegation_hours'])) {
+            $c->set('saas.domains.delegation_hours', (int) $s['domains.delegation_hours']);
+        }
+
         // Cache.
         $set('database.redis.default.host', $s['cache.redis_host'] ?? null);
         if (isset($s['cache.redis_port'])) {
