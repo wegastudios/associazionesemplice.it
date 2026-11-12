@@ -47,8 +47,8 @@ $resources = static fn (string $code, string $name, string $kind, int $first, ar
 return [
     'name' => 'Associazione Semplice · Gestionale',
     'description' => 'Il gestionale per associazioni, circoli e società sportive: soci, prima nota, attività e area soci.',
-    'rev' => 1,
-    'published_at' => '2026-11-10',
+    'rev' => 2,
+    'published_at' => '2026-11-12',
     'currency' => 'EUR',
 
     'features' => [

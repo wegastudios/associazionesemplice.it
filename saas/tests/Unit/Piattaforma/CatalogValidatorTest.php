@@ -16,7 +16,7 @@ it('accetta il catalogo iniziale e lo completa con schema e prodotto', function 
 
     expect($doc['schema'])->toBe('catalogo/v1')
         ->and($doc['product'])->toBe('saas')
-        ->and($doc['rev'])->toBe(1)
+        ->and($doc['rev'])->toBe(2)
         ->and(array_column($doc['plans'], 'code'))->toBe(['gestionale']);
 });
 
