@@ -8384,6 +8384,15 @@ asem_ok( false === strpos( \AssociazioneSemplice\Frontend\Views::event_booking( 
 $er_list = \AssociazioneSemplice\Frontend\Views::activities( array( 'tipo' => 'evento', 'anno' => $sy_label ) );
 asem_ok( false !== strpos( $er_list, 'Dettagli' ) && false !== strpos( $er_list, (string) \AssociazioneSemplice\PublicEvents::page_url( $er_a ) ), 'elenco attività: le schede portano alla pagina pubblica dell\'evento' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::member_login_url(), '/' ), 'accesso per prenotarsi: indirizzo di accesso disponibile' );
+Settings::update( array( 'secretary_phone' => '333 1234567' ) );
+ob_start();
+\AssociazioneSemplice\Frontend\WhatsappFloat::render();
+$wa_html = (string) ob_get_clean();
+asem_ok( false !== strpos( $wa_html, 'https://wa.me/393331234567' ) && false !== strpos( $wa_html, 'asem-wa-float' ), 'WhatsApp: pulsante fisso con il numero della segreteria' );
+Settings::update( array( 'secretary_phone' => 'non un numero' ) );
+ob_start();
+\AssociazioneSemplice\Frontend\WhatsappFloat::render();
+asem_ok( '' === (string) ob_get_clean(), 'WhatsApp: senza numero valido il pulsante non compare' );
 remove_filter( 'pre_wp_mail', $er_hook, 10 );
 Settings::update( array( 'guest_max_events' => 2 ) );
 

@@ -541,8 +541,16 @@ final class PublicEvents {
 		if ( '' !== $where ) {
 			$h .= '<div><strong>Dove</strong><br>' . esc_html( $where ) . '<br><a href="' . esc_url( 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode( $where ), array( 'https' ) ) . '" target="_blank" rel="noopener noreferrer">Apri su Google Maps</a></div>';
 		}
-		if ( '' !== $mail ) {
-			$h .= '<div><strong>Info e contatti</strong><br><a href="mailto:' . esc_attr( antispambot( $mail ) ) . '">' . esc_html( antispambot( $mail ) ) . '</a></div>';
+		$wa = Phone::whatsapp( (string) Settings::get( 'secretary_phone' ) );
+		if ( '' !== $mail || '' !== $wa ) {
+			$h .= '<div><strong>Info e contatti</strong>';
+			if ( '' !== $wa ) {
+				$h .= '<br><a class="asemf-btn wp-element-button asemf-wa" href="' . esc_url( 'https://wa.me/' . $wa . '?text=' . rawurlencode( 'Ciao, vorrei informazioni su «' . (string) $a['name'] . '»' ), array( 'https' ) ) . '" target="_blank" rel="noopener noreferrer">💬 Scrivici su WhatsApp</a>';
+			}
+			if ( '' !== $mail ) {
+				$h .= '<br><a href="mailto:' . esc_attr( antispambot( $mail ) ) . '">' . esc_html( antispambot( $mail ) ) . '</a>';
+			}
+			$h .= '</div>';
 		}
 		return $h . '</div>';
 	}
