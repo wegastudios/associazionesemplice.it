@@ -273,7 +273,7 @@ it('dà il biglietto solo a chi è operatore, lo accetta una volta sola e apre i
 
     $this->get($path)->assertRedirect('/gestionale');
     $this->assertAuthenticatedAs($user);
-    expect(session('operator.sso_mfa'))->toBeTrue();
+    expect(session('operator.sso_mfa'))->toBeFalse(); // la persona di prova non ha il secondo livello
 
     // Il biglietto non si riusa.
     auth()->logout();
