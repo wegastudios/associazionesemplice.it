@@ -19,5 +19,5 @@ Route::prefix('saas/api/staff/v1')->middleware('throttle:portal-api')->group(fun
 // Identità unica: le richieste del portale (docs/IDENTITA_API.md), tutte firmate, tutte POST.
 Route::prefix('saas/api/staff/v1/identity')->middleware('throttle:portal-api')->group(function (): void {
     Route::post('{action}', [IdentityApiController::class, 'handle'])
-        ->where('action', 'login|code|session|profile|password|email|email-confirm|2fa-start|2fa-confirm|2fa-disable|sessions|session-revoke|logout|reset-request|reset-complete|token');
+        ->where('action', 'login|code|session|profile|password|email|email-confirm|2fa-start|2fa-confirm|2fa-disable|sessions|session-revoke|logout|reset-request|reset-complete|token|operator-entry');
 });
