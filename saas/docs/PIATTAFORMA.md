@@ -121,3 +121,40 @@ Dietro il flag `SAAS_STAFF_SSO` (spento di default; spento resta l'accesso local
   Senza sessione si rimanda a `{portale}/staff/accedi?area=saas`.
 - **Da fare**: pagina «Utenti» (list/invite/grant/revoke/deactivate verso il portale), poi, a accesso unico funzionante,
   spegnimento dell'accesso locale in due tempi (resta spento di default un accesso di emergenza della sola titolare).
+
+## 8. Funzioni di /wordpress/admin da portare anche nel SaaS (promemoria, 12/11/2026)
+
+/saas/admin ha la stessa grafica e la stessa organizzazione di /wordpress/admin (schede su due livelli, cruscotto, tabelle).
+Confronto delle funzioni: quelle già fatte e quelle che al plugin servono e al SaaS ancora mancano, in ordine di utilità.
+
+**Già fatte nel SaaS**: cruscotto con i numeri, piani e prezzi, pacchetti, promozioni, catalogo con bozza e «Pubblica»,
+abbonamenti, registro delle azioni, impostazioni (nameserver dei domini), accesso unico e sola lettura.
+
+**Da fare, per utilità**
+
+1. **Codici promo: usi e sospensione.** La pagina del plugin mostra «usi / massimo», lo stato (attivo, non in corso, sospeso) e
+   un pulsante Sospendi/Riattiva. Nel SaaS gli usi esistono già (`core.promo_redemptions`) ma la pagina Promozioni non li
+   mostra, e una promozione si toglie solo cancellandola dalla bozza.
+2. **Dettaglio abbonamento** (come la pagina di una licenza): cronologia delle revisioni ricevute dal portale, stato del
+   dominio personalizzato, pacchetti attivi, promozione usata, **nota interna** non visibile al cliente, collegamento
+   all'associazione nell'app.
+3. **Cruscotto: incasso mensile ricorrente** (somma dei `price_cents` degli abbonamenti attivi) e riquadro «Da completare»
+   con gli avvisi di configurazione che oggi stanno solo nel controllo di salute (posta non configurata, servizio chiavi,
+   nameserver vuoti).
+4. **Riconciliazione portale ↔ SaaS** (la «Da Wega» del plugin): associazioni del SaaS senza abbonamento (create a mano) e
+   abbonamenti del portale che qui non risultano; serve un endpoint del portale che elenchi i `ref`.
+5. **Gestione dello staff** (la «Utenti» del plugin): elenco delle persone, livello, stato, invito; oggi si vede solo il
+   numero e si crea da riga di comando (docs/UTENTI_E_ACCESSI.md).
+6. **Email del SaaS modificabili** (la scheda «Email»): testo e interruttore per prova in scadenza, pagamento in ritardo,
+   sospensione, riattivazione; oggi sono fisse nel codice.
+7. **Promozione «in vetrina»** con prezzo di listino barrato (la scheda «Piani e prezzi» del plugin): un campo del catalogo
+   `catalogo/v1` letto dal portale.
+8. **Prova gratuita e promemoria configurabili**: giorni di prova e giorni prima della scadenza in cui avvisare; oggi c'è
+   `trial_days` per piano e un solo valore di tolleranza (`grace_days`).
+9. **Esportazione CSV degli abbonamenti** e ricerca avanzata (per promozione, per piano e versione, per scadenza).
+10. **Novità e manutenzione del SaaS** (la scheda «Versioni del plugin»): note di rilascio mostrate agli operatori nell'app e
+    avvisi di manutenzione programmata.
+11. **Pagine legali e consenso** (Privacy, cookie, script di monitoraggio): condizioni del servizio e informativa privacy del
+    SaaS, modificabili da qui come nel portale.
+
+Non portare: pagamenti Stripe/PayPal (restano del portale), emissione licenze, caricamento dei file del plugin.
