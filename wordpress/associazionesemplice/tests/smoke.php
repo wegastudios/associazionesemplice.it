@@ -569,7 +569,7 @@ asem_ok( false === strpos( \AssociazioneSemplice\PublicEvents::list_html( array(
 $_GET['asem_vista'] = 'mese'; // e Calendario in una pagina con l'elenco
 asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::list_html(), 'asemf-cal' ), 'eventi: il pulsante Calendario vale più del modo elenco della pagina' );
 unset( $_GET['asem_vista'] );
-$pe_course = $acts->create( array( 'name' => 'Corso di acquerello', 'kind' => 'course', 'fee_cents' => 2000, 'lesson_weekday' => 3, 'lesson_start' => '17:00', 'lesson_end' => '18:30' ) ); // un corso compare nel calendario con le lezioni settimanali
+$pe_course = $acts->create( array( 'name' => 'Corso di acquerello', 'social_year' => $sy->label(), 'kind' => 'course', 'fee_cents' => 2000, 'lesson_weekday' => 3, 'lesson_start' => '17:00', 'lesson_end' => '18:30' ) ); // un corso compare nel calendario con le lezioni settimanali
 $pe_cpost   = \AssociazioneSemplice\PublicEvents::ensure( $pe_course );
 wp_update_post( array( 'ID' => $pe_cpost, 'post_status' => 'publish' ) );
 $pe_ccal = \AssociazioneSemplice\PublicEvents::list_html( array( 'modo' => 'mese' ) );
