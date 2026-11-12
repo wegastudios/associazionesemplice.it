@@ -11,7 +11,7 @@ final class SystemDns implements DomainDns
         $records = @dns_get_record($domain, DNS_CNAME);
         $found = [];
         foreach (is_array($records) ? $records : [] as $record) {
-            if (is_array($record) && is_string($record['target'] ?? null)) {
+            if (is_string($record['target'] ?? null)) {
                 $found[] = rtrim(strtolower($record['target']), '.');
             }
         }
