@@ -63,6 +63,7 @@
     <nav class="menu" aria-label="Sezioni">
         <span class="grow"></span>
         <a href="{{ route('platform.home') }}">Riepilogo</a>
+        <a href="{{ route('platform.subscriptions') }}">Abbonamenti</a>
         <a href="{{ route('platform.plans') }}">Piani</a>
         <a href="{{ route('platform.addons') }}">Pacchetti</a>
         <a href="{{ route('platform.promos') }}">Promozioni</a>

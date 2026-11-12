@@ -6,6 +6,7 @@ use App\Modules\Piattaforma\Http\Controllers\AdminCatalogController;
 use App\Modules\Piattaforma\Http\Controllers\AdminCatalogEditorController;
 use App\Modules\Piattaforma\Http\Controllers\AdminConsoleController;
 use App\Modules\Piattaforma\Http\Controllers\AdminLoginController;
+use App\Modules\Piattaforma\Http\Controllers\AdminSubscriptionsController;
 use App\Modules\Piattaforma\Http\Controllers\StaffSsoController;
 use App\Modules\Piattaforma\Http\Middleware\UsePlatformSession;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -55,6 +56,7 @@ Route::middleware('web')->prefix(UsePlatformSession::path())->group(function ():
             Route::post('catalogo/pacchetti/{code}', [AdminCatalogEditorController::class, 'addonSave'])->where('code', '[a-z][a-z0-9_]{1,39}')->name('platform.addons.save');
             Route::post('catalogo/promozioni', [AdminCatalogEditorController::class, 'promosSave'])->name('platform.promos.save');
         });
+        Route::get('abbonamenti', [AdminSubscriptionsController::class, 'index'])->name('platform.subscriptions');
         Route::get('registro', [AdminConsoleController::class, 'audit'])->name('platform.audit');
         Route::post('esci', [AdminLoginController::class, 'logout'])->name('platform.logout');
     });
