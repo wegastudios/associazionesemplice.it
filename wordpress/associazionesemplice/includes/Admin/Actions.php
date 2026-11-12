@@ -1182,6 +1182,7 @@ final class Actions {
 			$ente['apply_volunteer']  = ! empty( $p['apply_volunteer'] ) ? 1 : 0;
 			$ente['apply_pay_online'] = ! empty( $p['apply_pay_online'] ) ? 1 : 0;
 			$ente['apply_email']      = $txt( 'apply_email' );
+			$ente['secretary_phone']  = $txt( 'secretary_phone' );
 		}
 		if ( ! empty( $p['uninstall_present'] ) ) {
 			$ente['delete_on_uninstall'] = ! empty( $p['delete_on_uninstall'] ) ? 1 : 0;

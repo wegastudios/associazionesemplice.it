@@ -306,8 +306,8 @@
 /* Elenco eventi a card, per mese */
 .asemf-events .asemf-month { margin: 2rem 0 .75rem; font-size: 1.25rem; }
 .asemf-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; }
-.asemf-card { display: grid; grid-template-columns: 64px 1fr; gap: 1rem; padding: 1rem; border: 1px solid rgba(0,0,0,.1); border-radius: 16px; background: #fff; }
-.asemf-card.has-poster { grid-template-columns: 64px 120px 1fr; }
+.asemf-cards > .asemf-card { display: grid; grid-template-columns: 64px 1fr; gap: 1rem; padding: 1rem; border: 1px solid rgba(0,0,0,.1); border-radius: 16px; background: #fff; }
+.asemf-cards > .asemf-card.has-poster { grid-template-columns: 64px 120px 1fr; }
 .asemf-card-date { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 64px; border-radius: 12px; background: #f0f4ff; text-decoration: none; color: inherit; }
 .asemf-card-day { font-size: 1.5rem; font-weight: 700; line-height: 1; }
 .asemf-card-mon { font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; }
@@ -319,7 +319,7 @@
 .asemf-card-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-top: .75rem; }
 .asemf-card-price { font-weight: 600; }
 @media (max-width: 600px) {
-	.asemf-card, .asemf-card.has-poster { grid-template-columns: 56px 1fr; }
+	.asemf-cards > .asemf-card, .asemf-cards > .asemf-card.has-poster { grid-template-columns: 56px 1fr; }
 	.asemf-card-poster { grid-column: 1 / -1; grid-row: 2; }
 	.asemf-card-body { grid-column: 1 / -1; }
 }

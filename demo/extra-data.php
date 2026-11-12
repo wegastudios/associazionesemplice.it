@@ -463,3 +463,12 @@ extra_step( 'menu con gli eventi', function () {
 		}
 	}
 } );
+
+// WhatsApp della segreteria: il pulsante fisso e quello nelle pagine degli eventi compaiono solo con un numero (qui un numero di prova, non attivo).
+extra_step( 'whatsapp della segreteria', function () {
+	$s = (array) get_option( 'asem_settings', array() );
+	if ( empty( $s['secretary_phone'] ) ) {
+		$s['secretary_phone'] = '+39 320 000 0000';
+		update_option( 'asem_settings', $s );
+	}
+} );

@@ -564,6 +564,11 @@ asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::list_html( array(
 asem_ok( false !== strpos( do_shortcode( '[associazionesemplice_eventi]' ), 'asemf-card' ), 'elenco eventi: lo shortcode funziona' );
 $pe_cal = \AssociazioneSemplice\PublicEvents::list_html( array( 'modo' => 'mese' ) );
 asem_ok( false !== strpos( $pe_cal, 'asemf-cal' ) && false !== strpos( $pe_cal, 'asemf-filters' ), 'calendario eventi: la vista mensile e i filtri si disegnano' );
+$_GET['asem_vista'] = 'elenco'; // il pulsante Elenco funziona anche in una pagina che forza il calendario
+asem_ok( false === strpos( \AssociazioneSemplice\PublicEvents::list_html( array( 'modo' => 'mese' ) ), 'asemf-cal' ), 'eventi: il pulsante Elenco vale più del modo calendario della pagina' );
+$_GET['asem_vista'] = 'mese'; // e Calendario in una pagina con l'elenco
+asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::list_html(), 'asemf-cal' ), 'eventi: il pulsante Calendario vale più del modo elenco della pagina' );
+unset( $_GET['asem_vista'] );
 asem_ok( false !== strpos( \AssociazioneSemplice\PublicEvents::list_html( array( 'modo' => 'mese', 'filtri' => 'no' ) ), 'asemf-cal' ) && false === strpos( \AssociazioneSemplice\PublicEvents::list_html( array( 'modo' => 'mese', 'filtri' => 'no' ) ), 'asemf-filters' ), 'calendario eventi: i filtri si possono togliere' );
 wp_update_post( array( 'ID' => $pe_post, 'post_status' => 'draft' ) );
 asem_ok( null !== asem_throws( function () use ( $acts, $event, $ev_date ) { $acts->add_session( $event, array( 'session_date' => $ev_date ) ); } ), 'evento una tantum: una sola data' );
@@ -8384,6 +8389,15 @@ asem_ok( false === strpos( \AssociazioneSemplice\Frontend\Views::event_booking( 
 $er_list = \AssociazioneSemplice\Frontend\Views::activities( array( 'tipo' => 'evento', 'anno' => $sy_label ) );
 asem_ok( false !== strpos( $er_list, 'Dettagli' ) && false !== strpos( $er_list, (string) \AssociazioneSemplice\PublicEvents::page_url( $er_a ) ), 'elenco attività: le schede portano alla pagina pubblica dell\'evento' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::member_login_url(), '/' ), 'accesso per prenotarsi: indirizzo di accesso disponibile' );
+Settings::update( array( 'secretary_phone' => '333 1234567' ) );
+ob_start();
+\AssociazioneSemplice\Frontend\WhatsappFloat::render();
+$wa_html = (string) ob_get_clean();
+asem_ok( false !== strpos( $wa_html, 'https://wa.me/393331234567' ) && false !== strpos( $wa_html, 'asem-wa-float' ), 'WhatsApp: pulsante fisso con il numero della segreteria' );
+Settings::update( array( 'secretary_phone' => 'non un numero' ) );
+ob_start();
+\AssociazioneSemplice\Frontend\WhatsappFloat::render();
+asem_ok( '' === (string) ob_get_clean(), 'WhatsApp: senza numero valido il pulsante non compare' );
 remove_filter( 'pre_wp_mail', $er_hook, 10 );
 Settings::update( array( 'guest_max_events' => 2 ) );
 

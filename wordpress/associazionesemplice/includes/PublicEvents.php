@@ -140,6 +140,16 @@ final class PublicEvents {
 		return (int) get_post_meta( $post_id, self::META, true );
 	}
 
+	/** Pagina con l'elenco degli eventi: quella guidata, oppure una pagina pubblicata che contiene lo shortcode (vuoto se non c'è). */
+	public static function list_page_url(): string {
+		$id = (int) ( Pages::existing()['eventi'] ?? 0 );
+		if ( ! $id ) {
+			$found = get_posts( array( 'post_type' => 'page', 'post_status' => 'publish', 's' => 'associazionesemplice_eventi', 'numberposts' => 1, 'fields' => 'ids', 'orderby' => 'ID', 'order' => 'ASC' ) );
+			$id    = $found ? (int) $found[0] : 0;
+		}
+		return $id ? (string) get_permalink( $id ) : '';
+	}
+
 	/** Indirizzo della pagina pubblica dell'attività, se è pubblicata (altrimenti vuoto). */
 	public static function page_url( int $activity_id ): string {
 		$id = self::post_of( $activity_id );
@@ -498,8 +508,7 @@ final class PublicEvents {
 			return $content;
 		}
 		Frontend\Views::no_cache();
-		$list_id = (int) ( Pages::existing()['eventi'] ?? 0 );
-		$all     = $list_id ? (string) get_permalink( $list_id ) : '';
+		$all     = self::list_page_url();
 		$html    = '<div class="asemf asemf-event">' . ( '' !== $all ? '<p class="asemf-back"><a href="' . esc_url( $all ) . '">« Tutti gli eventi</a></p>' : '' ) . '<div class="asemf-event-head' . ( has_post_thumbnail( $post ) ? ' has-poster' : '' ) . '">';
 		if ( has_post_thumbnail( $post ) ) {
 			$html .= '<figure class="asemf-poster">' . wp_get_attachment_image( (int) get_post_thumbnail_id( $post ), 'large' ) . '</figure>'; // direttamente: il filtro del tema che toglie la locandina duplicata non deve toccare questa
@@ -541,8 +550,16 @@ final class PublicEvents {
 		if ( '' !== $where ) {
 			$h .= '<div><strong>Dove</strong><br>' . esc_html( $where ) . '<br><a href="' . esc_url( 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode( $where ), array( 'https' ) ) . '" target="_blank" rel="noopener noreferrer">Apri su Google Maps</a></div>';
 		}
-		if ( '' !== $mail ) {
-			$h .= '<div><strong>Info e contatti</strong><br><a href="mailto:' . esc_attr( antispambot( $mail ) ) . '">' . esc_html( antispambot( $mail ) ) . '</a></div>';
+		$wa = Phone::whatsapp( (string) Settings::get( 'secretary_phone' ) );
+		if ( '' !== $mail || '' !== $wa ) {
+			$h .= '<div><strong>Info e contatti</strong>';
+			if ( '' !== $wa ) {
+				$h .= '<br><a class="asemf-btn wp-element-button asemf-wa" href="' . esc_url( 'https://wa.me/' . $wa . '?text=' . rawurlencode( 'Ciao, vorrei informazioni su «' . (string) $a['name'] . '»' ), array( 'https' ) ) . '" target="_blank" rel="noopener noreferrer">💬 Scrivici su WhatsApp</a>';
+			}
+			if ( '' !== $mail ) {
+				$h .= '<br><a href="mailto:' . esc_attr( antispambot( $mail ) ) . '">' . esc_html( antispambot( $mail ) ) . '</a>';
+			}
+			$h .= '</div>';
 		}
 		return $h . '</div>';
 	}
@@ -655,7 +672,11 @@ final class PublicEvents {
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- filtri di sola lettura sull'indirizzo della pagina
 		$cat = isset( $_GET['asem_cat'] ) ? sanitize_title( wp_unslash( (string) $_GET['asem_cat'] ) ) : sanitize_title( (string) ( $atts['categoria'] ?? '' ) );
 		$ym  = isset( $_GET['asem_mese'] ) ? sanitize_text_field( wp_unslash( (string) $_GET['asem_mese'] ) ) : '';
+		$pick = isset( $_GET['asem_vista'] ) ? sanitize_key( wp_unslash( (string) $_GET['asem_vista'] ) ) : '';
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended
+		if ( 'elenco' === $pick || 'mese' === $pick ) { // la scelta dei pulsanti Elenco/Calendario vale più del modo scritto nella pagina
+			$view = $pick;
+		}
 		$filters = 'no' !== strtolower( (string) ( $atts['filtri'] ?? 'si' ) );
 		$bar     = $filters ? self::filter_bar( $view, $cat, $ym ) : '';
 		if ( 'mese' === $view ) {
@@ -805,12 +826,12 @@ final class PublicEvents {
 		$month = 'mese' === $view ? ( '' !== $ym ? $ym : wp_date( 'Y-m' ) ) : '';
 		$h     = '<nav class="asemf-filters" aria-label="Filtri degli eventi">';
 		$h    .= '<span class="asemf-filter-group">'
-			. '<a class="asemf-chip' . ( 'elenco' === $view ? ' is-on' : '' ) . '" href="' . esc_url( self::view_url( array( 'asem_cat' => $cat ) ) ) . '">Elenco</a>'
-			. '<a class="asemf-chip' . ( 'mese' === $view ? ' is-on' : '' ) . '" href="' . esc_url( self::view_url( array( 'asem_cat' => $cat, 'asem_mese' => '' !== $ym ? $ym : wp_date( 'Y-m' ) ) ) ) . '">Calendario</a></span>';
+			. '<a class="asemf-chip' . ( 'elenco' === $view ? ' is-on' : '' ) . '" href="' . esc_url( self::view_url( array( 'asem_cat' => $cat, 'asem_vista' => 'elenco' ) ) ) . '">Elenco</a>'
+			. '<a class="asemf-chip' . ( 'mese' === $view ? ' is-on' : '' ) . '" href="' . esc_url( self::view_url( array( 'asem_cat' => $cat, 'asem_vista' => 'mese', 'asem_mese' => '' !== $ym ? $ym : wp_date( 'Y-m' ) ) ) ) . '">Calendario</a></span>';
 		if ( $terms && ! is_wp_error( $terms ) ) {
-			$h .= '<span class="asemf-filter-group"><a class="asemf-chip' . ( '' === $cat ? ' is-on' : '' ) . '" href="' . esc_url( self::view_url( array( 'asem_mese' => $month ) ) ) . '">Tutte le categorie</a>';
+			$h .= '<span class="asemf-filter-group"><a class="asemf-chip' . ( '' === $cat ? ' is-on' : '' ) . '" href="' . esc_url( self::view_url( array( 'asem_vista' => $view, 'asem_mese' => $month ) ) ) . '">Tutte le categorie</a>';
 			foreach ( $terms as $t ) {
-				$h .= '<a class="asemf-chip' . ( $cat === $t->slug ? ' is-on' : '' ) . '" href="' . esc_url( self::view_url( array( 'asem_cat' => $t->slug, 'asem_mese' => $month ) ) ) . '">' . esc_html( $t->name ) . '</a>';
+				$h .= '<a class="asemf-chip' . ( $cat === $t->slug ? ' is-on' : '' ) . '" href="' . esc_url( self::view_url( array( 'asem_cat' => $t->slug, 'asem_vista' => $view, 'asem_mese' => $month ) ) ) . '">' . esc_html( $t->name ) . '</a>';
 			}
 			$h .= '</span>';
 		}
@@ -832,9 +853,9 @@ final class PublicEvents {
 		}
 		$prev = gmdate( 'Y-m', (int) strtotime( $ym . '-01 -1 month' ) );
 		$next = gmdate( 'Y-m', (int) strtotime( $ym . '-01 +1 month' ) );
-		$h    = '<div class="asemf-cal-nav"><a class="asemf-chip" href="' . esc_url( self::view_url( array( 'asem_cat' => $cat, 'asem_mese' => $prev ) ) ) . '">← ' . esc_html( ucfirst( wp_date( 'F', (int) strtotime( $prev . '-01 12:00:00' ) ) ) ) . '</a>'
+		$h    = '<div class="asemf-cal-nav"><a class="asemf-chip" href="' . esc_url( self::view_url( array( 'asem_cat' => $cat, 'asem_vista' => 'mese', 'asem_mese' => $prev ) ) ) . '">← ' . esc_html( ucfirst( wp_date( 'F', (int) strtotime( $prev . '-01 12:00:00' ) ) ) ) . '</a>'
 			. '<h3 class="asemf-month">' . esc_html( ucfirst( wp_date( 'F Y', $first ) ) ) . '</h3>'
-			. '<a class="asemf-chip" href="' . esc_url( self::view_url( array( 'asem_cat' => $cat, 'asem_mese' => $next ) ) ) . '">' . esc_html( ucfirst( wp_date( 'F', (int) strtotime( $next . '-01 12:00:00' ) ) ) ) . ' →</a></div>';
+			. '<a class="asemf-chip" href="' . esc_url( self::view_url( array( 'asem_cat' => $cat, 'asem_vista' => 'mese', 'asem_mese' => $next ) ) ) . '">' . esc_html( ucfirst( wp_date( 'F', (int) strtotime( $next . '-01 12:00:00' ) ) ) ) . ' →</a></div>';
 		$h   .= '<table class="asemf-cal"><caption class="screen-reader-text">Eventi di ' . esc_html( wp_date( 'F Y', $first ) ) . '</caption><thead><tr>';
 		foreach ( array( 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom' ) as $d ) {
 			$h .= '<th scope="col">' . $d . '</th>';
