@@ -112,6 +112,26 @@ final class SaasClient {
 		return self::request( 'POST', '/api/portale/v2/promo/redeem', 'promo_redeem', array( 'code' => mb_substr( $code, 0, 40 ), 'order' => $orderId, 'ref' => $ref ), $now );
 	}
 
+	/** «Ci sto dentro?» prima di passare a un altro piano (contratto §3.4): solo numeri, nessun dato dei soci. Non cambia niente. */
+	public static function planChangeCheck( string $orgId, string $ref, string $toPlan, int $toVersion, ?int $now = null ): array {
+		return self::request( 'POST', '/api/portale/v2/orgs/' . self::id( $orgId ) . '/plan-change/check', 'plan_change_check', array( 'ref' => $ref, 'to_plan' => $toPlan, 'to_plan_version' => $toVersion ), $now );
+	}
+
+	/** Il dominio è valido e libero? (contratto §3.5) */
+	public static function domainCheck( string $orgId, string $ref, string $domain, ?int $now = null ): array {
+		return self::request( 'POST', '/api/portale/v2/orgs/' . self::id( $orgId ) . '/domain/check', 'domain_check', array( 'ref' => $ref, 'domain' => mb_substr( $domain, 0, 253 ) ), $now );
+	}
+
+	/** Salva il dominio personalizzato (`null` = toglie). Risponde con lo stato e i record DNS da creare. */
+	public static function domainSet( string $orgId, string $ref, ?string $domain, ?int $now = null ): array {
+		return self::request( 'POST', '/api/portale/v2/orgs/' . self::id( $orgId ) . '/domain/set', 'domain_set', array( 'ref' => $ref, 'domain' => null === $domain ? null : mb_substr( $domain, 0, 253 ) ), $now );
+	}
+
+	/** Stato per l'area clienti (contratto §3.6): solo numeri e stato. */
+	public static function orgStatus( string $orgId, string $ref, ?int $now = null ): array {
+		return self::request( 'POST', '/api/portale/v2/orgs/' . self::id( $orgId ) . '/status', 'org_status', array( 'ref' => $ref ), $now );
+	}
+
 	/** Gli identificativi sono UUID: niente altro finisce nell'indirizzo. */
 	private static function id( string $id ): string {
 		if ( ! preg_match( '/^[A-Za-z0-9-]{8,64}$/', $id ) ) {

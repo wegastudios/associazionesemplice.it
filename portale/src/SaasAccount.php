@@ -33,6 +33,37 @@ final class SaasAccount {
 		)[ $state ] ?? array( $state, '' );
 	}
 
+	/** Pagina «Gestisci» con stato, dominio e controllo del cambio piano: spenta finché il SaaS non ha in produzione gli endpoint v2 (`saas_v2.enabled`). */
+	public static function manageEnabled(): bool {
+		return true === Config::get( 'saas_v2.enabled', false ) && SaasClient::enabled();
+	}
+
+	/** Associazione del cliente per la pagina «Gestisci»: ordine attivo con associazione già creata. */
+	public static function org( Db $db, string $customerId, string $orderId ): ?array {
+		$o = $db->one(
+			"SELECT o.*, g.org_id, g.name AS org_name FROM orders o JOIN saas_orgs g ON g.ref = o.org_ref
+			 WHERE o.id = ? AND o.customer_id = ? AND o.product = 'saas' AND o.status IN ('paid','active') AND g.org_id IS NOT NULL",
+			array( $orderId, $customerId )
+		);
+		return $o ?: null;
+	}
+
+	/** Dominio scritto dal cliente → forma normalizzata (minuscolo, senza schema né percorso) o null. */
+	public static function cleanDomain( string $d ): ?string {
+		$d = strtolower( trim( $d ) );
+		$d = preg_replace( '#^https?://#', '', $d );
+		$d = rtrim( (string) preg_replace( '#[/?].*$#', '', $d ), '.' );
+		return 1 === preg_match( '/^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,24}$/', $d ) ? $d : null;
+	}
+
+	/** Parole italiane per le ragioni di rifiuto del dominio. */
+	public static function domainReason( string $reason ): string {
+		return array(
+			'invalid' => 'L\'indirizzo non sembra valido: scrivilo come www.tuaassociazione.it.', 'taken' => 'Questo indirizzo è già usato da un\'altra associazione.',
+			'reserved' => 'Questo indirizzo non si può usare.', 'no_package' => 'Il tuo abbonamento non comprende il dominio personalizzato.',
+		)[ $reason ] ?? 'Questo indirizzo non si può usare.';
+	}
+
 	/** Ordine del cliente (per i pulsanti dell'area clienti). */
 	public static function mine( Db $db, string $customerId, string $orderId ): ?array {
 		$o = $db->one( "SELECT * FROM orders WHERE id = ? AND customer_id = ? AND product = 'saas' AND status = 'active'", array( $orderId, $customerId ) );

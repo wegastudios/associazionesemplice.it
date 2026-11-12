@@ -2177,6 +2177,39 @@ check( 'profilo: conferma email dal link', true === Identity::emailConfirm( 'cod
 Http::$transport = $idPrev;
 Config::set( 'identity', array() );
 Config::set( 'staff_area_sign_key', '' );
+use PortaleSaasClient;
+// Contratto v2 lato portale: «Gestisci» (stato, dominio, controllo cambio piano), spento finché il SaaS non ha gli endpoint in produzione
+check( 'gestisci: spento di default', false === SaasAccount::manageEnabled() );
+Config::set( 'saas_sign_key', base64_encode( str_repeat( 's', 32 ) ) );
+check( 'gestisci: acceso solo con saas_v2.enabled e la chiave', false === SaasAccount::manageEnabled() && ( Config::set( 'saas_v2', array( 'enabled' => true ) ) || true ) && true === SaasAccount::manageEnabled() );
+$v2Sent = array();
+$v2Prev = Http::$transport;
+Http::$transport = function ( $m, $u, $h, $b ) use ( &$v2Sent ) {
+	$p = explode( '.', json_decode( (string) $b, true )['token'] ?? '' );
+	$v2Sent = array( 'm' => $m, 'u' => $u, 'c' => json_decode( (string) base64_decode( strtr( $p[1] ?? '', '-_', '+/' ) ), true ) );
+	return array( 200, '{"ok":true}' );
+};
+SaasClient::planChangeCheck( 'abcdef12-3456', 'o1', 'gestionale', 2 );
+check( 'gestisci: cambio piano — percorso, tipo e claim del contratto', 'POST' === $v2Sent['m'] && false !== strpos( $v2Sent['u'], '/api/portale/v2/orgs/abcdef12-3456/plan-change/check' ) && 'plan_change_check' === $v2Sent['c']['typ'] && 'o1' === $v2Sent['c']['ref'] && 'gestionale' === $v2Sent['c']['to_plan'] && 2 === $v2Sent['c']['to_plan_version'] );
+SaasClient::domainSet( 'abcdef12-3456', 'o1', null );
+check( 'gestisci: dominio tolto = domain null', 'domain_set' === $v2Sent['c']['typ'] && array_key_exists( 'domain', $v2Sent['c'] ) && null === $v2Sent['c']['domain'] );
+SaasClient::domainCheck( 'abcdef12-3456', 'o1', 'www.esempio.it' );
+check( 'gestisci: controllo dominio', 'domain_check' === $v2Sent['c']['typ'] && 'www.esempio.it' === $v2Sent['c']['domain'] );
+SaasClient::orgStatus( 'abcdef12-3456', 'o1' );
+check( 'gestisci: stato', 'org_status' === $v2Sent['c']['typ'] && false !== strpos( $v2Sent['u'], '/orgs/abcdef12-3456/status' ) );
+$v2Bad = false;
+try {
+	SaasClient::orgStatus( '../../x', 'o1' );
+} catch ( UserError $e ) {
+	$v2Bad = true;
+}
+check( 'gestisci: identificativo strano mai nell\'indirizzo', $v2Bad );
+Http::$transport = $v2Prev;
+check( 'gestisci: dominio normalizzato', 'www.esempio.it' === SaasAccount::cleanDomain( ' HTTPS://WWW.Esempio.it/pagina?x=1 ' ) && 'esempio.it' === SaasAccount::cleanDomain( 'esempio.it.' ) );
+check( 'gestisci: domini non validi rifiutati', null === SaasAccount::cleanDomain( 'localhost' ) && null === SaasAccount::cleanDomain( 'a b.it' ) && null === SaasAccount::cleanDomain( '<script>.it' ) && null === SaasAccount::cleanDomain( '' ) );
+check( 'gestisci: ragioni del dominio in italiano', false !== strpos( SaasAccount::domainReason( 'taken' ), 'un\'altra associazione' ) && '' !== SaasAccount::domainReason( 'boh' ) );
+Config::set( 'saas_v2', array() );
+Config::set( 'saas_sign_key', '' );
 Http::$transport = $prevTransport;
 Config::set( 'saas_public_keys', array() );
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
