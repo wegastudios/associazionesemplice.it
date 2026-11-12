@@ -75,7 +75,7 @@ return array(
 	// Accesso unico (saas/docs/IDENTITA_API.md): /accedi, /twofactor, /account/esci e il reset password parlano col SaaS con richieste firmate (chiave staff_area_sign_key). Spento = accesso come prima.
 	'identity' => array( 'enabled' => false ),
 	// Pagina «Gestisci» nell'area clienti (stato, dominio, controllo cambio piano): accendere solo quando il SaaS ha in produzione gli endpoint v2 (promo, plan-change, domain, status).
-	'saas_v2' => array( 'enabled' => false ),
+	'saas_v2' => array( 'enabled' => false, 'domain' => false ), // 'domain': dominio personalizzato ai clienti, solo quando i certificati sono decisi
 
 	// Catalogo del SaaS (piani, prezzi, promo): chiave pubblica con cui il SaaS firma, come «kid => x» (si legge con `php artisan saas:keys:generate` / dal SaaS).
 	// Senza chiavi il portale non scarica il catalogo e /saas non mostra prezzi. Indirizzo opzionale: 'saas_catalog_url' (default {saas_api_url}/api/catalogo/v1).

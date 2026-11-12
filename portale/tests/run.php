@@ -2205,6 +2205,7 @@ try {
 }
 check( 'gestisci: identificativo strano mai nell\'indirizzo', $v2Bad );
 Http::$transport = $v2Prev;
+check( 'gestisci: il dominio resta spento anche con «Gestisci» acceso', true === SaasAccount::manageEnabled() && false === SaasAccount::domainEnabled() );
 check( 'gestisci: dominio normalizzato', 'www.esempio.it' === SaasAccount::cleanDomain( ' HTTPS://WWW.Esempio.it/pagina?x=1 ' ) && 'esempio.it' === SaasAccount::cleanDomain( 'esempio.it.' ) );
 check( 'gestisci: domini non validi rifiutati', null === SaasAccount::cleanDomain( 'localhost' ) && null === SaasAccount::cleanDomain( 'a b.it' ) && null === SaasAccount::cleanDomain( '<script>.it' ) && null === SaasAccount::cleanDomain( '' ) );
 check( 'gestisci: ragioni del dominio in italiano', false !== strpos( SaasAccount::domainReason( 'taken' ), 'un\'altra associazione' ) && '' !== SaasAccount::domainReason( 'boh' ) );

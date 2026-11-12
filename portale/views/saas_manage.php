@@ -24,7 +24,7 @@ $stateName = array( 'pending' => 'In verifica', 'active' => 'Attivo', 'error' =>
 		<?php else : ?><p class="muted">Il gestionale non risponde ora: riprova tra poco.</p><?php endif; ?>
 	</div>
 
-	<?php if ( $st && in_array( 'custom_domain', $pk, true ) ) : ?>
+	<?php if ( $st && Portale\SaasAccount::domainEnabled() && in_array( 'custom_domain', $pk, true ) ) : ?>
 	<div class="sub">
 		<div class="sub-top"><h2>Indirizzo personalizzato</h2><?php if ( $dom ) : ?><span class="badge <?php echo 'active' === ( $dom['state'] ?? '' ) ? 'ok' : 'warn'; ?>"><?php echo e( $stateName[ $dom['state'] ?? '' ] ?? '' ); ?></span><?php endif; ?></div>
 		<?php if ( $dom ) : ?><p>Oggi: <b><?php echo e( (string) ( $dom['name'] ?? '' ) ); ?></b></p><?php endif; ?>
