@@ -12,17 +12,17 @@ di Wega: il portale non le emette. Documento di riferimento: `LOGIN_UNICO_E_DATA
 | `customers` | 3 | **già nel SaaS** (import clienti, 3/3 verificati) |
 | `staff_people`, `staff_roles`, `staff_sessions`, `staff_audit`, `staff_invites` | 1/2/0/0/0 | **già nel SaaS** (identità unica) |
 | `staff`, `plugin_staff` | 0 | vecchi accessi: si scartano |
-| `subscriptions` | 3 (licenza cifrata, dominio, scadenza) | `core.portal_subscriptions` |
-| `orders` | 0 | `core.portal_orders` (vuota, schema pronto) |
-| `saas_orgs`, `saas_outbox` | 0 | `core.portal_orgs`, `core.portal_outbox` |
-| `releases` (20) + file `data/releases/` | 20 | `core.plugin_releases`; i file restano su disco, percorso nella riga |
-| `downloads` | 9 | `core.plugin_downloads` |
+| `subscriptions` | 3 (licenza cifrata, dominio, scadenza) | `portal.subscriptions` |
+| `orders` | 0 | `portal.orders` (vuota, scrivibile subito) |
+| `saas_orgs`, `saas_outbox` | 0 | `portal.orgs` (l'outbox in coda resta locale) |
+| `releases` (20) + file `data/releases/` | 20 | `portal.releases`; i file restano su disco, percorso nella riga |
+| `downloads` | 9 | `portal.downloads` |
 | `plugin_catalog_revs`, `plugin_catalog_draft` | 0 | già gestiti dal catalogo del SaaS (rev 2): non si importano |
 | `plugin_promos`, `plugin_promo_uses` | 0 | già `core.promo_redemptions` (PR 531): non si importano |
-| `email_templates` | 0 | `core.portal_email_templates` |
-| `settings` (6) | 6 | `core.portal_settings` (il segreto `wega_token` resta cifrato, non in chiaro) |
-| `audit` | 262 | `core.portal_audit` |
-| `events` | 11 | dedup dei webhook: si importa (evita doppi) |
+| `email_templates` | 0 | `portal.email_templates` |
+| `settings` (6) | 6 | `portal.settings` (`wega_token` resta cifrato con la chiave del portale: il SaaS non lo decifra mai) |
+| `audit` | 262 | `portal.audit` |
+| `events` | 11 | `portal.events` (dedup dei webhook, evita doppi) |
 | `login_tokens`, `seen_jti`, `rate_limits`, `proxy_cache` | – | transitori: si scartano |
 
 ## 2. Come
@@ -31,8 +31,7 @@ di Wega: il portale non le emette. Documento di riferimento: `LOGIN_UNICO_E_DATA
    server, con impronta verificata.
 2. **Schema** (migrazioni centrali) e **comando di import** `saas:portal:import-db`, ripetibile (upsert per id) e con
    conteggi e somme a fine corsa, come l'import clienti.
-3. **API di dati del SaaS** firmata come le altre (`/saas/api/portale/v3/...`): il portale non apre più il file, legge e
-   scrive qui. Cambio nel portale (lo fa la sessione Portale: vendita e area clienti).
+3. **Connessione diretta**: il portale (stesso server, PostgreSQL su 127.0.0.1, `pdo_pgsql` attivo) usa un ruolo ristretto `portal_app` con diritti solo sullo schema `portal`. Niente API per query. Dati effimeri (`seen_jti`, limiti, cache, token di accesso, sessioni, outbox in coda) restano locali. Il cambio nello strato Db del portale lo fa la sessione Portale: vendita e area clienti.
 4. **Parallelo**: il portale scrive in entrambi per un periodo; confronto automatico dei conteggi.
 5. **Prova con una licenza vera** dai plugin installati (attivazione, controllo, aggiornamento, scarico), identica a prima.
 6. **Spegnimento** del vecchio file e dei vecchi accessi **solo dopo la prova e avvisando la titolare**. L'accesso
