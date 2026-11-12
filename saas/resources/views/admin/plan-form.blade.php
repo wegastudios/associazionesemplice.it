@@ -57,6 +57,9 @@
             <div><label for="l-spm">Spazio file per socio (MB)</label><input id="l-spm" name="limits[storage_mb_per_member]" value="{{ $values['limits']['storage_mb_per_member'] ?? '' }}" inputmode="numeric"></div>
             <div><label for="l-min">Spazio file minimo (MB)</label><input id="l-min" name="limits[storage_mb_min]" value="{{ $values['limits']['storage_mb_min'] ?? '' }}" inputmode="numeric"></div>
         </div>
+        <label for="l-packages">Pacchetti già inclusi nel piano (facoltativo)</label>
+        <textarea id="l-packages" name="packages_json" rows="2" placeholder='{"site": {}, "einvoice": {"yearly": 50}}'>{{ $values['packages_json'] ?? '' }}</textarea>
+        <p class="muted">Scrivi {"codice": {limiti}}; per un pacchetto senza limiti {}. Lascia vuoto se il piano non ne include.</p>
 
         <h2>Cosa comprende</h2>
         <p class="muted">Per ogni voce: inclusa, con un limite (scrivi il testo che vedrà il cliente) o non compresa.</p>
