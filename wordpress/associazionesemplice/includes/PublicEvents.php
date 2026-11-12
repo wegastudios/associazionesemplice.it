@@ -534,7 +534,7 @@ final class PublicEvents {
 			}
 			$html .= '<p class="asemf-ics"><a class="asemf-btn asemf-btn-ghost wp-element-button" href="' . esc_url( add_query_arg( 'asem_ics', '1', (string) get_permalink( $post ) ) ) . '">Salva nel tuo calendario</a></p>';
 		} else {
-			$html .= '<p class="asemf-small asemf-muted">Per iscriverti a questo corso rivolgiti alla segreteria dell\'associazione.</p>';
+			$html .= '<div class="asemf-notice" role="note"><strong>Come iscriversi</strong><br>L\'iscrizione al corso la registra la segreteria: scrivici o chiamaci con i contatti qui sotto e ti diciamo come fare (serve la tessera di socio; se non sei ancora socio, ti aiutiamo anche con quella).</div>';
 		}
 		return $html . self::venue_html( $a ) . self::share_html( $post ) . self::prev_next_html( $post ) . '</div>';
 	}
@@ -850,6 +850,20 @@ final class PublicEvents {
 		$by    = array(); // giorno => date
 		foreach ( self::rows( $posts, $ym . '-01', $last ) as $s ) {
 			$by[ (string) $s['session_date'] ][] = $s;
+		}
+		foreach ( $posts as $aid => $unused ) { // i corsi non hanno «date»: nel calendario compaiono con le loro lezioni settimanali
+			$a = Plugin::activities()->get( (int) $aid );
+			if ( ! $a || ActivityKind::COURSE !== $a['kind'] ) {
+				continue;
+			}
+			$slots = array();
+			foreach ( ActivityService::slots( $a ) as $sl ) {
+				$slots[ (int) $sl['day'] ] = (string) ( $sl['start'] ?? '' );
+			}
+			foreach ( Attendance::lesson_dates( $a, $ym . '-01', $last ) as $d ) {
+				$dow = (int) gmdate( 'N', (int) strtotime( $d . ' 12:00:00' ) );
+				$by[ $d ][] = array( 'activity_id' => (int) $aid, 'session_date' => $d, 'start_time' => $slots[ $dow ] ?? (string) ( $a['lesson_start'] ?? '' ) );
+			}
 		}
 		$prev = gmdate( 'Y-m', (int) strtotime( $ym . '-01 -1 month' ) );
 		$next = gmdate( 'Y-m', (int) strtotime( $ym . '-01 +1 month' ) );

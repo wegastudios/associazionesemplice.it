@@ -472,3 +472,33 @@ extra_step( 'whatsapp della segreteria', function () {
 		update_option( 'asem_settings', $s );
 	}
 } );
+
+// Il corso ha la sua pagina pubblica (orario settimanale, sede, come iscriversi) e compare nel calendario con le sue lezioni.
+extra_step( 'pagina del corso di fotografia', function () {
+	if ( ! class_exists( '\AssociazioneSemplice\PublicEvents' ) ) {
+		return;
+	}
+	$act = Plugin::activities();
+	$aid = (int) \AssociazioneSemplice\Db::db()->get_var( 'SELECT id FROM ' . \AssociazioneSemplice\Db::t( 'activities' ) . " WHERE name = 'Corso di fotografia' AND kind = 'course' ORDER BY id LIMIT 1" );
+	if ( ! $aid ) {
+		return;
+	}
+	$act->update( $aid, array( 'lesson_weekday' => 2, 'lesson_start' => '18:30', 'lesson_end' => '20:00', 'location' => 'Sede dell\'associazione' ) );
+	$pid = \AssociazioneSemplice\PublicEvents::ensure( $aid );
+	if ( ! $pid ) {
+		return;
+	}
+	$intro = 'Un corso per imparare a fotografare con qualsiasi macchina, anche il telefono: composizione, luce, ritratto e un po\' di fotoritocco. Si fa una lezione a settimana, il martedì sera; le uscite fotografiche si concordano insieme.';
+	wp_update_post( array( 'ID' => $pid, 'post_status' => 'publish', 'post_content' => extra_event_html( $intro, 'Corsi', 'Sede dell\'associazione' ), 'post_excerpt' => wp_trim_words( $intro, 18 ) ) );
+	$t = term_exists( 'Corsi', \AssociazioneSemplice\PublicEvents::TAXONOMY );
+	if ( ! $t ) {
+		$t = wp_insert_term( 'Corsi', \AssociazioneSemplice\PublicEvents::TAXONOMY );
+	}
+	if ( ! is_wp_error( $t ) ) {
+		wp_set_object_terms( $pid, array( (int) $t['term_id'] ), \AssociazioneSemplice\PublicEvents::TAXONOMY );
+	}
+	$thumb = extra_poster( 'Corso di fotografia', array( 60, 90, 130 ) );
+	if ( $thumb ) {
+		set_post_thumbnail( $pid, $thumb );
+	}
+} );
