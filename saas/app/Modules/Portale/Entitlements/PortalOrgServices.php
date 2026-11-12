@@ -195,7 +195,7 @@ final readonly class PortalOrgServices
         $host = (string) parse_url($this->config->saasUrl(), PHP_URL_HOST);
         $labels = explode('.', $host);
 
-        return implode('.', array_slice($labels, -2));
+        return implode('.', array_slice($labels, max(0, count($labels) - 2)));
     }
 
     private function domainReason(?string $domain, string $orgId): ?string
