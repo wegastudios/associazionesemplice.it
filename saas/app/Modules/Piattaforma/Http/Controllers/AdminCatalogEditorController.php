@@ -6,6 +6,7 @@ namespace App\Modules\Piattaforma\Http\Controllers;
 
 use App\Modules\Piattaforma\Catalogo\CatalogDraftEditor;
 use App\Modules\Piattaforma\Catalogo\CatalogForm;
+use App\Modules\Piattaforma\Catalogo\CatalogPublisher;
 use App\Modules\Piattaforma\Catalogo\PriceCalculator;
 use App\Modules\Piattaforma\Contracts\Catalog;
 use App\Modules\Piattaforma\Models\PlatformStaff;
@@ -243,7 +244,7 @@ final readonly class AdminCatalogEditorController
             'grant_operators' => $grants['operators'] ?? '',
             'grant_storage_gb' => $grants['storage_gb'] ?? '',
             'grant_package' => $grants['package'] ?? '',
-            'grant_limits' => $limits === [] || $limits === null ? '' : json_encode($limits, JSON_UNESCAPED_UNICODE),
+            'grant_limits' => $limits === [] ? '' : json_encode($limits, JSON_UNESCAPED_UNICODE),
         ];
         $rows = CatalogForm::priceRows($addon['prices'] ?? []);
         if ($input !== null) {
@@ -343,12 +344,22 @@ final readonly class AdminCatalogEditorController
         foreach (self::PREVIEW_MEMBERS as $members) {
             $rows[] = [
                 'members' => $members,
-                'month' => $month === null ? '—' : CatalogForm::euros(PriceCalculator::members($month, $members)),
-                'year' => $year === null ? '—' : CatalogForm::euros(PriceCalculator::members($year, $members)),
+                'month' => $month === null ? '—' : CatalogForm::euros(PriceCalculator::members(self::map($month), $members)),
+                'year' => $year === null ? '—' : CatalogForm::euros(PriceCalculator::members(self::map($year), $members)),
             ];
         }
 
         return $rows;
+    }
+
+    /**
+     * @param  array<mixed>  $value
+     * @return array<string, mixed>
+     */
+    private static function map(array $value): array
+    {
+        /** @var array<string, mixed> $value */
+        return $value;
     }
 
     private function priceSummary(mixed $prices): string

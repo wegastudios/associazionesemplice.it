@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Piattaforma\Http\Controllers\AdminCatalogController;
+use App\Modules\Piattaforma\Http\Controllers\AdminCatalogEditorController;
 use App\Modules\Piattaforma\Http\Controllers\AdminConsoleController;
 use App\Modules\Piattaforma\Http\Controllers\AdminLoginController;
 use App\Modules\Piattaforma\Http\Controllers\StaffSsoController;

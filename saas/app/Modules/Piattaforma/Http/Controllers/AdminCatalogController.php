@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Piattaforma\Http\Controllers;
 
+use App\Modules\Piattaforma\Catalogo\CatalogDraftEditor;
 use App\Modules\Piattaforma\Catalogo\CatalogPublisher;
 use App\Modules\Piattaforma\Contracts\Catalog;
 use App\Modules\Piattaforma\Models\PlatformStaff;
