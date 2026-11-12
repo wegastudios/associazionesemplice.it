@@ -23,7 +23,6 @@ $csrf = Portale\App::csrf();
 				</label>
 			<?php endforeach; ?>
 			<button class="btn" type="submit" style="margin-top:12px">Salva</button>
-			<p class="hint">Prezzi, limiti e testi delle email non si cambiano qui: stanno in <a href="/wordpress/admin/impostazioni">Gestisci Plugin</a>.</p>
 		</div>
 	</form>
 </div></section>
