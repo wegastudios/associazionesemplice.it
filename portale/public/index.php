@@ -39,6 +39,7 @@ if ( 0 !== strpos( $apiPath, '/api/' ) && 0 !== strpos( $apiPath, '/webhook/' ) 
 $db = Portale\Db::connect( (array) Portale\Config::get( 'db' ) );
 $db->migrate();
 Portale\Settings::load( $db );
+Portale\Switches::load( $db );
 // Una sessione senza attività per più di «session_hours» ore si chiude (una scheda dimenticata aperta non resta valida per sempre).
 if ( ! empty( $_SESSION['customer'] ) ) {
 	if ( ! empty( $_SESSION['seen'] ) && time() - (int) $_SESSION['seen'] > Portale\Settings::limit( 'session_hours' ) * 3600 ) {

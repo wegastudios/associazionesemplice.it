@@ -283,6 +283,24 @@ final class App {
 				return;
 			}
 			header( 'Location: ' . SupportSso::url( $this->db, ! empty( $_SESSION['customer'] ) ? $this->customerEmail( (string) $_SESSION['customer'] ) : $idn['email'] ), true, 303 );
+		} elseif ( '/account/impostazioni' === $path ) {
+			// Interruttori del portale per la titolare (e chi ha il ruolo admin): niente da scrivere in config.php.
+			$idn = Identity::enabled() ? Identity::check() : null;
+			if ( ! $idn && empty( $_SESSION['customer'] ) ) {
+				header( 'Location: /accedi', true, 303 );
+				return;
+			}
+			if ( ! ( $idn && 'admin' === ( $idn['areas']['wordpress'] ?? '' ) ) && empty( $_SESSION['admin'] ) ) {
+				http_response_code( 403 );
+				throw new UserError( 'Questa pagina è solo per chi amministra il portale.' );
+			}
+			$flash = '';
+			if ( ! $get ) {
+				Switches::save( $this->db, $_POST );
+				Audit::log( $this->db, $idn ? (string) $idn['email'] : $this->customerEmail( (string) $_SESSION['customer'] ), 'switches', 'Interruttori: ' . json_encode( Switches::current() ) );
+				$flash = 'Salvato: vale subito.';
+			}
+			View::render( 'switches', array( 'title' => 'Impostazioni del portale', 'all' => Switches::ALL, 'on' => Switches::current(), 'flash' => $flash ) );
 		} elseif ( $get && '/account' === $path ) {
 			$this->account();
 		} elseif ( SaasAccount::manageEnabled() && 1 === preg_match( '#^/account/gestionale/([0-9a-f]{32})(?:/(dominio|dominio-togli|piano))?$#', $path, $mg ) ) {
