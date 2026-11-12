@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Core\Contracts\OrgSchema;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
@@ -80,6 +81,12 @@ return new class extends Migration
         DB::statement('CREATE INDEX portal_audit_at_idx ON portal.audit (at)');
 
         DB::statement('CREATE TABLE portal.events (provider text NOT NULL, event_id text NOT NULL, processed_at timestamptz NOT NULL, PRIMARY KEY (provider, event_id))');
+
+        // I backup leggono anche lo schema portal (sola lettura, anche per le tabelle future).
+        $backup = OrgSchema::backupRole();
+        DB::statement("GRANT USAGE ON SCHEMA portal TO {$backup}");
+        DB::statement("GRANT SELECT ON ALL TABLES IN SCHEMA portal TO {$backup}");
+        DB::statement("ALTER DEFAULT PRIVILEGES IN SCHEMA portal GRANT SELECT ON TABLES TO {$backup}");
 
         // Il ruolo del portale si crea a mano (CREATE ROLE portal_app LOGIN PASSWORD …): senza, nulla da dare.
         DB::statement(<<<'SQL'
