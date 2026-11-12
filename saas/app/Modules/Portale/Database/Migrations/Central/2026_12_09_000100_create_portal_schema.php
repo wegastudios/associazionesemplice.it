@@ -23,10 +23,10 @@ return new class extends Migration
             CREATE TABLE portal.subscriptions (
                 id text PRIMARY KEY, customer_id text NOT NULL, plan_code text NOT NULL, period text NOT NULL,
                 provider text NOT NULL, provider_ref text, provider_customer text, status text NOT NULL, domain text NOT NULL,
-                license_id text, license_key_enc text, expires_at timestamptz, cancel_at_period_end boolean NOT NULL DEFAULT false,
-                created_at timestamptz NOT NULL, updated_at timestamptz NOT NULL, reminded_for timestamptz, note text, mode text,
-                renews text, trial_used_at timestamptz, last_seen_at timestamptz, next_plan text, change_to text,
-                domain_changed_at timestamptz, plan_version integer, sites_allowed integer, notice_rev integer
+                license_id text, license_key_enc text, expires_at varchar(19), cancel_at_period_end integer NOT NULL DEFAULT 0,
+                created_at varchar(19) NOT NULL, updated_at varchar(19) NOT NULL, reminded_for varchar(19), note text, mode text,
+                renews text, trial_used_at varchar(19), last_seen_at varchar(19), next_plan text, change_to text,
+                domain_changed_at varchar(19), plan_version integer, sites_allowed integer, notice_rev integer
             )
         SQL);
         DB::statement('CREATE INDEX portal_subscriptions_customer_idx ON portal.subscriptions (customer_id)');
@@ -36,8 +36,8 @@ return new class extends Migration
             CREATE TABLE portal.orders (
                 id text PRIMARY KEY, customer_id text NOT NULL, product text NOT NULL, plan text NOT NULL, plan_version integer NOT NULL,
                 period text NOT NULL, members integer NOT NULL, catalog_rev integer NOT NULL, quote text NOT NULL, status text NOT NULL,
-                created_at timestamptz NOT NULL, updated_at timestamptz NOT NULL, org_ref text, provider text, provider_ref text,
-                provider_customer text, paid_at timestamptz, cancel_at_period_end boolean NOT NULL DEFAULT false
+                created_at varchar(19) NOT NULL, updated_at varchar(19) NOT NULL, org_ref text, provider text, provider_ref text,
+                provider_customer text, paid_at varchar(19), cancel_at_period_end integer NOT NULL DEFAULT 0
             )
         SQL);
         DB::statement('CREATE INDEX portal_orders_customer_idx ON portal.orders (customer_id)');
@@ -45,27 +45,27 @@ return new class extends Migration
         DB::statement(<<<'SQL'
             CREATE TABLE portal.orgs (
                 ref text PRIMARY KEY, customer_id text NOT NULL, org_id text, name text NOT NULL, slug text NOT NULL,
-                rev integer NOT NULL DEFAULT 0, created_at timestamptz NOT NULL
+                rev integer NOT NULL DEFAULT 0, created_at varchar(19) NOT NULL
             )
         SQL);
 
         DB::statement(<<<'SQL'
             CREATE TABLE portal.releases (
                 product text NOT NULL, version text NOT NULL, size integer NOT NULL, sha256 text NOT NULL, note text,
-                created_at timestamptz NOT NULL, signature text, kid text, PRIMARY KEY (product, version)
+                created_at varchar(19) NOT NULL, signature text, kid text, PRIMARY KEY (product, version)
             )
         SQL);
 
         DB::statement(<<<'SQL'
             CREATE TABLE portal.downloads (
-                id text PRIMARY KEY, customer_id text NOT NULL, at timestamptz NOT NULL, product text NOT NULL, version text NOT NULL
+                id text PRIMARY KEY, customer_id text NOT NULL, at varchar(19) NOT NULL, product text NOT NULL, version text NOT NULL
             )
         SQL);
 
         DB::statement(<<<'SQL'
             CREATE TABLE portal.outbox (
                 id text PRIMARY KEY, org_id text NOT NULL, rev integer NOT NULL, body text NOT NULL, attempts integer NOT NULL DEFAULT 0,
-                next_at timestamptz NOT NULL, done_at timestamptz, last_error text, created_at timestamptz NOT NULL
+                next_at varchar(19) NOT NULL, done_at varchar(19), last_error text, created_at varchar(19) NOT NULL
             )
         SQL);
 
@@ -73,14 +73,14 @@ return new class extends Migration
 
         DB::statement(<<<'SQL'
             CREATE TABLE portal.email_templates (
-                event text PRIMARY KEY, subject text NOT NULL, body text NOT NULL, enabled boolean NOT NULL DEFAULT true, updated_at timestamptz NOT NULL
+                event text PRIMARY KEY, subject text NOT NULL, body text NOT NULL, enabled integer NOT NULL DEFAULT 1, updated_at varchar(19) NOT NULL
             )
         SQL);
 
-        DB::statement('CREATE TABLE portal.audit (id text PRIMARY KEY, at timestamptz NOT NULL, actor text NOT NULL, action text NOT NULL, detail text)');
+        DB::statement('CREATE TABLE portal.audit (id text PRIMARY KEY, at varchar(19) NOT NULL, actor text NOT NULL, action text NOT NULL, detail text)');
         DB::statement('CREATE INDEX portal_audit_at_idx ON portal.audit (at)');
 
-        DB::statement('CREATE TABLE portal.events (provider text NOT NULL, event_id text NOT NULL, processed_at timestamptz NOT NULL, PRIMARY KEY (provider, event_id))');
+        DB::statement('CREATE TABLE portal.events (provider text NOT NULL, event_id text NOT NULL, processed_at varchar(19) NOT NULL, PRIMARY KEY (provider, event_id))');
 
         // I backup leggono anche lo schema portal (sola lettura, anche per le tabelle future).
         $backup = OrgSchema::backupRole();

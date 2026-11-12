@@ -55,9 +55,9 @@ it('importa i dati durevoli, ed è ripetibile e verificabile', function (): void
         $owner = DB::connection('pgsql_owner');
         $sub = $owner->table('portal.subscriptions')->where('id', 's1')->first();
         expect($owner->table('portal.subscriptions')->count())->toBe(1)
-            ->and($sub->cancel_at_period_end)->toBeFalse()
+            ->and($sub->cancel_at_period_end)->toBe(0)->and($sub->created_at)->toBe('2026-11-01 10:00:00')
             ->and($owner->table('portal.settings')->where('name', 'general')->value('val'))->toBe('{"a":1}')
-            ->and($owner->table('portal.email_templates')->where('event', 'benvenuto')->value('enabled'))->toBeTrue()
+            ->and($owner->table('portal.email_templates')->where('event', 'benvenuto')->value('enabled'))->toBe(1)
             ->and($owner->table('portal.events')->count())->toBe(1);
 
         $this->artisan('saas:portal:import-db', ['source' => $source, '--verify' => true])->expectsOutputToContain('Verifica riuscita')->assertSuccessful();

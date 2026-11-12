@@ -45,8 +45,8 @@ proxy verso Wega, pagamenti (webhook Stripe/PayPal agli stessi indirizzi).
 ## 4. Convenzioni dello schema `portal` (per il portale)
 
 - Lo schema è il file `app/Modules/Portale/Database/Migrations/Central/2026_12_09_000100_create_portal_schema.php` (il DDL per la CI del portale).
-- Id come `text` (quelli esadecimali del portale), date come `timestamptz`; il ruolo `portal_app` ha fuso orario UTC, quindi il portale
-  legge e scrive stringhe UTC `Y-m-d H:i:s` come oggi. JSON (`quote`, `body`, `val`) come `text`, come oggi.
+- Id come `text` (quelli esadecimali del portale), date come `varchar(19)` (stringhe UTC `Y-m-d H:i:s`) e booleani come `integer` 0/1, identici allo SQLite: il portale
+  legge e scrive come oggi (nessuna conversione). JSON (`quote`, `body`, `val`) come `text`, come oggi.
 - `events` ha chiave `(provider, event_id)`: l'idempotenza dei webhook è `INSERT … ON CONFLICT DO NOTHING`.
 - Credenziali del ruolo: file `~/portale/data/pg.php` (permessi 600), fuori dal repository; i valori non passano mai dalla chat.
 - Cutover dietro interruttore nel portale (sqlite → doppia scrittura con confronto → solo Postgres), a «pronto» detto da qui.
