@@ -238,8 +238,8 @@ final readonly class CatalogDraftEditor
                 'operators' => CatalogForm::int($limits['operators'] ?? null),
                 'storage_mb_per_member' => CatalogForm::int($limits['storage_mb_per_member'] ?? null),
                 'storage_mb_min' => CatalogForm::int($limits['storage_mb_min'] ?? null),
-                // I limiti dei pacchetti inclusi non si cambiano da questo modulo: restano quelli della versione.
-                'packages' => $baseLimits['packages'] ?? [],
+                // Pacchetti inclusi nel piano (JSON); se il campo non arriva restano quelli della versione.
+                'packages' => array_key_exists('packages_json', $input) ? $this->limits($input['packages_json']) : ($baseLimits['packages'] ?? []),
             ],
             'prices' => CatalogForm::prices($input['prices'] ?? null),
         ];
@@ -344,7 +344,7 @@ final readonly class CatalogDraftEditor
     private function limits(mixed $text): array
     {
         $raw = is_string($text) ? trim($text) : '';
-        if ($raw === '' || $raw === '[]') {
+        if ($raw === '' || $raw === '[]' || $raw === '{}') {
             return [];
         }
         $decoded = json_decode($raw, true);

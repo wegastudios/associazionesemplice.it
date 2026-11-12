@@ -204,3 +204,22 @@ it('chi è in sola lettura vede tutto ma non salva', function (): void {
     $this->get('/saas/admin/catalogo/piani/nuovo')->assertForbidden();
     expect(DB::table('core.catalog_draft')->exists())->toBeFalse();
 });
+
+it('imposta i pacchetti inclusi nel piano e rifiuta un testo che non è un oggetto', function (): void {
+    $this->get('/saas/admin/catalogo/piani/gestionale')->assertOk()->assertSee('Pacchetti già inclusi');
+
+    $this->post('/saas/admin/catalogo/piani/gestionale', planFormInput(['packages_json' => '{"site": {}, "einvoice": {"yearly": 50}}']))->assertRedirect();
+    $draft = json_decode((string) DB::table('core.catalog_draft')->value('document'), true);
+    expect($draft['plans'][1]['limits']['packages'])->toEqual(['site' => [], 'einvoice' => ['yearly' => 50]]);
+    $this->get('/saas/admin/catalogo/piani/gestionale')->assertSee('einvoice');
+
+    // Senza il campo restano quelli della versione; con «{}» si tolgono.
+    $this->post('/saas/admin/catalogo/piani/gestionale', planFormInput())->assertRedirect();
+    $draft = json_decode((string) DB::table('core.catalog_draft')->value('document'), true);
+    expect($draft['plans'][1]['limits']['packages'])->toHaveKey('site');
+    $this->post('/saas/admin/catalogo/piani/gestionale', planFormInput(['packages_json' => '{}']))->assertRedirect();
+    $draft = json_decode((string) DB::table('core.catalog_draft')->value('document'), true);
+    expect($draft['plans'][1]['limits']['packages'])->toBe([]);
+
+    $this->post('/saas/admin/catalogo/piani/gestionale', planFormInput(['packages_json' => '[1,2]']))->assertOk()->assertSee('devono essere un oggetto JSON');
+});

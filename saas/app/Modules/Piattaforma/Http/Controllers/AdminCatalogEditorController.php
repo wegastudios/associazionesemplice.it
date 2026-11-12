@@ -190,6 +190,7 @@ final readonly class AdminCatalogEditorController
                 'storage_mb_per_member' => $limits['storage_mb_per_member'] ?? 5,
                 'storage_mb_min' => $limits['storage_mb_min'] ?? 250,
             ],
+            'packages_json' => is_array($limits['packages'] ?? null) && $limits['packages'] !== [] ? json_encode($limits['packages'], JSON_UNESCAPED_UNICODE) : '',
         ];
         $rows = CatalogForm::priceRows($plan['prices'] ?? []);
 
@@ -203,6 +204,7 @@ final readonly class AdminCatalogEditorController
                 'support_level' => $input['support_level'] ?? '',
                 'trial_days' => $input['trial_days'] ?? '',
                 'limits' => is_array($input['limits'] ?? null) ? $input['limits'] : [],
+                'packages_json' => $input['packages_json'] ?? '',
             ];
             $rows = is_array($input['prices'] ?? null) ? array_values($input['prices']) : [];
             foreach ($features as $i => $f) {
