@@ -39,7 +39,7 @@ final readonly class AdminSubscriptionsController
         }
         if ($search !== '') {
             $like = '%'.str_replace(['%', '_'], ['\\%', '\\_'], mb_strtolower($search)).'%';
-            $query->where(fn ($q) => $q->whereRaw('lower(o.name) like ?', [$like])->orWhereRaw('lower(coalesce(o.portal_ref, \'\')) like ?', [$like]));
+            $query->where(fn (Builder $q) => $q->whereRaw('lower(o.name) like ?', [$like])->orWhereRaw('lower(coalesce(o.portal_ref, \'\')) like ?', [$like]));
         }
 
         $total = (clone $query)->count();
