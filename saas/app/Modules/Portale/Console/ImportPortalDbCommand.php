@@ -11,33 +11,16 @@ use PDO;
 use Throwable;
 
 /**
- * Importa i dati durevoli del portale (SQLite) nello schema `portal` (docs/MIGRAZIONE_DB_PORTALE.md). Ripetibile: ogni riga
- * si inserisce o si aggiorna per chiave. Non cancella nulla. Le date del portale sono UTC e restano tali.
- * `--verify` confronta conteggi e chiavi senza scrivere.
+ * Importa le tabelle del portale (SQLite) nelle tabelle omonime dello schema `portal` (docs/MIGRAZIONE_DB_PORTALE.md).
+ * Ripetibile: ogni riga si inserisce o si aggiorna per chiave primaria (quella della tabella SQLite). Non cancella nulla.
+ * Date (stringhe UTC) e 0/1 passano tali e quali. Una tabella che nello schema `portal` non esiste ancora si salta e si
+ * segnala (le crea il portale con la sua `migrate()`). `--verify` confronta conteggi e chiavi senza scrivere.
  */
 final class ImportPortalDbCommand extends Command
 {
-    /**
-     * Per ogni tabella: chiave primaria e, se diversa, la tabella di origine. Date (stringhe UTC) e 0/1 passano tali e quali.
-     *
-     * @var array<string, array{pk: list<string>, from?: string}>
-     */
-    private const TABLES = [
-        'subscriptions' => ['pk' => ['id']],
-        'orders' => ['pk' => ['id']],
-        'orgs' => ['pk' => ['ref'], 'from' => 'saas_orgs'],
-        'outbox' => ['pk' => ['id'], 'from' => 'saas_outbox'],
-        'releases' => ['pk' => ['product', 'version']],
-        'downloads' => ['pk' => ['id']],
-        'settings' => ['pk' => ['name']],
-        'email_templates' => ['pk' => ['event']],
-        'audit' => ['pk' => ['id']],
-        'events' => ['pk' => ['provider', 'event_id']],
-    ];
-
     protected $signature = 'saas:portal:import-db {source : copia del file SQLite del portale} {--dry-run : non scrive nulla, mostra i conteggi} {--verify : confronta conteggi e chiavi, senza scrivere}';
 
-    protected $description = 'Importa i dati durevoli del portale nello schema portal';
+    protected $description = 'Importa le tabelle del portale nello schema portal';
 
     public function handle(DatabaseManager $db): int
     {
@@ -57,9 +40,13 @@ final class ImportPortalDbCommand extends Command
             }
             $dry = $this->option('dry-run') === true;
             $run = function () use ($pdo, $con, $dry): void {
-                foreach (self::TABLES as $table => $def) {
-                    $n = $this->importTable($pdo, $con, $table, $def, $dry);
-                    $this->line(str_pad($table, 18).$n);
+                foreach ($this->tables($pdo) as $table) {
+                    if (! $this->exists($con, $table)) {
+                        $this->line(str_pad($table, 20).'manca nello schema portal (saltata)');
+
+                        continue;
+                    }
+                    $this->line(str_pad($table, 20).$this->importTable($pdo, $con, $table, $dry));
                 }
             };
             $dry ? $run() : $con->transaction($run);
@@ -74,12 +61,43 @@ final class ImportPortalDbCommand extends Command
         return self::SUCCESS;
     }
 
-    /** @param  array{pk: list<string>, from?: string}  $def */
-    private function importTable(PDO $pdo, ConnectionInterface $con, string $table, array $def, bool $dry): int
+    /** @return list<string> */
+    private function tables(PDO $pdo): array
     {
-        $rows = $this->readRows($pdo, $def['from'] ?? $table);
+        $stmt = $pdo->query("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name");
+        $names = $stmt === false ? [] : $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        return array_values(array_filter($names, static fn (mixed $n): bool => is_string($n) && preg_match('/^[a-z][a-z0-9_]*$/', $n) === 1));
+    }
+
+    /** @return list<string> */
+    private function primaryKey(PDO $pdo, string $table): array
+    {
+        $stmt = $pdo->query('PRAGMA table_info('.$table.')');
+        /** @var list<array<string, mixed>> $info */
+        $info = $stmt === false ? [] : $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $pk = [];
+        foreach ($info as $col) {
+            $order = is_numeric($col['pk'] ?? null) ? (int) $col['pk'] : 0;
+            if ($order > 0 && is_string($col['name'] ?? null)) {
+                $pk[$order] = $col['name'];
+            }
+        }
+        ksort($pk);
+
+        return array_values($pk);
+    }
+
+    private function exists(ConnectionInterface $con, string $table): bool
+    {
+        return $con->selectOne("SELECT 1 AS x FROM information_schema.tables WHERE table_schema = 'portal' AND table_name = ?", [$table]) !== null;
+    }
+
+    private function importTable(PDO $pdo, ConnectionInterface $con, string $table, bool $dry): int
+    {
+        $pk = $this->primaryKey($pdo, $table);
         $n = 0;
-        foreach ($rows as $row) {
+        foreach ($this->readRows($pdo, $table) as $row) {
             $n++;
             if ($dry) {
                 continue;
@@ -89,10 +107,9 @@ final class ImportPortalDbCommand extends Command
                 $values[$col] = is_scalar($raw) ? (string) $raw : null;
             }
             $cols = array_keys($values);
-            $update = array_values(array_diff($cols, $def['pk']));
-            $sql = 'INSERT INTO portal.'.$table.' ('.implode(',', $cols).') VALUES ('.implode(',', array_fill(0, count($cols), '?')).') ON CONFLICT ('.implode(',', $def['pk']).')'
-                .($update === [] ? ' DO NOTHING' : ' DO UPDATE SET '.implode(',', array_map(static fn (string $c): string => $c.' = EXCLUDED.'.$c, $update)));
-            $con->statement($sql, array_values($values));
+            $update = array_values(array_diff($cols, $pk));
+            $conflict = $pk === [] ? '' : ' ON CONFLICT ('.implode(',', $pk).')'.($update === [] ? ' DO NOTHING' : ' DO UPDATE SET '.implode(',', array_map(static fn (string $c): string => $c.' = EXCLUDED.'.$c, $update)));
+            $con->statement('INSERT INTO portal.'.$table.' ('.implode(',', $cols).') VALUES ('.implode(',', array_fill(0, count($cols), '?')).')'.$conflict, array_values($values));
         }
 
         return $n;
@@ -111,27 +128,25 @@ final class ImportPortalDbCommand extends Command
     private function verify(PDO $pdo, ConnectionInterface $con): int
     {
         $ok = true;
-        foreach (self::TABLES as $table => $def) {
-            $src = $this->readRows($pdo, $def['from'] ?? $table);
-            $a = array_map(static fn (array $r): string => implode('|', array_map(static fn (string $k): string => self::key($r[$k] ?? null), $def['pk'])), $src);
-            $b = array_map(static function (object $r) use ($def): string {
-                $r = (array) $r;
+        foreach ($this->tables($pdo) as $table) {
+            if (! $this->exists($con, $table)) {
+                $ok = false;
+                $this->line(str_pad($table, 20).'MANCA nello schema portal');
 
-                return implode('|', array_map(static fn (string $k): string => self::key($r[$k] ?? null), $def['pk']));
-            }, $con->table('portal.'.$table)->get($def['pk'])->all());
+                continue;
+            }
+            $pk = $this->primaryKey($pdo, $table);
+            $keyOf = static fn (array $r): string => implode('|', array_map(static fn (string $k): string => is_scalar($r[$k] ?? null) ? (string) $r[$k] : '', $pk));
+            $a = array_map($keyOf, $this->readRows($pdo, $table));
+            $b = $pk === [] ? [] : array_map(static fn (object $r): string => $keyOf((array) $r), $con->table('portal.'.$table)->get($pk)->all());
             sort($a);
             sort($b);
-            $same = $a === $b;
+            $same = $pk === [] ? count($a) === $con->table('portal.'.$table)->count() : $a === $b;
             $ok = $ok && $same;
-            $this->line(str_pad($table, 18).str_pad((string) count($a), 6).str_pad((string) count($b), 6).($same ? 'uguali' : 'DIVERSI'));
+            $this->line(str_pad($table, 20).str_pad((string) count($a), 6).($same ? 'uguali' : 'DIVERSI'));
         }
         $this->line($ok ? 'Verifica riuscita: conteggi e chiavi coincidono.' : 'Verifica NON riuscita.');
 
         return $ok ? self::SUCCESS : self::FAILURE;
-    }
-
-    private static function key(mixed $v): string
-    {
-        return is_scalar($v) ? (string) $v : '';
     }
 }

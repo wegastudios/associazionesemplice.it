@@ -15,8 +15,8 @@ return new class extends Migration
     private const DATES = [
         'subscriptions' => ['expires_at', 'created_at', 'updated_at', 'reminded_for', 'trial_used_at', 'last_seen_at', 'domain_changed_at'],
         'orders' => ['created_at', 'updated_at', 'paid_at'],
-        'orgs' => ['created_at'],
-        'outbox' => ['next_at', 'done_at', 'created_at'],
+        'saas_orgs' => ['created_at'],
+        'saas_outbox' => ['next_at', 'done_at', 'created_at'],
         'releases' => ['created_at'],
         'downloads' => ['at'],
         'email_templates' => ['updated_at'],
