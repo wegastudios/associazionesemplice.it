@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Platform;
 
+use AppModulesCoreContractsPlatformSettingsStore;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Contracts\Encryption\Encrypter;
@@ -16,7 +17,7 @@ use RuntimeException;
  * Impostazioni della piattaforma nel database centrale, cifrate con la chiave dell'applicazione. Ognuna, se c'è, prende
  * il posto del valore del file d'ambiente (PlatformConfig). I segreti non tornano mai in chiaro alla pagina.
  */
-final readonly class PlatformSettings
+final readonly class PlatformSettings implements PlatformSettingsStore
 {
     /**
      * Le impostazioni: chiave => [etichetta, segreto, controllo].
@@ -45,6 +46,8 @@ final readonly class PlatformSettings
         'cache.redis_host' => ['Redis: host o socket', false, 'text'],
         'cache.redis_port' => ['Redis: porta (0 con il socket)', false, 'port0'],
         'cache.redis_password' => ['Redis: password', true, 'text'],
+        'domains.nameservers' => ['Nameserver a cui il cliente delega il dominio (separati da virgola)', false, 'nameservers'],
+        'domains.delegation_hours' => ['Ore di attesa della delega prima di segnalare un errore', false, 'hours'],
     ];
 
     public function __construct(
@@ -149,10 +152,27 @@ final readonly class PlatformSettings
             'email' => filter_var($v, FILTER_VALIDATE_EMAIL) !== false ? null : 'email non valida.',
             'https' => str_starts_with($v, 'https://') && filter_var($v, FILTER_VALIDATE_URL) !== false ? null : 'serve un indirizzo https://.',
             'base64' => base64_decode($v, true) !== false ? null : 'non è in base64.',
+            'nameservers' => self::checkNameservers($v),
+            'hours' => ctype_digit($v) && (int) $v >= 1 && (int) $v <= 720 ? null : 'scrivi un numero di ore da 1 a 720.',
             'store' => in_array($v, ['auto', 'redis', 'database', 'file'], true) ? null : 'scegli auto, redis, database o file.',
             'path' => str_starts_with($v, '/') && mb_strlen($v) <= 200 ? null : 'scrivi un percorso che inizia con /.',
             'key' => str_contains($v, 'PRIVATE KEY') ? null : 'incolla il testo della chiave privata (-----BEGIN … PRIVATE KEY-----).',
             default => mb_strlen($v) <= 300 ? null : 'troppo lungo.',
         };
+    }
+
+    private static function checkNameservers(string $v): ?string
+    {
+        $list = preg_split('/[\s,]+/', $v, -1, PREG_SPLIT_NO_EMPTY);
+        if ($list === false || $list === [] || count($list) > 8) {
+            return 'scrivi da 1 a 8 nameserver, separati da virgola.';
+        }
+        foreach ($list as $ns) {
+            if (preg_match('/^(?=.{4,253}$)([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}\.?$/', $ns) !== 1) {
+                return "«{$ns}» non è un nome di server valido.";
+            }
+        }
+
+        return null;
     }
 }
