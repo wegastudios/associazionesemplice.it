@@ -1,18 +1,29 @@
 <?php
 namespace Portale;
 
-/** Accesso al database (SQLite o MySQL) con uno schema scritto in SQL comune a entrambi. */
+/**
+ * Accesso al database (PostgreSQL in produzione; SQLite per i test veloci e per il passaggio) con uno schema scritto in SQL comune.
+ * Su PostgreSQL le due uniche particolarità di SQLite usate nel codice si traducono qui (GROUP_CONCAT, LIKE senza maiuscole).
+ */
 final class Db {
 
 	/** @var \PDO */
 	private $pdo;
 
+	/** @var bool */
+	private $pg = false;
+
 	public function __construct( \PDO $pdo ) {
 		$this->pdo = $pdo;
 		$this->pdo->setAttribute( \PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION );
 		$this->pdo->setAttribute( \PDO::ATTR_DEFAULT_FETCH_MODE, \PDO::FETCH_ASSOC );
+		$this->pg = 'pgsql' === $pdo->getAttribute( \PDO::ATTR_DRIVER_NAME );
 	}
 
+	/**
+	 * Configurazione `db`: `dsn`, `user`, `pass` oppure `pass_file` (percorso di un file fuori dal repository con la sola password),
+	 * e per PostgreSQL `schema` (default del ruolo se omesso).
+	 */
 	public static function connect( array $cfg ): self {
 		$dsn = (string) $cfg['dsn'];
 		if ( 0 === strpos( $dsn, 'sqlite:' ) && ':memory:' !== substr( $dsn, 7 ) ) {
@@ -21,11 +32,38 @@ final class Db {
 				mkdir( $dir, 0750, true );
 			}
 		}
-		return new self( new \PDO( $dsn, $cfg['user'] ?? null, $cfg['pass'] ?? null ) );
+		$pass = $cfg['pass'] ?? null;
+		if ( ! empty( $cfg['pass_file'] ) ) {
+			$read = is_readable( (string) $cfg['pass_file'] ) ? file_get_contents( (string) $cfg['pass_file'] ) : false;
+			if ( false === $read ) {
+				throw new \RuntimeException( 'Password del database non leggibile.' );
+			}
+			$pass = trim( $read );
+		}
+		$db = new self( new \PDO( $dsn, $cfg['user'] ?? null, $pass ) );
+		if ( $db->pg && ! empty( $cfg['schema'] ) ) {
+			if ( 1 !== preg_match( '/^[a-z_][a-z0-9_]{0,62}$/', (string) $cfg['schema'] ) ) {
+				throw new \RuntimeException( 'Nome dello schema non valido.' );
+			}
+			$db->pdo->exec( 'SET search_path TO ' . $cfg['schema'] );
+		}
+		return $db;
+	}
+
+	public function isPostgres(): bool {
+		return $this->pg;
+	}
+
+	private function sql( string $sql ): string {
+		if ( ! $this->pg ) {
+			return $sql;
+		}
+		$sql = (string) preg_replace( '/\bGROUP_CONCAT\(\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\)/i', "string_agg($1::text, ',')", $sql );
+		return (string) preg_replace( '/\bLIKE\b/i', 'ILIKE', $sql );
 	}
 
 	public function run( string $sql, array $args = array() ): \PDOStatement {
-		$st = $this->pdo->prepare( $sql );
+		$st = $this->pdo->prepare( $this->sql( $sql ) );
 		$st->execute( $args );
 		return $st;
 	}

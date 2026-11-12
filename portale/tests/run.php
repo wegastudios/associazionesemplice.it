@@ -12,6 +12,22 @@ function check( string $name, bool $ok ): void {
 		++$fails;
 	}
 }
+/**
+ * Database di prova nuovo a ogni chiamata: SQLite in memoria; con PORTALE_TEST_PG_DSN (es. «pgsql:host=127.0.0.1;dbname=portale_test») lo stesso
+ * insieme di prove gira su PostgreSQL, ogni database di prova in uno schema nuovo.
+ */
+function testDb(): Db {
+	static $n = 0;
+	$dsn = (string) getenv( 'PORTALE_TEST_PG_DSN' );
+	if ( '' === $dsn ) {
+		return new Db( new PDO( 'sqlite::memory:' ) );
+	}
+	$pdo    = new PDO( $dsn, (string) getenv( 'PORTALE_TEST_PG_USER' ) ?: null, (string) getenv( 'PORTALE_TEST_PG_PASS' ) ?: null );
+	$schema = 't' . getmypid() . '_' . ( ++$n );
+	$pdo->exec( 'CREATE SCHEMA ' . $schema );
+	$pdo->exec( 'SET search_path TO ' . $schema );
+	return new Db( $pdo );
+}
 function throwsUser( callable $f ): ?string {
 	try {
 		$f();
@@ -92,7 +108,7 @@ Mailer::$sender = function ( $to, $subject, $body ) use ( &$mails ) {
 	return true;
 };
 
-$db = new Db( new PDO( 'sqlite::memory:' ) );
+$db = testDb();
 $db->migrate();
 $billing = new Billing( $db, new WegaClient( 'https://license.test/api/v1', 'wic_x.y' ) );
 
@@ -452,7 +468,7 @@ try {
 }
 
 // --- Rimbalzo delle verifiche del plugin ------------------------------------------------
-$pdb    = new Db( new PDO( 'sqlite::memory:' ) );
+$pdb    = testDb();
 $pdb->migrate();
 $pcalls = 0;
 Http::$transport = function ( $method, $url, $headers, $body ) use ( &$pcalls ) {
@@ -505,7 +521,7 @@ check( 'jwks: Wega irraggiungibile, si usa l\'ultima copia', 200 === $proxy->jwk
 if ( class_exists( 'ZipArchive' ) ) {
 	$rdir = sys_get_temp_dir() . '/asem-rel-' . bin2hex( random_bytes( 4 ) );
 	Config::set( 'releases_dir', $rdir );
-	$rdb = new Db( new PDO( 'sqlite::memory:' ) );
+	$rdb = testDb();
 	$rdb->migrate();
 	$mkzip = function ( string $slug, string $ver, string $inner = '' ) {
 		$f = tempnam( sys_get_temp_dir(), 'z' );
@@ -547,7 +563,7 @@ if ( class_exists( 'ZipArchive' ) ) {
 }
 
 // --- Accesso con password -----------------------------------------------------------------
-$adb = new Db( new PDO( 'sqlite::memory:' ) );
+$adb = testDb();
 $adb->migrate();
 $auth = new Portale\Auth( $adb );
 $adb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'c1', 'socio@esempio.it', Db::now() ) );
@@ -573,7 +589,7 @@ $dm = new ReflectionMethod( Portale\Auth::class, 'dummy_hash' );
 $dm->setAccessible( true );
 check( 'password: l\'impronta finta ha lo stesso costo di quelle vere (i tempi non rivelano chi è cliente)', password_get_info( (string) $dm->invoke( null ) )['options']['cost'] === password_get_info( password_hash( 'x', PASSWORD_DEFAULT ) )['options']['cost'] && ! password_verify( 'qualunque', (string) $dm->invoke( null ) ) );
 check( 'password: una password enorme non viene nemmeno controllata', null !== throwsUser( function () use ( $auth ) { $auth->loginWithPassword( 'socio@esempio.it', str_repeat( 'a', 2000 ), '9.9.9.20' ); } ) );
-$rdb = new Db( new PDO( 'sqlite::memory:' ) );
+$rdb = testDb();
 $rdb->migrate();
 $took = 0;
 for ( $i = 0; $i < 6; $i++ ) {
@@ -582,7 +598,7 @@ for ( $i = 0; $i < 6; $i++ ) {
 check( 'limite: al massimo tre posti in un\'ora, anche con tante richieste', 3 === $took );
 Portale\RateLimit::give_back( $rdb, 'prova', '2026110100' );
 check( 'limite: un posto restituito si può riusare, un solo posto', Portale\RateLimit::take( $rdb, 'prova', '2026110100', 3, 1793000000 ) && ! Portale\RateLimit::take( $rdb, 'prova', '2026110100', 3, 1793000000 ) );
-$mdb = new Db( new PDO( 'sqlite::memory:' ) );
+$mdb = testDb();
 $mdb->migrate();
 $mdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'c9', 'ok@esempio.it', Db::now() ) );
 $mauth = new Portale\Auth( $mdb );
@@ -593,7 +609,7 @@ for ( $i = 0; $i < 3; $i++ ) {
 check( 'password: gli accessi riusciti non consumano il limite dell\'indirizzo', 'c9' === $mauth->loginWithPassword( 'ok@esempio.it', 'una password lunga abbastanza', '8.8.8.8' )['id'] && 0 === (int) ( $mdb->one( 'SELECT n FROM rate_limits WHERE bucket = ?', array( 'login:i:' . hash( 'sha256', '8.8.8.8' ) ) )['n'] ?? 0 ) );
 
 // --- Eliminazione di clienti e licenze --------------------------------------------------------
-$ddb = new Db( new PDO( 'sqlite::memory:' ) );
+$ddb = testDb();
 $ddb->migrate();
 $dbil = new Billing( $ddb, new WegaClient( 'https://license.test/api/v1', 't' ) );
 $ins = function ( string $cid, string $dom, string $status, string $prov = 'free', string $mode = 'once', int $cancel = 0 ) use ( $ddb ) {
@@ -616,7 +632,7 @@ check( 'eliminazione cliente: restituisce il numero di licenze eliminate', 1 ===
 check( 'eliminazione cliente: email libera', null === $ddb->one( 'SELECT id FROM customers WHERE id = ?', array( 'k1' ) ) && null === $ddb->one( 'SELECT 1 AS x FROM login_tokens WHERE customer_id = ?', array( 'k1' ) ) && null === $ddb->one( 'SELECT 1 AS x FROM subscriptions WHERE customer_id = ?', array( 'k1' ) ) );
 
 // --- Importazione dall'elenco Wega ------------------------------------------------------------
-$sdb = new Db( new PDO( 'sqlite::memory:' ) );
+$sdb = testDb();
 $sdb->migrate();
 $sbil  = new Billing( $sdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
 $pages = array(
@@ -645,7 +661,7 @@ check( 'wega import: dopo l\'importazione risulta già nel portale', 'known' ===
 check( 'wega orfane: licenza del portale che Wega non elenca', 1 === count( Portale\WegaSync::orphans( $sdb, array( $all[0] ) ) ) );
 
 // --- Specchio su Wega -------------------------------------------------------------------------
-$mdb  = new Db( new PDO( 'sqlite::memory:' ) );
+$mdb  = testDb();
 $mdb->migrate();
 $mbil = new Billing( $mdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
 $mcalls = array();
@@ -665,7 +681,7 @@ check( 'differenze: licenze identiche', array() === Portale\WegaSync::difference
 check( 'differenze: dominio, scadenza e stato diversi', 3 === count( Portale\WegaSync::differences( array( 'domain' => 'a.it', 'expires_at' => '2027-01-01 00:00:00', 'status' => 'canceled' ), array( 'domain' => 'b.it', 'expires_at' => '2027-03-01T00:00:00Z', 'state' => 'ACTIVE' ) ) ) );
 
 // --- Rinnovo automatico delle licenze gratuite ------------------------------------------------
-$fdb  = new Db( new PDO( 'sqlite::memory:' ) );
+$fdb  = testDb();
 $fdb->migrate();
 $fbil = new Billing( $fdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
 $fdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'f1', 'f@esempio.it', Db::now() ) );
@@ -698,7 +714,7 @@ $fbil->touch( 'LIC-I', $fnow );
 check( 'gratuite: un accesso riporta la licenza tra quelle da rinnovare', 'x' !== (string) $fdb->one( 'SELECT last_seen_at FROM subscriptions WHERE id = ?', array( $idle ) )['last_seen_at'] && strtotime( $fdb->one( 'SELECT last_seen_at FROM subscriptions WHERE id = ?', array( $idle ) )['last_seen_at'] . ' UTC' ) === $fnow );
 
 // --- Ultime versioni dei plugin (avviso aggiornamenti) ----------------------------------------
-$ldb = new Db( new PDO( 'sqlite::memory:' ) );
+$ldb = testDb();
 $ldb->migrate();
 $lpx = new Portale\LicenseProxy( $ldb, new WegaClient( 'https://license.test/api/v1', 't' ) );
 $r   = $lpx->latest( '7.7.7.7', 1700000000 );
@@ -716,7 +732,7 @@ for ( $i = 0; $i < 70; $i++ ) {
 check( 'aggiornamenti: limite per IP', 429 === $last );
 
 // --- Recupero della chiave da Wega ------------------------------------------------------------
-$kdb  = new Db( new PDO( 'sqlite::memory:' ) );
+$kdb  = testDb();
 $kdb->migrate();
 $kbil = new Billing( $kdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
 $kdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'k1', 'k@esempio.it', Db::now() ) );
@@ -735,7 +751,7 @@ Http::$fallback = array();
 
 // --- Modalità reale/prova: due gruppi di credenziali ---------------------------------------------------------
 $k = array( 'live' => 'sk_live_' . str_repeat( 'b', 24 ), 'test' => 'sk_test_' . str_repeat( 'a', 24 ) );
-$pdb2 = new Db( new PDO( 'sqlite::memory:' ) );
+$pdb2 = testDb();
 $pdb2->migrate();
 Portale\Settings::load( $pdb2 );
 check( 'stripe: chiave di prova nel campo reale rifiutata', null !== throwsUser( function () use ( $pdb2, $k ) { Portale\Settings::saveSecrets( $pdb2, array( 'stripe_secret' => $k['test'] ) ); } ) );
@@ -750,7 +766,7 @@ Portale\Settings::saveSecrets( $pdb2, array( 'paypal_client_test' => str_repeat(
 Portale\Settings::load( $pdb2 );
 check( 'paypal: sandbox attivo usa le credenziali sandbox; Stripe resta reale', str_repeat( 'S', 24 ) === Config::get( 'paypal.client_id' ) && true === Portale\Settings::stripeLive() );
 // Vecchio salvataggio con un solo gruppo: si assegna alla modalità giusta.
-$mdb2 = new Db( new PDO( 'sqlite::memory:' ) );
+$mdb2 = testDb();
 $mdb2->migrate();
 $mdb2->run( 'INSERT INTO settings (name, val) VALUES (?,?)', array( 'secrets', json_encode( array( 'stripe_secret' => Portale\Secrets::seal( $k['test'] ), 'stripe_webhook' => Portale\Secrets::seal( 'whsec_OLDOLDOLD12' ) ) ) ) );
 Portale\Settings::load( $mdb2 );
@@ -761,7 +777,7 @@ check( 'migrazione: chiave Stripe di prova del vecchio salvataggio finisce nel g
 // --- Dominio registrabile: la licenza vale per i sottodomini ----------------------------------
 check( 'dominio: staging, test e clone ricadono nel dominio registrabile', array( 'esempio.it', 'esempio.it', 'esempio.it', 'esempio.it' ) === array_map( array( 'Portale\Domain', 'forLicense' ), array( 'staging.esempio.it', 'https://test.esempio.it/wp-admin', 'www.clone.esempio.it', 'esempio.it/staging' ) ) );
 check( 'dominio: suffissi a più etichette (co.uk)', 'esempio.co.uk' === Domain::forLicense( 'staging.esempio.co.uk' ) && '' === Domain::forLicense( 'localhost' ) );
-$rdb2 = new Db( new PDO( 'sqlite::memory:' ) );
+$rdb2 = testDb();
 $rdb2->migrate();
 $seen = array();
 Http::$transport = function ( $m, $url, $h, $body ) use ( &$seen ) {
@@ -779,7 +795,7 @@ $GLOBALS['reg_ok'] = false;
 $r = json_decode( $px->validate( '{"license_key":"chiave-di-prova-2","domain":"legato.esempio.it"}', '3.3.3.4', 1700000000 )[1], true );
 check( 'rimbalzo: licenza emessa per un sottodominio esatto: secondo tentativo sul sottodominio', true === $r['valid'] && array( 'esempio.it', 'legato.esempio.it' ) === $seen );
 // --- Staff e accesso unico al supporto --------------------------------------------------------
-$tdb  = new Db( new PDO( 'sqlite::memory:' ) );
+$tdb  = testDb();
 $tdb->migrate();
 $tbil = new Billing( $tdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
 Config::set( 'admins', array( 'Capo@Esempio.it' ) );
@@ -821,7 +837,7 @@ Config::set( 'support', array( 'url' => 'https://supporto.test', 'sso_secret' =>
 check( 'sso: segreto corto → non attivo, si va alla home del supporto', ! Portale\SupportSso::enabled() && 'https://supporto.test' === Portale\SupportSso::url( $tdb, 'capo@esempio.it' ) );
 
 // --- Accesso unico al supporto: piano nel token ---------------------------------------------
-$cdb = new Db( new PDO( 'sqlite::memory:' ) );
+$cdb = testDb();
 $cdb->migrate();
 $cdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'p1', 'free@esempio.it', Db::now() ) );
 $cdb->run( 'INSERT INTO customers (id, email, created_at) VALUES (?,?,?)', array( 'p2', 'pro@esempio.it', Db::now() ) );
@@ -858,7 +874,7 @@ check( 'sso: il token porta il piano e conserva gli altri claim', 'Pro' === $pl2
 check( 'versioni: ammesse x.y.z e x.y, il resto no', Portale\Releases::validVersion( '1.1.14' ) && Portale\Releases::validVersion( '1.2' ) && ! Portale\Releases::validVersion( '1' ) && ! Portale\Releases::validVersion( '1.2.3.4' ) && ! Portale\Releases::validVersion( '../1.2' ) && ! Portale\Releases::validVersion( '1.2 ' ) );
 check( 'versioni: intestazione con due numeri', '1.2' === Portale\Releases::headerVersion( "<?php\n/**\n * Version:           1.2\n */" ) );
 if ( class_exists( 'ZipArchive' ) ) {
-	$vdb = new Db( new PDO( 'sqlite::memory:' ) );
+	$vdb = testDb();
 	$vdb->migrate();
 	Config::set( 'releases_dir', sys_get_temp_dir() . '/asem-rel-v-' . bin2hex( random_bytes( 4 ) ) );
 	foreach ( array( '1.1.20', '1.2', '1.1.9' ) as $vv ) {
@@ -877,7 +893,7 @@ if ( class_exists( 'ZipArchive' ) ) {
 
 // --- Aggiornamento diretto dei plugin da WordPress ------------------------------------------------
 if ( class_exists( 'ZipArchive' ) ) {
-	$udb = new Db( new PDO( 'sqlite::memory:' ) );
+	$udb = testDb();
 	$udb->migrate();
 	Config::set( 'releases_dir', sys_get_temp_dir() . '/asem-rel-u-' . bin2hex( random_bytes( 4 ) ) );
 	foreach ( array( array( 'free', 'associazionesemplice', '1.2' ), array( 'pro', 'associazionesemplice-pro', '1.1.5' ) ) as $rel ) {
@@ -932,7 +948,7 @@ if ( class_exists( 'ZipArchive' ) ) {
 }
 
 // --- Revisione di sicurezza ---------------------------------------------------------------------
-$sdb2 = new Db( new PDO( 'sqlite::memory:' ) );
+$sdb2 = testDb();
 $sdb2->migrate();
 $wh   = new Portale\Webhooks( $sdb2, new Billing( $sdb2, new WegaClient( 'https://license.test/api/v1', 't' ) ) );
 Config::set( 'stripe', array( 'webhook_secret' => 'whsec_test' ) );
@@ -967,7 +983,7 @@ check( 'dominio: chi paga non è bloccato da una licenza gratuita altrui sullo s
 check( 'intestazioni: nosniff, permessi e CSP definiti', ( function () { ob_start(); $src = file_get_contents( __DIR__ . '/../src/View.php' ); ob_end_clean(); return false !== strpos( $src, 'X-Content-Type-Options: nosniff' ) && false !== strpos( $src, 'Content-Security-Policy' ) && false !== strpos( $src, 'Permissions-Policy' ); } )() );
 
 // --- Nome del cliente ----------------------------------------------------------------------------
-$ndb = new Db( new PDO( 'sqlite::memory:' ) );
+$ndb = testDb();
 $ndb->migrate();
 $nbil = new Billing( $ndb, new WegaClient( 'https://license.test/api/v1', 't' ) );
 check( 'nome: spazi e caratteri di controllo ripuliti, al massimo 150 caratteri', 'Mario Rossi' === Portale\Billing::cleanName( "  Mario \t\n Rossi\x00 " ) && 150 === mb_strlen( Portale\Billing::cleanName( str_repeat( 'a', 400 ) ) ) );
@@ -987,7 +1003,7 @@ if ( class_exists( 'ZipArchive' ) && function_exists( 'sodium_crypto_sign_keypai
 	$sk   = sodium_crypto_sign_secretkey( $kp );
 	$b64u = function ( $r ) { return rtrim( strtr( base64_encode( $r ), '+/', '-_' ), '=' ); };
 	Config::set( 'package_keys', array( 'k-test' => $b64u( sodium_crypto_sign_publickey( $kp ) ) ) );
-	$gdb = new Db( new PDO( 'sqlite::memory:' ) );
+	$gdb = testDb();
 	$gdb->migrate();
 	Config::set( 'releases_dir', sys_get_temp_dir() . '/asem-rel-g-' . bin2hex( random_bytes( 4 ) ) );
 	$mkz = function ( $ver ) {
@@ -1076,7 +1092,7 @@ Config::load( array(
 		) ),
 	),
 ) );
-$pdb = new Db( new PDO( 'sqlite::memory:' ) );
+$pdb = testDb();
 $pdb->migrate();
 Portale\Settings::load( $pdb );
 $pcalls = array();
@@ -1252,7 +1268,7 @@ check( 'demo: l\'indirizzo non finisce con la barra', '/' !== substr( Portale\De
 
 // --- Livello firmato dal portale (portal_attestation) -------------------------------------------------------------------
 $pseed = random_bytes( SODIUM_CRYPTO_SIGN_SEEDBYTES );
-$adb   = new Db( new PDO( 'sqlite::memory:' ) );
+$adb   = testDb();
 $adb->migrate();
 $mkSub = function ( string $id, string $plan, string $status, string $license ) use ( $adb ) {
 	$adb->run( 'INSERT INTO subscriptions (id, customer_id, plan_code, period, provider, status, domain, license_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)', array( $id, 'c1', $plan, 'year', 'stripe', $status, 'esempio.it', $license, Db::now(), Db::now() ) );
@@ -1367,7 +1383,7 @@ foreach ( glob( __DIR__ . '/../views/wordpress-admin/*.php' ) as $f ) {
 }
 check( 'plugin: le viste puntano tutte a /wordpress/admin', 0 === $badLinks );
 // Staff del plugin in tabella propria (plugin_staff) e migrazione in due tempi
-$sdb = new Db( new PDO( 'sqlite::memory:' ) );
+$sdb = testDb();
 $sdb->migrate();
 $sdb->run( 'INSERT INTO staff (email, role, saas, created_at) VALUES (?,?,?,?)', array( 'vecchio@esempio.it', 'support', 'admin', Db::now() ) );
 $sdb->run( 'INSERT INTO staff (email, role, saas, created_at) VALUES (?,?,?,?)', array( 'solosaas@esempio.it', 'none', 'admin', Db::now() ) );
@@ -1383,7 +1399,7 @@ $sdb->migrate();
 check( 'plugin staff: tolto il ruolo non rivive né dal ripiego né da una nuova migrazione', null === Portale\Staff::role( $sdb, 'vecchio@esempio.it' ) && 'admin' === Portale\Staff::saas( $sdb, 'vecchio@esempio.it' ) );
 
 // Codici promo del plugin (Plugin\Promos)
-$rdb2 = new Db( new PDO( 'sqlite::memory:' ) );
+$rdb2 = testDb();
 $rdb2->migrate();
 $rcat  = new Portale\Plugin\ConfigCatalog();
 $rplan = Portale\Site::slug( 'full' );
@@ -1411,7 +1427,7 @@ $rpub = Portale\Plugin\Promos::publicList( $rdb2, $rnow );
 check( 'promo: la lista pubblica non espone dati interni', array() === array_filter( $rpub, function ( $p ) { return isset( $p['used'] ) || isset( $p['active'] ); } ) );
 
 // Operazioni dell'area clienti (CustomerApi, DownloadLink)
-$adb = new Db( new PDO( 'sqlite::memory:' ) );
+$adb = testDb();
 $adb->migrate();
 $abil = new Billing( $adb, new WegaClient( 'https://license.test/api/v1', 't' ) );
 foreach ( array( '1.0.0' => '2026-01-01 00:00:00', '1.1.0' => '2026-03-01 00:00:00', '1.2.0' => '2026-06-01 00:00:00' ) as $ver => $at ) {
@@ -1447,7 +1463,7 @@ $rfc = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ'; // "12345678901234567890" in base32 (
 check( 'totp: vettori RFC 6238 (SHA-1, 6 cifre)', '287082' === Portale\Plugin\Totp::code( $rfc, 59 ) && '081804' === Portale\Plugin\Totp::code( $rfc, 1111111109 ) && '005924' === Portale\Plugin\Totp::code( $rfc, 1234567890 ) );
 check( 'totp: base32 va e torna', '12345678901234567890' === Portale\Plugin\Totp::decode32( $rfc ) && $rfc === Portale\Plugin\Totp::base32( '12345678901234567890' ) );
 check( 'totp: tolleranza di 30 secondi, non di più; formato rigoroso', Portale\Plugin\Totp::verify( $rfc, '287082', 59 + 30 ) && ! Portale\Plugin\Totp::verify( $rfc, '287082', 59 + 90 ) && ! Portale\Plugin\Totp::verify( $rfc, '28708', 59 ) && ! Portale\Plugin\Totp::verify( $rfc, 'abcdef', 59 ) );
-$mdb = new Db( new PDO( 'sqlite::memory:' ) );
+$mdb = testDb();
 $mdb->migrate();
 $mbil = new Billing( $mdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
 Portale\Staff::set( $mdb, $mbil, 'persona@esempio.it', 'admin' );
@@ -1487,7 +1503,7 @@ if ( function_exists( 'sodium_crypto_sign_detached' ) ) {
 }
 
 // Notifica di abbonamento (Plugin\SubscriptionNotice)
-$ndb   = new Db( new PDO( 'sqlite::memory:' ) );
+$ndb   = testDb();
 $ndb->migrate();
 $ncalls = array();
 $nprev  = Http::$transport;
@@ -1513,7 +1529,7 @@ check( 'notifica: revisione più nuova applicata', 'applied' === Portale\Plugin\
 Http::$transport = $nprev;
 
 // Downgrade bloccato dai limiti del piano di arrivo (Plugin\Downgrade)
-$wdb = new Db( new PDO( 'sqlite::memory:' ) );
+$wdb = testDb();
 $wdb->migrate();
 $wbase  = ( new Portale\Plugin\ConfigCatalog() )->document();
 $wcodes = array_column( $wbase['plans'], 'code' );
@@ -1544,7 +1560,7 @@ check( 'downgrade: con più siti attivi di quelli ammessi è bloccato, con motiv
 check( 'downgrade: piano di arrivo senza limite di siti = nessun blocco', array() === Portale\Plugin\Downgrade::blockers( $wdb, $wcat, $w1, 'full', $wnow ) && array() === Portale\Plugin\Downgrade::blockers( $wdb, $wcat, $w1, 'inesistente', $wnow ) );
 
 // Editor del catalogo: bozza, validazione, pubblicazione, versioni dei piani
-$kdb = new Db( new PDO( 'sqlite::memory:' ) );
+$kdb = testDb();
 $kdb->migrate();
 $kbase  = ( new Portale\Plugin\ConfigCatalog() )->document();
 $kcodes = array_column( $kbase['plans'], 'code' );
@@ -1681,7 +1697,7 @@ $cdoc = function ( int $rev ) {
 $csign = function ( string $body, int $rev, array $over = array(), string $typ = 'catalog', int $now = 1000000 ) use ( $cseed ) {
 	return PortalAttestation::sign( $over + array( 'iss' => 'https://app.associazionesemplice.it', 'aud' => 'https://portale.test', 'typ' => $typ, 'iat' => $now, 'exp' => $now + 600, 'jti' => bin2hex( random_bytes( 8 ) ), 'rev' => $rev, 'sha256' => hash( 'sha256', $body ) ), $cseed );
 };
-$cdb = new Db( new PDO( "sqlite::memory:" ) );
+$cdb = testDb();
 $cdb->migrate();
 $b1 = $cdoc( 5 );
 check( 'catalogo: firma e impronta valide → salvato', '' === Catalog::accept( $cdb, $b1, $csign( $b1, 5 ), '"e5"', 1000000 ) && 5 === Catalog::stored( $cdb, 1000000 )['rev'] );
@@ -1733,7 +1749,7 @@ check( 'preventivo: annuale = 10 mensilità, piano o addon sconosciuti rifiutati
 
 $oseed = str_repeat( 'o', 32 );
 Config::set( 'saas_public_keys', array( PortalAttestation::kid( $oseed ) => PortalAttestation::publicKey( $oseed ) ) );
-$odb = new Db( new PDO( 'sqlite::memory:' ) );
+$odb = testDb();
 $odb->migrate();
 $mkcat = function ( int $rev, int $base ) use ( $qdoc ) {
 	$d        = $qdoc;
@@ -1758,7 +1774,7 @@ $serve( $mkcat( 9, 2000 ), 9 );
 $msg = throwsUser( function () use ( $odb, $ord ) { Orders::confirm( $odb, $ord['id'] ); } );
 check( 'ordine: prezzi cambiati → avviso con il nuovo totale e nuova istantanea', null !== $msg && false !== strpos( $msg, 'I prezzi sono stati aggiornati' ) && 9 === (int) Orders::get( $odb, $ord['id'] )['catalog_rev'] && 3800 === Orders::get( $odb, $ord['id'] )['quote']['net'] );
 Http::$transport = function () { return array( 0, '' ); };
-$odb2 = new Db( new PDO( 'sqlite::memory:' ) );
+$odb2 = testDb();
 $odb2->migrate();
 check( 'ordine: senza catalogo corrente non si vende', null !== throwsUser( function () use ( $odb2 ) { Orders::open( $odb2, 'cust1', 'gestionale', 'month', 50 ); } ) );
 
@@ -1788,7 +1804,7 @@ use Portale\SaasCheckout;
 Config::set( 'saas_sign_key', base64_encode( str_repeat( 's', 32 ) ) );
 Config::set( 'stripe.secret_key', 'sk_test_abc' );
 Config::set( 'base_url', 'https://portale.test' );
-$cdb = new Db( new PDO( 'sqlite::memory:' ) );
+$cdb = testDb();
 $cdb->migrate();
 $cbill  = new Billing( $cdb, new WegaClient( 'https://license.test/api/v1', 't' ) );
 $ccat   = $mkcat( 7, 1500 );
@@ -1899,7 +1915,7 @@ Config::set( 'stripe.secret_key', '' );
 
 // Elenco centrale dello staff (docs/UTENTI_E_ACCESSI.md): copia, livelli, super amministratore, registro
 use Portale\Plugin\Directory;
-$ddb = new Db( new PDO( 'sqlite::memory:' ) );
+$ddb = testDb();
 $ddb->migrate();
 $ddb->run( 'INSERT INTO staff (email, role, saas, created_at) VALUES (?,?,?,?)', array( 'vecchio@esempio.it', 'support', 'admin', Db::now() ) );
 $ddb->run( 'INSERT INTO staff (email, role, saas, created_at) VALUES (?,?,?,?)', array( 'solosaas@esempio.it', 'none', 'admin', Db::now() ) );
@@ -1936,7 +1952,7 @@ $ssTok  = function ( array $over = array() ) use ( $ssSeed, $ssNow ) {
 	$c = $over + array( 'iss' => 'https://associazionesemplice.it/saas', 'aud' => 'associazionesemplice-portale', 'typ' => 'staff_sso', 'iat' => $ssNow, 'exp' => $ssNow + 60, 'jti' => bin2hex( random_bytes( 8 ) ), 'sub' => 'mario@esempio.it', 'area' => 'wordpress', 'level' => 'vendita', 'mfa' => false, 'sid' => str_repeat( 'a', 32 ), 'areas' => array( 'wordpress' => 'vendita', 'saas' => 'admin' ) );
 	return Portale\PortalAttestation::sign( $c, $ssSeed );
 };
-$ssdb = new Db( new PDO( 'sqlite::memory:' ) );
+$ssdb = testDb();
 $ssdb->migrate();
 $_SESSION = array();
 check( 'staff sso: spento di default, nessuna sessione', false === StaffSso::enabled() && false === StaffSso::receive( $ssdb, $ssTok(), $ssNow ) && ! isset( $_SESSION['staff_sso'] ) );
@@ -2212,7 +2228,7 @@ check( 'gestisci: ragioni del dominio in italiano', false !== strpos( SaasAccoun
 Config::set( 'saas_v2', array() );
 Config::set( 'saas_sign_key', '' );
 // Interruttori del portale (/account/impostazioni): salvati nel database, sostituiscono config.php, chiavi sconosciute ignorate
-$swdb = new Db( new PDO( 'sqlite::memory:' ) );
+$swdb = testDb();
 $swdb->migrate();
 Config::set( 'saas_v2', array( 'enabled' => true, 'domain' => false ) );
 check( 'interruttori: lo stato parte da config.php', array( 'saas_v2' => true, 'saas_v2_domain' => false ) === Portale\Switches::current() );

@@ -12,12 +12,14 @@ return array(
 	// Sito di supporto clienti e accesso unico: lo stesso segreto (almeno 32 caratteri casuali) va nel .env del sito di supporto.
 	'support' => array( 'url' => 'https://supporto.associazionesemplice.it', 'sso_secret' => '' ),
 
-	// MySQL oppure SQLite (default).
+	// PostgreSQL (database unico della piattaforma: schema `portal`, ruolo `portal_app`). SQLite resta solo per le prove locali e per il passaggio.
 	'db' => array(
-		'dsn'  => 'sqlite:' . __DIR__ . '/data/portale.sqlite',
-		// 'dsn' => 'mysql:host=localhost;dbname=portale;charset=utf8mb4',
-		'user' => '',
-		'pass' => '',
+		'dsn'       => 'sqlite:' . __DIR__ . '/data/portale.sqlite',
+		// 'dsn'    => 'pgsql:host=127.0.0.1;port=5432;dbname=associazionesemplice',
+		'user'      => '',
+		'pass'      => '',
+		// 'pass_file' => '/percorso/fuori/dal/repository/portal_db.pass',  // al posto di 'pass': file con la sola password
+		// 'schema'    => 'portal',
 	),
 
 	// Server licenze Wega (token con scope licenses:create, licenses:read, licenses:change-binding).
