@@ -367,3 +367,4 @@ per `jti` (`409 replayed`).
 - **`org_status`**: `status` è quello dell'ultimo abbonamento ricevuto (`none` se non ne ha); `members_limit` viene dal
   piano (`null` = senza tetto); `operators.limit` dal calcolo dei limiti; `packages` in ordine alfabetico; `domain` è
   `null` o `{name, state}`.
+
