@@ -71,6 +71,7 @@ The interface uses the Montserrat typeface (SIL Open Font License 1.1, copy in `
 * Nuovi blocchi, shortcode e widget Elementor: elenco a schede, calendario, prossimi eventi e i pezzi della pagina evento (locandina, dati, prenotazione, dove, precedente e successivo, condividi); scegli tu il titolo, il messaggio senza eventi e il testo del pulsante, e componi la pagina dell'evento come vuoi
 * I pulsanti Elenco e Calendario funzionano anche nelle pagine che mostrano una sola vista
 * Elenco delle attività: schede in ordine e il pulsante di accesso non c'è più, perché confondeva (chi è socio accede dalla pagina dell'evento)
+* Importando gli eventi da The Events Calendar si compilano anche le pagine pubbliche: descrizione, immagine, categoria, organizzatore, luogo e sito dell'evento; le pagine restano in bozza (puoi scegliere di pubblicare subito quelle degli eventi futuri) e gli eventi che si ripetono diventano un solo evento ricorrente
 
 = 1.3.19 =
 * Eventi e corsi hanno una pagina pubblica sul sito, collegata all'attività e creata da sola: scrivi la descrizione e scegli la locandina, data, luogo, contributo e posti li prende dall'attività
