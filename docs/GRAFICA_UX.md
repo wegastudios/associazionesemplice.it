@@ -51,7 +51,7 @@ Dentro supporto e gestionale la barra ha solo: logo, il nome del posto («Suppor
 | Acquisto gestionale | `/saas/acquista?plan=` |
 | Gestione del plugin (staff) | `/wordpress/admin` |
 | Amministrazione della piattaforma (staff) | `https://associazionesemplice.it/saas/admin` (servita dal SaaS sotto lo stesso dominio) |
-| Gestionale dei clienti | quello dell'associazione, come lo restituisce il SaaS (`https://<nome>.associazionesemplice.it`); «Apri il gestionale» in `/account` usa questo. Gli operatori hanno ancora accesso e «Esci» locali finché non passano all'accesso unico (passo 6) |
+| Gestionale dei clienti | `https://app.associazionesemplice.it/gestionale` (sempre su `app.`; «Apri il gestionale» in `/account` porta qui). Il sottodominio `https://<nome>.associazionesemplice.it` è il sito pubblico e l'area soci dell'associazione, non il gestionale. Gli operatori hanno ancora accesso e «Esci» locali finché non passano all'accesso unico (passo 6) |
 | Supporto | `https://supporto.associazionesemplice.it/` |
 | Demo | `https://demo.associazionesemplice.it/` |
 

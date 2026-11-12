@@ -20,7 +20,9 @@ final class SaasAccount {
 			$r['state'] = 'paid' === $r['status'] ? 'pending' : (string) ( $last['status'] ?? 'active' );
 			$r['until'] = (string) ( $last['until'] ?? '' );
 			$r['total'] = (int) ( $q['total'] ?? 0 );
-			$r['url']   = $r['slug'] ? 'https://' . $r['slug'] . '.' . Config::get( 'saas_tenant_domain', 'associazionesemplice.it' ) : '';
+			// «Apri il gestionale» è sempre su app. (operatori e commercialisti); il sottodominio dell'associazione è il suo sito pubblico e l'area soci.
+			$r['url']      = $r['slug'] ? rtrim( (string) Config::get( 'saas_app_url', 'https://app.associazionesemplice.it/gestionale' ), '/' ) : '';
+			$r['site_url'] = $r['slug'] ? 'https://' . $r['slug'] . '.' . Config::get( 'saas_tenant_domain', 'associazionesemplice.it' ) : '';
 		}
 		unset( $r );
 		return $rows;

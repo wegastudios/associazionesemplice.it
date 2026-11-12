@@ -1876,7 +1876,7 @@ $mine = array();
 foreach ( SaasAccount::forCustomer( $cdb, $custA['id'] ) as $g ) {
 	$mine[ $g['org_name'] ] = $g;
 }
-check( 'area clienti: due abbonamenti al gestionale con stato e scadenza dall\'ultimo messaggio', 2 === count( $mine ) && 'cancelled' === $mine['Circolo San Giorgio']['state'] && '' !== $mine['Circolo San Giorgio']['until'] && 'https://circolo-san-giorgio.associazionesemplice.it' === $mine['Circolo San Giorgio']['url'] );
+check( 'area clienti: due abbonamenti al gestionale con stato e scadenza dall\'ultimo messaggio', 2 === count( $mine ) && 'cancelled' === $mine['Circolo San Giorgio']['state'] && '' !== $mine['Circolo San Giorgio']['until'] && 'https://app.associazionesemplice.it/gestionale' === $mine['Circolo San Giorgio']['url'] && 'https://circolo-san-giorgio.associazionesemplice.it' === $mine['Circolo San Giorgio']['site_url'] );
 check( 'area clienti: un altro cliente non vede nulla e non può agire sull\'ordine', array() === SaasAccount::forCustomer( $cdb, 'altro' ) && null === SaasAccount::mine( $cdb, 'altro', $ord['id'] ) && null !== SaasAccount::mine( $cdb, $custA['id'], $ord['id'] ) );
 $ssoTok = function ( array $over = array() ) use ( $oseed, $ord ) {
 	return PortalAttestation::sign( $over + array( 'iss' => 'https://app.associazionesemplice.it', 'aud' => 'https://portale.test', 'typ' => 'sso', 'iat' => time(), 'exp' => time() + 60, 'jti' => 'sso' . bin2hex( random_bytes( 6 ) ), 'sub' => 'anna@esempio.it', 'ref' => $ord['org_ref'], 'org_id' => 'x', 'role' => 'owner' ), $oseed );
