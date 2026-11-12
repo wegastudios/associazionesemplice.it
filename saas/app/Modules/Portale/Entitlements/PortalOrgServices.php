@@ -126,7 +126,12 @@ final readonly class PortalOrgServices
             'org_id' => $orgId, 'domain' => (string) $domain, 'state' => 'pending', 'message' => null, 'requested_at' => now(), 'checked_at' => null,
         ]], ['org_id'], ['domain', 'state', 'message', 'requested_at', 'checked_at']);
 
-        return $this->domainState($orgId) ?? throw new UnknownOrg;
+        $state = $this->domainState($orgId);
+        if ($state === null) {
+            throw new UnknownOrg;
+        }
+
+        return $state;
     }
 
     /**
@@ -157,7 +162,7 @@ final readonly class PortalOrgServices
             'rev' => is_int($stored['rev'] ?? null) ? $stored['rev'] : null,
             'members' => $this->context->run($orgId, fn (): int => $this->members->activeCount()),
             'members_limit' => is_array($planLimits) && is_int($planLimits['members'] ?? null) ? $planLimits['members'] : null,
-            'operators' => $this->operators($orgId) + ['limit' => is_int($stored['operators'] ?? null) ? $stored['operators'] : null],
+            'operators' => ['active' => $this->operators($orgId)['active'], 'limit' => is_int($stored['operators'] ?? null) ? $stored['operators'] : null],
             'storage_limit_gb' => is_int($stored['storage_gb'] ?? null) ? $stored['storage_gb'] : null,
             'packages' => $packages,
             'domain' => $domain === null ? null : ['name' => $domain['domain'], 'state' => $domain['state']],
