@@ -351,3 +351,5 @@ Il portale non deve più avere un database SQL proprio: tutto sta su PostgreSQL,
 - Su PostgreSQL `Db` traduce da solo `GROUP_CONCAT(x)` in `string_agg` e `LIKE` in `ILIKE`: il resto dell'SQL del portale è già comune.
 - La suite di test gira due volte in CI: SQLite in memoria (PHP 7.4/8.1/8.3) e PostgreSQL 16 (job «Portale (PostgreSQL)», variabili `PORTALE_TEST_PG_*`, uno schema nuovo per ogni database di prova).
 - Il passaggio dei dati di produzione e lo spegnimento di SQLite avvengono solo con il via libera scritto della titolare, dopo il «pronto» della sessione SaaS e una prova in parallelo.
+
+**Stato (12/11/2026 19:30):** il portale in produzione usa PostgreSQL (schema `portal`, ruolo `associazionesemp_portal`, credenziali in `~/portale/data/pg.php` fuori dal repository, lette dal `config.php` del server). Il database SQLite è stato importato, verificato tabella per tabella e cancellato dal server; la copia finale è stata conservata fuori dal server dalla sessione SaaS. SQLite resta solo per le prove locali e per i test veloci della CI.
