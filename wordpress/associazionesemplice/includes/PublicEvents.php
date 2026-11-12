@@ -498,7 +498,9 @@ final class PublicEvents {
 			return $content;
 		}
 		Frontend\Views::no_cache();
-		$html = '<div class="asemf asemf-event"><div class="asemf-event-head' . ( has_post_thumbnail( $post ) ? ' has-poster' : '' ) . '">';
+		$list_id = (int) ( Pages::existing()['eventi'] ?? 0 );
+		$all     = $list_id ? (string) get_permalink( $list_id ) : '';
+		$html    = '<div class="asemf asemf-event">' . ( '' !== $all ? '<p class="asemf-back"><a href="' . esc_url( $all ) . '">« Tutti gli eventi</a></p>' : '' ) . '<div class="asemf-event-head' . ( has_post_thumbnail( $post ) ? ' has-poster' : '' ) . '">';
 		if ( has_post_thumbnail( $post ) ) {
 			$html .= '<figure class="asemf-poster">' . wp_get_attachment_image( (int) get_post_thumbnail_id( $post ), 'large' ) . '</figure>'; // direttamente: il filtro del tema che toglie la locandina duplicata non deve toccare questa
 		}
@@ -525,7 +527,45 @@ final class PublicEvents {
 		} else {
 			$html .= '<p class="asemf-small asemf-muted">Per iscriverti a questo corso rivolgiti alla segreteria dell\'associazione.</p>';
 		}
-		return $html . self::share_html( $post ) . self::related_html( $post ) . '</div>';
+		return $html . self::venue_html( $a ) . self::share_html( $post ) . self::prev_next_html( $post ) . '</div>';
+	}
+
+	/** Dove e come contattarci: luogo con il collegamento alla mappa (si apre solo cliccando) e l'email della segreteria. */
+	private static function venue_html( array $a ): string {
+		$where = self::where_text( $a );
+		$mail  = Applications::notify_email();
+		if ( '' === $where && '' === $mail ) {
+			return '';
+		}
+		$h = '<div class="asemf-venue">';
+		if ( '' !== $where ) {
+			$h .= '<div><strong>Dove</strong><br>' . esc_html( $where ) . '<br><a href="' . esc_url( 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode( $where ), array( 'https' ) ) . '" target="_blank" rel="noopener noreferrer">Apri su Google Maps</a></div>';
+		}
+		if ( '' !== $mail ) {
+			$h .= '<div><strong>Info e contatti</strong><br><a href="mailto:' . esc_attr( antispambot( $mail ) ) . '">' . esc_html( antispambot( $mail ) ) . '</a></div>';
+		}
+		return $h . '</div>';
+	}
+
+	/** Evento precedente e successivo in programma (per data), come sul sito di riferimento. */
+	private static function prev_next_html( \WP_Post $post ): string {
+		$posts = self::posts_by_activity( '' );
+		$me    = self::activity_of( (int) $post->ID );
+		$order = array();
+		foreach ( self::rows( $posts, Db::today(), '9999-12-31' ) as $s ) {
+			$order[ (int) $s['activity_id'] ] = true; // già in ordine di data: conta la prima data di ognuno
+		}
+		$ids = array_keys( $order );
+		$i   = array_search( $me, $ids, true );
+		if ( false === $i ) {
+			return '';
+		}
+		$link = function ( int $aid, string $rel, string $label ) use ( $posts ) {
+			return isset( $posts[ $aid ] ) ? '<a rel="' . esc_attr( $rel ) . '" href="' . esc_url( (string) get_permalink( $posts[ $aid ] ) ) . '">' . $label . '</a>' : '';
+		};
+		$prev = $i > 0 ? $link( (int) $ids[ $i - 1 ], 'prev', '« ' . esc_html( get_the_title( $posts[ (int) $ids[ $i - 1 ] ] ) ) ) : '';
+		$next = isset( $ids[ $i + 1 ] ) ? $link( (int) $ids[ $i + 1 ], 'next', esc_html( get_the_title( $posts[ (int) $ids[ $i + 1 ] ] ) ) . ' »' ) : '';
+		return '' === $prev . $next ? '' : '<nav class="asemf-prevnext" aria-label="Altri eventi"><span>' . $prev . '</span><span>' . $next . '</span></nav>';
 	}
 
 	/** Pulsanti di condivisione: semplici collegamenti, nessuno script né richiesta a siti esterni finché non si clicca. */
