@@ -1375,6 +1375,30 @@ final class Views {
 					$html .= self::form( 'asem_front_waitlist_join', self::hidden( 'session_id', $s['id'] ) . $wf, 'Lista d\'attesa', false, 'asemf-inline' );
 				}
 			}
+			if ( $free && ! $full && \AssociazioneSemplice\PublicEvents::options( (int) $activity['id'] )['approval'] ) { // evento con richiesta di partecipazione: la segreteria approva, in ordine di arrivo
+				$ask = array();
+				foreach ( $free as $person ) {
+					if ( \AssociazioneSemplice\EventRequests::pending_for( (int) $s['id'], (int) $person['id'] ) ) {
+						$html .= '<span class="asemf-badge">' . esc_html( $person['first_name'] ) . ': richiesta inviata, in attesa della segreteria</span> ';
+					} else {
+						$ask[] = $person;
+					}
+				}
+				if ( $ask ) {
+					$rf = '';
+					if ( count( $ask ) > 1 ) {
+						$rf .= '<select name="person_id" aria-label="Per chi chiedi">';
+						foreach ( $ask as $person ) {
+							$rf .= '<option value="' . (int) $person['id'] . '">' . esc_html( $person['first_name'] ) . '</option>';
+						}
+						$rf .= '</select>';
+					} else {
+						$rf .= self::hidden( 'person_id', $ask[0]['id'] );
+					}
+					$html .= self::form( 'asem_front_request', self::hidden( 'session_id', $s['id'] ) . $rf, 'Chiedi di partecipare', false, 'asemf-inline' );
+				}
+				$free = array();
+			}
 			if ( $free && ! $full ) {
 				$fields = '';
 				if ( count( $free ) > 1 ) {

@@ -358,10 +358,71 @@ final class EventRequests {
 	/** Chiude la richiesta con un rifiuto e lo scrive a chi l'ha fatta. */
 	private static function fail( array $row, string $status, string $mail_text, ?string $subject = null ): array {
 		self::set( (int) $row['id'], array( 'status' => $status, 'data' => null ) );
-		if ( is_email( (string) $row['email'] ) ) {
-			Texts::mail( $row['email'], $subject ?? 'Richiesta non accolta' . self::assoc_suffix(), $mail_text );
+		$to = self::recipient( $row );
+		if ( '' !== $to ) {
+			Texts::mail( $to, $subject ?? 'Richiesta non accolta' . self::assoc_suffix(), $mail_text );
 		}
 		return array( 'ok' => false, 'message' => $mail_text );
+	}
+
+	/** A chi scrivere: l'email della richiesta (non soci) o quella del socio. */
+	private static function recipient( array $row ): string {
+		if ( is_email( (string) $row['email'] ) ) {
+			return (string) $row['email'];
+		}
+		$p = ! empty( $row['person_id'] ) ? Plugin::people()->get( (int) $row['person_id'] ) : null;
+		return $p && is_email( (string) $p['email'] ) ? (string) $p['email'] : '';
+	}
+
+	// ---------- Richieste dei soci (eventi con approvazione) ----------
+
+	/** C'è già una richiesta in attesa di questa persona per questa data? */
+	public static function pending_for( int $session_id, int $person_id ): bool {
+		return (bool) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'event_requests' ) . " WHERE session_id = %d AND person_id = %d AND status = 'approval'", $session_id, $person_id ) );
+	}
+
+	/** Un socio (o un suo ospite o minore) chiede di partecipare: la segreteria le esamina nell'ordine di arrivo. @throws \InvalidArgumentException */
+	public static function member_request( int $session_id, int $person_id ): void {
+		$s = Plugin::activities()->session( $session_id );
+		$p = Plugin::people()->get( $person_id );
+		if ( ! $s || ! $p || $s['cancelled_at'] || (string) $s['session_date'] < Db::today() ) {
+			throw new \InvalidArgumentException( 'Evento non disponibile.' );
+		}
+		if ( ! PublicEvents::options( (int) $s['activity_id'] )['approval'] ) {
+			throw new \InvalidArgumentException( 'Questo evento si prenota direttamente.' );
+		}
+		if ( Plugin::activities()->has_active_booking( $session_id, $person_id ) || self::pending_for( $session_id, $person_id ) ) {
+			throw new \InvalidArgumentException( 'C\'è già una prenotazione o una richiesta per questa data.' );
+		}
+		$now = Db::now();
+		self::db()->insert(
+			Db::t( 'event_requests' ),
+			array( 'activity_id' => (int) $s['activity_id'], 'session_id' => $session_id, 'person_id' => $person_id, 'seats' => 1, 'status' => 'approval', 'token_hash' => hash( 'sha256', wp_generate_password( 32, false, false ) ), 'created_at' => $now, 'updated_at' => $now )
+		);
+		Audit::log( 'event_request.member', 'activity', (int) $s['activity_id'], array( 'person_id' => $person_id ) );
+		$a = Plugin::activities()->get( (int) $s['activity_id'] );
+		Texts::mail( Applications::notify_email(), 'Richiesta di partecipazione da approvare' . ( $a ? ': ' . $a['name'] : '' ) . self::assoc_suffix(), "È arrivata una richiesta di partecipazione di un socio.\n\nEsaminala dalla scheda dell'attività: " . admin_url( 'admin.php?page=asem-activity&id=' . (int) $s['activity_id'] ) );
+	}
+
+	/** Prenota un socio la cui richiesta è stata approvata (contributo e blocco posti come per ogni prenotazione). */
+	private static function book_member( array $row ): array {
+		$svc = Plugin::activities();
+		$a   = $svc->get( (int) $row['activity_id'] );
+		$s   = $svc->session( (int) $row['session_id'] );
+		if ( ! $a || ! $s || $s['cancelled_at'] || (string) $s['session_date'] < Db::today() ) {
+			return self::fail( $row, 'rejected', 'La data richiesta non è più disponibile. Scusaci: controlla il calendario degli eventi sul sito.' );
+		}
+		try {
+			$svc->book( (int) $s['id'], (int) $row['person_id'] );
+		} catch ( \InvalidArgumentException $e ) {
+			return array( 'ok' => false, 'message' => 'Non è stato possibile prenotare: ' . $e->getMessage() ); // la richiesta resta in attesa
+		}
+		self::set( (int) $row['id'], array( 'status' => 'booked', 'data' => null ) );
+		$to = self::recipient( $row );
+		if ( '' !== $to ) {
+			Texts::mail( $to, 'Richiesta accolta: ' . $a['name'] . self::assoc_suffix(), 'La tua richiesta di partecipazione a «' . $a['name'] . '» del ' . $s['session_date'] . ' è stata accolta: il posto è prenotato. Lo trovi nella tua area, tra le prenotazioni.' );
+		}
+		return array( 'ok' => true, 'message' => 'Richiesta accolta: il socio è prenotato.' );
 	}
 
 	/**
@@ -373,6 +434,9 @@ final class EventRequests {
 		$row = self::row( $id );
 		if ( ! $row || ! in_array( $row['status'], array( 'new', 'approval' ), true ) ) {
 			return array( 'ok' => false, 'message' => 'Richiesta non trovata o già lavorata.' );
+		}
+		if ( ! empty( $row['person_id'] ) ) {
+			return self::book_member( $row );
 		}
 		$data = json_decode( (string) $row['data'], true );
 		$list = is_array( $data ) && ! empty( $data['people'] ) ? $data['people'] : array();
@@ -482,6 +546,10 @@ final class EventRequests {
 		foreach ( $rows as &$r ) {
 			$d          = json_decode( (string) $r['data'], true );
 			$r['names'] = array();
+			if ( ! empty( $r['person_id'] ) ) {
+				$mp           = Plugin::people()->get( (int) $r['person_id'] );
+				$r['names'][] = $mp ? trim( $mp['first_name'] . ' ' . $mp['last_name'] ) . ' (socio)' : 'Socio';
+			}
 			foreach ( is_array( $d ) && ! empty( $d['people'] ) ? $d['people'] : array() as $p ) {
 				$r['names'][] = trim( $p['first_name'] . ' ' . $p['last_name'] );
 			}
@@ -491,7 +559,11 @@ final class EventRequests {
 	}
 
 	public static function approve( int $id ): string {
-		$r = self::book_request( $id );
+		$r   = self::book_request( $id );
+		$now = self::row( $id );
+		if ( ! $r['ok'] && $now && 'approval' === $now['status'] ) {
+			throw new \InvalidArgumentException( $r['message'] ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
 		return $r['message'];
 	}
 
