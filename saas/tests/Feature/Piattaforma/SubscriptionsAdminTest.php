@@ -15,7 +15,7 @@ beforeEach(function (): void {
 });
 
 /** @param  array<string, mixed>  $subscription */
-function subscribe(Tests\TestCase $test, string $name, string $ref, string $status, array $subscription, ?int $members = 120): void
+function subscribe(object $org, string $ref, string $status, array $subscription, ?int $members = 120): void
 {
     DB::table('core.orgs')->where('id', $org->id)->update(['portal_ref' => $ref]);
     DB::table('core.org_entitlements')->insert([
