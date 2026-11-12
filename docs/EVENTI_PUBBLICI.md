@@ -107,3 +107,16 @@ Fatto, **non ancora pubblicato**. Decisione della titolare: **blocchi, widget e 
 - **Pagina evento editabile:** se nel contenuto dell'evento c'è uno di questi pezzi (shortcode, blocco o widget), la pagina mostra solo ciò che ha scritto il gestore; altrimenti resta l'impaginazione automatica. Filtro `asem_event_custom_layout` per le eccezioni.
 - **Demo:** la pagina «Eventi in programma» diventa «I nostri prossimi eventi» (titolo della pagina e attributo `titolo`).
 - **Guide, FAQ e confronto:** alla pubblicazione, aggiornare l'elenco shortcode e le guide del supporto.
+
+## Import da The Events Calendar e pagine pubbliche (12/11/2026)
+
+Fatto, **non ancora pubblicato** (numero di versione e log alla pubblicazione).
+
+L'import degli eventi (Importa da The Events Calendar) compila ora anche la **pagina pubblica** di ogni evento o corso importato, oltre all'attività:
+
+- descrizione in HTML ripulito (`wp_kses_post`), estratto breve, **immagine in evidenza** (lo stesso allegato: nessuna copia, nessun download), **categoria** pubblica (creata o riusata per nome; la prima categoria che non è dei corsi), **organizzatore** («Con …» con email e telefono se ci sono), **sito dell'evento** (collegamento «Maggiori informazioni») e, per gli eventi su più giorni o per tutto il giorno, una riga «Quando»;
+- gli eventi con **lo stesso titolo nello stesso anno sociale** (le ripetizioni di The Events Calendar) diventano **un solo evento ricorrente** con tutte le date e una sola pagina; i corsi restano un solo corso con le lezioni;
+- le pagine restano in **bozza**; la casella **«Pubblica subito le pagine degli eventi futuri»** (spenta di default) pubblica solo quelle con una data futura;
+- rilanciando l'import non nascono doppioni e **una pagina che ha già un contenuto non si tocca**; se è rimasta vuota si compila;
+- restano esclusi costi e prenotazioni. Il riepilogo dice quante pagine sono state compilate e pubblicate e dove vederle (Eventi sul sito).
+- Voce del log da scrivere alla pubblicazione: «L'importazione da The Events Calendar compila anche le pagine pubbliche degli eventi (descrizione, immagine, categoria, organizzatore); le ripetizioni diventano un evento ricorrente e le pagine restano in bozza finché non le pubblichi».

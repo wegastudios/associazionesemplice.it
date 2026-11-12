@@ -5,8 +5,9 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Importa gli eventi di The Events Calendar (contenuti `tribe_events`) come eventi una tantum, passati e futuri, per poterli riproporre
- * senza rifare tutto. Si legge dal database del sito: The Events Calendar può anche essere disattivato. Non si importano costi,
- * prenotazioni, immagini né categorie. Ogni evento importato ricorda il contenuto di origine, quindi si può rilanciare senza doppioni.
+ * senza rifare tutto. Si legge dal database del sito: The Events Calendar può anche essere disattivato. Non si importano costi
+ * e prenotazioni; immagine, categoria, descrizione, organizzatore e sito vanno nella pagina pubblica dell'evento. Ogni evento importato
+ * ricorda il contenuto di origine, quindi si può rilanciare senza doppioni.
  */
 final class TribeImport {
 
@@ -221,17 +222,25 @@ final class TribeImport {
 	 * Importa tutti gli eventi non ancora importati: gli eventi delle categorie indicate come corsi diventano corsi (uno per titolo e anno
 	 * sociale, con tutte le sue lezioni), gli altri eventi una tantum.
 	 *
-	 * @param int[] $course_cats categorie degli eventi che sono corsi
-	 * @return array imported (eventi), courses, lessons (date dei corsi), skipped (già importati), failed, errors[] (i primi)
+	 * Per ogni evento o corso importato si compila anche la sua pagina pubblica (descrizione, estratto, immagine in evidenza,
+	 * categoria, organizzatore, sito, giorni e orari): in bozza, o pubblicata se si chiede e l'evento è futuro. Le pagine che
+	 * hanno già un contenuto non si toccano. Gli eventi con lo stesso titolo nello stesso anno sociale (le ripetizioni di The Events
+	 * Calendar) diventano un solo evento ricorrente con la sua pagina.
+	 *
+	 * @param int[] $course_cats    categorie degli eventi che sono corsi
+	 * @param bool  $publish_future pubblica subito le pagine degli eventi con una data futura
+	 * @return array imported (eventi), courses, lessons (date dei corsi), series (eventi ricorrenti), skipped (già importati), failed, pages (compilate), published, errors[] (i primi)
 	 */
-	public static function run( array $course_cats = array() ): array {
+	public static function run( array $course_cats = array(), bool $publish_future = false ): array {
 		$course_cats = array_map( 'intval', $course_cats );
-		$res         = array( 'imported' => 0, 'courses' => 0, 'lessons' => 0, 'skipped' => 0, 'failed' => 0, 'errors' => array() );
+		$res         = array( 'imported' => 0, 'courses' => 0, 'lessons' => 0, 'series' => 0, 'skipped' => 0, 'failed' => 0, 'pages' => 0, 'published' => 0, 'errors' => array() );
 		$groups      = array();
+		$series      = array();
 		foreach ( self::found() as $f ) {
 			$pid = (int) $f['post_id'];
 			if ( $f['imported'] && Plugin::activities()->get( (int) $f['imported'] ) ) {
 				$res['skipped']++;
+				self::fill_page( (int) $f['imported'], array( $pid ), $course_cats, $publish_future, $res ); // una pagina rimasta vuota si compila
 				continue;
 			}
 			$post = get_post( $pid );
@@ -253,21 +262,43 @@ final class TribeImport {
 				$groups[ $key ]['items'][] = array( 'date' => $map['session']['session_date'], 'start' => $map['session']['start_time'], 'end' => $map['session']['end_time'], 'name' => $map['name'], 'notes' => $map['notes'], 'venue' => $map['session']['location'] );
 				continue;
 			}
+			$key                    = mb_strtolower( $map['name'] ) . '|' . $year; // le ripetizioni di un evento (stesso titolo, stesso anno) si raccolgono
+			$series[ $key ]['year'] = $year;
+			$series[ $key ]['name'] = $map['name'];
+			$series[ $key ]['rows'][] = array( 'pid' => $pid, 'title' => $f['title'], 'map' => $map );
+		}
+		foreach ( $series as $s ) {
 			try {
-				$aid = Plugin::activities()->create(
-					array(
-						'name'        => $map['name'],
-						'social_year' => $year,
-						'kind'        => ActivityKind::EVENT,
-						'notes'       => $map['notes'],
-						'session'     => $map['session'],
-					)
-				);
-				update_post_meta( $pid, self::META_DONE, $aid );
-				$res['imported']++;
+				$first = $s['rows'][0]['map'];
+				if ( 1 === count( $s['rows'] ) ) {
+					$aid = Plugin::activities()->create(
+						array(
+							'name'        => $first['name'],
+							'social_year' => $s['year'],
+							'kind'        => ActivityKind::EVENT,
+							'notes'       => $first['notes'],
+							'session'     => $first['session'],
+						)
+					);
+				} else { // evento ricorrente: una sola attività con tutte le date
+					$aid = Plugin::activities()->create( array( 'name' => $first['name'], 'social_year' => $s['year'], 'kind' => ActivityKind::RECURRING, 'notes' => $first['notes'] ) );
+					foreach ( $s['rows'] as $r ) {
+						Plugin::activities()->add_session( $aid, $r['map']['session'] );
+					}
+					$res['series']++;
+				}
+				$pids = array();
+				foreach ( $s['rows'] as $r ) {
+					update_post_meta( $r['pid'], self::META_DONE, $aid );
+					$pids[] = (int) $r['pid'];
+					$res['imported']++;
+				}
+				self::fill_page( $aid, $pids, $course_cats, $publish_future, $res );
 			} catch ( \InvalidArgumentException $e ) {
-				$res['failed']++;
-				$res['errors'][] = '«' . $f['title'] . '»: ' . $e->getMessage();
+				foreach ( $s['rows'] as $r ) {
+					$res['failed']++;
+					$res['errors'][] = '«' . $r['title'] . '»: ' . $e->getMessage();
+				}
 			}
 		}
 		foreach ( $groups as $g ) {
@@ -291,13 +322,153 @@ final class TribeImport {
 				}
 				$res['courses']++;
 				$res['lessons'] += count( $g['posts'] );
+				self::fill_page( $aid, array_map( 'intval', $g['posts'] ), $course_cats, $publish_future, $res );
 			} catch ( \InvalidArgumentException $e ) {
 				$res['failed']++;
 				$res['errors'][] = '«' . $c['name'] . '»: ' . $e->getMessage();
 			}
 		}
 		$res['errors'] = array_slice( $res['errors'], 0, 5 );
-		Audit::log( 'import.tribe', 'settings', null, array( 'imported' => $res['imported'], 'courses' => $res['courses'], 'failed' => $res['failed'] ) );
+		Audit::log( 'import.tribe', 'settings', null, array( 'imported' => $res['imported'], 'courses' => $res['courses'], 'failed' => $res['failed'], 'pages' => $res['pages'], 'published' => $res['published'] ) );
 		return $res;
+	}
+
+	/** Una data scritta come giorno/mese/anno. */
+	private static function dmy( string $ymd ): string {
+		return ( new \DateTimeImmutable( substr( $ymd, 0, 10 ) ) )->format( 'd/m/Y' );
+	}
+
+	/** Giorni e orari che la scheda standard non dice: evento su più giorni o per tutto il giorno. */
+	private static function when_html( int $pid ): string {
+		$start  = substr( (string) get_post_meta( $pid, '_EventStartDate', true ), 0, 10 );
+		$end    = substr( (string) get_post_meta( $pid, '_EventEndDate', true ), 0, 10 );
+		$allday = 'yes' === (string) get_post_meta( $pid, '_EventAllDay', true );
+		$parts  = array();
+		if ( 1 === preg_match( '/^\d{4}-\d{2}-\d{2}$/', $start ) && 1 === preg_match( '/^\d{4}-\d{2}-\d{2}$/', $end ) && $end > $start ) {
+			$parts[] = 'dal ' . self::dmy( $start ) . ' al ' . self::dmy( $end );
+		}
+		if ( $allday ) {
+			$parts[] = 'tutto il giorno';
+		}
+		return $parts ? '<p><strong>Quando:</strong> ' . esc_html( implode( ', ', $parts ) ) . '.</p>' : '';
+	}
+
+	/** Organizzatore (con i contatti che ha) e sito dell'evento, come righe di testo per la pagina. */
+	private static function extras_html( int $pid ): string {
+		$h   = '';
+		$ids = (array) get_post_meta( $pid, '_EventOrganizerID', false );
+		$oid = (int) ( $ids ? reset( $ids ) : 0 );
+		if ( $oid > 0 ) {
+			$name = trim( (string) get_the_title( $oid ) );
+			if ( '' !== $name ) {
+				$contacts = array_filter( array( trim( (string) get_post_meta( $oid, '_OrganizerEmail', true ) ), trim( (string) get_post_meta( $oid, '_OrganizerPhone', true ) ) ) );
+				$h       .= '<p><strong>Con</strong> ' . esc_html( $name ) . ( $contacts ? ' (' . esc_html( implode( ', ', $contacts ) ) . ')' : '' ) . '</p>';
+			}
+		}
+		$url = esc_url( trim( (string) get_post_meta( $pid, '_EventURL', true ) ), array( 'http', 'https' ) );
+		if ( '' !== $url ) {
+			$h .= '<p><a href="' . esc_url( $url ) . '" rel="noopener noreferrer">Maggiori informazioni</a></p>';
+		}
+		return $h;
+	}
+
+	/** Categoria pubblica (creata o riusata per nome) dalla prima categoria di The Events Calendar che non è dei corsi. */
+	private static function public_category( array $pids, array $course_cats ): int {
+		self::ensure_taxonomy();
+		$pick = null;
+		foreach ( $pids as $pid ) {
+			$terms = wp_get_object_terms( (int) $pid, self::TAXONOMY );
+			foreach ( is_wp_error( $terms ) ? array() : (array) $terms as $t ) {
+				if ( null === $pick ) {
+					$pick = $t;
+				}
+				if ( ! in_array( (int) $t->term_id, $course_cats, true ) ) {
+					$pick = $t;
+					break 2;
+				}
+			}
+		}
+		if ( ! $pick || '' === trim( (string) $pick->name ) ) {
+			return 0;
+		}
+		$ex = term_exists( (string) $pick->name, PublicEvents::TAXONOMY );
+		if ( ! $ex ) {
+			$ex = wp_insert_term( (string) $pick->name, PublicEvents::TAXONOMY );
+		}
+		return is_wp_error( $ex ) ? 0 : (int) ( is_array( $ex ) ? $ex['term_id'] : $ex );
+	}
+
+	/**
+	 * Compila la pagina pubblica dell'attività importata dai contenuti di The Events Calendar: descrizione (HTML ripulito), estratto,
+	 * immagine in evidenza (lo stesso allegato, nessun download), categoria, organizzatore, sito e giorni. Se la pagina ha già un contenuto
+	 * non si tocca. Resta in bozza, a meno che si chieda di pubblicare e l'evento sia futuro.
+	 *
+	 * @param int[] $pids contenuti di origine (uno, o le ripetizioni / lezioni)
+	 */
+	private static function fill_page( int $aid, array $pids, array $course_cats, bool $publish_future, array &$res ): void {
+		if ( ! class_exists( __NAMESPACE__ . '\PublicEvents' ) || ! $pids ) {
+			return;
+		}
+		$page = PublicEvents::ensure( $aid );
+		$post = $page ? get_post( $page ) : null;
+		if ( ! $post || '' !== trim( (string) $post->post_content ) ) {
+			return;
+		}
+		$src   = null; // il contenuto con la descrizione più lunga
+		$thumb = 0;
+		foreach ( $pids as $pid ) {
+			$p = get_post( (int) $pid );
+			if ( ! $p ) {
+				continue;
+			}
+			if ( null === $src || mb_strlen( trim( (string) $p->post_content ) ) > mb_strlen( trim( (string) $src->post_content ) ) ) {
+				$src = $p;
+			}
+			if ( ! $thumb ) {
+				$thumb = (int) get_post_thumbnail_id( $p );
+			}
+		}
+		if ( ! $src ) {
+			return;
+		}
+		$body = wp_kses_post( (string) $src->post_content );
+		$more = 1 === count( $pids ) ? self::when_html( (int) $src->ID ) : '';
+		$more .= self::extras_html( (int) $src->ID );
+		$text = trim( $body . $more );
+		$data = array( 'ID' => $page );
+		if ( '' !== $text ) {
+			$data['post_content'] = $text;
+			$excerpt              = wp_trim_words( self::plain( $body ), 30 );
+			if ( '' !== $excerpt ) {
+				$data['post_excerpt'] = $excerpt;
+			}
+		}
+		$a      = Plugin::activities()->get( $aid );
+		$future = false;
+		if ( $a && ActivityKind::uses_sessions( (string) $a['kind'] ) ) {
+			foreach ( Plugin::activities()->sessions( $aid ) as $s ) {
+				if ( empty( $s['cancelled_at'] ) && (string) $s['session_date'] >= Db::today() ) {
+					$future = true;
+					break;
+				}
+			}
+		} elseif ( $a ) {
+			$future = (string) ( $a['ends_on'] ?? '' ) >= Db::today();
+		}
+		if ( $publish_future && $future ) {
+			$data['post_status'] = 'publish';
+		}
+		wp_update_post( $data );
+		if ( $thumb && 'attachment' === get_post_type( $thumb ) && ! get_post_meta( $page, '_thumbnail_id', true ) ) {
+			update_post_meta( $page, '_thumbnail_id', $thumb ); // lo stesso allegato: nessuna copia, nessun download
+		}
+		$term = self::public_category( $pids, $course_cats );
+		if ( $term ) {
+			wp_set_object_terms( $page, array( $term ), PublicEvents::TAXONOMY );
+		}
+		$res['pages']++;
+		if ( isset( $data['post_status'] ) ) {
+			$res['published']++;
+		}
 	}
 }

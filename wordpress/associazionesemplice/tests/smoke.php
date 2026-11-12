@@ -6182,6 +6182,49 @@ asem_ok( 0 === $tec_cr2['courses'] && 0 === $tec_cr2['imported'] && 7 === $tec_c
 $tec_cre = $CP::duplicate( (int) $tec_c['id'], array( 'social_year' => Settings::social_year( '2024-03-05' )->next()->label() ) );
 asem_ok( 'Yoga TEC' === $acts->get( $tec_cre )['name'] && 2 === count( \AssociazioneSemplice\ActivityService::lessons( $acts->get( $tec_cre ) ) ), 'riproporre: un corso importato si ripropone nell\'anno dopo con le sue lezioni' );
 asem_render( array( Admin\TribeImportPage::class, 'render' ), 'Quali categorie sono corsi?' );
+// le pagine pubbliche: l'import compila descrizione, estratto, immagine, categoria, organizzatore, sito e giorni
+$PE       = '\AssociazioneSemplice\PublicEvents';
+$tec_img  = wp_insert_post( array( 'post_type' => 'attachment', 'post_status' => 'inherit', 'post_mime_type' => 'image/png', 'post_title' => 'Locandina TEC' ) );
+$tec_org  = wp_insert_post( array( 'post_type' => 'tribe_organizer', 'post_status' => 'publish', 'post_title' => 'Maria Bianchi' ) );
+update_post_meta( $tec_org, '_OrganizerEmail', 'maria@example.org' );
+$tec_cat  = wp_insert_term( 'Musica TEC', 'tribe_events_cat' );
+$tec_fut  = gmdate( 'Y-m-d', strtotime( $today . ' +40 days' ) );
+$tec_q1   = wp_insert_post( array( 'post_type' => 'tribe_events', 'post_status' => 'publish', 'post_title' => 'Concerto TEC', 'post_content' => '<p>Serata di <b>musica</b> dal vivo</p><script>alert(1)</script>' ) );
+update_post_meta( $tec_q1, '_EventStartDate', $tec_fut . ' 21:00:00' );
+update_post_meta( $tec_q1, '_EventEndDate', gmdate( 'Y-m-d', strtotime( $tec_fut . ' +1 day' ) ) . ' 23:00:00' );
+update_post_meta( $tec_q1, '_EventOrganizerID', $tec_org );
+update_post_meta( $tec_q1, '_EventURL', 'https://example.org/concerto' );
+update_post_meta( $tec_q1, '_thumbnail_id', $tec_img );
+wp_set_object_terms( $tec_q1, array( (int) $tec_cat['term_id'] ), 'tribe_events_cat' );
+$tec_q3 = array();
+foreach ( array( 10, 17 ) as $tec_n ) { // le ripetizioni di un evento (stesso titolo) diventano un solo evento ricorrente
+	$tec_x = wp_insert_post( array( 'post_type' => 'tribe_events', 'post_status' => 'publish', 'post_title' => 'Serata ripetuta TEC', 'post_content' => '<p>Ogni settimana</p>' ) );
+	update_post_meta( $tec_x, '_EventStartDate', gmdate( 'Y-m-d', strtotime( $today . ' +' . $tec_n . ' days' ) ) . ' 20:00:00' );
+	$tec_q3[] = $tec_x;
+}
+$tec_pr = \AssociazioneSemplice\TribeImport::run( array(), false );
+$tec_a1 = (int) get_post_meta( $tec_q1, '_asem_activity', true );
+$tec_g1 = get_post( $PE::post_of( $tec_a1 ) );
+$tec_gt = $tec_g1 ? wp_get_object_terms( $tec_g1->ID, 'asem_evento_cat', array( 'fields' => 'names' ) ) : array();
+asem_ok( $tec_g1 && 'draft' === $tec_g1->post_status && false !== strpos( $tec_g1->post_content, '<b>musica</b>' ) && false === strpos( $tec_g1->post_content, '<script' ) && false !== strpos( $tec_g1->post_excerpt, 'musica' ), 'The Events Calendar: la pagina dell\'evento ha la descrizione ripulita e l\'estratto, ed è in bozza' );
+asem_ok( $tec_g1 && (int) get_post_meta( $tec_g1->ID, '_thumbnail_id', true ) === $tec_img && in_array( 'Musica TEC', (array) $tec_gt, true ), 'The Events Calendar: la pagina riusa l\'immagine in evidenza e ha la categoria' );
+asem_ok( $tec_g1 && false !== strpos( $tec_g1->post_content, 'Maria Bianchi' ) && false !== strpos( $tec_g1->post_content, 'maria@example.org' ) && false !== strpos( $tec_g1->post_content, 'example.org/concerto' ) && false !== strpos( $tec_g1->post_content, 'Quando:' ), 'The Events Calendar: organizzatore, sito e giorni (evento su più giorni) passano nella pagina' );
+$tec_a3 = (int) get_post_meta( $tec_q3[0], '_asem_activity', true );
+asem_ok( $tec_a3 > 0 && $tec_a3 === (int) get_post_meta( $tec_q3[1], '_asem_activity', true ) && 'recurring' === $acts->get( $tec_a3 )['kind'] && 2 === count( $acts->sessions( $tec_a3 ) ) && $tec_pr['series'] >= 1 && $PE::post_of( $tec_a3 ) > 0, 'The Events Calendar: le ripetizioni diventano un solo evento ricorrente con una pagina' );
+wp_update_post( array( 'ID' => $tec_g1->ID, 'post_content' => 'Testo scritto dal gestore' ) ); // rilanciando non si sovrascrive
+$tec_q4 = wp_insert_post( array( 'post_type' => 'tribe_events', 'post_status' => 'publish', 'post_title' => 'Concerto bis TEC', 'post_content' => '<p>Bis</p>' ) );
+update_post_meta( $tec_q4, '_EventStartDate', $tec_fut . ' 18:00:00' );
+$tec_q5 = wp_insert_post( array( 'post_type' => 'tribe_events', 'post_status' => 'publish', 'post_title' => 'Concerto vecchio TEC', 'post_content' => '<p>Vecchio</p>' ) );
+update_post_meta( $tec_q5, '_EventStartDate', '2024-06-01 18:00:00' );
+$tec_pr2 = \AssociazioneSemplice\TribeImport::run( array(), true );
+$tec_p4g = get_post( $PE::post_of( (int) get_post_meta( $tec_q4, '_asem_activity', true ) ) );
+$tec_p5g = get_post( $PE::post_of( (int) get_post_meta( $tec_q5, '_asem_activity', true ) ) );
+asem_ok( $tec_p4g && 'publish' === $tec_p4g->post_status && $tec_p5g && 'draft' === $tec_p5g->post_status && $tec_pr2['published'] >= 1, 'The Events Calendar: con la casella si pubblicano solo le pagine degli eventi futuri' );
+asem_ok( 'Testo scritto dal gestore' === get_post( $tec_g1->ID )->post_content && 'draft' === get_post( $tec_g1->ID )->post_status, 'The Events Calendar: rilanciando non si sovrascrive una pagina che ha già un contenuto' );
+foreach ( array_merge( array( $tec_img, $tec_org, $tec_q1, $tec_q4, $tec_q5 ), $tec_q3 ) as $tec_del ) {
+	wp_delete_post( $tec_del, true );
+}
+wp_delete_term( (int) $tec_cat['term_id'], 'tribe_events_cat' );
 foreach ( array_merge( array( $tec_p1, $tec_p2, $tec_p3, $tec_p4, $tec_v ), $tec_cp ) as $tec_del ) {
 	wp_delete_post( $tec_del, true );
 }
