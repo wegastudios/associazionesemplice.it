@@ -8,4 +8,4 @@ Raccolte durante il lavoro autonomo del 12/11/2026 (nessuna risposta richiesta p
 3. **Temi**: provato solo sul tema della demo (a blocchi). Classico ed Elementor non sono stati provati da me: se hai un sito con quei temi dimmi quale usare per una prova.
 
 ## Prenotazione dei non soci e pagamento (vedi sotto, docs/EVENTI_PRENOTAZIONE_PUBBLICA.md)
-Le domande sono in fondo a quel documento.
+Le 8 domande sono in fondo a quel documento (proposta e default già indicati per ciascuna).
