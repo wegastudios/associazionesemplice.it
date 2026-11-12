@@ -324,7 +324,7 @@ final class PublicEvents {
 				return empty( $s['cancelled_at'] ) && (string) $s['session_date'] >= Db::today();
 			} ) );
 			if ( ! $rows ) {
-				return 'Nessuna data in programma';
+				return self::cancelled_future( (int) $a['id'] ) ? 'Evento annullato' : 'Nessuna data in programma';
 			}
 			$first = $rows[0];
 			$t     = Frontend\Views::date_long( (string) $first['session_date'] ) . ( ! empty( $first['start_time'] ) ? ' · ore ' . $first['start_time'] : '' );
@@ -436,7 +436,11 @@ final class PublicEvents {
 		$html .= '</dl></div>';
 		$html .= '<div class="asemf-event-text">' . $content . '</div>';
 		if ( ActivityKind::uses_sessions( (string) $a['kind'] ) ) {
-			$html .= Frontend\Views::event_booking( $a );
+			if ( ! self::upcoming_sessions( (int) $a['id'] ) && self::cancelled_future( (int) $a['id'] ) ) {
+				$html .= '<p class="asemf-notice asemf-notice-cancelled" role="status"><strong>Evento annullato.</strong> Ci dispiace: le date previste non si terranno. Segui le novità sul sito dell\'associazione.</p>';
+			} else {
+				$html .= Frontend\Views::event_booking( $a );
+			}
 			$html .= '<p class="asemf-ics"><a class="asemf-btn asemf-btn-ghost wp-element-button" href="' . esc_url( add_query_arg( 'asem_ics', '1', (string) get_permalink( $post ) ) ) . '">Salva nel tuo calendario</a></p>';
 		} else {
 			$html .= '<p class="asemf-small asemf-muted">Per iscriverti a questo corso rivolgiti alla segreteria dell\'associazione.</p>';
@@ -543,7 +547,8 @@ final class PublicEvents {
 			$until = gmdate( 'Y-m-d', strtotime( Db::today() . ' +' . max( 1, min( 24, (int) $atts['mesi'] ) ) . ' months' ) );
 		}
 		$posts = self::posts_by_activity( $cat );
-		$rows  = array_slice( self::rows( $posts, Db::today(), $until ), 0, $limit );
+		$rows  = self::trim_recurring( self::rows( $posts, Db::today(), $until ) );
+		$rows  = array_slice( $rows, 0, $limit );
 		if ( ! $rows ) {
 			return Frontend\Views::shell( $bar . '<p class="asemf-muted">Nessun evento in programma.</p>', 'asemf-events' );
 		}
@@ -603,6 +608,24 @@ final class PublicEvents {
 				Plugin::activities()->sessions_between( $from, $to, 500 ),
 				function ( $s ) use ( $posts ) {
 					return isset( $posts[ (int) $s['activity_id'] ] );
+				}
+			)
+		);
+	}
+
+	/** Un evento ricorrente non riempie l'elenco: di ogni serie si mostrano le prossime due date (il calendario le mostra tutte). */
+	private static function trim_recurring( array $rows ): array {
+		$count = array();
+		return array_values(
+			array_filter(
+				$rows,
+				function ( $s ) use ( &$count ) {
+					if ( ActivityKind::RECURRING !== ( $s['kind'] ?? '' ) ) {
+						return true;
+					}
+					$k           = (int) $s['activity_id'];
+					$count[ $k ] = ( $count[ $k ] ?? 0 ) + 1;
+					return $count[ $k ] <= 2;
 				}
 			)
 		);
@@ -720,6 +743,13 @@ final class PublicEvents {
 	// ---------- Calendario (.ics) e dati strutturati ----------
 
 	/** Date prenotabili o in programma dell'evento. @return array[] */
+	/** Date future annullate (per dire «evento annullato» quando non ne resta nessuna). @return array[] */
+	private static function cancelled_future( int $activity_id ): array {
+		return array_values( array_filter( Plugin::activities()->sessions( $activity_id ), function ( $s ) {
+			return ! empty( $s['cancelled_at'] ) && (string) $s['session_date'] >= Db::today();
+		} ) );
+	}
+
 	private static function upcoming_sessions( int $activity_id ): array {
 		return array_values( array_filter( Plugin::activities()->sessions( $activity_id ), function ( $s ) {
 			return empty( $s['cancelled_at'] ) && (string) $s['session_date'] >= Db::today();
@@ -770,7 +800,12 @@ final class PublicEvents {
 		if ( ! $a || ! ActivityKind::uses_sessions( (string) $a['kind'] ) ) {
 			return;
 		}
-		$rows = self::upcoming_sessions( $aid );
+		$rows      = self::upcoming_sessions( $aid );
+		$cancelled = false;
+		if ( ! $rows ) {
+			$rows      = self::cancelled_future( $aid ); // annullato: i motori di ricerca lo sanno (EventCancelled)
+			$cancelled = (bool) $rows;
+		}
 		if ( ! $rows ) {
 			return;
 		}
@@ -788,7 +823,7 @@ final class PublicEvents {
 			'@type'               => 'Event',
 			'name'                => (string) $post->post_title,
 			'startDate'           => $iso( (string) $s['session_date'], $s['start_time'] ?? null ),
-			'eventStatus'         => 'https://schema.org/EventScheduled',
+			'eventStatus'         => $cancelled ? 'https://schema.org/EventCancelled' : 'https://schema.org/EventScheduled',
 			'eventAttendanceMode' => 'https://schema.org/OfflineEventAttendanceMode',
 			'url'                 => (string) get_permalink( $post ),
 		);
@@ -812,6 +847,10 @@ final class PublicEvents {
 		}
 		$cap   = null === $s['capacity'] ? null : (int) $s['capacity'];
 		$full  = null !== $cap && (int) ( $s['booked_count'] ?? 0 ) >= $cap;
+		if ( $cancelled ) {
+			wp_print_inline_script_tag( (string) wp_json_encode( $data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP ), array( 'type' => 'application/ld+json' ) );
+			return;
+		}
 		$data['offers'] = array(
 			'@type'         => 'Offer',
 			'price'         => number_format( ( (int) $a['fee_cents'] ) / 100, 2, '.', '' ),
