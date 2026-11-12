@@ -92,7 +92,6 @@ final class CatalogForm
     /**
      * Prezzi del catalogo → righe del modulo (importi in euro, come testo).
      *
-     * @param  mixed  $prices
      * @return list<array<string, mixed>>
      */
     public static function priceRows(mixed $prices): array
