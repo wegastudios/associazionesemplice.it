@@ -73,6 +73,17 @@ test l'amministrazione sta su `/saas/admin` e il prefisso è una sola costante (
   persona disattivata. Nemmeno in sviluppo si spegne (`SAAS_REQUIRE_TWO_FACTOR` riguarda solo gli operatori).
 - **Staff**: nasce solo da riga di comando: `php artisan saas:admin:create email "Nome" --role=admin|readonly` (password
   casuale mostrata una volta); telefono perso: `php artisan saas:admin:reset-2fa email`.
+- **Gestione della vendita** (dal 12/11/2026), tutto sulla stessa bozza e con lo stesso validatore del JSON:
+  - *Abbonamenti* (`/saas/admin/abbonamenti`, sola lettura): piano e versione, stato, scadenza, pacchetti e promozione di
+    ogni associazione, con filtri per stato, piano e testo. Sono i dati che il portale ha comunicato.
+  - *Piani* e *Pacchetti* (`catalogo/piani`, `catalogo/pacchetti`): moduli in euro (non centesimi) con caratteristiche,
+    limiti, pacchetti inclusi e prezzi (fisso, a fasce di soci, a scaglioni). Salvare un piano **già in vigore** crea
+    la versione successiva nella bozza: le versioni pubblicate non cambiano mai. Per ogni piano c'è l'anteprima dei prezzi
+    per 30, 50, 150, 400 e 800 soci, calcolata dallo stesso `PriceCalculator` del portale.
+  - *Promozioni* (`catalogo/promozioni`): codice, sconto (% o euro), validità, usi massimi, piani. Non cumulabili.
+  - *Catalogo*: prima di «Pubblica» elenca in italiano che cosa cambia rispetto alla revisione in vigore; il JSON resta
+    come modalità avanzata.
+  - Chi è in sola lettura vede tutto e non salva (403). Ogni pubblicazione finisce nel registro e avvisa il portale.
 - **Pagine** (sola lettura, Blade senza JavaScript): riepilogo, catalogo (bozza e «Pubblica»), registro. Seguono: gestione dello
   staff, `admin_hop`. L'admin non mostra né modifica associazioni, operatori, soci o utenti: è solo la parte di vendita.
 
