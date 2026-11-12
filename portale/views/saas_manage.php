@@ -30,12 +30,13 @@ $stateName = array( 'pending' => 'In verifica', 'active' => 'Attivo', 'error' =>
 		<?php if ( $dom ) : ?><p>Oggi: <b><?php echo e( (string) ( $dom['name'] ?? '' ) ); ?></b></p><?php endif; ?>
 		<form method="post" action="<?php echo $base; ?>/dominio" class="domain-form" style="display:block">
 			<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>">
-			<label for="dom">Il tuo indirizzo (per esempio www.tuaassociazione.it)</label>
+			<label for="dom">Il tuo indirizzo (per esempio tuaassociazione.it)</label>
 			<input id="dom" type="text" name="domain" autocomplete="off" inputmode="url" required>
 			<button class="btn" type="submit" style="margin-top:10px">Salva l'indirizzo</button>
 		</form>
 		<?php if ( $dns ) : ?>
-			<p class="hint" style="margin-top:12px">Nel pannello di chi gestisce il tuo dominio crea questo collegamento. Poi il gestionale lo controlla da solo ogni ora.</p>
+			<p class="hint" style="margin-top:12px"><b>Cosa fare ora.</b> Presso chi gestisce il tuo dominio (dove l'hai registrato) cambia i <b>nameserver</b> con quelli qui sotto. Al resto pensiamo noi: controlliamo da soli ogni ora e prepariamo il certificato HTTPS. L'attivazione può richiedere <b>fino a 72 ore</b>.</p>
+			<p class="hint"><b>Attenzione alla posta.</b> Cambiando i nameserver, l'email del tuo dominio (record MX) smette di funzionare finché non la ricrei nella nostra zona. Fallo <b>prima</b> di cambiarli, oppure scrivici dal supporto e ti aiutiamo.</p>
 			<?php foreach ( (array) ( $dns['dns'] ?? array() ) as $r ) : if ( ! is_array( $r ) ) { continue; } ?>
 				<p class="small"><code><?php echo e( (string) ( $r['type'] ?? '' ) ); ?> · <?php echo e( (string) ( $r['name'] ?? '' ) ); ?> → <?php echo e( (string) ( $r['value'] ?? '' ) ); ?></code></p>
 			<?php endforeach; ?>
