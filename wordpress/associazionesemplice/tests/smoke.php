@@ -716,7 +716,7 @@ asem_ok( false !== strpos( $as( $u_ord, '[associazionesemplice_area_volontari]' 
 
 // Elenco attività pubblico e prenotazioni
 $html = $as( 0, '[associazionesemplice_attivita]' );
-asem_ok( false !== strpos( $html, 'Yoga' ) && false !== strpos( $html, 'Serata giochi' ) && false !== strpos( $html, 'Accedi per prenotarti' ), 'attività: pubblico, con invito ad accedere per prenotarsi' );
+asem_ok( false !== strpos( $html, 'Yoga' ) && false !== strpos( $html, 'Serata giochi' ) && false === strpos( $html, 'Accedi per prenotarti' ), 'attività: pubblico, senza pulsante di accesso negli elenchi' );
 asem_ok( false !== strpos( $html, 'Soci 5,00' ) && false !== strpos( $html, 'ospiti 8,00' ), 'attività: contributo soci e ospiti visibile' );
 $html = $as( 0, '[associazionesemplice_attivita tipo="evento"]' );
 asem_ok( false !== strpos( $html, 'Serata giochi' ) && false === strpos( $html, 'Yoga' ), 'attività: filtro per tipo' );
@@ -8381,6 +8381,9 @@ $er_form = \AssociazioneSemplice\Frontend\Views::event_booking( (array) $acts->g
 asem_ok( false !== strpos( $er_form, 'asem_evreq_go' ) && false !== strpos( $er_form, 'name="tax_code"' ) && false !== strpos( $er_form, 'name="website"' ), 'pagina evento: il modulo «Non sei socio?» ha i dati e il campo esca' );
 update_post_meta( \AssociazioneSemplice\PublicEvents::post_of( $er_a ), '_asem_ev_guests', '0' );
 asem_ok( false === strpos( \AssociazioneSemplice\Frontend\Views::event_booking( (array) $acts->get( $er_a ) ), 'asem_evreq_go' ), 'pagina evento: senza l\'opzione ospiti il modulo non compare' );
+$er_list = \AssociazioneSemplice\Frontend\Views::activities( array( 'tipo' => 'evento', 'anno' => $sy_label ) );
+asem_ok( false !== strpos( $er_list, 'Dettagli' ) && false !== strpos( $er_list, (string) \AssociazioneSemplice\PublicEvents::page_url( $er_a ) ), 'elenco attività: le schede portano alla pagina pubblica dell\'evento' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::member_login_url(), '/' ), 'accesso per prenotarsi: indirizzo di accesso disponibile' );
 remove_filter( 'pre_wp_mail', $er_hook, 10 );
 Settings::update( array( 'guest_max_events' => 2 ) );
 

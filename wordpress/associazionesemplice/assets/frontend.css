@@ -362,3 +362,5 @@
 
 /* Evento annullato */
 .asemf-notice-cancelled { margin: 1.25rem 0; padding: .9rem 1.1rem; border-radius: 12px; background: #fdecea; color: #b42318; }
+
+.asemf-grid .asemf-card-poster { display: block; margin-bottom: .6rem; }

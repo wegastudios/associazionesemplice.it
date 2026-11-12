@@ -140,6 +140,18 @@ final class PublicEvents {
 		return (int) get_post_meta( $post_id, self::META, true );
 	}
 
+	/** Indirizzo della pagina pubblica dell'attività, se è pubblicata (altrimenti vuoto). */
+	public static function page_url( int $activity_id ): string {
+		$id = self::post_of( $activity_id );
+		return $id && 'publish' === get_post_status( $id ) ? (string) get_permalink( $id ) : '';
+	}
+
+	/** Locandina della pagina pubblicata (immagine già escapata, vuoto se manca). */
+	public static function poster( int $activity_id, string $size = 'medium' ): string {
+		$id = self::post_of( $activity_id );
+		return $id && 'publish' === get_post_status( $id ) && has_post_thumbnail( $id ) ? wp_get_attachment_image( (int) get_post_thumbnail_id( $id ), $size ) : '';
+	}
+
 	/** Contenuto collegato a un'attività, anche nel cestino (0 se non c'è). */
 	public static function post_of( int $activity_id ): int {
 		$ids = get_posts(

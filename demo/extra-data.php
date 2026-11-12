@@ -437,3 +437,29 @@ extra_step( 'evento ricorrente e annullato', function () {
 
 update_option( 'asem_demo_extra_done', gmdate( 'c' ), false );
 WP_CLI::success( 'Dati in più della demo inseriti.' );
+
+// Menu e pagina iniziale: chi prova deve arrivare alle pagine pubbliche degli eventi (locandina, descrizione, altre date, modulo per i non soci).
+extra_step( 'menu con gli eventi', function () {
+	$nav = get_page_by_path( 'menu-demo', OBJECT, 'wp_navigation' );
+	$ev  = get_page_by_path( 'eventi-in-programma' );
+	$cal = get_page_by_path( 'calendario-eventi' );
+	if ( ! $nav || ! $ev ) {
+		return;
+	}
+	$item = function ( string $label, string $url ) {
+		return '<!-- wp:navigation-link ' . wp_json_encode( array( 'label' => $label, 'url' => $url, 'kind' => 'custom' ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . ' /-->';
+	};
+	$content = (string) $nav->post_content;
+	$new     = $item( 'Eventi', get_permalink( $ev ) ) . ( $cal ? $item( 'Calendario', get_permalink( $cal ) ) : '' );
+	$content = str_replace( 'Attività ed eventi', 'Corsi e attività', $content );
+	wp_update_post( array( 'ID' => $nav->ID, 'post_content' => wp_slash( $new . $content ) ) );
+	$home = get_page_by_path( 'demo' ) ?: get_post( (int) get_option( 'page_on_front' ) );
+	if ( $home ) { // il pulsante della pagina iniziale porta all'elenco a schede
+		$html = (string) $home->post_content;
+		$old  = get_permalink( get_page_by_path( 'attivita-ed-eventi' ) );
+		if ( $old ) {
+			$html = str_replace( array( $old . '"', '>Attività ed eventi<' ), array( get_permalink( $ev ) . '"', '>Eventi in programma<' ), $html );
+			wp_update_post( array( 'ID' => $home->ID, 'post_content' => wp_slash( $html ) ) );
+		}
+	}
+} );
