@@ -11,8 +11,9 @@ final class TribeImportPage {
 	public static function render(): void {
 		Ui::header( 'Importa da The Events Calendar' );
 		$found = TribeImport::found();
-		echo '<p class="description">Porta qui gli eventi di The Events Calendar (passati e futuri) come eventi una tantum (o come corsi, per le categorie che indichi), con titolo, data, orario, luogo e descrizione. Così un evento già fatto si può <strong>riproporre</strong> in una nuova data dalla sua scheda, senza rifare tutto. '
-			. 'Non si importano costi, prenotazioni, immagini e categorie. The Events Calendar può anche essere disattivato: gli eventi si leggono dal database del sito.</p>';
+		echo '<p class="description">Porta qui gli eventi di The Events Calendar (passati e futuri) come eventi una tantum (o come corsi, per le categorie che indichi), con titolo, data, orario, luogo e descrizione. Gli eventi ripetuti con lo stesso titolo nello stesso anno sociale diventano un solo evento ricorrente. Così un evento già fatto si può <strong>riproporre</strong> in una nuova data dalla sua scheda, senza rifare tutto. '
+			. 'Per ogni evento si compila anche la <strong>pagina pubblica</strong> (Eventi sul sito): descrizione, immagine in evidenza, categoria, organizzatore, sito dell\'evento e giorni; di norma resta in bozza, così la controlli prima di pubblicarla. '
+			. 'Non si importano costi e prenotazioni. The Events Calendar può anche essere disattivato: gli eventi si leggono dal database del sito.</p>';
 		if ( ! $found ) {
 			echo '<p>Non ho trovato eventi di The Events Calendar su questo sito.</p>';
 			Ui::footer();
@@ -34,6 +35,7 @@ final class TribeImportPage {
 				}
 				echo '</div>';
 			}
+			echo '<p><label><input type="checkbox" name="publish_future" value="1"> Pubblica subito le pagine degli eventi futuri</label> <span class="description">Spenta: le pagine restano in bozza. Acceso: solo gli eventi con una data futura vengono pubblicati.</span></p>';
 			echo '<p><button class="button button-primary">Importa i ' . (int) $todo . ' eventi</button> <span class="description">Si può rilanciare senza creare doppioni.</span></p>';
 			Ui::form_close();
 		}
