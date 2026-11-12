@@ -101,7 +101,7 @@ it('salvare un piano già in vigore crea la versione successiva nella bozza e il
 
     $this->post('/saas/admin/catalogo/pubblica')->assertRedirect('/saas/admin/catalogo');
     $published = json_decode((string) $this->get('/api/catalogo/v1')->getContent(), true);
-    expect($published['rev'])->toBe(2)->and(array_column($published['plans'], 'plan_version'))->toBe([1, 2]);
+    expect($published['rev'])->toBe(3)->and(array_column($published['plans'], 'plan_version'))->toBe([1, 2]);
 });
 
 it('cambia un prezzo dal modulo e il confronto lo dice', function (): void {

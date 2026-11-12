@@ -22,12 +22,12 @@ it('serve il catalogo pubblico, senza accesso né cookie, con firma sugli stessi
         ->and($response->headers->get('Cache-Control'))->toContain('public');
 
     $doc = json_decode((string) $body, true, 32, JSON_THROW_ON_ERROR);
-    expect($doc['schema'])->toBe('catalogo/v1')->and($doc['product'])->toBe('saas')->and($doc['rev'])->toBe(1);
+    expect($doc['schema'])->toBe('catalogo/v1')->and($doc['product'])->toBe('saas')->and($doc['rev'])->toBe(2);
 
     // Il portale verifica la firma con la chiave pubblica del SaaS, e che l'impronta sia quella del corpo.
     $signature = (string) $response->headers->get('X-Catalog-Signature');
     $claims = EdDsaJwt::verify($signature, [EdDsaJwt::kid(EdDsaJwt::unb64($this->saasKey)) => $this->saasKey], 'https://app.example.test', 'https://portale.example.test', 'catalog', time());
-    expect($claims['sha256'])->toBe(hash('sha256', (string) $body))->and($claims['rev'])->toBe(1);
+    expect($claims['sha256'])->toBe(hash('sha256', (string) $body))->and($claims['rev'])->toBe(2);
 });
 
 it('risponde 304 se il portale ha già la stessa revisione', function (): void {
