@@ -6,7 +6,7 @@ import Avatar from '../components/ui/Avatar.vue';
 import Sheet from '../components/ui/Sheet.vue';
 import {
     Banknote, BookOpen, CalendarDays, ChartColumn, ChevronRight, CreditCard, Download, Ellipsis, FileText, House, Landmark, LogOut,
-    MapPin, Plus, Receipt, Settings, ShieldCheck, UserPlus, Users, Wallet,
+    MapPin, Plus, Receipt, Settings, ShieldCheck, UserPlus, UserRound, Users, Wallet,
 } from '../components/ui/icons.js';
 
 const page = usePage();
@@ -163,6 +163,7 @@ const showAccount = ref(false);
 
         <Sheet v-model="showAccount" title="Il tuo account" :description="user?.email">
             <ul class="list-group">
+                <li><Link href="/gestionale/profilo" class="list-row" @click="showAccount = false"><UserRound class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Il tuo profilo</span><ChevronRight class="size-5 shrink-0 text-muted" aria-hidden="true" /></Link></li>
                 <li><Link href="/account/verifica-in-due-passaggi" class="list-row" @click="showAccount = false"><ShieldCheck class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Sicurezza</span><ChevronRight class="size-5 shrink-0 text-muted" aria-hidden="true" /></Link></li>
                 <li><Link href="/associazioni" class="list-row" @click="showAccount = false"><Landmark class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Cambia associazione</span><ChevronRight class="size-5 shrink-0 text-muted" aria-hidden="true" /></Link></li>
                 <li><Link href="/esci" method="post" as="button" class="list-row" @click="showAccount = false"><LogOut class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Esci</span></Link></li>
@@ -184,6 +185,7 @@ const showAccount = ref(false);
             </div>
             <p class="caption mb-1.5 px-1 font-semibold">Il tuo account</p>
             <ul class="list-group">
+                <li><Link href="/gestionale/profilo" class="list-row" @click="showMore = false"><UserRound class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Il tuo profilo</span><ChevronRight class="size-5 shrink-0 text-muted" aria-hidden="true" /></Link></li>
                 <li><Link href="/account/verifica-in-due-passaggi" class="list-row" @click="showMore = false"><ShieldCheck class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Sicurezza</span><ChevronRight class="size-5 shrink-0 text-muted" aria-hidden="true" /></Link></li>
                 <li><Link href="/associazioni" class="list-row" @click="showMore = false"><Landmark class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Cambia associazione</span><ChevronRight class="size-5 shrink-0 text-muted" aria-hidden="true" /></Link></li>
                 <li><Link href="/esci" method="post" as="button" class="list-row" @click="showMore = false"><LogOut class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Esci</span></Link></li>
