@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.19
+Stable tag: 1.3.20
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -60,6 +60,17 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 The interface uses the Montserrat typeface (SIL Open Font License 1.1, copy in `assets/fonts/OFL.txt`) and icons from Lucide (ISC license, https://lucide.dev), both bundled with the plugin; nothing is loaded from external servers.
 
 == Changelog ==
+
+= 1.3.20 =
+* Chi non è socio può prenotarsi a un evento dal sito: compila un modulo breve, conferma l'indirizzo dall'email e la segreteria vede la richiesta; per gli eventi a pagamento versa in anticipo con bonifico istantaneo e manda la ricevuta
+* Per ogni evento scegli se la prenotazione è automatica o solo su richiesta, quanti posti si possono chiedere per volta, se ammettere gli ospiti e cosa succede se l'evento viene annullato
+* Ricorrenze: gli eventi che si ripetono ogni settimana compaiono nell'elenco con una sola scheda («Tutti i giovedì»)
+* Pagina dell'evento rifatta: «Tutti gli eventi», dove si svolge con collegamento alla mappa, contatti con WhatsApp ed email, evento precedente e successivo, locandina e pulsanti per condividere
+* I corsi compaiono nel calendario del sito con le loro lezioni; dalla pagina del corso si chiede l'iscrizione (il socio con un clic, chi non è socio dal modulo, con bonifico anticipato) e la segreteria approva
+* WhatsApp della segreteria: scrivi il numero nelle impostazioni e sul sito compare un pulsante fisso «Scrivici su WhatsApp»; finché non lo imposti, in amministrazione c'è un promemoria
+* Nuovi blocchi, shortcode e widget Elementor: elenco a schede, calendario, prossimi eventi e i pezzi della pagina evento (locandina, dati, prenotazione, dove, precedente e successivo, condividi); scegli tu il titolo, il messaggio senza eventi e il testo del pulsante, e componi la pagina dell'evento come vuoi
+* I pulsanti Elenco e Calendario funzionano anche nelle pagine che mostrano una sola vista
+* Elenco delle attività: schede in ordine e il pulsante di accesso non c'è più, perché confondeva (chi è socio accede dalla pagina dell'evento)
 
 = 1.3.19 =
 * Eventi e corsi hanno una pagina pubblica sul sito, collegata all'attività e creata da sola: scrivi la descrizione e scegli la locandina, data, luogo, contributo e posti li prende dall'attività

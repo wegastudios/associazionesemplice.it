@@ -2,6 +2,17 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.20
+- Chi non è socio può prenotarsi a un evento dal sito: compila un modulo breve, conferma l'indirizzo dall'email e la segreteria vede la richiesta; per gli eventi a pagamento versa in anticipo con bonifico istantaneo e manda la ricevuta
+- Per ogni evento scegli se la prenotazione è automatica o solo su richiesta, quanti posti si possono chiedere per volta, se ammettere gli ospiti e cosa succede se l'evento viene annullato
+- Ricorrenze: gli eventi che si ripetono ogni settimana compaiono nell'elenco con una sola scheda («Tutti i giovedì»)
+- Pagina dell'evento rifatta: «Tutti gli eventi», dove si svolge con collegamento alla mappa, contatti con WhatsApp ed email, evento precedente e successivo, locandina e pulsanti per condividere
+- I corsi compaiono nel calendario del sito con le loro lezioni; dalla pagina del corso si chiede l'iscrizione (il socio con un clic, chi non è socio dal modulo, con bonifico anticipato) e la segreteria approva
+- WhatsApp della segreteria: scrivi il numero nelle impostazioni e sul sito compare un pulsante fisso «Scrivici su WhatsApp»; finché non lo imposti, in amministrazione c'è un promemoria
+- Nuovi blocchi, shortcode e widget Elementor: elenco a schede, calendario, prossimi eventi e i pezzi della pagina evento (locandina, dati, prenotazione, dove, precedente e successivo, condividi); scegli tu il titolo, il messaggio senza eventi e il testo del pulsante, e componi la pagina dell'evento come vuoi
+- I pulsanti Elenco e Calendario funzionano anche nelle pagine che mostrano una sola vista
+- Elenco delle attività: schede in ordine e il pulsante di accesso non c'è più, perché confondeva (chi è socio accede dalla pagina dell'evento)
+
 ## 1.3.19
 - Eventi e corsi hanno una pagina pubblica sul sito, collegata all'attività e creata da sola: scrivi la descrizione e scegli la locandina, data, luogo, contributo e posti li prende dall'attività
 - Dalla pagina dell'evento i soci si prenotano e possono salvare le date nel proprio calendario
