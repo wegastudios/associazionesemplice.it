@@ -52,6 +52,27 @@ final readonly class PortalConfig
             : throw new RuntimeException('SAAS_PORTAL_SIGNING_KEY non valida.');
     }
 
+    /** @return list<string> i nameserver a cui il cliente delega il dominio personalizzato */
+    public function nameservers(): array
+    {
+        $list = $this->config->get('saas.domains.nameservers', []);
+        $out = [];
+        foreach (is_array($list) ? $list : [] as $ns) {
+            if (is_string($ns) && $ns !== '') {
+                $out[] = rtrim(strtolower($ns), '.');
+            }
+        }
+
+        return $out;
+    }
+
+    public function delegationHours(): int
+    {
+        $hours = $this->config->get('saas.domains.delegation_hours', 72);
+
+        return is_int($hours) && $hours > 0 ? $hours : 72;
+    }
+
     public function graceDays(): int
     {
         $days = $this->config->get('saas.portal.grace_days', 15);
