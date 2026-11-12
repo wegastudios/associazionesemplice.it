@@ -420,7 +420,7 @@ final readonly class AdminCatalogEditorController
 
     private function hasDraft(): bool
     {
-        return app(\App\Modules\Piattaforma\Catalogo\CatalogPublisher::class)->hasDraft();
+        return $this->publisher->hasDraft();
     }
 
     private function canWrite(): bool
