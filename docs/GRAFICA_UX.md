@@ -28,7 +28,7 @@ Stessa barra in alto, nello stesso ordine, con le stesse parole. Cambia solo il 
 Dentro supporto e gestionale la barra ha solo: logo, il nome del posto («Supporto», «Gestionale»), **Il mio account**. Il menu proprio del sistema (voci del gestionale, argomenti del supporto) sta sotto la barra, non dentro.
 
 - **Esci** è una sola azione ovunque: le altre aree linkano `https://associazionesemplice.it/account/esci` (una GET: mostra «Vuoi uscire?» col pulsante che fa la POST con il token del portale; nessun POST da altri domini). Chiude la sessione unica e quindi tutte le aree. Nessun sistema ha un proprio «Esci» che chiude solo se stesso.
-- **Nomi fissi** (mai sinonimi): «Il mio account» (`/account`), «Gestionale», «Supporto», «Gestione del plugin» (solo staff), piani «Contabilità» e «Contabilità & Fiscale». Il nome del fornitore interno non compare mai ai clienti.
+- **Nomi fissi** (mai sinonimi): «Il mio account» (`/account`), «Gestionale», «Supporto», «Gestisci Plugin» (`/wordpress/admin`) e «Gestisci SaaS» (`/saas/admin`), solo staff, piani «Contabilità» e «Contabilità & Fiscale». Il nome del fornitore interno non compare mai ai clienti.
 - Mobile: da 1024 px barra e menu laterale; sul telefono barra bassa (56 px) più barra in basso come in `DESIGN.md` §5. La barra comune non supera 56 px.
 
 ## 3. Come si passa da un posto all'altro (la regola dei link)

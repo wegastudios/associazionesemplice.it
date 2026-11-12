@@ -49,3 +49,7 @@ it('solo l\'amministratore cambia le impostazioni; gli altri le vedono', functio
     $this->post('/saas/admin/impostazioni', ['settings' => ['domains_nameservers' => 'ns1.example.test']])->assertForbidden();
     expect(DB::table('core.platform_settings')->count())->toBe(0);
 });
+
+it('la barra dell\'amministrazione della vendita dice «Gestisci SaaS», non «Gestionale»', function (): void {
+    $this->get('/saas/admin')->assertOk()->assertSee('Gestisci SaaS')->assertDontSee('<span class="place">Gestionale</span>', false);
+});

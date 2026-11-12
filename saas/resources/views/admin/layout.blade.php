@@ -56,7 +56,7 @@
         </picture>
         <img class="logo-mark" src="{{ asset('assets/brand/simbolo-colore.svg') }}" alt="">
     </a>
-    <span class="place">Gestionale</span>
+    <span class="place">Gestisci SaaS</span>
     <a class="account" href="https://associazionesemplice.it/account">Il mio account</a>
 </div>
 @auth('platform')
