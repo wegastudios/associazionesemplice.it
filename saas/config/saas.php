@@ -85,6 +85,8 @@ return [
     // di /saas/admin rinviano lì. Spento finché SAAS_UNIFIED_LOGIN non è true.
     'unified_login' => [
         'enabled' => (bool) env('SAAS_UNIFIED_LOGIN', false),
+        // Anche gli operatori delle associazioni entrano nel gestionale da /accedi (passo 6); spento finché SAAS_UNIFIED_OPERATORS non è true.
+        'operators' => (bool) env('SAAS_UNIFIED_OPERATORS', false),
     ],
 
     // Contratto con il portale (docs/CONTRATTO_PORTALE.md).

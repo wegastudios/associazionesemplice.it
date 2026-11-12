@@ -246,3 +246,47 @@ it('dà il token di un\'area solo se la persona ha quel ruolo', function (): voi
     idCall($this, 'token', ['sid' => $sid, 'to' => 'wordpress'])->assertForbidden();
     idCall($this, 'token', ['sid' => $sid, 'to' => 'inventata'])->assertForbidden();
 });
+
+/* Operatori delle associazioni nello stesso accesso (passo 6): il portale chiede il biglietto, il gestionale lo consuma. */
+
+it('l\'ingresso degli operatori è spento di default', function (): void {
+    idPerson();
+    $sid = idLogin($this);
+
+    idCall($this, 'operator-entry', ['sid' => $sid])->assertStatus(403);
+});
+
+it('dà il biglietto solo a chi è operatore, lo accetta una volta sola e apre il gestionale', function (): void {
+    config(['saas.unified_login.operators' => true]);
+    idPerson();
+    $sid = idLogin($this);
+
+    // Persona senza associazioni: niente biglietto.
+    idCall($this, 'operator-entry', ['sid' => $sid])->assertStatus(403);
+
+    $user = $this->createUser('persona@example.test', twoFactor: true);
+    $this->addOperator($this->createOrg('Polisportiva Alfa'), $user);
+
+    $url = idCall($this, 'operator-entry', ['sid' => $sid])->assertOk()->json('url');
+    expect($url)->toBeString()->toContain('/accesso-unico?t=');
+    $path = (string) parse_url((string) $url, PHP_URL_PATH).'?'.(string) parse_url((string) $url, PHP_URL_QUERY);
+
+    $this->get($path)->assertRedirect('/gestionale');
+    $this->assertAuthenticatedAs($user);
+    expect(session('operator.sso_mfa'))->toBeTrue();
+
+    // Il biglietto non si riusa.
+    auth()->logout();
+    $this->get($path)->assertRedirect('https://associazionesemplice.it/account');
+    $this->assertGuest();
+});
+
+it('rifiuta un biglietto contraffatto o con l\'ingresso spento', function (): void {
+    config(['saas.unified_login.operators' => true]);
+
+    $this->get('/accesso-unico?t=non-un-biglietto')->assertRedirect('https://associazionesemplice.it/account');
+    $this->assertGuest();
+
+    config(['saas.unified_login.operators' => false]);
+    $this->get('/accesso-unico?t=x')->assertRedirect('https://associazionesemplice.it/account');
+});

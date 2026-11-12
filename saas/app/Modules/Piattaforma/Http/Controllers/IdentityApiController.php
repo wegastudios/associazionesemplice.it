@@ -6,6 +6,7 @@ namespace App\Modules\Piattaforma\Http\Controllers;
 
 use App\Modules\Piattaforma\Identity\AreaRequestVerifier;
 use App\Modules\Piattaforma\Identity\IdentityService;
+use App\Modules\Piattaforma\Identity\OperatorEntry;
 use App\Modules\Piattaforma\Identity\StaffAccess;
 use App\Modules\Piattaforma\Identity\StaffAreas;
 use App\Modules\Piattaforma\Identity\StaffDirectory;
@@ -33,6 +34,7 @@ final readonly class IdentityApiController
         private StaffAccess $access,
         private StaffDirectory $directory,
         private StaffTokenIssuer $issuer,
+        private OperatorEntry $operators,
     ) {}
 
     public function handle(Request $request, string $action): JsonResponse
@@ -74,6 +76,7 @@ final readonly class IdentityApiController
             'reset-request' => $this->resetRequest($c, $ip),
             'reset-complete' => $this->messages($this->access->reset($this->str($c, 'code', 100), $this->str($c, 'password', 1024), $this->str($c, 'password', 1024), $ip)),
             'token' => $this->areaToken($sid, $this->str($c, 'to', 20)),
+            'operator-entry' => $this->operatorEntry($sid),
             default => $this->denied(404),
         };
     }
@@ -151,6 +154,14 @@ final readonly class IdentityApiController
         $this->directory->audit('staff.jump', $person->id, null, ['from' => 'account', 'to' => $to], null);
 
         return response()->json(['token' => $this->issuer->issue($person, $to, $sid, $areas)]);
+    }
+
+    /** L'indirizzo d'ingresso nel gestionale per un operatore (passo 6); 403 se non lo è o se l'ingresso unico è spento. */
+    private function operatorEntry(string $sid): JsonResponse
+    {
+        $url = $this->operators->enabled() ? $this->operators->urlFor($sid) : null;
+
+        return $url === null ? $this->denied(403) : response()->json(['url' => $url]);
     }
 
     /**

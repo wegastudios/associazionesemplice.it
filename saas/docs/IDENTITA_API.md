@@ -41,6 +41,7 @@ Formato già in uso: `POST /saas/api/staff/v1/<azione>`, corpo JSON `{"token": "
 | `identity_reset_request` | `email`, `link_base`, `ip` | sempre ok; la mail parte solo se l'email esiste |
 | `identity_reset_complete` | `code`, `password` | ok; chiude tutte le sessioni |
 | `identity_token` | `sid`, `to` | `staff_sso` per l'area `to` (solo se la persona ha il ruolo): è il collegamento di `/account` |
+| `identity_operator_entry` | `sid` | `{url}`: indirizzo d'ingresso `<app>/accesso-unico?t=…` nel gestionale (biglietto `operator_sso`, 60 s, monouso, porta con sé se il secondo livello è verificato). 403 se la persona non è operatore attivo di un'associazione o se `SAAS_UNIFIED_OPERATORS` è spento (default). Il portale lo usa per «Apri il gestionale» |
 
 Il blocco dei tentativi (5 al minuto per email e indirizzo) e il registro (`core.staff_audit`) sono nel SaaS; l'indirizzo che il portale manda in `ip` è quello del browser.
 
