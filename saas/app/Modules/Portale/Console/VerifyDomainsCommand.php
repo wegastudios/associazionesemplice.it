@@ -4,40 +4,49 @@ declare(strict_types=1);
 
 namespace App\Modules\Portale\Console;
 
-use App\Modules\Core\Contracts\OrgDirectory;
 use App\Modules\Portale\Entitlements\DomainDns;
-use App\Modules\Portale\Entitlements\PortalOrgServices;
+use App\Modules\Portale\PortalConfig;
+use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Database\DatabaseManager;
 
 /**
- * Controlla il DNS dei domini personalizzati in attesa o in errore: se il CNAME punta all'indirizzo dell'associazione il
- * dominio passa a «attivo», altrimenti resta (o diventa) in errore con il motivo. Il certificato lo emette il server.
+ * Controlla i domini personalizzati in attesa o in errore. Il cliente delega il dominio ai nostri nameserver; poi il
+ * dominio si associa al sottodominio dell'associazione in cPanel e AutoSSL emette il certificato. Qui si vede dall'esterno:
+ * delega non ancora visibile → in attesa (errore dopo le ore di tolleranza); delega ok ma senza certificato → in attesa
+ * del certificato; delega ok e HTTPS valido → attivo.
  */
 final class VerifyDomainsCommand extends Command
 {
     protected $signature = 'saas:portal:verify-domains';
 
-    protected $description = 'Controlla il DNS dei domini personalizzati in attesa';
+    protected $description = 'Controlla delega DNS e certificato dei domini personalizzati in attesa';
 
-    public function handle(DatabaseManager $db, DomainDns $dns, OrgDirectory $orgs, PortalOrgServices $services): int
+    public function handle(DatabaseManager $db, DomainDns $dns, PortalConfig $config): int
     {
+        $expected = $config->nameservers();
         $rows = $db->connection('pgsql')->table('core.org_domains')->whereIn('state', ['pending', 'error'])->get(['org_id', 'domain', 'requested_at']);
-        $changed = 0;
+        $active = 0;
         foreach ($rows as $row) {
             if (! is_string($row->org_id) || ! is_string($row->domain)) {
                 continue;
             }
-            $target = ($orgs->slug($row->org_id) ?? '').'.'.$services->rootDomain();
-            $ok = in_array($target, $dns->cnames($row->domain), true);
-            $db->connection('pgsql')->table('core.org_domains')->where('org_id', $row->org_id)->update([
-                'state' => $ok ? 'active' : 'error',
-                'message' => $ok ? null : "Il dominio {$row->domain} deve avere un record CNAME verso {$target}.",
-                'checked_at' => now(),
-            ]);
-            $changed += $ok ? 1 : 0;
+            $delegated = $expected !== [] && array_diff($expected, $dns->nameservers($row->domain)) === [];
+            $hours = $config->delegationHours();
+            $late = is_string($row->requested_at) && CarbonImmutable::parse($row->requested_at)->addHours($hours)->isPast();
+
+            if ($delegated && $dns->hasCertificate($row->domain)) {
+                [$state, $message] = ['active', null];
+                $active++;
+            } elseif ($delegated) {
+                [$state, $message] = ['pending', 'Nameserver corretti: il certificato è in emissione.'];
+            } else {
+                $list = implode(', ', $expected);
+                [$state, $message] = [$late ? 'error' : 'pending', "Il dominio {$row->domain} deve essere delegato ai nameserver {$list}."];
+            }
+            $db->connection('pgsql')->table('core.org_domains')->where('org_id', $row->org_id)->update(['state' => $state, 'message' => $message, 'checked_at' => now()]);
         }
-        $this->info("Domini controllati: {$rows->count()}, attivati: {$changed}.");
+        $this->info("Domini controllati: {$rows->count()}, attivi: {$active}.");
 
         return self::SUCCESS;
     }

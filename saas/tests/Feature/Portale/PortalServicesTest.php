@@ -63,6 +63,7 @@ beforeEach(function (): void {
     Notification::fake();
     $this->app->instance(Catalog::class, servicesCatalog());
     $this->portal = fakePortal();
+    config(['saas.domains.nameservers' => ['ns1.example.test', 'ns2.example.test']]);
     $this->orgId = (string) $this->postJson('/api/portale/v1/orgs', ['token' => portalToken($this->portal, 'provision', [
         'ref' => 'sub_123',
         'org' => ['name' => 'Polisportiva Alfa', 'slug' => 'polisportiva-alfa'],
@@ -146,8 +147,11 @@ it('controlla e imposta il dominio personalizzato, con le istruzioni per il DNS'
 
     $set('WWW.PolisportivaAlfa.it')->assertOk()->assertExactJson([
         'domain' => 'www.polisportivaalfa.it', 'state' => 'pending',
-        'dns' => [['type' => 'CNAME', 'name' => 'www.polisportivaalfa.it', 'value' => 'polisportiva-alfa.example.test']],
-        'message' => 'In attesa che il record DNS sia visibile.',
+        'dns' => [
+            ['type' => 'NS', 'name' => 'www.polisportivaalfa.it', 'value' => 'ns1.example.test'],
+            ['type' => 'NS', 'name' => 'www.polisportivaalfa.it', 'value' => 'ns2.example.test'],
+        ],
+        'message' => 'In attesa che il dominio sia delegato ai nostri nameserver.',
     ]);
     $set('non un dominio')->assertStatus(409)->assertExactJson(['ok' => false, 'reason' => 'invalid']);
 
@@ -167,32 +171,45 @@ it('attiva il dominio quando il DNS è corretto e dice che cosa manca altrimenti
     $this->putJson("/api/portale/v2/orgs/{$this->orgId}/subscription", ['token' => portalToken($this->portal, 'subscription', servicesSubscription($this->orgId, 1, [['code' => 'custom_domain', 'qty' => 1]]))])->assertOk();
     ($this->call)("orgs/{$this->orgId}/domain/set", 'domain_set', ['ref' => 'sub_123', 'domain' => 'www.polisportivaalfa.it'])->assertOk();
 
-    $answers = [];
-    $this->app->instance(DomainDns::class, new class($answers) implements DomainDns
-    {
-        /** @param  list<string>  $answers */
-        public function __construct(public array $answers) {}
-
-        public function cnames(string $domain): array
+    $dns = function (array $nameservers, bool $certificate): void {
+        $this->app->instance(DomainDns::class, new readonly class($nameservers, $certificate) implements DomainDns
         {
-            return $this->answers;
-        }
-    });
+            /** @param  list<string>  $nameservers */
+            public function __construct(private array $nameservers, private bool $certificate) {}
 
+            public function nameservers(string $domain): array
+            {
+                return $this->nameservers;
+            }
+
+            public function hasCertificate(string $domain): bool
+            {
+                return $this->certificate;
+            }
+        });
+    };
+    $row = fn (string $column) => DB::table('core.org_domains')->value($column);
+
+    // Delega non ancora visibile: resta in attesa e dice quali nameserver servono.
+    $dns(['ns1.altro.test'], false);
     $this->artisan('saas:portal:verify-domains')->assertSuccessful();
-    expect(DB::table('core.org_domains')->value('state'))->toBe('error')
-        ->and((string) DB::table('core.org_domains')->value('message'))->toContain('polisportiva-alfa.example.test');
+    expect($row('state'))->toBe('pending')->and((string) $row('message'))->toContain('ns1.example.test, ns2.example.test');
 
-    $this->app->instance(DomainDns::class, new class implements DomainDns
-    {
-        public function cnames(string $domain): array
-        {
-            return ['polisportiva-alfa.example.test'];
-        }
-    });
+    // Dopo le ore di tolleranza la delega mancante è un errore.
+    DB::table('core.org_domains')->update(['requested_at' => now()->subHours(100)]);
+    $this->artisan('saas:portal:verify-domains')->assertSuccessful();
+    expect($row('state'))->toBe('error');
+
+    // Delega corretta ma ancora senza certificato: in attesa del certificato.
+    $dns(['ns1.example.test', 'ns2.example.test', 'ns3.altro.test'], false);
+    $this->artisan('saas:portal:verify-domains')->assertSuccessful();
+    expect($row('state'))->toBe('pending')->and((string) $row('message'))->toContain('certificato');
+
+    // Delega e certificato: attivo.
+    $dns(['ns1.example.test', 'ns2.example.test'], true);
     $this->artisan('saas:portal:verify-domains')->assertSuccessful();
 
-    expect(DB::table('core.org_domains')->value('state'))->toBe('active');
+    expect($row('state'))->toBe('active');
     ($this->call)("orgs/{$this->orgId}/status", 'org_status', ['ref' => 'sub_123'])->assertOk()
         ->assertJsonPath('domain', ['name' => 'www.polisportivaalfa.it', 'state' => 'active']);
 });

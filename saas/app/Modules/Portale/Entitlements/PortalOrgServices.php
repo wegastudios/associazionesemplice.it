@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Portale\Entitlements;
 
 use App\Modules\Core\Contracts\OrgContext;
-use App\Modules\Core\Contracts\OrgDirectory;
 use App\Modules\Piattaforma\Contracts\Catalog;
 use App\Modules\Piattaforma\Contracts\PlanLimits;
 use App\Modules\Piattaforma\Contracts\UnknownAddon;
@@ -28,7 +27,6 @@ final readonly class PortalOrgServices
         private PortalConfig $config,
         private DatabaseManager $db,
         private OrgContext $context,
-        private OrgDirectory $orgs,
         private Members $members,
         private Catalog $catalog,
         private PlanLimits $limits,
@@ -180,16 +178,16 @@ final readonly class PortalOrgServices
         if ($row === null || ! is_string($row->domain) || ! is_string($row->state)) {
             return null;
         }
-        $slug = $this->orgs->slug($orgId) ?? '';
+        $name = $row->domain;
 
         return [
             'domain' => $row->domain,
             'state' => $row->state,
-            'dns' => [['type' => 'CNAME', 'name' => $row->domain, 'value' => $slug.'.'.$this->rootDomain()]],
+            'dns' => array_map(static fn (string $ns): array => ['type' => 'NS', 'name' => $name, 'value' => $ns], $this->config->nameservers()),
             'message' => is_string($row->message) && $row->message !== '' ? $row->message : match ($row->state) {
                 'active' => 'Il dominio è attivo.',
-                'error' => 'Il record DNS non è corretto.',
-                default => 'In attesa che il record DNS sia visibile.',
+                'error' => 'I nameserver del dominio non sono ancora quelli indicati.',
+                default => 'In attesa che il dominio sia delegato ai nostri nameserver.',
             },
         ];
     }

@@ -98,6 +98,14 @@ return [
         'grace_days' => 15,
     ],
 
+    // Dominio personalizzato: il cliente delega il dominio ai nostri nameserver (elenco separato da virgole), noi emettiamo
+    // il certificato (cPanel/AutoSSL) sul dominio associato al sottodominio dell'associazione.
+    'domains' => [
+        'nameservers' => array_values(array_filter(array_map('trim', explode(',', (string) env('SAAS_DOMAIN_NAMESERVERS', ''))))),
+        // Ore dopo le quali una delega non ancora visibile è segnalata come errore.
+        'delegation_hours' => 72,
+    ],
+
     // Dump orari cifrati (docs/RILASCIO.md). Sul server solo la chiave pubblica; la coppia completa solo dove si fa
     // la prova di ripristino (staging).
     'backup' => [

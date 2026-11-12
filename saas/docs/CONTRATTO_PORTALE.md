@@ -267,8 +267,8 @@ questa richiesta dice solo se i dati rientrano nei limiti del piano più basso. 
 - `POST /api/portale/v2/orgs/{org_id}/domain/check` — `typ: "domain_check"` — claim `ref`, `domain`: formato valido, non
   già di un'altra associazione, non nostro. Risposta `{"ok": true}` o `{"ok": false, "reason": "invalid"|"taken"|"reserved"|"no_package"}`.
 - `POST /api/portale/v2/orgs/{org_id}/domain/set` — `typ: "domain_set"` — claim `ref`, `domain` (o `null` per toglierlo):
-  salva e restituisce lo stato `{"domain", "state": "pending"|"active"|"error", "dns": [{"type":"CNAME","name":"…","value":"…"}], "message": "…"}`.
-  Il SaaS verifica il DNS e attiva il certificato; lo stato si rilegge con `org_status` (§3.6). `slug.associazionesemplice.it` non si cambia da qui.
+  salva e restituisce lo stato `{"domain", "state": "pending"|"active"|"error", "dns": [{"type":"NS","name":"…","value":"ns…"}], "message": "…"}`.
+  Il cliente delega il dominio ai nostri nameserver; il SaaS verifica la delega e il certificato (§10); lo stato si rilegge con `org_status` (§3.6). `slug.associazionesemplice.it` non si cambia da qui.
 
 ### 3.6 Stato per l'area clienti **[fatto]**
 
@@ -361,9 +361,7 @@ per `jti` (`409 replayed`).
 - **`domain_check` / `domain_set`**: ragioni `invalid` (formato), `reserved` (il dominio base del servizio e i suoi
   sottodomini), `no_package` (l'abbonamento non ha `custom_domain`), `taken` (di un'altra associazione). `domain_set`
   con un rifiuto risponde `409` con lo stesso corpo `{"ok": false, "reason": …}`; con `domain: null` toglie il dominio e
-  risponde `{"domain": null, "state": "removed", "dns": [], "message": …}`. Il record da creare è un `CNAME` verso
-  `<slug>.associazionesemplice.it`. Il comando orario `saas:portal:verify-domains` controlla il DNS e porta il dominio
-  a `active` (o `error`, col motivo nel messaggio). **L'emissione del certificato è del server**, non di questo codice.
+  risponde `{"domain": null, "state": "removed", "dns": [], "message": …}`. Il cliente deve delegare il dominio ai nostri nameserver (record `NS` in `dns`); poi il dominio si associa in cPanel al sottodominio dell'associazione e AutoSSL emette il certificato Let's Encrypt. Il comando orario `saas:portal:verify-domains` porta il dominio a `active` solo con delega visibile e HTTPS valido (`pending` con messaggio prima; `error` dopo 72 ore senza delega).
 - **`org_status`**: `status` è quello dell'ultimo abbonamento ricevuto (`none` se non ne ha); `members_limit` viene dal
   piano (`null` = senza tetto); `operators.limit` dal calcolo dei limiti; `packages` in ordine alfabetico; `domain` è
   `null` o `{name, state}`.
