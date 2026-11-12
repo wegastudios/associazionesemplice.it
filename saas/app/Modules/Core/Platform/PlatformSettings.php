@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Platform;
 
-use AppModulesCoreContractsPlatformSettingsStore;
+use App\Modules\Core\Contracts\PlatformSettingsStore;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Contracts\Encryption\Encrypter;
