@@ -237,6 +237,34 @@ function extra_poster( string $title, array $rgb ) {
 	return (int) $id;
 }
 
+/** Testo completo di una pagina evento di prova: presentazione, programma, cosa portare, come arrivare e informazioni utili (tutto inventato). */
+function extra_event_html( string $intro, string $category, string $where ): string {
+	$prog  = array(
+		'Serate'      => array( 'Accoglienza e registrazione dei partecipanti', 'Apertura della serata con il saluto del presidente', 'Momento conviviale e musica', 'Estrazione dei premi e saluti finali' ),
+		'Gite'        => array( 'Ritrovo e partenza in auto condivise', 'Passeggiata guidata dai volontari', 'Pranzo al sacco e giochi di gruppo', 'Rientro previsto nel tardo pomeriggio' ),
+		'Musica'      => array( 'Apertura porte e accoglienza', 'Prima parte del concerto', 'Breve pausa con rinfresco offerto', 'Seconda parte e bis' ),
+		'Laboratori'  => array( 'Presentazione dell\'attività e dei materiali', 'Lavoro a gruppi guidato dai volontari', 'Pausa merenda', 'Risultati e foto di gruppo' ),
+		'Solidarietà' => array( 'Allestimento dei banchi e apertura al pubblico', 'Giochi e animazione per i bambini', 'Estrazione della lotteria solidale', 'Chiusura e conteggio del ricavato' ),
+	);
+	$bring = array(
+		'Serate'      => 'Basta la tessera da socio (o il nome con cui hai prenotato). Se hai allergie o intolleranze scrivilo nelle note della prenotazione.',
+		'Gite'        => 'Scarpe comode, acqua, cappellino e qualcosa per il pranzo. Per i bambini un cambio e una giacca leggera.',
+		'Musica'      => 'Niente: l\'ingresso è con la prenotazione. Se vuoi, porta un cuscino per stare più comodo.',
+		'Laboratori'  => 'Un grembiule o dei vestiti che puoi sporcare. Tutto il resto lo mettiamo noi.',
+		'Solidarietà' => 'Se vuoi donare libri, giochi o oggetti in buono stato, portali il giorno prima in sede: li prepariamo insieme.',
+	);
+	$p = $prog[ $category ] ?? $prog['Serate'];
+	$h  = '<p>' . esc_html( $intro ) . '</p>';
+	$h .= '<h2>Programma</h2><ul>';
+	foreach ( $p as $row ) {
+		$h .= '<li>' . esc_html( $row ) . '</li>';
+	}
+	$h .= '</ul><h2>Cosa portare</h2><p>' . esc_html( $bring[ $category ] ?? $bring['Serate'] ) . '</p>';
+	$h .= '<h2>Come arrivare</h2><p>' . esc_html( '' !== $where ? 'Il ritrovo è presso: ' . $where . '. ' : '' ) . 'Parcheggio gratuito nelle vie vicine; chi viene a piedi o in bicicletta trova i posti per le bici davanti all\'ingresso. Per chi ha difficoltà di spostamento possiamo organizzare il passaggio: scrivici in anticipo.</p>';
+	$h .= '<h2>Informazioni utili</h2><ul><li><strong>Posti limitati:</strong> prenota per essere sicuro di trovare posto; se si riempie puoi metterti in lista d\'attesa.</li><li><strong>Soci e ospiti:</strong> i soci prenotano con un clic dall\'area soci, gli ospiti sono i benvenuti dove indicato nel contributo.</li><li><strong>Disdetta:</strong> se non puoi venire annulla la prenotazione dall\'area soci, così libero il posto a qualcun altro.</li><li><strong>Foto:</strong> durante l\'evento potremmo scattare foto per il racconto dell\'associazione; chi preferisce non comparire può dirlo agli organizzatori.</li></ul>';
+	return $h;
+}
+
 extra_step( 'eventi sul sito', function () {
 	if ( ! class_exists( '\AssociazioneSemplice\PublicEvents' ) ) {
 		return;
@@ -293,11 +321,11 @@ extra_step( 'eventi sul sito', function () {
 		$want    = gmdate( 'Y-m-d', time() + $e[1] * 86400 );
 		$sy      = $want > $last_day ? Settings::social_year()->next() : Settings::social_year(); // oltre fine anno: anno sociale successivo
 		$day     = min( $want, $sy->end()->format( 'Y-m-d' ) );
-		$session = array( 'session_date' => $day, 'start_time' => $e[2], 'location' => $e[3] );
+		$session = array( 'session_date' => $day, 'start_time' => $e[2], 'end_time' => gmdate( 'H:i', (int) strtotime( $e[2] ) + 9000 ), 'location' => $e[3] );
 		if ( $e[4] > 0 ) {
 			$session['capacity'] = $e[4];
 		}
-		$act->create( array( 'name' => $e[0], 'social_year' => $sy->label(), 'kind' => 'event', 'fee_cents' => $e[5], 'session' => $session ) );
+		$act->create( array( 'name' => $e[0], 'social_year' => $sy->label(), 'kind' => 'event', 'fee_cents' => $e[5], 'guest_fee_cents' => $e[5] > 0 ? $e[5] + 500 : null, 'session' => $session ) );
 	}
 	foreach ( $texts as $name => $t ) {
 		foreach ( $act->all_for_select() as $a ) {
@@ -309,7 +337,7 @@ extra_step( 'eventi sul sito', function () {
 				continue;
 			}
 			$thumb = extra_poster( $name, $t[2] );
-			wp_update_post( array( 'ID' => $pid, 'post_status' => 'publish', 'post_content' => $t[1], 'post_excerpt' => wp_trim_words( $t[1], 18 ) ) );
+			wp_update_post( array( 'ID' => $pid, 'post_status' => 'publish', 'post_content' => extra_event_html( $t[1], $t[0], \AssociazioneSemplice\PublicEvents::where_text( (array) $act->get( (int) $a['id'] ) ) ), 'post_excerpt' => wp_trim_words( $t[1], 18 ) ) );
 			wp_set_object_terms( $pid, array( $cat( $t[0] ) ), \AssociazioneSemplice\PublicEvents::TAXONOMY );
 			if ( $thumb ) {
 				set_post_thumbnail( $pid, $thumb );
@@ -343,6 +371,29 @@ extra_step( 'locandine degli eventi', function () {
 extra_step( 'pagina calendario eventi', function () {
 	if ( ! get_page_by_path( 'calendario-eventi' ) ) {
 		wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Calendario eventi', 'post_name' => 'calendario-eventi', 'post_content' => '[associazionesemplice_eventi modo="mese"]' ) );
+	}
+} );
+
+// Pagine evento complete: testo con programma, cosa portare, come arrivare e informazioni utili, e contributo ospiti (anche per le pagine create prima).
+extra_step( 'testi completi degli eventi', function () {
+	if ( ! class_exists( '\AssociazioneSemplice\PublicEvents' ) ) {
+		return;
+	}
+	global $wpdb;
+	$t = \AssociazioneSemplice\Db::t( 'activities' );
+	$wpdb->query( "UPDATE $t SET guest_fee_cents = fee_cents + 500 WHERE kind = 'event' AND fee_cents > 0 AND guest_fee_cents IS NULL AND deleted_at IS NULL" ); // phpcs:ignore WordPress.DB
+	foreach ( get_posts( array( 'post_type' => \AssociazioneSemplice\PublicEvents::POST_TYPE, 'post_status' => 'publish', 'numberposts' => 100 ) ) as $p ) {
+		if ( false !== strpos( (string) $p->post_content, '<h2>' ) ) {
+			continue;
+		}
+		$aid   = \AssociazioneSemplice\PublicEvents::activity_of( (int) $p->ID );
+		$a     = $aid ? Plugin::activities()->get( $aid ) : null;
+		$terms = get_the_terms( $p, \AssociazioneSemplice\PublicEvents::TAXONOMY );
+		if ( ! $a ) {
+			continue;
+		}
+		$intro = trim( wp_strip_all_tags( (string) $p->post_content ) );
+		wp_update_post( array( 'ID' => $p->ID, 'post_content' => extra_event_html( $intro, ( $terms && ! is_wp_error( $terms ) ) ? (string) $terms[0]->name : 'Serate', \AssociazioneSemplice\PublicEvents::where_text( $a ) ) ) );
 	}
 } );
 

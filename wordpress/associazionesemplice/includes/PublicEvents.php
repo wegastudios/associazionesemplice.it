@@ -31,6 +31,7 @@ final class PublicEvents {
 		add_filter( 'post_thumbnail_html', array( __CLASS__, 'hide_theme_poster' ), 10, 2 );
 		add_filter( 'render_block', array( __CLASS__, 'hide_theme_poster_block' ), 10, 2 );
 		add_action( 'wp_head', array( __CLASS__, 'structured_data' ) );
+		add_action( 'wp_head', array( __CLASS__, 'social_meta' ), 5 );
 		add_action( 'template_redirect', array( __CLASS__, 'maybe_ics' ) );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'assets' ) );
 		if ( is_admin() ) {
@@ -417,7 +418,7 @@ final class PublicEvents {
 			return $content;
 		}
 		Frontend\Views::no_cache();
-		$html = '<div class="asemf asemf-event">';
+		$html = '<div class="asemf asemf-event"><div class="asemf-event-head' . ( has_post_thumbnail( $post ) ? ' has-poster' : '' ) . '">';
 		if ( has_post_thumbnail( $post ) ) {
 			$html .= '<figure class="asemf-poster">' . wp_get_attachment_image( (int) get_post_thumbnail_id( $post ), 'large' ) . '</figure>'; // direttamente: il filtro del tema che toglie la locandina duplicata non deve toccare questa
 		}
@@ -432,7 +433,7 @@ final class PublicEvents {
 		if ( '' !== $org ) {
 			$html .= '<div><dt>Organizza</dt><dd>' . esc_html( $org ) . '</dd></div>';
 		}
-		$html .= '</dl>';
+		$html .= '</dl></div>';
 		$html .= '<div class="asemf-event-text">' . $content . '</div>';
 		if ( ActivityKind::uses_sessions( (string) $a['kind'] ) ) {
 			$html .= Frontend\Views::event_booking( $a );
@@ -440,7 +441,81 @@ final class PublicEvents {
 		} else {
 			$html .= '<p class="asemf-small asemf-muted">Per iscriverti a questo corso rivolgiti alla segreteria dell\'associazione.</p>';
 		}
-		return $html . '</div>';
+		return $html . self::share_html( $post ) . self::related_html( $post ) . '</div>';
+	}
+
+	/** Pulsanti di condivisione: semplici collegamenti, nessuno script né richiesta a siti esterni finché non si clicca. */
+	private static function share_html( \WP_Post $post ): string {
+		$url   = rawurlencode( (string) get_permalink( $post ) );
+		$title = rawurlencode( get_the_title( $post ) );
+		$links = array(
+			'WhatsApp' => 'https://wa.me/?text=' . $title . '%20' . $url,
+			'Facebook' => 'https://www.facebook.com/sharer/sharer.php?u=' . $url,
+			'Email'    => 'mailto:?subject=' . $title . '&body=' . $url,
+		);
+		$h = '<div class="asemf-share"><span class="asemf-share-label">Condividi</span>';
+		foreach ( $links as $name => $href ) {
+			$h .= '<a class="asemf-chip" href="' . esc_url( $href, array( 'https', 'mailto' ) ) . '" target="_blank" rel="noopener noreferrer">' . esc_html( $name ) . '</a>';
+		}
+		return $h . '</div>';
+	}
+
+	/** Altri eventi in programma (fino a tre; prima quelli della stessa categoria). */
+	private static function related_html( \WP_Post $post ): string {
+		$posts = self::posts_by_activity( '' );
+		unset( $posts[ self::activity_of( (int) $post->ID ) ] );
+		if ( ! $posts ) {
+			return '';
+		}
+		$mine = wp_list_pluck( (array) wp_get_post_terms( $post->ID, self::TAXONOMY ), 'term_id' );
+		$rows = array();
+		foreach ( self::rows( $posts, Db::today(), '9999-12-31' ) as $s ) {
+			$same   = (bool) array_intersect( $mine, wp_list_pluck( (array) wp_get_post_terms( $posts[ (int) $s['activity_id'] ]->ID, self::TAXONOMY ), 'term_id' ) );
+			$rows[] = array( $same ? 0 : 1, $s );
+		}
+		usort( $rows, function ( $x, $y ) {
+			return $x[0] <=> $y[0] ?: strcmp( (string) $x[1]['session_date'], (string) $y[1]['session_date'] );
+		} );
+		$h    = '';
+		$seen = array();
+		foreach ( $rows as $r ) {
+			$s   = $r[1];
+			$aid = (int) $s['activity_id'];
+			$a   = isset( $seen[ $aid ] ) ? null : Plugin::activities()->get( $aid );
+			if ( ! $a ) {
+				continue;
+			}
+			$seen[ $aid ] = true;
+			$h           .= self::card( $posts[ $aid ], $a, $s, (int) strtotime( (string) $s['session_date'] . ' 12:00:00' ) );
+			if ( count( $seen ) >= 3 ) {
+				break;
+			}
+		}
+		return '' === $h ? '' : '<h2 class="asemf-event-h">Ti può interessare anche</h2><ul class="asemf-cards">' . $h . '</ul>';
+	}
+
+	/** Anteprima per i social (titolo, descrizione, locandina), solo se non c'è già un plugin SEO che la fornisce. */
+	public static function social_meta(): void {
+		if ( ! is_singular( self::POST_TYPE ) || defined( 'WPSEO_VERSION' ) || defined( 'RANK_MATH_VERSION' ) || defined( 'AIOSEO_VERSION' ) || defined( 'SEOPRESS_VERSION' ) ) {
+			return;
+		}
+		$post = get_queried_object();
+		if ( ! $post instanceof \WP_Post ) {
+			return;
+		}
+		$desc = wp_trim_words( wp_strip_all_tags( has_excerpt( $post ) ? get_the_excerpt( $post ) : (string) $post->post_content ), 30 );
+		echo '<meta property="og:type" content="website" />' . "\n";
+		echo '<meta property="og:title" content="' . esc_attr( get_the_title( $post ) ) . '" />' . "\n";
+		echo '<meta property="og:url" content="' . esc_url( (string) get_permalink( $post ) ) . '" />' . "\n";
+		if ( '' !== $desc ) {
+			echo '<meta property="og:description" content="' . esc_attr( $desc ) . '" />' . "\n";
+			echo '<meta name="description" content="' . esc_attr( $desc ) . '" />' . "\n";
+		}
+		$img = get_the_post_thumbnail_url( $post, 'large' );
+		if ( $img ) {
+			echo '<meta property="og:image" content="' . esc_url( $img ) . '" />' . "\n";
+			echo '<meta name="twitter:card" content="summary_large_image" />' . "\n";
+		}
 	}
 
 	// ---------- Elenco pubblico a card, per mese ----------
@@ -623,7 +698,7 @@ final class PublicEvents {
 		$h     = '<li class="asemf-card' . ( has_post_thumbnail( $post ) ? ' has-poster' : '' ) . '">';
 		$h    .= '<a class="asemf-card-date" href="' . esc_url( $url ) . '" aria-hidden="true" tabindex="-1"><span class="asemf-card-day">' . esc_html( wp_date( 'j', $ts ) ) . '</span><span class="asemf-card-mon">' . esc_html( wp_date( 'M', $ts ) ) . '</span></a>';
 		if ( has_post_thumbnail( $post ) ) {
-			$h .= '<a class="asemf-card-poster" href="' . esc_url( $url ) . '" aria-hidden="true" tabindex="-1">' . get_the_post_thumbnail( $post, 'medium' ) . '</a>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			$h .= '<a class="asemf-card-poster" href="' . esc_url( $url ) . '" aria-hidden="true" tabindex="-1">' . wp_get_attachment_image( (int) get_post_thumbnail_id( $post ), 'medium' ) . '</a>';
 		}
 		$h .= '<div class="asemf-card-body">';
 		if ( '' !== $cat ) {

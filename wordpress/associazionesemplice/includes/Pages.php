@@ -10,7 +10,7 @@ final class Pages {
 
 	/** Area di ogni pagina (vedi Areas). */
 	const AREA = array(
-		'area' => 'soci', 'calendario' => 'soci', 'volontari' => 'eventi', 'ingressi' => 'eventi', 'attivita' => 'pubblico',
+		'area' => 'soci', 'calendario' => 'soci', 'volontari' => 'eventi', 'ingressi' => 'eventi', 'attivita' => 'pubblico', 'eventi' => 'pubblico',
 		'bonifico' => 'pubblico', 'privacy' => 'pubblico', 'adesione' => 'pubblico', 'segreteria' => 'segreteria', 'tesoriere' => 'tesoriere',
 	);
 
@@ -34,6 +34,7 @@ final class Pages {
 			'area'      => array( 'title' => 'Area soci', 'content' => '[associazionesemplice_area_soci]', 'access' => '', 'hint' => 'Tessera, attività, pagamenti, ospiti e profilo dei soci: è la pagina principale.', 'default' => true ),
 			'volontari' => array( 'title' => 'Area volontari', 'content' => '[associazionesemplice_area_volontari]', 'access' => 'volunteers', 'hint' => 'Le attività di cui i volontari sono referenti (visibile solo a loro).', 'default' => true ),
 			'attivita'  => array( 'title' => 'Attività ed eventi', 'content' => '[associazionesemplice_attivita]', 'access' => '', 'hint' => 'L\'elenco pubblico di corsi ed eventi, con la prenotazione.', 'default' => true ),
+			'eventi'    => array( 'title' => 'Eventi', 'content' => '[associazionesemplice_eventi]', 'access' => '', 'hint' => 'Gli eventi pubblicati sul sito, a schede per mese (con la scelta del calendario mensile e delle categorie).', 'default' => false ),
 			'calendario' => array( 'title' => 'Calendario', 'content' => '[associazionesemplice_calendario]', 'access' => 'members', 'hint' => 'Il calendario di corsi ed eventi per i soli soci.', 'default' => false ),
 			'privacy'   => array( 'title' => 'Informativa privacy', 'content' => '[associazionesemplice_privacy]', 'access' => '', 'hint' => 'L\'informativa sul trattamento dei dati personali, compilata con i dati dell\'ente (si aggiorna da sola).', 'default' => true ),
 			'bonifico'  => array( 'title' => 'Dona con bonifico', 'content' => '[associazionesemplice_bonifico]', 'access' => '', 'hint' => 'Le coordinate bancarie per chi vuole sostenere l\'associazione (servono il bonifico attivo e almeno un IBAN).', 'default' => false ),
