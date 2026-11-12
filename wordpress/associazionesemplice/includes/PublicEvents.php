@@ -20,6 +20,31 @@ final class PublicEvents {
 	const OPT_DONE  = 'asem_public_events_backfill';
 	const OPT_FLUSH = 'asem_public_events_rewrite';
 
+	/** Impostazioni di prenotazione dell'evento (campi della pagina). */
+	const OPT_GUESTS    = '_asem_ev_guests';
+	const OPT_APPROVAL  = '_asem_ev_approval';
+	const OPT_MAX_SEATS = '_asem_ev_max_seats';
+	const OPT_HIDE_CANC = '_asem_ev_hide_cancelled';
+
+	/**
+	 * Come si prenota questo evento dal sito.
+	 *
+	 * @return array{guests:bool,approval:bool,max_seats:int,hide_cancelled:bool} ospiti ammessi (predefinito sì), richiesta con approvazione (predefinito no),
+	 *         posti per richiesta (0 = nessun limite), pagina nascosta se l'evento è annullato (predefinito no: resta con l'avviso)
+	 */
+	public static function options( int $activity_id ): array {
+		$pid = self::post_of( $activity_id );
+		$get = function ( string $k ) use ( $pid ) {
+			return $pid ? (string) get_post_meta( $pid, $k, true ) : '';
+		};
+		return array(
+			'guests'         => '0' !== $get( self::OPT_GUESTS ),
+			'approval'       => '1' === $get( self::OPT_APPROVAL ),
+			'max_seats'      => max( 0, min( 50, (int) $get( self::OPT_MAX_SEATS ) ) ),
+			'hide_cancelled' => '1' === $get( self::OPT_HIDE_CANC ),
+		);
+	}
+
 	public static function register(): void {
 		add_action( 'init', array( __CLASS__, 'register_types' ) );
 		add_action( 'asem_activity_created', array( __CLASS__, 'ensure' ) );
@@ -33,7 +58,10 @@ final class PublicEvents {
 		add_action( 'wp_head', array( __CLASS__, 'structured_data' ) );
 		add_action( 'wp_head', array( __CLASS__, 'social_meta' ), 5 );
 		add_action( 'template_redirect', array( __CLASS__, 'maybe_ics' ) );
+		add_action( 'template_redirect', array( __CLASS__, 'maybe_hide_cancelled' ) );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'assets' ) );
+		EventRequests::register(); // prenotazione dei non soci dalla pagina dell'evento
+		add_action( 'save_post_' . self::POST_TYPE, array( __CLASS__, 'save_options' ) );
 		if ( is_admin() ) {
 			add_action( 'admin_init', array( __CLASS__, 'backfill' ) );
 			add_action( 'add_meta_boxes_' . self::POST_TYPE, array( __CLASS__, 'meta_box' ) );
@@ -281,6 +309,46 @@ final class PublicEvents {
 
 	public static function meta_box(): void {
 		add_meta_box( 'asem_event_data', 'Dati presi dall\'attività', array( __CLASS__, 'render_meta_box' ), self::POST_TYPE, 'side', 'high' );
+		add_meta_box( 'asem_event_booking', 'Prenotazione online', array( __CLASS__, 'render_options_box' ), self::POST_TYPE, 'side', 'default' );
+	}
+
+	public static function render_options_box( $post ): void {
+		$aid = self::activity_of( (int) $post->ID );
+		$o   = $aid ? self::options( $aid ) : self::options( 0 );
+		wp_nonce_field( 'asem_event_options', '_asem_ev_nonce' );
+		echo '<p><label><input type="checkbox" name="asem_ev_guests" value="1"' . checked( $o['guests'], true, false ) . '> Anche chi non è socio può chiedere un posto dalla pagina</label></p>';
+		echo '<p><label><input type="checkbox" name="asem_ev_approval" value="1"' . checked( $o['approval'], true, false ) . '> Richiesta di partecipazione: la segreteria approva ogni richiesta (altrimenti la prenotazione è automatica)</label></p>';
+		echo '<p><label>Posti al massimo per richiesta (0 = nessun limite)<br><input type="number" min="0" max="50" name="asem_ev_max_seats" value="' . (int) $o['max_seats'] . '" style="width:5em"></label></p>';
+		echo '<p><label><input type="checkbox" name="asem_ev_hide_cancelled" value="1"' . checked( $o['hide_cancelled'], true, false ) . '> Se l\'evento viene annullato, nascondi la pagina (altrimenti resta con l\'avviso «annullato»)</label></p>';
+		echo '<p class="description">I soci prenotano sempre dal loro accesso. I non soci pagano in anticipo con bonifico e inviano la ricevuta alla segreteria.</p>';
+	}
+
+	public static function save_options( $post_id ): void {
+		if ( ! isset( $_POST['_asem_ev_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_asem_ev_nonce'] ) ), 'asem_event_options' ) || ! current_user_can( 'edit_post', (int) $post_id ) ) {
+			return;
+		}
+		update_post_meta( (int) $post_id, self::OPT_GUESTS, isset( $_POST['asem_ev_guests'] ) ? '1' : '0' );
+		update_post_meta( (int) $post_id, self::OPT_APPROVAL, isset( $_POST['asem_ev_approval'] ) ? '1' : '0' );
+		update_post_meta( (int) $post_id, self::OPT_MAX_SEATS, (string) max( 0, min( 50, isset( $_POST['asem_ev_max_seats'] ) ? absint( wp_unslash( $_POST['asem_ev_max_seats'] ) ) : 0 ) ) );
+		update_post_meta( (int) $post_id, self::OPT_HIDE_CANC, isset( $_POST['asem_ev_hide_cancelled'] ) ? '1' : '0' );
+	}
+
+	/** Evento annullato con l'opzione «nascondi»: la pagina non si trova più (chi gestisce la vede ancora). */
+	public static function maybe_hide_cancelled(): void {
+		if ( ! is_singular( self::POST_TYPE ) ) {
+			return;
+		}
+		$post = get_queried_object();
+		$aid  = $post ? self::activity_of( (int) $post->ID ) : 0;
+		if ( ! $aid || current_user_can( 'edit_post', (int) $post->ID ) || ! self::options( $aid )['hide_cancelled'] ) {
+			return;
+		}
+		if ( ! self::upcoming_sessions( $aid ) && self::cancelled_future( $aid ) ) {
+			global $wp_query;
+			$wp_query->set_404();
+			status_header( 404 );
+			nocache_headers();
+		}
 	}
 
 	public static function render_meta_box( $post ): void {
@@ -613,22 +681,64 @@ final class PublicEvents {
 		);
 	}
 
-	/** Un evento ricorrente non riempie l'elenco: di ogni serie si mostrano le prossime due date (il calendario le mostra tutte). */
+	/**
+	 * Un evento ricorrente non riempie l'elenco (il calendario mostra sempre tutte le date):
+	 *  - corso: solo la prossima data;
+	 *  - serie regolare (stesso giorno della settimana, ogni 7 giorni, almeno 3 date): una scheda con la prossima data
+	 *    e la dicitura «Tutti i giovedì» (chiave `series_label`);
+	 *  - poche date (fino a 5): tutte; di più e irregolari: la prossima con «e altre N date».
+	 */
 	private static function trim_recurring( array $rows ): array {
-		$count = array();
-		return array_values(
-			array_filter(
-				$rows,
-				function ( $s ) use ( &$count ) {
-					if ( ActivityKind::RECURRING !== ( $s['kind'] ?? '' ) ) {
-						return true;
-					}
-					$k           = (int) $s['activity_id'];
-					$count[ $k ] = ( $count[ $k ] ?? 0 ) + 1;
-					return $count[ $k ] <= 2;
+		$by = array();
+		foreach ( $rows as $s ) {
+			$by[ (int) $s['activity_id'] ][] = $s;
+		}
+		$keep = array();
+		foreach ( $by as $list ) {
+			$n    = count( $list );
+			$kind = (string) ( $list[0]['kind'] ?? '' );
+			if ( ActivityKind::COURSE === $kind ) {
+				$keep[] = $list[0];
+				continue;
+			}
+			if ( 1 === $n ) {
+				$keep[] = $list[0];
+				continue;
+			}
+			if ( $n >= 3 && self::is_weekly( $list ) ) {
+				$first                 = $list[0];
+				$first['series_label'] = 'Tutti i ' . wp_date( 'l', (int) strtotime( (string) $first['session_date'] . ' 12:00:00' ) ) . ' · e così via';
+				$keep[]                = $first;
+				continue;
+			}
+			if ( $n <= 5 ) {
+				foreach ( $list as $s ) {
+					$keep[] = $s;
 				}
-			)
+				continue;
+			}
+			$first                 = $list[0];
+			$first['series_label'] = 'e altre ' . ( $n - 1 ) . ' date';
+			$keep[]                = $first;
+		}
+		usort(
+			$keep,
+			function ( $a, $b ) {
+				return strcmp( (string) $a['session_date'] . (string) ( $a['start_time'] ?? '' ), (string) $b['session_date'] . (string) ( $b['start_time'] ?? '' ) );
+			}
 		);
+		return $keep;
+	}
+
+	/** Le date sono a distanza di 7 giorni una dall'altra? */
+	private static function is_weekly( array $list ): bool {
+		for ( $i = 1, $c = count( $list ); $i < $c; $i++ ) {
+			$d = ( strtotime( (string) $list[ $i ]['session_date'] . ' 12:00:00' ) - strtotime( (string) $list[ $i - 1 ]['session_date'] . ' 12:00:00' ) ) / DAY_IN_SECONDS;
+			if ( 7 !== (int) round( $d ) ) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/** Indirizzo della pagina corrente con i filtri indicati. */
@@ -729,6 +839,9 @@ final class PublicEvents {
 		}
 		$h .= '<h4 class="asemf-card-title"><a href="' . esc_url( $url ) . '">' . esc_html( get_the_title( $post ) ) . '</a></h4>';
 		$h .= '<div class="asemf-small">' . esc_html( ucfirst( wp_date( 'l j F', $ts ) ) . ( '' !== $time ? ' · ore ' . $time : '' ) ) . '</div>';
+		if ( ! empty( $s['series_label'] ) ) {
+			$h .= '<div class="asemf-small"><strong>' . esc_html( (string) $s['series_label'] ) . '</strong></div>';
+		}
 		if ( '' !== $where ) {
 			$h .= '<div class="asemf-small">' . esc_html( $where ) . '</div>';
 		}

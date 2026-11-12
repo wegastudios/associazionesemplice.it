@@ -1477,7 +1477,11 @@ final class Views {
 		foreach ( $rows as $s ) {
 			$html .= self::session_row( $s, $activity, $ctx );
 		}
-		return \AssociazioneSemplice\Texts::html( self::flash() . $html . '</ul>' );
+		$html .= '</ul>';
+		if ( empty( $ctx['can_book'] ) && \AssociazioneSemplice\EventRequests::available( $activity ) ) { // chi non è socio chiede un posto da qui
+			$html .= \AssociazioneSemplice\EventRequests::form_html( $activity, $rows );
+		}
+		return \AssociazioneSemplice\Texts::html( self::flash() . $html );
 	}
 
 	/** Le prossime date di tutti gli eventi, in ordine di data. */

@@ -99,6 +99,8 @@ final class Actions {
 			'asem_access_approve'     => 'access_approve',
 			'asem_application_approve' => 'application_approve',
 			'asem_application_reject' => 'application_reject',
+			'asem_event_request_approve' => 'event_request_approve',
+			'asem_event_request_reject' => 'event_request_reject',
 			'asem_adult_invite'       => 'adult_invite',
 			'asem_send_notice'        => 'send_notice',
 			'asem_transfer_booking'   => 'transfer_booking',
@@ -790,6 +792,16 @@ final class Actions {
 	private static function application_approve( array $p ): array {
 		$msg = \AssociazioneSemplice\Applications::approve( (int) ( $p['id'] ?? 0 ), (string) ( $p['card_number'] ?? '' ) );
 		return array( Ui::url( 'asem' ), $msg );
+	}
+
+	private static function event_request_approve( array $p ): array {
+		$msg = \AssociazioneSemplice\EventRequests::approve( (int) ( $p['id'] ?? 0 ) );
+		return array( (string) ( $p['_back'] ?? Ui::url( 'asem' ) ), $msg );
+	}
+
+	private static function event_request_reject( array $p ): array {
+		$msg = \AssociazioneSemplice\EventRequests::reject( (int) ( $p['id'] ?? 0 ) );
+		return array( (string) ( $p['_back'] ?? Ui::url( 'asem' ) ), $msg );
 	}
 
 	private static function application_reject( array $p ): array {

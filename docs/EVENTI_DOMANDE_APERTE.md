@@ -1,11 +1,18 @@
-# Eventi pubblici: domande aperte per la titolare
+# Eventi pubblici: decisioni della titolare (12/11/2026)
 
-Raccolte durante il lavoro autonomo del 12/11/2026 (nessuna risposta richiesta per proseguire: dove serviva ho scelto il default indicato).
+Risposte alle domande poste al rientro. Sostituiscono le «proposte» di EVENTI_PRENOTAZIONE_PUBBLICA.md dove diverse.
 
-## Fase 5 (fatta)
-1. **Evento ricorrente nell'elenco**: di una serie si mostrano le prossime **2 date** (il calendario le mostra tutte; la pagina della serie le elenca tutte). Va bene 2, o preferisci 3 / una sola riga «ogni giovedì»? *(default: 2)*
-2. **Evento annullato**: la pagina resta online con l'avviso «Evento annullato» (utile per chi ha il link) e sparisce da elenco e calendario. Preferisci che sparisca del tutto (bozza)? *(default: resta con avviso)*
-3. **Temi**: provato solo sul tema della demo (a blocchi). Classico ed Elementor non sono stati provati da me: se hai un sito con quei temi dimmi quale usare per una prova.
+1. **Ricorrenze nell'elenco**: se è una serie regolare (es. tutti i giovedì) → **una sola scheda con la prossima data e la dicitura «Tutti i giovedì»**. Se sono poche date (2, 5…): **tutte**, se è un evento; **la prossima**, se è un corso. Il calendario mostra sempre ogni data.
+2. **Evento annullato**: **a scelta dell'operatore**, per evento: mostrare la pagina con l'avviso, oppure nasconderla.
+3. **Chi prenota**: se l'evento concede la prenotazione agli **ospiti**, possono i non soci; altrimenti solo i soci. Ospiti **oltre il limite** di partecipazioni: se il prezzo ospite è **uguale** a quello dei soci devono **diventare soci**; se è **maggiore** possono prenotare lo stesso pagando di più.
+4. **Approvazione**: di norma **automatica**; l'operatore può creare un evento **con richiesta di partecipazione** (approvazione della segreteria).
+5. **Dati richiesti al non socio**: **tutti subito**, a prescindere (come la domanda di adesione).
+6. **Minori**: prenota **sempre il tutore**; altrimenti si passa dalla **segreteria**.
+7. **Posti per richiesta**: **impostazione nell'evento**, predefinito **nessun limite**.
+8. **Pagamento**: i **non soci pagano in anticipo con bonifico istantaneo** e inviano la **ricevuta alla segreteria**, altrimenti il **posto viene cancellato**. I soci hanno il **tempo impostato** (blocco posti).
+9. **Dati delle richieste non confermate o non approvate**: cancellati dopo **30 giorni**.
+10. **Disdetta**: il non socio **non ha pannello**, quindi non disdice da solo: **la gestisce la segreteria**.
 
-## Prenotazione dei non soci e pagamento (vedi sotto, docs/EVENTI_PRENOTAZIONE_PUBBLICA.md)
-Le 8 domande sono in fondo a quel documento (proposta e default già indicati per ciascuna).
+## Aperto (scelte tecniche mie, da confermare quando rivedi il lavoro)
+- Tempo concesso al non socio per il bonifico istantaneo e la ricevuta: **24 ore** (modificabile dai Limiti).
+- Il «Prenota e paga» con carta/PayPal per i non soci (Pro) resta fuori da questa versione: i non soci pagano con bonifico come deciso.

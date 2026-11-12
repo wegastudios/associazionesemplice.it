@@ -59,6 +59,7 @@ final class Plugin {
 	private static function schedule_jobs(): void {
 		$jobs = array(
 			'asem_release_holds'          => array( 'hourly', 900, 'Holds', 'release_expired', '' ),
+			'asem_event_requests'         => array( 'hourly', 1500, 'EventRequests', 'run', '' ),
 			'asem_send_reminders'         => array( 'daily', 600, 'Reminders', 'run', '' ),
 			'asem_purge_backups'          => array( 'hourly', 1200, 'Backup', 'purge_old', '' ),
 			'asem_purge_audit'            => array( 'daily', 1800, 'Audit', 'purge_old', '' ),
