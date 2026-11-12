@@ -2211,6 +2211,22 @@ check( 'gestisci: domini non validi rifiutati', null === SaasAccount::cleanDomai
 check( 'gestisci: ragioni del dominio in italiano', false !== strpos( SaasAccount::domainReason( 'taken' ), 'un\'altra associazione' ) && '' !== SaasAccount::domainReason( 'boh' ) );
 Config::set( 'saas_v2', array() );
 Config::set( 'saas_sign_key', '' );
+// Interruttori del portale (/account/impostazioni): salvati nel database, sostituiscono config.php, chiavi sconosciute ignorate
+$swdb = new Db( new PDO( 'sqlite::memory:' ) );
+$swdb->migrate();
+Config::set( 'saas_v2', array( 'enabled' => true, 'domain' => false ) );
+check( 'interruttori: lo stato parte da config.php', array( 'saas_v2' => true, 'saas_v2_domain' => false ) === Portale\Switches::current() );
+Portale\Switches::save( $swdb, array( 'saas_v2_domain' => '1', 'sconosciuta' => '1' ) );
+check( 'interruttori: salvando, ciò che non è spuntato si spegne e il resto si accende', array( 'saas_v2' => false, 'saas_v2_domain' => true ) === Portale\Switches::current() );
+Config::set( 'saas_v2', array( 'enabled' => true, 'domain' => false ) );
+Portale\Switches::load( $swdb );
+check( 'interruttori: all\'avvio il valore salvato vince su config.php', false === Config::get( 'saas_v2.enabled' ) && true === Config::get( 'saas_v2.domain' ) );
+$swdb->run( 'DELETE FROM settings WHERE name = ?', array( 'switches' ) );
+$swdb->run( 'INSERT INTO settings (name, val) VALUES (?,?)', array( 'switches', '{"saas_v2":"si","altro":true}' ) );
+Config::set( 'saas_v2', array( 'enabled' => true, 'domain' => false ) );
+Portale\Switches::load( $swdb );
+check( 'interruttori: valori non booleani o chiavi ignote non toccano la configurazione', true === Config::get( 'saas_v2.enabled' ) && false === Config::get( 'saas_v2.domain' ) );
+Config::set( 'saas_v2', array() );
 Http::$transport = $prevTransport;
 Config::set( 'saas_public_keys', array() );
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
