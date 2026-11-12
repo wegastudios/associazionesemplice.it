@@ -285,6 +285,8 @@ final class App {
 			header( 'Location: ' . SupportSso::url( $this->db, ! empty( $_SESSION['customer'] ) ? $this->customerEmail( (string) $_SESSION['customer'] ) : $idn['email'] ), true, 303 );
 		} elseif ( $get && '/account' === $path ) {
 			$this->account();
+		} elseif ( SaasAccount::manageEnabled() && 1 === preg_match( '#^/account/gestionale/([0-9a-f]{32})(?:/(dominio|dominio-togli|piano))?$#', $path, $mg ) ) {
+			$this->saasManage( $get, $mg[1], $mg[2] ?? '' );
 		} elseif ( $get && '/account/da-gestionale' === $path ) {
 			// «Gestisci abbonamento» dal gestionale (contratto §4.3). Destinazione fissa; se qualcosa non torna si passa dall'accesso normale, senza dire perché.
 			header( 'Cache-Control: no-store' );
@@ -449,6 +451,72 @@ final class App {
 		}
 		http_response_code( 'limit' === $r['status'] ? 429 : 401 );
 		View::render( 'twofactor', array( 'title' => 'Codice di verifica', 'error' => 'limit' === $r['status'] ? 'Troppi tentativi: aspetta un minuto.' : 'Il codice non è corretto o è scaduto.' ) );
+	}
+
+	/**
+	 * «Gestisci» il gestionale: stato (numeri e stato dal SaaS), dominio personalizzato e controllo «ci sto dentro?» prima di cambiare piano
+	 * (contratto v2 §3.4–3.6). Non cambia piano né incassa: dice solo se i dati rientrano nei limiti.
+	 */
+	private function saasManage( bool $get, string $id, string $act ): void {
+		$o = SaasAccount::org( $this->db, $this->customerId(), $id );
+		if ( ! $o ) {
+			throw new UserError( 'Abbonamento non trovato.' );
+		}
+		$org = (string) $o['org_id'];
+		$ref = (string) $o['org_ref'];
+		$flash = '';
+		$error = '';
+		$dns   = null;
+		$check = null;
+		$cat   = $this->saasCatalog();
+		$plans = array();
+		foreach ( $cat ? Catalog::plans( $cat['doc'] ) : array() as $p ) {
+			if ( is_array( $p ) && is_string( $p['code'] ?? null ) && $p['code'] !== $o['plan'] ) {
+				$plans[ $p['code'] ] = array( 'name' => (string) ( $p['name'] ?? $p['label'] ?? $p['code'] ), 'version' => (int) ( $p['plan_version'] ?? 0 ) );
+			}
+		}
+		if ( ! $get ) {
+			$this->formLimit();
+			if ( 'dominio' === $act ) {
+				$d = SaasAccount::cleanDomain( (string) $this->in( 'domain' ) );
+				if ( null === $d ) {
+					$error = SaasAccount::domainReason( 'invalid' );
+				} else {
+					list( $c, $r ) = SaasClient::domainCheck( $org, $ref, $d );
+					if ( 200 !== $c || empty( $r['ok'] ) ) {
+						$error = 200 === $c ? SaasAccount::domainReason( (string) ( $r['reason'] ?? '' ) ) : 'Il gestionale non risponde: riprova tra poco.';
+					} else {
+						list( $c, $r ) = SaasClient::domainSet( $org, $ref, $d );
+						if ( 200 === $c ) {
+							$dns   = $r;
+							$flash = 'Indirizzo salvato: ora crea il collegamento nel pannello di chi gestisce il tuo dominio.';
+						} else {
+							$error = 409 === $c ? SaasAccount::domainReason( (string) ( $r['reason'] ?? '' ) ) : 'Il gestionale non risponde: riprova tra poco.';
+						}
+					}
+				}
+			} elseif ( 'dominio-togli' === $act ) {
+				list( $c ) = SaasClient::domainSet( $org, $ref, null );
+				if ( 200 === $c ) {
+					$flash = 'Indirizzo personalizzato tolto: resta quello standard.';
+				} else {
+					$error = 'Il gestionale non risponde: riprova tra poco.';
+				}
+			} elseif ( 'piano' === $act ) {
+				$to = Site::code( (string) $this->in( 'to_plan' ) );
+				if ( ! isset( $plans[ $to ] ) ) {
+					$error = 'Scegli un piano dall\'elenco.';
+				} else {
+					list( $c, $r ) = SaasClient::planChangeCheck( $org, $ref, $to, $plans[ $to ]['version'] );
+					$check = 200 === $c ? array( 'to' => $plans[ $to ]['name'], 'allowed' => ! empty( $r['allowed'] ), 'blockers' => array_slice( array_map( 'strval', array_filter( (array) ( $r['blockers'] ?? array() ), 'is_scalar' ) ), 0, 8 ), 'effects' => array_slice( array_map( 'strval', array_filter( (array) ( $r['effects'] ?? array() ), 'is_scalar' ) ), 0, 8 ) ) : null;
+					if ( null === $check ) {
+						$error = 'Il gestionale non risponde: riprova tra poco.';
+					}
+				}
+			}
+		}
+		list( $c, $st ) = SaasClient::orgStatus( $org, $ref );
+		View::render( 'saas_manage', array( 'title' => 'Gestisci il gestionale', 'o' => $o, 'st' => 200 === $c ? $st : null, 'flash' => $flash, 'error' => $error, 'dns' => $dns, 'check' => $check, 'plans' => $plans ) );
 	}
 
 	/** Profilo e sicurezza: password, email, secondo livello, sessioni aperte. Tutto lo fa il SaaS; qui si mostrano esiti e moduli. */

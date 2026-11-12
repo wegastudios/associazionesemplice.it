@@ -46,6 +46,7 @@ $csrf = Portale\App::csrf();
 		<?php if ( 'pending' === $g['state'] ) : ?><p class="hint">Stiamo preparando il gestionale: di solito basta qualche minuto. Ricarica la pagina tra poco.</p><?php endif; ?>
 		<div class="actions">
 			<?php if ( '' !== $g['url'] && 'pending' !== $g['state'] ) : ?><a class="btn" href="<?php echo e( $g['url'] ); ?>">Apri il gestionale</a><?php endif; ?>
+			<?php if ( Portale\SaasAccount::manageEnabled() && 'pending' !== $g['state'] ) : ?><a class="btn alt" href="/account/gestionale/<?php echo e( $g['id'] ); ?>">Gestisci</a><?php endif; ?>
 			<?php if ( 'stripe' === $g['provider'] && $g['provider_customer'] ) : ?>
 			<form method="post" action="/account/gestionale-fatturazione"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="id" value="<?php echo e( $g['id'] ); ?>"><button class="btn alt" type="submit">Fatture e metodo di pagamento</button></form>
 			<?php endif; ?>
