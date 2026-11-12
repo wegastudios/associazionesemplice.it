@@ -10,8 +10,16 @@ final class Switches {
 
 	/** chiave => [percorso in Config, nome, spiegazione]. */
 	const ALL = array(
-		'saas_v2'        => array( 'saas_v2.enabled', 'Pagina «Gestisci» del gestionale', 'Nell\'area clienti, accanto a «Apri il gestionale»: stato (soci, operatori, spazio) e controllo «ci sto dentro?» prima di cambiare piano. Se spegni, il pulsante sparisce.' ),
-		'saas_v2_domain' => array( 'saas_v2.domain', 'Indirizzo personalizzato del gestionale', 'Il cliente può usare il suo dominio (delega dei nameserver, certificato con AutoSSL). Accendi solo quando il passo sul server è pronto: serve «Pagina Gestisci» accesa.' ),
+		'saas_v2'        => array(
+			'saas_v2.enabled', 'Pagina «Gestisci» per i clienti del gestionale',
+			'Se è acceso, chi ha comprato il gestionale vede nel suo account il pulsante «Gestisci»: lì controlla lo stato dell\'abbonamento (soci, operatori, spazio usato) e può verificare in anticipo se un cambio di piano è possibile. Se è spento, il pulsante non c\'è e i clienti usano solo «Apri il gestionale».',
+			'Esiste perché la pagina dipende dal collegamento con il gestionale: si accende quando quel collegamento funziona, e si spegne subito se dà problemi.',
+		),
+		'saas_v2_domain' => array(
+			'saas_v2.domain', 'Indirizzo personalizzato per i clienti del gestionale',
+			'Se è acceso, nella pagina «Gestisci» il cliente può chiedere che il gestionale risponda al suo indirizzo (per esempio www.tuaassociazione.it) invece che a quello nostro. Se è spento, la richiesta non compare e i clienti usano l\'indirizzo che diamo noi.',
+			'Va acceso solo quando sul server è pronto il modo di avere i certificati di sicurezza per i domini dei clienti. Funziona soltanto se anche l\'interruttore qui sopra è acceso.',
+		),
 	);
 
 	/** Applica al Config i valori salvati. Da chiamare dopo la connessione al database. */
