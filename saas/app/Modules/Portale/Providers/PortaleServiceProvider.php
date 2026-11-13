@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Portale\Providers;
 
 use App\Modules\Portale\Console\ImportPortalDbCommand;
-use App\Modules\Portale\Console\SendUsageCommand;
 use App\Modules\Portale\Console\PurgeExpiredCommand;
+use App\Modules\Portale\Console\SendUsageCommand;
 use App\Modules\Portale\Console\SuspendExpiredCommand;
 use App\Modules\Portale\Console\VerifyDomainsCommand;
 use App\Modules\Portale\Contracts\Entitlements;
