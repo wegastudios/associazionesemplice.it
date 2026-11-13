@@ -14,6 +14,7 @@ defineProps({ member: Object, payment: Object });
                 <template v-else-if="payment.status === 'pending'">Pagamento in attesa di conferma</template>
                 <template v-else>Pagamento non riuscito</template>
             </h1>
+            <p v-if="payment.status === 'failed'" class="mt-2 text-sm text-muted">Non ti è stato addebitato nulla. Puoi riprovare o pagare in segreteria.</p>
             <p class="mt-2 text-2xl font-bold tabular-nums">{{ payment.amount }}</p>
             <ul class="mt-3 text-sm text-muted"><li v-for="i in payment.items" :key="i">{{ i }}</li></ul>
             <p v-if="payment.receipts.length" class="mt-3 text-sm">Ricevute n. {{ payment.receipts.join(', ') }}: le trovi in «Quote e ricevute».</p>

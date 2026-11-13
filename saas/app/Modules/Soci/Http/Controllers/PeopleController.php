@@ -53,6 +53,14 @@ final readonly class PeopleController
         if (MemberType::tryFrom($type) !== null) {
             $query->where('type', $type);
         }
+        $status = $request->string('stato')->toString();
+        if ($status === 'in_regola') {
+            $query->whereIn('id', $this->memberships->activeIds());
+        } elseif ($status === 'da_rinnovare') {
+            $query->whereNull('left_on')->whereIn('type', ['ordinary', 'volunteer'])->whereNotIn('id', $this->memberships->activeIds());
+        } elseif ($status === 'usciti') {
+            $query->whereNotNull('left_on');
+        }
         $page = $query->cursorPaginate(50, ['id', 'first_name', 'last_name', 'email', 'card_number', 'type', 'left_on'])->withQueryString();
         $year = $this->memberships->socialYear();
         $active = $this->memberships->activeAmong(array_values(array_map(static fn (Person $p): string => $p->id, $page->items())));
@@ -60,6 +68,7 @@ final readonly class PeopleController
         return Inertia::render('Soci/Elenco', [
             'q' => $q,
             'type' => $type,
+            'status' => $status,
             'types' => self::types(),
             'year' => $year->label(),
             'rows' => collect($page->items())->map(fn (Person $p): array => [

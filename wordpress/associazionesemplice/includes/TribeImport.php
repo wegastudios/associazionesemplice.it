@@ -158,7 +158,7 @@ final class TribeImport {
 				'post_id'  => $id,
 				'title'    => (string) $post->post_title,
 				'date'     => substr( (string) self::event_meta( $id )['_EventStartDate'], 0, 10 ),
-				'imported' => (int) get_post_meta( $id, self::META_DONE, true ),
+				'imported' => self::live_activity( $id ),
 				'cats'     => self::cats_of( $id ),
 			);
 		}
@@ -171,11 +171,29 @@ final class TribeImport {
 		return $out;
 	}
 
+	/**
+	 * Ricontrollo: l'attività collegata a un evento già importato esiste ancora? Se è stata eliminata a mano il segno non vale più: si toglie
+	 * e l'evento torna importabile. Elenco «già importati», riepilogo e importazione passano tutti da qui, così i numeri tornano.
+	 *
+	 * @return int id dell'attività ancora esistente, 0 se l'evento non è importato (o la sua attività non c'è più)
+	 */
+	private static function live_activity( int $pid ): int {
+		$aid = (int) get_post_meta( $pid, self::META_DONE, true );
+		if ( ! $aid ) {
+			return 0;
+		}
+		if ( Plugin::activities()->get( $aid ) ) {
+			return $aid;
+		}
+		delete_post_meta( $pid, self::META_DONE );
+		return 0;
+	}
+
 	/** @return array[] gli eventi ancora da importare (mai importati, o la cui attività non c'è più) */
 	private static function todo(): array {
 		$out = array();
 		foreach ( self::found() as $f ) {
-			if ( $f['imported'] && Plugin::activities()->get( (int) $f['imported'] ) ) {
+			if ( $f['imported'] ) {
 				continue;
 			}
 			$out[] = $f;
@@ -298,7 +316,7 @@ final class TribeImport {
 		$out = array( 'events' => array(), 'courses' => array(), 'done' => array(), 'failed' => array() );
 		foreach ( self::found() as $f ) {
 			$pid = (int) $f['post_id'];
-			if ( $f['imported'] && Plugin::activities()->get( (int) $f['imported'] ) ) {
+			if ( $f['imported'] ) {
 				$out['done'][] = array( 'pid' => $pid, 'aid' => (int) $f['imported'] );
 				continue;
 			}
@@ -412,7 +430,7 @@ final class TribeImport {
 			array_filter(
 				$rows,
 				function ( $r ) {
-					return ! get_post_meta( (int) $r['pid'], self::META_DONE, true );
+					return ! self::live_activity( (int) $r['pid'] );
 				}
 			)
 		);

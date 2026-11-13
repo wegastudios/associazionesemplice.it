@@ -44,7 +44,40 @@ $resources = static fn (string $code, string $name, string $kind, int $first, ar
     'prices' => [['period' => 'month', 'kind' => 'step_tiers', 'vat_percent' => 22, 'steps' => $steps]],
 ];
 
-return [
+// Un piano a prezzo fisso per fasce di soci (decisione del 13/11/2026). I pacchetti inclusi stanno in `limits.packages`;
+// `$extra` sono le caratteristiche che cambiano da un piano all'altro.
+$tier = static fn (string $code, int $order, string $name, string $audience, int $members, int $monthlyCents, int $operators, string $operatorsText, array $extra, array $packages): array => [
+    'code' => $code,
+    'plan_version' => 1,
+    'name' => $name,
+    'audience' => $audience,
+    'order' => $order,
+    'visible' => true,
+    'support_level' => 'paid',
+    'trial_days' => 30,
+    'features' => $extra + [
+        'members' => ['state' => 'limit', 'text' => "Fino a {$members} soci"],
+        'ledger' => ['state' => 'included'],
+        'activities' => ['state' => 'included'],
+        'operators' => ['state' => 'limit', 'text' => $operatorsText],
+        'storage' => ['state' => 'limit', 'text' => '5 MB per socio, almeno 250 MB'],
+        'resources' => ['state' => 'excluded'],
+        'site' => ['state' => 'excluded'],
+        'advanced_accounting' => ['state' => 'excluded'],
+        'fiscal' => ['state' => 'limit', 'text' => 'In arrivo'],
+        'sport' => ['state' => 'excluded'],
+    ],
+    'limits' => [
+        'members' => $members,
+        'operators' => $operators,
+        'storage_mb_per_member' => 5,
+        'storage_mb_min' => 250,
+        'packages' => $packages,
+    ],
+    'prices' => $flat($monthlyCents),
+];
+
+$catalog = [
     'name' => 'Associazione Semplice · Gestionale',
     'description' => 'Il gestionale per associazioni, circoli e società sportive: soci, prima nota, attività e area soci.',
     'rev' => 2,
@@ -63,7 +96,7 @@ return [
         ['id' => 'einvoice', 'text' => 'Fattura elettronica', 'group' => 'Pacchetti', 'compare' => 'einvoice'],
         ['id' => 'communications', 'text' => 'Comunicazioni', 'group' => 'Pacchetti'],
         ['id' => 'advanced_accounting', 'text' => 'Contabilità avanzata', 'group' => 'Pacchetti'],
-        ['id' => 'fiscal', 'text' => 'Parte fiscale: IVA e corrispettivi, regime L.398, 5 per mille, rendiconto per cassa', 'group' => 'Pacchetti', 'compare' => 'fiscal'],
+        ['id' => 'fiscal', 'text' => 'Parte fiscale: IVA e corrispettivi, regime L.398, 5 per mille', 'group' => 'Pacchetti', 'compare' => 'fiscal'],
         ['id' => 'association_life', 'text' => 'Vita associativa', 'group' => 'Pacchetti'],
         ['id' => 'sport', 'text' => 'Sport', 'group' => 'Pacchetti'],
     ],
@@ -75,7 +108,7 @@ return [
             'name' => 'Gestionale',
             'audience' => 'Associazioni, APS, ODV e società sportive',
             'order' => 1,
-            'visible' => true,
+            'visible' => false,
             'support_level' => 'paid',
             'trial_days' => 30,
             'features' => [
@@ -104,6 +137,24 @@ return [
             // I primi 50 soci a 15 € fissi, poi 0,18 · 0,12 · 0,06 € a socio al mese (PERIMETRO §7.2).
             'prices' => $memberTiers(1500, [['up_to' => 150, 'unit_cents' => 18], ['up_to' => 400, 'unit_cents' => 12], ['up_to' => null, 'unit_cents' => 6]]),
         ],
+        $tier('piccola', 1, 'Piccola', 'Associazioni fino a 100 soci', 100, 1900, 2, '2 operatori', [
+            'member_area' => ['state' => 'excluded'],
+            'einvoice' => ['state' => 'excluded'],
+            'communications' => ['state' => 'excluded'],
+            'association_life' => ['state' => 'excluded'],
+        ], []),
+        $tier('media', 2, 'Media', 'Associazioni fino a 300 soci', 300, 3500, 5, '5 operatori', [
+            'member_area' => ['state' => 'included'],
+            'einvoice' => ['state' => 'limit', 'text' => "50 fatture all'anno"],
+            'communications' => ['state' => 'excluded'],
+            'association_life' => ['state' => 'excluded'],
+        ], ['member_area' => [], 'einvoice' => ['yearly' => 50]]),
+        $tier('grande', 3, 'Grande', 'Associazioni fino a 1.000 soci', 1000, 5900, 1000, 'Senza limite', [
+            'member_area' => ['state' => 'included'],
+            'einvoice' => ['state' => 'limit', 'text' => "50 fatture all'anno"],
+            'communications' => ['state' => 'included'],
+            'association_life' => ['state' => 'included'],
+        ], ['member_area' => [], 'einvoice' => ['yearly' => 50], 'communications' => [], 'association_life' => []]),
     ],
 
     'addons' => [
@@ -114,15 +165,15 @@ return [
             'code' => 'member_area',
             'name' => 'Area soci e pagamenti',
             'kind' => 'package',
-            'visible' => true,
+            'visible' => false,
             'grants' => ['package' => 'member_area', 'limits' => []],
             'prices' => $memberTiers(500, [['up_to' => 150, 'unit_cents' => 6], ['up_to' => 400, 'unit_cents' => 4], ['up_to' => null, 'unit_cents' => 2]]),
         ],
         $package('site', 'Sito', 1900),
         $package('einvoice', "Fattura elettronica (50 fatture all'anno)", 700, ['yearly' => 50]),
-        $package('communications', 'Comunicazioni', 900),
-        $package('advanced_accounting', 'Contabilità avanzata', 1900),
-        $package('association_life', 'Vita associativa', 700),
+        array_replace($package('communications', 'Comunicazioni', 900), ['visible' => false]),
+        array_replace($package('advanced_accounting', 'Contabilità avanzata', 1900), ['visible' => false]),
+        array_replace($package('association_life', 'Vita associativa', 700), ['visible' => false]),
         $package('sport', 'Sport', 1200),
         // Versione Web; la Interna costa il 50% (da aggiungere come addon a parte quando serve venderla).
         $resources('resources_hourly_web', 'Risorse orarie, Web', 'hourly', 2, [
@@ -141,3 +192,7 @@ return [
 
     'promos' => [],
 ];
+
+// Il piano a scaglioni resta per le versioni già vendute; non è più in vendita (il nuovo listino è dei tre piani sopra).
+
+return $catalog;

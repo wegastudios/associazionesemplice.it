@@ -136,6 +136,12 @@ summary,
     .btn-sm {
         @apply min-h-9 rounded-lg px-3 py-1.5 text-sm;
     }
+    /* Sul telefono i pulsanti piccoli restano comunque da 44 px (bersaglio da toccare). */
+    @media (pointer: coarse) {
+        .btn-sm {
+            @apply min-h-11;
+        }
+    }
     .btn-block {
         @apply w-full;
     }

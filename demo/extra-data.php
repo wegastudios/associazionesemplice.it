@@ -74,8 +74,9 @@ extra_step( 'soci', function () use ( $people, $ledger, $cur, $prev, $y, &$ids )
 		array( 'Camilla', 'Sala', 'ordinary', 'Ciampino', 'none' ), array( 'Nicola', 'De Luca', 'ordinary', 'Roma', 'suspended' ),
 		array( 'Monica', 'Valentini', 'ordinary', 'Roma', 'suspended' ),
 	);
-	$acc = $ledger->default_account_for( 'cash' );
-	$cat = $ledger->category_id_of_kind( 'membership' );
+	$acc  = $ledger->default_account_for( 'cash' );
+	$bank = $ledger->default_account_for( 'bank' ) ?: $acc;
+	$cat  = $ledger->category_id_of_kind( 'membership' );
 	$day = 85;
 	$existing = array();
 	foreach ( $people->search() as $p ) {
@@ -94,7 +95,7 @@ extra_step( 'soci', function () use ( $people, $ledger, $cur, $prev, $y, &$ids )
 		$ids[ $r[0] . ' ' . $r[1] ] = $id;
 		if ( 'paid' === $r[4] && $acc && $cat ) {
 			$ledger->record_receipt( array(
-				'date' => gmdate( 'Y-m-d', time() - ( $day -= 6 ) * 86400 ), 'account_id' => (int) $acc['id'], 'method' => 0 === $i % 2 ? 'cash' : 'bank_transfer', 'person_id' => $id,
+				'date' => gmdate( 'Y-m-d', time() - ( $day -= 6 ) * 86400 ), 'account_id' => (int) ( 0 === $i % 2 ? $acc['id'] : $bank['id'] ), 'method' => 0 === $i % 2 ? 'cash' : 'bank_transfer', 'person_id' => $id,
 				'lines' => array( array( 'category_id' => $cat, 'amount_cents' => 2000, 'description' => 'Quota associativa' ) ),
 			) );
 		} elseif ( 'expired' === $r[4] || 'suspended' === $r[4] ) {
@@ -119,20 +120,48 @@ extra_step( 'ospiti', function () use ( $people, $by_name ) {
 
 // 3. Più prima nota: donazioni, spese e un incasso
 extra_step( 'prima nota', function () use ( $ledger ) {
-	$acc  = $ledger->default_account_for( 'cash' );
-	$don  = $ledger->category_id_of_kind( 'donation' );
-	$cost = $ledger->category_id_of_kind( 'general_cost' );
-	if ( ! $acc ) {
+	$cash = $ledger->default_account_for( 'cash' );
+	$bank = $ledger->default_account_for( 'bank' ) ?: $cash;
+	if ( ! $cash ) {
 		return;
 	}
-	foreach ( array( array( 70, 7500, 'Erogazione liberale di un socio' ), array( 41, 2500, 'Offerta al banchetto' ), array( 3, 4000, 'Offerta alla serata di giochi' ) ) as $d ) {
-		if ( $don ) {
-			$ledger->record_receipt( array( 'date' => gmdate( 'Y-m-d', time() - $d[0] * 86400 ), 'account_id' => (int) $acc['id'], 'method' => 'cash', 'lines' => array( array( 'category_id' => $don, 'amount_cents' => $d[1], 'description' => $d[2] ) ) ) );
+	// Come in un'associazione vera: entrate di quattro tipi e spese in tre categorie, con i pagamenti importanti dalla banca.
+	// Quadro dei contanti (cassa): entrano 360 € e ne escono 102 €, quindi la cassa non va mai sotto zero.
+	// giorni fa, importo in centesimi, descrizione, tipo di entrata, conto
+	$income = array(
+		array( 70, 7500, 'Erogazione liberale di un socio', 'donation', 'bank' ),
+		array( 41, 2500, 'Offerta al banchetto', 'donation', 'cash' ),
+		array( 3, 4000, 'Offerta alla serata di giochi', 'donation', 'cash' ),
+		array( 45, 9000, 'Quote del corso di fotografia', 'activity_fee', 'cash' ),
+		array( 18, 8500, 'Incasso del mercatino di autunno', 'other_income', 'cash' ),
+	);
+	foreach ( $income as $d ) {
+		$cat = $ledger->category_id_of_kind( $d[3] );
+		$acc = 'bank' === $d[4] ? $bank : $cash;
+		if ( $cat ) {
+			$ledger->record_receipt( array( 'date' => gmdate( 'Y-m-d', time() - $d[0] * 86400 ), 'account_id' => (int) $acc['id'], 'method' => 'bank' === $d[4] ? 'bank_transfer' : 'cash', 'lines' => array( array( 'category_id' => $cat, 'amount_cents' => $d[1], 'description' => $d[2] ) ) ) );
 		}
 	}
-	foreach ( array( array( 80, 18000, 'Affitto sala per l\'assemblea' ), array( 64, 5400, 'Stampa dei volantini' ), array( 52, 2200, 'Bollette del mese' ), array( 33, 7600, 'Compenso per il corso di fotografia' ), array( 27, 1900, 'Materiale per la gita' ), array( 11, 4300, 'Riparazione dell\'impianto audio' ), array( 2, 2900, 'Acqua e bibite per la serata' ) ) as $s ) {
-		if ( $cost ) {
-			$ledger->record_expense( array( 'date' => gmdate( 'Y-m-d', time() - $s[0] * 86400 ), 'account_id' => (int) $acc['id'], 'method' => 'cash', 'category_id' => $cost, 'amount_cents' => $s[1], 'description' => $s[2] ) );
+	$costs = array(
+		array( 80, 18000, 'Affitto sala per l\'assemblea', 'general_cost', 'bank' ),
+		array( 64, 5400, 'Stampa dei volantini', 'general_cost', 'cash' ),
+		array( 52, 2200, 'Bollette del mese', 'general_cost', 'bank' ),
+		array( 33, 7600, 'Compenso per il corso di fotografia', 'activity_cost', 'bank' ),
+		array( 27, 1900, 'Materiale per la gita', 'activity_cost', 'cash' ),
+		array( 11, 4300, 'Riparazione dell\'impianto audio', 'general_cost', 'bank' ),
+		array( 2, 2900, 'Acqua e bibite per la serata', 'activity_cost', 'cash' ),
+	);
+	foreach ( $costs as $s ) {
+		$cat = $ledger->category_id_of_kind( $s[3] );
+		$acc = 'bank' === $s[4] ? $bank : $cash;
+		if ( $cat ) {
+			$ledger->record_expense( array( 'date' => gmdate( 'Y-m-d', time() - $s[0] * 86400 ), 'account_id' => (int) $acc['id'], 'method' => 'bank' === $s[4] ? 'bank_transfer' : 'cash', 'category_id' => $cat, 'amount_cents' => $s[1], 'description' => $s[2] ) );
+		}
+	}
+	// Controllo: nessun conto in negativo (altrimenti la demo mostrerebbe una cassa con meno di zero)
+	foreach ( $ledger->balances() as $b ) {
+		if ( (int) $b['balance'] < 0 ) {
+			WP_CLI::warning( 'Il conto «' . $b['name'] . '» è andato sotto zero: riallinea gli importi dei dati di esempio.' );
 		}
 	}
 } );

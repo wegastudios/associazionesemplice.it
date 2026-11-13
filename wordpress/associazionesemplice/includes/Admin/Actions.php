@@ -791,17 +791,17 @@ final class Actions {
 
 	private static function create_year( array $p ): array {
 		\AssociazioneSemplice\FiscalYears::create( (int) ( $p['year'] ?? 0 ) );
-		return array( Ui::url( 'asem-years' ), 'Anno solare creato.' );
+		return array( Ui::url( 'asem-years' ), 'Esercizio creato.' );
 	}
 
 	private static function close_year( array $p ): array {
 		\AssociazioneSemplice\FiscalYears::close( (int) ( $p['year'] ?? 0 ), ! empty( $p['confirm_gaps'] ) );
-		return array( Ui::url( 'asem-years' ), 'Anno solare chiuso: non accetta più incassi né spese.' );
+		return array( Ui::url( 'asem-years' ), 'Esercizio chiuso: non accetta più incassi né spese.' );
 	}
 
 	private static function reopen_year( array $p ): array {
 		\AssociazioneSemplice\FiscalYears::reopen( (int) ( $p['year'] ?? 0 ) );
-		return array( Ui::url( 'asem-years' ), 'Anno solare riaperto.' );
+		return array( Ui::url( 'asem-years' ), 'Esercizio riaperto.' );
 	}
 
 	private static function book( array $p ): array {

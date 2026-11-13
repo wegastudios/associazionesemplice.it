@@ -72,7 +72,7 @@ final class PeoplePage {
 			Ui::form_close();
 		}
 		echo '<p class="description">' . count( $rows ) . ' persone.</p>';
-		echo wp_kses( '<table class="widefat striped asem-cards"><thead><tr>' . self::sort_th( 'Tessera', 'card', $by, $dir, $keep ) . self::sort_th( 'Nome', 'name', $by, $dir, $keep ) . self::sort_th( 'Tipo', 'type', $by, $dir, $keep ) . '<th>Contatti</th><th>Stato</th><th></th></tr></thead><tbody>', Html::allowed() );
+		echo wp_kses( '<table class="widefat striped asem-cards asem-more"><thead><tr>' . self::sort_th( 'Tessera', 'card', $by, $dir, $keep ) . self::sort_th( 'Nome', 'name', $by, $dir, $keep ) . self::sort_th( 'Tipo', 'type', $by, $dir, $keep ) . '<th>Contatti</th><th>Stato</th><th></th></tr></thead><tbody>', Html::allowed() );
 		if ( ! $rows ) {
 			echo '<tr><td colspan="6">Nessuna persona trovata.</td></tr>';
 		}

@@ -102,6 +102,21 @@
 	.asem .asem-tabs{position:relative;display:flex;flex-wrap:nowrap;gap:.35rem;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:8px 0 12px}
 	.asem .asem-tabs::-webkit-scrollbar{display:none}
 	.asem .asem-tabs .nav-tab{flex:none;float:none;margin:0;white-space:nowrap;min-height:44px;display:inline-flex;align-items:center}
+	/* un segno (freccia con sfumatura) quando ci sono altre schede di lato; la classe la mette admin.js, e non cambia la larghezza della riga */
+	.asem .asem-tabs.asem-tabs-r::after,.asem .asem-tabs.asem-tabs-l::before{content:"›";content:"›" / "";position:sticky;flex:none;align-self:stretch;display:flex;align-items:center;justify-content:center;width:32px;font-size:26px;line-height:1;color:var(--asem-accent,#2271b1);pointer-events:none;z-index:1}
+	.asem .asem-tabs.asem-tabs-r::after{right:0;margin-left:-32px;background:linear-gradient(to right,rgba(240,240,241,0),#f0f0f1 65%)}
+	.asem .asem-tabs.asem-tabs-l::before{content:"‹";content:"‹" / "";left:0;margin-right:-32px;background:linear-gradient(to left,rgba(240,240,241,0),#f0f0f1 65%)}
+}
+
+/* Telefono: avvisi raccolti, elenchi a blocchi («Mostra altri») */
+.asem details.asem-alerts{margin:16px 0}
+.asem.asem-ui details.asem-alerts>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;padding:0 12px;background:var(--asem-warn-soft,#fcf9e8);border:1px solid var(--asem-warn-ink,#996800);border-radius:8px;list-style:revert}
+.asem.asem-ui details.asem-alerts[open]>summary{margin-bottom:8px}
+.asem details.asem-alerts>.notice{margin:0 0 8px}
+.asem .asem-more [hidden]{display:none!important}
+@media (max-width:782px){
+	.asem .asem-more-btn{margin:.5rem 0 1rem}
+	.asem .asem-more-btn .button{width:100%;min-height:44px}
 }
 
 /* Calendario delle date di un evento (mese o settimana) */

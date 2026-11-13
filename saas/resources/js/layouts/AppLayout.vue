@@ -72,7 +72,7 @@ const showAccount = ref(false);
 <template>
     <div class="min-h-full pt-14 lg:pl-64">
         <!-- Barra comune a portale, supporto e gestionale (docs/GRAFICA_UX.md §2): logo, nome del posto, Il mio account. -->
-        <div class="fixed inset-x-0 top-0 z-40 h-14 border-b border-line bg-card">
+        <div class="print:hidden fixed inset-x-0 top-0 z-40 h-14 border-b border-line bg-card">
             <div class="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4">
                 <a href="https://associazionesemplice.it/" class="flex shrink-0 items-center" aria-label="Associazione Semplice, vai alla home">
                     <picture>
@@ -86,7 +86,7 @@ const showAccount = ref(false);
             </div>
         </div>
         <!-- Barra laterale: da 1024 px -->
-        <aside class="fixed bottom-0 left-0 top-14 z-30 hidden w-64 flex-col border-r border-line bg-card lg:flex" aria-label="Menu del gestionale">
+        <aside class="print:hidden fixed bottom-0 left-0 top-14 z-30 hidden w-64 flex-col border-r border-line bg-card lg:flex" aria-label="Menu del gestionale">
             <div v-if="org" class="px-5 pb-3 pt-5">
                 <p class="truncate font-bold">{{ org.name }}</p>
                 <p class="caption">{{ org.role }}</p>
@@ -117,7 +117,7 @@ const showAccount = ref(false);
         </aside>
 
         <!-- Intestazione bassa: telefono e tablet -->
-        <header class="sticky top-14 z-30 border-b border-line bg-card/95 backdrop-blur lg:hidden">
+        <header class="print:hidden sticky top-14 z-30 border-b border-line bg-card/95 backdrop-blur lg:hidden">
             <div class="mx-auto flex h-14 max-w-3xl items-center gap-3 px-4">
                 <div v-if="org" class="min-w-0 flex-1">
                     <p class="truncate text-[15px] font-bold leading-5">{{ org.name }}</p>
@@ -134,7 +134,7 @@ const showAccount = ref(false);
         </main>
 
         <!-- Barra in basso: telefono e tablet -->
-        <nav class="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card pb-[env(safe-area-inset-bottom)] shadow-bar lg:hidden" aria-label="Sezioni">
+        <nav class="print:hidden fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card pb-[env(safe-area-inset-bottom)] shadow-bar lg:hidden" aria-label="Sezioni">
             <ul class="mx-auto grid max-w-3xl auto-cols-fr grid-flow-col">
                 <li v-for="t in tabs" :key="t.href">
                     <Link :href="t.href" class="flex min-h-[3.75rem] flex-col items-center justify-center gap-0.5 px-1 text-[12px] font-semibold" :class="current(t.href) ? 'text-accent' : 'text-muted'"

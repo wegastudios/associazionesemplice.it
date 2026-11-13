@@ -44,6 +44,7 @@ final class WhatsappFloat {
 			'.asem-wa-float{position:fixed;right:16px;bottom:16px;z-index:9998;display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:999px;background:#25d366;color:#fff;font:600 15px/1 system-ui,sans-serif;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.25)}'
 			. '.asem-wa-float:hover,.asem-wa-float:focus{background:#1ebe5b;color:#fff}'
 			. '@media (max-width:480px){.asem-wa-float span{display:none}.asem-wa-float{padding:14px}}'
+			. '@media (max-width:700px){body:has(.asemf-jump) .asem-wa-float{bottom:calc(76px + env(safe-area-inset-bottom,0px))}}'
 		);
 	}
 

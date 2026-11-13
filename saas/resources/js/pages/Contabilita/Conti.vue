@@ -19,11 +19,28 @@ const field = 'field';
 <template>
     <Head title="Conti" />
     <AppLayout>
-        <h1 class="mb-6 text-2xl font-bold">Conti</h1>
-        <div class="mb-8 card overflow-x-auto">
+        <h1 class="mb-1 text-2xl font-bold">Conti</h1>
+        <p class="mb-6 text-sm text-muted">Dove stanno i soldi dell’associazione: la cassa, il conto in banca, il conto PayPal. Ogni incasso e ogni spesa passa da uno di questi.</p>
+        <ul class="mb-8 space-y-3 sm:hidden">
+            <li v-for="a in accounts" :key="a.id" class="card space-y-3 p-4" :class="a.open ? '' : 'text-muted'">
+                <div class="flex items-baseline justify-between gap-3">
+                    <p class="font-semibold">{{ a.name }}<span v-if="!a.open" class="ml-2 text-xs">(chiuso)</span></p>
+                    <p class="text-lg font-bold tabular-nums">{{ a.balance }}</p>
+                </div>
+                <p class="text-sm text-muted">{{ a.type }} · saldo iniziale {{ a.opening }}</p>
+                <form v-if="canEdit" class="flex flex-wrap items-center gap-2 text-sm" @submit.prevent="saveFee(a)">
+                    <span class="w-full font-semibold">Commissione trattenuta a ogni incasso</span>
+                    <input v-model="fee(a).fee_fixed" inputmode="decimal" :class="field" class="w-24" aria-label="Quota fissa in euro" placeholder="0,00" /> € +
+                    <input v-model="fee(a).fee_percent" inputmode="decimal" :class="field" class="w-20" aria-label="Percentuale" placeholder="0" /> %
+                    <button type="submit" class="btn btn-secondary btn-sm">Salva</button>
+                </form>
+                <button v-if="canEdit" type="button" class="btn btn-ghost btn-sm" @click="toggle(a)">{{ a.open ? 'Chiudi il conto' : 'Riapri il conto' }}</button>
+            </li>
+        </ul>
+        <div class="mb-8 hidden card overflow-x-auto sm:block">
             <table class="w-full text-sm">
                 <thead class="text-left text-muted">
-                    <tr><th class="px-4 py-3">Conto</th><th class="px-4 py-3">Tipo</th><th class="px-4 py-3 text-right">Saldo iniziale</th><th class="px-4 py-3 text-right">Saldo</th><th class="px-4 py-3">Commissione di incasso</th><th class="px-4 py-3"><span class="sr-only">Azioni</span></th></tr>
+                    <tr><th class="px-4 py-3">Conto</th><th class="px-4 py-3">Tipo</th><th class="px-4 py-3 text-right">Saldo iniziale</th><th class="px-4 py-3 text-right">Saldo</th><th class="px-4 py-3">Commissione trattenuta a ogni incasso (es. POS)</th><th class="px-4 py-3"><span class="sr-only">Azioni</span></th></tr>
                 </thead>
                 <tbody>
                     <tr v-for="a in accounts" :key="a.id" class="border-t border-line" :class="a.open ? '' : 'text-muted'">

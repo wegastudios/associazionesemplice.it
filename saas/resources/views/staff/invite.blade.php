@@ -26,6 +26,7 @@
         <div class="card">
             <h1>Password impostata</h1>
             <p>Ora puoi accedere alle aree dello staff con la tua email e la password che hai scelto.</p>
+            <p><a href="{{ rtrim((string) config('saas.portal.url'), '/') }}/account">Vai all’accesso</a></p>
         </div>
     @elseif ($invite === null)
         <div class="card">

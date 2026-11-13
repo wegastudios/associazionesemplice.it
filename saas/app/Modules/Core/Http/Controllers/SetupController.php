@@ -49,14 +49,14 @@ final readonly class SetupController
             throw ValidationException::withMessages($messages);
         }
 
-        return redirect()->route('dashboard')->with('status', 'Configurazione salvata. Puoi riaprirla quando vuoi dal riepilogo.');
+        return redirect()->route('dashboard')->with('status', 'Configurazione salvata. Puoi riaprirla quando vuoi da Altro › Configurazione guidata.');
     }
 
     public function skip(): RedirectResponse
     {
         $this->wizard->skip();
 
-        return redirect()->route('dashboard')->with('status', 'Configurazione rimandata: la trovi nel riepilogo.');
+        return redirect()->route('dashboard')->with('status', 'Va bene, più tardi: la trovi in Altro › Configurazione guidata.');
     }
 
     private function operator(): Operator

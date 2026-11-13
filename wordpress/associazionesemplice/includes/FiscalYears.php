@@ -129,10 +129,10 @@ final class FiscalYears {
 		}
 		$row = self::get( $year );
 		if ( ! $row ) {
-			throw new \InvalidArgumentException( 'L\'anno solare ' . $year . ' non è stato creato: crealo da Contabilità › Anni solari prima di registrare movimenti in quella data.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( 'L\'esercizio ' . $year . ' non è stato creato: crealo dalla scheda «Esercizi» prima di registrare movimenti in quella data.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( 'open' !== $row['status'] ) {
-			throw new \InvalidArgumentException( 'L\'anno solare ' . $year . ' è chiuso: non accetta più incassi né spese. Riaprilo da Contabilità › Anni solari se devi correggerlo.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( 'L\'esercizio ' . $year . ' è chiuso: non accetta più incassi né spese. Riaprilo dalla scheda «Esercizi» se devi correggerlo.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 	}
 

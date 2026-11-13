@@ -111,8 +111,8 @@ const label = 'space-y-1 text-sm';
                     <PersonPicker v-else id="instructor" v-model="form.instructor_person_id" />
                 </div>
                 <label v-if="isBookable" :class="[label, 'sm:col-span-3']"><span class="font-semibold">Listini</span>
-                    <textarea v-model="form.price_lists" rows="2" :class="field" placeholder="Ingresso singolo 10,00&#10;Pacchetto 5 ingressi 40 x5" />
-                    <span class="text-muted">Facoltativi, uno per riga: nome e prezzo; per un pacchetto «x» e gli ingressi. Senza listino vale l'importo per i soci o per gli ospiti.</span>
+                    <textarea v-model="form.price_lists" rows="2" :class="field" placeholder="Ingresso singolo 10,00&#10;Carnet 5 ingressi 40 x5" />
+                    <span class="text-muted">Facoltativi, uno per riga: nome e prezzo; per un carnet «x» e gli ingressi. Senza listino vale l'importo per i soci o per gli ospiti.</span>
                     <span v-if="form.errors.price_lists" class="text-danger">{{ form.errors.price_lists }}</span></label>
                 <label :class="[label, 'sm:col-span-3']"><span class="font-semibold">Note</span><textarea v-model="form.notes" rows="2" :class="field" maxlength="2000" /></label>
             </fieldset>
@@ -128,8 +128,8 @@ const label = 'space-y-1 text-sm';
         </p>
 
         <section v-if="activity && activity.bookable && activity.packages.length" class="mt-6 card p-4 sm:p-5" aria-labelledby="packs-title">
-            <h2 id="packs-title" class="mb-1 text-lg font-bold">Pacchetti con ingressi residui</h2>
-            <p class="mb-3 text-sm text-muted">Pacchetti già pagati con ingressi ancora da usare. Per scalarne uno, prenota la persona a una data scegliendo «Un ingresso da un pacchetto già preso».</p>
+            <h2 id="packs-title" class="mb-1 text-lg font-bold">Carnet con ingressi da usare</h2>
+            <p class="mb-3 text-sm text-muted">Carnet già pagati con ingressi ancora da usare. Per scalarne uno, prenota la persona a una data scegliendo «Un ingresso dal carnet».</p>
             <ul class="divide-y divide-line text-sm">
                 <li v-for="p in activity.packages" :key="p.id" class="flex flex-wrap items-center gap-3 py-2">
                     <Link :href="`/gestionale/soci/${p.person_id}`" class="font-semibold text-accent hover:underline">{{ p.name }}</Link>

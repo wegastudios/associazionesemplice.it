@@ -53,7 +53,7 @@ const states = { created: 'avviato', pending: 'in attesa', settled: 'registrato'
             <p v-for="(e, k) in form.errors" :key="k" class="mt-2 text-sm text-danger" role="alert">{{ e }}</p>
             <div class="mt-4 flex flex-wrap items-center gap-3">
                 <button type="submit" class="btn btn-primary" :disabled="form.processing">Salva</button>
-                <span class="text-sm text-muted">Pronti per i soci: {{ s.ready.length ? s.ready.join(', ') : 'nessuno' }}. Le chiavi sono cifrate e non si rileggono.</span>
+                <span class="text-sm text-muted">Pronti per i soci: {{ s.ready.length ? s.ready.join(', ') : 'nessuno' }}. Le chiavi salvate non si possono rileggere: per cambiarle, scrivile di nuovo.</span>
             </div>
         </form>
 

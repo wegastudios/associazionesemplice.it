@@ -89,8 +89,11 @@ $asem_demo_exit = function () use ( $asem_demo_cta ): string {
 	$u = wp_get_current_user();
 	return ' Sei entrato come <strong>' . esc_html( $u->user_login ) . '</strong> · <a href="' . esc_url( wp_logout_url( home_url( '/' ) ) ) . '" style="color:inherit;font-weight:700">Esci</a>' . $asem_demo_cta;
 };
-add_action( 'admin_notices', function () use ( $asem_demo_note, $asem_demo_exit, $asem_demo_kses ) {
-	echo '<div class="notice notice-info"><p>' . wp_kses( $asem_demo_note, array( 'strong' => array() ) ) . wp_kses( $asem_demo_exit(), $asem_demo_kses ) . '</p></div>';
+// Nel pannello l'avviso è una riga sola e si può chiudere (da telefono ne occupava cinque in cima a ogni pagina); la chiusura vale finché la scheda del browser resta aperta.
+add_action( 'admin_notices', function () use ( $asem_demo_cta, $asem_demo_exit, $asem_demo_kses ) {
+	$exit = str_replace( $asem_demo_cta, '', $asem_demo_exit() ); // l'invito alla licenza gratuita sta già nella barra del sito
+	echo '<div id="asem-demo-note" class="notice notice-info is-dismissible"><p><strong>Demo pubblica</strong>: dati inventati, azzerati ogni notte.' . wp_kses( $exit, $asem_demo_kses ) . '</p></div>';
+	echo '<script>(function(){var n=document.getElementById("asem-demo-note");try{if(sessionStorage.getItem("asemDemoNote")){n.style.display="none";}}catch(e){}document.addEventListener("click",function(e){if(e.target.closest&&e.target.closest("#asem-demo-note .notice-dismiss")){try{sessionStorage.setItem("asemDemoNote","1");}catch(x){}}});})();</script>';
 } );
 add_action( 'wp_footer', function () use ( $asem_demo_note, $asem_demo_exit, $asem_demo_kses ) {
 	echo '<style>body{padding-bottom:48px}.asem-wa-float{bottom:64px!important}</style><div style="position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#1f218c;color:#fff;padding:8px 16px;font:14px/1.4 system-ui,sans-serif;text-align:center">' . wp_kses( $asem_demo_note, array( 'strong' => array() ) ) . wp_kses( $asem_demo_exit(), $asem_demo_kses ) . '</div>';

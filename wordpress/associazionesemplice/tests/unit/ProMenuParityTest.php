@@ -1,7 +1,7 @@
 <?php
 use PHPUnit\Framework\TestCase;
 
-/** (La Cassa non c'è: «Anni solari» sta lì nel gratuito e in Contabilità con il Pro.) Con il Pro il menu è quello di ProMenu: ogni scheda del menu gratuito deve esserci anche lì, altrimenti sparisce quando il Pro è attivo. */
+/** (La Cassa non c'è: «Esercizi» sta lì nel gratuito e in Contabilità con il Pro.) Con il Pro il menu è quello di ProMenu: ogni scheda del menu gratuito deve esserci anche lì, altrimenti sparisce quando il Pro è attivo. */
 final class ProMenuParityTest extends TestCase {
 
 	private function pages( string $file, string $group ): array {

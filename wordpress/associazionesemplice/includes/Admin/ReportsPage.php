@@ -90,7 +90,7 @@ final class ReportsPage {
 		$r    = Plugin::reports()->period( $from, $to );
 		self::nav( 'solar', $year, ( 1 === FiscalYears::start_month() ? 'Anno ' : 'Esercizio ' ) . FiscalYears::label( $year ) );
 		$fy = \AssociazioneSemplice\FiscalYears::get( $year );
-		echo '<p>' . ( $fy ? ( 'open' === $fy['status'] ? '<span class="asem-ok">Anno aperto</span>' : '<strong class="asem-warn">Anno chiuso</strong>' ) : '<span class="description">Anno non creato</span>' ) . ' · <a href="' . esc_url( Ui::url( 'asem-years' ) ) . '">Anni solari</a></p>';
+		echo '<p>' . ( $fy ? ( 'open' === $fy['status'] ? '<span class="asem-ok">Anno aperto</span>' : '<strong class="asem-warn">Anno chiuso</strong>' ) : '<span class="description">Anno non creato</span>' ) . ' · <a href="' . esc_url( Ui::url( 'asem-years' ) ) . '">Esercizi</a></p>';
 		echo '<p>' . Exports::link( 'period', array( 'from' => $from, 'to' => $to ), 'Esporta rendiconto (CSV)' ) . ' ' . Exports::link( 'ledger', array( 'from' => $from, 'to' => $to ), 'Esporta prima nota (CSV)' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 
 		echo '<h3>Saldi dei conti</h3><table class="widefat striped"><thead><tr><th>Conto</th><th>Iniziale</th><th>Entrate</th><th>Uscite</th><th>Giroconti</th><th>Finale</th></tr></thead><tbody>';
