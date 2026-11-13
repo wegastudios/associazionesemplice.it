@@ -111,7 +111,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: {piano_contabile}, {piano_fiscale}
 
-Le risorse a fasce orarie si prenotano dall'**area riservata**. La prenotazione è del socio che la fa.
+Le risorse a fasce orarie si prenotano dall'**area soci**. La prenotazione è del socio che la fa.
 
 ## Chi può prenotare
 

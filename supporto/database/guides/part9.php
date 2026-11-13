@@ -27,7 +27,7 @@ Tutti i soci in regola con la tessera, oppure solo gli iscritti a una certa atti
 
 ## Come votano i soci
 
-Dall'**area riservata**, nella sezione **«Votazioni e sondaggi»**. Si vota **una volta sola** e la risposta non si può cambiare. Per mostrare la sezione in una pagina del sito usa lo shortcode `[associazionesemplice_votazioni]`.
+Dall'**area soci**, nella sezione **«Votazioni e sondaggi»**. Si vota **una volta sola** e la risposta non si può cambiare. Per mostrare la sezione in una pagina del sito usa lo shortcode `[associazionesemplice_votazioni]`.
 
 ## Voto palese e voto segreto
 
@@ -127,7 +127,7 @@ L'**Archivio documenti** raccoglie in un posto solo statuto, regolamenti, verbal
 ## Chi lo vede
 
 - **Solo segreteria**: lo vede solo chi gestisce il plugin.
-- **Soci**: lo vedono i soci in regola dall'area riservata, nella sezione **«Documenti»**, oppure in una pagina con lo shortcode `[associazionesemplice_documenti_soci]`.
+- **Soci**: lo vedono i soci in regola dall'area soci, nella sezione **«Documenti»**, oppure in una pagina con lo shortcode `[associazionesemplice_documenti_soci]`.
 - **Pubblico**: lo vede chiunque, con lo shortcode `[associazionesemplice_documenti]` oppure con il blocco Associazione Semplice. Per mostrare una sola categoria usa `[associazionesemplice_documenti categoria="Moduli"]`.
 
 ## Sicurezza
@@ -143,7 +143,7 @@ I documenti sono inclusi nella [copia di sicurezza](guida:copia-di-sicurezza-e-r
 MD,
     ],
     [
-        'topic' => 'plugin-pro', 'section' => 'Registri', 'slug' => 'certificati-medici-sportivi',
+        'topic' => 'plugin-pro', 'section' => 'Registri del Pro', 'slug' => 'certificati-medici-sportivi',
         'title' => 'Tenere i certificati medici sportivi dei soci',
         'body' => <<<'MD'
 > Disponibile in: {piano_contabile}, {piano_fiscale} (aggiorna insieme gratuito e Pro)
@@ -188,7 +188,7 @@ Nelle stesse impostazioni puoi attivare **«Il socio vede nella sua area la scad
 MD,
     ],
     [
-        'topic' => 'plugin-pro', 'section' => 'Registri', 'slug' => 'affiliazioni-agli-enti',
+        'topic' => 'plugin-pro', 'section' => 'Registri del Pro', 'slug' => 'affiliazioni-agli-enti',
         'title' => 'Gestire le affiliazioni agli enti e le tessere dei soci',
         'body' => <<<'MD'
 > Disponibile in: {piano_contabile}, {piano_fiscale} (aggiorna insieme gratuito e Pro)
@@ -328,7 +328,7 @@ Le pagine con questi shortcode non finiscono nella cache di pagina, così le con
 
 ## Avvisare i soci
 
-Nella scheda della convenzione, il pulsante **«Avvisa i soci della nuova convenzione»** manda un'email a tutti i soci a cui spetta (tessera valida e tipo previsto) con il vantaggio e il rimando all'area riservata. Prima dell'invio la pagina dice quanti soci hanno un indirizzo email.
+Nella scheda della convenzione, il pulsante **«Avvisa i soci della nuova convenzione»** manda un'email a tutti i soci a cui spetta (tessera valida e tipo previsto) con il vantaggio e il rimando all'area soci. Prima dell'invio la pagina dice quanti soci hanno un indirizzo email.
 
 - Funziona solo se la convenzione è **in corso** e ogni socio riceve l'email **una volta sola**.
 - Non dipende dall'interruttore «Promemoria attivi» di Impostazioni → Privacy e regolamento.

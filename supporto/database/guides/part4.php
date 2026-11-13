@@ -22,7 +22,7 @@ Ogni versamento (quota, mensilità, contributo di un evento, donazione) entra ne
 ## Scorciatoie
 
 - Dalla **Bacheca**, il pulsante **Incassa** apre l'incasso già compilato con le mensilità dovute e i contributi non ancora pagati.
-- Se il tuo tesoriere lavora da telefono, può incassare dalla pagina **Tesoriere** dell'area riservata.
+- Se il tuo tesoriere lavora da telefono, può incassare dalla pagina **Tesoriere** dell'area soci.
 
 ## Se hai sbagliato
 
@@ -145,7 +145,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: {piano_contabile}, {piano_fiscale}
 
-I soci pagano quote, mensilità e contributi direttamente dall'area riservata. I dati della carta **non passano mai dal tuo sito**: il socio paga su una pagina ospitata da Stripe o da PayPal.
+I soci pagano quote, mensilità e contributi direttamente dall'area soci. I dati della carta **non passano mai dal tuo sito**: il socio paga su una pagina ospitata da Stripe o da PayPal.
 
 ## Prima di iniziare
 
@@ -192,7 +192,7 @@ Un account **SumUp** dell'associazione, con il **codice commerciante** e la **ch
 
 ## Come funziona
 
-1. Il socio sceglie SumUp dall'area riservata e paga sulla pagina di SumUp.
+1. Il socio sceglie SumUp dall'area soci e paga sulla pagina di SumUp.
 2. **Non serve nessun webhook**: la conferma arriva quando il socio torna sul sito e il plugin la ricontrolla anche **ogni ora**.
 3. L'incasso entra in prima nota sul conto **«SumUp»**, creato in automatico.
 

@@ -151,7 +151,7 @@ Nella pagina dell'evento trovi il **Calendario dell'evento**. Lo vedi per **Mese
 
 ## Chi lo gestisce
 
-Nella scheda c'è **Gestori dell'evento**: i soci o volontari indicati possono, dall'area riservata, vedere i prenotati e registrare gli ingressi solo per quell'evento (vedi [Registrare gli ingressi a un evento](guida:registrare-gli-ingressi)).
+Nella scheda c'è **Gestori dell'evento**: i soci o volontari indicati possono, dall'area soci, vedere i prenotati e registrare gli ingressi solo per quell'evento (vedi [Registrare gli ingressi a un evento](guida:registrare-gli-ingressi)).
 
 ## Cancellare un evento
 
@@ -331,7 +331,7 @@ Un listino con un solo ingresso è una prenotazione normale; un listino con più
 ## Prenotare con un listino
 
 - **Dall'amministrazione**: in **Cassa → Prenota** (o dalla scheda dell'evento) scegli la persona e il listino.
-- **Dall'area riservata**: il socio vede e sceglie solo il listino, senza altre opzioni.
+- **Dall'area soci**: il socio vede e sceglie solo il listino, senza altre opzioni.
 
 ## Come funzionano i pacchetti
 
@@ -363,7 +363,7 @@ Chi gestisce un evento può registrare chi entra direttamente dal telefono, senz
 
 ## Il giorno dell'evento
 
-1. Apri la pagina **Ingressi** dall'area riservata e scegli la data.
+1. Apri la pagina **Ingressi** dall'area soci e scegli la data.
 2. Vedi la **lista dei prenotati** con tipo (socio o ospite), contributo (versato, da versare, gratuito), ora di ingresso e i contatori. Email e telefoni non compaiono.
 3. Premi **Registra ingresso** accanto alla persona. Puoi annullare la registrazione.
 4. Con il QR: premi **Scansiona** (nei browser che leggono i QR) oppure usa la fotocamera del telefono, che apre la pagina del biglietto, e lì **Registra ingresso**.
@@ -397,7 +397,7 @@ Chi tiene un'attività (referente), chi gestisce un evento e gli amministratori 
 ## Chi lo riceve e come
 
 - Arriva **per email a ciascun iscritto**, singolarmente: nessuno vede gli indirizzi degli altri.
-- Resta anche nella **bacheca «Avvisi»** dell'area riservata per 45 giorni.
+- Resta anche nella **bacheca «Avvisi»** dell'area soci per 45 giorni.
 - Gli ospiti senza email ricevono l'avviso tramite il socio che li ospita.
 
 ## Limiti
