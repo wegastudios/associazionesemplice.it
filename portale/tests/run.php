@@ -464,6 +464,19 @@ check( 'cookie: categoria sconosciuta ripiega su «statistiche»', 'analytics' =
 Portale\Settings::saveTracking( $db, array() );
 Portale\Settings::load( $db );
 
+// --- Demo del gestionale: nessun collegamento finché l'indirizzo non è in config -------------------------------------------------------
+$sdBefore = array( Config::get( 'saas_demo_url', '' ), Config::get( 'saas_demo_password', '' ) );
+Config::set( 'saas_demo_url', '' );
+check( 'demo gestionale: senza indirizzo nessun accesso e nessun collegamento', '' === Portale\SaasDemo::url() && array() === Portale\SaasDemo::accounts() );
+Config::set( 'saas_demo_url', 'http://non-https.example/' );
+check( 'demo gestionale: indirizzo non https ignorato', '' === Portale\SaasDemo::url() );
+Config::set( 'saas_demo_url', 'https://demosaas.associazionesemplice.it/' );
+Config::set( 'saas_demo_password', 'Prova123' );
+$sa = Portale\SaasDemo::accounts();
+check( 'demo gestionale: cinque ruoli con email ruolo@dominio e password della configurazione', 5 === count( $sa ) && 'titolare@demosaas.associazionesemplice.it' === $sa[0]['user'] && 'commercialista@demosaas.associazionesemplice.it' === $sa[4]['user'] && 'Prova123' === $sa[0]['password'] && 'https://demosaas.associazionesemplice.it' === Portale\SaasDemo::url() );
+Config::set( 'saas_demo_url', $sdBefore[0] );
+Config::set( 'saas_demo_password', $sdBefore[1] );
+
 // --- Pagine legali -----------------------------------------------------------------------------------------------------------------------
 Portale\Settings::saveLegal( $db, array( 'titolare' => 'Associazione <b>Prova</b>', 'email' => 'privacy@esempio.it', 'privacy_body' => "## Titolo\n\nUn <script>alert(1)</script> **forte** per {titolare}\n\n- uno\n- due" ) );
 Portale\Settings::load( $db );

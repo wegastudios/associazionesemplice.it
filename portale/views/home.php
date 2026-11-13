@@ -8,7 +8,7 @@
 			<a class="btn big" href="/wordpress">Hai già un sito WordPress? Plugin</a>
 			<a class="btn alt big" href="/saas">Non hai un sito? Gestionale online</a>
 		</div>
-		<p class="fine"><a href="/prova">Prova la demo del plugin</a> · <a href="/free">Inizia gratis con il plugin</a></p>
+		<p class="fine"><a href="/prova">Prova la demo del plugin</a> · <?php if ( '' !== Portale\SaasDemo::url() ) : ?><a href="/prova#gestionale">Prova la demo del gestionale</a> · <?php endif; ?><a href="/free">Inizia gratis con il plugin</a></p>
 		<ul class="ticks"><li>Plugin gratuito per cominciare</li><li>In italiano, con le regole del Terzo Settore</li><li>I dati restano tuoi</li></ul>
 	</div>
 	<div class="mock" aria-hidden="true">
