@@ -40,6 +40,18 @@
             <p class="muted small">Sconto: vale sul primo pagamento, dal giorno in cui la prova finisce fino al giorno in cui i dati vengono cancellati. Scrivi 0 per non proporre sconti (le email partono senza il paragrafo dell'offerta). Durante la prova si usa tutto il gestionale. Le voci senza spunta si sbloccano quando l'associazione sceglie un piano. La durata della prova si imposta in ogni piano.</p>
         </fieldset>
 
+        <fieldset class="card">
+            <legend>Limite di soci del piano</legend>
+            <div class="grid">
+                <div><label for="warn_percent">Primo avviso quando i soci arrivano al (% del limite)</label><input id="warn_percent" name="warn_percent" value="{{ $t['warn_percent'] }}" inputmode="numeric"></div>
+                <div><label for="full_percent">Secondo avviso quando arrivano al (% del limite)</label><input id="full_percent" name="full_percent" value="{{ $t['full_percent'] }}" inputmode="numeric"></div>
+                <div><label for="tolerance_percent">Si può superare il limite fino a (%)</label><input id="tolerance_percent" name="tolerance_percent" value="{{ $t['tolerance_percent'] }}" inputmode="numeric"></div>
+                <div><label for="tolerance_days">per quanti giorni</label><input id="tolerance_days" name="tolerance_days" value="{{ $t['tolerance_days'] }}" inputmode="numeric"></div>
+                <div><label for="guests_free_percent">Ospiti dell'anno che non contano (% del limite)</label><input id="guests_free_percent" name="guests_free_percent" value="{{ $t['guests_free_percent'] }}" inputmode="numeric"></div>
+            </div>
+            <p class="muted small">Passato il tempo di tolleranza si bloccano i nuovi soci, non l'accesso né i dati: l'associazione cambia piano o, sulla Grande, compra un pacchetto di soci. Contano i soci e gli ex soci; gli ospiti degli anni passati no; gli ospiti dell'anno in corso contano solo oltre la quota che non conta. Scrivi 0 nella tolleranza per bloccare subito al limite.</p>
+        </fieldset>
+
         @if ($canWrite)
             <button class="primary" type="submit">Controlla e salva nella bozza</button>
         @else

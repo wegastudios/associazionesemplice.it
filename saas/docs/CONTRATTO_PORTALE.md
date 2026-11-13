@@ -152,6 +152,15 @@ Il portale lo legge dal catalogo come il resto e **applica** le regole, non le r
 | `terms.trial.accountant_access` | bool (partenza `false`) | Con `false` durante la prova non si può collegare un commercialista. |
 | `terms.trial.end_discount_percent` | intero 0–100 (partenza 0) | Sconto proposto nelle email di fine prova a chi non ha ancora scelto un piano. Con 0 non si propone nulla. Lo imposta la titolare. |
 | `terms.trial.purge_days` | intero 1–90 (partenza 7) | Giorni dopo la fine della prova (senza piano) dopo i quali i dati della prova si cancellano; prima partono le email di avviso. |
+| `terms.members.warn_percent` | intero 1–100 (partenza 80) | Il SaaS avvisa il titolare quando i soci arrivano a questa percentuale del limite del piano (limite = soci del piano + pacchetti di soci). |
+| `terms.members.full_percent` | intero 1–100, non sotto `warn_percent` (partenza 100) | Secondo avviso, con la data in cui scade la tolleranza. |
+| `terms.members.tolerance_percent` | intero 0–50 (partenza 10) | Si può superare il limite fino a questa percentuale. |
+| `terms.members.tolerance_days` | intero 0–90 (partenza 15) | Per quanti giorni dal superamento; poi si bloccano i **nuovi** soci (non l'accesso né i dati) finché non si cambia piano o, sulla Grande, non si compra un pacchetto. |
+| `terms.members.guests_free_percent` | intero 0–100 (partenza 20, da confermare) | Quota degli ospiti dell'anno in corso che non conta; oltre vale anche l'ospite. Contano soci ed ex soci; gli ospiti degli anni passati no. |
+
+Il conteggio e il blocco si fanno nell'app («Sviluppo SaaS in locale»); il portale deve solo vendere i pacchetti «500 soci in più»
+e «1.000 soci in più» (si comprano più volte e si sommano, solo sopra il piano Grande) e scrivere nelle pagine di vendita che
+il piano ha un limite di soci. Piccola e Media non hanno pacchetti: si passa al piano sopra.
 
 Il SaaS applica da sé i due limiti della prova; il portale deve solo scriverli nelle pagine di vendita («Prova 30 giorni: tutto
 tranne le esportazioni e l'accesso del commercialista»).

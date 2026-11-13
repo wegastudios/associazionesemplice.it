@@ -203,6 +203,8 @@ $catalog = [
         'vat' => ['mode' => 'standard', 'note' => ''],
         'payments' => ['own_gateway_percent' => 0, 'collected_by_us_percent' => 0],
         'trial' => ['exports' => false, 'accountant_access' => false, 'end_discount_percent' => 0, 'purge_days' => 7],
+        // Limite di soci del piano (decisione 13/11/2026): avvisi all'80% e al 100%, tolleranza del 10% per 15 giorni, poi blocco dei nuovi soci. Quota franca ospiti: proposta, da confermare.
+        'members' => ['warn_percent' => 80, 'full_percent' => 100, 'tolerance_percent' => 10, 'tolerance_days' => 15, 'guests_free_percent' => 20],
     ],
 ];
 

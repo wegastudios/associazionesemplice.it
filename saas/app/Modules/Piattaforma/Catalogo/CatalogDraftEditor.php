@@ -359,6 +359,13 @@ final readonly class CatalogDraftEditor
                 'end_discount_percent' => CatalogForm::int($input['end_discount_percent'] ?? null),
                 'purge_days' => CatalogForm::int($input['purge_days'] ?? null),
             ],
+            'members' => [
+                'warn_percent' => CatalogForm::int($input['warn_percent'] ?? null),
+                'full_percent' => CatalogForm::int($input['full_percent'] ?? null),
+                'tolerance_percent' => CatalogForm::int($input['tolerance_percent'] ?? null),
+                'tolerance_days' => CatalogForm::int($input['tolerance_days'] ?? null),
+                'guests_free_percent' => CatalogForm::int($input['guests_free_percent'] ?? null),
+            ],
         ];
         $this->publisher->saveDraft($document, $staffId);
     }

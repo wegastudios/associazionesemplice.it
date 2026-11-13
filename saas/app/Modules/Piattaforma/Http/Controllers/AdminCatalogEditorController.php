@@ -179,7 +179,7 @@ final readonly class AdminCatalogEditorController
                 'trial_accountant_access' => ($input['trial_accountant_access'] ?? null) === '1',
                 'end_discount_percent' => is_string($input['end_discount_percent'] ?? null) ? $input['end_discount_percent'] : '',
                 'purge_days' => is_string($input['purge_days'] ?? null) ? $input['purge_days'] : '',
-            ];
+            ] + $this->membersForm($input);
 
             return view('admin.terms', $this->termsView($form) + ['problem' => $e->getMessage()]);
         }
@@ -187,7 +187,7 @@ final readonly class AdminCatalogEditorController
         return redirect(AdminLoginController::url('catalogo/condizioni'))->with('status', 'Condizioni salvate nella bozza.');
     }
 
-    /** @return array{vat_mode: string, vat_note: string, own_gateway_percent: string, collected_by_us_percent: string, trial_exports: bool, trial_accountant_access: bool, end_discount_percent: string, purge_days: string} */
+    /** @return array{vat_mode: string, vat_note: string, own_gateway_percent: string, collected_by_us_percent: string, trial_exports: bool, trial_accountant_access: bool, end_discount_percent: string, purge_days: string, warn_percent: string, full_percent: string, tolerance_percent: string, tolerance_days: string, guests_free_percent: string} */
     private function termsFromDocument(): array
     {
         $terms = $this->editor->document()['terms'] ?? [];
@@ -205,6 +205,25 @@ final readonly class AdminCatalogEditorController
             'trial_accountant_access' => ($trial['accountant_access'] ?? null) === true,
             'end_discount_percent' => is_int($trial['end_discount_percent'] ?? null) ? (string) $trial['end_discount_percent'] : '0',
             'purge_days' => is_int($trial['purge_days'] ?? null) ? (string) $trial['purge_days'] : '7',
+        ] + $this->membersForm(is_array($terms['members'] ?? null) ? $terms['members'] : []);
+    }
+
+    /**
+     * Limite di soci del piano: valori scritti nel modulo o nel documento, con i valori di partenza se mancano.
+     *
+     * @param  array<array-key, mixed>  $source
+     * @return array{warn_percent: string, full_percent: string, tolerance_percent: string, tolerance_days: string, guests_free_percent: string}
+     */
+    private function membersForm(array $source): array
+    {
+        $pick = static fn (string $key, string $default): string => is_int($source[$key] ?? null) || is_string($source[$key] ?? null) ? (string) $source[$key] : $default;
+
+        return [
+            'warn_percent' => $pick('warn_percent', '80'),
+            'full_percent' => $pick('full_percent', '100'),
+            'tolerance_percent' => $pick('tolerance_percent', '10'),
+            'tolerance_days' => $pick('tolerance_days', '15'),
+            'guests_free_percent' => $pick('guests_free_percent', '20'),
         ];
     }
 
