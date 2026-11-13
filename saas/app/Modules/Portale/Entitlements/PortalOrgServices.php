@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Portale\Entitlements;
 
 use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Piattaforma\Contracts\AddonNotAllowed;
 use App\Modules\Piattaforma\Contracts\Catalog;
 use App\Modules\Piattaforma\Contracts\PlanLimits;
-use App\Modules\Piattaforma\Contracts\AddonNotAllowed;
 use App\Modules\Piattaforma\Contracts\UnknownAddon;
 use App\Modules\Piattaforma\Contracts\UnknownPlan;
 use App\Modules\Portale\PortalConfig;
