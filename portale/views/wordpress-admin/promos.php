@@ -32,7 +32,7 @@ $val  = 'amount' === $e0['kind'] ? number_format( $e0['value'] / 100, 2, ',', ''
 		<td><?php echo e( ( $r['starts_on'] ? date_it( $r['starts_on'] ) . ' → ' : 'fino al ' ) . date_it( $r['ends_on'] ) ); ?></td>
 		<td><?php echo (int) $r['used']; ?><?php echo null !== $r['max_uses'] ? ' / ' . (int) $r['max_uses'] : ''; ?></td>
 		<td><span class="badge <?php echo $live ? 'ok' : ''; ?>"><?php echo $live ? 'attivo' : ( $r['active'] ? 'non in corso' : 'sospeso' ); ?></span></td>
-		<td><form method="post" action="/wordpress/admin/codici-promo/stato"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="code" value="<?php echo e( $r['code'] ); ?>"><?php if ( ! $r['active'] ) : ?><input type="hidden" name="active" value="1"><button class="btn small" type="submit">Riattiva</button><?php else : ?><button class="btn small ghost" type="submit">Sospendi</button><?php endif; ?></form></td></tr>
+		<td><form method="post" action="/wordpress/admin/codici-promo/stato"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="code" value="<?php echo e( $r['code'] ); ?>"><?php if ( ! $r['active'] ) : ?><input type="hidden" name="active" value="1"><button class="btn small" type="submit">Riattiva</button><?php else : ?><button class="btn alt small" type="submit">Sospendi</button><?php endif; ?></form></td></tr>
 	<?php endforeach; ?>
 	<?php if ( ! $rows ) : ?><tr><td colspan="7" class="muted">Nessun codice per ora.</td></tr><?php endif; ?>
 	</tbody></table></div>

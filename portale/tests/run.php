@@ -1681,6 +1681,7 @@ Config::set( 'saas_admin_url', 'https://gestione.esempio.it/admin/' );
 check( 'sezioni: indirizzo di amministrazione configurabile', 'https://gestione.esempio.it/admin/x' === Sections::legacy( 'GET', '/saas/admin/x', '' )[1] );
 check( 'sezioni: vecchia pagina di un\'associazione → /saas/admin (301)', array( 301, '/saas/admin' ) === Sections::legacy( 'GET', '/saas/11111111-2222-3333-4444-555555555555', '' ) );
 check( 'sezioni: vecchio /saas/utenti/… → /saas/admin (308 per POST)', array( 308, '/saas/admin' ) === Sections::legacy( 'POST', '/saas/utenti/abc', '' ) );
+check( 'sezioni: /wordpress/confronto rimanda a /confronto (301, 308 per POST, query conservata)', array( 301, '/confronto' ) === Sections::legacy( 'GET', '/wordpress/confronto', '' ) && 308 === Sections::legacy( 'POST', '/wordpress/confronto', '' )[0] && array( 301, '/confronto?x=1' ) === Sections::legacy( 'GET', '/wordpress/confronto', 'x=1' ) );
 check( 'sezioni: /saas/acquista non è un vecchio indirizzo', null === Sections::legacy( 'GET', '/saas/acquista', 'plan=gestionale' ) );
 check( 'sezioni: con saas_admin_url vuoto /saas/admin non è più rimandato (lo serve il SaaS)', ( function () { Config::set( 'saas_admin_url', '' ); $r = Sections::legacy( 'GET', '/saas/admin/utenti', '' ); Config::set( 'saas_admin_url', 'https://app.associazionesemplice.it/admin' ); return $r; } )() === null );
 check( 'sezioni: /saas e /wordpress sono contenuti, non redirect', null === Sections::legacy( 'GET', '/saas', '' ) && null === Sections::legacy( 'GET', '/wordpress/changelog', '' ) );

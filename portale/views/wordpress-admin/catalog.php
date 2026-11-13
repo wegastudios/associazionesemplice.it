@@ -22,7 +22,7 @@ $lines  = implode( "\n", array_map( function ( $f ) { return $f['id'] . ' | ' . 
 		<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>">
 		<h3>Parti dal confronto di oggi</h3>
 		<p class="muted small">Carica nella bozza le righe della pagina «Confronto» (gruppi, funzioni e cosa è incluso in ogni piano) con codici stabili. Non pubblica niente.</p>
-		<div class="row-actions"><button class="btn small ghost" type="submit">Importa nella bozza</button></div>
+		<div class="row-actions"><button class="btn alt small" type="submit">Importa nella bozza</button></div>
 	</form>
 
 	<form class="card2" method="post" action="/wordpress/admin/catalogo/piani">
@@ -59,7 +59,7 @@ $lines  = implode( "\n", array_map( function ( $f ) { return $f['id'] . ' | ' . 
 	<div class="card2">
 		<h3>Pubblica</h3>
 		<form method="post" action="/wordpress/admin/catalogo/pubblica" style="display:inline"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><button class="btn" type="submit"<?php echo $errors ? ' disabled' : ''; ?> onclick="<?php echo js_confirm( 'Pubblicare il catalogo? Da ora il portale legge questa revisione.' ); ?>">Pubblica</button></form>
-		<?php if ( $has_draft ) : ?><form method="post" action="/wordpress/admin/catalogo/scarta" style="display:inline" onsubmit="<?php echo js_confirm( 'Scartare la bozza e tornare all\'ultima revisione pubblicata?' ); ?>"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><button class="btn small ghost" type="submit">Scarta la bozza</button></form><?php endif; ?>
+		<?php if ( $has_draft ) : ?><form method="post" action="/wordpress/admin/catalogo/scarta" style="display:inline" onsubmit="<?php echo js_confirm( 'Scartare la bozza e tornare all\'ultima revisione pubblicata?' ); ?>"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><button class="btn alt small" type="submit">Scarta la bozza</button></form><?php endif; ?>
 		<p class="muted small" style="margin-top:12px">Catalogo pubblico (sola lettura, firmato più avanti): <a href="/wordpress/api/catalogo/v1">/wordpress/api/catalogo/v1</a></p>
 		<?php if ( $history ) : ?><h4>Revisioni pubblicate</h4><ul class="small"><?php foreach ( $history as $h ) : ?><li>Revisione <?php echo (int) $h['rev']; ?> · <?php echo e( date_it( $h['at'] ) ); ?> · <?php echo e( $h['actor'] ); ?></li><?php endforeach; ?></ul><?php endif; ?>
 	</div>
