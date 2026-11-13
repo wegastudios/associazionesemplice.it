@@ -198,6 +198,43 @@ final class Catalog {
 	}
 
 	/**
+	 * Perché un componente (addon) non si compra sul piano scelto, oppure null se si può. Nessuna regola scritta qui: vale il catalogo
+	 * (contratto §2): un pacchetto già compreso nel piano (`limits.packages`) non si vende due volte; se l'addon ha l'elenco `plans`
+	 * (assente o null = tutti i piani) il piano scelto deve esserci.
+	 */
+	public static function addonBlock( array $doc, string $plan, array $addon ): ?string {
+		$chosen = null;
+		$names  = array();
+		foreach ( (array) ( $doc['plans'] ?? array() ) as $p ) {
+			if ( is_array( $p ) && is_string( $p['code'] ?? null ) ) {
+				$names[ $p['code'] ] = (string) ( $p['name'] ?? $p['code'] );
+				if ( $p['code'] === $plan ) {
+					$chosen = $p;
+				}
+			}
+		}
+		if ( ! $chosen ) {
+			return null; // piano sconosciuto: ci pensa Quote::build
+		}
+		$pack     = (string) ( $addon['grants']['package'] ?? '' );
+		$included = (array) ( $chosen['limits']['packages'] ?? array() );
+		if ( 'package' === ( $addon['kind'] ?? '' ) && '' !== $pack && array_key_exists( $pack, $included ) ) {
+			return 'Compreso nel piano ' . $names[ $plan ];
+		}
+		$allowed = $addon['plans'] ?? null;
+		if ( is_array( $allowed ) && ! in_array( $plan, $allowed, true ) ) {
+			$list = array();
+			foreach ( $allowed as $c ) {
+				if ( is_string( $c ) && isset( $names[ $c ] ) ) {
+					$list[] = $names[ $c ];
+				}
+			}
+			return $list ? 'Disponibile solo con ' . ( count( $list ) > 1 ? 'i piani ' : 'il piano ' ) . implode( ', ', $list ) : 'Non disponibile con questo piano';
+		}
+		return null;
+	}
+
+	/**
 	 * Condizioni di vendita del catalogo (`terms`, contratto §2.2), con i valori di partenza dove mancano: IVA standard (prezzi IVA esclusa),
 	 * commissioni 0% (Stripe/PayPal propri) e 3% (incassiamo noi), prova senza esportazioni né commercialista.
 	 * Le commissioni NON si scrivono nelle pagine di vendita finché la titolare non lo decide: qui si leggono soltanto.
