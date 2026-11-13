@@ -27,6 +27,25 @@ $url = function ( string $path ) use ( $base ): string { return $base . $path; }
 	<p class="fine">Nessun accesso è amministratore di WordPress: l'amministratore del plugin ha tutti i permessi di Associazione Semplice ma non gestisce il sito. Non inserire chiavi vere (Stripe, PayPal…): la demo è pubblica.</p>
 </div></section>
 
+<?php $saasAcc = Portale\SaasDemo::accounts(); if ( $saasAcc ) : $sd = Portale\SaasDemo::url(); ?>
+<section class="section" id="gestionale"><div class="wrap" style="max-width:960px">
+	<h2>Prova il gestionale online</h2>
+	<p class="muted">Non hai un sito WordPress? Il gestionale online è un'altra demo, con dati inventati: scegli un ruolo, entra e clicca dove vuoi. Non scrivere dati veri: si azzera ogni notte, non partono email e le password non si possono cambiare.</p>
+	<p><a class="btn big" href="<?php echo e( $sd ); ?>">Apri la demo del gestionale</a></p>
+	<div class="grid-3" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin-bottom:12px">
+	<?php foreach ( $saasAcc as $a ) : ?>
+		<div class="feature">
+			<h3><?php echo e( $a['role'] ); ?></h3>
+			<p style="margin-bottom:12px"><?php echo e( $a['note'] ); ?></p>
+			<div class="keybox" style="margin-bottom:8px"><span class="muted small">Email</span> <code><?php echo e( $a['user'] ); ?></code><button class="btn alt small" type="button" data-copy="<?php echo e( $a['user'] ); ?>">Copia</button></div>
+			<?php if ( '' !== $a['password'] ) : ?><div class="keybox"><span class="muted small">Password</span> <code><?php echo e( $a['password'] ); ?></code><button class="btn alt small" type="button" data-copy="<?php echo e( $a['password'] ); ?>">Copia</button></div><?php endif; ?>
+		</div>
+	<?php endforeach; ?>
+	</div>
+	<p class="fine">Non inserire chiavi o dati veri: la demo è pubblica.</p>
+</div></section>
+<?php endif; ?>
+
 <section class="section alt" id="scegli"><div class="wrap">
 	<div class="section-head"><h2>Ti è piaciuta? Scegli come proseguire</h2><p>Si parte dal piano gratuito e si passa al Pro quando servono incassi online o contabilità. Con la licenza gratuita puoi anche provare un Pro per qualche giorno.</p></div>
 	<?php include __DIR__ . '/_plans.php'; ?>
