@@ -73,7 +73,7 @@ final class Orders {
 	}
 
 	/** Addon dell'ordine (tutte le righe tranne il piano). */
-	private static function addonsOf( array $quote ): array {
+	public static function addonsOf( array $quote ): array {
 		$out = array();
 		foreach ( array_slice( (array) ( $quote['lines'] ?? array() ), 1 ) as $l ) {
 			$out[ (string) $l['code'] ] = (int) $l['qty'];

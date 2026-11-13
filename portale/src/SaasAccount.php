@@ -31,6 +31,45 @@ final class SaasAccount {
 		return $rows;
 	}
 
+	/** Stato dell'ultimo messaggio al gestionale (active, past_due, suspended, cancelled…), o '' se non ce n'è. */
+	public static function stateOf( Db $db, string $orgId ): string {
+		$r = $db->one( 'SELECT body FROM saas_outbox WHERE org_id = ? ORDER BY rev DESC LIMIT 1', array( $orgId ) );
+		return $r ? (string) ( ( (array) json_decode( (string) $r['body'], true ) )['status'] ?? '' ) : '';
+	}
+
+	/**
+	 * Il pulsante «Riattiva» c'è quando il gestionale non è in regola: pagamento non riuscito, sospeso, annullato o scaduto da ieri o prima.
+	 * @param array $g riga di forCustomer()
+	 * @return array|null null se non serve; altrimenti total (centesimi), since (scadenza), delete_on (fine conservazione dati), pay_now (si paga con il metodo già salvato)
+	 */
+	public static function reactivation( array $g, ?Db $db = null, ?int $now = null ): ?array {
+		$now   = $now ?? time();
+		$until = (string) $g['until'];
+		$lapsed = '' !== $until && $until < gmdate( 'Y-m-d', $now );
+		if ( 'pending' === $g['state'] || 'active' !== ( $g['status'] ?? '' ) || ! ( $lapsed || in_array( $g['state'], array( 'past_due', 'suspended' ), true ) ) ) {
+			return null;
+		}
+		$payNow = 'stripe' === $g['provider'] && 'past_due' === $g['state'];
+		$total  = (int) $g['total'];
+		if ( ! $payNow && $db ) {
+			// Nuovo ordine: lo stesso piano ai prezzi di oggi (è la cifra che il cliente conferma e che poi si controlla prima di addebitare).
+			try {
+				$cat = Catalog::stored( $db, $now );
+				if ( $cat ) {
+					$q     = (array) json_decode( (string) $g['quote'], true );
+					$total = (int) Quote::build( $cat['doc'], (string) $g['plan'], (string) $g['period'], (int) $g['members'], Orders::addonsOf( $q ) )['total'];
+				}
+			} catch ( \Throwable $e ) {
+				// resta la cifra dell'ordine: se non coincide, reactivate() lo dice e non addebita
+			}
+		}
+		return array(
+			'total'     => $total, 'since' => $until,
+			'delete_on' => '' !== $until ? gmdate( 'Y-m-d', strtotime( $until . ' UTC +181 days' ) ) : '',
+			'pay_now'   => $payNow,
+		);
+	}
+
 	public static function stateLabel( string $state ): array {
 		return array(
 			'pending'   => array( 'In attivazione', 'warn' ), 'active' => array( 'Attivo', 'ok' ), 'trial' => array( 'In prova', 'ok' ),

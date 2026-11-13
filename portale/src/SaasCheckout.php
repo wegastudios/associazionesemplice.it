@@ -143,7 +143,9 @@ final class SaasCheckout {
 		if ( ! $org ) {
 			throw new \RuntimeException( 'Ordine senza associazione: ' . $orderId );
 		}
-		if ( empty( $org['org_id'] ) ) {
+		// Associazione già creata da un ordine precedente: è una «Riattiva» (stessa associazione, nuovo pagamento), non un primo acquisto.
+		$again = ! empty( $org['org_id'] );
+		if ( ! $again ) {
 			$org = self::provision( $db, $org, $now );
 		}
 		$promo = (string) ( $o['quote']['promo'] ?? '' );
@@ -157,9 +159,71 @@ final class SaasCheckout {
 		self::push( $db, $o, $org, 'active', self::until( (string) $o['period'], $now ), $now );
 		$db->run( "UPDATE orders SET status = ?, updated_at = ? WHERE id = ? AND status = 'paid'", array( self::ACTIVE, $at, $orderId ) );
 		// Una sola volta (il ramo «già attivato» sopra esce prima): un errore di posta non deve far ripetere il pagamento.
+		if ( $again ) {
+			// L'ordine vecchio non conta più (l'elenco dell'area clienti mostra l'associazione una volta sola).
+			$db->run( "UPDATE orders SET status = 'replaced', updated_at = ? WHERE org_ref = ? AND id <> ? AND product = 'saas'", array( $at, $o['org_ref'], $orderId ) );
+			self::mail( $db, 'saas_renewed', $o, $org, $now );
+			return true;
+		}
 		self::mail( $db, 'saas_welcome', $o, $org, $now );
 		self::mail( $db, 'saas_ready', $o, $org, $now );
 		return true;
+	}
+
+	/**
+	 * «Riattiva» dall'area clienti. Con un pagamento non riuscito su Stripe si paga la fattura aperta con il metodo già salvato (il webhook
+	 * riporta il gestionale attivo); altrimenti si apre un nuovo ordine per la stessa associazione, allo stesso piano ai prezzi di oggi.
+	 * @param int|null $seen centesimi mostrati al cliente: se il totale è cambiato non si addebita nulla
+	 * @return string|null indirizzo del pagamento da aprire, o null se il pagamento è già stato fatto
+	 * @throws UserError
+	 */
+	public static function reactivate( Db $db, Billing $billing, array $order, ?int $seen = null, ?int $now = null ): ?string {
+		$org = $db->one( 'SELECT * FROM saas_orgs WHERE ref = ?', array( $order['org_ref'] ?? '' ) );
+		if ( ! $org || empty( $org['org_id'] ) || 'active' !== $order['status'] ) {
+			throw new UserError( 'Abbonamento non trovato.' );
+		}
+		if ( 'stripe' === $order['provider'] && ! empty( $order['provider_ref'] ) && 'past_due' === ( SaasAccount::stateOf( $db, (string) $org['org_id'] ) ) ) {
+			$total = (int) ( json_decode( (string) $order['quote'], true )['total'] ?? 0 );
+			if ( null !== $seen && $seen !== $total ) {
+				throw new UserError( 'L\'importo è cambiato: controlla e conferma di nuovo.' );
+			}
+			$res = Stripe::payOpenInvoice( (string) $order['provider_ref'] );
+			if ( 'paid' === $res ) {
+				return null;
+			}
+			if ( 'declined' === $res ) {
+				throw new UserError( 'Il pagamento non è andato a buon fine. Controlla o cambia il metodo di pagamento da «Fatture e metodo di pagamento» e riprova.' );
+			}
+			// «unavailable»: l'abbonamento su Stripe è già chiuso, si riparte con un nuovo ordine.
+		}
+		$provider = (string) $order['provider'];
+		if ( ! in_array( $provider, self::providers(), true ) ) {
+			throw new UserError( 'Questo metodo di pagamento non è disponibile.' );
+		}
+		$cat = Orders::catalog( $db, $now );
+		$q   = (array) json_decode( (string) $order['quote'], true );
+		$new = Quote::build( $cat['doc'], (string) $order['plan'], (string) $order['period'], (int) $order['members'], Orders::addonsOf( $q ) );
+		if ( null !== $seen && $seen !== $new['total'] ) {
+			throw new UserError( 'I prezzi sono stati aggiornati: il nuovo totale è ' . money( $new['total'] ) . '. Controlla e conferma di nuovo.' );
+		}
+		if ( $new['total'] < 100 ) {
+			throw new UserError( 'Non riusciamo a riattivare da qui: scrivici e lo sistemiamo.' );
+		}
+		$ord = Orders::open( $db, (string) $order['customer_id'], (string) $order['plan'], (string) $order['period'], (int) $order['members'], Orders::addonsOf( $q ), null, $now );
+		$db->run( 'UPDATE orders SET org_ref = ?, provider = ? WHERE id = ?', array( $order['org_ref'], $provider, $ord['id'] ) );
+		$cust     = $db->one( 'SELECT email FROM customers WHERE id = ?', array( $order['customer_id'] ) );
+		$planName = (string) $order['plan'];
+		foreach ( Catalog::plans( $cat['doc'] ) as $p ) {
+			if ( ( $p['code'] ?? '' ) === $order['plan'] ) {
+				$planName = (string) ( $p['name'] ?? $planName );
+			}
+		}
+		$label = 'Associazione Semplice · ' . $planName . ( 'year' === $order['period'] ? ' · annuale' : ' · mensile' );
+		if ( 'stripe' === $provider ) {
+			$note = (string) ( Catalog::terms( $cat['doc'] )['vat_note'] ?? '' );
+			return Stripe::checkoutUrl( $ord['id'], (string) $cust['email'], '', $ord['total'], (string) $order['period'], mb_substr( '' !== $note ? $label . ' · ' . $note : $label, 0, 250 ) );
+		}
+		return PayPal::approvalUrl( $ord['id'], (string) $cust['email'], $billing->paypalPlan( array( 'cents' => $ord['total'] ), (string) $order['period'], $label ) );
 	}
 
 	/**
