@@ -27,7 +27,15 @@ beforeEach(function (): void {
         'owner' => ['email' => $email, 'name' => 'Titolare'],
     ])])->json('org_id');
     $this->entitle = fn (string $orgId, string $ref, array $overrides) => $this->putJson("/api/portale/v1/orgs/{$orgId}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($orgId, $ref, 1, $overrides))])->assertOk();
-    $this->people = fn (string $orgId): int => $this->orgContext()->run($orgId, fn (): int => Person::query()->count());
+    $this->people = function (string $orgId): int {
+        $owner = DB::connection('pgsql_owner');
+
+        return $owner->transaction(function () use ($owner, $orgId): int {
+            $owner->select("SELECT set_config('app.org_id', ?, true)", [$orgId]);
+
+            return $owner->table('app.people')->count();
+        });
+    };
 });
 
 it('cancella i dati scaduti da più di 180 giorni e lascia le altre associazioni', function (): void {
