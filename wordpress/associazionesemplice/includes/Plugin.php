@@ -14,6 +14,9 @@ final class Plugin {
 	/** Ruolo WordPress della segreteria: opera sul plugin senza essere amministratore del sito. */
 	const ROLE_SECRETARY = 'asem_secretary';
 
+	/** Ruolo WordPress del dipendente dell'ente: parte con i permessi della segreteria; si possono togliere solo quelli dell'elenco di {@see EmployeeRules}. */
+	const ROLE_EMPLOYEE = 'asem_employee';
+
 	/** Ruolo WordPress dato ai nuovi utenti creati per i soci: nessun accesso all'area di amministrazione. */
 	const ROLE_MEMBER = 'asem_member';
 
@@ -23,6 +26,7 @@ final class Plugin {
 		Install::maybe_upgrade();
 		FiscalYears::maybe_open_current(); // il primo giorno dell'anno si apre il nuovo anno solare
 		Access::register();      // capability meta: asem_notify_activity, asem_view_person...
+		Employees::register();   // utenti «Dipendente»: permessi che si possono togliere, conteggio per il RUNTS
 		Gatekeeper::register(); // i soci restano fuori da wp-admin
 		Rest\Api::register();    // associazionesemplice/v1
 		Frontend\Front::init();  // shortcode, contenuti riservati, blocchi, widget
