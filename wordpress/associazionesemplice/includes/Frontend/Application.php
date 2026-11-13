@@ -130,6 +130,7 @@ final class Application {
 		$html  = '<form class="asemf-form" method="post" action="' . esc_url( Restrict::current_url() ) . '">'
 			. '<input type="hidden" name="asem_apply_go" value="1">' . '<input type="hidden" name="t" value="' . esc_attr( self::make_token( time() ) ) . '">'
 			. '<div style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden" aria-hidden="true"><label>Non compilare questo campo <input type="text" name="website" value="" tabindex="-1" autocomplete="off"></label></div>'
+			. '<p class="asemf-small asemf-muted">I campi con * sono obbligatori. Email e cellulare servono se hai almeno 18 anni.</p>'
 			. '<div class="asemf-fields">'
 			. self::field( 'Nome', 'first_name', 'text', $post, 'given-name', true ) . self::field( 'Cognome', 'last_name', 'text', $post, 'family-name', true )
 			. self::field( 'Data di nascita', 'birth_date', 'date', $post, 'bday', true, ' data-asemf-birth max="' . esc_attr( gmdate( 'Y-m-d' ) ) . '"' )
@@ -137,7 +138,7 @@ final class Application {
 			. self::field( 'Codice fiscale', 'tax_code', 'text', $post, 'off', true, ' maxlength="16"' )
 			. self::field( 'Indirizzo di residenza', 'address', 'text', $post, 'street-address', false, ' maxlength="190"' )
 			. self::field( 'CAP', 'zip', 'text', $post, 'postal-code', false, ' maxlength="12"' ) . self::field( 'Comune', 'city', 'text', $post, 'address-level2', false, ' maxlength="100"' ) . self::field( 'Provincia', 'province', 'text', $post, 'address-level1', false, ' maxlength="5"' )
-			. self::field( 'Email', 'email', 'email', $post, 'email', false, ' data-asemf-adult-required' ) . self::field( 'Cellulare', 'phone', 'tel', $post, 'tel', false, ' inputmode="tel" data-asemf-adult-required' )
+			. self::field( 'Email *', 'email', 'email', $post, 'email', false, ' data-asemf-adult-required' ) . self::field( 'Cellulare *', 'phone', 'tel', $post, 'tel', false, ' inputmode="tel" data-asemf-adult-required' )
 			. '</div>';
 		if ( count( $types ) > 1 ) {
 			$sel = (string) ( $post['type'] ?? '' );

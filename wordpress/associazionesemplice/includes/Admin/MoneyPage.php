@@ -41,7 +41,8 @@ final class MoneyPage {
 		echo wp_kses( '<div class="asem-card"><h2>Anno sociale ' . esc_html( $year->label() ) . '</h2><table class="asem-kv">'
 			. '<tr><td>Entrate</td><td>' . Ui::money( $r['total_income'] ) . '</td></tr><tr><td>Uscite</td><td>' . Ui::money( $r['total_expense'] ) . '</td></tr>'
 			. '<tr><td><strong>Resta all\'ente</strong></td><td><strong>' . Ui::money( $r['result'] ) . '</strong></td></tr></table>', Html::allowed() );
-		echo '<p class="description">Per cassa: conta quando i soldi entrano ed escono, nell\'anno sociale. La contabilità per anno solare è in Contabilità.</p></div></div>';
+		echo '<p class="description">Calcolato per cassa: contano i soldi quando entrano ed escono davvero, nell\'anno sociale in corso. '
+			. ( \AssociazioneSemplice\Edition::has( 'fiscal' ) ? 'Il rendiconto dell\'anno solare (esercizio) è in Contabilità.' : 'Per vedere i movimenti di un anno solare apri la Prima nota.' ) . '</p></div></div>';
 		do_action( 'asem_yearend_alert' ); // un'estensione mostra qui le verifiche di fine anno fiscale: dopo le cifre, che sono ciò che si cerca per primo
 
 		// Ultimi movimenti

@@ -148,6 +148,19 @@ final class Actions {
 		}
 	}
 
+	/**
+	 * Messaggio per chi ha la tessera non valida: dice cosa fare e dove (la stessa frase ovunque).
+	 *
+	 * @param array  $who   la persona la cui tessera non è valida
+	 * @param array  $actor chi sta usando l'area soci
+	 * @param string $for   cosa voleva fare, all'infinito («prenotare»)
+	 */
+	public static function card_invalid( array $who, array $actor, string $for ): string {
+		$own   = (int) ( $who['id'] ?? 0 ) === (int) ( $actor['id'] ?? -1 );
+		$where = Plugin::payments()->enabled() ? 'Apri «Pagamenti» nella tua area soci, oppure rivolgiti alla segreteria.' : 'Rivolgiti alla segreteria.';
+		return ( $own ? 'La tua tessera non è valida: per ' . $for . ' rinnova la quota associativa. ' : 'La tessera di ' . trim( (string) ( $who['first_name'] ?? '' ) ) . ' non è valida: per ' . $for . ' rinnova prima la sua quota associativa. ' ) . $where;
+	}
+
 	/** Chiede di partecipare a un evento con approvazione della segreteria (per sé o per un proprio ospite o minore). @return string messaggio */
 	public static function do_request( array $post ): string {
 		$actor     = self::actor();
@@ -160,7 +173,7 @@ final class Actions {
 			throw new \InvalidArgumentException( $block ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( ! Plugin::people()->is_active_member( (int) $subject['id'] ) ) {
-			throw new \InvalidArgumentException( 'La tessera non è valida: va rinnovata per partecipare.' );
+			throw new \InvalidArgumentException( self::card_invalid( $subject, $actor, 'partecipare' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		\AssociazioneSemplice\EventRequests::member_request( (int) ( $post['session_id'] ?? 0 ), $person_id );
 		return 'Richiesta inviata: la segreteria la esamina e ti scrive. Le richieste si esaminano nell\'ordine di arrivo.';
@@ -174,7 +187,7 @@ final class Actions {
 		self::require_cap( 'asem_book_for', $person_id );
 		$subject = self::booking_subject( $actor, $person_id );
 		if ( ! Plugin::people()->is_active_member( (int) $subject['id'] ) ) {
-			throw new \InvalidArgumentException( 'La tessera non è valida: va rinnovata per iscriversi.' );
+			throw new \InvalidArgumentException( self::card_invalid( $subject, $actor, 'iscriverti' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		\AssociazioneSemplice\EventRequests::course_member_request( (int) ( $post['activity_id'] ?? 0 ), $person_id );
 		return 'Richiesta inviata: la segreteria la esamina e ti scrive. Le richieste si esaminano nell\'ordine di arrivo.';
@@ -192,7 +205,7 @@ final class Actions {
 			throw new \InvalidArgumentException( $block ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( ! Plugin::people()->is_active_member( (int) ( $ward ? $ward['id'] : $actor['id'] ) ) ) {
-			throw new \InvalidArgumentException( $ward ? 'La tessera di ' . $ward['first_name'] . ' non è valida: va rinnovata per prenotare.' : 'La tua tessera non è valida: rinnovala per prenotare.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( self::card_invalid( $ward ?: $actor, $actor, 'prenotare' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$session = Plugin::activities()->session( (int) ( $post['session_id'] ?? 0 ) );
 		if ( ! $session ) {
@@ -218,7 +231,7 @@ final class Actions {
 			throw new \InvalidArgumentException( $block ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( ! Plugin::people()->is_active_member( (int) $subject['id'] ) ) {
-			throw new \InvalidArgumentException( (int) $subject['id'] === (int) $actor['id'] ? 'La tua tessera non è valida: rinnovala per prenotare.' : 'La tessera di ' . $subject['first_name'] . ' non è valida: va rinnovata per prenotare.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( self::card_invalid( $subject, $actor, 'prenotare' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$sid = (int) ( $post['session_id'] ?? 0 );
 		\AssociazioneSemplice\Waitlist::join( $sid, $person_id, (int) $actor['id'] );
@@ -298,7 +311,7 @@ final class Actions {
 		self::require_cap( 'asem_book_for', $from_id );
 		$subject = self::booking_subject( $actor, $from_id );
 		if ( ! Plugin::people()->is_active_member( (int) $subject['id'] ) ) {
-			throw new \InvalidArgumentException( 'La tessera non è valida: va rinnovata per gestire le prenotazioni.' );
+			throw new \InvalidArgumentException( self::card_invalid( $subject, $actor, 'gestire le prenotazioni' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$block = \AssociazioneSemplice\Regulation::booking_block( $subject );
 		if ( '' !== $block ) {

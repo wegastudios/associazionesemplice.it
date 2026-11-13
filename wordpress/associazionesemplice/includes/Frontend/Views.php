@@ -34,6 +34,16 @@ final class Views {
 		return self::DAYS[ (int) gmdate( 'w', $t ) ] . ' ' . (int) gmdate( 'j', $t ) . ' ' . self::MONTHS[ (int) gmdate( 'n', $t ) ] . ' ' . gmdate( 'Y', $t );
 	}
 
+	/** Data scritta per esteso per le email («venerdì 20 novembre 2026»); da una data tecnica «2026-11-20» (un valore vuoto o non valido torna com'è). */
+	public static function date_words( string $ymd ): string {
+		$t = strtotime( substr( $ymd, 0, 10 ) . ' 12:00:00 UTC' );
+		if ( false === $t || ! preg_match( '/^\d{4}-\d{2}-\d{2}/', $ymd ) ) {
+			return $ymd;
+		}
+		$days = array( 'domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato' );
+		return $days[ (int) gmdate( 'w', $t ) ] . ' ' . (int) gmdate( 'j', $t ) . ' ' . self::MONTHS[ (int) gmdate( 'n', $t ) ] . ' ' . gmdate( 'Y', $t );
+	}
+
 	public static function d( ?string $ymd ): string {
 		return $ymd ? esc_html( ( new \DateTimeImmutable( $ymd ) )->format( 'd/m/Y' ) ) : '—';
 	}
@@ -446,7 +456,7 @@ final class Views {
 		if ( $apps > 0 ) {
 			$html .= '<p><strong>' . (int) $apps . ( 1 === $apps ? ' domanda di adesione' : ' domande di adesione' ) . '</strong> da approvare: si approvano dalla <a href="' . $url( 'asem' ) . '">Bacheca</a>.</p>';
 		}
-		$html .= '<p>' . ( $pend > 0 ? '<strong>' . (int) $pend . ( 1 === $pend ? ' richiesta di accesso' : ' richieste di accesso' ) . '</strong> da evadere: si evadono dalla <a href="' . $url( 'asem' ) . '">Bacheca</a>.' : 'Nessuna richiesta di accesso da evadere.' ) . '</p><p class="asemf-small asemf-muted">Da qui si arriva alle funzioni di gestione.</p><p class="asemf-actions">';
+		$html .= '<p>' . ( $pend > 0 ? '<strong>' . (int) $pend . ( 1 === $pend ? ' richiesta di accesso' : ' richieste di accesso' ) . '</strong> da controllare: le trovi in <a href="' . $url( 'asem' ) . '">Bacheca</a>.' : 'Nessuna richiesta di accesso da controllare.' ) . '</p><p class="asemf-small asemf-muted">Da qui si arriva alle funzioni di gestione.</p><p class="asemf-actions">';
 		foreach ( $links as $l ) {
 			if ( $l[2] ) {
 				$html .= '<a class="asemf-btn" href="' . $url( $l[0] ) . '">' . esc_html( $l[1] ) . '</a> ';
@@ -1424,7 +1434,7 @@ final class Views {
 				}
 				$lists = \AssociazioneSemplice\PriceLists::for_activity( $activity );
 				if ( $lists ) {
-					$fields .= '<select name="price_list" aria-label="Listino">';
+					$fields .= '<select name="price_list" aria-label="Tariffa">';
 					foreach ( $lists as $l ) {
 						$fields .= '<option value="' . esc_attr( $l['key'] ) . '">' . esc_html( $l['label'] . ' — ' . Money::format( $l['cents'] ) ) . '</option>';
 					}
@@ -1433,7 +1443,7 @@ final class Views {
 				$html .= self::form( 'asem_front_book', self::hidden( 'session_id', $s['id'] ) . $fields, 'Prenotati', false, 'asemf-inline' );
 			}
 		} elseif ( ! empty( $ctx['actor'] ) ) {
-			$html .= '<span class="asemf-small asemf-muted">Rinnova la tessera per prenotarti</span>';
+			$html .= '<span class="asemf-small asemf-muted">La tessera non è valida: per prenotarti rinnova la quota associativa (' . ( Plugin::payments()->enabled() ? 'apri «Pagamenti» qui sopra o ' : '' ) . 'rivolgiti alla segreteria).</span>';
 		}
 		return $html . '</div></li>';
 	}

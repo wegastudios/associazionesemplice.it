@@ -111,7 +111,7 @@ final class UpdateCheck {
 	/** Frase per le impostazioni e per l'esito di «Controlla adesso»: ultime versioni note e data dell'ultimo controllo. */
 	public static function summary(): string {
 		if ( 1 !== Limits::get( 'update_notice' ) ) {
-			return 'Avviso aggiornamenti spento (Impostazioni → Tecniche → Limiti e soglie).';
+			return 'Avviso aggiornamenti spento (Impostazioni → Limiti e soglie).';
 		}
 		$l = self::latest();
 		if ( ! $l['checked_at'] ) {

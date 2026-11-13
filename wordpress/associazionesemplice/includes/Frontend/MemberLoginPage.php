@@ -23,7 +23,8 @@ defined( 'ABSPATH' ) || exit;
 final class MemberLoginPage {
 
 	const SENT = 'Se l\'email è di un socio ti abbiamo scritto: apri il link che trovi nell\'email (controlla anche la posta indesiderata).';
-	const FAIL = 'Email, codice o password non corretti, oppure troppi tentativi: riprova tra qualche minuto.';
+	const FAIL    = 'Email, codice o password non corretti. Controlla e riprova, oppure premi «Mandami un link» per entrare senza password.';
+	const BLOCKED = 'Troppi tentativi da questa connessione. Aspetta un\'ora e riprova, oppure chiedi aiuto alla segreteria.';
 
 	public static function register(): void {
 		add_action( 'template_redirect', array( __CLASS__, 'handle' ), 1 );
@@ -122,7 +123,7 @@ final class MemberLoginPage {
 			} elseif ( ! wp_verify_nonce( self::post( '_asem_nonce' ), 'asem_member_login' ) ) {
 				$err = 'Sessione scaduta: riprova.';
 			} elseif ( self::throttled() ) {
-				$err = self::FAIL;
+				$err = self::BLOCKED;
 			} elseif ( 'request' === $do || 'recover' === $do ) {
 				MemberLogin::request( self::post( 'email' ), 'recover' === $do ? 'reset' : 'login' );
 				$msg  = self::SENT; // sempre la stessa risposta: non si scopre chi è socio

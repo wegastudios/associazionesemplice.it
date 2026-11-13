@@ -32,7 +32,7 @@ final class MemberAccessChoice {
 			. '<li><strong>Svantaggi.</strong> Ogni socio è un utente del sito: la pagina di accesso di WordPress è esposta a tentativi di indovinare le password di tutti, le password dei soci vivono sul sito principale, e i plugin di sicurezza o di cache possono interferire con l\'accesso. Hai due archivi di persone da tenere allineati.</li>'
 			. '</ul>';
 		if ( self::woocommerce_active() ) {
-			$html .= '<p class="description" style="border-left:4px solid #dba617;padding:6px 10px"><strong>Ho rilevato WooCommerce.</strong> Se vuoi che i soci acquistino nel negozio con il proprio account (storico degli ordini, indirizzi salvati, prezzi o sconti riservati agli iscritti), serve un utente WordPress: in quel caso scegli la seconda voce. Se invece il negozio serve solo per pagare le quote e i soci acquistano come ospiti, la prima basta e non mescola i soci con i tuoi clienti.</p>';
+			$html .= '<p class="description" style="border-left:4px solid #dba617;padding:6px 10px"><strong>Su questo sito c\'è un negozio (WooCommerce).</strong> Se vuoi che i soci acquistino nel negozio con il proprio account (storico degli ordini, indirizzi salvati, prezzi o sconti riservati agli iscritti), serve un utente WordPress: in quel caso scegli la seconda voce. Se invece il negozio serve solo per pagare le quote e i soci acquistano come ospiti, la prima basta e non mescola i soci con i tuoi clienti.</p>';
 		}
 		return $html
 			. '<p class="description">Chi ha un potere nell\'amministrazione (segreteria, presidente e vicepresidente, tesoriere, staff) ha sempre un utente WordPress, in entrambi i casi: l\'utente nasce quando gli dai il ruolo.</p>'

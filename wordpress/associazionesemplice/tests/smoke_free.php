@@ -388,6 +388,13 @@ $pd       = \AssociazioneSemplice\Plugin::post_data();
 free_ok( array( 'nome', 'righe', '_back', 'password' ) === array_keys( $pd ) && array( 'primariga', 3 ) === array_keys( $pd['righe'] ) && array( 'importox' ) === array_keys( $pd['righe']['primariga'] ) && 'Ada' === $pd['nome'] && ' <segreta> ' === $pd['password'] && false === strpos( $pd['_back'], ' ' ), 'dati dei moduli: chiavi ripulite a ogni livello, valori ripuliti, password intatte' );
 $_POST = $pd_saved;
 
+// ---------- Le domande frequenti della guida non mandano a schede che nel gratuito non ci sono ----------
+$faq     = \AssociazioneSemplice\Admin\GuidePage::faq();
+$faq_all = implode( ' ', array_merge( array_keys( $faq ), $faq ) );
+free_ok( false === strpos( $faq_all, 'Registri → Presenze' ) && false === strpos( $faq_all, 'Comunicazioni:' ) && false === strpos( $faq_all, 'Contabilità →' ) && false === strpos( $faq_all, 'Cassa per più persone' ) && false === strpos( $faq_all, 'Impostazioni → Copia di sicurezza' ), 'guida: nel gratuito le domande frequenti non rimandano a schede del Pro' );
+free_ok( false !== strpos( $faq_all, 'Strumenti → Copia di sicurezza' ) && false !== strpos( $faq_all, 'Cassa → Prima nota' ) && false !== strpos( $faq_all, 'fa parte di Associazione Semplice Pro' ), 'guida: nel gratuito la copia di sicurezza è in Strumenti e le funzioni a pagamento sono dichiarate come tali' );
+free_ok( false === strpos( $html['Soldi'], 'è in Contabilità' ) && false === strpos( $html['Bacheca'], 'Dati e fiscalità' ), 'soldi e bacheca: nessun rimando a schede del Pro' );
+
 free_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Edizione gratuita: tutti i controlli sono passati.' );

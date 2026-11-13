@@ -50,7 +50,7 @@ final class ActivitiesPage {
 		};
 		$tr = '<tr class="' . esc_attr( $row_class ) . '">';
 		return $tr . '<th>Come si paga</th><td><select name="billing" class="asem-billing">' . Ui::options( array( 'once' => 'Una tantum (anche annuale)', 'monthly' => 'Rinnovo mensile', 'quarterly' => 'Rinnovo trimestrale' ), $billing ) . '</select>'
-			. '<p class="description"><strong>Una tantum:</strong> la quota indicata è il totale (es. 10 incontri a 120 €), dovuta subito all\'iscrizione. <strong>Rinnovo trimestrale:</strong> la quota indicata è quella di un trimestre, dovuta all\'inizio di ogni periodo di tre mesi dal primo mese dell\'iscrizione. <strong>Rinnovo mensile:</strong> il corso si rinnova da solo ogni mese finché l\'iscritto non lo cancella, e ogni mensilità è dovuta <strong>dalla prima lezione del mese</strong>.</p></td></tr>'
+			. '<p class="description"><strong>Una tantum:</strong> il contributo indicato è il totale (es. 10 incontri a 120 €), dovuto subito all\'iscrizione. <strong>Rinnovo trimestrale:</strong> il contributo indicato è quello di un trimestre, dovuto all\'inizio di ogni periodo di tre mesi dal primo mese dell\'iscrizione. <strong>Rinnovo mensile:</strong> il corso si rinnova da solo ogni mese finché l\'iscritto non lo cancella, e ogni mensilità è dovuta <strong>dalla prima lezione del mese</strong>.</p></td></tr>'
 			. ( $with_when ? $tr . '<th>Quando</th><td>' . self::when_builder( $rows ) . '</td></tr>' : '' )
 			. $tr . '<th>Luogo</th><td><input type="text" name="location" class="regular-text" value="' . $val( 'location' ) . '"></td></tr>'
 			. $tr . '<th>Dal / al</th><td><input type="date" name="starts_on" value="' . $val( 'starts_on' ) . '"> <input type="date" name="ends_on" value="' . $val( 'ends_on' ) . '"> <span class="description">facoltative: se il corso ha una fine, dopo quella data le mensilità non sono più dovute</span></td></tr>';
@@ -107,9 +107,9 @@ final class ActivitiesPage {
 		$mode  = $a ? (string) $a['fund_mode'] : '';
 		$value = $a ? (int) $a['fund_value'] : 0;
 		$shown = \AssociazioneSemplice\FundShare::PERCENT === $mode ? rtrim( rtrim( number_format( $value / 100, 2, ',', '' ), '0' ), ',' ) : ( $value ? Money::plain( $value ) : '' );
-		return '<tr><th>Quota per il rimborso</th><td><select name="fund_mode">' . Ui::options( \AssociazioneSemplice\FundShare::modes(), $mode ) . '</select> '
+		return '<tr><th>Parte per il rimborso</th><td><select name="fund_mode">' . Ui::options( \AssociazioneSemplice\FundShare::modes(), $mode ) . '</select> '
 			. '<input type="text" name="fund_value" class="small-text" inputmode="decimal" value="' . esc_attr( $shown ) . '"> <span class="description">€ se importo fisso, % se percentuale</span>'
-			. '<p class="description">Una parte di ogni pagamento ricevuto va nel fondo "Rimborso (volontario) — (attività)". Il pagamento entra comunque nella cassa o nel conto usato: la quota è accantonata e si sottrae dalla disponibilità reale, finché non estingui il fondo registrando il rimborso. Serve indicare il referente.</p></td></tr>';
+			. '<p class="description">Una parte di ogni pagamento ricevuto va nel fondo "Rimborso (volontario) — (attività)". Il pagamento entra comunque nella cassa o nel conto usato: la parte accantonata si sottrae dalla disponibilità reale, finché non estingui il fondo registrando il rimborso. Serve indicare il referente.</p></td></tr>';
 	}
 
 	/** Riga del modulo: tolleranza per il pagamento (solo eventi ed eventi ricorrenti; ha effetto se i posti sono limitati). */
@@ -357,7 +357,7 @@ final class ActivitiesPage {
 			}
 		}
 		$ex = \AssociazioneSemplice\LessonExceptions::for_activity( $id );
-		echo '<div class="asem-card"><h2>Date delle lezioni</h2><p class="description">Annulla una lezione (festività, maltempo) o spostala a un altro giorno: il calendario, le presenze e i promemoria seguono. Le quote non cambiano.</p>';
+		echo '<div class="asem-card"><h2>Date delle lezioni</h2><p class="description">Annulla una lezione (festività, maltempo) o spostala a un altro giorno: il calendario, le presenze e i promemoria seguono. I contributi non cambiano.</p>';
 		if ( ! $next ) {
 			echo '<p class="description">Nessuna lezione nei prossimi 60 giorni.</p>';
 		}
@@ -530,7 +530,7 @@ final class ActivitiesPage {
 		$lists = PriceLists::for_activity( $activity );
 		$html  = '';
 		if ( $lists ) {
-			$html .= '<select name="price_list" title="Listino"><option value="">Contributo base</option>';
+			$html .= '<select name="price_list" title="Tariffa"><option value="">Contributo base</option>';
 			foreach ( $lists as $l ) {
 				$html .= '<option value="' . esc_attr( $l['key'] ) . '">' . esc_html( $l['label'] . ' — ' . Money::format( $l['cents'] ) ) . '</option>';
 			}
@@ -565,8 +565,8 @@ final class ActivitiesPage {
 	private static function price_row( int $i, array $l, bool $course ): string {
 		return '<div class="asem-pl-row"><input type="hidden" name="pl_key[' . $i . ']" value="' . esc_attr( (string) ( $l['key'] ?? '' ) ) . '">'
 			. ( $course ? '<input type="hidden" name="pl_entries[' . $i . ']" value="1">' : '' )
-			. '<input type="text" class="asem-pl-name" name="pl_label[' . $i . ']" value="' . esc_attr( $l['label'] ) . '" placeholder="' . ( $course ? 'es. Secondo corso -10%, Famiglia, Solo il sabato' : 'es. Intero, Ridotto, Pacchetto 4' ) . '" maxlength="60" aria-label="' . ( $course ? 'Nome della variante' : 'Nome del listino' ) . '">'
-			. '<span class="asem-pl-price"><input type="text" name="pl_price[' . $i . ']" size="7" value="' . esc_attr( '' === $l['label'] ? '' : Money::plain( (int) $l['cents'] ) ) . '" aria-label="Prezzo in euro"> €</span>'
+			. '<input type="text" class="asem-pl-name" name="pl_label[' . $i . ']" value="' . esc_attr( $l['label'] ) . '" placeholder="' . ( $course ? 'es. Secondo corso -10%, Famiglia, Solo il sabato' : 'es. Intero, Ridotto, Pacchetto 4' ) . '" maxlength="60" aria-label="' . ( $course ? 'Nome della variante' : 'Nome della tariffa' ) . '">'
+			. '<span class="asem-pl-price"><input type="text" name="pl_price[' . $i . ']" size="7" value="' . esc_attr( '' === $l['label'] ? '' : Money::plain( (int) $l['cents'] ) ) . '" aria-label="Importo in euro"> €</span>'
 			. ( $course ? '' : '<input type="number" name="pl_entries[' . $i . ']" min="1" max="50" value="' . (int) $l['entries'] . '" aria-label="Ingressi">' )
 			. '</div>';
 	}
@@ -575,11 +575,11 @@ final class ActivitiesPage {
 	private static function price_rows( array $activity, bool $course ): string {
 		$lists = array_slice( PriceLists::for_activity( $activity ), 0, PriceLists::max() );
 		$lists = array_merge( $lists, array( array( 'label' => '', 'cents' => 0, 'entries' => 1 ) ) );
-		$rows  = $course ? '<div class="asem-pl-row asem-pl-head"><span>Variante</span><span>Prezzo</span></div>' : '<div class="asem-pl-row asem-pl-head"><span>Nome</span><span>Prezzo</span><span>Ingressi</span></div>';
+		$rows  = $course ? '<div class="asem-pl-row asem-pl-head"><span>Variante</span><span>Importo</span></div>' : '<div class="asem-pl-row asem-pl-head"><span>Nome</span><span>Importo</span><span>Ingressi</span></div>';
 		foreach ( $lists as $i => $l ) {
 			$rows .= self::price_row( (int) $i, $l, $course );
 		}
-		return '<div class="asem-pl" data-max="' . (int) PriceLists::max() . '">' . $rows . '</div><p><button type="button" class="button asem-pl-add">+ Aggiungi un prezzo</button></p>';
+		return '<div class="asem-pl" data-max="' . (int) PriceLists::max() . '">' . $rows . '</div><p><button type="button" class="button asem-pl-add">+ Aggiungi una tariffa</button></p>';
 	}
 
 	/** Righe del modulo con i listini dell'attività (nome, prezzo, ingressi). */
@@ -591,12 +591,12 @@ final class ActivitiesPage {
 			return '';
 		}
 		return '<tr><th>Listini</th><td>' . self::price_rows( $activity, false )
-			. '<p class="description">Facoltativi: ad esempio Intero, Ridotto, Studenti, Pacchetto 4. Scrivi solo quelli che servono e aggiungine altri col pulsante. In prenotazione la segreteria sceglie il listino; con 4 ingressi il prezzo del pacchetto si paga una volta e le altre date si prenotano «dal pacchetto» senza altro da pagare. Senza listini vale il contributo sopra.</p></td></tr>';
+			. '<p class="description">Facoltativi: ad esempio Intero, Ridotto, Studenti, Pacchetto 4. Scrivi solo quelli che servono e aggiungine altri col pulsante. In prenotazione la segreteria sceglie la tariffa; con 4 ingressi l\'importo del pacchetto si paga una volta e le altre date si prenotano «dal pacchetto» senza altro da pagare. Senza tariffe vale il contributo sopra.</p></td></tr>';
 	}
 
 	/** Il menu delle varianti del contributo di un corso (la quota base è la prima voce). */
 	private static function variant_select( array $activity, string $selected ): string {
-		$html = '<select name="price_list"><option value="">Quota base — ' . esc_html( Money::format( (int) $activity['fee_cents'] ) ) . '</option>';
+		$html = '<select name="price_list"><option value="">Contributo base — ' . esc_html( Money::format( (int) $activity['fee_cents'] ) ) . '</option>';
 		foreach ( PriceLists::for_activity( $activity ) as $l ) {
 			$html .= '<option value="' . esc_attr( $l['key'] ) . '"' . selected( $selected, $l['key'], false ) . '>' . esc_html( $l['label'] . ' — ' . Money::format( (int) $l['cents'] ) ) . '</option>';
 		}
@@ -621,7 +621,7 @@ final class ActivitiesPage {
 	/** Corsi: varianti del contributo (nome libero e prezzo per ogni periodo di pagamento) che la segreteria assegna all'iscrizione. */
 	private static function course_variants_row( array $activity ): string {
 		return '<tr><th>Varianti del contributo</th><td>' . self::price_rows( $activity, true )
-			. '<p class="description">Facoltative e descritte come vuoi: sconto per più corsi, attività parziale, più familiari iscritti. Il prezzo è quello di ogni periodo di pagamento del corso. Le assegna la segreteria all\'iscrizione di una persona; chi si iscrive da solo paga il contributo sopra.</p></td></tr>';
+			. '<p class="description">Facoltative e descritte come vuoi: sconto per più corsi, attività parziale, più familiari iscritti. L\'importo è quello di ogni periodo di pagamento del corso. Le assegna la segreteria all\'iscrizione di una persona; chi si iscrive da solo paga il contributo sopra.</p></td></tr>';
 	}
 
 	private static function edit_card( array $activity, string $back ): void {
@@ -682,7 +682,7 @@ final class ActivitiesPage {
 			return ! in_array( (int) $p['id'], $enrolled_ids, true );
 		} ) );
 		echo '<div class="asem-card"><h2>Iscrivi un socio o un ospite</h2>' . ( 'once' === $activity['billing']
-			? '<p class="description">Corso a <strong>pagamento unico</strong>: la quota è dovuta per intero all\'iscrizione (si può versare anche a rate).</p>'
+			? '<p class="description">Corso a <strong>pagamento unico</strong>: il contributo è dovuto per intero all\'iscrizione (si può versare anche a rate).</p>'
 			: ( 'quarterly' === $activity['billing'] ? '<p class="description">L\'iscrizione si <strong>rinnova da sola ogni trimestre</strong> (tre mesi dal primo mese dovuto) finché non viene cancellata.</p>' : '<p class="description">L\'iscrizione si <strong>rinnova da sola ogni mese</strong> finché non viene cancellata' . ( $activity['ends_on'] ? ' (o fino alla fine del corso)' : '' ) . '. Ogni mensilità si paga alla prima lezione del mese' . ( (int) $activity['lesson_weekday'] ? '' : ' (indica il giorno della lezione nei dati del corso per saperlo con precisione)' ) . '.</p>' ) );
 		Ui::form_open( 'asem_enroll', $back );
 		echo wp_kses( Ui::hidden( 'activity_id', $id ), Html::allowed() );
@@ -793,7 +793,7 @@ final class ActivitiesPage {
 					}
 				)
 			);
-			echo '<h3>Elimina una data</h3><p class="description">Per un giorno di festa o di pausa: la data sparisce dal calendario e le prenotazioni non contano più. I pagamenti già ricevuti per quella data vanno rimborsati a mano.</p>';
+			echo '<h3>Annulla una data</h3><p class="description">Per un giorno di festa o di pausa: la data resta in elenco con la scritta «annullata» e le prenotazioni non contano più. I pagamenti già ricevuti per quella data vanno rimborsati a mano.</p>';
 			if ( ! $upcoming ) {
 				echo '<p class="description">Non ci sono date future.</p>';
 			} else {
@@ -801,7 +801,7 @@ final class ActivitiesPage {
 				foreach ( $upcoming as $s ) {
 					echo '<li>';
 					Ui::form_open( 'asem_cancel_session', $back, false, 'asem-confirm asem-inline' );
-					echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ) . esc_html( Ui::date( $s['session_date'] ) . ( $s['start_time'] ? ' · ore ' . substr( (string) $s['start_time'], 0, 5 ) : '' ) ) . ' <button class="button button-small" data-confirm="Eliminare la data del ' . esc_attr( Ui::date( $s['session_date'] ) ) . '? Le prenotazioni non contano più; i pagamenti già ricevuti vanno rimborsati a mano.">Elimina</button>', Html::allowed() );
+					echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ) . esc_html( Ui::date( $s['session_date'] ) . ( $s['start_time'] ? ' · ore ' . substr( (string) $s['start_time'], 0, 5 ) : '' ) ) . ' <button class="button button-small" data-confirm="Annullare la data del ' . esc_attr( Ui::date( $s['session_date'] ) ) . '? Le prenotazioni non contano più; i pagamenti già ricevuti vanno rimborsati a mano.">Annulla</button>', Html::allowed() );
 					Ui::form_close();
 					echo '</li>';
 				}
@@ -902,7 +902,7 @@ final class ActivitiesPage {
 		$staff = $svc->staff( $id );
 		$in    = array();
 		echo '<div class="asem-card"><h2>Staff dell\'evento (ingressi e cassa)</h2>';
-		echo '<p class="description">Vedono i prenotati e registrano gli ingressi (anche scansionando il QR) dall\'area riservata, solo per questo evento. Se abiliti l\'incasso, possono anche far pagare il biglietto sul posto a chi si presenta senza aver prenotato (se c\'è posto) e registrare subito l\'ingresso. Il referente e gli amministratori possono fare tutto questo già di default.</p>';
+		echo '<p class="description">Vedono i prenotati e registrano gli ingressi (anche scansionando il QR) dall\'area riservata, solo per questo evento. Se abiliti l\'incasso, possono anche far pagare il contributo d\'ingresso sul posto a chi si presenta senza aver prenotato (se c\'è posto) e registrare subito l\'ingresso. Il referente e gli amministratori possono fare tutto questo già di default.</p>';
 		if ( $staff ) {
 			echo '<ul>';
 			foreach ( $staff as $m ) {
@@ -949,7 +949,7 @@ final class ActivitiesPage {
 			$cap   = null === $s['capacity'] ? null : (int) $s['capacity'];
 			$title = Ui::date( $s['session_date'] ) . ( $s['start_time'] ? ' · ore ' . esc_html( $s['start_time'] ) : '' ) . ( $s['location'] ? ' · ' . esc_html( $s['location'] ) : '' );
 			echo wp_kses( '<details class="asem-detail" id="asem-sess-' . (int) $s['id'] . '"' . ( ActivityKind::EVENT === $activity['kind'] ? ' open' : '' ) . '><summary><strong>' . $title . '</strong> — '
-				. count( $booked ) . ( null === $cap ? ' prenotati' : ' / ' . $cap . ' posti (' . max( 0, $cap - count( $booked ) ) . ' liberi)' ) . ( $cancelled ? ' <span class="asem-neg">· ANNULLATA</span>' : '' ) . '</summary>', Html::allowed() );
+				. count( $booked ) . ( null === $cap ? ' prenotati' : ' / ' . $cap . ' posti (' . max( 0, $cap - count( $booked ) ) . ' liberi)' ) . ( $cancelled ? ' <span class="asem-neg">· annullata</span>' : '' ) . '</summary>', Html::allowed() );
 
 			$queue = \AssociazioneSemplice\Waitlist::waiting( (int) $s['id'] );
 			if ( $queue ) {
