@@ -6,6 +6,7 @@ namespace App\Modules\Soci\Services;
 
 use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Core\Contracts\StaffCount;
+use App\Modules\Soci\Models\MemberLevel;
 use App\Modules\Soci\Rules\Age;
 
 /**
@@ -40,8 +41,9 @@ final readonly class RuntsCounts
         $same = 0;
         $volunteers = 0;
         $list = [];
+        $noVote = MemberLevel::query()->where('votes', false)->pluck('id')->all();
         foreach ($this->book->peopleEntering([$date, $date]) as $p) {
-            if (! $p->type->hasVotingRights()) {
+            if (! $p->type->hasVotingRights() || ($p->level_id !== null && in_array($p->level_id, $noVote, true))) {
                 continue;
             }
             if ($p->is_entity) {

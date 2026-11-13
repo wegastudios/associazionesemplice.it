@@ -34,6 +34,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string|null $notes
  * @property MemberType $type
  * @property string|null $level_id
+ * @property int|null $matricola
  * @property string|null $host_person_id
  * @property CarbonImmutable|null $joined_on
  * @property CarbonImmutable|null $left_on

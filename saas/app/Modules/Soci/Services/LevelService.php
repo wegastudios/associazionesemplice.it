@@ -12,9 +12,10 @@ use App\Modules\Soci\Models\Person;
 /** Livelli di socio (dal Levels del plugin): una base tra fondatore, ordinario e volontario e una quota propria. */
 final readonly class LevelService
 {
-    public function create(string $name, MemberType $base, ?int $feeCents): MemberLevel
+    public function create(string $name, MemberType $base, ?int $feeCents, bool $votes = true): MemberLevel
     {
         $level = new MemberLevel([
+            'votes' => $votes,
             'name' => self::name($name),
             'base_type' => self::base($base)->value,
             'fee_cents' => self::fee($feeCents),
@@ -26,15 +27,15 @@ final readonly class LevelService
         return $level;
     }
 
-    public function update(string $id, string $name, MemberType $base, ?int $feeCents, bool $active): MemberLevel
+    public function update(string $id, string $name, MemberType $base, ?int $feeCents, bool $active, bool $votes = true): MemberLevel
     {
         $level = MemberLevel::query()->findOrFail($id);
-        $level->fill(['name' => self::name($name), 'base_type' => self::base($base)->value, 'fee_cents' => self::fee($feeCents), 'active' => $active])->save();
+        $level->fill(['name' => self::name($name), 'base_type' => self::base($base)->value, 'fee_cents' => self::fee($feeCents), 'active' => $active, 'votes' => $votes])->save();
 
         return $level;
     }
 
-    /** @return list<array{id: string, name: string, base: string, base_label: string, fee_cents: int|null, active: bool, people: int}> */
+    /** @return list<array{id: string, name: string, base: string, base_label: string, fee_cents: int|null, active: bool, votes: bool, people: int}> */
     public function all(): array
     {
         $counts = Person::query()->whereNotNull('level_id')->whereNull('left_on')->selectRaw('level_id, count(*) AS n')->groupBy('level_id')
@@ -47,6 +48,7 @@ final readonly class LevelService
             'base_label' => $l->base_type->label(),
             'fee_cents' => $l->fee_cents,
             'active' => $l->active,
+            'votes' => $l->votes,
             'people' => is_numeric($counts->get($l->id)) ? (int) $counts->get($l->id) : 0,
         ])->all());
     }
