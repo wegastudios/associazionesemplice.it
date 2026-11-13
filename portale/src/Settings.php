@@ -237,6 +237,16 @@ final class Settings {
 		return ( $now >= $start && $now <= $end ) ? (string) $p['label'] : null;
 	}
 
+	/** «fino al 1° novembre»: l'ultimo giorno della promozione in corso, per scriverlo accanto al nome; vuoto se non c'è. */
+	public static function promoUntil( ?int $now = null ): string {
+		$end = (string) Config::get( 'promo.end', '' );
+		if ( null === self::promoNow( $now ) || 1 !== preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $end, $m ) ) {
+			return '';
+		}
+		$mesi = array( 1 => 'gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre' );
+		return 'fino al ' . ( 1 === (int) $m[3] ? '1°' : (int) $m[3] ) . ' ' . ( $mesi[ (int) $m[2] ] ?? '' );
+	}
+
 	/**
 	 * Regime IVA dei piani del plugin: `exempt` (venditore forfettario: nessuna IVA, serve la dicitura di legge) oppure `included` (il prezzo
 	 * è il totale, IVA compresa). Finché non si sceglie nulla le pagine non dicono niente sull'IVA. Come per il gestionale, senza la dicitura
