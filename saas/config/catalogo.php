@@ -190,8 +190,10 @@ $catalog = [
         ]),
         ['code' => 'custom_domain', 'name' => 'Il tuo indirizzo web (dominio personalizzato)', 'kind' => 'domain', 'visible' => true, 'grants' => [], 'prices' => $flat(300)],
         ['code' => 'dedicated_db', 'name' => 'Archivio separato solo per la tua associazione (database dedicato)', 'kind' => 'dedicated_db', 'visible' => true, 'grants' => [], 'prices' => $flat(2500)],
-        // Oltre i 1.000 soci della Grande: +500 soci, acquistabile più volte. Il prezzo non è deciso: a 0 e non in vendita finché la titolare non lo imposta.
-        ['code' => 'members_500', 'name' => '500 soci in più (oltre i 1.000 della Grande)', 'kind' => 'package', 'visible' => false, 'grants' => ['package' => 'members_extra', 'limits' => ['members' => 500]], 'prices' => $flat(0)],
+        // Pacchetti di soci solo per la Grande, oltre i 1.000 (decisione della titolare, 13/11/2026): 3,4 € a socio, 17 € per 500 e 30 € per 1.000.
+        // Nascosti finché lei non li mette in vendita dal pannello. Piccola e Media non li hanno: chi supera i limiti passa al piano sopra.
+        ['code' => 'members_500', 'name' => '500 soci in più (solo con il piano Grande)', 'kind' => 'package', 'visible' => false, 'grants' => ['package' => 'members_extra', 'limits' => ['members' => 500]], 'prices' => $flat(1700)],
+        ['code' => 'members_1000', 'name' => '1.000 soci in più (solo con il piano Grande)', 'kind' => 'package', 'visible' => false, 'grants' => ['package' => 'members_extra', 'limits' => ['members' => 1000]], 'prices' => $flat(3000)],
     ],
 
     'promos' => [],

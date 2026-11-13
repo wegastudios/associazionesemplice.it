@@ -73,6 +73,32 @@ final readonly class PortalConfig
         return is_int($hours) && $hours > 0 ? $hours : 72;
     }
 
+    public function retentionDays(): int
+    {
+        $days = $this->config->get('saas.portal.retention_days', 180);
+
+        return is_int($days) && $days > 0 ? $days : 180;
+    }
+
+    public function trialPurgeDays(): int
+    {
+        $days = $this->config->get('saas.portal.trial_purge_days', 7);
+
+        return is_int($days) && $days > 0 ? $days : 7;
+    }
+
+    public function purgeEnabled(): bool
+    {
+        return $this->config->get('saas.portal.purge_enabled', false) === true;
+    }
+
+    public function purgeMaxPerNight(): int
+    {
+        $max = $this->config->get('saas.portal.purge_max_per_night', 5);
+
+        return is_int($max) && $max > 0 ? $max : 5;
+    }
+
     public function graceDays(): int
     {
         $days = $this->config->get('saas.portal.grace_days', 0);

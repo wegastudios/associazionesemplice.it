@@ -101,3 +101,10 @@ con una proposta scontata (`terms.trial.end_discount_percent`, partenza 0: la mi
 esporta (la prova non esporta). La cancellazione usa gli stessi passi di §3–4 con la scadenza della prova al posto di
 `until`; chi sceglie un piano prima, la ferma. Sequenza degli avvisi da definire con l'audit (per esempio al giorno
 −7, −2 della fine prova, alla fine, +3 e +6).
+
+## 9. Decisioni del 13/11/2026 (titolare, via audit)
+
+- Lo sconto di fine prova si imposta in Condizioni (`terms.trial.end_discount_percent`, partenza 0). Con 0 le email non hanno il paragrafo dell'offerta. Vale sul primo pagamento, dalla fine della prova fino alla cancellazione dei dati.
+- Nei 7 giorni dopo la prova il gestionale è in **sola lettura** e si può acquistare un piano (realizzazione nell'app: «Sviluppo SaaS in locale»).
+- Commercialista: i termini di legge di conservazione non sono un problema nostro. Backup legati al servizio: distrutta la chiave, i dati non si aprono più.
+- Pacchetti di soci (decisione definitiva 13/11): «500 soci in più» 17 €/mese (170 €/anno) e «1.000 soci in più» 30 €/mese (300 €/anno), IVA esclusa, solo sopra il piano Grande, nascosti finché la titolare non li mette in vendita. Piccola e Media non li hanno. Da chiederle: si sommano e si comprano più volte? Cosa succede se si supera il limite senza cambiare piano?

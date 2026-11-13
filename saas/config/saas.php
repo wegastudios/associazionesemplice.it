@@ -100,8 +100,14 @@ return [
         // (decisione del 13/11/2026).
         'grace_days' => 0,
         // Giorni in cui si conservano i dati di un'associazione sospesa o che ha disdetto, poi si cancellano (decisione del 13/11/2026).
-        // Oggi è solo il valore: la cancellazione non è ancora fatta dall'applicazione.
+        // La cancellazione la fa `saas:portal:purge-expired`, ogni notte solo se `purge_enabled` è acceso.
         'retention_days' => 180,
+        // Giorni dopo la fine della prova, senza un piano, prima di cancellare i dati della prova (decisione del 13/11/2026).
+        'trial_purge_days' => 7,
+        // Interruttore della cancellazione notturna: spento finché la titolare non dà il via.
+        'purge_enabled' => (bool) env('SAAS_PURGE_ENABLED', false),
+        // Se in una notte i candidati sono di più la cancellazione non parte e avvisa: un errore di data non cancella tutto.
+        'purge_max_per_night' => 5,
     ],
 
     // Dominio personalizzato: il cliente delega il dominio ai nostri nameserver (elenco separato da virgole), noi emettiamo

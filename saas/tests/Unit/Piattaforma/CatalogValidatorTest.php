@@ -162,7 +162,11 @@ it('tiene pronti lo sconto di fine prova e il pacchetto da 500 soci, senza una c
     expect($doc['terms']['trial']['end_discount_percent'])->toBe(0)
         ->and($doc['terms']['trial']['purge_days'])->toBe(7)
         ->and($addons['members_500']['visible'])->toBeFalse()
-        ->and($addons['members_500']['prices'][0]['amount_cents'])->toBe(0)
+        ->and($addons['members_500']['prices'][0]['amount_cents'])->toBe(1700)
+        ->and($addons['members_500']['prices'][1]['amount_cents'])->toBe(17000)
+        ->and($addons['members_1000']['visible'])->toBeFalse()
+        ->and($addons['members_1000']['prices'][0]['amount_cents'])->toBe(3000)
+        ->and($addons['members_1000']['prices'][1]['amount_cents'])->toBe(30000)
         ->and($addons['members_500']['grants']['limits'])->toBe(['members' => 500]);
 
     $bad = seedCatalog();
