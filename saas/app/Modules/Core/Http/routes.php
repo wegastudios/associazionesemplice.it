@@ -55,6 +55,7 @@ Route::middleware('web')->group(function (): void {
                 Route::get('/operatori', [OperatorsController::class, 'index'])->name('operators');
                 Route::post('/operatori', [OperatorsController::class, 'invite'])->middleware('throttle:20,1')->name('operators.invite');
                 Route::put('/operatori/{user}', [OperatorsController::class, 'update'])->whereUuid('user')->name('operators.update');
+                Route::put('/operatori/{user}/permessi', [OperatorsController::class, 'permissions'])->whereUuid('user')->name('operators.permissions');
                 Route::delete('/operatori/{user}', [OperatorsController::class, 'remove'])->whereUuid('user')->name('operators.remove');
                 Route::post('/ruoli', [OperatorsController::class, 'saveRole'])->name('roles.store');
                 Route::put('/ruoli/{role}', [OperatorsController::class, 'saveRole'])->whereUuid('role')->name('roles.update');

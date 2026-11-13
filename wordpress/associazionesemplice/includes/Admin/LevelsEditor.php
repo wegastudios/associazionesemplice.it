@@ -17,9 +17,9 @@ final class LevelsEditor {
 	public static function section(): void {
 		$rows = array();
 		foreach ( Levels::all() as $lv ) {
-			$rows[] = array( 'id' => (int) $lv['id'], 'name' => $lv['name'], 'base' => $lv['base_type'], 'fee' => null === $lv['fee_cents'] ? '' : Money::plain( (int) $lv['fee_cents'] ), 'active' => (bool) (int) $lv['active'], 'used' => Levels::in_use( (int) $lv['id'] ) );
+			$rows[] = array( 'id' => (int) $lv['id'], 'name' => $lv['name'], 'base' => $lv['base_type'], 'fee' => null === $lv['fee_cents'] ? '' : Money::plain( (int) $lv['fee_cents'] ), 'active' => (bool) (int) $lv['active'], 'votes' => 1 === (int) ( $lv['votes'] ?? 1 ), 'used' => Levels::in_use( (int) $lv['id'] ) );
 		}
-		echo '<h2>Livelli di socio</h2><p class="description">Ogni livello ha il suo nome (come appare sulla tessera e negli elenchi), una base che ne decide il comportamento e, se serve, una quota propria. '
+		echo '<h2>Livelli di socio</h2><p class="description">Ogni livello ha il suo nome (come appare sulla tessera e negli elenchi), una base che ne decide il comportamento, se serve una quota propria e il diritto di voto (vota «sì» o «no»: conta nelle votazioni, nel numero legale delle assemblee e nei dati per il RUNTS; i minorenni non votano mai). '
 			. 'Lascia vuota la quota per usare quella proposta qui sopra: così puoi avere, ad esempio, soci ordinari, soci ridotti, sostenitori o soci onorari con quote diverse. '
 			. 'Un livello con dei soci non si cancella: se lo togli resta, ma non si può più assegnare.</p>';
 		Ui::form_open( 'asem_save_levels', Ui::url( 'asem-settings' ) );

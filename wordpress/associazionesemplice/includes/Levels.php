@@ -129,7 +129,7 @@ final class Levels {
 			if ( '' !== $fee_txt && null === $fee ) {
 				throw new \InvalidArgumentException( 'La quota del livello «' . $name . '» non è un importo valido.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
-			$clean[] = array( 'id' => (int) ( $r['id'] ?? 0 ), 'name' => $name, 'base_type' => $base, 'fee_cents' => $fee, 'active' => ! empty( $r['active'] ) ? 1 : 0 );
+			$clean[] = array( 'id' => (int) ( $r['id'] ?? 0 ), 'name' => $name, 'base_type' => $base, 'fee_cents' => $fee, 'active' => ! empty( $r['active'] ) ? 1 : 0, 'votes' => array_key_exists( 'votes', $r ) ? ( ! empty( $r['votes'] ) ? 1 : 0 ) : null );
 		}
 		if ( count( $clean ) > self::MAX ) {
 			throw new \InvalidArgumentException( 'Al massimo ' . self::MAX . ' livelli.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
@@ -148,7 +148,10 @@ final class Levels {
 		$now_sort = 0;
 		foreach ( $clean as $c ) {
 			$data = array( 'name' => $c['name'], 'base_type' => $c['base_type'], 'fee_cents' => $c['fee_cents'], 'active' => $c['active'], 'sort_order' => $now_sort++ );
-			$old  = $c['id'] ? self::get( $c['id'] ) : null;
+			if ( null !== $c['votes'] ) {
+				$data['votes'] = $c['votes']; // diritto di voto del livello (Pro); un livello nuovo senza scelta parte da «sì»
+			}
+			$old  =$c['id'] ? self::get( $c['id'] ) : null;
 			if ( $old ) {
 				if ( $old['base_type'] !== $c['base_type'] && self::in_use( (int) $old['id'] ) ) {
 					throw new \InvalidArgumentException( 'La base del livello «' . $old['name'] . '» non si può cambiare finché ci sono soci con quel livello.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
@@ -171,6 +174,7 @@ final class Levels {
 			}
 		}
 		Audit::log( 'levels.saved', 'settings', 0, array( 'levels' => count( $clean ) ) );
+		do_action( 'asem_levels_saved' );
 	}
 
 	public static function in_use( int $id ): bool {

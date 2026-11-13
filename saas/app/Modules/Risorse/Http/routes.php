@@ -28,6 +28,6 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator', 'package:resources']
     });
 
     // Gli incassi scrivono in prima nota: servono anche i permessi della contabilità.
-    Route::middleware(['can:people.edit', 'can:accounting.edit'])
+    Route::middleware(['can:people.edit', 'can:accounting.edit', 'can:accounting.income'])
         ->post('/prenotazioni/{reservation}/incassa', [ReservationsController::class, 'collect'])->whereUuid('reservation')->name('reservations.collect');
 });

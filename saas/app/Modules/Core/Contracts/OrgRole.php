@@ -21,6 +21,9 @@ enum OrgRole: string
     /** Operatore di segreteria: anagrafica e prima nota. */
     case Operator = 'operator';
 
+    /** Dipendente: parte come la segreteria; titolare e amministratori possono togliergli alcuni permessi. */
+    case Employee = 'employee';
+
     /** Commercialista o revisore: legge contabilità e anagrafica, non modifica. */
     case Accountant = 'accountant';
 
@@ -33,6 +36,7 @@ enum OrgRole: string
             self::Owner => 'Titolare',
             self::Admin => 'Amministratore',
             self::Operator => 'Segreteria',
+            self::Employee => 'Dipendente',
             self::Accountant => 'Commercialista',
             self::Custom => 'Ruolo personalizzato',
         };
@@ -44,7 +48,7 @@ enum OrgRole: string
         return match ($this) {
             self::Owner => true,
             self::Admin => $role !== self::Owner,
-            self::Operator, self::Accountant, self::Custom => false,
+            self::Operator, self::Employee, self::Accountant, self::Custom => false,
         };
     }
 }

@@ -478,8 +478,16 @@ Config::set( 'legal', array() );
 check( 'piè di pagina: senza dati compilati nessuna riga', '' === Portale\Legal::footerLine() );
 Config::set( 'legal', array( 'titolare' => 'Associazione Rossi', 'piva' => '01234567890', 'indirizzo' => '', 'email' => '' ) );
 check( 'piè di pagina: solo i campi compilati', 'Associazione Rossi · P.IVA 01234567890' === Portale\Legal::footerLine() );
+check( 'legale: frase del titolare con i soli campi compilati', 'Associazione Rossi, partita IVA 01234567890' === Portale\Legal::vars()['titolare_completo'] );
+Config::set( 'legal', array( 'titolare' => 'Associazione Rossi', 'indirizzo' => 'Via Roma 1, Milano', 'piva' => '', 'email' => '' ) );
+check( 'legale: frase del titolare con indirizzo e senza partita IVA', 'Associazione Rossi, con sede in Via Roma 1, Milano' === Portale\Legal::vars()['titolare_completo'] );
+Config::set( 'legal', array() );
+$privHtml = Portale\Legal::html( Portale\Legal::body( 'privacy' ) );
+check( 'legale: privacy di base senza buchi quando i dati non ci sono', false !== strpos( $privHtml, 'è Associazione Semplice. Per' ) && false === strpos( $privHtml, 'partita IVA' ) );
+$cookieHtml = Portale\Legal::html( Portale\Legal::body( 'cookie' ) );
+check( 'legale: cookie di base senza statistiche né marketing promessi', false === strpos( $cookieHtml, 'Marketing' ) && false === strpos( $cookieHtml, 'Statistiche' ) && false !== strpos( $cookieHtml, 'non usiamo cookie di statistica' ) );
 Config::set( 'legal', $legalBefore );
-$lv = Portale\Legal::vars();
+$lv =Portale\Legal::vars();
 check( 'legale: segnaposto dei piani nuovi e vecchi → stesso nome del pannello', $lv['piano_contabile'] === $lv['piano_lite'] && $lv['piano_fiscale'] === $lv['piano_full'] && '' !== $lv['piano_gratuito'] && false === strpos( Portale\Legal::html( Portale\Legal::body( 'termini' ) ), '{piano_' ) );
 check( 'legale: email non valida scartata, si torna ai valori di base', 'info@associazionesemplice.it' === Portale\Legal::vars()['email'] && ! Portale\Legal::isCustom( 'privacy' ) );
 
@@ -1812,6 +1820,23 @@ $qdoc = json_decode( (string) json_encode( array(
 	'plans' => array( array( 'code' => 'gestionale', 'plan_version' => 3, 'name' => 'Gestionale', 'order' => 1, 'visible' => true, 'trial_days' => 30, 'prices' => array( $cases['members_tiers']['price'], $cases['members_tiers_year']['price'] ) ) ),
 	'addons' => array( array( 'code' => 'operators_extra', 'visible' => true, 'prices' => array( array( 'period' => 'month', 'kind' => 'flat', 'amount_cents' => 300, 'vat_percent' => 22 ) ) ) ),
 ) ), true );
+// Pacchetti per piano: lo dice il catalogo (campo `plans` dell'addon, `limits.packages` del piano), il portale non ha regole sue.
+$pdoc = $qdoc;
+$pdoc['plans'][]  = array( 'code' => 'grande', 'plan_version' => 1, 'name' => 'Grande', 'order' => 2, 'visible' => true, 'limits' => array( 'packages' => array( 'member_area' => array() ) ), 'prices' => $qdoc['plans'][0]['prices'] );
+$pdoc['addons'][] = array( 'code' => 'members_500', 'kind' => 'package', 'visible' => true, 'plans' => array( 'grande' ), 'prices' => $qdoc['addons'][0]['prices'] );
+$pdoc['addons'][] = array( 'code' => 'member_area', 'kind' => 'package', 'grants' => array( 'package' => 'member_area' ), 'visible' => true, 'prices' => $qdoc['addons'][0]['prices'] );
+$pdoc['addons'][ 0 ]['plans'] = array( 'gestionale' );
+check( 'carrello: pacchetto solo su un piano → motivo sugli altri, libero sul suo', 'Disponibile solo con il piano Grande' === Portale\Catalog::addonBlock( $pdoc, 'gestionale', $pdoc['addons'][1] ) && null === Portale\Catalog::addonBlock( $pdoc, 'grande', $pdoc['addons'][1] ) );
+check( 'carrello: pacchetto compreso nel piano → «Compreso nel piano», mai venduto due volte', 'Compreso nel piano Grande' === Portale\Catalog::addonBlock( $pdoc, 'grande', $pdoc['addons'][2] ) && null === Portale\Catalog::addonBlock( $pdoc, 'gestionale', $pdoc['addons'][2] ) );
+check( 'carrello: senza il campo `plans` vale «tutti i piani»', null === Portale\Catalog::addonBlock( $qdoc, 'gestionale', $qdoc['addons'][0] ) );
+$pe = '';
+try {
+	Quote::build( $pdoc, 'gestionale', 'month', 150, array( 'members_500' => 1 ) );
+} catch ( Portale\UserError $e ) {
+	$pe = $e->getMessage();
+}
+check( 'preventivo: addon non ammesso sul piano rifiutato con il motivo', false !== strpos( $pe, 'Disponibile solo con il piano Grande' ) );
+check( 'preventivo: addon ammesso sul suo piano si somma', 3300 + 300 === Quote::build( $pdoc, 'grande', 'month', 150, array( 'members_500' => 1 ) )['net'] );
 $q150 = Quote::build( $qdoc, 'gestionale', 'month', 150 );
 check( 'preventivo: 150 soci = 3300 + IVA 726 = 4026, versione e rev nell\'istantanea', 3300 === $q150['net'] && 726 === $q150['vat'] && 4026 === $q150['total'] && 3 === $q150['plan_version'] && 7 === $q150['rev'] );
 $qa = Quote::build( $qdoc, 'gestionale', 'month', 150, array( 'operators_extra' => 2 ) );

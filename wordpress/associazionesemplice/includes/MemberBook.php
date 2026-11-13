@@ -20,10 +20,10 @@ final class MemberBook {
 	 * elenco: si cambia qui oppure con il filtro `asem_member_book_snapshot_fields`. Non si copiano email, telefono, numero e stato della tessera,
 	 * quote e pagamenti, note, consensi, certificati, dati dei genitori e foto. Il numero di riga e la matricola hanno una colonna propria.
 	 */
-	const SNAPSHOT_FIELDS = array( 'last_name', 'first_name', 'birth_date', 'birth_place', 'tax_code', 'residence', 'level', 'joined_on', 'approved_on', 'left_on', 'left_reason' );
+	const SNAPSHOT_FIELDS = array( 'kind', 'last_name', 'first_name', 'birth_date', 'birth_place', 'tax_code', 'residence', 'level', 'joined_on', 'approved_on', 'left_on', 'left_reason' );
 
 	/** Tutti i campi che una riga del libro sa fornire: un filtro non può chiederne altri. */
-	const ROW_FIELDS = array( 'last_name', 'first_name', 'tax_code', 'birth_date', 'birth_place', 'residence', 'email', 'phone', 'applied_on', 'approved_on', 'fee_cents', 'fee_year', 'guardian', 'card_number', 'level', 'joined_on', 'left_on', 'left_reason' );
+	const ROW_FIELDS = array( 'kind', 'last_name', 'first_name', 'tax_code', 'birth_date', 'birth_place', 'residence', 'email', 'phone', 'applied_on', 'approved_on', 'fee_cents', 'fee_year', 'guardian', 'card_number', 'level', 'joined_on', 'left_on', 'left_reason' );
 
 	private static function db(): \wpdb {
 		return Db::db();
@@ -147,12 +147,23 @@ final class MemberBook {
 	}
 
 	/** Le tessere non cancellate di tutte le persone: person_id => [ [valid_from, valid_to], … ]. */
-	private static function cards_by_person(): array {
+	public static function cards_by_person(): array {
 		$out = array();
 		foreach ( self::db()->get_results( 'SELECT person_id, valid_from, valid_to FROM ' . Db::t( 'memberships' ) . ' WHERE deleted_at IS NULL', ARRAY_A ) ?: array() as $r ) {
 			$out[ (int) $r['person_id'] ][] = $r;
 		}
 		return $out;
+	}
+
+	/**
+	 * Le righe grezze di tutte le persone che possono essere soci (non cancellate, non domande in corso, non ospiti né tutori) e le loro tessere:
+	 * serve a chi deve applicare {@see MemberBook::qualifies()} a più date senza rileggere il database ogni volta.
+	 *
+	 * @return array{0:array[],1:array} [persone, tessere per persona]
+	 */
+	public static function candidates(): array {
+		$rows = self::db()->get_results( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE deleted_at IS NULL AND application_status IS NULL AND type NOT IN ('guest','guardian') ORDER BY joined_on, id", ARRAY_A ) ?: array();
+		return array( $rows, self::cards_by_person() );
 	}
 
 	/**
@@ -162,8 +173,7 @@ final class MemberBook {
 	 * @return array[]
 	 */
 	public static function qualifying_people( string $from, string $to ): array {
-		$rows  = self::db()->get_results( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE deleted_at IS NULL AND application_status IS NULL AND type NOT IN ('guest','guardian') ORDER BY joined_on, id", ARRAY_A ) ?: array();
-		$cards = self::cards_by_person();
+		list( $rows, $cards ) = self::candidates();
 		return array_values(
 			array_filter(
 				$rows,
@@ -175,6 +185,11 @@ final class MemberBook {
 	}
 
 	// ---------- Libro dal vivo e fotografato ----------
+
+	/** «Persona fisica» o «Ente», per la colonna «Tipo» del libro (schermo, PDF, CSV). */
+	public static function kind_label( string $kind ): string {
+		return RuntsRules::ENTITY === $kind ? 'Ente' : 'Persona fisica';
+	}
 
 	/** Residenza su una riga: via, CAP, comune (provincia). */
 	private static function residence( array $p ): string {
@@ -268,6 +283,7 @@ final class MemberBook {
 				'n'           => $n,
 				'id'          => (int) $p['id'],
 				'matricola'   => (int) $p['matricola'],
+				'kind'        => RuntsRules::kind( $p['subject_kind'] ?? '' ), // persona o ente
 				'name'        => $anon ? '(dati anonimizzati)' : trim( $p['last_name'] . ' ' . $p['first_name'] ),
 				'last_name'   => $anon ? '(dati anonimizzati)' : (string) $p['last_name'],
 				'first_name'  => $anon ? '' : (string) $p['first_name'],
@@ -336,6 +352,7 @@ final class MemberBook {
 			'n'           => (int) $r['n'],
 			'id'          => (int) $r['person_id'],
 			'matricola'   => (int) $r['matricola'],
+			'kind'        => RuntsRules::kind( $s( 'kind' ) ), // le fotografie scritte prima di questo campo non lo hanno: si mostrano come persona fisica
 			'name'        => trim( $s( 'last_name' ) . ' ' . $s( 'first_name' ) ),
 			'last_name'   => $s( 'last_name' ),
 			'first_name'  => $s( 'first_name' ),

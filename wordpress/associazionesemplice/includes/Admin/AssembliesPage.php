@@ -20,7 +20,7 @@ final class AssembliesPage {
 			return;
 		}
 		Ui::header( 'Assemblee', '<a class="page-title-action" href="' . esc_url( Ui::url( 'asem-assemblies', array( 'new' => 1 ) ) ) . '">Nuova assemblea</a>' );
-		echo '<p class="description">Convoca l\'assemblea dei soci, registra chi è presente, le deleghe tra soci e il numero legale, poi crea il verbale già compilato. Hanno diritto di intervenire i soci in regola (non i tutori né gli ospiti). Il verbale si trova poi in Registri → Verbali.</p>';
+		echo '<p class="description">Convoca l\'assemblea dei soci, registra chi è presente, le deleghe tra soci e il numero legale, poi crea il verbale già compilato. Hanno diritto di intervenire i soci in regola con diritto di voto (non i minorenni, né i soci di un livello senza voto, né i tutori e gli ospiti). Il verbale si trova poi in Registri → Verbali.</p>';
 		$labels = AssemblyRules::status_labels();
 		echo '<table class="widefat striped"><thead><tr><th>Assemblea</th><th>Tipo</th><th>Prima convocazione</th><th>Stato</th><th>Verbale</th></tr></thead><tbody>';
 		$rows = Assemblies::all();

@@ -71,16 +71,29 @@ final readonly class Memberships
             ->leftJoin('core.org_roles as r', 'r.id', '=', 'm.custom_role_id')
             ->whereNull('o.deleted_at')
             ->where(fn (Builder $q) => $q->where('o.status', 'active')->orWhere(fn (Builder $r) => self::trialEnded($r)))
-            ->select(['m.user_id', 'm.org_id', 'm.role', 'o.name', 'm.custom_role_id', 'r.name as custom_name', 'r.abilities as custom_abilities']);
+            ->select(['m.user_id', 'm.org_id', 'm.role', 'o.name', 'm.custom_role_id', 'r.name as custom_name', 'r.abilities as custom_abilities', 'm.denied_abilities']);
     }
 
     private function toOperator(object $row): Operator
     {
-        /** @var object{user_id: string, org_id: string, role: string, name: string, custom_role_id: string|null, custom_name: string|null, custom_abilities: string|null} $row */
+        /** @var object{user_id: string, org_id: string, role: string, name: string, custom_role_id: string|null, custom_name: string|null, custom_abilities: string|null, denied_abilities: string|null} $row */
         return new Operator(
             $row->user_id, $row->org_id, $row->name, OrgRole::from($row->role),
             $row->custom_role_id, $row->custom_name, self::abilities($row->custom_abilities),
+            self::denied($row->denied_abilities),
         );
+    }
+
+    /**
+     * Permessi tolti a un dipendente, dall'array di PostgreSQL: solo quelli dell'elenco chiuso.
+     *
+     * @return list<Ability>
+     */
+    public static function denied(?string $array): array
+    {
+        $values = $array === null || trim($array, '{}') === '' ? [] : array_map(static fn (string $v): string => trim($v, '"'), explode(',', trim($array, '{}')));
+
+        return array_values(array_filter(Ability::removable(), static fn (Ability $a): bool => in_array($a->value, $values, true)));
     }
 
     /**
