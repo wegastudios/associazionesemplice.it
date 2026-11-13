@@ -312,7 +312,12 @@ final class Backup {
 				unset( $new[ $k ] ); // le chiavi segrete restano quelle del sito (e Settings::update le lascia com'è)
 			}
 			unset( $new['license_key'] ); // la chiave di licenza resta quella del sito
+			$fiscal_month = max( 1, min( 12, (int) ( $new['fiscal_start_month'] ?? 1 ) ) ); // il mese dell'anno fiscale torna quello della copia, insieme agli esercizi: non passa dal blocco «esercizi chiusi»
+			unset( $new['fiscal_start_month'] );
 			Settings::update( $new ); // passa dai controlli delle impostazioni: una copia modificata non può inserire valori fuori regola
+			$saved                       = (array) get_option( Settings::OPTION, array() );
+			$saved['fiscal_start_month'] = $fiscal_month;
+			update_option( Settings::OPTION, $saved );
 			foreach ( self::OPT_NAMES as $n ) {
 				if ( isset( $p['options'][ $n ] ) && null !== $p['options'][ $n ] ) {
 					update_option( $n, $p['options'][ $n ], false );
@@ -334,6 +339,7 @@ final class Backup {
 			}
 		}
 		$zip->close();
+		Install::migrate_year_closures(); // una copia fatta prima della traccia delle chiusure: gli anni chiusi ne ricevono la riga (idempotente)
 		Texts::flush();
 		Audit::log( 'backup.restored', 'settings', 0, array( 'rows' => $rows_total, 'attachments' => $files ) );
 		return array( 'tables' => count( $m['tables'] ), 'rows' => $rows_total, 'files' => $files, 'safety' => basename( $safety ) );

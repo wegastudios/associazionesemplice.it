@@ -205,7 +205,7 @@ final class ProRegisters {
 			}
 			echo '</div>';
 		}
-		$from = preg_match( '/^\d{4}-\d{2}-\d{2}$/', Ui::get_str( 'from' ) ) ? Ui::get_str( 'from' ) : substr( $today, 0, 4 ) . '-01-01';
+		$from = preg_match( '/^\d{4}-\d{2}-\d{2}$/', Ui::get_str( 'from' ) ) ? Ui::get_str( 'from' ) : \AssociazioneSemplice\FiscalYears::range( \AssociazioneSemplice\FiscalYears::current() )[0]; // inizio dell'esercizio in corso
 		$to   = preg_match( '/^\d{4}-\d{2}-\d{2}$/', Ui::get_str( 'to' ) ) ? Ui::get_str( 'to' ) : $today;
 		echo '<h2>Riepilogo del periodo</h2>';
 		echo '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-attendance"><input type="hidden" name="activity" value="' . (int) $aid . '"><input type="hidden" name="ym" value="' . esc_attr( $ym ) . '">'

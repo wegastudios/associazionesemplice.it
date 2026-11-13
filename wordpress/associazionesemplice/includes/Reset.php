@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Azzeramento dei dati dell'associazione, per ripartire da zero.
  *
- *  - «data»: cancella soci, ospiti, attività, prima nota, registri, pagamenti, comunicazioni, ricevute e allegati; restano impostazioni,
+ *  - «data»: cancella soci, ospiti, attività, prima nota, registri, pagamenti, comunicazioni, ricevute e allegati; restano impostazioni, traccia delle chiusure degli esercizi,
  *    testi, pagine e registro azioni. Si ricreano conti, voci e livelli predefiniti.
  *  - «factory»: ripristino di fabbrica, come appena installato: cancella anche impostazioni, testi, pagine create dalla procedura
  *    e registro azioni, e rilancia la configurazione guidata.
@@ -32,7 +32,7 @@ final class Reset {
 	/** Tabelle da svuotare (nomi senza prefisso). Il registro azioni resta, salvo nel ripristino di fabbrica. */
 	public static function tables( string $mode ): array {
 		return array_values( array_filter( Backup::tables(), function ( $t ) use ( $mode ) {
-			return self::FACTORY === $mode || 'asem_audit_log' !== $t;
+			return self::FACTORY === $mode || ! in_array( $t, array( 'asem_audit_log', 'asem_fiscal_year_closures' ), true ); // registro azioni e traccia delle chiusure restano
 		} ) );
 	}
 

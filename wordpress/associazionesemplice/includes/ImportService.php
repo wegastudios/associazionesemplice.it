@@ -120,6 +120,10 @@ final class ImportService {
 	 * @return array people {created, updated, failed[]}, ledger {created, transfers, duplicates, skipped, failed[], memberships, shifted}, batch_id
 	 */
 	public static function apply( array $preview, array $opts = array() ): array {
+		if ( ! empty( $preview['ledger'] ) && ! empty( $opts['keep_balances'] ) && null !== FiscalYears::last_closed() ) {
+			// Aggiustare il saldo iniziale cambierebbe i saldi degli esercizi chiusi: si ferma prima di scrivere qualunque cosa.
+			throw new \InvalidArgumentException( FiscalYears::closed_message( (int) FiscalYears::last_closed() ) . ' «Non cambiare i saldi attuali dei conti» aggiusta il saldo iniziale e non si può usare con esercizi chiusi: togli la spunta (i saldi derivano dai movimenti) oppure riapri l\'esercizio.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
 		$res   = array( 'people' => null, 'ledger' => null, 'batch_id' => null );
 		$track = array( 'people_created' => array(), 'people_updated' => array(), 'wp_users_created' => array(), 'memberships' => array(), 'shifts' => array(), 'accounts_created' => array() );
 		$batch = self::open_batch( (string) ( $opts['source'] ?? $preview['file'] ?? 'Import' ) );

@@ -23,6 +23,8 @@ final class MemberBook {
 			throw new \InvalidArgumentException( 'La cessazione si registra per un socio.' );
 		}
 		$date = trim( $date );
+		YearLock::assert_date_open( (string) ( $p['left_on'] ?? '' ) ); // togliere o cambiare una cessazione già in un esercizio chiuso non si può
+		YearLock::assert_date_open( $date ); // e nemmeno metterne una con data in un esercizio chiuso
 		if ( '' === $date ) {
 			self::db()->update( Db::t( 'people' ), array( 'left_on' => null, 'left_reason' => null, 'suspended_at' => null, 'updated_at' => Db::now() ), array( 'id' => $person_id ) );
 			if ( MemberType::is_auto_renewed( $p['type'] ) ) {

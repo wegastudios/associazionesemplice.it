@@ -62,6 +62,9 @@ class LedgerService {
 			throw new \InvalidArgumentException( 'Conto non trovato.' );
 		}
 		$name = $this->check_account_fields( $name, $type );
+		if ( (int) $old['opening_cents'] !== $opening_cents ) {
+			YearLock::assert_none_closed(); // il saldo iniziale cambia anche i saldi degli esercizi chiusi
+		}
 		$this->db()->update( Db::t( 'accounts' ), array( 'name' => $name, 'type' => $type, 'opening_cents' => $opening_cents ), array( 'id' => $id ) );
 		$details = array();
 		foreach ( array( 'name' => $name, 'type' => $type ) as $k => $v ) {
@@ -656,6 +659,7 @@ class LedgerService {
 		if ( 0 === $delta ) {
 			return;
 		}
+		YearLock::assert_none_closed(); // il saldo iniziale cambia anche i saldi degli esercizi chiusi
 		$this->db()->query( $this->db()->prepare( 'UPDATE ' . Db::t( 'accounts' ) . ' SET opening_cents = opening_cents + %d WHERE id = %d', $delta, $account_id ) );
 		Audit::log( 'account.opening_shifted', 'account', $account_id, array( 'delta_cents' => $delta ) );
 	}

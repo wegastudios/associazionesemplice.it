@@ -4,21 +4,14 @@ namespace AssociazioneSemplice;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Controllo di bilancio, spese attribuite ai fondi e inizio dell'anno fiscale (funzioni di Associazione Semplice Pro Fiscale) nei punti di
- * estensione di Associazione Semplice: impostazioni, limiti, procedura guidata, Bacheca, lavori periodici, privacy e azioni di amministrazione.
+ * Controllo di bilancio e spese attribuite ai fondi (funzioni di Associazione Semplice Pro Fiscale) nei punti di
+ * estensione di Associazione Semplice: limiti, Bacheca, lavori periodici, privacy e azioni di amministrazione.
  * Si avvia da {@see ProBoot::init()}.
  */
 final class ProWatch {
 
 	public static function register(): void {
-		add_filter( 'asem_settings_defaults', array( __CLASS__, 'defaults' ) );
-		add_filter( 'asem_settings_clean', array( __CLASS__, 'clean' ) );
 		add_filter( 'asem_limits_defs', array( __CLASS__, 'limits' ) );
-		add_filter( 'asem_fiscal_start_month', array( __CLASS__, 'fiscal_start_month' ) );
-		add_action( 'asem_entity_rows', array( __CLASS__, 'entity_row' ), 20 );
-		add_filter( 'asem_entity_values', array( __CLASS__, 'entity_values' ), 20, 3 );
-		add_action( 'asem_wizard_more_rows', array( __CLASS__, 'wizard_row' ) );
-		add_filter( 'asem_wizard_values', array( __CLASS__, 'wizard_values' ), 10, 2 );
 		add_action( 'asem_expense_recorded', array( ExpenseFunds::class, 'on_recorded' ), 10, 2 );
 		add_action( 'asem_attachments_added', array( ExpenseFunds::class, 'on_attachments' ), 10, 1 );
 		add_action( 'asem_expense_form_rows', array( __CLASS__, 'expense_form_row' ) );
@@ -34,71 +27,6 @@ final class ProWatch {
 		add_action( 'asem_yearend_alert', array( YearEndCheck::class, 'show' ) );
 		add_filter( 'asem_expense_saved_note', array( ExpenseFunds::class, 'saved_note' ), 10, 2 );
 		FundReconciliation::register();
-	}
-
-	// ---------- Impostazioni ----------
-
-	public static function defaults( array $d ): array {
-		return $d + array( 'fiscal_start_month' => 1 ); // l'esercizio inizia a gennaio, cioè coincide con l'anno solare (comportamento di sempre)
-	}
-
-	public static function clean( array $clean ): array {
-		$clean['fiscal_start_month'] = max( 1, min( 12, (int) ( $clean['fiscal_start_month'] ?? 1 ) ) );
-		return $clean;
-	}
-
-	/** Il mese di inizio dell'anno fiscale vale solo con il livello Pro Fiscale: senza, gli anni restano solari. */
-	public static function fiscal_start_month( $month ) {
-		return Edition::has( 'watch' ) ? (int) Settings::get( 'fiscal_start_month' ) : (int) $month;
-	}
-
-	/** Quando cambia l'inizio dell'anno fiscale gli anni si ridisegnano: serve che esistano quelli che contengono i movimenti. */
-	private static function month_changed( int $old ): void {
-		if ( $old !== FiscalYears::start_month() ) {
-			FiscalYears::seed();
-		}
-	}
-
-	private static function month_select( array $s ): string {
-		return '<select name="fiscal_start_month">' . Admin\Ui::options( Admin\Ui::MONTHS, (int) $s['fiscal_start_month'] ) . '</select>';
-	}
-
-	/** Scheda «Dati e fiscalità»: il mese in cui inizia l'anno fiscale, distinto dall'anno sociale. */
-	public static function entity_row( array $s ): void {
-		if ( ! Edition::has( 'watch' ) ) {
-			return;
-		}
-		echo '<tr><th>L\'anno fiscale inizia a</th><td>' . self::month_select( $s ) . '<p class="description">È l\'esercizio della contabilità (prima nota, anni, report, preventivo, rendiconto): può iniziare in un mese diverso dall\'anno sociale. Di partenza è gennaio, cioè l\'anno solare. Le tessere dei soci restano per anno solare (scadono il 31 dicembre). Cambiarlo ridisegna gli anni della contabilità: fallo a inizio esercizio e controlla poi gli anni in «Anni solari».</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
-	}
-
-	public static function entity_values( array $vals, array $p, bool $full ): array {
-		if ( Edition::has( 'watch' ) && ( $full || array_key_exists( 'fiscal_start_month', $p ) ) ) {
-			$old                        = FiscalYears::start_month();
-			$vals['fiscal_start_month'] = max( 1, min( 12, (int) ( $p['fiscal_start_month'] ?? 1 ) ) );
-			add_action( 'shutdown', function () use ( $old ) { // dopo il salvataggio
-				self::month_changed( $old );
-			} );
-		}
-		return $vals;
-	}
-
-	/** Procedura guidata: tra le domande secondarie, annidata in «Più dettagli». */
-	public static function wizard_row( array $s ): void {
-		if ( ! Edition::has( 'watch' ) ) {
-			return;
-		}
-		echo '<tr><th>L\'anno fiscale inizia a</th><td>' . self::month_select( $s ) . ' <span class="description">(di solito gennaio, come l\'anno solare)</span></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
-	}
-
-	public static function wizard_values( array $vals, array $p ): array {
-		if ( Edition::has( 'watch' ) && isset( $p['fiscal_start_month'] ) ) {
-			$old                        = FiscalYears::start_month();
-			$vals['fiscal_start_month'] = max( 1, min( 12, (int) $p['fiscal_start_month'] ) );
-			add_action( 'shutdown', function () use ( $old ) {
-				self::month_changed( $old );
-			} );
-		}
-		return $vals;
 	}
 
 	// ---------- Limiti ----------

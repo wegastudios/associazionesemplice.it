@@ -28,8 +28,74 @@ final class FiscalYears {
 	 * `asem_fiscal_start_month`. L'anno si indica con l'anno in cui inizia: con inizio a luglio il 2025 va dal 1 luglio 2025 al 30 giugno 2026.
 	 */
 	public static function start_month(): int {
-		$m = function_exists( 'apply_filters' ) ? (int) apply_filters( 'asem_fiscal_start_month', 1 ) : 1;
+		$m = function_exists( 'get_option' ) ? (int) Settings::get( 'fiscal_start_month' ) : 1; // un'unica fonte di verità: l'impostazione «L'anno fiscale inizia a» (tutte le edizioni)
+		$m = function_exists( 'apply_filters' ) ? (int) apply_filters( 'asem_fiscal_start_month', $m ) : $m;
 		return max( 1, min( 12, $m ) );
+	}
+
+	/** Dopo la chiusura di un esercizio il mese di inizio non si cambia più: gli anni si ridisegnerebbero e quelli chiusi cambierebbero confini. */
+	public static function start_month_locked(): bool {
+		return null !== self::last_closed();
+	}
+
+	/** Messaggio mostrato quando si prova a cambiare il mese con esercizi chiusi. */
+	public static function start_month_locked_message(): string {
+		return 'Esistono esercizi chiusi: il mese di inizio non si può più cambiare.';
+	}
+
+	/** Messaggio unico per ogni azione bloccata perché tocca un anno chiuso. */
+	public static function closed_message( int $year ): string {
+		return 'L\'anno ' . self::label( $year ) . ' è chiuso: per modificarlo va riaperto.';
+	}
+
+	/** L'esercizio chiuso più recente (l'unico che si può riaprire), oppure null se nessuno è chiuso. */
+	public static function last_closed(): ?int {
+		$y = self::db()->get_var( 'SELECT MAX(year) FROM ' . Db::t( 'fiscal_years' ) . " WHERE status = 'closed'" );
+		return null === $y ? null : (int) $y;
+	}
+
+	// ---------- Traccia permanente di chiusure e riaperture ----------
+
+	/** La chiusura in vigore di un anno (l'ultima versione), se l'anno è stato chiuso. */
+	public static function current_closure( int $year ): ?array {
+		$row = self::db()->get_row( self::db()->prepare( 'SELECT * FROM ' . Db::t( 'fiscal_year_closures' ) . ' WHERE year = %d ORDER BY version DESC LIMIT 1', $year ), ARRAY_A );
+		return $row && 'current' === $row['status'] ? $row : null;
+	}
+
+	/**
+	 * Tutte le chiusure (e le riaperture, che sono scritte sulla stessa riga) di un anno o di tutti, dalla più recente. La tabella non si
+	 * cancella mai: nemmeno con la pulizia del registro azioni.
+	 *
+	 * @return array[]
+	 */
+	public static function closures( ?int $year = null ): array {
+		$sql = 'SELECT c.*, u.display_name AS closed_by_name, r.display_name AS reopened_by_name FROM ' . Db::t( 'fiscal_year_closures' ) . ' c LEFT JOIN ' . self::db()->users . ' u ON u.ID = c.closed_by LEFT JOIN ' . self::db()->users . ' r ON r.ID = c.reopened_by';
+		if ( null !== $year ) {
+			$sql .= self::db()->prepare( ' WHERE c.year = %d', $year );
+		}
+		return self::db()->get_results( $sql . ' ORDER BY c.year DESC, c.version DESC', ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nomi di tabella interni, il valore è già passato da prepare()
+	}
+
+	/** Scrive la riga di una nuova chiusura (versione successiva dell'anno). Con $user = 0 l'utente non si conosce (anni chiusi prima della traccia). */
+	public static function record_closure( int $year, string $at, int $user ): void {
+		$v    = 1 + (int) self::db()->get_var( self::db()->prepare( 'SELECT MAX(version) FROM ' . Db::t( 'fiscal_year_closures' ) . ' WHERE year = %d', $year ) );
+		$m    = self::start_month();
+		$span = self::range_for( $year, $m );
+		self::db()->insert(
+			Db::t( 'fiscal_year_closures' ),
+			array(
+				'year'             => $year,
+				'version'          => $v,
+				'closed_at'        => $at,
+				'closed_by'        => $user > 0 ? $user : null,
+				'start_month_used' => $m,
+				'range_from'       => $span[0],
+				'range_to'         => $span[1],
+				'plugin_version'   => defined( 'ASEM_VERSION' ) ? ASEM_VERSION : null,
+				'status'           => 'current',
+				'snapshot_state'   => 'none', // la fotografia dei dati arriva con una versione successiva: qui si traccia solo la chiusura
+			)
+		);
 	}
 
 	/** Primo e ultimo giorno dell'anno fiscale (regola pura). @return array{0:string,1:string} */
@@ -70,15 +136,14 @@ final class FiscalYears {
 		return self::year_of( Db::today() );
 	}
 
-	/** L'anno in corso si apre da solo (il primo giorno dell'anno, o al primo movimento) e non può restare chiuso. */
+	/**
+	 * L'anno in corso si apre da solo (il primo giorno dell'anno, o al primo movimento) se non esiste ancora. Un anno già chiuso non si riapre
+	 * mai in silenzio: «il chiuso è chiuso», si riapre solo a mano con {@see FiscalYears::reopen()} e il motivo.
+	 */
 	public static function ensure_current_open(): void {
 		$cur = self::current();
-		$row = self::get( $cur );
-		if ( ! $row ) {
+		if ( ! self::get( $cur ) ) {
 			self::create( $cur );
-			Audit::log( 'year.opened_auto', 'year', $cur );
-		} elseif ( 'open' !== $row['status'] ) {
-			self::reopen( $cur );
 			Audit::log( 'year.opened_auto', 'year', $cur );
 		}
 	}
@@ -129,10 +194,10 @@ final class FiscalYears {
 		}
 		$row = self::get( $year );
 		if ( ! $row ) {
-			throw new \InvalidArgumentException( 'L\'esercizio ' . $year . ' non è stato creato: crealo dalla scheda «Esercizi» prima di registrare movimenti in quella data.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( 'L\'esercizio ' . self::label( $year ) . ' non è stato creato: crealo dalla scheda «Esercizi» prima di registrare movimenti in quella data.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( 'open' !== $row['status'] ) {
-			throw new \InvalidArgumentException( 'L\'esercizio ' . $year . ' è chiuso: non accetta più incassi né spese. Riaprilo dalla scheda «Esercizi» se devi correggerlo.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( 'L\'esercizio ' . self::label( $year ) . ' è chiuso: non accetta più incassi né spese. Riaprilo dalla scheda «Esercizi» se devi correggerlo.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 	}
 
@@ -155,27 +220,56 @@ final class FiscalYears {
 			throw new \InvalidArgumentException( 'Anno solare non trovato.' );
 		}
 		if ( 'open' !== $row['status'] ) {
-			throw new \InvalidArgumentException( 'L\'anno ' . $year . ' è già chiuso.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( 'L\'anno ' . self::label( $year ) . ' è già chiuso.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$b = self::blockers( $year );
 		if ( $b ) {
-			throw new \InvalidArgumentException( 'L\'anno ' . $year . ' non si può chiudere: ' . implode( '; ', $b ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( 'L\'anno ' . self::label( $year ) . ' non si può chiudere: ' . implode( '; ', $b ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$prev = self::db()->get_var( self::db()->prepare( 'SELECT MAX(year) FROM ' . Db::t( 'fiscal_years' ) . " WHERE year < %d AND status = 'open'", $year ) );
+		if ( null !== $prev ) { // gli esercizi chiusi formano sempre una serie continua: si chiude in ordine
+			throw new \InvalidArgumentException( 'Prima di chiudere il ' . self::label( $year ) . ' chiudi il ' . self::label( (int) $prev ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$gaps = function_exists( 'apply_filters' ) ? (array) apply_filters( 'asem_year_close_confirm', array(), $year ) : array(); // cose da confermare per chiudere lo stesso
 		if ( $gaps && ! $confirmed ) {
-			throw new \InvalidArgumentException( 'L\'anno ' . $year . ' si chiude solo con la tua conferma: ' . implode( '; ', $gaps ) . '. Spunta la conferma accanto a «Chiudi l\'anno» se vuoi chiuderlo comunque.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( 'L\'anno ' . self::label( $year ) . ' si chiude solo con la tua conferma: ' . implode( '; ', $gaps ) . '. Spunta la conferma accanto a «Chiudi l\'anno» se vuoi chiuderlo comunque.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
-		self::db()->update( Db::t( 'fiscal_years' ), array( 'status' => 'closed', 'closed_at' => Db::now() ), array( 'year' => $year ) );
+		$now = Db::now();
+		self::db()->update( Db::t( 'fiscal_years' ), array( 'status' => 'closed', 'closed_at' => $now ), array( 'year' => $year ) );
+		self::record_closure( $year, $now, (int) get_current_user_id() );
 		Audit::log( 'year.closed', 'year', $year, $gaps ? array( 'confirmed_gaps' => $gaps ) : array() );
 	}
 
-	public static function reopen( int $year ): void {
+	/**
+	 * Riapre un esercizio chiuso. Si riapre solo l'ultimo esercizio chiuso (il più recente) e serve sempre il motivo, che resta scritto per
+	 * sempre insieme a chi e quando. La chiusura riaperta non si cancella: diventa una versione precedente e alla chiusura successiva ne nasce una nuova.
+	 *
+	 * @throws \InvalidArgumentException
+	 */
+	public static function reopen( int $year, string $reason ): void {
 		$row = self::get( $year );
 		if ( ! $row || 'closed' !== $row['status'] ) {
 			throw new \InvalidArgumentException( 'L\'anno solare non è chiuso.' );
 		}
+		$last = self::last_closed();
+		if ( $last !== $year ) {
+			throw new \InvalidArgumentException( 'Si può riaprire solo l\'ultimo esercizio chiuso (' . self::label( (int) $last ) . '): riaprilo prima di tornare al ' . self::label( $year ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$reason = mb_substr( trim( sanitize_textarea_field( $reason ) ), 0, 500 );
+		if ( '' === $reason ) {
+			throw new \InvalidArgumentException( 'Scrivi il motivo della riapertura: resta registrato per sempre.' );
+		}
+		if ( null === self::current_closure( $year ) ) {
+			self::record_closure( $year, $row['closed_at'] ? (string) $row['closed_at'] : Db::now(), 0 ); // anno chiuso senza traccia (dati di prima della v58)
+		}
+		$c = self::current_closure( $year );
 		self::db()->update( Db::t( 'fiscal_years' ), array( 'status' => 'open', 'closed_at' => null ), array( 'year' => $year ) );
-		Audit::log( 'year.reopened', 'year', $year );
+		self::db()->update(
+			Db::t( 'fiscal_year_closures' ),
+			array( 'status' => 'superseded', 'reopened_at' => Db::now(), 'reopened_by' => get_current_user_id() ?: null, 'reopen_reason' => $reason ),
+			array( 'id' => (int) $c['id'] )
+		);
+		Audit::log( 'year.reopened', 'year', $year, array( 'reason' => $reason, 'version' => (int) $c['version'] ) );
 	}
 
 	/** Numero di movimenti registrati in un anno (non annullati). */
