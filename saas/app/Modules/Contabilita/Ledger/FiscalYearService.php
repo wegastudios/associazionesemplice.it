@@ -67,6 +67,15 @@ final readonly class FiscalYearService
 
     public function close(int $year): void
     {
+        // Gli esercizi si chiudono in ordine: un esercizio precedente ancora aperto (e con movimenti) va chiuso prima.
+        $starts = $this->connection()->table('app.fiscal_years')->where('year', $year)->value('starts_on');
+        $earlier = is_string($starts) ? $this->connection()->table('app.fiscal_years as f')->where('f.starts_on', '<', $starts)->where('f.status', 'open')
+            ->whereExists(fn ($q) => $q->selectRaw('1')->from('app.transactions as t')->whereColumn('t.fiscal_year', 'f.year'))
+            ->orderBy('f.starts_on')->value('f.year') : null;
+        if (is_numeric($earlier)) {
+            throw new LedgerError("Prima di chiudere l'esercizio {$year} chiudi l'esercizio {$earlier}: gli esercizi si chiudono in ordine.");
+        }
+
         $updated = $this->connection()->table('app.fiscal_years')->where('year', $year)->where('status', 'open')
             ->update(['status' => 'closed', 'closed_at' => now(), 'closed_by' => $this->userId()]);
         if ($updated !== 1) {
@@ -79,6 +88,12 @@ final readonly class FiscalYearService
     {
         if (trim($reason) === '') {
             throw new LedgerError('Indica perché riapri l\'esercizio.');
+        }
+        // Si riapre solo l'esercizio chiuso più recente: gli altri restano com'erano.
+        $starts = $this->connection()->table('app.fiscal_years')->where('year', $year)->where('status', 'closed')->value('starts_on');
+        $latest = is_string($starts) ? $this->connection()->table('app.fiscal_years')->where('status', 'closed')->where('starts_on', '>', $starts)->orderByDesc('starts_on')->value('year') : null;
+        if (is_numeric($latest)) {
+            throw new LedgerError("Si può riaprire solo l'ultimo esercizio chiuso: prima riapri il {$latest}.");
         }
         $updated = $this->connection()->table('app.fiscal_years')->where('year', $year)->where('status', 'closed')
             ->update(['status' => 'open', 'closed_at' => null, 'closed_by' => null]);

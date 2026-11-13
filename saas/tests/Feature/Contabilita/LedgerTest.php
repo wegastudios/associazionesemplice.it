@@ -244,3 +244,22 @@ it('la commissione ha limiti: al massimo 20 euro e 25 per cento', function (): v
         ->and(fn () => $accounts->setFee($this->bank->id, 0, 2501))->toThrow(LedgerError::class)
         ->and($accounts->setFee($this->bank->id, 2000, 2500)->fee_bp)->toBe(2500);
 });
+
+it('gli esercizi si chiudono in ordine e si riapre solo l\'ultimo chiuso', function (): void {
+    $years = app(FiscalYearService::class);
+    $old = (int) now()->subYear()->format('Y');
+    $current = (int) now()->format('Y');
+    $this->ledger->recordExpense(new Expense(now()->subYear()->format('Y-m-d'), $this->cash->id, ($this->cat)(CategoryKind::GeneralCost), 500));
+    $this->ledger->recordExpense(new Expense($this->today, $this->cash->id, ($this->cat)(CategoryKind::GeneralCost), 700));
+
+    expect(fn () => $years->close($current))->toThrow(LedgerError::class, "chiudi l'esercizio {$old}");
+
+    $years->close($old);
+    $years->close($current);
+
+    expect(fn () => $years->reopen($old, 'Correzione'))->toThrow(LedgerError::class, "riapri il {$current}");
+
+    $years->reopen($current, 'Correzione');
+    $years->reopen($old, 'Correzione');
+    expect(DB::table('app.fiscal_years')->where('status', 'open')->count())->toBe(2);
+});
