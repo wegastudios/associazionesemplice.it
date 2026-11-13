@@ -1938,13 +1938,14 @@ $reSeen  = array();
 $reInv   = array( 'status' => 'open', 'id' => 'in_1' );
 $reSub   = array( 'status' => 'past_due' );
 $reCode  = 200;
+$reBody  = '{}';
 $reTrans = Http::$transport;
-Http::$transport = function ( $m, $u, $h, $b ) use ( &$reSeen, &$reInv, &$reSub, &$reCode ) {
+Http::$transport = function ( $m, $u, $h, $b ) use ( &$reSeen, &$reInv, &$reSub, &$reCode, &$reBody ) {
 	$reSeen[] = array( $m, $u );
 	if ( 'GET' === $m ) {
 		return array( 200, json_encode( $reSub + array( 'latest_invoice' => $reInv ) ) );
 	}
-	return array( $reCode, '{}' );
+	return array( $reCode, $reBody );
 };
 check( 'riattiva (Stripe): fattura aperta → pagata con il metodo salvato', 'paid' === Stripe::payOpenInvoice( 'sub_1' ) && 'POST' === $reSeen[1][0] && false !== strpos( $reSeen[1][1], '/invoices/in_1/pay' ) );
 $reSeen = array();
@@ -1964,6 +1965,37 @@ $reSeen = array();
 check( 'riattiva: pagamento riuscito → nessun indirizzo da aprire', null === SaasCheckout::reactivate( $cdb, $cbill, $reOrd, (int) json_decode( (string) $reOrd['quote'], true )['total'] ) && 'POST' === $reSeen[1][0] );
 $reCode = 402;
 check( 'riattiva: rifiuto della carta → messaggio per il cliente', null !== throwsUser( function () use ( $cdb, $cbill, $reOrd ) { SaasCheckout::reactivate( $cdb, $cbill, $reOrd ); } ) );
+// Nuovi tentativi dopo un rifiuto: 3 al giorno nei primi 2 giorni, poi 1 al giorno per altri 5 (11 in 7 giorni), mai dopo un rifiuto definitivo.
+$rt = function () use ( $cdb, $reOrd ) { return $cdb->one( 'SELECT retry_from, retry_n, retry_at FROM orders WHERE id = ?', array( $reOrd['id'] ) ); };
+check( 'tentativi: programmati al primo rifiuto (primo dopo 8 ore), 11 in 7 giorni', 5000100 + 8 * 3600 === strtotime( $rt()['retry_at'] . ' UTC' ) && 0 === (int) $rt()['retry_n'] && 11 === count( SaasCheckout::RETRY_HOURS ) && 168 === max( SaasCheckout::RETRY_HOURS ) && 6 === count( array_filter( SaasCheckout::RETRY_HOURS, function ( $h ) { return $h <= 48; } ) ) );
+$mailsBefore = count( $mails );
+SaasCheckout::event( $cdb, 'stripe', 'sub_1', 'failed', 5000200 );
+check( 'tentativi: un altro «non riuscito» durante i tentativi → niente email in più né nuova programmazione', count( $mails ) === $mailsBefore && 0 === (int) $rt()['retry_n'] && 5000100 === strtotime( $rt()['retry_from'] . ' UTC' ) );
+$due = 5000100 + 8 * 3600;
+$reSeen = array();
+check( 'tentativi: spenti finché non si accende saas_retry', 0 === SaasCheckout::retryPayments( $cdb, $due ) && array() === $reSeen );
+Config::set( 'saas_retry', true );
+check( 'tentativi: prima dell\'ora prevista non succede nulla', 0 === SaasCheckout::retryPayments( $cdb, $due - 60 ) && array() === $reSeen );
+$reCode = 402;
+$reBody = json_encode( array( 'error' => array( 'code' => 'card_declined', 'decline_code' => 'insufficient_funds' ) ) );
+check( 'tentativi: rifiuto normale → riprogrammato alle 16 ore dal primo rifiuto', 1 === SaasCheckout::retryPayments( $cdb, $due ) && 1 === (int) $rt()['retry_n'] && 5000100 + 16 * 3600 === strtotime( $rt()['retry_at'] . ' UTC' ) );
+$cdb->run( 'UPDATE orders SET retry_n = 10, retry_at = ? WHERE id = ?', array( gmdate( 'Y-m-d H:i:s', $due ), $reOrd['id'] ) );
+SaasCheckout::retryPayments( $cdb, $due );
+check( 'tentativi: dopo l\'undicesimo si smette', null === $rt()['retry_at'] );
+$cdb->run( 'UPDATE orders SET retry_n = 2, retry_at = ? WHERE id = ?', array( gmdate( 'Y-m-d H:i:s', $due ), $reOrd['id'] ) );
+$reBody = json_encode( array( 'error' => array( 'code' => 'card_declined', 'decline_code' => 'stolen_card' ) ) );
+SaasCheckout::retryPayments( $cdb, $due );
+check( 'tentativi: carta rubata (rifiuto definitivo) → mai più', null === $rt()['retry_at'] );
+$cdb->run( 'UPDATE orders SET retry_n = 2, retry_at = ? WHERE id = ?', array( gmdate( 'Y-m-d H:i:s', $due ), $reOrd['id'] ) );
+$reBody = json_encode( array( 'error' => array( 'code' => 'card_declined', 'decline_code' => 'generic_decline', 'advice_code' => 'do_not_try_again' ) ) );
+SaasCheckout::retryPayments( $cdb, $due );
+check( 'tentativi: la banca dice «non riprovare» → mai più', null === $rt()['retry_at'] );
+$cdb->run( 'UPDATE orders SET retry_n = 2, retry_at = ? WHERE id = ?', array( gmdate( 'Y-m-d H:i:s', $due ), $reOrd['id'] ) );
+$reCode = 200;
+$reBody = '{}';
+SaasCheckout::retryPayments( $cdb, $due );
+check( 'tentativi: pagamento riuscito → programma azzerato', null === $rt()['retry_at'] );
+Config::set( 'saas_retry', false );
 Http::$transport = $reTrans;
 // Nuovo ordine per la stessa associazione (Riattiva dopo la scadenza): niente benvenuto, ordine vecchio sostituito, gestionale attivo.
 $reNew = Orders::open( $cdb, (string) $reOrd['customer_id'], (string) $reOrd['plan'], (string) $reOrd['period'], (int) $reOrd['members'], Orders::addonsOf( (array) json_decode( (string) $reOrd['quote'], true ) ), null );
