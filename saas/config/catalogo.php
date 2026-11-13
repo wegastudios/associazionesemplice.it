@@ -191,6 +191,14 @@ $catalog = [
     ],
 
     'promos' => [],
+
+    // Condizioni uguali per tutti i piani. Oggi il venditore è in regime forfettario: nessuna IVA esposta (dicitura da
+    // far confermare al commercialista). Per tornare all'IVA basta `'mode' => 'standard'` dal pannello (Condizioni).
+    'terms' => [
+        'vat' => ['mode' => 'exempt', 'note' => "Operazione senza applicazione dell'IVA ai sensi dell'art. 1, commi 54-89, legge 190/2014 (regime forfettario)."],
+        'payments' => ['own_gateway_percent' => 0, 'collected_by_us_percent' => 3],
+        'trial' => ['exports' => false, 'accountant_access' => false],
+    ],
 ];
 
 // Il piano a scaglioni resta per le versioni già vendute; non è più in vendita (il nuovo listino è dei tre piani sopra).

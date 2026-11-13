@@ -156,6 +156,63 @@ final readonly class AdminCatalogEditorController
         return redirect(AdminLoginController::url('catalogo/promozioni'))->with('status', 'Promozioni salvate nella bozza.');
     }
 
+    // ───────────────────────────── Condizioni ─────────────────────────────
+
+    public function terms(): View
+    {
+        return view('admin.terms', $this->termsView($this->termsFromDocument()));
+    }
+
+    public function termsSave(Request $request): RedirectResponse|View
+    {
+        /** @var array<string, mixed> $input */
+        $input = $request->all();
+        try {
+            $this->editor->saveTerms($input, $this->staffId());
+        } catch (InvalidArgumentException $e) {
+            $form = [
+                'vat_mode' => ($input['vat_mode'] ?? null) === 'exempt' ? 'exempt' : 'standard',
+                'vat_note' => is_string($input['vat_note'] ?? null) ? $input['vat_note'] : '',
+                'own_gateway_percent' => is_string($input['own_gateway_percent'] ?? null) ? $input['own_gateway_percent'] : '',
+                'collected_by_us_percent' => is_string($input['collected_by_us_percent'] ?? null) ? $input['collected_by_us_percent'] : '',
+                'trial_exports' => ($input['trial_exports'] ?? null) === '1',
+                'trial_accountant_access' => ($input['trial_accountant_access'] ?? null) === '1',
+            ];
+
+            return view('admin.terms', $this->termsView($form) + ['problem' => $e->getMessage()]);
+        }
+
+        return redirect(AdminLoginController::url('catalogo/condizioni'))->with('status', 'Condizioni salvate nella bozza.');
+    }
+
+    /** @return array{vat_mode: string, vat_note: string, own_gateway_percent: string, collected_by_us_percent: string, trial_exports: bool, trial_accountant_access: bool} */
+    private function termsFromDocument(): array
+    {
+        $terms = $this->editor->document()['terms'] ?? [];
+        $terms = is_array($terms) ? $terms : [];
+        $vat = is_array($terms['vat'] ?? null) ? $terms['vat'] : [];
+        $payments = is_array($terms['payments'] ?? null) ? $terms['payments'] : [];
+        $trial = is_array($terms['trial'] ?? null) ? $terms['trial'] : [];
+
+        return [
+            'vat_mode' => ($vat['mode'] ?? null) === 'exempt' ? 'exempt' : 'standard',
+            'vat_note' => is_string($vat['note'] ?? null) ? $vat['note'] : '',
+            'own_gateway_percent' => is_int($payments['own_gateway_percent'] ?? null) ? (string) $payments['own_gateway_percent'] : '0',
+            'collected_by_us_percent' => is_int($payments['collected_by_us_percent'] ?? null) ? (string) $payments['collected_by_us_percent'] : '3',
+            'trial_exports' => ($trial['exports'] ?? null) === true,
+            'trial_accountant_access' => ($trial['accountant_access'] ?? null) === true,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $form
+     * @return array<string, mixed>
+     */
+    private function termsView(array $form): array
+    {
+        return ['t' => $form, 'canWrite' => $this->canWrite()];
+    }
+
     // ───────────────────────────── Viste ─────────────────────────────
 
     /**

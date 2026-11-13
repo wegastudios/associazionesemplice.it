@@ -133,3 +133,24 @@ it('ha tre piani a prezzo fisso per fasce di soci, con i pacchetti inclusi e il 
     }
     expect($addons['einvoice']['visible'])->toBeTrue();
 });
+
+it('ha le condizioni di vendita: senza IVA per ora, commissione 0% o 3%, prova senza esportazioni né commercialista', function (): void {
+    $doc = CatalogValidator::validate(seedCatalog());
+
+    expect($doc['terms']['vat']['mode'])->toBe('exempt')
+        ->and($doc['terms']['vat']['note'])->toContain('190/2014')
+        ->and($doc['terms']['payments'])->toBe(['own_gateway_percent' => 0, 'collected_by_us_percent' => 3])
+        ->and($doc['terms']['trial'])->toBe(['exports' => false, 'accountant_access' => false]);
+
+    // Un catalogo senza condizioni (le revisioni precedenti) vale come i valori di partenza, con IVA.
+    $old = seedCatalog();
+    unset($old['terms']);
+    expect(CatalogValidator::validate($old)['terms']['vat'])->toBe(['mode' => 'standard', 'note' => '']);
+
+    $bad = seedCatalog();
+    $bad['terms']['vat'] = ['mode' => 'exempt'];
+    expect(fn () => CatalogValidator::validate($bad))->toThrow(InvalidArgumentException::class);
+    $bad = seedCatalog();
+    $bad['terms']['payments']['collected_by_us_percent'] = 31;
+    expect(fn () => CatalogValidator::validate($bad))->toThrow(InvalidArgumentException::class);
+});

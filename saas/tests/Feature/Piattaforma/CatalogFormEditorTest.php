@@ -223,3 +223,36 @@ it('imposta i pacchetti inclusi nel piano e rifiuta un testo che non è un ogget
 
     $this->post('/saas/admin/catalogo/piani/gestionale', planFormInput(['packages_json' => '[1,2]']))->assertOk()->assertSee('devono essere un oggetto JSON');
 });
+
+it('imposta le condizioni di vendita: IVA, commissione sui pagamenti online e limiti della prova', function (): void {
+    $this->get('/saas/admin/catalogo/condizioni')->assertOk()->assertSee('Commissione sui pagamenti online')->assertSee('Durante la prova gratuita');
+
+    $this->post('/saas/admin/catalogo/condizioni', [
+        'vat_mode' => 'exempt', 'vat_note' => 'Operazione senza IVA, regime forfettario.',
+        'own_gateway_percent' => '0', 'collected_by_us_percent' => '4', 'trial_exports' => '1',
+    ])->assertRedirect('/saas/admin/catalogo/condizioni');
+
+    $draft = json_decode((string) DB::table('core.catalog_draft')->value('document'), true);
+    expect($draft['terms'])->toEqual([
+        'vat' => ['mode' => 'exempt', 'note' => 'Operazione senza IVA, regime forfettario.'],
+        'payments' => ['own_gateway_percent' => 0, 'collected_by_us_percent' => 4],
+        'trial' => ['exports' => true, 'accountant_access' => false],
+    ]);
+    $this->get('/saas/admin/catalogo/condizioni')->assertSee('Operazione senza IVA, regime forfettario.');
+});
+
+it('rifiuta condizioni non valide e mostra l\'errore con quello che era stato scritto', function (): void {
+    $this->post('/saas/admin/catalogo/condizioni', ['vat_mode' => 'exempt', 'vat_note' => '', 'own_gateway_percent' => '0', 'collected_by_us_percent' => '3'])
+        ->assertOk()->assertSee('terms.vat.note');
+    $this->post('/saas/admin/catalogo/condizioni', ['vat_mode' => 'standard', 'own_gateway_percent' => '0', 'collected_by_us_percent' => '99'])
+        ->assertOk()->assertSee('collected_by_us_percent')->assertSee('99');
+    expect(DB::table('core.catalog_draft')->exists())->toBeFalse();
+});
+
+it('le condizioni le salva solo chi può scrivere', function (): void {
+    $this->post('/saas/admin/esci');
+    loginStaff($this, makeStaff('lettura2@example.test', 'readonly'));
+
+    $this->get('/saas/admin/catalogo/condizioni')->assertOk()->assertSee('sola lettura');
+    $this->post('/saas/admin/catalogo/condizioni', ['vat_mode' => 'standard'])->assertForbidden();
+});

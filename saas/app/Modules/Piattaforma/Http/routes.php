@@ -44,6 +44,7 @@ Route::middleware('web')->prefix(UsePlatformSession::path())->group(function ():
         Route::get('catalogo/piani', [AdminCatalogEditorController::class, 'plans'])->name('platform.plans');
         Route::get('catalogo/pacchetti', [AdminCatalogEditorController::class, 'addons'])->name('platform.addons');
         Route::get('catalogo/promozioni', [AdminCatalogEditorController::class, 'promos'])->name('platform.promos');
+        Route::get('catalogo/condizioni', [AdminCatalogEditorController::class, 'terms'])->name('platform.terms');
         Route::middleware('platform.staff:write')->group(function (): void {
             Route::get('catalogo/piani/nuovo', [AdminCatalogEditorController::class, 'planNew'])->name('platform.plans.new');
             Route::post('catalogo/piani/nuovo', [AdminCatalogEditorController::class, 'planCreate'])->name('platform.plans.create');
@@ -56,6 +57,7 @@ Route::middleware('web')->prefix(UsePlatformSession::path())->group(function ():
             Route::post('catalogo/piani/{code}', [AdminCatalogEditorController::class, 'planSave'])->where('code', '[a-z][a-z0-9_]{1,39}')->name('platform.plans.save');
             Route::post('catalogo/pacchetti/{code}', [AdminCatalogEditorController::class, 'addonSave'])->where('code', '[a-z][a-z0-9_]{1,39}')->name('platform.addons.save');
             Route::post('catalogo/promozioni', [AdminCatalogEditorController::class, 'promosSave'])->name('platform.promos.save');
+            Route::post('catalogo/condizioni', [AdminCatalogEditorController::class, 'termsSave'])->name('platform.terms.save');
         });
         Route::get('abbonamenti', [AdminSubscriptionsController::class, 'index'])->name('platform.subscriptions');
         Route::get('impostazioni', [AdminSettingsController::class, 'show'])->name('platform.settings');
