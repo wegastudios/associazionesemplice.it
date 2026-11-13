@@ -157,10 +157,16 @@ final class ActivitiesPage {
 		if ( ! $report['activities'] ) {
 			echo '<div class="asem-empty"><p><strong>Ancora nessuna attività in questo anno sociale</strong></p><p class="description">Crea la prima con il modulo «Nuova attività» qui sotto: un corso, un evento o un evento ricorrente.</p><a class="button button-primary" href="#asem-new-activity">Crea un\'attività</a></div>';
 		}
+		$can_bulk = $report['activities'] && current_user_can( Plugin::CAP );
+		if ( $can_bulk ) { // scelta multipla: un modulo GET porta alla pagina di conferma (le eliminazioni sono riservate agli amministratori)
+			echo '<form method="get" id="asem-bulk" action="' . esc_url( admin_url( 'admin.php' ) ) . '"><input type="hidden" name="page" value="asem-activity-delete">'
+				. '<p><label><input type="checkbox" data-asem-check-all="asem-bulk-item"> <strong>Seleziona tutte</strong></label> '
+				. '<button class="button" style="color:#b32d2e;border-color:#b32d2e">Elimina selezionate…</button> <span class="description">Spunta le attività da togliere: prima di eliminare vedrai l\'elenco e cosa viene cancellato.</span></p>';
+		}
 		echo '<div class="asem-grid">';
 		foreach ( $report['activities'] as $s ) {
 			$a = $s['activity'];
-			echo '<div class="asem-card"><p class="description" style="margin-bottom:0">' . esc_html( ActivityKind::short_label( $a['kind'] ) ) . '</p>';
+			echo '<div class="asem-card">' . ( $can_bulk ? '<label style="float:right"><input type="checkbox" class="asem-bulk-item" name="ids[]" value="' . (int) $a['id'] . '" aria-label="' . esc_attr( 'Seleziona ' . $a['name'] ) . '"></label>' : '' ) . '<p class="description" style="margin-bottom:0">' . esc_html( ActivityKind::short_label( $a['kind'] ) ) . '</p>';
 			echo '<h2 style="margin-top:2px"><a href="' . esc_url( Ui::url( 'asem-activity', array( 'id' => $a['id'] ) ) ) . '">' . esc_html( $a['name'] ) . '</a></h2>';
 			echo '<p class="description">' . esc_html( self::fee_text( $a ) ) . '<br>' . (int) $s['participants'] . ' partecipanti · '
 				. ( $a['instructor_name'] ? 'tenuta da ' . esc_html( $a['instructor_name'] ) : 'senza referente' ) . '</p>';
@@ -181,6 +187,9 @@ final class ActivitiesPage {
 				. '<p><a class="button button-small" href="' . esc_url( Ui::url( 'asem-activity', array( 'id' => $a['id'] ) ) . '#asem-riproponi' ) . '">Riproponi</a></p></div>', Html::allowed() );
 		}
 		echo '</div>';
+		if ( $can_bulk ) {
+			echo '</form>';
+		}
 
 		self::sports_card();
 		$volunteers = Plugin::people()->search( array( 'type' => MemberType::VOLUNTEER ) );

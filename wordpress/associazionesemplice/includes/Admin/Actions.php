@@ -25,7 +25,7 @@ final class Actions {
 		'asem_sports', 'asem_create_year', 'asem_close_year', 'asem_reopen_year', 'asem_save_settings', 'asem_save_card', 'asem_regen_qr',
 		'asem_save_look', 'asem_save_donate', 'asem_save_campaign', 'asem_delete_campaign', 'asem_create_privacy_page', 'asem_save_ical', 'asem_regen_ical', 'asem_create_pages', 'asem_save_wpai', 'asem_wpai_process', 'asem_wpai_retry', 'asem_wpai_clear', 'asem_privacy_anonymize', 'asem_save_comms',
 		
-		'asem_delete_activity', 'asem_delete_booking', 'asem_purge_enrollments', 'asem_set_treasurer', 'asem_set_secretary', 'asem_release_wp_user', 'asem_set_board_role', 'asem_backup_restore', 
+		'asem_delete_activity', 'asem_delete_activities', 'asem_delete_booking', 'asem_purge_enrollments', 'asem_set_treasurer', 'asem_set_secretary', 'asem_release_wp_user', 'asem_set_board_role', 'asem_backup_restore', 
 	);
 
 	/** @var array<string,callable> azioni di amministrazione aggiunte da un'estensione */
@@ -59,6 +59,7 @@ final class Actions {
 			'asem_release_wp_user'    => 'release_wp_user',
 			'asem_set_staff'          => 'set_staff',
 			'asem_delete_activity'    => 'delete_activity',
+			'asem_delete_activities'  => 'delete_activities',
 			'asem_delete_booking'     => 'delete_booking',
 			'asem_purge_enrollments'  => 'purge_enrollments',
 			'asem_set_secretary'      => 'set_secretary',
@@ -414,6 +415,34 @@ final class Actions {
 		$msg .= $s['expenses_voided'] ? ' Annullate ' . (int) $s['expenses_voided'] . ' spese.' : '';
 		$msg .= $s['kept_count'] ? ' ' . ( 1 === (int) $s['kept_count'] ? 'Un incasso' : (int) $s['kept_count'] . ' incassi' ) . ' (' . Money::format( (int) $s['kept_cents'] ) . ') di date o mesi già svolti ' . ( 1 === (int) $s['kept_count'] ? 'resta' : 'restano' ) . ' in prima nota, senza restituzione.' : '';
 		$msg .= $s['notified'] ? ' Avvisate ' . (int) $s['notified'] . ' persone.' : '';
+		return array( Ui::url( 'asem-activities' ), $msg );
+	}
+
+	/** Eliminazione di più attività insieme (dall'elenco): stessa logica del singolo (ActivityReset::delete), solo per quelle senza movimenti in prima nota. */
+	private static function delete_activities( array $p ): array {
+		if ( empty( $p['confirm'] ) ) {
+			throw new \InvalidArgumentException( 'Spunta la conferma: l\'eliminazione è definitiva.' );
+		}
+		$ids  = array_map( 'intval', explode( ',', (string) ( $p['ids'] ?? '' ) ) );
+		$plan = \AssociazioneSemplice\ActivityReset::bulk_plan( $ids );
+		if ( ! $plan['ok'] ) {
+			throw new \InvalidArgumentException( 'Nessuna delle attività scelte si può eliminare così.' );
+		}
+		$done = 0;
+		foreach ( $plan['ok'] as $pv ) {
+			\AssociazioneSemplice\ActivityReset::delete( (int) $pv['activity']['id'], \AssociazioneSemplice\ActivityReset::REFUND, array( 'notify' => ! empty( $p['notify'] ) ) );
+			$done++;
+		}
+		$msg = $done . ( 1 === $done ? ' eliminato' : ' eliminati' ) . '.';
+		if ( $plan['skipped'] ) {
+			$names = array_map(
+				function ( $x ) {
+					return $x['name'];
+				},
+				$plan['skipped']
+			);
+			$msg  .= ' Non eliminati perché hanno movimenti in prima nota o un blocco (da fare una per una): ' . implode( ', ', $names ) . '.';
+		}
 		return array( Ui::url( 'asem-activities' ), $msg );
 	}
 

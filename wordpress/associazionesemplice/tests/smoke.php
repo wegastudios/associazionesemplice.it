@@ -1348,6 +1348,27 @@ ob_start();
 Admin\ActivitiesPage::render_list();
 $ev_list = (string) ob_get_clean();
 asem_ok( false !== strpos( $ev_list, 'Quarta serata' ) && false !== strpos( $ev_list, '<details' ) && false !== strpos( $ev_list, 'Lia Otto' ) && false !== strpos( $ev_list, 'wa.me/' ) && false === strpos( $ev_list, 'page=asem-booking-delete' ), 'elenco attività: partecipanti attesi a scomparsa in ogni evento, con WhatsApp (la cancellazione resta nella scheda)' );
+// eliminazione di più attività insieme dall'elenco
+$bk_a = $acts->create( array( 'name' => 'Errore uno', 'social_year' => $ev_sy, 'kind' => 'event', 'fee_cents' => 0, 'session' => array( 'session_date' => $today ) ) );
+$bk_b = $acts->create( array( 'name' => 'Errore due', 'social_year' => $ev_sy, 'kind' => 'event', 'fee_cents' => 0, 'session' => array( 'session_date' => $today ) ) );
+$bk_s = (int) $acts->sessions( $bk_b )[0]['id'];
+$acts->book( $bk_s, $ev_p8 );
+asem_ok( false !== strpos( $ev_list, 'name="ids[]"' ) && false !== strpos( $ev_list, 'data-asem-check-all' ) && false !== strpos( $ev_list, 'value="asem-activity-delete"' ), 'elenco attività: casella per ogni attività, «seleziona tutte» e pulsante per eliminare le selezionate' );
+$bk_plan = \AssociazioneSemplice\ActivityReset::bulk_plan( array( $bk_a, $bk_b, $ev_a4, 999999, 'x' ) );
+asem_ok( 2 === count( $bk_plan['ok'] ) && 1 === count( $bk_plan['skipped'] ) && 'Quarta serata' === $bk_plan['skipped'][0]['name'], 'eliminazione multipla: si propongono solo le attività senza movimenti in prima nota, quelle con incassi restano fuori e gli id non validi si ignorano' );
+$_GET = array( 'ids' => array( (string) $bk_a, (string) $bk_b, (string) $ev_a4 ) );
+ob_start();
+Admin\DeleteActivityPage::render();
+$bk_page = (string) ob_get_clean();
+$_GET = array();
+asem_ok( false !== strpos( $bk_page, 'Errore uno' ) && false !== strpos( $bk_page, 'Errore due' ) && false !== strpos( $bk_page, '1 prenotazione attiva' ) && false !== strpos( $bk_page, 'Stai per eliminare 2 attività' ) && false !== strpos( $bk_page, 'Queste non si eliminano da qui' ) && false !== strpos( $bk_page, 'name="confirm"' ) && false !== strpos( $bk_page, 'value="asem_delete_activities"' ), 'eliminazione multipla: la conferma mostra numero, nomi, prenotazioni collegate e le attività escluse' );
+$bk_del = new ReflectionMethod( Admin\Actions::class, 'delete_activities' );
+$bk_del->setAccessible( true );
+asem_ok( null !== asem_throws( function () use ( $bk_del, $bk_a, $bk_b ) { $bk_del->invoke( null, array( 'ids' => $bk_a . ',' . $bk_b ) ); } ) && null !== $acts->get( $bk_a ) && null !== $acts->get( $bk_b ), 'eliminazione multipla: senza la conferma non si elimina nulla' );
+asem_ok( null !== asem_throws( function () use ( $bk_del, $ev_a4 ) { $bk_del->invoke( null, array( 'ids' => (string) $ev_a4, 'confirm' => '1' ) ); } ) && null !== $acts->get( $ev_a4 ), 'eliminazione multipla: un\'attività con incassi non si elimina da qui' );
+$bk_res = $bk_del->invoke( null, array( 'ids' => $bk_a . ',' . $bk_b . ',' . $ev_a4 . ',0,abc', 'confirm' => '1' ) );
+asem_ok( null === $acts->get( $bk_a ) && null === $acts->get( $bk_b ) && null !== $acts->get( $ev_a4 ) && 0 === count( $acts->sessions( $bk_b ) ) && 0 === (int) Db::db()->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) . ' WHERE session_id = ' . $bk_s ) && 0 === strpos( $bk_res[1], '2 eliminati.' ) && false !== strpos( $bk_res[1], 'Quarta serata' ), 'eliminazione multipla: eliminate le attività senza soldi (con le loro prenotazioni), l\'altra resta e il messaggio dice «2 eliminati»' );
+asem_ok( in_array( 'asem_delete_activities', Admin\Actions::ADMIN_ONLY, true ), 'eliminazione multipla: azione riservata agli amministratori' );
 \AssociazioneSemplice\ActivityReset::delete( $ev_a4, 'void' );
 \AssociazioneSemplice\ActivityReset::delete( $ev_r, 'refund' );
 // evento in più date: si restituisce solo il non fruito (la data passata resta incassata)

@@ -56,6 +56,15 @@
 		if (t && !window.confirm(t.getAttribute('data-confirm'))) { e.preventDefault(); }
 	});
 
+	/* «Seleziona tutte»: spunta o toglie tutte le caselle di un gruppo */
+	document.addEventListener('change', function (e) {
+		var t = e.target;
+		var cls = t && t.getAttribute ? t.getAttribute('data-asem-check-all') : null;
+		if (!cls) { return; }
+		var boxes = document.getElementsByClassName(cls);
+		for (var i = 0; i < boxes.length; i++) { boxes[i].checked = t.checked; }
+	});
+
 	/* Campi da copiare (link, shortcode): un clic seleziona tutto il testo */
 	document.addEventListener('click', function (e) {
 		var t = e.target.closest ? e.target.closest('[data-asem-select]') : null;

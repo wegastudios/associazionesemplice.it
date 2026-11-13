@@ -24,7 +24,67 @@ final class DeleteActivityPage {
 		return Ui::url( 'asem-activity-delete', array( 'id' => $id, 'step' => 2, 'mode' => $mode, 'notify' => $notify ? 1 : 0, 'void_costs' => $void_costs ? 1 : 0 ) );
 	}
 
+	/** Conferma dell'eliminazione di più attività scelte dall'elenco (ids[] in GET). */
+	private static function render_bulk(): void {
+		$raw  = isset( $_GET['ids'] ) ? (array) wp_unslash( $_GET['ids'] ) : array(); // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sola lettura: ogni id è convertito in numero
+		$ids  = array_map( 'intval', $raw );
+		$plan = ActivityReset::bulk_plan( $ids );
+		$back = Ui::url( 'asem-activities' );
+		Ui::header( 'Elimina le attività scelte' );
+		if ( ! $plan['ok'] && ! $plan['skipped'] ) {
+			echo '<p>Nessuna attività scelta.</p><p><a href="' . esc_url( $back ) . '">← Torna all\'elenco</a></p>';
+			Ui::footer();
+			return;
+		}
+		if ( $plan['skipped'] ) {
+			echo '<div class="notice notice-warning inline"><p><strong>Queste non si eliminano da qui</strong> e restano dove sono:</p><ul style="list-style:disc;margin-left:20px">';
+			foreach ( $plan['skipped'] as $x ) {
+				echo '<li>' . esc_html( $x['name'] ) . ': ' . esc_html( $x['why'] ) . '.</li>';
+			}
+			echo '</ul></div>';
+		}
+		if ( ! $plan['ok'] ) {
+			echo '<p><a class="button" href="' . esc_url( $back ) . '">← Torna all\'elenco</a></p>';
+			Ui::footer();
+			return;
+		}
+		$n = count( $plan['ok'] );
+		echo '<div class="notice notice-error inline"><p><strong>Operazione definitiva.</strong> Stai per eliminare ' . ( 1 === $n ? '1 attività' : $n . ' attività' ) . ' con tutti i loro dati. Non si può annullare: prima scarica una <a href="' . esc_url( Ui::url( 'asem-backup' ) ) . '">copia di sicurezza</a>. La prima nota non cambia (nessuna ha incassi o spese).</p></div>';
+		echo '<ul style="list-style:disc;margin-left:20px">';
+		$ok_ids     = array();
+		$recipients = 0;
+		foreach ( $plan['ok'] as $p ) {
+			$ok_ids[]    = (int) $p['activity']['id'];
+			$recipients += (int) $p['recipients'];
+			$bits        = array();
+			if ( $p['sessions'] ) {
+				$bits[] = (int) $p['sessions'] . ( 1 === $p['sessions'] ? ' data' : ' date' );
+			}
+			if ( $p['bookings'] ) {
+				$bits[] = (int) $p['bookings'] . ( 1 === $p['bookings'] ? ' prenotazione attiva' : ' prenotazioni attive' );
+			}
+			if ( $p['enrollments'] ) {
+				$bits[] = (int) $p['enrollments'] . ( 1 === $p['enrollments'] ? ' iscrizione in corso' : ' iscrizioni in corso' );
+			}
+			echo '<li><strong>' . esc_html( (string) $p['activity']['name'] ) . '</strong>' . ( $bits ? ' — ' . esc_html( implode( ', ', $bits ) ) . ' (verranno cancellate)' : ' — nessuna prenotazione o iscrizione' ) . '</li>';
+		}
+		echo '</ul>';
+		Ui::form_open( 'asem_delete_activities', $back );
+		echo wp_kses( Ui::hidden( 'ids', implode( ',', $ok_ids ) ), Html::allowed() );
+		if ( $recipients > 0 ) {
+			echo '<p><label><input type="checkbox" name="notify" value="1"> Avvisa per email le ' . (int) $recipients . ' persone prenotate o iscritte con un indirizzo email</label></p>';
+		}
+		echo '<p><label><input type="checkbox" name="confirm" value="1"> Ho letto e ho capito: l\'eliminazione è definitiva e non si può annullare.</label></p>';
+		echo '<p><button class="button button-primary" style="background:#b32d2e;border-color:#b32d2e">Elimina ' . ( 1 === $n ? 'l\'attività' : 'le ' . $n . ' attività' ) . '</button> <a class="button" href="' . esc_url( $back ) . '">Annulla</a></p>';
+		Ui::form_close();
+		Ui::footer();
+	}
+
 	public static function render(): void {
+		if ( isset( $_GET['ids'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+			self::render_bulk();
+			return;
+		}
 		$id = Ui::get_int( 'id' );
 		$p  = ActivityReset::preview( $id );
 		Ui::header( 'Elimina l\'evento' );
