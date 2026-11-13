@@ -40,7 +40,7 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale
     });
 
     // Export con i dati sensibili: non per il commercialista; ogni export finisce nel registro.
-    Route::middleware(['can:people.export', 'throttle:10,1'])->group(function (): void {
+    Route::middleware(['can:people.export', 'exports.allowed', 'throttle:10,1'])->group(function (): void {
         Route::get('/soci/esporta', [PeopleTransferController::class, 'export'])->name('people.export');
         Route::get('/soci/libro.pdf', [MemberBookController::class, 'pdf'])->name('member-book.pdf');
         Route::get('/soci/libro.csv', [MemberBookController::class, 'csv'])->name('member-book.csv');

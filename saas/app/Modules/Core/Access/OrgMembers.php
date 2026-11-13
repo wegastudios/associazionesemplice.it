@@ -14,6 +14,7 @@ use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Models\Org;
 use App\Modules\Core\Models\User;
 use App\Modules\Portale\Contracts\Entitlements;
+use App\Modules\Portale\Contracts\LifecyclePolicy;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\Passwords\PasswordBroker;
 use Illuminate\Database\DatabaseManager;
@@ -37,6 +38,7 @@ final readonly class OrgMembers
         private OrgContext $context,
         private AuditLog $audit,
         private Entitlements $entitlements,
+        private LifecyclePolicy $lifecycle,
     ) {}
 
     public function invite(Org $org, string $email, string $name, OrgRole $role, ?Operator $by, ?string $customRoleId = null): User
@@ -49,7 +51,8 @@ final readonly class OrgMembers
             throw new InvalidArgumentException('Email non valida.');
         }
         if ($by !== null) {
-            $this->assertOperatorAvailable($org, $email);
+            $this->assertAccountantAllowed($org, $role);
+            $this->assertOperatorAvailable($org, $email, $role);
         }
 
         return $this->db->connection('pgsql')->transaction(function () use ($org, $email, $name, $role, $customRoleId): User {
@@ -88,6 +91,13 @@ final readonly class OrgMembers
         $this->keepAnOwner($org, $current->role, $role);
         if ($userId === $by->userId && $role !== $current->role) {
             throw new InvalidArgumentException('Il tuo ruolo lo cambia un altro titolare o amministratore.');
+        }
+        // Chi passa da commercialista (gratuito) a un altro ruolo occupa un posto operatore.
+        if ($current->role === OrgRole::Accountant && $role !== OrgRole::Accountant) {
+            $this->assertOperatorAvailable($org, null, $role);
+        }
+        if ($role === OrgRole::Accountant && $current->role !== OrgRole::Accountant) {
+            $this->assertAccountantAllowed($org, $role);
         }
 
         $this->db->connection('pgsql')->table('core.org_users')
@@ -245,16 +255,28 @@ final readonly class OrgMembers
      * dall'associazione con un abbonamento sul portale; il primo titolare, gli interventi dell'assistenza (senza $by)
      * e le associazioni create a mano (pilota) non sono limitati.
      */
-    private function assertOperatorAvailable(Org $org, string $email): void
+    private function assertOperatorAvailable(Org $org, ?string $email, OrgRole $role): void
     {
+        // Il commercialista «solo fiscale» è gratuito e fuori dal conteggio; ogni altro accesso occupa un posto.
+        if ($role === OrgRole::Accountant) {
+            return;
+        }
         if ($this->db->connection('pgsql')->table('core.orgs')->where('id', $org->id)->value('portal_ref') === null) {
             return;
         }
 
-        $table = $this->db->connection('pgsql')->table('core.org_users as m')->where('m.org_id', $org->id);
-        $already = (clone $table)->join('core.users as u', 'u.id', '=', 'm.user_id')->where('u.email', $email)->exists();
+        $table = $this->db->connection('pgsql')->table('core.org_users as m')->where('m.org_id', $org->id)->where('m.role', '!=', OrgRole::Accountant->value);
+        $already = $email !== null && (clone $table)->join('core.users as u', 'u.id', '=', 'm.user_id')->where('u.email', $email)->exists();
         if (! $already && $table->count() >= $this->entitlements->for($org->id)->operators) {
             throw new OperatorLimitReached('Hai raggiunto il numero di operatori del tuo abbonamento: aggiungine uno dal portale.');
+        }
+    }
+
+    /** Durante la prova il commercialista si collega solo se le condizioni del catalogo lo prevedono. */
+    private function assertAccountantAllowed(Org $org, OrgRole $role): void
+    {
+        if ($role === OrgRole::Accountant && ! $this->lifecycle->accountantLinkAllowed($org->id)) {
+            throw new InvalidArgumentException(LifecyclePolicy::CHOOSE_A_PLAN);
         }
     }
 

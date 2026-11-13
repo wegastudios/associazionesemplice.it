@@ -33,6 +33,19 @@ final readonly class Memberships
         return $row === null ? null : $this->toOperator($row);
     }
 
+    /**
+     * Nomi delle associazioni sospese dell'utente: non si aprono, ma ne mostriamo la pagina del pagamento.
+     *
+     * @return list<string>
+     */
+    public function suspendedNames(string $userId): array
+    {
+        return array_values($this->db->connection('pgsql')->table('core.org_users as m')
+            ->join('core.orgs as o', 'o.id', '=', 'm.org_id')
+            ->where('m.user_id', $userId)->whereNull('o.deleted_at')->where('o.status', 'suspended')
+            ->orderBy('o.name')->pluck('o.name')->map(static fn (mixed $n): string => (string) $n)->all());
+    }
+
     /** L'utente è operatore di almeno un'associazione, anche sospesa: allora la verifica in due passaggi è obbligatoria. */
     public function isOperator(string $userId): bool
     {

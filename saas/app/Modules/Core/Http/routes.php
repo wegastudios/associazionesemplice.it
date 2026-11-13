@@ -8,6 +8,7 @@ use App\Modules\Core\Http\Controllers\OperatorsController;
 use App\Modules\Core\Http\Controllers\OrgSwitchController;
 use App\Modules\Core\Http\Controllers\ProfileController;
 use App\Modules\Core\Http\Controllers\SetupController;
+use App\Modules\Core\Http\Controllers\SuspendedController;
 use App\Modules\Core\Http\Controllers\TwoFactorSetupController;
 use Illuminate\Support\Facades\Route;
 
@@ -27,6 +28,7 @@ Route::middleware('web')->group(function (): void {
 
     Route::middleware(['auth', 'two-factor'])->group(function (): void {
         Route::get('/associazioni', [OrgSwitchController::class, 'index'])->name('orgs.choose');
+        Route::get('/associazione-sospesa', SuspendedController::class)->name('org.suspended');
 
         Route::post('/associazioni/{org}', [OrgSwitchController::class, 'store'])->whereUuid('org')->name('orgs.switch');
 
@@ -44,8 +46,8 @@ Route::middleware('web')->group(function (): void {
                 Route::get('/configurazione', [SetupController::class, 'show'])->name('setup');
                 Route::post('/configurazione', [SetupController::class, 'save'])->name('setup.save');
                 Route::post('/configurazione/rimanda', [SetupController::class, 'skip'])->name('setup.skip');
-                Route::get('/esportazione', [ExportController::class, 'show'])->name('export');
-                Route::get('/esportazione.zip', [ExportController::class, 'download'])->middleware('throttle:3,1')->name('export.download');
+                Route::get('/esportazione', [ExportController::class, 'show'])->middleware('exports.allowed')->name('export');
+                Route::get('/esportazione.zip', [ExportController::class, 'download'])->middleware(['exports.allowed', 'throttle:3,1'])->name('export.download');
             });
 
             // Operatori e ruoli personalizzati: titolare e amministratore.

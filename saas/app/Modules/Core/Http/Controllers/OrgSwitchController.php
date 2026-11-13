@@ -18,10 +18,14 @@ final readonly class OrgSwitchController
 {
     public function __construct(private Memberships $memberships) {}
 
-    public function index(Request $request): Response
+    public function index(Request $request): Response|RedirectResponse
     {
         /** @var User $user */
         $user = $request->user();
+
+        if ($this->memberships->forUser($user->id) === [] && $this->memberships->suspendedNames($user->id) !== []) {
+            return redirect()->route('org.suspended');
+        }
 
         return Inertia::render('Orgs/Choose', [
             'orgs' => array_map(static fn (Operator $o): array => [

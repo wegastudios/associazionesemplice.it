@@ -9,8 +9,10 @@ use App\Modules\Portale\Console\SendUsageCommand;
 use App\Modules\Portale\Console\SuspendExpiredCommand;
 use App\Modules\Portale\Console\VerifyDomainsCommand;
 use App\Modules\Portale\Contracts\Entitlements;
+use App\Modules\Portale\Contracts\LifecyclePolicy;
 use App\Modules\Portale\Contracts\PortalNotifier;
 use App\Modules\Portale\Contracts\StaffAccess;
+use App\Modules\Portale\Entitlements\CatalogLifecyclePolicy;
 use App\Modules\Portale\Entitlements\DomainDns;
 use App\Modules\Portale\Entitlements\EntitlementReader;
 use App\Modules\Portale\Entitlements\SystemDns;
@@ -19,6 +21,7 @@ use App\Modules\Portale\Http\Controllers\CatalogController;
 use App\Modules\Portale\Http\Controllers\PortalApiController;
 use App\Modules\Portale\Http\Controllers\PortalServicesController;
 use App\Modules\Portale\Http\Controllers\SubscriptionSsoController;
+use App\Modules\Portale\Http\Middleware\RequireFullAccount;
 use App\Modules\Portale\Http\Middleware\RequirePackage;
 use App\Modules\Portale\Notifications\PortalNotifications;
 use App\Modules\Portale\Staff\PortalStaffAccess;
@@ -35,6 +38,7 @@ final class PortaleServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(Entitlements::class, EntitlementReader::class);
+        $this->app->singleton(LifecyclePolicy::class, CatalogLifecyclePolicy::class);
         $this->app->singleton(PortalNotifier::class, PortalNotifications::class);
         $this->app->singleton(StaffAccess::class, PortalStaffAccess::class);
         $this->app->singleton(DomainDns::class, SystemDns::class);
@@ -43,6 +47,7 @@ final class PortaleServiceProvider extends ServiceProvider
     public function boot(Router $router): void
     {
         $router->aliasMiddleware('package', RequirePackage::class);
+        $router->aliasMiddleware('exports.allowed', RequireFullAccount::class);
 
         RateLimiter::for('portal-api', static fn (Request $request): Limit => Limit::perMinute(120)->by('portal|'.$request->ip()));
 

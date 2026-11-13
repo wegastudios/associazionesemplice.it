@@ -45,6 +45,13 @@ final readonly class IdentifyOperatorOrg
             $request->session()->forget(self::SESSION_KEY);
             $all = $this->memberships->forUser($user->id);
 
+            // Solo associazioni sospese: nessun dato, nessuna esportazione, solo la pagina del pagamento.
+            if ($all === [] && $this->memberships->suspendedNames($user->id) !== []) {
+                return $request->expectsJson()
+                    ? abort(402, 'L\'abbonamento è scaduto: riattivalo dal portale.')
+                    : redirect()->route('org.suspended');
+            }
+
             if (count($all) !== 1) {
                 return $request->expectsJson()
                     ? abort(409, 'Scegli l\'associazione.')

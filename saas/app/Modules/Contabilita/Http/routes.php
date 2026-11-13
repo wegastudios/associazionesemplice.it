@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale')->group(function (): void {
     Route::middleware('can:accounting.view')->group(function (): void {
         Route::get('/prima-nota', [LedgerController::class, 'index'])->name('ledger');
-        Route::get('/prima-nota/esporta', [LedgerTransferController::class, 'export'])->middleware('throttle:10,1')->name('ledger.export');
+        Route::get('/prima-nota/esporta', [LedgerTransferController::class, 'export'])->middleware(['exports.allowed', 'throttle:10,1'])->name('ledger.export');
         Route::get('/conti', [AccountsController::class, 'index'])->name('accounts');
         Route::get('/ricevute/{receipt}.pdf', [ReceiptsController::class, 'pdf'])->whereUuid('receipt')->name('receipts.pdf');
         Route::get('/rendiconto/{year?}', [YearsController::class, 'statement'])->whereNumber('year')->name('statement');
