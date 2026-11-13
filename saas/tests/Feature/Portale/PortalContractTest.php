@@ -103,7 +103,7 @@ it('sospende e riapre l\'associazione secondo lo stato dell\'abbonamento', funct
     $put = fn (int $rev, string $status) => $this->putJson("/api/portale/v1/orgs/{$orgId}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($orgId, 'sub_123', $rev, ['status' => $status]))]);
 
     $put(1, 'suspended')->assertOk();
-    $this->actingAs($owner)->get('/gestionale')->assertRedirect('/associazioni');
+    $this->actingAs($owner)->get('/gestionale')->assertRedirect('/associazione-sospesa');
 
     $put(2, 'active')->assertOk();
     $this->get('/gestionale')->assertRedirect('/gestionale/configurazione'); // associazione nuova: la configurazione guidata
@@ -261,7 +261,7 @@ it('dopo la prova senza piano il gestionale resta in sola lettura, senza esporta
     $this->putJson("/api/portale/v1/orgs/{$orgId}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($orgId, 'sub_123', 1, ['status' => 'trial', 'trial_ends' => now()->subDays(2)->toDateString()]))])->assertOk();
     DB::table('core.orgs')->where('id', $orgId)->update(['status' => 'suspended']);
 
-    $this->actingAs($user)->get('/gestionale')->assertOk();
+    $this->actingAs($user)->get('/gestionale/profilo')->assertOk();
     $this->post('/gestionale/configurazione/rimanda')->assertForbidden();
     $this->get('/gestionale/esportazione')->assertForbidden();
 

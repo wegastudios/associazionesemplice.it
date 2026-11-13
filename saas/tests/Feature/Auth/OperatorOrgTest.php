@@ -93,7 +93,7 @@ it('non apre un\'associazione sospesa o cancellata', function (): void {
     $beta->delete();
 
     $this->actingAs($user)->withSession([IdentifyOperatorOrg::SESSION_KEY => $alfa->id])
-        ->get('/gestionale')->assertRedirect('/associazioni');
+        ->get('/gestionale')->assertRedirect('/associazione-sospesa');
     $this->post("/associazioni/{$alfa->id}")->assertNotFound();
     $this->post("/associazioni/{$beta->id}")->assertNotFound();
 });
