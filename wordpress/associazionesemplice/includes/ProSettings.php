@@ -35,7 +35,7 @@ final class ProSettings {
 			'wallet_enabled'        => array( 'Pulsanti Apple Wallet e Google Wallet', 'wallet', 'ticket_qr_enabled' ),
 			'insurance_volunteers'  => array( 'Assicurazioni dei volontari', 'insurance', 'reminders_enabled' ),
 			'insurance_association' => array( 'Polizze dell\'associazione (responsabilità civile, infortuni)', 'insurance', 'insurance_volunteers' ),
-			'fivepm_enabled'        => array( '5x1000', 'fivepm', 'insurance_association' ),
+			'fivepm_enabled'        => array( '5 per mille', 'fivepm', 'insurance_association' ),
 			'pwa_enabled'           => array( 'App installabile sul telefono (PWA)', 'pwa', 'fivepm_enabled' ),
 			'push_enabled'          => array( 'Notifiche push ai dispositivi dei soci', 'pwa', 'pwa_enabled' ),
 		);
@@ -90,7 +90,7 @@ final class ProSettings {
 			'pwa_short_name'          => '',    // nome breve sotto l'icona
 			'pwa_icon_id'             => 0,     // icona dell'app (immagine PNG della libreria media)
 			'woo_default_product'     => 0,     // prodotto WooCommerce per le voci senza un prodotto proprio
-			'fivepm_enabled'          => 0,     // 5x1000: spento di default
+			'fivepm_enabled'          => 0,     // 5 per mille: spento di default
 			'fivepm_text'             => '',    // messaggio personalizzato (vuoto = quello standard)
 			'insurance_volunteers'    => 0,     // registro delle assicurazioni dei volontari: spento di default
 			'insurance_association'   => 0,     // polizze dell'associazione (responsabilità civile, infortuni): spente di default

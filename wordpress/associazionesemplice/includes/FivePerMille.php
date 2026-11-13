@@ -4,7 +4,7 @@ namespace AssociazioneSemplice;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * 5x1000: il messaggio per chiedere la firma ai soci (con il codice fiscale dell'associazione) e il registro dei contributi ricevuti,
+ * 5 per mille: il messaggio per chiedere la firma ai soci (con il codice fiscale dell'associazione) e il registro dei contributi ricevuti,
  * con la scadenza del rendiconto sull'utilizzo (entro 12 mesi dall'accredito).
  */
 final class FivePerMille {
@@ -15,7 +15,7 @@ final class FivePerMille {
 	const REPORTED = 'reported';
 	const SOON     = 60; // giorni
 
-	const DEFAULT_TEXT = 'Nella dichiarazione dei redditi puoi destinare il 5x1000 a {associazione}: non costa nulla e per noi vale molto. Firma nel riquadro «Sostegno degli enti del Terzo settore» e scrivi il codice fiscale {codice_fiscale}.';
+	const DEFAULT_TEXT = 'Nella dichiarazione dei redditi puoi destinare il 5 per mille a {associazione}: non costa nulla e per noi vale molto. Firma nel riquadro «Sostegno degli enti del Terzo settore» e scrivi il codice fiscale {codice_fiscale}.';
 
 	private static function db(): \wpdb {
 		return Db::db();
@@ -41,7 +41,7 @@ final class FivePerMille {
 	public static function add( int $year, string $amount, int $choices, string $received_on ): int {
 		$now = (int) substr( Db::today(), 0, 4 );
 		if ( $year < 2006 || $year > $now + 1 ) {
-			throw new \InvalidArgumentException( 'Indica l\'anno di imposta del 5x1000 (ad esempio 2023).' );
+			throw new \InvalidArgumentException( 'Indica l\'anno di imposta del 5 per mille (ad esempio 2023).' );
 		}
 		$cents = Money::parse( $amount );
 		if ( null === $cents || $cents <= 0 ) {
@@ -55,7 +55,7 @@ final class FivePerMille {
 			throw new \InvalidArgumentException( 'Indica la data in cui è stato accreditato.' );
 		}
 		if ( self::db()->get_var( self::db()->prepare( 'SELECT id FROM ' . Db::t( 'fivepm' ) . ' WHERE year = %d', $year ) ) ) {
-			throw new \InvalidArgumentException( 'Il 5x1000 dell\'anno ' . $year . ' è già registrato.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( 'Il 5 per mille dell\'anno ' . $year . ' è già registrato.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$ok = self::db()->insert( Db::t( 'fivepm' ), array( 'year' => $year, 'amount_cents' => $cents, 'choices' => $choices, 'received_on' => $rec, 'created_at' => Db::now() ) );
 		if ( ! $ok ) {

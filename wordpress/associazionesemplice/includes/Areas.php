@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
  *  - Segreteria: il punto d'ingresso di chi lavora con la segreteria (anche presidente e vicepresidente);
  *  - Tesoriere: incassi, spese, iscrizioni e vendita eventi;
  *  - Eventi: gestione per il responsabile e lo staff (ingressi, avvisi, iscritti);
- *  - Pubblico: elenco attività, prossimi eventi, bonifico, donazioni, 5x1000, accesso.
+ *  - Pubblico: elenco attività, prossimi eventi, bonifico, donazioni, 5 per mille, accesso.
  */
 final class Areas {
 

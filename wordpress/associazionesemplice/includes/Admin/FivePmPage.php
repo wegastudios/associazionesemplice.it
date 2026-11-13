@@ -9,7 +9,7 @@ use AssociazioneSemplice\Settings;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Contabilità → Adempimenti → 5x1000: messaggio per i soci, promemoria e contributi ricevuti con il rendiconto sull'utilizzo. */
+/** Contabilità → Adempimenti → 5 per mille: messaggio per i soci, promemoria e contributi ricevuti con il rendiconto sull'utilizzo. */
 final class FivePmPage {
 
 	private static function date( ?string $ymd ): string {
@@ -17,29 +17,29 @@ final class FivePmPage {
 	}
 
 	public static function render(): void {
-		Ui::header( '5x1000' );
+		Ui::header( '5 per mille' );
 		$on    = FivePerMille::enabled();
 		$admin = current_user_can( Plugin::CAP );
 		if ( $admin ) {
 			Ui::form_open( 'asem_fivepm_settings', Ui::url( 'asem-fivepm' ) );
-			echo '<p><label><input type="checkbox" name="fivepm_enabled" value="1"' . checked( $on, true, false ) . '> <strong>Attiva il 5x1000</strong></label> <span class="description">Spento di default.</span></p>';
+			echo '<p><label><input type="checkbox" name="fivepm_enabled" value="1"' . checked( $on, true, false ) . '> <strong>Attiva il 5 per mille</strong></label> <span class="description">Spento di default.</span></p>';
 			echo '<p>Messaggio per i soci <span class="description">(vuoto = messaggio standard; puoi usare {associazione} e {codice_fiscale})</span><br><textarea name="fivepm_text" rows="4" class="large-text" maxlength="1000">' . esc_textarea( (string) Settings::get( 'fivepm_text' ) ) . '</textarea></p>';
 			echo '<p><button class="button button-primary">Salva</button></p>';
 			Ui::form_close();
 		}
 		if ( ! $on ) {
-			echo '<p class="description">Il 5x1000 è spento' . ( $admin ? '.' : ': lo attiva un amministratore.' ) . '</p>';
+			echo '<p class="description">Il 5 per mille è spento' . ( $admin ? '.' : ': lo attiva un amministratore.' ) . '</p>';
 			Ui::footer();
 			return;
 		}
 		$cf = trim( (string) Settings::get( 'tax_code' ) );
 		if ( '' === $cf ) {
-			echo '<div class="notice notice-warning inline"><p>Manca il codice fiscale dell\'associazione: inseriscilo in <a href="' . esc_url( Ui::url( 'asem-settings' ) ) . '">Impostazioni</a>, senza non si può chiedere il 5x1000.</p></div>';
+			echo '<div class="notice notice-warning inline"><p>Manca il codice fiscale dell\'associazione: inseriscilo in <a href="' . esc_url( Ui::url( 'asem-settings' ) ) . '">Impostazioni</a>, senza non si può chiedere il 5 per mille.</p></div>';
 		}
-		echo '<h2>Chiedi il 5x1000 ai soci</h2><p>Il messaggio con il codice fiscale compare dove inserisci lo shortcode <code>[associazionesemplice_cinquepermille]</code> (o il blocco «Associazione Semplice» → 5x1000). Questo è il testo:</p>';
+		echo '<h2>Chiedi il 5 per mille ai soci</h2><p>Il messaggio con il codice fiscale compare dove inserisci lo shortcode <code>[associazionesemplice_cinquepermille]</code> (o il blocco «Associazione Semplice» → 5 per mille). Questo è il testo:</p>';
 		echo '<div class="asem-card">' . esc_html( FivePerMille::text() ) . '</div>';
 		$body = 'Ciao {nome}, ' . FivePerMille::text() . "\n\nGrazie, {associazione}";
-		echo '<p><a class="button" href="' . esc_url( Ui::url( 'asem-messages', array( 'audience' => 'members_all', 'subject' => 'Il tuo 5x1000', 'body' => $body, 'preview' => 1 ) ) ) . '">Prepara il promemoria per i soci</a> '
+		echo '<p><a class="button" href="' . esc_url( Ui::url( 'asem-messages', array( 'audience' => 'members_all', 'subject' => 'Il tuo 5 per mille', 'body' => $body, 'preview' => 1 ) ) ) . '">Prepara il promemoria per i soci</a> '
 			. '<span class="description">Apre le comunicazioni con il messaggio già scritto: controlli l\'elenco dei destinatari e lo invii.</span></p>';
 
 		echo '<h2>Contributi ricevuti</h2><p class="description">Registra l\'importo accreditato dall\'Agenzia delle Entrate: entro 12 mesi va redatto il rendiconto sull\'utilizzo (e la relazione illustrativa), da pubblicare.</p>';

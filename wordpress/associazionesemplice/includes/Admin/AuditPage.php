@@ -24,7 +24,7 @@ final class AuditPage {
 				array(
 					'person.' => 'Persone', 'member.' => 'Libro soci', 'membership.' => 'Iscrizioni', 'activity.' => 'Attività', 'booking.' => 'Prenotazioni', 'attendance.' => 'Presenze',
 					'tx.' => 'Movimenti', 'account.' => 'Conti', 'fund.' => 'Fondi', 'year.' => 'Esercizi', 'payment.' => 'Pagamenti online', 'cashcount.' => 'Verifiche cassa',
-					'minutes.' => 'Verbali', 'insurance.' => 'Assicurazioni dei volontari', 'policy.' => 'Polizze', 'fivepm.' => '5x1000', 'privacy.' => 'Privacy', 'backup.' => 'Copie di sicurezza',
+					'minutes.' => 'Verbali', 'insurance.' => 'Assicurazioni dei volontari', 'policy.' => 'Polizze', 'fivepm.' => '5 per mille', 'privacy.' => 'Privacy', 'backup.' => 'Copie di sicurezza',
 					'import.' => 'Import', 'settings.' => 'Impostazioni',
 				),
 				$prefix,
