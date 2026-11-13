@@ -1032,6 +1032,24 @@ if ( class_exists( 'ZipArchive' ) && function_exists( 'sodium_crypto_sign_keypai
 	$g2 = json_decode( Portale\PluginUpdates::check( $gdb, $gpx, str_replace( 'chiave-firma-prova', 'chiave-firma-prova2', $req ), '8.8.1.2', 1800000000 )[1], true );
 	check( 'firma: dopo la firma la 1.0.4 diventa l\'aggiornamento offerto', '1.0.4' === $g2['version'] && $sig4 === $g2['signature'] );
 	check( 'firma: firma aggiunta a una versione sbagliata rifiutata', null !== throwsUser( function () use ( $gdb, $sig ) { Portale\Releases::sign( $gdb, 'pro', '1.0.4', $sig, 'k-test', 'test' ); } ) );
+	// Sostituzione eccezionale di una versione già pubblicata (stesso numero)
+	$rzdir = Portale\Releases::dir( 'pro' );
+	$oldsha = Portale\Releases::get( $gdb, 'pro', '1.0.1' )['sha256'];
+	$z1b = $mkz( '1.0.1' );
+	$zz  = new ZipArchive();
+	$zz->open( $z1b );
+	$zz->addFromString( 'associazionesemplice-pro/extra.txt', 'cambiato' );
+	$zz->close();
+	$sig1b = $b64u( sodium_crypto_sign_detached( Portale\Releases::signedMessage( 'pro', '1.0.1', hash_file( 'sha256', $z1b ) ), $sk ) );
+	check( 'sostituzione: senza firma rifiutata', null !== throwsUser( function () use ( $gdb, $z1b ) { Portale\Releases::replace( $gdb, 'pro', $z1b, '', 'test', '', 'k-test' ); } ) );
+	check( 'sostituzione: firma di un altro pacchetto rifiutata', null !== throwsUser( function () use ( $gdb, $z1b, $sig ) { Portale\Releases::replace( $gdb, 'pro', $z1b, '', 'test', $sig, 'k-test' ); } ) );
+	check( 'sostituzione: versione non ancora pubblicata rifiutata', null !== throwsUser( function () use ( $gdb, $mkz, $b64u, $sk ) { $z = $mkz( '7.7.7' ); Portale\Releases::replace( $gdb, 'pro', $z, '', 'test', $b64u( sodium_crypto_sign_detached( Portale\Releases::signedMessage( 'pro', '7.7.7', hash_file( 'sha256', $z ) ), $sk ) ), 'k-test' ); } ) );
+	check( 'sostituzione: pacchetto identico rifiutato', null !== throwsUser( function () use ( $gdb, $z1, $sig ) { Portale\Releases::replace( $gdb, 'pro', $z1, '', 'test', $sig, 'k-test' ); } ) );
+	$rep = Portale\Releases::replace( $gdb, 'pro', $z1b, '', 'test', $sig1b, 'k-test' );
+	$now1 = Portale\Releases::get( $gdb, 'pro', '1.0.1' );
+	check( 'sostituzione: impronta, firma e file nuovi, stesso numero', $now1['sha256'] === hash_file( 'sha256', $z1b ) && $sig1b === $now1['signature'] && $rep['sha256'] === $now1['sha256'] && hash_file( 'sha256', $rzdir . '/1.0.1.zip' ) === $now1['sha256'] );
+	check( 'sostituzione: il vecchio zip resta conservato e non è scaricabile', is_file( $rzdir . '/1.0.1.zip.' . substr( $oldsha, 0, 8 ) . '.replaced' ) && hash_file( 'sha256', $rzdir . '/1.0.1.zip.' . substr( $oldsha, 0, 8 ) . '.replaced' ) === $oldsha );
+	check( 'sostituzione: registrata nell\'audit', null !== $gdb->one( "SELECT 1 AS x FROM audit WHERE action = 'release.replace'" ) );
 	Config::set( 'package_keys', Portale\Releases::SIGNING_KEYS );
 }
 

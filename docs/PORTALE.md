@@ -353,3 +353,13 @@ Il portale non deve più avere un database SQL proprio: tutto sta su PostgreSQL,
 - Il passaggio dei dati di produzione e lo spegnimento di SQLite avvengono solo con il via libera scritto della titolare, dopo il «pronto» della sessione SaaS e una prova in parallelo.
 
 **Stato (12/11/2026 19:30):** il portale in produzione usa PostgreSQL (schema `portal`, ruolo `associazionesemp_portal`, credenziali in `~/portale/data/pg.php` fuori dal repository, lette dal `config.php` del server). Il database SQLite è stato importato, verificato tabella per tabella e cancellato dal server; la copia finale è stata conservata fuori dal server dalla sessione SaaS. SQLite resta solo per le prove locali e per i test veloci della CI.
+
+## Sostituire un pacchetto già pubblicato (eccezione)
+
+Di norma una versione già presente si rifiuta: per cambiare il pacchetto si aumenta il numero. Solo con l'**ok scritto della titolare** (es. un solo sito che aggiorna a mano) si può sostituire zip, impronta e firma di una versione esistente con lo stesso numero:
+
+```
+bash wordpress/build.sh && bash portale/release.sh replace free "nota facoltativa"   # oppure pro
+```
+
+Il comando firma sul computer di chi pubblica (come `release.sh free`), carica lo zip e lancia `php bin/release.php replace …` sul server. La firma è obbligatoria e deve corrispondere al nuovo zip; un pacchetto identico o una versione non ancora pubblicata si rifiutano. Il vecchio zip resta sul server come `<versione>.zip.<impronta8>.replaced` (non scaricabile) e l'audit registra `release.replace` con le due impronte. I siti che hanno già installato il vecchio pacchetto non lo vedono come aggiornamento (stesso numero): chi vuole il nuovo lo reinstalla a mano.
