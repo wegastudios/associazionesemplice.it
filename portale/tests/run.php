@@ -2044,6 +2044,13 @@ check( 'sospensione: il giorno dopo la scadenza, una email sola, con la data di 
 $cdb->run( 'UPDATE orders SET suspended_for = NULL WHERE id = ?', array( $ord['id'] ) );
 $mails = array();
 check( 'sospensione: scadenza di molti giorni fa → niente email a sorpresa', 0 === SaasCheckout::sendLifecycleMails( $cdb, $lcUntil + 10 * 86400 ) && array() === $mails );
+// Avvisi prima della cancellazione dei dati (181 giorni dopo la scadenza): 15 giorni prima e il giorno prima, una volta ciascuno.
+$pgDel  = $lcUntil + 181 * 86400;
+$mails  = array();
+check( 'cancellazione: 16 giorni prima non parte nulla', 0 === SaasCheckout::sendLifecycleMails( $cdb, $pgDel - 16 * 86400 + 3600 ) && array() === $mails );
+check( 'cancellazione: 15 giorni prima un avviso, una volta sola (anche il giorno dopo)', 1 === SaasCheckout::sendLifecycleMails( $cdb, $pgDel - 15 * 86400 + 3600 ) && 0 === SaasCheckout::sendLifecycleMails( $cdb, $pgDel - 15 * 86400 + 7200 ) && 0 === SaasCheckout::sendLifecycleMails( $cdb, $pgDel - 14 * 86400 + 3600 ) && 1 === count( $mails ) && false !== strpos( $mails[0][1], 'Tra 15 giorni' ) && false !== strpos( $mails[0][2], date_it( gmdate( 'Y-m-d', $pgDel ) . ' 00:00:00' ) ) && false === strpos( $mails[0][2], '{' ) );
+check( 'cancellazione: il giorno prima un secondo avviso, una volta sola; il giorno stesso nulla', 1 === SaasCheckout::sendLifecycleMails( $cdb, $pgDel - 86400 + 3600 ) && 0 === SaasCheckout::sendLifecycleMails( $cdb, $pgDel - 86400 + 7200 ) && 0 === SaasCheckout::sendLifecycleMails( $cdb, $pgDel + 3600 ) && 2 === count( $mails ) && false !== strpos( $mails[1][1], 'Domani cancelliamo' ) );
+$mails = array();
 // Fine della prova senza un piano: sequenza P1…P6, sola lettura il giorno dopo, chiusura alla cancellazione; niente arretrati.
 $cdb->run( 'INSERT INTO saas_orgs (ref, customer_id, name, slug, rev, created_at, org_id) VALUES (?,?,?,?,0,?,?)', array( 'otrial', $reOrd['customer_id'], 'Circolo Prova', 'prova', '2030-01-01 00:00:00', 'orgT' ) );
 $tOrd = Orders::open( $cdb, (string) $reOrd['customer_id'], (string) $reOrd['plan'], (string) $reOrd['period'], (int) $reOrd['members'], array(), null );

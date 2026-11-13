@@ -154,6 +154,17 @@ final class Emails {
 				'subject' => 'Abbiamo cancellato i dati della prova di {associazione}',
 				'body' => "Ciao {nome},\ncome ti avevamo scritto, oggi abbiamo cancellato i dati della prova di {associazione}. Non conserviamo più nulla di quello che avevi inserito.\n\nIl tuo account su associazionesemplice.it resta: se un giorno vorrai ripartire, lo fai da {piani_url}.\n\nGrazie per aver provato Associazione Semplice.",
 			),
+			// Avvisi prima della cancellazione dei dati di un gestionale scaduto (testi scritti dal portale, da rivedere con l'audit). Dopo la scadenza non si esporta.
+			'saas_purge_15' => array(
+				'label' => 'Gestionale scaduto: 15 giorni prima della cancellazione dei dati', 'when' => '15 giorni prima della cancellazione dei dati di un gestionale scaduto e non rinnovato.', 'vars' => array( 'nome', 'associazione', 'piano', 'scadenza', 'data_cancellazione', 'account_url', 'supporto_url', 'email' ),
+				'subject' => 'Tra 15 giorni cancelliamo i dati di {associazione}',
+				'body' => "Ciao {nome},\nil piano {piano} di {associazione} è scaduto il {scadenza} e il gestionale è sospeso. Il {data_cancellazione}, tra 15 giorni, cancelliamo i dati: soci, movimenti e attività. La cancellazione non si può annullare.\n\nSe vuoi tenerli, apri {account_url} e premi «Riattiva»: ritrovi tutto com'era. Per dubbi scrivici da {supporto_url}.",
+			),
+			'saas_purge_1' => array(
+				'label' => 'Gestionale scaduto: il giorno prima della cancellazione dei dati', 'when' => 'Il giorno prima della cancellazione dei dati di un gestionale scaduto e non rinnovato.', 'vars' => array( 'nome', 'associazione', 'piano', 'scadenza', 'data_cancellazione', 'account_url', 'supporto_url', 'email' ),
+				'subject' => 'Domani cancelliamo i dati di {associazione}',
+				'body' => "Ciao {nome},\ndomani, {data_cancellazione}, cancelliamo i dati del gestionale di {associazione}: soci, movimenti e attività. La cancellazione non si può annullare.\n\nSe vuoi tenerli, riattiva il gestionale oggi da {account_url} («Riattiva»). Se ti serve una mano scrivici da {supporto_url}.",
+			),
 			'saas_cancelled' => array(
 				'label' => 'Gestionale: disdetta registrata', 'when' => 'Il cliente disdice il rinnovo del gestionale dall\'area clienti.', 'vars' => array( 'nome', 'associazione', 'piano', 'scadenza', 'account_url', 'supporto_url', 'email' ),
 				'subject' => 'Disdetta registrata: il gestionale resta attivo fino al {scadenza}',
