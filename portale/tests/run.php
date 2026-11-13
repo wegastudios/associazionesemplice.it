@@ -1890,8 +1890,11 @@ foreach ( $cseen as $c ) {
 check( 'acquisto: Stripe con importo del preventivo (3300 - 20% + IVA = 3221)', 'https://checkout.stripe.test/s1' === $url && '3221' === (string) ( $stripeForm['line_items'][0]['price_data']['unit_amount'] ?? '' ) && $ord['id'] === $stripeForm['client_reference_id'] );
 check( 'acquisto: ordine con istantanea, associazione e metodo', 'pending' === $ord['status'] && 3 === (int) $ord['plan_version'] && 'stripe' === $ord['provider'] && 1 === (int) $cdb->one( 'SELECT COUNT(*) n FROM saas_orgs WHERE ref = ?', array( $ord['org_ref'] ) )['n'] );
 $cseen = array();
+$mails = array();
 check( 'pagamento: id che non è un ordine del gestionale → non è affar nostro', false === SaasCheckout::paid( $cdb, 'nonesiste', 'sub_1', 'cus_1' ) );
 check( 'pagamento riuscito: associazione creata, promo consumata, subscription in coda', true === SaasCheckout::paid( $cdb, $ord['id'], 'sub_1', 'cus_1', 1000 ) );
+check( 'email gestionale: benvenuto e «pronto» alla cliente, con associazione, piano del catalogo e supporto, senza nome → «Ciao,»', 2 === count( $mails ) && 'anna@esempio.it' === $mails[0][0] && 'anna@esempio.it' === $mails[1][0] && false !== strpos( $mails[0][2], 'Circolo San Giorgio' ) && false === strpos( $mails[0][2], '{' ) && false === strpos( $mails[1][2], '{' ) );
+$mails = array();
 $types = array_map( function ( $c ) { return $c[0]; }, $cseen );
 check( 'pagamento: provision → promo_redeem, una volta', array( 'provision', 'promo_redeem' ) === $types );
 $prov = $cseen[0][1];
@@ -1900,9 +1903,12 @@ $qrow = json_decode( (string) $cdb->one( 'SELECT body FROM saas_outbox' )['body'
 check( 'subscription in coda: rev 1, plan_version dell\'ordine, scadenza, promo e prezzo netto', 1 === $qrow['rev'] && 'active' === $qrow['status'] && 3 === $qrow['plan_version'] && 150 === $qrow['members'] && 'PRIMAVERA' === $qrow['promo'] && 2640 === $qrow['price_cents'] && gmdate( 'Y-m-d', strtotime( '+1 month', 1000 ) ) === $qrow['until'] && $ord['org_ref'] === $qrow['ref'] );
 $cseen = array();
 SaasCheckout::paid( $cdb, $ord['id'], 'sub_1', 'cus_1', 1100 );
+check( 'pagamento ripetuto (webhook doppio): nessuna email in più', array() === $mails );
 check( 'pagamento ripetuto (webhook doppio): nessun effetto in più', array() === $cseen && 1 === (int) $cdb->one( 'SELECT COUNT(*) n FROM saas_outbox' )['n'] && 'active' === $cdb->one( 'SELECT status FROM orders' )['status'] );
 check( 'rinnovo: nuova subscription con rev 2 e scadenza spostata', true === SaasCheckout::event( $cdb, 'stripe', 'sub_1', 'renewed', 5000000 ) && 2 === json_decode( (string) $cdb->one( 'SELECT body FROM saas_outbox WHERE rev = 2' )['body'], true )['rev'] );
+check( 'email rinnovo: una sola, alla cliente', 1 === count( $mails ) && 'anna@esempio.it' === $mails[0][0] );
 SaasCheckout::event( $cdb, 'stripe', 'sub_1', 'failed', 5000100 );
+check( 'email pagamento non riuscito: inviata', 2 === count( $mails ) && 'anna@esempio.it' === $mails[1][0] && false === strpos( $mails[1][2], '{' ) );
 $pd = json_decode( (string) $cdb->one( 'SELECT body FROM saas_outbox WHERE rev = 3' )['body'], true );
 check( 'pagamento non riuscito: past_due, scadenza invariata', 'past_due' === $pd['status'] && gmdate( 'Y-m-d', strtotime( '+1 month', 5000000 ) ) === $pd['until'] );
 SaasCheckout::event( $cdb, 'stripe', 'sub_1', 'cancelled', 5000200 );
@@ -1949,7 +1955,9 @@ Http::$transport = function ( $m, $u, $h, $b ) use ( &$cancelled ) {
 	$cancelled[] = array( $m, $u, $b );
 	return array( 200, '{}' );
 };
+$mails = array();
 SaasAccount::cancel( $cdb, SaasAccount::mine( $cdb, $custA['id'], $ord['id'] ) );
+check( 'email disdetta: inviata alla cliente', 1 === count( $mails ) && 'anna@esempio.it' === $mails[0][0] && false === strpos( $mails[0][2], '{' ) );
 check( 'disdetta: a fine periodo su Stripe e ordine segnato', 1 === count( $cancelled ) && false !== strpos( $cancelled[0][1], '/subscriptions/sub_1' ) && 'true' === ( function ( $s ) { parse_str( $s, $o ); return $o['cancel_at_period_end'] ?? ''; } )( $cancelled[0][2] ) && 1 === (int) $cdb->one( 'SELECT cancel_at_period_end c FROM orders WHERE id = ?', array( $ord['id'] ) )['c'] );
 Config::set( 'stripe.secret_key', '' );
 

@@ -182,6 +182,8 @@ final class App {
 			header( 'Location: ' . $url, true, 303 );
 		} elseif ( $get && '/paypal/ritorno' === $path ) {
 			$this->paypalReturn( (string) ( $_GET['token'] ?? '' ) );
+		} elseif ( $get && '/grazie' === $path && 'saas' === ( $_SESSION['grazie']['kind'] ?? '' ) ) {
+			View::render( 'thanks_saas', array( 'title' => 'Grazie!', 'org' => (string) $_SESSION['grazie']['associazione'], 'email' => (string) $_SESSION['grazie']['email'] ) );
 		} elseif ( $get && '/grazie' === $path ) {
 			View::render( 'message', array( 'title' => 'Grazie!', 'text' => 'Appena il pagamento è confermato ti scriviamo un link per entrare nell\'area riservata e trovare la chiave di licenza del plugin o l\'indirizzo del tuo gestionale.' ) );
 		} elseif ( $get && '/accedi' === $path ) {
@@ -748,6 +750,7 @@ final class App {
 			$this->formLimit();
 			if ( 'pay' === (string) $this->in( 'step' ) ) {
 				$url = SaasCheckout::start( $this->db, $this->billing, $v + array( 'seen_total' => $_POST['seen_total'] ?? '' ) );
+				$_SESSION['grazie'] = array( 'kind' => 'saas', 'associazione' => $v['org_name'], 'email' => $v['email'] ); // la pagina «Grazie» sa che ordine è
 				header( 'Location: ' . $url, true, 303 );
 				return;
 			}

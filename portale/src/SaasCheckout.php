@@ -156,7 +156,46 @@ final class SaasCheckout {
 		}
 		self::push( $db, $o, $org, 'active', self::until( (string) $o['period'], $now ), $now );
 		$db->run( "UPDATE orders SET status = ?, updated_at = ? WHERE id = ? AND status = 'paid'", array( self::ACTIVE, $at, $orderId ) );
+		// Una sola volta (il ramo «già attivato» sopra esce prima): un errore di posta non deve far ripetere il pagamento.
+		self::mail( $db, 'saas_welcome', $o, $org, $now );
+		self::mail( $db, 'saas_ready', $o, $org, $now );
 		return true;
+	}
+
+	/**
+	 * Email del gestionale al cliente dell'ordine (rispetta i modelli e l'interruttore del pannello). Mai un'eccezione: la posta non blocca i pagamenti.
+	 * Il link per scegliere la password porta alla pagina «Scegli o recupera la password» (la email con il link la manda il sistema di accesso).
+	 */
+	public static function mail( Db $db, string $event, array $order, array $org, ?int $now = null ): bool {
+		try {
+			$cust = $db->one( 'SELECT email, name FROM customers WHERE id = ?', array( $order['customer_id'] ) );
+			if ( ! $cust ) {
+				return false;
+			}
+			$q    = (array) ( is_array( $order['quote'] ?? null ) ? $order['quote'] : json_decode( (string) ( $order['quote'] ?? '' ), true ) );
+			$stored = Catalog::stored( $db, $now );
+			$plan = (string) $order['plan'];
+			foreach ( $stored ? Catalog::plans( $stored['doc'] ) : array() as $p ) {
+				if ( ( $p['code'] ?? '' ) === $plan ) {
+					$plan = (string) ( $p['name'] ?? $plan );
+				}
+			}
+			$last  = self::lastUntil( $db, (string) ( $org['org_id'] ?? '' ) );
+			$until = $last ?? self::until( (string) $order['period'], $now );
+			$name  = trim( (string) ( $cust['name'] ?? '' ) );
+			$total = (int) ( $q['total'] ?? 0 );
+			$vars  = array(
+				'nome' => $name,'associazione' => (string) ( $org['name'] ?? '' ), 'piano' => $plan,
+				'periodo' => 'year' === $order['period'] ? 'annuale' : 'mensile', 'scadenza' => date_it( $until . ' 00:00:00' ),
+				'importo' => money( $total ) . ( 'exempt' === ( $q['vat_mode'] ?? '' ) ? ' (senza IVA)' : ' (IVA inclusa)' ),
+				'gestionale_url' => rtrim( (string) Config::get( 'saas_app_url', 'https://app.associazionesemplice.it/gestionale' ), '/' ),
+				'link_password' => rtrim( (string) Config::get( 'base_url' ), '/' ) . '/accedi/password-dimenticata',
+			);
+			return Emails::send( $db, $event, (string) $cust['email'], $vars );
+		} catch ( \Throwable $e ) {
+			error_log( '[portale] email ' . $event . ' non inviata (' . $e->getMessage() . ')' );
+			return false;
+		}
 	}
 
 	/**
@@ -181,8 +220,10 @@ final class SaasCheckout {
 		}
 		if ( 'renewed' === $kind ) {
 			self::push( $db, $o, $org, 'active', self::until( (string) $o['period'], $now ), $now );
+			self::mail( $db, 'saas_renewed', $o, $org, $now );
 		} elseif ( 'failed' === $kind ) {
 			self::push( $db, $o, $org, 'past_due', self::lastUntil( $db, (string) $org['org_id'] ) ?? self::until( (string) $o['period'], $now ), $now );
+			self::mail( $db, 'saas_payment_failed', $o, $org, $now );
 		} elseif ( 'cancelled' === $kind ) {
 			self::push( $db, $o, $org, 'cancelled', self::lastUntil( $db, (string) $org['org_id'] ) ?? gmdate( 'Y-m-d', $now ?? time() ), $now );
 		}
