@@ -8553,7 +8553,7 @@ $ct_aid = $acts->create( array( 'name' => 'Corso dei contatti', 'social_year' =>
 $ct_pid = \AssociazioneSemplice\PublicEvents::ensure( $ct_aid );
 wp_update_post( array( 'ID' => $ct_pid, 'post_status' => 'publish' ) );
 $ct_c = \AssociazioneSemplice\PublicEvents::contacts( $ct_pid );
-asem_ok( 'creatore@example.com' === $ct_c['email'] && '333 1234567' === $ct_c['phone'], 'contatti evento: di default l\'email di chi crea la pagina e il telefono della segreteria' );
+asem_ok( 'creatore@example.com' === $ct_c['email'] && '333 1234567' === $ct_c['phone'], 'contatti evento: di default l\'email di chi crea la pagina e il telefono della segreteria ' . wp_json_encode( array( $ct_c, get_post_meta( $ct_pid ), get_post_field( 'post_author', $ct_pid ), $ct_uid ) ) );
 $ct_html = html_entity_decode( \AssociazioneSemplice\PublicEvents::part( 'dove', array( 'evento' => $ct_pid ) ) );
 asem_ok( false !== strpos( $ct_html, 'creatore@example.com' ) && false !== strpos( $ct_html, 'wa.me/393331234567' ) && false !== strpos( $ct_html, 'tel:+393331234567' ), 'contatti evento: la pagina mostra email, WhatsApp e telefono dell\'evento' );
 update_post_meta( $ct_pid, \AssociazioneSemplice\PublicEvents::META_EMAIL, 'esterno@example.com' ); // organizza qualcuno esterno
