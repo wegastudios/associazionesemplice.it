@@ -133,3 +133,25 @@ it('non vede le schede di un\'altra associazione', function (): void {
         app(PeopleService::class)->create(['first_name' => 'Giuseppe', 'last_name' => 'Verdi', 'tax_code' => VALID_CF]);
     });
 });
+
+it('registra un socio ente con denominazione e partita IVA, senza nome né nascita', function (): void {
+    $p = $this->people->create([
+        'is_entity' => true, 'last_name' => 'Pro Loco Beta', 'first_name' => 'ignorato', 'tax_code' => '01234567890',
+        'birth_date' => '1990-01-01', 'entity_same_section' => true,
+    ]);
+
+    expect($p->is_entity)->toBeTrue()
+        ->and($p->first_name)->toBe('')
+        ->and($p->birth_date)->toBeNull()
+        ->and($p->entity_same_section)->toBeTrue()
+        ->and($p->tax_code)->toBe('01234567890');
+    expect(fn () => $this->people->create(['is_entity' => true, 'last_name' => '']))->toThrow(PeopleError::class);
+    expect(fn () => $this->people->create(['first_name' => 'Mario', 'last_name' => 'Rossi', 'tax_code' => '01234567890']))->toThrow(PeopleError::class);
+});
+
+it('dà il diritto di voto ai soli soci', function (): void {
+    expect(\App\Modules\Soci\Contracts\MemberType::Ordinary->hasVotingRights())->toBeTrue()
+        ->and(\App\Modules\Soci\Contracts\MemberType::Volunteer->hasVotingRights())->toBeTrue()
+        ->and(\App\Modules\Soci\Contracts\MemberType::Guest->hasVotingRights())->toBeFalse()
+        ->and(\App\Modules\Soci\Contracts\MemberType::Guardian->hasVotingRights())->toBeFalse();
+});
