@@ -6181,11 +6181,11 @@ $tec_cr2 = \AssociazioneSemplice\TribeImport::run( array( $tec_tid ) );
 asem_ok( 0 === $tec_cr2['courses'] && 0 === $tec_cr2['imported'] && 7 === $tec_cr2['skipped'], 'The Events Calendar: rilanciando i corsi non nascono doppioni' );
 $tec_cre = $CP::duplicate( (int) $tec_c['id'], array( 'social_year' => Settings::social_year( '2024-03-05' )->next()->label() ) );
 asem_ok( 'Yoga TEC' === $acts->get( $tec_cre )['name'] && 2 === count( \AssociazioneSemplice\ActivityService::lessons( $acts->get( $tec_cre ) ) ), 'riproporre: un corso importato si ripropone nell\'anno dopo con le sue lezioni' );
-asem_render( array( Admin\TribeImportPage::class, 'render' ), 'Quali categorie sono corsi?' );
-// corsi: regola chiara (categoria spuntata + almeno 3 lezioni lo stesso giorno alla stessa ora), parole intere, correzioni a mano
+// corsi: li decide l'utente scegliendo «Evento» o «Corso» per ogni categoria; prima si importano gli eventi, poi i corsi
 $TI       = '\AssociazioneSemplice\TribeImport';
+$PE       = '\AssociazioneSemplice\PublicEvents';
 $tec_t    = array();
-foreach ( array( 'Laboratori', 'Percorsi', 'Concorsi', 'Lezioni di prova', 'Musica vera' ) as $tec_tn ) {
+foreach ( array( 'Laboratori', 'Percorsi', 'Concorsi', 'Lezioni di prova', 'Eventi speciali' ) as $tec_tn ) {
 	$tec_tt = wp_insert_term( $tec_tn, 'tribe_events_cat' );
 	$tec_t[ $tec_tn ] = (int) $tec_tt['term_id'];
 }
@@ -6200,32 +6200,67 @@ $tec_mk = function ( $title, $dates, $time, $terms ) {
 	}
 	return $ids;
 };
-$tec_k1 = $tec_mk( 'Evento percorsi TEC', array( '2024-04-02' ), '10:00', array( $tec_t['Percorsi'], $tec_t['Concorsi'] ) );
-$tec_k2 = $tec_mk( 'Pittura TEC', array( '2024-04-03', '2024-04-10', '2024-04-17' ), '18:00', array( $tec_t['Lezioni di prova'], $tec_t['Musica vera'] ) ); // due categorie, tre mercoledì
-$tec_k3 = $tec_mk( 'Mosaico TEC', array( '2024-04-04', '2024-04-11' ), '18:00', array( $tec_t['Lezioni di prova'] ) ); // categoria dei corsi ma solo 2 date
-$tec_k4 = $tec_mk( 'Cucina TEC', array( '2024-04-05', '2024-04-12', '2024-04-19' ), '20:00', array( $tec_t['Laboratori'] ) ); // tre venerdì, categoria non spuntata
-$tec_k5 = $tec_mk( 'Coro TEC', array( '2024-04-01', '2024-04-08', '2024-04-15' ), '19:00', array( $tec_t['Lezioni di prova'] ) );
+$tec_k1  = $tec_mk( 'Evento percorsi TEC', array( '2024-04-02' ), '10:00', array( $tec_t['Percorsi'], $tec_t['Concorsi'] ) ); // due categorie «Evento»
+$tec_k2  = $tec_mk( 'Pittura TEC', array( '2024-04-03', '2024-04-10', '2024-04-17' ), '18:00', array( $tec_t['Lezioni di prova'], $tec_t['Laboratori'] ) ); // categorie miste: Evento vince
+$tec_k3  = $tec_mk( 'Mosaico TEC', array( '2024-04-04', '2024-04-11' ), '18:00', array( $tec_t['Lezioni di prova'] ) ); // solo «Corso», anche con 2 sole date
+$tec_k4  = $tec_mk( 'Cucina TEC', array( '2024-04-05', '2024-04-12', '2024-04-19' ), '20:00', array( $tec_t['Laboratori'] ) ); // «Laboratori» scelta Evento: tutti eventi
+$tec_k5  = $tec_mk( 'Coro TEC', array( '2024-04-01', '2024-04-08', '2024-04-15' ), '19:00', array( $tec_t['Lezioni di prova'] ) );
+$tec_k6  = $tec_mk( 'Senza categoria TEC', array( '2024-04-30' ), '09:00', array() );
+$tec_k7  = $tec_mk( 'Doppio TEC', array( '2024-04-22', '2024-04-23' ), '20:00', array( $tec_t['Eventi speciali'] ) ); // stesso titolo e stesso anno di un corso: due cose separate
+$tec_k8  = $tec_mk( 'Doppio TEC', array( '2024-05-01', '2024-05-08', '2024-05-15' ), '18:00', array( $tec_t['Lezioni di prova'] ) );
+$tec_all = array_merge( $tec_k1, $tec_k2, $tec_k3, $tec_k4, $tec_k5, $tec_k6, $tec_k7, $tec_k8 );
 $tec_flag = array();
 foreach ( $TI::categories() as $tec_cc ) {
 	$tec_flag[ $tec_cc['name'] ] = $tec_cc['course'];
 }
-asem_ok( true === $tec_flag['Lezioni di prova'] && false === $tec_flag['Laboratori'] && false === $tec_flag['Percorsi'] && false === $tec_flag['Concorsi'] && false === $tec_flag['Musica vera'], 'The Events Calendar: si propone come corso solo una categoria che dice «corso» o «lezione» (parole intere), non «Laboratori», «Percorsi», «Concorsi»' );
-$tec_kind = array();
-foreach ( $TI::plan( array( $tec_t['Lezioni di prova'] ) ) as $tec_row ) {
-	$tec_kind[ $tec_row['name'] ] = $tec_row['kind'];
-}
-asem_ok( 'course' === $tec_kind['Pittura TEC'] && 'event' === $tec_kind['Mosaico TEC'] && 'event' === $tec_kind['Cucina TEC'] && 'course' === $tec_kind['Coro TEC'] && 'event' === $tec_kind['Evento percorsi TEC'], 'The Events Calendar: anteprima: corso solo con categoria spuntata e 3 lezioni lo stesso giorno e ora (anche con due categorie); con meno date o senza categoria è un evento' );
-$tec_y   = Settings::social_year( '2024-04-05' )->label();
-$tec_ov  = array( $TI::key( 'Cucina TEC', $tec_y ) => 'course', $TI::key( 'Coro TEC', $tec_y ) => 'event' );
-$tec_ro  = $TI::run( array( $tec_t['Lezioni di prova'] ), false, $tec_ov );
-$tec_ak  = function ( $ids ) use ( $acts ) {
+asem_ok( true === $tec_flag['Lezioni di prova'] && false === $tec_flag['Laboratori'] && false === $tec_flag['Percorsi'] && false === $tec_flag['Concorsi'] && false === $tec_flag['Eventi speciali'], 'The Events Calendar: si propone «Corso» solo per una categoria che dice «corso» o «lezione» (parole intere), non «Laboratori», «Percorsi», «Concorsi»' );
+$tec_cc_n = array_column( $TI::categories(), 'count', 'name' );
+asem_ok( 11 === (int) $tec_cc_n['Lezioni di prova'] && 6 === (int) $tec_cc_n['Laboratori'] && 2 === (int) $tec_cc_n['Eventi speciali'], 'The Events Calendar: ogni categoria dice quanti eventi ha' );
+asem_ok( 2 === $TI::uncategorized() && false === $TI::is_course( array(), array( 5 ) ) && true === $TI::is_course( array( 5 ), array( 5 ) ) && true === $TI::is_course( array( 5, 6 ), array( 5, 6 ) ) && false === $TI::is_course( array( 5, 7 ), array( 5, 6 ) ), 'The Events Calendar: senza categoria è evento; è corso solo se nessuna categoria è «Evento» e almeno una è «Corso»' );
+asem_render( array( Admin\TribeImportPage::class, 'render' ), 'Ogni categoria è un evento o un corso?' );
+$tec_course_cats = array( $tec_t['Lezioni di prova'] );
+$tec_sum         = $TI::summary( $tec_course_cats );
+asem_ok( 10 === $tec_sum['events'] && 5 === $tec_sum['event_titles'] && 3 === count( $tec_sum['courses'] ) && 8 === $tec_sum['lessons'] && in_array( 'Laboratori', $tec_sum['categories'], true ) && in_array( 'Lezioni di prova', $tec_sum['categories'], true ) && in_array( 'Concorsi', $tec_sum['categories'], true ), 'The Events Calendar: il riepilogo dice prima di importare quanti eventi, quanti corsi (e lezioni) e quali categorie' );
+asem_render( array( Admin\TribeImportPage::class, 'render' ), 'Cosa succederà', array( 'preview' => '1', 'cat_kind' => array( $tec_t['Lezioni di prova'] => 'course', $tec_t['Laboratori'] => 'event' ) ) );
+$tec_ro = $TI::run( $tec_course_cats, false );
+$tec_ak = function ( $ids ) use ( $acts ) {
 	$a = $acts->get( (int) get_post_meta( $ids[0], '_asem_activity', true ) );
 	return $a ? $a['kind'] : '';
 };
-asem_ok( 'course' === $tec_ak( $tec_k2 ) && 'recurring' === $tec_ak( $tec_k3 ) && 'course' === $tec_ak( $tec_k4 ) && 'recurring' === $tec_ak( $tec_k5 ) && 'event' === $tec_ak( $tec_k1 ), 'The Events Calendar: l\'importazione segue la regola e le correzioni a mano (Cucina forzato a corso, Coro forzato a evento, Mosaico con 2 date non è un corso)' );
+asem_ok( 'event' === $tec_ak( $tec_k1 ) && 'event' === $tec_ak( $tec_k6 ) && 'recurring' === $tec_ak( $tec_k2 ) && 'recurring' === $tec_ak( $tec_k4 ) && 'recurring' === $tec_ak( $tec_k7 ), 'The Events Calendar: eventi senza categoria, con categorie «Evento» o miste (anche se hanno 3 date alla settimana) restano eventi' );
+asem_ok( 'course' === $tec_ak( $tec_k3 ) && 'course' === $tec_ak( $tec_k5 ) && 'course' === $tec_ak( $tec_k8 ), 'The Events Calendar: gli eventi con solo categorie «Corso» diventano corsi (anche con 2 sole date)' );
+$tec_a7 = (int) get_post_meta( $tec_k7[0], '_asem_activity', true );
+$tec_a8 = (int) get_post_meta( $tec_k8[0], '_asem_activity', true );
+asem_ok( $tec_a7 !== $tec_a8 && 2 === count( $acts->sessions( $tec_a7 ) ) && 'course' === $acts->get( $tec_a8 )['kind'] && (int) get_post_meta( $tec_k8[2], '_asem_activity', true ) === $tec_a8 && (int) get_post_meta( $tec_k7[1], '_asem_activity', true ) === $tec_a7, 'The Events Calendar: stesso titolo, un evento e un corso: restano separati, nessuna variabile si trascina' );
 $tec_cn = array_column( $tec_ro['course_list'], 'lessons', 'name' );
-asem_ok( 3 === (int) ( $tec_cn['Pittura TEC'] ?? 0 ) && 3 === (int) ( $tec_cn['Cucina TEC'] ?? 0 ) && in_array( 'Coro TEC (3 date)', $tec_ro['event_list'], true ), 'The Events Calendar: il riepilogo dice quali corsi (e con quante lezioni) e quali eventi sono nati' );
-foreach ( array_merge( $tec_k1, $tec_k2, $tec_k3, $tec_k4, $tec_k5 ) as $tec_del ) {
+asem_ok( 10 === $tec_ro['imported'] && 3 === $tec_ro['courses'] && 8 === $tec_ro['lessons'] && 2 === (int) ( $tec_cn['Mosaico TEC'] ?? 0 ) && 3 === (int) ( $tec_cn['Coro TEC'] ?? 0 ) && 3 === (int) ( $tec_cn['Doppio TEC'] ?? 0 ) && in_array( 'Cucina TEC (3 date)', $tec_ro['event_list'], true ) && ! isset( $tec_cn['Cucina TEC'] ) && ! isset( $tec_cn['Pittura TEC'] ), 'The Events Calendar: il riepilogo finale dice quali eventi e quali corsi (con le lezioni) sono nati' );
+$tec_ev_ids = array();
+$tec_co_ids = array();
+foreach ( $tec_all as $tec_pid ) {
+	$tec_aid = (int) get_post_meta( $tec_pid, '_asem_activity', true );
+	if ( 'course' === $acts->get( $tec_aid )['kind'] ) {
+		$tec_co_ids[ $tec_aid ] = true;
+	} else {
+		$tec_ev_ids[ $tec_aid ] = true;
+	}
+}
+asem_ok( ! array_intersect_key( $tec_ev_ids, $tec_co_ids ) && count( $tec_ev_ids ) + count( $tec_co_ids ) === 8 && min( array_keys( $tec_co_ids ) ) > max( array_keys( $tec_ev_ids ) ), 'The Events Calendar: nessun evento finisce in entrambi i passaggi e gli eventi si importano prima dei corsi' );
+$tec_names = function ( $ids ) use ( $PE ) {
+	$g = get_post( $PE::post_of( (int) get_post_meta( $ids[0], '_asem_activity', true ) ) );
+	$n = $g ? wp_get_object_terms( $g->ID, 'asem_evento_cat', array( 'fields' => 'names' ) ) : array();
+	sort( $n );
+	return $n;
+};
+asem_ok( array( 'Laboratori', 'Lezioni di prova' ) === $tec_names( $tec_k2 ) && array( 'Lezioni di prova' ) === $tec_names( $tec_k5 ) && array( 'Lezioni di prova' ) === $tec_names( $tec_k3 ) && array( 'Laboratori' ) === $tec_names( $tec_k4 ) && array( 'Concorsi', 'Percorsi' ) === $tec_names( $tec_k1 ) && array() === $tec_names( $tec_k6 ), 'The Events Calendar: tutte le categorie originali (anche quelle dei corsi) diventano categorie pubbliche e vanno su tutte le pagine create' );
+asem_ok( in_array( 'Laboratori', $tec_ro['categories'], true ) && in_array( 'Lezioni di prova', $tec_ro['categories'], true ) && in_array( 'Eventi speciali', $tec_ro['categories'], true ), 'The Events Calendar: il riepilogo finale elenca le categorie assegnate' );
+$tec_ro2 = $TI::run( $tec_course_cats, false );
+asem_ok( 0 === $tec_ro2['imported'] && 0 === $tec_ro2['courses'], 'The Events Calendar: rilanciando non nascono doppioni' );
+// «Laboratori» scelta come Corso: i suoi eventi diventano corsi, ma con una categoria «Evento» in più restano eventi
+$tec_m1 = $tec_mk( 'Ceramica TEC', array( '2024-06-03', '2024-06-10', '2024-06-17' ), '17:00', array( $tec_t['Laboratori'] ) );
+$tec_m2 = $tec_mk( 'Ceramica mista TEC', array( '2024-06-04' ), '17:00', array( $tec_t['Laboratori'], $tec_t['Percorsi'] ) );
+$tec_rb = $TI::run( array( $tec_t['Laboratori'] ), false );
+asem_ok( 'course' === $tec_ak( $tec_m1 ) && 'event' === $tec_ak( $tec_m2 ) && 1 === $tec_rb['courses'] && 3 === $tec_rb['lessons'] && 1 === $tec_rb['imported'] && array( 'Laboratori' ) === $tec_names( $tec_m1 ) && array( 'Laboratori', 'Percorsi' ) === $tec_names( $tec_m2 ), 'The Events Calendar: la stessa categoria scelta come Corso fa nascere corsi; con una categoria «Evento» in più è un evento; le categorie restano su entrambe' );
+foreach ( array_merge( $tec_all, $tec_m1, $tec_m2 ) as $tec_del ) {
 	wp_delete_post( $tec_del, true );
 }
 foreach ( $tec_t as $tec_del ) {

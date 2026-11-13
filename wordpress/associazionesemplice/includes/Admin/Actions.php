@@ -698,28 +698,22 @@ final class Actions {
 	/** Importa gli eventi di The Events Calendar. */
 	private static function tec_import( array $p ): array {
 		$cats     = isset( $p['course_cats'] ) && is_array( $p['course_cats'] ) ? array_map( 'intval', $p['course_cats'] ) : array();
-		$override = array(); // le scelte a mano dell'anteprima (Corso / Evento per titolo)
-		if ( isset( $p['kind'] ) && is_array( $p['kind'] ) ) {
-			foreach ( \AssociazioneSemplice\TribeImport::plan( $cats ) as $row ) {
-				$k = isset( $p['kind'][ $row['id'] ] ) ? (string) $p['kind'][ $row['id'] ] : '';
-				if ( 'course' === $k || 'event' === $k ) {
-					$override[ $row['key'] ] = $k;
-				}
-			}
-		}
-		$r   = \AssociazioneSemplice\TribeImport::run( $cats, ! empty( $p['publish_future'] ), $override );
+		$r   = \AssociazioneSemplice\TribeImport::run( $cats, ! empty( $p['publish_future'] ) ); // $cats: le categorie scelte dall'utente come «Corso»; tutte le altre sono «Evento»
 		$msg = $r['imported'] . ( 1 === $r['imported'] ? ' evento importato' : ' eventi importati' ) . ( $r['series'] ? ' (' . $r['series'] . ( 1 === $r['series'] ? ' evento ricorrente' : ' eventi ricorrenti' ) . ')' : '' ) . ( $r['courses'] ? ', ' . $r['courses'] . ( 1 === $r['courses'] ? ' corso' : ' corsi' ) . ' (' . $r['lessons'] . ' lezioni)' : '' )
 			. ( $r['skipped'] ? ', ' . $r['skipped'] . ' già presenti' : '' ) . ( $r['failed'] ? ', ' . $r['failed'] . ' non importati (' . implode( ' ', $r['errors'] ) . ')' : '' ) . '.'
 			. ( $r['pages'] ? ' Pagine pubbliche compilate: ' . $r['pages'] . ( $r['published'] ? ', di cui ' . $r['published'] . ' pubblicate' : ', in bozza' ) . ' (le trovi in Eventi sul sito).' : '' );
-		if ( ! empty( $r['course_list'] ) ) { // cosa è successo, titolo per titolo
+		if ( ! empty( $r['event_list'] ) ) { // cosa è nato: prima gli eventi, poi i corsi
+			$msg .= ' Eventi creati: ' . implode( ', ', array_slice( $r['event_list'], 0, 10 ) ) . ( count( $r['event_list'] ) > 10 ? ' e altri ' . ( count( $r['event_list'] ) - 10 ) : '' ) . '.';
+		}
+		if ( ! empty( $r['course_list'] ) ) {
 			$names = array();
 			foreach ( array_slice( $r['course_list'], 0, 10 ) as $c ) {
 				$names[] = $c['name'] . ' (' . $c['lessons'] . ( 1 === (int) $c['lessons'] ? ' lezione' : ' lezioni' ) . ')';
 			}
-			$msg .= ' Corsi creati: ' . implode( ', ', $names ) . ( count( $r['course_list'] ) > 10 ? ' e altri' : '' ) . '.';
+			$msg .= ' Corsi creati: ' . implode( ', ', $names ) . ( count( $r['course_list'] ) > 10 ? ' e altri ' . ( count( $r['course_list'] ) - 10 ) : '' ) . '.';
 		}
-		if ( ! empty( $r['event_list'] ) ) {
-			$msg .= ' Eventi creati: ' . implode( ', ', array_slice( $r['event_list'], 0, 10 ) ) . ( count( $r['event_list'] ) > 10 ? ' e altri ' . ( count( $r['event_list'] ) - 10 ) : '' ) . '.';
+		if ( ! empty( $r['categories'] ) ) {
+			$msg .= ' Categorie assegnate alle pagine: ' . implode( ', ', $r['categories'] ) . ( $r['categories_new'] ? ' (nuove: ' . implode( ', ', $r['categories_new'] ) . ')' : '' ) . '.';
 		}
 		return array( Ui::url( 'asem-tec' ), $msg );
 	}
