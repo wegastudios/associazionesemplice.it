@@ -190,6 +190,8 @@ $catalog = [
         ]),
         ['code' => 'custom_domain', 'name' => 'Il tuo indirizzo web (dominio personalizzato)', 'kind' => 'domain', 'visible' => true, 'grants' => [], 'prices' => $flat(300)],
         ['code' => 'dedicated_db', 'name' => 'Archivio separato solo per la tua associazione (database dedicato)', 'kind' => 'dedicated_db', 'visible' => true, 'grants' => [], 'prices' => $flat(2500)],
+        // Oltre i 1.000 soci della Grande: +500 soci, acquistabile più volte. Il prezzo non è deciso: a 0 e non in vendita finché la titolare non lo imposta.
+        ['code' => 'members_500', 'name' => '500 soci in più (oltre i 1.000 della Grande)', 'kind' => 'package', 'visible' => false, 'grants' => ['package' => 'members_extra', 'limits' => ['members' => 500]], 'prices' => $flat(0)],
     ],
 
     'promos' => [],
@@ -198,7 +200,7 @@ $catalog = [
     'terms' => [
         'vat' => ['mode' => 'standard', 'note' => ''],
         'payments' => ['own_gateway_percent' => 0, 'collected_by_us_percent' => 0],
-        'trial' => ['exports' => false, 'accountant_access' => false],
+        'trial' => ['exports' => false, 'accountant_access' => false, 'end_discount_percent' => 0, 'purge_days' => 7],
     ],
 ];
 

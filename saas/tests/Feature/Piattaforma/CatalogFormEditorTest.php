@@ -229,14 +229,14 @@ it('imposta le condizioni di vendita: IVA, commissione sui pagamenti online e li
 
     $this->post('/saas/admin/catalogo/condizioni', [
         'vat_mode' => 'exempt', 'vat_note' => 'Operazione senza IVA, regime forfettario.',
-        'own_gateway_percent' => '0', 'collected_by_us_percent' => '4', 'trial_exports' => '1',
+        'own_gateway_percent' => '0', 'collected_by_us_percent' => '4', 'trial_exports' => '1', 'end_discount_percent' => '15', 'purge_days' => '7',
     ])->assertRedirect('/saas/admin/catalogo/condizioni');
 
     $draft = json_decode((string) DB::table('core.catalog_draft')->value('document'), true);
     expect($draft['terms'])->toEqual([
         'vat' => ['mode' => 'exempt', 'note' => 'Operazione senza IVA, regime forfettario.'],
         'payments' => ['own_gateway_percent' => 0, 'collected_by_us_percent' => 4],
-        'trial' => ['exports' => true, 'accountant_access' => false],
+        'trial' => ['exports' => true, 'accountant_access' => false, 'end_discount_percent' => 15, 'purge_days' => 7],
     ]);
     $this->get('/saas/admin/catalogo/condizioni')->assertSee('Operazione senza IVA, regime forfettario.');
 });
