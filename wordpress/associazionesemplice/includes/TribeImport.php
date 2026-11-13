@@ -138,15 +138,38 @@ final class TribeImport {
 		return $out;
 	}
 
+	/** @return array[] gli eventi ancora da importare (mai importati, o la cui attività non c'è più) */
+	private static function todo(): array {
+		$out = array();
+		foreach ( self::found() as $f ) {
+			if ( $f['imported'] && Plugin::activities()->get( (int) $f['imported'] ) ) {
+				continue;
+			}
+			$out[] = $f;
+		}
+		return $out;
+	}
+
+	/** Quanti eventi ancora da importare non hanno nessuna categoria (sono eventi). */
+	public static function uncategorized(): int {
+		$n = 0;
+		foreach ( self::todo() as $f ) {
+			if ( ! $f['cats'] ) {
+				$n++;
+			}
+		}
+		return $n;
+	}
+
 	/**
-	 * Le categorie degli eventi trovati, con quanti eventi hanno: servono a indicare quali sono corsi.
+	 * Le categorie degli eventi ancora da importare, con quanti eventi hanno. Ogni categoria si sceglie come «Evento» o «Corso» prima di partire.
 	 *
-	 * @return array[] id, name, count, course (probabile corso: il nome parla di corsi o lezioni)
+	 * @return array[] id, name, count, course (proposta: il nome parla di corsi o lezioni, parole intere)
 	 */
 	public static function categories(): array {
 		self::ensure_taxonomy();
 		$count = array();
-		foreach ( self::found() as $f ) {
+		foreach ( self::todo() as $f ) {
 			foreach ( $f['cats'] as $c ) {
 				$count[ $c ] = ( $count[ $c ] ?? 0 ) + 1;
 			}
@@ -155,7 +178,7 @@ final class TribeImport {
 		foreach ( $count as $id => $n ) {
 			$t = get_term( (int) $id, self::TAXONOMY );
 			if ( $t && ! is_wp_error( $t ) ) {
-				$out[] = array( 'id' => (int) $id, 'name' => (string) $t->name, 'count' => $n, 'course' => 1 === preg_match( '/\b(?:cors[oi]|lezion[ei])\b/iu', (string) $t->name ) ); // parole intere: «Percorsi», «Concorsi» e «Laboratori» non si propongono da soli
+				$out[] = array( 'id' => (int) $id, 'name' => (string) $t->name, 'count' => $n, 'course' => 1 === preg_match( '/\b(?:cors[oi]|lezion[ei])\b/iu', (string) $t->name ) ); // solo una proposta, a parole intere: «Percorsi», «Concorsi» e «Laboratori» non si propongono
 			}
 		}
 		usort(
@@ -170,6 +193,7 @@ final class TribeImport {
 	/**
 	 * Un corso a partire dalle sue lezioni, cioè gli eventi di The Events Calendar con lo stesso titolo (di solito un evento ripetuto ogni settimana).
 	 * I giorni e gli orari che si ripetono almeno 3 volte diventano una lezione settimanale (dalla prima all'ultima data); gli altri restano date singole.
+	 * Descrive solo il calendario del corso: se un evento sia un corso lo decide la categoria scelta dall'utente, non questa funzione.
 	 *
 	 * @param array[] $items date (Y-m-d), start, end (HH:MM o null), name, notes, venue
 	 * @return array|null name, notes, location, starts_on, ends_on, lessons[]; null se non ci sono lezioni
@@ -218,135 +242,36 @@ final class TribeImport {
 		);
 	}
 
-	/** Chiave di un gruppo di eventi: titolo (senza maiuscole) e anno sociale. */
+	/** Chiave di un gruppo di eventi: titolo (senza maiuscole) e anno sociale. Serve solo a raccogliere le date dello stesso evento ricorrente o le lezioni dello stesso corso. */
 	public static function key( string $name, string $year ): string {
 		return mb_strtolower( trim( $name ) ) . '|' . $year;
 	}
 
 	/**
-	 * Quante lezioni ha il giorno e orario che si ripete di più (stesso giorno della settimana, stessa ora di inizio e fine).
+	 * Un evento è un corso solo se NESSUNA delle sue categorie è stata scelta come «Evento» e almeno una è stata scelta come «Corso».
+	 * Ogni categoria è «Corso» (è tra $course_cats) o «Evento» (tutte le altre); un evento senza categoria è un evento. Decide solo la scelta
+	 * dell'utente: non conta il titolo né quante volte l'evento si ripete.
 	 *
-	 * @param array[] $rows righe con ['map']['session'][session_date, start_time, end_time]
-	 * @return array{count:int,day:int,start:string}
+	 * @param int[] $cats        categorie dell'evento
+	 * @param int[] $course_cats categorie scelte come «Corso»
 	 */
-	private static function weekly_peak( array $rows ): array {
-		$by = array();
-		foreach ( $rows as $r ) {
-			$s   = $r['map']['session'];
-			$day = (int) ( new \DateTimeImmutable( (string) $s['session_date'] ) )->format( 'N' );
-			$k   = $day . '|' . (string) $s['start_time'] . '|' . (string) $s['end_time'];
-			if ( ! isset( $by[ $k ] ) ) {
-				$by[ $k ] = array( 'count' => 0, 'day' => $day, 'start' => (string) $s['start_time'] );
-			}
-			$by[ $k ]['count']++;
-		}
-		$best = array( 'count' => 0, 'day' => 0, 'start' => '' );
-		foreach ( $by as $v ) {
-			if ( $v['count'] > $best['count'] ) {
-				$best = $v;
-			}
-		}
-		return $best;
+	public static function is_course( array $cats, array $course_cats ): bool {
+		$cats = array_map( 'intval', $cats );
+		return ! empty( $cats ) && empty( array_diff( $cats, array_map( 'intval', $course_cats ) ) );
 	}
 
 	/**
-	 * Un gruppo di eventi con lo stesso titolo è un corso? Regola: è un corso se ha una categoria spuntata come «dei corsi» E si ripete
-	 * come lezione settimanale (almeno 3 volte lo stesso giorno della settimana alla stessa ora); si può correggere a mano con $forced
-	 * («course» o «event»).
+	 * Divide gli eventi ancora da importare in due elenchi che non si toccano mai: prima gli eventi, poi i corsi. Ogni evento sta in uno solo.
 	 *
-	 * @param array  $b           gruppo: rows, cats
-	 * @param int[]  $course_cats categorie spuntate come corsi
-	 * @param string $forced      '', 'course' o 'event'
-	 * @return array{course:bool,candidate:bool,weekly:bool,reason:string}
+	 * @param int[] $course_cats categorie scelte come «Corso»
+	 * @return array events[], courses[] (righe: pid, title, map, year, cats), done[] (pid, aid: già importati), failed[] (title)
 	 */
-	public static function decide( array $b, array $course_cats, string $forced = '' ): array {
-		$days      = array( 1 => 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato', 'domenica' );
-		$peak      = self::weekly_peak( (array) $b['rows'] );
-		$weekly    = $peak['count'] >= 3;
-		$candidate = (bool) array_intersect( array_map( 'intval', (array) $b['cats'] ), array_map( 'intval', $course_cats ) );
-		$when      = $weekly ? $peak['count'] . ' lezioni di ' . ( $days[ $peak['day'] ] ?? '' ) . ( '' !== $peak['start'] ? ' alle ' . $peak['start'] : '' ) : '';
-		if ( 'course' === $forced ) {
-			return array( 'course' => true, 'candidate' => $candidate, 'weekly' => $weekly, 'reason' => 'scelto da te come corso' );
-		}
-		if ( 'event' === $forced ) {
-			return array( 'course' => false, 'candidate' => $candidate, 'weekly' => $weekly, 'reason' => 'scelto da te come evento' );
-		}
-		if ( $candidate && $weekly ) {
-			return array( 'course' => true, 'candidate' => true, 'weekly' => true, 'reason' => 'categoria dei corsi e ' . $when );
-		}
-		if ( $candidate ) {
-			return array( 'course' => false, 'candidate' => true, 'weekly' => false, 'reason' => 'categoria dei corsi, ma meno di 3 lezioni nello stesso giorno e orario: resta un evento' );
-		}
-		return array( 'course' => false, 'candidate' => false, 'weekly' => $weekly, 'reason' => $weekly ? 'si ripete ogni settimana ma la sua categoria non è tra quelle dei corsi' : 'evento' );
-	}
-
-	/**
-	 * Anteprima: per ogni titolo (e anno sociale) ancora da importare, che cosa diventerebbe e perché.
-	 *
-	 * @param int[] $course_cats categorie spuntate come corsi
-	 * @return array[] id (per i moduli), key, name, year, count, kind ('course'|'event'), reason
-	 */
-	public static function plan( array $course_cats = array() ): array {
-		$course_cats = array_map( 'intval', $course_cats );
-		$buckets     = array();
-		foreach ( self::found() as $f ) {
-			if ( $f['imported'] && Plugin::activities()->get( (int) $f['imported'] ) ) {
-				continue;
-			}
-			$post = get_post( (int) $f['post_id'] );
-			$meta = array();
-			foreach ( array( '_EventStartDate', '_EventEndDate', '_EventAllDay', '_EventURL' ) as $k ) {
-				$meta[ $k ] = get_post_meta( (int) $f['post_id'], $k, true );
-			}
-			$map = $post ? self::map_event( $meta, (string) $post->post_title, (string) $post->post_content, '' ) : null;
-			if ( ! $map ) {
-				continue;
-			}
-			$year = Settings::social_year( $map['session']['session_date'] )->label();
-			$key  = self::key( (string) $map['name'], $year );
-			if ( ! isset( $buckets[ $key ] ) ) {
-				$buckets[ $key ] = array( 'year' => $year, 'name' => (string) $map['name'], 'rows' => array(), 'cats' => array() );
-			}
-			$buckets[ $key ]['rows'][] = array( 'pid' => (int) $f['post_id'], 'map' => $map );
-			$buckets[ $key ]['cats']   = array_values( array_unique( array_merge( $buckets[ $key ]['cats'], array_map( 'intval', $f['cats'] ) ) ) );
-		}
-		$out = array();
-		foreach ( $buckets as $key => $b ) {
-			$d     = self::decide( $b, $course_cats );
-			$out[] = array( 'id' => md5( $key ), 'key' => $key, 'name' => $b['name'], 'year' => $b['year'], 'count' => count( $b['rows'] ), 'kind' => $d['course'] ? 'course' : 'event', 'reason' => $d['reason'] );
-		}
-		usort(
-			$out,
-			function ( $a, $b ) {
-				return strcmp( mb_strtolower( $a['name'] ), mb_strtolower( $b['name'] ) );
-			}
-		);
-		return $out;
-	}
-
-	/**
-	 * Importa tutti gli eventi non ancora importati: gli eventi delle categorie indicate come corsi diventano corsi (uno per titolo e anno
-	 * sociale, con tutte le sue lezioni), gli altri eventi una tantum.
-	 *
-	 * Per ogni evento o corso importato si compila anche la sua pagina pubblica (descrizione, estratto, immagine in evidenza,
-	 * categoria, organizzatore, sito, giorni e orari): in bozza, o pubblicata se si chiede e l'evento è futuro. Le pagine che
-	 * hanno già un contenuto non si toccano. Gli eventi con lo stesso titolo nello stesso anno sociale (le ripetizioni di The Events
-	 * Calendar) diventano un solo evento ricorrente con la sua pagina.
-	 *
-	 * @param int[] $course_cats    categorie degli eventi che sono corsi
-	 * @param bool  $publish_future pubblica subito le pagine degli eventi con una data futura
-	 * @param array $override       scelte a mano per gruppo (chiave «titolo|anno sociale» → «course» o «event»); vincono sulla regola
-	 * @return array imported (eventi), courses, lessons (date dei corsi), series (eventi ricorrenti), skipped (già importati), failed, pages (compilate), published, errors[] (i primi)
-	 */
-	public static function run( array $course_cats = array(), bool $publish_future = false, array $override = array() ): array {
-		$course_cats = array_map( 'intval', $course_cats );
-		$res         = array( 'imported' => 0, 'courses' => 0, 'lessons' => 0, 'series' => 0, 'skipped' => 0, 'failed' => 0, 'pages' => 0, 'published' => 0, 'errors' => array(), 'course_list' => array(), 'event_list' => array() );
-		$buckets     = array();
+	private static function partition( array $course_cats ): array {
+		$out = array( 'events' => array(), 'courses' => array(), 'done' => array(), 'failed' => array() );
 		foreach ( self::found() as $f ) {
 			$pid = (int) $f['post_id'];
 			if ( $f['imported'] && Plugin::activities()->get( (int) $f['imported'] ) ) {
-				$res['skipped']++;
-				self::fill_page( (int) $f['imported'], array( $pid ), $course_cats, $publish_future, $res ); // una pagina rimasta vuota si compila
+				$out['done'][] = array( 'pid' => $pid, 'aid' => (int) $f['imported'] );
 				continue;
 			}
 			$post = get_post( $pid );
@@ -356,33 +281,112 @@ final class TribeImport {
 			}
 			$map = $post ? self::map_event( $meta, (string) $post->post_title, (string) $post->post_content, self::venue( $pid ) ) : null;
 			if ( ! $map ) {
-				$res['failed']++;
-				$res['errors'][] = '«' . $f['title'] . '»: manca la data.';
+				$out['failed'][] = array( 'title' => (string) $f['title'] );
 				continue;
 			}
-			$year = Settings::social_year( $map['session']['session_date'] )->label();
-			$key  = self::key( (string) $map['name'], $year ); // le ripetizioni (stesso titolo, stesso anno sociale) si raccolgono: poi si decide per titolo se sono un corso
-			if ( ! isset( $buckets[ $key ] ) ) {
-				$buckets[ $key ] = array( 'year' => $year, 'name' => (string) $map['name'], 'rows' => array(), 'cats' => array() );
-			}
-			$buckets[ $key ]['rows'][] = array( 'pid' => $pid, 'title' => $f['title'], 'map' => $map );
-			$buckets[ $key ]['cats']   = array_values( array_unique( array_merge( $buckets[ $key ]['cats'], array_map( 'intval', $f['cats'] ) ) ) );
+			$row = array( 'pid' => $pid, 'title' => (string) $f['title'], 'map' => $map, 'year' => Settings::social_year( $map['session']['session_date'] )->label(), 'cats' => array_map( 'intval', $f['cats'] ) );
+			$out[ self::is_course( $row['cats'], $course_cats ) ? 'courses' : 'events' ][] = $row;
 		}
-		$series = array();
+		return $out;
+	}
+
+	/**
+	 * Raccoglie le righe con lo stesso titolo e anno sociale (le date di un evento ricorrente, le lezioni di un corso). Ogni chiamata parte da zero.
+	 *
+	 * @return array[] chiave → year, name, rows[]
+	 */
+	private static function group( array $rows ): array {
 		$groups = array();
-		foreach ( $buckets as $key => $b ) {
-			$d = self::decide( $b, $course_cats, isset( $override[ $key ] ) ? (string) $override[ $key ] : '' );
-			if ( ! $d['course'] ) {
-				$series[ $key ] = $b;
-				continue;
+		foreach ( $rows as $r ) {
+			$key = self::key( (string) $r['map']['name'], (string) $r['year'] );
+			if ( ! isset( $groups[ $key ] ) ) {
+				$groups[ $key ] = array( 'year' => $r['year'], 'name' => (string) $r['map']['name'], 'rows' => array() );
 			}
-			$groups[ $key ] = array( 'year' => $b['year'], 'posts' => array(), 'items' => array() );
-			foreach ( $b['rows'] as $r ) {
-				$groups[ $key ]['posts'][] = (int) $r['pid'];
-				$groups[ $key ]['items'][] = array( 'date' => $r['map']['session']['session_date'], 'start' => $r['map']['session']['start_time'], 'end' => $r['map']['session']['end_time'], 'name' => $r['map']['name'], 'notes' => $r['map']['notes'], 'venue' => $r['map']['session']['location'] );
+			$groups[ $key ]['rows'][] = $r;
+		}
+		return $groups;
+	}
+
+	/** Il nome di una categoria di The Events Calendar. */
+	private static function cat_name( int $id ): string {
+		$t = get_term( $id, self::TAXONOMY );
+		return $t && ! is_wp_error( $t ) ? (string) $t->name : '';
+	}
+
+	/**
+	 * Che cosa succederebbe con queste scelte: quanti eventi, quali corsi (con le lezioni) e quali categorie si ricreano nei nostri portali.
+	 *
+	 * @param int[] $course_cats categorie scelte come «Corso»
+	 * @return array events (numero di eventi), event_titles (titoli distinti), courses[] (name, year, lessons), lessons (eventi che diventano lezioni), categories[] (nomi), failed
+	 */
+	public static function summary( array $course_cats = array() ): array {
+		self::ensure_taxonomy();
+		$p       = self::partition( $course_cats );
+		$courses = array();
+		foreach ( self::group( $p['courses'] ) as $g ) {
+			$courses[] = array( 'name' => $g['name'], 'year' => $g['year'], 'lessons' => count( $g['rows'] ) );
+		}
+		$names = array();
+		foreach ( array_merge( $p['events'], $p['courses'] ) as $r ) {
+			foreach ( $r['cats'] as $c ) {
+				$n = self::cat_name( (int) $c );
+				if ( '' !== trim( $n ) ) {
+					$names[ mb_strtolower( trim( $n ) ) ] = trim( $n );
+				}
 			}
 		}
-		foreach ( $series as $s ) {
+		return array( 'events' => count( $p['events'] ), 'event_titles' => count( self::group( $p['events'] ) ), 'courses' => $courses, 'lessons' => count( $p['courses'] ), 'categories' => array_values( $names ), 'failed' => count( $p['failed'] ) );
+	}
+
+	/**
+	 * Importa tutti gli eventi non ancora importati, in due passaggi nell'ordine fisso: PRIMA gli eventi (quelli senza categoria e quelli con almeno
+	 * una categoria scelta come «Evento»), POI i corsi (solo gli eventi rimasti, con tutte le categorie scelte come «Corso»). Un evento sta in un
+	 * solo elenco e, una volta importato, è segnato: il secondo passaggio non lo riprende.
+	 *
+	 * Per ogni evento o corso importato si compila anche la sua pagina pubblica (descrizione, estratto, immagine in evidenza,
+	 * categorie, organizzatore, sito, giorni e orari): in bozza, o pubblicata se si chiede e l'evento è futuro. Le pagine che
+	 * hanno già un contenuto non si toccano. Gli eventi con lo stesso titolo nello stesso anno sociale (le ripetizioni di The Events
+	 * Calendar) diventano un solo evento ricorrente con la sua pagina; le lezioni dello stesso corso un solo corso.
+	 *
+	 * @param int[] $course_cats    categorie scelte come «Corso» (le altre sono «Evento»)
+	 * @param bool  $publish_future pubblica subito le pagine degli eventi con una data futura
+	 * @return array imported (eventi), courses, lessons (eventi diventati lezioni), series (eventi ricorrenti), skipped (già importati), failed, pages (compilate), published, errors[] (i primi), course_list[] (name, lessons), event_list[], categories[] (nomi usati nelle pagine), categories_new[] (nomi creati ora)
+	 */
+	public static function run( array $course_cats = array(), bool $publish_future = false ): array {
+		$res  = array( 'imported' => 0, 'courses' => 0, 'lessons' => 0, 'series' => 0, 'skipped' => 0, 'failed' => 0, 'pages' => 0, 'published' => 0, 'errors' => array(), 'course_list' => array(), 'event_list' => array(), 'categories' => array(), 'categories_new' => array() );
+		$part = self::partition( $course_cats );
+		foreach ( $part['failed'] as $f ) {
+			$res['failed']++;
+			$res['errors'][] = '«' . $f['title'] . '»: manca la data.';
+		}
+		foreach ( $part['done'] as $d ) {
+			$res['skipped']++;
+			self::fill_page( (int) $d['aid'], array( (int) $d['pid'] ), $publish_future, $res ); // una pagina rimasta vuota si compila
+		}
+		self::import_events( $part['events'], $publish_future, $res ); // 1° passaggio: tutti gli eventi
+		self::import_courses( $part['courses'], $publish_future, $res ); // 2° passaggio: poi i corsi
+		$res['errors']     = array_slice( $res['errors'], 0, 5 );
+		$res['categories']     = array_values( $res['categories'] );
+		$res['categories_new'] = array_values( $res['categories_new'] );
+		Audit::log( 'import.tribe', 'settings', null, array( 'imported' => $res['imported'], 'courses' => $res['courses'], 'failed' => $res['failed'], 'pages' => $res['pages'], 'published' => $res['published'] ) );
+		return $res;
+	}
+
+	/** Righe non ancora importate: toglie quelle già segnate (nessun evento passa due volte). */
+	private static function not_yet_done( array $rows ): array {
+		return array_values(
+			array_filter(
+				$rows,
+				function ( $r ) {
+					return ! get_post_meta( (int) $r['pid'], self::META_DONE, true );
+				}
+			)
+		);
+	}
+
+	/** 1° passaggio: gli eventi, uno per titolo e anno sociale (più date = evento ricorrente). */
+	private static function import_events( array $rows, bool $publish_future, array &$res ): void {
+		foreach ( self::group( self::not_yet_done( $rows ) ) as $s ) {
 			try {
 				$first = $s['rows'][0]['map'];
 				if ( 1 === count( $s['rows'] ) ) {
@@ -409,7 +413,7 @@ final class TribeImport {
 					$res['imported']++;
 				}
 				$res['event_list'][] = $first['name'] . ( count( $s['rows'] ) > 1 ? ' (' . count( $s['rows'] ) . ' date)' : '' );
-				self::fill_page( $aid, $pids, $course_cats, $publish_future, $res );
+				self::fill_page( $aid, $pids, $publish_future, $res );
 			} catch ( \InvalidArgumentException $e ) {
 				foreach ( $s['rows'] as $r ) {
 					$res['failed']++;
@@ -417,8 +421,18 @@ final class TribeImport {
 				}
 			}
 		}
-		foreach ( $groups as $g ) {
-			$c = self::map_course( $g['items'] );
+	}
+
+	/** 2° passaggio: i corsi, uno per titolo e anno sociale, con tutte le sue lezioni. */
+	private static function import_courses( array $rows, bool $publish_future, array &$res ): void {
+		foreach ( self::group( self::not_yet_done( $rows ) ) as $g ) {
+			$items = array();
+			$posts = array();
+			foreach ( $g['rows'] as $r ) {
+				$posts[] = (int) $r['pid'];
+				$items[] = array( 'date' => $r['map']['session']['session_date'], 'start' => $r['map']['session']['start_time'], 'end' => $r['map']['session']['end_time'], 'name' => $r['map']['name'], 'notes' => $r['map']['notes'], 'venue' => $r['map']['session']['location'] );
+			}
+			$c = self::map_course( $items );
 			try {
 				$aid = Plugin::activities()->create(
 					array(
@@ -433,21 +447,18 @@ final class TribeImport {
 						'lesson_slots' => wp_json_encode( $c['lessons'] ),
 					)
 				);
-				foreach ( $g['posts'] as $pid ) {
+				foreach ( $posts as $pid ) {
 					update_post_meta( $pid, self::META_DONE, $aid );
 				}
 				$res['courses']++;
-				$res['lessons']      += count( $g['posts'] );
-				$res['course_list'][] = array( 'name' => (string) $c['name'], 'lessons' => count( $g['posts'] ) );
-				self::fill_page( $aid, array_map( 'intval', $g['posts'] ), $course_cats, $publish_future, $res );
+				$res['lessons']      += count( $posts );
+				$res['course_list'][] = array( 'name' => (string) $c['name'], 'lessons' => count( $posts ) );
+				self::fill_page( $aid, $posts, $publish_future, $res );
 			} catch ( \InvalidArgumentException $e ) {
 				$res['failed']++;
 				$res['errors'][] = '«' . $c['name'] . '»: ' . $e->getMessage();
 			}
 		}
-		$res['errors'] = array_slice( $res['errors'], 0, 5 );
-		Audit::log( 'import.tribe', 'settings', null, array( 'imported' => $res['imported'], 'courses' => $res['courses'], 'failed' => $res['failed'], 'pages' => $res['pages'], 'published' => $res['published'] ) );
-		return $res;
 	}
 
 	/** Una data scritta come giorno/mese/anno. */
@@ -489,30 +500,40 @@ final class TribeImport {
 		return $h;
 	}
 
-	/** Categoria pubblica (creata o riusata per nome) dalla prima categoria di The Events Calendar che non è dei corsi. */
-	private static function public_category( array $pids, array $course_cats ): int {
+	/**
+	 * Le categorie originali di The Events Calendar dei contenuti indicati, ricreate (o riusate per nome) come categorie pubbliche degli eventi.
+	 * Tutte, anche quelle scelte come «Corso» (es. «Laboratorio»).
+	 *
+	 * @param int[] $pids contenuti di origine
+	 * @return int[] id delle categorie pubbliche
+	 */
+	private static function public_categories( array $pids, array &$res ): array {
 		self::ensure_taxonomy();
-		$pick = null;
+		$ids = array();
 		foreach ( $pids as $pid ) {
 			$terms = wp_get_object_terms( (int) $pid, self::TAXONOMY );
 			foreach ( is_wp_error( $terms ) ? array() : (array) $terms as $t ) {
-				if ( null === $pick ) {
-					$pick = $t;
+				$name = trim( (string) $t->name );
+				if ( '' === $name ) {
+					continue;
 				}
-				if ( ! in_array( (int) $t->term_id, $course_cats, true ) ) {
-					$pick = $t;
-					break 2;
+				$ex  = term_exists( $name, PublicEvents::TAXONOMY );
+				$new = false;
+				if ( ! $ex ) {
+					$ex  = wp_insert_term( $name, PublicEvents::TAXONOMY );
+					$new = true;
+				}
+				if ( is_wp_error( $ex ) ) {
+					continue;
+				}
+				$ids[ (int) ( is_array( $ex ) ? $ex['term_id'] : $ex ) ] = true;
+				$res['categories'][ mb_strtolower( $name ) ]             = $name;
+				if ( $new ) {
+					$res['categories_new'][ mb_strtolower( $name ) ] = $name;
 				}
 			}
 		}
-		if ( ! $pick || '' === trim( (string) $pick->name ) ) {
-			return 0;
-		}
-		$ex = term_exists( (string) $pick->name, PublicEvents::TAXONOMY );
-		if ( ! $ex ) {
-			$ex = wp_insert_term( (string) $pick->name, PublicEvents::TAXONOMY );
-		}
-		return is_wp_error( $ex ) ? 0 : (int) ( is_array( $ex ) ? $ex['term_id'] : $ex );
+		return array_keys( $ids );
 	}
 
 	/**
@@ -522,7 +543,7 @@ final class TribeImport {
 	 *
 	 * @param int[] $pids contenuti di origine (uno, o le ripetizioni / lezioni)
 	 */
-	private static function fill_page( int $aid, array $pids, array $course_cats, bool $publish_future, array &$res ): void {
+	private static function fill_page( int $aid, array $pids, bool $publish_future, array &$res ): void {
 		if ( ! class_exists( __NAMESPACE__ . '\PublicEvents' ) || ! $pids ) {
 			return;
 		}
@@ -579,9 +600,9 @@ final class TribeImport {
 		if ( $thumb && 'attachment' === get_post_type( $thumb ) && ! get_post_meta( $page, '_thumbnail_id', true ) ) {
 			update_post_meta( $page, '_thumbnail_id', $thumb ); // lo stesso allegato: nessuna copia, nessun download
 		}
-		$term = self::public_category( $pids, $course_cats );
-		if ( $term ) {
-			wp_set_object_terms( $page, array( $term ), PublicEvents::TAXONOMY );
+		$terms = self::public_categories( $pids, $res ); // tutte le categorie originali, su ogni pagina creata
+		if ( $terms ) {
+			wp_set_object_terms( $page, $terms, PublicEvents::TAXONOMY );
 		}
 		$res['pages']++;
 		if ( isset( $data['post_status'] ) ) {
