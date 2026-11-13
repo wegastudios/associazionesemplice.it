@@ -12,7 +12,7 @@ on:
       environment:
         description: Dove rilasciare
         type: choice
-        options: [production, staging]
+        options: [production, staging, demo]
         default: production
 
 permissions:

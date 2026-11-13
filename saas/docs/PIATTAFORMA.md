@@ -94,15 +94,17 @@ Un'istanza separata del SaaS (ARCHITETTURA_DOMINI §9) con database proprio e so
 - **Dove vive**: `APP_ENV=demo` (mai `production`), `SAAS_DEMO=true`, database e utenti PostgreSQL propri. Il comando rifiuta di
   partire se la demo è spenta o l'ambiente è la produzione: cancella tutto il database.
 - **`php artisan saas:demo:reset`**: `saas:migrate --fresh` sul database condiviso, poi crea «Polisportiva Demo»
-  (`saas.demo.org_name`), tre utenti pubblici (`titolare@`, `segreteria@`, `commercialista@` su `SAAS_DEMO_MAIL_DOMAIN`, password
+  (`saas.demo.org_name`), cinque utenti pubblici (`titolare@`, `amministratore@`, `segreteria@`, `dipendente@`, `commercialista@` su `SAAS_DEMO_MAIL_DOMAIN`, password
   `SAAS_DEMO_PASSWORD`, scritta anche nel pulsante «Prova la demo») e chiama i seeder dei moduli. Ogni notte alle 03:30 dallo scheduler.
 - **Dati finti dei moduli**: un modulo implementa `Core\Contracts\DemoSeeder` e si registra col tag `DemoSeeder::TAG`.
   Fatto: soci e tessere (`Soci\Demo\DemoMembers`: codici fiscali e IBAN non validi apposta, email su dominio riservato).
-  Da fare: attività, risorse, prima nota, domande aperte, avvisi, socio di prova con area soci.
+  Fatto anche: due soci ente e tipo di ente APS (per «Dati per il RUNTS»). Da fare: attività, risorse, prima nota, domande aperte, avvisi, socio di prova con area soci.
 - **Banner** in testa (`app.blade.php`) e `noindex` su tutte le pagine; nessuna statistica.
 - **Sul server demo**: `SAAS_REQUIRE_TWO_FACTOR=false` (solo lì, documentato), `MAIL_MAILER=log` (posta simulata: nessuna mail
   esce), pagamenti simulati quando ci saranno, `SAAS_MEMBERS_DOMAIN=demo.associazionesemplice.it` (area soci demo: `polisportiva-demo.demo.associazionesemplice.it`)` e DNS jolly a parte.
-- **Online**: serve il via libera della titolare e l'accesso al server (sottodominio, database, cron). Non fatto.
+- **Accessi visibili**: la pagina di accesso della demo elenca i cinque ruoli con email e password (`DemoEnvironment::credentials()`, vuoto fuori dalla demo) e un pulsante «Usa» che compila i campi. Su questo server l'accesso unico degli operatori (`SAAS_UNIFIED_OPERATORS`) resta spento, altrimenti la pagina di accesso rimanda al portale.
+- **Rilascio**: il workflow «SaaS · rilascio» ha l'ambiente `demo` (segreti SSH propri). Il primo reset si lancia a mano dopo il primo rilascio: `php artisan saas:demo:reset`; poi lo fa lo scheduler alle 03:30.
+- **Online**: serve il sottodominio `demo.associazionesemplice.it`, un sub-account con database PostgreSQL propri e il cron, dalla titolare. Link in home dal portale (sessione Portale). Non fatto.
 
 ## 7. Accesso unico dello staff (docs/UTENTI_E_ACCESSI.md; formato in docs/STAFF_SSO.md)
 

@@ -19,7 +19,10 @@ final readonly class DemoMembers implements DemoSeeder
 
     private const LAST = ['Rossi', 'Bianchi', 'Verdi', 'Ferrari', 'Esposito', 'Romano', 'Colombo', 'Ricci', 'Marino', 'Greco', 'Bruno', 'Gallo'];
 
+    /** Persone fisiche; i soci ente (2) si aggiungono. */
     public const COUNT = 36;
+
+    public const ENTITIES = 2;
 
     public function __construct(private MembershipService $memberships) {}
 
@@ -62,6 +65,17 @@ final readonly class DemoMembers implements DemoSeeder
             if ($i % 6 !== 5 && ! $type->isAutoRenewed()) {
                 $this->memberships->grantManually($person->id, $year, 'Dati di demo');
             }
+        }
+
+        // Due soci ente (denominazione, codice fiscale di 11 cifre finto), per la pagina «Dati per il RUNTS».
+        foreach (['Pro Loco di Cittàdemo' => true, 'Circolo Culturale Demo' => false] as $n => $same) {
+            $entity = Person::query()->create([
+                'first_name' => '', 'last_name' => $n, 'is_entity' => true, 'entity_same_section' => $same,
+                'email' => sprintf('ente%d@%s', $n === 'Pro Loco di Cittàdemo' ? 1 : 2, $domain),
+                'tax_code' => $same ? '99999999901' : '99999999902',
+                'type' => MemberType::Ordinary, 'joined_on' => now()->subYears(2)->toDateString(),
+            ]);
+            $this->memberships->grantManually($entity->id, $year, 'Dati di demo');
         }
     }
 }

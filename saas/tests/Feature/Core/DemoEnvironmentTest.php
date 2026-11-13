@@ -7,6 +7,7 @@ use App\Modules\Core\Demo\DemoEnvironment;
 use App\Modules\Soci\Demo\DemoMembers;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Inertia\Testing\AssertableInertia as Assert;
 
 it('non parte se la demo è spenta', function (): void {
     config(['saas.demo.enabled' => false]);
@@ -34,7 +35,9 @@ it('crea l\'associazione di fantasia, gli utenti pubblici per ruolo e i soci fin
         ->where('o.org_id', $org->id)->pluck('o.role', 'u.email')->all();
     expect($roles)->toBe([
         DemoEnvironment::email('titolare') => 'owner',
+        DemoEnvironment::email('amministratore') => 'admin',
         DemoEnvironment::email('segreteria') => 'operator',
+        DemoEnvironment::email('dipendente') => 'employee',
         DemoEnvironment::email('commercialista') => 'accountant',
     ]);
 
@@ -44,7 +47,7 @@ it('crea l\'associazione di fantasia, gli utenti pubblici per ruolo e i soci fin
         DB::table('app.people')->where('email', 'not like', '%@'.config('saas.demo.mail_domain'))->count(),
         DB::table('app.memberships')->count(),
     ]);
-    expect($people)->toBe(DemoMembers::COUNT)
+    expect($people)->toBe(DemoMembers::COUNT + DemoMembers::ENTITIES)
         ->and($foreign)->toBe(0)
         ->and($memberships)->toBeGreaterThan(10);
 });
@@ -55,4 +58,19 @@ it('mostra il banner della demo solo dove è accesa', function (): void {
 
     config(['saas.demo.enabled' => false]);
     $this->get('/accesso')->assertDontSee('i dati sono inventati', false);
+});
+
+it('mostra gli accessi di prova con la password solo sulla demo', function (): void {
+    config(['saas.demo.enabled' => true, 'saas.demo.password' => 'password-di-prova-demo']);
+    $this->get('/accesso')->assertInertia(fn (Assert $page) => $page->component('Auth/Login')
+        ->has('demoAccounts', 5)
+        ->where('demoAccounts.0.email', DemoEnvironment::email('titolare'))
+        ->where('demoAccounts.0.password', 'password-di-prova-demo'));
+
+    config(['saas.demo.enabled' => false]);
+    $this->get('/accesso')->assertInertia(fn (Assert $page) => $page->has('demoAccounts', 0));
+
+    config(['saas.demo.enabled' => true]);
+    app()->detectEnvironment(fn (): string => 'production');
+    $this->get('/accesso')->assertInertia(fn (Assert $page) => $page->has('demoAccounts', 0));
 });
