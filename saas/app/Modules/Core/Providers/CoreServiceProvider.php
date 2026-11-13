@@ -9,7 +9,7 @@ use App\Modules\Core\Console\DemoResetCommand;
 use App\Modules\Core\Console\HealthCommand;
 use App\Modules\Core\Console\InviteOperatorCommand;
 use App\Modules\Core\Console\MigrateAllCommand;
-use AppModulesCoreConsoleSelfTestPurgeCommand;
+use App\Modules\Core\Console\SelfTestPurgeCommand;
 use App\Modules\Core\Contracts\DatabaseNames;
 use App\Modules\Core\Contracts\DataExport;
 use App\Modules\Core\Contracts\OrgContext;
