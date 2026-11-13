@@ -363,3 +363,10 @@ bash wordpress/build.sh && bash portale/release.sh replace free "nota facoltativ
 ```
 
 Il comando firma sul computer di chi pubblica (come `release.sh free`), carica lo zip e lancia `php bin/release.php replace …` sul server. La firma è obbligatoria e deve corrispondere al nuovo zip; un pacchetto identico o una versione non ancora pubblicata si rifiutano. Il vecchio zip resta sul server come `<versione>.zip.<impronta8>.replaced` (non scaricabile) e l'audit registra `release.replace` con le due impronte. I siti che hanno già installato il vecchio pacchetto non lo vedono come aggiornamento (stesso numero): chi vuole il nuovo lo reinstalla a mano.
+
+## Vendita: prima tranche delle correzioni dell'audit (13/11/2026)
+
+- Dove i pagamenti online non sono attivi (nessuna chiave Stripe né PayPal: `Billing::paymentsOn()`), le pagine dei piani non mostrano «Scegli» ma «Avvisami quando si può acquistare» (porta a `/free`); `buy.php` dice la verità invece di «riprova tra poco». Si riaccende da solo con le chiavi vere.
+- Home: sotto la promessa il bivio «Hai già un sito WordPress? Plugin» / «Non hai un sito? Gestionale online»; voce «Gestionale online» nel menu (anche da telefono).
+- `/saas/prezzi` → `/prezzi#prezzi-saas` e `/wordpress/confronto` → `/confronto` (301 in `Sections::legacy`).
+- Piccoli testi: «ci sono le domande frequenti», «Guarda il gestionale online» (niente sigle).

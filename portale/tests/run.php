@@ -1672,6 +1672,15 @@ check( 'catalogo: JSON valido e ETag stabile', is_array( json_decode( $catBody, 
 use Portale\Sections;
 Config::set( 'saas_admin_url', 'https://app.associazionesemplice.it/admin' );
 check( 'sezioni: /saas/accedi diventa /account/da-gestionale con lo stesso token', array( 301, '/account/da-gestionale?t=abc' ) === Sections::legacy( 'GET', '/saas/accedi', 't=abc' ) );
+check( 'sezioni: /saas/prezzi e /wordpress/confronto rimandano alle pagine vere', array( 301, '/prezzi#prezzi-saas' ) === Sections::legacy( 'GET', '/saas/prezzi', '' ) && array( 301, '/confronto' ) === Sections::legacy( 'GET', '/wordpress/confronto', '' ) );
+$prevStripe = Config::get( 'stripe' );
+$prevPaypal = Config::get( 'paypal' );
+Config::set( 'stripe', array( 'secret_key' => '' ) );
+Config::set( 'paypal', array( 'client_id' => '', 'secret' => '' ) );
+check( 'vendita: senza chiavi dei pagamenti niente «Scegli» (paymentsOn falso)', false === Portale\Billing::paymentsOn() );
+Config::set( 'stripe', array( 'secret_key' => 'sk_test_x' ) );
+check( 'vendita: con Stripe configurato i pagamenti sono attivi', true === Portale\Billing::paymentsOn() );
+Config::set( 'stripe', $prevStripe ); Config::set( 'paypal', $prevPaypal );
 check( 'sezioni: /saas/accedi con POST conserva il metodo (308)', 308 === Sections::legacy( 'POST', '/saas/accedi', '' )[0] );
 check( 'sezioni: /saas/admin va all\'amministrazione del SaaS (temporaneo)', array( 302, 'https://app.associazionesemplice.it/admin' ) === Sections::legacy( 'GET', '/saas/admin', '' ) );
 check( 'sezioni: /saas/admin/percorso mantiene il resto e la query', array( 302, 'https://app.associazionesemplice.it/admin/associazioni?q=a' ) === Sections::legacy( 'GET', '/saas/admin/associazioni', 'q=a' ) );
