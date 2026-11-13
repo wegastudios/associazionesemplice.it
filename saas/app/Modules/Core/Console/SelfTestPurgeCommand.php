@@ -87,6 +87,6 @@ final class SelfTestPurgeCommand extends Command
             ->where('o.slug', 'not like', 'prova-%')
             ->orderBy('o.id')->get(['o.id', 'o.status', 'o.deleted_at', 'k.org_id as key_org']);
 
-        return md5((string) json_encode($rows));
+        return hash('sha256', (string) json_encode($rows));
     }
 }
