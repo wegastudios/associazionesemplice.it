@@ -2540,7 +2540,10 @@ $pv    = ImportService::preview_file( $csv_y, 'anni.csv', array() );
 asem_ok( 'create' === $pv['people']['plan'][0]['action'] && array( '2023', '2025' ) === $pv['people']['plan'][0]['row']['years'] && false !== strpos( (string) $pv['people']['plan'][0]['message'], 'Iscritto: 2023, 2025' ), 'import CSV: le colonne-anno diventano gli anni di iscrizione' );
 ImportService::apply( $pv, array() );
 $anni_p = $people->find_by_email( 'anni.effettivi@example.com' );
-asem_ok( $anni_p && $people->has_membership( (int) $anni_p['id'], '2023' ) && $people->has_membership( (int) $anni_p['id'], '2025' ) && ! $people->has_membership( (int) $anni_p['id'], '2024' ), 'import CSV: iscrizioni registrate solo per gli anni indicati' );
+$iy = function ( string $y ) { // con l'anno sociale sfalsato la colonna «2023» è la tessera che inizia nel 2023
+	return \AssociazioneSemplice\MembershipRules::import_label( $y, Settings::start_month() );
+};
+asem_ok( $anni_p && $people->has_membership( (int) $anni_p['id'], $iy( '2023' ) ) && $people->has_membership( (int) $anni_p['id'], $iy( '2025' ) ) && ! $people->has_membership( (int) $anni_p['id'], $iy( '2024' ) ), 'import CSV: iscrizioni registrate solo per gli anni indicati' );
 // Ospiti importati con il contatore delle volte già venuto, gli eventi passati nelle note e l'anno di iscrizione
 $csv_g = $mkf( 'ospiti-storici.csv', "Tipo;Nome;Cognome;Cellulare;Ospite di;Volte venuto;Eventi passati;Anno di iscrizione\r\nospite;Ospite;Storico;333 1112233;anni.effettivi@example.com;3;Cena 2024, gita 2025;2020\r\n" );
 $pv    = ImportService::preview_file( $csv_g, 'ospiti-storici.csv', array() );
@@ -3740,10 +3743,19 @@ $fy_p = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Fine', 'l
 $si   = new ReflectionMethod( Admin\Actions::class, 'save_income' );
 $si->setAccessible( true );
 $cy = (int) substr( $today, 0, 4 );
-\AssociazioneSemplice\FiscalYears::create( $cy + 1 );
+\AssociazioneSemplice\FiscalYears::create( $cy + 1 ); // serve agli esercizi (prove più sotto): la tessera non ne dipende più
+$sm_was = (int) Settings::get( 'social_year_start_month' );
+$set_sm = function ( int $m ) { // cambia il mese dell'anno sociale senza il controllo delle tessere già emesse (le prove mettono insieme mesi diversi)
+	$o                            = Settings::all();
+	$o['social_year_start_month'] = $m;
+	update_option( Settings::OPTION, $o );
+};
+$set_sm( ( (int) substr( $today, 5, 2 ) % 12 ) + 1 ); // la tessera di oggi finisce a fine mese: siamo negli ultimi giorni e il rinnovo per l'anno dopo è aperto
+$fy_cur = Settings::membership_year( $today );
 $si->invoke( null, array( 'date' => $today, 'account_id' => (string) $cash['id'], 'person_id' => (string) $fy_p, 'lines' => array( array( 'category_id' => (string) $cat['membership'], 'amount' => '10,00' ) ) ) );
 $fy_years = $wpdb->get_col( 'SELECT social_year FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . $fy_p . ' AND deleted_at IS NULL ORDER BY social_year' );
-asem_ok( array( (string) $cy, (string) ( $cy + 1 ) ) === $fy_years, 'quota automatica: un nuovo socio paga l\'anno più recente e ha l\'anno in corso in omaggio (' . implode( ',', $fy_years ) . ')' );
+asem_ok( array( $fy_cur->label(), $fy_cur->next()->label() ) === $fy_years, 'quota automatica: negli ultimi giorni della tessera un nuovo socio paga l\'anno dopo e ha l\'anno in corso in omaggio (' . implode( ',', $fy_years ) . ')' );
+$set_sm( $sm_was );
 asem_ok( $people->is_active_member( $fy_p ), 'quota automatica: il socio è attivo subito' );
 
 // iscrizione rapida dalla Bacheca
@@ -3933,8 +3945,9 @@ $det = asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Solo
 asem_ok( false !== strpos( $det, 'calendar.google.com' ) && false !== strpos( $det, 'Tutte le attività' ), 'scheda attività: link al suo calendario e a quello di tutte' );
 Settings::update( array( 'ical_enabled' => 0 ) );
 
-// tessera associativa: scade sempre il 31 dicembre
-$mb_p = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Tessera', 'last_name' => 'Dicembre', 'email' => 'tessera.dicembre@example.com' ) );
+// tessera associativa con l'anno sociale a gennaio: è l'anno solare e scade il 31 dicembre (invariata rispetto a prima)
+$set_sm( 1 );
+$mb_p =$people->create( array( 'type' => 'ordinary', 'first_name' => 'Tessera', 'last_name' => 'Dicembre', 'email' => 'tessera.dicembre@example.com' ) );
 $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $mb_p, 'lines' => array( array( 'category_id' => $cat['membership'], 'amount_cents' => 1000 ) ) ) );
 asem_ok( substr( $today, 0, 4 ) . '-12-31' <= $people->active_until( $mb_p ) && '-12-31' === substr( $people->active_until( $mb_p ), 4 ), 'tessera: la scadenza è un 31 dicembre, il più lontano tra quelli pagati (' . $people->active_until( $mb_p ) . ')' );
 asem_ok( substr( $today, 0, 4 ) === Settings::membership_year()->label() && ( (int) substr( $today, 0, 4 ) + 1 ) . '' === Settings::membership_year()->next()->label(), 'tessera: l\'anno della tessera è l\'anno solare' );
@@ -3955,6 +3968,7 @@ asem_ok( $mb_cur . '-12-31' === $people->active_until( $mb_far ), 'tessera: tolt
 $mb_only = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Solo', 'last_name' => 'Futura', 'email' => 'solo.futura@example.com' ) );
 $people->set_membership( $mb_only, $mb_next, true, 'manual' );
 asem_ok( ! $people->is_active_member( $mb_only ), 'tessera: una tessera che non è ancora iniziata, da sola, non rende il socio in regola' );
+$set_sm( $sm_was );
 
 // ---------- Anni solari: quota automatica, anni chiusi, fondi ----------
 $count_mb = function ( int $pid ) use ( $wpdb ) {
@@ -3963,20 +3977,25 @@ $count_mb = function ( int $pid ) use ( $wpdb ) {
 $pay_q = function ( int $pid ) use ( $si, $cash, $today, $cat ) {
 	$si->invoke( null, array( 'date' => $today, 'account_id' => (string) $cash['id'], 'person_id' => (string) $pid, 'lines' => array( array( 'category_id' => (string) $cat['membership'], 'amount' => '10,00' ) ) ) );
 };
+$set_sm( ( (int) substr( $today, 5, 2 ) % 12 ) + 1 ); // la tessera di oggi finisce a fine mese: il rinnovo per l'anno dopo è aperto
+$q_cur = Settings::membership_year( $today );
+$q_cl  = $q_cur->label();
+$q_nl  = $q_cur->next()->label();
+$q_pl  = $q_cur->previous()->label();
 $p_cov = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Anno', 'last_name' => 'Coperto', 'email' => 'anno.coperto@example.com' ) );
-$people->set_membership( $p_cov, (string) $cy, true, 'manual' );
-asem_ok( array( 'year' => (string) ( $cy + 1 ), 'free' => null ) === $people->membership_plan( $p_cov, $today ), 'quota automatica: chi ha l\'anno in corso rinnova in anticipo, senza regali' );
+$people->set_membership( $p_cov, $q_cl, true, 'manual' );
+asem_ok( array( 'year' => $q_nl, 'free' => null ) === $people->membership_plan( $p_cov, $today ), 'quota automatica: chi ha l\'anno in corso rinnova in anticipo, senza regali' );
 $pay_q( $p_cov );
-asem_ok( array( (string) $cy, (string) ( $cy + 1 ) ) === $count_mb( $p_cov ), 'quota automatica: il socio in regola paga solo l\'anno più recente' );
+asem_ok( array( $q_cl, $q_nl ) === $count_mb( $p_cov ), 'quota automatica: il socio in regola paga solo l\'anno dopo' );
 $p_lap = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Anno', 'last_name' => 'Scaduto', 'email' => 'anno.scaduto@example.com' ) );
-$people->set_membership( $p_lap, (string) ( $cy - 1 ), true, 'manual' );
-asem_ok( array( 'year' => (string) $cy, 'free' => null ) === $people->membership_plan( $p_lap, $today ), 'quota automatica: chi non ha rinnovato l\'anno in corso paga prima quello, niente omaggio' );
+$people->set_membership( $p_lap, $q_pl, true, 'manual' );
+asem_ok( array( 'year' => $q_cl, 'free' => null ) === $people->membership_plan( $p_lap, $today ), 'quota automatica: chi non ha rinnovato l\'anno in corso paga prima quello, niente omaggio' );
 $pay_q( $p_lap );
-asem_ok( array( (string) ( $cy - 1 ), (string) $cy ) === $count_mb( $p_lap ), 'quota automatica: il socio scaduto rinnova l\'anno in corso (poi la segreteria gestisce il resto)' );
+asem_ok( array( $q_pl, $q_cl ) === $count_mb( $p_lap ), 'quota automatica: il socio scaduto rinnova l\'anno in corso (poi la segreteria gestisce il resto)' );
 $p_new = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Anno', 'last_name' => 'Nuovo', 'email' => 'anno.nuovo@example.com' ) );
-asem_ok( array( 'year' => (string) ( $cy + 1 ), 'free' => (string) $cy ) === $people->membership_plan( $p_new, $today ), 'quota automatica: il nuovo socio paga l\'anno più recente e ha l\'anno in corso in omaggio' );
+asem_ok( array( 'year' => $q_nl, 'free' => $q_cl ) === $people->membership_plan( $p_new, $today ), 'quota automatica: il nuovo socio paga l\'anno dopo e ha l\'anno in corso in omaggio' );
 $dash_new = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Pagamenti da incassare' );
-asem_ok( false !== strpos( $dash_new, 'Anno Nuovo' ) && false !== strpos( $dash_new, 'Quota associativa ' . ( $cy + 1 ) ), 'bacheca: i nuovi soci che devono pagare compaiono nei pagamenti da incassare' );
+asem_ok( false !== strpos( $dash_new, 'Anno Nuovo' ) && false !== strpos( $dash_new, 'Quota associativa ' . $q_nl ), 'bacheca: i nuovi soci che devono pagare compaiono nei pagamenti da incassare' );
 // annullando l'incasso salta anche l'anno in omaggio
 $p_void = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Anno', 'last_name' => 'Annullato', 'email' => 'anno.annullato@example.com' ) );
 $pay_q( $p_void );
@@ -3984,6 +4003,8 @@ asem_ok( 2 === count( $count_mb( $p_void ) ), 'quota automatica: due anni dopo l
 $void_tx = (int) $wpdb->get_var( 'SELECT id FROM ' . Db::t( 'transactions' ) . ' WHERE person_id = ' . $p_void . ' ORDER BY id DESC LIMIT 1' );
 $ledger->void( $void_tx, 'prova' );
 asem_ok( array() === $count_mb( $p_void ), 'quota automatica: annullando l\'incasso si annullano anche i due anni' );
+$set_sm( $sm_was );
+$people->set_membership( $p_cov, (string) $cy, true, 'manual' ); // il socio «in regola» delle prove seguenti ha anche l'anno solare in corso
 
 // anni solari: creare, chiudere, riaprire
 $fy_far = $cy - 6;
@@ -5663,6 +5684,9 @@ $dash_due = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Pagamen
 asem_ok( false !== strpos( $dash_due, 'due=1' ), 'bacheca: il pulsante Incassa chiede la compilazione automatica' );
 
 // ---------- Tessera: migrazione delle iscrizioni dall'anno sociale all'anno solare ----------
+// le tessere con la barra di tutte le altre prove (anno sociale a settembre) si mettono da parte: la migrazione storica tocca solo quelle di questa prova
+$wpdb->query( 'UPDATE ' . Db::t( 'memberships' ) . " SET social_year = CONCAT('K', social_year) WHERE social_year LIKE '%/%'" );
+$set_sm( 9 );
 $mg_p = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Vecchia', 'last_name' => 'Iscrizione', 'email' => 'vecchia.iscrizione@example.com' ) );
 $mg_y = (int) substr( $today, 0, 4 );
 $people->set_membership( $mg_p, ( $mg_y - 1 ) . '/' . $mg_y, true, 'manual' );
@@ -5674,6 +5698,76 @@ $mg_n = \AssociazioneSemplice\Install::migrate_membership_years();
 asem_ok( $mg_n >= 2 && $mg_y . '-12-31' === $people->active_until( $mg_p ), 'migrazione: ora la tessera scade il 31 dicembre (' . $people->active_until( $mg_p ) . ')' );
 asem_ok( 1 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . $mg_q . ' AND deleted_at IS NULL' ) && $mg_y . '-12-31' === $people->active_until( $mg_q ), 'migrazione: se c\'è già l\'anno solare resta quello, senza doppioni' );
 asem_ok( 0 === \AssociazioneSemplice\Install::migrate_membership_years(), 'migrazione: rilanciarla non cambia nulla' );
+$wpdb->query( 'UPDATE ' . Db::t( 'memberships' ) . " SET social_year = SUBSTRING(social_year, 2) WHERE social_year LIKE 'K%'" );
+$set_sm( $sm_was );
+
+// ---------- Tessera: segue l'anno sociale (non l'esercizio) ----------
+$ts_row = function ( int $pid, string $label ) use ( $wpdb ) {
+	return $wpdb->get_row( $wpdb->prepare( 'SELECT social_year, valid_from, valid_to FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = %d AND social_year = %s AND deleted_at IS NULL', $pid, $label ), ARRAY_A );
+};
+$ts_mk = function ( string $n ) use ( $people ) {
+	return $people->create( array( 'type' => 'ordinary', 'first_name' => 'Tessera', 'last_name' => $n, 'email' => strtolower( $n ) . '.tessera@example.com', 'joined_on' => '2020-01-01' ) );
+};
+$ts_d = '2026-11-13';
+// anno sociale a gennaio: la tessera è l'anno solare, come sempre
+$set_sm( 1 );
+$ts_a = $ts_mk( 'Solare' );
+$ts_l = Settings::membership_year( $ts_d )->label();
+$people->set_membership( $ts_a, $ts_l, true );
+$ts_r = $ts_row( $ts_a, '2026' );
+asem_ok( '2026' === $ts_l && $ts_r && '2026-01-01' === $ts_r['valid_from'] && '2026-12-31' === $ts_r['valid_to'], 'tessera, anno sociale a gennaio: è l\'anno solare, etichetta «2026», dal 1/1 al 31/12' );
+asem_ok( array( 'year' => '2026', 'free' => null ) === $people->membership_plan( $ts_mk( 'Solarenuovo' ), '2026-06-01' ) && array( 'year' => '2027', 'free' => null ) === $people->membership_plan( $ts_a, '2026-12-15' ) && array( 'year' => '2027', 'free' => '2026' ) === $people->membership_plan( $ts_mk( 'Solarenuovo2' ), '2026-12-15' ), 'tessera solare: stesse etichette di prima, il rinnovo per l\'anno dopo si apre a dicembre' );
+// anno sociale a settembre: la tessera 2026/2027 va dal 1/9/2026 al 31/8/2027
+$set_sm( 9 );
+$ts_b = $ts_mk( 'Settembre' );
+$ts_l = Settings::membership_year( $ts_d )->label();
+$people->set_membership( $ts_b, $ts_l, true );
+$ts_r = $ts_row( $ts_b, '2026/2027' );
+asem_ok( '2026/2027' === $ts_l && $ts_r && '2026-09-01' === $ts_r['valid_from'] && '2027-08-31' === $ts_r['valid_to'], 'tessera, anno sociale a settembre: «2026/2027», dal 1/9/2026 al 31/8/2027' );
+asem_ok( '2027-08-31' === $people->active_until( $ts_b, $ts_d ) && $people->is_active_member( $ts_b, '2027-08-31' ) && ! $people->is_active_member( $ts_b, '2027-09-01' ), 'tessera a settembre: la scadenza è il 31 agosto' );
+asem_ok( '2025/2026' === Settings::membership_year( '2026-08-31' )->label() && '2026/2027' === Settings::membership_year( '2026-09-01' )->label(), 'tessera a settembre: l\'anno cambia il 1° settembre' );
+$ts_pn = $ts_mk( 'Nuovosett' );
+asem_ok( array( 'year' => '2026/2027', 'free' => null ) === $people->membership_plan( $ts_pn, '2027-03-01' ) && array( 'year' => '2027/2028', 'free' => null ) === $people->membership_plan( $ts_b, '2027-08-15' ) && array( 'year' => '2027/2028', 'free' => '2026/2027' ) === $people->membership_plan( $ts_pn, '2027-08-15' ), 'tessera a settembre: rinnovo anticipato solo negli ultimi giorni (chi ha l\'anno rinnova, il nuovo ha l\'anno in corso in omaggio)' );
+asem_ok( array( 'year' => '2026/2027', 'free' => null ) === $people->membership_plan( $people->create( array( 'type' => 'ordinary', 'first_name' => 'Tessera', 'last_name' => 'Rinnovolasciato', 'email' => 'rinnovolasciato.tessera@example.com', 'joined_on' => '2020-01-01' ) ), '2026-11-13' ), 'tessera: a metà anno la quota va all\'anno in corso' );
+// anno sociale a luglio
+$set_sm( 7 );
+$ts_c = $ts_mk( 'Luglio' );
+$people->set_membership( $ts_c, Settings::membership_year( $ts_d )->label(), true );
+$ts_r = $ts_row( $ts_c, '2026/2027' );
+asem_ok( '2025/2026' === Settings::membership_year( '2026-06-30' )->label() && $ts_r && '2026-07-01' === $ts_r['valid_from'] && '2027-06-30' === $ts_r['valid_to'], 'tessera, anno sociale a luglio: dal 1/7 al 30/6' );
+// la tessera già emessa non si sposta quando cambia il mese
+$people->set_membership( $ts_b, '2026/2027', true );
+$ts_r = $ts_row( $ts_b, '2026/2027' );
+asem_ok( $ts_r && '2026-09-01' === $ts_r['valid_from'] && '2027-08-31' === $ts_r['valid_to'], 'cambio mese: la tessera già emessa resta dal 1/9/2026 al 31/8/2027, anche se la si segna di nuovo' );
+$ts_r = $ts_row( $ts_a, '2026' );
+asem_ok( $ts_r && '2026-01-01' === $ts_r['valid_from'] && '2026-12-31' === $ts_r['valid_to'], 'cambio mese: la tessera solare già emessa non cambia' );
+// con tessere ancora valide che partono in un altro mese, il mese non si cambia (si confonderebbero le etichette); gennaio sempre possibile
+$set_sm( 9 );
+$people->set_membership( $ts_pn, Settings::membership_year()->label(), true );
+$ts_msg = asem_throws( function () { Settings::update( array( 'social_year_start_month' => 7 ) ); } );
+asem_ok( null !== $ts_msg && false !== strpos( $ts_msg, 'tessere ancora valide' ) && 9 === Settings::start_month(), 'cambio mese: con tessere in corso che partono in un altro mese non si cambia (messaggio chiaro, nulla viene toccato)' );
+asem_ok( null === asem_throws( function () { Settings::update( array( 'social_year_start_month' => 1 ) ); } ) && 1 === Settings::start_month(), 'cambio mese: passare a gennaio è sempre possibile' );
+$set_sm( 9 );
+// la tessera non dipende dall'esercizio: con l'esercizio a luglio e a settembre nulla cambia per la tessera
+$ts_fm = function () { return 7; };
+add_filter( 'asem_fiscal_start_month', $ts_fm );
+asem_ok( array( 'year' => '2026/2027', 'free' => null ) === $people->membership_plan( $ts_mk( 'Esercizioluglio' ), $ts_d ) && '2026/2027' === Settings::membership_year( $ts_d )->label(), 'tessera: l\'esercizio a luglio non cambia l\'anno della tessera' );
+// una tessera a cavallo di due esercizi compare nel libro soci di entrambi
+asem_ok( in_array( $ts_b, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', 2026 ) ), true ) && in_array( $ts_b, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', 2027 ) ), true ), 'libro soci: la tessera 2026/2027 compare negli esercizi 2026 e 2027 (con l\'esercizio a luglio: 2026/2027 e 2027/2028)' );
+remove_filter( 'asem_fiscal_start_month', $ts_fm );
+asem_ok( ! in_array( $ts_b, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', 2025 ) ), true ) && ! in_array( $ts_b, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', 2028 ) ), true ), 'libro soci: negli esercizi fuori dalla validità non compare' );
+// incasso della quota con anno sociale a settembre: etichetta con la barra e scadenza il 31 agosto
+$ts_pay = $ts_mk( 'Incassosett' );
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $ts_pay, 'lines' => array( array( 'category_id' => $cat['membership'], 'amount_cents' => 1000 ) ) ) );
+$ts_sy = (string) $wpdb->get_var( 'SELECT social_year FROM ' . Db::t( 'transactions' ) . ' WHERE person_id = ' . $ts_pay . ' ORDER BY id DESC LIMIT 1' );
+$ts_end = Settings::membership_year()->end()->format( 'Y-m-d' );
+asem_ok( false !== strpos( $ts_sy, '/' ) && $people->active_until( $ts_pay ) >= $ts_end && '-08-31' === substr( $people->active_until( $ts_pay ), 4 ), 'tessera a settembre: la quota è registrata con l\'anno «' . $ts_sy . '» e la tessera scade il 31 agosto (' . $people->active_until( $ts_pay ) . ')' );
+$ts_html = asem_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Anno della tessera:', array( 'id' => $ts_pay ) );
+asem_ok( false !== strpos( $ts_html, Settings::membership_year()->label() ) && false !== strpos( $ts_html, Settings::membership_year()->end()->format( 'd/m/Y' ) ), 'scheda socio: l\'anno della tessera mostra l\'etichetta e le date vere' );
+asem_ok( false !== strpos( \AssociazioneSemplice\CardLayout::samples()['valid'], Settings::membership_year()->next()->end()->format( 'd/m/Y' ) ), 'tessera: l\'anteprima della scadenza segue l\'anno sociale' );
+// import: la colonna-anno «2025» è la tessera che inizia nel 2025
+asem_ok( '2025/2026' === \AssociazioneSemplice\MembershipRules::import_label( '2025', Settings::start_month() ), 'import: con l\'anno sociale a settembre la colonna «2025» è la tessera 2025/2026' );
+$set_sm( $sm_was );
 asem_ok( 1 === preg_match( '/^[0-9.]+\.\d{6,}$/', Plugin::asset_version( 'admin.js' ) ), 'script: la versione cambia a ogni aggiornamento (nessuna cache vecchia)' );
 
 // ---------- Render di tutte le pagine ----------

@@ -112,7 +112,7 @@
 	if (typeSel) {
 		var hints = {
 			founder: 'Socio fondatore: tessera sempre rinnovata (scadenza a lungo termine, vedi Impostazioni). Email facoltativa: con l\'email ha subito l\'accesso all\'area riservata.',
-			ordinary: 'Socio ordinario: tessera valida fino al 31 dicembre, si rinnova con la quota associativa. Email facoltativa: con l\'email ha subito l\'accesso all\'area riservata.',
+			ordinary: 'Socio ordinario: la tessera dura un anno (come l\'anno sociale), si rinnova con la quota associativa. Email facoltativa: con l\'email ha subito l\'accesso all\'area riservata.',
 			volunteer: 'Socio e volontario: come l\'ordinario, e può tenere le attività. Email facoltativa: con l\'email ha subito l\'accesso all\'area riservata.',
 			guest: 'Ospite: non è socio, partecipa alle attività tramite il socio che lo ospita. Non ha tessera.'
 		};
@@ -503,7 +503,7 @@
 				row.appendChild(prev); row.appendChild(el('span', { text: monthLabel(l.month) })); row.appendChild(next);
 			}
 			if (l.kind === 'membership') {
-				row.appendChild(el('span', { 'class': 'description', text: l.note || 'tessera fino al 31 dicembre' }));
+				row.appendChild(el('span', { 'class': 'description', text: l.note || 'tessera fino al ' + (D.yearEndText || '') }));
 			}
 			var amt = el('input', { type: 'text', name: n + '[amount]', inputmode: 'decimal', value: l.amount, size: '8', 'aria-label': 'Importo' });
 			var acc = el('span', { 'class': 'description asem-acc', text: '' });
@@ -576,10 +576,11 @@
 	}
 
 	/* Voci: quota associativa, mensilità, altro */
-	/* La quota va all'anno più recente creato (se non è quello in corso, l'anno in corso è in omaggio): lo decide il programma */
+	/* La quota va all'anno della tessera (segue l'anno sociale); negli ultimi giorni dell'anno si rinnova per l'anno dopo e l'anno in corso può essere in omaggio: lo decide il programma */
 	function membershipLine(c) {
 		var plan = ctx && ctx.membership;
-		var note = plan ? 'tessera ' + plan.year + ' fino al 31 dicembre' + (plan.free ? ' · ' + plan.free + ' in omaggio' : '') : 'tessera fino al 31 dicembre';
+		var until = (ctx && ctx.membership_until) || D.yearEndText || '';
+		var note = plan ? 'tessera ' + plan.year + ' fino al ' + until + (plan.free ? ' · ' + plan.free + ' in omaggio' : '') : 'tessera fino al ' + until;
 		return { title: 'Quota associativa' + (plan ? ' ' + plan.year : ''), category: c.id, kind: 'membership', amount: plain(ctx && ctx.membership_fee != null ? ctx.membership_fee : D.membershipFee), note: note };
 	}
 	$('#asem-add-membership').addEventListener('click', function () {
