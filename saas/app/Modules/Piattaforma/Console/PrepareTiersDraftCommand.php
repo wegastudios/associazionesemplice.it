@@ -22,7 +22,7 @@ final class PrepareTiersDraftCommand extends Command
 
     protected $description = 'Prepara nella bozza del catalogo i tre piani fissi (Piccola, Media, Grande), senza pubblicare';
 
-    public function handle(CatalogPublisher $publisher, Catalog $catalog): int
+    public function handle(CatalogPublisher $publisher, Catalog $published): int
     {
         $staff = PlatformStaff::query()->where('email', Str::lower((string) $this->argument('email')))->first();
         if ($staff === null) {
@@ -37,7 +37,7 @@ final class PrepareTiersDraftCommand extends Command
 
         $draft['features'] = $seed['features'] ?? [];
         $draft['terms'] ??= $seed['terms'] ?? [];
-        $draft['plans'] = self::plans(self::rows($draft['plans'] ?? null), self::rows($seed['plans'] ?? null), $catalog);
+        $draft['plans'] = self::plans(self::rows($draft['plans'] ?? null), self::rows($seed['plans'] ?? null), $published);
         $draft['addons'] = self::addons(self::rows($draft['addons'] ?? null), self::rows($seed['addons'] ?? null));
 
         try {
