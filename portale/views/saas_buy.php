@@ -55,8 +55,13 @@ $labels = array( 'stripe' => 'Carta (Stripe)', 'paypal' => 'PayPal' );
 					<div class="summary"><span><?php echo e( $names[ $l['code'] ] ?? $l['code'] ); ?><?php echo $l['qty'] > 1 ? ' × ' . (int) $l['qty'] : ''; ?></span><b><?php echo e( money( $l['net'] ) ); ?></b></div>
 				<?php endforeach; ?>
 				<?php if ( $quote['discount'] > 0 ) : ?><div class="summary"><span>Sconto <?php echo e( $quote['promo'] ); ?></span><b>− <?php echo e( money( $quote['discount'] ) ); ?></b></div><?php endif; ?>
+				<?php if ( 'exempt' === ( $quote['vat_mode'] ?? '' ) ) : ?>
+				<div class="summary"><span><strong>Totale <?php echo $year ? 'all\'anno' : 'al mese'; ?></strong> (senza IVA)</span><b><?php echo e( money( $quote['total'] ) ); ?></b></div>
+				<p class="hint"><?php echo e( (string) $quote['vat_note'] ); ?></p>
+				<?php else : ?>
 				<div class="summary"><span>IVA <?php echo (int) $quote['vat_percent']; ?>%</span><b><?php echo e( money( $quote['vat'] ) ); ?></b></div>
 				<div class="summary"><span><strong>Totale <?php echo $year ? 'all\'anno' : 'al mese'; ?></strong> (IVA inclusa)</span><b><?php echo e( money( $quote['total'] ) ); ?></b></div>
+				<?php endif; ?>
 				<p class="hint">Si rinnova da solo <?php echo $year ? 'ogni anno' : 'ogni mese'; ?> allo stesso prezzo: disdici quando vuoi dall'area clienti.</p>
 			</div>
 
@@ -91,7 +96,11 @@ $labels = array( 'stripe' => 'Carta (Stripe)', 'paypal' => 'PayPal' );
 		<ul>
 			<li>Paghi in modo sicuro su Stripe o PayPal: noi non vediamo i dati della carta.</li>
 			<li>Appena il pagamento è confermato creiamo il gestionale della tua associazione e ti scriviamo per entrare.</li>
+			<?php if ( $doc && 'exempt' === Portale\Catalog::terms( $doc )['vat_mode'] ) : ?>
+			<li>I prezzi sono senza IVA: il totale che vedi è quello che paghi.</li>
+			<?php else : ?>
 			<li>I prezzi sono IVA esclusa nel listino; qui sopra vedi il totale con IVA.</li>
+			<?php endif; ?>
 		</ul>
 	</div>
 </div></section>

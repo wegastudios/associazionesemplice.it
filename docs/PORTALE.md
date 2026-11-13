@@ -370,3 +370,10 @@ Il comando firma sul computer di chi pubblica (come `release.sh free`), carica l
 - Home: sotto la promessa il bivio «Hai già un sito WordPress? Plugin» / «Non hai un sito? Gestionale online»; voce «Gestionale online» nel menu (anche da telefono).
 - `/saas/prezzi` → `/prezzi#prezzi-saas` e `/wordpress/confronto` → `/confronto` (301 in `Sections::legacy`).
 - Piccoli testi: «ci sono le domande frequenti», «Guarda il gestionale online» (niente sigle).
+
+## Condizioni di vendita del catalogo (`terms`, 13/11/2026)
+
+Il portale legge `terms` dal catalogo del SaaS (`saas/docs/CONTRATTO_PORTALE.md` §2.2) con `Catalog::terms()` e applica le regole; senza il blocco valgono i valori di partenza (IVA standard, commissioni 0%/3%, prova senza esportazioni né commercialista).
+- **IVA**: `standard` = prezzi IVA esclusa, IVA di ogni prezzo aggiunta una sola volta sul totale (come prima). `exempt` (regime forfettario) = nessuna IVA, totale = importo dei prezzi, il `vat_percent` del catalogo si ignora; la dicitura `terms.vat.note` compare nel listino, nel riepilogo del checkout, nella ricevuta Stripe (nome del prodotto) e si conserva nell'istantanea dell'ordine (`vat_mode`, `vat_note`). `exempt` senza dicitura non si applica (resta l'IVA). `/account` scrive «senza IVA» o «IVA inclusa» secondo l'ordine; gli ordini di prima restano «IVA inclusa».
+- **Commissioni** (`own_gateway_percent`, `collected_by_us_percent`): lette da `Catalog::terms()` ma **mai scritte nelle pagine di vendita** finché la titolare non lo decide (inquadramento da confermare con il commercialista).
+- **Prova**: la scheda del piano dice «Prova N giorni, senza carta: tutto tranne le esportazioni e l'accesso del commercialista» solo con `saas_trial_enabled => true` in `config.php` (da accendere quando il percorso d'acquisto offre davvero la prova senza carta; oggi spento, quindi la promessa non compare). I limiti li applica il SaaS.

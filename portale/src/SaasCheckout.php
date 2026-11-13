@@ -93,7 +93,7 @@ final class SaasCheckout {
 		$seen  = isset( $in['seen_total'] ) && '' !== $in['seen_total'] ? (int) $in['seen_total'] : null;
 		if ( null !== $seen && $seen !== $order['total'] ) {
 			$db->run( 'DELETE FROM orders WHERE id = ?', array( $order['id'] ) );
-			throw new UserError( 'I prezzi sono stati aggiornati: il nuovo totale è ' . money( $order['total'] ) . ' (IVA inclusa). Controlla e conferma di nuovo.' );
+			throw new UserError( 'I prezzi sono stati aggiornati: il nuovo totale è ' . money( $order['total'] ) . ( 'exempt' === Catalog::terms( $cat['doc'] )['vat_mode'] ? ' (senza IVA)' : ' (IVA inclusa)' ) . '. Controlla e conferma di nuovo.' );
 		}
 		if ( $order['total'] < 100 ) {
 			$db->run( 'DELETE FROM orders WHERE id = ?', array( $order['id'] ) );
@@ -114,7 +114,9 @@ final class SaasCheckout {
 		}
 		$label = 'Associazione Semplice · ' . $planName . ( 'year' === $period ? ' · annuale' : ' · mensile' );
 		if ( 'stripe' === $provider ) {
-			return Stripe::checkoutUrl( $order['id'], $cust['email'], '', $order['total'], $period, $label );
+			// Regime forfettario: la dicitura di legge sulla ricevuta (nome del prodotto su Stripe, al massimo 250 caratteri).
+			$note = (string) ( Catalog::terms( $cat['doc'] )['vat_note'] ?? '' );
+			return Stripe::checkoutUrl( $order['id'], $cust['email'], '', $order['total'], $period, mb_substr( '' !== $note ? $label . ' · ' . $note : $label, 0, 250 ) );
 		}
 		return PayPal::approvalUrl( $order['id'], $cust['email'], $billing->paypalPlan( array( 'cents' => $order['total'] ), $period, $label ) );
 	}

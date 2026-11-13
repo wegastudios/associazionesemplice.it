@@ -7,9 +7,14 @@ $plans  = Portale\Catalog::plans( $doc );
 $groups = Portale\Catalog::comparison( $doc );
 $show_cards = $show_cards ?? true; // /prezzi: solo le schede; /confronto: solo la tabella; /saas: entrambe
 $show_table = $show_table ?? true;
+$terms  = Portale\Catalog::terms( $doc );
+$exempt = 'exempt' === $terms['vat_mode'];
+$vatTxt = $exempt ? '' : ' + IVA';
+// La prova del gestionale si annuncia solo quando il percorso d'acquisto la offre davvero (senza carta): `saas_trial_enabled` in config.php.
+$trialOn = true === Portale\Config::get( 'saas_trial_enabled', false );
 ?>
 <section class="section product-saas" id="prezzi-saas"><div class="wrap">
-	<div class="section-head"><span class="eyebrow">Gestionale online</span><h2>Piani e prezzi</h2><p>Importi IVA esclusa. Il prezzo cresce con i soci: nessun limite blocca la segreteria.</p></div>
+	<div class="section-head"><span class="eyebrow">Gestionale online</span><h2>Piani e prezzi</h2><p><?php echo $exempt ? 'Importi in euro, senza IVA.' : 'Importi IVA esclusa.'; ?> Il prezzo cresce con i soci: nessun limite blocca la segreteria.</p></div>
 	<?php if ( $show_cards ) : ?><div class="plans">
 	<?php foreach ( $plans as $p ) :
 		$m = Portale\Catalog::from( $p, 'month' );
@@ -18,13 +23,13 @@ $show_table = $show_table ?? true;
 		<div class="plan">
 			<h3><?php echo e( (string) $p['name'] ); ?></h3>
 			<p class="muted"><?php echo e( (string) ( $p['audience'] ?? '' ) ); ?></p>
-			<?php if ( $m ) : ?><p class="price"><?php echo $members ? 'da ' : ''; ?><strong><?php echo e( money( $m[0] ) ); ?></strong> al mese + IVA</p><?php endif; ?>
-			<?php if ( $y ) : ?><p class="fine"><?php echo $members ? 'da ' : ''; ?><?php echo e( money( $y[0] ) ); ?> all'anno + IVA</p><?php endif; ?>
-			<?php if ( ! empty( $p['trial_days'] ) ) : ?><p class="fine">Prova gratuita di <?php echo (int) $p['trial_days']; ?> giorni, senza carta.</p><?php endif; ?>
+			<?php if ( $m ) : ?><p class="price"><?php echo $members ? 'da ' : ''; ?><strong><?php echo e( money( $m[0] ) ); ?></strong> al mese<?php echo e( $vatTxt ); ?></p><?php endif; ?>
+			<?php if ( $y ) : ?><p class="fine"><?php echo $members ? 'da ' : ''; ?><?php echo e( money( $y[0] ) ); ?> all'anno<?php echo e( $vatTxt ); ?></p><?php endif; ?>
+			<?php if ( $trialOn && ! empty( $p['trial_days'] ) ) : ?><p class="fine">Prova <?php echo (int) $p['trial_days']; ?> giorni, senza carta: <?php echo e( Portale\Catalog::trialLimits( $doc ) ); ?>.</p><?php endif; ?>
 			<p><a class="btn" href="/saas/acquista?plan=<?php echo e( rawurlencode( (string) $p['code'] ) ); ?>">Scegli <?php echo e( (string) $p['name'] ); ?></a></p>
 		</div>
 	<?php endforeach; ?>
-	</div><?php endif; ?>
+	</div><?php if ( $exempt ) : ?><p class="fine center"><?php echo e( $terms['vat_note'] ); ?></p><?php endif; ?><?php endif; ?>
 	<?php if ( $show_table && $plans ) : ?>
 	<div class="cmp-wrap"><table class="cmp"><thead><tr><th scope="col">Funzione</th><?php foreach ( $plans as $p ) : ?><th scope="col"><?php echo e( (string) $p['name'] ); ?></th><?php endforeach; ?></tr></thead><tbody>
 	<?php foreach ( $groups as $g => $feats ) : ?>

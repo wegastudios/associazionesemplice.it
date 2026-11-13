@@ -40,7 +40,7 @@ $csrf = Portale\App::csrf();
 		<div class="facts">
 			<div><span>Piano</span><b><?php echo e( $g['plan'] ); ?> · <?php echo 'year' === $g['period'] ? 'annuale' : 'mensile'; ?></b></div>
 			<div><span>Soci</span><b><?php echo (int) $g['members']; ?></b></div>
-			<div><span>Importo</span><b><?php echo e( money( $g['total'] ) ); ?> <small class="muted">IVA inclusa</small></b></div>
+			<div><span>Importo</span><b><?php echo e( money( $g['total'] ) ); ?> <small class="muted"><?php echo 'exempt' === ( $g['vat_mode'] ?? '' ) ? 'senza IVA' : 'IVA inclusa'; ?></small></b></div>
 			<?php if ( '' !== $g['until'] ) : ?><div><span><?php echo ! empty( $g['cancel_at_period_end'] ) ? 'Attivo fino al' : 'Prossimo rinnovo'; ?></span><b><?php echo e( date_it( $g['until'] ) ); ?></b></div><?php endif; ?>
 		</div>
 		<?php if ( 'pending' === $g['state'] ) : ?><p class="hint">Stiamo preparando il gestionale: di solito basta qualche minuto. Ricarica la pagina tra poco.</p><?php endif; ?>

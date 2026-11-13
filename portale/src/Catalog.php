@@ -197,6 +197,43 @@ final class Catalog {
 		return $plans;
 	}
 
+	/**
+	 * Condizioni di vendita del catalogo (`terms`, contratto §2.2), con i valori di partenza dove mancano: IVA standard (prezzi IVA esclusa),
+	 * commissioni 0% (Stripe/PayPal propri) e 3% (incassiamo noi), prova senza esportazioni né commercialista.
+	 * Le commissioni NON si scrivono nelle pagine di vendita finché la titolare non lo decide: qui si leggono soltanto.
+	 * @return array{vat_mode:string,vat_note:string,own_gateway_percent:int,collected_by_us_percent:int,trial_exports:bool,trial_accountant_access:bool}
+	 */
+	public static function terms( array $doc ): array {
+		$t    = is_array( $doc['terms'] ?? null ) ? $doc['terms'] : array();
+		$vat  = is_array( $t['vat'] ?? null ) ? $t['vat'] : array();
+		$pay  = is_array( $t['payments'] ?? null ) ? $t['payments'] : array();
+		$try  = is_array( $t['trial'] ?? null ) ? $t['trial'] : array();
+		$note = is_string( $vat['note'] ?? null ) ? trim( $vat['note'] ) : '';
+		// Senza la dicitura obbligatoria il regime «esente» non si applica: meglio l'IVA esposta che una fattura senza la dicitura di legge.
+		$exempt = 'exempt' === ( $vat['mode'] ?? '' ) && '' !== $note;
+		$pct    = function ( $v, int $default ): int {
+			return is_int( $v ) && $v >= 0 && $v <= 30 ? $v : $default;
+		};
+		return array(
+			'vat_mode' => $exempt ? 'exempt' : 'standard', 'vat_note' => $exempt ? $note : '',
+			'own_gateway_percent' => $pct( $pay['own_gateway_percent'] ?? null, 0 ), 'collected_by_us_percent' => $pct( $pay['collected_by_us_percent'] ?? null, 3 ),
+			'trial_exports' => true === ( $try['exports'] ?? false ), 'trial_accountant_access' => true === ( $try['accountant_access'] ?? false ),
+		);
+	}
+
+	/** Frase per le pagine di vendita sulla prova (solo i limiti decisi): vuota se la prova non toglie nulla. */
+	public static function trialLimits( array $doc ): string {
+		$t    = self::terms( $doc );
+		$gone = array();
+		if ( ! $t['trial_exports'] ) {
+			$gone[] = 'le esportazioni';
+		}
+		if ( ! $t['trial_accountant_access'] ) {
+			$gone[] = 'l\'accesso del commercialista';
+		}
+		return $gone ? 'tutto tranne ' . implode( ' e ', $gone ) : 'tutto compreso';
+	}
+
 	/** Prezzo di un piano per periodo (month|year): il primo con quel periodo. @return array|null */
 	public static function price( array $plan, string $period ): ?array {
 		foreach ( (array) ( $plan['prices'] ?? array() ) as $p ) {
