@@ -8579,6 +8579,50 @@ Settings::update( array( 'secretary_phone' => 'non un numero' ) );
 ob_start();
 \AssociazioneSemplice\Frontend\WhatsappFloat::render();
 asem_ok( '' === (string) ob_get_clean(), 'WhatsApp: senza numero valido il pulsante non compare' );
+// Contatti per le informazioni di ogni evento: di default chi crea l'evento e il telefono della segreteria, modificabili per evento.
+Settings::update( array( 'secretary_phone' => '333 1234567' ) );
+$ct_prev = get_current_user_id();
+$ct_uid  = wp_insert_user( array( 'user_login' => 'ct_creatore', 'user_pass' => wp_generate_password(), 'user_email' => 'creatore@example.com', 'role' => 'administrator' ) );
+wp_set_current_user( (int) $ct_uid );
+$ct_aid = $acts->create( array( 'name' => 'Corso dei contatti', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 1000, 'lesson_weekday' => 2, 'lesson_start' => '18:00', 'lesson_end' => '19:00', 'location' => 'Sala Prova' ) );
+$ct_old = \AssociazioneSemplice\PublicEvents::post_of( $ct_aid ); // col Pro la pagina può essere già nata altrove (utente e numero di prima): si riparte da zero
+if ( $ct_old ) {
+	wp_delete_post( $ct_old, true );
+}
+$ct_pid = \AssociazioneSemplice\PublicEvents::ensure( $ct_aid );
+wp_update_post( array( 'ID' => $ct_pid, 'post_status' => 'publish' ) );
+$ct_c = \AssociazioneSemplice\PublicEvents::contacts( $ct_pid );
+asem_ok( 'creatore@example.com' === $ct_c['email'] && '333 1234567' === $ct_c['phone'], 'contatti evento: di default l\'email di chi crea la pagina e il telefono della segreteria ' . wp_json_encode( array( $ct_c, get_post_meta( $ct_pid ), get_post_field( 'post_author', $ct_pid ), $ct_uid ) ) );
+$ct_html = html_entity_decode( \AssociazioneSemplice\PublicEvents::part( 'dove', array( 'evento' => $ct_pid ) ) );
+asem_ok( false !== strpos( $ct_html, 'creatore@example.com' ) && false !== strpos( $ct_html, 'wa.me/393331234567' ) && false !== strpos( $ct_html, 'tel:+393331234567' ), 'contatti evento: la pagina mostra email, WhatsApp e telefono dell\'evento' );
+update_post_meta( $ct_pid, \AssociazioneSemplice\PublicEvents::META_EMAIL, 'esterno@example.com' ); // organizza qualcuno esterno
+update_post_meta( $ct_pid, \AssociazioneSemplice\PublicEvents::META_PHONE, '+39 339 9998887' );
+$ct_html = html_entity_decode( \AssociazioneSemplice\PublicEvents::part( 'dove', array( 'evento' => $ct_pid ) ) );
+asem_ok( false !== strpos( $ct_html, 'esterno@example.com' ) && false === strpos( $ct_html, 'creatore@example.com' ) && false !== strpos( $ct_html, 'wa.me/393399998887' ) && false === strpos( $ct_html, '393331234567' ), 'contatti evento: modificati per evento, valgono quelli dell\'evento e non quelli della segreteria' );
+update_post_meta( $ct_pid, \AssociazioneSemplice\PublicEvents::META_EMAIL, '' );
+update_post_meta( $ct_pid, \AssociazioneSemplice\PublicEvents::META_PHONE, '' );
+$ct_html = html_entity_decode( \AssociazioneSemplice\PublicEvents::part( 'dove', array( 'evento' => $ct_pid ) ) );
+asem_ok( false === strpos( $ct_html, 'mailto:' ) && false === strpos( $ct_html, 'wa.me/' ) && false === strpos( $ct_html, 'tel:' ), 'contatti evento: vuoti, la pagina non mostra email né telefono' );
+delete_post_meta( $ct_pid, \AssociazioneSemplice\PublicEvents::META_EMAIL ); // pagina vecchia: senza contatti propri
+delete_post_meta( $ct_pid, \AssociazioneSemplice\PublicEvents::META_PHONE );
+wp_update_post( array( 'ID' => $ct_pid, 'post_author' => 0 ) );
+$ct_c = \AssociazioneSemplice\PublicEvents::contacts( $ct_pid );
+asem_ok( \AssociazioneSemplice\Applications::notify_email() === $ct_c['email'] && '333 1234567' === $ct_c['phone'], 'contatti evento: pagina vecchia senza autore, ripiego sulla segreteria' );
+// Avvisi delle richieste: segreteria e anche il contatto dell'evento (niente doppioni, vuoto = solo segreteria).
+$ct_office = (string) \AssociazioneSemplice\Applications::notify_email();
+update_post_meta( $ct_pid, \AssociazioneSemplice\PublicEvents::META_EMAIL, 'esterno@example.com' );
+asem_ok( array( $ct_office, 'esterno@example.com' ) === $er::staff_recipients( $ct_aid ), 'avvisi richieste: segreteria e contatto dell\'evento' );
+update_post_meta( $ct_pid, \AssociazioneSemplice\PublicEvents::META_EMAIL, strtoupper( $ct_office ) );
+asem_ok( array( $ct_office ) === $er::staff_recipients( $ct_aid ), 'avvisi richieste: stessa email della segreteria = un solo invio' );
+update_post_meta( $ct_pid, \AssociazioneSemplice\PublicEvents::META_EMAIL, '' );
+asem_ok( array( $ct_office ) === $er::staff_recipients( $ct_aid ), 'avvisi richieste: contatto vuoto = solo la segreteria' );
+update_post_meta( $ct_pid, \AssociazioneSemplice\PublicEvents::META_EMAIL, 'esterno@example.com' );
+$ct_n = count( $er_mails );
+$er::course_member_request( $ct_aid, $er_gid );
+$ct_last = $er_mails[ count( $er_mails ) - 1 ];
+asem_ok( count( $er_mails ) > $ct_n && array( $ct_office, 'esterno@example.com' ) === (array) $ct_last['to'], 'avvisi richieste: la richiesta di iscrizione a un corso arriva a segreteria e contatto' );
+wp_set_current_user( $ct_prev );
+Settings::update( array( 'secretary_phone' => '' ) );
 remove_filter( 'pre_wp_mail', $er_hook, 10 );
 Settings::update( array( 'guest_max_events' => 2 ) );
 
