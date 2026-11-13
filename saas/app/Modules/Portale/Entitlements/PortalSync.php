@@ -8,6 +8,7 @@ use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgDirectory;
 use App\Modules\Piattaforma\Contracts\PlanLimits;
+use App\Modules\Piattaforma\Contracts\AddonNotAllowed;
 use App\Modules\Piattaforma\Contracts\UnknownAddon;
 use App\Modules\Piattaforma\Contracts\UnknownPlan;
 use App\Modules\Portale\Jwt\EdDsaJwt;
@@ -76,6 +77,7 @@ final readonly class PortalSync
      *
      * @throws UnknownPlan
      * @throws UnknownAddon
+     * @throws AddonNotAllowed
      */
     public function applySubscription(string $token, ?string $orgId = null): array
     {

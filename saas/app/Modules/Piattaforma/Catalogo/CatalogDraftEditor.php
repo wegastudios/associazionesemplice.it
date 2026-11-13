@@ -283,6 +283,8 @@ final readonly class CatalogDraftEditor
             'name' => $this->str($input['name'] ?? null),
             'kind' => $kind,
             'visible' => ($input['visible'] ?? null) === '1',
+            // Nessuna casella spuntata = si vende su tutti i piani.
+            'plans' => is_array($input['plans'] ?? null) && $input['plans'] !== [] ? array_values(array_filter($input['plans'], 'is_string')) : null,
             'grants' => $grants,
             'prices' => CatalogForm::prices($input['prices'] ?? null),
         ];

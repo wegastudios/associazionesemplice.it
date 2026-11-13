@@ -7,6 +7,7 @@ namespace App\Modules\Portale\Entitlements;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Piattaforma\Contracts\Catalog;
 use App\Modules\Piattaforma\Contracts\PlanLimits;
+use App\Modules\Piattaforma\Contracts\AddonNotAllowed;
 use App\Modules\Piattaforma\Contracts\UnknownAddon;
 use App\Modules\Piattaforma\Contracts\UnknownPlan;
 use App\Modules\Portale\PortalConfig;
@@ -61,7 +62,11 @@ final readonly class PortalOrgServices
         $members = $this->context->run($orgId, fn (): int => $this->members->activeCount());
         $operators = $this->operators($orgId)['active'];
         $target = $this->catalog->plan($plan, $version) ?? throw new UnknownPlan("{$plan}@{$version}");
-        $resolved = $this->limits->resolve($plan, $version, $addons, $members);
+        try {
+            $resolved = $this->limits->resolve($plan, $version, $addons, $members);
+        } catch (AddonNotAllowed $e) {
+            return ['allowed' => false, 'blockers' => ["Il pacchetto «{$e->addon}» che hai non è disponibile nel piano scelto: toglilo prima di cambiare"], 'effects' => []];
+        }
 
         $blockers = [];
         $targetLimits = is_array($target['limits'] ?? null) ? $target['limits'] : [];

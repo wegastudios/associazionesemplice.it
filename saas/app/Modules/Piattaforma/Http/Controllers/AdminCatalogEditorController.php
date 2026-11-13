@@ -328,6 +328,7 @@ final readonly class AdminCatalogEditorController
             'grant_storage_gb' => $grants['storage_gb'] ?? '',
             'grant_package' => $grants['package'] ?? '',
             'grant_limits' => $limits === [] ? '' : json_encode($limits, JSON_UNESCAPED_UNICODE),
+            'plans' => is_array($addon['plans'] ?? null) ? array_values(array_filter($addon['plans'], 'is_string')) : [],
         ];
         $rows = CatalogForm::priceRows($addon['prices'] ?? []);
         if ($input !== null) {
@@ -341,6 +342,7 @@ final readonly class AdminCatalogEditorController
                 'grant_storage_gb' => $input['grant_storage_gb'] ?? '',
                 'grant_package' => $input['grant_package'] ?? '',
                 'grant_limits' => $input['grant_limits'] ?? '',
+                'plans' => is_array($input['plans'] ?? null) ? array_values(array_filter($input['plans'], 'is_string')) : [],
             ];
             $rows = is_array($input['prices'] ?? null) ? array_values($input['prices']) : [];
         }
@@ -349,9 +351,27 @@ final readonly class AdminCatalogEditorController
             'isNew' => $isNew,
             'values' => $values,
             'priceRows' => $rows,
+            'planChoices' => $this->planChoices(),
             'preview' => $this->preview($addon['prices'] ?? []),
             'canWrite' => $this->canWrite(),
         ];
+    }
+
+    /**
+     * I piani della bozza (uno per codice) tra cui scegliere dove si vende un pacchetto.
+     *
+     * @return array<string, string>
+     */
+    private function planChoices(): array
+    {
+        $choices = [];
+        foreach ($this->items($this->editor->document(), 'plans') as $plan) {
+            if (is_string($plan['code'] ?? null)) {
+                $choices[$plan['code']] = is_string($plan['name'] ?? null) ? $plan['name'] : $plan['code'];
+            }
+        }
+
+        return $choices;
     }
 
     /**

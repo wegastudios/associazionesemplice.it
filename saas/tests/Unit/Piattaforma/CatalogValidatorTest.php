@@ -185,3 +185,39 @@ it('controlla il limite di soci: avvisi in ordine, tolleranza e quota ospiti ent
         expect(fn () => CatalogValidator::validate($bad))->toThrow(InvalidArgumentException::class);
     }
 });
+
+it('dice su quali piani si compra ogni pacchetto: soci solo sulla Grande, operatori non sulla Grande, compresi nel piano non in vendita', function (): void {
+    $doc = CatalogValidator::validate(seedCatalog());
+    $plans = [];
+    foreach ($doc['addons'] as $addon) {
+        $plans[$addon['code']] = $addon['plans'];
+    }
+
+    expect($plans['members_500'])->toBe(['grande'])
+        ->and($plans['members_1000'])->toBe(['grande'])
+        ->and($plans['operators_extra'])->toBe(['gestionale', 'piccola', 'media'])
+        ->and($plans['einvoice'])->toBe(['gestionale', 'piccola'])
+        ->and($plans['member_area'])->toBe(['gestionale', 'piccola'])
+        ->and($plans['site'])->toBeNull();
+});
+
+it('rifiuta un pacchetto su un piano sconosciuto o già compreso nel piano', function (): void {
+    foreach (['sconosciuto' => ['nessuno'], 'compreso' => ['piccola', 'media']] as $plans) {
+        $bad = seedCatalog();
+        foreach ($bad['addons'] as $i => $addon) {
+            if ($addon['code'] === 'einvoice') {
+                $bad['addons'][$i]['plans'] = $plans;
+            }
+        }
+        expect(fn () => CatalogValidator::validate($bad))->toThrow(InvalidArgumentException::class);
+    }
+
+    // Senza l'elenco un pacchetto compreso in qualche piano varrebbe anche lì: rifiutato.
+    $bad = seedCatalog();
+    foreach ($bad['addons'] as $i => $addon) {
+        if ($addon['code'] === 'einvoice') {
+            unset($bad['addons'][$i]['plans']);
+        }
+    }
+    expect(fn () => CatalogValidator::validate($bad))->toThrow(InvalidArgumentException::class);
+});
