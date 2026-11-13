@@ -29,7 +29,10 @@ final class Quote {
 		if ( ! $found || ! $price || null === $net ) {
 			throw new UserError( 'Questo piano non è a listino per le scelte fatte: scrivici per un preventivo.' );
 		}
-		$vatPercent = (int) ( $price['vat_percent'] ?? 0 );
+		$terms      = Catalog::terms( $doc );
+		$exempt     = 'exempt' === $terms['vat_mode'];
+		// Regime forfettario: nessuna IVA, il totale è l'importo dei prezzi (il vat_percent del catalogo si ignora).
+		$vatPercent = $exempt ? 0 : (int) ( $price['vat_percent'] ?? 0 );
 		$lines      = array( array( 'code' => $plan, 'qty' => 1, 'net' => $net ) );
 		$total      = $net;
 		$byCode     = array();
@@ -42,7 +45,7 @@ final class Quote {
 		foreach ( $addons as $code => $qty ) {
 			$qty = (int) $qty;
 			$ap  = isset( $byCode[ $code ] ) ? Catalog::price( $byCode[ $code ], $period ) : null;
-			if ( $qty < 1 || $qty > 1000 || ! $ap || (int) ( $ap['vat_percent'] ?? 0 ) !== $vatPercent ) {
+			if ( $qty < 1 || $qty > 1000 || ! $ap || ( ! $exempt && (int) ( $ap['vat_percent'] ?? 0 ) !== $vatPercent ) ) {
 				throw new UserError( 'Un componente scelto non è disponibile per questo piano.' );
 			}
 			// Prezzo fisso: per unità × quantità; a scaglioni (step_tiers) l'importo dipende già dalla quantità intera.
@@ -69,6 +72,7 @@ final class Quote {
 			'rev' => (int) ( $doc['rev'] ?? 0 ), 'lines' => $lines, 'subtotal' => $total,
 			'promo' => $pd ? (string) ( $promo['code'] ?? '' ) : '', 'promo_discount' => $pd,
 			'discount' => $discount, 'net' => $taxable, 'vat_percent' => $vatPercent, 'vat' => $vat, 'total' => $taxable + $vat,
+			'vat_mode' => $terms['vat_mode'], 'vat_note' => $terms['vat_note'],
 			'price_rules' => $price, 'currency' => (string) ( $doc['currency'] ?? 'EUR' ),
 		);
 	}

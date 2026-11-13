@@ -1672,7 +1672,7 @@ check( 'catalogo: JSON valido e ETag stabile', is_array( json_decode( $catBody, 
 use Portale\Sections;
 Config::set( 'saas_admin_url', 'https://app.associazionesemplice.it/admin' );
 check( 'sezioni: /saas/accedi diventa /account/da-gestionale con lo stesso token', array( 301, '/account/da-gestionale?t=abc' ) === Sections::legacy( 'GET', '/saas/accedi', 't=abc' ) );
-check( 'sezioni: /saas/prezzi e /wordpress/confronto rimandano alle pagine vere', array( 301, '/prezzi#prezzi-saas' ) === Sections::legacy( 'GET', '/saas/prezzi', '' ) && array( 301, '/confronto' ) === Sections::legacy( 'GET', '/wordpress/confronto', '' ) );
+check( 'sezioni: /saas/prezzi rimanda al listino del gestionale in /prezzi', array( 301, '/prezzi#prezzi-saas' ) === Sections::legacy( 'GET', '/saas/prezzi', '' ) );
 $prevStripe = Config::get( 'stripe' );
 $prevPaypal = Config::get( 'paypal' );
 Config::set( 'stripe', array( 'secret_key' => '' ) );
@@ -1773,6 +1773,18 @@ $qp = Quote::build( $qdoc, 'gestionale', 'month', 150, array(), array( 'code' =>
 check( 'preventivo: sconto 20% sull\'imponibile, IVA sul netto scontato', 660 === $qp['discount'] && 2640 === $qp['net'] && 581 === $qp['vat'] && 'P20' === $qp['promo'] );
 $qf = Quote::build( $qdoc, 'gestionale', 'month', 150, array(), array( 'code' => 'X', 'discount' => array( 'type' => 'amount_cents', 'value' => 99999 ) ) );
 check( 'preventivo: sconto a importo mai oltre il totale', 0 === $qf['net'] && 0 === $qf['total'] );
+// Condizioni di vendita del catalogo (`terms`): partenza, regime forfettario, valori non validi
+$tdef = Portale\Catalog::terms( $qdoc );
+check( 'condizioni: senza `terms` valgono i valori di partenza (IVA standard, 0%/3%, prova senza esportazioni né commercialista)', 'standard' === $tdef['vat_mode'] && 0 === $tdef['own_gateway_percent'] && 3 === $tdef['collected_by_us_percent'] && false === $tdef['trial_exports'] && false === $tdef['trial_accountant_access'] && 'standard' === $q150['vat_mode'] );
+$xdoc = $qdoc;
+$xdoc['terms'] = array( 'vat' => array( 'mode' => 'exempt', 'note' => 'Operazione senza IVA.' ), 'payments' => array( 'own_gateway_percent' => 1, 'collected_by_us_percent' => 99 ), 'trial' => array( 'exports' => true ) );
+$qx = Quote::build( $xdoc, 'gestionale', 'month', 150, array( 'operators_extra' => 2 ) );
+check( 'condizioni: regime forfettario = nessuna IVA, totale = importo dei prezzi, dicitura nell\'istantanea (vat_percent del catalogo ignorato)', 3900 === $qx['total'] && 0 === $qx['vat'] && 0 === $qx['vat_percent'] && 'exempt' === $qx['vat_mode'] && 'Operazione senza IVA.' === $qx['vat_note'] );
+$tx = Portale\Catalog::terms( $xdoc );
+check( 'condizioni: commissione fuori da 0–30 torna al valore di partenza, prova con esportazioni', 1 === $tx['own_gateway_percent'] && 3 === $tx['collected_by_us_percent'] && true === $tx['trial_exports'] );
+$xdoc['terms']['vat']['note'] = '';
+check( 'condizioni: «exempt» senza dicitura non si applica (resta l\'IVA)', 'standard' === Portale\Catalog::terms( $xdoc )['vat_mode'] && 4026 + 732 === Quote::build( $xdoc, 'gestionale', 'month', 150, array( 'operators_extra' => 2 ) )['total'] );
+check( 'condizioni: frase sulla prova dalle regole del catalogo', 'tutto tranne le esportazioni e l\'accesso del commercialista' === Portale\Catalog::trialLimits( $qdoc ) );
 check( 'preventivo: annuale = 10 mensilità, piano o addon sconosciuti rifiutati', 33000 === Quote::build( $qdoc, 'gestionale', 'year', 150 )['net'] && null !== throwsUser( function () use ( $qdoc ) { Quote::build( $qdoc, 'altro', 'month', 10 ); } ) && null !== throwsUser( function () use ( $qdoc ) { Quote::build( $qdoc, 'gestionale', 'month', 10, array( 'zzz' => 1 ) ); } ) );
 
 $oseed = str_repeat( 'o', 32 );

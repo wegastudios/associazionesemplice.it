@@ -33,9 +33,6 @@ final class Sections {
 		if ( $get && '/saas/prezzi' === $path ) {
 			return array( 301, '/prezzi#prezzi-saas' );
 		}
-		if ( $get && '/wordpress/confronto' === $path ) {
-			return array( 301, '/confronto' );
-		}
 		if ( '/saas/accedi' === $path ) {
 			// «Gestisci abbonamento» dal gestionale (contratto §3.2): stesso token, nuovo indirizzo.
 			return array( $get ? 301 : 308, '/account/da-gestionale' . $qs );
