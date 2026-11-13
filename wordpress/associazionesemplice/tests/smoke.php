@@ -791,7 +791,7 @@ asem_ok( null !== asem_throws( function () use ( $front, $s3, $ord ) { $front::d
 $people->set_membership( $ord, $sy_label, true );
 wp_set_current_user( $u_f );
 $msg = (string) asem_throws( function () use ( $front, $s3, $g_id ) { $front::do_cancel_booking( array( 'session_id' => $s3, 'person_id' => $g_id ) ); } );
-asem_ok( false !== strpos( $msg, 'non è cancellabile' ) && $acts->has_active_booking( $s3, $g_id ), 'sito: la prenotazione a pagamento dell\'ospite non si annulla' );
+asem_ok( false !== strpos( $msg, 'non si può annullare' ) && $acts->has_active_booking( $s3, $g_id ), 'sito: la prenotazione a pagamento dell\'ospite non si annulla' );
 $front::do_profile( array( 'phone' => '3331112222', 'tax_code' => 'vrdgpp75b10f205b', 'address' => 'Via Verdi 9', 'zip' => '00100', 'city' => 'Roma' ) );
 asem_ok( '3331112222' === $people->get( $founder )['phone'] && 'VRDGPP75B10F205B' === $people->get( $founder )['tax_code'] && 'Via Verdi 9' === $people->get( $founder )['address'], 'sito: il socio aggiorna il proprio profilo' );
 
@@ -1567,7 +1567,7 @@ wp_set_current_user( $u_f );
 $front::do_book( array( 'session_id' => $paid_s, 'person_id' => $founder ) );
 $ev = $acts->cancellation_for( $paid_s, $founder );
 asem_ok( ! $ev['allowed'] && 'not_cancellable' === $ev['reason'] && $ev['can_transfer'], 'evento a pagamento: non cancellabile ma il nominativo si può cambiare' );
-asem_ok( false !== strpos( (string) $cancels( $paid_s, $founder ), 'non è cancellabile' ), 'evento a pagamento: l\'annullo dal sito è rifiutato' );
+asem_ok( false !== strpos( (string) $cancels( $paid_s, $founder ), 'non si può annullare' ), 'evento a pagamento: l\'annullo dal sito è rifiutato' );
 wp_set_current_user( 1 );
 $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $founder,
 	'lines' => array( array( 'category_id' => $cat['activity_fee'], 'amount_cents' => 500, 'activity_id' => $paid_ev, 'session_id' => $paid_s ) ) ) );
@@ -1645,14 +1645,14 @@ wp_set_current_user( 1 );
 $acts->cancel_booking( $late_s, $founder );
 asem_ok( ! $acts->has_active_booking( $late_s, $founder ), 'amministratore: può sempre annullare' );
 $html = $as( $u_f, '[associazionesemplice_area_soci]' );
-asem_ok( false !== strpos( $html, 'Cambia nominativo' ) && false !== strpos( $html, 'asem_front_transfer_booking' ), 'area soci: pulsante Cambia nominativo' );
-asem_ok( false !== strpos( $html, 'non è cancellabile' ) || false !== strpos( $html, 'Puoi annullare fino al' ), 'area soci: spiega se e fino a quando si può annullare' );
+asem_ok( false !== strpos( $html, 'Cedi il posto' ) && false !== strpos( $html, 'asem_front_transfer_booking' ), 'area soci: pulsante «Cedi il posto a un\'altra persona»' );
+asem_ok( false !== strpos( $html, 'non si può annullare' ) || false !== strpos( $html, 'Puoi annullare fino al' ), 'area soci: spiega se e fino a quando si può annullare' );
 asem_ok( false !== strpos( $html, '<details class="asemf-details asemf-collapse" open><summary><h3>Le mie attività</h3></summary>' ) && false !== strpos( $html, '<summary><h3>Pagamenti</h3></summary>' ), 'area soci: attività e pagamenti sono sezioni richiudibili, aperte di partenza' );
 asem_ok( substr_count( $html, '<details class="asemf-details asemf-collapse"' ) === substr_count( $html, 'asemf-collapsible' ), 'area soci: ogni sezione richiudibile ha il suo titolo e il suo riquadro' );
 
 // Pagina attività: creazione con cancellabilità e pagina scheda
 asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Cancellabile anche se a pagamento', array( 'id' => $can7 ) );
-asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Cambia nominativo', array( 'id' => $paid_ev ) );
+asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Cedi il posto a un\'altra persona', array( 'id' => $paid_ev ) );
 asem_render( array( Admin\ActivitiesPage::class, 'render_list' ), 'Cancellabile anche se a pagamento' );
 $pc = new ReflectionMethod( Admin\Actions::class, 'save_activity' );
 $pc->setAccessible( true );
@@ -3397,7 +3397,7 @@ asem_ok( in_array( 'person.activated', array_column( Audit::recent( 500 ), 'acti
 // amministrazione: elenco, filtro e scheda
 wp_set_current_user( 1 );
 $list = asem_render( array( Admin\PeoplePage::class, 'render_list' ), 'Soloturnessera', array( 'status' => 'noaccess' ) );
-asem_ok( false !== strpos( $list, 'Senza accesso' ) && false === strpos( $list, 'Senzamail' ), 'elenco soci: il filtro "Senza accesso" mostra chi non si è ancora attivato (non chi l\'ha fatto)' );
+asem_ok( false !== strpos( $list, 'Non è ancora entrato' ) && false === strpos( $list, 'Senzamail' ), 'elenco soci: il filtro "Non è ancora entrato nell\'area soci" mostra chi non si è ancora attivato (non chi l\'ha fatto)' );
 $ed = asem_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Accesso all\'area riservata', array( 'id' => $cm ) );
 asem_ok( false !== strpos( $ed, 'asem_activate=' ) && false !== strpos( $ed, 'Senza cellulare' ), 'scheda socio senza cellulare: il link da copiare' );
 $people->update( $cm, array( 'phone' => '335 7654321' ) );
@@ -4949,16 +4949,17 @@ list( $pn_pid ) = $mkmem( 'Pia', 'Presidente' );
 $people->set_board_role( $pn_pid, 'president' );
 $pn_pres = $people->get( $pn_pid );
 $pn_resp = \AssociazioneSemplice\PrivacyNotice::responsible();
-asem_ok( 'Presidente' === $pn_resp['role'] && trim( $pn_pres['first_name'] . ' ' . $pn_pres['last_name'] ) === $pn_resp['name'], 'informativa privacy: il responsabile è il presidente' );
+asem_ok( 'Presidente' === $pn_resp['role'] && trim( $pn_pres['first_name'] . ' ' . $pn_pres['last_name'] ) === $pn_resp['name'], 'informativa privacy: il referente per la privacy è il presidente' );
 $people->set_board_role( $pn_pid, null );
 $pn_resp2 = \AssociazioneSemplice\PrivacyNotice::responsible();
 $pn_sec   = $people->get( $sec_p );
-asem_ok( 'Segreteria' === $pn_resp2['role'] && trim( $pn_sec['first_name'] . ' ' . $pn_sec['last_name'] ) === $pn_resp2['name'], 'informativa privacy: senza presidente il responsabile è il socio con il ruolo di segreteria' );
+asem_ok( 'Segreteria' === $pn_resp2['role'] && trim( $pn_sec['first_name'] . ' ' . $pn_sec['last_name'] ) === $pn_resp2['name'], 'informativa privacy: senza presidente il referente è il socio con il ruolo di segreteria' );
 $people->set_board_role( $pn_pid, 'president' );
 $pn_html = \AssociazioneSemplice\PrivacyNotice::html();
 asem_ok( false !== strpos( $pn_html, 'Circolo Prova' ) && false !== strpos( $pn_html, '12345678903' ) && false !== strpos( $pn_html, 'Via Roma 1, 80100 Napoli (NA)' ) && false !== strpos( $pn_html, 'circolo@pec.example.org' ), 'informativa privacy: si compila con i dati dell\'ente' );
 asem_ok( false !== strpos( $pn_html, 'esclusivamente per le finalità connesse agli eventi' ) && false !== strpos( $pn_html, 'non sono ceduti né venduti' ) && false !== strpos( $pn_html, 'Non è svolta alcuna profilazione per finalità commerciali' ) && false !== strpos( $pn_html, 'strumenti informatici' ), 'informativa privacy: dichiara comunicazione solo per gli eventi, nessuna cessione commerciale, strumenti informatici e nessuna profilazione commerciale' );
 asem_ok( array() === \AssociazioneSemplice\PrivacyNotice::missing(), 'informativa privacy: con i dati dell\'ente non manca nulla' );
+asem_ok( false !== strpos( $pn_html, 'Referente per la privacy' ) && false !== strpos( $pn_html, 'ha incaricato come referente per la privacy' ) && false === stripos( $pn_html, 'responsabile del trattamento' ) && false === strpos( $pn_html, 'DPO' ), 'informativa privacy: il titolo è «Referente per la privacy» (né «responsabile del trattamento» né DPO)' );
 asem_ok( false !== strpos( $pn_html, 'cookie tecnici di autenticazione di WordPress' ) && false === strpos( $pn_html, 'asem_s' ), 'informativa privacy: con gli utenti WordPress parla dei cookie di WordPress' );
 Settings::update( array( 'member_wp_users' => 0 ) );
 $pn_own = \AssociazioneSemplice\PrivacyNotice::html();
@@ -5654,6 +5655,8 @@ asem_ok( ! $tx_bad, 'testi: nessun rimando a «Impostazioni → Tecniche», che 
 asem_ok( 'venerdì 20 novembre 2026' === \AssociazioneSemplice\Frontend\Views::date_words( '2026-11-20' ) && 'domenica 1 marzo 2026' === \AssociazioneSemplice\Frontend\Views::date_words( '2026-03-01 18:00:00' ) && '' === \AssociazioneSemplice\Frontend\Views::date_words( '' ), 'email: la data si scrive per esteso, con il giorno della settimana' );
 $tx_card = \AssociazioneSemplice\Frontend\Actions::card_invalid( array( 'id' => 5, 'first_name' => 'Lia' ), array( 'id' => 5 ), 'prenotare' );
 $tx_ward = \AssociazioneSemplice\Frontend\Actions::card_invalid( array( 'id' => 6, 'first_name' => 'Gio' ), array( 'id' => 5 ), 'prenotare' );
+asem_ok( ! \AssociazioneSemplice\Plugin::payments()->enabled() ? false !== strpos( $tx_card, 'Rinnova la quota in segreteria' ) : false !== strpos( $tx_card, \AssociazioneSemplice\Frontend\Actions::RENEW_LINK ),'tessera non valida: dice dove rinnovare (online dall\'area soci se i pagamenti sono attivi, altrimenti in segreteria)' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Actions::card_invalid_staff( 'Lia Rossi' ), 'rinnova la quota dalla scheda del socio' ) && false === stripos( \AssociazioneSemplice\Frontend\Actions::card_invalid_staff( 'Lia Rossi' ),'va rinnovata' ), 'tessera non valida (staff): il messaggio manda alla scheda del socio' );
 asem_ok( 0 === strpos( $tx_card, 'La tua tessera non è valida' ) && false !== strpos( $tx_card, 'rinnova la quota associativa' ) && false !== strpos( $tx_card, 'segreteria' ) && 0 === strpos( $tx_ward, 'La tessera di Gio non è valida' ), 'tessera non valida: il messaggio dice come rinnovare e chi è il titolare della tessera' );
 asem_ok( \AssociazioneSemplice\Frontend\MemberLoginPage::FAIL !== \AssociazioneSemplice\Frontend\MemberLoginPage::BLOCKED && false !== strpos( \AssociazioneSemplice\Frontend\MemberLoginPage::BLOCKED, 'Troppi tentativi' ) && false === strpos( \AssociazioneSemplice\Frontend\MemberLoginPage::FAIL, 'troppi tentativi' ), 'accesso: password sbagliata e blocco per troppi tentativi hanno messaggi diversi' );
 asem_render( array( Admin\DashboardPage::class, 'render' ), 'Configurazione iniziale' );

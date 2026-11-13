@@ -155,7 +155,7 @@ final class ResourcesFront {
 		if ( (int) $r['fee_cents'] <= 0 ) {
 			return 'gratuita';
 		}
-		return esc_html( Money::format( (int) $r['fee_cents'] ) ) . ( ResourceRules::SLOT === $r['mode'] ? ' a fascia' : ' a periodo' );
+		return esc_html( Money::format( (int) $r['fee_cents'] ) ) . ( ResourceRules::SLOT === $r['mode'] ? ( 60 === (int) ( $r['slot_minutes'] ?? 0 ) ? ' all\'ora' : ' per turno' ) : ' a periodo' );
 	}
 
 	private static function when( array $r ): string {

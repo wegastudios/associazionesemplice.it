@@ -25,7 +25,7 @@ final class ActivitiesPage {
 		$default = CancelPolicy::labels()[ Settings::get( 'cancel_policy_default' ) ] ?? '';
 		return '<tr class="' . esc_attr( $row_class ) . '"><th>Cancellazione</th><td><label><input type="checkbox" name="cancellable" value="1"' . checked( $on, true, false ) . '> Cancellabile anche se a pagamento</label>'
 			. '<p>Termine: <select name="cancel_policy">' . Ui::options( array( '' => 'Predefinito (' . $default . ')' ) + CancelPolicy::labels(), $pol ) . '</select></p>'
-			. '<p class="description">Gratuito: si può sempre annullare. A pagamento: non si annulla mai, ma si può cambiare nominativo (se il nuovo partecipante è un ospite con contributo maggiore si integra la differenza), a meno che l\'evento sia cancellabile entro il termine scelto.</p></td></tr>';
+			. '<p class="description">Gratuito: si può sempre annullare. A pagamento: non si annulla mai, ma si può cedere il posto a un\'altra persona (se il nuovo partecipante è un ospite con contributo maggiore si integra la differenza), a meno che l\'evento sia cancellabile entro il termine scelto.</p></td></tr>';
 	}
 	/**
 	 * Programma a righe dinamiche: ogni riga ha giorno e orario e, con la spunta "ricorrente", si ripete ogni settimana
@@ -979,7 +979,7 @@ final class ActivitiesPage {
 						$others = array_values( array_filter( $all, function ( $x ) use ( $b, $booked ) {
 							return (int) $x['id'] !== (int) $b['person_id'] && ! in_array( (int) $x['id'], $booked, true );
 						} ) );
-						echo '<details style="margin-top:6px"><summary>Cambia nominativo</summary>';
+						echo '<details style="margin-top:6px"><summary>Cedi il posto a un\'altra persona</summary>';
 						Ui::form_open( 'asem_transfer_booking', $back );
 						echo wp_kses( Ui::hidden( 'activity_id', $id ) . Ui::hidden( 'session_id', $s['id'] ) . Ui::hidden( 'person_id', $b['person_id'] ), Html::allowed() );
 						echo wp_kses( Ui::person_select( 'to_person_id', $others, null, '— scegli la nuova persona —', 'asem-tr-' . (int) $s['id'] . '-' . (int) $b['person_id'] ) . ' <button class="button button-small">Cambia</button>', Html::allowed() );

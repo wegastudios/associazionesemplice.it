@@ -126,7 +126,7 @@ final class BlockFViews {
 					return '<div class="asemf-notice">Le convenzioni sono riservate ai soci in regola con la tessera.</div>';
 				}
 				$html = self::section_members( $p );
-				return '' !== $html ? $html : '<div class="asemf-notice">Non ci sono convenzioni valide per te in questo momento. Se la tessera è scaduta, rinnovala per tornare a vederle.</div>';
+				return '' !== $html ? $html : '<div class="asemf-notice">Non ci sono convenzioni valide per te in questo momento. Se la tessera è scaduta, tornerai a vederle dopo il rinnovo. ' . esc_html( Actions::renew_where() ) . '</div>';
 			}
 		);
 	}

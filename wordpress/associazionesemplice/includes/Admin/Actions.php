@@ -1097,7 +1097,7 @@ final class Actions {
 	private static function membership_warning( int $person_id ): string {
 		$person = $person_id ? Plugin::people()->get( $person_id ) : null;
 		if ( $person && MemberType::is_member( $person['type'] ) && ! MemberType::is_auto_renewed( $person['type'] ) && ! Plugin::people()->is_active_member( $person_id ) ) {
-			return ' Attenzione: la tessera non è valida, il socio deve rinnovare (la quota è tra i pagamenti da incassare in Bacheca).';
+			return ' Attenzione: la tessera non è valida: rinnova la quota dalla scheda del socio (la trovi anche tra i pagamenti da incassare in Bacheca).';
 		}
 		return '';
 	}

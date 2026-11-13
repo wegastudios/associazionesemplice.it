@@ -71,6 +71,14 @@ final class Views {
 			return '';
 		}
 		$printed = true;
+		if ( '' !== $err ) {
+			$link = esc_html( Actions::RENEW_LINK );
+			$safe = esc_html( $err );
+			if ( false !== strpos( $safe, $link ) ) { // «Rinnova online dalla tua area soci» diventa un link alla pagina dell'area (il testo è quello firmato dal sito)
+				$safe = str_replace( $link, '<a href="' . esc_url( \AssociazioneSemplice\Gatekeeper::area_url() ) . '">' . $link . '</a>', $safe );
+			}
+			return '<div class="asemf-notice asemf-err" role="alert">' . $safe . '</div>';
+		}
 		return '' !== $err ? '<div class="asemf-notice asemf-err" role="alert">' . esc_html( $err ) . '</div>' : '<div class="asemf-notice asemf-ok" role="status">' . esc_html( $ok ) . '</div>';
 	}
 
@@ -366,9 +374,9 @@ final class Views {
 			$fields = '<div class="asemf-fields">'
 				. ( '' !== $options ? '<label>Intesta a <select name="to_person_id"><option value="">— scegli —</option>' . $options . '</select></label>' : '' )
 				. '<label>' . ( '' !== $options ? 'oppure nuovo ospite: nome' : 'Nuovo ospite: nome' ) . ' <input type="text" name="new_first_name"></label><label>Cognome <input type="text" name="new_last_name"></label><label>Cellulare <input type="tel" name="new_phone" placeholder="333 1234567"></label></div>';
-			$html  .= '<details class="asemf-details"><summary>Cambia nominativo</summary>'
+			$html  .= '<details class="asemf-details"><summary>Cedi il posto a un\'altra persona</summary>'
 				. '<p class="asemf-small asemf-muted">Se il nuovo partecipante ha un contributo diverso (ad esempio un ospite) la differenza va integrata.</p>'
-				. self::form( 'asem_front_transfer_booking', self::hidden( 'session_id', $sid ) . self::hidden( 'person_id', $pid ) . $fields, 'Cambia nominativo' ) . '</details>';
+				. self::form( 'asem_front_transfer_booking', self::hidden( 'session_id', $sid ) . self::hidden( 'person_id', $pid ) . $fields, 'Cedi il posto' ) . '</details>';
 		}
 		return $html . '</div>';
 	}

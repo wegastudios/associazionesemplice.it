@@ -75,7 +75,7 @@ final class CancelPolicyTest extends TestCase {
 		$this->assertFalse( C::is_valid( '3h' ) );
 		$this->assertFalse( C::is_valid( null ) );
 		$this->assertSame( 168, C::hours( C::D7 ) );
-		$this->assertStringContainsString( 'cambiare il nominativo', C::message( $this->ev( 500, false, null, '2026-10-01 09:00:00' ) ) );
+		$this->assertStringContainsString( 'cedere il posto a un\'altra persona', C::message( $this->ev( 500, false, null, '2026-10-01 09:00:00' ) ) );
 		$this->assertStringContainsString( '19/10/2026 21:00', C::message( $this->ev( 500, true, C::H24, '2026-10-19 22:00:00' ) ) );
 		$this->assertStringContainsString( 'quando vuoi', C::message( $this->ev( 0, false, null, '2026-10-01 09:00:00' ) ) );
 	}

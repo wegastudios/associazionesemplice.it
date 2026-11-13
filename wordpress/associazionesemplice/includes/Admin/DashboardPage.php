@@ -165,7 +165,7 @@ final class DashboardPage {
 		if ( ! $apps ) {
 			return;
 		}
-		echo '<div class="asem-card" id="asem-applications"><h2>Domande di adesione (' . count( $apps ) . ')</h2><p class="description">Dal modulo «Diventa socio» del sito. Approvando assegni il numero di tessera: il nuovo socio riceve il link per scegliere la password (per un minore, il genitore). Rifiutando, la domanda sparisce; una quota pagata online resta «da rimborsare».</p><ul>';
+		echo '<div class="asem-card" id="asem-applications"><h2>Domande di adesione (' . count( $apps ) . ')</h2><p class="description">Dal modulo «Diventa socio» del sito. Approvando assegni il numero di tessera: il nuovo socio riceve il link per scegliere la password (per un minore, il genitore). Rifiutando, la domanda viene cancellata; una quota pagata online resta «da rimborsare».</p><ul>';
 		foreach ( $apps as $a ) {
 			$age   = \AssociazioneSemplice\Age::years( $a['birth_date'] ?? null, \AssociazioneSemplice\Db::today() );
 			$minor = ! empty( $a['guardian'] );

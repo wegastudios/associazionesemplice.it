@@ -73,7 +73,7 @@ final class SettingsPage {
 		) . '<p class="description">La pagina del sito dove soci e volontari accedono alla propria area (si crea dalla sezione «Pagine del sito e shortcode» qui sotto). Chi ha solo il ruolo "Socio" viene indirizzato qui al posto di wp-admin.</p></td></tr>', Html::allowed() );
 		echo '</tbody></table>'; self::section_close(); self::section_open( 'Eventi: cancellazioni', 'Termine predefinito per annullare' ); echo '<table class="form-table"><tbody>';
 		echo wp_kses( '<tr><th>Termine predefinito per annullare</th><td><select name="cancel_policy_default">' . Ui::options( CancelPolicy::labels(), $s['cancel_policy_default'] ) . '</select>'
-			. '<p class="description">Vale per gli eventi creati come «cancellabili» senza un termine proprio. Gli eventi gratuiti si annullano sempre; quelli a pagamento mai, ma si può cambiare nominativo.</p></td></tr>', Html::allowed() );
+			. '<p class="description">Vale per gli eventi creati come «cancellabili» senza un termine proprio. Gli eventi gratuiti si annullano sempre; quelli a pagamento mai, ma si può cedere il posto a un\'altra persona.</p></td></tr>', Html::allowed() );
 
 		echo '</tbody></table>'; self::section_close(); self::section_open( 'Domanda di adesione online', 'Chi può chiedere di iscriversi, quota, avvisi alla segreteria' ); echo '<table class="form-table"><tbody>';
 		$pay_on = Plugin::payments()->enabled() && Plugin::payments()->application_online();

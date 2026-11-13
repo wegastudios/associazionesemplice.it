@@ -157,8 +157,28 @@ final class Actions {
 	 */
 	public static function card_invalid( array $who, array $actor, string $for ): string {
 		$own   = (int) ( $who['id'] ?? 0 ) === (int) ( $actor['id'] ?? -1 );
-		$where = Plugin::payments()->enabled() ? 'Apri «Pagamenti» nella tua area soci, oppure rivolgiti alla segreteria.' : 'Rivolgiti alla segreteria.';
+		$where = self::renew_where();
 		return ( $own ? 'La tua tessera non è valida: per ' . $for . ' rinnova la quota associativa. ' : 'La tessera di ' . trim( (string) ( $who['first_name'] ?? '' ) ) . ' non è valida: per ' . $for . ' rinnova prima la sua quota associativa. ' ) . $where;
+	}
+
+	/** Il pezzo di frase che diventa un link all'area soci quando il messaggio si mostra (vedi Views::flash). */
+	const RENEW_LINK = 'Rinnova online dalla tua area soci';
+
+	/**
+	 * Dove e come si rinnova la quota (regola unica, per il socio): con i pagamenti online attivi si rinnova dalla propria area soci
+	 * (sezione «Pagamenti»), altrimenti in segreteria, con il numero se l'associazione lo ha indicato.
+	 */
+	public static function renew_where(): string {
+		if ( Plugin::payments()->enabled() ) {
+			return self::RENEW_LINK . ' (sezione «Pagamenti»), oppure rivolgiti alla segreteria.';
+		}
+		$phone = trim( (string) \AssociazioneSemplice\Settings::get( 'secretary_phone' ) );
+		return 'Rinnova la quota in segreteria' . ( '' !== $phone ? ' (telefono o WhatsApp ' . $phone . ')' : '' ) . '.';
+	}
+
+	/** Messaggio per lo staff che prenota o incassa per un socio con la tessera non valida: la quota si rinnova dalla sua scheda. */
+	public static function card_invalid_staff( string $name ): string {
+		return 'La tessera di ' . $name . ' non è in regola: rinnova la quota dalla scheda del socio, poi riprova a prenotare.';
 	}
 
 	/** Chiede di partecipare a un evento con approvazione della segreteria (per sé o per un proprio ospite o minore). @return string messaggio */
