@@ -55,7 +55,7 @@ return [
         'org_slug' => 'polisportiva-demo',
         // Password pubblica degli utenti di prova (titolare@, segreteria@, commercialista@ su mail_domain).
         'password' => env('SAAS_DEMO_PASSWORD', 'demo-demo-demo-2026'),
-        'mail_domain' => env('SAAS_DEMO_MAIL_DOMAIN', 'demo.associazionesemplice.it'),
+        'mail_domain' => env('SAAS_DEMO_MAIL_DOMAIN', 'demosaas.associazionesemplice.it'),
     ],
 
     // Accesso unico dello staff (docs/UTENTI_E_ACCESSI.md): /saas/admin si apre con il token `staff_sso` del portale.
