@@ -29,8 +29,9 @@ final class SendLifecycleNoticesCommand extends Command
     public function handle(DatabaseManager $db, PortalConfig $config, Catalog $catalog): int
     {
         $today = CarbonImmutable::today();
-        $trial = $catalog->published()->document['terms']['trial'] ?? [];
-        $discount = is_array($trial) && is_int($trial['end_discount_percent'] ?? null) ? $trial['end_discount_percent'] : 0;
+        $terms = $catalog->published()->document['terms'] ?? null;
+        $trial = is_array($terms) && is_array($terms['trial'] ?? null) ? $terms['trial'] : [];
+        $discount = is_int($trial['end_discount_percent'] ?? null) ? $trial['end_discount_percent'] : 0;
         $sent = 0;
 
         $rows = $db->connection('pgsql')->table('core.org_entitlements as e')
@@ -39,12 +40,12 @@ final class SendLifecycleNoticesCommand extends Command
             ->get(['e.org_id', 'o.name', 'o.status as org_status', 'e.status', 'e.until']);
 
         foreach ($rows as $row) {
-            if (! is_string($row->org_id) || ! is_string($row->name) || ! is_string($row->until)) {
+            if (! is_string($row->org_id) || ! is_string($row->name) || ! is_string($row->until) || ! is_string($row->status) || ! is_string($row->org_status)) {
                 continue;
             }
             $until = CarbonImmutable::parse($row->until);
             $offset = (int) $until->diffInDays($today, false); // negativo = la scadenza è futura
-            $notice = self::notice((string) $row->status, (string) $row->org_status, $offset, $config);
+            $notice = self::notice($row->status, $row->org_status, $offset, $config);
             if ($notice === null) {
                 continue;
             }

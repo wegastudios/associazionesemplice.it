@@ -33,7 +33,7 @@ final class AuditPruneCommand extends Command
         $old = [];
         foreach ($owner->select("SELECT c.relname AS name FROM pg_class c JOIN pg_inherits i ON i.inhrelid = c.oid JOIN pg_class p ON p.oid = i.inhparent JOIN pg_namespace n ON n.oid = p.relnamespace WHERE n.nspname = 'audit' AND p.relname = 'log' AND c.relname ~ '^log_[0-9]{4}_[0-9]{2}$' ORDER BY 1") as $row) {
             $name = is_object($row) && is_string($row->name ?? null) ? $row->name : '';
-            if (preg_match('/^log_(\d{4})_(\d{2})$/', $name, $m) === 1 && CarbonImmutable::create((int) $m[1], (int) $m[2], 1, 0, 0, 0, 'UTC')->addMonth()->lte($cutoff)) {
+            if (preg_match('/^log_(\d{4})_(\d{2})$/', $name, $m) === 1 && (new CarbonImmutable("{$m[1]}-{$m[2]}-01 00:00:00", 'UTC'))->addMonth()->lte($cutoff)) {
                 $old[] = $name;
             }
         }
