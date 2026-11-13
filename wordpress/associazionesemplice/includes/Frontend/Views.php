@@ -1171,7 +1171,7 @@ final class Views {
 			}
 			$nav .= '</ul></nav>';
 		}
-		return '<div class="asemf-hello">Ciao <strong>' . esc_html( $p['first_name'] ) . '</strong></div><div class="asemf-layout' . ( '' === $nav ? ' asemf-nonav' : '' ) . '">' . $nav
+		return '<div class="asemf-hello"><span>Ciao <strong>' . esc_html( $p['first_name'] ) . '</strong></span>' . MemberLoginPage::logout_button() . '</div><div class="asemf-layout' . ( '' === $nav ? ' asemf-nonav' : '' ) . '">' . $nav
 			. '<div class="asemf-area asemf-pane-' . esc_attr( $pane ) . '">' . self::pane_html( $pane, $p ) . '</div></div>';
 	}
 
@@ -1187,7 +1187,7 @@ final class Views {
 					'tessera'    => 'section_card', 'attivita' => 'section_activities', 'calendario' => 'section_calendar', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests', 'minori' => 'section_minors',
 					'profilo'    => 'section_profile', 'regolamento' => 'section_rules', 'volontario' => 'section_volunteer', 'spese' => 'section_expenses', 'ingressi' => 'section_checkin', 'avvisi' => 'section_notices',
 				);
-				$html = '<div class="asemf-hello">Ciao <strong>' . esc_html( $p['first_name'] ) . '</strong></div><div class="asemf-area">';
+				$html = '<div class="asemf-hello"><span>Ciao <strong>' . esc_html( $p['first_name'] ) . '</strong></span>' . MemberLoginPage::logout_button() . '</div><div class="asemf-area">';
 				if ( ! in_array( 'profilo', $sections, true ) ) {
 					$html .= self::section_complete( $p ); // l'avviso compare comunque in cima, anche se la sezione del profilo non è tra quelle mostrate
 				}
