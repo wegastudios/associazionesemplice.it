@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gira sul server (sub-account cPanel), lanciato dal workflow «SaaS · manutenzione server» via SSH.
-# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|pubblica-catalogo> [cartella-bin-postgresql]
+# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|pubblica-catalogo|soci-in-vendita> [cartella-bin-postgresql]
 #
 # Azioni fisse e limitate (non è una shell remota):
 #   diagnosi          sola lettura: stato (impostata/vuota) delle variabili che contano, client PostgreSQL presenti, ultimi errori
@@ -121,6 +121,21 @@ case "$ACTION" in
       if ($id === null) { echo "Nessuna persona admin nello staff.", PHP_EOL; exit(1); }
       $rev = app(App\Modules\Piattaforma\Catalogo\CatalogPublisher::class)->publish((string) $id, "Listino a tre piani, pacchetti soci e vincoli per piano");
       echo "Pubblicata la revisione ", $rev, PHP_EOL;
+    '
+    ;;
+  soci-in-vendita)
+    # Mette in vendita «500 soci in più» e «1.000 soci in più» e pubblica (richiesta scritta della titolare, 13/11/2026).
+    cd "$BASE/current"
+    "$PHP" artisan tinker --execute='
+      $id = DB::connection("pgsql")->table("core.platform_staff")->where("role", "admin")->whereNull("disabled_at")->orderBy("created_at")->value("id");
+      if ($id === null) { echo "Nessuna persona admin nello staff.", PHP_EOL; exit(1); }
+      $p = app(App\Modules\Piattaforma\Catalogo\CatalogPublisher::class);
+      $d = $p->draft();
+      $n = 0;
+      foreach ($d["addons"] as $i => $a) { if (in_array($a["code"], ["members_500", "members_1000"], true)) { $d["addons"][$i]["visible"] = true; $n++; } }
+      if ($n !== 2) { echo "Pacchetti soci non trovati.", PHP_EOL; exit(1); }
+      $p->saveDraft($d, (string) $id);
+      echo "Pubblicata la revisione ", $p->publish((string) $id, "Pacchetti soci in vendita sulla Grande"), PHP_EOL;
     '
     ;;
   percorso-pgdump)
