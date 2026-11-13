@@ -20,8 +20,7 @@ $priceText = function ( string $code, string $period ): string {
 $md = (string) file_get_contents( __DIR__ . '/../content/confronto.md' );
 // Nomi dei piani sempre quelli del pannello (Prezzi → «Nome sul sito»); i nomi scritti a mano nel testo sono segnaposto.
 $planName = function ( string $code, string $fallback ): string {
-	$n = trim( (string) Portale\Config::get( 'plans.' . $code . '.label', '' ) );
-	return '' !== $n ? $n : $fallback;
+	return Portale\Site::planName( $code );
 };
 // Dati dei piani per l'intestazione fissa del confronto (nome, prezzo, pulsante): li legge confronto.js dall'attributo data-cmp.
 $cmpBase = rtrim( (string) Portale\Config::get( 'base_url', '' ), '/' );
@@ -46,7 +45,7 @@ foreach ( (array) Portale\Config::get( 'plans', array() ) as $code => $p ) {
 }
 $cmpData = e( json_encode( array( 'plans' => $cmpPlans ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) );
 $md = strtr( $md, array(
-	'{free_name}' => $planName( 'free', 'Free' ), '{lite_name}' => $planName( 'lite', 'PRO Contabilità' ), '{full_name}' => $planName( 'full', 'PRO Contabilità & Fiscalità' ),
+	'{free_name}' => $planName( 'free', '' ), '{lite_name}' => $planName( 'lite', '' ), '{full_name}' => $planName( 'full', '' ),
 	'{lite_month}' => $priceText( 'lite', 'month' ), '{lite_year}' => $priceText( 'lite', 'year' ),
 	'{full_month}' => $priceText( 'full', 'month' ), '{full_year}' => $priceText( 'full', 'year' ),
 ) );

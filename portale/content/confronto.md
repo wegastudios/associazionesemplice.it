@@ -170,14 +170,14 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | | {free_name} | {lite_name} | {full_name} |
 |---|---|---|---|
 | Chiave di licenza | Gratuita e facoltativa | Obbligatoria | Obbligatoria |
-| Prova gratuita di Pro (30 giorni) | ✓ | — | — |
+| Prova gratuita di Pro | ✓ | — | — |
 | Prezzo | 0 € per sempre | {lite_month} al mese o {lite_year} all'anno | {full_month} al mese o {full_year} all'anno |
 
 > I prezzi e i piani sono sempre aggiornati nella sezione **Prezzi** della home. Con una licenza non in regola Pro torna alle funzioni di base, senza toccare i dati.
 
 ## Passare da una versione all'altra
 
-- **Da Free a {lite_name}**: si aggiungono pagamenti online, livelli di socio, conti e fondi, ricevute, comunicazioni, app, wallet e personalizzazione dei testi.
+- **Da {free_name} a {lite_name}**: si aggiungono pagamenti online, livelli di socio, conti e fondi, ricevute, comunicazioni, app, wallet e personalizzazione dei testi.
 - **Da {lite_name} a {full_name}**: si aggiungono IVA, 5 per mille e rendiconto per cassa.
 - **Non si reinstalla nulla** (se hai già Pro): cambia la chiave di licenza e compaiono le funzioni in più. Se la licenza scade, il plugin torna alle funzioni di base e i dati restano intatti.
 

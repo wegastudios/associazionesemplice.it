@@ -17,11 +17,11 @@ Si scarica da WordPress.org e funziona da solo, senza chiave e senza contattare 
 - **Donazioni con PayPal** e **copia di sicurezza** dei dati.
 
 ## Il plugin Pro
-È un plugin a parte, che richiede quello gratuito, con una licenza per dominio ({piano_lite} o {piano_full}):
+È un plugin a parte, che richiede quello gratuito, con una licenza per dominio ({piano_contabile} o {piano_fiscale}):
 - pagamenti online (Stripe, PayPal, WooCommerce), più livelli di socio, conti e fondi, ricevute in PDF;
 - comunicazioni ai soci, app installabile e tessera nel telefono;
 - risorse prenotabili, assicurazioni e presenze, testi personalizzabili e lingue;
-- con {piano_full} anche IVA, 5 per mille e rendiconto per cassa.
+- con {piano_fiscale} anche IVA, 5 per mille e rendiconto per cassa.
 
 Il confronto completo, funzione per funzione, è nella pagina [Confronto tra le versioni](/confronto).
 

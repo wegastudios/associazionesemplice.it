@@ -128,7 +128,7 @@ final class Site {
 
 	/** Nome pubblico di un piano: quello del pannello (Prezzi → «Nome sul sito»), altrimenti uno di riserva. */
 	public static function planName( string $code ): string {
-		$fallback = array( 'free' => 'Free', 'lite' => 'PRO Contabilità', 'full' => 'PRO Contabilità & Fiscalità' );
+		$fallback = array( 'free' => 'Gratuito', 'lite' => 'Pro Contabile', 'full' => 'Pro Fiscale' );
 		$name     = trim( (string) Config::get( 'plans.' . $code . '.label', '' ) );
 		return '' !== $name ? $name : ( $fallback[ $code ] ?? $code );
 	}
