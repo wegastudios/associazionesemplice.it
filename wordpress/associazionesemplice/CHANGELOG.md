@@ -13,6 +13,7 @@ Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi u
 - I pulsanti Elenco e Calendario funzionano anche nelle pagine che mostrano una sola vista
 - Elenco delle attività: schede in ordine e il pulsante di accesso non c'è più, perché confondeva (chi è socio accede dalla pagina dell'evento)
 - Importando gli eventi da The Events Calendar si compilano anche le pagine pubbliche: descrizione, immagine, categoria, organizzatore, luogo e sito dell'evento; le pagine restano in bozza (puoi scegliere di pubblicare subito quelle degli eventi futuri); ogni evento diventa un'attività a sé, senza raggruppamenti, e quelli senza data sono elencati per titolo. Scegli tu quali categorie sono corsi e quali eventi prima di importare
+- Importando da The Events Calendar, se un evento già importato ha l'attività eliminata a mano, torna importabile e si reimporta; elenco dei già importati, riepilogo e importazione danno sempre gli stessi numeri
 - Ogni import si può annullare: vale per soci, prima nota, WP All Import e The Events Calendar (restano gli eventi che hanno già prenotazioni o movimenti)
 - Puoi selezionare ed eliminare più corsi o eventi insieme dall'elenco delle attività (restano escluse quelle con incassi o spese in prima nota)
 - Per ogni evento puoi indicare email e telefono per le informazioni (di partenza quelli di chi lo crea e della segreteria); gli avvisi di prenotazione arrivano anche al contatto dell'evento
