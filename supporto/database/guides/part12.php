@@ -41,7 +41,7 @@ La prova dura **30 giorni** e **non chiede la carta**. Puoi provare quasi tutto 
 
 I piani sono **{piano_piccola}**, **{piano_media}** e **{piano_grande}**. Si distinguono per il **numero di soci**, il **numero di operatori** e le funzioni incluse; per esempio i **pagamenti online dei soci** e la **fattura elettronica** partono da {piano_media}, le **comunicazioni** e la **vita associativa** da {piano_grande}. Alcune funzioni si aggiungono a parte (per esempio il sito, le risorse e prenotazioni, lo sport, il dominio personalizzato, il database dedicato). Limiti e prezzi aggiornati sono sempre nella **pagina dei prezzi** di associazionesemplice.it: qui non li ripetiamo per non darti numeri vecchi.
 
-Con **{piano_grande}**, se superi il numero di soci previsto, si aggiungono **pacchetti da 500 soci**.
+{piano_piccola} e {piano_media} non hanno pacchetti: se superi il numero di soci previsto, passi al piano successivo. Solo sopra **{piano_grande}** puoi aggiungere i pacchetti **«500 soci in più»** e **«1.000 soci in più»**; i prezzi sono nella pagina dei prezzi.
 
 ## Se non scegli un piano
 
