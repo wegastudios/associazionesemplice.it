@@ -11,6 +11,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Auth\Factory as Auth;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\Query\Builder;
 
 /**
  * Esercizi dell'associazione. Di norma coincidono con l'anno solare; un esercizio diverso (per esempio da settembre ad
@@ -70,7 +71,7 @@ final readonly class FiscalYearService
         // Gli esercizi si chiudono in ordine: un esercizio precedente ancora aperto (e con movimenti) va chiuso prima.
         $starts = $this->connection()->table('app.fiscal_years')->where('year', $year)->value('starts_on');
         $earlier = is_string($starts) ? $this->connection()->table('app.fiscal_years as f')->where('f.starts_on', '<', $starts)->where('f.status', 'open')
-            ->whereExists(fn ($q) => $q->selectRaw('1')->from('app.transactions as t')->whereColumn('t.fiscal_year', 'f.year'))
+            ->whereExists(fn (Builder $q) => $q->selectRaw('1')->from('app.transactions as t')->whereColumn('t.fiscal_year', 'f.year'))
             ->orderBy('f.starts_on')->value('f.year') : null;
         if (is_numeric($earlier)) {
             throw new LedgerError("Prima di chiudere l'esercizio {$year} chiudi l'esercizio {$earlier}: gli esercizi si chiudono in ordine.");
