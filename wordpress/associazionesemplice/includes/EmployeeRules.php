@@ -76,6 +76,7 @@ final class EmployeeRules {
 			'asem-refunds'    => array( 'all' => array( self::REFUNDS ) ),
 			'asem-money'      => array( 'all' => array( self::FUNDS ) ),
 			'asem-ledger'     => array( 'all' => array( self::FUNDS ) ),
+			'asem-receipt-replace' => array( 'all' => array( self::FUNDS ) ),
 			'asem-accounts'   => array( 'all' => array( self::FUNDS ) ),
 			'asem-transfer'   => array( 'all' => array( self::FUNDS ) ),
 			'asem-watch'      => array( 'all' => array( self::FUNDS ) ),
@@ -119,7 +120,7 @@ final class EmployeeRules {
 			$add(
 				array(
 					'asem_save_transfer', 'asem_add_account', 'asem_update_account', 'asem_close_account', 'asem_reopen_account', 'asem_fund_create', 'asem_fund_deposit',
-					'asem_fund_release', 'asem_fund_settle', 'asem_watch_snapshot', 'asem_discrepancy_approve', 'asem_discrepancy_revoke', 'asem_watch_csv', 'asem_cash_count',
+					'asem_fund_release', 'asem_fund_settle', 'asem_receipt_replace', 'asem_watch_snapshot', 'asem_discrepancy_approve', 'asem_discrepancy_revoke', 'asem_watch_csv', 'asem_cash_count',
 				),
 				array( 'all' => array( self::FUNDS ) )
 			);

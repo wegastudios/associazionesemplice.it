@@ -5093,7 +5093,8 @@ $rm = array();
 \AssociazioneSemplice\Receipts::email( $rc_list[0]['key'] );
 asem_ok( 1 === count( $rm ) && in_array( 'rosa.ricevuta@example.com', (array) $rm[0]['to'], true ) && ! empty( $rm[0]['_exists'][0] ) && 0 === strpos( $rm[0]['_exists'][0], 'ricevuta-' ), 'ricevute: invio per email con il PDF allegato' );
 $wpdb->update( Db::t( 'transactions' ), array( 'voided_at' => Db::now(), 'void_reason' => 'prova' ), array( 'receipt_id' => $wpdb->get_var( 'SELECT receipt_id FROM ' . Db::t( 'transactions' ) . " WHERE person_id = $rc_p AND amount_cents = 2000" ) ) );
-asem_ok( null !== asem_throws( function () use ( $don_key ) { \AssociazioneSemplice\Receipts::build( $don_key ); } ), 'ricevute: un incasso annullato non ha ricevuta' );
+$rc_void = \AssociazioneSemplice\Receipts::build( $don_key );
+asem_ok( true === $rc_void['voided'] && false !== strpos( $rc_void['pdf'], 'ANNULLATA' ) && null !== asem_throws( function () use ( $don_key ) { \AssociazioneSemplice\Receipts::email( $don_key ); } ), 'ricevute: un incasso annullato ha la ricevuta marcata ANNULLATA, che non si manda per email' );
 asem_render( array( Admin\LedgerPage::class, 'render' ), 'Ricevuta PDF' );
 asem_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Ricevute e attestazioni', array( 'id' => $rc_p ) );
 Settings::update( array( 'receipt_footer' => '' ) );
@@ -9687,7 +9688,8 @@ $wpdb->update( Db::t( 'people' ), array( 'last_name' => 'Quattro', 'tax_code' =>
 Settings::update( array( 'receipt_footer' => $v4_foot ) );
 // annullo: tracciato, il numero non torna libero
 $ledger->void( $v4_tx( 2000 ), 'Prova V4' );
-asem_ok( null !== asem_throws( function () use ( $v4_key ) { \AssociazioneSemplice\Receipts::build( $v4_key[2000] ); } ), 'ricevute: una ricevuta annullata non si emette più' ); // anche se l'azione dell'annullo non fosse agganciata, la lettura se ne accorge
+$v4_v1 = \AssociazioneSemplice\Receipts::build( $v4_key[2000] );
+asem_ok( true === $v4_v1['voided'] && false !== strpos( $v4_v1['pdf'], 'ANNULLATA' ) && '1/' . $v4_z === $v4_v1['number'], 'ricevute: una ricevuta annullata si legge ancora, marcata ANNULLATA e con lo stesso numero' ); // anche se l'azione dell'annullo non fosse agganciata, la lettura se ne accorge
 $v4_rec = \AssociazioneSemplice\Receipts::record( $v4_key[2000] );
 asem_ok( $v4_rec && null !== $v4_rec['voided_at'] && '' !== (string) $v4_rec['void_reason'] && 1 === (int) $v4_rec['number'] && '' !== (string) $v4_rec['data'], 'ricevute: l\'annullo dell\'incasso annulla la ricevuta emessa, la riga, i dati e il numero restano' );
 $v4_r3 = \AssociazioneSemplice\Receipts::build( $v4_key[2200] );
@@ -9751,6 +9753,87 @@ $wpdb->delete( Db::t( 'poll_options' ), array( 'poll_id' => $v4_poll ) );
 $wpdb->delete( Db::t( 'receipts' ), array( 'year' => $v4_z ) );
 $wpdb->query( 'DELETE FROM ' . Db::t( 'transactions' ) . ' WHERE tx_date BETWEEN \'' . $v4_z . '-01-01\' AND \'' . $v4_z . '-12-31\'' );
 $wpdb->delete( Db::t( 'fiscal_years' ), array( 'year' => $v4_z ) );
+
+// ---------- Ricevuta sostitutiva: annullo di una riga, ricevuta annullata, nuova ricevuta per le righe rimaste ----------
+$rs_z = 2001; // un anno vecchio e libero, creato solo per la prova (le righe dell'incasso sono di quell'anno; la sostitutiva si emette oggi)
+while ( \AssociazioneSemplice\FiscalYears::get( $rs_z ) ) {
+	++$rs_z;
+}
+\AssociazioneSemplice\FiscalYears::create( $rs_z );
+$rs_set = function ( string $status ) use ( $wpdb, $rs_z ) {
+	$wpdb->update( Db::t( 'fiscal_years' ), array( 'status' => $status, 'closed_at' => 'closed' === $status ? Db::now() : null ), array( 'year' => $rs_z ) );
+};
+$rs_p = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Sara', 'last_name' => 'Sostituita', 'email' => 'sara.sostituita@example.com' ) );
+$wpdb->update( Db::t( 'people' ), array( 'tax_code' => 'SSTSRA80A41H501W' ), array( 'id' => $rs_p ) );
+$rs_cat = $ledger->category_id_of_kind( 'donation' );
+$rs_tx  = function ( int $cents ) use ( $wpdb, $rs_p ): int {
+	return (int) $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ' . Db::t( 'transactions' ) . ' WHERE person_id = %d AND amount_cents = %d AND voided_at IS NULL ORDER BY id DESC LIMIT 1', $rs_p, $cents ) );
+};
+$rs_line = function ( int $cents, string $what ) use ( $rs_cat ): array {
+	return array( 'category_id' => $rs_cat, 'amount_cents' => $cents, 'description' => $what );
+};
+$ledger->record_receipt( array( 'date' => $rs_z . '-05-10', 'account_id' => (int) $cash['id'], 'person_id' => $rs_p, 'lines' => array( $rs_line( 3000, 'Voce uno' ), $rs_line( 3100, 'Voce due' ), $rs_line( 3200, 'Voce tre' ) ) ) );
+$rs_list = \AssociazioneSemplice\Receipts::list_for_payer( $rs_p );
+$rs_key  = $rs_list[0]['key'];
+$rs_r1   = \AssociazioneSemplice\Receipts::build( $rs_key );
+asem_ok( 1 === count( $rs_list ) && '1/' . $rs_z === $rs_r1['number'] && false === $rs_r1['voided'] && false === strpos( $rs_r1['pdf'], 'ANNULLATA' ), 'sostitutiva: un incasso con tre voci è una ricevuta emessa, non annullata' );
+$rs_old = \AssociazioneSemplice\Receipts::record( $rs_key );
+asem_ok( null === $rs_old['voided_at'] && '' !== \AssociazioneSemplice\Receipts::replacement_problem( $rs_key ), 'sostitutiva: una ricevuta non annullata non ha bisogno della sostitutiva' );
+// annullo parziale di UNA riga: l'intera ricevuta risulta annullata, il numero resta, con motivo e data
+$ledger->void( $rs_tx( 3100 ), 'Riga sbagliata' );
+$rs_old = \AssociazioneSemplice\Receipts::record( $rs_key );
+asem_ok( null !== $rs_old['voided_at'] && 'Riga sbagliata' === $rs_old['void_reason'] && 1 === (int) $rs_old['number'], 'sostitutiva: annullando una sola riga l\'intera ricevuta emessa risulta annullata (numero, motivo e data restano)' );
+$rs_v1 = \AssociazioneSemplice\Receipts::build( $rs_key );
+$rs_v2 = \AssociazioneSemplice\Receipts::build( $rs_key );
+asem_ok( true === $rs_v1['voided'] && $rs_v1['pdf'] === $rs_v2['pdf'] && '1/' . $rs_z === $rs_v1['number'] && 0 === strpos( $rs_v1['pdf'], '%PDF-1.4' ) && false !== strpos( $rs_v1['pdf'], 'ANNULLATA' ) && false !== strpos( $rs_v1['pdf'], 'Riga sbagliata' ) && false !== strpos( $rs_v1['pdf'], 'Voce due' ) && false !== strpos( $rs_v1['pdf'], '31,00' ) && false !== strpos( $rs_v1['pdf'], 'Sostituita' ), 'sostitutiva: la ricevuta annullata resta consultabile, PDF ANNULLATA con data e motivo, uguale a ogni lettura e con le righe com\'erano' );
+$rs_html = asem_render( array( Admin\ReceiptReplacePage::class, 'render' ), 'Emetti la ricevuta sostitutiva per le righe rimaste?', array( 'key' => $rs_key ) ); // la schermata propone la sostitutiva con le righe rimaste
+asem_ok( false !== strpos( $rs_html, 'Voce uno' ) && false !== strpos( $rs_html, 'Voce tre' ) && false === strpos( $rs_html, 'Voce due' ) && false !== strpos( $rs_html, 'asem_receipt_replace' ), 'sostitutiva: la schermata elenca solo le righe rimaste e ha il pulsante per emetterla' );
+$rs_prop = apply_filters( 'asem_tx_void_result', array( 'http://example.org/ledger', 'Movimento annullato (resta tracciato).' ), $rs_tx( 3000 ) );
+asem_ok( false !== strpos( $rs_prop[0], 'asem-receipt-replace' ) && false !== strpos( $rs_prop[1], 'sostitutiva' ), 'sostitutiva: dopo l\'annullo della riga si propone la ricevuta sostitutiva' );
+// il chiuso è chiuso: le righe rimaste sono di un esercizio chiuso, la sostitutiva non si emette
+$rs_set( 'closed' );
+$rs_cl = asem_throws( function () use ( $rs_key ) { \AssociazioneSemplice\Receipts::issue_replacement( $rs_key ); } );
+asem_ok( null !== $rs_cl && false !== strpos( $rs_cl, 'chiuso' ) && null === \AssociazioneSemplice\Receipts::record( 'sub' . (int) $rs_old['id'] ), 'sostitutiva: per un incasso di un anno chiuso non si emette e nessun numero viene assegnato' );
+asem_ok( \AssociazioneSemplice\Receipts::build( $rs_key )['pdf'] === $rs_v1['pdf'], 'sostitutiva: nell\'anno chiuso la ricevuta annullata si legge sempre uguale' );
+// riapertura: ora si emette
+$rs_set( 'open' );
+Settings::update( array( 'receipt_footer' => 'Piè di pagina di oggi' ) );
+$wpdb->update( Db::t( 'people' ), array( 'last_name' => 'Aggiornata' ), array( 'id' => $rs_p ) );
+$rs_fy  = \AssociazioneSemplice\FiscalYears::year_of( $today );
+$rs_exp = 1 + (int) $wpdb->get_var( 'SELECT MAX(number) FROM ' . Db::t( 'receipts' ) . ' WHERE year = ' . $rs_fy );
+$rs_new = \AssociazioneSemplice\Receipts::issue_replacement( $rs_key );
+$rs_nrec = \AssociazioneSemplice\Receipts::record( $rs_new['key'] );
+asem_ok( $rs_exp . '/' . $rs_fy === $rs_new['number'] && '1/' . $rs_z === $rs_new['replaces'] && (int) $rs_nrec['replaces_id'] === (int) $rs_old['id'] && (int) $rs_nrec['year'] === $rs_fy, 'sostitutiva: numero nuovo nella serie dell\'anno fiscale di oggi, collegata alla ricevuta annullata' );
+$rs_s1 = \AssociazioneSemplice\Receipts::build( $rs_new['key'] );
+$rs_s2 = \AssociazioneSemplice\Receipts::build( $rs_new['key'] );
+asem_ok( false === $rs_s1['voided'] && $rs_s1['pdf'] === $rs_s2['pdf'] && false !== strpos( $rs_s1['pdf'], 'Sostituisce la ricevuta n. 1/' . $rs_z . ' annullata il' ) && false !== strpos( $rs_s1['pdf'], 'Data: ' . ( new \DateTimeImmutable( $today ) )->format( 'd/m/Y' ) ) && false !== strpos( $rs_s1['pdf'], 'Incasso del 10/05/' . $rs_z ) && false === strpos( $rs_s1['pdf'], 'ANNULLATA' ), 'sostitutiva: PDF con il riferimento alla ricevuta annullata, la data di oggi e la data dell\'incasso' );
+asem_ok( false !== strpos( $rs_s1['pdf'], 'Voce uno' ) && false !== strpos( $rs_s1['pdf'], 'Voce tre' ) && false === strpos( $rs_s1['pdf'], 'Voce due' ) && false !== strpos( $rs_s1['pdf'], '62,00' ), 'sostitutiva: contiene solo le righe rimaste (30 + 32 = 62 euro)' );
+asem_ok( false !== strpos( $rs_s1['pdf'], 'Aggiornata' ) && false !== strpos( $rs_s1['pdf'], 'di oggi' ) && false === strpos( $rs_v1['pdf'], 'di oggi' ) && \AssociazioneSemplice\Receipts::build( $rs_key )['pdf'] === $rs_v1['pdf'], 'sostitutiva: fotografa i dati di oggi (nome, piè di pagina); la ricevuta annullata resta come era' );
+asem_ok( $rs_new['key'] === \AssociazioneSemplice\Receipts::effective_key( $rs_key ) && $rs_new['key'] === \AssociazioneSemplice\Receipts::list_for_payer( $rs_p )[0]['key'] && \AssociazioneSemplice\Receipts::can_view( $rs_new['key'] ) && \AssociazioneSemplice\Receipts::can_view( $rs_key ), 'sostitutiva: per l\'incasso vale l\'ultima ricevuta; si vedono sia la sostitutiva sia l\'annullata' );
+asem_ok( false !== strpos( (string) asem_throws( function () use ( $rs_key ) { \AssociazioneSemplice\Receipts::issue_replacement( $rs_key ); } ), 'Esiste già' ), 'sostitutiva: una ricevuta annullata ha una sola sostitutiva' );
+$rs_aud = array_column( \AssociazioneSemplice\Audit::recent( 20, 'receipt.' ), 'action' );
+asem_ok( in_array( 'receipt.replacement_issued', $rs_aud, true ), 'sostitutiva: l\'emissione è scritta nel registro azioni (receipt.replacement_issued)' );
+// annullo di una riga della sostitutiva: annullata anche lei; si può emettere la seconda sostitutiva, con numero ancora nuovo
+$ledger->void( $rs_tx( 3200 ), 'Seconda correzione' );
+asem_ok( null !== \AssociazioneSemplice\Receipts::record( $rs_new['key'] )['voided_at'] && true === \AssociazioneSemplice\Receipts::build( $rs_new['key'] )['voided'], 'sostitutiva: se si annulla una sua riga, anche la sostitutiva risulta annullata' );
+$rs_new2 = \AssociazioneSemplice\Receipts::issue_replacement( \AssociazioneSemplice\Receipts::effective_key( $rs_key ) );
+$rs_s3   = \AssociazioneSemplice\Receipts::build( $rs_new2['key'] );
+asem_ok( ( $rs_exp + 1 ) . '/' . $rs_fy === $rs_new2['number'] && $rs_new['number'] === $rs_new2['replaces'] && false !== strpos( $rs_s3['pdf'], 'Voce uno' ) && false === strpos( $rs_s3['pdf'], 'Voce tre' ) && $rs_new2['key'] === \AssociazioneSemplice\Receipts::effective_key( $rs_key ), 'sostitutiva: la sostitutiva annullata si sostituisce a sua volta, con un altro numero nuovo' );
+// nessuna riga rimasta: nessuna emissione
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $rs_p, 'lines' => array( $rs_line( 4000, 'Solo una' ) ) ) );
+$rs_key2 = \AssociazioneSemplice\Receipts::key_of( $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'transactions' ) . ' WHERE id = ' . $rs_tx( 4000 ), ARRAY_A ) );
+\AssociazioneSemplice\Receipts::build( $rs_key2 );
+$rs_cnt = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'receipts' ) );
+$ledger->void( $rs_tx( 4000 ), 'Errore' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Receipts::replacement_problem( $rs_key2 ), 'Non restano righe' ) && null !== asem_throws( function () use ( $rs_key2 ) { \AssociazioneSemplice\Receipts::issue_replacement( $rs_key2 ); } ) && $rs_cnt === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'receipts' ) ) && true === \AssociazioneSemplice\Receipts::build( $rs_key2 )['voided'], 'sostitutiva: se non restano righe non si emette nulla (la ricevuta annullata resta consultabile)' );
+$rs_none = apply_filters( 'asem_tx_void_result', array( 'http://example.org/ledger', 'Movimento annullato (resta tracciato).' ), 0 );
+asem_ok( 'http://example.org/ledger' === $rs_none[0], 'sostitutiva: senza ricevuta emessa non si propone nulla' );
+// pulizia
+$wpdb->delete( Db::t( 'receipts' ), array( 'year' => $rs_z ) );
+$wpdb->query( 'DELETE FROM ' . Db::t( 'receipts' ) . ' WHERE replaces_id IS NOT NULL OR receipt_key = \'' . $rs_key2 . '\'' );
+$wpdb->query( 'DELETE FROM ' . Db::t( 'transactions' ) . ' WHERE person_id = ' . (int) $rs_p );
+$wpdb->delete( Db::t( 'fiscal_years' ), array( 'year' => $rs_z ) );
+Settings::update( array( 'receipt_footer' => '' ) );
 
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 

@@ -2091,6 +2091,26 @@
   "Non invia la chiave di licenza, il dominio né dati dei soci o dell'associazione. Come ogni richiesta su internet, il sito riceve l'indirizzo IP del server e l'User-Agent di WordPress, che contiene l'indirizzo di questo sito." : "It does not send the license key, the domain, or any data about members or the association. As with any internet request, the website receives the server's IP address and the WordPress User-Agent, which contains this site's address.",
   "Si spegne da Impostazioni → Limiti e soglie, togliendo il segno da «Aggiornamenti diretti di Associazione Semplice e del Pro»: se è già spento, non parte nessuna richiesta, e gli aggiornamenti vanno scaricati dall'area clienti e caricati a mano." : "It can be turned off in Settings → Limits and thresholds by unticking \"Direct updates of Associazione Semplice and of Pro\": if it is already off, no request is made, and updates must be downloaded from the customer area and uploaded by hand.",
   "Con Associazione Semplice Pro attivo, la richiesta di aggiornamento porta con sé anche la chiave di licenza e il dominio del sito, e una volta al giorno il Pro verifica la licenza inviando gli stessi due dati. Nemmeno in questo caso partono dati dei soci." : "With Associazione Semplice Pro active, the update request also carries the license key and the site's domain, and once a day Pro checks the license by sending the same two items. Even then, no member data is sent.",
-  "Aggiornamenti diretti di Associazione Semplice e del Pro (Bacheca → Aggiornamenti)" : "Direct updates of Associazione Semplice and of Pro (Dashboard → Updates)"
+  "Aggiornamenti diretti di Associazione Semplice e del Pro (Bacheca → Aggiornamenti)" : "Direct updates of Associazione Semplice and of Pro (Dashboard → Updates)",
+  "Ricevuta sostitutiva" : "Replacement receipt",
+  "Emetti la ricevuta sostitutiva" : "Issue the replacement receipt",
+  "Emetti la sostitutiva" : "Issue the replacement",
+  "Emetti la ricevuta sostitutiva per le righe rimaste?" : "Issue a replacement receipt for the remaining lines?",
+  "Ricevuta annullata (PDF)" : "Cancelled receipt (PDF)",
+  "ricevuta annullata" : "cancelled receipt",
+  "Ricevute annullate" : "Cancelled receipts",
+  "Torna indietro" : "Go back",
+  "No, per ora no" : "No, not now",
+  "ANNULLATA" : "CANCELLED",
+  "Non ha valore." : "It is void.",
+  "Questa ricevuta non è annullata: non serve una sostitutiva." : "This receipt is not cancelled: no replacement is needed.",
+  "Non restano righe da ricevere: non c'è nessuna ricevuta sostitutiva da emettere." : "No lines remain: there is no replacement receipt to issue.",
+  "Non restano altre righe: non c'è nessuna ricevuta sostitutiva da emettere." : "No other lines remain: there is no replacement receipt to issue.",
+  "La ricevuta è annullata: non si manda. Se restano righe, emetti la ricevuta sostitutiva." : "The receipt is cancelled and is not sent. If lines remain, issue the replacement receipt.",
+  "Ricevuta annullata: i suoi dati non sono più disponibili." : "Cancelled receipt: its data is no longer available.",
+  "Emettere la ricevuta sostitutiva? Prende un numero nuovo e non si può togliere." : "Issue the replacement receipt? It takes a new number and cannot be removed.",
+  "Sostituisce la ricevuta n. " : "Replaces receipt no. ",
+  " annullata il " : " cancelled on ",
+  "Incasso del " : "Payment of "
  }
 }
