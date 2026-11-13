@@ -89,6 +89,9 @@ return [
         'operators' => (bool) env('SAAS_UNIFIED_OPERATORS', false),
     ],
 
+    // Registro delle azioni: cancellare le partizioni più vecchie dell'anno precedente (saas:audit:prune). Spento finché non si accende.
+    'audit_prune_enabled' => (bool) env('SAAS_AUDIT_PRUNE_ENABLED', false),
+
     // Contratto con il portale (docs/CONTRATTO_PORTALE.md).
     'portal' => [
         'url' => env('SAAS_PORTAL_URL', 'https://associazionesemplice.it'),

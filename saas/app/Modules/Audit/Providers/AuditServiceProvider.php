@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Audit\Providers;
 
 use App\Modules\Audit\Console\AuditPartitionsCommand;
+use App\Modules\Audit\Console\AuditPruneCommand;
 use App\Modules\Audit\Console\VerifyAuditCommand;
 use App\Modules\Audit\Contracts\ActingMember;
 use App\Modules\Audit\Contracts\AuditLog;
@@ -37,10 +38,12 @@ final class AuditServiceProvider extends ServiceProvider
         Event::listen(SensitiveFieldRead::class, [RecordSensitiveReads::class, 'handle']);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([VerifyAuditCommand::class, AuditPartitionsCommand::class]);
+            $this->commands([VerifyAuditCommand::class, AuditPartitionsCommand::class, AuditPruneCommand::class]);
 
             $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
                 $schedule->command('saas:audit:partitions')->monthlyOn(1, '02:13')->withoutOverlapping();
+                // Tiene l'anno corrente e il precedente: parte solo con l'interruttore acceso (saas.audit_prune_enabled).
+                $schedule->command('saas:audit:prune')->monthlyOn(1, '02:43')->withoutOverlapping()->when(static fn (): bool => config('saas.audit_prune_enabled') === true);
                 $schedule->command('saas:audit:verify')->dailyAt('03:37')->withoutOverlapping();
             });
         }
