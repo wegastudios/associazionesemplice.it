@@ -273,6 +273,7 @@ final readonly class CatalogDraftEditor
         $kind = is_array($existing) ? $this->str($existing['kind'] ?? null) : $this->str($input['kind'] ?? null);
         $grants = match ($kind) {
             'operators' => ['operators' => CatalogForm::int($input['grant_operators'] ?? null)],
+            'members' => ['members' => CatalogForm::int($input['grant_members'] ?? null)],
             'storage' => ['storage_gb' => CatalogForm::int($input['grant_storage_gb'] ?? null)],
             'package' => ['package' => $this->str($input['grant_package'] ?? null), 'limits' => $this->limits($input['grant_limits'] ?? null)],
             default => [],

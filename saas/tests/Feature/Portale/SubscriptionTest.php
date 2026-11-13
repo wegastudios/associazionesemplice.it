@@ -100,3 +100,14 @@ it('lascia le associazioni create a mano con i soli limiti di base', function ()
 
     expect($e->operators)->toBe(1)->and($e->packages)->toBe([]);
 });
+
+it('porta nei diritti il tetto di soci: piano più pacchetti, e il piano comprato', function (): void {
+    ($this->put)(subscriptionClaims($this->orgId, 1, ['plan' => 'grande', 'members' => 1000, 'addons' => [['code' => 'members_1000', 'qty' => 3], ['code' => 'members_500', 'qty' => 1]]]))->assertOk();
+
+    $e = app(Entitlements::class)->for($this->orgId);
+    expect($e->membersLimit)->toBe(4500)->and($e->plan)->toBe('grande')->and($e->planVersion)->toBe(1);
+
+    // Il piano Piccola ha il suo tetto e nessun pacchetto.
+    ($this->put)(subscriptionClaims($this->orgId, 2, ['plan' => 'piccola', 'members' => 50, 'addons' => []]))->assertOk();
+    expect(app(Entitlements::class)->for($this->orgId)->membersLimit)->toBe(100);
+});

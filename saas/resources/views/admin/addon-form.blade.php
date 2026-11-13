@@ -21,7 +21,7 @@
             <input id="code" name="code" value="{{ $values['code'] }}" maxlength="40" required>
             <label for="kind">Tipo (non si può cambiare dopo)</label>
             <select id="kind" name="kind">
-                @foreach (['package' => 'Pacchetto di funzioni', 'operators' => 'Operatori', 'storage' => 'Spazio file', 'domain' => 'Dominio personalizzato', 'dedicated_db' => 'Database dedicato', 'recharge' => 'Ricarica'] as $v => $label)
+                @foreach (['package' => 'Pacchetto di funzioni', 'operators' => 'Operatori', 'members' => 'Soci in più', 'storage' => 'Spazio file', 'domain' => 'Dominio personalizzato', 'dedicated_db' => 'Database dedicato', 'recharge' => 'Ricarica'] as $v => $label)
                     <option value="{{ $v }}" @selected($values['kind'] === $v)>{{ $label }}</option>
                 @endforeach
             </select>
@@ -37,6 +37,7 @@
         <p class="muted">Compila solo il campo del tipo scelto.</p>
         <div class="grid">
             <div><label for="go">Operatori aggiunti</label><input id="go" name="grant_operators" value="{{ $values['grant_operators'] }}" inputmode="numeric"></div>
+            <div><label for="gm">Soci aggiunti</label><input id="gm" name="grant_members" value="{{ $values['grant_members'] }}" inputmode="numeric"></div>
             <div><label for="gs">Spazio aggiunto (GB)</label><input id="gs" name="grant_storage_gb" value="{{ $values['grant_storage_gb'] }}" inputmode="numeric"></div>
             <div><label for="gp">Codice del pacchetto di funzioni</label><input id="gp" name="grant_package" value="{{ $values['grant_package'] }}" maxlength="40"></div>
         </div>

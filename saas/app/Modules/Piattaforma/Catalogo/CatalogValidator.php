@@ -19,7 +19,7 @@ final class CatalogValidator
 
     private const PRICE_KINDS = ['flat', 'members_tiers', 'step_tiers'];
 
-    private const ADDON_KINDS = ['package', 'operators', 'storage', 'domain', 'dedicated_db', 'recharge'];
+    private const ADDON_KINDS = ['package', 'operators', 'members', 'storage', 'domain', 'dedicated_db', 'recharge'];
 
     /**
      * @param  array<mixed>  $input
@@ -243,7 +243,7 @@ final class CatalogValidator
             if (! is_string($kind) || ! in_array($kind, self::ADDON_KINDS, true)) {
                 throw new InvalidArgumentException("addons.{$code}.kind non valido");
             }
-            $grants = self::object($a['grants'] ?? null, "addons.{$code}.grants", ['operators', 'storage_gb', 'package', 'limits']);
+            $grants = self::object($a['grants'] ?? null, "addons.{$code}.grants", ['operators', 'members', 'storage_gb', 'package', 'limits']);
             $out[] = [
                 'code' => $code,
                 'name' => self::text($a['name'] ?? null, "addons.{$code}.name", 80),
@@ -265,6 +265,7 @@ final class CatalogValidator
     {
         return match ($kind) {
             'operators' => ['operators' => self::int($g['operators'] ?? null, "addons.{$code}.grants.operators", 1, 1000)],
+            'members' => ['members' => self::int($g['members'] ?? null, "addons.{$code}.grants.members", 1, 100_000)],
             'storage' => ['storage_gb' => self::int($g['storage_gb'] ?? null, "addons.{$code}.grants.storage_gb", 1, 10_000)],
             'package' => [
                 'package' => self::code($g['package'] ?? null, "addons.{$code}.grants.package", 40),

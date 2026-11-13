@@ -9,7 +9,7 @@ interface PlanLimits
 {
     /**
      * @param  list<array{code: string, qty: int}>  $addons
-     * @return array{operators: int, storage_gb: int, packages: array<string, array<string, mixed>>}
+     * @return array{operators: int, storage_gb: int, packages: array<string, array<string, mixed>>, members_limit: int|null}
      *
      * @throws UnknownPlan
      * @throws UnknownAddon

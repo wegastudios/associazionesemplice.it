@@ -27,6 +27,9 @@ final readonly class EntitlementReader implements Entitlements
         }
         /** @var array<string, mixed> $decoded */
         $c = ClaimsValidator::entitlements($decoded);
+        $subscription = is_array($decoded['subscription'] ?? null) ? $decoded['subscription'] : [];
+        $plan = is_string($subscription['plan'] ?? null) ? $subscription['plan'] : null;
+        $planVersion = is_int($subscription['plan_version'] ?? null) ? $subscription['plan_version'] : null;
 
         return new OrgEntitlements(
             $c['rev'],
@@ -38,6 +41,9 @@ final readonly class EntitlementReader implements Entitlements
             $c['storage_gb'],
             $c['packages'],
             $c['partner'],
+            is_int($decoded['members_limit'] ?? null) ? $decoded['members_limit'] : null,
+            $plan,
+            $planVersion,
         );
     }
 }
