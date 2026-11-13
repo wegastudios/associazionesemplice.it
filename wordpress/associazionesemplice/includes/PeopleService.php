@@ -409,6 +409,8 @@ class PeopleService {
 			'prior_visits'   => max( 0, min( 9999, (int) ( $d['prior_visits'] ?? 0 ) ) ),
 			'image_consent'  => isset( $d['image_consent'] ) && in_array( (string) $d['image_consent'], array( '0', '1' ), true ) ? (int) $d['image_consent'] : null,
 			'affiliation_role' => MembershipRoles::is_valid( $d['affiliation_role'] ?? null ) ? (string) $d['affiliation_role'] : null,
+			'subject_kind'   => RuntsRules::kind( $d['subject_kind'] ?? '' ), // persona fisica o ente (la denominazione sta in «cognome»)
+			'runts_same_section' => isset( $d['runts_same_section'] ) && in_array( (string) $d['runts_same_section'], array( '0', '1' ), true ) ? (int) $d['runts_same_section'] : null,
 		);
 	}
 
@@ -451,7 +453,7 @@ class PeopleService {
 
 		$user_id = null;
 		if ( MemberType::can_login( $d['type'] ) && null !== $d['email'] && MemberSession::wp_users_wanted() ) { // senza email: nessun utente finché il socio non si attiva col suo link; con l'accesso proprio i soci semplici non hanno un utente WordPress, salvo scelta dell'amministratore
-			$user_id = $this->ensure_wp_user( $d, null );
+			$user_id = $this->ensure_wp_user( $d, null ) ?: null; // 0 = l'email è di un dipendente: nessun collegamento
 		}
 		$now = Db::now();
 		$ok  = $this->db()->insert(
@@ -476,6 +478,8 @@ class PeopleService {
 				'notes'          => $d['notes'],
 				'prior_visits'   => $d['prior_visits'],
 				'affiliation_role' => $d['affiliation_role'],
+				'subject_kind'   => $d['subject_kind'],
+				'runts_same_section' => RuntsRules::ENTITY === $d['subject_kind'] ? $d['runts_same_section'] : null,
 				'image_consent'  => $d['image_consent'],
 				'image_consent_at' => null === $d['image_consent'] ? null : $now,
 				'created_at'     => $now,
@@ -579,6 +583,9 @@ class PeopleService {
 			throw new \InvalidArgumentException( 'Prima inserisci l\'email nella scheda: serve per l\'accesso.' );
 		}
 		$uid = $this->ensure_wp_user( $this->normalize( $p ), $id );
+		if ( $uid <= 0 ) {
+			throw new \InvalidArgumentException( 'Con questa email c\'è già un dipendente del sito: i due accessi restano separati. Per dare al socio un potere (segreteria, tesoriere, staff) serve un\'altra email nella sua scheda.' );
+		}
 		$this->db()->update( Db::t( 'people' ), array( 'wp_user_id' => $uid, 'updated_at' => Db::now() ), array( 'id' => $id ) );
 		Audit::log( 'person.wp_user_created', 'person', $id );
 		return $uid;
@@ -775,7 +782,7 @@ class PeopleService {
 		if ( MemberType::can_login( $d['type'] ) ) {
 			if ( null === $user_id ) {
 				if ( null !== $d['email'] && MemberSession::wp_users_wanted() ) {
-					$user_id = $this->ensure_wp_user( $d, $id ); // ad es. ospite diventato socio, o socio che ha dato l'email
+					$user_id = $this->ensure_wp_user( $d, $id ) ?: null; // ad es. ospite diventato socio, o socio che ha dato l'email
 				}
 			} else {
 				$this->sync_wp_user( $user_id, $d );
@@ -804,6 +811,8 @@ class PeopleService {
 				'notes'          => $d['notes'],
 				'prior_visits'   => $d['prior_visits'],
 				'affiliation_role' => $d['affiliation_role'],
+				'subject_kind'   => $d['subject_kind'],
+				'runts_same_section' => RuntsRules::ENTITY === $d['subject_kind'] ? $d['runts_same_section'] : null,
 				'image_consent'  => $d['image_consent'],
 				'image_consent_at' => $d['image_consent'] === ( null === $current['image_consent'] ? null : (int) $current['image_consent'] ) ? $current['image_consent_at'] : ( null === $d['image_consent'] ? null : Db::now() ),
 				'image_consent_by' => $d['image_consent'] === ( null === $current['image_consent'] ? null : (int) $current['image_consent'] ) ? $current['image_consent_by'] : $this->image_consent_giver( $current ),
@@ -884,6 +893,9 @@ class PeopleService {
 
 	private function ensure_wp_user( array $d, ?int $person_id ): int {
 		$existing = get_user_by( 'email', $d['email'] );
+		if ( $existing && Employees::is_employee( $existing ) ) {
+			return 0; // l'utente è un dipendente: non si collega mai a un socio. Da socio si entra con l'accesso personale (link o codice via email), da dipendente con l'utente del sito
+		}
 		if ( $existing ) {
 			$linked = $this->db()->get_var(
 				$this->db()->prepare( 'SELECT id FROM ' . Db::t( 'people' ) . ' WHERE wp_user_id = %d AND deleted_at IS NULL AND id <> %d', $existing->ID, (int) $person_id )

@@ -10,12 +10,37 @@ final class Legal {
 		'termini' => array( 'Termini di utilizzo del servizio', 'terms_body' ),
 	);
 
+	/**
+	 * Riga dei dati dell'attività per il piè di pagina (obbligo per chi vende online): solo i campi compilati nel pannello
+	 * (Pagine legali: titolare, indirizzo, partita IVA, email di contatto); vuota se non c'è nulla.
+	 */
+	public static function footerLine(): string {
+		$l   = (array) Config::get( 'legal', array() );
+		$out = array();
+		foreach ( array( 'titolare' => '', 'indirizzo' => '', 'piva' => 'P.IVA ', 'email' => '' ) as $k => $prefix ) {
+			$v = trim( (string) ( $l[ $k ] ?? '' ) );
+			if ( '' !== $v ) {
+				$out[] = $prefix . $v;
+			}
+		}
+		return implode( ' · ', $out );
+	}
+
 	public static function vars(): array {
 		$l    = (array) Config::get( 'legal', array() );
 		$none = function ( string $k, string $fallback ) use ( $l ) {
 			return '' !== trim( (string) ( $l[ $k ] ?? '' ) ) ? (string) $l[ $k ] : $fallback;
 		};
+		// Frase del titolare composta solo dai campi compilati, senza buchi né «partita IVA» vuota.
+		$full = $none( 'titolare', 'Associazione Semplice' );
+		if ( '' !== trim( (string) ( $l['indirizzo'] ?? '' ) ) ) {
+			$full .= ', con sede in ' . trim( (string) $l['indirizzo'] );
+		}
+		if ( '' !== trim( (string) ( $l['piva'] ?? '' ) ) ) {
+			$full .= ', partita IVA ' . trim( (string) $l['piva'] );
+		}
 		return array(
+			'titolare_completo' => $full,
 			'titolare'  => $none( 'titolare', 'Associazione Semplice' ),
 			'indirizzo' => $none( 'indirizzo', '' ),
 			'piva'      => $none( 'piva', '' ),
@@ -89,7 +114,7 @@ final class Legal {
 		return array(
 			'privacy' => <<<'TXT'
 ## Chi tratta i tuoi dati
-Il titolare del trattamento è {titolare} {indirizzo} {piva}. Per qualsiasi richiesta scrivi a {email}.
+Il titolare del trattamento è {titolare_completo}. Per qualsiasi richiesta scrivi a {email}.
 
 ## Quali dati trattiamo
 - Indirizzo email e dominio del sito che indichi quando chiedi una licenza o acquisti un piano.
@@ -106,7 +131,7 @@ Trattiamo i dati per fornirti la licenza, gestire il tuo abbonamento, inviarti l
 Solo a fornitori che ci permettono di erogare il servizio: Stripe e PayPal per i pagamenti, il servizio di gestione delle licenze e il sistema centrale di assistenza (che registra le richieste di supporto e assegna loro il numero), il fornitore di hosting e di posta. Non vendiamo i tuoi dati.
 
 ## Il plugin sul tuo sito: verifica della licenza e aggiornamenti
-Il plugin gratuito non invia nulla al nostro server. Il plugin Pro, per funzionare, contatta ogni giorno questo sito per verificare la licenza e, almeno ogni 12 ore, per sapere se esiste un aggiornamento. In queste richieste inviamo solo la chiave di licenza, l'indirizzo del sito (dominio) e il numero di versione del plugin. Non inviamo dati dei soci, dei pagamenti dell'associazione né altri contenuti del tuo sito. Per limitare gli abusi conserviamo per breve tempo l'indirizzo IP da cui arrivano le richieste e il numero di richieste. L'aggiornamento diretto si può spegnere dalle impostazioni del plugin e il pacchetto scaricato è firmato: il plugin lo controlla prima di installarlo.
+Il plugin gratuito scaricato da WordPress.org non invia nulla al nostro server: si aggiorna tramite WordPress.org. Se invece lo scarichi da questo sito, per sapere se esiste un aggiornamento contatta questo sito di norma una volta al giorno e invia solo il nome del prodotto e il numero di versione; si può spegnere dalle impostazioni del plugin. Come in ogni richiesta web, ci arrivano l'indirizzo IP del server del tuo sito e l'identificativo di WordPress, che di norma include l'indirizzo del sito. Il plugin Pro, per funzionare, contatta ogni giorno questo sito per verificare la licenza e, almeno ogni 12 ore, per sapere se esiste un aggiornamento. In queste richieste inviamo solo la chiave di licenza, l'indirizzo del sito (dominio) e il numero di versione del plugin. Non inviamo dati dei soci, dei pagamenti dell'associazione né altri contenuti del tuo sito. Per limitare gli abusi conserviamo per breve tempo l'indirizzo IP da cui arrivano le richieste e il numero di richieste. L'aggiornamento diretto si può spegnere dalle impostazioni del plugin e il pacchetto scaricato è firmato: il plugin lo controlla prima di installarlo.
 
 ## Per quanto tempo li conserviamo
 Le richieste di supporto e le relative risposte si conservano per la durata del rapporto e per il tempo necessario a gestire eventuali ulteriori richieste; si cancellano su richiesta. Gli altri dati si conservano per tutta la durata del rapporto e, dopo, per il tempo richiesto dalla legge per le scritture contabili e fiscali (di norma 10 anni). I dati di accesso inutilizzati si cancellano su richiesta.
@@ -122,10 +147,8 @@ I cookie sono piccoli file che il sito salva nel tuo browser. Alcuni servono a f
 ## Cookie che usiamo
 - **Tecnici (sempre attivi):** mantengono la sessione quando accedi all'area riservata e ricordano le tue scelte sui cookie. Non richiedono consenso.
 - **Accesso alla demo (tecnico):** nella demo pubblica sotto `/demo/` il cookie «asem_s» ricorda l'accesso di chi entra come socio. Dura poco, serve solo a restare collegato e non richiede consenso.
-- **Statistiche (solo con il tuo consenso):** ci aiutano a capire quali pagine sono utili, in forma aggregata.
-- **Marketing (solo con il tuo consenso):** servono a misurare l'efficacia delle comunicazioni.
 
-Gli strumenti di statistica e marketing partono solo se li accetti. Se non li accetti, non vengono caricati.
+Al momento non usiamo cookie di statistica, di marketing o di profilazione, né strumenti di terze parti che ne installino. Se in futuro li useremo, partiranno solo dopo il tuo consenso e aggiorneremo questa pagina.
 
 ## Come cambiare scelta
 Puoi modificare o ritirare il consenso in ogni momento dal link «Preferenze cookie» in fondo a ogni pagina. Puoi anche cancellare i cookie dalle impostazioni del browser.
@@ -136,7 +159,7 @@ TXT
 			,
 			'termini' => <<<'TXT'
 ## Chi offre il servizio
-Il servizio di licenze, aggiornamenti e area riservata di Associazione Semplice è offerto da {titolare} {indirizzo} {piva}. Per qualsiasi richiesta scrivi a {email}.
+Il servizio di licenze, aggiornamenti e area riservata di Associazione Semplice è offerto da {titolare_completo}. Per qualsiasi richiesta scrivi a {email}.
 
 ## Che cosa include
 - **Licenza gratuita:** abilita i servizi collegati del plugin gratuito per un dominio. È gratuita, senza scadenza fissa, e si rinnova da sola finché usi il servizio.

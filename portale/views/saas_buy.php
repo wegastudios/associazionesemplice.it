@@ -1,7 +1,7 @@
 <?php
 /**
  * Acquisto del gestionale. Scelte e prezzi vengono dal listino corrente del SaaS; il totale mostrato è quello che si paga.
- * @var array|null $doc @var array $v @var array|null $quote @var string $error @var string[] $providers
+ * @var array|null $doc @var array $v @var array|null $quote @var string $error @var string[] $providers @var string $convert @var int $trial_days
  */
 $plans  = $doc ? Portale\Catalog::plans( $doc ) : array();
 $addons = array();
@@ -20,13 +20,14 @@ $labels = array( 'stripe' => 'Carta (Stripe)', 'paypal' => 'PayPal' );
 <section class="page"><div class="wrap page-grid">
 	<div class="panel">
 		<span class="eyebrow">Gestionale online</span>
-		<h1>Prendi il gestionale</h1>
+		<h1><?php echo ! empty( $convert ) ? "Scegli il piano per " . e( $v["org_name"] ) : "Prendi il gestionale"; ?></h1>
 		<?php if ( ! $doc || ! $plans ) : ?>
 			<p class="muted">Il listino non è disponibile in questo momento: riprova tra poco o <a href="mailto:info@associazionesemplice.it">scrivici</a>.</p>
 		<?php else : ?>
 		<?php if ( '' !== $error ) : ?><p class="flash" role="alert"><?php echo e( $error ); ?></p><?php endif; ?>
 		<form method="post" action="/saas/acquista">
 			<input type="hidden" name="csrf" value="<?php echo e( Portale\App::csrf() ); ?>">
+			<?php if ( ! empty( $convert ) ) : ?><input type="hidden" name="convert" value="<?php echo e( $convert ); ?>"><?php endif; ?>
 			<label for="plan">Piano</label>
 			<select id="plan" name="plan">
 				<?php foreach ( $plans as $p ) : ?><option value="<?php echo e( $p['code'] ); ?>"<?php echo $v['plan'] === $p['code'] ? ' selected' : ''; ?>><?php echo e( $p['name'] ?? $p['code'] ); ?></option><?php endforeach; ?>
@@ -40,9 +41,9 @@ $labels = array( 'stripe' => 'Carta (Stripe)', 'paypal' => 'PayPal' );
 			<input id="members" type="number" name="members" min="1" max="100000" inputmode="numeric" value="<?php echo (int) $v['members']; ?>">
 			<?php if ( $addons ) : ?>
 				<label>Componenti in più</label>
-				<?php foreach ( $addons as $a ) : ?>
-					<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin:6px 0"><label for="ad-<?php echo e( $a['code'] ); ?>" style="font-weight:400"><?php echo e( $a['name'] ?? $a['code'] ); ?></label>
-					<input id="ad-<?php echo e( $a['code'] ); ?>" type="number" name="addons[<?php echo e( $a['code'] ); ?>]" min="0" max="1000" inputmode="numeric" value="<?php echo (int) ( $v['addons'][ $a['code'] ] ?? 0 ); ?>" style="max-width:6rem"></div>
+				<?php foreach ( $addons as $a ) : $why = Portale\Catalog::addonBlock( $doc, (string) $v['plan'], $a ); ?>
+					<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin:6px 0"><label for="ad-<?php echo e( $a['code'] ); ?>" style="font-weight:400"><?php echo e( $a['name'] ?? $a['code'] ); ?><?php echo null !== $why ? '<br><small class="muted">' . e( $why ) . '</small>' : ''; ?></label>
+					<input id="ad-<?php echo e( $a['code'] ); ?>" type="number" name="addons[<?php echo e( $a['code'] ); ?>]" min="0" max="1000" inputmode="numeric" value="<?php echo null !== $why ? 0 : (int) ( $v['addons'][ $a['code'] ] ?? 0 ); ?>"<?php echo null !== $why ? ' disabled' : ''; ?> style="max-width:6rem"></div>
 				<?php endforeach; ?>
 			<?php endif; ?>
 			<label for="promo">Codice promozionale <span class="muted">(facoltativo)</span></label>
@@ -67,14 +68,18 @@ $labels = array( 'stripe' => 'Carta (Stripe)', 'paypal' => 'PayPal' );
 
 			<h2 style="margin-top:1.4rem">I tuoi dati</h2>
 			<label for="org_name">Nome dell'associazione</label>
-			<input id="org_name" type="text" name="org_name" maxlength="150" value="<?php echo e( $v['org_name'] ); ?>" required>
+			<input id="org_name" type="text" name="org_name" maxlength="150" value="<?php echo e( $v['org_name'] ); ?>" required<?php echo ! empty( $convert ) ? ' readonly' : ''; ?>>
 			<label for="slug">Indirizzo del gestionale</label>
-			<input id="slug" type="text" name="slug" maxlength="40" autocapitalize="none" spellcheck="false" value="<?php echo e( $v['slug'] ); ?>" placeholder="la-mia-associazione" required>
+			<input id="slug" type="text" name="slug" maxlength="40" autocapitalize="none" spellcheck="false" value="<?php echo e( $v['slug'] ); ?>" placeholder="la-mia-associazione" required<?php echo ! empty( $convert ) ? ' readonly' : ''; ?>>
 			<p class="hint">Sarà <b>indirizzo</b>.associazionesemplice.it. Se è già preso ne aggiungiamo un pezzetto noi.</p>
 			<label for="email">La tua email</label>
-			<input id="email" type="email" name="email" autocomplete="email" value="<?php echo e( $v['email'] ); ?>" required>
+			<input id="email" type="email" name="email" autocomplete="email" value="<?php echo e( $v['email'] ); ?>" required<?php echo ! empty( $convert ) ? ' readonly' : ''; ?>>
 			<label for="name">Il tuo nome <span class="muted">(facoltativo)</span></label>
 			<input id="name" type="text" name="name" autocomplete="name" maxlength="150" value="<?php echo e( $v['name'] ); ?>">
+			<?php if ( ! empty( $trial_days ) ) : ?>
+				<button class="btn alt big block" type="submit" name="step" value="trial" style="margin-bottom:1rem">Prova gratis <?php echo (int) $trial_days; ?> giorni, senza carta</button>
+				<p class="hint" style="margin-top:-.4rem">Nessun pagamento adesso: ti avvisiamo prima della fine e scegli tu se continuare.</p>
+			<?php endif; ?>
 			<?php if ( $providers ) : ?>
 				<label>Come vuoi pagare</label>
 				<div class="choice">

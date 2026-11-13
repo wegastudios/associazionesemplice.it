@@ -13,6 +13,7 @@ interface PlanLimits
      *
      * @throws UnknownPlan
      * @throws UnknownAddon
+     * @throws AddonNotAllowed
      */
     public function resolve(string $plan, int $version, array $addons, int $members): array;
 }

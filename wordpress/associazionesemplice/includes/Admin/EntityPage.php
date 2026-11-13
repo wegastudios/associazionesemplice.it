@@ -32,6 +32,15 @@ final class EntityPage {
 		echo wp_kses( '<tr><th>L\'anno fiscale inizia a</th><td>' . self::fiscal_month_field( $s ) . '<p class="description">È l\'esercizio della contabilità (prima nota, esercizi, report, preventivo): di partenza è gennaio, cioè l\'anno solare, ma può iniziare in qualunque mese. Cambialo prima di chiudere il primo esercizio: dopo la prima chiusura non si può più cambiare.</p></td></tr>', Html::allowed() );
 		echo '</tbody></table>';
 
+		echo '<h2>Registro unico del Terzo settore (RUNTS)</h2><table class="form-table"><tbody>';
+		echo wp_kses( '<tr><th>Sezione del RUNTS</th><td><select name="runts_section">' . Ui::options( \AssociazioneSemplice\RuntsRules::sections(), (string) $s['runts_section'] ) . '</select>'
+			. '<p class="description">Se sei una ODV o una APS il programma controlla che i soci non scendano sotto il minimo (7 persone oppure 3 enti) e ti avvisa. Se non sei iscritto al RUNTS lascia «Non indicata».</p></td></tr>', Html::allowed() );
+		$ry = (int) $s['runts_manual_year'];
+		echo wp_kses( '<tr><th>Volontari iscritti nel registro</th><td><input type="number" name="runts_volunteers" min="0" max="1000000" value="' . (int) $s['runts_volunteers'] . '" class="small-text"> '
+			. 'riferiti al 31 dicembre <input type="number" name="runts_manual_year" min="2000" max="2100" value="' . ( $ry ? $ry : '' ) . '" class="small-text" placeholder="anno">'
+			. '<p class="description">Scrivi quanti volontari risultano nel tuo registro dei volontari al 31 dicembre, e di quale anno. Il numero compare in Registri → Dati per il RUNTS.</p></td></tr>', Html::allowed() );
+		echo '</tbody></table>';
+
 		echo '<h2>Sede e contatti</h2><table class="form-table"><tbody>';
 		echo '<tr><th>Indirizzo</th><td><input type="text" name="legal_address" value="' . esc_attr( (string) $s['legal_address'] ) . '" class="regular-text"></td></tr>';
 		echo '<tr><th>CAP, comune, provincia</th><td><input type="text" name="legal_zip" value="' . esc_attr( (string) $s['legal_zip'] ) . '" size="6" placeholder="CAP"> <input type="text" name="legal_city" value="' . esc_attr( (string) $s['legal_city'] ) . '" placeholder="Comune"> <input type="text" name="legal_province" value="' . esc_attr( (string) $s['legal_province'] ) . '" size="4" placeholder="Prov."></td></tr>';

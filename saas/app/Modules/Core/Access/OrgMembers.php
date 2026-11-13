@@ -70,9 +70,9 @@ final readonly class OrgMembers
 
             $now = now();
             $this->db->connection('pgsql')->table('core.org_users')->upsert(
-                [['org_id' => $org->id, 'user_id' => $user->id, 'role' => $role->value, 'custom_role_id' => $customRoleId, 'created_at' => $now, 'updated_at' => $now]],
+                [['org_id' => $org->id, 'user_id' => $user->id, 'role' => $role->value, 'custom_role_id' => $customRoleId, 'denied_abilities' => '{}', 'created_at' => $now, 'updated_at' => $now]],
                 ['org_id', 'user_id'],
-                ['role', 'custom_role_id', 'updated_at'],
+                ['role', 'custom_role_id', 'denied_abilities', 'updated_at'],
             );
 
             $this->audit($org, 'operator.invited', $user->id, ['role' => $role->value, 'new_user' => $isNew] + ($customRoleId === null ? [] : ['custom_role_id' => $customRoleId]));
@@ -102,15 +102,39 @@ final readonly class OrgMembers
 
         $this->db->connection('pgsql')->table('core.org_users')
             ->where('org_id', $org->id)->where('user_id', $userId)
-            ->update(['role' => $role->value, 'custom_role_id' => $customRoleId, 'updated_at' => now()]);
+            ->update(['role' => $role->value, 'custom_role_id' => $customRoleId, 'denied_abilities' => '{}', 'updated_at' => now()]);
         $this->audit($org, 'operator.role_changed', $userId, ['from' => $current->role->value, 'to' => $role->value]
             + ($customRoleId === null ? [] : ['custom_role_id' => $customRoleId]));
     }
 
     /**
+     * Permessi tolti a un dipendente (elenco chiuso, Ability::removable). Li gestiscono titolare e amministratori;
+     * l'elenco passato sostituisce il precedente, e ogni modifica finisce nel registro delle azioni.
+     *
+     * @param  list<string>  $denied
+     */
+    public function setDeniedAbilities(Org $org, string $userId, array $denied, Operator $by): void
+    {
+        $current = $this->memberships->find($userId, $org->id) ?? throw new InvalidArgumentException('Operatore inesistente.');
+        if ($by->orgId !== $org->id || ! $by->role->canAssign(OrgRole::Employee)) {
+            throw new AuthorizationException('Non puoi cambiare i permessi di un dipendente.');
+        }
+        if ($current->role !== OrgRole::Employee) {
+            throw new InvalidArgumentException('I permessi si tolgono solo a chi ha il ruolo Dipendente.');
+        }
+        $values = array_map(static fn (Ability $a): string => $a->value, array_values(array_filter(Ability::removable(), static fn (Ability $a): bool => in_array($a->value, $denied, true))));
+        $before = array_map(static fn (Ability $a): string => $a->value, $current->deniedAbilities);
+
+        $this->db->connection('pgsql')->table('core.org_users')
+            ->where('org_id', $org->id)->where('user_id', $userId)
+            ->update(['denied_abilities' => '{'.implode(',', $values).'}', 'updated_at' => now()]);
+        $this->audit($org, 'operator.permissions_changed', $userId, ['denied_before' => implode(',', $before), 'denied' => implode(',', $values)]);
+    }
+
+    /**
      * Operatori dell'associazione, con il ruolo e lo stato dell'accesso.
      *
-     * @return list<array{user_id: string, name: string, email: string, role: OrgRole, custom_role_id: string|null, role_label: string, two_factor: bool}>
+     * @return list<array{user_id: string, name: string, email: string, role: OrgRole, custom_role_id: string|null, role_label: string, two_factor: bool, denied: list<string>}>
      */
     public function operators(Org $org): array
     {
@@ -118,17 +142,18 @@ final readonly class OrgMembers
             ->join('core.users as u', 'u.id', '=', 'm.user_id')
             ->leftJoin('core.org_roles as r', 'r.id', '=', 'm.custom_role_id')
             ->where('m.org_id', $org->id)
-            ->orderByRaw("array_position(ARRAY['owner', 'admin', 'operator', 'custom', 'accountant'], m.role)")->orderBy('u.name')
-            ->get(['m.user_id', 'u.name', 'u.email', 'm.role', 'm.custom_role_id', 'r.name as custom_name', 'u.two_factor_confirmed_at']);
+            ->orderByRaw("array_position(ARRAY['owner', 'admin', 'operator', 'employee', 'custom', 'accountant'], m.role)")->orderBy('u.name')
+            ->get(['m.user_id', 'u.name', 'u.email', 'm.role', 'm.custom_role_id', 'r.name as custom_name', 'u.two_factor_confirmed_at', 'm.denied_abilities']);
 
         $out = [];
         foreach ($rows as $r) {
-            /** @var object{user_id: string, name: string, email: string, role: string, custom_role_id: string|null, custom_name: string|null, two_factor_confirmed_at: string|null} $r */
+            /** @var object{user_id: string, name: string, email: string, role: string, custom_role_id: string|null, custom_name: string|null, two_factor_confirmed_at: string|null, denied_abilities: string|null} $r */
             $role = OrgRole::from($r->role);
             $out[] = [
                 'user_id' => $r->user_id, 'name' => $r->name, 'email' => $r->email, 'role' => $role, 'custom_role_id' => $r->custom_role_id,
                 'role_label' => $role === OrgRole::Custom && $r->custom_name !== null ? $r->custom_name : $role->label(),
                 'two_factor' => $r->two_factor_confirmed_at !== null,
+                'denied' => array_map(static fn (Ability $a): string => $a->value, Memberships::denied($r->denied_abilities)),
             ];
         }
 

@@ -183,7 +183,7 @@ final class App {
 		} elseif ( $get && '/paypal/ritorno' === $path ) {
 			$this->paypalReturn( (string) ( $_GET['token'] ?? '' ) );
 		} elseif ( $get && '/grazie' === $path && 'saas' === ( $_SESSION['grazie']['kind'] ?? '' ) ) {
-			View::render( 'thanks_saas', array( 'title' => 'Grazie!', 'org' => (string) $_SESSION['grazie']['associazione'], 'email' => (string) $_SESSION['grazie']['email'] ) );
+			View::render( 'thanks_saas', array( 'title' => 'Grazie!', 'org' => (string) $_SESSION['grazie']['associazione'], 'email' => (string) $_SESSION['grazie']['email'], 'trial' => ! empty( $_SESSION['grazie']['trial'] ) ) );
 		} elseif ( $get && '/grazie' === $path ) {
 			View::render( 'message', array( 'title' => 'Grazie!', 'text' => 'Appena il pagamento è confermato ti scriviamo un link per entrare nell\'area riservata e trovare la chiave di licenza del plugin o l\'indirizzo del tuo gestionale.' ) );
 		} elseif ( $get && '/accedi' === $path ) {
@@ -759,15 +759,42 @@ final class App {
 			'name' => trim( (string) ( $in['name'] ?? '' ) ), 'org_name' => trim( (string) ( $in['org_name'] ?? '' ) ),
 			'slug' => strtolower( trim( (string) ( $in['slug'] ?? '' ) ) ), 'provider' => (string) ( $in['provider'] ?? '' ),
 		);
+		// «Scegli un piano» alla fine della prova: dati dell'associazione fissi, quelli della prova (solo per chi è entrato e ne è il titolare).
+		$convert = '';
+		if ( '' !== (string) ( $in['convert'] ?? '' ) ) {
+			$t = SaasAccount::trial( $this->db, $this->customerId(), (string) $in['convert'] );
+			if ( ! $t ) {
+				throw new UserError( 'Questa prova non è più attiva: scegli un piano da capo.' );
+			}
+			$convert = (string) $t['id'];
+			$v       = array( 'org_name' => (string) $t['org_name'], 'slug' => (string) $t['slug'], 'email' => (string) $t['email'], 'name' => (string) $v['name'] ) + $v;
+			if ( '' === (string) ( $in['plan'] ?? '' ) ) {
+				$v['plan'] = (string) $t['plan'];
+			}
+		}
 		if ( '' === $v['slug'] && '' !== $v['org_name'] ) {
 			$v['slug'] = SaasCheckout::slugFrom( $v['org_name'] );
+		}
+		// Cambiando piano, i componenti che il catalogo non ammette su quello nuovo escono dal carrello (la pagina li mostra spenti col motivo).
+		if ( $cat && '' !== $v['plan'] && $v['addons'] ) {
+			foreach ( (array) ( $cat['doc']['addons'] ?? array() ) as $a ) {
+				if ( is_array( $a ) && isset( $v['addons'][ $a['code'] ?? '' ] ) && null !== Catalog::addonBlock( $cat['doc'], $v['plan'], $a ) ) {
+					unset( $v['addons'][ $a['code'] ] );
+				}
+			}
 		}
 		$quote = null;
 		$error = '';
 		if ( ! $get ) {
 			$this->formLimit();
+			if ( 'trial' === (string) $this->in( 'step' ) ) {
+				$email = SaasCheckout::startTrial( $this->db, $this->billing, $v );
+				$_SESSION['grazie'] = array( 'kind' => 'saas', 'trial' => true, 'associazione' => $v['org_name'], 'email' => $email );
+				header( 'Location: /grazie', true, 303 );
+				return;
+			}
 			if ( 'pay' === (string) $this->in( 'step' ) ) {
-				$url = SaasCheckout::start( $this->db, $this->billing, $v + array( 'seen_total' => $_POST['seen_total'] ?? '' ) );
+				$url = SaasCheckout::start( $this->db, $this->billing, $v + array( 'seen_total' => $_POST['seen_total'] ?? '', 'convert' => $convert ) );
 				$_SESSION['grazie'] = array( 'kind' => 'saas', 'associazione' => $v['org_name'], 'email' => $v['email'] ); // la pagina «Grazie» sa che ordine è
 				header( 'Location: ' . $url, true, 303 );
 				return;
@@ -781,7 +808,8 @@ final class App {
 				$error = $e->getMessage();
 			}
 		}
-		View::render( 'saas_buy', array( 'title' => 'Prendi il gestionale', 'doc' => $cat ? $cat['doc'] : null, 'v' => $v, 'quote' => $quote, 'error' => $error, 'providers' => SaasCheckout::providers() ) );
+		View::render( 'saas_buy', array( 'title' => 'Prendi il gestionale', 'doc' => $cat ? $cat['doc'] : null, 'v' => $v, 'quote' => $quote, 'error' => $error, 'providers' => SaasCheckout::providers(),
+			'convert' => $convert, 'trial_days' => ( '' === $convert && $cat && '' !== $v['plan'] && SaasCheckout::trialEnabled() ) ? SaasCheckout::trialDays( $cat['doc'], $v['plan'] ) : 0 ) );
 	}
 
 	/** Il cliente torna da PayPal dopo aver approvato un pagamento singolo: qui si incassa l'ordine. */

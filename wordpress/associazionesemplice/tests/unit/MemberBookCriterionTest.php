@@ -75,7 +75,7 @@ final class MemberBookCriterionTest extends TestCase {
 		foreach ( array( 'email', 'phone', 'card_number', 'fee_cents', 'fee_year', 'guardian', 'applied_on' ) as $not ) {
 			$this->assertNotContains( $not, $f );
 		}
-		foreach ( array( 'last_name', 'first_name', 'birth_date', 'birth_place', 'tax_code', 'residence', 'level', 'joined_on', 'approved_on', 'left_on', 'left_reason' ) as $yes ) {
+		foreach ( array( 'kind', 'last_name', 'first_name', 'birth_date', 'birth_place', 'tax_code', 'residence', 'level', 'joined_on', 'approved_on', 'left_on', 'left_reason' ) as $yes ) {
 			$this->assertContains( $yes, $f );
 		}
 	}

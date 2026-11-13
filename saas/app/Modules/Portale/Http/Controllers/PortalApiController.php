@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Portale\Http\Controllers;
 
+use App\Modules\Piattaforma\Contracts\AddonNotAllowed;
 use App\Modules\Piattaforma\Contracts\UnknownAddon;
 use App\Modules\Piattaforma\Contracts\UnknownPlan;
 use App\Modules\Portale\Entitlements\PortalSync;
@@ -77,6 +78,8 @@ final readonly class PortalApiController
             return self::error(409, 'unknown_plan');
         } catch (UnknownAddon) {
             return self::error(409, 'unknown_addon');
+        } catch (AddonNotAllowed) {
+            return self::error(409, 'addon_not_allowed');
         } catch (UnknownOrg) {
             return self::error(404, 'unknown_org');
         } catch (InvalidArgumentException $e) {

@@ -24,7 +24,7 @@ final readonly class PeopleService
 {
     /** Campi che l'operatore può scrivere. */
     private const FIELDS = [
-        'type', 'first_name', 'last_name', 'email', 'phone', 'card_number', 'tax_code', 'birth_date', 'birth_place',
+        'type', 'is_entity', 'entity_same_section', 'first_name', 'last_name', 'email', 'phone', 'card_number', 'tax_code', 'birth_date', 'birth_place',
         'address', 'iban', 'notes', 'level_id', 'host_person_id', 'joined_on',
     ];
 
@@ -127,6 +127,17 @@ final readonly class PeopleService
             }
         }
         $values['type'] ??= $current?->type->value ?? MemberType::Ordinary->value;
+        $isEntity = array_key_exists('is_entity', $values) ? filter_var($values['is_entity'], FILTER_VALIDATE_BOOLEAN) : ($current !== null && $current->is_entity);
+        if ($isEntity) {
+            // Un ente non ha nome né data di nascita: la denominazione sta nel cognome.
+            $values['is_entity'] = true;
+            $values['first_name'] = '';
+            $values['birth_date'] = null;
+            $values['birth_place'] = null;
+        } else {
+            $values['is_entity'] = false;
+            $values['entity_same_section'] = null;
+        }
 
         $hostType = null;
         if (is_string($values['host_person_id'] ?? null)) {

@@ -5,7 +5,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Assemblee dei soci: convocazione, presenze, deleghe tra soci, numero legale e verbale collegato. Le regole pure stanno in {@see AssemblyRules}.
- * Ha diritto di intervenire chi ha diritto di voto (come nelle votazioni): socio in regola, non sospeso, non uscito. Tutori e ospiti no.
+ * Ha diritto di intervenire chi ha diritto di voto (come nelle votazioni, {@see VotingRight}: maggiorenne e, nel Pro, di un livello che vota): socio in regola, non sospeso, non uscito. Tutori e ospiti no.
  */
 final class Assemblies {
 
@@ -334,8 +334,8 @@ final class Assemblies {
 		$today = Db::today();
 		$types = "'" . implode( "','", array_map( 'esc_sql', MemberType::member_types() ) ) . "'";
 		$sql   = 'SELECT p.id FROM ' . Db::t( 'people' ) . " p WHERE p.deleted_at IS NULL AND p.anonymized_at IS NULL AND p.application_status IS NULL AND p.suspended_at IS NULL AND p.type IN ($types) AND (p.left_on IS NULL OR p.left_on > %s) "
-			. 'AND EXISTS (SELECT 1 FROM ' . Db::t( 'memberships' ) . ' m WHERE m.person_id = p.id AND m.deleted_at IS NULL AND m.valid_from <= %s AND m.valid_to >= %s)';
-		return array_map( 'intval', $db->get_col( $db->prepare( $sql, $today, $today, $today ) ) ?: array() );
+			. 'AND EXISTS (SELECT 1 FROM ' . Db::t( 'memberships' ) . ' m WHERE m.person_id = p.id AND m.deleted_at IS NULL AND m.valid_from <= %s AND m.valid_to >= %s) AND ' . VotingRight::sql_condition(); // chi vota: tipo che vota e maggiorenne
+		return array_map( 'intval', $db->get_col( $db->prepare( $sql, $today, $today, $today, $today ) ) ?: array() );
 	}
 
 	/**

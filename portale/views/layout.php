@@ -54,7 +54,7 @@ $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 </div></section>
 <?php endif; ?></main>
 <footer class="site-footer"><div class="wrap">
-	<div>© <?php echo date( 'Y' ); ?> Associazione Semplice</div>
+	<div>© <?php echo date( 'Y' ); ?> Associazione Semplice<?php $fl = Portale\Legal::footerLine(); echo '' !== $fl ? '<br><small>' . e( $fl ) . '</small>' : ''; ?></div>
 	<div><a href="/free">Licenza gratuita</a><a href="/saas">Gestionale online</a><a href="/wordpress">Plugin WordPress</a><a href="/plugin">Il plugin</a><a href="/confronto">Confronto versioni</a><a href="<?php echo e( $support_href ); ?>">Supporto</a><a href="<?php echo e( $area ); ?>"><?php echo $logged ? 'Il mio account' : 'Accedi'; ?></a><a href="/privacy">Privacy</a><a href="/termini">Termini</a><a href="/cookie">Cookie</a><?php if ( \Portale\Tracking::banner() ) : ?><a href="#" data-cc-open>Preferenze cookie</a><?php endif; ?></div>
 </div></footer>
 <?php if ( $bar ) : ?>

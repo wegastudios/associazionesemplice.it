@@ -151,7 +151,7 @@ $catalog = [
             'communications' => ['state' => 'excluded'],
             'association_life' => ['state' => 'excluded'],
         ], ['member_area' => [], 'einvoice' => ['yearly' => 50]]),
-        $tier('grande', 3, 'Grande', 'Per le associazioni grandi, fino a 1.000 soci', 1000, 5900, 1000, 'Quante ne servono', [
+        $tier('grande', 3, 'Grande', 'Per le associazioni grandi, fino a 1.000 soci', 1000, 5900, 50, '50 persone', [
             'member_area' => ['state' => 'included'],
             'einvoice' => ['state' => 'limit', 'text' => "50 fatture all'anno incluse"],
             'communications' => ['state' => 'included'],
@@ -160,7 +160,7 @@ $catalog = [
     ],
 
     'addons' => [
-        ['code' => 'operators_extra', 'name' => 'Una persona in più nel gestionale', 'kind' => 'operators', 'visible' => true, 'grants' => ['operators' => 1], 'prices' => $flat(300)],
+        ['code' => 'operators_extra', 'name' => 'Una persona in più nel gestionale', 'kind' => 'operators', 'visible' => true, 'plans' => ['gestionale', 'piccola', 'media'], 'grants' => ['operators' => 1], 'prices' => $flat(300)],
         ['code' => 'storage_extra', 'name' => '10 GB di spazio in più', 'kind' => 'storage', 'visible' => true, 'grants' => ['storage_gb' => 10], 'prices' => $flat(300)],
         // Area soci: 5 € fissi fino a 50 soci, poi 0,06 · 0,04 · 0,02 € a socio al mese.
         [
@@ -168,14 +168,15 @@ $catalog = [
             'name' => 'Area soci e pagamenti',
             'kind' => 'package',
             'visible' => false,
+            'plans' => ['gestionale', 'piccola'],
             'grants' => ['package' => 'member_area', 'limits' => []],
             'prices' => $memberTiers(500, [['up_to' => 150, 'unit_cents' => 6], ['up_to' => 400, 'unit_cents' => 4], ['up_to' => null, 'unit_cents' => 2]]),
         ],
         $package('site', 'Sito', 1900),
-        $package('einvoice', "Fattura elettronica (50 fatture all'anno)", 700, ['yearly' => 50]),
-        array_replace($package('communications', 'Email e SMS ai soci', 900), ['visible' => false]),
+        array_replace($package('einvoice', "Fattura elettronica (50 fatture all'anno)", 700, ['yearly' => 50]), ['plans' => ['gestionale', 'piccola']]),
+        array_replace($package('communications', 'Email e SMS ai soci', 900), ['visible' => false, 'plans' => ['gestionale', 'piccola', 'media']]),
         array_replace($package('advanced_accounting', 'Contabilità avanzata', 1900), ['visible' => false]),
-        array_replace($package('association_life', 'Assemblee, verbali e votazioni', 700), ['visible' => false]),
+        array_replace($package('association_life', 'Assemblee, verbali e votazioni', 700), ['visible' => false, 'plans' => ['gestionale', 'piccola', 'media']]),
         $package('sport', 'Sport: certificati medici e affiliazioni', 1200),
         // Versione Web; la Interna costa il 50% (da aggiungere come addon a parte quando serve venderla).
         $resources('resources_hourly_web', 'Risorse orarie, Web', 'hourly', 2, [
@@ -192,8 +193,8 @@ $catalog = [
         ['code' => 'dedicated_db', 'name' => 'Archivio separato solo per la tua associazione (database dedicato)', 'kind' => 'dedicated_db', 'visible' => true, 'grants' => [], 'prices' => $flat(2500)],
         // Pacchetti di soci solo per la Grande, oltre i 1.000 (decisione della titolare, 13/11/2026): 3,4 € a socio, 17 € per 500 e 30 € per 1.000.
         // Nascosti finché lei non li mette in vendita dal pannello. Piccola e Media non li hanno: chi supera i limiti passa al piano sopra.
-        ['code' => 'members_500', 'name' => '500 soci in più (solo con il piano Grande)', 'kind' => 'members', 'visible' => false, 'grants' => ['members' => 500], 'prices' => $flat(1700)],
-        ['code' => 'members_1000', 'name' => '1.000 soci in più (solo con il piano Grande)', 'kind' => 'members', 'visible' => false, 'grants' => ['members' => 1000], 'prices' => $flat(3000)],
+        ['code' => 'members_500', 'name' => '500 soci in più (solo con il piano Grande)', 'kind' => 'members', 'visible' => false, 'plans' => ['grande'], 'grants' => ['members' => 500], 'prices' => $flat(1700)],
+        ['code' => 'members_1000', 'name' => '1.000 soci in più (solo con il piano Grande)', 'kind' => 'members', 'visible' => false, 'plans' => ['grande'], 'grants' => ['members' => 1000], 'prices' => $flat(3000)],
     ],
 
     'promos' => [],

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Piattaforma\Catalogo;
 
+use App\Modules\Piattaforma\Contracts\AddonNotAllowed;
 use App\Modules\Piattaforma\Contracts\Catalog;
 use App\Modules\Piattaforma\Contracts\PlanLimits;
 use App\Modules\Piattaforma\Contracts\UnknownAddon;
@@ -35,6 +36,10 @@ final readonly class CatalogPlanLimits implements PlanLimits
 
         foreach ($addons as $requested) {
             $addon = $this->catalog->published()->addon($requested['code']) ?? throw new UnknownAddon($requested['code']);
+            // Un catalogo vecchio senza `plans` ammette il pacchetto su ogni piano.
+            if (is_array($addon['plans'] ?? null) && ! in_array($plan, $addon['plans'], true)) {
+                throw new AddonNotAllowed($requested['code'], $plan);
+            }
             $grants = is_array($addon['grants'] ?? null) ? $addon['grants'] : [];
             $operators += self::int($grants['operators'] ?? null) * $requested['qty'];
             $storageGb += self::int($grants['storage_gb'] ?? null) * $requested['qty'];

@@ -134,6 +134,7 @@ final class Db {
 			'ALTER TABLE orders ADD COLUMN retry_at VARCHAR(19) NULL',
 			'ALTER TABLE orders ADD COLUMN trial_ends VARCHAR(10) NULL',
 			'ALTER TABLE orders ADD COLUMN trial_step INTEGER NOT NULL DEFAULT 0',
+			'ALTER TABLE orders ADD COLUMN purge_notice VARCHAR(24) NULL',
 			// Colonne aggiunte dopo la prima versione: se esistono già l'errore si ignora.
 			"ALTER TABLE staff ADD COLUMN saas VARCHAR(10) NOT NULL DEFAULT ''",
 			'ALTER TABLE customers ADD COLUMN password_hash VARCHAR(255) NULL',

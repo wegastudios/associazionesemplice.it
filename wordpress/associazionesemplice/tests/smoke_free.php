@@ -395,6 +395,15 @@ free_ok( false === strpos( $faq_all, 'Registri → Presenze' ) && false === strp
 free_ok( false !== strpos( $faq_all, 'Strumenti → Copia di sicurezza' ) && false !== strpos( $faq_all, 'Cassa → Prima nota' ) && false !== strpos( $faq_all, 'fa parte di Associazione Semplice Pro' ), 'guida: nel gratuito la copia di sicurezza è in Strumenti e le funzioni a pagamento sono dichiarate come tali' );
 free_ok( false === strpos( $html['Soldi'], 'è in Contabilità' ) && false === strpos( $html['Bacheca'], 'Dati e fiscalità' ), 'soldi e bacheca: nessun rimando a schede del Pro' );
 
+// ---------- Diritto di voto nel gratuito: tutti i soci maggiorenni, non configurabile ----------
+$vr_html = free_render( array( \AssociazioneSemplice\Admin\SettingsPage::class, 'render' ) );
+free_ok( false === strpos( $vr_html, 'voting_types' ) && false !== strpos( $vr_html, 'tutti i soci maggiorenni' ), 'impostazioni: niente caselle di voto per tipo, il testo dice che votano tutti i maggiorenni' );
+foreach ( array( 'founder', 'ordinary', 'volunteer' ) as $vr_t ) {
+	free_ok( \AssociazioneSemplice\VotingRight::person_votes( array( 'type' => $vr_t, 'birth_date' => '1980-01-01', 'level_id' => 999 ), '2026-11-13' ), "diritto di voto nel gratuito: vota il socio $vr_t, qualunque livello abbia" );
+}
+free_ok( ! \AssociazioneSemplice\VotingRight::person_votes( array( 'type' => 'ordinary', 'birth_date' => '2015-01-01' ), '2026-11-13' ), 'diritto di voto nel gratuito: i minorenni non votano' );
+free_ok( false === strpos( \AssociazioneSemplice\VotingRight::sql_condition(), 'member_levels' ), 'diritto di voto nel gratuito: la condizione SQL non guarda i livelli' );
+
 free_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Edizione gratuita: tutti i controlli sono passati.' );

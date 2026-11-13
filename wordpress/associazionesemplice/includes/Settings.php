@@ -89,6 +89,9 @@ final class Settings {
 			'legal_city'              => '',
 			'legal_province'          => '',
 			'runts_number'            => '',        // iscrizione al RUNTS / registro (testo libero)
+			'runts_section'           => '',        // sezione del RUNTS: '', 'odv', 'aps', 'other' (vedi RuntsRules)
+			'runts_volunteers'        => 0,         // volontari iscritti nel registro dei volontari (numero inserito a mano: il programma non ha ancora il registro)
+			'runts_manual_year'       => 0,         // anno (31 dicembre) a cui si riferisce il numero dei volontari inserito a mano; 0 = non indicato
 			'pec'                     => '',        // PEC dell'ente
 			'sdi_code'                => '',        // codice destinatario per la fatturazione elettronica
 			'modules'                 => array(),   // parti del gestionale usate (vedi Modules): vuoto = tutte, come prima della configurazione guidata

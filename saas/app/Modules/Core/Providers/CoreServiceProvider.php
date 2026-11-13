@@ -4,17 +4,20 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Providers;
 
+use App\Modules\Core\Access\EmployeeCounter;
 use App\Modules\Core\Console\CreateOrgCommand;
 use App\Modules\Core\Console\DemoResetCommand;
 use App\Modules\Core\Console\HealthCommand;
 use App\Modules\Core\Console\InviteOperatorCommand;
 use App\Modules\Core\Console\MigrateAllCommand;
+use App\Modules\Core\Console\SelfTestPurgeCommand;
 use App\Modules\Core\Contracts\DatabaseNames;
 use App\Modules\Core\Contracts\DataExport;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgDirectory;
 use App\Modules\Core\Contracts\OrgPurger;
 use App\Modules\Core\Contracts\PlatformSettingsStore;
+use App\Modules\Core\Contracts\StaffCount;
 use App\Modules\Core\Database\DatabaseRegistry;
 use App\Modules\Core\Export\CoreDataExport;
 use App\Modules\Core\Org\DatabaseOrgContext;
@@ -43,6 +46,7 @@ final class CoreServiceProvider extends ServiceProvider
         $this->app->singleton(OrgPurger::class, DatabaseOrgPurger::class);
         $this->app->singleton(PlatformSettingsStore::class, PlatformSettings::class);
         $this->app->singleton(OrgContext::class, DatabaseOrgContext::class);
+        $this->app->bind(StaffCount::class, EmployeeCounter::class);
     }
 
     public function boot(): void
@@ -73,7 +77,7 @@ final class CoreServiceProvider extends ServiceProvider
         Event::listen(JobFailed::class, $reset);
 
         if ($this->app->runningInConsole()) {
-            $this->commands([MigrateAllCommand::class, CreateOrgCommand::class, InviteOperatorCommand::class, HealthCommand::class, DemoResetCommand::class]);
+            $this->commands([MigrateAllCommand::class, CreateOrgCommand::class, InviteOperatorCommand::class, HealthCommand::class, DemoResetCommand::class, SelfTestPurgeCommand::class]);
 
             // Code su Postgres: un lavoratore a giro di cron, che si ferma quando la coda è vuota o dopo 50 secondi
             // (sul server non ci sono processi sempre attivi).

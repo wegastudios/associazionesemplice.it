@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gira sul server (sub-account cPanel), lanciato dal workflow «SaaS · manutenzione server» via SSH.
-# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita> [cartella-bin-postgresql]
+# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino> [cartella-bin-postgresql]
 #
 # Azioni fisse e limitate (non è una shell remota):
 #   diagnosi          sola lettura: stato (impostata/vuota) delle variabili che contano, client PostgreSQL presenti, ultimi errori
@@ -73,6 +73,38 @@ case "$ACTION" in
     "$PHP" artisan tinker --execute='echo (DB::connection("pgsql")->selectOne("select to_regclass(?) is not null as ok", ["core.org_notices"])->ok ? "core.org_notices ok" : "core.org_notices MANCA"), PHP_EOL, (DB::connection("pgsql")->selectOne("select to_regclass(?) is not null as ok", ["audit.anchors"])->ok ? "audit.anchors ok" : "audit.anchors MANCA"), PHP_EOL;' || true
     echo "== Interruttori (devono essere spenti) =="
     for v in SAAS_PURGE_ENABLED SAAS_NOTICES_ENABLED SAAS_AUDIT_PRUNE_ENABLED; do echo "$v = [$(get "$v")]  (vuoto o 0 = spento)"; done
+    ;;
+  prova-cancellazione)
+    # Crea un'associazione di prova, la cancella con il servizio vero e controlla che le altre restino identiche; poi verifica le catene.
+    cd "$BASE/current"
+    "$PHP" artisan saas:selftest:purge
+    echo "== Registro: verifica delle catene =="; "$PHP" artisan saas:audit:verify | tail -5
+    ;;
+  catalogo)
+    # Sola lettura: ultima revisione pubblicata e bozza (piani con versione, visibilità e operatori; pacchetti).
+    cd "$BASE/current"
+    "$PHP" artisan tinker --execute='
+      $show = function (string $title, ?array $doc): void {
+        echo "== {$title} ==", PHP_EOL;
+        if ($doc === null) { echo "(nessuno)", PHP_EOL; return; }
+        foreach ($doc["plans"] ?? [] as $p) { echo "piano ", $p["code"], " v", $p["plan_version"], " visibile=", $p["visible"] ? "si" : "no", " operatori=", $p["limits"]["operators"] ?? "?", " soci=", var_export($p["limits"]["members"] ?? null, true), PHP_EOL; }
+        foreach ($doc["addons"] ?? [] as $a) { echo "addon ", $a["code"], " visibile=", $a["visible"] ? "si" : "no", PHP_EOL; }
+        echo "terms.members: ", json_encode($doc["terms"]["members"] ?? null), PHP_EOL;
+      };
+      $rev = DB::connection("pgsql")->table("core.catalog_revisions")->orderByDesc("rev")->first(["rev", "document", "published_at"]);
+      echo "Ultima revisione pubblicata: ", $rev === null ? "nessuna" : $rev->rev." del ".$rev->published_at, PHP_EOL;
+      $show("Pubblicato", $rev === null ? null : json_decode($rev->document, true));
+      $draft = DB::connection("pgsql")->table("core.catalog_draft")->first(["document", "updated_at"]);
+      $show("Bozza (ultima modifica ".($draft->updated_at ?? "-").")", $draft === null ? null : json_decode($draft->document, true));
+    '
+    ;;
+  bozza-listino)
+    # Rifà la bozza del catalogo dal listino di partenza (piani non ancora pubblicati e condizioni mancanti). NON pubblica:
+    # la pubblicazione la fa la titolare dal pannello. Autore della bozza: la prima persona dello staff con ruolo admin.
+    cd "$BASE/current"
+    EMAIL="$("$PHP" artisan tinker --execute='echo DB::connection("pgsql")->table("core.platform_staff")->where("role", "admin")->whereNull("disabled_at")->orderBy("created_at")->value("email");' | tail -1)"
+    [ -n "$EMAIL" ] || { echo "Nessuna persona admin nello staff." >&2; exit 1; }
+    "$PHP" artisan saas:catalog:prepare-tiers "$EMAIL"
     ;;
   percorso-pgdump)
     [[ "$ARG" =~ ^/[A-Za-z0-9_./-]+$ ]] || { echo "Cartella non valida." >&2; exit 1; }

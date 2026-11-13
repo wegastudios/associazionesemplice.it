@@ -162,7 +162,7 @@ final class Push {
 		}
 		$ids = array();
 		$u   = get_user_by( 'email', $email );
-		if ( $u ) {
+		if ( $u && ! Employees::is_employee( $u ) ) { // l'utente di un dipendente non è quello del socio con la stessa email
 			$ids[] = (int) $u->ID;
 		}
 		$p = Plugin::people()->find_by_email( strtolower( trim( $email ) ) ); // chi ha l'accesso proprio non ha un utente: le sue notifiche stanno sul numero legato alla persona

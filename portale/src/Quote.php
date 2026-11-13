@@ -45,6 +45,10 @@ final class Quote {
 		foreach ( $addons as $code => $qty ) {
 			$qty = (int) $qty;
 			$ap  = isset( $byCode[ $code ] ) ? Catalog::price( $byCode[ $code ], $period ) : null;
+			$why = isset( $byCode[ $code ] ) ? Catalog::addonBlock( $doc, $plan, $byCode[ $code ] ) : null;
+			if ( null !== $why ) {
+				throw new UserError( $why . ': togli questo componente dal carrello.' );
+			}
 			if ( $qty < 1 || $qty > 1000 || ! $ap || ( ! $exempt && (int) ( $ap['vat_percent'] ?? 0 ) !== $vatPercent ) ) {
 				throw new UserError( 'Un componente scelto non è disponibile per questo piano.' );
 			}

@@ -116,6 +116,25 @@ final readonly class MemberBookService
         return false;
     }
 
+    /**
+     * Le schede dei soci che entrano nel periodo (stesso criterio del libro soci), per i conteggi del RUNTS.
+     *
+     * @param  array{0: string, 1: string}  $period
+     * @return list<Person>
+     */
+    public function peopleEntering(array $period): array
+    {
+        $cards = $this->cardPeriods();
+        $out = [];
+        foreach (Person::query()->whereIn('type', ['founder', 'ordinary', 'volunteer'])->whereNull('anonymized_at')->orderBy('last_name')->orderBy('id')->get() as $p) {
+            if (self::entersPeriod($p->type->value, $cards[$p->id] ?? [], $period, $p->joined_on?->format('Y-m-d') ?? $p->created_at?->format('Y-m-d'), $p->left_on?->format('Y-m-d'))) {
+                $out[] = $p;
+            }
+        }
+
+        return $out;
+    }
+
     /** @return array<string, list<array{0: string, 1: string}>> tessere valide per persona */
     private function cardPeriods(): array
     {

@@ -162,7 +162,9 @@ final class Polls {
 			);
 		}
 		$active = MemberType::is_member( (string) $person['type'] ) && Plugin::people()->is_active_member( (int) $person['id'] );
-		return PollRules::is_eligible( (string) $person['type'], $active, $in_audience );
+		// Il diritto di voto (tipo di socio che vota, e maggiorenne) conta per le votazioni di tutti i soci e per le assemblee; i sondaggi tra gli iscritti a un'attività restano aperti a chi partecipa.
+		$may_vote = PollRules::AUDIENCE_ACTIVITY === $poll['audience'] || VotingRight::person_votes( $person, Db::today() );
+		return PollRules::is_eligible( (string) $person['type'], $active, $in_audience, $may_vote );
 	}
 
 	/** Quanti hanno diritto al voto: una sola interrogazione (stesse regole di is_eligible). */
@@ -176,6 +178,9 @@ final class Polls {
 		if ( PollRules::AUDIENCE_ACTIVITY === $poll['audience'] ) {
 			$sql   .= ' AND EXISTS (SELECT 1 FROM ' . Db::t( 'enrollments' ) . ' e WHERE e.person_id = p.id AND e.activity_id = %d AND e.end_month IS NULL)';
 			$args[] = (int) $poll['activity_id'];
+		} else {
+			$sql   .= ' AND ' . VotingRight::sql_condition(); // stessa regola di is_eligible: tipo che vota e maggiorenne
+			$args[] = $today;
 		}
 		return (int) $db->get_var( $db->prepare( $sql, $args ) );
 	}

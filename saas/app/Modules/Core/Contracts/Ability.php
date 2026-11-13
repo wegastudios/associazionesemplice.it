@@ -28,6 +28,14 @@ enum Ability: string
     case CloseFiscalYear = 'accounting.close';
     case ViewAudit = 'audit.view';
 
+    /* Permessi fini, che si possono togliere a un dipendente. Per i ruoli personalizzati derivano da quelli larghi (parent). */
+    case ManageCourses = 'courses.manage';
+    case ManageEvents = 'events.manage';
+    case RecordIncome = 'accounting.income';
+    case RecordExpense = 'accounting.expense';
+    case IssueRefunds = 'accounting.refund';
+    case ViewFunds = 'accounting.funds';
+
     /** Regola pura: il ruolo fisso ha questo permesso? Un ruolo personalizzato ha i permessi che gli sono stati dati. */
     public function allows(OrgRole $role): bool
     {
@@ -48,6 +56,12 @@ enum Ability: string
             self::EditAccounting => 'Registrare in prima nota',
             self::CloseFiscalYear => 'Chiudere e riaprire gli esercizi',
             self::ViewAudit => 'Vedere il registro delle azioni',
+            self::ManageCourses => 'Gestire i corsi',
+            self::ManageEvents => 'Gestire gli eventi',
+            self::RecordIncome => 'Registrare gli incassi',
+            self::RecordExpense => 'Registrare le spese',
+            self::IssueRefunds => 'Emettere rimborsi',
+            self::ViewFunds => 'Vedere fondi, casse e conti',
         };
     }
 
@@ -59,7 +73,7 @@ enum Ability: string
      */
     public static function assignable(): array
     {
-        return array_values(array_filter(self::cases(), static fn (self $a): bool => ! in_array($a, [self::ManageSubscription, self::ManageSettings, self::ManageOperators], true)));
+        return array_values(array_filter(self::cases(), static fn (self $a): bool => $a->parent() === null && ! in_array($a, [self::ManageSubscription, self::ManageSettings, self::ManageOperators], true)));
     }
 
     /**
@@ -99,13 +113,36 @@ enum Ability: string
         return array_values(array_filter(self::assignable(), static fn (self $a): bool => isset($chosen[$a->value])));
     }
 
+    /** Il permesso largo da cui dipende uno fine (per i ruoli personalizzati); null per i permessi larghi. */
+    public function parent(): ?self
+    {
+        return match ($this) {
+            self::ManageCourses, self::ManageEvents => self::EditPeople,
+            self::RecordIncome, self::RecordExpense, self::IssueRefunds => self::EditAccounting,
+            self::ViewFunds => self::ViewAccounting,
+            default => null,
+        };
+    }
+
+    /**
+     * Permessi che titolare e amministratori possono togliere a un dipendente: elenco chiuso.
+     *
+     * @return list<self>
+     */
+    public static function removable(): array
+    {
+        return [self::ManageCourses, self::ManageEvents, self::RecordIncome, self::RecordExpense, self::IssueRefunds, self::ViewFunds];
+    }
+
     private function allowsFixed(OrgRole $role): bool
     {
+        $role = $role === OrgRole::Employee ? OrgRole::Operator : $role;
+
         return match ($this) {
             self::ManageSubscription => $role === OrgRole::Owner,
             self::ManageSettings, self::ManageOperators, self::CloseFiscalYear, self::ViewAudit => in_array($role, [OrgRole::Owner, OrgRole::Admin], true),
-            self::EditPeople, self::ExportPeople, self::EditAccounting, self::ViewHealth => in_array($role, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator], true),
-            self::ViewPeople, self::ViewAccounting => true,
+            self::EditPeople, self::ExportPeople, self::EditAccounting, self::ViewHealth, self::ManageCourses, self::ManageEvents, self::RecordIncome, self::RecordExpense, self::IssueRefunds => in_array($role, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator], true),
+            self::ViewPeople, self::ViewAccounting, self::ViewFunds => true,
         };
     }
 }

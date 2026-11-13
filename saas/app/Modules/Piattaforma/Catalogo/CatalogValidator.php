@@ -34,7 +34,7 @@ final class CatalogValidator
         if (! array_filter($plans, static fn (array $plan): bool => $plan['visible'] === true)) {
             throw new InvalidArgumentException('almeno un piano deve essere visibile');
         }
-        $addons = self::addons($input['addons'] ?? []);
+        $addons = self::addons($input['addons'] ?? [], $plans);
         $planCodes = array_column($plans, 'code');
 
         return [
@@ -226,14 +226,15 @@ final class CatalogValidator
     }
 
     /**
+     * @param  list<array<string, mixed>>  $plans
      * @return list<array<string, mixed>>
      */
-    private static function addons(mixed $value): array
+    private static function addons(mixed $value, array $plans): array
     {
         $out = [];
         $seen = [];
         foreach (self::list($value, 'addons', 0) as $i => $item) {
-            $a = self::object($item, "addons.{$i}", ['code', 'name', 'kind', 'visible', 'grants', 'prices']);
+            $a = self::object($item, "addons.{$i}", ['code', 'name', 'kind', 'visible', 'plans', 'grants', 'prices']);
             $code = self::code($a['code'] ?? null, "addons.{$i}.code", 40);
             if (isset($seen[$code])) {
                 throw new InvalidArgumentException("addon duplicato: {$code}");
@@ -244,17 +245,59 @@ final class CatalogValidator
                 throw new InvalidArgumentException("addons.{$code}.kind non valido");
             }
             $grants = self::object($a['grants'] ?? null, "addons.{$code}.grants", ['operators', 'members', 'storage_gb', 'package', 'limits']);
+            $grantsOut = self::grants($grants, $kind, $code);
+            $allowed = self::addonPlans($a['plans'] ?? null, $code, $plans, $grantsOut);
             $out[] = [
                 'code' => $code,
                 'name' => self::text($a['name'] ?? null, "addons.{$code}.name", 80),
                 'kind' => $kind,
                 'visible' => self::bool($a['visible'] ?? null, "addons.{$code}.visible"),
-                'grants' => self::grants($grants, $kind, $code),
+                'plans' => $allowed,
+                'grants' => $grantsOut,
                 'prices' => self::prices($a['prices'] ?? null, "addons.{$code}.prices"),
             ];
         }
 
         return $out;
+    }
+
+    /**
+     * Su quali piani si compra un pacchetto: `null` = su tutti, altrimenti l'elenco dei codici piano. Un pacchetto di
+     * funzioni già compreso in un piano non si può vendere su quel piano (si pagherebbe due volte).
+     *
+     * @param  list<array<string, mixed>>  $plans
+     * @param  array<string, mixed>  $grants
+     * @return list<string>|null
+     */
+    private static function addonPlans(mixed $value, string $code, array $plans, array $grants): ?array
+    {
+        $codes = array_values(array_unique(array_map(static fn (array $p): string => is_string($p['code'] ?? null) ? $p['code'] : '', $plans)));
+        $allowed = null;
+        if ($value !== null) {
+            $allowed = [];
+            foreach (self::list($value, "addons.{$code}.plans", 1) as $plan) {
+                if (! is_string($plan) || ! in_array($plan, $codes, true)) {
+                    throw new InvalidArgumentException("addons.{$code}.plans: piano sconosciuto");
+                }
+                $allowed[$plan] = $plan;
+            }
+            $allowed = array_values($allowed);
+        }
+
+        $package = $grants['package'] ?? null;
+        // Con `plans` assente («su tutti») il portale riconosce da sé i piani che lo comprendono (limits.packages): qui si
+        // controlla solo l'elenco scritto a mano.
+        if (is_string($package) && $allowed !== null) {
+            foreach ($plans as $plan) {
+                $limits = is_array($plan['limits'] ?? null) ? $plan['limits'] : [];
+                $included = is_array($limits['packages'] ?? null) && array_key_exists($package, $limits['packages']);
+                if ($included && in_array($plan['code'], $allowed, true)) {
+                    throw new InvalidArgumentException("addons.{$code}: il pacchetto è già compreso nel piano {$plan['code']}, toglilo dai piani su cui si vende");
+                }
+            }
+        }
+
+        return $allowed;
     }
 
     /**

@@ -110,7 +110,7 @@ it('ha tre piani a prezzo fisso per fasce di soci, con i pacchetti inclusi e il 
     $doc = CatalogValidator::validate(seedCatalog());
     $plans = collect($doc['plans'])->keyBy(fn (array $p): string => $p['code'].'@'.$p['plan_version']);
 
-    $expected = ['piccola' => [100, 1900, 2], 'media' => [300, 3500, 5], 'grande' => [1000, 5900, 1000]];
+    $expected = ['piccola' => [100, 1900, 2], 'media' => [300, 3500, 5], 'grande' => [1000, 5900, 50]];
     foreach ($expected as $code => [$members, $monthly, $operators]) {
         $plan = $plans["{$code}@1"];
         expect($plan['visible'])->toBeTrue()
@@ -182,6 +182,33 @@ it('controlla il limite di soci: avvisi in ordine, tolleranza e quota ospiti ent
     foreach ([['warn_percent' => 90, 'full_percent' => 80], ['tolerance_percent' => 51], ['tolerance_days' => 91], ['guests_free_percent' => 101], ['warn_percent' => 0]] as $wrong) {
         $bad = seedCatalog();
         $bad['terms']['members'] = $wrong + $bad['terms']['members'];
+        expect(fn () => CatalogValidator::validate($bad))->toThrow(InvalidArgumentException::class);
+    }
+});
+
+it('dice su quali piani si compra ogni pacchetto: soci solo sulla Grande, operatori non sulla Grande, compresi nel piano non in vendita', function (): void {
+    $doc = CatalogValidator::validate(seedCatalog());
+    $plans = [];
+    foreach ($doc['addons'] as $addon) {
+        $plans[$addon['code']] = $addon['plans'];
+    }
+
+    expect($plans['members_500'])->toBe(['grande'])
+        ->and($plans['members_1000'])->toBe(['grande'])
+        ->and($plans['operators_extra'])->toBe(['gestionale', 'piccola', 'media'])
+        ->and($plans['einvoice'])->toBe(['gestionale', 'piccola'])
+        ->and($plans['member_area'])->toBe(['gestionale', 'piccola'])
+        ->and($plans['site'])->toBeNull();
+});
+
+it('rifiuta un pacchetto su un piano sconosciuto o già compreso nel piano', function (): void {
+    foreach (['sconosciuto' => ['nessuno'], 'compreso' => ['piccola', 'media']] as $plans) {
+        $bad = seedCatalog();
+        foreach ($bad['addons'] as $i => $addon) {
+            if ($addon['code'] === 'einvoice') {
+                $bad['addons'][$i]['plans'] = $plans;
+            }
+        }
         expect(fn () => CatalogValidator::validate($bad))->toThrow(InvalidArgumentException::class);
     }
 });
