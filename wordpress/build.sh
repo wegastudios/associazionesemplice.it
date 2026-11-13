@@ -16,6 +16,22 @@ cp -r associazionesemplice-pro "$out/pro/associazionesemplice-pro"
 mkdir -p "$out/pro/associazionesemplice-pro/includes"
 # ASEM_WPORG=1: pacchetto per WordPress.org, senza l'aggiornatore dal portale (lì aggiorna WordPress.org)
 [ "${ASEM_WPORG:-}" = "1" ] && rm -f "$out/free/associazionesemplice/includes/Updater.php"
+# Pacchetto del portale (senza ASEM_WPORG): è l'unico che contatta il portale, quindi solo il suo readme.txt lo dichiara in «External services»
+# (testo in readme-portale.txt, fuori dal plugin). Il readme di WordPress.org resta quello del plugin: dice che non si contatta niente per impostazione predefinita.
+if [ "${ASEM_WPORG:-}" != "1" ]; then
+	rd="$out/free/associazionesemplice/readme.txt"
+	awk -v frag="readme-portale.txt" '
+		{ sub(/\r$/, "") }
+		/^The plugin works fully on its own and contacts no external service by default\./ {
+			print "The plugin works fully on its own. This copy, downloaded from associazionesemplice.it, contacts the Associazione Semplice website to look for updates (first item below). The optional features that involve a third party are described after it."
+			next
+		}
+		/^= PayPal donations \(optional\) =/ { while ((getline l < frag) > 0) { sub(/\r$/, "", l); print l } }
+		{ print }
+	' "$rd" > "$rd.tmp"
+	mv "$rd.tmp" "$rd"
+	grep -q '^= Updates from the associazionesemplice.it website' "$rd" || { echo "readme del portale: sezione aggiornamenti non inserita" >&2; exit 1; }
+fi
 rm -rf "$out/free/associazionesemplice/tests" "$out/free/associazionesemplice/vendor" "$out/free/associazionesemplice/composer.json" "$out/free/associazionesemplice/composer.lock" "$out/free/associazionesemplice/phpunit.xml.dist"
 n=0
 while IFS= read -r f; do

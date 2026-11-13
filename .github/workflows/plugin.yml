@@ -130,6 +130,13 @@ jobs:
         run: bash wordpress/build.sh wordpress/dist
       - name: The free package has no trace of the Pro functions
         run: bash wordpress/check-free-clean.sh --strict
+      - name: Only the portal package declares the portal contact (WordPress.org package does not)
+        run: |
+          grep -q 'associazionesemplice.it/api/plugin/update' wordpress/dist/free/associazionesemplice/readme.txt
+          grep -q 'privacy_policy' wordpress/dist/free/associazionesemplice/includes/Updater.php
+          ASEM_WPORG=1 bash wordpress/build.sh wordpress/dist-wporg
+          test ! -f wordpress/dist-wporg/free/associazionesemplice/includes/Updater.php
+          if grep -rIl 'api/plugin/update' wordpress/dist-wporg/free/associazionesemplice; then echo "Il pacchetto WordPress.org cita il contatto col portale" >&2; exit 1; fi
       - uses: actions/upload-artifact@v4
         with:
           name: associazionesemplice-packages
