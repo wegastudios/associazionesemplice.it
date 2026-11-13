@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gira sul server (sub-account cPanel), lanciato dal workflow «SaaS · manutenzione server» via SSH.
-# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita> [cartella-bin-postgresql]
+# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione> [cartella-bin-postgresql]
 #
 # Azioni fisse e limitate (non è una shell remota):
 #   diagnosi          sola lettura: stato (impostata/vuota) delle variabili che contano, client PostgreSQL presenti, ultimi errori
@@ -73,6 +73,12 @@ case "$ACTION" in
     "$PHP" artisan tinker --execute='echo (DB::connection("pgsql")->selectOne("select to_regclass(?) is not null as ok", ["core.org_notices"])->ok ? "core.org_notices ok" : "core.org_notices MANCA"), PHP_EOL, (DB::connection("pgsql")->selectOne("select to_regclass(?) is not null as ok", ["audit.anchors"])->ok ? "audit.anchors ok" : "audit.anchors MANCA"), PHP_EOL;' || true
     echo "== Interruttori (devono essere spenti) =="
     for v in SAAS_PURGE_ENABLED SAAS_NOTICES_ENABLED SAAS_AUDIT_PRUNE_ENABLED; do echo "$v = [$(get "$v")]  (vuoto o 0 = spento)"; done
+    ;;
+  prova-cancellazione)
+    # Crea un'associazione di prova, la cancella con il servizio vero e controlla che le altre restino identiche; poi verifica le catene.
+    cd "$BASE/current"
+    "$PHP" artisan saas:selftest:purge
+    echo "== Registro: verifica delle catene =="; "$PHP" artisan saas:audit:verify | tail -5
     ;;
   percorso-pgdump)
     [[ "$ARG" =~ ^/[A-Za-z0-9_./-]+$ ]] || { echo "Cartella non valida." >&2; exit 1; }
