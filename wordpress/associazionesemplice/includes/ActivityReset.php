@@ -521,6 +521,34 @@ final class ActivityReset {
 		return $p && 0 === (int) $p['income']['count'] + (int) $p['expense']['count'] + (int) $p['refund_exp']['count'];
 	}
 
+	/**
+	 * Eliminazione di più attività insieme: si eliminano solo quelle senza movimenti in prima nota e senza blocchi (le altre richiedono
+	 * di scegliere cosa fare delle somme e si eliminano una per una).
+	 *
+	 * @param int[] $ids
+	 * @return array{ok:array[],skipped:array[]} ok = anteprime delle attività eliminabili; skipped = nome e motivo delle altre
+	 */
+	public static function bulk_plan( array $ids ): array {
+		$out = array( 'ok' => array(), 'skipped' => array() );
+		foreach ( array_unique( array_filter( array_map( 'intval', $ids ) ) ) as $id ) {
+			$p = self::preview( $id );
+			if ( ! $p ) {
+				continue; // id non valido: ignorato
+			}
+			if ( ! self::activity_is_free( $id ) ) {
+				$out['skipped'][] = array( 'name' => (string) $p['activity']['name'], 'why' => 'ha incassi o spese in prima nota: eliminala singolarmente, scegliendo cosa fare delle somme' );
+				continue;
+			}
+			$blockers = self::blockers( $id, self::REFUND );
+			if ( $blockers ) {
+				$out['skipped'][] = array( 'name' => (string) $p['activity']['name'], 'why' => rtrim( (string) reset( $blockers ), '.' ) );
+				continue;
+			}
+			$out['ok'][] = $p;
+		}
+		return $out;
+	}
+
 	/** Iscritti a un corso la cui iscrizione è finita prima del mese in corso (ad esempio chi non ha confermato). @return int[] id delle persone */
 	public static function ended_enrollments( int $activity_id ): array {
 		return array_map( 'intval', self::db()->get_col( self::db()->prepare(
