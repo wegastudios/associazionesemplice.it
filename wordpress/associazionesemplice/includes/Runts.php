@@ -144,7 +144,7 @@ final class Runts {
 		if ( ! $out['below'] ) {
 			return $out;
 		}
-		$out['since']       =RuntsRules::below_since( RuntsRules::change_dates( $members, $today ), $count );
+		$out['since']       = RuntsRules::below_since( RuntsRules::change_dates( $members, $today ), $count );
 		$out['deadline']    = null === $out['since'] ? null : RuntsRules::notice_deadline( $out['since'] );
 		return $out;
 	}
