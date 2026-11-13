@@ -22,7 +22,7 @@ final class Actions {
 	/** Azioni riservate agli amministratori: impostazioni, pagamenti online, tessera e QR, anni solari, privacy, testi, tesoriere e segreteria. */
 	const ADMIN_ONLY = array(
 
-		'asem_sports', 'asem_create_year', 'asem_close_year', 'asem_reopen_year', 'asem_save_settings', 'asem_save_card', 'asem_regen_qr',
+		'asem_sports', 'asem_create_year', 'asem_close_year', 'asem_reopen_year', 'asem_snapshot_past_years', 'asem_save_settings', 'asem_save_card', 'asem_regen_qr',
 		'asem_save_look', 'asem_save_donate', 'asem_save_campaign', 'asem_delete_campaign', 'asem_create_privacy_page', 'asem_save_ical', 'asem_regen_ical', 'asem_create_pages', 'asem_save_wpai', 'asem_wpai_process', 'asem_wpai_retry', 'asem_wpai_clear', 'asem_privacy_anonymize', 'asem_save_comms',
 		
 		'asem_delete_activity', 'asem_delete_activities', 'asem_delete_booking', 'asem_purge_enrollments', 'asem_set_treasurer', 'asem_set_secretary', 'asem_release_wp_user', 'asem_set_board_role', 'asem_backup_restore', 
@@ -91,6 +91,7 @@ final class Actions {
 			'asem_create_year'        => 'create_year',
 			'asem_close_year'         => 'close_year',
 			'asem_reopen_year'        => 'reopen_year',
+			'asem_snapshot_past_years' => 'snapshot_past_years',
 			'asem_event_staff_add'    => 'event_staff_add',
 			'asem_event_staff_remove' => 'event_staff_remove',
 			'asem_event_staff_cash'   => 'event_staff_cash',
@@ -228,7 +229,7 @@ final class Actions {
 
 	private static function delete_person( array $p ): array {
 		Plugin::people()->delete( (int) $p['id'] );
-		return array( Ui::url( 'asem-people' ), 'Persona eliminata. L\'eventuale utente WordPress collegato non viene rimosso.' );
+		return array( Ui::url( 'asem-people' ), 'Persona eliminata. L\'eventuale utente WordPress collegato non viene rimosso.' . \AssociazioneSemplice\Privacy::closed_books_note( (int) $p['id'] ) );
 	}
 
 	private static function set_membership( array $p ): array {
@@ -272,7 +273,7 @@ final class Actions {
 	private static function privacy_anonymize( array $p ): array {
 		$id = (int) ( $p['id'] ?? 0 );
 		\AssociazioneSemplice\Privacy::anonymize( $id );
-		return array( Ui::url( 'asem-comms' ), 'Persona anonimizzata: i dati personali sono stati rimossi, i movimenti contabili restano registrati.' );
+		return array( Ui::url( 'asem-comms' ), 'Persona anonimizzata: i dati personali sono stati rimossi, i movimenti contabili restano registrati.' . \AssociazioneSemplice\Privacy::closed_books_note( $id ) );
 	}
 
 	private static function save_comms( array $p ): array {
@@ -802,6 +803,15 @@ final class Actions {
 	private static function reopen_year( array $p ): array {
 		\AssociazioneSemplice\FiscalYears::reopen( (int) ( $p['year'] ?? 0 ), (string) ( $p['reason'] ?? '' ) );
 		return array( Ui::url( 'asem-years' ), 'Esercizio riaperto: il motivo resta registrato.' );
+	}
+
+	/** Fotografia retroattiva del libro soci degli esercizi già chiusi (con i dati di oggi): serve la conferma esplicita. */
+	private static function snapshot_past_years( array $p ): array {
+		if ( empty( $p['confirm_retro'] ) ) {
+			throw new \InvalidArgumentException( 'Spunta la conferma: i dati di allora vengono ricostruiti da quelli di oggi.' );
+		}
+		$n = \AssociazioneSemplice\FiscalYears::snapshot_past_years();
+		return array( Ui::url( 'asem-years' ), 0 === $n ? 'Nessun esercizio da fotografare.' : ( 1 === $n ? 'Fotografato 1 esercizio già chiuso' : 'Fotografati ' . $n . ' esercizi già chiusi' ) . ': libro ricostruito dai dati di oggi, la data è scritta nello storico delle chiusure.' );
 	}
 
 	private static function book( array $p ): array {

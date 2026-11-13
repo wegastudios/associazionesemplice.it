@@ -77,7 +77,7 @@ final class FiscalYears {
 	}
 
 	/** Scrive la riga di una nuova chiusura (versione successiva dell'anno). Con $user = 0 l'utente non si conosce (anni chiusi prima della traccia). */
-	public static function record_closure( int $year, string $at, int $user ): void {
+	public static function record_closure( int $year, string $at, int $user ): int {
 		$v    = 1 + (int) self::db()->get_var( self::db()->prepare( 'SELECT MAX(version) FROM ' . Db::t( 'fiscal_year_closures' ) . ' WHERE year = %d', $year ) );
 		$m    = self::start_month();
 		$span = self::range_for( $year, $m );
@@ -93,9 +93,78 @@ final class FiscalYears {
 				'range_to'         => $span[1],
 				'plugin_version'   => defined( 'ASEM_VERSION' ) ? ASEM_VERSION : null,
 				'status'           => 'current',
-				'snapshot_state'   => 'none', // la fotografia dei dati arriva con una versione successiva: qui si traccia solo la chiusura
+				'snapshot_state'   => 'none', // la fotografia si scrive subito dopo, nella stessa operazione ({@see FiscalYears::close()}); resta «none» per gli anni chiusi prima della traccia
 			)
 		);
+		return (int) self::db()->insert_id;
+	}
+
+	/** Una chiusura precisa di un anno (anche una versione precedente, poi riaperta), oppure null. */
+	public static function closure_version( int $year, int $version ): ?array {
+		$row = self::db()->get_row( self::db()->prepare( 'SELECT * FROM ' . Db::t( 'fiscal_year_closures' ) . ' WHERE year = %d AND version = %d', $year, $version ), ARRAY_A );
+		return $row ?: null;
+	}
+
+	/** Il libro soci di quella chiusura è stato fotografato? Per le chiusure fatte prima della fotografia («none») no, finché non si fotografano. */
+	public static function snapshot_text( array $closure ): string {
+		if ( 'complete' !== $closure['snapshot_state'] ) {
+			return 'non fotografato';
+		}
+		$d = substr( (string) ( $closure['snapshotted_at'] ?: $closure['closed_at'] ), 0, 10 );
+		$d = preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $d, $m ) ? $m[3] . '/' . $m[2] . '/' . $m[1] : '';
+		return ( ! empty( $closure['retroactive'] ) ? 'ricostruito il ' : 'fotografato il ' ) . $d;
+	}
+
+	/** Le chiusure in vigore di esercizi chiusi senza fotografia (chiusi prima che esistesse), dalla più vecchia. @return array[] */
+	public static function unphotographed(): array {
+		return self::db()->get_results(
+			'SELECT c.* FROM ' . Db::t( 'fiscal_year_closures' ) . ' c JOIN ' . Db::t( 'fiscal_years' ) . " y ON y.year = c.year AND y.status = 'closed' WHERE c.status = 'current' AND c.snapshot_state <> 'complete' ORDER BY c.year", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nomi di tabella interni
+			ARRAY_A
+		) ?: array();
+	}
+
+	/**
+	 * Fotografia retroattiva: gli esercizi già chiusi e non fotografati si fotografano ora, con i dati di oggi. Ogni fotografia è segnata
+	 * «ricostruita il …» (non è ripresa al giorno della chiusura) e l'evento resta nella traccia delle chiusure. Un'estensione scrive le sue
+	 * fotografie con l'azione `asem_year_closing` (terzo parametro true). Tutto o niente per ogni esercizio.
+	 *
+	 * @return int esercizi fotografati
+	 * @throws \InvalidArgumentException
+	 */
+	public static function snapshot_past_years(): int {
+		MemberBook::assign_missing();
+		$n = 0;
+		foreach ( self::unphotographed() as $c ) {
+			$year = (int) $c['year'];
+			self::in_transaction(
+				function () use ( $c, $year ) {
+					$from = $c['range_from'] ? (string) $c['range_from'] : self::range( $year )[0];
+					$to   = $c['range_to'] ? (string) $c['range_to'] : self::range( $year )[1];
+					MemberBook::write_snapshot( (int) $c['id'], $from, $to );
+					do_action( 'asem_year_closing', $year, (int) $c['id'], true );
+					self::db()->update(
+						Db::t( 'fiscal_year_closures' ),
+						array( 'snapshot_state' => 'complete', 'retroactive' => 1, 'snapshotted_at' => Db::now(), 'snapshotted_by' => get_current_user_id() ?: null ),
+						array( 'id' => (int) $c['id'] )
+					);
+					Audit::log( 'year.snapshot_retro', 'year', $year, array( 'version' => (int) $c['version'] ) );
+				}
+			);
+			$n++;
+		}
+		return $n;
+	}
+
+	/** Esegue $fn in una transazione: se lancia qualcosa, non resta scritto niente. */
+	private static function in_transaction( callable $fn ): void {
+		self::db()->query( 'START TRANSACTION' );
+		try {
+			$fn();
+			self::db()->query( 'COMMIT' );
+		} catch ( \Throwable $e ) {
+			self::db()->query( 'ROLLBACK' );
+			throw $e;
+		}
 	}
 
 	/** Primo e ultimo giorno dell'anno fiscale (regola pura). @return array{0:string,1:string} */
@@ -234,10 +303,20 @@ final class FiscalYears {
 		if ( $gaps && ! $confirmed ) {
 			throw new \InvalidArgumentException( 'L\'anno ' . self::label( $year ) . ' si chiude solo con la tua conferma: ' . implode( '; ', $gaps ) . '. Spunta la conferma accanto a «Chiudi l\'anno» se vuoi chiuderlo comunque.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
+		MemberBook::assign_missing(); // le matricole si danno prima, fuori dalla transazione
 		$now = Db::now();
-		self::db()->update( Db::t( 'fiscal_years' ), array( 'status' => 'closed', 'closed_at' => $now ), array( 'year' => $year ) );
-		self::record_closure( $year, $now, (int) get_current_user_id() );
-		Audit::log( 'year.closed', 'year', $year, $gaps ? array( 'confirmed_gaps' => $gaps ) : array() );
+		// Chiusura e fotografie sono un'unica operazione: se una fotografia non riesce (anche quella di un'estensione, con l'azione sotto) la chiusura non avviene.
+		self::in_transaction(
+			function () use ( $year, $now, $gaps ) {
+				self::db()->update( Db::t( 'fiscal_years' ), array( 'status' => 'closed', 'closed_at' => $now ), array( 'year' => $year ) );
+				$id   = self::record_closure( $year, $now, (int) get_current_user_id() );
+				$span = self::range( $year );
+				MemberBook::write_snapshot( $id, $span[0], $span[1] );
+				do_action( 'asem_year_closing', $year, $id ); // le estensioni (Pro) scrivono le loro fotografie legate a questa chiusura; se lanciano, la chiusura non avviene
+				self::db()->update( Db::t( 'fiscal_year_closures' ), array( 'snapshot_state' => 'complete', 'snapshotted_at' => $now, 'snapshotted_by' => get_current_user_id() ?: null ), array( 'id' => $id ) );
+				Audit::log( 'year.closed', 'year', $year, $gaps ? array( 'confirmed_gaps' => $gaps ) : array() );
+			}
+		);
 	}
 
 	/**

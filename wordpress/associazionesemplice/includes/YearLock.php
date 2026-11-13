@@ -39,6 +39,28 @@ final class YearLock {
 	}
 
 	/**
+	 * Blocca un periodo (per esempio la validità di una tessera) che cade interamente in esercizi chiusi. Un periodo che arriva fino a un esercizio
+	 * aperto o futuro non blocca: la tessera che prosegue nell'anno in corso si può ancora toccare.
+	 *
+	 * @throws \InvalidArgumentException
+	 */
+	public static function assert_range_open( string $from, string $to ): void {
+		$last = self::closed_year_of( $to );
+		if ( null === $last ) {
+			return;
+		}
+		$first = self::closed_year_of( $from );
+		if ( null === $first ) { // l'inizio non cade in un esercizio chiuso: o è aperto, o è precedente al primo esercizio registrato (allora tutto ciò che sta prima è chiuso)
+			$all = FiscalYears::all();
+			$min = $all ? (int) end( $all )['year'] : null;
+			if ( null === $min || FiscalYears::year_of( substr( $from, 0, 10 ) ) >= $min ) {
+				return;
+			}
+		}
+		throw new \InvalidArgumentException( FiscalYears::closed_message( $last ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+	}
+
+	/**
 	 * Blocca se un movimento è datato in un esercizio chiuso.
 	 *
 	 * @throws \InvalidArgumentException

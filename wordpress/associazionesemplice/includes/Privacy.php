@@ -96,6 +96,7 @@ final class Privacy {
 				'consenso_privacy' => $p['privacy_consent_at'], 'consenso_modalita' => $p['privacy_consent_source'] ? ( self::SOURCES[ $p['privacy_consent_source'] ] ?? $p['privacy_consent_source'] ) : null,
 			),
 			'iscrizioni_tessera' => $memberships,
+			'libro_soci_fotografato' => MemberBook::snapshot_export( $person_id ), // le righe dei libri soci degli esercizi chiusi in cui compare (restano per dovere di conservazione)
 			'corsi'        => $courses,
 			'prenotazioni' => $bookings,
 			'pagamenti'    => $payments,
@@ -106,6 +107,15 @@ final class Privacy {
 			'scelte_nelle_votazioni_palesi' => $open_choices,
 		);
 		return (array) apply_filters( 'asem_privacy_export', $export, $person_id ); // le estensioni aggiungono i loro dati
+	}
+
+	/**
+	 * Frase per chi esegue una cancellazione o un'anonimizzazione: i dati minimi del libro soci restano nelle fotografie degli esercizi chiusi
+	 * (dovere di conservazione), non si toccano. Vuota se la persona non compare in nessuna fotografia.
+	 */
+	public static function closed_books_note( int $person_id ): string {
+		$n = MemberBook::snapshot_count_for( $person_id );
+		return 0 === $n ? '' : ' Attenzione: i dati del libro soci (nome, codice fiscale, nascita, residenza, date) restano nei libri degli esercizi già chiusi (' . $n . ( 1 === $n ? ' libro' : ' libri' ) . '), come dovere di conservazione: non si cancellano né si rendono anonimi.';
 	}
 
 	public static function can_export( int $person_id ): bool {

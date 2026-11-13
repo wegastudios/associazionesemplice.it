@@ -51,6 +51,9 @@ final class YearsPage {
 			$unsettled = (int) ( $totals[ $year ]['unsettled'] ?? 0 );
 			$cl        = $open ? null : FiscalYears::current_closure( $year );
 			$ver       = $cl && (int) $cl['version'] > 1 ? ' <span class="description">(chiusura n. ' . (int) $cl['version'] . ')</span>' : '';
+			if ( $cl ) { // libro soci di quell'esercizio: fotografato alla chiusura, ricostruito dopo, oppure ancora no
+				$ver .= '<br><span class="description">Libro soci ' . esc_html( FiscalYears::snapshot_text( $cl ) ) . ' · <a href="' . esc_url( Ui::url( 'asem-book', array( 'year' => $year ) ) ) . '">apri</a></span>';
+			}
 			echo wp_kses( '<tr><td><strong>' . esc_html( FiscalYears::label( $year ) ) . '</strong></td><td>' . ( $open ? '<span class="asem-ok">aperto</span>' : '<strong>chiuso</strong>' . ( $y['closed_at'] ? ' <span class="description">il ' . esc_html( mysql2date( 'd/m/Y', $y['closed_at'] ) ) . '</span>' : '' ) . $ver ) . '</td>'
 				. '<td>' . (int) FiscalYears::movements( $year ) . '</td><td>' . ( $unsettled > 0 ? '<strong class="asem-warn">' . Ui::money( $unsettled ) . '</strong>' : Ui::money( 0 ) ) . '</td><td>', Html::allowed() );
 			if ( $open && $year >= FiscalYears::current() ) {
@@ -72,15 +75,32 @@ final class YearsPage {
 		}
 		echo '</tbody></table>';
 
+		$retro = FiscalYears::unphotographed();
+		if ( $retro ) {
+			$names = array_map(
+				function ( $c ) {
+					return FiscalYears::label( (int) $c['year'] );
+				},
+				$retro
+			);
+			echo '<div class="asem-card"><h2>Fotografa gli anni già chiusi</h2>';
+			echo '<p>Questi esercizi sono stati chiusi prima che esistesse la fotografia del libro soci: <strong>' . esc_html( implode( ', ', $names ) ) . '</strong>. Si può fotografarli ora, ma i dati di allora non ci sono più: il libro viene <strong>ricostruito dai dati di oggi</strong> (chi è già stato cancellato non compare, nome e dati anagrafici sono quelli attuali). '
+				. 'Ogni libro porta la dicitura «ricostruito il gg/mm/aaaa» e l\'operazione resta scritta nello storico. Non si può annullare.</p>';
+			Ui::form_open( 'asem_snapshot_past_years', $back, false, 'asem-inline' );
+			echo wp_kses( '<label><input type="checkbox" name="confirm_retro" value="1"> Ho capito: i dati sono ricostruiti, non ripresi alla chiusura.</label> <button class="button" data-confirm="Fotografare ora gli esercizi già chiusi con i dati di oggi? Non si può annullare.">Fotografa gli anni già chiusi</button>', Html::allowed() );
+			Ui::form_close();
+			echo '</div>';
+		}
+
 		$hist = FiscalYears::closures();
 		if ( $hist ) {
 			echo '<h2>Storico delle chiusure e delle riaperture</h2><p class="description">Resta per sempre: non si cancella nemmeno con la pulizia del registro azioni.</p>';
-			echo '<table class="widefat striped"><thead><tr><th>Anno</th><th>Chiusura</th><th>Chiuso da</th><th>Riapertura</th><th>Motivo</th></tr></thead><tbody>';
+			echo '<table class="widefat striped"><thead><tr><th>Anno</th><th>Chiusura</th><th>Chiuso da</th><th>Riapertura</th><th>Motivo</th><th>Libro soci</th></tr></thead><tbody>';
 			foreach ( $hist as $h ) {
 				$by_closed   = '' !== (string) $h['closed_by_name'] ? (string) $h['closed_by_name'] : 'non registrato (anno chiuso prima di questo storico)';
 				$by_reopened = '' !== (string) $h['reopened_by_name'] ? ' da ' . $h['reopened_by_name'] : '';
 				echo '<tr><td>' . esc_html( FiscalYears::label( (int) $h['year'] ) ) . ' <span class="description">(n. ' . (int) $h['version'] . ')</span></td><td>' . esc_html( mysql2date( 'd/m/Y', $h['closed_at'] ) ) . '</td><td>' . esc_html( $by_closed ) . '</td><td>'
-					. ( $h['reopened_at'] ? esc_html( mysql2date( 'd/m/Y', $h['reopened_at'] ) . $by_reopened ) : '<span class="description">ancora chiuso</span>' ) . '</td><td>' . esc_html( (string) $h['reopen_reason'] ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- tutti i valori passano da esc_html
+					. ( $h['reopened_at'] ? esc_html( mysql2date( 'd/m/Y', $h['reopened_at'] ) . $by_reopened ) : '<span class="description">ancora chiuso</span>' ) . '</td><td>' . esc_html( (string) $h['reopen_reason'] ) . '</td><td>' . esc_html( FiscalYears::snapshot_text( $h ) ) . ( 'complete' === $h['snapshot_state'] ? ' · <a href="' . esc_url( Ui::url( 'asem-book', array( 'year' => (int) $h['year'], 'version' => (int) $h['version'] ) ) ) . '">apri</a>' : '' ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- tutti i valori passano da esc_html
 			}
 			echo '</tbody></table>';
 		}

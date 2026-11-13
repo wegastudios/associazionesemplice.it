@@ -155,8 +155,16 @@ final class Docs {
 
 	// ---------- Libro soci ----------
 
-	private static function book_cols(): array {
-		$labels = array( 'N.', 'Cognome e nome', 'Codice fiscale', 'Data di nascita', 'Luogo di nascita', 'Residenza', 'Email', 'Telefono', 'Data domanda', 'Data delibera', 'Ingresso', 'Ultima quota versata', 'Anno della quota', 'Cessazione (recesso/esclusione)', 'Motivo', 'Genitore o tutore firmatario', 'Livello' );
+	/** Colonne del libro soci che nella fotografia non ci sono (recapiti, domanda, quota, tutore: non si copiano). */
+	private static function book_snapshot_gaps(): array {
+		return array( 'Email', 'Telefono', 'Data domanda', 'Ultima quota versata', 'Anno della quota', 'Genitore o tutore firmatario' );
+	}
+
+	private static function book_cols( bool $snap = false ): array {
+		$labels = array( 'N.', 'Matricola', 'Cognome e nome', 'Codice fiscale', 'Data di nascita', 'Luogo di nascita', 'Residenza', 'Email', 'Telefono', 'Data domanda', 'Data delibera', 'Ingresso', 'Ultima quota versata', 'Anno della quota', 'Cessazione (recesso/esclusione)', 'Motivo', 'Genitore o tutore firmatario', 'Livello' );
+		if ( $snap ) {
+			$labels = array_values( array_diff( $labels, self::book_snapshot_gaps() ) );
+		}
 		return array_map(
 			function ( $l ) {
 				return array( 'label' => $l, 'w' => 60 );
@@ -165,11 +173,18 @@ final class Docs {
 		);
 	}
 
-	private static function book_rows( array $rows ): array {
+	private static function book_rows( array $rows, bool $snap = false ): array {
 		$out = array();
 		foreach ( $rows as $r ) {
+			if ( $snap ) {
+				$out[] = array(
+					(string) $r['n'], (int) $r['matricola'] > 0 ? (string) (int) $r['matricola'] : '', $r['name'], $r['tax_code'], '' !== $r['birth_date'] ? self::d( $r['birth_date'] ) : '', $r['birth_place'], $r['residence'],
+					self::d( $r['approved_on'] ), self::d( $r['joined_on'] ), $r['left_on'] ? self::d( $r['left_on'] ) : '', $r['left_reason'], $r['level'],
+				);
+				continue;
+			}
 			$out[] = array(
-				(string) $r['n'], $r['name'], $r['tax_code'], '' !== $r['birth_date'] ? self::d( $r['birth_date'] ) : '', $r['birth_place'], $r['residence'], $r['email'], $r['phone'],
+				(string) $r['n'], (int) $r['matricola'] > 0 ? (string) (int) $r['matricola'] : '', $r['name'], $r['tax_code'], '' !== $r['birth_date'] ? self::d( $r['birth_date'] ) : '', $r['birth_place'], $r['residence'], $r['email'], $r['phone'],
 				self::d( $r['applied_on'] ), self::d( $r['approved_on'] ), self::d( $r['joined_on'] ), $r['fee_cents'] > 0 ? Money::format( $r['fee_cents'] ) : '', $r['fee_year'],
 				$r['left_on'] ? self::d( $r['left_on'] ) : '', $r['left_reason'], $r['guardian'], $r['level'],
 			);
@@ -178,10 +193,10 @@ final class Docs {
 	}
 
 	/** Libro soci in PDF: ogni socio occupa tre righe (anagrafica, recapiti, date e quota), perché i dati richiesti non stanno su una riga sola. */
-	private static function book_pdf( array $rows, string $subtitle ): string {
+	private static function book_pdf( array $rows, string $subtitle, bool $snap = false, string $title = 'LIBRO DEI SOCI' ): string {
 		Pdf::$filter = array( Texts::class, 'plain' );
 		$pdf         = new Pdf();
-		$y           = self::head( $pdf, 'LIBRO DEI SOCI', $subtitle );
+		$y           = self::head( $pdf, $title, $subtitle );
 		$w           = self::RIGHT - self::LEFT;
 		foreach ( $rows as $i => $r ) {
 			if ( $y + 40 > self::BOTTOM ) {
@@ -192,20 +207,20 @@ final class Docs {
 				$pdf->rect( self::LEFT, $y - 9, $w, 38, 0.97 );
 			}
 			$born = trim( ( '' !== $r['birth_date'] ? 'nato/a il ' . self::d( $r['birth_date'] ) : '' ) . ( '' !== $r['birth_place'] ? ' a ' . $r['birth_place'] : '' ) );
-			$pdf->text( self::LEFT + 3, $y, self::fit( $r['n'] . '. ' . $r['name'] . ( '' !== $r['tax_code'] ? ' · CF ' . $r['tax_code'] : '' ), 240, 8, true ), 8, true );
+			$pdf->text( self::LEFT + 3, $y, self::fit( $r['n'] . '. ' . ( (int) $r['matricola'] > 0 ? '[matr. ' . (int) $r['matricola'] . '] ' : '' ) . $r['name'] . ( '' !== $r['tax_code'] ? ' · CF ' . $r['tax_code'] : '' ), 240, 8, true ), 8, true );
 			$pdf->text( self::LEFT + 250, $y, self::fit( $born, $w - 253, 8 ), 8 );
 			$y += 12;
 			$pdf->text( self::LEFT + 3, $y, self::fit( ( '' !== $r['residence'] ? 'Residenza: ' . $r['residence'] : '' ), 300, 8 ), 8 );
-			$pdf->text( self::LEFT + 310, $y, self::fit( trim( $r['email'] . ( '' !== $r['phone'] ? ' · ' . $r['phone'] : '' ) ), $w - 313, 8 ), 8 );
+			$pdf->text( self::LEFT + 310, $y, self::fit( $snap ? (string) $r['level'] : trim( $r['email'] . ( '' !== $r['phone'] ? ' · ' . $r['phone'] : '' ) ), $w - 313, 8 ), 8 );
 			$y += 12;
-			$parts = array( 'Domanda ' . self::d( $r['applied_on'] ), 'Delibera ' . self::d( $r['approved_on'] ), 'Ingresso ' . self::d( $r['joined_on'] ) );
-			if ( $r['fee_cents'] > 0 ) {
+			$parts = $snap ? array( 'Delibera ' . self::d( $r['approved_on'] ), 'Ingresso ' . self::d( $r['joined_on'] ) ) : array( 'Domanda ' . self::d( $r['applied_on'] ), 'Delibera ' . self::d( $r['approved_on'] ), 'Ingresso ' . self::d( $r['joined_on'] ) );
+			if ( ! $snap && $r['fee_cents'] > 0 ) {
 				$parts[] = 'Quota ' . Money::format( $r['fee_cents'] ) . ( '' !== $r['fee_year'] ? ' (' . $r['fee_year'] . ')' : '' );
 			}
 			if ( $r['left_on'] ) {
 				$parts[] = 'Cessato il ' . self::d( $r['left_on'] ) . ( '' !== $r['left_reason'] ? ' · ' . $r['left_reason'] : '' );
 			}
-			if ( '' !== $r['guardian'] ) {
+			if ( ! $snap && '' !== $r['guardian'] ) {
 				$parts[] = 'Tutore ' . $r['guardian'];
 			}
 			$pdf->text( self::LEFT + 3, $y, self::fit( implode( ' · ', $parts ), $w - 6, 8 ), 8 );
@@ -220,16 +235,18 @@ final class Docs {
 	}
 
 	/** @return array{body:string,filename:string,mime:string} */
-	public static function book( string $filter = '', string $format = 'pdf' ): array {
-		$rows   = MemberBook::rows( $filter );
-		$all    = MemberBook::rows();
-		$active = count( MemberBook::rows( MemberBook::IN_FORCE ) );
-		$cells  = self::book_rows( $rows );
+	public static function book( string $filter = '', string $format = 'pdf', ?int $year = null, ?int $version = null ): array {
+		$rows   = MemberBook::rows( $filter, $year, $version );
+		$all    = MemberBook::rows( '', $year, $version );
+		$active = count( MemberBook::rows( MemberBook::IN_FORCE, $year, $version ) );
+		$cap    = null === $year ? null : MemberBook::caption( $year, $version );
+		$snap   = $cap && 'snapshot' === $cap['state'];
+		$name   = 'libro-soci' . ( null === $year ? '' : '-' . str_replace( '/', '-', FiscalYears::label( $year ) ) . ( $version ? '-chiusura-' . $version : '' ) );
 		if ( 'csv' === $format ) {
-			return array( 'body' => self::csv( self::book_cols(), $cells ), 'filename' => 'libro-soci.csv', 'mime' => 'text/csv; charset=utf-8' );
+			return array( 'body' => self::csv( self::book_cols( $snap ), self::book_rows( $rows, $snap ) ), 'filename' => $name . '.csv', 'mime' => 'text/csv; charset=utf-8' );
 		}
-		$sub = 'Aggiornato al ' . self::d( Db::today() ) . ' · ' . count( $all ) . ' soci iscritti, ' . $active . ' in carica';
-		return array( 'body' => self::book_pdf( $rows, $sub ), 'filename' => 'libro-soci.pdf', 'mime' => 'application/pdf' );
+		$sub = ( $cap ? mb_substr( $cap['title'], mb_strlen( 'Libro soci — ' ) ) : 'Aggiornato al ' . self::d( Db::today() ) ) . ' · ' . count( $all ) . ' soci, ' . $active . ' in carica';
+		return array( 'body' => self::book_pdf( $rows, $sub, $snap ), 'filename' => $name . '.pdf', 'mime' => 'application/pdf' );
 	}
 
 	// ---------- Verbale ----------
@@ -396,7 +413,7 @@ final class Docs {
 		try {
 			switch ( $what ) {
 				case 'book':
-					$doc = self::book( (string) ( $g['filter'] ?? '' ), $format );
+					$doc = self::book( (string) ( $g['filter'] ?? '' ), $format, ! empty( $g['year'] ) ? (int) $g['year'] : null, ! empty( $g['version'] ) ? (int) $g['version'] : null );
 					break;
 				case 'cards':
 					$doc = self::cards( (string) ( $g['filter'] ?? '' ), (int) ( $g['per'] ?? 0 ) );

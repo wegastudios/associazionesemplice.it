@@ -249,6 +249,7 @@ final class Applications {
 			array( 'card_number' => $card, 'joined_on' => Db::today(), 'approved_on' => Db::today(), 'application_status' => null, 'application_data' => null, 'updated_at' => Db::now() ),
 			array( 'id' => $id )
 		);
+		MemberBook::ensure_matricola( $id ); // ammesso: entra nel libro soci con la sua matricola
 		// L'iscrizione all'anno si registra solo con l'incasso della quota (pagata online con la domanda, oppure in sede o dall'area soci): senza quota da pagare vale subito.
 		$due = 0;
 		if ( ! Plugin::payments()->application_settle( $id, $year ) ) {

@@ -1990,6 +1990,17 @@
   "＋ Ingresso sul posto" : "＋ On-site entry",
   "＋ Un socio paga per più soci" : "＋ One member pays for several members",
   "📷 Scansiona il QR del biglietto" : "📷 Scan the ticket QR",
-  "📷 Scatta una foto" : "📷 Take a photo"
+  "📷 Scatta una foto" : "📷 Take a photo",
+  "Matricola" : "Registration number",
+  "Categoria" : "Category",
+  "Delibera" : "Board resolution",
+  "Fotografa gli anni già chiusi" : "Photograph the years already closed",
+  "Ho capito: i dati sono ricostruiti, non ripresi alla chiusura." : "I understand: the data is reconstructed, not taken at closing.",
+  "Spunta la conferma: i dati di allora vengono ricostruiti da quelli di oggi." : "Tick the confirmation: the data of that time is reconstructed from today's data.",
+  "Nessun esercizio da fotografare." : "No financial year to photograph.",
+  "La fotografia del libro soci non è riuscita (errore del database)." : "The members register snapshot failed (database error).",
+  "Libro dal vivo: cambia finché l'esercizio non viene chiuso. Alla chiusura se ne scatta la fotografia." : "Live register: it changes until the financial year is closed. At closing a snapshot of it is taken.",
+  "Fotografia presa alla chiusura dell'esercizio: non cambia più, anche se poi un socio viene modificato, cancellato o reso anonimo." : "Snapshot taken when the financial year was closed: it no longer changes, even if a member is later edited, deleted or anonymised.",
+  "Esercizio chiuso prima che esistesse la fotografia del libro: i dati qui sotto sono quelli di oggi e possono essere cambiati. Dalla pagina «Esercizi» puoi fotografarlo ora." : "Year closed before the register snapshot existed: the data below is today's data and may have changed. From the «Financial years» page you can photograph it now."
  }
 }
