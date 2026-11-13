@@ -211,13 +211,4 @@ it('rifiuta un pacchetto su un piano sconosciuto o già compreso nel piano', fun
         }
         expect(fn () => CatalogValidator::validate($bad))->toThrow(InvalidArgumentException::class);
     }
-
-    // Senza l'elenco un pacchetto compreso in qualche piano varrebbe anche lì: rifiutato.
-    $bad = seedCatalog();
-    foreach ($bad['addons'] as $i => $addon) {
-        if ($addon['code'] === 'einvoice') {
-            unset($bad['addons'][$i]['plans']);
-        }
-    }
-    expect(fn () => CatalogValidator::validate($bad))->toThrow(InvalidArgumentException::class);
 });

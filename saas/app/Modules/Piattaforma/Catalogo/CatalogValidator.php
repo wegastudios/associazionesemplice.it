@@ -285,11 +285,13 @@ final class CatalogValidator
         }
 
         $package = $grants['package'] ?? null;
-        if (is_string($package)) {
+        // Con `plans` assente («su tutti») il portale riconosce da sé i piani che lo comprendono (limits.packages): qui si
+        // controlla solo l'elenco scritto a mano.
+        if (is_string($package) && $allowed !== null) {
             foreach ($plans as $plan) {
                 $limits = is_array($plan['limits'] ?? null) ? $plan['limits'] : [];
                 $included = is_array($limits['packages'] ?? null) && array_key_exists($package, $limits['packages']);
-                if ($included && in_array($plan['code'], $allowed ?? $codes, true)) {
+                if ($included && in_array($plan['code'], $allowed, true)) {
                     throw new InvalidArgumentException("addons.{$code}: il pacchetto è già compreso nel piano {$plan['code']}, toglilo dai piani su cui si vende");
                 }
             }

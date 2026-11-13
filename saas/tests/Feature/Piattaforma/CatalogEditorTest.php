@@ -21,6 +21,10 @@ function draftWithNewVersion(string $name = 'Gestionale 2'): array
     $plan['name'] = $name;
     $plan['visible'] = true;
     $catalog['plans'] = [$plan];
+    // Con un solo piano, i pacchetti non possono più indicare gli altri.
+    foreach ($catalog['addons'] as $i => $addon) {
+        unset($catalog['addons'][$i]['plans']);
+    }
 
     return $catalog;
 }
