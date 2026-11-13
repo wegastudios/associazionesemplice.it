@@ -10,7 +10,7 @@ on:
       action:
         description: Cosa fare
         type: choice
-        options: [diagnosi, chiave-catalogo, percorso-pgdump]
+        options: [diagnosi, chiave-catalogo, percorso-pgdump, ciclo-vita]
         default: diagnosi
       pg_bin_dir:
         description: Solo per percorso-pgdump, cartella dei programmi PostgreSQL 16 (es. /usr/pgsql-16/bin)
