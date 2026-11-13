@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 final class ProSchema {
 
 	const VERSION_OPTION = 'asem_pro_db_version';
-	const VERSION        = '12';
+	const VERSION        = '13'; // dalla 13 la ricevuta emessa conserva i suoi dati (data, content_hash) e l'eventuale annullo (voided_*)
 
 	public static function register(): void {
 		add_filter( 'asem_schema_tables', array( __CLASS__, 'tables' ), 10, 3 );
@@ -263,6 +263,11 @@ final class ProSchema {
   number int(10) unsigned NOT NULL,
   issued_at datetime NOT NULL,
   issued_by bigint(20) unsigned DEFAULT NULL,
+  data longtext,
+  content_hash char(64) DEFAULT NULL,
+  voided_at datetime DEFAULT NULL,
+  voided_by bigint(20) unsigned DEFAULT NULL,
+  void_reason varchar(255) DEFAULT NULL,
   PRIMARY KEY  (id),
   UNIQUE KEY receipt_key (receipt_key),
   UNIQUE KEY year_number (year,number)

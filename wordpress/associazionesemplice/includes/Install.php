@@ -6,13 +6,14 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '62';
+	const DB_VERSION        = '63'; // dalla 62 il verbale ha il numero salvato (number_year, number_seq); dalla 63 l'anno sociale parte a gennaio
 
 	public static function activate(): void {
 		self::create_tables();
 		self::add_roles_and_caps();
 		self::seed();
 		self::migrate_year_closures(); // gli esercizi già chiusi entrano nella traccia permanente (idempotente)
+		self::migrate_minute_numbers(); // ogni verbale ha il suo numero salvato, con lo stesso ordine di prima (idempotente)
 		MemberBook::assign_missing(); // ogni socio ha la sua matricola, assegnata una volta sola (idempotente)
 		if ( '' === (string) get_option( self::DB_VERSION_OPTION, '' ) ) { // prima installazione: si propone la configurazione guidata
 			Wizard::schedule_first_run();
@@ -39,7 +40,7 @@ final class Install {
 			if ( '' !== $old && version_compare( $old, '61', '<' ) ) {
 				self::migrate_voting_types();
 			}
-			if ( '' !== $old && version_compare( $old, '62', '<' ) ) {
+			if ( '' !== $old && version_compare( $old, '63', '<' ) ) {
 				self::migrate_social_year_month();
 			}
 			if ( '' !== $old && version_compare( $old, '3', '<' ) ) {
@@ -47,6 +48,39 @@ final class Install {
 				Db::db()->query( 'UPDATE ' . Db::t( 'activities' ) . ' SET fee_cents = monthly_fee_cents WHERE fee_cents = 0 AND monthly_fee_cents > 0' );
 			}
 		}
+	}
+
+	/**
+	 * Dalla v62 il numero del verbale è salvato. Ai verbali esistenti (non cancellati) si assegna il numero che già mostravano: progressivo per tipo e
+	 * anno della data, in ordine di data e poi di inserimento, quindi nessun numero visibile cambia. Ripartendo da dove sono arrivati i numeri già
+	 * salvati, si può rilanciare senza effetti. I verbali già cancellati restano senza numero. @return int verbali numerati
+	 */
+	public static function migrate_minute_numbers(): int {
+		$db  = Db::db();
+		$tbl = Db::t( 'minutes' );
+		$n   = 0;
+		try {
+			Db::with_lock(
+				'asem_minutes_number',
+				function () use ( $db, $tbl, &$n ) {
+					$rows = $db->get_results( "SELECT id, kind, meeting_date FROM $tbl WHERE deleted_at IS NULL AND number_seq IS NULL ORDER BY kind, YEAR(meeting_date), meeting_date, id", ARRAY_A ) ?: array();
+					$next = array();
+					foreach ( $rows as $r ) {
+						$y = (int) substr( (string) $r['meeting_date'], 0, 4 );
+						$k = $r['kind'] . '|' . $y;
+						if ( ! isset( $next[ $k ] ) ) {
+							$next[ $k ] = 1 + (int) $db->get_var( $db->prepare( "SELECT MAX(number_seq) FROM $tbl WHERE kind = %s AND number_year = %d", $r['kind'], $y ) );
+						}
+						$db->update( $tbl, array( 'number_year' => $y, 'number_seq' => $next[ $k ] ), array( 'id' => (int) $r['id'] ) );
+						++$next[ $k ];
+						++$n;
+					}
+				}
+			);
+		} catch ( \InvalidArgumentException $e ) {
+			return 0; // blocco occupato: ci pensa la prossima attivazione, e intanto ogni verbale si numera da solo alla prima lettura
+		}
+		return $n;
 	}
 
 	/**
@@ -66,7 +100,7 @@ final class Install {
 	}
 
 	/**
-	 * Dalla v62 il mese di partenza dell'anno sociale è gennaio (prima era settembre). Chi usa già il programma e non ha mai salvato questa scelta
+	 * Dalla v63 il mese di partenza dell'anno sociale è gennaio (prima era settembre). Chi usa già il programma e non ha mai salvato questa scelta
 	 * deve restare com'era, cioè con la tessera sull'anno solare: se ha già soci o tessere, gennaio viene scritto come scelta salvata. Chi ha una
 	 * scelta salvata (qualunque mese) non si tocca; chi non ha ancora dati prende il nuovo valore di partenza. Si può rilanciare senza effetti.
 	 *
@@ -272,12 +306,15 @@ final class Install {
   agenda text,
   body longtext,
   approved_on date DEFAULT NULL,
+  number_year smallint(5) unsigned DEFAULT NULL,
+  number_seq int(10) unsigned DEFAULT NULL,
   created_by bigint(20) unsigned DEFAULT NULL,
   created_at datetime NOT NULL,
   updated_at datetime NOT NULL,
   deleted_at datetime DEFAULT NULL,
   PRIMARY KEY  (id),
-  KEY kind_date (kind,meeting_date)
+  KEY kind_date (kind,meeting_date),
+  UNIQUE KEY kind_number (kind,number_year,number_seq)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}member_levels (

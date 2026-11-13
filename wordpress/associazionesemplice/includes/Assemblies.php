@@ -28,11 +28,11 @@ final class Assemblies {
 		if ( $id && ! $old ) {
 			throw new \InvalidArgumentException( 'Assemblea non trovata.' );
 		}
+		if ( $old ) {
+			self::lock( $old ); // prima di ogni altro controllo: in un esercizio chiuso il messaggio è sempre lo stesso
+		}
 		if ( $old && AssemblyRules::HELD === $old['status'] ) {
 			throw new \InvalidArgumentException( 'L\'assemblea è già stata svolta: non si modifica più.' );
-		}
-		if ( $old ) {
-			self::lock( $old );
 		}
 		$title = mb_substr( trim( sanitize_text_field( (string) ( $in['title'] ?? '' ) ) ), 0, 190 );
 		if ( '' === $title ) {
@@ -79,10 +79,10 @@ final class Assemblies {
 		if ( ! $a ) {
 			throw new \InvalidArgumentException( 'Assemblea non trovata.' );
 		}
+		self::lock( $a );
 		if ( AssemblyRules::HELD === $a['status'] ) {
 			throw new \InvalidArgumentException( 'Un\'assemblea svolta resta nel registro: si può solo consultare.' );
 		}
-		self::lock( $a );
 		self::db()->update( Db::t( 'assemblies' ), array( 'deleted_at' => Db::now() ), array( 'id' => $id ) );
 		Audit::log( 'assembly.deleted', 'assembly', $id );
 	}
@@ -184,10 +184,12 @@ final class Assemblies {
 	/** Cambia stato: annullata, tornata in bozza. @throws \InvalidArgumentException */
 	public static function move( int $id, string $to ): void {
 		$a = self::get( $id );
+		if ( $a ) {
+			self::lock( $a );
+		}
 		if ( ! $a || ! AssemblyRules::can_move( (string) $a['status'], $to ) ) {
 			throw new \InvalidArgumentException( 'Questa operazione non è possibile per lo stato attuale dell\'assemblea.' );
 		}
-		self::lock( $a );
 		self::db()->update( Db::t( 'assemblies' ), array( 'status' => $to, 'updated_at' => Db::now() ), array( 'id' => $id ) );
 		Audit::log( 'assembly.' . $to, 'assembly', $id );
 	}
@@ -318,10 +320,12 @@ final class Assemblies {
 	/** @throws \InvalidArgumentException */
 	public static function revoke_proxy( int $id, int $delegator ): void {
 		$a = self::get( $id );
+		if ( $a ) {
+			self::lock( $a );
+		}
 		if ( ! $a || ! in_array( $a['status'], array( AssemblyRules::DRAFT, AssemblyRules::CONVENED ), true ) ) {
 			throw new \InvalidArgumentException( 'Le deleghe si revocano prima dell\'assemblea.' );
 		}
-		self::lock( $a );
 		self::db()->delete( Db::t( 'assembly_proxies' ), array( 'assembly_id' => $id, 'delegator_id' => $delegator ) );
 		Audit::log( 'assembly.proxy_revoked', 'assembly', $id, array( 'delegator' => $delegator ) );
 	}
@@ -389,10 +393,12 @@ final class Assemblies {
 	 */
 	public static function hold( int $id, int $call ): array {
 		$a = self::get( $id );
+		if ( $a ) {
+			self::lock( $a );
+		}
 		if ( ! $a || AssemblyRules::CONVENED !== $a['status'] ) {
 			throw new \InvalidArgumentException( 'Si può chiudere solo un\'assemblea convocata.' );
 		}
-		self::lock( $a );
 		$call = 2 === $call && ! empty( $a['second_call_at'] ) ? 2 : 1;
 		$t    = self::tally( $id, $call );
 		if ( 0 === $t['present'] ) {
@@ -428,6 +434,7 @@ final class Assemblies {
 		if ( ! $a ) {
 			throw new \InvalidArgumentException( 'Assemblea non trovata.' );
 		}
+		self::lock( $a ); // il verbale di un'assemblea di un esercizio chiuso non si crea più: va riaperto l'anno
 		if ( AssemblyRules::HELD !== $a['status'] ) {
 			throw new \InvalidArgumentException( 'Il verbale si crea dopo aver chiuso l\'assemblea come «Svolta».' );
 		}
