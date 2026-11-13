@@ -68,7 +68,7 @@ La tessera dura l'anno solare e la prima nota si organizza per anno solare: per 
 
 ## Aprire l'anno nuovo
 
-1. Vai in **Cassa → Anni solari**.
+1. Vai in **Cassa → Esercizi** (con {piano_contabile} o {piano_fiscale}: **Contabilità → Esercizi**).
 2. **Apri** l'anno nuovo (per esempio a novembre, per l'anno dopo).
 
 Da settembre la **Bacheca** ti ricorda di aprire il nuovo anno. L'avviso si può chiudere e ricompare a inizio mese; a dicembre è sempre visibile. L'anno in corso esiste sempre.
@@ -151,11 +151,11 @@ I soci pagano quote, mensilità e contributi direttamente dall'area riservata. I
 
 Ti serve un account **Stripe** o **PayPal Business** dell'associazione. Le chiavi si copiano dal pannello del fornitore.
 
-Se in **Impostazioni → Pagamenti online** compare un avviso sulle **chiavi di sicurezza di WordPress** (`AUTH_KEY` e `AUTH_SALT`) mancanti o di esempio, fai sostituire quei valori nel file `wp-config.php` dal tuo fornitore di hosting o da chi segue il sito.
+Se in **Impostazioni → Cassa → Pagamenti online** compare un avviso sulle **chiavi di sicurezza di WordPress** (`AUTH_KEY` e `AUTH_SALT`) mancanti o di esempio, fai sostituire quei valori nel file `wp-config.php` dal tuo fornitore di hosting o da chi segue il sito.
 
 ## Cosa fare
 
-1. Vai in **Impostazioni → Tecniche → Pagamenti online**.
+1. Vai in **Impostazioni → Cassa → Pagamenti online**.
 2. Scegli il gateway: Stripe, PayPal, SumUp (anche combinati), WooCommerce (in alternativa) oppure solo bonifico. Per SumUp vedi [Attivare i pagamenti online con SumUp](guida:attivare-sumup).
 3. Incolla le chiavi. Vengono salvate **cifrate** e legate al sito: se lo copi su un altro dominio vanno reinserite.
 4. Per Stripe, crea nel pannello Stripe un **webhook** verso l'indirizzo mostrato nella pagina del plugin.
@@ -185,7 +185,7 @@ Un account **SumUp** dell'associazione, con il **codice commerciante** e la **ch
 
 ## Cosa fare
 
-1. Vai in **Impostazioni → Pagamenti online**.
+1. Vai in **Impostazioni → Cassa → Pagamenti online**.
 2. Attiva **SumUp** e inserisci il **codice commerciante** e la **chiave API**. La chiave viene salvata cifrata.
 3. Premi **Verifica connessione**: il plugin controlla che chiave e codice siano validi.
 4. Salva.
@@ -213,7 +213,7 @@ Ogni gateway trattiene una commissione su ciascun pagamento. Il plugin ti aiuta 
 
 ## Indicare la commissione
 
-1. Vai in **Impostazioni → Pagamenti online**.
+1. Vai in **Impostazioni → Cassa → Pagamenti online**.
 2. Per ogni metodo (**Stripe**, **PayPal**, **SumUp** e **Satispay**) indica la commissione: una **cifra fissa**, una **percentuale**, oppure **entrambe**.
 
 I campi partono già compilati con le **tariffe standard**:
@@ -252,7 +252,7 @@ A volte un pagamento online non coincide con quello che il sistema si aspettava,
 
 ## Cosa fare
 
-1. Apri **Pagamenti online** dal menu.
+1. Vai in **Impostazioni → Cassa → Pagamenti online**.
 2. Trova i pagamenti con lo stato **da controllare**.
 3. Confronta importo e riferimento con quello che trovi nel pannello del fornitore.
 4. Se la persona ha pagato più o meno del dovuto, correggi a mano: annulla il movimento e registra l'incasso corretto, oppure registra la differenza.
@@ -306,7 +306,7 @@ Con lo shortcode `[associazionesemplice_ricevute]` (già incluso nell'area soci)
 
 ## Impostazioni
 
-La riga finale e la numerazione si impostano in **Impostazioni → Promemoria, privacy e ricevute**.
+La riga finale e la numerazione si impostano in **Impostazioni → Ente → Privacy e regolamento** (con {piano_contabile} o {piano_fiscale}: **Ente e fiscalità → Privacy, regolamento e ricevute**).
 MD,
     ],
 ];

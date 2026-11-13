@@ -433,7 +433,7 @@ Due metodi in più per i pagamenti online. Il resto della configurazione è in [
 ## Satispay
 
 1. In **Satispay Business** genera un **codice di attivazione**.
-2. In **Impostazioni → Pagamenti online** scegli **Satispay** (da solo o con gli altri metodi).
+2. In **Impostazioni → Cassa → Pagamenti online** scegli **Satispay** (da solo o con gli altri metodi).
 3. Incolla il codice in **«Collega Satispay»** e premi il pulsante. Il sito crea e conserva da solo la **chiave di firma**.
 4. Premi **Verifica connessione Satispay** per controllare che tutto funzioni.
 

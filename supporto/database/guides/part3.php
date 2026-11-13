@@ -208,7 +208,7 @@ In **Strumenti → Calendari** trovi il calendario di tutte le attività. Quello
 
 ## Pubblicarlo su Google Calendar
 
-1. In **Corsi ed eventi › Calendario** attiva la pubblicazione: viene creato un **indirizzo segreto**, in sola lettura, che contiene solo nomi, giorni, orari e luoghi.
+1. In **Strumenti → Calendari** attiva la pubblicazione: viene creato un **indirizzo segreto**, in sola lettura, che contiene solo nomi, giorni, orari e luoghi.
 2. In Google Calendar apri **Altri calendari › Da URL** e incolla l'indirizzo.
 3. Lo stesso indirizzo funziona con Apple Calendar e Outlook.
 
@@ -418,7 +418,7 @@ Le Comunicazioni inviano un messaggio email a un gruppo, con anteprima dei desti
 
 ## Cosa fare
 
-1. Vai in **Rubrica → Comunicazioni**.
+1. Vai in **Rubrica soci → Comunicazioni**.
 2. Scegli il **gruppo**: soci in regola, tutti i soci, tessera in scadenza o scaduta, soci e volontari, consiglio direttivo, ospiti, chi non ha accettato il regolamento, iscritti a un corso o a un evento, prenotati a una data.
 3. Scrivi oggetto e testo. Puoi usare `{nome}` e `{associazione}` per personalizzare.
 4. Guarda l'**anteprima dei destinatari** (e di chi non ha email).

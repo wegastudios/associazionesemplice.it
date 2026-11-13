@@ -11,7 +11,7 @@
                 @forelse ($section->articles as $article)
                     <li><a href="{{ route('help.article', $article) }}">{{ $article->title }}</a></li>
                 @empty
-                    <li class="muted">Nessun articolo.</li>
+                    <li class="muted">Stiamo scrivendo le guide di questa sezione. Intanto puoi aprire una richiesta.</li>
                 @endforelse
             </ul>
         </section>

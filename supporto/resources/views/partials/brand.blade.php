@@ -104,6 +104,7 @@
     .docs-nav ul { list-style:none; margin:0; padding:0; }
     .docs-nav a { display:block; padding:6px 10px; border-radius:var(--r-control); text-decoration:none; color:var(--ink); }
     .docs-nav a[aria-current="page"] { background:var(--yellow-soft); border:1px solid var(--line); border-left:5px solid var(--yellow); font-weight:600; color:var(--link); }
+    @media (max-width:640px) { .menu a, .card li a { display:inline-flex; align-items:center; min-height:var(--tap); } }
     @media (max-width:640px) {
         .bar { gap:4px 12px; padding:8px 16px; }
         .bar nav { flex:1 1 100%; flex-wrap:nowrap; overflow-x:auto; gap:4px; scrollbar-width:none; }

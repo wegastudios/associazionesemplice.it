@@ -186,7 +186,7 @@ L'area soci può diventare un'**app installabile** sul telefono, con notifiche. 
 
 ## Attivarla
 
-1. Vai in **Impostazioni → Tecniche → App e notifiche**.
+1. Vai in **Impostazioni → Comunicazioni → App e notifiche**.
 2. Attiva l'app e, se vuoi, le notifiche.
 3. Scegli nome e icona (un'immagine quadrata di almeno 192 px, meglio 512). Senza immagine, l'icona mostra l'**iniziale dell'associazione** e si adatta alle forme di Android.
 
@@ -218,7 +218,7 @@ Il socio può salvare la tessera nel wallet del telefono. Il sito non contatta m
 
 ## Cosa fare
 
-1. Vai in **Impostazioni → Tecniche → Tessera/QR/Wallet**.
+1. Vai in **Impostazioni → Soci e identità → Tessera, QR e Wallet**.
 2. Carica le credenziali Apple e/o Google. Le chiavi private sono salvate cifrate e legate al sito: se copi il sito altrove vanno ricaricate.
 3. Nella tessera digitale del socio compaiono **Aggiungi ad Apple Wallet** e/o **Salva su Google Wallet**.
 
@@ -265,7 +265,7 @@ Il plugin compila da solo l'informativa sulla privacy con i dati della tua assoc
 
 ## Generare l'informativa
 
-1. Controlla i dati dell'ente in **Impostazioni → Ente e fiscalità → Dati e fiscalità** (denominazione, codice fiscale, sede, PEC) e l'email per la privacy in **Impostazioni → Privacy**.
+1. Controlla i dati dell'ente in **Impostazioni → Ente e fiscalità → Dati e fiscalità** (denominazione, codice fiscale, sede, PEC) e l'email per la privacy in **Impostazioni → Ente e fiscalità → Privacy, regolamento e ricevute**.
 2. Apri l'anteprima nelle impostazioni.
 3. Scarica il PDF (con la firma di presa visione) oppure pubblicala come pagina del sito con lo shortcode `[associazionesemplice_privacy]`.
 

@@ -7,7 +7,7 @@
         @php($t = $row['ticket'])
         <div class="card">
             <p style="margin:0"><a href="{{ $row['url'] }}"><strong>Richiesta n. {{ $t->hub_id }}</strong> · {{ $t->subject }}</a></p>
-            <p class="muted" style="margin:4px 0 0">{{ ['open' => 'aperto', 'pending' => 'in attesa della tua risposta', 'on_hold' => 'in lavorazione', 'solved' => 'risolto', 'closed' => 'chiuso'][$t->status] ?? $t->status }} · ultimo aggiornamento {{ ($t->last_activity_at ?? $t->created_at)->format('d/m/Y H:i') }}</p>
+            <p class="muted" style="margin:4px 0 0">{{ ['open' => 'aperta', 'pending' => 'aspettiamo la tua risposta', 'on_hold' => 'ci stiamo lavorando', 'solved' => 'risolta', 'closed' => 'chiusa'][$t->status] ?? $t->status }} · ultimo aggiornamento {{ ($t->last_activity_at ?? $t->created_at)->format('d/m/Y H:i') }}</p>
         </div>
     @empty
         <p>Non hai ancora aperto richieste.</p>

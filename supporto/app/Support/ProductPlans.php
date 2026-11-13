@@ -5,7 +5,7 @@ namespace App\Support;
 /** Prodotti serviti dal supporto e scelta del piano del cliente per il ticket (dati dall'accesso unico del portale). */
 class ProductPlans
 {
-    public const PRODUCTS = ['plugin' => 'Plugin', 'saas' => 'SaaS', 'billing' => 'Fatturazione e account'];
+    public const PRODUCTS = ['plugin' => 'Plugin WordPress', 'saas' => 'Gestionale', 'billing' => 'Pagamenti, fatture e account'];
 
     /** Livelli di assistenza: free, paid, top (etichette ai clienti: Gratuita, Standard, Top). */
     public const LEVELS = ['free' => 0, 'paid' => 1, 'top' => 2];

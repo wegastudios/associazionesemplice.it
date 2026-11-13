@@ -235,7 +235,7 @@ MD,
         'topic' => 'domande-frequenti', 'section' => 'Uso quotidiano', 'slug' => 'come-fare-la-copia-di-sicurezza',
         'title' => 'Come faccio una copia di sicurezza dei dati?',
         'body' => <<<'MD'
-Da **Impostazioni → Tecniche → Copia di sicurezza** scarichi un file ZIP con tutti i dati del plugin (e, se vuoi, gli allegati). Il ripristino sostituisce i dati con quelli della copia, tutto o niente, dopo aver salvato lo stato precedente. Se l'ultima copia ha più di 30 giorni, la Bacheca te lo ricorda.
+Da **Strumenti → Copia di sicurezza** scarichi un file ZIP con tutti i dati del plugin (e, se vuoi, gli allegati). Il ripristino sostituisce i dati con quelli della copia, tutto o niente, dopo aver salvato lo stato precedente. Se l'ultima copia ha più di 30 giorni, la Bacheca te lo ricorda.
 
 È disponibile in tutte le versioni. Vedi [Fare una copia di sicurezza e ripristinarla](guida:copia-di-sicurezza-e-ripristino).
 MD,
@@ -260,7 +260,7 @@ Sì, in tutte le versioni. I permessi si assegnano dalla **scheda del socio** e 
 - **Volontario**: gestisce solo le attività di cui è referente.
 - **Staff**: verifica gli ingressi agli eventi.
 
-Presidente e vicepresidente agiscono come la segreteria. In **Impostazioni → Tecniche → Ruoli e accessi** trovi la matrice «chi può fare cosa». Vedi [Assegnare ruoli e permessi](guida:assegnare-ruoli-e-permessi).
+Presidente e vicepresidente agiscono come la segreteria. In **Impostazioni → Soci e identità → Ruoli e accessi** trovi la matrice «chi può fare cosa». Vedi [Assegnare ruoli e permessi](guida:assegnare-ruoli-e-permessi).
 MD,
     ],
 ];

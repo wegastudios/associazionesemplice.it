@@ -131,7 +131,7 @@ La copia di sicurezza è un file ZIP con tutti i dati del plugin: soci, attivit�
 
 ## Fare la copia
 
-1. Vai in **Impostazioni → Tecniche → Copia di sicurezza**.
+1. Vai in **Strumenti → Copia di sicurezza**.
 2. Scegli se includere gli allegati.
 3. Premi il pulsante per creare la copia e scarica il file.
 4. Conservalo in un posto sicuro, fuori dal sito.

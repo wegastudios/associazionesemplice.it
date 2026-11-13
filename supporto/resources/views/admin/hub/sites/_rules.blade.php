@@ -29,4 +29,4 @@
 
 <label for="notify_emails">Altri indirizzi avvisati per le priorità 3 e 4 (uno per riga)</label>
 <textarea id="notify_emails" name="notify_emails" rows="3">{{ old('notify_emails', implode("\n", $site?->notify_emails ?? [])) }}</textarea>
-<p class="hint">Si aggiungono a info@wegastudios.com, agli indirizzi globali e all'email del portale.</p>
+<p class="hint">Si aggiungono all'indirizzo di assistenza, agli indirizzi globali e all'email del portale.</p>
