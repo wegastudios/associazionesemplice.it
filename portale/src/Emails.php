@@ -117,6 +117,11 @@ final class Emails {
 				'subject' => 'Il gestionale di {associazione} è sospeso',
 				'body' => "Ciao {nome},\nil piano {piano} è scaduto il {scadenza} e il gestionale di {associazione} è sospeso: tu, gli operatori e i soci non potete entrare.\n\nI dati sono al sicuro e restano conservati per 180 giorni, fino al {data_cancellazione}. Dopo quella data vengono cancellati.\n\nPer riattivarlo apri {account_url} e premi «Riattiva»: ritrovi tutto com'era.",
 			),
+			'saas_trial_started' => array(
+				'label' => 'Prova gestionale: benvenuto', 'when' => 'Subito dopo l\'avvio della prova gratuita del gestionale (testo scritto dal portale, da rivedere con l\'audit).', 'vars' => array( 'nome', 'associazione', 'giorni', 'fine_prova', 'gestionale_url', 'link_password', 'piani_url', 'account_url', 'supporto_url', 'email' ),
+				'subject' => 'Benvenuto: la prova di {associazione} è partita',
+				'body' => "Ciao {nome},\ngrazie per aver scelto Associazione Semplice. La prova gratuita di {giorni} giorni del gestionale di {associazione} è partita e finisce il {fine_prova}.\n\nScegli la tua password da qui (scrivi questa email e ti arriva il link per sceglierla):\n{link_password}\n\nL'indirizzo del tuo gestionale è {gestionale_url}. Salvalo tra i preferiti: entrerai sempre da lì.\n\nTi avvisiamo prima della fine. Per continuare dopo la prova scegli un piano da {piani_url}: tutto quello che hai inserito resta com'è.",
+			),
 			// Fine della prova senza un piano (testi dell'audit, 13/11/2026). Dopo la prova 7 giorni di sola lettura, poi i dati si cancellano.
 			// {offerta} è il paragrafo dello sconto: lo scrive il sistema e c'è solo se lo sconto è impostato (la misura la decide la titolare).
 			'saas_trial_p1' => array(

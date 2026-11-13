@@ -72,6 +72,18 @@ final class SaasCheckout {
 		if ( ! in_array( $provider, self::providers(), true ) ) {
 			throw new UserError( 'Questo metodo di pagamento non è disponibile.' );
 		}
+		// «Scegli un piano» alla fine della prova: stessa associazione, nome, indirizzo e email sono quelli della prova (chi chiama ha già controllato che l'ordine è del cliente).
+		$trialOrder = null;
+		if ( '' !== (string) ( $in['convert'] ?? '' ) ) {
+			$trialOrder = Orders::get( $db, (string) $in['convert'] );
+			$tg         = $trialOrder ? $db->one( 'SELECT g.name, g.slug, c.email FROM saas_orgs g JOIN customers c ON c.id = g.customer_id WHERE g.ref = ?', array( $trialOrder['org_ref'] ) ) : null;
+			if ( ! $trialOrder || 'trial' !== $trialOrder['status'] || ! $tg ) {
+				throw new UserError( 'Questa prova non è più attiva: scegli un piano da capo.' );
+			}
+			$in['org_name'] = $tg['name'];
+			$in['slug']     = $tg['slug'];
+			$in['email']    = $tg['email'];
+		}
 		$orgName = Billing::cleanName( (string) ( $in['org_name'] ?? '' ) );
 		$slug    = strtolower( trim( (string) ( $in['slug'] ?? '' ) ) );
 		if ( mb_strlen( $orgName ) < 2 ) {
@@ -99,8 +111,10 @@ final class SaasCheckout {
 			$db->run( 'DELETE FROM orders WHERE id = ?', array( $order['id'] ) );
 			throw new UserError( 'Con questo codice il totale è troppo basso per il pagamento online: scrivici e lo sistemiamo.' );
 		}
-		$ref = 'o' . $order['id'];
-		$db->run( 'INSERT INTO saas_orgs (ref, customer_id, name, slug, rev, created_at) VALUES (?,?,?,?,0,?)', array( $ref, $cust['id'], $orgName, $slug, gmdate( 'Y-m-d H:i:s', $now ?? time() ) ) );
+		$ref = $trialOrder ? (string) $trialOrder['org_ref'] : 'o' . $order['id'];
+		if ( ! $trialOrder ) {
+			$db->run( 'INSERT INTO saas_orgs (ref, customer_id, name, slug, rev, created_at) VALUES (?,?,?,?,0,?)', array( $ref, $cust['id'], $orgName, $slug, gmdate( 'Y-m-d H:i:s', $now ?? time() ) ) );
+		}
 		$db->run( 'UPDATE orders SET org_ref = ?, provider = ? WHERE id = ?', array( $ref, $provider, $order['id'] ) );
 		if ( '' !== trim( (string) ( $in['name'] ?? '' ) ) ) {
 			$billing->setName( $cust['id'], (string) $in['name'] );
@@ -119,6 +133,74 @@ final class SaasCheckout {
 			return Stripe::checkoutUrl( $order['id'], $cust['email'], '', $order['total'], $period, mb_substr( '' !== $note ? $label . ' · ' . $note : $label, 0, 250 ) );
 		}
 		return PayPal::approvalUrl( $order['id'], $cust['email'], $billing->paypalPlan( array( 'cents' => $order['total'] ), $period, $label ) );
+	}
+
+	/** La prova senza carta si offre solo quando è acceso `saas_trial` in config (dopo che il SaaS la gestisce in produzione). */
+	public static function trialEnabled(): bool {
+		return true === Config::get( 'saas_trial', false );
+	}
+
+	/** Giorni di prova del piano nel catalogo (`trial_days`): 0 = quel piano non ha la prova. */
+	public static function trialDays( array $doc, string $plan ): int {
+		foreach ( Catalog::plans( $doc ) as $p ) {
+			if ( ( $p['code'] ?? '' ) === $plan ) {
+				return max( 0, min( 90, (int) ( $p['trial_days'] ?? 0 ) ) );
+			}
+		}
+		return 0;
+	}
+
+	/**
+	 * Avvia la prova gratuita del gestionale, senza metodo di pagamento (contratto: l'abbonamento nasce `trial` con `trial_ends`).
+	 * Una prova sola per cliente. Se l'associazione non si può creare adesso non resta nulla in sospeso.
+	 * @param array $in email, name, org_name, slug, plan, period, members, addons
+	 * @return string email del cliente (per la pagina «Grazie»)
+	 * @throws UserError
+	 */
+	public static function startTrial( Db $db, Billing $billing, array $in, ?int $now = null ): string {
+		if ( ! self::trialEnabled() ) {
+			throw new UserError( 'La prova gratuita non è ancora disponibile.' );
+		}
+		$orgName = Billing::cleanName( (string) ( $in['org_name'] ?? '' ) );
+		$slug    = strtolower( trim( (string) ( $in['slug'] ?? '' ) ) );
+		if ( mb_strlen( $orgName ) < 2 ) {
+			throw new UserError( 'Scrivi il nome dell\'associazione.' );
+		}
+		if ( ! self::validSlug( $slug ) ) {
+			throw new UserError( 'L\'indirizzo scelto non è valido: usa da 3 a 40 tra lettere minuscole, cifre e trattini.' );
+		}
+		$plan   = (string) ( $in['plan'] ?? '' );
+		$period = 'year' === ( $in['period'] ?? '' ) ? 'year' : 'month';
+		$cat    = Orders::catalog( $db, $now );
+		$days   = self::trialDays( $cat['doc'], $plan );
+		if ( $days < 1 ) {
+			throw new UserError( 'Questo piano non ha la prova gratuita.' );
+		}
+		$cust = $billing->customer( (string) ( $in['email'] ?? '' ) );
+		if ( (int) $db->one( "SELECT COUNT(*) n FROM orders WHERE customer_id = ? AND product = 'saas' AND trial_ends IS NOT NULL", array( $cust['id'] ) )['n'] > 0 ) {
+			throw new UserError( 'Con questa email hai già fatto la prova: scegli un piano da /saas/acquista oppure scrivici.' );
+		}
+		$order = Orders::open( $db, $cust['id'], $plan, $period, max( 1, (int) ( $in['members'] ?? 50 ) ), self::cleanAddons( (array) ( $in['addons'] ?? array() ) ), null, $now );
+		$end   = gmdate( 'Y-m-d', strtotime( '+' . $days . ' days', $now ?? time() ) );
+		$ref   = 'o' . $order['id'];
+		$db->run( 'INSERT INTO saas_orgs (ref, customer_id, name, slug, rev, created_at) VALUES (?,?,?,?,0,?)', array( $ref, $cust['id'], $orgName, $slug, gmdate( 'Y-m-d H:i:s', $now ?? time() ) ) );
+		$db->run( "UPDATE orders SET org_ref = ?, status = 'trial', trial_ends = ?, updated_at = ? WHERE id = ?", array( $ref, $end, gmdate( 'Y-m-d H:i:s', $now ?? time() ), $order['id'] ) );
+		if ( '' !== trim( (string) ( $in['name'] ?? '' ) ) ) {
+			$billing->setName( $cust['id'], (string) $in['name'] );
+		}
+		try {
+			$org = self::provision( $db, (array) $db->one( 'SELECT * FROM saas_orgs WHERE ref = ?', array( $ref ) ), $now );
+		} catch ( \RuntimeException $e ) {
+			$db->run( 'DELETE FROM orders WHERE id = ?', array( $order['id'] ) );
+			$db->run( 'DELETE FROM saas_orgs WHERE ref = ?', array( $ref ) );
+			error_log( '[portale] prova non avviata: ' . $e->getMessage() );
+			throw new UserError( 'Non riusciamo a creare il gestionale in questo momento: riprova tra poco.' );
+		}
+		$o = (array) Orders::get( $db, (string) $order['id'] );
+		self::push( $db, $o, $org, 'trial', $end, $now );
+		self::mail( $db, 'saas_trial_started', $o, $org, $now, array( 'giorni' => (string) $days, 'fine_prova' => date_it( $end . ' 00:00:00' ), 'piani_url' => rtrim( (string) Config::get( 'base_url' ), '/' ) . '/account#gestionale' ) );
+		self::mail( $db, 'saas_ready', $o, $org, $now );
+		return (string) $cust['email'];
 	}
 
 	/**
@@ -160,9 +242,13 @@ final class SaasCheckout {
 		$db->run( "UPDATE orders SET status = ?, updated_at = ? WHERE id = ? AND status = 'paid'", array( self::ACTIVE, $at, $orderId ) );
 		// Una sola volta (il ramo «già attivato» sopra esce prima): un errore di posta non deve far ripetere il pagamento.
 		if ( $again ) {
+			// Dopo una prova il primo piano non è un «rinnovo»: la ricevuta la manda il provider, qui nessuna email in più.
+			$wasTrial = (int) $db->one( "SELECT COUNT(*) n FROM orders WHERE org_ref = ? AND id <> ? AND product = 'saas' AND status = 'trial'", array( $o['org_ref'], $orderId ) )['n'] > 0;
 			// L'ordine vecchio non conta più (l'elenco dell'area clienti mostra l'associazione una volta sola).
 			$db->run( "UPDATE orders SET status = 'replaced', updated_at = ? WHERE org_ref = ? AND id <> ? AND product = 'saas'", array( $at, $o['org_ref'], $orderId ) );
-			self::mail( $db, 'saas_renewed', $o, $org, $now );
+			if ( ! $wasTrial ) {
+				self::mail( $db, 'saas_renewed', $o, $org, $now );
+			}
 			return true;
 		}
 		self::mail( $db, 'saas_welcome', $o, $org, $now );
@@ -478,7 +564,7 @@ final class SaasCheckout {
 			$addons[] = array( 'code' => (string) $l['code'], 'qty' => (int) $l['qty'] );
 		}
 		$claims = array(
-			'ref' => (string) $org['ref'], 'rev' => $rev, 'status' => $status, 'until' => $until, 'trial_ends' => null,
+			'ref' => (string) $org['ref'], 'rev' => $rev, 'status' => $status, 'until' => $until, 'trial_ends' => ( 'active' !== $status && ! empty( $o['trial_ends'] ) ) ? (string) $o['trial_ends'] : null,
 			'plan' => (string) $o['plan'], 'plan_version' => (int) $o['plan_version'], 'members' => (int) $o['members'], 'addons' => $addons,
 			'price_cents' => (int) ( $o['quote']['net'] ?? 0 ),
 		);
