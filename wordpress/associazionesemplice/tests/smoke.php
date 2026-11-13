@@ -4427,6 +4427,9 @@ asem_ok( 'Prova: errore dopo il rendiconto.' === $rs_msg0 && \AssociazioneSempli
 // chiusura: il rendiconto è fotografato nella stessa operazione, con il PDF emesso
 \AssociazioneSemplice\FiscalYears::close( $rs_y, true );
 $rs_row = $rs_ss::row_for( $rs_y );
+asem_ok( (bool) $rs_row, 'chiusura: la riga del rendiconto fotografato esiste (hook registrato, tabella scritta)' );
+asem_ok( 1 === (int) $rs_row['number'], 'chiusura: il rendiconto ha il numero 1 (trovato ' . (int) $rs_row['number'] . ')' );
+asem_ok( 0 === (int) $rs_row['retroactive'] && $rs_ss::intact( $rs_row ), 'chiusura: il rendiconto non è retroattivo e il contenuto è integro' );
 asem_ok( $rs_row && 1 === (int) $rs_row['number'] && 0 === (int) $rs_row['retroactive'] && $rs_ss::intact( $rs_row ) && (int) $rs_row['closure_id'] === (int) \AssociazioneSemplice\FiscalYears::current_closure( $rs_y )['id'], 'chiusura: il rendiconto è fotografato, numero 1, collegato alla chiusura' );
 $rs_snap = \AssociazioneSemplice\Statement::data( $rs_y );
 asem_ok( isset( $rs_snap['snapshot'] ) && 'n. 1/' . $rs_y === $rs_snap['snapshot']['number_text'] && 0 === strpos( $rs_snap['snapshot']['text'], 'fotografato il ' ) && $rs_live['income'] === $rs_snap['income'] && $rs_live['expenses'] === $rs_snap['expenses'] && $rs_live['result'] === $rs_snap['result'] && $rs_live['accounts'] === $rs_snap['accounts'], 'rendiconto di un anno chiuso: si legge dalla fotografia, con le stesse cifre del calcolo dal vivo' );
