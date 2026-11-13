@@ -111,7 +111,7 @@ final class DocsPro {
 		$s = Statement::data( $year );
 		Pdf::$filter = array( Texts::class, 'plain' );
 		$pdf         = new Pdf();
-		$y           = Docs::head( $pdf, 'RENDICONTO PER CASSA — ANNO ' . $year, 'Entrate e uscite dal 1° gennaio al 31 dicembre ' . $year . ', con il confronto con l\'anno ' . ( $year - 1 ) );
+		$y           = Docs::head( $pdf, 'RENDICONTO PER CASSA (MOD. D) — ANNO ' . $year, 'Entrate e uscite dal 1° gennaio al 31 dicembre ' . $year . ', con il confronto con l\'anno ' . ( $year - 1 ) );
 		$cx          = Docs::RIGHT - 3;
 		$px          = Docs::RIGHT - 3 - 85;
 		$ensure      = function ( float $need ) use ( $pdf, &$y ) {

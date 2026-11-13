@@ -233,7 +233,7 @@ final class ProRegisters {
 		$years = Statement::years();
 		$year  = Ui::get_int( 'year', $years[0] );
 		$year  = in_array( $year, $years, true ) ? $year : $years[0];
-		Ui::header( 'Rendiconto per cassa' );
+		Ui::header( 'Rendiconto per cassa (Mod. D)' );
 		echo '<p class="description">Il rendiconto dell\'anno solare costruito dalla prima nota: entrate e uscite per area, confronto con l\'anno precedente, avanzo o disavanzo, cassa e conti. '
 			. 'Le aree seguono la «voce di rendiconto» di ogni categoria. Stampa il PDF, aggiungi la relazione e fai firmare tesoriere e presidente; il commercialista può verificarlo prima dell\'approvazione.</p>';
 		echo '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-statement"><select name="year">' . Ui::options( array_combine( $years, $years ), $year ) . '</select> <button class="button">Mostra</button> ' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
@@ -252,7 +252,7 @@ final class ProRegisters {
 		$show( 'Entrate', $s['income'], $s['total_income'] );
 		$show( 'Uscite', $s['expenses'], $s['total_expense'] );
 		echo '<p><strong>' . ( $s['result']['cur'] >= 0 ? 'Avanzo' : 'Disavanzo' ) . ' di gestione ' . (int) $year . ':</strong> ' . Ui::money( $s['result']['cur'] ) . ' <span class="description">(' . (int) ( $year - 1 ) . ': ' . esc_html( Money::format( $s['result']['prev'] ) ) . ')</span></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<h2>Cassa e conti</h2><table class="widefat striped"><thead><tr><th></th><th style="text-align:right">Iniziale</th><th style="text-align:right">Finale</th></tr></thead><tbody>';
+		echo '<h2>Cassa e conti</h2><table class="widefat striped asem-fullw"><thead><tr><th></th><th style="text-align:right">Iniziale</th><th style="text-align:right">Finale</th></tr></thead><tbody>';
 		foreach ( $s['accounts'] as $a ) {
 			echo '<tr><td>' . esc_html( $a['name'] ) . '</td><td style="text-align:right">' . Ui::money( $a['opening'] ) . '</td><td style="text-align:right">' . Ui::money( $a['closing'] ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
