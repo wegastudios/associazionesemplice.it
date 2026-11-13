@@ -1018,14 +1018,28 @@ class PeopleService {
 		if ( MemberType::is_auto_renewed( $p['type'] ) ) {
 			throw new \InvalidArgumentException( 'Il socio fondatore ha la tessera sempre rinnovata.' );
 		}
-		$year = SocialYear::from_label( $year_label, Settings::start_month() );
-		YearLock::assert_range_open( $year->start()->format( 'Y-m-d' ), $year->end()->format( 'Y-m-d' ) ); // una tessera che cade interamente in esercizi chiusi non si aggiunge né si toglie: l'esercizio va riaperto
+		list( $label, $from, $to ) = $this->membership_span( $person_id, $year_label );
+		YearLock::assert_range_open( $from, $to ); // una tessera che cade interamente in esercizi chiusi non si aggiunge né si toglie: l'esercizio va riaperto
 		if ( $enabled ) {
-			$this->upsert_membership( $person_id, $year->label(), $year->start()->format( 'Y-m-d' ), $year->end()->format( 'Y-m-d' ), $source, $tx_id );
+			$this->upsert_membership( $person_id, $label, $from, $to, $source, $tx_id );
 		} else {
-			$this->db()->update( Db::t( 'memberships' ), array( 'deleted_at' => Db::now() ), array( 'person_id' => $person_id, 'social_year' => $year->label() ) );
+			$this->db()->update( Db::t( 'memberships' ), array( 'deleted_at' => Db::now() ), array( 'person_id' => $person_id, 'social_year' => $label ) );
 		}
-		Audit::log( $enabled ? 'membership.set' : 'membership.removed', 'person', $person_id, array( 'social_year' => $year->label(), 'source' => $source ) );
+		Audit::log( $enabled ? 'membership.set' : 'membership.removed', 'person', $person_id, array( 'social_year' => $label, 'source' => $source ) );
+	}
+
+	/**
+	 * Etichetta e date di una tessera. Se il socio ha già quella tessera valgono le sue date vere: non si spostano né si accorciano mai,
+	 * nemmeno se nel frattempo è cambiato il mese di inizio dell'anno sociale. Altrimenti si parte dall'anno della tessera con il mese in vigore.
+	 */
+	/** @return array{0:string,1:string,2:string} etichetta, dal, al */
+	private function membership_span( int $person_id, string $label ): array {
+		$row = $this->db()->get_row( $this->db()->prepare( 'SELECT social_year, valid_from, valid_to FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = %d AND social_year = %s AND deleted_at IS NULL', $person_id, $label ), ARRAY_A );
+		if ( $row ) {
+			return array( (string) $row['social_year'], (string) $row['valid_from'], (string) $row['valid_to'] );
+		}
+		$year = MembershipRules::from_label( $label, Settings::start_month() );
+		return array( $year->label(), $year->start()->format( 'Y-m-d' ), $year->end()->format( 'Y-m-d' ) );
 	}
 
 	/** Il socio ha un'iscrizione (non cancellata) per quell'anno della tessera (es. "2026")? */
@@ -1035,27 +1049,18 @@ class PeopleService {
 
 	/**
 	 * Per quale anno paga la quota un socio che versa oggi, e quale anno gli è regalato.
-	 * La quota va all'anno solare più recente creato. Se non è quello in corso:
-	 *  - chi ha già l'anno in corso rinnova in anticipo (paga il più recente);
-	 *  - chi è nuovo (non aveva la tessera nemmeno l'anno scorso) paga il più recente e ha l'anno in corso in omaggio;
+	 * L'anno della tessera segue l'anno sociale (non l'esercizio contabile). La quota va all'anno in corso; negli ultimi giorni dell'anno
+	 * (gli stessi dell'avviso di scadenza) si apre il rinnovo per l'anno dopo:
+	 *  - chi ha già l'anno in corso rinnova in anticipo (paga l'anno dopo);
+	 *  - chi è nuovo (non aveva la tessera nemmeno l'anno scorso) paga l'anno dopo e ha l'anno in corso in omaggio;
 	 *  - chi non ha rinnovato l'anno in corso, ma aveva la tessera l'anno scorso, paga prima l'anno in corso (poi la segreteria gestisce il resto a mano).
 	 *
 	 * @return array{year:string, free:?string}
 	 */
 	public function membership_plan( int $person_id, string $date ): array {
-		$cur    = (int) substr( $date, 0, 4 );
-		$latest = FiscalYears::latest();
-		$year   = (string) $cur;
-		$free   = null;
-		if ( null !== $latest && $latest > $cur ) {
-			if ( $this->has_membership( $person_id, (string) $cur ) ) {
-				$year = (string) $latest;
-			} elseif ( ! $this->has_membership( $person_id, (string) ( $cur - 1 ) ) ) {
-				$year = (string) $latest;
-				$free = (string) $cur;
-			}
-		}
-		return array( 'year' => $year, 'free' => $free );
+		$cur  = Settings::membership_year( $date );
+		$open = MembershipRules::renewal_open( $cur, $date, Settings::renewal_days() );
+		return MembershipRules::plan( $cur, $open, $open && $this->has_membership( $person_id, $cur->label() ), $open && $this->has_membership( $person_id, $cur->previous()->label() ) );
 	}
 
 	/** Quanto copre ciò che è stato incassato per la quota associativa di un anno della tessera (movimenti non annullati, sconti compresi). */
@@ -1102,8 +1107,8 @@ class PeopleService {
 			return;
 		}
 		if ( $this->membership_missing( $p, (string) $row['social_year'] ) > 0 ) {
-			$sy = SocialYear::from_label( (string) $row['social_year'], Settings::start_month() );
-			YearLock::assert_range_open( $sy->start()->format( 'Y-m-d' ), $sy->end()->format( 'Y-m-d' ) ); // la tessera di un esercizio chiuso non decade
+			$span = $this->membership_span( (int) $p['id'], (string) $row['social_year'] );
+			YearLock::assert_range_open( $span[1], $span[2] ); // la tessera di un esercizio chiuso non decade
 			$this->db()->update( Db::t( 'memberships' ), array( 'deleted_at' => Db::now() ), array( 'person_id' => (int) $p['id'], 'social_year' => (string) $row['social_year'] ) );
 			Audit::log( 'membership.removed', 'person', (int) $p['id'], array( 'social_year' => $row['social_year'], 'source' => 'void_partial', 'transaction' => $tx_id ) );
 		}

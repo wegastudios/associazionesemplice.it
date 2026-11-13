@@ -128,7 +128,7 @@ final class AppearancePage {
 			. '<div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase">' . esc_html( (string) Settings::get( 'association_name' ) ) . '</div>'
 			. '<div style="font-size:24px;font-weight:700;margin-top:6px">Nome Cognome</div><div style="opacity:.9">Socio ordinario</div>'
 			. '<div style="display:flex;gap:32px;margin-top:14px"><div><div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;opacity:.8">Tessera n.</div><div style="font-size:20px;font-weight:600">123</div></div>'
-			. '<div><div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;opacity:.8">Valida fino al</div><div style="font-size:20px;font-weight:600">31/12/' . ( (int) current_time( 'Y' ) + 1 ) . '</div></div></div></div>', Html::allowed() );
+			. '<div><div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;opacity:.8">Valida fino al</div><div style="font-size:20px;font-weight:600">' . esc_html( \AssociazioneSemplice\Settings::membership_year( current_time( 'Y-m-d' ) )->next()->end()->format( 'd/m/Y' ) ) . '</div></div></div></div>', Html::allowed() );
 		}
 		Ui::inline_js( '(function(){var pick=document.getElementById("asem-logo-pick"),clr=document.getElementById("asem-logo-clear"),id=document.getElementById("asem-logo-id"),pv=document.getElementById("asem-logo-preview"),f;'
 			. 'if(!pick){return;}'

@@ -103,7 +103,8 @@ final class IncomePage {
 				'activities'       => $acts,
 				'bookings'         => $bookings,
 				'dues'             => $dues,
-				'membership'       => Plugin::people()->membership_plan( (int) $person['id'], $date ),
+				'membership'       => $m_plan,
+				'membership_until' => \AssociazioneSemplice\MembershipRules::from_label( $m_plan['year'], Settings::start_month() )->end()->format( 'd/m/Y' ),
 				'suspended'        => Plugin::people()->is_suspended( (int) $person['id'] ),
 				'membership_fee'   => $m_missing > 0 ? $m_missing : \AssociazioneSemplice\Levels::fee_for( $person ), // a rate: si precompila il residuo
 				'membership_paid'  => $m_paid,
@@ -143,6 +144,7 @@ final class IncomePage {
 			'socialYear'    => Settings::membership_year( $today )->label(),
 			'nextYear'      => Settings::membership_year( $today )->next()->label(),
 			'yearEnd'       => Settings::membership_year( $today )->end()->format( 'Y-m-d' ),
+			'yearEndText'   => Settings::membership_year( $today )->end()->format( 'd/m/Y' ),
 			'autofill'      => 1 === Ui::get_int( 'due' ),
 			'accountTypes'  => $account_types,
 			'guests'        => Settings::guests_enabled() ? 1 : 0,
