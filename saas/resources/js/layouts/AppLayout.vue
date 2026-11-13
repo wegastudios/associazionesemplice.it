@@ -34,6 +34,7 @@ const groups = [
         { href: '/gestionale/pagamenti-online', label: 'Pagamenti online', icon: CreditCard, can: 'accounting.view', pkg: 'member_area' },
     ] },
     { label: 'Gestione', items: [
+        { href: '/gestionale/abbonamento', label: 'Abbonamento e pacchetti', icon: CreditCard, can: 'org.subscription', external: true },
         { href: '/gestionale/operatori', label: 'Operatori e ruoli', icon: ShieldCheck, can: 'org.operators' },
         { href: '/gestionale/esportazione', label: 'Esportazione dei dati', icon: Download, can: 'org.settings' },
         { href: '/gestionale/configurazione', label: 'Configurazione guidata', icon: Settings, can: 'org.settings' },
@@ -100,10 +101,10 @@ const showAccount = ref(false);
                 </Link>
                 <div v-for="g in visibleGroups" :key="g.label" class="mt-3">
                     <p class="px-3 pb-1 text-[13px] font-semibold text-muted">{{ g.label }}</p>
-                    <Link v-for="i in g.items" :key="i.href" :href="i.href" class="flex min-h-10 items-center gap-3 rounded-xl px-3 text-[15px] font-semibold hover:bg-surface"
+                    <component :is="i.external ? 'a' : Link" v-for="i in g.items" :key="i.href" :href="i.href" class="flex min-h-10 items-center gap-3 rounded-xl px-3 text-[15px] font-semibold hover:bg-surface"
                         :class="current(i.href) ? 'bg-info-soft text-info-ink' : 'text-ink'" :aria-current="current(i.href) ? 'page' : undefined">
                         <component :is="i.icon" class="size-5" aria-hidden="true" />{{ i.label }}
-                    </Link>
+                    </component>
                 </div>
             </nav>
             <div class="border-t border-line p-3">
@@ -175,11 +176,11 @@ const showAccount = ref(false);
                 <p class="caption mb-1.5 px-1 font-semibold">{{ g.label }}</p>
                 <ul class="list-group">
                     <li v-for="i in g.items" :key="i.href">
-                        <Link :href="i.href" class="list-row" :class="current(i.href) ? 'text-accent' : ''" @click="showMore = false">
+                        <component :is="i.external ? 'a' : Link" :href="i.href" class="list-row" :class="current(i.href) ? 'text-accent' : ''" @click="showMore = false">
                             <component :is="i.icon" class="size-5 shrink-0 text-muted" aria-hidden="true" />
                             <span class="flex-1 font-semibold">{{ i.label }}</span>
                             <ChevronRight class="size-5 shrink-0 text-muted" aria-hidden="true" />
-                        </Link>
+                        </component>
                     </li>
                 </ul>
             </div>

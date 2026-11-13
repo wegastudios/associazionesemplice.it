@@ -27,8 +27,12 @@
     <h1>@yield('heading')</h1>
     <p>@yield('message')</p>
     <div class="actions">
-        <a class="btn primary" href="https://associazionesemplice.it/account">Torna al tuo account</a>
-        <a class="btn" href="https://associazionesemplice.it/">Vai alla home</a>
+        @if (request()->is('area', 'area/*'))
+            <a class="btn primary" href="/area">Torna all’area soci</a>
+        @else
+            <a class="btn primary" href="/gestionale">Torna al gestionale</a>
+            <a class="btn" href="https://supporto.associazionesemplice.it/">Chiedi aiuto</a>
+        @endif
     </div>
 </main>
 </body>

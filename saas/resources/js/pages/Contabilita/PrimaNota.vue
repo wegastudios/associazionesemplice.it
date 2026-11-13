@@ -77,6 +77,8 @@ const transfer = useForm({
 });
 
 const done = (form) => ({ preserveScroll: true, onSuccess: () => { form.reset(); mode.value = null; } });
+// Un errore del server (esercizio chiuso, conto chiuso, dati non validi) si legge dentro al foglio, non sotto il velo.
+const sheetError = (form) => usePage().props.errors?.ledger ?? Object.values(form.errors)[0] ?? null;
 const noEmpty = (d) => ({ ...d, activity_id: d.activity_id || null });
 const submitIncome = () => income.transform(noEmpty).post('/gestionale/prima-nota/incassi', done(income));
 const submitExpense = () => expense.transform(noEmpty).post('/gestionale/prima-nota/spese', done(expense));
@@ -257,6 +259,7 @@ const label = 'block space-y-1.5 text-sm';
                         <label class="flex items-center gap-3"><input v-model="income.receipt" type="checkbox" />Emetti la ricevuta</label>
                     </div>
                 </details>
+${E//FORM/income}
                 <button type="submit" class="btn btn-primary btn-block" :disabled="income.processing">Registra l'incasso</button>
             </form>
         </Sheet>
@@ -284,6 +287,7 @@ const label = 'block space-y-1.5 text-sm';
                             <select v-model="expense.activity_id" class="field"><option value="">Nessuna</option><option v-for="a in activities" :key="a.id" :value="a.id">{{ a.name }}</option></select></label>
                     </div>
                 </details>
+${E//FORM/expense}
                 <button type="submit" class="btn btn-primary btn-block" :disabled="expense.processing">Registra la spesa</button>
             </form>
         </Sheet>
@@ -300,6 +304,7 @@ const label = 'block space-y-1.5 text-sm';
                 <label :class="label"><span class="font-semibold">A</span>
                     <select v-model="transfer.to_account_id" class="field"><option v-for="a in openAccounts" :key="a.id" :value="a.id">{{ a.name }}</option></select></label>
                 <label :class="label"><span class="font-semibold">Descrizione <span class="font-medium text-muted">(facoltativa)</span></span><input v-model="transfer.description" class="field" /></label>
+${E//FORM/transfer}
                 <button type="submit" class="btn btn-primary btn-block" :disabled="transfer.processing">Registra il giroconto</button>
             </form>
         </Sheet>

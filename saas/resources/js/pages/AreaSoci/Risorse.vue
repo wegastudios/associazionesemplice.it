@@ -8,6 +8,7 @@ const res = computed(() => props.resources.find((r) => r.id === props.chosen));
 const go = (q) => router.get('/area/risorse', { risorsa: props.chosen, giorno: props.date, ...q }, { preserveScroll: true });
 const form = useForm({ date: props.date, start: '', units: 1, guests: '' });
 const book = (start) => {
+    if (start && !window.confirm(`Prenotare dalle ${start}?`)) return;
     form.date = props.date;
     form.start = start ?? '';
     form.post(`/area/risorse/${props.chosen}/prenota`, { preserveScroll: true, onSuccess: () => form.reset('guests') });
