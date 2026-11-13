@@ -9,3 +9,6 @@ claude.ssh
 deploy_key*
 
 /wordpress/dist/
+
+# Il pacchetto del Pro non si pubblica: lo produce la CI e lo distribuisce il portale a chi ha la licenza.
+/associazionesemplice-pro.zip
