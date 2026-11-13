@@ -151,7 +151,7 @@ $catalog = [
             'communications' => ['state' => 'excluded'],
             'association_life' => ['state' => 'excluded'],
         ], ['member_area' => [], 'einvoice' => ['yearly' => 50]]),
-        $tier('grande', 3, 'Grande', 'Per le associazioni grandi, fino a 1.000 soci', 1000, 5900, 1000, 'Quante ne servono', [
+        $tier('grande', 3, 'Grande', 'Per le associazioni grandi, fino a 1.000 soci', 1000, 5900, 50, '50 persone', [
             'member_area' => ['state' => 'included'],
             'einvoice' => ['state' => 'limit', 'text' => "50 fatture all'anno incluse"],
             'communications' => ['state' => 'included'],
