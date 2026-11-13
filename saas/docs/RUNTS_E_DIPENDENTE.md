@@ -1,62 +1,45 @@
-# Dati per il RUNTS, socio ente e utente «Dipendente»: disegno
+# Dati per il RUNTS, socio ente e utente «Dipendente»
 
-Decisioni del titolare, 13/11/2026. Stato: **disegno**; le tre cose non decise sono in §5.
+Decisioni del titolare, 13/11/2026. Stato: **realizzato e unito in main** (PR 648 e PR 650); nessun deploy. Il testo del decreto RUNTS non è verificato: i criteri vengono da fonti professionali.
 
-## 1. Cosa si decide (già deciso)
+## 1. Cosa chiede il RUNTS
 
-1. «Dati per il RUNTS» sta **in tutti i piani**.
-2. **Diritto di voto**: casella sulla scheda del socio, spuntata in partenza per i maggiorenni, modificabile.
-3. **Lavoratori**: numero inserito a mano una volta l'anno nelle impostazioni dell'associazione.
-4. Nuovo tipo di utente **Dipendente**: parte con i permessi della segreteria; presidente, vicepresidente e amministratori possono togliergliene alcuni, uno per uno; non è socio in partenza (non entra nel libro soci, non ha tessera, non conta tra i soci) ma può esserlo.
-5. **Socio ente**: persona fisica o ente, con denominazione e codice fiscale.
+Entro il 30 giugno i dati al 31 dicembre dell'anno prima, solo se cambiati: soci con diritto di voto persone fisiche (solo il numero); soci enti (denominazione, CF, se iscritti nella stessa sezione); volontari iscritti nel registro; lavoratori dipendenti e parasubordinati. ODV/APS sotto il minimo (7 persone fisiche o 3 enti della stessa sezione): comunicazione entro 30 giorni.
 
-Cosa chiede il RUNTS (da fonti professionali, testo del decreto non verificato): entro il 30 giugno i dati al 31 dicembre dell'anno prima, solo se cambiati; soci con diritto di voto persone fisiche (solo il numero); soci enti (denominazione, CF, se iscritti nella stessa sezione); volontari iscritti nel registro; lavoratori dipendenti e parasubordinati; ODV/APS sotto il minimo (7 persone o 3 enti): comunicazione entro 30 giorni.
+## 2. Decisioni (risposte del titolare)
 
-## 2. Anagrafica (modulo Soci)
+1. «Dati per il RUNTS» sta in tutti i piani.
+2. **Diritto di voto sul tipo di socio** (non una casella per scheda): `MemberType::hasVotingRights()`. I minorenni alla data si escludono dal conteggio.
+3. **Lavoratori = numero dei Dipendenti** (utenti con ruolo Dipendente), non un numero inserito a mano.
+4. **Dipendente conta tra gli operatori del piano** (`OrgMembers::assertOperatorAvailable` conta ogni ruolo tranne Commercialista), perché accede come la segreteria.
+5. **Elenco dei permessi rimovibili chiuso** (`Ability::removable()`); mai un permesso in più del ruolo.
+6. **Chi li toglie: titolare e amministratori** (chi può assegnare il ruolo Dipendente); ogni modifica è nel registro delle azioni. Presidente e vicepresidente restano Owner e Admin.
+7. **Socio ente**: persona fisica o ente, con denominazione e codice fiscale (anche di 11 cifre).
+8. Il Dipendente non è socio in partenza (niente scheda, tessera, libro soci) ma si può collegare a una scheda.
 
-Nuove colonne su `app.people` (migrazione org):
-- `entity_kind text NOT NULL DEFAULT 'person' CHECK IN ('person','entity')`; per `entity`: `entity_name`, `tax_code` = codice fiscale dell'ente (il campo esistente, cifrato), `entity_same_section boolean` (iscritto nella stessa sezione del RUNTS).
-- `voting_rights boolean NOT NULL DEFAULT false`; all'inserimento di un socio persona maggiorenne si propone spuntata (regola in `PeopleService::clean`, modificabile); per un ente e per un minorenne parte non spuntata.
-- Per i soci già presenti la migrazione non indovina: li lascia da confermare (vedi §4, «da verificare»).
-- `MemberType` non cambia; l'ente è un `ordinary` con `entity_kind = 'entity'`. Il libro soci mostra la denominazione.
-- Le fotografie del libro (PR del libro soci) aggiungono `kind`, `voting` a `MemberBookSnapshots::FIELDS`.
+## 3. Anagrafica (PR 648)
 
-## 3. Pagina «Dati per il RUNTS» (gestionale, tutti i piani)
+Colonne su `app.people`: `is_entity`, `entity_same_section` (migrazione org `2026_11_24_000100_add_entity_to_people`). Per l'ente la denominazione sta in `last_name`, `first_name` è vuoto, niente data di nascita. `is_entity` non indicato in un aggiornamento mantiene il valore attuale. Scheda socio con casella «Socio ente» e «Iscritto nella stessa sezione».
 
-Una pagina (sezione Soci o Gestione), data di riferimento 31 dicembre dell'anno precedente (modificabile), calcolata dai dati con `MemberBookService::entersPeriod()` su [data, data]:
-- soci con diritto di voto, persone fisiche: numero;
-- soci enti: elenco (denominazione, CF, stessa sezione);
-- volontari iscritti nel registro dei volontari (tipo `volunteer` alla data): numero;
-- lavoratori: il numero inserito (impostazione annuale `runts.workers.<anno>`), con valore suggerito dal conteggio dei dipendenti (§5);
-- avviso sotto il minimo: 7 persone fisiche / 3 enti (solo se l'associazione è ODV o APS: serve il tipo di ETS già presente nell'anagrafica dell'associazione, da verificare);
-- promemoria del 30 giugno (avviso nella pagina iniziale dal 1° giugno) e del termine dei 30 giorni se si scende sotto il minimo;
-- nessun invio al RUNTS: i numeri si copiano nel portale del RUNTS. Pulsante «Copia» e stampa.
+## 4. Pagina «Dati per il RUNTS» (PR 650)
 
-Stima: pagina e calcolo 1,5 giorni, campi anagrafica e ente 1,5, impostazione lavoratori e promemoria 0,5, test 1.
+`/gestionale/soci/runts` (permesso `people.view`), data di riferimento 31 dicembre dell'anno precedente. Il calcolo (`RuntsCounts`) riusa il criterio del libro soci, `MemberBookService::entersPeriod()` / `peopleEntering()`: fondatori per date, gli altri solo con tessera valida alla data. Mostra:
+- soci con diritto di voto, persone fisiche maggiorenni;
+- soci enti (elenco con denominazione e «stessa sezione»);
+- volontari (tipo `volunteer` alla data);
+- lavoratori = Dipendenti (`StaffCount`, implementato in Core da `EmployeeCounter`);
+- avviso sotto il minimo, solo se `ente.kind` è `odv` o `aps` (7 persone oppure 3 enti della stessa sezione).
 
-## 4. Utente «Dipendente» (modulo Core, accessi)
+Il promemoria del 30 giugno è solo un avviso nella pagina, nessuna notifica programmata. Nessun invio al RUNTS: i numeri si copiano nel portale.
 
-- Nuovo `OrgRole::Employee` (`'employee'`), etichetta «Dipendente».
-- Permessi di partenza = quelli della segreteria (`OrgRole::Operator`).
-- Togliere permessi: nuova colonna `core.org_users.denied_abilities jsonb NOT NULL DEFAULT '[]'` con le `Ability` tolte; `Operator::can()` = permessi del ruolo meno quelli tolti. Chi può modificarli: titolare, presidente, vicepresidente, amministratori (oggi i ruoli sono Owner/Admin/Operator/Accountant/Custom: presidente e vicepresidente corrispondono a Owner/Admin o a un ruolo personalizzato; da chiarire in §5).
-- Pagina Operatori: invito come «Dipendente» e, per ogni dipendente, l'elenco dei permessi con un interruttore ciascuno (solo ai ruoli sopra); ogni modifica nel registro delle azioni.
-- Non è socio: nessuna scheda soci creata; si può **collegare** a una scheda socio (come già per chi è operatore e socio, per email), allora è anche socio.
-- Il dipendente alimenta il suggerimento del numero di lavoratori della pagina RUNTS.
-- Test: un dipendente con permessi tolti riceve 403 sulle rotte dei permessi tolti; Owner/Admin possono toglierli, Operator e Dipendente no.
+## 5. Utente «Dipendente» (PR 650)
 
-Stima: ruolo, colonna, `can()` 1, interfaccia permessi 1,5, invito e collegamento al socio 1, test 1.
+- `OrgRole::Employee` (`'employee'`), etichetta «Dipendente», permessi di partenza della segreteria.
+- Colonna `core.org_users.denied_abilities jsonb` con le abilità tolte; `Operator::can()` = permessi del ruolo meno quelle tolte. Per i ruoli personalizzati i permessi fini derivano da quelli generali (`parent()`).
+- Pagina Operatori: per ogni Dipendente un interruttore per permesso, visibile a titolare e amministratori.
+- Permessi applicati alle rotte: entrate, uscite e fondi in contabilità (`accounting.income|expense|funds`), corsi (`courses.manage`).
 
-## 5. Da decidere con il titolare (non deciso da noi)
+## 6. Ancora aperto
 
-1. **Il dipendente conta tra gli operatori del piano** (2 nella Piccola, 5 nella Media, senza limite nella Grande)? Oggi `OrgMembers::assertOperatorAvailable` conta ogni ruolo tranne Commercialista. Proposta: **sì**, perché accede come la segreteria; altrimenti si aggira il limite.
-2. **Numero dei lavoratori**: valore suggerito dai dipendenti inseriti, campo comunque modificabile (non tutti i lavoratori avranno un accesso, e i parasubordinati sono da contare a parte). Proposta del titolare/audit: suggerito + modificabile.
-3. **Quali permessi si possono togliere e quali no.** Proposta: tutti quelli della segreteria si possono togliere uno per uno, tranne «vedere la propria scheda e il profilo»; mai si può dare un permesso in più del ruolo. Da confermare l'elenco (es. dati sanitari, esportazioni, contabilità).
-4. **Presidente e vicepresidente**: oggi non sono ruoli. Si mappano su Owner/Admin o si creano come cariche? Proposta: restano Owner e Admin (chi ha «Gestire gli operatori»).
-5. **Soci già presenti** all'attivazione del diritto di voto: spuntati per i maggiorenni con una conferma guidata, oppure da controllare uno per uno? Proposta: spuntati in blocco, con avviso e pagina di verifica.
-
-## 6. Ordine di consegna
-
-1. Anagrafica: socio ente e diritto di voto (+ fotografie del libro con i campi nuovi).
-2. Pagina «Dati per il RUNTS» con lavoratori manuali e promemoria.
-3. Ruolo Dipendente con permessi toglibili.
-Nessun deploy senza il via del titolare.
+- I permessi «eventi» e «rimborsi» sono definiti ma non applicati a nessuna rotta, perché le pagine non esistono ancora: vanno agganciati quando arrivano.
+- I parasubordinati non hanno un conteggio proprio: oggi «lavoratori» è solo il numero dei Dipendenti.
