@@ -17,7 +17,7 @@ it('accetta il catalogo iniziale e lo completa con schema e prodotto', function 
     expect($doc['schema'])->toBe('catalogo/v1')
         ->and($doc['product'])->toBe('saas')
         ->and($doc['rev'])->toBe(2)
-        ->and(array_column($doc['plans'], 'code'))->toBe(['gestionale']);
+        ->and(array_column($doc['plans'], 'code'))->toBe(['gestionale', 'piccola', 'media', 'grande', 'gestionale']);
 });
 
 it('rifiuta campi sconosciuti, importi non interi e testo con HTML', function (array $change): void {
@@ -52,7 +52,9 @@ it('rifiuta campi sconosciuti, importi non interi e testo con HTML', function (a
 
         return $c;
     }]],
-    'nessun piano visibile' => [['apply' => function (array $c): array {
+        foreach ($c['plans'] as $i => $plan) {
+            $c['plans'][$i]['visible'] = false;
+        }
         $c['plans'][0]['visible'] = false;
 
         return $c;
@@ -102,4 +104,33 @@ it('accetta una promo valida', function (): void {
         'valid_from' => '2026-01-01', 'valid_to' => '2026-12-31', 'max_uses' => 50, 'stackable' => false];
 
     expect(CatalogValidator::validate($catalog)['promos'])->toHaveCount(1);
+});
+
+it('ha tre piani a prezzo fisso per fasce di soci, con i pacchetti inclusi e il piano a scaglioni non più in vendita', function (): void {
+    $doc = CatalogValidator::validate(seedCatalog());
+    $plans = collect($doc['plans'])->keyBy(fn (array $p): string => $p['code'].'@'.$p['plan_version']);
+
+    $expected = ['piccola' => [100, 1900, 2], 'media' => [300, 3500, 5], 'grande' => [1000, 5900, 1000]];
+    foreach ($expected as $code => [$members, $monthly, $operators]) {
+        $plan = $plans["{$code}@1"];
+        expect($plan['visible'])->toBeTrue()
+            ->and($plan['trial_days'])->toBe(30)
+            ->and($plan['limits']['members'])->toBe($members)
+            ->and($plan['limits']['operators'])->toBe($operators)
+            ->and($plan['prices'][0]['amount_cents'])->toBe($monthly)
+            ->and($plan['prices'][1]['amount_cents'])->toBe($monthly * 10);
+    }
+
+    expect($plans['piccola@1']['limits']['packages'])->toBe([])
+        ->and(array_keys($plans['media@1']['limits']['packages']))->toBe(['member_area', 'einvoice'])
+        ->and($plans['media@1']['limits']['packages']['einvoice'])->toBe(['yearly' => 50])
+        ->and(array_keys($plans['grande@1']['limits']['packages']))->toBe(['member_area', 'einvoice', 'communications', 'association_life'])
+        ->and($plans['gestionale@2']['visible'])->toBeFalse()
+        ->and($plans['gestionale@1']['visible'])->toBeTrue();
+
+    $addons = collect($doc['addons'])->keyBy('code');
+    foreach (['member_area', 'communications', 'association_life', 'advanced_accounting'] as $included) {
+        expect($addons[$included]['visible'])->toBeFalse();
+    }
+    expect($addons['einvoice']['visible'])->toBeTrue();
 });
