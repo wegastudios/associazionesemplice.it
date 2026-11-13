@@ -12,6 +12,7 @@ use Portale\Legal;
 use Portale\Releases;
 use Portale\Secrets;
 use Portale\Settings;
+use Portale\Site;
 use Portale\Staff;
 use Portale\SupportSso;
 use Portale\Tracking;
@@ -569,8 +570,13 @@ final class Admin {
 	private function sampleVars(): array {
 		return array(
 			'link' => rtrim( (string) Config::get( 'base_url' ), '/' ) . '/entra/ESEMPIO', 'dominio' => 'miaassociazione.it', 'vecchio_dominio' => 'vecchio-sito.it',
-			'piano' => 'Pro Fiscale', 'nuovo_piano' => 'Pro Contabile', 'scadenza' => date( 'd/m/Y', time() + 30 * 86400 ), 'email' => $this->email,
+			// I nomi dei piani sono quelli del pannello (mai scritti a mano); per il gestionale un nome di esempio.
+			'piano' => Site::planName( 'full' ), 'nuovo_piano' => Site::planName( 'lite' ),
+			'scadenza' => date( 'd/m/Y', time() + 30 * 86400 ), 'email' => $this->email,
 			'account_url' => rtrim( (string) Config::get( 'base_url' ), '/' ) . '/account',
+			'nome' => 'Giulia', 'associazione' => 'Associazione Esempio', 'periodo' => 'annuale', 'importo' => '350 €',
+			'gestionale_url' => (string) Config::get( 'saas_app_url', 'https://app.associazionesemplice.it/gestionale' ),
+			'link_password' => rtrim( (string) Config::get( 'base_url' ), '/' ) . '/accedi/password-dimenticata', 'supporto_url' => SupportSso::supportUrl(),
 		);
 	}
 

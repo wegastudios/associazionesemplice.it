@@ -7,7 +7,12 @@ namespace Portale;
  */
 final class Emails {
 
-	const FOOTER = "\n\n— Associazione Semplice\nhttps://associazionesemplice.it";
+	/** Firma uguale in tutte le email; {supporto_url} diventa l'indirizzo del supporto. */
+	const FOOTER = "\n\n— Associazione Semplice\nHai bisogno di aiuto? Scrivici da {supporto_url}";
+
+	public static function footer( array $vars = array() ): string {
+		return self::render( self::FOOTER, $vars + array( 'supporto_url' => SupportSso::supportUrl() ) );
+	}
 
 	/** Eventi che non si possono spegnere: senza questi il cliente non riesce a entrare. */
 	const ALWAYS_ON = array( 'login_link', 'free_confirm' );
@@ -80,6 +85,33 @@ final class Emails {
 				'subject' => 'Dominio aggiornato: {dominio}',
 				'body' => "Il dominio della licenza {piano} è passato da {vecchio_dominio} a {dominio}.\nIl vecchio dominio smette di funzionare al prossimo controllo.\n\nSe non hai fatto tu questa richiesta, scrivici subito.\n{account_url}",
 			),
+			// Gestionale online (acquisto dal portale). Testi dell'audit del 13/11/2026. Regole della titolare (13/11/2026): nuovi tentativi per 7 giorni (3 al giorno
+			// nei primi 2, poi 1), sospensione il giorno dopo la scadenza, dati conservati 180 giorni.
+			'saas_welcome' => array(
+				'label' => 'Gestionale: benvenuto', 'when' => 'Subito dopo il pagamento dell\'ordine del gestionale online.', 'vars' => array( 'nome', 'associazione', 'piano', 'periodo', 'gestionale_url', 'link_password', 'account_url', 'supporto_url', 'email' ),
+				'subject' => 'Benvenuto: scegli la password per il gestionale di {associazione}',
+				'body' => "Ciao {nome},\ngrazie per aver scelto Associazione Semplice. Stiamo preparando il gestionale di {associazione}: ci vogliono pochi minuti.\n\nIntanto scegli la tua password da qui (scrivi questa email e ti arriva il link per sceglierla):\n{link_password}\n\nL'indirizzo del tuo gestionale è {gestionale_url}. Salvalo tra i preferiti: entrerai sempre da lì.\n\nHai scelto il piano {piano}, con pagamento {periodo}. Fatture e pagamenti sono in {account_url}.",
+			),
+			'saas_ready' => array(
+				'label' => 'Gestionale: pronto', 'when' => 'Quando il gestionale dell\'associazione è stato creato.', 'vars' => array( 'nome', 'associazione', 'gestionale_url', 'link_password', 'account_url', 'supporto_url', 'email' ),
+				'subject' => 'Il gestionale di {associazione} è pronto',
+				'body' => "Ciao {nome},\nil gestionale è pronto. Entra da {gestionale_url} con la tua email e la password che hai scelto.\n\nPer cominciare bastano tre passi:\n1. completa i dati dell'associazione nella configurazione guidata;\n2. importa l'elenco dei soci da Excel;\n3. invita le persone che lavorano con te.\n\nNon hai ancora scelto la password? Fallo da qui: {link_password}",
+			),
+			'saas_renewed' => array(
+				'label' => 'Gestionale: rinnovo avvenuto', 'when' => 'A ogni rinnovo del gestionale andato a buon fine.', 'vars' => array( 'nome', 'associazione', 'piano', 'importo', 'scadenza', 'account_url', 'supporto_url', 'email' ),
+				'subject' => 'Rinnovo riuscito: {piano} valido fino al {scadenza}',
+				'body' => "Ciao {nome},\nabbiamo rinnovato il piano {piano} di {associazione}.\n\nImporto: {importo}\nValido fino al: {scadenza}\n\nLa fattura è in {account_url}. Non devi fare nulla.",
+			),
+			'saas_payment_failed' => array(
+				'label' => 'Gestionale: pagamento non riuscito', 'when' => 'Il pagamento di un rinnovo del gestionale non è andato a buon fine.', 'vars' => array( 'nome', 'associazione', 'piano', 'importo', 'scadenza', 'account_url', 'supporto_url', 'email' ),
+				'subject' => 'Pagamento non riuscito per {associazione}: cosa fare',
+				'body' => "Ciao {nome},\nnon siamo riusciti ad addebitare {importo} per il piano {piano}. Di solito succede per una carta scaduta o un limite di spesa.\n\nCosa fare: apri {account_url}, premi «Fatture e metodo di pagamento» e controlla o cambia il metodo di pagamento.\n\nRiproviamo da soli per 7 giorni: più volte nei primi due, poi una volta al giorno. Se in quei giorni sistemi il metodo di pagamento, non devi fare altro.\n\nIl gestionale funziona fino al {scadenza}. Se entro quel giorno il pagamento non va a buon fine, dal giorno dopo viene sospeso finché non è sistemato. I dati restano al loro posto.",
+			),
+			'saas_cancelled' => array(
+				'label' => 'Gestionale: disdetta registrata', 'when' => 'Il cliente disdice il rinnovo del gestionale dall\'area clienti.', 'vars' => array( 'nome', 'associazione', 'piano', 'scadenza', 'account_url', 'supporto_url', 'email' ),
+				'subject' => 'Disdetta registrata: il gestionale resta attivo fino al {scadenza}',
+				'body' => "Ciao {nome},\nabbiamo registrato la disdetta del piano {piano} di {associazione}. Non ci saranno altri addebiti.\n\nIl gestionale resta attivo fino al {scadenza}. Prima di quella data ti consigliamo di scaricare i tuoi dati da «Gestione → Esportazione dei dati».\n\nHai cambiato idea? Scrivici da {supporto_url}.\n\nDopo il {scadenza} i dati restano conservati per 180 giorni, poi vengono cancellati.",
+			),
 		);
 	}
 
@@ -100,7 +132,8 @@ final class Emails {
 		foreach ( $vars as $k => $v ) {
 			$map[ '{' . $k . '}' ] = (string) $v;
 		}
-		return strtr( $text, $map );
+		// Senza nome del cliente «Ciao {nome},» diventa «Ciao,».
+		return (string) preg_replace( '/^Ciao ,/m', 'Ciao,', strtr( $text, $map ) );
 	}
 
 	/** Segnaposto scritti nel testo che non esistono per questo evento (per avvisare chi modifica). */
@@ -116,9 +149,9 @@ final class Emails {
 		if ( ! $t || ( ! $t['enabled'] && ! in_array( $event, self::ALWAYS_ON, true ) ) ) {
 			return false;
 		}
-		$vars += array( 'email' => $to, 'account_url' => rtrim( (string) Config::get( 'base_url' ), '/' ) . '/account' );
+		$vars += array( 'email' => $to, 'account_url' => rtrim( (string) Config::get( 'base_url' ), '/' ) . '/account', 'supporto_url' => SupportSso::supportUrl() );
 		$subject = trim( str_replace( array( "\r", "\n" ), ' ', self::render( $t['subject'], $vars ) ) );
-		return Mailer::send( $to, $subject, self::render( $t['body'], $vars ) . self::FOOTER . "\n" );
+		return Mailer::send( $to, $subject, self::render( $t['body'], $vars ) . self::footer( $vars ) . "\n" );
 	}
 
 	/** Invia il modello com'è adesso (anche se spento) con dati di esempio: serve a vedere l'effetto prima di usarlo. */
@@ -128,7 +161,7 @@ final class Emails {
 			return false;
 		}
 		$subject = trim( str_replace( array( "\r", "\n" ), ' ', self::render( $t['subject'], $vars ) ) );
-		return Mailer::send( $to, '[PROVA] ' . $subject, self::render( $t['body'], $vars ) . self::FOOTER . "\n" );
+		return Mailer::send( $to, '[PROVA] ' . $subject, self::render( $t['body'], $vars ) . self::footer( $vars ) . "\n" );
 	}
 
 	public static function save( Db $db, string $event, string $subject, string $body, bool $enabled ): void {

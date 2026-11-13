@@ -90,6 +90,10 @@ final class SaasAccount {
 			throw new UserError( 'Questo abbonamento non si può disdire da qui: scrivici.' );
 		}
 		$db->run( 'UPDATE orders SET cancel_at_period_end = 1, updated_at = ? WHERE id = ?', array( Db::now(), $order['id'] ) );
+		$org = $db->one( 'SELECT * FROM saas_orgs WHERE ref = ?', array( $order['org_ref'] ?? '' ) );
+		if ( $org ) {
+			SaasCheckout::mail( $db, 'saas_cancelled', $order, $org );
+		}
 	}
 
 	/**

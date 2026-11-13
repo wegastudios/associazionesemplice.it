@@ -27,6 +27,6 @@ include __DIR__ . '/_nav.php'; ?>
 	<div class="card2">
 		<h2>Anteprima con dati di esempio</h2>
 		<p><b><?php echo e( Portale\Emails::render( $tpl['subject'], $sample ) ); ?></b></p>
-		<div class="pre"><?php echo e( Portale\Emails::render( $tpl['body'], $sample ) . Portale\Emails::FOOTER ); ?></div>
+		<div class="pre"><?php echo e( Portale\Emails::render( $tpl['body'], $sample ) . Portale\Emails::footer( $sample ) ); ?></div>
 	</div>
 </div></section>
