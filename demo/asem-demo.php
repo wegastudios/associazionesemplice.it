@@ -77,9 +77,11 @@ add_filter( 'wp_robots', function ( $robots ) {
 $asem_demo_note = 'Questa è una <strong>demo pubblica</strong> di Associazione Semplice: i dati sono inventati, non vengono inviate email e tutto si azzera ogni notte alle 4.';
 // Uscire dalla demo: un collegamento sempre in vista (per cambiare accesso, da segreteria a socio e viceversa) che riporta alla pagina iniziale.
 $asem_demo_cta = ' · <a href="https://associazionesemplice.it/free" style="color:inherit;font-weight:700">Ottieni la licenza gratuita</a>';
+$asem_demo_kses = array( 'strong' => array(), 'a' => array( 'href' => array(), 'style' => array() ), 'form' => array( 'method' => array(), 'action' => array(), 'style' => array() ), 'input' => array( 'type' => array(), 'name' => array(), 'value' => array() ), 'button' => array( 'type' => array(), 'style' => array() ) );
 $asem_demo_exit = function () use ( $asem_demo_cta ): string {
 	if ( ! is_user_logged_in() && class_exists( '\AssociazioneSemplice\MemberSession' ) && null !== \AssociazioneSemplice\MemberSession::session_person() ) { // il socio entra con l'accesso proprio, non è un utente WordPress
-		return ' Sei entrato come <strong>socio</strong> · <a href="' . esc_url( \AssociazioneSemplice\Frontend\MemberLoginPage::url() ) . '" style="color:inherit;font-weight:700">Esci</a>' . $asem_demo_cta;
+		$f = '<form method="post" action="' . esc_url( \AssociazioneSemplice\Frontend\MemberLoginPage::url() ) . '" style="display:inline;margin:0"><input type="hidden" name="asem_ml_do" value="logout"><input type="hidden" name="_csrf" value="' . esc_attr( \AssociazioneSemplice\MemberSession::csrf( 'account' ) ) . '"><button type="submit" style="background:none;border:0;padding:0;color:inherit;font:inherit;font-weight:700;text-decoration:underline;cursor:pointer">Esci</button></form>'; // il socio esce con un invio vero: l'uscita dell'area soci vuole il suo segnale di sicurezza
+		return ' Sei entrato come <strong>socio</strong> · ' . $f . $asem_demo_cta;
 	}
 	if ( ! is_user_logged_in() ) {
 		return ' <a href="' . esc_url( wp_login_url( home_url( '/' ) ) ) . '" style="color:inherit;font-weight:700">Entra</a>' . $asem_demo_cta;
@@ -87,11 +89,11 @@ $asem_demo_exit = function () use ( $asem_demo_cta ): string {
 	$u = wp_get_current_user();
 	return ' Sei entrato come <strong>' . esc_html( $u->user_login ) . '</strong> · <a href="' . esc_url( wp_logout_url( home_url( '/' ) ) ) . '" style="color:inherit;font-weight:700">Esci</a>' . $asem_demo_cta;
 };
-add_action( 'admin_notices', function () use ( $asem_demo_note, $asem_demo_exit ) {
-	echo '<div class="notice notice-info"><p>' . wp_kses( $asem_demo_note, array( 'strong' => array() ) ) . wp_kses( $asem_demo_exit(), array( 'strong' => array(), 'a' => array( 'href' => array(), 'style' => array() ) ) ) . '</p></div>';
+add_action( 'admin_notices', function () use ( $asem_demo_note, $asem_demo_exit, $asem_demo_kses ) {
+	echo '<div class="notice notice-info"><p>' . wp_kses( $asem_demo_note, array( 'strong' => array() ) ) . wp_kses( $asem_demo_exit(), $asem_demo_kses ) . '</p></div>';
 } );
-add_action( 'wp_footer', function () use ( $asem_demo_note, $asem_demo_exit ) {
-	echo '<style>body{padding-bottom:48px}.asem-wa-float{bottom:64px!important}</style><div style="position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#1f218c;color:#fff;padding:8px 16px;font:14px/1.4 system-ui,sans-serif;text-align:center">' . wp_kses( $asem_demo_note, array( 'strong' => array() ) ) . wp_kses( $asem_demo_exit(), array( 'strong' => array(), 'a' => array( 'href' => array(), 'style' => array() ) ) ) . '</div>';
+add_action( 'wp_footer', function () use ( $asem_demo_note, $asem_demo_exit, $asem_demo_kses ) {
+	echo '<style>body{padding-bottom:48px}.asem-wa-float{bottom:64px!important}</style><div style="position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#1f218c;color:#fff;padding:8px 16px;font:14px/1.4 system-ui,sans-serif;text-align:center">' . wp_kses( $asem_demo_note, array( 'strong' => array() ) ) . wp_kses( $asem_demo_exit(), $asem_demo_kses ) . '</div>';
 } );
 // Anche nella barra in alto un «Esci» diretto, senza aprire il menu del profilo.
 add_action( 'admin_bar_menu', function ( $bar ) {
