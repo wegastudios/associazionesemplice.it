@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Piattaforma\Console;
 
 use App\Modules\Piattaforma\Catalogo\CatalogPublisher;
+use App\Modules\Piattaforma\Contracts\Catalog;
 use App\Modules\Piattaforma\Models\PlatformStaff;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
@@ -21,7 +22,7 @@ final class PrepareTiersDraftCommand extends Command
 
     protected $description = 'Prepara nella bozza del catalogo i tre piani fissi (Piccola, Media, Grande), senza pubblicare';
 
-    public function handle(CatalogPublisher $publisher): int
+    public function handle(CatalogPublisher $publisher, Catalog $published): int
     {
         $staff = PlatformStaff::query()->where('email', Str::lower((string) $this->argument('email')))->first();
         if ($staff === null) {
@@ -36,7 +37,7 @@ final class PrepareTiersDraftCommand extends Command
 
         $draft['features'] = $seed['features'] ?? [];
         $draft['terms'] ??= $seed['terms'] ?? [];
-        $draft['plans'] = self::plans(self::rows($draft['plans'] ?? null), self::rows($seed['plans'] ?? null));
+        $draft['plans'] = self::plans(self::rows($draft['plans'] ?? null), self::rows($seed['plans'] ?? null), $published);
         $draft['addons'] = self::addons(self::rows($draft['addons'] ?? null), self::rows($seed['addons'] ?? null));
 
         try {
@@ -57,7 +58,7 @@ final class PrepareTiersDraftCommand extends Command
      * @param  list<array<string, mixed>>  $seed
      * @return list<array<string, mixed>>
      */
-    private static function plans(array $current, array $seed): array
+    private static function plans(array $current, array $seed, Catalog $catalog): array
     {
         $known = [];
         $latest = null;
@@ -76,8 +77,19 @@ final class PrepareTiersDraftCommand extends Command
             $known[self::key($hidden)] = true;
         }
         foreach ($seed as $plan) {
-            if (($plan['code'] ?? null) !== 'gestionale' && ! isset($known[self::key($plan)])) {
+            if (($plan['code'] ?? null) === 'gestionale') {
+                continue;
+            }
+            $key = self::key($plan);
+            if (! isset($known[$key])) {
                 $plans[] = $plan;
+            } elseif (is_string($plan['code'] ?? null) && is_int($plan['plan_version'] ?? null) && $catalog->plan($plan['code'], $plan['plan_version']) === null) {
+                // Già in bozza ma mai pubblicato: si aggiorna ai testi del file (una versione pubblicata non si tocca).
+                foreach ($plans as $i => $existing) {
+                    if (self::key($existing) === $key) {
+                        $plans[$i] = $plan;
+                    }
+                }
             }
         }
 

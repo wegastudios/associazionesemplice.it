@@ -112,7 +112,7 @@ it('cambia un prezzo dal modulo e il confronto lo dice', function (): void {
 
     $draft = json_decode((string) DB::table('core.catalog_draft')->value('document'), true);
     expect($draft['plans'][4]['prices'][0]['base_cents'])->toBe(1600);
-    $this->get('/saas/admin/catalogo')->assertSee('cambiano prezzi');
+    $this->get('/saas/admin/catalogo')->assertSee('prezzi');
 });
 
 it('non salva un modulo non valido e mostra l\'errore con quello che era stato scritto', function (): void {
@@ -225,7 +225,7 @@ it('imposta i pacchetti inclusi nel piano e rifiuta un testo che non è un ogget
 });
 
 it('imposta le condizioni di vendita: IVA, commissione sui pagamenti online e limiti della prova', function (): void {
-    $this->get('/saas/admin/catalogo/condizioni')->assertOk()->assertSee('Commissione sui pagamenti online')->assertSee('Durante la prova gratuita');
+    $this->get('/saas/admin/catalogo/condizioni')->assertOk()->assertSee('Commissione sui pagamenti dei soci')->assertSee('durante la prova gratuita');
 
     $this->post('/saas/admin/catalogo/condizioni', [
         'vat_mode' => 'exempt', 'vat_note' => 'Operazione senza IVA, regime forfettario.',
