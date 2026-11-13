@@ -9,7 +9,7 @@ use App\Modules\Piattaforma\Catalogo\DbCatalog;
 use App\Modules\Piattaforma\Console\CreateStaffCommand;
 use App\Modules\Piattaforma\Console\ImportPortalCustomersCommand;
 use App\Modules\Piattaforma\Console\InviteStaffCommand;
-use AppModulesPiattaformaConsolePrepareTiersDraftCommand;
+use App\Modules\Piattaforma\Console\PrepareTiersDraftCommand;
 use App\Modules\Piattaforma\Console\ResetStaffTwoFactorCommand;
 use App\Modules\Piattaforma\Contracts\Catalog;
 use App\Modules\Piattaforma\Contracts\PlanLimits;
