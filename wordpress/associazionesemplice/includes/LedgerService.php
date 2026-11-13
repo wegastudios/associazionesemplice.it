@@ -536,6 +536,7 @@ class LedgerService {
 					Plugin::people()->remove_membership_of_transaction( $id );
 					Plugin::people()->recheck_membership_after_void( $id );
 					Audit::log( 'tx.voided', 'transaction', $id, array( 'reason' => $reason ) );
+					do_action( 'asem_tx_voided', $id, $reason ); // chi emette documenti sul movimento (le ricevute) segna l'annullo, senza cancellare nulla
 				}
 			}
 		);

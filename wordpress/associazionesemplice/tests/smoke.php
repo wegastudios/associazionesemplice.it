@@ -9620,6 +9620,138 @@ remove_filter( 'pre_wp_mail', '__return_true' );
 wp_set_current_user( 1 );
 \AssociazioneSemplice\Employees::reset_cache();
 
+// ---------- Documenti numerati e anno chiuso: verbali, ricevute, assemblee, votazioni ----------
+$v4_z = 2001; // un anno vecchio e libero, creato e chiuso solo per la prova
+while ( \AssociazioneSemplice\FiscalYears::get( $v4_z ) ) {
+	++$v4_z;
+}
+\AssociazioneSemplice\FiscalYears::create( $v4_z );
+$v4_msg = 'L\'anno ' . \AssociazioneSemplice\FiscalYears::label( $v4_z ) . ' è chiuso: per modificarlo va riaperto.';
+$v4_set = function ( string $status ) use ( $wpdb, $v4_z ) { // chiusura e riapertura dirette: qui si prova la guardia, non la chiusura
+	$wpdb->update( Db::t( 'fiscal_years' ), array( 'status' => $status, 'closed_at' => 'closed' === $status ? Db::now() : null ), array( 'year' => $v4_z ) );
+};
+$v4_mk = function ( string $kind, string $date, string $title ) {
+	return \AssociazioneSemplice\Minutes::save( 0, array( 'kind' => $kind, 'meeting_date' => $date, 'title' => $title, 'body' => 'Testo di prova.' ), 1 );
+};
+$v4_lbl = function ( int $id ): string {
+	return \AssociazioneSemplice\Minutes::get( $id )['number'];
+};
+// verbali: il numero è salvato alla creazione e non cambia
+$v4_a = $v4_mk( 'assembly', $v4_z . '-03-10', 'Verbale A' );
+$v4_b = $v4_mk( 'assembly', $v4_z . '-05-12', 'Verbale B' );
+$v4_c = $v4_mk( 'assembly', $v4_z . '-01-05', 'Verbale C' ); // creato per terzo anche se la data è la più vecchia
+asem_ok( '1/' . $v4_z === $v4_lbl( $v4_a ) && '2/' . $v4_z === $v4_lbl( $v4_b ) && '3/' . $v4_z === $v4_lbl( $v4_c ), 'verbali: il numero si assegna alla creazione, in ordine di creazione, e si salva' );
+asem_ok( 3 === (int) $wpdb->get_var( 'SELECT number_seq FROM ' . Db::t( 'minutes' ) . ' WHERE id = ' . $v4_c ) && $v4_z === (int) $wpdb->get_var( 'SELECT number_year FROM ' . Db::t( 'minutes' ) . ' WHERE id = ' . $v4_c ), 'verbali: numero e anno stanno nelle colonne del verbale' );
+\AssociazioneSemplice\Minutes::delete( $v4_b );
+$v4_d = $v4_mk( 'assembly', $v4_z . '-09-01', 'Verbale D' );
+asem_ok( '4/' . $v4_z === $v4_lbl( $v4_d ) && '1/' . $v4_z === $v4_lbl( $v4_a ) && '3/' . $v4_z === $v4_lbl( $v4_c ), 'verbali: dopo una cancellazione i numeri degli altri non cambiano e il numero tolto non si riassegna' );
+$v4_o = $v4_mk( 'board', $v4_z . '-02-02', 'Consiglio' );
+asem_ok( '1/' . $v4_z === $v4_lbl( $v4_o ), 'verbali: ogni tipo ha la sua numerazione' );
+// migrazione: i verbali senza numero lo ricevono con l'ordine di prima (data, poi inserimento), una volta sola
+$wpdb->query( 'UPDATE ' . Db::t( 'minutes' ) . ' SET number_year = NULL, number_seq = NULL WHERE id IN (' . implode( ',', array( $v4_a, $v4_b, $v4_c, $v4_d, $v4_o ) ) . ')' );
+$v4_mig = \AssociazioneSemplice\Install::migrate_minute_numbers();
+asem_ok( $v4_mig >= 4 && '1/' . $v4_z === $v4_lbl( $v4_c ) && '2/' . $v4_z === $v4_lbl( $v4_a ) && '3/' . $v4_z === $v4_lbl( $v4_d ) && '1/' . $v4_z === $v4_lbl( $v4_o ), 'verbali: la migrazione numera i verbali esistenti con lo stesso ordine di prima (data, poi inserimento)' );
+asem_ok( 0 === \AssociazioneSemplice\Install::migrate_minute_numbers() && '2/' . $v4_z === $v4_lbl( $v4_a ), 'verbali: la migrazione si può rilanciare senza cambiare nulla' );
+asem_ok( null === $wpdb->get_var( 'SELECT number_seq FROM ' . Db::t( 'minutes' ) . ' WHERE id = ' . $v4_b ), 'verbali: un verbale già cancellato prima della migrazione resta senza numero' );
+// assemblea svolta, votazione e ricevute dell'anno, preparate mentre l'anno è aperto
+$wpdb->insert( Db::t( 'assemblies' ), array( 'kind' => 'ordinary', 'title' => 'Assemblea svolta di prova', 'first_call_at' => $v4_z . '-02-01 10:00:00', 'agenda' => 'Ordine del giorno', 'status' => 'held', 'call_held' => 1, 'eligible_at_close' => 3, 'created_at' => Db::now(), 'updated_at' => Db::now() ) );
+$v4_asm = (int) $wpdb->insert_id;
+$v4_poll_in = array( 'title' => 'Votazione di prova', 'opens_at' => $v4_z . '-03-01T09:00', 'closes_at' => $v4_z . '-03-10T09:00', 'options' => "Sì\nNo" );
+$v4_poll    = \AssociazioneSemplice\Polls::save( 0, $v4_poll_in, 1 );
+$v4_p       = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Vera', 'last_name' => 'Quattro', 'email' => 'vera.quattro@example.com' ) );
+$wpdb->update( Db::t( 'people' ), array( 'tax_code' => 'QTTVRE80A41H501Z' ), array( 'id' => $v4_p ) ); // codice di prova scritto direttamente: qui non si prova il controllo del codice fiscale
+$v4_cat     = $ledger->category_id_of_kind( 'donation' );
+$v4_cents   = array( 2000, 2100, 2200, 2300 );
+foreach ( $v4_cents as $i => $v4_c1 ) {
+	$ledger->record_receipt( array( 'date' => $v4_z . '-0' . ( $i + 4 ) . '-10', 'account_id' => (int) $cash['id'], 'person_id' => $v4_p, 'lines' => array( array( 'category_id' => $v4_cat, 'amount_cents' => $v4_c1, 'description' => 'Offerta V4' ) ) ) );
+}
+$v4_key = array();
+foreach ( \AssociazioneSemplice\Receipts::list_for_payer( $v4_p ) as $r ) {
+	$v4_key[ (int) $r['cents'] ] = $r['key'];
+}
+$v4_tx = function ( int $cents ) use ( $wpdb, $v4_p ): int {
+	return (int) $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ' . Db::t( 'transactions' ) . " WHERE person_id = %d AND amount_cents = %d AND voided_at IS NULL ORDER BY id DESC LIMIT 1", $v4_p, $cents ) );
+};
+// ricevute: numero per anno fiscale, salvato, mai riassegnato; la ricevuta emessa non cambia
+$v4_r1 = \AssociazioneSemplice\Receipts::build( $v4_key[2000] );
+$v4_r2 = \AssociazioneSemplice\Receipts::build( $v4_key[2100] );
+asem_ok( '1/' . $v4_z === $v4_r1['number'] && '2/' . $v4_z === $v4_r2['number'], 'ricevute: il numero progressivo è per anno fiscale e si salva alla prima emissione' );
+$v4_rec = \AssociazioneSemplice\Receipts::record( $v4_key[2000] );
+asem_ok( $v4_rec && '' !== (string) $v4_rec['data'] && 64 === strlen( (string) $v4_rec['content_hash'] ) && $v4_r1['hash'] === $v4_rec['content_hash'] && null === $v4_rec['voided_at'], 'ricevute: all\'emissione si salvano i dati fotografati e il loro hash' );
+$v4_foot = (string) Settings::get( 'receipt_footer' );
+$wpdb->update( Db::t( 'people' ), array( 'last_name' => 'Cambiata', 'tax_code' => 'CMBVRE80A41H501Y' ), array( 'id' => $v4_p ) );
+Settings::update( array( 'receipt_footer' => 'Piè di pagina cambiato dopo l\'emissione' ) );
+$v4_r1b = \AssociazioneSemplice\Receipts::build( $v4_key[2000] );
+asem_ok( $v4_r1['pdf'] === $v4_r1b['pdf'] && $v4_r1['hash'] === $v4_r1b['hash'] && false !== strpos( $v4_r1b['pdf'], 'Quattro' ) && false !== strpos( $v4_r1b['pdf'], 'QTTVRE80A41H501Z' ) && false === strpos( $v4_r1b['pdf'], 'cambiato dopo' ), 'ricevute: la ricevuta emessa si rigenera uguale anche se poi cambiano nome, codice fiscale e piè di pagina' );
+$wpdb->update( Db::t( 'people' ), array( 'last_name' => 'Quattro', 'tax_code' => 'QTTVRE80A41H501Z' ), array( 'id' => $v4_p ) );
+Settings::update( array( 'receipt_footer' => $v4_foot ) );
+// annullo: tracciato, il numero non torna libero
+$ledger->void( $v4_tx( 2000 ), 'Prova V4' );
+asem_ok( null !== asem_throws( function () use ( $v4_key ) { \AssociazioneSemplice\Receipts::build( $v4_key[2000] ); } ), 'ricevute: una ricevuta annullata non si emette più' ); // anche se l'azione dell'annullo non fosse agganciata, la lettura se ne accorge
+$v4_rec = \AssociazioneSemplice\Receipts::record( $v4_key[2000] );
+asem_ok( $v4_rec && null !== $v4_rec['voided_at'] && '' !== (string) $v4_rec['void_reason'] && 1 === (int) $v4_rec['number'] && '' !== (string) $v4_rec['data'], 'ricevute: l\'annullo dell\'incasso annulla la ricevuta emessa, la riga, i dati e il numero restano' );
+$v4_r3 = \AssociazioneSemplice\Receipts::build( $v4_key[2200] );
+asem_ok( '3/' . $v4_z === $v4_r3['number'], 'ricevute: il numero di una ricevuta annullata non si riassegna' );
+// numerazione per anno fiscale con esercizio a luglio (il filtro vale come l'impostazione)
+$v4_july = function () {
+	return 7;
+};
+add_filter( 'asem_fiscal_start_month', $v4_july );
+$v4_fy = \AssociazioneSemplice\Receipts::number_for( 'tx990000001', ( $v4_z + 1 ) . '-02-01' );
+$v4_mf = $v4_mk( 'board', ( $v4_z + 1 ) . '-02-10', 'Verbale fiscale' );
+asem_ok( $v4_z === $v4_fy['year'] && 4 === $v4_fy['number'], 'ricevute: con esercizio da luglio, febbraio dell\'anno dopo appartiene all\'esercizio che è iniziato a luglio' );
+asem_ok( '2/' . $v4_z === $v4_lbl( $v4_mf ), 'verbali: nuovi verbali seguono anche loro l\'anno fiscale' );
+remove_filter( 'asem_fiscal_start_month', $v4_july );
+$wpdb->delete( Db::t( 'receipts' ), array( 'receipt_key' => 'tx990000001' ) );
+$wpdb->delete( Db::t( 'minutes' ), array( 'id' => $v4_mf ) );
+
+// ---- esercizio chiuso: tutto bloccato, con il messaggio unico
+$v4_set( 'closed' );
+$v4_r2c = \AssociazioneSemplice\Receipts::build( $v4_key[2100] );
+asem_ok( $v4_msg === asem_throws( function () use ( $v4_key ) { \AssociazioneSemplice\Receipts::build( $v4_key[2300] ); } ) && null === \AssociazioneSemplice\Receipts::record( $v4_key[2300] ), 'anno chiuso: una ricevuta nuova non si emette e nessun numero viene assegnato' );
+asem_ok( $v4_r2['pdf'] === $v4_r2c['pdf'] && '2/' . $v4_z === $v4_r2c['number'], 'anno chiuso: la ricevuta già emessa si legge sempre uguale' );
+asem_ok( null !== asem_throws( function () use ( $ledger, $v4_tx ) { $ledger->void( $v4_tx( 2100 ), 'Prova' ); } ) && null === \AssociazioneSemplice\Receipts::record( $v4_key[2100] )['voided_at'], 'anno chiuso: l\'incasso e la sua ricevuta non si annullano' );
+asem_ok( $v4_msg === asem_throws( function () use ( $v4_a, $v4_z ) { \AssociazioneSemplice\Minutes::save( $v4_a,array( 'kind' => 'assembly', 'meeting_date' => $v4_z . '-03-10', 'title' => 'Cambiato', 'body' => 'Testo cambiato.' ), 1 ); } ) && 'Verbale A' === \AssociazioneSemplice\Minutes::get( $v4_a )['title'], 'anno chiuso: il verbale non si modifica (testo, data, presenti)' );
+asem_ok( $v4_msg === asem_throws( function () use ( $v4_a ) { \AssociazioneSemplice\Minutes::delete( $v4_a ); } ) && null !== \AssociazioneSemplice\Minutes::get( $v4_a ), 'anno chiuso: il verbale non si cancella' );
+asem_ok( $v4_msg === asem_throws( function () use ( $v4_mk, $v4_z ) { $v4_mk( 'assembly', $v4_z . '-11-01', 'Nuovo' ); } ), 'anno chiuso: non si crea un verbale con la data nell\'anno chiuso' );
+$v4_open = $v4_mk( 'board', $today, 'Verbale aperto' );
+asem_ok( $v4_msg === asem_throws( function () use ( $v4_open, $v4_z ) { \AssociazioneSemplice\Minutes::save( $v4_open, array( 'kind' => 'board', 'meeting_date' => $v4_z . '-02-01', 'title' => 'Spostato', 'body' => 'x' ), 1 ); } ) && $today === \AssociazioneSemplice\Minutes::get( $v4_open )['meeting_date'], 'anno chiuso: un verbale non si sposta dentro l\'anno chiuso' );
+asem_ok( 0 === strpos( \AssociazioneSemplice\Docs::minute( $v4_a )['body'], '%PDF-1.4' ), 'anno chiuso: il verbale resta consultabile e stampabile' );
+$v4_ok = function ( callable $f ) use ( $v4_msg ): bool {
+	return $v4_msg === asem_throws( $f );
+};
+$A = \AssociazioneSemplice\Assemblies::class;
+asem_ok( $v4_ok( function () use ( $A, $v4_z ) { $A::save( 0, array( 'title' => 'Nuova', 'first_call_at' => $v4_z . '-04-10T10:00', 'agenda' => 'x' ), 1 ); } ), 'anno chiuso: non si crea un\'assemblea con la prima convocazione nell\'anno chiuso' );
+asem_ok( $v4_ok( function () use ( $A, $v4_asm ) { $A::save( $v4_asm, array( 'title' => 'Cambiata', 'first_call_at' => gmdate( 'Y-m-d\TH:i', strtotime( '+10 days' ) ), 'agenda' => 'x' ), 1 ); } ), 'anno chiuso: l\'assemblea svolta non si modifica né si sposta' );
+asem_ok( $v4_ok( function () use ( $A, $v4_asm ) { $A::delete( $v4_asm ); } ) && null !== $A::get( $v4_asm ), 'anno chiuso: l\'assemblea svolta non si cancella' );
+asem_ok( $v4_ok( function () use ( $A, $v4_asm ) { $A::set_attendance( $v4_asm, array() ); } ) && $v4_ok( function () use ( $A, $v4_asm ) { $A::add_proxy( $v4_asm, 1, 2 ); } ) && $v4_ok( function () use ( $A, $v4_asm ) { $A::revoke_proxy( $v4_asm, 1 ); } ), 'anno chiuso: presenze e deleghe non si toccano' );
+asem_ok( $v4_ok( function () use ( $A, $v4_asm ) { $A::convene( $v4_asm ); } ) && $v4_ok( function () use ( $A, $v4_asm ) { $A::hold( $v4_asm, 1 ); } ) && $v4_ok( function () use ( $A, $v4_asm ) { $A::move( $v4_asm, 'draft' ); } ), 'anno chiuso: convocazione, chiusura e cambi di stato bloccati' );
+asem_ok( $v4_ok( function () use ( $A, $v4_asm ) { $A::create_minutes( $v4_asm, 1 ); } ), 'anno chiuso: il verbale dell\'assemblea non si crea' );
+asem_ok( $v4_ok( function () use ( $v4_poll_in, $v4_poll ) { \AssociazioneSemplice\Polls::save( $v4_poll, array_merge( $v4_poll_in, array( 'title' => 'Cambiata' ) ), 1 ); } ) && $v4_ok( function () use ( $v4_poll ) { \AssociazioneSemplice\Polls::delete( $v4_poll ); } ) && $v4_ok( function () use ( $v4_poll_in ) { \AssociazioneSemplice\Polls::save( 0, $v4_poll_in, 1 ); } ), 'anno chiuso: votazioni e sondaggi non si creano, non si modificano, non si cancellano' );
+
+// ---- riaperto: si può di nuovo modificare
+$v4_set( 'open' );
+\AssociazioneSemplice\Minutes::save( $v4_a, array( 'kind' => 'assembly', 'meeting_date' => $v4_z . '-03-10', 'title' => 'Verbale A corretto', 'body' => 'Testo corretto.' ), 1 );
+asem_ok( 'Verbale A corretto' === \AssociazioneSemplice\Minutes::get( $v4_a )['title'] && '2/' . $v4_z === $v4_lbl( $v4_a ), 'anno riaperto: il verbale si corregge e il numero resta quello' );
+$v4_mid = $A::create_minutes( $v4_asm, 1 );
+asem_ok( $v4_mid > 0 && $v4_mid === (int) $A::get( $v4_asm )['minutes_id'] && $v4_z . '-02-01' === \AssociazioneSemplice\Minutes::get( $v4_mid )['meeting_date'], 'anno riaperto: si crea il verbale dell\'assemblea' );
+\AssociazioneSemplice\Polls::save( $v4_poll, array_merge( $v4_poll_in, array( 'title' => 'Votazione corretta' ) ), 1 );
+asem_ok( 'Votazione corretta' === \AssociazioneSemplice\Polls::get( $v4_poll )['title'], 'anno riaperto: la votazione si modifica' );
+$v4_r4 = \AssociazioneSemplice\Receipts::build( $v4_key[2300] );
+asem_ok( '4/' . $v4_z === $v4_r4['number'], 'anno riaperto: la ricevuta nuova si emette, con il numero successivo' );
+$ledger->void( $v4_tx( 2100 ), 'Prova riaperto' );
+asem_throws( function () use ( $v4_key ) { \AssociazioneSemplice\Receipts::build( $v4_key[2100] ); } );
+asem_ok( null !== \AssociazioneSemplice\Receipts::record( $v4_key[2100] )['voided_at'], 'anno riaperto: l\'incasso si annulla e la ricevuta con lui' );
+
+// pulizia
+$wpdb->query( 'DELETE FROM ' . Db::t( 'minutes' ) . ' WHERE meeting_date BETWEEN \'' . $v4_z . '-01-01\' AND \'' . $v4_z . '-12-31\' OR id = ' . $v4_open );
+$wpdb->delete( Db::t( 'assemblies' ), array( 'id' => $v4_asm ) );
+$wpdb->delete( Db::t( 'polls' ), array( 'id' => $v4_poll ) );
+$wpdb->delete( Db::t( 'poll_options' ), array( 'poll_id' => $v4_poll ) );
+$wpdb->delete( Db::t( 'receipts' ), array( 'year' => $v4_z ) );
+$wpdb->query( 'DELETE FROM ' . Db::t( 'transactions' ) . ' WHERE tx_date BETWEEN \'' . $v4_z . '-01-01\' AND \'' . $v4_z . '-12-31\'' );
+$wpdb->delete( Db::t( 'fiscal_years' ), array( 'year' => $v4_z ) );
+
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Tutti i controlli sono passati.' );

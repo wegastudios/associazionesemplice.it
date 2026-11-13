@@ -15,6 +15,12 @@ final class Polls {
 		return Db::db();
 	}
 
+	/** Una votazione che si apre o si chiude in un esercizio chiuso non si crea, non si modifica e non si cancella: partecipanti e risultati sono parte di quell'anno. @throws \InvalidArgumentException */
+	private static function lock( array $p ): void {
+		YearLock::assert_date_open( substr( (string) $p['opens_at'], 0, 10 ) );
+		YearLock::assert_date_open( substr( (string) $p['closes_at'], 0, 10 ) );
+	}
+
 	// ---------- Registro ----------
 
 	/**
@@ -53,6 +59,10 @@ final class Polls {
 		if ( $id && ! $old ) {
 			throw new \InvalidArgumentException( 'Votazione non trovata.' );
 		}
+		if ( $old ) {
+			self::lock( $old );
+		}
+		self::lock( array( 'opens_at' => $opens, 'closes_at' => $closes ) ); // nemmeno si sposta o si crea dentro un esercizio chiuso
 		if ( $locked && $old ) { // con voti già dati la finestra non si sposta: né si riapre una votazione chiusa, né si chiude prima del tempo dopo aver visto i risultati
 			$old_closed = Db::now() >= (string) $old['closes_at'];
 			if ( $opens !== (string) $old['opens_at'] && Db::now() >= (string) $old['opens_at'] ) {
@@ -113,9 +123,11 @@ final class Polls {
 	}
 
 	public static function delete( int $id ): void {
-		if ( ! self::get( $id ) ) {
+		$p = self::get( $id );
+		if ( ! $p ) {
 			throw new \InvalidArgumentException( 'Votazione non trovata.' );
 		}
+		self::lock( $p );
 		self::db()->update( Db::t( 'polls' ), array( 'deleted_at' => Db::now() ), array( 'id' => $id ) );
 		Audit::log( 'poll.deleted', 'poll', $id );
 	}
