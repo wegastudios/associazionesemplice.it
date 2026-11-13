@@ -74,7 +74,7 @@ final readonly class FiscalYearService
             ->whereExists(fn (Builder $q) => $q->selectRaw('1')->from('app.transactions as t')->whereColumn('t.fiscal_year', 'f.year'))
             ->orderBy('f.starts_on')->value('f.year') : null;
         if (is_numeric($earlier)) {
-            throw new LedgerError("Prima di chiudere l'esercizio {$year} chiudi l'esercizio {$earlier}: gli esercizi si chiudono in ordine.");
+            throw new LedgerError("Prima di chiudere il {$year} chiudi il {$earlier}.");
         }
 
         $updated = $this->connection()->table('app.fiscal_years')->where('year', $year)->where('status', 'open')

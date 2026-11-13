@@ -252,7 +252,7 @@ it('gli esercizi si chiudono in ordine e si riapre solo l\'ultimo chiuso', funct
     $this->ledger->recordExpense(new Expense(now()->subYear()->format('Y-m-d'), $this->cash->id, ($this->cat)(CategoryKind::GeneralCost), 500));
     $this->ledger->recordExpense(new Expense($this->today, $this->cash->id, ($this->cat)(CategoryKind::GeneralCost), 700));
 
-    expect(fn () => $years->close($current))->toThrow(LedgerError::class, "chiudi l'esercizio {$old}");
+    expect(fn () => $years->close($current))->toThrow(LedgerError::class, "chiudi il {$old}");
 
     $years->close($old);
     $years->close($current);
