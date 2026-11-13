@@ -12,6 +12,7 @@ use App\Modules\Soci\Models\MemberLevel;
 use App\Modules\Soci\Models\Person;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Carbon;
 
 /**
  * Libro soci (dal MemberBook del plugin): l'elenco progressivo di tutti i soci in ordine di ingresso, con domanda,
@@ -131,6 +132,31 @@ final readonly class MemberBookService
         $out = [];
         foreach (Person::query()->whereIn('type', ['founder', 'ordinary', 'volunteer'])->whereNull('anonymized_at')->orderBy('last_name')->orderBy('id')->get() as $p) {
             if (self::entersPeriod($p->type->value, $cards[$p->id] ?? [], $period, $p->joined_on?->format('Y-m-d') ?? $p->created_at?->format('Y-m-d'), $p->left_on?->format('Y-m-d'))) {
+                $out[] = $p;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Soci ordinari e volontari senza tessera valida oggi ma con una tessera scaduta da meno di `$days` giorni
+     * (da rinnovare): non cessati, non anonimizzati.
+     *
+     * @return list<Person>
+     */
+    public function recentlyExpired(string $today, int $days): array
+    {
+        $since = Carbon::parse($today)->subDays($days)->toDateString();
+        $cards = $this->cardPeriods();
+        $out = [];
+        foreach (Person::query()->whereIn('type', ['ordinary', 'volunteer'])->whereNull('anonymized_at')->whereNull('left_on')->orderBy('last_name')->orderBy('id')->get() as $p) {
+            $periods = $cards[$p->id] ?? [];
+            if ($periods === [] || self::entersPeriod($p->type->value, $periods, [$today, $today], null, null)) {
+                continue;
+            }
+            $lastEnd = max(array_column($periods, 1));
+            if ($lastEnd < $today && $lastEnd >= $since) {
                 $out[] = $p;
             }
         }

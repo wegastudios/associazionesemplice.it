@@ -29,6 +29,7 @@ final readonly class RuntsController
             'year' => $year,
             'years' => range($thisYear - 1, max(2000, $thisYear - 6)),
             'counts' => $this->counts->at($date),
+            'current' => $this->counts->today($today->toDateString()),
             'deadline' => Age::display($deadline),
             'overdue' => $today->toDateString() > $deadline,
             'min' => ['persons' => RuntsCounts::MIN_PERSONS, 'entities' => RuntsCounts::MIN_ENTITIES],

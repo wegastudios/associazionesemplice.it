@@ -7,6 +7,7 @@ namespace App\Modules\Soci\Services;
 use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Core\Contracts\StaffCount;
 use App\Modules\Soci\Models\MemberLevel;
+use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Rules\Age;
 
 /**
@@ -21,6 +22,9 @@ final readonly class RuntsCounts
 
     public const MIN_ENTITIES = 3;
 
+    /** Giorni dalla scadenza della tessera entro cui un socio si segnala come «da rinnovare». */
+    public const EXPIRED_DAYS = 90;
+
     public function __construct(
         private MemberBookService $book,
         private StaffCount $staff,
@@ -30,7 +34,7 @@ final readonly class RuntsCounts
     /**
      * @return array{
      *     date: string, persons: int, entities: int, entities_same_section: int, volunteers: int, workers: int,
-     *     kind: string|null, minimum_applies: bool, below_minimum: bool,
+     *     kind: string|null, minimum_applies: bool,
      *     entity_list: list<array{id: string, name: string, same_section: bool|null}>
      * }
      */
@@ -68,8 +72,32 @@ final readonly class RuntsCounts
             'date' => $date, 'persons' => $persons, 'entities' => $entities, 'entities_same_section' => $same,
             'volunteers' => $volunteers, 'workers' => $this->staff->employees(),
             'kind' => $kind, 'minimum_applies' => $applies,
-            'below_minimum' => $applies && $persons < self::MIN_PERSONS && $same < self::MIN_ENTITIES,
             'entity_list' => $list,
+        ];
+    }
+
+    /**
+     * L'avviso «sotto il minimo», come nel plugin: guarda i soci con tessera valida OGGI (chi non ha rinnovato è
+     * cessato di fatto fino al rinnovo), non il 31 dicembre. Mostra anche chi ha la tessera scaduta da poco.
+     *
+     * @return array{
+     *     date: string, persons: int, entities_same_section: int, minimum_applies: bool, below_minimum: bool,
+     *     recently_expired: list<array{id: string, name: string}>, expired_days: int
+     * }
+     */
+    public function today(string $today): array
+    {
+        $now = $this->at($today);
+        $below = $now['minimum_applies'] && $now['persons'] < self::MIN_PERSONS && $now['entities_same_section'] < self::MIN_ENTITIES;
+        $expired = array_map(
+            static fn (Person $p): array => ['id' => $p->id, 'name' => trim($p->last_name.' '.$p->first_name)],
+            $this->book->recentlyExpired($today, self::EXPIRED_DAYS),
+        );
+
+        return [
+            'date' => $today, 'persons' => $now['persons'], 'entities_same_section' => $now['entities_same_section'],
+            'minimum_applies' => $now['minimum_applies'], 'below_minimum' => $below,
+            'recently_expired' => $below ? $expired : [], 'expired_days' => self::EXPIRED_DAYS,
         ];
     }
 }
