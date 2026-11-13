@@ -45,7 +45,7 @@ Con **{piano_grande}**, se superi il numero di soci previsto, si aggiungono **pa
 
 ## Se non scegli un piano
 
-Alla fine dei 30 giorni, se **non scegli un piano**, i dati della prova vengono **cancellati dopo 7 giorni**. Prima ricevi **email di avviso** con una **proposta scontata** per continuare. Se scegli un piano in tempo, i tuoi dati restano dove sono.
+Finita la prova hai ancora **7 giorni**: puoi entrare e consultare tutto, ma **non inserire né modificare**. Se in quei giorni **scegli un piano**, riprendi da dove eri arrivato. Dopo 7 giorni i dati della prova vengono **cancellati**. Prima ricevi **email di avviso** con una **proposta scontata** per continuare.
 
 ## Se un piano scade
 
