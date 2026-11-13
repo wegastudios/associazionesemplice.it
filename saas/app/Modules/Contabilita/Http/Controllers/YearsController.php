@@ -63,7 +63,11 @@ final readonly class YearsController
 
     public function reopen(Request $request, int $year): RedirectResponse
     {
-        $data = Input::of($request->validate(['reason' => ['required', 'string', 'max:200']]));
+        // Conferma esplicita: chi riapre scrive l'anno dell'esercizio.
+        $data = Input::of($request->validate([
+            'reason' => ['required', 'string', 'max:200'],
+            'confirm_year' => ['required', 'integer', 'in:'.$year],
+        ], ['confirm_year.in' => 'Per confermare scrivi l\'anno dell\'esercizio che riapri.', 'confirm_year.required' => 'Per confermare scrivi l\'anno dell\'esercizio che riapri.']));
 
         return $this->attempt(fn () => $this->years->reopen($year, Input::string($data, 'reason')), "Esercizio {$year} riaperto.");
     }
