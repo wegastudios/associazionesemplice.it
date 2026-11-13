@@ -115,11 +115,11 @@ Fatto, **non ancora pubblicato** (numero di versione e log alla pubblicazione).
 L'import degli eventi (Importa da The Events Calendar) compila ora anche la **pagina pubblica** di ogni evento o corso importato, oltre all'attività:
 
 - descrizione in HTML ripulito (`wp_kses_post`), estratto breve, **immagine in evidenza** (lo stesso allegato: nessuna copia, nessun download), **categorie** pubbliche (tutte quelle originali di The Events Calendar, anche quelle scelte come «Corso», ricreate o riusate per nome e assegnate a ogni pagina creata), **organizzatore** («Con …» con email e telefono se ci sono), **sito dell'evento** (collegamento «Maggiori informazioni») e, per gli eventi su più giorni o per tutto il giorno, una riga «Quando»;
-- gli eventi con **lo stesso titolo nello stesso anno sociale** (le ripetizioni di The Events Calendar) diventano **un solo evento ricorrente** con tutte le date e una sola pagina; i corsi restano un solo corso con le lezioni;
+- **uno a uno** (correzione del 13/11/2026, vedi sotto): ogni evento di The Events Calendar diventa **una sola attività** con la sua pagina, anche se altri hanno lo stesso titolo e lo stesso anno sociale; niente viene raggruppato;
 - le pagine restano in **bozza**; la casella **«Pubblica subito le pagine degli eventi futuri»** (spenta di default) pubblica solo quelle con una data futura;
 - rilanciando l'import non nascono doppioni e **una pagina che ha già un contenuto non si tocca**; se è rimasta vuota si compila;
 - restano esclusi costi e prenotazioni. Il riepilogo dice quante pagine sono state compilate e pubblicate e dove vederle (Eventi sul sito).
-- Voce del log da scrivere alla pubblicazione: «L'importazione da The Events Calendar compila anche le pagine pubbliche degli eventi (descrizione, immagine, categoria, organizzatore); le ripetizioni diventano un evento ricorrente e le pagine restano in bozza finché non le pubblichi».
+- Voce del log da scrivere alla pubblicazione: «L'importazione da The Events Calendar compila anche le pagine pubbliche degli eventi (descrizione, immagine, categoria, organizzatore); ogni evento di The Events Calendar diventa un'attività a sé (mai raggruppata) e le pagine restano in bozza finché non le pubblichi».
 
 ## Contatti per le informazioni di ogni evento (13/11/2026)
 
@@ -135,11 +135,13 @@ Fatto, **non ancora pubblicato** (numero di versione e log alla pubblicazione).
 
 Sostituisce la regola «corso solo se ≥3 lezioni settimanali» e l'anteprima per titolo: il plugin non decide nulla da solo.
 
-1. **Passo 1:** per **ogni** categoria di The Events Calendar un menu «Evento / Corso» col numero di eventi; la proposta è «Corso» solo se il nome contiene per parole intere corso/corsi/lezione/lezioni (non «Percorsi», «Concorsi», «Laboratori»). Gli eventi senza categoria sono eventi. «Continua» mostra il riepilogo (quanti eventi, quanti corsi con le lezioni, quali categorie si ricreano) e poi «Importa». Nessuna scelta per singolo titolo.
+1. **Passo 1:** per **ogni** categoria di The Events Calendar un menu «Evento / Corso» col numero di eventi; la proposta è «Corso» solo se il nome contiene per parole intere corso/corsi/lezione/lezioni (non «Percorsi», «Concorsi», «Laboratori»). Gli eventi senza categoria sono eventi. «Continua» mostra il riepilogo (quanti eventi, quanti corsi con le lezioni, quali categorie si ricreano) e poi «Importa». Nessuna scelta per singolo titolo. Il riepilogo dice «N eventi» e «M corsi», con N e M uguali agli eventi di The Events Calendar scelti.
 2. **Regola:** un evento è un **corso** solo se **nessuna** delle sue categorie è «Evento» e almeno una è «Corso»; altrimenti è un evento (categorie miste → evento).
-3. **Due passaggi in ordine fisso:** prima tutti gli eventi, poi i corsi. Ogni evento sta in un solo elenco, è segnato appena importato e il secondo passaggio non lo riprende; i gruppi si ricostruiscono da zero a ogni passaggio. Titolo + anno sociale servono solo a raccogliere date (evento ricorrente) o lezioni (un corso); le lezioni settimanali (≥3 volte stesso giorno e ora) o le date singole descrivono solo il calendario del corso, non se è un corso.
+3. **Due passaggi in ordine fisso:** prima tutti gli eventi, poi i corsi. Ogni evento sta in un solo elenco, è segnato appena importato e il secondo passaggio non lo riprende.
+   **Niente raggruppamenti (correzione 13/11/2026):** 51 eventi di The Events Calendar restano 51 attività, 11 corsi restano 11 corsi; lo stesso corso si può tenere più volte nello stesso anno. Un evento di categoria «Evento» diventa un'attività di tipo evento con la sua data (mai un evento ricorrente); un evento di categoria «Corso» diventa un corso con quella data come unica lezione singola (inizio e fine del corso = quella data). Titolo e anno sociale non servono più a raccogliere nulla. Un evento già ripetuto in The Events Calendar (ogni occorrenza è un contenuto a sé) è trattato come gli altri: una attività per contenuto.
+   **Eventi senza data:** quelli che non si possono importare perché manca una data valida sono **elencati per titolo** (con il link per modificarli in The Events Calendar, se il plugin è attivo) nel passo 2 «Cosa succederà», sotto le categorie del passo 1 e nel messaggio dopo l'import. La data si legge da `_EventStartDate`; se manca o non è valida si usa `_EventStartDateUTC` convertita nel fuso dell'evento (`_EventTimezone`, altrimenti quello del sito). Se mancano entrambe, l'evento non si importa e non viene inventata nessuna data.
 4. **Categorie:** ogni categoria originale (anche «Laboratorio» scelta come Corso) si ricrea come categoria pubblica con lo stesso nome (riusata se esiste) e va su **tutte** le pagine create.
-5. **Riepilogo finale:** eventi creati, corsi creati (con le lezioni), categorie assegnate e nuove.
+5. **Riepilogo finale:** eventi creati, corsi creati, eventi senza data (per titolo), categorie assegnate e nuove.
 
 ### Annullamento di tutti gli import (13/11/2026)
 

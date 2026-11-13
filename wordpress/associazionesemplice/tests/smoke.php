@@ -6168,7 +6168,11 @@ update_post_meta( $tec_p4, '_EventStartDate', '2024-01-01 10:00:00' );
 asem_ok( 3 === count( \AssociazioneSemplice\TribeImport::found() ), 'The Events Calendar: si trovano gli eventi pubblicati, programmati e in bozza, non quelli nel cestino' );
 asem_render( array( Admin\TribeImportPage::class, 'render' ), 'Festa vecchia' );
 $tec_r = \AssociazioneSemplice\TribeImport::run();
-asem_ok( 2 === $tec_r['imported'] && 1 === $tec_r['failed'] && 0 === $tec_r['skipped'] && false !== strpos( implode( ' ', $tec_r['errors'] ), 'Senza data' ), 'The Events Calendar: gli eventi con una data si importano, quello senza data no e lo dice' );
+asem_ok( 2 === $tec_r['imported'] && 2 === $tec_r['events'] && 0 === $tec_r['courses'] && 1 === $tec_r['failed'] && 0 === $tec_r['skipped'] && 1 === count( $tec_r['failed_list'] ) && 'Senza data' === $tec_r['failed_list'][0]['title'], 'The Events Calendar: gli eventi con una data si importano, quello senza data no e viene elencato per titolo' );
+$tec_und = \AssociazioneSemplice\TribeImport::undatable();
+asem_ok( 1 === count( $tec_und ) && 'Senza data' === $tec_und[0]['title'], 'The Events Calendar: l\'elenco degli eventi senza data si legge anche prima dell\'import' );
+asem_render( array( Admin\TribeImportPage::class, 'render' ), 'perché manca la data' ); // senza categorie si passa subito al riepilogo, che elenca l'evento senza data
+asem_ok( '2024-05-18 20:00:00' === \AssociazioneSemplice\TribeImport::from_utc( '2024-05-18 18:00:00', 'Europe/Rome' ) && '' === \AssociazioneSemplice\TribeImport::from_utc( '', 'Europe/Rome' ) && '' === \AssociazioneSemplice\TribeImport::from_utc( 'ieri', '' ), 'The Events Calendar: senza la data locale si usa quella in UTC col fuso dell\'evento' );
 $tec_a  = $acts->get( (int) get_post_meta( $tec_p1, '_asem_activity', true ) );
 $tec_ss = $tec_a ? $acts->sessions( (int) $tec_a['id'] ) : array();
 asem_ok( $tec_a && 'Festa vecchia' === $tec_a['name'] && 'event' === $tec_a['kind'] && 0 === (int) $tec_a['fee_cents'] && false !== strpos( (string) $tec_a['notes'], 'Una bella festa' ) && Settings::social_year( '2024-05-18' )->label() === $tec_a['social_year'], 'The Events Calendar: l\'evento passato diventa un evento del suo anno sociale, senza contributo, con la descrizione nelle note' );
@@ -6177,7 +6181,7 @@ $tec_r2 = \AssociazioneSemplice\TribeImport::run();
 asem_ok( 0 === $tec_r2['imported'] && 2 === $tec_r2['skipped'] && 1 === $tec_r2['failed'], 'The Events Calendar: rilanciando non nascono doppioni' );
 $tec_re = $CP::duplicate( (int) $tec_a['id'], array( 'date' => gmdate( 'Y-m-d', strtotime( $today . ' +30 days' ) ) ) );
 asem_ok( 'Festa vecchia' === $acts->get( $tec_re )['name'] && false !== strpos( (string) $acts->get( $tec_re )['notes'], 'Una bella festa' ) && 'Sala Verde, Via Po 3' === $acts->sessions( $tec_re )[0]['location'], 'riproporre: un evento importato si ripropone in una nuova data con i vecchi contenuti' );
-// i corsi: eventi ripetuti con la stessa categoria diventano un solo corso con le sue lezioni
+// i corsi: ogni evento della categoria dei corsi diventa un corso, anche con lo stesso titolo (niente raggruppamenti)
 \AssociazioneSemplice\TribeImport::categories();
 $tec_term = wp_insert_term( 'Corsi del martedì', 'tribe_events_cat' );
 $tec_tid  = (int) $tec_term['term_id'];
@@ -6193,15 +6197,21 @@ foreach ( array( '2024-03-05', '2024-03-12', '2024-03-19', '2024-03-26', '2024-0
 $tec_cats = \AssociazioneSemplice\TribeImport::categories();
 asem_ok( 1 === count( $tec_cats ) && 'Corsi del martedì' === $tec_cats[0]['name'] && 5 === $tec_cats[0]['count'] && $tec_cats[0]['course'], 'The Events Calendar: le categorie si leggono anche senza il plugin e quella dei corsi è proposta' );
 $tec_cr = \AssociazioneSemplice\TribeImport::run( array( $tec_tid ) );
-asem_ok( 1 === $tec_cr['courses'] && 5 === $tec_cr['lessons'] && 0 === $tec_cr['imported'] && 1 === $tec_cr['failed'], 'The Events Calendar: i 5 eventi della categoria dei corsi diventano un solo corso' );
+$tec_cids = array();
+foreach ( $tec_cp as $tec_x ) {
+	$tec_cids[ (int) get_post_meta( $tec_x, '_asem_activity', true ) ] = true;
+}
+asem_ok( 5 === $tec_cr['courses'] && 5 === $tec_cr['imported'] && 0 === $tec_cr['events'] && 1 === $tec_cr['failed'] && 5 === count( $tec_cids ) && ! isset( $tec_cids[0] ), 'The Events Calendar: 5 eventi di corso con lo stesso titolo restano 5 corsi' );
 $tec_c = $acts->get( (int) get_post_meta( $tec_cp[0], '_asem_activity', true ) );
-asem_ok( $tec_c && 'course' === $tec_c['kind'] && 'Yoga TEC' === $tec_c['name'] && '2024-03-05' === $tec_c['starts_on'] && '2024-03-27' === $tec_c['ends_on'] && 'Sala Verde, Via Po 3' === $tec_c['location'] && false !== strpos( (string) $tec_c['notes'], 'Yoga per tutti' ) && 0 === (int) $tec_c['fee_cents'], 'The Events Calendar: il corso ha le date della prima e dell\'ultima lezione, il luogo e la descrizione' );
+asem_ok( $tec_c && 'course' === $tec_c['kind'] && 'Yoga TEC' === $tec_c['name'] && '2024-03-05' === $tec_c['starts_on'] && '2024-03-05' === $tec_c['ends_on'] && 'Sala Verde, Via Po 3' === $tec_c['location'] && false !== strpos( (string) $tec_c['notes'], 'Yoga per tutti' ) && 0 === (int) $tec_c['fee_cents'], 'The Events Calendar: il corso ha la data del suo evento, il luogo e la descrizione' );
 $tec_l = $tec_c ? \AssociazioneSemplice\ActivityService::lessons( $tec_c ) : array();
-asem_ok( 2 === count( $tec_l ) && 'weekly' === $tec_l[0]['type'] && 2 === (int) $tec_l[0]['day'] && '18:00' === $tec_l[0]['start'] && '19:00' === $tec_l[0]['end'] && '2024-03-05' === $tec_l[0]['from'] && '2024-03-26' === $tec_l[0]['until'] && 'single' === $tec_l[1]['type'] && '2024-03-27' === $tec_l[1]['date'], 'The Events Calendar: il martedì ripetuto diventa la lezione settimanale, il mercoledì una data singola' );
+$tec_c4 = $acts->get( (int) get_post_meta( $tec_cp[4], '_asem_activity', true ) );
+asem_ok( 1 === count( $tec_l ) && 'single' === $tec_l[0]['type'] && '2024-03-05' === $tec_l[0]['date'] && '18:00' === $tec_l[0]['start'] && '19:00' === $tec_l[0]['end'] && $tec_c4 && '2024-03-27' === $tec_c4['starts_on'] && '2024-03-27' === $tec_c4['ends_on'], 'The Events Calendar: ogni corso ha una sola lezione singola, quella del suo evento' );
+asem_ok( \AssociazioneSemplice\PublicEvents::post_of( (int) $tec_c['id'] ) > 0 && \AssociazioneSemplice\PublicEvents::post_of( (int) $tec_c4['id'] ) > 0 && \AssociazioneSemplice\PublicEvents::post_of( (int) $tec_c['id'] ) !== \AssociazioneSemplice\PublicEvents::post_of( (int) $tec_c4['id'] ), 'The Events Calendar: ogni corso ha la sua pagina' );
 $tec_cr2 = \AssociazioneSemplice\TribeImport::run( array( $tec_tid ) );
 asem_ok( 0 === $tec_cr2['courses'] && 0 === $tec_cr2['imported'] && 7 === $tec_cr2['skipped'], 'The Events Calendar: rilanciando i corsi non nascono doppioni' );
 $tec_cre = $CP::duplicate( (int) $tec_c['id'], array( 'social_year' => Settings::social_year( '2024-03-05' )->next()->label() ) );
-asem_ok( 'Yoga TEC' === $acts->get( $tec_cre )['name'] && 2 === count( \AssociazioneSemplice\ActivityService::lessons( $acts->get( $tec_cre ) ) ), 'riproporre: un corso importato si ripropone nell\'anno dopo con le sue lezioni' );
+asem_ok( 'Yoga TEC' === $acts->get( $tec_cre )['name'] && 1 === count( \AssociazioneSemplice\ActivityService::lessons( $acts->get( $tec_cre ) ) ), 'riproporre: un corso importato si ripropone nell\'anno dopo con la sua lezione' );
 // corsi: li decide l'utente scegliendo «Evento» o «Corso» per ogni categoria; prima si importano gli eventi, poi i corsi
 $TI       = '\AssociazioneSemplice\TribeImport';
 $PE       = '\AssociazioneSemplice\PublicEvents';
@@ -6239,22 +6249,34 @@ $tec_cc_n = array_column( $TI::categories(), 'count', 'name' );
 asem_ok( 11 === (int) $tec_cc_n['Lezioni di prova'] && 6 === (int) $tec_cc_n['Laboratori'] && 2 === (int) $tec_cc_n['Eventi speciali'], 'The Events Calendar: ogni categoria dice quanti eventi ha' );
 asem_ok( 2 === $TI::uncategorized() && false === $TI::is_course( array(), array( 5 ) ) && true === $TI::is_course( array( 5 ), array( 5 ) ) && true === $TI::is_course( array( 5, 6 ), array( 5, 6 ) ) && false === $TI::is_course( array( 5, 7 ), array( 5, 6 ) ), 'The Events Calendar: senza categoria è evento; è corso solo se nessuna categoria è «Evento» e almeno una è «Corso»' );
 asem_render( array( Admin\TribeImportPage::class, 'render' ), 'Ogni categoria è un evento o un corso?' );
+asem_render( array( Admin\TribeImportPage::class, 'render' ), 'Eventi che non si possono importare' ); // al passo 1 l'elenco degli eventi senza data sta sotto le categorie
 $tec_course_cats = array( $tec_t['Lezioni di prova'] );
 $tec_sum         = $TI::summary( $tec_course_cats );
-asem_ok( 10 === $tec_sum['events'] && 5 === $tec_sum['event_titles'] && 3 === count( $tec_sum['courses'] ) && 8 === $tec_sum['lessons'] && in_array( 'Laboratori', $tec_sum['categories'], true ) && in_array( 'Lezioni di prova', $tec_sum['categories'], true ) && in_array( 'Concorsi', $tec_sum['categories'], true ), 'The Events Calendar: il riepilogo dice prima di importare quanti eventi, quanti corsi (e lezioni) e quali categorie' );
+asem_ok( 10 === $tec_sum['events'] && 8 === $tec_sum['courses'] && 1 === $tec_sum['failed'] && 'Senza data' === $tec_sum['failed_list'][0]['title'] && in_array( 'Laboratori', $tec_sum['categories'], true ) && in_array( 'Lezioni di prova', $tec_sum['categories'], true ) && in_array( 'Concorsi', $tec_sum['categories'], true ), 'The Events Calendar: il riepilogo dice prima di importare quanti eventi, quanti corsi (e lezioni) e quali categorie' );
 asem_render( array( Admin\TribeImportPage::class, 'render' ), 'Cosa succederà', array( 'preview' => '1', 'cat_kind' => array( $tec_t['Lezioni di prova'] => 'course', $tec_t['Laboratori'] => 'event' ) ) );
 $tec_ro = $TI::run( $tec_course_cats, false );
 $tec_ak = function ( $ids ) use ( $acts ) {
 	$a = $acts->get( (int) get_post_meta( $ids[0], '_asem_activity', true ) );
 	return $a ? $a['kind'] : '';
 };
-asem_ok( 'event' === $tec_ak( $tec_k1 ) && 'event' === $tec_ak( $tec_k6 ) && 'recurring' === $tec_ak( $tec_k2 ) && 'recurring' === $tec_ak( $tec_k4 ) && 'recurring' === $tec_ak( $tec_k7 ), 'The Events Calendar: eventi senza categoria, con categorie «Evento» o miste (anche se hanno 3 date alla settimana) restano eventi' );
+asem_ok( 'event' === $tec_ak( $tec_k1 ) && 'event' === $tec_ak( $tec_k6 ) && 'event' === $tec_ak( $tec_k2 ) && 'event' === $tec_ak( $tec_k4 ) && 'event' === $tec_ak( $tec_k7 ), 'The Events Calendar: eventi senza categoria, con categorie «Evento» o miste (anche con lo stesso titolo ripetuto) sono eventi, mai ricorrenti' );
+$tec_ev_each = true;
+foreach ( array_merge( $tec_k2, $tec_k4, $tec_k7 ) as $tec_x ) {
+	$tec_xa      = $acts->get( (int) get_post_meta( $tec_x, '_asem_activity', true ) );
+	$tec_ev_each = $tec_ev_each && $tec_xa && 'event' === $tec_xa['kind'] && 1 === count( $acts->sessions( (int) $tec_xa['id'] ) );
+}
+$tec_cuc = array();
+foreach ( $tec_k4 as $tec_x ) {
+	$tec_cuc[ (int) get_post_meta( $tec_x, '_asem_activity', true ) ] = true;
+}
+asem_ok( $tec_ev_each && 3 === count( $tec_cuc ), 'The Events Calendar: 3 eventi con lo stesso titolo e lo stesso anno sociale restano 3 attività, ognuna con la sua data' );
 asem_ok( 'course' === $tec_ak( $tec_k3 ) && 'course' === $tec_ak( $tec_k5 ) && 'course' === $tec_ak( $tec_k8 ), 'The Events Calendar: gli eventi con solo categorie «Corso» diventano corsi (anche con 2 sole date)' );
 $tec_a7 = (int) get_post_meta( $tec_k7[0], '_asem_activity', true );
 $tec_a8 = (int) get_post_meta( $tec_k8[0], '_asem_activity', true );
-asem_ok( $tec_a7 !== $tec_a8 && 2 === count( $acts->sessions( $tec_a7 ) ) && 'course' === $acts->get( $tec_a8 )['kind'] && (int) get_post_meta( $tec_k8[2], '_asem_activity', true ) === $tec_a8 && (int) get_post_meta( $tec_k7[1], '_asem_activity', true ) === $tec_a7, 'The Events Calendar: stesso titolo, un evento e un corso: restano separati, nessuna variabile si trascina' );
-$tec_cn = array_column( $tec_ro['course_list'], 'lessons', 'name' );
-asem_ok( 10 === $tec_ro['imported'] && 3 === $tec_ro['courses'] && 8 === $tec_ro['lessons'] && 2 === (int) ( $tec_cn['Mosaico TEC'] ?? 0 ) && 3 === (int) ( $tec_cn['Coro TEC'] ?? 0 ) && 3 === (int) ( $tec_cn['Doppio TEC'] ?? 0 ) && in_array( 'Cucina TEC (3 date)', $tec_ro['event_list'], true ) && ! isset( $tec_cn['Cucina TEC'] ) && ! isset( $tec_cn['Pittura TEC'] ), 'The Events Calendar: il riepilogo finale dice quali eventi e quali corsi (con le lezioni) sono nati' );
+$tec_a72 = (int) get_post_meta( $tec_k7[1], '_asem_activity', true );
+$tec_a82 = (int) get_post_meta( $tec_k8[2], '_asem_activity', true );
+asem_ok( $tec_a7 !== $tec_a72 && 'event' === $acts->get( $tec_a7 )['kind'] && 'course' === $acts->get( $tec_a8 )['kind'] && $tec_a8 !== $tec_a82 && 'course' === $acts->get( $tec_a82 )['kind'] && '2024-05-01' === $acts->get( $tec_a8 )['starts_on'] && '2024-05-01' === $acts->get( $tec_a8 )['ends_on'], 'The Events Calendar: stesso titolo, eventi e corsi: ognuno è un\'attività a sé, con la sua data' );
+asem_ok( 18 === $tec_ro['imported'] && 10 === $tec_ro['events'] && 8 === $tec_ro['courses'] && 3 === count( array_keys( $tec_ro['event_list'], 'Cucina TEC', true ) ) && 2 === count( array_keys( $tec_ro['event_list'], 'Doppio TEC', true ) ) && 3 === count( array_keys( $tec_ro['course_list'], 'Doppio TEC', true ) ) && 10 === count( $tec_ro['event_list'] ) && 8 === count( $tec_ro['course_list'] ) && 1 === $tec_ro['failed'] && 'Senza data' === $tec_ro['failed_list'][0]['title'], 'The Events Calendar: il riepilogo finale conta un\'attività per evento (10 eventi, 8 corsi) ed elenca quello senza data' );
 $tec_ev_ids = array();
 $tec_co_ids = array();
 foreach ( $tec_all as $tec_pid ) {
@@ -6265,7 +6287,7 @@ foreach ( $tec_all as $tec_pid ) {
 		$tec_ev_ids[ $tec_aid ] = true;
 	}
 }
-asem_ok( ! array_intersect_key( $tec_ev_ids, $tec_co_ids ) && count( $tec_ev_ids ) + count( $tec_co_ids ) === 8 && min( array_keys( $tec_co_ids ) ) > max( array_keys( $tec_ev_ids ) ), 'The Events Calendar: nessun evento finisce in entrambi i passaggi e gli eventi si importano prima dei corsi' );
+asem_ok( ! array_intersect_key( $tec_ev_ids, $tec_co_ids ) && 10 === count( $tec_ev_ids ) && 8 === count( $tec_co_ids ) && min( array_keys( $tec_co_ids ) ) > max( array_keys( $tec_ev_ids ) ), 'The Events Calendar: nessun evento finisce in entrambi i passaggi e gli eventi si importano prima dei corsi' );
 $tec_names = function ( $ids ) use ( $PE ) {
 	$g = get_post( $PE::post_of( (int) get_post_meta( $ids[0], '_asem_activity', true ) ) );
 	$n = $g ? wp_get_object_terms( $g->ID, 'asem_evento_cat', array( 'fields' => 'names' ) ) : array();
@@ -6280,7 +6302,7 @@ asem_ok( 0 === $tec_ro2['imported'] && 0 === $tec_ro2['courses'], 'The Events Ca
 $tec_m1 = $tec_mk( 'Ceramica TEC', array( '2024-06-03', '2024-06-10', '2024-06-17' ), '17:00', array( $tec_t['Laboratori'] ) );
 $tec_m2 = $tec_mk( 'Ceramica mista TEC', array( '2024-06-04' ), '17:00', array( $tec_t['Laboratori'], $tec_t['Percorsi'] ) );
 $tec_rb = $TI::run( array( $tec_t['Laboratori'] ), false );
-asem_ok( 'course' === $tec_ak( $tec_m1 ) && 'event' === $tec_ak( $tec_m2 ) && 1 === $tec_rb['courses'] && 3 === $tec_rb['lessons'] && 1 === $tec_rb['imported'] && array( 'Laboratori' ) === $tec_names( $tec_m1 ) && array( 'Laboratori', 'Percorsi' ) === $tec_names( $tec_m2 ), 'The Events Calendar: la stessa categoria scelta come Corso fa nascere corsi; con una categoria «Evento» in più è un evento; le categorie restano su entrambe' );
+asem_ok( 'course' === $tec_ak( $tec_m1 ) && 'event' === $tec_ak( $tec_m2 ) && 3 === $tec_rb['courses'] && 1 === $tec_rb['events'] && 4 === $tec_rb['imported'] && array( 'Laboratori' ) === $tec_names( $tec_m1 ) && array( 'Laboratori', 'Percorsi' ) === $tec_names( $tec_m2 ), 'The Events Calendar: la stessa categoria scelta come Corso fa nascere corsi; con una categoria «Evento» in più è un evento; le categorie restano su entrambe' );
 foreach ( array_merge( $tec_all, $tec_m1, $tec_m2 ) as $tec_del ) {
 	wp_delete_post( $tec_del, true );
 }
@@ -6302,7 +6324,7 @@ update_post_meta( $tec_q1, '_EventURL', 'https://example.org/concerto' );
 update_post_meta( $tec_q1, '_thumbnail_id', $tec_img );
 wp_set_object_terms( $tec_q1, array( (int) $tec_cat['term_id'] ), 'tribe_events_cat' );
 $tec_q3 = array();
-foreach ( array( 10, 17 ) as $tec_n ) { // le ripetizioni di un evento (stesso titolo) diventano un solo evento ricorrente
+foreach ( array( 10, 17, 24 ) as $tec_n ) { // tre eventi con lo stesso titolo: restano tre attività
 	$tec_x = wp_insert_post( array( 'post_type' => 'tribe_events', 'post_status' => 'publish', 'post_title' => 'Serata ripetuta TEC', 'post_content' => '<p>Ogni settimana</p>' ) );
 	update_post_meta( $tec_x, '_EventStartDate', gmdate( 'Y-m-d', strtotime( $today . ' +' . $tec_n . ' days' ) ) . ' 20:00:00' );
 	$tec_q3[] = $tec_x;
@@ -6314,8 +6336,12 @@ $tec_gt = $tec_g1 ? wp_get_object_terms( $tec_g1->ID, 'asem_evento_cat', array( 
 asem_ok( $tec_g1 && 'draft' === $tec_g1->post_status && false !== strpos( $tec_g1->post_content, '<b>musica</b>' ) && false === strpos( $tec_g1->post_content, '<script' ) && false !== strpos( $tec_g1->post_excerpt, 'musica' ), 'The Events Calendar: la pagina dell\'evento ha la descrizione ripulita e l\'estratto, ed è in bozza' );
 asem_ok( $tec_g1 && (int) get_post_meta( $tec_g1->ID, '_thumbnail_id', true ) === $tec_img && in_array( 'Musica TEC', (array) $tec_gt, true ), 'The Events Calendar: la pagina riusa l\'immagine in evidenza e ha la categoria' );
 asem_ok( $tec_g1 && false !== strpos( $tec_g1->post_content, 'Maria Bianchi' ) && false !== strpos( $tec_g1->post_content, 'maria@example.org' ) && false !== strpos( $tec_g1->post_content, 'example.org/concerto' ) && false !== strpos( $tec_g1->post_content, 'Quando:' ), 'The Events Calendar: organizzatore, sito e giorni (evento su più giorni) passano nella pagina' );
+$tec_a3s = array();
+foreach ( $tec_q3 as $tec_x ) {
+	$tec_a3s[ (int) get_post_meta( $tec_x, '_asem_activity', true ) ] = true;
+}
 $tec_a3 = (int) get_post_meta( $tec_q3[0], '_asem_activity', true );
-asem_ok( $tec_a3 > 0 && $tec_a3 === (int) get_post_meta( $tec_q3[1], '_asem_activity', true ) && 'recurring' === $acts->get( $tec_a3 )['kind'] && 2 === count( $acts->sessions( $tec_a3 ) ) && $tec_pr['series'] >= 1 && $PE::post_of( $tec_a3 ) > 0, 'The Events Calendar: le ripetizioni diventano un solo evento ricorrente con una pagina' );
+asem_ok( 3 === count( $tec_a3s ) && $tec_a3 > 0 && 'event' === $acts->get( $tec_a3 )['kind'] && 1 === count( $acts->sessions( $tec_a3 ) ) && $PE::post_of( $tec_a3 ) > 0 && $PE::post_of( $tec_a3 ) !== $PE::post_of( (int) get_post_meta( $tec_q3[1], '_asem_activity', true ) ), 'The Events Calendar: tre eventi con lo stesso titolo diventano tre eventi, ognuno con la sua pagina' );
 wp_update_post( array( 'ID' => $tec_g1->ID, 'post_content' => 'Testo scritto dal gestore' ) ); // rilanciando non si sovrascrive
 $tec_q4 = wp_insert_post( array( 'post_type' => 'tribe_events', 'post_status' => 'publish', 'post_title' => 'Concerto bis TEC', 'post_content' => '<p>Bis</p>' ) );
 update_post_meta( $tec_q4, '_EventStartDate', $tec_fut . ' 18:00:00' );
@@ -6359,13 +6385,13 @@ $un_a1 = (int) get_post_meta( $un_ids[0], '_asem_activity', true );
 $un_a2 = (int) get_post_meta( $un_ids[1], '_asem_activity', true );
 $un_a3 = (int) get_post_meta( $un_course[0], '_asem_activity', true );
 $un_b  = \AssociazioneSemplice\ImportService::batch( (int) $un_r['batch_id'] );
-asem_ok( $un_r['batch_id'] && $un_b && 'The Events Calendar' === $un_b['source'] && 3 === count( $un_b['data']['activities'] ) && 2 === (int) $un_b['summary']['events'] && 1 === (int) $un_b['summary']['courses'], 'annulla import TEC: l\'import apre un lotto con gli eventi e il corso nati' );
+asem_ok( $un_r['batch_id'] && $un_b && 'The Events Calendar' === $un_b['source'] && 5 === count( $un_b['data']['activities'] ) && 2 === (int) $un_b['summary']['events'] && 3 === (int) $un_b['summary']['courses'], 'annulla import TEC: l\'import apre un lotto con gli eventi e i corsi nati (uno per evento)' );
 asem_ok( $un_a1 && $un_a2 && $un_a3 && \AssociazioneSemplice\PublicEvents::post_of( $un_a1 ) > 0 && \AssociazioneSemplice\PublicEvents::post_of( $un_a3 ) > 0 && term_exists( 'Corsi UNDO', 'asem_evento_cat' ), 'annulla import TEC: nascono le pagine pubbliche e le categorie' );
 asem_render( array( Admin\TribeImportPage::class, 'render' ), 'Annulla questo import' );
 $acts->book( (int) $acts->sessions( $un_a2 )[0]['id'], $founder ); // la seconda mostra ha una prenotazione
 $un_page2 = \AssociazioneSemplice\PublicEvents::post_of( $un_a2 );
 $un_u     = \AssociazioneSemplice\ImportService::undo( (int) $un_r['batch_id'] );
-asem_ok( null === $acts->get( $un_a1 ) && 0 === \AssociazioneSemplice\PublicEvents::post_of( $un_a1 ) && null === $acts->get( $un_a3 ) && 0 === \AssociazioneSemplice\PublicEvents::post_of( $un_a3 ) && 2 === $un_u['activities_removed'], 'annulla import TEC: evento e corso senza prenotazioni spariscono con date, lezioni e pagina' );
+asem_ok( null === $acts->get( $un_a1 ) && 0 === \AssociazioneSemplice\PublicEvents::post_of( $un_a1 ) && null === $acts->get( $un_a3 ) && 0 === \AssociazioneSemplice\PublicEvents::post_of( $un_a3 ) && 4 === $un_u['activities_removed'], 'annulla import TEC: evento e corsi senza prenotazioni spariscono con date, lezioni e pagina' );
 asem_ok( $acts->get( $un_a2 ) && get_post( $un_page2 ) && 1 === count( $un_u['kept'] ) && false !== strpos( $un_u['kept'][0], 'Mostra usata UNDO' ), 'annulla import TEC: l\'evento con una prenotazione resta e viene segnalato tra i mantenuti' );
 asem_ok( '' === (string) get_post_meta( $un_ids[0], '_asem_activity', true ) && '' === (string) get_post_meta( $un_course[0], '_asem_activity', true ) && $un_a2 === (int) get_post_meta( $un_ids[1], '_asem_activity', true ), 'annulla import TEC: gli eventi di origine tolti si possono importare di nuovo, quello rimasto no' );
 asem_ok( ! term_exists( 'Corsi UNDO', 'asem_evento_cat' ) && term_exists( 'Mostre UNDO', 'asem_evento_cat' ) && 1 === $un_u['terms_removed'], 'annulla import TEC: la categoria pubblica creata dall\'import si toglie se resta vuota, quella ancora usata resta' );
@@ -6373,9 +6399,9 @@ asem_ok( ! empty( \AssociazioneSemplice\ImportService::batch( (int) $un_r['batch
 asem_render( array( Admin\TribeImportPage::class, 'render' ), 'Annullato il' );
 wp_update_post( array( 'ID' => $un_page2, 'post_content' => '' ) ); // pagina di un'attività esistente rimasta vuota: il nuovo import la compila e l'annullamento la svuota
 $un_r2 = \AssociazioneSemplice\TribeImport::run( array( $un_t2 ) );
-asem_ok( 1 === $un_r2['imported'] && 1 === $un_r2['courses'] && 1 === $un_r2['skipped'] && $un_r2['batch_id'] && '' !== get_post( $un_page2 )->post_content, 'annulla import TEC: dopo l\'annullamento si reimporta e una pagina vuota si compila' );
+asem_ok( 4 === $un_r2['imported'] && 1 === $un_r2['events'] && 3 === $un_r2['courses'] && 1 === $un_r2['skipped'] && $un_r2['batch_id'] && '' !== get_post( $un_page2 )->post_content, 'annulla import TEC: dopo l\'annullamento si reimporta e una pagina vuota si compila' );
 $un_u2 = \AssociazioneSemplice\ImportService::undo( (int) $un_r2['batch_id'] );
-asem_ok( 2 === $un_u2['activities_removed'] && 1 === $un_u2['pages_restored'] && '' === get_post( $un_page2 )->post_content, 'annulla import TEC: la pagina compilata dall\'import torna vuota' );
+asem_ok( 4 === $un_u2['activities_removed'] && 1 === $un_u2['pages_restored'] && '' === get_post( $un_page2 )->post_content, 'annulla import TEC: la pagina compilata dall\'import torna vuota' );
 asem_ok( ! empty( \AssociazioneSemplice\ImportService::batch( (int) $un_r2['batch_id'] )['undone_at'] ) && null !== asem_throws( function () use ( $un_r2 ) { \AssociazioneSemplice\ImportService::undo( (int) $un_r2['batch_id'] ); } ), 'annulla import TEC: anche il secondo import si annulla una volta sola' );
 \AssociazioneSemplice\ActivityReset::delete( $un_a2, 'void' );
 foreach ( array_merge( $un_ids, $un_course ) as $un_del ) {
