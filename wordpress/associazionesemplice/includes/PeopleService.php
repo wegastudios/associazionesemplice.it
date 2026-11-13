@@ -66,7 +66,7 @@ class PeopleService {
 		} else {
 			$where[] = 'p.application_status = \'requested\'';
 		}
-		$args  = array( $today );
+		$args  = array( $today, $today, $today ); // tre volte: serve alla scadenza della tessera (vedi active_until)
 		if ( ! empty( $f['type'] ) ) {
 			$where[] = 'p.type = %s';
 			$args[]  = $f['type'];
@@ -81,7 +81,7 @@ class PeopleService {
 			array_push( $args, $like, $like, $like, $like, $like, $like, $like );
 		}
 		$sql = 'SELECT p.*, '
-			. '(SELECT MAX(m.valid_to) FROM ' . Db::t( 'memberships' ) . ' m WHERE m.person_id = p.id AND m.deleted_at IS NULL AND m.valid_from <= %s) AS active_until, '
+			. '(SELECT MAX(m.valid_to) FROM ' . Db::t( 'memberships' ) . ' m WHERE m.person_id = p.id AND m.deleted_at IS NULL AND (m.valid_from <= %s OR EXISTS (SELECT 1 FROM ' . Db::t( 'memberships' ) . ' c WHERE c.person_id = p.id AND c.deleted_at IS NULL AND c.valid_from <= %s AND c.valid_to >= %s))) AS active_until, '
 			. 'CONCAT(h.first_name, " ", h.last_name) AS host_name '
 			. 'FROM ' . Db::t( 'people' ) . ' p LEFT JOIN ' . Db::t( 'people' ) . ' h ON h.id = p.host_person_id '
 			. 'WHERE ' . implode( ' AND ', $where ) . ' ORDER BY p.last_name, p.first_name';
@@ -133,10 +133,20 @@ class PeopleService {
 		return array_merge( $this->guests_of( $member_id ), $this->dependents_of( $member_id ) );
 	}
 
+	/**
+	 * Fino a quando vale la tessera: la scadenza PIÙ LONTANA tra le tessere del socio. Se oggi è in regola e ha già pagato anche l'anno dopo,
+	 * la scadenza è la fine di quell'anno. Se non è in regola, conta l'ultima tessera già iniziata (le future da sole non lo rendono socio in regola).
+	 */
 	public function active_until( int $person_id, ?string $date = null ): ?string {
 		$date = $date ?? Db::today();
 		$v    = $this->db()->get_var(
-			$this->db()->prepare( 'SELECT MAX(valid_to) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = %d AND deleted_at IS NULL AND valid_from <= %s', $person_id, $date )
+			$this->db()->prepare(
+				'SELECT MAX(m.valid_to) FROM ' . Db::t( 'memberships' ) . ' m WHERE m.person_id = %d AND m.deleted_at IS NULL AND (m.valid_from <= %s OR EXISTS (SELECT 1 FROM ' . Db::t( 'memberships' ) . ' c WHERE c.person_id = m.person_id AND c.deleted_at IS NULL AND c.valid_from <= %s AND c.valid_to >= %s))',
+				$person_id,
+				$date,
+				$date,
+				$date
+			)
 		);
 		return $v ?: null;
 	}

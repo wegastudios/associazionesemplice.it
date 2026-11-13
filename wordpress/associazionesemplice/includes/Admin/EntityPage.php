@@ -18,7 +18,7 @@ final class EntityPage {
 		do_action( 'asem_entity_rows', $s ); // le estensioni aggiungono qui i loro campi
 		echo '<tr><th>Codice fiscale</th><td><input type="text" name="tax_code" value="' . esc_attr( (string) $s['tax_code'] ) . '" class="regular-text"></td></tr>';
 		echo '<tr><th>Iscrizione (RUNTS, registro…)</th><td><input type="text" name="runts_number" value="' . esc_attr( (string) $s['runts_number'] ) . '" class="regular-text"></td></tr>';
-		echo wp_kses( '<tr><th>L\'anno sociale inizia a</th><td><select name="social_year_start_month">' . Ui::options( Ui::MONTHS, (int) $s['social_year_start_month'] ) . '</select></td></tr>', Html::allowed() );
+		echo wp_kses( '<tr><th>L\'anno sociale inizia a</th><td><select name="social_year_start_month">' . Ui::options( Ui::MONTHS, (int) $s['social_year_start_month'] ) . '</select><p class="description">Serve per raggruppare corsi ed eventi (per esempio una stagione da settembre ad agosto). Non cambia la tessera, che vale sempre dal 1° gennaio al 31 dicembre.</p></td></tr>', Html::allowed() );
 		echo '</tbody></table>';
 
 		echo '<h2>Sede e contatti</h2><table class="form-table"><tbody>';

@@ -3,6 +3,7 @@ namespace AssociazioneSemplice\Admin;
 
 use AssociazioneSemplice\License;
 use AssociazioneSemplice\LicensePolicy;
+use AssociazioneSemplice\Plugin;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -45,7 +46,11 @@ final class LicenseNotice {
 			return '';
 		}
 		if ( '' === License::key() ) {
-			return '<div class="notice notice-info is-dismissible asem-license-notice"><p><strong>Collega la licenza gratuita.</strong> È gratis, legata al dominio di questo sito, e abilita la prova del piano Pro e gli avvisi di aggiornamento. Il plugin funziona anche senza.</p><p><a class="button button-primary" href="' . esc_url( License::free_url() ) . '" target="_blank" rel="noopener">Ottieni la chiave gratuita</a> <a class="button" href="' . esc_url( admin_url( 'admin.php?page=asem-settings#asem-license' ) ) . '">Ho già una chiave</a></p></div>';
+			// Solo agli amministratori (la segreteria non può aprire le Impostazioni) e, una volta chiuso, resta chiuso per tre mesi.
+			if ( ! current_user_can( Plugin::CAP ) ) {
+				return '';
+			}
+			return Dismiss::html( 'license-free-link', 'info', '<strong>Collega la licenza gratuita.</strong> È gratis (serve solo l\'email), legata al dominio di questo sito, e ti permette di ricevere gli avvisi di aggiornamento. Il plugin funziona anche senza.</p><p><a class="button button-primary" href="' . esc_url( License::free_url() ) . '" target="_blank" rel="noopener">Ottieni la chiave gratuita</a> <a class="button" href="' . esc_url( admin_url( 'admin.php?page=asem-settings#asem-license' ) ) . '">Ho già una chiave</a>', 90 );
 		}
 		if ( License::state()['in_grace'] ) {
 			return '<div class="notice notice-warning asem-license-notice"><p><strong>La licenza è scaduta da pochi giorni.</strong> C\'è ancora una breve tolleranza: rinnovala per non perdere le funzioni del tuo piano. <a class="button button-primary" href="' . esc_url( License::payment_url() ) . '" target="_blank" rel="noopener">Rinnova la licenza</a></p></div>';

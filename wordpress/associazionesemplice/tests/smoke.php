@@ -308,14 +308,14 @@ asem_ok( Admin\ProPage::needed(), 'licenza contabile: la pagina che presenta il 
 ob_start();
 Admin\ProPage::render();
 $pl_page = (string) ob_get_clean();
-asem_ok( false !== strpos( $pl_page, 'Pro Full' ) && false !== strpos( $pl_page, 'IVA' ) && false !== strpos( $pl_page, 'attiva' ), 'pagina Pro: elenca i due livelli e le funzioni già attive' );
+asem_ok( false !== strpos( $pl_page, 'Contabilità e fiscale' ) && false !== strpos( $pl_page, 'IVA' ) && false !== strpos( $pl_page, 'attiva' ), 'pagina Pro: elenca i due gruppi e le funzioni già attive' );
 delete_option( License::OPT_STATE );
 asem_ok( \AssociazioneSemplice\Edition::has( 'vat' ) && \AssociazioneSemplice\Edition::has( 'fiscal' ) && ! Admin\ProPage::needed(), 'licenza in standby: tutto disponibile come Pro completo, nessuna promozione' );
 // livello Pro Lite (senza contabilità) e licenza gratuita con il Pro installato
 License::set_state( 'active', null, null, 'lite' );
 asem_ok( 'lite' === License::plan() && \AssociazioneSemplice\Edition::has( 'payments' ) && \AssociazioneSemplice\Edition::has( 'levels' ) && \AssociazioneSemplice\Edition::has( 'broadcasts' ) && \AssociazioneSemplice\Edition::has( 'pwa' ), 'licenza Pro Lite: pagamenti, quote, comunicazioni e app sì' );
 asem_ok( ! \AssociazioneSemplice\Edition::has( 'funds' ) && ! \AssociazioneSemplice\Edition::has( 'reports' ) && ! \AssociazioneSemplice\Edition::has( 'receipts' ) && ! \AssociazioneSemplice\Edition::has( 'vat' ) && ! \AssociazioneSemplice\Edition::has( 'fiscal' ) && ! \AssociazioneSemplice\Edition::has( 'fivepm' ), 'licenza Pro Lite: niente contabilità né funzioni fiscali' );
-asem_ok( false !== strpos( \AssociazioneSemplice\Edition::missing_message( 'funds' ), 'Pro Full' ), 'licenza Pro Lite: il messaggio rimanda al Pro Full' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Edition::missing_message( 'funds' ), 'più completo' ), 'licenza senza contabilità: il messaggio rimanda al piano più completo' );
 License::set_state( 'active', null, null, 'free' );
 asem_ok( 'free' === License::plan() && ! \AssociazioneSemplice\Edition::has( 'payments' ) && ! \AssociazioneSemplice\Edition::has( 'funds' ) && \AssociazioneSemplice\Edition::pro_present() && ! \AssociazioneSemplice\Edition::degraded(), 'licenza gratuita con il Pro installato: le funzioni Pro restano chiuse, la licenza si può gestire' );
 asem_ok( \AssociazioneSemplice\Edition::allows( 'export' ) && \AssociazioneSemplice\Edition::allows( 'member_area' ) && '' === Admin\LicenseNotice::html(), 'licenza gratuita: nessuna funzione di base viene toccata' );
@@ -373,7 +373,15 @@ add_filter( 'pre_http_request', $lic_http, 10, 3 );
 Settings::update( array( 'license_key' => '' ) );
 License::sync();
 asem_ok( \AssociazioneSemplice\LicensePolicy::STATUS_NOKEY === License::state()['status'] && 'free' === License::plan() && ! $lic_calls && ! \AssociazioneSemplice\Edition::has( 'payments' ), 'verifica attiva senza chiave: livello gratuito e nessuna chiamata al server' );
+wp_set_current_user( 1 ); // l'invito lo vede solo l'amministratore
 asem_ok( false !== strpos( Admin\LicenseNotice::html(), 'Collega la licenza gratuita' ) && false !== strpos( Admin\LicenseNotice::html(), 'domain=prova-sito.it' ), 'senza chiave: invito a ottenere la chiave gratuita, con il dominio già compilato' );
+Admin\Dismiss::dismiss( 'license-free-link', 90 );
+asem_ok( '' === Admin\LicenseNotice::html(), 'invito alla licenza gratuita: una volta chiuso resta chiuso' );
+delete_user_meta( 1, Admin\Dismiss::META );
+wp_set_current_user( $u_ord );
+asem_ok( '' === Admin\LicenseNotice::html(), 'invito alla licenza gratuita: non lo vede chi non è amministratore' );
+wp_set_current_user( 1 );
+asem_ok( false !== strpos( Admin\LicenseNotice::html(), 'asem-dismissible' ), 'invito alla licenza gratuita: l\'amministratore lo vede e lo può chiudere' );
 Settings::update( array( 'license_key' => 'WEGA-AAAAAAAA-BBBBBBBB-CCCCCCCC-DDDDDDDD' ) );
 $lic_r = License::sync();
 asem_ok( $lic_r['ok'] && 'lite' === License::plan() && 1 === count( $lic_calls ) && 'prova-sito.it' === $lic_calls[0][1]['domain'] && 'WEGA-AAAAAAAA-BBBBBBBB-CCCCCCCC-DDDDDDDD' === $lic_calls[0][1]['license_key'], 'verifica: chiave e dominio normalizzato inviati, livello Lite letto' );
@@ -387,6 +395,12 @@ asem_ok( 'free' === License::plan(), 'licenza: un livello sconosciuto non regala
 update_option( License::OPT_STATE, $lic_saved );
 asem_ok( 'https://associazionesemplice.it/api/license/validate' === $lic_calls[0][0] && ! isset( $lic_calls[0][2]['Authorization'] ) && '2027-01-01' === License::state()['expires_at'], 'verifica: chiamata al portale senza credenziali, scadenza salvata' );
 asem_ok( 'Pro Lite' === License::status()['plan_label'] && false !== strpos( License::status()['note'], '01/01/2027' ) && \AssociazioneSemplice\Edition::has( 'payments' ) && ! \AssociazioneSemplice\Edition::has( 'funds' ), 'verifica: stato mostrabile e funzioni del livello' );
+$lic_keep = get_option( License::OPT_STATE );
+update_option( License::OPT_STATE, array_merge( (array) $lic_keep, array( 'plan_name' => '' ) ) );
+asem_ok( 'Associazione Semplice Pro' === License::plan_label( 'lite' ) && 'Associazione Semplice Pro' === License::plan_label( 'fiscal' ) && 'Gratuito' === License::plan_label( 'free' ), 'nomi dei piani: senza nome dal portale vale un nome neutro, non uno scritto a mano' );
+update_option( License::OPT_STATE, array_merge( (array) $lic_keep, array( 'plan_name' => 'Nome dal portale' ) ) );
+asem_ok( 'Nome dal portale' === License::plan_label( 'fiscal' ), 'nomi dei piani: si usa il nome che arriva dalla licenza' );
+update_option( License::OPT_STATE, $lic_keep );
 $lic_resp = array( 'valid' => false, 'reason_code' => 'EXPIRED', 'plan_name' => 'Pro Full', 'expires_at' => gmdate( 'Y-m-d\TH:i:s\Z', time() - 2 * DAY_IN_SECONDS ), 'product_code' => 'associazionesemplice' );
 $lic_r    = License::sync();
 asem_ok( ! $lic_r['ok'] && 'unpaid' === License::state()['status'] && \AssociazioneSemplice\Edition::degraded() && ! \AssociazioneSemplice\Edition::has( 'payments' ), 'verifica: licenza scaduta, funzioni Pro sospese' );
@@ -2345,7 +2359,12 @@ asem_ok( null !== asem_throws( function () use ( $set_tre, $guest ) { $set_tre->
 $res = $set_tre->invoke( null, array( 'id' => $tre_p, 'enabled' => 1 ) );
 asem_ok( Access::is_treasurer( $u_tre ) && user_can( $u_tre, 'asem_add_expense', 0 ) && ! user_can( $u_tre, Plugin::CAP ), 'tesoriere: con il permesso può registrare spese ma non è amministratore' );
 $html = asem_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Tesoriere', array( 'id' => $tre_p ) );
-asem_ok( false !== strpos( $html, 'Togli il permesso' ), 'scheda socio: il permesso di tesoriere è visibile e revocabile' );
+asem_ok( false !== strpos( $html, 'Togli l\'incarico di tesoriere' ) && false !== strpos( $html, 'incassare quote e contributi' ), 'scheda socio: l\'incarico di tesoriere è visibile e revocabile, e il testo dice che include gli incassi' );
+asem_ok( true === \AssociazioneSemplice\Access::decide( 'asem_collect', false, array( 'id' => $tre_p, 'type' => 'ordinary' ), array( 'is_treasurer' => true ) ) && true === \AssociazioneSemplice\Access::decide( 'asem_register_member', false, array( 'id' => $tre_p, 'type' => 'ordinary' ), array( 'is_treasurer' => true ) ), 'tesoriere: il permesso comprende anche incassare e iscrivere soci (come dice il pulsante)' );
+$res_off = $set_tre->invoke( null, array( 'id' => $tre_p, 'enabled' => 0 ) );
+$html_off = asem_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Tesoriere', array( 'id' => $tre_p ) );
+asem_ok( false !== strpos( $html_off, 'Nomina tesoriere' ) && false !== strpos( $html_off, 'data-confirm="Nominare ' ), 'scheda socio: «Nomina tesoriere» chiede conferma' );
+$set_tre->invoke( null, array( 'id' => $tre_p, 'enabled' => 1 ) );
 
 // la schermata
 $html = $as( $u_tre, '[associazionesemplice_spese]' );
@@ -3909,10 +3928,25 @@ Settings::update( array( 'ical_enabled' => 0 ) );
 // tessera associativa: scade sempre il 31 dicembre
 $mb_p = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Tessera', 'last_name' => 'Dicembre', 'email' => 'tessera.dicembre@example.com' ) );
 $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $mb_p, 'lines' => array( array( 'category_id' => $cat['membership'], 'amount_cents' => 1000 ) ) ) );
-asem_ok( substr( $today, 0, 4 ) . '-12-31' === $people->active_until( $mb_p ), 'tessera: la scadenza è il 31 dicembre (' . $people->active_until( $mb_p ) . ')' );
+asem_ok( substr( $today, 0, 4 ) . '-12-31' <= $people->active_until( $mb_p ) && '-12-31' === substr( $people->active_until( $mb_p ), 4 ), 'tessera: la scadenza è un 31 dicembre, il più lontano tra quelli pagati (' . $people->active_until( $mb_p ) . ')' );
 asem_ok( substr( $today, 0, 4 ) === Settings::membership_year()->label() && ( (int) substr( $today, 0, 4 ) + 1 ) . '' === Settings::membership_year()->next()->label(), 'tessera: l\'anno della tessera è l\'anno solare' );
 $founder_until = $people->active_until( $founder );
 asem_ok( null !== $founder_until && $founder_until > ( (int) substr( $today, 0, 4 ) + 5 ) . '-01-01', 'tessera: il socio fondatore resta fuori da questa regola' );
+// scadenza = la più lontana tra le tessere: chi ha già pagato anche l'anno dopo scade a fine di quell'anno
+$mb_next = Settings::membership_year()->next()->label();
+$mb_cur = Settings::membership_year()->label();
+$mb_far = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Scadenza', 'last_name' => 'Lontana', 'email' => 'scadenza.lontana@example.com' ) );
+$people->set_membership( $mb_far, $mb_cur, true, 'manual' );
+asem_ok( $mb_cur . '-12-31' === $people->active_until( $mb_far ), 'tessera: con una sola tessera la scadenza è il 31 dicembre' );
+$people->set_membership( $mb_far, $mb_next, true, 'manual' );
+asem_ok( $mb_next . '-12-31' === $people->active_until( $mb_far ) && $people->is_active_member( $mb_far ), 'tessera: con l\'anno dopo già pagato la scadenza è la più lontana (' . $people->active_until( $mb_far ) . ')' );
+$mb_row = array_values( array_filter( $people->search(), function ( $r ) use ( $mb_far ) { return (int) $r['id'] === $mb_far; } ) );
+asem_ok( $mb_row && $mb_next . '-12-31' === $mb_row[0]['active_until'], 'tessera: l\'elenco soci mostra la stessa scadenza più lontana' );
+$people->set_membership( $mb_far, $mb_next, false, 'manual' );
+asem_ok( $mb_cur . '-12-31' === $people->active_until( $mb_far ), 'tessera: tolto l\'anno dopo, torna la scadenza del 31 dicembre' );
+$mb_only = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Solo', 'last_name' => 'Futura', 'email' => 'solo.futura@example.com' ) );
+$people->set_membership( $mb_only, $mb_next, true, 'manual' );
+asem_ok( ! $people->is_active_member( $mb_only ), 'tessera: una tessera che non è ancora iniziata, da sola, non rende il socio in regola' );
 
 // ---------- Anni solari: quota automatica, anni chiusi, fondi ----------
 $count_mb = function ( int $pid ) use ( $wpdb ) {
