@@ -102,7 +102,7 @@ final class DeleteActivityPage {
 			. '<li>' . (int) $p['sessions'] . ( 1 === $p['sessions'] ? ' data' : ' date' ) . ' e tutte le prenotazioni (' . (int) $p['bookings'] . ' attive), la lista d\'attesa e le presenze</li>'
 			. '<li>' . (int) $p['enrollments'] . ' iscrizioni in corso e ' . (int) $p['staff'] . ' persone dello staff</li>'
 			. '<li>' . (int) $p['notices'] . ' avvisi inviati e i collegamenti (WooCommerce, pagine riservate)</li>'
-			. ( $p['fund_cents'] > 0 ? '<li>le quote accantonate per il rimborso del referente (' . esc_html( Money::format( (int) $p['fund_cents'] ) ) . ')</li>' : '' )
+			. ( $p['fund_cents'] > 0 ? '<li>le somme accantonate per il rimborso del referente (' . esc_html( Money::format( (int) $p['fund_cents'] ) ) . ')</li>' : '' )
 			. '</ul>';
 
 		echo '<h3>Soldi collegati all\'evento</h3>';

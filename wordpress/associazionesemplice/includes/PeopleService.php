@@ -596,7 +596,7 @@ class PeopleService {
 			throw new \InvalidArgumentException( 'Questo socio non ha un utente WordPress.' );
 		}
 		if ( ! MemberSession::enabled() ) {
-			throw new \InvalidArgumentException( 'L\'accesso con link è spento (Impostazioni → Tecniche → Limiti e soglie): accendilo prima.' );
+			throw new \InvalidArgumentException( 'L\'accesso con link è spento (Impostazioni → Limiti e soglie): accendilo prima.' );
 		}
 		if ( '' === trim( (string) $p['email'] ) ) {
 			throw new \InvalidArgumentException( 'Prima inserisci la sua email nella scheda: il link di accesso arriva lì.' );

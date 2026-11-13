@@ -1,6 +1,7 @@
 <?php
 namespace AssociazioneSemplice\Admin;
 
+use AssociazioneSemplice\Edition;
 use AssociazioneSemplice\Guide;
 use AssociazioneSemplice\Html;
 
@@ -9,16 +10,34 @@ defined( 'ABSPATH' ) || exit;
 /** Guida iniziale: cosa fare per cominciare, le funzioni facoltative e le risposte alle domande più comuni. */
 final class GuidePage {
 
-	const FAQ = array(
-		'Come iscrivo un nuovo socio?'           => 'Rubrica soci → Soci e ospiti → «Nuovo socio». Con l\'email il socio ha subito l\'accesso all\'area riservata; senza email si attiva dopo, con un link da mandargli su WhatsApp. Per molti soci insieme usa «Importa da Excel/CSV».',
-		'Come incasso una quota o un contributo?' => 'Cassa → Nuovo incasso (o la cassa rapida in Bacheca). Scegli la persona: il plugin propone la quota associativa, le mensilità dei corsi dovute e gli eventi. Per più persone insieme usa «Cassa per più persone».',
-		'Come creo un corso o un evento?'        => 'Corsi ed eventi → «Nuova attività». Il programma si compone a righe: date uniche o giorni che si ripetono ogni settimana. I corsi si rinnovano ogni mese; gli eventi si prenotano a una data.',
-		'Come registro le presenze?'             => 'Registri → Presenze: scegli il corso, il mese e la lezione, spunta chi era presente e salva. Il riepilogo si scarica in PDF o CSV.',
-		'Come invio un messaggio ai soci?'       => 'Rubrica soci → Comunicazioni: scegli il gruppo (soci in regola, scaduti, iscritti a un corso…), scrivi il messaggio, controlla i destinatari e invia.',
-		'Dove trovo ricevute e rendiconto?'      => 'Le ricevute si scaricano dalla prima nota e dall\'area soci. Il rendiconto per cassa è in Contabilità → Rendiconto, in PDF con le firme.',
-		'Come cambio i testi o i termini?'       => 'Con Associazione Semplice Pro, in Impostazioni → Testi personalizzati: puoi scegliere il tipo di ente («socio»/«socia», «iscritto», «sostenitore»…), cambiare ogni frase e anche passare a un\'altra lingua.',
-		'Come faccio una copia dei dati?'        => 'Impostazioni → Copia di sicurezza: scarichi un file con tutti i dati; da lì puoi anche ripristinarlo.',
-	);
+	/**
+	 * Domande frequenti. Le risposte rimandano solo a schede che esistono nell'edizione in uso: presenze, comunicazioni, rendiconto, cassa per più
+	 * persone e testi compaiono come nel menu solo se la funzione c'è; altrimenti la risposta dice cosa si fa nel gratuito.
+	 *
+	 * @return array<string,string> domanda => risposta
+	 */
+	public static function faq(): array {
+		$pro_cash = Edition::has( 'funds' ) ? ' Per più persone insieme usa «Cassa per più persone».' : '';
+		$out      = array(
+			'Come iscrivo un nuovo socio?'            => 'Rubrica soci → Soci e ospiti → «Nuovo socio». Con l\'email il socio ha subito l\'accesso all\'area riservata; senza email si attiva dopo, con un link da mandargli su WhatsApp. Per molti soci insieme usa «Importa da Excel/CSV».',
+			'Come incasso una quota o un contributo?' => 'Cassa → Nuovo incasso (o la cassa rapida in Bacheca). Scegli la persona: il plugin propone la quota associativa, le mensilità dei corsi dovute e gli eventi.' . $pro_cash,
+			'Come creo un corso o un evento?'         => 'Corsi ed eventi → «Nuova attività». Il programma si compone a righe: date uniche o giorni che si ripetono ogni settimana. I corsi si rinnovano ogni mese; gli eventi si prenotano a una data.',
+			'Come registro le presenze?'              => Edition::has( 'insurance' )
+				? 'Registri → Presenze: scegli il corso, il mese e la lezione, spunta chi era presente e salva. Il riepilogo si scarica in PDF o CSV.'
+				: 'Il registro delle presenze fa parte di Associazione Semplice Pro. Nella versione gratuita puoi segnare l\'ingresso agli eventi dalla scheda dell\'evento (Corsi ed eventi → apri l\'evento → «Registra ingresso»).',
+			'Come invio un messaggio ai soci?'        => Edition::has( 'broadcasts' )
+				? 'Rubrica soci → Comunicazioni: scegli il gruppo (soci in regola, scaduti, iscritti a un corso…), scrivi il messaggio, controlla i destinatari e invia.'
+				: 'Dalla scheda di un corso o evento, riquadro «Avvisi agli iscritti». L\'invio a gruppi di soci (in regola, scaduti…) fa parte di Associazione Semplice Pro.',
+		);
+		if ( Edition::has( 'fiscal' ) ) {
+			$out['Dove trovo ricevute e rendiconto?'] = 'Le ricevute si scaricano dalla prima nota e dall\'area soci. Il rendiconto per cassa è in Contabilità → Rendiconto, in PDF con le firme.';
+		} else {
+			$out['Dove trovo l\'elenco di entrate e uscite?'] = 'In Cassa → Prima nota (la prima nota è l\'elenco di tutte le entrate e uscite). Per il commercialista: Strumenti → Esporta. Ricevute e rendiconto per cassa fanno parte di Associazione Semplice Pro.';
+		}
+		$out['Come cambio i testi o i termini?'] = ( Edition::has( 'texts' ) ? 'In' : 'Con Associazione Semplice Pro, in' ) . ' Impostazioni → Testi personalizzati: puoi scegliere il tipo di ente («socio»/«socia», «iscritto», «sostenitore»…), cambiare ogni frase e anche passare a un\'altra lingua.';
+		$out['Come faccio una copia dei dati?']  = 'Strumenti → Copia di sicurezza: scarichi un file con tutti i dati; da lì puoi anche ripristinarlo.';
+		return $out;
+	}
 
 	public static function render(): void {
 		Ui::header( 'Guida iniziale' );
@@ -39,7 +58,7 @@ final class GuidePage {
 		echo '</tbody></table>';
 
 		echo '<h2>Domande frequenti</h2>';
-		foreach ( self::FAQ as $q => $a ) {
+		foreach ( self::faq() as $q => $a ) {
 			echo '<details class="asem-card"><summary><strong>' . esc_html( $q ) . '</strong></summary><p>' . esc_html( $a ) . '</p></details>';
 		}
 

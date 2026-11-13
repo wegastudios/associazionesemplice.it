@@ -5632,6 +5632,22 @@ Settings::update( array( 'fivepm_enabled' => 0, 'fivepm_text' => '', 'tax_code' 
 $gd = \AssociazioneSemplice\Guide::steps();
 asem_ok( 7 === count( $gd ) && 7 === \AssociazioneSemplice\Guide::progress()['total'] && count( \AssociazioneSemplice\Guide::options() ) >= 6, 'guida: sette passi e le funzioni facoltative' );
 asem_render( array( Admin\GuidePage::class, 'render' ), 'Domande frequenti' );
+// revisione dei testi: guida filtrata per edizione, percorsi che esistono, date leggibili, accesso e tessera con indicazioni
+$gd_faq = Admin\GuidePage::faq();
+$gd_all = implode( ' ', array_merge( array_keys( $gd_faq ), $gd_faq ) );
+asem_ok( false !== strpos( $gd_all, 'Registri → Presenze' ) && false !== strpos( $gd_all, 'Contabilità → Rendiconto' ) && false !== strpos( $gd_all, 'Cassa per più persone' ) && false !== strpos( $gd_all, 'Strumenti → Copia di sicurezza' ) && false === strpos( $gd_all, 'Impostazioni → Copia di sicurezza' ), 'guida: con il Pro le domande frequenti rimandano alle schede del Pro e la copia di sicurezza è in Strumenti' );
+$tx_bad = array();
+foreach ( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( ASEM_DIR . 'includes', \FilesystemIterator::SKIP_DOTS ) ) as $tx_f ) {
+	if ( 'php' === $tx_f->getExtension() && false !== strpos( (string) file_get_contents( $tx_f->getPathname() ), 'Impostazioni → Tecniche → Limiti' ) ) {
+		$tx_bad[] = $tx_f->getFilename();
+	}
+}
+asem_ok( ! $tx_bad, 'testi: nessun rimando a «Impostazioni → Tecniche», che non esiste' . ( $tx_bad ? ': ' . implode( ', ', $tx_bad ) : '' ) );
+asem_ok( 'venerdì 20 novembre 2026' === \AssociazioneSemplice\Frontend\Views::date_words( '2026-11-20' ) && 'domenica 1 marzo 2026' === \AssociazioneSemplice\Frontend\Views::date_words( '2026-03-01 18:00:00' ) && '' === \AssociazioneSemplice\Frontend\Views::date_words( '' ), 'email: la data si scrive per esteso, con il giorno della settimana' );
+$tx_card = \AssociazioneSemplice\Frontend\Actions::card_invalid( array( 'id' => 5, 'first_name' => 'Lia' ), array( 'id' => 5 ), 'prenotare' );
+$tx_ward = \AssociazioneSemplice\Frontend\Actions::card_invalid( array( 'id' => 6, 'first_name' => 'Gio' ), array( 'id' => 5 ), 'prenotare' );
+asem_ok( 0 === strpos( $tx_card, 'La tua tessera non è valida' ) && false !== strpos( $tx_card, 'rinnova la quota associativa' ) && false !== strpos( $tx_card, 'segreteria' ) && 0 === strpos( $tx_ward, 'La tessera di Gio non è valida' ), 'tessera non valida: il messaggio dice come rinnovare e chi è il titolare della tessera' );
+asem_ok( \AssociazioneSemplice\Frontend\MemberLoginPage::FAIL !== \AssociazioneSemplice\Frontend\MemberLoginPage::BLOCKED && false !== strpos( \AssociazioneSemplice\Frontend\MemberLoginPage::BLOCKED, 'Troppi tentativi' ) && false === strpos( \AssociazioneSemplice\Frontend\MemberLoginPage::FAIL, 'troppi tentativi' ), 'accesso: password sbagliata e blocco per troppi tentativi hanno messaggi diversi' );
 asem_render( array( Admin\DashboardPage::class, 'render' ), 'Configurazione iniziale' );
 Admin\RegistersActions::guide_dismiss( array( 'on' => '1' ) );
 asem_ok( \AssociazioneSemplice\Guide::dismissed( 1 ) && ! \AssociazioneSemplice\Guide::show_banner( 1 ), 'guida: l\'avviso in Bacheca si può nascondere' );
@@ -8647,6 +8663,7 @@ asem_ok( $er_ok['ok'] && $er_el && 'guest' === $er_el['type'] && null === $er_el
 asem_ok( 800 === (int) $acts->bookings_for_session( $er_sid( $er_a ) )[0]['fee_due_cents'], 'conferma: il contributo dovuto è quello degli ospiti' );
 $er_last = end( $er_mails );
 asem_ok( false !== strpos( (string) $er_last['message'], 'bonifico istantaneo' ) && false !== strpos( (string) $er_last['message'], 'ricevuta' ), 'conferma: l\'email dice di pagare con bonifico istantaneo e inviare la ricevuta' );
+asem_ok( false !== strpos( (string) $er_last['message'], '1. fai un bonifico istantaneo' ) && false !== strpos( (string) $er_last['message'], '2. entro' ) && false !== strpos( (string) $er_last['message'], 'il posto torna libero' ) && ! preg_match( '/\d{4}-\d{2}-\d{2}/', (string) $er_last['message'] ) && 1 === preg_match( '/ di (lunedì|martedì|mercoledì|giovedì|venerdì|sabato|domenica) \d{1,2} [a-z]+ \d{4}/u', (string) $er_last['message'] ), 'conferma: l\'email ha i passi numerati per pagare e la data per esteso, non «2026-11-20»' );
 asem_ok( 'booked' === $wpdb->get_var( "SELECT status FROM $er_tbl ORDER BY id DESC LIMIT 1" ) && null !== $wpdb->get_var( "SELECT deadline FROM $er_tbl ORDER BY id DESC LIMIT 1" ), 'conferma: la richiesta è prenotata, con il termine per il pagamento' );
 asem_ok( $er::confirm( $er_par )['ok'] && 1 === count( $acts->bookings_for_session( $er_sid( $er_a ) ) ), 'conferma: aprire due volte il collegamento non prenota due volte' );
 // Limite di partecipazioni (qui 1): B costa agli ospiti come ai soci → devono iscriversi; C costa di più agli ospiti → possono.

@@ -174,7 +174,7 @@ final class BookDeskPage {
 			);
 			if ( $courses ) {
 				$month = $sy->clamp( substr( $date, 0, 7 ) );
-				echo '<table class="widefat striped"><thead><tr><th>Corso</th><th>Quota</th><th></th></tr></thead><tbody>';
+				echo '<table class="widefat striped"><thead><tr><th>Corso</th><th>Contributo</th><th></th></tr></thead><tbody>';
 				foreach ( $courses as $a ) {
 					echo wp_kses( self::course_row( $a, $person, $month ), Html::allowed() );
 				}
@@ -188,7 +188,7 @@ final class BookDeskPage {
 		} elseif ( 0 === strpos( $item, 'a:' ) ) {
 			$a = Plugin::activities()->get( (int) substr( $item, 2 ) );
 			if ( $a && ActivityKind::COURSE === $a['kind'] ) {
-				echo wp_kses( '<h2>' . esc_html( $a['name'] ) . '</h2><table class="widefat striped"><thead><tr><th>Corso</th><th>Quota</th><th></th></tr></thead><tbody>'
+				echo wp_kses( '<h2>' . esc_html( $a['name'] ) . '</h2><table class="widefat striped"><thead><tr><th>Corso</th><th>Contributo</th><th></th></tr></thead><tbody>'
 					. self::course_row( $a, $person, Settings::social_year()->clamp( substr( $today, 0, 7 ) ) ) . '</tbody></table>', Html::allowed() );
 			} elseif ( $a ) {
 				echo '<h2>' . esc_html( $a['name'] ) . ': prossime date</h2>';

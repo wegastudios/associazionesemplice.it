@@ -60,7 +60,7 @@ final class DashboardPage {
 			echo wp_kses( Dismiss::html( 'mail-fail-' . $mail_fail, 'warning', '<strong>Alcune email non sono partite</strong> negli ultimi giorni (' . (int) $mail_fail . '). <a href="' . esc_url( Ui::url( 'asem-tech' ) ) . '">Vedi perché e prova l\'invio</a>.', 3 ), Html::allowed() );
 		}
 		if ( current_user_can( \AssociazioneSemplice\Plugin::CAP ) && '' === trim( (string) \AssociazioneSemplice\Settings::get( 'association_name' ) ) ) {
-			echo wp_kses( Dismiss::html( 'entity-name', 'info', '<strong>Manca il nome dell\'ente.</strong> Compare su ricevute, tessere e messaggi ai soci: inseriscilo in <a href="' . esc_url( Ui::url( 'asem-entity' ) ) . '">Impostazioni → Dati e fiscalità</a>.', 7 ), Html::allowed() );
+			echo wp_kses( Dismiss::html( 'entity-name', 'info', '<strong>Manca il nome dell\'associazione.</strong> Compare su ricevute, tessere e messaggi ai soci: scrivilo nei <a href="' . esc_url( Ui::url( 'asem-entity' ) ) . '">dati dell\'ente</a>.', 7 ), Html::allowed() );
 		}
 		if ( current_user_can( \AssociazioneSemplice\Plugin::CAP ) && \AssociazioneSemplice\Wizard::pending() ) {
 			echo wp_kses( Dismiss::html( 'wizard', 'info', '<strong>Benvenuto.</strong> Configura il plugin in pochi minuti: ente, quote, pagamenti e pagine del sito. <a class="button button-primary" href="' . esc_url( Ui::url( 'asem-wizard' ) ) . '">Avvia la configurazione guidata</a>', 3 ), Html::allowed() );

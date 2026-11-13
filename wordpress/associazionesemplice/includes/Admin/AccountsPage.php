@@ -64,7 +64,7 @@ final class AccountsPage {
 		echo Ui::hidden( 'id', $f['id'] ) . Ui::hidden( 'date', $today ) . '<p><input type="text" name="amount" inputmode="decimal" required placeholder="0,00"> € <button class="button">Accantona</button></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		Ui::form_close();
 		echo '</details>';
-		echo '<details><summary>Libera una quota</summary><p class="description">Restituisce una parte all\'associazione: torna nella disponibilità reale. Non muove contanti né conti.</p>';
+		echo '<details><summary>Libera una parte del fondo</summary><p class="description">Restituisce una parte all\'associazione: torna nella disponibilità reale. Non muove contanti né conti.</p>';
 		Ui::form_open( 'asem_fund_release', $back );
 		echo Ui::hidden( 'id', $f['id'] ) . Ui::hidden( 'date', $today ) . '<p><input type="text" name="amount" inputmode="decimal" required placeholder="0,00"> € <button class="button">Libera</button></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		Ui::form_close();
@@ -103,7 +103,7 @@ final class AccountsPage {
 		echo '</div>';
 
 		$funds = Plugin::funds()->all();
-		echo '<h2>Fondi per i rimborsi</h2><p class="description">Un corso o un evento può destinare una parte di ogni pagamento al rimborso del volontario. Il pagamento resta nel conto in cui è entrato; la quota è accantonata qui e non fa parte della disponibilità reale finché il fondo non è estinto o liberato.</p>';
+		echo '<h2>Fondi per i rimborsi</h2><p class="description">Un corso o un evento può destinare una parte di ogni pagamento al rimborso del volontario. Il pagamento resta nel conto in cui è entrato; la parte accantonata sta qui e non fa parte della disponibilità reale finché il fondo non è estinto o liberato.</p>';
 		if ( $funds ) {
 			echo '<div class="asem-grid">';
 			foreach ( $funds as $f ) {
@@ -111,7 +111,7 @@ final class AccountsPage {
 			}
 			echo '</div>';
 		} else {
-			echo '<p>Nessun fondo aperto. Si creano da soli quando incassi un corso o un evento con una quota per il rimborso (si imposta nella scheda dell\'attività), oppure a mano con "Nuovo fondo" qui sotto.</p>';
+			echo '<p>Nessun fondo aperto. Si creano da soli quando incassi un corso o un evento con una parte per il rimborso (si imposta nella scheda dell\'attività), oppure a mano con "Nuovo fondo" qui sotto.</p>';
 		}
 
 		ReportsPage::funds_by_year();
