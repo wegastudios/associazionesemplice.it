@@ -63,9 +63,24 @@ final class ImportPage {
 		self::history();
 	}
 
-	/** Import già fatti, con l'annullamento in blocco. */
-	private static function history(): void {
-		$batches = \AssociazioneSemplice\ImportService::batches( 20 );
+	/**
+	 * Import già fatti, con l'annullamento in blocco.
+	 *
+	 * @param string $kind 'tribe' = solo gli import da The Events Calendar (nella sua pagina); '' = tutti gli altri (soci e prima nota)
+	 */
+	public static function history( string $kind = '', string $back = 'asem-import' ): void {
+		$batches = array_slice(
+			array_values(
+				array_filter(
+					\AssociazioneSemplice\ImportService::batches( 100 ),
+					function ( $b ) use ( $kind ) {
+						return ( 'tribe' === (string) ( $b['data']['kind'] ?? '' ) ) === ( 'tribe' === $kind );
+					}
+				)
+			),
+			0,
+			20
+		);
 		if ( ! $batches ) {
 			return;
 		}
@@ -78,6 +93,9 @@ final class ImportPage {
 					! empty( $s['people_updated'] ) ? $s['people_updated'] . ' schede aggiornate' : '',
 					! empty( $s['transactions'] ) ? $s['transactions'] . ' movimenti' : '',
 					! empty( $s['transfers'] ) ? $s['transfers'] . ' giroconti' : '',
+					! empty( $s['events'] ) ? $s['events'] . ( 1 === (int) $s['events'] ? ' evento' : ' eventi' ) : '',
+					! empty( $s['courses'] ) ? $s['courses'] . ( 1 === (int) $s['courses'] ? ' corso' : ' corsi' ) : '',
+					! empty( $s['pages'] ) ? $s['pages'] . ( 1 === (int) $s['pages'] ? ' pagina pubblica' : ' pagine pubbliche' ) : '',
 				)
 			);
 			echo '<tr><td>' . (int) $b['id'] . '</td><td>' . esc_html( mysql2date( 'd/m/Y H:i', $b['created_at'] ) ) . '<br><span class="description">' . esc_html( (string) $b['display_name'] ) . '</span></td>'
@@ -85,11 +103,18 @@ final class ImportPage {
 			if ( ! empty( $b['undone_at'] ) ) {
 				echo '<span class="description">Annullato il ' . esc_html( mysql2date( 'd/m/Y H:i', $b['undone_at'] ) ) . '</span>';
 			} else {
-				Ui::form_open( 'asem_import_undo', Ui::url( 'asem-import' ), false, 'asem-inline' );
-				echo wp_kses( Ui::hidden( 'batch_id', $b['id'] ) . '<button class="button button-small" data-confirm="Annullare TUTTO questo import? Si annullano i movimenti, si tolgono i soci creati se non sono ancora stati usati e si rimettono i dati dei soci aggiornati. Non si può rifare con un clic.">Annulla questo import</button>', Html::allowed() );
+				Ui::form_open( 'asem_import_undo', Ui::url( $back ), false, 'asem-inline' );
+				$ask = 'tribe' === $kind
+					? 'Annullare TUTTO questo import? Si tolgono gli eventi e i corsi creati (con le loro pagine pubbliche) se nessuno si è prenotato o iscritto; quelli già usati restano. Non si può rifare con un clic.'
+					: 'Annullare TUTTO questo import? Si annullano i movimenti, si tolgono i soci creati se non sono ancora stati usati e si rimettono i dati dei soci aggiornati. Non si può rifare con un clic.';
+				echo wp_kses( Ui::hidden( 'batch_id', $b['id'] ) . '<button class="button button-small" data-confirm="' . esc_attr( $ask ) . '">Annulla questo import</button>', Html::allowed() );
 				Ui::form_close();
 			}
 			echo '</td></tr>';
+		}
+		if ( 'tribe' === $kind ) {
+			echo '</tbody></table><p class="description">L\'annullamento toglie gli eventi e i corsi nati con l\'import, con le date, le lezioni e la pagina pubblica, solo se non hanno prenotazioni, iscritti o movimenti (quelli usati restano e vengono elencati). Le pagine di attività già esistenti che l\'import ha compilato tornano vuote, se non le hai modificate; le categorie pubbliche create dall\'import si tolgono se restano vuote. Gli eventi di The Events Calendar tolti si possono importare di nuovo.</p></div>';
+			return;
 		}
 		echo '</tbody></table><p class="description">L\'annullamento in blocco annulla i movimenti (restano nel registro come annullati), rimette i saldi iniziali dei conti, toglie i conti nuovi rimasti vuoti, ripristina i dati dei soci aggiornati e rimuove i soci e gli ospiti creati che non sono stati ancora usati (iscritti ad attività, prenotati, con movimenti o pagamenti): quelli già usati restano e vengono elencati.</p></div>';
 	}

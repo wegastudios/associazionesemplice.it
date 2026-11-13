@@ -6314,6 +6314,61 @@ foreach ( array_merge( array( $tec_p1, $tec_p2, $tec_p3, $tec_p4, $tec_v ), $tec
 }
 wp_delete_term( $tec_tid, 'tribe_events_cat' );
 
+// ---------- The Events Calendar: annullamento dell'import ----------
+\AssociazioneSemplice\TribeImport::categories(); // registra la tassonomia di origine
+$un_t1  = (int) wp_insert_term( 'Mostre UNDO', 'tribe_events_cat' )['term_id'];
+$un_t2  = (int) wp_insert_term( 'Corsi UNDO', 'tribe_events_cat' )['term_id'];
+$un_fut = gmdate( 'Y-m-d', strtotime( $today . ' +25 days' ) );
+$un_ids = array();
+foreach ( array( 'Mostra annullabile UNDO' => $un_fut, 'Mostra usata UNDO' => gmdate( 'Y-m-d', strtotime( $today . ' +26 days' ) ) ) as $un_n => $un_d ) {
+	$un_p = wp_insert_post( array( 'post_type' => 'tribe_events', 'post_status' => 'publish', 'post_title' => $un_n, 'post_content' => '<p>Da vedere</p>' ) );
+	update_post_meta( $un_p, '_EventStartDate', $un_d . ' 18:00:00' );
+	wp_set_object_terms( $un_p, array( $un_t1 ), 'tribe_events_cat' );
+	$un_ids[] = $un_p;
+}
+$un_course = array();
+foreach ( array( '2024-03-05', '2024-03-12', '2024-03-19' ) as $un_d ) {
+	$un_p = wp_insert_post( array( 'post_type' => 'tribe_events', 'post_status' => 'publish', 'post_title' => 'Lezione UNDO', 'post_content' => '<p>Corso</p>' ) );
+	update_post_meta( $un_p, '_EventStartDate', $un_d . ' 18:00:00' );
+	wp_set_object_terms( $un_p, array( $un_t2 ), 'tribe_events_cat' );
+	$un_course[] = $un_p;
+}
+$un_r  = \AssociazioneSemplice\TribeImport::run( array( $un_t2 ) );
+$un_a1 = (int) get_post_meta( $un_ids[0], '_asem_activity', true );
+$un_a2 = (int) get_post_meta( $un_ids[1], '_asem_activity', true );
+$un_a3 = (int) get_post_meta( $un_course[0], '_asem_activity', true );
+$un_b  = \AssociazioneSemplice\ImportService::batch( (int) $un_r['batch_id'] );
+asem_ok( $un_r['batch_id'] && $un_b && 'The Events Calendar' === $un_b['source'] && 3 === count( $un_b['data']['activities'] ) && 2 === (int) $un_b['summary']['events'] && 1 === (int) $un_b['summary']['courses'], 'annulla import TEC: l\'import apre un lotto con gli eventi e il corso nati' );
+asem_ok( $un_a1 && $un_a2 && $un_a3 && \AssociazioneSemplice\PublicEvents::post_of( $un_a1 ) > 0 && \AssociazioneSemplice\PublicEvents::post_of( $un_a3 ) > 0 && term_exists( 'Corsi UNDO', 'asem_evento_cat' ), 'annulla import TEC: nascono le pagine pubbliche e le categorie' );
+asem_render( array( Admin\TribeImportPage::class, 'render' ), 'Annulla questo import' );
+$acts->book( (int) $acts->sessions( $un_a2 )[0]['id'], $founder ); // la seconda mostra ha una prenotazione
+$un_page2 = \AssociazioneSemplice\PublicEvents::post_of( $un_a2 );
+$un_u     = \AssociazioneSemplice\ImportService::undo( (int) $un_r['batch_id'] );
+asem_ok( null === $acts->get( $un_a1 ) && 0 === \AssociazioneSemplice\PublicEvents::post_of( $un_a1 ) && null === $acts->get( $un_a3 ) && 0 === \AssociazioneSemplice\PublicEvents::post_of( $un_a3 ) && 2 === $un_u['activities_removed'], 'annulla import TEC: evento e corso senza prenotazioni spariscono con date, lezioni e pagina' );
+asem_ok( $acts->get( $un_a2 ) && get_post( $un_page2 ) && 1 === count( $un_u['kept'] ) && false !== strpos( $un_u['kept'][0], 'Mostra usata UNDO' ), 'annulla import TEC: l\'evento con una prenotazione resta e viene segnalato tra i mantenuti' );
+asem_ok( '' === (string) get_post_meta( $un_ids[0], '_asem_activity', true ) && '' === (string) get_post_meta( $un_course[0], '_asem_activity', true ) && $un_a2 === (int) get_post_meta( $un_ids[1], '_asem_activity', true ), 'annulla import TEC: gli eventi di origine tolti si possono importare di nuovo, quello rimasto no' );
+asem_ok( ! term_exists( 'Corsi UNDO', 'asem_evento_cat' ) && term_exists( 'Mostre UNDO', 'asem_evento_cat' ) && 1 === $un_u['terms_removed'], 'annulla import TEC: la categoria pubblica creata dall\'import si toglie se resta vuota, quella ancora usata resta' );
+asem_ok( ! empty( \AssociazioneSemplice\ImportService::batch( (int) $un_r['batch_id'] )['undone_at'] ) && null !== asem_throws( function () use ( $un_r ) { \AssociazioneSemplice\ImportService::undo( (int) $un_r['batch_id'] ); } ), 'annulla import TEC: si annulla una volta sola' );
+asem_render( array( Admin\TribeImportPage::class, 'render' ), 'Annullato il' );
+wp_update_post( array( 'ID' => $un_page2, 'post_content' => '' ) ); // pagina di un'attività esistente rimasta vuota: il nuovo import la compila e l'annullamento la svuota
+$un_r2 = \AssociazioneSemplice\TribeImport::run( array( $un_t2 ) );
+asem_ok( 1 === $un_r2['imported'] && 1 === $un_r2['courses'] && 1 === $un_r2['skipped'] && $un_r2['batch_id'] && '' !== get_post( $un_page2 )->post_content, 'annulla import TEC: dopo l\'annullamento si reimporta e una pagina vuota si compila' );
+$un_u2 = \AssociazioneSemplice\ImportService::undo( (int) $un_r2['batch_id'] );
+asem_ok( 2 === $un_u2['activities_removed'] && 1 === $un_u2['pages_restored'] && '' === get_post( $un_page2 )->post_content, 'annulla import TEC: la pagina compilata dall\'import torna vuota' );
+asem_ok( ! empty( \AssociazioneSemplice\ImportService::batch( (int) $un_r2['batch_id'] )['undone_at'] ) && null !== asem_throws( function () use ( $un_r2 ) { \AssociazioneSemplice\ImportService::undo( (int) $un_r2['batch_id'] ); } ), 'annulla import TEC: anche il secondo import si annulla una volta sola' );
+\AssociazioneSemplice\ActivityReset::delete( $un_a2, 'void' );
+foreach ( array_merge( $un_ids, $un_course ) as $un_del ) {
+	wp_delete_post( $un_del, true );
+}
+wp_delete_term( $un_t1, 'tribe_events_cat' );
+wp_delete_term( $un_t2, 'tribe_events_cat' );
+foreach ( array( 'Mostre UNDO', 'Corsi UNDO' ) as $un_nm ) {
+	$un_te = term_exists( $un_nm, 'asem_evento_cat' );
+	if ( $un_te ) {
+		wp_delete_term( (int) $un_te['term_id'], 'asem_evento_cat' );
+	}
+}
+
 // ---------- Risorse: quota per un fondo (gestione a terzi) ----------
 wp_set_current_user( 1 );
 $fn_fund = Plugin::funds()->create( 'Gestore Sporting Club' );

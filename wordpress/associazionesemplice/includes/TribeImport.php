@@ -354,17 +354,27 @@ final class TribeImport {
 	 */
 	public static function run( array $course_cats = array(), bool $publish_future = false ): array {
 		$res  = array( 'imported' => 0, 'courses' => 0, 'lessons' => 0, 'series' => 0, 'skipped' => 0, 'failed' => 0, 'pages' => 0, 'published' => 0, 'errors' => array(), 'course_list' => array(), 'event_list' => array(), 'categories' => array(), 'categories_new' => array() );
-		$part = self::partition( $course_cats );
-		foreach ( $part['failed'] as $f ) {
-			$res['failed']++;
-			$res['errors'][] = '«' . $f['title'] . '»: manca la data.';
+		$res['track']    = array( 'kind' => 'tribe', 'activities' => array(), 'posts' => array(), 'filled' => array(), 'terms' => array() ); // quello che l'import scrive, per poterlo annullare
+		$res['batch_id'] = null;
+		$part  = self::partition( $course_cats );
+		$batch = ImportService::open_batch( 'The Events Calendar' );
+		try {
+			foreach ( $part['failed'] as $f ) {
+				$res['failed']++;
+				$res['errors'][] = '«' . $f['title'] . '»: manca la data.';
+			}
+			foreach ( $part['done'] as $d ) {
+				$res['skipped']++;
+				self::fill_page( (int) $d['aid'], array( (int) $d['pid'] ), $publish_future, $res ); // una pagina rimasta vuota si compila
+			}
+			self::import_events( $part['events'], $publish_future, $res ); // 1° passaggio: tutti gli eventi
+			self::import_courses( $part['courses'], $publish_future, $res ); // 2° passaggio: poi i corsi
+		} finally {
+			$t               = $res['track'];
+			$summary         = array( 'kind' => 'tribe', 'events' => count( $t['activities'] ) - (int) $res['courses'], 'courses' => (int) $res['courses'], 'pages' => (int) $res['pages'], 'filled' => count( $t['filled'] ) );
+			$res['batch_id'] = ImportService::finish_batch( $batch, $summary, $t, ! empty( $t['activities'] ) || ! empty( $t['filled'] ) ); // anche se qualcosa va storto a metà, quello che è nato si può annullare
 		}
-		foreach ( $part['done'] as $d ) {
-			$res['skipped']++;
-			self::fill_page( (int) $d['aid'], array( (int) $d['pid'] ), $publish_future, $res ); // una pagina rimasta vuota si compila
-		}
-		self::import_events( $part['events'], $publish_future, $res ); // 1° passaggio: tutti gli eventi
-		self::import_courses( $part['courses'], $publish_future, $res ); // 2° passaggio: poi i corsi
+		unset( $res['track'] );
 		$res['errors']     = array_slice( $res['errors'], 0, 5 );
 		$res['categories']     = array_values( $res['categories'] );
 		$res['categories_new'] = array_values( $res['categories_new'] );
@@ -401,14 +411,19 @@ final class TribeImport {
 					);
 				} else { // evento ricorrente: una sola attività con tutte le date
 					$aid = Plugin::activities()->create( array( 'name' => $first['name'], 'social_year' => $s['year'], 'kind' => ActivityKind::RECURRING, 'notes' => $first['notes'] ) );
+					$res['track']['activities'][] = $aid;
 					foreach ( $s['rows'] as $r ) {
 						Plugin::activities()->add_session( $aid, $r['map']['session'] );
 					}
 					$res['series']++;
 				}
+				if ( 1 === count( $s['rows'] ) ) {
+					$res['track']['activities'][] = $aid;
+				}
 				$pids = array();
 				foreach ( $s['rows'] as $r ) {
 					update_post_meta( $r['pid'], self::META_DONE, $aid );
+					$res['track']['posts'][ (int) $r['pid'] ] = $aid;
 					$pids[] = (int) $r['pid'];
 					$res['imported']++;
 				}
@@ -447,7 +462,9 @@ final class TribeImport {
 						'lesson_slots' => wp_json_encode( $c['lessons'] ),
 					)
 				);
+				$res['track']['activities'][] = $aid;
 				foreach ( $posts as $pid ) {
+					$res['track']['posts'][ (int) $pid ] = $aid;
 					update_post_meta( $pid, self::META_DONE, $aid );
 				}
 				$res['courses']++;
@@ -526,7 +543,11 @@ final class TribeImport {
 				if ( is_wp_error( $ex ) ) {
 					continue;
 				}
-				$ids[ (int) ( is_array( $ex ) ? $ex['term_id'] : $ex ) ] = true;
+				$tid         = (int) ( is_array( $ex ) ? $ex['term_id'] : $ex );
+				$ids[ $tid ] = true;
+				if ( $new ) {
+					$res['track']['terms'][] = $tid; // creata da questo import: si toglie se resta vuota
+				}
 				$res['categories'][ mb_strtolower( $name ) ]             = $name;
 				if ( $new ) {
 					$res['categories_new'][ mb_strtolower( $name ) ] = $name;
@@ -596,17 +617,130 @@ final class TribeImport {
 		if ( $publish_future && $future ) {
 			$data['post_status'] = 'publish';
 		}
+		$mine = in_array( $aid, array_map( 'intval', $res['track']['activities'] ?? array() ), true ); // attività nata con questo import: la sua pagina si toglie con lei
+		$prev = wp_get_object_terms( $page, PublicEvents::TAXONOMY, array( 'fields' => 'ids' ) );
+		$prev = is_wp_error( $prev ) ? array() : array_map( 'intval', (array) $prev );
 		wp_update_post( $data );
+		$thumb_set = false;
 		if ( $thumb && 'attachment' === get_post_type( $thumb ) && ! get_post_meta( $page, '_thumbnail_id', true ) ) {
 			update_post_meta( $page, '_thumbnail_id', $thumb ); // lo stesso allegato: nessuna copia, nessun download
+			$thumb_set = true;
 		}
 		$terms = self::public_categories( $pids, $res ); // tutte le categorie originali, su ogni pagina creata
 		if ( $terms ) {
 			wp_set_object_terms( $page, $terms, PublicEvents::TAXONOMY );
 		}
+		if ( ! $mine && isset( $res['track'] ) ) { // pagina di un'attività di un import precedente, rimasta vuota: si ricorda com'era per poterla svuotare
+			$now                             = get_post( $page );
+			$res['track']['filled'][ $page ] = array(
+				'activity' => $aid, 'status' => (string) $post->post_status, 'thumb' => $thumb_set ? 1 : 0, 'terms_before' => $prev,
+				'hash'     => self::page_hash( $now ),
+			);
+		}
 		$res['pages']++;
 		if ( isset( $data['post_status'] ) ) {
 			$res['published']++;
 		}
+	}
+
+	// ---------- Annullamento ----------
+
+	/** Impronta del contenuto scritto dall'import in una pagina (testo ed estratto): serve a non svuotare una pagina che nel frattempo hai modificato tu. */
+	private static function page_hash( $post ): string {
+		return $post ? md5( (string) $post->post_content . '|' . (string) $post->post_excerpt ) : '';
+	}
+
+	/** True se l'attività è già stata usata: prenotazioni, lista d'attesa, iscrizioni o movimenti (anche annullati). */
+	private static function activity_used( int $aid ): bool {
+		$db   = Db::db();
+		$ids  = array_map( 'intval', $db->get_col( $db->prepare( 'SELECT id FROM ' . Db::t( 'sessions' ) . ' WHERE activity_id = %d', $aid ) ) );
+		$in   = $ids ? implode( ',', $ids ) : '0';
+		$used = (int) $db->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) . " WHERE session_id IN ($in)" )
+			+ (int) $db->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'waitlist' ) . " WHERE session_id IN ($in)" )
+			+ (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'enrollments' ) . ' WHERE activity_id = %d', $aid ) )
+			+ (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . ' WHERE activity_id = %d', $aid ) );
+		return $used > 0;
+	}
+
+	/**
+	 * Annulla un import da The Events Calendar: toglie le attività nate con l'import (con date, lezioni e pagina pubblica) solo se nessuno
+	 * si è prenotato o iscritto e non ci sono movimenti; quelle usate restano e vengono elencate. Le pagine di attività già esistenti che l'import
+	 * ha riempito tornano vuote (se non le hai modificate nel frattempo). Le categorie pubbliche create dall'import si tolgono se restano vuote;
+	 * gli eventi di The Events Calendar la cui attività è stata tolta si possono importare di nuovo.
+	 *
+	 * @param array $b import (di ImportService::batch)
+	 * @return array tribe (1), activities_removed, pages_removed, pages_restored, terms_removed, posts_released, kept[] (motivi)
+	 * @throws \InvalidArgumentException
+	 */
+	public static function undo( array $b ): array {
+		$batch_id = (int) $b['id'];
+		$data     = (array) $b['data'];
+		$res      = array( 'tribe' => 1, 'activities_removed' => 0, 'pages_removed' => 0, 'pages_restored' => 0, 'terms_removed' => 0, 'posts_released' => 0, 'kept' => array() );
+		$gone     = array(); // attività tolte (o già sparite)
+		$has_page = class_exists( __NAMESPACE__ . '\PublicEvents' );
+		foreach ( array_unique( array_map( 'intval', (array) ( $data['activities'] ?? array() ) ) ) as $aid ) {
+			$a = Plugin::activities()->get( $aid );
+			if ( ! $a ) {
+				$gone[] = $aid;
+				continue;
+			}
+			if ( self::activity_used( $aid ) ) {
+				$res['kept'][] = '«' . $a['name'] . '» (ha prenotazioni, iscritti o movimenti)';
+				continue;
+			}
+			$page = $has_page ? PublicEvents::post_of( $aid ) : 0;
+			try {
+				ActivityReset::delete( $aid, ActivityReset::VOID );
+			} catch ( \InvalidArgumentException $e ) {
+				$res['kept'][] = '«' . $a['name'] . '» (' . $e->getMessage() . ')';
+				continue;
+			}
+			$gone[] = $aid;
+			$res['activities_removed']++;
+			if ( $page && get_post( $page ) ) {
+				wp_delete_post( $page, true ); // la pagina nata con l'attività se ne va con lei, non nel cestino
+				$res['pages_removed']++;
+			}
+		}
+		// Pagine di attività già esistenti riempite dall'import: tornano come erano, solo se non toccate da te dopo.
+		foreach ( (array) ( $data['filled'] ?? array() ) as $page => $f ) {
+			$page = (int) $page;
+			$post = $page ? get_post( $page ) : null;
+			$aid  = (int) ( $f['activity'] ?? 0 );
+			if ( ! $post || in_array( $aid, $gone, true ) ) {
+				continue;
+			}
+			if ( self::page_hash( $post ) !== (string) ( $f['hash'] ?? '' ) ) {
+				$res['kept'][] = 'pagina «' . $post->post_title . '» (modificata dopo l\'import: non la tocco)';
+				continue;
+			}
+			wp_update_post( array( 'ID' => $page, 'post_content' => '', 'post_excerpt' => '', 'post_status' => in_array( (string) ( $f['status'] ?? '' ), array( 'draft', 'pending', 'private', 'publish', 'future' ), true ) ? (string) $f['status'] : 'draft' ) );
+			if ( ! empty( $f['thumb'] ) ) {
+				delete_post_meta( $page, '_thumbnail_id' );
+			}
+			wp_set_object_terms( $page, array_map( 'intval', (array) ( $f['terms_before'] ?? array() ) ), PublicEvents::TAXONOMY );
+			$res['pages_restored']++;
+		}
+		// Eventi di The Events Calendar: tornano importabili solo quelli la cui attività non c'è più.
+		foreach ( (array) ( $data['posts'] ?? array() ) as $pid => $aid ) {
+			if ( in_array( (int) $aid, $gone, true ) ) {
+				delete_post_meta( (int) $pid, self::META_DONE );
+				$res['posts_released']++;
+			}
+		}
+		// Categorie pubbliche create dall'import: via se nessuna pagina le usa più.
+		if ( $has_page ) {
+			foreach ( array_unique( array_map( 'intval', (array) ( $data['terms'] ?? array() ) ) ) as $tid ) {
+				$objs = get_objects_in_term( $tid, PublicEvents::TAXONOMY );
+				if ( ! is_wp_error( $objs ) && ! $objs ) {
+					$r = wp_delete_term( $tid, PublicEvents::TAXONOMY );
+					if ( true === $r ) {
+						$res['terms_removed']++;
+					}
+				}
+			}
+		}
+		ImportService::mark_undone( $batch_id, $res, array( 'tribe' => 1, 'activities_removed' => $res['activities_removed'], 'pages_removed' => $res['pages_removed'], 'kept' => count( $res['kept'] ) ) );
+		return $res;
 	}
 }

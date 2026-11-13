@@ -13,9 +13,10 @@ final class TribeImportPage {
 		$found = TribeImport::found();
 		echo '<p class="description">Porta qui gli eventi di The Events Calendar (passati e futuri) come eventi una tantum (o come corsi, per le categorie che indichi tu), con titolo, data, orario, luogo e descrizione. Gli eventi ripetuti con lo stesso titolo nello stesso anno sociale diventano un solo evento ricorrente. Così un evento già fatto si può <strong>riproporre</strong> in una nuova data dalla sua scheda, senza rifare tutto. '
 			. 'Per ogni evento si compila anche la <strong>pagina pubblica</strong> (Eventi sul sito): descrizione, immagine in evidenza, categorie, organizzatore, sito dell\'evento e giorni; di norma resta in bozza, così la controlli prima di pubblicarla. '
-			. 'Non si importano costi e prenotazioni. The Events Calendar può anche essere disattivato: gli eventi si leggono dal database del sito.</p>';
+			. 'Non si importano costi e prenotazioni. The Events Calendar può anche essere disattivato: gli eventi si leggono dal database del sito. Se ci ripensi, ogni import si può <strong>annullare</strong> da «Import già fatti» in fondo a questa pagina: eventi e corsi creati senza prenotazioni né iscritti vengono tolti (con la loro pagina pubblica), gli altri restano.</p>';
 		if ( ! $found ) {
 			echo '<p>Non ho trovato eventi di The Events Calendar su questo sito.</p>';
+			ImportPage::history( 'tribe', 'asem-tec' );
 			Ui::footer();
 			return;
 		}
@@ -26,6 +27,7 @@ final class TribeImportPage {
 		if ( $todo ) {
 			self::steps();
 		}
+		ImportPage::history( 'tribe', 'asem-tec' ); // import già fatti, con «Annulla questo import»
 		echo '<table class="widefat striped"><thead><tr><th>Data</th><th>Evento</th><th>Stato</th></tr></thead><tbody>';
 		foreach ( array_slice( $found, 0, 300 ) as $f ) {
 			echo '<tr><td>' . esc_html( '' !== $f['date'] ? Ui::date( $f['date'] ) : '—' ) . '</td><td>' . esc_html( '' !== $f['title'] ? $f['title'] : '(senza titolo)' ) . '</td><td>'
