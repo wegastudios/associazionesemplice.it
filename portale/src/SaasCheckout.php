@@ -392,7 +392,8 @@ final class SaasCheckout {
 
 	/**
 	 * Lavoro giornaliero (bin/cron.php): la sequenza di email della prova che finisce senza un piano (P1 sette giorni prima… P6 a cancellazione
-	 * fatta), il passaggio a «sospeso» (sola lettura) il giorno dopo la fine e la chiusura dell'ordine alla cancellazione dei dati, che fa il SaaS.
+	 * fatta), e la chiusura dell'ordine alla cancellazione dei dati. Dopo la fine NON si manda «suspended» (per il SaaS sarebbe un abbonamento scaduto, con 180 giorni):
+	 * resta «trial» con `until` = fine prova, e la sospensione (sola lettura) e la cancellazione dopo `purge_days` le fa il SaaS da sé.
 	 * Ogni email parte una volta sola e solo nel giorno previsto (o il giorno dopo, se il lavoro è saltato): niente arretrati. Lo sconto compare solo
 	 * se è impostato nel catalogo (`terms.trial.end_discount_percent`) e c'è il codice da usare (`saas_trial_promo` in config).
 	 * @return int email inviate
@@ -421,11 +422,6 @@ final class SaasCheckout {
 				4 => 'Lo sconto del {sconto} con il codice {codice_sconto} vale fino a quel giorno.',
 				5 => 'Il codice {codice_sconto} ({sconto} di sconto) vale fino a domani.',
 			) : array();
-			// Il giorno dopo la fine: sola lettura (stato «suspended» al SaaS), una volta.
-			if ( $end < $today && $o['suspended_for'] !== $end ) {
-				$db->run( 'UPDATE orders SET suspended_for = ? WHERE id = ?', array( $end, $o['id'] ) );
-				self::push( $db, array( 'quote' => (array) json_decode( (string) $o['quote'], true ) ) + $o, $org, 'suspended', $end, $now );
-			}
 			foreach ( self::trialDue( $end, $purge ) as $step => $due ) {
 				if ( $step <= (int) $o['trial_step'] || $today < $due ) {
 					continue;
