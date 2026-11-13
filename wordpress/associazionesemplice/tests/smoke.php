@@ -9593,9 +9593,9 @@ $wpdb->update( Db::t( 'people' ), array( 'last_name' => 'Quattro', 'tax_code' =>
 Settings::update( array( 'receipt_footer' => $v4_foot ) );
 // annullo: tracciato, il numero non torna libero
 $ledger->void( $v4_tx( 2000 ), 'Prova V4' );
+asem_ok( null !== asem_throws( function () use ( $v4_key ) { \AssociazioneSemplice\Receipts::build( $v4_key[2000] ); } ), 'ricevute: una ricevuta annullata non si emette più' ); // anche se l'azione dell'annullo non fosse agganciata, la lettura se ne accorge
 $v4_rec = \AssociazioneSemplice\Receipts::record( $v4_key[2000] );
-asem_ok( $v4_rec && null !== $v4_rec['voided_at'] && 'Prova V4' === $v4_rec['void_reason'] && 1 === (int) $v4_rec['number'], 'ricevute: l\'annullo dell\'incasso annulla la ricevuta emessa, la riga e il numero restano' );
-asem_ok( null !== asem_throws( function () use ( $v4_key ) { \AssociazioneSemplice\Receipts::build( $v4_key[2000] ); } ), 'ricevute: una ricevuta annullata non si emette più' );
+asem_ok( $v4_rec && null !== $v4_rec['voided_at'] && '' !== (string) $v4_rec['void_reason'] && 1 === (int) $v4_rec['number'] && '' !== (string) $v4_rec['data'], 'ricevute: l\'annullo dell\'incasso annulla la ricevuta emessa, la riga, i dati e il numero restano' );
 $v4_r3 = \AssociazioneSemplice\Receipts::build( $v4_key[2200] );
 asem_ok( '3/' . $v4_z === $v4_r3['number'], 'ricevute: il numero di una ricevuta annullata non si riassegna' );
 // numerazione per anno fiscale con esercizio a luglio (il filtro vale come l'impostazione)
@@ -9646,6 +9646,7 @@ asem_ok( 'Votazione corretta' === \AssociazioneSemplice\Polls::get( $v4_poll )['
 $v4_r4 = \AssociazioneSemplice\Receipts::build( $v4_key[2300] );
 asem_ok( '4/' . $v4_z === $v4_r4['number'], 'anno riaperto: la ricevuta nuova si emette, con il numero successivo' );
 $ledger->void( $v4_tx( 2100 ), 'Prova riaperto' );
+asem_throws( function () use ( $v4_key ) { \AssociazioneSemplice\Receipts::build( $v4_key[2100] ); } );
 asem_ok( null !== \AssociazioneSemplice\Receipts::record( $v4_key[2100] )['voided_at'], 'anno riaperto: l\'incasso si annulla e la ricevuta con lui' );
 
 // pulizia
