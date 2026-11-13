@@ -18,6 +18,7 @@ use App\Modules\Soci\Contracts\MemberType;
  * @property int|null $fee_cents
  * @property int $sort_order
  * @property bool $active
+ * @property bool $votes
  */
 final class MemberLevel extends OrgModel
 {
@@ -26,11 +27,11 @@ final class MemberLevel extends OrgModel
     protected $table = 'app.member_levels';
 
     /** @var list<string> */
-    protected $fillable = ['name', 'base_type', 'fee_cents', 'sort_order', 'active'];
+    protected $fillable = ['name', 'base_type', 'fee_cents', 'sort_order', 'active', 'votes'];
 
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['base_type' => MemberType::class, 'fee_cents' => 'integer', 'sort_order' => 'integer', 'active' => 'boolean'];
+        return ['base_type' => MemberType::class, 'fee_cents' => 'integer', 'sort_order' => 'integer', 'active' => 'boolean', 'votes' => 'boolean'];
     }
 }

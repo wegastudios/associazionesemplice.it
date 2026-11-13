@@ -54,7 +54,7 @@ MD,
 - il **5 per mille** con il registro dei contributi e il rendiconto sull'utilizzo;
 - il **rendiconto per cassa** per il commercialista.
 
-L'apertura e la chiusura degli anni solari sono incluse anche nel piano gratuito.
+L'apertura e la chiusura degli esercizi sono incluse anche nel piano gratuito.
 
 Se la tua associazione non ha partita IVA e un commercialista che richiede questi documenti, {piano_contabile} è di solito sufficiente. Puoi passare da un piano all'altro dall'area soci, senza reinstallare nulla.
 MD,
@@ -107,7 +107,7 @@ MD,
 Il plugin funziona da solo. Contatta un servizio esterno solo in questi casi opzionali:
 
 - **Verifica della licenza**: se inserisci una chiave, una volta al giorno invia al server delle licenze solo la chiave e il nome del dominio. Mai dati dei soci.
-- **Avviso degli aggiornamenti**: con una chiave inserita, al massimo ogni 24 ore chiede al sito associazionesemplice.it i numeri delle ultime versioni, senza inviare chiave, dati dei soci o informazioni sul sito. Si può spegnere dalle impostazioni.
+- **Aggiornamenti dal sito associazionesemplice.it**: per mostrarti gli aggiornamenti in Bacheca → Aggiornamenti, il plugin contatta il sito associazionesemplice.it e gli invia **solo il nome del prodotto e la versione installata** (di solito una volta al giorno, anche senza chiave). Non invia la chiave, il dominio né dati dei soci. Si spegne da **Impostazioni → Limiti e soglie**, togliendo il segno da «Aggiornamenti diretti»; il testo completo è in **Strumenti → Privacy**. Con Pro attivo la richiesta porta anche la chiave e il dominio.
 - **Donazioni PayPal**: il pulsante apre la pagina di donazione di PayPal nel browser del visitatore; dal tuo server non parte nulla.
 - **Ricerca dei luoghi con Google**: spenta di default; se la attivi con la tua chiave, il testo scritto nel campo «Luogo» arriva a Google dal browser dell'amministratore.
 

@@ -14,6 +14,7 @@ Se hai già un elenco di soci, non devi riscriverlo: puoi importarlo da un file 
 
 - Una riga di intestazione con i nomi delle colonne. Può stare anche sotto qualche riga di titolo.
 - Colonne riconosciute per **soci e ospiti**: *Numero tessera, Tipo, Nome, Cognome, Email, Telefono, Codice fiscale* e, per gli ospiti, *Ospite di* (tessera, email o nome e cognome del socio).
+- Per i **soci che sono enti** ci sono colonne in più (*Tipo soggetto*, *Denominazione*…): vedi [Soci che sono enti](guida:soci-che-sono-enti).
 - Se il file Excel ha più fogli (per esempio «Soci», «Ospiti», «Prima nota»), il plugin li legge tutti e capisce da solo a cosa serve ciascuno. I fogli non riconosciuti vengono ignorati.
 - I vecchi file `.xls` vanno salvati prima come `.xlsx` o CSV.
 
@@ -27,6 +28,7 @@ Se hai già un elenco di soci, non devi riscriverlo: puoi importarlo da un file 
 ## Da sapere
 
 - I soci già presenti vengono **aggiornati** (riconosciuti per tessera, email, codice fiscale o nome): importare due volte lo stesso file non crea doppioni.
+- Se un'importazione tocca un **esercizio chiuso**, l'importazione può fermarsi con il messaggio «L'anno … è chiuso…»: [riapri l'esercizio](guida:aprire-e-chiudere-gli-anni-solari) se è l'ultimo chiuso, oppure correggi il file.
 - Limiti: 5000 righe per tipo e 20 MB per file. Le formule di Excel si leggono con il risultato salvato.
 - In alternativa puoi usare **WP All Import**: il plugin mette a disposizione due tipi di contenuto di appoggio, applicando le stesse regole.
 - Anche la **prima nota** si può importare da file: vedi [Importare ed esportare la prima nota](guida:importare-ed-esportare-la-prima-nota).

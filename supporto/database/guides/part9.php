@@ -23,7 +23,9 @@ Con le votazioni i soci decidono, o danno un parere, senza fogli e riunioni. La 
 
 Tutti i soci in regola con la tessera, oppure solo gli iscritti a una certa attività.
 
-**Non votano**: genitori e tutori che non sono soci, ospiti, soci sospesi, soci usciti e soci con la tessera scaduta. Non si vota per delega: ogni socio vota dal proprio accesso.
+Il **diritto di voto** ce l'hanno **tutti i soci maggiorenni**. Con {piano_contabile} e {piano_fiscale} si decide invece **per ogni livello di socio** (sì o no), in **Impostazioni → Livelli di socio**. La stessa regola vale per le votazioni, per il numero legale delle assemblee e per i [Dati per il RUNTS](guida:dati-per-il-runts).
+
+**Non votano**: i minorenni (qualunque sia il livello), genitori e tutori che non sono soci, ospiti, soci sospesi, soci usciti e soci con la tessera scaduta. Non si vota per delega: ogni socio vota dal proprio accesso.
 
 ## Come votano i soci
 
@@ -472,6 +474,14 @@ Il **libro soci** è il registro ufficiale delle persone iscritte, in **Registri
 - per i minori, il **tutore**.
 
 Lo scarichi in **PDF** e in **CSV**.
+
+## Un libro per ogni esercizio
+
+Il libro soci **segue l'esercizio**. Quando [chiudi l'esercizio](guida:aprire-e-chiudere-gli-anni-solari) il libro viene **fotografato** e da quel momento non cambia più: lo trovi in **Registri → Libro soci**, scegliendo l'anno, e lo scarichi in PDF e in CSV. Ogni socio ha una **matricola fissa** e ogni riga un **numero**. Per gli esercizi chiusi prima di questa funzione, **«Fotografa gli anni già chiusi»** (nella pagina Esercizi) ricostruisce i libri dai dati di oggi e li segna con «ricostruito il…».
+
+L'**esportazione dei dati personali** di un socio comprende anche i libri soci chiusi in cui compare.
+
+Per i soci che sono **enti** vedi [Soci che sono enti](guida:soci-che-sono-enti): nel libro hanno la colonna **«Tipo»**.
 
 Nella scheda del socio trovi anche il **tipo di tesseramento** (atleta, istruttore, dirigente…), che compare nell'**esportazione dei soci**, e la **liberatoria per foto e video**. In **Bacheca** e nel riquadro **Da lavorare** l'avviso **«Schede da completare»** ti ricorda i soci a cui mancano dei dati.
 

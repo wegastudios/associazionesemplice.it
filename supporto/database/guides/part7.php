@@ -65,7 +65,7 @@ Se non vedi gli aggiornamenti diretti, controlla in **Impostazioni → Limiti e 
 
 ## Avviso degli aggiornamenti
 
-Con una chiave di licenza inserita (anche quella gratuita), il plugin ti avvisa quando esce una versione più recente. L'avviso si può chiudere e si può spegnere dalle impostazioni.
+Il plugin ti avvisa in **Bacheca → Aggiornamenti** quando esce una versione più recente. Per farlo contatta il sito associazionesemplice.it e gli invia **solo il nome del prodotto e la versione installata**, di solito una volta al giorno e anche senza chiave di licenza. Si spegne da **Impostazioni → Limiti e soglie** («Aggiornamenti diretti»); in quel caso gli aggiornamenti si scaricano dall'area clienti e si caricano a mano. Cosa viene inviato è scritto in **Strumenti → Privacy**.
 MD,
     ],
     [

@@ -70,8 +70,10 @@ return array(
 	// Dove portare chi apre /saas/admin se il server non lo serve già sotto il dominio principale (docs/ARCHITETTURA_DOMINI.md §3.3).
 	// Dove rimandare /saas/admin finché non lo serve già il SaaS sotto questo dominio; VUOTO = nessun rimando (lo serve il SaaS, il portale non si mette in mezzo).
 	'saas_admin_url' => 'https://app.associazionesemplice.it/admin',
-	// Demo pubblica del gestionale (pulsante «Prova la demo» in /saas); vuoto = nessun pulsante.
-	'saas_demo_url'  => 'https://demo.associazionesemplice.it',
+	// Demo pubblica del gestionale (collegamento in home, /saas e /prova con gli accessi ruolo@dominio); vuoto = nessun collegamento.
+	// Mettere l'indirizzo solo quando la demo risponde davvero. Password = quella degli accessi di prova (SAAS_DEMO_PASSWORD del SaaS).
+	'saas_demo_url'  => '', // es. 'https://demosaas.associazionesemplice.it'
+	'saas_demo_password' => '',
 	// Proxy verso il SaaS: /saas/admin, /saas/staff, /saas/api e /saas/vai si servono dal gestionale restando su questo dominio. Spento = come prima (rinvio di /saas/admin a saas_admin_url).
 	'saas_proxy' => array( 'enabled' => false, 'upstream' => 'https://app.associazionesemplice.it' ),
 	// Accesso unico (saas/docs/IDENTITA_API.md): /accedi, /twofactor, /account/esci e il reset password parlano col SaaS con richieste firmate (chiave staff_area_sign_key). Spento = accesso come prima.

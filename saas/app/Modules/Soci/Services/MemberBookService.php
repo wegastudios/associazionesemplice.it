@@ -17,7 +17,7 @@ use Illuminate\Database\DatabaseManager;
  * Libro soci (dal MemberBook del plugin): l'elenco progressivo di tutti i soci in ordine di ingresso, con domanda,
  * ammissione, cessazione e l'ultima quota versata. Ospiti e genitori non soci non ci sono.
  *
- * @phpstan-type Row array{n: int, id: string, name: string, tax_code: string, birth: string, residence: string, email: string, phone: string, card: string, level: string, applied_on: string, approved_on: string, joined_on: string, left_on: string, left_reason: string, fee: string, fee_year: string, guardian: string, in_force: bool}
+ * @phpstan-type Row array{n: int, matricola: int, id: string, name: string, tax_code: string, birth: string, residence: string, email: string, phone: string, card: string, level: string, applied_on: string, approved_on: string, joined_on: string, left_on: string, left_reason: string, fee: string, fee_year: string, guardian: string, in_force: bool}
  */
 final readonly class MemberBookService
 {
@@ -29,6 +29,7 @@ final readonly class MemberBookService
         private DatabaseManager $db,
         private OrgContext $context,
         private AuditLog $audit,
+        private MatricolaService $matricole,
     ) {}
 
     /**
@@ -40,6 +41,7 @@ final readonly class MemberBookService
      */
     public function rows(string $filter = '', ?array $period = null): array
     {
+        $this->matricole->assignMissing();
         $people = Person::query()->whereIn('type', ['founder', 'ordinary', 'volunteer'])
             ->orderByRaw('coalesce(joined_on, created_at::date)')->orderBy('id')->get();
         $applications = $this->applications();
@@ -65,6 +67,7 @@ final readonly class MemberBookService
             $birth = $anon ? '' : trim(($p->birth_date?->format('d/m/Y') ?? '').($p->birth_place !== null && $p->birth_place !== '' ? ' '.$p->birth_place : ''));
             $out[] = [
                 'n' => $n,
+                'matricola' => $p->matricola ?? 0,
                 'id' => $p->id,
                 'name' => $anon ? '(dati anonimizzati)' : trim($p->last_name.' '.$p->first_name),
                 'tax_code' => $anon ? '' : (string) $p->tax_code,
@@ -153,7 +156,7 @@ final readonly class MemberBookService
     {
         $pdf = new Pdf(landscape: true);
         $cols = [
-            ['N.', 30, 'R'], ['Socio e codice fiscale', 166, 'L'], ['Nascita', 104, 'L'], ['Residenza', 150, 'L'],
+            ['N. / matr.', 40, 'R'], ['Socio e codice fiscale', 166, 'L'], ['Nascita', 104, 'L'], ['Residenza', 150, 'L'],
             ['Tessera', 52, 'L'], ['Ammissione', 80, 'L'], ['Cessazione', 100, 'L'], ['Ultima quota', 70, 'R'],
         ];
         $title = 'Libro soci'.match ($filter) {
@@ -178,7 +181,7 @@ final readonly class MemberBookService
         $y = $head();
         foreach ($rows as $r) {
             $cells = [
-                [(string) $r['n'], ''],
+                [(string) $r['n'], $r['matricola'] > 0 ? 'm. '.$r['matricola'] : ''],
                 [$r['name'], $r['tax_code']],
                 [$r['birth'], ''],
                 [$r['residence'], $r['guardian'] !== '' ? 'Tutore: '.$r['guardian'] : ''],
@@ -221,9 +224,9 @@ final readonly class MemberBookService
             return '';
         }
         fwrite($out, "\xEF\xBB\xBF");
-        self::line($out, ['N.', 'Cognome e nome', 'Codice fiscale', 'Nascita', 'Residenza', 'Email', 'Cellulare', 'Tessera', 'Livello', 'Domanda', 'Ammissione', 'Ingresso', 'Cessazione', 'Motivo', 'Ultima quota', 'Anno', 'Tutore']);
+        self::line($out, ['N.', 'Matricola', 'Cognome e nome', 'Codice fiscale', 'Nascita', 'Residenza', 'Email', 'Cellulare', 'Tessera', 'Livello', 'Domanda', 'Ammissione', 'Ingresso', 'Cessazione', 'Motivo', 'Ultima quota', 'Anno', 'Tutore']);
         foreach ($rows as $r) {
-            self::line($out, [(string) $r['n'], $r['name'], $r['tax_code'], $r['birth'], $r['residence'], $r['email'], $r['phone'], $r['card'], $r['level'],
+            self::line($out, [(string) $r['n'], $r['matricola'] > 0 ? (string) $r['matricola'] : '', $r['name'], $r['tax_code'], $r['birth'], $r['residence'], $r['email'], $r['phone'], $r['card'], $r['level'],
                 $r['applied_on'], $r['approved_on'], $r['joined_on'], $r['left_on'], $r['left_reason'], $r['fee'], $r['fee_year'], $r['guardian']]);
         }
         rewind($out);
