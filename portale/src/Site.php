@@ -62,7 +62,7 @@ final class Site {
 			array( 'Posso passare dal gratuito al Pro più avanti?', 'Sì, in qualsiasi momento. I dati restano dove sono: si attivano soltanto le funzioni in più.' ),
 			array( 'Come funziona il rinnovo?', 'Il rinnovo è automatico, mensile o annuale a scelta. Puoi disdire quando vuoi dall\'area riservata: la licenza resta valida fino alla scadenza già pagata.' ),
 			array( 'Cosa succede se un pagamento non va a buon fine?', 'Hai alcuni giorni di tolleranza. I tuoi dati non vengono mai cancellati: se la licenza scade, tornano disponibili le funzioni di base.' ),
-			array( 'Dove stanno i dati dei miei soci?', 'Sul tuo sito WordPress, non da noi. Il plugin gratuito non contatta nessun servizio; il Pro verifica la licenza una volta al giorno e controlla gli aggiornamenti inviando solo chiave, dominio e versione.' ),
+			array( 'Dove stanno i dati dei miei soci?', 'Sul tuo sito WordPress, non da noi. Il plugin gratuito non invia dati dei soci né dell\'associazione (scaricato da questo sito, chiede solo una volta al giorno se c\'è una versione nuova, con nome del plugin e versione; si può spegnere); il Pro verifica la licenza una volta al giorno e controlla gli aggiornamenti inviando solo chiave, dominio e versione.' ),
 			array( 'Cosa succede ai dati se disdico o la licenza scade?', 'Restano sul tuo sito. Alla scadenza il plugin torna alle funzioni del gratuito: i dati non vengono cancellati e si possono sempre esportare.' ),
 			array( 'Come pago?','Con carta tramite Stripe oppure con PayPal. Non vediamo né conserviamo i dati della tua carta.' ),
 		);

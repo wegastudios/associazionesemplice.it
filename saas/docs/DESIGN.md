@@ -98,15 +98,15 @@ Telefono:
 │  contenuto                   │
 │                              │
 ├──────────────────────────────┤
-│ Home  Soci  Attività  Soldi  Altro │   barra in basso, 5 voci
+│ Home  Soci  Attività  Prima nota  Altro │   barra in basso, 5 voci
 └──────────────────────────────┘
 ```
 
 - La barra in basso mostra al massimo 4 voci + «Altro», scelte in base a permessi e pacchetti: Home, Soci, Attività,
-  Soldi (prima nota), oppure Risorse al posto di Soldi per chi non vede la contabilità.
+  «Prima nota» (del gruppo «Cassa e conti»), oppure Risorse al posto della prima nota per chi non vede la contabilità.
 - **Nuovo** apre un foglio con le azioni di creazione consentite (nuovo incasso, nuova spesa, nuova scheda,
   nuova attività, prenota una risorsa).
-- **Altro** apre un foglio con tutte le sezioni raggruppate (Persone, Attività e risorse, Soldi, Gestione) e, in fondo,
+- **Altro** apre un foglio con tutte le sezioni raggruppate (Persone, Attività e risorse, Cassa e conti, Gestione) e, in fondo,
   l'account (sicurezza, cambia associazione, esci).
 - Il nome dell'associazione nell'intestazione apre il cambio di associazione quando se ne seguono più d'una.
 

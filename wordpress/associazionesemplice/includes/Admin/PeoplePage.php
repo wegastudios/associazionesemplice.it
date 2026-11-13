@@ -353,10 +353,17 @@ final class PeoplePage {
 			return;
 		}
 		$cur = Settings::membership_year();
-		$opts = array( $cur->previous()->label() => $cur->previous()->label(), $cur->label() => $cur->label() . ' (corrente)', $cur->next()->label() => $cur->next()->label() );
+		$dmy  = function ( \DateTimeImmutable $d ): string {
+			return $d->format( 'd/m/Y' );
+		};
+		$opts = array(
+			$cur->previous()->label() => $cur->previous()->label() . ' (dal ' . $dmy( $cur->previous()->start() ) . ' al ' . $dmy( $cur->previous()->end() ) . ')',
+			$cur->label()             => $cur->label() . ' (corrente, dal ' . $dmy( $cur->start() ) . ' al ' . $dmy( $cur->end() ) . ')',
+			$cur->next()->label()     => $cur->next()->label() . ' (dal ' . $dmy( $cur->next()->start() ) . ' al ' . $dmy( $cur->next()->end() ) . ')',
+		);
 		Ui::form_open( 'asem_set_membership', Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) );
 		echo wp_kses( Ui::hidden( 'id', $p['id'] ), Html::allowed() );
-		echo wp_kses( '<p>Anno della tessera (scade il 31 dicembre): <select name="social_year">' . Ui::options( $opts, $cur->label() ) . '</select> ', Html::allowed() );
+		echo wp_kses( '<p>Anno della tessera: <select name="social_year">' . Ui::options( $opts, $cur->label() ) . '</select> ', Html::allowed() );
 		echo '<button class="button" name="enabled" value="1">Segna iscritto</button> <button class="button" name="enabled" value="0">Togli iscrizione</button></p>';
 		Ui::form_close();
 		echo '<p class="description">L\'incasso di una "Quota associativa" iscrive in automatico. Qui puoi iscrivere a mano chi ha già pagato.</p>';

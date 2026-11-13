@@ -173,7 +173,7 @@ final class CardLayout {
 			'logo'   => 'Logo',
 			'name'   => 'Nome Cognome',
 			'number' => 'N. 123',
-			'valid'  => 'Valida fino al 31/12/' . ( (int) current_time( 'Y' ) + 1 ),
+			'valid'  => 'Valida fino al ' . Settings::membership_year( current_time( 'Y-m-d' ) )->next()->end()->format( 'd/m/Y' ), // l'anno della tessera segue l'anno sociale
 			'qr'     => 'QR',
 			'type'   => 'Socio ordinario',
 			'roles'  => 'Consigliere · Staff: Corso di yoga',
