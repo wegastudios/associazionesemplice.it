@@ -240,7 +240,7 @@ it('controlla il codice fiscale dell\'ente, la denominazione e gli ospiti', func
 
 it('non scambia una persona con un ente già in anagrafica', function (): void {
     $existing = [['id' => 'e1', 'card' => null, 'first' => '', 'last' => 'Pro Loco Beta', 'email' => null, 'tax' => '12345678903', 'type' => 'ordinary', 'entity' => true]];
-    $plans = sheetPlan("Tipo soggetto;Denominazione;Nome;Cognome;Codice fiscale\nente;Pro Loco Beta;;;12345678903\npersona;;Mario;Rossi;12345678903\n", MemberType::Ordinary, $existing);
+    $plans = sheetPlan("Tipo soggetto;Denominazione;Nome;Cognome;Codice fiscale;Email\nente;Pro Loco Beta;;;12345678903;\npersona;;Mario;Rossi;12345678903;mario@x.it\n", MemberType::Ordinary, $existing);
 
     expect($plans[0]['action'])->toBe('update')->and($plans[0]['matched_id'])->toBe('e1')
         ->and($plans[1]['action'])->toBe('error')->and($plans[1]['message'])->toContain('è un ente, non una persona');

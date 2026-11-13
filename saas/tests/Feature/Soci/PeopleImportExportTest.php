@@ -158,7 +158,7 @@ it('esporta l\'anagrafica in CSV leggibile dall\'import, e lo annota', function 
     expect($csv)->toStartWith("\xEF\xBB\xBF\"Numero tessera\";Tipo;Nome;Cognome")
         ->toContain('1;"Socio ordinario";Mario;Rossi;mario@example.com;;RSSMRA80A01H501U;01/01/1980')
         ->toContain("'=SOMMA(A1)")->toContain('"+39 333 1234567"')
-        ->toContain('Bianchi;;"347 1112223";;;;;;;;1;;'."\r\n");
+        ->toContain('Bianchi;;"347 1112223";;;;;;;;1;;;Persona;'."\r\n");
     $this->orgContext()->run($this->org->id, fn () => expect(DB::table('audit.log')->where('action', 'export.done')->value('details'))->toContain('"rows": 3'));
 
     // Ricaricato, il file aggiorna le stesse schede.
