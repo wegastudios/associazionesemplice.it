@@ -16,6 +16,8 @@ use Inertia\Response;
 /**
  * Libro soci: consultazione nel gestionale, stampa in PDF ed export CSV (con il registro). Con `?anno=` è il libro di
  * un esercizio: quello chiuso si legge dalla fotografia della chiusura.
+ *
+ * @phpstan-import-type Row from MemberBookService
  */
 final readonly class MemberBookController
 {
@@ -68,7 +70,7 @@ final readonly class MemberBookController
         ]);
     }
 
-    /** @return array{rows: list<array<string, mixed>>, source: string} */
+    /** @return array{rows: list<Row>, source: string} */
     private function load(string $filter, ?int $year): array
     {
         if ($year === null) {

@@ -89,7 +89,9 @@ final readonly class FiscalYearService
             }
             // Chi tiene dati dell'anno li fotografa qui, nella stessa transazione: se fallisce, l'esercizio resta aperto.
             $fy = $this->connection()->table('app.fiscal_years')->where('year', $year)->first(['starts_on', 'ends_on']);
-            $this->events->dispatch(new FiscalYearClosed($year, is_string($fy->starts_on ?? null) ? $fy->starts_on : '', is_string($fy->ends_on ?? null) ? $fy->ends_on : ''));
+            $start = $fy?->starts_on;
+            $end = $fy?->ends_on;
+            $this->events->dispatch(new FiscalYearClosed($year, is_string($start) ? $start : '', is_string($end) ? $end : ''));
             $this->audit->record('fiscal_year.closed', 'app.fiscal_years', null, ['year' => $year]);
         });
     }

@@ -43,7 +43,8 @@ final readonly class MemberBookSnapshots
             static fn (array $r): array => array_intersect_key($r, array_flip(self::FIELDS)),
             $this->book->rows('', [$event->startsOn, $event->endsOn]),
         );
-        $version = 1 + (int) $this->table()->where('fiscal_year', $event->year)->max('version');
+        $max = $this->table()->where('fiscal_year', $event->year)->max('version');
+        $version = 1 + (is_numeric($max) ? (int) $max : 0);
         $user = $this->auth->guard()->id();
         $this->table()->insert([
             'org_id' => $this->context->require()->id,
