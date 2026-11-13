@@ -137,6 +137,23 @@ l'ultimo salvato per le pagine di vendita, segnando «aggiornato il …» nel pa
 catalogo corrente: all'apertura del carrello chiede la `rev` (con `If-None-Match`) e la confronta con quella
 dell'ordine. Se è cambiata mentre il cliente decideva, lo dice e ricalcola prima di incassare.
 
+### 2.2 Condizioni di vendita (`terms`, dal 13/11/2026)
+
+Il catalogo ha un blocco `terms`, uguale per tutti i piani; i cataloghi che non lo hanno valgono come i valori di partenza.
+Il portale lo legge dal catalogo come il resto e **applica** le regole, non le ricalcola il SaaS.
+
+| Campo | Valori | Cosa deve fare il portale |
+|---|---|---|
+| `terms.vat.mode` | `standard` o `exempt` | `standard`: i prezzi sono IVA esclusa e si aggiunge `vat_percent` di ogni prezzo. `exempt` (regime forfettario): nessuna IVA, il totale è l'importo di `prices[]` e al pagamento e in fattura compare `terms.vat.note`. |
+| `terms.vat.note` | testo, obbligatorio se `exempt` | La dicitura da mostrare. |
+| `terms.payments.own_gateway_percent` | intero 0–30 (partenza 0) | Commissione sui pagamenti online dei soci se l'associazione usa il proprio Stripe o PayPal. |
+| `terms.payments.collected_by_us_percent` | intero 0–30 (partenza 3) | Commissione se incassiamo noi e giriamo all'associazione (oltre al costo del circuito). |
+| `terms.trial.exports` | bool (partenza `false`) | Con `false` durante la prova sono vietate le esportazioni (dati, contabilità, libro soci). |
+| `terms.trial.accountant_access` | bool (partenza `false`) | Con `false` durante la prova non si può collegare un commercialista. |
+
+Il SaaS applica da sé i due limiti della prova; il portale deve solo scriverli nelle pagine di vendita («Prova 30 giorni: tutto
+tranne le esportazioni e l'accesso del commercialista»).
+
 ### 2.1 Regole di calcolo dei prezzi (concordate con il portale, 10/11/2026)
 
 Il portale calcola l'importo dalle regole `prices[]`; il SaaS non ricalcola (`price_cents` della `subscription` è

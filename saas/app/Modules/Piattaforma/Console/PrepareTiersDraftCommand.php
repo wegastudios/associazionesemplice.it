@@ -35,6 +35,7 @@ final class PrepareTiersDraftCommand extends Command
         $draft = $publisher->draft();
 
         $draft['features'] = $seed['features'] ?? [];
+        $draft['terms'] ??= $seed['terms'] ?? [];
         $draft['plans'] = self::plans(self::rows($draft['plans'] ?? null), self::rows($seed['plans'] ?? null));
         $draft['addons'] = self::addons(self::rows($draft['addons'] ?? null), self::rows($seed['addons'] ?? null));
 

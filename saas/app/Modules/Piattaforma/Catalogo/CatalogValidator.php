@@ -27,7 +27,7 @@ final class CatalogValidator
      */
     public static function validate(array $input): array
     {
-        self::only($input, ['name', 'description', 'rev', 'published_at', 'currency', 'features', 'plans', 'addons', 'promos'], 'catalogo');
+        self::only($input, ['name', 'description', 'rev', 'published_at', 'currency', 'features', 'plans', 'addons', 'promos', 'terms'], 'catalogo');
 
         $features = self::features($input['features'] ?? null);
         $plans = self::plans($input['plans'] ?? null, array_keys($features));
@@ -49,6 +49,38 @@ final class CatalogValidator
             'plans' => $plans,
             'addons' => $addons,
             'promos' => self::promos($input['promos'] ?? [], $planCodes),
+            'terms' => self::terms($input['terms'] ?? []),
+        ];
+    }
+
+    /**
+     * Condizioni generali di vendita, uguali per tutti i piani: IVA, commissione sui pagamenti online e cosa non è
+     * disponibile durante la prova. I cataloghi che non le dicono hanno i valori di partenza.
+     *
+     * @return array{vat: array{mode: string, note: string}, payments: array{own_gateway_percent: int, collected_by_us_percent: int}, trial: array{exports: bool, accountant_access: bool}}
+     */
+    private static function terms(mixed $value): array
+    {
+        $terms = self::object($value, 'terms', ['vat', 'payments', 'trial']);
+        $vat = self::object($terms['vat'] ?? [], 'terms.vat', ['mode', 'note']);
+        $payments = self::object($terms['payments'] ?? [], 'terms.payments', ['own_gateway_percent', 'collected_by_us_percent']);
+        $trial = self::object($terms['trial'] ?? [], 'terms.trial', ['exports', 'accountant_access']);
+
+        $exempt = ($vat['mode'] ?? 'standard') === 'exempt';
+        if (! $exempt && ($vat['mode'] ?? 'standard') !== 'standard') {
+            throw new InvalidArgumentException('terms.vat.mode deve essere standard o exempt');
+        }
+
+        return [
+            'vat' => ['mode' => $exempt ? 'exempt' : 'standard', 'note' => $exempt ? self::text($vat['note'] ?? null, 'terms.vat.note', 300) : ''],
+            'payments' => [
+                'own_gateway_percent' => self::int($payments['own_gateway_percent'] ?? 0, 'terms.payments.own_gateway_percent', 0, 30),
+                'collected_by_us_percent' => self::int($payments['collected_by_us_percent'] ?? 3, 'terms.payments.collected_by_us_percent', 0, 30),
+            ],
+            'trial' => [
+                'exports' => self::bool($trial['exports'] ?? false, 'terms.trial.exports'),
+                'accountant_access' => self::bool($trial['accountant_access'] ?? false, 'terms.trial.accountant_access'),
+            ],
         ];
     }
 

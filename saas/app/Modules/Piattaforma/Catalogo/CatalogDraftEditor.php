@@ -337,6 +337,31 @@ final readonly class CatalogDraftEditor
     }
 
     /**
+     * Condizioni generali dal modulo: IVA, commissione sui pagamenti online, limiti della prova.
+     *
+     * @param  array<string, mixed>  $input
+     *
+     * @throws InvalidArgumentException
+     */
+    public function saveTerms(array $input, string $staffId): void
+    {
+        $exempt = ($input['vat_mode'] ?? null) === 'exempt';
+        $document = $this->document();
+        $document['terms'] = [
+            'vat' => ['mode' => $exempt ? 'exempt' : 'standard', 'note' => $exempt ? $this->str($input['vat_note'] ?? null) : ''],
+            'payments' => [
+                'own_gateway_percent' => CatalogForm::int($input['own_gateway_percent'] ?? null),
+                'collected_by_us_percent' => CatalogForm::int($input['collected_by_us_percent'] ?? null),
+            ],
+            'trial' => [
+                'exports' => ($input['trial_exports'] ?? null) === '1',
+                'accountant_access' => ($input['trial_accountant_access'] ?? null) === '1',
+            ],
+        ];
+        $this->publisher->saveDraft($document, $staffId);
+    }
+
+    /**
      * @return array<string, mixed>
      *
      * @throws InvalidArgumentException
