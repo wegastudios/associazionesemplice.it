@@ -1647,6 +1647,8 @@ asem_ok( ! $acts->has_active_booking( $late_s, $founder ), 'amministratore: può
 $html = $as( $u_f, '[associazionesemplice_area_soci]' );
 asem_ok( false !== strpos( $html, 'Cambia nominativo' ) && false !== strpos( $html, 'asem_front_transfer_booking' ), 'area soci: pulsante Cambia nominativo' );
 asem_ok( false !== strpos( $html, 'non è cancellabile' ) || false !== strpos( $html, 'Puoi annullare fino al' ), 'area soci: spiega se e fino a quando si può annullare' );
+asem_ok( false !== strpos( $html, '<details class="asemf-details asemf-collapse" open><summary><h3>Le mie attività</h3></summary>' ) && false !== strpos( $html, '<summary><h3>Pagamenti</h3></summary>' ), 'area soci: attività e pagamenti sono sezioni richiudibili, aperte di partenza' );
+asem_ok( substr_count( $html, '<details class="asemf-details asemf-collapse"' ) === substr_count( $html, 'asemf-collapsible' ), 'area soci: ogni sezione richiudibile ha il suo titolo e il suo riquadro' );
 
 // Pagina attività: creazione con cancellabilità e pagina scheda
 asem_render( array( Admin\ActivitiesPage::class, 'render_detail' ), 'Cancellabile anche se a pagamento', array( 'id' => $can7 ) );

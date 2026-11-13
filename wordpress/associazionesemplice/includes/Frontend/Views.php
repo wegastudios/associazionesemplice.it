@@ -702,7 +702,7 @@ final class Views {
 			. '<div><dt>Email</dt><dd>' . esc_html( (string) $p['email'] ) . '</dd></div></dl>'
 			. '<p class="asemf-small asemf-muted">Per cambiare nome o email scrivi all\'associazione.</p>'
 			. self::form( 'asem_front_profile', $fields, 'Salva' )
-			. '<p class="asemf-small"><a href="' . esc_url( \AssociazioneSemplice\Privacy::export_url( (int) $p['id'] ) ) . '">Scarica i miei dati (JSON)</a>'
+			. '<p class="asemf-small"><a href="' . esc_url( \AssociazioneSemplice\Privacy::export_url( (int) $p['id'] ) ) . '">Scarica i miei dati</a>'
 			. ( '' !== (string) Settings::get( 'privacy_url' ) ? ' · <a href="' . esc_url( (string) Settings::get( 'privacy_url' ) ) . '" target="_blank" rel="noopener">Informativa sulla privacy</a>' : '' ) . '</p></section>';
 	}
 
@@ -948,7 +948,7 @@ final class Views {
 				foreach ( $items as $o ) {
 					$html .= '<div class="asemf-small">' . ( $o['start'] ? esc_html( $o['start'] . ( $o['end'] ? '-' . $o['end'] : '' ) ) . ' &middot; ' : '' ) . esc_html( $o['title'] )
 						. ( $o['location'] ? ' <span class="asemf-muted">&middot; ' . esc_html( $o['location'] ) . '</span>' : '' )
-						. ( in_array( (int) $o['activity_id'], $mine, true ) ? ' <strong>&middot; la tua</strong>' : '' ) . '</div>';
+						. ( in_array( (int) $o['activity_id'], $mine, true ) ? ' <strong>&middot; sei iscritto</strong>' : '' ) . '</div>';
 				}
 				$html .= '</div></li>';
 			}
@@ -1110,7 +1110,7 @@ final class Views {
 		$html = self::section_complete( $p );
 		foreach ( self::my_sections() as $s ) {
 			$map = array( 'tessera' => 'section_card', 'attivita' => 'section_activities', 'calendario' => 'section_calendar', 'pagamenti' => 'section_pay', 'ospiti' => 'section_guests', 'minori' => 'section_minors', 'profilo' => 'section_profile', 'regolamento' => 'section_rules', 'avvisi' => 'section_notices' );
-			$html .= isset( $map[ $s ] ) ? self::{$map[ $s ]}( $p ) : (string) apply_filters( 'asem_area_section', '', $s, $p );
+			$html .= isset( $map[ $s ] ) ? self::collapsible( self::{$map[ $s ]}( $p ) ) : (string) apply_filters( 'asem_area_section', '', $s, $p );
 			if ( 'tessera' === $s ) {
 				$html .= (string) apply_filters( 'asem_after_card', '' ); // invito all'app (Pro)
 			}
@@ -1118,6 +1118,21 @@ final class Views {
 		return self::jump_nav( $html );
 	}
 
+
+	/**
+	 * Rende richiudibile una sezione lunga dell'area soci: il titolo diventa il «summary» di un <details>, con tutto il contenuto uguale.
+	 * Nasce aperta (senza JavaScript resta tutta aperta); da telefono frontend.js chiude le sezioni dopo la prima. Le sezioni senza titolo,
+	 * quelle da accettare (regolamento) e l'avviso «Completa i tuoi dati» restano com'erano.
+	 */
+	private static function collapsible( string $html ): string {
+		if ( 1 !== substr_count( $html, '<section' ) || false !== strpos( $html, 'asemf-rules-box' ) || false !== strpos( $html, 'asemf-complete' ) ) {
+			return $html;
+		}
+		if ( ! preg_match( '#^<section class="([^"]*)">\s*<h3>(.*?)</h3>(.*)</section>$#s', $html, $m ) ) {
+			return $html;
+		}
+		return '<section class="' . $m[1] . ' asemf-collapsible"><details class="asemf-details asemf-collapse" open><summary><h3>' . $m[2] . '</h3></summary>' . $m[3] . '</details></section>';
+	}
 
 	/** Icona della voce della barra: dal titolo della sezione (tessera, attività, pagamenti, profilo…). */
 	private static function jump_icon( string $title ): string {
@@ -1143,7 +1158,7 @@ final class Views {
 		$n     = 0;
 		$items = array();
 		$html  = (string) preg_replace_callback(
-			'#<section class="(asemf-section[^"]*)">(\s*<h3>(.*?)</h3>)?#s',
+			'#<section class="(asemf-section[^"]*)">(\s*(?:<details[^>]*>\s*<summary>\s*)?<h3>(.*?)</h3>)?#s',
 			function ( $m ) use ( &$n, &$items ) {
 				if ( empty( $m[3] ) || false !== strpos( $m[1], 'asemf-complete' ) ) {
 					return $m[0];

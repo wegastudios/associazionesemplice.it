@@ -217,3 +217,22 @@
 	window.addEventListener('load', ask);
 	ask();
 })();
+
+/* Area soci da telefono: le sezioni richiudibili partono chiuse, tranne la prima; da computer restano tutte aperte. La barra in basso apre la sezione scelta. */
+(function () {
+	'use strict';
+	function init() {
+		var all = document.querySelectorAll('.asemf-collapse');
+		if (!all.length) { return; }
+		if (window.matchMedia && window.matchMedia('(max-width: 700px)').matches) {
+			all.forEach(function (d, i) { if (i > 0) { d.removeAttribute('open'); } });
+		}
+	}
+	document.addEventListener('click', function (e) {
+		var a = e.target && e.target.closest ? e.target.closest('.asemf-jump a[href^="#"]') : null;
+		var t = a ? document.getElementById(a.getAttribute('href').slice(1)) : null;
+		var d = t ? t.querySelector('.asemf-collapse') : null;
+		if (d) { d.setAttribute('open', ''); }
+	});
+	if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
+})();

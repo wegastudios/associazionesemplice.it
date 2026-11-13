@@ -598,7 +598,13 @@ final class PublicEvents {
 		if ( ! has_post_thumbnail( $post ) ) {
 			return '';
 		}
-		return '<figure class="asemf-poster">' . wp_get_attachment_image( (int) get_post_thumbnail_id( $post ), 'large' ) . '</figure>'; // direttamente: il filtro del tema che toglie la locandina duplicata non deve toccare questa
+		$tid  = (int) get_post_thumbnail_id( $post );
+		$full = (string) wp_get_attachment_image_url( $tid, 'full' );
+		$img  = wp_get_attachment_image( $tid, 'large' );
+		if ( '' !== $full ) { // la locandina intera si apre in un'altra scheda, senza JavaScript
+			$img = '<a href="' . esc_url( $full ) . '" target="_blank" rel="noopener" aria-label="Apri la locandina a grandezza intera (si apre in un\'altra scheda)">' . $img . '</a>';
+		}
+		return '<figure class="asemf-poster">' . $img . '</figure>'; // direttamente: il filtro del tema che toglie la locandina duplicata non deve toccare questa
 	}
 
 	private static function facts_html( array $a ): string {

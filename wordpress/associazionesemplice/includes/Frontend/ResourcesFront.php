@@ -210,7 +210,7 @@ final class ResourcesFront {
 		foreach ( $list as $r ) {
 			$open  = (int) $r['id'] === $sel_id;
 			$html .= '<details class="asemf-card"' . ( $open ? ' open' : '' ) . '><summary><strong>' . esc_html( $r['name'] ) . '</strong> · ' . esc_html( ResourceRules::categories()[ $r['category'] ] ?? '' ) . ' · ' . self::fee_text( $r ) // phpcs:ignore WordPress.Security.EscapeOutput
-				. ( (int) $r['guests_max'] > 0 ? ' · ospiti fino a ' . (int) $r['guests_max'] : '' ) . '</summary>';
+				. ( (int) $r['guests_max'] > 0 ? ( 1 === (int) $r['guests_max'] ? ' · puoi portare 1 ospite' : ' · puoi portare fino a ' . (int) $r['guests_max'] . ' ospiti' ) : '' ) . '</summary>';
 			if ( '' !== trim( (string) $r['description'] ) ) {
 				$html .= '<p>' . esc_html( $r['description'] ) . '</p>';
 			}
