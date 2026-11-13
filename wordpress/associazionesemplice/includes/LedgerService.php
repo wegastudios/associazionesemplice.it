@@ -55,13 +55,17 @@ class LedgerService {
 		return (int) $this->db()->insert_id;
 	}
 
-	/** Rinomina e cambia tipo e saldo di partenza: i saldi si ricalcolano da soli. */
+	/** Rinomina e cambia tipo e saldo di partenza: i saldi si ricalcolano da soli. Nome e tipo sono bloccati se il conto ha movimenti in un esercizio chiuso. */
 	public function update_account( int $id, string $name, string $type, int $opening_cents ): void {
 		$old = $this->account_any( $id );
 		if ( ! $old ) {
 			throw new \InvalidArgumentException( 'Conto non trovato.' );
 		}
 		$name = $this->check_account_fields( $name, $type );
+		if ( $old['name'] !== $name || $old['type'] !== $type ) {
+			// il nome e il tipo finiscono nella fotografia del rendiconto: con movimenti in un esercizio chiuso non si cambiano più
+			YearLock::assert_rows_open( 'transactions', 'tx_date', $this->db()->prepare( 'account_id = %d AND voided_at IS NULL', $id ) );
+		}
 		if ( (int) $old['opening_cents'] !== $opening_cents ) {
 			YearLock::assert_none_closed(); // il saldo iniziale cambia anche i saldi degli esercizi chiusi
 		}
