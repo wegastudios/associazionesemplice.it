@@ -40,7 +40,7 @@ function planFormInput(array $overrides = []): array
         'name' => $plan['name'],
         'audience' => $plan['audience'],
         'order' => (string) $plan['order'],
-        'visible' => '1',
+        'visible' => $plan['visible'] ? '1' : '',
         'support_level' => $plan['support_level'],
         'trial_days' => (string) $plan['trial_days'],
         'limits' => ['members' => '', 'operators' => '1', 'storage_mb_per_member' => '5', 'storage_mb_min' => '250'],
@@ -159,7 +159,7 @@ it('modifica un pacchetto esistente senza poterne cambiare il tipo', function ()
     $this->post('/saas/admin/catalogo/pacchetti/site', [
         'kind' => 'operators', // ignorato: il tipo di un pacchetto già creato non cambia
         'name' => 'Sito web',
-        'visible' => '1',
+        'visible' => $plan['visible'] ? '1' : '',
         'grant_package' => 'site',
         'prices' => [['kind' => 'flat', 'period' => 'month', 'vat_percent' => '22', 'amount' => '21']],
     ])->assertRedirect('/saas/admin/catalogo/pacchetti');
