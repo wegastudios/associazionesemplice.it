@@ -57,11 +57,27 @@ class GuideContentSeeder extends Seeder
                 $section->forceFill(['name' => $guide['section'], 'sort' => $sectionSort[$topic->id]++])->save();
             }
 
+            // Se una guida cambia sezione non resta il doppione nella vecchia
+            Article::query()->where('slug', $guide['slug'])->where('section_id', '!=', $section->id)->delete();
+
             Article::query()->updateOrCreate(
                 ['section_id' => $section->id, 'slug' => $guide['slug']],
-                ['title' => $this->planNames($guide['title']), 'body' => $this->planNames(trim($guide['body'])), 'is_published' => true],
+                ['title' => $this->planNames($guide['title']), 'body' => $this->planNames($this->pluginNotice($guide['topic'], trim($guide['body']))), 'is_published' => true],
             );
         }
+
+        // Sezioni rimaste vuote dopo uno spostamento
+        Section::query()->doesntHave('articles')->delete();
+    }
+
+    /** In cima alle guide del plugin: chi usa il gestionale online trova la strada per le sue guide. */
+    private function pluginNotice(string $topic, string $body): string
+    {
+        if (in_array($topic, self::SAAS_TOPICS, true) || $topic === 'domande-frequenti') {
+            return $body;
+        }
+
+        return "> Questa guida vale per il **plugin WordPress**. Usi il gestionale online? Vai alle [guide del gestionale](/argomenti/gestionale).\n\n".$body;
     }
 
     /** Sostituisce {piano_contabile} e {piano_fiscale} con i nomi in config('support.plan_names'). */

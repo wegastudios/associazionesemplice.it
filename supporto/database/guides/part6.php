@@ -56,7 +56,7 @@ MD,
 
 L'apertura e la chiusura degli anni solari sono incluse anche nel piano gratuito.
 
-Se la tua associazione non ha partita IVA e un commercialista che richiede questi documenti, {piano_contabile} è di solito sufficiente. Puoi passare da un piano all'altro dall'area riservata, senza reinstallare nulla.
+Se la tua associazione non ha partita IVA e un commercialista che richiede questi documenti, {piano_contabile} è di solito sufficiente. Puoi passare da un piano all'altro dall'area soci, senza reinstallare nulla.
 MD,
     ],
     [
@@ -138,7 +138,7 @@ MD,
         'body' => <<<'MD'
 Dall'**area riservata** di associazionesemplice.it. I piani Pro si rinnovano da soli, ma puoi disdire il rinnovo, cambiare piano o aggiornare i dati di fatturazione in autonomia, senza vincoli.
 
-Se disdici, alla scadenza il plugin torna alle funzioni di base senza toccare i dati. Se hai pagato con Stripe, dall'area riservata puoi aprire anche il portale di fatturazione del fornitore.
+Se disdici, alla scadenza il plugin torna alle funzioni di base senza toccare i dati. Se hai pagato con Stripe, dall'area soci puoi aprire anche il portale di fatturazione del fornitore.
 MD,
     ],
     [
@@ -163,7 +163,7 @@ MD,
         'topic' => 'domande-frequenti', 'section' => 'Uso quotidiano', 'slug' => 'soci-senza-email',
         'title' => 'Posso gestire soci che non hanno un indirizzo email?',
         'body' => <<<'MD'
-Sì. Nella scheda del socio l'**email è facoltativa**. Con l'email il socio ha subito accesso all'area riservata. Senza email resta nel libro soci con tessera, quote e partecipazioni, e l'accesso si attiva con un **link da mandargli su WhatsApp**. Gli **ospiti** senza email ricevono avvisi e promemoria tramite il socio che li ospita.
+Sì. Nella scheda del socio l'**email è facoltativa**. Con l'email il socio ha subito accesso all'area soci. Senza email resta nel libro soci con tessera, quote e partecipazioni, e l'accesso si attiva con un **link da mandargli su WhatsApp**. Gli **ospiti** senza email ricevono avvisi e promemoria tramite il socio che li ospita.
 
 Se un socio vuole accedere e non ha l'email, può usare il **Primo accesso** indicando il cellulare: la segreteria verifica la persona e approva l'accesso. Vedi [Primo accesso dei soci e soci senza email](guida:primo-accesso-e-soci-senza-email).
 MD,
@@ -172,7 +172,7 @@ MD,
         'topic' => 'domande-frequenti', 'section' => 'Uso quotidiano', 'slug' => 'pagamenti-con-carta',
         'title' => 'Posso far pagare i soci con carta o PayPal?',
         'body' => <<<'MD'
-Sì, con **Pro** (Contabile o Fiscale): i pagamenti online funzionano con **Stripe**, **PayPal**, **SumUp** (anche insieme) o, in alternativa, con **WooCommerce**. Il socio paga dall'area riservata e l'incasso entra da solo in prima nota, con la ricevuta.
+Sì, con **Pro** (Contabile o Fiscale): i pagamenti online funzionano con **Stripe**, **PayPal**, **SumUp** (anche insieme) o, in alternativa, con **WooCommerce**. Il socio paga dall'area soci e l'incasso entra da solo in prima nota, con la ricevuta.
 
 Nel **plugin gratuito** puoi comunque indicare le coordinate del bonifico, registrare a mano contanti e bonifici e ricevere **donazioni** con un modulo che porta alla pagina di PayPal. Vedi [Attivare i pagamenti online](guida:attivare-stripe-o-paypal).
 MD,
@@ -246,7 +246,7 @@ MD,
         'body' => <<<'MD'
 Cerca prima nelle guide con il campo di ricerca del [centro assistenza](/cerca): la maggior parte delle procedure è descritta passo per passo.
 
-Se non trovi la risposta, **apri una richiesta**: accedi dall'area riservata, scegli l'argomento e descrivi il problema, indicando la versione del plugin e, se puoi, i passi che hai fatto. Il tuo indirizzo email e il tuo piano vengono compilati da soli. Riceverai un numero di riferimento e potrai seguire le risposte dalla pagina **I miei ticket**.
+Se non trovi la risposta, **apri una richiesta**: accedi dall'area soci, scegli l'argomento e descrivi il problema, indicando la versione del plugin e, se puoi, i passi che hai fatto. Il tuo indirizzo email e il tuo piano vengono compilati da soli. Riceverai un numero di riferimento e potrai seguire le risposte dalla pagina **I miei ticket**.
 MD,
     ],
     [
@@ -256,7 +256,7 @@ MD,
 Sì, in tutte le versioni. I permessi si assegnano dalla **scheda del socio** e valgono solo finché la persona ha il ruolo (e, per le cariche, la tessera in regola):
 
 - **Segreteria**: gestisce soci, attività, incassi, registri e comunicazioni, senza impostazioni.
-- **Tesoriere**: incassa, registra le spese e iscrive nuovi soci dall'area riservata, senza vedere comunicazioni e impostazioni.
+- **Tesoriere**: incassa, registra le spese e iscrive nuovi soci dall'area soci, senza vedere comunicazioni e impostazioni.
 - **Volontario**: gestisce solo le attività di cui è referente.
 - **Staff**: verifica gli ingressi agli eventi.
 

@@ -3,7 +3,7 @@
 // Guide: assemblee e deleghe, bilancio preventivo, rimborsi ai volontari (Pro, blocco D).
 return [
     [
-        'topic' => 'plugin-pro', 'section' => 'Registri', 'slug' => 'assemblee-e-deleghe',
+        'topic' => 'plugin-pro', 'section' => 'Registri del Pro', 'slug' => 'assemblee-e-deleghe',
         'title' => 'Convocare l\'assemblea e gestire presenze e deleghe',
         'body' => <<<'MD'
 > Disponibile in: {piano_contabile}, {piano_fiscale} (non nel plugin gratuito)
@@ -27,7 +27,7 @@ I soci con la **tessera in regola**, non sospesi e non usciti. Tutori e ospiti n
 
 ## Le deleghe
 
-- Il socio sceglie un altro socio dalla sua **area riservata**, sezione **«Assemblee»** (anche con lo shortcode `[associazionesemplice_assemblee]`).
+- Il socio sceglie un altro socio dalla sua **area soci**, sezione **«Assemblee»** (anche con lo shortcode `[associazionesemplice_assemblee]`).
 - Oppure la segreteria registra una **delega scritta** ricevuta.
 
 Le regole: ogni socio può dare **una sola delega** per assemblea e riceverne **al massimo 3** (5 se i soci sono almeno 500). Chi riceve una delega non può delegare, e chi ha delegato non può riceverne. Non si delega a chi non è socio in regola.
@@ -98,7 +98,7 @@ I rimborsi ti fanno gestire le richieste dei volontari dall'approvazione al paga
 
 ## Chi chiede il rimborso
 
-Il **volontario** lo chiede dall'**area riservata**, sezione **«Rimborsi spese»** (anche con lo shortcode `[associazionesemplice_rimborsi]`). La segreteria può registrare una richiesta per lui da **Cassa → Rimborsi**. La voce compare solo ai volontari: gli altri soci non vedono nulla e le spese le gestisce la segreteria. Tutori e ospiti non sono soci e non chiedono rimborsi.
+Il **volontario** lo chiede dall'**area soci**, sezione **«Rimborsi spese»** (anche con lo shortcode `[associazionesemplice_rimborsi]`). La segreteria può registrare una richiesta per lui da **Cassa → Rimborsi**. La voce compare solo ai volontari: gli altri soci non vedono nulla e le spese le gestisce la segreteria. Tutori e ospiti non sono soci e non chiedono rimborsi.
 
 ## I tre tipi
 

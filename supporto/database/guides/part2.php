@@ -1,6 +1,6 @@
 <?php
 
-// Guide: soci, tessere e area riservata.
+// Guide: soci, tessere e area soci.
 return [
     [
         'topic' => 'soci-e-tessere', 'section' => 'Soci', 'slug' => 'importare-i-soci-da-excel-o-csv',
@@ -40,13 +40,13 @@ MD,
 
 ## Iscrivere un nuovo socio
 
-1. Vai nell'elenco **Soci** e aggiungi una nuova persona con nome e cognome. L'**email è facoltativa**: con l'email il socio ha subito l'accesso all'area riservata; senza, l'accesso si attiva con un link da mandargli su WhatsApp.
+1. Vai nell'elenco **Soci** e aggiungi una nuova persona con nome e cognome. L'**email è facoltativa**: con l'email il socio ha subito l'accesso all'area soci; senza, l'accesso si attiva con un link da mandargli su WhatsApp.
 2. Registra la quota associativa dalla scheda del socio o dall'incasso: se il socio ha la tessera non valida, la quota si inserisce da sola in qualunque incasso.
 3. La tessera si attiva quando la quota è **saldata** (vedi «Quota pagata a rate» più sotto).
 
 La scheda del socio è divisa in sezioni. Nell'elenco dei soci, il foglio **«Altro»** raccoglie le azioni meno usate. Anche la prima nota e l'incasso sono più leggibili, soprattutto da telefono.
 
-I nuovi soci **non hanno più un utente WordPress**: entrano nell'area riservata con **email e password** (obbligatoria, la scelgono alla prima entrata); il link o codice ricevuto per email resta come opzione. L'utente WordPress nasce **solo quando si dà un potere** al socio (segreteria, tesoriere, staff). Chi ha già un utente WordPress continua a entrare da WordPress. Se esiste già un utente con l'email del socio, viene collegato senza cambiargli ruolo. Se quell'utente ha **altri ruoli** (redattore, amministratore…) la segreteria vede un errore: **solo un amministratore** può collegarlo.
+I nuovi soci **non hanno più un utente WordPress**: entrano nell'area soci con **email e password** (obbligatoria, la scelgono alla prima entrata); il link o codice ricevuto per email resta come opzione. L'utente WordPress nasce **solo quando si dà un potere** al socio (segreteria, tesoriere, staff). Chi ha già un utente WordPress continua a entrare da WordPress. Se esiste già un utente con l'email del socio, viene collegato senza cambiargli ruolo. Se quell'utente ha **altri ruoli** (redattore, amministratore…) la segreteria vede un errore: **solo un amministratore** può collegarlo.
 
 Se preferisci un utente WordPress per ogni socio (per esempio per usare WooCommerce con il loro account), vedi [Come entrano i soci: link, codice o utente WordPress](guida:accesso-dei-soci-link-codice-o-utente-wordpress).
 
@@ -134,7 +134,7 @@ I permessi derivano dai dati della persona, non solo dai ruoli di WordPress. Si 
 - **Amministratore** del sito: tutto, comprese impostazioni, pagamenti online e copia di sicurezza.
 - **Segreteria**: gestisce soci, attività, incassi, registri e comunicazioni dall'amministrazione, senza essere amministratore del sito e senza accesso alle impostazioni.
 - **Presidente e vicepresidente**: agiscono come la segreteria finché la carica e la tessera sono valide.
-- **Tesoriere**: dall'area riservata incassa, registra le spese, iscrive nuovi soci e vende gli eventi. Non vede comunicazioni né impostazioni.
+- **Tesoriere**: dall'area soci incassa, registra le spese, iscrive nuovi soci e vende gli eventi. Non vede comunicazioni né impostazioni.
 - **Volontario**: non gestisce soldi; per le attività di cui è referente gestisce avvisi agli iscritti, staff e ingressi.
 - **Staff dell'ente**: verifica gli ingressi di tutti gli eventi, ma manda avvisi solo agli iscritti degli eventi di cui è staff.
 - **Staff dell'evento**: verifica gli ingressi di quell'evento e, se abilitato, incassa il biglietto sul posto.
@@ -209,11 +209,11 @@ MD,
     ],
     [
         'topic' => 'soci-e-tessere', 'section' => 'Area riservata', 'slug' => 'area-riservata-dei-soci',
-        'title' => 'Creare l\'area riservata dei soci',
+        'title' => 'Creare l\'area soci dei soci',
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-L'area riservata è la pagina dove ogni socio trova il suo spazio: tessera, attività, pagamenti, ospiti, profilo, avvisi e calendario.
+L'area soci è la pagina dove ogni socio trova il suo spazio: tessera, attività, pagamenti, ospiti, profilo, avvisi e calendario.
 
 ## Creare la pagina
 
@@ -245,10 +245,10 @@ MD,
 
 ## Come entra un socio la prima volta
 
-Nella pagina di accesso e nell'area riservata c'è il link **Primo accesso**.
+Nella pagina di accesso e nell'area soci c'è il link **Primo accesso**.
 
 1. Il socio indica nome, email e cellulare.
-2. Se l'email è già quella di un socio, gli arriva il link per scegliere la password. Il link abilita l'accesso ma **non fa entrare da solo**: il socio torna all'area riservata ed entra con le sue credenziali.
+2. Se l'email è già quella di un socio, gli arriva il link per scegliere la password. Il link abilita l'accesso ma **non fa entrare da solo**: il socio torna all'area soci ed entra con le sue credenziali.
 3. Se non c'è corrispondenza sull'email, la richiesta arriva alla segreteria.
 
 Il socio può anche entrare con un **link o un codice** che riceve per email, senza password; la password però è **obbligatoria** e va scelta alla prima entrata. Vedi [Come entrano i soci: link, codice o utente WordPress](guida:accesso-dei-soci-link-codice-o-utente-wordpress).
@@ -265,7 +265,7 @@ Se il socio ha indicato solo il cellulare, il plugin **non modifica nulla da sol
 
 ## Soci senza email
 
-Nella scheda del socio l'**email è facoltativa**. Con l'email il socio ha subito l'accesso all'area riservata. Senza email, l'accesso si attiva con un **link da mandare al socio su WhatsApp**.
+Nella scheda del socio l'**email è facoltativa**. Con l'email il socio ha subito l'accesso all'area soci. Senza email, l'accesso si attiva con un **link da mandare al socio su WhatsApp**.
 
 ## Se l'ente chiede dati obbligatori
 
@@ -280,7 +280,7 @@ MD,
 
 ## Come entra un socio
 
-I nuovi soci **non hanno un utente WordPress**. Entrano nell'area riservata con **email e password**. La password è **obbligatoria**: il socio la sceglie **alla prima entrata** o quando attiva l'accesso dal link; finché non l'ha scelta l'area riservata resta chiusa.
+I nuovi soci **non hanno un utente WordPress**. Entrano nell'area soci con **email e password**. La password è **obbligatoria**: il socio la sceglie **alla prima entrata** o quando attiva l'accesso dal link; finché non l'ha scelta l'area soci resta chiusa.
 
 La pagina di accesso è **una sola schermata**: il socio sceglie se entrare con la **password** o con un **link** che riceve per email. Con la casella **«Ricordami»** resta collegato per **30 giorni** su quel dispositivo.
 
@@ -290,7 +290,7 @@ Il **link** o il **codice** ricevuto per email restano come opzione, per entrare
 
 **«Password dimenticata»** manda un link che fa entrare, ma **obbliga a scegliere una nuova password** prima di navigare. Cambiata la password, gli **altri dispositivi devono rientrare**.
 
-Per **cambiare** la password dall'area riservata serve **quella attuale**; anche in questo caso gli altri dispositivi vengono chiusi.
+Per **cambiare** la password dall'area soci serve **quella attuale**; anche in questo caso gli altri dispositivi vengono chiusi.
 
 ## Quando nasce un utente WordPress
 

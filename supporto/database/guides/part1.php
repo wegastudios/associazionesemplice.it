@@ -55,7 +55,7 @@ Parte da sola alla prima attivazione. Puoi riaprirla quando vuoi da **Strumenti 
 
 ## Dopo la procedura
 
-Apri **Impostazioni → Guida iniziale**: sette controlli sullo stato reale dei dati (denominazione, quota, soci, presidente, area riservata, primo corso o evento, copia di sicurezza) ti dicono cosa manca.
+Apri **Impostazioni → Guida iniziale**: sette controlli sullo stato reale dei dati (denominazione, quota, soci, presidente, area soci, primo corso o evento, copia di sicurezza) ti dicono cosa manca.
 MD,
     ],
     [
@@ -252,7 +252,7 @@ Se hai già la licenza gratuita, puoi provare un piano Pro **per 30 giorni**, un
 
 ## Rinnovare, cambiare o disdire
 
-I piani si rinnovano da soli. Dall'area riservata puoi rinnovare, cambiare piano, aggiornare i dati di fatturazione o disdire il rinnovo in autonomia. Se non rinnovi, alla scadenza il plugin torna alle funzioni di base senza toccare i tuoi dati.
+I piani si rinnovano da soli. Dall'area soci puoi rinnovare, cambiare piano, aggiornare i dati di fatturazione o disdire il rinnovo in autonomia. Se non rinnovi, alla scadenza il plugin torna alle funzioni di base senza toccare i tuoi dati.
 
 > I prezzi e le funzioni dei piani sono sempre aggiornati nella pagina [associazionesemplice.it](https://associazionesemplice.it). Per il confronto completo vedi [Free, {piano_contabile} e {piano_fiscale} a confronto](guida:free-pro-contabile-e-pro-fiscale-a-confronto).
 MD,

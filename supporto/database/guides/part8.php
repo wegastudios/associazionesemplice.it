@@ -43,7 +43,7 @@ Se la data di nascita indica un **minorenne**, il modulo chiede anche i dati del
 
 ## La tessera e la quota
 
-- L'iscrizione all'anno sociale **non si registra all'approvazione**: la tessera diventa valida **con l'incasso della quota**. La quota resta tra le voci da pagare, in sede o online dall'area riservata.
+- L'iscrizione all'anno sociale **non si registra all'approvazione**: la tessera diventa valida **con l'incasso della quota**. La quota resta tra le voci da pagare, in sede o online dall'area soci.
 - Se la quota è stata già pagata online con la domanda, o è zero, la tessera vale **subito**.
 - Il **pagamento online della quota alla domanda** funziona solo con **Stripe o PayPal** (Pro), non con WooCommerce. Se rifiuti la domanda, il pagamento resta **«da rimborsare»**: il rimborso si fa dal pannello del fornitore.
 MD,
@@ -62,13 +62,13 @@ Un minore si registra con **uno o due genitori o tutori**, anche non soci e senz
 2. Scegli **uno o due tutori**: un socio o una persona di tipo **«genitore o tutore»**, anche **senza email**. Un tutore deve essere maggiorenne (se la sua data è nota). Un ospite non può essere tutore. Se ne indichi due, sul sito **opera solo il primo**.
 3. Salva.
 
-Il genitore o tutore di tipo **«Genitore o tutore (non socio)»** **non è socio**: non compare nel libro soci, non ha la tessera, non paga la quota, non riceve i promemoria di rinnovo e non vota. Può invece entrare nell'area riservata per seguire il minore: riceve l'invito per scegliere la password, gli avvisi e i promemoria del minore. Il minore può anche non avere né email né utente WordPress, e può usare l'email del genitore.
+Il genitore o tutore di tipo **«Genitore o tutore (non socio)»** **non è socio**: non compare nel libro soci, non ha la tessera, non paga la quota, non riceve i promemoria di rinnovo e non vota. Può invece entrare nell'area soci per seguire il minore: riceve l'invito per scegliere la password, gli avvisi e i promemoria del minore. Il minore può anche non avere né email né utente WordPress, e può usare l'email del genitore.
 
 ## Da una domanda di adesione online
 
 Se chi compila la domanda risulta minorenne dalla data di nascita, il modulo chiede anche nome, cognome, email e cellulare del genitore o tutore (il codice fiscale è facoltativo), e lo fa dichiarare come tale. Email e cellulare del minore diventano facoltativi. Vedi [Ricevere le domande di adesione online](guida:domanda-di-adesione-online).
 
-## Cosa fa il genitore dall'area riservata
+## Cosa fa il genitore dall'area soci
 
 La sezione **«I miei figli»** (shortcode `[associazionesemplice_minori]`, già nell'area soci) mostra per ogni minore:
 
@@ -83,7 +83,7 @@ Promemoria, avvisi delle attività e ricevute arrivano anche ai tutori, o **solo
 
 Nella Bacheca e in **Da lavorare** compare **«Maggiorenni da invitare»** con i ragazzi che non hanno ancora un accesso. Aggiungendo la loro email nella scheda, gli arriva l'invito per scegliere la password.
 
-**A 18 anni il genitore o tutore collegato smette di agire per il ragazzo**, anche se questo non ha ancora un accesso suo: non lo vede più nell'area riservata, non prenota né paga per lui e non riceve più le sue email. Il **collegamento resta registrato** e si toglie dalla scheda.
+**A 18 anni il genitore o tutore collegato smette di agire per il ragazzo**, anche se questo non ha ancora un accesso suo: non lo vede più nell'area soci, non prenota né paga per lui e non riceve più le sue email. Il **collegamento resta registrato** e si toglie dalla scheda.
 
 Se preferisci che il tutore continui anche dopo i 18 anni, come nelle versioni precedenti, spegni in **Impostazioni → Limiti e soglie** l'opzione **«Il tutore smette di agire per chi compie 18 anni»** (è **accesa** di partenza).
 
