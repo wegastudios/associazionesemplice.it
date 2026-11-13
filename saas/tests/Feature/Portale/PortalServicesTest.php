@@ -28,6 +28,10 @@ function servicesCatalog(array $extra = []): Catalog
     $small['limits']['operators'] = 0;
     $small['limits']['packages'] = [];
     $doc['plans'][] = $small;
+    // Qui i pacchetti si vendono su ogni piano: il vincolo per piano ha i suoi test.
+    foreach ($doc['addons'] as $i => $addon) {
+        unset($doc['addons'][$i]['plans']);
+    }
     $doc['promos'] = [
         ['code' => 'AUTUNNO', 'name' => 'Autunno', 'discount' => ['type' => 'percent', 'value' => 20], 'plans' => ['gestionale'], 'valid_from' => '2020-01-01', 'valid_to' => '2099-12-31', 'max_uses' => 2, 'stackable' => false],
         ['code' => 'SCADUTA', 'name' => 'Vecchia', 'discount' => ['type' => 'percent', 'value' => 10], 'plans' => null, 'valid_from' => '2020-01-01', 'valid_to' => '2020-12-31', 'max_uses' => null, 'stackable' => false],

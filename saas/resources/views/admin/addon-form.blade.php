@@ -33,6 +33,12 @@
         <input id="name" name="name" value="{{ $values['name'] }}" maxlength="80" required>
         <label class="inline"><input type="checkbox" name="visible" value="1" @checked($values['visible'])> Visibile in vendita</label>
 
+        <h2>Su quali piani si compra</h2>
+        <p class="muted">Spunta i piani su cui si può comprare. Nessuna casella = su tutti. Un pacchetto già compreso in un piano non si può spuntare per quel piano.</p>
+        @foreach ($planChoices as $planCode => $planName)
+            <label class="inline"><input type="checkbox" name="plans[]" value="{{ $planCode }}" @checked(in_array($planCode, $values['plans'], true))> {{ $planName }}</label>
+        @endforeach
+
         <h2>Cosa dà</h2>
         <p class="muted">Compila solo il campo del tipo scelto.</p>
         <div class="grid">

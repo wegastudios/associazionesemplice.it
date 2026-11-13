@@ -341,5 +341,5 @@ Modulo `Piattaforma` ([PIATTAFORMA.md](PIATTAFORMA.md)). I piani, i pacchetti, i
 - **Abbonamento v2** (`PUT /api/portale/v2/orgs/{org}/subscription`): `PortalSync::applySubscription` ricava operatori, spazio e
   pacchetti dalla `plan_version` e dagli addon con `Piattaforma\Contracts\PlanLimits` e li salva come i diritti v1
   (`core.org_entitlements`, `claims` con in più la chiave `subscription`): `Entitlements` e tutto il resto restano uguali.
-  `409 unknown_plan` / `unknown_addon` non applicano nulla. La serie delle `rev` è la stessa dei diritti v1; una `rev`
+  `409 unknown_plan` / `unknown_addon` / `addon_not_allowed` (pacchetto non ammesso sul piano, campo `plans` dell'addon) non applicano nulla. La serie delle `rev` è la stessa dei diritti v1; una `rev`
   non crescente è già una ripetizione innocua, quindi per la `subscription` non serve tenere i `jti` usati.

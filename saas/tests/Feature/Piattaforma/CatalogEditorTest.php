@@ -21,6 +21,10 @@ function draftWithNewVersion(string $name = 'Gestionale 2'): array
     $plan['name'] = $name;
     $plan['visible'] = true;
     $catalog['plans'] = [$plan];
+    // Con un solo piano, i pacchetti non possono più indicare gli altri.
+    foreach ($catalog['addons'] as $i => $addon) {
+        unset($catalog['addons'][$i]['plans']);
+    }
 
     return $catalog;
 }
@@ -100,7 +104,12 @@ it('prepara in bozza il listino a tre piani dal catalogo in vigore, senza pubbli
     // Il catalogo in vigore è quello già venduto: piano a scaglioni visibile, versione 1.
     $current = config('catalogo');
     $current['plans'] = [array_replace($current['plans'][0], ['visible' => true])];
-    $current['addons'] = array_map(fn (array $a): array => array_replace($a, ['visible' => true]), $current['addons']);
+    // Il catalogo già venduto non conosce i tre piani: i suoi pacchetti non li nominano.
+    $current['addons'] = array_map(function (array $a): array {
+        unset($a['plans']);
+
+        return array_replace($a, ['visible' => true]);
+    }, $current['addons']);
     $this->post('/saas/admin/catalogo/bozza', ['document' => json_encode($current)])->assertRedirect();
     $this->post('/saas/admin/catalogo/pubblica')->assertRedirect();
 

@@ -111,3 +111,15 @@ it('porta nei diritti il tetto di soci: piano più pacchetti, e il piano comprat
     ($this->put)(subscriptionClaims($this->orgId, 2, ['plan' => 'piccola', 'members' => 50, 'addons' => []]))->assertOk();
     expect(app(Entitlements::class)->for($this->orgId)->membersLimit)->toBe(100);
 });
+
+it('rifiuta con 409 un pacchetto non ammesso sul piano e non applica nulla', function (): void {
+    ($this->put)(subscriptionClaims($this->orgId, 1, ['plan' => 'piccola', 'members' => 50, 'addons' => [['code' => 'members_500', 'qty' => 1]]]))
+        ->assertStatus(409)->assertExactJson(['error' => 'addon_not_allowed']);
+    ($this->put)(subscriptionClaims($this->orgId, 1, ['plan' => 'grande', 'members' => 1000, 'addons' => [['code' => 'operators_extra', 'qty' => 1]]]))
+        ->assertStatus(409)->assertExactJson(['error' => 'addon_not_allowed']);
+    ($this->put)(subscriptionClaims($this->orgId, 1, ['plan' => 'media', 'members' => 100, 'addons' => [['code' => 'einvoice', 'qty' => 1]]]))
+        ->assertStatus(409)->assertExactJson(['error' => 'addon_not_allowed']);
+
+    expect(DB::table('core.org_entitlements')->where('org_id', $this->orgId)->exists())->toBeFalse();
+    ($this->put)(subscriptionClaims($this->orgId, 1, ['plan' => 'media', 'members' => 100, 'addons' => [['code' => 'operators_extra', 'qty' => 1]]]))->assertOk();
+});
