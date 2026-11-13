@@ -1803,7 +1803,7 @@ check( 'catalogo: senza chiavi fissate non si scarica niente', 'off' === Catalog
 use Portale\{Quote, Orders, Outbox};
 $qdoc = json_decode( (string) json_encode( array(
 	'schema' => 'catalogo/v1', 'product' => 'saas', 'rev' => 7, 'currency' => 'EUR', 'features' => array(),
-	'plans' => array( array( 'code' => 'gestionale', 'plan_version' => 3, 'name' => 'Gestionale', 'order' => 1, 'visible' => true, 'prices' => array( $cases['members_tiers']['price'], $cases['members_tiers_year']['price'] ) ) ),
+	'plans' => array( array( 'code' => 'gestionale', 'plan_version' => 3, 'name' => 'Gestionale', 'order' => 1, 'visible' => true, 'trial_days' => 30, 'prices' => array( $cases['members_tiers']['price'], $cases['members_tiers_year']['price'] ) ) ),
 	'addons' => array( array( 'code' => 'operators_extra', 'visible' => true, 'prices' => array( array( 'period' => 'month', 'kind' => 'flat', 'amount_cents' => 300, 'vat_percent' => 22 ) ) ) ),
 ) ), true );
 $q150 = Quote::build( $qdoc, 'gestionale', 'month', 150 );
@@ -1910,7 +1910,7 @@ $cnet = function ( string $m, string $u, $h, $b ) use ( &$cseen, $ccat, $oseed, 
 		case 'promo_redeem':
 			return array( 200, '{"redeemed":true}' );
 		case 'provision':
-			return array( $provCode, $provCode >= 400 ? '{"error":"slug_taken"}' : '{"org_id":"aaaaaaaa-bbbb-cccc-dddd-000000000001","created":true}' );
+			return array( $provCode, $provCode >= 400 ? '{"error":"slug_taken"}' : '{"org_id":"aaaaaaaa-bbbb-cccc-dddd-' . substr( md5( (string) ( $cl['ref'] ?? '' ) ), 0, 12 ) . '","created":true}' );
 	}
 	return array( 200, '{}' );
 };
@@ -2063,6 +2063,51 @@ check( 'prova: se il lavoro non è girato, gli avvisi vecchi non partono in arre
 $cdb->run( 'DELETE FROM orders WHERE id = ?', array( $tOrd['id'] ) );
 $cdb->run( 'DELETE FROM saas_outbox WHERE org_id = ?', array( 'orgT' ) );
 $cdb->run( 'DELETE FROM saas_orgs WHERE ref = ?', array( 'otrial' ) );
+$mails = array();
+// Avvio della prova senza carta e passaggio a un piano.
+$obBefore = array_column( $cdb->all( 'SELECT id FROM saas_outbox' ), 'id' );
+$ordBefore = array_column( $cdb->all( 'SELECT id FROM orders' ), 'id' );
+$orgBefore = array_column( $cdb->all( 'SELECT ref FROM saas_orgs' ), 'ref' );
+$tf = array( 'email' => 'nuova@esempio.it', 'name' => '', 'org_name' => 'Circolo Prova Gratis', 'slug' => 'circolo-prova-gratis', 'plan' => 'gestionale', 'period' => 'month', 'members' => 80, 'addons' => array() );
+$mails = array();
+check( 'prova: spenta finché non si accende saas_trial', null !== throwsUser( function () use ( $cdb, $cbill, $tf ) { SaasCheckout::startTrial( $cdb, $cbill, $tf ); } ) );
+Config::set( 'saas_trial', true );
+$tmail = SaasCheckout::startTrial( $cdb, $cbill, $tf );
+$tRow  = $cdb->one( "SELECT * FROM orders WHERE status = 'trial' AND customer_id = (SELECT id FROM customers WHERE email = 'nuova@esempio.it')" );
+$tOrgId = (string) $cdb->one( 'SELECT org_id FROM saas_orgs WHERE ref = ?', array( $tRow['org_ref'] ) )['org_id'];
+$tBody  = json_decode( (string) $cdb->one( 'SELECT body FROM saas_outbox WHERE org_id = ? ORDER BY rev DESC LIMIT 1', array( $tOrgId ) )['body'], true );
+check( 'prova: avviata senza pagamento, 30 giorni dal catalogo, associazione creata', 'nuova@esempio.it' === $tmail && $tRow && gmdate( 'Y-m-d', strtotime( '+30 days' ) ) === $tRow['trial_ends'] && 1 === (int) $cdb->one( 'SELECT COUNT(*) n FROM saas_orgs WHERE ref = ? AND org_id IS NOT NULL', array( $tRow['org_ref'] ) )['n'] && null === $tRow['provider'] );
+check( 'prova: allo stato «trial» con la fine della prova', 'trial' === $tBody['status'] && $tRow['trial_ends'] === $tBody['trial_ends'] && $tRow['trial_ends'] === $tBody['until'] );
+check( 'prova: email di benvenuto e «pronto» alla cliente, senza segnaposto', 2 === count( $mails ) && 'nuova@esempio.it' === $mails[0][0] && false !== strpos( $mails[0][2], '30 giorni' ) && false !== strpos( $mails[0][2], 'Circolo Prova Gratis' ) && false === strpos( $mails[0][2], '{' ) && false === strpos( $mails[1][2], '{' ) );
+check( 'prova: una sola per cliente', null !== throwsUser( function () use ( $cdb, $cbill, $tf ) { SaasCheckout::startTrial( $cdb, $cbill, $tf ); } ) );
+check( 'prova: compare nell\'area clienti come «in prova»', 'trial' === ( Portale\SaasAccount::forCustomer( $cdb, $tRow['customer_id'] )[0]['state'] ?? '' ) && null !== Portale\SaasAccount::trial( $cdb, $tRow['customer_id'], $tRow['id'] ) && null === Portale\SaasAccount::trial( $cdb, 'altro', $tRow['id'] ) );
+// «Scegli un piano»: stessa associazione, nessuna nuova riga, dopo il pagamento la prova è sostituita e non parte nessuna email di «rinnovo».
+$orgsN  = (int) $cdb->one( 'SELECT COUNT(*) n FROM saas_orgs' )['n'];
+$cseen  = array();
+$cUrl   = SaasCheckout::start( $cdb, $cbill, array( 'convert' => $tRow['id'], 'plan' => 'gestionale', 'period' => 'month', 'members' => 80, 'addons' => array(), 'promo' => '', 'provider' => 'stripe', 'org_name' => 'ignorato', 'slug' => 'ignorato', 'email' => 'ignorata@esempio.it' ) );
+$cOrd   = $cdb->one( "SELECT * FROM orders WHERE status = 'pending' AND org_ref = ?", array( $tRow['org_ref'] ) );
+check( 'scegli un piano: ordine sulla stessa associazione, dati della prova e non quelli del modulo', 'https://checkout.stripe.test/s1' === $cUrl && $cOrd && $orgsN === (int) $cdb->one( 'SELECT COUNT(*) n FROM saas_orgs' )['n'] && 'Circolo Prova Gratis' === $cdb->one( 'SELECT name FROM saas_orgs WHERE ref = ?', array( $tRow['org_ref'] ) )['name'] );
+$mails = array();
+SaasCheckout::paid( $cdb, $cOrd['id'], 'sub_t1', 'cus_t1', 7000000 );
+check( 'scegli un piano: pagato → prova sostituita, gestionale attivo, nessuna email di rinnovo', 'replaced' === $cdb->one( 'SELECT status FROM orders WHERE id = ?', array( $tRow['id'] ) )['status'] && 'active' === $cdb->one( 'SELECT status FROM orders WHERE id = ?', array( $cOrd['id'] ) )['status'] && array() === $mails && 'active' === Portale\SaasAccount::stateOf( $cdb, (string) $cdb->one( 'SELECT org_id FROM saas_orgs WHERE ref = ?', array( $tRow['org_ref'] ) )['org_id'] ) );
+check( 'scegli un piano: una prova già sostituita non si può più convertire', null !== throwsUser( function () use ( $cdb, $cbill, $tRow ) { SaasCheckout::start( $cdb, $cbill, array( 'convert' => $tRow['id'], 'plan' => 'gestionale', 'period' => 'month', 'members' => 80, 'provider' => 'stripe' ) ); } ) );
+foreach ( $cdb->all( 'SELECT id FROM saas_outbox' ) as $r ) {
+	if ( ! in_array( $r['id'], $obBefore, true ) ) {
+		$cdb->run( 'DELETE FROM saas_outbox WHERE id = ?', array( $r['id'] ) );
+	}
+}
+foreach ( $cdb->all( 'SELECT id FROM orders' ) as $r ) {
+	if ( ! in_array( $r['id'], $ordBefore, true ) ) {
+		$cdb->run( 'DELETE FROM orders WHERE id = ?', array( $r['id'] ) );
+	}
+}
+foreach ( $cdb->all( 'SELECT ref FROM saas_orgs' ) as $r ) {
+	if ( ! in_array( $r['ref'], $orgBefore, true ) ) {
+		$cdb->run( 'DELETE FROM saas_orgs WHERE ref = ?', array( $r['ref'] ) );
+	}
+}
+$cdb->run( "DELETE FROM customers WHERE email = 'nuova@esempio.it'" );
+Config::set( 'saas_trial', false );
 $mails = array();
 // Sottodominio già preso: ne prova un altro; provision fallita: l'ordine resta «paid» e il webhook riprova.
 $provCode = 409;
