@@ -4165,6 +4165,18 @@ asem_ok( $yl_msg( $yl_y ) === asem_throws( function () use ( $yl_att ) { Attachm
 asem_ok( null !== asem_throws( function () use ( $ledger, $yl_acc ) { $ledger->update_account( $yl_acc, 'Conto anno chiuso', 'other', 900 ); } ) && 700 === (int) $ledger->account_any( $yl_acc )['opening_cents'], 'anno chiuso: non si cambia il saldo iniziale di un conto' );
 $ledger->update_account( $yl_acc, 'Conto rinominato in anno chiuso', 'other', 700 );
 asem_ok( 'Conto rinominato in anno chiuso' === $ledger->account_any( $yl_acc )['name'], 'anno chiuso: il nome del conto, a saldo iniziale invariato, si cambia' );
+// nome e tipo di un conto con movimenti in un esercizio chiuso sono congelati; un conto senza movimenti in anni chiusi resta libero
+$yl_acc2 = $ledger->add_account( 'Conto con movimenti', 'bank', 0 );
+$wpdb->insert( Db::t( 'transactions' ), array( 'tx_date' => $yl_date, 'type' => 'expense', 'amount_cents' => 100, 'account_id' => $yl_acc2, 'method' => 'bank', 'category_id' => (int) $cat['general_cost'], 'description' => 'prova blocco conto', 'created_at' => gmdate( 'Y-m-d H:i:s' ) ) );
+$yl_tx2 = (int) $wpdb->insert_id;
+asem_ok( $yl_msg( $yl_y ) === asem_throws( function () use ( $ledger, $yl_acc2 ) { $ledger->update_account( $yl_acc2, 'Conto ribattezzato', 'bank', 0 ); } ) && 'Conto con movimenti' === $ledger->account_any( $yl_acc2 )['name'], 'anno chiuso: il nome di un conto con movimenti in quell\'anno non si cambia' );
+asem_ok( $yl_msg( $yl_y ) === asem_throws( function () use ( $ledger, $yl_acc2 ) { $ledger->update_account( $yl_acc2, 'Conto con movimenti', 'cash', 0 ); } ) && 'bank' === $ledger->account_any( $yl_acc2 )['type'], 'anno chiuso: il tipo di un conto con movimenti in quell\'anno non si cambia' );
+$ledger->update_account( $yl_acc2, 'Conto con movimenti', 'bank', 0 );
+asem_ok( 'Conto con movimenti' === $ledger->account_any( $yl_acc2 )['name'], 'anno chiuso: salvare il conto senza cambiare nome e tipo resta possibile' );
+$yl_new = $ledger->add_account( 'Conto nuovo in anno chiuso', 'cash', 0 );
+$ledger->update_account( $yl_new, 'Conto nuovo, rinominato', 'bank', 0 );
+asem_ok( 'Conto nuovo, rinominato' === $ledger->account_any( $yl_new )['name'] && 'bank' === $ledger->account_any( $yl_new )['type'], 'anno chiuso: un conto nuovo, senza movimenti in anni chiusi, si crea e si rinomina' );
+$ledger->close_account( $yl_new );
 asem_ok( null !== asem_throws( function () use ( $ledger, $yl_acc ) { $ledger->shift_opening( $yl_acc, 50 ); } ) && 700 === (int) $ledger->account_any( $yl_acc )['opening_cents'], 'anno chiuso: non si sposta il saldo iniziale' );
 asem_ok( $yl_msg( $yl_y ) === asem_throws( function () use ( $yl_p, $yl_date ) { \AssociazioneSemplice\MemberBook::set_left( $yl_p, $yl_date, 'x' ); } ), 'anno chiuso: non si mette una cessazione con data nell\'anno chiuso' );
 asem_ok( $yl_msg( $yl_y ) === asem_throws( function () use ( $yl_p ) { \AssociazioneSemplice\MemberBook::set_left( $yl_p, '' ); } ) && $yl_date === $people->get( $yl_p )['left_on'], 'anno chiuso: non si toglie una cessazione datata nell\'anno chiuso' );
@@ -4199,6 +4211,10 @@ asem_ok( $yl_free === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'fi
 // anno di nuovo aperto: le azioni tornano consentite
 Attachments::remove( (int) $yl_att[0]['id'] );
 \AssociazioneSemplice\MemberBook::set_left( $yl_p, '' );
+$ledger->update_account( $yl_acc2, 'Conto riaperto, rinominato', 'cash', 0 );
+asem_ok( 'Conto riaperto, rinominato' === $ledger->account_any( $yl_acc2 )['name'] && 'cash' === $ledger->account_any( $yl_acc2 )['type'], 'anno riaperto: nome e tipo del conto si possono di nuovo cambiare' );
+$wpdb->delete( Db::t( 'transactions' ), array( 'id' => $yl_tx2 ) );
+$ledger->close_account( $yl_acc2 );
 $ledger->update_account( $yl_acc, 'Conto anno riaperto', 'other', 800 );
 asem_ok( 800 === (int) $ledger->account_any( $yl_acc )['opening_cents'] && null === $people->get( $yl_p )['left_on'], 'anno riaperto: allegati, saldo iniziale e cessazione si possono di nuovo modificare' );
 
