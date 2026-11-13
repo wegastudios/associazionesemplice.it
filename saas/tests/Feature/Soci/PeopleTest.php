@@ -7,7 +7,7 @@ use App\Modules\Contabilita\Models\Account;
 use App\Modules\Contabilita\Models\Transaction;
 use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Soci\Contracts\Members;
-use AppModulesSociContractsMemberType;
+use App\Modules\Soci\Contracts\MemberType;
 use App\Modules\Soci\Contracts\PeopleError;
 use App\Modules\Soci\Services\MembershipService;
 use App\Modules\Soci\Services\PeopleService;
