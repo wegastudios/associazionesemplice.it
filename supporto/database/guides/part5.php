@@ -35,7 +35,7 @@ Con **Cassa per più persone** incassi in un'unica operazione quote e contributi
 
 ## Fondi
 
-I fondi accantonano somme già incassate. Per ogni anno solare vedi quanto è stato accantonato, rimborsato o liberato e quanto resta da rimborsare: la tabella dei **fondi da rimborsare per anno** è nella pagina degli anni solari della versione Pro. **Un anno con fondi non rimborsati non si chiude.** Per aprire e chiudere gli anni vedi [Aprire e chiudere gli anni solari](guida:aprire-e-chiudere-gli-anni-solari).
+I fondi accantonano somme già incassate. Per ogni anno solare vedi quanto è stato accantonato, rimborsato o liberato e quanto resta da rimborsare: la tabella dei **fondi da rimborsare per anno** è nella pagina Esercizi della versione Pro. **Un anno con fondi non rimborsati non si chiude.** Per aprire e chiudere gli anni vedi [Aprire e chiudere gli esercizi](guida:aprire-e-chiudere-gli-anni-solari).
 MD,
     ],
     [
@@ -44,7 +44,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Report: {piano_contabile} e {piano_fiscale}. Rendiconto per cassa: {piano_fiscale}.
 
-Questa parte serve a chi deve preparare i documenti per il commercialista. L'apertura e la chiusura dell'anno solare sono invece disponibili in tutte le versioni: vedi [Aprire e chiudere gli anni solari](guida:aprire-e-chiudere-gli-anni-solari).
+Questa parte serve a chi deve preparare i documenti per il commercialista. L'apertura e la chiusura dell'anno solare sono invece disponibili in tutte le versioni: vedi [Aprire e chiudere gli esercizi](guida:aprire-e-chiudere-gli-anni-solari).
 
 ## Il rendiconto per cassa
 
@@ -157,6 +157,7 @@ Con il plugin gratuito c'è una sola quota (con l'opzione socio fondatore). Con 
    - il **nome** (compare su tessera, elenchi ed esportazioni);
    - la **base**: fondatore, ordinario, socio o volontario, che decide il comportamento (tessera, attività, cariche);
    - una **quota propria** facoltativa: se vuota, vale la quota predefinita.
+   - il **diritto di voto** («sì» o «no»): conta nelle votazioni, nel numero legale delle assemblee e nei [Dati per il RUNTS](guida:dati-per-il-runts). I minorenni non votano mai;
 3. Salva.
 
 Chi non ha un livello assegnato usa il nome della base e la quota predefinita: nessuna migrazione dei soci esistenti. Un livello con dei soci non si cancella: resta disattivato.
