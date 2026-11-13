@@ -7,6 +7,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Funzione | {free_name} | {lite_name} | {full_name} |
 |---|---|---|---|
 | Libro soci con numerazione progressiva e cessazioni | ✓ | ✓ | ✓ |
+| Libro soci per esercizio :: Il libro soci segue l'esercizio e alla chiusura viene fotografato, così da quel momento non cambia più; ogni socio ha una matricola fissa e ogni riga un numero; «Fotografa gli anni già chiusi» ricostruisce i libri passati; ogni libro si scarica in PDF e in CSV | ✓ | ✓ | ✓ |
+| Soci che sono enti :: Scheda dedicata, importazione da CSV e colonna «Tipo» nel libro soci | ✓ | ✓ | ✓ |
 | Libro soci completo: date di domanda e delibera, luogo di nascita, residenza, contatti, ultima quota, recesso e tutore, con PDF e CSV | ✓ | ✓ | ✓ |
 | Schede dei soci e collegamento all'utente WordPress | ✓ | ✓ | ✓ |
 | Addebito crediti con il QR dello staff :: Addebito di crediti con il QR da parte dello staff di un evento con incasso abilitato, anche senza utente WordPress | — | ✓ | ✓ |
@@ -41,6 +43,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Tipo di tesseramento (atleta, istruttore, dirigente…) nella scheda e nell'esportazione soci | ✓ | ✓ | ✓ |
 | Avviso «Schede da completare» in Bacheca e in «Da lavorare» | ✓ | ✓ | ✓ |
 | Ruoli: segreteria, presidente, tesoriere, volontari, staff | ✓ | ✓ | ✓ |
+| Utente «Dipendente» :: Permessi che si possono togliere, periodo di servizio e conteggio dei lavoratori per il RUNTS | ✓ | ✓ | ✓ |
 | Regolamento da accettare con registrazione della versione | ✓ | ✓ | ✓ |
 | Blocchi, shortcode e widget Elementor | ✓ | ✓ | ✓ |
 | Riquadri «Da lavorare» e «Eventi e corsi della settimana» nella Bacheca di WordPress | ✓ | ✓ | ✓ |
@@ -90,7 +93,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Spese con scontrini e fatture allegati | ✓ | ✓ | ✓ |
 | Importazione ed esportazione della prima nota | ✓ | ✓ | ✓ |
 | Donazioni con PayPal | ✓ | ✓ | ✓ |
-| Anni solari: apertura, chiusura e riapertura (solo amministratori), con avviso del nuovo anno da settembre | ✓ | ✓ | ✓ |
+| Esercizi: apertura e chiusura (solo amministratori), con il mese di inizio a scelta e l'avviso del nuovo anno da settembre; si chiudono in ordine | ✓ | ✓ | ✓ |
+| Riapertura dell'ultimo esercizio :: Si riapre solo l'ultimo esercizio chiuso, scrivendo il motivo; resta una traccia permanente di chiusure e riaperture, e le tessere di un esercizio chiuso non si modificano | ✓ | ✓ | ✓ |
 | Cassa «Prenota» (per data o per attività) | ✓ | ✓ | ✓ |
 | Acconti e sconti con motivo per riga di incasso | ✓ | ✓ | ✓ |
 | Nuovo socio in un popup durante l'incasso, senza perdere l'operazione | ✓ | ✓ | ✓ |
@@ -120,7 +124,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | IVA :: IVA su quote, attività, incassi e spese | — | — | ✓ |
 | 5 per mille :: 5 per mille e rendiconto sull'utilizzo | — | — | ✓ |
 | Rendiconto per cassa :: Rendiconto per cassa per il commercialista | — | — | ✓ |
-| Anno fiscale personalizzato :: Anno fiscale con mese di inizio diverso dall'anno sociale | — | — | ✓ |
+| Anno fiscale con verifiche :: Anno fiscale del rendiconto per cassa e verifiche prima della chiusura | — | — | ✓ |
 | Spese documentate sui fondi dei rimborsi :: Spese documentate attribuite in automatico ai fondi dei rimborsi, con elenchi e CSV | — | — | ✓ |
 | Bilancio provvisorio e storico mensile :: Bilancio provvisorio dell'anno fiscale, avvisi di bilancio e storico mensile con CSV | — | — | ✓ |
 | Prospetto dei rimborsi per persona :: Prospetto dei rimborsi per persona, con CSV e PDF | — | — | ✓ |
@@ -131,13 +135,15 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Funzione | {free_name} | {lite_name} | {full_name} |
 |---|---|---|---|
 | Verbali di assemblea e consiglio con PDF | ✓ | ✓ | ✓ |
-| Votazioni e sondaggi dei soci, anche a voto segreto, con verbale dei risultati in PDF e CSV | ✓ | ✓ | ✓ |
+| Votazioni e sondaggi dei soci, anche a voto segreto, con verbale dei risultati in PDF e CSV; votano i soci maggiorenni | ✓ | ✓ | ✓ |
+| Diritto di voto per livello :: Si sceglie per ogni livello di socio se ha diritto di voto | — | ✓ | ✓ |
+| Dati per il RUNTS :: Registri → «Dati per il RUNTS»: numeri al 31 dicembre, soci che sono enti, avviso se si scende sotto il minimo di soci per ODV e APS e promemoria del 30 giugno | ✓ | ✓ | ✓ |
 | Assemblee dei soci :: Assemblee dei soci: convocazione per email, presenze, deleghe tra soci, numero legale e verbale già compilato | — | ✓ | ✓ |
 | Inventario dei beni con prestiti a soci e volontari, rientri, storico e promemoria | ✓ | ✓ | ✓ |
 | Archivio documenti (statuto, regolamenti, moduli) per segreteria, soci o pubblico | ✓ | ✓ | ✓ |
 | Convenzioni per i soci: sconti dei partner con codice, validità, destinatari per tipo di socio, elenco pubblico, avviso per email e CSV | ✓ | ✓ | ✓ |
 | Informativa privacy generata e registro dei consensi | ✓ | ✓ | ✓ |
-| Anonimizzazione e download dei dati personali | ✓ | ✓ | ✓ |
+| Anonimizzazione e download dei dati personali, con i libri soci chiusi | ✓ | ✓ | ✓ |
 | Assicurazioni dei volontari :: Assicurazioni dei volontari e polizze dell'associazione | — | ✓ | ✓ |
 | Registro delle presenze :: Registro delle presenze a corsi ed eventi, anche in vista a calendario | — | ✓ | ✓ |
 | Certificato medico sportivo :: Certificato medico sportivo dei soci: scadenze, attività che lo richiedono, promemoria ed esportazione | — | ✓ | ✓ |

@@ -24,7 +24,7 @@ Dopo il salvataggio la pagina ti propone i passi successivi: **Importa i soci** 
 
 ## Dove trovi le cose
 
-Il menu è diviso in quattro gruppi: **Persone** (Soci, Domande di adesione), **Attività e risorse** (Attività, Calendario, Risorse), **Soldi** (Prima nota, Conti, Rendiconto, Pagamenti online) e **Gestione** (Operatori e ruoli, Esportazione dei dati, Configurazione guidata). Il pulsante **Nuovo** crea una scheda socio, un incasso, una spesa o un'attività. Alcune voci compaiono solo se il tuo piano le include o se il tuo ruolo lo permette.
+Il menu è diviso in quattro gruppi: **Persone** (Soci, Domande di adesione), **Attività e risorse** (Attività, Calendario, Risorse), **Cassa e conti** (Prima nota, Conti, Rendiconto, Pagamenti online) e **Gestione** (Operatori e ruoli, Esportazione dei dati, Configurazione guidata). Il pulsante **Nuovo** crea una scheda socio, un incasso, una spesa o un'attività. Alcune voci compaiono solo se il tuo piano le include o se il tuo ruolo lo permette.
 MD,
     ],
     [
@@ -110,7 +110,7 @@ Dalla scheda del socio, nella parte **Tesseramento**, premi **«Incassa e rinnov
 MD,
     ],
     [
-        'topic' => 'gestionale', 'section' => 'Soldi', 'slug' => 'gestionale-registrare-un-incasso-e-una-spesa',
+        'topic' => 'gestionale', 'section' => 'Cassa e conti', 'slug' => 'gestionale-registrare-un-incasso-e-una-spesa',
         'title' => 'Registrare un incasso e una spesa',
         'body' => <<<'MD'
 > Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
@@ -135,7 +135,7 @@ Per spostare soldi da un conto all'altro (per esempio contanti versati in banca)
 MD,
     ],
     [
-        'topic' => 'gestionale', 'section' => 'Soldi', 'slug' => 'gestionale-conti-e-giroconti',
+        'topic' => 'gestionale', 'section' => 'Cassa e conti', 'slug' => 'gestionale-conti-e-giroconti',
         'title' => 'I conti: cassa, banca e giroconti',
         'body' => <<<'MD'
 > Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
@@ -150,7 +150,7 @@ Per spostare soldi tra due conti usa il **Giroconto tra conti** dalla **Prima no
 MD,
     ],
     [
-        'topic' => 'gestionale', 'section' => 'Soldi', 'slug' => 'gestionale-chiudere-l-esercizio-e-leggere-il-rendiconto',
+        'topic' => 'gestionale', 'section' => 'Cassa e conti', 'slug' => 'gestionale-chiudere-l-esercizio-e-leggere-il-rendiconto',
         'title' => 'Chiudere l\'esercizio e leggere il rendiconto',
         'body' => <<<'MD'
 > Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}

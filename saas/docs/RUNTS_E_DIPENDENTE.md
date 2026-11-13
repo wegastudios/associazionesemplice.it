@@ -9,7 +9,7 @@ Entro il 30 giugno i dati al 31 dicembre dell'anno prima, solo se cambiati: soci
 ## 2. Decisioni (risposte del titolare)
 
 1. «Dati per il RUNTS» sta in tutti i piani.
-2. **Diritto di voto sul tipo di socio** (non una casella per scheda): `MemberType::hasVotingRights()`. I minorenni alla data si escludono dal conteggio.
+2. **Diritto di voto** (aggiornato 14/11/2026, allineato al plugin): ospiti e genitori mai; i soci votano salvo che il loro **livello** abbia «Vota» spento (`member_levels.votes`, un livello nuovo vota); i minorenni alla data mai.
 3. **Lavoratori = numero dei Dipendenti** (utenti con ruolo Dipendente), non un numero inserito a mano.
 4. **Dipendente conta tra gli operatori del piano** (`OrgMembers::assertOperatorAvailable` conta ogni ruolo tranne Commercialista), perché accede come la segreteria.
 5. **Elenco dei permessi rimovibili chiuso** (`Ability::removable()`); mai un permesso in più del ruolo.
@@ -43,3 +43,7 @@ Il promemoria del 30 giugno è solo un avviso nella pagina, nessuna notifica pro
 
 - I permessi «eventi» e «rimborsi» sono definiti ma non applicati a nessuna rotta, perché le pagine non esistono ancora: vanno agganciati quando arrivano.
 - I parasubordinati non hanno un conteggio proprio: oggi «lavoratori» è solo il numero dei Dipendenti.
+
+## 7. Matricola (allineamento al plugin, 14/11/2026)
+
+`app.people.matricola`: numero fisso per socio, dato una volta sola a chi entra nel libro soci in ordine di ingresso (data, poi id) e senza buchi; non cambia e non si riassegna (contatore per associazione in `app.matricola_counters`, indice unico). Il numero di tessera (`card_number`) è un'altra cosa. Il libro soci mostra matricola e numero di riga dell'esercizio; la fotografia li conserva entrambi. Assegnazione pigra (`MatricolaService::assignMissing()`, alla prima lettura del libro). Import CSV con enti: da fare dopo.

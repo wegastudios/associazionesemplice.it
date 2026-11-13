@@ -42,3 +42,16 @@ it('fa gestire i livelli solo a titolare e amministratore', function (): void {
 
     $this->get('/gestionale/soci/livelli')->assertInertia(fn (Assert $page) => $page->component('Soci/Livelli')->where('levels.0.fee', '12,00')->where('levels.0.active', false));
 });
+
+it('fa votare un livello nuovo e lascia toglierne il voto', function (): void {
+    $org = $this->createOrg('Polisportiva Alfa');
+    $admin = $this->createUser('admin@example.com', twoFactor: true);
+    $this->addOperator($org, $admin, OrgRole::Admin);
+
+    $this->actingAs($admin)->post('/gestionale/soci/livelli', ['name' => 'Junior', 'base_type' => 'ordinary']);
+    $id = $this->orgContext()->run($org->id, fn () => MemberLevel::query()->sole()->id);
+    $this->get('/gestionale/soci/livelli')->assertInertia(fn (Assert $page) => $page->where('levels.0.votes', true));
+
+    $this->put("/gestionale/soci/livelli/{$id}", ['name' => 'Junior', 'base_type' => 'ordinary', 'votes' => false]);
+    $this->get('/gestionale/soci/livelli')->assertInertia(fn (Assert $page) => $page->where('levels.0.votes', false));
+});

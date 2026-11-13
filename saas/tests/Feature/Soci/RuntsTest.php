@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Contracts\OrgSettings;
+use App\Modules\Soci\Models\MemberLevel;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Services\MembershipService;
 use App\Modules\Soci\Services\RuntsCounts;
@@ -47,4 +48,16 @@ it('mostra la pagina RUNTS ai soli operatori che vedono l\'anagrafica', function
 
     $this->actingAs($user)->get('/gestionale/soci/runts')->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('Soci/Runts')->where('year', $year)->where('counts.date', "{$year}-12-31")->where('counts.minimum_applies', false));
+});
+
+it('non conta chi ha un livello senza diritto di voto', function (): void {
+    $counts = $this->orgContext()->run($this->org->id, function (): array {
+        $senzaVoto = MemberLevel::create(['name' => 'Sostenitore', 'base_type' => 'ordinary', 'votes' => false]);
+        Person::create(['type' => 'founder', 'first_name' => 'Franco', 'last_name' => 'Fondatore', 'joined_on' => '2015-03-01']);
+        Person::create(['type' => 'founder', 'first_name' => 'Sara', 'last_name' => 'Sostenitrice', 'joined_on' => '2016-03-01', 'level_id' => $senzaVoto->id]);
+
+        return app(RuntsCounts::class)->at('2025-12-31');
+    });
+
+    expect($counts['persons'])->toBe(1);
 });
