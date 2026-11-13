@@ -149,7 +149,7 @@ final class WatchPage {
 		for ( $y = $s['year']; $y >= $s['year'] - 5; $y-- ) {
 			echo '<option value="' . (int) $y . '"' . selected( $ry, $y, false ) . '>' . esc_html( \AssociazioneSemplice\FiscalYears::label( $y ) ) . '</option>';
 		}
-		echo '</select></label> <a class="button" href="' . esc_url( WatchExports::url( 'recon', array( 'year' => $ry ) ) ) . '">Esporta CSV</a> <a class="button" href="' . esc_url( WatchExports::url( 'recon_pdf', array( 'year' => $ry ) ) ) . '">Scarica PDF per il rendiconto</a></p></form>';
+		echo '</select></label> <a class="button" href="' . esc_url( WatchExports::url( 'recon', array( 'year' => $ry ) ) ) . '">Scarica per Excel</a> <a class="button" href="' . esc_url( WatchExports::url( 'recon_pdf', array( 'year' => $ry ) ) ) . '">Scarica PDF per il rendiconto</a></p></form>';
 		$recon = \AssociazioneSemplice\FundReconciliation::rows( $ry );
 		echo '<table class="widefat striped"><thead><tr><th>Persona</th><th>Rimborsato dai fondi</th><th>Spese documentate attribuite</th><th>Differenza</th><th>Situazione</th></tr></thead><tbody>';
 		if ( ! $recon ) {
@@ -169,7 +169,7 @@ final class WatchPage {
 			foreach ( $years as $y ) {
 				echo '<option value="' . (int) $y . '"' . selected( $year, $y, false ) . '>' . esc_html( (string) $y ) . '</option>';
 			}
-			echo '</select></label> <a class="button" href="' . esc_url( WatchExports::url( 'snapshots', array( 'year' => $year ) ) ) . '">Esporta CSV</a> <a class="button" href="' . esc_url( WatchExports::url( 'snapshots' ) ) . '">Esporta tutto</a></p></form>';
+			echo '</select></label> <a class="button" href="' . esc_url( WatchExports::url( 'snapshots', array( 'year' => $year ) ) ) . '">Scarica per Excel</a> <a class="button" href="' . esc_url( WatchExports::url( 'snapshots' ) ) . '">Esporta tutto</a></p></form>';
 		}
 		$snaps = $years ? BalanceWatch::snapshots( $year ) : array();
 		echo '<table class="widefat striped"><thead><tr><th>Mese</th><th>Entrate del mese</th><th>Uscite del mese</th><th>Entrate dall\'inizio</th><th>Uscite dall\'inizio</th><th>Risultato dall\'inizio</th><th>Preventivo (entrate / uscite)</th><th>Origine</th></tr></thead><tbody>';
@@ -202,7 +202,7 @@ final class WatchPage {
 		}
 		$limit = $compact ? 5 : 500;
 		echo '<div class="asem-card"><h2>Spese documentate non rimborsate' . ( $spese ? ' (' . count( $spese ) . ')' : '' ) . '</h2>';
-		echo '<p class="description">Spese con scontrino o fattura allegati e un beneficiario, che non risultano ancora attribuite a nessun fondo (o solo in parte).' . ( $compact ? '' : ' <a href="' . esc_url( WatchExports::url( 'uncovered' ) ) . '">Esporta CSV</a>' ) . '</p>';
+		echo '<p class="description">Spese con scontrino o fattura allegati e un beneficiario, che non risultano ancora attribuite a nessun fondo (o solo in parte).' . ( $compact ? '' : ' <a href="' . esc_url( WatchExports::url( 'uncovered' ) ) . '">Scarica per Excel</a>' ) . '</p>';
 		if ( ! $spese ) {
 			echo '<p>Nessuna.</p>';
 		} else {
@@ -238,7 +238,7 @@ final class WatchPage {
 		echo '</div>';
 
 		echo '<div class="asem-card"><h2>Fondi accantonati non documentati' . ( $fondi ? ' (' . count( $fondi ) . ')' : '' ) . '</h2>';
-		echo '<p class="description">Fondi (aperti o già liquidati) per cui le spese documentate non coprono ancora quanto accantonato.' . ( $compact ? '' : ' <a href="' . esc_url( WatchExports::url( 'undocumented' ) ) . '">Esporta CSV</a>' ) . '</p>';
+		echo '<p class="description">Fondi (aperti o già liquidati) per cui le spese documentate non coprono ancora quanto accantonato.' . ( $compact ? '' : ' <a href="' . esc_url( WatchExports::url( 'undocumented' ) ) . '">Scarica per Excel</a>' ) . '</p>';
 		if ( ! $fondi ) {
 			echo '<p>Nessuno.</p>';
 		} else {

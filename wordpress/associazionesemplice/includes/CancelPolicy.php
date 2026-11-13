@@ -88,9 +88,9 @@ final class CancelPolicy {
 			case self::REASON_STARTED:
 				return 'L\'evento è già iniziato.';
 			case self::REASON_NOT_CANCELLABLE:
-				return 'Questo evento è a pagamento e non è cancellabile. Puoi però cambiare il nominativo.';
+				return 'Questo evento è a pagamento e non si può annullare. Puoi però cedere il posto a un\'altra persona.';
 			case self::REASON_DEADLINE:
-				return 'Il termine per annullare è scaduto' . ( $eval['deadline'] ? ' (' . $eval['deadline']->format( 'd/m/Y H:i' ) . ')' : '' ) . '. Puoi però cambiare il nominativo.';
+				return 'Il termine per annullare è scaduto' . ( $eval['deadline'] ? ' (' . $eval['deadline']->format( 'd/m/Y H:i' ) . ')' : '' ) . '. Puoi però cedere il posto a un\'altra persona.';
 			case self::REASON_OK:
 				return 'Puoi annullare fino al ' . ( $eval['deadline'] ? $eval['deadline']->format( 'd/m/Y H:i' ) : '' ) . '.';
 		}

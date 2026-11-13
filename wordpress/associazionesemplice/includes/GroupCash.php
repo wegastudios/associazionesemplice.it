@@ -66,7 +66,7 @@ final class GroupCash {
 				}
 				$name = trim( $person['first_name'] . ' ' . $person['last_name'] );
 				if ( $staff && ( ! MemberType::is_member( $person['type'] ) || ! $people->is_active_member( $pid ) ) ) {
-					throw new \InvalidArgumentException( MemberType::is_member( $person['type'] ) ? 'La tessera di ' . $name . ' non è in regola: va rinnovata (in segreteria o dal tesoriere) prima di prenotare.' : 'Sul posto lo staff incassa solo dai soci: gli ospiti li gestisce la segreteria.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+					throw new \InvalidArgumentException( MemberType::is_member( $person['type'] ) ? \AssociazioneSemplice\Frontend\Actions::card_invalid_staff( $name ) : 'Sul posto lo staff incassa solo dai soci: gli ospiti li gestisce la segreteria.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 				$b_lines = array_values( array_filter( (array) ( $b['lines'] ?? array() ), 'is_array' ) );
 				if ( ! $b_lines ) {

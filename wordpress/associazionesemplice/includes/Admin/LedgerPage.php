@@ -52,7 +52,7 @@ final class LedgerPage {
 			}
 		}
 
-		Ui::header( 'Prima nota — ' . ( 1 === FiscalYears::start_month() ? 'anno solare ' : 'esercizio ' ) . FiscalYears::label( $year ), Exports::link( 'ledger', array( 'from' => $from, 'to' => $to ), 'Esporta CSV' ) );
+		Ui::header( 'Prima nota — ' . ( 1 === FiscalYears::start_month() ? 'anno solare ' : 'esercizio ' ) . FiscalYears::label( $year ), Exports::link( 'ledger', array( 'from' => $from, 'to' => $to ), 'Scarica per Excel' ) );
 		echo wp_kses( '<p><a class="button" href="' . esc_url( Ui::url( 'asem-ledger', array( 'year' => $year - 1, 'account' => $acc ?: null ) ) ) . '">‹ ' . ( $year - 1 ) . '</a> '
 			. '<a class="button" href="' . esc_url( Ui::url( 'asem-ledger', array( 'year' => $year + 1, 'account' => $acc ?: null ) ) ) . '">' . ( $year + 1 ) . ' ›</a> ', Html::allowed() );
 		$accounts = array();

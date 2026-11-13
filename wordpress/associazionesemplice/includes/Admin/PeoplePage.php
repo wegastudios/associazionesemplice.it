@@ -40,7 +40,7 @@ final class PeoplePage {
 			'<dialog class="asem-sheet" id="asem-people-more" aria-labelledby="asem-people-more-t"><h2 id="asem-people-more-t">Altre azioni</h2><div class="asem-sheet-actions">'
 			. $guest_link
 			. '<a class="button" href="' . esc_url( Ui::url( 'asem-import' ) ) . '">Importa da Excel/CSV</a>'
-			. Exports::link( 'people', array(), 'Esporta CSV' )
+			. Exports::link( 'people', array(), 'Scarica per Excel' )
 			. '</div><p><button type="button" class="button" data-asem-close>Chiudi</button></p></dialog>',
 			Html::allowed()
 		);
@@ -60,7 +60,7 @@ final class PeoplePage {
 		}
 		echo '<input type="search" name="q" value="' . esc_attr( $q ) . '" placeholder="Cerca per nome, tessera, email o codice fiscale"> ';
 		echo wp_kses( '<select name="type">' . Ui::options( MemberType::labels(), $type, 'Tutti i tipi' ) . '</select> ', Html::allowed() );
-		echo wp_kses( '<select name="status">' . Ui::options( array( 'active' => 'Tessera valida', 'expired' => 'Tessera scaduta / senza tessera', 'noaccess' => 'Senza accesso all\'area riservata', 'suspended' => 'Sospesi (inattivi)', 'noconsent' => 'Senza consenso privacy', 'norules' => 'Regolamento non accettato' ), $status, 'Qualsiasi stato' ) . '</select> ', Html::allowed() );
+		echo wp_kses( '<select name="status">' . Ui::options( array( 'active' => 'Tessera valida', 'expired' => 'Tessera scaduta / senza tessera', 'noaccess' => 'Non è ancora entrato nell\'area soci', 'suspended' => 'Sospesi (inattivi)', 'noconsent' => 'Senza consenso privacy', 'norules' => 'Regolamento non accettato' ), $status, 'Qualsiasi stato' ) . '</select> ', Html::allowed() );
 		echo '<label><input type="checkbox" name="at_limit" value="1"' . checked( $at_limit, true, false ) . '> Solo ospiti da invitare a iscriversi</label> ';
 		echo '<button class="button">Filtra</button></form>';
 
@@ -364,9 +364,9 @@ final class PeoplePage {
 	private static function invite_link( array $p ): string {
 		$wa = \AssociazioneSemplice\Phone::whatsapp( (string) $p['phone'] );
 		if ( '' === $wa ) {
-			return '<span class="asem-warn">Senza accesso</span> <span class="description">(senza cellulare: apri la scheda per il link)</span>';
+			return '<span class="asem-warn">Non è ancora entrato nell\'area soci</span> <span class="description">(senza cellulare: apri la scheda per il link)</span>';
 		}
-		return '<span class="asem-warn">Senza accesso</span> <a class="button button-small" target="_blank" rel="noopener" href="' . esc_url( 'https://wa.me/' . $wa . '?text=' . rawurlencode( \AssociazioneSemplice\Frontend\Activation::invite_text( $p ) ) ) . '">💬 Invia link</a>';
+		return '<span class="asem-warn">Non è ancora entrato nell\'area soci</span> <a class="button button-small" target="_blank" rel="noopener" href="' . esc_url( 'https://wa.me/' . $wa . '?text=' . rawurlencode( \AssociazioneSemplice\Frontend\Activation::invite_text( $p ) ) ) . '">💬 Invia link</a>';
 	}
 
 	/** Socio con un utente WordPress ma senza più poteri: l'amministratore può farlo passare all'accesso con link. */
@@ -395,7 +395,7 @@ final class PeoplePage {
 			return;
 		}
 		$url = \AssociazioneSemplice\Frontend\Activation::url( (int) $p['id'] );
-		echo '<p><strong class="asem-warn">Senza accesso.</strong> Il socio non ha ancora un\'email collegata: con questo link sceglie email e password e attiva il proprio accesso (vale ' . esc_html( \AssociazioneSemplice\Frontend\Activation::validity_text() ) . ', se scade se ne genera un altro aprendo questa scheda).</p>'
+		echo '<p><strong class="asem-warn">Non è ancora entrato nell\'area soci.</strong> Il socio non ha ancora un\'email collegata: con questo link sceglie email e password e attiva il proprio accesso (vale ' . esc_html( \AssociazioneSemplice\Frontend\Activation::validity_text() ) . ', se scade se ne genera un altro aprendo questa scheda).</p>'
 			. '<p><input type="text" readonly class="large-text" value="' . esc_attr( $url ) . '" data-asem-select></p>';
 		$wa = \AssociazioneSemplice\Phone::whatsapp( (string) $p['phone'] );
 		if ( '' !== $wa ) {
@@ -520,7 +520,7 @@ final class PeoplePage {
 			echo wp_kses( Ui::hidden( 'id', $id ) . '<select name="mode">' . Ui::options( \AssociazioneSemplice\Privacy::SOURCES, 'paper' ) . '</select> <button class="button">Registra il consenso</button>', Html::allowed() );
 			Ui::form_close();
 		}
-		echo '<p><a class="button" href="' . esc_url( \AssociazioneSemplice\Privacy::export_url( $id ) ) . '">Scarica i dati (JSON)</a></p>';
+		echo '<p><a class="button" href="' . esc_url( \AssociazioneSemplice\Privacy::export_url( $id ) ) . '">Scarica i dati</a></p>';
 		$why = \AssociazioneSemplice\Privacy::blocker( $id );
 		if ( ! current_user_can( \AssociazioneSemplice\Plugin::CAP ) ) {
 			// la cancellazione dei dati la decide un amministratore

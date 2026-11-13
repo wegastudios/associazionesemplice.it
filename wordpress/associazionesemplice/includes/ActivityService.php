@@ -1059,7 +1059,7 @@ class ActivityService {
 			throw new \InvalidArgumentException( 'Scegli una persona diversa.' );
 		}
 		if ( $enforce_time && ! CancelPolicy::can_transfer( $s['session_date'], $s['start_time'] ?: null, current_datetime() ) ) {
-			throw new \InvalidArgumentException( 'L\'evento è già iniziato: non si può più cambiare il nominativo.' );
+			throw new \InvalidArgumentException( 'L\'evento è già iniziato: non si può più cedere il posto.' );
 		}
 		if ( $this->has_active_booking( $session_id, $to_id ) ) {
 			throw new \InvalidArgumentException( $to['first_name'] . ' è già prenotato/a a questa data.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html

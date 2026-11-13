@@ -346,7 +346,7 @@ final class Credits {
 		}
 		$person = self::assert_member( $person_id );
 		if ( ! Plugin::people()->is_active_member( $person_id ) ) {
-			throw new \InvalidArgumentException( 'La tua tessera non è valida: rinnovala per spendere i crediti.' );
+			throw new \InvalidArgumentException( 'La tua tessera non è valida: per spendere i crediti rinnova la quota associativa. ' . \AssociazioneSemplice\Frontend\Actions::renew_where() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$tbl = Db::t( 'credit_charges' );
 		Db::with_lock(

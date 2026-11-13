@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Informativa sul trattamento dei dati personali (artt. 13 e 14 del Regolamento UE 2016/679, GDPR).
  *
- * Il modello si compila da solo con i dati dell'ente (denominazione, codice fiscale, sede, contatti), con il responsabile del trattamento
+ * Il modello si compila da solo con i dati dell'ente (denominazione, codice fiscale, sede, contatti), con il referente per la privacy
  * (il presidente o, in mancanza, il socio con il ruolo di segreteria) e con i servizi che l'ente usa davvero (bonifico, donazioni e quelli
  * aggiunti da eventuali estensioni). Dichiara che i dati si comunicano a terzi solo per le finalità connesse agli eventi cui si partecipa, che non sono ceduti per
  * scopi commerciali e che il trattamento avviene con strumenti informatici, senza profilazione commerciale.
@@ -67,7 +67,7 @@ final class PrivacyNotice {
 	}
 
 	/**
-	 * Il responsabile del trattamento: il presidente; in mancanza, il socio con il ruolo di segreteria.
+	 * Il referente per la privacy: il presidente; in mancanza, il socio con il ruolo di segreteria.
 	 *
 	 * @return array{name:string,role:string,found:bool}
 	 */
@@ -171,9 +171,9 @@ final class PrivacyNotice {
 				),
 			),
 			array(
-				'Responsabile del trattamento',
+				'Referente per la privacy',
 				array(
-					'Il responsabile del trattamento designato dall\'Associazione è ' . $r['name'] . ', in qualità di ' . $r['role'] . '. In mancanza del Presidente, il ruolo è assunto dal socio con il ruolo di segreteria.',
+					'Per ogni richiesta sui tuoi dati puoi rivolgerti a ' . $r['name'] . ', ' . $r['role'] . ', che l\'Associazione ha incaricato come referente per la privacy. In mancanza del Presidente, il referente è il socio con il ruolo di segreteria.',
 					'Chi opera per l\'Associazione (consiglio direttivo, segreteria, tesoriere, referenti di corsi ed eventi) accede ai soli dati necessari al proprio compito, con le istruzioni ricevute e con l\'obbligo di riservatezza.',
 				),
 			),
