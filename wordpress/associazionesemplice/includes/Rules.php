@@ -17,7 +17,18 @@ final class Rules {
 		if ( ! MemberType::is_valid( $type ) ) {
 			return array( 'Tipo di persona non valido.' );
 		}
-		if ( '' === trim( (string) ( $d['first_name'] ?? '' ) ) || '' === trim( (string) ( $d['last_name'] ?? '' ) ) ) {
+		if ( RuntsRules::ENTITY === RuntsRules::kind( $d['subject_kind'] ?? '' ) ) { // un socio che è un ente: la denominazione sta nel campo «cognome», il nome non serve
+			if ( ! MemberType::is_member( $type ) ) {
+				$errors[] = 'Solo un socio può essere un ente.';
+			}
+			if ( '' === trim( (string) ( $d['last_name'] ?? '' ) ) ) {
+				$errors[] = 'La denominazione dell\'ente è obbligatoria.';
+			}
+			$cf_error = RuntsRules::entity_tax_code_error( (string) ( $d['tax_code'] ?? '' ) );
+			if ( '' !== $cf_error ) {
+				$errors[] = $cf_error;
+			}
+		} elseif ( '' === trim( (string) ( $d['first_name'] ?? '' ) ) || '' === trim( (string) ( $d['last_name'] ?? '' ) ) ) {
 			$errors[] = 'Nome e cognome sono obbligatori.';
 		}
 

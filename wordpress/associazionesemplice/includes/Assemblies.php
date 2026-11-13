@@ -334,8 +334,8 @@ final class Assemblies {
 		$today = Db::today();
 		$types = "'" . implode( "','", array_map( 'esc_sql', MemberType::member_types() ) ) . "'";
 		$sql   = 'SELECT p.id FROM ' . Db::t( 'people' ) . " p WHERE p.deleted_at IS NULL AND p.anonymized_at IS NULL AND p.application_status IS NULL AND p.suspended_at IS NULL AND p.type IN ($types) AND (p.left_on IS NULL OR p.left_on > %s) "
-			. 'AND EXISTS (SELECT 1 FROM ' . Db::t( 'memberships' ) . ' m WHERE m.person_id = p.id AND m.deleted_at IS NULL AND m.valid_from <= %s AND m.valid_to >= %s)';
-		return array_map( 'intval', $db->get_col( $db->prepare( $sql, $today, $today, $today ) ) ?: array() );
+			. 'AND EXISTS (SELECT 1 FROM ' . Db::t( 'memberships' ) . ' m WHERE m.person_id = p.id AND m.deleted_at IS NULL AND m.valid_from <= %s AND m.valid_to >= %s) AND ' . VotingRight::sql_condition(); // chi vota: tipo che vota e maggiorenne
+		return array_map( 'intval', $db->get_col( $db->prepare( $sql, $today, $today, $today, $today ) ) ?: array() );
 	}
 
 	/**

@@ -409,6 +409,8 @@ class PeopleService {
 			'prior_visits'   => max( 0, min( 9999, (int) ( $d['prior_visits'] ?? 0 ) ) ),
 			'image_consent'  => isset( $d['image_consent'] ) && in_array( (string) $d['image_consent'], array( '0', '1' ), true ) ? (int) $d['image_consent'] : null,
 			'affiliation_role' => MembershipRoles::is_valid( $d['affiliation_role'] ?? null ) ? (string) $d['affiliation_role'] : null,
+			'subject_kind'   => RuntsRules::kind( $d['subject_kind'] ?? '' ), // persona fisica o ente (la denominazione sta in «cognome»)
+			'runts_same_section' => isset( $d['runts_same_section'] ) && in_array( (string) $d['runts_same_section'], array( '0', '1' ), true ) ? (int) $d['runts_same_section'] : null,
 		);
 	}
 
@@ -476,6 +478,8 @@ class PeopleService {
 				'notes'          => $d['notes'],
 				'prior_visits'   => $d['prior_visits'],
 				'affiliation_role' => $d['affiliation_role'],
+				'subject_kind'   => $d['subject_kind'],
+				'runts_same_section' => RuntsRules::ENTITY === $d['subject_kind'] ? $d['runts_same_section'] : null,
 				'image_consent'  => $d['image_consent'],
 				'image_consent_at' => null === $d['image_consent'] ? null : $now,
 				'created_at'     => $now,
@@ -804,6 +808,8 @@ class PeopleService {
 				'notes'          => $d['notes'],
 				'prior_visits'   => $d['prior_visits'],
 				'affiliation_role' => $d['affiliation_role'],
+				'subject_kind'   => $d['subject_kind'],
+				'runts_same_section' => RuntsRules::ENTITY === $d['subject_kind'] ? $d['runts_same_section'] : null,
 				'image_consent'  => $d['image_consent'],
 				'image_consent_at' => $d['image_consent'] === ( null === $current['image_consent'] ? null : (int) $current['image_consent'] ) ? $current['image_consent_at'] : ( null === $d['image_consent'] ? null : Db::now() ),
 				'image_consent_by' => $d['image_consent'] === ( null === $current['image_consent'] ? null : (int) $current['image_consent'] ) ? $current['image_consent_by'] : $this->image_consent_giver( $current ),

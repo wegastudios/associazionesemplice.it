@@ -23,6 +23,7 @@ final class Admin {
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'assets' ) );
 		Actions::register();
 		YearsPage::register();
+		RuntsPage::register();
 		WpDashboard::register();
 		Exports::register();
 		IncomePage::register_ajax();
@@ -41,7 +42,7 @@ final class Admin {
 		'asem-activities' => array( 'Corsi ed eventi', array( 'asem-activities' => 'Elenco' ) ),
 		'asem-tools'      => array( 'Strumenti', array( 'asem-tools' => 'Panoramica', 'asem-import' => 'Importa da Excel/CSV', 'asem-tec' => 'Da The Events Calendar', 'asem-wpai' => 'WP All Import', 'asem-exports' => 'Esporta', 'asem-calendar' => 'Calendari', 'asem-backup' => 'Copia di sicurezza', 'asem-tech' => 'Integrazioni' ) ),
 		'asem-money'      => array( 'Cassa', array( 'asem-money' => 'Cassa', 'asem-ledger' => 'Prima nota', 'asem-income' => 'Nuovo incasso', 'asem-bookdesk' => 'Prenota', 'asem-expense' => 'Nuova spesa', 'asem-years' => 'Esercizi' ) ),
-		'asem-book'       => array( 'Registri', array( 'asem-book' => 'Libro soci', 'asem-minutes' => 'Verbali', 'asem-polls' => 'Votazioni', 'asem-inventory' => 'Inventario', 'asem-documents' => 'Documenti', 'asem-conventions' => 'Convenzioni' ) ),
+		'asem-book'       => array( 'Registri', array( 'asem-book' => 'Libro soci', 'asem-runts' => 'Dati per il RUNTS', 'asem-minutes' => 'Verbali', 'asem-polls' => 'Votazioni', 'asem-inventory' => 'Inventario', 'asem-documents' => 'Documenti', 'asem-conventions' => 'Convenzioni' ) ),
 		'asem-settings'   => array( 'Impostazioni', array( 'asem-entity' => 'Dati dell\'ente', 'asem-comms' => 'Privacy e regolamento', 'asem-settings' => 'Soci e quote', 'asem-look' => 'Aspetto', 'asem-bank' => 'Bonifico', 'asem-donate' => 'Donazioni', 'asem-card' => 'Tessera e QR', 'asem-roles' => 'Ruoli e accessi', 'asem-limits' => 'Limiti e soglie', 'asem-audit' => 'Registro azioni', 'asem-guide' => 'Guida iniziale', 'asem-reset' => 'Azzeramento dati' ) ),
 	);
 
@@ -109,6 +110,7 @@ final class Admin {
 			array( 'asem-income', 'Nuovo incasso', array( IncomePage::class, 'render' ) ),
 			array( 'asem-bookdesk', 'Prenota', array( BookDeskPage::class, 'render' ) ),
 			array( 'asem-years', 'Esercizi', array( YearsPage::class, 'render' ) ),
+			array( 'asem-runts', 'Dati per il RUNTS', array( RuntsPage::class, 'render' ) ),
 			array( 'asem-expense', 'Nuova spesa', array( ExpensePage::class, 'render' ) ),
 			array( 'asem-minutes', 'Verbali', array( RegistersPage::class, 'render_minutes' ) ),
 			array( 'asem-polls', 'Votazioni', array( PollsPage::class, 'render' ) ),

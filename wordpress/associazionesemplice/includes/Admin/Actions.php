@@ -195,7 +195,7 @@ final class Actions {
 			'notes'          => $p['notes'] ?? '',
 			'prior_visits'   => $p['prior_visits'] ?? 0,
 		);
-		foreach ( array( 'birth_date', 'birth_place', 'approved_on', 'image_consent', 'affiliation_role' ) as $k ) {
+		foreach ( array( 'birth_date', 'birth_place', 'approved_on', 'image_consent', 'affiliation_role', 'subject_kind', 'runts_same_section' ) as $k ) {
 			if ( array_key_exists( $k, $p ) ) {
 				$data[ $k ] = $p[ $k ];
 			}
@@ -1240,6 +1240,9 @@ final class Actions {
 			$ente['apply_pay_online'] = ! empty( $p['apply_pay_online'] ) ? 1 : 0;
 			$ente['apply_email']      = $txt( 'apply_email' );
 			$ente['secretary_phone']  = $txt( 'secretary_phone' );
+		}
+		if ( ! empty( $p['voting_present'] ) ) {
+			$ente['voting_types'] = array_map( 'sanitize_key', (array) ( $p['voting_types'] ?? array() ) ); // se non ne resta nessuno votano tutti (vedi VotingRight)
 		}
 		if ( ! empty( $p['uninstall_present'] ) ) {
 			$ente['delete_on_uninstall'] = ! empty( $p['delete_on_uninstall'] ) ? 1 : 0;

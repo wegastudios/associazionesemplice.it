@@ -2001,6 +2001,27 @@
   "La fotografia del libro soci non è riuscita (errore del database)." : "The members register snapshot failed (database error).",
   "Libro dal vivo: cambia finché l'esercizio non viene chiuso. Alla chiusura se ne scatta la fotografia." : "Live register: it changes until the financial year is closed. At closing a snapshot of it is taken.",
   "Fotografia presa alla chiusura dell'esercizio: non cambia più, anche se poi un socio viene modificato, cancellato o reso anonimo." : "Snapshot taken when the financial year was closed: it no longer changes, even if a member is later edited, deleted or anonymised.",
-  "Esercizio chiuso prima che esistesse la fotografia del libro: i dati qui sotto sono quelli di oggi e possono essere cambiati. Dalla pagina «Esercizi» puoi fotografarlo ora." : "Year closed before the register snapshot existed: the data below is today's data and may have changed. From the «Financial years» page you can photograph it now."
+  "Esercizio chiuso prima che esistesse la fotografia del libro: i dati qui sotto sono quelli di oggi e possono essere cambiati. Dalla pagina «Esercizi» puoi fotografarlo ora." : "Year closed before the register snapshot existed: the data below is today's data and may have changed. From the «Financial years» page you can photograph it now.",
+  "Dati per il RUNTS" : "Data for the RUNTS",
+  "Registro unico del Terzo settore (RUNTS)" : "Third Sector Single Register (RUNTS)",
+  "Sezione del RUNTS" : "RUNTS section",
+  "Non indicata" : "Not specified",
+  "Organizzazione di volontariato (ODV)" : "Voluntary organisation (ODV)",
+  "Associazione di promozione sociale (APS)" : "Social promotion association (APS)",
+  "Altra sezione del RUNTS" : "Other RUNTS section",
+  "Volontari iscritti nel registro" : "Volunteers in the volunteers' register",
+  "Diritto di voto" : "Voting right",
+  "Tipo di socio" : "Member kind",
+  "Persona fisica" : "Individual",
+  "Soci che sono enti" : "Members that are entities",
+  "Soci persone fisiche con diritto di voto" : "Individual members with voting right",
+  "Volontari iscritti nel registro dei volontari" : "Volunteers in the volunteers' register",
+  "Lavoratori (dipendenti a qualsiasi titolo)" : "Workers (employees of any kind)",
+  "Scadenze e minimo di soci" : "Deadlines and minimum number of members",
+  "Stessa sezione del RUNTS" : "Same RUNTS section",
+  "Solo un socio può essere un ente." : "Only a member can be an entity.",
+  "La denominazione dell'ente è obbligatoria." : "The entity's name is required.",
+  "Il codice fiscale dell'ente non è valido: controllalo (11 cifre, oppure 16 caratteri)." : "The entity's tax code is not valid: check it (11 digits, or 16 characters).",
+  "Le regole qui sotto arrivano da commenti di professionisti e centri di servizio, non dal testo del decreto: controlla sempre sul portale del RUNTS e con chi ti segue prima di comunicare i dati." : "The rules below come from comments by professionals and service centres, not from the text of the decree: always check on the RUNTS portal and with your adviser before submitting the data."
  }
 }
