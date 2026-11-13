@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Portale\Notifications;
 
-use App\Modules\Core\Models\User;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -24,15 +23,15 @@ final class OrgLifecycleNotification extends Notification
     ) {}
 
     /** @return list<string> */
-    public function via(User $notifiable): array
+    public function via(object $notifiable): array
     {
         return ['mail'];
     }
 
-    public function toMail(User $notifiable): MailMessage
+    public function toMail(object $notifiable): MailMessage
     {
         $days = $this->days;
-        $mail = (new MailMessage)->greeting("Ciao {$notifiable->name},");
+        $mail = (new MailMessage)->greeting('Buongiorno,');
         [$subject, $lines, $button] = match (true) {
             str_starts_with($this->kind, 'expiry') => [
                 "L'abbonamento di {$this->orgName} sta per scadere",

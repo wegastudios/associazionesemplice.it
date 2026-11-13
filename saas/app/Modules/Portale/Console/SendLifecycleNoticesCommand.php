@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Portale\Console;
 
-use App\Modules\Core\Models\User;
 use App\Modules\Piattaforma\Contracts\Catalog;
 use App\Modules\Portale\Notifications\OrgLifecycleNotification;
 use App\Modules\Portale\PortalConfig;
@@ -54,9 +53,14 @@ final class SendLifecycleNoticesCommand extends Command
             if ($claimed === 0) {
                 continue;
             }
-            $users = User::query()->whereIn('id', $db->connection('pgsql')->table('core.org_users')
-                ->where('org_id', $row->org_id)->whereIn('role', ['owner', 'admin'])->pluck('user_id'))->get();
-            Notification::send($users, new OrgLifecycleNotification($kind, $row->name, $days, rtrim($config->portalUrl(), '/').'/account', $discount));
+            $emails = $db->connection('pgsql')->table('core.users')->whereIn('id', $db->connection('pgsql')->table('core.org_users')
+                ->where('org_id', $row->org_id)->whereIn('role', ['owner', 'admin'])->select('user_id'))->pluck('email')->all();
+            $notification = new OrgLifecycleNotification($kind, $row->name, $days, rtrim($config->portalUrl(), '/').'/account', $discount);
+            foreach ($emails as $email) {
+                if (is_string($email)) {
+                    Notification::route('mail', $email)->notify($notification);
+                }
+            }
             $sent++;
         }
         $this->info("Avvisi inviati: {$sent}");
