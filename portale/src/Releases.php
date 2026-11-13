@@ -24,26 +24,7 @@ final class Releases {
 	 * @return array riga inserita
 	 */
 	public static function add( Db $db, string $product, string $tmpFile, string $note, string $actor, ?int $now = null, ?string $signature = null, ?string $kid = null ): array {
-		if ( ! isset( self::PRODUCTS[ $product ] ) ) {
-			throw new UserError( 'Prodotto non valido.' );
-		}
-		if ( ! class_exists( '\ZipArchive' ) ) {
-			throw new UserError( 'Sul server manca l\'estensione zip di PHP.' );
-		}
-		$slug = self::PRODUCTS[ $product ][0];
-		$zip  = new \ZipArchive();
-		if ( true !== $zip->open( $tmpFile ) ) {
-			throw new UserError( 'Il file non è uno zip valido.' );
-		}
-		$main = (string) $zip->getFromName( $slug . '/' . $slug . '.php' );
-		$zip->close();
-		if ( '' === $main ) {
-			throw new UserError( 'Il pacchetto non contiene ' . $slug . '/' . $slug . '.php: controlla di aver scelto il file giusto.' );
-		}
-		$version = self::headerVersion( $main );
-		if ( '' === $version ) {
-			throw new UserError( 'Non trovo la versione nell\'intestazione del plugin.' );
-		}
+		$version = self::packageVersion( $product, $tmpFile );
 		if ( $db->one( 'SELECT 1 AS x FROM releases WHERE product = ? AND version = ?', array( $product, $version ) ) ) {
 			throw new UserError( 'La versione ' . $version . ' è già presente: aumenta il numero di versione per pubblicarne una nuova.' );
 		}
@@ -73,6 +54,67 @@ final class Releases {
 		Audit::log( $db, $actor, 'release.add', $product . ' ' . $version . ( '' !== $signature ? ' (firmata)' : ' (NON firmata)' ) );
 		self::prune( $db, $product, $actor );
 		return $row;
+	}
+
+	/** Numero di versione scritto nell'intestazione del plugin dentro lo zip; controlla che sia lo zip del prodotto giusto. @throws UserError */
+	private static function packageVersion( string $product, string $tmpFile ): string {
+		if ( ! isset( self::PRODUCTS[ $product ] ) ) {
+			throw new UserError( 'Prodotto non valido.' );
+		}
+		if ( ! class_exists( '\ZipArchive' ) ) {
+			throw new UserError( 'Sul server manca l\'estensione zip di PHP.' );
+		}
+		$slug = self::PRODUCTS[ $product ][0];
+		$zip  = new \ZipArchive();
+		if ( true !== $zip->open( $tmpFile ) ) {
+			throw new UserError( 'Il file non è uno zip valido.' );
+		}
+		$main = (string) $zip->getFromName( $slug . '/' . $slug . '.php' );
+		$zip->close();
+		if ( '' === $main ) {
+			throw new UserError( 'Il pacchetto non contiene ' . $slug . '/' . $slug . '.php: controlla di aver scelto il file giusto.' );
+		}
+		$version = self::headerVersion( $main );
+		if ( '' === $version ) {
+			throw new UserError( 'Non trovo la versione nell\'intestazione del plugin.' );
+		}
+		return $version;
+	}
+
+	/**
+	 * Sostituisce zip, impronta e firma di una versione GIÀ pubblicata, con lo stesso numero (caso eccezionale, autorizzato dalla titolare: la firma è
+	 * obbligatoria). Il vecchio zip resta sul server accanto al nuovo come «VERSIONE.zip.IMPRONTA8.replaced» (non scaricabile) e l'audit registra le due impronte.
+	 * @return array riga aggiornata
+	 * @throws UserError
+	 */
+	public static function replace( Db $db, string $product, string $tmpFile, string $note, string $actor, string $signature, string $kid ): array {
+		$version = self::packageVersion( $product, $tmpFile );
+		$old     = self::get( $db, $product, $version );
+		if ( ! $old ) {
+			throw new UserError( 'La versione ' . $version . ' non è ancora pubblicata: si pubblica con il comando normale.' );
+		}
+		$sha = (string) hash_file( 'sha256', $tmpFile );
+		if ( strtolower( (string) $old['sha256'] ) === $sha ) {
+			throw new UserError( 'Il pacchetto è identico a quello già pubblicato: niente da sostituire.' );
+		}
+		if ( '' === trim( $signature ) || ! self::verify( $product, $version, $sha, trim( $signature ), $kid ) ) {
+			throw new UserError( 'La firma non corrisponde a questo pacchetto (prodotto, versione e impronta) o alla chiave dei pacchetti: ricalcolala con release.sh.' );
+		}
+		$dest = self::dir( $product ) . '/' . $version . '.zip';
+		if ( is_file( $dest ) && ! copy( $dest, $dest . '.' . substr( (string) $old['sha256'], 0, 8 ) . '.replaced' ) ) {
+			throw new UserError( 'Non riesco a conservare il vecchio pacchetto: sostituzione annullata.' );
+		}
+		if ( ! copy( $tmpFile, $dest ) ) {
+			throw new UserError( 'Non riesco a salvare il pacchetto.' );
+		}
+		@chmod( $dest, 0640 );
+		$row = array(
+			'size' => (int) filesize( $dest ), 'sha256' => (string) hash_file( 'sha256', $dest ), 'note' => '' !== trim( $note ) ? mb_substr( trim( $note ), 0, 500 ) : (string) $old['note'],
+			'signature' => trim( $signature ), 'kid' => $kid,
+		);
+		$db->run( 'UPDATE releases SET size = ?, sha256 = ?, note = ?, signature = ?, kid = ? WHERE product = ? AND version = ?', array( $row['size'], $row['sha256'], $row['note'], $row['signature'], $row['kid'], $product, $version ) );
+		Audit::log( $db, $actor, 'release.replace', $product . ' ' . $version . ' ' . substr( (string) $old['sha256'], 0, 12 ) . ' → ' . substr( $row['sha256'], 0, 12 ) );
+		return array_merge( $old, $row );
 	}
 
 	/**

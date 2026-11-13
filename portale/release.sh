@@ -2,7 +2,8 @@
 # Carica sul portale i pacchetti del plugin (restano online le ultime N versioni, vedi Impostazioni) FIRMANDOLI sul tuo computer:
 # la chiave privata dei pacchetti (Ed25519) non sta mai sul server, così un portale compromesso non può far installare codice sui siti.
 # Uso: bash portale/release.sh free|pro|both ["nota"]   (legge wordpress/dist/associazionesemplice.zip (gratuito) e associazionesemplice-pro.zip (Pro); prima `bash wordpress/build.sh`)
-#      bash portale/release.sh sign free|pro VERSIONE        firma una versione già pubblicata (serve il suo zip in wordpress/dist o l'impronta dal pannello)
+#      bash portale/release.sh replace free|pro ["nota"]     SOSTITUISCE il pacchetto di una versione già pubblicata (stesso numero): solo con ok scritto della titolare; il vecchio zip resta sul server
+#      bash portale/release.sh sign free|pro VERSIONE       firma una versione già pubblicata (serve il suo zip in wordpress/dist o l'impronta dal pannello)
 # Chiave: PORTALE_SIGN_KEY (default ~/.asem/pacchetti-ed25519.pem); identificativo in ~/.asem/pacchetti-ed25519.kid. Fai una copia della chiave in un luogo sicuro.
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -26,6 +27,20 @@ if [ "${1:-}" = sign ]; then
 	f="$(zipfile "$P")"; [ -f "$f" ] || { echo "Manca $f" >&2; exit 1; }
 	SHA="$(openssl dgst -sha256 "$f" | awk '{print $NF}')"
 	"${S[@]}" "cd ~/portale && php bin/release.php sign $P $V $(sign "$P" "$V" "$SHA") $SIGN_KID"
+	exit 0
+fi
+
+if [ "${1:-}" = replace ]; then # eccezionale: stessa versione, nuovo pacchetto (solo con ok scritto della titolare); il vecchio zip resta sul server
+	P="${2:?Uso: release.sh replace free|pro [nota]}"; NOTE="${3:-}"
+	f="$(zipfile "$P")"; [ -f "$f" ] || { echo "Manca $f: lancia prima bash wordpress/build.sh" >&2; exit 1; }
+	VER="$(unzip -p "$f" "$(slug "$P")/$(slug "$P").php" | grep -m1 -oE 'Version:[[:space:]]*[0-9]+\.[0-9]+(\.[0-9]+)?' | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?')"
+	[ -n "$VER" ] || { echo "Non trovo la versione in $f" >&2; exit 1; }
+	SHA="$(openssl dgst -sha256 "$f" | awk '{print $NF}')"
+	SIG="$(sign "$P" "$VER" "$SHA")"
+	tmp="portale/data/incoming-$P-$$.zip"
+	"${S[@]}" "cat > ~/$tmp" < "$f"
+	"${S[@]}" "cd ~/portale && php bin/release.php replace $P ~/$tmp $(printf '%q' "$NOTE") $SIG $SIGN_KID; rc=\$?; rm -f ~/$tmp; exit \$rc"
+	"${S[@]}" 'bash ~/demo-provision/update.sh' || echo "Attenzione: la demo non è stata aggiornata (la sostituzione è andata a buon fine)." >&2
 	exit 0
 fi
 
