@@ -57,7 +57,7 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale
     });
 
     // Il rinnovo con incasso scrive in prima nota: servono anche i permessi della contabilità.
-    Route::middleware(['can:people.edit', 'can:accounting.edit'])
+    Route::middleware(['can:people.edit', 'can:accounting.edit', 'can:accounting.income'])
         ->post('/soci/{person}/tessera', [PeopleController::class, 'renew'])->whereUuid('person')->name('people.renew');
 
     Route::middleware('can:org.settings')->group(function (): void {
