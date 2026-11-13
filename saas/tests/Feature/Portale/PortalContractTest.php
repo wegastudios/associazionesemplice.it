@@ -213,7 +213,10 @@ it('in prova non si esporta né si collega il commercialista; con un piano sì',
     $org = Org::query()->findOrFail($orgId);
     $owner = User::query()->where('email', 'titolare@example.com')->sole();
     $by = app(Memberships::class)->find($owner->id, $orgId);
-    $put = fn (string $status) => $this->putJson("/api/portale/v1/orgs/{$orgId}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($orgId, 'sub_123', random_int(2, 9999), ['status' => $status, 'operators' => 5]))])->assertOk();
+    $rev = 0;
+    $put = function (string $status) use ($orgId, &$rev): void {
+        $this->putJson("/api/portale/v1/orgs/{$orgId}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($orgId, 'sub_123', ++$rev, ['status' => $status, 'operators' => 5]))])->assertOk();
+    };
     $user = $this->createUser('anna@example.com', twoFactor: true);
     $this->addOperator($org, $user);
 
