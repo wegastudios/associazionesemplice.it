@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Soci\Providers;
 
+use App\Modules\Contabilita\Contracts\FiscalYearClosed;
+use App\Modules\Contabilita\Contracts\FiscalYearReopened;
 use App\Modules\Core\Contracts\DataExport;
 use App\Modules\Core\Contracts\DemoSeeder;
 use App\Modules\Core\Contracts\HomeWidget;
@@ -17,6 +19,7 @@ use App\Modules\Soci\Demo\DemoMembers;
 use App\Modules\Soci\Export\SociDataExport;
 use App\Modules\Soci\Home\SociHome;
 use App\Modules\Soci\Payments\MembershipDues;
+use App\Modules\Soci\Services\MemberBookSnapshots;
 use App\Modules\Soci\Services\MemberProfilesService;
 use App\Modules\Soci\Services\MembershipService;
 use App\Modules\Soci\Services\PeopleDirectory;
@@ -25,6 +28,7 @@ use App\Modules\Soci\Setup\MembershipStep;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -45,6 +49,10 @@ final class SociServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadRoutesFrom(dirname(__DIR__).'/Http/routes.php');
+
+        // Chiusura e riapertura di un esercizio: il libro soci dell'anno si fotografa e si conserva.
+        Event::listen(FiscalYearClosed::class, [MemberBookSnapshots::class, 'take']);
+        Event::listen(FiscalYearReopened::class, [MemberBookSnapshots::class, 'supersede']);
 
         // Domande di adesione: 5 al minuto dallo stesso indirizzo, 50 all'ora per associazione.
         RateLimiter::for('applications', static function (Request $request): array {

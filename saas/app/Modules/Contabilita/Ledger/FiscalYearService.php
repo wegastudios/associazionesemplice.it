@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Modules\Contabilita\Ledger;
 
 use App\Modules\Audit\Contracts\AuditLog;
+use App\Modules\Contabilita\Contracts\FiscalYearClosed;
+use App\Modules\Contabilita\Contracts\FiscalYearReopened;
 use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Core\Contracts\OrgContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Auth\Factory as Auth;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\Query\Builder;
@@ -25,6 +28,7 @@ final readonly class FiscalYearService
         private OrgContext $context,
         private AuditLog $audit,
         private Auth $auth,
+        private Dispatcher $events,
     ) {}
 
     /** Esercizio che contiene la data; se non c'è e la data non si sovrappone ad altri, si crea l'anno solare. */
@@ -77,12 +81,17 @@ final readonly class FiscalYearService
             throw new LedgerError("Prima di chiudere il {$year} chiudi il {$earlier}.");
         }
 
-        $updated = $this->connection()->table('app.fiscal_years')->where('year', $year)->where('status', 'open')
-            ->update(['status' => 'closed', 'closed_at' => now(), 'closed_by' => $this->userId()]);
-        if ($updated !== 1) {
-            throw new LedgerError("L'esercizio {$year} non esiste o è già chiuso.");
-        }
-        $this->audit->record('fiscal_year.closed', 'app.fiscal_years', null, ['year' => $year]);
+        $this->connection()->transaction(function () use ($year): void {
+            $updated = $this->connection()->table('app.fiscal_years')->where('year', $year)->where('status', 'open')
+                ->update(['status' => 'closed', 'closed_at' => now(), 'closed_by' => $this->userId()]);
+            if ($updated !== 1) {
+                throw new LedgerError("L'esercizio {$year} non esiste o è già chiuso.");
+            }
+            // Chi tiene dati dell'anno li fotografa qui, nella stessa transazione: se fallisce, l'esercizio resta aperto.
+            $fy = $this->connection()->table('app.fiscal_years')->where('year', $year)->first(['starts_on', 'ends_on']);
+            $this->events->dispatch(new FiscalYearClosed($year, is_string($fy->starts_on ?? null) ? $fy->starts_on : '', is_string($fy->ends_on ?? null) ? $fy->ends_on : ''));
+            $this->audit->record('fiscal_year.closed', 'app.fiscal_years', null, ['year' => $year]);
+        });
     }
 
     public function reopen(int $year, string $reason): void
@@ -96,12 +105,15 @@ final readonly class FiscalYearService
         if (is_numeric($latest)) {
             throw new LedgerError("Si può riaprire solo l'ultimo esercizio chiuso: prima riapri il {$latest}.");
         }
-        $updated = $this->connection()->table('app.fiscal_years')->where('year', $year)->where('status', 'closed')
-            ->update(['status' => 'open', 'closed_at' => null, 'closed_by' => null]);
-        if ($updated !== 1) {
-            throw new LedgerError("L'esercizio {$year} non esiste o è già aperto.");
-        }
-        $this->audit->record('fiscal_year.reopened', 'app.fiscal_years', null, ['year' => $year, 'reason' => mb_substr(trim($reason), 0, 200)]);
+        $this->connection()->transaction(function () use ($year, $reason): void {
+            $updated = $this->connection()->table('app.fiscal_years')->where('year', $year)->where('status', 'closed')
+                ->update(['status' => 'open', 'closed_at' => null, 'closed_by' => null]);
+            if ($updated !== 1) {
+                throw new LedgerError("L'esercizio {$year} non esiste o è già aperto.");
+            }
+            $this->events->dispatch(new FiscalYearReopened($year));
+            $this->audit->record('fiscal_year.reopened', 'app.fiscal_years', null, ['year' => $year, 'reason' => mb_substr(trim($reason), 0, 200)]);
+        });
     }
 
     /** @return list<array{year: int, starts_on: string, ends_on: string, status: string}> */

@@ -31,8 +31,14 @@ final readonly class MemberBookService
         private AuditLog $audit,
     ) {}
 
-    /** @return list<Row> */
-    public function rows(string $filter = ''): array
+    /**
+     * Righe del libro. Senza periodo: tutti i soci di sempre (ordine di ingresso). Con un periodo (un esercizio:
+     * primo e ultimo giorno) solo chi ci entra secondo {@see self::entersPeriod()}, con numero progressivo dell'anno.
+     *
+     * @param  array{0: string, 1: string}|null  $period
+     * @return list<Row>
+     */
+    public function rows(string $filter = '', ?array $period = null): array
     {
         $people = Person::query()->whereIn('type', ['founder', 'ordinary', 'volunteer'])
             ->orderByRaw('coalesce(joined_on, created_at::date)')->orderBy('id')->get();
@@ -40,10 +46,14 @@ final readonly class MemberBookService
         $fees = $this->lastFees();
         $guardians = $this->guardians();
         $levels = MemberLevel::query()->get(['id', 'name'])->mapWithKeys(static fn (MemberLevel $l): array => [$l->id => $l->name])->all();
+        $cards = $period === null ? [] : $this->cardPeriods();
 
         $out = [];
         $n = 0;
         foreach ($people as $p) {
+            if ($period !== null && ! self::entersPeriod($p->type->value, $cards[$p->id] ?? [], $period, $p->joined_on?->format('Y-m-d') ?? $p->created_at?->format('Y-m-d'), $p->left_on?->format('Y-m-d'))) {
+                continue;
+            }
             $n++;
             $gone = $p->left_on !== null;
             if (($filter === self::IN_FORCE && $gone) || ($filter === self::LEFT && ! $gone)) {
@@ -74,6 +84,46 @@ final readonly class MemberBookService
                 'guardian' => $anon ? '' : ($guardians[$p->id] ?? ''),
                 'in_force' => ! $gone,
             ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * L'UNICO punto che decide chi entra nel libro di un esercizio (decisione del titolare, 13/11/2026): chi ha avuto
+     * una tessera valida per almeno un giorno dell'esercizio; una tessera a cavallo di due esercizi compare in
+     * entrambi i libri. I fondatori (tessera sempre rinnovata) ci sono per tutto il tempo in cui erano soci.
+     * Per cambiare il criterio basta cambiare questo metodo.
+     *
+     * @param  list<array{0: string, 1: string}>  $cards  periodi di validità delle tessere (dal, al)
+     * @param  array{0: string, 1: string}  $period  primo e ultimo giorno dell'esercizio
+     */
+    public static function entersPeriod(string $type, array $cards, array $period, ?string $joined, ?string $left): bool
+    {
+        [$start, $end] = $period;
+        if (($joined !== null && $joined > $end) || ($left !== null && $left < $start)) {
+            return false;
+        }
+        if ($type === 'founder') {
+            return true;
+        }
+        foreach ($cards as [$from, $to]) {
+            if ($from <= $end && $to >= $start) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** @return array<string, list<array{0: string, 1: string}>> tessere valide per persona */
+    private function cardPeriods(): array
+    {
+        $out = [];
+        foreach ($this->connection()->table('app.valid_memberships')->get(['person_id', 'valid_from', 'valid_to']) as $m) {
+            if (is_string($m->person_id ?? null) && is_string($m->valid_from ?? null) && is_string($m->valid_to ?? null)) {
+                $out[$m->person_id][] = [substr($m->valid_from, 0, 10), substr($m->valid_to, 0, 10)];
+            }
         }
 
         return $out;

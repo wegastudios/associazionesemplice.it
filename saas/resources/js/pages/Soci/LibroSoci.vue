@@ -2,9 +2,10 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 
-const props = defineProps({ filter: String, rows: Array, canExport: Boolean });
+const props = defineProps({ filter: String, rows: Array, year: Number, source: String, years: Array, canExport: Boolean });
 const filters = [{ value: '', label: 'Tutti' }, { value: 'in_force', label: 'In carica' }, { value: 'left', label: 'Cessati' }];
-const q = () => (props.filter ? `?stato=${props.filter}` : '');
+const params = (over = {}) => { const p = { ...(props.filter ? { stato: props.filter } : {}), ...(props.year ? { anno: props.year } : {}), ...over }; return Object.fromEntries(Object.entries(p).filter(([, v]) => v !== '' && v != null)); };
+const q = () => { const s = new URLSearchParams(params()).toString(); return s ? `?${s}` : ''; };
 </script>
 
 <template>
@@ -15,11 +16,13 @@ const q = () => (props.filter ? `?stato=${props.filter}` : '');
             <div>
                 <h1 class="text-2xl font-bold">Libro soci</h1>
                 <p class="text-sm text-muted">Tutti i soci in ordine di ingresso, con domanda, ammissione, cessazione e ultima quota. Ospiti e genitori non soci non ci sono.</p>
+                <p v-if="year" class="text-sm font-semibold text-muted">Esercizio {{ year }}: chi ha avuto una tessera valida per almeno un giorno dell'anno. {{ source === 'snapshot' ? 'Fotografia alla chiusura: non cambia più, salvo riapertura.' : 'Esercizio aperto: si aggiorna fino alla chiusura.' }}</p>
             </div>
             <div class="flex flex-wrap items-center gap-3 text-sm font-semibold">
+                <label v-if="years.length" class="flex items-center gap-2">Esercizio<select class="rounded border border-line bg-surface px-2 py-1" :value="year ?? ''" @change="router.get('/gestionale/soci/libro', params({ anno: $event.target.value }), { preserveScroll: true })"><option value="">Tutti i soci</option><option v-for="y in years" :key="y.year" :value="y.year">{{ y.year }}{{ y.status === 'closed' ? ' (chiuso)' : '' }}</option></select></label>
                 <nav class="flex gap-1 rounded-lg border border-line p-1" aria-label="Filtro">
                     <button v-for="f in filters" :key="f.value" type="button" class="rounded px-3 py-1" :class="filter === f.value ? 'bg-surface text-accent' : 'text-muted'" :aria-pressed="filter === f.value"
-                        @click="router.get('/gestionale/soci/libro', f.value ? { stato: f.value } : {}, { preserveScroll: true })">{{ f.label }}</button>
+                        @click="router.get('/gestionale/soci/libro', params({ stato: f.value }), { preserveScroll: true })">{{ f.label }}</button>
                 </nav>
                 <template v-if="canExport">
                     <a :href="`/gestionale/soci/libro.pdf${q()}`" target="_blank" class="btn btn-primary">Stampa (PDF)</a>

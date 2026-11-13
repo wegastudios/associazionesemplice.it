@@ -2,11 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Modules\Contabilita\Ledger\FiscalYearService;
 use App\Modules\Contabilita\Models\Account;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Soci\Contracts\PeopleError;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Services\MemberBookService;
+use App\Modules\Soci\Services\MemberBookSnapshots;
 use App\Modules\Soci\Services\MembershipService;
 use App\Modules\Soci\Services\PeopleService;
 use Illuminate\Support\Facades\DB;
@@ -71,5 +73,46 @@ it('va a capo di pagina con molti soci', function (): void {
     $this->orgContext()->run($this->org->id, function (): void {
         $rows = array_fill(0, 45, app(MemberBookService::class)->rows()[0]);
         expect(app(MemberBookService::class)->pdf($rows, 'X', ''))->toContain('/Count 3')->toContain('pagina 3');
+    });
+});
+
+it('fa entrare nel libro di un esercizio chi ha avuto una tessera valida almeno un giorno; a cavallo compare in entrambi', function (): void {
+    $card = [['2025-09-01', '2026-08-31']];
+    $enters = fn (string $from, string $to) => MemberBookService::entersPeriod('ordinary', $card, [$from, $to], '2020-01-01', null);
+
+    expect($enters('2025-01-01', '2025-12-31'))->toBeTrue()
+        ->and($enters('2026-01-01', '2026-12-31'))->toBeTrue()
+        ->and($enters('2024-01-01', '2024-12-31'))->toBeFalse()
+        ->and($enters('2027-01-01', '2027-12-31'))->toBeFalse()
+        ->and(MemberBookService::entersPeriod('founder', [], ['2026-01-01', '2026-12-31'], '2015-03-01', null))->toBeTrue()
+        ->and(MemberBookService::entersPeriod('founder', [], ['2026-01-01', '2026-12-31'], '2015-03-01', '2025-06-30'))->toBeFalse();
+});
+
+it('fotografa il libro alla chiusura dell\'esercizio e non lo cambia più, nemmeno se la persona viene cancellata', function (): void {
+    $this->orgContext()->run($this->org->id, function (): void {
+        $years = app(FiscalYearService::class);
+        $snapshots = app(MemberBookSnapshots::class);
+        $year = $years->yearFor(now()->format('Y-m-d'));
+
+        // Dal vivo: il fondatore e chi ha rinnovato; chi era uscito prima dell'anno no.
+        expect(array_column($snapshots->forYear($year)['rows'], 'name'))->toBe(['Fondatore Franco', 'Rossi Anna']);
+
+        $years->close($year);
+        Person::query()->where('first_name', 'Anna')->sole()->delete();
+
+        $closed = $snapshots->forYear($year);
+        expect($closed['source'])->toBe('snapshot')
+            ->and(array_column($closed['rows'], 'name'))->toBe(['Fondatore Franco', 'Rossi Anna'])
+            ->and($closed['rows'][1]['email'])->toBe('')
+            ->and($closed['rows'][1]['residence'])->toBe('Via Roma 1, 00100 Roma');
+
+        // Riaperto: la fotografia resta come versione precedente e si torna al vivo.
+        $years->reopen($year, 'Correzione');
+        expect(DB::table('app.member_book_snapshots')->whereNotNull('superseded_at')->count())->toBe(1)
+            ->and($snapshots->forYear($year)['source'])->toBe('live')
+            ->and(array_column($snapshots->forYear($year)['rows'], 'name'))->toBe(['Fondatore Franco']);
+
+        $years->close($year);
+        expect(DB::table('app.member_book_snapshots')->where('fiscal_year', $year)->orderBy('version')->pluck('version')->all())->toBe([1, 2]);
     });
 });
