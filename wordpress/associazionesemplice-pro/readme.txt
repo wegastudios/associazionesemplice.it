@@ -3,7 +3,7 @@ Contributors: wegastudios
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.9
+Stable tag: 1.3.10
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,11 @@ With a license key entered in Associazione Semplice Pro, once a day (and when yo
 The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, Mozilla Public License 2.0) to tell which domain a license covers.
 
 == Changelog ==
+
+= 1.3.10 =
+* Il diritto di voto si decide per ogni livello di socio (sì o no) e vale per votazioni, assemblee e Dati per il RUNTS
+* I minorenni non votano mai, qualunque sia il livello
+* Se la licenza non comprende i livelli, votano tutti i soci maggiorenni
 
 = 1.3.9 =
 * Il nome del piano che vedi nel programma è quello della tua licenza, non più un nome scritto nel programma

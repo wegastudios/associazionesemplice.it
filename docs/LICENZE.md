@@ -51,7 +51,7 @@ del plugin spiega come regolarizzare (link al portale). Esportazione dei dati e 
 
 `UpdateCheck` (+ `Admin/UpdateNotice`). Con una chiave di licenza inserita (anche la gratuita) e fuori dai siti locali, un lavoro orario (`asem_update_check`) chiede
 al portale `GET https://associazionesemplice.it/api/plugin/latest` (filtro `asem_update_api`) e salva l'esito nell'opzione `asem_update_latest`. Parte solo se sono passate
-`update_check_hours` ore (default 24, 6–168). **Non si manda niente**: né chiave né dati del sito, la risposta è uguale per tutti.
+`update_check_hours` ore (default 24, 12–168). **Non si manda niente**: né chiave né dati del sito, la risposta è uguale per tutti.
 
 - Risposta attesa (da realizzare nel portale): `{"free":{"version":"1.1.13","url":"https://associazionesemplice.it/scarica/free/1.1.13"},"pro":{"version":"1.1.5","url":"…"}}`.
   Le versioni devono essere numeri (`1.2`, `1.1.13`); l'indirizzo è accettato solo se `https`; voci malformate si ignorano. Se il portale non risponde l'avviso resta com'è.

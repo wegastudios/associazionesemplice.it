@@ -2,6 +2,19 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.23
+- Libro soci per esercizio: segue l'esercizio e alla chiusura viene fotografato, così da quel momento non cambia più
+- Ogni socio ha una matricola fissa e ogni riga un numero; «Fotografa gli anni già chiusi» ricostruisce i libri passati con la dicitura «ricostruito il…»
+- Il libro soci di ogni esercizio si scarica in PDF e in CSV
+- Un esercizio chiuso si può riaprire solo se è l'ultimo, scrivendo il motivo; resta una traccia permanente di chiusure e riaperture; gli esercizi si chiudono in ordine
+- Il mese di inizio dell'esercizio si sceglie in tutte le edizioni; le tessere di un esercizio chiuso non si modificano
+- L'esportazione dei dati personali di un socio comprende anche i libri soci chiusi
+- Nuova voce Registri → «Dati per il RUNTS»: numeri al 31 dicembre, soci che sono enti, avviso se si scende sotto il minimo di soci per ODV e APS, promemoria del 30 giugno
+- Diritto di voto: votano i soci maggiorenni
+- Soci che sono enti: scheda dedicata, importazione da CSV e colonna «Tipo» nel libro soci
+- Nuovo tipo di utente «Dipendente»: permessi che si possono togliere, periodo di servizio e conteggio dei lavoratori per il RUNTS
+- Trasparenza: è scritto cosa il programma invia al sito associazionesemplice.it per gli aggiornamenti (solo prodotto e versione); si spegne da Impostazioni → Tecniche → Limiti e soglie, e il testo è in Strumenti → Privacy
+
 ## 1.3.22
 - Informativa privacy: ora si parla di «Referente per la privacy», con una frase più chiara su a chi rivolgersi per i propri dati
 - Parole più semplici: «non si può annullare», «Cedi il posto a un'altra persona», «Non è ancora entrato nell'area soci», «Scarica per Excel», «Scarica i dati», «la domanda viene cancellata»; il prezzo a fasce si legge «all'ora» o «per turno»
