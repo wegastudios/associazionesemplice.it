@@ -178,6 +178,16 @@ final class MemberLoginPage {
 			. '<button type="submit" style="' . $btn . '">' . esc_html( $button ) . '</button></form>';
 	}
 
+	/** Pulsante «Esci» per l'area soci: solo per chi è entrato con l'accesso proprio dei soci (invio con il segnale di sicurezza della sessione). */
+	public static function logout_button(): string {
+		if ( ! MemberSession::current() ) {
+			return '';
+		}
+		return '<form class="asemf-logout" method="post" action="' . esc_url( self::url() ) . '"><input type="hidden" name="asem_ml_do" value="logout">'
+			. '<input type="hidden" name="_csrf" value="' . esc_attr( MemberSession::csrf( 'account' ) ) . '">'
+			. '<button type="submit" class="asemf-btn asemf-btn-ghost wp-element-button">Esci</button></form>';
+	}
+
 	/** Modulo email e password per l'area riservata (quando non si è entrati): quello predefinito dei soci senza utente WordPress. */
 	public static function inline_login( string $back ): string {
 		$f = '<p><label>Email<br><input type="email" name="email" required autocomplete="username" class="asemf-input"></label></p>'
