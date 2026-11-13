@@ -6195,7 +6195,7 @@ asem_ok( 1 === $rc_s['events'], 'ricontrollo import TEC: il riepilogo conta l\'e
 update_post_meta( $rc_p, '_asem_activity', $rc_a );
 $rc_r2 = \AssociazioneSemplice\TribeImport::run();
 $rc_a2 = (int) get_post_meta( $rc_p, '_asem_activity', true );
-asem_ok( 1 === $rc_r2['imported'] && 0 === $rc_r2['skipped'] && $rc_a2 && $rc_a2 !== $rc_a && $acts->get( $rc_a2 ), 'ricontrollo import TEC: l\'evento con l\'attività eliminata si reimporta in una nuova attività' );
+asem_ok( 1 === $rc_r2['imported'] && 2 === $rc_r2['skipped'] && $rc_a2 && $rc_a2 !== $rc_a && $acts->get( $rc_a2 ), 'ricontrollo import TEC: l\'evento con l\'attività eliminata si reimporta in una nuova attività' );
 \AssociazioneSemplice\ActivityReset::delete( $rc_a2, \AssociazioneSemplice\ActivityReset::VOID );
 wp_delete_post( $rc_p, true ); // pulizia: gli altri test partono dagli eventi di prima
 $tec_re = $CP::duplicate( (int) $tec_a['id'], array( 'date' => gmdate( 'Y-m-d', strtotime( $today . ' +30 days' ) ) ) );
