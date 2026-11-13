@@ -41,11 +41,11 @@ La prova dura **30 giorni** e **non chiede la carta**. Puoi provare quasi tutto 
 
 I piani sono **{piano_piccola}**, **{piano_media}** e **{piano_grande}**. Si distinguono per il **numero di soci**, il **numero di operatori** e le funzioni incluse; per esempio i **pagamenti online dei soci** e la **fattura elettronica** partono da {piano_media}, le **comunicazioni** e la **vita associativa** da {piano_grande}. Alcune funzioni si aggiungono a parte (per esempio il sito, le risorse e prenotazioni, lo sport, il dominio personalizzato, il database dedicato). Limiti e prezzi aggiornati sono sempre nella **pagina dei prezzi** di associazionesemplice.it: qui non li ripetiamo per non darti numeri vecchi.
 
-Con **{piano_grande}**, se superi il numero di soci previsto, si aggiungono **pacchetti da 500 soci**.
+{piano_piccola} e {piano_media} non hanno pacchetti: se superi il numero di soci previsto, passi al piano successivo. Solo sopra **{piano_grande}** puoi aggiungere i pacchetti **«500 soci in più»** e **«1.000 soci in più»**; i prezzi sono nella pagina dei prezzi.
 
 ## Se non scegli un piano
 
-Alla fine dei 30 giorni, se **non scegli un piano**, i dati della prova vengono **cancellati dopo 7 giorni**. Prima ricevi **email di avviso** con una **proposta scontata** per continuare. Se scegli un piano in tempo, i tuoi dati restano dove sono.
+Finita la prova hai ancora **7 giorni**: puoi entrare e consultare tutto, ma **non inserire né modificare**. Se in quei giorni **scegli un piano**, riprendi da dove eri arrivato. Dopo 7 giorni i dati della prova vengono **cancellati**. Prima ricevi **email di avviso** con una **proposta scontata** per continuare.
 
 ## Se un piano scade
 
