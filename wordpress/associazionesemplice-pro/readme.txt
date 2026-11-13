@@ -3,7 +3,7 @@ Contributors: wegastudios
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.8
+Stable tag: 1.3.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,14 @@ With a license key entered in Associazione Semplice Pro, once a day (and when yo
 The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, Mozilla Public License 2.0) to tell which domain a license covers.
 
 == Changelog ==
+
+= 1.3.9 =
+* Il nome del piano che vedi nel programma è quello della tua licenza, non più un nome scritto nel programma
+* Contabilità: «Anno solare» e «Anni solari» diventano «Riepilogo» ed «Esercizi» (l'anno contabile); creare un esercizio in anticipo chiede conferma
+* Rendiconto per cassa: nel titolo e nel PDF compare «Mod. D»; da telefono gli importi restano su una riga e la tabella «Cassa e conti» occupa tutta la larghezza; un avviso ricorda al commercialista le somme accantonate nei fondi
+* Il «5x1000» ora si chiama «5 per mille» in menu, pagina pubblica, avvisi e procedura guidata
+* Risorse prenotabili: gli orari liberi sono un elenco da scegliere, con un solo pulsante «Prenota» in fondo invece di uno per ogni orario; «pago in segreteria» si legge una volta sola
+* Cassa all'ingresso e cassa per più persone: se la tessera non è valida il messaggio dice di rinnovare la quota dalla scheda del socio
 
 = 1.3.8 =
 * Anche il programma gratuito ora si aggiorna da Bacheca → Aggiornamenti, insieme al Pro

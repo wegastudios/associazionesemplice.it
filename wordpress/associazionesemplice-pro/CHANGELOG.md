@@ -2,6 +2,14 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.9
+- Il nome del piano che vedi nel programma è quello della tua licenza, non più un nome scritto nel programma
+- Contabilità: «Anno solare» e «Anni solari» diventano «Riepilogo» ed «Esercizi» (l'anno contabile); creare un esercizio in anticipo chiede conferma
+- Rendiconto per cassa: nel titolo e nel PDF compare «Mod. D»; da telefono gli importi restano su una riga e la tabella «Cassa e conti» occupa tutta la larghezza; un avviso ricorda al commercialista le somme accantonate nei fondi
+- Il «5x1000» ora si chiama «5 per mille» in menu, pagina pubblica, avvisi e procedura guidata
+- Risorse prenotabili: gli orari liberi sono un elenco da scegliere, con un solo pulsante «Prenota» in fondo invece di uno per ogni orario; «pago in segreteria» si legge una volta sola
+- Cassa all'ingresso e cassa per più persone: se la tessera non è valida il messaggio dice di rinnovare la quota dalla scheda del socio
+
 ## 1.3.8
 - Anche il programma gratuito ora si aggiorna da Bacheca → Aggiornamenti, insieme al Pro
 - Prima di aggiornare, con «Visualizza i dettagli» vedi in italiano cosa cambia

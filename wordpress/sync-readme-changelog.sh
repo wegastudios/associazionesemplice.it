@@ -33,3 +33,19 @@ tr -d '\r' < "$readme" | awk -v newfile="$new" '
 ' > "$tmp"
 mv "$tmp" "$readme"; trap - EXIT; rm -f "$new"
 echo "$readme: changelog rigenerato da $log"; sed -n '/^== Changelog ==/,+6p' "$readme"
+# 3) WordPress.org mostra al massimo 5000 caratteri di Changelog (oltre, il Plugin Check avvisa «too long»): nel readme del gratuito restano le versioni più recenti
+#    entro il limite; la cronologia completa resta in CHANGELOG.md.
+if [ "$1" = "free" ]; then
+	tmp2="$(mktemp)"
+	tr -d '\r' < "$readme" | awk '
+		/^== Changelog ==/ { inlog = 1; print; next }
+		!inlog { print; next }
+		/^== / { inlog = 0; print; next }
+		{
+			if ($0 ~ /^= .* =$/) { if (blk != "") { if (!skipped && (total + length(blk) <= 4600 || nblk == 0)) { printf "%s", blk; total += length(blk); nblk++ } else { skipped = 1 } } blk = "" }
+			blk = blk $0 "\n"
+		}
+		END { if (inlog && blk != "") { if (!skipped && (total + length(blk) <= 4600 || nblk == 0)) printf "%s", blk; else skipped = 1 } if (skipped) print "\nLe versioni precedenti sono nel file CHANGELOG.md del plugin." }
+	' > "$tmp2"
+	mv "$tmp2" "$readme"
+fi
