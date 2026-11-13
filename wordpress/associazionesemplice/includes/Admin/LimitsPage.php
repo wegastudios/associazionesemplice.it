@@ -5,7 +5,7 @@ use AssociazioneSemplice\Limits;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Impostazioni → Tecniche → Limiti e soglie: ogni limite del plugin con il suo valore predefinito e i rischi di alzarlo o abbassarlo. */
+/** Impostazioni → Limiti e soglie: ogni limite del plugin con il suo valore predefinito e i rischi di alzarlo o abbassarlo. */
 final class LimitsPage {
 
 	public static function render(): void {

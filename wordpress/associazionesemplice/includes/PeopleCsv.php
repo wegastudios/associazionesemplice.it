@@ -434,7 +434,7 @@ final class PeopleCsv {
 				};
 				$host = null === $r['host'] ? '' : trim( $r['host'] );
 				if ( '' === $host && $need_host ) {
-					$plans[ $idx ] = $err( 'Ospite senza l\'indicazione del socio ospitante (colonna "Ospite di": tessera, email o nome e cognome). Per importare ospiti senza ospitante spegni la regola in Impostazioni → Tecniche → Limiti e soglie' );
+					$plans[ $idx ] = $err( 'Ospite senza l\'indicazione del socio ospitante (colonna "Ospite di": tessera, email o nome e cognome). Per importare ospiti senza ospitante spegni la regola in Impostazioni → Limiti e soglie' );
 					continue;
 				}
 				if ( null !== $r['email'] && ! filter_var( $r['email'], FILTER_VALIDATE_EMAIL ) ) {
@@ -442,7 +442,7 @@ final class PeopleCsv {
 					continue;
 				}
 				if ( ( $need_phone || null !== $r['phone'] ) && ! Phone::is_valid( (string) $r['phone'] ) ) {
-					$plans[ $idx ] = $err( 'Cellulare mancante o non valido (obbligatorio per gli ospiti: serve a riconoscerli ed evitare doppioni). Per importare ospiti senza cellulare spegni la regola in Impostazioni → Tecniche → Limiti e soglie' );
+					$plans[ $idx ] = $err( 'Cellulare mancante o non valido (obbligatorio per gli ospiti: serve a riconoscerli ed evitare doppioni). Per importare ospiti senza cellulare spegni la regola in Impostazioni → Limiti e soglie' );
 					continue;
 				}
 				if ( '' === $host ) { // ospite senza ospitante (la regola è spenta nei Limiti): si riconosce per nome e cognome

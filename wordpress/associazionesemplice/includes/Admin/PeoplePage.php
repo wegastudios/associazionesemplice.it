@@ -627,7 +627,7 @@ final class PeoplePage {
 		echo wp_kses( Ui::hidden( 'id', $p['id'] ) . ( $on ? '' : Ui::hidden( 'enabled', 1 ) )
 			. '<button class="button">' . ( $on ? 'Togli dallo staff' : 'Aggiungi allo staff' ) . '</button>', Html::allowed() );
 		Ui::form_close();
-		echo '<p class="description">Lo staff dell\'ente può registrare gli ingressi di tutti gli eventi. Può anche essere staff di un singolo evento (scheda dell\'attività): solo lì si può abilitare l\'incasso del biglietto sul posto. Non gestisce soldi né comunicazioni.</p></div>';
+		echo '<p class="description">Lo staff dell\'ente può registrare gli ingressi di tutti gli eventi. Può anche essere staff di un singolo evento (scheda dell\'attività): solo lì si può abilitare l\'incasso del contributo d\'ingresso sul posto. Non gestisce soldi né comunicazioni.</p></div>';
 	}
 
 	private static function panel_guests( array $p ): void {

@@ -7,7 +7,7 @@ defined( 'ABSPATH' ) || exit;
  * Limiti, gruppi e comportamenti automatici del plugin.
  *
  * Ogni voce ha un valore predefinito (scelto per essere prudente su un hosting condiviso), un minimo e un massimo di sicurezza e una
- * spiegazione di cosa fa e dei rischi di alzarlo o abbassarlo. I valori si cambiano da Impostazioni → Tecniche → Limiti e soglie.
+ * spiegazione di cosa fa e dei rischi di alzarlo o abbassarlo. I valori si cambiano da Impostazioni → Limiti e soglie.
  */
 final class Limits {
 

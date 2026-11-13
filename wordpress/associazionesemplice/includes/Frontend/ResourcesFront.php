@@ -194,7 +194,7 @@ final class ResourcesFront {
 		}
 
 		if ( ! $active ) {
-			return $html . '<div class="asemf-notice">Rinnova la tessera per prenotare le risorse.</div></section>';
+			return $html . '<div class="asemf-notice">La tessera non è valida: per prenotare le risorse rinnova la quota associativa (' . ( \AssociazioneSemplice\Plugin::payments()->enabled() ? 'apri «Pagamenti» o ' : '' ) . 'rivolgiti alla segreteria).</div></section>';
 		}
 		$list = Resources::all();
 		if ( ! $list ) {

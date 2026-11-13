@@ -243,11 +243,11 @@ final class ProViews {
 			}
 		}
 		$ids = Views::hidden( 'session_id', $s['id'] );
-		return '<details class="asemf-door"><summary><strong>＋ Ingresso sul posto</strong> <span class="asemf-small asemf-muted">socio non prenotato (biglietto socio: ' . esc_html( Money::format( Plugin::activities()->fee_for( $a, MemberType::ORDINARY ) ) ) . ')</span></summary>'
+		return '<details class="asemf-door"><summary><strong>＋ Ingresso sul posto</strong> <span class="asemf-small asemf-muted">socio non prenotato (contributo d\'ingresso socio: ' . esc_html( Money::format( Plugin::activities()->fee_for( $a, MemberType::ORDINARY ) ) ) . ')</span></summary>'
 			. Views::form(
 				'asem_front_door',
 				$ids . '<label>Socio <select name="person_id" required>' . $all . '</select></label>'
-				. '<label><input type="checkbox" name="pay" value="1" checked> Incassa il biglietto</label>'
+				. '<label><input type="checkbox" name="pay" value="1" checked> Incassa il contributo d\'ingresso</label>'
 				. ( '' !== $accs ? '<label>Pagamento <select name="account_id">' . $accs . '</select></label>' : '' ),
 				'Prenota, incassa e registra l\'ingresso',
 				true
@@ -353,7 +353,7 @@ final class ProViews {
 		$fields = Views::hidden( 'session_id', $s['id'] )
 			. '<label>Chi paga <select name="payer_id" required>' . $members_options . '</select></label>'
 			. '<label>Pagamento <select name="account_id">' . $accounts_options . '</select></label>'
-			. '<p class="asemf-small asemf-muted">Scegli i soci per cui paga (può includere anche sé stesso): ognuno viene prenotato, l\'importo del biglietto è calcolato automaticamente e l\'incasso è unico.</p>' . $rows;
+			. '<p class="asemf-small asemf-muted">Scegli i soci per cui paga (può includere anche sé stesso): ognuno viene prenotato, l\'importo del contributo d\'ingresso è calcolato automaticamente e l\'incasso è unico.</p>' . $rows;
 		return '<details class="asemf-door-group"><summary><strong>＋ Un socio paga per più soci</strong></summary>'
 			. Views::form( 'asem_front_door_group', $fields, 'Prenota e incassa per tutti', true ) . '</details>';
 	}

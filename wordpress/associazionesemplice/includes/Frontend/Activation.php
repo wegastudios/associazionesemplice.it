@@ -40,7 +40,7 @@ final class Activation {
 	/** Messaggio di invito per WhatsApp con il link già dentro. */
 	public static function invite_text( array $person ): string {
 		$assoc = (string) Settings::get( 'association_name' );
-		return 'Ciao ' . $person['first_name'] . ', sei stato/a registrato/a come socio/a' . ( '' !== $assoc ? ' di ' . $assoc : '' ) . '. '
+		return 'Ciao ' . $person['first_name'] . ', la segreteria' . ( '' !== $assoc ? ' di ' . $assoc : '' ) . ' ti ha registrato tra i soci. '
 			. 'Attiva il tuo accesso all\'area riservata da questo link (vale ' . self::validity_text() . '): ' . self::url( (int) $person['id'] );
 	}
 

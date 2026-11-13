@@ -26,7 +26,7 @@ final class EventRequests {
 	const KEEP_DAYS = 30;
 	const CONFIRM_H = 24;
 	const MAX_SEATS = 10;
-	const MESSAGE   = 'Richiesta ricevuta. Ti abbiamo scritto un\'email: apri il collegamento che contiene entro 24 ore per confermare l\'indirizzo (controlla anche la posta indesiderata).';
+	const MESSAGE   = 'Richiesta ricevuta. Ti abbiamo scritto un\'email: apri il link che contiene entro 24 ore per confermare l\'indirizzo (controlla anche la posta indesiderata).';
 
 	/** Esito dell'invio già elaborato nella richiesta in corso (il testo della pagina può passare più volte dal filtro). */
 	private static $handled = null;
@@ -148,7 +148,7 @@ final class EventRequests {
 		$url   = (string) Settings::get( 'privacy_url' );
 		$form .= '<div class="asemf-rules-box">' . ( '' === $url ? '<div style="max-height:200px;overflow:auto;border:1px solid #c3c4c7;border-radius:8px;padding:10px 12px;margin:8px 0;background:#fff">' . PrivacyNotice::html() . '</div>' : '' )
 			. '<label class="asemf-check"><input type="checkbox" name="privacy_ok" value="1"' . checked( ! empty( $post['privacy_ok'] ), true, false ) . '> Ho letto ' . ( '' !== $url ? '<a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">l\'informativa sulla privacy</a>' : 'l\'informativa sulla privacy' ) . ' e acconsento al trattamento dei dati.</label></div>';
-		$form .= '<p class="asemf-small asemf-muted">' . ( $fee > 0 ? 'Contributo: ' . esc_html( Money::format( $fee ) ) . ' a persona, da pagare in anticipo con bonifico istantaneo (te lo spieghiamo nell\'email) e da inviare in ricevuta alla segreteria entro ' . (int) self::pay_hours() . ' ore dalla conferma; altrimenti il posto viene cancellato. ' : 'Partecipazione gratuita. ' )
+		$form .= '<p class="asemf-small asemf-muted">' . ( $fee > 0 ? 'Contributo: ' . esc_html( Money::format( $fee ) ) . ' a persona. Come funziona: 1) invii la richiesta; 2) ricevi un\'email con i dati per il bonifico istantaneo; 3) entro ' . (int) self::pay_hours() . ' ore dalla conferma mandi alla segreteria la ricevuta del bonifico. Se la ricevuta non arriva in tempo, il posto torna libero. ' : 'Partecipazione gratuita. ' )
 			. ( $opt['approval'] ? 'La partecipazione è confermata dalla segreteria dopo la tua richiesta.' : 'La prenotazione è automatica dopo la conferma dell\'email.' ) . ' Per disdire scrivi alla segreteria.</p>'
 			. '<button type="submit" class="asemf-btn wp-element-button">' . ( $opt['approval'] ? 'Invia la richiesta di partecipazione' : 'Prenota' ) . '</button></form>';
 		return $html . '<section class="asemf-guest-request"><h3 class="asemf-event-h">Non sei socio?</h3><details class="asemf-guest-details"' . ( $errors || $post ? ' open' : '' ) . '><summary class="asemf-btn wp-element-button">Prenota senza iscriverti</summary><p class="asemf-small">Puoi partecipare anche senza essere socio: compila i dati qui sotto.</p>' . $form . '</details></section>';
@@ -275,12 +275,27 @@ final class EventRequests {
 		Texts::mail(
 			$email,
 			'Conferma la tua richiesta: ' . $activity['name'] . self::assoc_suffix(),
-			'Ciao ' . $people[0]['first_name'] . ",\n\nhai chiesto " . count( $people ) . ( 1 === count( $people ) ? ' posto' : ' posti' ) . ' per «' . $activity['name'] . '» del ' . $s['session_date'] . ".\n\n"
-			. 'Per confermare che l\'indirizzo è tuo apri questo collegamento entro ' . self::CONFIRM_H . " ore:\n" . self::confirm_url( $id, $token ) . "\n\n"
+			'Ciao ' . $people[0]['first_name'] . ",\n\nhai chiesto " . count( $people ) . ( 1 === count( $people ) ? ' posto' : ' posti' ) . ' per «' . $activity['name'] . '» di ' . Frontend\Views::date_words( (string) $s['session_date'] ) . ".\n\n"
+			. 'Per confermare che l\'indirizzo è tuo apri questo link entro ' . self::CONFIRM_H . " ore:\n" . self::confirm_url( $id, $token ) . "\n\n"
 			. 'Se non sei stato tu, ignora questo messaggio: la richiesta non avrà seguito.'
 		);
 		Audit::log( 'event_request.received', 'activity', (int) $activity['id'], array( 'seats' => count( $people ) ) ); // niente dati personali nel registro
 		return $ok;
+	}
+
+	/**
+	 * I due passi per pagare con bonifico istantaneo, scritti uno per riga nelle email: bonifico, poi ricevuta alla segreteria entro il termine.
+	 *
+	 * @param string $what     cosa si conferma: «il posto» o «l'iscrizione»
+	 * @param string $deadline termine di pagamento («Y-m-d H:i:s», ora del sito), vuoto se non c'è
+	 * @param string $fail     cosa succede se la ricevuta non arriva («il posto torna libero»)
+	 */
+	private static function pay_steps( string $what, int $fee, string $deadline, string $title, string $surname, string $fail ): string {
+		$until = '' !== $deadline ? ' (cioè entro ' . Frontend\Views::date_words( substr( $deadline, 0, 10 ) ) . ' alle ' . substr( $deadline, 11, 5 ) . ')' : '';
+		$tag   = trim( $title . ( '' !== $surname ? ' – ' . $surname : '' ) );
+		return 'Per confermare ' . $what . ":\n1. fai un bonifico istantaneo di " . Money::format( $fee ) . ( Bank::enabled() ? ' con i dati qui sotto' : '' ) . ";\n"
+			. '2. entro ' . self::pay_hours() . ' ore' . $until . ' manda la ricevuta del bonifico a ' . Applications::notify_email() . ' scrivendo «' . $tag . "».\n"
+			. 'Se la ricevuta non arriva in tempo ' . $fail . ".\n\n";
 	}
 
 	private static function assoc_suffix(): string {
@@ -318,17 +333,17 @@ final class EventRequests {
 	/** @return array{ok:bool,message:string} */
 	public static function confirm( string $param ): array {
 		if ( ! preg_match( '/^(\d{1,12})\.([A-Za-z0-9]{32})$/', $param, $m ) ) {
-			return array( 'ok' => false, 'message' => 'Il collegamento non è valido.' );
+			return array( 'ok' => false, 'message' => 'Il link non è valido.' );
 		}
 		$row = self::row( (int) $m[1] );
 		if ( ! $row || ! hash_equals( (string) $row['token_hash'], hash( 'sha256', $m[2] ) ) ) {
-			return array( 'ok' => false, 'message' => 'Il collegamento non è valido o la richiesta è stata cancellata.' );
+			return array( 'ok' => false, 'message' => 'Il link non è valido o la richiesta è stata annullata.' );
 		}
 		if ( 'new' !== $row['status'] ) {
 			return array( 'ok' => true, 'message' => 'Hai già confermato questa richiesta: ti abbiamo scritto un\'email con le informazioni.' );
 		}
 		if ( ( new \DateTimeImmutable( (string) $row['created_at'], wp_timezone() ) )->getTimestamp() < time() - self::CONFIRM_H * HOUR_IN_SECONDS ) {
-			return array( 'ok' => false, 'message' => 'Il collegamento è scaduto: invia di nuovo la richiesta dalla pagina dell\'evento.' );
+			return array( 'ok' => false, 'message' => 'Il link è scaduto: invia di nuovo la richiesta dalla pagina dell\'evento.' );
 		}
 		$a = Plugin::activities()->get( (int) $row['activity_id'] );
 		if ( ! $a ) {
@@ -451,7 +466,7 @@ final class EventRequests {
 		self::set( (int) $row['id'], array( 'status' => 'booked', 'data' => null ) );
 		$to = self::recipient( $row );
 		if ( '' !== $to ) {
-			Texts::mail( $to, 'Richiesta accolta: ' . $a['name'] . self::assoc_suffix(), 'La tua richiesta di partecipazione a «' . $a['name'] . '» del ' . $s['session_date'] . ' è stata accolta: il posto è prenotato. Lo trovi nella tua area, tra le prenotazioni.' );
+			Texts::mail( $to, 'Richiesta accolta: ' . $a['name'] . self::assoc_suffix(), 'La tua richiesta di partecipazione a «' . $a['name'] . '» di ' . Frontend\Views::date_words( (string) $s['session_date'] ) . ' è stata accolta: il posto è prenotato. Lo trovi nella tua area, tra le prenotazioni.' );
 		}
 		return array( 'ok' => true, 'message' => 'Richiesta accolta: il socio è prenotato.' );
 	}
@@ -524,14 +539,14 @@ final class EventRequests {
 		$deadline = $fee > 0 ? wp_date( 'Y-m-d H:i:s', time() + self::pay_hours() * HOUR_IN_SECONDS ) : null;
 		self::set( $id, array( 'status' => 'booked', 'deadline' => $deadline, 'data' => wp_json_encode( array( 'bookings' => $booked ) ) ) );
 		Audit::log( 'event_request.booked', 'activity', (int) $a['id'], array( 'seats' => count( $booked ) ) );
-		$text = 'Ciao ' . $list[0]['first_name'] . ",\n\nil tuo posto per «" . $a['name'] . '» del ' . $s['session_date'] . ( $s['start_time'] ? ' alle ' . $s['start_time'] : '' ) . ' (' . count( $booked ) . ( 1 === count( $booked ) ? ' persona' : ' persone' ) . ") è prenotato.\n\n";
+		$text = 'Ciao ' . $list[0]['first_name'] . ",\n\nil tuo posto per «" . $a['name'] . '» di ' . Frontend\Views::date_words( (string) $s['session_date'] ) . ( $s['start_time'] ? ' alle ' . $s['start_time'] : '' ) . ' (' . count( $booked ) . ( 1 === count( $booked ) ? ' persona' : ' persone' ) . ") è prenotato.\n\n";
 		if ( $fee > 0 ) {
-			$text .= 'Per tenerlo, paga ' . Money::format( $fee ) . ' con bonifico istantaneo entro ' . self::pay_hours() . ' ore e invia la ricevuta alla segreteria (' . Applications::notify_email() . "), indicando il nome dell'evento e il tuo cognome. Se la ricevuta non arriva entro il termine il posto viene cancellato.\n\n"
+			$text .= self::pay_steps( 'il posto', $fee, (string) $deadline, (string) $a['name'], (string) ( $list[0]['last_name'] ?? '' ), 'il posto torna libero' )
 				. ( Bank::enabled() ? Bank::text_block() . "\n\n" : '' );
 		}
-		$text .= 'Per disdire scrivi alla segreteria.';
+		$text .= 'Per disdire scrivi alla segreteria (' . Applications::notify_email() . ').';
 		Texts::mail( $row['email'], 'Prenotazione: ' . $a['name'] . self::assoc_suffix(), $text );
-		return array( 'ok' => true, 'message' => $fee > 0 ? 'Prenotazione registrata. Ti abbiamo scritto come pagare con bonifico istantaneo: invia la ricevuta alla segreteria entro ' . self::pay_hours() . ' ore, altrimenti il posto viene cancellato.' : 'Prenotazione confermata: ti abbiamo scritto un\'email di riepilogo.' );
+		return array( 'ok' => true, 'message' => $fee > 0 ? 'Prenotazione registrata. Ti abbiamo scritto come pagare con bonifico istantaneo: manda la ricevuta del bonifico alla segreteria entro ' . self::pay_hours() . ' ore, altrimenti il posto torna libero.' : 'Prenotazione confermata: ti abbiamo scritto un\'email di riepilogo.' );
 	}
 
 	/** Registra un ospite senza socio ospitante (la prenotazione online non lo richiede). */
@@ -655,7 +670,7 @@ final class EventRequests {
 		$url   = (string) Settings::get( 'privacy_url' );
 		$form .= '<div class="asemf-rules-box">' . ( '' === $url ? '<div style="max-height:200px;overflow:auto;border:1px solid #c3c4c7;border-radius:8px;padding:10px 12px;margin:8px 0;background:#fff">' . PrivacyNotice::html() . '</div>' : '' )
 			. '<label class="asemf-check"><input type="checkbox" name="privacy_ok" value="1"' . checked( ! empty( $post['privacy_ok'] ), true, false ) . '> Ho letto ' . ( '' !== $url ? '<a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">l\'informativa sulla privacy</a>' : 'l\'informativa sulla privacy' ) . ' e acconsento al trattamento dei dati.</label></div>';
-		$form .= '<p class="asemf-small asemf-muted">' . ( $fee > 0 ? 'Contributo: ' . esc_html( Money::format( $fee ) ) . ' ' . ( '' === ActivityKind::fee_unit( ActivityKind::COURSE, (string) ( $activity['billing'] ?? 'monthly' ) ) ? 'al mese' : esc_html( ActivityKind::fee_unit( ActivityKind::COURSE, (string) ( $activity['billing'] ?? 'monthly' ) ) ) ) . '. Dopo l\'approvazione della segreteria ti scriviamo come pagare in anticipo con bonifico istantaneo; la ricevuta va inviata alla segreteria entro ' . (int) self::pay_hours() . ' ore, altrimenti l\'iscrizione viene annullata. ' : 'Contributo gratuito. ' )
+		$form .= '<p class="asemf-small asemf-muted">' . ( $fee > 0 ? 'Contributo: ' . esc_html( Money::format( $fee ) ) . ' ' . ( '' === ActivityKind::fee_unit( ActivityKind::COURSE, (string) ( $activity['billing'] ?? 'monthly' ) ) ? 'al mese' : esc_html( ActivityKind::fee_unit( ActivityKind::COURSE, (string) ( $activity['billing'] ?? 'monthly' ) ) ) ) . '. Dopo l\'approvazione della segreteria ti scriviamo come pagare in anticipo con bonifico istantaneo; entro ' . (int) self::pay_hours() . ' ore devi mandare alla segreteria la ricevuta del bonifico, altrimenti l\'iscrizione viene annullata. ' : 'Contributo gratuito. ' )
 			. 'L\'iscrizione parte dal mese corrente ed è confermata dalla segreteria dopo la tua richiesta.</p>'
 			. '<button type="submit" class="asemf-btn wp-element-button">Invia la richiesta di iscrizione</button></form>';
 		return $html . '<section class="asemf-guest-request"><h3 class="asemf-event-h">Non sei socio?</h3><details class="asemf-guest-details"' . ( $errors || $post ? ' open' : '' ) . '><summary class="asemf-btn wp-element-button">Chiedi l\'iscrizione senza essere socio</summary><p class="asemf-small">Puoi chiedere di iscriverti al corso anche se non sei ancora socio: compila i dati qui sotto.</p>' . $form . '</details></section>';
@@ -710,7 +725,7 @@ final class EventRequests {
 			$email,
 			'Conferma la tua richiesta: ' . $activity['name'] . self::assoc_suffix(),
 			'Ciao ' . $p['first_name'] . ",\n\nhai chiesto di iscriverti al corso «" . $activity['name'] . "».\n\n"
-			. 'Per confermare che l\'indirizzo è tuo apri questo collegamento entro ' . self::CONFIRM_H . " ore:\n" . self::confirm_url( $id, $token ) . "\n\n"
+			. 'Per confermare che l\'indirizzo è tuo apri questo link entro ' . self::CONFIRM_H . " ore:\n" . self::confirm_url( $id, $token ) . "\n\n"
 			. 'Se non sei stato tu, ignora questo messaggio: la richiesta non avrà seguito.'
 		);
 		Audit::log( 'event_request.course_received', 'activity', (int) $activity['id'] ); // niente dati personali nel registro
@@ -764,12 +779,12 @@ final class EventRequests {
 		Audit::log( 'event_request.enrolled', 'activity', (int) $a['id'], array( 'person_id' => $pid ) );
 		$text = 'Ciao ' . $p['first_name'] . ",\n\nla tua richiesta di iscrizione al corso «" . $a['name'] . "» è stata accolta: sei iscritto dal mese corrente.\n\n";
 		if ( $fee > 0 ) {
-			$text .= 'Per confermare l\'iscrizione paga ' . Money::format( $fee ) . ' con bonifico istantaneo entro ' . self::pay_hours() . ' ore e invia la ricevuta alla segreteria (' . Applications::notify_email() . "), indicando il nome del corso e il tuo cognome. Se la ricevuta non arriva entro il termine l'iscrizione viene annullata.\n\n"
+			$text .= self::pay_steps( 'l\'iscrizione', $fee, (string) $deadline, (string) $a['name'], (string) ( $p['last_name'] ?? '' ), 'l\'iscrizione viene annullata' )
 				. ( Bank::enabled() ? Bank::text_block() . "\n\n" : '' );
 		}
 		$text .= 'Per ritirarti o per qualsiasi dubbio scrivi alla segreteria.';
 		Texts::mail( $row['email'], 'Iscrizione: ' . $a['name'] . self::assoc_suffix(), $text );
-		return array( 'ok' => true, 'message' => $fee > 0 ? 'Iscrizione registrata. Ti abbiamo scritto come pagare con bonifico istantaneo: la ricevuta va alla segreteria entro ' . self::pay_hours() . ' ore, altrimenti viene annullata.' : 'Iscrizione registrata: ti abbiamo scritto un\'email di riepilogo.' );
+		return array( 'ok' => true, 'message' => $fee > 0 ? 'Iscrizione registrata. Ti abbiamo scritto come pagare con bonifico istantaneo: manda la ricevuta del bonifico alla segreteria entro ' . self::pay_hours() . ' ore, altrimenti l\'iscrizione viene annullata.' : 'Iscrizione registrata: ti abbiamo scritto un\'email di riepilogo.' );
 	}
 
 	// ---------- Segreteria ----------
@@ -843,7 +858,7 @@ final class EventRequests {
 			$a = $svc->get( (int) $r['activity_id'] );
 			Audit::log( 'event_request.released', 'activity', (int) $r['activity_id'], array( 'seats' => count( $list ) ) );
 			if ( is_email( (string) $r['email'] ) ) {
-				Texts::mail( $r['email'], 'Posto liberato' . ( $a ? ': ' . $a['name'] : '' ) . self::assoc_suffix(), "Il pagamento non è arrivato entro il termine, quindi il posto è stato cancellato e liberato.\n\nSe vuoi ancora partecipare, prenota di nuovo dalla pagina dell'evento (se ci sono posti) oppure scrivi alla segreteria." );
+				Texts::mail( $r['email'], 'Posto liberato' . ( $a ? ': ' . $a['name'] : '' ) . self::assoc_suffix(), "Il pagamento non è arrivato entro il termine, quindi il posto è tornato libero.\n\nSe hai già pagato, scrivi subito alla segreteria. Se vuoi ancora partecipare, prenota di nuovo dalla pagina dell'evento (se ci sono posti) oppure scrivi alla segreteria." );
 			}
 		}
 		$db->query( $db->prepare( "DELETE FROM $t WHERE updated_at < %s", wp_date( 'Y-m-d H:i:s', time() - self::KEEP_DAYS * DAY_IN_SECONDS ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- tabella interna, valori preparati
