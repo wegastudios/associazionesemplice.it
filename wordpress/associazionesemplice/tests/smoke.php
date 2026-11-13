@@ -91,6 +91,7 @@ $reports  = Plugin::reports();
 $today    = Db::today();
 Settings::update( array( 'ticket_qr_enabled' => 1, 'wallet_enabled' => 1 ) ); // spenti di default: i test li accendono
 Settings::update( array( 'member_wp_users' => 1 ) ); // i controlli più vecchi presuppongono un utente WordPress per ogni socio (la scelta di default, senza utente, si prova nel blocco «Accesso proprio»)
+Settings::update( array( 'social_year_start_month' => 9 ) ); // la maggior parte delle prove usa una stagione settembre-agosto, scelta in modo esplicito (il valore di partenza è gennaio: lo provano le prove sul mese di partenza)
 $year     = substr( $today, 0, 4 );
 $sy       = Settings::social_year();
 $month    = $sy->clamp( substr( $today, 0, 7 ) );
