@@ -14,7 +14,7 @@ use AssociazioneSemplice\WooLinks;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Passi e domande delle funzioni aggiuntive nella configurazione guidata (tipo di ente, partita IVA, livelli, pagamenti online, WooCommerce, 5x1000). */
+/** Passi e domande delle funzioni aggiuntive nella configurazione guidata (tipo di ente, partita IVA, livelli, pagamenti online, WooCommerce, 5 per mille). */
 final class ProWizard {
 
 	public static function register(): void {
@@ -90,7 +90,7 @@ final class ProWizard {
 			}
 			if ( 'accounting' === $key ) {
 				echo '<div data-if="mod[accounting]=1" style="margin-left:24px"><input type="hidden" name="adempimenti_present" value="1">'
-					. WizardPage::yes_no( 'fivepm_enabled', 'Raccogli il 5x1000? Si attiva il messaggio per i soci, il promemoria e il registro dei contributi ricevuti.', ! empty( $s['fivepm_enabled'] ) ) . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+					. WizardPage::yes_no( 'fivepm_enabled', 'Raccogli il 5 per mille? Si attiva il messaggio per i soci, il promemoria e il registro dei contributi ricevuti.', ! empty( $s['fivepm_enabled'] ) ) . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput
 			}
 	}
 
@@ -204,11 +204,11 @@ final class ProWizard {
 	/** @var array dati del modulo se si è scelto WooCommerce (per collegare i prodotti dopo il salvataggio) */
 	private static $woo_products = array();
 
-	/** Scelte delle funzioni aggiuntive: 5x1000, riga delle ricevute, pagamenti online, altri tipi di socio. */
+	/** Scelte delle funzioni aggiuntive: 5 per mille, riga delle ricevute, pagamenti online, altri tipi di socio. */
 	public static function values( array $vals, array $p ): array {
 		self::$notes        = array();
 		self::$woo_products = array();
-		// Adempimenti (solo con la contabilità): 5x1000
+		// Adempimenti (solo con la contabilità): 5 per mille
 		if ( ! empty( $p['adempimenti_present'] ) ) {
 			$vals['fivepm_enabled'] = ! empty( $p['fivepm_enabled'] ) ? 1 : 0;
 		}

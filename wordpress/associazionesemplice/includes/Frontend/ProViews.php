@@ -10,7 +10,7 @@ use AssociazioneSemplice\Settings;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Sezioni e viste del sito delle funzioni aggiuntive (risorse, crediti, ricevute, app, 5x1000, incasso sul posto, cassa per più persone). */
+/** Sezioni e viste del sito delle funzioni aggiuntive (risorse, crediti, ricevute, app, 5 per mille, incasso sul posto, cassa per più persone). */
 final class ProViews {
 
 	public static function register(): void {
@@ -54,9 +54,9 @@ final class ProViews {
 		return $groups;
 	}
 
-	/** Pagine del sito proposte: il 5x1000. */
+	/** Pagine del sito proposte: il 5 per mille. */
 	public static function page_defs( array $defs ): array {
-		$defs['cinquemille'] = array( 'title' => '5x1000', 'content' => '[associazionesemplice_cinquepermille]', 'access' => '', 'hint' => 'Il messaggio con il codice fiscale per il 5x1000 (serve la funzione attiva).', 'default' => false );
+		$defs['cinquemille'] = array( 'title' => '5 per mille', 'content' => '[associazionesemplice_cinquepermille]', 'access' => '', 'hint' => 'Il messaggio con il codice fiscale per il 5 per mille (serve la funzione attiva).', 'default' => false );
 		return $defs;
 	}
 
@@ -92,7 +92,7 @@ final class ProViews {
 			'crediti'         => array( 'credits', 'I miei crediti: saldo, ricarica e movimenti (soci)', 'risorse' ),
 			'incasso_crediti' => array( 'credits', 'Incasso crediti dal vivo con QR (staff)', 'crediti' ),
 			'app'             => array( 'pwa', 'App e notifiche (installazione e notifiche sul telefono)', 'prossimi_eventi' ),
-			'cinquepermille'  => array( 'fivepm', '5x1000 (messaggio pubblico con il codice fiscale)', 'app' ),
+			'cinquepermille'  => array( 'fivepm', '5 per mille (messaggio pubblico con il codice fiscale)', 'app' ),
 		);
 		foreach ( $extra as $slug => $row ) {
 			$out = array();
@@ -304,13 +304,13 @@ final class ProViews {
 		return $html . '</ul></section>';
 	}
 
-	/** Messaggio pubblico del 5x1000 con il codice fiscale dell'associazione (vuoto se spento o senza codice fiscale). */
+	/** Messaggio pubblico del 5 per mille con il codice fiscale dell'associazione (vuoto se spento o senza codice fiscale). */
 	public static function five_per_mille(): string {
 		if ( ! \AssociazioneSemplice\Edition::has( 'fivepm' ) || ! \AssociazioneSemplice\FivePerMille::enabled() || '' === trim( (string) Settings::get( 'tax_code' ) ) ) {
 			return '';
 		}
 		$name = trim( (string) Settings::get( 'association_name' ) );
-		return '<section class="asemf-section asemf-fivepm"><h3>5x1000' . ( '' !== $name ? ' a ' . esc_html( $name ) : '' ) . '</h3><p>' . esc_html( \AssociazioneSemplice\FivePerMille::text() ) . '</p>'
+		return '<section class="asemf-section asemf-fivepm"><h3>5 per mille' . ( '' !== $name ? ' a ' . esc_html( $name ) : '' ) . '</h3><p>' . esc_html( \AssociazioneSemplice\FivePerMille::text() ) . '</p>'
 			. '<p class="asemf-small">Codice fiscale: <strong>' . esc_html( (string) Settings::get( 'tax_code' ) ) . '</strong></p></section>';
 	}
 

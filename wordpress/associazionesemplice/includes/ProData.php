@@ -337,7 +337,7 @@ final class ProData {
 		return PaymentService::engine();
 	}
 
-	/** Funzioni facoltative della guida iniziale: pagamenti online, Wallet, assicurazioni, 5x1000, lingua. */
+	/** Funzioni facoltative della guida iniziale: pagamenti online, Wallet, assicurazioni, 5 per mille, lingua. */
 	public static function guide_options( array $list ): array {
 		$out = array();
 		if ( Edition::has( 'payments' ) ) {
@@ -353,7 +353,7 @@ final class ProData {
 					$out[] = array( 'title' => 'Assicurazioni', 'on' => ProSettings::insurance_volunteers() || ProSettings::insurance_association(), 'page' => 'asem-volunteers', 'hint' => 'Polizze dell\'associazione e dei volontari, con le scadenze.' );
 				}
 				if ( Edition::has( 'fivepm' ) ) {
-					$out[] = array( 'title' => '5x1000', 'on' => FivePerMille::enabled(), 'page' => 'asem-fivepm', 'hint' => 'Messaggio con il codice fiscale e rendiconto dei contributi.' );
+					$out[] = array( 'title' => '5 per mille', 'on' => FivePerMille::enabled(), 'page' => 'asem-fivepm', 'hint' => 'Messaggio con il codice fiscale e rendiconto dei contributi.' );
 				}
 				if ( Edition::has( 'texts' ) ) {
 					$out[] = array( 'title' => 'Lingua del sito', 'on' => Languages::current() !== Languages::DEFAULT_CODE, 'page' => 'asem-texts', 'hint' => 'Testi in un\'altra lingua, con i pacchetti di traduzione.' );

@@ -497,10 +497,10 @@ final class ProActions {
 
 	public static function fivepm_settings( array $p ): array {
 		if ( ! current_user_can( Plugin::CAP ) ) {
-			throw new \InvalidArgumentException( 'Solo un amministratore può attivare il 5x1000.' );
+			throw new \InvalidArgumentException( 'Solo un amministratore può attivare il 5 per mille.' );
 		}
 		Settings::update( array( 'fivepm_enabled' => ! empty( $p['fivepm_enabled'] ) ? 1 : 0, 'fivepm_text' => (string) ( $p['fivepm_text'] ?? '' ) ) );
-		return array( Ui::url( 'asem-fivepm' ), 'Impostazioni del 5x1000 salvate.' );
+		return array( Ui::url( 'asem-fivepm' ), 'Impostazioni del 5 per mille salvate.' );
 	}
 
 	public static function fivepm_add( array $p ): array {

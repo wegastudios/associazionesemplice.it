@@ -43,7 +43,7 @@ final class ResetPage {
 		$mode  = 'factory' === Ui::get_str( 'mode' ) ? Reset::FACTORY : Reset::DATA;
 		$users = '1' === Ui::get_str( 'users' );
 		echo '<div class="notice notice-warning inline" style="padding:12px 16px"><h3 style="margin-top:0">Cosa succede</h3>';
-		echo '<p><strong>Vengono cancellati per sempre:</strong> tutti i soci e gli ospiti, le attività e gli eventi con prenotazioni, iscrizioni e presenze, <strong>tutta la prima nota</strong> (incassi, spese, giroconti, rettifiche), i conti e i fondi, le iscrizioni all\'anno, i verbali, le assicurazioni, il 5x1000, i pagamenti online registrati, le comunicazioni, le ricevute emesse (e la loro numerazione) e i file allegati (' . (int) $p['files'] . ').</p>';
+		echo '<p><strong>Vengono cancellati per sempre:</strong> tutti i soci e gli ospiti, le attività e gli eventi con prenotazioni, iscrizioni e presenze, <strong>tutta la prima nota</strong> (incassi, spese, giroconti, rettifiche), i conti e i fondi, le iscrizioni all\'anno, i verbali, le assicurazioni, il 5 per mille, i pagamenti online registrati, le comunicazioni, le ricevute emesse (e la loro numerazione) e i file allegati (' . (int) $p['files'] . ').</p>';
 		if ( Reset::FACTORY === $mode ) {
 			echo '<p><strong>Ripristino di fabbrica:</strong> vengono eliminati anche le impostazioni, i testi personalizzati, l\'elenco delle pagine create dalla procedura (le pagine WordPress restano, con i loro shortcode), le richieste di accesso e il registro azioni. La configurazione guidata si riapre.</p>';
 		} else {

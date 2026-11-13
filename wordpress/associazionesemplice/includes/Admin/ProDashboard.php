@@ -3,7 +3,7 @@ namespace AssociazioneSemplice\Admin;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Avvisi delle funzioni aggiuntive nella Bacheca (assicurazioni, 5x1000). */
+/** Avvisi delle funzioni aggiuntive nella Bacheca (assicurazioni, 5 per mille). */
 final class ProDashboard {
 
 	public static function register(): void {
@@ -28,7 +28,7 @@ final class ProDashboard {
 		if ( \AssociazioneSemplice\Edition::has( 'fivepm' ) && \AssociazioneSemplice\FivePerMille::enabled() ) {
 			$fp = \AssociazioneSemplice\FivePerMille::alerts();
 			if ( $fp ) {
-				echo Dismiss::html( 'fivepm-' . count( $fp ), 'warning', '5x1000: ' . count( $fp ) . ( 1 === count( $fp ) ? ' contributo ha il rendiconto sull\'utilizzo scaduto o in scadenza' : ' contributi hanno il rendiconto sull\'utilizzo scaduto o in scadenza' ) . '. <a href="' . esc_url( Ui::url( 'asem-fivepm' ) ) . '">Apri il 5x1000</a>.', 7 ); // phpcs:ignore WordPress.Security.EscapeOutput
+				echo Dismiss::html( 'fivepm-' . count( $fp ), 'warning', '5 per mille: ' . count( $fp ) . ( 1 === count( $fp ) ? ' contributo ha il rendiconto sull\'utilizzo scaduto o in scadenza' : ' contributi hanno il rendiconto sull\'utilizzo scaduto o in scadenza' ) . '. <a href="' . esc_url( Ui::url( 'asem-fivepm' ) ) . '">Apri il 5 per mille</a>.', 7 ); // phpcs:ignore WordPress.Security.EscapeOutput
 			}
 		}
 		$ins = \AssociazioneSemplice\Edition::has( 'insurance' ) && (bool) \AssociazioneSemplice\Settings::get( 'insurance_volunteers' ) ? \AssociazioneSemplice\Insurance::counts() : array( 'none' => 0, 'expired' => 0, 'expiring' => 0 );
