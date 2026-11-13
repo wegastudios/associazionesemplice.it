@@ -156,7 +156,7 @@ final class FiscalYears {
 	}
 
 	/** Esegue $fn in una transazione: se lancia qualcosa, non resta scritto niente. */
-	private static function in_transaction( callable $fn ): void {
+	public static function in_transaction( callable $fn ): void {
 		self::db()->query( 'START TRANSACTION' );
 		try {
 			$fn();

@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 final class ProSchema {
 
 	const VERSION_OPTION = 'asem_pro_db_version';
-	const VERSION        = '12';
+	const VERSION        = '13';
 
 	public static function register(): void {
 		add_filter( 'asem_schema_tables', array( __CLASS__, 'tables' ), 10, 3 );
@@ -545,6 +545,25 @@ final class ProSchema {
   approved_at datetime NOT NULL,
   PRIMARY KEY  (id),
   UNIQUE KEY kind_ref (kind,ref)
+) $c;";
+
+		// Rendiconto fotografato alla chiusura di un esercizio, con il PDF emesso (numero e data). Una riga per chiusura; non si cancella mai
+		// (nemmeno con la riapertura: la chiusura riaperta resta come versione precedente) e il ripristino dei dati la lascia.
+		$tables[] = "CREATE TABLE {$p}statement_snapshot (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  closure_id bigint(20) unsigned NOT NULL,
+  year smallint(5) unsigned NOT NULL,
+  number int(10) unsigned NOT NULL,
+  issued_at datetime NOT NULL,
+  issued_by bigint(20) unsigned DEFAULT NULL,
+  retroactive tinyint(1) NOT NULL DEFAULT 0,
+  payload longtext NOT NULL,
+  payload_sha256 char(64) NOT NULL,
+  pdf_b64 longtext NOT NULL,
+  pdf_sha256 char(64) NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY closure_id (closure_id),
+  UNIQUE KEY year_number (year,number)
 ) $c;";
 
 		return $tables;

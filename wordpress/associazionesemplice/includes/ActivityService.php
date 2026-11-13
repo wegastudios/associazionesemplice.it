@@ -1067,6 +1067,8 @@ class ActivityService {
 		$tbl  = Db::t( 'bookings' );
 		$fee  = $this->fee_for( $a, $to['type'] );
 		$note = ' [intestato da ' . trim( $from_p['first_name'] . ' ' . $from_p['last_name'] ) . ' a ' . trim( $to['first_name'] . ' ' . $to['last_name'] ) . ']';
+		// la cessione riscrive persona e descrizione degli incassi del posto: se uno è in un esercizio chiuso non si può (il rendiconto è fotografato e la prima nota di un anno chiuso non si tocca)
+		YearLock::assert_rows_open( 'transactions', 'tx_date', $this->db()->prepare( "session_id = %d AND person_id = %d AND type = 'income' AND voided_at IS NULL", $session_id, $from_id ) );
 		$this->in_transaction(
 			function () use ( $tbl, $session_id, $from, $from_id, $to_id, $fee, $note ) {
 				$this->db()->update( $tbl, array( 'status' => 'transferred', 'transferred_to' => $to_id, 'cancelled_at' => Db::now() ), array( 'id' => (int) $from['id'] ) );

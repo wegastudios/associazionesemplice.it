@@ -74,6 +74,7 @@ final class ProActions {
 		'asem_fivepm_report' => array( 'fivepm_report', 'fivepm', false ),
 		'asem_fivepm_delete' => array( 'fivepm_delete', 'fivepm', false ),
 		'asem_statement_notes' => array( 'statement_notes', 'fiscal', false ),
+		'asem_statement_backfill' => array( 'statement_backfill', 'fiscal', true ),
 		'asem_save_woo' => array( 'save_woo', 'payments', true ),
 		'asem_save_app' => array( 'save_app', 'pwa', true ),
 		'asem_push_test' => array( 'push_test', 'pwa', true ),
@@ -524,6 +525,15 @@ final class ProActions {
 		return array( Ui::url( 'asem-statement', array( 'year' => $year ) ), 'Relazione salvata.' );
 	}
 
+
+	/** Fotografa il rendiconto degli esercizi chiusi che non ce l'hanno (ricostruito dai dati di oggi): serve la conferma esplicita. */
+	public static function statement_backfill( array $p ): array {
+		if ( empty( $p['confirm_retro'] ) ) {
+			throw new \InvalidArgumentException( 'Spunta la conferma: i dati di allora vengono ricostruiti da quelli di oggi.' );
+		}
+		$n = \AssociazioneSemplice\StatementSnapshot::backfill();
+		return array( Ui::url( 'asem-years' ), 0 === $n ? 'Nessun rendiconto da fotografare.' : ( 1 === $n ? 'Fotografato il rendiconto di 1 esercizio già chiuso' : 'Fotografato il rendiconto di ' . $n . ' esercizi già chiusi' ) . ': ricostruito dai dati di oggi, con numero e data di emissione.' );
+	}
 
 	public static function save_woo( array $p ): array {
 		$on = ! empty( $p['woo_enabled'] );

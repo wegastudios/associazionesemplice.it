@@ -4389,6 +4389,142 @@ foreach ( array( $mb_a, $mb_b, $mb_c, $mb_d, $mb_e, $mb_g, $mb_h, $mb_fnd, $mb_p
 }
 asem_ok( 1 === \AssociazioneSemplice\FiscalYears::start_month() && null === \AssociazioneSemplice\FiscalYears::last_closed(), 'libro soci per anno: prove ripulite, esercizio di nuovo a gennaio senza anni chiusi' );
 
+// ---------- Rendiconto fotografato alla chiusura, PDF emesso e blocchi (V3) ----------
+$rs_min = (int) $wpdb->get_var( 'SELECT MIN(year) FROM ' . Db::t( 'fiscal_years' ) );
+$rs_y   = max( 2000, ( $rs_min ?: $cy ) - 3 ); // più vecchio di tutti gli esercizi esistenti: si chiude senza chiudere altri
+while ( \AssociazioneSemplice\FiscalYears::get( $rs_y ) || \AssociazioneSemplice\FiscalYears::get( $rs_y + 1 ) ) {
+	--$rs_y;
+}
+$rs_y1 = $rs_y + 1;
+asem_ok( null === \AssociazioneSemplice\FiscalYears::last_closed(), 'rendiconto fotografato: si parte senza esercizi chiusi' );
+\AssociazioneSemplice\FiscalYears::create( $rs_y );
+\AssociazioneSemplice\FiscalYears::create( $rs_y1 );
+$rs_last = function () use ( $wpdb ): int {
+	return (int) $wpdb->get_var( 'SELECT MAX(id) FROM ' . Db::t( 'transactions' ) );
+};
+$rs_don  = function ( string $date, int $cents ) use ( $ledger, $cash, $cat ) {
+	$ledger->record_receipt( array( 'date' => $date, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'lines' => array( array( 'category_id' => $cat['donation'], 'amount_cents' => $cents ) ) ) );
+};
+$rs_don( $rs_y . '-03-10', 10000 );
+$rs_tx1 = $rs_last();
+$rs_don( $rs_y . '-04-20', 5000 );
+$ledger->record_expense( array( 'date' => $rs_y . '-05-05', 'account_id' => (int) $cash['id'], 'category_id' => $cat['general_cost'], 'amount_cents' => 3000, 'description' => 'Spesa dell\'esercizio da chiudere' ) );
+$rs_don( $rs_y1 . '-02-01', 2000 );
+$rs_tx4 = $rs_last();
+$rs_ss  = \AssociazioneSemplice\StatementSnapshot::class;
+$rs_live = \AssociazioneSemplice\Statement::data( $rs_y );
+asem_ok( ! isset( $rs_live['snapshot'] ) && 15000 === $rs_live['total_income']['cur'] && 3000 === $rs_live['total_expense']['cur'] && 12000 === $rs_live['result']['cur'], 'rendiconto: un esercizio aperto si calcola dal vivo (avanzo, mai disavanzo)' );
+// una fotografia che non riesce annulla la chiusura: non resta scritto nulla, nemmeno il rendiconto
+$rs_n_cl = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'fiscal_year_closures' ) );
+$rs_n_ss = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'statement_snapshot' ) );
+$rs_boom = function () {
+	throw new \InvalidArgumentException( 'Prova: errore dopo il rendiconto.' );
+};
+add_action( 'asem_year_closing', $rs_boom, 20 );
+$rs_msg0 = asem_throws( function () use ( $rs_y ) { \AssociazioneSemplice\FiscalYears::close( $rs_y, true ); } );
+remove_action( 'asem_year_closing', $rs_boom, 20 );
+asem_ok( 'Prova: errore dopo il rendiconto.' === $rs_msg0 && \AssociazioneSemplice\FiscalYears::is_open( $rs_y ) && $rs_n_cl === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'fiscal_year_closures' ) ) && $rs_n_ss === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'statement_snapshot' ) ), 'chiusura: se qualcosa dopo il rendiconto fallisce, la chiusura non avviene e il rendiconto non resta scritto' );
+// chiusura: il rendiconto è fotografato nella stessa operazione, con il PDF emesso
+\AssociazioneSemplice\FiscalYears::close( $rs_y, true );
+$rs_row = $rs_ss::row_for( $rs_y );
+asem_ok( $rs_row && 1 === (int) $rs_row['number'] && 0 === (int) $rs_row['retroactive'] && $rs_ss::intact( $rs_row ) && (int) $rs_row['closure_id'] === (int) \AssociazioneSemplice\FiscalYears::current_closure( $rs_y )['id'], 'chiusura: il rendiconto è fotografato, numero 1, collegato alla chiusura' );
+$rs_snap = \AssociazioneSemplice\Statement::data( $rs_y );
+asem_ok( isset( $rs_snap['snapshot'] ) && 'n. 1/' . $rs_y === $rs_snap['snapshot']['number_text'] && 0 === strpos( $rs_snap['snapshot']['text'], 'fotografato il ' ) && $rs_live['income'] === $rs_snap['income'] && $rs_live['expenses'] === $rs_snap['expenses'] && $rs_live['result'] === $rs_snap['result'] && $rs_live['accounts'] === $rs_snap['accounts'], 'rendiconto di un anno chiuso: si legge dalla fotografia, con le stesse cifre del calcolo dal vivo' );
+$rs_before = (string) wp_json_encode( $rs_snap );
+$rs_doc    = \AssociazioneSemplice\DocsPro::statement( $rs_y );
+asem_ok( 0 === strpos( $rs_doc['body'], '%PDF-1.4' ) && false !== strpos( $rs_doc['body'], 'Documento emesso n. 1/' . $rs_y ) && 'rendiconto-' . $rs_y . '-n1.pdf' === $rs_doc['filename'] && hash( 'sha256', $rs_doc['body'] ) === $rs_row['pdf_sha256'], 'PDF emesso: ha numero e data di emissione ed è quello salvato alla chiusura' );
+// dopo la chiusura cambiano categoria, gruppo, nome dell'ente e relazione: il rendiconto chiuso resta com'era
+$rs_cat   = $wpdb->get_row( $wpdb->prepare( 'SELECT name, fiscal_group FROM ' . Db::t( 'categories' ) . ' WHERE id = %d', $cat['donation'] ), ARRAY_A );
+$rs_assoc = (string) Settings::get( 'association_name' );
+$wpdb->update( Db::t( 'categories' ), array( 'name' => 'Categoria rinominata dopo', 'fiscal_group' => 'Uscite di supporto generale' ), array( 'id' => $cat['donation'] ) );
+Settings::update( array( 'association_name' => 'Nome cambiato dopo la chiusura' ) );
+update_option( 'asem_statement_notes_' . $rs_y, 'Relazione cambiata a mano dopo la chiusura', false );
+asem_ok( $rs_before === wp_json_encode( \AssociazioneSemplice\Statement::data( $rs_y ) ) && false === strpos( $rs_before, 'Categoria rinominata dopo' ), 'rendiconto chiuso: categoria rinominata, gruppo cambiato e relazione modificata dopo la chiusura non lo cambiano' );
+asem_ok( false !== strpos( (string) wp_json_encode( \AssociazioneSemplice\Statement::live( $rs_y ) ), 'Categoria rinominata dopo' ), 'rendiconto: il calcolo dal vivo invece le avrebbe cambiate (la fotografia serve a questo)' );
+$rs_doc2 = \AssociazioneSemplice\DocsPro::statement( $rs_y );
+asem_ok( $rs_doc2['body'] === $rs_doc['body'] && false === strpos( $rs_doc2['body'], 'Nome cambiato dopo la chiusura' ), 'PDF emesso: identico byte per byte anche dopo aver cambiato nome dell\'ente, categorie e relazione' );
+$wpdb->update( Db::t( 'categories' ), $rs_cat, array( 'id' => $cat['donation'] ) );
+Settings::update( array( 'association_name' => $rs_assoc ) );
+delete_option( 'asem_statement_notes_' . $rs_y );
+$wpdb->update( Db::t( 'statement_snapshot' ), array( 'pdf_sha256' => str_repeat( '0', 64 ) ), array( 'id' => (int) $rs_row['id'] ) );
+asem_ok( null !== asem_throws( function () use ( $rs_y ) { \AssociazioneSemplice\DocsPro::statement( $rs_y ); } ), 'PDF emesso: se l\'impronta non corrisponde non lo si scarica' );
+$wpdb->update( Db::t( 'statement_snapshot' ), array( 'pdf_sha256' => $rs_row['pdf_sha256'] ), array( 'id' => (int) $rs_row['id'] ) );
+
+// blocchi su un esercizio chiuso
+$rs_msg = \AssociazioneSemplice\FiscalYears::closed_message( $rs_y );
+asem_ok( $rs_msg === asem_throws( function () use ( $rs_y ) { \AssociazioneSemplice\Statement::save_notes( $rs_y, 'Nuova relazione' ); } ), 'anno chiuso: la relazione sull\'andamento non si modifica' );
+$rs_fund = $funds->create( 'Fondo prova rendiconto', 1000 );
+asem_ok( $rs_msg === asem_throws( function () use ( $funds, $rs_fund, $rs_y ) { $funds->deposit( $rs_fund, 500, $rs_y . '-06-01' ); } ) && $rs_msg === asem_throws( function () use ( $funds, $rs_fund, $rs_y ) { $funds->release( $rs_fund, 100, $rs_y . '-06-01' ); } ), 'anno chiuso: non si accantona né si libera una somma di un fondo con data nell\'esercizio chiuso' );
+$funds->deposit( $rs_fund, 500, $today );
+asem_ok( true, 'anno aperto: l\'accantonamento di oggi si registra ancora' );
+$rs_ev = $acts->create( array( 'name' => 'Serata dell\'esercizio chiuso', 'social_year' => $sy->label(), 'kind' => 'event', 'fee_cents' => 100, 'session' => array( 'session_date' => $today ) ) );
+$wpdb->update( Db::t( 'transactions' ), array( 'activity_id' => $rs_ev ), array( 'id' => $rs_tx1 ) );
+$rs_bl = \AssociazioneSemplice\ActivityReset::blockers( $rs_ev, 'void' );
+asem_ok( in_array( true, array_map( function ( $b ) use ( $rs_msg ) { return 0 === strpos( $b, $rs_msg ); }, $rs_bl ), true ) && null !== asem_throws( function () use ( $rs_ev ) { \AssociazioneSemplice\ActivityReset::delete( $rs_ev, 'void' ); } ) && null !== $acts->get( $rs_ev ), 'anno chiuso: un evento con movimenti nell\'esercizio chiuso non si elimina (nemmeno quelli già fruiti, che resterebbero ritoccati)' );
+$wpdb->update( Db::t( 'transactions' ), array( 'activity_id' => null ), array( 'id' => $rs_tx1 ) );
+\AssociazioneSemplice\ActivityReset::delete( $rs_ev, 'refund' );
+// anonimizzazione: nei movimenti dell'esercizio chiuso la descrizione non si riscrive, in quelli aperti sì
+$rs_p  = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Ottavia', 'last_name' => 'Chiusa', 'email' => 'ottavia.chiusa@example.com', 'joined_on' => $today ) );
+$rs_nm = $people->full_name( $people->get( $rs_p ) );
+$wpdb->update( Db::t( 'transactions' ), array( 'person_id' => $rs_p, 'description' => 'Offerta di ' . $rs_nm ), array( 'id' => $rs_tx1 ) );
+$wpdb->update( Db::t( 'transactions' ), array( 'person_id' => $rs_p, 'description' => 'Offerta di ' . $rs_nm ), array( 'id' => $rs_tx4 ) );
+\AssociazioneSemplice\Privacy::anonymize( $rs_p );
+$rs_d1 = (string) $wpdb->get_var( $wpdb->prepare( 'SELECT description FROM ' . Db::t( 'transactions' ) . ' WHERE id = %d', $rs_tx1 ) );
+$rs_d4 = (string) $wpdb->get_var( $wpdb->prepare( 'SELECT description FROM ' . Db::t( 'transactions' ) . ' WHERE id = %d', $rs_tx4 ) );
+asem_ok( false !== strpos( $rs_d1, $rs_nm ) && false === strpos( $rs_d4, $rs_nm ) && false !== strpos( $rs_d4, '[anonimizzato]' ), 'anonimizzazione: la descrizione di un movimento di un esercizio chiuso non si riscrive, quella di un movimento aperto sì' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Privacy::closed_descriptions_note( $rs_p ), 'il chiuso è chiuso' ) && $rs_before === wp_json_encode( \AssociazioneSemplice\Statement::data( $rs_y ) ), 'anonimizzazione: chi la esegue è avvisato, e il rendiconto chiuso non cambia (importi e categorie intatti)' );
+
+// riapertura e nuova chiusura: la versione 1 resta, nasce la 2 con un nuovo numero
+\AssociazioneSemplice\FiscalYears::reopen( $rs_y, 'Correzione di prova del rendiconto' );
+$rs_open = \AssociazioneSemplice\Statement::data( $rs_y );
+asem_ok( ! isset( $rs_open['snapshot'] ), 'riapertura: il rendiconto dell\'esercizio riaperto torna dal vivo' );
+$rs_v1 = \AssociazioneSemplice\Statement::data( $rs_y, 1 );
+$rs_b1 = json_decode( $rs_before, true );
+asem_ok( isset( $rs_v1['snapshot'] ) && true === $rs_v1['snapshot']['superseded'] && $rs_b1['income'] === $rs_v1['income'] && $rs_b1['expenses'] === $rs_v1['expenses'] && 'n. 1/' . $rs_y === $rs_v1['snapshot']['number_text'], 'riapertura: il rendiconto della chiusura n. 1 resta consultabile, segnato come poi riaperto' );
+$ledger->record_expense( array( 'date' => $rs_y . '-06-01', 'account_id' => (int) $cash['id'], 'category_id' => $cat['general_cost'], 'amount_cents' => 1000, 'description' => 'Spesa dimenticata' ) );
+\AssociazioneSemplice\FiscalYears::close( $rs_y, true );
+$rs_row2 = $rs_ss::row_for( $rs_y );
+asem_ok( $rs_row2 && 2 === (int) $rs_row2['number'] && 2 === (int) $rs_row2['closure']['version'] && 4000 === \AssociazioneSemplice\Statement::data( $rs_y )['total_expense']['cur'] && 3000 === \AssociazioneSemplice\Statement::data( $rs_y, 1 )['total_expense']['cur'], 'nuova chiusura: nasce la versione 2 (numero 2) con le cifre corrette e la 1 resta com\'era' );
+$rs_p2 = \AssociazioneSemplice\DocsPro::statement( $rs_y );
+$rs_p1 = \AssociazioneSemplice\DocsPro::statement( $rs_y, 1 );
+asem_ok( false !== strpos( $rs_p2['body'], 'Documento emesso n. 2/' . $rs_y ) && false !== strpos( $rs_p2['body'], 'chiusura n. 2' ) && false !== strpos( $rs_p1['body'], 'Documento emesso n. 1/' . $rs_y ) && $rs_p1['body'] === $rs_doc['body'] && null !== asem_throws( function () use ( $rs_y ) { \AssociazioneSemplice\DocsPro::statement( $rs_y, 9 ); } ), 'PDF emesso: la versione 2 ha un numero nuovo, la 1 è ancora scaricabile identica, una versione inesistente no' );
+
+// anni già chiusi prima della fotografia: ricostruzione esplicita, «ricostruito il …»
+$wpdb->update( Db::t( 'fiscal_years' ), array( 'status' => 'closed', 'closed_at' => $rs_y1 . '-12-31 10:00:00' ), array( 'year' => $rs_y1 ) );
+\AssociazioneSemplice\Install::migrate_year_closures();
+asem_ok( null === $rs_ss::row_for( $rs_y1 ) && ! isset( \AssociazioneSemplice\Statement::data( $rs_y1 )['snapshot'] ), 'anno chiuso prima: senza fotografia il rendiconto si legge dal vivo' );
+\AssociazioneSemplice\FiscalYears::snapshot_past_years();
+$rs_r = $rs_ss::row_for( $rs_y1 );
+asem_ok( $rs_r && 1 === (int) $rs_r['retroactive'] && 1 === (int) $rs_r['number'] && 0 === strpos( \AssociazioneSemplice\Statement::data( $rs_y1 )['snapshot']['text'], 'ricostruito il ' ) && 2000 === \AssociazioneSemplice\Statement::data( $rs_y1 )['total_income']['cur'], 'fotografia retroattiva: il rendiconto è ricostruito, segnato «ricostruito il …» e con le cifre registrate' );
+asem_ok( false !== strpos( \AssociazioneSemplice\DocsPro::statement( $rs_y1 )['body'], 'Ricostruito il ' ), 'fotografia retroattiva: il PDF emesso porta la dicitura di ricostruzione' );
+// chiuso con il libro fotografato ma senza il rendiconto (prima di questa funzione): si fotografa a parte
+$wpdb->delete( Db::t( 'statement_snapshot' ), array( 'id' => (int) $rs_r['id'] ) );
+asem_ok( in_array( $rs_y1, array_map( 'intval', array_column( $rs_ss::missing(), 'year' ) ), true ), 'rendiconto mancante: gli esercizi chiusi senza fotografia del rendiconto si riconoscono' );
+asem_ok( $rs_ss::backfill() >= 1 && null !== $rs_ss::row_for( $rs_y1 ) && 1 === (int) $rs_ss::row_for( $rs_y1 )['retroactive'] && ! in_array( $rs_y1, array_map( 'intval', array_column( $rs_ss::missing(), 'year' ) ), true ), 'rendiconto mancante: la fotografia a parte lo ricostruisce, una volta sola' );
+
+// schermate
+$rs_yp = asem_render( array( Admin\YearsPage::class, 'render' ), 'PDF emesso' );
+asem_ok( false !== strpos( $rs_yp, 'Rendiconto fotografato il ' ) && false !== strpos( $rs_yp, 'Rendiconto ricostruito il ' ) && false !== strpos( $rs_yp, 'n. 2/' . $rs_y ) && false !== strpos( $rs_yp, 'n. 1/' . $rs_y ) && false !== strpos( $rs_yp, '>Fotografie<' ), 'esercizi: ogni chiusura mostra il rendiconto fotografato o ricostruito, il numero e il PDF emesso, versioni comprese' );
+$rs_sp = asem_render( array( Admin\ProRegisters::class, 'render_statement' ), 'Fotografia presa alla chiusura', array( 'year' => (string) $rs_y ) );
+asem_ok( false !== strpos( $rs_sp, 'n. 2/' . $rs_y ) && false !== strpos( $rs_sp, 'chiusura n. 1' ) && false === strpos( $rs_sp, 'name="notes"' ) && false !== strpos( $rs_sp, 'version=2' ), 'rendiconto: un anno chiuso mostra la fotografia, rimanda alle altre versioni e non ha il modulo della relazione' );
+asem_render( array( Admin\ProRegisters::class, 'render_statement' ), 'poi riaperta', array( 'year' => (string) $rs_y, 'version' => '1' ) );
+asem_render( array( Admin\ProRegisters::class, 'render_statement' ), 'Ricostruito dai dati di allora', array( 'year' => (string) $rs_y1 ) );
+asem_ok( false !== strpos( \AssociazioneSemplice\Docs::url( 'statement', array( 'year' => $rs_y, 'version' => 1 ) ), 'version=1' ), 'rendiconto: l\'indirizzo del PDF porta la versione' );
+
+// pulizia: anni, chiusure, fotografie, movimenti, fondo e persona di prova
+$rs_cls = array_map( 'intval', $wpdb->get_col( $wpdb->prepare( 'SELECT id FROM ' . Db::t( 'fiscal_year_closures' ) . ' WHERE year IN (%d,%d)', $rs_y, $rs_y1 ) ) );
+if ( $rs_cls ) {
+	$wpdb->query( 'DELETE FROM ' . Db::t( 'statement_snapshot' ) . ' WHERE closure_id IN (' . implode( ',', $rs_cls ) . ')' );
+	$wpdb->query( 'DELETE FROM ' . Db::t( 'member_book_snapshot' ) . ' WHERE closure_id IN (' . implode( ',', $rs_cls ) . ')' );
+}
+$wpdb->query( $wpdb->prepare( 'DELETE FROM ' . Db::t( 'fiscal_year_closures' ) . ' WHERE year IN (%d,%d)', $rs_y, $rs_y1 ) );
+$wpdb->query( $wpdb->prepare( 'DELETE FROM ' . Db::t( 'fiscal_years' ) . ' WHERE year IN (%d,%d)', $rs_y, $rs_y1 ) );
+$wpdb->query( $wpdb->prepare( 'DELETE FROM ' . Db::t( 'transactions' ) . ' WHERE tx_date BETWEEN %s AND %s', $rs_y . '-01-01', $rs_y1 . '-12-31' ) );
+$wpdb->delete( Db::t( 'fund_entries' ), array( 'fund_id' => $rs_fund ) );
+$wpdb->delete( Db::t( 'funds' ), array( 'id' => $rs_fund ) );
+$wpdb->delete( Db::t( 'people' ), array( 'id' => $rs_p ) );
+asem_ok( null === \AssociazioneSemplice\FiscalYears::last_closed(), 'rendiconto fotografato: prove ripulite, nessun esercizio chiuso' );
+
 asem_render( array( Admin\YearsPage::class, 'render' ), 'Crea anno solare' );
 $rep_html = asem_render( array( Admin\ReportsPage::class, 'render' ), 'Conti e liquidità' );
 asem_ok( strpos( $rep_html, 'Conti e liquidità' ) < strpos( $rep_html, 'Anno sociale (attività)' ) && strpos( $rep_html, 'Anno sociale (attività)' ) < strpos( $rep_html, 'Anno solare (commercialista)' ), 'report: prima conti e liquidità, poi anno sociale, poi anno solare' );

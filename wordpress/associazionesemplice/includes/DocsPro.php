@@ -25,7 +25,7 @@ final class DocsPro {
 			case 'attendance':
 				return self::attendance( (int) ( $g['activity'] ?? 0 ), (string) ( $g['from'] ?? '' ), (string) ( $g['to'] ?? '' ), $format );
 			default:
-				return self::statement( (int) ( $g['year'] ?? 0 ) );
+				return self::statement( (int) ( $g['year'] ?? 0 ), ! empty( $g['version'] ) ? (int) $g['version'] : null );
 		}
 	}
 
@@ -104,14 +104,64 @@ final class DocsPro {
 	}
 
 	/** @return array{body:string,filename:string,mime:string} */
-	public static function statement( int $year ): array {
+	public static function statement( int $year, ?int $version = null ): array {
 		if ( $year < 2000 || $year > (int) substr( Db::today(), 0, 4 ) + 1 ) {
 			throw new \InvalidArgumentException( 'Anno non valido.' );
 		}
-		$s = Statement::data( $year );
+		$row = StatementSnapshot::row_for( $year, $version );
+		if ( $row ) { // esercizio chiuso e fotografato: il PDF è quello emesso alla chiusura, con il suo numero e la sua data
+			return StatementSnapshot::document( $row );
+		}
+		if ( null !== $version ) {
+			throw new \InvalidArgumentException( 'Di questa chiusura non c\'è un rendiconto fotografato.' );
+		}
+		$span = FiscalYears::range( $year ); // esercizio aperto (o chiuso prima della fotografia): PDF dal vivo, non emesso
+		$prev = FiscalYears::range( $year - 1 );
+		return self::live_statement_pdf( $year, $span, $prev );
+	}
+
+	/** @return array{body:string,filename:string,mime:string} */
+	private static function live_statement_pdf( int $year, array $span, array $prev ): array {
+		$meta = array(
+			'entity'     => array( 'name' => (string) Settings::get( 'association_name' ), 'tax_code' => (string) Settings::get( 'tax_code' ) ),
+			'president'  => Docs::president(),
+			'label'      => FiscalYears::label( $year ),
+			'prev_label' => FiscalYears::label( $year - 1 ),
+			'from'       => $span[0],
+			'to'         => $span[1],
+			'emission'   => null,
+		);
+		return array( 'body' => self::render_statement( Statement::live( $year ), $meta ), 'filename' => 'rendiconto-' . $year . '.pdf', 'mime' => 'application/pdf' );
+	}
+
+	/**
+	 * Disegna il PDF del rendiconto da dei dati già pronti (dal vivo o fotografati): non legge nulla dal database né dalle impostazioni, tutto
+	 * ciò che serve (ente, presidente, intervallo, numero e data di emissione) sta in $meta.
+	 *
+	 * @param array $s    dati del rendiconto ({@see Statement::live()})
+	 * @param array $meta entity, president, label, prev_label, from, to, emission (null, oppure number, year, issued_at, retroactive, version)
+	 * @return string i byte del PDF
+	 */
+	public static function render_statement( array $s, array $meta ): string {
+		$year        = (int) $s['year'];
+		$label       = (string) $meta['label'];
+		$prev_label  = (string) $meta['prev_label'];
 		Pdf::$filter = array( Texts::class, 'plain' );
 		$pdf         = new Pdf();
-		$y           = Docs::head( $pdf, 'RENDICONTO PER CASSA (MOD. D) — ANNO ' . $year, 'Entrate e uscite dal 1° gennaio al 31 dicembre ' . $year . ', con il confronto con l\'anno ' . ( $year - 1 ) );
+		$range       = '01' === substr( (string) $meta['from'], 5, 2 )
+			? 'dal 1° gennaio al 31 dicembre ' . $year
+			: 'dal ' . Docs::d( (string) $meta['from'] ) . ' al ' . Docs::d( (string) $meta['to'] );
+		$y           = Docs::head( $pdf, 'RENDICONTO PER CASSA (MOD. D) — ANNO ' . $label, 'Entrate e uscite ' . $range . ', con il confronto con l\'anno ' . $prev_label, (array) $meta['entity'] );
+		$em          = $meta['emission'];
+		if ( is_array( $em ) ) { // documento emesso alla chiusura: numero, data, versione e, se ricostruito, la dicitura
+			$pdf->text( Docs::LEFT, $y - 5, 'Documento emesso ' . StatementSnapshot::number_text( (int) $em['number'], (int) $em['year'] ) . ' il ' . StatementSnapshot::dmy( (string) $em['issued_at'] ) . ' · chiusura n. ' . (int) $em['version'] . ' dell\'esercizio', 9, true );
+			$y += 12;
+			if ( ! empty( $em['retroactive'] ) ) {
+				$pdf->text( Docs::LEFT, $y - 5, 'Ricostruito il ' . StatementSnapshot::dmy( (string) $em['issued_at'] ) . ' dai dati di allora ancora presenti: non è stato ripreso al giorno della chiusura.', 8 );
+				$y += 12;
+			}
+			$y += 4;
+		}
 		$cx          = Docs::RIGHT - 3;
 		$px          = Docs::RIGHT - 3 - 85;
 		$ensure      = function ( float $need ) use ( $pdf, &$y ) {
@@ -120,10 +170,10 @@ final class DocsPro {
 				$y = 60.0;
 			}
 		};
-		$colhead     = function () use ( $pdf, &$y, $cx, $px, $year ) {
+		$colhead     = function () use ( $pdf, &$y, $cx, $px, $label, $prev_label ) {
 			$pdf->rect( Docs::LEFT, $y - 11, Docs::RIGHT - Docs::LEFT, 17 );
-			$pdf->text( $px, $y + 1, (string) ( $year - 1 ), 8, true, 'R' );
-			$pdf->text( $cx, $y + 1, (string) $year, 8, true, 'R' );
+			$pdf->text( $px, $y + 1, $prev_label, 8, true, 'R' );
+			$pdf->text( $cx, $y + 1, $label, 8, true, 'R' );
 			$y += 20;
 		};
 		$section = function ( string $label, array $groups, array $total ) use ( $pdf, &$y, $cx, $px, $ensure, $colhead ) {
@@ -207,10 +257,10 @@ final class DocsPro {
 		$pdf->line( Docs::LEFT, $y + 24, Docs::LEFT + 170, $y + 24 );
 		$pdf->text( Docs::LEFT, $y + 37, 'Il Tesoriere', 9 );
 		$pdf->line( Docs::RIGHT - 170, $y + 24, Docs::RIGHT, $y + 24 );
-		$pres = Docs::president();
+		$pres = (string) $meta['president'];
 		$pdf->text( Docs::RIGHT, $y + 37, 'Il Presidente' . ( '' !== $pres ? ' ' . $pres : '' ), 9, false, 'R' );
 		$out         = $pdf->output();
 		Pdf::$filter = null;
-		return array( 'body' => $out, 'filename' => 'rendiconto-' . $year . '.pdf', 'mime' => 'application/pdf' );
+		return $out;
 	}
 }
