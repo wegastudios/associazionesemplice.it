@@ -373,6 +373,7 @@ add_filter( 'pre_http_request', $lic_http, 10, 3 );
 Settings::update( array( 'license_key' => '' ) );
 License::sync();
 asem_ok( \AssociazioneSemplice\LicensePolicy::STATUS_NOKEY === License::state()['status'] && 'free' === License::plan() && ! $lic_calls && ! \AssociazioneSemplice\Edition::has( 'payments' ), 'verifica attiva senza chiave: livello gratuito e nessuna chiamata al server' );
+wp_set_current_user( 1 ); // l'invito lo vede solo l'amministratore
 asem_ok( false !== strpos( Admin\LicenseNotice::html(), 'Collega la licenza gratuita' ) && false !== strpos( Admin\LicenseNotice::html(), 'domain=prova-sito.it' ), 'senza chiave: invito a ottenere la chiave gratuita, con il dominio già compilato' );
 Admin\Dismiss::dismiss( 'license-free-link', 90 );
 asem_ok( '' === Admin\LicenseNotice::html(), 'invito alla licenza gratuita: una volta chiuso resta chiuso' );
