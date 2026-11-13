@@ -9958,7 +9958,7 @@ asem_ok( null === $rs_old['voided_at'] && '' !== \AssociazioneSemplice\Receipts:
 // annullo parziale di UNA riga: l'intera ricevuta risulta annullata, il numero resta, con motivo e data
 $ledger->void( $rs_tx( 3100 ), 'Riga sbagliata' );
 $rs_old = \AssociazioneSemplice\Receipts::record( $rs_key );
-asem_ok( null !== $rs_old['voided_at'] && 'Riga sbagliata' === $rs_old['void_reason'] && 1 === (int) $rs_old['number'], 'sostitutiva: annullando una sola riga l\'intera ricevuta emessa risulta annullata (numero, motivo e data restano)' );
+asem_ok( null !== $rs_old['voided_at'] && 'Riga sbagliata' === $rs_old['void_reason'] && 1 === (int) $rs_old['number'], 'sostitutiva: annullando una sola riga l\'intera ricevuta emessa risulta annullata (numero, motivo e data restano)' . ( null === $rs_old['voided_at'] || 'Riga sbagliata' !== $rs_old['void_reason'] ? ' [' . wp_json_encode( $rs_old ) . ']' : '' ) );
 $rs_v1 = \AssociazioneSemplice\Receipts::build( $rs_key );
 $rs_v2 = \AssociazioneSemplice\Receipts::build( $rs_key );
 asem_ok( true === $rs_v1['voided'] && $rs_v1['pdf'] === $rs_v2['pdf'] && '1/' . $rs_z === $rs_v1['number'] && 0 === strpos( $rs_v1['pdf'], '%PDF-1.4' ) && false !== strpos( $rs_v1['pdf'], 'ANNULLATA' ) && false !== strpos( $rs_v1['pdf'], 'Riga sbagliata' ) && false !== strpos( $rs_v1['pdf'], 'Voce due' ) && false !== strpos( $rs_v1['pdf'], '31,00' ) && false !== strpos( $rs_v1['pdf'], 'Sostituita' ), 'sostitutiva: la ricevuta annullata resta consultabile, PDF ANNULLATA con data e motivo, uguale a ogni lettura e con le righe com\'erano' );
