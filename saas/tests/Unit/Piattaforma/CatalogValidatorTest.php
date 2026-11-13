@@ -17,7 +17,7 @@ it('accetta il catalogo iniziale e lo completa con schema e prodotto', function 
     expect($doc['schema'])->toBe('catalogo/v1')
         ->and($doc['product'])->toBe('saas')
         ->and($doc['rev'])->toBe(2)
-        ->and(array_column($doc['plans'], 'code'))->toBe(['gestionale', 'piccola', 'media', 'grande', 'gestionale']);
+        ->and(array_column($doc['plans'], 'code'))->toBe(['gestionale', 'piccola', 'media', 'grande']);
 });
 
 it('rifiuta campi sconosciuti, importi non interi e testo con HTML', function (array $change): void {
@@ -125,8 +125,7 @@ it('ha tre piani a prezzo fisso per fasce di soci, con i pacchetti inclusi e il 
         ->and(array_keys($plans['media@1']['limits']['packages']))->toBe(['member_area', 'einvoice'])
         ->and($plans['media@1']['limits']['packages']['einvoice'])->toBe(['yearly' => 50])
         ->and(array_keys($plans['grande@1']['limits']['packages']))->toBe(['member_area', 'einvoice', 'communications', 'association_life'])
-        ->and($plans['gestionale@2']['visible'])->toBeFalse()
-        ->and($plans['gestionale@1']['visible'])->toBeTrue();
+        ->and($plans['gestionale@1']['visible'])->toBeFalse()
 
     $addons = collect($doc['addons'])->keyBy('code');
     foreach (['member_area', 'communications', 'association_life', 'advanced_accounting'] as $included) {

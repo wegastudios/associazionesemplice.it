@@ -108,7 +108,7 @@ $catalog = [
             'name' => 'Gestionale',
             'audience' => 'Associazioni, APS, ODV e società sportive',
             'order' => 1,
-            'visible' => true,
+            'visible' => false,
             'support_level' => 'paid',
             'trial_days' => 30,
             'features' => [
@@ -193,7 +193,6 @@ $catalog = [
     'promos' => [],
 ];
 
-// Il piano a scaglioni resta nelle versioni già vendute; dalla versione 2 non è più in vendita.
-$catalog['plans'][] = array_replace($catalog['plans'][0], ['plan_version' => 2, 'visible' => false]);
+// Il piano a scaglioni resta per le versioni già vendute; non è più in vendita (il nuovo listino è dei tre piani sopra).
 
 return $catalog;
