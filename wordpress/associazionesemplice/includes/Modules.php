@@ -33,7 +33,7 @@ final class Modules {
 			'activities' => array( 'label' => 'Corsi ed eventi', 'ask' => 'Organizzi corsi, eventi o attività con iscrizioni e presenze?', 'pages' => array( 'asem-activities', 'asem-calendar', 'asem-attendance' ), 'needs' => '' ),
 			'ledger'     => array( 'label' => 'Cassa e prima nota', 'ask' => 'Ti serve registrare incassi e spese (la prima nota)?', 'pages' => array( 'asem-money', 'asem-ledger', 'asem-income', 'asem-group', 'asem-expense' ), 'needs' => '' ),
 			'accounts'   => array( 'label' => 'Conti e fondi', 'ask' => 'Ti serve gestire altri conti oltre alla cassa contanti (banca, PayPal, fondi)?', 'pages' => array( 'asem-accounts', 'asem-transfer' ), 'needs' => 'ledger' ),
-			'accounting' => array( 'label' => 'Contabilità', 'ask' => 'Tieni la contabilità qui (anni solari, adempimenti, 5x1000)? Se la tiene un altro, resta solo la prima nota.', 'pages' => array( 'asem-accounting', 'asem-years', 'asem-fivepm' ), 'needs' => 'ledger' ),
+			'accounting' => array( 'label' => 'Contabilità', 'ask' => 'Tieni la contabilità qui (anni solari, adempimenti, 5 per mille)? Se la tiene un altro, resta solo la prima nota.', 'pages' => array( 'asem-accounting', 'asem-years', 'asem-fivepm' ), 'needs' => 'ledger' ),
 			'reports'    => array( 'label' => 'Bilanci e rendiconto', 'ask' => 'Ti servono i bilanci e il rendiconto?', 'pages' => array( 'asem-reports', 'asem-statement' ), 'needs' => 'accounting' ),
 			'book'       => array( 'label' => 'Libro soci e verbali', 'ask' => 'Ti serve il libro soci (con i verbali)?', 'pages' => array( 'asem-book', 'asem-minutes' ), 'needs' => '' ),
 			'messages'   => array( 'label' => 'Comunicazioni', 'ask' => 'Vuoi scrivere ai soci dal gestionale, via email?', 'pages' => array( 'asem-messages' ), 'needs' => '' ),

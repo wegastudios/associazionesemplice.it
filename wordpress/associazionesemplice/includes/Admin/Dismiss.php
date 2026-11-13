@@ -6,7 +6,7 @@ use AssociazioneSemplice\Plugin;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Avvisi che si possono chiudere (assicurazioni, copia di sicurezza, 5x1000…). La chiusura vale per chi l'ha fatta e per un certo numero di
+ * Avvisi che si possono chiudere (assicurazioni, copia di sicurezza, 5 per mille…). La chiusura vale per chi l'ha fatta e per un certo numero di
  * giorni: poi, se la situazione non è cambiata, l'avviso ricompare. Niente avviso, niente rumore: si chiude con la X e basta.
  */
 final class Dismiss {
