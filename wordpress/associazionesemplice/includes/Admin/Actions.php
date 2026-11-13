@@ -273,7 +273,7 @@ final class Actions {
 	private static function privacy_anonymize( array $p ): array {
 		$id = (int) ( $p['id'] ?? 0 );
 		\AssociazioneSemplice\Privacy::anonymize( $id );
-		return array( Ui::url( 'asem-comms' ), 'Persona anonimizzata: i dati personali sono stati rimossi, i movimenti contabili restano registrati.' . \AssociazioneSemplice\Privacy::closed_books_note( $id ) );
+		return array( Ui::url( 'asem-comms' ), 'Persona anonimizzata: i dati personali sono stati rimossi, i movimenti contabili restano registrati.' . \AssociazioneSemplice\Privacy::closed_books_note( $id ) . \AssociazioneSemplice\Privacy::closed_descriptions_note( $id ) );
 	}
 
 	private static function save_comms( array $p ): array {

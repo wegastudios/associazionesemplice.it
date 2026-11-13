@@ -118,6 +118,16 @@ final class Privacy {
 		return 0 === $n ? '' : ' Attenzione: i dati del libro soci (nome, codice fiscale, nascita, residenza, date) restano nei libri degli esercizi già chiusi (' . $n . ( 1 === $n ? ' libro' : ' libri' ) . '), come dovere di conservazione: non si cancellano né si rendono anonimi.';
 	}
 
+	/**
+	 * Frase per chi anonimizza: nei movimenti degli esercizi già chiusi la descrizione non si riscrive (il chiuso è chiuso), quindi un nome scritto
+	 * a mano lì può restare. Importi, categorie e date non contengono dati personali e non cambiano. Vuota se la persona non ha movimenti in esercizi chiusi.
+	 */
+	public static function closed_descriptions_note( int $person_id ): string {
+		$db = Db::db();
+		$n  = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE (person_id = %d OR payer_person_id = %d) AND description <> '' AND " . YearLock::in_closed_sql( 'tx_date' ), $person_id, $person_id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- la condizione sugli esercizi chiusi è già preparata (date)
+		return 0 === $n ? '' : ' Attenzione: ' . $n . ( 1 === $n ? ' movimento' : ' movimenti' ) . ' di esercizi già chiusi ' . ( 1 === $n ? 'ha' : 'hanno' ) . ' una descrizione che non si modifica (il chiuso è chiuso): se vi è scritto a mano il nome della persona, resta. Riapri l\'esercizio solo se devi toglierlo.';
+	}
+
 	public static function can_export( int $person_id ): bool {
 		return $person_id > 0 && ( current_user_can( Plugin::CAP_OPS ) || current_user_can( 'asem_view_person', $person_id ) );
 	}
@@ -224,9 +234,11 @@ final class Privacy {
 		}
 		self::scrub_copies( $person_id, $name );
 		if ( '' !== trim( $name ) ) { // il nome scritto a mano nelle descrizioni dei movimenti
+			// I movimenti di un esercizio chiuso non si toccano (il rendiconto è fotografato e la prima nota chiusa non cambia): lì la descrizione resta com'è.
+			// È un'eccezione al dovere di anonimizzare, spiegata a chi esegue la richiesta con {@see Privacy::closed_descriptions_note()}.
 			$db->query(
 				$db->prepare(
-					'UPDATE ' . Db::t( 'transactions' ) . ' SET description = REPLACE(description, %s, %s) WHERE person_id = %d OR payer_person_id = %d',
+					'UPDATE ' . Db::t( 'transactions' ) . ' SET description = REPLACE(description, %s, %s) WHERE (person_id = %d OR payer_person_id = %d) AND NOT ' . YearLock::in_closed_sql( 'tx_date' ), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- la condizione sugli esercizi chiusi è già preparata (date) e non contiene segnaposto
 					$name,
 					'[anonimizzato]',
 					$person_id,

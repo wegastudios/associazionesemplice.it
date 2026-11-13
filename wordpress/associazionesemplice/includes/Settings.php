@@ -32,8 +32,8 @@ final class Settings {
 		return array(
 			'association_name'        => '',
 			'tax_code'                => '',
-			'social_year_start_month' => 9,     // l'anno sociale inizia a settembre
-			'fiscal_start_month'      => 1,     // l'anno fiscale (esercizio) inizia a gennaio, cioè coincide con l'anno solare; vale per tutte le edizioni
+			'social_year_start_month' => 1,     // l'anno sociale (tessere e attività) inizia a gennaio; si sceglie in modo indipendente dall'anno fiscale
+			'fiscal_start_month'      => 1,     // l'anno fiscale (bilancio e rendiconto) inizia a gennaio, cioè come l'anno solare; vale per tutte le edizioni; si sceglie in modo indipendente dall'anno sociale
 			'membership_fee_cents'    => 1000,  // quota associativa proposta negli incassi
 			'founder_years'           => 99,    // durata della tessera del socio fondatore
 			'guest_max_events'        => 2,     // quante volte un non socio può partecipare (eventi e corsi) prima di doversi iscrivere; 0 = nessun limite
@@ -171,7 +171,7 @@ final class Settings {
 			$clean[ $k ] = $values[ $k ];
 		}
 		$clean['social_year_start_month'] = max( 1, min( 12, (int) $clean['social_year_start_month'] ) );
-		if ( $clean['social_year_start_month'] !== max( 1, min( 12, (int) ( $before['social_year_start_month'] ?? 9 ) ) ) ) { // la tessera segue l'anno sociale: le tessere già emesse non si toccano, ma due non devono avere la stessa etichetta
+		if ( $clean['social_year_start_month'] !== max( 1, min( 12, (int) ( $before['social_year_start_month'] ?? 1 ) ) ) ) { // la tessera segue l'anno sociale: le tessere già emesse non si toccano, ma due non devono avere la stessa etichetta
 				$cards = Db::db()->get_results( 'SELECT valid_from, valid_to FROM ' . Db::t( 'memberships' ) . " WHERE deleted_at IS NULL AND social_year LIKE '%/%'", ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery -- nomi tabella interni, nessun valore dall'esterno
 				if ( MembershipRules::month_change_conflicts( $cards, (int) $clean['social_year_start_month'], Db::today() ) ) {
 					throw new \InvalidArgumentException( 'Ci sono tessere ancora valide che iniziano in un altro mese: cambiare ora il mese dell\'anno sociale le confonderebbe con quelle nuove. Aspetta che scadano, oppure scegli gennaio.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html

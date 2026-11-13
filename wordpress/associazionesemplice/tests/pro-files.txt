@@ -20,6 +20,7 @@ GroupCash.php
 Admin/ReportsPage.php
 Admin/AccountingPage.php
 Statement.php
+StatementSnapshot.php
 Admin/FivePmPage.php
 FivePerMille.php
 Insurance.php

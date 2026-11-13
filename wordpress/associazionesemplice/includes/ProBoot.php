@@ -106,6 +106,7 @@ final class ProBoot {
 		ProWatch::register(); // controllo di bilancio, spese attribuite ai fondi e inizio dell'anno fiscale (Pro Fiscale)
 		ProBlockE::register(); // SMS, newsletter, Satispay e Klarna
 		DocsPro::register();
+		StatementSnapshot::register(); // rendiconto fotografato alla chiusura di un esercizio e PDF emesso
 		add_filter( 'asem_settings_defaults', array( ProSettings::class, 'defaults' ) );
 		add_filter( 'asem_settings_clean', array( ProSettings::class, 'clean' ), 10, 2 );
 		Admin\ProMenu::register(); // pagine, schede e permessi dell'amministrazione

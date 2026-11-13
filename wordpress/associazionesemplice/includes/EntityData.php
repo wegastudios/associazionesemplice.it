@@ -48,7 +48,7 @@ final class EntityData {
 			$vals['runts_manual_year'] = $y >= 2000 && $y <= 2100 ? $y : 0;
 		}
 		if ( $has( 'social_year_start_month' ) ) {
-			$vals['social_year_start_month'] = (int) ( $p['social_year_start_month'] ?? 9 );
+			$vals['social_year_start_month'] = max( 1, min( 12, (int) ( $p['social_year_start_month'] ?? 1 ) ) );
 		}
 		if ( $has( 'fiscal_start_month' ) ) {
 			// Con esercizi chiusi il campo è disabilitato e non arriva nel modulo: il mese resta quello in vigore.

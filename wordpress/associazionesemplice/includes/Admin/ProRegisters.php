@@ -5,6 +5,7 @@ use AssociazioneSemplice\AssocPolicies;
 use AssociazioneSemplice\Attendance;
 use AssociazioneSemplice\Db;
 use AssociazioneSemplice\Docs;
+use AssociazioneSemplice\FiscalYears;
 use AssociazioneSemplice\Insurance;
 use AssociazioneSemplice\Money;
 use AssociazioneSemplice\Plugin;
@@ -236,11 +237,37 @@ final class ProRegisters {
 		Ui::header( 'Rendiconto per cassa (Mod. D)' );
 		echo '<p class="description">Il rendiconto dell\'anno solare costruito dalla prima nota: entrate e uscite per area, confronto con l\'anno precedente, avanzo o disavanzo, cassa e conti. '
 			. 'Le aree seguono la «voce di rendiconto» di ogni categoria. Stampa il PDF, aggiungi la relazione e fai firmare tesoriere e presidente; il commercialista può verificarlo prima dell\'approvazione.</p>';
-		echo '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-statement"><select name="year">' . Ui::options( array_combine( $years, $years ), $year ) . '</select> <button class="button">Mostra</button> ' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
-			. '<a class="button button-primary" target="_blank" href="' . esc_url( Docs::url( 'statement', array( 'year' => $year ) ) ) . '">PDF del rendiconto</a></form>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		$s    = Statement::data( $year );
-		$show = function ( string $label, array $groups, array $total ) use ( $year ) {
-			echo '<h2>' . esc_html( $label ) . '</h2><table class="widefat striped"><thead><tr><th></th><th style="text-align:right">' . (int) ( $year - 1 ) . '</th><th style="text-align:right">' . (int) $year . '</th></tr></thead><tbody>';
+		$labels  = array();
+		foreach ( $years as $y ) {
+			$labels[ $y ] = FiscalYears::label( $y );
+		}
+		$version = Ui::get_int( 'version' );
+		$version = $version > 0 && null !== FiscalYears::closure_version( $year, $version ) ? $version : null;
+		$s       = Statement::data( $year, $version );
+		$snap    = $s['snapshot'] ?? null; // esercizio chiuso e fotografato: si legge la fotografia, non si ricalcola
+		$cl      = FiscalYears::current_closure( $year );
+		$col_cur = $snap ? (string) $snap['label'] : FiscalYears::label( $year );
+		$col_prv = $snap ? (string) $snap['prev_label'] : FiscalYears::label( $year - 1 );
+		echo '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-statement"><select name="year">' . Ui::options( $labels, $year ) . '</select> <button class="button">Mostra</button> ' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- html già protetto dagli helper o numeri interi
+			. '<a class="button button-primary" target="_blank" href="' . esc_url( Docs::url( 'statement', array( 'year' => $year ) + ( $snap ? array( 'version' => (int) $snap['version'] ) : array() ) ) ) . '">' . ( $snap ? 'PDF emesso ' . esc_html( $snap['number_text'] ) : 'PDF del rendiconto (bozza dal vivo)' ) . '</a></form>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		if ( $snap ) {
+			echo '<p class="description"><strong>' . esc_html( ucfirst( $snap['text'] ) ) . ' (' . esc_html( $snap['number_text'] ) . ', chiusura n. ' . (int) $snap['version'] . ( $snap['superseded'] ? ', poi riaperta' : '' ) . ').</strong> '
+				. ( $snap['retroactive'] ? 'Ricostruito dai dati di allora ancora presenti: non è stato ripreso al giorno della chiusura; le voci per area sono quelle di quel giorno. ' : 'Fotografia presa alla chiusura dell\'esercizio: non cambia più, anche se poi una categoria viene modificata o una scheda cancellata. ' )
+				. ( $snap['superseded'] ? 'È una chiusura precedente: l\'esercizio è stato riaperto.' : 'Per correggerlo riapri l\'esercizio da <a href="' . esc_url( Ui::url( 'asem-years' ) ) . '">Esercizi</a>: alla nuova chiusura nasce un nuovo rendiconto e questo resta come versione precedente.' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- i valori passano da esc_html e dagli helper
+		} elseif ( $cl ) {
+			echo '<p class="description"><strong>Esercizio chiuso prima che esistesse la fotografia del rendiconto:</strong> le cifre qui sotto sono calcolate dai dati di oggi. Da <a href="' . esc_url( Ui::url( 'asem-years' ) ) . '">Esercizi</a> puoi fotografarlo ora («ricostruito il …»).</p>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- indirizzo già protetto
+		}
+		$others = array();
+		foreach ( FiscalYears::closures( $year ) as $c ) {
+			if ( ( ! $snap || (int) $c['version'] !== (int) $snap['version'] ) && null !== \AssociazioneSemplice\StatementSnapshot::row_for_closure( (int) $c['id'] ) ) {
+				$others[] = '<a href="' . esc_url( Ui::url( 'asem-statement', array( 'year' => $year, 'version' => (int) $c['version'] ) ) ) . '">chiusura n. ' . (int) $c['version'] . ( 'superseded' === $c['status'] ? ' (poi riaperta)' : '' ) . '</a>';
+			}
+		}
+		if ( $others ) {
+			echo '<p class="description">Altre versioni del rendiconto di questo esercizio, conservate dopo una riapertura: ' . implode( ' · ', $others ) . '.</p>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- indirizzi già protetti
+		}
+		$show = function ( string $label, array $groups, array $total ) use ( $col_cur, $col_prv ) {
+			echo '<h2>' . esc_html( $label ) . '</h2><table class="widefat striped"><thead><tr><th></th><th style="text-align:right">' . esc_html( $col_prv ) . '</th><th style="text-align:right">' . esc_html( $col_cur ) . '</th></tr></thead><tbody>';
 			foreach ( $groups as $g ) {
 				echo '<tr><td><strong>' . esc_html( $g['group'] ) . '</strong></td><td style="text-align:right"><strong>' . Ui::money( $g['prev'] ) . '</strong></td><td style="text-align:right"><strong>' . Ui::money( $g['cur'] ) . '</strong></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 				foreach ( $g['lines'] as $l ) {
@@ -251,16 +278,20 @@ final class ProRegisters {
 		};
 		$show( 'Entrate', $s['income'], $s['total_income'] );
 		$show( 'Uscite', $s['expenses'], $s['total_expense'] );
-		echo '<p><strong>' . ( $s['result']['cur'] >= 0 ? 'Avanzo' : 'Disavanzo' ) . ' di gestione ' . (int) $year . ':</strong> ' . Ui::money( $s['result']['cur'] ) . ' <span class="description">(' . (int) ( $year - 1 ) . ': ' . esc_html( Money::format( $s['result']['prev'] ) ) . ')</span></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<p><strong>' . ( $s['result']['cur'] >= 0 ? 'Avanzo' : 'Disavanzo' ) . ' di gestione ' . esc_html( $col_cur ) . ':</strong> ' . Ui::money( $s['result']['cur'] ) . ' <span class="description">(' . esc_html( $col_prv ) . ': ' . esc_html( Money::format( $s['result']['prev'] ) ) . ')</span></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<h2>Cassa e conti</h2><table class="widefat striped asem-fullw"><thead><tr><th></th><th style="text-align:right">Iniziale</th><th style="text-align:right">Finale</th></tr></thead><tbody>';
 		foreach ( $s['accounts'] as $a ) {
 			echo '<tr><td>' . esc_html( $a['name'] ) . '</td><td style="text-align:right">' . Ui::money( $a['opening'] ) . '</td><td style="text-align:right">' . Ui::money( $a['closing'] ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
 		echo '<tr><td><strong>Totale</strong></td><td style="text-align:right"><strong>' . Ui::money( $s['opening_total'] ) . '</strong></td><td style="text-align:right"><strong>' . Ui::money( $s['closing_total'] ) . '</strong></td></tr></tbody></table>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '<h2>Relazione sull\'andamento della gestione</h2>';
-		Ui::form_open( 'asem_statement_notes', Ui::url( 'asem-statement', array( 'year' => $year ) ) );
-		echo Ui::hidden( 'year', $year ) . '<p><textarea name="notes" rows="8" class="large-text" maxlength="' . (int) Statement::MAX_NOTES . '">' . esc_textarea( $s['notes'] ) . '</textarea></p><p class="description">Compare in fondo al PDF, prima delle firme.</p><p><button class="button button-primary">Salva la relazione</button></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		Ui::form_close();
+		if ( $cl || $snap ) { // esercizio chiuso: la relazione è nella fotografia e non si cambia
+			echo '<p>' . ( '' !== trim( (string) $s['notes'] ) ? nl2br( esc_html( (string) $s['notes'] ) ) : '<em>Nessuna relazione scritta.</em>' ) . '</p><p class="description">L\'esercizio è chiuso: la relazione è quella fotografata alla chiusura. Per cambiarla riapri l\'esercizio da <a href="' . esc_url( Ui::url( 'asem-years' ) ) . '">Esercizi</a>.</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		} else {
+			Ui::form_open( 'asem_statement_notes', Ui::url( 'asem-statement', array( 'year' => $year ) ) );
+			echo Ui::hidden( 'year', $year ) . '<p><textarea name="notes" rows="8" class="large-text" maxlength="' . (int) Statement::MAX_NOTES . '">' . esc_textarea( $s['notes'] ) . '</textarea></p><p class="description">Compare in fondo al PDF, prima delle firme.</p><p><button class="button button-primary">Salva la relazione</button></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
+			Ui::form_close();
+		}
 		Ui::footer();
 	}
 
