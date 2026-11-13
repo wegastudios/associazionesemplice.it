@@ -176,7 +176,7 @@
 		var box = form.querySelector('[data-asemf-guardian]'), birth = form.querySelector('[data-asemf-birth]');
 		if (!box || !birth) { return; }
 		var a = adult(birth.value);
-		box.hidden = a === true;
+		box.hidden = a !== false; // nascosto finché non si scrive una data da cui risulta un minore
 		form.querySelectorAll('[data-asemf-adult-required]').forEach(function (i) { i.required = (a === true); }); // chi ha 18 anni o più deve dare email e cellulare, per un minore bastano quelli del genitore
 	}
 	document.addEventListener('change', function (e) {
