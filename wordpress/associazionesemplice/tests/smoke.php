@@ -9222,6 +9222,234 @@ foreach ( array_merge( $ru_ids, array( $ru_adult, $ru_minor, $ru_volun ) ) as $r
 	$people->delete( $ru_del );
 }
 
+// ---------- Dipendenti ----------
+wp_set_current_user( 1 );
+add_filter( 'pre_wp_mail', '__return_true' ); // nessuna email vera: l'invito parte «a vuoto»
+$em_keys = \AssociazioneSemplice\EmployeeRules::keys();
+asem_ok( null !== get_role( Plugin::ROLE_EMPLOYEE ) && 'Dipendente' === wp_roles()->role_names[ Plugin::ROLE_EMPLOYEE ], 'dipendente: il ruolo esiste e si chiama «Dipendente»' );
+asem_ok( get_role( Plugin::ROLE_EMPLOYEE )->capabilities === get_role( Plugin::ROLE_SECRETARY )->capabilities, 'dipendente: il ruolo parte con le stesse capability della segreteria' );
+$em_sy     = Settings::social_year()->label();
+$em_course = $acts->create( array( 'name' => 'Corso dipendenti', 'social_year' => $em_sy, 'kind' => 'course', 'fee_cents' => 0, 'lesson_weekday' => 2, 'lesson_start' => '17:00', 'lesson_end' => '18:00' ) );
+$em_event  = $acts->create( array( 'name' => 'Evento dipendenti', 'social_year' => $em_sy, 'kind' => 'event', 'fee_cents' => 0, 'session' => array( 'session_date' => Db::today(), 'start_time' => '18:00', 'location' => 'Sede' ) ) );
+$em_sess   = (int) $acts->sessions( $em_event )[0]['id'];
+
+// creazione: solo chi ha titolo; nessuna persona nel libro soci
+list( $em_sp, $em_su ) = $mkmem( 'Sandra', 'Segreteriaprova' );
+( new ReflectionMethod( Admin\Actions::class, 'set_secretary' ) )->invoke( null, array( 'id' => $em_sp, 'enabled' => '1' ) );
+wp_set_current_user( $em_su );
+asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\Employees::create( array( 'first_name' => 'Aldo', 'last_name' => 'Prova', 'email' => 'aldo.prova@example.test' ) ); } ), 'dipendenti: la segreteria non crea dipendenti' );
+wp_set_current_user( 1 );
+asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\Employees::create( array( 'first_name' => 'Aldo', 'last_name' => '', 'email' => 'aldo.prova@example.test' ) ); } ), 'dipendenti: nome e cognome sono obbligatori' );
+asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\Employees::create( array( 'first_name' => 'Aldo', 'last_name' => 'Prova', 'email' => 'non-una-email' ) ); } ), 'dipendenti: l\'email deve essere valida' );
+asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\Employees::create( array( 'first_name' => 'Aldo', 'last_name' => 'Prova', 'email' => 'aldo.prova@example.test', 'from' => '2026-05-01', 'to' => '2026-04-01' ) ); } ), 'dipendenti: la fine del servizio non è prima dell\'inizio' );
+$em_uid = \AssociazioneSemplice\Employees::create( array( 'first_name' => 'Dora', 'last_name' => 'Dipendente', 'email' => 'dora.dipendente@example.test' ) );
+$em_mail = 'dora.dipendente@example.test';
+asem_ok( \AssociazioneSemplice\Employees::is_employee( $em_uid ) && array( Plugin::ROLE_EMPLOYEE ) === array_values( get_userdata( $em_uid )->roles ), 'dipendente: creato con il solo ruolo Dipendente' );
+asem_ok( user_can( $em_uid, Plugin::CAP_OPS ) && ! user_can( $em_uid, Plugin::CAP ), 'dipendente: opera come la segreteria ma non è amministratore' );
+asem_ok( true === \AssociazioneSemplice\Employees::send_invite( $em_uid ), 'dipendente: l\'invito per email parte' );
+asem_ok( null !== asem_throws( function () use ( $em_mail ) { \AssociazioneSemplice\Employees::create( array( 'first_name' => 'Dora', 'last_name' => 'Doppia', 'email' => $em_mail ) ); } ), 'dipendenti: un\'email già usata da un utente del sito è rifiutata' );
+asem_ok( null === $people->find_by_email( $em_mail ) && null === Access::person_for_user( $em_uid ), 'dipendente: non è una persona del libro soci (nessuna scheda, nessun collegamento)' );
+$em_book = array_filter( \AssociazioneSemplice\MemberBook::qualifying_people( Db::today(), Db::today() ), function ( $q ) use ( $em_mail ) { return $em_mail === (string) ( $q['email'] ?? '' ); } );
+asem_ok( ! $em_book, 'dipendente: non compare nel libro soci né tra i soci con la tessera' );
+$em_card = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE email = %s OR wp_user_id = %d', $em_mail, $em_uid ) );
+asem_ok( 0 === $em_card, 'dipendente: non ha una tessera né una riga nelle persone' );
+wp_set_current_user( $em_uid );
+asem_ok( null === Access::current_person(), 'dipendente: da utente del sito non è nessun socio' );
+wp_set_current_user( 1 );
+
+// permessi di partenza = segreteria
+$em_abilities = array( 'asem_add_expense' => 0, 'asem_collect' => 0, 'asem_register_member' => 0, 'asem_view_activity' => $em_course, 'asem_manage_event' => $em_event, 'asem_door_cash' => $em_event, 'asem_view_participants' => $em_event, 'asem_notify_activity' => $em_course );
+foreach ( $em_abilities as $em_ab => $em_obj ) {
+	asem_ok( Access::user_can( $em_uid, $em_ab, $em_obj ) === Access::user_can( $em_su, $em_ab, $em_obj ) && Access::user_can( $em_uid, $em_ab, $em_obj ), "dipendente: all'inizio $em_ab come la segreteria" );
+}
+wp_set_current_user( $em_uid );
+foreach ( $em_keys as $em_k ) {
+	asem_ok( \AssociazioneSemplice\Employees::can( $em_k ), "dipendente: all'inizio ha il permesso $em_k" );
+}
+foreach ( array( 'asem-income', 'asem-expense', 'asem-refunds', 'asem-money', 'asem-ledger', 'asem-activities', 'asem-bookdesk', 'asem-calendar' ) as $em_pg ) {
+	asem_ok( \AssociazioneSemplice\Employees::page_allowed( $em_pg ), "dipendente: all'inizio può aprire $em_pg" );
+}
+wp_set_current_user( 1 );
+
+// il blocco vale davvero: pagine, azioni, ajax, esportazioni (la porta si chiude con wp_die)
+add_filter( 'wp_die_handler', $em_die = function () { return function ( $message ) { throw new \RuntimeException( is_scalar( $message ) ? (string) $message : 'die' ); }; } );
+$em_blocked = function ( string $pagenow, array $req ) use ( $em_uid ): ?string {
+	wp_set_current_user( $em_uid );
+	\AssociazioneSemplice\Employees::reset_cache();
+	$GLOBALS['pagenow'] = $pagenow;
+	$old_g = $_GET; $old_r = $_REQUEST;
+	$_GET = $_REQUEST = $req;
+	try {
+		\AssociazioneSemplice\Employees::gate();
+		$out = null;
+	} catch ( \RuntimeException $e ) {
+		$out = $e->getMessage();
+	}
+	$_GET = $old_g; $_REQUEST = $old_r;
+	$GLOBALS['pagenow'] = 'admin.php';
+	wp_set_current_user( 1 );
+	return $out;
+};
+$em_cat_exp = (int) Plugin::ledger()->category_id_of_kind( 'general_cost' );
+$em_cat_inc = (int) Plugin::ledger()->category_id_of_kind( 'donation' );
+asem_ok( null === $em_blocked( 'admin.php', array( 'page' => 'asem-income' ) ) && null === $em_blocked( 'admin-post.php', array( 'action' => 'asem_save_expense' ) ), 'dipendente: senza permessi tolti nessuna porta è chiusa' );
+
+// toglierne uno per uno: ognuno chiude le sue porte e solo quelle
+$em_cases = array(
+	'collect'  => array( array( 'admin.php', array( 'page' => 'asem-income' ) ), array( 'admin-post.php', array( 'action' => 'asem_save_income' ) ), array( 'admin-post.php', array( 'action' => 'asem_quick_cash', 'category_id' => $em_cat_inc ) ), array( 'admin-post.php', array( 'action' => 'asem_walk_in' ) ) ),
+	'expenses' => array( array( 'admin.php', array( 'page' => 'asem-expense' ) ), array( 'admin-post.php', array( 'action' => 'asem_save_expense' ) ), array( 'admin-post.php', array( 'action' => 'asem_quick_cash', 'category_id' => $em_cat_exp ) ) ),
+	'refunds'  => array( array( 'admin.php', array( 'page' => 'asem-refunds' ) ), array( 'admin-post.php', array( 'action' => 'asem_refund_pay' ) ), array( 'admin-post.php', array( 'action' => 'asem_refunds_csv' ) ) ),
+	'funds'    => array( array( 'admin.php', array( 'page' => 'asem-money' ) ), array( 'admin.php', array( 'page' => 'asem-ledger' ) ), array( 'admin-post.php', array( 'action' => 'asem_export', 'what' => 'ledger' ) ), array( 'admin-post.php', array( 'action' => 'asem_export', 'what' => 'period' ) ), array( 'admin-post.php', array( 'action' => 'asem_cash_count' ) ) ),
+	'courses'  => array( array( 'admin.php', array( 'page' => 'asem-activity', 'id' => $em_course ) ), array( 'admin-post.php', array( 'action' => 'asem_enroll', 'activity_id' => $em_course ) ), array( 'admin-post.php', array( 'action' => 'asem_save_activity', 'kind' => 'course' ) ), array( 'admin-post.php', array( 'action' => 'asem_quick_enroll', 'target' => 'a:' . $em_course ) ) ),
+	'events'   => array( array( 'admin.php', array( 'page' => 'asem-activity', 'id' => $em_event ) ), array( 'admin.php', array( 'page' => 'asem-bookdesk' ) ), array( 'admin-post.php', array( 'action' => 'asem_book', 'session_id' => $em_sess ) ), array( 'admin-post.php', array( 'action' => 'asem_checkin', 'session_id' => $em_sess ) ), array( 'admin-post.php', array( 'action' => 'asem_quick_enroll', 'target' => 's:' . $em_sess ) ) ),
+);
+$em_always = array( array( 'admin.php', array( 'page' => 'asem-people' ) ), array( 'admin.php', array( 'page' => 'asem-person' ) ), array( 'admin-post.php', array( 'action' => 'asem_save_person' ) ), array( 'admin-post.php', array( 'action' => 'asem_export', 'what' => 'people' ) ), array( 'admin.php', array( 'page' => 'asem-book' ) ), array( 'admin.php', array( 'page' => 'asem' ) ) );
+foreach ( $em_keys as $em_k ) {
+	\AssociazioneSemplice\Employees::set_denied( $em_uid, array( $em_k ) );
+	asem_ok( array( $em_k ) === \AssociazioneSemplice\Employees::denied_for( $em_uid ), "dipendente: tolto solo $em_k" );
+	foreach ( $em_cases[ $em_k ] as $em_i => $em_c ) {
+		$em_msg = $em_blocked( $em_c[0], $em_c[1] );
+		asem_ok( null !== $em_msg && false !== strpos( $em_msg, \AssociazioneSemplice\EmployeeRules::label( $em_k ) ), "dipendente senza $em_k: la porta $em_i si chiude con un messaggio che dice quale permesso manca" );
+	}
+	foreach ( array_diff( $em_keys, array( $em_k ) ) as $em_o ) { // le porte degli altri permessi restano aperte
+		foreach ( $em_cases[ $em_o ] as $em_i => $em_c ) {
+			if ( in_array( $em_k, array( 'courses', 'events' ), true ) && in_array( $em_o, array( 'courses', 'events' ), true ) ) {
+				continue; // corsi ed eventi sono due permessi distinti: sotto
+			}
+			asem_ok( null === $em_blocked( $em_c[0], $em_c[1] ), "dipendente senza $em_k: la porta $em_i di $em_o resta aperta" );
+		}
+	}
+	foreach ( $em_always as $em_i => $em_c ) {
+		asem_ok( null === $em_blocked( $em_c[0], $em_c[1] ), "dipendente senza $em_k: soci, registri e Bacheca restano aperti ($em_i)" );
+	}
+}
+// corsi ed eventi sono distinti: senza i corsi si apre ancora l'evento e viceversa
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'courses' ) );
+asem_ok( null === $em_blocked( 'admin.php', array( 'page' => 'asem-activity', 'id' => $em_event ) ) && null === $em_blocked( 'admin.php', array( 'page' => 'asem-activities' ) ), 'dipendente senza corsi: l\'evento e l\'elenco restano aperti' );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'events' ) );
+asem_ok( null === $em_blocked( 'admin.php', array( 'page' => 'asem-activity', 'id' => $em_course ) ), 'dipendente senza eventi: il corso resta aperto' );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'courses', 'events' ) );
+asem_ok( null !== $em_blocked( 'admin.php', array( 'page' => 'asem-activities' ) ) && null !== $em_blocked( 'admin.php', array( 'page' => 'asem-calendar' ) ), 'dipendente senza corsi né eventi: l\'elenco e il calendario si chiudono' );
+asem_ok( null !== $em_blocked( 'admin-post.php', array( 'action' => 'asem_add_session' ) ), 'dipendente: un\'azione sulle attività di cui non si capisce il tipo si nega nel dubbio' );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'collect', 'courses', 'events' ) );
+asem_ok( null !== $em_blocked( 'admin-post.php', array( 'action' => 'asem_person_context' ) ) && null !== $em_blocked( 'admin-post.php', array( 'action' => 'asem_quick_person' ) ), 'dipendente senza incassi, corsi ed eventi: i suggerimenti sulle persone si chiudono' );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'courses', 'events' ) );
+// elenchi e area riservata: ciò che non si può fare non si vede
+wp_set_current_user( $em_uid );
+\AssociazioneSemplice\Employees::reset_cache();
+asem_ok( ! in_array( $em_course, array_map( 'intval', array_column( $acts->for_year( $em_sy ), 'id' ) ), true ) && ! in_array( $em_event, array_map( 'intval', array_column( $acts->for_year( $em_sy ), 'id' ) ), true ), 'dipendente senza corsi né eventi: l\'elenco delle attività è vuoto di entrambi' );
+asem_ok( ! Access::user_can( $em_uid, 'asem_view_activity', $em_course ) && ! Access::user_can( $em_uid, 'asem_manage_event', $em_event ) && ! Access::user_can( $em_uid, 'asem_view_participants', $em_event ), 'dipendente senza corsi né eventi: nemmeno le capability dell\'area riservata e della REST' );
+wp_set_current_user( 1 );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'collect', 'expenses' ) );
+asem_ok( ! Access::user_can( $em_uid, 'asem_collect', 0 ) && ! Access::user_can( $em_uid, 'asem_door_cash', $em_event ) && ! Access::user_can( $em_uid, 'asem_add_expense', 0 ), 'dipendente senza incassi né spese: nemmeno dall\'area riservata' );
+asem_ok( Access::user_can( $em_uid, 'asem_register_member', 0 ) && Access::user_can( $em_uid, 'asem_view_activity', $em_course ), 'dipendente: l\'iscrizione dei soci e le attività restano come alla segreteria' );
+// la Bacheca non mostra saldi senza il permesso
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'funds' ) );
+wp_set_current_user( $em_uid );
+$em_dash = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Anno sociale' );
+asem_ok( false === strpos( $em_dash, 'Disponibilità reale' ), 'dipendente senza visualizzazione di fondi, casse e conti: la Bacheca non mostra i saldi' );
+wp_set_current_user( 1 );
+asem_render( array( Admin\DashboardPage::class, 'render' ), 'Disponibilità reale' );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array() );
+remove_filter( 'wp_die_handler', $em_die );
+
+// solo i sei permessi si tolgono; solo chi ha titolo li toglie
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'courses', 'asem_manage', 'people', 'asem_operate', 'members' ) );
+asem_ok( array( 'courses' ) === \AssociazioneSemplice\Employees::denied_for( $em_uid ) && 6 === count( $em_keys ), 'dipendente: dei permessi solo i sei dell\'elenco si possono togliere, gli altri nomi si ignorano' );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array() );
+$em_try = function ( int $who ) use ( $em_uid ) {
+	wp_set_current_user( $who );
+	$r = asem_throws( function () use ( $em_uid ) { \AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'funds' ) ); } );
+	wp_set_current_user( 1 );
+	\AssociazioneSemplice\Employees::reset_cache();
+	return null === $r;
+};
+list( $em_mp, $em_mu ) = $mkmem( 'Marta', 'Socia' );
+asem_ok( ! $em_try( $em_su ) && ! $em_try( $em_uid ) && ! $em_try( $em_mu ), 'dipendenti: la segreteria, il dipendente stesso e un socio semplice non possono toglierli' );
+asem_ok( array() === \AssociazioneSemplice\Employees::denied_for( $em_uid ), 'dipendenti: i tentativi senza titolo non cambiano nulla' );
+$em_saved = array();
+foreach ( $people->board() as $em_b ) { // si parte da un consiglio senza cariche (poi si ripristinano)
+	$em_saved[] = array( (int) $em_b['id'], (string) $em_b['board_role'] );
+	$people->set_board_role( (int) $em_b['id'], null );
+}
+list( $em_pp, $em_pu ) = $mkmem( 'Piero', 'Presidenteprova' );
+list( $em_vp, $em_vu ) = $mkmem( 'Vera', 'Vicepresidenteprova' );
+asem_ok( ! \AssociazioneSemplice\Employees::can_manage( $em_pu ), 'dipendenti: un socio senza carica non li gestisce' );
+$people->set_board_role( $em_pp, 'president' );
+$people->set_board_role( $em_vp, 'vice_president' );
+asem_ok( \AssociazioneSemplice\Employees::can_manage( $em_pu ) && \AssociazioneSemplice\Employees::can_manage( $em_vu ) && \AssociazioneSemplice\Employees::can_manage( 1 ) && ! \AssociazioneSemplice\Employees::can_manage( $em_su ), 'dipendenti: li gestiscono presidente, vicepresidente e amministratori; non la segreteria' );
+asem_ok( $em_try( $em_pu ), 'presidente: toglie un permesso a un dipendente' );
+asem_ok( array( 'funds' ) === \AssociazioneSemplice\Employees::denied_for( $em_uid ), 'presidente: il permesso risulta tolto' );
+wp_set_current_user( $em_vu );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array() );
+wp_set_current_user( 1 );
+asem_ok( array() === \AssociazioneSemplice\Employees::denied_for( $em_uid ), 'vicepresidente: ridà il permesso' );
+// registro azioni: chi, a chi, quale, quando
+wp_set_current_user( $em_pu );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'refunds' ) );
+wp_set_current_user( 1 );
+$em_log = Audit::recent( 5, 'employee.permission_removed' );
+$em_det = $em_log ? json_decode( (string) $em_log[0]['details'], true ) : array();
+asem_ok( $em_log && (int) $em_log[0]['user_id'] === $em_pu && (int) $em_log[0]['object_id'] === $em_uid && 'user' === $em_log[0]['object_type'] && 'refunds' === ( $em_det['permission'] ?? '' ) && '' !== (string) $em_log[0]['created_at'], 'registro azioni: chi (presidente), a chi (dipendente), quale permesso e quando' );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array() );
+$em_log2 = Audit::recent( 5, 'employee.permission_restored' );
+asem_ok( $em_log2 && (int) $em_log2[0]['object_id'] === $em_uid && 'refunds' === ( json_decode( (string) $em_log2[0]['details'], true )['permission'] ?? '' ), 'registro azioni: anche quando il permesso viene ridato' );
+$em_n = count( Audit::recent( 200, 'employee.permission' ) );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array() );
+asem_ok( count( Audit::recent( 200, 'employee.permission' ) ) === $em_n, 'registro azioni: nessuna riga se non cambia nulla' );
+
+// la schermata di gestione
+asem_render( array( Admin\EmployeesPage::class, 'render' ), 'Nuovo dipendente' );
+wp_set_current_user( $em_su );
+asem_render( array( Admin\EmployeesPage::class, 'render' ), 'riservata al presidente' );
+wp_set_current_user( 1 );
+
+// socio e dipendente: due accessi separati
+Settings::update( array( 'member_wp_users' => 1 ) ); // ogni socio con email avrebbe un utente WordPress: per il dipendente non deve succedere
+$em_soc =$people->create( array( 'type' => 'ordinary', 'first_name' => 'Dora', 'last_name' => 'Soci', 'email' => $em_mail ) );
+asem_ok( empty( $people->get( $em_soc )['wp_user_id'] ), 'dipendente anche socio: la scheda del socio non si collega all\'utente del dipendente' );
+asem_ok( null === Access::person_for_user( $em_uid ) && array( Plugin::ROLE_EMPLOYEE ) === array_values( get_userdata( $em_uid )->roles ) && $em_mail === get_userdata( $em_uid )->user_email, 'dipendente anche socio: l\'utente WordPress resta solo da dipendente' );
+$em_ml = \AssociazioneSemplice\MemberLogin::person_by_email( $em_mail );
+asem_ok( $em_ml && (int) $em_ml['id'] === $em_soc, 'dipendente anche socio: da socio entra con l\'accesso personale (link o codice via email)' );
+asem_ok( null !== asem_throws( function () use ( $people, $em_soc ) { $people->ensure_user( $em_soc ); } ), 'dipendente anche socio: nessun potere sul socio si aggancia all\'utente del dipendente' );
+$people->update( $em_soc, array( 'phone' => '339 7878787' ) );
+asem_ok( empty( $people->get( $em_soc )['wp_user_id'] ), 'dipendente anche socio: nemmeno un aggiornamento della scheda li collega' );
+$people->delete( $em_soc );
+
+// conteggio dei lavoratori per il RUNTS
+$em_uid2 = \AssociazioneSemplice\Employees::create( array( 'first_name' => 'Elio', 'last_name' => 'Estivo', 'email' => 'elio.estivo@example.test', 'from' => '2026-03-01', 'to' => '2026-06-30' ) );
+asem_ok( 1 === \AssociazioneSemplice\Runts::workers_count( '2026-02-28' ), 'RUNTS lavoratori: prima dell\'inizio del servizio conta solo chi non ha date' );
+asem_ok( 2 === \AssociazioneSemplice\Runts::workers_count( '2026-03-01' ) && 2 === \AssociazioneSemplice\Runts::workers_count( '2026-06-30' ), 'RUNTS lavoratori: il primo e l\'ultimo giorno di servizio contano' );
+asem_ok( 1 === \AssociazioneSemplice\Runts::workers_count( '2026-07-01' ), 'RUNTS lavoratori: dopo la fine del servizio non conta' );
+$em_ru = asem_render( array( \AssociazioneSemplice\Admin\RuntsPage::class, 'render' ), 'Lavoratori' );
+asem_ok( false === strpos( $em_ru, 'sarà aggiunto in seguito' ), 'pagina Dati per il RUNTS: non dice più che il ruolo Dipendente non c\'è' );
+// fuori dal periodo di servizio non si opera
+\AssociazioneSemplice\Employees::set_period( $em_uid2, array( 'from' => '2099-01-01' ) );
+asem_ok( ! user_can( $em_uid2, Plugin::CAP_OPS ) && ! Access::is_admin_user( $em_uid2 ), 'dipendente: prima del primo giorno di servizio non opera' );
+\AssociazioneSemplice\Employees::set_period( $em_uid2, array( 'from' => '2020-01-01', 'to' => '2020-12-31' ) );
+asem_ok( ! user_can( $em_uid2, Plugin::CAP_OPS ), 'dipendente: dopo l\'ultimo giorno di servizio non opera' );
+\AssociazioneSemplice\Employees::set_period( $em_uid2, array() );
+asem_ok( user_can( $em_uid2, Plugin::CAP_OPS ), 'dipendente: senza date opera sempre' );
+
+// pulizia
+require_once ABSPATH . 'wp-admin/includes/user.php';
+foreach ( array( $em_uid, $em_uid2 ) as $em_del ) {
+	wp_delete_user( $em_del );
+}
+asem_ok( 0 === \AssociazioneSemplice\Runts::workers_count( '2026-03-01' ), 'RUNTS lavoratori: senza dipendenti il numero torna 0' );
+$people->set_board_role( $em_pp, null );
+$people->set_board_role( $em_vp, null );
+foreach ( $em_saved as $em_s ) {
+	try {
+		$people->set_board_role( $em_s[0], $em_s[1] );
+	} catch ( \Throwable $em_e ) { // una carica non più assegnabile resta vuota
+		unset( $em_e );
+	}
+}
+remove_filter( 'pre_wp_mail', '__return_true' );
+wp_set_current_user( 1 );
+\AssociazioneSemplice\Employees::reset_cache();
+
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Tutti i controlli sono passati.' );

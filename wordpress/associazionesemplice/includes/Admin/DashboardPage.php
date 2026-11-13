@@ -1,6 +1,8 @@
 <?php
 namespace AssociazioneSemplice\Admin;
 
+use AssociazioneSemplice\EmployeeRules;
+use AssociazioneSemplice\Employees;
 use AssociazioneSemplice\MemberType;
 use AssociazioneSemplice\Money;
 use AssociazioneSemplice\Plugin;
@@ -22,23 +24,26 @@ final class DashboardPage {
 		Ui::header( 'Associazione Semplice' . ( $name ? ' — ' . $name : '' ) );
 		echo '<img class="asem-logo" src="' . esc_url( ASEM_URL . 'assets/brand/logo-orizzontale.png' ) . '" width="150" height="55" alt="Associazione Semplice">';
 		echo '<p>'
-			. '<a class="button button-primary" href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Nuovo incasso</a> '
-			. ( \AssociazioneSemplice\Edition::has( 'funds' ) ? '<a class="button" href="' . esc_url( Ui::url( 'asem-group' ) ) . '">Cassa per più persone</a> ' : '' )
-			. '<a class="button" href="' . esc_url( Ui::url( 'asem-expense' ) ) . '">Nuova spesa</a> '
-			. '<a class="button" href="' . esc_url( Ui::url( 'asem-person', array( 'type' => 'ordinary' ) ) ) . '">Nuovo socio</a>' . ( \AssociazioneSemplice\Modules::on( 'activities' ) ? ' <a class="button" href="' . esc_url( Ui::url( 'asem-calendar' ) ) . '">Calendario</a>' : '' ) . '</p>';
+			. ( Employees::page_allowed( 'asem-income' ) ? '<a class="button button-primary" href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Nuovo incasso</a> ' : '' )
+			. ( \AssociazioneSemplice\Edition::has( 'funds' ) && Employees::page_allowed( 'asem-group' ) ? '<a class="button" href="' . esc_url( Ui::url( 'asem-group' ) ) . '">Cassa per più persone</a> ' : '' )
+			. ( Employees::page_allowed( 'asem-expense' ) ? '<a class="button" href="' . esc_url( Ui::url( 'asem-expense' ) ) . '">Nuova spesa</a> ' : '' )
+			. '<a class="button" href="' . esc_url( Ui::url( 'asem-person', array( 'type' => 'ordinary' ) ) ) . '">Nuovo socio</a>' . ( \AssociazioneSemplice\Modules::on( 'activities' ) && Employees::page_allowed( 'asem-calendar' ) ? ' <a class="button" href="' . esc_url( Ui::url( 'asem-calendar' ) ) . '">Calendario</a>' : '' ) . '</p>';
 		echo '<p class="description">Il tuo account su associazionesemplice.it: <a href="' . esc_url( (string) apply_filters( 'asem_portal_account_url', 'https://associazionesemplice.it/account' ) ) . '" target="_blank" rel="noopener">Area riservata</a> (licenza, dominio, pagamenti, download) · <a href="' . esc_url( (string) apply_filters( 'asem_portal_support_url', 'https://associazionesemplice.it/supporto/accedi' ) ) . '" target="_blank" rel="noopener">Supporto</a></p>';
 
 		ob_start(); // le cose da fare vengono prima dei numeri
-		echo '<div class="asem-grid"><div class="asem-card"><h2>Disponibilità reale</h2>';
-		echo wp_kses( '<p class="asem-big">' . Ui::money( $avail['available'] ) . '</p><p class="description">Saldi dei conti meno i fondi accantonati per i rimborsi.</p><table class="asem-kv">', Html::allowed() );
-		foreach ( $balances as $b ) {
-			echo wp_kses( '<tr><td>' . esc_html( $b['name'] ) . '</td><td>' . Ui::money( $b['balance'] ) . '</td></tr>', Html::allowed() );
+		echo '<div class="asem-grid">';
+		if ( Employees::can( EmployeeRules::FUNDS ) ) { // saldi di conti, casse e fondi: non li vede un dipendente a cui è stato tolto il permesso
+			echo '<div class="asem-card"><h2>Disponibilità reale</h2>';
+			echo wp_kses( '<p class="asem-big">' . Ui::money( $avail['available'] ) . '</p><p class="description">Saldi dei conti meno i fondi accantonati per i rimborsi.</p><table class="asem-kv">', Html::allowed() );
+			foreach ( $balances as $b ) {
+				echo wp_kses( '<tr><td>' . esc_html( $b['name'] ) . '</td><td>' . Ui::money( $b['balance'] ) . '</td></tr>', Html::allowed() );
+			}
+			echo wp_kses( '<tr><td><strong>Totale saldi</strong></td><td><strong>' . Ui::money( $avail['accounts'] ) . '</strong></td></tr>', Html::allowed() );
+			foreach ( $funds as $f ) {
+				echo wp_kses( '<tr><td>− ' . esc_html( $f['name'] ) . '</td><td>' . Ui::money( $f['balance'] ) . '</td></tr>', Html::allowed() );
+			}
+			echo wp_kses( '</table>' . ( \AssociazioneSemplice\Edition::has( 'funds' ) ? '<p><a href="' . esc_url( Ui::url( 'asem-accounts' ) ) . '">Conti, fondi e verifica saldi →</a></p>' : '' ) . '</div>', Html::allowed() );
 		}
-		echo wp_kses( '<tr><td><strong>Totale saldi</strong></td><td><strong>' . Ui::money( $avail['accounts'] ) . '</strong></td></tr>', Html::allowed() );
-		foreach ( $funds as $f ) {
-			echo wp_kses( '<tr><td>− ' . esc_html( $f['name'] ) . '</td><td>' . Ui::money( $f['balance'] ) . '</td></tr>', Html::allowed() );
-		}
-		echo wp_kses( '</table>' . ( \AssociazioneSemplice\Edition::has( 'funds' ) ? '<p><a href="' . esc_url( Ui::url( 'asem-accounts' ) ) . '">Conti, fondi e verifica saldi →</a></p>' : '' ) . '</div>', Html::allowed() );
 
 		echo '<div class="asem-card"><h2>Anno sociale ' . esc_html( $year->label() ) . '</h2><table class="asem-kv">';
 		foreach ( MemberType::member_types() as $t ) {
@@ -259,6 +264,9 @@ final class DashboardPage {
 			$account_types[ (int) $a['id'] ] = $a['type'];
 		}
 		foreach ( array( 'donation', 'other_income', 'general_cost' ) as $k ) {
+			if ( ! Employees::can( 'general_cost' === $k ? EmployeeRules::EXPENSES : EmployeeRules::COLLECT ) ) { // solo ciò che il dipendente può registrare
+				continue;
+			}
 			$id = $ledger->category_id_of_kind( $k );
 			if ( $id && ! \AssociazioneSemplice\Labels::category_kinds()[ $k ][2] ) {
 				$income_ids[] = (int) $id;
@@ -266,6 +274,9 @@ final class DashboardPage {
 			if ( $id ) {
 				$cats[ $id ] = ( \AssociazioneSemplice\Labels::category_kinds()[ $k ][2] ? 'Spesa: ' : 'Incasso: ' ) . \AssociazioneSemplice\Labels::category_kinds()[ $k ][0];
 			}
+		}
+		if ( ! $cats && Employees::denied_for( get_current_user_id() ) ) { // al dipendente sono stati tolti sia gli incassi sia le spese
+			return;
 		}
 		$default = $ledger->default_account_for( 'cash' );
 		echo '<div class="asem-card"><h2>Cassa rapida</h2>';
@@ -308,6 +319,9 @@ final class DashboardPage {
 
 	/** Pagamenti da incassare: per ogni persona, la quota associativa (se la tessera non è valida), le mensilità dei corsi già dovute e i contributi non versati. */
 	private static function payments_due(): void {
+		if ( ! Employees::can( EmployeeRules::COLLECT ) ) { // un dipendente senza il permesso «Incassi» non vede nemmeno cosa c'è da incassare
+			return;
+		}
 		$acts   = Plugin::activities();
 		$people = Plugin::people();
 		$today  = current_time( 'Y-m-d' );

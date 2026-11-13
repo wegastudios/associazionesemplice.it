@@ -35,9 +35,9 @@ final class Runts {
 	}
 
 	/**
-	 * Lavoratori (dipendenti a qualsiasi titolo) alla data: il numero per il RUNTS è il conteggio degli utenti «Dipendente», un tipo di utente che
-	 * verrà aggiunto in una fase a parte. Finché non esiste restituisce 0. È l'UNICO punto da cui il numero entra nei Dati per il RUNTS: chi
-	 * costruirà il ruolo si aggancia al filtro `asem_runts_workers_count`.
+	 * Lavoratori (dipendenti a qualsiasi titolo) alla data: il numero per il RUNTS è il conteggio degli utenti «Dipendente» in servizio a quella data
+	 * ({@see Employees::runts_workers()}, agganciato al filtro `asem_runts_workers_count`). Senza dipendenti restituisce 0. È l'UNICO punto da cui
+	 * il numero entra nei Dati per il RUNTS.
 	 *
 	 * @param int    $count valore di partenza (0)
 	 * @param string $date  data di riferimento (Y-m-d)

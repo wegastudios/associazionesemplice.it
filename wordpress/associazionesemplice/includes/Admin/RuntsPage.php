@@ -83,7 +83,7 @@ final class RuntsPage {
 		}
 		$vol .= 'Il programma non ha il registro dei volontari: il numero lo scrivi tu in <a href="' . esc_url( Ui::url( 'asem-entity' ) ) . '">Dati dell\'ente</a>. Come promemoria, i soci di tipo «Socio e volontario» a quella data sono ' . (int) $c['volunteer_members'] . ' (non è il registro dei volontari).</td></tr>';
 		echo wp_kses( $vol, Html::allowed() );
-		echo wp_kses( '<tr><th>Lavoratori (dipendenti a qualsiasi titolo)</th><td><strong style="font-size:1.4em">' . Runts::workers_count( $date ) . '</strong></td><td class="description">Lavoratori: n. (utenti «Dipendente»). Si contano dagli utenti «Dipendente», un tipo di utente che sarà aggiunto in seguito: finché non c\'è, il numero è 0 e non è un dato vero. Controlla sul portale del RUNTS.</td></tr>', Html::allowed() );
+		echo wp_kses( '<tr><th>Lavoratori (dipendenti a qualsiasi titolo)</th><td><strong style="font-size:1.4em">' . Runts::workers_count( $date ) . '</strong></td><td class="description">Lavoratori: n. (utenti «Dipendente»). Si contano gli utenti «Dipendente» in servizio a quella data (senza date di servizio sono sempre in servizio): si gestiscono da Rubrica soci → Dipendenti. Controlla sul portale del RUNTS.</td></tr>', Html::allowed() );
 		echo '</tbody></table>';
 
 		if ( $c['entities'] ) {

@@ -104,7 +104,7 @@ final class Calendar {
 				return strcmp( $x['date'] . ( $x['start'] ?: '00:00' ) . $x['title'], $y['date'] . ( $y['start'] ?: '00:00' ) . $y['title'] );
 			}
 		);
-		return $out;
+		return Employees::only_allowed_kinds( $out ); // un dipendente a cui sono stati tolti i corsi (o gli eventi) non li vede nel calendario
 	}
 
 	/** Date comprese tra $from e $to che cadono nel giorno della settimana indicato (1 = lunedì … 7 = domenica). @return string[] */

@@ -466,7 +466,7 @@ final class Views {
 		}
 		$html .= '<p>' . ( $pend > 0 ? '<strong>' . (int) $pend . ( 1 === $pend ? ' richiesta di accesso' : ' richieste di accesso' ) . '</strong> da controllare: le trovi in <a href="' . $url( 'asem' ) . '">Bacheca</a>.' : 'Nessuna richiesta di accesso da controllare.' ) . '</p><p class="asemf-small asemf-muted">Da qui si arriva alle funzioni di gestione.</p><p class="asemf-actions">';
 		foreach ( $links as $l ) {
-			if ( $l[2] ) {
+			if ( $l[2] && \AssociazioneSemplice\Employees::page_allowed( $l[0] ) ) { // un dipendente non vede i collegamenti ai permessi che gli sono stati tolti
 				$html .= '<a class="asemf-btn" href="' . $url( $l[0] ) . '">' . esc_html( $l[1] ) . '</a> ';
 			}
 		}

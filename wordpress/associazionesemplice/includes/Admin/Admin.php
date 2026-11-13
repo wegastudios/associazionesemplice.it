@@ -21,6 +21,7 @@ final class Admin {
 		add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
 		add_filter( 'parent_file', array( __CLASS__, 'menu_parent' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'assets' ) );
+		EmployeesPage::register(); // prima di Actions::register(): aggiunge le sue azioni
 		Actions::register();
 		YearsPage::register();
 		RuntsPage::register();
@@ -183,7 +184,7 @@ final class Admin {
 		}
 		$off     = self::disabled_pages();
 		$visible = function ( string $slug ) use ( $off ) {
-			return ! in_array( $slug, $off, true ) && ( ! in_array( $slug, self::admin_only(), true ) || current_user_can( Plugin::CAP ) );
+			return ! in_array( $slug, $off, true ) && ( ! in_array( $slug, self::admin_only(), true ) || current_user_can( Plugin::CAP ) ) && \AssociazioneSemplice\Employees::page_allowed( $slug ); // un dipendente non vede le schede dei permessi che gli sono stati tolti
 		};
 		if ( 'asem-settings' === $main ) { // Impostazioni: prima la sezione, poi le schede della sezione
 			$current = null;

@@ -23,7 +23,7 @@ final class WpDashboard {
 			return;
 		}
 		wp_add_dashboard_widget( 'asem_todo', 'Associazione Semplice — Da lavorare', array( __CLASS__, 'todo' ) );
-		if ( Modules::on( 'activities' ) ) {
+		if ( Modules::on( 'activities' ) && \AssociazioneSemplice\Employees::page_allowed( 'asem-activities' ) ) {
 			wp_add_dashboard_widget( 'asem_week', 'Associazione Semplice — Eventi e corsi della settimana', array( __CLASS__, 'week' ) );
 		}
 	}

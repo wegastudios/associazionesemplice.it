@@ -34,6 +34,7 @@ function asem_uninstall_site() {
 	// Ruoli del plugin: gli utenti che li avevano restano su WordPress.
 	remove_role( 'asem_member' );
 	remove_role( 'asem_secretary' );
+	remove_role( 'asem_employee' );
 	foreach ( array( 'administrator' ) as $role_name ) {
 		$role = get_role( $role_name );
 		if ( $role ) {
