@@ -715,6 +715,9 @@ final class Actions {
 		if ( ! empty( $r['categories'] ) ) {
 			$msg .= ' Categorie assegnate alle pagine: ' . implode( ', ', $r['categories'] ) . ( $r['categories_new'] ? ' (nuove: ' . implode( ', ', $r['categories_new'] ) . ')' : '' ) . '.';
 		}
+		if ( ! empty( $r['batch_id'] ) ) {
+			$msg .= ' Import n. ' . (int) $r['batch_id'] . ': si può annullare da «Import già fatti», in fondo a questa pagina.';
+		}
 		return array( Ui::url( 'asem-tec' ), $msg );
 	}
 
@@ -1405,7 +1408,16 @@ final class Actions {
 	}
 
 	private static function import_undo( array $p ): array {
-		$r    = \AssociazioneSemplice\ImportService::undo( (int) ( $p['batch_id'] ?? 0 ) );
+		$r = \AssociazioneSemplice\ImportService::undo( (int) ( $p['batch_id'] ?? 0 ) );
+		if ( ! empty( $r['tribe'] ) ) { // import da The Events Calendar: si torna alla sua pagina
+			$msg = 'Import annullato: ' . $r['activities_removed'] . ( 1 === (int) $r['activities_removed'] ? ' evento o corso tolto' : ' tra eventi e corsi tolti' );
+			$msg .= $r['pages_removed'] ? ', ' . $r['pages_removed'] . ( 1 === (int) $r['pages_removed'] ? ' pagina pubblica tolta' : ' pagine pubbliche tolte' ) : '';
+			$msg .= $r['pages_restored'] ? ', ' . $r['pages_restored'] . ' pagine tornate vuote' : '';
+			$msg .= $r['terms_removed'] ? ', ' . $r['terms_removed'] . ' categorie pubbliche tolte' : '';
+			$msg .= $r['posts_released'] ? '. Gli eventi di The Events Calendar tolti si possono importare di nuovo' : '';
+			$msg .= $r['kept'] ? '. Mantenuti: ' . implode( '; ', array_slice( $r['kept'], 0, 6 ) ) : '';
+			return array( Ui::url( 'asem-tec' ), $msg . '.' );
+		}
 		$msg  = 'Import annullato: ' . $r['voided'] . ' movimenti annullati';
 		$msg .= $r['accounts_removed'] ? ', ' . $r['accounts_removed'] . ' conti tolti' : '';
 		$msg .= $r['people_removed'] ? ', ' . $r['people_removed'] . ' soci/ospiti rimossi' : '';

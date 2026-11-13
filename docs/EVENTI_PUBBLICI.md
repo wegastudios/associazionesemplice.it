@@ -140,3 +140,13 @@ Sostituisce la regola «corso solo se ≥3 lezioni settimanali» e l'anteprima p
 3. **Due passaggi in ordine fisso:** prima tutti gli eventi, poi i corsi. Ogni evento sta in un solo elenco, è segnato appena importato e il secondo passaggio non lo riprende; i gruppi si ricostruiscono da zero a ogni passaggio. Titolo + anno sociale servono solo a raccogliere date (evento ricorrente) o lezioni (un corso); le lezioni settimanali (≥3 volte stesso giorno e ora) o le date singole descrivono solo il calendario del corso, non se è un corso.
 4. **Categorie:** ogni categoria originale (anche «Laboratorio» scelta come Corso) si ricrea come categoria pubblica con lo stesso nome (riusata se esiste) e va su **tutte** le pagine create.
 5. **Riepilogo finale:** eventi creati, corsi creati (con le lezioni), categorie assegnate e nuove.
+
+### Annullamento di tutti gli import (13/11/2026)
+
+Lo stesso meccanismo della prima nota (tabella `import_batches`, elenco «Import già fatti», pulsante «Annulla questo import», voce `import.undone` nel registro azioni) vale ora anche per l'import da The Events Calendar. Censimento: soci e prima nota da Excel/CSV e da WP All Import (stessa `ImportService::apply`) avevano già l'annullamento; il ripristino da copia di sicurezza è un ripristino, non un import; mancava solo The Events Calendar.
+
+- Ogni import apre un lotto (origine «The Events Calendar») e ricorda: attività create, eventi di origine segnati (`_asem_activity`), pagine di attività già esistenti che ha compilato (com'erano prima: stato, categorie, immagine) e categorie pubbliche create.
+- **Annullamento:** toglie le attività nate con l'import (date, lezioni e pagina pubblica, non nel cestino) **solo se** non hanno prenotazioni, lista d'attesa, iscritti o movimenti; quelle usate **restano** e il riepilogo le elenca come «Mantenuti». Le pagine di attività già esistenti che l'import aveva compilato tornano vuote, ma solo se non le hai modificate dopo. Le categorie pubbliche create dall'import si tolgono se restano vuote.
+- Gli eventi di The Events Calendar la cui attività è stata tolta tornano **importabili**; quelli la cui attività è rimasta restano segnati (altrimenti nascerebbe un doppione).
+- Si annulla una sola volta. L'elenco è nella pagina «Importa da The Events Calendar» (gli import da file restano in «Importa soci e prima nota»).
+- Voce del log da scrivere alla pubblicazione: «Ogni import, anche quello da The Events Calendar, si può annullare dall'elenco "Import già fatti": si tolgono gli eventi e i corsi creati (con le pagine pubbliche) se nessuno si è prenotato o iscritto; gli altri restano e vengono elencati».

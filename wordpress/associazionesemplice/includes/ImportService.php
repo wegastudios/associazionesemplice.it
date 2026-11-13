@@ -141,9 +141,26 @@ final class ImportService {
 		return $res;
 	}
 
-	private static function open_batch( string $source ): int {
+	/** Apre un import (numero): quello che si scrive da qui in poi si può annullare in blocco. Lo usano anche gli import che non sono prima nota (The Events Calendar). */
+	public static function open_batch( string $source ): int {
 		Db::db()->insert( Db::t( 'import_batches' ), array( 'created_at' => Db::now(), 'user_id' => get_current_user_id() ?: null, 'source' => mb_substr( $source, 0, 190 ) ) );
 		return (int) Db::db()->insert_id;
+	}
+
+	/** Chiude un import con il riepilogo e i dati per annullarlo; se non è cambiato nulla lo toglie dall'elenco (null). */
+	public static function finish_batch( int $batch, array $summary, array $track, bool $changed ): ?int {
+		if ( ! $changed ) {
+			Db::db()->delete( Db::t( 'import_batches' ), array( 'id' => $batch ) );
+			return null;
+		}
+		Db::db()->update( Db::t( 'import_batches' ), array( 'summary' => wp_json_encode( $summary ), 'data' => wp_json_encode( $track ) ), array( 'id' => $batch ) );
+		return $batch;
+	}
+
+	/** Segna un import come annullato (una volta sola) e lo scrive nel registro azioni. */
+	public static function mark_undone( int $batch_id, array $res, array $audit ): void {
+		Db::db()->update( Db::t( 'import_batches' ), array( 'undone_at' => Db::now(), 'undone_by' => get_current_user_id() ?: null, 'undo_result' => wp_json_encode( $res ) ), array( 'id' => $batch_id ) );
+		Audit::log( 'import.undone', 'import', $batch_id, $audit );
 	}
 
 	private static function close_batch( int $batch, array $res, array $track ): void {
@@ -462,6 +479,9 @@ final class ImportService {
 		}
 		if ( ! empty( $b['undone_at'] ) ) {
 			throw new \InvalidArgumentException( 'Questo import è già stato annullato.' );
+		}
+		if ( 'tribe' === (string) ( $b['data']['kind'] ?? '' ) ) {
+			return TribeImport::undo( $b ); // eventi e corsi di The Events Calendar: stesso elenco e stesso pulsante, annullamento sul loro contenuto
 		}
 		$db     = Db::db();
 		$ledger = Plugin::ledger();
