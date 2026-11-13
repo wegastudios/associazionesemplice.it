@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.22
+Stable tag: 1.3.23
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -61,36 +61,25 @@ The interface uses the Montserrat typeface (SIL Open Font License 1.1, copy in `
 
 == Changelog ==
 
+= 1.3.23 =
+* Libro soci per esercizio: segue l'esercizio e alla chiusura viene fotografato, così da quel momento non cambia più
+* Ogni socio ha una matricola fissa e ogni riga un numero; «Fotografa gli anni già chiusi» ricostruisce i libri passati con la dicitura «ricostruito il…»
+* Il libro soci di ogni esercizio si scarica in PDF e in CSV
+* Un esercizio chiuso si può riaprire solo se è l'ultimo, scrivendo il motivo; resta una traccia permanente di chiusure e riaperture; gli esercizi si chiudono in ordine
+* Il mese di inizio dell'esercizio si sceglie in tutte le edizioni; le tessere di un esercizio chiuso non si modificano
+* L'esportazione dei dati personali di un socio comprende anche i libri soci chiusi
+* Nuova voce Registri → «Dati per il RUNTS»: numeri al 31 dicembre, soci che sono enti, avviso se si scende sotto il minimo di soci per ODV e APS, promemoria del 30 giugno
+* Diritto di voto: votano i soci maggiorenni
+* Soci che sono enti: scheda dedicata, importazione da CSV e colonna «Tipo» nel libro soci
+* Nuovo tipo di utente «Dipendente»: permessi che si possono togliere, periodo di servizio e conteggio dei lavoratori per il RUNTS
+* Trasparenza: è scritto cosa il programma invia al sito associazionesemplice.it per gli aggiornamenti (solo prodotto e versione); si spegne da Impostazioni → Tecniche → Limiti e soglie, e il testo è in Strumenti → Privacy
+
 = 1.3.22 =
 * Informativa privacy: ora si parla di «Referente per la privacy», con una frase più chiara su a chi rivolgersi per i propri dati
 * Parole più semplici: «non si può annullare», «Cedi il posto a un'altra persona», «Non è ancora entrato nell'area soci», «Scarica per Excel», «Scarica i dati», «la domanda viene cancellata»; il prezzo a fasce si legge «all'ora» o «per turno»
 * Tessera non valida: ogni messaggio spiega dove e come rinnovare; il socio trova il link per rinnovare online, oppure l'indicazione di andare in segreteria, e la segreteria viene mandata alla scheda del socio
 * Bacheca da telefono: «Incassa» e «Sospendi» sono più grandi e facili da toccare, e «Sospendi» sta dentro «Altro» così non si preme per sbaglio
 * Tessera: la frase sotto il codice QR è in un blocco ordinato e «Apri la verifica» va a capo
-
-= 1.3.21 =
-* Area soci: le sezioni lunghe (attività, calendario, avvisi, pagamenti, ospiti, profilo) si aprono e si chiudono toccando il titolo; da telefono si parte con una sola sezione aperta e la barra in basso apre quella scelta
-* Area soci: c'è il pulsante «Esci» accanto al saluto
-* Area soci: parole più chiare («Scarica i miei dati», «sei iscritto» nel calendario, «puoi portare 2 ospiti») e, da telefono, «Stampa la tessera» e «Scarica il PDF» a tutta larghezza
-* Moduli «Diventa socio» e prenotazione: Cellulare, Data di nascita e gli altri campi hanno lo stesso aspetto e testo da 16 px, così sull'iPhone la pagina non si ingrandisce da sola; le caselle di consenso sono più grandi
-* «Diventa socio»: la parte per il genitore compare solo se dalla data di nascita risulta un minorenne; email e cellulare sono segnati con l'asterisco
-* Da telefono il pulsante WhatsApp non finisce più sotto la barra in basso; filtri, calendario e comandi «apri e chiudi» sono più facili da toccare
-* Le locandine si vedono sempre intere e, nella pagina dell'evento, un tocco le apre a grandezza intera in un'altra scheda
-* Bacheca: «Da fare» sta in cima e gli avvisi stanno sotto, raccolti in «N cose da sistemare» quando sono più d'uno
-* Da telefono le schede in alto mostrano una freccia quando ce ne sono altre di lato, e Rubrica soci, Prima nota e Corsi ed eventi mostrano 20 righe alla volta con «Mostra altri»
-* Impostazioni: la pagina è divisa in sezioni che si aprono e si chiudono, con un solo «Salva»; il sito ricorda quali hai lasciato aperte
-* «Anno solare» e «Anni solari» diventano «Riepilogo» ed «Esercizi» (l'anno contabile); creare un esercizio in anticipo chiede conferma
-* Se un socio ha già pagato anche l'anno dopo, la tessera mostra e usa la scadenza più lontana (fine di quell'anno); nelle schermate l'anno della tessera non si chiama più «anno sociale»
-* I nomi dei piani non sono più scritti nel plugin: si vede il nome che arriva dalla licenza
-* Scheda socio, riquadro Tesoriere: testo e pulsante «Nomina tesoriere» dicono chiaramente che può incassare, registrare spese e iscrivere soci, e chiedono conferma
-* L'invito «Collega la licenza gratuita» lo vede solo l'amministratore e, una volta chiuso, non ricompare per tre mesi
-* Rendiconto: avviso per il commercialista sulle somme accantonate nei fondi
-* Guida: le domande frequenti mostrano solo ciò che la tua versione ha davvero, e la copia di sicurezza è indicata in Strumenti; i rimandi «Impostazioni → Tecniche → …» ora portano alla scheda giusta
-* Email di prenotazione per i non soci: la data è scritta per esteso e i passi per il bonifico sono numerati, con la scadenza e a chi mandare la ricevuta; se il posto torna libero per un pagamento non arrivato, l'email lo dice e invita a scrivere se hai già pagato
-* Con la tessera non valida il messaggio dice come rinnovare la quota e dove; nell'accesso dei soci errore di password e blocco per troppi tentativi hanno messaggi diversi
-* «Elimina una data» diventa «Annulla una data»; parole uniformi: «contributo», «tariffa» e «importo» al posto di prezzo, biglietto e listino, «quota» solo per la quota associativa
-* Privacy: «Titolare del trattamento» al posto di «Responsabile del trattamento» nella pagina delle impostazioni
-* Il «5x1000» ora si chiama «5 per mille» nei testi (menu, pagina pubblica, avvisi e procedura guidata), senza modifiche ai dati e ai collegamenti esistenti
 
 
 Le versioni precedenti sono nel file CHANGELOG.md del plugin.

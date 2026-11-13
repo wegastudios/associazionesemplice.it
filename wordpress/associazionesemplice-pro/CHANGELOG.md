@@ -2,6 +2,11 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.10
+- Il diritto di voto si decide per ogni livello di socio (sì o no) e vale per votazioni, assemblee e Dati per il RUNTS
+- I minorenni non votano mai, qualunque sia il livello
+- Se la licenza non comprende i livelli, votano tutti i soci maggiorenni
+
 ## 1.3.9
 - Il nome del piano che vedi nel programma è quello della tua licenza, non più un nome scritto nel programma
 - Contabilità: «Anno solare» e «Anni solari» diventano «Riepilogo» ed «Esercizi» (l'anno contabile); creare un esercizio in anticipo chiede conferma
