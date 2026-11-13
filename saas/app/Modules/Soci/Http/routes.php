@@ -7,6 +7,7 @@ use App\Modules\Soci\Http\Controllers\MemberBookController;
 use App\Modules\Soci\Http\Controllers\PeopleController;
 use App\Modules\Soci\Http\Controllers\PeopleTransferController;
 use App\Modules\Soci\Http\Controllers\PublicApplicationController;
+use App\Modules\Soci\Http\Controllers\RuntsController;
 use App\Modules\Soci\Http\Controllers\SociExtrasController;
 use Illuminate\Support\Facades\Route;
 
@@ -16,6 +17,7 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale
         Route::get('/soci/cerca', [PeopleController::class, 'lookup'])->name('people.lookup');
         Route::get('/soci/livelli', [SociExtrasController::class, 'levels'])->name('levels');
         Route::get('/soci/libro', [MemberBookController::class, 'index'])->name('member-book');
+        Route::get('/soci/runts', [RuntsController::class, 'index'])->name('runts');
         Route::get('/soci/{person}', [PeopleController::class, 'show'])->whereUuid('person')->name('people.show');
         Route::get('/domande', [ApplicationsController::class, 'index'])->name('applications');
         Route::get('/domande/{application}', [ApplicationsController::class, 'show'])->whereUuid('application')->name('applications.show');
