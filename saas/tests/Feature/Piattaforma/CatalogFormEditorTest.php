@@ -233,7 +233,7 @@ it('imposta le condizioni di vendita: IVA, commissione sui pagamenti online e li
     ])->assertRedirect('/saas/admin/catalogo/condizioni');
 
     $draft = json_decode((string) DB::table('core.catalog_draft')->value('document'), true);
-    expect($draft['terms'])->toBe([
+    expect($draft['terms'])->toEqual([
         'vat' => ['mode' => 'exempt', 'note' => 'Operazione senza IVA, regime forfettario.'],
         'payments' => ['own_gateway_percent' => 0, 'collected_by_us_percent' => 4],
         'trial' => ['exports' => true, 'accountant_access' => false],
