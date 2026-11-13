@@ -225,7 +225,7 @@ it('imposta i pacchetti inclusi nel piano e rifiuta un testo che non è un ogget
 });
 
 it('imposta le condizioni di vendita: IVA, commissione sui pagamenti online e limiti della prova', function (): void {
-    $this->get('/saas/admin/catalogo/condizioni')->assertOk()->assertSee('Commissione sui pagamenti online')->assertSee('Durante la prova gratuita');
+    $this->get('/saas/admin/catalogo/condizioni')->assertOk()->assertSee('Commissione sui pagamenti dei soci')->assertSee('durante la prova gratuita');
 
     $this->post('/saas/admin/catalogo/condizioni', [
         'vat_mode' => 'exempt', 'vat_note' => 'Operazione senza IVA, regime forfettario.',
