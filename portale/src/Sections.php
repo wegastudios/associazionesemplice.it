@@ -34,6 +34,10 @@ final class Sections {
 			// «Gestisci abbonamento» dal gestionale (contratto §3.2): stesso token, nuovo indirizzo.
 			return array( $get ? 301 : 308, '/account/da-gestionale' . $qs );
 		}
+		if ( '/wordpress/confronto' === $path ) {
+			// Indirizzo previsto nei documenti ma senza pagina: il confronto dei piani sta in /confronto.
+			return array( $get ? 301 : 308, '/confronto' . $qs );
+		}
 		if ( ( '/saas/admin' === $path || 0 === strpos( $path, '/saas/admin/' ) ) && ( SaasProxy::enabled() || '' === trim( (string) Config::get( 'saas_admin_url', 'https://app.associazionesemplice.it/admin' ) ) ) ) {
 			return null; // proxy acceso, oppure `saas_admin_url` vuoto: /saas/admin lo serve il SaaS sotto questo dominio, il portale non rimanda.
 		}

@@ -322,3 +322,4 @@ input[type=number]:focus { border-color: var(--brand); outline: none; box-shadow
 .product-saas .cmp th[scope=row]{text-align:left;font-weight:500}
 .product-saas .cmp th[scope=colgroup]{text-align:left;background:var(--surface-2)}
 .cmp-wrap{overflow-x:auto}
+@media (max-width: 640px) { .admin-top .muted a { display: inline-block; padding: 13px 4px; min-height: 44px; box-sizing: border-box; } } /* collegamenti di servizio della gestione: bersagli da 44 px */
