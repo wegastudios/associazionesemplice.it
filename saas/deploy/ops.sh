@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gira sul server (sub-account cPanel), lanciato dal workflow «SaaS · manutenzione server» via SSH.
-# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino> [cartella-bin-postgresql]
+# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|pubblica-catalogo> [cartella-bin-postgresql]
 #
 # Azioni fisse e limitate (non è una shell remota):
 #   diagnosi          sola lettura: stato (impostata/vuota) delle variabili che contano, client PostgreSQL presenti, ultimi errori
@@ -105,6 +105,23 @@ case "$ACTION" in
     EMAIL="$("$PHP" artisan tinker --execute='echo DB::connection("pgsql")->table("core.platform_staff")->where("role", "admin")->whereNull("disabled_at")->orderBy("created_at")->value("email");' | tail -1)"
     [ -n "$EMAIL" ] || { echo "Nessuna persona admin nello staff." >&2; exit 1; }
     "$PHP" artisan saas:catalog:prepare-tiers "$EMAIL"
+    ;;
+  accendi-ciclo-vita)
+    # Accende cancellazione notturna, avvisi email e potatura del registro (decisione scritta della titolare, 13/11/2026).
+    for v in SAAS_PURGE_ENABLED SAAS_NOTICES_ENABLED SAAS_AUDIT_PRUNE_ENABLED; do set_var "$v" 1; done
+    refresh
+    for v in SAAS_PURGE_ENABLED SAAS_NOTICES_ENABLED SAAS_AUDIT_PRUNE_ENABLED; do echo "$v = [$(get "$v")]"; done
+    ;;
+  pubblica-catalogo)
+    # Pubblica la bozza del catalogo come revisione successiva (decisione scritta della titolare, 13/11/2026). Autore: la
+    # prima persona admin dello staff. Il portale legge la nuova revisione da sé.
+    cd "$BASE/current"
+    "$PHP" artisan tinker --execute='
+      $id = DB::connection("pgsql")->table("core.platform_staff")->where("role", "admin")->whereNull("disabled_at")->orderBy("created_at")->value("id");
+      if ($id === null) { echo "Nessuna persona admin nello staff.", PHP_EOL; exit(1); }
+      $rev = app(App\Modules\Piattaforma\Catalogo\CatalogPublisher::class)->publish((string) $id, "Listino a tre piani, pacchetti soci e vincoli per piano");
+      echo "Pubblicata la revisione ", $rev, PHP_EOL;
+    '
     ;;
   percorso-pgdump)
     [[ "$ARG" =~ ^/[A-Za-z0-9_./-]+$ ]] || { echo "Cartella non valida." >&2; exit 1; }
