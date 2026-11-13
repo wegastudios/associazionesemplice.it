@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Piattaforma\Catalogo\CatalogPublisher;
 use App\Modules\Piattaforma\Contracts\PlanLimits;
 use App\Modules\Piattaforma\Contracts\UnknownPlan;
 use Illuminate\Support\Facades\DB;
@@ -110,7 +111,7 @@ it('prepara in bozza il listino a tre piani dal catalogo in vigore, senza pubbli
     expect($versions)->toBe(['gestionale@1+', 'gestionale@2-', 'piccola@1+', 'media@1+', 'grande@1+']);
     $addons = array_column($draft['addons'], 'visible', 'code');
     expect($addons['member_area'])->toBeFalse()->and($addons['site'])->toBeTrue();
-    expect(app(\App\Modules\Piattaforma\Catalogo\CatalogPublisher::class)->hasDraft())->toBeTrue();
+    expect(app(CatalogPublisher::class)->hasDraft())->toBeTrue();
 
     $this->post('/saas/admin/catalogo/pubblica')->assertRedirect();
     $this->artisan('saas:catalog:prepare-tiers', ['email' => 'nessuno@example.test'])->assertFailed();

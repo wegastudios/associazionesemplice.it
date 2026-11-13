@@ -125,7 +125,7 @@ it('ha tre piani a prezzo fisso per fasce di soci, con i pacchetti inclusi e il 
         ->and(array_keys($plans['media@1']['limits']['packages']))->toBe(['member_area', 'einvoice'])
         ->and($plans['media@1']['limits']['packages']['einvoice'])->toBe(['yearly' => 50])
         ->and(array_keys($plans['grande@1']['limits']['packages']))->toBe(['member_area', 'einvoice', 'communications', 'association_life'])
-        ->and($plans['gestionale@1']['visible'])->toBeFalse()
+        ->and($plans['gestionale@1']['visible'])->toBeFalse();
 
     $addons = collect($doc['addons'])->keyBy('code');
     foreach (['member_area', 'communications', 'association_life', 'advanced_accounting'] as $included) {
