@@ -40,7 +40,7 @@ it('crea un ruolo personalizzato e ne applica i permessi', function (): void {
     $this->actingAs($user->fresh() ?? $user);
     $this->get('/gestionale/soci')->assertOk();
     $this->get('/gestionale/prima-nota')->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->where('org.role', 'Consigliere')->where('org.can', ['people.view', 'accounting.view', 'accounting.edit']));
+        ->assertInertia(fn (Assert $page) => $page->where('org.role', 'Consigliere')->where('org.can', ['people.view', 'accounting.view', 'accounting.edit', 'accounting.income', 'accounting.expense', 'accounting.refund', 'accounting.funds']));
     $this->get('/gestionale/operatori')->assertForbidden();
     $this->post('/gestionale/soci', ['type' => 'ordinary', 'first_name' => 'A', 'last_name' => 'B'])->assertForbidden();
 
@@ -115,4 +115,40 @@ it('gestisce operatori e ruoli dalla pagina', function (): void {
     $this->addOperator($this->org, $operator, OrgRole::Operator);
     $this->actingAs($operator)->get('/gestionale/operatori')->assertForbidden();
     $this->post('/gestionale/ruoli', ['name' => 'X', 'abilities' => ['people.view']])->assertForbidden();
+});
+
+it('fa partire il dipendente come la segreteria e gli toglie i permessi uno per uno', function (): void {
+    $m = app(OrgMembers::class);
+    $user = $m->invite($this->org, 'dipendente@example.com', 'Dina Dipendente', OrgRole::Employee, ownerOperator());
+    User::query()->whereKey($user->id)->update(['two_factor_secret' => encrypt('JBSWY3DPEHPK3PXP'), 'two_factor_confirmed_at' => now()]);
+
+    $op = fn () => app(Memberships::class)->find($user->id, $this->org->id);
+    expect($op()?->can(Ability::RecordIncome))->toBeTrue()->and($op()?->can(Ability::EditPeople))->toBeTrue();
+
+    $m->setDeniedAbilities($this->org, $user->id, ['accounting.income', 'courses.manage', 'org.settings', 'boh'], ownerOperator());
+    expect($op()?->can(Ability::RecordIncome))->toBeFalse()
+        ->and($op()?->can(Ability::ManageCourses))->toBeFalse()
+        ->and($op()?->can(Ability::RecordExpense))->toBeTrue()
+        ->and($op()?->can(Ability::ManageSettings))->toBeFalse()
+        ->and($op()?->deniedAbilities)->toBe([Ability::ManageCourses, Ability::RecordIncome]);
+
+    $this->actingAs($user->fresh() ?? $user);
+    $cash = $this->orgContext()->run($this->org->id, fn () => App\Modules\Contabilita\Models\Account::query()->sole()->id);
+    $this->post('/gestionale/prima-nota/incassi', ['date' => now()->toDateString(), 'account_id' => $cash, 'lines' => []])->assertForbidden();
+    $this->get('/gestionale/attivita/nuova')->assertForbidden();
+    $this->get('/gestionale/conti')->assertOk();
+
+    // Chi non è titolare o amministratore non può cambiare i permessi; cambiando ruolo si azzerano.
+    $other = $m->invite($this->org, 'segreteria@example.com', 'Sara Segreteria', OrgRole::Operator, ownerOperator());
+    $secretary = app(Memberships::class)->find($other->id, $this->org->id) ?? throw new RuntimeException('manca');
+    expect(fn () => $m->setDeniedAbilities($this->org, $user->id, [], $secretary))->toThrow(Illuminate\Auth\Access\AuthorizationException::class);
+    expect(fn () => $m->setDeniedAbilities($this->org, $other->id, ['accounting.income'], ownerOperator()))->toThrow(InvalidArgumentException::class);
+    $m->changeRole($this->org, $user->id, OrgRole::Operator, ownerOperator());
+    expect($op()?->deniedAbilities)->toBe([])->and($op()?->can(Ability::RecordIncome))->toBeTrue();
+});
+
+it('lascia a un ruolo personalizzato i permessi fini del suo permesso largo', function (): void {
+    $op = new App\Modules\Core\Contracts\Operator('u', 'o', 'Org', OrgRole::Custom, 'r', 'Cassiere', [Ability::ViewAccounting, Ability::EditAccounting]);
+    expect($op->can(Ability::RecordIncome))->toBeTrue()->and($op->can(Ability::ViewFunds))->toBeTrue()->and($op->can(Ability::ManageCourses))->toBeFalse()
+        ->and(Ability::assignable())->not->toContain(Ability::RecordIncome);
 });

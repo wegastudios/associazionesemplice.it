@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Providers;
 
+use App\Modules\Core\Access\EmployeeCounter;
 use App\Modules\Core\Console\CreateOrgCommand;
 use App\Modules\Core\Console\DemoResetCommand;
 use App\Modules\Core\Console\HealthCommand;
@@ -16,6 +17,7 @@ use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgDirectory;
 use App\Modules\Core\Contracts\OrgPurger;
 use App\Modules\Core\Contracts\PlatformSettingsStore;
+use App\Modules\Core\Contracts\StaffCount;
 use App\Modules\Core\Database\DatabaseRegistry;
 use App\Modules\Core\Export\CoreDataExport;
 use App\Modules\Core\Org\DatabaseOrgContext;
@@ -44,6 +46,7 @@ final class CoreServiceProvider extends ServiceProvider
         $this->app->singleton(OrgPurger::class, DatabaseOrgPurger::class);
         $this->app->singleton(PlatformSettingsStore::class, PlatformSettings::class);
         $this->app->singleton(OrgContext::class, DatabaseOrgContext::class);
+        $this->app->bind(StaffCount::class, EmployeeCounter::class);
     }
 
     public function boot(): void

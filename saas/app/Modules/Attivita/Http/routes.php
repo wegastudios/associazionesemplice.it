@@ -15,7 +15,7 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale
         Route::get('/calendario', [SessionsController::class, 'calendar'])->name('activities.calendar');
     });
 
-    Route::middleware('can:people.edit')->group(function (): void {
+    Route::middleware(['can:people.edit', 'can:courses.manage'])->group(function (): void {
         Route::get('/attivita/nuova', [ActivitiesController::class, 'create'])->name('activities.create');
         Route::post('/attivita', [ActivitiesController::class, 'store'])->name('activities.store');
         Route::put('/attivita/{activity}', [ActivitiesController::class, 'update'])->whereUuid('activity')->name('activities.update');
@@ -33,11 +33,11 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale
     });
 
     // Incassi e spese scrivono in prima nota: servono anche i permessi della contabilità.
-    Route::middleware(['can:people.edit', 'can:accounting.edit'])
+    Route::middleware(['can:people.edit', 'can:accounting.edit', 'can:accounting.income', 'can:courses.manage'])
         ->group(function (): void {
             Route::post('/attivita/{activity}/incassi', [ActivitiesController::class, 'collect'])->whereUuid('activity')->name('activities.collect');
             Route::post('/attivita/prenotazioni/{booking}/incassa', [SessionsController::class, 'collect'])->whereUuid('booking')->name('bookings.collect');
         });
-    Route::middleware('can:accounting.edit')
+    Route::middleware(['can:accounting.edit', 'can:accounting.expense'])
         ->post('/attivita/{activity}/spese', [ActivitiesController::class, 'expense'])->whereUuid('activity')->name('activities.expense');
 });

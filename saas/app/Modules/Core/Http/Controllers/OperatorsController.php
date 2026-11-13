@@ -40,7 +40,7 @@ final readonly class OperatorsController
             'operators' => array_map(static fn (array $o): array => [
                 'user_id' => $o['user_id'], 'name' => $o['name'], 'email' => $o['email'], 'role' => $o['role']->value,
                 'custom_role_id' => $o['custom_role_id'], 'role_label' => $o['role_label'], 'two_factor' => $o['two_factor'],
-                'me' => $o['user_id'] === $by->userId,
+                'me' => $o['user_id'] === $by->userId, 'denied' => $o['denied'],
                 'editable' => $o['user_id'] !== $by->userId && $by->role->canAssign($o['role']),
             ], $this->members->operators($org)),
             'roles' => array_map(static fn (array $r): array => [
@@ -48,9 +48,10 @@ final readonly class OperatorsController
                 'abilities' => array_map(static fn (Ability $a): string => $a->value, $r['abilities']),
             ], $roles),
             'fixedRoles' => array_values(array_map(
-                static fn (OrgRole $r): array => ['value' => $r->value, 'label' => $r->label(), 'abilities' => array_values(array_map(static fn (Ability $a): string => $a->label(), array_filter(Ability::cases(), static fn (Ability $a): bool => $a->allows($r))))],
+                static fn (OrgRole $r): array => ['value' => $r->value, 'label' => $r->label(), 'abilities' => array_values(array_map(static fn (Ability $a): string => $a->label(), array_filter(Ability::cases(), static fn (Ability $a): bool => $a->parent() === null && $a->allows($r))))],
                 array_filter(OrgRole::cases(), static fn (OrgRole $r): bool => $r !== OrgRole::Custom && $by->role->canAssign($r)),
             )),
+            'removable' => array_map(static fn (Ability $a): array => ['value' => $a->value, 'label' => $a->label()], Ability::removable()),
             'abilities' => array_map(static fn (Ability $a): array => [
                 'value' => $a->value, 'label' => $a->label(), 'requires' => array_map(static fn (Ability $r): string => $r->value, $a->requires()),
             ], Ability::assignable()),
@@ -81,6 +82,22 @@ final readonly class OperatorsController
             $this->members->changeRole($this->org($by), $user, OrgRole::from(Input::string($data, 'role')), $by, Input::optionalString($data, 'custom_role_id'));
 
             return 'Ruolo cambiato.';
+        });
+    }
+
+    public function permissions(Request $request, string $user): RedirectResponse
+    {
+        $data = Input::of($request->validate([
+            'denied' => ['array'],
+            'denied.*' => ['string', Rule::in(array_map(static fn (Ability $a): string => $a->value, Ability::removable()))],
+        ]));
+        $denied = array_values(array_filter(is_array($data['denied'] ?? null) ? $data['denied'] : [], is_string(...)));
+
+        return $this->attempt(function () use ($denied, $user): string {
+            $by = $this->by();
+            $this->members->setDeniedAbilities($this->org($by), $user, $denied, $by);
+
+            return 'Permessi del dipendente aggiornati.';
         });
     }
 

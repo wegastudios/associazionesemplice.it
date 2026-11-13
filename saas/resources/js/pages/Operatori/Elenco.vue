@@ -3,7 +3,14 @@ import { Head, router, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import AppLayout from '../../layouts/AppLayout.vue';
 
-const props = defineProps({ operators: Array, roles: Array, fixedRoles: Array, abilities: Array });
+const props = defineProps({ operators: Array, roles: Array, fixedRoles: Array, abilities: Array, removable: Array });
+
+// Dipendente: un interruttore per ogni permesso toglibile; ogni cambio si salva subito.
+const setDenied = (o, value, allowed) => {
+    const denied = new Set(o.denied);
+    if (allowed) denied.delete(value); else denied.add(value);
+    router.put(`/gestionale/operatori/${o.user_id}/permessi`, { denied: [...denied] }, { preserveScroll: true });
+};
 
 // Un valore per la scelta del ruolo: «operator» per i ruoli fissi, «custom:<id>» per quelli dell'associazione.
 const choices = computed(() => [
@@ -64,6 +71,10 @@ const field = 'field';
                     </select>
                     <span v-else class="rounded bg-surface px-2 py-1">{{ o.role_label }}</span>
                     <button v-if="o.editable" type="button" class="ml-auto text-danger hover:underline" @click="remove(o)">Togli</button>
+                    <fieldset v-if="o.role === 'employee' && o.editable" class="basis-full rounded border border-line p-3">
+                        <legend class="px-1 text-xs font-semibold text-muted">Cosa può fare {{ o.name }}</legend>
+                        <label v-for="r in removable" :key="r.value" class="mr-4 inline-flex items-center gap-2"><input type="checkbox" :checked="!o.denied.includes(r.value)" @change="setDenied(o, r.value, $event.target.checked)" />{{ r.label }}</label>
+                    </fieldset>
                 </li>
             </ul>
             <form class="mt-4 grid gap-3 border-t border-line pt-4 text-sm sm:grid-cols-[2fr_2fr_2fr_auto]" @submit.prevent="sendInvite">

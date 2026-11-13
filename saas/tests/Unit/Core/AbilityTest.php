@@ -15,12 +15,15 @@ it('assegna i permessi per ruolo', function (Ability $ability, array $allowed): 
     [Ability::ManageOperators, [OrgRole::Owner, OrgRole::Admin]],
     [Ability::CloseFiscalYear, [OrgRole::Owner, OrgRole::Admin]],
     [Ability::ViewAudit, [OrgRole::Owner, OrgRole::Admin]],
-    [Ability::EditPeople, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator]],
-    [Ability::ExportPeople, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator]],
-    [Ability::EditAccounting, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator]],
-    [Ability::ViewHealth, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator]],
-    [Ability::ViewPeople, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator, OrgRole::Accountant]],
-    [Ability::ViewAccounting, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator, OrgRole::Accountant]],
+    [Ability::EditPeople, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator, OrgRole::Employee]],
+    [Ability::ExportPeople, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator, OrgRole::Employee]],
+    [Ability::EditAccounting, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator, OrgRole::Employee]],
+    [Ability::ViewHealth, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator, OrgRole::Employee]],
+    [Ability::ViewPeople, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator, OrgRole::Employee, OrgRole::Accountant]],
+    [Ability::ViewAccounting, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator, OrgRole::Employee, OrgRole::Accountant]],
+    [Ability::ManageCourses, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator, OrgRole::Employee]],
+    [Ability::RecordIncome, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator, OrgRole::Employee]],
+    [Ability::ViewFunds, [OrgRole::Owner, OrgRole::Admin, OrgRole::Operator, OrgRole::Employee, OrgRole::Accountant]],
 ]);
 
 it('dà ai ruoli personalizzati solo i permessi scelti, con quelli che presuppongono', function (): void {
