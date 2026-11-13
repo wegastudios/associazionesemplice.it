@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gira sul server (sub-account cPanel), lanciato dal workflow «SaaS · manutenzione server» via SSH.
-# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump> [cartella-bin-postgresql]
+# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita> [cartella-bin-postgresql]
 #
 # Azioni fisse e limitate (non è una shell remota):
 #   diagnosi          sola lettura: stato (impostata/vuota) delle variabili che contano, client PostgreSQL presenti, ultimi errori
@@ -62,6 +62,17 @@ case "$ACTION" in
     fi
     echo "== Da fissare nel portale (kid=x) =="
     public_of_seed "$seed"
+    ;;
+  ciclo-vita)
+    # Solo lettura: elenco di cosa cancellerebbero cancellazione e potatura del registro, verifica delle catene, tabelle nuove.
+    cd "$BASE/current"
+    echo "== Cancellazione dati (solo elenco) =="; "$PHP" artisan saas:portal:purge-expired --dry-run || true
+    echo "== Registro: partizioni da cancellare (solo elenco) =="; "$PHP" artisan saas:audit:prune --dry-run || true
+    echo "== Registro: verifica delle catene =="; "$PHP" artisan saas:audit:verify | tail -5 || true
+    echo "== Tabelle nuove =="
+    "$PHP" artisan tinker --execute='echo (DB::connection("pgsql")->selectOne("select to_regclass(?) is not null as ok", ["core.org_notices"])->ok ? "core.org_notices ok" : "core.org_notices MANCA"), PHP_EOL, (DB::connection("pgsql")->selectOne("select to_regclass(?) is not null as ok", ["audit.anchors"])->ok ? "audit.anchors ok" : "audit.anchors MANCA"), PHP_EOL;' || true
+    echo "== Interruttori (devono essere spenti) =="
+    for v in SAAS_PURGE_ENABLED SAAS_NOTICES_ENABLED SAAS_AUDIT_PRUNE_ENABLED; do echo "$v = [$(get "$v")]  (vuoto o 0 = spento)"; done
     ;;
   percorso-pgdump)
     [[ "$ARG" =~ ^/[A-Za-z0-9_./-]+$ ]] || { echo "Cartella non valida." >&2; exit 1; }
