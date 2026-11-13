@@ -25,7 +25,7 @@ final readonly class RequirePackage
         $org = $this->context->require();
 
         if (! $this->entitlements->for($org->id)->has(Package::from($package))) {
-            abort(403, 'Questa funzione fa parte di un pacchetto non attivo: puoi aggiungerlo dal portale.');
+            abort(403, 'Questa funzione fa parte di un pacchetto che la tua associazione non ha attivato. Il titolare può aggiungerlo da Gestione › Abbonamento e pacchetti.');
         }
 
         return $next($request);

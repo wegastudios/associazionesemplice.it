@@ -34,7 +34,7 @@ const submitDates = () => dates.transform((d) => ({ ...d, to: d.weekly ? d.to ||
 const enroll = useForm({ person_id: '', start_month: '' });
 const submitEnroll = () => enroll.transform((d) => ({ ...d, start_month: d.start_month || null }))
     .post(`/gestionale/attivita/${props.activity.id}/iscrizioni`, { preserveScroll: true, onSuccess: () => enroll.reset() });
-const unenroll = (e) => router.post(`/gestionale/attivita/${props.activity.id}/iscrizioni/${e.person_id}/chiudi`, {}, { preserveScroll: true });
+const unenroll = (e) => window.confirm(`Chiudere l'iscrizione di ${e.name ?? 'questa persona'}?`) && router.post(`/gestionale/attivita/${props.activity.id}/iscrizioni/${e.person_id}/chiudi`, {}, { preserveScroll: true });
 
 const paying = ref(null);
 const pay = useForm({ person_id: '', account_id: props.accounts[0]?.id ?? '', date: today, months: [], amount: '', method: '' });

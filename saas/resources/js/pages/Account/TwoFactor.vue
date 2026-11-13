@@ -26,8 +26,8 @@ const confirm = () =>
         preserveScroll: true,
         onFinish: () => confirmForm.reset(),
     });
-const regenerate = () => router.post('/user/two-factor-recovery-codes', {}, { preserveScroll: true });
-const disable = () => router.delete('/user/two-factor-authentication', { preserveScroll: true });
+const regenerate = () => window.confirm('Generare nuovi codici di recupero? Quelli vecchi non varranno più.') && router.post('/user/two-factor-recovery-codes', {}, { preserveScroll: true });
+const disable = () => window.confirm('Disattivare la verifica in due passaggi? Per entrare basterà la password.') && router.delete('/user/two-factor-authentication', { preserveScroll: true });
 </script>
 
 <template>
@@ -82,8 +82,7 @@ const disable = () => router.delete('/user/two-factor-authentication', { preserv
                 <button type="button" class="text-sm font-semibold text-danger hover:underline" @click="disable">Disattiva la verifica</button>
             </div>
             <p v-if="disableError" class="text-sm font-semibold text-danger" role="alert">{{ disableError }}</p>
-
-            <Link v-if="props.required" href="/gestionale" class="block text-center font-semibold text-accent hover:underline">Vai al gestionale</Link>
         </div>
+        <Link href="/gestionale" class="mt-6 block text-center font-semibold text-accent hover:underline">Torna al gestionale</Link>
     </GuestLayout>
 </template>

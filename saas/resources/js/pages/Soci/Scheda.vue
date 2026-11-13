@@ -58,20 +58,20 @@ const renew = useForm({ account_id: props.accounts[0]?.id ?? '', amount: p.fee ?
 const submitRenew = () => renew.post(`/gestionale/soci/${props.person.id}/tessera`, { preserveScroll: true });
 const grant = useForm({ social_year: props.socialYear.current, reason: '' });
 const submitGrant = () => grant.post(`/gestionale/soci/${props.person.id}/tessera-manuale`, { preserveScroll: true, onSuccess: () => grant.reset('reason') });
-const revoke = (id) => router.post(`/gestionale/tessere/${id}/togli`, {}, { preserveScroll: true });
+const revoke = (id) => window.confirm('Togliere la tessera di questo anno sociale?') && router.post(`/gestionale/tessere/${id}/togli`, {}, { preserveScroll: true });
 const leave = useForm({ date: today, reason: '' });
-const submitLeave = () => leave.post(`/gestionale/soci/${props.person.id}/uscita`, { preserveScroll: true });
+const submitLeave = () => window.confirm(`Registrare l'uscita di ${props.person.first_name} ${props.person.last_name} dall'associazione?`) && leave.post(`/gestionale/soci/${props.person.id}/uscita`, { preserveScroll: true });
 const settingsForm = useForm({ start_month: props.settings.start_month, fee: props.settings.fee, warn_days: props.settings.warn_days });
 
 const guardianForm = useForm({ guardian_id: '' });
 const linkGuardian = () => guardianForm.post(`/gestionale/soci/${props.person.id}/tutori`, { preserveScroll: true, onSuccess: () => guardianForm.reset() });
 const makeOperative = (g) => router.post(`/gestionale/soci/${props.person.id}/tutori/${g.id}/operativo`, {}, { preserveScroll: true });
-const unlinkGuardian = (g) => router.delete(`/gestionale/soci/${props.person.id}/tutori/${g.id}`, { preserveScroll: true });
+const unlinkGuardian = (g) => window.confirm(`Scollegare ${g.name}? Non vedrà più la scheda del minore nell'area soci.`) && router.delete(`/gestionale/soci/${props.person.id}/tutori/${g.id}`, { preserveScroll: true });
 
 const nextYear = (d) => { const x = new Date(d); x.setFullYear(x.getFullYear() + 1); return x.toISOString().slice(0, 10); };
 const certForm = useForm({ kind: 'non_agonistic', issued_on: today, expires_on: nextYear(today), doctor: '', file: null });
 const addCert = () => certForm.post(`/gestionale/soci/${props.person.id}/certificati`, { preserveScroll: true, forceFormData: true, onSuccess: () => certForm.reset() });
-const deleteCert = (c) => router.delete(`/gestionale/certificati/${c.id}`, { preserveScroll: true });
+const deleteCert = (c) => window.confirm('Cancellare questo certificato medico? Il file allegato viene eliminato.') && router.delete(`/gestionale/certificati/${c.id}`, { preserveScroll: true });
 const certBadge = { valid: 'bg-salvia/15', expiring: 'bg-giallo/25', expired: 'bg-danger/15 text-danger', none: 'bg-surface' };
 const consentForm = useForm({ channel: '', granted: true, source: 'paper', given_by: '' });
 const setConsent = (channel, granted) => {

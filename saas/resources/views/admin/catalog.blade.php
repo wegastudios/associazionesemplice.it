@@ -25,13 +25,13 @@
             <p>Nessuna bozza: il catalogo in vigore è quello pubblicato.</p>
         @endif
         @if (auth('platform')->user()?->canWrite() && $hasDraft)
-            <form method="post" action="{{ route('platform.catalog.publish') }}">
+            <form method="post" action="{{ route('platform.catalog.publish') }}" onsubmit="return confirm('Pubblicare la revisione? I prezzi cambiano subito sul portale.')">
                 @csrf
                 <label for="note">Nota sulla modifica (facoltativa, resta nel registro)</label>
                 <input id="note" name="note" maxlength="300">
                 <button class="primary" type="submit">Pubblica come revisione {{ $rev + 1 }}</button>
             </form>
-            <form method="post" action="{{ route('platform.catalog.discard') }}">@csrf<button type="submit">Scarta la bozza</button></form>
+            <form method="post" action="{{ route('platform.catalog.discard') }}" onsubmit="return confirm('Scartare la bozza? Le modifiche non pubblicate si perdono.')">@csrf<button type="submit">Scarta la bozza</button></form>
         @endif
     </div>
 

@@ -39,7 +39,7 @@ const toggle = (a, on) => {
 const saveRole = () => (editing.value === 'new'
     ? role.post('/gestionale/ruoli', { preserveScroll: true, onSuccess: () => { editing.value = null; } })
     : role.put(`/gestionale/ruoli/${editing.value}`, { preserveScroll: true, onSuccess: () => { editing.value = null; } }));
-const deleteRole = (r) => router.delete(`/gestionale/ruoli/${r.id}`, { preserveScroll: true });
+const deleteRole = (r) => window.confirm(`Eliminare il ruolo «${r.name}»?`) && router.delete(`/gestionale/ruoli/${r.id}`, { preserveScroll: true });
 const abilityLabel = (v) => props.abilities.find((a) => a.value === v)?.label ?? v;
 
 const field = 'field';

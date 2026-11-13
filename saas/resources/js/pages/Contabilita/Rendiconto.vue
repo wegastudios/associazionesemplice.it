@@ -5,7 +5,7 @@ import AppLayout from '../../layouts/AppLayout.vue';
 const props = defineProps({ years: Array, statement: Object, canClose: Boolean });
 
 const reopen = useForm({ reason: '' });
-const close = () => router.post(`/gestionale/esercizi/${props.statement.year}/chiudi`, {}, { preserveScroll: true });
+const close = () => window.confirm(`Chiudere l'esercizio ${props.statement.year}? Non potrai più registrare né stornare movimenti con date di quell'anno finché non lo riapri.`) && router.post(`/gestionale/esercizi/${props.statement.year}/chiudi`, {}, { preserveScroll: true });
 const submitReopen = () => reopen.post(`/gestionale/esercizi/${props.statement.year}/riapri`, { preserveScroll: true, onSuccess: () => reopen.reset() });
 const go = (year) => router.get(`/gestionale/rendiconto/${year}`);
 const field = 'field';
@@ -61,7 +61,7 @@ const field = 'field';
             <h2 class="mb-3 text-lg font-bold">Chiusura dell'esercizio</h2>
             <template v-if="statement.status === 'open'">
                 <p class="mb-3 text-sm text-muted">Con l'esercizio chiuso non si registrano né si stornano movimenti con date al suo interno.</p>
-                <button type="button" class="btn btn-primary" @click="close">Chiudi l'esercizio {{ statement.year }}</button>
+                <button type="button" class="btn btn-secondary" @click="close">Chiudi l'esercizio {{ statement.year }}</button>
             </template>
             <form v-else class="flex flex-wrap items-end gap-3" @submit.prevent="submitReopen">
                 <label class="min-w-64 flex-1 space-y-1 text-sm"><span class="font-semibold">Motivo della riapertura</span><input v-model="reopen.reason" required :class="field" /></label>
