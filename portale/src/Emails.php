@@ -85,8 +85,8 @@ final class Emails {
 				'subject' => 'Dominio aggiornato: {dominio}',
 				'body' => "Il dominio della licenza {piano} è passato da {vecchio_dominio} a {dominio}.\nIl vecchio dominio smette di funzionare al prossimo controllo.\n\nSe non hai fatto tu questa richiesta, scrivici subito.\n{account_url}",
 			),
-			// Gestionale online (acquisto dal portale). Testi dell'audit del 13/11/2026. Le frasi con la data del nuovo tentativo, della sospensione e della
-			// cancellazione dei dati non ci sono: la titolare non ha ancora deciso quei termini (non si inventano numeri).
+			// Gestionale online (acquisto dal portale). Testi dell'audit del 13/11/2026. Regole della titolare (13/11/2026): nuovi tentativi per 7 giorni (3 al giorno
+			// nei primi 2, poi 1), sospensione il giorno dopo la scadenza, dati conservati 180 giorni.
 			'saas_welcome' => array(
 				'label' => 'Gestionale: benvenuto', 'when' => 'Subito dopo il pagamento dell\'ordine del gestionale online.', 'vars' => array( 'nome', 'associazione', 'piano', 'periodo', 'gestionale_url', 'link_password', 'account_url', 'supporto_url', 'email' ),
 				'subject' => 'Benvenuto: scegli la password per il gestionale di {associazione}',
@@ -103,14 +103,14 @@ final class Emails {
 				'body' => "Ciao {nome},\nabbiamo rinnovato il piano {piano} di {associazione}.\n\nImporto: {importo}\nValido fino al: {scadenza}\n\nLa fattura è in {account_url}. Non devi fare nulla.",
 			),
 			'saas_payment_failed' => array(
-				'label' => 'Gestionale: pagamento non riuscito', 'when' => 'Il pagamento di un rinnovo del gestionale non è andato a buon fine.', 'vars' => array( 'nome', 'associazione', 'piano', 'importo', 'account_url', 'supporto_url', 'email' ),
+				'label' => 'Gestionale: pagamento non riuscito', 'when' => 'Il pagamento di un rinnovo del gestionale non è andato a buon fine.', 'vars' => array( 'nome', 'associazione', 'piano', 'importo', 'scadenza', 'account_url', 'supporto_url', 'email' ),
 				'subject' => 'Pagamento non riuscito per {associazione}: cosa fare',
-				'body' => "Ciao {nome},\nnon siamo riusciti ad addebitare {importo} per il piano {piano}. Di solito succede per una carta scaduta o un limite di spesa.\n\nCosa fare: apri {account_url}, premi «Fatture e metodo di pagamento» e controlla o cambia il metodo di pagamento.\n\nPer ora il gestionale funziona come sempre e i dati restano al loro posto.",
+				'body' => "Ciao {nome},\nnon siamo riusciti ad addebitare {importo} per il piano {piano}. Di solito succede per una carta scaduta o un limite di spesa.\n\nCosa fare: apri {account_url}, premi «Fatture e metodo di pagamento» e controlla o cambia il metodo di pagamento.\n\nRiproviamo da soli per 7 giorni: più volte nei primi due, poi una volta al giorno. Se in quei giorni sistemi il metodo di pagamento, non devi fare altro.\n\nIl gestionale funziona fino al {scadenza}. Se entro quel giorno il pagamento non va a buon fine, dal giorno dopo viene sospeso finché non è sistemato. I dati restano al loro posto.",
 			),
 			'saas_cancelled' => array(
 				'label' => 'Gestionale: disdetta registrata', 'when' => 'Il cliente disdice il rinnovo del gestionale dall\'area clienti.', 'vars' => array( 'nome', 'associazione', 'piano', 'scadenza', 'account_url', 'supporto_url', 'email' ),
 				'subject' => 'Disdetta registrata: il gestionale resta attivo fino al {scadenza}',
-				'body' => "Ciao {nome},\nabbiamo registrato la disdetta del piano {piano} di {associazione}. Non ci saranno altri addebiti.\n\nIl gestionale resta attivo fino al {scadenza}. Prima di quella data ti consigliamo di scaricare i tuoi dati da «Gestione → Esportazione dei dati».\n\nHai cambiato idea? Scrivici da {supporto_url}.",
+				'body' => "Ciao {nome},\nabbiamo registrato la disdetta del piano {piano} di {associazione}. Non ci saranno altri addebiti.\n\nIl gestionale resta attivo fino al {scadenza}. Prima di quella data ti consigliamo di scaricare i tuoi dati da «Gestione → Esportazione dei dati».\n\nHai cambiato idea? Scrivici da {supporto_url}.\n\nDopo il {scadenza} i dati restano conservati per 180 giorni, poi vengono cancellati.",
 			),
 		);
 	}
