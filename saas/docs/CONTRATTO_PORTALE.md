@@ -156,7 +156,7 @@ Il portale lo legge dal catalogo come il resto e **applica** le regole, non le r
 | `terms.members.full_percent` | intero 1–100, non sotto `warn_percent` (partenza 100) | Secondo avviso, con la data in cui scade la tolleranza. |
 | `terms.members.tolerance_percent` | intero 0–50 (partenza 10) | Si può superare il limite fino a questa percentuale. |
 | `terms.members.tolerance_days` | intero 0–90 (partenza 15) | Per quanti giorni dal superamento; poi si bloccano i **nuovi** soci (non l'accesso né i dati) finché non si cambia piano o, sulla Grande, non si compra un pacchetto. |
-| `terms.members.guests_free_percent` | intero 0–100 (partenza 20, da confermare) | Quota degli ospiti dell'anno in corso che non conta; oltre vale anche l'ospite. Contano soci ed ex soci; gli ospiti degli anni passati no. |
+| `terms.members.guests_free_percent` | intero 0–100 (partenza 10, decisa dalla titolare; sui pacchetti di soci la quota cresce nella stessa misura) | Quota degli ospiti dell'anno in corso che non conta; oltre vale anche l'ospite. Contano soci ed ex soci; gli ospiti degli anni passati no. |
 
 Il tetto totale (soci del piano + pacchetti × quantità) lo calcola il SaaS alla `subscription` e lo salva nei diritti (`members_limit`, con `plan` e `plan_version` in `subscription`). I pacchetti sono addon di tipo `members` (`grants.members`). Il conteggio e il blocco si fanno nell app («Sviluppo SaaS in locale»); il portale deve solo vendere i pacchetti «500 soci in più»
 e «1.000 soci in più» (si comprano più volte e si sommano, solo sopra il piano Grande) e scrivere nelle pagine di vendita che

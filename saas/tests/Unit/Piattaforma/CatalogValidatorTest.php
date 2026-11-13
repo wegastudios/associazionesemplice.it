@@ -141,7 +141,7 @@ it('ha condizioni di partenza neutre: IVA standard, nessuna commissione, prova s
         ->and($doc['terms']['vat']['note'])->toBe('')
         ->and($doc['terms']['payments'])->toBe(['own_gateway_percent' => 0, 'collected_by_us_percent' => 0])
         ->and($doc['terms']['trial'])->toBe(['exports' => false, 'accountant_access' => false, 'end_discount_percent' => 0, 'purge_days' => 7])
-        ->and($doc['terms']['members'])->toBe(['warn_percent' => 80, 'full_percent' => 100, 'tolerance_percent' => 10, 'tolerance_days' => 15, 'guests_free_percent' => 20]);
+        ->and($doc['terms']['members'])->toBe(['warn_percent' => 80, 'full_percent' => 100, 'tolerance_percent' => 10, 'tolerance_days' => 15, 'guests_free_percent' => 10]);
 
     // Un catalogo senza condizioni (le revisioni precedenti) vale come i valori di partenza, con IVA.
     $old = seedCatalog();

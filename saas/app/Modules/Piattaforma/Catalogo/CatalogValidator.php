@@ -95,7 +95,7 @@ final class CatalogValidator
                 'full_percent' => $full,
                 'tolerance_percent' => self::int($members['tolerance_percent'] ?? 10, 'terms.members.tolerance_percent', 0, 50),
                 'tolerance_days' => self::int($members['tolerance_days'] ?? 15, 'terms.members.tolerance_days', 0, 90),
-                'guests_free_percent' => self::int($members['guests_free_percent'] ?? 20, 'terms.members.guests_free_percent', 0, 100),
+                'guests_free_percent' => self::int($members['guests_free_percent'] ?? 10, 'terms.members.guests_free_percent', 0, 100),
             ],
         ];
     }

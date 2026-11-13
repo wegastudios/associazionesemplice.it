@@ -223,7 +223,7 @@ final readonly class AdminCatalogEditorController
             'full_percent' => $pick('full_percent', '100'),
             'tolerance_percent' => $pick('tolerance_percent', '10'),
             'tolerance_days' => $pick('tolerance_days', '15'),
-            'guests_free_percent' => $pick('guests_free_percent', '20'),
+            'guests_free_percent' => $pick('guests_free_percent', '10'),
         ];
     }
 
