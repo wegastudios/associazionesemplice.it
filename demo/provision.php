@@ -190,6 +190,15 @@ demo_step( 'cariche', function () use ( $people, &$ids ) {
 
 // 6. Prima nota: quote associative incassate e qualche spesa
 $ledger = Plugin::ledger();
+demo_step( 'conto corrente', function () use ( $ledger ) { // il conto in banca parte con un saldo, così nessun conto va in negativo
+	foreach ( $ledger->accounts() as $a ) {
+		if ( 'bank' === $a['type'] ) {
+			$ledger->update_account( (int) $a['id'], (string) $a['name'], 'bank', 150000 );
+			return;
+		}
+	}
+	$ledger->add_account( 'Conto corrente', 'bank', 150000 );
+} );
 demo_step( 'quote incassate', function () use ( $ledger, &$ids ) {
 	$cat  = $ledger->category_id_of_kind( 'membership' );
 	$acc  = $ledger->default_account_for( 'cash' );
@@ -209,26 +218,40 @@ demo_step( 'quote incassate', function () use ( $ledger, &$ids ) {
 	}
 } );
 demo_step( 'donazioni', function () use ( $ledger ) {
-	$acc = $ledger->default_account_for( 'cash' );
-	$cat = $ledger->category_id_of_kind( 'donation' );
-	if ( ! $acc || ! $cat ) {
+	$acc  = $ledger->default_account_for( 'cash' );
+	$bank = $ledger->default_account_for( 'bank' );
+	$cat  = $ledger->category_id_of_kind( 'donation' );
+	if ( ! $acc || ! $bank || ! $cat ) {
 		return;
 	}
-	foreach ( array( array( 30, 10000, 'Erogazione liberale' ), array( 14, 5000, 'Offerta alla cena di raccolta fondi' ) ) as $d ) {
+	foreach ( array( array( 30, 10000, 'Erogazione liberale', 'bank' ), array( 14, 5000, 'Offerta alla cena di raccolta fondi', 'cash' ) ) as $d ) {
 		$ledger->record_receipt( array(
-			'date' => gmdate( 'Y-m-d', time() - $d[0] * 86400 ), 'account_id' => (int) $acc['id'], 'method' => 'cash',
+			'date' => gmdate( 'Y-m-d', time() - $d[0] * 86400 ), 'account_id' => (int) ( 'bank' === $d[3] ? $bank['id'] : $acc['id'] ), 'method' => 'bank' === $d[3] ? 'bank_transfer' : 'cash',
 			'lines' => array( array( 'category_id' => $cat, 'amount_cents' => $d[1], 'description' => $d[2] ) ),
 		) );
 	}
 } );
 demo_step( 'spese', function () use ( $ledger ) {
-	$acc = $ledger->default_account_for( 'cash' );
-	$cat = $ledger->category_id_of_kind( 'general_cost' );
-	if ( ! $acc || ! $cat ) {
+	$cash = $ledger->default_account_for( 'cash' );
+	$bank = $ledger->default_account_for( 'bank' );
+	if ( ! $cash || ! $bank ) {
 		return;
 	}
-	foreach ( array( array( 35, 12500, 'Affitto sala per la riunione' ), array( 20, 4800, 'Materiale di cancelleria' ), array( 8, 6000, 'Assicurazione dei volontari' ), array( 22, 9500, 'Noleggio attrezzatura per il corso' ), array( 5, 3800, 'Rinfresco dopo la riunione' ) ) as $s ) {
-		$ledger->record_expense( array( 'date' => gmdate( 'Y-m-d', time() - $s[0] * 86400 ), 'account_id' => (int) $acc['id'], 'method' => 'cash', 'category_id' => $cat, 'amount_cents' => $s[1], 'description' => $s[2] ) );
+	// giorni fa, importo in centesimi, descrizione, tipo di costo, conto: come in un'associazione vera le spese stanno in categorie diverse e i pagamenti importanti passano dalla banca
+	$rows = array(
+		array( 35, 12500, 'Affitto sala per la riunione', 'general_cost', 'bank' ),
+		array( 20, 4800, 'Materiale di cancelleria', 'general_cost', 'cash' ),
+		array( 8, 6000, 'Assicurazione dei volontari', 'general_cost', 'bank' ),
+		array( 22, 9500, 'Noleggio attrezzatura per il corso', 'activity_cost', 'bank' ),
+		array( 5, 3800, 'Rinfresco dopo la riunione', 'general_cost', 'cash' ),
+		array( 15, 3500, 'Rimborso benzina a un volontario', 'member_reimbursement', 'cash' ),
+	);
+	foreach ( $rows as $s ) {
+		$cat = $ledger->category_id_of_kind( $s[3] );
+		$acc = 'bank' === $s[4] ? $bank : $cash;
+		if ( $cat ) {
+			$ledger->record_expense( array( 'date' => gmdate( 'Y-m-d', time() - $s[0] * 86400 ), 'account_id' => (int) $acc['id'], 'method' => 'bank' === $s[4] ? 'bank_transfer' : 'cash', 'category_id' => $cat, 'amount_cents' => $s[1], 'description' => $s[2] ) );
+		}
 	}
 } );
 

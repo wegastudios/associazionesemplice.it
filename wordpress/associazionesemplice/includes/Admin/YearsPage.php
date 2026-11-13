@@ -26,7 +26,7 @@ final class YearsPage {
 		if ( $month < 9 || FiscalYears::get( $next ) ) {
 			return;
 		}
-		$msg = '<strong>Apri l\'anno solare ' . (int) $next . '.</strong> Finché non esiste, le quote dei soci si registrano solo per il ' . (int) $year . ' e non puoi incassare in anticipo per il ' . (int) $next . '. '
+		$msg = '<strong>Apri l\'esercizio ' . (int) $next . '.</strong> Finché non esiste, le quote dei soci si registrano solo per il ' . (int) $year . ' e non puoi incassare in anticipo per il ' . (int) $next . '. '
 			. '<a class="button" href="' . esc_url( Ui::url( 'asem-years' ) ) . '">Apri il ' . (int) $next . '</a>';
 		if ( 12 === $month ) { // a dicembre non si può chiudere
 			echo wp_kses( '<div class="notice notice-warning inline"><p>' . $msg . '</p></div>', Html::allowed() );
@@ -40,7 +40,7 @@ final class YearsPage {
 		$years  = FiscalYears::all();
 		$latest = FiscalYears::latest();
 		$totals = Plugin::funds()->yearly()['totals'];
-		Ui::header( 'Anni solari' );
+		Ui::header( 'Esercizi (anni contabili)' );
 		echo '<p class="description">Si può incassare, spendere e girare denaro solo negli anni solari <strong>aperti</strong>. Un anno chiuso non accetta più movimenti finché non lo riapri. '
 			. 'L\'anno in corso non si chiude (e il primo giorno di ogni anno il nuovo anno si apre da solo). Un anno finito non si chiude se ha fondi accantonati non ancora rimborsati. La quota associativa va all\'anno più recente tra quelli creati: se non è quello in corso, l\'anno in corso è in omaggio per chi si iscrive per la prima volta.</p>';
 		echo '<table class="widefat striped"><thead><tr><th>Anno</th><th>Stato</th><th>Movimenti</th><th>Fondi da rimborsare</th><th></th></tr></thead><tbody>';

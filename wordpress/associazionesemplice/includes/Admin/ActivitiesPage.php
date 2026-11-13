@@ -163,7 +163,7 @@ final class ActivitiesPage {
 				. '<p><label><input type="checkbox" data-asem-check-all="asem-bulk-item"> <strong>Seleziona tutte</strong></label> '
 				. '<button class="button" style="color:#b32d2e;border-color:#b32d2e">Elimina selezionate…</button> <span class="description">Spunta le attività da togliere: prima di eliminare vedrai l\'elenco e cosa viene cancellato.</span></p>';
 		}
-		echo '<div class="asem-grid">';
+		echo '<div class="asem-grid asem-more">';
 		foreach ( $report['activities'] as $s ) {
 			$a = $s['activity'];
 			echo '<div class="asem-card">' . ( $can_bulk ? '<label style="float:right"><input type="checkbox" class="asem-bulk-item" name="ids[]" value="' . (int) $a['id'] . '" aria-label="' . esc_attr( 'Seleziona ' . $a['name'] ) . '"></label>' : '' ) . '<p class="description" style="margin-bottom:0">' . esc_html( ActivityKind::short_label( $a['kind'] ) ) . '</p>';
