@@ -17,6 +17,7 @@ require_once __DIR__.'/PortalHelpers.php';
  */
 
 beforeEach(function (): void {
+    DB::commit();
     Notification::fake();
     Http::fake();
     $this->portal = fakePortal();
@@ -84,4 +85,11 @@ it('si ferma se i candidati di una notte sono troppi', function (): void {
 
     expect(Org::query()->findOrFail($alfa)->deleted_at)->toBeNull()
         ->and(Org::query()->findOrFail($beta)->deleted_at)->toBeNull();
+});
+
+afterEach(function (): void {
+    $owner = DB::connection('pgsql_owner');
+    $owner->statement('TRUNCATE app.people, app.orgs CASCADE');
+    $owner->statement('TRUNCATE core.org_keys, core.org_users, core.org_entitlements, core.orgs, core.users CASCADE');
+    DB::beginTransaction();
 });
