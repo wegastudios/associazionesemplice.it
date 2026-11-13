@@ -6191,6 +6191,25 @@ asem_ok( $tec_a && 'Festa vecchia' === $tec_a['name'] && 'event' === $tec_a['kin
 asem_ok( $tec_ss && '2024-05-18' === $tec_ss[0]['session_date'] && '20:00' === $tec_ss[0]['start_time'] && '23:00' === $tec_ss[0]['end_time'] && 'Sala Verde, Via Po 3' === $tec_ss[0]['location'], 'The Events Calendar: data, orario e luogo (con l\'indirizzo) passano nella data dell\'evento' );
 $tec_r2 = \AssociazioneSemplice\TribeImport::run();
 asem_ok( 0 === $tec_r2['imported'] && 2 === $tec_r2['skipped'] && 1 === $tec_r2['failed'], 'The Events Calendar: rilanciando non nascono doppioni' );
+// Ricontrollo: un evento importato la cui attività è poi stata eliminata a mano torna importabile; se l'attività esiste ancora non si reimporta
+$rc_p = wp_insert_post( array( 'post_type' => 'tribe_events', 'post_status' => 'publish', 'post_title' => 'Ricontrollo TEC' ) );
+update_post_meta( $rc_p, '_EventStartDate', '2024-06-01 10:00:00' );
+$rc_r  = \AssociazioneSemplice\TribeImport::run();
+$rc_a  = (int) get_post_meta( $rc_p, '_asem_activity', true );
+asem_ok( 1 === $rc_r['imported'] && $rc_a && $acts->get( $rc_a ), 'ricontrollo import TEC: l\'evento nuovo si importa' );
+$rc_r1 = \AssociazioneSemplice\TribeImport::run();
+asem_ok( 0 === $rc_r1['imported'] && $rc_a === (int) get_post_meta( $rc_p, '_asem_activity', true ), 'ricontrollo import TEC: se l\'attività esiste ancora l\'evento non si reimporta' );
+\AssociazioneSemplice\ActivityReset::delete( $rc_a, \AssociazioneSemplice\ActivityReset::VOID ); // eliminata a mano, non dall'annullamento dell'import
+asem_ok( 0 === count( array_filter( \AssociazioneSemplice\TribeImport::found(), function ( $f ) use ( $rc_p ) { return $f['post_id'] === $rc_p && $f['imported']; } ) ) && '' === (string) get_post_meta( $rc_p, '_asem_activity', true ), 'ricontrollo import TEC: con l\'attività eliminata l\'evento non risulta più importato e il segno cade' );
+update_post_meta( $rc_p, '_asem_activity', $rc_a ); // segno rimasto: il riepilogo lo ignora
+$rc_s = \AssociazioneSemplice\TribeImport::summary();
+asem_ok( 1 === $rc_s['events'], 'ricontrollo import TEC: il riepilogo conta l\'evento tornato da importare' );
+update_post_meta( $rc_p, '_asem_activity', $rc_a );
+$rc_r2 = \AssociazioneSemplice\TribeImport::run();
+$rc_a2 = (int) get_post_meta( $rc_p, '_asem_activity', true );
+asem_ok( 1 === $rc_r2['imported'] && 2 === $rc_r2['skipped'] && $rc_a2 && $rc_a2 !== $rc_a && $acts->get( $rc_a2 ), 'ricontrollo import TEC: l\'evento con l\'attività eliminata si reimporta in una nuova attività' );
+\AssociazioneSemplice\ActivityReset::delete( $rc_a2, \AssociazioneSemplice\ActivityReset::VOID );
+wp_delete_post( $rc_p, true ); // pulizia: gli altri test partono dagli eventi di prima
 $tec_re = $CP::duplicate( (int) $tec_a['id'], array( 'date' => gmdate( 'Y-m-d', strtotime( $today . ' +30 days' ) ) ) );
 asem_ok( 'Festa vecchia' === $acts->get( $tec_re )['name'] && false !== strpos( (string) $acts->get( $tec_re )['notes'], 'Una bella festa' ) && 'Sala Verde, Via Po 3' === $acts->sessions( $tec_re )[0]['location'], 'riproporre: un evento importato si ripropone in una nuova data con i vecchi contenuti' );
 // i corsi: ogni evento della categoria dei corsi diventa un corso, anche con lo stesso titolo (niente raggruppamenti)
