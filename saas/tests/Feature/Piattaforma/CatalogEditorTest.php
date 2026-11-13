@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Piattaforma\Catalogo\CatalogPublisher;
 use App\Modules\Piattaforma\Contracts\PlanLimits;
 use App\Modules\Piattaforma\Contracts\UnknownPlan;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,7 @@ function draftWithNewVersion(string $name = 'Gestionale 2'): array
     $plan = $catalog['plans'][0];
     $plan['plan_version'] = 2;
     $plan['name'] = $name;
+    $plan['visible'] = true;
     $catalog['plans'] = [$plan];
 
     return $catalog;
@@ -92,4 +94,25 @@ it('al solo lettura mostra il catalogo ma non lo fa modificare', function (): vo
     $this->get('/saas/admin/catalogo/bozza')->assertOk()->assertSee('sola lettura');
     $this->post('/saas/admin/catalogo/bozza', ['document' => json_encode(draftWithNewVersion())])->assertForbidden();
     $this->post('/saas/admin/catalogo/pubblica')->assertForbidden();
+});
+
+it('prepara in bozza il listino a tre piani dal catalogo in vigore, senza pubblicare', function (): void {
+    // Il catalogo in vigore è quello già venduto: piano a scaglioni visibile, versione 1.
+    $current = config('catalogo');
+    $current['plans'] = [array_replace($current['plans'][0], ['visible' => true])];
+    $current['addons'] = array_map(fn (array $a): array => array_replace($a, ['visible' => true]), $current['addons']);
+    $this->post('/saas/admin/catalogo/bozza', ['document' => json_encode($current)])->assertRedirect();
+    $this->post('/saas/admin/catalogo/pubblica')->assertRedirect();
+
+    $this->artisan('saas:catalog:prepare-tiers', ['email' => $this->staff->email])->assertSuccessful();
+
+    $draft = json_decode((string) DB::table('core.catalog_draft')->value('document'), true);
+    $versions = array_map(fn (array $p): string => $p['code'].'@'.$p['plan_version'].($p['visible'] ? '+' : '-'), $draft['plans']);
+    expect($versions)->toBe(['gestionale@1+', 'gestionale@2-', 'piccola@1+', 'media@1+', 'grande@1+']);
+    $addons = array_column($draft['addons'], 'visible', 'code');
+    expect($addons['member_area'])->toBeFalse()->and($addons['site'])->toBeTrue();
+    expect(app(CatalogPublisher::class)->hasDraft())->toBeTrue();
+
+    $this->post('/saas/admin/catalogo/pubblica')->assertRedirect();
+    $this->artisan('saas:catalog:prepare-tiers', ['email' => 'nessuno@example.test'])->assertFailed();
 });

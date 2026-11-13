@@ -9,6 +9,7 @@ use App\Modules\Piattaforma\Catalogo\DbCatalog;
 use App\Modules\Piattaforma\Console\CreateStaffCommand;
 use App\Modules\Piattaforma\Console\ImportPortalCustomersCommand;
 use App\Modules\Piattaforma\Console\InviteStaffCommand;
+use App\Modules\Piattaforma\Console\PrepareTiersDraftCommand;
 use App\Modules\Piattaforma\Console\ResetStaffTwoFactorCommand;
 use App\Modules\Piattaforma\Contracts\Catalog;
 use App\Modules\Piattaforma\Contracts\PlanLimits;
@@ -58,7 +59,7 @@ final class PiattaformaServiceProvider extends ServiceProvider
         Route::group([], __DIR__.'/../Http/operator_sso_routes.php');
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CreateStaffCommand::class, InviteStaffCommand::class, ResetStaffTwoFactorCommand::class, ImportPortalCustomersCommand::class]);
+            $this->commands([CreateStaffCommand::class, InviteStaffCommand::class, ResetStaffTwoFactorCommand::class, ImportPortalCustomersCommand::class, PrepareTiersDraftCommand::class]);
         }
     }
 }

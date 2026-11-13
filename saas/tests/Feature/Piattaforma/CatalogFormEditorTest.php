@@ -40,7 +40,7 @@ function planFormInput(array $overrides = []): array
         'name' => $plan['name'],
         'audience' => $plan['audience'],
         'order' => (string) $plan['order'],
-        'visible' => '1',
+        'visible' => $plan['visible'] ? '1' : '',
         'support_level' => $plan['support_level'],
         'trial_days' => (string) $plan['trial_days'],
         'limits' => ['members' => '', 'operators' => '1', 'storage_mb_per_member' => '5', 'storage_mb_min' => '250'],
@@ -87,21 +87,21 @@ it('salvare un piano già in vigore crea la versione successiva nella bozza e il
         ->assertRedirect('/saas/admin/catalogo/piani/gestionale');
 
     $draft = json_decode((string) DB::table('core.catalog_draft')->value('document'), true);
-    expect(array_column($draft['plans'], 'plan_version'))->toBe([1, 2])
+    expect(array_column($draft['plans'], 'plan_version'))->toBe([1, 1, 1, 1, 2])
         ->and($draft['plans'][0]['name'])->toBe('Gestionale')
-        ->and($draft['plans'][1]['name'])->toBe('Gestionale Plus')
-        ->and($draft['plans'][1]['prices'])->toEqual($draft['plans'][0]['prices']);
+        ->and($draft['plans'][4]['name'])->toBe('Gestionale Plus')
+        ->and($draft['plans'][4]['prices'])->toEqual($draft['plans'][0]['prices']);
 
     $this->get('/saas/admin/catalogo')->assertOk()->assertSee('nuova versione 2')->assertSee('cambiano nome');
 
     // Una seconda modifica ritocca la versione 2 (ancora in bozza) senza crearne una terza.
     $this->post('/saas/admin/catalogo/piani/gestionale', planFormInput(['name' => 'Gestionale Pro']))->assertRedirect();
     $draft = json_decode((string) DB::table('core.catalog_draft')->value('document'), true);
-    expect(array_column($draft['plans'], 'plan_version'))->toBe([1, 2])->and($draft['plans'][1]['name'])->toBe('Gestionale Pro');
+    expect(array_column($draft['plans'], 'plan_version'))->toBe([1, 1, 1, 1, 2])->and($draft['plans'][4]['name'])->toBe('Gestionale Pro');
 
     $this->post('/saas/admin/catalogo/pubblica')->assertRedirect('/saas/admin/catalogo');
     $published = json_decode((string) $this->get('/api/catalogo/v1')->getContent(), true);
-    expect($published['rev'])->toBe(3)->and(array_column($published['plans'], 'plan_version'))->toBe([1, 2]);
+    expect($published['rev'])->toBe(3)->and(array_column($published['plans'], 'plan_version'))->toBe([1, 1, 1, 1, 2]);
 });
 
 it('cambia un prezzo dal modulo e il confronto lo dice', function (): void {
@@ -111,7 +111,7 @@ it('cambia un prezzo dal modulo e il confronto lo dice', function (): void {
     $this->post('/saas/admin/catalogo/piani/gestionale', $input)->assertRedirect();
 
     $draft = json_decode((string) DB::table('core.catalog_draft')->value('document'), true);
-    expect($draft['plans'][1]['prices'][0]['base_cents'])->toBe(1600);
+    expect($draft['plans'][4]['prices'][0]['base_cents'])->toBe(1600);
     $this->get('/saas/admin/catalogo')->assertSee('cambiano prezzi');
 });
 
@@ -210,16 +210,16 @@ it('imposta i pacchetti inclusi nel piano e rifiuta un testo che non è un ogget
 
     $this->post('/saas/admin/catalogo/piani/gestionale', planFormInput(['packages_json' => '{"site": {}, "einvoice": {"yearly": 50}}']))->assertRedirect();
     $draft = json_decode((string) DB::table('core.catalog_draft')->value('document'), true);
-    expect($draft['plans'][1]['limits']['packages'])->toEqual(['site' => [], 'einvoice' => ['yearly' => 50]]);
+    expect($draft['plans'][4]['limits']['packages'])->toEqual(['site' => [], 'einvoice' => ['yearly' => 50]]);
     $this->get('/saas/admin/catalogo/piani/gestionale')->assertSee('einvoice');
 
     // Senza il campo restano quelli della versione; con «{}» si tolgono.
     $this->post('/saas/admin/catalogo/piani/gestionale', planFormInput())->assertRedirect();
     $draft = json_decode((string) DB::table('core.catalog_draft')->value('document'), true);
-    expect($draft['plans'][1]['limits']['packages'])->toHaveKey('site');
+    expect($draft['plans'][4]['limits']['packages'])->toHaveKey('site');
     $this->post('/saas/admin/catalogo/piani/gestionale', planFormInput(['packages_json' => '{}']))->assertRedirect();
     $draft = json_decode((string) DB::table('core.catalog_draft')->value('document'), true);
-    expect($draft['plans'][1]['limits']['packages'])->toBe([]);
+    expect($draft['plans'][4]['limits']['packages'])->toBe([]);
 
     $this->post('/saas/admin/catalogo/piani/gestionale', planFormInput(['packages_json' => '[1,2]']))->assertOk()->assertSee('devono essere un oggetto JSON');
 });
