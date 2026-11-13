@@ -187,6 +187,8 @@ final class SaasCheckout {
 			$vars  = array(
 				'nome' => $name,'associazione' => (string) ( $org['name'] ?? '' ), 'piano' => $plan,
 				'periodo' => 'year' === $order['period'] ? 'annuale' : 'mensile', 'scadenza' => date_it( $until . ' 00:00:00' ),
+				// Sospeso il giorno dopo la scadenza; dati conservati 180 giorni dalla sospensione (decisione della titolare, 13/11/2026).
+				'data_cancellazione' => date_it( gmdate( 'Y-m-d', strtotime( $until . ' UTC +181 days' ) ) . ' 00:00:00' ),
 				'importo' => money( $total ) . ( 'exempt' === ( $q['vat_mode'] ?? '' ) ? ' (senza IVA)' : ' (IVA inclusa)' ),
 				'gestionale_url' => rtrim( (string) Config::get( 'saas_app_url', 'https://app.associazionesemplice.it/gestionale' ), '/' ),
 				'link_password' => rtrim( (string) Config::get( 'base_url' ), '/' ) . '/accedi/password-dimenticata',
@@ -196,6 +198,38 @@ final class SaasCheckout {
 			error_log( '[portale] email ' . $event . ' non inviata (' . $e->getMessage() . ')' );
 			return false;
 		}
+	}
+
+	/**
+	 * Lavoro giornaliero (bin/cron.php): avviso «scade e non si rinnova» entro i giorni di preavviso delle impostazioni (solo per le disdette)
+	 * e avviso «sospeso» dal giorno dopo la scadenza. Una email per scadenza (colonne reminded_for / suspended_for). @return int email inviate
+	 */
+	public static function sendLifecycleMails( Db $db, ?int $now = null ): int {
+		$now   = $now ?? time();
+		$today = gmdate( 'Y-m-d', $now );
+		$days  = Settings::limit( 'reminder_days' );
+		$sent  = 0;
+		$rows  = $db->all( "SELECT o.*, g.org_id, g.name AS org_name FROM orders o JOIN saas_orgs g ON g.ref = o.org_ref WHERE o.product = 'saas' AND o.status = ? AND g.org_id IS NOT NULL", array( self::ACTIVE ) );
+		foreach ( $rows as $o ) {
+			$until = self::lastUntil( $db, (string) $o['org_id'] );
+			if ( null === $until ) {
+				continue;
+			}
+			$org = array( 'org_id' => $o['org_id'], 'name' => $o['org_name'] );
+			if ( $until < $today ) {
+				if ( $until < gmdate( 'Y-m-d', $now - 3 * 86400 ) ) {
+					continue; // scaduto da tempo (dati di prova o già gestito a mano): niente email a sorpresa
+				}
+				if ( $o['suspended_for'] !== $until ) {
+					$db->run( 'UPDATE orders SET suspended_for = ? WHERE id = ?', array( $until, $o['id'] ) );
+					$sent += self::mail( $db, 'saas_suspended', $o, $org, $now ) ? 1 : 0;
+				}
+			} elseif ( $days > 0 && (int) $o['cancel_at_period_end'] && $until <= gmdate( 'Y-m-d', $now + $days * 86400 ) && $o['reminded_for'] !== $until ) {
+				$db->run( 'UPDATE orders SET reminded_for = ? WHERE id = ?', array( $until, $o['id'] ) );
+				$sent += self::mail( $db, 'saas_expiring', $o, $org, $now ) ? 1 : 0;
+			}
+		}
+		return $sent;
 	}
 
 	/**

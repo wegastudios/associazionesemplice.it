@@ -1915,6 +1915,17 @@ $pd = json_decode( (string) $cdb->one( 'SELECT body FROM saas_outbox WHERE rev =
 check( 'pagamento non riuscito: past_due, scadenza invariata', 'past_due' === $pd['status'] && gmdate( 'Y-m-d', strtotime( '+1 month', 5000000 ) ) === $pd['until'] );
 SaasCheckout::event( $cdb, 'stripe', 'sub_1', 'cancelled', 5000200 );
 check( 'disdetta: cancelled; riferimento sconosciuto → non è nostro', 'cancelled' === json_decode( (string) $cdb->one( 'SELECT body FROM saas_outbox WHERE rev = 4' )['body'], true )['status'] && false === SaasCheckout::event( $cdb, 'stripe', 'altro', 'renewed' ) );
+// Email di scadenza e sospensione (lavoro giornaliero): una per scadenza, niente a sorpresa per le scadenze vecchie.
+$lcUntil = strtotime( json_decode( (string) $cdb->one( 'SELECT body FROM saas_outbox ORDER BY rev DESC LIMIT 1' )['body'], true )['until'] . ' UTC' );
+$mails = array();
+check( 'scadenza: senza disdetta niente avviso', 0 === SaasCheckout::sendLifecycleMails( $cdb, $lcUntil - 5 * 86400 ) && array() === $mails );
+$cdb->run( 'UPDATE orders SET cancel_at_period_end = 1 WHERE id = ?', array( $ord['id'] ) );
+check( 'scadenza: con disdetta e scadenza vicina, una email sola', 1 === SaasCheckout::sendLifecycleMails( $cdb, $lcUntil - 5 * 86400 ) && 0 === SaasCheckout::sendLifecycleMails( $cdb, $lcUntil - 4 * 86400 ) && 1 === count( $mails ) && 'anna@esempio.it' === $mails[0][0] && false === strpos( $mails[0][2], '{' ) );
+$mails = array();
+check( 'sospensione: il giorno dopo la scadenza, una email sola, con la data di cancellazione a 180 giorni', 1 === SaasCheckout::sendLifecycleMails( $cdb, $lcUntil + 86400 ) && 0 === SaasCheckout::sendLifecycleMails( $cdb, $lcUntil + 2 * 86400 ) && 1 === count( $mails ) && false !== strpos( $mails[0][2], date_it( gmdate( 'Y-m-d', $lcUntil + 181 * 86400 ) . ' 00:00:00' ) ) && false === strpos( $mails[0][2], '{' ) );
+$cdb->run( 'UPDATE orders SET suspended_for = NULL WHERE id = ?', array( $ord['id'] ) );
+$mails = array();
+check( 'sospensione: scadenza di molti giorni fa → niente email a sorpresa', 0 === SaasCheckout::sendLifecycleMails( $cdb, $lcUntil + 10 * 86400 ) && array() === $mails );
 // Sottodominio già preso: ne prova un altro; provision fallita: l'ordine resta «paid» e il webhook riprova.
 $provCode = 409;
 $f2 = array( 'promo' => '', 'org_name' => 'Altro Circolo', 'slug' => 'altro' ) + $form;
