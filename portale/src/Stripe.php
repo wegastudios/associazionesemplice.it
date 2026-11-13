@@ -6,6 +6,17 @@ final class Stripe {
 
 	const API = 'https://api.stripe.com/v1';
 
+	/** Errore dell'ultima richiesta non riuscita (`code`, `decline_code`, `advice_code`…), vuoto se è andata bene. */
+	public static $lastError = array();
+
+	/** Rifiuti definitivi della carta (carta rubata o smarrita, numero o conto non validi, scaduta…): non si riprova mai. */
+	const HARD_DECLINES = array( 'stolen_card', 'lost_card', 'pickup_card', 'invalid_account', 'invalid_number', 'expired_card', 'fraudulent', 'restricted_card' );
+
+	/** L'ultimo errore è un rifiuto definitivo: lo dice la banca (`do_not_try_again`) o il motivo è tra quelli elencati. */
+	public static function hardDecline(): bool {
+		return 'do_not_try_again' === ( self::$lastError['advice_code'] ?? '' ) || in_array( (string) ( self::$lastError['decline_code'] ?? '' ), self::HARD_DECLINES, true );
+	}
+
 	/**
 	 * @param int    $cents    importo, usato quando non c'è un prezzo già creato su Stripe (il prezzo ricorrente si crea da solo)
 	 * @param string $interval `month` o `year`
@@ -82,7 +93,7 @@ final class Stripe {
 	/**
 	 * «Riattiva» su un abbonamento con pagamento non riuscito: paga la fattura aperta con il metodo di pagamento già salvato.
 	 * Premuto due volte non addebita due volte: una fattura già pagata non si ripaga.
-	 * @return string `paid` (pagata ora o già pagata) | `declined` (la carta ha rifiutato) | `unavailable` (niente da pagare: abbonamento chiuso o senza fattura aperta)
+	 * @return string `paid` (pagata ora o già pagata) | `declined` (la carta ha rifiutato) | `hard` (rifiuto definitivo: non si riprova) | `unavailable` (niente da pagare: abbonamento chiuso o senza fattura aperta)
 	 */
 	public static function payOpenInvoice( string $stripeSubscription ): string {
 		$s = self::call( 'GET', '/subscriptions/' . rawurlencode( $stripeSubscription ) . '?expand%5B%5D=latest_invoice', array() );
@@ -99,7 +110,7 @@ final class Stripe {
 		try {
 			self::call( 'POST', '/invoices/' . rawurlencode( (string) $inv['id'] ) . '/pay', array() );
 		} catch ( \RuntimeException $e ) {
-			return 'declined';
+			return self::hardDecline() ? 'hard' : 'declined';
 		}
 		return 'paid';
 	}
@@ -152,6 +163,7 @@ final class Stripe {
 		$headers = array( 'Authorization: Bearer ' . Config::get( 'stripe.secret_key' ), 'Content-Type: application/x-www-form-urlencoded' );
 		list( $status, $raw ) = Http::send( $method, self::API . $path, $headers, http_build_query( $form ) );
 		$data = json_decode( $raw, true );
+		self::$lastError = ( $status >= 400 && is_array( $data ) && is_array( $data['error'] ?? null ) ) ? $data['error'] : array();
 		if ( $status < 200 || $status >= 300 || ! is_array( $data ) ) {
 			throw new \RuntimeException( 'Stripe: richiesta non riuscita (' . $status . ').' );
 		}
