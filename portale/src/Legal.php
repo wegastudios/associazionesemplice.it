@@ -31,7 +31,16 @@ final class Legal {
 		$none = function ( string $k, string $fallback ) use ( $l ) {
 			return '' !== trim( (string) ( $l[ $k ] ?? '' ) ) ? (string) $l[ $k ] : $fallback;
 		};
+		// Frase del titolare composta solo dai campi compilati, senza buchi né «partita IVA» vuota.
+		$full = $none( 'titolare', 'Associazione Semplice' );
+		if ( '' !== trim( (string) ( $l['indirizzo'] ?? '' ) ) ) {
+			$full .= ', con sede in ' . trim( (string) $l['indirizzo'] );
+		}
+		if ( '' !== trim( (string) ( $l['piva'] ?? '' ) ) ) {
+			$full .= ', partita IVA ' . trim( (string) $l['piva'] );
+		}
 		return array(
+			'titolare_completo' => $full,
 			'titolare'  => $none( 'titolare', 'Associazione Semplice' ),
 			'indirizzo' => $none( 'indirizzo', '' ),
 			'piva'      => $none( 'piva', '' ),
@@ -105,7 +114,7 @@ final class Legal {
 		return array(
 			'privacy' => <<<'TXT'
 ## Chi tratta i tuoi dati
-Il titolare del trattamento è {titolare} {indirizzo} {piva}. Per qualsiasi richiesta scrivi a {email}.
+Il titolare del trattamento è {titolare_completo}. Per qualsiasi richiesta scrivi a {email}.
 
 ## Quali dati trattiamo
 - Indirizzo email e dominio del sito che indichi quando chiedi una licenza o acquisti un piano.
@@ -138,10 +147,8 @@ I cookie sono piccoli file che il sito salva nel tuo browser. Alcuni servono a f
 ## Cookie che usiamo
 - **Tecnici (sempre attivi):** mantengono la sessione quando accedi all'area riservata e ricordano le tue scelte sui cookie. Non richiedono consenso.
 - **Accesso alla demo (tecnico):** nella demo pubblica sotto `/demo/` il cookie «asem_s» ricorda l'accesso di chi entra come socio. Dura poco, serve solo a restare collegato e non richiede consenso.
-- **Statistiche (solo con il tuo consenso):** ci aiutano a capire quali pagine sono utili, in forma aggregata.
-- **Marketing (solo con il tuo consenso):** servono a misurare l'efficacia delle comunicazioni.
 
-Gli strumenti di statistica e marketing partono solo se li accetti. Se non li accetti, non vengono caricati.
+Al momento non usiamo cookie di statistica, di marketing o di profilazione, né strumenti di terze parti che ne installino. Se in futuro li useremo, partiranno solo dopo il tuo consenso e aggiorneremo questa pagina.
 
 ## Come cambiare scelta
 Puoi modificare o ritirare il consenso in ogni momento dal link «Preferenze cookie» in fondo a ogni pagina. Puoi anche cancellare i cookie dalle impostazioni del browser.
@@ -152,7 +159,7 @@ TXT
 			,
 			'termini' => <<<'TXT'
 ## Chi offre il servizio
-Il servizio di licenze, aggiornamenti e area riservata di Associazione Semplice è offerto da {titolare} {indirizzo} {piva}. Per qualsiasi richiesta scrivi a {email}.
+Il servizio di licenze, aggiornamenti e area riservata di Associazione Semplice è offerto da {titolare_completo}. Per qualsiasi richiesta scrivi a {email}.
 
 ## Che cosa include
 - **Licenza gratuita:** abilita i servizi collegati del plugin gratuito per un dominio. È gratuita, senza scadenza fissa, e si rinnova da sola finché usi il servizio.
