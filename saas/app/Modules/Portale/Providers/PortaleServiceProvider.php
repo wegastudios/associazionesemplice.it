@@ -6,6 +6,7 @@ namespace App\Modules\Portale\Providers;
 
 use App\Modules\Portale\Console\ImportPortalDbCommand;
 use App\Modules\Portale\Console\PurgeExpiredCommand;
+use App\Modules\Portale\Console\SendLifecycleNoticesCommand;
 use App\Modules\Portale\Console\SendUsageCommand;
 use App\Modules\Portale\Console\SuspendExpiredCommand;
 use App\Modules\Portale\Console\VerifyDomainsCommand;
@@ -86,13 +87,14 @@ final class PortaleServiceProvider extends ServiceProvider
             ->name('subscription');
 
         if ($this->app->runningInConsole()) {
-            $this->commands([SendUsageCommand::class, SuspendExpiredCommand::class, PurgeExpiredCommand::class, VerifyDomainsCommand::class, ImportPortalDbCommand::class]);
+            $this->commands([SendUsageCommand::class, SuspendExpiredCommand::class, PurgeExpiredCommand::class, SendLifecycleNoticesCommand::class, VerifyDomainsCommand::class, ImportPortalDbCommand::class]);
 
             $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
                 $schedule->command('saas:portal:usage')->dailyAt('04:23')->withoutOverlapping();
                 $schedule->command('saas:portal:suspend-expired')->dailyAt('00:41')->withoutOverlapping();
                 // La cancellazione dei dati scaduti parte solo con l'interruttore acceso (saas.portal.purge_enabled).
                 $schedule->command('saas:portal:purge-expired')->dailyAt('01:17')->withoutOverlapping()->when(static fn (): bool => config('saas.portal.purge_enabled') === true);
+                $schedule->command('saas:portal:lifecycle-notices')->dailyAt('08:10')->withoutOverlapping()->when(static fn (): bool => config('saas.portal.notices_enabled') === true);
                 $schedule->command('saas:portal:verify-domains')->hourly()->withoutOverlapping();
             });
         }

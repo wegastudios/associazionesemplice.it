@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Org;
 
+use App\Modules\Core\Contracts\DatabaseNames;
 use App\Modules\Core\Contracts\OrgPurger;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
@@ -21,7 +22,7 @@ final readonly class DatabaseOrgPurger implements OrgPurger
     /** Schemi con i dati delle associazioni. `audit` ha la sua regola (registro solo in aggiunta), `core` è trattato a parte. */
     private const DATA_SCHEMAS = ['app', 'sites', 'portal'];
 
-    public function __construct(private DatabaseManager $db) {}
+    public function __construct(private DatabaseManager $db, private DatabaseNames $names) {}
 
     public function purge(string $orgId): array
     {
@@ -33,9 +34,6 @@ final readonly class DatabaseOrgPurger implements OrgPurger
         if (! in_array($org->status, ['suspended', 'closed'], true)) {
             throw new RuntimeException('Si cancellano solo associazioni sospese o chiuse.');
         }
-        if (isset($org->database)) {
-            throw new RuntimeException('Database dedicato: la cancellazione non è ancora gestita.');
-        }
 
         // Prima il blocco: nessun accesso mentre si cancella.
         $owner->table('core.orgs')->where('id', $orgId)->update(['status' => 'closed']);
@@ -44,9 +42,15 @@ final readonly class DatabaseOrgPurger implements OrgPurger
 
         $rows = 0;
         $users = 0;
-        $owner->transaction(function () use ($owner, $orgId, &$rows, &$users): void {
+        // Il database dedicato, se c'è, si svuota qui; il database stesso lo toglie chi gestisce il server (vedi il registro dello staff).
+        $data = is_string($org->database ?? null) && $org->database !== '' ? $this->db->connection($this->names->ownerConnection($org->database)) : $owner;
+        $data->transaction(function () use ($data, $orgId, &$rows): void {
+            $data->select("SELECT set_config('app.org_id', ?, true)", [$orgId]);
+            $rows = $this->deleteAuditRows($data, $orgId) + $this->deleteDataRows($data, $orgId);
+        });
+
+        $owner->transaction(function () use ($owner, $orgId, &$users): void {
             $owner->select("SELECT set_config('app.org_id', ?, true)", [$orgId]);
-            $rows = $this->deleteAuditRows($owner, $orgId) + $this->deleteDataRows($owner, $orgId);
 
             $members = $owner->table('core.org_users')->where('org_id', $orgId)->pluck('user_id')->all();
             $owner->table('core.org_users')->where('org_id', $orgId)->delete();
@@ -74,6 +78,7 @@ final readonly class DatabaseOrgPurger implements OrgPurger
         $owner->statement('ALTER TABLE audit.log DISABLE TRIGGER log_append_only');
         $rows = $owner->delete('DELETE FROM audit.log WHERE org_id = ?', [$orgId]);
         $rows += $owner->delete('DELETE FROM audit.heads WHERE org_id = ?', [$orgId]);
+        $rows += $owner->delete('DELETE FROM audit.anchors WHERE org_id = ?', [$orgId]);
         $owner->statement('ALTER TABLE audit.log ENABLE TRIGGER log_append_only');
 
         return $rows;

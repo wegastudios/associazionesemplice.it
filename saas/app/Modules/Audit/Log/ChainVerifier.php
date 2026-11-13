@@ -30,7 +30,15 @@ final readonly class ChainVerifier
             $previous = ChainedAuditLog::GENESIS;
             $expected = 1;
 
-            $rows = $connection->table('audit.log')->where('org_id', $orgId)->lazyById(500, 'seq');
+            // Dopo la cancellazione delle partizioni vecchie la catena riparte dall'ancora (audit.anchors).
+            $anchor = $connection->table('audit.anchors')->where('org_id', $orgId)->first(['seq', 'hash']);
+            $anchorSeq = $anchor === null ? 0 : Entry::seq($anchor->seq);
+            if ($anchor !== null) {
+                $previous = Bytea::decode($anchor->hash);
+                $expected = $anchorSeq + 1;
+            }
+
+            $rows = $connection->table('audit.log')->where('org_id', $orgId)->where('seq', '>', $anchorSeq)->lazyById(500, 'seq');
             foreach ($rows as $row) {
                 /** @var object{seq: int, occurred_at: string, actor_type: string, actor_id: string|null, action: string, subject_type: string|null, subject_id: string|null, ip: string|null, details: string, hash: mixed} $row */
                 if ((int) $row->seq !== $expected) {
@@ -69,7 +77,7 @@ final readonly class ChainVerifier
             }
 
             // Una riga con un numero già usato verrebbe saltata dalla lettura per numero: si contano tutte.
-            if ($connection->table('audit.log')->where('org_id', $orgId)->count() !== $headSeq) {
+            if ($connection->table('audit.log')->where('org_id', $orgId)->count() !== $headSeq - $anchorSeq) {
                 return self::result(false, $expected - 1, null, 'righe in più nella catena');
             }
 

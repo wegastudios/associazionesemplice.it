@@ -15,7 +15,7 @@ interface OrgPurger
      *
      * @return array{rows: int, users: int}
      *
-     * @throws RuntimeException se l'associazione è attiva, non esiste o ha un database dedicato (non ancora gestito)
+     * @throws RuntimeException se l'associazione è attiva o non esiste. Il database dedicato si svuota; toglierlo dal server spetta a chi lo gestisce
      */
     public function purge(string $orgId): array;
 }
