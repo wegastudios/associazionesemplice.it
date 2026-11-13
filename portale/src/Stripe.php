@@ -79,6 +79,31 @@ final class Stripe {
 		) );
 	}
 
+	/**
+	 * «Riattiva» su un abbonamento con pagamento non riuscito: paga la fattura aperta con il metodo di pagamento già salvato.
+	 * Premuto due volte non addebita due volte: una fattura già pagata non si ripaga.
+	 * @return string `paid` (pagata ora o già pagata) | `declined` (la carta ha rifiutato) | `unavailable` (niente da pagare: abbonamento chiuso o senza fattura aperta)
+	 */
+	public static function payOpenInvoice( string $stripeSubscription ): string {
+		$s = self::call( 'GET', '/subscriptions/' . rawurlencode( $stripeSubscription ) . '?expand%5B%5D=latest_invoice', array() );
+		if ( in_array( (string) ( $s['status'] ?? '' ), array( 'canceled', 'incomplete_expired' ), true ) || ! is_array( $s['latest_invoice'] ?? null ) ) {
+			return 'unavailable';
+		}
+		$inv = $s['latest_invoice'];
+		if ( 'paid' === ( $inv['status'] ?? '' ) ) {
+			return 'paid';
+		}
+		if ( 'open' !== ( $inv['status'] ?? '' ) || empty( $inv['id'] ) ) {
+			return 'unavailable';
+		}
+		try {
+			self::call( 'POST', '/invoices/' . rawurlencode( (string) $inv['id'] ) . '/pay', array() );
+		} catch ( \RuntimeException $e ) {
+			return 'declined';
+		}
+		return 'paid';
+	}
+
 	public static function portalUrl( string $stripeCustomer ): string {
 		$r = self::call( 'POST', '/billing_portal/sessions', array( 'customer' => $stripeCustomer, 'return_url' => Config::get( 'base_url' ) . '/account' ) );
 		return (string) ( $r['url'] ?? '' );

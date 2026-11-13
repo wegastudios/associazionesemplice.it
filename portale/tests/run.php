@@ -1932,6 +1932,53 @@ SaasCheckout::event( $cdb, 'stripe', 'sub_1', 'failed', 5000100 );
 check( 'email pagamento non riuscito: inviata', 2 === count( $mails ) && 'anna@esempio.it' === $mails[1][0] && false === strpos( $mails[1][2], '{' ) );
 $pd = json_decode( (string) $cdb->one( 'SELECT body FROM saas_outbox WHERE rev = 3' )['body'], true );
 check( 'pagamento non riuscito: past_due, scadenza invariata', 'past_due' === $pd['status'] && gmdate( 'Y-m-d', strtotime( '+1 month', 5000000 ) ) === $pd['until'] );
+// «Riattiva» con pagamento non riuscito (Stripe): paga la fattura aperta con il metodo salvato, una volta sola.
+$rrow    = array( 'state' => 'past_due', 'status' => 'active', 'until' => '2099-01-01', 'total' => 3221, 'provider' => 'stripe', 'plan' => 'x', 'period' => 'month', 'members' => 1, 'quote' => '{}' );
+$reSeen  = array();
+$reInv   = array( 'status' => 'open', 'id' => 'in_1' );
+$reSub   = array( 'status' => 'past_due' );
+$reCode  = 200;
+$reTrans = Http::$transport;
+Http::$transport = function ( $m, $u, $h, $b ) use ( &$reSeen, &$reInv, &$reSub, &$reCode ) {
+	$reSeen[] = array( $m, $u );
+	if ( 'GET' === $m ) {
+		return array( 200, json_encode( $reSub + array( 'latest_invoice' => $reInv ) ) );
+	}
+	return array( $reCode, '{}' );
+};
+check( 'riattiva (Stripe): fattura aperta → pagata con il metodo salvato', 'paid' === Stripe::payOpenInvoice( 'sub_1' ) && 'POST' === $reSeen[1][0] && false !== strpos( $reSeen[1][1], '/invoices/in_1/pay' ) );
+$reSeen = array();
+$reInv  = array( 'status' => 'paid', 'id' => 'in_1' );
+check( 'riattiva (Stripe): premuto due volte, fattura già pagata → nessun secondo addebito', 'paid' === Stripe::payOpenInvoice( 'sub_1' ) && 1 === count( $reSeen ) );
+$reInv  = array( 'status' => 'open', 'id' => 'in_2' );
+$reCode = 402;
+check( 'riattiva (Stripe): carta rifiutata → declined', 'declined' === Stripe::payOpenInvoice( 'sub_1' ) );
+$reCode = 200;
+$reSub  = array( 'status' => 'canceled' );
+check( 'riattiva (Stripe): abbonamento chiuso → non c\'è nulla da pagare qui', 'unavailable' === Stripe::payOpenInvoice( 'sub_1' ) );
+$reSub  = array( 'status' => 'past_due' );
+$reOrd  = $cdb->one( 'SELECT * FROM orders WHERE id = ?', array( $ord['id'] ) );
+$reSeen = array();
+check( 'riattiva: importo cambiato rispetto a quello mostrato → non si addebita nulla', null !== throwsUser( function () use ( $cdb, $cbill, $reOrd ) { SaasCheckout::reactivate( $cdb, $cbill, $reOrd, 1 ); } ) && array() === $reSeen );
+$reSeen = array();
+check( 'riattiva: pagamento riuscito → nessun indirizzo da aprire', null === SaasCheckout::reactivate( $cdb, $cbill, $reOrd, (int) json_decode( (string) $reOrd['quote'], true )['total'] ) && 'POST' === $reSeen[1][0] );
+$reCode = 402;
+check( 'riattiva: rifiuto della carta → messaggio per il cliente', null !== throwsUser( function () use ( $cdb, $cbill, $reOrd ) { SaasCheckout::reactivate( $cdb, $cbill, $reOrd ); } ) );
+Http::$transport = $reTrans;
+// Nuovo ordine per la stessa associazione (Riattiva dopo la scadenza): niente benvenuto, ordine vecchio sostituito, gestionale attivo.
+$reNew = Orders::open( $cdb, (string) $reOrd['customer_id'], (string) $reOrd['plan'], (string) $reOrd['period'], (int) $reOrd['members'], Orders::addonsOf( (array) json_decode( (string) $reOrd['quote'], true ) ), null );
+$cdb->run( 'UPDATE orders SET org_ref = ?, provider = ? WHERE id = ?', array( $reOrd['org_ref'], 'stripe', $reNew['id'] ) );
+$mails = array();
+SaasCheckout::paid( $cdb, $reNew['id'], 'sub_9', 'cus_1', 5000300 );
+check( 'riattiva (nuovo ordine): una sola email di conferma, nessun benvenuto; ordine vecchio sostituito; stessa associazione', 1 === count( $mails ) && false !== stripos( $mails[0][1], 'rinnovo' ) && 'replaced' === $cdb->one( 'SELECT status FROM orders WHERE id = ?', array( $reOrd['id'] ) )['status'] && 'active' === $cdb->one( 'SELECT status FROM orders WHERE id = ?', array( $reNew['id'] ) )['status'] && 'active' === Portale\SaasAccount::stateOf( $cdb, (string) $cdb->one( 'SELECT org_id FROM saas_orgs WHERE ref = ?', array( $reOrd['org_ref'] ) )['org_id'] ) );
+$cdb->run( "UPDATE orders SET status = 'active' WHERE id = ?", array( $reOrd['id'] ) );
+$reOrgId = (string) $cdb->one( 'SELECT org_id FROM saas_orgs WHERE ref = ?', array( $reOrd['org_ref'] ) )['org_id'];
+$cdb->run( 'DELETE FROM saas_outbox WHERE org_id = ? AND rev = 4', array( $reOrgId ) );
+$cdb->run( 'UPDATE saas_orgs SET rev = 3 WHERE ref = ?', array( $reOrd['org_ref'] ) );
+$cdb->run( 'DELETE FROM orders WHERE id = ?', array( $reNew['id'] ) );
+$mails = array();
+check( 'riattiva: il pulsante c\'è se in ritardo col pagamento o scaduto, non se tutto è in regola', null !== Portale\SaasAccount::reactivation( $rrow ) && true === Portale\SaasAccount::reactivation( $rrow )['pay_now'] && null === Portale\SaasAccount::reactivation( array( 'state' => 'active' ) + $rrow ) && null !== Portale\SaasAccount::reactivation( array( 'state' => 'active', 'until' => '2020-01-01', 'provider' => 'paypal' ) + $rrow, null, 1700000000 ) && null === Portale\SaasAccount::reactivation( array( 'state' => 'pending' ) + $rrow ) );
+check( 'riattiva: dati conservati 180 giorni dal giorno dopo la scadenza', '2020-06-30' === Portale\SaasAccount::reactivation( array( 'until' => '2020-01-01', 'state' => 'suspended' ) + $rrow )['delete_on'] );
 SaasCheckout::event( $cdb, 'stripe', 'sub_1', 'cancelled', 5000200 );
 check( 'disdetta: cancelled; riferimento sconosciuto → non è nostro', 'cancelled' === json_decode( (string) $cdb->one( 'SELECT body FROM saas_outbox WHERE rev = 4' )['body'], true )['status'] && false === SaasCheckout::event( $cdb, 'stripe', 'altro', 'renewed' ) );
 // Email di scadenza e sospensione (lavoro giornaliero): una per scadenza, niente a sorpresa per le scadenze vecchie.

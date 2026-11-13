@@ -44,7 +44,13 @@ $csrf = Portale\App::csrf();
 			<?php if ( '' !== $g['until'] ) : ?><div><span><?php echo ! empty( $g['cancel_at_period_end'] ) ? 'Attivo fino al' : 'Prossimo rinnovo'; ?></span><b><?php echo e( date_it( $g['until'] ) ); ?></b></div><?php endif; ?>
 		</div>
 		<?php if ( 'pending' === $g['state'] ) : ?><p class="hint">Stiamo preparando il gestionale: di solito basta qualche minuto. Ricarica la pagina tra poco.</p><?php endif; ?>
+		<?php if ( ! empty( $g['re'] ) ) : $re = $g['re']; ?>
+		<p class="hint"><b>Il gestionale di <?php echo e( $g['org_name'] ); ?> è sospeso<?php echo '' !== $re['since'] ? ' dal ' . e( date_it( $re['since'] ) ) : ''; ?>.</b><?php echo '' !== $re['delete_on'] ? ' I dati sono al sicuro fino al ' . e( date_it( $re['delete_on'] ) ) . '.' : ''; ?></p>
+		<?php endif; ?>
 		<div class="actions">
+			<?php if ( ! empty( $g['re'] ) ) : ?>
+			<form method="post" action="/account/gestionale-riattiva" onsubmit="<?php echo js_confirm( 'Riattivi il piano ' . $g['plan'] . ': ' . ( $g['re']['pay_now'] ? 'paghi ' . money( $g['re']['total'] ) . ' adesso e il gestionale torna subito disponibile.' : 'ti portiamo al pagamento di ' . money( $g['re']['total'] ) . ' e il gestionale torna disponibile appena è fatto.' ) ); ?>"><input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>"><input type="hidden" name="id" value="<?php echo e( $g['id'] ); ?>"><input type="hidden" name="seen_total" value="<?php echo (int) $g['re']['total']; ?>"><button class="btn" type="submit">Riattiva</button></form>
+			<?php endif; ?>
 			<?php if ( '' !== $g['url'] && 'pending' !== $g['state'] ) : ?><a class="btn" href="<?php echo e( $g['url'] ); ?>">Apri il gestionale</a><?php endif; ?>
 			<?php if ( Portale\SaasAccount::manageEnabled() && 'pending' !== $g['state'] ) : ?><a class="btn alt" href="/account/gestionale/<?php echo e( $g['id'] ); ?>">Gestisci</a><?php endif; ?>
 			<?php if ( 'stripe' === $g['provider'] && $g['provider_customer'] ) : ?>

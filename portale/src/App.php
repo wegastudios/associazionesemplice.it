@@ -325,6 +325,24 @@ final class App {
 			SaasAccount::cancel( $this->db, $o );
 			$_SESSION['acc_flash'] = 'Rinnovo disdetto: il gestionale resta attivo fino alla scadenza già pagata.';
 			header( 'Location: /account#gestionale', true, 303 );
+		} elseif ( ! $get && '/account/gestionale-riattiva' === $path ) {
+			$gid = (string) $this->in( 'id' );
+			$row = null;
+			foreach ( SaasAccount::forCustomer( $this->db, $this->customerId() ) as $g ) {
+				if ( $g['id'] === $gid ) {
+					$row = $g;
+				}
+			}
+			if ( ! $row || ! SaasAccount::reactivation( $row, $this->db ) ) {
+				throw new UserError( 'Questo gestionale non ha bisogno di essere riattivato.' );
+			}
+			$url = SaasCheckout::reactivate( $this->db, $this->billing, $row, (int) $this->in( 'seen_total' ) );
+			if ( null === $url ) {
+				$_SESSION['acc_flash'] = 'Fatto: il pagamento è andato a buon fine. Il gestionale torna attivo tra pochi istanti: ricarica la pagina tra poco.';
+				header( 'Location: /account#gestionale', true, 303 );
+			} else {
+				header( 'Location: ' . $url, true, 303 );
+			}
 		} elseif ( ! $get && '/account/gestionale-fatturazione' === $path ) {
 			$o = SaasAccount::mine( $this->db, $this->customerId(), (string) $this->in( 'id' ) );
 			if ( ! $o || 'stripe' !== $o['provider'] || empty( $o['provider_customer'] ) ) {
@@ -722,7 +740,7 @@ final class App {
 			'name' => (string) ( $this->db->one( 'SELECT name FROM customers WHERE id = ?', array( $cid ) )['name'] ?? '' ), 'has_password' => $this->auth->hasPassword( $cid ), 'via_link' => ! empty( $_SESSION['via_link'] ), 'flash' => $flash,
 			'subs' => $subs, 'email' => $this->customerEmail( $cid ), 'trial' => $trial, 'trial_days' => Settings::limit( 'trial_days' ),
 			'trial_label' => (string) Config::get( 'plans.' . Config::get( 'trial_plan', 'full' ) . '.label', 'Pro' ),
-			'areas' => $idn ? $idn['areas'] : array(), 'saas' => SaasAccount::forCustomer( $this->db, $cid ), 'billing' => $this->billing, 'is_admin' => ! empty( $_SESSION['staff'] ),
+			'areas' => $idn ? $idn['areas'] : array(), 'saas' => array_map( function ( $r ) { $r['re'] = SaasAccount::reactivation( $r, $this->db ); return $r; }, SaasAccount::forCustomer( $this->db, $cid ) ), 'billing' => $this->billing, 'is_admin' => ! empty( $_SESSION['staff'] ),
 			'releases' => array_combine( Releases::entitled( $subs ), array_map( function ( $p ) { return Releases::all( $this->db, $p ); }, Releases::entitled( $subs ) ) ) ?: array(),
 		) );
 	}
