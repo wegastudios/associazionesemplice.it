@@ -52,10 +52,10 @@ it('rifiuta campi sconosciuti, importi non interi e testo con HTML', function (a
 
         return $c;
     }]],
-        foreach ($c['plans'] as $i => $plan) {
+    'nessun piano visibile' => [['apply' => function (array $c): array {
+        foreach (array_keys($c['plans']) as $i) {
             $c['plans'][$i]['visible'] = false;
         }
-        $c['plans'][0]['visible'] = false;
 
         return $c;
     }]],
