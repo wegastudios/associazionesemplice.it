@@ -59,7 +59,7 @@ final readonly class PeopleTransferController
             'rows' => array_map(static fn (array $p): array => [
                 'where' => ($p['row']['sheet'] !== '' ? $p['row']['sheet'].' ' : '').$p['row']['line'],
                 'name' => trim($p['row']['last'].' '.$p['row']['first']),
-                'type' => $p['type'] !== null ? MemberType::from($p['type'])->label() : '',
+                'type' => $p['type'] !== null ? ($p['row']['entity'] ? 'Ente · ' : '').MemberType::from($p['type'])->label() : '',
                 'action' => $p['action'],
                 'message' => $p['message'],
             ], $preview['plan']),
@@ -100,7 +100,7 @@ final readonly class PeopleTransferController
     {
         return Inertia::render('Soci/Importa', [
             'types' => array_map(static fn (MemberType $t): array => ['value' => $t->value, 'label' => $t->label()], self::DEFAULT_TYPES),
-            'columns' => ['Numero tessera', 'Tipo', 'Nome', 'Cognome', 'Email', 'Cellulare', 'Codice fiscale', 'Data di nascita', 'Luogo di nascita', 'Indirizzo, CAP, Comune, Provincia', 'Data di ingresso', 'Ospite di', 'Tutore', 'Note', '2025, 2026… (una crocetta per ogni anno di iscrizione)'],
+            'columns' => ['Numero tessera', 'Tipo', 'Nome', 'Cognome', 'Email', 'Cellulare', 'Codice fiscale', 'Data di nascita', 'Luogo di nascita', 'Indirizzo, CAP, Comune, Provincia', 'Data di ingresso', 'Ospite di', 'Tutore', 'Tipo soggetto (persona o ente)', 'Denominazione (enti)', 'Stessa sezione RUNTS (enti)', 'Note', '2025, 2026… (una crocetta per ogni anno di iscrizione)'],
             'preview' => $preview,
             'result' => $result,
         ]);

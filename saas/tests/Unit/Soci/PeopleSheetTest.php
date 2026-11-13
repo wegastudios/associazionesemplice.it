@@ -207,3 +207,41 @@ it('riconosce i tipi scritti a parole', function (): void {
         ->and(PeopleSheet::typeFromText('genitore'))->toBe(MemberType::Guardian)
         ->and(PeopleSheet::typeFromText('boh'))->toBeNull();
 });
+
+// Soci enti (denominazione, codice fiscale di 11 cifre con controllo o 16 caratteri, stessa sezione del RUNTS).
+it('legge un ente: denominazione al posto di nome e cognome, sezione sì o no', function (): void {
+    $r = sheetRows("Tipo soggetto;Denominazione;Codice fiscale;Stessa sezione RUNTS;Email\nente;Pro Loco Beta;00000000000;sì;info@beta.it\n");
+
+    expect($r[0]['entity'])->toBeTrue()->and($r[0]['first'])->toBe('')->and($r[0]['last'])->toBe('Pro Loco Beta')
+        ->and($r[0]['same_section'])->toBeTrue();
+});
+
+it('controlla il codice fiscale dell\'ente, la denominazione e gli ospiti', function (): void {
+    expect(PeopleSheet::entityTaxValid('12345678903'))->toBeTrue()
+        ->and(PeopleSheet::entityTaxValid('12345678900'))->toBeFalse()
+        ->and(PeopleSheet::entityTaxValid('RSSMRA80A01H501U'))->toBeTrue()
+        ->and(PeopleSheet::entityTaxValid('1234'))->toBeFalse();
+
+    $plans = sheetPlan("Tipo soggetto;Denominazione;Codice fiscale;Stessa sezione RUNTS;Tipo;Email\n"
+        ."ente;Pro Loco Beta;12345678903;sì;ordinario;info@beta.it\n"
+        ."ente;;12345678903;;ordinario;a@beta.it\n"
+        ."ente;Circolo Gamma;12345678900;;ordinario;b@beta.it\n"
+        ."ente;Club Delta;12345678903;forse;ordinario;c@beta.it\n"
+        ."ente;Ospite Srl;;;ospite;d@beta.it\n"
+        ."boh;Altro;;;ordinario;e@beta.it\n");
+
+    expect(array_column($plans, 'action'))->toBe(['create', 'error', 'error', 'error', 'error', 'error'])
+        ->and($plans[1]['message'])->toContain('Denominazione')
+        ->and($plans[2]['message'])->toContain('Codice fiscale dell\'ente non valido')
+        ->and($plans[3]['message'])->toContain('Stessa sezione')
+        ->and($plans[4]['message'])->toBe('Un ospite non può essere un ente')
+        ->and($plans[5]['message'])->toContain('Tipo soggetto non riconosciuto');
+});
+
+it('non scambia una persona con un ente già in anagrafica', function (): void {
+    $existing = [['id' => 'e1', 'card' => null, 'first' => '', 'last' => 'Pro Loco Beta', 'email' => null, 'tax' => '12345678903', 'type' => 'ordinary', 'entity' => true]];
+    $plans = sheetPlan("Tipo soggetto;Denominazione;Nome;Cognome;Codice fiscale\nente;Pro Loco Beta;;;12345678903\npersona;;Mario;Rossi;12345678903\n", MemberType::Ordinary, $existing);
+
+    expect($plans[0]['action'])->toBe('update')->and($plans[0]['matched_id'])->toBe('e1')
+        ->and($plans[1]['action'])->toBe('error')->and($plans[1]['message'])->toContain('è un ente, non una persona');
+});
