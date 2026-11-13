@@ -41,9 +41,9 @@ $labels = array( 'stripe' => 'Carta (Stripe)', 'paypal' => 'PayPal' );
 			<input id="members" type="number" name="members" min="1" max="100000" inputmode="numeric" value="<?php echo (int) $v['members']; ?>">
 			<?php if ( $addons ) : ?>
 				<label>Componenti in più</label>
-				<?php foreach ( $addons as $a ) : ?>
-					<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin:6px 0"><label for="ad-<?php echo e( $a['code'] ); ?>" style="font-weight:400"><?php echo e( $a['name'] ?? $a['code'] ); ?></label>
-					<input id="ad-<?php echo e( $a['code'] ); ?>" type="number" name="addons[<?php echo e( $a['code'] ); ?>]" min="0" max="1000" inputmode="numeric" value="<?php echo (int) ( $v['addons'][ $a['code'] ] ?? 0 ); ?>" style="max-width:6rem"></div>
+				<?php foreach ( $addons as $a ) : $why = Portale\Catalog::addonBlock( $doc, (string) $v['plan'], $a ); ?>
+					<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin:6px 0"><label for="ad-<?php echo e( $a['code'] ); ?>" style="font-weight:400"><?php echo e( $a['name'] ?? $a['code'] ); ?><?php echo null !== $why ? '<br><small class="muted">' . e( $why ) . '</small>' : ''; ?></label>
+					<input id="ad-<?php echo e( $a['code'] ); ?>" type="number" name="addons[<?php echo e( $a['code'] ); ?>]" min="0" max="1000" inputmode="numeric" value="<?php echo null !== $why ? 0 : (int) ( $v['addons'][ $a['code'] ] ?? 0 ); ?>"<?php echo null !== $why ? ' disabled' : ''; ?> style="max-width:6rem"></div>
 				<?php endforeach; ?>
 			<?php endif; ?>
 			<label for="promo">Codice promozionale <span class="muted">(facoltativo)</span></label>
