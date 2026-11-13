@@ -129,6 +129,9 @@ const showAccount = ref(false);
 
         <main class="mx-auto max-w-5xl px-4 pb-28 pt-5 lg:px-8 lg:pb-12 lg:pt-8">
             <p v-if="user" class="sr-only">Collegato come {{ user.name }}</p>
+            <p v-if="org?.read_only" role="status" class="mb-4 rounded-lg bg-giallo px-4 py-3 text-sm font-semibold text-warn-ink">
+                La prova è finita: puoi consultare i dati ma non modificarli né esportarli. Scegli un piano dal portale per tornare a lavorare.
+            </p>
             <FlashMessages />
             <slot />
         </main>

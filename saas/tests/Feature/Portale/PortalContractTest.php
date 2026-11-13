@@ -253,3 +253,19 @@ it('mostra a chi ha solo associazioni sospese la pagina del pagamento, senza dat
     $this->get('/associazioni')->assertRedirect('/associazione-sospesa');
     $this->get('/associazione-sospesa')->assertOk()->assertSee('Polisportiva Alfa');
 });
+
+it('dopo la prova senza piano il gestionale resta in sola lettura, senza esportazioni', function (): void {
+    $orgId = ($this->provision)()->json('org_id');
+    $user = $this->createUser('anna@example.com', twoFactor: true);
+    $this->addOperator(Org::query()->findOrFail($orgId), $user);
+    $this->putJson("/api/portale/v1/orgs/{$orgId}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($orgId, 'sub_123', 1, ['status' => 'trial', 'trial_ends' => now()->subDays(2)->toDateString()]))])->assertOk();
+    DB::table('core.orgs')->where('id', $orgId)->update(['status' => 'suspended']);
+
+    $this->actingAs($user)->get('/gestionale')->assertOk();
+    $this->post('/gestionale/configurazione/rimanda')->assertForbidden();
+    $this->get('/gestionale/esportazione')->assertForbidden();
+
+    // Se invece ha avuto un piano e non ha pagato: solo la pagina del pagamento.
+    DB::table('core.org_entitlements')->where('org_id', $orgId)->update(['status' => 'suspended']);
+    $this->get('/gestionale')->assertRedirect('/associazione-sospesa');
+});

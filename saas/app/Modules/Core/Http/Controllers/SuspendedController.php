@@ -25,7 +25,7 @@ final readonly class SuspendedController
 
         return Inertia::render('Orgs/Sospesa', [
             'orgs' => $this->memberships->suspendedNames($user->id),
-            'portalUrl' => rtrim((string) config('saas.portal.url'), '/').'/account',
+            'portalUrl' => rtrim(config()->string('saas.portal.url'), '/').'/account',
         ]);
     }
 }

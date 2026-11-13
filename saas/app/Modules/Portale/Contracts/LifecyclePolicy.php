@@ -17,4 +17,10 @@ interface LifecyclePolicy
     public function exportsAllowed(string $orgId): bool;
 
     public function accountantLinkAllowed(string $orgId): bool;
+
+    /**
+     * Prova finita senza un piano, nei giorni prima della cancellazione: si entra e si consulta, non si inserisce
+     * né si modifica, non si esporta; si può acquistare un piano dal portale.
+     */
+    public function readOnly(string $orgId): bool;
 }
