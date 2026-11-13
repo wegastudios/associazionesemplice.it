@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Piattaforma\Console;
 
 use App\Modules\Piattaforma\Catalogo\CatalogPublisher;
-use App\Modules\Piattaforma\Contracts\Catalog;
 use App\Modules\Piattaforma\Models\PlatformStaff;
 use Illuminate\Console\Command;
+use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
@@ -22,7 +22,7 @@ final class PrepareTiersDraftCommand extends Command
 
     protected $description = 'Prepara nella bozza del catalogo i tre piani fissi (Piccola, Media, Grande), senza pubblicare';
 
-    public function handle(CatalogPublisher $publisher, Catalog $published): int
+    public function handle(CatalogPublisher $publisher, DatabaseManager $db): int
     {
         $staff = PlatformStaff::query()->where('email', Str::lower((string) $this->argument('email')))->first();
         if ($staff === null) {
@@ -37,7 +37,7 @@ final class PrepareTiersDraftCommand extends Command
 
         $draft['features'] = $seed['features'] ?? [];
         $draft['terms'] ??= $seed['terms'] ?? [];
-        $draft['plans'] = self::plans(self::rows($draft['plans'] ?? null), self::rows($seed['plans'] ?? null), $published);
+        $draft['plans'] = self::plans(self::rows($draft['plans'] ?? null), self::rows($seed['plans'] ?? null), $db);
         $draft['addons'] = self::addons(self::rows($draft['addons'] ?? null), self::rows($seed['addons'] ?? null));
 
         try {
@@ -58,7 +58,7 @@ final class PrepareTiersDraftCommand extends Command
      * @param  list<array<string, mixed>>  $seed
      * @return list<array<string, mixed>>
      */
-    private static function plans(array $current, array $seed, Catalog $catalog): array
+    private static function plans(array $current, array $seed, DatabaseManager $db): array
     {
         $known = [];
         $latest = null;
@@ -83,7 +83,7 @@ final class PrepareTiersDraftCommand extends Command
             $key = self::key($plan);
             if (! isset($known[$key])) {
                 $plans[] = $plan;
-            } elseif (is_string($plan['code'] ?? null) && is_int($plan['plan_version'] ?? null) && $catalog->plan($plan['code'], $plan['plan_version']) === null) {
+            } elseif (is_string($plan['code'] ?? null) && is_int($plan['plan_version'] ?? null) && ! self::wasPublished($db, $plan['code'], $plan['plan_version'])) {
                 // Già in bozza ma mai pubblicato: si aggiorna ai testi del file (una versione pubblicata non si tocca).
                 foreach ($plans as $i => $existing) {
                     if (self::key($existing) === $key) {
@@ -122,6 +122,17 @@ final class PrepareTiersDraftCommand extends Command
         }
 
         return array_merge($out, array_values($byCode));
+    }
+
+    /** Una versione è «pubblicata» solo se sta in una revisione salvata: il listino di partenza non conta. */
+    private static function wasPublished(DatabaseManager $db, string $code, int $version): bool
+    {
+        $found = $db->connection('pgsql')->selectOne(
+            'SELECT 1 AS ok FROM core.catalog_revisions r, jsonb_array_elements(r.document->\'plans\') AS p(value) WHERE p.value->>\'code\' = ? AND (p.value->>\'plan_version\')::int = ? LIMIT 1',
+            [$code, $version],
+        );
+
+        return $found !== null;
     }
 
     /** @param  array<string, mixed>  $plan */
