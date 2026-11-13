@@ -119,8 +119,8 @@ final class Emails {
 			),
 			'saas_trial_started' => array(
 				'label' => 'Prova gestionale: benvenuto', 'when' => 'Subito dopo l\'avvio della prova gratuita del gestionale (testo scritto dal portale, da rivedere con l\'audit).', 'vars' => array( 'nome', 'associazione', 'giorni', 'fine_prova', 'gestionale_url', 'link_password', 'piani_url', 'account_url', 'supporto_url', 'email' ),
-				'subject' => 'Benvenuto: la prova di {associazione} è partita',
-				'body' => "Ciao {nome},\ngrazie per aver scelto Associazione Semplice. La prova gratuita di {giorni} giorni del gestionale di {associazione} è partita e finisce il {fine_prova}.\n\nScegli la tua password da qui (scrivi questa email e ti arriva il link per sceglierla):\n{link_password}\n\nL'indirizzo del tuo gestionale è {gestionale_url}. Salvalo tra i preferiti: entrerai sempre da lì.\n\nTi avvisiamo prima della fine. Per continuare dopo la prova scegli un piano da {piani_url}: tutto quello che hai inserito resta com'è.",
+				'subject' => 'La prova di {associazione} è partita: hai tempo fino al {fine_prova}',
+				'body' => "Ciao {nome},\nla prova gratuita del gestionale di {associazione} è partita. Dura {giorni} giorni, fino al {fine_prova}, e non ti chiediamo la carta.\n\nPer entrare scegli la tua password da qui:\n{link_password}\nSi apre una pagina: scrivi {email} e ti mandiamo il link per scegliere la password.\n\nL'indirizzo del tuo gestionale è {gestionale_url}. Salvalo tra i preferiti: entrerai sempre da lì.\n\nDurante la prova usi tutto il gestionale. Due cose si sbloccano solo con un piano: scaricare i dati e dare l'accesso al commercialista.\n\nAlla fine della prova non ti addebitiamo nulla. Se non scegli un piano, per 7 giorni puoi ancora entrare e consultare, poi i dati della prova vengono cancellati. Ti avvisiamo prima.\n\nPer vedere i piani: {piani_url}",
 			),
 			// Fine della prova senza un piano (testi dell'audit, 13/11/2026). Dopo la prova 7 giorni di sola lettura, poi i dati si cancellano.
 			// {offerta} è il paragrafo dello sconto: lo scrive il sistema e c'è solo se lo sconto è impostato (la misura la decide la titolare).
@@ -137,7 +137,7 @@ final class Emails {
 			'saas_trial_p3' => array(
 				'label' => 'Prova gestionale: giorno della fine', 'when' => 'Il giorno in cui finisce la prova, senza un piano.', 'vars' => array( 'nome', 'associazione', 'fine_prova', 'data_cancellazione_prova', 'sconto', 'codice_sconto', 'scadenza_sconto', 'offerta', 'piani_url', 'account_url', 'supporto_url', 'email' ),
 				'subject' => 'La prova di {associazione} è finita: i dati restano fino al {data_cancellazione_prova}',
-				'body' => "Ciao {nome},\nla prova è finita. Fino al {data_cancellazione_prova} puoi ancora entrare nel gestionale di {associazione} e consultare tutto, ma non inserire né modificare.\n\nQuello che hai inserito è ancora al suo posto fino al {data_cancellazione_prova}. Se scegli un piano prima di quel giorno, ritrovi tutto.\n\n{offerta}\n\nScegli il piano: {piani_url}",
+				'body' => "Ciao {nome},\nla prova è finita. Fino al {data_cancellazione_prova} puoi ancora entrare nel gestionale di {associazione} e consultare tutto, ma non inserire né modificare.\n\nSe scegli un piano prima di quel giorno, riprendi da dove eri arrivato.\n\n{offerta}\n\nScegli il piano: {piani_url}",
 			),
 			'saas_trial_p4' => array(
 				'label' => 'Prova gestionale: 3 giorni dopo la fine', 'when' => '3 giorni dopo la fine della prova, senza un piano.', 'vars' => array( 'nome', 'associazione', 'fine_prova', 'data_cancellazione_prova', 'sconto', 'codice_sconto', 'scadenza_sconto', 'offerta', 'piani_url', 'account_url', 'supporto_url', 'email' ),
@@ -154,16 +154,16 @@ final class Emails {
 				'subject' => 'Abbiamo cancellato i dati della prova di {associazione}',
 				'body' => "Ciao {nome},\ncome ti avevamo scritto, oggi abbiamo cancellato i dati della prova di {associazione}. Non conserviamo più nulla di quello che avevi inserito.\n\nIl tuo account su associazionesemplice.it resta: se un giorno vorrai ripartire, lo fai da {piani_url}.\n\nGrazie per aver provato Associazione Semplice.",
 			),
-			// Avvisi prima della cancellazione dei dati di un gestionale scaduto (testi scritti dal portale, da rivedere con l'audit). Dopo la scadenza non si esporta.
+			// Avvisi prima della cancellazione dei dati di un gestionale scaduto (testi rivisti dall'audit, 13/11/2026). Dopo la scadenza oggi non si esporta: il titolare deve ancora decidere se lasciare lo scarico dati durante i 180 giorni.
 			'saas_purge_15' => array(
 				'label' => 'Gestionale scaduto: 15 giorni prima della cancellazione dei dati', 'when' => '15 giorni prima della cancellazione dei dati di un gestionale scaduto e non rinnovato.', 'vars' => array( 'nome', 'associazione', 'piano', 'scadenza', 'data_cancellazione', 'account_url', 'supporto_url', 'email' ),
 				'subject' => 'Tra 15 giorni cancelliamo i dati di {associazione}',
-				'body' => "Ciao {nome},\nil piano {piano} di {associazione} è scaduto il {scadenza} e il gestionale è sospeso. Il {data_cancellazione}, tra 15 giorni, cancelliamo i dati: soci, movimenti e attività. La cancellazione non si può annullare.\n\nSe vuoi tenerli, apri {account_url} e premi «Riattiva»: ritrovi tutto com'era. Per dubbi scrivici da {supporto_url}.",
+				'body' => "Ciao {nome},\nil piano {piano} di {associazione} è scaduto il {scadenza} e da allora il gestionale è sospeso.\n\nTra 15 giorni, il {data_cancellazione}, cancelliamo tutti i dati: soci, movimenti, attività e documenti. Dopo non si possono recuperare.\n\nVuoi tenerli? Apri {account_url} e premi «Riattiva»: rinnovi il piano e ritrovi tutto com'era.\n\nNon ti servono più? Non devi fare nulla.\n\nHai un dubbio? Scrivici da {supporto_url}.",
 			),
 			'saas_purge_1' => array(
 				'label' => 'Gestionale scaduto: il giorno prima della cancellazione dei dati', 'when' => 'Il giorno prima della cancellazione dei dati di un gestionale scaduto e non rinnovato.', 'vars' => array( 'nome', 'associazione', 'piano', 'scadenza', 'data_cancellazione', 'account_url', 'supporto_url', 'email' ),
 				'subject' => 'Domani cancelliamo i dati di {associazione}',
-				'body' => "Ciao {nome},\ndomani, {data_cancellazione}, cancelliamo i dati del gestionale di {associazione}: soci, movimenti e attività. La cancellazione non si può annullare.\n\nSe vuoi tenerli, riattiva il gestionale oggi da {account_url} («Riattiva»). Se ti serve una mano scrivici da {supporto_url}.",
+				'body' => "Ciao {nome},\ndomani, {data_cancellazione}, cancelliamo tutti i dati del gestionale di {associazione}: soci, movimenti, attività e documenti. Dopo non si possono recuperare.\n\nPer tenerli, oggi apri {account_url} e premi «Riattiva»: rinnovi il piano e ritrovi tutto com'era.\n\nSe ti serve una mano scrivici da {supporto_url}.",
 			),
 			'saas_cancelled' => array(
 				'label' => 'Gestionale: disdetta registrata', 'when' => 'Il cliente disdice il rinnovo del gestionale dall\'area clienti.', 'vars' => array( 'nome', 'associazione', 'piano', 'scadenza', 'account_url', 'supporto_url', 'email' ),
