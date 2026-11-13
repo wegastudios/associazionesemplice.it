@@ -294,14 +294,14 @@ asem_ok( false !== strpos( $lic_notice, 'notice-warning' ) && false === strpos( 
 // livelli di licenza: contabile (senza le funzioni fiscali) e fiscale
 $pl_fiscal = array( 'vat', 'fivepm', 'fiscal' );
 \AssociazioneSemplice\License::set_state( 'active', null, null, 'fiscal' );
-asem_ok( 'fiscal' === License::plan() && \AssociazioneSemplice\Edition::has( 'vat' ) && \AssociazioneSemplice\Edition::has( 'fivepm' ) && \AssociazioneSemplice\Edition::has( 'receipts' ) && \AssociazioneSemplice\Edition::has( 'fiscal' ) && \AssociazioneSemplice\Edition::has( 'payments' ), 'licenza fiscale: tutte le funzioni, anche IVA, 5x1000, ricevute e anni solari' );
+asem_ok( 'fiscal' === License::plan() && \AssociazioneSemplice\Edition::has( 'vat' ) && \AssociazioneSemplice\Edition::has( 'fivepm' ) && \AssociazioneSemplice\Edition::has( 'receipts' ) && \AssociazioneSemplice\Edition::has( 'fiscal' ) && \AssociazioneSemplice\Edition::has( 'payments' ), 'licenza fiscale: tutte le funzioni, anche IVA, 5 per mille, ricevute e anni solari' );
 \AssociazioneSemplice\License::set_state( 'active', null, null, 'accounting' );
 asem_ok( 'accounting' === License::plan(), 'licenza contabile: il livello viene letto' );
 $pl_off = true;
 foreach ( $pl_fiscal as $pf ) {
 	$pl_off = $pl_off && ! \AssociazioneSemplice\Edition::has( $pf );
 }
-asem_ok( $pl_off && \AssociazioneSemplice\Edition::has( 'payments' ) && \AssociazioneSemplice\Edition::has( 'funds' ) && \AssociazioneSemplice\Edition::has( 'reports' ) && \AssociazioneSemplice\Edition::has( 'levels' ) && \AssociazioneSemplice\Edition::has( 'broadcasts' ), 'licenza contabile: niente IVA, 5x1000 e anni solari; ricevute e il resto del Pro restano' );
+asem_ok( $pl_off && \AssociazioneSemplice\Edition::has( 'payments' ) && \AssociazioneSemplice\Edition::has( 'funds' ) && \AssociazioneSemplice\Edition::has( 'reports' ) && \AssociazioneSemplice\Edition::has( 'levels' ) && \AssociazioneSemplice\Edition::has( 'broadcasts' ), 'licenza contabile: niente IVA, 5 per mille e anni solari; ricevute e il resto del Pro restano' );
 asem_ok( ! \AssociazioneSemplice\Fiscal::vat_applies() && false !== strpos( \AssociazioneSemplice\Edition::missing_message( 'vat' ), 'non è compresa nella tua licenza' ), 'licenza contabile: l\'IVA non si applica e il messaggio spiega il livello' );
 asem_ok( in_array( 'asem-fivepm', \AssociazioneSemplice\Edition::missing_pages(), true ) && ! in_array( 'asem-years', \AssociazioneSemplice\Edition::missing_pages(), true ) && ! in_array( 'asem-reports', \AssociazioneSemplice\Edition::missing_pages(), true ), 'licenza contabile: le pagine fiscali spariscono, i report e gli anni solari restano' );
 asem_ok( Admin\ProPage::needed(), 'licenza contabile: la pagina che presenta il livello fiscale è disponibile' );
@@ -1021,17 +1021,17 @@ asem_ok( ! \AssociazioneSemplice\Fiscal::vat_applies() && '' === Settings::get( 
 $wz_feat = array_intersect_key( Settings::all(), Admin\SettingsPage::all_features() ); // l'elenco delle funzioni spegne ciò che non è spuntato: si ripristina dopo il controllo
 Settings::update( array( 'fivepm_enabled' => 1 ) );
 \AssociazioneSemplice\Wizard::apply( array( 'features_present' => '1' ) );
-asem_ok( 1 === (int) Settings::get( 'fivepm_enabled' ), 'procedura: l\'elenco delle funzioni non tocca il 5x1000, che ha il suo passo' );
+asem_ok( 1 === (int) Settings::get( 'fivepm_enabled' ), 'procedura: l\'elenco delle funzioni non tocca il 5 per mille, che ha il suo passo' );
 Settings::update( $wz_feat );
 Settings::update( array( 'fivepm_enabled' => 1 ) );
 \AssociazioneSemplice\Wizard::apply( array( 'adempimenti_present' => '1' ) );
-asem_ok( 0 === (int) Settings::get( 'fivepm_enabled' ), 'procedura: nel passo adempimenti, senza risposta sì il 5x1000 si spegne' );
+asem_ok( 0 === (int) Settings::get( 'fivepm_enabled' ), 'procedura: nel passo adempimenti, senza risposta sì il 5 per mille si spegne' );
 \AssociazioneSemplice\Wizard::apply( array( 'adempimenti_present' => '1', 'fivepm_enabled' => '1' ) );
-asem_ok( 1 === (int) Settings::get( 'fivepm_enabled' ), 'procedura: il 5x1000 si accende dal passo adempimenti' );
+asem_ok( 1 === (int) Settings::get( 'fivepm_enabled' ), 'procedura: il 5 per mille si accende dal passo adempimenti' );
 ob_start();
 Admin\WizardPage::render();
 $wz_html3 = (string) ob_get_clean();
-asem_ok( false !== strpos( $wz_html3, 'Partita IVA' ) && false !== strpos( $wz_html3, 'data-if="has_vat=1"' ) && false !== strpos( $wz_html3, 'name="vat_number"' ) && false !== strpos( $wz_html3, 'data-if="mod[accounting]=1"' ) && false !== strpos( $wz_html3, 'name="fivepm_enabled"' ) && false !== strpos( $wz_html3, 'name="legal_address"' ), 'procedura: passo partita IVA con i campi che compaiono solo se c\'è, e domanda sul 5x1000 legata alla contabilità' );
+asem_ok( false !== strpos( $wz_html3, 'Partita IVA' ) && false !== strpos( $wz_html3, 'data-if="has_vat=1"' ) && false !== strpos( $wz_html3, 'name="vat_number"' ) && false !== strpos( $wz_html3, 'data-if="mod[accounting]=1"' ) && false !== strpos( $wz_html3, 'name="fivepm_enabled"' ) && false !== strpos( $wz_html3, 'name="legal_address"' ), 'procedura: passo partita IVA con i campi che compaiono solo se c\'è, e domanda sul 5 per mille legata alla contabilità' );
 asem_ok( false !== strpos( $wz_html3, 'name="go_import"' ) && false !== strpos( $wz_html3, 'Elenco dei soci' ) && false === strpos( $wz_html3, 'name="mod[import]"' ), 'procedura: passo per importare l\'elenco di soci e ospiti, sempre proposto (le importazioni non si chiedono)' );
 Settings::update( array( 'payment_provider' => 'none', 'bank_enabled' => 0 ) );
 $wz_go = Admin\TechActions::wizard_save( array( 'go_import' => '1' ) );
@@ -5602,33 +5602,33 @@ asem_ok( false !== strpos( Admin\Admin::tabs( 'asem-book' ), 'page=asem-minutes'
 wp_set_current_user( 1 );
 asem_ok( ( \AssociazioneSemplice\Plugin::load_for_action( 'asem_doc' ) && has_action( 'admin_post_asem_doc' ) ) && has_action( 'admin_post_asem_minute_save' ) && has_action( 'admin_post_asem_attendance_save' ) && false !== strpos( \AssociazioneSemplice\Docs::url( 'book' ), 'action=asem_doc' ), 'registri: download e azioni registrati' );
 
-// ---------- 5x1000, guida iniziale, lingue ----------
+// ---------- 5 per mille, guida iniziale, lingue ----------
 wp_set_current_user( 1 );
 $fp_cf = Settings::get( 'tax_code' );
-asem_ok( ! \AssociazioneSemplice\FivePerMille::enabled() && '' === \AssociazioneSemplice\Frontend\ProViews::five_per_mille(), '5x1000: spento di default, il messaggio non compare' );
-asem_render( array( Admin\FivePmPage::class, 'render' ), 'Il 5x1000 è spento' );
+asem_ok( ! \AssociazioneSemplice\FivePerMille::enabled() && '' === \AssociazioneSemplice\Frontend\ProViews::five_per_mille(), '5 per mille: spento di default, il messaggio non compare' );
+asem_render( array( Admin\FivePmPage::class, 'render' ), 'Il 5 per mille è spento' );
 Settings::update( array( 'fivepm_enabled' => 1, 'tax_code' => '12345678901', 'association_name' => 'Associazione Cinque' ) );
 $fp_view = \AssociazioneSemplice\Frontend\ProViews::five_per_mille();
-asem_ok( false !== strpos( $fp_view, '12345678901' ) && false !== strpos( $fp_view, 'Associazione Cinque' ) && false !== strpos( do_shortcode( '[associazionesemplice_cinquepermille]' ), '12345678901' ), '5x1000: il messaggio ha il codice fiscale ed è disponibile come shortcode' );
+asem_ok( false !== strpos( $fp_view, '12345678901' ) && false !== strpos( $fp_view, 'Associazione Cinque' ) && false !== strpos( do_shortcode( '[associazionesemplice_cinquepermille]' ), '12345678901' ), '5 per mille: il messaggio ha il codice fiscale ed è disponibile come shortcode' );
 Settings::update( array( 'fivepm_text' => 'Firma per {associazione} con {codice_fiscale}.' ) );
-asem_ok( 'Firma per Associazione Cinque con 12345678901.' === \AssociazioneSemplice\FivePerMille::text(), '5x1000: messaggio personalizzabile con i segnaposto' );
+asem_ok( 'Firma per Associazione Cinque con 12345678901.' === \AssociazioneSemplice\FivePerMille::text(), '5 per mille: messaggio personalizzabile con i segnaposto' );
 Settings::update( array( 'tax_code' => '' ) );
-asem_ok( '' === \AssociazioneSemplice\Frontend\ProViews::five_per_mille(), '5x1000: senza codice fiscale il messaggio non compare' );
+asem_ok( '' === \AssociazioneSemplice\Frontend\ProViews::five_per_mille(), '5 per mille: senza codice fiscale il messaggio non compare' );
 Settings::update( array( 'tax_code' => '12345678901' ) );
 $fp_1 = \AssociazioneSemplice\FivePerMille::add( 2023, '1.234,56', 80, $in_day( -300 ) );
 $fp_2 = \AssociazioneSemplice\FivePerMille::add( 2022, '900', 60, $in_day( -400 ) );
 $fp_r1 = \AssociazioneSemplice\FivePerMille::get( $fp_1 );
 $fp_r2 = \AssociazioneSemplice\FivePerMille::get( $fp_2 );
-asem_ok( 123456 === (int) $fp_r1['amount_cents'] && 'open' === \AssociazioneSemplice\FivePerMille::status( $fp_r1 ) && 'overdue' === \AssociazioneSemplice\FivePerMille::status( $fp_r2 ), '5x1000: contributi con scadenza del rendiconto a 12 mesi' );
-asem_ok( 1 === count( \AssociazioneSemplice\FivePerMille::alerts() ) && 'overdue' === \AssociazioneSemplice\FivePerMille::alerts()[0]['status'], '5x1000: avviso per il rendiconto scaduto' );
-asem_render( array( Admin\DashboardPage::class, 'render' ), '5x1000: 1 contributo' );
-asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\FivePerMille::add( 2023, '10', 1, '2026-01-01' ); } ) && null !== asem_throws( function () { \AssociazioneSemplice\FivePerMille::add( 1990, '10', 1, '2026-01-01' ); } ) && null !== asem_throws( function () { \AssociazioneSemplice\FivePerMille::add( 2021, '0', 1, '2026-01-01' ); } ) && null !== asem_throws( function () { \AssociazioneSemplice\FivePerMille::add( 2021, '10', 1, 'ieri' ); } ), '5x1000: anno già registrato, anno, importo e data validi' );
+asem_ok( 123456 === (int) $fp_r1['amount_cents'] && 'open' === \AssociazioneSemplice\FivePerMille::status( $fp_r1 ) && 'overdue' === \AssociazioneSemplice\FivePerMille::status( $fp_r2 ), '5 per mille: contributi con scadenza del rendiconto a 12 mesi' );
+asem_ok( 1 === count( \AssociazioneSemplice\FivePerMille::alerts() ) && 'overdue' === \AssociazioneSemplice\FivePerMille::alerts()[0]['status'], '5 per mille: avviso per il rendiconto scaduto' );
+asem_render( array( Admin\DashboardPage::class, 'render' ), '5 per mille: 1 contributo' );
+asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\FivePerMille::add( 2023, '10', 1, '2026-01-01' ); } ) && null !== asem_throws( function () { \AssociazioneSemplice\FivePerMille::add( 1990, '10', 1, '2026-01-01' ); } ) && null !== asem_throws( function () { \AssociazioneSemplice\FivePerMille::add( 2021, '0', 1, '2026-01-01' ); } ) && null !== asem_throws( function () { \AssociazioneSemplice\FivePerMille::add( 2021, '10', 1, 'ieri' ); } ), '5 per mille: anno già registrato, anno, importo e data validi' );
 \AssociazioneSemplice\FivePerMille::report( $fp_2, $today, 'Acquisto di materiali per i corsi.' );
-asem_ok( 'reported' === \AssociazioneSemplice\FivePerMille::status( \AssociazioneSemplice\FivePerMille::get( $fp_2 ) ) && 0 === count( \AssociazioneSemplice\FivePerMille::alerts() ) && null !== asem_throws( function () use ( $fp_1, $today ) { \AssociazioneSemplice\FivePerMille::report( $fp_1, $today, '' ); } ), '5x1000: il rendiconto chiude l\'avviso (e non può essere vuoto)' );
+asem_ok( 'reported' === \AssociazioneSemplice\FivePerMille::status( \AssociazioneSemplice\FivePerMille::get( $fp_2 ) ) && 0 === count( \AssociazioneSemplice\FivePerMille::alerts() ) && null !== asem_throws( function () use ( $fp_1, $today ) { \AssociazioneSemplice\FivePerMille::report( $fp_1, $today, '' ); } ), '5 per mille: il rendiconto chiude l\'avviso (e non può essere vuoto)' );
 asem_render( array( Admin\FivePmPage::class, 'render' ), 'Prepara il promemoria per i soci' );
 asem_render( array( Admin\FivePmPage::class, 'render' ), 'Contributi ricevuti' );
 \AssociazioneSemplice\FivePerMille::delete( $fp_1 );
-asem_ok( 1 === count( \AssociazioneSemplice\FivePerMille::all() ), '5x1000: si elimina un contributo' );
+asem_ok( 1 === count( \AssociazioneSemplice\FivePerMille::all() ), '5 per mille: si elimina un contributo' );
 Settings::update( array( 'fivepm_enabled' => 0, 'fivepm_text' => '', 'tax_code' => $fp_cf ) );
 // guida iniziale
 $gd = \AssociazioneSemplice\Guide::steps();
