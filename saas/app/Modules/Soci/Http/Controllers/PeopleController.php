@@ -244,6 +244,8 @@ final readonly class PeopleController
             'person' => $person === null ? null : [
                 'id' => $person->id,
                 'type' => $person->type->value,
+                'is_entity' => $person->is_entity,
+                'entity_same_section' => $person->entity_same_section,
                 'first_name' => $person->first_name,
                 'last_name' => $person->last_name,
                 'email' => $person->email,
@@ -293,7 +295,9 @@ final readonly class PeopleController
     {
         $data = Input::of($request->validate([
             'type' => ['required', Rule::enum(MemberType::class)],
-            'first_name' => ['required', 'string', 'max:120'],
+            'is_entity' => ['nullable', 'boolean'],
+            'entity_same_section' => ['nullable', 'boolean'],
+            'first_name' => ['required_unless:is_entity,1,true', 'nullable', 'string', 'max:120'],
             'last_name' => ['required', 'string', 'max:120'],
             'email' => ['nullable', 'string', 'max:190'],
             'phone' => ['nullable', 'string', 'max:60'],
