@@ -367,8 +367,21 @@ final class SaasCheckout {
 			}
 			$org = array( 'org_id' => $o['org_id'], 'name' => $o['org_name'] );
 			if ( $until < $today ) {
+				// Avvisi prima della cancellazione dei dati (180 giorni dalla sospensione): 15 giorni prima e il giorno prima, una volta ciascuno,
+				// nel giorno previsto o il giorno dopo se il lavoro è saltato. Solo finché il gestionale non è stato rinnovato (`until` resta quello).
+				$del  = strtotime( $until . ' UTC +181 days' );
+				$last = explode( ':', (string) $o['purge_notice'] . ':' );
+				foreach ( array( 15, 1 ) as $k ) {
+					$due = gmdate( 'Y-m-d', $del - $k * 86400 );
+					if ( $today < $due || $today > gmdate( 'Y-m-d', strtotime( $due . ' UTC +1 day' ) ) || ( $last[0] === $until && '' !== $last[1] && (int) $last[1] <= $k ) ) {
+						continue;
+					}
+					$db->run( 'UPDATE orders SET purge_notice = ? WHERE id = ?', array( $until . ':' . $k, $o['id'] ) );
+					$sent += self::mail( $db, 'saas_purge_' . $k, $o, $org, $now ) ? 1 : 0;
+					break;
+				}
 				if ( $until < gmdate( 'Y-m-d', $now - 3 * 86400 ) ) {
-					continue; // scaduto da tempo (dati di prova o già gestito a mano): niente email a sorpresa
+					continue; // scaduto da tempo (dati di prova o già gestito a mano): niente email di sospensione a sorpresa
 				}
 				if ( $o['suspended_for'] !== $until ) {
 					$db->run( 'UPDATE orders SET suspended_for = ? WHERE id = ?', array( $until, $o['id'] ) );
