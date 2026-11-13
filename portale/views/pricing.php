@@ -78,8 +78,10 @@ foreach ( $plans as $p ) {
 			<?php if ( 'free' === $code ) : ?>
 				<a class="btn alt block" href="/free">Inizia gratis</a>
 			<?php else : ?>
+				<?php if ( ! \Portale\Billing::paymentsOn() ) : ?><a class="btn alt block" href="/free">Avvisami quando si può acquistare</a><?php else : ?>
 				<?php if ( $m ) : ?><a class="btn<?php echo $hot ? '' : ' alt'; ?> block only-month" href="/acquista?plan=<?php echo e( \Portale\Site::slug( $code ) ); ?>&amp;period=month">Scegli <?php echo e( $p['label'] ); ?></a><?php endif; ?>
 				<?php if ( $y ) : ?><a class="btn<?php echo $hot ? '' : ' alt'; ?> block only-year" href="/acquista?plan=<?php echo e( \Portale\Site::slug( $code ) ); ?>&amp;period=year">Scegli <?php echo e( $p['label'] ); ?></a><?php endif; ?>
+				<?php endif; ?>
 			<?php endif; ?>
 		</div>
 	<?php endforeach; ?>

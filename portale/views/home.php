@@ -1,14 +1,15 @@
 <?php /** @var array $plans */ ?>
 <section class="hero"><div class="wrap hero-grid">
 	<div>
-		<span class="eyebrow">Plugin WordPress per associazioni</span>
+		<span class="eyebrow">Per APS, ASD ed enti del Terzo Settore</span>
 		<h1>Soci, eventi e cassa della tua associazione, finalmente in ordine.</h1>
-		<p class="lead">Un plugin per il tuo sito WordPress: libro soci, eventi e corsi, prima nota e privacy. Il gratuito basta per cominciare; incassi online e contabilità si aggiungono con il Pro.</p>
+		<p class="lead">Libro soci, tessere, iscrizioni a corsi ed eventi, prima nota e privacy. Lo usi dentro il tuo sito WordPress oppure online, senza installare niente.</p>
 		<div class="hero-cta">
-			<a class="btn big" href="/prova">Prova la demo</a>
-			<a class="btn alt big" href="/free">Ottieni la licenza gratuita</a>
+			<a class="btn big" href="/wordpress">Hai già un sito WordPress? Plugin</a>
+			<a class="btn alt big" href="/saas">Non hai un sito? Gestionale online</a>
 		</div>
-		<ul class="ticks"><li>Plugin gratuito</li><li>I dati restano sul tuo sito</li><li>In italiano</li></ul>
+		<p class="fine"><a href="/prova">Prova la demo del plugin</a> · <a href="/free">Inizia gratis con il plugin</a></p>
+		<ul class="ticks"><li>Plugin gratuito per cominciare</li><li>In italiano, con le regole del Terzo Settore</li><li>I dati restano tuoi</li></ul>
 	</div>
 	<div class="mock" aria-hidden="true">
 		<div class="mock-bar"><i></i><i></i><i></i></div>

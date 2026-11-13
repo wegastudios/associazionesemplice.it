@@ -6,5 +6,5 @@
 		<div class="feature"><div class="ico"><?php echo icon( 'calendar' ); ?></div><h3>Novità</h3><p>Cosa cambia a ogni versione, dalla più recente: <a href="/wordpress/changelog">novità del plugin</a>.</p></div>
 		<div class="feature"><div class="ico"><?php echo icon( 'phone' ); ?></div><h3>Provalo</h3><p>Una demo con dati inventati, senza installare nulla: <a href="/prova">apri la demo</a>.</p></div>
 	</div>
-	<p class="fine center">Requisiti, installazione e assistenza sono nel <a href="/domande">elenco delle domande</a> e nel sito di supporto. Cerchi il gestionale online? <a href="/saas">Guarda il SaaS</a>.</p>
+	<p class="fine center">Requisiti, installazione e assistenza sono nelle <a href="/domande">domande frequenti</a> e nel sito di supporto. Cerchi il gestionale online? <a href="/saas">Guarda il gestionale online</a>.</p>
 </div></section>

@@ -70,6 +70,11 @@ final class Billing {
 		return in_array( $sub['provider'], array( 'stripe', 'paypal' ), true ) && 'once' !== ( $sub['mode'] ?? 'recurring' );
 	}
 
+	/** Ci sono pagamenti online attivi (Stripe o PayPal configurati)? Se no, le pagine di vendita non mostrano «Scegli» ma «Avvisami». */
+	public static function paymentsOn(): bool {
+		return '' !== (string) Config::get( 'stripe.secret_key', '' ) || ( '' !== (string) Config::get( 'paypal.client_id', '' ) && '' !== (string) Config::get( 'paypal.secret', '' ) );
+	}
+
 	/** Come si può pagare questo prezzo: elenco di [provider, modo]. Il ricorrente richiede l'id su Stripe/PayPal, il singolo no. */
 	public function methods( ?array $price ): array {
 		$out = array();

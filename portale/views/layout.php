@@ -8,7 +8,7 @@ $band   = $market ? \Portale\Site::band( $path ) : null;
 $bar    = $market ? \Portale\Site::bar( $path ) : array();
 $home   = rtrim( (string) \Portale\Config::get( 'base_url', '' ), '/' ) . '/'; // il logo riporta sempre alla home del dominio principale
 $area   = $logged ? '/account' : '/accedi';
-$items  = array( array( 'Funzioni', '/funzioni' ), array( 'Domande', '/domande' ), array( 'Supporto', $support_href ) );
+$items  = array( array( 'Funzioni', '/funzioni' ), array( 'Gestionale online', '/saas' ), array( 'Domande', '/domande' ), array( 'Supporto', $support_href ) );
 $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 ?><!doctype html>
 <html lang="it">
@@ -36,7 +36,7 @@ $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 	<details class="menu">
 		<summary aria-label="Menu"><?php echo icon( 'menu' ); ?><span>Menu</span></summary>
 		<div class="menu-panel">
-			<a href="/funzioni">Funzioni</a><a href="/prova">Prova la demo</a><a href="/prezzi">Prezzi</a><a href="/confronto">Confronto versioni</a><a href="/domande">Domande</a><a href="<?php echo e( $support_href ); ?>">Supporto</a>
+			<a href="/funzioni">Funzioni</a><a href="/saas">Gestionale online</a><a href="/prova">Prova la demo</a><a href="/prezzi">Prezzi</a><a href="/confronto">Confronto versioni</a><a href="/domande">Domande</a><a href="<?php echo e( $support_href ); ?>">Supporto</a>
 			<?php if ( ! empty( $_SESSION['staff'] ) ) : ?><a href="/wordpress/admin">Gestione</a><?php endif; ?>
 			<a class="menu-area" href="<?php echo e( $area ); ?>"><?php echo icon( 'user' ); ?><?php echo $logged ? 'Il mio account' : 'Accedi'; ?></a>
 		</div>

@@ -7,6 +7,6 @@
 		<div class="feature"><div class="ico"><?php echo icon( 'shield' ); ?></div><h3>Dati al sicuro</h3><p>I dati di ogni associazione sono separati da quelli delle altre e i campi sensibili sono cifrati.</p></div>
 	</div>
 	<?php $demo = trim( (string) Portale\Config::get( 'saas_demo_url', 'https://demo.associazionesemplice.it' ) ); if ( '' !== $demo ) : ?><p class="center"><a class="btn" href="<?php echo e( $demo ); ?>">Prova la demo del gestionale</a></p><?php endif; ?>
-	<p class="fine center">I piani e i prezzi sono qui sotto; per qualunque dubbio c'è il <a href="/domande">elenco delle domande</a>. Preferisci WordPress? Guarda <a href="/wordpress">il plugin</a>.</p>
+	<p class="fine center">I piani e i prezzi sono qui sotto; per qualunque dubbio ci sono le <a href="/domande">domande frequenti</a>. Preferisci WordPress? Guarda <a href="/wordpress">il plugin</a>.</p>
 </div></section>
 <?php include __DIR__ . "/_catalog_saas.php"; ?>

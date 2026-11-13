@@ -13,7 +13,8 @@ $names = array(
 		<h1>Completa l'acquisto</h1>
 		<div class="summary"><span><?php echo e( $label ); ?> · <?php echo $year ? 'annuale' : 'mensile'; ?></span><b><?php $lc = Portale\Settings::listCents( $plan, $period ); echo $lc ? '<s class="was">' . e( money( $lc ) ) . '</s> ' : ''; echo e( money( $price['cents'] ) ); ?> <small class="muted"><?php echo $year ? '/ anno' : '/ mese'; ?></small></b></div>
 		<?php if ( ! $methods ) : ?>
-			<p class="muted">Questo piano non è ancora acquistabile: riprova tra poco o <a href="mailto:info@associazionesemplice.it">scrivici</a>.</p>
+			<p class="muted">I pagamenti online non sono ancora attivi. Intanto puoi partire con la licenza gratuita e provare i piani Pro senza carta. Per acquistare subito scrivici a <a href="mailto:info@associazionesemplice.it">info@associazionesemplice.it</a>.</p>
+			<p><a class="btn" href="/free">Inizia gratis</a></p>
 		<?php else : ?>
 		<form method="post" action="/acquista">
 			<input type="hidden" name="csrf" value="<?php echo e( Portale\App::csrf() ); ?>">

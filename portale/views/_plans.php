@@ -20,6 +20,8 @@ $euro = function ( $c ) { return number_format( $c / 100, ( $c % 100 ) ? 2 : 0, 
 		<p class="for"><?php echo e( \Portale\Site::blurb( $code ) ); ?></p>
 		<?php if ( 'free' === $code ) : ?>
 			<a class="btn alt block" href="/free">Inizia gratis</a>
+		<?php elseif ( ! \Portale\Billing::paymentsOn() ) : ?>
+			<a class="btn alt block" href="/free">Avvisami quando si può acquistare</a>
 		<?php else : ?>
 			<a class="btn<?php echo $hot ? '' : ' alt'; ?> block" href="/acquista?plan=<?php echo e( \Portale\Site::slug( $code ) ); ?>&amp;period=year">Scegli questo piano</a>
 		<?php endif; ?>
