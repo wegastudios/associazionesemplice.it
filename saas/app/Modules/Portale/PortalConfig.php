@@ -75,9 +75,9 @@ final readonly class PortalConfig
 
     public function graceDays(): int
     {
-        $days = $this->config->get('saas.portal.grace_days', 15);
+        $days = $this->config->get('saas.portal.grace_days', 0);
 
-        return is_int($days) && $days >= 0 ? $days : 15;
+        return is_int($days) && $days >= 0 ? $days : 0;
     }
 
     private function string(string $key): string
