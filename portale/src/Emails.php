@@ -107,6 +107,16 @@ final class Emails {
 				'subject' => 'Pagamento non riuscito per {associazione}: cosa fare',
 				'body' => "Ciao {nome},\nnon siamo riusciti ad addebitare {importo} per il piano {piano}. Di solito succede per una carta scaduta o un limite di spesa.\n\nCosa fare: apri {account_url}, premi «Fatture e metodo di pagamento» e controlla o cambia il metodo di pagamento.\n\nRiproviamo da soli per 7 giorni: più volte nei primi due, poi una volta al giorno. Se in quei giorni sistemi il metodo di pagamento, non devi fare altro.\n\nIl gestionale funziona fino al {scadenza}. Se entro quel giorno il pagamento non va a buon fine, dal giorno dopo viene sospeso finché non è sistemato. I dati restano al loro posto.",
 			),
+			'saas_expiring' => array(
+				'label' => 'Gestionale: piano in scadenza', 'when' => 'Nei giorni di preavviso prima della scadenza di un gestionale disdetto (non si rinnova da solo).', 'vars' => array( 'nome', 'associazione', 'piano', 'scadenza', 'account_url', 'supporto_url', 'email' ),
+				'subject' => 'Il piano di {associazione} scade il {scadenza}',
+				'body' => "Ciao {nome},\nil piano {piano} di {associazione} scade il {scadenza} e non si rinnova da solo.\n\nPer continuare a usare il gestionale rinnovalo da {account_url}. Se non lo rinnovi, dal giorno dopo il gestionale viene sospeso: i dati restano conservati, ma tu e i soci non potrete entrare.",
+			),
+			'saas_suspended' => array(
+				'label' => 'Gestionale: sospeso', 'when' => 'Il giorno dopo la scadenza, se il gestionale non è stato rinnovato.', 'vars' => array( 'nome', 'associazione', 'piano', 'scadenza', 'data_cancellazione', 'account_url', 'supporto_url', 'email' ),
+				'subject' => 'Il gestionale di {associazione} è sospeso',
+				'body' => "Ciao {nome},\nil piano {piano} è scaduto il {scadenza} e il gestionale di {associazione} è sospeso: tu, gli operatori e i soci non potete entrare.\n\nI dati sono al sicuro e restano conservati per 180 giorni, fino al {data_cancellazione}. Dopo quella data vengono cancellati.\n\nPer riattivarlo scrivici da {supporto_url}: ritrovi tutto com'era.",
+			),
 			'saas_cancelled' => array(
 				'label' => 'Gestionale: disdetta registrata', 'when' => 'Il cliente disdice il rinnovo del gestionale dall\'area clienti.', 'vars' => array( 'nome', 'associazione', 'piano', 'scadenza', 'account_url', 'supporto_url', 'email' ),
 				'subject' => 'Disdetta registrata: il gestionale resta attivo fino al {scadenza}',
