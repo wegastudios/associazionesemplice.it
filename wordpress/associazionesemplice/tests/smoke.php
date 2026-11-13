@@ -8585,6 +8585,10 @@ $ct_prev = get_current_user_id();
 $ct_uid  = wp_insert_user( array( 'user_login' => 'ct_creatore', 'user_pass' => wp_generate_password(), 'user_email' => 'creatore@example.com', 'role' => 'administrator' ) );
 wp_set_current_user( (int) $ct_uid );
 $ct_aid = $acts->create( array( 'name' => 'Corso dei contatti', 'social_year' => $sy_label, 'kind' => 'course', 'fee_cents' => 1000, 'lesson_weekday' => 2, 'lesson_start' => '18:00', 'lesson_end' => '19:00', 'location' => 'Sala Prova' ) );
+$ct_old = \AssociazioneSemplice\PublicEvents::post_of( $ct_aid ); // col Pro la pagina può essere già nata altrove (utente e numero di prima): si riparte da zero
+if ( $ct_old ) {
+	wp_delete_post( $ct_old, true );
+}
 $ct_pid = \AssociazioneSemplice\PublicEvents::ensure( $ct_aid );
 wp_update_post( array( 'ID' => $ct_pid, 'post_status' => 'publish' ) );
 $ct_c = \AssociazioneSemplice\PublicEvents::contacts( $ct_pid );
