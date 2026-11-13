@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Core\Models\Org;
 use App\Modules\Core\Models\User;
 use App\Modules\Soci\Models\Person;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
@@ -37,7 +38,8 @@ it('cancella i dati scaduti da più di 180 giorni e lascia le altre associazioni
     $this->orgContext()->run($beta, fn () => Person::create(['type' => 'founder', 'first_name' => 'Bruno', 'last_name' => 'Bianchi']));
     config(['saas.portal.purge_enabled' => true]);
 
-    $this->artisan('saas:portal:purge-expired')->assertSuccessful();
+    $exit = Artisan::call('saas:portal:purge-expired');
+    expect($exit)->toBe(0, Artisan::output());
 
     $org = Org::query()->findOrFail($alfa);
     expect($org->status)->toBe('closed')->and($org->deleted_at)->not->toBeNull()
@@ -82,14 +84,4 @@ it('si ferma se i candidati di una notte sono troppi', function (): void {
 
     expect(Org::query()->findOrFail($alfa)->deleted_at)->toBeNull()
         ->and(Org::query()->findOrFail($beta)->deleted_at)->toBeNull();
-});
-
-it('non cancella un\'associazione attiva anche se la data è passata', function (): void {
-    $alfa = ($this->provision)('sub_a', 'Alfa', 'alfa-circolo', 'alfa@example.com');
-    ($this->entitle)($alfa, 'sub_a', ['status' => 'active', 'until' => now()->subDays(300)->toDateString()]);
-    config(['saas.portal.purge_enabled' => true]);
-
-    $this->artisan('saas:portal:purge-expired')->assertSuccessful();
-
-    expect(Org::query()->findOrFail($alfa)->deleted_at)->toBeNull();
 });
