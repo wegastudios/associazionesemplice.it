@@ -28,10 +28,17 @@ final readonly class PeopleService
         'address', 'iban', 'notes', 'level_id', 'host_person_id', 'joined_on',
     ];
 
+    public function __construct(private MemberLimit $limit) {}
+
     /** @param  array<string, mixed>  $data */
     public function create(array $data): Person
     {
         $clean = $this->clean($data, null);
+        // Oltre il limite del piano (e la tolleranza) non si aggiungono nuovi soci; chi c'è già resta com'è.
+        $type = MemberType::tryFrom(is_string($clean['type'] ?? null) ? $clean['type'] : '');
+        if ($type?->isMember() === true && ($blocked = $this->limit->blockMessage()) !== null) {
+            throw new PeopleError([$blocked]);
+        }
         $person = new Person($clean);
 
         return $this->save($person);

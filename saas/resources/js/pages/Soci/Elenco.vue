@@ -8,7 +8,7 @@ import PageHeader from '../../components/ui/PageHeader.vue';
 import Sheet from '../../components/ui/Sheet.vue';
 import { BookOpen, ChevronRight, Download, Ellipsis, FileText, ListChecks, Search, Upload, UserRound } from '../../components/ui/icons.js';
 
-const props = defineProps({ q: String, type: String, status: String, types: Array, year: String, rows: Array, next: String, prev: String, activeCount: Number, canEdit: Boolean, canExport: Boolean });
+const props = defineProps({ q: String, type: String, status: String, types: Array, year: String, rows: Array, next: String, prev: String, activeCount: Number, limit: Object, canEdit: Boolean, canExport: Boolean });
 
 const search = ref(props.q ?? '');
 const tools = ref(false);
@@ -30,6 +30,11 @@ const chip = (on) => ['inline-flex min-h-10 shrink-0 items-center rounded-full b
                 <Link v-if="canEdit" href="/gestionale/soci/nuovo" class="btn btn-primary hidden lg:inline-flex">Nuova scheda</Link>
             </template>
         </PageHeader>
+
+        <div v-if="limit" role="status" class="mb-3 flex flex-wrap items-center gap-3 rounded-lg bg-giallo px-4 py-3 text-sm font-semibold text-warn-ink">
+            <p class="min-w-0 flex-1">{{ limit.message }}</p>
+            <a v-if="limit.state !== 'warn'" href="/gestionale/abbonamento" class="btn btn-primary btn-sm min-h-11">Cambia piano</a>
+        </div>
 
         <div class="mb-3 flex gap-2">
             <label class="relative min-w-0 flex-1">
