@@ -7,7 +7,8 @@ defined( 'ABSPATH' ) || exit;
  * Importa gli eventi di The Events Calendar (contenuti `tribe_events`) come eventi una tantum, passati e futuri, per poterli riproporre
  * senza rifare tutto. Si legge dal database del sito: The Events Calendar può anche essere disattivato. Non si importano costi
  * e prenotazioni; immagine, categoria, descrizione, organizzatore e sito vanno nella pagina pubblica dell'evento. Ogni evento importato
- * ricorda il contenuto di origine, quindi si può rilanciare senza doppioni.
+ * ricorda il contenuto di origine, quindi si può rilanciare senza doppioni. Uno a uno: ogni evento di The Events Calendar diventa una sola
+ * attività (mai raggruppata con altre, nemmeno con lo stesso titolo).
  */
 final class TribeImport {
 
@@ -76,6 +77,38 @@ final class TribeImport {
 		);
 	}
 
+	/** Una data di The Events Calendar (Y-m-d H:i:s) letta dal valore in UTC e dal fuso dell'evento, per quando manca quella locale. */
+	public static function from_utc( string $utc, string $tz ): string {
+		if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/', $utc ) ) {
+			return '';
+		}
+		try {
+			$name = '' !== trim( $tz ) ? trim( $tz ) : ( function_exists( 'wp_timezone_string' ) && '' !== wp_timezone_string() ? wp_timezone_string() : 'UTC' );
+			$d    = new \DateTimeImmutable( substr( str_replace( 'T', ' ', $utc ), 0, 19 ), new \DateTimeZone( 'UTC' ) );
+			return $d->setTimezone( new \DateTimeZone( $name ) )->format( 'Y-m-d H:i:s' );
+		} catch ( \Exception $e ) {
+			return '';
+		}
+	}
+
+	/** I dati di data di un evento: _EventStartDate/_EventEndDate; se la data locale manca o non è valida si usa quella in UTC (_EventStartDateUTC) col fuso dell'evento. */
+	private static function event_meta( int $pid ): array {
+		$meta = array();
+		foreach ( array( '_EventStartDate', '_EventEndDate', '_EventAllDay', '_EventURL', '_EventStartDateUTC', '_EventEndDateUTC', '_EventTimezone' ) as $k ) {
+			$meta[ $k ] = get_post_meta( $pid, $k, true );
+		}
+		if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}/', (string) $meta['_EventStartDate'] ) ) {
+			$alt = self::from_utc( (string) $meta['_EventStartDateUTC'], (string) $meta['_EventTimezone'] );
+			if ( '' !== $alt ) {
+				$meta['_EventStartDate'] = $alt;
+				if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}/', (string) $meta['_EventEndDate'] ) ) {
+					$meta['_EventEndDate'] = self::from_utc( (string) $meta['_EventEndDateUTC'], (string) $meta['_EventTimezone'] );
+				}
+			}
+		}
+		return $meta;
+	}
+
 	/** Il luogo di un evento: nome, indirizzo e città del `tribe_venue` collegato. */
 	private static function venue( int $post_id ): string {
 		$vid = (int) get_post_meta( $post_id, '_EventVenueID', true );
@@ -124,7 +157,7 @@ final class TribeImport {
 			$out[] = array(
 				'post_id'  => $id,
 				'title'    => (string) $post->post_title,
-				'date'     => substr( (string) get_post_meta( $id, '_EventStartDate', true ), 0, 10 ),
+				'date'     => substr( (string) self::event_meta( $id )['_EventStartDate'], 0, 10 ),
 				'imported' => (int) get_post_meta( $id, self::META_DONE, true ),
 				'cats'     => self::cats_of( $id ),
 			);
@@ -191,8 +224,8 @@ final class TribeImport {
 	}
 
 	/**
-	 * Un corso a partire dalle sue lezioni, cioè gli eventi di The Events Calendar con lo stesso titolo (di solito un evento ripetuto ogni settimana).
-	 * I giorni e gli orari che si ripetono almeno 3 volte diventano una lezione settimanale (dalla prima all'ultima data); gli altri restano date singole.
+	 * Un corso a partire dalle sue date. L'import gli passa un solo evento alla volta (un evento = un corso, con la sua data come unica lezione singola);
+	 * se gli si danno più date, quelle che si ripetono almeno 3 volte lo stesso giorno e ora diventano una lezione settimanale, le altre restano date singole.
 	 * Descrive solo il calendario del corso: se un evento sia un corso lo decide la categoria scelta dall'utente, non questa funzione.
 	 *
 	 * @param array[] $items date (Y-m-d), start, end (HH:MM o null), name, notes, venue
@@ -242,11 +275,6 @@ final class TribeImport {
 		);
 	}
 
-	/** Chiave di un gruppo di eventi: titolo (senza maiuscole) e anno sociale. Serve solo a raccogliere le date dello stesso evento ricorrente o le lezioni dello stesso corso. */
-	public static function key( string $name, string $year ): string {
-		return mb_strtolower( trim( $name ) ) . '|' . $year;
-	}
-
 	/**
 	 * Un evento è un corso solo se NESSUNA delle sue categorie è stata scelta come «Evento» e almeno una è stata scelta come «Corso».
 	 * Ogni categoria è «Corso» (è tra $course_cats) o «Evento» (tutte le altre); un evento senza categoria è un evento. Decide solo la scelta
@@ -264,7 +292,7 @@ final class TribeImport {
 	 * Divide gli eventi ancora da importare in due elenchi che non si toccano mai: prima gli eventi, poi i corsi. Ogni evento sta in uno solo.
 	 *
 	 * @param int[] $course_cats categorie scelte come «Corso»
-	 * @return array events[], courses[] (righe: pid, title, map, year, cats), done[] (pid, aid: già importati), failed[] (title)
+	 * @return array events[], courses[] (righe: pid, title, map, year, cats), done[] (pid, aid: già importati), failed[] (pid, title: senza una data valida)
 	 */
 	private static function partition( array $course_cats ): array {
 		$out = array( 'events' => array(), 'courses' => array(), 'done' => array(), 'failed' => array() );
@@ -275,13 +303,10 @@ final class TribeImport {
 				continue;
 			}
 			$post = get_post( $pid );
-			$meta = array();
-			foreach ( array( '_EventStartDate', '_EventEndDate', '_EventAllDay', '_EventURL' ) as $k ) {
-				$meta[ $k ] = get_post_meta( $pid, $k, true );
-			}
+			$meta = self::event_meta( $pid );
 			$map = $post ? self::map_event( $meta, (string) $post->post_title, (string) $post->post_content, self::venue( $pid ) ) : null;
 			if ( ! $map ) {
-				$out['failed'][] = array( 'title' => (string) $f['title'] );
+				$out['failed'][] = array( 'pid' => $pid, 'title' => (string) $f['title'] );
 				continue;
 			}
 			$row = array( 'pid' => $pid, 'title' => (string) $f['title'], 'map' => $map, 'year' => Settings::social_year( $map['session']['session_date'] )->label(), 'cats' => array_map( 'intval', $f['cats'] ) );
@@ -290,42 +315,43 @@ final class TribeImport {
 		return $out;
 	}
 
-	/**
-	 * Raccoglie le righe con lo stesso titolo e anno sociale (le date di un evento ricorrente, le lezioni di un corso). Ogni chiamata parte da zero.
-	 *
-	 * @return array[] chiave → year, name, rows[]
-	 */
-	private static function group( array $rows ): array {
-		$groups = array();
-		foreach ( $rows as $r ) {
-			$key = self::key( (string) $r['map']['name'], (string) $r['year'] );
-			if ( ! isset( $groups[ $key ] ) ) {
-				$groups[ $key ] = array( 'year' => $r['year'], 'name' => (string) $r['map']['name'], 'rows' => array() );
-			}
-			$groups[ $key ]['rows'][] = $r;
-		}
-		return $groups;
-	}
-
 	/** Il nome di una categoria di The Events Calendar. */
 	private static function cat_name( int $id ): string {
 		$t = get_term( $id, self::TAXONOMY );
 		return $t && ! is_wp_error( $t ) ? (string) $t->name : '';
 	}
 
+	/** Il link per modificare un evento in The Events Calendar, se si può aprire (il tipo di contenuto c'è solo con il plugin attivo). */
+	private static function edit_link( int $pid ): string {
+		if ( ! post_type_exists( self::POST_TYPE ) ) {
+			return '';
+		}
+		return (string) get_edit_post_link( $pid, 'raw' );
+	}
+
+	/** Gli eventi non importabili (senza data valida) come elenco per titolo, col link di modifica se c'è. */
+	private static function failed_list( array $failed ): array {
+		$list = array();
+		foreach ( $failed as $f ) {
+			$list[] = array( 'title' => '' !== trim( (string) $f['title'] ) ? (string) $f['title'] : '(senza titolo)', 'link' => self::edit_link( (int) $f['pid'] ) );
+		}
+		return $list;
+	}
+
+	/** @return array[] gli eventi ancora da importare che non si possono importare perché manca la data: title, link (modifica in The Events Calendar, vuoto se non disponibile) */
+	public static function undatable(): array {
+		return self::failed_list( self::partition( array() )['failed'] );
+	}
+
 	/**
-	 * Che cosa succederebbe con queste scelte: quanti eventi, quali corsi (con le lezioni) e quali categorie si ricreano nei nostri portali.
+	 * Che cosa succederebbe con queste scelte: quanti eventi, quanti corsi (uno per evento di The Events Calendar) e quali categorie si ricreano nei nostri portali.
 	 *
 	 * @param int[] $course_cats categorie scelte come «Corso»
-	 * @return array events (numero di eventi), event_titles (titoli distinti), courses[] (name, year, lessons), lessons (eventi che diventano lezioni), categories[] (nomi), failed
+	 * @return array events (numero di eventi), courses (numero di corsi), categories[] (nomi), failed (numero), failed_list[] (title, link)
 	 */
 	public static function summary( array $course_cats = array() ): array {
 		self::ensure_taxonomy();
-		$p       = self::partition( $course_cats );
-		$courses = array();
-		foreach ( self::group( $p['courses'] ) as $g ) {
-			$courses[] = array( 'name' => $g['name'], 'year' => $g['year'], 'lessons' => count( $g['rows'] ) );
-		}
+		$p     = self::partition( $course_cats );
 		$names = array();
 		foreach ( array_merge( $p['events'], $p['courses'] ) as $r ) {
 			foreach ( $r['cats'] as $c ) {
@@ -335,7 +361,7 @@ final class TribeImport {
 				}
 			}
 		}
-		return array( 'events' => count( $p['events'] ), 'event_titles' => count( self::group( $p['events'] ) ), 'courses' => $courses, 'lessons' => count( $p['courses'] ), 'categories' => array_values( $names ), 'failed' => count( $p['failed'] ) );
+		return array( 'events' => count( $p['events'] ), 'courses' => count( $p['courses'] ), 'categories' => array_values( $names ), 'failed' => count( $p['failed'] ), 'failed_list' => self::failed_list( $p['failed'] ) );
 	}
 
 	/**
@@ -345,24 +371,22 @@ final class TribeImport {
 	 *
 	 * Per ogni evento o corso importato si compila anche la sua pagina pubblica (descrizione, estratto, immagine in evidenza,
 	 * categorie, organizzatore, sito, giorni e orari): in bozza, o pubblicata se si chiede e l'evento è futuro. Le pagine che
-	 * hanno già un contenuto non si toccano. Gli eventi con lo stesso titolo nello stesso anno sociale (le ripetizioni di The Events
-	 * Calendar) diventano un solo evento ricorrente con la sua pagina; le lezioni dello stesso corso un solo corso.
+	 * hanno già un contenuto non si toccano. Uno a uno: ogni evento di The Events Calendar diventa una sola attività con la sua pagina,
+	 * anche se un altro ha lo stesso titolo e lo stesso anno sociale (niente viene raggruppato).
 	 *
 	 * @param int[] $course_cats    categorie scelte come «Corso» (le altre sono «Evento»)
 	 * @param bool  $publish_future pubblica subito le pagine degli eventi con una data futura
-	 * @return array imported (eventi), courses, lessons (eventi diventati lezioni), series (eventi ricorrenti), skipped (già importati), failed, pages (compilate), published, errors[] (i primi), course_list[] (name, lessons), event_list[], categories[] (nomi usati nelle pagine), categories_new[] (nomi creati ora)
+	 * @return array imported (attività create, eventi e corsi), events, courses, skipped (già importati), failed, failed_list[] (title, link: senza data), pages (compilate), published, errors[] (i primi), course_list[] (nomi), event_list[] (nomi), categories[] (nomi usati nelle pagine), categories_new[] (nomi creati ora)
 	 */
 	public static function run( array $course_cats = array(), bool $publish_future = false ): array {
-		$res  = array( 'imported' => 0, 'courses' => 0, 'lessons' => 0, 'series' => 0, 'skipped' => 0, 'failed' => 0, 'pages' => 0, 'published' => 0, 'errors' => array(), 'course_list' => array(), 'event_list' => array(), 'categories' => array(), 'categories_new' => array() );
+		$res  = array( 'imported' => 0, 'events' => 0, 'courses' => 0, 'skipped' => 0, 'failed' => 0, 'failed_list' => array(), 'pages' => 0, 'published' => 0, 'errors' => array(), 'course_list' => array(), 'event_list' => array(), 'categories' => array(), 'categories_new' => array() );
 		$res['track']    = array( 'kind' => 'tribe', 'activities' => array(), 'posts' => array(), 'filled' => array(), 'terms' => array() ); // quello che l'import scrive, per poterlo annullare
 		$res['batch_id'] = null;
 		$part  = self::partition( $course_cats );
 		$batch = ImportService::open_batch( 'The Events Calendar' );
 		try {
-			foreach ( $part['failed'] as $f ) {
-				$res['failed']++;
-				$res['errors'][] = '«' . $f['title'] . '»: manca la data.';
-			}
+			$res['failed']     += count( $part['failed'] ); // senza data: elencati per titolo in failed_list
+			$res['failed_list'] = self::failed_list( $part['failed'] );
 			foreach ( $part['done'] as $d ) {
 				$res['skipped']++;
 				self::fill_page( (int) $d['aid'], array( (int) $d['pid'] ), $publish_future, $res ); // una pagina rimasta vuota si compila
@@ -371,14 +395,14 @@ final class TribeImport {
 			self::import_courses( $part['courses'], $publish_future, $res ); // 2° passaggio: poi i corsi
 		} finally {
 			$t               = $res['track'];
-			$summary         = array( 'kind' => 'tribe', 'events' => count( $t['activities'] ) - (int) $res['courses'], 'courses' => (int) $res['courses'], 'pages' => (int) $res['pages'], 'filled' => count( $t['filled'] ) );
+			$summary         = array( 'kind' => 'tribe', 'events' => (int) $res['events'], 'courses' => (int) $res['courses'], 'pages' => (int) $res['pages'], 'filled' => count( $t['filled'] ) );
 			$res['batch_id'] = ImportService::finish_batch( $batch, $summary, $t, ! empty( $t['activities'] ) || ! empty( $t['filled'] ) ); // anche se qualcosa va storto a metà, quello che è nato si può annullare
 		}
 		unset( $res['track'] );
 		$res['errors']     = array_slice( $res['errors'], 0, 5 );
 		$res['categories']     = array_values( $res['categories'] );
 		$res['categories_new'] = array_values( $res['categories_new'] );
-		Audit::log( 'import.tribe', 'settings', null, array( 'imported' => $res['imported'], 'courses' => $res['courses'], 'failed' => $res['failed'], 'pages' => $res['pages'], 'published' => $res['published'] ) );
+		Audit::log( 'import.tribe', 'settings', null, array( 'imported' => $res['imported'], 'events' => $res['events'], 'courses' => $res['courses'], 'failed' => $res['failed'], 'pages' => $res['pages'], 'published' => $res['published'] ) );
 		return $res;
 	}
 
@@ -394,65 +418,44 @@ final class TribeImport {
 		);
 	}
 
-	/** 1° passaggio: gli eventi, uno per titolo e anno sociale (più date = evento ricorrente). */
+	/** 1° passaggio: gli eventi, uno per ogni evento di The Events Calendar (mai raggruppati, nemmeno con lo stesso titolo). */
 	private static function import_events( array $rows, bool $publish_future, array &$res ): void {
-		foreach ( self::group( self::not_yet_done( $rows ) ) as $s ) {
+		foreach ( self::not_yet_done( $rows ) as $r ) {
 			try {
-				$first = $s['rows'][0]['map'];
-				if ( 1 === count( $s['rows'] ) ) {
-					$aid = Plugin::activities()->create(
-						array(
-							'name'        => $first['name'],
-							'social_year' => $s['year'],
-							'kind'        => ActivityKind::EVENT,
-							'notes'       => $first['notes'],
-							'session'     => $first['session'],
-						)
-					);
-				} else { // evento ricorrente: una sola attività con tutte le date
-					$aid = Plugin::activities()->create( array( 'name' => $first['name'], 'social_year' => $s['year'], 'kind' => ActivityKind::RECURRING, 'notes' => $first['notes'] ) );
-					$res['track']['activities'][] = $aid;
-					foreach ( $s['rows'] as $r ) {
-						Plugin::activities()->add_session( $aid, $r['map']['session'] );
-					}
-					$res['series']++;
-				}
-				if ( 1 === count( $s['rows'] ) ) {
-					$res['track']['activities'][] = $aid;
-				}
-				$pids = array();
-				foreach ( $s['rows'] as $r ) {
-					update_post_meta( $r['pid'], self::META_DONE, $aid );
-					$res['track']['posts'][ (int) $r['pid'] ] = $aid;
-					$pids[] = (int) $r['pid'];
-					$res['imported']++;
-				}
-				$res['event_list'][] = $first['name'] . ( count( $s['rows'] ) > 1 ? ' (' . count( $s['rows'] ) . ' date)' : '' );
-				self::fill_page( $aid, $pids, $publish_future, $res );
+				$m   = $r['map'];
+				$aid = Plugin::activities()->create(
+					array(
+						'name'        => $m['name'],
+						'social_year' => $r['year'],
+						'kind'        => ActivityKind::EVENT,
+						'notes'       => $m['notes'],
+						'session'     => $m['session'],
+					)
+				);
+				$res['track']['activities'][]             = $aid;
+				$res['track']['posts'][ (int) $r['pid'] ] = $aid;
+				update_post_meta( $r['pid'], self::META_DONE, $aid );
+				$res['imported']++;
+				$res['events']++;
+				$res['event_list'][] = $m['name'];
+				self::fill_page( $aid, array( (int) $r['pid'] ), $publish_future, $res );
 			} catch ( \InvalidArgumentException $e ) {
-				foreach ( $s['rows'] as $r ) {
-					$res['failed']++;
-					$res['errors'][] = '«' . $r['title'] . '»: ' . $e->getMessage();
-				}
+				$res['failed']++;
+				$res['errors'][] = '«' . $r['title'] . '»: ' . $e->getMessage();
 			}
 		}
 	}
 
-	/** 2° passaggio: i corsi, uno per titolo e anno sociale, con tutte le sue lezioni. */
+	/** 2° passaggio: i corsi, uno per ogni evento di The Events Calendar, con la sua data come unica lezione (singola). */
 	private static function import_courses( array $rows, bool $publish_future, array &$res ): void {
-		foreach ( self::group( self::not_yet_done( $rows ) ) as $g ) {
-			$items = array();
-			$posts = array();
-			foreach ( $g['rows'] as $r ) {
-				$posts[] = (int) $r['pid'];
-				$items[] = array( 'date' => $r['map']['session']['session_date'], 'start' => $r['map']['session']['start_time'], 'end' => $r['map']['session']['end_time'], 'name' => $r['map']['name'], 'notes' => $r['map']['notes'], 'venue' => $r['map']['session']['location'] );
-			}
-			$c = self::map_course( $items );
+		foreach ( self::not_yet_done( $rows ) as $r ) {
+			$s = $r['map']['session'];
+			$c = self::map_course( array( array( 'date' => $s['session_date'], 'start' => $s['start_time'], 'end' => $s['end_time'], 'name' => $r['map']['name'], 'notes' => $r['map']['notes'], 'venue' => $s['location'] ) ) );
 			try {
 				$aid = Plugin::activities()->create(
 					array(
 						'name'         => $c['name'],
-						'social_year'  => $g['year'],
+						'social_year'  => $r['year'],
 						'kind'         => ActivityKind::COURSE,
 						'billing'      => 'once',
 						'notes'        => $c['notes'],
@@ -462,18 +465,16 @@ final class TribeImport {
 						'lesson_slots' => wp_json_encode( $c['lessons'] ),
 					)
 				);
-				$res['track']['activities'][] = $aid;
-				foreach ( $posts as $pid ) {
-					$res['track']['posts'][ (int) $pid ] = $aid;
-					update_post_meta( $pid, self::META_DONE, $aid );
-				}
+				$res['track']['activities'][]             = $aid;
+				$res['track']['posts'][ (int) $r['pid'] ] = $aid;
+				update_post_meta( $r['pid'], self::META_DONE, $aid );
+				$res['imported']++;
 				$res['courses']++;
-				$res['lessons']      += count( $posts );
-				$res['course_list'][] = array( 'name' => (string) $c['name'], 'lessons' => count( $posts ) );
-				self::fill_page( $aid, $posts, $publish_future, $res );
+				$res['course_list'][] = (string) $c['name'];
+				self::fill_page( $aid, array( (int) $r['pid'] ), $publish_future, $res );
 			} catch ( \InvalidArgumentException $e ) {
 				$res['failed']++;
-				$res['errors'][] = '«' . $c['name'] . '»: ' . $e->getMessage();
+				$res['errors'][] = '«' . $r['title'] . '»: ' . $e->getMessage();
 			}
 		}
 	}

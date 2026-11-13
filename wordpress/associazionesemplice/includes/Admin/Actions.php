@@ -728,18 +728,18 @@ final class Actions {
 	private static function tec_import( array $p ): array {
 		$cats     = isset( $p['course_cats'] ) && is_array( $p['course_cats'] ) ? array_map( 'intval', $p['course_cats'] ) : array();
 		$r   = \AssociazioneSemplice\TribeImport::run( $cats, ! empty( $p['publish_future'] ) ); // $cats: le categorie scelte dall'utente come «Corso»; tutte le altre sono «Evento»
-		$msg = $r['imported'] . ( 1 === $r['imported'] ? ' evento importato' : ' eventi importati' ) . ( $r['series'] ? ' (' . $r['series'] . ( 1 === $r['series'] ? ' evento ricorrente' : ' eventi ricorrenti' ) . ')' : '' ) . ( $r['courses'] ? ', ' . $r['courses'] . ( 1 === $r['courses'] ? ' corso' : ' corsi' ) . ' (' . $r['lessons'] . ' lezioni)' : '' )
-			. ( $r['skipped'] ? ', ' . $r['skipped'] . ' già presenti' : '' ) . ( $r['failed'] ? ', ' . $r['failed'] . ' non importati (' . implode( ' ', $r['errors'] ) . ')' : '' ) . '.'
+		$msg = $r['events'] . ( 1 === $r['events'] ? ' evento importato' : ' eventi importati' ) . ( $r['courses'] ? ', ' . $r['courses'] . ( 1 === $r['courses'] ? ' corso importato' : ' corsi importati' ) : '' )
+			. ( $r['skipped'] ? ', ' . $r['skipped'] . ' già presenti' : '' ) . ( $r['failed'] ? ', ' . $r['failed'] . ' non importati' : '' ) . '.'
+			. ( ! empty( $r['failed_list'] ) ? ' Non importati perché manca la data (da correggere in The Events Calendar): ' . implode( ', ', array_map( function ( $f ) {
+				return '«' . $f['title'] . '»';
+			}, $r['failed_list'] ) ) . '.' : '' )
+			. ( $r['errors'] ? ' Altri non importati: ' . implode( ' ', $r['errors'] ) : '' )
 			. ( $r['pages'] ? ' Pagine pubbliche compilate: ' . $r['pages'] . ( $r['published'] ? ', di cui ' . $r['published'] . ' pubblicate' : ', in bozza' ) . ' (le trovi in Eventi sul sito).' : '' );
 		if ( ! empty( $r['event_list'] ) ) { // cosa è nato: prima gli eventi, poi i corsi
 			$msg .= ' Eventi creati: ' . implode( ', ', array_slice( $r['event_list'], 0, 10 ) ) . ( count( $r['event_list'] ) > 10 ? ' e altri ' . ( count( $r['event_list'] ) - 10 ) : '' ) . '.';
 		}
 		if ( ! empty( $r['course_list'] ) ) {
-			$names = array();
-			foreach ( array_slice( $r['course_list'], 0, 10 ) as $c ) {
-				$names[] = $c['name'] . ' (' . $c['lessons'] . ( 1 === (int) $c['lessons'] ? ' lezione' : ' lezioni' ) . ')';
-			}
-			$msg .= ' Corsi creati: ' . implode( ', ', $names ) . ( count( $r['course_list'] ) > 10 ? ' e altri ' . ( count( $r['course_list'] ) - 10 ) : '' ) . '.';
+			$msg .= ' Corsi creati: ' . implode( ', ', array_slice( $r['course_list'], 0, 10 ) ) . ( count( $r['course_list'] ) > 10 ? ' e altri ' . ( count( $r['course_list'] ) - 10 ) : '' ) . '.';
 		}
 		if ( ! empty( $r['categories'] ) ) {
 			$msg .= ' Categorie assegnate alle pagine: ' . implode( ', ', $r['categories'] ) . ( $r['categories_new'] ? ' (nuove: ' . implode( ', ', $r['categories_new'] ) . ')' : '' ) . '.';
