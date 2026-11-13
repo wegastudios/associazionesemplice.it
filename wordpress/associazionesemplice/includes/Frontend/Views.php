@@ -241,7 +241,7 @@ final class Views {
 		} catch ( \InvalidArgumentException $e ) {
 			return '';
 		}
-		return '<div class="asemf-memcard-qr">' . $svg . '<div class="asemf-small">Mostra questo codice: chi lo scansiona vede subito se la tessera è valida. '
+		return '<div class="asemf-memcard-qr">' . $svg . '<div class="asemf-small asemf-qr-note"><span>Mostra questo codice: chi lo scansiona vede subito se la tessera è valida.</span> '
 			. '<a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">Apri la verifica</a></div></div>';
 	}
 

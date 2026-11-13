@@ -77,6 +77,16 @@
 	#wpbody-content input.regular-text,#wpbody-content input.large-text,#wpbody-content textarea.large-text{max-width:100%;box-sizing:border-box}
 }
 
+/* Importi su una riga; Incassa e Sospendi con area di tocco di 44 px; Sospendi dentro «Altro» */
+.asem .asem-money{white-space:nowrap}
+.asem details.asem-more{display:inline-block;vertical-align:middle}
+.asem details.asem-more summary{cursor:pointer;color:#2271b1}
+.asem details.asem-more form{margin-top:.4rem}
+@media (max-width:782px){
+	.asem .button.asem-tap,.asem details.asem-more summary{min-height:44px;min-width:44px;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;padding:0 1em;margin:.25rem .5rem .25rem 0}
+	.asem table.asem-fullw{display:table!important;width:100%;overflow:visible}
+}
+
 /* Telefono: Cassa senza pulsanti ripetuti (le schede in alto li hanno già) e Rubrica a schede compatte, una per persona */
 @media (max-width:782px){
 	.asem-quick{display:none}

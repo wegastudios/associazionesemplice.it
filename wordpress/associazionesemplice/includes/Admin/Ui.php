@@ -168,7 +168,7 @@ final class Ui {
 	}
 
 	public static function money( int $cents ): string {
-		$cls = $cents < 0 ? ' class="asem-neg"' : '';
+		$cls = $cents < 0 ? ' class="asem-money asem-neg"' : ' class="asem-money"';
 		return '<span' . $cls . '>' . esc_html( Money::format( $cents ) ) . '</span>';
 	}
 

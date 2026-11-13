@@ -372,7 +372,7 @@ final class DashboardPage {
 		foreach ( array_slice( $rows, 0, 12 ) as $r ) {
 			$p = $r['person'];
 			echo wp_kses( '<li><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '">' . esc_html( $p['first_name'] . ' ' . $p['last_name'] ) . '</a> <span class="description">' . esc_html( implode( ' + ', $r['what'] ) ) . '</span> <strong>' . esc_html( Money::format( (int) $r['cents'] ) ) . '</strong> '
-				. '<a class="button button-small" href="' . esc_url( Ui::url( 'asem-income', array( 'person_id' => $p['id'], 'due' => 1 ) ) ) . '">Incassa</a> ' . Ui::contact_links( $p ) . '</li>', Html::allowed() );
+				. '<a class="button button-small asem-tap" href="' . esc_url( Ui::url( 'asem-income', array( 'person_id' => $p['id'], 'due' => 1 ) ) ) . '">Incassa</a> ' . Ui::contact_links( $p ) . '</li>', Html::allowed() );
 		}
 		echo wp_kses( '</ul>' . ( count( $rows ) > 12 ? '<p class="description">… e altri ' . ( count( $rows ) - 12 ) . '.</p>' : '' ) . '</div>', Html::allowed() );
 	}
@@ -401,12 +401,13 @@ final class DashboardPage {
 			$expired = $p['active_until'] < $today;
 			echo wp_kses( '<li><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $p['id'] ) ) ) . '">' . esc_html( $p['first_name'] . ' ' . $p['last_name'] ) . '</a> <span class="description">'
 				. ( $expired ? 'scaduta il ' : 'scade il ' ) . esc_html( Ui::date( $p['active_until'] ) ) . '</span> '
-				. '<a class="button button-small" href="' . esc_url( Ui::url( 'asem-income', array( 'person_id' => $p['id'], 'due' => 1 ) ) ) . '">Incassa</a> ', Html::allowed() );
+				. '<a class="button button-small asem-tap" href="' . esc_url( Ui::url( 'asem-income', array( 'person_id' => $p['id'], 'due' => 1 ) ) ) . '">Incassa</a> ', Html::allowed() );
 			if ( $expired ) {
+				echo '<details class="asem-more"><summary>Altro</summary>';
 				Ui::form_open( 'asem_suspend_member', Ui::url( 'asem' ), false, 'asem-inline' );
-				echo wp_kses( Ui::hidden( 'id', $p['id'] ) . '<button class="button button-small" data-confirm="Sospendere ' . esc_attr( $p['first_name'] . ' ' . $p['last_name'] ) . '? Diventa inattivo finché non rinnova.">Sospendi</button>', Html::allowed() );
+				echo wp_kses( Ui::hidden( 'id', $p['id'] ) . '<button class="button button-small asem-tap" data-confirm="Sospendere ' . esc_attr( $p['first_name'] . ' ' . $p['last_name'] ) . '? Diventa inattivo finché non rinnova.">Sospendi</button>', Html::allowed() );
 				Ui::form_close();
-				echo ' ';
+				echo '</details> ';
 			}
 			echo wp_kses( Ui::contact_links( $p ) . '</li>', Html::allowed() );
 		}

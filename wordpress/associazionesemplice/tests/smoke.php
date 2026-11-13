@@ -4096,6 +4096,7 @@ $sp_a = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Sospeso',
 $people->set_membership( $sp_a, (string) ( $cy - 1 ), true, 'manual' );
 $dash_sp = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Soci da rinnovare' );
 asem_ok( false !== strpos( $dash_sp, 'Sospeso Manuale' ) && false !== strpos( $dash_sp, 'asem_suspend_member' ) && false !== strpos( $dash_sp, 'Incassa' ), 'bacheca: i soci che non hanno rinnovato hanno i pulsanti Incassa e Sospendi' );
+asem_ok( 1 === preg_match( '/<details class="asem-more"><summary>Altro<\/summary>.*asem_suspend_member.*Sospendi<\/button>.*<\/details>/s', $dash_sp ) && false !== strpos( $dash_sp, 'button button-small asem-tap' ), 'bacheca: Sospendi sta dentro «Altro» e i pulsanti hanno l\'area di tocco larga' );
 $susp = new ReflectionMethod( Admin\Actions::class, 'suspend_member' );
 $susp->setAccessible( true );
 $susp->invoke( null, array( 'id' => (string) $sp_a ) );
@@ -5598,7 +5599,7 @@ $rd   = \AssociazioneSemplice\Statement::data( $rd_y );
 asem_ok( $rd['result']['cur'] === $rd['total_income']['cur'] - $rd['total_expense']['cur'] && $rd['total_income']['cur'] === array_sum( array_column( $rd['income'], 'cur' ) ) && $rd['total_expense']['cur'] === array_sum( array_column( $rd['expenses'], 'cur' ) ) && in_array( $rd_y, \AssociazioneSemplice\Statement::years(), true ), 'rendiconto: totali, avanzo e anni coerenti' );
 \AssociazioneSemplice\Statement::save_notes( $rd_y, "Anno positivo.\nNessuna criticità." );
 $rd_doc = \AssociazioneSemplice\DocsPro::statement( $rd_y );
-asem_ok( 0 === strpos( $rd_doc['body'], '%PDF-1.4' ) && false !== strpos( $rd_doc['body'], 'RENDICONTO PER CASSA' ) && false !== strpos( $rd_doc['body'], 'ENTRATE' ) && false !== strpos( $rd_doc['body'], 'USCITE' ) && false !== strpos( $rd_doc['body'], 'Anno positivo.' ) && false !== strpos( $rd_doc['body'], 'Il Tesoriere' ) && false !== strpos( $rd_doc['body'], 'CASSA E CONTI' ), 'rendiconto: il PDF ha entrate, uscite, cassa, relazione e firme' );
+asem_ok( 0 === strpos( $rd_doc['body'], '%PDF-1.4' ) && false !== strpos( $rd_doc['body'], 'RENDICONTO PER CASSA (MOD. D)' ) && false !== strpos( $rd_doc['body'], 'ENTRATE' ) && false !== strpos( $rd_doc['body'], 'USCITE' ) && false !== strpos( $rd_doc['body'], 'Anno positivo.' ) && false !== strpos( $rd_doc['body'], 'Il Tesoriere' ) && false !== strpos( $rd_doc['body'], 'CASSA E CONTI' ), 'rendiconto: il PDF ha entrate, uscite, cassa, relazione e firme' );
 asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\DocsPro::statement( 1999 ); } ) && null !== asem_throws( function () use ( $rd_y ) { \AssociazioneSemplice\Statement::save_notes( $rd_y, str_repeat( 'x', 6000 ) ); } ), 'rendiconto: anno valido e relazione di lunghezza limitata' );
 asem_render( array( Admin\ProRegisters::class, 'render_statement' ), 'Relazione sull\'andamento della gestione', array( 'year' => $rd_y ) );
 // accessi
