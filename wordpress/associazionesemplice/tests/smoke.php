@@ -6727,6 +6727,25 @@ asem_ok( false !== strpos( $gt_pub, 'Rita R.' ) && false === strpos( $gt_pub, 'R
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\ResourcesGate::page( '1.2.' . str_repeat( '0', 20 ), array( 'ok' => '', 'err' => '' ) ), 'Non valida' ) && false !== strpos( \AssociazioneSemplice\Frontend\ResourcesGate::page( \AssociazioneSemplice\ResourceGate::param( $oc_b, $rs_m1, \AssociazioneSemplice\Settings::card_secret() ), array( 'ok' => '', 'err' => '' ) ), 'Non valida' ), 'risorse: un codice sbagliato o di una risorsa senza ingresso con QR non vale' );
 wp_set_current_user( 1 );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\ResourcesFront::section( $people->get( $rs_m1 ) ), 'QR di ingresso' ), 'risorse: il socio trova il QR di ingresso nella sua area' );
+// ---------- Risorse: elenco degli orari con un solo pulsante ----------
+$lf_res = $RS::save( 0, array( 'name' => 'Campo Elenco', 'category' => 'court', 'mode' => 'slot', 'open_time' => '08:00', 'close_time' => '12:00', 'slot_minutes' => 60, 'min_slots' => 1, 'max_slots' => 1, 'fee_cents' => 1000, 'max_per_person' => 1, 'remind_hours' => 0 ) );
+$lf_day = gmdate( 'Y-m-d', strtotime( $today . ' +20 days' ) );
+$_GET['asem_res'] = $lf_res;
+$_GET['asem_day'] = $lf_day;
+$lf_html = \AssociazioneSemplice\Frontend\ResourcesFront::section( $people->get( $rs_m1 ) );
+unset( $_GET['asem_res'], $_GET['asem_day'] );
+$lf_pos = strpos( $lf_html, 'Campo Elenco' );
+$lf_blk = substr( $lf_html, $lf_pos, (int) strpos( $lf_html, '</details>', $lf_pos ) - $lf_pos );
+asem_ok( 4 === substr_count( $lf_blk, 'type="radio" name="start"' ), 'risorse: ogni orario libero è una scelta nell\'elenco' );
+asem_ok( 1 === substr_count( $lf_blk, '<button' ) && 1 === substr_count( $lf_blk, '<form' ) && 1 === substr_count( $lf_blk, 'name="action" value="asem_front_res_book"' ), 'risorse: l\'elenco ha un solo modulo e un solo pulsante Prenota' );
+asem_ok( false !== strpos( $lf_blk, '>Prenota</button>' ) && 1 === substr_count( $lf_blk, 'si paga in segreteria' ) && false === strpos( $lf_blk, 'Prenota (pago in segreteria)' ), 'risorse: la nota «si paga in segreteria» compare una volta sola' );
+// la stessa prenotazione di prima, con i campi che il nuovo modulo invia
+$lf_post = array( 'resource_id' => $lf_res, 'date' => $lf_day, 'start' => '09:00', 'slots' => 1, 'pay' => 'desk' );
+list( $lf_fee ) = $RS::quote( (int) $lf_post['resource_id'], $lf_post['date'], $lf_post['start'], (int) $lf_post['slots'], array() );
+$lf_id = $RS::book_slot( (int) $lf_post['resource_id'], $rs_m1, $lf_post['date'], $lf_post['start'], (int) $lf_post['slots'], array() );
+asem_ok( 1000 === (int) $lf_fee && $lf_id > 0, 'risorse: l\'orario scelto nel nuovo modulo si prenota come prima' );
+asem_ok( null !== asem_throws( function () use ( $RS, $lf_res, $rs_m1, $lf_day ) { $RS::book_slot( $lf_res, $rs_m1, $lf_day, '10:00', 1, array() ); } ), 'risorse: il limite per persona vale anche con il nuovo modulo' );
+$RS::cancel( $lf_id, true );
 asem_render( array( Admin\ResourcesPage::class, 'render_detail' ), 'ingresso con il QR della prenotazione', array( 'id' => $gt_res ) );
 
 // ---------- Copia di sicurezza e ripristino (in fondo: tocca tutte le tabelle) ----------
