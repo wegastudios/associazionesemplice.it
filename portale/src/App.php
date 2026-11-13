@@ -775,6 +775,14 @@ final class App {
 		if ( '' === $v['slug'] && '' !== $v['org_name'] ) {
 			$v['slug'] = SaasCheckout::slugFrom( $v['org_name'] );
 		}
+		// Cambiando piano, i componenti che il catalogo non ammette su quello nuovo escono dal carrello (la pagina li mostra spenti col motivo).
+		if ( $cat && '' !== $v['plan'] && $v['addons'] ) {
+			foreach ( (array) ( $cat['doc']['addons'] ?? array() ) as $a ) {
+				if ( is_array( $a ) && isset( $v['addons'][ $a['code'] ?? '' ] ) && null !== Catalog::addonBlock( $cat['doc'], $v['plan'], $a ) ) {
+					unset( $v['addons'][ $a['code'] ] );
+				}
+			}
+		}
 		$quote = null;
 		$error = '';
 		if ( ! $get ) {

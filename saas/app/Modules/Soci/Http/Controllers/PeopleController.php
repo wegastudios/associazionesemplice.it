@@ -21,6 +21,7 @@ use App\Modules\Soci\Rules\Age;
 use App\Modules\Soci\Services\CertificateService;
 use App\Modules\Soci\Services\ConsentService;
 use App\Modules\Soci\Services\GuardianService;
+use App\Modules\Soci\Services\MemberLimit;
 use App\Modules\Soci\Services\MembershipService;
 use App\Modules\Soci\Services\PeopleService;
 use Closure;
@@ -43,7 +44,18 @@ final readonly class PeopleController
         private GuardianService $guardians,
         private CertificateService $certificates,
         private ConsentService $consents,
+        private MemberLimit $limit,
     ) {}
+
+    /** @return array{state: string, message: string}|null avviso sul limite di soci, solo da quando serve */
+    private function limitNotice(): ?array
+    {
+        $status = $this->limit->status();
+
+        return in_array($status['state'], ['warn', 'tolerance', 'blocked'], true)
+            ? ['state' => $status['state'], 'message' => $status['message']]
+            : null;
+    }
 
     public function index(Request $request): Response
     {
@@ -83,6 +95,7 @@ final readonly class PeopleController
             'next' => $page->nextPageUrl(),
             'prev' => $page->previousPageUrl(),
             'activeCount' => $this->memberships->activeCount(),
+            'limit' => $this->limitNotice(),
             'canEdit' => $request->user()?->can('people.edit') ?? false,
             'canExport' => $request->user()?->can('people.export') ?? false,
         ]);
