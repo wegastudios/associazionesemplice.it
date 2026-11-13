@@ -163,6 +163,16 @@ final readonly class MembershipService implements Members
             ->where('valid_from', '<=', $day)->where('valid_to', '>=', $day)->exists();
     }
 
+    /**
+     * Tutte le persone attive oggi (per il filtro «in regola» / «da rinnovare» dell'elenco soci).
+     *
+     * @return list<string>
+     */
+    public function activeIds(?string $date = null): array
+    {
+        return array_values(array_filter($this->activeQuery($date ?? now()->toDateString())->pluck('p.id')->all(), is_string(...)));
+    }
+
     public function activeCount(?string $date = null): int
     {
         return $this->activeQuery($date ?? now()->toDateString())->count();

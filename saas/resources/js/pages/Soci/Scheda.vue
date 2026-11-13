@@ -98,7 +98,7 @@ const label = 'space-y-1 text-sm';
                 <p v-if="person" class="mt-1.5 flex flex-wrap gap-1.5">
                     <span v-if="person.left_on" class="badge badge-neutral">Uscito il {{ person.left_on }}</span>
                     <span v-else-if="person.active" class="badge badge-ok">In regola</span>
-                    <span v-else class="badge badge-warn">Senza tessera valida</span>
+                    <span v-else class="badge badge-warn">Da rinnovare</span>
                     <span v-if="person.minor" class="badge badge-neutral">Minorenne</span>
                 </p>
             </div>
@@ -136,7 +136,7 @@ const label = 'space-y-1 text-sm';
 
             <fieldset :disabled="!canEdit" class="grid gap-4 sm:grid-cols-3">
                 <legend class="mb-1 text-lg font-bold">Dati riservati</legend>
-                <p class="text-sm text-muted sm:col-span-3">Questi dati sono cifrati: nel database non si leggono.</p>
+                <p class="text-sm text-muted sm:col-span-3">Dati protetti: li vede solo chi ha il permesso di aprire le schede.</p>
                 <label :class="label"><span class="font-semibold">Codice fiscale</span><input v-model="form.tax_code" autocomplete="off" class="uppercase" :class="field" /></label>
                 <label :class="label"><span class="font-semibold">Data di nascita</span><input v-model="form.birth_date" type="date" :class="field" /></label>
                 <label :class="label"><span class="font-semibold">Luogo di nascita</span><input v-model="form.birth_place" :class="field" /></label>
@@ -161,7 +161,7 @@ const label = 'space-y-1 text-sm';
                             <span class="block font-semibold" :class="m.valid ? '' : 'line-through'">Anno sociale {{ m.social_year }}</span>
                             <span class="caption block">fino al {{ m.valid_to }} – {{ { payment: 'quota incassata', manual: 'senza incasso', import: 'importata', founder: 'fondatore' }[m.source] }}</span>
                         </span>
-                        <span v-if="m.valid" class="badge badge-ok">Valida</span><span v-else class="badge badge-neutral">Tolta</span>
+                        <span v-if="m.valid" class="badge badge-ok">Valida</span><span v-else class="badge badge-neutral">Annullata</span>
                         <button v-if="canEdit && m.valid && m.source !== 'payment'" type="button" class="btn btn-ghost btn-sm" @click="revoke(m.id)">Togli</button>
                     </li>
                 </ul>
@@ -186,7 +186,7 @@ const label = 'space-y-1 text-sm';
                     <h2 class="text-lg font-bold">Certificato medico</h2>
                     <span class="rounded px-2 py-0.5 text-sm font-semibold" :class="certBadge[person.certificates.status]">{{ person.certificates.label }}</span>
                 </div>
-                <p class="mb-3 text-sm text-muted">Dato sanitario: è cifrato e ogni consultazione resta nel registro delle azioni.</p>
+                <p class="mb-3 text-sm text-muted">È un dato sanitario: resta traccia di chi lo apre.</p>
                 <table v-if="person.certificates.items.length" class="mb-4 w-full text-sm">
                     <thead class="text-left text-muted"><tr><th class="py-2">Tipo</th><th class="py-2">Medico</th><th class="py-2">Rilascio</th><th class="py-2">Scadenza</th><th class="py-2"></th></tr></thead>
                     <tbody>
@@ -213,14 +213,14 @@ const label = 'space-y-1 text-sm';
 
             <section v-if="person.minor || person.guardians.length" v-show="tab === 'famiglia'" class="mb-4 card p-4 sm:p-5">
                 <h2 class="mb-3 text-lg font-bold">Genitori o tutori</h2>
-                <p v-if="!person.guardians.length" class="mb-3 text-sm text-muted">Nessun tutore collegato. Il tutore operativo segue il minore nell'area soci.</p>
+                <p v-if="!person.guardians.length" class="mb-3 text-sm text-muted">Nessun genitore o tutore collegato. Collegane uno: sarà lui a entrare nell’area soci per il minore.</p>
                 <ul class="mb-4 space-y-2 text-sm">
                     <li v-for="g in person.guardians" :key="g.id" class="flex flex-wrap items-center gap-3">
                         <Link :href="`/gestionale/soci/${g.id}`" class="font-semibold text-accent hover:underline">{{ g.name }}</Link>
                         <span class="text-muted">{{ g.email ?? 'senza email' }}</span>
-                        <span v-if="g.operative" class="rounded bg-salvia/15 px-2 py-0.5">operativo</span>
+                        <span v-if="g.operative" class="rounded bg-salvia/15 px-2 py-0.5">entra nell’area soci</span>
                         <template v-if="canEdit">
-                            <button v-if="!g.operative" type="button" class="text-accent hover:underline" @click="makeOperative(g)">Rendi operativo</button>
+                            <button v-if="!g.operative" type="button" class="text-accent hover:underline" @click="makeOperative(g)">Fai entrare lui nell’area soci</button>
                             <button type="button" class="text-danger hover:underline" @click="unlinkGuardian(g)">Scollega</button>
                         </template>
                     </li>

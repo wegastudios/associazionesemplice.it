@@ -11,7 +11,7 @@ import AppLayout from '../layouts/AppLayout.vue';
         <section class="card p-4 sm:p-5 text-sm">
             <ul class="mb-4 list-disc space-y-1 pl-5">
                 <li>La prima nota e l'anagrafica si possono ricaricare con gli import.</li>
-                <li>Contiene dati personali e sanitari: conservalo con cura e cancellalo quando non serve più. Lo scarico resta nel registro delle azioni.</li>
+                <li>Contiene dati personali e sanitari: conservalo con cura e cancellalo quando non serve più. Resta traccia di chi scarica l’archivio.</li>
                 <li>I file allegati ai certificati medici non sono compresi: si scaricano dalla scheda della persona.</li>
             </ul>
             <a href="/gestionale/esportazione.zip" class="inline-block btn btn-primary">Scarica l'archivio</a>

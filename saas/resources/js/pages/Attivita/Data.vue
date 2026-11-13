@@ -54,7 +54,7 @@ const states = { free: 'gratuita', paid: 'pagata', partial: 'pagata in parte', u
                     <div class="flex flex-wrap items-center gap-3">
                         <Link :href="`/gestionale/soci/${b.person_id}`" class="font-semibold text-accent hover:underline">{{ b.name }}</Link>
                         <span class="text-muted">{{ b.type }}</span>
-                        <span v-if="b.list" class="rounded bg-surface px-2 py-0.5 text-xs">{{ b.list }}<template v-if="b.from_package"> · dal pacchetto</template></span>
+                        <span v-if="b.list" class="rounded bg-surface px-2 py-0.5 text-xs">{{ b.list }}<template v-if="b.from_package"> · dal carnet</template></span>
                         <span v-if="b.package_left !== null" class="text-xs text-muted">ingressi rimasti: {{ b.package_left }}</span>
                         <span class="text-muted">{{ b.fee }} · {{ states[b.state] }}</span>
                         <span v-if="b.active && b.due > 0" class="rounded bg-danger/15 px-2 py-0.5 text-danger">da incassare {{ b.due_label }}</span>
@@ -81,7 +81,7 @@ const states = { free: 'gratuita', paid: 'pagata', partial: 'pagata in parte', u
                     <select v-model="book.price" :class="field">
                         <option value="">Contributo ({{ fee }} per i soci)</option>
                         <option v-for="l in priceLists" :key="l.key" :value="l.key">{{ l.label }}</option>
-                        <option value="_package">Un ingresso da un pacchetto già preso</option>
+                        <option value="_package">Un ingresso dal carnet già pagato</option>
                     </select></label>
                 <button type="submit" class="btn btn-primary" :disabled="!book.person_id || book.processing || session.free === 0">Prenota</button>
                 <span v-if="session.free === 0" class="text-sm text-danger">Posti esauriti: usa la lista d'attesa.</span>

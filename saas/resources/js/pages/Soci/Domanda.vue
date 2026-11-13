@@ -51,7 +51,7 @@ const field = 'field';
             </form>
             <form class="space-y-3 card p-4 sm:p-5 text-sm" @submit.prevent="reject">
                 <h2 class="text-lg font-bold">Respingi</h2>
-                <label class="block space-y-1"><span class="font-semibold">Motivo</span><input v-model="rejectForm.reason" :class="field" maxlength="200" required /></label>
+                <label class="block space-y-1"><span class="font-semibold">Motivo <span class="font-normal text-muted">(resta nel gestionale: a chi ha fatto domanda arriva solo un avviso)</span></span><input v-model="rejectForm.reason" :class="field" maxlength="200" required /></label>
                 <p v-if="rejectForm.errors.reason" class="text-danger">{{ rejectForm.errors.reason }}</p>
                 <button type="submit" class="btn btn-danger" :disabled="rejectForm.processing || !rejectForm.reason.trim()">Respingi</button>
             </form>

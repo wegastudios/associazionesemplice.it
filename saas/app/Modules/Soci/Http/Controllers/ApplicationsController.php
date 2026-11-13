@@ -98,7 +98,8 @@ final readonly class ApplicationsController
     {
         $data = Input::of($request->validate(['reason' => ['required', 'string', 'max:200']]));
         try {
-            $this->applications->reject($application, Input::string($data, 'reason'));
+            $name = $this->db->connection($this->context->require()->connection)->table('app.orgs')->value('name');
+            $this->applications->reject($application, Input::string($data, 'reason'), is_string($name) ? $name : '');
         } catch (PeopleError $e) {
             throw ValidationException::withMessages(['ledger' => implode(' ', $e->messages)]);
         }

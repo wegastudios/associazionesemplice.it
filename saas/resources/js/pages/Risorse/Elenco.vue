@@ -19,11 +19,11 @@ defineProps({ archived: Boolean, limits: Array, rows: Array, canEdit: Boolean })
             </div>
         </div>
 
-        <section class="mb-6 grid gap-3 sm:grid-cols-3" aria-label="Risorse del pacchetto">
+        <section class="mb-6 grid gap-3 sm:grid-cols-3" aria-label="Risorse dell’abbonamento">
             <div v-for="l in limits" :key="l.value" class="card p-4">
                 <p class="text-sm text-muted">{{ l.label }}</p>
                 <p class="text-xl font-bold tabular-nums">{{ l.used }}<span v-if="l.tier !== null" class="text-base font-normal text-muted"> su {{ l.tier }}</span></p>
-                <p v-if="l.tier === null" class="text-xs text-muted">non comprese nel pacchetto</p>
+                <p v-if="l.tier === null" class="text-xs text-muted">non comprese nel tuo abbonamento: si aggiungono da Abbonamento e pacchetti</p>
             </div>
         </section>
 
