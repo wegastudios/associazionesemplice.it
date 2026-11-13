@@ -89,6 +89,10 @@ final class Settings {
 			'legal_city'              => '',
 			'legal_province'          => '',
 			'runts_number'            => '',        // iscrizione al RUNTS / registro (testo libero)
+			'runts_section'           => '',        // sezione del RUNTS: '', 'odv', 'aps', 'other' (vedi RuntsRules)
+			'runts_volunteers'        => 0,         // volontari iscritti nel registro dei volontari (numero inserito a mano: il programma non ha ancora il registro)
+			'runts_manual_year'       => 0,         // anno (31 dicembre) a cui si riferisce il numero dei volontari inserito a mano; 0 = non indicato
+			'voting_types'            => array( 'founder', 'ordinary', 'volunteer' ), // tipi di socio con diritto di voto (vedi VotingRight): di partenza tutti; i minorenni non votano mai
 			'pec'                     => '',        // PEC dell'ente
 			'sdi_code'                => '',        // codice destinatario per la fatturazione elettronica
 			'modules'                 => array(),   // parti del gestionale usate (vedi Modules): vuoto = tutte, come prima della configurazione guidata
@@ -173,6 +177,7 @@ final class Settings {
 		if ( $clean['fiscal_start_month'] !== $old_fiscal && FiscalYears::start_month_locked() ) { // con esercizi chiusi il mese non si cambia più
 			throw new \InvalidArgumentException( FiscalYears::start_month_locked_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
+		$clean['voting_types']            = VotingRight::clean_types( (array) $clean['voting_types'] );
 		$clean['membership_fee_cents']    = max( 0, (int) $clean['membership_fee_cents'] );
 		$clean['founder_years']           = max( 1, (int) $clean['founder_years'] );
 		$clean['guest_max_events']         = max( 0, min( 20, (int) $clean['guest_max_events'] ) );

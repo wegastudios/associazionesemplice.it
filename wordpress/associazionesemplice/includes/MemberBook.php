@@ -155,6 +155,25 @@ final class MemberBook {
 		return $out;
 	}
 
+	/**
+	 * I soci (righe grezze della tabella persone) che per il criterio {@see MemberBook::qualifies()} rientrano nel periodo da $from a $to. Con un periodo
+	 * di un solo giorno ($from = $to) sono i soci di quella data: lo usano i dati per il RUNTS, così il criterio resta uno solo.
+	 *
+	 * @return array[]
+	 */
+	public static function qualifying_people( string $from, string $to ): array {
+		$rows  = self::db()->get_results( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE deleted_at IS NULL AND application_status IS NULL AND type NOT IN ('guest','guardian') ORDER BY joined_on, id", ARRAY_A ) ?: array();
+		$cards = self::cards_by_person();
+		return array_values(
+			array_filter(
+				$rows,
+				function ( $p ) use ( $cards, $from, $to ) {
+					return self::qualifies( $p, $cards[ (int) $p['id'] ] ?? array(), $from, $to );
+				}
+			)
+		);
+	}
+
 	// ---------- Libro dal vivo e fotografato ----------
 
 	/** Residenza su una riga: via, CAP, comune (provincia). */

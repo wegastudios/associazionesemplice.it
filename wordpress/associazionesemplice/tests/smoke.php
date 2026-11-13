@@ -9148,6 +9148,80 @@ Settings::update( array( 'secretary_phone' => '' ) );
 remove_filter( 'pre_wp_mail', $er_hook, 10 );
 Settings::update( array( 'guest_max_events' => 2 ) );
 
+// ---------- Dati per il RUNTS: soci a una data, diritto di voto per tipo, soci enti, minimo di soci ----------
+$ru_mk = function ( string $type, string $first, string $last, string $birth, string $joined, string $from, string $to ) use ( $people, $wpdb ) {
+	$id = $people->create( array( 'type' => $type, 'first_name' => $first, 'last_name' => $last, 'birth_date' => $birth, 'joined_on' => $joined ) );
+	$wpdb->insert( Db::t( 'memberships' ), array( 'person_id' => $id, 'social_year' => substr( $from, 0, 4 ), 'valid_from' => $from, 'valid_to' => $to, 'source' => 'manual', 'created_at' => Db::now() ) );
+	return $id;
+};
+$ru_date = '2001-12-31';
+$ru_base = \AssociazioneSemplice\Runts::counts_at( $ru_date );
+$ru_ids  = array();
+$ru_ids[] = $ru_mk( 'ordinary', 'Rita', 'Votante', '1980-01-01', '2001-01-01', '2001-01-01', '2001-12-31' );
+$ru_ids[] = $ru_mk( 'volunteer', 'Vito', 'Cavallo', '1975-05-05', '2001-07-01', '2001-07-01', '2002-06-30' ); // la tessera attraversa il 31 dicembre
+$ru_ids[] = $ru_mk( 'ordinary', 'Mina', 'Minorenne', '1990-01-01', '2001-01-01', '2001-01-01', '2001-12-31' ); // 11 anni al 31/12/2001: non vota
+$ru_ids[] = $ru_mk( 'ordinary', 'Ada', 'Diciotto', '1983-12-31', '2001-01-01', '2001-01-01', '2001-12-31' ); // compie 18 anni proprio il 31 dicembre: vota
+$ru_left = $ru_mk( 'ordinary', 'Lia', 'Uscita', '1980-01-01', '2001-01-01', '2001-01-01', '2001-12-31' );
+$wpdb->update( Db::t( 'people' ), array( 'left_on' => '2001-10-01', 'left_reason' => 'recesso' ), array( 'id' => $ru_left ) );
+$ru_ids[] = $ru_left;
+$ru_ent = function ( string $name, string $cf, $same ) use ( $people, $wpdb ) {
+	$id = $people->create( array( 'type' => 'ordinary', 'subject_kind' => 'entity', 'first_name' => '', 'last_name' => $name, 'tax_code' => $cf, 'runts_same_section' => $same, 'joined_on' => '2001-01-01' ) );
+	$wpdb->insert( Db::t( 'memberships' ), array( 'person_id' => $id, 'social_year' => '2001', 'valid_from' => '2001-01-01', 'valid_to' => '2001-12-31', 'source' => 'manual', 'created_at' => Db::now() ) );
+	return $id;
+};
+$ru_ids[] = $ru_ent( 'Ente Uno APS', '12345678903', '1' );
+$ru_ids[] = $ru_ent( 'Ente Due', '12345678903', '0' );
+$ru_ids[] = $ru_ent( 'Ente Tre', '', '' );
+$ru_c = \AssociazioneSemplice\Runts::counts_at( $ru_date );
+asem_ok( 4 === $ru_c['persons'] - $ru_base['persons'] && 3 === $ru_c['persons_vote'] - $ru_base['persons_vote'] && 1 === $ru_c['persons_no_vote'] - $ru_base['persons_no_vote'], 'RUNTS: persone fisiche al 31/12 (tessera a cavallo sì, uscito prima no), con voto solo i maggiorenni (18 anni compiuti il 31/12 sì)' );
+asem_ok( 3 === count( $ru_c['entities'] ) - count( $ru_base['entities'] ) && 1 === $ru_c['entities_same_section'] - $ru_base['entities_same_section'], 'RUNTS: gli enti sono elencati a parte e non contano tra le persone; uno solo è della stessa sezione' );
+asem_ok( 1 === $ru_c['volunteer_members'] - $ru_base['volunteer_members'], 'RUNTS: i soci «socio e volontario» a quella data sono un promemoria separato' );
+add_filter( 'asem_fiscal_start_month', $ru_fm = function () { return 7; } );
+asem_ok( \AssociazioneSemplice\Runts::counts_at( $ru_date ) === $ru_c, 'RUNTS: il conteggio al 31/12 non dipende dal mese di inizio dell\'esercizio' );
+remove_filter( 'asem_fiscal_start_month', $ru_fm );
+asem_ok( in_array( 'Ente Uno APS', array_column( $ru_c['entities'], 'name' ), true ) && in_array( '12345678903', array_column( $ru_c['entities'], 'tax_code' ), true ),'RUNTS: l\'ente compare con la denominazione e il codice fiscale' );
+// diritto di voto per tipo di socio
+Settings::update( array( 'voting_types' => array( 'ordinary' ) ) );
+$ru_c2 = \AssociazioneSemplice\Runts::counts_at( $ru_date );
+asem_ok( 2 === $ru_c2['persons_vote'] - $ru_base['persons_vote'], 'diritto di voto per tipo: se il tipo «socio e volontario» non vota, non conta nei dati RUNTS' );
+Settings::update( array( 'voting_types' => array() ) );
+asem_ok( array( 'founder', 'ordinary', 'volunteer' ) === \AssociazioneSemplice\VotingRight::types(), 'diritto di voto per tipo: se non resta nessun tipo, votano tutti' );
+Settings::update( array( 'voting_types' => array( 'founder', 'ordinary', 'volunteer' ) ) );
+// votazioni e assemblee: tipo che vota e maggiorenne
+$ru_next = gmdate( 'Y-m-d', strtotime( '+1 year' ) );
+$ru_today = Db::today();
+$ru_adult  = $ru_mk( 'ordinary', 'Piero', 'Adulto', '1980-01-01', $ru_today, $ru_today, $ru_next );
+$ru_minor  = $ru_mk( 'ordinary', 'Pia', 'Piccola', gmdate( 'Y-m-d', strtotime( '-10 years' ) ), $ru_today, $ru_today, $ru_next );
+$ru_volun  = $ru_mk( 'volunteer', 'Vera', 'Volontaria', '1980-01-01', $ru_today, $ru_today, $ru_next );
+$ru_el     = \AssociazioneSemplice\Assemblies::eligible_ids();
+asem_ok( in_array( $ru_adult, $ru_el, true ) && in_array( $ru_volun, $ru_el, true ) && ! in_array( $ru_minor, $ru_el, true ), 'assemblee: il minorenne non ha diritto di voto, gli adulti sì' );
+asem_ok( \AssociazioneSemplice\Assemblies::is_eligible( $people->get( $ru_adult ) ) && ! \AssociazioneSemplice\Assemblies::is_eligible( $people->get( $ru_minor ) ), 'assemblee: stessa regola nel controllo della singola persona' );
+asem_ok( \AssociazioneSemplice\Assemblies::eligible_count() === count( \AssociazioneSemplice\Assemblies::eligible_people() ), 'votazioni: il conteggio e l\'elenco di chi vota coincidono' );
+Settings::update( array( 'voting_types' => array( 'ordinary' ) ) );
+asem_ok( ! in_array( $ru_volun, \AssociazioneSemplice\Assemblies::eligible_ids(), true ) && ! \AssociazioneSemplice\Assemblies::is_eligible( $people->get( $ru_volun ) ) && \AssociazioneSemplice\Assemblies::eligible_count() === count( \AssociazioneSemplice\Assemblies::eligible_people() ), 'diritto di voto per tipo: un tipo che non vota non è tra gli aventi diritto' );
+Settings::update( array( 'voting_types' => array( 'founder', 'ordinary', 'volunteer' ) ) );
+// soci enti: controlli
+asem_ok( null !== asem_throws( function () use ( $people ) { $people->create( array( 'type' => 'ordinary', 'subject_kind' => 'entity', 'last_name' => 'Ente Sbagliato', 'tax_code' => '12345678901' ) ); } ), 'socio ente: codice fiscale non valido rifiutato' );
+asem_ok( null !== asem_throws( function () use ( $people ) { $people->create( array( 'type' => 'ordinary', 'subject_kind' => 'entity', 'last_name' => '' ) ); } ), 'socio ente: la denominazione è obbligatoria' );
+asem_ok( null !== asem_throws( function () use ( $people ) { $people->create( array( 'type' => 'guest', 'subject_kind' => 'entity', 'last_name' => 'Ente Ospite', 'phone' => '333 1212121' ) ); } ), 'socio ente: solo un socio può essere un ente' );
+asem_ok( 'entity' === $people->get( $ru_ids[5] )['subject_kind'] && 'person' === $people->get( $ru_ids[0] )['subject_kind'], 'socio ente: il tipo di soggetto si salva, di partenza è persona fisica' );
+// pagina, impostazioni e avvisi
+Settings::update( array( 'runts_section' => 'odv', 'runts_volunteers' => 12, 'runts_manual_year' => (int) gmdate( 'Y' ) - 1 ) );
+$ru_html = asem_render( array( \AssociazioneSemplice\Admin\RuntsPage::class, 'render' ), 'Dati per il RUNTS' );
+asem_ok( false !== strpos( $ru_html, 'controlla sempre sul portale del RUNTS' ) && false !== strpos( $ru_html, 'Lavoratori' ), 'pagina Dati per il RUNTS: si apre, con l\'avvertenza prudente e la riga dei lavoratori' );
+asem_ok( 0 === \AssociazioneSemplice\Runts::workers_count( '2001-12-31' ), 'RUNTS lavoratori: 0 finché non esiste il ruolo Dipendente' );
+add_filter( 'asem_runts_workers_count', $ru_wf = function () { return 5; } );
+asem_ok( 5 === \AssociazioneSemplice\Runts::workers_count( '2001-12-31' ), 'RUNTS lavoratori: il numero arriva dal filtro asem_runts_workers_count' );
+remove_filter( 'asem_runts_workers_count', $ru_wf );
+$ru_min = \AssociazioneSemplice\Runts::minimum_state();
+asem_ok( true === $ru_min['applies'] && 'odv' === $ru_min['section'], 'minimo di soci: il controllo scatta per le ODV' );
+$ru_txt = \AssociazioneSemplice\Admin\RuntsPage::minimum_text( array( 'section' => 'odv', 'persons' => 5, 'entities' => 0, 'since' => '2026-10-01', 'deadline' => '2026-10-31' ) );
+asem_ok( false !== strpos( $ru_txt, '30 giorni' ) && false !== strpos( $ru_txt, '31/10/2026' ) && false !== strpos( $ru_txt, 'Controlla sul portale del RUNTS' ), 'minimo di soci: l\'avviso dice i 30 giorni, la scadenza e di controllare sul portale' );
+Settings::update( array( 'runts_section' => '', 'runts_volunteers' => 0, 'runts_manual_year' => 0 ) );
+foreach ( array_merge( $ru_ids, array( $ru_adult, $ru_minor, $ru_volun ) ) as $ru_del ) {
+	$people->delete( $ru_del );
+}
+
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Tutti i controlli sono passati.' );

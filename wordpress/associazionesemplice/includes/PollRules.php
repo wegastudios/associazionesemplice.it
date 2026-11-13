@@ -94,8 +94,8 @@ final class PollRules {
 	 * Può votare? Solo i soci veri (non i genitori o tutori, non gli ospiti), in regola con la tessera, non sospesi né usciti,
 	 * e rientranti tra chi ha diritto al voto (tutti i soci, oppure gli iscritti dell'attività).
 	 */
-	public static function is_eligible( string $type, bool $active_member, bool $in_audience ): bool {
-		return MemberType::is_member( $type ) && $active_member && $in_audience;
+	public static function is_eligible( string $type, bool $active_member, bool $in_audience, bool $voting_right = true ): bool {
+		return MemberType::is_member( $type ) && $active_member && $in_audience && $voting_right; // il diritto di voto del tipo di socio, per i maggiorenni (vedi VotingRight)
 	}
 
 	/** Motivo per cui non si può votare ora, '' se si può. */

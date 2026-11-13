@@ -36,6 +36,17 @@ final class EntityData {
 			}
 			$vals['tax_code'] = $cf;
 		}
+		if ( $has( 'runts_section' ) ) { // sezione del RUNTS e numero dei volontari inserito a mano, con l'anno a cui si riferisce
+			$sec = $txt( 'runts_section' );
+			$vals['runts_section'] = RuntsRules::section_valid( $sec ) ? $sec : '';
+		}
+		if ( $has( 'runts_volunteers' ) ) {
+			$vals['runts_volunteers'] = max( 0, min( 1000000, (int) ( $p['runts_volunteers'] ?? 0 ) ) );
+		}
+		if ( $has( 'runts_manual_year' ) ) {
+			$y = (int) ( $p['runts_manual_year'] ?? 0 );
+			$vals['runts_manual_year'] = $y >= 2000 && $y <= 2100 ? $y : 0;
+		}
 		if ( $has( 'social_year_start_month' ) ) {
 			$vals['social_year_start_month'] = (int) ( $p['social_year_start_month'] ?? 9 );
 		}
