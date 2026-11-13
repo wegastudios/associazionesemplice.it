@@ -77,7 +77,7 @@ return array(
 	// Accesso unico (saas/docs/IDENTITA_API.md): /accedi, /twofactor, /account/esci e il reset password parlano col SaaS con richieste firmate (chiave staff_area_sign_key). Spento = accesso come prima.
 	'identity' => array( 'enabled' => false ),
 	// Pagina «Gestisci» nell'area clienti (stato, dominio, controllo cambio piano): accendere solo quando il SaaS ha in produzione gli endpoint v2 (promo, plan-change, domain, status).
-	'saas_retry' => false, // nuovi tentativi dei pagamenti non riusciti (bin/retry.php, ogni ora): accendere solo dopo aver spento i tentativi automatici di Stripe
+	'saas_retry' => false, // lasciare false: con Stripe riprova Stripe (Smart Retries, al massimo 8 in una settimana: in Stripe → Fatturazione → Recupero ricavi impostarli sulla durata più vicina ai 7 giorni). Il portale sa rifare i tentativi (3 al giorno per 2 giorni, poi 1 al giorno per 5; bin/retry.php ogni ora) ma oggi solo per Stripe: servirebbe per altri metodi che non riprovano da soli
 	'saas_v2' => array( 'enabled' => false, 'domain' => false ), // 'domain': dominio personalizzato ai clienti, solo quando i certificati sono decisi
 
 	// Catalogo del SaaS (piani, prezzi, promo): chiave pubblica con cui il SaaS firma, come «kid => x» (si legge con `php artisan saas:keys:generate` / dal SaaS).

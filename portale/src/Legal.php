@@ -10,6 +10,22 @@ final class Legal {
 		'termini' => array( 'Termini di utilizzo del servizio', 'terms_body' ),
 	);
 
+	/**
+	 * Riga dei dati dell'attività per il piè di pagina (obbligo per chi vende online): solo i campi compilati nel pannello
+	 * (Pagine legali: titolare, indirizzo, partita IVA, email di contatto); vuota se non c'è nulla.
+	 */
+	public static function footerLine(): string {
+		$l   = (array) Config::get( 'legal', array() );
+		$out = array();
+		foreach ( array( 'titolare' => '', 'indirizzo' => '', 'piva' => 'P.IVA ', 'email' => '' ) as $k => $prefix ) {
+			$v = trim( (string) ( $l[ $k ] ?? '' ) );
+			if ( '' !== $v ) {
+				$out[] = $prefix . $v;
+			}
+		}
+		return implode( ' · ', $out );
+	}
+
 	public static function vars(): array {
 		$l    = (array) Config::get( 'legal', array() );
 		$none = function ( string $k, string $fallback ) use ( $l ) {

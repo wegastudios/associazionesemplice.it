@@ -473,6 +473,12 @@ check( 'legale: HTML inserito dall\'amministratore è neutralizzato', false === 
 check( 'legale: pagina cookie usa il testo di base se non personalizzata', ! Portale\Legal::isCustom( 'cookie' ) && false !== strpos( Portale\Legal::html( Portale\Legal::body( 'cookie' ) ), 'privacy@esempio.it' ) );
 Portale\Settings::saveLegal( $db, array( 'email' => 'non-valida' ) );
 Portale\Settings::load( $db );
+$legalBefore = Config::get( 'legal', array() );
+Config::set( 'legal', array() );
+check( 'piè di pagina: senza dati compilati nessuna riga', '' === Portale\Legal::footerLine() );
+Config::set( 'legal', array( 'titolare' => 'Associazione Rossi', 'piva' => '01234567890', 'indirizzo' => '', 'email' => '' ) );
+check( 'piè di pagina: solo i campi compilati', 'Associazione Rossi · P.IVA 01234567890' === Portale\Legal::footerLine() );
+Config::set( 'legal', $legalBefore );
 $lv = Portale\Legal::vars();
 check( 'legale: segnaposto dei piani nuovi e vecchi → stesso nome del pannello', $lv['piano_contabile'] === $lv['piano_lite'] && $lv['piano_fiscale'] === $lv['piano_full'] && '' !== $lv['piano_gratuito'] && false === strpos( Portale\Legal::html( Portale\Legal::body( 'termini' ) ), '{piano_' ) );
 check( 'legale: email non valida scartata, si torna ai valori di base', 'info@associazionesemplice.it' === Portale\Legal::vars()['email'] && ! Portale\Legal::isCustom( 'privacy' ) );
