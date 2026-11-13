@@ -49,7 +49,7 @@ final class DeleteActivityPage {
 			return;
 		}
 		$n = count( $plan['ok'] );
-		echo '<div class="notice notice-error inline"><p><strong>Operazione definitiva.</strong> Stai per eliminare ' . ( 1 === $n ? '1 attività' : $n . ' attività' ) . ' con tutti i loro dati. Non si può annullare: prima scarica una <a href="' . esc_url( Ui::url( 'asem-backup' ) ) . '">copia di sicurezza</a>. La prima nota non cambia (nessuna ha incassi o spese).</p></div>';
+		echo '<div class="notice notice-error inline"><p><strong>Operazione definitiva.</strong> Stai per eliminare ' . ( 1 === $n ? '1 attività' : (int) $n . ' attività' ) . ' con tutti i loro dati. Non si può annullare: prima scarica una <a href="' . esc_url( Ui::url( 'asem-backup' ) ) . '">copia di sicurezza</a>. La prima nota non cambia (nessuna ha incassi o spese).</p></div>';
 		echo '<ul style="list-style:disc;margin-left:20px">';
 		$ok_ids     = array();
 		$recipients = 0;
@@ -75,7 +75,7 @@ final class DeleteActivityPage {
 			echo '<p><label><input type="checkbox" name="notify" value="1"> Avvisa per email le ' . (int) $recipients . ' persone prenotate o iscritte con un indirizzo email</label></p>';
 		}
 		echo '<p><label><input type="checkbox" name="confirm" value="1"> Ho letto e ho capito: l\'eliminazione è definitiva e non si può annullare.</label></p>';
-		echo '<p><button class="button button-primary" style="background:#b32d2e;border-color:#b32d2e">Elimina ' . ( 1 === $n ? 'l\'attività' : 'le ' . $n . ' attività' ) . '</button> <a class="button" href="' . esc_url( $back ) . '">Annulla</a></p>';
+		echo '<p><button class="button button-primary" style="background:#b32d2e;border-color:#b32d2e">Elimina ' . ( 1 === $n ? 'l\'attività' : 'le ' . (int) $n . ' attività' ) . '</button> <a class="button" href="' . esc_url( $back ) . '">Annulla</a></p>';
 		Ui::form_close();
 		Ui::footer();
 	}
