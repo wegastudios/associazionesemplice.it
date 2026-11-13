@@ -1219,6 +1219,7 @@ $rome = function ( string $when ) { return ( new DateTime( $when, new DateTimeZo
 check( 'promo: attiva tra le date (fine compresa)', 'Black Friday' === Portale\Settings::promoNow( $rome( '2026-11-30 12:00' ) ) && 'Black Friday' === Portale\Settings::promoNow( $rome( '2026-12-01 23:30' ) ) );
 check( 'promo: non attiva prima dell\'inizio e dopo la fine', null === Portale\Settings::promoNow( $rome( '2026-11-26 23:59' ) ) && null === Portale\Settings::promoNow( $rome( '2026-12-02 00:01' ) ) );
 check( 'promo: listino barrato solo in promo e solo se più alto', 1000 === Portale\Settings::listCents( 'lite', 'month', $rome( '2026-11-28 10:00' ) ) && null === Portale\Settings::listCents( 'lite', 'month', $rome( '2026-12-05 10:00' ) ) && null === Portale\Settings::listCents( 'lite', 'year', $rome( '2026-11-28 10:00' ) ) );
+check( 'promo: la data di fine si scrive in italiano accanto al nome solo in promo', 'fino al 1° dicembre' === Portale\Settings::promoUntil( $rome( '2026-11-28 10:00' ) ) && '' === Portale\Settings::promoUntil( $rome( '2026-12-05 10:00' ) ) );
 check( 'promo: il prezzo incassato resta quello in vigore', 800 === Portale\Config::price( 'lite', 'month' )['cents'] );
 check( 'promo: serve la data di fine', null !== throwsUser( function () use ( $pdb ) {
 	Portale\Settings::savePromo( $pdb, array( 'promo_label' => 'Prova' ) );
