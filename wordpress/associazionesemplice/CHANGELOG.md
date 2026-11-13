@@ -12,7 +12,10 @@ Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi u
 - Nuovi blocchi, shortcode e widget Elementor: elenco a schede, calendario, prossimi eventi e i pezzi della pagina evento (locandina, dati, prenotazione, dove, precedente e successivo, condividi); scegli tu il titolo, il messaggio senza eventi e il testo del pulsante, e componi la pagina dell'evento come vuoi
 - I pulsanti Elenco e Calendario funzionano anche nelle pagine che mostrano una sola vista
 - Elenco delle attività: schede in ordine e il pulsante di accesso non c'è più, perché confondeva (chi è socio accede dalla pagina dell'evento)
-- Importando gli eventi da The Events Calendar si compilano anche le pagine pubbliche: descrizione, immagine, categoria, organizzatore, luogo e sito dell'evento; le pagine restano in bozza (puoi scegliere di pubblicare subito quelle degli eventi futuri) e gli eventi che si ripetono diventano un solo evento ricorrente
+- Importando gli eventi da The Events Calendar si compilano anche le pagine pubbliche: descrizione, immagine, categoria, organizzatore, luogo e sito dell'evento; le pagine restano in bozza (puoi scegliere di pubblicare subito quelle degli eventi futuri); ogni evento diventa un'attività a sé, senza raggruppamenti, e quelli senza data sono elencati per titolo. Scegli tu quali categorie sono corsi e quali eventi prima di importare
+- Ogni import si può annullare: vale per soci, prima nota, WP All Import e The Events Calendar (restano gli eventi che hanno già prenotazioni o movimenti)
+- Puoi selezionare ed eliminare più corsi o eventi insieme dall'elenco delle attività (restano escluse quelle con incassi o spese in prima nota)
+- Per ogni evento puoi indicare email e telefono per le informazioni (di partenza quelli di chi lo crea e della segreteria); gli avvisi di prenotazione arrivano anche al contatto dell'evento
 
 ## 1.3.19
 - Eventi e corsi hanno una pagina pubblica sul sito, collegata all'attività e creata da sola: scrivi la descrizione e scegli la locandina, data, luogo, contributo e posti li prende dall'attività
