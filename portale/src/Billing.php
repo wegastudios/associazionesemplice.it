@@ -164,13 +164,45 @@ final class Billing {
 	 * @param string $mode `recurring` (rinnovo automatico) oppure `once` (pagamento singolo, nessun rinnovo)
 	 * @return string indirizzo a cui mandare il cliente per pagare
 	 */
-	public function startPaid( string $email, string $domain, string $plan, string $period, string $provider, string $mode = 'recurring', ?string $name = null ): string {
+	public function startPaid( string $email, string $domain, string $plan, string $period, string $provider, string $mode = 'recurring', ?string $name = null, string $promo = '' ): string {
 		$price = Config::price( $plan, $period );
 		if ( 'free' === $plan || ! $price || ! in_array( array( $provider, $mode ), $this->methods( $price ), true ) ) {
 			throw new UserError( 'Questo metodo di pagamento non è disponibile per il piano scelto.' );
 		}
+		$promo = strtoupper( trim( $promo ) );
+		$disc  = 0;
+		if ( '' !== $promo ) {
+			// Lo sconto vale sul pagamento singolo: sul rinnovo automatico il prezzo ricorrente è fisso su Stripe e PayPal.
+			if ( 'once' !== $mode ) {
+				throw new UserError( 'Il codice promo vale con il pagamento singolo: scegli quel metodo, oppure lascia vuoto il campo del codice.' );
+			}
+			$ck = \Portale\Plugin\Promos::check( $this->db, new \Portale\Plugin\ConfigCatalog(), $promo, Site::slug( $plan ), $period );
+			if ( ! $ck['valid'] ) {
+				throw new UserError( 'Il codice promo non è valido per questo piano o è scaduto.' );
+			}
+			if ( $ck['final_cents'] < 50 ) {
+				throw new UserError( 'Con questo codice l\'importo da pagare è troppo basso per il pagamento online: scrivici per attivare la licenza.' );
+			}
+			$disc            = (int) $ck['discount_cents'];
+			$price['cents']  = (int) $ck['final_cents'];
+		}
 		$r = $this->create( $email, $domain, $plan, $period, $provider, $mode, $name );
+		if ( $disc > 0 ) {
+			$this->db->run( 'INSERT INTO plugin_promo_orders (sub_id, code, discount_cents, created_at) VALUES (?,?,?,?)', array( $r['sub']['id'], $promo, $disc, Db::now() ) );
+		}
 		return $this->checkoutUrl( $r['sub'], $r['customer']['email'], $price, $provider, $mode );
+	}
+
+	/** A pagamento riuscito conferma l'uso del codice promo dell'ordine (una volta sola). Se nel frattempo è esaurito il cliente ha già pagato: non si blocca nulla. */
+	private function redeemPromo( string $subId ): void {
+		$o = $this->db->one( 'SELECT code FROM plugin_promo_orders WHERE sub_id = ?', array( $subId ) );
+		if ( $o ) {
+			try {
+				\Portale\Plugin\Promos::redeem( $this->db, (string) $o['code'], $subId );
+			} catch ( UserError $e ) {
+				// esaurito tra l'ordine e il pagamento: l'uso non si registra
+			}
+		}
 	}
 
 	/** Rinnovo di una licenza con pagamento singolo: stesso piano e stesso periodo, la chiave non cambia. */
@@ -314,6 +346,7 @@ final class Billing {
 		}
 		$this->issued = false;
 		$sub          = $this->activate( $subId, $providerRef, $providerCustomer );
+		$this->redeemPromo( $subId );
 		if ( $retryIfBusy && ! $this->issued && self::CLAIM === ( $sub['license_id'] ?? '' ) ) {
 			// Un altro processo sta ancora emettendo la licenza: il webhook risponde con errore e il provider riprova (poi è un no-op).
 			throw new \RuntimeException( 'Emissione della licenza già in corso: da riprovare.' );

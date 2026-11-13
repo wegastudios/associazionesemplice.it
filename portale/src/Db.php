@@ -151,6 +151,8 @@ final class Db {
 			// Codici promo del plugin (sempre di un solo prodotto) e usi confermati (uno per ordine).
 			'CREATE TABLE IF NOT EXISTS plugin_promos (code VARCHAR(30) PRIMARY KEY, kind VARCHAR(8) NOT NULL, value INTEGER NOT NULL, plans TEXT NOT NULL, starts_on VARCHAR(10) NOT NULL DEFAULT \'\', ends_on VARCHAR(10) NOT NULL, max_uses INTEGER NULL, used INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1, created_at VARCHAR(19) NOT NULL, updated_at VARCHAR(19) NOT NULL)',
 			'CREATE TABLE IF NOT EXISTS plugin_promo_uses (code VARCHAR(30) NOT NULL, order_ref VARCHAR(80) NOT NULL, at VARCHAR(19) NOT NULL, PRIMARY KEY (code, order_ref))',
+			// Codice promo scritto all'acquisto del plugin: ordine (abbonamento) → codice e sconto applicato; l'uso si conferma a pagamento riuscito.
+			'CREATE TABLE IF NOT EXISTS plugin_promo_orders (sub_id VARCHAR(64) PRIMARY KEY, code VARCHAR(30) NOT NULL, discount_cents INTEGER NOT NULL, created_at VARCHAR(19) NOT NULL)',
 			// Catalogo del plugin: bozza unica e revisioni pubblicate immutabili.
 			'CREATE TABLE IF NOT EXISTS plugin_catalog_draft (id INTEGER PRIMARY KEY, doc TEXT NOT NULL, updated_at VARCHAR(19) NOT NULL, updated_by VARCHAR(190) NOT NULL)',
 			'CREATE TABLE IF NOT EXISTS plugin_catalog_revs (rev INTEGER PRIMARY KEY, doc TEXT NOT NULL, at VARCHAR(19) NOT NULL, actor VARCHAR(190) NOT NULL)',
