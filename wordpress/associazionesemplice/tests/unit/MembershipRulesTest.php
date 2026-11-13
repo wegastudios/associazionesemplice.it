@@ -91,4 +91,11 @@ final class MembershipRulesTest extends TestCase {
 		$this->assertFalse( MemberBook::qualifies( $p, $cards, '2028-01-01', '2028-12-31' ) );
 		$this->assertTrue( MemberBook::qualifies( $p, $cards, '2026-07-01', '2027-06-30' ), 'esercizio a luglio: una sola volta in quello che la contiene' );
 	}
+
+	public function test_both_start_months_begin_in_january(): void {
+		$d = \AssociazioneSemplice\Settings::defaults();
+		$this->assertSame( 1, (int) $d['social_year_start_month'], 'anno sociale: di partenza gennaio (tessera = anno solare)' );
+		$this->assertSame( 1, (int) $d['fiscal_start_month'], 'anno fiscale: di partenza gennaio' );
+		$this->assertSame( '2026', SocialYear::for_date( '2026-11-13', (int) $d['social_year_start_month'] )->label(), 'con il valore di partenza la tessera è l\'anno solare' );
+	}
 }

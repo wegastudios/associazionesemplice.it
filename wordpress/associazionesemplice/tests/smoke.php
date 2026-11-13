@@ -5699,6 +5699,41 @@ asem_ok( $mg_n >= 2 && $mg_y . '-12-31' === $people->active_until( $mg_p ), 'mig
 asem_ok( 1 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . $mg_q . ' AND deleted_at IS NULL' ) && $mg_y . '-12-31' === $people->active_until( $mg_q ), 'migrazione: se c\'è già l\'anno solare resta quello, senza doppioni' );
 asem_ok( 0 === \AssociazioneSemplice\Install::migrate_membership_years(), 'migrazione: rilanciarla non cambia nulla' );
 $wpdb->query( 'UPDATE ' . Db::t( 'memberships' ) . " SET social_year = SUBSTRING(social_year, 2) WHERE social_year LIKE 'K%'" );
+
+// ---------- Mese di partenza dell'anno sociale: gennaio per tutti i nuovi, e per chi usa già il programma resta com'era (v62) ----------
+asem_ok( 1 === (int) Settings::defaults()['social_year_start_month'] && 1 === (int) Settings::defaults()['fiscal_start_month'], 'mesi di partenza: anno sociale e anno fiscale iniziano entrambi a gennaio' );
+$sy_raw   = function () { $o = get_option( Settings::OPTION, array() ); return is_array( $o ) ? $o : array(); };
+$sy_unset = function () use ( $sy_raw ) { $o = $sy_raw(); unset( $o['social_year_start_month'] ); update_option( Settings::OPTION, $o ); }; // come un sito che non ha mai salvato la scelta
+// installazione esistente con soci e nessuna scelta salvata: gennaio viene fissato, la tessera resta sull'anno solare
+$sy_unset();
+asem_ok( true === \AssociazioneSemplice\Install::migrate_social_year_month() && 1 === (int) ( $sy_raw()['social_year_start_month'] ?? 0 ) && 1 === Settings::start_month(), 'migrazione mese: con soci già inseriti e nessuna scelta salvata si fissa gennaio' );
+asem_ok( false === \AssociazioneSemplice\Install::migrate_social_year_month() && 1 === (int) ( $sy_raw()['social_year_start_month'] ?? 0 ), 'migrazione mese: rilanciarla non cambia nulla' );
+// scelta esplicita (settembre): non si tocca
+$set_sm( 9 );
+asem_ok( false === \AssociazioneSemplice\Install::migrate_social_year_month() && 9 === (int) ( $sy_raw()['social_year_start_month'] ?? 0 ) && 9 === Settings::start_month(), 'migrazione mese: chi ha scelto settembre resta a settembre' );
+// installazione nuova (nessun socio e nessuna tessera): niente da fissare, vale il valore di partenza
+$sy_pp = array_map( 'intval', $wpdb->get_col( 'SELECT id FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL' ) );
+$sy_mm = array_map( 'intval', $wpdb->get_col( 'SELECT id FROM ' . Db::t( 'memberships' ) . ' WHERE deleted_at IS NULL' ) );
+$wpdb->query( 'UPDATE ' . Db::t( 'people' ) . ' SET deleted_at = NOW() WHERE deleted_at IS NULL' );
+$wpdb->query( 'UPDATE ' . Db::t( 'memberships' ) . ' SET deleted_at = NOW() WHERE deleted_at IS NULL' );
+$sy_unset();
+asem_ok( false === \AssociazioneSemplice\Install::migrate_social_year_month() && ! array_key_exists( 'social_year_start_month', $sy_raw() ) && 1 === Settings::start_month(), 'migrazione mese: senza soci né tessere non si salva nulla e il mese di partenza è gennaio' );
+if ( $sy_pp ) {
+	$wpdb->query( 'UPDATE ' . Db::t( 'people' ) . ' SET deleted_at = NULL WHERE id IN (' . implode( ',', $sy_pp ) . ')' );
+}
+if ( $sy_mm ) {
+	$wpdb->query( 'UPDATE ' . Db::t( 'memberships' ) . ' SET deleted_at = NULL WHERE id IN (' . implode( ',', $sy_mm ) . ')' );
+}
+$set_sm( $sm_was );
+// le due domande sono separate e chiare, sia nei Dati dell'ente sia nella procedura guidata
+ob_start();
+Admin\EntityPage::render();
+$sy_html = (string) ob_get_clean();
+asem_ok( false !== strpos( $sy_html, 'Da che mese inizia il tuo anno sociale (tessere e attività)?' ) && false !== strpos( $sy_html, 'Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?' ) && false !== strpos( $sy_html, 'riferiti al 31 dicembre in ogni caso' ), 'dati dell\'ente: le domande su anno sociale e anno fiscale sono due, separate' );
+ob_start();
+Admin\WizardPage::render();
+$sy_html = (string) ob_get_clean();
+asem_ok( false !== strpos( $sy_html, 'Da che mese inizia il tuo anno sociale (tessere e attività)?' ) && false !== strpos( $sy_html, 'Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?' ), 'procedura guidata: le domande su anno sociale e anno fiscale sono due, separate' );
 $set_sm( $sm_was );
 
 // ---------- Tessera: segue l'anno sociale (non l'esercizio) ----------

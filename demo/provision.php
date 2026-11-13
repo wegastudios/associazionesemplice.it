@@ -35,6 +35,8 @@ demo_step( 'ente e funzioni', function () {
 		'guests_enabled'   => 1,
 		'join_mode'        => 'request',
 		'membership_fee'   => '20,00',
+		'social_year_start_month' => 1, // anno sociale (tessere e attività) a gennaio, scelto in modo esplicito
+		'fiscal_start_month'      => 1, // anno fiscale (bilancio e rendiconto) a gennaio, scelto in modo esplicito
 	) );
 	Wizard::mark( Wizard::DONE );
 } );
