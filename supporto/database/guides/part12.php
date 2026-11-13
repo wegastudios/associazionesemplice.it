@@ -28,6 +28,35 @@ Il menu è diviso in quattro gruppi: **Persone** (Soci, Domande di adesione), **
 MD,
     ],
     [
+        'topic' => 'gestionale', 'section' => 'Per cominciare', 'slug' => 'gestionale-prova-di-30-giorni-e-scelta-del-piano',
+        'title' => 'La prova di 30 giorni e la scelta del piano',
+        'body' => <<<'MD'
+> Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
+
+## La prova
+
+La prova dura **30 giorni** e **non chiede la carta**. Puoi provare quasi tutto il gestionale; **non comprende** le **esportazioni** (dei dati, della contabilità e del libro soci) e la possibilità di **collegare un commercialista**.
+
+## I tre piani
+
+I piani sono **{piano_piccola}**, **{piano_media}** e **{piano_grande}**. Si distinguono per il **numero di soci**, il **numero di operatori** e le funzioni incluse; per esempio i **pagamenti online dei soci** e la **fattura elettronica** partono da {piano_media}, le **comunicazioni** e la **vita associativa** da {piano_grande}. Alcune funzioni si aggiungono a parte (per esempio il sito, le risorse e prenotazioni, lo sport, il dominio personalizzato, il database dedicato). Limiti e prezzi aggiornati sono sempre nella **pagina dei prezzi** di associazionesemplice.it: qui non li ripetiamo per non darti numeri vecchi.
+
+Con **{piano_grande}**, se superi il numero di soci previsto, si aggiungono **pacchetti da 500 soci**.
+
+## Se non scegli un piano
+
+Alla fine dei 30 giorni, se **non scegli un piano**, i dati della prova vengono **cancellati dopo 7 giorni**. Prima ricevi **email di avviso** con una **proposta scontata** per continuare. Se scegli un piano in tempo, i tuoi dati restano dove sono.
+
+## Se un piano scade
+
+Se un piano a pagamento non viene rinnovato, il gestionale si **sospende il giorno dopo la scadenza** e i tuoi dati vengono **conservati per 180 giorni**: rinnovando, riparti da dove eri. Puoi sempre **esportare i tuoi dati** (vedi [Esportare tutti i dati](guida:gestionale-esportare-i-dati)).
+
+## Il commercialista
+
+Il commercialista può avere un accesso **solo fiscale**, gratuito e che **non conta tra gli operatori**, oppure un accesso **completo**, che conta come un operatore. Vedi [Operatori e ruoli](guida:gestionale-operatori-e-ruoli).
+MD,
+    ],
+    [
         'topic' => 'gestionale', 'section' => 'Soci', 'slug' => 'gestionale-aggiungere-e-importare-i-soci',
         'title' => 'Aggiungere i soci e importarli da Excel o CSV',
         'body' => <<<'MD'

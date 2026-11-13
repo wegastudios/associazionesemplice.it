@@ -356,6 +356,8 @@ final readonly class CatalogDraftEditor
             'trial' => [
                 'exports' => ($input['trial_exports'] ?? null) === '1',
                 'accountant_access' => ($input['trial_accountant_access'] ?? null) === '1',
+                'end_discount_percent' => CatalogForm::int($input['end_discount_percent'] ?? null),
+                'purge_days' => CatalogForm::int($input['purge_days'] ?? null),
             ],
         ];
         $this->publisher->saveDraft($document, $staffId);
