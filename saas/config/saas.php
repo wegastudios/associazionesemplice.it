@@ -96,8 +96,12 @@ return [
         'public_keys' => env('SAAS_PORTAL_PUBLIC_KEYS', ''),
         // Seme della chiave Ed25519 con cui il SaaS firma verso il portale (base64, 32 byte).
         'signing_key' => env('SAAS_PORTAL_SIGNING_KEY'),
-        // Giorni dopo la scadenza prima che il SaaS sospenda da sé un'associazione.
-        'grace_days' => 15,
+        // Giorni dopo la scadenza prima che il SaaS sospenda da sé un'associazione: 0 = sospesa il giorno dopo l'ultimo giorno pagato
+        // (decisione del 13/11/2026).
+        'grace_days' => 0,
+        // Giorni in cui si conservano i dati di un'associazione sospesa o che ha disdetto, poi si cancellano (decisione del 13/11/2026).
+        // Oggi è solo il valore: la cancellazione non è ancora fatta dall'applicazione.
+        'retention_days' => 180,
     ],
 
     // Dominio personalizzato: il cliente delega il dominio ai nostri nameserver (elenco separato da virgole), noi emettiamo

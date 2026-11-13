@@ -150,7 +150,7 @@ abbonamenti, registro delle azioni, impostazioni (nameserver dei domini), access
 7. **Promozione «in vetrina»** con prezzo di listino barrato (la scheda «Piani e prezzi» del plugin): un campo del catalogo
    `catalogo/v1` letto dal portale.
 8. **Prova gratuita e promemoria configurabili**: giorni di prova e giorni prima della scadenza in cui avvisare; oggi c'è
-   `trial_days` per piano e un solo valore di tolleranza (`grace_days`).
+   `trial_days` per piano e un solo valore di tolleranza (`grace_days`, oggi 0: sospesa il giorno dopo la scadenza).
 9. **Esportazione CSV degli abbonamenti** e ricerca avanzata (per promozione, per piano e versione, per scadenza).
 10. **Novità e manutenzione del SaaS** (la scheda «Versioni del plugin»): note di rilascio mostrate agli operatori nell'app e
     avvisi di manutenzione programmata.

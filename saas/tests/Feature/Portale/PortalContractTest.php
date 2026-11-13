@@ -113,14 +113,14 @@ it('sospende e riapre l\'associazione secondo lo stato dell\'abbonamento', funct
     expect(Org::query()->findOrFail($orgId)->status)->toBe('closed');
 });
 
-it('sospende da sé le associazioni scadute oltre la tolleranza', function (): void {
+it('sospende da sé le associazioni il giorno dopo la scadenza', function (): void {
     $orgId = ($this->provision)()->json('org_id');
-    $this->putJson("/api/portale/v1/orgs/{$orgId}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($orgId, 'sub_123', 1, ['until' => now()->subDays(10)->toDateString()]))])->assertOk();
+    $this->putJson("/api/portale/v1/orgs/{$orgId}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($orgId, 'sub_123', 1, ['until' => now()->toDateString()]))])->assertOk();
 
     $this->artisan('saas:portal:suspend-expired')->assertSuccessful();
     expect(Org::query()->findOrFail($orgId)->status)->toBe('active');
 
-    $this->travel(6)->days();
+    $this->travel(1)->days();
     $this->artisan('saas:portal:suspend-expired')->assertSuccessful();
     expect(Org::query()->findOrFail($orgId)->status)->toBe('suspended');
 });

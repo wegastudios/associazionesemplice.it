@@ -228,7 +228,7 @@ Subito dopo il portale manda `subscription` (§3.2). Finché non arriva, l'assoc
 |---|---|
 | `sub`, `ref` | associazione e abbonamento: devono coincidere con l'indirizzo e con quanto creato in 3.1, altrimenti `404 unknown_org` |
 | `rev` | revisione **crescente per associazione**, la stessa numerazione dei diritti v1: si applica solo una `rev` maggiore dell'ultima (`409 stale_revision` con `current_rev`) |
-| `status`, `until`, `trial_ends`, `partner` | **invariati rispetto alla v1** (stati `trial`, `active`, `past_due`, `suspended`, `cancelled`; dopo `until` + 15 giorni il SaaS sospende da sé) |
+| `status`, `until`, `trial_ends`, `partner` | **invariati rispetto alla v1** (stati `trial`, `active`, `past_due`, `suspended`, `cancelled`; dal giorno dopo `until` il SaaS sospende da sé (era `until` + 15 giorni; dal 13/11/2026 la tolleranza è 0)) |
 | `plan`, `plan_version` | codice e versione **del catalogo**. Se il SaaS non conosce quella versione: **`409 unknown_plan`, nulla viene applicato** (il portale deve ricaricare il catalogo e riprovare) |
 | `members` | fascia di soci acquistata (informativa: il prezzo lo calcola il portale dai consumi, §4.1) |
 | `addons[]` | `code` di un addon del catalogo e `qty` ≥ 1. Codice sconosciuto → `409 unknown_addon` |
@@ -382,3 +382,18 @@ per `jti` (`409 replayed`).
 - **`org_status`**: `status` è quello dell'ultimo abbonamento ricevuto (`none` se non ne ha); `members_limit` viene dal
   piano (`null` = senza tetto); `operators.limit` dal calcolo dei limiti; `packages` in ordine alfabetico; `domain` è
   `null` o `{name, state}`.
+
+## 11. Pagamenti non riusciti, sospensione e conservazione dei dati (decisione della titolare, 13/11/2026)
+
+| Regola | Chi la applica |
+|---|---|
+| **Tentativi dopo un pagamento rifiutato:** 3 al giorno per i primi 2 giorni, poi 1 al giorno per altri 5 giorni: 11 tentativi in 7 giorni, poi non si riprova. | Il **portale**, che incassa (Stripe, PayPal). Durante i tentativi lo stato è `past_due`. |
+| **Sospensione:** il giorno dopo la scadenza del periodo pagato (`until`). | Il **SaaS** da sé, ogni notte (`saas:portal:suspend-expired`, `saas.portal.grace_days` = 0), o subito se il portale manda `suspended`. |
+| **Conservazione dei dati:** 180 giorni dopo la sospensione o la disdetta, poi si cancellano. | Il **SaaS** (`saas.portal.retention_days` = 180). Il valore c'è; la cancellazione non è ancora fatta: va progettata (avviso prima, esportazione, cancellazione definitiva con conferma). |
+
+Limiti dei circuiti da rispettare nei tentativi (verificati il 13/11/2026 su pagine di Stripe e PayPal):
+- Visa: al massimo 15 nuovi tentativi in 30 giorni per lo stesso pagamento secondo Stripe; PayPal indica 20 in 30 giorni per i rifiuti non definitivi. Si assume il più prudente: 15. I tentativi previsti sono 11.
+- Mastercard: oltre 10 tentativi in 24 ore e oltre 35 in 30 giorni scatta una commissione. I tentativi previsti (3 al giorno, 11 in tutto) restano sotto.
+- Rifiuti definitivi (Visa categoria 1; Mastercard codici 04, 14, 15, 41, 43, 54): **non si riprova**. Vale per ogni tentativo, anche il primo.
+- Stripe: i tentativi automatici «Smart Retries» arrivano a 8 (da verificare nelle impostazioni dell'account): per 11 tentativi in 7 giorni li fa il portale. PayPal riprova da sé (due volte a distanza di 5 giorni) e i tentativi in più si fanno con la sua interfaccia.
+Fonti: pagine di Stripe «Payment blocked due to excessive retries» e di PayPal «How to avoid excessive retries penalties». Le regole dei circuiti cambiano ogni anno: ricontrollare.
