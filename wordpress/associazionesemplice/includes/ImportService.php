@@ -283,7 +283,7 @@ final class ImportService {
 					}
 					if ( $person && ! empty( $r['years'] ) && in_array( $person['type'], array( MemberType::ORDINARY, MemberType::VOLUNTEER ), true ) ) {
 						foreach ( $r['years'] as $y ) { // anni di iscrizione indicati nelle colonne del file (2024, 2025… oppure «ANNO CORRENTE» e «ANNO SCORSO»)
-							$y = '@current' === $y ? $year : ( '@previous' === $y ? Settings::membership_year()->previous()->label() : $y );
+							$y = '@current' === $y ? $year : ( '@previous' === $y ? Settings::membership_year()->previous()->label() : MembershipRules::import_label( (string) $y, Settings::start_month() ) );
 							$y_had = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = %d AND social_year = %s AND deleted_at IS NULL', $id, (string) $y ) );
 							$people->set_membership( $id, (string) $y, true, 'import' );
 							if ( ! $y_had ) {

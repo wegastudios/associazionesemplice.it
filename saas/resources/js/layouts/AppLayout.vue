@@ -27,7 +27,7 @@ const groups = [
         { href: '/gestionale/calendario', label: 'Calendario', icon: CalendarDays, can: 'people.view' },
         { href: '/gestionale/risorse', label: 'Risorse', icon: MapPin, can: 'people.view', pkg: 'resources' },
     ] },
-    { label: 'Soldi', items: [
+    { label: 'Cassa e conti', items: [
         { href: '/gestionale/prima-nota', label: 'Prima nota', icon: Wallet, can: 'accounting.view' },
         { href: '/gestionale/conti', label: 'Conti', icon: Landmark, can: 'accounting.view' },
         { href: '/gestionale/rendiconto', label: 'Rendiconto', icon: ChartColumn, can: 'accounting.view' },

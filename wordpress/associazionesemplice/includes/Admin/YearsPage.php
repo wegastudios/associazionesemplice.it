@@ -26,7 +26,7 @@ final class YearsPage {
 		if ( $month < 9 || FiscalYears::get( $next ) ) {
 			return;
 		}
-		$msg = '<strong>Apri l\'esercizio ' . esc_html( FiscalYears::label( $next ) ) . '.</strong> Finché non esiste, le quote dei soci si registrano solo per il ' . esc_html( FiscalYears::label( $year ) ) . ' e non puoi incassare in anticipo per il ' . esc_html( FiscalYears::label( $next ) ) . '. '
+		$msg = '<strong>Apri l\'esercizio ' . esc_html( FiscalYears::label( $next ) ) . '.</strong> Finché non esiste, non puoi registrare incassi e spese del ' . esc_html( FiscalYears::label( $next ) ) . '. '
 			. '<a class="button" href="' . esc_url( Ui::url( 'asem-years' ) ) . '">Apri il ' . esc_html( FiscalYears::label( $next ) ) . '</a>';
 		if ( 12 === $month ) { // a dicembre non si può chiudere
 			echo wp_kses( '<div class="notice notice-warning inline"><p>' . $msg . '</p></div>', Html::allowed() );
@@ -43,7 +43,7 @@ final class YearsPage {
 		$last   = FiscalYears::last_closed();
 		Ui::header( 'Esercizi (anni contabili)' );
 		echo '<p class="description">Si può incassare, spendere e girare denaro solo negli esercizi <strong>aperti</strong>. Un esercizio chiuso non si modifica più: nemmeno allegati, saldi iniziali o cessazioni dei soci. Si chiude in ordine, dal più vecchio, e si può riaprire solo l\'ultimo esercizio chiuso, indicando il motivo (resta scritto per sempre). '
-			. 'L\'anno in corso non si chiude (e il primo giorno di ogni anno il nuovo anno si apre da solo). Un anno finito non si chiude se ha fondi accantonati non ancora rimborsati. La quota associativa va all\'anno più recente tra quelli creati: se non è quello in corso, l\'anno in corso è in omaggio per chi si iscrive per la prima volta.</p>';
+			. 'L\'anno in corso non si chiude (e il primo giorno di ogni anno il nuovo anno si apre da solo). Un anno finito non si chiude se ha fondi accantonati non ancora rimborsati. L\'anno della tessera non dipende dagli esercizi: segue l\'anno sociale (Impostazioni).</p>';
 		echo '<table class="widefat striped"><thead><tr><th>Anno</th><th>Stato</th><th>Movimenti</th><th>Fondi da rimborsare</th><th></th></tr></thead><tbody>';
 		foreach ( $years as $y ) {
 			$year     = (int) $y['year'];
@@ -114,8 +114,8 @@ final class YearsPage {
 
 		echo '<div class="asem-card"><h2>Crea anno solare</h2>';
 		Ui::form_open( 'asem_create_year', $back );
-		echo '<p><input type="number" name="year" min="2000" max="2100" value="' . esc_attr( (string) ( $latest ? $latest + 1 : (int) current_time( 'Y' ) ) ) . '" required> <button class="button button-primary" data-confirm="Creare questo anno? Se è un anno che deve ancora iniziare, da adesso le quote dei nuovi soci varranno per quell\'anno (con il resto di quest\'anno in omaggio). Fallo solo verso la fine dell\'anno.">Crea l\'anno</button></p>'
-			. '<p class="description">Crea in anticipo l\'anno che inizia (ad esempio a novembre l\'anno dopo): da quel momento i nuovi soci pagano la quota di quell\'anno e hanno in omaggio quello in corso.</p>';
+		echo '<p><input type="number" name="year" min="2000" max="2100" value="' . esc_attr( (string) ( $latest ? $latest + 1 : (int) current_time( 'Y' ) ) ) . '" required> <button class="button button-primary" data-confirm="Creare questo anno? Da adesso si possono registrare incassi e spese di quell\'anno.">Crea l\'anno</button></p>'
+			. '<p class="description">Crea in anticipo l\'anno che inizia (ad esempio a novembre l\'anno dopo), se devi registrare incassi o spese in anticipo. Le quote dei soci non dipendono da qui: la tessera segue l\'anno sociale.</p>';
 		Ui::form_close();
 		echo '</div>';
 
