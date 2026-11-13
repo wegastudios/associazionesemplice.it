@@ -285,6 +285,25 @@ foreach ( array_slice( $calls, $n ) as $c ) {
 	$renews += false !== strpos( $c[1], '/licenses/renew' ) ? 1 : 0;
 }
 check( 'rinnovo singolo: un solo rinnovo anche se arriva due volte', 1 === $renews && 'merged' === $billing->subscription( $rn['id'] )['status'] );
+// Codice promo all'acquisto: sconto sul pagamento singolo, uso confermato solo a pagamento riuscito.
+$pcodes = array_column( ( new Portale\Plugin\ConfigCatalog() )->document()['plans'], 'code' );
+Portale\Plugin\Promos::save( $db, Portale\Plugin\Promos::validate( array( 'code' => 'CHECKOUT20', 'kind' => 'percent', 'value' => 20, 'ends_on' => '2099-12-31', 'max_uses' => 5 ), $pcodes ) );
+check( 'codice all\'acquisto: col rinnovo automatico è rifiutato', null !== throwsUser( function () use ( $billing ) { $billing->startPaid( 'pia@esempio.it', 'pia.it', 'full', 'year', 'stripe', 'recurring', null, 'CHECKOUT20' ); } ) );
+check( 'codice all\'acquisto: codice sconosciuto rifiutato', null !== throwsUser( function () use ( $billing ) { $billing->startPaid( 'pia@esempio.it', 'pia.it', 'full', 'year', 'stripe', 'once', null, 'NOPE' ); } ) );
+$n = count( $calls );
+$billing->startPaid( 'pia@esempio.it', 'Pia.it', 'full', 'year', 'stripe', 'once', null, ' checkout20 ' );
+$pd = $db->one( "SELECT * FROM subscriptions WHERE domain = 'pia.it'" );
+$po = $db->one( 'SELECT * FROM plugin_promo_orders WHERE sub_id = ?', array( $pd['id'] ) );
+$pfull = (int) Portale\Config::price( 'full', 'year' )['cents'];
+$pbody = '';
+foreach ( array_slice( $calls, $n ) as $c ) { $pbody .= (string) ( is_array( $c[2] ) ? http_build_query( $c[2] ) : $c[2] ); }
+check( 'codice all\'acquisto: ordine registrato con lo sconto del 20%', $po && 'CHECKOUT20' === $po['code'] && (int) round( $pfull * 0.2 ) === (int) $po['discount_cents'] );
+check( 'codice all\'acquisto: a Stripe va l\'importo scontato', false !== strpos( $pbody, (string) ( $pfull - (int) $po['discount_cents'] ) ) );
+check( 'codice all\'acquisto: prima del pagamento nessun uso consumato', 0 === (int) Portale\Plugin\Promos::get( $db, 'CHECKOUT20' )['used'] );
+$billing->completePayment( $pd['id'], 'pi_promo' );
+$billing->completePayment( $pd['id'], 'pi_promo' );
+check( 'codice all\'acquisto: a pagamento riuscito l\'uso si conta una volta sola', 1 === (int) Portale\Plugin\Promos::get( $db, 'CHECKOUT20' )['used'] );
+
 // Primo pagamento: se un altro processo sta già emettendo la licenza (segnaposto recente) non se ne crea una seconda.
 $billing->startPaid( 'dora@esempio.it', 'Claim.it', 'full', 'year', 'stripe', 'once' );
 $cl = $db->one( "SELECT * FROM subscriptions WHERE domain = 'claim.it'" );

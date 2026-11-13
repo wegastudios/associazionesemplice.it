@@ -178,7 +178,7 @@ final class App {
 		} elseif ( ! $get && '/acquista' === $path ) {
 			$this->formLimit();
 			list( $provider, $mode ) = array_pad( explode( ':', (string) $this->in( 'method' ), 2 ), 2, '' );
-			$url = $this->billing->startPaid( (string) $this->in( 'email' ), (string) $this->in( 'domain' ), (string) $this->in( 'plan' ), (string) $this->in( 'period' ), $provider, $mode, (string) $this->in( 'name' ) );
+			$url = $this->billing->startPaid( (string) $this->in( 'email' ), (string) $this->in( 'domain' ), (string) $this->in( 'plan' ), (string) $this->in( 'period' ), $provider, $mode, (string) $this->in( 'name' ), (string) $this->in( 'promo' ) );
 			header( 'Location: ' . $url, true, 303 );
 		} elseif ( $get && '/paypal/ritorno' === $path ) {
 			$this->paypalReturn( (string) ( $_GET['token'] ?? '' ) );

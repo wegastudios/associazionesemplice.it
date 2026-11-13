@@ -27,6 +27,9 @@ $names = array(
 			<label for="domain">Indirizzo del sito WordPress</label>
 			<input id="domain" type="text" name="domain" placeholder="miaassociazione.it" autocapitalize="none" spellcheck="false" required>
 			<p class="hint">La licenza sarà legata a questo dominio; potrai cambiarlo in seguito.</p>
+			<label for="promo">Codice promo <span class="muted">(facoltativo)</span></label>
+			<input id="promo" type="text" name="promo" maxlength="30" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Per esempio: BLACK-FRIDAY">
+			<p class="hint">Lo sconto vale con il pagamento singolo (carta o PayPal), non con il rinnovo automatico.</p>
 			<label>Come vuoi pagare</label>
 			<div class="choice">
 			<?php $first = true; foreach ( $methods as $m ) : $k = $m[0] . ':' . $m[1]; ?>
