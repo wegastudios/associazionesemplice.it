@@ -40,6 +40,7 @@ final class Settings {
 		}
 		Config::set( 'plans', $plans );
 		Config::set( 'promo', self::read( $db, 'promo' ) );
+		Config::set( 'plan_vat', self::read( $db, 'plan_vat' ) );
 
 		$g = self::read( $db, 'general' );
 		self::apply( 'duration_days.month', $g, 'duration_month' );
@@ -234,6 +235,43 @@ final class Settings {
 		$end   = ( new \DateTime( $p['end'] . ' 23:59:59', $tz ) )->getTimestamp();
 		$start = ! empty( $p['start'] ) ? ( new \DateTime( $p['start'] . ' 00:00:00', $tz ) )->getTimestamp() : 0;
 		return ( $now >= $start && $now <= $end ) ? (string) $p['label'] : null;
+	}
+
+	/**
+	 * Regime IVA dei piani del plugin: `exempt` (venditore forfettario: nessuna IVA, serve la dicitura di legge) oppure `included` (il prezzo
+	 * è il totale, IVA compresa). Finché non si sceglie nulla le pagine non dicono niente sull'IVA. Come per il gestionale, senza la dicitura
+	 * il regime «senza IVA» non si applica.
+	 */
+	public static function saveVat( Db $db, array $in ): void {
+		$mode = (string) ( $in['vat_mode'] ?? '' );
+		if ( ! in_array( $mode, array( '', 'exempt', 'included' ), true ) ) {
+			throw new UserError( 'Regime IVA non valido.' );
+		}
+		$note = mb_substr( trim( preg_replace( '/\s+/', ' ', (string) ( $in['vat_note'] ?? '' ) ) ), 0, 250 );
+		if ( 'exempt' === $mode && '' === $note ) {
+			throw new UserError( 'Per «senza IVA» scrivi la dicitura di legge: la stessa che usi nel gestionale.' );
+		}
+		self::write( $db, 'plan_vat', '' === $mode ? array() : array( 'mode' => $mode, 'note' => 'exempt' === $mode ? $note : '' ) );
+	}
+
+	/** @return array{mode:string,note:string} mode vuoto se non è stato scelto nulla */
+	public static function vat(): array {
+		$v    = (array) Config::get( 'plan_vat', array() );
+		$mode = (string) ( $v['mode'] ?? '' );
+		$note = (string) ( $v['note'] ?? '' );
+		if ( 'exempt' === $mode && '' === $note ) {
+			$mode = '';
+		}
+		return array( 'mode' => in_array( $mode, array( 'exempt', 'included' ), true ) ? $mode : '', 'note' => $note );
+	}
+
+	/** Frase sull'IVA per le pagine di vendita del plugin; vuota se il regime non è stato scelto. */
+	public static function vatLine( bool $withNote = false ): string {
+		$v = self::vat();
+		if ( 'exempt' === $v['mode'] ) {
+			return 'Prezzi in euro, senza IVA.' . ( $withNote ? ' ' . $v['note'] : '' );
+		}
+		return 'included' === $v['mode'] ? 'Prezzi in euro, IVA inclusa.' : '';
 	}
 
 	/** Prezzo di listino da mostrare barrato per un piano e un periodo: solo durante la promo e se più alto del prezzo in vigore. */

@@ -6,7 +6,7 @@ $val  = 'amount' === $e0['kind'] ? number_format( $e0['value'] / 100, 2, ',', ''
 ?>
 <section class="admin"><div class="wrap" style="max-width:900px">
 	<h2>Codici promo del plugin</h2>
-	<p class="muted">Ogni codice vale solo per i piani del plugin (le offerte combinate con il gestionale online non esistono). Il cliente scrive il codice all'acquisto; il portale chiede qui se vale e lo conferma solo a pagamento riuscito, una volta per ordine. Quelli attivi compaiono nel catalogo pubblico. La promozione «in vetrina» con il prezzo barrato resta in <a href="/wordpress/admin/prezzi">Piani e prezzi</a>.</p>
+	<p class="muted">Ogni codice vale solo per i piani del plugin (le offerte combinate con il gestionale online non esistono). Attenzione: nella pagina d'acquisto del plugin il campo per scrivere il codice non c'è ancora, quindi per ora il codice non fa sconti sul plugin. Il portale sa già verificarlo e contarne gli usi; quelli attivi compaiono nel catalogo pubblico. La promozione «in vetrina» con il prezzo barrato resta in <a href="/wordpress/admin/prezzi">Piani e prezzi</a>.</p>
 	<form class="card2" method="post" action="/wordpress/admin/codici-promo">
 		<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>">
 		<h3><?php echo $edit ? 'Modifica ' . e( $edit['code'] ) : 'Nuovo codice'; ?></h3>

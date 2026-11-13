@@ -35,12 +35,6 @@ $copy = array(
 		'Anno fiscale con mese di inizio proprio e verifiche prima della chiusura',
 	) ),
 );
-$save = 0;
-foreach ( $plans as $p ) {
-	if ( ! empty( $p['prices']['month']['cents'] ) && ! empty( $p['prices']['year']['cents'] ) ) {
-		$save = max( $save, (int) round( 100 - 100 * $p['prices']['year']['cents'] / ( 12 * $p['prices']['month']['cents'] ) ) );
-	}
-}
 ?>
 <nav class="product-nav" aria-label="Prodotti"><a href="#prezzi">Plugin per WordPress</a><a href="#prezzi-saas">Gestionale online</a></nav>
 <section class="section pricing" id="prezzi" data-period="year"><div class="wrap">
@@ -48,7 +42,7 @@ foreach ( $plans as $p ) {
 	<div class="section-head"><h1 style="font-size:clamp(1.9rem,4vw,2.8rem)">Prezzi chiari, disdici quando vuoi</h1><p>Il piano gratuito resta gratuito. I piani Pro si rinnovano da soli, ogni mese o ogni anno, e si disdicono quando vuoi dall'area riservata.</p></div>
 	<div class="seg" role="group" aria-label="Periodo di fatturazione">
 		<button type="button" data-period="month" aria-pressed="false">Mensile</button>
-		<button type="button" data-period="year" aria-pressed="true">Annuale<?php echo $save > 0 ? ' <span class="save">-' . (int) $save . '%</span>' : ''; ?></button>
+		<button type="button" data-period="year" aria-pressed="true">Annuale</button>
 	</div>
 	<div class="plans">
 	<?php foreach ( $plans as $code => $p ) :
@@ -72,7 +66,7 @@ foreach ( $plans as $p ) {
 			<?php else : ?>
 				<?php $promoName = Portale\Settings::promoNow(); $lm = Portale\Settings::listCents( $code, 'month' ); $ly = Portale\Settings::listCents( $code, 'year' ); if ( $promoName && ( $lm || $ly ) ) : ?><div class="promo-tag"><?php echo e( $promoName ); ?></div><?php endif; ?>
 				<?php if ( $m ) : ?><div class="only-month"><div class="price"><?php if ( $lm ) : ?><s class="was"><?php echo e( $euro( $lm ) ); ?></s> <?php endif; ?><b><?php echo e( $euro( $m ) ); ?></b><span>al mese</span></div><div class="price-note">Rinnovo mensile, senza vincoli</div></div><?php endif; ?>
-				<?php if ( $y ) : ?><div class="only-year"><div class="price"><?php if ( $ly ) : ?><s class="was"><?php echo e( $euro( $ly ) ); ?></s> <?php endif; ?><b><?php echo e( $euro( $y ) ); ?></b><span>all'anno</span></div><div class="price-note"><small>pari a <?php echo e( $euro( (int) round( $y / 12 ) ) ); ?> al mese<?php echo $m && $m * 12 > $y ? ' · risparmi ' . e( $euro( $m * 12 - $y ) ) . ' rispetto al mensile' : ''; ?></small></div></div><?php endif; ?>
+				<?php if ( $y ) : ?><div class="only-year"><div class="price"><?php if ( $ly ) : ?><s class="was"><?php echo e( $euro( $ly ) ); ?></s> <?php endif; ?><b><?php echo e( $euro( $y ) ); ?></b><span>all'anno</span></div><div class="price-note"><small>pari a <?php echo e( $euro( (int) round( $y / 12 ) ) ); ?> al mese<?php $free = $m ? (int) round( 12 - $y / $m ) : 0; echo $free >= 1 ? ' · ' . $free . ( 1 === $free ? ' mese in regalo' : ' mesi in regalo' ) . ' rispetto al mensile' : ''; ?></small></div></div><?php endif; ?>
 			<?php endif; ?>
 			<ul><?php if ( '' !== $lead ) : ?><li class="lead"><?php echo e( $lead ); ?></li><?php endif; foreach ( $feat as $line ) : ?><li><?php echo e( $line ); ?></li><?php endforeach; ?></ul>
 			<?php if ( 'free' === $code ) : ?>
@@ -87,6 +81,6 @@ foreach ( $plans as $p ) {
 	<?php endforeach; ?>
 	</div>
 	<?php if ( ! empty( $trial ) ) : ?><p class="fine" style="font-weight:600;color:var(--fg)">Hai già la licenza gratuita? Prova gratis <?php echo e( (string) \Portale\Config::get( 'plans.' . \Portale\Config::get( 'trial_plan', 'full' ) . '.label', 'il piano Pro' ) ); ?> per <?php echo (int) $trial; ?> giorni dall'area riservata, una volta sola: nessuna carta, nessun addebito alla fine.</p><?php endif; ?>
-	<p class="fine"><a href="/confronto">Confronta tutte le funzioni delle tre versioni</a>. Prezzi in euro. Pagamento sicuro con Stripe o PayPal. Ogni licenza è legata a un dominio, modificabile dall'area riservata.</p>
+	<p class="fine"><a href="/confronto">Confronta tutte le funzioni delle tre versioni</a>. <?php $vl = Portale\Settings::vatLine( true ); echo e( '' !== $vl ? $vl : 'Prezzi in euro.' ); ?> Pagamento sicuro con Stripe o PayPal. Ogni licenza è legata a un dominio, modificabile dall'area riservata.</p>
 </div></section>
 <?php $show_table = false; include __DIR__ . "/_catalog_saas.php"; ?>

@@ -171,6 +171,9 @@ final class Admin {
 			} elseif ( 'promo' === $b ) {
 				Settings::savePromo( $this->db, $_POST );
 				$this->done( 'promo', 'Promozione salvata.', '/wordpress/admin/prezzi' );
+			} elseif ( 'iva' === $b ) {
+				Settings::saveVat( $this->db, $_POST );
+				$this->done( 'vat', 'Regime IVA salvato.', '/wordpress/admin/prezzi' );
 			} elseif ( '' !== $b ) {
 				$this->savePlan( $b );
 			} else {

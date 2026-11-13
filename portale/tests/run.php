@@ -1211,6 +1211,25 @@ Portale\Settings::savePromo( $pdb, array( 'promo_label' => '' ) );
 Portale\Settings::load( $pdb );
 check( 'promo: nome vuoto la spegne', null === Portale\Settings::promoNow( $rome( '2026-11-28 10:00' ) ) );
 
+// --- Regime IVA dei prezzi del plugin --------------------------------------------------------------------------------------
+Portale\Settings::load( $pdb );
+check( 'iva: non scelta, le pagine non dicono nulla', '' === Portale\Settings::vatLine( true ) && '' === Portale\Settings::vat()['mode'] );
+check( 'iva: senza IVA richiede la dicitura', null !== throwsUser( function () use ( $pdb ) {
+	Portale\Settings::saveVat( $pdb, array( 'vat_mode' => 'exempt', 'vat_note' => '  ' ) );
+} ) );
+check( 'iva: regime sconosciuto rifiutato', null !== throwsUser( function () use ( $pdb ) {
+	Portale\Settings::saveVat( $pdb, array( 'vat_mode' => 'boh' ) );
+} ) );
+Portale\Settings::saveVat( $pdb, array( 'vat_mode' => 'exempt', 'vat_note' => 'Operazione senza IVA ai sensi della legge 190/2014.' ) );
+Portale\Settings::load( $pdb );
+check( 'iva: senza IVA con dicitura', 'Prezzi in euro, senza IVA. Operazione senza IVA ai sensi della legge 190/2014.' === Portale\Settings::vatLine( true ) && 'Prezzi in euro, senza IVA.' === Portale\Settings::vatLine() );
+Portale\Settings::saveVat( $pdb, array( 'vat_mode' => 'included', 'vat_note' => 'ignorata' ) );
+Portale\Settings::load( $pdb );
+check( 'iva: inclusa, la dicitura non conta', 'Prezzi in euro, IVA inclusa.' === Portale\Settings::vatLine( true ) && '' === Portale\Settings::vat()['note'] );
+Portale\Settings::saveVat( $pdb, array( 'vat_mode' => '' ) );
+Portale\Settings::load( $pdb );
+check( 'iva: scelta vuota la toglie', '' === Portale\Settings::vatLine( true ) );
+
 // --- Rinnovo automatico senza prezzi creati a mano su Stripe e PayPal ------------------------------------------------------
 Portale\Settings::savePlan( $pdb, 'full', array( 'label' => 'Pro Fiscale', 'plan_name' => 'Pro Full', 'visible' => '1', 'price_month' => '12', 'price_year' => '120' ) );
 Portale\Settings::load( $pdb );

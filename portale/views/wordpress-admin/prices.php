@@ -14,6 +14,22 @@ $eur  = function ( $c ) { return null === $c ? '' : number_format( $c / 100, 2, 
 		</div>
 		<div class="row-actions"><button class="btn" type="submit">Salva promozione</button></div>
 	</form>
+	<?php $vat = Portale\Settings::vat(); ?>
+	<form class="card2" method="post" action="/wordpress/admin/prezzi/iva">
+		<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>">
+		<h2>IVA sui prezzi del plugin <span class="badge <?php echo '' !== $vat['mode'] ? 'ok' : ''; ?>"><?php echo 'exempt' === $vat['mode'] ? 'senza IVA' : ( 'included' === $vat['mode'] ? 'IVA inclusa' : 'non scelta' ); ?></span></h2>
+		<p class="muted">Cosa scrivono il sito e la pagina d'acquisto accanto ai prezzi. Finché non scegli, le pagine non dicono niente sull'IVA.</p>
+		<div class="form-grid two">
+			<div><label for="vm" style="margin-top:0">Regime</label>
+				<select id="vm" name="vat_mode">
+					<option value=""<?php echo '' === $vat['mode'] ? ' selected' : ''; ?>>Non scritto sul sito</option>
+					<option value="exempt"<?php echo 'exempt' === $vat['mode'] ? ' selected' : ''; ?>>Senza IVA (regime forfettario)</option>
+					<option value="included"<?php echo 'included' === $vat['mode'] ? ' selected' : ''; ?>>IVA inclusa nel prezzo</option>
+				</select></div>
+			<div><label for="vn" style="margin-top:0">Dicitura di legge (solo per «senza IVA»)</label><input id="vn" type="text" name="vat_note" value="<?php echo e( $vat['note'] ); ?>" maxlength="250" placeholder="La stessa del gestionale"></div>
+		</div>
+		<div class="row-actions"><button class="btn" type="submit">Salva IVA</button></div>
+	</form>
 	<?php foreach ( $plans as $code => $p ) :
 		$paid = 'free' !== $code;
 	?>
