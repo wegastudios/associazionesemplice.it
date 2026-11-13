@@ -44,7 +44,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Report: {piano_contabile} e {piano_fiscale}. Rendiconto per cassa: {piano_fiscale}.
 
-Questa parte serve a chi deve preparare i documenti per il commercialista. L'apertura e la chiusura dell'anno solare sono invece disponibili in tutte le versioni: vedi [Aprire e chiudere gli esercizi](guida:aprire-e-chiudere-gli-anni-solari).
+Questa parte serve a chi deve preparare i documenti per il commercialista. L'apertura e la chiusura degli esercizi sono invece disponibili in tutte le versioni: vedi [Aprire e chiudere gli esercizi](guida:aprire-e-chiudere-gli-anni-solari).
 
 ## Il rendiconto per cassa
 
