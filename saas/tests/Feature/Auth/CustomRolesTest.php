@@ -40,7 +40,7 @@ it('crea un ruolo personalizzato e ne applica i permessi', function (): void {
     $this->actingAs($user->fresh() ?? $user);
     $this->get('/gestionale/soci')->assertOk();
     $this->get('/gestionale/prima-nota')->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->where('org.role', 'Consigliere')->where('org.can', ['people.view', 'accounting.view', 'accounting.edit']));
+        ->assertInertia(fn (Assert $page) => $page->where('org.role', 'Consigliere')->where('org.can', ['people.view', 'accounting.view', 'accounting.edit', 'accounting.income', 'accounting.expense', 'accounting.refund', 'accounting.funds']));
     $this->get('/gestionale/operatori')->assertForbidden();
     $this->post('/gestionale/soci', ['type' => 'ordinary', 'first_name' => 'A', 'last_name' => 'B'])->assertForbidden();
 
