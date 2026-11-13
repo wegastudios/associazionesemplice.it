@@ -1672,7 +1672,7 @@ check( 'catalogo: JSON valido e ETag stabile', is_array( json_decode( $catBody, 
 use Portale\Sections;
 Config::set( 'saas_admin_url', 'https://app.associazionesemplice.it/admin' );
 check( 'sezioni: /saas/accedi diventa /account/da-gestionale con lo stesso token', array( 301, '/account/da-gestionale?t=abc' ) === Sections::legacy( 'GET', '/saas/accedi', 't=abc' ) );
-check( 'sezioni: /saas/prezzi e /wordpress/confronto rimandano alle pagine vere', array( 301, '/prezzi#prezzi-saas' ) === Sections::legacy( 'GET', '/saas/prezzi', '' ) && array( 301, '/confronto' ) === Sections::legacy( 'GET', '/wordpress/confronto', '' ) );
+check( 'sezioni: /saas/prezzi rimanda al listino del gestionale in /prezzi', array( 301, '/prezzi#prezzi-saas' ) === Sections::legacy( 'GET', '/saas/prezzi', '' ) );
 $prevStripe = Config::get( 'stripe' );
 $prevPaypal = Config::get( 'paypal' );
 Config::set( 'stripe', array( 'secret_key' => '' ) );
