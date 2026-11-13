@@ -46,7 +46,7 @@ final readonly class DatabaseOrgPurger implements OrgPurger
         $users = 0;
         $owner->transaction(function () use ($owner, $orgId, &$rows, &$users): void {
             $owner->select("SELECT set_config('app.org_id', ?, true)", [$orgId]);
-            $rows = $this->deleteDataRows($owner, $orgId);
+            $rows = $this->deleteAuditRows($owner, $orgId) + $this->deleteDataRows($owner, $orgId);
 
             $members = $owner->table('core.org_users')->where('org_id', $orgId)->pluck('user_id')->all();
             $owner->table('core.org_users')->where('org_id', $orgId)->delete();
@@ -63,6 +63,20 @@ final readonly class DatabaseOrgPurger implements OrgPurger
         });
 
         return ['rows' => $rows, 'users' => $users];
+    }
+
+    /**
+     * Il registro delle azioni dell'associazione si cancella con lei (180 giorni dalla scadenza). Il trigger che lo rende
+     * «solo in aggiunta» si toglie soltanto dentro questa transazione, per questa sola operazione: col commit è di nuovo attivo.
+     */
+    private function deleteAuditRows(ConnectionInterface $owner, string $orgId): int
+    {
+        $owner->statement('ALTER TABLE audit.log DISABLE TRIGGER log_append_only');
+        $rows = $owner->delete('DELETE FROM audit.log WHERE org_id = ?', [$orgId]);
+        $rows += $owner->delete('DELETE FROM audit.heads WHERE org_id = ?', [$orgId]);
+        $owner->statement('ALTER TABLE audit.log ENABLE TRIGGER log_append_only');
+
+        return $rows;
     }
 
     private function deleteDataRows(ConnectionInterface $owner, string $orgId): int
