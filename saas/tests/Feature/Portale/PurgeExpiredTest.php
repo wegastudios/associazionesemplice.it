@@ -42,7 +42,7 @@ it('cancella i dati scaduti da più di 180 giorni e lascia le altre associazioni
     $exit = Artisan::call('saas:portal:purge-expired');
     expect($exit)->toBe(0, Artisan::output());
 
-    $org = Org::query()->findOrFail($alfa);
+    $org = Org::withTrashed()->findOrFail($alfa);
     expect($org->status)->toBe('closed')->and($org->deleted_at)->not->toBeNull()
         ->and(($this->people)($alfa))->toBe(0)
         ->and(($this->people)($beta))->toBe(1)
@@ -58,7 +58,7 @@ it('chi non ha scelto un piano si cancella 7 giorni dopo la fine della prova, no
     config(['saas.portal.purge_enabled' => true]);
 
     $this->artisan('saas:portal:purge-expired')->assertSuccessful();
-    expect(Org::query()->findOrFail($prova)->deleted_at)->not->toBeNull();
+    expect(Org::withTrashed()->findOrFail($prova)->deleted_at)->not->toBeNull();
 })->skip('Da definire con la regola della prova: serve il segno «prova» sui diritti.');
 
 it('non cancella nulla con l\'interruttore spento, e con --dry-run elenca soltanto', function (): void {
@@ -66,11 +66,11 @@ it('non cancella nulla con l\'interruttore spento, e con --dry-run elenca soltan
     ($this->entitle)($alfa, 'sub_a', ['status' => 'suspended', 'until' => now()->subDays(300)->toDateString()]);
 
     $this->artisan('saas:portal:purge-expired')->assertSuccessful();
-    expect(Org::query()->findOrFail($alfa)->deleted_at)->toBeNull();
+    expect(Org::withTrashed()->findOrFail($alfa)->deleted_at)->toBeNull();
 
     config(['saas.portal.purge_enabled' => true]);
     $this->artisan('saas:portal:purge-expired', ['--dry-run' => true])->assertSuccessful();
-    expect(Org::query()->findOrFail($alfa)->deleted_at)->toBeNull();
+    expect(Org::withTrashed()->findOrFail($alfa)->deleted_at)->toBeNull();
 });
 
 it('si ferma se i candidati di una notte sono troppi', function (): void {
@@ -83,8 +83,8 @@ it('si ferma se i candidati di una notte sono troppi', function (): void {
 
     $this->artisan('saas:portal:purge-expired')->assertFailed();
 
-    expect(Org::query()->findOrFail($alfa)->deleted_at)->toBeNull()
-        ->and(Org::query()->findOrFail($beta)->deleted_at)->toBeNull();
+    expect(Org::withTrashed()->findOrFail($alfa)->deleted_at)->toBeNull()
+        ->and(Org::withTrashed()->findOrFail($beta)->deleted_at)->toBeNull();
 });
 
 afterEach(function (): void {
