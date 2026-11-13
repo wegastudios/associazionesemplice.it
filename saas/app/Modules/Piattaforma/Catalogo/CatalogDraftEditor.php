@@ -273,6 +273,7 @@ final readonly class CatalogDraftEditor
         $kind = is_array($existing) ? $this->str($existing['kind'] ?? null) : $this->str($input['kind'] ?? null);
         $grants = match ($kind) {
             'operators' => ['operators' => CatalogForm::int($input['grant_operators'] ?? null)],
+            'members' => ['members' => CatalogForm::int($input['grant_members'] ?? null)],
             'storage' => ['storage_gb' => CatalogForm::int($input['grant_storage_gb'] ?? null)],
             'package' => ['package' => $this->str($input['grant_package'] ?? null), 'limits' => $this->limits($input['grant_limits'] ?? null)],
             default => [],
@@ -358,6 +359,13 @@ final readonly class CatalogDraftEditor
                 'accountant_access' => ($input['trial_accountant_access'] ?? null) === '1',
                 'end_discount_percent' => CatalogForm::int($input['end_discount_percent'] ?? null),
                 'purge_days' => CatalogForm::int($input['purge_days'] ?? null),
+            ],
+            'members' => [
+                'warn_percent' => CatalogForm::int($input['warn_percent'] ?? null),
+                'full_percent' => CatalogForm::int($input['full_percent'] ?? null),
+                'tolerance_percent' => CatalogForm::int($input['tolerance_percent'] ?? null),
+                'tolerance_days' => CatalogForm::int($input['tolerance_days'] ?? null),
+                'guests_free_percent' => CatalogForm::int($input['guests_free_percent'] ?? null),
             ],
         ];
         $this->publisher->saveDraft($document, $staffId);

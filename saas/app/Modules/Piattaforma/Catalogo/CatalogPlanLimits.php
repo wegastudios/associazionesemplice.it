@@ -24,6 +24,8 @@ final readonly class CatalogPlanLimits implements PlanLimits
         $limits = is_array($found['limits'] ?? null) ? $found['limits'] : [];
 
         $operators = self::int($limits['operators'] ?? null);
+        // Tetto di soci: quello del piano più i pacchetti di soci comprati (null = senza tetto, il prezzo cresce a scaglioni).
+        $membersLimit = is_int($limits['members'] ?? null) ? $limits['members'] : null;
         $storageMb = max(self::int($limits['storage_mb_min'] ?? null), $members * self::int($limits['storage_mb_per_member'] ?? null));
         $storageGb = intdiv($storageMb + 1023, 1024);
         $packages = [];
@@ -36,6 +38,9 @@ final readonly class CatalogPlanLimits implements PlanLimits
             $grants = is_array($addon['grants'] ?? null) ? $addon['grants'] : [];
             $operators += self::int($grants['operators'] ?? null) * $requested['qty'];
             $storageGb += self::int($grants['storage_gb'] ?? null) * $requested['qty'];
+            if ($membersLimit !== null) {
+                $membersLimit += self::int($grants['members'] ?? null) * $requested['qty'];
+            }
 
             $package = match ($addon['kind'] ?? null) {
                 'package' => is_string($grants['package'] ?? null) ? $grants['package'] : null,
@@ -48,7 +53,7 @@ final readonly class CatalogPlanLimits implements PlanLimits
             }
         }
 
-        return ['operators' => $operators, 'storage_gb' => $storageGb, 'packages' => $packages];
+        return ['operators' => $operators, 'storage_gb' => $storageGb, 'packages' => $packages, 'members_limit' => $membersLimit];
     }
 
     /** @return array<string, mixed> */

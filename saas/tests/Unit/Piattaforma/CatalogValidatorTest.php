@@ -140,7 +140,8 @@ it('ha condizioni di partenza neutre: IVA standard, nessuna commissione, prova s
     expect($doc['terms']['vat']['mode'])->toBe('standard')
         ->and($doc['terms']['vat']['note'])->toBe('')
         ->and($doc['terms']['payments'])->toBe(['own_gateway_percent' => 0, 'collected_by_us_percent' => 0])
-        ->and($doc['terms']['trial'])->toBe(['exports' => false, 'accountant_access' => false, 'end_discount_percent' => 0, 'purge_days' => 7]);
+        ->and($doc['terms']['trial'])->toBe(['exports' => false, 'accountant_access' => false, 'end_discount_percent' => 0, 'purge_days' => 7])
+        ->and($doc['terms']['members'])->toBe(['warn_percent' => 80, 'full_percent' => 100, 'tolerance_percent' => 10, 'tolerance_days' => 15, 'guests_free_percent' => 10]);
 
     // Un catalogo senza condizioni (le revisioni precedenti) vale come i valori di partenza, con IVA.
     $old = seedCatalog();
@@ -155,7 +156,7 @@ it('ha condizioni di partenza neutre: IVA standard, nessuna commissione, prova s
     expect(fn () => CatalogValidator::validate($bad))->toThrow(InvalidArgumentException::class);
 });
 
-it('tiene pronti lo sconto di fine prova e il pacchetto da 500 soci, senza una cifra inventata', function (): void {
+it('tiene pronti lo sconto di fine prova e i pacchetti di soci, nascosti finché non in vendita', function (): void {
     $doc = CatalogValidator::validate(seedCatalog());
     $addons = collect($doc['addons'])->keyBy('code');
 
@@ -167,7 +168,7 @@ it('tiene pronti lo sconto di fine prova e il pacchetto da 500 soci, senza una c
         ->and($addons['members_1000']['visible'])->toBeFalse()
         ->and($addons['members_1000']['prices'][0]['amount_cents'])->toBe(3000)
         ->and($addons['members_1000']['prices'][1]['amount_cents'])->toBe(30000)
-        ->and($addons['members_500']['grants']['limits'])->toBe(['members' => 500]);
+        ->and($addons['members_500']['grants'])->toBe(['members' => 500]);
 
     $bad = seedCatalog();
     $bad['terms']['trial']['end_discount_percent'] = 101;
@@ -175,4 +176,12 @@ it('tiene pronti lo sconto di fine prova e il pacchetto da 500 soci, senza una c
     $bad = seedCatalog();
     $bad['terms']['trial']['purge_days'] = 0;
     expect(fn () => CatalogValidator::validate($bad))->toThrow(InvalidArgumentException::class);
+});
+
+it('controlla il limite di soci: avvisi in ordine, tolleranza e quota ospiti entro i confini', function (): void {
+    foreach ([['warn_percent' => 90, 'full_percent' => 80], ['tolerance_percent' => 51], ['tolerance_days' => 91], ['guests_free_percent' => 101], ['warn_percent' => 0]] as $wrong) {
+        $bad = seedCatalog();
+        $bad['terms']['members'] = $wrong + $bad['terms']['members'];
+        expect(fn () => CatalogValidator::validate($bad))->toThrow(InvalidArgumentException::class);
+    }
 });

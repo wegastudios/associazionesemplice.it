@@ -99,7 +99,7 @@ final readonly class PortalSync
         ];
         // Controllo finale con le stesse regole dei diritti v1 (pacchetti e limiti ammessi).
         $checked = ClaimsValidator::entitlements($claims);
-        $stored = $claims + ['subscription' => ['plan' => $c['plan'], 'plan_version' => $c['plan_version'], 'addons' => $c['addons'], 'promo' => $c['promo'], 'price_cents' => $c['price_cents']]];
+        $stored = $claims + ['members_limit' => $limits['members_limit'], 'subscription' => ['plan' => $c['plan'], 'plan_version' => $c['plan_version'], 'addons' => $c['addons'], 'promo' => $c['promo'], 'price_cents' => $c['price_cents']]];
 
         $this->store($checked, $stored, $token, ['plan' => $c['plan'], 'plan_version' => $c['plan_version']]);
 

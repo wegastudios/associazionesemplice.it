@@ -23,6 +23,10 @@ final readonly class OrgEntitlements
         public int $storageGb,
         public array $packages,
         public ?string $partner,
+        /** Tetto di soci (piano + pacchetti di soci), null se senza tetto o diritti v1 senza abbonamento. */
+        public ?int $membersLimit = null,
+        public ?string $plan = null,
+        public ?int $planVersion = null,
     ) {}
 
     public static function none(): self

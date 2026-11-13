@@ -192,8 +192,8 @@ $catalog = [
         ['code' => 'dedicated_db', 'name' => 'Archivio separato solo per la tua associazione (database dedicato)', 'kind' => 'dedicated_db', 'visible' => true, 'grants' => [], 'prices' => $flat(2500)],
         // Pacchetti di soci solo per la Grande, oltre i 1.000 (decisione della titolare, 13/11/2026): 3,4 € a socio, 17 € per 500 e 30 € per 1.000.
         // Nascosti finché lei non li mette in vendita dal pannello. Piccola e Media non li hanno: chi supera i limiti passa al piano sopra.
-        ['code' => 'members_500', 'name' => '500 soci in più (solo con il piano Grande)', 'kind' => 'package', 'visible' => false, 'grants' => ['package' => 'members_extra', 'limits' => ['members' => 500]], 'prices' => $flat(1700)],
-        ['code' => 'members_1000', 'name' => '1.000 soci in più (solo con il piano Grande)', 'kind' => 'package', 'visible' => false, 'grants' => ['package' => 'members_extra', 'limits' => ['members' => 1000]], 'prices' => $flat(3000)],
+        ['code' => 'members_500', 'name' => '500 soci in più (solo con il piano Grande)', 'kind' => 'members', 'visible' => false, 'grants' => ['members' => 500], 'prices' => $flat(1700)],
+        ['code' => 'members_1000', 'name' => '1.000 soci in più (solo con il piano Grande)', 'kind' => 'members', 'visible' => false, 'grants' => ['members' => 1000], 'prices' => $flat(3000)],
     ],
 
     'promos' => [],
@@ -203,6 +203,8 @@ $catalog = [
         'vat' => ['mode' => 'standard', 'note' => ''],
         'payments' => ['own_gateway_percent' => 0, 'collected_by_us_percent' => 0],
         'trial' => ['exports' => false, 'accountant_access' => false, 'end_discount_percent' => 0, 'purge_days' => 7],
+        // Limite di soci del piano (decisione 13/11/2026): avvisi all'80% e al 100%, tolleranza del 10% per 15 giorni, poi blocco dei nuovi soci.
+        'members' => ['warn_percent' => 80, 'full_percent' => 100, 'tolerance_percent' => 10, 'tolerance_days' => 15, 'guests_free_percent' => 10],
     ],
 ];
 

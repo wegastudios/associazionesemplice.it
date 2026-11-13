@@ -19,7 +19,7 @@ final class CatalogValidator
 
     private const PRICE_KINDS = ['flat', 'members_tiers', 'step_tiers'];
 
-    private const ADDON_KINDS = ['package', 'operators', 'storage', 'domain', 'dedicated_db', 'recharge'];
+    private const ADDON_KINDS = ['package', 'operators', 'members', 'storage', 'domain', 'dedicated_db', 'recharge'];
 
     /**
      * @param  array<mixed>  $input
@@ -57,14 +57,21 @@ final class CatalogValidator
      * Condizioni generali di vendita, uguali per tutti i piani: IVA, commissione sui pagamenti online e cosa non è
      * disponibile durante la prova. I cataloghi che non le dicono hanno i valori di partenza.
      *
-     * @return array{vat: array{mode: string, note: string}, payments: array{own_gateway_percent: int, collected_by_us_percent: int}, trial: array{exports: bool, accountant_access: bool, end_discount_percent: int, purge_days: int}}
+     * @return array{vat: array{mode: string, note: string}, payments: array{own_gateway_percent: int, collected_by_us_percent: int}, trial: array{exports: bool, accountant_access: bool, end_discount_percent: int, purge_days: int}, members: array{warn_percent: int, full_percent: int, tolerance_percent: int, tolerance_days: int, guests_free_percent: int}}
      */
     private static function terms(mixed $value): array
     {
-        $terms = self::object($value, 'terms', ['vat', 'payments', 'trial']);
+        $terms = self::object($value, 'terms', ['vat', 'payments', 'trial', 'members']);
         $vat = self::object($terms['vat'] ?? [], 'terms.vat', ['mode', 'note']);
         $payments = self::object($terms['payments'] ?? [], 'terms.payments', ['own_gateway_percent', 'collected_by_us_percent']);
         $trial = self::object($terms['trial'] ?? [], 'terms.trial', ['exports', 'accountant_access', 'end_discount_percent', 'purge_days']);
+
+        $members = self::object($terms['members'] ?? [], 'terms.members', ['warn_percent', 'full_percent', 'tolerance_percent', 'tolerance_days', 'guests_free_percent']);
+        $warn = self::int($members['warn_percent'] ?? 80, 'terms.members.warn_percent', 1, 100);
+        $full = self::int($members['full_percent'] ?? 100, 'terms.members.full_percent', 1, 100);
+        if ($full < $warn) {
+            throw new InvalidArgumentException("terms.members: l'avviso al limite non può venire prima di quello di preavviso");
+        }
 
         $exempt = ($vat['mode'] ?? 'standard') === 'exempt';
         if (! $exempt && ($vat['mode'] ?? 'standard') !== 'standard') {
@@ -82,6 +89,13 @@ final class CatalogValidator
                 'accountant_access' => self::bool($trial['accountant_access'] ?? false, 'terms.trial.accountant_access'),
                 'end_discount_percent' => self::int($trial['end_discount_percent'] ?? 0, 'terms.trial.end_discount_percent', 0, 100),
                 'purge_days' => self::int($trial['purge_days'] ?? 7, 'terms.trial.purge_days', 1, 90),
+            ],
+            'members' => [
+                'warn_percent' => $warn,
+                'full_percent' => $full,
+                'tolerance_percent' => self::int($members['tolerance_percent'] ?? 10, 'terms.members.tolerance_percent', 0, 50),
+                'tolerance_days' => self::int($members['tolerance_days'] ?? 15, 'terms.members.tolerance_days', 0, 90),
+                'guests_free_percent' => self::int($members['guests_free_percent'] ?? 10, 'terms.members.guests_free_percent', 0, 100),
             ],
         ];
     }
@@ -229,7 +243,7 @@ final class CatalogValidator
             if (! is_string($kind) || ! in_array($kind, self::ADDON_KINDS, true)) {
                 throw new InvalidArgumentException("addons.{$code}.kind non valido");
             }
-            $grants = self::object($a['grants'] ?? null, "addons.{$code}.grants", ['operators', 'storage_gb', 'package', 'limits']);
+            $grants = self::object($a['grants'] ?? null, "addons.{$code}.grants", ['operators', 'members', 'storage_gb', 'package', 'limits']);
             $out[] = [
                 'code' => $code,
                 'name' => self::text($a['name'] ?? null, "addons.{$code}.name", 80),
@@ -251,6 +265,7 @@ final class CatalogValidator
     {
         return match ($kind) {
             'operators' => ['operators' => self::int($g['operators'] ?? null, "addons.{$code}.grants.operators", 1, 1000)],
+            'members' => ['members' => self::int($g['members'] ?? null, "addons.{$code}.grants.members", 1, 100_000)],
             'storage' => ['storage_gb' => self::int($g['storage_gb'] ?? null, "addons.{$code}.grants.storage_gb", 1, 10_000)],
             'package' => [
                 'package' => self::code($g['package'] ?? null, "addons.{$code}.grants.package", 40),
