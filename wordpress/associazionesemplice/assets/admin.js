@@ -960,6 +960,31 @@ window.asemPlacesInit = function () {
 	});
 })();
 
+/* Impostazioni a sezioni richiudibili: un campo non valido in una sezione chiusa la apre; si ricorda quali sono aperte (facoltativo) */
+(function () {
+	'use strict';
+	var key = 'asemSettingsOpen';
+	function read() { try { return JSON.parse(window.localStorage.getItem(key) || 'null'); } catch (e) { return null; } }
+	function write(v) { try { window.localStorage.setItem(key, JSON.stringify(v)); } catch (e) { /* senza memoria locale non cambia nulla */ } }
+	document.addEventListener('DOMContentLoaded', function () {
+		var all = Array.prototype.slice.call(document.querySelectorAll('details.asem-section[data-asem-section]'));
+		if (!all.length) { return; }
+		var saved = read();
+		if (saved && saved.length) {
+			all.forEach(function (d) { if (saved.indexOf(d.getAttribute('data-asem-section')) !== -1) { d.setAttribute('open', ''); } });
+		}
+		all.forEach(function (d) {
+			d.addEventListener('toggle', function () {
+				write(all.filter(function (x) { return x.open; }).map(function (x) { return x.getAttribute('data-asem-section'); }));
+			});
+		});
+		document.addEventListener('invalid', function (e) {
+			var d = e.target && e.target.closest ? e.target.closest('details') : null;
+			if (d && !d.open) { d.open = true; }
+		}, true);
+	});
+})();
+
 /* Telefono: avvisi raccolti chiusi, schede con il segno che ce ne sono altre di lato, elenchi lunghi a blocchi di 20 («Mostra altri») */
 (function () {
 	'use strict';

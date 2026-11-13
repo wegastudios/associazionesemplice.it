@@ -44,10 +44,20 @@ final class SettingsPage {
 	}
 
 
+	/** Apre una sezione richiudibile (un solo modulo, un solo «Salva»): i campi nelle sezioni chiuse si inviano comunque. */
+	private static function section_open( string $title, string $hint, bool $open = false ): void {
+		echo wp_kses( '<details class="asem-section asem-card"' . ( $open ? ' open' : '' ) . ' data-asem-section="' . esc_attr( sanitize_title( $title ) ) . '"><summary><strong>' . esc_html( $title ) . '</strong> <span class="description">' . esc_html( $hint ) . '</span></summary>', Html::allowed() );
+	}
+
+	private static function section_close(): void {
+		echo '</details>';
+	}
+
 	public static function render(): void {
 		$s = Settings::all();
 		Ui::header( 'Soci e quote' );
 		Ui::form_open( 'asem_save_settings', Ui::url( 'asem-settings' ) );
+		self::section_open( 'Soci e quote', 'Quota, funzioni attive, accesso dei soci, ospiti, consiglio direttivo', true );
 		echo '<table class="form-table"><tbody>';
 		echo '<tr><th>Quota associativa proposta</th><td><input type="text" name="membership_fee" value="' . esc_attr( Money::plain( (int) $s['membership_fee_cents'] ) ) . '" inputmode="decimal"> €</td></tr>';
 		echo wp_kses( '<tr><th>Funzioni attive</th><td>' . self::feature_boxes( $s ) . '<p class="description">Tutte le funzioni facoltative sono spente di default: accendi solo quelle che ti servono, ciò che è spento resta invisibile a soci e gestori. I dettagli tecnici si trovano nelle pagine «Tessera e QR», «Integrazioni» e «Ruoli e accessi».</p></td></tr>', Html::allowed() );
@@ -61,11 +71,11 @@ final class SettingsPage {
 		echo wp_kses( '<tr><th>Pagina area riservata</th><td>' . wp_dropdown_pages(
 			array( 'name' => 'member_area_page_id', 'selected' => (int) $s['member_area_page_id'], 'show_option_none' => '— home del sito —', 'option_none_value' => '0', 'echo' => 0 )
 		) . '<p class="description">La pagina del sito dove soci e volontari accedono alla propria area (si crea dalla sezione «Pagine del sito e shortcode» qui sotto). Chi ha solo il ruolo "Socio" viene indirizzato qui al posto di wp-admin.</p></td></tr>', Html::allowed() );
-		echo '</tbody></table><h2>Eventi: cancellazioni</h2><table class="form-table"><tbody>';
+		echo '</tbody></table>'; self::section_close(); self::section_open( 'Eventi: cancellazioni', 'Termine predefinito per annullare' ); echo '<table class="form-table"><tbody>';
 		echo wp_kses( '<tr><th>Termine predefinito per annullare</th><td><select name="cancel_policy_default">' . Ui::options( CancelPolicy::labels(), $s['cancel_policy_default'] ) . '</select>'
 			. '<p class="description">Vale per gli eventi creati come «cancellabili» senza un termine proprio. Gli eventi gratuiti si annullano sempre; quelli a pagamento mai, ma si può cambiare nominativo.</p></td></tr>', Html::allowed() );
 
-		echo '</tbody></table><h2>Domanda di adesione online</h2><table class="form-table"><tbody>';
+		echo '</tbody></table>'; self::section_close(); self::section_open( 'Domanda di adesione online', 'Chi può chiedere di iscriversi, quota, avvisi alla segreteria' ); echo '<table class="form-table"><tbody>';
 		$pay_on = Plugin::payments()->enabled() && Plugin::payments()->application_online();
 		echo '<tr><th>Chi non è ancora socio</th><td><input type="hidden" name="apply_present" value="1"><label><input type="checkbox" name="apply_enabled" value="1"' . checked( ! empty( $s['apply_enabled'] ), true, false ) . '> Si può chiedere di iscriversi dal sito</label>'
 			. '<p class="description">Aggiungi la pagina «Diventa socio» (shortcode <code>[associazionesemplice_adesione]</code>, si crea dalla sezione «Pagine del sito» qui sotto). Ogni domanda arriva nella Bacheca e nel riquadro «Da lavorare»: tu scegli <em>Approva</em> (assegni la tessera e al richiedente arriva il link per scegliere la password) o <em>Rifiuta</em>. Chi risulta minorenne dalla data di nascita deve indicare anche il genitore.</p></td></tr>';
@@ -74,13 +84,13 @@ final class SettingsPage {
 			. '<p class="description">' . ( $pay_on ? 'Se la domanda viene rifiutata il pagamento resta segnato «da rimborsare» nei Pagamenti online.' : 'Non c\'è nessun metodo di pagamento online attivo: la domanda dice di pagare la quota in sede.' ) . '</p></td></tr>';
 		echo '<tr><th>Avviso alla segreteria</th><td><input type="email" name="apply_email" value="' . esc_attr( (string) $s['apply_email'] ) . '" class="regular-text" placeholder="' . esc_attr( (string) get_option( 'admin_email' ) ) . '"><p class="description">A questo indirizzo arriva un\'email a ogni nuova domanda. Vuoto = l\'email di amministrazione del sito.</p></td></tr>';
 		echo '<tr><th>WhatsApp della segreteria</th><td><input type="tel" name="secretary_phone" value="' . esc_attr( (string) $s['secretary_phone'] ) . '" class="regular-text" placeholder="+39 333 1234567"><p class="description">Il numero a cui scrivere su WhatsApp: compare sulle pagine degli eventi con un pulsante che apre la conversazione.</p></td></tr>';
-		echo '</tbody></table><h2>Aspetto e messaggi del sito</h2><table class="form-table"><tbody>';
+		echo '</tbody></table>'; self::section_close(); self::section_open( 'Aspetto e messaggi del sito', 'Logo, colori, invito al pagamento, contenuti riservati' ); echo '<table class="form-table"><tbody>';
 		echo '<tr><th>Logo e colori</th><td><a href="' . esc_url( Ui::url( 'asem-look' ) ) . '">Aspetto →</a><p class="description">Logo, colore principale e secondario di tessera e pulsanti: di default quelli del sito, personalizzabili.</p></td></tr>';
 		echo '<tr><th>Invito al pagamento</th><td><textarea name="payment_hint" rows="2" class="large-text">' . esc_textarea( Settings::payment_hint() ) . '</textarea>'
 			. '<p class="description">Mostrato ai soci che hanno importi da pagare (finché i pagamenti online non sono attivi).</p></td></tr>';
 		echo '<tr><th>Messaggio sui contenuti riservati</th><td><input type="text" name="gate_message" value="' . esc_attr( (string) $s['gate_message'] ) . '" class="large-text" placeholder="Automatico: «Contenuto riservato ai soci.»">'
 			. '<p class="description">Se lo compili sostituisce il messaggio automatico mostrato a chi non può vedere un contenuto riservato.</p></td></tr>';
-		echo '</tbody></table>';
+		echo '</tbody></table>'; self::section_close();
 		submit_button( 'Salva' );
 		Ui::form_close();
 		do_action( 'asem_settings_page_end' ); // le estensioni aggiungono qui le loro sezioni
