@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Azzeramento dei dati dell'associazione, per ripartire da zero.
  *
- *  - «data»: cancella soci, ospiti, attività, prima nota, registri, pagamenti, comunicazioni, ricevute e allegati; restano impostazioni, traccia delle chiusure degli esercizi,
+ *  - «data»: cancella soci, ospiti, attività, prima nota, registri, pagamenti, comunicazioni, ricevute e allegati; restano impostazioni, traccia delle chiusure degli esercizi e libri soci fotografati,
  *    testi, pagine e registro azioni. Si ricreano conti, voci e livelli predefiniti.
  *  - «factory»: ripristino di fabbrica, come appena installato: cancella anche impostazioni, testi, pagine create dalla procedura
  *    e registro azioni, e rilancia la configurazione guidata.
@@ -23,7 +23,7 @@ final class Reset {
 	const PHRASE = 'AZZERA TUTTO';
 
 	/** Opzioni del plugin che il ripristino di fabbrica cancella. */
-	const FACTORY_OPTIONS = array( 'asem_settings', 'asem_texts', 'asem_pages', 'asem_access_requests', 'asem_wizard_status', 'asem_backup_last', 'asem_convention_categories' );
+	const FACTORY_OPTIONS = array( 'asem_settings', 'asem_texts', 'asem_pages', 'asem_access_requests', 'asem_wizard_status', 'asem_backup_last', 'asem_convention_categories', 'asem_matricola_last' );
 
 	private static function db(): \wpdb {
 		return Db::db();
@@ -32,7 +32,7 @@ final class Reset {
 	/** Tabelle da svuotare (nomi senza prefisso). Il registro azioni resta, salvo nel ripristino di fabbrica. */
 	public static function tables( string $mode ): array {
 		return array_values( array_filter( Backup::tables(), function ( $t ) use ( $mode ) {
-			return self::FACTORY === $mode || ! in_array( $t, array( 'asem_audit_log', 'asem_fiscal_year_closures' ), true ); // registro azioni e traccia delle chiusure restano
+			return self::FACTORY === $mode || ! in_array( $t, array( 'asem_audit_log', 'asem_fiscal_year_closures', 'asem_member_book_snapshot' ), true ); // registro azioni, traccia delle chiusure e libri soci fotografati restano
 		} ) );
 	}
 

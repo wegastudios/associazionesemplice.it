@@ -489,6 +489,7 @@ class PeopleService {
 		if ( MemberType::is_auto_renewed( $d['type'] ) ) {
 			$this->set_founder_membership( $id, $d['joined_on'] ?: Db::today() );
 		}
+		MemberBook::ensure_matricola( $id ); // il socio ha la sua matricola, per sempre
 		Audit::log( 'person.created', 'person', $id, array( 'type' => $d['type'] ) );
 		return $id;
 	}
@@ -818,6 +819,7 @@ class PeopleService {
 		} elseif ( $was_founder ) {
 			$this->db()->update( Db::t( 'memberships' ), array( 'deleted_at' => Db::now() ), array( 'person_id' => $id, 'social_year' => 'FOUNDER' ) );
 		}
+		MemberBook::ensure_matricola( $id ); // un ospite diventato socio entra nel libro: prende la matricola
 		Audit::log( 'person.updated', 'person', $id, $current['type'] === $d['type'] ? array() : array( 'type' => array( $current['type'], $d['type'] ) ) );
 	}
 
@@ -1005,6 +1007,7 @@ class PeopleService {
 			throw new \InvalidArgumentException( 'Il socio fondatore ha la tessera sempre rinnovata.' );
 		}
 		$year = SocialYear::from_label( $year_label, Settings::start_month() );
+		YearLock::assert_range_open( $year->start()->format( 'Y-m-d' ), $year->end()->format( 'Y-m-d' ) ); // una tessera che cade interamente in esercizi chiusi non si aggiunge né si toglie: l'esercizio va riaperto
 		if ( $enabled ) {
 			$this->upsert_membership( $person_id, $year->label(), $year->start()->format( 'Y-m-d' ), $year->end()->format( 'Y-m-d' ), $source, $tx_id );
 		} else {
@@ -1072,6 +1075,9 @@ class PeopleService {
 		if ( ! $row ) {
 			return;
 		}
+		foreach ( $this->db()->get_results( $this->db()->prepare( 'SELECT valid_from, valid_to FROM ' . Db::t( 'memberships' ) . ' WHERE transaction_id = %d AND deleted_at IS NULL', $tx_id ), ARRAY_A ) ?: array() as $m ) {
+			YearLock::assert_range_open( (string) $m['valid_from'], (string) $m['valid_to'] ); // la tessera di un esercizio chiuso non decade
+		}
 		$this->db()->update( Db::t( 'memberships' ), array( 'deleted_at' => Db::now() ), array( 'transaction_id' => $tx_id ) );
 		Audit::log( 'membership.removed', 'person', (int) $row['person_id'], array( 'social_year' => $row['social_year'], 'source' => 'void', 'transaction' => $tx_id ) );
 	}
@@ -1084,6 +1090,8 @@ class PeopleService {
 			return;
 		}
 		if ( $this->membership_missing( $p, (string) $row['social_year'] ) > 0 ) {
+			$sy = SocialYear::from_label( (string) $row['social_year'], Settings::start_month() );
+			YearLock::assert_range_open( $sy->start()->format( 'Y-m-d' ), $sy->end()->format( 'Y-m-d' ) ); // la tessera di un esercizio chiuso non decade
 			$this->db()->update( Db::t( 'memberships' ), array( 'deleted_at' => Db::now() ), array( 'person_id' => (int) $p['id'], 'social_year' => (string) $row['social_year'] ) );
 			Audit::log( 'membership.removed', 'person', (int) $p['id'], array( 'social_year' => $row['social_year'], 'source' => 'void_partial', 'transaction' => $tx_id ) );
 		}

@@ -4135,7 +4135,7 @@ $yl_v0 = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT MAX(version) FROM ' . Db:
 $wpdb->update( Db::t( 'people' ), array( 'left_on' => $yl_date ), array( 'id' => $yl_p ) );
 \AssociazioneSemplice\FiscalYears::close( $yl_y );
 $yl_c1 = \AssociazioneSemplice\FiscalYears::current_closure( $yl_y );
-asem_ok( $yl_c1 && $yl_v0 + 1 === (int) $yl_c1['version'] && 'current' === $yl_c1['status'] && 'none' === $yl_c1['snapshot_state'] && (int) $yl_c1['closed_by'] === get_current_user_id() && $yl_y . '-01-01' === $yl_c1['range_from'], 'esercizi: la chiusura lascia una riga permanente (utente, data, versione)' );
+asem_ok( $yl_c1 && $yl_v0 + 1 === (int) $yl_c1['version'] && 'current' === $yl_c1['status'] && 'complete' === $yl_c1['snapshot_state'] && (int) $yl_c1['closed_by'] === get_current_user_id() && $yl_y . '-01-01' === $yl_c1['range_from'], 'esercizi: la chiusura lascia una riga permanente (utente, data, versione)' );
 
 // anno chiuso: ogni azione bloccata, con il messaggio unico
 asem_ok( $yl_msg( $yl_y ) === asem_throws( function () use ( $yl_tx, $yl_png ) { Attachments::add( $yl_tx, $yl_png( 'yl-chiuso.png' ) ); } ), 'anno chiuso: non si aggiungono allegati' );
@@ -4213,6 +4213,181 @@ $wpdb->delete( Db::t( 'fiscal_years' ), array( 'year' => $yl_old ) );
 Settings::update( array( 'fiscal_start_month' => 1 ) );
 asem_ok( 1 === \AssociazioneSemplice\FiscalYears::start_month() && (string) $cy === \AssociazioneSemplice\FiscalYears::label( $cy ), 'esercizio: tornati a gennaio l\'etichetta è l\'anno solare' );
 $wpdb->delete( Db::t( 'fiscal_year_closures' ), array( 'year' => $yl_old ) );
+
+// ---------- Libro soci per esercizio: criterio, fotografia, matricole ----------
+$mb_min = (int) $wpdb->get_var( 'SELECT MIN(year) FROM ' . Db::t( 'fiscal_years' ) );
+$mb_y   = max( 2000, ( $mb_min ?: $cy ) - 3 ); // un anno più vecchio di tutti quelli esistenti: si può chiudere senza chiudere altri
+while ( \AssociazioneSemplice\FiscalYears::get( $mb_y ) || \AssociazioneSemplice\FiscalYears::get( $mb_y + 1 ) ) {
+	--$mb_y;
+}
+$mb_y1 = $mb_y + 1;
+\AssociazioneSemplice\FiscalYears::create( $mb_y );
+\AssociazioneSemplice\FiscalYears::create( $mb_y1 );
+$mb_mk   = function ( string $type, string $first, string $last, string $joined ) use ( $people ) {
+	return $people->create( array( 'type' => $type, 'first_name' => $first, 'last_name' => $last, 'email' => strtolower( $first . '.' . $last ) . '@example.com', 'joined_on' => $joined ) );
+};
+$mb_card = function ( int $pid, string $from, string $to, string $label ) use ( $wpdb ) {
+	$wpdb->insert( Db::t( 'memberships' ), array( 'person_id' => $pid, 'social_year' => $label, 'valid_from' => $from, 'valid_to' => $to, 'source' => 'manual', 'created_at' => Db::now() ) );
+};
+$mb_ids  = function ( array $rows ): array {
+	return array_map( 'intval', array_column( $rows, 'id' ) );
+};
+$mb_a = $mb_mk( 'ordinary', 'Anna', 'Cavallo', $mb_y . '-07-01' );         // tessera dal 1/7 dell'anno al 30/6 dopo: a cavallo di due anni
+$mb_b = $mb_mk( 'ordinary', 'Bruno', 'Nonrinnovato', ( $mb_y - 1 ) . '-02-01' ); // tessera solo dell'anno prima
+$mb_c = $mb_mk( 'founder', 'Carla', 'Fondatrice', ( $mb_y - 3 ) . '-01-01' );
+$mb_d = $mb_mk( 'ordinary', 'Dario', 'Cessato', $mb_y . '-02-01' );          // lascia durante l'anno
+$mb_e = $mb_mk( 'ordinary', 'Elena', 'Cancellata', $mb_y . '-03-01' );       // sarà cancellata dopo la chiusura
+$mb_card( $mb_a, $mb_y . '-07-01', $mb_y1 . '-06-30', $mb_y . '/' . $mb_y1 );
+$mb_card( $mb_b, ( $mb_y - 1 ) . '-01-01', ( $mb_y - 1 ) . '-12-31', (string) ( $mb_y - 1 ) );
+$mb_card( $mb_d, $mb_y . '-01-01', $mb_y . '-12-31', (string) $mb_y );
+$mb_card( $mb_e, $mb_y . '-01-01', $mb_y . '-12-31', (string) $mb_y );
+$wpdb->update( Db::t( 'people' ), array( 'left_on' => $mb_y . '-05-10', 'left_reason' => 'recesso' ), array( 'id' => $mb_d ) );
+$mb_mat = function ( int $id ) use ( $wpdb ): int {
+	return (int) $wpdb->get_var( $wpdb->prepare( 'SELECT matricola FROM ' . Db::t( 'people' ) . ' WHERE id = %d', $id ) );
+};
+
+// criterio con esercizio a gennaio: la tessera dell'anno solare sta in un solo libro; quella a cavallo in due
+$mb_live = $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y ) );
+asem_ok( in_array( $mb_a, $mb_live, true ) && in_array( $mb_c, $mb_live, true ) && in_array( $mb_d, $mb_live, true ) && in_array( $mb_e, $mb_live, true ) && ! in_array( $mb_b, $mb_live, true ), 'libro per anno: ci entra chi ha una tessera valida in almeno un giorno dell\'esercizio; il non rinnovato no' );
+$mb_next = $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y1 ) );
+asem_ok( in_array( $mb_a, $mb_next, true ) && in_array( $mb_c, $mb_next, true ) && ! in_array( $mb_d, $mb_next, true ) && ! in_array( $mb_e, $mb_next, true ), 'libro per anno: la tessera a cavallo compare in entrambi i libri, il cessato l\'anno prima non compare più' );
+asem_ok( in_array( $mb_d, $mb_ids( \AssociazioneSemplice\MemberBook::rows( 'left', $mb_y ) ), true ) && ! in_array( $mb_d, $mb_ids( \AssociazioneSemplice\MemberBook::rows( 'in_force', $mb_y ) ), true ), 'libro per anno: chi ha lasciato durante l\'esercizio compare tra i cessati, con la sua data' );
+$mb_rows = \AssociazioneSemplice\MemberBook::rows( '', $mb_y );
+asem_ok( range( 1, count( $mb_rows ) ) === array_map( 'intval', array_column( $mb_rows, 'n' ) ), 'libro per anno: il numero di riga riparte da 1 e non ha buchi' );
+$mb_m = array_map( 'intval', array_column( $mb_rows, 'matricola' ) );
+asem_ok( ! in_array( 0, $mb_m, true ) && count( array_unique( $mb_m ) ) === count( $mb_m ), 'matricole: ogni socio del libro ne ha una, tutte diverse' );
+// esercizio a luglio e a settembre: la tessera dell'anno solare compare in due libri
+Settings::update( array( 'fiscal_start_month' => 7 ) );
+$mb_h = $mb_mk( 'ordinary', 'Ugo', 'Solare', ( $mb_y - 1 ) . '-01-10' );
+$mb_card( $mb_h, $mb_y . '-01-01', $mb_y . '-12-31', (string) $mb_y );
+asem_ok( in_array( $mb_h, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y ) ), true ) && in_array( $mb_h, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y - 1 ) ), true ) && ! in_array( $mb_h, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y + 1 ) ), true ), 'libro per anno, esercizio a luglio: la tessera dell\'anno solare compare nei due esercizi che attraversa' );
+asem_ok( in_array( $mb_a, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y ) ), true ) && ! in_array( $mb_a, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y + 1 ) ), true ), 'libro per anno, esercizio a luglio: la tessera da luglio a giugno sta in un solo libro' );
+Settings::update( array( 'fiscal_start_month' => 9 ) );
+asem_ok( in_array( $mb_a, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y ) ), true ) && in_array( $mb_a, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y - 1 ) ), true ) && ! in_array( $mb_a, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y + 1 ) ), true ), 'libro per anno, esercizio a settembre: la tessera da luglio a giugno cade in due esercizi' );
+Settings::update( array( 'fiscal_start_month' => 1 ) );
+// il fondatore: ammesso entro la fine dell'esercizio e non cessato prima dell'inizio
+$mb_fnd = $mb_mk( 'founder', 'Ferdinando', 'Fondatore', ( $mb_y + 1 ) . '-03-01' );
+asem_ok( ! in_array( $mb_fnd, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y ) ), true ) && in_array( $mb_fnd, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y1 ) ), true ), 'libro per anno: il fondatore entra dall\'esercizio in cui è ammesso' );
+// campi della fotografia: solo i dati minimi, configurabili da un filtro
+$mb_f = \AssociazioneSemplice\MemberBook::snapshot_fields();
+asem_ok( array() === array_intersect( $mb_f, array( 'email', 'phone', 'card_number', 'fee_cents', 'fee_year', 'guardian', 'applied_on' ) ) && in_array( 'tax_code', $mb_f, true ) && in_array( 'left_reason', $mb_f, true ), 'fotografia: i campi sono solo i dati minimi (niente email, telefono, tessera, quote, tutore)' );
+$mb_flt = function ( $f ) {
+	return array_merge( $f, array( 'email', 'campo_inesistente' ) );
+};
+add_filter( 'asem_member_book_snapshot_fields', $mb_flt );
+asem_ok( in_array( 'email', \AssociazioneSemplice\MemberBook::snapshot_fields(), true ) && ! in_array( 'campo_inesistente', \AssociazioneSemplice\MemberBook::snapshot_fields(), true ), 'fotografia: l\'elenco dei campi si cambia con il filtro, ma solo con campi che il libro conosce' );
+remove_filter( 'asem_member_book_snapshot_fields', $mb_flt );
+
+// chiusura: la fotografia nasce nella stessa operazione
+$mb_seen = array();
+$mb_spy  = function ( $y, $cid ) use ( &$mb_seen ) {
+	$mb_seen[] = (int) $cid;
+};
+add_action( 'asem_year_closing', $mb_spy, 10, 2 );
+$mb_pre = \AssociazioneSemplice\MemberBook::rows( '', $mb_y ); // il libro dal vivo prima della chiusura
+\AssociazioneSemplice\FiscalYears::close( $mb_y );
+$mb_c1 = \AssociazioneSemplice\FiscalYears::current_closure( $mb_y );
+asem_ok( $mb_c1 && 'complete' === $mb_c1['snapshot_state'] && 0 === (int) $mb_c1['retroactive'] && null !== $mb_c1['snapshotted_at'] && 'snapshot' === \AssociazioneSemplice\MemberBook::caption( $mb_y )['state'], 'chiusura: l\'esercizio è fotografato, non ricostruito' );
+$mb_snap = \AssociazioneSemplice\MemberBook::rows( '', $mb_y );
+asem_ok( array_column( $mb_pre, 'name' ) === array_column( $mb_snap, 'name' ) && array_column( $mb_pre, 'matricola' ) === array_column( $mb_snap, 'matricola' ) && array_column( $mb_pre, 'n' ) === array_column( $mb_snap, 'n' ), 'chiusura: la fotografia ha gli stessi soci, numeri di riga e matricole del libro dal vivo' );
+$mb_raw = (string) $wpdb->get_var( $wpdb->prepare( 'SELECT GROUP_CONCAT(data) FROM ' . Db::t( 'member_book_snapshot' ) . ' WHERE closure_id = %d', (int) $mb_c1['id'] ) );
+asem_ok( false === strpos( $mb_raw, 'example.com' ) && false === strpos( $mb_raw, '"phone"' ), 'chiusura: nella fotografia non ci sono email né telefoni' );
+asem_ok( 0 === strpos( \AssociazioneSemplice\MemberBook::caption( $mb_y )['title'], 'Libro soci — esercizio ' . \AssociazioneSemplice\FiscalYears::label( $mb_y ) . ' (fotografato il ' ), 'libro: l\'intestazione dice «fotografato il …»' );
+asem_ok( 0 === strpos( \AssociazioneSemplice\MemberBook::caption( $mb_y1 )['title'], 'Libro soci — esercizio ' ) && false !== strpos( \AssociazioneSemplice\MemberBook::caption( $mb_y1 )['title'], 'aggiornato al ' ), 'libro: per l\'esercizio non chiuso l\'intestazione dice «aggiornato al …»' );
+// una fotografia che non riesce annulla la chiusura (qui un'estensione lancia un errore)
+$mb_boom = function () {
+	throw new \InvalidArgumentException( 'Fotografia di prova non riuscita.' );
+};
+$mb_n1 = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'fiscal_year_closures' ) );
+$mb_ns = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_book_snapshot' ) );
+add_action( 'asem_year_closing', $mb_boom );
+$mb_msg = asem_throws( function () use ( $mb_y1 ) { \AssociazioneSemplice\FiscalYears::close( $mb_y1 ); } );
+remove_action( 'asem_year_closing', $mb_boom );
+asem_ok( 'Fotografia di prova non riuscita.' === $mb_msg && \AssociazioneSemplice\FiscalYears::is_open( $mb_y1 ) && $mb_n1 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'fiscal_year_closures' ) ) && $mb_ns === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_book_snapshot' ) ), 'chiusura: se la fotografia (anche quella di un\'estensione) non riesce, l\'esercizio resta aperto e non resta scritto nulla' );
+
+// dopo la chiusura: modifiche, cancellazione e anonimizzazione non cambiano il libro chiuso
+$mb_matE = $mb_mat( $mb_e );
+$wpdb->update( Db::t( 'people' ), array( 'last_name' => 'Rinominata' ), array( 'id' => $mb_a ) );
+$people->delete( $mb_e );
+\AssociazioneSemplice\Privacy::anonymize( $mb_d );
+$mb_after = \AssociazioneSemplice\MemberBook::rows( '', $mb_y );
+$mb_names = array_column( $mb_after, 'name' );
+asem_ok( array_column( $mb_pre, 'name' ) === $mb_names && in_array( 'Cancellata Elena', $mb_names, true ) && in_array( 'Cessato Dario', $mb_names, true ) && in_array( 'Cavallo Anna', $mb_names, true ), 'libro chiuso: un socio cancellato, uno anonimizzato e uno rinominato dopo la chiusura restano come erano nella fotografia' );
+$mb_dr = array_values( array_filter( $mb_after, function ( $r ) use ( $mb_d ) { return (int) $r['id'] === $mb_d; } ) );
+asem_ok( $mb_dr && $mb_y . '-05-10' === $mb_dr[0]['left_on'] && 'recesso' === $mb_dr[0]['left_reason'], 'libro chiuso: chi ha lasciato durante l\'esercizio ha la sua data e la sua causa di cessazione' );
+asem_ok( ! in_array( $mb_e, $mb_ids( \AssociazioneSemplice\MemberBook::rows() ), true ), 'libro dal vivo: la persona cancellata non compare più' );
+asem_ok( $mb_matE > 0 && $mb_matE === (int) $mb_after[ array_search( $mb_e, array_column( $mb_after, 'id' ), true ) ]['matricola'], 'matricola: nel libro chiuso la persona cancellata ha ancora la sua' );
+$mb_exp = \AssociazioneSemplice\Privacy::export( $mb_a );
+asem_ok( ! empty( $mb_exp['libro_soci_fotografato'] ) && (int) $mb_exp['libro_soci_fotografato'][0]['matricola'] === $mb_mat( $mb_a ) && 'Cavallo' === $mb_exp['libro_soci_fotografato'][0]['dati']['last_name'], 'privacy: l\'esportazione dei dati comprende le righe fotografate (con i dati di allora)' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Privacy::closed_books_note( $mb_e ), 'restano nei libri degli esercizi già chiusi' ) && '' === \AssociazioneSemplice\Privacy::closed_books_note( $mb_b ), 'privacy: chi cancella o anonimizza viene avvisato che i dati restano nei libri chiusi' );
+// matricole mai riassegnate
+$mb_g = $mb_mk( 'ordinary', 'Gina', 'Nuova', $today );
+asem_ok( $mb_mat( $mb_g ) > $mb_matE && $mb_mat( $mb_g ) > $mb_mat( $mb_a ), 'matricola: quella di una persona cancellata non viene riassegnata a un nuovo socio' );
+$mb_before = $mb_mat( $mb_a );
+\AssociazioneSemplice\MemberBook::ensure_matricola( $mb_a );
+asem_ok( $mb_before === $mb_mat( $mb_a ), 'matricola: assegnata una volta sola, non cambia più' );
+// migrazione: idempotente e in ordine di ingresso, senza buchi
+$mb_p1 = $mb_mk( 'ordinary', 'Pia', 'Prima', ( $mb_y - 2 ) . '-01-01' );
+$mb_p2 = $mb_mk( 'ordinary', 'Paolo', 'Secondo', ( $mb_y - 2 ) . '-06-01' );
+$wpdb->query( 'UPDATE ' . Db::t( 'people' ) . ' SET matricola = NULL WHERE id IN (' . $mb_p2 . ',' . $mb_p1 . ')' );
+$mb_assigned = \AssociazioneSemplice\MemberBook::assign_missing();
+asem_ok( $mb_assigned >= 2 && $mb_mat( $mb_p1 ) > 0 && $mb_mat( $mb_p2 ) === $mb_mat( $mb_p1 ) + 1, 'migrazione matricole: assegnate in ordine di ingresso, senza buchi' );
+asem_ok( 0 === \AssociazioneSemplice\MemberBook::assign_missing() && $mb_before === $mb_mat( $mb_a ), 'migrazione matricole: rilanciarla non cambia nulla' );
+
+// riapertura e nuova chiusura: la versione 2 nasce, la 1 resta consultabile
+\AssociazioneSemplice\FiscalYears::reopen( $mb_y, 'Correzione di prova' );
+asem_ok( null === \AssociazioneSemplice\FiscalYears::current_closure( $mb_y ) && 'live' === \AssociazioneSemplice\MemberBook::caption( $mb_y )['state'] && ! in_array( $mb_e, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y ) ), true ), 'riapertura: l\'esercizio torna dal vivo' );
+asem_ok( in_array( $mb_e, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y, 1 ) ), true ) && 'snapshot' === \AssociazioneSemplice\MemberBook::caption( $mb_y, 1 )['state'], 'riapertura: la fotografia della chiusura n. 1 resta consultabile' );
+\AssociazioneSemplice\FiscalYears::close( $mb_y );
+$mb_c2 = \AssociazioneSemplice\FiscalYears::current_closure( $mb_y );
+asem_ok( $mb_c2 && 2 === (int) $mb_c2['version'] && 'complete' === $mb_c2['snapshot_state'] && 2 === count( \AssociazioneSemplice\FiscalYears::closures( $mb_y ) ), 'nuova chiusura: nasce la versione 2 con la sua fotografia' );
+asem_ok( ! in_array( $mb_e, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y ) ), true ) && in_array( $mb_e, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y, 1 ) ), true ), 'nuova chiusura: la versione 2 è quella in vigore, la 1 resta com\'era' );
+asem_ok( in_array( (int) $mb_c1['id'], $mb_seen, true ) && in_array( (int) $mb_c2['id'], $mb_seen, true ) && 2 === (int) $wpdb->get_var( 'SELECT COUNT(DISTINCT closure_id) FROM ' . Db::t( 'member_book_snapshot' ) . ' WHERE closure_id IN (' . (int) $mb_c1['id'] . ',' . (int) $mb_c2['id'] . ')' ),'chiusura: l\'azione asem_year_closing parte a ogni chiusura (con l\'id della chiusura)' );
+remove_action( 'asem_year_closing', $mb_spy, 10 );
+
+// tessere di un esercizio chiuso: non si aggiungono né si tolgono
+$mb_msg = $yl_msg( $mb_y );
+asem_ok( $mb_msg === asem_throws( function () use ( $people, $mb_g, $mb_y ) { $people->set_membership( $mb_g, (string) $mb_y, true ); } ), 'anno chiuso: non si aggiunge una tessera che cade tutta in un esercizio chiuso' );
+asem_ok( $mb_msg === asem_throws( function () use ( $people, $mb_d, $mb_y ) { $people->set_membership( $mb_d, (string) $mb_y, false ); } ), 'anno chiuso: non si toglie una tessera che cade tutta in un esercizio chiuso' );
+$people->set_membership( $mb_g, (string) $cy, true );
+asem_ok( $people->has_membership( $mb_g, (string) $cy ), 'anno aperto: la tessera dell\'anno in corso si aggiunge ancora' );
+
+// anni già chiusi prima della fotografia: ricostruzione esplicita, con la dicitura
+$wpdb->update( Db::t( 'fiscal_years' ), array( 'status' => 'closed', 'closed_at' => $mb_y1 . '-12-31 10:00:00' ), array( 'year' => $mb_y1 ) );
+\AssociazioneSemplice\Install::migrate_year_closures();
+$mb_leg = \AssociazioneSemplice\FiscalYears::current_closure( $mb_y1 );
+asem_ok( $mb_leg && 'none' === $mb_leg['snapshot_state'] && 'unphotographed' === \AssociazioneSemplice\MemberBook::caption( $mb_y1 )['state'] && 'non fotografato' === \AssociazioneSemplice\FiscalYears::snapshot_text( $mb_leg ) && in_array( $mb_y1, array_map( 'intval', array_column( \AssociazioneSemplice\FiscalYears::unphotographed(), 'year' ) ), true ), 'anno chiuso prima: risulta «non fotografato»' );
+$mb_yp = asem_render( array( Admin\YearsPage::class, 'render' ), 'Fotografa gli anni già chiusi' );
+asem_ok( false !== strpos( $mb_yp, 'name="confirm_retro"' ) && false !== strpos( $mb_yp, 'ricostruito dai dati di oggi' ), 'esercizi: la fotografia retroattiva avvisa che i dati sono ricostruiti e chiede conferma' );
+$mb_retro = new ReflectionMethod( Admin\Actions::class, 'snapshot_past_years' );
+$mb_retro->setAccessible( true );
+asem_ok( null !== asem_throws( function () use ( $mb_retro ) { $mb_retro->invoke( null, array() ); } ) && 'none' === \AssociazioneSemplice\FiscalYears::current_closure( $mb_y1 )['snapshot_state'], 'fotografia retroattiva: senza la conferma non parte' );
+$mb_retro->invoke( null, array( 'confirm_retro' => '1' ) );
+$mb_leg = \AssociazioneSemplice\FiscalYears::current_closure( $mb_y1 );
+asem_ok( 'complete' === $mb_leg['snapshot_state'] && 1 === (int) $mb_leg['retroactive'] && null !== $mb_leg['snapshotted_at'] && 0 === strpos( \AssociazioneSemplice\FiscalYears::snapshot_text( $mb_leg ), 'ricostruito il ' ), 'fotografia retroattiva: l\'esercizio è segnato come ricostruito, con la data' );
+asem_ok( false !== strpos( \AssociazioneSemplice\MemberBook::caption( $mb_y1 )['title'], '(ricostruito il ' ) && in_array( $mb_a, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y1 ) ), true ) && in_array( $mb_c, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y1 ) ), true ), 'fotografia retroattiva: l\'intestazione dice «ricostruito il …» e il libro è quello dei dati di oggi' );
+asem_ok( 0 === \AssociazioneSemplice\FiscalYears::snapshot_past_years() && ! in_array( $mb_y1, array_map( 'intval', array_column( \AssociazioneSemplice\FiscalYears::unphotographed(), 'year' ) ), true ), 'fotografia retroattiva: rilanciarla non rifà nulla' );
+$mb_page = asem_render( array( Admin\RegistersPage::class, 'render_book' ), 'ricostruito il ', array( 'year' => (string) $mb_y1 ) );
+asem_ok( false !== strpos( $mb_page, 'Matricola' ) && false === strpos( $mb_page, 'Ultima quota' ), 'libro soci: la schermata di un anno fotografato mostra solo i dati minimi, con la matricola' );
+$mb_page = asem_render( array( Admin\RegistersPage::class, 'render_book' ), 'fotografato il ', array( 'year' => (string) $mb_y ) );
+asem_ok( false !== strpos( $mb_page, 'chiusura n. 1' ), 'libro soci: dopo una riapertura la schermata rimanda alla fotografia precedente' );
+$mb_doc = \AssociazioneSemplice\Docs::book( '', 'csv', $mb_y, 1 );
+asem_ok( false !== strpos( $mb_doc['body'], 'Cancellata Elena' ) && false !== strpos( $mb_doc['body'], 'Matricola' ) && false === strpos( $mb_doc['body'], 'Email' ), 'libro soci: il CSV di un anno fotografato legge la fotografia (versione 1)' );
+$mb_pdf = \AssociazioneSemplice\Docs::book( '', 'pdf', $mb_y1 );
+asem_ok( 0 === strpos( $mb_pdf['body'], '%PDF-1.4' ), 'libro soci: il PDF di un anno si genera' );
+
+// pulizia: anni, chiusure, fotografie e persone di prova
+$mb_cl = array_map( 'intval', $wpdb->get_col( $wpdb->prepare( 'SELECT id FROM ' . Db::t( 'fiscal_year_closures' ) . ' WHERE year IN (%d,%d)', $mb_y, $mb_y1 ) ) );
+if ( $mb_cl ) {
+	$wpdb->query( 'DELETE FROM ' . Db::t( 'member_book_snapshot' ) . ' WHERE closure_id IN (' . implode( ',', $mb_cl ) . ')' );
+}
+$wpdb->query( $wpdb->prepare( 'DELETE FROM ' . Db::t( 'fiscal_year_closures' ) . ' WHERE year IN (%d,%d)', $mb_y, $mb_y1 ) );
+$wpdb->query( $wpdb->prepare( 'DELETE FROM ' . Db::t( 'fiscal_years' ) . ' WHERE year IN (%d,%d)', $mb_y, $mb_y1 ) );
+foreach ( array( $mb_a, $mb_b, $mb_c, $mb_d, $mb_e, $mb_g, $mb_h, $mb_fnd, $mb_p1, $mb_p2 ) as $mb_pid ) {
+	$wpdb->delete( Db::t( 'memberships' ), array( 'person_id' => $mb_pid ) );
+	$wpdb->delete( Db::t( 'people' ), array( 'id' => $mb_pid ) );
+}
+asem_ok( 1 === \AssociazioneSemplice\FiscalYears::start_month() && null === \AssociazioneSemplice\FiscalYears::last_closed(), 'libro soci per anno: prove ripulite, esercizio di nuovo a gennaio senza anni chiusi' );
 
 asem_render( array( Admin\YearsPage::class, 'render' ), 'Crea anno solare' );
 $rep_html = asem_render( array( Admin\ReportsPage::class, 'render' ), 'Conti e liquidità' );

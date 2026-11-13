@@ -6,13 +6,14 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '58';
+	const DB_VERSION        = '59';
 
 	public static function activate(): void {
 		self::create_tables();
 		self::add_roles_and_caps();
 		self::seed();
 		self::migrate_year_closures(); // gli esercizi già chiusi entrano nella traccia permanente (idempotente)
+		MemberBook::assign_missing(); // ogni socio ha la sua matricola, assegnata una volta sola (idempotente)
 		if ( '' === (string) get_option( self::DB_VERSION_OPTION, '' ) ) { // prima installazione: si propone la configurazione guidata
 			Wizard::schedule_first_run();
 		} elseif ( Wizard::pending() ) { // sito già in uso prima di questa funzione: nessun invito, la pagina resta in Impostazioni
@@ -146,6 +147,7 @@ final class Install {
   wp_user_id bigint(20) unsigned DEFAULT NULL,
   type varchar(20) NOT NULL,
   card_number varchar(40) DEFAULT NULL,
+  matricola int(10) unsigned DEFAULT NULL,
   first_name varchar(120) NOT NULL,
   last_name varchar(120) NOT NULL,
   email varchar(190) DEFAULT NULL,
@@ -189,6 +191,7 @@ final class Install {
   deleted_at datetime DEFAULT NULL,
   PRIMARY KEY  (id),
   UNIQUE KEY card_number (card_number),
+  UNIQUE KEY matricola (matricola),
   UNIQUE KEY wp_user_id (wp_user_id),
   KEY email (email),
   KEY type (type),
@@ -289,8 +292,24 @@ final class Install {
   status varchar(12) NOT NULL DEFAULT 'current',
   snapshot_state varchar(10) NOT NULL DEFAULT 'none',
   retroactive tinyint(1) NOT NULL DEFAULT 0,
+  snapshotted_at datetime DEFAULT NULL,
+  snapshotted_by bigint(20) unsigned DEFAULT NULL,
   PRIMARY KEY  (id),
   UNIQUE KEY year_version (year,version)
+) $c;";
+
+		// Libro soci fotografato alla chiusura di un esercizio: una riga per socio per chiusura, con i soli dati minimi (l'elenco è in MemberBook::snapshot_fields()).
+		// Non si cancella mai: né alla riapertura (la chiusura diventa una versione precedente), né con l'anonimizzazione o la cancellazione di un socio.
+		$tables[] = "CREATE TABLE {$p}member_book_snapshot (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  closure_id bigint(20) unsigned NOT NULL,
+  n int(11) NOT NULL,
+  person_id bigint(20) unsigned NOT NULL,
+  matricola int(10) unsigned DEFAULT NULL,
+  data longtext NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY closure_n (closure_id,n),
+  KEY person_id (person_id)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}funds (

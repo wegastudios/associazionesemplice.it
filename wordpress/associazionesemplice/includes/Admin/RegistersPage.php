@@ -3,6 +3,7 @@ namespace AssociazioneSemplice\Admin;
 
 use AssociazioneSemplice\Db;
 use AssociazioneSemplice\Docs;
+use AssociazioneSemplice\FiscalYears;
 use AssociazioneSemplice\MemberBook;
 use AssociazioneSemplice\Minutes;
 use AssociazioneSemplice\Money;
@@ -27,13 +28,35 @@ final class RegistersPage {
 	public static function render_book(): void {
 		$filter = Ui::get_str( 'filter' );
 		$filter = in_array( $filter, array( MemberBook::IN_FORCE, MemberBook::LEFT ), true ) ? $filter : '';
-		Ui::header( 'Libro soci' );
-		$rows = MemberBook::rows( $filter );
-		echo '<p class="description">L\'elenco progressivo dei soci con data di ingresso e, se c\'è stata, di cessazione (recesso, esclusione, decesso). Gli ospiti non sono soci e non compaiono. '
-			. 'La cessazione si registra dalla scheda del socio.</p>';
-		echo wp_kses( '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-book"><select name="filter">'
+		$years  = array();
+		foreach ( FiscalYears::all() as $fy ) {
+			$years[ (int) $fy['year'] ] = 'Esercizio ' . FiscalYears::label( (int) $fy['year'] );
+		}
+		$year    = Ui::get_int( 'year' );
+		$year    = isset( $years[ $year ] ) ? $year : FiscalYears::current();
+		$version = Ui::get_int( 'version' );
+		$version = $version > 0 && null !== FiscalYears::closure_version( $year, $version ) ? $version : null;
+		$cap     = MemberBook::caption( $year, $version );
+		$snap    = 'snapshot' === $cap['state'];
+		Ui::header( $cap['title'] );
+		$rows = MemberBook::rows( $filter, $year, $version );
+		echo '<p class="description">L\'elenco dei soci dell\'esercizio, con matricola, data di ingresso e, se c\'è stata, di cessazione (recesso, esclusione, decesso). Entra chi ha avuto una tessera valida per almeno un giorno dell\'esercizio (una tessera a cavallo di due esercizi compare in entrambi i libri). '
+			. 'Il numero di riga riparte da 1 ogni esercizio; la matricola invece resta la stessa per sempre. Gli ospiti non sono soci e non compaiono. La cessazione si registra dalla scheda del socio.</p>';
+		echo '<p class="description"><strong>' . esc_html( $cap['note'] ) . '</strong></p>';
+		$others = array();
+		foreach ( FiscalYears::closures( $year ) as $c ) {
+			if ( 'complete' === $c['snapshot_state'] && (int) $c['version'] !== (int) ( $cap['closure']['version'] ?? 0 ) ) {
+				$others[] = '<a href="' . esc_url( Ui::url( 'asem-book', array( 'year' => $year, 'version' => (int) $c['version'], 'filter' => $filter ) ) ) . '">chiusura n. ' . (int) $c['version'] . ' (' . esc_html( FiscalYears::snapshot_text( $c ) ) . ')</a>';
+			}
+		}
+		if ( $others ) {
+			echo wp_kses( '<p class="description">Altre fotografie di questo esercizio, conservate dopo una riapertura: ' . implode( ' · ', $others ) . '.</p>', Html::allowed() );
+		}
+		$args = array( 'filter' => $filter, 'year' => $year, 'version' => (int) $version );
+		echo wp_kses( '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-book"><select name="year">'
+			. Ui::options( $years, $year ) . '</select> <select name="filter">'
 			. Ui::options( array( MemberBook::IN_FORCE => 'In carica', MemberBook::LEFT => 'Cessati' ), $filter, 'Tutti' ) . '</select> <button class="button">Filtra</button> '
-			. self::downloads( 'book', array( 'filter' => $filter ) ) . '</form>', Html::allowed() );
+			. self::downloads( 'book', $args ) . '</form>', Html::allowed() );
 		$grid = \AssociazioneSemplice\CardLayout::sheet_grid();
 		$per  = Ui::get_int( 'per' );
 		$opts = array( 0 => 'il massimo (' . $grid['max'] . ')' );
@@ -46,13 +69,23 @@ final class RegistersPage {
 			. '<strong>Tessere in PDF</strong> (fogli A4 da stampare e ritagliare; i posti che restano sono modelli vuoti): per foglio <select name="per">' . Ui::options( $opts, isset( $opts[ $per ] ) ? $per : 0 ) . '</select> <button class="button">Applica</button> '
 			. '<a class="button button-primary" target="_blank" href="' . esc_url( Docs::url( 'cards', array( 'filter' => $filter, 'per' => isset( $opts[ $per ] ) ? $per : 0 ) ) ) . '">Genera le tessere (' . ( '' === $filter ? 'soci in carica' : ( MemberBook::IN_FORCE === $filter ? 'in carica' : 'cessati' ) ) . ')</a></form>', Html::allowed() );
 		echo '<p class="description">' . count( $rows ) . ' soci.</p>';
-		echo '<table class="widefat striped"><thead><tr><th>N.</th><th>Cognome e nome</th><th>Codice fiscale</th><th>Nascita</th><th>Residenza e contatti</th><th>Domanda</th><th>Delibera</th><th>Ultima quota</th><th>Tutore</th><th>Livello</th><th>Ingresso</th><th>Cessazione</th></tr></thead><tbody>';
+		if ( $snap ) { // la fotografia ha solo i dati minimi: recapiti, domanda, quota e tutore non ci sono
+			echo '<table class="widefat striped"><thead><tr><th>N.</th><th>Matricola</th><th>Cognome e nome</th><th>Codice fiscale</th><th>Nascita</th><th>Residenza</th><th>Categoria</th><th>Delibera</th><th>Ingresso</th><th>Cessazione</th></tr></thead><tbody>';
+		} else {
+			echo '<table class="widefat striped"><thead><tr><th>N.</th><th>Matricola</th><th>Cognome e nome</th><th>Codice fiscale</th><th>Nascita</th><th>Residenza e contatti</th><th>Domanda</th><th>Delibera</th><th>Ultima quota</th><th>Tutore</th><th>Categoria</th><th>Ingresso</th><th>Cessazione</th></tr></thead><tbody>';
+		}
 		if ( ! $rows ) {
-			echo '<tr><td colspan="12">Nessun socio.</td></tr>';
+			echo '<tr><td colspan="13">Nessun socio.</td></tr>';
 		}
 		foreach ( $rows as $r ) {
-			echo wp_kses( '<tr><td>' . (int) $r['n'] . '</td><td><a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $r['id'] ) ) ) . '">' . esc_html( $r['name'] ) . '</a></td><td>' . esc_html( $r['tax_code'] ) . '</td><td>' . trim( ( '' !== $r['birth_date'] ? self::date( $r['birth_date'] ) : '' ) . ( '' !== $r['birth_place'] ? ' · ' . esc_html( $r['birth_place'] ) : '' ) ) . '</td><td>' . esc_html( trim( $r['residence'] . ' ' . $r['email'] . ' ' . $r['phone'] ) ) . '</td><td>' . self::date( $r['applied_on'] ) . '</td><td>' . self::date( $r['approved_on'] ) . '</td><td>' . ( $r['fee_cents'] > 0 ? esc_html( \AssociazioneSemplice\Money::format( $r['fee_cents'] ) . ' ' . $r['fee_year'] ) : '' ) . '</td><td>' . esc_html( $r['guardian'] ) . '</td><td>' . esc_html( $r['level'] ) . '</td><td>' . self::date( $r['joined_on'] )
-				. '</td><td>' . ( $r['left_on'] ? self::date( $r['left_on'] ) . ( '' !== $r['left_reason'] ? ' · ' . esc_html( $r['left_reason'] ) : '' ) : '' ) . '</td></tr>', Html::allowed() );
+			$name   = $snap ? esc_html( $r['name'] ) : '<a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $r['id'] ) ) ) . '">' . esc_html( $r['name'] ) . '</a>';
+			$born   = trim( ( '' !== $r['birth_date'] ? self::date( $r['birth_date'] ) : '' ) . ( '' !== $r['birth_place'] ? ' · ' . esc_html( $r['birth_place'] ) : '' ) );
+			$left   = $r['left_on'] ? self::date( $r['left_on'] ) . ( '' !== $r['left_reason'] ? ' · ' . esc_html( $r['left_reason'] ) : '' ) : '';
+			$matr   = (int) $r['matricola'] > 0 ? (string) (int) $r['matricola'] : '';
+			$middle = $snap
+				? '<td>' . esc_html( $r['residence'] ) . '</td><td>' . esc_html( $r['level'] ) . '</td><td>' . self::date( $r['approved_on'] ) . '</td><td>' . self::date( $r['joined_on'] ) . '</td>'
+				: '<td>' . esc_html( trim( $r['residence'] . ' ' . $r['email'] . ' ' . $r['phone'] ) ) . '</td><td>' . self::date( $r['applied_on'] ) . '</td><td>' . self::date( $r['approved_on'] ) . '</td><td>' . ( $r['fee_cents'] > 0 ? esc_html( \AssociazioneSemplice\Money::format( $r['fee_cents'] ) . ' ' . $r['fee_year'] ) : '' ) . '</td><td>' . esc_html( $r['guardian'] ) . '</td><td>' . esc_html( $r['level'] ) . '</td><td>' . self::date( $r['joined_on'] ) . '</td>';
+			echo wp_kses( '<tr><td>' . (int) $r['n'] . '</td><td>' . esc_html( $matr ) . '</td><td>' . $name . '</td><td>' . esc_html( $r['tax_code'] ) . '</td><td>' . $born . '</td>' . $middle . '<td>' . $left . '</td></tr>', Html::allowed() );
 		}
 		echo '</tbody></table>';
 		Ui::footer();
