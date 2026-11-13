@@ -8,6 +8,8 @@ use App\Modules\Soci\Models\MemberLevel;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Services\MembershipService;
 use App\Modules\Soci\Services\RuntsCounts;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
 // Dati di prova inventati.
@@ -37,7 +39,7 @@ it('conta soci con diritto di voto, enti, volontari e lavoratori al 31 dicembre'
 
     expect($counts)->toMatchArray([
         'persons' => 2, 'entities' => 2, 'entities_same_section' => 1, 'volunteers' => 1, 'workers' => 1,
-        'kind' => 'odv', 'minimum_applies' => true, 'below_minimum' => true,
+        'kind' => 'odv', 'minimum_applies' => true,
     ])->and(array_column($counts['entity_list'], 'name'))->toBe(['Circolo Gamma', 'Pro Loco Beta']);
 });
 
@@ -60,4 +62,22 @@ it('non conta chi ha un livello senza diritto di voto', function (): void {
     });
 
     expect($counts['persons'])->toBe(1);
+});
+
+it('avvisa sotto il minimo con i soci di oggi e segnala le tessere scadute da poco', function (): void {
+    $result = $this->orgContext()->run($this->org->id, function (): array {
+        app(OrgSettings::class)->set('ente.kind', 'aps');
+        Person::create(['type' => 'founder', 'first_name' => 'Franco', 'last_name' => 'Fondatore', 'joined_on' => '2015-03-01']);
+        $vera = Person::create(['type' => 'ordinary', 'first_name' => 'Vera', 'last_name' => 'Rinnovi', 'joined_on' => '2020-01-10']);
+        app(MembershipService::class)->grantManually($vera->id, app(MembershipService::class)->socialYear('2025-12-31')->label(), 'Prova');
+        $end = (string) DB::table('app.valid_memberships')->where('person_id', $vera->id)->value('valid_to');
+        $soon = Carbon::parse($end)->addDays(10)->toDateString();
+        $late = Carbon::parse($end)->addDays(200)->toDateString();
+
+        return [app(RuntsCounts::class)->today($soon), app(RuntsCounts::class)->today($late)];
+    });
+
+    expect($result[0]['persons'])->toBe(1)->and($result[0]['below_minimum'])->toBeTrue()
+        ->and(array_column($result[0]['recently_expired'], 'name'))->toBe(['Rinnovi Vera'])
+        ->and($result[1]['recently_expired'])->toBe([]);
 });
