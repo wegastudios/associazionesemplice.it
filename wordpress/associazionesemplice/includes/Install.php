@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '62'; // dalla 62 il verbale ha il numero salvato (number_year, number_seq)
+	const DB_VERSION        = '63'; // dalla 62 il verbale ha il numero salvato (number_year, number_seq); dalla 63 l'anno sociale parte a gennaio
 
 	public static function activate(): void {
 		self::create_tables();
@@ -39,6 +39,9 @@ final class Install {
 			}
 			if ( '' !== $old && version_compare( $old, '61', '<' ) ) {
 				self::migrate_voting_types();
+			}
+			if ( '' !== $old && version_compare( $old, '63', '<' ) ) {
+				self::migrate_social_year_month();
 			}
 			if ( '' !== $old && version_compare( $old, '3', '<' ) ) {
 				// Dalla v3 il contributo di un'attività è `fee_cents` (per i corsi resta "al mese").
@@ -94,6 +97,30 @@ final class Install {
 			}
 		}
 		return $n;
+	}
+
+	/**
+	 * Dalla v63 il mese di partenza dell'anno sociale è gennaio (prima era settembre). Chi usa già il programma e non ha mai salvato questa scelta
+	 * deve restare com'era, cioè con la tessera sull'anno solare: se ha già soci o tessere, gennaio viene scritto come scelta salvata. Chi ha una
+	 * scelta salvata (qualunque mese) non si tocca; chi non ha ancora dati prende il nuovo valore di partenza. Si può rilanciare senza effetti.
+	 *
+	 * @return bool true se il mese è stato fissato a gennaio
+	 */
+	public static function migrate_social_year_month(): bool {
+		$saved = get_option( Settings::OPTION, array() );
+		if ( is_array( $saved ) && array_key_exists( 'social_year_start_month', $saved ) ) {
+			return false; // una scelta salvata c'è già: resta
+		}
+		$db       = Db::db();
+		$has_data = (int) $db->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL' ) > 0 // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery -- nomi tabella interni, nessun valore dall'esterno
+			|| (int) $db->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE deleted_at IS NULL' ) > 0; // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery -- nomi tabella interni, nessun valore dall'esterno
+		if ( ! $has_data ) {
+			return false; // nessun dato: vale il nuovo valore di partenza, gennaio
+		}
+		$saved                            = is_array( $saved ) ? $saved : array();
+		$saved['social_year_start_month'] = 1;
+		update_option( Settings::OPTION, $saved );
+		return true;
 	}
 
 	/**
