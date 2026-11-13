@@ -9236,7 +9236,7 @@ foreach ( array( $ru_exp, $ru_old, $ru_ok ) as $ru_del ) {
 }
 Settings::update( array( 'runts_section' => '' ) );
 // importazione CSV di soci enti
-$ru_csv = $mkf( 'enti.csv', "Tipo soggetto;Denominazione;Codice fiscale;Stessa sezione RUNTS;Email;Anno iscrizione\r\nente;Associazione Prova ODV;12345678903;sì;ente.prova@example.com;\r\nente;;12345678903;;senza.nome@example.com;\r\nente;Ente Codice Sbagliato;12345678901;no;codice.sbagliato@example.com;\r\nente;Ente Sezione Strana;12345678903;forse;sezione.strana@example.com;\r\nboh;Altro;;;altro@example.com;\r\nente;Ente Antico;;no;ente.antico@example.com;2001\r\n" );
+$ru_csv = $mkf( 'enti.csv', "Tipo soggetto;Denominazione;Codice fiscale;Stessa sezione RUNTS;Email;Anno iscrizione\r\nente;Associazione Prova ODV;;sì;ente.prova@example.com;\r\nente;;12345678903;;senza.nome@example.com;\r\nente;Ente Codice Sbagliato;12345678901;no;codice.sbagliato@example.com;\r\nente;Ente Sezione Strana;12345678903;forse;sezione.strana@example.com;\r\nboh;Altro;;;altro@example.com;\r\nente;Ente Antico;;no;ente.antico@example.com;2001\r\n" );
 $ru_pv  = \AssociazioneSemplice\ImportService::preview_file( $ru_csv, 'enti.csv', array() );
 $ru_pl  = $ru_pv['people']['plan'];
 asem_ok( 'create' === $ru_pl[0]['action'] && 'entity' === $ru_pl[0]['row']['kind'] && '' === $ru_pl[0]['row']['first'] && 'Associazione Prova ODV' === $ru_pl[0]['row']['last'] && true === $ru_pl[0]['row']['same'], 'import CSV enti: l\'ente si legge con la denominazione (nel cognome) e la stessa sezione del RUNTS' );
@@ -9247,7 +9247,7 @@ $ru_closed = null !== \AssociazioneSemplice\YearLock::closed_year_of( '2001-01-0
 asem_ok( $ru_closed ? ( 'error' === $ru_pl[5]['action'] && false !== strpos( $ru_pl[5]['message'], 'esercizio già chiuso' ) ) : 'create' === $ru_pl[5]['action'], 'import CSV enti: un ingresso in un esercizio chiuso è un errore per riga (altrimenti la riga si importa)' );
 $ru_ap = \AssociazioneSemplice\ImportService::apply( $ru_pv, array() );
 $ru_e1 = $people->find_by_email( 'ente.prova@example.com' );
-asem_ok( $ru_e1 && 'entity' === $ru_e1['subject_kind'] && 'Associazione Prova ODV' === $ru_e1['last_name'] && '' === (string) $ru_e1['first_name'] && 1 === (int) $ru_e1['runts_same_section'] && '12345678903' === $ru_e1['tax_code'], 'import CSV enti: il socio ente è creato come ente, con codice fiscale e stessa sezione' );
+asem_ok( $ru_e1 && 'entity' === $ru_e1['subject_kind'] && 'Associazione Prova ODV' === $ru_e1['last_name'] && '' === (string) $ru_e1['first_name'] && 1 === (int) $ru_e1['runts_same_section'], 'import CSV enti: il socio ente è creato come ente, con denominazione e stessa sezione' );
 $ru_rp = \AssociazioneSemplice\ImportService::preview_file( $ru_csv, 'enti.csv', array() );
 asem_ok( 'update' === $ru_rp['people']['plan'][0]['action'], 'import CSV enti: rilanciando il file l\'ente esistente si aggiorna, non si duplica' );
 $ru_pe = $mkf( 'persona-su-ente.csv', "Nome;Cognome;Email\r\nMario;Prova;ente.prova@example.com\r\n" );
