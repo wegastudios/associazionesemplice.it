@@ -2091,6 +2091,17 @@
   "Non invia la chiave di licenza, il dominio né dati dei soci o dell'associazione. Come ogni richiesta su internet, il sito riceve l'indirizzo IP del server e l'User-Agent di WordPress, che contiene l'indirizzo di questo sito." : "It does not send the license key, the domain, or any data about members or the association. As with any internet request, the website receives the server's IP address and the WordPress User-Agent, which contains this site's address.",
   "Si spegne da Impostazioni → Limiti e soglie, togliendo il segno da «Aggiornamenti diretti di Associazione Semplice e del Pro»: se è già spento, non parte nessuna richiesta, e gli aggiornamenti vanno scaricati dall'area clienti e caricati a mano." : "It can be turned off in Settings → Limits and thresholds by unticking \"Direct updates of Associazione Semplice and of Pro\": if it is already off, no request is made, and updates must be downloaded from the customer area and uploaded by hand.",
   "Con Associazione Semplice Pro attivo, la richiesta di aggiornamento porta con sé anche la chiave di licenza e il dominio del sito, e una volta al giorno il Pro verifica la licenza inviando gli stessi due dati. Nemmeno in questo caso partono dati dei soci." : "With Associazione Semplice Pro active, the update request also carries the license key and the site's domain, and once a day Pro checks the license by sending the same two items. Even then, no member data is sent.",
-  "Aggiornamenti diretti di Associazione Semplice e del Pro (Bacheca → Aggiornamenti)" : "Direct updates of Associazione Semplice and of Pro (Dashboard → Updates)"
+  "Aggiornamenti diretti di Associazione Semplice e del Pro (Bacheca → Aggiornamenti)" : "Direct updates of Associazione Semplice and of Pro (Dashboard → Updates)",
+  "Fotografie" : "Snapshots",
+  "PDF emesso" : "Issued PDF",
+  "apri" : "open",
+  "Fotografa il rendiconto degli anni già chiusi" : "Photograph the statement of the years already closed",
+  "Fotografa il rendiconto" : "Photograph the statement",
+  "Rendiconto non fotografato (si legge dal vivo)" : "Statement not photographed (read live)",
+  "Nessun rendiconto da fotografare." : "No statement to photograph.",
+  "Il PDF emesso non risulta integro (l'impronta non corrisponde): non lo scarico." : "The issued PDF is not intact (the fingerprint does not match): I will not download it.",
+  "La fotografia del rendiconto non è riuscita (errore del database): la chiusura non è avvenuta." : "The statement snapshot failed (database error): the year was not closed.",
+  "Di questa chiusura non c'è un rendiconto fotografato." : "There is no photographed statement for this closure.",
+  "PDF del rendiconto (bozza dal vivo)" : "Statement PDF (live draft)"
  }
 }

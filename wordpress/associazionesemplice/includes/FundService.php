@@ -161,6 +161,7 @@ class FundService {
 		if ( $cents <= 0 ) {
 			throw new \InvalidArgumentException( 'Indica un importo maggiore di zero.' );
 		}
+		YearLock::assert_date_open( $date ); // un accantonamento a una data di un esercizio chiuso cambierebbe il suo rendiconto
 		$this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund_id, 'kind' => 'share', 'cents' => $cents, 'entry_date' => $date, 'note' => mb_substr( '' !== $note ? $note : 'Somma accantonata', 0, 255 ), 'created_at' => Db::now() ) );
 		Audit::log( 'fund.deposited', 'fund', $fund_id, array( 'cents' => $cents ) );
 	}
@@ -239,6 +240,7 @@ class FundService {
 		if ( $cents <= 0 || $cents > $f['balance'] ) {
 			throw new \InvalidArgumentException( 'Puoi liberare da zero fino a ' . Money::format( $f['balance'] ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
+		YearLock::assert_date_open( $date ); // come l'accantonamento: la quota liberata in un esercizio chiuso ne cambierebbe il rendiconto
 		$this->db()->insert( Db::t( 'fund_entries' ), array( 'fund_id' => $fund_id, 'kind' => 'release', 'cents' => $cents, 'entry_date' => $date, 'note' => mb_substr( '' !== $note ? $note : 'Quota liberata', 0, 255 ), 'created_at' => Db::now() ) );
 		Audit::log( 'fund.released', 'fund', $fund_id, array( 'cents' => $cents ) );
 	}

@@ -32,7 +32,7 @@ final class Reset {
 	/** Tabelle da svuotare (nomi senza prefisso). Il registro azioni resta, salvo nel ripristino di fabbrica. */
 	public static function tables( string $mode ): array {
 		return array_values( array_filter( Backup::tables(), function ( $t ) use ( $mode ) {
-			return self::FACTORY === $mode || ! in_array( $t, array( 'asem_audit_log', 'asem_fiscal_year_closures', 'asem_member_book_snapshot' ), true ); // registro azioni, traccia delle chiusure e libri soci fotografati restano
+			return self::FACTORY === $mode || ! in_array( $t, array( 'asem_audit_log', 'asem_fiscal_year_closures', 'asem_member_book_snapshot', 'asem_statement_snapshot' ), true ); // registro azioni, traccia delle chiusure, libri soci e rendiconti fotografati restano
 		} ) );
 	}
 

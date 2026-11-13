@@ -83,9 +83,9 @@ final class Docs {
 	}
 
 	/** Intestazione dell'associazione, titolo e sottotitolo. @return float la y da cui continuare */
-	public static function head( Pdf $pdf, string $title, string $subtitle = '' ): float {
-		$name = (string) Settings::get( 'association_name' );
-		$cf   = (string) Settings::get( 'tax_code' );
+	public static function head( Pdf $pdf, string $title, string $subtitle = '', ?array $entity = null ): float {
+		$name = null !== $entity ? (string) ( $entity['name'] ?? '' ) : (string) Settings::get( 'association_name' ); // un documento emesso porta l'ente di quel giorno, non quello di oggi
+		$cf   = null !== $entity ? (string) ( $entity['tax_code'] ?? '' ) : (string) Settings::get( 'tax_code' );
 		$pdf->text( self::LEFT, 56, '' !== $name ? $name : 'Associazione', 15, true );
 		if ( '' !== $cf ) {
 			$pdf->text( self::LEFT, 72, 'Codice fiscale: ' . $cf, 9 );

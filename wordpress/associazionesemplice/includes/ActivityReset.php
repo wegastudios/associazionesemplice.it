@@ -277,6 +277,17 @@ final class ActivityReset {
 				}
 			}
 		}
+		// Eliminare l'evento riscrive la descrizione di TUTTI i suoi movimenti, anche di quelli già fruiti che restano, e cancella le quote accantonate:
+		// se uno è in un esercizio chiuso (il cui rendiconto è fotografato) l'evento non si elimina, finché l'esercizio non si riapre.
+		$db     = self::db();
+		$closed = YearLock::closed_year_with( 'transactions', 'tx_date', $db->prepare( 'activity_id = %d AND voided_at IS NULL', $activity_id ) );
+		$fund   = (int) $db->get_var( $db->prepare( 'SELECT id FROM ' . Db::t( 'funds' ) . ' WHERE activity_id = %d', $activity_id ) );
+		if ( null === $closed && $fund ) {
+			$closed = YearLock::closed_year_with( 'fund_entries', 'entry_date', $db->prepare( "fund_id = %d AND kind = 'share'", $fund ) );
+		}
+		if ( null !== $closed ) {
+			$out[] = FiscalYears::closed_message( $closed ) . ' (L\'evento ha movimenti o somme accantonate in quell\'anno: eliminarlo li modificherebbe.)';
+		}
 		return (array) apply_filters( 'asem_activity_delete_blockers', $out, $activity_id ); // chi incassa online segnala un pagamento in corso
 	}
 
@@ -597,6 +608,21 @@ final class ActivityReset {
 				FiscalYears::assert_open_for_date( (int) $y . '-06-15' );
 			} catch ( \InvalidArgumentException $e ) {
 				$out[] = $e->getMessage() . ' (Contiene incassi di questa iscrizione, o è l\'anno in cui si registrerebbe la restituzione.)';
+			}
+		}
+		// La cancellazione riscrive la descrizione degli incassi dell'iscrizione e toglie le loro quote accantonate: non in un esercizio chiuso.
+		$ids = array_map( 'intval', (array) $p['income']['ids'] );
+		if ( $ids ) {
+			$in     = implode( ',', $ids );
+			$closed = YearLock::closed_year_with( 'transactions', 'tx_date', "id IN ($in)" );
+			if ( null === $closed ) {
+				$closed = YearLock::closed_year_with( 'fund_entries', 'entry_date', "kind = 'share' AND tx_id IN ($in)" );
+			}
+			if ( null !== $closed ) {
+				$msg = FiscalYears::closed_message( $closed ) . ' (Contiene incassi di questa iscrizione: cancellarla li modificherebbe.)';
+				if ( ! in_array( $msg, $out, true ) ) {
+					$out[] = $msg;
+				}
 			}
 		}
 		return $out;

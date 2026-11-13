@@ -404,6 +404,36 @@ foreach ( array( 'founder', 'ordinary', 'volunteer' ) as $vr_t ) {
 free_ok( ! \AssociazioneSemplice\VotingRight::person_votes( array( 'type' => 'ordinary', 'birth_date' => '2015-01-01' ), '2026-11-13' ), 'diritto di voto nel gratuito: i minorenni non votano' );
 free_ok( false === strpos( \AssociazioneSemplice\VotingRight::sql_condition(), 'member_levels' ), 'diritto di voto nel gratuito: la condizione SQL non guarda i livelli' );
 
+// ---------- Esercizi chiusi senza il Pro: la chiusura funziona e i blocchi valgono ----------
+$yc_min = (int) $wpdb->get_var( 'SELECT MIN(year) FROM ' . \AssociazioneSemplice\Db::t( 'fiscal_years' ) );
+$yc_y   = max( 2000, ( $yc_min ?: (int) current_time( 'Y' ) ) - 3 );
+while ( \AssociazioneSemplice\FiscalYears::get( $yc_y ) ) {
+	--$yc_y;
+}
+\AssociazioneSemplice\FiscalYears::create( $yc_y );
+\AssociazioneSemplice\FiscalYears::close( $yc_y );
+$yc_cl = \AssociazioneSemplice\FiscalYears::current_closure( $yc_y );
+free_ok( ! \AssociazioneSemplice\FiscalYears::is_open( $yc_y ) && $yc_cl && 'complete' === $yc_cl['snapshot_state'], 'esercizi: senza il Pro l\'esercizio si chiude con il libro soci fotografato' );
+$yc_sql = \AssociazioneSemplice\YearLock::in_closed_sql( 'tx_date' );
+free_ok( array_key_exists( $yc_y, \AssociazioneSemplice\YearLock::closed_spans() ) && false !== strpos( $yc_sql, $yc_y . '-01-01' ) && false !== strpos( $yc_sql, $yc_y . '-12-31' ), 'esercizi chiusi: l\'elenco e la condizione SQL per escluderli dalle modifiche in massa' );
+$yc_fund = Plugin::funds()->create( 'Fondo prova esercizio chiuso', 1000 );
+$yc_msg  = \AssociazioneSemplice\FiscalYears::closed_message( $yc_y );
+$yc_thr  = function ( callable $f ): string {
+	try {
+		$f();
+	} catch ( \InvalidArgumentException $e ) {
+		return $e->getMessage();
+	}
+	return '';
+};
+free_ok( $yc_msg === $yc_thr( function () use ( $yc_fund, $yc_y ) { Plugin::funds()->deposit( $yc_fund, 100, $yc_y . '-05-01' ); } ), 'esercizi chiusi: non si accantona una somma con data in un esercizio chiuso' );
+free_ok( null === \AssociazioneSemplice\YearLock::closed_year_with( 'transactions', 'tx_date', '1 = 1' ) && '' === $yc_thr( function () { \AssociazioneSemplice\YearLock::assert_rows_open( 'transactions', 'tx_date', '1 = 1' ); } ), 'esercizi chiusi: senza movimenti in quell\'esercizio la guardia sulle righe non blocca nulla' );
+$wpdb->delete( \AssociazioneSemplice\Db::t( 'fund_entries' ), array( 'fund_id' => $yc_fund ) );
+$wpdb->delete( \AssociazioneSemplice\Db::t( 'funds' ), array( 'id' => $yc_fund ) );
+$wpdb->delete( \AssociazioneSemplice\Db::t( 'member_book_snapshot' ), array( 'closure_id' => (int) $yc_cl['id'] ) );
+$wpdb->delete( \AssociazioneSemplice\Db::t( 'fiscal_year_closures' ), array( 'year' => $yc_y ) );
+$wpdb->delete( \AssociazioneSemplice\Db::t( 'fiscal_years' ), array( 'year' => $yc_y ) );
+
 free_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Edizione gratuita: tutti i controlli sono passati.' );

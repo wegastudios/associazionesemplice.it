@@ -20,6 +20,7 @@ final class Statement {
 
 	/** @throws \InvalidArgumentException */
 	public static function save_notes( int $year, string $text ): void {
+		YearLock::assert_date_open( FiscalYears::range( $year )[0] ); // la relazione di un esercizio chiuso è nella fotografia: per cambiarla si riapre l'esercizio
 		$text = trim( sanitize_textarea_field( $text ) );
 		if ( mb_strlen( $text ) > self::MAX_NOTES ) {
 			throw new \InvalidArgumentException( 'La relazione è troppo lunga (al massimo ' . self::MAX_NOTES . ' caratteri).' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
@@ -74,8 +75,18 @@ final class Statement {
 		return $out;
 	}
 
-	/** @return array dati del rendiconto dell'anno (e di quello precedente per il confronto) */
-	public static function data( int $year ): array {
+	/**
+	 * Il rendiconto dell'anno (e quello precedente per il confronto). Un esercizio chiuso e fotografato si legge dalla fotografia, che non cambia
+	 * più (chiave `snapshot` con numero, data e versione); un esercizio aperto, o chiuso prima della fotografia, si calcola dal vivo.
+	 *
+	 * @param int|null $version chiusura da leggere (n. 1, 2…); null = quella in vigore
+	 */
+	public static function data( int $year, ?int $version = null ): array {
+		return StatementSnapshot::data( $year, $version ) ?? self::live( $year );
+	}
+
+	/** @return array dati del rendiconto calcolati ora dalla prima nota, qualunque sia lo stato dell'esercizio */
+	public static function live( int $year ): array {
 		$svc  = new ReportService();
 		$cur  = $svc->period( ...FiscalYears::range( $year ) );
 		$prev = $svc->period( ...FiscalYears::range( $year - 1 ) );
