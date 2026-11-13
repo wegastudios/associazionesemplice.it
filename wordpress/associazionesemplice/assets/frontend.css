@@ -409,3 +409,10 @@
 /* Locandine: sempre intere, mai ritagliate */
 .asemf-poster img, .asemf-card-poster img { width: 100%; height: auto; aspect-ratio: auto; object-fit: contain; }
 .asemf-poster a { display: block; }
+
+/* Risorse: elenco degli orari con un solo pulsante «Prenota» */
+.asemf-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.asemf-slots { border: 0; margin: 0; padding: 0; min-width: 0; }
+.asemf-slot { display: flex; align-items: center; gap: .6rem; min-height: 44px; width: 100%; cursor: pointer; }
+.asemf-slot input[type="radio"] { width: 24px; height: 24px; margin: 0; flex: none; }
+.asemf-slotform .asemf-actions .asemf-btn { min-height: 44px; padding: .5em 1.25em; font-size: 1em; }

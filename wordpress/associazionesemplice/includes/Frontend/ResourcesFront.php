@@ -260,22 +260,16 @@ final class ResourcesFront {
 			. self::form( 'asem_front_res_wait', self::hidden( 'resource_id', $rid ), 'Mettiti in lista d\'attesa' );
 	}
 
-	/** Il modulo di prenotazione di una fascia, con i pulsanti che la regola di pagamento della risorsa consente. */
-	private static function book_form( array $r, string $fields, string $starts_at ): string {
+	/** Le vie di pagamento che la regola della risorsa consente per le fasce libere del giorno (unione, in ordine fisso). */
+	private static function day_options( array $r, array $starts ): array {
 		$online  = Edition::has( 'payments' ) && Plugin::payments()->enabled();
-		$fee     = ResourceRules::fee( $r, max( 1, (int) $r['min_slots'] ), 0, $starts_at );
-		$options = ResourceRules::pay_options( (string) $r['pay_mode'], $online, $fee, Resources::credit_price( $r, 1 ) );
-		if ( ! $options ) {
-			return '<span class="asemf-small asemf-muted">Pagamento online non attivo: prenota in segreteria</span>';
+		$credits = Resources::credit_price( $r, 1 );
+		$all     = array();
+		foreach ( $starts as $at ) {
+			$fee = ResourceRules::fee( $r, max( 1, (int) $r['min_slots'] ), 0, $at );
+			$all = array_merge( $all, ResourceRules::pay_options( (string) $r['pay_mode'], $online, $fee, $credits ) );
 		}
-		$labels  = array( 'free' => 'Prenota', 'desk' => 'Prenota (pago in segreteria)', 'online' => 'Prenota e paga ora', 'credits' => 'Paga con i crediti' );
-		$buttons = '';
-		foreach ( $options as $o ) {
-			$buttons .= '<button class="asemf-btn" name="pay" value="' . esc_attr( $o ) . '">' . esc_html( $labels[ $o ] ) . '</button> ';
-		}
-		return '<form class="asemf-form asemf-inline" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">'
-			. '<input type="hidden" name="action" value="asem_front_res_book"><input type="hidden" name="_back" value="' . esc_url( Restrict::current_url() ) . '">'
-			. \AssociazioneSemplice\Csrf::field( 'asem_front_res_book' ) . $fields . $buttons . '</form>';
+		return array_values( array_intersect( array( 'free', 'credits', 'online', 'desk' ), array_unique( $all ) ) );
 	}
 
 	private static function day( array $r, string $day, string $today ): string {
@@ -289,33 +283,59 @@ final class ResourcesFront {
 		$days = (int) $r['advance_days'];
 		$html = '<p>' . ( $day > $today ? '<a class="asemf-btn" href="' . $nav( $prev ) . '">‹</a> ' : '' ) . '<strong>' . esc_html( ( new \DateTimeImmutable( $day ) )->format( 'd/m/Y' ) ) . '</strong> '
 			. ( 0 === $days || $next <= gmdate( 'Y-m-d', strtotime( $today . ' +' . $days . ' days' ) ) ? '<a class="asemf-btn" href="' . $nav( $next ) . '">›</a>' : '' ) . '</p>';
-		$now  = current_time( 'Y-m-d H:i:s' );
-		$html .= '<ul class="asemf-list">';
-		foreach ( Resources::day_grid( $r, $day ) as $s ) {
-			$html .= '<li><div>' . esc_html( $s['start'] . '–' . $s['end'] ) . '</div><div>';
-			if ( $s['reservation'] ) {
-				$html .= '<span class="asemf-small asemf-muted">occupata</span>';
-			} elseif ( $day . ' ' . $s['start'] . ':00' < $now ) {
-				$html .= '<span class="asemf-small asemf-muted">passata</span>';
-			} else {
-				$fields = self::hidden( 'resource_id', $rid ) . self::hidden( 'date', $day ) . self::hidden( 'start', $s['start'] );
-				if ( (int) $r['max_slots'] > 1 ) {
-					$opts = '';
-					for ( $n = max( 1, (int) $r['min_slots'] ); $n <= (int) $r['max_slots']; $n++ ) {
-						$opts .= '<option value="' . $n . '">' . $n . ' ' . ( 1 === $n ? 'fascia' : 'fasce' ) . '</option>';
-					}
-					$fields .= '<select name="slots">' . $opts . '</select> ';
-				} else {
-					$fields .= self::hidden( 'slots', max( 1, (int) $r['min_slots'] ) );
-				}
-				for ( $g = 1; $g <= (int) $r['guests_max']; $g++ ) {
-					$fields .= '<input type="text" name="guest[]" maxlength="120" placeholder="Ospite ' . $g . ' (nome e cognome)"> ';
-				}
-				$price = ResourceRules::band_fee( $r, $day . ' ' . $s['start'] . ':00' );
-				$html .= ( $price > 0 && ! empty( $r['rates'] ) ? '<span class="asemf-small asemf-muted">' . esc_html( Money::format( $price ) ) . '</span> ' : '' ) . self::book_form( $r, $fields, $day . ' ' . $s['start'] . ':00' );
+		$now   = current_time( 'Y-m-d H:i:s' );
+		$grid  = Resources::day_grid( $r, $day );
+		$free  = array();
+		foreach ( $grid as $s ) {
+			if ( ! $s['reservation'] && $day . ' ' . $s['start'] . ':00' >= $now ) {
+				$free[ $s['start'] ] = $day . ' ' . $s['start'] . ':00';
 			}
-			$html .= '</div></li>';
 		}
-		return $html . '</ul>';
+		$options = $free ? self::day_options( $r, array_values( $free ) ) : array();
+		$html   .= '<form class="asemf-form asemf-slotform" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">'
+			. '<input type="hidden" name="action" value="asem_front_res_book"><input type="hidden" name="_back" value="' . esc_url( Restrict::current_url() ) . '">'
+			. \AssociazioneSemplice\Csrf::field( 'asem_front_res_book' ) . self::hidden( 'resource_id', $rid ) . self::hidden( 'date', $day );
+		$html .= '<fieldset class="asemf-slots"><legend class="asemf-sr">Scegli l\'orario</legend><ul class="asemf-list">';
+		$first = true;
+		foreach ( $grid as $s ) {
+			$label = esc_html( $s['start'] . '–' . $s['end'] );
+			if ( $s['reservation'] ) {
+				$html .= '<li><div>' . $label . '</div><div><span class="asemf-small asemf-muted">occupata</span></div></li>';
+			} elseif ( ! isset( $free[ $s['start'] ] ) ) {
+				$html .= '<li><div>' . $label . '</div><div><span class="asemf-small asemf-muted">passata</span></div></li>';
+			} else {
+				$price = ResourceRules::band_fee( $r, $day . ' ' . $s['start'] . ':00' );
+				$html .= '<li><label class="asemf-slot"><input type="radio" name="start" value="' . esc_attr( $s['start'] ) . '"' . ( $first ? ' required' : '' ) . '> ' . $label
+					. ( $price > 0 && ! empty( $r['rates'] ) ? ' <span class="asemf-small asemf-muted">' . esc_html( Money::format( $price ) ) . '</span>' : '' ) . '</label></li>';
+				$first = false;
+			}
+		}
+		$html .= '</ul></fieldset>';
+		if ( ! $free ) {
+			return $html . '</form>';
+		}
+		if ( ! $options ) {
+			return $html . '<p class="asemf-small asemf-muted">Pagamento online non attivo: prenota in segreteria</p></form>';
+		}
+		if ( (int) $r['max_slots'] > 1 ) {
+			$opts = '';
+			for ( $n = max( 1, (int) $r['min_slots'] ); $n <= (int) $r['max_slots']; $n++ ) {
+				$opts .= '<option value="' . $n . '">' . $n . ' ' . ( 1 === $n ? 'fascia' : 'fasce' ) . '</option>';
+			}
+			$html .= '<p><label>Quante fasce <select name="slots">' . $opts . '</select></label></p>';
+		} else {
+			$html .= self::hidden( 'slots', max( 1, (int) $r['min_slots'] ) );
+		}
+		for ( $g = 1; $g <= (int) $r['guests_max']; $g++ ) {
+			$html .= '<p><label class="asemf-sr" for="asemf-g-' . $rid . '-' . $g . '">Ospite ' . $g . '</label><input type="text" id="asemf-g-' . $rid . '-' . $g . '" name="guest[]" maxlength="120" placeholder="Ospite ' . $g . ' (nome e cognome)"></p>';
+		}
+		$only_desk = array( 'desk' ) === $options;
+		$labels    = array( 'free' => 'Prenota', 'desk' => $only_desk ? 'Prenota' : 'Prenota e pago in segreteria', 'online' => 'Prenota e paga ora', 'credits' => 'Paga con i crediti' );
+		$html     .= '<p class="asemf-actions">';
+		foreach ( $options as $o ) {
+			$html .= '<button class="asemf-btn" name="pay" value="' . esc_attr( $o ) . '">' . esc_html( $labels[ $o ] ) . '</button> ';
+		}
+		$html .= '</p>' . ( $only_desk ? '<p class="asemf-small asemf-muted">Il contributo si paga in segreteria.</p>' : '' );
+		return $html . '</form>';
 	}
 }
