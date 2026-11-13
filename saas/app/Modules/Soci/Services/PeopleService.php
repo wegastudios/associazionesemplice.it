@@ -127,7 +127,8 @@ final readonly class PeopleService
             }
         }
         $values['type'] ??= $current?->type->value ?? MemberType::Ordinary->value;
-        if (filter_var($values['is_entity'] ?? $current?->is_entity ?? false, FILTER_VALIDATE_BOOLEAN)) {
+        $isEntity = array_key_exists('is_entity', $values) ? filter_var($values['is_entity'], FILTER_VALIDATE_BOOLEAN) : ($current !== null && $current->is_entity);
+        if ($isEntity) {
             // Un ente non ha nome né data di nascita: la denominazione sta nel cognome.
             $values['is_entity'] = true;
             $values['first_name'] = '';
