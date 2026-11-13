@@ -39,11 +39,44 @@ final class PeopleCsv {
 		'since' => array( 'annodiiscrizione', 'annoiscrizione', 'datadiiscrizione', 'dataiscrizione', 'iscrittodal', 'sociodal', 'dataingresso', 'ingresso' ),
 		'host'  => array( 'ospitedi', 'ospitante', 'socioospitante', 'invitatoda', 'ospiteda', 'tesseraospitante', 'host' ),
 		'birth' => array( 'datadinascita', 'datanascita', 'nascita', 'natoil', 'natail', 'nata', 'nato', 'dob', 'birthdate', 'dateofbirth' ),
+		'kind'  => array( 'tiposoggetto', 'soggetto', 'personaente', 'personaoente', 'personafisicaoente', 'tiposogg' ),
+		'denom' => array( 'denominazione', 'denominazioneente', 'ragionesociale', 'nomeente', 'denominazionesociale' ),
+		'same'  => array( 'stessasezione', 'stessasezionerunts', 'stessasezionedelrunts', 'stessasezioneruntsdellente', 'iscrittorunts', 'sezionerunts' ),
 		'guardian' => array( 'tutore', 'genitore', 'tutoregenitore', 'genitoretutore', 'tutoreogenitore', 'genitoreotutore', 'tutori', 'genitori', 'guardian', 'parent' ),
 	);
 
 	public static function accepts_header( array $h ): bool {
-		return SheetReader::col( $h, self::COLS['first'] ) >= 0 && SheetReader::col( $h, self::COLS['last'] ) >= 0;
+		return ( SheetReader::col( $h, self::COLS['first'] ) >= 0 && SheetReader::col( $h, self::COLS['last'] ) >= 0 ) || SheetReader::col( $h, self::COLS['denom'] ) >= 0; // un file di soli enti ha la «Denominazione» al posto di nome e cognome
+	}
+
+	/** Tipo di soggetto scritto in una cella: 'person', 'entity', null se vuota, 'invalid' se non si capisce. */
+	public static function parse_kind( ?string $v ): ?string {
+		if ( null === $v ) {
+			return null;
+		}
+		$n = Text::normalize( $v );
+		if ( in_array( $n, array( 'persona', 'personafisica', 'fisica', 'pf', 'p' ), true ) ) {
+			return RuntsRules::PERSON;
+		}
+		if ( in_array( $n, array( 'ente', 'enti', 'personagiuridica', 'giuridica', 'pg', 'associazione', 'societa', 'azienda', 'entepubblico' ), true ) ) {
+			return RuntsRules::ENTITY;
+		}
+		return 'invalid';
+	}
+
+	/** Sì / no scritto in una cella: true, false, null se vuota, 'invalid' se non si capisce. @return bool|string|null */
+	public static function parse_yes_no( ?string $v ) {
+		if ( null === $v ) {
+			return null;
+		}
+		$n = Text::normalize( $v );
+		if ( in_array( $n, array( 'si', 's', 'yes', 'y', '1', 'true', 'x' ), true ) ) {
+			return true;
+		}
+		if ( in_array( $n, array( 'no', 'n', '0', 'false' ), true ) ) {
+			return false;
+		}
+		return 'invalid';
 	}
 
 	/**
@@ -67,7 +100,7 @@ final class PeopleCsv {
 		}
 		$hi = SheetReader::find_header( $table, array( __CLASS__, 'accepts_header' ) );
 		if ( null === $hi ) {
-			return array( 'error' => 'Nella prima riga servono almeno le colonne "Nome" e "Cognome". Trovate: ' . implode( ', ', $table[0] ) );
+			return array( 'error' => 'Nella prima riga servono almeno le colonne "Nome" e "Cognome" (per un file di soli enti basta "Denominazione"). Trovate: ' . implode( ', ', $table[0] ) );
 		}
 		$header = SheetReader::normalize_header( $table[ $hi ] );
 		$col    = array();
@@ -105,13 +138,30 @@ final class PeopleCsv {
 					$years[] = $label;
 				}
 			}
-			$rows[] = array(
+			$kind_text = $cell( $cells, $col['kind'] );
+			$kind      = self::parse_kind( $kind_text );
+			$denom     = $cell( $cells, $col['denom'] );
+			$first     = $cell( $cells, $col['first'] ) ?? '';
+			$last      = $cell( $cells, $col['last'] ) ?? '';
+			if ( null === $kind && null !== $denom && '' === $first && '' === $last ) {
+				$kind = RuntsRules::ENTITY; // solo la denominazione, senza nome e cognome: è un ente
+			}
+			if ( RuntsRules::ENTITY === $kind ) { // un ente: la denominazione sta nel «cognome», il nome resta vuoto (come nella scheda del socio)
+				$last  = $denom ?? $last;
+				$first = '';
+			}
+			$same_text = $cell( $cells, $col['same'] );
+			$rows[]    = array(
+				'kind'      => $kind ?? RuntsRules::PERSON,
+				'kind_text' => $kind_text,
+				'same'      => self::parse_yes_no( $same_text ),
+				'same_text' => $same_text,
 				'line'      => $lines ? (int) ( $lines[ $idx ] ?? $idx + 1 ) : $idx + 1,
 				'sheet'     => $sheet,
 				'card'      => null === $card ? null : self::clean_card( $card ),
 				'type_text' => $cell( $cells, $col['type'] ),
-				'first'     => $cell( $cells, $col['first'] ) ?? '',
-				'last'      => $cell( $cells, $col['last'] ) ?? '',
+				'first'     => $first,
+				'last'      => $last,
 				'email'     => $cell( $cells, $col['mail'] ),
 				'phone'     => $cell( $cells, $col['phone'] ),
 				'tax'       => null === $tax ? null : strtoupper( str_replace( ' ', '', $tax ) ),
@@ -294,17 +344,38 @@ final class PeopleCsv {
 				return array( 'row' => $r, 'type' => null, 'action' => 'error', 'message' => $msg, 'matched_id' => null );
 			};
 
-			if ( '' === trim( $r['first'] ) || '' === trim( $r['last'] ) ) {
-				$plans[] = $err( 'Nome o cognome mancante' );
+			if ( 'invalid' === $r['kind'] ) {
+				$plans[] = $err( 'Tipo soggetto non riconosciuto: "' . $r['kind_text'] . '" (scrivi persona oppure ente)' );
 				continue;
 			}
-			if ( null !== $r['birth_text'] && null === $r['birth'] ) {
-				$plans[] = $err( 'Data di nascita non valida: "' . $r['birth_text'] . '" (scrivila come 31/12/2010)' );
-				continue;
-			}
-			if ( null !== $r['guardian'] && null === $r['birth'] ) {
-				$plans[] = $err( 'Per indicare il tutore serve la data di nascita' );
-				continue;
+			$is_entity = RuntsRules::ENTITY === $r['kind'];
+			if ( $is_entity ) { // stesse regole della scheda del socio ({@see Rules::validate_person}): denominazione obbligatoria, codice fiscale dell'ente valido
+				if ( '' === trim( $r['last'] ) ) {
+					$plans[] = $err( 'Denominazione dell\'ente mancante' );
+					continue;
+				}
+				$cf_error = RuntsRules::entity_tax_code_error( (string) $r['tax'] );
+				if ( '' !== $cf_error ) {
+					$plans[] = $err( $cf_error );
+					continue;
+				}
+				if ( 'invalid' === $r['same'] ) {
+					$plans[] = $err( 'Stessa sezione del RUNTS non riconosciuta: "' . $r['same_text'] . '" (scrivi sì oppure no)' );
+					continue;
+				}
+			} else {
+				if ( '' === trim( $r['first'] ) || '' === trim( $r['last'] ) ) {
+					$plans[] = $err( 'Nome o cognome mancante' );
+					continue;
+				}
+				if ( null !== $r['birth_text'] && null === $r['birth'] ) {
+					$plans[] = $err( 'Data di nascita non valida: "' . $r['birth_text'] . '" (scrivila come 31/12/2010)' );
+					continue;
+				}
+				if ( null !== $r['guardian'] && null === $r['birth'] ) {
+					$plans[] = $err( 'Per indicare il tutore serve la data di nascita' );
+					continue;
+				}
 			}
 			$type = $default_type;
 			if ( null !== $r['type_text'] ) {
@@ -313,6 +384,10 @@ final class PeopleCsv {
 					$plans[] = $err( 'Tipo non riconosciuto: "' . $r['type_text'] . '" (usa fondatore, ordinario, volontario)' );
 					continue;
 				}
+			}
+			if ( $is_entity && ! MemberType::is_member( $type ) ) {
+				$plans[] = $err( 'Solo un socio può essere un ente' );
+				continue;
 			}
 			if ( MemberType::GUEST === $type ) {
 				$deferred[ count( $plans ) ] = $r; // si risolve dopo i soci: l'ospitante può essere nello stesso file
@@ -325,8 +400,8 @@ final class PeopleCsv {
 				continue;
 			}
 			// L'email non è obbligatoria: un socio senza email si attiva dopo (link su WhatsApp). Serve però un modo per riconoscerlo.
-			if ( null === $email && null === $r['card'] && ! Phone::is_valid( (string) $r['phone'] ) ) {
-				$plans[] = $err( 'Servono almeno l\'email, il cellulare o il numero di tessera' );
+			if ( null === $email && null === $r['card'] && ! Phone::is_valid( (string) $r['phone'] ) && ( ! $is_entity || null === $r['tax'] ) ) {
+				$plans[] = $err( $is_entity ? 'Servono almeno il codice fiscale, l\'email, il cellulare o il numero di tessera' : 'Servono almeno l\'email, il cellulare o il numero di tessera' );
 				continue;
 			}
 
@@ -382,6 +457,10 @@ final class PeopleCsv {
 				continue;
 			}
 
+			if ( $match && ( $is_entity ? RuntsRules::ENTITY : RuntsRules::PERSON ) !== RuntsRules::kind( $match['kind'] ?? '' ) ) {
+				$plans[] = $err( 'Il socio già presente (' . $label( $match ) . ') è ' . ( $is_entity ? 'una persona' : 'un ente' ) . ': il tipo di soggetto non si cambia da qui' );
+				continue;
+			}
 			if ( $match ) {
 				if ( isset( $touched[ $match['id'] ] ) ) {
 					$plans[] = $err( 'Lo stesso socio è già aggiornato dalla riga ' . $touched[ $match['id'] ] );

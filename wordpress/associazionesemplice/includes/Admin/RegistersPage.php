@@ -70,12 +70,12 @@ final class RegistersPage {
 			. '<a class="button button-primary" target="_blank" href="' . esc_url( Docs::url( 'cards', array( 'filter' => $filter, 'per' => isset( $opts[ $per ] ) ? $per : 0 ) ) ) . '">Genera le tessere (' . ( '' === $filter ? 'soci in carica' : ( MemberBook::IN_FORCE === $filter ? 'in carica' : 'cessati' ) ) . ')</a></form>', Html::allowed() );
 		echo '<p class="description">' . count( $rows ) . ' soci.</p>';
 		if ( $snap ) { // la fotografia ha solo i dati minimi: recapiti, domanda, quota e tutore non ci sono
-			echo '<table class="widefat striped"><thead><tr><th>N.</th><th>Matricola</th><th>Cognome e nome</th><th>Codice fiscale</th><th>Nascita</th><th>Residenza</th><th>Categoria</th><th>Delibera</th><th>Ingresso</th><th>Cessazione</th></tr></thead><tbody>';
+			echo '<table class="widefat striped"><thead><tr><th>N.</th><th>Matricola</th><th>Cognome e nome</th><th>Tipo</th><th>Codice fiscale</th><th>Nascita</th><th>Residenza</th><th>Categoria</th><th>Delibera</th><th>Ingresso</th><th>Cessazione</th></tr></thead><tbody>';
 		} else {
-			echo '<table class="widefat striped"><thead><tr><th>N.</th><th>Matricola</th><th>Cognome e nome</th><th>Codice fiscale</th><th>Nascita</th><th>Residenza e contatti</th><th>Domanda</th><th>Delibera</th><th>Ultima quota</th><th>Tutore</th><th>Categoria</th><th>Ingresso</th><th>Cessazione</th></tr></thead><tbody>';
+			echo '<table class="widefat striped"><thead><tr><th>N.</th><th>Matricola</th><th>Cognome e nome</th><th>Tipo</th><th>Codice fiscale</th><th>Nascita</th><th>Residenza e contatti</th><th>Domanda</th><th>Delibera</th><th>Ultima quota</th><th>Tutore</th><th>Categoria</th><th>Ingresso</th><th>Cessazione</th></tr></thead><tbody>';
 		}
 		if ( ! $rows ) {
-			echo '<tr><td colspan="13">Nessun socio.</td></tr>';
+			echo '<tr><td colspan="14">Nessun socio.</td></tr>';
 		}
 		foreach ( $rows as $r ) {
 			$name   = $snap ? esc_html( $r['name'] ) : '<a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $r['id'] ) ) ) . '">' . esc_html( $r['name'] ) . '</a>';
@@ -85,7 +85,7 @@ final class RegistersPage {
 			$middle = $snap
 				? '<td>' . esc_html( $r['residence'] ) . '</td><td>' . esc_html( $r['level'] ) . '</td><td>' . self::date( $r['approved_on'] ) . '</td><td>' . self::date( $r['joined_on'] ) . '</td>'
 				: '<td>' . esc_html( trim( $r['residence'] . ' ' . $r['email'] . ' ' . $r['phone'] ) ) . '</td><td>' . self::date( $r['applied_on'] ) . '</td><td>' . self::date( $r['approved_on'] ) . '</td><td>' . ( $r['fee_cents'] > 0 ? esc_html( \AssociazioneSemplice\Money::format( $r['fee_cents'] ) . ' ' . $r['fee_year'] ) : '' ) . '</td><td>' . esc_html( $r['guardian'] ) . '</td><td>' . esc_html( $r['level'] ) . '</td><td>' . self::date( $r['joined_on'] ) . '</td>';
-			echo wp_kses( '<tr><td>' . (int) $r['n'] . '</td><td>' . esc_html( $matr ) . '</td><td>' . $name . '</td><td>' . esc_html( $r['tax_code'] ) . '</td><td>' . $born . '</td>' . $middle . '<td>' . $left . '</td></tr>', Html::allowed() );
+			echo wp_kses( '<tr><td>' . (int) $r['n'] . '</td><td>' . esc_html( $matr ) . '</td><td>' . $name . '</td><td>' . esc_html( \AssociazioneSemplice\MemberBook::kind_label( (string) $r['kind'] ) ) . '</td><td>' . esc_html( $r['tax_code'] ) . '</td><td>' . $born . '</td>' . $middle . '<td>' . $left . '</td></tr>', Html::allowed() );
 		}
 		echo '</tbody></table>';
 		Ui::footer();

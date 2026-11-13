@@ -99,6 +99,7 @@ final class ProBoot {
 		ProSchema::register(); // tabelle delle funzioni aggiuntive
 		ProData::register(); // esportazione, anonimizzazione ed eliminazioni
 		ProSettings::register();
+		LevelVoting::register(); // diritto di voto per livello di socio
 		ProBlockC::register(); // certificati medici e affiliazioni agli enti
 		ProBlockD::register(); // assemblee, bilancio preventivo e rimborsi ai volontari
 		ProWatch::register(); // controllo di bilancio, spese attribuite ai fondi e inizio dell'anno fiscale (Pro Fiscale)

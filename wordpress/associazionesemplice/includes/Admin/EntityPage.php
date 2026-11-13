@@ -34,11 +34,11 @@ final class EntityPage {
 
 		echo '<h2>Registro unico del Terzo settore (RUNTS)</h2><table class="form-table"><tbody>';
 		echo wp_kses( '<tr><th>Sezione del RUNTS</th><td><select name="runts_section">' . Ui::options( \AssociazioneSemplice\RuntsRules::sections(), (string) $s['runts_section'] ) . '</select>'
-			. '<p class="description">Per le ODV e le APS il programma controlla il numero minimo di soci (sette persone fisiche, oppure tre enti) e ti avvisa se si scende sotto. Se non sei nel RUNTS lascia «Non indicata».</p></td></tr>', Html::allowed() );
+			. '<p class="description">Se sei una ODV o una APS il programma controlla che i soci non scendano sotto il minimo (7 persone oppure 3 enti) e ti avvisa. Se non sei iscritto al RUNTS lascia «Non indicata».</p></td></tr>', Html::allowed() );
 		$ry = (int) $s['runts_manual_year'];
 		echo wp_kses( '<tr><th>Volontari iscritti nel registro</th><td><input type="number" name="runts_volunteers" min="0" max="1000000" value="' . (int) $s['runts_volunteers'] . '" class="small-text"> '
 			. 'riferiti al 31 dicembre <input type="number" name="runts_manual_year" min="2000" max="2100" value="' . ( $ry ? $ry : '' ) . '" class="small-text" placeholder="anno">'
-			. '<p class="description">Il programma non tiene (ancora) il registro dei volontari: questo numero lo scrivi tu, una volta l\'anno, con l\'anno a cui si riferisce. Compare in «Registri → Dati per il RUNTS». I lavoratori, invece, si contano dagli utenti «Dipendente» (quando ci saranno).</p></td></tr>', Html::allowed() );
+			. '<p class="description">Scrivi quanti volontari risultano nel tuo registro dei volontari al 31 dicembre, e di quale anno. Il numero compare in Registri → Dati per il RUNTS.</p></td></tr>', Html::allowed() );
 		echo '</tbody></table>';
 
 		echo '<h2>Sede e contatti</h2><table class="form-table"><tbody>';

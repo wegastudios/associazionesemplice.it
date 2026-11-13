@@ -5,7 +5,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Assemblee dei soci: convocazione, presenze, deleghe tra soci, numero legale e verbale collegato. Le regole pure stanno in {@see AssemblyRules}.
- * Ha diritto di intervenire chi ha diritto di voto (come nelle votazioni): socio in regola, non sospeso, non uscito. Tutori e ospiti no.
+ * Ha diritto di intervenire chi ha diritto di voto (come nelle votazioni, {@see VotingRight}: maggiorenne e, nel Pro, di un livello che vota): socio in regola, non sospeso, non uscito. Tutori e ospiti no.
  */
 final class Assemblies {
 

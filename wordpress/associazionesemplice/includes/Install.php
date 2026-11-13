@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '60';
+	const DB_VERSION        = '61';
 
 	public static function activate(): void {
 		self::create_tables();
@@ -36,6 +36,9 @@ final class Install {
 			if ( '' !== $old && version_compare( $old, '45', '<' ) ) {
 				self::migrate_operative_guardians();
 			}
+			if ( '' !== $old && version_compare( $old, '61', '<' ) ) {
+				self::migrate_voting_types();
+			}
 			if ( '' !== $old && version_compare( $old, '3', '<' ) ) {
 				// Dalla v3 il contributo di un'attività è `fee_cents` (per i corsi resta "al mese").
 				Db::db()->query( 'UPDATE ' . Db::t( 'activities' ) . ' SET fee_cents = monthly_fee_cents WHERE fee_cents = 0 AND monthly_fee_cents > 0' );
@@ -57,6 +60,26 @@ final class Install {
 			}
 		}
 		return $n;
+	}
+
+	/**
+	 * Dalla v61 il diritto di voto non è più una scelta per tipo di socio nelle impostazioni: nel gratuito votano tutti, nel Pro si decide per livello
+	 * (`member_levels.votes`). Chi aveva tolto la spunta a un tipo (opzione `voting_types` della v60) mantiene lo stesso effetto: i livelli di quella
+	 * base passano a «non vota». Chi non aveva toccato nulla non cambia: votano tutti. Si può rilanciare senza effetti.
+	 */
+	public static function migrate_voting_types(): void {
+		$saved = get_option( Settings::OPTION, array() );
+		if ( ! is_array( $saved ) || ! isset( $saved['voting_types'] ) ) {
+			return;
+		}
+		$keep = is_array( $saved['voting_types'] ) ? array_map( 'strval', $saved['voting_types'] ) : array();
+		if ( array_intersect( MemberType::member_types(), $keep ) ) { // se non ne restava nessuno votavano tutti
+			foreach ( array_diff( MemberType::member_types(), $keep ) as $base ) {
+				Db::db()->update( Db::t( 'member_levels' ), array( 'votes' => 0 ), array( 'base_type' => $base ) );
+			}
+		}
+		unset( $saved['voting_types'] );
+		update_option( Settings::OPTION, $saved );
 	}
 
 	/** Dalla v45 di due tutori ne opera uno solo sul sito: dove prima ce n'erano due resta operativo il primo collegato. */
@@ -237,6 +260,7 @@ final class Install {
   fee_cents bigint(20) DEFAULT NULL,
   sort_order int(11) NOT NULL DEFAULT 0,
   active tinyint(1) NOT NULL DEFAULT 1,
+  votes tinyint(1) NOT NULL DEFAULT 1,
   created_at datetime NOT NULL,
   PRIMARY KEY  (id)
 ) $c;";

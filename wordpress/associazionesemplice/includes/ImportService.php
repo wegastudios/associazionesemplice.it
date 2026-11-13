@@ -58,7 +58,7 @@ final class ImportService {
 		$out = array( 'people' => null, 'ledger' => null, 'ignored' => $ignored );
 		if ( $people_rows ) {
 			$default = MemberType::is_member( (string) ( $opts['default_type'] ?? '' ) ) ? $opts['default_type'] : MemberType::ORDINARY;
-			$out['people'] = array( 'plan' => PeopleCsv::plan( $people_rows, self::existing_people(), $default, array( 'guest_phone_required' => Limits::flag( 'guest_phone_required' ), 'guest_host_required' => Limits::flag( 'guest_host_required' ) ) ) );
+			$out['people'] = array( 'plan' => self::lock_check( PeopleCsv::plan( $people_rows, self::existing_people(), $default, array( 'guest_phone_required' => Limits::flag( 'guest_phone_required' ), 'guest_host_required' => Limits::flag( 'guest_host_required' ) ) ) ) );
 		}
 		if ( $ledger_rows ) {
 			$plan             = LedgerImport::plan( $ledger_rows, self::ledger_context( $ledger_rows, (int) ( $opts['default_account_id'] ?? 0 ), $people_rows ) );
@@ -68,12 +68,32 @@ final class ImportService {
 		return $out;
 	}
 
+	/**
+	 * Anni chiusi: un socio ente con una data di ingresso in un esercizio chiuso non entra (il libro soci di quell'esercizio è fotografato e non si
+	 * modifica); la riga diventa un errore già nell'anteprima, con il motivo.
+	 *
+	 * @param array[] $plan
+	 * @return array[]
+	 */
+	private static function lock_check( array $plan ): array {
+		foreach ( $plan as $i => $p ) {
+			if ( ! $p || 'error' === $p['action'] || RuntsRules::ENTITY !== ( $p['row']['kind'] ?? '' ) || empty( $p['row']['since'] ) ) {
+				continue;
+			}
+			$closed = YearLock::closed_year_of( (string) $p['row']['since'] );
+			if ( null !== $closed ) {
+				$plan[ $i ] = array( 'row' => $p['row'], 'type' => null, 'action' => 'error', 'message' => 'L\'ingresso cade in un esercizio già chiuso (' . $closed . '): riapri l\'esercizio oppure togli la data di ingresso', 'matched_id' => null );
+			}
+		}
+		return $plan;
+	}
+
 	private static function existing_people(): array {
 		$out = array();
 		foreach ( Plugin::people()->search() as $e ) {
 			$out[] = array(
 				'id' => (int) $e['id'], 'card' => $e['card_number'], 'first' => $e['first_name'], 'last' => $e['last_name'], 'email' => $e['email'],
-				'tax' => $e['tax_code'], 'phone' => $e['phone'], 'type' => $e['type'], 'host_id' => (int) $e['host_person_id'],
+				'tax' => $e['tax_code'], 'phone' => $e['phone'], 'type' => $e['type'], 'host_id' => (int) $e['host_person_id'], 'kind' => RuntsRules::kind( $e['subject_kind'] ?? '' ),
 			);
 		}
 		return $out;
@@ -208,8 +228,14 @@ final class ImportService {
 				if ( ! empty( $r['since'] ) ) {
 					$data['joined_on'] = $r['since']; // anno (o data) di iscrizione
 				}
-				if ( ! empty( $r['birth'] ) ) {
+				if ( ! empty( $r['birth'] ) && RuntsRules::ENTITY !== ( $r['kind'] ?? '' ) ) {
 					$data['birth_date'] = $r['birth'];
+				}
+				if ( RuntsRules::ENTITY === ( $r['kind'] ?? '' ) ) { // socio ente: denominazione nel «cognome», nome vuoto, sezione del RUNTS se indicata
+					$data['subject_kind'] = RuntsRules::ENTITY;
+					if ( is_bool( $r['same'] ?? null ) ) {
+						$data['runts_same_section'] = $r['same'] ? '1' : '0';
+					}
 				}
 				if ( 1 === $pass && isset( $r['prior'] ) && null !== $r['prior'] ) {
 					$data['prior_visits'] = (int) $r['prior']; // volte già venuto prima di usare il programma
@@ -241,7 +267,7 @@ final class ImportService {
 						$people->update( $id, $data );
 						$updated++;
 						if ( $before ) {
-							$track['people_updated'][ $id ] = array_intersect_key( $before, array_flip( array( 'first_name', 'last_name', 'email', 'phone', 'tax_code', 'address', 'zip', 'city', 'province', 'card_number', 'type', 'host_person_id', 'notes', 'joined_on', 'prior_visits', 'birth_date' ) ) );
+							$track['people_updated'][ $id ] = array_intersect_key( $before, array_flip( array( 'first_name', 'last_name', 'email', 'phone', 'tax_code', 'address', 'zip', 'city', 'province', 'card_number', 'type', 'host_person_id', 'notes', 'joined_on', 'prior_visits', 'birth_date', 'subject_kind', 'runts_same_section' ) ) );
 						}
 					}
 					if ( ! empty( $r['guardian'] ) ) {

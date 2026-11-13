@@ -80,50 +80,51 @@ final class RuntsRules {
 	}
 
 	/**
-	 * Quante persone fisiche e quanti enti della stessa sezione sono soci a una data: entrato entro quel giorno e non ancora cessato (chi cessa in
-	 * quella data non è più socio da quel giorno). Non guarda la scadenza della tessera: una tessera non rinnovata non è una cessazione.
+	 * Le date in cui il conteggio dei soci può cambiare, fino a oggi (oggi compreso), in ordine. Per ogni socio: il giorno di ingresso, il giorno di
+	 * cessazione e il giorno dopo la cessazione, l'inizio di ogni tessera e il giorno dopo la sua fine. Tra due date consecutive il conteggio non cambia.
 	 *
-	 * @param array[] $members vedi {@see RuntsRules::below_since()}
-	 * @return int[] [persone fisiche, enti della stessa sezione]
+	 * @param array[] $members ciascuno: joined (Y-m-d o ''), left (Y-m-d o ''), cards (array di [valid_from, valid_to])
+	 * @return string[]
 	 */
-	public static function counts_on( array $members, string $d ): array {
-		$p = 0;
-		$e = 0;
-		foreach ( $members as $m ) {
-			$in = ( '' === (string) $m['joined'] || (string) $m['joined'] <= $d ) && ( '' === (string) $m['left'] || (string) $m['left'] > $d );
-			if ( ! $in ) {
-				continue;
-			}
-			if ( self::ENTITY === $m['kind'] ) {
-				$e += ! empty( $m['same'] ) ? 1 : 0;
-			} else {
-				++$p;
-			}
-		}
-		return array( $p, $e );
-	}
-
-	/**
-	 * Da quando si è sotto il minimo, in modo continuativo fino a oggi. Si scorrono le date in cui qualcuno entra o esce.
-	 *
-	 * @param array[] $members ciascuno: kind (person|entity), same (bool, ente della stessa sezione), joined (Y-m-d o ''), left (Y-m-d o '')
-	 * @return string|null la data da cui il numero è sotto il minimo; null se oggi non lo è, oppure se lo è da sempre (non si può dire da quando)
-	 */
-	public static function below_since( array $members, string $today ): ?string {
-		$count = function ( string $d ) use ( $members ): array {
-			return self::counts_on( $members, $d );
-		};
+	public static function change_dates( array $members, string $today ): array {
 		$dates = array( $today => true );
+		$next  = function ( string $d ): string {
+			return ( new \DateTimeImmutable( $d ) )->modify( '+1 day' )->format( 'Y-m-d' );
+		};
 		foreach ( $members as $m ) {
-			foreach ( array( (string) $m['joined'], (string) $m['left'] ) as $d ) {
+			$list = array( (string) $m['joined'], (string) $m['left'] );
+			if ( '' !== (string) $m['left'] ) {
+				$list[] = $next( (string) $m['left'] );
+			}
+			foreach ( (array) ( $m['cards'] ?? array() ) as $c ) {
+				$list[] = (string) $c[0];
+				$list[] = $next( (string) $c[1] );
+			}
+			foreach ( $list as $d ) {
 				if ( '' !== $d && $d <= $today ) {
 					$dates[ $d ] = true;
 				}
 			}
 		}
-		$dates = array_map( 'strval', array_keys( $dates ) );
-		sort( $dates );
-		list( $p, $e ) = $count( $today );
+		$out = array_map( 'strval', array_keys( $dates ) );
+		sort( $out );
+		return $out;
+	}
+
+	/**
+	 * Da quando si è sotto il minimo, in modo continuativo fino a oggi. Il conteggio a ogni data lo fa chi chiama ($count), con il criterio unico del
+	 * libro soci ({@see MemberBook::qualifies()}): un socio conta se ha la tessera valida quel giorno e non è cessato. Si scorrono all'indietro le date
+	 * in cui il conteggio può cambiare ({@see RuntsRules::change_dates()}).
+	 *
+	 * @param string[]                  $dates  date in ordine, l'ultima è oggi
+	 * @param callable(string):int[]    $count  data => [persone fisiche, enti della stessa sezione]
+	 * @return string|null la data da cui il numero è sotto il minimo; null se oggi non lo è, oppure se lo è da sempre (non si può dire da quando)
+	 */
+	public static function below_since( array $dates, callable $count ): ?string {
+		if ( ! $dates ) {
+			return null;
+		}
+		list( $p, $e ) = $count( $dates[ count( $dates ) - 1 ] );
 		if ( ! self::below_minimum( $p, $e ) ) {
 			return null;
 		}
@@ -136,6 +137,33 @@ final class RuntsRules {
 			$since = $dates[ $i ];
 		}
 		return $since === $dates[0] ? null : $since; // sotto il minimo fin dalla prima data conosciuta: non si può dire da quando
+	}
+
+	/** Giorni dopo la scadenza in cui una tessera è considerata «scaduta da poco» (si aspetta il rinnovo). */
+	const RECENT_EXPIRY_DAYS = 90;
+
+	/**
+	 * La tessera è scaduta da poco? Oggi non ne ha una valida, non è cessato e l'ultima è finita al massimo RECENT_EXPIRY_DAYS giorni fa: probabilmente
+	 * sta per rinnovare. Chi ha la tessera sempre rinnovata (fondatore) non rientra.
+	 *
+	 * @param array[] $cards [valid_from, valid_to]
+	 */
+	public static function recently_expired( array $cards, string $left, string $today ): bool {
+		if ( '' !== $left ) {
+			return false;
+		}
+		$last = '';
+		foreach ( $cards as $c ) {
+			if ( (string) $c[0] <= $today && (string) $c[1] >= $today ) {
+				return false;
+			}
+			$last = max( $last, (string) $c[1] );
+		}
+		if ( '' === $last || $last >= $today ) {
+			return false;
+		}
+		$from = ( new \DateTimeImmutable( $today ) )->modify( '-' . self::RECENT_EXPIRY_DAYS . ' days' )->format( 'Y-m-d' );
+		return $last >= $from;
 	}
 
 	/** Ultimo giorno per comunicare la variazione: 30 giorni dopo. */
