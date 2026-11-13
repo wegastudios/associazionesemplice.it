@@ -104,6 +104,8 @@ return [
         'retention_days' => 180,
         // Giorni dopo la fine della prova, senza un piano, prima di cancellare i dati della prova (decisione del 13/11/2026).
         'trial_purge_days' => 7,
+        // Avvisi sul ciclo di vita (scadenza, sospensione, cancellazione, fine prova): spenti finché non si accendono.
+        'notices_enabled' => env('SAAS_NOTICES_ENABLED', false),
         // Interruttore della cancellazione notturna: spento finché la titolare non dà il via.
         'purge_enabled' => (bool) env('SAAS_PURGE_ENABLED', false),
         // Se in una notte i candidati sono di più la cancellazione non parte e avvisa: un errore di data non cancella tutto.
