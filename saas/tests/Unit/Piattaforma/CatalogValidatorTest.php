@@ -110,7 +110,7 @@ it('ha tre piani a prezzo fisso per fasce di soci, con i pacchetti inclusi e il 
     $doc = CatalogValidator::validate(seedCatalog());
     $plans = collect($doc['plans'])->keyBy(fn (array $p): string => $p['code'].'@'.$p['plan_version']);
 
-    $expected = ['piccola' => [100, 1900, 2], 'media' => [300, 3500, 5], 'grande' => [1000, 5900, 1000]];
+    $expected = ['piccola' => [100, 1900, 2], 'media' => [300, 3500, 5], 'grande' => [1000, 5900, 50]];
     foreach ($expected as $code => [$members, $monthly, $operators]) {
         $plan = $plans["{$code}@1"];
         expect($plan['visible'])->toBeTrue()
