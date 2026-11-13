@@ -11,13 +11,13 @@ final class SaasAccount {
 	public static function forCustomer( Db $db, string $customerId ): array {
 		$rows = $db->all(
 			"SELECT o.*, g.org_id, g.slug, g.name AS org_name FROM orders o JOIN saas_orgs g ON g.ref = o.org_ref
-			 WHERE o.customer_id = ? AND o.product = 'saas' AND o.status IN ('paid','active') ORDER BY o.created_at DESC",
+			 WHERE o.customer_id = ? AND o.product = 'saas' AND o.status IN ('paid','active','trial') ORDER BY o.created_at DESC",
 			array( $customerId )
 		);
 		foreach ( $rows as &$r ) {
 			$q          = (array) json_decode( (string) $r['quote'], true );
 			$last       = $r['org_id'] ? (array) json_decode( (string) ( $db->one( 'SELECT body FROM saas_outbox WHERE org_id = ? ORDER BY rev DESC LIMIT 1', array( $r['org_id'] ) )['body'] ?? '[]' ), true ) : array();
-			$r['state'] = 'paid' === $r['status'] ? 'pending' : (string) ( $last['status'] ?? 'active' );
+			$r['state'] = 'paid' === $r['status'] ? 'pending' : (string) ( $last['status'] ?? ( 'trial' === $r['status'] ? 'trial' : 'active' ) );
 			$r['until'] = (string) ( $last['until'] ?? '' );
 			$r['total'] = (int) ( $q['total'] ?? 0 );
 			// Regime dell'ordine al momento dell'acquisto (gli ordini di prima non lo hanno: IVA inclusa come sempre).
@@ -111,6 +111,16 @@ final class SaasAccount {
 			'invalid' => 'L\'indirizzo non sembra valido: scrivilo come www.tuaassociazione.it.', 'taken' => 'Questo indirizzo è già usato da un\'altra associazione.',
 			'reserved' => 'Questo indirizzo non si può usare.', 'no_package' => 'Il tuo abbonamento non comprende il dominio personalizzato.',
 		)[ $reason ] ?? 'Questo indirizzo non si può usare.';
+	}
+
+	/** Prova in corso (o in sola lettura) di questo cliente, con i dati dell'associazione; null se non è sua o è già conclusa. */
+	public static function trial( Db $db, string $customerId, string $orderId ): ?array {
+		$r = $db->one(
+			"SELECT o.id, o.plan, g.name AS org_name, g.slug, c.email FROM orders o JOIN saas_orgs g ON g.ref = o.org_ref JOIN customers c ON c.id = o.customer_id
+			 WHERE o.id = ? AND o.customer_id = ? AND o.product = 'saas' AND o.status = 'trial'",
+			array( $orderId, $customerId )
+		);
+		return $r ?: null;
 	}
 
 	/** Ordine del cliente (per i pulsanti dell'area clienti). */
