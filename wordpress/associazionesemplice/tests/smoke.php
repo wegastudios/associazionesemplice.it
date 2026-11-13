@@ -3230,7 +3230,13 @@ $det = $as( $u_tre, '[associazionesemplice_ingressi]' );
 unset( $_GET['asem_session'] );
 asem_ok( false !== strpos( $det, 'partecipazione come ospite' ) && false !== strpos( $det, 'risulta registrato anche come' ) && false !== strpos( $det, 'da invitare a iscriversi' ), 'lista prenotati all\'ingresso: chi gestisce vede quante volte è venuto e se risulta registrato anche con altri nomi' );
 asem_ok( false === strpos( $det, '333 5555552' ) && false === strpos( $det, 'wa.me' ), 'lista prenotati all\'ingresso: nessun cellulare mostrato a chi gestisce l\'evento' );
-asem_ok( false !== strpos( asem_render( array( Admin\SettingsPage::class, 'render' ), 'Ospiti: soglia di segnalazione' ), 'Non blocca nulla' ), 'impostazioni: la soglia è una segnalazione, non un blocco' );
+$set_html = asem_render( array( Admin\SettingsPage::class, 'render' ), 'Ospiti: soglia di segnalazione' );
+asem_ok( 4 === substr_count( $set_html, 'class="asem-section asem-card"' ) && 1 === substr_count( $set_html, 'asem-card" open' ), 'impostazioni: quattro sezioni richiudibili, solo la prima aperta' );
+foreach ( array( 'membership_fee', 'cancel_policy_default', 'apply_email', 'gate_message' ) as $set_field ) {
+	$set_pos = strpos( $set_html, 'name="' . $set_field . '"' );
+	asem_ok( false !== $set_pos && substr_count( substr( $set_html, 0, $set_pos ), '<form' ) > substr_count( substr( $set_html, 0, $set_pos ), '</form' ), 'impostazioni: il campo ' . $set_field . ' resta dentro il modulo' );
+}
+asem_ok( false !== strpos( $set_html, 'Non blocca nulla' ), 'impostazioni: la soglia è una segnalazione, non un blocco' );
 asem_ok( false !== strpos( asem_render( array( Admin\PeoplePage::class, 'render_edit' ), 'Cellulare', array( 'type' => 'guest' ) ), 'Obbligatorio per gli ospiti' ), 'modulo ospite: cellulare obbligatorio' );
 Settings::update( array( 'guest_max_events' => 0 ) );
 asem_ok( empty( $people->guest_overview()[ $gx ]['flag'] ) && array() === $people->guests_to_invite(), 'soglia 0: nessuna segnalazione' );
