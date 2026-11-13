@@ -69,7 +69,11 @@ final class PurgeExpiredCommand extends Command
         return $failed === 0 ? self::SUCCESS : self::FAILURE;
     }
 
-    /** Registro dello staff: solo identificatore e passo, mai dati dei soci. @param  array<string, mixed>  $details */
+    /**
+     * Registro dello staff: solo identificatore e passo, mai dati dei soci.
+     *
+     * @param  array<string, mixed>  $details
+     */
     private function audit(DatabaseManager $db, string $action, ?string $staffId, ?string $subject, array $details): void
     {
         $db->connection('pgsql')->table('core.platform_audit')->insert([
