@@ -81,6 +81,10 @@ return [
     'plan_names' => [
         'contabile' => env('SUPPORT_PLAN_CONTABILE', 'PRO Contabilità'),
         'fiscale' => env('SUPPORT_PLAN_FISCALE', 'PRO Contabilità & Fiscalità'),
+        // Piani del gestionale online (il catalogo definitivo è del portale: qui solo i nomi usati nelle guide)
+        'piccola' => env('SUPPORT_PLAN_PICCOLA', 'Piccola'),
+        'media' => env('SUPPORT_PLAN_MEDIA', 'Media'),
+        'grande' => env('SUPPORT_PLAN_GRANDE', 'Grande'),
     ],
 
     // Validita del link inviato al cliente per seguire il ticket

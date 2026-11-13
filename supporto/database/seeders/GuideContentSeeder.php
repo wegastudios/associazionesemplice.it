@@ -24,7 +24,11 @@ class GuideContentSeeder extends Seeder
         'plugin-pro' => ['Plugin Pro', 'Conti e fondi, fiscalità, registri, app, wallet e personalizzazione.'],
         'domande-frequenti' => ['Domande frequenti', 'Le risposte rapide, con il confronto tra Free, {piano_contabile} e {piano_fiscale}.'],
         'altro' => ['Altro', 'Privacy e dati personali.'],
+        'gestionale' => ['Gestionale online', 'Guide del gestionale online: soci, soldi, attività, pagamenti online e operatori.'],
     ];
+
+    /** Argomenti del gestionale online (prodotto saas): tutti gli altri sono del plugin. */
+    public const SAAS_TOPICS = ['gestionale'];
 
     /** @var array<string, string> articoli rinominati: lo slug vecchio si elimina, cosi non restano doppioni */
     public const RENAMED = ['anni-solari-e-rendiconto' => 'rendiconto-per-cassa-e-report'];
@@ -38,7 +42,7 @@ class GuideContentSeeder extends Seeder
         foreach (self::TOPICS as $slug => [$name, $description]) {
             $topics[$slug] = Topic::query()->updateOrCreate(
                 ['slug' => $slug],
-                ['name' => $name, 'description' => $this->planNames($description), 'sort' => $sort++, 'is_public' => true, 'product' => 'plugin'],
+                ['name' => $name, 'description' => $this->planNames($description), 'sort' => $sort++, 'is_public' => true, 'product' => in_array($slug, self::SAAS_TOPICS, true) ? 'saas' : 'plugin'],
             );
         }
 
@@ -66,6 +70,9 @@ class GuideContentSeeder extends Seeder
         return strtr($text, [
             '{piano_contabile}' => (string) config('support.plan_names.contabile'),
             '{piano_fiscale}' => (string) config('support.plan_names.fiscale'),
+            '{piano_piccola}' => (string) config('support.plan_names.piccola'),
+            '{piano_media}' => (string) config('support.plan_names.media'),
+            '{piano_grande}' => (string) config('support.plan_names.grande'),
         ]);
     }
 
