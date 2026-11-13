@@ -2,6 +2,13 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.22
+- Informativa privacy: ora si parla di «Referente per la privacy», con una frase più chiara su a chi rivolgersi per i propri dati
+- Parole più semplici: «non si può annullare», «Cedi il posto a un'altra persona», «Non è ancora entrato nell'area soci», «Scarica per Excel», «Scarica i dati», «la domanda viene cancellata»; il prezzo a fasce si legge «all'ora» o «per turno»
+- Tessera non valida: ogni messaggio spiega dove e come rinnovare; il socio trova il link per rinnovare online, oppure l'indicazione di andare in segreteria, e la segreteria viene mandata alla scheda del socio
+- Bacheca da telefono: «Incassa» e «Sospendi» sono più grandi e facili da toccare, e «Sospendi» sta dentro «Altro» così non si preme per sbaglio
+- Tessera: la frase sotto il codice QR è in un blocco ordinato e «Apri la verifica» va a capo
+
 ## 1.3.21
 - Area soci: le sezioni lunghe (attività, calendario, avvisi, pagamenti, ospiti, profilo) si aprono e si chiudono toccando il titolo; da telefono si parte con una sola sezione aperta e la barra in basso apre quella scelta
 - Area soci: c'è il pulsante «Esci» accanto al saluto
