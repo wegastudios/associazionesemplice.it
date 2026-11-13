@@ -49,7 +49,7 @@ const field = 'field';
     <Head title="Operatori" />
     <AppLayout>
         <h1 class="mb-1 text-2xl font-bold">Operatori e ruoli</h1>
-        <p class="mb-6 text-sm text-muted">Chi entra nel gestionale e cosa può fare. Ogni operatore entra con la verifica in due passaggi.</p>
+        <p class="mb-6 text-sm text-muted">Chi entra nel gestionale e cosa può fare.</p>
 
         <section class="card p-4 sm:p-5" aria-labelledby="ops-title">
             <h2 id="ops-title" class="mb-3 text-lg font-bold">Operatori</h2>
@@ -57,7 +57,7 @@ const field = 'field';
                 <li v-for="o in operators" :key="o.user_id" class="flex flex-wrap items-center gap-3 py-3">
                     <div class="min-w-48">
                         <p class="font-semibold">{{ o.name }}<span v-if="o.me" class="ml-1 text-muted">(tu)</span></p>
-                        <p class="text-muted">{{ o.email }}<span v-if="!o.two_factor"> · non ha ancora attivato l'accesso</span></p>
+                        <p class="text-muted">{{ o.email }}<span v-if="!o.two_factor"> · verifica in due passaggi non attiva</span></p>
                     </div>
                     <select v-if="o.editable" :value="valueOf(o)" class="field w-auto" :aria-label="`Ruolo di ${o.name}`" @change="changeRole(o, $event.target.value)">
                         <option v-for="c in choices" :key="c.value" :value="c.value">{{ c.label }}</option>

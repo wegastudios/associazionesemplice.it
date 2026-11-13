@@ -111,7 +111,7 @@ const label = 'block space-y-1.5 text-sm';
 <template>
     <Head title="Prima nota" />
     <AppLayout>
-        <PageHeader title="Prima nota" :subtitle="`Esercizio ${year}`">
+        <PageHeader title="Prima nota" :subtitle="`Esercizio ${year} · incassi (entrate) e spese (uscite) dell’anno`">
             <template #actions>
                 <template v-if="canEdit">
                     <button type="button" class="btn btn-primary hidden lg:inline-flex" @click="mode = 'income'">Registra un incasso</button>
@@ -161,6 +161,7 @@ const label = 'block space-y-1.5 text-sm';
             <EmptyState title="Nessun movimento" :text="filtersActive ? 'Con questi filtri non c\'è niente: prova a toglierne qualcuno.' : `Nell'esercizio ${year} non c'è ancora nessun movimento.`">
                 <template #icon><Wallet class="size-6" /></template>
                 <button v-if="canEdit && !filtersActive" type="button" class="btn btn-primary" @click="mode = 'income'">Registra un incasso</button>
+                <button v-if="canEdit && !filtersActive" type="button" class="btn btn-secondary" @click="mode = 'expense'">Registra una spesa</button>
             </EmptyState>
         </div>
 

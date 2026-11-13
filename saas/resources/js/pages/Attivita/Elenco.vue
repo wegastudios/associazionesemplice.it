@@ -23,7 +23,20 @@ const field = 'field';
             </div>
         </div>
 
-        <div class="card overflow-x-auto">
+        <div class="sm:hidden">
+            <p v-if="!rows.length" class="card p-4 text-center text-sm text-muted">Ancora nessun corso o evento per questo anno sociale. Crea il primo con «Nuova attività».</p>
+            <ul v-else class="space-y-3">
+                <li v-for="r in rows" :key="r.id" class="card space-y-2 p-4" :class="r.archived ? 'text-muted' : ''">
+                    <Link :href="`/gestionale/attivita/${r.id}`" class="font-semibold text-accent hover:underline">{{ r.name }}</Link>
+                    <p class="text-xs text-muted">{{ r.kind }}<template v-if="r.archived"> · archiviata</template> · {{ r.participants }} iscritti</p>
+                    <p class="flex justify-between text-sm"><span>Entrate</span><span class="tabular-nums">{{ r.income_label }}</span></p>
+                    <p class="flex justify-between text-sm"><span>Uscite</span><span class="tabular-nums">{{ r.expense_label }}</span></p>
+                    <p class="flex justify-between text-sm font-semibold" :class="r.negative ? 'text-danger' : ''"><span>Risultato</span><span class="tabular-nums">{{ r.balance_label }}</span></p>
+                </li>
+            </ul>
+        </div>
+
+        <div class="hidden card overflow-x-auto sm:block">
             <table class="w-full text-sm">
                 <thead class="text-left text-muted">
                     <tr>
@@ -35,7 +48,7 @@ const field = 'field';
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-if="!rows.length"><td colspan="5" class="px-4 py-6 text-center text-muted">Nessuna attività in questo anno sociale.</td></tr>
+                    <tr v-if="!rows.length"><td colspan="5" class="px-4 py-6 text-center text-muted">Ancora nessun corso o evento per questo anno sociale. Crea il primo con «Nuova attività».</td></tr>
                     <tr v-for="r in rows" :key="r.id" class="border-t border-line" :class="r.archived ? 'text-muted' : ''">
                         <td class="px-4 py-3">
                             <Link :href="`/gestionale/attivita/${r.id}`" class="font-semibold text-accent hover:underline">{{ r.name }}</Link>

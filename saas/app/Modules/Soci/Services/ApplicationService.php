@@ -177,12 +177,18 @@ final readonly class ApplicationService
         return $personId;
     }
 
-    public function reject(string $id, string $reason): void
+    public function reject(string $id, string $reason, string $orgName = ''): void
     {
         if (trim($reason) === '') {
             throw new PeopleError(['Indica il motivo.']);
         }
-        $this->decide($this->find($id, pending: true), 'rejected', mb_substr(trim($reason), 0, 200), null);
+        $application = $this->find($id, pending: true);
+        $this->decide($application, 'rejected', mb_substr(trim($reason), 0, 200), null);
+
+        // Il motivo resta nel gestionale; a chi ha fatto domanda va una risposta, senza dettagli interni.
+        $c = $this->contact($application->data, $application->minor);
+        $about = $c['about'] !== '' ? " di {$c['about']}" : '';
+        $this->mail($c['email'], 'Domanda di adesione non accolta', "Ciao {$c['name']},", "la domanda di adesione{$about} non è stata accolta. Per chiarimenti rivolgiti alla segreteria.", $orgName);
     }
 
     /**
