@@ -1188,9 +1188,9 @@ ob_start();
 Admin\AccountingPage::render();
 $ac_html = (string) ob_get_clean();
 asem_ok( false !== strpos( $mn_html, 'Disponibilità reale' ) && false !== strpos( $mn_html, 'Nuovo incasso' ) && false !== strpos( $mn_html, 'Ultimi movimenti' ) && false !== strpos( $mn_html, 'Anno sociale' ) && false !== strpos( $mn_html, 'page=asem-ledger' ), 'soldi: cassa, liquidità reale, anno sociale e ultimi movimenti, con la prima nota' );
-asem_ok( false !== strpos( $ac_html, 'Anno solare' ) && false !== strpos( $ac_html, 'Adempimenti' ) && false !== strpos( $ac_html, 'page=asem-years' ) && false !== strpos( $ac_html, 'page=asem-ledger' ), 'contabilità: anno solare, anni, adempimenti e la stessa prima nota' );
+asem_ok( false !== strpos( $ac_html, 'Esercizio' ) && false !== strpos( $ac_html, 'Adempimenti' ) && false !== strpos( $ac_html, 'page=asem-years' ) && false !== strpos( $ac_html, 'page=asem-ledger' ), 'contabilità: esercizio, esercizi, adempimenti e la stessa prima nota' );
 $ac_tabs = Admin\Admin::tabs( 'asem-accounting' );
-asem_ok( false !== strpos( $ac_tabs, 'Anni solari' ) && false !== strpos( $ac_tabs, 'Rendiconto' ) && false !== strpos( $ac_tabs, 'Adempimenti' ) && false === strpos( $ac_tabs, 'Nuovo incasso' ) && false !== strpos( Admin\Admin::tabs( 'asem-money' ), 'Nuovo incasso' ) && false !== strpos( Admin\Admin::tabs( 'asem-money' ), 'Prima nota' ) && false === strpos( Admin\Admin::tabs( 'asem-money' ), 'Anni solari' ), 'menu: Soldi ha incassi, spese, conti e prima nota; Contabilità anni, rendiconto e adempimenti' );
+asem_ok( false !== strpos( $ac_tabs, 'Esercizi' ) && false !== strpos( $ac_tabs, 'Rendiconto' ) && false !== strpos( $ac_tabs, 'Adempimenti' ) && false === strpos( $ac_tabs, 'Nuovo incasso' ) && false !== strpos( Admin\Admin::tabs( 'asem-money' ), 'Nuovo incasso' ) && false !== strpos( Admin\Admin::tabs( 'asem-money' ), 'Prima nota' ) && false === strpos( Admin\Admin::tabs( 'asem-money' ), 'Esercizi' ), 'menu: Soldi ha incassi, spese, conti e prima nota; Contabilità anni, rendiconto e adempimenti' );
 Settings::update( array( 'modules' => array( 'accounting' => 0 ) ) );
 $ac_off = Admin\Admin::disabled_pages();
 asem_ok( in_array( 'asem-accounting', $ac_off, true ) && in_array( 'asem-years', $ac_off, true ) && in_array( 'asem-fivepm', $ac_off, true ) && in_array( 'asem-reports', $ac_off, true ) && in_array( 'asem-statement', $ac_off, true ) && ! in_array( 'asem-ledger', $ac_off, true ) && ! in_array( 'asem-income', $ac_off, true ) && ! in_array( 'asem-accounts', $ac_off, true ), 'senza contabilità resta la prima nota con incassi, spese e conti: il resto non si vede' );
@@ -2677,6 +2677,18 @@ $mi->setAccessible( true );
 asem_ok( 0 === strpos( (string) $mi->invoke( null ), 'data:image/svg+xml;base64,' ) && file_exists( ASEM_DIR . 'assets/brand/simbolo-bianco.svg' ) && file_exists( ASEM_DIR . 'assets/brand/logo-orizzontale.png' ), 'marchio: il menu usa il simbolo ufficiale (SVG) e i file del logo ci sono' );
 $br_dash = asem_render( array( Admin\DashboardPage::class, 'render' ), 'asem-logo' );
 asem_ok( false !== strpos( $br_dash, 'assets/brand/logo-orizzontale.png' ), 'marchio: la bacheca mostra il logo ufficiale' );
+// Bacheca: «Da fare» prima degli avvisi e degli strumenti; un avviso solo resta com'è, più avvisi stanno in un riquadro «N cose da sistemare»
+asem_ok( false !== strpos( $br_dash, 'Da fare' ) && strpos( $br_dash, 'Da fare' ) < strpos( $br_dash, 'Cassa rapida' ), 'bacheca: «Da fare» viene prima della cassa rapida e dei numeri' );
+$ga_n1 = '<div class="notice notice-warning inline"><p>Primo avviso</p></div>';
+$ga_n2 = '<div class="notice notice-info inline"><p>Secondo avviso</p></div>';
+$ga_n3 = '<div class="notice notice-info inline"><p>Terzo avviso</p></div>';
+asem_ok( '' === Admin\DashboardPage::group_alerts( '' ) && $ga_n1 === Admin\DashboardPage::group_alerts( $ga_n1 ), 'bacheca avvisi: nessuno o uno solo restano com\'erano' );
+$ga_html = Admin\DashboardPage::group_alerts( $ga_n1 . $ga_n2 . $ga_n3 );
+asem_ok( false !== strpos( $ga_html, '<details class="asem-alerts"' ) && false !== strpos( $ga_html, '3 cose da sistemare' ) && false !== strpos( $ga_html, 'Primo avviso' ) && false !== strpos( $ga_html, 'Secondo avviso' ) && false !== strpos( $ga_html, 'Terzo avviso' ), 'bacheca avvisi: tre avvisi in un solo riquadro, nessuno perso' );
+$ga_js = (string) file_get_contents( ASEM_DIR . 'assets/admin.js' );
+$ga_css = (string) file_get_contents( ASEM_DIR . 'assets/admin.css' );
+asem_ok( false !== strpos( $ga_js, 'asem-tabs-r' ) && false !== strpos( $ga_css, '.asem-tabs.asem-tabs-r::after' ) && false !== strpos( $ga_js, 'Mostra altri' ), 'telefono: schede con il segno di scorrimento ed elenchi a blocchi di 20' );
+asem_ok( false !== strpos( asem_render( array( Admin\LedgerPage::class, 'render' ), 'asem-ledger' ), 'asem-more' ) && false !== strpos( asem_render( array( Admin\PeoplePage::class, 'render_list' ), 'asem-cards' ), 'asem-more' ), 'telefono: rubrica e prima nota hanno gli elenchi a blocchi' );
 
 // primo accesso e utenti esistenti: coda, avviso al vecchio indirizzo, accesso messo in sicurezza, link di scarico
 Settings::update( array( 'limits' => array( 'access_requests_unknown_max' => 5 ) ) );

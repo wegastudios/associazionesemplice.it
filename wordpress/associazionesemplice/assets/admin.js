@@ -62,7 +62,7 @@
 		var cls = t && t.getAttribute ? t.getAttribute('data-asem-check-all') : null;
 		if (!cls) { return; }
 		var boxes = document.getElementsByClassName(cls);
-		for (var i = 0; i < boxes.length; i++) { boxes[i].checked = t.checked; }
+		for (var i = 0; i < boxes.length; i++) { if (!(boxes[i].closest && boxes[i].closest('[hidden]'))) { boxes[i].checked = t.checked; } } // le righe nascoste da «Mostra altri» non si toccano
 	});
 
 	/* Campi da copiare (link, shortcode): un clic seleziona tutto il testo */
@@ -959,6 +959,66 @@ window.asemPlacesInit = function () {
 		if (rows.length + 1 >= max) { btn.disabled = true; }
 	});
 })();
+
+/* Telefono: avvisi raccolti chiusi, schede con il segno che ce ne sono altre di lato, elenchi lunghi a blocchi di 20 («Mostra altri») */
+(function () {
+	'use strict';
+	var phone = function () { return window.matchMedia && window.matchMedia('(max-width:782px)').matches; };
+
+	function alertsClosed() {
+		if (!phone()) { return; }
+		Array.prototype.forEach.call(document.querySelectorAll('details.asem-alerts'), function (d) { d.removeAttribute('open'); });
+	}
+
+	function tabsHints() {
+		Array.prototype.forEach.call(document.querySelectorAll('.asem-tabs'), function (nav) {
+			var update = function () {
+				var max = nav.scrollWidth - nav.clientWidth;
+				nav.classList.toggle('asem-tabs-r', max > 4 && nav.scrollLeft < max - 4);
+				nav.classList.toggle('asem-tabs-l', nav.scrollLeft > 4);
+			};
+			var cur = nav.querySelector('.nav-tab-active');
+			if (phone() && cur && nav.scrollWidth > nav.clientWidth) { // la scheda aperta resta in vista
+				nav.scrollLeft = Math.max(0, cur.offsetLeft - (nav.clientWidth - cur.offsetWidth) / 2);
+			}
+			nav.addEventListener('scroll', update, { passive: true });
+			window.addEventListener('resize', update);
+			update();
+		});
+	}
+
+	function moreLists() {
+		if (!phone()) { return; }
+		var STEP = 20;
+		Array.prototype.forEach.call(document.querySelectorAll('.asem-more'), function (box) {
+			var items = box.tagName === 'TABLE' ? Array.prototype.slice.call(box.querySelectorAll('tbody > tr')) : Array.prototype.slice.call(box.children);
+			if (items.length <= STEP + 5) { return; } // per pochi in più si mostra tutto
+			var shown = STEP;
+			items.forEach(function (it, i) { if (i >= shown) { it.hidden = true; } });
+			var p = document.createElement('p');
+			p.className = 'asem-more-btn';
+			var b = document.createElement('button');
+			b.type = 'button';
+			b.className = 'button';
+			var label = function () {
+				var rest = items.length - shown;
+				b.textContent = 'Mostra altri ' + Math.min(STEP, rest) + ' (ne restano ' + rest + ')';
+			};
+			b.addEventListener('click', function () {
+				var to = Math.min(items.length, shown + STEP);
+				for (var i = shown; i < to; i++) { items[i].hidden = false; }
+				shown = to;
+				if (shown >= items.length) { p.parentNode.removeChild(p); } else { label(); }
+			});
+			label();
+			p.appendChild(b);
+			box.parentNode.insertBefore(p, box.nextSibling);
+		});
+	}
+
+	function start() { alertsClosed(); tabsHints(); moreLists(); }
+	if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', start); } else { start(); }
+}());
 
 /* Fogli (<dialog class="asem-sheet">): si aprono dal pulsante con data-asem-sheet, si chiudono con «Chiudi», Esc o un clic fuori */
 (function () {

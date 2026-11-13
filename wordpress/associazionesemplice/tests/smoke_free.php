@@ -78,7 +78,7 @@ $pages = array(
 	'Prima nota'            => array( array( \AssociazioneSemplice\Admin\LedgerPage::class, 'render' ), array() ),
 	'Nuovo incasso'         => array( array( \AssociazioneSemplice\Admin\IncomePage::class, 'render' ), array() ),
 	'Nuova spesa'           => array( array( \AssociazioneSemplice\Admin\ExpensePage::class, 'render' ), array() ),
-	'Anni solari'           => array( array( \AssociazioneSemplice\Admin\YearsPage::class, 'render' ), array() ),
+	'Esercizi'              => array( array( \AssociazioneSemplice\Admin\YearsPage::class, 'render' ), array() ),
 	'Widget da lavorare'    => array( array( \AssociazioneSemplice\Admin\WpDashboard::class, 'todo' ), array() ),
 	'Widget settimana'      => array( array( \AssociazioneSemplice\Admin\WpDashboard::class, 'week' ), array() ),
 );

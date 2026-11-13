@@ -273,7 +273,7 @@ final class ProRegisters {
 		Ui::form_close();
 		echo '<h2>Dove sono le altre impostazioni contabili</h2><ul>'
 			. '<li><a href="' . esc_url( Ui::url( 'asem-settings' ) ) . '">Soci e quote</a> — quota associativa, livelli di socio, sconto del nucleo familiare.</li>'
-			. '<li><a href="' . esc_url( Ui::url( 'asem-years' ) ) . '">Anni solari</a> — apertura e chiusura degli anni contabili.</li>'
+			. '<li><a href="' . esc_url( Ui::url( 'asem-years' ) ) . '">Esercizi</a> — apertura e chiusura degli anni contabili.</li>'
 			. '<li><a href="' . esc_url( Ui::url( 'asem-accounts' ) ) . '">Conti e fondi</a> — cassa, banca, POS e fondi per i rimborsi ai volontari.</li>'
 			. '<li><a href="' . esc_url( Ui::url( 'asem-comms' ) ) . '">Privacy, regolamento e ricevute</a> — riga in fondo alla ricevuta, promemoria dei pagamenti.</li></ul>';
 		Ui::footer();

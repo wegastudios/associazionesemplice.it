@@ -48,6 +48,7 @@ final class DashboardPage {
 			. '<tr><td><strong>Resta all\'associazione</strong></td><td><strong>' . Ui::money( $r['result'] ) . '</strong></td></tr></table></div></div>', Html::allowed() );
 
 		$figures = (string) ob_get_clean();
+		ob_start(); // gli avvisi si raccolgono: in Bacheca vengono dopo «Da fare», raggruppati
 		if ( current_user_can( \AssociazioneSemplice\Plugin::CAP ) ) { // promemoria della copia di sicurezza (solo amministratori)
 			$bk = \AssociazioneSemplice\Backup::last();
 			if ( ! $bk || time() - $bk > 30 * DAY_IN_SECONDS ) {
@@ -69,6 +70,7 @@ final class DashboardPage {
 			echo wp_kses( Dismiss::html( 'guide', 'info', 'Configurazione iniziale: ' . (int) $gp['done'] . ' passi su ' . (int) $gp['total'] . '. <a href="' . esc_url( Ui::url( 'asem-guide' ) ) . '">Apri la guida</a>.', 7 ), Html::allowed() );
 		}
 		do_action( 'asem_dashboard_alerts' ); // le estensioni aggiungono i loro avvisi
+		$alerts = trim( (string) ob_get_clean() );
 		ob_start();
 		self::payments_due();
 		self::renewals();
@@ -128,6 +130,7 @@ final class DashboardPage {
 		echo '' !== $todo
 			? '<div class="asem-todo">' . wp_kses( $todo, Html::allowed() ) . '</div>'
 			: '<div class="asem-empty"><p><strong>Tutto in ordine</strong></p><p class="description">Non c\'è niente da fare adesso. Registra un incasso o aggiungi un socio quando ti serve.</p></div>';
+		echo wp_kses( self::group_alerts( $alerts ), Html::allowed() ); // dopo «Da fare»: un avviso da solo resta com'è, più avvisi stanno in un solo riquadro
 		self::quick_cash();
 		self::quick_enroll();
 		echo wp_kses( $figures, Html::allowed() );
@@ -141,6 +144,19 @@ final class DashboardPage {
 			echo '</div>';
 		}
 		Ui::footer();
+	}
+
+	/**
+	 * Avvisi della Bacheca: uno solo si mostra com'è; due o più si raccolgono in «N cose da sistemare» (aperto sul computer, chiuso sul telefono: lo decide admin.js).
+	 * Nessun avviso si perde: sono tutti nel riquadro, e chiuderne uno con la X vale come prima.
+	 */
+	public static function group_alerts( string $html ): string {
+		$html = trim( $html );
+		$n    = preg_match_all( '/<div class="notice /', $html );
+		if ( '' === $html || $n < 2 ) {
+			return $html;
+		}
+		return '<details class="asem-alerts" open><summary><strong>' . (int) $n . ' cose da sistemare</strong> <span class="description">tocca per aprire o chiudere</span></summary>' . $html . '</details>';
 	}
 
 	/** Domande di adesione dal sito: Approva (si assegna la tessera, si propone la successiva) o Rifiuta. */
