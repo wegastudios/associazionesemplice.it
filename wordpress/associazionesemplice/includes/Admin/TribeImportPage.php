@@ -46,7 +46,7 @@ final class TribeImportPage {
 
 	/** Gli eventi senza data, per titolo, con il link per correggerli in The Events Calendar (se si può aprire). */
 	private static function undatable_list( array $list ): string {
-		$h = '<ul style="list-style:circle;margin-left:1.5em">';
+		$h = '<ul style="list-style-type:circle;margin-left:1.5em">';
 		foreach ( $list as $f ) {
 			$h .= '<li>' . esc_html( $f['title'] ) . ( '' !== $f['link'] ? ' <a href="' . esc_url( $f['link'] ) . '">modifica in The Events Calendar</a>' : '' ) . '</li>';
 		}
@@ -99,7 +99,7 @@ final class TribeImportPage {
 			echo '<li>Categorie pubbliche ricreate (o riusate se esistono) e assegnate a tutte le pagine create: <span class="description">' . esc_html( implode( ', ', $sum['categories'] ) ) . '</span>.</li>';
 		}
 		if ( $sum['failed'] ) {
-			echo '<li>' . (int) $sum['failed'] . ( 1 === (int) $sum['failed'] ? ' evento non si importa' : ' eventi non si importano' ) . ' perché manca la data:' . self::undatable_list( $sum['failed_list'] ) . '</li>';
+			echo '<li>' . (int) $sum['failed'] . ( 1 === (int) $sum['failed'] ? ' evento non si importa' : ' eventi non si importano' ) . ' perché manca la data:' . wp_kses_post( self::undatable_list( $sum['failed_list'] ) ) . '</li>';
 		}
 		echo '</ul></div>';
 		echo '<p><label><input type="checkbox" name="publish_future" value="1"> Pubblica subito le pagine degli eventi futuri</label> <span class="description">Spenta: le pagine restano in bozza. Acceso: solo gli eventi con una data futura vengono pubblicati.</span></p>';
