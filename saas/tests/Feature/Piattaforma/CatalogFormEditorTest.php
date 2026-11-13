@@ -159,7 +159,7 @@ it('modifica un pacchetto esistente senza poterne cambiare il tipo', function ()
     $this->post('/saas/admin/catalogo/pacchetti/site', [
         'kind' => 'operators', // ignorato: il tipo di un pacchetto già creato non cambia
         'name' => 'Sito web',
-        'visible' => $plan['visible'] ? '1' : '',
+        'visible' => '1',
         'grant_package' => 'site',
         'prices' => [['kind' => 'flat', 'period' => 'month', 'vat_percent' => '22', 'amount' => '21']],
     ])->assertRedirect('/saas/admin/catalogo/pacchetti');
