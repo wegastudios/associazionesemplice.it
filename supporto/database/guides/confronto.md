@@ -6,7 +6,9 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 
 | Funzione | Free | {piano_contabile} | {piano_fiscale} |
 |---|---|---|---|
-| Libro soci con numerazione progressiva e cessazioni | ✓ | ✓ | ✓ |
+| Libro soci per esercizio: segue l'esercizio e alla chiusura viene fotografato, così da quel momento non cambia più; ogni socio ha una matricola fissa e ogni riga un numero; «Fotografa gli anni già chiusi» ricostruisce i libri passati; ogni libro si scarica in PDF e in CSV | ✓ | ✓ | ✓ |
+| Soci che sono enti: scheda dedicata, importazione da CSV e colonna «Tipo» nel libro soci | ✓ | ✓ | ✓ |
+| Utente «Dipendente»: permessi che si possono togliere, periodo di servizio e conteggio dei lavoratori per il RUNTS | ✓ | ✓ | ✓ |
 | Libro soci completo: date di domanda e delibera, luogo di nascita, residenza, contatti, ultima quota, recesso e tutore, con PDF e CSV | ✓ | ✓ | ✓ |
 | Quota associativa a rate: saldo da incassare e tessera valida al saldo | ✓ | ✓ | ✓ |
 | Schede dei soci e collegamento all'utente WordPress | ✓ | ✓ | ✓ |
@@ -87,7 +89,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Spese con scontrini e fatture allegati | ✓ | ✓ | ✓ |
 | Importazione ed esportazione della prima nota | ✓ | ✓ | ✓ |
 | Donazioni con PayPal | ✓ | ✓ | ✓ |
-| Anni solari: apertura, chiusura e riapertura (solo amministratori), con avviso del nuovo anno da settembre | ✓ | ✓ | ✓ |
+| Esercizi: apertura e chiusura (solo amministratori), con il mese di inizio a scelta e l'avviso del nuovo anno da settembre; si chiudono in ordine | ✓ | ✓ | ✓ |
+| Riapertura dell'ultimo esercizio: si riapre solo l'ultimo esercizio chiuso, scrivendo il motivo; resta una traccia permanente di chiusure e riaperture, e le tessere di un esercizio chiuso non si modificano | ✓ | ✓ | ✓ |
 | Cassa «Prenota» (per data o per attività) | ✓ | ✓ | ✓ |
 | Acconti e sconti con motivo per riga di incasso | ✓ | ✓ | ✓ |
 | Nuovo socio in un popup durante l'incasso, senza perdere l'operazione | ✓ | ✓ | ✓ |
@@ -114,7 +117,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | IVA su quote, attività, incassi e spese | — | — | ✓ |
 | 5 per mille e rendiconto sull'utilizzo | — | — | ✓ |
 | Rendiconto per cassa per il commercialista | — | — | ✓ |
-| Anno fiscale con mese di inizio diverso dall'anno sociale | — | — | ✓ |
+| Anno fiscale del rendiconto per cassa e verifiche prima della chiusura | — | — | ✓ |
 | Spese documentate attribuite in automatico ai fondi dei rimborsi, con elenchi e CSV | — | — | ✓ |
 | Bilancio provvisorio dell'anno fiscale, avvisi di bilancio e storico mensile con CSV | — | — | ✓ |
 | Prospetto dei rimborsi per persona, con CSV e PDF | — | — | ✓ |
@@ -126,14 +129,16 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 |---|---|---|---|
 | Verbali di assemblea e consiglio con PDF | ✓ | ✓ | ✓ |
 | Assemblee: convocazione per email, presenze, deleghe, numero legale e verbale compilato | — | ✓ | ✓ |
-| Votazioni e sondaggi tra i soci, anche a voto segreto, con verbale dei risultati | ✓ | ✓ | ✓ |
+| Votazioni e sondaggi tra i soci, anche a voto segreto, con verbale dei risultati; votano i soci maggiorenni | ✓ | ✓ | ✓ |
+| Diritto di voto per livello: si sceglie per ogni livello di socio se ha diritto di voto | — | ✓ | ✓ |
+| Dati per il RUNTS: Registri → «Dati per il RUNTS», con i numeri al 31 dicembre, i soci che sono enti, l'avviso se si scende sotto il minimo di soci per ODV e APS e il promemoria del 30 giugno | ✓ | ✓ | ✓ |
 | Inventario dei beni e prestiti ai soci con promemoria | ✓ | ✓ | ✓ |
 | Archivio documenti con accesso per segreteria, soci o pubblico | ✓ | ✓ | ✓ |
 | Certificati medici sportivi con scadenze, promemoria e riquadro in Bacheca | — | ✓ | ✓ |
 | Affiliazioni agli enti (CONI/RAS e enti di promozione sportiva), tessere dei soci anche in blocco e file CSV per i portali degli enti con sport e disciplina | — | ✓ | ✓ |
 | Sport (elenco basato sull'elenco CONI) e disciplina dell'ente su corsi ed eventi | ✓ | ✓ | ✓ |
 | Informativa privacy generata e registro dei consensi | ✓ | ✓ | ✓ |
-| Anonimizzazione e download dei dati personali | ✓ | ✓ | ✓ |
+| Anonimizzazione e download dei dati personali, con i libri soci chiusi | ✓ | ✓ | ✓ |
 | Assicurazioni dei volontari e polizze dell'associazione | — | ✓ | ✓ |
 | Registro delle presenze a corsi ed eventi, anche in vista a calendario | — | ✓ | ✓ |
 

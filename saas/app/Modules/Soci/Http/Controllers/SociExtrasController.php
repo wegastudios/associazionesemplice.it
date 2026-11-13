@@ -108,15 +108,18 @@ final readonly class SociExtrasController
     {
         [$name, $base, $fee] = $this->level($request);
 
-        return $this->attempt(fn () => $this->levels->create($name, $base, $fee), 'Livello creato.');
+        $votes = $request->boolean('votes', true);
+
+        return $this->attempt(fn () => $this->levels->create($name, $base, $fee, $votes), 'Livello creato.');
     }
 
     public function updateLevel(Request $request, string $level): RedirectResponse
     {
         [$name, $base, $fee] = $this->level($request);
         $active = $request->boolean('active', true);
+        $votes = $request->boolean('votes', true);
 
-        return $this->attempt(fn () => $this->levels->update($level, $name, $base, $fee, $active), 'Livello salvato.');
+        return $this->attempt(fn () => $this->levels->update($level, $name, $base, $fee, $active, $votes), 'Livello salvato.');
     }
 
     /** @return array{string, MemberType, int|null} */
@@ -127,6 +130,7 @@ final readonly class SociExtrasController
             'base_type' => ['required', Rule::in(['founder', 'ordinary', 'volunteer'])],
             'fee' => ['nullable', 'string', 'max:20'],
             'active' => ['boolean'],
+            'votes' => ['boolean'],
         ]));
         $raw = Input::optionalString($data, 'fee');
         $fee = $raw === null ? null : Money::parse($raw);

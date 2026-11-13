@@ -32,7 +32,7 @@ $copy = array(
 		'Rendiconto per cassa per il commercialista',
 		'Spese documentate sui fondi dei rimborsi, con prospetto per persona',
 		'Bilancio provvisorio, avvisi di bilancio e storico mensile',
-		'Anno fiscale con mese di inizio proprio e verifiche prima della chiusura',
+		'Anno fiscale con verifiche prima della chiusura',
 	) ),
 );
 ?>

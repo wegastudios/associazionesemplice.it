@@ -14,7 +14,7 @@ manca e le scelte prese**; si aggiorna a ogni PR del modulo.
 | 5 | `/saas/admin`: staff, 2FA, editor con bozza e «Pubblica», registro. **Solo la vendita** (decisione 10/11/2026): niente elenco associazioni, utenti o disattivazioni, che stanno nell'app | accesso, riepilogo, registro ed editor del catalogo **fatti**; gestione staff e `admin_hop` da fare |
 | 6 | Ricezione di `subscription`, `409 unknown_plan`, limiti dal piano | **fatto** (PR 2) |
 | 7 | `admin_hop` | da fare, dopo il passo 5 |
-| 9 | Demo `demo.associazionesemplice.it` | comando, utenti e soci finti nella PR; altri dati e messa online da fare (§6) |
+| 9 | Demo `demosaas.associazionesemplice.it` | comando, utenti e soci finti nella PR; altri dati e messa online da fare (§6) |
 
 ## 2. Catalogo (fatto)
 
@@ -87,7 +87,7 @@ test l'amministrazione sta su `/saas/admin` e il prefisso è una sola costante (
 - **Pagine** (sola lettura, Blade senza JavaScript): riepilogo, catalogo (bozza e «Pubblica»), registro. Seguono: gestione dello
   staff, `admin_hop`. L'admin non mostra né modifica associazioni, operatori, soci o utenti: è solo la parte di vendita.
 
-## 6. Demo `demo.associazionesemplice.it` (in corso)
+## 6. Demo `demosaas.associazionesemplice.it` (in corso)
 
 Un'istanza separata del SaaS (ARCHITETTURA_DOMINI §9) con database proprio e solo dati finti.
 
@@ -101,10 +101,10 @@ Un'istanza separata del SaaS (ARCHITETTURA_DOMINI §9) con database proprio e so
   Fatto anche: due soci ente e tipo di ente APS (per «Dati per il RUNTS»). Da fare: attività, risorse, prima nota, domande aperte, avvisi, socio di prova con area soci.
 - **Banner** in testa (`app.blade.php`) e `noindex` su tutte le pagine; nessuna statistica.
 - **Sul server demo**: `SAAS_REQUIRE_TWO_FACTOR=false` (solo lì, documentato), `MAIL_MAILER=log` (posta simulata: nessuna mail
-  esce), pagamenti simulati quando ci saranno, `SAAS_MEMBERS_DOMAIN=demo.associazionesemplice.it` (area soci demo: `polisportiva-demo.demo.associazionesemplice.it`)` e DNS jolly a parte.
+  esce), pagamenti simulati quando ci saranno, `SAAS_MEMBERS_DOMAIN=demosaas.associazionesemplice.it` (area soci demo: `polisportiva-demo.demosaas.associazionesemplice.it`)` e DNS jolly a parte.
 - **Accessi visibili**: la pagina di accesso della demo elenca i cinque ruoli con email e password (`DemoEnvironment::credentials()`, vuoto fuori dalla demo) e un pulsante «Usa» che compila i campi. Su questo server l'accesso unico degli operatori (`SAAS_UNIFIED_OPERATORS`) resta spento, altrimenti la pagina di accesso rimanda al portale.
 - **Rilascio**: il workflow «SaaS · rilascio» ha l'ambiente `demo` (segreti SSH propri). Il primo reset si lancia a mano dopo il primo rilascio: `php artisan saas:demo:reset`; poi lo fa lo scheduler alle 03:30.
-- **Online**: serve il sottodominio `demo.associazionesemplice.it`, un sub-account con database PostgreSQL propri e il cron, dalla titolare. Link in home dal portale (sessione Portale). Non fatto.
+- **Online**: serve il sottodominio `demosaas.associazionesemplice.it`, un sub-account con database PostgreSQL propri e il cron, dalla titolare. Link in home dal portale (sessione Portale). Non fatto.
 
 ## 7. Accesso unico dello staff (docs/UTENTI_E_ACCESSI.md; formato in docs/STAFF_SSO.md)
 

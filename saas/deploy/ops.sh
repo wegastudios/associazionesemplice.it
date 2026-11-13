@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Gira sul server (sub-account cPanel), lanciato dal workflow «SaaS · manutenzione server» via SSH.
-# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|pubblica-catalogo|soci-in-vendita> [cartella-bin-postgresql]
+# Uso: ops.sh <diagnosi|chiave-catalogo|percorso-pgdump|ciclo-vita|prova-cancellazione|catalogo|bozza-listino|accendi-ciclo-vita|pubblica-catalogo|soci-in-vendita|spegni-avvisi> [cartella-bin-postgresql]
 #
 # Azioni fisse e limitate (non è una shell remota):
 #   diagnosi          sola lettura: stato (impostata/vuota) delle variabili che contano, client PostgreSQL presenti, ultimi errori
@@ -137,6 +137,18 @@ case "$ACTION" in
       $p->saveDraft($d, (string) $id);
       echo "Pubblicata la revisione ", $p->publish((string) $id, "Pacchetti soci in vendita sulla Grande"), PHP_EOL;
     '
+    ;;
+  spegni-avvisi)
+    # Spegne gli avvisi email del gestionale (restano solo le email del portale) e dice se ne sono già partiti.
+    set_var SAAS_NOTICES_ENABLED 0
+    refresh
+    echo "SAAS_NOTICES_ENABLED = [$(get SAAS_NOTICES_ENABLED)]"
+    cd "$BASE/current"
+    "$PHP" artisan tinker --execute='
+      $n = DB::connection("pgsql_owner")->table("core.org_notices")->get(["kind", "sent_at"]);
+      echo "Avvisi registrati: ", $n->count(), PHP_EOL;
+      foreach ($n->groupBy("kind") as $k => $rows) { echo $k, ": ", $rows->count(), PHP_EOL; }
+    ' || true
     ;;
   percorso-pgdump)
     [[ "$ARG" =~ ^/[A-Za-z0-9_./-]+$ ]] || { echo "Cartella non valida." >&2; exit 1; }

@@ -25,9 +25,10 @@ final readonly class MemberBookSnapshots
 {
     /**
      * I campi che entrano nella fotografia: UN solo elenco. È una proposta basata sulla prassi (nessuna norma li
-     * elenca) in attesa del parere del commercialista: niente email, telefono, quote. `card` è la matricola.
+     * elenca) in attesa del parere del commercialista: niente email, telefono, quote. `matricola` è il numero fisso del socio, `n` il numero di riga dell'esercizio,
+     * `card` il numero di tessera.
      */
-    public const FIELDS = ['n', 'name', 'tax_code', 'birth', 'residence', 'level', 'card', 'approved_on', 'left_on', 'left_reason'];
+    public const FIELDS = ['n', 'matricola', 'name', 'tax_code', 'birth', 'residence', 'level', 'card', 'approved_on', 'left_on', 'left_reason'];
 
     public function __construct(
         private DatabaseManager $db,
@@ -102,7 +103,7 @@ final readonly class MemberBookSnapshots
         $s = static fn (string $k): string => is_scalar($r[$k] ?? null) ? (string) $r[$k] : '';
 
         return [
-            'n' => is_numeric($r['n'] ?? null) ? (int) $r['n'] : 0, 'id' => '', 'name' => $s('name'), 'tax_code' => $s('tax_code'),
+            'n' => is_numeric($r['n'] ?? null) ? (int) $r['n'] : 0, 'matricola' => is_numeric($r['matricola'] ?? null) ? (int) $r['matricola'] : 0, 'id' => '', 'name' => $s('name'), 'tax_code' => $s('tax_code'),
             'birth' => $s('birth'), 'residence' => $s('residence'), 'email' => '', 'phone' => '', 'card' => $s('card'), 'level' => $s('level'),
             'applied_on' => $s('approved_on'), 'approved_on' => $s('approved_on'), 'joined_on' => $s('approved_on'),
             'left_on' => $s('left_on'), 'left_reason' => $s('left_reason'), 'fee' => '', 'fee_year' => '', 'guardian' => '',
