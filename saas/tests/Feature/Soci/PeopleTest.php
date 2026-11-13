@@ -151,8 +151,8 @@ it('registra un socio ente con denominazione e partita IVA, senza nome né nasci
 });
 
 it('dà il diritto di voto ai soli soci', function (): void {
-    expect(\App\Modules\Soci\Contracts\MemberType::Ordinary->hasVotingRights())->toBeTrue()
-        ->and(\App\Modules\Soci\Contracts\MemberType::Volunteer->hasVotingRights())->toBeTrue()
-        ->and(\App\Modules\Soci\Contracts\MemberType::Guest->hasVotingRights())->toBeFalse()
-        ->and(\App\Modules\Soci\Contracts\MemberType::Guardian->hasVotingRights())->toBeFalse();
+    expect(MemberType::Ordinary->hasVotingRights())->toBeTrue()
+        ->and(MemberType::Volunteer->hasVotingRights())->toBeTrue()
+        ->and(MemberType::Guest->hasVotingRights())->toBeFalse()
+        ->and(MemberType::Guardian->hasVotingRights())->toBeFalse();
 });
