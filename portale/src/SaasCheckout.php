@@ -191,7 +191,7 @@ final class SaasCheckout {
 			if ( 'paid' === $res ) {
 				return null;
 			}
-			if ( 'declined' === $res ) {
+			if ( in_array( $res, array( 'declined', 'hard' ), true ) ) {
 				throw new UserError( 'Il pagamento non è andato a buon fine. Controlla o cambia il metodo di pagamento da «Fatture e metodo di pagamento» e riprova.' );
 			}
 			// «unavailable»: l'abbonamento su Stripe è già chiuso, si riparte con un nuovo ordine.
@@ -297,6 +297,58 @@ final class SaasCheckout {
 	}
 
 	/**
+	 * Nuovi tentativi dopo un pagamento non riuscito (decisione della titolare, 13/11/2026): 3 al giorno nei primi 2 giorni, poi 1 al giorno per altri
+	 * 5, cioè 11 in 7 giorni, poi basta. Ore dal primo rifiuto. Solo Stripe: PayPal riprova da sé.
+	 */
+	const RETRY_HOURS = array( 8, 16, 24, 32, 40, 48, 72, 96, 120, 144, 168 );
+
+	private static function scheduleRetries( Db $db, array $o, ?int $now ): void {
+		if ( 'stripe' !== ( $o['provider'] ?? '' ) ) {
+			return;
+		}
+		$t = $now ?? time();
+		$db->run( 'UPDATE orders SET retry_from = ?, retry_n = 0, retry_at = ? WHERE id = ?', array( gmdate( 'Y-m-d H:i:s', $t ), gmdate( 'Y-m-d H:i:s', $t + self::RETRY_HOURS[0] * 3600 ), $o['id'] ) );
+	}
+
+	private static function clearRetries( Db $db, string $orderId ): void {
+		$db->run( 'UPDATE orders SET retry_at = NULL, retry_n = 0 WHERE id = ?', array( $orderId ) );
+	}
+
+	/**
+	 * Lavoro frequente (bin/cron.php, ogni ora): fa i nuovi tentativi arrivati a scadenza. Si ferma per ordine al pagamento riuscito, a un rifiuto
+	 * definitivo della carta (carta rubata, numero non valido… mai riprovare), all'abbonamento chiuso o all'undicesimo tentativo.
+	 * Spento finché non è acceso `saas_retry` (prima vanno spenti i nuovi tentativi automatici di Stripe, per non sommarli ai nostri).
+	 * @return int tentativi fatti
+	 */
+	public static function retryPayments( Db $db, ?int $now = null ): int {
+		if ( true !== Config::get( 'saas_retry', false ) ) {
+			return 0;
+		}
+		$t     = $now ?? time();
+		$done  = 0;
+		$rows  = $db->all( "SELECT * FROM orders WHERE product = 'saas' AND provider = 'stripe' AND status = ? AND retry_at IS NOT NULL AND retry_at <= ?", array( self::ACTIVE, gmdate( 'Y-m-d H:i:s', $t ) ) );
+		foreach ( $rows as $o ) {
+			if ( empty( $o['provider_ref'] ) ) {
+				self::clearRetries( $db, (string) $o['id'] );
+				continue;
+			}
+			$res = Stripe::payOpenInvoice( (string) $o['provider_ref'] );
+			++$done;
+			if ( 'declined' !== $res ) {
+				self::clearRetries( $db, (string) $o['id'] ); // pagata (ci pensa il webhook), definitivo o chiusa: basta
+				continue;
+			}
+			$n = (int) $o['retry_n'] + 1;
+			if ( $n >= count( self::RETRY_HOURS ) ) {
+				self::clearRetries( $db, (string) $o['id'] );
+				continue;
+			}
+			$db->run( 'UPDATE orders SET retry_n = ?, retry_at = ? WHERE id = ?', array( $n, gmdate( 'Y-m-d H:i:s', strtotime( $o['retry_from'] . ' UTC' ) + self::RETRY_HOURS[ $n ] * 3600 ), $o['id'] ) );
+		}
+		return $done;
+	}
+
+	/**
 	 * Novità del provider su un abbonamento già attivo: renewed | failed | cancelled.
 	 * @return bool falso se il riferimento non è di un ordine del gestionale
 	 */
@@ -317,12 +369,19 @@ final class SaasCheckout {
 			return true;
 		}
 		if ( 'renewed' === $kind ) {
+			self::clearRetries( $db, (string) $o['id'] );
 			self::push( $db, $o, $org, 'active', self::until( (string) $o['period'], $now ), $now );
 			self::mail( $db, 'saas_renewed', $o, $org, $now );
 		} elseif ( 'failed' === $kind ) {
+			// Ogni nuovo tentativo andato male riconsegna «pagamento non riuscito»: il cliente è già stato avvisato una volta, niente email a ogni tentativo.
+			if ( 'past_due' === SaasAccount::stateOf( $db, (string) $org['org_id'] ) ) {
+				return true;
+			}
+			self::scheduleRetries( $db, $o, $now );
 			self::push( $db, $o, $org, 'past_due', self::lastUntil( $db, (string) $org['org_id'] ) ?? self::until( (string) $o['period'], $now ), $now );
 			self::mail( $db, 'saas_payment_failed', $o, $org, $now );
 		} elseif ( 'cancelled' === $kind ) {
+			self::clearRetries( $db, (string) $o['id'] );
 			self::push( $db, $o, $org, 'cancelled', self::lastUntil( $db, (string) $org['org_id'] ) ?? gmdate( 'Y-m-d', $now ?? time() ), $now );
 		}
 		return true;
