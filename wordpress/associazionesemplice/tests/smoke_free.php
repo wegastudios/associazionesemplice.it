@@ -156,7 +156,7 @@ free_ok( \AssociazioneSemplice\Admin\ProPage::needed(), 'nel gratuito la pagina 
 ob_start();
 \AssociazioneSemplice\Admin\ProPage::render();
 $pro_page = (string) ob_get_clean();
-free_ok( false !== strpos( $pro_page, 'Pagamenti online' ) && false !== strpos( $pro_page, 'Pro Full' ) && false !== strpos( $pro_page, 'IVA' ) && false === strpos( $pro_page, 'attiva</span>' ), 'pagina Pro: mostra le funzioni dei due livelli, nessuna già attiva' );
+free_ok( false !== strpos( $pro_page, 'Pagamenti online' ) && false !== strpos( $pro_page, 'Contabilità e fiscale' ) && false !== strpos( $pro_page, 'IVA' ) && false === strpos( $pro_page, 'attiva</span>' ), 'pagina Pro: mostra le funzioni dei due livelli, nessuna già attiva' );
 
 // ---------- Il salvataggio dei livelli è rifiutato ----------
 $threw = false;

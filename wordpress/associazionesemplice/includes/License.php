@@ -29,13 +29,13 @@ final class License {
 	);
 
 	/**
-	 * Livelli di licenza. Il portale vende Free, Pro Lite (senza contabilità) e Pro Full (tutto); «contabile» è il vecchio livello intermedio
+	 * Livelli di licenza. Il portale vende un piano gratuito, uno senza contabilità e uno con tutto; «accounting» è il livello intermedio
 	 * (conti, report e ricevute ma non IVA, 5 per mille e anni solari), ancora riconosciuto.
 	 */
 	const PLAN_FREE       = 'free';
 	const PLAN_LITE       = 'lite';
 	const PLAN_ACCOUNTING = 'accounting';
-	const PLAN_FISCAL     = 'fiscal'; // = Pro Full
+	const PLAN_FISCAL     = 'fiscal'; // il piano con tutto
 
 	const PLANS = array( self::PLAN_FREE, self::PLAN_LITE, self::PLAN_ACCOUNTING, self::PLAN_FISCAL );
 
@@ -68,8 +68,11 @@ final class License {
 	}
 
 	public static function plan_label( string $plan ): string {
-		$map = array( self::PLAN_FREE => 'Gratuito', self::PLAN_LITE => 'Pro Lite', self::PLAN_ACCOUNTING => 'Pro (contabile)', self::PLAN_FISCAL => 'Pro Full' );
-		return $map[ $plan ] ?? $plan;
+		if ( self::PLAN_FREE === $plan ) {
+			return 'Gratuito';
+		}
+		$name = trim( (string) self::state()['plan_name'] ); // il nome lo scrive il portale nella licenza: nel plugin non si scrive a mano
+		return '' !== $name ? $name : 'Associazione Semplice Pro';
 	}
 
 	public static function key(): string {
@@ -99,6 +102,7 @@ final class License {
 			'attestation'   => (string) ( $s['attestation'] ?? '' ),
 			'portal_attestation' => (string) ( $s['portal_attestation'] ?? '' ),
 			'product'       => (string) ( $s['product'] ?? '' ),
+			'plan_name'     => (string) ( $s['plan_name'] ?? '' ),
 		);
 	}
 
@@ -246,7 +250,7 @@ final class License {
 		if ( $claims && ! empty( $claims['plan'] ) ) {
 			$i['plan'] = LicenseClient::plan_from_name( (string) $claims['plan'] ); // il livello lo dice la parte firmata, non quella modificabile in transito
 		}
-		$extra       = array( 'reason' => $i['reason'], 'expires_at' => $i['expires_at'], 'next_check_at' => $i['next_check_at'], 'in_grace' => $i['in_grace'] );
+		$extra       = array( 'reason' => $i['reason'], 'expires_at' => $i['expires_at'], 'next_check_at' => $i['next_check_at'], 'in_grace' => $i['in_grace'], 'plan_name' => sanitize_text_field( mb_substr( (string) ( $r['plan_name'] ?? '' ), 0, 60 ) ) ); // il nome del piano è solo da mostrare
 		$portal_att  = $claims ? (string) ( $r['portal_attestation'] ?? '' ) : '';
 		$portal_plan = '' === $portal_att ? null : LicenseClient::portal_plan( $portal_att, (string) ( $r['product_code'] ?? '' ), $domain );
 		if ( $claims && null === $portal_plan && LicenseClient::portal_decides_plan() ) {

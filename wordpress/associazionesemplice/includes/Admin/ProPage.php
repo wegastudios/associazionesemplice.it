@@ -6,7 +6,7 @@ use AssociazioneSemplice\Edition;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Pagina che presenta le funzioni di Associazione Semplice Pro e dei suoi due livelli di licenza. È un semplice elenco informativo (niente funzioni
+ * Pagina che presenta le funzioni di Associazione Semplice Pro e dei suoi piani. È un semplice elenco informativo (niente funzioni
  * finte né pulsanti che non fanno nulla) e compare solo se c'è qualcosa che questa installazione non ha.
  */
 final class ProPage {
@@ -14,7 +14,7 @@ final class ProPage {
 	/** Funzioni per livello: [funzione, titolo, descrizione]. */
 	public static function catalog(): array {
 		return array(
-			'Pro Lite' => array(
+			'Gestione e comunicazione' => array(
 				array( 'payments', 'Pagamenti online', 'I soci pagano quote, mensilità ed eventi con carta (Stripe), PayPal o il checkout di WooCommerce; l\'incasso entra da solo in prima nota.' ),
 				array( 'levels', 'Quote diverse per i soci', 'Più livelli di socio (ridotto, sostenitore, onorario…) ognuno con la sua quota.' ),
 				array( 'broadcasts', 'Comunicazioni a gruppi', 'Email a tutti i soci, a chi ha la tessera in scadenza o agli iscritti di un\'attività, inviate in background.' ),
@@ -24,7 +24,7 @@ final class ProPage {
 				array( 'texts', 'Personalizzazione dei testi', 'Ogni frase che i soci vedono, nelle email e nei PDF si può cambiare; più lingue, tipo di ente e termini (associazione o comitato, socio o tesserato) con gli articoli giusti.' ),
 				array( 'insurance', 'Assicurazioni e presenze', 'Registro delle polizze di volontari e associazione, con scadenze, e registro delle presenze ai corsi.' ),
 			),
-			'Pro Full (include tutto il Pro Lite)' => array(
+			'Contabilità e fiscale (si aggiunge a tutto il resto)' => array(
 				array( 'funds', 'Conti, fondi e cassa per più persone', 'Più conti (cassa, banca, POS), giroconti, fondi per i rimborsi ai volontari e un\'unica cassa per chi paga per più soci.' ),
 				array( 'reports', 'Report di gestione', 'Saldi e liquidità reale, risultato per attività e anno sociale.' ),
 				array( 'receipts', 'Ricevute e attestazioni', 'Ricevute in PDF numerate (per gli eventi valgono anche da biglietto) e attestazione annuale dei versamenti per soci e donatori.' ),
@@ -50,7 +50,7 @@ final class ProPage {
 
 	public static function render(): void {
 		Ui::header( 'Associazione Semplice Pro' );
-		echo '<p>Associazione Semplice resta gratuito per la gestione di base di un\'associazione. <strong>Associazione Semplice Pro</strong> è un plugin a parte che si affianca a questo e aggiunge le funzioni qui sotto, in due livelli di licenza. I dati restano gli stessi: attivandolo non si perde né si ricarica niente.</p>';
+		echo '<p>Associazione Semplice resta gratuito per la gestione di base di un\'associazione. <strong>Associazione Semplice Pro</strong> è un plugin a parte che si affianca a questo e aggiunge le funzioni qui sotto, in due gruppi di funzioni, a seconda del piano scelto. I dati restano gli stessi: attivandolo non si perde né si ricarica niente.</p>';
 		foreach ( self::catalog() as $level => $rows ) {
 			echo '<div class="asem-card"><h2>' . esc_html( $level ) . '</h2><table class="widefat striped"><tbody>';
 			foreach ( $rows as $r ) {
@@ -60,7 +60,7 @@ final class ProPage {
 			echo '</tbody></table></div>';
 		}
 		echo '<p><a class="button button-primary" href="' . esc_url( Edition::pro_url() ) . '" target="_blank" rel="noopener">Scopri Associazione Semplice Pro</a></p>';
-		echo '<p class="description">Pro Lite comprende pagamenti online, quote diverse, comunicazioni, app e Wallet; Pro Full aggiunge la contabilità (conti e fondi, report, ricevute), l\'IVA, il 5 per mille e gli anni solari per il commercialista.</p>';
+		echo '<p class="description">Il primo gruppo comprende pagamenti online, quote diverse, comunicazioni, app e Wallet; il secondo aggiunge la contabilità (conti e fondi, report, ricevute), l\'IVA, il 5 per mille e gli anni solari per il commercialista. Prezzi e dettagli dei piani su associazionesemplice.it.</p>';
 		Ui::footer();
 	}
 }

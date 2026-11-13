@@ -78,10 +78,10 @@ final class ProBoot {
 		'texts'      => array( 'asem_save_terms', 'asem_save_texts', 'asem_import_texts', 'asem_reset_texts', 'asem_add_text', 'asem_save_language', 'asem_import_language', 'asem_delete_language' ),
 	);
 
-	/** Funzioni fiscali: solo con la licenza Pro Full (IVA, 5 per mille, anni solari e rendiconto; più avanti la fatturazione elettronica). */
+	/** Funzioni fiscali: solo con il piano più completo (IVA, 5 per mille, anni solari e rendiconto; più avanti la fatturazione elettronica). */
 	const FISCAL = array( 'vat', 'fivepm', 'fiscal', 'watch' );
 
-	/** Funzioni di contabilità: conti e fondi, report, ricevute. Mancano nel Pro Lite; ci sono nel Pro Full e nel vecchio livello contabile. */
+	/** Funzioni di contabilità: conti e fondi, report, ricevute. Mancano nel piano senza contabilità; ci sono nel piano completo e nel livello intermedio. */
 	const ACCOUNTING = array( 'funds', 'reports', 'receipts', 'budget' );
 
 	/** @var bool */
@@ -178,7 +178,7 @@ final class ProBoot {
 		return $value || License::degraded();
 	}
 
-	/** Il livello della licenza esclude questa funzione? (Pro Full: nessuna esclusione; contabile: le fiscali; Pro Lite: fiscali e contabilità; gratuita: tutte.) */
+	/** Il livello della licenza esclude questa funzione? (piano completo: nessuna esclusione; intermedio: le fiscali; senza contabilità: fiscali e contabilità; gratuita: tutte.) */
 	public static function plan_blocks( string $feature ): bool {
 		switch ( License::plan() ) {
 			case License::PLAN_FREE:
@@ -203,9 +203,9 @@ final class ProBoot {
 				case License::PLAN_FREE:
 					return LicensePolicy::STATUS_NOKEY === License::state()['status']
 						? 'Questa funzione fa parte di Associazione Semplice Pro: inserisci la chiave di licenza in Impostazioni per usarla.'
-						: 'Questa funzione fa parte di Associazione Semplice Pro (Lite o Full): la tua è la licenza gratuita.';
+						: 'Questa funzione è compresa nei piani a pagamento di Associazione Semplice. Ora stai usando la licenza gratuita.';
 				case License::PLAN_LITE:
-					return 'Questa funzione fa parte della licenza Associazione Semplice Pro Full: la tua licenza è Pro Lite, senza la parte contabile.';
+					return 'Questa funzione è compresa in un piano più completo di Associazione Semplice. Il tuo piano è «' . License::plan_label( License::PLAN_LITE ) . '», senza la parte contabile.';
 			}
 			return 'Questa funzione non è compresa nella tua licenza di Associazione Semplice Pro.';
 		}

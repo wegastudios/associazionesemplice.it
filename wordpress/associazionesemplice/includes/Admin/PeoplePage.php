@@ -351,7 +351,7 @@ final class PeoplePage {
 		}
 		$rows = $people->memberships( (int) $p['id'] );
 		if ( $rows ) {
-			echo '<table class="widefat striped"><thead><tr><th>Anno sociale</th><th>Dal</th><th>Al</th><th>Origine</th></tr></thead><tbody>';
+			echo '<table class="widefat striped"><thead><tr><th>Anno della tessera</th><th>Dal</th><th>Al</th><th>Origine</th></tr></thead><tbody>';
 			foreach ( $rows as $m ) {
 				echo wp_kses( '<tr><td>' . esc_html( $m['social_year'] ) . '</td><td>' . Ui::date( $m['valid_from'] ) . '</td><td>' . Ui::date( $m['valid_to'] ) . '</td><td>' . esc_html( $m['source'] ) . '</td></tr>', Html::allowed() );
 			}
@@ -479,7 +479,7 @@ final class PeoplePage {
 		echo wp_kses( '<details style="margin-top:10px"' . ( $ov && $ov['flag'] ? ' open' : '' ) . '><summary><strong>Iscrivi come socio</strong></summary>' . Ui::hidden( 'id', $p['id'] )
 			. '<p>Email (facoltativa) <input type="email" name="email" value="' . esc_attr( (string) $p['email'] ) . '"> tipo <select name="type">' . Ui::options( array( MemberType::ORDINARY => MemberType::label( MemberType::ORDINARY ), MemberType::VOLUNTEER => MemberType::label( MemberType::VOLUNTEER ) ), MemberType::ORDINARY ) . '</select> '
 			. 'n. tessera (facoltativo) <input type="text" name="card_number" class="small-text"></p>'
-			. '<p><label><input type="checkbox" name="membership" value="1" checked> Segna l\'iscrizione all\'anno sociale ' . esc_html( \AssociazioneSemplice\Settings::social_year()->label() ) . '</label> <button class="button button-primary">Iscrivi come socio</button></p>'
+			. '<p><label><input type="checkbox" name="membership" value="1" checked> Segna la quota del ' . esc_html( \AssociazioneSemplice\Settings::membership_year()->label() ) . ' come pagata</label> <button class="button button-primary">Iscrivi come socio</button></p>'
 			. '<p class="description">La scheda resta la stessa: tutte le partecipazioni e i pagamenti già registrati restano collegati. Si crea l\'utente per l\'area riservata.</p></details>', Html::allowed() );
 		Ui::form_close();
 		echo '</div>';
@@ -607,12 +607,12 @@ final class PeoplePage {
 		}
 		$on = \AssociazioneSemplice\Access::is_treasurer( (int) ( $p['wp_user_id'] ?? 0 ) );
 		echo '<div class="asem-card"><h2>Tesoriere</h2>';
-		echo '<p>' . ( $on ? '<strong class="asem-ok">Può incassare, registrare spese, iscrivere soci e vendere gli eventi dall\'area riservata</strong>' : 'Non può incassare, registrare spese né iscrivere soci.' ) . '</p>';
+		echo '<p>' . ( $on ? '<strong class="asem-ok">È tesoriere: dall\'area riservata può incassare quote e contributi, registrare spese, iscrivere nuovi soci e incassare gli eventi.</strong>' : 'Non è tesoriere: dall\'area riservata non può incassare, registrare spese né iscrivere soci.' ) . '</p>';
 		Ui::form_open( 'asem_set_treasurer', Ui::url( 'asem-person', array( 'id' => (int) $p['id'] ) ) );
 		echo wp_kses( Ui::hidden( 'id', $p['id'] ) . ( $on ? '' : Ui::hidden( 'enabled', 1 ) )
-			. '<button class="button">' . ( $on ? 'Togli il permesso' : 'Permetti di registrare spese' ) . '</button>', Html::allowed() );
+			. '<button class="button"' . ( $on ? '' : ' data-confirm="' . esc_attr( 'Nominare ' . trim( $p['first_name'] . ' ' . $p['last_name'] ) . ' tesoriere? Potrà incassare denaro, registrare spese e iscrivere nuovi soci dall\'area riservata.' ) . '"' ) . '>' . ( $on ? 'Togli l\'incarico di tesoriere' : 'Nomina tesoriere' ) . '</button>', Html::allowed() );
 		Ui::form_close();
-		echo '<p class="description">Con il permesso, nell\'area riservata compare la pagina "Spese" (shortcode <code>[associazionesemplice_spese]</code>): scatta lo scontrino e registra la spesa. Vede solo le spese che ha registrato personalmente e non i saldi dei conti.</p></div>';
+		echo '<p class="description">Con il permesso, nell\'area riservata compare la pagina «Area tesoriere»: incassa, scatta lo scontrino e registra la spesa. Vede solo gli incassi e le spese che ha registrato personalmente e non i saldi dei conti.</p></div>';
 	}
 
 	/** Staff dell'ente: verifica gli accessi a tutti gli eventi. Per l'incasso sul posto serve inoltre l'abilitazione sul singolo evento. */

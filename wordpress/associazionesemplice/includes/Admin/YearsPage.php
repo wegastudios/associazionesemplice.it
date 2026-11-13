@@ -68,7 +68,7 @@ final class YearsPage {
 
 		echo '<div class="asem-card"><h2>Crea anno solare</h2>';
 		Ui::form_open( 'asem_create_year', $back );
-		echo '<p><input type="number" name="year" min="2000" max="2100" value="' . esc_attr( (string) ( $latest ? $latest + 1 : (int) current_time( 'Y' ) ) ) . '" required> <button class="button button-primary">Crea l\'anno</button></p>'
+		echo '<p><input type="number" name="year" min="2000" max="2100" value="' . esc_attr( (string) ( $latest ? $latest + 1 : (int) current_time( 'Y' ) ) ) . '" required> <button class="button button-primary" data-confirm="Creare questo anno? Se è un anno che deve ancora iniziare, da adesso le quote dei nuovi soci varranno per quell\'anno (con il resto di quest\'anno in omaggio). Fallo solo verso la fine dell\'anno.">Crea l\'anno</button></p>'
 			. '<p class="description">Crea in anticipo l\'anno che inizia (ad esempio a novembre l\'anno dopo): da quel momento i nuovi soci pagano la quota di quell\'anno e hanno in omaggio quello in corso.</p>';
 		Ui::form_close();
 		echo '</div>';
