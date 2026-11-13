@@ -28,7 +28,7 @@ final class FiscalYears {
 	 * `asem_fiscal_start_month`. L'anno si indica con l'anno in cui inizia: con inizio a luglio il 2025 va dal 1 luglio 2025 al 30 giugno 2026.
 	 */
 	public static function start_month(): int {
-		$m = (int) Settings::get( 'fiscal_start_month' ); // un'unica fonte di verità: l'impostazione «L'anno fiscale inizia a» (tutte le edizioni)
+		$m = function_exists( 'get_option' ) ? (int) Settings::get( 'fiscal_start_month' ) : 1; // un'unica fonte di verità: l'impostazione «L'anno fiscale inizia a» (tutte le edizioni)
 		$m = function_exists( 'apply_filters' ) ? (int) apply_filters( 'asem_fiscal_start_month', $m ) : $m;
 		return max( 1, min( 12, $m ) );
 	}
