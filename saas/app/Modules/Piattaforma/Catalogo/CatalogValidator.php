@@ -226,6 +226,7 @@ final class CatalogValidator
     }
 
     /**
+     * @param  list<array<string, mixed>>  $plans
      * @return list<array<string, mixed>>
      */
     private static function addons(mixed $value, array $plans): array
@@ -270,7 +271,7 @@ final class CatalogValidator
      */
     private static function addonPlans(mixed $value, string $code, array $plans, array $grants): ?array
     {
-        $codes = array_values(array_unique(array_map(static fn (array $p): string => (string) $p['code'], $plans)));
+        $codes = array_values(array_unique(array_map(static fn (array $p): string => is_string($p['code'] ?? null) ? $p['code'] : '', $plans)));
         $allowed = null;
         if ($value !== null) {
             $allowed = [];
