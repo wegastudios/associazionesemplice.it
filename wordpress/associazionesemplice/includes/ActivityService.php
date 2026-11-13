@@ -25,7 +25,7 @@ class ActivityService {
 
 	/** Attività di un anno sociale (etichetta "2025/2026"), con nome del referente. */
 	public function for_year( string $label ): array {
-		return $this->db()->get_results(
+		return Employees::only_allowed_kinds( $this->db()->get_results(
 			$this->db()->prepare(
 				'SELECT a.*, CONCAT(i.first_name, " ", i.last_name) AS instructor_name FROM ' . Db::t( 'activities' ) . ' a '
 				. 'LEFT JOIN ' . Db::t( 'people' ) . ' i ON i.id = a.instructor_person_id '
@@ -33,7 +33,7 @@ class ActivityService {
 				$label
 			),
 			ARRAY_A
-		) ?: array();
+		) ?: array() ); // un dipendente a cui sono stati tolti i corsi (o gli eventi) non li vede nemmeno negli elenchi
 	}
 
 	/** Contributo dovuto da una persona per questa attività (ospiti: contributo ospiti se impostato). */
@@ -1394,6 +1394,6 @@ class ActivityService {
 		}
 		$sql   .= ' ORDER BY s.session_date, s.start_time, s.id LIMIT %d';
 		$args[] = max( 1, $limit );
-		return $this->db()->get_results( $this->db()->prepare( $sql, $args ), ARRAY_A ) ?: array();
+		return Employees::only_allowed_kinds( $this->db()->get_results( $this->db()->prepare( $sql, $args ), ARRAY_A ) ?: array() );
 	}
 }

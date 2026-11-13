@@ -96,7 +96,7 @@ final class RuntsPage {
 		$workers = Runts::workers_count( $date );
 		echo wp_kses(
 			'<tr><th>Lavoratori (dipendenti a qualsiasi titolo)</th><td><strong style="font-size:1.4em">' . ( null === $workers ? '—' : (int) $workers ) . '</strong></td><td class="description">'
-			. ( null === $workers ? 'Il programma non li conta ancora: scrivi tu il numero nel portale del RUNTS.' : 'Utenti «Dipendente» a quella data.' ) . '</td></tr>',
+			. ( null === $workers ? 'Il programma non li conta ancora: scrivi tu il numero nel portale del RUNTS.' : 'Utenti «Dipendente» in servizio a quella data (senza date di servizio sono sempre in servizio): si gestiscono da Rubrica soci → Dipendenti.' ) . '</td></tr>',
 			Html::allowed()
 		);
 		echo '</tbody></table>';

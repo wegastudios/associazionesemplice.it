@@ -838,6 +838,7 @@ final class Install {
 		if ( ! get_role( Plugin::ROLE_SECRETARY ) ) {
 			add_role( Plugin::ROLE_SECRETARY, 'Segreteria', array( 'read' => true, Plugin::CAP_OPS => true ) );
 		}
+		Employees::ensure_role();
 		$wp_roles = wp_roles(); // i ruoli creati con il vecchio nome («Socio APS», «Segreteria APS») prendono il nome nuovo
 		$names    = array( Plugin::ROLE_MEMBER => 'Socio', Plugin::ROLE_SECRETARY => 'Segreteria' );
 		$renamed  = false;

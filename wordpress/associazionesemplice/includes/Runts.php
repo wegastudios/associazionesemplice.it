@@ -35,9 +35,10 @@ final class Runts {
 	}
 
 	/**
-	 * Lavoratori (dipendenti a qualsiasi titolo) alla data: il numero per il RUNTS è il conteggio degli utenti «Dipendente». È l'UNICO punto da cui il
-	 * numero entra nei Dati per il RUNTS, attraverso il filtro `asem_runts_workers_count` (valore, data). Il valore di partenza è null = «non disponibile»:
-	 * finché nessuno risponde con un numero (intero, zero compreso) la pagina non scrive un falso 0 ma dice che il programma non li conta ancora.
+	 * Lavoratori (dipendenti a qualsiasi titolo) alla data: il numero per il RUNTS è il conteggio degli utenti «Dipendente» in servizio a quella data
+	 * ({@see Employees::runts_workers()}). È l'UNICO punto da cui il numero entra nei Dati per il RUNTS, attraverso il filtro `asem_runts_workers_count`
+	 * (valore, data). Il valore di partenza è null = «non disponibile»: se nessuno risponde con un numero (intero, zero compreso) la pagina non scrive
+	 * un falso 0 ma dice che il programma non li conta ancora.
 	 *
 	 * @return int|null il numero, oppure null se il programma non lo sa
 	 */

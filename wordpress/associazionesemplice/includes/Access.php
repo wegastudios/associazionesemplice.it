@@ -191,7 +191,7 @@ final class Access {
 	public static function user_can( int $user_id, string $ability, int $object_id ): bool {
 		$is_admin = self::is_admin_user( $user_id );
 		if ( $is_admin ) {
-			return true;
+			return ! Employees::ability_denied( $user_id, $ability, $object_id ); // un dipendente a cui è stato tolto un permesso non lo ha nemmeno dall'area riservata
 		}
 		// Licenza non in regola: l'accesso di soci e volontari è sospeso (gli amministratori restano, coperti dal popup).
 		if ( ! Edition::allows( 'member_area' ) ) {

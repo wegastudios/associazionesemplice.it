@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 final class TechPage {
 
 	/** Ruoli che non si toccano: l'amministratore ha già tutto, la segreteria si gestisce dalle schede dei soci, il socio non è un ruolo di gestione. */
-	const LOCKED_ROLES = array( 'administrator', 'asem_secretary', 'asem_member' );
+	const LOCKED_ROLES = array( 'administrator', 'asem_secretary', 'asem_member', 'asem_employee' );
 
 	// ---------- Integrazioni ----------
 
@@ -91,7 +91,8 @@ final class TechPage {
 		Ui::header( 'Ruoli e accessi' );
 		echo '<p class="description">Chi può usare il plugin: gli <strong>amministratori</strong> hanno tutto; la <strong>Segreteria</strong> lavora su soci, attività e contabilità senza toccare le impostazioni (si assegna dalla scheda del socio). '
 			. 'Se ti serve, puoi dare lo stesso accesso operativo a un altro ruolo di WordPress (ad esempio «Editor» o un ruolo creato da te): chi lo ha vede e gestisce soci, attività, registri e prima nota, ma non le impostazioni, i pagamenti, la copia di sicurezza e i testi. '
-			. 'Il tesoriere e lo staff degli eventi sono ruoli sulle persone (scheda del socio e scheda dell\'attività), non ruoli di WordPress.</p>';
+			. 'Il tesoriere e lo staff degli eventi sono ruoli sulle persone (scheda del socio e scheda dell\'attività), non ruoli di WordPress. '
+			. 'Il <strong>Dipendente</strong> è un utente a parte (non è un socio): parte con gli stessi permessi della segreteria e si gestisce da Rubrica soci → Dipendenti.</p>';
 		Ui::form_open( 'asem_save_roles', Ui::url( 'asem-roles' ) );
 		echo '<table class="widefat striped"><thead><tr><th>Ruolo di WordPress</th><th>Utenti</th><th>Accesso operativo al plugin</th></tr></thead><tbody>';
 		foreach ( self::roles() as $key => $r ) {
