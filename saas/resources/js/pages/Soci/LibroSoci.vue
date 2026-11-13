@@ -35,7 +35,7 @@ const q = () => { const s = new URLSearchParams(params()).toString(); return s ?
             <table class="w-full text-sm">
                 <thead class="text-left text-muted">
                     <tr>
-                        <th class="px-3 py-3 text-right font-semibold">N.</th>
+                        <th class="px-3 py-3 text-right font-semibold">N. e matricola</th>
                         <th class="px-3 py-3 font-semibold">Socio</th>
                         <th class="px-3 py-3 font-semibold">Nascita</th>
                         <th class="px-3 py-3 font-semibold">Residenza</th>
@@ -48,7 +48,7 @@ const q = () => { const s = new URLSearchParams(params()).toString(); return s ?
                 <tbody>
                     <tr v-if="!rows.length"><td colspan="8" class="px-3 py-6 text-center text-muted">Nessun socio.</td></tr>
                     <tr v-for="r in rows" :key="r.id" class="border-t border-line align-top" :class="r.in_force ? '' : 'text-muted'">
-                        <td class="px-3 py-2 text-right tabular-nums">{{ r.n }}</td>
+                        <td class="px-3 py-2 text-right tabular-nums">{{ r.n }}<span v-if="r.matricola" class="block text-xs text-muted">matr. {{ r.matricola }}</span></td>
                         <td class="px-3 py-2"><Link :href="`/gestionale/soci/${r.id}`" class="font-semibold text-accent hover:underline">{{ r.name }}</Link><span class="block text-xs text-muted">{{ r.tax_code }}</span></td>
                         <td class="px-3 py-2">{{ r.birth }}</td>
                         <td class="px-3 py-2">{{ r.residence }}<span v-if="r.guardian" class="block text-xs text-muted">Tutore: {{ r.guardian }}</span></td>
