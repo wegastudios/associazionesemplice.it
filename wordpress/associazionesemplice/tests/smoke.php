@@ -3916,18 +3916,22 @@ Settings::update( array( 'ical_enabled' => 0 ) );
 // tessera associativa: scade sempre il 31 dicembre
 $mb_p = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Tessera', 'last_name' => 'Dicembre', 'email' => 'tessera.dicembre@example.com' ) );
 $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $mb_p, 'lines' => array( array( 'category_id' => $cat['membership'], 'amount_cents' => 1000 ) ) ) );
-asem_ok( substr( $today, 0, 4 ) . '-12-31' === $people->active_until( $mb_p ), 'tessera: la scadenza è il 31 dicembre (' . $people->active_until( $mb_p ) . ')' );
+asem_ok( substr( $today, 0, 4 ) . '-12-31' <= $people->active_until( $mb_p ) && '-12-31' === substr( $people->active_until( $mb_p ), 4 ), 'tessera: la scadenza è un 31 dicembre, il più lontano tra quelli pagati (' . $people->active_until( $mb_p ) . ')' );
 asem_ok( substr( $today, 0, 4 ) === Settings::membership_year()->label() && ( (int) substr( $today, 0, 4 ) + 1 ) . '' === Settings::membership_year()->next()->label(), 'tessera: l\'anno della tessera è l\'anno solare' );
 $founder_until = $people->active_until( $founder );
 asem_ok( null !== $founder_until && $founder_until > ( (int) substr( $today, 0, 4 ) + 5 ) . '-01-01', 'tessera: il socio fondatore resta fuori da questa regola' );
 // scadenza = la più lontana tra le tessere: chi ha già pagato anche l'anno dopo scade a fine di quell'anno
 $mb_next = Settings::membership_year()->next()->label();
-$people->set_membership( $mb_p, $mb_next, true, 'manual' );
-asem_ok( $mb_next . '-12-31' === $people->active_until( $mb_p ) && $people->is_active_member( $mb_p ), 'tessera: con l\'anno dopo già pagato la scadenza è la più lontana (' . $people->active_until( $mb_p ) . ')' );
-$mb_row = array_values( array_filter( $people->search(), function ( $r ) use ( $mb_p ) { return (int) $r['id'] === $mb_p; } ) );
+$mb_cur = Settings::membership_year()->label();
+$mb_far = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Scadenza', 'last_name' => 'Lontana', 'email' => 'scadenza.lontana@example.com' ) );
+$people->set_membership( $mb_far, $mb_cur, true, 'manual' );
+asem_ok( $mb_cur . '-12-31' === $people->active_until( $mb_far ), 'tessera: con una sola tessera la scadenza è il 31 dicembre' );
+$people->set_membership( $mb_far, $mb_next, true, 'manual' );
+asem_ok( $mb_next . '-12-31' === $people->active_until( $mb_far ) && $people->is_active_member( $mb_far ), 'tessera: con l\'anno dopo già pagato la scadenza è la più lontana (' . $people->active_until( $mb_far ) . ')' );
+$mb_row = array_values( array_filter( $people->search(), function ( $r ) use ( $mb_far ) { return (int) $r['id'] === $mb_far; } ) );
 asem_ok( $mb_row && $mb_next . '-12-31' === $mb_row[0]['active_until'], 'tessera: l\'elenco soci mostra la stessa scadenza più lontana' );
-$people->set_membership( $mb_p, $mb_next, false, 'manual' );
-asem_ok( substr( $today, 0, 4 ) . '-12-31' === $people->active_until( $mb_p ), 'tessera: tolto l\'anno dopo, torna la scadenza del 31 dicembre' );
+$people->set_membership( $mb_far, $mb_next, false, 'manual' );
+asem_ok( $mb_cur . '-12-31' === $people->active_until( $mb_far ), 'tessera: tolto l\'anno dopo, torna la scadenza del 31 dicembre' );
 $mb_only = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Solo', 'last_name' => 'Futura', 'email' => 'solo.futura@example.com' ) );
 $people->set_membership( $mb_only, $mb_next, true, 'manual' );
 asem_ok( ! $people->is_active_member( $mb_only ), 'tessera: una tessera che non è ancora iniziata, da sola, non rende il socio in regola' );
