@@ -218,6 +218,9 @@ final class Catalog {
 			'vat_mode' => $exempt ? 'exempt' : 'standard', 'vat_note' => $exempt ? $note : '',
 			'own_gateway_percent' => $pct( $pay['own_gateway_percent'] ?? null, 0 ), 'collected_by_us_percent' => $pct( $pay['collected_by_us_percent'] ?? null, 3 ),
 			'trial_exports' => true === ( $try['exports'] ?? false ), 'trial_accountant_access' => true === ( $try['accountant_access'] ?? false ),
+			// Fine prova senza piano: sconto proposto nelle email (0 = niente offerta) e giorni dopo i quali i dati della prova si cancellano.
+			'trial_end_discount_percent' => is_int( $try['end_discount_percent'] ?? null ) && $try['end_discount_percent'] >= 0 && $try['end_discount_percent'] <= 100 ? $try['end_discount_percent'] : 0,
+			'trial_purge_days' => is_int( $try['purge_days'] ?? null ) && $try['purge_days'] >= 1 && $try['purge_days'] <= 90 ? $try['purge_days'] : 7,
 		);
 	}
 

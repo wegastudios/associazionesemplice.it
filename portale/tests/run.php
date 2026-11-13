@@ -2043,6 +2043,26 @@ check( 'sospensione: il giorno dopo la scadenza, una email sola, con la data di 
 $cdb->run( 'UPDATE orders SET suspended_for = NULL WHERE id = ?', array( $ord['id'] ) );
 $mails = array();
 check( 'sospensione: scadenza di molti giorni fa → niente email a sorpresa', 0 === SaasCheckout::sendLifecycleMails( $cdb, $lcUntil + 10 * 86400 ) && array() === $mails );
+// Fine della prova senza un piano: sequenza P1…P6, sola lettura il giorno dopo, chiusura alla cancellazione; niente arretrati.
+$cdb->run( 'INSERT INTO saas_orgs (ref, customer_id, name, slug, rev, created_at, org_id) VALUES (?,?,?,?,0,?,?)', array( 'otrial', $reOrd['customer_id'], 'Circolo Prova', 'prova', '2030-01-01 00:00:00', 'orgT' ) );
+$tOrd = Orders::open( $cdb, (string) $reOrd['customer_id'], (string) $reOrd['plan'], (string) $reOrd['period'], (int) $reOrd['members'], array(), null );
+$cdb->run( "UPDATE orders SET status = 'trial', trial_ends = '2030-01-31', org_ref = 'otrial' WHERE id = ?", array( $tOrd['id'] ) );
+$tAt   = function ( string $d ) { return strtotime( $d . ' 12:00:00 UTC' ); };
+$mails = array();
+check( 'prova: nei giorni prima di P1 non parte nulla', 0 === SaasCheckout::sendTrialMails( $cdb, $tAt( '2030-01-23' ) ) && array() === $mails );
+check( 'prova: P1 sette giorni prima, una volta sola', 1 === SaasCheckout::sendTrialMails( $cdb, $tAt( '2030-01-24' ) ) && 0 === SaasCheckout::sendTrialMails( $cdb, $tAt( '2030-01-24' ) ) && false !== strpos( $mails[0][1], 'finisce il 31/01/2030' ) && false !== strpos( $mails[0][2], 'sola lettura' ) && false !== strpos( $mails[0][2], '07/02/2030' ) && false === strpos( $mails[0][2], '{' ) );
+check( 'prova: P2 due giorni prima', 1 === SaasCheckout::sendTrialMails( $cdb, $tAt( '2030-01-29' ) ) && false !== strpos( $mails[1][1], 'Ancora 2 giorni' ) );
+check( 'prova: P3 il giorno della fine, senza sconto non c\'è il paragrafo dell\'offerta', 1 === SaasCheckout::sendTrialMails( $cdb, $tAt( '2030-01-31' ) ) && false !== strpos( $mails[2][2], 'consultare tutto' ) && false === stripos( $mails[2][2], 'sconto' ) && false === strpos( $mails[2][2], "\n\n\n" ) );
+check( 'prova: il giorno dopo la fine il gestionale passa a «sospeso» (sola lettura) una volta', 0 === SaasCheckout::sendTrialMails( $cdb, $tAt( '2030-02-01' ) ) && 0 === SaasCheckout::sendTrialMails( $cdb, $tAt( '2030-02-02' ) ) && 'suspended' === Portale\SaasAccount::stateOf( $cdb, 'orgT' ) && 1 === (int) $cdb->one( 'SELECT COUNT(*) n FROM saas_outbox WHERE org_id = ?', array( 'orgT' ) )['n'] );
+check( 'prova: P4 tre giorni dopo, P5 il giorno prima della cancellazione', 1 === SaasCheckout::sendTrialMails( $cdb, $tAt( '2030-02-03' ) ) && false !== strpos( $mails[3][2], 'in sola lettura da 3 giorni' ) && 1 === SaasCheckout::sendTrialMails( $cdb, $tAt( '2030-02-06' ) ) && false !== strpos( $mails[4][1], 'Domani cancelliamo' ) );
+check( 'prova: P6 a cancellazione fatta, ordine chiuso', 'trial' === $cdb->one( 'SELECT status FROM orders WHERE id = ?', array( $tOrd['id'] ) )['status'] && 1 === SaasCheckout::sendTrialMails( $cdb, $tAt( '2030-02-07' ) ) && false !== strpos( $mails[5][1], 'Abbiamo cancellato' ) && 'trial_purged' === $cdb->one( 'SELECT status FROM orders WHERE id = ?', array( $tOrd['id'] ) )['status'] && 0 === SaasCheckout::sendTrialMails( $cdb, $tAt( '2030-02-08' ) ) );
+$cdb->run( "UPDATE orders SET status = 'trial', trial_step = 0, suspended_for = NULL WHERE id = ?", array( $tOrd['id'] ) );
+$mails = array();
+check( 'prova: se il lavoro non è girato, gli avvisi vecchi non partono in arretrato', 0 === SaasCheckout::sendTrialMails( $cdb, $tAt( '2030-02-05' ) ) && array() === $mails );
+$cdb->run( 'DELETE FROM orders WHERE id = ?', array( $tOrd['id'] ) );
+$cdb->run( 'DELETE FROM saas_outbox WHERE org_id = ?', array( 'orgT' ) );
+$cdb->run( 'DELETE FROM saas_orgs WHERE ref = ?', array( 'otrial' ) );
+$mails = array();
 // Sottodominio già preso: ne prova un altro; provision fallita: l'ordine resta «paid» e il webhook riprova.
 $provCode = 409;
 $f2 = array( 'promo' => '', 'org_name' => 'Altro Circolo', 'slug' => 'altro' ) + $form;
