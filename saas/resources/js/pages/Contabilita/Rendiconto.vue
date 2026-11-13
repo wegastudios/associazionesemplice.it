@@ -4,7 +4,7 @@ import AppLayout from '../../layouts/AppLayout.vue';
 
 const props = defineProps({ years: Array, statement: Object, canClose: Boolean });
 
-const reopen = useForm({ reason: '' });
+const reopen = useForm({ reason: '', confirm_year: '' });
 const close = () => window.confirm(`Chiudere l'esercizio ${props.statement.year}? Non potrai più registrare né stornare movimenti con date di quell'anno finché non lo riapri.`) && router.post(`/gestionale/esercizi/${props.statement.year}/chiudi`, {}, { preserveScroll: true });
 const submitReopen = () => reopen.post(`/gestionale/esercizi/${props.statement.year}/riapri`, { preserveScroll: true, onSuccess: () => reopen.reset() });
 const print = () => window.print();
@@ -70,6 +70,7 @@ const field = 'field';
             </template>
             <form v-else class="flex flex-wrap items-end gap-3" @submit.prevent="submitReopen">
                 <label class="min-w-64 flex-1 space-y-1 text-sm"><span class="font-semibold">Motivo della riapertura</span><input v-model="reopen.reason" required :class="field" /></label>
+                <label class="w-48 space-y-1 text-sm"><span class="font-semibold">Scrivi {{ statement.year }} per confermare</span><input v-model="reopen.confirm_year" required inputmode="numeric" autocomplete="off" :class="field" /></label>
                 <button type="submit" class="btn btn-secondary">Riapri l'esercizio</button>
             </form>
         </section>

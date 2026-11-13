@@ -117,6 +117,38 @@ final class Emails {
 				'subject' => 'Il gestionale di {associazione} è sospeso',
 				'body' => "Ciao {nome},\nil piano {piano} è scaduto il {scadenza} e il gestionale di {associazione} è sospeso: tu, gli operatori e i soci non potete entrare.\n\nI dati sono al sicuro e restano conservati per 180 giorni, fino al {data_cancellazione}. Dopo quella data vengono cancellati.\n\nPer riattivarlo apri {account_url} e premi «Riattiva»: ritrovi tutto com'era.",
 			),
+			// Fine della prova senza un piano (testi dell'audit, 13/11/2026). Dopo la prova 7 giorni di sola lettura, poi i dati si cancellano.
+			// {offerta} è il paragrafo dello sconto: lo scrive il sistema e c'è solo se lo sconto è impostato (la misura la decide la titolare).
+			'saas_trial_p1' => array(
+				'label' => 'Prova gestionale: 7 giorni prima della fine', 'when' => '7 giorni prima della fine della prova, se non hai ancora scelto un piano.', 'vars' => array( 'nome', 'associazione', 'fine_prova', 'data_cancellazione_prova', 'piani_url', 'account_url', 'supporto_url', 'email' ),
+				'subject' => 'La prova di {associazione} finisce il {fine_prova}',
+				'body' => "Ciao {nome},\nla prova gratuita del gestionale di {associazione} finisce il {fine_prova}.\n\nPer continuare senza interruzioni scegli un piano da {piani_url}: tutto quello che hai inserito resta com'è.\n\nSe non scegli un piano, dal {fine_prova} il gestionale resta in sola lettura e il {data_cancellazione_prova} i dati della prova vengono cancellati.",
+			),
+			'saas_trial_p2' => array(
+				'label' => 'Prova gestionale: 2 giorni prima della fine', 'when' => '2 giorni prima della fine della prova, se non hai ancora scelto un piano.', 'vars' => array( 'nome', 'associazione', 'fine_prova', 'data_cancellazione_prova', 'piani_url', 'account_url', 'supporto_url', 'email' ),
+				'subject' => 'Ancora 2 giorni di prova per {associazione}',
+				'body' => "Ciao {nome},\ntra 2 giorni, il {fine_prova}, finisce la prova del gestionale.\n\nScegli un piano da {piani_url} e continui da dove sei arrivato, con soci, movimenti e attività già inseriti.\n\nCon un piano si sbloccano anche lo scarico dei dati e l'accesso per il commercialista.",
+			),
+			'saas_trial_p3' => array(
+				'label' => 'Prova gestionale: giorno della fine', 'when' => 'Il giorno in cui finisce la prova, senza un piano.', 'vars' => array( 'nome', 'associazione', 'fine_prova', 'data_cancellazione_prova', 'sconto', 'codice_sconto', 'scadenza_sconto', 'offerta', 'piani_url', 'account_url', 'supporto_url', 'email' ),
+				'subject' => 'La prova di {associazione} è finita: i dati restano fino al {data_cancellazione_prova}',
+				'body' => "Ciao {nome},\nla prova è finita. Fino al {data_cancellazione_prova} puoi ancora entrare nel gestionale di {associazione} e consultare tutto, ma non inserire né modificare.\n\nQuello che hai inserito è ancora al suo posto fino al {data_cancellazione_prova}. Se scegli un piano prima di quel giorno, ritrovi tutto.\n\n{offerta}\n\nScegli il piano: {piani_url}",
+			),
+			'saas_trial_p4' => array(
+				'label' => 'Prova gestionale: 3 giorni dopo la fine', 'when' => '3 giorni dopo la fine della prova, senza un piano.', 'vars' => array( 'nome', 'associazione', 'fine_prova', 'data_cancellazione_prova', 'sconto', 'codice_sconto', 'scadenza_sconto', 'offerta', 'piani_url', 'account_url', 'supporto_url', 'email' ),
+				'subject' => 'I dati di {associazione} vengono cancellati il {data_cancellazione_prova}',
+				'body' => "Ciao {nome},\nil gestionale di {associazione} è in sola lettura da 3 giorni. I dati della prova restano ancora fino al {data_cancellazione_prova}.\n\n{offerta}\n\nPer riprendere: {piani_url}\n\nNon ti serve? Non devi fare nulla: cancelliamo tutto noi.",
+			),
+			'saas_trial_p5' => array(
+				'label' => 'Prova gestionale: il giorno prima della cancellazione', 'when' => 'Il giorno prima della cancellazione dei dati della prova.', 'vars' => array( 'nome', 'associazione', 'fine_prova', 'data_cancellazione_prova', 'sconto', 'codice_sconto', 'scadenza_sconto', 'offerta', 'piani_url', 'account_url', 'supporto_url', 'email' ),
+				'subject' => 'Domani cancelliamo i dati della prova di {associazione}',
+				'body' => "Ciao {nome},\ndomani, {data_cancellazione_prova}, cancelliamo i dati della prova di {associazione}: soci, movimenti e attività inseriti. La cancellazione non si può annullare.\n\nSe vuoi tenerli, scegli un piano oggi: {piani_url}\n\n{offerta}",
+			),
+			'saas_trial_p6' => array(
+				'label' => 'Prova gestionale: dati cancellati', 'when' => 'Il giorno in cui si cancellano i dati della prova.', 'vars' => array( 'nome', 'associazione', 'fine_prova', 'data_cancellazione_prova', 'piani_url', 'account_url', 'supporto_url', 'email' ),
+				'subject' => 'Abbiamo cancellato i dati della prova di {associazione}',
+				'body' => "Ciao {nome},\ncome ti avevamo scritto, oggi abbiamo cancellato i dati della prova di {associazione}. Non conserviamo più nulla di quello che avevi inserito.\n\nIl tuo account su associazionesemplice.it resta: se un giorno vorrai ripartire, lo fai da {piani_url}.\n\nGrazie per aver provato Associazione Semplice.",
+			),
 			'saas_cancelled' => array(
 				'label' => 'Gestionale: disdetta registrata', 'when' => 'Il cliente disdice il rinnovo del gestionale dall\'area clienti.', 'vars' => array( 'nome', 'associazione', 'piano', 'scadenza', 'account_url', 'supporto_url', 'email' ),
 				'subject' => 'Disdetta registrata: il gestionale resta attivo fino al {scadenza}',
@@ -143,7 +175,8 @@ final class Emails {
 			$map[ '{' . $k . '}' ] = (string) $v;
 		}
 		// Senza nome del cliente «Ciao {nome},» diventa «Ciao,».
-		return (string) preg_replace( '/^Ciao ,/m', 'Ciao,', strtr( $text, $map ) );
+		// Un paragrafo che resta vuoto (per esempio l'offerta senza sconto) non lascia righe vuote di troppo.
+		return (string) preg_replace( array( '/^Ciao ,/m', "/\n{3,}/" ), array( 'Ciao,', "\n\n" ), strtr( $text, $map ) );
 	}
 
 	/** Segnaposto scritti nel testo che non esistono per questo evento (per avvisare chi modifica). */
