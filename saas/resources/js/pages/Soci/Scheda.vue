@@ -13,7 +13,7 @@ const props = defineProps({
 
 const p = props.person ?? {};
 const form = useForm({
-    type: p.type ?? 'ordinary', first_name: p.first_name ?? '', last_name: p.last_name ?? '', email: p.email ?? '',
+    type: p.type ?? 'ordinary', is_entity: p.is_entity ?? false, entity_same_section: p.entity_same_section ?? null, first_name: p.first_name ?? '', last_name: p.last_name ?? '', email: p.email ?? '',
     phone: p.phone ?? '', card_number: p.card_number ?? '', tax_code: p.tax_code ?? '', birth_date: p.birth_date ?? '',
     birth_place: p.birth_place ?? '', address: p.address ?? '', iban: p.iban ?? '', notes: p.notes ?? '',
     level_id: p.level_id ?? '', host_person_id: '', joined_on: p.joined_on ?? '',
@@ -116,8 +116,10 @@ const label = 'space-y-1 text-sm';
                 <legend class="mb-2 text-lg font-bold">Dati principali</legend>
                 <label :class="label"><span class="font-semibold">Tipo</span>
                     <select v-model="form.type" :class="field"><option v-for="t in types" :key="t.value" :value="t.value">{{ t.label }}</option></select></label>
-                <label :class="label"><span class="font-semibold">Nome</span><input v-model="form.first_name" required :class="field" /></label>
-                <label :class="label"><span class="font-semibold">Cognome</span><input v-model="form.last_name" required :class="field" /></label>
+                <label :class="label"><span class="font-semibold">È un ente</span><span class="flex items-center gap-2 text-sm"><input v-model="form.is_entity" type="checkbox" />Associazione, società o altro ente</span></label>
+                <label v-if="!form.is_entity" :class="label"><span class="font-semibold">Nome</span><input v-model="form.first_name" required :class="field" /></label>
+                <label :class="label"><span class="font-semibold">{{ form.is_entity ? 'Denominazione' : 'Cognome' }}</span><input v-model="form.last_name" required :class="field" /></label>
+                <label v-if="form.is_entity" :class="label"><span class="font-semibold">Stessa sezione del Registro (RUNTS)?</span><select v-model="form.entity_same_section" :class="field"><option :value="null">Non indicato</option><option :value="true">Sì, stessa sezione</option><option :value="false">No, altra sezione o non iscritto</option></select></label>
                 <label :class="label"><span class="font-semibold">Email</span><input v-model="form.email" type="email" :class="field" /></label>
                 <label :class="label"><span class="font-semibold">Cellulare</span><input v-model="form.phone" type="tel" :class="field" /></label>
                 <label v-if="!isGuest" :class="label">
@@ -138,8 +140,8 @@ const label = 'space-y-1 text-sm';
                 <legend class="mb-1 text-lg font-bold">Dati riservati</legend>
                 <p class="text-sm text-muted sm:col-span-3">Dati protetti: li vede solo chi ha il permesso di aprire le schede.</p>
                 <label :class="label"><span class="font-semibold">Codice fiscale</span><input v-model="form.tax_code" autocomplete="off" class="uppercase" :class="field" /></label>
-                <label :class="label"><span class="font-semibold">Data di nascita</span><input v-model="form.birth_date" type="date" :class="field" /></label>
-                <label :class="label"><span class="font-semibold">Luogo di nascita</span><input v-model="form.birth_place" :class="field" /></label>
+                <label v-if="!form.is_entity" :class="label"><span class="font-semibold">Data di nascita</span><input v-model="form.birth_date" type="date" :class="field" /></label>
+                <label v-if="!form.is_entity" :class="label"><span class="font-semibold">Luogo di nascita</span><input v-model="form.birth_place" :class="field" /></label>
                 <label :class="label" class="sm:col-span-2"><span class="font-semibold">Indirizzo</span><input v-model="form.address" placeholder="Via, CAP, comune, provincia" :class="field" /></label>
                 <label :class="label"><span class="font-semibold">IBAN</span><input v-model="form.iban" autocomplete="off" :class="field" /></label>
                 <label :class="label" class="sm:col-span-3"><span class="font-semibold">Note</span><textarea v-model="form.notes" rows="3" :class="field" /></label>

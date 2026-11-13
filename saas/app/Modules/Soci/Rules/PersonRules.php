@@ -31,7 +31,12 @@ final class PersonRules
         $today = $today !== '' ? $today : date('Y-m-d');
         $errors = [];
 
-        if ($text('first_name') === '' || $text('last_name') === '') {
+        $entity = filter_var($d['is_entity'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        if ($entity) {
+            if ($text('last_name') === '') {
+                $errors[] = "La denominazione dell'ente è obbligatoria.";
+            }
+        } elseif ($text('first_name') === '' || $text('last_name') === '') {
             $errors[] = 'Nome e cognome sono obbligatori.';
         }
         if ($text('email') !== '' && filter_var($text('email'), FILTER_VALIDATE_EMAIL) === false) {
@@ -40,7 +45,8 @@ final class PersonRules
         if ($text('phone') !== '' && ! Phone::isValid($text('phone'))) {
             $errors[] = 'Il numero di cellulare non è valido.';
         }
-        if ($text('tax_code') !== '' && ! TaxCode::isValid($text('tax_code'))) {
+        $entityCode = $entity && preg_match('/^\d{11}$/', TaxCode::normalize($text('tax_code'))) === 1;
+        if ($text('tax_code') !== '' && ! $entityCode && ! TaxCode::isValid($text('tax_code'))) {
             $errors[] = 'Il codice fiscale non è valido.';
         }
         if ($text('iban') !== '' && ! Iban::isValid($text('iban'))) {

@@ -21,6 +21,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string|null $user_id
  * @property string $first_name
  * @property string $last_name
+ * @property bool $is_entity
+ * @property bool|null $entity_same_section
  * @property string|null $email
  * @property string|null $card_number
  * @property string|null $tax_code
@@ -56,7 +58,7 @@ final class Person extends OrgModel
     protected $fillable = [
         'first_name', 'last_name', 'email', 'card_number', 'user_id',
         'tax_code', 'birth_date', 'birth_place', 'address', 'phone', 'iban', 'notes',
-        'type', 'level_id', 'host_person_id', 'joined_on', 'left_on', 'left_reason',
+        'is_entity', 'entity_same_section', 'type', 'level_id', 'host_person_id', 'joined_on', 'left_on', 'left_reason',
     ];
 
     /** @var list<string> */
@@ -76,6 +78,8 @@ final class Person extends OrgModel
             'iban' => Encrypted::class,
             'notes' => Encrypted::class,
             'type' => MemberType::class,
+            'is_entity' => 'boolean',
+            'entity_same_section' => 'boolean',
             'joined_on' => 'immutable_date',
             'left_on' => 'immutable_date',
             'suspended_at' => 'immutable_datetime',

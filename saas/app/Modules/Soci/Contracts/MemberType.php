@@ -37,6 +37,15 @@ enum MemberType: string
         return in_array($this, [self::Founder, self::Ordinary, self::Volunteer], true);
     }
 
+    /**
+     * Diritto di voto in assemblea (conteggi RUNTS): i soci sì, ospiti e genitori no. I minorenni
+     * si escludono a parte, alla data del conteggio.
+     */
+    public function hasVotingRights(): bool
+    {
+        return $this->isMember();
+    }
+
     public function canLogin(): bool
     {
         return $this->isMember() || $this === self::Guardian;
