@@ -337,7 +337,7 @@ final class EventRequests {
 		if ( ActivityKind::COURSE === $a['kind'] ) { // l'iscrizione a un corso la approva sempre la segreteria
 			self::set( (int) $row['id'], array( 'status' => 'approval' ) );
 			Texts::mail(
-				Applications::notify_email(),
+				self::staff_recipients( (int) $a['id'] ),
 				'Richiesta di iscrizione da approvare: ' . $a['name'] . self::assoc_suffix(),
 				'È arrivata una richiesta di iscrizione al corso «' . $a['name'] . "».\n\nApprovala o rifiutala dalla scheda dell'attività: " . admin_url( 'admin.php?page=asem-activity&id=' . (int) $a['id'] )
 			);
@@ -346,7 +346,7 @@ final class EventRequests {
 		if ( PublicEvents::options( (int) $a['id'] )['approval'] ) {
 			self::set( (int) $row['id'], array( 'status' => 'approval' ) );
 			Texts::mail(
-				Applications::notify_email(),
+				self::staff_recipients( (int) $a['id'] ),
 				'Richiesta di partecipazione da approvare: ' . $a['name'] . self::assoc_suffix(),
 				'È arrivata una richiesta di partecipazione a «' . $a['name'] . '» (' . (int) $row['seats'] . ' posti).' . "\n\nApprovala o rifiutala dalla scheda dell'attività: " . admin_url( 'admin.php?page=asem-activity&id=' . (int) $a['id'] )
 			);
@@ -388,6 +388,26 @@ final class EventRequests {
 	// ---------- Richieste dei soci (eventi con approvazione) ----------
 
 	/** C'è già una richiesta in attesa di questa persona per questa data? */
+	/**
+	 * Chi riceve l'avviso di una richiesta di prenotazione o iscrizione: la segreteria e anche l'email di contatto di quell'evento o corso
+	 * (può occuparsene qualcuno esterno), se è valida e diversa da quella della segreteria. La conferma a chi chiede non cambia.
+	 *
+	 * @return string[]
+	 */
+	public static function staff_recipients( int $activity_id ): array {
+		$to      = array();
+		$office  = trim( (string) Applications::notify_email() );
+		if ( '' !== $office ) {
+			$to[] = $office;
+		}
+		$pid     = PublicEvents::post_of( $activity_id );
+		$contact = $pid ? PublicEvents::contacts( $pid )['email'] : '';
+		if ( '' !== $contact && is_email( $contact ) && ( '' === $office || 0 !== strcasecmp( $contact, $office ) ) ) {
+			$to[] = $contact;
+		}
+		return $to;
+	}
+
 	public static function pending_for( int $session_id, int $person_id ): bool {
 		return (bool) self::db()->get_var( self::db()->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'event_requests' ) . " WHERE session_id = %d AND person_id = %d AND status = 'approval'", $session_id, $person_id ) );
 	}
@@ -412,7 +432,7 @@ final class EventRequests {
 		);
 		Audit::log( 'event_request.member', 'activity', (int) $s['activity_id'], array( 'person_id' => $person_id ) );
 		$a = Plugin::activities()->get( (int) $s['activity_id'] );
-		Texts::mail( Applications::notify_email(), 'Richiesta di partecipazione da approvare' . ( $a ? ': ' . $a['name'] : '' ) . self::assoc_suffix(), "È arrivata una richiesta di partecipazione di un socio.\n\nEsaminala dalla scheda dell'attività: " . admin_url( 'admin.php?page=asem-activity&id=' . (int) $s['activity_id'] ) );
+		Texts::mail( self::staff_recipients( (int) $s['activity_id'] ), 'Richiesta di partecipazione da approvare' . ( $a ? ': ' . $a['name'] : '' ) . self::assoc_suffix(), "È arrivata una richiesta di partecipazione di un socio.\n\nEsaminala dalla scheda dell'attività: " . admin_url( 'admin.php?page=asem-activity&id=' . (int) $s['activity_id'] ) );
 	}
 
 	/** Prenota un socio la cui richiesta è stata approvata (contributo e blocco posti come per ogni prenotazione). */
@@ -593,7 +613,7 @@ final class EventRequests {
 			array( 'activity_id' => $activity_id, 'session_id' => 0, 'person_id' => $person_id, 'seats' => 1, 'status' => 'approval', 'token_hash' => hash( 'sha256', wp_generate_password( 32, false, false ) ), 'created_at' => $now, 'updated_at' => $now )
 		);
 		Audit::log( 'event_request.course_member', 'activity', $activity_id, array( 'person_id' => $person_id ) );
-		Texts::mail( Applications::notify_email(), 'Richiesta di iscrizione da approvare: ' . $a['name'] . self::assoc_suffix(), "È arrivata la richiesta di iscrizione di un socio al corso «" . $a['name'] . "».\n\nEsaminala dalla scheda dell'attività: " . admin_url( 'admin.php?page=asem-activity&id=' . $activity_id ) );
+		Texts::mail( self::staff_recipients( $activity_id ), 'Richiesta di iscrizione da approvare: ' . $a['name'] . self::assoc_suffix(), "È arrivata la richiesta di iscrizione di un socio al corso «" . $a['name'] . "».\n\nEsaminala dalla scheda dell'attività: " . admin_url( 'admin.php?page=asem-activity&id=' . $activity_id ) );
 	}
 
 	/** Modulo del non socio per chiedere l'iscrizione a un corso (o l'esito, dopo l'invio). */

@@ -120,3 +120,13 @@ L'import degli eventi (Importa da The Events Calendar) compila ora anche la **pa
 - rilanciando l'import non nascono doppioni e **una pagina che ha già un contenuto non si tocca**; se è rimasta vuota si compila;
 - restano esclusi costi e prenotazioni. Il riepilogo dice quante pagine sono state compilate e pubblicate e dove vederle (Eventi sul sito).
 - Voce del log da scrivere alla pubblicazione: «L'importazione da The Events Calendar compila anche le pagine pubbliche degli eventi (descrizione, immagine, categoria, organizzatore); le ripetizioni diventano un evento ricorrente e le pagine restano in bozza finché non le pubblichi».
+
+## Contatti per le informazioni di ogni evento (13/11/2026)
+
+Fatto, **non ancora pubblicato** (numero di versione e log alla pubblicazione).
+
+- L'email e il telefono/WhatsApp mostrati in «Info e contatti» nella pagina di un evento o corso non si impostano più dall'amministrazione del sito: **di default** sono l'email di **chi crea** l'evento (o il corso) e il telefono della **segreteria** (impostazione `secretary_phone`, lo stesso del pulsante WhatsApp fisso). Si cambiano **per ogni evento** nel riquadro «Contatti per le informazioni» della pagina (può occuparsene qualcuno esterno); lasciati vuoti non si mostra niente. Meta: `_asem_contact_email`, `_asem_contact_phone`.
+- Pagine create prima di questa funzione, senza contatti propri: email dell'autore della pagina, solo come ultimo ripiego quella della segreteria; telefono della segreteria.
+- Il **pulsante WhatsApp fisso** su tutto il sito resta sempre quello della segreteria.
+- Gli **avvisi di nuove richieste** di prenotazione o iscrizione (anche ai corsi) arrivano **alla segreteria e anche all'email di contatto di quell'evento**, se valida e diversa da quella della segreteria (un solo invio se coincidono). La conferma a chi chiede non cambia.
+- Voce del log da scrivere alla pubblicazione: «Ogni evento o corso ha la sua email e il suo telefono per le informazioni: di default quelli di chi lo crea e della segreteria, modificabili per evento; le richieste di prenotazione e iscrizione avvisano anche l'email di quell'evento».

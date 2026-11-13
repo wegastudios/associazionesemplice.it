@@ -26,6 +26,38 @@ final class PublicEvents {
 	const OPT_MAX_SEATS = '_asem_ev_max_seats';
 	const OPT_HIDE_CANC = '_asem_ev_hide_cancelled';
 
+	/** Contatti per le informazioni di quell'evento (può occuparsene qualcuno esterno): email e telefono/WhatsApp. */
+	const META_EMAIL = '_asem_contact_email';
+	const META_PHONE = '_asem_contact_phone';
+
+	/**
+	 * Contatti mostrati nella pagina dell'evento. Email: quella scelta per l'evento (anche vuota = nessuna), altrimenti di chi ha creato la pagina,
+	 * e solo per le pagine vecchie senza autore con email quella della segreteria. Telefono: quello dell'evento (vuoto = nessuno), altrimenti
+	 * quello della segreteria (pagine create prima di questa impostazione).
+	 *
+	 * @return array{email:string,phone:string}
+	 */
+	public static function contacts( int $post_id ): array {
+		$email = '';
+		if ( $post_id && metadata_exists( 'post', $post_id, self::META_EMAIL ) ) {
+			$email = (string) sanitize_email( (string) get_post_meta( $post_id, self::META_EMAIL, true ) );
+		} else {
+			$post   = $post_id ? get_post( $post_id ) : null;
+			$author = $post && (int) $post->post_author > 0 ? get_userdata( (int) $post->post_author ) : false;
+			$email  = $author && is_email( (string) $author->user_email ) ? (string) $author->user_email : (string) Applications::notify_email();
+		}
+		$phone = '';
+		if ( $post_id && metadata_exists( 'post', $post_id, self::META_PHONE ) ) {
+			$phone = trim( (string) get_post_meta( $post_id, self::META_PHONE, true ) );
+		} else {
+			$phone = trim( (string) Settings::get( 'secretary_phone' ) );
+		}
+		return array(
+			'email' => $email,
+			'phone' => Phone::is_valid( $phone ) ? $phone : '',
+		);
+	}
+
 	/**
 	 * Come si prenota questo evento dal sito.
 	 *
@@ -201,13 +233,22 @@ final class PublicEvents {
 				}
 				return $id;
 			}
+			$meta  = array( self::META => $activity_id );
+			$me    = wp_get_current_user();
+			$phone = trim( (string) Settings::get( 'secretary_phone' ) );
+			if ( $me && $me->exists() && is_email( (string) $me->user_email ) ) {
+				$meta[ self::META_EMAIL ] = (string) $me->user_email; // di default chi crea l'evento, poi si cambia per ogni evento
+			}
+			if ( Phone::is_valid( $phone ) ) {
+				$meta[ self::META_PHONE ] = $phone; // di default la segreteria
+			}
 			$new = wp_insert_post(
 				array(
 					'post_type'   => self::POST_TYPE,
 					'post_status' => 'draft',
 					'post_title'  => (string) $a['name'],
 					'post_name'   => sanitize_title( (string) $a['name'] ),
-					'meta_input'  => array( self::META => $activity_id ),
+					'meta_input'  => $meta,
 				),
 				true
 			);
@@ -332,6 +373,15 @@ final class PublicEvents {
 	public static function meta_box(): void {
 		add_meta_box( 'asem_event_data', 'Dati presi dall\'attività', array( __CLASS__, 'render_meta_box' ), self::POST_TYPE, 'side', 'high' );
 		add_meta_box( 'asem_event_booking', 'Prenotazione online', array( __CLASS__, 'render_options_box' ), self::POST_TYPE, 'side', 'default' );
+		add_meta_box( 'asem_event_contacts', 'Contatti per le informazioni', array( __CLASS__, 'render_contacts_box' ), self::POST_TYPE, 'side', 'default' );
+	}
+
+	/** Email e telefono/WhatsApp mostrati nella pagina: di chi l'ha creata e della segreteria, ma si cambiano per ogni evento (può occuparsene qualcuno esterno). */
+	public static function render_contacts_box( $post ): void {
+		$c = self::contacts( (int) $post->ID );
+		echo '<p><label>Email per le informazioni<br><input type="email" name="asem_ev_email" value="' . esc_attr( $c['email'] ) . '" class="widefat"></label></p>';
+		echo '<p><label>Telefono per le informazioni (anche WhatsApp)<br><input type="text" name="asem_ev_phone" value="' . esc_attr( $c['phone'] ) . '" class="widefat" autocomplete="off"></label></p>';
+		echo '<p class="description">Di solito sono i tuoi e quelli della segreteria. Cambiali se di questo evento si occupa qualcun altro; lasciali vuoti per non mostrare niente. Le richieste di prenotazione arrivano comunque alla segreteria.</p>';
 	}
 
 	public static function render_options_box( $post ): void {
@@ -353,6 +403,15 @@ final class PublicEvents {
 		update_post_meta( (int) $post_id, self::OPT_APPROVAL, isset( $_POST['asem_ev_approval'] ) ? '1' : '0' );
 		update_post_meta( (int) $post_id, self::OPT_MAX_SEATS, (string) max( 0, min( 50, isset( $_POST['asem_ev_max_seats'] ) ? absint( wp_unslash( $_POST['asem_ev_max_seats'] ) ) : 0 ) ) );
 		update_post_meta( (int) $post_id, self::OPT_HIDE_CANC, isset( $_POST['asem_ev_hide_cancelled'] ) ? '1' : '0' );
+		if ( isset( $_POST['asem_ev_email'] ) ) { // vuoto = nessuna email nella pagina
+			update_post_meta( (int) $post_id, self::META_EMAIL, (string) sanitize_email( wp_unslash( $_POST['asem_ev_email'] ) ) );
+		}
+		if ( isset( $_POST['asem_ev_phone'] ) ) {
+			$phone = trim( sanitize_text_field( wp_unslash( $_POST['asem_ev_phone'] ) ) );
+			if ( '' === $phone || Phone::is_valid( $phone ) ) { // un numero non valido non sostituisce quello di prima
+				update_post_meta( (int) $post_id, self::META_PHONE, mb_substr( $phone, 0, 30 ) );
+			}
+		}
 	}
 
 	/** Evento annullato con l'opzione «nascondi»: la pagina non si trova più (chi gestisce la vede ancora). */
@@ -516,7 +575,7 @@ final class PublicEvents {
 		$html    = '<div class="asemf asemf-event">' . ( '' !== $all ? '<p class="asemf-back"><a href="' . esc_url( $all ) . '">« Tutti gli eventi</a></p>' : '' ) . '<div class="asemf-event-head' . ( has_post_thumbnail( $post ) ? ' has-poster' : '' ) . '">';
 		$html   .= self::poster_html( $post ) . self::facts_html( $a ) . '</div>';
 		$html   .= '<div class="asemf-event-text">' . $content . '</div>';
-		return $html . self::booking_html( $a, $post ) . self::venue_html( $a ) . self::share_html( $post ) . self::prev_next_html( $post ) . '</div>';
+		return $html . self::booking_html( $a, $post ) . self::venue_html( $a, $post ) . self::share_html( $post ) . self::prev_next_html( $post ) . '</div>';
 	}
 
 	/** Pezzi della pagina evento, ognuno una vista (shortcode `associazionesemplice_evento_*`, blocco e widget «Associazione Semplice»). */
@@ -605,7 +664,7 @@ final class PublicEvents {
 				$h = self::booking_html( $a, $post );
 				break;
 			case 'dove':
-				$h = self::venue_html( $a );
+				$h = self::venue_html( $a, $post );
 				break;
 			case 'navigazione':
 				$all = self::list_page_url();
@@ -618,21 +677,24 @@ final class PublicEvents {
 	}
 
 	/** Dove e come contattarci: luogo con il collegamento alla mappa (si apre solo cliccando) e l'email della segreteria. */
-	private static function venue_html( array $a ): string {
-		$where = self::where_text( $a );
-		$mail  = Applications::notify_email();
-		if ( '' === $where && '' === $mail ) {
+	private static function venue_html( array $a, ?\WP_Post $post = null ): string {
+		$where   = self::where_text( $a );
+		$pid     = $post ? (int) $post->ID : self::post_of( (int) $a['id'] );
+		$contact = self::contacts( $pid ); // email e telefono di questo evento
+		$mail    = $contact['email'];
+		if ( '' === $where && '' === $mail && '' === $contact['phone'] ) {
 			return '';
 		}
 		$h = '<div class="asemf-venue">';
 		if ( '' !== $where ) {
 			$h .= '<div><strong>Dove</strong><br>' . esc_html( $where ) . '<br><a href="' . esc_url( 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode( $where ), array( 'https' ) ) . '" target="_blank" rel="noopener noreferrer">Apri su Google Maps</a></div>';
 		}
-		$wa = Phone::whatsapp( (string) Settings::get( 'secretary_phone' ) );
+		$wa = Phone::whatsapp( $contact['phone'] ); // il telefono di questo evento, non per forza quello della segreteria
 		if ( '' !== $mail || '' !== $wa ) {
 			$h .= '<div><strong>Info e contatti</strong>';
 			if ( '' !== $wa ) {
 				$h .= '<br><a class="asemf-btn wp-element-button asemf-wa" href="' . esc_url( 'https://wa.me/' . $wa . '?text=' . rawurlencode( 'Ciao, vorrei informazioni su «' . (string) $a['name'] . '»' ), array( 'https' ) ) . '" target="_blank" rel="noopener noreferrer">💬 Scrivici su WhatsApp</a>';
+				$h .= '<br><a href="' . esc_url( 'tel:+' . $wa, array( 'tel' ) ) . '">' . esc_html( $contact['phone'] ) . '</a>';
 			}
 			if ( '' !== $mail ) {
 				$h .= '<br><a href="mailto:' . esc_attr( antispambot( $mail ) ) . '">' . esc_html( antispambot( $mail ) ) . '</a>';
