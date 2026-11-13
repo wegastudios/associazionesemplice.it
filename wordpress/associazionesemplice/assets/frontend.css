@@ -201,7 +201,7 @@
 	.asemf-section a:not(.asemf-btn) { display: inline-flex; align-items: center; }
 	.asemf-section p a:not(.asemf-btn), .asemf-section li a:not(.asemf-btn), .asemf-section dd a { display: inline; min-height: 0; padding: .6em 0; }
 	.asemf-section input:not([type=checkbox]):not([type=radio]), .asemf-section select, .asemf-section textarea { min-height: 44px; font-size: 16px; } /* 16 px: iOS non zooma nei campi */
-	.asemf-print-wrap { display: flex; gap: .5rem; flex-wrap: wrap; } .asemf-print-wrap .asemf-btn { flex: 1 1 8rem; }
+	.asemf-print-wrap { display: flex; gap: .5rem; flex-wrap: wrap; } .asemf-print-wrap .asemf-btn { flex: 1 1 100%; text-align: center; }
 }
 
 /* Pulsante secondario («Non ora», «Disattiva le notifiche»): contorno, non pieno, così il primario si distingue */
@@ -243,7 +243,7 @@
 /* Riquadri: carta bianca con il suo testo, leggibile su un sito chiaro o scuro */
 :where(body) .asemf .asemf-section { background: #fff; color: var(--asemf-ink); border-color: var(--asemf-line); border-radius: 16px; }
 :where(body) .asemf .asemf-card { background: #F5F6FA; color: var(--asemf-ink); border-color: var(--asemf-line); border-radius: 16px; }
-:where(body) .asemf .asemf-section > h3 { font-family: Montserrat, system-ui, sans-serif; font-weight: 700; font-size: 1.15em; }
+:where(body) .asemf .asemf-section > h3, :where(body) .asemf .asemf-collapse > summary > h3 { font-family: Montserrat, system-ui, sans-serif; font-weight: 700; font-size: 1.15em; }
 :where(body) .asemf .asemf-list > li { min-height: 56px; padding: .75rem 0; border-color: var(--asemf-line); }
 :where(body) .asemf .asemf-table th, :where(body) .asemf .asemf-table td { border-color: var(--asemf-line); }
 
@@ -395,3 +395,17 @@
 @media (max-width: 700px) {
 	.asemf-chip { display: inline-flex; align-items: center; min-height: 44px; padding: 0 1rem; font-size: 1rem; }
 }
+
+/* Sezioni richiudibili dell'area soci: il titolo è il pulsante che apre e chiude */
+.asemf-collapse { margin-top: 0; }
+.asemf-collapse > summary { display: flex; align-items: center; justify-content: space-between; gap: .75rem; cursor: pointer; list-style: none; min-height: 44px; padding: 0; }
+.asemf-collapse > summary::-webkit-details-marker { display: none; }
+.asemf-collapse > summary::after { content: ""; flex: none; width: .6em; height: .6em; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); transition: transform .15s; }
+.asemf-collapse[open] > summary::after { transform: rotate(-135deg); }
+.asemf-collapse > summary > h3 { margin: 0; }
+.asemf-collapse[open] > summary { margin-bottom: .5rem; }
+.asemf-collapse > summary:focus-visible { outline: 2px solid var(--asemf-accent, #1F218C); outline-offset: 2px; }
+
+/* Locandine: sempre intere, mai ritagliate */
+.asemf-poster img, .asemf-card-poster img { width: 100%; height: auto; aspect-ratio: auto; object-fit: contain; }
+.asemf-poster a { display: block; }
