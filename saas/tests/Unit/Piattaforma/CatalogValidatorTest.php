@@ -140,7 +140,7 @@ it('ha condizioni di partenza neutre: IVA standard, nessuna commissione, prova s
     expect($doc['terms']['vat']['mode'])->toBe('standard')
         ->and($doc['terms']['vat']['note'])->toBe('')
         ->and($doc['terms']['payments'])->toBe(['own_gateway_percent' => 0, 'collected_by_us_percent' => 0])
-        ->and($doc['terms']['trial'])->toBe(['exports' => false, 'accountant_access' => false]);
+        ->and($doc['terms']['trial'])->toBe(['exports' => false, 'accountant_access' => false, 'end_discount_percent' => 0, 'purge_days' => 7]);
 
     // Un catalogo senza condizioni (le revisioni precedenti) vale come i valori di partenza, con IVA.
     $old = seedCatalog();
@@ -152,5 +152,23 @@ it('ha condizioni di partenza neutre: IVA standard, nessuna commissione, prova s
     expect(fn () => CatalogValidator::validate($bad))->toThrow(InvalidArgumentException::class);
     $bad = seedCatalog();
     $bad['terms']['payments']['collected_by_us_percent'] = 31;
+    expect(fn () => CatalogValidator::validate($bad))->toThrow(InvalidArgumentException::class);
+});
+
+it('tiene pronti lo sconto di fine prova e il pacchetto da 500 soci, senza una cifra inventata', function (): void {
+    $doc = CatalogValidator::validate(seedCatalog());
+    $addons = collect($doc['addons'])->keyBy('code');
+
+    expect($doc['terms']['trial']['end_discount_percent'])->toBe(0)
+        ->and($doc['terms']['trial']['purge_days'])->toBe(7)
+        ->and($addons['members_500']['visible'])->toBeFalse()
+        ->and($addons['members_500']['prices'][0]['amount_cents'])->toBe(0)
+        ->and($addons['members_500']['grants']['limits'])->toBe(['members' => 500]);
+
+    $bad = seedCatalog();
+    $bad['terms']['trial']['end_discount_percent'] = 101;
+    expect(fn () => CatalogValidator::validate($bad))->toThrow(InvalidArgumentException::class);
+    $bad = seedCatalog();
+    $bad['terms']['trial']['purge_days'] = 0;
     expect(fn () => CatalogValidator::validate($bad))->toThrow(InvalidArgumentException::class);
 });

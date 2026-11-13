@@ -150,6 +150,8 @@ Il portale lo legge dal catalogo come il resto e **applica** le regole, non le r
 | `terms.payments.collected_by_us_percent` | intero 0–30 (partenza 3) | Commissione se incassiamo noi e giriamo all'associazione (oltre al costo del circuito). |
 | `terms.trial.exports` | bool (partenza `false`) | Con `false` durante la prova sono vietate le esportazioni (dati, contabilità, libro soci). |
 | `terms.trial.accountant_access` | bool (partenza `false`) | Con `false` durante la prova non si può collegare un commercialista. |
+| `terms.trial.end_discount_percent` | intero 0–100 (partenza 0) | Sconto proposto nelle email di fine prova a chi non ha ancora scelto un piano. Con 0 non si propone nulla. Lo imposta la titolare. |
+| `terms.trial.purge_days` | intero 1–90 (partenza 7) | Giorni dopo la fine della prova (senza piano) dopo i quali i dati della prova si cancellano; prima partono le email di avviso. |
 
 Il SaaS applica da sé i due limiti della prova; il portale deve solo scriverli nelle pagine di vendita («Prova 30 giorni: tutto
 tranne le esportazioni e l'accesso del commercialista»).

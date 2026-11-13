@@ -33,6 +33,10 @@
             <legend>Cosa si può fare durante la prova gratuita</legend>
             <label class="inline"><input type="checkbox" name="trial_exports" value="1" @checked($t['trial_exports'])> Scaricare i dati: elenco dei soci, contabilità, libro soci</label>
             <label class="inline"><input type="checkbox" name="trial_accountant_access" value="1" @checked($t['trial_accountant_access'])> Dare l'accesso al commercialista</label>
+            <div class="grid">
+                <div><label for="end_discount_percent">Sconto proposto a chi è a fine prova (%)</label><input id="end_discount_percent" name="end_discount_percent" value="{{ $t['end_discount_percent'] }}" inputmode="numeric"></div>
+                <div><label for="purge_days">Giorni dopo la fine della prova prima di cancellare i dati</label><input id="purge_days" name="purge_days" value="{{ $t['purge_days'] }}" inputmode="numeric"></div>
+            </div>
             <p class="muted small">Durante la prova si usa tutto il gestionale. Le voci senza spunta si sbloccano quando l'associazione sceglie un piano. La durata della prova si imposta in ogni piano.</p>
         </fieldset>
 
