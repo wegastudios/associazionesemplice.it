@@ -30,6 +30,27 @@ final class Updater {
 		add_filter( 'pre_set_site_transient_update_plugins', array( __CLASS__, 'inject' ) );
 		add_filter( 'plugins_api', array( __CLASS__, 'info' ), 10, 3 );
 		add_filter( 'upgrader_pre_download', array( __CLASS__, 'download' ), 10, 3 );
+		add_action( 'admin_init', array( __CLASS__, 'privacy_policy' ) );
+	}
+
+	/**
+	 * Testo suggerito per Strumenti → Privacy: dice all'amministratore cosa contatta il programma. Esiste solo in questo pacchetto
+	 * (quello del portale), perché solo questo contatta il portale: nel pacchetto di WordPress.org la classe non c'è e il testo non compare.
+	 * Ogni paragrafo è una frase intera, così la traduzione (languages/en.json) la trova uguale.
+	 */
+	public static function privacy_policy(): void {
+		if ( ! function_exists( 'wp_add_privacy_policy_content' ) ) {
+			return;
+		}
+		$p   = array();
+		$p[] = '<h2>Aggiornamenti dal sito associazionesemplice.it</h2>';
+		$p[] = '<p>Questa copia di Associazione Semplice è stata scaricata dal sito associazionesemplice.it, non da WordPress.org. Per offrirti gli aggiornamenti in Bacheca → Aggiornamenti, il programma contatta quel sito (indirizzo https://associazionesemplice.it/api/plugin/update) e gli invia solo il nome del prodotto («free») e la versione installata. Lo fa al massimo ogni 12 ore o più (di solito una volta al giorno), anche senza chiave di licenza, e mai su un sito di prova locale.</p>';
+		$p[] = '<p>Non invia la chiave di licenza, il dominio né dati dei soci o dell\'associazione. Come ogni richiesta su internet, il sito riceve l\'indirizzo IP del server e l\'User-Agent di WordPress, che contiene l\'indirizzo di questo sito.</p>';
+		$p[] = '<p>Si spegne da Impostazioni → Limiti e soglie, togliendo il segno da «Aggiornamenti diretti di Associazione Semplice e del Pro»: se è già spento, non parte nessuna richiesta, e gli aggiornamenti vanno scaricati dall\'area clienti e caricati a mano.</p>';
+		if ( isset( self::products()['pro'] ) ) {
+			$p[] = '<p>Con Associazione Semplice Pro attivo, la richiesta di aggiornamento porta con sé anche la chiave di licenza e il dominio del sito, e una volta al giorno il Pro verifica la licenza inviando gli stessi due dati. Nemmeno in questo caso partono dati dei soci.</p>';
+		}
+		wp_add_privacy_policy_content( 'Associazione Semplice', wp_kses_post( implode( '', $p ) ) );
 	}
 
 	/** Scelta dell'amministratore (Limiti e soglie) e sito non locale. */
