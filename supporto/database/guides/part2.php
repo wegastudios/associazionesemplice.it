@@ -148,7 +148,7 @@ I permessi derivano dai dati della persona, non solo dai ruoli di WordPress. Si 
 
 ## Quadro completo
 
-**Impostazioni → Tecniche → Ruoli e accessi** mostra la matrice «chi può fare cosa» e l'elenco di chi ha un ruolo. Puoi anche dare l'accesso operativo della segreteria a un altro ruolo di WordPress.
+**Impostazioni → Soci e identità → Ruoli e accessi** mostra la matrice «chi può fare cosa» e l'elenco di chi ha un ruolo. Puoi anche dare l'accesso operativo della segreteria a un altro ruolo di WordPress.
 MD,
     ],
     [
@@ -161,7 +161,7 @@ Il QR permette di verificare al volo una tessera o una prenotazione, anche a chi
 
 ## QR della tessera
 
-1. Vai in **Impostazioni → Tecniche → Tessera/QR/Wallet** (scheda *Tessera e Wallet*).
+1. Vai in **Impostazioni → Soci e identità → Tessera, QR e Wallet**.
 2. Attiva **QR sulla tessera digitale**.
 3. Nella tessera digitale del socio compare il QR.
 
@@ -229,7 +229,7 @@ L'area riservata è la pagina dove ogni socio trova il suo spazio: tessera, atti
 
 ## Aspetto e contenuti
 
-- Il colore d'accento è quello scelto in **Impostazioni → Aspetto**.
+- Il colore d'accento è quello scelto in **Impostazioni → Soci e identità → Aspetto**.
 - L'area soci ha un aspetto pensato per il telefono: elenchi a righe, tessera a carta e barra in basso.
 - Il messaggio mostrato a chi non ha i permessi si cambia dalle impostazioni.
 - Con l'attributo `sezioni` dello shortcode puoi tornare all'elenco piatto, senza menu laterale.

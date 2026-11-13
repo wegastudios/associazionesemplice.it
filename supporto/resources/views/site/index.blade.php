@@ -7,7 +7,7 @@
         <button type="submit">Cerca</button>
     </form>
     <div class="row">
-        @php $productLabels = ['plugin' => 'Plugin', 'saas' => 'SaaS']; @endphp
+        @php $productLabels = ['plugin' => 'Plugin WordPress', 'saas' => 'Gestionale']; @endphp
         @forelse ($topics->sortBy(fn ($t) => $t->product === null ? 2 : ($t->product === 'plugin' ? 0 : 1))->values() as $topic)
             <section class="card">
                 @if ($topic->product !== null && $topics->pluck('product')->unique()->count() > 1)<p class="muted" style="margin:0">{{ $productLabels[$topic->product] ?? '' }}</p>@elseif ($topic->product === null && $topics->pluck('product')->unique()->count() > 1)<p class="muted" style="margin:0">Per tutti</p>@endif
@@ -19,5 +19,5 @@
             <p class="muted">Non trovi una guida? Scrivici: la risposta arriva per email.</p>
         @endforelse
     </div>
-    <div class="card"><p style="margin-top:0">Non trovi quello che cerchi? Scrivici: ti rispondiamo per email.</p><p style="margin-bottom:0"><a class="btn" href="{{ route('ticket.create') }}">Apri una richiesta</a></p><p class="muted" style="margin-bottom:0">Per scrivere al supporto entri con l'email della tua licenza: al primo accesso ti mandiamo un link.</p></div>
+    <div class="card"><p style="margin-top:0">Non trovi quello che cerchi? Scrivici: ti rispondiamo per email.</p><p style="margin-bottom:0"><a class="btn" href="{{ route('ticket.create') }}">Apri una richiesta</a></p><p class="muted" style="margin-bottom:0">Per seguire le tue richieste entra con l'email del tuo account Associazione Semplice.</p></div>
 @endsection

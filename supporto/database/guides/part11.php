@@ -12,7 +12,7 @@ Per molte associazioni l'esercizio non coincide con l'anno solare. Puoi indicare
 
 ## Dove si imposta
 
-1. Vai in **Impostazioni → Dati e fiscalità** (scheda dell'ente).
+1. Vai in **Impostazioni → Ente e fiscalità → Dati e fiscalità** (scheda dell'ente).
 2. Nel menu **«L'anno fiscale inizia a»**, accanto a «L'anno sociale inizia a», scegli il mese. Di partenza è **gennaio**, cioè l'anno solare, come prima.
 3. Salva.
 
@@ -174,7 +174,7 @@ Le approvate restano elencate con **chi e quando** le ha approvate (per esempio 
 
 ## Chiudere l'anno
 
-1. Vai in **Contabilità → Anni solari** e premi **Chiudi l'anno** (vedi [Aprire e chiudere gli anni solari](guida:aprire-e-chiudere-gli-anni-solari)).
+1. Vai in **Contabilità → Esercizi** e premi **Chiudi l'anno** (vedi [Aprire e chiudere gli anni solari](guida:aprire-e-chiudere-gli-anni-solari)).
 2. Di partenza la chiusura **si ferma** e mostra l'elenco se ci sono rimborsi non documentati.
 3. Con l'opzione **«chiedi conferma»** compare l'elenco con una casella da spuntare per procedere.
 
