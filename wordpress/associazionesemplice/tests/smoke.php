@@ -4380,6 +4380,7 @@ asem_ok( 0 === strpos( $mb_pdf['body'], '%PDF-1.4' ), 'libro soci: il PDF di un 
 $mb_cl = array_map( 'intval', $wpdb->get_col( $wpdb->prepare( 'SELECT id FROM ' . Db::t( 'fiscal_year_closures' ) . ' WHERE year IN (%d,%d)', $mb_y, $mb_y1 ) ) );
 if ( $mb_cl ) {
 	$wpdb->query( 'DELETE FROM ' . Db::t( 'member_book_snapshot' ) . ' WHERE closure_id IN (' . implode( ',', $mb_cl ) . ')' );
+	$wpdb->query( 'DELETE FROM ' . Db::t( 'statement_snapshot' ) . ' WHERE closure_id IN (' . implode( ',', $mb_cl ) . ')' ); // anche i rendiconti fotografati da quelle chiusure
 }
 $wpdb->query( $wpdb->prepare( 'DELETE FROM ' . Db::t( 'fiscal_year_closures' ) . ' WHERE year IN (%d,%d)', $mb_y, $mb_y1 ) );
 $wpdb->query( $wpdb->prepare( 'DELETE FROM ' . Db::t( 'fiscal_years' ) . ' WHERE year IN (%d,%d)', $mb_y, $mb_y1 ) );
