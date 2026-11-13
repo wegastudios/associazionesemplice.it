@@ -47,3 +47,7 @@ Il promemoria del 30 giugno è solo un avviso nella pagina, nessuna notifica pro
 ## 7. Matricola (allineamento al plugin, 14/11/2026)
 
 `app.people.matricola`: numero fisso per socio, dato una volta sola a chi entra nel libro soci in ordine di ingresso (data, poi id) e senza buchi; non cambia e non si riassegna (contatore per associazione in `app.matricola_counters`, indice unico). Il numero di tessera (`card_number`) è un'altra cosa. Il libro soci mostra matricola e numero di riga dell'esercizio; la fotografia li conserva entrambi. Assegnazione pigra (`MatricolaService::assignMissing()`, alla prima lettura del libro). Import CSV con enti: da fare dopo.
+
+## 8. Avviso «sotto il minimo» (14/11/2026, come nel plugin)
+
+Decisione del titolare: i numeri da copiare nel portale del RUNTS restano quelli **al 31 dicembre**; l'avviso 7 persone / 3 enti guarda invece i soci con **tessera valida oggi** (chi non ha rinnovato è cessato di fatto fino al rinnovo; cessati veri solo espulsi e dimissionari). `RuntsCounts::today()` riusa lo stesso conteggio (diritto di voto, minorenni esclusi) alla data odierna; l'avviso elenca i soci con tessera scaduta da meno di 90 giorni (`MemberBookService::recentlyExpired()`), che tornano soci se rinnovano. La pagina dice i due conti con parole diverse: «Oggi i soci con diritto di voto sono…» e «Dati al 31 dicembre…». Resta solo per ODV e APS (`ente.kind`).

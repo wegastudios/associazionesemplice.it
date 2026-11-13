@@ -7,7 +7,10 @@ defined( 'ABSPATH' ) || exit;
  * Ricevute di pagamento e attestazioni annuali dei versamenti, in PDF.
  *
  * Una ricevuta è un incasso (tutte le righe con lo stesso `receipt_id`; per i movimenti vecchi senza codice, la singola riga).
- * Il numero progressivo (N/AAAA, per anno) si assegna alla prima emissione e non cambia più. Un incasso annullato non ha ricevuta.
+ * Il numero progressivo (N/AAAA, per anno fiscale dell'ente) si assegna alla prima emissione e non cambia più, nemmeno dopo un annullo.
+ * Alla prima emissione i dati si fotografano (colonna `data`): la ricevuta emessa si rigenera sempre uguale, anche se poi cambiano il nome, il codice
+ * fiscale o le impostazioni. Un incasso annullato non ha ricevuta: l'annullo resta scritto sulla riga (mai cancellata). Un incasso di un esercizio
+ * chiuso non riceve un numero nuovo.
  * Le vede chi amministra e chi ha pagato (o il socio che ospita chi ha pagato).
  */
 final class Receipts {
@@ -19,6 +22,7 @@ final class Receipts {
 			add_action( 'admin_post_' . $a, array( __CLASS__, $m ) );
 			add_action( 'admin_post_nopriv_' . $a, Csrf::nopriv( array( __CLASS__, $m ), array( Csrf::class, 'to_login' ) ) );
 		}
+		add_action( 'asem_tx_voided', array( __CLASS__, 'on_void' ), 10, 2 ); // l'annullo di un incasso annulla anche la ricevuta già emessa (resta traccia, non si cancella)
 	}
 
 	// ---------- Dati ----------
@@ -135,7 +139,51 @@ final class Receipts {
 
 	// ---------- Numerazione ----------
 
-	/** Numero progressivo della ricevuta (per anno): si assegna la prima volta e resta. @return array{number:int,year:int} */
+	/** La riga della ricevuta emessa (numero, dati fotografati, eventuale annullo), oppure null se non è mai stata emessa. */
+	public static function record( string $key ): ?array {
+		$db  = Db::db();
+		$row = $db->get_row( $db->prepare( 'SELECT * FROM ' . Db::t( 'receipts' ) . ' WHERE receipt_key = %s', $key ), ARRAY_A );
+		return $row ?: null;
+	}
+
+	/**
+	 * Segna come annullata la ricevuta emessa di un incasso. La riga e il numero restano: è un annullamento tracciato, non una cancellazione.
+	 *
+	 * @return bool true se la ricevuta c'era e non era già annullata
+	 */
+	public static function mark_voided( string $key, string $reason = '' ): bool {
+		$db = Db::db();
+		$n  = $db->query(
+			$db->prepare(
+				'UPDATE ' . Db::t( 'receipts' ) . ' SET voided_at = %s, voided_by = %d, void_reason = %s WHERE receipt_key = %s AND voided_at IS NULL',
+				Db::now(),
+				get_current_user_id(),
+				mb_substr( '' === trim( $reason ) ? 'Incasso annullato' : trim( $reason ), 0, 255 ),
+				$key
+			)
+		);
+		if ( $n ) {
+			$rec = self::record( $key );
+			Audit::log( 'receipt.voided', 'receipt', $rec ? (int) $rec['id'] : 0, array( 'number' => $rec ? $rec['number'] . '/' . $rec['year'] : '' ) );
+		}
+		return (bool) $n;
+	}
+
+	/** Azione `asem_tx_voided`: la ricevuta emessa per l'incasso annullato risulta annullata. */
+	public static function on_void( int $tx_id, string $reason = '' ): void {
+		$db  = Db::db();
+		$rid = $db->get_var( $db->prepare( 'SELECT receipt_id FROM ' . Db::t( 'transactions' ) . ' WHERE id = %d', $tx_id ) );
+		self::mark_voided( $rid ? (string) $rid : 'tx' . $tx_id, $reason );
+	}
+
+	/**
+	 * Numero progressivo della ricevuta: si assegna alla prima emissione, per ANNO FISCALE dell'ente (con inizio a gennaio coincide con l'anno
+	 * solare), sotto blocco, e non si riassegna mai (la riga non si cancella). Per un incasso di un esercizio chiuso non si emette un numero
+	 * nuovo: finirebbe dentro un anno chiuso. Una ricevuta già emessa si ritrova sempre.
+	 *
+	 * @return array{number:int,year:int}
+	 * @throws \InvalidArgumentException
+	 */
 	public static function number_for( string $key, string $date ): array {
 		$db   = Db::db();
 		$tbl  = Db::t( 'receipts' );
@@ -143,7 +191,8 @@ final class Receipts {
 		if ( $have ) {
 			return array( 'number' => (int) $have['number'], 'year' => (int) $have['year'] );
 		}
-		$year = (int) substr( $date, 0, 4 );
+		YearLock::assert_date_open( $date );
+		$year = FiscalYears::year_of( $date );
 		$lock = (int) $db->get_var( "SELECT GET_LOCK('asem_receipt_number', 5)" );
 		try {
 			$have = $db->get_row( $db->prepare( "SELECT number, year FROM $tbl WHERE receipt_key = %s", $key ), ARRAY_A );
@@ -154,6 +203,7 @@ final class Receipts {
 			if ( ! $db->insert( $tbl, array( 'receipt_key' => $key, 'year' => $year, 'number' => $next, 'issued_at' => Db::now(), 'issued_by' => get_current_user_id() ?: null ) ) ) {
 				throw new \RuntimeException( 'Impossibile assegnare il numero della ricevuta.' );
 			}
+			Audit::log( 'receipt.issued', 'receipt', (int) $db->insert_id, array( 'number' => $next . '/' . $year ) );
 			return array( 'number' => $next, 'year' => $year );
 		} finally {
 			if ( $lock ) {
@@ -223,10 +273,11 @@ final class Receipts {
 	}
 
 	private static function header( Pdf $pdf ): float {
-		$name = (string) Settings::get( 'association_name' );
-		$cf   = (string) Settings::get( 'tax_code' );
+		return self::header_with( $pdf, (string) Settings::get( 'association_name' ), (string) Settings::get( 'tax_code' ), Fiscal::vat_applies() ? (string) Settings::get( 'vat_number' ) : '' );
+	}
+
+	private static function header_with( Pdf $pdf, string $name, string $cf, string $vat ): float {
 		$pdf->text( 50, 62, '' !== $name ? $name : 'Associazione', 17, true );
-		$vat = Fiscal::vat_applies() ? (string) Settings::get( 'vat_number' ) : '';
 		if ( '' !== $cf || '' !== $vat ) {
 			$pdf->text( 50, 80, trim( ( '' !== $cf ? 'Codice fiscale: ' . $cf : '' ) . ( '' !== $cf && '' !== $vat ? ' · ' : '' ) . ( '' !== $vat ? 'Partita IVA: ' . $vat : '' ) ), 10 );
 		}
@@ -235,7 +286,10 @@ final class Receipts {
 	}
 
 	private static function footer( Pdf $pdf, float $y ): void {
-		$foot = (string) Settings::get( 'receipt_footer' );
+		self::footer_with( $pdf, $y, (string) Settings::get( 'receipt_footer' ) );
+	}
+
+	private static function footer_with( Pdf $pdf, float $y, string $foot ): void {
 		if ( '' !== $foot ) {
 			foreach ( Pdf::wrap( $foot, Pdf::W - 100, 9 ) as $line ) {
 				$pdf->text( 50, $y, $line, 9 );
@@ -296,42 +350,135 @@ final class Receipts {
 		return array( 'holder' => $holder, 'lines' => $lines, 'note' => $note );
 	}
 
-	/** @return array pdf (byte), filename, number (stringa N/AAAA), payer (persona o null)
+	/**
+	 * Fotografa i dati di una ricevuta al momento dell'emissione: da qui in poi il PDF si disegna solo da questi, non dai dati vivi.
+	 *
+	 * @param array[] $rows righe di incasso (vedi {@see Receipts::rows()})
+	 * @param array   $num  numero e anno (vedi {@see Receipts::number_for()})
+	 */
+	private static function capture( array $rows, array $num ): array {
+		$payer   = self::payer( $rows );
+		$date    = (string) $rows[0]['tx_date'];
+		$kinds   = array_values( array_unique( array_column( $rows, 'category_kind' ) ) );
+		$method  = (string) $rows[0]['method'];
+		$mlabel  = Labels::methods()[ $method ] ?? $method;
+		$ward_id = (int) $rows[0]['person_id'];
+		$ward    = $ward_id ? Plugin::people()->get( $ward_id ) : $payer;
+		$minor   = self::minor_block( $payer, $ward, $ward ? Guardians::of( (int) $ward['id'] ) : array(), $date, $method, $mlabel, $kinds );
+		$holder  = $minor['holder'];
+		$lines   = array();
+		$total   = 0;
+		foreach ( $rows as $r ) {
+			$total   += (int) $r['amount_cents'];
+			$lines[] = array( 'what' => self::describe( $r, $payer ), 'cents' => (int) $r['amount_cents'] );
+		}
+		$vat_rows = array();
+		foreach ( self::vat_breakdown( $rows ) as $rate => $b ) {
+			$vat_rows[] = array( 'rate' => (int) $rate, 'net' => (int) $b['net'], 'vat' => (int) $b['vat'] );
+		}
+		return array(
+			'v'          => 1,
+			'number'     => (int) $num['number'],
+			'year'       => (int) $num['year'],
+			'date'       => $date,
+			'title'      => array( 'donation' ) === $kinds ? 'RICEVUTA DI EROGAZIONE LIBERALE' : 'RICEVUTA DI PAGAMENTO',
+			'assoc_name' => (string) Settings::get( 'association_name' ),
+			'assoc_cf'   => (string) Settings::get( 'tax_code' ),
+			'assoc_vat'  => Fiscal::vat_applies() ? (string) Settings::get( 'vat_number' ) : '',
+			'holder'     => $holder ? array( 'name' => Plugin::people()->full_name( $holder ), 'tax_code' => (string) ( $holder['tax_code'] ?? '' ) ) : null,
+			'extra'      => array_values( $minor['lines'] ),
+			'note'       => (string) $minor['note'],
+			'lines'      => $lines,
+			'total'      => $total,
+			'vat_rows'   => $vat_rows,
+			'method'     => $mlabel,
+			'ref'        => (string) ( $rows[0]['document_ref'] ?? '' ),
+			'president'  => self::president_name(),
+			'footer'     => (string) Settings::get( 'receipt_footer' ),
+			'payer_id'   => $payer ? (int) $payer['id'] : 0,
+			'payer_last' => $payer ? (string) $payer['last_name'] : '',
+			'tx_ids'     => array_map( 'intval', array_column( $rows, 'id' ) ),
+		);
+	}
+
+	/**
+	 * Le ricevute emesse sono immutabili: i dati fotografati alla prima emissione (colonna `data`) e il loro hash. Una ricevuta emessa prima che
+	 * esistesse la fotografia si fotografa alla prima lettura (con i dati di quel momento).
+	 *
+	 * @return array{0:array,1:string} dati e hash
+	 */
+	private static function issued( string $key, array $rows ): array {
+		$db  = Db::db();
+		$tbl = Db::t( 'receipts' );
+		$rec = self::record( $key );
+		if ( $rec && null !== $rec['voided_at'] ) {
+			throw new \InvalidArgumentException( 'Ricevuta annullata: l\'incasso è stato annullato.' );
+		}
+		if ( $rec && ! empty( $rec['data'] ) ) {
+			$data = json_decode( (string) $rec['data'], true );
+			if ( is_array( $data ) && isset( $data['tx_ids'] ) ) {
+				$live = array_map( 'intval', array_column( $rows, 'id' ) );
+				$old  = array_map( 'intval', $data['tx_ids'] );
+				sort( $live );
+				sort( $old );
+				if ( $live !== $old ) { // una delle righe è stata annullata dopo l'emissione: la ricevuta emessa non vale più
+					self::mark_voided( $key, 'Incasso annullato' );
+					throw new \InvalidArgumentException( 'Ricevuta annullata: l\'incasso è stato annullato.' );
+				}
+				return array( $data, (string) $rec['content_hash'] );
+			}
+		}
+		$num  = self::number_for( $key, (string) $rows[0]['tx_date'] ); // se è nuova assegna il numero (un esercizio chiuso non ne riceve di nuovi)
+		$data = self::capture( $rows, $num );
+		$json = (string) wp_json_encode( $data, JSON_UNESCAPED_UNICODE );
+		$hash = hash( 'sha256', $json );
+		$db->query( $db->prepare( "UPDATE $tbl SET data = %s, content_hash = %s WHERE receipt_key = %s AND (data IS NULL OR data = '')", $json, $hash, $key ) );
+		$rec = self::record( $key );
+		if ( $rec && ! empty( $rec['data'] ) && is_array( json_decode( (string) $rec['data'], true ) ) ) { // se un'altra richiesta è arrivata prima, vale la sua fotografia
+			return array( json_decode( (string) $rec['data'], true ), (string) $rec['content_hash'] );
+		}
+		return array( $data, $hash );
+	}
+
+	/** @return array pdf (byte), filename, number (stringa N/AAAA), payer (persona o null), hash (della fotografia)
 	 *  @throws \InvalidArgumentException */
 	public static function build( string $key ): array {
 		$key  = self::clean_key( $key );
 		$rows = self::rows( $key );
 		if ( ! $rows ) {
+			self::mark_voided( $key, 'Incasso annullato' ); // se la ricevuta era stata emessa, l'annullo resta scritto
 			throw new \InvalidArgumentException( 'Ricevuta non trovata (o incasso annullato).' );
 		}
-		$payer  = self::payer( $rows );
-		$date   = (string) $rows[0]['tx_date'];
-		$num    = self::number_for( $key, $date );
-		$label  = $num['number'] . '/' . $num['year'];
-		$kinds  = array_unique( array_column( $rows, 'category_kind' ) );
-		$title  = array( 'donation' ) === array_values( $kinds ) ? 'RICEVUTA DI EROGAZIONE LIBERALE' : 'RICEVUTA DI PAGAMENTO';
+		list( $s, $hash ) = self::issued( $key, $rows );
+		$label            = $s['number'] . '/' . $s['year'];
+		$payer            = $s['payer_id'] ? Plugin::people()->get( (int) $s['payer_id'] ) : null;
+		$who              = '' !== (string) $s['payer_last'] ? Text::normalize( $s['payer_last'] ) : 'ricevuta';
+		return array( 'pdf' => self::render( $s ), 'filename' => 'ricevuta-' . $s['number'] . '-' . $s['year'] . '-' . preg_replace( '/[^a-z0-9]/', '', $who ) . '.pdf', 'number' => $label, 'payer' => $payer, 'hash' => $hash );
+	}
+
+	/** Disegna il PDF della ricevuta dai soli dati fotografati. */
+	private static function render( array $s ): string {
+		$label  = $s['number'] . '/' . $s['year'];
+		$date   = (string) $s['date'];
 		Pdf::$filter = array( Texts::class, 'plain' ); // testi personalizzati nel PDF
 		$pdf    = new Pdf();
-		$y      = self::header( $pdf );
-		$pdf->text( 50, $y, $title, 14, true );
+		$y      = self::header_with( $pdf, (string) $s['assoc_name'], (string) $s['assoc_cf'], (string) $s['assoc_vat'] );
+		$pdf->text( 50, $y, (string) $s['title'], 14, true );
 		$pdf->text( Pdf::W - 50, $y, 'N. ' . $label, 14, true, 'R' );
 		$y += 20;
 		$pdf->text( 50, $y, 'Data: ' . self::d( $date ), 11 );
 		$y += 30;
 		$pdf->text( 50, $y, 'Ricevuto da', 9 );
 		$y += 15;
-		$ward_id = (int) $rows[0]['person_id'];
-		$ward    = $ward_id ? Plugin::people()->get( $ward_id ) : $payer;
-		$minor   = self::minor_block( $payer, $ward, $ward ? Guardians::of( (int) $ward['id'] ) : array(), $date, (string) $rows[0]['method'], Labels::methods()[ (string) $rows[0]['method'] ] ?? (string) $rows[0]['method'], $kinds );
-		$holder  = $minor['holder'];
+		$holder = $s['holder'];
 		if ( $holder ) {
-			$pdf->text( 50, $y, Plugin::people()->full_name( $holder ), 12, true );
+			$pdf->text( 50, $y, (string) $holder['name'], 12, true );
 			$y += 15;
-			if ( ! empty( $holder['tax_code'] ) ) {
+			if ( '' !== (string) $holder['tax_code'] ) {
 				$pdf->text( 50, $y, 'Codice fiscale: ' . $holder['tax_code'], 10 );
 				$y += 14;
 			}
-			foreach ( $minor['lines'] as $line ) {
+			foreach ( $s['extra'] as $line ) {
 				foreach ( Pdf::wrap( $line, Pdf::W - 100, 10 ) as $l ) {
 					$pdf->text( 50, $y, $l, 10 );
 					$y += 14;
@@ -346,11 +493,10 @@ final class Receipts {
 		$pdf->text( 56, $y + 2, 'Descrizione', 10, true );
 		$pdf->text( Pdf::W - 56, $y + 2, 'Importo', 10, true, 'R' );
 		$y    += 24;
-		$total = 0;
-		foreach ( $rows as $r ) {
-			$cents = (int) $r['amount_cents'];
-			$total += $cents;
-			$lines = Pdf::wrap( self::describe( $r, $payer ), Pdf::W - 100 - 110, 11 );
+		$total = (int) $s['total'];
+		foreach ( $s['lines'] as $r ) {
+			$cents = (int) $r['cents'];
+			$lines = Pdf::wrap( (string) $r['what'], Pdf::W - 100 - 110, 11 );
 			foreach ( $lines as $i => $line ) {
 				$pdf->text( 56, $y, $line, 11 );
 				if ( 0 === $i ) {
@@ -365,35 +511,34 @@ final class Receipts {
 		$pdf->text( 56, $y, 'Totale', 12, true );
 		$pdf->text( Pdf::W - 56, $y, Money::format( $total ), 12, true, 'R' );
 		$y += 18;
-		foreach ( self::vat_breakdown( $rows ) as $rate => $b ) { // imponibile e IVA contenuta, per aliquota
-			$pdf->text( 56, $y, 'di cui imponibile ' . $rate . '%: ' . Money::format( $b['net'] ) . ' · IVA: ' . Money::format( $b['vat'] ), 10 );
+		foreach ( $s['vat_rows'] as $b ) { // imponibile e IVA contenuta, per aliquota
+			$pdf->text( 56, $y, 'di cui imponibile ' . $b['rate'] . '%: ' . Money::format( (int) $b['net'] ) . ' · IVA: ' . Money::format( (int) $b['vat'] ), 10 );
 			$y += 14;
 		}
 		$y += 6;
-		$method = (string) $rows[0]['method'];
-		$pdf->text( 56, $y, 'Pagato con: ' . ( Labels::methods()[ $method ] ?? $method ), 10 );
-		if ( ! empty( $rows[0]['document_ref'] ) ) {
+		$pdf->text( 56, $y, 'Pagato con: ' . $s['method'], 10 );
+		if ( '' !== (string) $s['ref'] ) {
 			$y += 14;
-			$pdf->text( 56, $y, 'Riferimento: ' . $rows[0]['document_ref'], 10 );
+			$pdf->text( 56, $y, 'Riferimento: ' . $s['ref'], 10 );
 		}
-		if ( '' !== $minor['note'] ) {
-			foreach ( Pdf::wrap( $minor['note'], Pdf::W - 112, 10 ) as $l ) {
+		if ( '' !== (string) $s['note'] ) {
+			foreach ( Pdf::wrap( (string) $s['note'], Pdf::W - 112, 10 ) as $l ) {
 				$y += 14;
 				$pdf->text( 56, $y, $l, 10 );
 			}
 		}
 		$y += 60;
 		$pdf->text( Pdf::W - 60, $y, 'Per l\'associazione', 10, false, 'R' );
-		$pres = self::president_name();
+		$pres = (string) $s['president'];
 		$y   += 34;
 		$pdf->line( Pdf::W - 230, $y, Pdf::W - 60, $y );
 		if ( '' !== $pres ) {
 			$pdf->text( Pdf::W - 60, $y + 13, 'Il Presidente ' . $pres, 9, false, 'R' );
 		}
-		self::footer( $pdf, 770 );
-		$who = $payer ? Text::normalize( $payer['last_name'] ) : 'ricevuta';
+		self::footer_with( $pdf, 770, (string) $s['footer'] );
+		$bytes       = $pdf->output();
 		Pdf::$filter = null;
-		return array( 'pdf' => $pdf->output(), 'filename' => 'ricevuta-' . $num['number'] . '-' . $num['year'] . '-' . preg_replace( '/[^a-z0-9]/', '', $who ) . '.pdf', 'number' => $label, 'payer' => $payer );
+		return $bytes;
 	}
 
 	// ---------- Attestazione annuale ----------
