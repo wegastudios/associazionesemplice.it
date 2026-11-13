@@ -33,6 +33,7 @@ final class Settings {
 			'association_name'        => '',
 			'tax_code'                => '',
 			'social_year_start_month' => 9,     // l'anno sociale inizia a settembre
+			'fiscal_start_month'      => 1,     // l'anno fiscale (esercizio) inizia a gennaio, cioè coincide con l'anno solare; vale per tutte le edizioni
 			'membership_fee_cents'    => 1000,  // quota associativa proposta negli incassi
 			'founder_years'           => 99,    // durata della tessera del socio fondatore
 			'guest_max_events'        => 2,     // quante volte un non socio può partecipare (eventi e corsi) prima di doversi iscrivere; 0 = nessun limite
@@ -151,7 +152,8 @@ final class Settings {
 	 * (Per toglierne una si usa {@see Settings::clear_secret()}.)
 	 */
 	public static function update( array $values ): void {
-		$clean = self::all();
+		$clean  = self::all();
+		$before = $clean;
 		foreach ( self::defaults() as $k => $_ ) {
 			if ( ! array_key_exists( $k, $values ) ) {
 				continue;
@@ -166,6 +168,11 @@ final class Settings {
 			$clean[ $k ] = $values[ $k ];
 		}
 		$clean['social_year_start_month'] = max( 1, min( 12, (int) $clean['social_year_start_month'] ) );
+		$old_fiscal                       = max( 1, min( 12, (int) ( $before['fiscal_start_month'] ?? 1 ) ) );
+		$clean['fiscal_start_month']      = max( 1, min( 12, (int) $clean['fiscal_start_month'] ) );
+		if ( $clean['fiscal_start_month'] !== $old_fiscal && FiscalYears::start_month_locked() ) { // con esercizi chiusi il mese non si cambia più
+			throw new \InvalidArgumentException( FiscalYears::start_month_locked_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
 		$clean['membership_fee_cents']    = max( 0, (int) $clean['membership_fee_cents'] );
 		$clean['founder_years']           = max( 1, (int) $clean['founder_years'] );
 		$clean['guest_max_events']         = max( 0, min( 20, (int) $clean['guest_max_events'] ) );
@@ -245,6 +252,9 @@ final class Settings {
 		}
 		Audit::log( 'settings.updated', 'settings' ); // senza i valori: nel registro non finiscono chiavi
 		update_option( self::OPTION, $clean );
+		if ( $clean['fiscal_start_month'] !== $old_fiscal ) { // gli anni si ridisegnano: devono esistere quelli che contengono i movimenti
+			FiscalYears::seed();
+		}
 	}
 
 	// ---------- QR della tessera ----------

@@ -796,12 +796,12 @@ final class Actions {
 
 	private static function close_year( array $p ): array {
 		\AssociazioneSemplice\FiscalYears::close( (int) ( $p['year'] ?? 0 ), ! empty( $p['confirm_gaps'] ) );
-		return array( Ui::url( 'asem-years' ), 'Esercizio chiuso: non accetta più incassi né spese.' );
+		return array( Ui::url( 'asem-years' ), 'Esercizio chiuso: non si modifica più. Si può riaprire solo finché è l\'ultimo esercizio chiuso, indicando il motivo.' );
 	}
 
 	private static function reopen_year( array $p ): array {
-		\AssociazioneSemplice\FiscalYears::reopen( (int) ( $p['year'] ?? 0 ) );
-		return array( Ui::url( 'asem-years' ), 'Esercizio riaperto.' );
+		\AssociazioneSemplice\FiscalYears::reopen( (int) ( $p['year'] ?? 0 ), (string) ( $p['reason'] ?? '' ) );
+		return array( Ui::url( 'asem-years' ), 'Esercizio riaperto: il motivo resta registrato.' );
 	}
 
 	private static function book( array $p ): array {

@@ -15,6 +15,11 @@ final class Assemblies {
 		return Db::db();
 	}
 
+	/** Un'assemblea con la prima convocazione in un esercizio chiuso non si modifica né si cancella, anche se non è stata svolta (può esserci un libro fisico). @throws \InvalidArgumentException */
+	private static function lock( array $a ): void {
+		YearLock::assert_date_open( substr( (string) $a['first_call_at'], 0, 10 ) );
+	}
+
 	// ---------- Registro ----------
 
 	/** @throws \InvalidArgumentException */
@@ -26,6 +31,9 @@ final class Assemblies {
 		if ( $old && AssemblyRules::HELD === $old['status'] ) {
 			throw new \InvalidArgumentException( 'L\'assemblea è già stata svolta: non si modifica più.' );
 		}
+		if ( $old ) {
+			self::lock( $old );
+		}
 		$title = mb_substr( trim( sanitize_text_field( (string) ( $in['title'] ?? '' ) ) ), 0, 190 );
 		if ( '' === $title ) {
 			throw new \InvalidArgumentException( 'Scrivi il titolo.' );
@@ -36,6 +44,7 @@ final class Assemblies {
 		if ( ! $first ) {
 			throw new \InvalidArgumentException( 'Indica data e ora della prima convocazione.' );
 		}
+		YearLock::assert_date_open( substr( $first, 0, 10 ) ); // nemmeno si sposta o si crea in un esercizio chiuso
 		$err = AssemblyRules::check_calls( $first, (string) $second );
 		if ( $err ) {
 			throw new \InvalidArgumentException( $err ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
@@ -73,6 +82,7 @@ final class Assemblies {
 		if ( AssemblyRules::HELD === $a['status'] ) {
 			throw new \InvalidArgumentException( 'Un\'assemblea svolta resta nel registro: si può solo consultare.' );
 		}
+		self::lock( $a );
 		self::db()->update( Db::t( 'assemblies' ), array( 'deleted_at' => Db::now() ), array( 'id' => $id ) );
 		Audit::log( 'assembly.deleted', 'assembly', $id );
 	}
@@ -128,6 +138,7 @@ final class Assemblies {
 		if ( ! $a ) {
 			throw new \InvalidArgumentException( 'Assemblea non trovata.' );
 		}
+		self::lock( $a );
 		if ( AssemblyRules::CONVENED !== $a['status'] && ! AssemblyRules::can_move( (string) $a['status'], AssemblyRules::CONVENED ) ) {
 			throw new \InvalidArgumentException( 'Questa assemblea non si può convocare (stato: ' . AssemblyRules::status_labels()[ $a['status'] ] . ').' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 		}
@@ -176,6 +187,7 @@ final class Assemblies {
 		if ( ! $a || ! AssemblyRules::can_move( (string) $a['status'], $to ) ) {
 			throw new \InvalidArgumentException( 'Questa operazione non è possibile per lo stato attuale dell\'assemblea.' );
 		}
+		self::lock( $a );
 		self::db()->update( Db::t( 'assemblies' ), array( 'status' => $to, 'updated_at' => Db::now() ), array( 'id' => $id ) );
 		Audit::log( 'assembly.' . $to, 'assembly', $id );
 	}
@@ -198,6 +210,7 @@ final class Assemblies {
 		if ( ! $a ) {
 			throw new \InvalidArgumentException( 'Assemblea non trovata.' );
 		}
+		self::lock( $a );
 		if ( AssemblyRules::HELD === $a['status'] || AssemblyRules::CANCELLED === $a['status'] ) {
 			throw new \InvalidArgumentException( 'Le presenze si registrano finché l\'assemblea non è svolta o annullata.' );
 		}
@@ -272,6 +285,7 @@ final class Assemblies {
 		if ( ! $a ) {
 			throw new \InvalidArgumentException( 'Assemblea non trovata.' );
 		}
+		self::lock( $a );
 		if ( ! in_array( $a['status'], $staff ? array( AssemblyRules::DRAFT, AssemblyRules::CONVENED ) : array( AssemblyRules::CONVENED ), true ) ) {
 			throw new \InvalidArgumentException( 'Le deleghe si danno prima dell\'assemblea, quando è stata convocata.' );
 		}
@@ -307,6 +321,7 @@ final class Assemblies {
 		if ( ! $a || ! in_array( $a['status'], array( AssemblyRules::DRAFT, AssemblyRules::CONVENED ), true ) ) {
 			throw new \InvalidArgumentException( 'Le deleghe si revocano prima dell\'assemblea.' );
 		}
+		self::lock( $a );
 		self::db()->delete( Db::t( 'assembly_proxies' ), array( 'assembly_id' => $id, 'delegator_id' => $delegator ) );
 		Audit::log( 'assembly.proxy_revoked', 'assembly', $id, array( 'delegator' => $delegator ) );
 	}
@@ -377,6 +392,7 @@ final class Assemblies {
 		if ( ! $a || AssemblyRules::CONVENED !== $a['status'] ) {
 			throw new \InvalidArgumentException( 'Si può chiudere solo un\'assemblea convocata.' );
 		}
+		self::lock( $a );
 		$call = 2 === $call && ! empty( $a['second_call_at'] ) ? 2 : 1;
 		$t    = self::tally( $id, $call );
 		if ( 0 === $t['present'] ) {

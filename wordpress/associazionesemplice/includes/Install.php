@@ -6,12 +6,13 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '57';
+	const DB_VERSION        = '58';
 
 	public static function activate(): void {
 		self::create_tables();
 		self::add_roles_and_caps();
 		self::seed();
+		self::migrate_year_closures(); // gli esercizi già chiusi entrano nella traccia permanente (idempotente)
 		if ( '' === (string) get_option( self::DB_VERSION_OPTION, '' ) ) { // prima installazione: si propone la configurazione guidata
 			Wizard::schedule_first_run();
 		} elseif ( Wizard::pending() ) { // sito già in uso prima di questa funzione: nessun invito, la pagina resta in Impostazioni
@@ -39,6 +40,22 @@ final class Install {
 				Db::db()->query( 'UPDATE ' . Db::t( 'activities' ) . ' SET fee_cents = monthly_fee_cents WHERE fee_cents = 0 AND monthly_fee_cents > 0' );
 			}
 		}
+	}
+
+	/**
+	 * Dalla v58 ogni chiusura di un esercizio lascia una riga permanente in `fiscal_year_closures`. Per gli esercizi già chiusi prima di questa
+	 * funzione si crea la riga della prima versione con lo stato «non fotografato»: nessun dato viene inventato (chi ha chiuso e il motivo non
+	 * si conoscono). Si può rilanciare senza effetti. @return int righe create
+	 */
+	public static function migrate_year_closures(): int {
+		$n = 0;
+		foreach ( Db::db()->get_results( 'SELECT year, closed_at FROM ' . Db::t( 'fiscal_years' ) . " WHERE status = 'closed'", ARRAY_A ) ?: array() as $y ) {
+			if ( null === FiscalYears::current_closure( (int) $y['year'] ) ) {
+				FiscalYears::record_closure( (int) $y['year'], $y['closed_at'] ? (string) $y['closed_at'] : Db::now(), 0 );
+				$n++;
+			}
+		}
+		return $n;
 	}
 
 	/** Dalla v45 di due tutori ne opera uno solo sul sito: dove prima ce n'erano due resta operativo il primo collegato. */
@@ -253,6 +270,27 @@ final class Install {
   created_at datetime NOT NULL,
   closed_at datetime DEFAULT NULL,
   PRIMARY KEY  (year)
+) $c;";
+
+		// Traccia permanente delle chiusure e delle riaperture degli esercizi: non la tocca né la pulizia né «Libera spazio» del registro azioni.
+		$tables[] = "CREATE TABLE {$p}fiscal_year_closures (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  year smallint(5) unsigned NOT NULL,
+  version int(11) NOT NULL DEFAULT 1,
+  closed_at datetime NOT NULL,
+  closed_by bigint(20) unsigned DEFAULT NULL,
+  start_month_used tinyint(3) unsigned NOT NULL DEFAULT 1,
+  range_from date DEFAULT NULL,
+  range_to date DEFAULT NULL,
+  plugin_version varchar(20) DEFAULT NULL,
+  reopened_at datetime DEFAULT NULL,
+  reopened_by bigint(20) unsigned DEFAULT NULL,
+  reopen_reason text DEFAULT NULL,
+  status varchar(12) NOT NULL DEFAULT 'current',
+  snapshot_state varchar(10) NOT NULL DEFAULT 'none',
+  retroactive tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY  (id),
+  UNIQUE KEY year_version (year,version)
 ) $c;";
 
 		$tables[] = "CREATE TABLE {$p}funds (

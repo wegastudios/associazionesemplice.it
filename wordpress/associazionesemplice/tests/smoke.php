@@ -4030,7 +4030,7 @@ try {
 	$threw = true;
 }
 asem_ok( $threw, 'anno chiuso: non si annullano i suoi movimenti' );
-\AssociazioneSemplice\FiscalYears::reopen( $fy_far );
+\AssociazioneSemplice\FiscalYears::reopen( $fy_far, 'prova di riapertura' );
 $ledger->record_expense( array( 'date' => $far_date, 'account_id' => (int) $cash['id'], 'category_id' => $cat['general_cost'], 'amount_cents' => 100, 'description' => 'riaperto' ) );
 asem_ok( true, 'anno riaperto: accetta di nuovo i movimenti' );
 $threw = false;
@@ -4063,7 +4063,7 @@ $rep_b = Plugin::reports()->period( $cy . '-01-01', $cy . '-12-31' );
 asem_ok( $rep_b['total_expense'] === $rep_a['total_expense'], 'anno solare: pagare il rimborso non conta due volte (' . $rep_a['total_expense'] . ' = ' . $rep_b['total_expense'] . ')' );
 \AssociazioneSemplice\FiscalYears::close( $fy_far );
 asem_ok( ! \AssociazioneSemplice\FiscalYears::is_open( $fy_far ), 'anni solari: rimborsato tutto, l\'anno finito si chiude' );
-\AssociazioneSemplice\FiscalYears::reopen( $fy_far );
+\AssociazioneSemplice\FiscalYears::reopen( $fy_far, 'prova di riapertura' );
 // l'anno in corso non si chiude e si apre da solo
 $threw = false;
 try {
@@ -4080,12 +4080,140 @@ try {
 }
 asem_ok( $threw, 'anni solari: un anno non ancora iniziato non si chiude' );
 $wpdb->update( Db::t( 'fiscal_years' ), array( 'status' => 'closed' ), array( 'year' => $cy ) ); // simulo un anno in corso rimasto chiuso
-$ledger->record_expense( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'category_id' => $cat['general_cost'], 'amount_cents' => 100, 'description' => 'anno in corso riaperto da solo' ) );
-asem_ok( \AssociazioneSemplice\FiscalYears::is_open( $cy ), 'anni solari: se l\'anno in corso non è aperto, si apre da solo al primo movimento' );
+$threw = null !== asem_throws( function () use ( $ledger, $today, $cash, $cat ) {
+	$ledger->record_expense( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'category_id' => $cat['general_cost'], 'amount_cents' => 100, 'description' => 'anno in corso chiuso' ) );
+} );
+asem_ok( $threw && ! \AssociazioneSemplice\FiscalYears::is_open( $cy ), 'anni solari: un anno chiuso non si riapre mai in silenzio, nemmeno se è quello in corso' );
+$wpdb->update( Db::t( 'fiscal_years' ), array( 'status' => 'open' ), array( 'year' => $cy ) ); // ripristino la prova
 $wpdb->delete( Db::t( 'fiscal_years' ), array( 'year' => $cy ) );
 delete_option( 'asem_fy_auto' );
 \AssociazioneSemplice\FiscalYears::maybe_open_current();
 asem_ok( \AssociazioneSemplice\FiscalYears::is_open( $cy ) && (string) $cy === get_option( 'asem_fy_auto' ), 'anni solari: all\'inizio dell\'anno il nuovo anno si apre in automatico' );
+// ---------- Esercizio chiuso: «il chiuso è chiuso» ----------
+$yl_msg  = function ( int $y ): string {
+	return 'L\'anno ' . \AssociazioneSemplice\FiscalYears::label( $y ) . ' è chiuso: per modificarlo va riaperto.';
+};
+$yl_png  = function ( string $n ) use ( $files, $mkf ) { // il file caricato viene spostato: ogni volta se ne crea uno nuovo
+	return Attachments::prepare( $files( array( $n => $mkf( $n, base64_decode( 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==' ) ) ) ) );
+};
+$yl_y    = $fy_far;               // anno passato aperto, con movimenti
+$yl_y2   = $yl_y + 1;             // l'anno dopo (esiste o lo creo)
+$yl_made = ! \AssociazioneSemplice\FiscalYears::get( $yl_y2 );
+if ( $yl_made ) {
+	\AssociazioneSemplice\FiscalYears::create( $yl_y2 );
+}
+$yl_date = $yl_y . '-06-15';
+$yl_tx   = (int) $wpdb->get_var( 'SELECT id FROM ' . Db::t( 'transactions' ) . " WHERE tx_date = '$yl_date' AND voided_at IS NULL ORDER BY id DESC LIMIT 1" );
+$yl_p    = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Chiara', 'last_name' => 'Chiusura', 'email' => 'chiara.chiusura@example.com' ) );
+$yl_acc  = $ledger->add_account( 'Conto anno chiuso', 'other', 0 );
+$yl_asm  = \AssociazioneSemplice\Assemblies::save( 0, array( 'title' => 'Assemblea anno chiuso', 'first_call_at' => gmdate( 'Y-m-d\TH:i', strtotime( '+10 days' ) ), 'agenda' => 'Varie' ), 1 );
+$wpdb->update( Db::t( 'assemblies' ), array( 'first_call_at' => $yl_date . ' 10:00:00' ), array( 'id' => $yl_asm ) ); // un'assemblea non svolta, datata nell'anno passato
+
+// anno aperto: tutte le azioni sono consentite
+Attachments::add( $yl_tx, $yl_png( 'yl-aperto.png' ) );
+$yl_att = Attachments::list_for( $yl_tx );
+asem_ok( 1 === count( $yl_att ), 'anno aperto: si aggiunge un allegato' );
+Attachments::remove( (int) $yl_att[0]['id'] );
+asem_ok( 0 === count( Attachments::list_for( $yl_tx ) ), 'anno aperto: si toglie un allegato' );
+Attachments::add( $yl_tx, $yl_png( 'yl-da-tenere.png' ) );
+$yl_att = Attachments::list_for( $yl_tx );
+$ledger->update_account( $yl_acc, 'Conto anno aperto', 'other', 700 );
+asem_ok( 700 === (int) $ledger->account_any( $yl_acc )['opening_cents'], 'anno aperto: il saldo iniziale di un conto si cambia' );
+\AssociazioneSemplice\MemberBook::set_left( $yl_p, $today, 'prova' );
+\AssociazioneSemplice\MemberBook::set_left( $yl_p, '' );
+asem_ok( null === $people->get( $yl_p )['left_on'], 'anno aperto: la cessazione si mette e si toglie' );
+\AssociazioneSemplice\Assemblies::save( $yl_asm, array( 'title' => 'Assemblea anno aperto', 'first_call_at' => $yl_date . 'T10:00', 'agenda' => 'Varie' ), 1 );
+asem_ok( 'Assemblea anno aperto' === \AssociazioneSemplice\Assemblies::get( $yl_asm )['title'], 'anno aperto: l\'assemblea non svolta si modifica' );
+Settings::update( array( 'fiscal_start_month' => 1 ) ); // senza esercizi chiusi il mese si può (ri)salvare
+
+// ordine di chiusura: non si chiude un anno se uno precedente è ancora aperto
+$yl_m = asem_throws( function () use ( $yl_y2 ) { \AssociazioneSemplice\FiscalYears::close( $yl_y2 ); } );
+asem_ok( 'Prima di chiudere il ' . \AssociazioneSemplice\FiscalYears::label( $yl_y2 ) . ' chiudi il ' . \AssociazioneSemplice\FiscalYears::label( $yl_y ) . '.' === $yl_m, 'esercizi: non si chiude un anno con un anno precedente ancora aperto (' . (string) $yl_m . ')' );
+
+// si prepara la cessazione antica e si chiude l'anno
+$yl_v0 = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT MAX(version) FROM ' . Db::t( 'fiscal_year_closures' ) . ' WHERE year = %d', $yl_y ) ); // chiusure già fatte in precedenza su questo anno
+$wpdb->update( Db::t( 'people' ), array( 'left_on' => $yl_date ), array( 'id' => $yl_p ) );
+\AssociazioneSemplice\FiscalYears::close( $yl_y );
+$yl_c1 = \AssociazioneSemplice\FiscalYears::current_closure( $yl_y );
+asem_ok( $yl_c1 && $yl_v0 + 1 === (int) $yl_c1['version'] && 'current' === $yl_c1['status'] && 'none' === $yl_c1['snapshot_state'] && (int) $yl_c1['closed_by'] === get_current_user_id() && $yl_y . '-01-01' === $yl_c1['range_from'], 'esercizi: la chiusura lascia una riga permanente (utente, data, versione)' );
+
+// anno chiuso: ogni azione bloccata, con il messaggio unico
+asem_ok( $yl_msg( $yl_y ) === asem_throws( function () use ( $yl_tx, $yl_png ) { Attachments::add( $yl_tx, $yl_png( 'yl-chiuso.png' ) ); } ), 'anno chiuso: non si aggiungono allegati' );
+asem_ok( $yl_msg( $yl_y ) === asem_throws( function () use ( $yl_att ) { Attachments::remove( (int) $yl_att[0]['id'] ); } ) && 1 === count( Attachments::list_for( $yl_tx ) ), 'anno chiuso: non si tolgono allegati' );
+asem_ok( null !== asem_throws( function () use ( $ledger, $yl_acc ) { $ledger->update_account( $yl_acc, 'Conto anno chiuso', 'other', 900 ); } ) && 700 === (int) $ledger->account_any( $yl_acc )['opening_cents'], 'anno chiuso: non si cambia il saldo iniziale di un conto' );
+$ledger->update_account( $yl_acc, 'Conto rinominato in anno chiuso', 'other', 700 );
+asem_ok( 'Conto rinominato in anno chiuso' === $ledger->account_any( $yl_acc )['name'], 'anno chiuso: il nome del conto, a saldo iniziale invariato, si cambia' );
+asem_ok( null !== asem_throws( function () use ( $ledger, $yl_acc ) { $ledger->shift_opening( $yl_acc, 50 ); } ) && 700 === (int) $ledger->account_any( $yl_acc )['opening_cents'], 'anno chiuso: non si sposta il saldo iniziale' );
+asem_ok( $yl_msg( $yl_y ) === asem_throws( function () use ( $yl_p, $yl_date ) { \AssociazioneSemplice\MemberBook::set_left( $yl_p, $yl_date, 'x' ); } ), 'anno chiuso: non si mette una cessazione con data nell\'anno chiuso' );
+asem_ok( $yl_msg( $yl_y ) === asem_throws( function () use ( $yl_p ) { \AssociazioneSemplice\MemberBook::set_left( $yl_p, '' ); } ) && $yl_date === $people->get( $yl_p )['left_on'], 'anno chiuso: non si toglie una cessazione datata nell\'anno chiuso' );
+asem_ok( $yl_msg( $yl_y ) === asem_throws( function () use ( $yl_asm ) { \AssociazioneSemplice\Assemblies::save( $yl_asm, array( 'title' => 'Cambiata', 'first_call_at' => gmdate( 'Y-m-d\TH:i', strtotime( '+10 days' ) ), 'agenda' => 'x' ), 1 ); } ), 'anno chiuso: l\'assemblea non svolta non si modifica' );
+asem_ok( $yl_msg( $yl_y ) === asem_throws( function () use ( $yl_asm ) { \AssociazioneSemplice\Assemblies::delete( $yl_asm ); } ) && null !== \AssociazioneSemplice\Assemblies::get( $yl_asm ), 'anno chiuso: l\'assemblea non svolta non si cancella' );
+asem_ok( null !== asem_throws( function () use ( $yl_asm ) { \AssociazioneSemplice\Assemblies::convene( $yl_asm ); } ) && null !== asem_throws( function () use ( $yl_asm ) { \AssociazioneSemplice\Assemblies::set_attendance( $yl_asm, array() ); } ) && null !== asem_throws( function () use ( $yl_asm ) { \AssociazioneSemplice\Assemblies::move( $yl_asm, \AssociazioneSemplice\AssemblyRules::CANCELLED ); } ), 'anno chiuso: l\'assemblea non si convoca, non cambia stato e non cambiano le presenze' );
+$yl_set = asem_throws( function () { Settings::update( array( 'fiscal_start_month' => 7 ) ); } );
+asem_ok( 'Esistono esercizi chiusi: il mese di inizio non si può più cambiare.' === $yl_set && 1 === \AssociazioneSemplice\FiscalYears::start_month(), 'esercizi: con un esercizio chiuso il mese di inizio non si cambia' );
+Settings::update( array( 'fiscal_start_month' => 1 ) ); // lo stesso valore si può risalvare
+$yl_html = asem_render( array( Admin\EntityPage::class, 'render' ), 'Esistono esercizi chiusi' );
+asem_ok( 1 === preg_match( '/<select name="fiscal_start_month"[^>]*disabled/', $yl_html ), 'esercizi: nella scheda Dati e fiscalità il mese è bloccato e dice perché' );
+
+// riapertura: solo l'ultimo chiuso, con il motivo
+\AssociazioneSemplice\FiscalYears::close( $yl_y2 ); // ora si può: l'anno precedente è chiuso
+asem_ok( ! \AssociazioneSemplice\FiscalYears::is_open( $yl_y2 ) && $yl_y2 === \AssociazioneSemplice\FiscalYears::last_closed(), 'esercizi: chiuso in ordine, l\'ultimo chiuso è il più recente' );
+$yl_m = asem_throws( function () use ( $yl_y ) { \AssociazioneSemplice\FiscalYears::reopen( $yl_y, 'voglio riaprirlo' ); } );
+asem_ok( null !== $yl_m && false !== strpos( $yl_m, 'solo l\'ultimo esercizio chiuso' ) && ! \AssociazioneSemplice\FiscalYears::is_open( $yl_y ), 'esercizi: si riapre solo l\'ultimo chiuso (non uno precedente)' );
+asem_ok( false !== strpos( (string) asem_throws( function () use ( $yl_y2 ) { \AssociazioneSemplice\FiscalYears::reopen( $yl_y2, '   ' ); } ), 'motivo' ) && ! \AssociazioneSemplice\FiscalYears::is_open( $yl_y2 ), 'esercizi: senza motivo la riapertura è rifiutata' );
+$yl_page = asem_render( array( Admin\YearsPage::class, 'render' ), 'Storico delle chiusure' );
+asem_ok( false !== strpos( $yl_page, 'name="reason"' ) && false !== strpos( $yl_page, 'Non riapribile' ), 'esercizi: la pagina chiede il motivo e non offre la riapertura degli altri anni' );
+\AssociazioneSemplice\FiscalYears::reopen( $yl_y2, 'Correzione di una spesa' );
+\AssociazioneSemplice\FiscalYears::reopen( $yl_y, 'Cessazione registrata in ritardo' );
+$yl_hist = \AssociazioneSemplice\FiscalYears::closures( $yl_y );
+asem_ok( \AssociazioneSemplice\FiscalYears::is_open( $yl_y ) && \AssociazioneSemplice\FiscalYears::is_open( $yl_y2 ) && 'superseded' === $yl_hist[0]['status'] && 'Cessazione registrata in ritardo' === $yl_hist[0]['reopen_reason'] && null !== $yl_hist[0]['reopened_at'] && null === \AssociazioneSemplice\FiscalYears::current_closure( $yl_y ), 'esercizi: la riapertura resta scritta (chi, quando, motivo) e la chiusura diventa una versione precedente' );
+\AssociazioneSemplice\FiscalYears::close( $yl_y );
+asem_ok( $yl_v0 + 2 === (int) \AssociazioneSemplice\FiscalYears::current_closure( $yl_y )['version'] && $yl_v0 + 2 === count( \AssociazioneSemplice\FiscalYears::closures( $yl_y ) ), 'esercizi: richiudendo nasce una nuova versione e la prima resta nella traccia' );
+$yl_free = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'fiscal_year_closures' ) );
+\AssociazioneSemplice\Audit::purge_old();
+asem_ok( $yl_free === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'fiscal_year_closures' ) ), 'esercizi: la traccia delle chiusure non dipende dalla pulizia del registro azioni' );
+\AssociazioneSemplice\FiscalYears::reopen( $yl_y, 'Fine della prova' );
+
+// anno di nuovo aperto: le azioni tornano consentite
+Attachments::remove( (int) $yl_att[0]['id'] );
+\AssociazioneSemplice\MemberBook::set_left( $yl_p, '' );
+$ledger->update_account( $yl_acc, 'Conto anno riaperto', 'other', 800 );
+asem_ok( 800 === (int) $ledger->account_any( $yl_acc )['opening_cents'] && null === $people->get( $yl_p )['left_on'], 'anno riaperto: allegati, saldo iniziale e cessazione si possono di nuovo modificare' );
+
+// anni già chiusi prima della traccia: la migrazione crea la riga «non fotografato» senza inventare nulla, e si può rilanciare
+$wpdb->update( Db::t( 'fiscal_years' ), array( 'status' => 'closed', 'closed_at' => $yl_y . '-12-31 10:00:00' ), array( 'year' => $yl_y ) );
+asem_ok( 1 === \AssociazioneSemplice\Install::migrate_year_closures() && 0 === \AssociazioneSemplice\Install::migrate_year_closures(), 'migrazione: l\'anno chiuso senza traccia ottiene la sua riga, una volta sola' );
+$yl_leg = \AssociazioneSemplice\FiscalYears::current_closure( $yl_y );
+asem_ok( $yl_v0 + 3 === (int) $yl_leg['version'] && 'none' === $yl_leg['snapshot_state'] && null === $yl_leg['closed_by'] && $yl_y . '-12-31 10:00:00' === $yl_leg['closed_at'], 'migrazione: stato «non fotografato», utente sconosciuto, data della chiusura originale' );
+\AssociazioneSemplice\FiscalYears::reopen( $yl_y, 'Fine della prova' );
+$ledger->update_account( $yl_acc, 'Conto prova chiuso', 'other', 0 );
+$ledger->close_account( $yl_acc );
+$wpdb->delete( Db::t( 'assemblies' ), array( 'id' => $yl_asm ) );
+if ( $yl_made ) {
+	$wpdb->delete( Db::t( 'fiscal_years' ), array( 'year' => $yl_y2 ) );
+}
+
+// mesi di inizio diversi da gennaio e anni bisestili (regole pure)
+$yl_fy = \AssociazioneSemplice\FiscalYears::class;
+asem_ok( array( '2025-07-01', '2026-06-30' ) === $yl_fy::range_for( 2025, 7 ) && 2024 === $yl_fy::year_for( '2025-06-30', 7 ) && 2025 === $yl_fy::year_for( '2025-07-01', 7 ), 'esercizio a luglio: dal 1 luglio al 30 giugno, confini 30/6 e 1/7' );
+asem_ok( array( '2025-09-01', '2026-08-31' ) === $yl_fy::range_for( 2025, 9 ) && 2025 === $yl_fy::year_for( '2026-08-31', 9 ) && 2026 === $yl_fy::year_for( '2026-09-01', 9 ), 'esercizio a settembre: dal 1 settembre al 31 agosto' );
+asem_ok( array( '2023-03-01', '2024-02-29' ) === $yl_fy::range_for( 2023, 3 ) && array( '2024-03-01', '2025-02-28' ) === $yl_fy::range_for( 2024, 3 ) && 2023 === $yl_fy::year_for( '2024-02-29', 3 ) && 2024 === $yl_fy::year_for( '2024-03-01', 3 ), 'esercizio a marzo: il 29 febbraio degli anni bisestili cade nell\'esercizio giusto' );
+asem_ok( array( '2024-01-01', '2024-12-31' ) === $yl_fy::range_for( 2024, 1 ) && 2024 === $yl_fy::year_for( '2024-02-29', 1 ), 'esercizio a gennaio: identico all\'anno solare, anche bisestile' );
+// con inizio a luglio la guardia degli esercizi chiusi segue l'esercizio e l'etichetta mostra i due anni
+$yl_old = 2005;
+while ( \AssociazioneSemplice\FiscalYears::get( $yl_old ) ) {
+	++$yl_old;
+}
+Settings::update( array( 'fiscal_start_month' => 7 ) );
+\AssociazioneSemplice\FiscalYears::create( $yl_old );
+$wpdb->update( Db::t( 'fiscal_years' ), array( 'status' => 'closed', 'closed_at' => Db::now() ), array( 'year' => $yl_old ) ); // chiusura diretta: qui si prova solo la guardia
+$yl_lk = \AssociazioneSemplice\YearLock::class;
+asem_ok( $yl_old . '/' . ( $yl_old + 1 ) === \AssociazioneSemplice\FiscalYears::label( $yl_old ) && $yl_lk::is_closed_date( $yl_old . '-07-01' ) && $yl_lk::is_closed_date( ( $yl_old + 1 ) . '-06-30' ) && ! $yl_lk::is_closed_date( $yl_old . '-06-30' ) && ! $yl_lk::is_closed_date( ( $yl_old + 1 ) . '-07-01' ), 'esercizio a luglio: la guardia e l\'etichetta seguono l\'esercizio (confini 30/6 e 1/7)' );
+$wpdb->delete( Db::t( 'fiscal_years' ), array( 'year' => $yl_old ) );
+Settings::update( array( 'fiscal_start_month' => 1 ) );
+asem_ok( 1 === \AssociazioneSemplice\FiscalYears::start_month() && (string) $cy === \AssociazioneSemplice\FiscalYears::label( $cy ), 'esercizio: tornati a gennaio l\'etichetta è l\'anno solare' );
+$wpdb->delete( Db::t( 'fiscal_year_closures' ), array( 'year' => $yl_old ) );
+
 asem_render( array( Admin\YearsPage::class, 'render' ), 'Crea anno solare' );
 $rep_html = asem_render( array( Admin\ReportsPage::class, 'render' ), 'Conti e liquidità' );
 asem_ok( strpos( $rep_html, 'Conti e liquidità' ) < strpos( $rep_html, 'Anno sociale (attività)' ) && strpos( $rep_html, 'Anno sociale (attività)' ) < strpos( $rep_html, 'Anno solare (commercialista)' ), 'report: prima conti e liquidità, poi anno sociale, poi anno solare' );

@@ -39,6 +39,10 @@ final class EntityData {
 		if ( $has( 'social_year_start_month' ) ) {
 			$vals['social_year_start_month'] = (int) ( $p['social_year_start_month'] ?? 9 );
 		}
+		if ( $has( 'fiscal_start_month' ) ) {
+			// Con esercizi chiusi il campo è disabilitato e non arriva nel modulo: il mese resta quello in vigore.
+			$vals['fiscal_start_month'] = max( 1, min( 12, (int) ( $p['fiscal_start_month'] ?? FiscalYears::start_month() ) ) );
+		}
 		if ( $has( 'pec' ) ) {
 			$pec = trim( $txt( 'pec' ) );
 			if ( '' !== $pec && ! is_email( $pec ) ) {
