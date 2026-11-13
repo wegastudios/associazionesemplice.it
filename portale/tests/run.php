@@ -478,8 +478,16 @@ Config::set( 'legal', array() );
 check( 'piè di pagina: senza dati compilati nessuna riga', '' === Portale\Legal::footerLine() );
 Config::set( 'legal', array( 'titolare' => 'Associazione Rossi', 'piva' => '01234567890', 'indirizzo' => '', 'email' => '' ) );
 check( 'piè di pagina: solo i campi compilati', 'Associazione Rossi · P.IVA 01234567890' === Portale\Legal::footerLine() );
+check( 'legale: frase del titolare con i soli campi compilati', 'Associazione Rossi, partita IVA 01234567890' === Portale\Legal::vars()['titolare_completo'] );
+Config::set( 'legal', array( 'titolare' => 'Associazione Rossi', 'indirizzo' => 'Via Roma 1, Milano', 'piva' => '', 'email' => '' ) );
+check( 'legale: frase del titolare con indirizzo e senza partita IVA', 'Associazione Rossi, con sede in Via Roma 1, Milano' === Portale\Legal::vars()['titolare_completo'] );
+Config::set( 'legal', array() );
+$privHtml = Portale\Legal::html( Portale\Legal::body( 'privacy' ) );
+check( 'legale: privacy di base senza buchi quando i dati non ci sono', false !== strpos( $privHtml, 'è Associazione Semplice. Per' ) && false === strpos( $privHtml, 'partita IVA' ) );
+$cookieHtml = Portale\Legal::html( Portale\Legal::body( 'cookie' ) );
+check( 'legale: cookie di base senza statistiche né marketing promessi', false === strpos( $cookieHtml, 'Marketing' ) && false === strpos( $cookieHtml, 'Statistiche' ) && false !== strpos( $cookieHtml, 'non usiamo cookie di statistica' ) );
 Config::set( 'legal', $legalBefore );
-$lv = Portale\Legal::vars();
+$lv =Portale\Legal::vars();
 check( 'legale: segnaposto dei piani nuovi e vecchi → stesso nome del pannello', $lv['piano_contabile'] === $lv['piano_lite'] && $lv['piano_fiscale'] === $lv['piano_full'] && '' !== $lv['piano_gratuito'] && false === strpos( Portale\Legal::html( Portale\Legal::body( 'termini' ) ), '{piano_' ) );
 check( 'legale: email non valida scartata, si torna ai valori di base', 'info@associazionesemplice.it' === Portale\Legal::vars()['email'] && ! Portale\Legal::isCustom( 'privacy' ) );
 
