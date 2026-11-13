@@ -2,6 +2,7 @@
 # Li usa il workflow per provare il plugin senza di loro (tests/smoke_free.php) e, più avanti, per costruire i due pacchetti.
 Admin/VatFields.php
 Admin/LevelsEditor.php
+LevelVoting.php
 PaymentService.php
 Gateways.php
 StripeApi.php

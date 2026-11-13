@@ -226,6 +226,22 @@
 		if (INIT.length) { INIT.forEach(add); } else { add({}); }
 	});
 
+	/* Scheda socio: se il socio è un ente, «Cognome» diventa «Nome dell'ente», «Nome» sparisce e compare la domanda sulla sezione del RUNTS */
+	(function () {
+		var kind = $('select[name="subject_kind"]');
+		if (!kind) { return; }
+		var first = $('.asem-row-firstname'), last = $('.asem-row-lastname'), ent = $('.asem-row-entity');
+		var lastTh = last ? $('th', last) : null;
+		function sync() {
+			var isEnt = kind.value === 'entity';
+			if (first) { first.style.display = isEnt ? 'none' : ''; if (isEnt) { var f = $('input', first); if (f) { f.value = ''; } } }
+			if (lastTh) { lastTh.textContent = isEnt ? 'Nome dell\'ente *' : 'Cognome *'; }
+			if (ent) { ent.style.display = isEnt ? '' : 'none'; }
+		}
+		kind.addEventListener('change', sync);
+		sync();
+	})();
+
 	/* Livelli di socio: righe dinamiche nome + base + quota + attivo */
 	$$('.asem-levels').forEach(function (wrap) {
 		var rows = $('.asem-levels-rows', wrap), seq = 0;
@@ -244,6 +260,12 @@
 			fl.appendChild(document.createTextNode('Quota € '));
 			fl.appendChild(el('input', { type: 'text', name: n + '[fee]', value: r.fee || '', placeholder: 'predefinita', size: '9', inputmode: 'decimal' }));
 			row.appendChild(fl);
+			var vl = el('label', { style: 'margin-right:10px' });
+			vl.appendChild(document.createTextNode('Voto '));
+			var vs = el('select', { name: n + '[votes]' });
+			[['1', 'sì'], ['0', 'no']].forEach(function (o) { var op = el('option', { value: o[0], text: o[1] }); if ((r.votes === false ? '0' : '1') === o[0]) { op.selected = true; } vs.appendChild(op); });
+			vl.appendChild(vs);
+			row.appendChild(vl);
 			var al = el('label', { style: 'margin-right:10px' });
 			var act = el('input', { type: 'checkbox', name: n + '[active]', value: '1' });
 			if (r.active !== false) { act.checked = true; }

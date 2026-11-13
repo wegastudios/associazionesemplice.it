@@ -161,7 +161,7 @@ final class Docs {
 	}
 
 	private static function book_cols( bool $snap = false ): array {
-		$labels = array( 'N.', 'Matricola', 'Cognome e nome', 'Codice fiscale', 'Data di nascita', 'Luogo di nascita', 'Residenza', 'Email', 'Telefono', 'Data domanda', 'Data delibera', 'Ingresso', 'Ultima quota versata', 'Anno della quota', 'Cessazione (recesso/esclusione)', 'Motivo', 'Genitore o tutore firmatario', 'Livello' );
+		$labels = array( 'N.', 'Matricola', 'Cognome e nome', 'Tipo', 'Codice fiscale', 'Data di nascita', 'Luogo di nascita', 'Residenza', 'Email', 'Telefono', 'Data domanda', 'Data delibera', 'Ingresso', 'Ultima quota versata', 'Anno della quota', 'Cessazione (recesso/esclusione)', 'Motivo', 'Genitore o tutore firmatario', 'Livello' );
 		if ( $snap ) {
 			$labels = array_values( array_diff( $labels, self::book_snapshot_gaps() ) );
 		}
@@ -178,13 +178,13 @@ final class Docs {
 		foreach ( $rows as $r ) {
 			if ( $snap ) {
 				$out[] = array(
-					(string) $r['n'], (int) $r['matricola'] > 0 ? (string) (int) $r['matricola'] : '', $r['name'], $r['tax_code'], '' !== $r['birth_date'] ? self::d( $r['birth_date'] ) : '', $r['birth_place'], $r['residence'],
+					(string) $r['n'], (int) $r['matricola'] > 0 ? (string) (int) $r['matricola'] : '', $r['name'], MemberBook::kind_label( (string) $r['kind'] ), $r['tax_code'], '' !== $r['birth_date'] ? self::d( $r['birth_date'] ) : '', $r['birth_place'], $r['residence'],
 					self::d( $r['approved_on'] ), self::d( $r['joined_on'] ), $r['left_on'] ? self::d( $r['left_on'] ) : '', $r['left_reason'], $r['level'],
 				);
 				continue;
 			}
 			$out[] = array(
-				(string) $r['n'], (int) $r['matricola'] > 0 ? (string) (int) $r['matricola'] : '', $r['name'], $r['tax_code'], '' !== $r['birth_date'] ? self::d( $r['birth_date'] ) : '', $r['birth_place'], $r['residence'], $r['email'], $r['phone'],
+				(string) $r['n'], (int) $r['matricola'] > 0 ? (string) (int) $r['matricola'] : '', $r['name'], MemberBook::kind_label( (string) $r['kind'] ), $r['tax_code'], '' !== $r['birth_date'] ? self::d( $r['birth_date'] ) : '', $r['birth_place'], $r['residence'], $r['email'], $r['phone'],
 				self::d( $r['applied_on'] ), self::d( $r['approved_on'] ), self::d( $r['joined_on'] ), $r['fee_cents'] > 0 ? Money::format( $r['fee_cents'] ) : '', $r['fee_year'],
 				$r['left_on'] ? self::d( $r['left_on'] ) : '', $r['left_reason'], $r['guardian'], $r['level'],
 			);
@@ -210,7 +210,7 @@ final class Docs {
 			$pdf->text( self::LEFT + 3, $y, self::fit( $r['n'] . '. ' . ( (int) $r['matricola'] > 0 ? '[matr. ' . (int) $r['matricola'] . '] ' : '' ) . $r['name'] . ( '' !== $r['tax_code'] ? ' · CF ' . $r['tax_code'] : '' ), 240, 8, true ), 8, true );
 			$pdf->text( self::LEFT + 250, $y, self::fit( $born, $w - 253, 8 ), 8 );
 			$y += 12;
-			$pdf->text( self::LEFT + 3, $y, self::fit( ( '' !== $r['residence'] ? 'Residenza: ' . $r['residence'] : '' ), 300, 8 ), 8 );
+			$pdf->text( self::LEFT + 3, $y, self::fit( 'Tipo: ' . MemberBook::kind_label( (string) $r['kind'] ) . ( '' !== $r['residence'] ? ' · Residenza: ' . $r['residence'] : '' ), 300, 8 ), 8 );
 			$pdf->text( self::LEFT + 310, $y, self::fit( $snap ? (string) $r['level'] : trim( $r['email'] . ( '' !== $r['phone'] ? ' · ' . $r['phone'] : '' ) ), $w - 313, 8 ), 8 );
 			$y += 12;
 			$parts = $snap ? array( 'Delibera ' . self::d( $r['approved_on'] ), 'Ingresso ' . self::d( $r['joined_on'] ) ) : array( 'Domanda ' . self::d( $r['applied_on'] ), 'Delibera ' . self::d( $r['approved_on'] ), 'Ingresso ' . self::d( $r['joined_on'] ) );

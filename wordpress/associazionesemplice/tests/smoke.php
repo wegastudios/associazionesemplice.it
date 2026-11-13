@@ -9180,13 +9180,18 @@ add_filter( 'asem_fiscal_start_month', $ru_fm = function () { return 7; } );
 asem_ok( \AssociazioneSemplice\Runts::counts_at( $ru_date ) === $ru_c, 'RUNTS: il conteggio al 31/12 non dipende dal mese di inizio dell\'esercizio' );
 remove_filter( 'asem_fiscal_start_month', $ru_fm );
 asem_ok( in_array( 'Ente Uno APS', array_column( $ru_c['entities'], 'name' ), true ) && in_array( '12345678903', array_column( $ru_c['entities'], 'tax_code' ), true ),'RUNTS: l\'ente compare con la denominazione e il codice fiscale' );
-// diritto di voto per tipo di socio
-Settings::update( array( 'voting_types' => array( 'ordinary' ) ) );
+// diritto di voto per LIVELLO (Pro): un livello senza voto esclude chi lo ha, gli altri livelli della stessa base no
+$wpdb->insert( Db::t( 'member_levels' ), array( 'name' => 'Sostenitore senza voto', 'base_type' => 'volunteer', 'fee_cents' => null, 'sort_order' => 99, 'active' => 1, 'votes' => 0, 'created_at' => Db::now() ) );
+$ru_lv = (int) $wpdb->insert_id;
+\AssociazioneSemplice\LevelVoting::flush();
+asem_ok( 1 === (int) $wpdb->get_var( 'SELECT votes FROM ' . Db::t( 'member_levels' ) . " WHERE base_type = 'ordinary' ORDER BY id LIMIT 1" ), 'livelli: di partenza ogni livello vota (migrazione: non cambia nulla)' );
+$wpdb->update( Db::t( 'people' ), array( 'level_id' => $ru_lv ), array( 'id' => $ru_ids[1] ) );
 $ru_c2 = \AssociazioneSemplice\Runts::counts_at( $ru_date );
-asem_ok( 2 === $ru_c2['persons_vote'] - $ru_base['persons_vote'], 'diritto di voto per tipo: se il tipo «socio e volontario» non vota, non conta nei dati RUNTS' );
-Settings::update( array( 'voting_types' => array() ) );
-asem_ok( array( 'founder', 'ordinary', 'volunteer' ) === \AssociazioneSemplice\VotingRight::types(), 'diritto di voto per tipo: se non resta nessun tipo, votano tutti' );
-Settings::update( array( 'voting_types' => array( 'founder', 'ordinary', 'volunteer' ) ) );
+asem_ok( 2 === $ru_c2['persons_vote'] - $ru_base['persons_vote'] && 2 === $ru_c2['persons_no_vote'] - $ru_base['persons_no_vote'], 'diritto di voto per livello: se il livello di un socio non vota, non conta nei dati RUNTS' );
+$ru_vit = $people->get( $ru_ids[1] );
+asem_ok( 'level' === \AssociazioneSemplice\VotingRight::reason( $ru_vit, $ru_date ) && 'minor' === \AssociazioneSemplice\VotingRight::reason( $people->get( $ru_ids[2] ), $ru_date ) && 'nobirth' === \AssociazioneSemplice\VotingRight::reason( array( 'type' => 'ordinary', 'birth_date' => null ), $ru_date ), 'diritto di voto: la scheda sa dire perché non vota (livello, minorenne, data di nascita mancante)' );
+$wpdb->query( 'UPDATE ' . Db::t( 'people' ) . ' SET level_id = NULL WHERE id = ' . (int) $ru_ids[1] );
+asem_ok( $ru_c['persons_vote'] === \AssociazioneSemplice\Runts::counts_at( $ru_date )['persons_vote'], 'diritto di voto per livello: senza livello (o con livello che vota) il socio vota' );
 // votazioni e assemblee: tipo che vota e maggiorenne
 $ru_next = gmdate( 'Y-m-d', strtotime( '+1 year' ) );
 $ru_today = Db::today();
@@ -9197,9 +9202,69 @@ $ru_el     = \AssociazioneSemplice\Assemblies::eligible_ids();
 asem_ok( in_array( $ru_adult, $ru_el, true ) && in_array( $ru_volun, $ru_el, true ) && ! in_array( $ru_minor, $ru_el, true ), 'assemblee: il minorenne non ha diritto di voto, gli adulti sì' );
 asem_ok( \AssociazioneSemplice\Assemblies::is_eligible( $people->get( $ru_adult ) ) && ! \AssociazioneSemplice\Assemblies::is_eligible( $people->get( $ru_minor ) ), 'assemblee: stessa regola nel controllo della singola persona' );
 asem_ok( \AssociazioneSemplice\Assemblies::eligible_count() === count( \AssociazioneSemplice\Assemblies::eligible_people() ), 'votazioni: il conteggio e l\'elenco di chi vota coincidono' );
-Settings::update( array( 'voting_types' => array( 'ordinary' ) ) );
-asem_ok( ! in_array( $ru_volun, \AssociazioneSemplice\Assemblies::eligible_ids(), true ) && ! \AssociazioneSemplice\Assemblies::is_eligible( $people->get( $ru_volun ) ) && \AssociazioneSemplice\Assemblies::eligible_count() === count( \AssociazioneSemplice\Assemblies::eligible_people() ), 'diritto di voto per tipo: un tipo che non vota non è tra gli aventi diritto' );
-Settings::update( array( 'voting_types' => array( 'founder', 'ordinary', 'volunteer' ) ) );
+$wpdb->update( Db::t( 'people' ), array( 'level_id' => $ru_lv ), array( 'id' => $ru_volun ) );
+asem_ok( ! in_array( $ru_volun, \AssociazioneSemplice\Assemblies::eligible_ids(), true ) && ! \AssociazioneSemplice\Assemblies::is_eligible( $people->get( $ru_volun ) ) && \AssociazioneSemplice\Assemblies::eligible_count() === count( \AssociazioneSemplice\Assemblies::eligible_people() ), 'diritto di voto per livello: un livello che non vota non è tra gli aventi diritto' );
+$wpdb->update( Db::t( 'member_levels' ), array( 'votes' => 1 ), array( 'id' => $ru_lv ) );
+\AssociazioneSemplice\LevelVoting::flush();
+asem_ok( in_array( $ru_volun, \AssociazioneSemplice\Assemblies::eligible_ids(), true ) && \AssociazioneSemplice\Assemblies::is_eligible( $people->get( $ru_volun ) ), 'diritto di voto per livello: rimesso «vota sì», il socio torna tra gli aventi diritto' );
+$wpdb->update( Db::t( 'member_levels' ), array( 'votes' => 0 ), array( 'id' => $ru_lv ) );
+\AssociazioneSemplice\LevelVoting::flush();
+add_filter( 'asem_feature_available', $ru_off = function ( $ok, $f ) { return 'levels' === $f ? false : $ok; }, 20, 2 );
+asem_ok( \AssociazioneSemplice\VotingRight::level_votes( $people->get( $ru_volun ) ) && in_array( $ru_volun, \AssociazioneSemplice\Assemblies::eligible_ids(), true ), 'diritto di voto: senza la funzione «livelli» (licenza scaduta o gratuito) votano tutti i soci maggiorenni' );
+remove_filter( 'asem_feature_available', $ru_off, 20 );
+asem_ok( ! \AssociazioneSemplice\VotingRight::level_votes( $people->get( $ru_volun ) ), 'diritto di voto: con la funzione «livelli» il livello senza voto vale di nuovo' );
+\AssociazioneSemplice\Levels::save( array_map( function ( $lv ) { return array( 'id' => $lv['id'], 'name' => $lv['name'], 'base_type' => $lv['base_type'], 'fee' => '', 'active' => $lv['active'], 'votes' => '1' ); }, \AssociazioneSemplice\Levels::all() ) );
+asem_ok( 1 === (int) $wpdb->get_var( 'SELECT votes FROM ' . Db::t( 'member_levels' ) . ' WHERE id = ' . (int) $ru_lv ) && in_array( $ru_volun, \AssociazioneSemplice\Assemblies::eligible_ids(), true ), 'livelli: il salvataggio dell\'editor scrive il voto e svuota la cache' );
+$wpdb->update( Db::t( 'people' ), array( 'level_id' => null ), array( 'id' => $ru_volun ) );
+$wpdb->delete( Db::t( 'member_levels' ), array( 'id' => $ru_lv ) );
+\AssociazioneSemplice\LevelVoting::flush();
+// soglia dei soci: conta chi ha la tessera valida oggi (come il conteggio del 31 dicembre); la tessera scaduta da poco è «da rinnovare»
+Settings::update( array( 'runts_section' => 'odv' ) );
+$ru_m0   = \AssociazioneSemplice\Runts::minimum_state();
+$ru_gone = gmdate( 'Y-m-d', strtotime( '-10 days' ) );
+$ru_exp  = $ru_mk( 'ordinary', 'Elia', 'Scaduta', '1980-01-01', '2020-01-01', '2025-01-01', $ru_gone );
+$ru_m1   = \AssociazioneSemplice\Runts::minimum_state();
+asem_ok( $ru_m1['persons'] === $ru_m0['persons'] && $ru_m1['recent'] === $ru_m0['recent'] + 1, 'soglia soci: chi ha la tessera scaduta non è contato (non è cessato, ma non è valido), ed è segnalato come «scaduta da poco»' );
+$ru_old = $ru_mk( 'ordinary', 'Olga', 'Antica', '1980-01-01', '2010-01-01', '2011-01-01', '2011-12-31' );
+asem_ok( \AssociazioneSemplice\Runts::minimum_state()['recent'] === $ru_m1['recent'], 'soglia soci: una tessera scaduta da molto tempo non è «scaduta da poco»' );
+$ru_ok = $ru_mk( 'ordinary', 'Ugo', 'Valido', '1980-01-01', '2020-01-01', '2020-01-01', gmdate( 'Y-m-d', strtotime( '+200 days' ) ) );
+asem_ok( \AssociazioneSemplice\Runts::minimum_state()['persons'] === $ru_m0['persons'] + 1, 'soglia soci: chi ha la tessera valida oggi è contato' );
+$ru_t = \AssociazioneSemplice\Admin\RuntsPage::minimum_text( array( 'section' => 'odv', 'persons' => 6, 'entities' => 0, 'since' => null, 'deadline' => null, 'recent' => 2, 'recoverable' => true ) );
+asem_ok( false !== strpos( $ru_t, 'tessera scaduta non è contato' ) && false !== strpos( $ru_t, '2 soci hanno la tessera scaduta da poco' ) && false !== strpos( $ru_t, 'tornano nel conteggio' ) && false !== strpos( $ru_t, 'Non sappiamo dirti da quando' ) && false !== strpos( $ru_t, 'entro un anno' ), 'soglia soci: l\'avviso dice che le tessere scadute non si contano, ricorda i rinnovi in corso e il termine di un anno' );
+foreach ( array( $ru_exp, $ru_old, $ru_ok ) as $ru_del ) {
+	$people->delete( $ru_del );
+}
+Settings::update( array( 'runts_section' => '' ) );
+// importazione CSV di soci enti
+$ru_csv = $mkf( 'enti.csv', "Tipo soggetto;Denominazione;Codice fiscale;Stessa sezione RUNTS;Email;Anno iscrizione\r\nente;Associazione Prova ODV;;sì;ente.prova@example.com;\r\nente;;12345678903;;senza.nome@example.com;\r\nente;Ente Codice Sbagliato;12345678901;no;codice.sbagliato@example.com;\r\nente;Ente Sezione Strana;12345678903;forse;sezione.strana@example.com;\r\nboh;Altro;;;altro@example.com;\r\nente;Ente Antico;;no;ente.antico@example.com;2001\r\n" );
+$ru_pv  = \AssociazioneSemplice\ImportService::preview_file( $ru_csv, 'enti.csv', array() );
+$ru_pl  = $ru_pv['people']['plan'];
+asem_ok( 'create' === $ru_pl[0]['action'] && 'entity' === $ru_pl[0]['row']['kind'] && '' === $ru_pl[0]['row']['first'] && 'Associazione Prova ODV' === $ru_pl[0]['row']['last'] && true === $ru_pl[0]['row']['same'], 'import CSV enti: l\'ente si legge con la denominazione (nel cognome) e la stessa sezione del RUNTS' );
+asem_ok( 'error' === $ru_pl[1]['action'] && false !== strpos( $ru_pl[1]['message'], 'Denominazione' ), 'import CSV enti: denominazione obbligatoria, errore per riga' );
+asem_ok( 'error' === $ru_pl[2]['action'] && false !== strpos( $ru_pl[2]['message'], 'codice fiscale' ), 'import CSV enti: codice fiscale dell\'ente non valido (11 cifre con controllo)' );
+asem_ok( 'error' === $ru_pl[3]['action'] && false !== strpos( $ru_pl[3]['message'], 'sì oppure no' ) && 'error' === $ru_pl[4]['action'] && false !== strpos( $ru_pl[4]['message'], 'persona oppure ente' ), 'import CSV enti: sezione e tipo soggetto non riconosciuti sono errori per riga' );
+$ru_closed = null !== \AssociazioneSemplice\YearLock::closed_year_of( '2001-01-01' );
+asem_ok( $ru_closed ? ( 'error' === $ru_pl[5]['action'] && false !== strpos( $ru_pl[5]['message'], 'esercizio già chiuso' ) ) : 'create' === $ru_pl[5]['action'], 'import CSV enti: un ingresso in un esercizio chiuso è un errore per riga (altrimenti la riga si importa)' );
+$ru_ap = \AssociazioneSemplice\ImportService::apply( $ru_pv, array() );
+$ru_e1 = $people->find_by_email( 'ente.prova@example.com' );
+asem_ok( $ru_e1 && 'entity' === $ru_e1['subject_kind'] && 'Associazione Prova ODV' === $ru_e1['last_name'] && '' === (string) $ru_e1['first_name'] && 1 === (int) $ru_e1['runts_same_section'], 'import CSV enti: il socio ente è creato come ente, con denominazione e stessa sezione' );
+$ru_rp = \AssociazioneSemplice\ImportService::preview_file( $ru_csv, 'enti.csv', array() );
+asem_ok( 'update' === $ru_rp['people']['plan'][0]['action'], 'import CSV enti: rilanciando il file l\'ente esistente si aggiorna, non si duplica' );
+$ru_pe = $mkf( 'persona-su-ente.csv', "Nome;Cognome;Email\r\nMario;Prova;ente.prova@example.com\r\n" );
+$ru_pp = \AssociazioneSemplice\ImportService::preview_file( $ru_pe, 'persona-su-ente.csv', array() );
+asem_ok( 'error' === $ru_pp['people']['plan'][0]['action'] && false !== strpos( $ru_pp['people']['plan'][0]['message'], 'è un ente' ), 'import CSV enti: una persona non può sovrascrivere un ente' );
+$ru_ud = \AssociazioneSemplice\ImportService::undo( (int) $ru_ap['batch_id'] );
+asem_ok( null === $people->find_by_email( 'ente.prova@example.com' ) || ! empty( $people->find_by_email( 'ente.prova@example.com' )['deleted_at'] ), 'import CSV enti: l\'annullamento dell\'import toglie l\'ente creato' );
+// libro soci: colonna «Tipo» (persona / ente), anche nelle fotografie
+$ru_book = \AssociazioneSemplice\MemberBook::rows();
+$ru_kinds = array_column( $ru_book, 'kind', 'id' );
+asem_ok( 'entity' === ( $ru_kinds[ $ru_ids[5] ] ?? '' ) && 'person' === ( $ru_kinds[ $ru_ids[0] ] ?? '' ), 'libro soci: ogni riga sa se il socio è una persona o un ente' );
+asem_ok( 'Ente' === \AssociazioneSemplice\MemberBook::kind_label( 'entity' ) && 'Persona fisica' === \AssociazioneSemplice\MemberBook::kind_label( 'person' ), 'libro soci: etichette della colonna Tipo' );
+asem_ok( in_array( 'kind', \AssociazioneSemplice\MemberBook::snapshot_fields(), true ), 'libro soci: il tipo è un campo minimo della fotografia' );
+$ru_old_snap = new ReflectionMethod( \AssociazioneSemplice\MemberBook::class, 'snapshot_row' );
+$ru_old_snap->setAccessible( true );
+$ru_old_row = $ru_old_snap->invoke( null, array( 'n' => 1, 'person_id' => 1, 'matricola' => 1, 'data' => wp_json_encode( array( 'last_name' => 'Rossi', 'first_name' => 'Anna' ) ) ) );
+asem_ok( 'person' === $ru_old_row['kind'] && 'Persona fisica' === \AssociazioneSemplice\MemberBook::kind_label( $ru_old_row['kind'] ), 'libro soci: le fotografie scritte prima del campo mostrano «persona fisica»' );
 // soci enti: controlli
 asem_ok( null !== asem_throws( function () use ( $people ) { $people->create( array( 'type' => 'ordinary', 'subject_kind' => 'entity', 'last_name' => 'Ente Sbagliato', 'tax_code' => '12345678901' ) ); } ), 'socio ente: codice fiscale non valido rifiutato' );
 asem_ok( null !== asem_throws( function () use ( $people ) { $people->create( array( 'type' => 'ordinary', 'subject_kind' => 'entity', 'last_name' => '' ) ); } ), 'socio ente: la denominazione è obbligatoria' );
@@ -9208,15 +9273,26 @@ asem_ok( 'entity' === $people->get( $ru_ids[5] )['subject_kind'] && 'person' ===
 // pagina, impostazioni e avvisi
 Settings::update( array( 'runts_section' => 'odv', 'runts_volunteers' => 12, 'runts_manual_year' => (int) gmdate( 'Y' ) - 1 ) );
 $ru_html = asem_render( array( \AssociazioneSemplice\Admin\RuntsPage::class, 'render' ), 'Dati per il RUNTS' );
-asem_ok( false !== strpos( $ru_html, 'controlla sempre sul portale del RUNTS' ) && false !== strpos( $ru_html, 'Lavoratori' ), 'pagina Dati per il RUNTS: si apre, con l\'avvertenza prudente e la riga dei lavoratori' );
-asem_ok( 0 === \AssociazioneSemplice\Runts::workers_count( '2001-12-31' ), 'RUNTS lavoratori: 0 finché non esiste il ruolo Dipendente' );
+asem_ok( false !== strpos( $ru_html, 'o con il tuo commercialista' ) && false !== strpos( $ru_html, 'Lavoratori' ), 'pagina Dati per il RUNTS: si apre, con l\'avvertenza prudente e la riga dei lavoratori' );
+$ru_emp = array( \AssociazioneSemplice\Employees::class, 'runts_workers' );
+remove_filter( 'asem_runts_workers_count', $ru_emp, 10 );
+$ru_html0 = asem_render( array( \AssociazioneSemplice\Admin\RuntsPage::class, 'render' ), 'Dati per il RUNTS' );
+asem_ok( null === \AssociazioneSemplice\Runts::workers_count( '2001-12-31' ) && false !== strpos( $ru_html0, 'Il programma non li conta ancora' ) && false === strpos( $ru_html0, 'in servizio a quella data' ), 'RUNTS lavoratori: se nessuno risponde al filtro la pagina scrive «—» e dice che il programma non li conta, non uno 0 finto' );
 add_filter( 'asem_runts_workers_count', $ru_wf = function () { return 5; } );
 asem_ok( 5 === \AssociazioneSemplice\Runts::workers_count( '2001-12-31' ), 'RUNTS lavoratori: il numero arriva dal filtro asem_runts_workers_count' );
 remove_filter( 'asem_runts_workers_count', $ru_wf );
+add_filter( 'asem_runts_workers_count', $ru_wf0 = function () { return 0; } );
+asem_ok( 0 === \AssociazioneSemplice\Runts::workers_count( '2001-12-31' ), 'RUNTS lavoratori: uno zero vero (ruolo presente, nessun dipendente) resta 0' );
+remove_filter( 'asem_runts_workers_count', $ru_wf0 );
+add_filter( 'asem_runts_workers_count', $ru_wff = function () { return false; } );
+asem_ok( null === \AssociazioneSemplice\Runts::workers_count( '2001-12-31' ), 'RUNTS lavoratori: il filtro può dire «non disponibile» con false o null' );
+remove_filter( 'asem_runts_workers_count', $ru_wff );
+add_filter( 'asem_runts_workers_count', $ru_emp, 10, 2 ); // il ruolo Dipendente torna ad agganciarsi
+asem_ok( 0 <= \AssociazioneSemplice\Runts::workers_count( '2001-12-31' ) && null !== \AssociazioneSemplice\Runts::workers_count( '2001-12-31' ), 'RUNTS lavoratori: con il ruolo Dipendente il numero c\'è sempre (anche 0)' );
 $ru_min = \AssociazioneSemplice\Runts::minimum_state();
 asem_ok( true === $ru_min['applies'] && 'odv' === $ru_min['section'], 'minimo di soci: il controllo scatta per le ODV' );
 $ru_txt = \AssociazioneSemplice\Admin\RuntsPage::minimum_text( array( 'section' => 'odv', 'persons' => 5, 'entities' => 0, 'since' => '2026-10-01', 'deadline' => '2026-10-31' ) );
-asem_ok( false !== strpos( $ru_txt, '30 giorni' ) && false !== strpos( $ru_txt, '31/10/2026' ) && false !== strpos( $ru_txt, 'Controlla sul portale del RUNTS' ), 'minimo di soci: l\'avviso dice i 30 giorni, la scadenza e di controllare sul portale' );
+asem_ok( false !== strpos( $ru_txt, '30 giorni' ) && false !== strpos( $ru_txt, '31/10/2026' ) && false !== strpos( $ru_txt, 'controlla sul portale del RUNTS' ), 'minimo di soci: l\'avviso dice i 30 giorni, la scadenza e di controllare sul portale' );
 Settings::update( array( 'runts_section' => '', 'runts_volunteers' => 0, 'runts_manual_year' => 0 ) );
 foreach ( array_merge( $ru_ids, array( $ru_adult, $ru_minor, $ru_volun ) ) as $ru_del ) {
 	$people->delete( $ru_del );

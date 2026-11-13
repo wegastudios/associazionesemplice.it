@@ -203,8 +203,8 @@ final class PeoplePage {
 		echo '<tr class="asem-row-card"><th>N. tessera</th><td><input type="text" name="card_number" id="asem-card" value="' . esc_attr( $val( 'card_number' ) ) . '" class="regular-text"> '
 			. '<button type="button" class="button" id="asem-next-card" data-next="' . esc_attr( $people->next_free_card() ) . '">Prossimo libero</button>'
 			. '<p class="description">Assegnata a mano, univoca, modificabile.</p></td></tr>';
-		echo '<tr><th>Nome *</th><td><input type="text" name="first_name" value="' . esc_attr( $val( 'first_name' ) ) . '" class="regular-text"></td></tr>'; // senza «required»: per un socio che è un ente il nome resta vuoto; il controllo è nel programma
-		echo '<tr><th>Cognome *</th><td><input type="text" name="last_name" value="' . esc_attr( $val( 'last_name' ) ) . '" class="regular-text" required></td></tr>';
+		echo '<tr class="asem-row-firstname"><th>Nome *</th><td><input type="text" name="first_name" value="' . esc_attr( $val( 'first_name' ) ) . '" class="regular-text"></td></tr>'; // senza «required»: per un socio che è un ente il nome resta vuoto; il controllo è nel programma
+		echo '<tr class="asem-row-lastname"><th>Cognome *</th><td><input type="text" name="last_name" value="' . esc_attr( $val( 'last_name' ) ) . '" class="regular-text" required></td></tr>';
 		self::form_section( 'Contatti' );
 		echo '<tr><th>Email</th><td><input type="email" name="email" id="asem-email" value="' . esc_attr( $val( 'email' ) ) . '" class="regular-text">'
 			. '<p class="description asem-email-note">Facoltativa: con l\'email il socio ha subito il suo accesso all\'area riservata. Senza email il socio si registra lo stesso (meglio se con cellulare o numero di tessera) e si attiva dopo con un link da mandare su WhatsApp.</p></td></tr>';
@@ -259,14 +259,24 @@ final class PeoplePage {
 				. '<p class="description">Come va comunicato all\'ente di promozione sportiva (atleta, istruttore, dirigente…).</p></td></tr>', Html::allowed() );
 		}
 		if ( MemberType::is_member( $type ) ) { // diritto di voto e tipo di soggetto: servono ai «Dati per il RUNTS» e a votazioni e assemblee
-			$kind   = \AssociazioneSemplice\RuntsRules::kind( $val( 'subject_kind' ) );
-			$same   = $val( 'runts_same_section' );
-			$votes = \AssociazioneSemplice\VotingRight::type_votes( $type );
-			echo wp_kses( '<tr><th>Diritto di voto</th><td>' . ( $votes ? 'Sì, se maggiorenne' : 'No' ) . '<p class="description">Il diritto di voto dipende dal <strong>tipo di socio</strong> (si sceglie in Impostazioni → Soci e quote) e i minorenni non votano mai. Conta nelle votazioni di tutti i soci, nel numero legale delle assemblee e nei «Dati per il RUNTS».</p></td></tr>', Html::allowed() );
-			echo wp_kses( '<tr><th>Tipo di socio</th><td><select name="subject_kind">' . Ui::options( array( \AssociazioneSemplice\RuntsRules::PERSON => 'Persona fisica', \AssociazioneSemplice\RuntsRules::ENTITY => 'Ente (associazione, società, ente pubblico…)' ), $kind ) . '</select>'
-				. '<p class="description">Per un ente scrivi la <strong>denominazione nel campo «Cognome»</strong>, lascia vuoto il «Nome» e metti il codice fiscale dell\'ente (11 cifre).</p></td></tr>', Html::allowed() );
-			echo wp_kses( '<tr><th>Ente: stessa sezione del RUNTS</th><td><select name="runts_same_section">' . Ui::options( array( '1' => 'Sì, è iscritto nella stessa sezione del RUNTS dell\'ente', '0' => 'No' ), $same, 'Non so / non è un ente' ) . '</select>'
-				. '<p class="description">Solo per gli enti. Serve a contare gli enti per il numero minimo di soci di ODV e APS: controlla sul portale del RUNTS.</p></td></tr>', Html::allowed() );
+			$kind = \AssociazioneSemplice\RuntsRules::kind( $val( 'subject_kind' ) );
+			$same = $val( 'runts_same_section' );
+			$pro  = \AssociazioneSemplice\Edition::has( 'levels' );
+			$why  = $p ? \AssociazioneSemplice\VotingRight::reason( $p, \AssociazioneSemplice\Db::today() ) : 'new';
+			$vote = array(
+				''        => 'Sì',
+				'nobirth' => 'Sì (manca la data di nascita)',
+				'minor'   => 'No: è minorenne',
+				'level'   => $pro ? 'No: il suo livello di socio non vota' : 'No',
+				'new'     => 'Si vede dopo aver salvato',
+			);
+			echo wp_kses( '<tr><th>Diritto di voto</th><td>' . esc_html( $vote[ $why ] ?? 'Sì' ) . '<p class="description">'
+				. ( $pro ? 'Dipende dal <strong>livello</strong> del socio (si decide in Impostazioni → Soci e quote, «Livelli di socio»)' : 'Hanno diritto di voto tutti i soci' )
+				. ' e i minorenni non votano mai. Conta nelle votazioni di tutti i soci, nel numero legale delle assemblee e nei «Dati per il RUNTS».</p></td></tr>', Html::allowed() );
+			echo wp_kses( '<tr><th>Il socio è</th><td><select name="subject_kind">' . Ui::options( array( \AssociazioneSemplice\RuntsRules::PERSON => 'Una persona', \AssociazioneSemplice\RuntsRules::ENTITY => 'Un ente (associazione, società, ente pubblico…)' ), $kind ) . '</select>'
+				. '<p class="description">Se è un ente, scrivi il suo nome nel campo «Cognome», lascia vuoto «Nome» e inserisci il suo codice fiscale (11 cifre).</p></td></tr>', Html::allowed() );
+			echo wp_kses( '<tr class="asem-row-entity"><th>È iscritto al RUNTS nella vostra stessa sezione?</th><td><select name="runts_same_section">' . Ui::options( array( '1' => 'Sì', '0' => 'No' ), $same, 'Non lo so' ) . '</select>'
+				. '<p class="description">Solo per i soci che sono enti. Per esempio: se la tua associazione è una APS, rispondi Sì se anche questo ente è una APS. Serve per il numero minimo di soci.</p></td></tr>', Html::allowed() );
 		}
 		echo '<tr class="asem-row-host"><th>Volte già venuto</th><td><input type="number" name="prior_visits" min="0" max="9999" value="' . (int) $val( 'prior_visits' ) . '" class="small-text"><p class="description">Quante volte è già venuto prima di usare il programma: si somma alle partecipazioni registrate qui e conta per la soglia dell\'invito a iscriversi. Gli eventi passati puoi segnarli nelle note.</p></td></tr>';
 		self::form_section( 'Note' );
