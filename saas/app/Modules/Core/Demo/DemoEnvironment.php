@@ -27,9 +27,30 @@ final readonly class DemoEnvironment
     /** @var array<string, array{0: OrgRole, 1: string}> */
     public const USERS = [
         'titolare' => [OrgRole::Owner, 'Titolare Demo'],
+        'amministratore' => [OrgRole::Admin, 'Amministratore Demo'],
         'segreteria' => [OrgRole::Operator, 'Segreteria Demo'],
+        'dipendente' => [OrgRole::Employee, 'Dipendente Demo'],
         'commercialista' => [OrgRole::Accountant, 'Commercialista Demo'],
     ];
+
+    /**
+     * Accessi pubblici della demo, da mostrare nella pagina di accesso: vuoto dove la demo non c'è.
+     *
+     * @return list<array{role: string, email: string, password: string}>
+     */
+    public static function credentials(): array
+    {
+        if (! (bool) config('saas.demo.enabled') || app()->environment('production')) {
+            return [];
+        }
+        $password = config('saas.demo.password');
+        $out = [];
+        foreach (self::USERS as $key => [$role, $label]) {
+            $out[] = ['role' => $role->label(), 'email' => self::email($key), 'password' => is_string($password) ? $password : ''];
+        }
+
+        return $out;
+    }
 
     public function __construct(
         private Application $app,
@@ -85,6 +106,7 @@ final readonly class DemoEnvironment
 
         $this->context->run($org->id, function () use ($org): void {
             $this->settings->set(SetupWizard::STATUS, SetupWizard::DONE);
+            $this->settings->set('ente.kind', 'aps'); // la pagina «Dati per il RUNTS» mostra così il minimo di soci
 
             $seeders = [];
             foreach ($this->container->tagged(DemoSeeder::TAG) as $seeder) {
