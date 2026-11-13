@@ -9,6 +9,7 @@ use App\Modules\Core\Access\Memberships;
 use App\Modules\Core\Contracts\CurrentOperator;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Models\User;
+use App\Modules\Portale\Contracts\LifecyclePolicy;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -27,6 +28,7 @@ final readonly class IdentifyOperatorOrg
         private OrgContext $context,
         private CurrentOperator $operator,
         private AuditLog $audit,
+        private LifecyclePolicy $lifecycle,
     ) {}
 
     /** @param  Closure(Request): Response  $next */
@@ -45,6 +47,13 @@ final readonly class IdentifyOperatorOrg
             $request->session()->forget(self::SESSION_KEY);
             $all = $this->memberships->forUser($user->id);
 
+            // Solo associazioni sospese: nessun dato, nessuna esportazione, solo la pagina del pagamento.
+            if ($all === [] && $this->memberships->suspendedNames($user->id) !== []) {
+                return $request->expectsJson()
+                    ? abort(402, 'L\'abbonamento è scaduto: riattivalo dal portale.')
+                    : redirect()->route('org.suspended');
+            }
+
             if (count($all) !== 1) {
                 return $request->expectsJson()
                     ? abort(409, 'Scegli l\'associazione.')
@@ -58,6 +67,12 @@ final readonly class IdentifyOperatorOrg
 
         $this->context->enter($operator->orgId);
         $this->operator->set($operator);
+
+        // Prova finita senza un piano: si consulta, non si modifica (il profilo personale resta modificabile).
+        if (! $request->isMethodSafe() && ! $request->is('gestionale/profilo*') && $this->lifecycle->readOnly($operator->orgId)) {
+            $this->operator->set(null);
+            abort(403, 'La prova è finita: puoi consultare i dati ma non modificarli. Scegli un piano dal portale per tornare a lavorare.');
+        }
 
         // Si annota quando un operatore apre l'associazione, non ogni pagina.
         if ($opened || $request->session()->pull('operator_org_opened') === true) {

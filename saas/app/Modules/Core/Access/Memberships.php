@@ -33,6 +33,31 @@ final readonly class Memberships
         return $row === null ? null : $this->toOperator($row);
     }
 
+    /**
+     * Prova finita senza un piano: l'associazione è sospesa ma resta consultabile (sola lettura) fino alla
+     * cancellazione dei dati.
+     */
+    private static function trialEnded(Builder $q): void
+    {
+        $q->where('o.status', 'suspended')->whereExists(
+            fn (Builder $e) => $e->from('core.org_entitlements as e')->whereColumn('e.org_id', 'o.id')->where('e.status', 'trial'),
+        );
+    }
+
+    /**
+     * Nomi delle associazioni sospese dell'utente: non si aprono, ma ne mostriamo la pagina del pagamento.
+     *
+     * @return list<string>
+     */
+    public function suspendedNames(string $userId): array
+    {
+        return array_values($this->db->connection('pgsql')->table('core.org_users as m')
+            ->join('core.orgs as o', 'o.id', '=', 'm.org_id')
+            ->where('m.user_id', $userId)->whereNull('o.deleted_at')->where('o.status', 'suspended')
+            ->whereNotExists(fn (Builder $q) => $q->from('core.org_entitlements as e')->whereColumn('e.org_id', 'o.id')->where('e.status', 'trial'))
+            ->orderBy('o.name')->pluck('o.name')->map(static fn (mixed $n): string => is_string($n) ? $n : '')->all());
+    }
+
     /** L'utente è operatore di almeno un'associazione, anche sospesa: allora la verifica in due passaggi è obbligatoria. */
     public function isOperator(string $userId): bool
     {
@@ -45,7 +70,7 @@ final readonly class Memberships
             ->join('core.orgs as o', 'o.id', '=', 'm.org_id')
             ->leftJoin('core.org_roles as r', 'r.id', '=', 'm.custom_role_id')
             ->whereNull('o.deleted_at')
-            ->where('o.status', 'active')
+            ->where(fn (Builder $q) => $q->where('o.status', 'active')->orWhere(fn (Builder $r) => self::trialEnded($r)))
             ->select(['m.user_id', 'm.org_id', 'm.role', 'o.name', 'm.custom_role_id', 'r.name as custom_name', 'r.abilities as custom_abilities']);
     }
 

@@ -8,6 +8,7 @@ use App\Modules\Core\Contracts\Ability;
 use App\Modules\Core\Contracts\CurrentOperator;
 use App\Modules\Core\Models\User;
 use App\Modules\Portale\Contracts\Entitlements;
+use App\Modules\Portale\Contracts\LifecyclePolicy;
 use App\Modules\Portale\Contracts\Package;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -38,6 +39,7 @@ final class HandleInertiaRequests extends Middleware
                     'name' => $operator->orgName,
                     'role' => $operator->roleLabel(),
                     // Per mostrare solo le sezioni permesse; i controlli veri restano nelle rotte.
+                    'read_only' => app(LifecyclePolicy::class)->readOnly($operator->orgId),
                     'can' => array_values(array_map(static fn (Ability $a): string => $a->value, array_filter(Ability::cases(), $operator->can(...)))),
                     // I pacchetti attivi, per le sezioni che ne dipendono (Risorse).
                     'packages' => array_values(array_map(static fn (Package $p): string => $p->value,

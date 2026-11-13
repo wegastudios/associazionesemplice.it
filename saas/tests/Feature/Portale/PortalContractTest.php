@@ -103,7 +103,7 @@ it('sospende e riapre l\'associazione secondo lo stato dell\'abbonamento', funct
     $put = fn (int $rev, string $status) => $this->putJson("/api/portale/v1/orgs/{$orgId}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($orgId, 'sub_123', $rev, ['status' => $status]))]);
 
     $put(1, 'suspended')->assertOk();
-    $this->actingAs($owner)->get('/gestionale')->assertRedirect('/associazioni');
+    $this->actingAs($owner)->get('/gestionale')->assertRedirect('/associazione-sospesa');
 
     $put(2, 'active')->assertOk();
     $this->get('/gestionale')->assertRedirect('/gestionale/configurazione'); // associazione nuova: la configurazione guidata
@@ -206,4 +206,69 @@ it('porta il titolare al portale con un token di 60 secondi, e solo lui', functi
         ->and($claims['exp'] - $claims['iat'])->toBe(60);
 
     $this->actingAs($accountant)->get('/gestionale/abbonamento')->assertForbidden();
+});
+
+it('in prova non si esporta né si collega il commercialista; con un piano sì', function (): void {
+    $orgId = ($this->provision)()->json('org_id');
+    $org = Org::query()->findOrFail($orgId);
+    $owner = User::query()->where('email', 'titolare@example.com')->sole();
+    $by = app(Memberships::class)->find($owner->id, $orgId);
+    $rev = 0;
+    $put = function (string $status) use ($orgId, &$rev): void {
+        $this->putJson("/api/portale/v1/orgs/{$orgId}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($orgId, 'sub_123', ++$rev, ['status' => $status, 'operators' => 5]))])->assertOk();
+    };
+    $user = $this->createUser('anna@example.com', twoFactor: true);
+    $this->addOperator($org, $user);
+
+    $put('trial');
+    expect(fn () => app(OrgMembers::class)->invite($org, 'ct@example.com', 'Ct', OrgRole::Accountant, $by))->toThrow(InvalidArgumentException::class, 'Disponibile scegliendo un piano.');
+    $this->actingAs($user)->get('/gestionale/esportazione')->assertForbidden();
+    $this->get('/gestionale/prima-nota/esporta')->assertForbidden();
+
+    $put('active');
+    app(OrgMembers::class)->invite($org, 'ct@example.com', 'Ct', OrgRole::Accountant, $by);
+    $this->get('/gestionale/esportazione')->assertOk();
+});
+
+it('non conta il commercialista tra gli operatori; l\'accesso completo sì', function (): void {
+    $orgId = ($this->provision)()->json('org_id');
+    $org = Org::query()->findOrFail($orgId);
+    $owner = User::query()->where('email', 'titolare@example.com')->sole();
+    $by = app(Memberships::class)->find($owner->id, $orgId);
+    $members = app(OrgMembers::class);
+    $this->putJson("/api/portale/v1/orgs/{$orgId}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($orgId, 'sub_123', 1, ['operators' => 1]))])->assertOk();
+
+    // Un solo posto, già del titolare: il commercialista fiscale entra lo stesso, uno completo no.
+    $accountant = $members->invite($org, 'ct@example.com', 'Ct', OrgRole::Accountant, $by);
+    expect(fn () => $members->invite($org, 'op@example.com', 'Op', OrgRole::Operator, $by))->toThrow(OperatorLimitReached::class)
+        ->and(fn () => $members->changeRole($org, $accountant->id, OrgRole::Operator, $by))->toThrow(OperatorLimitReached::class);
+});
+
+it('mostra a chi ha solo associazioni sospese la pagina del pagamento, senza dati né esportazioni', function (): void {
+    $orgId = ($this->provision)()->json('org_id');
+    $user = $this->createUser('anna@example.com', twoFactor: true);
+    $this->addOperator(Org::query()->findOrFail($orgId), $user);
+    DB::table('core.orgs')->where('id', $orgId)->update(['status' => 'suspended']);
+
+    $this->actingAs($user)->get('/gestionale')->assertRedirect('/associazione-sospesa');
+    $this->get('/gestionale/esportazione')->assertRedirect('/associazione-sospesa');
+    $this->get('/gestionale/esportazione.zip')->assertRedirect('/associazione-sospesa');
+    $this->get('/associazioni')->assertRedirect('/associazione-sospesa');
+    $this->get('/associazione-sospesa')->assertOk()->assertSee('Polisportiva Alfa');
+});
+
+it('dopo la prova senza piano il gestionale resta in sola lettura, senza esportazioni', function (): void {
+    $orgId = ($this->provision)()->json('org_id');
+    $user = $this->createUser('anna@example.com', twoFactor: true);
+    $this->addOperator(Org::query()->findOrFail($orgId), $user);
+    $this->putJson("/api/portale/v1/orgs/{$orgId}/entitlements", ['token' => portalToken($this->portal, 'entitlements', entitlementClaims($orgId, 'sub_123', 1, ['status' => 'trial', 'trial_ends' => now()->subDays(2)->toDateString()]))])->assertOk();
+    DB::table('core.orgs')->where('id', $orgId)->update(['status' => 'suspended']);
+
+    $this->actingAs($user)->get('/gestionale/profilo')->assertOk();
+    $this->post('/gestionale/configurazione/rimanda')->assertForbidden();
+    $this->get('/gestionale/esportazione')->assertForbidden();
+
+    // Se invece ha avuto un piano e non ha pagato: solo la pagina del pagamento.
+    DB::table('core.org_entitlements')->where('org_id', $orgId)->update(['status' => 'suspended']);
+    $this->get('/gestionale')->assertRedirect('/associazione-sospesa');
 });
