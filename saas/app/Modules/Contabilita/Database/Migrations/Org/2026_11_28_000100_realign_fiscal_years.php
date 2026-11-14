@@ -28,6 +28,7 @@ return new class extends Migration
             ALTER TABLE app.transactions ADD CONSTRAINT transactions_fiscal_year_fk
                 FOREIGN KEY (org_id, fiscal_year) REFERENCES app.fiscal_years(org_id, year) DEFERRABLE INITIALLY IMMEDIATE;
         SQL);
+
         DB::unprepared(<<<'SQL'
             CREATE OR REPLACE FUNCTION app.transaction_guard() RETURNS trigger
             LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $$
@@ -78,8 +79,6 @@ return new class extends Migration
             END
             $$;
         SQL);
-
-
 
         DB::unprepared(<<<'SQL'
             CREATE FUNCTION app.realign_fiscal_years(p_month integer, p_today date) RETURNS integer
