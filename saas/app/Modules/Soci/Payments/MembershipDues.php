@@ -11,7 +11,7 @@ use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Services\MembershipService;
 use InvalidArgumentException;
 
-/** La quota associativa dell'anno sociale in corso, per chi non ha ancora la tessera (chiave q:{persona}:{anno}). */
+/** La quota associativa dell'anno che il programma sceglie (in corso, o il successivo negli ultimi giorni), per chi non ha ancora quella tessera (chiave q:{persona}:{anno}). */
 final readonly class MembershipDues implements PayableDues
 {
     public function __construct(private MembershipService $memberships) {}
@@ -21,10 +21,11 @@ final readonly class MembershipDues implements PayableDues
         if ($personIds === []) {
             return [];
         }
-        $year = $this->memberships->socialYearLabel();
         $out = [];
         foreach (Person::query()->whereIn('id', $personIds)->whereNull('left_on')->whereNull('anonymized_at')->get() as $p) {
-            if (! $p->type->isMember() || $p->type->isAutoRenewed() || $this->memberships->isActive($p->id)) {
+            $plan = $this->memberships->renewalPlan($p->id);
+            $year = $plan['year'];
+            if (! $p->type->isMember() || $p->type->isAutoRenewed() || $this->memberships->holds($p->id, $year)) {
                 continue;
             }
             $fee = $this->memberships->feeFor($p);
@@ -48,7 +49,7 @@ final readonly class MembershipDues implements PayableDues
             throw new InvalidArgumentException('Voce non valida.');
         }
         try {
-            return $this->memberships->renewWithPayment($m[1], $accountId, $cents, $date, $m[2], PaymentMethod::from($method))['receipt'];
+            return $this->memberships->renewWithPayment($m[1], $accountId, $cents, $date, null, PaymentMethod::from($method))['receipt'];
         } catch (PeopleError $e) {
             throw new InvalidArgumentException($e->getMessage(), 0, $e);
         }

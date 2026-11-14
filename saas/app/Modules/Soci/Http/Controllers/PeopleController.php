@@ -139,7 +139,6 @@ final readonly class PeopleController
             'account_id' => ['required', 'uuid'],
             'amount' => ['required', 'string', 'max:20'],
             'date' => ['required', 'date_format:Y-m-d'],
-            'social_year' => ['required', 'regex:/^\d{4}(\/\d{4})?$/'],
             'method' => ['nullable', Rule::in(PaymentMethod::values())],
         ]));
         $amount = Money::parse(Input::string($data, 'amount'));
@@ -149,9 +148,9 @@ final readonly class PeopleController
         $method = Input::optionalString($data, 'method');
 
         return $this->attempt(function () use ($person, $data, $amount, $method): RedirectResponse {
-            $r = $this->memberships->renewWithPayment($person, Input::string($data, 'account_id'), $amount, Input::string($data, 'date'), Input::string($data, 'social_year'), $method === null ? null : PaymentMethod::from($method));
+            $r = $this->memberships->renewWithPayment($person, Input::string($data, 'account_id'), $amount, Input::string($data, 'date'), null, $method === null ? null : PaymentMethod::from($method));
 
-            return back()->with('status', 'Tessera '.Input::string($data, 'social_year').' registrata'.($r['receipt'] !== null ? ", ricevuta n. {$r['receipt']}." : '.'));
+            return back()->with('status', 'Tessera '.$r['social_year'].' registrata'.($r['receipt'] !== null ? ", ricevuta n. {$r['receipt']}." : '.'));
         });
     }
 
@@ -294,6 +293,7 @@ final readonly class PeopleController
                 ->map(static fn (MemberLevel $l): array => ['id' => $l->id, 'name' => $l->name])->values(),
             'accounts' => $this->ledger->openAccounts(),
             'socialYear' => ['current' => $year->label(), 'next' => $year->next()->label()],
+            'renewal' => $person === null ? null : $this->memberships->renewalPlan($person->id),
             'settings' => [
                 'start_month' => $this->memberships->startMonth(),
                 'fee' => Money::plain($this->settings->int(MembershipService::DEFAULT_FEE, 0)),

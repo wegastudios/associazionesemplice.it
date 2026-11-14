@@ -65,6 +65,7 @@ it('collega un ospite solo a un socio', function (): void {
 });
 
 it('rinnova la tessera incassando la quota con ricevuta, e lo storno la toglie', function (): void {
+    $this->travelTo(now()->setDate(2026, 6, 15));
     $socio = $this->people->create(['first_name' => 'Anna', 'last_name' => 'Rossi']);
     app(OrgSettings::class)->set(MembershipService::DEFAULT_FEE, 3000);
     $year = $this->memberships->socialYear()->label();
@@ -179,15 +180,37 @@ it('non blocca il cambio mese se le tessere valide hanno solo l\'anno (gennaio)'
     expect($this->memberships->startMonthProblem(9))->toBeNull();
 });
 
-it('rinnova la tessera dell\'anno dopo solo negli ultimi giorni dell\'anno sociale', function (): void {
+it('sceglie la tessera da incassare come il plugin: il socio non sceglie l\'anno', function (): void {
     app(OrgSettings::class)->set(MembershipService::START_MONTH, 1);
     app(OrgSettings::class)->set(MembershipService::DEFAULT_FEE, 3000);
+    $nuova = $this->people->create(['first_name' => 'Anna', 'last_name' => 'Rossi']);
+    $vecchia = $this->people->create(['first_name' => 'Luisa', 'last_name' => 'Bianchi']);
+    $this->travelTo('2026-06-15');
+
+    // Fuori periodo: sempre l'anno in corso, per chiunque, senza rifiuti.
+    expect($this->memberships->renewalPlan($nuova->id))->toBe(['year' => '2026', 'free' => null]);
+    $this->memberships->renewWithPayment($vecchia->id, $this->cash, 3000);
+    expect($this->memberships->renewalPlan($vecchia->id))->toBe(['year' => '2026', 'free' => null]);
+
+    // Ultimi giorni dell'anno sociale: chi ha l'anno in corso prende il successivo; chi è nuovo ha anche il corrente in omaggio.
+    $this->travelTo('2026-12-28');
+    expect($this->memberships->renewalPlan($vecchia->id))->toBe(['year' => '2027', 'free' => null])
+        ->and($this->memberships->renewalPlan($nuova->id))->toBe(['year' => '2027', 'free' => '2026']);
+
+    $this->memberships->renewWithPayment($nuova->id, $this->cash, 3000);
+    $this->memberships->renewWithPayment($vecchia->id, $this->cash, 3000);
+
+    expect($this->memberships->holds($nuova->id, '2027'))->toBeTrue()
+        ->and($this->memberships->holds($nuova->id, '2026'))->toBeTrue()
+        ->and($this->memberships->holds($vecchia->id, '2027'))->toBeTrue()
+        ->and($this->memberships->renewalPlan($vecchia->id))->toBe(['year' => '2027', 'free' => null]);
+});
+
+it('chi aveva solo la tessera dell\'anno prima paga prima quella in corso, anche negli ultimi giorni', function (): void {
+    app(OrgSettings::class)->set(MembershipService::START_MONTH, 1);
     $socio = $this->people->create(['first_name' => 'Anna', 'last_name' => 'Rossi']);
-    $next = (string) ((int) $this->memberships->socialYear()->label() + 1);
+    $this->memberships->grantManually($socio->id, '2025', 'Socia onoraria');
+    $this->travelTo('2026-12-28');
 
-    $this->travelTo(now()->setDate((int) now()->format('Y'), 6, 15));
-    expect(fn () => $this->memberships->renewWithPayment($socio->id, $this->cash, 3000, null, $next))->toThrow(PeopleError::class, 'ultimi');
-
-    $this->travelTo(now()->setDate((int) now()->format('Y'), 12, 28));
-    expect($this->memberships->renewWithPayment($socio->id, $this->cash, 3000, null, $next)['receipt'])->not->toBeNull();
+    expect($this->memberships->renewalPlan($socio->id))->toBe(['year' => '2026', 'free' => null]);
 });

@@ -8,7 +8,7 @@ import PersonPicker from '../../components/PersonPicker.vue';
 
 const props = defineProps({
     person: Object, firstFreeCard: String, types: Array, levels: Array, accounts: Array,
-    socialYear: Object, settings: Object, certificateKinds: Array, consentChannels: Array, consentSources: Array, canEdit: Boolean, canSettings: Boolean,
+    socialYear: Object, renewal: Object, settings: Object, certificateKinds: Array, consentChannels: Array, consentSources: Array, canEdit: Boolean, canSettings: Boolean,
 });
 
 const p = props.person ?? {};
@@ -54,7 +54,7 @@ const copyLink = () => navigator.clipboard?.writeText(accessLink.value);
 const save = () => (props.person ? form.put(`/gestionale/soci/${props.person.id}`, { preserveScroll: true }) : form.post('/gestionale/soci'));
 
 const today = new Date().toISOString().slice(0, 10);
-const renew = useForm({ account_id: props.accounts[0]?.id ?? '', amount: p.fee ?? '', date: today, social_year: props.socialYear.current, method: '' });
+const renew = useForm({ account_id: props.accounts[0]?.id ?? '', amount: p.fee ?? '', date: today, method: '' });
 const submitRenew = () => renew.post(`/gestionale/soci/${props.person.id}/tessera`, { preserveScroll: true });
 const grant = useForm({ social_year: props.socialYear.current, reason: '' });
 const submitGrant = () => grant.post(`/gestionale/soci/${props.person.id}/tessera-manuale`, { preserveScroll: true, onSuccess: () => grant.reset('reason') });
@@ -167,9 +167,8 @@ const label = 'space-y-1 text-sm';
                         <button v-if="canEdit && m.valid && m.source !== 'payment'" type="button" class="btn btn-ghost btn-sm" @click="revoke(m.id)">Togli</button>
                     </li>
                 </ul>
-                <form v-if="canEdit && person.type !== 'founder' && !person.left_on" class="grid gap-3 sm:grid-cols-5" @submit.prevent="submitRenew">
-                    <label :class="label"><span class="font-semibold">Anno sociale</span>
-                        <select v-model="renew.social_year" :class="field"><option :value="socialYear.current">{{ socialYear.current }}</option><option :value="socialYear.next">{{ socialYear.next }}</option></select></label>
+                <form v-if="canEdit && person.type !== 'founder' && !person.left_on" class="grid gap-3 sm:grid-cols-4" @submit.prevent="submitRenew">
+                    <p class="text-sm sm:col-span-4"><span class="font-semibold">Tessera che si incassa: {{ renewal.year }}</span><template v-if="renewal.free"> ({{ renewal.free }} in omaggio, perché si iscrive negli ultimi giorni dell’anno sociale)</template>. La sceglie il programma: chi chiede di essere socio, o di rinnovare, prende l’anno in corso; negli ultimi giorni dell’anno sociale chi ha già la tessera prende quella dell’anno dopo.</p>
                     <label :class="label"><span class="font-semibold">Quota</span><input v-model="renew.amount" inputmode="decimal" :class="field" required /></label>
                     <label :class="label"><span class="font-semibold">Data</span><input v-model="renew.date" type="date" :class="field" required /></label>
                     <label :class="label"><span class="font-semibold">Conto</span>
