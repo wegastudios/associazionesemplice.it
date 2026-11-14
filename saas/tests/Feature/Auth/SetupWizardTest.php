@@ -24,7 +24,7 @@ beforeEach(function (): void {
 
 function setupInput(array $over = []): array
 {
-    $cash = test()->orgContext()->run(test()->org->id, fn () => Account::query()->sole()->id);
+    $cash = test()->orgContext()->run(test()->org->id, fn () => Account::query()->where('type', 'cash')->sole()->id);
 
     return array_replace_recursive(['steps' => [
         'ente' => ['kind' => 'aps', 'tax_code' => '12345678903', 'vat' => '', 'runts' => '12345', 'address' => 'Via Roma 1', 'zip' => '00100', 'city' => 'Roma', 'province' => 'rm', 'email' => 'Info@Alfa.example', 'pec' => '', 'phone' => ''],
@@ -99,7 +99,7 @@ it('chiede subito il mese dell\'anno sociale e dell\'anno fiscale e rifà l\'ann
             ->and(app(FiscalYearService::class)->yearFor($today->toDateString()))->toBe((int) substr($start, 0, 4));
 
         // Con movimenti registrati il mese dell'anno fiscale non si cambia più.
-        app(Ledger::class)->recordIncome(new Income($today->toDateString(), Account::query()->sole()->id, [new IncomeLine(Category::query()->where('kind', 'donation')->sole()->id, 1000)], null, null, false));
+        app(Ledger::class)->recordIncome(new Income($today->toDateString(), Account::query()->where('type', 'cash')->sole()->id, [new IncomeLine(Category::query()->where('kind', 'donation')->sole()->id, 1000)], null, null, false));
     });
     $this->post('/gestionale/configurazione', setupInput(['steps' => ['anno_fiscale' => ['start_month' => 3]]]))->assertSessionHasErrors('steps.anno_fiscale');
 });
