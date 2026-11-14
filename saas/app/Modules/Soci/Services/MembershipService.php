@@ -17,6 +17,7 @@ use App\Modules\Soci\Contracts\PeopleError;
 use App\Modules\Soci\Models\MemberLevel;
 use App\Modules\Soci\Models\Membership;
 use App\Modules\Soci\Models\Person;
+use App\Modules\Soci\Rules\ExpiryRules;
 use App\Modules\Soci\Rules\SocialYear;
 use Illuminate\Contracts\Auth\Factory as Auth;
 use Illuminate\Database\ConnectionInterface;
@@ -48,6 +49,44 @@ final readonly class MembershipService implements Members
         $month = $this->settings->int(self::START_MONTH, 1);
 
         return $month >= 1 && $month <= 12 ? $month : 1;
+    }
+
+    /** Il mese scelto per l'anno sociale, o null se non è ancora stato scelto. */
+    public function chosenStartMonth(): ?int
+    {
+        $month = $this->settings->get(self::START_MONTH);
+
+        return is_numeric($month) && (int) $month >= 1 && (int) $month <= 12 ? (int) $month : null;
+    }
+
+    /**
+     * Perché il mese di inizio dell'anno sociale non si può cambiare (null se si può). Le tessere già emesse restano
+     * come sono: con tessere valide si può solo passare a gennaio, altrimenti bisogna aspettare che scadano.
+     */
+    public function startMonthProblem(int $month): ?string
+    {
+        $current = $this->chosenStartMonth();
+        if ($current === null || $month === $current || $month === 1) {
+            return null;
+        }
+
+        return $this->activeCount() > 0
+            ? 'Ci sono tessere valide: il mese di inizio dell\'anno sociale si può cambiare solo passando a gennaio, o quando non ce ne sono più.'
+            : null;
+    }
+
+    /** Si rinnova in anticipo solo l'anno sociale successivo, negli ultimi giorni di quello in corso (i giorni dell'avviso di scadenza). */
+    private function assertRenewalWindow(SocialYear $year): void
+    {
+        $current = $this->socialYear();
+        if ($year->startYear <= $current->startYear) {
+            return;
+        }
+        $days = ExpiryRules::warnDays($this->settings->get(CertificateService::WARN_DAYS, ExpiryRules::DEFAULT_WARN));
+        $opens = $current->end()->modify("-{$days} days")->format('Y-m-d');
+        if ($year->startYear > $current->startYear + 1 || now()->toDateString() < $opens) {
+            throw new PeopleError(["La tessera {$year->label()} si rinnova solo negli ultimi {$days} giorni dell'anno sociale in corso ({$current->label()})."]);
+        }
     }
 
     public function socialYear(?string $date = null): SocialYear
@@ -104,6 +143,7 @@ final readonly class MembershipService implements Members
             throw new PeopleError(['Indica l\'importo della quota (o imposta la quota associativa).']);
         }
         $category = $this->ledger->categoryFor(CategoryKind::Membership) ?? throw new PeopleError(['Manca la categoria «Quota associativa» in prima nota.']);
+        $this->assertRenewalWindow($year);
         $this->assertNoMembership($person->id, $year->label());
 
         return $this->connection()->transaction(function () use ($person, $year, $amount, $category, $accountId, $date, $method): array {
