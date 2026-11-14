@@ -14,8 +14,8 @@ use App\Modules\Soci\Rules\Phone;
  * Lettura dei fogli di import soci e piano di importazione (nuovo / aggiorna / errore), dal PeopleCsv del plugin.
  * Codice puro: non scrive nel database.
  *
- * @phpstan-type Row array{line: int, sheet: string, card: string|null, type_text: string|null, first: string, last: string, email: string|null, phone: string|null, tax: string|null, addr: string|null, zip: string|null, city: string|null, prov: string|null, years: list<string>, prior: int|null, notes: string|null, since: string|null, host: string|null, birth: string|null, birth_text: string|null, guardian: string|null}
- * @phpstan-type Existing array{id: string, card: string|null, first: string, last: string, email: string|null, tax: string|null, phone?: string|null, type?: string, host_id?: string|null}
+ * @phpstan-type Row array{line: int, sheet: string, card: string|null, type_text: string|null, first: string, last: string, email: string|null, phone: string|null, tax: string|null, addr: string|null, zip: string|null, city: string|null, prov: string|null, years: list<string>, prior: int|null, notes: string|null, since: string|null, host: string|null, birth: string|null, birth_text: string|null, guardian: string|null, subject_text: string|null, entity: bool, same_section: bool|null, same_section_text: string|null}
+ * @phpstan-type Existing array{id: string, card: string|null, first: string, last: string, email: string|null, tax: string|null, phone?: string|null, type?: string, host_id?: string|null, entity?: bool}
  * @phpstan-type Plan array{row: Row, type: string|null, type_given: bool, action: 'create'|'update'|'error', message: string|null, matched_id: string|null, host_text: string|null, host_id: string|null}
  */
 final class PeopleSheet
@@ -40,6 +40,9 @@ final class PeopleSheet
         'since' => ['annodiiscrizione', 'annoiscrizione', 'datadiiscrizione', 'dataiscrizione', 'iscrittodal', 'sociodal', 'dataingresso', 'ingresso', 'datadiingresso'],
         'host' => ['ospitedi', 'ospitante', 'socioospitante', 'invitatoda', 'ospiteda', 'tesseraospitante', 'host'],
         'birth' => ['datadinascita', 'datanascita', 'nascita', 'natoil', 'natail', 'nata', 'nato', 'dob', 'birthdate', 'dateofbirth'],
+        'subject' => ['tiposoggetto', 'soggetto', 'tipopersona', 'personafisicagiuridica'],
+        'entity_name' => ['denominazione', 'ragionesociale', 'denominazioneente', 'nomeente'],
+        'same_section' => ['stessasezione', 'stessasezionerunts', 'sezionerunts', 'stessasezionedelrunts'],
         'guardian' => ['tutore', 'genitore', 'tutoregenitore', 'genitoretutore', 'tutoreogenitore', 'genitoreotutore', 'tutori', 'genitori', 'guardian', 'parent'],
     ];
 
@@ -56,6 +59,49 @@ final class PeopleSheet
         };
     }
 
+    /** Soggetto da come lo scrive un foglio: true = ente, false = persona fisica, null = non riconosciuto. */
+    public static function subjectFromText(string $text): ?bool
+    {
+        return match (Text::normalize($text)) {
+            'ente', 'enti', 'personagiuridica', 'giuridica', 'associazione', 'societa', 'azienda' => true,
+            'persona', 'personafisica', 'fisica' => false,
+            default => null,
+        };
+    }
+
+    /** «sì», «x», «1» → true; «no», «0» → false; altro → null. */
+    public static function yesNo(?string $v): ?bool
+    {
+        return match ($v === null ? '' : Text::normalize($v)) {
+            'si', 's', 'x', '1', 'true', 'vero', 'yes' => true,
+            'no', 'n', '0', 'false', 'falso' => false,
+            default => null,
+        };
+    }
+
+    /** Codice fiscale di un ente: 11 cifre con la cifra di controllo giusta, oppure 16 caratteri come quello di una persona. */
+    public static function entityTaxValid(string $tax): bool
+    {
+        $tax = strtoupper(str_replace(' ', '', $tax));
+        if (preg_match('/^[A-Z0-9]{16}$/', $tax) === 1) {
+            return true;
+        }
+        if (preg_match('/^\d{11}$/', $tax) !== 1) {
+            return false;
+        }
+        $sum = 0;
+        for ($i = 0; $i < 10; $i++) {
+            $d = (int) $tax[$i];
+            if ($i % 2 === 1) {
+                $d *= 2;
+                $d -= $d > 9 ? 9 : 0;
+            }
+            $sum += $d;
+        }
+
+        return (10 - $sum % 10) % 10 === (int) $tax[10];
+    }
+
     public static function decode(string $bytes): string
     {
         return SheetReader::decode($bytes);
@@ -64,7 +110,8 @@ final class PeopleSheet
     /** @param  list<string>  $h */
     public static function acceptsHeader(array $h): bool
     {
-        return SheetReader::col($h, self::COLS['first']) >= 0 && SheetReader::col($h, self::COLS['last']) >= 0;
+        return (SheetReader::col($h, self::COLS['first']) >= 0 && SheetReader::col($h, self::COLS['last']) >= 0)
+            || SheetReader::col($h, self::COLS['entity_name']) >= 0;
     }
 
     /** @return array{error: string}|array{rows: list<Row>} */
@@ -122,13 +169,22 @@ final class PeopleSheet
                 }
             }
             $birthText = $cell($cells, $col['birth']);
+            $subjectText = $cell($cells, $col['subject']);
+            $entityName = $cell($cells, $col['entity_name']);
+            $entity = $subjectText !== null ? self::subjectFromText($subjectText) === true : $entityName !== null;
+            $sectionText = $cell($cells, $col['same_section']);
             $rows[] = [
                 'line' => $lines !== null ? ($lines[$idx] ?? $idx + 1) : $idx + 1,
                 'sheet' => $sheet,
                 'card' => $card === null ? null : self::cleanCard($card),
                 'type_text' => $cell($cells, $col['type']),
-                'first' => $cell($cells, $col['first']) ?? '',
-                'last' => $cell($cells, $col['last']) ?? '',
+                // Un ente non ha nome: la denominazione sta nel cognome (colonna «Denominazione» o «Cognome»).
+                'first' => $entity ? '' : ($cell($cells, $col['first']) ?? ''),
+                'last' => $entity ? ($entityName ?? $cell($cells, $col['last']) ?? '') : ($cell($cells, $col['last']) ?? ''),
+                'subject_text' => $subjectText,
+                'entity' => $entity,
+                'same_section' => self::yesNo($sectionText),
+                'same_section_text' => $sectionText,
                 'email' => $cell($cells, $col['mail']),
                 'phone' => $cell($cells, $col['phone']),
                 'tax' => $tax === null ? null : strtoupper(str_replace(' ', '', $tax)),
@@ -190,6 +246,29 @@ final class PeopleSheet
         return preg_match('/^(\d+)[.,]0+$/', $raw, $m) === 1 ? $m[1] : $raw;
     }
 
+    /**
+     * Cosa non va in una riga che descrive un ente (null se va bene): denominazione, codice fiscale, sezione, tutore.
+     *
+     * @param  Row  $r
+     */
+    private static function entityProblem(array $r): ?string
+    {
+        if (trim($r['last']) === '') {
+            return 'Denominazione dell\'ente mancante';
+        }
+        if ($r['tax'] !== null && ! self::entityTaxValid($r['tax'])) {
+            return 'Codice fiscale dell\'ente non valido: «'.$r['tax'].'» (11 cifre con la cifra di controllo giusta, oppure 16 caratteri)';
+        }
+        if ($r['same_section_text'] !== null && $r['same_section'] === null) {
+            return 'Stessa sezione del RUNTS non riconosciuta: «'.$r['same_section_text'].'» (scrivi sì o no)';
+        }
+        if ($r['guardian'] !== null) {
+            return 'Un ente non ha il tutore';
+        }
+
+        return null;
+    }
+
     /** @return list<list<string>> */
     public static function readTable(string $text): array
     {
@@ -238,17 +317,30 @@ final class PeopleSheet
 
         $cardsInFile = $mailsInFile = $taxInFile = $touched = $plans = $deferred = [];
         foreach ($rows as $r) {
-            if (trim($r['first']) === '' || trim($r['last']) === '') {
+            $entity = $r['entity'];
+            if ($r['subject_text'] !== null && self::subjectFromText($r['subject_text']) === null) {
+                $plans[] = $err($r, 'Tipo soggetto non riconosciuto: «'.$r['subject_text'].'» (usa persona oppure ente)');
+
+                continue;
+            }
+            if ($entity) {
+                $problem = self::entityProblem($r);
+                if ($problem !== null) {
+                    $plans[] = $err($r, $problem);
+
+                    continue;
+                }
+            } elseif (trim($r['first']) === '' || trim($r['last']) === '') {
                 $plans[] = $err($r, 'Nome o cognome mancante');
 
                 continue;
             }
-            if ($r['birth_text'] !== null && $r['birth'] === null) {
+            if (! $entity && $r['birth_text'] !== null && $r['birth'] === null) {
                 $plans[] = $err($r, 'Data di nascita non valida: «'.$r['birth_text'].'» (scrivila come 31/12/2010)');
 
                 continue;
             }
-            if ($r['guardian'] !== null && $r['birth'] === null) {
+            if (! $entity && $r['guardian'] !== null && $r['birth'] === null) {
                 $plans[] = $err($r, 'Per indicare il tutore serve la data di nascita');
 
                 continue;
@@ -261,6 +353,11 @@ final class PeopleSheet
 
                     continue;
                 }
+            }
+            if ($entity && ! $type->isMember()) {
+                $plans[] = $err($r, $type === MemberType::Guest ? 'Un ospite non può essere un ente' : 'Un ente può essere solo socio (fondatore, ordinario o volontario)');
+
+                continue;
             }
             if ($type === MemberType::Guest) {
                 $deferred[count($plans)] = $r; // si risolve dopo i soci: l'ospitante può essere nello stesso file
@@ -275,8 +372,8 @@ final class PeopleSheet
                 continue;
             }
             // L'email non è obbligatoria, ma serve un modo per riconoscere la persona.
-            if ($email === null && $r['card'] === null && ! Phone::isValid((string) $r['phone'])) {
-                $plans[] = $err($r, 'Servono almeno l\'email, il cellulare o il numero di tessera');
+            if ($email === null && $r['card'] === null && ! Phone::isValid((string) $r['phone']) && ! ($entity && $r['tax'] !== null)) {
+                $plans[] = $err($r, $entity ? 'Per un ente servono almeno il codice fiscale, l\'email, il cellulare o il numero di tessera' : 'Servono almeno l\'email, il cellulare o il numero di tessera');
 
                 continue;
             }
@@ -337,6 +434,11 @@ final class PeopleSheet
                 continue;
             }
 
+            if ($match !== null && ($match['entity'] ?? false) !== $entity) {
+                $plans[] = $err($r, 'La scheda già presente ('.$label($match).') è '.($entity ? 'una persona, non un ente' : 'un ente, non una persona'));
+
+                continue;
+            }
             if ($match !== null) {
                 if (isset($touched[$match['id']])) {
                     $plans[] = $err($r, 'La stessa persona è già aggiornata dalla riga '.$touched[$match['id']]);

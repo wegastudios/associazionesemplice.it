@@ -172,6 +172,12 @@ final readonly class PeopleImportService
     private function data(array $r, bool $withCard): array
     {
         $data = ['first_name' => $r['first'], 'last_name' => $r['last']];
+        if ($r['entity']) {
+            $data['is_entity'] = true;
+            if ($r['same_section'] !== null) {
+                $data['entity_same_section'] = $r['same_section'];
+            }
+        }
         foreach (['email' => 'email', 'phone' => 'phone', 'tax' => 'tax_code', 'notes' => 'notes', 'since' => 'joined_on', 'birth' => 'birth_date'] as $from => $to) {
             if (is_string($r[$from] ?? null) && $r[$from] !== '') {
                 $data[$to] = $r[$from];
@@ -243,7 +249,7 @@ final readonly class PeopleImportService
         foreach (Person::query()->whereNull('anonymized_at')->orderBy('id')->lazy(500) as $p) {
             $out[] = [
                 'id' => $p->id, 'card' => $p->card_number, 'first' => $p->first_name, 'last' => $p->last_name,
-                'email' => $p->email, 'tax' => $p->tax_code, 'phone' => $p->phone, 'type' => $p->type->value, 'host_id' => $p->host_person_id,
+                'email' => $p->email, 'tax' => $p->tax_code, 'phone' => $p->phone, 'type' => $p->type->value, 'host_id' => $p->host_person_id, 'entity' => $p->is_entity,
             ];
         }
 

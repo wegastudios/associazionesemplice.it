@@ -33,6 +33,7 @@ const field = 'field';
         <section class="card p-4 sm:p-5">
             <p class="mb-3 text-sm text-muted">Servono almeno le colonne <strong>Nome</strong> e <strong>Cognome</strong>, e per ogni persona l'email, il cellulare o il numero di tessera. Si riconoscono anche:</p>
             <p class="mb-4 text-sm">{{ columns.join(' · ') }}. <a href="/gestionale/soci/modello-import.csv" class="font-semibold text-accent hover:underline">Scarica il modello</a></p>
+            <p class="mb-4 text-sm text-muted">Per i <strong>soci enti</strong> aggiungi la colonna «Tipo soggetto» (scrivi <em>ente</em>) e «Denominazione» al posto di nome e cognome, il codice fiscale dell'ente (11 cifre oppure 16 caratteri) e «Stessa sezione RUNTS» (sì o no). Un ospite non può essere un ente.</p>
             <p class="mb-4 text-sm text-muted">Chi è già in anagrafica (stessa tessera, email, cellulare, codice fiscale o nome) viene aggiornato con i soli dati presenti nel file. Prima vedi l'anteprima: nulla si salva finché non confermi.</p>
             <form class="grid gap-4 text-sm sm:grid-cols-2" @submit.prevent="send(false)">
                 <label class="space-y-1 sm:col-span-2"><span class="block font-semibold">File (.xlsx o .csv, al massimo 5 MB)</span>
