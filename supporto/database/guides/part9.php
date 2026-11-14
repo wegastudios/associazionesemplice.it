@@ -51,6 +51,7 @@ Con **«Avvisa i soci per email»** attivo e i promemoria accesi (**Impostazioni
 
 - Dopo il **primo voto** non si cambiano più le risposte, il tipo di scelta, il voto segreto e chi può votare. Restano modificabili titolo, chiusura e avvisi.
 - Per cambiare altro, o per correggere dei voti, crea una **nuova votazione**: i voti non si possono riaprire.
+- Votazioni e sondaggi di un **anno fiscale chiuso**, e i relativi verbali, non si modificano più.
 - I dati delle votazioni sono inclusi nella [copia di sicurezza](guida:copia-di-sicurezza-e-ripristino); l'azzeramento dei dati li cancella.
 
 ## Un socio non vede la votazione
@@ -477,7 +478,7 @@ Lo scarichi in **PDF** e in **CSV**.
 
 ## Un libro per ogni anno fiscale
 
-Il libro soci **segue l'anno fiscale**. Quando [chiudi l'anno fiscale](guida:aprire-e-chiudere-gli-anni-solari) il libro diventa **definitivo**: viene pubblicato e bloccato a quel momento e non cambia più (prima della chiusura è una **bozza**): lo trovi in **Registri → Libro soci**, scegliendo l'anno, e lo scarichi in PDF e in CSV. Ogni socio ha una **matricola fissa** e ogni riga un **numero**. Per gli anni fiscali chiusi prima di questa funzione, **«Fotografa gli anni già chiusi»** (nella pagina Esercizi) ricostruisce i libri dai dati di oggi e li segna con «ricostruito il…».
+Il libro soci **segue l'anno fiscale**. Quando [chiudi l'anno fiscale](guida:aprire-e-chiudere-gli-anni-solari) il libro diventa **definitivo**: viene pubblicato e bloccato a quel momento e non cambia più (prima della chiusura è una **bozza**): lo trovi in **Registri → Libro soci**, scegliendo l'anno, e lo scarichi in PDF e in CSV. Ogni socio ha una **matricola fissa** e ogni riga un **numero**. Per gli anni fiscali chiusi prima di questa funzione, **«Emetti i documenti definitivi degli anni già chiusi»** (nella pagina Anni fiscali) li emette ora, con la dicitura «Emesso il gg/mm/aaaa per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura.»
 
 L'**esportazione dei dati personali** di un socio comprende anche i libri soci chiusi in cui compare.
 

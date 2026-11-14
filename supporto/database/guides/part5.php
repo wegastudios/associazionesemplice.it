@@ -13,7 +13,7 @@ Con Pro puoi tenere più conti (cassa contanti, banca, carta, Stripe, PayPal…)
 ## Gestire i conti
 
 1. Vai in **Cassa → Conti e fondi**.
-2. Per ogni conto puoi **rinominare**, cambiare tipo e saldo di partenza (il saldo attuale si ricalcola da solo).
+2. Per ogni conto puoi **rinominare**, cambiare tipo e saldo di partenza (il saldo attuale si ricalcola da solo). Se il conto ha movimenti in un anno fiscale chiuso, **nome e tipo non si cambiano**; commissione, chiusura e riapertura sì.
 3. Per **chiudere** un conto il saldo deve essere zero: prima sposta i soldi con un giroconto. I conti chiusi non accettano movimenti, ma restano nei rendiconti dei periodi in cui hanno lavorato.
 4. Puoi riaprire un conto chiuso.
 
@@ -35,7 +35,7 @@ Con **Cassa per più persone** incassi in un'unica operazione quote e contributi
 
 ## Fondi
 
-I fondi accantonano somme già incassate. Per ogni anno solare vedi quanto è stato accantonato, rimborsato o liberato e quanto resta da rimborsare: la tabella dei **fondi da rimborsare per anno** è nella pagina Esercizi della versione Pro. **Un anno con fondi non rimborsati non si chiude.** Per aprire e chiudere gli anni vedi [Aprire e chiudere gli anni fiscali](guida:aprire-e-chiudere-gli-anni-solari).
+I fondi accantonano somme già incassate. Per ogni anno fiscale vedi quanto è stato accantonato, rimborsato o liberato e quanto resta da rimborsare: la tabella dei **fondi da rimborsare per anno** è nella pagina Anni fiscali della versione Pro. **Un anno con fondi non rimborsati non si chiude.** Per aprire e chiudere gli anni vedi [Aprire e chiudere gli anni fiscali](guida:aprire-e-chiudere-gli-anni-solari).
 MD,
     ],
     [
@@ -53,11 +53,15 @@ Questa parte serve a chi deve preparare i documenti per il commercialista. L'ape
 3. Scrivi la relazione sull'andamento (testo libero per anno).
 4. Scarica il PDF con le firme di tesoriere e presidente.
 
+## Bozza e definitivo
+
+Prima della chiusura dell'anno fiscale il rendiconto è una **bozza**: i numeri sono quelli di oggi e possono cambiare. Alla chiusura viene emesso il **rendiconto definitivo**, bloccato e con un PDF numerato («n. 1/2026»): non cambia più. Per gli anni già chiusi, nella pagina **Anni fiscali**, **«Emetti il rendiconto definitivo»** o **«Emetti i documenti definitivi degli anni già chiusi»** lo emettono ora; il documento porta la dicitura «Emesso il gg/mm/aaaa per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura.».
+
 > Il rendiconto è un documento di lavoro: fallo verificare dal commercialista prima dell'approvazione.
 
 ## Report
 
-La scheda **Report** offre **Conti e liquidità** (saldi, fondi, disponibilità reale), **Anno sociale** e **Anno solare (commercialista)**.
+La scheda **Report** offre **Conti e liquidità** (saldi, fondi, disponibilità reale), **Anno sociale** e **Anno fiscale (commercialista)**.
 MD,
     ],
     [
@@ -301,7 +305,7 @@ MD,
 
 ## Anonimizzare una persona
 
-L'anonimizzazione toglie nome, contatti, codice fiscale, tessera e note, scollega (ed elimina, se è solo un socio) l'utente del sito e sostituisce il nome nelle descrizioni dei movimenti. **I movimenti contabili restano**, per l'obbligo di conservazione.
+L'anonimizzazione toglie nome, contatti, codice fiscale, tessera e note, scollega (ed elimina, se è solo un socio) l'utente del sito e sostituisce il nome nelle descrizioni dei movimenti. **I movimenti contabili restano**, per l'obbligo di conservazione; le descrizioni dei movimenti di un **anno fiscale chiuso** non vengono riscritte.
 
 1. Apri la scheda della persona.
 2. Premi **Anonimizza** e conferma.

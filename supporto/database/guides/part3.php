@@ -142,6 +142,7 @@ Un evento ha una o più date e, se vuoi, posti limitati e un contributo.
 ## Regole utili
 
 - Tutte le date di un evento devono cadere nell'**anno sociale** dell'attività, altrimenti il salvataggio viene rifiutato e non resta nulla a metà.
+- Se un incasso di un corso o di un evento cade in un **anno fiscale chiuso**, non si possono eliminare l'evento o l'iscrizione né cedere il posto: va prima riaperto l'ultimo anno chiuso.
 - Le date già presenti non si duplicano.
 - Per più date, usa l'evento ricorrente. In un evento ricorrente puoi aggiungere o togliere date con **«Aggiungi o elimina date»**.
 

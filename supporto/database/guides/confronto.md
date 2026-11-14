@@ -6,7 +6,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 
 | Funzione | Free | {piano_contabile} | {piano_fiscale} |
 |---|---|---|---|
-| Libro soci per anno fiscale: segue l'anno fiscale e alla chiusura diventa definitivo (pubblicato e bloccato, non cambia più), prima è una bozza; ogni socio ha una matricola fissa e ogni riga un numero; «Fotografa gli anni già chiusi» ricostruisce i libri passati; ogni libro si scarica in PDF e in CSV | ✓ | ✓ | ✓ |
+| Libro soci per anno fiscale: segue l'anno fiscale e alla chiusura diventa definitivo (pubblicato e bloccato, non cambia più), prima è una bozza; ogni socio ha una matricola fissa e ogni riga un numero; «Emetti i documenti definitivi degli anni già chiusi» emette quelli passati; ogni libro si scarica in PDF e in CSV | ✓ | ✓ | ✓ |
 | Soci che sono enti: scheda dedicata, importazione da CSV e colonna «Tipo» nel libro soci | ✓ | ✓ | ✓ |
 | Utente «Dipendente»: permessi che si possono togliere, periodo di servizio e conteggio dei lavoratori per il RUNTS | ✓ | ✓ | ✓ |
 | Libro soci completo: date di domanda e delibera, luogo di nascita, residenza, contatti, ultima quota, recesso e tutore, con PDF e CSV | ✓ | ✓ | ✓ |
@@ -89,8 +89,9 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Spese con scontrini e fatture allegati | ✓ | ✓ | ✓ |
 | Importazione ed esportazione della prima nota | ✓ | ✓ | ✓ |
 | Donazioni con PayPal | ✓ | ✓ | ✓ |
-| Anni fiscali: apertura e chiusura (solo amministratori), con il mese di inizio a scelta e l'avviso del nuovo anno da settembre; si chiudono in ordine | ✓ | ✓ | ✓ |
+| Anni fiscali: apertura e chiusura (solo amministratori), con il mese di inizio a scelta (si blocca alla prima chiusura, anche se poi l'anno viene riaperto) e l'avviso del nuovo anno da settembre; si chiudono in ordine | ✓ | ✓ | ✓ |
 | Riapertura dell'ultimo anno fiscale: si riapre solo l'ultimo anno fiscale chiuso, scrivendo il motivo; resta una traccia permanente di chiusure e riaperture, e le tessere di un anno fiscale chiuso non si modificano | ✓ | ✓ | ✓ |
+| Tessera annuale che segue l'anno sociale: l'etichetta è «2026» oppure «2026/2027»; negli ultimi giorni prima della scadenza si rinnova in anticipo; se cambi il mese, vale solo per le tessere nuove; anno sociale e anno fiscale si scelgono al primo passo della configurazione guidata | ✓ | ✓ | ✓ |
 | Cassa «Prenota» (per data o per attività) | ✓ | ✓ | ✓ |
 | Acconti e sconti con motivo per riga di incasso | ✓ | ✓ | ✓ |
 | Nuovo socio in un popup durante l'incasso, senza perdere l'operazione | ✓ | ✓ | ✓ |
@@ -106,7 +107,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Voce di prima nota per ogni risorsa, separata nei report | — | ✓ | ✓ |
 | Disponibilità reale dei fondi, liberazione ed estinzione | — | ✓ | ✓ |
 | Tabella dei fondi da rimborsare per anno | — | ✓ | ✓ |
-| Ricevute in PDF e attestazione annuale | — | ✓ | ✓ |
+| Ricevute in PDF e attestazione annuale, numerate per anno fiscale; la ricevuta emessa non cambia più e, se annulli l'incasso, il numero non si libera: si emette la ricevuta sostitutiva | — | ✓ | ✓ |
 | Ricevute dei minori intestate al genitore, con codici fiscali e indicazione di pagamento tracciato per la detrazione delle spese sportive | — | ✓ | ✓ |
 | Report di gestione (conti e liquidità, anno sociale) | — | ✓ | ✓ |
 
@@ -116,7 +117,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 |---|---|---|---|
 | IVA su quote, attività, incassi e spese | — | — | ✓ |
 | 5 per mille e rendiconto sull'utilizzo | — | — | ✓ |
-| Rendiconto per cassa per il commercialista | — | — | ✓ |
+| Rendiconto per cassa per il commercialista: alla chiusura dell'anno fiscale diventa definitivo, con un PDF numerato (n. 1/2026) che non cambia più; prima è una bozza | — | — | ✓ |
 | Anno fiscale del rendiconto per cassa e verifiche prima della chiusura | — | — | ✓ |
 | Spese documentate attribuite in automatico ai fondi dei rimborsi, con elenchi e CSV | — | — | ✓ |
 | Bilancio provvisorio dell'anno fiscale, avvisi di bilancio e storico mensile con CSV | — | — | ✓ |
@@ -127,7 +128,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 
 | Funzione | Free | {piano_contabile} | {piano_fiscale} |
 |---|---|---|---|
-| Verbali di assemblea e consiglio con PDF | ✓ | ✓ | ✓ |
+| Verbali di assemblea e consiglio con PDF, con numero fisso che non cambia mai | ✓ | ✓ | ✓ |
 | Assemblee: convocazione per email, presenze, deleghe, numero legale e verbale compilato | — | ✓ | ✓ |
 | Votazioni e sondaggi tra i soci, anche a voto segreto, con verbale dei risultati; votano i soci maggiorenni | ✓ | ✓ | ✓ |
 | Diritto di voto per livello: si sceglie per ogni livello di socio se ha diritto di voto | — | ✓ | ✓ |

@@ -54,7 +54,9 @@ Se preferisci un utente WordPress per ogni socio (per esempio per usare WooComme
 
 ## Come dura la tessera
 
-La tessera dura l'anno solare e **scade sempre il 31 dicembre**, per tutti tranne i soci fondatori (tessera sempre rinnovata). Chi si iscrive a fine anno può pagare la tessera dell'anno dopo e avere gratis quella in corso.
+La tessera segue l'**anno sociale**, cioè il mese di inizio scelto nella configurazione guidata (o in **Impostazioni → Ente → Dati dell'ente**). Con gennaio vale da gennaio a dicembre e si chiama «**2026**»; con un altro mese, per esempio settembre, vale da settembre ad agosto e si chiama «**2026/2027**». I soci fondatori hanno la tessera sempre rinnovata.
+
+Negli **ultimi giorni prima della scadenza** (quelli dell'avviso di scadenza, **30** di partenza) si può **rinnovare in anticipo**. Le tessere in corso non si accorciano: se cambi il mese dell'anno sociale, vale solo per le **tessere nuove**. Passare a gennaio si può sempre; scegliere un altro mese si può solo quando le tessere con la barra («2026/2027») sono scadute. L'anno sociale e l'anno fiscale sono **indipendenti**.
 
 ## Rinnovare
 

@@ -41,8 +41,8 @@ Il numero legale si scrive **assemblea per assemblea**, in percentuale degli ave
 
 ## Chiudere e creare il verbale
 
-1. Premi **«Chiudi: svolta in prima (o seconda) convocazione»**. Servono almeno una presenza e il numero legale raggiunto. Dopo la chiusura l'assemblea **non si modifica più**.
-2. Premi **Crea il verbale**: nasce il verbale in **Registri → Verbali**, già compilato con presenti, rappresentati per delega, numero legale e ordine del giorno. Resta da scrivere lo svolgimento. C'è un verbale per assemblea.
+1. Premi **«Chiudi: svolta in prima (o seconda) convocazione»**. Servono almeno una presenza e il numero legale raggiunto. Dopo la chiusura l'assemblea **non si modifica più**. Anche le assemblee (anche quelle non svolte) di un **anno fiscale chiuso** non si modificano: per cambiarle va riaperto l'ultimo anno chiuso dalla pagina «Anni fiscali».
+2. Premi **Crea il verbale**: nasce il verbale in **Registri → Verbali**, già compilato con presenti, rappresentati per delega, numero legale e ordine del giorno. Resta da scrivere lo svolgimento. C'è un verbale per assemblea. Il verbale ha un **numero fisso** alla creazione (progressivo per anno fiscale della riunione), che non cambia e non viene mai riassegnato.
 3. **Foglio presenze (CSV)** scarica l'elenco di tutti i soci con presente, delegato o assente.
 
 ## Privacy

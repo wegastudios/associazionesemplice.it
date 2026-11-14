@@ -150,7 +150,7 @@ Per spostare soldi tra due conti usa il **Giroconto tra conti** dalla **Prima no
 MD,
     ],
     [
-        'topic' => 'gestionale', 'section' => 'Cassa e conti', 'slug' => 'gestionale-chiudere-l-anno fiscale-e-leggere-il-rendiconto',
+        'topic' => 'gestionale', 'section' => 'Cassa e conti', 'slug' => 'gestionale-chiudere-l-esercizio-e-leggere-il-rendiconto',
         'title' => 'Chiudere l\'anno fiscale e leggere il rendiconto',
         'body' => <<<'MD'
 > Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}

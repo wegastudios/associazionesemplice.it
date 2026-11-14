@@ -64,12 +64,12 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-L'**anno fiscale** (per il commercialista, l'«esercizio») è l'anno della contabilità: la prima nota si organizza per anno fiscale, e l'apertura e la chiusura sono disponibili in tutte le versioni. Solo gli amministratori possono aprire, chiudere e riaprire un anno fiscale. Di partenza l'anno fiscale coincide con l'anno solare; il mese di inizio si sceglie in **Dati dell'ente** (vedi [L'anno fiscale con un mese di inizio diverso](guida:inizio-dell-anno-fiscale)).
+L'**anno fiscale** (l'«esercizio», per il commercialista) è l'anno della contabilità: la prima nota si organizza per anno fiscale, e l'apertura e la chiusura sono disponibili in tutte le versioni. Solo gli amministratori possono aprire, chiudere e riaprire un anno fiscale. Di partenza l'anno fiscale coincide con l'anno solare; il mese di inizio si sceglie in **Dati dell'ente** (vedi [Impostare il mese di inizio dell'anno fiscale](guida:inizio-dell-anno-fiscale)).
 
 ## Aprire l'anno fiscale nuovo
 
-1. Vai in **Cassa → Esercizi** (con {piano_contabile} o {piano_fiscale}: **Contabilità → Esercizi**).
-2. In fondo alla pagina scrivi l'anno e premi **Crea l'anno**: conferma, perché da quel momento le quote dei nuovi soci valgono per quell'anno fiscale.
+1. Vai in **Cassa → Anni fiscali** (con {piano_contabile} o {piano_fiscale}: **Contabilità → Anni fiscali**).
+2. In fondo alla pagina scrivi l'anno e premi **Crea l'anno**: serve se devi registrare incassi o spese in anticipo. Le quote dei soci non dipendono da qui.
 
 Da settembre la **Bacheca** ti ricorda di aprire l'anno fiscale nuovo. L'avviso si può chiudere e ricompare a inizio mese; a dicembre è sempre visibile. Il primo giorno dell'anno il nuovo anno fiscale si apre da solo.
 
@@ -79,11 +79,11 @@ Da settembre la **Bacheca** ti ricorda di aprire l'anno fiscale nuovo. L'avviso 
 2. Gli anni fiscali si chiudono **in ordine, dal più vecchio**. L'anno fiscale in corso non si chiude finché non è finito.
 3. Per chiudere un anno fiscale non devono restare fondi non rimborsati (funzione Pro).
 
-Si può incassare, spendere e girare denaro solo negli anni fiscali **aperti**. Un anno fiscale chiuso non si modifica più: nemmeno allegati, saldi iniziali, cessazioni dei soci e **tessere**.
+Si può incassare, spendere e girare denaro solo negli anni fiscali **aperti**. Se provi a modificare un anno chiuso, un messaggio ti dice che per modificarlo va riaperto dalla pagina «Anni fiscali» (si può riaprire solo l'ultimo anno chiuso). Un anno fiscale chiuso non si modifica più: nemmeno allegati, saldi iniziali, cessazioni dei soci. Si bloccano anche **assemblee** (anche non svolte), **votazioni**, **sondaggi** e **verbali** di quell'anno, la **relazione del rendiconto**, la **cessione del posto** e l'eliminazione di eventi e iscrizioni con incassi in quell'anno, l'accantonamento e il rilascio dei **fondi**; il **nome e il tipo di un conto** con movimenti in quell'anno non si cambiano (commissione, chiusura e riapertura del conto sì).
 
 ## Il libro soci dell'anno fiscale
 
-Alla chiusura il **libro soci** di quell'anno fiscale diventa **definitivo**: viene pubblicato e bloccato a quel momento e non cambia più. Prima della chiusura è una **bozza**. Si scarica in PDF e in CSV (vedi [Il libro soci completo](guida:libro-soci-completo)). Per gli anni fiscali chiusi prima di questa funzione compare **«Fotografa gli anni già chiusi»**: il libro viene **ricostruito dai dati di oggi** e porta la dicitura «ricostruito il…». Non si può annullare.
+Alla chiusura il **libro soci** di quell'anno fiscale diventa **definitivo**: viene pubblicato e bloccato a quel momento e non cambia più. Prima della chiusura è una **bozza**: i numeri sono quelli di oggi e possono cambiare. Si scarica in PDF e in CSV (vedi [Il libro soci completo](guida:libro-soci-completo)). Per gli anni fiscali chiusi prima di questa funzione compare **«Emetti i documenti definitivi degli anni già chiusi»**: ogni documento porta la dicitura «Emesso il gg/mm/aaaa per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura.» Non si può annullare.
 
 ## Riaprire un anno fiscale
 
@@ -91,7 +91,7 @@ Si riapre **solo l'ultimo anno fiscale chiuso**, dalla stessa pagina con **Riapr
 
 ## La quota associativa
 
-La quota va all'anno fiscale più recente creato. Un socio che ha già l'anno in corso rinnova in anticipo; un nuovo socio paga il più recente e ha l'anno in corso in omaggio.
+La quota e la tessera non dipendono dagli anni fiscali: seguono l'**anno sociale** (vedi [Come dura la tessera](guida:iscrivere-un-socio-e-rinnovare-la-tessera)).
 
 ## Con Pro
 
@@ -107,7 +107,7 @@ MD,
 ## Esportare
 
 1. Vai in **Strumenti → Esporta**.
-2. Scegli cosa esportare: soci e ospiti, prima nota (anno solare) o report delle attività (anno sociale).
+2. Scegli cosa esportare: soci e ospiti, prima nota (anno fiscale) o report delle attività (anno sociale).
 3. Scarica il file CSV.
 
 I file usano il punto e virgola come separatore e la virgola come decimale, pronti per Excel. Con la partita IVA l'esportazione della prima nota aggiunge aliquota, imponibile e IVA, utili al commercialista.
@@ -292,12 +292,18 @@ Ogni incasso può avere una **ricevuta in PDF**, numerata e con il nome dell'ass
 
 ## Cosa contiene
 
-- Un numero progressivo **N/AAAA**, assegnato alla prima emissione e poi fisso.
+- Un numero progressivo **N/AAAA**, per **anno fiscale**, assegnato alla prima emissione e poi fisso: una ricevuta emessa non cambia più.
 - La firma «Per l'associazione» con il nome del presidente, se assegnato, e una riga finale a tua scelta (per esempio un riferimento normativo).
 - Il titolo «Ricevuta di erogazione liberale» se sono solo donazioni.
 - Con la partita IVA, imponibile e IVA contenuta per ogni aliquota.
 
 Un incasso annullato non ha ricevuta.
+
+## Se annulli un incasso
+
+L'**annullo** di un incasso annulla subito la ricevuta già emessa, ma **non libera il suo numero**. La ricevuta annullata non si vede più nell'**area soci** (il socio la chiede alla segreteria); alla segreteria resta, con il PDF **«RICEVUTA ANNULLATA»**.
+
+Se serve una nuova ricevuta, dopo l'annullo premi **«Emetti la ricevuta sostitutiva»**: prende un **numero nuovo** e la **data di oggi**, e vale solo per le voci rimaste. Non si può emettere se l'incasso o la sua data cadono in un anno fiscale chiuso.
 
 ## Ricevute dei minori
 
