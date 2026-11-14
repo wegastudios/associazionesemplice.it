@@ -49,33 +49,41 @@ final readonly class FiscalYearService
         return is_numeric($month) && (int) $month >= 1 && (int) $month <= 12 ? (int) $month : null;
     }
 
-    /** Ci sono già movimenti (e quindi il mese di inizio non si cambia più)? */
+    /** Ci sono già movimenti registrati? */
     public function hasMovements(): bool
     {
         return $this->connection()->table('app.transactions')->exists();
     }
 
-    /**
-     * Sceglie il mese di inizio dell'anno fiscale. Finché non ci sono movimenti l'anno fiscale di partenza, preparato
-     * con l'associazione, si rifà in modo che contenga oggi e cominci in quel mese.
-     */
-    public function chooseStartMonth(int $month): void
+    /** Un anno fiscale è stato chiuso (anche se poi riaperto): da qui il mese di inizio non si cambia più. */
+    public function hasClosedYear(): bool
     {
+        return $this->connection()->table('app.fiscal_years')->where('status', '<>', 'open')->exists()
+            || $this->connection()->table('app.statement_snapshots')->exists();
+    }
+
+    /**
+     * Sceglie o cambia il mese di inizio dell'anno fiscale, finché nessun anno è stato chiuso. Gli anni fiscali si
+     * rifanno dal nuovo mese e i movimenti già registrati passano all'anno fiscale che li contiene: le date non
+     * cambiano, le ricevute già emesse restano col loro numero. Restituisce quanti movimenti sono passati ad altro anno.
+     */
+    public function chooseStartMonth(int $month): int
+    {
+        $from = $this->chosenStartMonth();
+        if ($from === $month) {
+            return 0;
+        }
+        if ($this->hasClosedYear()) {
+            throw new LedgerError('Dopo la prima chiusura il mese di inizio dell\'anno fiscale non si cambia più.');
+        }
         $this->settings->set(self::START_MONTH, $month);
-        if ($this->hasMovements()) {
-            return;
+        $row = $this->connection()->selectOne('select app.realign_fiscal_years(?, ?) as moved', [$month, CarbonImmutable::today()->toDateString()]);
+        $moved = is_object($row) && is_numeric($row->moved ?? null) ? (int) $row->moved : 0;
+        if ($from !== $month) {
+            $this->audit->record('fiscal_year.start_month_changed', 'app.fiscal_years', null, ['from' => $from, 'to' => $month, 'moved_transactions' => $moved]);
         }
-        $today = CarbonImmutable::today();
-        $start = self::startFor($today, $month);
-        $current = $this->connection()->table('app.fiscal_years')->get(['year', 'starts_on', 'status']);
-        if ($current->count() === 1 && $current->first()?->status === 'open' && $current->first()->starts_on === $start->toDateString()) {
-            return;
-        }
-        $this->connection()->table('app.fiscal_years')->where('status', 'open')->delete();
-        if ($this->connection()->table('app.fiscal_years')->doesntExist()) {
-            $this->create($start->year, $start->toDateString(), audit: false);
-            $this->audit->record('fiscal_year.realigned', 'app.fiscal_years', null, ['year' => $start->year, 'starts_on' => $start->toDateString()]);
-        }
+
+        return $moved;
     }
 
     /** Inizio dell'anno fiscale che contiene la data. */
