@@ -60,12 +60,12 @@ it('non lascia cambiare voci e conti usati in un esercizio chiuso', function ():
     expect(fn () => DB::transaction(fn () => app(AccountService::class)->update($this->cash->id, 'Altro conto', AccountType::Cash, 0)))->toThrow(LedgerError::class);
 
     // L'ordine non è un dato dell'esercizio: si può cambiare.
-    $this->donation->update(['sort_order' => 99]);
+    $this->donation->refresh()->update(['sort_order' => 99]);
     expect(Category::query()->findOrFail($this->donation->id)->sort_order)->toBe(99);
 
     // Riaperto, si può di nuovo.
     app(FiscalYearService::class)->reopen($this->year, 'Correzione');
-    $this->donation->update(['name' => 'Offerte libere']);
+    $this->donation->refresh()->update(['name' => 'Offerte libere']);
     expect(Category::query()->findOrFail($this->donation->id)->name)->toBe('Offerte libere');
 });
 
