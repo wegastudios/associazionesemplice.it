@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Contabilita\Ledger\FiscalYearService;
 use App\Modules\Contabilita\Models\Account;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Soci\Models\Person;
@@ -39,6 +40,7 @@ it('esporta tutti i dati in un archivio per il titolare', function (): void {
     $owner = $this->createUser('own@example.com', twoFactor: true);
     $this->addOperator($this->org, $owner, OrgRole::Owner);
 
+    $this->orgContext()->run($this->org->id, fn () => app(FiscalYearService::class)->close((int) now()->format('Y')));
     $response = $this->actingAs($owner)->get('/gestionale/esportazione.zip')->assertOk()->assertHeader('content-type', 'application/zip');
     $base = $response->baseResponse;
     expect($base)->toBeInstanceOf(BinaryFileResponse::class);
@@ -49,6 +51,8 @@ it('esporta tutti i dati in un archivio per il titolare', function (): void {
         'contabilita/prima-nota.csv', 'contabilita/conti.csv', 'contabilita/ricevute.csv', 'attivita/attivita.csv',
         'operatori.csv', 'ruoli.csv', 'impostazioni.csv', 'registro-delle-azioni.csv',
     )
+        ->and(array_keys($files))->toContain('contabilita/rendiconti-esercizi-chiusi.json', 'soci/libri-soci-esercizi-chiusi.json')
+        ->and(json_decode($files['soci/libri-soci-esercizi-chiusi.json'], true)[0]['rows'][0]['name'])->toBe('Rossi Mario')
         ->and($files['soci/anagrafica.csv'])->toContain('RSSMRA80A01H501U')
         ->and($files['soci/certificati-medici.csv'])->toContain('Dr. Bianchi')
         ->and($files['contabilita/prima-nota.csv'])->toContain('Quota associativa')

@@ -7,7 +7,7 @@ namespace App\Modules\Contabilita\Http\Controllers;
 use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Contabilita\Contracts\Money;
 use App\Modules\Contabilita\Ledger\FiscalYearService;
-use App\Modules\Contabilita\Ledger\StatementService;
+use App\Modules\Contabilita\Ledger\StatementSnapshots;
 use App\Modules\Core\Contracts\Input;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,7 +20,7 @@ final readonly class YearsController
 {
     public function __construct(
         private FiscalYearService $years,
-        private StatementService $statements,
+        private StatementSnapshots $statements,
     ) {}
 
     public function statement(Request $request, ?int $year = null): Response
@@ -29,7 +29,8 @@ final readonly class YearsController
         $year ??= $years[0]['year'] ?? (int) now()->format('Y');
 
         try {
-            $s = $this->statements->forYear($year);
+            $result = $this->statements->forYear($year);
+            $s = $result['statement'];
         } catch (LedgerError) {
             abort(404);
         }
@@ -52,6 +53,11 @@ final readonly class YearsController
                     'name' => $a['name'], 'opening' => Money::format($a['opening']), 'closing' => Money::format($a['closing']),
                 ], $s['accounts']),
             ],
+            'source' => $result['source'],
+            'version' => $result['version'],
+            'versions' => array_map(static fn (array $v): array => [
+                'version' => $v['version'], 'date' => date('d/m/Y H:i', (int) strtotime($v['created_at'])), 'superseded' => $v['superseded'],
+            ], $this->statements->versions($year)),
             'canClose' => $request->user()?->can('accounting.close') ?? false,
         ]);
     }

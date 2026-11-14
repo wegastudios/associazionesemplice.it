@@ -11,6 +11,14 @@ use Illuminate\Database\DatabaseManager;
 /**
  * Rendiconto per cassa di un esercizio: entrate e uscite per raggruppamento e categoria, saldi dei conti a inizio e a
  * fine esercizio. Gli storni non contano, i giroconti nemmeno (spostano denaro tra conti, non sono entrate né uscite).
+ *
+ * @phpstan-type Statement array{
+ *     year: int, starts_on: string, ends_on: string, status: string,
+ *     income: list<array{group: string, category: string, cents: int}>,
+ *     expense: list<array{group: string, category: string, cents: int}>,
+ *     totals: array{income: int, expense: int, result: int},
+ *     accounts: list<array{name: string, opening: int, closing: int}>
+ * }
  */
 final readonly class StatementService
 {
@@ -19,15 +27,7 @@ final readonly class StatementService
         private OrgContext $context,
     ) {}
 
-    /**
-     * @return array{
-     *     year: int, starts_on: string, ends_on: string, status: string,
-     *     income: list<array{group: string, category: string, cents: int}>,
-     *     expense: list<array{group: string, category: string, cents: int}>,
-     *     totals: array{income: int, expense: int, result: int},
-     *     accounts: list<array{name: string, opening: int, closing: int}>
-     * }
-     */
+    /** @return Statement */
     public function forYear(int $year): array
     {
         $c = $this->db->connection($this->context->require()->connection);

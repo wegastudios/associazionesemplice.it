@@ -2,7 +2,7 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 
-const props = defineProps({ filter: String, rows: Array, year: Number, source: String, years: Array, canExport: Boolean });
+const props = defineProps({ filter: String, rows: Array, year: Number, source: String, years: Array, versions: { type: Array, default: () => [] }, canExport: Boolean });
 const filters = [{ value: '', label: 'Tutti' }, { value: 'in_force', label: 'In carica' }, { value: 'left', label: 'Cessati' }];
 const params = (over = {}) => { const p = { ...(props.filter ? { stato: props.filter } : {}), ...(props.year ? { anno: props.year } : {}), ...over }; return Object.fromEntries(Object.entries(p).filter(([, v]) => v !== '' && v != null)); };
 const q = () => { const s = new URLSearchParams(params()).toString(); return s ? `?${s}` : ''; };
@@ -16,6 +16,7 @@ const q = () => { const s = new URLSearchParams(params()).toString(); return s ?
             <div>
                 <h1 class="text-2xl font-bold">Libro soci</h1>
                 <p class="text-sm text-muted">Tutti i soci in ordine di ingresso, con domanda, ammissione, cessazione e ultima quota. Ospiti e genitori non soci non ci sono.</p>
+                <p v-if="versions.length" class="text-sm text-muted">Fotografie: <span v-for="(v, i) in versions" :key="v.version">versione {{ v.version }} del {{ v.date }} ({{ v.superseded ? 'superata dopo una riapertura' : 'in uso' }})<template v-if="i < versions.length - 1">; </template></span>.</p>
                 <p v-if="year" class="text-sm font-semibold text-muted">Esercizio {{ year }}: chi ha avuto una tessera valida per almeno un giorno dell'anno. {{ source === 'snapshot' ? 'Fotografia alla chiusura: non cambia più, salvo riapertura.' : 'Esercizio aperto: si aggiorna fino alla chiusura.' }}</p>
             </div>
             <div class="flex flex-wrap items-center gap-3 text-sm font-semibold">

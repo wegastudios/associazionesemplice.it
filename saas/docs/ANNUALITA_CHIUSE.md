@@ -1,6 +1,6 @@
 # Annualità chiuse: disegno e stima
 
-Decisioni della titolare, 13/11/2026. Stato: **disegno, niente costruito**; si parte con il suo via.
+Decisioni della titolare, 13/11/2026. Stato al 14/11/2026: **costruito** libro soci per anno fiscale con fotografia, **fotografia del rendiconto** (tabella `app.statement_snapshots`, scritta alla chiusura dall'evento `FiscalYearClosed`, superata alla riapertura), **blocco** in database di nome, natura e gruppo delle voci e di nome, tipo e saldo iniziale dei conti usati in un esercizio chiuso (l'ordine e la rimozione restano liberi), fotografie di entrambi **nell'esportazione completa** (`contabilita/rendiconti-esercizi-chiusi.json`, `soci/libri-soci-esercizi-chiusi.json`, tutte le versioni) ed **elenco delle versioni** nelle pagine Rendiconto e Libro soci. Le fotografie stanno in due tabelle (una per tipo) invece della tabella unica del disegno. Gli esercizi già chiusi prima di questa funzione non hanno fotografia: si leggono dai dati attuali e la pagina lo dice; per fotografarli basta riaprirli e richiuderli. Ancora da fare: PDF con data emissione nella fotografia, scelta guidata del mese dell'esercizio, informativa privacy.
 
 ## 1. Le regole
 
