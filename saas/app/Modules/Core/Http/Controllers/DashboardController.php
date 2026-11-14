@@ -39,7 +39,7 @@ final readonly class DashboardController
         }
 
         // Al primo accesso la configurazione guidata si apre da sola, una volta per sessione.
-        if ($setupPending &&! $request->session()->has('setup_offered.'.$operator->orgId)) {
+        if ($setupPending && ! $request->session()->has('setup_offered.'.$operator->orgId)) {
             $request->session()->put('setup_offered.'.$operator->orgId, true);
 
             return redirect()->route('setup');
