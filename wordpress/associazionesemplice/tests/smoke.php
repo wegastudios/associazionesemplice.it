@@ -9956,8 +9956,12 @@ asem_ok( 1 === count( $rs_list ) && '1/' . $rs_z === $rs_r1['number'] && false =
 $rs_old = \AssociazioneSemplice\Receipts::record( $rs_key );
 asem_ok( null === $rs_old['voided_at'] && '' !== \AssociazioneSemplice\Receipts::replacement_problem( $rs_key ), 'sostitutiva: una ricevuta non annullata non ha bisogno della sostitutiva' );
 // annullo parziale di UNA riga: l'intera ricevuta risulta annullata, il numero resta, con motivo e data
-$ledger->void( $rs_tx( 3100 ), 'Riga sbagliata' );
+$rs_t3100 = $rs_tx( 3100 );
+$ledger->void( $rs_t3100, 'Riga sbagliata' );
 $rs_old = \AssociazioneSemplice\Receipts::record( $rs_key );
+if ( null === $rs_old['voided_at'] ) {
+	fwrite( STDERR, 'DIAG ' . wp_json_encode( array( $rs_t3100, $wpdb->get_row( 'SELECT id, receipt_id, voided_at, void_reason, person_id FROM ' . Db::t( 'transactions' ) . ' WHERE id = ' . $rs_t3100, ARRAY_A ), $rs_key, has_action( 'asem_tx_voided' ) ) ) . "\n" );
+}
 asem_ok( null !== $rs_old['voided_at'] && 'Riga sbagliata' === $rs_old['void_reason'] && 1 === (int) $rs_old['number'], 'sostitutiva: annullando una sola riga l\'intera ricevuta emessa risulta annullata (numero, motivo e data restano)' . ( null === $rs_old['voided_at'] || 'Riga sbagliata' !== $rs_old['void_reason'] ? ' [' . wp_json_encode( $rs_old ) . ']' : '' ) );
 $rs_v1 = \AssociazioneSemplice\Receipts::build( $rs_key );
 $rs_v2 = \AssociazioneSemplice\Receipts::build( $rs_key );
