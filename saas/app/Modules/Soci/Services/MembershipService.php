@@ -19,6 +19,7 @@ use App\Modules\Soci\Models\Membership;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Rules\ExpiryRules;
 use App\Modules\Soci\Rules\SocialYear;
+use DateTimeImmutable;
 use Illuminate\Contracts\Auth\Factory as Auth;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
