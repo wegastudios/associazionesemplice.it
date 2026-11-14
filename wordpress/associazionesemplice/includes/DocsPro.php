@@ -157,7 +157,7 @@ final class DocsPro {
 			$pdf->text( Docs::LEFT, $y - 5, 'Documento emesso ' . StatementSnapshot::number_text( (int) $em['number'], (int) $em['year'] ) . ' il ' . StatementSnapshot::dmy( (string) $em['issued_at'] ) . ' · chiusura n. ' . (int) $em['version'] . ' dell\'anno fiscale', 9, true );
 			$y += 12;
 			if ( ! empty( $em['retroactive'] ) ) {
-				$pdf->text( Docs::LEFT, $y - 5, 'Emesso ora per un anno già chiuso: dati di oggi, ricostruiti il ' . StatementSnapshot::dmy( (string) $em['issued_at'] ) . '.', 8 );
+				$pdf->text( Docs::LEFT, $y - 5, 'Emesso il ' . StatementSnapshot::dmy( (string) $em['issued_at'] ) . ' per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura.', 8 );
 				$y += 12;
 			}
 			$y += 4;

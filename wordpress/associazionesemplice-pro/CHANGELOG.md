@@ -2,6 +2,12 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.11
+- Alla chiusura dell'anno fiscale viene emesso il rendiconto definitivo, con un PDF numerato («n. 1/2026»); vale anche per gli anni già chiusi
+- Le ricevute sono numerate per anno fiscale e il numero resta uguale nel tempo; se una ricevuta viene annullata ne resta traccia
+- Dopo l'annullo di una voce si può emettere la ricevuta sostitutiva
+- Le ricevute annullate non si vedono più nell'area soci
+
 ## 1.3.10
 - Il diritto di voto si decide per ogni livello di socio (sì o no) e vale per votazioni, assemblee e Dati per il RUNTS
 - I minorenni non votano mai, qualunque sia il livello

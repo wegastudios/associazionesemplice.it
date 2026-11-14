@@ -2,6 +2,16 @@
 
 Qui trovi, versione per versione, cosa cambia. Testi semplici, pensati per chi usa il programma ogni giorno.
 
+## 1.3.24
+- La tessera segue l'anno sociale: l'etichetta è «2026» oppure «2026/2027», e negli ultimi giorni prima della scadenza si può rinnovare in anticipo; se cambi il mese, vale solo per le tessere nuove
+- Anno sociale e anno fiscale si scelgono subito all'installazione, al primo passo della procedura guidata
+- Il mese dell'anno fiscale si blocca alla prima chiusura, anche se poi l'anno viene riaperto
+- I verbali hanno un numero fisso che non cambia mai
+- Assemblee, votazioni e verbali di un anno fiscale chiuso non si modificano più
+- Il nome e il tipo di un conto con movimenti in un anno fiscale chiuso non si cambiano
+- La pagina «Esercizi» si chiama ora «Anni fiscali» e i testi parlano di «anno fiscale», «bozza» e «definitivo»
+- Quando un anno fiscale è chiuso i messaggi sono più chiari: si riapre dalla pagina «Anni fiscali», ma solo l'ultimo
+
 ## 1.3.23
 - Libro soci per esercizio: segue l'esercizio e alla chiusura viene fotografato, così da quel momento non cambia più
 - Ogni socio ha una matricola fissa e ogni riga un numero; «Fotografa gli anni già chiusi» ricostruisce i libri passati con la dicitura «ricostruito il…»

@@ -57,7 +57,7 @@ final class ReceiptReplacePage {
 		}
 		Ui::form_open( 'asem_receipt_replace', $back, false, 'asem-confirm' );
 		echo Ui::hidden( 'key', $key ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<p><button class="button button-primary" data-confirm="Emettere la ricevuta sostitutiva? Prende un numero nuovo e non si può cancellare: se serve, si annulla l\'incasso e la ricevuta risulta annullata.">Emetti la ricevuta sostitutiva</button> <a class="button" href="' . esc_url( $back ) . '">Non ora</a></p>';
+		echo '<p><button class="button button-primary" data-confirm="Emettere la ricevuta sostitutiva? Prende un numero nuovo e non si può cancellare. Se serve, annulli l\'incasso e la ricevuta risulta annullata.">Emetti la ricevuta sostitutiva</button> <a class="button" href="' . esc_url( $back ) . '">Non ora</a></p>';
 		Ui::form_close();
 		Ui::footer();
 	}
