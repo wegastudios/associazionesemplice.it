@@ -64,7 +64,7 @@ final readonly class YearsController
 
     public function close(int $year): RedirectResponse
     {
-        return $this->attempt(fn () => $this->years->close($year), "Esercizio {$year} chiuso.");
+        return $this->attempt(fn () => $this->years->close($year), "Anno fiscale {$year} chiuso: rendiconto e libro soci definitivi.");
     }
 
     public function reopen(Request $request, int $year): RedirectResponse
@@ -73,9 +73,9 @@ final readonly class YearsController
         $data = Input::of($request->validate([
             'reason' => ['required', 'string', 'max:200'],
             'confirm_year' => ['required', 'integer', 'in:'.$year],
-        ], ['confirm_year.in' => 'Per confermare scrivi l\'anno dell\'esercizio che riapri.', 'confirm_year.required' => 'Per confermare scrivi l\'anno dell\'esercizio che riapri.']));
+        ], ['confirm_year.in' => 'Per confermare scrivi l\'anno fiscale che riapri.', 'confirm_year.required' => 'Per confermare scrivi l\'anno fiscale che riapri.']));
 
-        return $this->attempt(fn () => $this->years->reopen($year, Input::string($data, 'reason')), "Esercizio {$year} riaperto.");
+        return $this->attempt(fn () => $this->years->reopen($year, Input::string($data, 'reason')), "Anno fiscale {$year} riaperto: tornano bozze.");
     }
 
     /** @param  callable(): mixed  $action */
