@@ -20,7 +20,7 @@ const field = 'field';
                 <h1 class="text-2xl font-bold">Rendiconto per cassa {{ statement.year }}</h1>
                 <p class="text-sm text-muted">Entrate e uscite dell’anno per categoria, nello schema del Mod. D degli enti del Terzo settore: il documento da portare in assemblea e al commercialista.</p>
                 <p class="text-sm text-muted">Dal {{ statement.starts_on }} al {{ statement.ends_on }} · {{ statement.status === 'closed' ? 'anno fiscale chiuso' : 'anno fiscale aperto' }}</p>
-                <p class="text-sm font-semibold text-muted">{{ statement.status === 'closed' ? (source === 'snapshot' ? `Rendiconto definitivo: emesso e bloccato alla chiusura dell'anno fiscale ${statement.year}, non cambia più.` : '') : 'Bozza: i numeri sono quelli di oggi e possono cambiare.' }}</p>
+                <p class="text-sm font-semibold text-muted">{{ statement.status === 'closed' ? (source === 'snapshot' ? `Rendiconto definitivo: emesso e bloccato alla chiusura dell'anno fiscale ${statement.year}, non cambia più.` : '') : `Bozza: i numeri sono quelli di oggi e possono cambiare. Alla chiusura dell'anno fiscale il rendiconto viene emesso e bloccato.` }}</p>
             </div>
             <div class="flex items-end gap-3 print:hidden">
             <button type="button" class="btn btn-secondary" @click="print">Stampa o salva in PDF</button>
