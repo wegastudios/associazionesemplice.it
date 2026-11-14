@@ -97,7 +97,7 @@ return new class extends Migration
                 END IF;
 
                 PERFORM set_config('app.realigning', org::text, true);
-                SET CONSTRAINTS transactions_fiscal_year_fk DEFERRED;
+                SET CONSTRAINTS ALL DEFERRED;
 
                 DELETE FROM app.fiscal_years WHERE org_id = org;
                 INSERT INTO app.fiscal_years (org_id, year, starts_on, ends_on)
