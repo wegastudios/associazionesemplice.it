@@ -16,7 +16,6 @@ final readonly class MembershipStep implements SetupStep
 {
     public function __construct(
         private OrgSettings $settings,
-        private MembershipService $memberships,
     ) {}
 
     public function key(): string

@@ -68,7 +68,7 @@ final readonly class FiscalYearService
         $today = CarbonImmutable::today();
         $start = self::startFor($today, $month);
         $current = $this->connection()->table('app.fiscal_years')->get(['year', 'starts_on', 'status']);
-        if ($current->count() === 1 && $current->first()?->status === 'open' && (string) $current->first()->starts_on === $start->toDateString()) {
+        if ($current->count() === 1 && $current->first()?->status === 'open' && $current->first()->starts_on === $start->toDateString()) {
             return;
         }
         $this->connection()->table('app.fiscal_years')->where('status', 'open')->delete();
