@@ -115,7 +115,7 @@ final class FiscalYears {
 		}
 		$d = substr( (string) ( $closure['snapshotted_at'] ?: $closure['closed_at'] ), 0, 10 );
 		$d = preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $d, $m ) ? $m[3] . '/' . $m[2] . '/' . $m[1] : '';
-		return ( ! empty( $closure['retroactive'] ) ? 'definitivo, emesso ora per un anno già chiuso: dati di oggi, ricostruiti il ' : 'definitivo, emesso il ' ) . $d;
+		return 'definitivo, emesso il ' . $d . ( ! empty( $closure['retroactive'] ) ? ' per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura' : '' );
 	}
 
 	/** Le chiusure in vigore di esercizi chiusi senza fotografia (chiusi prima che esistesse), dalla più vecchia. @return array[] */

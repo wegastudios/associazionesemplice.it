@@ -429,10 +429,10 @@ final class MemberBook {
 		if ( $cl && 'complete' === $cl['snapshot_state'] ) {
 			$when = self::dmy( (string) ( $cl['snapshotted_at'] ?: $cl['closed_at'] ) );
 			return array(
-				'title'   => 'Libro soci definitivo — anno fiscale ' . $label . ' (' . ( ! empty( $cl['retroactive'] ) ? 'emesso ora per un anno già chiuso: dati di oggi, ricostruiti il ' : 'emesso il ' ) . $when . $ver . ')',
+				'title'   => 'Libro soci definitivo — anno fiscale ' . $label . ' (emesso il ' . $when . ( ! empty( $cl['retroactive'] ) ? ' per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura' : '' ) . $ver . ')',
 				'state'   => 'snapshot',
 				'closure' => $cl,
-				'note'    => ! empty( $cl['retroactive'] ) ? 'Emesso ora per un anno già chiuso: dati di oggi, ricostruiti il ' . $when . '. Chi era già stato cancellato non compare e i dati anagrafici sono quelli attuali.' : 'Emesso e bloccato alla chiusura dell\'anno fiscale ' . $label . ': non cambia più, anche se poi un socio viene modificato, cancellato o reso anonimo.',
+				'note'    => ! empty( $cl['retroactive'] ) ? 'Emesso il ' . $when . ' per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura. Chi era già stato cancellato non compare e i dati anagrafici sono quelli attuali.' : 'Emesso e bloccato alla chiusura dell\'anno fiscale ' . $label . ': non cambia più, anche se poi un socio viene modificato, cancellato o reso anonimo.',
 			);
 		}
 		if ( $cl ) {

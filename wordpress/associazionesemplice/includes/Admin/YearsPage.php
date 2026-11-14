@@ -91,7 +91,7 @@ final class YearsPage {
 			);
 			echo '<div class="asem-card"><h2>Emetti i documenti definitivi degli anni già chiusi</h2>';
 			echo '<p>Questi anni fiscali sono stati chiusi prima che esistessero i documenti definitivi: <strong>' . esc_html( implode( ', ', $names ) ) . '</strong>. Si possono emettere ora, ma i dati di allora non ci sono più: il libro viene <strong>ricostruito dai dati di oggi</strong> (chi è già stato cancellato non compare, nome e dati anagrafici sono quelli attuali). '
-				. 'Ogni libro porta la dicitura «emesso ora per un anno già chiuso: dati di oggi, ricostruiti il gg/mm/aaaa» e l\'operazione resta scritta nello storico. Non si può annullare.</p>';
+				. 'Ogni libro porta la dicitura «Emesso il gg/mm/aaaa per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura.» e l\'operazione resta scritta nello storico. Non si può annullare.</p>';
 			Ui::form_open( 'asem_snapshot_past_years', $back, false, 'asem-inline' );
 			echo wp_kses( '<label><input type="checkbox" name="confirm_retro" value="1"> Ho capito: i dati sono ricostruiti, non ripresi alla chiusura.</label> <button class="button" data-confirm="Emettere ora i documenti definitivi degli anni fiscali già chiusi con i dati di oggi? Non si può annullare.">Emetti i documenti definitivi degli anni già chiusi</button>', Html::allowed() );
 			Ui::form_close();

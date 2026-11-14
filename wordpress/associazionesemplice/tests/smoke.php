@@ -4414,10 +4414,10 @@ $mb_retro->setAccessible( true );
 asem_ok( null !== asem_throws( function () use ( $mb_retro ) { $mb_retro->invoke( null, array() ); } ) && 'none' === \AssociazioneSemplice\FiscalYears::current_closure( $mb_y1 )['snapshot_state'], 'fotografia retroattiva: senza la conferma non parte' );
 $mb_retro->invoke( null, array( 'confirm_retro' => '1' ) );
 $mb_leg = \AssociazioneSemplice\FiscalYears::current_closure( $mb_y1 );
-asem_ok( 'complete' === $mb_leg['snapshot_state'] && 1 === (int) $mb_leg['retroactive'] && null !== $mb_leg['snapshotted_at'] && 0 === strpos( \AssociazioneSemplice\FiscalYears::snapshot_text( $mb_leg ), 'definitivo, emesso ora per un anno già chiuso: dati di oggi, ricostruiti il ' ), 'fotografia retroattiva: l\'esercizio è segnato come ricostruito, con la data' );
-asem_ok( false !== strpos( \AssociazioneSemplice\MemberBook::caption( $mb_y1 )['title'], '(emesso ora per un anno già chiuso: dati di oggi, ricostruiti il ' ) && in_array( $mb_a, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y1 ) ), true ) && in_array( $mb_c, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y1 ) ), true ), 'fotografia retroattiva: l\'intestazione dice «ricostruito il …» e il libro è quello dei dati di oggi' );
+asem_ok( 'complete' === $mb_leg['snapshot_state'] && 1 === (int) $mb_leg['retroactive'] && null !== $mb_leg['snapshotted_at'] && false !== strpos( \AssociazioneSemplice\FiscalYears::snapshot_text( $mb_leg ), ' per un anno già chiuso: i dati sono quelli di quel giorno' ), 'fotografia retroattiva: l\'esercizio è segnato come ricostruito, con la data' );
+asem_ok( false !== strpos( \AssociazioneSemplice\MemberBook::caption( $mb_y1 )['title'], ' per un anno già chiuso: i dati sono quelli di quel giorno' ) && in_array( $mb_a, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y1 ) ), true ) && in_array( $mb_c, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y1 ) ), true ), 'fotografia retroattiva: l\'intestazione dice «ricostruito il …» e il libro è quello dei dati di oggi' );
 asem_ok( 0 === \AssociazioneSemplice\FiscalYears::snapshot_past_years() && ! in_array( $mb_y1, array_map( 'intval', array_column( \AssociazioneSemplice\FiscalYears::unphotographed(), 'year' ) ), true ), 'fotografia retroattiva: rilanciarla non rifà nulla' );
-$mb_page = asem_render( array( Admin\RegistersPage::class, 'render_book' ), 'ricostruiti il ', array( 'year' => (string) $mb_y1 ) );
+$mb_page = asem_render( array( Admin\RegistersPage::class, 'render_book' ), ' per un anno già chiuso: i dati sono quelli di quel giorno', array( 'year' => (string) $mb_y1 ) );
 asem_ok( false !== strpos( $mb_page, 'Matricola' ) && false === strpos( $mb_page, 'Ultima quota' ), 'libro soci: la schermata di un anno fotografato mostra solo i dati minimi, con la matricola' );
 $mb_page = asem_render( array( Admin\RegistersPage::class, 'render_book' ), 'emesso il ', array( 'year' => (string) $mb_y ) );
 asem_ok( false !== strpos( $mb_page, 'chiusura n. 1' ), 'libro soci: dopo una riapertura la schermata rimanda alla fotografia precedente' );
@@ -4549,8 +4549,8 @@ $wpdb->update( Db::t( 'fiscal_years' ), array( 'status' => 'closed', 'closed_at'
 asem_ok( null === $rs_ss::row_for( $rs_y1 ) && ! isset( \AssociazioneSemplice\Statement::data( $rs_y1 )['snapshot'] ), 'anno chiuso prima: senza fotografia il rendiconto si legge dal vivo' );
 \AssociazioneSemplice\FiscalYears::snapshot_past_years();
 $rs_r = $rs_ss::row_for( $rs_y1 );
-asem_ok( $rs_r && 1 === (int) $rs_r['retroactive'] && 1 === (int) $rs_r['number'] && 0 === strpos( \AssociazioneSemplice\Statement::data( $rs_y1 )['snapshot']['text'], 'emesso ora per un anno già chiuso: dati di oggi, ricostruiti il ' ) && 2000 === \AssociazioneSemplice\Statement::data( $rs_y1 )['total_income']['cur'], 'fotografia retroattiva: il rendiconto è ricostruito, segnato «ricostruito il …» e con le cifre registrate' );
-asem_ok( false !== strpos( \AssociazioneSemplice\DocsPro::statement( $rs_y1 )['body'], 'ricostruiti il ' ), 'fotografia retroattiva: il PDF emesso porta la dicitura di ricostruzione' );
+asem_ok( $rs_r && 1 === (int) $rs_r['retroactive'] && 1 === (int) $rs_r['number'] && false !== strpos( \AssociazioneSemplice\Statement::data( $rs_y1 )['snapshot']['text'], ' per un anno già chiuso: i dati sono quelli di quel giorno' ) && 2000 === \AssociazioneSemplice\Statement::data( $rs_y1 )['total_income']['cur'], 'fotografia retroattiva: il rendiconto è ricostruito, segnato «ricostruito il …» e con le cifre registrate' );
+asem_ok( false !== strpos( \AssociazioneSemplice\DocsPro::statement( $rs_y1 )['body'], ' per un anno già chiuso: i dati sono quelli di quel giorno' ), 'fotografia retroattiva: il PDF emesso porta la dicitura di ricostruzione' );
 // chiuso con il libro fotografato ma senza il rendiconto (prima di questa funzione): si fotografa a parte
 $wpdb->delete( Db::t( 'statement_snapshot' ), array( 'id' => (int) $rs_r['id'] ) );
 asem_ok( in_array( $rs_y1, array_map( 'intval', array_column( $rs_ss::missing(), 'year' ) ), true ), 'rendiconto mancante: gli esercizi chiusi senza fotografia del rendiconto si riconoscono' );
@@ -4558,11 +4558,11 @@ asem_ok( $rs_ss::backfill() >= 1 && null !== $rs_ss::row_for( $rs_y1 ) && 1 === 
 
 // schermate
 $rs_yp = asem_render( array( Admin\YearsPage::class, 'render' ), 'PDF emesso' );
-asem_ok( false !== strpos( $rs_yp, 'Rendiconto definitivo emesso il ' ) && false !== strpos( $rs_yp, 'Rendiconto definitivo emesso ora per un anno già chiuso: dati di oggi, ricostruiti il ' ) && false !== strpos( $rs_yp, 'n. 2/' . $rs_y ) && false !== strpos( $rs_yp, 'n. 1/' . $rs_y ) && false !== strpos( $rs_yp, '>Documenti definitivi<' ), 'esercizi: ogni chiusura mostra il rendiconto fotografato o ricostruito, il numero e il PDF emesso, versioni comprese' );
+asem_ok( false !== strpos( $rs_yp, 'Rendiconto definitivo emesso il ' ) && false !== strpos( $rs_yp, ' per un anno già chiuso: i dati sono quelli di quel giorno' ) && false !== strpos( $rs_yp, 'n. 2/' . $rs_y ) && false !== strpos( $rs_yp, 'n. 1/' . $rs_y ) && false !== strpos( $rs_yp, '>Documenti definitivi<' ), 'esercizi: ogni chiusura mostra il rendiconto fotografato o ricostruito, il numero e il PDF emesso, versioni comprese' );
 $rs_sp = asem_render( array( Admin\ProRegisters::class, 'render_statement' ), 'Emesso e bloccato alla chiusura', array( 'year' => (string) $rs_y ) );
 asem_ok( false !== strpos( $rs_sp, 'n. 2/' . $rs_y ) && false !== strpos( $rs_sp, 'chiusura n. 1' ) && false === strpos( $rs_sp, 'name="notes"' ) && false !== strpos( $rs_sp, 'version=2' ), 'rendiconto: un anno chiuso mostra la fotografia, rimanda alle altre versioni e non ha il modulo della relazione' );
 asem_render( array( Admin\ProRegisters::class, 'render_statement' ), 'poi riaperta', array( 'year' => (string) $rs_y, 'version' => '1' ) );
-asem_render( array( Admin\ProRegisters::class, 'render_statement' ), 'Emesso ora per un anno già chiuso', array( 'year' => (string) $rs_y1 ) );
+asem_render( array( Admin\ProRegisters::class, 'render_statement' ), ' per un anno già chiuso: i dati sono quelli di quel giorno', array( 'year' => (string) $rs_y1 ) );
 asem_ok( false !== strpos( \AssociazioneSemplice\Docs::url( 'statement', array( 'year' => $rs_y, 'version' => 1 ) ), 'version=1' ), 'rendiconto: l\'indirizzo del PDF porta la versione' );
 
 // pulizia: anni, chiusure, fotografie, movimenti, fondo e persona di prova

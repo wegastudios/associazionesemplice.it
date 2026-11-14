@@ -153,7 +153,7 @@ final class StatementSnapshot {
 			'number_text' => self::number_text( (int) $row['number'], (int) $row['year'] ),
 			'issued_at'   => (string) $row['issued_at'],
 			'retroactive' => $retro,
-			'text'        => ( $retro ? 'emesso ora per un anno già chiuso: dati di oggi, ricostruiti il ' : 'emesso il ' ) . $when,
+			'text'        => 'emesso il ' . $when . ( $retro ? ' per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura' : '' ),
 			'label'       => (string) ( $payload['label'] ?? $row['year'] ),
 			'prev_label'  => (string) ( $payload['prev_label'] ?? ( (int) $row['year'] - 1 ) ),
 			'from'        => (string) ( $payload['from'] ?? '' ),
@@ -206,7 +206,7 @@ final class StatementSnapshot {
 		$row     = self::row_for_closure( (int) ( $closure['id'] ?? 0 ) );
 		if ( $row ) {
 			$ver     = (int) $closure['version'];
-			$lines[] = 'Rendiconto definitivo ' . esc_html( ( ! empty( $row['retroactive'] ) ? 'emesso ora per un anno già chiuso: dati di oggi, ricostruiti il ' : 'emesso il ' ) . self::dmy( (string) $row['issued_at'] ) . ' · ' . self::number_text( (int) $row['number'], (int) $row['year'] ) )
+			$lines[] = 'Rendiconto definitivo ' . esc_html( 'emesso il ' . self::dmy( (string) $row['issued_at'] ) . ( ! empty( $row['retroactive'] ) ? ' per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura' : '' ) . ' · ' . self::number_text( (int) $row['number'], (int) $row['year'] ) )
 				. ' · <a target="_blank" rel="noopener" href="' . esc_url( Docs::url( 'statement', array( 'year' => $year, 'version' => $ver ) ) ) . '">PDF emesso</a>'
 				. ' · <a href="' . esc_url( Admin\Ui::url( 'asem-statement', array( 'year' => $year, 'version' => $ver ) ) ) . '">Apri</a>';
 		} elseif ( 'current' === ( $closure['status'] ?? '' ) ) {
@@ -257,7 +257,7 @@ final class StatementSnapshot {
 		);
 		echo '<div class="asem-card"><h2>Emetti il rendiconto definitivo degli anni già chiusi</h2>';
 		echo '<p>Il rendiconto di questi anni fiscali chiusi non è ancora definitivo: i numeri che si vedono sono quelli di oggi e possono cambiare. Anni: <strong>' . esc_html( implode( ', ', $names ) ) . '</strong>. Emetterlo ora lo <strong>ricostruisce dai dati di oggi</strong> (le cifre dei movimenti sono quelle registrate, ma le voci per area sono quelle attuali) e ne emette il PDF con numero e data. '
-			. 'Porta la dicitura «emesso ora per un anno già chiuso: dati di oggi, ricostruiti il gg/mm/aaaa» e l\'operazione resta scritta nello storico. Non si può annullare.</p>';
+			. 'Porta la dicitura «Emesso il gg/mm/aaaa per un anno già chiuso: i dati sono quelli di quel giorno, non quelli della chiusura.» e l\'operazione resta scritta nello storico. Non si può annullare.</p>';
 		Admin\Ui::form_open( 'asem_statement_backfill', Admin\Ui::url( 'asem-years' ), false, 'asem-inline' );
 		echo wp_kses( '<label><input type="checkbox" name="confirm_retro" value="1"> Ho capito: i dati sono ricostruiti, non ripresi alla chiusura.</label> <button class="button" data-confirm="Emettere ora il rendiconto definitivo degli anni fiscali già chiusi con i dati di oggi? Non si può annullare.">Emetti il rendiconto definitivo</button>', Html::allowed() );
 		Admin\Ui::form_close();
