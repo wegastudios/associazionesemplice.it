@@ -8,7 +8,7 @@ const by = Object.fromEntries(props.steps.map((s) => [s.key, s.props]));
 const initial = {};
 if (by.ente) initial.ente = { ...by.ente.values };
 if (by.anno_sociale) initial.anno_sociale = { start_month: by.anno_sociale.start_month ?? '' };
-if (by.anno_fiscale) initial.anno_fiscale = { start_month: by.anno_fiscale.start_month ?? '' };
+if (by.anno_fiscale) initial.anno_fiscale = { start_month: by.anno_fiscale.start_month ?? '', confirm_move: false };
 if (by.tesseramento) initial.tesseramento = { fee: by.tesseramento.fee };
 if (by.conti) initial.conti = { openings: Object.fromEntries(by.conti.accounts.map((a) => [a.id, a.opening])), bank_name: '', bank_opening: '' };
 if (by.soci) initial.soci = { ...by.soci };
@@ -40,7 +40,8 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
                     <label v-if="has('anno_fiscale')" :class="label"><span class="font-semibold">L'anno fiscale comincia a</span>
                         <select v-model.number="form.steps.anno_fiscale.start_month" :class="field" required :disabled="by.anno_fiscale.locked"><option value="" disabled>Scegli il mese</option><option v-for="(m, i) in months" :key="m" :value="i + 1">{{ m }}</option></select></label>
                 </div>
-                <p class="mt-2 text-sm text-muted">Con inizio a gennaio l'anno coincide con quello solare («2026»); altrimenti è a cavallo («2025/2026»). I due anni possono cominciare in mesi diversi. Vanno scelti ora: l'anno fiscale non si cambia più dopo il primo movimento registrato.</p>
+                <p class="mt-2 text-sm text-muted">Con inizio a gennaio l'anno coincide con quello solare («2026»); altrimenti è a cavallo («2025/2026»). I due anni possono cominciare in mesi diversi. Sceglilo prima di chiudere il primo anno: dopo la prima chiusura non si può più cambiare.</p>
+                <label v-if="has('anno_fiscale') && by.anno_fiscale.has_movements && by.anno_fiscale.start_month && form.steps.anno_fiscale.start_month !== by.anno_fiscale.start_month && !by.anno_fiscale.locked" class="mt-3 flex items-start gap-2 text-sm"><input v-model="form.steps.anno_fiscale.confirm_move" type="checkbox" class="mt-1" /><span>Cambiando il mese, i movimenti già registrati passano all'anno fiscale che inizia a {{ months[form.steps.anno_fiscale.start_month - 1] }}. Le date non cambiano. Le ricevute già emesse restano con il loro numero.</span></label>
             </section>
 
             <section v-if="has('ente')" class="card p-4 sm:p-5" aria-labelledby="s-ente">

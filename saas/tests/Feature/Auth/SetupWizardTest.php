@@ -102,7 +102,7 @@ it('chiede subito il mese dell\'anno sociale e dell\'anno fiscale e rifà l\'ann
         expect($years)->toHaveCount(1)->and($years[0]->starts_on)->toBe($start)->and($years[0]->status)->toBe('open')
             ->and(app(FiscalYearService::class)->yearFor($today->toDateString()))->toBe((int) substr($start, 0, 4));
 
-        // Con movimenti registrati il mese dell'anno fiscale non si cambia più.
+        // Con movimenti registrati il cambio del mese chiede conferma.
         app(Ledger::class)->recordIncome(new Income($today->toDateString(), Account::query()->where('type', 'cash')->sole()->id, [new IncomeLine(Category::query()->where('kind', 'donation')->sole()->id, 1000)], null, null, false));
     });
     $this->post('/gestionale/configurazione', setupInput(['steps' => ['anno_fiscale' => ['start_month' => 3]]]))->assertSessionHasErrors('steps.anno_fiscale');

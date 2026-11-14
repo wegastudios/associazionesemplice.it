@@ -9,7 +9,10 @@ use App\Modules\Core\Contracts\Ability;
 use App\Modules\Core\Contracts\Operator;
 use App\Modules\Core\Contracts\RequiredSetupStep;
 
-/** Mese di inizio dell'anno fiscale: si sceglie subito, prima di registrare qualunque movimento. */
+/**
+ * Mese di inizio dell'anno fiscale: si sceglie subito. Si può cambiare finché nessun anno fiscale è stato chiuso; con
+ * movimenti già registrati serve la conferma (passano all'anno fiscale che inizia nel nuovo mese, le date non cambiano).
+ */
 final readonly class FiscalYearStep implements RequiredSetupStep
 {
     public function __construct(private FiscalYearService $years) {}
@@ -36,12 +39,12 @@ final readonly class FiscalYearStep implements RequiredSetupStep
 
     public function visible(Operator $operator): bool
     {
-        return $operator->can(Ability::ManageSettings);
+        return $operator->can(Ability::ManageSettings) && $operator->can(Ability::CloseFiscalYear);
     }
 
     public function props(): array
     {
-        return ['start_month' => $this->years->chosenStartMonth(), 'locked' => $this->years->hasMovements()];
+        return ['start_month' => $this->years->chosenStartMonth(), 'locked' => $this->years->hasClosedYear(), 'has_movements' => $this->years->hasMovements()];
     }
 
     public function errors(array $input): array
@@ -50,8 +53,12 @@ final readonly class FiscalYearStep implements RequiredSetupStep
         if (! is_numeric($month) || (int) $month < 1 || (int) $month > 12) {
             return ['Scegli il mese in cui comincia l\'anno fiscale.'];
         }
-        if ($this->years->hasMovements() && (int) $month !== $this->years->startMonth()) {
-            return ['Il mese di inizio dell\'anno fiscale non si cambia dopo aver registrato movimenti.'];
+        $changes = (int) $month !== $this->years->chosenStartMonth();
+        if ($changes && $this->years->hasClosedYear()) {
+            return ['Dopo la prima chiusura il mese di inizio dell\'anno fiscale non si cambia più.'];
+        }
+        if ($changes && $this->years->chosenStartMonth() !== null && $this->years->hasMovements() && ($input['confirm_move'] ?? false) !== true) {
+            return ['Conferma il cambio: i movimenti già registrati passano all\'anno fiscale che inizia nel nuovo mese.'];
         }
 
         return [];
