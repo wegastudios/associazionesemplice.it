@@ -36,8 +36,8 @@ final class MemberBook {
 			throw new \InvalidArgumentException( 'La cessazione si registra per un socio.' );
 		}
 		$date = trim( $date );
-		YearLock::assert_date_open( (string) ( $p['left_on'] ?? '' ) ); // togliere o cambiare una cessazione già in un esercizio chiuso non si può
-		YearLock::assert_date_open( $date ); // e nemmeno metterne una con data in un esercizio chiuso
+		YearLock::assert_date_open( (string) ( $p['left_on'] ?? '' ) ); // togliere o cambiare una cessazione già in un anno fiscale chiuso non si può
+		YearLock::assert_date_open( $date ); // e nemmeno metterne una con data in un anno fiscale chiuso
 		if ( '' === $date ) {
 			self::db()->update( Db::t( 'people' ), array( 'left_on' => null, 'left_reason' => null, 'suspended_at' => null, 'updated_at' => Db::now() ), array( 'id' => $person_id ) );
 			if ( MemberType::is_auto_renewed( $p['type'] ) ) {
@@ -129,7 +129,7 @@ final class MemberBook {
 		}
 		$joined = (string) ( $p['joined_on'] ?? '' );
 		if ( '' !== $joined && $joined > $to ) {
-			return false; // ammesso dopo la fine dell'esercizio
+			return false; // ammesso dopo la fine dell'anno fiscale
 		}
 		$left = (string) ( $p['left_on'] ?? '' );
 		if ( '' !== $left && $left < $from ) {
@@ -317,7 +317,7 @@ final class MemberBook {
 	 * @return int righe scritte
 	 * @throws \InvalidArgumentException
 	 */
-	public static function write_snapshot( int $closure_id, string $from, string $to ): int {
+	public static function write_snapshot( int $closure_id, string $from, string $to, bool $closing = true ): int {
 		self::assign_missing(); // chi non ha ancora la matricola la riceve ora, così entra con il numero che avrà per sempre
 		$db     = self::db();
 		$tbl    = Db::t( 'member_book_snapshot' );
@@ -334,7 +334,7 @@ final class MemberBook {
 				$values[] = '(' . $db->prepare( '%d,%d,%d', $closure_id, (int) $r['n'], (int) $r['id'] ) . ',' . ( (int) $r['matricola'] > 0 ? (string) (int) $r['matricola'] : 'NULL' ) . ',' . $db->prepare( '%s', (string) wp_json_encode( $data, JSON_UNESCAPED_UNICODE ) ) . ')';
 			}
 			if ( false === $db->query( 'INSERT INTO ' . $tbl . ' (closure_id, n, person_id, matricola, data) VALUES ' . implode( ',', $values ) ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nome tabella interno, valori già passati da prepare()
-				throw new \InvalidArgumentException( 'La fotografia del libro soci non è riuscita (errore del database).' );
+				throw new \InvalidArgumentException( $closing ? 'Il libro soci definitivo non è stato emesso (errore del database): la chiusura non è avvenuta. Riprova; se succede ancora scrivi all\'assistenza.' : 'Il libro soci definitivo non è stato emesso (errore del database): non è stato salvato nulla. Riprova; se succede ancora scrivi all\'assistenza.' );
 			}
 		}
 		return count( $rows );
@@ -429,25 +429,25 @@ final class MemberBook {
 		if ( $cl && 'complete' === $cl['snapshot_state'] ) {
 			$when = self::dmy( (string) ( $cl['snapshotted_at'] ?: $cl['closed_at'] ) );
 			return array(
-				'title'   => 'Libro soci — esercizio ' . $label . ' (' . ( ! empty( $cl['retroactive'] ) ? 'ricostruito il ' : 'fotografato il ' ) . $when . $ver . ')',
+				'title'   => 'Libro soci definitivo — anno fiscale ' . $label . ' (' . ( ! empty( $cl['retroactive'] ) ? 'emesso ora per un anno già chiuso: dati di oggi, ricostruiti il ' : 'emesso il ' ) . $when . $ver . ')',
 				'state'   => 'snapshot',
 				'closure' => $cl,
-				'note'    => ! empty( $cl['retroactive'] ) ? 'Ricostruito il ' . $when . ' dai dati di allora ancora presenti: non è stato ripreso al giorno della chiusura. Chi era già stato cancellato non compare e i dati anagrafici sono quelli di quel giorno.' : 'Fotografia presa alla chiusura dell\'esercizio: non cambia più, anche se poi un socio viene modificato, cancellato o reso anonimo.',
+				'note'    => ! empty( $cl['retroactive'] ) ? 'Emesso ora per un anno già chiuso: dati di oggi, ricostruiti il ' . $when . '. Chi era già stato cancellato non compare e i dati anagrafici sono quelli attuali.' : 'Emesso e bloccato alla chiusura dell\'anno fiscale ' . $label . ': non cambia più, anche se poi un socio viene modificato, cancellato o reso anonimo.',
 			);
 		}
 		if ( $cl ) {
 			return array(
-				'title'   => 'Libro soci — esercizio ' . $label . ' (chiuso il ' . self::dmy( (string) $cl['closed_at'] ) . ', non fotografato)',
+				'title'   => 'Libro soci — anno fiscale ' . $label . ' (chiuso il ' . self::dmy( (string) $cl['closed_at'] ) . ', bozza)',
 				'state'   => 'unphotographed',
 				'closure' => $cl,
-				'note'    => 'Esercizio chiuso prima che esistesse la fotografia del libro: i dati qui sotto sono quelli di oggi e possono essere cambiati. Dalla pagina «Esercizi» puoi fotografarlo ora.',
+				'note'    => 'Anno chiuso prima che esistessero i documenti definitivi: i dati qui sotto sono quelli di oggi e possono cambiare. Dalla pagina degli anni fiscali puoi emetterli ora.',
 			);
 		}
 		return array(
-			'title'   => 'Libro soci — esercizio ' . $label . ' (aggiornato al ' . self::dmy( Db::today() ) . ')',
+			'title'   => 'Libro soci — anno fiscale ' . $label . ' (aggiornato al ' . self::dmy( Db::today() ) . ')',
 			'state'   => 'live',
 			'closure' => null,
-			'note'    => 'Libro dal vivo: cambia finché l\'esercizio non viene chiuso. Alla chiusura se ne scatta la fotografia.',
+			'note'    => 'Bozza: i numeri sono quelli di oggi e possono cambiare. Alla chiusura dell\'anno fiscale il libro viene emesso e bloccato.',
 		);
 	}
 

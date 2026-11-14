@@ -21,12 +21,12 @@ final class AccountingPage {
 		WatchPage::box_html(); // bilancio provvisorio e avvisi (Pro Fiscale)
 		$cur = FiscalYears::current();
 		$fy  = FiscalYears::get( $cur );
-		echo '<div class="asem-grid"><div class="asem-card"><h2>Esercizio ' . (int) $cur . '</h2>';
+		echo '<div class="asem-grid"><div class="asem-card"><h2>Anno fiscale ' . (int) $cur . '</h2>';
 		echo '<p>' . ( $fy && 'open' !== $fy['status'] ? '<strong class="asem-neg">Anno chiuso</strong>' : '<span class="asem-ok">Anno aperto</span>' ) . '</p>';
 		echo '<p><a href="' . esc_url( Ui::url( 'asem-ledger', array( 'year' => $cur ) ) ) . '">Prima nota dell\'anno →</a><br>'
 			. ( Modules::on( 'reports' ) ? '<a href="' . esc_url( Ui::url( 'asem-statement' ) ) . '">Rendiconto →</a><br><a href="' . esc_url( Ui::url( 'asem-reports' ) ) . '">Report →</a><br>' : '' )
-			. '<a href="' . esc_url( Ui::url( 'asem-years' ) ) . '">Apertura e chiusura degli esercizi →</a></p>';
-		echo '<p class="description">È la stessa prima nota di «Cassa»: qui si legge per esercizio, per chiudere l\'anno e preparare i documenti.</p></div>';
+			. '<a href="' . esc_url( Ui::url( 'asem-years' ) ) . '">Apertura e chiusura degli anni fiscali →</a></p>';
+		echo '<p class="description">È la stessa prima nota di «Cassa»: qui si legge per anno fiscale, per chiudere l\'anno e preparare i documenti.</p></div>';
 
 		echo '<div class="asem-card"><h2>Adempimenti</h2>';
 		$any = false;

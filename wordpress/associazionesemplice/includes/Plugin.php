@@ -24,7 +24,7 @@ final class Plugin {
 
 	public static function init(): void {
 		Install::maybe_upgrade();
-		FiscalYears::maybe_open_current(); // il primo giorno dell'anno si apre il nuovo anno solare
+		FiscalYears::maybe_open_current(); // il primo giorno dell'anno si apre il nuovo anno fiscale
 		Access::register();      // capability meta: asem_notify_activity, asem_view_person...
 		Employees::register();   // utenti «Dipendente»: permessi che si possono togliere, conteggio per il RUNTS
 		Gatekeeper::register(); // i soci restano fuori da wp-admin

@@ -1019,7 +1019,7 @@ class PeopleService {
 			throw new \InvalidArgumentException( 'Il socio fondatore ha la tessera sempre rinnovata.' );
 		}
 		list( $label, $from, $to ) = $this->membership_span( $person_id, $year_label );
-		YearLock::assert_range_open( $from, $to ); // una tessera che cade interamente in esercizi chiusi non si aggiunge né si toglie: l'esercizio va riaperto
+		YearLock::assert_range_open( $from, $to ); // una tessera che cade interamente in anni fiscali chiusi non si aggiunge né si toglie: l'anno fiscale va riaperto
 		if ( $enabled ) {
 			$this->upsert_membership( $person_id, $label, $from, $to, $source, $tx_id );
 		} else {
@@ -1093,7 +1093,7 @@ class PeopleService {
 			return;
 		}
 		foreach ( $this->db()->get_results( $this->db()->prepare( 'SELECT valid_from, valid_to FROM ' . Db::t( 'memberships' ) . ' WHERE transaction_id = %d AND deleted_at IS NULL', $tx_id ), ARRAY_A ) ?: array() as $m ) {
-			YearLock::assert_range_open( (string) $m['valid_from'], (string) $m['valid_to'] ); // la tessera di un esercizio chiuso non decade
+			YearLock::assert_range_open( (string) $m['valid_from'], (string) $m['valid_to'] ); // la tessera di un anno fiscale chiuso non decade
 		}
 		$this->db()->update( Db::t( 'memberships' ), array( 'deleted_at' => Db::now() ), array( 'transaction_id' => $tx_id ) );
 		Audit::log( 'membership.removed', 'person', (int) $row['person_id'], array( 'social_year' => $row['social_year'], 'source' => 'void', 'transaction' => $tx_id ) );
@@ -1108,7 +1108,7 @@ class PeopleService {
 		}
 		if ( $this->membership_missing( $p, (string) $row['social_year'] ) > 0 ) {
 			$span = $this->membership_span( (int) $p['id'], (string) $row['social_year'] );
-			YearLock::assert_range_open( $span[1], $span[2] ); // la tessera di un esercizio chiuso non decade
+			YearLock::assert_range_open( $span[1], $span[2] ); // la tessera di un anno fiscale chiuso non decade
 			$this->db()->update( Db::t( 'memberships' ), array( 'deleted_at' => Db::now() ), array( 'person_id' => (int) $p['id'], 'social_year' => (string) $row['social_year'] ) );
 			Audit::log( 'membership.removed', 'person', (int) $p['id'], array( 'social_year' => $row['social_year'], 'source' => 'void_partial', 'transaction' => $tx_id ) );
 		}

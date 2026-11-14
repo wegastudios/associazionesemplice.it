@@ -792,17 +792,17 @@ final class Actions {
 
 	private static function create_year( array $p ): array {
 		\AssociazioneSemplice\FiscalYears::create( (int) ( $p['year'] ?? 0 ) );
-		return array( Ui::url( 'asem-years' ), 'Esercizio creato.' );
+		return array( Ui::url( 'asem-years' ), 'Anno fiscale creato.' );
 	}
 
 	private static function close_year( array $p ): array {
 		\AssociazioneSemplice\FiscalYears::close( (int) ( $p['year'] ?? 0 ), ! empty( $p['confirm_gaps'] ) );
-		return array( Ui::url( 'asem-years' ), 'Esercizio chiuso: non si modifica più. Si può riaprire solo finché è l\'ultimo esercizio chiuso, indicando il motivo.' );
+		return array( Ui::url( 'asem-years' ), 'Anno fiscale chiuso: non si modifica più. Si può riaprire solo finché è l\'ultimo anno fiscale chiuso, indicando il motivo.' );
 	}
 
 	private static function reopen_year( array $p ): array {
 		\AssociazioneSemplice\FiscalYears::reopen( (int) ( $p['year'] ?? 0 ), (string) ( $p['reason'] ?? '' ) );
-		return array( Ui::url( 'asem-years' ), 'Esercizio riaperto: il motivo resta registrato.' );
+		return array( Ui::url( 'asem-years' ), 'Anno fiscale riaperto: il motivo resta registrato.' );
 	}
 
 	/** Fotografia retroattiva del libro soci degli esercizi già chiusi (con i dati di oggi): serve la conferma esplicita. */
@@ -811,7 +811,7 @@ final class Actions {
 			throw new \InvalidArgumentException( 'Spunta la conferma: i dati di allora vengono ricostruiti da quelli di oggi.' );
 		}
 		$n = \AssociazioneSemplice\FiscalYears::snapshot_past_years();
-		return array( Ui::url( 'asem-years' ), 0 === $n ? 'Nessun esercizio da fotografare.' : ( 1 === $n ? 'Fotografato 1 esercizio già chiuso' : 'Fotografati ' . $n . ' esercizi già chiusi' ) . ': libro ricostruito dai dati di oggi, la data è scritta nello storico delle chiusure.' );
+		return array( Ui::url( 'asem-years' ), 0 === $n ? 'Nessun anno fiscale da emettere.' : ( 1 === $n ? 'Emessi i documenti definitivi di 1 anno fiscale già chiuso' : 'Emessi i documenti definitivi di ' . $n . ' anni fiscali già chiusi' ) . ': libro ricostruito dai dati di oggi, la data è scritta nello storico delle chiusure.' );
 	}
 
 	private static function book( array $p ): array {

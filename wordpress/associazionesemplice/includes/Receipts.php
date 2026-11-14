@@ -304,12 +304,12 @@ final class Receipts {
 		}
 		$rows = self::rows( $key );
 		if ( ! $rows ) {
-			return 'Non restano righe da ricevere: non c\'è nessuna ricevuta sostitutiva da emettere.';
+			return 'Non restano voci incassate: non c\'è nessuna ricevuta sostitutiva da emettere.';
 		}
 		foreach ( $rows as $r ) {
 			$y = YearLock::closed_year_of( (string) $r['tx_date'] );
 			if ( null !== $y ) {
-				return 'Ricevuta sostitutiva non emessa: l\'incasso è dell\'anno ' . FiscalYears::label( $y ) . ', che è chiuso. Per emetterla va prima riaperto.';
+				return 'Ricevuta sostitutiva non emessa. ' . FiscalYears::closed_message( $y );
 			}
 		}
 		$y = YearLock::closed_year_of( Db::today() );
@@ -623,7 +623,7 @@ final class Receipts {
 		if ( preg_match( '/^sub\d+$/', $key ) ) { // una sostitutiva nasce solo da issue_replacement(): senza i suoi dati non si ricostruisce
 			throw new \InvalidArgumentException( 'Ricevuta non trovata (o incasso annullato).' );
 		}
-		$num  = self::number_for( $key, (string) $rows[0]['tx_date'] ); // se è nuova assegna il numero (un esercizio chiuso non ne riceve di nuovi)
+		$num  = self::number_for( $key, (string) $rows[0]['tx_date'] ); // se è nuova assegna il numero (un anno fiscale chiuso non ne riceve di nuovi)
 		$data = self::capture( $rows, $num );
 		$json = (string) wp_json_encode( $data, JSON_UNESCAPED_UNICODE );
 		$hash = hash( 'sha256', $json );
@@ -676,22 +676,22 @@ final class Receipts {
 		$pdf->text( 50, $y, 'Data: ' . self::d( $date ), 11 );
 		if ( ! empty( $s['replaces'] ) ) { // sostitutiva: da dove nasce
 			$rp = (array) $s['replaces'];
-			foreach ( Pdf::wrap( 'Sostituisce la ricevuta n. ' . (int) $rp['number'] . '/' . (int) $rp['year'] . ' annullata il ' . self::d( (string) $rp['voided_at'] ) . '.', Pdf::W - 100, 10 ) as $l ) {
+			foreach ( Pdf::wrap( sprintf( 'Sostituisce la ricevuta n. %1$d/%2$d annullata il %3$s.', (int) $rp['number'], (int) $rp['year'], self::d( (string) $rp['voided_at'] ) ), Pdf::W - 100, 10 ) as $l ) {
 				$y += 15;
 				$pdf->text( 50, $y, $l, 10 );
 			}
 			if ( ! empty( $s['paid_on'] ) && (string) $s['paid_on'] !== $date ) {
 				$y += 15;
-				$pdf->text( 50, $y, 'Incasso del ' . self::d( (string) $s['paid_on'] ), 10 );
+				$pdf->text( 50, $y, sprintf( 'Incasso del %s', self::d( (string) $s['paid_on'] ) ), 10 );
 			}
 		}
 		if ( $void ) { // ricevuta annullata: marchio ben visibile, con data e motivo (stessi dati a ogni lettura)
 			$y += 38;
 			$pdf->color( 'B00020' );
-			$pdf->text( 50, $y, 'ANNULLATA', 28, true );
+			$pdf->text( 50, $y, 'RICEVUTA ANNULLATA', 28, true );
 			$pdf->color();
 			$y += 8;
-			foreach ( Pdf::wrap( 'Annullata il ' . self::d( substr( (string) $void['voided_at'], 0, 10 ) ) . ( '' !== trim( (string) $void['void_reason'] ) ? ' — motivo: ' . trim( (string) $void['void_reason'] ) : '' ) . '. Non ha valore.', Pdf::W - 100, 10 ) as $l ) {
+			foreach ( Pdf::wrap( 'Non ha valore. Annullata il ' . self::d( substr( (string) $void['voided_at'], 0, 10 ) ) . ( '' !== trim( (string) $void['void_reason'] ) ? ' — motivo: ' . trim( (string) $void['void_reason'] ) : '' ) . '.', Pdf::W - 100, 10 ) as $l ) {
 				$y += 14;
 				$pdf->text( 50, $y, $l, 10 );
 			}
@@ -866,7 +866,7 @@ final class Receipts {
 	public static function email( string $key ): void {
 		$r = self::build( $key );
 		if ( ! empty( $r['voided'] ) ) {
-			throw new \InvalidArgumentException( 'La ricevuta è annullata: non si manda. Se restano righe, emetti la ricevuta sostitutiva.' );
+			throw new \InvalidArgumentException( 'La ricevuta è annullata: non si può inviare. Se restano voci, emetti la ricevuta sostitutiva.' );
 		}
 		$payer = $r['payer'];
 		$to    = $payer && ! empty( $payer['email'] ) ? (string) $payer['email'] : '';

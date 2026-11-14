@@ -67,7 +67,7 @@ class LedgerService {
 			YearLock::assert_rows_open( 'transactions', 'tx_date', $this->db()->prepare( 'account_id = %d AND voided_at IS NULL', $id ) );
 		}
 		if ( (int) $old['opening_cents'] !== $opening_cents ) {
-			YearLock::assert_none_closed(); // il saldo iniziale cambia anche i saldi degli esercizi chiusi
+			YearLock::assert_none_closed(); // il saldo iniziale cambia anche i saldi degli anni fiscali chiusi
 		}
 		$this->db()->update( Db::t( 'accounts' ), array( 'name' => $name, 'type' => $type, 'opening_cents' => $opening_cents ), array( 'id' => $id ) );
 		$details = array();
@@ -527,7 +527,7 @@ class LedgerService {
 		if ( ! $tx ) {
 			throw new \InvalidArgumentException( 'Movimento non trovato o già annullato.' );
 		}
-		FiscalYears::assert_open_for_date( (string) $tx['tx_date'] ); // un anno solare chiuso non si modifica
+		FiscalYears::assert_open_for_date( (string) $tx['tx_date'] ); // un anno fiscale chiuso non si modifica
 		$ids = array( $tx_id );
 		if ( ! empty( $tx['transfer_id'] ) ) {
 			$ids = array_map( 'intval', $this->db()->get_col( $this->db()->prepare( "SELECT id FROM $tbl WHERE transfer_id = %s AND voided_at IS NULL", $tx['transfer_id'] ) ) );
@@ -664,7 +664,7 @@ class LedgerService {
 		if ( 0 === $delta ) {
 			return;
 		}
-		YearLock::assert_none_closed(); // il saldo iniziale cambia anche i saldi degli esercizi chiusi
+		YearLock::assert_none_closed(); // il saldo iniziale cambia anche i saldi degli anni fiscali chiusi
 		$this->db()->query( $this->db()->prepare( 'UPDATE ' . Db::t( 'accounts' ) . ' SET opening_cents = opening_cents + %d WHERE id = %d', $delta, $account_id ) );
 		Audit::log( 'account.opening_shifted', 'account', $account_id, array( 'delta_cents' => $delta ) );
 	}

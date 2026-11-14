@@ -8,7 +8,7 @@ final class ProDashboard {
 
 	public static function register(): void {
 		add_action( 'asem_dashboard_alerts', array( __CLASS__, 'alerts' ) );
-		add_action( 'asem_years_page_after', array( ReportsPage::class, 'funds_by_year' ) ); // nella pagina Anni solari (gratuita) i fondi per anno
+		add_action( 'asem_years_page_after', array( ReportsPage::class, 'funds_by_year' ) ); // nella pagina Anni fiscali (gratuita) i fondi per anno
 	}
 
 	public static function alerts(): void {

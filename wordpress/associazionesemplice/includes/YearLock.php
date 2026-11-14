@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Guardia degli esercizi chiusi: «il chiuso è chiuso». Chi sta per modificare un dato che cade in un esercizio chiuso (un allegato, un saldo
  * iniziale, una cessazione, un'assemblea…) chiama una di queste funzioni: se l'esercizio è chiuso lancia un'eccezione con il messaggio unico
- * «L'anno X è chiuso: per modificarlo va riaperto.». Un anno non ancora creato o aperto non blocca nulla.
+ * «L'anno X è chiuso: per modificarlo va riaperto dalla pagina «Esercizi» (si può riaprire solo l'ultimo anno chiuso).». Un anno non ancora creato o aperto non blocca nulla.
  */
 final class YearLock {
 
@@ -50,7 +50,7 @@ final class YearLock {
 			return;
 		}
 		$first = self::closed_year_of( $from );
-		if ( null === $first ) { // l'inizio non cade in un esercizio chiuso: o è aperto, o è precedente al primo esercizio registrato (allora tutto ciò che sta prima è chiuso)
+		if ( null === $first ) { // l'inizio non cade in un anno fiscale chiuso: o è aperto, o è precedente al primo anno fiscale registrato (allora tutto ciò che sta prima è chiuso)
 			$all = FiscalYears::all();
 			$min = $all ? (int) end( $all )['year'] : null;
 			if ( null === $min || FiscalYears::year_of( substr( $from, 0, 10 ) ) >= $min ) {

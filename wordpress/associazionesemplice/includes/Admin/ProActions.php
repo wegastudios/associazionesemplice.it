@@ -539,7 +539,7 @@ final class ProActions {
 			throw new \InvalidArgumentException( 'Spunta la conferma: i dati di allora vengono ricostruiti da quelli di oggi.' );
 		}
 		$n = \AssociazioneSemplice\StatementSnapshot::backfill();
-		return array( Ui::url( 'asem-years' ), 0 === $n ? 'Nessun rendiconto da fotografare.' : ( 1 === $n ? 'Fotografato il rendiconto di 1 esercizio già chiuso' : 'Fotografato il rendiconto di ' . $n . ' esercizi già chiusi' ) . ': ricostruito dai dati di oggi, con numero e data di emissione.' );
+		return array( Ui::url( 'asem-years' ), 0 === $n ? 'Nessun rendiconto da emettere.' : ( 1 === $n ? 'Emesso il rendiconto definitivo di 1 anno fiscale già chiuso' : 'Emesso il rendiconto definitivo di ' . $n . ' anni fiscali già chiusi' ) . ': ricostruito dai dati di oggi, con numero e data di emissione.' );
 	}
 
 	public static function save_woo( array $p ): array {

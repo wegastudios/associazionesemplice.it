@@ -72,6 +72,10 @@ final class Wizard {
 		$done = array();
 		$vals = array();
 
+		if ( ! empty( $p['months_present'] ) && empty( $p['months_confirmed'] ) ) { // i due mesi si confermano per primi: nessun valore nascosto
+			throw new \InvalidArgumentException( 'Prima di continuare conferma i due mesi: l\'inizio dell\'anno sociale e quello dell\'anno fiscale.' );
+		}
+
 		// 1. Ente
 		$vals = EntityData::values( $p, false ); // nome, tipo, codice fiscale, sede, partita IVA: stesse regole della scheda «Dati e fiscalità»
 

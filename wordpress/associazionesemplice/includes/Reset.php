@@ -141,7 +141,7 @@ final class Reset {
 		}
 		Backup::delete_saved(); // anche le copie salvate sul sito: i dati azzerati non devono restare altrove
 		delete_user_meta( get_current_user_id(), Backup::META_DOWNLOADED );
-		Install::seed(); // conti, voci, livelli e anno solare predefiniti
+		Install::seed(); // conti, voci, livelli e anno fiscale predefiniti
 		if ( self::FACTORY === $mode ) {
 			Wizard::schedule_first_run();
 		}

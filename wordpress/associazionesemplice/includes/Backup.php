@@ -312,7 +312,7 @@ final class Backup {
 				unset( $new[ $k ] ); // le chiavi segrete restano quelle del sito (e Settings::update le lascia com'è)
 			}
 			unset( $new['license_key'] ); // la chiave di licenza resta quella del sito
-			$fiscal_month = max( 1, min( 12, (int) ( $new['fiscal_start_month'] ?? 1 ) ) ); // il mese dell'anno fiscale torna quello della copia, insieme agli esercizi: non passa dal blocco «esercizi chiusi»
+			$fiscal_month = max( 1, min( 12, (int) ( $new['fiscal_start_month'] ?? 1 ) ) ); // il mese dell'anno fiscale torna quello della copia, insieme agli anni fiscali: non passa dal blocco «anni fiscali chiusi»
 			unset( $new['fiscal_start_month'] );
 			Settings::update( $new ); // passa dai controlli delle impostazioni: una copia modificata non può inserire valori fuori regola
 			$saved                       = (array) get_option( Settings::OPTION, array() );

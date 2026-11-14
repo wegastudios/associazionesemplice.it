@@ -12,7 +12,7 @@ final class Install {
 		self::create_tables();
 		self::add_roles_and_caps();
 		self::seed();
-		self::migrate_year_closures(); // gli esercizi già chiusi entrano nella traccia permanente (idempotente)
+		self::migrate_year_closures(); // gli anni fiscali già chiusi entrano nella traccia permanente (idempotente)
 		self::migrate_minute_numbers(); // ogni verbale ha il suo numero salvato, con lo stesso ordine di prima (idempotente)
 		MemberBook::assign_missing(); // ogni socio ha la sua matricola, assegnata una volta sola (idempotente)
 		if ( '' === (string) get_option( self::DB_VERSION_OPTION, '' ) ) { // prima installazione: si propone la configurazione guidata
@@ -176,7 +176,7 @@ final class Install {
 			$to       = $year . '-12-31';
 			$existing = $db->get_row( $db->prepare( "SELECT * FROM $tbl WHERE person_id = %d AND social_year = %s", (int) $r['person_id'], $label ), ARRAY_A );
 			if ( $existing && null === $existing['deleted_at'] ) {
-				$db->update( $tbl, array( 'deleted_at' => Db::now() ), array( 'id' => (int) $r['id'] ) ); // c'è già l'anno solare: basta quello
+				$db->update( $tbl, array( 'deleted_at' => Db::now() ), array( 'id' => (int) $r['id'] ) ); // c'è già l'anno fiscale: basta quello
 			} elseif ( $existing ) {
 				$db->update( $tbl, array( 'valid_from' => $r['valid_from'], 'valid_to' => $to, 'source' => $r['source'], 'transaction_id' => $r['transaction_id'], 'deleted_at' => null ), array( 'id' => (int) $existing['id'] ) );
 				$db->update( $tbl, array( 'deleted_at' => Db::now() ), array( 'id' => (int) $r['id'] ) );
@@ -945,7 +945,7 @@ final class Install {
 			}
 		}
 		Levels::seed();
-		FiscalYears::seed(); // l'anno solare in corso (e quelli con movimenti) esiste sempre
+		FiscalYears::seed(); // l'anno fiscale in corso (e quelli con movimenti) esiste sempre
 		$acc = Db::t( 'accounts' );
 		$count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM $acc" ); // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- tabelle del plugin, nessuna API di WordPress equivalente
 		if ( 0 === $count ) {

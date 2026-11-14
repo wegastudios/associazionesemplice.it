@@ -62,7 +62,7 @@ final class Polls {
 		if ( $old ) {
 			self::lock( $old );
 		}
-		self::lock( array( 'opens_at' => $opens, 'closes_at' => $closes ) ); // nemmeno si sposta o si crea dentro un esercizio chiuso
+		self::lock( array( 'opens_at' => $opens, 'closes_at' => $closes ) ); // nemmeno si sposta o si crea dentro un anno fiscale chiuso
 		if ( $locked && $old ) { // con voti già dati la finestra non si sposta: né si riapre una votazione chiusa, né si chiude prima del tempo dopo aver visto i risultati
 			$old_closed = Db::now() >= (string) $old['closes_at'];
 			if ( $opens !== (string) $old['opens_at'] && Db::now() >= (string) $old['opens_at'] ) {

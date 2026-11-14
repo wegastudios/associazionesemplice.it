@@ -96,7 +96,7 @@ final class Privacy {
 				'consenso_privacy' => $p['privacy_consent_at'], 'consenso_modalita' => $p['privacy_consent_source'] ? ( self::SOURCES[ $p['privacy_consent_source'] ] ?? $p['privacy_consent_source'] ) : null,
 			),
 			'iscrizioni_tessera' => $memberships,
-			'libro_soci_fotografato' => MemberBook::snapshot_export( $person_id ), // le righe dei libri soci degli esercizi chiusi in cui compare (restano per dovere di conservazione)
+			'libro_soci_fotografato' => MemberBook::snapshot_export( $person_id ), // le righe dei libri soci degli anni fiscali chiusi in cui compare (restano per dovere di conservazione)
 			'corsi'        => $courses,
 			'prenotazioni' => $bookings,
 			'pagamenti'    => $payments,
@@ -115,7 +115,7 @@ final class Privacy {
 	 */
 	public static function closed_books_note( int $person_id ): string {
 		$n = MemberBook::snapshot_count_for( $person_id );
-		return 0 === $n ? '' : ' Attenzione: i dati del libro soci (nome, codice fiscale, nascita, residenza, date) restano nei libri degli esercizi già chiusi (' . $n . ( 1 === $n ? ' libro' : ' libri' ) . '), come dovere di conservazione: non si cancellano né si rendono anonimi.';
+		return 0 === $n ? '' : ' Attenzione: i dati del libro soci (nome, codice fiscale, nascita, residenza, date) restano nei libri degli anni fiscali già chiusi (' . $n . ( 1 === $n ? ' libro' : ' libri' ) . '), come dovere di conservazione: non si cancellano né si rendono anonimi.';
 	}
 
 	/**
@@ -124,8 +124,8 @@ final class Privacy {
 	 */
 	public static function closed_descriptions_note( int $person_id ): string {
 		$db = Db::db();
-		$n  = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE (person_id = %d OR payer_person_id = %d) AND description <> '' AND " . YearLock::in_closed_sql( 'tx_date' ), $person_id, $person_id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- la condizione sugli esercizi chiusi è già preparata (date)
-		return 0 === $n ? '' : ' Attenzione: ' . $n . ( 1 === $n ? ' movimento' : ' movimenti' ) . ' di esercizi già chiusi ' . ( 1 === $n ? 'ha' : 'hanno' ) . ' una descrizione che non si modifica (il chiuso è chiuso): se vi è scritto a mano il nome della persona, resta. Riapri l\'esercizio solo se devi toglierlo.';
+		$n  = (int) $db->get_var( $db->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE (person_id = %d OR payer_person_id = %d) AND description <> '' AND " . YearLock::in_closed_sql( 'tx_date' ), $person_id, $person_id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- la condizione sugli anni fiscali chiusi è già preparata (date)
+		return 0 === $n ? '' : ' Attenzione: ' . $n . ( 1 === $n ? ' movimento' : ' movimenti' ) . ' di anni fiscali già chiusi ' . ( 1 === $n ? 'ha' : 'hanno' ) . ' una descrizione che non si modifica (il chiuso è chiuso): se vi è scritto a mano il nome della persona, resta. Riapri l\'anno fiscale solo se devi toglierlo.';
 	}
 
 	public static function can_export( int $person_id ): bool {
@@ -238,7 +238,7 @@ final class Privacy {
 			// È un'eccezione al dovere di anonimizzare, spiegata a chi esegue la richiesta con {@see Privacy::closed_descriptions_note()}.
 			$db->query(
 				$db->prepare(
-					'UPDATE ' . Db::t( 'transactions' ) . ' SET description = REPLACE(description, %s, %s) WHERE (person_id = %d OR payer_person_id = %d) AND NOT ' . YearLock::in_closed_sql( 'tx_date' ), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- la condizione sugli esercizi chiusi è già preparata (date) e non contiene segnaposto
+					'UPDATE ' . Db::t( 'transactions' ) . ' SET description = REPLACE(description, %s, %s) WHERE (person_id = %d OR payer_person_id = %d) AND NOT ' . YearLock::in_closed_sql( 'tx_date' ), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- la condizione sugli anni fiscali chiusi è già preparata (date) e non contiene segnaposto
 					$name,
 					'[anonimizzato]',
 					$person_id,

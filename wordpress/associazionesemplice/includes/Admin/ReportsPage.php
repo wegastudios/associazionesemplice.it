@@ -16,11 +16,11 @@ final class ReportsPage {
 			return;
 		}
 		$mode = Ui::get_str( 'mode' );
-		$fiscal = \AssociazioneSemplice\Edition::has( 'fiscal' ); // l'anno solare per il commercialista è della licenza fiscale
+		$fiscal = \AssociazioneSemplice\Edition::has( 'fiscal' ); // l'anno fiscale per il commercialista è della licenza fiscale
 		$mode   = in_array( $mode, array( 'social', 'solar' ), true ) && ( $fiscal || 'solar' !== $mode ) ? $mode : 'liquidity';
 		Ui::header( 'Report' );
 		WatchPage::box_html(); // bilancio provvisorio e avvisi (Pro Fiscale)
-		$tabs = array( 'liquidity' => 'Conti e liquidità', 'social' => 'Anno sociale (attività)' ) + ( $fiscal ? array( 'solar' => 'Anno solare (commercialista)' ) : array() );
+		$tabs = array( 'liquidity' => 'Conti e liquidità', 'social' => 'Anno sociale (attività)' ) + ( $fiscal ? array( 'solar' => 'Anno fiscale (commercialista)' ) : array() );
 		echo '<h2 class="nav-tab-wrapper">';
 		foreach ( $tabs as $key => $label ) {
 			echo '<a class="nav-tab ' . ( $key === $mode ? 'nav-tab-active' : '' ) . '" href="' . esc_url( Ui::url( 'asem-reports', array( 'mode' => $key ) ) ) . '">' . esc_html( $label ) . '</a>';
@@ -65,18 +65,18 @@ final class ReportsPage {
 	/** Per ogni anno solare: totale accantonato nei fondi, già rimborsato o liberato e ancora da rimborsare (finché è più di zero, l'anno non si chiude). */
 	public static function funds_by_year(): void {
 		$tot = Plugin::funds()->yearly()['totals'];
-		echo '<h3>Fondi per anno solare</h3>';
+		echo '<h3>Fondi per anno fiscale</h3>';
 		if ( ! $tot ) {
 			echo '<p class="description">Nessun accantonamento registrato.</p>';
 			return;
 		}
-		echo '<table class="widefat striped"><thead><tr><th>Anno solare</th><th>Accantonato</th><th>Rimborsato o liberato</th><th>Da rimborsare</th><th>Anno</th></tr></thead><tbody>';
+		echo '<table class="widefat striped"><thead><tr><th>Anno fiscale</th><th>Accantonato</th><th>Rimborsato o liberato</th><th>Da rimborsare</th><th>Anno</th></tr></thead><tbody>';
 		foreach ( $tot as $y => $r ) {
 			$fy = \AssociazioneSemplice\FiscalYears::get( (int) $y );
 			echo '<tr><td>' . (int) $y . '</td><td>' . Ui::money( $r['accrued'] ) . '</td><td>' . Ui::money( $r['settled'] ) . '</td><td>' . ( $r['unsettled'] > 0 ? '<strong class="asem-warn">' . Ui::money( $r['unsettled'] ) . '</strong>' : Ui::money( 0 ) ) . '</td>' // phpcs:ignore WordPress.Security.EscapeOutput
 				. '<td>' . ( $fy ? ( 'open' === $fy['status'] ? 'aperto' : 'chiuso' ) : '—' ) . ( $r['unsettled'] > 0 && $fy && 'open' === $fy['status'] ? ' <span class="description">(non si può chiudere finché resta da rimborsare)</span>' : '' ) . '</td></tr>';
 		}
-		echo '</tbody></table><p class="description">Un rimborso o una liberazione copre prima gli accantonamenti più vecchi. Gli accantonamenti sono mostrati tra le uscite dell\'anno solare in cui si registrano, anche se il rimborso non è ancora stato pagato. Attenzione per il commercialista: nel rendiconto per cassa (Mod. D) una somma accantonata va considerata uscita solo quando il rimborso viene pagato; il dettaglio è in questa tabella.</p>';
+		echo '</tbody></table><p class="description">Un rimborso o una liberazione copre prima gli accantonamenti più vecchi. Gli accantonamenti sono mostrati tra le uscite dell\'anno fiscale in cui si registrano, anche se il rimborso non è ancora stato pagato. Attenzione per il commercialista: nel rendiconto per cassa (Mod. D) una somma accantonata va considerata uscita solo quando il rimborso viene pagato; il dettaglio è in questa tabella.</p>';
 	}
 
 	private static function nav( string $mode, int $year, string $label ): void {
@@ -88,9 +88,9 @@ final class ReportsPage {
 		$year = Ui::get_int( 'year', FiscalYears::current() );
 		list( $from, $to ) = FiscalYears::range( $year );
 		$r    = Plugin::reports()->period( $from, $to );
-		self::nav( 'solar', $year, ( 1 === FiscalYears::start_month() ? 'Anno ' : 'Esercizio ' ) . FiscalYears::label( $year ) );
+		self::nav( 'solar', $year, 'Anno fiscale ' . FiscalYears::label( $year ) );
 		$fy = \AssociazioneSemplice\FiscalYears::get( $year );
-		echo '<p>' . ( $fy ? ( 'open' === $fy['status'] ? '<span class="asem-ok">Anno aperto</span>' : '<strong class="asem-warn">Anno chiuso</strong>' ) : '<span class="description">Anno non creato</span>' ) . ' · <a href="' . esc_url( Ui::url( 'asem-years' ) ) . '">Esercizi</a></p>';
+		echo '<p>' . ( $fy ? ( 'open' === $fy['status'] ? '<span class="asem-ok">Anno aperto</span>' : '<strong class="asem-warn">Anno chiuso</strong>' ) : '<span class="description">Anno non creato</span>' ) . ' · <a href="' . esc_url( Ui::url( 'asem-years' ) ) . '">Anni fiscali</a></p>';
 		echo '<p>' . Exports::link( 'period', array( 'from' => $from, 'to' => $to ), 'Esporta rendiconto (CSV)' ) . ' ' . Exports::link( 'ledger', array( 'from' => $from, 'to' => $to ), 'Esporta prima nota (CSV)' ) . '</p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 
 		echo '<h3>Saldi dei conti</h3><table class="widefat striped"><thead><tr><th>Conto</th><th>Iniziale</th><th>Entrate</th><th>Uscite</th><th>Giroconti</th><th>Finale</th></tr></thead><tbody>';
@@ -108,7 +108,7 @@ final class ReportsPage {
 		}
 		echo '<p><strong>Avanzo / disavanzo: ' . Ui::money( $r['result'] ) . '</strong></p>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		if ( $r['fund_accrued'] || $r['fund_released'] ) {
-			echo '<p class="description">Le uscite comprendono i fondi accantonati nell\'anno (' . esc_html( \AssociazioneSemplice\Money::format( $r['fund_accrued'] ) ) . ')' . ( $r['fund_released'] ? ', al netto di ' . esc_html( \AssociazioneSemplice\Money::format( $r['fund_released'] ) ) . ' liberati' : '' ) . ', anche se il rimborso non è ancora stato pagato; il pagamento del rimborso non si conta una seconda volta. Attenzione per il commercialista: nel rendiconto per cassa (Mod. D) le somme accantonate vanno considerate uscite solo quando il rimborso viene pagato: trovi il dettaglio nella tabella «Fondi per anno solare» qui sotto.</p>';
+			echo '<p class="description">Le uscite comprendono i fondi accantonati nell\'anno (' . esc_html( \AssociazioneSemplice\Money::format( $r['fund_accrued'] ) ) . ')' . ( $r['fund_released'] ? ', al netto di ' . esc_html( \AssociazioneSemplice\Money::format( $r['fund_released'] ) ) . ' liberati' : '' ) . ', anche se il rimborso non è ancora stato pagato; il pagamento del rimborso non si conta una seconda volta. Attenzione per il commercialista: nel rendiconto per cassa (Mod. D) le somme accantonate vanno considerate uscite solo quando il rimborso viene pagato: trovi il dettaglio nella tabella «Fondi per anno fiscale» qui sotto.</p>';
 		}
 		self::funds_by_year();
 	}
