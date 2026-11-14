@@ -61,7 +61,7 @@ final readonly class MembershipService implements Members
 
     /**
      * Perché il mese di inizio dell'anno sociale non si può cambiare (null se si può). Le tessere già emesse restano
-     * come sono: con tessere valide si può solo passare a gennaio, altrimenti bisogna aspettare che scadano.
+     * come sono: con tessere valide «2026/2027» si può solo passare a gennaio, altrimenti bisogna aspettare che scadano.
      */
     public function startMonthProblem(int $month): ?string
     {
@@ -70,8 +70,13 @@ final readonly class MembershipService implements Members
             return null;
         }
 
-        return $this->activeCount() > 0
-            ? 'Ci sono tessere valide: il mese di inizio dell\'anno sociale si può cambiare solo passando a gennaio, o quando non ce ne sono più.'
+        // Come nel plugin: blocca solo una tessera valida con la barra («2026/2027»), che parte in un altro mese.
+        $day = now()->toDateString();
+        $conflict = $this->connection()->table('app.valid_memberships')
+            ->where('social_year', 'like', '%/%')->where('valid_from', '<=', $day)->where('valid_to', '>=', $day)->exists();
+
+        return $conflict
+            ? 'Per ora puoi passare solo a gennaio. Con gennaio la tessera prende il nome dell\'anno (per esempio «2026») e non si confonde con quelle già emesse. Per un altro mese aspetta che le tessere ancora valide siano scadute.'
             : null;
     }
 
