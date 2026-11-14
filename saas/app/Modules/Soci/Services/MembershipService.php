@@ -19,6 +19,7 @@ use App\Modules\Soci\Models\Membership;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Rules\ExpiryRules;
 use App\Modules\Soci\Rules\SocialYear;
+use DateTimeImmutable;
 use Illuminate\Contracts\Auth\Factory as Auth;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
@@ -80,18 +81,36 @@ final readonly class MembershipService implements Members
             : null;
     }
 
-    /** Si rinnova in anticipo solo l'anno sociale successivo, negli ultimi giorni di quello in corso (i giorni dell'avviso di scadenza). */
-    private function assertRenewalWindow(SocialYear $year): void
+    /**
+     * Che tessera si prende oggi, come nel plugin: il socio non sceglie l'anno. Fuori dal periodo di rinnovo anticipato
+     * (gli ultimi giorni dell'anno sociale, quanti sono i giorni dell'avviso di scadenza) è quella dell'anno in corso.
+     * Nel periodo: chi ha l'anno in corso prende il successivo; chi è nuovo prende il successivo e l'anno in corso gli è
+     * regalato; chi aveva solo il precedente paga prima l'anno in corso.
+     *
+     * @return array{year: string, free: string|null}
+     */
+    public function renewalPlan(string $personId, ?string $date = null): array
     {
-        $current = $this->socialYear();
-        if ($year->startYear <= $current->startYear) {
-            return;
-        }
+        $day = $date ?? now()->toDateString();
+        $current = $this->socialYear($day);
         $days = ExpiryRules::warnDays($this->settings->get(CertificateService::WARN_DAYS, ExpiryRules::DEFAULT_WARN));
-        $opens = $current->end()->modify("-{$days} days")->format('Y-m-d');
-        if ($year->startYear > $current->startYear + 1 || now()->toDateString() < $opens) {
-            throw new PeopleError(["La tessera {$year->label()} si rinnova solo negli ultimi {$days} giorni dell'anno sociale in corso ({$current->label()})."]);
+        $left = (int) (new DateTimeImmutable($day))->diff($current->end())->format('%r%a');
+        if ($left < 0 || $left > $days) {
+            return ['year' => $current->label(), 'free' => null];
         }
+        if ($this->holds($personId, $current->label())) {
+            return ['year' => $current->next()->label(), 'free' => null];
+        }
+        if ($this->holds($personId, $current->previous()->label())) {
+            return ['year' => $current->label(), 'free' => null];
+        }
+
+        return ['year' => $current->next()->label(), 'free' => $current->label()];
+    }
+
+    public function holds(string $personId, string $year): bool
+    {
+        return $this->connection()->table('app.valid_memberships')->where('person_id', $personId)->where('social_year', $year)->exists();
     }
 
     public function socialYear(?string $date = null): SocialYear
@@ -137,21 +156,22 @@ final readonly class MembershipService implements Members
     /**
      * Rinnovo con incasso della quota: movimento in prima nota con ricevuta e tessera dell'anno sociale, tutto insieme.
      *
-     * @return array{membership_id: string, receipt: string|null}
+     * @return array{membership_id: string, receipt: string|null, social_year: string}
      */
     public function renewWithPayment(string $personId, string $accountId, ?int $amountCents = null, ?string $date = null, ?string $socialYear = null, ?PaymentMethod $method = null): array
     {
         $person = $this->member($personId);
-        $year = $socialYear === null ? $this->socialYear($date) : SocialYear::fromLabel($socialYear, $this->startMonth());
+        $plan = $socialYear === null ? $this->renewalPlan($person->id, $date) : ['year' => $socialYear, 'free' => null];
+        $year = SocialYear::fromLabel($plan['year'], $this->startMonth());
         $amount = $amountCents ?? $this->feeFor($person);
         if ($amount <= 0) {
             throw new PeopleError(['Indica l\'importo della quota (o imposta la quota associativa).']);
         }
         $category = $this->ledger->categoryFor(CategoryKind::Membership) ?? throw new PeopleError(['Manca la categoria «Quota associativa» in prima nota.']);
-        $this->assertRenewalWindow($year);
         $this->assertNoMembership($person->id, $year->label());
+        $free = $plan['free'] === null || $this->holds($person->id, $plan['free']) ? null : SocialYear::fromLabel($plan['free'], $this->startMonth());
 
-        return $this->connection()->transaction(function () use ($person, $year, $amount, $category, $accountId, $date, $method): array {
+        return $this->connection()->transaction(function () use ($person, $year, $free, $amount, $category, $accountId, $date, $method): array {
             $income = $this->ledger->recordIncome(new Income(
                 $date ?? now()->toDateString(),
                 $accountId,
@@ -160,8 +180,12 @@ final readonly class MembershipService implements Members
                 $person->id,
             ));
             $id = $this->insert($person->id, $year, 'payment', $income['transactions'][0]);
+            if ($free !== null) {
+                $freeId = $this->insert($person->id, $free, 'manual', null);
+                $this->audit->record('membership.manual', 'app.memberships', $freeId, ['social_year' => $free->label(), 'reason' => 'In omaggio: iscrizione negli ultimi giorni dell\'anno sociale']);
+            }
 
-            return ['membership_id' => $id, 'receipt' => $income['receipt']];
+            return ['membership_id' => $id, 'receipt' => $income['receipt'], 'social_year' => $year->label()];
         });
     }
 
