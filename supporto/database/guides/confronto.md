@@ -6,7 +6,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 
 | Funzione | Free | {piano_contabile} | {piano_fiscale} |
 |---|---|---|---|
-| Libro soci per esercizio: segue l'esercizio e alla chiusura viene fotografato, così da quel momento non cambia più; ogni socio ha una matricola fissa e ogni riga un numero; «Fotografa gli anni già chiusi» ricostruisce i libri passati; ogni libro si scarica in PDF e in CSV | ✓ | ✓ | ✓ |
+| Libro soci per anno fiscale: segue l'anno fiscale e alla chiusura diventa definitivo (pubblicato e bloccato, non cambia più), prima è una bozza; ogni socio ha una matricola fissa e ogni riga un numero; «Fotografa gli anni già chiusi» ricostruisce i libri passati; ogni libro si scarica in PDF e in CSV | ✓ | ✓ | ✓ |
 | Soci che sono enti: scheda dedicata, importazione da CSV e colonna «Tipo» nel libro soci | ✓ | ✓ | ✓ |
 | Utente «Dipendente»: permessi che si possono togliere, periodo di servizio e conteggio dei lavoratori per il RUNTS | ✓ | ✓ | ✓ |
 | Libro soci completo: date di domanda e delibera, luogo di nascita, residenza, contatti, ultima quota, recesso e tutore, con PDF e CSV | ✓ | ✓ | ✓ |
@@ -89,8 +89,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Spese con scontrini e fatture allegati | ✓ | ✓ | ✓ |
 | Importazione ed esportazione della prima nota | ✓ | ✓ | ✓ |
 | Donazioni con PayPal | ✓ | ✓ | ✓ |
-| Esercizi: apertura e chiusura (solo amministratori), con il mese di inizio a scelta e l'avviso del nuovo anno da settembre; si chiudono in ordine | ✓ | ✓ | ✓ |
-| Riapertura dell'ultimo esercizio: si riapre solo l'ultimo esercizio chiuso, scrivendo il motivo; resta una traccia permanente di chiusure e riaperture, e le tessere di un esercizio chiuso non si modificano | ✓ | ✓ | ✓ |
+| Anni fiscali: apertura e chiusura (solo amministratori), con il mese di inizio a scelta e l'avviso del nuovo anno da settembre; si chiudono in ordine | ✓ | ✓ | ✓ |
+| Riapertura dell'ultimo anno fiscale: si riapre solo l'ultimo anno fiscale chiuso, scrivendo il motivo; resta una traccia permanente di chiusure e riaperture, e le tessere di un anno fiscale chiuso non si modificano | ✓ | ✓ | ✓ |
 | Cassa «Prenota» (per data o per attività) | ✓ | ✓ | ✓ |
 | Acconti e sconti con motivo per riga di incasso | ✓ | ✓ | ✓ |
 | Nuovo socio in un popup durante l'incasso, senza perdere l'operazione | ✓ | ✓ | ✓ |

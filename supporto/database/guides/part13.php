@@ -12,7 +12,7 @@ La pagina **Registri → Dati per il RUNTS** raccoglie i numeri da copiare nel p
 
 ## Cosa trovi
 
-Scegli l'anno e premi **Mostra**: i numeri valgono al **31 dicembre** di quell'anno, anche se il tuo esercizio inizia in un altro mese. Conta come socio chi quel giorno aveva la tessera valida (e i fondatori già ammessi), esclusi quelli già usciti. È lo stesso criterio del libro soci.
+Scegli l'anno e premi **Mostra**: i numeri valgono al **31 dicembre** di quell'anno, anche se il tuo anno fiscale inizia in un altro mese. Conta come socio chi quel giorno aveva la tessera valida (e i fondatori già ammessi), esclusi quelli già usciti. È lo stesso criterio del libro soci.
 
 - **Soci persone fisiche con diritto di voto**: vota chi era maggiorenne a quella data e ha diritto di voto (con {piano_contabile} e {piano_fiscale} dipende dal livello di socio). Se a qualcuno manca la data di nascita, il programma lo conta come maggiorenne e te lo segnala: completa le schede per un numero sicuro. I numeri usano le impostazioni di voto **di oggi**: se le hai cambiate dopo il 31 dicembre, ricontrolla.
 - **Soci che sono enti**: il numero, con l'elenco di denominazione e codice fiscale e se sono iscritti al RUNTS nella tua stessa sezione (vedi [Soci che sono enti](guida:soci-che-sono-enti)).
