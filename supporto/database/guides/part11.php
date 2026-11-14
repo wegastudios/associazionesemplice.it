@@ -16,7 +16,7 @@ Per molte associazioni l'anno fiscale non coincide con l'anno solare. Puoi indic
 2. Nel menu **«L'anno fiscale inizia a»**, accanto a «L'anno sociale inizia a», scegli il mese. Di partenza è **gennaio**, cioè l'anno solare, come prima.
 3. Salva.
 
-Lo trovi anche nella [configurazione guidata](guida:completare-la-configurazione-guidata), dentro **«Più dettagli: codice fiscale, anno sociale, sede»**.
+Lo scegli anche al primo passo della [configurazione guidata](guida:completare-la-configurazione-guidata), insieme al mese dell'anno sociale (spunta **«Ho controllato i due mesi»**).
 
 Un anno si chiama con **l'anno in cui inizia**: con inizio a luglio, il 2025 va dal 1° luglio 2025 al 30 giugno 2026.
 
@@ -26,11 +26,11 @@ Seguono il mese scelto l'apertura e la chiusura degli anni fiscali, la **prima n
 
 ## Cosa non cambia
 
-Le **tessere** restano per **anno solare** e scadono il 31 dicembre. Restano così anche l'**anno sociale** e il **5 per mille** (anno d'imposta solare).
+Le **tessere** seguono l'**anno sociale**, non l'anno fiscale: i due mesi sono indipendenti. Il **5 per mille** e i **Dati per il RUNTS** restano sull'anno solare (31 dicembre).
 
 ## Da sapere
 
-- Il mese si sceglie **prima di chiudere il primo anno fiscale**: dopo la prima chiusura il menu è bloccato e non si può più cambiare (compare «Esistono esercizi chiusi: il mese di inizio non si può più cambiare»).
+- Il mese si sceglie **prima di chiudere il primo anno fiscale**: dopo la prima chiusura resta **bloccato**, anche se poi l'anno viene riaperto.
 - Le **verifiche prima della chiusura** dell'anno fiscale (per esempio i fondi non rimborsati) e il rendiconto per cassa sono funzioni di {piano_contabile} e {piano_fiscale}.
 MD,
     ],
@@ -174,7 +174,7 @@ Le approvate restano elencate con **chi e quando** le ha approvate (per esempio 
 
 ## Chiudere l'anno
 
-1. Vai in **Contabilità → Esercizi** e premi **Chiudi l'anno** (vedi [Aprire e chiudere gli anni fiscali](guida:aprire-e-chiudere-gli-anni-solari)).
+1. Vai in **Contabilità → Anni fiscali** e premi **Chiudi l'anno** (vedi [Aprire e chiudere gli anni fiscali](guida:aprire-e-chiudere-gli-anni-solari)).
 2. Di partenza la chiusura **si ferma** e mostra l'elenco se ci sono rimborsi non documentati.
 3. Con l'opzione **«chiedi conferma»** compare l'elenco con una casella da spuntare per procedere.
 

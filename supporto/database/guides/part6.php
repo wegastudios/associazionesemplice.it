@@ -154,7 +154,9 @@ MD,
         'topic' => 'domande-frequenti', 'section' => 'Uso quotidiano', 'slug' => 'quando-scade-la-tessera',
         'title' => 'Quando scade la tessera associativa?',
         'body' => <<<'MD'
-La tessera dura l'anno solare e **scade sempre il 31 dicembre**, per tutti tranne i soci fondatori, la cui tessera è sempre rinnovata. Chi si iscrive a fine anno può pagare la tessera dell'anno dopo e avere gratis quella in corso.
+La tessera segue l'**anno sociale**, cioè il mese di inizio scelto nella configurazione guidata (o in **Impostazioni → Ente → Dati dell'ente**). Con gennaio vale da gennaio a dicembre e si chiama «**2026**»; con un altro mese, per esempio settembre, vale da settembre ad agosto e si chiama «**2026/2027**». I soci fondatori hanno la tessera sempre rinnovata.
+
+Negli **ultimi giorni prima della scadenza** (quelli dell'avviso di scadenza, **30** di partenza) si può **rinnovare in anticipo**. Le tessere in corso non si accorciano: se cambi il mese dell'anno sociale, vale solo per le **tessere nuove**. Passare a gennaio si può sempre; scegliere un altro mese si può solo quando le tessere con la barra («2026/2027») sono scadute. L'anno sociale e l'anno fiscale sono **indipendenti**.
 
 Un socio con la tessera scaduta non può prenotare gli eventi dal sito, nemmeno quelli gratuiti, finché non rinnova. Dalla Bacheca vedi i **Soci da rinnovare** e puoi incassare con un clic.
 MD,
@@ -208,7 +210,7 @@ MD,
         'topic' => 'domande-frequenti', 'section' => 'Uso quotidiano', 'slug' => 'come-emettere-una-ricevuta',
         'title' => 'Come emetto una ricevuta per un pagamento?',
         'body' => <<<'MD'
-Con **{piano_contabile}** o **{piano_fiscale}** ogni incasso ha una **ricevuta in PDF**, numerata (N/AAAA) e con il nome dell'associazione. La trovi in **Cassa → Prima nota**: puoi scaricarla o inviarla per email a chi ha pagato. Con i pagamenti online il socio la riceve da solo.
+Con **{piano_contabile}** o **{piano_fiscale}** ogni incasso ha una **ricevuta in PDF**, numerata per anno fiscale (N/AAAA) e con il nome dell'associazione. La trovi in **Cassa → Prima nota**: puoi scaricarla o inviarla per email a chi ha pagato. Con i pagamenti online il socio la riceve da solo.
 
 Vedi [Ricevute in PDF e attestazione annuale](guida:ricevute-in-pdf).
 MD,
