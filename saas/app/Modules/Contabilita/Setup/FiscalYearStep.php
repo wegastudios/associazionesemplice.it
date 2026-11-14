@@ -55,7 +55,7 @@ final readonly class FiscalYearStep implements RequiredSetupStep
         }
         $changes = (int) $month !== $this->years->chosenStartMonth();
         if ($changes && $this->years->hasClosedYear()) {
-            return ['Dopo la prima chiusura il mese di inizio dell\'anno fiscale non si cambia più.'];
+            return ['Hai già chiuso un anno fiscale: il mese di inizio non si può più cambiare.'];
         }
         if ($changes && $this->years->chosenStartMonth() !== null && $this->years->hasMovements() && ($input['confirm_move'] ?? false) !== true) {
             return ['Conferma il cambio: i movimenti già registrati passano all\'anno fiscale che inizia nel nuovo mese.'];

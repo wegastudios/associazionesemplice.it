@@ -61,10 +61,10 @@ it('si può cambiare finché nessun anno è chiuso, poi no', function (): void {
     expect($this->years->startMonth())->toBe(3);
 
     $this->years->close($this->years->yearFor(now()->toDateString()));
-    expect(fn () => $this->years->chooseStartMonth(5))->toThrow(LedgerError::class, 'prima chiusura');
+    expect(fn () => $this->years->chooseStartMonth(5))->toThrow(LedgerError::class, 'già chiuso un anno fiscale');
 
     // Nemmeno riaprendo: la fotografia fatta alla chiusura resta.
     $this->years->reopen($this->years->yearFor(now()->toDateString()), 'Correzione');
-    expect(fn () => $this->years->chooseStartMonth(5))->toThrow(LedgerError::class, 'prima chiusura')
+    expect(fn () => $this->years->chooseStartMonth(5))->toThrow(LedgerError::class, 'già chiuso un anno fiscale')
         ->and($this->years->startMonth())->toBe(3);
 });

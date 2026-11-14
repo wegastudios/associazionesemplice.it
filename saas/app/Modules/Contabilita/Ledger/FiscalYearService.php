@@ -74,7 +74,7 @@ final readonly class FiscalYearService
             return 0;
         }
         if ($this->hasClosedYear()) {
-            throw new LedgerError('Dopo la prima chiusura il mese di inizio dell\'anno fiscale non si cambia più.');
+            throw new LedgerError('Hai già chiuso un anno fiscale: il mese di inizio non si può più cambiare.');
         }
         $this->settings->set(self::START_MONTH, $month);
         $row = $this->connection()->selectOne('select app.realign_fiscal_years(?, ?) as moved', [$month, CarbonImmutable::today()->toDateString()]);
