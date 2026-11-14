@@ -157,7 +157,7 @@ it('dà il diritto di voto ai soli soci', function (): void {
         ->and(MemberType::Guardian->hasVotingRights())->toBeFalse();
 });
 
-it('cambia il mese di inizio dell\'anno sociale solo senza tessere valide, o passando a gennaio', function (): void {
+it('blocca il cambio mese solo con tessere valide "con la barra", e passare a gennaio è sempre libero', function (): void {
     $settings = app(OrgSettings::class);
     $settings->set(MembershipService::START_MONTH, 9);
     $socio = $this->people->create(['first_name' => 'Anna', 'last_name' => 'Rossi']);
@@ -166,9 +166,17 @@ it('cambia il mese di inizio dell\'anno sociale solo senza tessere valide, o pas
 
     $this->memberships->grantManually($socio->id, $this->memberships->socialYear()->label(), 'Socia onoraria');
 
-    expect($this->memberships->startMonthProblem(3))->toContain('tessere valide')
+    expect($this->memberships->startMonthProblem(3))->toContain('solo a gennaio')
         ->and($this->memberships->startMonthProblem(9))->toBeNull()
         ->and($this->memberships->startMonthProblem(1))->toBeNull();
+});
+
+it('non blocca il cambio mese se le tessere valide hanno il nome dell'anno (gennaio)', function (): void {
+    app(OrgSettings::class)->set(MembershipService::START_MONTH, 1);
+    $socio = $this->people->create(['first_name' => 'Anna', 'last_name' => 'Rossi']);
+    $this->memberships->grantManually($socio->id, $this->memberships->socialYear()->label(), 'Socia onoraria');
+
+    expect($this->memberships->startMonthProblem(9))->toBeNull();
 });
 
 it('rinnova la tessera dell\'anno dopo solo negli ultimi giorni dell\'anno sociale', function (): void {
