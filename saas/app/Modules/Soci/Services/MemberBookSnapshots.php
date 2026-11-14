@@ -66,6 +66,47 @@ final readonly class MemberBookSnapshots
     }
 
     /**
+     * Le versioni della fotografia di un esercizio, dalla più recente.
+     *
+     * @return list<array{version: int, created_at: string, superseded: bool}>
+     */
+    public function versions(int $year): array
+    {
+        $out = [];
+        foreach ($this->table()->where('fiscal_year', $year)->orderByDesc('version')->get(['version', 'created_at', 'superseded_at']) as $r) {
+            $out[] = [
+                'version' => is_numeric($r->version ?? null) ? (int) $r->version : 0,
+                'created_at' => is_string($r->created_at ?? null) ? $r->created_at : '',
+                'superseded' => ($r->superseded_at ?? null) !== null,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Tutte le fotografie di tutti gli esercizi, per l'esportazione completa.
+     *
+     * @return list<array{fiscal_year: int, version: int, created_at: string, superseded: bool, rows: list<array<mixed, mixed>>}>
+     */
+    public function all(): array
+    {
+        $out = [];
+        foreach ($this->table()->orderBy('fiscal_year')->orderBy('version')->get(['fiscal_year', 'version', 'created_at', 'superseded_at', 'rows']) as $r) {
+            $rows = is_string($r->rows ?? null) ? json_decode($r->rows, true) : null;
+            $out[] = [
+                'fiscal_year' => is_numeric($r->fiscal_year ?? null) ? (int) $r->fiscal_year : 0,
+                'version' => is_numeric($r->version ?? null) ? (int) $r->version : 0,
+                'created_at' => is_string($r->created_at ?? null) ? $r->created_at : '',
+                'superseded' => ($r->superseded_at ?? null) !== null,
+                'rows' => is_array($rows) ? array_values(array_filter($rows, is_array(...))) : [],
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
      * Libro di un esercizio: dalla fotografia se l'esercizio è chiuso e ce l'ha; altrimenti dal vivo.
      *
      * @return array{rows: list<Row>, source: 'snapshot'|'live'}

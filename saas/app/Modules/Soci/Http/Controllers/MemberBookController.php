@@ -40,6 +40,9 @@ final readonly class MemberBookController
             'year' => $year,
             'source' => $result['source'],
             'years' => $this->years(),
+            'versions' => $year === null ? [] : array_map(static fn (array $v): array => [
+                'version' => $v['version'], 'date' => date('d/m/Y H:i', (int) strtotime($v['created_at'])), 'superseded' => $v['superseded'],
+            ], $this->snapshots->versions($year)),
             'canExport' => $request->user()?->can('people.export') ?? false,
         ]);
     }
