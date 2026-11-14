@@ -152,7 +152,7 @@ it('in un esercizio chiuso non entra né si storna nulla, finché non si riapre'
     $years->close($year);
 
     expect(fn () => $this->ledger->recordIncome(income($this->cash->id, [new IncomeLine(($this->cat)(CategoryKind::Donation), 100)])))
-        ->toThrow(LedgerError::class, "esercizio {$year} è chiuso")
+        ->toThrow(LedgerError::class, "anno fiscale {$year} è chiuso")
         ->and(fn () => $this->ledger->void($id, 'x'))->toThrow(LedgerError::class, 'chiuso')
         ->and(fn () => $years->reopen($year, ' '))->toThrow(LedgerError::class, 'perché');
 

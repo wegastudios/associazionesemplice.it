@@ -51,8 +51,8 @@ it('esporta tutti i dati in un archivio per il titolare', function (): void {
         'contabilita/prima-nota.csv', 'contabilita/conti.csv', 'contabilita/ricevute.csv', 'attivita/attivita.csv',
         'operatori.csv', 'ruoli.csv', 'impostazioni.csv', 'registro-delle-azioni.csv',
     )
-        ->and(array_keys($files))->toContain('contabilita/rendiconti-esercizi-chiusi.json', 'soci/libri-soci-esercizi-chiusi.json')
-        ->and(json_decode($files['soci/libri-soci-esercizi-chiusi.json'], true)[0]['rows'][0]['name'])->toBe('Rossi Mario')
+        ->and(array_keys($files))->toContain('contabilita/rendiconti-anni-fiscali-chiusi.json', 'soci/libri-soci-anni-fiscali-chiusi.json')
+        ->and(json_decode($files['soci/libri-soci-anni-fiscali-chiusi.json'], true)[0]['rows'][0]['name'])->toBe('Rossi Mario')
         ->and($files['soci/anagrafica.csv'])->toContain('RSSMRA80A01H501U')
         ->and($files['soci/certificati-medici.csv'])->toContain('Dr. Bianchi')
         ->and($files['contabilita/prima-nota.csv'])->toContain('Quota associativa')
