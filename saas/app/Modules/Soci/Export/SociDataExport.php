@@ -88,7 +88,7 @@ final readonly class SociDataExport implements DataExport
         }
 
         // Le fotografie del libro soci di ogni esercizio chiuso, tutte le versioni (anche quelle superate da una riapertura).
-        $files['soci/libri-soci-esercizi-chiusi.json'] = json_encode($this->snapshots->all(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]';
+        $files['soci/libri-soci-anni-fiscali-chiusi.json'] = json_encode($this->snapshots->all(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]';
 
         return $files;
     }

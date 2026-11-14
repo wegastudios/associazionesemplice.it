@@ -51,7 +51,7 @@ final readonly class ContabilitaDataExport implements DataExport
         foreach ($this->db()->table('app.fiscal_years')->orderBy('year')->get(['year', 'starts_on', 'ends_on', 'status']) as $y) {
             $rows[] = [$s($y->year ?? ''), $s($y->starts_on ?? ''), $s($y->ends_on ?? ''), ($y->status ?? '') === 'closed' ? 'chiuso' : 'aperto'];
         }
-        $files['contabilita/esercizi.csv'] = Csv::build(['Esercizio', 'Dal', 'Al', 'Stato'], $rows);
+        $files['contabilita/anni-fiscali.csv'] = Csv::build(['Anno fiscale', 'Dal', 'Al', 'Stato'], $rows);
 
         $rows = [];
         foreach ($this->db()->table('app.receipts as r')->leftJoin('app.people as p', 'p.id', '=', 'r.payer_person_id')->orderBy('r.year')->orderBy('r.number')
@@ -69,7 +69,7 @@ final readonly class ContabilitaDataExport implements DataExport
         $files['contabilita/dati-ente.csv'] = Csv::build(['Dato', 'Valore'], $rows);
 
         // Il rendiconto di ogni esercizio chiuso com'era alla chiusura, tutte le versioni (anche quelle superate da una riapertura).
-        $files['contabilita/rendiconti-esercizi-chiusi.json'] = json_encode($this->snapshots->all(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]';
+        $files['contabilita/rendiconti-anni-fiscali-chiusi.json'] = json_encode($this->snapshots->all(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]';
 
         return $files;
     }
