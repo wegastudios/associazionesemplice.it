@@ -283,7 +283,7 @@ final class ProViews {
 			return '';
 		}
 		$pid   = (int) $p['id'];
-		$mine  = \AssociazioneSemplice\Receipts::list_for_payer( $pid, 15 );
+		$mine  = \AssociazioneSemplice\Receipts::list_for_payer( $pid, 15, true ); // una ricevuta annullata non si mostra al socio: resta solo la sostitutiva
 		$years = \AssociazioneSemplice\Receipts::years_for_payer( $pid );
 		if ( ! $mine && ! $years ) {
 			return '<section class="asemf-section"><h3>Le mie ricevute</h3><p class="asemf-muted">Nessun pagamento registrato finora.</p></section>';
