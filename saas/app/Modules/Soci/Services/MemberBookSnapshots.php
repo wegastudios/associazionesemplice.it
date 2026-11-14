@@ -87,7 +87,7 @@ final readonly class MemberBookSnapshots
     /**
      * Tutte le fotografie di tutti gli esercizi, per l'esportazione completa.
      *
-     * @return list<array{fiscal_year: int, version: int, created_at: string, superseded: bool, rows: list<array<string, mixed>>}>
+     * @return list<array{fiscal_year: int, version: int, created_at: string, superseded: bool, rows: list<array<mixed, mixed>>}>
      */
     public function all(): array
     {
