@@ -222,7 +222,7 @@
   "Anno fiscale creato." : "Financial year created.",
   "Anno fiscale chiuso: non si modifica più. Si può riaprire solo finché è l'ultimo anno fiscale chiuso, indicando il motivo." : "Financial year closed: it can no longer be changed. It can be reopened only while it is the last closed year, giving the reason.",
   "Anno fiscale riaperto: il motivo resta registrato." : "Financial year reopened: the reason stays on record.",
-  "Esistono anni fiscali chiusi: il mese di inizio non si può più cambiare." : "There are closed financial years: the starting month can no longer be changed.",
+  "Hai già chiuso un anno fiscale: il mese di inizio non si può più cambiare." : "You have already closed a financial year: the starting month can no longer be changed.",
   "Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?" : "Which month does your financial year start in (accounts and annual statement)?",
   "Storico delle chiusure e delle riaperture" : "History of closures and reopenings",
   "Resta per sempre: non si cancella nemmeno con la pulizia del registro azioni." : "It stays forever: it is not deleted even when the action log is cleaned up.",

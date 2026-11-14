@@ -33,14 +33,17 @@ final class FiscalYears {
 		return max( 1, min( 12, $m ) );
 	}
 
-	/** Dopo la chiusura di un esercizio il mese di inizio non si cambia più: gli anni si ridisegnerebbero e quelli chiusi cambierebbero confini. */
+	/**
+	 * Dalla prima chiusura di un anno fiscale il mese di inizio non si cambia più: gli anni si ridisegnerebbero e quelli chiusi cambierebbero confini.
+	 * Conta lo storico: il blocco resta anche se l'anno chiuso viene poi riaperto (basta una riga in `fiscal_year_closures`, anche «riaperta»).
+	 */
 	public static function start_month_locked(): bool {
-		return null !== self::last_closed();
+		return null !== self::last_closed() || (int) self::db()->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'fiscal_year_closures' ) ) > 0;
 	}
 
-	/** Messaggio mostrato quando si prova a cambiare il mese con esercizi chiusi. */
+	/** Messaggio mostrato quando si prova a cambiare il mese dopo la prima chiusura. */
 	public static function start_month_locked_message(): string {
-		return 'Esistono anni fiscali chiusi: il mese di inizio non si può più cambiare.';
+		return 'Hai già chiuso un anno fiscale: il mese di inizio non si può più cambiare.';
 	}
 
 	/** Messaggio unico per ogni azione bloccata perché tocca un anno chiuso. */

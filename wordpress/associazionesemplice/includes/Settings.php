@@ -179,7 +179,7 @@ final class Settings {
 			}
 			$old_fiscal                       = max( 1, min( 12, (int) ( $before['fiscal_start_month'] ?? 1 ) ) );
 		$clean['fiscal_start_month']      = max( 1, min( 12, (int) $clean['fiscal_start_month'] ) );
-		if ( $clean['fiscal_start_month'] !== $old_fiscal && FiscalYears::start_month_locked() ) { // con anni fiscali chiusi il mese non si cambia più
+		if ( $clean['fiscal_start_month'] !== $old_fiscal && FiscalYears::start_month_locked() ) { // dalla prima chiusura (anche se poi riaperta) il mese non si cambia più
 			throw new \InvalidArgumentException( FiscalYears::start_month_locked_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$clean['membership_fee_cents']    = max( 0, (int) $clean['membership_fee_cents'] );
