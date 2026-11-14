@@ -158,7 +158,7 @@ it('esporta l\'anagrafica in CSV leggibile dall\'import, e lo annota', function 
     expect($csv)->toStartWith("\xEF\xBB\xBF\"Numero tessera\";Tipo;Nome;Cognome")
         ->toContain('1;"Socio ordinario";Mario;Rossi;mario@example.com;;RSSMRA80A01H501U;01/01/1980')
         ->toContain("'=SOMMA(A1)")->toContain('"+39 333 1234567"')
-        ->toContain('Bianchi;;"347 1112223";;;;;;;;1;;'."\r\n");
+        ->toContain('Bianchi;;"347 1112223";;;;;;;;1;;;Persona;'."\r\n");
     $this->orgContext()->run($this->org->id, fn () => expect(DB::table('audit.log')->where('action', 'export.done')->value('details'))->toContain('"rows": 3'));
 
     // Ricaricato, il file aggiorna le stesse schede.
@@ -176,3 +176,21 @@ it('protegge le celle che Excel prenderebbe per formule', function (string $in, 
 })->with([
     ['=1+1', "'=1+1"], ['@SUM', "'@SUM"], ['-2+3', "'-2+3"], ['+39 333 1234567', '+39 333 1234567'], ['-5', '-5'], ['Mario', 'Mario'],
 ]);
+
+it('importa un socio ente e lo esporta con tipo e sezione', function (): void {
+    $this->orgContext()->run($this->org->id, function (): void {
+        $csv = "Tipo soggetto;Denominazione;Codice fiscale;Stessa sezione RUNTS;Email;Tipo\nente;Pro Loco Beta;12345678903;sì;info@beta.example.com;ordinario\n";
+        $service = app(PeopleImportService::class);
+        $preview = $service->preview(importFile($csv), 'soci.csv', MemberType::Ordinary);
+        expect($preview)->toHaveKey('plan');
+        $result = $service->apply($preview['plan'], false);
+
+        $entity = Person::query()->sole();
+        expect($result['failed'])->toBe([])->and($result['created'])->toBe(1)
+            ->and($entity->is_entity)->toBeTrue()->and($entity->last_name)->toBe('Pro Loco Beta')->and($entity->first_name)->toBe('')
+            ->and($entity->entity_same_section)->toBeTrue()->and($entity->tax_code)->toBe('12345678903');
+
+        $out = app(PeopleExportService::class)->csv()['csv'];
+        expect($out)->toContain('"Tipo soggetto";"Stessa sezione RUNTS"')->and($out)->toContain('Ente;sì');
+    });
+});

@@ -36,7 +36,7 @@ final readonly class PeopleExportService
     public function csv(string $q = '', ?MemberType $type = null): array
     {
         $year = $this->memberships->socialYear();
-        $header = [...self::HEADER, 'In regola '.$year->label()];
+        $header = [...self::HEADER, 'In regola '.$year->label(), 'Tipo soggetto', 'Stessa sezione RUNTS'];
 
         $query = $this->people->search($q)->orderBy('last_name')->orderBy('first_name')->orderBy('id');
         if ($type !== null) {
@@ -73,6 +73,8 @@ final readonly class PeopleExportService
                     $p->host_person_id !== null ? ($refs[$p->host_person_id] ?? null) : null,
                     $guardian !== null ? ($refs[$guardian] ?? null) : null,
                     $p->type->isMember() ? (in_array($p->id, $active, true) ? 'sì' : 'no') : null,
+                    $p->is_entity ? 'Ente' : 'Persona',
+                    $p->is_entity && $p->entity_same_section !== null ? ($p->entity_same_section ? 'sì' : 'no') : null,
                 ]);
                 $count++;
             }
