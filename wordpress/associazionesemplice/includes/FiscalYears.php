@@ -40,12 +40,12 @@ final class FiscalYears {
 
 	/** Messaggio mostrato quando si prova a cambiare il mese con esercizi chiusi. */
 	public static function start_month_locked_message(): string {
-		return 'Esistono esercizi chiusi: il mese di inizio non si può più cambiare.';
+		return 'Esistono anni fiscali chiusi: il mese di inizio non si può più cambiare.';
 	}
 
 	/** Messaggio unico per ogni azione bloccata perché tocca un anno chiuso. */
 	public static function closed_message( int $year ): string {
-		return 'L\'anno ' . self::label( $year ) . ' è chiuso: per modificarlo va riaperto.';
+		return 'L\'anno ' . self::label( $year ) . ' è chiuso: per modificarlo va riaperto dalla pagina «Anni fiscali» (si può riaprire solo l\'ultimo anno chiuso).';
 	}
 
 	/** L'esercizio chiuso più recente (l'unico che si può riaprire), oppure null se nessuno è chiuso. */
@@ -108,11 +108,11 @@ final class FiscalYears {
 	/** Il libro soci di quella chiusura è stato fotografato? Per le chiusure fatte prima della fotografia («none») no, finché non si fotografano. */
 	public static function snapshot_text( array $closure ): string {
 		if ( 'complete' !== $closure['snapshot_state'] ) {
-			return 'non fotografato';
+			return 'in bozza: i numeri sono quelli di oggi e possono cambiare';
 		}
 		$d = substr( (string) ( $closure['snapshotted_at'] ?: $closure['closed_at'] ), 0, 10 );
 		$d = preg_match( '/^(\d{4})-(\d{2})-(\d{2})$/', $d, $m ) ? $m[3] . '/' . $m[2] . '/' . $m[1] : '';
-		return ( ! empty( $closure['retroactive'] ) ? 'ricostruito il ' : 'fotografato il ' ) . $d;
+		return ( ! empty( $closure['retroactive'] ) ? 'definitivo, emesso ora per un anno già chiuso: dati di oggi, ricostruiti il ' : 'definitivo, emesso il ' ) . $d;
 	}
 
 	/** Le chiusure in vigore di esercizi chiusi senza fotografia (chiusi prima che esistesse), dalla più vecchia. @return array[] */
@@ -140,7 +140,7 @@ final class FiscalYears {
 				function () use ( $c, $year ) {
 					$from = $c['range_from'] ? (string) $c['range_from'] : self::range( $year )[0];
 					$to   = $c['range_to'] ? (string) $c['range_to'] : self::range( $year )[1];
-					MemberBook::write_snapshot( (int) $c['id'], $from, $to );
+					MemberBook::write_snapshot( (int) $c['id'], $from, $to, false );
 					do_action( 'asem_year_closing', $year, (int) $c['id'], true );
 					self::db()->update(
 						Db::t( 'fiscal_year_closures' ),
@@ -242,7 +242,7 @@ final class FiscalYears {
 			throw new \InvalidArgumentException( 'Anno non valido.' );
 		}
 		if ( self::get( $year ) ) {
-			throw new \InvalidArgumentException( 'L\'anno solare ' . $year . ' esiste già.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( 'L\'anno fiscale ' . $year . ' esiste già.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		self::db()->insert( Db::t( 'fiscal_years' ), array( 'year' => $year, 'status' => 'open', 'created_at' => Db::now() ) );
 		Audit::log( 'year.created', 'year', $year );
@@ -263,10 +263,10 @@ final class FiscalYears {
 		}
 		$row = self::get( $year );
 		if ( ! $row ) {
-			throw new \InvalidArgumentException( 'L\'esercizio ' . self::label( $year ) . ' non è stato creato: crealo dalla scheda «Esercizi» prima di registrare movimenti in quella data.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( 'L\'anno fiscale ' . self::label( $year ) . ' non è stato creato: crealo dalla scheda «Anni fiscali» prima di registrare movimenti in quella data.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( 'open' !== $row['status'] ) {
-			throw new \InvalidArgumentException( 'L\'esercizio ' . self::label( $year ) . ' è chiuso: non accetta più incassi né spese. Riaprilo dalla scheda «Esercizi» se devi correggerlo.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( self::closed_message( $year ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 	}
 
@@ -286,7 +286,7 @@ final class FiscalYears {
 	public static function close( int $year, bool $confirmed = false ): void {
 		$row = self::get( $year );
 		if ( ! $row ) {
-			throw new \InvalidArgumentException( 'Anno solare non trovato.' );
+			throw new \InvalidArgumentException( 'Anno fiscale non trovato.' );
 		}
 		if ( 'open' !== $row['status'] ) {
 			throw new \InvalidArgumentException( 'L\'anno ' . self::label( $year ) . ' è già chiuso.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
@@ -296,7 +296,7 @@ final class FiscalYears {
 			throw new \InvalidArgumentException( 'L\'anno ' . self::label( $year ) . ' non si può chiudere: ' . implode( '; ', $b ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$prev = self::db()->get_var( self::db()->prepare( 'SELECT MAX(year) FROM ' . Db::t( 'fiscal_years' ) . " WHERE year < %d AND status = 'open'", $year ) );
-		if ( null !== $prev ) { // gli esercizi chiusi formano sempre una serie continua: si chiude in ordine
+		if ( null !== $prev ) { // gli anni fiscali chiusi formano sempre una serie continua: si chiude in ordine
 			throw new \InvalidArgumentException( 'Prima di chiudere il ' . self::label( $year ) . ' chiudi il ' . self::label( (int) $prev ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$gaps = function_exists( 'apply_filters' ) ? (array) apply_filters( 'asem_year_close_confirm', array(), $year ) : array(); // cose da confermare per chiudere lo stesso
@@ -328,11 +328,11 @@ final class FiscalYears {
 	public static function reopen( int $year, string $reason ): void {
 		$row = self::get( $year );
 		if ( ! $row || 'closed' !== $row['status'] ) {
-			throw new \InvalidArgumentException( 'L\'anno solare non è chiuso.' );
+			throw new \InvalidArgumentException( 'L\'anno fiscale non è chiuso.' );
 		}
 		$last = self::last_closed();
 		if ( $last !== $year ) {
-			throw new \InvalidArgumentException( 'Si può riaprire solo l\'ultimo esercizio chiuso (' . self::label( (int) $last ) . '): riaprilo prima di tornare al ' . self::label( $year ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( 'Si può riaprire solo l\'ultimo anno fiscale chiuso (' . self::label( (int) $last ) . '): riaprilo prima di tornare al ' . self::label( $year ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$reason = mb_substr( trim( sanitize_textarea_field( $reason ) ), 0, 500 );
 		if ( '' === $reason ) {

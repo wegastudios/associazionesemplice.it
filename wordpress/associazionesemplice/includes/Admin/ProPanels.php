@@ -45,9 +45,9 @@ final class ProPanels {
 		}
 		$label = $rec['number'] . '/' . $rec['year'];
 		if ( \AssociazioneSemplice\Receipts::rows( $key ) ) {
-			return array( Ui::url( 'asem-receipt-replace', array( 'key' => $key, 'back' => (string) $res[0] ) ), $res[1] . ' La ricevuta n. ' . $label . ' risulta annullata: puoi emettere la ricevuta sostitutiva per le righe rimaste.' );
+			return array( Ui::url( 'asem-receipt-replace', array( 'key' => $key, 'back' => (string) $res[0] ) ), $res[1] . ' La ricevuta n. ' . $label . ' risulta annullata: puoi emettere la ricevuta sostitutiva per le voci rimaste.' );
 		}
-		return array( $res[0], $res[1] . ' La ricevuta n. ' . $label . ' risulta annullata (non restano altre righe: nessuna ricevuta sostitutiva).' );
+		return array( $res[0], $res[1] . ' La ricevuta n. ' . $label . ' risulta annullata. Non restano voci incassate: non c\'è nessuna ricevuta sostitutiva da emettere.' );
 	}
 
 	/** Ricevute e attestazioni annuali della persona. */
@@ -76,7 +76,7 @@ final class ProPanels {
 			foreach ( $voided as $v ) {
 				$rec = $v['rec'];
 				$by  = $v['replaced_by'];
-				echo '<li>n. ' . esc_html( $rec['number'] . '/' . $rec['year'] ) . ' · annullata il ' . Ui::date( substr( (string) $rec['voided_at'], 0, 10 ) ) // phpcs:ignore WordPress.Security.EscapeOutput
+				echo '<li>' . sprintf( 'n. %1$s · annullata il %2$s', esc_html( $rec['number'] . '/' . $rec['year'] ), Ui::date( substr( (string) $rec['voided_at'], 0, 10 ) ) ) // phpcs:ignore WordPress.Security.EscapeOutput
 					. ( $by ? ' · sostituita dalla n. ' . esc_html( $by['number'] . '/' . $by['year'] ) : '' )
 					. ' <a target="_blank" href="' . esc_url( \AssociazioneSemplice\Receipts::url( $v['key'] ) ) . '">ricevuta annullata</a></li>';
 			}
@@ -92,7 +92,7 @@ final class ProPanels {
 				$rrec = \AssociazioneSemplice\Receipts::record( $rkey );
 				if ( $rrec && null !== $rrec['voided_at'] ) { // annullata e non ancora sostituita: si legge (ANNULLATA) e, se restano righe, si propone la sostitutiva
 					echo '<a class="button button-small" target="_blank" href="' . esc_url( \AssociazioneSemplice\Receipts::url( $rkey ) ) . '">Ricevuta annullata (PDF)</a> '
-						. '<a class="button button-small" href="' . esc_url( Ui::url( 'asem-receipt-replace', array( 'key' => $rkey, 'back' => $here ) ) ) . '">Emetti la sostitutiva</a> ';
+						. '<a class="button button-small" href="' . esc_url( Ui::url( 'asem-receipt-replace', array( 'key' => $rkey, 'back' => $here ) ) ) . '">Emetti la ricevuta sostitutiva</a> ';
 					return;
 				}
 				echo '<a class="button button-small" target="_blank" href="' . esc_url( \AssociazioneSemplice\Receipts::url( $rkey ) ) . '">Ricevuta PDF</a> ';

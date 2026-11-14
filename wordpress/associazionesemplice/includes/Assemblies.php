@@ -29,7 +29,7 @@ final class Assemblies {
 			throw new \InvalidArgumentException( 'Assemblea non trovata.' );
 		}
 		if ( $old ) {
-			self::lock( $old ); // prima di ogni altro controllo: in un esercizio chiuso il messaggio è sempre lo stesso
+			self::lock( $old ); // prima di ogni altro controllo: in un anno fiscale chiuso il messaggio è sempre lo stesso
 		}
 		if ( $old && AssemblyRules::HELD === $old['status'] ) {
 			throw new \InvalidArgumentException( 'L\'assemblea è già stata svolta: non si modifica più.' );
@@ -44,7 +44,7 @@ final class Assemblies {
 		if ( ! $first ) {
 			throw new \InvalidArgumentException( 'Indica data e ora della prima convocazione.' );
 		}
-		YearLock::assert_date_open( substr( $first, 0, 10 ) ); // nemmeno si sposta o si crea in un esercizio chiuso
+		YearLock::assert_date_open( substr( $first, 0, 10 ) ); // nemmeno si sposta o si crea in un anno fiscale chiuso
 		$err = AssemblyRules::check_calls( $first, (string) $second );
 		if ( $err ) {
 			throw new \InvalidArgumentException( $err ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
@@ -434,7 +434,7 @@ final class Assemblies {
 		if ( ! $a ) {
 			throw new \InvalidArgumentException( 'Assemblea non trovata.' );
 		}
-		self::lock( $a ); // il verbale di un'assemblea di un esercizio chiuso non si crea più: va riaperto l'anno
+		self::lock( $a ); // il verbale di un'assemblea di un anno fiscale chiuso non si crea più: va riaperto l'anno
 		if ( AssemblyRules::HELD !== $a['status'] ) {
 			throw new \InvalidArgumentException( 'Il verbale si crea dopo aver chiuso l\'assemblea come «Svolta».' );
 		}

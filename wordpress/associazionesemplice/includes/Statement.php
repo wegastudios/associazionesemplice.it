@@ -20,7 +20,7 @@ final class Statement {
 
 	/** @throws \InvalidArgumentException */
 	public static function save_notes( int $year, string $text ): void {
-		YearLock::assert_date_open( FiscalYears::range( $year )[0] ); // la relazione di un esercizio chiuso è nella fotografia: per cambiarla si riapre l'esercizio
+		YearLock::assert_date_open( FiscalYears::range( $year )[0] ); // la relazione di un anno fiscale chiuso è nella fotografia: per cambiarla si riapre l'anno fiscale
 		$text = trim( sanitize_textarea_field( $text ) );
 		if ( mb_strlen( $text ) > self::MAX_NOTES ) {
 			throw new \InvalidArgumentException( 'La relazione è troppo lunga (al massimo ' . self::MAX_NOTES . ' caratteri).' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html

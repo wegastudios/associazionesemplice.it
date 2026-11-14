@@ -624,7 +624,7 @@ final class PeoplePage {
 		echo wp_kses( Ui::hidden( 'id', $p['id'] ) . ( $on ? '' : Ui::hidden( 'enabled', 1 ) )
 			. '<button class="button">' . ( $on ? 'Togli dalla segreteria' : 'Aggiungi alla segreteria' ) . '</button>', Html::allowed() );
 		Ui::form_close();
-		echo '<p class="description">La segreteria accede all\'amministrazione per gestire soci, attività, incassi e spese, comunicazioni e ricevute. Non vede Impostazioni, pagamenti online, privacy (anonimizzazione), testi personalizzati e anni solari.</p></div>';
+		echo '<p class="description">La segreteria accede all\'amministrazione per gestire soci, attività, incassi e spese, comunicazioni e ricevute. Non vede Impostazioni, pagamenti online, privacy (anonimizzazione), testi personalizzati e anni fiscali.</p></div>';
 	}
 
 	/** Permesso di registrare spese dall'area riservata (per chi non usa l'amministrazione del sito). */

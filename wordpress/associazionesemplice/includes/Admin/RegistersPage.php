@@ -30,7 +30,7 @@ final class RegistersPage {
 		$filter = in_array( $filter, array( MemberBook::IN_FORCE, MemberBook::LEFT ), true ) ? $filter : '';
 		$years  = array();
 		foreach ( FiscalYears::all() as $fy ) {
-			$years[ (int) $fy['year'] ] = 'Esercizio ' . FiscalYears::label( (int) $fy['year'] );
+			$years[ (int) $fy['year'] ] = 'Anno fiscale ' . FiscalYears::label( (int) $fy['year'] );
 		}
 		$year    = Ui::get_int( 'year' );
 		$year    = isset( $years[ $year ] ) ? $year : FiscalYears::current();
@@ -40,8 +40,8 @@ final class RegistersPage {
 		$snap    = 'snapshot' === $cap['state'];
 		Ui::header( $cap['title'] );
 		$rows = MemberBook::rows( $filter, $year, $version );
-		echo '<p class="description">L\'elenco dei soci dell\'esercizio, con matricola, data di ingresso e, se c\'è stata, di cessazione (recesso, esclusione, decesso). Entra chi ha avuto una tessera valida per almeno un giorno dell\'esercizio (una tessera a cavallo di due esercizi compare in entrambi i libri). '
-			. 'Il numero di riga riparte da 1 ogni esercizio; la matricola invece resta la stessa per sempre. Gli ospiti non sono soci e non compaiono. La cessazione si registra dalla scheda del socio.</p>';
+		echo '<p class="description">L\'elenco dei soci dell\'anno fiscale, con matricola, data di ingresso e, se c\'è stata, di cessazione (recesso, esclusione, decesso). Entra chi ha avuto una tessera valida per almeno un giorno dell\'anno fiscale (una tessera a cavallo di due anni fiscali compare in entrambi i libri). '
+			. 'Il numero di riga riparte da 1 ogni anno fiscale; la matricola invece resta la stessa per sempre. Gli ospiti non sono soci e non compaiono. La cessazione si registra dalla scheda del socio.</p>';
 		echo '<p class="description"><strong>' . esc_html( $cap['note'] ) . '</strong></p>';
 		$others = array();
 		foreach ( FiscalYears::closures( $year ) as $c ) {
@@ -50,7 +50,7 @@ final class RegistersPage {
 			}
 		}
 		if ( $others ) {
-			echo wp_kses( '<p class="description">Altre fotografie di questo esercizio, conservate dopo una riapertura: ' . implode( ' · ', $others ) . '.</p>', Html::allowed() );
+			echo wp_kses( '<p class="description">Altre versioni definitive di questo anno fiscale, conservate dopo una riapertura: ' . implode( ' · ', $others ) . '.</p>', Html::allowed() );
 		}
 		$args = array( 'filter' => $filter, 'year' => $year, 'version' => (int) $version );
 		echo wp_kses( '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-book"><select name="year">'

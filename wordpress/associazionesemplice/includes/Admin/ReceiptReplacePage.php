@@ -24,9 +24,9 @@ final class ReceiptReplacePage {
 			return;
 		}
 		$label = $rec['number'] . '/' . $rec['year'];
-		echo '<div class="asem-card"><p>La ricevuta <strong>n. ' . esc_html( $label ) . '</strong> è stata annullata il <strong>' . esc_html( Ui::date( substr( (string) $rec['voided_at'], 0, 10 ) ) ) . '</strong>'
+		echo '<div class="asem-card"><p>' . sprintf( 'La ricevuta <strong>n. %1$s</strong> è stata annullata il <strong>%2$s</strong>', esc_html( $label ), esc_html( Ui::date( substr( (string) $rec['voided_at'], 0, 10 ) ) ) )
 			. ( '' !== trim( (string) $rec['void_reason'] ) ? ' (motivo: ' . esc_html( (string) $rec['void_reason'] ) . ')' : '' )
-			. ': una ricevuta annullata vale per intero, anche per le righe che non sono state annullate. Il suo numero resta suo e non torna libero; la ricevuta resta consultabile, con la scritta «ANNULLATA».</p></div>';
+			. ': una ricevuta annullata vale per intero, anche per le voci che non sono state annullate. Il suo numero resta suo e non torna libero; la ricevuta resta consultabile, con la scritta «RICEVUTA ANNULLATA».</p></div>';
 		$replacement = Receipts::replacement_of( (int) $rec['id'] );
 		if ( $replacement ) {
 			echo '<p>Esiste già la ricevuta sostitutiva <strong>n. ' . esc_html( $replacement['number'] . '/' . $replacement['year'] ) . '</strong>.</p>';
@@ -36,12 +36,12 @@ final class ReceiptReplacePage {
 		}
 		$rows = Receipts::rows( $key );
 		if ( ! $rows ) {
-			echo '<p>Non restano altre righe: non c\'è nessuna ricevuta sostitutiva da emettere.</p><p><a class="button" href="' . esc_url( $back ) . '">Torna indietro</a></p>';
+			echo '<p>Non restano voci incassate: non c\'è nessuna ricevuta sostitutiva da emettere.</p><p><a class="button" href="' . esc_url( $back ) . '">Torna indietro</a></p>';
 			Ui::footer();
 			return;
 		}
 		$payer = Receipts::payer( $rows );
-		echo '<h2>Emetti la ricevuta sostitutiva per le righe rimaste?</h2><table class="widefat striped" style="max-width:640px"><tbody>';
+		echo '<h2>Vuoi emettere la ricevuta sostitutiva per le voci rimaste?</h2><table class="widefat striped" style="max-width:640px"><tbody>';
 		$total = 0;
 		foreach ( $rows as $r ) {
 			$total += (int) $r['amount_cents'];
@@ -57,7 +57,7 @@ final class ReceiptReplacePage {
 		}
 		Ui::form_open( 'asem_receipt_replace', $back, false, 'asem-confirm' );
 		echo Ui::hidden( 'key', $key ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<p><button class="button button-primary" data-confirm="Emettere la ricevuta sostitutiva? Prende un numero nuovo e non si può togliere.">Emetti la ricevuta sostitutiva</button> <a class="button" href="' . esc_url( $back ) . '">No, per ora no</a></p>';
+		echo '<p><button class="button button-primary" data-confirm="Emettere la ricevuta sostitutiva? Prende un numero nuovo e non si può cancellare: se serve, si annulla l\'incasso e la ricevuta risulta annullata.">Emetti la ricevuta sostitutiva</button> <a class="button" href="' . esc_url( $back ) . '">Non ora</a></p>';
 		Ui::form_close();
 		Ui::footer();
 	}

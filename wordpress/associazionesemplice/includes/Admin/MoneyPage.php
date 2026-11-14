@@ -42,7 +42,7 @@ final class MoneyPage {
 			. '<tr><td>Entrate</td><td>' . Ui::money( $r['total_income'] ) . '</td></tr><tr><td>Uscite</td><td>' . Ui::money( $r['total_expense'] ) . '</td></tr>'
 			. '<tr><td><strong>Resta all\'ente</strong></td><td><strong>' . Ui::money( $r['result'] ) . '</strong></td></tr></table>', Html::allowed() );
 		echo '<p class="description">Calcolato per cassa: contano i soldi quando entrano ed escono davvero, nell\'anno sociale in corso. '
-			. ( \AssociazioneSemplice\Edition::has( 'fiscal' ) ? 'Il rendiconto dell\'anno solare (esercizio) è in Contabilità.' : 'Per vedere i movimenti di un anno solare apri la Prima nota.' ) . '</p></div></div>';
+			. ( \AssociazioneSemplice\Edition::has( 'fiscal' ) ? 'Il rendiconto dell\'anno fiscale (esercizio) è in Contabilità.' : 'Per vedere i movimenti di un anno fiscale apri la Prima nota.' ) . '</p></div></div>';
 		do_action( 'asem_yearend_alert' ); // un'estensione mostra qui le verifiche di fine anno fiscale: dopo le cifre, che sono ciò che si cerca per primo
 
 		// Ultimi movimenti

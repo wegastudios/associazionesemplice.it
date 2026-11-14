@@ -14,7 +14,7 @@ final class YearsPage {
 		add_action( 'asem_dashboard_alerts', array( __CLASS__, 'alert' ) );
 	}
 
-	/** Da settembre ricorda di aprire il nuovo anno solare: chiudibile (ricompare a inizio mese), a dicembre resta sempre visibile. */
+	/** Dal nono mese dell'anno fiscale ricorda di aprire il nuovo anno: chiudibile (ricompare a inizio mese), all'ultimo mese resta sempre visibile. */
 	public static function alert(): void {
 		if ( ! current_user_can( Plugin::CAP ) ) {
 			return;
@@ -26,7 +26,7 @@ final class YearsPage {
 		if ( $month < 9 || FiscalYears::get( $next ) ) {
 			return;
 		}
-		$msg = '<strong>Apri l\'esercizio ' . esc_html( FiscalYears::label( $next ) ) . '.</strong> Finché non esiste, non puoi registrare incassi e spese del ' . esc_html( FiscalYears::label( $next ) ) . '. '
+		$msg = '<strong>Apri l\'anno fiscale ' . esc_html( FiscalYears::label( $next ) ) . '.</strong> Finché non esiste, non puoi registrare incassi e spese del ' . esc_html( FiscalYears::label( $next ) ) . '. '
 			. '<a class="button" href="' . esc_url( Ui::url( 'asem-years' ) ) . '">Apri il ' . esc_html( FiscalYears::label( $next ) ) . '</a>';
 		if ( 12 === $month ) { // a dicembre non si può chiudere
 			echo wp_kses( '<div class="notice notice-warning inline"><p>' . $msg . '</p></div>', Html::allowed() );
@@ -41,9 +41,12 @@ final class YearsPage {
 		$latest = FiscalYears::latest();
 		$totals = Plugin::funds()->yearly()['totals'];
 		$last   = FiscalYears::last_closed();
-		Ui::header( 'Esercizi (anni contabili)' );
-		echo '<p class="description">Si può incassare, spendere e girare denaro solo negli esercizi <strong>aperti</strong>. Un esercizio chiuso non si modifica più: nemmeno allegati, saldi iniziali o cessazioni dei soci. Si chiude in ordine, dal più vecchio, e si può riaprire solo l\'ultimo esercizio chiuso, indicando il motivo (resta scritto per sempre). '
-			. 'L\'anno in corso non si chiude (e il primo giorno di ogni anno il nuovo anno si apre da solo). Un anno finito non si chiude se ha fondi accantonati non ancora rimborsati. L\'anno della tessera non dipende dagli esercizi: segue l\'anno sociale (Impostazioni).</p>';
+		Ui::header( 'Anni fiscali' );
+		echo '<p class="description">Si può incassare, spendere e girare denaro solo negli anni fiscali <strong>aperti</strong>. Un anno fiscale chiuso non si modifica più: nemmeno allegati, saldi iniziali o cessazioni dei soci. Si chiude in ordine, dal più vecchio, e si può riaprire solo l\'ultimo anno fiscale chiuso, indicando il motivo (resta scritto per sempre). '
+			. 'L\'anno in corso non si chiude (e il primo giorno di ogni anno il nuovo anno si apre da solo). Un anno finito non si chiude se ha fondi accantonati non ancora rimborsati. L\'anno della tessera non dipende dagli anni fiscali: segue l\'anno sociale (Impostazioni).</p>';
+		if ( null !== $last ) {
+			echo '<p class="description">I documenti definitivi sono emessi e bloccati alla chiusura dell\'anno fiscale: non cambiano più.</p>';
+		}
 		echo '<table class="widefat striped"><thead><tr><th>Anno</th><th>Stato</th><th>Movimenti</th><th>Fondi da rimborsare</th><th></th></tr></thead><tbody>';
 		foreach ( $years as $y ) {
 			$year     = (int) $y['year'];
@@ -51,8 +54,8 @@ final class YearsPage {
 			$unsettled = (int) ( $totals[ $year ]['unsettled'] ?? 0 );
 			$cl        = $open ? null : FiscalYears::current_closure( $year );
 			$ver       = $cl && (int) $cl['version'] > 1 ? ' <span class="description">(chiusura n. ' . (int) $cl['version'] . ')</span>' : '';
-			if ( $cl ) { // libro soci di quell'esercizio: fotografato alla chiusura, ricostruito dopo, oppure ancora no
-				$ver .= '<br><span class="description">Libro soci ' . esc_html( FiscalYears::snapshot_text( $cl ) ) . ' · <a href="' . esc_url( Ui::url( 'asem-book', array( 'year' => $year ) ) ) . '">apri</a></span>';
+			if ( $cl ) { // libro soci di quell'anno fiscale: fotografato alla chiusura, ricostruito dopo, oppure ancora no
+				$ver .= '<br><span class="description">Libro soci ' . esc_html( FiscalYears::snapshot_text( $cl ) ) . ' · <a href="' . esc_url( Ui::url( 'asem-book', array( 'year' => $year ) ) ) . '">Apri</a></span>';
 				foreach ( (array) apply_filters( 'asem_year_snapshot_lines', array(), $year, $cl ) as $line ) { // le estensioni aggiungono le loro fotografie (HTML già protetto)
 					$ver .= '<br><span class="description">' . $line . '</span>';
 				}
@@ -64,7 +67,7 @@ final class YearsPage {
 			} elseif ( $open ) {
 				Ui::form_open( 'asem_close_year', $back, false, 'asem-inline' );
 				do_action( 'asem_year_close_form', $year ); // un'estensione aggiunge una conferma
-				echo wp_kses( Ui::hidden( 'year', $year ) . '<button class="button" data-confirm="Chiudere l\'anno ' . esc_attr( FiscalYears::label( $year ) ) . '? Non accetterà più nessuna modifica. Si può riaprire solo finché è l\'ultimo esercizio chiuso, e serve il motivo.">Chiudi l\'anno</button>', Html::allowed() );
+				echo wp_kses( Ui::hidden( 'year', $year ) . '<button class="button" data-confirm="Chiudere l\'anno ' . esc_attr( FiscalYears::label( $year ) ) . '? Non accetterà più nessuna modifica. Si può riaprire solo finché è l\'ultimo anno fiscale chiuso, e serve il motivo.">Chiudi l\'anno</button>', Html::allowed() );
 				Ui::form_close();
 			} elseif ( $year === $last ) {
 				Ui::form_open( 'asem_reopen_year', $back, false, 'asem-inline' );
@@ -72,7 +75,7 @@ final class YearsPage {
 					. '<button class="button" data-confirm="Riaprire l\'anno ' . esc_attr( FiscalYears::label( $year ) ) . '? Tornerà modificabile; il motivo resta registrato per sempre e dovrai chiuderlo di nuovo.">Riapri l\'anno</button>', Html::allowed() );
 				Ui::form_close();
 			} else {
-				echo '<span class="description">Non riapribile: si riapre solo l\'ultimo esercizio chiuso (' . esc_html( FiscalYears::label( (int) $last ) ) . ').</span>';
+				echo '<span class="description">Non riapribile: si riapre solo l\'ultimo anno fiscale chiuso (' . esc_html( FiscalYears::label( (int) $last ) ) . ').</span>';
 			}
 			echo '</td></tr>';
 		}
@@ -86,11 +89,11 @@ final class YearsPage {
 				},
 				$retro
 			);
-			echo '<div class="asem-card"><h2>Fotografa gli anni già chiusi</h2>';
-			echo '<p>Questi esercizi sono stati chiusi prima che esistesse la fotografia del libro soci: <strong>' . esc_html( implode( ', ', $names ) ) . '</strong>. Si può fotografarli ora, ma i dati di allora non ci sono più: il libro viene <strong>ricostruito dai dati di oggi</strong> (chi è già stato cancellato non compare, nome e dati anagrafici sono quelli attuali). '
-				. 'Ogni libro porta la dicitura «ricostruito il gg/mm/aaaa» e l\'operazione resta scritta nello storico. Non si può annullare.</p>';
+			echo '<div class="asem-card"><h2>Emetti i documenti definitivi degli anni già chiusi</h2>';
+			echo '<p>Questi anni fiscali sono stati chiusi prima che esistessero i documenti definitivi: <strong>' . esc_html( implode( ', ', $names ) ) . '</strong>. Si possono emettere ora, ma i dati di allora non ci sono più: il libro viene <strong>ricostruito dai dati di oggi</strong> (chi è già stato cancellato non compare, nome e dati anagrafici sono quelli attuali). '
+				. 'Ogni libro porta la dicitura «emesso ora per un anno già chiuso: dati di oggi, ricostruiti il gg/mm/aaaa» e l\'operazione resta scritta nello storico. Non si può annullare.</p>';
 			Ui::form_open( 'asem_snapshot_past_years', $back, false, 'asem-inline' );
-			echo wp_kses( '<label><input type="checkbox" name="confirm_retro" value="1"> Ho capito: i dati sono ricostruiti, non ripresi alla chiusura.</label> <button class="button" data-confirm="Fotografare ora gli esercizi già chiusi con i dati di oggi? Non si può annullare.">Fotografa gli anni già chiusi</button>', Html::allowed() );
+			echo wp_kses( '<label><input type="checkbox" name="confirm_retro" value="1"> Ho capito: i dati sono ricostruiti, non ripresi alla chiusura.</label> <button class="button" data-confirm="Emettere ora i documenti definitivi degli anni fiscali già chiusi con i dati di oggi? Non si può annullare.">Emetti i documenti definitivi degli anni già chiusi</button>', Html::allowed() );
 			Ui::form_close();
 			echo '</div>';
 		}
@@ -98,7 +101,7 @@ final class YearsPage {
 		$hist = FiscalYears::closures();
 		if ( $hist ) {
 			echo '<h2>Storico delle chiusure e delle riaperture</h2><p class="description">Resta per sempre: non si cancella nemmeno con la pulizia del registro azioni.</p>';
-			echo '<table class="widefat striped"><thead><tr><th>Anno</th><th>Chiusura</th><th>Chiuso da</th><th>Riapertura</th><th>Motivo</th><th>Fotografie</th></tr></thead><tbody>';
+			echo '<table class="widefat striped"><thead><tr><th>Anno</th><th>Chiusura</th><th>Chiuso da</th><th>Riapertura</th><th>Motivo</th><th>Documenti definitivi</th></tr></thead><tbody>';
 			foreach ( $hist as $h ) {
 				$by_closed   = '' !== (string) $h['closed_by_name'] ? (string) $h['closed_by_name'] : 'non registrato (anno chiuso prima di questo storico)';
 				$by_reopened = '' !== (string) $h['reopened_by_name'] ? ' da ' . $h['reopened_by_name'] : '';
@@ -107,12 +110,12 @@ final class YearsPage {
 					$extra .= '<br>' . $line;
 				}
 				echo '<tr><td>' . esc_html( FiscalYears::label( (int) $h['year'] ) ) . ' <span class="description">(n. ' . (int) $h['version'] . ')</span></td><td>' . esc_html( mysql2date( 'd/m/Y', $h['closed_at'] ) ) . '</td><td>' . esc_html( $by_closed ) . '</td><td>'
-					. ( $h['reopened_at'] ? esc_html( mysql2date( 'd/m/Y', $h['reopened_at'] ) . $by_reopened ) : '<span class="description">ancora chiuso</span>' ) . '</td><td>' . esc_html( (string) $h['reopen_reason'] ) . '</td><td>' . esc_html( FiscalYears::snapshot_text( $h ) ) . ( 'complete' === $h['snapshot_state'] ? ' · <a href="' . esc_url( Ui::url( 'asem-book', array( 'year' => (int) $h['year'], 'version' => (int) $h['version'] ) ) ) . '">apri</a>' : '' ) . wp_kses( $extra, Html::allowed() ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- tutti i valori passano da esc_html o da wp_kses
+					. ( $h['reopened_at'] ? esc_html( mysql2date( 'd/m/Y', $h['reopened_at'] ) . $by_reopened ) : '<span class="description">ancora chiuso</span>' ) . '</td><td>' . esc_html( (string) $h['reopen_reason'] ) . '</td><td>' . esc_html( FiscalYears::snapshot_text( $h ) ) . ( 'complete' === $h['snapshot_state'] ? ' · <a href="' . esc_url( Ui::url( 'asem-book', array( 'year' => (int) $h['year'], 'version' => (int) $h['version'] ) ) ) . '">Apri</a>' : '' ) . wp_kses( $extra, Html::allowed() ) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- tutti i valori passano da esc_html o da wp_kses
 			}
 			echo '</tbody></table>';
 		}
 
-		echo '<div class="asem-card"><h2>Crea anno solare</h2>';
+		echo '<div class="asem-card"><h2>Crea anno fiscale</h2>';
 		Ui::form_open( 'asem_create_year', $back );
 		echo '<p><input type="number" name="year" min="2000" max="2100" value="' . esc_attr( (string) ( $latest ? $latest + 1 : (int) current_time( 'Y' ) ) ) . '" required> <button class="button button-primary" data-confirm="Creare questo anno? Da adesso si possono registrare incassi e spese di quell\'anno.">Crea l\'anno</button></p>'
 			. '<p class="description">Crea in anticipo l\'anno che inizia (ad esempio a novembre l\'anno dopo), se devi registrare incassi o spese in anticipo. Le quote dei soci non dipendono da qui: la tessera segue l\'anno sociale.</p>';

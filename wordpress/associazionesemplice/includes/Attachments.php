@@ -111,7 +111,7 @@ final class Attachments {
 		if ( ! $tx || $tx['voided_at'] ) {
 			throw new \InvalidArgumentException( 'Movimento non trovato o annullato.' );
 		}
-		YearLock::assert_tx_open( $tx_id ); // su un esercizio chiuso non si aggiunge nulla
+		YearLock::assert_tx_open( $tx_id ); // su un anno fiscale chiuso non si aggiunge nulla
 		$dir = self::ensure_dir();
 		$ids = array();
 		foreach ( $prepared as $f ) {
@@ -273,7 +273,7 @@ final class Attachments {
 		if ( ! $a || $a['removed_at'] ) {
 			throw new \InvalidArgumentException( 'Allegato non trovato.' );
 		}
-		YearLock::assert_tx_open( (int) $a['transaction_id'] ); // su un esercizio chiuso non si toglie nulla
+		YearLock::assert_tx_open( (int) $a['transaction_id'] ); // su un anno fiscale chiuso non si toglie nulla
 		self::db()->update( Db::t( 'attachments' ), array( 'removed_at' => Db::now(), 'removed_by' => get_current_user_id() ?: null ), array( 'id' => $id ) );
 		Audit::log( 'attachment.removed', 'transaction', (int) $a['transaction_id'], array( 'attachment' => $id ) );
 	}

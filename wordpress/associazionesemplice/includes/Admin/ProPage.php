@@ -30,7 +30,7 @@ final class ProPage {
 				array( 'receipts', 'Ricevute e attestazioni', 'Ricevute in PDF numerate (per gli eventi valgono anche da biglietto) e attestazione annuale dei versamenti per soci e donatori.' ),
 				array( 'vat', 'IVA', 'Aliquote su quote, attività e incassi, importi con IVA compresa o esclusa e IVA contenuta in ogni movimento.' ),
 				array( 'fivepm', '5 per mille', 'Messaggio con il codice fiscale, contributi ricevuti e scadenze del rendiconto sull\'utilizzo.' ),
-				array( 'fiscal', 'Anni solari e rendiconto', 'Apertura e chiusura degli anni contabili, rendiconto per cassa e prima nota per il commercialista.' ),
+				array( 'fiscal', 'Anni fiscali e rendiconto', 'Apertura e chiusura degli anni fiscali, rendiconto per cassa e prima nota per il commercialista.' ),
 				array( 'watch', 'Controllo di bilancio e fondi', 'Bilancio provvisorio sempre aggiornato al mese concluso, avvisi su spese non coperte e utile eccessivo, storico mensile, spese documentate attribuite ai fondi dei volontari e inizio dell\'anno fiscale a scelta.' ),
 			),
 		);
@@ -60,7 +60,7 @@ final class ProPage {
 			echo '</tbody></table></div>';
 		}
 		echo '<p><a class="button button-primary" href="' . esc_url( Edition::pro_url() ) . '" target="_blank" rel="noopener">Scopri Associazione Semplice Pro</a></p>';
-		echo '<p class="description">Il primo gruppo comprende pagamenti online, quote diverse, comunicazioni, app e Wallet; il secondo aggiunge la contabilità (conti e fondi, report, ricevute), l\'IVA, il 5 per mille e gli anni solari per il commercialista. Prezzi e dettagli dei piani su associazionesemplice.it.</p>';
+		echo '<p class="description">Il primo gruppo comprende pagamenti online, quote diverse, comunicazioni, app e Wallet; il secondo aggiunge la contabilità (conti e fondi, report, ricevute), l\'IVA, il 5 per mille e gli anni fiscali per il commercialista. Prezzi e dettagli dei piani su associazionesemplice.it.</p>';
 		Ui::footer();
 	}
 }

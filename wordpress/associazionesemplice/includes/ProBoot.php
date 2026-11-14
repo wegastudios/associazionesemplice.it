@@ -17,7 +17,7 @@ final class ProBoot {
 		'payments'   => 'PaymentService.php',      // pagamenti online
 		'funds'      => 'Admin/AccountsPage.php',  // conti multipli, giroconti, fondi e cassa per più persone
 		'reports'    => 'Admin/ReportsPage.php',   // report di gestione (saldi, attività)
-		'fiscal'     => 'Statement.php',           // contabilità e rendiconto per il commercialista (gli anni solari sono nel gratuito)
+		'fiscal'     => 'Statement.php',           // contabilità e rendiconto per il commercialista (gli anni fiscali sono nel gratuito)
 		'watch'      => 'BalanceWatch.php',        // Pro Fiscale: controllo di bilancio, avvisi, istantanee mensili, spese attribuite ai fondi, inizio dell'anno fiscale
 		'fivepm'     => 'FivePerMille.php',        // 5 per mille
 		'insurance'  => 'Insurance.php',           // assicurazioni e presenze
@@ -106,7 +106,7 @@ final class ProBoot {
 		ProWatch::register(); // controllo di bilancio, spese attribuite ai fondi e inizio dell'anno fiscale (Pro Fiscale)
 		ProBlockE::register(); // SMS, newsletter, Satispay e Klarna
 		DocsPro::register();
-		StatementSnapshot::register(); // rendiconto fotografato alla chiusura di un esercizio e PDF emesso
+		StatementSnapshot::register(); // rendiconto fotografato alla chiusura di un anno fiscale e PDF emesso
 		add_action( // l'annullo di un incasso annulla subito la ricevuta emessa (Receipts::register() parte solo sulle richieste di scarico, non su quelle di annullo)
 			'asem_tx_voided',
 			function ( $tx_id, $reason = '' ) {

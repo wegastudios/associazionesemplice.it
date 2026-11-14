@@ -65,7 +65,7 @@ final class MembershipRules {
 	 */
 	public static function month_change_conflicts( array $live_slash_cards, int $new_month, string $today ): bool {
 		if ( 1 === $new_month ) {
-			return false; // l'anno solare ha l'etichetta senza barra: non si confonde con nessun'altra
+			return false; // l'anno fiscale ha l'etichetta senza barra: non si confonde con nessun'altra
 		}
 		foreach ( $live_slash_cards as $c ) {
 			if ( (string) $c['valid_to'] >= $today && (int) substr( (string) $c['valid_from'], 5, 2 ) !== $new_month ) {

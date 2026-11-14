@@ -74,7 +74,7 @@ final class RuntsPage {
 		$man  = Runts::manual();
 		Ui::header( 'Dati per il RUNTS' );
 		echo '<p class="description"><strong>' . esc_html( self::CAUTION ) . '</strong></p>';
-		echo '<p class="description">Numeri da copiare nel portale del RUNTS. Valgono al <strong>31 dicembre</strong>, anche se il tuo esercizio inizia in un altro mese. Contiamo come soci chi quel giorno aveva la tessera valida (e i fondatori già ammessi), esclusi quelli già usciti dall\'associazione. È lo stesso criterio del libro soci.</p>';
+		echo '<p class="description">Numeri da copiare nel portale del RUNTS. Valgono al <strong>31 dicembre</strong>, anche se il tuo anno fiscale inizia in un altro mese. Contiamo come soci chi quel giorno aveva la tessera valida (e i fondatori già ammessi), esclusi quelli già usciti dall\'associazione. È lo stesso criterio del libro soci.</p>';
 		echo wp_kses( '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-runts"><select name="year">' . Ui::options( $years, $year ) . '</select> <button class="button">Mostra</button></form>', Html::allowed() );
 
 		echo '<h2>Al ' . esc_html( self::dmy( $date ) ) . '</h2>';

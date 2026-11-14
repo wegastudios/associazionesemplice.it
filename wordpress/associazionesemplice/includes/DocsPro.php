@@ -109,13 +109,13 @@ final class DocsPro {
 			throw new \InvalidArgumentException( 'Anno non valido.' );
 		}
 		$row = StatementSnapshot::row_for( $year, $version );
-		if ( $row ) { // esercizio chiuso e fotografato: il PDF è quello emesso alla chiusura, con il suo numero e la sua data
+		if ( $row ) { // anno fiscale chiuso e fotografato: il PDF è quello emesso alla chiusura, con il suo numero e la sua data
 			return StatementSnapshot::document( $row );
 		}
 		if ( null !== $version ) {
-			throw new \InvalidArgumentException( 'Di questa chiusura non c\'è un rendiconto fotografato.' );
+			throw new \InvalidArgumentException( 'Di questa chiusura non c\'è un rendiconto definitivo.' );
 		}
-		$span = FiscalYears::range( $year ); // esercizio aperto (o chiuso prima della fotografia): PDF dal vivo, non emesso
+		$span = FiscalYears::range( $year ); // anno fiscale aperto (o chiuso prima della fotografia): PDF dal vivo, non emesso
 		$prev = FiscalYears::range( $year - 1 );
 		return self::live_statement_pdf( $year, $span, $prev );
 	}
@@ -154,10 +154,10 @@ final class DocsPro {
 		$y           = Docs::head( $pdf, 'RENDICONTO PER CASSA (MOD. D) — ANNO ' . $label, 'Entrate e uscite ' . $range . ', con il confronto con l\'anno ' . $prev_label, (array) $meta['entity'] );
 		$em          = $meta['emission'];
 		if ( is_array( $em ) ) { // documento emesso alla chiusura: numero, data, versione e, se ricostruito, la dicitura
-			$pdf->text( Docs::LEFT, $y - 5, 'Documento emesso ' . StatementSnapshot::number_text( (int) $em['number'], (int) $em['year'] ) . ' il ' . StatementSnapshot::dmy( (string) $em['issued_at'] ) . ' · chiusura n. ' . (int) $em['version'] . ' dell\'esercizio', 9, true );
+			$pdf->text( Docs::LEFT, $y - 5, 'Documento emesso ' . StatementSnapshot::number_text( (int) $em['number'], (int) $em['year'] ) . ' il ' . StatementSnapshot::dmy( (string) $em['issued_at'] ) . ' · chiusura n. ' . (int) $em['version'] . ' dell\'anno fiscale', 9, true );
 			$y += 12;
 			if ( ! empty( $em['retroactive'] ) ) {
-				$pdf->text( Docs::LEFT, $y - 5, 'Ricostruito il ' . StatementSnapshot::dmy( (string) $em['issued_at'] ) . ' dai dati di allora ancora presenti: non è stato ripreso al giorno della chiusura.', 8 );
+				$pdf->text( Docs::LEFT, $y - 5, 'Emesso ora per un anno già chiuso: dati di oggi, ricostruiti il ' . StatementSnapshot::dmy( (string) $em['issued_at'] ) . '.', 8 );
 				$y += 12;
 			}
 			$y += 4;

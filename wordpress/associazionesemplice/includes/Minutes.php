@@ -75,13 +75,13 @@ final class Minutes {
 			if ( ! $old ) {
 				throw new \InvalidArgumentException( 'Verbale non trovato.' );
 			}
-			YearLock::assert_date_open( (string) $old['meeting_date'] ); // un verbale di un esercizio chiuso è immutabile: testo, data e firmatari
-			YearLock::assert_date_open( $d['meeting_date'] ); // e non si sposta dentro un esercizio chiuso
+			YearLock::assert_date_open( (string) $old['meeting_date'] ); // un verbale di un anno fiscale chiuso è immutabile: testo, data e firmatari
+			YearLock::assert_date_open( $d['meeting_date'] ); // e non si sposta dentro un anno fiscale chiuso
 			self::db()->update( Db::t( 'minutes' ), $d + array( 'updated_at' => Db::now() ), array( 'id' => $id ) ); // il numero non cambia mai, nemmeno se la data passa a un altro anno
 			Audit::log( 'minutes.updated', 'minutes', $id, array( 'kind' => $d['kind'] ) );
 			return $id;
 		}
-		YearLock::assert_date_open( $d['meeting_date'] ); // nemmeno si crea un verbale dentro un esercizio chiuso
+		YearLock::assert_date_open( $d['meeting_date'] ); // nemmeno si crea un verbale dentro un anno fiscale chiuso
 		$ok = Db::with_lock(
 			'asem_minutes_number',
 			function () use ( $d, $user_id ) {

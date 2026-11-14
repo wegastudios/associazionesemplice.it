@@ -33,7 +33,7 @@ final class Settings {
 			'association_name'        => '',
 			'tax_code'                => '',
 			'social_year_start_month' => 1,     // l'anno sociale (tessere e attività) inizia a gennaio; si sceglie in modo indipendente dall'anno fiscale
-			'fiscal_start_month'      => 1,     // l'anno fiscale (bilancio e rendiconto) inizia a gennaio, cioè come l'anno solare; vale per tutte le edizioni; si sceglie in modo indipendente dall'anno sociale
+			'fiscal_start_month'      => 1,     // l'anno fiscale (bilancio e rendiconto) inizia a gennaio, cioè come l'anno fiscale; vale per tutte le edizioni; si sceglie in modo indipendente dall'anno sociale
 			'membership_fee_cents'    => 1000,  // quota associativa proposta negli incassi
 			'founder_years'           => 99,    // durata della tessera del socio fondatore
 			'guest_max_events'        => 2,     // quante volte un non socio può partecipare (eventi e corsi) prima di doversi iscrivere; 0 = nessun limite
@@ -174,12 +174,12 @@ final class Settings {
 		if ( $clean['social_year_start_month'] !== max( 1, min( 12, (int) ( $before['social_year_start_month'] ?? 1 ) ) ) ) { // la tessera segue l'anno sociale: le tessere già emesse non si toccano, ma due non devono avere la stessa etichetta
 				$cards = Db::db()->get_results( 'SELECT valid_from, valid_to FROM ' . Db::t( 'memberships' ) . " WHERE deleted_at IS NULL AND social_year LIKE '%/%'", ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery -- nomi tabella interni, nessun valore dall'esterno
 				if ( MembershipRules::month_change_conflicts( $cards, (int) $clean['social_year_start_month'], Db::today() ) ) {
-					throw new \InvalidArgumentException( 'Ci sono tessere ancora valide che iniziano in un altro mese: cambiare ora il mese dell\'anno sociale le confonderebbe con quelle nuove. Aspetta che scadano, oppure scegli gennaio.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+					throw new \InvalidArgumentException( 'Per ora il mese non si può cambiare: ci sono tessere ancora valide che iniziano in un altro mese e avrebbero lo stesso nome di quelle nuove. Potrai cambiarlo quando saranno scadute. Passare a gennaio è sempre possibile perché con gennaio la tessera si chiama solo con l\'anno (per esempio «2026»), un nome che non si confonde con le altre.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
 			}
 			$old_fiscal                       = max( 1, min( 12, (int) ( $before['fiscal_start_month'] ?? 1 ) ) );
 		$clean['fiscal_start_month']      = max( 1, min( 12, (int) $clean['fiscal_start_month'] ) );
-		if ( $clean['fiscal_start_month'] !== $old_fiscal && FiscalYears::start_month_locked() ) { // con esercizi chiusi il mese non si cambia più
+		if ( $clean['fiscal_start_month'] !== $old_fiscal && FiscalYears::start_month_locked() ) { // con anni fiscali chiusi il mese non si cambia più
 			throw new \InvalidArgumentException( FiscalYears::start_month_locked_message() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$clean['membership_fee_cents']    = max( 0, (int) $clean['membership_fee_cents'] );

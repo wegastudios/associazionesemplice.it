@@ -82,7 +82,7 @@ final class ImportService {
 			}
 			$closed = YearLock::closed_year_of( (string) $p['row']['since'] );
 			if ( null !== $closed ) {
-				$plan[ $i ] = array( 'row' => $p['row'], 'type' => null, 'action' => 'error', 'message' => 'L\'ingresso cade in un esercizio già chiuso (' . $closed . '): riapri l\'esercizio oppure togli la data di ingresso', 'matched_id' => null );
+				$plan[ $i ] = array( 'row' => $p['row'], 'type' => null, 'action' => 'error', 'message' => FiscalYears::closed_message( (int) $closed ) . ' Oppure togli la data di ingresso.', 'matched_id' => null );
 			}
 		}
 		return $plan;
@@ -142,7 +142,7 @@ final class ImportService {
 	public static function apply( array $preview, array $opts = array() ): array {
 		if ( ! empty( $preview['ledger'] ) && ! empty( $opts['keep_balances'] ) && null !== FiscalYears::last_closed() ) {
 			// Aggiustare il saldo iniziale cambierebbe i saldi degli esercizi chiusi: si ferma prima di scrivere qualunque cosa.
-			throw new \InvalidArgumentException( FiscalYears::closed_message( (int) FiscalYears::last_closed() ) . ' «Non cambiare i saldi attuali dei conti» aggiusta il saldo iniziale e non si può usare con esercizi chiusi: togli la spunta (i saldi derivano dai movimenti) oppure riapri l\'esercizio.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( FiscalYears::closed_message( (int) FiscalYears::last_closed() ) . ' «Non cambiare i saldi attuali dei conti» aggiusta il saldo iniziale e non si può usare con anni fiscali chiusi: togli la spunta (i saldi derivano dai movimenti) oppure riapri l\'anno fiscale.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$res   = array( 'people' => null, 'ledger' => null, 'batch_id' => null );
 		$track = array( 'people_created' => array(), 'people_updated' => array(), 'wp_users_created' => array(), 'memberships' => array(), 'shifts' => array(), 'accounts_created' => array() );
@@ -387,7 +387,7 @@ final class ImportService {
 					}
 					return $new[ $acc['ref'] ];
 				};
-				foreach ( $plan as $p ) { // importando gli anni precedenti, gli anni solari che mancano si creano (aperti); uno chiuso resta chiuso e blocca l'import
+				foreach ( $plan as $p ) { // importando gli anni precedenti, gli anni fiscali che mancano si creano (aperti); uno chiuso resta chiuso e blocca l'import
 					$when = (string) ( $p['data']['date'] ?? '' );
 					if ( preg_match( '/^(\d{4})-\d{2}-\d{2}$/', $when, $ym ) && (int) $ym[1] >= 2000 && (int) $ym[1] <= 2100 ) {
 						FiscalYears::ensure( FiscalYears::year_of( $when ) );

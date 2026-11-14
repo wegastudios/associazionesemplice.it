@@ -80,6 +80,9 @@ final class WizardPage {
 		$jm   = (string) $s['join_mode'];
 		self::step( 'Il tuo ente', 'Poche righe per cominciare' . (string) apply_filters( 'asem_wizard_entity_intro', '.' ), '', 'ente' );
 		echo '<table class="form-table"><tbody>';
+		echo wp_kses( '<tr><th>Da che mese inizia il tuo anno sociale (tessere e attività)?</th><td><select name="social_year_start_month">' . Ui::options( Ui::MONTHS, (int) $s['social_year_start_month'] ) . '</select><p class="description">È l\'anno delle attività (corsi ed eventi, per esempio una stagione da settembre ad agosto) e anche della tessera: la tessera inizia lo stesso mese e dura un anno. Con gennaio la tessera vale da gennaio a dicembre. Le tessere già emesse non cambiano: il nuovo mese vale per le tessere nuove. Non dipende dall\'anno fiscale: possono iniziare in mesi diversi.</p></td></tr>', Html::allowed() );
+		echo wp_kses( '<tr><th>Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?</th><td>' . EntityPage::fiscal_month_field( $s ) . '<p class="description">È l\'anno dei conti: prima nota, rendiconto e preventivo. Di solito inizia a gennaio, ma puoi scegliere un altro mese, anche diverso dall\'anno sociale. Sceglilo prima di chiudere il primo anno: dopo la prima chiusura non si può più cambiare. I Dati per il RUNTS restano al 31 dicembre in ogni caso.</p></td></tr>', Html::allowed() );
+		echo '<tr><th>Conferma</th><td><input type="hidden" name="months_present" value="1"><label><input type="checkbox" name="months_confirmed" value="1" required> Ho controllato i due mesi: sono quelli del mio ente.</label><p class="description">Vanno scelti per primi perché da questi mesi dipendono le tessere e i conti. Sono precompilati con gennaio: se va bene, basta la spunta.</p></td></tr>';
 		echo '<tr><th>Come si chiama</th><td><input type="text" name="association_name" value="' . esc_attr( (string) $s['association_name'] ) . '" class="regular-text"></td></tr>';
 		do_action( 'asem_wizard_entity_rows', $s ); // le estensioni aggiungono qui le loro domande
 		echo '</tbody></table>';
@@ -87,10 +90,8 @@ final class WizardPage {
 		echo '<p class="asem-wiz-q"><strong>Chi può iscriversi</strong><br>'
 			. '<label><input type="radio" name="join_mode" value="request"' . checked( 'invite' !== $jm, true, false ) . '> Chiunque può chiedere di iscriversi</label> <span class="description">(la richiesta arriva alla segreteria, che approva; si apre la domanda online nella pagina «Diventa socio»)</span><br>'
 			. '<label><input type="radio" name="join_mode" value="invite"' . checked( 'invite' === $jm, true, false ) . '> Solo su presentazione</label> <span class="description">(le iscrizioni le fa la segreteria)</span></p>';
-		echo '<details class="asem-wiz-more"><summary>Più dettagli: codice fiscale, anno sociale e anno fiscale, sede</summary><table class="form-table"><tbody>';
+		echo '<details class="asem-wiz-more"><summary>Più dettagli: codice fiscale e sede</summary><table class="form-table"><tbody>';
 		echo '<tr><th>Codice fiscale dell\'ente</th><td><input type="text" name="tax_code" value="' . esc_attr( (string) $s['tax_code'] ) . '" class="regular-text"></td></tr>';
-		echo wp_kses( '<tr><th>Da che mese inizia il tuo anno sociale (tessere e attività)?</th><td><select name="social_year_start_month">' . Ui::options( Ui::MONTHS, (int) $s['social_year_start_month'] ) . '</select><p class="description">È l\'anno delle attività (corsi ed eventi, per esempio una stagione da settembre ad agosto) e anche della tessera: la tessera inizia lo stesso mese e dura un anno. Con gennaio è l\'anno solare. Non dipende dall\'anno fiscale: possono iniziare in mesi diversi.</p></td></tr>', Html::allowed() );
-		echo wp_kses( '<tr><th>Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?</th><td>' . EntityPage::fiscal_month_field( $s ) . '<p class="description">È l\'esercizio della contabilità: di solito gennaio, come l\'anno solare. Può essere diverso dall\'anno sociale. I dati per il RUNTS restano riferiti al 31 dicembre in ogni caso.</p></td></tr>', Html::allowed() );
 		do_action( 'asem_wizard_more_rows', $s ); // le estensioni aggiungono qui le loro domande secondarie (ad esempio l'inizio dell'anno fiscale)
 		echo '<tr><th>Sede</th><td><input type="text" name="legal_address" value="' . esc_attr( (string) $s['legal_address'] ) . '" class="regular-text" placeholder="Indirizzo"> <input type="text" name="legal_zip" value="' . esc_attr( (string) $s['legal_zip'] ) . '" size="6" placeholder="CAP"> <input type="text" name="legal_city" value="' . esc_attr( (string) $s['legal_city'] ) . '" placeholder="Comune"> <input type="text" name="legal_province" value="' . esc_attr( (string) $s['legal_province'] ) . '" size="4" placeholder="Prov."></td></tr>';
 		echo '</tbody></table></details>';
@@ -201,7 +202,7 @@ final class WizardPage {
 			. 'f.querySelector(".asem-wiz-count").textContent="";'
 			. 'f.querySelector("[data-wiz=back]").style.display=n>0?"":"none";f.querySelector("[data-wiz=next]").style.display=n<v.length-1?"":"none";f.querySelector("[data-wiz=finish]").style.display=n===v.length-1?"":"none";}'
 			. 'f.addEventListener("change",show);'
-			. 'f.querySelector("[data-wiz=next]").addEventListener("click",function(){var v=vis(),n=v.indexOf(steps[cur]);cur=steps.indexOf(v[Math.min(n+1,v.length-1)]);show();window.scrollTo(0,0);});'
+			. 'f.querySelector("[data-wiz=next]").addEventListener("click",function(){var r=[].slice.call(steps[cur].querySelectorAll("input[required],select[required]"));for(var q=0;q<r.length;q++){if(!r[q].disabled&&!r[q].checkValidity()){r[q].reportValidity();return;}}var v=vis(),n=v.indexOf(steps[cur]);cur=steps.indexOf(v[Math.min(n+1,v.length-1)]);show();window.scrollTo(0,0);});'
 			. 'f.querySelector("[data-wiz=back]").addEventListener("click",function(){var v=vis(),n=v.indexOf(steps[cur]);cur=steps.indexOf(v[Math.max(n-1,0)]);show();window.scrollTo(0,0);});'
 			. 'show();})();' );
 	}

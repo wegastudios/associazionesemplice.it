@@ -53,7 +53,7 @@ final class StatementSnapshot {
 		$db = self::db();
 		$cl = $db->get_row( $db->prepare( 'SELECT * FROM ' . Db::t( 'fiscal_year_closures' ) . ' WHERE id = %d', $closure_id ), ARRAY_A );
 		if ( ! $cl || (int) $cl['year'] !== $year ) {
-			throw new \InvalidArgumentException( 'Chiusura non trovata: il rendiconto non si può fotografare.' );
+			throw new \InvalidArgumentException( 'Chiusura non trovata: il rendiconto non si può emettere.' );
 		}
 		if ( null !== self::row_for_closure( $closure_id ) ) {
 			return 0; // già fotografato (non si rifà mai: una fotografia emessa non si sostituisce)
@@ -100,7 +100,7 @@ final class StatementSnapshot {
 			)
 		);
 		if ( false === $ok ) {
-			throw new \InvalidArgumentException( 'La fotografia del rendiconto non è riuscita (errore del database): la chiusura non è avvenuta.' );
+			throw new \InvalidArgumentException( $retroactive ? 'Il rendiconto definitivo non è stato emesso (errore del database): non è stato salvato nulla. Riprova; se succede ancora scrivi all\'assistenza.' : 'Il rendiconto definitivo non è stato emesso (errore del database): la chiusura non è avvenuta. Riprova; se succede ancora scrivi all\'assistenza.' );
 		}
 		return (int) $db->insert_id;
 	}
@@ -153,7 +153,7 @@ final class StatementSnapshot {
 			'number_text' => self::number_text( (int) $row['number'], (int) $row['year'] ),
 			'issued_at'   => (string) $row['issued_at'],
 			'retroactive' => $retro,
-			'text'        => ( $retro ? 'ricostruito il ' : 'fotografato il ' ) . $when,
+			'text'        => ( $retro ? 'emesso ora per un anno già chiuso: dati di oggi, ricostruiti il ' : 'emesso il ' ) . $when,
 			'label'       => (string) ( $payload['label'] ?? $row['year'] ),
 			'prev_label'  => (string) ( $payload['prev_label'] ?? ( (int) $row['year'] - 1 ) ),
 			'from'        => (string) ( $payload['from'] ?? '' ),
@@ -183,7 +183,7 @@ final class StatementSnapshot {
 	public static function document( array $row ): array {
 		$bin = base64_decode( (string) $row['pdf_b64'], true ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode -- rilegge il PDF salvato come testo
 		if ( false === $bin || ! hash_equals( (string) $row['pdf_sha256'], hash( 'sha256', $bin ) ) ) {
-			throw new \InvalidArgumentException( 'Il PDF emesso non risulta integro (l\'impronta non corrisponde): non lo scarico.' );
+			throw new \InvalidArgumentException( 'Il PDF emesso risulta cambiato dopo l\'emissione: per sicurezza non si può scaricare. Scrivi all\'assistenza.' );
 		}
 		return array( 'body' => $bin, 'filename' => 'rendiconto-' . (int) $row['year'] . '-n' . (int) $row['number'] . '.pdf', 'mime' => 'application/pdf' );
 	}
@@ -206,11 +206,11 @@ final class StatementSnapshot {
 		$row     = self::row_for_closure( (int) ( $closure['id'] ?? 0 ) );
 		if ( $row ) {
 			$ver     = (int) $closure['version'];
-			$lines[] = 'Rendiconto ' . esc_html( ( ! empty( $row['retroactive'] ) ? 'ricostruito il ' : 'fotografato il ' ) . self::dmy( (string) $row['issued_at'] ) . ' · ' . self::number_text( (int) $row['number'], (int) $row['year'] ) )
+			$lines[] = 'Rendiconto definitivo ' . esc_html( ( ! empty( $row['retroactive'] ) ? 'emesso ora per un anno già chiuso: dati di oggi, ricostruiti il ' : 'emesso il ' ) . self::dmy( (string) $row['issued_at'] ) . ' · ' . self::number_text( (int) $row['number'], (int) $row['year'] ) )
 				. ' · <a target="_blank" rel="noopener" href="' . esc_url( Docs::url( 'statement', array( 'year' => $year, 'version' => $ver ) ) ) . '">PDF emesso</a>'
-				. ' · <a href="' . esc_url( Admin\Ui::url( 'asem-statement', array( 'year' => $year, 'version' => $ver ) ) ) . '">apri</a>';
+				. ' · <a href="' . esc_url( Admin\Ui::url( 'asem-statement', array( 'year' => $year, 'version' => $ver ) ) ) . '">Apri</a>';
 		} elseif ( 'current' === ( $closure['status'] ?? '' ) ) {
-			$lines[] = 'Rendiconto non fotografato (si legge dal vivo)';
+			$lines[] = 'Rendiconto in bozza: i numeri sono quelli di oggi e possono cambiare';
 		}
 		return $lines;
 	}
@@ -255,11 +255,11 @@ final class StatementSnapshot {
 			},
 			$missing
 		);
-		echo '<div class="asem-card"><h2>Fotografa il rendiconto degli anni già chiusi</h2>';
-		echo '<p>Il rendiconto di questi esercizi chiusi non è ancora fotografato e si legge dal vivo: <strong>' . esc_html( implode( ', ', $names ) ) . '</strong>. Fotografarlo ora lo <strong>ricostruisce dai dati di oggi</strong> (le cifre dei movimenti sono quelle registrate, ma le voci per area sono quelle attuali) e ne emette il PDF con numero e data. '
-			. 'Porta la dicitura «ricostruito il gg/mm/aaaa» e l\'operazione resta scritta nello storico. Non si può annullare.</p>';
+		echo '<div class="asem-card"><h2>Emetti il rendiconto definitivo degli anni già chiusi</h2>';
+		echo '<p>Il rendiconto di questi anni fiscali chiusi non è ancora definitivo: i numeri che si vedono sono quelli di oggi e possono cambiare. Anni: <strong>' . esc_html( implode( ', ', $names ) ) . '</strong>. Emetterlo ora lo <strong>ricostruisce dai dati di oggi</strong> (le cifre dei movimenti sono quelle registrate, ma le voci per area sono quelle attuali) e ne emette il PDF con numero e data. '
+			. 'Porta la dicitura «emesso ora per un anno già chiuso: dati di oggi, ricostruiti il gg/mm/aaaa» e l\'operazione resta scritta nello storico. Non si può annullare.</p>';
 		Admin\Ui::form_open( 'asem_statement_backfill', Admin\Ui::url( 'asem-years' ), false, 'asem-inline' );
-		echo wp_kses( '<label><input type="checkbox" name="confirm_retro" value="1"> Ho capito: i dati sono ricostruiti, non ripresi alla chiusura.</label> <button class="button" data-confirm="Fotografare ora il rendiconto degli esercizi già chiusi con i dati di oggi? Non si può annullare.">Fotografa il rendiconto</button>', Html::allowed() );
+		echo wp_kses( '<label><input type="checkbox" name="confirm_retro" value="1"> Ho capito: i dati sono ricostruiti, non ripresi alla chiusura.</label> <button class="button" data-confirm="Emettere ora il rendiconto definitivo degli anni fiscali già chiusi con i dati di oggi? Non si può annullare.">Emetti il rendiconto definitivo</button>', Html::allowed() );
 		Admin\Ui::form_close();
 		echo '</div>';
 	}
