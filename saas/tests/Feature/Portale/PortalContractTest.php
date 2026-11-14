@@ -107,7 +107,7 @@ it('sospende e riapre l\'associazione secondo lo stato dell\'abbonamento', funct
 
     $put(2, 'active')->assertOk();
     $this->get('/gestionale')->assertRedirect('/gestionale/configurazione'); // associazione nuova: la configurazione guidata
-    $this->get('/gestionale')->assertOk();
+    $this->get('/gestionale')->assertRedirect('/gestionale/configurazione'); // finché anno sociale e anno fiscale non sono scelti si torna lì
 
     $put(3, 'cancelled')->assertOk();
     expect(Org::query()->findOrFail($orgId)->status)->toBe('closed');
