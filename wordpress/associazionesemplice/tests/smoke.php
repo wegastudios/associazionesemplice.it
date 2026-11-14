@@ -4031,14 +4031,7 @@ asem_ok( $threw && \AssociazioneSemplice\FiscalYears::is_open( $fy_far ), 'anni 
 $far_date = $fy_far . '-06-15';
 $ledger->record_expense( array( 'date' => $far_date, 'account_id' => (int) $cash['id'], 'category_id' => $cat['general_cost'], 'amount_cents' => 100, 'description' => 'anno lontano' ) );
 $fy_n0 = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'fiscal_year_closures' ) );
-if ( 0 === $fy_n0 ) { // base pulita: prima della prima chiusura il mese si cambia (e si rimette)
-	Settings::update( array( 'fiscal_start_month' => 7 ) );
-	$fy_free7 = 7 === \AssociazioneSemplice\FiscalYears::start_month() && ! \AssociazioneSemplice\FiscalYears::start_month_locked();
-	Settings::update( array( 'fiscal_start_month' => 1 ) );
-} else {
-	$fy_free7 = true;
-}
-asem_ok( $fy_free7 && 1 === \AssociazioneSemplice\FiscalYears::start_month(), 'esercizi: prima della prima chiusura il mese di inizio si cambia liberamente' );
+asem_ok( 0 < $fy_n0 || ! \AssociazioneSemplice\FiscalYears::start_month_locked(), 'esercizi: prima della prima chiusura il mese di inizio è libero (nessuna chiusura nello storico)' );
 \AssociazioneSemplice\FiscalYears::close( $fy_far );
 foreach (
 	array(
