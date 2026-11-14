@@ -4547,10 +4547,10 @@ asem_ok( $rs_ss::backfill() >= 1 && null !== $rs_ss::row_for( $rs_y1 ) && 1 === 
 // schermate
 $rs_yp = asem_render( array( Admin\YearsPage::class, 'render' ), 'PDF emesso' );
 asem_ok( false !== strpos( $rs_yp, 'Rendiconto definitivo emesso il ' ) && false !== strpos( $rs_yp, 'Rendiconto definitivo emesso ora per un anno già chiuso: dati di oggi, ricostruiti il ' ) && false !== strpos( $rs_yp, 'n. 2/' . $rs_y ) && false !== strpos( $rs_yp, 'n. 1/' . $rs_y ) && false !== strpos( $rs_yp, '>Documenti definitivi<' ), 'esercizi: ogni chiusura mostra il rendiconto fotografato o ricostruito, il numero e il PDF emesso, versioni comprese' );
-$rs_sp = asem_render( array( Admin\ProRegisters::class, 'render_statement' ), 'Fotografia presa alla chiusura', array( 'year' => (string) $rs_y ) );
+$rs_sp = asem_render( array( Admin\ProRegisters::class, 'render_statement' ), 'Emesso e bloccato alla chiusura', array( 'year' => (string) $rs_y ) );
 asem_ok( false !== strpos( $rs_sp, 'n. 2/' . $rs_y ) && false !== strpos( $rs_sp, 'chiusura n. 1' ) && false === strpos( $rs_sp, 'name="notes"' ) && false !== strpos( $rs_sp, 'version=2' ), 'rendiconto: un anno chiuso mostra la fotografia, rimanda alle altre versioni e non ha il modulo della relazione' );
 asem_render( array( Admin\ProRegisters::class, 'render_statement' ), 'poi riaperta', array( 'year' => (string) $rs_y, 'version' => '1' ) );
-asem_render( array( Admin\ProRegisters::class, 'render_statement' ), 'Ricostruito dai dati di allora', array( 'year' => (string) $rs_y1 ) );
+asem_render( array( Admin\ProRegisters::class, 'render_statement' ), 'Emesso ora per un anno già chiuso', array( 'year' => (string) $rs_y1 ) );
 asem_ok( false !== strpos( \AssociazioneSemplice\Docs::url( 'statement', array( 'year' => $rs_y, 'version' => 1 ) ), 'version=1' ), 'rendiconto: l\'indirizzo del PDF porta la versione' );
 
 // pulizia: anni, chiusure, fotografie, movimenti, fondo e persona di prova
@@ -5887,7 +5887,7 @@ $set_sm( $sm_was );
 ob_start();
 Admin\EntityPage::render();
 $sy_html = (string) ob_get_clean();
-asem_ok( false !== strpos( $sy_html, 'Da che mese inizia il tuo anno sociale (tessere e attività)?' ) && false !== strpos( $sy_html, 'Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?' ) && false !== strpos( $sy_html, 'riferiti al 31 dicembre in ogni caso' ), 'dati dell\'ente: le domande su anno sociale e anno fiscale sono due, separate' );
+asem_ok( false !== strpos( $sy_html, 'Da che mese inizia il tuo anno sociale (tessere e attività)?' ) && false !== strpos( $sy_html, 'Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?' ) && false !== strpos( $sy_html, 'restano al 31 dicembre in ogni caso' ), 'dati dell\'ente: le domande su anno sociale e anno fiscale sono due, separate' );
 ob_start();
 Admin\WizardPage::render();
 $sy_html = (string) ob_get_clean();
