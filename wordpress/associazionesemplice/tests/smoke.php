@@ -48,6 +48,14 @@ function asem_ok( $cond, string $msg ): void {
 	WP_CLI::log( 'ok - ' . $msg );
 }
 
+/** Prova: porta il mese dell'anno fiscale dove serve senza passare dal blocco «dopo la prima chiusura» (lo storico delle chiusure resta). */
+function asem_set_fiscal_month( int $m ): void {
+	$s                       = (array) get_option( Settings::OPTION, array() );
+	$s['fiscal_start_month'] = max( 1, min( 12, $m ) );
+	update_option( Settings::OPTION, $s );
+	\AssociazioneSemplice\FiscalYears::seed();
+}
+
 function asem_throws( callable $f ): ?string {
 	try {
 		$f();
@@ -4022,6 +4030,15 @@ try {
 asem_ok( $threw && \AssociazioneSemplice\FiscalYears::is_open( $fy_far ), 'anni solari: si crea aperto e non si crea due volte' );
 $far_date = $fy_far . '-06-15';
 $ledger->record_expense( array( 'date' => $far_date, 'account_id' => (int) $cash['id'], 'category_id' => $cat['general_cost'], 'amount_cents' => 100, 'description' => 'anno lontano' ) );
+$fy_n0 = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'fiscal_year_closures' ) );
+if ( 0 === $fy_n0 ) { // base pulita: prima della prima chiusura il mese si cambia (e si rimette)
+	Settings::update( array( 'fiscal_start_month' => 7 ) );
+	$fy_free7 = 7 === \AssociazioneSemplice\FiscalYears::start_month() && ! \AssociazioneSemplice\FiscalYears::start_month_locked();
+	Settings::update( array( 'fiscal_start_month' => 1 ) );
+} else {
+	$fy_free7 = true;
+}
+asem_ok( $fy_free7 && 1 === \AssociazioneSemplice\FiscalYears::start_month(), 'esercizi: prima della prima chiusura il mese di inizio si cambia liberamente' );
 \AssociazioneSemplice\FiscalYears::close( $fy_far );
 foreach (
 	array(
@@ -4146,7 +4163,7 @@ asem_ok( 700 === (int) $ledger->account_any( $yl_acc )['opening_cents'], 'anno a
 asem_ok( null === $people->get( $yl_p )['left_on'], 'anno aperto: la cessazione si mette e si toglie' );
 \AssociazioneSemplice\Assemblies::save( $yl_asm, array( 'title' => 'Assemblea anno aperto', 'first_call_at' => $yl_date . 'T10:00', 'agenda' => 'Varie' ), 1 );
 asem_ok( 'Assemblea anno aperto' === \AssociazioneSemplice\Assemblies::get( $yl_asm )['title'], 'anno aperto: l\'assemblea non svolta si modifica' );
-Settings::update( array( 'fiscal_start_month' => 1 ) ); // senza esercizi chiusi il mese si può (ri)salvare
+Settings::update( array( 'fiscal_start_month' => 1 ) ); // lo stesso valore si può sempre risalvare
 
 // ordine di chiusura: non si chiude un anno se uno precedente è ancora aperto
 $yl_m = asem_throws( function () use ( $yl_y2 ) { \AssociazioneSemplice\FiscalYears::close( $yl_y2 ); } );
@@ -4184,9 +4201,9 @@ asem_ok( $yl_msg( $yl_y ) === asem_throws( function () use ( $yl_asm ) { \Associ
 asem_ok( $yl_msg( $yl_y ) === asem_throws( function () use ( $yl_asm ) { \AssociazioneSemplice\Assemblies::delete( $yl_asm ); } ) && null !== \AssociazioneSemplice\Assemblies::get( $yl_asm ), 'anno chiuso: l\'assemblea non svolta non si cancella' );
 asem_ok( null !== asem_throws( function () use ( $yl_asm ) { \AssociazioneSemplice\Assemblies::convene( $yl_asm ); } ) && null !== asem_throws( function () use ( $yl_asm ) { \AssociazioneSemplice\Assemblies::set_attendance( $yl_asm, array() ); } ) && null !== asem_throws( function () use ( $yl_asm ) { \AssociazioneSemplice\Assemblies::move( $yl_asm, \AssociazioneSemplice\AssemblyRules::CANCELLED ); } ), 'anno chiuso: l\'assemblea non si convoca, non cambia stato e non cambiano le presenze' );
 $yl_set = asem_throws( function () { Settings::update( array( 'fiscal_start_month' => 7 ) ); } );
-asem_ok( 'Esistono anni fiscali chiusi: il mese di inizio non si può più cambiare.' === $yl_set && 1 === \AssociazioneSemplice\FiscalYears::start_month(), 'esercizi: con un esercizio chiuso il mese di inizio non si cambia' );
+asem_ok( 'Hai già chiuso un anno fiscale: il mese di inizio non si può più cambiare.' === $yl_set && 1 === \AssociazioneSemplice\FiscalYears::start_month(), 'esercizi: con un esercizio chiuso il mese di inizio non si cambia' );
 Settings::update( array( 'fiscal_start_month' => 1 ) ); // lo stesso valore si può risalvare
-$yl_html = asem_render( array( Admin\EntityPage::class, 'render' ), 'Esistono anni fiscali chiusi' );
+$yl_html = asem_render( array( Admin\EntityPage::class, 'render' ), 'Hai già chiuso un anno fiscale' );
 asem_ok( 1 === preg_match( '/<select name="fiscal_start_month"[^>]*disabled/', $yl_html ), 'esercizi: nella scheda Dati e fiscalità il mese è bloccato e dice perché' );
 
 // riapertura: solo l'ultimo chiuso, con il motivo
@@ -4207,6 +4224,8 @@ $yl_free = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'fiscal_year_c
 \AssociazioneSemplice\Audit::purge_old();
 asem_ok( $yl_free === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'fiscal_year_closures' ) ), 'esercizi: la traccia delle chiusure non dipende dalla pulizia del registro azioni' );
 \AssociazioneSemplice\FiscalYears::reopen( $yl_y, 'Fine della prova' );
+$yl_set2 = asem_throws( function () { Settings::update( array( 'fiscal_start_month' => 7 ) ); } );
+asem_ok( \AssociazioneSemplice\FiscalYears::is_open( $yl_y ) && null === \AssociazioneSemplice\FiscalYears::last_closed() && \AssociazioneSemplice\FiscalYears::start_month_locked() && 'Hai già chiuso un anno fiscale: il mese di inizio non si può più cambiare.' === $yl_set2 && 1 === \AssociazioneSemplice\FiscalYears::start_month(), 'esercizi: riaperto l\'unico anno chiuso, il mese di inizio resta bloccato (conta la prima chiusura)' );
 
 // anno di nuovo aperto: le azioni tornano consentite
 Attachments::remove( (int) $yl_att[0]['id'] );
@@ -4242,13 +4261,13 @@ $yl_old = 2005;
 while ( \AssociazioneSemplice\FiscalYears::get( $yl_old ) ) {
 	++$yl_old;
 }
-Settings::update( array( 'fiscal_start_month' => 7 ) );
+asem_set_fiscal_month( 7 );
 \AssociazioneSemplice\FiscalYears::create( $yl_old );
 $wpdb->update( Db::t( 'fiscal_years' ), array( 'status' => 'closed', 'closed_at' => Db::now() ), array( 'year' => $yl_old ) ); // chiusura diretta: qui si prova solo la guardia
 $yl_lk = \AssociazioneSemplice\YearLock::class;
 asem_ok( $yl_old . '/' . ( $yl_old + 1 ) === \AssociazioneSemplice\FiscalYears::label( $yl_old ) && $yl_lk::is_closed_date( $yl_old . '-07-01' ) && $yl_lk::is_closed_date( ( $yl_old + 1 ) . '-06-30' ) && ! $yl_lk::is_closed_date( $yl_old . '-06-30' ) && ! $yl_lk::is_closed_date( ( $yl_old + 1 ) . '-07-01' ), 'esercizio a luglio: la guardia e l\'etichetta seguono l\'esercizio (confini 30/6 e 1/7)' );
 $wpdb->delete( Db::t( 'fiscal_years' ), array( 'year' => $yl_old ) );
-Settings::update( array( 'fiscal_start_month' => 1 ) );
+asem_set_fiscal_month( 1 );
 asem_ok( 1 === \AssociazioneSemplice\FiscalYears::start_month() && (string) $cy === \AssociazioneSemplice\FiscalYears::label( $cy ), 'esercizio: tornati a gennaio l\'etichetta è l\'anno solare' );
 $wpdb->delete( Db::t( 'fiscal_year_closures' ), array( 'year' => $yl_old ) );
 
@@ -4295,14 +4314,14 @@ asem_ok( range( 1, count( $mb_rows ) ) === array_map( 'intval', array_column( $m
 $mb_m = array_map( 'intval', array_column( $mb_rows, 'matricola' ) );
 asem_ok( ! in_array( 0, $mb_m, true ) && count( array_unique( $mb_m ) ) === count( $mb_m ), 'matricole: ogni socio del libro ne ha una, tutte diverse' );
 // esercizio a luglio e a settembre: la tessera dell'anno solare compare in due libri
-Settings::update( array( 'fiscal_start_month' => 7 ) );
+asem_set_fiscal_month( 7 );
 $mb_h = $mb_mk( 'ordinary', 'Ugo', 'Solare', ( $mb_y - 1 ) . '-01-10' );
 $mb_card( $mb_h, $mb_y . '-01-01', $mb_y . '-12-31', (string) $mb_y );
 asem_ok( in_array( $mb_h, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y ) ), true ) && in_array( $mb_h, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y - 1 ) ), true ) && ! in_array( $mb_h, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y + 1 ) ), true ), 'libro per anno, esercizio a luglio: la tessera dell\'anno solare compare nei due esercizi che attraversa' );
 asem_ok( in_array( $mb_a, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y ) ), true ) && ! in_array( $mb_a, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y + 1 ) ), true ), 'libro per anno, esercizio a luglio: la tessera da luglio a giugno sta in un solo libro' );
-Settings::update( array( 'fiscal_start_month' => 9 ) );
+asem_set_fiscal_month( 9 );
 asem_ok( in_array( $mb_a, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y ) ), true ) && in_array( $mb_a, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y - 1 ) ), true ) && ! in_array( $mb_a, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y + 1 ) ), true ), 'libro per anno, esercizio a settembre: la tessera da luglio a giugno cade in due esercizi' );
-Settings::update( array( 'fiscal_start_month' => 1 ) );
+asem_set_fiscal_month( 1 );
 // il fondatore: ammesso entro la fine dell'esercizio e non cessato prima dell'inizio
 $mb_fnd = $mb_mk( 'founder', 'Ferdinando', 'Fondatore', ( $mb_y + 1 ) . '-03-01' );
 asem_ok( ! in_array( $mb_fnd, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y ) ), true ) && in_array( $mb_fnd, $mb_ids( \AssociazioneSemplice\MemberBook::rows( '', $mb_y1 ) ), true ), 'libro per anno: il fondatore entra dall\'esercizio in cui è ammesso' );
@@ -8741,15 +8760,15 @@ asem_ok( 1 === \AssociazioneSemplice\FiscalYears::start_month() && 1 === (int) S
 
 // Anno fiscale che inizia a luglio: gli anni seguono l'esercizio, poi si torna a gennaio.
 $wt_cur_cal = (int) substr( $today, 0, 4 );
-Settings::update( array( 'fiscal_start_month' => 7 ) );
+asem_set_fiscal_month( 7 );
 $wt_y = \AssociazioneSemplice\FiscalYears::current();
 asem_ok( 7 === \AssociazioneSemplice\FiscalYears::start_month() && $wt_y === ( (int) substr( $today, 5, 2 ) >= 7 ? $wt_cur_cal : $wt_cur_cal - 1 ), 'anno fiscale a luglio: l\'anno in corso segue l\'esercizio' );
 asem_ok( array( $wt_y . '-07-01', ( $wt_y + 1 ) . '-06-30' ) === \AssociazioneSemplice\FiscalYears::range( $wt_y ), 'anno fiscale a luglio: dal 1 luglio al 30 giugno' );
 \AssociazioneSemplice\FiscalYears::seed();
 asem_ok( null !== \AssociazioneSemplice\FiscalYears::get( $wt_y ), 'anno fiscale: l\'esercizio in corso esiste' );
-Settings::update( array( 'fiscal_start_month' => 99 ) );
+asem_set_fiscal_month( 99 );
 asem_ok( 12 === \AssociazioneSemplice\FiscalYears::start_month(), 'anno fiscale: il mese si limita tra 1 e 12' );
-Settings::update( array( 'fiscal_start_month' => 1 ) );
+asem_set_fiscal_month( 1 );
 \AssociazioneSemplice\FiscalYears::seed();
 \AssociazioneSemplice\FiscalYears::ensure_current_open();
 asem_ok( 1 === \AssociazioneSemplice\FiscalYears::start_month() && \AssociazioneSemplice\FiscalYears::current() === $wt_cur_cal, 'anno fiscale: tornato a gennaio, torna l\'anno solare' );
