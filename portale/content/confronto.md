@@ -15,6 +15,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Accesso dei soci semplificato :: Accesso dei soci in una sola schermata, con email e password o con un link via email, e «Ricordami» per 30 giorni; senza utente WordPress (utente WordPress solo per chi ha un ruolo, o per tutti se lo scegli) | ✓ | ✓ | ✓ |
 | Quota associativa unica e socio fondatore | ✓ | ✓ | ✓ |
 | Quota associativa a rate: residuo in scheda, saldo da incassare e tessera valida solo a quota saldata | ✓ | ✓ | ✓ |
+| Tessera annuale che segue l'anno sociale :: L'etichetta è «2026» oppure «2026/2027»; negli ultimi giorni prima della scadenza si rinnova in anticipo; se cambi il mese, vale solo per le tessere nuove | ✓ | ✓ | ✓ |
 | Più livelli di socio :: Più livelli di socio con quote diverse | — | ✓ | ✓ |
 | Nucleo familiare con sconto :: Nucleo familiare con sconto per i familiari | — | ✓ | ✓ |
 | Ospiti con conteggio delle partecipazioni e invito a iscriversi | ✓ | ✓ | ✓ |
@@ -93,7 +94,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Spese con scontrini e fatture allegati | ✓ | ✓ | ✓ |
 | Importazione ed esportazione della prima nota | ✓ | ✓ | ✓ |
 | Donazioni con PayPal | ✓ | ✓ | ✓ |
-| Anni fiscali: apertura e chiusura (solo amministratori), con il mese di inizio a scelta e l'avviso del nuovo anno da settembre; si chiudono in ordine | ✓ | ✓ | ✓ |
+| Anni fiscali: apertura e chiusura (solo amministratori), con il mese di inizio a scelta e l'avviso del nuovo anno da settembre; si chiudono in ordine; il mese di inizio dell'anno fiscale si blocca alla prima chiusura, anche dopo la riapertura | ✓ | ✓ | ✓ |
 | Riapertura dell'ultimo anno fiscale :: Si riapre solo l'ultimo anno fiscale chiuso, scrivendo il motivo; resta una traccia permanente di chiusure e riaperture, e le tessere di un anno fiscale chiuso non si modificano | ✓ | ✓ | ✓ |
 | Cassa «Prenota» (per data o per attività) | ✓ | ✓ | ✓ |
 | Acconti e sconti con motivo per riga di incasso | ✓ | ✓ | ✓ |
@@ -125,6 +126,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | 5 per mille :: 5 per mille e rendiconto sull'utilizzo | — | — | ✓ |
 | Rendiconto per cassa :: Rendiconto per cassa per il commercialista | — | — | ✓ |
 | Anno fiscale con verifiche :: Anno fiscale del rendiconto per cassa e verifiche prima della chiusura | — | — | ✓ |
+| Rendiconto definitivo :: Alla chiusura dell'anno fiscale il rendiconto diventa definitivo, con un PDF numerato (n. 1/2026) che non cambia più; prima è una bozza | — | — | ✓ |
 | Spese documentate sui fondi dei rimborsi :: Spese documentate attribuite in automatico ai fondi dei rimborsi, con elenchi e CSV | — | — | ✓ |
 | Bilancio provvisorio e storico mensile :: Bilancio provvisorio dell'anno fiscale, avvisi di bilancio e storico mensile con CSV | — | — | ✓ |
 | Prospetto dei rimborsi per persona :: Prospetto dei rimborsi per persona, con CSV e PDF | — | — | ✓ |
