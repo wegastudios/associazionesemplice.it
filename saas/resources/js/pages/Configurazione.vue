@@ -2,7 +2,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../layouts/AppLayout.vue';
 
-const props = defineProps({ status: String, steps: Array, can: Object });
+const props = defineProps({ status: String, canSkip: { type: Boolean, default: true }, steps: Array, can: Object });
 
 const by = Object.fromEntries(props.steps.map((s) => [s.key, s.props]));
 const initial = {};
@@ -94,7 +94,7 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
 
             <div class="flex flex-wrap items-center gap-3">
                 <button type="submit" class="rounded-lg bg-accent px-5 py-2.5 font-semibold text-accent-ink" :disabled="form.processing">Salva la configurazione</button>
-                <button v-if="!status" type="button" class="btn btn-secondary" @click="skip">Più tardi</button>
+                <button v-if="!status && canSkip" type="button" class="btn btn-secondary" @click="skip">Più tardi</button>
             </div>
         </form>
 

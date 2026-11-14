@@ -29,6 +29,7 @@ final readonly class SetupController
 
         return Inertia::render('Configurazione', [
             'status' => $this->wizard->status(),
+            'canSkip' => ! $this->wizard->mustChoose($operator),
             'steps' => array_map(static fn (SetupStep $s): array => ['key' => $s->key(), 'title' => $s->title(), 'props' => $s->props()], $this->wizard->steps($operator)),
             'can' => [
                 'operators' => $operator->can(Ability::ManageOperators),
@@ -54,6 +55,9 @@ final readonly class SetupController
 
     public function skip(): RedirectResponse
     {
+        if ($this->wizard->mustChoose($this->operator())) {
+            return redirect()->route('setup')->withErrors(['steps.anno_sociale' => 'Prima scegli il mese di inizio dell\'anno sociale e dell\'anno fiscale: non si rimanda.']);
+        }
         $this->wizard->skip();
 
         return redirect()->route('dashboard')->with('status', 'Va bene, più tardi: la trovi in Altro › Configurazione guidata.');
