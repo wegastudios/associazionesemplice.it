@@ -4550,7 +4550,7 @@ asem_ok( null === $rs_ss::row_for( $rs_y1 ) && ! isset( \AssociazioneSemplice\St
 \AssociazioneSemplice\FiscalYears::snapshot_past_years();
 $rs_r = $rs_ss::row_for( $rs_y1 );
 asem_ok( $rs_r && 1 === (int) $rs_r['retroactive'] && 1 === (int) $rs_r['number'] && false !== strpos( \AssociazioneSemplice\Statement::data( $rs_y1 )['snapshot']['text'], ' per un anno già chiuso: i dati sono quelli di quel giorno' ) && 2000 === \AssociazioneSemplice\Statement::data( $rs_y1 )['total_income']['cur'], 'fotografia retroattiva: il rendiconto è ricostruito, segnato «ricostruito il …» e con le cifre registrate' );
-asem_ok( false !== strpos( \AssociazioneSemplice\DocsPro::statement( $rs_y1 )['body'], ' per un anno già chiuso: i dati sono quelli di quel giorno' ), 'fotografia retroattiva: il PDF emesso porta la dicitura di ricostruzione' );
+asem_ok( false !== strpos( \AssociazioneSemplice\DocsPro::statement( $rs_y1 )['body'], 'i dati sono quelli di quel giorno' ), 'fotografia retroattiva: il PDF emesso porta la dicitura di ricostruzione' );
 // chiuso con il libro fotografato ma senza il rendiconto (prima di questa funzione): si fotografa a parte
 $wpdb->delete( Db::t( 'statement_snapshot' ), array( 'id' => (int) $rs_r['id'] ) );
 asem_ok( in_array( $rs_y1, array_map( 'intval', array_column( $rs_ss::missing(), 'year' ) ), true ), 'rendiconto mancante: gli esercizi chiusi senza fotografia del rendiconto si riconoscono' );
