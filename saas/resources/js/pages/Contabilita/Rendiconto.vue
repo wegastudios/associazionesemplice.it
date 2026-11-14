@@ -2,7 +2,7 @@
 import { Head, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 
-const props = defineProps({ years: Array, statement: Object, canClose: Boolean });
+const props = defineProps({ years: Array, statement: Object, source: String, version: Number, versions: Array, canClose: Boolean });
 
 const reopen = useForm({ reason: '', confirm_year: '' });
 const close = () => window.confirm(`Chiudere l'esercizio ${props.statement.year}? Non potrai più registrare né stornare movimenti con date di quell'anno finché non lo riapri.`) && router.post(`/gestionale/esercizi/${props.statement.year}/chiudi`, {}, { preserveScroll: true });
@@ -61,6 +61,18 @@ const field = 'field';
                 </tbody>
             </table>
         </section>
+
+        <section v-if="versions.length" class="mt-6 card p-4 sm:p-5 print:hidden">
+            <h2 class="mb-2 text-lg font-bold">Fotografie alla chiusura</h2>
+            <p class="mb-3 text-sm text-muted">Un esercizio chiuso si legge sempre dalla fotografia scattata alla chiusura, anche se voci e conti cambiano dopo. Se lo riapri e lo richiudi nasce una nuova versione; le precedenti restano.</p>
+            <ul class="divide-y divide-line text-sm">
+                <li v-for="v in versions" :key="v.version" class="flex justify-between gap-3 py-2">
+                    <span>Versione {{ v.version }} · {{ v.date }}</span>
+                    <span class="text-muted">{{ v.superseded ? 'superata dopo una riapertura' : 'in uso' }}</span>
+                </li>
+            </ul>
+        </section>
+        <p v-else-if="statement.status === 'closed'" class="mt-6 text-sm text-muted print:hidden">Esercizio chiuso prima delle fotografie: questo rendiconto è ricalcolato dai dati attuali. Riaprilo e richiudilo per fotografarlo.</p>
 
         <section v-if="canClose" class="mt-6 card p-4 sm:p-5 print:hidden">
             <h2 class="mb-3 text-lg font-bold">Chiusura dell'esercizio</h2>

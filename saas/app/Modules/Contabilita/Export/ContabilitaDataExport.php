@@ -7,6 +7,7 @@ namespace App\Modules\Contabilita\Export;
 use App\Modules\Contabilita\Contracts\CategoryKind;
 use App\Modules\Contabilita\Contracts\Money;
 use App\Modules\Contabilita\Import\LedgerExport;
+use App\Modules\Contabilita\Ledger\StatementSnapshots;
 use App\Modules\Core\Contracts\Ability;
 use App\Modules\Core\Contracts\DataExport;
 use App\Modules\Core\Contracts\Operator;
@@ -22,6 +23,7 @@ final readonly class ContabilitaDataExport implements DataExport
         private DatabaseManager $db,
         private OrgContext $context,
         private LedgerExport $ledger,
+        private StatementSnapshots $snapshots,
     ) {}
 
     public function files(Operator $operator): array
@@ -65,6 +67,9 @@ final readonly class ContabilitaDataExport implements DataExport
             $rows[] = [substr($s($e->key ?? ''), 5), is_scalar($v) ? (string) $v : ''];
         }
         $files['contabilita/dati-ente.csv'] = Csv::build(['Dato', 'Valore'], $rows);
+
+        // Il rendiconto di ogni esercizio chiuso com'era alla chiusura, tutte le versioni (anche quelle superate da una riapertura).
+        $files['contabilita/rendiconti-esercizi-chiusi.json'] = json_encode($this->snapshots->all(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]';
 
         return $files;
     }

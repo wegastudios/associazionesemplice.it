@@ -14,6 +14,7 @@ use App\Modules\Soci\Contracts\CertificateKind;
 use App\Modules\Soci\Models\Application;
 use App\Modules\Soci\Models\MedicalCertificate;
 use App\Modules\Soci\Services\MemberBookService;
+use App\Modules\Soci\Services\MemberBookSnapshots;
 use App\Modules\Soci\Services\PeopleExportService;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
@@ -26,6 +27,7 @@ final readonly class SociDataExport implements DataExport
         private OrgContext $context,
         private PeopleExportService $people,
         private MemberBookService $book,
+        private MemberBookSnapshots $snapshots,
     ) {}
 
     public function files(Operator $operator): array
@@ -84,6 +86,9 @@ final readonly class SociDataExport implements DataExport
             }
             $files['soci/certificati-medici.csv'] = Csv::build(['Persona', 'Tipo', 'Medico', 'Rilascio', 'Scadenza', 'File'], $rows);
         }
+
+        // Le fotografie del libro soci di ogni esercizio chiuso, tutte le versioni (anche quelle superate da una riapertura).
+        $files['soci/libri-soci-esercizi-chiusi.json'] = json_encode($this->snapshots->all(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]';
 
         return $files;
     }

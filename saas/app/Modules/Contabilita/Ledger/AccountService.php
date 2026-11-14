@@ -9,6 +9,7 @@ use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Contabilita\Contracts\Money;
 use App\Modules\Contabilita\Models\Account;
 use App\Modules\Contabilita\Rules\CollectionFee;
+use Illuminate\Database\QueryException;
 
 /** Conti (cassa, banca, POS…). Un conto con saldo diverso da zero non si chiude: prima un giroconto. */
 final readonly class AccountService
@@ -31,7 +32,16 @@ final readonly class AccountService
     public function update(string $id, string $name, AccountType $type, int $openingCents): Account
     {
         $account = Account::query()->findOrFail($id);
-        $account->fill(['name' => self::name($name), 'type' => $type->value, 'opening_cents' => $openingCents])->save();
+        $account->fill(['name' => self::name($name), 'type' => $type->value, 'opening_cents' => $openingCents]);
+        try {
+            $account->save();
+        } catch (QueryException $e) {
+            // Il conto ha movimenti in un esercizio chiuso: il database rifiuta e dice cosa fare.
+            if (($e->errorInfo[0] ?? null) === 'P0001' && is_string($e->errorInfo[2] ?? null)) {
+                throw new LedgerError(trim((string) preg_replace('/^ERROR:\s*|\s*CONTEXT:.*$/s', '', $e->errorInfo[2])), 0, $e);
+            }
+            throw $e;
+        }
 
         return $account;
     }
