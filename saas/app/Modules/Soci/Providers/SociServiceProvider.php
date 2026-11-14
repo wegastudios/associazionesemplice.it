@@ -25,6 +25,7 @@ use App\Modules\Soci\Services\MembershipService;
 use App\Modules\Soci\Services\PeopleDirectory;
 use App\Modules\Soci\Setup\ApplicationsStep;
 use App\Modules\Soci\Setup\MembershipStep;
+use App\Modules\Soci\Setup\SocialYearStep;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\Request;
@@ -40,7 +41,7 @@ final class SociServiceProvider extends ServiceProvider
         $this->app->tag([SociDataExport::class], DataExport::TAG);
         $this->app->tag([MembershipDues::class], PayableDues::TAG);
         $this->app->tag([DemoMembers::class], DemoSeeder::TAG);
-        $this->app->tag([MembershipStep::class, ApplicationsStep::class], SetupStep::TAG);
+        $this->app->tag([SocialYearStep::class, MembershipStep::class, ApplicationsStep::class], SetupStep::TAG);
         $this->app->bind(Members::class, MembershipService::class);
         $this->app->bind(People::class, PeopleDirectory::class);
         $this->app->bind(MemberProfiles::class, MemberProfilesService::class);

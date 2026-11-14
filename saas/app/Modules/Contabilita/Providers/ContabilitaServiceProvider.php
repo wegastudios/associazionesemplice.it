@@ -16,6 +16,7 @@ use App\Modules\Contabilita\Listeners\SeedAccounting;
 use App\Modules\Contabilita\Receipts\MemberReceiptsService;
 use App\Modules\Contabilita\Setup\AccountsStep;
 use App\Modules\Contabilita\Setup\EntityStep;
+use App\Modules\Contabilita\Setup\FiscalYearStep;
 use App\Modules\Core\Contracts\DataExport;
 use App\Modules\Core\Contracts\HomeWidget;
 use App\Modules\Core\Contracts\OrgCreated;
@@ -29,7 +30,7 @@ final class ContabilitaServiceProvider extends ServiceProvider
     {
         $this->app->tag([AccountingHome::class], HomeWidget::TAG);
         $this->app->tag([ContabilitaDataExport::class], DataExport::TAG);
-        $this->app->tag([EntityStep::class, AccountsStep::class], SetupStep::TAG);
+        $this->app->tag([FiscalYearStep::class, EntityStep::class, AccountsStep::class], SetupStep::TAG);
         $this->app->bind(Ledger::class, LedgerService::class);
         $this->app->bind(MemberReceipts::class, MemberReceiptsService::class);
     }

@@ -9,6 +9,7 @@ use App\Modules\Contabilita\Contracts\FiscalYearClosed;
 use App\Modules\Contabilita\Contracts\FiscalYearReopened;
 use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Core\Contracts\OrgSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Auth\Factory as Auth;
 use Illuminate\Contracts\Events\Dispatcher;
@@ -29,9 +30,63 @@ final readonly class FiscalYearService
         private AuditLog $audit,
         private Auth $auth,
         private Dispatcher $events,
+        private OrgSettings $settings,
     ) {}
 
-    /** Esercizio che contiene la data; se non c'è e la data non si sovrappone ad altri, si crea l'anno solare. */
+    public const START_MONTH = 'contabilita.fiscal_year_start_month';
+
+    /** Mese di inizio dell'anno fiscale; senza scelta è gennaio. */
+    public function startMonth(): int
+    {
+        return $this->chosenStartMonth() ?? 1;
+    }
+
+    /** Il mese scelto nella configurazione, o null se non è ancora stato scelto. */
+    public function chosenStartMonth(): ?int
+    {
+        $month = $this->settings->get(self::START_MONTH);
+
+        return is_numeric($month) && (int) $month >= 1 && (int) $month <= 12 ? (int) $month : null;
+    }
+
+    /** Ci sono già movimenti (e quindi il mese di inizio non si cambia più)? */
+    public function hasMovements(): bool
+    {
+        return $this->connection()->table('app.transactions')->exists();
+    }
+
+    /**
+     * Sceglie il mese di inizio dell'anno fiscale. Finché non ci sono movimenti l'anno fiscale di partenza, preparato
+     * con l'associazione, si rifà in modo che contenga oggi e cominci in quel mese.
+     */
+    public function chooseStartMonth(int $month): void
+    {
+        $this->settings->set(self::START_MONTH, $month);
+        if ($this->hasMovements()) {
+            return;
+        }
+        $today = CarbonImmutable::today();
+        $start = self::startFor($today, $month);
+        $current = $this->connection()->table('app.fiscal_years')->get(['year', 'starts_on', 'status']);
+        if ($current->count() === 1 && $current->first()?->status === 'open' && $current->first()->starts_on === $start->toDateString()) {
+            return;
+        }
+        $this->connection()->table('app.fiscal_years')->where('status', 'open')->delete();
+        if ($this->connection()->table('app.fiscal_years')->doesntExist()) {
+            $this->create($start->year, $start->toDateString(), audit: false);
+            $this->audit->record('fiscal_year.realigned', 'app.fiscal_years', null, ['year' => $start->year, 'starts_on' => $start->toDateString()]);
+        }
+    }
+
+    /** Inizio dell'anno fiscale che contiene la data. */
+    private static function startFor(CarbonImmutable $day, int $month): CarbonImmutable
+    {
+        $start = $day->setDate($day->year, $month, 1);
+
+        return $start->greaterThan($day) ? $start->subYear() : $start;
+    }
+
+    /** Anno fiscale che contiene la data; se non c'è e la data non si sovrappone ad altri, si crea quello del mese di inizio scelto (di norma l'anno solare). */
     public function yearFor(string $date): int
     {
         $day = self::date($date);
@@ -41,8 +96,9 @@ final readonly class FiscalYearService
         if ($row !== null && is_numeric($row->year)) {
             return (int) $row->year;
         }
+        $start = self::startFor($day, $this->startMonth());
 
-        return $this->create($day->year, $day->startOfYear()->toDateString());
+        return $this->create($start->year, $start->toDateString());
     }
 
     public function create(int $year, string $startsOn, bool $audit = true): int
