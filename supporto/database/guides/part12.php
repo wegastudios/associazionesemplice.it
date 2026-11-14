@@ -15,8 +15,8 @@ Entri dal tuo account: da **Il mio account** scegli **Gestionale**. Sulla Home, 
 
 La **Configurazione guidata** raccoglie le impostazioni principali in **una sola pagina**: compila quello che sai, il resto si cambia dopo. Si salva tutto insieme con **«Salva la configurazione»**; **«Più tardi»** ti lascia rimandare.
 
-1. **Ente**: forma dell'ente, codice fiscale, partita IVA (se c'è), sede e provincia.
-2. **Tesseramento**: il mese in cui comincia l'**anno sociale** e la **quota associativa**. Con inizio a gennaio l'anno sociale coincide con quello solare («2026»); altrimenti è a cavallo («2025/2026»).
+1. **Anno sociale e anno fiscale**: scegli i **due mesi** da cui cominciano (**«L'anno sociale comincia a»** e **«L'anno fiscale comincia a»**). Sono obbligatori e indipendenti: con inizio a gennaio l'anno coincide con quello solare («2026»); altrimenti è a cavallo («2025/2026»). Scegli il mese fiscale prima di chiudere il primo anno: dopo la prima chiusura non si può più cambiare.
+2. **Ente**: forma dell'ente, codice fiscale, partita IVA (se c'è), sede e provincia, e la **quota associativa**.
 3. **Conti**: aggiungi il **conto in banca** e il suo **saldo di partenza**.
 4. **Soci**: l'indirizzo della pagina dell'**informativa privacy** e quello del **regolamento**.
 
@@ -125,7 +125,7 @@ Tutti i movimenti stanno nella **Prima nota**: l'elenco di entrate e uscite in o
 
 ## Cercare e filtrare
 
-In **Prima nota** filtra per **conto**, per **attività** e per periodo, poi **«Mostra i movimenti»**. **«Esporta l'esercizio (CSV)»** scarica i movimenti; **«Importa da Excel o CSV»** li carica.
+In **Prima nota** filtra per **conto**, per **attività** e per periodo, poi **«Mostra i movimenti»**. **«Esporta l'anno fiscale (CSV)»** scarica i movimenti; **«Importa da Excel o CSV»** li carica.
 
 ## Correggere un errore
 
@@ -159,9 +159,11 @@ MD,
 
 Il **Rendiconto** mostra **entrate e uscite dell'anno per categoria**, nello schema del **Mod. D** degli enti del Terzo settore: è il documento da portare in assemblea e al commercialista. In fondo vedi l'**avanzo (o disavanzo)** dell'anno fiscale. Con **«Stampa o salva in PDF»** lo ottieni in un file.
 
+Prima della chiusura il rendiconto è una **bozza**: i numeri sono quelli di oggi e possono cambiare. Alla chiusura dell'anno fiscale diventa **definitivo**: emesso e bloccato, non cambia più.
+
 ## Chiudere l'anno fiscale
 
-Nella stessa pagina vedi **inizio e fine dell'anno fiscale**. Con **«Chiudi l'esercizio»** non accetta più incassi né spese. Se serve correggere qualcosa, **«Riapri l'esercizio»** (scrivi il **motivo della riapertura**: resta traccia).
+Nella stessa pagina vedi **inizio e fine dell'anno fiscale**. Quando il rendiconto è approvato premi **«Emetti il rendiconto definitivo»** (con l'anno): da quel momento non si registrano né si stornano movimenti con date di quell'anno. Se serve correggere qualcosa, **«Riapri l'anno fiscale»**: scrivi il **motivo della riapertura** e l'anno per confermare, e il motivo resta in traccia. Se lo riapri e lo richiudi nasce una nuova versione del rendiconto; le precedenti restano elencate.
 
 > Chiudi l'anno fiscale solo dopo aver controllato la prima nota e il rendiconto.
 MD,
