@@ -33,8 +33,13 @@ final readonly class DashboardController
         $operator = $this->operator->get() ?? abort(403);
         $setupPending = $operator->can(Ability::ManageSettings) && $this->setup->pending();
 
+        // Anno sociale e anno fiscale si scelgono esplicitamente come prima cosa: finché non è fatto, si torna qui ogni volta.
+        if ($operator->can(Ability::ManageSettings) && $this->setup->mustChoose($operator)) {
+            return redirect()->route('setup');
+        }
+
         // Al primo accesso la configurazione guidata si apre da sola, una volta per sessione.
-        if ($setupPending && ! $request->session()->has('setup_offered.'.$operator->orgId)) {
+        if ($setupPending &&! $request->session()->has('setup_offered.'.$operator->orgId)) {
             $request->session()->put('setup_offered.'.$operator->orgId, true);
 
             return redirect()->route('setup');

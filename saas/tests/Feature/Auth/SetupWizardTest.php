@@ -36,10 +36,10 @@ function setupInput(array $over = []): array
     ]], $over);
 }
 
-it('si apre da sola al primo accesso del titolare, una volta', function (): void {
+it('si apre da sola ad ogni accesso del titolare finché anno sociale e anno fiscale non sono scelti', function (): void {
     $this->actingAs($this->owner)->get('/gestionale')->assertRedirect('/gestionale/configurazione');
-    $this->get('/gestionale')->assertOk()->assertInertia(fn (Assert $page) => $page->component('Dashboard')->where('setupPending', true));
-    $this->get('/gestionale/configurazione')->assertInertia(fn (Assert $page) => $page->component('Configurazione')
+    $this->get('/gestionale')->assertRedirect('/gestionale/configurazione');
+    $this->get('/gestionale/configurazione')->assertInertia(fn (Assert $page) => $page->component('Configurazione')->where('canSkip', false)
         ->where('status', null)->where('steps.0.key', 'anno_sociale')->where('steps.1.key', 'anno_fiscale')->where('steps.2.key', 'ente')->where('steps.3.key', 'tesseramento')->where('steps.4.key', 'conti')->where('steps.5.key', 'soci'));
 
     $op = $this->createUser('seg@example.com', twoFactor: true);
@@ -80,10 +80,14 @@ it('non salva nulla se un passo ha errori e li indica per passo', function (): v
     $this->post('/gestionale/configurazione', setupInput(['steps' => ['soci' => ['privacy_url' => '']]]))->assertSessionHasErrors('steps.soci');
 });
 
-it('si può rimandare e riaprire', function (): void {
-    $this->actingAs($this->owner)->post('/gestionale/configurazione/rimanda')->assertRedirect('/gestionale');
+it('non lascia rimandare la scelta dell\'anno sociale e dell\'anno fiscale', function (): void {
+    $this->actingAs($this->owner)->post('/gestionale/configurazione/rimanda')->assertRedirect('/gestionale/configurazione')->assertSessionHasErrors('steps.anno_sociale');
+    $this->get('/gestionale/configurazione')->assertOk()->assertInertia(fn (Assert $page) => $page->where('status', null)->where('steps.0.props.start_month', null)->where('steps.1.props.start_month', null));
+
+    // Scelti i mesi (e salvata la configurazione) si torna al gestionale e la pagina si riapre quando si vuole.
+    $this->post('/gestionale/configurazione', setupInput())->assertRedirect('/gestionale');
     $this->get('/gestionale')->assertOk()->assertInertia(fn (Assert $page) => $page->where('setupPending', false)->where('canSetup', true));
-    $this->get('/gestionale/configurazione')->assertOk()->assertInertia(fn (Assert $page) => $page->where('status', 'skipped')->where('steps.0.props.start_month', null)->where('steps.1.props.start_month', null));
+    $this->get('/gestionale/configurazione')->assertOk()->assertInertia(fn (Assert $page) => $page->where('canSkip', true)->where('steps.0.props.start_month', 9));
 });
 
 it('chiede subito il mese dell\'anno sociale e dell\'anno fiscale e rifà l\'anno fiscale di partenza', function (): void {

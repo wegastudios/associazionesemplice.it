@@ -7,11 +7,11 @@ namespace App\Modules\Soci\Setup;
 use App\Modules\Core\Contracts\Ability;
 use App\Modules\Core\Contracts\Operator;
 use App\Modules\Core\Contracts\OrgSettings;
-use App\Modules\Core\Contracts\SetupStep;
+use App\Modules\Core\Contracts\RequiredSetupStep;
 use App\Modules\Soci\Services\MembershipService;
 
 /** Mese di inizio dell'anno sociale: si sceglie subito, prima di tesserare chiunque. */
-final readonly class SocialYearStep implements SetupStep
+final readonly class SocialYearStep implements RequiredSetupStep
 {
     public function __construct(private OrgSettings $settings) {}
 
@@ -28,6 +28,11 @@ final readonly class SocialYearStep implements SetupStep
     public function order(): int
     {
         return 4;
+    }
+
+    public function satisfied(): bool
+    {
+        return is_numeric($this->settings->get(MembershipService::START_MONTH));
     }
 
     public function visible(Operator $operator): bool

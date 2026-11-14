@@ -7,10 +7,10 @@ namespace App\Modules\Contabilita\Setup;
 use App\Modules\Contabilita\Ledger\FiscalYearService;
 use App\Modules\Core\Contracts\Ability;
 use App\Modules\Core\Contracts\Operator;
-use App\Modules\Core\Contracts\SetupStep;
+use App\Modules\Core\Contracts\RequiredSetupStep;
 
 /** Mese di inizio dell'anno fiscale: si sceglie subito, prima di registrare qualunque movimento. */
-final readonly class FiscalYearStep implements SetupStep
+final readonly class FiscalYearStep implements RequiredSetupStep
 {
     public function __construct(private FiscalYearService $years) {}
 
@@ -27,6 +27,11 @@ final readonly class FiscalYearStep implements SetupStep
     public function order(): int
     {
         return 5;
+    }
+
+    public function satisfied(): bool
+    {
+        return $this->years->chosenStartMonth() !== null;
     }
 
     public function visible(Operator $operator): bool

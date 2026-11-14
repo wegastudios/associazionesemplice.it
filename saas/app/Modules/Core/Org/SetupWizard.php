@@ -8,6 +8,7 @@ use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Core\Contracts\Operator;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgSettings;
+use App\Modules\Core\Contracts\RequiredSetupStep;
 use App\Modules\Core\Contracts\SetupStep;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Database\DatabaseManager;
@@ -42,6 +43,24 @@ final readonly class SetupWizard
     public function pending(): bool
     {
         return $this->status() === null;
+    }
+
+    /**
+     * Anno sociale e anno fiscale vanno scelti esplicitamente come prima cosa: finché un passo obbligatorio non è
+     * stato compilato (e la configurazione non è completata) la pagina si riapre da sola e non si rimanda.
+     */
+    public function mustChoose(Operator $operator): bool
+    {
+        if ($this->status() === self::DONE) {
+            return false;
+        }
+        foreach ($this->steps($operator) as $step) {
+            if ($step instanceof RequiredSetupStep && ! $step->satisfied()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** @return list<SetupStep> i passi per questo operatore, in ordine */
