@@ -89,9 +89,9 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Spese con scontrini e fatture allegati | ✓ | ✓ | ✓ |
 | Importazione ed esportazione della prima nota | ✓ | ✓ | ✓ |
 | Donazioni con PayPal | ✓ | ✓ | ✓ |
-| Anni fiscali: apertura e chiusura (solo amministratori), con il mese di inizio a scelta e l'avviso del nuovo anno da settembre; si chiudono in ordine | ✓ | ✓ | ✓ |
+| Anni fiscali: apertura e chiusura (solo amministratori), con il mese di inizio a scelta (si blocca alla prima chiusura, anche se poi l'anno viene riaperto) e l'avviso del nuovo anno da settembre; si chiudono in ordine | ✓ | ✓ | ✓ |
 | Riapertura dell'ultimo anno fiscale: si riapre solo l'ultimo anno fiscale chiuso, scrivendo il motivo; resta una traccia permanente di chiusure e riaperture, e le tessere di un anno fiscale chiuso non si modificano | ✓ | ✓ | ✓ |
-| Tessera che segue l'anno sociale («2026» oppure «2026/2027»), con rinnovo anticipato negli ultimi giorni; l'anno sociale e l'anno fiscale si scelgono al primo passo della configurazione guidata e sono indipendenti | ✓ | ✓ | ✓ |
+| Tessera annuale che segue l'anno sociale: l'etichetta è «2026» oppure «2026/2027»; negli ultimi giorni prima della scadenza si rinnova in anticipo; se cambi il mese, vale solo per le tessere nuove; anno sociale e anno fiscale si scelgono al primo passo della configurazione guidata | ✓ | ✓ | ✓ |
 | Cassa «Prenota» (per data o per attività) | ✓ | ✓ | ✓ |
 | Acconti e sconti con motivo per riga di incasso | ✓ | ✓ | ✓ |
 | Nuovo socio in un popup durante l'incasso, senza perdere l'operazione | ✓ | ✓ | ✓ |
@@ -117,7 +117,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 |---|---|---|---|
 | IVA su quote, attività, incassi e spese | — | — | ✓ |
 | 5 per mille e rendiconto sull'utilizzo | — | — | ✓ |
-| Rendiconto per cassa per il commercialista, definitivo e numerato alla chiusura dell'anno fiscale | — | — | ✓ |
+| Rendiconto per cassa per il commercialista: alla chiusura dell'anno fiscale diventa definitivo, con un PDF numerato (n. 1/2026) che non cambia più; prima è una bozza | — | — | ✓ |
 | Anno fiscale del rendiconto per cassa e verifiche prima della chiusura | — | — | ✓ |
 | Spese documentate attribuite in automatico ai fondi dei rimborsi, con elenchi e CSV | — | — | ✓ |
 | Bilancio provvisorio dell'anno fiscale, avvisi di bilancio e storico mensile con CSV | — | — | ✓ |
