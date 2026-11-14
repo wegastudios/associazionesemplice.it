@@ -3,7 +3,7 @@ Contributors: wegastudios
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.10
+Stable tag: 1.3.11
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,6 +22,12 @@ With a license key entered in Associazione Semplice Pro, once a day (and when yo
 The plugin includes a copy of the Public Suffix List (https://publicsuffix.org, Mozilla Public License 2.0) to tell which domain a license covers.
 
 == Changelog ==
+
+= 1.3.11 =
+* Alla chiusura dell'anno fiscale viene emesso il rendiconto definitivo, con un PDF numerato («n. 1/2026»); vale anche per gli anni già chiusi
+* Le ricevute sono numerate per anno fiscale e il numero resta uguale nel tempo; se una ricevuta viene annullata ne resta traccia
+* Dopo l'annullo di una voce si può emettere la ricevuta sostitutiva
+* Le ricevute annullate non si vedono più nell'area soci
 
 = 1.3.10 =
 * Il diritto di voto si decide per ogni livello di socio (sì o no) e vale per votazioni, assemblee e Dati per il RUNTS

@@ -4,7 +4,7 @@ Tags: nonprofit, members, membership, association, accounting
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.23
+Stable tag: 1.3.24
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -60,6 +60,16 @@ Straight to the PayPal account you enter in the settings. They are recorded in t
 The interface uses the Montserrat typeface (SIL Open Font License 1.1, copy in `assets/fonts/OFL.txt`) and icons from Lucide (ISC license, https://lucide.dev), both bundled with the plugin; nothing is loaded from external servers.
 
 == Changelog ==
+
+= 1.3.24 =
+* La tessera segue l'anno sociale: l'etichetta è «2026» oppure «2026/2027», e negli ultimi giorni prima della scadenza si può rinnovare in anticipo; se cambi il mese, vale solo per le tessere nuove
+* Anno sociale e anno fiscale si scelgono subito all'installazione, al primo passo della procedura guidata
+* Il mese dell'anno fiscale si blocca alla prima chiusura, anche se poi l'anno viene riaperto
+* I verbali hanno un numero fisso che non cambia mai
+* Assemblee, votazioni e verbali di un anno fiscale chiuso non si modificano più
+* Il nome e il tipo di un conto con movimenti in un anno fiscale chiuso non si cambiano
+* La pagina «Esercizi» si chiama ora «Anni fiscali» e i testi parlano di «anno fiscale», «bozza» e «definitivo»
+* Quando un anno fiscale è chiuso i messaggi sono più chiari: si riapre dalla pagina «Anni fiscali», ma solo l'ultimo
 
 = 1.3.23 =
 * Libro soci per esercizio: segue l'esercizio e alla chiusura viene fotografato, così da quel momento non cambia più
