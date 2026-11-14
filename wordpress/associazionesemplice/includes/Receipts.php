@@ -9,8 +9,10 @@ defined( 'ABSPATH' ) || exit;
  * Una ricevuta è un incasso (tutte le righe con lo stesso `receipt_id`; per i movimenti vecchi senza codice, la singola riga).
  * Il numero progressivo (N/AAAA, per anno fiscale dell'ente) si assegna alla prima emissione e non cambia più, nemmeno dopo un annullo.
  * Alla prima emissione i dati si fotografano (colonna `data`): la ricevuta emessa si rigenera sempre uguale, anche se poi cambiano il nome, il codice
- * fiscale o le impostazioni. Un incasso annullato non ha ricevuta: l'annullo resta scritto sulla riga (mai cancellata). Un incasso di un esercizio
- * chiuso non riceve un numero nuovo.
+ * fiscale o le impostazioni. Se un incasso (o una sola delle sue righe) è annullato, la ricevuta emessa risulta annullata: resta consultabile, in PDF
+ * marcato «ANNULLATA» con data e motivo, e il suo numero non torna libero. Un incasso di un esercizio chiuso non riceve un numero nuovo.
+ * Se dopo l'annullo di una riga ne restano altre, si può emettere una ricevuta SOSTITUTIVA: numero nuovo (serie dell'anno fiscale della data di
+ * emissione), data di oggi, dati fotografati di oggi, collegata a quella annullata (`replaces_id`) e con il riferimento scritto nel PDF.
  * Le vede chi amministra e chi ha pagato (o il socio che ospita chi ha pagato).
  */
 final class Receipts {
@@ -49,6 +51,14 @@ final class Receipts {
 			. 'LEFT JOIN ' . Db::t( 'people' ) . " bp ON bp.id = t.person_id WHERE t.type = 'income' AND t.voided_at IS NULL AND ";
 		if ( preg_match( '/^tx(\d+)$/', $key, $m ) ) {
 			$sql = $db->prepare( $sql . 't.id = %d AND t.receipt_id IS NULL ORDER BY t.id', (int) $m[1] );
+		} elseif ( preg_match( '/^sub\d+$/', $key ) ) { // ricevuta sostitutiva: le sue righe sono quelle fotografate all'emissione (una annullata poi non compare più)
+			$ids = self::data_of( self::record( $key ) )['tx_ids'] ?? array();
+			if ( ! $ids ) {
+				return array();
+			}
+			$ids = array_map( 'intval', $ids );
+			$in  = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+			$sql = $db->prepare( $sql . "t.id IN ($in) ORDER BY t.id", $ids ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared -- i segnaposto sono %d, uno per id
 		} else {
 			$sql = $db->prepare( $sql . 't.receipt_id = %s ORDER BY t.id', $key );
 		}
@@ -84,7 +94,7 @@ final class Receipts {
 				if ( count( $out ) >= $limit ) {
 					continue;
 				}
-				$out[ $k ] = array( 'key' => $k, 'date' => $r['tx_date'], 'cents' => 0, 'what' => array() );
+				$out[ $k ] = array( 'key' => self::effective_key( $k ), 'date' => $r['tx_date'], 'cents' => 0, 'what' => array() );
 			}
 			$out[ $k ]['cents'] += (int) $r['amount_cents'];
 			$out[ $k ]['what'][ $r['category_name'] ] = true;
@@ -114,8 +124,13 @@ final class Receipts {
 
 	public static function can_view( string $key ): bool {
 		$rows = self::rows( $key );
-		if ( ! $rows ) {
-			return false;
+		if ( ! $rows ) { // una ricevuta annullata resta consultabile: chi può vederla lo dicono i suoi dati fotografati
+			$rec  = self::record( $key );
+			$data = $rec && null !== $rec['voided_at'] ? self::data_of( $rec ) : array();
+			if ( ! $data ) {
+				return false;
+			}
+			return current_user_can( Plugin::CAP_OPS ) || ( ! empty( $data['payer_id'] ) && current_user_can( 'asem_view_payments', (int) $data['payer_id'] ) );
 		}
 		if ( current_user_can( Plugin::CAP_OPS ) ) {
 			return true;
@@ -174,6 +189,142 @@ final class Receipts {
 		$db  = Db::db();
 		$rid = $db->get_var( $db->prepare( 'SELECT receipt_id FROM ' . Db::t( 'transactions' ) . ' WHERE id = %d', $tx_id ) );
 		self::mark_voided( $rid ? (string) $rid : 'tx' . $tx_id, $reason );
+		foreach ( $db->get_results( 'SELECT receipt_key, data FROM ' . Db::t( 'receipts' ) . ' WHERE replaces_id IS NOT NULL AND voided_at IS NULL', ARRAY_A ) ?: array() as $sub ) { // anche una sostitutiva che contiene la riga annullata non vale più
+			$d = json_decode( (string) $sub['data'], true );
+			if ( is_array( $d ) && in_array( $tx_id, array_map( 'intval', (array) ( $d['tx_ids'] ?? array() ) ), true ) ) {
+				self::mark_voided( (string) $sub['receipt_key'], $reason );
+			}
+		}
+	}
+
+	/** I dati fotografati di una ricevuta emessa (array vuoto se non ci sono). */
+	public static function data_of( ?array $rec ): array {
+		if ( ! $rec || empty( $rec['data'] ) ) {
+			return array();
+		}
+		$d = json_decode( (string) $rec['data'], true );
+		return is_array( $d ) ? $d : array();
+	}
+
+	/** La ricevuta sostitutiva di una ricevuta annullata (null se non è stata emessa). */
+	public static function replacement_of( int $receipt_id ): ?array {
+		$db  = Db::db();
+		$row = $db->get_row( $db->prepare( 'SELECT * FROM ' . Db::t( 'receipts' ) . ' WHERE replaces_id = %d', $receipt_id ), ARRAY_A );
+		return $row ?: null;
+	}
+
+	/** La ricevuta annullata che questa sostituisce (null se non è una sostitutiva). */
+	public static function replaced_by_this( array $rec ): ?array {
+		if ( empty( $rec['replaces_id'] ) ) {
+			return null;
+		}
+		$db  = Db::db();
+		$row = $db->get_row( $db->prepare( 'SELECT * FROM ' . Db::t( 'receipts' ) . ' WHERE id = %d', (int) $rec['replaces_id'] ), ARRAY_A );
+		return $row ?: null;
+	}
+
+	/** Codice della ricevuta che oggi vale per questo incasso: segue le sostitutive fino all'ultima (se non ce ne sono, è lo stesso codice). */
+	public static function effective_key( string $key ): string {
+		for ( $i = 0; $i < 20; $i++ ) {
+			$rec = self::record( $key );
+			if ( ! $rec || null === $rec['voided_at'] ) {
+				return $key;
+			}
+			$next = self::replacement_of( (int) $rec['id'] );
+			if ( ! $next ) {
+				return $key;
+			}
+			$key = (string) $next['receipt_key'];
+		}
+		return $key;
+	}
+
+	/** Ricevute annullate di chi ha pagato (con l'eventuale sostitutiva), dalla più recente. @return array[] rec (riga), key, replaced_by (riga o null) */
+	public static function voided_for_payer( int $person_id ): array {
+		$db   = Db::db();
+		$rows = $db->get_results(
+			$db->prepare( 'SELECT * FROM ' . Db::t( 'receipts' ) . ' WHERE voided_at IS NOT NULL AND data LIKE %s ORDER BY voided_at DESC, id DESC LIMIT 50', '%"payer_id":' . (int) $person_id . ',%' ),
+			ARRAY_A
+		) ?: array();
+		$out = array();
+		foreach ( $rows as $r ) {
+			$out[] = array( 'rec' => $r, 'key' => (string) $r['receipt_key'], 'replaced_by' => self::replacement_of( (int) $r['id'] ) );
+		}
+		return $out;
+	}
+
+	/**
+	 * Perché NON si può emettere la sostitutiva di una ricevuta annullata (stringa vuota = si può). Regole: la ricevuta dev'essere annullata e senza
+	 * sostitutiva; devono restare righe; le righe rimaste devono essere di un esercizio aperto E la data di emissione (oggi) cadere in un esercizio aperto
+	 * («il chiuso è chiuso»: nessuna ricevuta nuova per incassi di anni chiusi).
+	 */
+	public static function replacement_problem( string $key ): string {
+		$key = self::clean_key( $key );
+		$rec = self::record( $key );
+		if ( ! $rec || null === $rec['voided_at'] ) {
+			return 'Questa ricevuta non è annullata: non serve una sostitutiva.';
+		}
+		$have = self::replacement_of( (int) $rec['id'] );
+		if ( $have ) {
+			return 'Esiste già la ricevuta sostitutiva n. ' . $have['number'] . '/' . $have['year'] . '.';
+		}
+		$rows = self::rows( $key );
+		if ( ! $rows ) {
+			return 'Non restano righe da ricevere: non c\'è nessuna ricevuta sostitutiva da emettere.';
+		}
+		foreach ( $rows as $r ) {
+			$y = YearLock::closed_year_of( (string) $r['tx_date'] );
+			if ( null !== $y ) {
+				return 'Ricevuta sostitutiva non emessa: l\'incasso è dell\'anno ' . FiscalYears::label( $y ) . ', che è chiuso. Per emetterla va prima riaperto.';
+			}
+		}
+		$y = YearLock::closed_year_of( Db::today() );
+		if ( null !== $y ) {
+			return FiscalYears::closed_message( $y );
+		}
+		return '';
+	}
+
+	/**
+	 * Emette la ricevuta sostitutiva per le righe rimaste dopo l'annullo di una o più righe: numero nuovo (serie dell'anno fiscale di oggi), data di
+	 * oggi, dati fotografati di oggi (intestatario, codice fiscale, intestazione e piè di pagina dell'ente), collegata alla ricevuta annullata.
+	 *
+	 * @param string $key codice della ricevuta annullata (anche una sostitutiva a sua volta annullata)
+	 * @return array{key:string,number:string,replaces:string}
+	 * @throws \InvalidArgumentException
+	 */
+	public static function issue_replacement( string $key ): array {
+		$key     = self::clean_key( $key );
+		$problem = self::replacement_problem( $key );
+		if ( '' !== $problem ) {
+			throw new \InvalidArgumentException( $problem ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$old   = (array) self::record( $key );
+		$rows  = self::rows( $key );
+		$today = Db::today();
+		$nkey  = 'sub' . (int) $old['id'];
+		$db    = Db::db();
+		$num   = self::number_for( $nkey, $today, (int) $old['id'] );
+		try {
+			$data = self::capture(
+				$rows,
+				$num,
+				$today,
+				array(
+					'number'    => (int) $old['number'],
+					'year'      => (int) $old['year'],
+					'voided_at' => substr( (string) $old['voided_at'], 0, 10 ),
+				)
+			);
+		} catch ( \Throwable $e ) { // se i dati non si fotografano, il numero non resta assegnato a una ricevuta vuota
+			$db->delete( Db::t( 'receipts' ), array( 'receipt_key' => $nkey ) );
+			throw $e;
+		}
+		$json = (string) wp_json_encode( $data, JSON_UNESCAPED_UNICODE );
+		$db->query( $db->prepare( 'UPDATE ' . Db::t( 'receipts' ) . " SET data = %s, content_hash = %s WHERE receipt_key = %s AND (data IS NULL OR data = '')", $json, hash( 'sha256', $json ), $nkey ) );
+		$new = self::record( $nkey );
+		Audit::log( 'receipt.replacement_issued', 'receipt', $new ? (int) $new['id'] : 0, array( 'number' => $num['number'] . '/' . $num['year'], 'replaces' => $old['number'] . '/' . $old['year'] ) );
+		return array( 'key' => $nkey, 'number' => $num['number'] . '/' . $num['year'], 'replaces' => $old['number'] . '/' . $old['year'] );
 	}
 
 	/**
@@ -184,7 +335,7 @@ final class Receipts {
 	 * @return array{number:int,year:int}
 	 * @throws \InvalidArgumentException
 	 */
-	public static function number_for( string $key, string $date ): array {
+	public static function number_for( string $key, string $date, ?int $replaces = null ): array {
 		$db   = Db::db();
 		$tbl  = Db::t( 'receipts' );
 		$have = $db->get_row( $db->prepare( "SELECT number, year FROM $tbl WHERE receipt_key = %s", $key ), ARRAY_A );
@@ -200,10 +351,16 @@ final class Receipts {
 				return array( 'number' => (int) $have['number'], 'year' => (int) $have['year'] );
 			}
 			$next = 1 + (int) $db->get_var( $db->prepare( "SELECT MAX(number) FROM $tbl WHERE year = %d", $year ) );
-			if ( ! $db->insert( $tbl, array( 'receipt_key' => $key, 'year' => $year, 'number' => $next, 'issued_at' => Db::now(), 'issued_by' => get_current_user_id() ?: null ) ) ) {
+			$new = array( 'receipt_key' => $key, 'year' => $year, 'number' => $next, 'issued_at' => Db::now(), 'issued_by' => get_current_user_id() ?: null );
+			if ( $replaces ) {
+				$new['replaces_id'] = $replaces; // sostitutiva: il numero è nuovo, il collegamento alla ricevuta annullata è unico
+			}
+			if ( ! $db->insert( $tbl, $new ) ) {
 				throw new \RuntimeException( 'Impossibile assegnare il numero della ricevuta.' );
 			}
-			Audit::log( 'receipt.issued', 'receipt', (int) $db->insert_id, array( 'number' => $next . '/' . $year ) );
+			if ( ! $replaces ) {
+				Audit::log( 'receipt.issued', 'receipt', (int) $db->insert_id, array( 'number' => $next . '/' . $year ) );
+			}
 			return array( 'number' => $next, 'year' => $year );
 		} finally {
 			if ( $lock ) {
@@ -356,9 +513,9 @@ final class Receipts {
 	 * @param array[] $rows righe di incasso (vedi {@see Receipts::rows()})
 	 * @param array   $num  numero e anno (vedi {@see Receipts::number_for()})
 	 */
-	private static function capture( array $rows, array $num ): array {
+	private static function capture( array $rows, array $num, ?string $issue_date = null, ?array $replaces = null ): array {
 		$payer   = self::payer( $rows );
-		$date    = (string) $rows[0]['tx_date'];
+		$date    = $issue_date ?: (string) $rows[0]['tx_date']; // la sostitutiva porta la data di emissione (oggi); la data dell'incasso resta in `paid_on`
 		$kinds   = array_values( array_unique( array_column( $rows, 'category_kind' ) ) );
 		$method  = (string) $rows[0]['method'];
 		$mlabel  = Labels::methods()[ $method ] ?? $method;
@@ -376,7 +533,8 @@ final class Receipts {
 		foreach ( self::vat_breakdown( $rows ) as $rate => $b ) {
 			$vat_rows[] = array( 'rate' => (int) $rate, 'net' => (int) $b['net'], 'vat' => (int) $b['vat'] );
 		}
-		return array(
+		$sub = $replaces ? array( 'paid_on' => (string) $rows[0]['tx_date'], 'replaces' => $replaces ) : array(); // solo la sostitutiva: data dell'incasso e ricevuta annullata che sostituisce
+		return $sub + array(
 			'v'          => 1,
 			'number'     => (int) $num['number'],
 			'year'       => (int) $num['year'],
@@ -411,8 +569,8 @@ final class Receipts {
 		$db  = Db::db();
 		$tbl = Db::t( 'receipts' );
 		$rec = self::record( $key );
-		if ( $rec && null !== $rec['voided_at'] ) {
-			throw new \InvalidArgumentException( 'Ricevuta annullata: l\'incasso è stato annullato.' );
+		if ( $rec && null !== $rec['voided_at'] ) { // già annullata: si legge dai dati fotografati
+			return array( self::data_of( $rec ), (string) $rec['content_hash'], $rec );
 		}
 		if ( $rec && ! empty( $rec['data'] ) ) {
 			$data = json_decode( (string) $rec['data'], true );
@@ -423,10 +581,13 @@ final class Receipts {
 				sort( $old );
 				if ( $live !== $old ) { // una delle righe è stata annullata dopo l'emissione: la ricevuta emessa non vale più
 					self::mark_voided( $key, 'Incasso annullato' );
-					throw new \InvalidArgumentException( 'Ricevuta annullata: l\'incasso è stato annullato.' );
+					return array( $data, (string) $rec['content_hash'], self::record( $key ) );
 				}
-				return array( $data, (string) $rec['content_hash'] );
+				return array( $data, (string) $rec['content_hash'], null );
 			}
+		}
+		if ( preg_match( '/^sub\d+$/', $key ) ) { // una sostitutiva nasce solo da issue_replacement(): senza i suoi dati non si ricostruisce
+			throw new \InvalidArgumentException( 'Ricevuta non trovata (o incasso annullato).' );
 		}
 		$num  = self::number_for( $key, (string) $rows[0]['tx_date'] ); // se è nuova assegna il numero (un esercizio chiuso non ne riceve di nuovi)
 		$data = self::capture( $rows, $num );
@@ -435,29 +596,41 @@ final class Receipts {
 		$db->query( $db->prepare( "UPDATE $tbl SET data = %s, content_hash = %s WHERE receipt_key = %s AND (data IS NULL OR data = '')", $json, $hash, $key ) );
 		$rec = self::record( $key );
 		if ( $rec && ! empty( $rec['data'] ) && is_array( json_decode( (string) $rec['data'], true ) ) ) { // se un'altra richiesta è arrivata prima, vale la sua fotografia
-			return array( json_decode( (string) $rec['data'], true ), (string) $rec['content_hash'] );
+			return array( json_decode( (string) $rec['data'], true ), (string) $rec['content_hash'], null );
 		}
-		return array( $data, $hash );
+		return array( $data, $hash, null );
 	}
 
-	/** @return array pdf (byte), filename, number (stringa N/AAAA), payer (persona o null), hash (della fotografia)
+	/**
+	 * La ricevuta in PDF. Se è annullata (l'incasso o una sua riga è stato annullato) il PDF è lo stesso di quando è stata emessa, marcato «ANNULLATA»
+	 * con data e motivo dell'annullo: si legge sempre uguale.
+	 *
+	 * @return array pdf (byte), filename, number (stringa N/AAAA), payer (persona o null), hash (della fotografia), voided (bool)
 	 *  @throws \InvalidArgumentException */
 	public static function build( string $key ): array {
 		$key  = self::clean_key( $key );
 		$rows = self::rows( $key );
-		if ( ! $rows ) {
+		$rec  = self::record( $key );
+		if ( ! $rows && ! ( $rec && null !== $rec['voided_at'] ) ) {
 			self::mark_voided( $key, 'Incasso annullato' ); // se la ricevuta era stata emessa, l'annullo resta scritto
-			throw new \InvalidArgumentException( 'Ricevuta non trovata (o incasso annullato).' );
+			$rec = self::record( $key );
+			if ( ! $rec || null === $rec['voided_at'] ) {
+				throw new \InvalidArgumentException( 'Ricevuta non trovata (o incasso annullato).' );
+			}
 		}
-		list( $s, $hash ) = self::issued( $key, $rows );
-		$label            = $s['number'] . '/' . $s['year'];
-		$payer            = $s['payer_id'] ? Plugin::people()->get( (int) $s['payer_id'] ) : null;
-		$who              = '' !== (string) $s['payer_last'] ? Text::normalize( $s['payer_last'] ) : 'ricevuta';
-		return array( 'pdf' => self::render( $s ), 'filename' => 'ricevuta-' . $s['number'] . '-' . $s['year'] . '-' . preg_replace( '/[^a-z0-9]/', '', $who ) . '.pdf', 'number' => $label, 'payer' => $payer, 'hash' => $hash );
+		list( $s, $hash, $void ) = self::issued( $key, $rows );
+		if ( ! $s ) {
+			throw new \InvalidArgumentException( 'Ricevuta annullata: i suoi dati non sono più disponibili.' ); // emessa prima che si fotografassero i dati e poi annullata
+		}
+		$label = $s['number'] . '/' . $s['year'];
+		$payer = $s['payer_id'] ? Plugin::people()->get( (int) $s['payer_id'] ) : null;
+		$who   = '' !== (string) $s['payer_last'] ? Text::normalize( $s['payer_last'] ) : 'ricevuta';
+		$out   = array( 'pdf' => self::render( $s, $void ), 'filename' => 'ricevuta-' . $s['number'] . '-' . $s['year'] . ( $void ? '-annullata' : '' ) . '-' . preg_replace( '/[^a-z0-9]/', '', $who ) . '.pdf', 'number' => $label, 'payer' => $payer, 'hash' => $hash, 'voided' => (bool) $void );
+		return $out;
 	}
 
-	/** Disegna il PDF della ricevuta dai soli dati fotografati. */
-	private static function render( array $s ): string {
+	/** Disegna il PDF della ricevuta dai soli dati fotografati (e, se annullata, dalla riga dell'annullo: data e motivo). */
+	private static function render( array $s, ?array $void = null ): string {
 		$label  = $s['number'] . '/' . $s['year'];
 		$date   = (string) $s['date'];
 		Pdf::$filter = array( Texts::class, 'plain' ); // testi personalizzati nel PDF
@@ -467,6 +640,28 @@ final class Receipts {
 		$pdf->text( Pdf::W - 50, $y, 'N. ' . $label, 14, true, 'R' );
 		$y += 20;
 		$pdf->text( 50, $y, 'Data: ' . self::d( $date ), 11 );
+		if ( ! empty( $s['replaces'] ) ) { // sostitutiva: da dove nasce
+			$rp = (array) $s['replaces'];
+			foreach ( Pdf::wrap( 'Sostituisce la ricevuta n. ' . (int) $rp['number'] . '/' . (int) $rp['year'] . ' annullata il ' . self::d( (string) $rp['voided_at'] ) . '.', Pdf::W - 100, 10 ) as $l ) {
+				$y += 15;
+				$pdf->text( 50, $y, $l, 10 );
+			}
+			if ( ! empty( $s['paid_on'] ) && (string) $s['paid_on'] !== $date ) {
+				$y += 15;
+				$pdf->text( 50, $y, 'Incasso del ' . self::d( (string) $s['paid_on'] ), 10 );
+			}
+		}
+		if ( $void ) { // ricevuta annullata: marchio ben visibile, con data e motivo (stessi dati a ogni lettura)
+			$y += 38;
+			$pdf->color( 'B00020' );
+			$pdf->text( 50, $y, 'ANNULLATA', 28, true );
+			$pdf->color();
+			$y += 8;
+			foreach ( Pdf::wrap( 'Annullata il ' . self::d( substr( (string) $void['voided_at'], 0, 10 ) ) . ( '' !== trim( (string) $void['void_reason'] ) ? ' — motivo: ' . trim( (string) $void['void_reason'] ) : '' ) . '. Non ha valore.', Pdf::W - 100, 10 ) as $l ) {
+				$y += 14;
+				$pdf->text( 50, $y, $l, 10 );
+			}
+		}
 		$y += 30;
 		$pdf->text( 50, $y, 'Ricevuto da', 9 );
 		$y += 15;
@@ -635,7 +830,10 @@ final class Receipts {
 
 	/** Manda la ricevuta in PDF all'email di chi ha pagato. @throws \InvalidArgumentException */
 	public static function email( string $key ): void {
-		$r     = self::build( $key );
+		$r = self::build( $key );
+		if ( ! empty( $r['voided'] ) ) {
+			throw new \InvalidArgumentException( 'La ricevuta è annullata: non si manda. Se restano righe, emetti la ricevuta sostitutiva.' );
+		}
 		$payer = $r['payer'];
 		$to    = $payer && ! empty( $payer['email'] ) ? (string) $payer['email'] : '';
 		if ( '' === $to && $payer && ! empty( $payer['host_person_id'] ) ) {

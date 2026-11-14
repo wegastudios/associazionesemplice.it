@@ -59,6 +59,7 @@ final class ProMenu {
 		array( 'asem-budget', 'Bilancio preventivo', array( BudgetPage::class, 'render' ) ),
 		array( 'asem-watch', 'Bilancio provvisorio', array( WatchPage::class, 'render' ) ),
 		array( 'asem-refunds', 'Rimborsi ai volontari', array( RefundsPage::class, 'render' ) ),
+		array( 'asem-receipt-replace', 'Ricevuta sostitutiva', array( ReceiptReplacePage::class, 'render' ) ),
 	);
 
 	/** Titoli completi delle pagine che il gratuito chiama con un nome più corto. */

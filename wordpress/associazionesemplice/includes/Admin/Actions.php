@@ -1065,7 +1065,8 @@ final class Actions {
 
 	private static function void_tx( array $p ): array {
 		Plugin::ledger()->void( (int) $p['id'], (string) ( $p['reason'] ?? '' ) );
-		return array( $p['_back'] ?? Ui::url( 'asem-ledger' ), 'Movimento annullato (resta tracciato).' );
+		$res = array( $p['_back'] ?? Ui::url( 'asem-ledger' ), 'Movimento annullato (resta tracciato).' );
+		return (array) apply_filters( 'asem_tx_void_result', $res, (int) $p['id'] ); // le estensioni aggiungono una nota o propongono il passo successivo (dove andare, cosa dire)
 	}
 
 	// ---------- Conti ----------

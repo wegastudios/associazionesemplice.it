@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 final class ProSchema {
 
 	const VERSION_OPTION = 'asem_pro_db_version';
-	const VERSION        = '14'; // dalla 14 il rendiconto chiuso è fotografato (statement_snapshot); dalla 13 la ricevuta emessa conserva i suoi dati (data, content_hash) e l'eventuale annullo (voided_*)
+	const VERSION        = '15'; // dalla 15 la ricevuta sostitutiva (replaces_id); dalla 14 il rendiconto chiuso è fotografato (statement_snapshot); dalla 13 la ricevuta emessa conserva i suoi dati (data, content_hash) e l'eventuale annullo (voided_*)
 
 	public static function register(): void {
 		add_filter( 'asem_schema_tables', array( __CLASS__, 'tables' ), 10, 3 );
@@ -268,8 +268,10 @@ final class ProSchema {
   voided_at datetime DEFAULT NULL,
   voided_by bigint(20) unsigned DEFAULT NULL,
   void_reason varchar(255) DEFAULT NULL,
+  replaces_id bigint(20) unsigned DEFAULT NULL,
   PRIMARY KEY  (id),
   UNIQUE KEY receipt_key (receipt_key),
+  UNIQUE KEY replaces_id (replaces_id),
   UNIQUE KEY year_number (year,number)
 ) $c;";
 

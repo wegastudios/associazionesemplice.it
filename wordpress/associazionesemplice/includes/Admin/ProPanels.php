@@ -23,6 +23,31 @@ final class ProPanels {
 		add_filter( 'asem_bookdesk_item', array( __CLASS__, 'bookdesk_item' ), 10, 3 );
 		add_action( 'asem_person_receipts', array( __CLASS__, 'person_receipts' ) );
 		add_action( 'asem_ledger_row_actions', array( __CLASS__, 'ledger_row_actions' ), 10, 2 );
+		add_filter( 'asem_tx_void_result', array( __CLASS__, 'void_result' ), 10, 2 );
+	}
+
+	/**
+	 * Dopo l'annullo di una riga: se la ricevuta emessa dell'incasso risulta annullata e restano altre righe, si propone la ricevuta sostitutiva
+	 * (schermata con le righe rimaste); se non restano righe lo si dice e basta.
+	 *
+	 * @param array $res [indirizzo, messaggio]
+	 */
+	public static function void_result( array $res, int $tx_id ): array {
+		if ( ! \AssociazioneSemplice\Edition::has( 'receipts' ) ) {
+			return $res;
+		}
+		$db  = \AssociazioneSemplice\Db::db();
+		$rid = $db->get_var( $db->prepare( 'SELECT receipt_id FROM ' . \AssociazioneSemplice\Db::t( 'transactions' ) . ' WHERE id = %d', $tx_id ) );
+		$key = \AssociazioneSemplice\Receipts::effective_key( $rid ? (string) $rid : 'tx' . $tx_id );
+		$rec = \AssociazioneSemplice\Receipts::record( $key );
+		if ( ! $rec || null === $rec['voided_at'] ) {
+			return $res;
+		}
+		$label = $rec['number'] . '/' . $rec['year'];
+		if ( \AssociazioneSemplice\Receipts::rows( $key ) ) {
+			return array( Ui::url( 'asem-receipt-replace', array( 'key' => $key, 'back' => (string) $res[0] ) ), $res[1] . ' La ricevuta n. ' . $label . ' risulta annullata: puoi emettere la ricevuta sostitutiva per le righe rimaste.' );
+		}
+		return array( $res[0], $res[1] . ' La ricevuta n. ' . $label . ' risulta annullata (non restano altre righe: nessuna ricevuta sostitutiva).' );
 	}
 
 	/** Ricevute e attestazioni annuali della persona. */
@@ -31,8 +56,9 @@ final class ProPanels {
 			return;
 		}
 		$id    = (int) $p['id'];
-		$years = \AssociazioneSemplice\Receipts::years_for_payer( $id );
-		if ( ! $years ) {
+		$years  = \AssociazioneSemplice\Receipts::years_for_payer( $id );
+		$voided = \AssociazioneSemplice\Receipts::voided_for_payer( $id );
+		if ( ! $years && ! $voided ) {
 			return;
 		}
 		echo '<div class="asem-card"><h2>Ricevute e attestazioni</h2><p class="description">Le ricevute dei singoli incassi sono in Contabilità → Prima nota.</p><p>';
@@ -44,13 +70,31 @@ final class ProPanels {
 			echo '<li>' . Ui::date( $r['date'] ) . ' · ' . esc_html( $r['what'] ) . ' · ' . esc_html( \AssociazioneSemplice\Money::format( $r['cents'] ) ) // phpcs:ignore WordPress.Security.EscapeOutput
 				. ' <a target="_blank" href="' . esc_url( \AssociazioneSemplice\Receipts::url( $r['key'] ) ) . '">ricevuta</a></li>';
 		}
-		echo '</ul></div>';
+		echo '</ul>';
+		if ( $voided ) { // le ricevute annullate restano consultabili (PDF con la scritta ANNULLATA) e dicono da quale sono state sostituite
+			echo '<h3>Ricevute annullate</h3><ul>';
+			foreach ( $voided as $v ) {
+				$rec = $v['rec'];
+				$by  = $v['replaced_by'];
+				echo '<li>n. ' . esc_html( $rec['number'] . '/' . $rec['year'] ) . ' · annullata il ' . Ui::date( substr( (string) $rec['voided_at'], 0, 10 ) ) // phpcs:ignore WordPress.Security.EscapeOutput
+					. ( $by ? ' · sostituita dalla n. ' . esc_html( $by['number'] . '/' . $by['year'] ) : '' )
+					. ' <a target="_blank" href="' . esc_url( \AssociazioneSemplice\Receipts::url( $v['key'] ) ) . '">ricevuta annullata</a></li>';
+			}
+			echo '</ul>';
+		}
+		echo '</div>';
 	}
 
 	/** Nella riga di un incasso: ricevuta PDF e invio per email. */
 	public static function ledger_row_actions( array $r, string $here ): void {
 			if ( 'income' === $r['type'] && \AssociazioneSemplice\Edition::has( 'receipts' ) ) {
-				$rkey = \AssociazioneSemplice\Receipts::key_of( $r );
+				$rkey = \AssociazioneSemplice\Receipts::effective_key( \AssociazioneSemplice\Receipts::key_of( $r ) ); // se la ricevuta è stata sostituita, vale l'ultima
+				$rrec = \AssociazioneSemplice\Receipts::record( $rkey );
+				if ( $rrec && null !== $rrec['voided_at'] ) { // annullata e non ancora sostituita: si legge (ANNULLATA) e, se restano righe, si propone la sostitutiva
+					echo '<a class="button button-small" target="_blank" href="' . esc_url( \AssociazioneSemplice\Receipts::url( $rkey ) ) . '">Ricevuta annullata (PDF)</a> '
+						. '<a class="button button-small" href="' . esc_url( Ui::url( 'asem-receipt-replace', array( 'key' => $rkey, 'back' => $here ) ) ) . '">Emetti la sostitutiva</a> ';
+					return;
+				}
 				echo '<a class="button button-small" target="_blank" href="' . esc_url( \AssociazioneSemplice\Receipts::url( $rkey ) ) . '">Ricevuta PDF</a> ';
 				Ui::form_open( 'asem_receipt_email', $here, false, 'asem-inline' );
 				echo Ui::hidden( 'key', $rkey ) . '<button class="button-link" data-confirm="Mandare la ricevuta per email a chi ha pagato?">invia per email</button>'; // phpcs:ignore WordPress.Security.EscapeOutput

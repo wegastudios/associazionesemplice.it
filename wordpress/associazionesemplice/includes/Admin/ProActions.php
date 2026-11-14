@@ -47,6 +47,7 @@ final class ProActions {
 		'asem_fund_release' => array( 'fund_release', 'funds', false ),
 		'asem_fund_settle' => array( 'fund_settle', 'funds', false ),
 		'asem_receipt_email' => array( 'receipt_email', 'receipts', false ),
+		'asem_receipt_replace' => array( 'receipt_replace', 'receipts', false ),
 		'asem_walk_in' => array( 'walk_in', 'door_sales', false ),
 		'asem_broadcast_send' => array( 'broadcast_send', 'broadcasts', false ),
 		'asem_broadcast_test' => array( 'broadcast_test', 'broadcasts', false ),
@@ -163,6 +164,12 @@ final class ProActions {
 	public static function receipt_email( array $p ): array {
 		\AssociazioneSemplice\Receipts::email( (string) ( $p['key'] ?? '' ) );
 		return array( $p['_back'] ?? Ui::url( 'asem-ledger' ), 'Ricevuta inviata per email.' );
+	}
+
+	/** Emette la ricevuta sostitutiva per le righe rimaste dopo l'annullo di una riga. */
+	public static function receipt_replace( array $p ): array {
+		$r = \AssociazioneSemplice\Receipts::issue_replacement( (string) ( $p['key'] ?? '' ) );
+		return array( $p['_back'] ?? Ui::url( 'asem-ledger' ), 'Ricevuta sostitutiva n. ' . $r['number'] . ' emessa: sostituisce la n. ' . $r['replaces'] . ' annullata. La scarichi dalla riga dell\'incasso con «Ricevuta PDF».' );
 	}
 
 	public static function save_terms( array $p ): array {
