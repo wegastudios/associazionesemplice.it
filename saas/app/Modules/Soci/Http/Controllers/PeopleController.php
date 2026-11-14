@@ -242,6 +242,10 @@ final readonly class PeopleController
         if ($cents === null || $cents < 0) {
             throw ValidationException::withMessages(['fee' => 'Importo non valido.']);
         }
+        $problem = $this->memberships->startMonthProblem((int) $request->integer('start_month'));
+        if ($problem !== null) {
+            throw ValidationException::withMessages(['start_month' => $problem]);
+        }
         $this->settings->set(MembershipService::START_MONTH, (int) $request->integer('start_month'));
         $this->settings->set(MembershipService::DEFAULT_FEE, $cents);
         $this->settings->set(CertificateService::WARN_DAYS, $request->integer('warn_days', 30));

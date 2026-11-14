@@ -13,7 +13,7 @@ use App\Modules\Soci\Services\MembershipService;
 /** Mese di inizio dell'anno sociale: si sceglie subito, prima di tesserare chiunque. */
 final readonly class SocialYearStep implements RequiredSetupStep
 {
-    public function __construct(private OrgSettings $settings) {}
+    public function __construct(private OrgSettings $settings, private MembershipService $memberships) {}
 
     public function key(): string
     {
@@ -51,7 +51,12 @@ final readonly class SocialYearStep implements RequiredSetupStep
     {
         $month = $input['start_month'] ?? null;
 
-        return is_numeric($month) && (int) $month >= 1 && (int) $month <= 12 ? [] : ['Scegli il mese in cui comincia l\'anno sociale.'];
+        if (! is_numeric($month) || (int) $month < 1 || (int) $month > 12) {
+            return ['Scegli il mese in cui comincia l\'anno sociale.'];
+        }
+        $problem = $this->memberships->startMonthProblem((int) $month);
+
+        return $problem === null ? [] : [$problem];
     }
 
     public function save(array $input): void

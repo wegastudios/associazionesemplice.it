@@ -156,3 +156,30 @@ it('dà il diritto di voto ai soli soci', function (): void {
         ->and(MemberType::Guest->hasVotingRights())->toBeFalse()
         ->and(MemberType::Guardian->hasVotingRights())->toBeFalse();
 });
+
+it('cambia il mese di inizio dell\'anno sociale solo senza tessere valide, o passando a gennaio', function (): void {
+    $settings = app(OrgSettings::class);
+    $settings->set(MembershipService::START_MONTH, 9);
+    $socio = $this->people->create(['first_name' => 'Anna', 'last_name' => 'Rossi']);
+
+    expect($this->memberships->startMonthProblem(3))->toBeNull();
+
+    $this->memberships->grantManually($socio->id, $this->memberships->socialYear()->label(), 'Socia onoraria');
+
+    expect($this->memberships->startMonthProblem(3))->toContain('tessere valide')
+        ->and($this->memberships->startMonthProblem(9))->toBeNull()
+        ->and($this->memberships->startMonthProblem(1))->toBeNull();
+});
+
+it('rinnova la tessera dell\'anno dopo solo negli ultimi giorni dell\'anno sociale', function (): void {
+    app(OrgSettings::class)->set(MembershipService::START_MONTH, 1);
+    app(OrgSettings::class)->set(MembershipService::DEFAULT_FEE, 3000);
+    $socio = $this->people->create(['first_name' => 'Anna', 'last_name' => 'Rossi']);
+    $next = (string) ((int) $this->memberships->socialYear()->label() + 1);
+
+    $this->travelTo(now()->setDate((int) now()->format('Y'), 6, 15));
+    expect(fn () => $this->memberships->renewWithPayment($socio->id, $this->cash, 3000, null, $next))->toThrow(PeopleError::class, 'ultimi');
+
+    $this->travelTo(now()->setDate((int) now()->format('Y'), 12, 28));
+    expect($this->memberships->renewWithPayment($socio->id, $this->cash, 3000, null, $next)['receipt'])->not->toBeNull();
+});
