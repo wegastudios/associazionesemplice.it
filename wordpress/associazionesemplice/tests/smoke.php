@@ -10065,6 +10065,41 @@ $wpdb->delete( $wpdb->usermeta, array( 'user_id' => (int) $rs_sec ) );
 $wpdb->delete( $wpdb->users, array( 'ID' => (int) $rs_sec ) );
 Settings::update( array( 'receipt_footer' => '' ) );
 
+// ---------- Quota associativa doppia: bloccata; annullo sicuro del doppione ----------
+Settings::update( array( 'limits' => array( 'membership_on_balance' => 0 ) ) );
+$qd_p   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Doppia', 'last_name' => 'Quota', 'email' => 'doppia.quota@example.com' ) );
+$qd_cat = $ledger->category_id_of_kind( 'membership' );
+$qd_rec = function () use ( $ledger, $cash, $today, $qd_p, $qd_cat ) {
+	return $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $qd_p, 'lines' => array( array( 'category_id' => $qd_cat, 'amount_cents' => 1000 ) ) ) );
+};
+$qd_count = function () use ( $wpdb, $qd_p ) {
+	return (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . ' WHERE person_id = ' . (int) $qd_p ); // senza movimento non nasce nemmeno la ricevuta (si genera dal movimento)
+};
+$qd_rec();
+$qd_year = (string) $wpdb->get_var( 'SELECT social_year FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . (int) $qd_p . ' AND deleted_at IS NULL AND source = \'payment\' ORDER BY social_year DESC LIMIT 1' );
+$qd_tx1  = (int) $wpdb->get_var( 'SELECT transaction_id FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . (int) $qd_p . ' AND social_year = \'' . $qd_year . '\' AND deleted_at IS NULL' );
+$qd_before = $qd_count();
+$qd_msg    = (string) asem_throws( $qd_rec );
+asem_ok( '' !== $qd_year && 'Voce 1: il socio ha già la tessera ' . $qd_year . '.' === $qd_msg && $qd_before === $qd_count(), 'quota doppia: con la tessera già presente la seconda quota è rifiutata e non nasce alcun movimento né ricevuta' );
+// una voce doppione blocca tutto l'incasso (anche le altre voci)
+$qd_other = $ledger->category_id_of_kind( 'donation' );
+asem_ok( null !== asem_throws( function () use ( $ledger, $cash, $today, $qd_p, $qd_cat, $qd_other ) { $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $qd_p, 'lines' => array( array( 'category_id' => $qd_other, 'amount_cents' => 500 ), array( 'category_id' => $qd_cat, 'amount_cents' => 1000 ) ) ) ); } ) && $qd_before === $qd_count(), 'quota doppia: se una voce è un doppione non si registra nemmeno l\'altra' );
+// doppione già esistente (nato prima del blocco): copia dell'incasso, con la tessera agganciata al secondo
+$qd_row = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'transactions' ) . ' WHERE id = ' . $qd_tx1, ARRAY_A );
+unset( $qd_row['id'], $qd_row['receipt_id'] );
+$wpdb->insert( Db::t( 'transactions' ), $qd_row );
+$qd_tx2 = (int) $wpdb->insert_id;
+$wpdb->update( Db::t( 'memberships' ), array( 'transaction_id' => $qd_tx2 ), array( 'person_id' => $qd_p, 'social_year' => $qd_year ) );
+$ledger->void( $qd_tx2, 'Incassata due volte' );
+asem_ok( $people->has_membership( $qd_p, $qd_year ) && $qd_tx1 === (int) $wpdb->get_var( 'SELECT transaction_id FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . (int) $qd_p . ' AND social_year = \'' . $qd_year . '\' AND deleted_at IS NULL' ), 'annullo del doppione: chi ha un altro incasso valido della stessa quota tiene la tessera (agganciata al primo incasso)' );
+// annullo dell'unico incasso rimasto: la tessera decade
+$ledger->void( $qd_tx1, 'Errore' );
+asem_ok( ! $people->has_membership( $qd_p, $qd_year ), 'annullo dell\'unico incasso della quota: la tessera si toglie ancora' );
+$qd_rec();
+asem_ok( $people->has_membership( $qd_p, $qd_year ), 'dopo l\'annullo la quota si può incassare di nuovo' );
+$wpdb->query( 'DELETE FROM ' . Db::t( 'transactions' ) . ' WHERE person_id = ' . (int) $qd_p );
+$wpdb->delete( Db::t( 'memberships' ), array( 'person_id' => $qd_p ) );
+
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Tutti i controlli sono passati.' );

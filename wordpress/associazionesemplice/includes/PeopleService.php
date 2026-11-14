@@ -1086,17 +1086,47 @@ class PeopleService {
 		return $fee > 0 && $paid > 0 ? max( 0, $fee - $paid ) : 0;
 	}
 
-	/** Annulla l'iscrizione nata da un incasso (usato quando si annulla il movimento). */
+	/**
+	 * Annulla l'iscrizione nata da un incasso (usato quando si annulla il movimento).
+	 * La tessera decade solo se non resta un altro incasso valido (non annullato) della quota dello stesso anno per lo stesso socio:
+	 * in quel caso (doppione già presente) la tessera resta e passa a quell'altro incasso.
+	 */
 	public function remove_membership_of_transaction( int $tx_id ): void {
-		$row = $this->db()->get_row( $this->db()->prepare( 'SELECT person_id, social_year FROM ' . Db::t( 'memberships' ) . ' WHERE transaction_id = %d AND deleted_at IS NULL', $tx_id ), ARRAY_A );
-		if ( ! $row ) {
+		$tbl  = Db::t( 'memberships' );
+		$rows = $this->db()->get_results( $this->db()->prepare( 'SELECT id, person_id, social_year, valid_from, valid_to FROM ' . $tbl . ' WHERE transaction_id = %d AND deleted_at IS NULL', $tx_id ), ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nome tabella interno
+		if ( ! $rows ) {
 			return;
 		}
-		foreach ( $this->db()->get_results( $this->db()->prepare( 'SELECT valid_from, valid_to FROM ' . Db::t( 'memberships' ) . ' WHERE transaction_id = %d AND deleted_at IS NULL', $tx_id ), ARRAY_A ) ?: array() as $m ) {
-			YearLock::assert_range_open( (string) $m['valid_from'], (string) $m['valid_to'] ); // la tessera di un anno fiscale chiuso non decade
+		$keep = array();
+		foreach ( $rows as $m ) {
+			$other = $this->other_membership_payment( (int) $m['person_id'], (string) $m['social_year'], $tx_id );
+			if ( $other ) {
+				$keep[ (int) $m['id'] ] = $other;
+			} else {
+				YearLock::assert_range_open( (string) $m['valid_from'], (string) $m['valid_to'] ); // la tessera di un anno fiscale chiuso non decade
+			}
 		}
-		$this->db()->update( Db::t( 'memberships' ), array( 'deleted_at' => Db::now() ), array( 'transaction_id' => $tx_id ) );
-		Audit::log( 'membership.removed', 'person', (int) $row['person_id'], array( 'social_year' => $row['social_year'], 'source' => 'void', 'transaction' => $tx_id ) );
+		foreach ( $rows as $m ) {
+			if ( isset( $keep[ (int) $m['id'] ] ) ) {
+				$this->db()->update( $tbl, array( 'transaction_id' => $keep[ (int) $m['id'] ] ), array( 'id' => (int) $m['id'] ) );
+				Audit::log( 'membership.kept', 'person', (int) $m['person_id'], array( 'social_year' => $m['social_year'], 'source' => 'void_other_payment', 'transaction' => $tx_id, 'now_on' => $keep[ (int) $m['id'] ] ) );
+				continue;
+			}
+			$this->db()->update( $tbl, array( 'deleted_at' => Db::now() ), array( 'id' => (int) $m['id'] ) );
+			Audit::log( 'membership.removed', 'person', (int) $m['person_id'], array( 'social_year' => $m['social_year'], 'source' => 'void', 'transaction' => $tx_id ) );
+		}
+	}
+
+	/** Un altro incasso valido (non annullato) della quota associativa di quell'anno per il socio, diverso da $except; 0 se non c'è. */
+	private function other_membership_payment( int $person_id, string $year_label, int $except ): int {
+		return (int) $this->db()->get_var(
+			$this->db()->prepare(
+				'SELECT t.id FROM ' . Db::t( 'transactions' ) . ' t JOIN ' . Db::t( 'categories' ) . " c ON c.id = t.category_id WHERE t.person_id = %d AND t.social_year = %s AND t.id <> %d AND t.type = 'income' AND t.voided_at IS NULL AND (t.amount_cents + t.discount_cents) > 0 AND c.kind = 'membership' ORDER BY t.id LIMIT 1", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- nomi tabella interni
+				$person_id,
+				$year_label,
+				$except
+			)
+		);
 	}
 
 	/** Dopo l'annullamento di un versamento: se la quota dell'anno non è più completa, la tessera data al saldo decade. */
