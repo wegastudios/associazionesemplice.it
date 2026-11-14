@@ -107,6 +107,14 @@ final class ProBoot {
 		ProBlockE::register(); // SMS, newsletter, Satispay e Klarna
 		DocsPro::register();
 		StatementSnapshot::register(); // rendiconto fotografato alla chiusura di un esercizio e PDF emesso
+		add_action( // l'annullo di un incasso annulla subito la ricevuta emessa (Receipts::register() parte solo sulle richieste di scarico, non su quelle di annullo)
+			'asem_tx_voided',
+			function ( $tx_id, $reason = '' ) {
+				Receipts::on_void( (int) $tx_id, (string) $reason ); // senza ricevute emesse non fa nulla
+			},
+			10,
+			2
+		);
 		add_filter( 'asem_settings_defaults', array( ProSettings::class, 'defaults' ) );
 		add_filter( 'asem_settings_clean', array( ProSettings::class, 'clean' ), 10, 2 );
 		Admin\ProMenu::register(); // pagine, schede e permessi dell'amministrazione
