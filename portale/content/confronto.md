@@ -113,6 +113,7 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Disponibilità reale dei fondi :: Disponibilità reale dei fondi, liberazione ed estinzione | — | ✓ | ✓ |
 | Fondi da rimborsare per anno :: Tabella dei fondi da rimborsare per anno | — | ✓ | ✓ |
 | Ricevute in PDF e attestazione annuale | — | ✓ | ✓ |
+| Ricevute numerate per anno fiscale :: Ogni ricevuta ha un numero che riparte a ogni anno fiscale; si può annullare e sostituire con «Emetti la ricevuta sostitutiva»; le ricevute annullate non si vedono più ai soci | — | ✓ | ✓ |
 | Ricevute dei minori intestate al genitore :: Ricevute dei minori intestate al genitore, con codici fiscali e indicazione di pagamento tracciato per la detrazione delle spese sportive | — | ✓ | ✓ |
 | Report di gestione :: Report di gestione (conti e liquidità, anno sociale) | — | ✓ | ✓ |
 | Bilancio preventivo :: Bilancio preventivo per categoria con confronto con il consuntivo della prima nota | — | ✓ | ✓ |
