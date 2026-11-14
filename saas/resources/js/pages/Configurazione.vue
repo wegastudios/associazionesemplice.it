@@ -7,7 +7,9 @@ const props = defineProps({ status: String, steps: Array, can: Object });
 const by = Object.fromEntries(props.steps.map((s) => [s.key, s.props]));
 const initial = {};
 if (by.ente) initial.ente = { ...by.ente.values };
-if (by.tesseramento) initial.tesseramento = { start_month: by.tesseramento.start_month, fee: by.tesseramento.fee };
+if (by.anno_sociale) initial.anno_sociale = { start_month: by.anno_sociale.start_month ?? '' };
+if (by.anno_fiscale) initial.anno_fiscale = { start_month: by.anno_fiscale.start_month ?? '' };
+if (by.tesseramento) initial.tesseramento = { fee: by.tesseramento.fee };
 if (by.conti) initial.conti = { openings: Object.fromEntries(by.conti.accounts.map((a) => [a.id, a.opening])), bank_name: '', bank_opening: '' };
 if (by.soci) initial.soci = { ...by.soci };
 const form = useForm({ steps: initial });
@@ -28,8 +30,21 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
         <p class="mb-6 text-sm text-muted">Le impostazioni principali in una pagina: compila quello che sai, il resto si cambia dopo. Si salva tutto insieme.</p>
 
         <form class="space-y-6" novalidate @submit.prevent="save">
+            <section v-if="has('anno_sociale') || has('anno_fiscale')" class="card p-4 sm:p-5" aria-labelledby="s-anni">
+                <h2 id="s-anni" class="mb-3 text-lg font-bold">1. Anno sociale e anno fiscale</h2>
+                <p v-if="form.errors['steps.anno_sociale']" class="mb-3 text-sm font-semibold text-danger" role="alert">{{ form.errors['steps.anno_sociale'] }}</p>
+                <p v-if="form.errors['steps.anno_fiscale']" class="mb-3 text-sm font-semibold text-danger" role="alert">{{ form.errors['steps.anno_fiscale'] }}</p>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <label v-if="has('anno_sociale')" :class="label"><span class="font-semibold">L'anno sociale comincia a</span>
+                        <select v-model.number="form.steps.anno_sociale.start_month" :class="field" required><option value="" disabled>Scegli il mese</option><option v-for="(m, i) in months" :key="m" :value="i + 1">{{ m }}</option></select></label>
+                    <label v-if="has('anno_fiscale')" :class="label"><span class="font-semibold">L'anno fiscale comincia a</span>
+                        <select v-model.number="form.steps.anno_fiscale.start_month" :class="field" required :disabled="by.anno_fiscale.locked"><option value="" disabled>Scegli il mese</option><option v-for="(m, i) in months" :key="m" :value="i + 1">{{ m }}</option></select></label>
+                </div>
+                <p class="mt-2 text-sm text-muted">Con inizio a gennaio l'anno coincide con quello solare («2026»); altrimenti è a cavallo («2025/2026»). I due anni possono cominciare in mesi diversi. Vanno scelti ora: l'anno fiscale non si cambia più dopo il primo movimento registrato.</p>
+            </section>
+
             <section v-if="has('ente')" class="card p-4 sm:p-5" aria-labelledby="s-ente">
-                <h2 id="s-ente" class="mb-3 text-lg font-bold">1. {{ title('ente') }}</h2>
+                <h2 id="s-ente" class="mb-3 text-lg font-bold">2. {{ title('ente') }}</h2>
                 <p v-if="form.errors['steps.ente']" class="mb-3 text-sm font-semibold text-danger" role="alert">{{ form.errors['steps.ente'] }}</p>
                 <div class="grid gap-4 sm:grid-cols-3">
                     <label :class="[label, 'sm:col-span-2']"><span class="font-semibold">Forma dell'ente</span>
@@ -48,18 +63,15 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
             </section>
 
             <section v-if="has('tesseramento')" class="card p-4 sm:p-5" aria-labelledby="s-tess">
-                <h2 id="s-tess" class="mb-3 text-lg font-bold">2. {{ title('tesseramento') }}</h2>
+                <h2 id="s-tess" class="mb-3 text-lg font-bold">3. {{ title('tesseramento') }}</h2>
                 <p v-if="form.errors['steps.tesseramento']" class="mb-3 text-sm font-semibold text-danger" role="alert">{{ form.errors['steps.tesseramento'] }}</p>
                 <div class="grid gap-4 sm:grid-cols-3">
-                    <label :class="label"><span class="font-semibold">L'anno sociale comincia a</span>
-                        <select v-model.number="form.steps.tesseramento.start_month" :class="field"><option v-for="(m, i) in months" :key="m" :value="i + 1">{{ m }}</option></select></label>
                     <label :class="label"><span class="font-semibold">Quota associativa</span><input v-model="form.steps.tesseramento.fee" inputmode="decimal" placeholder="es. 30,00" :class="field" /></label>
                 </div>
-                <p class="mt-2 text-sm text-muted">Con inizio a gennaio l'anno sociale coincide con quello solare («2026»); altrimenti è a cavallo («2025/2026»).</p>
             </section>
 
             <section v-if="has('conti')" class="card p-4 sm:p-5" aria-labelledby="s-conti">
-                <h2 id="s-conti" class="mb-3 text-lg font-bold">3. {{ title('conti') }}</h2>
+                <h2 id="s-conti" class="mb-3 text-lg font-bold">4. {{ title('conti') }}</h2>
                 <p v-if="form.errors['steps.conti']" class="mb-3 text-sm font-semibold text-danger" role="alert">{{ form.errors['steps.conti'] }}</p>
                 <div class="grid gap-4 sm:grid-cols-3">
                     <label v-for="a in by.conti.accounts" :key="a.id" :class="label"><span class="font-semibold">{{ a.name }}: saldo di partenza</span><input v-model="form.steps.conti.openings[a.id]" inputmode="decimal" :class="field" /></label>
@@ -69,7 +81,7 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
             </section>
 
             <section v-if="has('soci')" class="card p-4 sm:p-5" aria-labelledby="s-soci">
-                <h2 id="s-soci" class="mb-3 text-lg font-bold">4. {{ title('soci') }}</h2>
+                <h2 id="s-soci" class="mb-3 text-lg font-bold">5. {{ title('soci') }}</h2>
                 <p v-if="form.errors['steps.soci']" class="mb-3 text-sm font-semibold text-danger" role="alert">{{ form.errors['steps.soci'] }}</p>
                 <div class="grid gap-3 text-sm sm:grid-cols-2">
                     <label class="flex items-center gap-2 sm:col-span-2"><input v-model="form.steps.soci.applications_enabled" type="checkbox" /> Chi vuole iscriversi può mandare la domanda online</label>

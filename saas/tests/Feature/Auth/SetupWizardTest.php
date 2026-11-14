@@ -2,10 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Modules\Contabilita\Contracts\Income;
+use App\Modules\Contabilita\Contracts\IncomeLine;
+use App\Modules\Contabilita\Contracts\Ledger;
+use App\Modules\Contabilita\Ledger\FiscalYearService;
 use App\Modules\Contabilita\Models\Account;
+use App\Modules\Contabilita\Models\Category;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Core\Org\SetupWizard;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -22,7 +28,9 @@ function setupInput(array $over = []): array
 
     return array_replace_recursive(['steps' => [
         'ente' => ['kind' => 'aps', 'tax_code' => '12345678903', 'vat' => '', 'runts' => '12345', 'address' => 'Via Roma 1', 'zip' => '00100', 'city' => 'Roma', 'province' => 'rm', 'email' => 'Info@Alfa.example', 'pec' => '', 'phone' => ''],
-        'tesseramento' => ['start_month' => 9, 'fee' => '25,00'],
+        'anno_sociale' => ['start_month' => 9],
+        'anno_fiscale' => ['start_month' => 9],
+        'tesseramento' => ['fee' => '25,00'],
         'conti' => ['openings' => [$cash => '150,50'], 'bank_name' => 'Banca di prova', 'bank_opening' => '1.000,00'],
         'soci' => ['applications_enabled' => true, 'applications_rules' => false, 'privacy_url' => 'https://alfa.example/privacy', 'rules_url' => '', 'reminders_enabled' => true],
     ]], $over);
@@ -32,7 +40,7 @@ it('si apre da sola al primo accesso del titolare, una volta', function (): void
     $this->actingAs($this->owner)->get('/gestionale')->assertRedirect('/gestionale/configurazione');
     $this->get('/gestionale')->assertOk()->assertInertia(fn (Assert $page) => $page->component('Dashboard')->where('setupPending', true));
     $this->get('/gestionale/configurazione')->assertInertia(fn (Assert $page) => $page->component('Configurazione')
-        ->where('status', null)->where('steps.0.key', 'ente')->where('steps.1.key', 'tesseramento')->where('steps.2.key', 'conti')->where('steps.3.key', 'soci'));
+        ->where('status', null)->where('steps.0.key', 'anno_sociale')->where('steps.1.key', 'anno_fiscale')->where('steps.2.key', 'ente')->where('steps.3.key', 'tesseramento')->where('steps.4.key', 'conti')->where('steps.5.key', 'soci'));
 
     $op = $this->createUser('seg@example.com', twoFactor: true);
     $this->addOperator($this->org, $op, OrgRole::Operator);
@@ -75,5 +83,23 @@ it('non salva nulla se un passo ha errori e li indica per passo', function (): v
 it('si può rimandare e riaprire', function (): void {
     $this->actingAs($this->owner)->post('/gestionale/configurazione/rimanda')->assertRedirect('/gestionale');
     $this->get('/gestionale')->assertOk()->assertInertia(fn (Assert $page) => $page->where('setupPending', false)->where('canSetup', true));
-    $this->get('/gestionale/configurazione')->assertOk()->assertInertia(fn (Assert $page) => $page->where('status', 'skipped')->where('steps.1.props.start_month', 1));
+    $this->get('/gestionale/configurazione')->assertOk()->assertInertia(fn (Assert $page) => $page->where('status', 'skipped')->where('steps.0.props.start_month', null)->where('steps.1.props.start_month', null));
+});
+
+it('chiede subito il mese dell\'anno sociale e dell\'anno fiscale e rifà l\'anno fiscale di partenza', function (): void {
+    $this->actingAs($this->owner)->post('/gestionale/configurazione', setupInput(['steps' => ['anno_sociale' => ['start_month' => ''], 'anno_fiscale' => ['start_month' => '']]]))
+        ->assertSessionHasErrors(['steps.anno_sociale', 'steps.anno_fiscale']);
+
+    $this->post('/gestionale/configurazione', setupInput())->assertRedirect('/gestionale');
+    $this->orgContext()->run($this->org->id, function (): void {
+        $today = CarbonImmutable::today();
+        $start = CarbonImmutable::create($today->month >= 9 ? $today->year : $today->year - 1, 9, 1)->toDateString();
+        $years = DB::table('app.fiscal_years')->get(['starts_on', 'status']);
+        expect($years)->toHaveCount(1)->and($years[0]->starts_on)->toBe($start)->and($years[0]->status)->toBe('open')
+            ->and(app(FiscalYearService::class)->yearFor($today->toDateString()))->toBe((int) substr($start, 0, 4));
+
+        // Con movimenti registrati il mese dell'anno fiscale non si cambia più.
+        app(Ledger::class)->recordIncome(new Income($today->toDateString(), Account::query()->sole()->id, [new IncomeLine(Category::query()->where('kind', 'donation')->sole()->id, 1000)], null, null, false));
+    });
+    $this->post('/gestionale/configurazione', setupInput(['steps' => ['anno_fiscale' => ['start_month' => 3]]]))->assertSessionHasErrors('steps.anno_fiscale');
 });
