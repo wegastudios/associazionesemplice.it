@@ -60,38 +60,38 @@ MD,
     ],
     [
         'topic' => 'pagamenti', 'section' => 'Incassi e spese', 'slug' => 'aprire-e-chiudere-gli-anni-solari',
-        'title' => 'Aprire e chiudere gli esercizi',
+        'title' => 'Aprire e chiudere gli anni fiscali',
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-L'**esercizio** è l'anno contabile: la prima nota si organizza per esercizio, e l'apertura e la chiusura sono disponibili in tutte le versioni. Solo gli amministratori possono aprire, chiudere e riaprire un esercizio. Di partenza l'esercizio coincide con l'anno solare; il mese di inizio si sceglie in **Dati dell'ente** (vedi [L'anno fiscale con un mese di inizio diverso](guida:inizio-dell-anno-fiscale)).
+L'**anno fiscale** (per il commercialista, l'«esercizio») è l'anno della contabilità: la prima nota si organizza per anno fiscale, e l'apertura e la chiusura sono disponibili in tutte le versioni. Solo gli amministratori possono aprire, chiudere e riaprire un anno fiscale. Di partenza l'anno fiscale coincide con l'anno solare; il mese di inizio si sceglie in **Dati dell'ente** (vedi [L'anno fiscale con un mese di inizio diverso](guida:inizio-dell-anno-fiscale)).
 
-## Aprire l'esercizio nuovo
+## Aprire l'anno fiscale nuovo
 
 1. Vai in **Cassa → Esercizi** (con {piano_contabile} o {piano_fiscale}: **Contabilità → Esercizi**).
-2. In fondo alla pagina scrivi l'anno e premi **Crea l'anno**: conferma, perché da quel momento le quote dei nuovi soci valgono per quell'esercizio.
+2. In fondo alla pagina scrivi l'anno e premi **Crea l'anno**: conferma, perché da quel momento le quote dei nuovi soci valgono per quell'anno fiscale.
 
-Da settembre la **Bacheca** ti ricorda di aprire l'esercizio nuovo. L'avviso si può chiudere e ricompare a inizio mese; a dicembre è sempre visibile. Il primo giorno dell'anno il nuovo esercizio si apre da solo.
+Da settembre la **Bacheca** ti ricorda di aprire l'anno fiscale nuovo. L'avviso si può chiudere e ricompare a inizio mese; a dicembre è sempre visibile. Il primo giorno dell'anno il nuovo anno fiscale si apre da solo.
 
-## Chiudere un esercizio
+## Chiudere un anno fiscale
 
-1. Nella stessa pagina premi **Chiudi l'anno** accanto all'esercizio.
-2. Gli esercizi si chiudono **in ordine, dal più vecchio**. L'esercizio in corso non si chiude finché non è finito.
-3. Per chiudere un esercizio non devono restare fondi non rimborsati (funzione Pro).
+1. Nella stessa pagina premi **Chiudi l'anno** accanto all'anno fiscale.
+2. Gli anni fiscali si chiudono **in ordine, dal più vecchio**. L'anno fiscale in corso non si chiude finché non è finito.
+3. Per chiudere un anno fiscale non devono restare fondi non rimborsati (funzione Pro).
 
-Si può incassare, spendere e girare denaro solo negli esercizi **aperti**. Un esercizio chiuso non si modifica più: nemmeno allegati, saldi iniziali, cessazioni dei soci e **tessere**.
+Si può incassare, spendere e girare denaro solo negli anni fiscali **aperti**. Un anno fiscale chiuso non si modifica più: nemmeno allegati, saldi iniziali, cessazioni dei soci e **tessere**.
 
-## Il libro soci dell'esercizio
+## Il libro soci dell'anno fiscale
 
-Alla chiusura il **libro soci** di quell'esercizio viene **fotografato**: da quel momento non cambia più, e si scarica in PDF e in CSV (vedi [Il libro soci completo](guida:libro-soci-completo)). Per gli esercizi chiusi prima di questa funzione compare **«Fotografa gli anni già chiusi»**: il libro viene **ricostruito dai dati di oggi** e porta la dicitura «ricostruito il…». Non si può annullare.
+Alla chiusura il **libro soci** di quell'anno fiscale diventa **definitivo**: viene pubblicato e bloccato a quel momento e non cambia più. Prima della chiusura è una **bozza**. Si scarica in PDF e in CSV (vedi [Il libro soci completo](guida:libro-soci-completo)). Per gli anni fiscali chiusi prima di questa funzione compare **«Fotografa gli anni già chiusi»**: il libro viene **ricostruito dai dati di oggi** e porta la dicitura «ricostruito il…». Non si può annullare.
 
-## Riaprire un esercizio
+## Riaprire un anno fiscale
 
-Si riapre **solo l'ultimo esercizio chiuso**, dalla stessa pagina con **Riapri l'anno**, scrivendo il **motivo**. Gli esercizi più vecchi non si riaprono. Dopo la correzione si richiude l'esercizio. Lo **storico delle chiusure e delle riaperture** resta **per sempre**: non si cancella nemmeno con la pulizia del registro azioni.
+Si riapre **solo l'ultimo anno fiscale chiuso**, dalla stessa pagina con **Riapri l'anno**, scrivendo il **motivo**. Gli anni fiscali più vecchi non si riaprono. Dopo la correzione si richiude l'anno fiscale. Lo **storico delle chiusure e delle riaperture** resta **per sempre**: non si cancella nemmeno con la pulizia del registro azioni.
 
 ## La quota associativa
 
-La quota va all'esercizio più recente creato. Un socio che ha già l'anno in corso rinnova in anticipo; un nuovo socio paga il più recente e ha l'anno in corso in omaggio.
+La quota va all'anno fiscale più recente creato. Un socio che ha già l'anno in corso rinnova in anticipo; un nuovo socio paga il più recente e ha l'anno in corso in omaggio.
 
 ## Con Pro
 

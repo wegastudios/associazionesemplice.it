@@ -33,7 +33,7 @@ final readonly class StatementService
         $c = $this->db->connection($this->context->require()->connection);
         $fy = $c->table('app.fiscal_years')->where('year', $year)->first(['starts_on', 'ends_on', 'status']);
         if ($fy === null || ! is_string($fy->starts_on) || ! is_string($fy->ends_on) || ! is_string($fy->status)) {
-            throw new LedgerError("L'esercizio {$year} non esiste.");
+            throw new LedgerError("L'anno fiscale {$year} non esiste.");
         }
 
         $rows = $c->select(<<<'SQL'

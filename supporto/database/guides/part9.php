@@ -475,9 +475,9 @@ Il **libro soci** è il registro ufficiale delle persone iscritte, in **Registri
 
 Lo scarichi in **PDF** e in **CSV**.
 
-## Un libro per ogni esercizio
+## Un libro per ogni anno fiscale
 
-Il libro soci **segue l'esercizio**. Quando [chiudi l'esercizio](guida:aprire-e-chiudere-gli-anni-solari) il libro viene **fotografato** e da quel momento non cambia più: lo trovi in **Registri → Libro soci**, scegliendo l'anno, e lo scarichi in PDF e in CSV. Ogni socio ha una **matricola fissa** e ogni riga un **numero**. Per gli esercizi chiusi prima di questa funzione, **«Fotografa gli anni già chiusi»** (nella pagina Esercizi) ricostruisce i libri dai dati di oggi e li segna con «ricostruito il…».
+Il libro soci **segue l'anno fiscale**. Quando [chiudi l'anno fiscale](guida:aprire-e-chiudere-gli-anni-solari) il libro diventa **definitivo**: viene pubblicato e bloccato a quel momento e non cambia più (prima della chiusura è una **bozza**): lo trovi in **Registri → Libro soci**, scegliendo l'anno, e lo scarichi in PDF e in CSV. Ogni socio ha una **matricola fissa** e ogni riga un **numero**. Per gli anni fiscali chiusi prima di questa funzione, **«Fotografa gli anni già chiusi»** (nella pagina Esercizi) ricostruisce i libri dai dati di oggi e li segna con «ricostruito il…».
 
 L'**esportazione dei dati personali** di un socio comprende anche i libri soci chiusi in cui compare.
 

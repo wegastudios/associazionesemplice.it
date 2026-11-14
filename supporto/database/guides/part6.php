@@ -54,7 +54,7 @@ MD,
 - il **5 per mille** con il registro dei contributi e il rendiconto sull'utilizzo;
 - il **rendiconto per cassa** per il commercialista.
 
-L'apertura e la chiusura degli esercizi sono incluse anche nel piano gratuito.
+L'apertura e la chiusura degli anni fiscali sono incluse anche nel piano gratuito.
 
 Se la tua associazione non ha partita IVA e un commercialista che richiede questi documenti, {piano_contabile} è di solito sufficiente. Puoi passare da un piano all'altro dall'area soci, senza reinstallare nulla.
 MD,

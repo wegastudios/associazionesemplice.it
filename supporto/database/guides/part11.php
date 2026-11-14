@@ -4,11 +4,11 @@
 return [
     [
         'topic' => 'plugin-pro', 'section' => 'Contabilità e adempimenti', 'slug' => 'inizio-dell-anno-fiscale',
-        'title' => 'Impostare il mese di inizio dell\'esercizio (anno fiscale)',
+        'title' => 'Impostare il mese di inizio dell\'anno fiscale',
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-Per molte associazioni l'esercizio non coincide con l'anno solare. Puoi indicare il **mese di inizio dell'esercizio** (l'anno fiscale) in tutte le versioni, separatamente da quello dell'anno sociale.
+Per molte associazioni l'anno fiscale non coincide con l'anno solare. Puoi indicare il **mese di inizio dell'anno fiscale** in tutte le versioni, separatamente da quello dell'anno sociale.
 
 ## Dove si imposta
 
@@ -22,7 +22,7 @@ Un anno si chiama con **l'anno in cui inizia**: con inizio a luglio, il 2025 va 
 
 ## Cosa segue l'anno fiscale
 
-Seguono il mese scelto l'apertura e la chiusura degli esercizi, la **prima nota**, i **report**, il **rendiconto**, il **preventivo**, i **fondi per anno** e le **esportazioni e importazioni**.
+Seguono il mese scelto l'apertura e la chiusura degli anni fiscali, la **prima nota**, i **report**, il **rendiconto**, il **preventivo**, i **fondi per anno** e le **esportazioni e importazioni**.
 
 ## Cosa non cambia
 
@@ -30,8 +30,8 @@ Le **tessere** restano per **anno solare** e scadono il 31 dicembre. Restano cos
 
 ## Da sapere
 
-- Il mese si sceglie **prima di chiudere il primo esercizio**: dopo la prima chiusura il menu è bloccato e non si può più cambiare (compare «Esistono esercizi chiusi: il mese di inizio non si può più cambiare»).
-- Le **verifiche prima della chiusura** dell'esercizio (per esempio i fondi non rimborsati) e il rendiconto per cassa sono funzioni di {piano_contabile} e {piano_fiscale}.
+- Il mese si sceglie **prima di chiudere il primo anno fiscale**: dopo la prima chiusura il menu è bloccato e non si può più cambiare (compare «Esistono esercizi chiusi: il mese di inizio non si può più cambiare»).
+- Le **verifiche prima della chiusura** dell'anno fiscale (per esempio i fondi non rimborsati) e il rendiconto per cassa sono funzioni di {piano_contabile} e {piano_fiscale}.
 MD,
     ],
     [
@@ -174,7 +174,7 @@ Le approvate restano elencate con **chi e quando** le ha approvate (per esempio 
 
 ## Chiudere l'anno
 
-1. Vai in **Contabilità → Esercizi** e premi **Chiudi l'anno** (vedi [Aprire e chiudere gli esercizi](guida:aprire-e-chiudere-gli-anni-solari)).
+1. Vai in **Contabilità → Esercizi** e premi **Chiudi l'anno** (vedi [Aprire e chiudere gli anni fiscali](guida:aprire-e-chiudere-gli-anni-solari)).
 2. Di partenza la chiusura **si ferma** e mostra l'elenco se ci sono rimborsi non documentati.
 3. Con l'opzione **«chiedi conferma»** compare l'elenco con una casella da spuntare per procedere.
 

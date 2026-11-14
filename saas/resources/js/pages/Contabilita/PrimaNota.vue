@@ -77,7 +77,7 @@ const transfer = useForm({
 });
 
 const done = (form) => ({ preserveScroll: true, onSuccess: () => { form.reset(); mode.value = null; } });
-// Un errore del server (esercizio chiuso, conto chiuso, dati non validi) si legge dentro al foglio, non sotto il velo.
+// Un errore del server (anno fiscale chiuso, conto chiuso, dati non validi) si legge dentro al foglio, non sotto il velo.
 const sheetError = (form) => usePage().props.errors?.ledger ?? Object.values(form.errors)[0] ?? null;
 const noEmpty = (d) => ({ ...d, activity_id: d.activity_id || null });
 const submitIncome = () => income.transform(noEmpty).post('/gestionale/prima-nota/incassi', done(income));
@@ -111,7 +111,7 @@ const label = 'block space-y-1.5 text-sm';
 <template>
     <Head title="Prima nota" />
     <AppLayout>
-        <PageHeader title="Prima nota" :subtitle="`Esercizio ${year} · incassi (entrate) e spese (uscite) dell’anno`">
+        <PageHeader title="Prima nota" :subtitle="`Anno fiscale ${year} · incassi (entrate) e spese (uscite) dell’anno`">
             <template #actions>
                 <template v-if="canEdit">
                     <button type="button" class="btn btn-primary hidden lg:inline-flex" @click="mode = 'income'">Registra un incasso</button>
@@ -158,7 +158,7 @@ const label = 'block space-y-1.5 text-sm';
             </section>
         </template>
         <div v-else class="card">
-            <EmptyState title="Nessun movimento" :text="filtersActive ? 'Con questi filtri non c\'è niente: prova a toglierne qualcuno.' : `Nell'esercizio ${year} non c'è ancora nessun movimento.`">
+            <EmptyState title="Nessun movimento" :text="filtersActive ? 'Con questi filtri non c\'è niente: prova a toglierne qualcuno.' : `Nell'anno fiscale ${year} non c'è ancora nessun movimento.`">
                 <template #icon><Wallet class="size-6" /></template>
                 <button v-if="canEdit && !filtersActive" type="button" class="btn btn-primary" @click="mode = 'income'">Registra un incasso</button>
                 <button v-if="canEdit && !filtersActive" type="button" class="btn btn-secondary" @click="mode = 'expense'">Registra una spesa</button>
@@ -173,7 +173,7 @@ const label = 'block space-y-1.5 text-sm';
         <!-- Filtri -->
         <Sheet v-model="showFilters" title="Filtri">
             <div class="space-y-4">
-                <label :class="label"><span class="font-semibold">Esercizio</span>
+                <label :class="label"><span class="font-semibold">Anno fiscale</span>
                     <select class="field" :value="year" @change="filter({ anno: $event.target.value })">
                         <option v-for="y in years" :key="y.year" :value="y.year">{{ y.year }}{{ y.status === 'closed' ? ' (chiuso)' : '' }}</option>
                     </select></label>
@@ -193,7 +193,7 @@ const label = 'block space-y-1.5 text-sm';
 
         <Sheet v-model="showTools" title="Altri strumenti">
             <ul class="list-group">
-                <li><a :href="`/gestionale/prima-nota/esporta?anno=${year}`" class="list-row" @click="showTools = false"><Download class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Esporta l'esercizio (CSV)</span></a></li>
+                <li><a :href="`/gestionale/prima-nota/esporta?anno=${year}`" class="list-row" @click="showTools = false"><Download class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Esporta l'anno fiscale (CSV)</span></a></li>
                 <li v-if="canEdit"><Link href="/gestionale/prima-nota/importa" class="list-row"><Upload class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Importa da Excel o CSV</span></Link></li>
                 <li v-if="canEdit"><button type="button" class="list-row" @click="showTools = false; mode = 'transfer'"><ArrowLeftRight class="size-5 shrink-0 text-muted" aria-hidden="true" /><span class="flex-1 font-semibold">Giroconto tra conti</span></button></li>
             </ul>

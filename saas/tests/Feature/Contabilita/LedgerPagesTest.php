@@ -90,10 +90,10 @@ it('fa chiudere l\'esercizio solo a titolare e amministratore', function (): voi
 
     $admin = $this->createUser('admin@example.com', twoFactor: true);
     $this->addOperator($org, $admin, OrgRole::Admin);
-    $this->actingAs($admin)->post("/gestionale/esercizi/{$year}/chiudi")->assertSessionHas('status', "Esercizio {$year} chiuso.");
+    $this->actingAs($admin)->post("/gestionale/esercizi/{$year}/chiudi")->assertSessionHas('status', "Anno fiscale {$year} chiuso: rendiconto e libro soci definitivi.");
     $this->get("/gestionale/rendiconto/{$year}")->assertInertia(fn (Assert $page) => $page->where('statement.status', 'closed'));
     $this->post("/gestionale/esercizi/{$year}/riapri", ['reason' => 'Correzione'])->assertSessionHasErrors('confirm_year');
-    $this->post("/gestionale/esercizi/{$year}/riapri", ['reason' => 'Correzione', 'confirm_year' => $year])->assertSessionHas('status', "Esercizio {$year} riaperto.");
+    $this->post("/gestionale/esercizi/{$year}/riapri", ['reason' => 'Correzione', 'confirm_year' => $year])->assertSessionHas('status', "Anno fiscale {$year} riaperto: tornano bozze.");
 });
 
 it('crea e chiude i conti dal gestionale', function (): void {

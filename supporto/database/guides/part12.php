@@ -150,20 +150,20 @@ Per spostare soldi tra due conti usa il **Giroconto tra conti** dalla **Prima no
 MD,
     ],
     [
-        'topic' => 'gestionale', 'section' => 'Cassa e conti', 'slug' => 'gestionale-chiudere-l-esercizio-e-leggere-il-rendiconto',
-        'title' => 'Chiudere l\'esercizio e leggere il rendiconto',
+        'topic' => 'gestionale', 'section' => 'Cassa e conti', 'slug' => 'gestionale-chiudere-l-anno fiscale-e-leggere-il-rendiconto',
+        'title' => 'Chiudere l\'anno fiscale e leggere il rendiconto',
         'body' => <<<'MD'
 > Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
 
 ## Il rendiconto per cassa
 
-Il **Rendiconto** mostra **entrate e uscite dell'anno per categoria**, nello schema del **Mod. D** degli enti del Terzo settore: è il documento da portare in assemblea e al commercialista. In fondo vedi l'**avanzo (o disavanzo)** dell'esercizio. Con **«Stampa o salva in PDF»** lo ottieni in un file.
+Il **Rendiconto** mostra **entrate e uscite dell'anno per categoria**, nello schema del **Mod. D** degli enti del Terzo settore: è il documento da portare in assemblea e al commercialista. In fondo vedi l'**avanzo (o disavanzo)** dell'anno fiscale. Con **«Stampa o salva in PDF»** lo ottieni in un file.
 
-## Chiudere l'esercizio
+## Chiudere l'anno fiscale
 
-Nella stessa pagina vedi **inizio e fine dell'esercizio**. Con **«Chiudi l'esercizio»** non accetta più incassi né spese. Se serve correggere qualcosa, **«Riapri l'esercizio»** (scrivi il **motivo della riapertura**: resta traccia).
+Nella stessa pagina vedi **inizio e fine dell'anno fiscale**. Con **«Chiudi l'esercizio»** non accetta più incassi né spese. Se serve correggere qualcosa, **«Riapri l'esercizio»** (scrivi il **motivo della riapertura**: resta traccia).
 
-> Chiudi l'esercizio solo dopo aver controllato la prima nota e il rendiconto.
+> Chiudi l'anno fiscale solo dopo aver controllato la prima nota e il rendiconto.
 MD,
     ],
     [

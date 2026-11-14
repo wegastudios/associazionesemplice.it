@@ -54,7 +54,7 @@ enum Ability: string
             self::ViewHealth => 'Vedere i certificati medici',
             self::ViewAccounting => 'Vedere la contabilità',
             self::EditAccounting => 'Registrare in prima nota',
-            self::CloseFiscalYear => 'Chiudere e riaprire gli esercizi',
+            self::CloseFiscalYear => 'Chiudere e riaprire gli anni fiscali',
             self::ViewAudit => 'Vedere il registro delle azioni',
             self::ManageCourses => 'Gestire i corsi',
             self::ManageEvents => 'Gestire gli eventi',

@@ -28,7 +28,7 @@ Se hai già un elenco di soci, non devi riscriverlo: puoi importarlo da un file 
 ## Da sapere
 
 - I soci già presenti vengono **aggiornati** (riconosciuti per tessera, email, codice fiscale o nome): importare due volte lo stesso file non crea doppioni.
-- Se un'importazione tocca un **esercizio chiuso**, l'importazione può fermarsi con il messaggio «L'anno … è chiuso…»: [riapri l'esercizio](guida:aprire-e-chiudere-gli-anni-solari) se è l'ultimo chiuso, oppure correggi il file.
+- Se un'importazione tocca un **anno fiscale chiuso**, l'importazione può fermarsi con il messaggio «L'anno … è chiuso…»: [riapri l'anno fiscale](guida:aprire-e-chiudere-gli-anni-solari) se è l'ultimo chiuso, oppure correggi il file.
 - Limiti: 5000 righe per tipo e 20 MB per file. Le formule di Excel si leggono con il risultato salvato.
 - In alternativa puoi usare **WP All Import**: il plugin mette a disposizione due tipi di contenuto di appoggio, applicando le stesse regole.
 - Anche la **prima nota** si può importare da file: vedi [Importare ed esportare la prima nota](guida:importare-ed-esportare-la-prima-nota).

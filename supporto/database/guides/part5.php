@@ -35,7 +35,7 @@ Con **Cassa per più persone** incassi in un'unica operazione quote e contributi
 
 ## Fondi
 
-I fondi accantonano somme già incassate. Per ogni anno solare vedi quanto è stato accantonato, rimborsato o liberato e quanto resta da rimborsare: la tabella dei **fondi da rimborsare per anno** è nella pagina Esercizi della versione Pro. **Un anno con fondi non rimborsati non si chiude.** Per aprire e chiudere gli anni vedi [Aprire e chiudere gli esercizi](guida:aprire-e-chiudere-gli-anni-solari).
+I fondi accantonano somme già incassate. Per ogni anno solare vedi quanto è stato accantonato, rimborsato o liberato e quanto resta da rimborsare: la tabella dei **fondi da rimborsare per anno** è nella pagina Esercizi della versione Pro. **Un anno con fondi non rimborsati non si chiude.** Per aprire e chiudere gli anni vedi [Aprire e chiudere gli anni fiscali](guida:aprire-e-chiudere-gli-anni-solari).
 MD,
     ],
     [
@@ -44,7 +44,7 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Report: {piano_contabile} e {piano_fiscale}. Rendiconto per cassa: {piano_fiscale}.
 
-Questa parte serve a chi deve preparare i documenti per il commercialista. L'apertura e la chiusura degli esercizi sono invece disponibili in tutte le versioni: vedi [Aprire e chiudere gli esercizi](guida:aprire-e-chiudere-gli-anni-solari).
+Questa parte serve a chi deve preparare i documenti per il commercialista. L'apertura e la chiusura degli anni fiscali sono invece disponibili in tutte le versioni: vedi [Aprire e chiudere gli anni fiscali](guida:aprire-e-chiudere-gli-anni-solari).
 
 ## Il rendiconto per cassa
 
