@@ -9983,6 +9983,20 @@ $rs_html = asem_render( array( Admin\ReceiptReplacePage::class, 'render' ), 'Eme
 asem_ok( false !== strpos( $rs_html, 'Voce uno' ) && false !== strpos( $rs_html, 'Voce tre' ) && false === strpos( $rs_html, 'Voce due' ) && false !== strpos( $rs_html, 'asem_receipt_replace' ), 'sostitutiva: la schermata elenca solo le righe rimaste e ha il pulsante per emetterla' );
 $rs_prop = apply_filters( 'asem_tx_void_result', array( 'http://example.org/ledger', 'Movimento annullato (resta tracciato).' ), $rs_tx( 3000 ) );
 asem_ok( false !== strpos( $rs_prop[0], 'asem-receipt-replace' ) && false !== strpos( $rs_prop[1], 'sostitutiva' ), 'sostitutiva: dopo l\'annullo della riga si propone la ricevuta sostitutiva' );
+// la ricevuta annullata non si mostra al socio (come se non esistesse); alla segreteria e agli amministratori sì
+$rs_uid = (int) $people->get( $rs_p )['wp_user_id'];
+$rs_sec = wp_insert_user( array( 'user_login' => 'rs_segreteria', 'user_pass' => wp_generate_password(), 'user_email' => 'rs-seg@example.test', 'role' => \AssociazioneSemplice\Plugin::ROLE_SECRETARY ) );
+wp_set_current_user( $rs_uid );
+$rs_m_view  = \AssociazioneSemplice\Receipts::can_view( $rs_key );
+$rs_m_ghost = \AssociazioneSemplice\Receipts::can_view( 'tx990000123' ); // un codice che non esiste: stesso esito
+$rs_m_list  = \AssociazioneSemplice\Receipts::list_for_payer( $rs_p, 15, true );
+$rs_m_html  = $as( $rs_uid, '[associazionesemplice_ricevute]' );
+wp_set_current_user( $rs_sec );
+$rs_s_view = \AssociazioneSemplice\Receipts::can_view( $rs_key );
+$rs_s_list = \AssociazioneSemplice\Receipts::list_for_payer( $rs_p, 15 );
+wp_set_current_user( 1 );
+asem_ok( $rs_uid > 0 && ( ! $rs_m_view && $rs_m_view === $rs_m_ghost && ! $rs_m_list && false === strpos( $rs_m_html, 'key=' . $rs_key ) && false === strpos( $rs_m_html, 'nnullata' ) ), 'ricevute annullate: il socio non la vede in elenco e non la scarica (link diretto o già mandato per email: come una ricevuta inesistente)' );
+asem_ok( $rs_uid > 0 && $rs_s_view && $rs_s_list && \AssociazioneSemplice\Receipts::can_view( $rs_key ) && true === \AssociazioneSemplice\Receipts::build( $rs_key )['voided'], 'ricevute annullate: la segreteria e l\'amministratore la vedono e la scaricano (PDF ANNULLATA)' );
 // il chiuso è chiuso: le righe rimaste sono di un esercizio chiuso, la sostitutiva non si emette
 $rs_set( 'closed' );
 $rs_cl = asem_throws( function () use ( $rs_key ) { \AssociazioneSemplice\Receipts::issue_replacement( $rs_key ); } );
@@ -10004,6 +10018,15 @@ asem_ok( false !== strpos( $rs_s1['pdf'], 'Voce uno' ) && false !== strpos( $rs_
 asem_ok( false !== strpos( $rs_s1['pdf'], 'Aggiornata' ) && false !== strpos( $rs_s1['pdf'], 'di oggi' ) && false === strpos( $rs_v1['pdf'], 'di oggi' ) && \AssociazioneSemplice\Receipts::build( $rs_key )['pdf'] === $rs_v1['pdf'], 'sostitutiva: fotografa i dati di oggi (nome, piè di pagina); la ricevuta annullata resta come era' );
 asem_ok( $rs_new['key'] === \AssociazioneSemplice\Receipts::effective_key( $rs_key ) && $rs_new['key'] === \AssociazioneSemplice\Receipts::list_for_payer( $rs_p )[0]['key'] && \AssociazioneSemplice\Receipts::can_view( $rs_new['key'] ) && \AssociazioneSemplice\Receipts::can_view( $rs_key ), 'sostitutiva: per l\'incasso vale l\'ultima ricevuta; si vedono sia la sostitutiva sia l\'annullata' );
 asem_ok( false !== strpos( (string) asem_throws( function () use ( $rs_key ) { \AssociazioneSemplice\Receipts::issue_replacement( $rs_key ); } ), 'Esiste già' ), 'sostitutiva: una ricevuta annullata ha una sola sostitutiva' );
+// con la sostitutiva il socio vede solo quella; la ricevuta annullata resta alla segreteria
+wp_set_current_user( $rs_uid );
+$rs_m_list2 = \AssociazioneSemplice\Receipts::list_for_payer( $rs_p, 15, true );
+$rs_m_ok    = array( \AssociazioneSemplice\Receipts::can_view( $rs_new['key'] ), \AssociazioneSemplice\Receipts::can_view( $rs_key ) );
+$rs_m_html2 = $as( $rs_uid, '[associazionesemplice_ricevute]' );
+wp_set_current_user( $rs_sec );
+$rs_s_ok = \AssociazioneSemplice\Receipts::can_view( $rs_key ) && \AssociazioneSemplice\Receipts::can_view( $rs_new['key'] );
+wp_set_current_user( 1 );
+asem_ok( 1 === count( $rs_m_list2 ) && $rs_new['key'] === $rs_m_list2[0]['key'] && $rs_m_ok[0] && ! $rs_m_ok[1] && false !== strpos( $rs_m_html2, 'key=' . $rs_new['key'] ) && false === strpos( $rs_m_html2, 'key=' . $rs_key ) && $rs_s_ok, 'ricevute annullate: con la sostitutiva il socio vede e scarica solo quella; la segreteria vede entrambe' );
 $rs_aud = array_column( \AssociazioneSemplice\Audit::recent( 20, 'receipt.' ), 'action' );
 asem_ok( in_array( 'receipt.replacement_issued', $rs_aud, true ), 'sostitutiva: l\'emissione è scritta nel registro azioni (receipt.replacement_issued)' );
 // annullo di una riga della sostitutiva: annullata anche lei; si può emettere la seconda sostitutiva, con numero ancora nuovo
@@ -10026,6 +10049,8 @@ $wpdb->delete( Db::t( 'receipts' ), array( 'year' => $rs_z ) );
 $wpdb->query( 'DELETE FROM ' . Db::t( 'receipts' ) . ' WHERE replaces_id IS NOT NULL OR receipt_key = \'' . $rs_key2 . '\'' );
 $wpdb->query( 'DELETE FROM ' . Db::t( 'transactions' ) . ' WHERE person_id = ' . (int) $rs_p );
 $wpdb->delete( Db::t( 'fiscal_years' ), array( 'year' => $rs_z ) );
+$wpdb->delete( $wpdb->usermeta, array( 'user_id' => (int) $rs_sec ) );
+$wpdb->delete( $wpdb->users, array( 'ID' => (int) $rs_sec ) );
 Settings::update( array( 'receipt_footer' => '' ) );
 
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );

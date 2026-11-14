@@ -76,8 +76,13 @@ final class Receipts {
 		return null;
 	}
 
-	/** Ricevute di una persona (come chi ha pagato), dalla più recente. @return array[] key, date, cents, what */
-	public static function list_for_payer( int $person_id, int $limit = 30 ): array {
+	/**
+	 * Ricevute di una persona (come chi ha pagato), dalla più recente. Con $hide_voided (le viste rivolte al socio) una ricevuta annullata e non ancora
+	 * sostituita non compare; se c'è la sostitutiva compare solo quella.
+	 *
+	 * @return array[] key, date, cents, what
+	 */
+	public static function list_for_payer( int $person_id, int $limit = 30, bool $hide_voided = false ): array {
 		$db   = Db::db();
 		$rows = $db->get_results(
 			$db->prepare(
@@ -91,19 +96,20 @@ final class Receipts {
 		foreach ( $rows as $r ) {
 			$k = self::key_of( $r );
 			if ( ! isset( $out[ $k ] ) ) {
-				if ( count( $out ) >= $limit ) {
-					continue;
-				}
 				$out[ $k ] = array( 'key' => self::effective_key( $k ), 'date' => $r['tx_date'], 'cents' => 0, 'what' => array() );
 			}
 			$out[ $k ]['cents'] += (int) $r['amount_cents'];
 			$out[ $k ]['what'][ $r['category_name'] ] = true;
 		}
-		foreach ( $out as &$o ) {
+		$list = array();
+		foreach ( $out as $o ) {
+			if ( $hide_voided && self::is_void( $o['key'] ) ) {
+				continue;
+			}
 			$o['what'] = implode( ', ', array_keys( $o['what'] ) );
+			$list[]    = $o;
 		}
-		unset( $o );
-		return array_values( $out );
+		return array_slice( $list, 0, max( 0, $limit ) );
 	}
 
 	/** Anni (solari) in cui una persona ha versato qualcosa, dal più recente. @return int[] */
@@ -122,15 +128,43 @@ final class Receipts {
 
 	// ---------- Permessi e indirizzi ----------
 
+	/** La ricevuta emessa risulta annullata (anche se una riga è stata annullata dopo l'emissione e il segno non è ancora scritto). Mai emessa o ancora valida: false. */
+	public static function is_void( string $key ): bool {
+		$key = self::clean_key( $key );
+		$rec = self::record( $key );
+		if ( ! $rec ) {
+			return false;
+		}
+		if ( null !== $rec['voided_at'] ) {
+			return true;
+		}
+		$data = self::data_of( $rec );
+		if ( ! isset( $data['tx_ids'] ) ) {
+			return false;
+		}
+		$live = array_map( 'intval', array_column( self::rows( $key ), 'id' ) );
+		$old  = array_map( 'intval', (array) $data['tx_ids'] );
+		sort( $live );
+		sort( $old );
+		return $live !== $old;
+	}
+
+	/**
+	 * Chi può vedere una ricevuta. La ricevuta annullata la vede solo chi gestisce (segreteria, amministratori, dipendenti con permesso): al socio,
+	 * al tutore e a chi ha pagato risponde come se non esistesse (stesso esito di un codice sbagliato), anche per i link già mandati per email.
+	 */
 	public static function can_view( string $key ): bool {
 		$rows = self::rows( $key );
+		if ( $rows && ! current_user_can( Plugin::CAP_OPS ) && self::is_void( $key ) ) {
+			return false;
+		}
 		if ( ! $rows ) { // una ricevuta annullata resta consultabile: chi può vederla lo dicono i suoi dati fotografati
 			$rec  = self::record( $key );
 			$data = $rec && null !== $rec['voided_at'] ? self::data_of( $rec ) : array();
 			if ( ! $data ) {
 				return false;
 			}
-			return current_user_can( Plugin::CAP_OPS ) || ( ! empty( $data['payer_id'] ) && current_user_can( 'asem_view_payments', (int) $data['payer_id'] ) );
+			return current_user_can( Plugin::CAP_OPS ); // al socio la ricevuta annullata non si mostra: per lui non esiste
 		}
 		if ( current_user_can( Plugin::CAP_OPS ) ) {
 			return true;
