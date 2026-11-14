@@ -171,7 +171,7 @@ it('blocca il cambio mese solo con tessere valide "con la barra", e passare a ge
         ->and($this->memberships->startMonthProblem(1))->toBeNull();
 });
 
-it('non blocca il cambio mese se le tessere valide hanno il nome dell'anno (gennaio)', function (): void {
+it('non blocca il cambio mese se le tessere valide hanno solo l\'anno (gennaio)', function (): void {
     app(OrgSettings::class)->set(MembershipService::START_MONTH, 1);
     $socio = $this->people->create(['first_name' => 'Anna', 'last_name' => 'Rossi']);
     $this->memberships->grantManually($socio->id, $this->memberships->socialYear()->label(), 'Socia onoraria');
