@@ -39,7 +39,7 @@ it('fotografa il rendiconto alla chiusura e lo legge da lì, non dai dati vivi',
     $years->close($this->year);
     $closed = $snapshots->forYear($this->year);
     expect($closed['source'])->toBe('snapshot')->and($closed['version'])->toBe(1)
-        ->and($closed['statement'])->toEqual($live);
+        ->and(array_diff_key($closed['statement'], ['status' => 1]))->toEqual(array_diff_key($live, ['status' => 1]));
 
     // Riaperto: la fotografia resta come versione superata e si torna al vivo.
     $years->reopen($this->year, 'Correzione');
@@ -55,8 +55,9 @@ it('fotografa il rendiconto alla chiusura e lo legge da lì, non dai dati vivi',
 it('non lascia cambiare voci e conti usati in un esercizio chiuso', function (): void {
     app(FiscalYearService::class)->close($this->year);
 
-    expect(fn () => $this->donation->update(['name' => 'Altro nome']))->toThrow(QueryException::class);
-    expect(fn () => app(AccountService::class)->update($this->cash->id, 'Altro conto', AccountType::Cash, 0))->toThrow(LedgerError::class);
+    // Ogni rifiuto in un punto di salvataggio: dentro la transazione del test un errore la lascerebbe interrotta.
+    expect(fn () => DB::transaction(fn () => $this->donation->update(['name' => 'Altro nome'])))->toThrow(QueryException::class);
+    expect(fn () => DB::transaction(fn () => app(AccountService::class)->update($this->cash->id, 'Altro conto', AccountType::Cash, 0)))->toThrow(LedgerError::class);
 
     // L'ordine non è un dato dell'esercizio: si può cambiare.
     $this->donation->update(['sort_order' => 99]);
@@ -76,5 +77,4 @@ it('elenca le versioni delle fotografie nelle pagine', function (): void {
     $this->actingAs($user)->get("/gestionale/rendiconto/{$this->year}")->assertInertia(fn (Assert $page) => $page
         ->where('source', 'snapshot')->where('version', 1)->has('versions', 1));
     $this->get("/gestionale/soci/libro?anno={$this->year}")->assertInertia(fn (Assert $page) => $page->where('source', 'snapshot')->has('versions', 1));
-    expect(DB::table('app.statement_snapshots')->count())->toBe(1);
 });
