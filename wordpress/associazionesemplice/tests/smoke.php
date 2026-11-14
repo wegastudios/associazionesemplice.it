@@ -4186,7 +4186,7 @@ asem_ok( null !== asem_throws( function () use ( $yl_asm ) { \AssociazioneSempli
 $yl_set = asem_throws( function () { Settings::update( array( 'fiscal_start_month' => 7 ) ); } );
 asem_ok( 'Esistono anni fiscali chiusi: il mese di inizio non si può più cambiare.' === $yl_set && 1 === \AssociazioneSemplice\FiscalYears::start_month(), 'esercizi: con un esercizio chiuso il mese di inizio non si cambia' );
 Settings::update( array( 'fiscal_start_month' => 1 ) ); // lo stesso valore si può risalvare
-$yl_html = asem_render( array( Admin\EntityPage::class, 'render' ), 'Esistono esercizi chiusi' );
+$yl_html = asem_render( array( Admin\EntityPage::class, 'render' ), 'Esistono anni fiscali chiusi' );
 asem_ok( 1 === preg_match( '/<select name="fiscal_start_month"[^>]*disabled/', $yl_html ), 'esercizi: nella scheda Dati e fiscalità il mese è bloccato e dice perché' );
 
 // riapertura: solo l'ultimo chiuso, con il motivo
@@ -4357,7 +4357,7 @@ asem_ok( ! in_array( $mb_e, $mb_ids( \AssociazioneSemplice\MemberBook::rows() ),
 asem_ok( $mb_matE > 0 && $mb_matE === (int) $mb_after[ array_search( $mb_e, array_column( $mb_after, 'id' ), true ) ]['matricola'], 'matricola: nel libro chiuso la persona cancellata ha ancora la sua' );
 $mb_exp = \AssociazioneSemplice\Privacy::export( $mb_a );
 asem_ok( ! empty( $mb_exp['libro_soci_fotografato'] ) && (int) $mb_exp['libro_soci_fotografato'][0]['matricola'] === $mb_mat( $mb_a ) && 'Cavallo' === $mb_exp['libro_soci_fotografato'][0]['dati']['last_name'], 'privacy: l\'esportazione dei dati comprende le righe fotografate (con i dati di allora)' );
-asem_ok( false !== strpos( \AssociazioneSemplice\Privacy::closed_books_note( $mb_e ), 'restano nei libri degli esercizi già chiusi' ) && '' === \AssociazioneSemplice\Privacy::closed_books_note( $mb_b ), 'privacy: chi cancella o anonimizza viene avvisato che i dati restano nei libri chiusi' );
+asem_ok( false !== strpos( \AssociazioneSemplice\Privacy::closed_books_note( $mb_e ), 'restano nei libri degli anni fiscali già chiusi' ) && '' === \AssociazioneSemplice\Privacy::closed_books_note( $mb_b ), 'privacy: chi cancella o anonimizza viene avvisato che i dati restano nei libri chiusi' );
 // matricole mai riassegnate
 $mb_g = $mb_mk( 'ordinary', 'Gina', 'Nuova', $today );
 asem_ok( $mb_mat( $mb_g ) > $mb_matE && $mb_mat( $mb_g ) > $mb_mat( $mb_a ), 'matricola: quella di una persona cancellata non viene riassegnata a un nuovo socio' );
