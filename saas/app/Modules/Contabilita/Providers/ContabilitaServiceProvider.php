@@ -11,6 +11,7 @@ use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Contracts\MemberReceipts;
 use App\Modules\Contabilita\Contracts\ReceiptIssued;
 use App\Modules\Contabilita\Export\ContabilitaDataExport;
+use App\Modules\Contabilita\Export\ContabilitaReadableExport;
 use App\Modules\Contabilita\Home\AccountingHome;
 use App\Modules\Contabilita\Ledger\LedgerService;
 use App\Modules\Contabilita\Ledger\StatementSnapshots;
@@ -23,6 +24,7 @@ use App\Modules\Contabilita\Setup\FiscalYearStep;
 use App\Modules\Core\Contracts\DataExport;
 use App\Modules\Core\Contracts\HomeWidget;
 use App\Modules\Core\Contracts\OrgCreated;
+use App\Modules\Core\Contracts\ReadableExport;
 use App\Modules\Core\Contracts\SetupStep;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Event;
@@ -34,6 +36,7 @@ final class ContabilitaServiceProvider extends ServiceProvider
     {
         $this->app->tag([AccountingHome::class], HomeWidget::TAG);
         $this->app->tag([ContabilitaDataExport::class], DataExport::TAG);
+        $this->app->tag([ContabilitaReadableExport::class], ReadableExport::TAG);
         $this->app->tag([FiscalYearStep::class, EntityStep::class, AccountsStep::class], SetupStep::TAG);
         $this->app->bind(Ledger::class, LedgerService::class);
         $this->app->bind(MemberReceipts::class, MemberReceiptsService::class);

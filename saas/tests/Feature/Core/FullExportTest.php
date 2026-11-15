@@ -8,6 +8,7 @@ use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Services\CertificateService;
 use App\Modules\Soci\Services\MembershipService;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -46,19 +47,61 @@ it('esporta tutti i dati in un archivio per il titolare', function (): void {
     expect($base)->toBeInstanceOf(BinaryFileResponse::class);
     $files = zipContents($base);
 
+    $d = 'Dati per il programma/';
     expect(array_keys($files))->toContain(
-        'LEGGIMI.txt', 'soci/anagrafica.csv', 'soci/libro-soci.csv', 'soci/tessere.csv', 'soci/certificati-medici.csv', 'soci/consensi.csv',
-        'contabilita/prima-nota.csv', 'contabilita/conti.csv', 'contabilita/ricevute.csv', 'attivita/attivita.csv',
-        'operatori.csv', 'ruoli.csv', 'impostazioni.csv', 'registro-delle-azioni.csv',
+        'LEGGIMI.txt', $d.'soci/anagrafica.csv', $d.'soci/libro-soci.csv', $d.'soci/tessere.csv', $d.'soci/certificati-medici.csv', $d.'soci/consensi.csv',
+        $d.'contabilita/prima-nota.csv', $d.'contabilita/conti.csv', $d.'contabilita/ricevute.csv', $d.'attivita/attivita.csv',
+        $d.'operatori.csv', $d.'ruoli.csv', $d.'impostazioni.csv', $d.'registro-delle-azioni.csv',
     )
-        ->and(array_keys($files))->toContain('contabilita/rendiconti-anni-fiscali-chiusi.json', 'soci/libri-soci-anni-fiscali-chiusi.json')
-        ->and(json_decode($files['soci/libri-soci-anni-fiscali-chiusi.json'], true)[0]['rows'][0]['name'])->toBe('Rossi Mario')
-        ->and($files['soci/anagrafica.csv'])->toContain('RSSMRA80A01H501U')
-        ->and($files['soci/certificati-medici.csv'])->toContain('Dr. Bianchi')
-        ->and($files['contabilita/prima-nota.csv'])->toContain('Quota associativa')
-        ->and($files['operatori.csv'])->toContain('own@example.com')
-        ->and($files['LEGGIMI.txt'])->toContain('Polisportiva Alfa');
-    $this->orgContext()->run($this->org->id, fn () => expect(DB::table('audit.log')->where('action', 'export.full')->exists())->toBeTrue());
+        ->and(array_keys($files))->toContain($d.'contabilita/rendiconti-anni-fiscali-chiusi.json', $d.'soci/libri-soci-anni-fiscali-chiusi.json')
+        ->and(json_decode($files[$d.'soci/libri-soci-anni-fiscali-chiusi.json'], true)[0]['rows'][0]['name'])->toBe('Rossi Mario')
+        ->and($files[$d.'soci/anagrafica.csv'])->toContain('RSSMRA80A01H501U')
+        ->and($files[$d.'soci/certificati-medici.csv'])->toContain('Dr. Bianchi')
+        ->and($files[$d.'contabilita/prima-nota.csv'])->toContain('Quota associativa')
+        ->and($files[$d.'operatori.csv'])->toContain('own@example.com')
+        ->and($files['LEGGIMI.txt'])->toContain('Polisportiva Alfa')->toContain('I certificati medici non sono in questa copia.')
+        ->toContain('I PDF si aprono con qualsiasi lettore PDF');
+    $this->orgContext()->run($this->org->id, fn () => expect(DB::table('audit.log')->where('action', 'backup.downloaded')->exists())->toBeTrue());
+});
+
+it('mette nei documenti leggibili rendiconto, prima nota, libro soci e ricevute di ogni anno fiscale', function (): void {
+    $owner = $this->createUser('own@example.com', twoFactor: true);
+    $this->addOperator($this->org, $owner, OrgRole::Owner);
+    $year = (int) now()->format('Y');
+    $this->orgContext()->run($this->org->id, fn () => app(FiscalYearService::class)->close($year));
+
+    $files = zipContents($this->actingAs($owner)->get('/gestionale/esportazione.zip')->assertOk()->baseResponse);
+    $r = 'Documenti leggibili/Anno fiscale '.$year.'/';
+    expect(array_keys($files))->toContain($r.'Rendiconto.pdf', $r.'Prima nota.csv', $r.'Libro soci.pdf', $r.'Libro soci.csv');
+    expect(str_starts_with($files[$r.'Rendiconto.pdf'], '%PDF'))->toBeTrue()
+        ->and(str_starts_with($files[$r.'Libro soci.pdf'], '%PDF'))->toBeTrue()
+        ->and($files[$r.'Libro soci.csv'])->toContain('Rossi Mario')
+        ->and($files[$r.'Prima nota.csv'])->toContain('Quota associativa');
+    $receipts = array_values(array_filter(array_keys($files), fn (string $n): bool => str_starts_with($n, $r.'Ricevute/Ricevuta ')));
+    expect($receipts)->toHaveCount(1)->and($receipts[0])->toContain('Rossi Mario')->and(str_starts_with($files[$receipts[0]], '%PDF'))->toBeTrue();
+    expect(array_keys($files))->not->toContain('Documenti leggibili/Certificati medici/');
+});
+
+it('i certificati medici in chiaro ci sono solo con la casella spuntata', function (): void {
+    $owner = $this->createUser('own@example.com', twoFactor: true);
+    $this->addOperator($this->org, $owner, OrgRole::Owner);
+    $this->orgContext()->run($this->org->id, function (): void {
+        $p = Person::query()->sole();
+        app(CertificateService::class)->add($p->id, ['kind' => 'agonistic', 'issued_on' => '2026-01-10', 'expires_on' => '2027-01-10', 'doctor' => 'Dr. Verdi'], UploadedFile::fake()->create('cert.pdf', 4, 'application/pdf'));
+    });
+
+    $without = zipContents($this->actingAs($owner)->get('/gestionale/esportazione.zip')->assertOk()->baseResponse);
+    expect(array_filter(array_keys($without), fn (string $n): bool => str_contains($n, 'Certificati medici/')))->toBe([]);
+
+    $with = zipContents($this->actingAs($owner)->get('/gestionale/esportazione.zip?certificati=1')->assertOk()->baseResponse);
+    $certs = array_values(array_filter(array_keys($with), fn (string $n): bool => str_starts_with($n, 'Documenti leggibili/Certificati medici/')));
+    expect($certs)->toHaveCount(1)->and($certs[0])->toContain('Rossi Mario - ')->toContain('scade 2027-01-10')
+        ->and($with['LEGGIMI.txt'])->toContain('In «Certificati medici» ci sono i certificati in chiaro');
+    $counts = $this->orgContext()->run($this->org->id, fn (): array => array_map(
+        fn ($d): int => (int) (json_decode((string) $d, true)['certificates'] ?? -1),
+        DB::table('audit.log')->where('action', 'backup.downloaded')->pluck('details')->all(),
+    ));
+    expect($counts)->toContain(0)->toContain(1);
 });
 
 it('non lascia l\'esportazione completa a segreteria e commercialista', function (): void {

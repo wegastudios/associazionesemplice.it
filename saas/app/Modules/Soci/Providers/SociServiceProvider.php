@@ -10,6 +10,7 @@ use App\Modules\Core\Contracts\DataExport;
 use App\Modules\Core\Contracts\DemoSeeder;
 use App\Modules\Core\Contracts\HomeWidget;
 use App\Modules\Core\Contracts\PayableDues;
+use App\Modules\Core\Contracts\ReadableExport;
 use App\Modules\Core\Contracts\SetupStep;
 use App\Modules\Soci\Console\SendRemindersCommand;
 use App\Modules\Soci\Contracts\MemberProfiles;
@@ -17,6 +18,7 @@ use App\Modules\Soci\Contracts\Members;
 use App\Modules\Soci\Contracts\People;
 use App\Modules\Soci\Demo\DemoMembers;
 use App\Modules\Soci\Export\SociDataExport;
+use App\Modules\Soci\Export\SociReadableExport;
 use App\Modules\Soci\Home\SociHome;
 use App\Modules\Soci\Payments\MembershipDues;
 use App\Modules\Soci\Services\MemberBookSnapshots;
@@ -39,6 +41,7 @@ final class SociServiceProvider extends ServiceProvider
     {
         $this->app->tag([SociHome::class], HomeWidget::TAG);
         $this->app->tag([SociDataExport::class], DataExport::TAG);
+        $this->app->tag([SociReadableExport::class], ReadableExport::TAG);
         $this->app->tag([MembershipDues::class], PayableDues::TAG);
         $this->app->tag([DemoMembers::class], DemoSeeder::TAG);
         $this->app->tag([SocialYearStep::class, MembershipStep::class, ApplicationsStep::class], SetupStep::TAG);
