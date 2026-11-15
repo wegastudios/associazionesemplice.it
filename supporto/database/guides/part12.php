@@ -106,13 +106,25 @@ Dalla scheda del socio, nella parte **Tesseramento**, premi **«Incassa e rinnov
 
 ## Se il socio ha già la tessera
 
-Se il socio ha **già la tessera di quell'anno**, il gestionale non registra la quota una seconda volta e ti dice **«Il socio ha già la tessera {anno}.»**. Dalla scheda del socio si ferma tutto: nessun incasso, nessuna ricevuta, nessuna tessera. Lo stesso vale per il **pagamento online** dall'area soci: la quota già presente non viene registrata e il pagamento resta segnato **«da verificare»** per la segreteria, con il motivo scritto. Se nello stesso pagamento ci sono altre voci (per esempio un'attività), quelle si registrano.
+Se il socio ha **già la tessera di quell'anno**, il gestionale non registra la quota una seconda volta e ti dice, per esempio, **«Il socio ha già la tessera 2026.»**. Dalla scheda del socio si ferma tutto: nessun incasso, nessuna ricevuta, nessuna tessera.
+
+## Se il socio ha già pagato online
+
+Se la quota era già presente quando arriva il **pagamento online** dall'area soci, la quota non viene registrata e il pagamento resta segnato **«da controllare»**. Il socio vede «Pagamento ricevuto, grazie! La segreteria sta registrando il pagamento». Se nello stesso pagamento ci sono altre voci (per esempio un'attività), quelle si registrano.
+
+I soldi sono arrivati sul **conto Stripe o PayPal dell'associazione**, ma per quella quota non ci sono né movimento né ricevuta nel gestionale. **Cosa fare:**
+
+1. Apri **Pagamenti online**, sezione **«Pagamenti dei soci»**, e leggi il **motivo**, scritto in rosso sotto il nome nella colonna Voci.
+2. Se è la quota già pagata, **restituisci l'importo di quella voce al socio dal pannello di Stripe o PayPal**: il gestionale non ha un rimborso e non restituisce i soldi da solo.
+3. **Chiedi al tuo commercialista come registrare la restituzione.**
+4. Premi **«controllato»** accanto allo stato: serve solo a dire «ho visto e sistemato», non registra e non rimborsa nulla. Lo vede chi ha il permesso di contabilità.
+
+## Se l'importo pagato è diverso
+
+Se l'importo incassato è diverso da quello atteso, il motivo è «Incassati X invece di Y: da controllare» e in quel caso **nessuna voce** viene registrata: leggi il motivo nella stessa pagina e premi «controllato» quando hai sistemato.
 
 L'anno della tessera lo decide il programma, non il socio.
 
-- **Tessera senza incasso**: se rinnovi senza un pagamento (per esempio una tessera regalata), scrivi il **motivo** e premi **«Registra la tessera»**.
-- **Socio fondatore**: la tessera è sempre rinnovata.
-- Il quadro del tesseramento (quote, livelli) è in **Soci → Livelli e quote**.
 MD,
     ],
     [
