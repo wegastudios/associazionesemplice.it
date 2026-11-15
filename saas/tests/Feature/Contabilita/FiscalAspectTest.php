@@ -104,7 +104,7 @@ it('sulla ricevuta l\'aliquota zero si chiama «IVA esente» e senza partita IVA
         $p = Person::create(['first_name' => 'Mario', 'last_name' => 'Rossi', 'email' => $tax.'@example.com', 'tax_code' => $tax, 'birth_date' => '1980-01-01']);
         app(MembershipService::class)->renewWithPayment($p->id, Account::query()->where('type', 'cash')->sole()->id, 3000);
 
-        return (string) DB::table('app.receipts')->orderByDesc('created_at')->value('id');
+        return (string) DB::table('app.receipts')->orderByDesc('number')->value('id');
     };
     $without = $pay('RSSMRA80A01H501U');
     $this->orgContext()->leave();
