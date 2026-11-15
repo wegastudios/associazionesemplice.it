@@ -15,6 +15,9 @@ interface ReadableExport
 {
     public const TAG = 'saas.readable-export';
 
+    /** Oltre questi file «pesanti» (ricevute, certificati) una copia o un archivio di tutti gli anni insieme non si fa: si va un anno alla volta. */
+    public const MAX_HEAVY_FILES = 2500;
+
     /**
      * @return array<string, Closure(): (string|null)> percorso nella cartella dei documenti leggibili => contenuto
      */

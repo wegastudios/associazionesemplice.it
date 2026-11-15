@@ -32,7 +32,7 @@ Finché manca qualche dato dell'ente, in cima a ogni pagina c'è una **banda fis
 
 ## Dove trovi le cose
 
-Il menu è diviso in quattro gruppi: **Persone** (Soci, Domande di adesione), **Attività e risorse** (Attività, Calendario, Risorse), **Cassa e conti** (Prima nota, Conti, Rendiconto, Pagamenti online) e **Gestione** (Operatori e ruoli, Esportazione dei dati, Configurazione guidata). Il pulsante **Nuovo** crea una scheda socio, un incasso, una spesa o un'attività. Alcune voci compaiono solo se il tuo piano le include o se il tuo ruolo lo permette.
+Il menu è diviso in quattro gruppi: **Persone** (Soci, Domande di adesione), **Attività e risorse** (Attività, Calendario, Risorse), **Cassa e conti** (Prima nota, Conti, Rendiconto, Pagamenti online) e **Gestione** (Operatori e ruoli, Copie di sicurezza, Configurazione guidata). Il pulsante **Nuovo** crea una scheda socio, un incasso, una spesa o un'attività. Alcune voci compaiono solo se il tuo piano le include o se il tuo ruolo lo permette.
 MD,
     ],
     [
@@ -57,7 +57,7 @@ Finita la prova hai ancora **7 giorni**: puoi entrare e consultare tutto, ma **n
 
 ## Se un piano scade
 
-Se un piano a pagamento non viene rinnovato, il gestionale si **sospende il giorno dopo la scadenza** e i tuoi dati vengono **conservati per 180 giorni**: rinnovando, riparti da dove eri. Puoi sempre **esportare i tuoi dati** (vedi [Esportare tutti i dati](guida:gestionale-esportare-i-dati)).
+Se un piano a pagamento non viene rinnovato, il gestionale si **sospende il giorno dopo la scadenza** e i tuoi dati vengono **conservati per 180 giorni**: rinnovando, riparti da dove eri. Prima della scadenza ti conviene **scaricare una copia di sicurezza** (vedi [Copie di sicurezza e documenti da consegnare](guida:gestionale-esportare-i-dati)).
 
 ## Il commercialista
 
@@ -369,14 +369,78 @@ MD,
     ],
     [
         'topic' => 'gestionale', 'section' => 'Gestione', 'slug' => 'gestionale-esportare-i-dati',
-        'title' => 'Esportare tutti i dati',
+        'title' => 'Copie di sicurezza e documenti da consegnare',
         'body' => <<<'MD'
 > Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande} (non durante la prova)
 
-In **Esportazione dei dati** scarichi l'**archivio completo** con **«Scarica l'archivio»**. La prima nota e l'anagrafica si possono ricaricare con gli import.
+La pagina **Copie di sicurezza** (menu **Gestione**, o dalla Home) ti dà **tutti i dati dell'associazione in un archivio ZIP**. La vedono e la usano il **titolare** e l'**amministratore**.
 
-- L'archivio contiene **dati personali e sanitari**: conservalo con cura e cancellalo quando non serve più. Resta traccia di chi lo scarica.
-- I **file allegati ai certificati medici** non sono compresi: si scaricano dalla scheda della persona.
+## Cosa contiene
+
+La copia ha due parti:
+
+- **«Dati per il programma»**: servono per **riportare i dati** nel plugin o nel gestionale Associazione Semplice. La prima nota e l'anagrafica si possono ricaricare con gli import.
+- **«Documenti leggibili»**: **PDF e tabelle che si aprono senza nessun programma speciale**, da consegnare a chi subentra o al commercialista. I PDF si aprono con qualsiasi lettore, le tabelle con Excel, LibreOffice o simili.
+
+Aprendo lo ZIP trovi questa struttura:
+
+- **LEGGIMI.txt**: una breve spiegazione
+- **Dati per il programma**
+- **Documenti leggibili**
+  - **Anno fiscale 2026** (una cartella per ogni anno fiscale)
+    - **Rendiconto.pdf**
+    - **Prima nota.csv**
+    - **Libro soci.pdf** e **Libro soci.csv**
+    - **Ricevute**: un PDF per ogni ricevuta, per esempio «Ricevuta 12-2026 - Rossi Maria.pdf»
+    - **Ricevute non incluse.txt**, solo se qualche ricevuta non si è potuta mettere nella copia
+  - **Certificati medici**, solo se lo hai chiesto (vedi sotto)
+
+Il file scaricato si chiama «copia-di-sicurezza-» seguito dal nome dell'associazione e dalla data (con l'anno, se la copia è di un solo anno fiscale).
+
+## Come si scarica
+
+1. Apri **Copie di sicurezza**.
+2. In **«Documenti leggibili di»** scegli **«tutti gli anni fiscali»** oppure un **«anno fiscale»** (per esempio 2026).
+3. Premi **«Scarica copia di sicurezza»**. Dopo il clic la copia viene preparata: può richiedere qualche minuto. Il download parte da solo: **non chiudere la pagina**.
+
+Se l'associazione ha **molti documenti**, la copia unica non parte e il gestionale ti dice: «Questa associazione ha molti documenti: una copia unica rischia di non finire. Scegli un anno fiscale e scarica una copia per anno.»
+
+## Le ricevute che mancano
+
+Se il PDF di una ricevuta manca o risulta diverso da quando è stato emesso, quella ricevuta non entra nella copia e compare nel file **«Ricevute non incluse.txt»**. Si controllano in **Altro → Verifica delle ricevute** (vedi [Registrare un incasso e una spesa](guida:gestionale-registrare-un-incasso-e-una-spesa)).
+
+## I certificati medici
+
+Di partenza **non ci sono**. Se hai il permesso sui **dati sulla salute**, vedi la casella **«Includi i certificati medici (dati sulla salute) in chiaro»**: spuntandola, nella cartella **Certificati medici** trovi un file per ogni certificato (nome «Cognome Nome - tipo - scade» con la data). Il gestionale avvisa: «Sono dati sulla salute, in chiaro, senza protezione: conservali con cura e consegnali solo a chi ne ha titolo.»
+
+## Attenzione ai dati personali
+
+La copia contiene **dati personali**: conservala con cura. Resta traccia di chi la scarica.
+
+## L'archivio degli anni chiusi (facoltativo)
+
+Nella pagina **Copie di sicurezza**, il **titolare** e l'**amministratore** trovano la sezione **«Archivio degli anni chiusi»**. È una funzione **facoltativa**, per tenere in ordine gli anni vecchi: un anno fiscale chiuso si può archiviare, e le sue ricevute in PDF si raccolgono in **un solo file cifrato**, conservato nel gestionale, al posto dei file singoli. I dati restano dove sono: l'archivio contiene solo file. Per te non cambia nulla: le ricevute si scaricano come sempre. I **certificati medici non vanno in archivio**.
+
+Per ogni anno fiscale vedi uno di questi stati:
+
+- **«Da archiviare»**: c'è il pulsante **«Archivia l'anno»**.
+- **«Archiviato il» con la data**: c'è il pulsante **«Rimetti i file»**, per tornare indietro quando vuoi.
+- **«Non ancora: si archiviano solo gli anni fiscali prima dell'ultimo anno chiuso.»**
+
+I file singoli vengono tolti **solo dopo che l'archivio è stato controllato**: se qualcosa non torna, non cambia nulla.
+
+**Archiviare non sostituisce la copia di sicurezza.** Resta consigliato **«Scarica copia di sicurezza»**, e la copia contiene comunque **anche gli anni archiviati**.
+
+In **Altro → Verifica delle ricevute** le ricevute di un anno archiviato hanno lo stato **«In archivio»**. Per rifare il PDF di una ricevuta di un anno archiviato, devi prima **rimettere i file** di quell'anno.
+
+Se l'archiviazione non parte, il gestionale te ne dice il motivo. I due casi:
+
+- **Una ricevuta senza PDF valido** ferma l'archiviazione: il messaggio indica il numero della ricevuta, da controllare in **Altro → Verifica delle ricevute**.
+- **Un anno con oltre 2.500 ricevute** non si archivia: non cambia nulla e il programma ti dice di scrivere all'assistenza.
+
+## Se cambi programma o chiudi l'abbonamento
+
+**Scarica la copia di sicurezza prima.** Quando la prova è finita o l'abbonamento non viene rinnovato, il gestionale si sospende: puoi consultare i dati ma **non modificarli né esportarli**. Per questo conviene fare la copia **prima della scadenza**. Nei **«Documenti leggibili»** trovi quello che serve da consegnare a chi subentra: rendiconto, prima nota, libro soci e ricevute di ogni anno fiscale.
 MD,
     ],
 ];

@@ -10,6 +10,7 @@ use App\Modules\Cifratura\Contracts\DecryptionFailed;
 use App\Modules\Cifratura\Contracts\EncryptedFiles;
 use App\Modules\Cifratura\Contracts\FieldCipher;
 use App\Modules\Cifratura\Contracts\StoredFile;
+use App\Modules\Contabilita\Archive\ArchivedReceipts;
 use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Core\Contracts\OrgContext;
 use Illuminate\Database\ConnectionInterface;
@@ -36,6 +37,8 @@ final readonly class ReceiptFiles
 
     public const ALTERED = 'altered';
 
+    public const ARCHIVED = 'archived';
+
     public function __construct(
         private DatabaseManager $db,
         private OrgContext $context,
@@ -43,6 +46,7 @@ final readonly class ReceiptFiles
         private EncryptedFiles $files,
         private AuditLog $audit,
         private FieldCipher $cipher,
+        private ArchivedReceipts $archived,
     ) {}
 
     /** Fissa il PDF se non lo è già. Ritorna true se l'ha creato adesso. */
@@ -90,12 +94,15 @@ final readonly class ReceiptFiles
         return ['pdf' => $this->read($row, $meta['number']), 'filename' => $name, 'number' => $meta['number'], 'email' => $meta['email'], 'holder' => $meta['holder']];
     }
 
-    /** @return self::OK|self::UNFIXED|self::MISSING|self::ALTERED */
+    /** @return self::OK|self::UNFIXED|self::MISSING|self::ALTERED|self::ARCHIVED */
     public function status(string $receiptId): string
     {
         $row = $this->row($receiptId);
         if ($row === null) {
             return self::UNFIXED;
+        }
+        if (($row->archived_year ?? null) !== null) {
+            return self::ARCHIVED;
         }
         try {
             $this->files->read($this->context->require()->id, self::stored($row));
@@ -117,6 +124,9 @@ final readonly class ReceiptFiles
     public function rebuild(string $receiptId): bool
     {
         $row = $this->row($receiptId) ?? throw new ReceiptFileProblem('Questa ricevuta non ha ancora un PDF fissato.', ReceiptFileProblem::MISSING);
+        if (($row->archived_year ?? null) !== null) {
+            throw new ReceiptFileProblem('Questa ricevuta è nell\'archivio dell\'anno fiscale '.(is_numeric($row->archived_year) ? (int) $row->archived_year : '').': per rifarla rimetti prima i file di quell\'anno da «Copie di sicurezza».', ReceiptFileProblem::CHANGED);
+        }
         $snapshot = $this->snapshotOf($row);
         if ($snapshot !== null) {
             // Dai dati fotografati all'emissione: il PDF si rifà uguale anche se socio ed ente sono cambiati.
@@ -199,6 +209,14 @@ final readonly class ReceiptFiles
 
     private function read(object $row, string $number): string
     {
+        if (($row->archived_year ?? null) !== null) {
+            $year = is_numeric($row->archived_year) ? (int) $row->archived_year : 0;
+            try {
+                return $this->archived->read(is_string($row->receipt_id ?? null) ? $row->receipt_id : '', $year, is_string($row->sha256 ?? null) ? $row->sha256 : '');
+            } catch (RuntimeException) {
+                throw new ReceiptFileProblem('Il PDF della ricevuta n. '.$number.' è nell\'archivio dell\'anno fiscale '.$year.', ma l\'archivio non si apre o risulta diverso da quando è stato fatto. Scrivi all\'assistenza di Associazione Semplice.', ReceiptFileProblem::ALTERED);
+            }
+        }
         try {
             return $this->files->read($this->context->require()->id, self::stored($row));
         } catch (UnableToReadFile) {

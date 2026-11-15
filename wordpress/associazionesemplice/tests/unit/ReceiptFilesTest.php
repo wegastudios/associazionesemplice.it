@@ -50,6 +50,8 @@ final class ReceiptFilesTest extends TestCase {
 		$this->assertSame( array( 'pdf_path', 'pdf_sha256', 'pdf_at' ), ReceiptFiles::columns( 'issued' ) );
 		$this->assertSame( array( 'void_pdf_path', 'void_pdf_sha256', 'void_pdf_at' ), ReceiptFiles::columns( 'void' ) );
 		$this->assertSame( array( 'issued', 'void' ), ReceiptFiles::kinds() );
+		$this->assertSame( 'pdf_enc_ver', ReceiptFiles::enc_col( 'issued' ) );
+		$this->assertSame( 'void_pdf_enc_ver', ReceiptFiles::enc_col( 'void' ) );
 	}
 
 	public function test_has_looks_only_at_the_path_column(): void {

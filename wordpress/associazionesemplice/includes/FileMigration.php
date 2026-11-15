@@ -77,7 +77,8 @@ final class FileMigration {
 			$en   = '`' . $s['enc'] . '`';
 			$rows = $db->get_results( $db->prepare( "SELECT id, $st AS st FROM $t WHERE $en IS NULL AND $st IS NOT NULL AND $st <> '' ORDER BY id LIMIT %d", $left ), ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared -- nomi di tabella e colonna fissi del plugin
 			foreach ( $rows as $r ) {
-				$out[] = array( 'key' => (string) $s['key'], 'id' => (int) $r['id'], 'stored' => (string) $r['st'], 'exists' => is_file( $dir . '/' . basename( (string) $r['st'] ) ) );
+				$rel   = PrivateFiles::rel_of( (string) $r['st'], $s );
+				$out[] = array( 'key' => (string) $s['key'], 'id' => (int) $r['id'], 'stored' => (string) $r['st'], 'exists' => '' !== $rel && is_file( $dir . '/' . $rel ) );
 			}
 		}
 		return $out;
@@ -173,7 +174,7 @@ final class FileMigration {
 				foreach ( $rows as $r ) {
 					$cursor = (int) $r['id'];
 					$left--;
-					$o = self::encrypt_one( (string) $r['st'], (string) $r['sh'] );
+					$o = self::encrypt_one( (string) $r['st'], (string) $r['sh'], $src );
 					if ( 'ok' === $o['status'] || 'already' === $o['status'] ) {
 						$upd = array( $src['enc'] => PrivateFiles::ENC_VER );
 						if ( '' === (string) $r['sh'] ) {
@@ -216,7 +217,7 @@ final class FileMigration {
 
 	/** Cancella i file temporanei lasciati da un lotto interrotto (più vecchi di un'ora). */
 	private static function clean_partials(): void {
-		foreach ( glob( Attachments::dir() . '/*.part-*' ) ?: array() as $f ) {
+		foreach ( array_merge( glob( Attachments::dir() . '/*.part-*' ) ?: array(), glob( Attachments::dir() . '/receipts/*/*.part-*' ) ?: array() ) as $f ) {
 			if ( is_file( $f ) && (int) filemtime( $f ) < time() - HOUR_IN_SECONDS ) {
 				wp_delete_file( $f );
 			}
@@ -226,12 +227,13 @@ final class FileMigration {
 	/**
 	 * Cifra un file già sul disco, al suo posto.
 	 *
-	 * @param string $stored nome del file nella cartella riservata
+	 * @param string     $stored nome del file nella cartella riservata (o percorso relativo, per le fonti con sottocartelle)
+	 * @param array|null $src    voce della fonte (serve a sapere come è fatto il percorso)
 	 * @param string $sha    impronta registrata del contenuto in chiaro (vuota se non c'è)
 	 * @return array{status:string,sha256:string} status: ok, already, missing, badhash, error
 	 */
-	public static function encrypt_one( string $stored, string $sha ): array {
-		$name = AttachmentRules::stored_name( $stored );
+	public static function encrypt_one( string $stored, string $sha, ?array $src = null ): array {
+		$name = PrivateFiles::rel_of( $stored, $src );
 		if ( '' === $name ) {
 			return array( 'status' => 'missing', 'sha256' => '' );
 		}

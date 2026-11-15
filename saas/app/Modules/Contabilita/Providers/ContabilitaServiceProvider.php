@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Contabilita\Providers;
 
+use App\Modules\Contabilita\Archive\ArchivedReceipts;
+use App\Modules\Contabilita\Archive\ReceiptYearArchive;
 use App\Modules\Contabilita\Console\FixReceiptsCommand;
 use App\Modules\Contabilita\Contracts\FiscalYearClosed;
 use App\Modules\Contabilita\Contracts\FiscalYearReopened;
@@ -26,6 +28,7 @@ use App\Modules\Core\Contracts\HomeWidget;
 use App\Modules\Core\Contracts\OrgCreated;
 use App\Modules\Core\Contracts\ReadableExport;
 use App\Modules\Core\Contracts\SetupStep;
+use App\Modules\Core\Contracts\YearArchives;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
@@ -39,6 +42,8 @@ final class ContabilitaServiceProvider extends ServiceProvider
         $this->app->tag([ContabilitaReadableExport::class], ReadableExport::TAG);
         $this->app->tag([FiscalYearStep::class, EntityStep::class, AccountsStep::class], SetupStep::TAG);
         $this->app->bind(Ledger::class, LedgerService::class);
+        $this->app->scoped(ArchivedReceipts::class);
+        $this->app->bind(YearArchives::class, ReceiptYearArchive::class);
         $this->app->bind(MemberReceipts::class, MemberReceiptsService::class);
     }
 

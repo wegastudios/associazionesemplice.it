@@ -113,6 +113,7 @@ final class FileCryptTest extends TestCase {
 		$src = $this->tmpfile();
 		$h   = fopen( $src, 'wb' );
 		$rnd = random_bytes( 1048576 );
+		$rnd[0] = 'A'; // il primo byte non è mai quello di un file cifrato (1 su 256 per caso)
 		for ( $i = 0; $i < 10; $i++ ) {
 			fwrite( $h, $rnd );
 			$rnd = hash( 'sha256', $rnd, true ) . substr( $rnd, 32 ); // contenuto che cambia da un megabyte all'altro

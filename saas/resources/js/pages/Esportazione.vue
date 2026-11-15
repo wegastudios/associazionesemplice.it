@@ -1,11 +1,22 @@
 <script setup>
-import { Head, usePage } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import AppLayout from '../layouts/AppLayout.vue';
 
-defineProps({ canHealth: Boolean, years: Array });
+defineProps({ canHealth: Boolean, years: Array, archives: Array });
 const page = usePage();
 const withCertificates = ref(false);
+const archive = (y) => {
+    if (window.confirm(`Archiviare l'anno fiscale ${y}? Le ricevute si raccolgono in un solo file cifrato e se ne controlla ogni impronta; solo dopo il controllo i file singoli vengono tolti. Si può tornare indietro con «Rimetti i file». L'operazione resta scritta nel registro azioni.`)) {
+        router.post(`/gestionale/archivio/${y}`, {}, { preserveScroll: true });
+    }
+};
+const restore = (y) => {
+    if (window.confirm(`Rimettere i file singoli dell'anno fiscale ${y}? L'archivio viene aperto e controllato; i file tornano al loro posto e l'archivio viene tolto. L'operazione resta scritta nel registro azioni.`)) {
+        router.post(`/gestionale/archivio/${y}/rimetti`, {}, { preserveScroll: true });
+    }
+};
+const day = (d) => (d ? d.split('-').reverse().join('/') : '');
 </script>
 
 <template>
@@ -30,6 +41,29 @@ const withCertificates = ref(false);
                 <p class="text-muted">Dopo il clic la copia viene preparata: può richiedere qualche minuto. Il download parte da solo: non chiudere la pagina.</p>
                 <button type="submit" class="btn btn-primary">Scarica copia di sicurezza</button>
             </form>
+        </section>
+        <section class="card mt-6 p-4 text-sm sm:p-5">
+            <h2 class="mb-1 text-lg font-bold">Archivio degli anni chiusi</h2>
+            <p class="mb-3">Un anno fiscale chiuso si può archiviare: le sue ricevute in PDF si raccolgono in un solo file cifrato, conservato nel gestionale, al posto dei file singoli. I dati restano dove sono: l'archivio contiene solo file. Serve a tenere in ordine gli anni vecchi: per te non cambia nulla, le ricevute si scaricano come sempre. I certificati medici non vanno in archivio.</p>
+            <p v-if="page.props.errors?.archive" class="mb-3 font-semibold text-danger" role="alert">{{ page.props.errors.archive }}</p>
+            <table v-if="archives.length" class="w-full text-left">
+                <tbody>
+                    <tr v-for="a in archives" :key="a.year" class="border-t">
+                        <td class="p-2 font-semibold">Anno fiscale {{ a.year }}</td>
+                        <td class="p-2">{{ a.files }} ricevute</td>
+                        <td class="p-2">
+                            <template v-if="a.state === 'archived'">Archiviato il {{ day(a.archived_on) }}</template>
+                            <template v-else-if="a.state === 'ready'">Da archiviare</template>
+                            <span v-else class="text-muted">Non ancora: si archiviano solo gli anni fiscali prima dell'ultimo anno chiuso.</span>
+                        </td>
+                        <td class="p-2 text-right">
+                            <button v-if="a.state === 'ready'" type="button" class="btn" @click="archive(a.year)">Archivia l'anno</button>
+                            <button v-else-if="a.state === 'archived'" type="button" class="btn" @click="restore(a.year)">Rimetti i file</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <p v-else class="text-muted">Nessun anno fiscale chiuso.</p>
         </section>
     </AppLayout>
 </template>
