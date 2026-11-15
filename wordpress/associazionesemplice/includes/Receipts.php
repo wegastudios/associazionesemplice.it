@@ -277,7 +277,11 @@ final class Receipts {
 		if ( ! $rec || ! in_array( $kind, ReceiptFiles::kinds(), true ) || ! ReceiptFiles::has( $rec, $kind ) ) {
 			throw new \InvalidArgumentException( Texts::t( 'Questa ricevuta non ha un PDF fissato da rifare.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
-		if ( ! in_array( ReceiptFiles::state( $rec, $kind ), array( 'missing', 'altered' ), true ) ) {
+		$st = ReceiptFiles::state( $rec, $kind );
+		if ( 'locked' === $st ) {
+			throw new \InvalidArgumentException( Texts::t( 'Il PDF di questa ricevuta è cifrato e la chiave di questo sito non lo apre: non viene rifatto, per non perdere il file. Sistema prima la chiave da Impostazioni → Copia di sicurezza → «Cifratura dei file riservati».' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		if ( ! in_array( $st, array( 'missing', 'altered' ), true ) ) {
 			throw new \InvalidArgumentException( Texts::t( 'Il PDF di questa ricevuta è a posto: non serve rifarlo.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( ReceiptFiles::VOID === $kind && null === $rec['voided_at'] ) {

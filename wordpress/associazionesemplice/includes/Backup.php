@@ -203,7 +203,7 @@ final class Backup {
 
 	/**
 	 * Aggiunge allo ZIP i documenti definitivi che un'estensione dichiara con il filtro `asem_backup_documents` (elenco di name, path, sha256) e
-	 * scrive `documenti/indice.json` con i nomi e le impronte SHA-256. Solo nomi sotto `documenti/`, senza `..`, e solo file che esistono.
+	 * scrive `documenti/indice.json` con i nomi e le impronte SHA-256 (del contenuto in chiaro e, se il file è cifrato, anche del file com'è nello ZIP). Solo nomi sotto `documenti/`, senza `..`, e solo file che esistono.
 	 *
 	 * @return int documenti aggiunti
 	 */
@@ -218,7 +218,11 @@ final class Backup {
 				continue;
 			}
 			$zip->addFile( (string) $d['path'], $name );
-			$index[] = array( 'name' => $name, 'sha256' => (string) ( $d['sha256'] ?? '' ) );
+			$entry   = array( 'name' => $name, 'sha256' => (string) ( $d['sha256'] ?? '' ) );
+			if ( ! empty( $d['file_sha256'] ) ) {
+				$entry['file_sha256'] = (string) $d['file_sha256']; // impronta del file così com'è nello ZIP (cifrato); «sha256» è quella del contenuto in chiaro
+			}
+			$index[] = $entry;
 		}
 		if ( $index ) {
 			$zip->addFromString( 'documenti/indice.json', (string) wp_json_encode( array( 'files' => $index ), JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT ) );

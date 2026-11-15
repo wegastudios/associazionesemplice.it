@@ -10,6 +10,11 @@ defined( 'ABSPATH' ) || exit;
  * identico. Non si riscrive mai un PDF già fissato; solo un amministratore, con un'azione esplicita e annotata, può rifarne uno mancante
  * o alterato, e solo dai dati fotografati all'emissione (se la loro impronta coincide).
  *
+ * Se la libreria di cifratura c'è, il file sul disco è CIFRATO (vedi {@see FileCrypt}; dato associato = il percorso relativo): nel database l'impronta resta
+ * quella del PDF IN CHIARO, e il controllo apre il file in streaming, ricalcola l'impronta del contenuto e la confronta. Download ed email servono sempre
+ * il PDF salvato (decifrato in memoria). Senza la libreria i PDF si salvano in chiaro come prima. I PDF già salvati in chiaro si cifrano a lotti con
+ * {@see FileMigration} (le colonne `pdf_enc_ver` e `void_pdf_enc_ver` dicono quali sono cifrati).
+ *
  * Ogni ricevuta ha fino a due file: quello EMESSO (colonne pdf_*) e, se poi viene annullata, quello ANNULLATA (colonne void_pdf_*), che porta
  * lo stesso contenuto con la scritta, la data e il motivo dell'annullo. Il primo non si sostituisce mai con il secondo.
  *
@@ -23,6 +28,7 @@ final class ReceiptFiles {
 	const CRON     = 'asem_receipt_pdfs_batch';
 	const FLAG     = 'asem_receipt_pdfs_backfill'; // assente = da fare, started = in corso, done = finito
 	const MAX_SIZE = 10485760; // 10 MB: una ricevuta pesa pochi KB, oltre non è un nostro PDF
+	const ENC_OVERHEAD = 1048576; // il file cifrato pesa poco più dell'originale (29 byte di intestazione e 17 per ogni blocco da 64 KiB)
 
 	const ISSUED = 'issued';
 	const VOID   = 'void';
@@ -34,6 +40,7 @@ final class ReceiptFiles {
 		add_action( 'asem_year_closed', array( __CLASS__, 'on_year_closed' ) );
 		add_action( 'plugins_loaded', array( __CLASS__, 'maybe_backfill' ), 20 ); // dopo l'aggiornamento dello schema (priorità 12)
 		add_action( self::CRON, array( __CLASS__, 'cron_batch' ), 10, 2 );
+		add_filter( 'asem_file_sources', array( __CLASS__, 'file_sources' ) ); // i PDF si cifrano come gli altri file riservati
 		add_filter( 'asem_backup_documents', array( __CLASS__, 'backup_documents' ) );
 		add_filter( 'asem_backup_restore_documents', array( __CLASS__, 'restore_documents' ), 10, 3 );
 		add_action( 'asem_reset_private_files', array( __CLASS__, 'delete_all' ) );
@@ -50,9 +57,32 @@ final class ReceiptFiles {
 		return self::VOID === $kind ? array( 'void_pdf_path', 'void_pdf_sha256', 'void_pdf_at' ) : array( 'pdf_path', 'pdf_sha256', 'pdf_at' );
 	}
 
+	/** Colonna della versione di cifratura di un tipo di PDF (vuota = in chiaro). */
+	public static function enc_col( string $kind ): string {
+		return self::VOID === $kind ? 'void_pdf_enc_ver' : 'pdf_enc_ver';
+	}
+
 	/** @return string[] */
 	public static function kinds(): array {
 		return array( self::ISSUED, self::VOID );
+	}
+
+	/**
+	 * Voci per l'elenco dei file da cifrare ({@see PrivateFiles::sources()}): il PDF emesso e quello «annullata». Il percorso nel database è relativo alla
+	 * cartella riservata (receipts/AAAA/…): è anche il dato associato della cifratura. L'impronta nel database resta quella del PDF in chiaro.
+	 *
+	 * @param array $sources
+	 * @return array
+	 */
+	public static function file_sources( $sources ): array {
+		$sources = (array) $sources;
+		if ( version_compare( (string) get_option( ProSchema::VERSION_OPTION, '0' ), '19', '<' ) ) {
+			return $sources; // le colonne della cifratura arrivano con l'aggiornamento dello schema
+		}
+		$valid     = array( __CLASS__, 'valid_path' );
+		$sources[] = array( 'key' => 'receipts', 'table' => 'receipts', 'stored' => 'pdf_path', 'sha' => 'pdf_sha256', 'enc' => 'pdf_enc_ver', 'prio' => 35, 'fields' => array(), 'valid' => $valid );
+		$sources[] = array( 'key' => 'receipts_void', 'table' => 'receipts', 'stored' => 'void_pdf_path', 'sha' => 'void_pdf_sha256', 'enc' => 'void_pdf_enc_ver', 'prio' => 36, 'fields' => array(), 'valid' => $valid );
+		return $sources;
 	}
 
 	/** Un percorso relativo è uno dei nostri? Solo `receipts/AAAA/<numero>[a]-<codice>.pdf`, mai altro (niente `..`, niente barre in più). */
@@ -98,10 +128,35 @@ final class ReceiptFiles {
 		if ( ! is_file( $abs ) ) {
 			return 'missing';
 		}
+		if ( (int) filesize( $abs ) > self::MAX_SIZE + self::ENC_OVERHEAD ) {
+			return 'altered';
+		}
+		$enc = $rec[ self::enc_col( $kind ) ] ?? null;
+		if ( self::is_stored_encrypted( $abs, $enc ) ) { // si decifra in streaming, si ricalcola l'impronta del contenuto e la si confronta con quella nel database
+			try {
+				PrivateFiles::verify( $abs, $path, (string) ( $rec[ $c[1] ] ?? '' ) );
+				return 'ok';
+			} catch ( FileCryptError $e ) {
+				return self::failure_state( $e->reason );
+			}
+		}
 		if ( (int) filesize( $abs ) > self::MAX_SIZE ) {
 			return 'altered';
 		}
 		return hash_equals( (string) ( $rec[ $c[1] ] ?? '' ), (string) hash_file( 'sha256', $abs ) ) ? 'ok' : 'altered';
+	}
+
+	/** Il file sul disco è cifrato? Lo dice il database o, se non lo dice, l'intestazione: un PDF in chiaro comincia sempre con «%PDF». */
+	private static function is_stored_encrypted( string $abs, $enc ): bool {
+		return ( null !== $enc && '' !== $enc && (int) $enc > 0 ) || FileCrypt::is_encrypted_file( $abs );
+	}
+
+	/** Da un errore di lettura allo stato: «locked» se il problema è la chiave (il file può essere a posto), «altered» se il contenuto non torna. */
+	private static function failure_state( string $reason ): string {
+		if ( FileCryptError::NO_KEY === $reason || FileCryptError::NO_SODIUM === $reason || ( FileCryptError::AUTH === $reason && 'ok' !== FileKey::state() ) ) {
+			return 'locked';
+		}
+		return 'altered';
 	}
 
 	// ---------- Lettura e scrittura ----------
@@ -121,20 +176,79 @@ final class ReceiptFiles {
 		if ( ! is_file( $abs ) ) {
 			throw new \InvalidArgumentException( Texts::t( 'Il PDF della ricevuta n. {n} non si trova più sul sito (la cartella dei file riservati è stata svuotata o spostata). Non viene rifatto in automatico: un amministratore può ripristinarlo da una copia di sicurezza oppure, da «Verifica delle ricevute», rigenerarlo dai dati salvati.', array( 'n' => $label ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
-		$bytes = (string) file_get_contents( $abs ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- file privato nella cartella del plugin
+		if ( self::is_stored_encrypted( $abs, $rec[ self::enc_col( $kind ) ] ?? null ) ) {
+			$bytes = self::read_encrypted( $abs, (string) $rec[ $c[0] ], $label );
+		} else {
+			$bytes = (string) file_get_contents( $abs ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- file privato nella cartella del plugin
+		}
 		if ( '' === $bytes || strlen( $bytes ) > self::MAX_SIZE || ! hash_equals( (string) ( $rec[ $c[1] ] ?? '' ), hash( 'sha256', $bytes ) ) ) {
 			throw new \InvalidArgumentException( Texts::t( 'Il PDF della ricevuta n. {n} risulta diverso da quando è stato emesso: per sicurezza non viene scaricato. Un amministratore può controllarlo da «Verifica delle ricevute».', array( 'n' => $label ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		return $bytes;
 	}
 
+	/**
+	 * Apre un PDF cifrato in memoria (pesa pochi KB). Un errore dà un messaggio chiaro: se il problema è la chiave lo dice, se il contenuto non torna dice
+	 * che il PDF è diverso da quando è stato emesso.
+	 *
+	 * @throws \InvalidArgumentException
+	 */
+	private static function read_encrypted( string $abs, string $rel, string $label ): string {
+		$in = @fopen( $abs, 'rb' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- file privato nella cartella del plugin
+		if ( false === $in ) {
+			throw new \InvalidArgumentException( Texts::t( 'Il PDF della ricevuta n. {n} non è leggibile su questo sito: {motivo}', array( 'n' => $label, 'motivo' => PrivateFiles::reason_text( FileCryptError::IO ) ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$buf = '';
+		try {
+			FileCrypt::decrypt_stream(
+				$in,
+				function ( string $d ) use ( &$buf ): void {
+					if ( strlen( $buf ) + strlen( $d ) > self::MAX_SIZE ) {
+						throw new FileCryptError( FileCryptError::FORMAT );
+					}
+					$buf .= $d;
+				},
+				PrivateFiles::key_for(),
+				PrivateFiles::ad( $rel )
+			);
+		} catch ( FileCryptError $e ) {
+			fclose( $in ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- file privato nella cartella del plugin
+			if ( 'locked' === self::failure_state( $e->reason ) ) {
+				throw new \InvalidArgumentException( Texts::t( 'Il PDF della ricevuta n. {n} non è leggibile su questo sito: {motivo}', array( 'n' => $label, 'motivo' => PrivateFiles::reason_text( $e->reason ) ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			}
+			return ''; // il contenuto non torna: chi chiama dà il messaggio «diverso da quando è stato emesso»
+		}
+		fclose( $in ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- file privato nella cartella del plugin
+		return $buf;
+	}
+
 	/** Crea un file nuovo, mai su uno esistente. */
-	private static function write_new( string $abs, string $bytes ): bool {
+	private static function write_new( string $abs, string $bytes, ?string $rel = null ): bool {
 		$h = @fopen( $abs, 'xb' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- file privato: «x» rifiuta di toccare un file che c'è già
 		if ( ! $h ) {
 			return false;
 		}
-		$ok = strlen( $bytes ) === fwrite( $h, $bytes ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- file privato
+		if ( null !== $rel ) { // cifrato: il PDF in chiaro non tocca mai il disco
+			$key = FileKey::current();
+			$in  = fopen( 'php://memory', 'r+b' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- flusso in memoria
+			$ok  = false;
+			if ( $in && null !== $key ) {
+				fwrite( $in, $bytes ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- flusso in memoria
+				rewind( $in );
+				try {
+					$r  = FileCrypt::encrypt_stream( $in, $h, (string) $key['key'], (int) $key['id'], PrivateFiles::ad( $rel ) );
+					$ok = hash_equals( hash( 'sha256', $bytes ), $r['sha256'] );
+					fflush( $h );
+				} catch ( \Throwable $e ) {
+					$ok = false;
+				}
+			}
+			if ( $in ) {
+				fclose( $in ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- flusso in memoria
+			}
+		} else {
+			$ok = strlen( $bytes ) === fwrite( $h, $bytes ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- file privato
+		}
 		fclose( $h ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- file privato
 		if ( ! $ok ) {
 			wp_delete_file( $abs );
@@ -183,11 +297,17 @@ final class ReceiptFiles {
 			$rel = self::rel_path( (int) $rec['year'], (int) $rec['number'], $kind, $mac, bin2hex( random_bytes( 3 ) ) );
 			$abs = self::abs_path( $rel );
 		}
-		if ( '' === $abs || ! self::write_new( $abs, $bytes ) ) {
+		$mode = FileKey::mode();
+		if ( 'blocked' === $mode ) {
+			return false; // la chiave di questo sito non coincide con quella usata finora: nessun file nuovo finché non viene sistemata (il PDF si fissa dopo)
+		}
+		$enc = 'encrypt' === $mode;
+		if ( '' === $abs || ! self::write_new( $abs, $bytes, $enc ? $rel : null ) ) {
 			return false;
 		}
+		$e  = self::enc_col( $kind );
 		$db = self::db();
-		$n  = $db->query( $db->prepare( 'UPDATE ' . Db::t( 'receipts' ) . " SET {$c[0]} = %s, {$c[1]} = %s, {$c[2]} = %s WHERE id = %d AND {$c[0]} IS NULL", $rel, hash( 'sha256', $bytes ), Db::now(), (int) $rec['id'] ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- i nomi delle colonne sono costanti interne
+		$n  = $db->query( $db->prepare( 'UPDATE ' . Db::t( 'receipts' ) . " SET {$c[0]} = %s, {$c[1]} = %s, {$c[2]} = %s, {$e} = " . ( $enc ? (int) PrivateFiles::ENC_VER : 'NULL' ) . " WHERE id = %d AND {$c[0]} IS NULL", $rel, hash( 'sha256', $bytes ), Db::now(), (int) $rec['id'] ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- i nomi delle colonne sono costanti interne
 		if ( 1 !== (int) $n ) { // un'altra richiesta l'ha fissato prima: vale il suo, il nostro si toglie
 			wp_delete_file( $abs );
 			return false;
@@ -208,14 +328,20 @@ final class ReceiptFiles {
 		if ( '' === $abs || 0 !== strpos( $bytes, '%PDF-' ) ) {
 			throw new \InvalidArgumentException( Texts::t( 'Impossibile rifare il PDF: percorso o contenuto non validi.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
+		$mode = FileKey::mode();
+		if ( 'blocked' === $mode ) {
+			throw new \InvalidArgumentException( PrivateFiles::blocked_text() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
 		if ( is_file( $abs ) && ! @rename( $abs, $abs . '.alterato-' . gmdate( 'YmdHis' ) ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.rename_rename -- il file alterato si conserva
 			throw new \InvalidArgumentException( Texts::t( 'Non riesco a mettere da parte il file alterato: controlla i permessi della cartella dei file riservati.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
-		if ( ! self::write_new( $abs, $bytes ) ) {
+		$enc = 'encrypt' === $mode;
+		if ( ! self::write_new( $abs, $bytes, $enc ? (string) $rec[ $c[0] ] : null ) ) {
 			throw new \InvalidArgumentException( Texts::t( 'Non riesco a scrivere il nuovo PDF: controlla i permessi della cartella dei file riservati.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
+		$e  = self::enc_col( $kind );
 		$db = self::db();
-		$db->query( $db->prepare( 'UPDATE ' . Db::t( 'receipts' ) . " SET {$c[1]} = %s, {$c[2]} = %s WHERE id = %d", hash( 'sha256', $bytes ), Db::now(), (int) $rec['id'] ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- i nomi delle colonne sono costanti interne
+		$db->query( $db->prepare( 'UPDATE ' . Db::t( 'receipts' ) . " SET {$c[1]} = %s, {$c[2]} = %s, {$e} = " . ( $enc ? (int) PrivateFiles::ENC_VER : 'NULL' ) . ' WHERE id = %d', hash( 'sha256', $bytes ), Db::now(), (int) $rec['id'] ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- i nomi delle colonne sono costanti interne
 		return (string) ( $rec[ $c[1] ] ?? '' );
 	}
 
@@ -341,20 +467,20 @@ final class ReceiptFiles {
 	 * Controlla le impronte dei PDF fissati di un anno fiscale.
 	 *
 	 * @return array{summary:array<string,int>,problems:array[],truncated:bool} stati: ok, pending (da fissare), nodata (emessa prima della fotografia dei dati),
-	 *         missing (file mancante), altered (impronta diversa); per ogni ricevuta con problemi: key, label, state, detail (tipo => stato)
+	 *         locked (cifrato e la chiave non lo apre), missing (file mancante), altered (impronta diversa); per ogni ricevuta con problemi: key, label, state, detail (tipo => stato)
 	 */
 	public static function verify( int $year, int $cap = 20000 ): array {
 		$db   = self::db();
 		$rows = $db->get_results(
 			$db->prepare(
-				'SELECT id, receipt_key, year, number, voided_at, pdf_path, pdf_sha256, void_pdf_path, void_pdf_sha256, ( data IS NOT NULL AND data <> \'\' ) AS has_data FROM ' . Db::t( 'receipts' ) . ' WHERE year = %d ORDER BY number LIMIT %d',
+				'SELECT id, receipt_key, year, number, voided_at, pdf_path, pdf_sha256, pdf_enc_ver, void_pdf_path, void_pdf_sha256, void_pdf_enc_ver, ( data IS NOT NULL AND data <> \'\' ) AS has_data FROM ' . Db::t( 'receipts' ) . ' WHERE year = %d ORDER BY number LIMIT %d',
 				$year,
 				$cap
 			),
 			ARRAY_A
 		) ?: array();
-		$rank = array( 'ok' => 0, 'pending' => 1, 'nodata' => 2, 'missing' => 3, 'altered' => 4 );
-		$sum  = array( 'total' => 0, 'ok' => 0, 'pending' => 0, 'nodata' => 0, 'missing' => 0, 'altered' => 0 );
+		$rank = array( 'ok' => 0, 'pending' => 1, 'nodata' => 2, 'locked' => 3, 'missing' => 4, 'altered' => 5 );
+		$sum  = array( 'total' => 0, 'ok' => 0, 'pending' => 0, 'nodata' => 0, 'locked' => 0, 'missing' => 0, 'altered' => 0 );
 		$bad  = array();
 		foreach ( $rows as $r ) {
 			$sum['total']++;
@@ -397,19 +523,38 @@ final class ReceiptFiles {
 		if ( true !== $zip->open( $path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE ) ) {
 			throw new \RuntimeException( Texts::t( 'Impossibile creare il file ZIP.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
-		$n = 0;
+		$n    = 0;
+		$temp = array(); // PDF decifrati per l'archivio: file temporanei, cancellati appena lo ZIP è scritto
 		foreach ( $rows as $r ) {
 			foreach ( self::kinds() as $kind ) {
 				if ( 'ok' !== self::state( $r, $kind ) ) {
-					continue; // un file mancante o alterato non entra nell'archivio: lo segnala la verifica
+					continue; // un file mancante, alterato o che non si apre non entra nell'archivio: lo segnala la verifica
 				}
-				$c = self::columns( $kind );
-				$zip->addFile( self::abs_path( (string) $r[ $c[0] ] ), sprintf( 'ricevute-%d/ricevuta-%d-%d%s.pdf', $year, (int) $r['number'], (int) $r['year'], self::VOID === $kind ? '-annullata' : '' ) );
+				$c    = self::columns( $kind );
+				$name = sprintf( 'ricevute-%d/ricevuta-%d-%d%s.pdf', $year, (int) $r['number'], (int) $r['year'], self::VOID === $kind ? '-annullata' : '' );
+				$src  = self::abs_path( (string) $r[ $c[0] ] );
+				if ( self::is_stored_encrypted( $src, $r[ self::enc_col( $kind ) ] ?? null ) ) { // lo scarico è per chi lo chiede: i PDF vanno DECIFRATI
+					try {
+						$plain = self::read( $r, $kind );
+					} catch ( \InvalidArgumentException $e ) {
+						continue;
+					}
+					$tmp = wp_tempnam( 'asem-ricevuta' );
+					if ( '' === (string) $tmp || false === file_put_contents( $tmp, $plain ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- file temporaneo dello scarico, cancellato appena lo ZIP è scritto
+						continue;
+					}
+					$temp[] = $tmp;
+					$src    = $tmp;
+				}
+				$zip->addFile( $src, $name );
 				$n++;
 			}
 		}
-		$zip->addFromString( 'LEGGIMI.txt', "PDF definitivi delle ricevute dell'anno fiscale $year, così come sono stati emessi. Le impronte SHA-256 sono nel database del sito (e nelle copie di sicurezza).\n" );
+		$zip->addFromString( 'LEGGIMI.txt', "PDF definitivi delle ricevute dell'anno fiscale $year, così come sono stati emessi. Le impronte SHA-256 sono nel database del sito (e nelle copie di sicurezza).\nI PDF in questo archivio NON sono cifrati e contengono dati personali (nome, codice fiscale, importi): conservalo con cura e cancellalo quando non ti serve più.\n" );
 		$ok = $zip->close();
+		foreach ( $temp as $t ) {
+			wp_delete_file( $t );
+		}
 		if ( ! $ok || ! is_file( $path ) ) {
 			throw new \RuntimeException( Texts::t( 'Creazione del file ZIP non riuscita.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
@@ -429,15 +574,17 @@ final class ReceiptFiles {
 		$db   = self::db();
 		$last = 0;
 		do {
-			$rows = $db->get_results( $db->prepare( 'SELECT id, year, number, pdf_path, pdf_sha256, void_pdf_path, void_pdf_sha256 FROM ' . Db::t( 'receipts' ) . ' WHERE id > %d AND ( pdf_path IS NOT NULL OR void_pdf_path IS NOT NULL ) ORDER BY id LIMIT 500', $last ), ARRAY_A ) ?: array();
+			$rows = $db->get_results( $db->prepare( 'SELECT id, year, number, pdf_path, pdf_sha256, pdf_enc_ver, void_pdf_path, void_pdf_sha256, void_pdf_enc_ver FROM ' . Db::t( 'receipts' ) . ' WHERE id > %d AND ( pdf_path IS NOT NULL OR void_pdf_path IS NOT NULL ) ORDER BY id LIMIT 500', $last ), ARRAY_A ) ?: array();
 			foreach ( $rows as $r ) {
 				$last = (int) $r['id'];
 				foreach ( self::kinds() as $kind ) {
-					if ( 'ok' !== self::state( $r, $kind ) ) { // un file alterato non va in una copia: il ripristino lo rifiuterebbe comunque
+					$st = self::state( $r, $kind );
+					if ( 'ok' !== $st && 'locked' !== $st ) { // un file alterato non va in una copia: il ripristino lo rifiuterebbe comunque (uno che non si apre per la chiave sì: resta com'è)
 						continue;
 					}
 					$c      = self::columns( $kind );
-					$docs[] = array( 'name' => 'documenti/' . $r[ $c[0] ], 'path' => self::abs_path( (string) $r[ $c[0] ] ), 'sha256' => (string) $r[ $c[1] ] );
+					$path   = self::abs_path( (string) $r[ $c[0] ] );
+					$docs[] = array( 'name' => 'documenti/' . $r[ $c[0] ], 'path' => $path, 'sha256' => (string) $r[ $c[1] ], 'file_sha256' => (string) hash_file( 'sha256', $path ) ); // «sha256»: il PDF in chiaro (nel database); «file_sha256»: il file com'è sul disco, per il controllo d'integrità della copia
 				}
 			}
 		} while ( count( $rows ) >= 500 );
@@ -456,10 +603,18 @@ final class ReceiptFiles {
 		if ( ! $zip instanceof \ZipArchive ) {
 			return $res;
 		}
-		$db   = self::db();
-		$last = 0;
+		$db    = self::db();
+		$last  = 0;
+		$files = array(); // nome nello ZIP => impronta del file com'è nello ZIP (cifrato), dall'indice
+		$raw   = $zip->getFromName( 'documenti/indice.json' );
+		$idx0  = $raw ? json_decode( $raw, true ) : null;
+		foreach ( is_array( $idx0 ) && isset( $idx0['files'] ) && is_array( $idx0['files'] ) ? $idx0['files'] : array() as $f ) {
+			if ( is_array( $f ) && ! empty( $f['name'] ) && ! empty( $f['file_sha256'] ) ) {
+				$files[ (string) $f['name'] ] = strtolower( (string) $f['file_sha256'] );
+			}
+		}
 		do {
-			$rows = $db->get_results( $db->prepare( 'SELECT id, year, number, pdf_path, pdf_sha256, void_pdf_path, void_pdf_sha256 FROM ' . Db::t( 'receipts' ) . ' WHERE id > %d AND ( pdf_path IS NOT NULL OR void_pdf_path IS NOT NULL ) ORDER BY id LIMIT 500', $last ), ARRAY_A ) ?: array();
+			$rows = $db->get_results( $db->prepare( 'SELECT id, year, number, pdf_path, pdf_sha256, pdf_enc_ver, void_pdf_path, void_pdf_sha256, void_pdf_enc_ver FROM ' . Db::t( 'receipts' ) . ' WHERE id > %d AND ( pdf_path IS NOT NULL OR void_pdf_path IS NOT NULL ) ORDER BY id LIMIT 500', $last ), ARRAY_A ) ?: array();
 			foreach ( $rows as $r ) {
 				$last = (int) $r['id'];
 				foreach ( self::kinds() as $kind ) {
@@ -483,12 +638,17 @@ final class ReceiptFiles {
 						continue;
 					}
 					$st = $zip->statIndex( $idx );
-					if ( ! $st || (int) $st['size'] > self::MAX_SIZE ) {
+					if ( ! $st || (int) $st['size'] > self::MAX_SIZE + self::ENC_OVERHEAD ) {
 						$res['bad']++;
 						continue;
 					}
 					$bytes = $zip->getFromIndex( $idx );
-					if ( false === $bytes || ! hash_equals( (string) $r[ $c[1] ], hash( 'sha256', $bytes ) ) ) {
+					if ( false === $bytes ) {
+						$res['bad']++;
+						continue;
+					}
+					$want = $files[ 'documenti/' . $rel ] ?? '';
+					if ( '' !== $want && ! hash_equals( $want, hash( 'sha256', $bytes ) ) ) { // il file nello ZIP non è più quello che c'era quando la copia è stata fatta
 						$res['bad']++;
 						continue;
 					}
@@ -501,13 +661,43 @@ final class ReceiptFiles {
 						$res['bad']++;
 						continue;
 					}
-					if ( is_file( $abs ) && ! @rename( $abs, $abs . '.alterato-' . gmdate( 'YmdHis' ) ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.rename_rename -- il file diverso si conserva
+					// il file si scrive accanto al suo posto e si controlla (se è cifrato, decifrando e ricalcolando l'impronta del contenuto): solo se coincide con quella nel database prende il posto
+					$tmp = $abs . '.part-' . bin2hex( random_bytes( 4 ) );
+					$h   = @fopen( $tmp, 'xb' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- file privato
+					if ( ! $h ) {
 						$res['bad']++;
 						continue;
 					}
-					if ( self::write_new( $abs, $bytes ) ) {
+					$wrote = strlen( $bytes ) === fwrite( $h, $bytes ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- file privato
+					fclose( $h ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- file privato
+					$good = false;
+					if ( $wrote ) {
+						try {
+							if ( self::is_stored_encrypted( $tmp, $r[ self::enc_col( $kind ) ] ?? null ) ) {
+								PrivateFiles::verify( $tmp, $rel, (string) $r[ $c[1] ] );
+								$good = true;
+							} else {
+								$good = strlen( $bytes ) <= self::MAX_SIZE && hash_equals( (string) $r[ $c[1] ], hash( 'sha256', $bytes ) );
+							}
+						} catch ( FileCryptError $e ) {
+							$good = false;
+						}
+					}
+					if ( ! $good ) {
+						wp_delete_file( $tmp );
+						$res['bad']++;
+						continue;
+					}
+					@chmod( $tmp, 0640 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_chmod -- file privato dell'ente: lettura solo per il server
+					if ( is_file( $abs ) && ! @rename( $abs, $abs . '.alterato-' . gmdate( 'YmdHis' ) ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.rename_rename -- il file diverso si conserva
+						wp_delete_file( $tmp );
+						$res['bad']++;
+						continue;
+					}
+					if ( @rename( $tmp, $abs ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.rename_rename -- sostituzione atomica sullo stesso disco
 						$res['restored']++;
 					} else {
+						wp_delete_file( $tmp );
 						$res['bad']++;
 					}
 				}
