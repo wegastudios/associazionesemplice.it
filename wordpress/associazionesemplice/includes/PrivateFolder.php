@@ -60,7 +60,7 @@ final class PrivateFolder {
 		if ( ! is_dir( $path ) && ! wp_mkdir_p( $path ) ) {
 			return array( 'path' => '', 'error' => 'missing' );
 		}
-		if ( ! is_writable( $path ) ) {
+		if ( ! wp_is_writable( $path ) ) {
 			return array( 'path' => '', 'error' => 'not_writable' );
 		}
 		return array( 'path' => $path, 'error' => '' );
@@ -250,7 +250,7 @@ final class PrivateFolder {
 							array(
 								'timeout'     => 5,
 								'redirection' => 0,
-								'sslverify'   => (bool) apply_filters( 'https_local_ssl_verify', false ), // come le chiamate del sito a sé stesso
+								'sslverify'   => (bool) apply_filters( 'https_local_ssl_verify', false ), // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- filtro di WordPress per le chiamate del sito a sé stesso
 								'user-agent'  => 'AssociazioneSemplice-controllo',
 								'headers'     => array( 'Cache-Control' => 'no-cache' ),
 							)
