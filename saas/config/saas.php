@@ -36,6 +36,9 @@ return [
     // «localhost»: i browser portano <slug>.localhost sul computer stesso.
     'members_domain' => env('SAAS_MEMBERS_DOMAIN', 'associazionesemplice.it'),
 
+    // Nomi che nessuna associazione vera può avere come indirizzo dell'area soci (sono indirizzi della piattaforma).
+    'reserved_slugs' => ['app', 'app-demo', 'demo', 'demosaas', 'wpdemo', 'www', 'mail', 'api', 'admin', 'staging', 'supporto', 'chiavi'],
+
     // Percorso dell'amministrazione della piattaforma (docs/PIATTAFORMA.md §4): `admin` qui; dietro il proxy del
     // portale sarà `saas/admin`, con `ASSET_URL` e `APP_URL` coerenti.
     'admin_path' => env('SAAS_ADMIN_PATH', 'saas/admin'),
