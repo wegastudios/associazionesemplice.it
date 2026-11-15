@@ -118,8 +118,7 @@ final readonly class DemoEnvironment
                 $this->settings->set('ente.'.$k, true);
             }
             $this->settings->set('ente.kind', 'aps'); // la pagina «Dati per il RUNTS» mostra così il minimo di soci
-            // Anni fiscale e sociale da settembre ad agosto, come la demo del plugin; quota e prezzi senza IVA per mostrare «Aspetto fiscale».
-            $this->settings->set('contabilita.fiscal_year_start_month', DemoScale::START_MONTH);
+            // Anno sociale da settembre ad agosto (il fiscale lo sceglie DemoFiscalYear), come la demo del plugin; quota e prezzi senza IVA per mostrare «Aspetto fiscale».
             $this->settings->set('soci.social_year_start_month', DemoScale::START_MONTH);
             $this->settings->set('soci.membership_fee_cents', 2500);
             $this->settings->set('fiscal.prices_include_vat', false);

@@ -12,6 +12,7 @@ use App\Modules\Contabilita\Contracts\FiscalYearReopened;
 use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Contracts\MemberReceipts;
 use App\Modules\Contabilita\Contracts\ReceiptIssued;
+use App\Modules\Contabilita\Demo\DemoFiscalYear;
 use App\Modules\Contabilita\Demo\DemoLedger;
 use App\Modules\Contabilita\Export\ContabilitaDataExport;
 use App\Modules\Contabilita\Export\ContabilitaReadableExport;
@@ -42,7 +43,7 @@ final class ContabilitaServiceProvider extends ServiceProvider
         $this->app->tag([AccountingHome::class], HomeWidget::TAG);
         $this->app->tag([ContabilitaDataExport::class], DataExport::TAG);
         $this->app->tag([ContabilitaReadableExport::class], ReadableExport::TAG);
-        $this->app->tag([DemoLedger::class], DemoSeeder::TAG);
+        $this->app->tag([DemoFiscalYear::class, DemoLedger::class], DemoSeeder::TAG);
         $this->app->tag([FiscalYearStep::class, EntityStep::class, AccountsStep::class], SetupStep::TAG);
         $this->app->bind(Ledger::class, LedgerService::class);
         $this->app->scoped(ArchivedReceipts::class);
