@@ -33,6 +33,7 @@ final class ProData {
 		add_filter( 'asem_privacy_transfer_note', array( __CLASS__, 'privacy_transfer_note' ), 10, 2 );
 		add_filter( 'asem_text_plain', array( TextsEngine::class, 'plain' ), 10, 2 );
 		add_filter( 'asem_text_html', array( TextsEngine::class, 'html' ), 10, 2 );
+		add_filter( 'asem_text_template', array( TextsEngine::class, 'template' ) );
 		add_action( 'asem_texts_flush', array( __CLASS__, 'texts_flush' ) );
 		add_action( 'asem_texts_admin_buffer', array( TextsEngine::class, 'start_admin_buffer' ) );
 		add_action( 'asem_notify_email', array( __CLASS__, 'notify_email' ), 10, 3 );

@@ -434,6 +434,7 @@ $wpdb->delete( \AssociazioneSemplice\Db::t( 'member_book_snapshot' ), array( 'cl
 $wpdb->delete( \AssociazioneSemplice\Db::t( 'fiscal_year_closures' ), array( 'year' => $yc_y ) );
 $wpdb->delete( \AssociazioneSemplice\Db::t( 'fiscal_years' ), array( 'year' => $yc_y ) );
 
+free_ok( 'Voce 2: il socio ha già la tessera 2026/2027.' === \AssociazioneSemplice\Texts::t( 'Voce {n}: il socio ha già la tessera {anno}.', array( 'n' => 2, 'anno' => '2026/2027' ) ) && 'Nessun segnaposto qui.' === \AssociazioneSemplice\Texts::t( 'Nessun segnaposto qui.' ), 'messaggi con variabili: senza il Pro escono in italiano con i valori inseriti' );
 free_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Edizione gratuita: tutti i controlli sono passati.' );

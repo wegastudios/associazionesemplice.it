@@ -149,6 +149,11 @@ final class IncomePage {
 			'autofill'      => 1 === Ui::get_int( 'due' ),
 			'accountTypes'  => $account_types,
 			'guests'        => Settings::guests_enabled() ? 1 : 0,
+			// frasi con variabili che admin.js compone: tradotte qui (modello con {anno}), perché lo script non passa dalla sostituzione dei testi
+			'txt'           => array(
+				'dup_year' => \AssociazioneSemplice\Texts::t( '⚠ il socio ha già la tessera {anno}: l\'incasso non verrà salvato finché c\'è questa voce' ),
+				'dup'      => \AssociazioneSemplice\Texts::t( '⚠ il socio ha già la tessera: l\'incasso non verrà salvato finché c\'è questa voce' ),
+			),
 		);
 
 		Ui::header( 'Nuovo incasso' );
