@@ -393,10 +393,10 @@ class LedgerService {
 				if ( $free_year ) {
 					$free_key = (int) $person['id'] . '|' . $free_year;
 					if ( isset( $quota_years[ $free_key ] ) ) {
-						$free_year = null; // l'anno in omaggio è già pagato da un'altra riga di questo incasso (forzata a mano prima): niente doppione
-					} else {
-						$quota_years[ $free_key ] = true; // una riga successiva sullo stesso anno in omaggio è rifiutata
+						// una riga precedente di questo incasso paga già quell'anno (forzata a mano): si rifiuta la riga che lo darebbe in omaggio, prima di scrivere
+						throw new \InvalidArgumentException( Texts::t( 'Voce {n}: il socio ha già la tessera {anno}.', array( 'n' => $n, 'anno' => $free_year ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 					}
+					$quota_years[ $free_key ] = true; // una riga successiva sullo stesso anno in omaggio è rifiutata
 				}
 			}
 			// IVA: esplicita se indicata, altrimenti quella della quota associativa o dell'attività (solo se l'ente applica l'IVA)
