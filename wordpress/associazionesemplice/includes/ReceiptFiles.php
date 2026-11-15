@@ -494,13 +494,13 @@ final class ReceiptFiles {
 						$n++;
 					}
 				}
-				@rmdir( $d ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.rmdir_rmdir -- cartella privata del plugin
+				@rmdir( $d ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_rmdir -- cartella privata del plugin
 			} elseif ( is_file( $d ) ) {
 				wp_delete_file( $d );
 				$n++;
 			}
 		}
-		@rmdir( $root ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.rmdir_rmdir -- cartella privata del plugin
+		@rmdir( $root ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_rmdir -- cartella privata del plugin
 		return $n;
 	}
 }
