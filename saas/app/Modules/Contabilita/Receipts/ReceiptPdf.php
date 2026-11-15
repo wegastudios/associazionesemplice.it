@@ -21,6 +21,11 @@ use Illuminate\Support\Str;
 /**
  * Ricevuta in PDF (dal Receipts::build del plugin): intestazione dell'ente, chi ha pagato (per un minore il genitore),
  * le voci, il totale con l'eventuale IVA, la modalità e, dai 5 ai 18 anni, la nota sulla detrazione.
+ *
+ * Due tempi: snapshot() raccoglie tutti i dati che finiscono sul foglio (si salvano cifrati all'emissione), render()
+ * produce il PDF solo da quei dati. Così la ricevuta si rifà uguale anche se poi cambiano il socio o l'ente.
+ *
+ * @phpstan-import-type Card from People
  */
 final readonly class ReceiptPdf
 {
@@ -37,6 +42,26 @@ final readonly class ReceiptPdf
      */
     public function build(string $receiptId): array
     {
+        $snapshot = $this->snapshot($receiptId);
+
+        return [
+            'pdf' => $this->render($snapshot),
+            'filename' => self::str($snapshot['filename'] ?? ''),
+            'number' => self::str($snapshot['number'] ?? ''),
+            'email' => $this->holderEmail($snapshot),
+            'holder' => $this->holderName($snapshot),
+        ];
+    }
+
+    /**
+     * Tutti i dati del foglio, in forma semplice (testo, numeri, elenchi): si salvano come JSON cifrato.
+     *
+     * @return array<string, mixed>
+     *
+     * @throws LedgerError
+     */
+    public function snapshot(string $receiptId): array
+    {
         $receipt = Str::isUuid($receiptId) ? $this->connection()->table('app.receipts')->where('id', $receiptId)->first() : null;
         if ($receipt === null) {
             throw new LedgerError('Ricevuta non trovata.');
@@ -52,10 +77,9 @@ final readonly class ReceiptPdf
             throw new LedgerError('Ricevuta senza voci.');
         }
 
-        $str = static fn (mixed $v): string => is_scalar($v) ? (string) $v : '';
-        $number = $str($receipt->number ?? '').'/'.$str($receipt->year ?? '');
-        $date = $str($receipt->issued_on ?? '');
-        $method = $str($first->method ?? 'other');
+        $number = self::str($receipt->number ?? '').'/'.self::str($receipt->year ?? '');
+        $date = self::str($receipt->issued_on ?? '');
+        $method = self::str($first->method ?? 'other');
         $methodLabel = PaymentMethod::tryFrom($method)?->label() ?? $method;
         $kinds = array_values(array_unique(array_map(static fn (object $r): string => is_string($r->kind ?? null) ? $r->kind : '', $rows->all())));
 
@@ -64,27 +88,75 @@ final readonly class ReceiptPdf
         $wardId = is_string($first->person_id ?? null) ? $first->person_id : $payerId;
         $ward = $wardId === null ? null : ($wardId === $payerId ? $payer : $this->people->card($wardId));
         $minor = ReceiptRules::minorBlock($payer, $ward, $wardId === null ? [] : $this->people->guardians($wardId), $date, $method, $methodLabel, $kinds);
+
+        $activityNames = $this->activities->names(array_values(array_filter(array_map(static fn (object $r): ?string => is_string($r->activity_id ?? null) ? $r->activity_id : null, $rows->all()))));
+        $lines = [];
+        foreach ($rows as $r) {
+            $lines[] = [
+                'amount' => is_numeric($r->amount_cents ?? null) ? (int) $r->amount_cents : 0,
+                'vat_rate' => is_numeric($r->vat_rate ?? null) ? (int) $r->vat_rate : null,
+                'vat' => is_numeric($r->vat_cents ?? null) ? (int) $r->vat_cents : 0,
+                'what' => trim(self::str($r->description ?? '')) !== '' ? trim(self::str($r->description)) : self::str($r->category ?? ''),
+                'activity' => is_string($r->activity_id ?? null) ? ($activityNames[$r->activity_id] ?? null) : null,
+            ];
+        }
+
+        $s = fn (string $k): string => is_string($v = $this->settings->get('ente.'.$k)) ? $v : '';
+        $name = $this->connection()->table('app.orgs')->value('name');
         $holder = $minor['holder'];
+        $who = $holder === null ? 'ricevuta' : (string) preg_replace('/[^a-z0-9]/', '', Str::lower(Str::ascii($holder['last_name'])));
+
+        return [
+            'org' => [
+                'name' => is_string($name) && $name !== '' ? $name : 'Associazione',
+                'tax_code' => $s('tax_code'), 'vat' => $s('vat'), 'zip' => $s('zip'), 'city' => $s('city'), 'province' => $s('province'), 'address' => $s('address'),
+            ],
+            'number' => $number,
+            'filename' => 'ricevuta-'.self::str($receipt->number ?? '').'-'.self::str($receipt->year ?? '').'-'.$who.'.pdf',
+            'date' => $date,
+            'method_label' => $methodLabel,
+            'document_ref' => self::str($first->document_ref ?? ''),
+            'kinds' => $kinds,
+            'ward' => $ward,
+            'minor' => $minor,
+            'lines' => $lines,
+        ];
+    }
+
+    /**
+     * Il PDF, solo dai dati dello snapshot.
+     *
+     * @param  array<string, mixed>  $d
+     */
+    public function render(array $d): string
+    {
+        $org = self::arr($d['org'] ?? null);
+        $minor = self::arr($d['minor'] ?? null);
+        $holder = is_array($minor['holder'] ?? null) ? self::arr($minor['holder']) : null;
+        $ward = is_array($d['ward'] ?? null) ? self::arr($d['ward']) : null;
+        $minorLines = array_map(self::str(...), is_array($minor['lines'] ?? null) ? $minor['lines'] : []);
+        $kinds = array_map(self::str(...), is_array($d['kinds'] ?? null) ? $d['kinds'] : []);
+        $lines = is_array($d['lines'] ?? null) ? $d['lines'] : [];
 
         $pdf = new Pdf;
         $w = $pdf->width;
-        $y = $this->header($pdf);
-        $title = $kinds === ['donation'] ? 'RICEVUTA DI EROGAZIONE LIBERALE' : 'RICEVUTA DI PAGAMENTO';
+        $y = $this->header($pdf, $org);
+        $title = array_values($kinds) === ['donation'] ? 'RICEVUTA DI EROGAZIONE LIBERALE' : 'RICEVUTA DI PAGAMENTO';
         $pdf->text(50, $y, $title, 14, true);
-        $pdf->text($w - 50, $y, 'N. '.$number, 14, true, 'R');
+        $pdf->text($w - 50, $y, 'N. '.self::str($d['number'] ?? ''), 14, true, 'R');
         $y += 20;
-        $pdf->text(50, $y, 'Data: '.(new DateTimeImmutable($date))->format('d/m/Y'), 11);
+        $pdf->text(50, $y, 'Data: '.(new DateTimeImmutable(self::str($d['date'] ?? '')))->format('d/m/Y'), 11);
         $y += 30;
         $pdf->text(50, $y, 'Ricevuto da', 9);
         $y += 15;
         if ($holder !== null) {
-            $pdf->text(50, $y, trim($holder['first_name'].' '.$holder['last_name']), 12, true);
+            $pdf->text(50, $y, trim(self::str($holder['first_name'] ?? '').' '.self::str($holder['last_name'] ?? '')), 12, true);
             $y += 15;
-            if (($holder['tax_code'] ?? null) !== null && $holder['tax_code'] !== '') {
-                $pdf->text(50, $y, 'Codice fiscale: '.$holder['tax_code'], 10);
+            if (self::str($holder['tax_code'] ?? '') !== '') {
+                $pdf->text(50, $y, 'Codice fiscale: '.self::str($holder['tax_code']), 10);
                 $y += 14;
             }
-            foreach ($minor['lines'] as $line) {
+            foreach ($minorLines as $line) {
                 foreach (Pdf::wrap($line, $w - 100, 10) as $l) {
                     $pdf->text(50, $y, $l, 10);
                     $y += 14;
@@ -100,23 +172,23 @@ final readonly class ReceiptPdf
         $pdf->text(56, $y + 2, 'Descrizione', 10, true);
         $pdf->text($w - 56, $y + 2, 'Importo', 10, true, 'R');
         $y += 24;
-        $activityNames = $this->activities->names(array_values(array_filter(array_map(static fn (object $r): ?string => is_string($r->activity_id ?? null) ? $r->activity_id : null, $rows->all()))));
         $total = 0;
         $vatRows = [];
-        foreach ($rows as $r) {
-            $cents = is_numeric($r->amount_cents ?? null) ? (int) $r->amount_cents : 0;
+        foreach ($lines as $line) {
+            $r = self::arr($line);
+            $cents = is_numeric($r['amount'] ?? null) ? (int) $r['amount'] : 0;
             $total += $cents;
-            $vatRows[] = ['amount' => $cents, 'vat_rate' => is_numeric($r->vat_rate ?? null) ? (int) $r->vat_rate : null, 'vat' => is_numeric($r->vat_cents ?? null) ? (int) $r->vat_cents : 0];
-            $what = trim($str($r->description ?? '')) !== '' ? trim($str($r->description)) : $str($r->category ?? '');
-            $activity = is_string($r->activity_id ?? null) ? ($activityNames[$r->activity_id] ?? null) : null;
+            $vatRows[] = ['amount' => $cents, 'vat_rate' => is_numeric($r['vat_rate'] ?? null) ? (int) $r['vat_rate'] : null, 'vat' => is_numeric($r['vat'] ?? null) ? (int) $r['vat'] : 0];
+            $what = self::str($r['what'] ?? '');
+            $activity = is_string($r['activity'] ?? null) ? $r['activity'] : null;
             if ($activity !== null && ! str_contains($what, $activity)) {
                 $what .= ' — '.$activity;
             }
-            if ($holder !== null && $ward !== null && $ward['id'] !== $holder['id'] && $minor['lines'] === []) {
-                $what .= ' — per '.trim($ward['first_name'].' '.$ward['last_name']);
+            if ($holder !== null && $ward !== null && self::str($ward['id'] ?? '') !== self::str($holder['id'] ?? '') && $minorLines === []) {
+                $what .= ' — per '.trim(self::str($ward['first_name'] ?? '').' '.self::str($ward['last_name'] ?? ''));
             }
-            foreach (Pdf::wrap($what, $w - 210, 11) as $i => $line) {
-                $pdf->text(56, $y, $line, 11);
+            foreach (Pdf::wrap($what, $w - 210, 11) as $i => $l) {
+                $pdf->text(56, $y, $l, 11);
                 if ($i === 0) {
                     $pdf->text($w - 56, $y, Money::format($cents), 11, false, 'R');
                 }
@@ -140,12 +212,13 @@ final readonly class ReceiptPdf
             $y += 14;
         }
         $y += 6;
-        $pdf->text(56, $y, 'Pagato con: '.$methodLabel, 10);
-        if ($str($first->document_ref ?? '') !== '') {
+        $pdf->text(56, $y, 'Pagato con: '.self::str($d['method_label'] ?? ''), 10);
+        if (self::str($d['document_ref'] ?? '') !== '') {
             $y += 14;
-            $pdf->text(56, $y, 'Riferimento: '.$str($first->document_ref), 10);
+            $pdf->text(56, $y, 'Riferimento: '.self::str($d['document_ref']), 10);
         }
-        foreach ($minor['note'] === '' ? [] : Pdf::wrap($minor['note'], $w - 112, 10) as $l) {
+        $note = self::str($minor['note'] ?? '');
+        foreach ($note === '' ? [] : Pdf::wrap($note, $w - 112, 10) as $l) {
             $y += 14;
             $pdf->text(56, $y, $l, 10);
         }
@@ -153,28 +226,42 @@ final readonly class ReceiptPdf
         $pdf->text($w - 60, $y, 'Per l\'associazione', 10, false, 'R');
         $pdf->line($w - 230, $y + 34, $w - 60, $y + 34);
 
-        $who = $holder === null ? 'ricevuta' : (string) preg_replace('/[^a-z0-9]/', '', Str::lower(Str::ascii($holder['last_name'])));
-        $email = null;
-        if ($holder !== null) {
-            $card = $holder === $payer ? $payer : $this->people->card($holder['id']);
-            $email = is_string($card['email'] ?? null) && $card['email'] !== '' ? $card['email'] : null;
-        }
-
-        return [
-            'pdf' => $pdf->output(),
-            'filename' => 'ricevuta-'.$str($receipt->number ?? '').'-'.$str($receipt->year ?? '').'-'.$who.'.pdf',
-            'number' => $number,
-            'email' => $email,
-            'holder' => $holder === null ? '' : trim($holder['first_name'].' '.$holder['last_name']),
-        ];
+        return $pdf->output();
     }
 
-    /** Intestazione con i dati dell'ente: nome, codice fiscale e partita IVA, sede. */
-    private function header(Pdf $pdf): float
+    /** @param  array<string, mixed>  $d */
+    private function holderEmail(array $d): ?string
     {
-        $s = fn (string $k): string => is_string($v = $this->settings->get('ente.'.$k)) ? $v : '';
-        $name = $this->connection()->table('app.orgs')->value('name');
-        $pdf->text(50, 62, is_string($name) && $name !== '' ? $name : 'Associazione', 17, true);
+        $minor = self::arr($d['minor'] ?? null);
+        $holder = is_array($minor['holder'] ?? null) ? self::arr($minor['holder']) : null;
+        if ($holder === null || ! is_string($holder['id'] ?? null)) {
+            return null;
+        }
+        // L'email è quella di oggi: serve per spedire, non fa parte del foglio.
+        $card = $this->people->card($holder['id']);
+
+        return is_string($card['email'] ?? null) && $card['email'] !== '' ? $card['email'] : null;
+    }
+
+    /** @param  array<string, mixed>  $d */
+    private function holderName(array $d): string
+    {
+        $minor = self::arr($d['minor'] ?? null);
+        $holder = is_array($minor['holder'] ?? null) ? self::arr($minor['holder']) : null;
+
+        return $holder === null ? '' : trim(self::str($holder['first_name'] ?? '').' '.self::str($holder['last_name'] ?? ''));
+    }
+
+    /**
+     * Intestazione con i dati dell'ente: nome, codice fiscale e partita IVA, sede.
+     *
+     * @param  array<string, mixed>  $org
+     */
+    private function header(Pdf $pdf, array $org): float
+    {
+        $s = static fn (string $k): string => self::str($org[$k] ?? '');
+        $name = $s('name');
+        $pdf->text(50, 62, $name !== '' ? $name : 'Associazione', 17, true);
         $ids = array_filter([$s('tax_code') !== '' ? 'Codice fiscale: '.$s('tax_code') : '', $s('vat') !== '' ? 'Partita IVA: '.$s('vat') : '']);
         $place = trim(trim($s('zip').' '.$s('city')).($s('province') !== '' ? ' ('.$s('province').')' : ''));
         $address = implode(', ', array_filter([$s('address'), $place]));
@@ -186,6 +273,20 @@ final readonly class ReceiptPdf
         $pdf->line(50, $y, $pdf->width - 50, $y, 1.2);
 
         return $y + 26;
+    }
+
+    private static function str(mixed $v): string
+    {
+        return is_scalar($v) ? (string) $v : '';
+    }
+
+    /** @return array<string, mixed> */
+    private static function arr(mixed $v): array
+    {
+        /** @var array<string, mixed> $out */
+        $out = is_array($v) ? $v : [];
+
+        return $out;
     }
 
     private function connection(): ConnectionInterface

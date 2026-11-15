@@ -64,17 +64,35 @@ it('con il file alterato non lo scarica', function (): void {
     expect($this->orgContext()->run($this->org->id, fn () => app(ReceiptFiles::class)->status($this->receipt)))->toBe('altered');
 });
 
-it('l\'amministratore rifà il PDF solo se i dati sono intatti; altrimenti no', function (): void {
+it('l\'amministratore rifà il PDF dai dati dell\'emissione, anche se i dati vivi sono cambiati', function (): void {
     $row = receiptRow($this->org->id, $this->receipt);
+    expect($row->snapshot)->not->toBeNull();
     Storage::disk('org_files')->delete($row->path);
     $this->actingAs($this->owner)->post("/gestionale/verifica-ricevute/{$this->receipt}/rifai")->assertSessionHasNoErrors();
     $this->actingAs($this->owner)->get("/gestionale/ricevute/{$this->receipt}.pdf")->assertOk();
     expect(receiptRow($this->org->id, $this->receipt)->source)->toBe('rifatta');
 
-    // Dati cambiati dall'emissione: il PDF non si può rifare uguale.
+    // Dati cambiati dall'emissione: il PDF si rifà lo stesso, con i dati di allora.
+    $this->orgContext()->run($this->org->id, fn () => Person::query()->whereKey($this->person)->firstOrFail()->update(['first_name' => 'Marco']));
+    Storage::disk('org_files')->delete(receiptRow($this->org->id, $this->receipt)->path);
+    $this->actingAs($this->owner)->post("/gestionale/verifica-ricevute/{$this->receipt}/rifai")->assertSessionHasNoErrors();
+    $pdf = (string) $this->actingAs($this->owner)->get("/gestionale/ricevute/{$this->receipt}.pdf")->assertOk()->getContent();
+    expect($pdf)->toContain('Mario Rossi')->not->toContain('Marco Rossi');
+});
+
+it('senza fotografia (ricevuta vecchia) si rifà solo se i dati di oggi danno lo stesso file', function (): void {
+    $this->orgContext()->run($this->org->id, fn () => DB::table('app.receipt_files')->where('receipt_id', $this->receipt)->update(['snapshot' => null]));
+    Storage::disk('org_files')->delete(receiptRow($this->org->id, $this->receipt)->path);
+    $this->actingAs($this->owner)->post("/gestionale/verifica-ricevute/{$this->receipt}/rifai")->assertSessionHasNoErrors();
+
     $this->orgContext()->run($this->org->id, fn () => Person::query()->whereKey($this->person)->firstOrFail()->update(['first_name' => 'Marco']));
     Storage::disk('org_files')->delete(receiptRow($this->org->id, $this->receipt)->path);
     $this->actingAs($this->owner)->post("/gestionale/verifica-ricevute/{$this->receipt}/rifai")->assertSessionHasErrors('ledger');
+});
+
+it('la fotografia dei dati è cifrata e non contiene testo in chiaro', function (): void {
+    $raw = $this->orgContext()->run($this->org->id, fn (): string => (string) DB::table('app.receipt_files')->selectRaw("encode(snapshot, 'escape') as s")->value('s'));
+    expect($raw)->not->toBe('')->not->toContain('Rossi')->not->toContain('RSSMRA80A01H501U');
 });
 
 it('la verifica è per gli amministratori e mostra lo stato delle ricevute', function (): void {

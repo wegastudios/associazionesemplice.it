@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Modules\Contabilita\Receipts;
 
 use App\Modules\Audit\Contracts\AuditLog;
+use App\Modules\Cifratura\Contracts\Bytea;
 use App\Modules\Cifratura\Contracts\DecryptionFailed;
 use App\Modules\Cifratura\Contracts\EncryptedFiles;
+use App\Modules\Cifratura\Contracts\FieldCipher;
 use App\Modules\Cifratura\Contracts\StoredFile;
 use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Core\Contracts\OrgContext;
@@ -19,10 +21,13 @@ use RuntimeException;
 /**
  * Ricevute definitive: il PDF si crea una volta sola e si salva cifrato con la sua impronta SHA-256. Download ed email
  * servono sempre quel file. Se manca o è alterato: errore chiaro, mai rifatto di nascosto. Lo si rifà solo da
- * «Verifica delle ricevute», e solo se rigenerato dai dati attuali risulta identico all'originale (stessi byte).
+ * «Verifica delle ricevute»: dai dati fotografati (cifrati) all'emissione; per le ricevute senza fotografia solo se
+ * rigenerato dai dati attuali risulta identico all'originale (stessi byte).
  */
 final readonly class ReceiptFiles
 {
+    private const FIELD = 'receipt_files.snapshot';
+
     public const OK = 'ok';
 
     public const UNFIXED = 'unfixed';
@@ -37,6 +42,7 @@ final readonly class ReceiptFiles
         private ReceiptPdf $pdf,
         private EncryptedFiles $files,
         private AuditLog $audit,
+        private FieldCipher $cipher,
     ) {}
 
     /** Fissa il PDF se non lo è già. Ritorna true se l'ha creato adesso. */
@@ -45,18 +51,20 @@ final readonly class ReceiptFiles
         if ($this->row($receiptId) !== null) {
             return false;
         }
-        $doc = $this->pdf->build($receiptId);
-        $stored = $this->store($doc['pdf'], $doc['filename']);
+        $snapshot = $this->pdf->snapshot($receiptId);
+        $stored = $this->store($this->pdf->render($snapshot), is_string($snapshot['filename'] ?? null) ? $snapshot['filename'] : 'ricevuta.pdf');
+        $orgId = $this->context->require()->id;
         $this->connection()->table('app.receipt_files')->insertOrIgnore([
-            'org_id' => $this->context->require()->id,
+            'org_id' => $orgId,
             'receipt_id' => $receiptId,
             'path' => $stored->path,
             'original_name' => $stored->originalName,
             'size_bytes' => $stored->size,
             'sha256' => $stored->sha256,
             'source' => $source,
+            'snapshot' => Bytea::encode($this->cipher->encrypt($orgId, self::FIELD, json_encode($snapshot, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE))),
         ]);
-        $this->audit->record('receipt.fixed', 'app.receipts', $receiptId, ['number' => $doc['number'], 'source' => $source]);
+        $this->audit->record('receipt.fixed', 'app.receipts', $receiptId, ['number' => is_string($snapshot['number'] ?? null) ? $snapshot['number'] : '', 'source' => $source]);
 
         return true;
     }
@@ -101,24 +109,41 @@ final readonly class ReceiptFiles
     }
 
     /**
-     * Rifà il PDF dai dati attuali, solo se è identico a quello emesso (stessa impronta): altrimenti i dati sono
-     * cambiati dall'emissione e non si rifà. Il file diverso resta dov'è, messo da parte.
+     * Rifà il PDF dai dati fotografati all'emissione (senza fotografia: dai dati attuali, solo se identico). Ritorna se
+     * il file nuovo è identico a quello emesso; l'impronta vecchia e la nuova restano nel registro azioni.
      *
      * @throws ReceiptFileProblem
      */
-    public function rebuild(string $receiptId): void
+    public function rebuild(string $receiptId): bool
     {
         $row = $this->row($receiptId) ?? throw new ReceiptFileProblem('Questa ricevuta non ha ancora un PDF fissato.', ReceiptFileProblem::MISSING);
-        $doc = $this->pdf->build($receiptId);
-        $sha = is_string($row->sha256 ?? null) ? $row->sha256 : '';
-        if (! hash_equals($sha, hash('sha256', $doc['pdf']))) {
-            throw new ReceiptFileProblem('Il PDF rifatto non risulta identico a quello emesso (i dati o i testi sono cambiati): non è stato sostituito. Scrivi all\'assistenza di Associazione Semplice.', ReceiptFileProblem::CHANGED);
+        $snapshot = $this->snapshotOf($row);
+        if ($snapshot !== null) {
+            // Dai dati fotografati all'emissione: il PDF si rifà uguale anche se socio ed ente sono cambiati.
+            $pdf = $this->pdf->render($snapshot);
+        } else {
+            // Ricevuta fissata prima della fotografia: si rifà solo se i dati di oggi danno lo stesso file.
+            $pdf = $this->pdf->build($receiptId)['pdf'];
+            $sha = is_string($row->sha256 ?? null) ? $row->sha256 : '';
+            if (! hash_equals($sha, hash('sha256', $pdf))) {
+                throw new ReceiptFileProblem('Il PDF rifatto non risulta identico a quello emesso (i dati o i testi sono cambiati): non è stato sostituito. Scrivi all\'assistenza di Associazione Semplice.', ReceiptFileProblem::CHANGED);
+            }
         }
-        $stored = $this->store($doc['pdf'], is_string($row->original_name ?? null) ? $row->original_name : $doc['filename']);
+        $stored = $this->store($pdf, is_string($row->original_name ?? null) ? $row->original_name : 'ricevuta.pdf');
         $this->connection()->table('app.receipt_files')->where('receipt_id', $receiptId)->update([
             'path' => $stored->path, 'size_bytes' => $stored->size, 'sha256' => $stored->sha256, 'source' => 'rifatta', 'fixed_at' => now(),
         ]);
-        $this->audit->record('receipt.rebuilt', 'app.receipts', $receiptId, ['previous_path' => is_string($row->path ?? null) ? $row->path : '', 'sha256' => $stored->sha256]);
+        $previous = is_string($row->sha256 ?? null) ? $row->sha256 : '';
+        $identical = hash_equals($previous, $stored->sha256);
+        $this->audit->record('receipt.rebuilt', 'app.receipts', $receiptId, [
+            'previous_path' => is_string($row->path ?? null) ? $row->path : '',
+            'previous_sha256' => $previous,
+            'sha256' => $stored->sha256,
+            'identical' => $identical,
+            'from_snapshot' => $snapshot !== null,
+        ]);
+
+        return $identical;
     }
 
     /**
@@ -189,6 +214,25 @@ final readonly class ReceiptFiles
     private static function missingText(string $number): string
     {
         return 'Il PDF della ricevuta n. '.$number.' non si trova più sul sito. Non viene rifatto in automatico: un amministratore può provare a rifarlo da «Verifica delle ricevute»; se non si riesce a rifarlo, scrivi all\'assistenza di Associazione Semplice.';
+    }
+
+    /**
+     * I dati fotografati all'emissione, se ci sono (assenti per le ricevute fissate prima della fotografia).
+     *
+     * @return array<string, mixed>|null
+     */
+    private function snapshotOf(object $row): ?array
+    {
+        if (($row->snapshot ?? null) === null) {
+            return null;
+        }
+        $raw = Bytea::decode($row->snapshot);
+        $data = json_decode($this->cipher->decrypt($this->context->require()->id, self::FIELD, $raw), true);
+
+        /** @var array<string, mixed>|null $out */
+        $out = is_array($data) ? $data : null;
+
+        return $out;
     }
 
     private function row(string $receiptId): ?object
