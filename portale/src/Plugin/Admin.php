@@ -86,6 +86,9 @@ final class Admin {
 		if ( 'sicurezza' === $a ) {
 			return true; // ognuno gestisce la propria verifica in due passaggi
 		}
+		if ( 'demo' === $a ) {
+			return true; // «Reset demo»: amministratori e supporto
+		}
 		return 'clienti' === $a && $get;
 	}
 
@@ -204,6 +207,8 @@ final class Admin {
 				$changed = Settings::saveSecrets( $this->db, $_POST );
 				$this->done( 'secrets', $changed ? 'Chiavi salvate (' . implode( ', ', $changed ) . ').' : 'Impostazioni di pagamento salvate.', '/wordpress/admin/pagamenti' );
 			}
+		} elseif ( 'demo' === $a ) {
+			$this->demoReset( $get, $b );
 		} elseif ( 'cookie' === $a ) {
 			if ( $get ) {
 				$this->show( 'cookies', 'cookie', array( 't' => Tracking::conf(), 'cats' => Tracking::CATEGORIES ) );
@@ -747,6 +752,24 @@ final class Admin {
 		Audit::log( $this->db, $this->email, $action, trim( $message . ' ' . ( '' !== $detail && $detail !== $message ? '[' . $detail . ']' : '' ) . $extra ) );
 		$_SESSION['flash'] = $message;
 		header( 'Location: ' . $to, true, 303 );
+	}
+
+	/** «Reset demo»: stato di ogni demo collegata e, con conferma esplicita, avvio del reset (uno alla volta, in background). Amministratori e supporto. */
+	private function demoReset( bool $get, string $key ): void {
+		if ( $get ) {
+			$rows = array();
+			foreach ( \Portale\DemoReset::targets() as $k => $t ) {
+				$rows[ $k ] = $t + \Portale\DemoReset::status( $this->db, $k );
+			}
+			$this->show( 'demo_reset', 'demo', array( 'rows' => $rows, 'can_run' => \Portale\DemoReset::canRun() ) );
+			return;
+		}
+		if ( '1' !== (string) ( $_POST['confirm'] ?? '' ) ) {
+			throw new UserError( 'Per azzerare la demo spunta la conferma: cancella tutti i dati inseriti e non si può annullare.' );
+		}
+		\Portale\DemoReset::start( $this->db, $key, $this->email );
+		$_SESSION['flash'] = 'Reset avviato: ci vuole qualche minuto, l\'esito compare in questa pagina.';
+		header( 'Location: ' . self::BASE . '/demo', true, 303 );
 	}
 
 	private function notFound(): void {

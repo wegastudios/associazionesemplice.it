@@ -2179,6 +2179,12 @@
   "l'associazione" : "the association",
   "Rimborso del tuo pagamento · {associazione}" : "Refund of your payment · {associazione}",
   "Ciao, abbiamo restituito {importo} del pagamento che hai fatto il {data} a {associazione}. Motivo: {motivo}. L'accredito compare sul tuo metodo di pagamento in genere entro pochi giorni lavorativi, fino a 10 a seconda della banca o del metodo di pagamento. Se hai dubbi, scrivi alla segreteria. — {associazione}" : "Hello, we have returned {importo} of the payment you made on {data} to {associazione}. Reason: {motivo}. The credit usually appears on your payment method within a few working days, up to 10 depending on your bank or payment method. If you have any doubts, write to the office. — {associazione}",
-  "Incasso annullato in prima nota: se i soldi vanno restituiti al socio usa «Rimborsa»." : "Receipt voided in the ledger: if the money has to go back to the member use «Refund»."
+  "Incasso annullato in prima nota: se i soldi vanno restituiti al socio usa «Rimborsa»." : "Receipt voided in the ledger: if the money has to go back to the member use «Refund».",
+  "il risultato dell'anno fiscale è un disavanzo di {importo}: le uscite superano le entrate" : "the result for the financial year is a deficit of {importo}: expenses exceed income",
+  "chiudo anche se l'anno è in disavanzo di {importo}" : "I am closing even though the year is in deficit by {importo}",
+  "Anno fiscale {anno} in disavanzo." : "Financial year {anno} is in deficit.",
+  "L'anno fiscale {anno} è finito ma è ancora aperto e ha un disavanzo di {importo}: le uscite superano le entrate. Per sistemarlo, registra in Prima nota le entrate mancanti con una data dentro quell'anno. Se invece i conti sono giusti, controllali e poi chiudi l'anno." : "Financial year {anno} has ended but is still open and has a deficit of {importo}: expenses exceed income. To fix it, record the missing income in the cash book with a date inside that year. If the accounts are correct, check them and then close the year.",
+  "Apri il rendiconto" : "Open the statement",
+  "Vai agli anni fiscali" : "Go to financial years"
  }
 }

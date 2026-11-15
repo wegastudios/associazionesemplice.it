@@ -74,6 +74,12 @@ return array(
 	// Mettere l'indirizzo solo quando la demo risponde davvero. Password = quella degli accessi di prova (SAAS_DEMO_PASSWORD del SaaS).
 	'saas_demo_url'  => '', // es. 'https://demosaas.associazionesemplice.it'
 	'saas_demo_password' => '',
+	// Tasti «Reset demo» della gestione (amministratori e supporto): il portale lancia direttamente questo comando sul server, in background, uno alla volta.
+	// Lista di argomenti con percorso assoluto, mai una riga libera. Vuoto = nessun tasto. Il reset cancella i dati della demo: parte solo da un clic con conferma.
+	'demo_reset' => array(
+		// 'plugin' => array( 'cmd' => array( '/bin/bash', '/home/UTENTE/demo-provision/reset.sh', '--forza' ), 'note' => 'Azzera WordPress, database e file della demo del plugin.' ),
+		// 'saas'   => array( 'cmd' => array( '/bin/bash', '/home/UTENTE/saas-demo/reset.sh' ), 'requires' => '/home/UTENTE/saas-demo/current', 'note' => 'Azzera il database della demo del gestionale.' ), // «requires»: finché il percorso non esiste il tasto dice «non ancora installata»
+	),
 	// Proxy verso il SaaS: /saas/admin, /saas/staff, /saas/api e /saas/vai si servono dal gestionale restando su questo dominio. Spento = come prima (rinvio di /saas/admin a saas_admin_url).
 	'saas_proxy' => array( 'enabled' => false, 'upstream' => 'https://app.associazionesemplice.it' ),
 	// Accesso unico (saas/docs/IDENTITA_API.md): /accedi, /twofactor, /account/esci e il reset password parlano col SaaS con richieste firmate (chiave staff_area_sign_key). Spento = accesso come prima.
