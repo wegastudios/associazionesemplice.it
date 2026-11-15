@@ -708,10 +708,18 @@ final class Actions {
 			$msg  = 'Lezione annullata.';
 			$text = 'La lezione di ' . ( $a ? $a['name'] : 'corso' ) . ' del ' . Ui::date( $date ) . ' è annullata' . ( '' !== trim( $note ) ? ' (' . trim( $note ) . ')' : '' ) . '.';
 		}
-		if ( ! empty( $p['notify'] ) && \AssociazioneSemplice\Notices::can_send( $id ) ) {
+		if ( ! empty( $p['notify'] ) && \AssociazioneSemplice\Notices::can_send( $id ) && ! \AssociazioneSemplice\Contacts::complete() ) { // invio manuale: senza i contatti della segreteria l'avviso non parte
+			$mode = (string) ( $p['mode'] ?? '' );
+			if ( 'move' === $mode ) {
+				$msg = \AssociazioneSemplice\Texts::t( 'Lezione modificata, ma i partecipanti NON sono stati avvisati: mancano email e telefono della segreteria (Impostazioni › Ente). Avvisali in un altro modo.' );
+			} elseif ( 'cancel_from' === $mode ) {
+				$msg = \AssociazioneSemplice\Texts::t( 'Lezioni annullate, ma i partecipanti NON sono stati avvisati: mancano email e telefono della segreteria (Impostazioni › Ente). Avvisali in un altro modo.' );
+			} else {
+				$msg = \AssociazioneSemplice\Texts::t( 'Lezione annullata, ma i partecipanti NON sono stati avvisati: mancano email e telefono della segreteria (Impostazioni › Ente). Avvisali in un altro modo.' );
+			}
+		} elseif ( ! empty( $p['notify'] ) && \AssociazioneSemplice\Notices::can_send( $id ) ) {
 			try {
-				\AssociazioneSemplice\Contacts::assert_can_write(); // invio manuale: servono i contatti della segreteria
-				$r    = \AssociazioneSemplice\Notices::send( $id, null, 'Cambio lezione: ' . ( $a ? $a['name'] : '' ), $text );
+				$r    =\AssociazioneSemplice\Notices::send( $id, null, 'Cambio lezione: ' . ( $a ? $a['name'] : '' ), $text );
 				$msg .= ' Avviso inviato agli iscritti (' . (int) $r['recipients'] . ').';
 			} catch ( \InvalidArgumentException $e ) {
 				$msg .= ' L\'avviso agli iscritti non è partito: ' . $e->getMessage();

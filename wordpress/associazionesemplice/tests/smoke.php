@@ -65,6 +65,15 @@ function asem_throws( callable $f ): ?string {
 	return null;
 }
 
+/** Dati della procedura guidata con i due contatti obbligatori della segreteria (quelli indicati nel test hanno la precedenza). */
+function asem_wz_contacts( array $p ): array {
+	return array_merge( array( 'secretary_email' => 'segreteria@example.org', 'secretary_phone' => '011 1234567' ), $p );
+}
+
+function asem_wizard( array $p ): array {
+	return \AssociazioneSemplice\Wizard::apply( asem_wz_contacts( $p ) );
+}
+
 function asem_render( callable $page, string $must_contain, array $get = array() ): string {
 	$old = $_GET;
 	$_GET = array_merge( array(), $get );
@@ -923,9 +932,9 @@ foreach ( array_map( 'intval', $wpdb->get_col( "SELECT ID FROM {$wpdb->posts} WH
 $wz_ent = (string) Settings::get( 'entity_type' );
 $wz_mem = (string) Settings::get( 'member_term' );
 $wz_old = array( 'association_name' => Settings::get( 'association_name' ), 'tax_code' => Settings::get( 'tax_code' ), 'payment_provider' => Settings::get( 'payment_provider' ), 'bank_enabled' => Settings::get( 'bank_enabled' ) );
-asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\Wizard::apply( array( 'entity_type' => 'astronave', 'member_term' => 'socio' ) ); } ) && null !== asem_throws( function () { \AssociazioneSemplice\Wizard::apply( array( 'tax_code' => '123' ) ); } ) && null !== asem_throws( function () { \AssociazioneSemplice\Wizard::apply( array( 'payment_choice' => 'bitcoin' ) ); } ), 'configurazione guidata: ente, codice fiscale e pagamento non validi si rifiutano' );
-asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\Wizard::apply( array( 'payment_choice' => 'woocommerce' ) ); } ) || \AssociazioneSemplice\WooBridge::active(), 'configurazione guidata: WooCommerce si sceglie solo se è attivo' );
-$wz_done = \AssociazioneSemplice\Wizard::apply( array(
+asem_ok( null !== asem_throws( function () { asem_wizard( array( 'entity_type' => 'astronave', 'member_term' => 'socio' ) ); } ) && null !== asem_throws( function () { asem_wizard( array( 'tax_code' => '123' ) ); } ) && null !== asem_throws( function () { asem_wizard( array( 'payment_choice' => 'bitcoin' ) ); } ), 'configurazione guidata: ente, codice fiscale e pagamento non validi si rifiutano' );
+asem_ok( null !== asem_throws( function () { asem_wizard( array( 'payment_choice' => 'woocommerce' ) ); } ) || \AssociazioneSemplice\WooBridge::active(), 'configurazione guidata: WooCommerce si sceglie solo se è attivo' );
+$wz_done = asem_wizard( array(
 	'entity_type' => $wz_ent, 'member_term' => $wz_mem, 'association_name' => 'Circolo Prova', 'tax_code' => '12345678903', 'social_year_start_month' => '9',
 	'secretary_email' => 'Segreteria@Example.org', 'secretary_phone' => '011 1234567',
 	'payment_choice' => 'stripe_paypal', 'bank_enabled' => '1', 'pages_present' => '1', 'pages' => array( 'calendario', 'inesistente' ),
@@ -935,11 +944,13 @@ $wz_pages = \AssociazioneSemplice\Pages::existing();
 asem_ok( isset( $wz_pages['calendario'] ) && ! isset( $wz_pages['inesistente'] ) && 'members' === get_post_meta( $wz_pages['calendario'], '_asem_access', true ) && false !== strpos( implode( ' ', $wz_done ), 'Calendario' ), 'configurazione guidata: crea solo le pagine note, con l\'accesso giusto' );
 // Contatti della segreteria (email e telefono): obbligatori nella procedura, nei dati dell'ente e ricordati finché mancano
 asem_ok( 'segreteria@example.org' === Settings::get( 'secretary_email' ) && '011 1234567' === Settings::get( 'secretary_phone' ) && ! \AssociazioneSemplice\Contacts::missing() && \AssociazioneSemplice\Contacts::complete(), 'contatti: la procedura salva email (minuscola) e telefono della segreteria' );
-$ct_e1 = (string) asem_throws( function () { \AssociazioneSemplice\Wizard::apply( array( 'secretary_email' => '', 'secretary_phone' => '' ) ); } );
+$ct_e1 = (string) asem_throws( function () { asem_wizard( array( 'secretary_email' => '', 'secretary_phone' => '' ) ); } );
 asem_ok( false !== strpos( $ct_e1, 'Indica l\'email della segreteria.' ) && false !== strpos( $ct_e1, 'Indica il telefono della segreteria.' ), 'contatti: la procedura non si completa senza email e telefono (un errore per campo)' );
-$ct_e2 = (string) asem_throws( function () { \AssociazioneSemplice\Wizard::apply( array( 'secretary_email' => 'non-una-email', 'secretary_phone' => '12345' ) ); } );
+$ct_e0 = (string) asem_throws( function () { \AssociazioneSemplice\Wizard::apply( array( 'join_mode' => 'invite' ) ); } );
+asem_ok( false !== strpos( $ct_e0, 'Indica l\'email della segreteria.' ) && false !== strpos( $ct_e0, 'Indica il telefono della segreteria.' ), 'contatti: lato server la procedura non si completa nemmeno se i campi mancano del tutto dal modulo' );
+$ct_e2 = (string) asem_throws( function () { asem_wizard( array( 'secretary_email' => 'non-una-email', 'secretary_phone' => '12345' ) ); } );
 asem_ok( false !== strpos( $ct_e2, 'L\'email della segreteria non è un indirizzo valido.' ) && false !== strpos( $ct_e2, 'Indica un telefono valido per la segreteria (almeno 6 cifre; ammessi + - . ( ) e spazi).' ), 'contatti: email non valida e telefono con meno di 6 cifre si rifiutano' );
-asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\Wizard::apply( array( 'secretary_email' => 'a@example.org', 'secretary_phone' => str_repeat( '1', 31 ) ) ); } ) && null !== asem_throws( function () { \AssociazioneSemplice\Wizard::apply( array( 'secretary_email' => 'a@example.org', 'secretary_phone' => '011 abc 123456' ) ); } ), 'contatti: telefono oltre 30 caratteri o con lettere rifiutato' );
+asem_ok( null !== asem_throws( function () { asem_wizard( array( 'secretary_email' => 'a@example.org', 'secretary_phone' => str_repeat( '1', 31 ) ) ); } ) && null !== asem_throws( function () { asem_wizard( array( 'secretary_email' => 'a@example.org', 'secretary_phone' => '011 abc 123456' ) ); } ), 'contatti: telefono oltre 30 caratteri o con lettere rifiutato' );
 asem_ok( \AssociazioneSemplice\Contacts::phone_valid( '+39 (011) 123-45.67' ) && ! \AssociazioneSemplice\Contacts::phone_valid( '12345' ), 'contatti: sono ammessi + - . ( ) e spazi' );
 ob_start();
 Admin\WizardPage::render();
@@ -984,8 +995,8 @@ asem_ok( '' === trim( (string) ob_get_clean() ), 'contatti: compilati i due camp
 // invii manuali: senza contatti completi si rifiutano; le email automatiche partono comunque
 Settings::update( array( 'secretary_email' => '', 'secretary_phone' => '' ) );
 $ct_blk = (string) asem_throws( function () { \AssociazioneSemplice\Contacts::assert_can_write(); } );
-asem_ok( 'Prima inserisci email e telefono della segreteria (Impostazioni › Ente): senza, l\'associazione non scrive ai soci.' === $ct_blk, 'contatti: invio manuale senza contatti rifiutato con la frase chiara' );
-asem_ok( 'Prima inserisci email e telefono della segreteria (Impostazioni › Ente): senza, l\'associazione non scrive ai soci. Intanto scarica la ricevuta e consegnala a mano.' === (string) asem_throws( function () { \AssociazioneSemplice\Contacts::assert_can_write( true ); } ), 'contatti: per la ricevuta si aggiunge «scarica e consegna a mano»' );
+asem_ok( 'Prima inserisci email e telefono della segreteria (Impostazioni › Ente): senza, la segreteria non può inviare email ai soci.' === $ct_blk, 'contatti: invio manuale senza contatti rifiutato con la frase chiara' );
+asem_ok( 'Prima inserisci email e telefono della segreteria (Impostazioni › Ente): senza, la segreteria non può inviare email ai soci. Intanto scarica la ricevuta e consegnala a mano.' === (string) asem_throws( function () { \AssociazioneSemplice\Contacts::assert_can_write( true ); } ), 'contatti: per la ricevuta si aggiunge «scarica e consegna a mano»' );
 $ct_rb = new ReflectionMethod( Admin\ProActions::class, 'receipt_email' );
 asem_ok( 0 === strpos( (string) asem_throws( function () use ( $ct_rb ) { $ct_rb->invoke( null, array( 'key' => 'x' ) ); } ), 'Prima inserisci email e telefono' ), 'contatti: la ricevuta inviata a mano è bloccata senza contatti' );
 $ct_rb2 = new ReflectionMethod( Admin\ProActions::class, 'broadcast_send' );
@@ -1068,9 +1079,9 @@ $ct_opt['secretary_phone'] = '';
 update_option( Settings::OPTION, $ct_opt );
 asem_ok( false === \AssociazioneSemplice\Install::migrate_whatsapp_button() && 0 === (int) Settings::get( 'whatsapp_button' ), 'WhatsApp: senza numero la migrazione non accende nulla' );
 Settings::update( array( 'pec' => '', 'secretary_email' => '', 'secretary_phone' => '', 'whatsapp_button' => 0 ) ); // come prima: i test seguenti non vedono i contatti
-\AssociazioneSemplice\Wizard::apply( array( 'pages_present' => '1', 'pages' => array( 'calendario' ) ) );
+asem_wizard( array( 'pages_present' => '1', 'pages' => array( 'calendario' ) ) );
 asem_ok( count( \AssociazioneSemplice\Pages::existing() ) === count( $wz_pages ), 'configurazione guidata: le pagine esistenti non si duplicano' );
-\AssociazioneSemplice\Wizard::apply( array( 'pages_present' => '1', 'pages' => array( 'segreteria', 'tesoriere', 'ingressi' ) ) );
+asem_wizard( array( 'pages_present' => '1', 'pages' => array( 'segreteria', 'tesoriere', 'ingressi' ) ) );
 $wz_p2 = \AssociazioneSemplice\Pages::existing();
 asem_ok( isset( $wz_p2['segreteria'], $wz_p2['tesoriere'], $wz_p2['ingressi'] ) && false !== strpos( get_post( $wz_p2['segreteria'] )->post_content, '[associazionesemplice_segreteria]' ) && false !== strpos( get_post( $wz_p2['tesoriere'] )->post_content, '[associazionesemplice_tesoriere]' ) && false !== strpos( get_post( $wz_p2['ingressi'] )->post_content, '[associazionesemplice_ingressi]' ), 'pagine: la procedura crea le pagine delle aree segreteria, tesoriere e ingressi' );
 $nm_id   = (int) wp_create_nav_menu( 'Menu prova area' );
@@ -1121,25 +1132,25 @@ asem_ok( false !== strpos( $wz_html, 'docs.stripe.com/keys' ) && false !== strpo
 asem_ok( in_array( 'asem-wizard', Admin\Admin::admin_only(), true ) && isset( Admin\TechActions::ACTIONS['asem_wizard_save'] ), 'configurazione guidata: riservata agli amministratori' );
 // ... a domande: parti del gestionale, iscrizione su presentazione, altri tipi di socio
 asem_ok( ! in_array( 'asem-ledger', Admin\Admin::disabled_pages(), true ) && \AssociazioneSemplice\Modules::on( 'accounts' ), 'moduli: prima della configurazione è tutto acceso' );
-\AssociazioneSemplice\Wizard::apply( array( 'mod_present' => '1', 'mod' => array( 'activities' => '1', 'ledger' => '0', 'accounts' => '1', 'accounting' => '1', 'reports' => '1', 'book' => '0', 'messages' => '1', 'import' => '0' ) ) );
+asem_wizard( array( 'mod_present' => '1', 'mod' => array( 'activities' => '1', 'ledger' => '0', 'accounts' => '1', 'accounting' => '1', 'reports' => '1', 'book' => '0', 'messages' => '1', 'import' => '0' ) ) );
 $wz_off = Admin\Admin::disabled_pages();
 asem_ok( ! \AssociazioneSemplice\Modules::on( 'ledger' ) && ! \AssociazioneSemplice\Modules::on( 'accounts' ) && ! \AssociazioneSemplice\Modules::on( 'reports' ) && \AssociazioneSemplice\Modules::on( 'activities' ) && in_array( 'asem-ledger', $wz_off, true ) && in_array( 'asem-accounts', $wz_off, true ) && in_array( 'asem-statement', $wz_off, true ) && in_array( 'asem-book', $wz_off, true ) && ! in_array( 'asem-activities', $wz_off, true ), 'moduli: senza prima nota spariscono anche conti e bilanci; le parti scelte restano' );
 ob_start();
 call_user_func( Admin\Admin::guard( 'asem-ledger', function () { echo 'CONTENUTO'; } ) );
 $wz_g = (string) ob_get_clean();
 asem_ok( false === strpos( $wz_g, 'CONTENUTO' ) && false !== strpos( $wz_g, 'configurazione guidata' ), 'moduli: una pagina spenta non si apre e indica come riaccenderla' );
-\AssociazioneSemplice\Wizard::apply( array( 'mod_present' => '1', 'mod' => array( 'activities' => '1', 'ledger' => '1', 'accounts' => '0', 'accounting' => '1', 'reports' => '1', 'book' => '1', 'messages' => '1', 'import' => '1' ) ) );
+asem_wizard( array( 'mod_present' => '1', 'mod' => array( 'activities' => '1', 'ledger' => '1', 'accounts' => '0', 'accounting' => '1', 'reports' => '1', 'book' => '1', 'messages' => '1', 'import' => '1' ) ) );
 asem_ok( \AssociazioneSemplice\Modules::on( 'ledger' ) && ! \AssociazioneSemplice\Modules::on( 'accounts' ) && \AssociazioneSemplice\Modules::on( 'reports' ) && 1 === (int) Settings::get( 'reports_enabled' ), 'moduli: riaccendendo la prima nota tornano i bilanci scelti, i conti restano spenti' );
 Settings::update( array( 'modules' => array(), 'reports_enabled' => 1 ) );
 asem_ok( \AssociazioneSemplice\Modules::on( 'accounts' ) && ! Admin\Admin::disabled_pages(), 'moduli: ripristino, tutto acceso' );
 $wz_req = count( \AssociazioneSemplice\AccessRequests::pending() );
-\AssociazioneSemplice\Wizard::apply( array( 'join_mode' => 'invite' ) );
+asem_wizard( array( 'join_mode' => 'invite' ) );
 asem_ok( 'invite' === Settings::get( 'join_mode' ) && 'unknown_queued' === \AssociazioneSemplice\Frontend\FirstAccess::submit( 'Sconosciuto Presentato', 'sconosciuto.presentato@example.com', '347 9990011' ) && count( \AssociazioneSemplice\AccessRequests::pending() ) === $wz_req, 'iscrizione su presentazione: lo sconosciuto riceve la stessa risposta ma nessuna richiesta viene registrata' );
-\AssociazioneSemplice\Wizard::apply( array( 'join_mode' => 'request' ) );
+asem_wizard( array( 'join_mode' => 'request' ) );
 asem_ok( 1 === (int) Settings::get( 'apply_enabled' ), 'procedura guidata: «chiunque può chiedere di iscriversi» accende anche la domanda online' );
-\AssociazioneSemplice\Wizard::apply( array( 'join_mode' => 'invite' ) );
+asem_wizard( array( 'join_mode' => 'invite' ) );
 asem_ok( 0 === (int) Settings::get( 'apply_enabled' ), 'procedura guidata: «solo su presentazione» spegne la domanda online' );
-\AssociazioneSemplice\Wizard::apply( array( 'join_mode' => 'request' ) );
+asem_wizard( array( 'join_mode' => 'request' ) );
 \AssociazioneSemplice\Frontend\FirstAccess::submit( 'Sconosciuto Richiesta', 'sconosciuto.richiesta@example.com', '347 9990022' );
 asem_ok( count( \AssociazioneSemplice\AccessRequests::pending() ) === $wz_req + 1, 'iscrizione aperta alle richieste: la richiesta arriva alla segreteria' );
 foreach ( \AssociazioneSemplice\AccessRequests::pending() as $wz_r ) { // la coda torna com'era: altri controlli la leggono
@@ -1147,33 +1158,33 @@ foreach ( \AssociazioneSemplice\AccessRequests::pending() as $wz_r ) { // la cod
 		\AssociazioneSemplice\AccessRequests::remove( (string) $wz_r['id'] );
 	}
 }
-\AssociazioneSemplice\Wizard::apply( array( 'extra_levels' => "Ridotto Prova; 15\nSostenitore Prova" ) );
+asem_wizard( array( 'extra_levels' => "Ridotto Prova; 15\nSostenitore Prova" ) );
 $wz_lv = array_column( \AssociazioneSemplice\Levels::all(), 'fee_cents', 'name' );
-\AssociazioneSemplice\Wizard::apply( array( 'extra_levels' => 'Ridotto Prova; 15' ) );
+asem_wizard( array( 'extra_levels' => 'Ridotto Prova; 15' ) );
 asem_ok( 1500 === (int) ( $wz_lv['Ridotto Prova'] ?? 0 ) && array_key_exists( 'Sostenitore Prova', $wz_lv ) && null === $wz_lv['Sostenitore Prova'] && count( \AssociazioneSemplice\Levels::all() ) === count( $wz_lv ), 'tipi di socio: aggiunti dalla procedura con la loro quota, senza duplicati' );
-asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\Wizard::apply( array( 'extra_levels' => 'Strano; abc' ) ); } ) && null !== asem_throws( function () { \AssociazioneSemplice\Wizard::apply( array( 'privacy_url' => 'javascript:alert(1)' ) ); } ), 'configurazione guidata: quota e indirizzo privacy non validi si rifiutano' );
-\AssociazioneSemplice\Wizard::apply( array( 'privacy_url' => 'https://example.com/privacy', 'privacy_retention_years' => '7', 'receipt_footer' => 'Esente IVA' ) );
+asem_ok( null !== asem_throws( function () { asem_wizard( array( 'extra_levels' => 'Strano; abc' ) ); } ) && null !== asem_throws( function () { asem_wizard( array( 'privacy_url' => 'javascript:alert(1)' ) ); } ), 'configurazione guidata: quota e indirizzo privacy non validi si rifiutano' );
+asem_wizard( array( 'privacy_url' => 'https://example.com/privacy', 'privacy_retention_years' => '7', 'receipt_footer' => 'Esente IVA' ) );
 asem_ok( 'https://example.com/privacy' === Settings::get( 'privacy_url' ) && 7 === (int) Settings::get( 'privacy_retention_years' ), 'configurazione guidata: privacy e ricevute' );
 Settings::update( array( 'privacy_url' => '', 'privacy_retention_years' => 5, 'receipt_footer' => '' ) );
 $wz_html2 = $wz_html;
 asem_ok( false !== strpos( $wz_html2, 'Cosa ti serve' ) && false !== strpos( $wz_html2, 'Solo su presentazione' ) && false !== strpos( $wz_html2, 'name="mod[ledger]"' ) && false !== strpos( $wz_html2, 'data-if="mod[ledger]=1"' ), 'configurazione guidata: domande per parte e blocchi condizionati dalle risposte' );
 // procedura guidata: partita IVA, sede e adempimenti
-asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\Wizard::apply( array( 'has_vat' => '1', 'vat_number' => '12345678901' ) ); } ) && null !== asem_throws( function () { \AssociazioneSemplice\Wizard::apply( array( 'pec' => 'non-una-pec' ) ); } ), 'procedura: partita IVA o PEC non valide si rifiutano' );
-\AssociazioneSemplice\Wizard::apply( array( 'has_vat' => '1', 'vat_number' => 'IT 12345678903', 'fiscal_regime' => 'ordinario', 'vat_default_rate' => '10', 'vat_prices_mode' => 'escl', 'vat_membership_rate' => '22', 'legal_address' => 'Via Verdi 3', 'legal_zip' => '10100', 'legal_city' => 'Torino', 'legal_province' => 'TO', 'pec' => 'ente@pec.example.com' ) );
+asem_ok( null !== asem_throws( function () { asem_wizard( array( 'has_vat' => '1', 'vat_number' => '12345678901' ) ); } ) && null !== asem_throws( function () { asem_wizard( array( 'pec' => 'non-una-pec' ) ); } ), 'procedura: partita IVA o PEC non valide si rifiutano' );
+asem_wizard( array( 'has_vat' => '1', 'vat_number' => 'IT 12345678903', 'fiscal_regime' => 'ordinario', 'vat_default_rate' => '10', 'vat_prices_mode' => 'escl', 'vat_membership_rate' => '22', 'legal_address' => 'Via Verdi 3', 'legal_zip' => '10100', 'legal_city' => 'Torino', 'legal_province' => 'TO', 'pec' => 'ente@pec.example.com' ) );
 asem_ok( \AssociazioneSemplice\Fiscal::vat_applies() && '12345678903' === Settings::get( 'vat_number' ) && 10 === \AssociazioneSemplice\Fiscal::default_rate() && 'escl' === \AssociazioneSemplice\Fiscal::default_mode() && 22 === \AssociazioneSemplice\Fiscal::membership_rate() && 'Torino' === Settings::get( 'legal_city' ), 'procedura: partita IVA, aliquote e sede applicate' );
-\AssociazioneSemplice\Wizard::apply( array( 'association_name' => 'Solo nome cambiato' ) );
+asem_wizard( array( 'association_name' => 'Solo nome cambiato' ) );
 asem_ok( \AssociazioneSemplice\Fiscal::vat_applies() && '12345678903' === Settings::get( 'vat_number' ), 'procedura: se il passo non c\'è, la partita IVA già impostata non si tocca' );
-\AssociazioneSemplice\Wizard::apply( array( 'has_vat' => '0', 'vat_number' => '12345678903', 'vat_membership_rate' => '22' ) );
+asem_wizard( array( 'has_vat' => '0', 'vat_number' => '12345678903', 'vat_membership_rate' => '22' ) );
 asem_ok( ! \AssociazioneSemplice\Fiscal::vat_applies() && '' === Settings::get( 'vat_number' ) && null === \AssociazioneSemplice\Fiscal::membership_rate(), 'procedura: senza partita IVA il numero e l\'aliquota delle quote si azzerano' );
 $wz_feat = array_intersect_key( Settings::all(), Admin\SettingsPage::all_features() ); // l'elenco delle funzioni spegne ciò che non è spuntato: si ripristina dopo il controllo
 Settings::update( array( 'fivepm_enabled' => 1 ) );
-\AssociazioneSemplice\Wizard::apply( array( 'features_present' => '1' ) );
+asem_wizard( array( 'features_present' => '1' ) );
 asem_ok( 1 === (int) Settings::get( 'fivepm_enabled' ), 'procedura: l\'elenco delle funzioni non tocca il 5 per mille, che ha il suo passo' );
 Settings::update( $wz_feat );
 Settings::update( array( 'fivepm_enabled' => 1 ) );
-\AssociazioneSemplice\Wizard::apply( array( 'adempimenti_present' => '1' ) );
+asem_wizard( array( 'adempimenti_present' => '1' ) );
 asem_ok( 0 === (int) Settings::get( 'fivepm_enabled' ), 'procedura: nel passo adempimenti, senza risposta sì il 5 per mille si spegne' );
-\AssociazioneSemplice\Wizard::apply( array( 'adempimenti_present' => '1', 'fivepm_enabled' => '1' ) );
+asem_wizard( array( 'adempimenti_present' => '1', 'fivepm_enabled' => '1' ) );
 asem_ok( 1 === (int) Settings::get( 'fivepm_enabled' ), 'procedura: il 5 per mille si accende dal passo adempimenti' );
 ob_start();
 Admin\WizardPage::render();
@@ -1181,9 +1192,9 @@ $wz_html3 = (string) ob_get_clean();
 asem_ok( false !== strpos( $wz_html3, 'Partita IVA' ) && false !== strpos( $wz_html3, 'data-if="has_vat=1"' ) && false !== strpos( $wz_html3, 'name="vat_number"' ) && false !== strpos( $wz_html3, 'data-if="mod[accounting]=1"' ) && false !== strpos( $wz_html3, 'name="fivepm_enabled"' ) && false !== strpos( $wz_html3, 'name="legal_address"' ), 'procedura: passo partita IVA con i campi che compaiono solo se c\'è, e domanda sul 5 per mille legata alla contabilità' );
 asem_ok( false !== strpos( $wz_html3, 'name="go_import"' ) && false !== strpos( $wz_html3, 'Elenco dei soci' ) && false === strpos( $wz_html3, 'name="mod[import]"' ), 'procedura: passo per importare l\'elenco di soci e ospiti, sempre proposto (le importazioni non si chiedono)' );
 Settings::update( array( 'payment_provider' => 'none', 'bank_enabled' => 0 ) );
-$wz_go = Admin\TechActions::wizard_save( array( 'go_import' => '1' ) );
+$wz_go = Admin\TechActions::wizard_save( asem_wz_contacts( array( 'go_import' => '1' ) ) );
 asem_ok( false !== strpos( $wz_go[0], 'asem-import' ) && false !== strpos( $wz_go[1], 'elenco' ), 'procedura: a fine configurazione porta all\'importazione dell\'elenco' );
-$wz_nogo = Admin\TechActions::wizard_save( array() );
+$wz_nogo = Admin\TechActions::wizard_save( asem_wz_contacts( array() ) );
 asem_ok( false === strpos( $wz_nogo[0], 'asem-import' ), 'procedura: senza la richiesta non porta all\'importazione' );
 ob_start();
 Admin\ToolsPage::render();
@@ -1250,22 +1261,22 @@ asem_ok( 'Dati dell’ente salvati.' === $fl_msg['ok'], 'messaggi: con l\'apostr
 asem_ok( false !== strpos( Admin\TechActions::wizard_skip( array() )[1], 'Strumenti' ), 'procedura: «Salta per ora» dice che si riapre dagli Strumenti' );
 Settings::update( array( 'association_name' => $nm_old ) );
 // ospiti non accettati
-\AssociazioneSemplice\Wizard::apply( array( 'guests_enabled' => '0' ) );
+asem_wizard( array( 'guests_enabled' => '0' ) );
 asem_ok( ! Settings::guests_enabled() && null !== asem_throws( function () use ( $people, $ord ) { $people->create( array( 'type' => 'guest', 'first_name' => 'Non', 'last_name' => 'Accettato', 'phone' => '348 7776655', 'host_person_id' => $ord ) ); } ), 'ospiti non accettati: non se ne registrano di nuovi' );
 asem_ok( '' === \AssociazioneSemplice\Frontend\Views::section_guests( $people->get( $founder ) ) || $people->guests_of( $founder ), 'ospiti non accettati: la sezione «I miei ospiti» non compare' );
-\AssociazioneSemplice\Wizard::apply( array( 'guests_enabled' => '1' ) );
+asem_wizard( array( 'guests_enabled' => '1' ) );
 $wz_g2 = $people->create( array( 'type' => 'guest', 'first_name' => 'Ora', 'last_name' => 'Accettato', 'phone' => '348 7776644', 'host_person_id' => $ord ) );
 asem_ok( Settings::guests_enabled() && $wz_g2 > 0, 'ospiti accettati: si registrano' );
 $people->delete( $wz_g2 ); // l'ospite di prova non resta: altri controlli eliminano il socio ospitante
 // informativa privacy: scelta tra le pagine esistenti
 $wz_pg = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Informativa privacy prova' ) );
 $wz_draft = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'draft', 'post_title' => 'Bozza' ) );
-\AssociazioneSemplice\Wizard::apply( array( 'privacy_page_id' => (string) $wz_pg ) );
-asem_ok( get_permalink( $wz_pg ) === Settings::get( 'privacy_url' ) && null !== asem_throws( function () use ( $wz_draft ) { \AssociazioneSemplice\Wizard::apply( array( 'privacy_page_id' => (string) $wz_draft ) ); } ) && null !== asem_throws( function () { \AssociazioneSemplice\Wizard::apply( array( 'privacy_page_id' => '999999' ) ); } ), 'procedura: l\'informativa privacy è una pagina pubblicata già presente (le bozze e le pagine inesistenti si rifiutano)' );
-\AssociazioneSemplice\Wizard::apply( array( 'privacy_page_id' => '0' ) );
+asem_wizard( array( 'privacy_page_id' => (string) $wz_pg ) );
+asem_ok( get_permalink( $wz_pg ) === Settings::get( 'privacy_url' ) && null !== asem_throws( function () use ( $wz_draft ) { asem_wizard( array( 'privacy_page_id' => (string) $wz_draft ) ); } ) && null !== asem_throws( function () { asem_wizard( array( 'privacy_page_id' => '999999' ) ); } ), 'procedura: l\'informativa privacy è una pagina pubblicata già presente (le bozze e le pagine inesistenti si rifiutano)' );
+asem_wizard( array( 'privacy_page_id' => '0' ) );
 asem_ok( '' === Settings::get( 'privacy_url' ), 'procedura: nessuna pagina scelta, nessuna informativa da accettare' );
 Settings::update( array( 'privacy_url' => 'https://esterno.example.com/privacy' ) );
-\AssociazioneSemplice\Wizard::apply( array( 'privacy_page_id' => '0' ) );
+asem_wizard( array( 'privacy_page_id' => '0' ) );
 asem_ok( 'https://esterno.example.com/privacy' === Settings::get( 'privacy_url' ), 'procedura: un indirizzo esterno già impostato non si cancella' );
 Settings::update( array( 'privacy_url' => '' ) );
 wp_delete_post( $wz_pg, true );
@@ -4009,6 +4020,11 @@ asem_ok( null !== asem_throws( function () use ( $once_c, $le_w ) { \Associazion
 \AssociazioneSemplice\LessonExceptions::restore( $once_c, $le_w[0] );
 \AssociazioneSemplice\LessonExceptions::restore( $once_c, $le_w[1] );
 asem_ok( null !== $le_has( $le_w[0] ) && null !== $le_has( $le_w[1] ) && null === $le_has( $le_new ), 'lezioni: ripristinate come prima' );
+$le_act = new ReflectionMethod( Admin\Actions::class, 'lesson_exception' );
+$le_act->setAccessible( true );
+$le_res = $le_act->invoke( null, array( 'activity_id' => $once_c, 'date' => $le_w[0], 'note' => 'Prova', 'notify' => '1' ) );
+asem_ok( 'Lezione annullata, ma i partecipanti NON sono stati avvisati: mancano email e telefono della segreteria (Impostazioni › Ente). Avvisali in un altro modo.' === $le_res[1], 'lezioni: annullo con avviso senza contatti della segreteria dice che i partecipanti NON sono stati avvisati' );
+\AssociazioneSemplice\LessonExceptions::restore( $once_c, $le_w[0] );
 // questa lezione e le successive: la prima resta, dalla seconda in poi (stesso giorno) sono annullate
 $le_end  = gmdate( 'Y-m-d', strtotime( $today . ' +70 days' ) );
 $le_rest = \AssociazioneSemplice\Schedule::weekly_dates( $le_w[1], $le_end, 3 );
@@ -6543,7 +6559,7 @@ if ( ! \AssociazioneSemplice\WooBridge::active() ) {
 	Admin\ProActions::save_woo( array( 'woo_enabled' => '1', 'woo_default_product' => (string) $wc_def ) );
 	asem_ok( \AssociazioneSemplice\WooBridge::enabled() && 'woocommerce' === Plugin::payments()->provider() && $wc_def === (int) Settings::get( 'woo_default_product' ), 'woocommerce: attivato dalle impostazioni, al posto di Stripe e PayPal' );
 	// configurazione guidata con WooCommerce: crea e collega i prodotti
-	$wz_r = \AssociazioneSemplice\Wizard::apply( array( 'payment_choice' => 'woocommerce', 'product_level' => array( $lv_ordn => 'new' ), 'product_default' => 'new' ) );
+	$wz_r = asem_wizard( array( 'payment_choice' => 'woocommerce', 'product_level' => array( $lv_ordn => 'new' ), 'product_default' => 'new' ) );
 	$wz_new = \AssociazioneSemplice\WooLinks::product_id( 'level', $lv_ordn );
 	$wz_prod = wc_get_product( $wz_new );
 	asem_ok( $wz_new > 0 && $wz_new !== $wc_q && $wz_prod && $wz_prod->is_type( 'simple' ) && $wz_prod->is_virtual() && 'publish' === $wz_prod->get_status() && (int) Settings::get( 'woo_default_product' ) !== $wc_def && 'woocommerce' === Settings::get( 'payment_provider' ), 'configurazione guidata: crea i prodotti WooCommerce e li collega a quota e voce generica' );
