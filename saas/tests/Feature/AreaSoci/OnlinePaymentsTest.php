@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\AreaSoci\Http\Controllers\StaffLinkController;
+use App\Modules\AreaSoci\Mail\PaymentRefunded;
 use App\Modules\AreaSoci\Payments\OnlinePayments;
 use App\Modules\AreaSoci\Payments\StripeWebhook;
 use App\Modules\Attivita\Services\ActivityService;
@@ -17,6 +18,7 @@ use App\Modules\Soci\Services\MembershipService;
 use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Testing\AssertableInertia as Assert;
 
 // Dati di prova inventati; le chiavi sono finte e Stripe e PayPal sono simulati.
