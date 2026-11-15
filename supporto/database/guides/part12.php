@@ -115,9 +115,9 @@ Se la quota era già presente quando arriva il **pagamento online** dall'area so
 I soldi sono arrivati sul **conto Stripe o PayPal dell'associazione**, ma per quella quota non ci sono né movimento né ricevuta nel gestionale. **Cosa fare:**
 
 1. Apri **Pagamenti online**, sezione **«Pagamenti dei soci»**, e leggi il **motivo**, scritto in rosso sotto il nome nella colonna Voci.
-2. Se è la quota già pagata, **restituisci l'importo di quella voce al socio dal pannello di Stripe o PayPal**: il gestionale non ha un rimborso e non restituisce i soldi da solo.
-3. **Chiedi al tuo commercialista come registrare la restituzione.**
-4. Premi **«controllato»** accanto allo stato: serve solo a dire «ho visto e sistemato», non registra e non rimborsa nulla. Lo vede chi ha il permesso di contabilità.
+2. Se è la quota già pagata, premi **«rimborsa»** (lo vede chi ha il permesso **«Emettere rimborsi»**; ti chiede la password). Scrivi l'**importo**: da **0,50 €** fino a quanto è stato incassato, anche in più volte. Il rimborso parte verso **Stripe o PayPal** e i soldi tornano sul metodo di pagamento del socio: **non si può annullare**. Dopo l'invio compare «Rimborso di X,XX € inviato al socio.» e sotto lo stato leggi **«restituiti X,XX €»**; il motivo si completa con «Restituiti X,XX € al socio.».
+3. Il rimborso vale solo per i soldi **non registrati** nel gestionale. Le voci già registrate in **Prima nota** si stornano a parte. Il gestionale non manda un'email al socio: avvisalo tu.
+4. Premi **«controllato»** accanto allo stato: serve solo a dire «ho visto e sistemato», non registra e non rimborsa nulla (il rimborso lo fa «rimborsa»). Lo vede chi ha il permesso di contabilità.
 
 ## Se l'importo pagato è diverso
 
