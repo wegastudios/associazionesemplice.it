@@ -92,7 +92,9 @@ asem_ok( count( Plugin::ledger()->accounts() ) >= 2, 'conti iniziali' );
 asem_ok( count( Plugin::ledger()->categories() ) >= 8, 'categorie iniziali' );
 
 wp_set_current_user( 1 );
-$people   = Plugin::people();
+// Le prove di chiusura più sotto lavorano su anni con movimenti di prova (anche in disavanzo): la conferma del disavanzo si riaccende solo per la sua prova, in fondo.
+remove_filter( 'asem_year_close_confirm', array( \AssociazioneSemplice\YearEndCheck::class, 'close_confirm' ), 5 );
+$people  = Plugin::people();
 $acts     = Plugin::activities();
 $ledger   = Plugin::ledger();
 $reports  = Plugin::reports();
@@ -10182,6 +10184,7 @@ update_option( Settings::OPTION, $qo_o );
 // ---------- Anno fiscale passato ancora aperto in disavanzo: avviso fisso in Bacheca e conferma alla chiusura ----------
 wp_set_current_user( 1 );
 asem_ok( \AssociazioneSemplice\Edition::has( 'watch' ), 'disavanzo anno passato: la funzione Pro Fiscale c\'è' );
+add_filter( 'asem_year_close_confirm', array( \AssociazioneSemplice\YearEndCheck::class, 'close_confirm' ), 5, 2 ); // la conferma di serie, tolta all'inizio
 $dp_y = max( 2000, min( 2001, (int) $wpdb->get_var( 'SELECT MIN(year) FROM ' . Db::t( 'fiscal_years' ) ) - 1 ) ); // un anno più vecchio di tutti: si può chiudere per primo
 asem_ok( null === \AssociazioneSemplice\FiscalYears::get( $dp_y ), 'disavanzo anno passato: l\'anno di prova non esiste ancora (' . $dp_y . ')' );
 \AssociazioneSemplice\FiscalYears::create( $dp_y );
