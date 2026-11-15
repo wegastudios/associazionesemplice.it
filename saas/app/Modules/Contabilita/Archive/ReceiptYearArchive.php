@@ -196,7 +196,7 @@ final readonly class ReceiptYearArchive implements YearArchives
     /**
      * Raccoglie i PDF singoli in uno ZIP (senza compressione: sono già PDF), con l'indice.
      *
-     * @param  list<object>  $rows
+     * @param  array<int, object>  $rows
      */
     private function collect(array $rows, int $year, string $zipPath, string $tmp): void
     {
@@ -238,7 +238,7 @@ final readonly class ReceiptYearArchive implements YearArchives
     /**
      * Rilegge l'archivio appena fatto e controlla ogni file contro l'impronta registrata.
      *
-     * @param  list<object>  $rows
+     * @param  array<int, object>  $rows
      */
     private function verify(StoredFile $stored, array $rows, string $checkPath): void
     {

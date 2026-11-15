@@ -94,7 +94,7 @@ final readonly class ReceiptFiles
         return ['pdf' => $this->read($row, $meta['number']), 'filename' => $name, 'number' => $meta['number'], 'email' => $meta['email'], 'holder' => $meta['holder']];
     }
 
-    /** @return self::OK|self::UNFIXED|self::MISSING|self::ALTERED */
+    /** @return self::OK|self::UNFIXED|self::MISSING|self::ALTERED|self::ARCHIVED */
     public function status(string $receiptId): string
     {
         $row = $this->row($receiptId);
