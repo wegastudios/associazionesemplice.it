@@ -35,8 +35,8 @@ demo_step( 'ente e funzioni', function () {
 		'guests_enabled'   => 1,
 		'join_mode'        => 'request',
 		'membership_fee'   => '20,00',
-		'social_year_start_month' => 1, // anno sociale (tessere e attività) a gennaio, scelto in modo esplicito
-		'fiscal_start_month'      => 1, // anno fiscale (bilancio e rendiconto) a gennaio, scelto in modo esplicito
+		'social_year_start_month' => 8, // anno sociale (tessere e attività) da agosto, scelto in modo esplicito
+		'fiscal_start_month'      => 9, // anno fiscale (bilancio e rendiconto) da settembre: l'anno scorso (set–ago) esiste, è aperto e si può chiudere in prova
 	) );
 	Wizard::mark( Wizard::DONE );
 } );
