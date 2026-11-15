@@ -249,9 +249,13 @@ it('rimborsa e storna in un gesto solo un pagamento già registrato, e se il rim
 
     Http::fake(['api.stripe.com/v1/checkout/sessions/*' => Http::response(['payment_intent' => 'pi_9']), 'api.stripe.com/v1/refunds' => Http::sequence()->push(['error' => ['message' => 'no']], 500)->push(['id' => 're_9'])]);
     $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['reason' => 'Quota già pagata'])->assertSessionHasErrors('ledger');
+    expect(session('errors')->first('ledger'))->toContain('Nulla è stato stornato');
     $this->orgContext()->run($this->org->id, function () use ($tessera): void {
         expect(app(MembershipService::class)->isActive($this->anna->id))->toBeTrue()
+            ->and(DB::table('app.transactions')->count())->toBe(1)
             ->and(DB::table('app.transactions')->whereNull('voided_at')->count())->toBe(1)
+            ->and(DB::table('app.receipts')->count())->toBe(1)
+            ->and(DB::table('app.receipts')->whereNull('voided_at')->count())->toBe(1)
             ->and($tessera)->not->toBe('');
     });
     Mail::assertNothingSent();

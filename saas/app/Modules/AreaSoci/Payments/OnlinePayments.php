@@ -265,7 +265,7 @@ final readonly class OnlinePayments
      * annullano anche le tessere) e si restituisce tutto quello che resta; se lo storno non è possibile (anno fiscale
      * chiuso) non si rimborsa nulla, e se il rimborso non riesce anche lo storno viene annullato.
      */
-    public function refund(string $paymentId, ?int $cents, string $reason, string $orgName): void
+    public function refund(string $paymentId, ?int $cents, string $reason, string $orgName): bool
     {
         $reason = trim($reason);
         if ($reason === '') {
@@ -274,6 +274,7 @@ final readonly class OnlinePayments
         $sent = $this->connection()->transaction(function () use ($paymentId, $cents, $reason): array {
             $row = $this->table()->where('id', $paymentId)->lockForUpdate()->first();
             $p = $row === null ? null : $this->find($paymentId);
+            $voided = false;
             $allowed = $cents === null ? ['settled', 'review'] : ['review'];
             if ($row === null || $p === null || ! in_array($p['status'], $allowed, true) || $p['provider_ref'] === null || $p['paid_cents'] === null) {
                 throw new MemberAccessError($cents === null ? 'Si rimborsano solo i pagamenti già incassati.' : 'Si rimborsano solo i pagamenti «da controllare» già incassati.');
@@ -285,6 +286,7 @@ final readonly class OnlinePayments
                     throw new MemberAccessError('Questo pagamento non ha voci registrate: usa «rimborsa» con l\'importo.');
                 }
                 $this->voidReceipts($p['receipts'], $reason);
+                $voided = true;
                 $cents = $left;
             }
             if ($cents < self::MIN_CENTS || $cents > $left) {
@@ -297,7 +299,7 @@ final readonly class OnlinePayments
                     ? $this->stripe->refund((string) $settings->stripe_secret, $p['provider_ref'], $cents, $key)
                     : $this->paypal->refund($settings->paypal_live, $this->paypal->token($settings->paypal_live, (string) $settings->paypal_client_id, (string) $settings->paypal_secret), $p['provider_ref'], $cents, $key);
             } catch (RuntimeException $e) {
-                throw new MemberAccessError('Rimborso non riuscito: '.$e->getMessage());
+                throw new MemberAccessError('Rimborso non riuscito: '.$e->getMessage().($voided ? ' Nulla è stato stornato: ricevute e tessere sono come prima.' : ''));
             }
             $note = 'Restituiti '.self::euro($cents).' al socio.';
             $update = ['refunded_cents' => $done + $cents, 'refunded_at' => now(), 'updated_at' => now(), 'error' => mb_substr(trim(($p['error'] ?? '').' '.$note), 0, 1000)];
@@ -309,7 +311,7 @@ final readonly class OnlinePayments
 
             return ['person_id' => $p['person_id'], 'cents' => $cents, 'date' => $p['created_at']];
         });
-        $this->tellMember($paymentId, $sent['person_id'], $sent['cents'], $sent['date'], $reason, $orgName);
+        return $this->tellMember($paymentId, $sent['person_id'], $sent['cents'], $sent['date'], $reason, $orgName);
     }
 
     /**
@@ -340,20 +342,24 @@ final readonly class OnlinePayments
     }
 
     /** Email al socio: importo, motivo e tempi di accredito. Se non parte, il rimborso resta valido e si scrive nel registro. */
-    private function tellMember(string $paymentId, string $personId, int $cents, string $createdAt, string $reason, string $orgName): void
+    private function tellMember(string $paymentId, string $personId, int $cents, string $createdAt, string $reason, string $orgName): bool
     {
         $details = $this->profiles->details($personId);
         $email = $details['email'] ?? null;
         if (! is_string($email) || $email === '') {
             $this->audit->record('payment.refund_mail_skipped', 'app.online_payments', $paymentId, ['why' => 'no_email']);
 
-            return;
+            return false;
         }
         try {
             $this->app->make(Mailer::class)->to($email)->send(new PaymentRefunded($orgName, self::euro($cents), date('d/m/Y', (int) strtotime($createdAt)), mb_substr($reason, 0, 200)));
             $this->audit->record('payment.refund_mail_sent', 'app.online_payments', $paymentId, []);
+
+            return true;
         } catch (Throwable $e) {
             $this->audit->record('payment.refund_mail_skipped', 'app.online_payments', $paymentId, ['why' => 'send_failed', 'error' => mb_substr($e->getMessage(), 0, 200)]);
+
+            return false;
         }
     }
 

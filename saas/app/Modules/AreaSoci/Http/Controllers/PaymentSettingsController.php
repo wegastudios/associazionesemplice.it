@@ -144,11 +144,13 @@ final readonly class PaymentSettingsController
         }
         $name = $this->db->connection('pgsql')->table('core.orgs')->where('id', $this->context->require()->id)->value('name');
         try {
-            $this->payments->refund($payment, $cents, Input::string($data, 'reason'), is_string($name) ? $name : '');
+            $mailed = $this->payments->refund($payment, $cents, Input::string($data, 'reason'), is_string($name) ? $name : '');
         } catch (MemberAccessError $e) {
             throw ValidationException::withMessages(['ledger' => $e->getMessage()]);
         }
 
-        return back()->with('status', $cents === null ? 'Rimborsato e stornato: ricevute e tessere annullate, il socio è stato avvisato.' : 'Rimborso di '.Money::format($cents).' inviato al socio.');
+        $notice = $mailed ? 'Il socio è stato avvisato per email.' : 'Il socio non ha un'email: avvisalo tu.';
+
+        return back()->with('status', ($cents === null ? 'Rimborsato e stornato: ricevute e tessere annullate. ' : 'Rimborso di '.Money::format($cents).' inviato al socio. ').$notice);
     }
 }
