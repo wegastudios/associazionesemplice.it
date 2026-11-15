@@ -114,7 +114,7 @@ final readonly class ResourceBookingsService implements ResourceBookings
     }
 
     /**
-     * @param  array<int, mixed>  $values
+     * @param  array<mixed>  $values
      * @return list<int>
      */
     private static function rates(array $values): array
@@ -127,6 +127,6 @@ final readonly class ResourceBookingsService implements ResourceBookings
         }
         sort($rates);
 
-        return array_values($rates);
+        return $rates;
     }
 }
