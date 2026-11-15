@@ -328,7 +328,7 @@ if ( class_exists( '\\AssociazioneSemplice\\Certificates' ) && $wpdb->get_var( $
 	$fc_cs = FileMigration::state( FileMigration::CERT_OPT );
 	$fc_al = html_entity_decode( \AssociazioneSemplice\Admin\FileCryptPanel::cert_alerts_html(), ENT_QUOTES, 'UTF-8' );
 	$fc_ok( 'running' === $fc_cs['status'] && $fc_cs['running'] && false !== wp_next_scheduled( FileMigration::CERT_HOOK ) && $fc_ns + 1 === $fc_audit_n( 'file_crypt.certs_auto_started' ), 'certificati automatici: appena la chiave è valida parte da sola, programma il primo lotto e lo scrive nel registro azioni' );
-	$fc_ok( false !== strpos( $fc_al, 'La cifratura dei certificati medici è partita.' ) && false !== strpos( $fc_al, 'Cifratura dei file riservati' ), 'certificati automatici: l\'avviso dice che è partita e dove vedere lo stato' );
+	$fc_ok( false !== strpos( $fc_al, 'La cifratura dei certificati medici è partita.' ) && false !== strpos( $fc_al, 'Cifratura dei file riservati' ), 'certificati automatici: l\'avviso dice che è partita (mentre usi il programma) e dove vedere lo stato' );
 	$fc_ok( null === $fc_cget( $fc_c1 )['enc_ver'] && hash_file( 'sha256', $fc_dir . '/' . $fc_c1['stored'] ) === $fc_plain_h[ $fc_c1['stored'] ], 'certificati automatici: la partenza non cifra nulla da sola, il lavoro lo fanno i lotti programmati' );
 
 	// interruzione: un lotto minuscolo, il lavoro programmato che va perso, un file cifrato ma con la riga non aggiornata
@@ -353,7 +353,7 @@ if ( class_exists( '\\AssociazioneSemplice\\Certificates' ) && $wpdb->get_var( $
 	$fc_ok( null === $fc_cget( $fc_c3 )['enc_ver'] && hash_file( 'sha256', $fc_dir . '/' . $fc_c3['stored'] ) === $fc_plain_h[ $fc_c3['stored'] ] && $fc_cs['failed'] >= 1, 'certificati automatici: un certificato che non coincide con l\'impronta registrata resta in chiaro, intatto, e si conta come non riuscito' );
 	$fc_ok( null === $fc_get( $fc_oth )['enc_ver'] && hash_file( 'sha256', $fc_dir . '/' . $fc_oth['stored'] ) === $fc_plain_h[ $fc_oth['stored'] ], 'certificati automatici: gli altri file già caricati non vengono toccati finché non si preme il pulsante' );
 	$fc_al = html_entity_decode( \AssociazioneSemplice\Admin\FileCryptPanel::cert_alerts_html(), ENT_QUOTES, 'UTF-8' );
-	$fc_ok( false !== strpos( $fc_al, 'La cifratura dei certificati medici è finita, ma' ) && false !== strpos( $fc_al, 'non si sono potuti cifrare' ), 'certificati automatici: l\'avviso di fine dice quanti non si sono potuti cifrare' );
+	$fc_ok( false !== strpos( $fc_al, 'La cifratura dei certificati medici è finita, ma' ) && false !== strpos( $fc_al, 'non si sono potuti cifrare' ) && false !== strpos( $fc_al, 'Apri l\'elenco e premi «Riprova»; se il file non si trova, ricaricalo dalla scheda del socio.' ), 'certificati automatici: l\'avviso di fine dice quanti non si sono potuti cifrare e la strada per sistemarli' );
 	$fc_ok( $fc_ns + 1 === $fc_audit_n( 'file_crypt.certs_auto_started' ) && $fc_audit_n( 'file_crypt.certs_auto_finished' ) >= 1, 'certificati automatici: partenza e fine sono nel registro azioni' );
 	$fc_ok( ! $fc_parts(), 'certificati automatici: non restano file temporanei' );
 
