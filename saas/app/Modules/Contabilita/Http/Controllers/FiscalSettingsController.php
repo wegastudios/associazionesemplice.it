@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Contabilita\Http\Controllers;
 
+use App\Modules\Attivita\Contracts\Activities;
 use App\Modules\Core\Contracts\Input;
 use App\Modules\Core\Contracts\OrgFiscal;
 use App\Modules\Core\Contracts\OrgSettings;
@@ -19,6 +20,7 @@ final readonly class FiscalSettingsController
     public function __construct(
         private OrgFiscal $fiscal,
         private OrgSettings $settings,
+        private Activities $activities,
     ) {}
 
     public function show(): Response
@@ -49,6 +51,10 @@ final readonly class FiscalSettingsController
         $membership = is_numeric($data['membership_rate'] ?? null) ? (int) $data['membership_rate'] : 0;
         if ($membership !== 0 && ! in_array($membership, $rates, true)) {
             throw ValidationException::withMessages(['membership_rate' => 'Prima cambia l\'aliquota della quota associativa: deve essere «IVA esente» o una di quelle dell\'elenco. I movimenti già registrati restano come sono.']);
+        }
+        $used = array_values(array_filter($this->activities->vatRatesInUse(), static fn (int $r): bool => ! in_array($r, $rates, true)));
+        if ($used !== []) {
+            throw ValidationException::withMessages(['rates' => 'Alcune attività usano l\'aliquota '.implode(', ', array_map(static fn (int $r): string => $r.'%', $used)).': prima cambia l\'IVA di quelle attività, poi toglila dall\'elenco.']);
         }
         $this->settings->set(OrgFiscal::RATES, implode(',', $rates));
         $this->settings->set(OrgFiscal::INCLUDES_VAT, Input::bool($data, 'includes_vat', true));

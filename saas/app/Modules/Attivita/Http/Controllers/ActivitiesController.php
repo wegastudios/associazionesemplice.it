@@ -18,6 +18,7 @@ use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Contabilita\Contracts\Money;
 use App\Modules\Contabilita\Contracts\PaymentMethod;
 use App\Modules\Core\Contracts\Input;
+use App\Modules\Core\Contracts\OrgFiscal;
 use App\Modules\Risorse\Contracts\ResourceBookings;
 use Closure;
 use Illuminate\Database\DatabaseManager;
@@ -38,6 +39,7 @@ final readonly class ActivitiesController
         private Ledger $ledger,
         private ResourceBookings $resourceList,
         private DatabaseManager $db,
+        private OrgFiscal $fiscal,
     ) {}
 
     public function index(Request $request): Response
@@ -191,6 +193,9 @@ final readonly class ActivitiesController
                 'billing' => $activity->billing->value,
                 'fee' => Money::plain($activity->fee_cents),
                 'guest_fee' => $activity->guest_fee_cents === null ? '' : Money::plain($activity->guest_fee_cents),
+                'vat_warning' => self::vatWarning($activity->vat_rate, $this->fiscal),
+                'with_vat' => $activity->vat_rate !== null,
+                'vat_rate' => $activity->vat_rate ?? 0,
                 'instructor_person_id' => $activity->instructor_person_id,
                 'instructor_name' => $instructor === null ? null : trim((is_string($instructor->last_name ?? null) ? $instructor->last_name : '').' '.(is_string($instructor->first_name ?? null) ? $instructor->first_name : '')),
                 'weekdays' => $activity->weekdays,
@@ -242,6 +247,8 @@ final readonly class ActivitiesController
                     'voided' => $m['voided'],
                 ], $movements),
             ],
+            // Solo con la partita IVA: aliquote scelte in Aspetto fiscale e se i prezzi sono finali o «senza IVA».
+            'fiscal' => ['hasVat' => $this->fiscal->hasVat(), 'includesVat' => $this->fiscal->includesVat(), 'rates' => $this->fiscal->rates()],
             'resources' => $this->resourceList->options(),
             'kinds' => array_map(static fn (ActivityKind $k): array => ['value' => $k->value, 'label' => $k->label()], ActivityKind::cases()),
             'billings' => array_map(static fn (Billing $b): array => ['value' => $b->value, 'label' => $b->label()], Billing::cases()),
@@ -273,7 +280,19 @@ final readonly class ActivitiesController
             'price_lists' => ['nullable', 'string', 'max:200000'],
             'resource' => ['required', 'string', 'max:40'],
             'occupy_on_booking' => ['boolean'],
+            'with_vat' => ['boolean'],
+            'vat_rate' => ['nullable', 'integer', 'min:0', 'max:30'],
         ]));
+        $vatRate = null;
+        if (Input::bool($data, 'with_vat', false)) {
+            $vatRate = is_numeric($data['vat_rate'] ?? null) ? (int) $data['vat_rate'] : 0;
+            if (! $this->fiscal->hasVat()) {
+                throw ValidationException::withMessages(['with_vat' => 'Senza partita IVA l\'IVA non si applica.']);
+            }
+            if (! $this->fiscal->allows($vatRate)) {
+                throw ValidationException::withMessages(['vat_rate' => 'Scegli «IVA esente» o una delle aliquote indicate in Aspetto fiscale.']);
+            }
+        }
         $resource = Input::string($data, 'resource');
         if ($resource !== 'none' && ! Str::isUuid($resource)) {
             throw ValidationException::withMessages(['resource' => 'Scegli dove si svolge: una risorsa, oppure «Nessuna (fuori sede)».']);
@@ -301,7 +320,21 @@ final readonly class ActivitiesController
             'resource_id' => $resource === 'none' ? null : $resource,
             'no_resource' => $resource === 'none',
             'occupy_on_booking' => (bool) ($data['occupy_on_booking'] ?? false),
+            'vat_rate' => $vatRate,
         ];
+    }
+
+    /** Un'attività con IVA che non si può più applicare non deve incassare in silenzio senza IVA: la scheda lo dice. */
+    private static function vatWarning(?int $rate, OrgFiscal $fiscal): ?string
+    {
+        if ($rate === null) {
+            return null;
+        }
+        if (! $fiscal->hasVat()) {
+            return 'Senza partita IVA l\'IVA non si applica: gli incassi di questa attività si registrano senza IVA.';
+        }
+
+        return $fiscal->allows($rate) ? null : 'L\'aliquota di questa attività non è più nell\'elenco di Aspetto fiscale: scegline un\'altra.';
     }
 
     private static function cents(?string $value, bool $optional, string $field = 'amount'): ?int

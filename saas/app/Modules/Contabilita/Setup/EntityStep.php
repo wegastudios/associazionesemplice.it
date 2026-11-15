@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Contabilita\Setup;
 
+use App\Modules\Attivita\Contracts\Activities;
 use App\Modules\Contabilita\Rules\Fiscal;
 use App\Modules\Core\Contracts\Ability;
 use App\Modules\Core\Contracts\Operator;
@@ -31,7 +32,7 @@ final readonly class EntityStep implements SetupStep
     /** Dati «solo se esistono»: la casella «non ce l'ha» al posto del valore. */
     public const NONE = ['vat', 'runts', 'pec'];
 
-    public function __construct(private OrgSettings $settings) {}
+    public function __construct(private OrgSettings $settings, private Activities $activities) {}
 
     public function key(): string
     {
@@ -64,7 +65,7 @@ final readonly class EntityStep implements SetupStep
             $values[$k.'_none'] = $this->settings->get('ente.'.$k.'_none') === true;
         }
 
-        return ['values' => $values, 'kinds' => array_map(static fn (string $k, string $l): array => ['value' => $k, 'label' => $l], array_keys(self::KINDS), self::KINDS)];
+        return ['vat_activities' => $this->activities->withVatCount(), 'values' => $values, 'kinds' => array_map(static fn (string $k, string $l): array => ['value' => $k, 'label' => $l], array_keys(self::KINDS), self::KINDS)];
     }
 
     public function errors(array $input): array
