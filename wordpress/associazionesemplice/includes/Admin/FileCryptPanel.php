@@ -40,7 +40,7 @@ final class FileCryptPanel {
 		}
 		if ( 'done' === $s['status'] && $s['finished'] > 0 ) {
 			if ( $s['failed'] > 0 || $s['missing'] > 0 ) {
-				return array( 'type' => 'warning', 'key' => 'cert-crypt-done', 'days' => 365, 'link' => 'stato', 'title' => Texts::t( 'La cifratura dei certificati medici è finita, ma {f} non si sono potuti cifrare e {m} non sono stati trovati sul disco.', array( 'f' => $s['failed'], 'm' => $s['missing'] ) ), 'body' => Texts::t( 'I certificati non cifrati sono rimasti dove stavano, in chiaro: l\'elenco è in Impostazioni → Copia di sicurezza → «Cifratura dei file riservati». Apri l\'elenco e premi «Riprova»; se il file non si trova, ricaricalo dalla scheda del socio.' ) );
+				return array( 'type' => 'warning', 'key' => 'cert-crypt-done', 'days' => 365, 'link' => 'stato', 'title' => Texts::t( 'La cifratura dei certificati medici è finita, ma {f} non si sono potuti cifrare e {m} non sono stati trovati sul disco.', array( 'f' => $s['failed'], 'm' => $s['missing'] ) ), 'body' => Texts::t( 'I certificati non cifrati sono rimasti dove stavano, in chiaro: l\'elenco è in Impostazioni → Copia di sicurezza → «Cifratura dei file riservati». Apri l\'elenco e premi «Riprova»; se il file non si trova, elimina il certificato dalla pagina Certificati e caricalo di nuovo, oppure ripristina una copia di sicurezza.' ) );
 			}
 			return array( 'type' => 'success', 'key' => 'cert-crypt-done', 'days' => 365, 'link' => 'stato', 'title' => Texts::t( 'La cifratura dei certificati medici è finita.' ), 'body' => Texts::t( 'Tutti i certificati già caricati sono ora cifrati sul disco.' ) . ' ' . $ex );
 		}
