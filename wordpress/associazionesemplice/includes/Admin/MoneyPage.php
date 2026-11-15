@@ -23,6 +23,7 @@ final class MoneyPage {
 		echo '<p class="asem-quick"><a class="button button-primary" href="' . esc_url( Ui::url( 'asem-income' ) ) . '">Nuovo incasso</a> <a class="button" href="' . esc_url( Ui::url( 'asem-bookdesk' ) ) . '">Prenota</a> '
 			. ( \AssociazioneSemplice\Edition::has( 'funds' ) ? '<a class="button" href="' . esc_url( Ui::url( 'asem-group' ) ) . '">Cassa per più persone</a> ' : '' )
 			. '<a class="button" href="' . esc_url( Ui::url( 'asem-expense' ) ) . '">Nuova spesa</a>'
+			. ( \AssociazioneSemplice\Edition::has( 'payments' ) ? ' <a class="button" href="' . esc_url( Ui::url( 'asem-payments' ) ) . '">Pagamenti online</a>' : '' )
 			. ( Modules::on( 'accounts' ) ? ' <a class="button" href="' . esc_url( Ui::url( 'asem-transfer' ) ) . '">Giroconto</a>' : '' ) . '</p>';
 
 		echo '<div class="asem-grid"><div class="asem-card"><h2>Disponibilità reale</h2>';

@@ -43,6 +43,7 @@ const open = (id) => router.post(`/area/scheda/${id}`);
             </div>
             <FlashMessages />
             <slot />
+            <p v-if="member?.contacts" class="caption mt-8 text-center">Segreteria: <a :href="`mailto:${member.contacts.email}`" class="underline">{{ member.contacts.email }}</a> · tel. <a :href="`tel:${member.contacts.phone.replace(/[^0-9+]/g, '')}`" class="underline">{{ member.contacts.phone }}</a></p>
         </main>
         <nav class="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card pb-[env(safe-area-inset-bottom)] shadow-bar sm:hidden" aria-label="Area soci">
             <ul class="grid auto-cols-fr grid-flow-col">

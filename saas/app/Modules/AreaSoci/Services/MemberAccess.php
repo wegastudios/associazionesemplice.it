@@ -6,6 +6,7 @@ namespace App\Modules\AreaSoci\Services;
 
 use App\Modules\AreaSoci\Mail\LoginLink;
 use App\Modules\Audit\Contracts\AuditLog;
+use App\Modules\Core\Contracts\OrgContacts;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Soci\Contracts\MemberProfiles;
 use Illuminate\Contracts\Mail\Mailer;
@@ -38,6 +39,7 @@ final readonly class MemberAccess
         private MemberProfiles $profiles,
         private Mailer $mailer,
         private AuditLog $audit,
+        private OrgContacts $contacts,
     ) {}
 
     /** Manda link e codice se l'email è di qualcuno che può entrare; la risposta per chi chiede è sempre la stessa. */
@@ -47,6 +49,8 @@ final readonly class MemberAccess
         if ($this->profiles->loginCandidates($email) === []) {
             return;
         }
+        // L'accesso è un invio automatico: parte sempre; senza i contatti della segreteria esce senza indirizzo di risposta né riga contatti.
+        $contacts = $this->contacts->all();
         $link = self::random();
         $code = (string) random_int(100000, 999999);
         $id = Str::uuid7()->toString();
@@ -54,7 +58,7 @@ final readonly class MemberAccess
             'org_id' => $this->org(), 'id' => $id, 'kind' => 'email', 'email' => $email, 'link_hash' => self::hash($link),
             'code_hash' => self::hash($id.':'.$code), 'expires_at' => now()->addMinutes(self::CODE_MINUTES),
         ]);
-        $this->mailer->to($email)->send(new LoginLink($orgName, rtrim($baseUrl, '/').'/area/entra/'.$link, $code, self::CODE_MINUTES));
+        $this->mailer->to($email)->send(new LoginLink($orgName, rtrim($baseUrl, '/').'/area/entra/'.$link, $code, self::CODE_MINUTES, $contacts['email'] ?? null, $contacts['phone'] ?? null));
         $this->audit->record('member.login_requested', null, null, ['kind' => 'email']);
     }
 

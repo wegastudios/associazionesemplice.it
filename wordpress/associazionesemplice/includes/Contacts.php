@@ -112,8 +112,8 @@ final class Contacts {
 			return null;
 		}
 		return array(
-			'text'       => Texts::t( 'Mancano i contatti della segreteria (email e telefono): finché mancano, la segreteria non può inviare email ai soci (comunicazioni, avvisi e ricevute inviate a mano). Gli invii automatici, come il link di accesso, partono lo stesso. I contatti compaiono anche nell\'informativa sulla privacy.' ),
-			'text_other' => Texts::t( 'Mancano i contatti della segreteria: chiedi a chi amministra di inserirli. Finché mancano, la segreteria non può inviare email ai soci.' ),
+			'text'       => Texts::t( 'Mancano i contatti della segreteria (email e telefono): finché mancano, la segreteria non può inviare messaggi ai soci (comunicazioni, avvisi agli iscritti e ricevute inviate a mano). Gli invii automatici, come il link di accesso, partono lo stesso. I contatti compaiono anche nell\'informativa sulla privacy.' ),
+			'text_other' => Texts::t( 'Mancano i contatti della segreteria: chiedi a chi amministra di inserirli. Finché mancano, la segreteria non può inviare messaggi ai soci.' ),
 			'url'        => Admin\Ui::url( 'asem-entity' ) . '#asem-contacts',
 			'page'       => 'asem-entity',
 			'button'     => Texts::t( 'Inseriscili ora' ),
@@ -130,7 +130,7 @@ final class Contacts {
 		if ( self::complete() ) {
 			return;
 		}
-		$msg = Texts::t( 'Prima inserisci email e telefono della segreteria (Impostazioni › Ente): senza, la segreteria non può inviare email ai soci.' );
+		$msg = Texts::t( 'Prima inserisci email e telefono della segreteria (Impostazioni › Ente): senza, la segreteria non può inviare messaggi ai soci.' );
 		if ( $receipt ) {
 			$msg .= ' ' . Texts::t( 'Intanto scarica la ricevuta e consegnala a mano.' );
 		}

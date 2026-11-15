@@ -74,6 +74,62 @@ final class StripeApi {
 		return self::call( $http, 'GET', '/v1/checkout/sessions/' . rawurlencode( $session_id ), $secret );
 	}
 
+	/**
+	 * Rimborso (anche parziale) di un pagamento: i soldi tornano sul metodo usato dal socio. L'Idempotency-Key fa sì che lo stesso invio ripetuto
+	 * (doppio clic, richiesta rifatta dopo un timeout) non rimborsi due volte. Non lancia eccezioni per le risposte di Stripe: le classifica.
+	 *
+	 * @return array ['ok' => bool, 'id' => re_…, 'reason' => permission|key|already|not_found|balance|amount|other (se non ok), 'message' => testo del gestore]
+	 */
+	public static function refund( callable $http, string $secret, string $payment_intent, int $cents, string $idempotency_key, string $public_id ): array {
+		$form = array(
+			'payment_intent' => $payment_intent,
+			'amount'         => $cents,
+			'reason'         => 'requested_by_customer',
+			'metadata'       => array( 'asem_payment' => $public_id ),
+		);
+		$r    = $http(
+			'POST',
+			self::BASE . '/v1/refunds',
+			array( 'Authorization' => 'Bearer ' . $secret, 'Content-Type' => 'application/x-www-form-urlencoded', 'Idempotency-Key' => $idempotency_key ),
+			http_build_query( $form, '', '&', PHP_QUERY_RFC3986 )
+		);
+		$code = (int) $r['code'];
+		$data = json_decode( (string) $r['body'], true );
+		if ( $code >= 200 && $code < 300 && is_array( $data ) && ! empty( $data['id'] ) ) {
+			if ( in_array( (string) ( $data['status'] ?? '' ), array( 'failed', 'canceled' ), true ) ) {
+				return array( 'ok' => false, 'id' => (string) $data['id'], 'reason' => 'other', 'message' => 'rimborso ' . (string) $data['status'] );
+			}
+			return array( 'ok' => true, 'id' => (string) $data['id'], 'reason' => '', 'message' => '' );
+		}
+		return array( 'ok' => false, 'id' => '', 'reason' => self::refund_reason( $code, $data ), 'message' => is_array( $data ) && isset( $data['error']['message'] ) ? (string) $data['error']['message'] : 'risposta ' . $code );
+	}
+
+	/** Perché Stripe ha rifiutato il rimborso. @param mixed $data risposta già decodificata */
+	public static function refund_reason( int $code, $data ): string {
+		$err = is_array( $data ) && isset( $data['error'] ) && is_array( $data['error'] ) ? $data['error'] : array();
+		$ec  = (string) ( $err['code'] ?? '' );
+		$msg = strtolower( (string) ( $err['message'] ?? '' ) );
+		if ( 'charge_already_refunded' === $ec || false !== strpos( $msg, 'has already been refunded' ) ) {
+			return 'already';
+		}
+		if ( 'balance_insufficient' === $ec || false !== strpos( $msg, 'insufficient funds' ) ) {
+			return 'balance';
+		}
+		if ( 'amount_too_large' === $ec || false !== strpos( $msg, 'greater than unrefunded amount' ) || false !== strpos( $msg, 'greater than the' ) ) {
+			return 'amount';
+		}
+		if ( 'resource_missing' === $ec || 404 === $code ) {
+			return 'not_found';
+		}
+		if ( 403 === $code || 'permission_error' === (string) ( $err['type'] ?? '' ) || false !== strpos( $msg, 'required permissions' ) || false !== strpos( $msg, 'does not have the required' ) ) {
+			return 'permission';
+		}
+		if ( 401 === $code || 'invalid_api_key' === $ec ) {
+			return 'key';
+		}
+		return 'other';
+	}
+
 	public static function is_paid( array $session ): bool {
 		return 'paid' === ( $session['payment_status'] ?? '' );
 	}

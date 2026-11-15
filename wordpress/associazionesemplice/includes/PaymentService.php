@@ -346,7 +346,7 @@ class PaymentService extends OfflinePayments {
 	/** Pagamenti della domanda già incassati dal gateway e non ancora registrati in prima nota né restituiti. @return array[] */
 	private function application_payments( int $person_id ): array {
 		$rows = $this->db()->get_results(
-			$this->db()->prepare( 'SELECT * FROM ' . Db::t( 'payments' ) . " WHERE payer_person_id = %d AND status = 'paid' AND allocated_cents = 0 AND refund_due = 0 ORDER BY id", $person_id ),
+			$this->db()->prepare( 'SELECT * FROM ' . Db::t( 'payments' ) . " WHERE payer_person_id = %d AND status = 'paid' AND allocated_cents = 0 AND refund_due = 0 AND refunded_cents = 0 ORDER BY id", $person_id ), // un pagamento già restituito (anche in parte) non entra più in prima nota
 			ARRAY_A
 		) ?: array();
 		return array_values( array_filter( $rows, function ( $r ) {
@@ -423,7 +423,234 @@ class PaymentService extends OfflinePayments {
 		return true;
 	}
 
+	// ---------- Rimborso dal gateway ----------
+
+	/** Rimborso minimo: sotto questa cifra i gestori lo rifiutano o costa più della somma. */
+	const REFUND_MIN_CENTS = 50;
+
+	/** Metodi che si rimborsano da qui (gli altri si restituiscono dal loro pannello). */
+	const REFUND_GATEWAYS = array( 'stripe' => 'Stripe', 'paypal' => 'PayPal' );
+
+	/** Incassi in prima nota collegati al pagamento (stesso riferimento e metodo): quanti, e quanti non annullati. @return array{total:int,active:int} */
+	private function linked_income( array $p ): array {
+		$ref = substr( (string) $p['provider_ref'], 0, 80 );
+		if ( '' === $ref ) {
+			return array( 'total' => 0, 'active' => 0 );
+		}
+		$row = $this->db()->get_row(
+			$this->db()->prepare( 'SELECT COUNT(*) AS n, COALESCE(SUM(voided_at IS NULL),0) AS a FROM ' . Db::t( 'transactions' ) . " WHERE document_ref = %s AND method = %s AND type = 'income'", $ref, (string) $p['provider'] ),
+			ARRAY_A
+		);
+		return array( 'total' => (int) ( $row['n'] ?? 0 ), 'active' => (int) ( $row['a'] ?? 0 ) );
+	}
+
+	/**
+	 * Si può restituire questo pagamento da qui? Sì per i pagamenti Stripe e PayPal incassati che (a) non sono mai entrati in prima nota (domanda rifiutata,
+	 * pagamento arrivato dopo il rifiuto, pagamento da controllare) o (b) sono entrati ma tutti i loro incassi sono stati annullati. Se l'incasso è
+	 * ancora valido in prima nota non si rimborsa: va prima annullato.
+	 *
+	 * @return array{ok:bool,why:string,case:string,remaining:int} case: 'a' (mai registrato) o 'b' (incasso annullato)
+	 */
+	public function refund_info( array $p ): array {
+		$no = function ( string $why ): array {
+			return array( 'ok' => false, 'why' => $why, 'case' => '', 'remaining' => 0 );
+		};
+		if ( ! isset( self::REFUND_GATEWAYS[ $p['provider'] ] ) ) {
+			if ( PaymentConfig::WOOCOMMERCE === $p['provider'] ) {
+				return $no( Texts::t( 'Questo pagamento è passato dal negozio WooCommerce: rimborsalo dall\'ordine nel negozio.' ) );
+			}
+			$name = array( 'sumup' => 'SumUp', 'satispay' => 'Satispay' )[ $p['provider'] ] ?? (string) $p['provider'];
+			return $no( Texts::t( 'I pagamenti con {metodo} non si rimborsano da qui: restituisci i soldi dal pannello di {metodo}.', array( 'metodo' => $name ) ) );
+		}
+		if ( 'paid' !== $p['status'] ) {
+			return $no( Texts::t( 'Il pagamento non risulta incassato: non c\'è nulla da restituire.' ) );
+		}
+		if ( '' === (string) $p['provider_payment_id'] ) {
+			return $no( Texts::t( 'Di questo pagamento manca il riferimento sul gestore: restituisci i soldi dal suo pannello.' ) );
+		}
+		$remaining = (int) $p['amount_cents'] - (int) ( $p['refunded_cents'] ?? 0 );
+		if ( $remaining <= 0 ) {
+			return $no( Texts::t( 'Questo pagamento è già stato restituito per intero.' ) );
+		}
+		$linked = $this->linked_income( $p );
+		if ( $linked['active'] > 0 ) {
+			return $no( Texts::t( 'L\'incasso è ancora registrato in prima nota: annullalo prima dalla prima nota, poi potrai restituire i soldi da qui.' ) );
+		}
+		if ( 0 === $linked['total'] ) {
+			$items = (array) json_decode( (string) $p['items'], true );
+			if ( isset( $items[0]['type'] ) && PaymentItems::APPLICATION === $items[0]['type'] && empty( $p['refund_due'] ) ) {
+				$person = Plugin::people()->get( (int) $p['payer_person_id'] );
+				if ( $person && ! empty( $person['application_status'] ) ) {
+					return $no( Texts::t( 'La domanda di adesione è ancora in esame: se la rifiuti la quota risulterà da rimborsare.' ) );
+				}
+			}
+		}
+		return array( 'ok' => true, 'why' => '', 'case' => 0 === $linked['total'] ? 'a' : 'b', 'remaining' => $remaining );
+	}
+
+	/** Frase per chi ha provato un rimborso che il gestore ha rifiutato. */
+	private function refund_error( string $provider, string $reason, string $detail ): string {
+		$name = self::REFUND_GATEWAYS[ $provider ] ?? $provider;
+		switch ( $reason ) {
+			case 'permission':
+				$tail = '' !== $detail ? ' ' . Texts::t( 'Messaggio del gestore: {dettaglio}', array( 'dettaglio' => mb_substr( $detail, 0, 160 ) ) ) : '';
+				return ( 'stripe' === $provider
+					? Texts::t( 'La chiave Stripe non ha il permesso di fare rimborsi: controlla le autorizzazioni della chiave su Stripe (serve poter scrivere i rimborsi).' )
+					: Texts::t( 'L\'app PayPal non ha il permesso di fare rimborsi: controlla le autorizzazioni dell\'app su developer.paypal.com e che l\'account PayPal possa rimborsare, poi riprova.' ) ) . $tail;
+			case 'key':
+				return Texts::t( 'Le credenziali di {metodo} non sono valide: controllale in Impostazioni → Pagamenti online.', array( 'metodo' => $name ) );
+			case 'already':
+				return Texts::t( '{metodo} dice che questo pagamento è già stato rimborsato per intero: controlla dal suo pannello.', array( 'metodo' => $name ) );
+			case 'not_found':
+				return Texts::t( '{metodo} non trova questo pagamento: controlla che le chiavi siano quelle dell\'account che lo ha incassato (prova o reale).', array( 'metodo' => $name ) );
+			case 'balance':
+				return Texts::t( 'Sul tuo conto {metodo} non c\'è abbastanza saldo per il rimborso: aspetta che arrivino gli accrediti o ricarica il saldo, poi riprova.', array( 'metodo' => $name ) );
+			case 'amount':
+				return Texts::t( 'L\'importo è più di quello che {metodo} può ancora restituire su questo pagamento: controlla dal suo pannello se è già stato rimborsato in parte.', array( 'metodo' => $name ) );
+		}
+		return Texts::t( 'Rimborso non riuscito: {fornitore}', array( 'fornitore' => $name . ( '' !== $detail ? ': ' . mb_substr( $detail, 0, 160 ) : '' ) ) );
+	}
+
+	/**
+	 * Restituisce al socio (tutto o parte di) un pagamento Stripe o PayPal. NON scrive in prima nota: lascia traccia solo nel pagamento e nel registro
+	 * azioni. Non si annulla. Il rimborso parte con una chiave di idempotenza legata al pagamento e a quanto era già stato restituito: lo stesso invio
+	 * ripetuto non rimborsa due volte.
+	 *
+	 * @param int $cents    importo da restituire
+	 * @param int $expected quanto risultava già restituito quando l'amministratore ha aperto la pagina (se nel frattempo è cambiato, non si procede)
+	 * @return array{cents:int,total:int,full:bool,mailed:bool}
+	 * @throws \InvalidArgumentException con la frase da mostrare
+	 */
+	public function refund( int $id, int $cents, int $expected, string $reason ): array {
+		$p = $this->get( $id );
+		if ( ! $p ) {
+			throw new \InvalidArgumentException( Texts::t( 'Pagamento non trovato.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$info = $this->refund_info( $p );
+		if ( ! $info['ok'] ) {
+			throw new \InvalidArgumentException( $info['why'] ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$before = (int) $p['refunded_cents'];
+		if ( $before !== $expected ) {
+			throw new \InvalidArgumentException( Texts::t( 'Il pagamento è cambiato dopo che hai aperto la pagina (già restituiti {importo}): ricarica la pagina e controlla prima di restituire altro.', array( 'importo' => Money::format( $before ) ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$reason = trim( $reason );
+		if ( '' === $reason ) {
+			throw new \InvalidArgumentException( Texts::t( 'Scrivi il motivo del rimborso: lo leggerà il socio.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		if ( $cents < self::REFUND_MIN_CENTS || $cents > $info['remaining'] ) {
+			throw new \InvalidArgumentException( Texts::t( 'Importo non valido: si può restituire da {min} a {max}.', array( 'min' => Money::format( self::REFUND_MIN_CENTS ), 'max' => Money::format( $info['remaining'] ) ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$provider = (string) $p['provider'];
+		$name     = self::REFUND_GATEWAYS[ $provider ];
+		$cfg      = ProSettings::payment_config();
+		$key      = 'refund-' . $p['public_id'] . '-' . $before . '-' . $cents;
+		try {
+			if ( 'stripe' === $provider ) {
+				if ( '' === (string) $cfg['stripe_secret_key'] ) {
+					throw new \InvalidArgumentException( Texts::t( 'Le credenziali di {metodo} non sono impostate: inseriscile in Impostazioni → Pagamenti online.', array( 'metodo' => $name ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				}
+				$res = StripeApi::refund( $this->http(), $cfg['stripe_secret_key'], (string) $p['provider_payment_id'], $cents, $key, (string) $p['public_id'] );
+			} else {
+				if ( '' === (string) $cfg['paypal_client_id'] || '' === (string) $cfg['paypal_client_secret'] ) {
+					throw new \InvalidArgumentException( Texts::t( 'Le credenziali di {metodo} non sono impostate: inseriscile in Impostazioni → Pagamenti online.', array( 'metodo' => $name ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				}
+				$live = 'live' === $cfg['paypal_mode'];
+				try {
+					$token = PayPalApi::access_token( $this->http(), $live, $cfg['paypal_client_id'], $cfg['paypal_client_secret'] );
+				} catch ( \RuntimeException $e ) {
+					throw new \InvalidArgumentException( $this->refund_error( $provider, 'key', '' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				}
+				$res = PayPalApi::refund( $this->http(), $live, $token, (string) $p['provider_payment_id'], $cents, mb_substr( 'refund-' . $p['public_id'] . '-' . $before . '-' . $cents, 0, 100 ), (string) $p['public_id'] );
+			}
+		} catch ( \RuntimeException $e ) { // rete: non si sa se il gestore ha ricevuto la richiesta; rifarla con gli stessi dati non rimborsa due volte
+			Audit::log( 'payment.refund_unreachable', 'payment', $id, array( 'provider' => $provider, 'cents' => $cents ) );
+			throw new \InvalidArgumentException( Texts::t( 'Il servizio di {metodo} non risponde: il rimborso non è stato confermato. Riprova tra poco: ripetere lo stesso invio non rimborsa due volte.', array( 'metodo' => $name ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		if ( empty( $res['ok'] ) ) {
+			Audit::log( 'payment.refund_refused', 'payment', $id, array( 'provider' => $provider, 'cents' => $cents, 'reason' => $res['reason'] ) );
+			throw new \InvalidArgumentException( $this->refund_error( $provider, (string) $res['reason'], (string) $res['message'] ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$total = $before + $cents;
+		$full  = $total >= (int) $p['amount_cents'];
+		$tbl   = Db::t( 'payments' );
+		$data  = array( 'refunded_cents' => $total, 'refund_id' => mb_substr( (string) $res['id'], 0, 120 ), 'refunded_at' => Db::now(), 'updated_at' => Db::now(), 'error' => mb_substr( Texts::t( 'Restituiti {importo} al socio.', array( 'importo' => Money::format( $total ) ) ), 0, 250 ) );
+		if ( $full ) {
+			$data['refund_due'] = 0;
+			$data['review']     = 0; // tutto restituito: nulla più da controllare
+		}
+		$done = $this->db()->update( $tbl, $data, array( 'id' => $id, 'refunded_cents' => $before ) ); // solo se nessun altro ha registrato un rimborso nel frattempo
+		Audit::log( 'payment.refunded', 'payment', $id, array( 'provider' => $provider, 'cents' => $cents, 'total' => $total, 'refund' => (string) $res['id'], 'case' => $info['case'], 'reason' => mb_substr( $reason, 0, 200 ), 'recorded' => 1 === (int) $done ) );
+		if ( 1 !== (int) $done ) {
+			throw new \InvalidArgumentException( Texts::t( 'Questo rimborso risulta già registrato: ricarica la pagina per vedere quanto è stato restituito.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		return array( 'cents' => $cents, 'total' => $total, 'full' => $full, 'mailed' => $this->send_refund_email( $this->get( $id ), $cents, $reason ) );
+	}
+
+	/** Email al socio che ha pagato: gli diciamo quanto gli è stato restituito. Senza email non si manda nulla (il rimborso è già partito). */
+	private function send_refund_email( ?array $p, int $cents, string $reason ): bool {
+		$payer = $p ? Plugin::people()->get( (int) $p['payer_person_id'] ) : null;
+		if ( ! $p || ! $payer || empty( $payer['email'] ) ) {
+			return false;
+		}
+		$assoc   = (string) Settings::get( 'association_name' );
+		$assoc   = '' !== $assoc ? $assoc : Texts::t( 'l\'associazione' );
+		$subject = Texts::t( 'Rimborso del tuo pagamento · {associazione}', array( 'associazione' => $assoc ) );
+		$tpl     = 'Ciao, abbiamo restituito {importo} del pagamento che hai fatto il {data} a {associazione}. Motivo: {motivo}. L\'accredito compare sul tuo metodo di pagamento in genere entro pochi giorni lavorativi, fino a 10 a seconda della banca o del metodo di pagamento. Se hai dubbi, scrivi alla segreteria. — {associazione}';
+		if ( Contacts::complete() ) { // con i contatti della segreteria la chiusa li riporta (e Texts::mail aggiunge il Reply-To); senza, resta la frase generica
+			$tpl = str_replace( 'scrivi alla segreteria. —', 'scrivi alla segreteria: {email}, tel. {telefono}. —', $tpl );
+		}
+		$body    = Texts::t(
+			$tpl,
+			array(
+				'importo'      => Money::format( $cents ),
+				'data'         => ( new \DateTimeImmutable( (string) ( $p['paid_at'] ?: $p['created_at'] ) ) )->format( 'd/m/Y' ),
+				'associazione' => $assoc,
+				'motivo'       => $reason,
+				'email'        => Contacts::email(),
+				'telefono'     => Contacts::phone(),
+			)
+		);
+		return Texts::mail( $payer['email'], $subject, $body );
+	}
+
+	/**
+	 * Azione `asem_tx_voided`: se l'incasso annullato era l'ultimo ancora valido di un pagamento online Stripe o PayPal, il pagamento si segna «da controllare»
+	 * con la domanda se i soldi vanno restituiti al socio. Non rimborsa nulla e non tocca altro: qualunque errore qui non deve fermare l'annullo.
+	 */
+	public static function on_tx_voided( $tx_id, $reason = '' ): void {
+		try {
+			$svc = self::engine();
+			$db  = $svc->db();
+			$tx  = $db->get_row( $db->prepare( 'SELECT type, method, document_ref FROM ' . Db::t( 'transactions' ) . ' WHERE id = %d', (int) $tx_id ), ARRAY_A );
+			if ( ! $tx || 'income' !== $tx['type'] || '' === (string) $tx['document_ref'] || ! isset( self::REFUND_GATEWAYS[ $tx['method'] ] ) ) {
+				return;
+			}
+			$p = $db->get_row( $db->prepare( 'SELECT * FROM ' . Db::t( 'payments' ) . " WHERE provider = %s AND status = 'paid' AND LEFT(provider_ref,80) = %s ORDER BY id DESC LIMIT 1", (string) $tx['method'], (string) $tx['document_ref'] ), ARRAY_A );
+			if ( ! $p || (int) $p['refunded_cents'] >= (int) $p['amount_cents'] ) {
+				return;
+			}
+			$linked = $svc->linked_income( $p );
+			if ( $linked['total'] < 1 || $linked['active'] > 0 ) {
+				return; // restano incassi validi: non è ancora il caso di chiedersi se rimborsare
+			}
+			$data = array( 'review' => 1 );
+			if ( '' === (string) $p['error'] ) {
+				$data['error'] = Texts::t( 'Incasso annullato in prima nota: se i soldi vanno restituiti al socio usa «Rimborsa».' );
+			}
+			$svc->update( (int) $p['id'], $data );
+			Audit::log( 'payment.void_signal', 'payment', (int) $p['id'], array( 'tx' => (int) $tx_id ) );
+		} catch ( \Throwable $e ) {
+			unset( $e ); // l'annullo dell'incasso è già riuscito: il segnale è un di più
+		}
+	}
+
 	// ---------- Conferme ----------
+
+	/** Messaggio al socio a pagamento ricevuto: se il pagamento resta da controllare lo sa, senza dettagli. */
+	private function received_message( ?array $p ): string {
+		return $p && ! empty( $p['review'] ) ? Texts::t( 'Pagamento ricevuto: la segreteria lo sta controllando.' ) : 'Pagamento ricevuto: grazie!';
+	}
 
 	/** Ritorno del socio dalla pagina del gateway. @return string messaggio per l'utente */
 	public function handle_return( string $public_id, string $ret, int $user_id ): string {
@@ -432,12 +659,12 @@ class PaymentService extends OfflinePayments {
 			throw new \InvalidArgumentException( 'Pagamento non trovato.' );
 		}
 		if ( 'paid' === $p['status'] ) {
-			return 'Pagamento ricevuto: grazie!';
+			return $this->received_message( $p );
 		}
 		if ( 'cancel' === $ret ) {
 			if ( in_array( $p['status'], array( 'created', 'pending' ), true ) ) {
 				if ( $this->confirm_with_gateway( $p ) ) {
-					return 'Pagamento ricevuto: grazie!'; // il gateway risulta pagato anche se l'indirizzo era quello dell'annullo: non si perde un incasso
+					return $this->received_message( $this->get( (int) $p['id'] ) ); // il gateway risulta pagato anche se l'indirizzo era quello dell'annullo: non si perde un incasso
 				}
 				$this->update( (int) $p['id'], array( 'status' => 'cancelled' ) );
 			}
@@ -446,7 +673,7 @@ class PaymentService extends OfflinePayments {
 		$this->confirm_with_gateway( $p );
 		$p = $this->get( (int) $p['id'] );
 		if ( 'paid' === $p['status'] ) {
-			return 'Pagamento ricevuto: grazie!';
+			return $this->received_message( $p );
 		}
 		return 'Pagamento in attesa di conferma: appena il gestore del pagamento lo conferma, lo registriamo.';
 	}

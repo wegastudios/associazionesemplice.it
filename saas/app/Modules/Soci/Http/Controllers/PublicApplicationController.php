@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Soci\Http\Controllers;
 
+use App\Modules\Core\Contracts\OrgContacts;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgDirectory;
 use App\Modules\Core\Contracts\OrgSettings;
@@ -30,6 +31,7 @@ final readonly class PublicApplicationController
         private OrgDirectory $directory,
         private OrgContext $context,
         private OrgSettings $settings,
+        private OrgContacts $contacts,
         private ApplicationService $applications,
     ) {}
 
@@ -49,6 +51,7 @@ final readonly class PublicApplicationController
             ],
             'privacyUrl' => $this->url(self::PRIVACY_URL),
             'rulesUrl' => $this->url(self::RULES_URL),
+            'contacts' => $this->contacts->all(),
         ]);
     }
 

@@ -5,6 +5,8 @@ use AssociazioneSemplice\Bank;
 use AssociazioneSemplice\Iban;
 use AssociazioneSemplice\Money;
 use AssociazioneSemplice\PaymentConfig;
+use AssociazioneSemplice\PaymentService;
+use AssociazioneSemplice\Texts;
 use AssociazioneSemplice\PaymentItems;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\SatispayRules;
@@ -126,18 +128,39 @@ final class PaymentsPage {
 		echo '</div>';
 	}
 
+	/** Modulo «Rimborsa»: importo scritto a mano (mai precompilato) e spunta «non si può annullare». Si vede solo se il pagamento si può restituire da qui. */
+	private static function refund_form( array $r, array $info ): string {
+		ob_start();
+		Ui::form_open( 'asem_payment_refund', Ui::url( 'asem-payments' ) );
+		$form = ob_get_clean();
+		$why  = 'a' === $info['case']
+			? Texts::t( 'Questo pagamento non è in prima nota: il rimborso non scrive nulla in prima nota.' )
+			: Texts::t( 'L\'incasso è già stato annullato in prima nota: il rimborso non scrive nulla in prima nota.' );
+		return '<details><summary class="button button-small">' . esc_html( Texts::t( 'Rimborsa' ) ) . '</summary>' . $form
+			. Ui::hidden( 'id', $r['id'] ) . Ui::hidden( 'expected', (int) $r['refunded_cents'] )
+			. '<p><label>' . esc_html( Texts::t( 'Quanto restituire al socio (massimo {importo})? I soldi tornano sul suo metodo di pagamento e non si può annullare.', array( 'importo' => Money::format( $info['remaining'] ) ) ) )
+			. '<br><input type="text" name="amount" size="8" inputmode="decimal" placeholder="0,00" autocomplete="off" required> €</label></p>'
+			. '<p><label>' . esc_html( Texts::t( 'Motivo del rimborso (lo leggerà il socio nell\'email):' ) ) . '<br><input type="text" name="reason" class="regular-text" maxlength="200" required></label></p>'
+			. '<p class="description">' . esc_html( $why ) . ' ' . esc_html( Texts::t( 'Si può restituire da 0,50 € in su.' ) ) . ' ' . esc_html( Texts::t( 'Il rimborso restituisce solo i soldi: iscrizioni, prenotazioni e crediti collegati a questo pagamento restano come sono. Se vanno tolti, sistemali a mano.' ) ) . '</p>'
+			. '<p><label><input type="checkbox" name="ack" value="1" required> ' . esc_html( Texts::t( 'Ho capito: il rimborso non si può annullare' ) ) . '</label></p>'
+			. '<button class="button button-small button-primary">' . esc_html( Texts::t( 'Rimborsa' ) ) . '</button></form></details>';
+	}
+
 	public static function render(): void {
 		$status = Ui::get_str( 'status' );
 		$review = '1' === Ui::get_str( 'review' );
 		$rows   = Plugin::payments()->list( array( 'status' => $status, 'review' => $review ), 200 );
 		$svc    = Plugin::payments();
 
-		Ui::header( 'Impostazioni: pagamenti online' );
-		self::settings_card();
-		BankPage::card();
+		$admin = current_user_can( Plugin::CAP ); // le chiavi dei gateway e il bonifico sono solo dell'amministratore; segreteria e dipendente vedono l'elenco dei pagamenti
+		Ui::header( $admin ? 'Impostazioni: pagamenti online' : 'Pagamenti online' );
+		if ( $admin ) {
+			self::settings_card();
+			BankPage::card();
+		}
 		echo '<h2>Pagamenti ricevuti</h2>';
 		if ( ! $svc->enabled() ) {
-			echo '<div class="notice notice-info inline"><p>I pagamenti online non sono attivi: scegli Stripe, PayPal o entrambi e inserisci le chiavi qui sopra. Nel frattempo i soci possono pagare in sede o, se lo attivi, con il bonifico.</p></div>';
+			echo '<div class="notice notice-info inline"><p>I pagamenti online non sono attivi: scegli Stripe, PayPal o entrambi e inserisci le chiavi' . ( $admin ? ' qui sopra' : ' (le imposta un amministratore)' ) . '. Nel frattempo i soci possono pagare in sede o, se lo attivi, con il bonifico.</p></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
 		echo '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-payments"><select name="status">' . Ui::options( self::STATUS, $status, 'Tutti gli stati' ) . '</select> ' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<label><input type="checkbox" name="review" value="1"' . checked( $review, true, false ) . '> Solo da controllare</label> <button class="button">Filtra</button></form>';
@@ -157,9 +180,16 @@ final class PaymentsPage {
 			} elseif ( in_array( $r['status'], array( 'failed', 'expired' ), true ) ) {
 				$state = '<span class="asem-neg">' . $state . '</span>';
 			}
+			$refunded = (int) ( $r['refunded_cents'] ?? 0 );
+			$rf_html  = '';
+			if ( $refunded > 0 ) { // stato «Rimborsato / restituiti X,XX €»
+				$rf_html = '<br><strong class="asem-warn">↩ ' . esc_html( $refunded >= (int) $r['amount_cents'] ? Texts::t( 'Rimborsato' ) : Texts::t( 'Rimborsato in parte' ) ) . '</strong> <span class="description">'
+					. esc_html( Texts::t( 'restituiti {importo}', array( 'importo' => Money::format( $refunded ) ) ) ) . ( ! empty( $r['refunded_at'] ) ? ' — ' . esc_html( mysql2date( 'd/m/Y', $r['refunded_at'] ) ) : '' ) . '</span>';
+			}
+			$info = PaymentService::engine()->refund_info( $r );
 			echo '<tr><td>' . esc_html( mysql2date( 'd/m/Y H:i', $r['created_at'] ) ) . '</td><td>' . esc_html( (string) $r['payer_name'] ) . '</td>'
 				. '<td>' . esc_html( array( 'paypal' => 'PayPal', 'sumup' => 'SumUp', 'satispay' => 'Satispay', 'woocommerce' => 'WooCommerce' )[ $r['provider'] ] ?? 'Stripe' ) . '</td><td>' . esc_html( Money::format( (int) $r['amount_cents'] ) ) . '</td><td>' . $state // phpcs:ignore WordPress.Security.EscapeOutput
-				. ( $r['review'] ? '<br><strong class="asem-warn">⚠ da controllare</strong>' : '' ) . ( ! empty( $r['refund_due'] ) ? '<br><strong class="asem-neg">↩ da rimborsare</strong> <span class="description">(domanda di adesione rifiutata: restituisci la quota dal pannello del gateway)</span>' : '' ) . ( $r['error'] ? '<br><span class="description">' . esc_html( $r['error'] ) . '</span>' : '' ) . '</td>'
+				. $rf_html . ( $r['review'] ? '<br><strong class="asem-warn">⚠ da controllare</strong>' : '' ) . ( ! empty( $r['refund_due'] ) ? '<br><strong class="asem-neg">↩ da rimborsare</strong> <span class="description">(domanda di adesione rifiutata: restituisci la quota con «Rimborsa» o, per i metodi non rimborsabili da qui, dal pannello del gestore)</span>' : '' ) . ( $r['error'] ? '<br><span class="description">' . esc_html( $r['error'] ) . '</span>' : '' ) . '</td>' // phpcs:ignore WordPress.Security.EscapeOutput
 				. '<td>' . esc_html( implode( '; ', $items ) ) . '<br><span class="description">' . esc_html( (string) $r['provider_ref'] ) . '</span></td><td>';
 			if ( ! empty( $r['refund_due'] ) ) {
 				Ui::form_open( 'asem_payment_refunded', Ui::url( 'asem-payments' ) );
@@ -171,11 +201,16 @@ final class PaymentsPage {
 				echo Ui::hidden( 'id', $r['id'] ) . '<button class="button button-small">Controllato</button>'; // phpcs:ignore WordPress.Security.EscapeOutput
 				Ui::form_close();
 			}
+			if ( $info['ok'] ) {
+				echo self::refund_form( $r, $info ); // phpcs:ignore WordPress.Security.EscapeOutput
+			} elseif ( ( $r['refund_due'] || $r['review'] ) && 'paid' === $r['status'] && $refunded < (int) $r['amount_cents'] ) {
+				echo '<p class="description">' . esc_html( $info['why'] ) . '</p>';
+			}
 			echo '</td></tr>';
 		}
 		echo '</tbody></table>';
 		echo '<p class="description">I pagamenti riusciti sono già in <a href="' . esc_url( Ui::url( 'asem-ledger' ) ) . '">Prima nota</a> sul conto "Stripe" o "PayPal". '
-			. 'Le commissioni del gateway si registrano da sole come spesa stimata (se lo hai scelto più sopra); il trasferimento sul conto corrente (payout) si registra a mano con un giroconto. I rimborsi si fanno dal pannello del gateway e si registrano come spesa. I bonifici arrivati sul conto si registrano a mano da «Nuovo incasso».</p>';
+			. 'Le commissioni del gateway si registrano da sole come spesa stimata (se lo hai scelto più sopra); il trasferimento sul conto corrente (payout) si registra a mano con un giroconto. Un pagamento Stripe o PayPal si restituisce al socio da qui con «Rimborsa» (tutto o in parte, da 0,50 €): vale per i pagamenti mai entrati in prima nota e per quelli il cui incasso è già stato annullato; i soldi tornano sul metodo del socio, il rimborso non si può annullare e non scrive nulla in prima nota. Il rimborso restituisce solo i soldi: iscrizioni, prenotazioni e crediti collegati a questo pagamento restano come sono; se vanno tolti, sistemali a mano. Se hai già restituito i soldi dal pannello di Stripe o PayPal, non rimborsare di nuovo da qui: segna il pagamento con «Rimborsato». Se l\'incasso è ancora in prima nota, annullalo prima da lì. Con gli altri metodi (SumUp, Satispay, negozio) il rimborso si fa dal pannello del gestore. I bonifici arrivati sul conto si registrano a mano da «Nuovo incasso».</p>';
 		Ui::footer();
 	}
 }

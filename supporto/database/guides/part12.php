@@ -16,11 +16,19 @@ Entri dal tuo account: da **Il mio account** scegli **Gestionale**. Sulla Home, 
 La **Configurazione guidata** raccoglie le impostazioni principali in **una sola pagina**: compila quello che sai, il resto si cambia dopo. Si salva tutto insieme con **«Salva la configurazione»**; **«Più tardi»** ti lascia rimandare.
 
 1. **Anno sociale e anno fiscale**: scegli i **due mesi** da cui cominciano (**«L'anno sociale comincia a»** e **«L'anno fiscale comincia a»**). Sono obbligatori e indipendenti: con inizio a gennaio l'anno coincide con quello solare («2026»); altrimenti è a cavallo («2025/2026»). Scegli il mese fiscale prima di chiudere il primo anno: dopo la prima chiusura non si può più cambiare.
-2. **Ente**: forma dell'ente, codice fiscale, partita IVA (se c'è), sede e provincia, e la **quota associativa**.
+2. **Dati dell'ente**: sono **obbligatori** la forma dell'ente (per esempio «APS – associazione di promozione sociale» o «ASD – associazione sportiva dilettantistica»), il **codice fiscale**, la **sede legale** (indirizzo, CAP, comune e provincia), il **legale rappresentante** (nome e cognome, di solito il presidente), l'**«Email della segreteria»** e il **«Telefono della segreteria»**. Per **partita IVA**, **numero RUNTS** e **PEC** scrivi il dato oppure, se non esiste, metti la spunta **«L'associazione non ha la partita IVA»**, **«L'associazione non è iscritta al RUNTS»** o **«L'associazione non ha una PEC»**. Il **codice destinatario** per la fattura elettronica è facoltativo. Poi c'è la **quota associativa**.
 3. **Conti**: aggiungi il **conto in banca** e il suo **saldo di partenza**.
 4. **Soci**: l'indirizzo della pagina dell'**informativa privacy** e quello del **regolamento**.
 
 Dopo il salvataggio la pagina ti propone i passi successivi: **Importa i soci** e **Invita gli altri operatori**. Puoi riaprire la configurazione quando vuoi dalla Home con **«Riapri la configurazione guidata»**.
+
+## Perché servono i dati dell'ente e i contatti della segreteria
+
+I dati dell'ente compaiono sulle **ricevute** e sul **modulo di adesione**. L'**email** e il **telefono della segreteria** servono ai soci per sapere **a chi scrivere**: le email che il programma manda ai soci hanno la segreteria come indirizzo di risposta e finiscono con la riga «Segreteria: email · tel.»; gli stessi contatti compaiono in fondo all'**area soci** e nel **modulo di adesione**, accanto al consenso sulla privacy. Scrivi quindi un recapito che qualcuno controlla davvero.
+
+## Perché vedo una banda in alto?
+
+Finché manca qualche dato dell'ente, in cima a ogni pagina c'è una **banda fissa** (non si chiude): **«Mancano dei dati dell'associazione»**, con l'elenco di quello che manca. Chi amministra preme **«Completali ora»** e arriva alla **Configurazione guidata** (anche da **Altro → Configurazione guidata**), al passo **Dati dell'ente**. Chi non amministra legge **«Chiedi a chi amministra di completarli.»**. Se nell'elenco vedi **partita IVA**, **numero RUNTS** o **PEC** e l'associazione non li ha, basta mettere la spunta **«non ce l'ha»**. La banda sparisce da sola quando è tutto compilato.
 
 ## Dove trovi le cose
 
@@ -124,7 +132,7 @@ I soldi sono arrivati sul **conto Stripe o PayPal dell'associazione**, ma per qu
    **Non vedi «rimborsa»?** Serve il permesso **«Emettere rimborsi»**: chiedilo a chi amministra il gestionale.
 3. Dopo l'invio compare «Rimborso di X,XX € inviato al socio. Il socio è stato avvisato per email.» e sotto lo stato leggi **«restituiti X,XX €»**.
 
-   Il socio riceve un'email con oggetto «Rimborso del tuo pagamento» e il nome dell'associazione, con **importo**, **data del pagamento**, **motivo** e **tempi di accredito** (in genere pochi giorni lavorativi, fino a 10). Se il socio non ha un'email, il gestionale te lo dice: «Il socio non ha un'email: avvisalo tu.».
+   Il socio riceve un'email con oggetto «Rimborso del tuo pagamento» e il nome dell'associazione, con **importo**, **data del pagamento**, **motivo** e **tempi di accredito** (in genere pochi giorni lavorativi, fino a 10); in fondo ci sono i **contatti della segreteria** (email e telefono), se li hai inseriti nei **Dati dell'ente**.  Se il socio non ha un'email, il gestionale te lo dice: «Il socio non ha un'email: avvisalo tu.».
 4. Stripe o PayPal di solito non restituiscono la loro commissione: chiedi al tuo commercialista se e come registrarla.
 5. Premi **«controllato»** accanto allo stato: serve solo a dire «ho visto e sistemato», non registra e non rimborsa nulla (il rimborso lo fa «rimborsa»). Lo vede chi ha il permesso di contabilità.
 
@@ -161,6 +169,10 @@ Tutti i movimenti stanno nella **Prima nota**: l'elenco di entrate e uscite in o
 1. Dal pulsante **Nuovo** (o dalla **Prima nota**) scegli **«Registra un incasso»** o **«Registra una spesa»**.
 2. Scegli il **conto**, l'importo, la data e, se serve, l'**attività** collegata. Puoi dividere il movimento in più voci con **«Aggiungi un'altra voce»** e **«Togli questa voce»**.
 3. Salva. L'incasso dà la **ricevuta**; con **«Invia per email»** la mandi alla persona.
+
+### Perché non riesco a inviare la ricevuta per email?
+
+Se mancano l'**email** e il **telefono della segreteria**, il pulsante **«Invia per email»** non invia e compare: «Prima inserisci email e telefono della segreteria (Altro › Configurazione guidata › Dati dell'ente): senza, non puoi inviare la ricevuta per email. Intanto scarica la ricevuta e consegnala a mano.» Inseriscili nei **Dati dell'ente** e riprova (se non amministri, chiedilo a chi amministra). Lo stesso avviso, in forma diversa, c'è se chi ha pagato non ha un'email in anagrafica: in quel caso scarica la ricevuta e consegnala a mano. Gli invii **automatici**, come il link di accesso all'area soci e l'avviso di rimborso, partono comunque.
 
 ## Cercare e filtrare
 

@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 final class ProSchema {
 
 	const VERSION_OPTION = 'asem_pro_db_version';
-	const VERSION        = '16'; // dalla 16 il PDF della ricevuta si fissa in un file della cartella privata, con la sua impronta (pdf_*, void_pdf_*); dalla 15 la ricevuta sostitutiva (replaces_id); dalla 14 il rendiconto chiuso è fotografato (statement_snapshot); dalla 13 la ricevuta emessa conserva i suoi dati (data, content_hash) e l'eventuale annullo (voided_*)
+	const VERSION        = '17'; // dalla 17 il PDF della ricevuta si fissa in un file della cartella privata, con la sua impronta (pdf_*, void_pdf_*); dalla 16 il pagamento online conserva il rimborso fatto dal gateway (refunded_cents, refund_id, refunded_at); dalla 15 la ricevuta sostitutiva (replaces_id); dalla 14 il rendiconto chiuso è fotografato (statement_snapshot); dalla 13 la ricevuta emessa conserva i suoi dati (data, content_hash) e l'eventuale annullo (voided_*)
 
 	public static function register(): void {
 		add_filter( 'asem_schema_tables', array( __CLASS__, 'tables' ), 10, 3 );
@@ -296,6 +296,9 @@ final class ProSchema {
   allocated_cents bigint(20) NOT NULL DEFAULT 0,
   review tinyint(1) NOT NULL DEFAULT 0,
   refund_due tinyint(1) NOT NULL DEFAULT 0,
+  refunded_cents bigint(20) NOT NULL DEFAULT 0,
+  refund_id varchar(120) DEFAULT NULL,
+  refunded_at datetime DEFAULT NULL,
   error varchar(255) DEFAULT NULL,
   created_at datetime NOT NULL,
   updated_at datetime NOT NULL,

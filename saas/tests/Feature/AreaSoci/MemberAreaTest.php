@@ -7,6 +7,7 @@ use App\Modules\Attivita\Services\ActivityService;
 use App\Modules\Attivita\Services\SessionService;
 use App\Modules\Contabilita\Models\Account;
 use App\Modules\Core\Contracts\OrgRole;
+use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Portale\Contracts\Entitlements;
 use App\Modules\Portale\Contracts\OrgEntitlements;
 use App\Modules\Soci\Models\Person;
@@ -36,6 +37,9 @@ beforeEach(function (): void {
     $this->org = $this->createOrg('Polisportiva Alfa');
     $this->base = 'http://'.$this->org->slug.'.associazionesemplice.it/area';
     [$this->mario, $this->luca] = $this->orgContext()->run($this->org->id, function (): array {
+        $s = app(OrgSettings::class);
+        $s->set('ente.email', 'segreteria@alfa.example');
+        $s->set('ente.phone', '06 1234567');
         $mario = Person::create(['first_name' => 'Mario', 'last_name' => 'Rossi', 'email' => 'mario@example.com', 'card_number' => '7', 'tax_code' => 'RSSMRA80A01H501U', 'birth_date' => '1980-01-01']);
         app(MembershipService::class)->renewWithPayment($mario->id, Account::query()->sole()->id, 3000);
         $luca = Person::create(['first_name' => 'Luca', 'last_name' => 'Rossi', 'birth_date' => now()->subYears(10)->toDateString()]);
@@ -196,4 +200,17 @@ it('lascia alla segreteria il link d\'accesso per chi non ha email', function ()
 
     memberArea(false);
     $this->actingAs($op)->postJson('/gestionale/soci/'.$anna->id.'/area-soci/link')->assertForbidden();
+});
+
+it('l\'email di accesso parte anche senza i contatti della segreteria, senza indirizzo di risposta', function (): void {
+    $this->orgContext()->run($this->org->id, fn () => app(OrgSettings::class)->set('ente.phone', null));
+    Mail::fake();
+    $this->post($this->base.'/accesso', ['email' => 'mario@example.com'])->assertRedirect('/area/accesso')->assertSessionHas('member_login_message');
+    Mail::assertSent(LoginLink::class, fn (LoginLink $m): bool => $m->hasTo('mario@example.com') && ! $m->hasReplyTo('segreteria@alfa.example') && $m->contactEmail === null);
+});
+
+it('l\'email di accesso ha la segreteria come indirizzo di risposta', function (): void {
+    Mail::fake();
+    $this->post($this->base.'/accesso', ['email' => 'mario@example.com']);
+    Mail::assertSent(LoginLink::class, fn (LoginLink $m): bool => $m->hasReplyTo('segreteria@alfa.example') && $m->contactPhone === '06 1234567');
 });
