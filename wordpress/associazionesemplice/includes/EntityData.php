@@ -37,6 +37,9 @@ final class EntityData {
 		if ( $has( 'tax_code' ) ) {
 			$vals['tax_code'] = TaxCode::normalize( $txt( 'tax_code' ) );
 		}
+		if ( $has( 'vat_number' ) ) { // la partita IVA è un dato dell'ente (anche senza le funzioni IVA)
+			$vals['vat_number'] = Fiscal::normalize_vat( $txt( 'vat_number' ) );
+		}
 		if ( $has( 'entity_form' ) ) {
 			$vals['entity_form'] = $txt( 'entity_form' );
 		}
@@ -76,6 +79,10 @@ final class EntityData {
 		if ( $full || array_key_exists( 'association_name', $p ) ) { // dati obbligatori: nella procedura guidata e nei dati dell'ente, anche lato server
 			$vals['no_runts'] = ! empty( $p['no_runts'] ) ? 1 : 0;
 			$vals['no_pec']   = ! empty( $p['no_pec'] ) ? 1 : 0;
+			$vals['no_vat']   = ! empty( $p['no_vat'] ) ? 1 : 0;
+			if ( '' !== (string) ( $vals['vat_number'] ?? '' ) ) {
+				$vals['no_vat'] = 0;
+			}
 			if ( '' !== (string) ( $vals['runts_number'] ?? '' ) ) {
 				$vals['no_runts'] = 0; // il dato c'è: la casella «non ce l'ha» non vale
 			}

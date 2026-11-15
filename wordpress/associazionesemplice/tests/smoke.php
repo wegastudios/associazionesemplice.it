@@ -67,7 +67,7 @@ function asem_throws( callable $f ): ?string {
 
 /** Dati obbligatori dell'ente per la procedura guidata (denominazione, forma, codice fiscale, sede, «non ce l'ha» per RUNTS e PEC); la partita IVA ha la sua casella nei test che la toccano. */
 function asem_wz_entity(): array {
-	return array( 'association_name' => 'Associazione Prova', 'entity_form' => 'asd', 'tax_code' => '12345678903', 'legal_address' => 'Via Roma 1', 'legal_zip' => '20100', 'legal_city' => 'Milano', 'legal_province' => 'MI', 'no_runts' => '1', 'no_pec' => '1' );
+	return array( 'association_name' => 'Associazione Prova', 'entity_form' => 'asd', 'tax_code' => '12345678903', 'legal_address' => 'Via Roma 1', 'legal_zip' => '20100', 'legal_city' => 'Milano', 'legal_province' => 'MI', 'no_runts' => '1', 'no_pec' => '1', 'no_vat' => '1', 'vat_number' => (string) Settings::get( 'vat_number' ) );
 }
 
 /** Dati della procedura guidata con i due contatti obbligatori della segreteria (quelli indicati nel test hanno la precedenza). */
@@ -1094,13 +1094,18 @@ asem_wizard( array( 'no_runts' => '1', 'runts_number' => '', 'no_pec' => '1', 'p
 asem_ok( 1 === (int) Settings::get( 'no_runts' ) && 1 === (int) Settings::get( 'no_pec' ) && ! in_array( 'runts', $de_missing(), true ) && ! in_array( 'pec', $de_missing(), true ), 'dati ente: con la casella spuntata e il dato vuoto numero RUNTS e PEC non risultano mancanti' );
 asem_ok( true === \AssociazioneSemplice\EntityRules::sdi_valid( 'abc1234' ) && false === \AssociazioneSemplice\EntityRules::sdi_valid( 'abc12' ) && false !== strpos( (string) asem_throws( function () { asem_wizard( array( 'has_vat' => '0', 'no_vat' => '1', 'sdi_code' => 'ABC' ) ); } ), 'Il codice destinatario ha 7 caratteri (lettere e cifre).' ), 'dati ente: il codice destinatario è facoltativo ma ha 7 caratteri' );
 asem_wizard( array( 'has_vat' => '0', 'no_vat' => '1', 'sdi_code' => '' ) );
-// partita IVA (funzioni aggiuntive): il numero oppure la casella «non ce l'ha»
-asem_ok( false !== strpos( (string) asem_throws( function () { asem_wizard( array( 'has_vat' => '0' ) ); } ), 'Indica la partita IVA oppure spunta «L\'associazione non ha la partita IVA».' ), 'dati ente: la partita IVA è obbligatoria, o la casella «non ce l\'ha»' );
+// partita IVA: è un dato dell'ente (anche senza le funzioni IVA): il numero oppure la casella «non ce l'ha»
+Settings::update( array( 'vat_number' => '', 'has_vat' => 0, 'no_vat' => 0 ) );
+asem_ok( false !== strpos( (string) asem_throws( function () { asem_wizard( array( 'no_vat' => '' ) ); } ), 'Indica la partita IVA oppure spunta «L\'associazione non ha la partita IVA».' ), 'dati ente: la partita IVA è obbligatoria, o la casella «non ce l\'ha»' );
 Settings::update( array( 'no_vat' => 0, 'has_vat' => 0, 'vat_number' => '' ) );
 asem_ok( in_array( 'vat', $de_missing(), true ), 'dati ente: senza partita IVA e senza casella la partita IVA risulta mancante' );
 asem_wizard( array( 'has_vat' => '1', 'vat_number' => '12345678903' ) );
 asem_ok( ! in_array( 'vat', $de_missing(), true ) && 0 === (int) Settings::get( 'no_vat' ), 'dati ente: con la partita IVA indicata non manca' );
 asem_wizard( array( 'has_vat' => '0', 'no_vat' => '1' ) );
+asem_ok( '12345678903' === Settings::get( 'vat_number' ) && ! \AssociazioneSemplice\Fiscal::vat_applies(), 'partita IVA: il numero è un dato dell\'ente e resta anche con l\'IVA spenta (le funzioni IVA leggono lo stesso dato)' );
+asem_ok( false !== strpos( (string) asem_throws( function () { asem_wizard( array( 'vat_number' => '12345678901' ) ); } ), 'La partita IVA non è valida' ) && false !== strpos( (string) asem_throws( function () { asem_wizard( array( 'has_vat' => '1', 'vat_number' => '', 'no_vat' => '1' ) ); } ), 'Per applicare l\'IVA indica la partita IVA.' ), 'partita IVA: numero non valido rifiutato; per accendere l\'IVA il numero serve' );
+asem_wizard( array( 'vat_number' => '12345678903', 'no_vat' => '1' ) );
+asem_ok( 0 === (int) Settings::get( 'no_vat' ), 'partita IVA: se il numero c\'è la casella «non ce l\'ha» non vale' );
 asem_ok( ! in_array( 'vat', $de_missing(), true ), 'dati ente: con «non ha la partita IVA» spuntato non manca' );
 // forma dell'ente e sezione del RUNTS: separate, con precompilazione e avviso
 Settings::update( array( 'runts_section' => '' ) );

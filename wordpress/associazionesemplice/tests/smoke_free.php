@@ -94,7 +94,18 @@ foreach ( array( 'Bacheca', 'Soldi', 'Prima nota', 'Soci e quote' ) as $pn ) {
 	}
 }
 free_ok( false === strpos( $html['Soci e quote'], 'Livelli di socio' ) && false === strpos( $html['Soci e quote'], 'Chiave di licenza' ), 'impostazioni: niente livelli e niente sezione licenza (è del Pro)' );
-free_ok( false === strpos( $html['Dati dell\'ente'], 'Partita IVA' ), 'dati dell\'ente: niente partita IVA' );
+free_ok( false !== strpos( $html['Dati dell\'ente'], 'name="vat_number"' ) && false !== strpos( $html['Dati dell\'ente'], 'name="no_vat"' ) && false === strpos( $html['Dati dell\'ente'], 'name="has_vat"' ) && false === strpos( $html['Dati dell\'ente'], 'name="fiscal_regime"' ), 'dati dell\'ente: la partita IVA è un dato dell\'ente anche nel gratuito (con la casella «non ce l\'ha»), ma senza calcoli IVA' );
+free_ok( false !== strpos( $html['Configurazione guidata'], 'name="vat_number"' ) && false !== strpos( $html['Configurazione guidata'], 'name="no_vat"' ), 'configurazione guidata: la partita IVA si chiede nel primo passo' );
+$free_missing = function () {
+	return array_column( \AssociazioneSemplice\EntityRules::missing(), 'key' );
+};
+Settings::update( array( 'vat_number' => '', 'no_vat' => 0 ) );
+free_ok( in_array( 'vat', $free_missing(), true ), 'partita IVA: senza numero e senza casella risulta mancante' );
+Settings::update( array( 'vat_number' => 'IT 12345678903' ) );
+free_ok( '12345678903' === Settings::get( 'vat_number' ) && ! Fiscal::vat_applies() && ! in_array( 'vat', $free_missing(), true ), 'partita IVA: indicata, non manca e nel gratuito non applica nessuna IVA' );
+Settings::update( array( 'vat_number' => '', 'no_vat' => 1 ) );
+free_ok( ! in_array( 'vat', $free_missing(), true ), 'partita IVA: con la casella «non ce l\'ha» non manca' );
+Settings::update( array( 'no_vat' => 0 ) );
 free_ok( false === strpos( $html['Configurazione guidata'], 'name="has_vat"' ) && false === strpos( $html['Configurazione guidata'], 'name="extra_levels"' ), 'configurazione guidata: niente IVA né tipi di socio extra' );
 free_ok( false === strpos( $html['Nuova spesa'], 'name="vat_rate"' ) && false === strpos( $html['Nuovo incasso'], 'name="vat_rate"' ), 'incasso e spesa: nessun campo IVA' );
 
