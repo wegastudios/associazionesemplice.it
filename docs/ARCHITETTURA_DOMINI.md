@@ -29,7 +29,7 @@ Cosa cambia rispetto a oggi: ora il listino e i diritti (pacchetti, limiti) sono
 | `associazionesemplice.it/wordpress/admin` | **controllo commerciale del plugin**: piani e licenze, prezzi, servizi, promo, versioni, clienti con licenza e le impostazioni del plugin (tutte nello stesso posto) | Plugin (il codice sta in `portale/`, in uno spazio separato: vedi §3.2) |
 | `supporto.associazionesemplice.it` | **un solo supporto** per SaaS e plugin | sessione supporto |
 | `associazionesemplice.it/demo` | demo del plugin (WordPress vero) — **resta dov è**; se le cartelle danno problemi si sposta su `wpdemo.associazionesemplice.it` | demo |
-| `demo.associazionesemplice.it` | **demo del SaaS** con dati finti, azzerata ogni notte | SaaS |
+| `app-demo.associazionesemplice.it` (gestione) e `demosaas.associazionesemplice.it` (area soci) | **demo del SaaS** con dati finti, azzerata ogni notte | SaaS |
 
 Regole sugli indirizzi:
 - Le pagine di vendita non stanno mai su `app.`; l'app non ha pagine pubbliche tranne il modulo d'adesione e l'area soci
@@ -304,7 +304,7 @@ obbligatoria** per chiunque abbia un ruolo). Il passaggio non è una sessione co
 Chiavi: una coppia Ed25519 per ciascuna amministrazione (non quella delle licenze né quella del contratto), parte
 pubblica nell'altra. Rotazione come nel contratto.
 
-## 9. Demo del SaaS: `demo.associazionesemplice.it`
+## 9. Demo del SaaS: `app-demo.associazionesemplice.it`
 
 Un'istanza separata del SaaS (ambiente «demo», non lo staging, non la produzione), con database proprio e **solo dati finti**.
 
@@ -317,10 +317,10 @@ Un'istanza separata del SaaS (ambiente «demo», non lo staging, non la produzio
 | Sicurezza ridotta solo qui | verifica in due passaggi spenta (`SAAS_REQUIRE_TWO_FACTOR=false`), password pubbliche; per questo nessun dato vero, mai |
 | Posta | mai inviata: solo log. Gli inviti e i codici d'accesso compaiono in una pagina «posta di prova» |
 | Pagamenti | simulati (nessuna chiave Stripe/PayPal): il pulsante «Paga» mostra l'esito finto |
-| File e import | caricamenti ammessi ma piccoli (2 MB) e cancellati con l'azzeramento notturno |
+| File e import | caricamento dei file spento («Nella demo il caricamento dei file è spento.»); i modelli da scaricare restano |
 | Limiti | frequenza ridotta per indirizzo IP, 50 richieste al minuto, ricerche e import con limiti più bassi |
 | Visibilità | `noindex`, nessun cookie di tracciamento, collegato dalle pagine `/saas` del portale con il pulsante «Prova la demo» |
-| Area soci | sottodominio `polisportiva-demo.demo.associazionesemplice.it` (jolly a parte, `SAAS_MEMBERS_DOMAIN=demo.associazionesemplice.it`) |
+| Indirizzi | gestione `app-demo.associazionesemplice.it`; area soci `demosaas.associazionesemplice.it/area` («demosaas» è il nome dell'associazione dimostrativa e in produzione è un nome riservato); `SAAS_MEMBERS_DOMAIN=associazionesemplice.it`. I due sottodomini sono veri e puntano alla cartella pubblica della demo: hanno la precedenza sul jolly della produzione |
 | Aggiornamento | a ogni rilascio del SaaS, come per la demo del plugin: stesso ambiente, nuovi dati (regola «demo sempre aggiornata») |
 | Cosa non si fa | niente `reset` a metà giornata senza chiedere; niente dati importati da associazioni vere |
 

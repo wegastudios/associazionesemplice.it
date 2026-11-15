@@ -206,7 +206,8 @@ const label = 'space-y-1 text-sm';
                     <label :class="label"><span class="font-semibold">Rilascio</span><input v-model="certForm.issued_on" type="date" :class="field" required @change="certForm.expires_on = nextYear(certForm.issued_on)" /></label>
                     <label :class="label"><span class="font-semibold">Scadenza</span><input v-model="certForm.expires_on" type="date" :class="field" required /></label>
                     <label :class="label"><span class="font-semibold">Medico</span><input v-model="certForm.doctor" :class="field" /></label>
-                    <label :class="label"><span class="font-semibold">File (PDF o foto)</span><input type="file" accept="application/pdf,image/jpeg,image/png" class="block w-full text-sm" @input="certForm.file = $event.target.files[0]" /></label>
+                    <label :class="label"><span class="font-semibold">File (PDF o foto)</span><input type="file" accept="application/pdf,image/jpeg,image/png" class="block w-full text-sm" :disabled="$page.props.demo_uploads_off" @input="certForm.file = $event.target.files[0]" /></label>
+                    <p v-if="$page.props.demo_uploads_off" class="mt-1 text-sm font-semibold text-amber-800">Nella demo il caricamento dei file è spento.</p>
                     <div class="sm:col-span-5"><button type="submit" class="btn btn-primary" :disabled="certForm.processing">Registra il certificato</button></div>
                     <p v-if="certForm.errors.file || certForm.errors.expires_on" class="text-sm text-danger sm:col-span-5">{{ certForm.errors.file || certForm.errors.expires_on }}</p>
                 </form>

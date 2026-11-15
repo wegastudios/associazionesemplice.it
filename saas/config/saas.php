@@ -36,6 +36,9 @@ return [
     // «localhost»: i browser portano <slug>.localhost sul computer stesso.
     'members_domain' => env('SAAS_MEMBERS_DOMAIN', 'associazionesemplice.it'),
 
+    // Nomi che nessuna associazione vera può avere come indirizzo dell'area soci (sono indirizzi della piattaforma).
+    'reserved_slugs' => ['app', 'app-demo', 'demo', 'demosaas', 'wpdemo', 'www', 'mail', 'api', 'admin', 'staging', 'supporto', 'chiavi'],
+
     // Percorso dell'amministrazione della piattaforma (docs/PIATTAFORMA.md §4): `admin` qui; dietro il proxy del
     // portale sarà `saas/admin`, con `ASSET_URL` e `APP_URL` coerenti.
     'admin_path' => env('SAAS_ADMIN_PATH', 'saas/admin'),
@@ -52,7 +55,9 @@ return [
     'demo' => [
         'enabled' => (bool) env('SAAS_DEMO', false),
         'org_name' => 'Polisportiva Demo',
-        'org_slug' => 'polisportiva-demo',
+        'org_slug' => env('SAAS_DEMO_SLUG', 'polisportiva-demo'),
+        // Quante persone fisiche ha l'associazione dimostrativa: più sono, più il reset notturno dura (ricevute comprese).
+        'people' => env('SAAS_DEMO_PEOPLE', 400),
         // Password pubblica degli utenti di prova (titolare@, segreteria@, commercialista@ su mail_domain).
         'password' => env('SAAS_DEMO_PASSWORD', 'demo-demo-demo-2026'),
         'mail_domain' => env('SAAS_DEMO_MAIL_DOMAIN', 'demosaas.associazionesemplice.it'),

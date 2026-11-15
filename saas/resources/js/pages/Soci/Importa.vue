@@ -37,7 +37,8 @@ const field = 'field';
             <p class="mb-4 text-sm text-muted">Chi è già in anagrafica (stessa tessera, email, cellulare, codice fiscale o nome) viene aggiornato con i soli dati presenti nel file. Prima vedi l'anteprima: nulla si salva finché non confermi.</p>
             <form class="grid gap-4 text-sm sm:grid-cols-2" @submit.prevent="send(false)">
                 <label class="space-y-1 sm:col-span-2"><span class="block font-semibold">File (.xlsx o .csv, al massimo 5 MB)</span>
-                    <input type="file" accept=".xlsx,.csv,.txt" @change="(e) => { form.file = e.target.files[0] ?? null; }" />
+                    <input type="file" accept=".xlsx,.csv,.txt" :disabled="$page.props.demo_uploads_off" @change="(e) => { form.file = e.target.files[0] ?? null; }" />
+                    <p v-if="$page.props.demo_uploads_off" class="mt-1 text-sm font-semibold text-amber-800">Nella demo il caricamento dei file è spento.</p>
                     <span v-if="form.errors.file" class="block text-danger" role="alert">{{ form.errors.file }}</span>
                 </label>
                 <label class="space-y-1"><span class="block font-semibold">Tipo se la colonna «Tipo» manca</span>

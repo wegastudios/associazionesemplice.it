@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Core\Demo;
 
+use App\Modules\Core\Contracts\DemoScale;
 use App\Modules\Core\Contracts\DemoSeeder;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgRole;
@@ -109,13 +110,19 @@ final readonly class DemoEnvironment
             $this->settings->set('ente.email', 'segreteria@polisportiva-demo.example');
             $this->settings->set('ente.phone', '06 1234567');
             // Dati di fantasia: la demo non mostra il promemoria dei dati mancanti.
-            foreach (['tax_code' => '12345678903', 'legal_rep' => 'Mario Rossi', 'address' => 'Via Roma 1', 'zip' => '00100', 'city' => 'Roma', 'province' => 'RM'] as $k => $v) {
+            // Il codice fiscale e la partita IVA sono quelli d'esempio dei controlli (numero che torna, ma palesemente finto).
+            foreach (['tax_code' => '12345678903', 'vat' => '12345678903', 'legal_rep' => 'Mario Rossi (dato di esempio)', 'address' => 'Via Roma 1 (dato di esempio)', 'zip' => '00100', 'city' => 'Roma', 'province' => 'RM'] as $k => $v) {
                 $this->settings->set('ente.'.$k, $v);
             }
-            foreach (['vat_none', 'runts_none', 'pec_none'] as $k) {
+            foreach (['runts_none', 'pec_none'] as $k) {
                 $this->settings->set('ente.'.$k, true);
             }
             $this->settings->set('ente.kind', 'aps'); // la pagina «Dati per il RUNTS» mostra così il minimo di soci
+            // Anno sociale da settembre ad agosto (il fiscale lo sceglie DemoFiscalYear), come la demo del plugin; quota e prezzi senza IVA per mostrare «Aspetto fiscale».
+            $this->settings->set('soci.social_year_start_month', DemoScale::START_MONTH);
+            $this->settings->set('soci.membership_fee_cents', 2500);
+            $this->settings->set('fiscal.prices_include_vat', false);
+            $this->grantPackages($org->id);
 
             $seeders = [];
             foreach ($this->container->tagged(DemoSeeder::TAG) as $seeder) {
@@ -130,5 +137,20 @@ final readonly class DemoEnvironment
         });
 
         return $org;
+    }
+
+    /** Tutti i pacchetti, senza scadenza: la demo mostra ogni funzione. I limiti sono larghi ma finiti. */
+    private function grantPackages(string $orgId): void
+    {
+        $kinds = ['hourly' => ['tier' => 10, 'web' => true], 'daily' => ['tier' => 10, 'web' => true], 'seasonal' => ['tier' => 10, 'web' => true]];
+        $claims = [
+            'sub' => $orgId, 'ref' => 'demo', 'rev' => 1, 'status' => 'active', 'until' => '2099-12-31', 'trial_ends' => null,
+            'members' => 100000, 'operators' => 20, 'storage_gb' => 10, 'partner' => null,
+            'packages' => ['member_area' => [], 'resources' => $kinds, 'site' => [], 'communications' => [], 'advanced_accounting' => [], 'association_life' => [], 'sport' => [], 'einvoice' => ['yearly' => 1000]],
+        ];
+        $this->db->connection('pgsql')->table('core.org_entitlements')->upsert([[
+            'org_id' => $orgId, 'rev' => 1, 'status' => 'active', 'until' => '2099-12-31',
+            'claims' => json_encode($claims, JSON_THROW_ON_ERROR), 'token' => 'demo', 'received_at' => now(),
+        ]], ['org_id'], ['rev', 'status', 'until', 'claims', 'token', 'received_at']);
     }
 }

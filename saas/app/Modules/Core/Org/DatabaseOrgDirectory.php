@@ -45,6 +45,12 @@ final readonly class DatabaseOrgDirectory implements OrgDirectory
 
     public function slugTaken(string $slug): bool
     {
+        // Nomi degli indirizzi della piattaforma (gestione, demo): nessuna associazione vera può prenderli.
+        $reserved = config('saas.reserved_slugs');
+        if (is_array($reserved) && in_array(strtolower($slug), $reserved, true)) {
+            return true;
+        }
+
         return Org::withTrashed()->where('slug', $slug)->exists();
     }
 

@@ -128,7 +128,7 @@ final readonly class ReceiptYearArchive implements YearArchives
             $this->safeDelete(new StoredFile(is_string($r->path ?? null) ? $r->path : '', 'ricevuta.pdf', 'application/pdf', 0, ''));
         }
         $this->archived->flush();
-        $this->audit->record('archive.created', 'app.year_archives', null, ['year' => $year, 'receipts' => count($rows), 'sha256' => $stored->sha256]);
+        $this->audit->record('archive.created', 'app.year_archives', null, ['year' => $year, 'receipts' => count($rows), 'checksum' => $stored->sha256]);
 
         return count($rows);
     }
