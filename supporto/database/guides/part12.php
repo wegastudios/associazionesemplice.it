@@ -225,9 +225,29 @@ L'IVA compare nel dettaglio del movimento. Sulla **ricevuta** in PDF vedi, per o
 
 Se togli un'aliquota dall'elenco, i movimenti già registrati con quella aliquota non cambiano. Se togli l'aliquota usata per la quota associativa, la pagina non si salva e ti dice: «Prima cambia l'aliquota della quota associativa: deve essere «IVA esente» o una di quelle dell'elenco. I movimenti già registrati restano come sono.»
 
+## IVA su attività, corsi ed eventi
+
+Con la partita IVA, nella **scheda di un'attività** (un corso o un evento) trovi la casella **«Con IVA»**:
+
+- **senza la spunta**, gli incassi di quell'attività si registrano come **«Fuori campo IVA»**;
+- **con la spunta**, scegli dal menu **«IVA esente»** oppure una delle aliquote che hai indicato in Aspetto fiscale («IVA 22%», «IVA 10%»…).
+
+Sotto il menu la scheda ti ricorda come leggere gli importi **«Importo per i soci»** e **«Importo per gli ospiti»**:
+
+- se in Aspetto fiscale hai scelto i prezzi **senza IVA**: «Gli importi che scrivi sono senza IVA: chi paga vede l'importo con l'IVA aggiunta.» Per esempio, un corso da **100,00 €** con **IVA 22%**: chi paga vede **122,00 €**;
+- se hai scelto i prezzi **finali**: «Gli importi che scrivi sono finali, con l'IVA compresa.»
+
+Gli incassi di corsi, eventi e prenotazioni nascono in prima nota **con l'aliquota dell'attività**. Le attività che esistevano già restano **senza IVA** finché non le cambi tu. Se non sai se un'attività va con IVA, esente o fuori campo, **chiedi al tuo commercialista**.
+
+Il gestionale ti avvisa se qualcosa non torna:
+
+- se provi a togliere da Aspetto fiscale un'aliquota usata da qualche attività: «Alcune attività usano l'aliquota X%: prima cambia l'IVA di quelle attività, poi toglila dall'elenco.»;
+- se nei Dati dell'ente spunti «L'associazione non ha la partita IVA» e ci sono attività con l'IVA: «Hai N attività con l'IVA: senza partita IVA l'IVA non si applica più a nessuna. I movimenti già registrati non cambiano.»;
+- in scheda, un avviso rosso: «L'aliquota di questa attività non è più nell'elenco di Aspetto fiscale: scegline un'altra.» oppure «Senza partita IVA l'IVA non si applica: gli incassi di questa attività si registrano senza IVA.»
+
 ## Cosa non c'è ancora
 
-Per ora l'IVA si indica movimento per movimento in prima nota. Non si può ancora impostare su un'attività, un corso o un evento.
+Non si può ancora impostare l'IVA sulle risorse e sulle prenotazioni di spazi.
 MD,
     ],
     [
@@ -276,6 +296,8 @@ In **Attività** trovi i corsi e gli eventi dell'anno sociale: ognuno raccoglie 
 2. Compila nome, **importo per i soci** e **importo per gli ospiti**. Per un corso scegli i **giorni delle lezioni**: il mese è dovuto dalla prima lezione del mese.
 3. Facoltativi: il **referente** (un socio volontario) e un **listino** (uno per riga: nome e prezzo; per un carnet «x» e gli ingressi). Senza listino vale l'importo per i soci o per gli ospiti.
 4. Con la funzione **Risorse** puoi indicare **dove si svolge**; più attività sulla stessa risorsa ne condividono il calendario.
+
+Se l'associazione ha la partita IVA, nella scheda trovi anche la casella **«Con IVA»**: vedi [IVA: la pagina «Aspetto fiscale»](guida:gestionale-iva-e-aspetto-fiscale).
 
 Nella scheda vedi gli **iscritti**, il **registro presenze** e i **carnet** con ingressi ancora da usare. Con **«Chiudi l'iscrizione»** non si accettano altre iscrizioni. Il **Calendario** mostra tutte le date.
 MD,
