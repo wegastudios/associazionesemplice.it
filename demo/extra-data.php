@@ -614,10 +614,30 @@ extra_step( 'richieste di iscrizione al corso', function () {
 	remove_filter( 'pre_wp_mail', $mute );
 } );
 
-// Anno fiscale scorso (con l'inizio a settembre esiste già, aperto, e nella demo si può chiudere in prova): nasce in DISAVANZO di proposito, perché nella demo si
-// veda l'avviso e lo si possa sistemare a mano (per esempio aggiungendo un'entrata). Qui non si aggiunge niente: si controlla soltanto che la cassa non sia mai negativa.
-extra_step( 'cassa anno fiscale scorso', function () {
-	$d = \AssociazioneSemplice\Statement::live( \AssociazioneSemplice\FiscalYears::current() - 1 );
+// Anno fiscale scorso (con l'inizio a settembre esiste già, aperto, e nella demo si può chiudere in prova): nasce in DISAVANZO di proposito, perché nella demo si veda
+// l'avviso e lo si possa sistemare a mano (per esempio aggiungendo un'entrata). Niente anni scritti a mano: l'anno è «quello in corso meno uno», quindi a ogni autunno la
+// demo scorre da sola. I dati di prova hanno date relative a oggi: se l'anno scorso, per come cadono le date, chiude in pari o in avanzo, si aggiunge una spesa
+// di 100 € sopra il pari (dalla banca, dentro quell'anno) così il disavanzo c'è sempre. La cassa non deve mai essere negativa: altrimenti il passo si ferma.
+extra_step( 'anno fiscale scorso in disavanzo', function () {
+	$prev   = \AssociazioneSemplice\FiscalYears::current() - 1;
+	$r      = \AssociazioneSemplice\FiscalYears::range( $prev );
+	$d      = \AssociazioneSemplice\Statement::live( $prev );
+	$result = (int) $d['result']['cur'];
+	if ( $result >= 0 ) {
+		$ledger = Plugin::ledger();
+		$cat    = $ledger->category_id_of_kind( 'general_cost' );
+		$bank   = $ledger->default_account_for( 'bank' );
+		if ( ! $cat || ! $bank ) {
+			throw new \RuntimeException( 'mancano categoria o conto' );
+		}
+		$date = ( new \DateTimeImmutable( $r[0] ) )->modify( '+5 months +13 days' )->format( 'Y-m-d' );
+		$date = $date > $r[1] ? $r[1] : $date;
+		$ledger->record_expense( array( 'date' => $date, 'account_id' => (int) $bank['id'], 'method' => 'bank_transfer', 'category_id' => $cat, 'amount_cents' => $result + 10000, 'description' => 'Manutenzione della sede' ) );
+		$d = \AssociazioneSemplice\Statement::live( $prev );
+	}
+	if ( (int) $d['result']['cur'] >= 0 ) {
+		throw new \RuntimeException( 'l\'anno fiscale scorso non è in disavanzo' );
+	}
 	if ( (int) $d['closing_total'] < 0 ) {
 		throw new \RuntimeException( 'cassa negativa nell\'anno fiscale scorso' );
 	}
