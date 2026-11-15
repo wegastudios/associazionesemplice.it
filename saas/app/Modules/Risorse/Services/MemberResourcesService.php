@@ -22,6 +22,7 @@ final readonly class MemberResourcesService implements MemberResources
         private OrgContext $context,
         private Entitlements $entitlements,
         private ReservationService $reservations,
+        private ResourceVat $vat,
     ) {}
 
     public function available(): array
@@ -32,9 +33,9 @@ final readonly class MemberResourcesService implements MemberResources
         }
 
         return array_values(Resource::query()->whereNull('archived_at')->whereIn('typology', $web)->orderBy('typology')->orderBy('name')->get()
-            ->map(static fn (Resource $r): array => [
+            ->map(fn (Resource $r): array => [
                 'id' => $r->id, 'name' => $r->name, 'typology' => $r->typology->value, 'typology_label' => $r->typology->label(), 'description' => $r->description,
-                'fee' => $r->fee_cents, 'nonmember_fee' => $r->nonmember_fee_cents, 'max_slots' => $r->max_slots, 'guests_max' => $r->guests_max,
+                'fee' => $this->vat->gross($r, $r->fee_cents), 'nonmember_fee' => $r->nonmember_fee_cents === null ? null : $this->vat->gross($r, $r->nonmember_fee_cents), 'max_slots' => $r->max_slots, 'guests_max' => $r->guests_max,
             ])->all());
     }
 
@@ -57,7 +58,7 @@ final readonly class MemberResourcesService implements MemberResources
                     $free = false;
                 }
             }
-            $out[] = ['start' => $slot['start'], 'end' => $slot['end'], 'free' => $free, 'past' => $past, 'price' => ResourceRules::bandFee($r->rules(), $s)];
+            $out[] = ['start' => $slot['start'], 'end' => $slot['end'], 'free' => $free, 'past' => $past, 'price' => $this->vat->gross($r, ResourceRules::bandFee($r->rules(), $s))];
         }
 
         return $out;

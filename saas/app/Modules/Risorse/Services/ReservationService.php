@@ -46,6 +46,7 @@ final readonly class ReservationService
         private Ledger $ledger,
         private AuditLog $audit,
         private ActivityOccupancy $occupancy,
+        private ResourceVat $vat,
     ) {}
 
     /** Adesso, nel fuso dell'associazione, come testo confrontabile. */
@@ -90,12 +91,12 @@ final readonly class ReservationService
                 $weeks = $bySelf ? 1 : max(1, min(self::MAX_WEEKS, (int) ($in['weeks'] ?? 1)));
                 foreach (ResourceRules::seriesDates($date, $weeks) as $day) {
                     [$s, $e] = ResourceRules::slotRange($rules, $day, (string) ($in['start'] ?? ''), $units, $now, $backdate);
-                    $ranges[] = [$s, $e, ResourceRules::fee($rules, $units, count($guests), $s, $member, $services)];
+                    $ranges[] = [$s, $e, $this->vat->gross($res, ResourceRules::fee($rules, $units, count($guests), $s, $member, $services))];
                 }
                 break;
             case Typology::Daily:
                 [$s, $e] = ResourceRules::dayRange($rules, $date, $units, $now, $backdate);
-                $ranges[] = [$s, $e, ResourceRules::fee($rules, $units, count($guests), $s, $member, $services)];
+                $ranges[] = [$s, $e, $this->vat->gross($res, ResourceRules::fee($rules, $units, count($guests), $s, $member, $services))];
                 break;
             case Typology::Seasonal:
                 if ($personId === null) {
@@ -103,13 +104,14 @@ final readonly class ReservationService
                 }
                 $units = 1;
                 [$s, $e] = ResourceRules::seasonRange($date, self::filled($in['to'] ?? null));
-                $ranges[] = [$s, $e, ResourceRules::fee($rules, 1, 0, $s, $member)];
+                $ranges[] = [$s, $e, $this->vat->gross($res, ResourceRules::fee($rules, 1, 0, $s, $member))];
                 break;
         }
 
         $ids = $this->insert($res, $ranges, [
             'kind' => 'booking', 'person_id' => $personId, 'holder_name' => $holder === null ? null : mb_substr($holder, 0, 160), 'member' => $member,
             'units' => $units, 'guests' => $guests, 'services' => $services, 'note' => self::note($in['note'] ?? null), 'created_by' => $userId,
+            'vat_rate' => $this->vat->rate($res),
         ]);
         if ($res->typology === Typology::Seasonal && $personId !== null) {
             // Chi era in lista d'attesa ora ha la risorsa.
@@ -144,7 +146,7 @@ final readonly class ReservationService
             Typology::Seasonal => ResourceRules::seasonRange($date, self::filled($in['to'] ?? null))[0],
         };
 
-        return ResourceRules::fee($rules, $units, count($guests), $start, $member, $res->typology === Typology::Seasonal ? [] : $this->chosenServices($res, $in['services'] ?? []));
+        return $this->vat->gross($res, ResourceRules::fee($rules, $units, count($guests), $start, $member, $res->typology === Typology::Seasonal ? [] : $this->chosenServices($res, $in['services'] ?? [])));
     }
 
     /** Blocca la risorsa (manutenzione, chiusura, torneo): da «Y-m-d H:i» a «Y-m-d H:i». */
@@ -207,10 +209,12 @@ final readonly class ReservationService
         }
         $category = $res->category_id ?? $this->ledger->categoryFor(CategoryKind::OtherIncome) ?? throw new ResourceError('Manca la categoria «Altre entrate» in prima nota.');
         $when = $res->typology === Typology::Hourly ? date('d/m/Y H:i', (int) strtotime($r->starts_at)) : date('d/m/Y', (int) strtotime($r->starts_at));
+        // L'aliquota è quella di quando la prenotazione è stata fatta (se la partita IVA c'è ancora e l'aliquota è in elenco).
+        $vatRate = $this->vat->usable($r->vat_rate);
         $description = mb_substr($res->name.' · '.$when.($r->holder_name !== null ? ' · '.$r->holder_name : ''), 0, 255);
 
-        return $this->connection()->transaction(function () use ($r, $accountId, $date, $cents, $method, $category, $description): ?string {
-            $out = $this->ledger->recordIncome(new Income($date, $accountId, [new IncomeLine($category, $cents, $description)], $method, $r->person_id, $r->person_id !== null));
+        return $this->connection()->transaction(function () use ($r, $accountId, $date, $cents, $method, $category, $description, $vatRate): ?string {
+            $out = $this->ledger->recordIncome(new Income($date, $accountId, [new IncomeLine($category, $cents, $description, null, $vatRate)], $method, $r->person_id, $r->person_id !== null));
             foreach ($out['transactions'] as $tx) {
                 $this->connection()->table('app.reservation_payments')->insert(['org_id' => $this->context->require()->id, 'transaction_id' => $tx, 'reservation_id' => $r->id]);
             }

@@ -5,6 +5,12 @@ import AppLayout from '../layouts/AppLayout.vue';
 const props = defineProps({ status: String, canSkip: { type: Boolean, default: true }, steps: Array, can: Object });
 
 const by = Object.fromEntries(props.steps.map((s) => [s.key, s.props]));
+
+// Quante attività e risorse hanno l'IVA: dice solo la parte presente.
+const vatCount = (e) => [
+    e.vat_activities > 0 ? `${e.vat_activities} attività` : null,
+    e.vat_resources > 0 ? `${e.vat_resources} ${e.vat_resources === 1 ? 'risorsa' : 'risorse'}` : null,
+].filter(Boolean).join(' e ');
 const initial = {};
 if (by.ente) initial.ente = { ...by.ente.values };
 if (by.anno_sociale) initial.anno_sociale = { start_month: by.anno_sociale.start_month ?? '' };
@@ -62,7 +68,7 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
                     <p class="text-sm text-muted sm:col-span-3">Email e telefono li leggono i soci nelle email, nell'area soci e nel modulo di adesione, accanto al consenso sulla privacy: usa un recapito che qualcuno controlla davvero. Senza, la segreteria non può inviare le ricevute per email. Gli invii automatici, come il link di accesso, partono lo stesso.</p>
                     <div :class="label"><label class="block space-y-1"><span class="font-semibold">Partita IVA</span><input v-model="form.steps.ente.vat" :disabled="form.steps.ente.vat_none" :class="field" maxlength="16" /></label>
                         <label class="flex items-center gap-2"><input v-model="form.steps.ente.vat_none" type="checkbox" /> L'associazione non ha la partita IVA</label>
-                        <p v-if="by.ente.vat_activities > 0 && (form.steps.ente.vat_none || !form.steps.ente.vat)" class="font-semibold text-danger" role="alert">Hai {{ by.ente.vat_activities }} attività con l'IVA: senza partita IVA l'IVA non si applica più a nessuna. I movimenti già registrati non cambiano.</p></div>
+                        <p v-if="(by.ente.vat_activities > 0 || by.ente.vat_resources > 0) && (form.steps.ente.vat_none || !form.steps.ente.vat)" class="font-semibold text-danger" role="alert">Hai {{ vatCount(by.ente) }} con l'IVA: senza partita IVA l'IVA non si applica più a nessuna. I movimenti già registrati non cambiano.</p></div>
                     <div :class="label"><label class="block space-y-1"><span class="font-semibold">Numero RUNTS (con la sezione)</span><input v-model="form.steps.ente.runts" :disabled="form.steps.ente.runts_none" :class="field" maxlength="30" /></label>
                         <label class="flex items-center gap-2"><input v-model="form.steps.ente.runts_none" type="checkbox" /> L'associazione non è iscritta al RUNTS</label></div>
                     <div :class="label"><label class="block space-y-1"><span class="font-semibold">PEC</span><input v-model="form.steps.ente.pec" type="email" :disabled="form.steps.ente.pec_none" :class="field" /></label>

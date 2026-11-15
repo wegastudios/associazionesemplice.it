@@ -109,6 +109,7 @@ final readonly class ResourceService
             'rates' => $hourly ? ResourceRules::parseRates(self::str($in['rates'] ?? '')) : [],
             'services' => $typology === Typology::Seasonal ? [] : ResourceRules::parseServices(self::str($in['services'] ?? '')),
             'category_id' => $incomeCategory === '' ? null : $incomeCategory,
+            'vat_rate' => is_int($in['vat_rate'] ?? null) ? $in['vat_rate'] : null,
         ]);
         if ($resource->name === '') {
             throw new ResourceError('Indica il nome della risorsa.');

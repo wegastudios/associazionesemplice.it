@@ -23,6 +23,7 @@ use Carbon\CarbonImmutable;
  * @property list<string> $guests
  * @property list<array{name: string, fee_cents: int}> $services
  * @property int $fee_due_cents
+ * @property int|null $vat_rate aliquota di quando è stata fatta
  * @property string $status booked|cancelled
  * @property string|null $note
  * @property string|null $series_id
@@ -37,7 +38,7 @@ final class Reservation extends OrgModel
     /** @var list<string> */
     protected $fillable = [
         'resource_id', 'kind', 'person_id', 'holder_name', 'member', 'starts_at', 'ends_at', 'units', 'guests', 'services',
-        'fee_due_cents', 'status', 'note', 'series_id', 'created_by',
+        'fee_due_cents', 'vat_rate', 'status', 'note', 'series_id', 'created_by',
     ];
 
     /** @return array<string, string> */
@@ -45,6 +46,7 @@ final class Reservation extends OrgModel
     {
         return [
             'member' => 'boolean',
+            'vat_rate' => 'integer',
             'units' => 'integer',
             'guests' => 'array',
             'services' => 'array',

@@ -61,6 +61,7 @@ final class DashboardPage {
 			}
 		}
 		PrivateFolderPanel::alerts(); // cartella dei file riservati: percorso non utilizzabile o raggiungibile da internet (solo amministratori)
+		FileCryptPanel::cert_alerts(); // cifratura automatica dei certificati medici già caricati: partita, in corso, finita o ferma (solo amministratori)
 		$mail_fail = current_user_can( \AssociazioneSemplice\Plugin::CAP ) ? \AssociazioneSemplice\MailLog::failures() : 0;
 		if ( $mail_fail > 0 ) {
 			echo wp_kses( Dismiss::html( 'mail-fail-' . $mail_fail, 'warning', '<strong>Alcune email non sono partite</strong> negli ultimi giorni (' . (int) $mail_fail . '). <a href="' . esc_url( Ui::url( 'asem-tech' ) ) . '">Vedi perché e prova l\'invio</a>.', 3 ), Html::allowed() );
