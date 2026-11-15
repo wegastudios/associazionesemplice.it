@@ -8240,7 +8240,8 @@ asem_ok( $rf_x1['ok'] && $rf_x1['id'] === $rf_x2['id'], 'rimborso: stessa chiave
 // oltre il pagato dopo un parziale
 $rf_a2 = $rf_pay( 'stripe', 1000, array( 'refund_due' => 1 ) );
 $ap_ps->refund( $rf_a2, 600, 0, 'Motivo di prova' );
-asem_ok( false !== strpos( (string) $rf_try( $rf_a2, 500 ), 'a 4,00 €' ) && 3 === count( $rf_calls ), 'rimborso: dopo un parziale non si supera il pagato (si può restituire solo il resto)' );
+$rf_c2 = count( $rf_calls );
+asem_ok( false !== strpos( (string) $rf_try( $rf_a2, 500 ), 'a 4,00 €' ) && $rf_c2 === count( $rf_calls ), 'rimborso: dopo un parziale non si supera il pagato (si può restituire solo il resto)' );
 
 // errori del gateway, con frasi chiare
 $rf_g = $rf_pay( 'stripe', 1000, array( 'review' => 1 ) );
