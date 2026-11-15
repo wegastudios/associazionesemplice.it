@@ -364,6 +364,13 @@ final class ReceiptFiles {
 		return (int) ( null === $year ? $db->get_var( $sql ) : $db->get_var( $db->prepare( $sql . ' AND year = %d', $year ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- condizione costante interna
 	}
 
+	/** Quante ricevute ANNULLATE sono rimaste senza dati e senza PDF (non si fissano mai: restano come sono). */
+	public static function nodata_voided_count( ?int $year = null ): int {
+		$db  = self::db();
+		$sql = 'SELECT COUNT(*) FROM ' . Db::t( 'receipts' ) . " WHERE ( data IS NULL OR data = '' ) AND pdf_path IS NULL AND voided_at IS NOT NULL";
+		return (int) ( null === $year ? $db->get_var( $sql ) : $db->get_var( $db->prepare( $sql . ' AND year = %d', $year ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- condizione costante interna
+	}
+
 	/**
 	 * Per le ricevute emesse prima che si salvassero i dati (le annullate restano fuori): fotografa i dati di OGGI e fissa il PDF, a lotti come {@see complete()}.
 	 * Azione esplicita di un amministratore: i dati non sono quelli dell'emissione.

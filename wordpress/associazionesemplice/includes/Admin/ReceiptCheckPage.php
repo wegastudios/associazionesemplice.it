@@ -188,6 +188,11 @@ final class ReceiptCheckPage {
 		}
 		if ( $left > 0 && $r['more'] ) {
 			$msg .= ' ' . Texts::t( 'Ne restano ancora {n}: premi di nuovo.', array( 'n' => $left ) );
+		} elseif ( 0 === $left ) {
+			$voided = ReceiptFiles::nodata_voided_count( $year > 0 ? $year : null );
+			if ( $voided > 0 ) {
+				$msg .= ' ' . Texts::t( 'Le {n} rimaste sono ricevute annullate: restano come sono.', array( 'n' => $voided ) );
+			}
 		}
 		return array( Ui::url( 'asem-receipt-check', array( 'year' => $year, 'after' => $r['more'] ? $r['last_id'] : 0 ) ), $msg );
 	}
