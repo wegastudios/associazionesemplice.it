@@ -6,9 +6,9 @@ namespace App\Modules\Contabilita\Http\Controllers;
 
 use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Contabilita\Contracts\LedgerError;
-use App\Modules\Contabilita\Receipts\ReceiptMail;
 use App\Modules\Contabilita\Receipts\ReceiptFileProblem;
 use App\Modules\Contabilita\Receipts\ReceiptFiles;
+use App\Modules\Contabilita\Receipts\ReceiptMail;
 use App\Modules\Core\Contracts\OrgContacts;
 use App\Modules\Core\Contracts\OrgContext;
 use Illuminate\Database\DatabaseManager;
