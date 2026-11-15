@@ -58,6 +58,7 @@ final readonly class PaymentSettingsController
                 'provider' => $p['provider'] === 'stripe' ? 'Stripe' : 'PayPal', 'status' => $p['status'], 'amount' => Money::format($p['amount_cents']),
                 'items' => implode(', ', array_column($p['items'], 'label')), 'receipts' => implode(', ', $p['receipts']), 'error' => $p['error'],
                 'refundable' => $p['status'] === 'review' && $p['paid_cents'] !== null ? max(0, $p['paid_cents'] - $p['refunded_cents']) : 0, 'refunded' => Money::format($p['refunded_cents']), 'has_receipts' => $p['receipts'] !== [],
+                'voidable' => $p['receipts'] !== [] && in_array($p['status'], ['settled', 'review'], true) && $p['paid_cents'] !== null && $p['paid_cents'] - $p['refunded_cents'] > 0,
             ], $list),
             'canSettings' => $request->user()?->can('org.settings') ?? false,
             'canAccounting' => $request->user()?->can('accounting.edit') ?? false,
@@ -135,17 +136,21 @@ final readonly class PaymentSettingsController
 
     public function refund(Request $request, string $payment): RedirectResponse
     {
-        $data = Input::of($request->validate(['amount' => ['required', 'string', 'max:20']]));
-        $cents = Money::parse(Input::string($data, 'amount'));
-        if ($cents === null || $cents <= 0) {
+        $data = Input::of($request->validate(['amount' => ['nullable', 'string', 'max:20'], 'reason' => ['required', 'string', 'max:200']]));
+        $amount = Input::optionalString($data, 'amount');
+        $cents = $amount === null ? null : Money::parse($amount);
+        if ($amount !== null && ($cents === null || $cents <= 0)) {
             throw ValidationException::withMessages(['amount' => 'Importo non valido.']);
         }
+        $name = $this->db->connection('pgsql')->table('core.orgs')->where('id', $this->context->require()->id)->value('name');
         try {
-            $this->payments->refund($payment, $cents);
+            $mailed = $this->payments->refund($payment, $cents, Input::string($data, 'reason'), is_string($name) ? $name : '');
         } catch (MemberAccessError $e) {
             throw ValidationException::withMessages(['ledger' => $e->getMessage()]);
         }
 
-        return back()->with('status', 'Rimborso di '.Money::format($cents).' inviato al socio.');
+        $notice = $mailed ? 'Il socio è stato avvisato per email.' : 'Il socio non ha un\'email: avvisalo tu.';
+
+        return back()->with('status', ($cents === null ? 'Rimborsato e stornato: ricevute e tessere annullate. ' : 'Rimborso di '.Money::format($cents).' inviato al socio. ').$notice);
     }
 }
