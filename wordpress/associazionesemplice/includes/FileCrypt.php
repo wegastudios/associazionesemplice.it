@@ -93,6 +93,114 @@ final class FileCrypt {
 		}
 	}
 
+	// ---------- Chiave da una frase, con ripiego per i server con poca memoria ----------
+
+	const MB             = 1048576;
+	const PBKDF2_ITER    = 600000;
+	const PBKDF2_MIN     = 100000;
+	const PBKDF2_MAX     = 5000000;
+
+	/** Solo per le prove: '' (normale), 'light' (salta il livello più robusto) o 'pbkdf2' (salta Argon2id). */
+	public static $kdf_force = '';
+
+	/** Memoria che PHP può ancora usare, in byte. */
+	private static function free_memory(): int {
+		$l = trim( (string) ini_get( 'memory_limit' ) );
+		if ( '' === $l || '-1' === $l ) {
+			return PHP_INT_MAX;
+		}
+		$n = (int) $l;
+		switch ( strtolower( substr( $l, -1 ) ) ) {
+			case 'g':
+				$n *= 1024;
+				// no break
+			case 'm':
+				$n *= 1024;
+				// no break
+			case 'k':
+				$n *= 1024;
+		}
+		return $n <= 0 ? PHP_INT_MAX : max( 0, $n - memory_get_usage( true ) );
+	}
+
+	/**
+	 * I metodi con cui si può ricavare una chiave da una frase su questo server, dal più robusto al più leggero: Argon2id con 64 MiB, Argon2id più leggero
+	 * (24 MiB, più giri) se la memoria non basta, e infine PBKDF2-SHA256 con molte iterazioni, che non usa memoria e funziona sempre.
+	 *
+	 * @return array[]
+	 */
+	public static function kdf_tiers(): array {
+		$t = array();
+		if ( self::pwhash_available() && 'pbkdf2' !== self::$kdf_force ) {
+			$free = self::free_memory();
+			if ( 'light' !== self::$kdf_force && $free >= 96 * self::MB ) {
+				$t[] = array( 'alg' => 'argon2id13', 'ops' => 2, 'mem' => 64 * self::MB, 'level' => 'strong' );
+			}
+			if ( $free >= 48 * self::MB ) {
+				$t[] = array( 'alg' => 'argon2id13', 'ops' => 3, 'mem' => 24 * self::MB, 'level' => 'light' );
+			}
+		}
+		$t[] = array( 'alg' => 'pbkdf2-sha256', 'iter' => self::PBKDF2_ITER, 'level' => 'basic' );
+		return $t;
+	}
+
+	/** Livello disponibile su questo server: strong, light o basic. */
+	public static function kdf_level(): string {
+		return (string) self::kdf_tiers()[0]['level'];
+	}
+
+	/**
+	 * Chiave nuova da una frase, con il primo metodo che riesce. Il risultato descrive il metodo (algoritmo, parametri, sale) per poterla ricavare di nuovo.
+	 *
+	 * @return array{key:string,kdf:array}
+	 */
+	public static function kdf_make( string $phrase ): array {
+		foreach ( self::kdf_tiers() as $tier ) {
+			$kdf = array( 'alg' => $tier['alg'], 'salt' => base64_encode( random_bytes( 16 ) ) );
+			if ( 'pbkdf2-sha256' === $tier['alg'] ) {
+				$kdf['iter'] = $tier['iter'];
+			} else {
+				$kdf['ops'] = $tier['ops'];
+				$kdf['mem'] = $tier['mem'];
+			}
+			try {
+				return array( 'key' => self::kdf_derive( $phrase, $kdf ), 'kdf' => $kdf );
+			} catch ( FileCryptError $e ) {
+				continue; // memoria insufficiente: si passa al metodo più leggero
+			}
+		}
+		throw new FileCryptError( FileCryptError::IO ); // non succede: l'ultimo metodo non usa memoria
+	}
+
+	/**
+	 * Ricava la chiave da una frase con il metodo descritto (letto da una copia o dal database).
+	 *
+	 * @throws FileCryptError
+	 */
+	public static function kdf_derive( string $phrase, array $kdf ): string {
+		$salt = base64_decode( (string) ( $kdf['salt'] ?? '' ), true );
+		if ( false === $salt || strlen( $salt ) < 16 ) {
+			throw new FileCryptError( FileCryptError::FORMAT );
+		}
+		$alg = (string) ( $kdf['alg'] ?? '' );
+		if ( 'pbkdf2-sha256' === $alg ) {
+			$iter = (int) ( $kdf['iter'] ?? 0 );
+			if ( $iter < self::PBKDF2_MIN || $iter > self::PBKDF2_MAX ) {
+				throw new FileCryptError( FileCryptError::FORMAT );
+			}
+			return hash_pbkdf2( 'sha256', $phrase, $salt, $iter, 32, true );
+		}
+		if ( 'argon2id13' === $alg ) {
+			$ops = (int) ( $kdf['ops'] ?? 0 );
+			$mem = (int) ( $kdf['mem'] ?? 0 );
+			if ( $ops < 1 || $ops > 12 || $mem < 8 * self::MB || $mem > 1024 * self::MB ) {
+				throw new FileCryptError( FileCryptError::FORMAT );
+			}
+			return self::key_from_phrase( $phrase, $salt, $ops, $mem );
+		}
+		throw new FileCryptError( FileCryptError::FORMAT );
+	}
+
 	// ---------- Dati associati ----------
 
 	public static function ad_file( string $site, string $rel ): string {

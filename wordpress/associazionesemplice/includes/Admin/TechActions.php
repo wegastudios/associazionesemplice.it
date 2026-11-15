@@ -29,6 +29,8 @@ final class TechActions {
 		'asem_enc_step'      => 'enc_step',
 		'asem_enc_recover'   => 'enc_recover',
 		'asem_enc_newkey'    => 'enc_newkey',
+		'asem_enc_setrecovery'    => 'enc_setrecovery',
+		'asem_enc_recoverphrase'  => 'enc_recoverphrase',
 	);
 
 	public static function register(): void {
@@ -108,6 +110,9 @@ final class TechActions {
 	/** «Cifra i file già caricati»: parte il primo lotto e si programmano gli altri. */
 	public static function enc_start( array $p ): array {
 		$back = Ui::url( 'asem-backup' ) . '#asem-cifratura';
+		if ( 'setup' === \AssociazioneSemplice\FileKey::mode() ) {
+			throw new \InvalidArgumentException( \AssociazioneSemplice\PrivateFiles::setup_text() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
 		if ( 'encrypt' !== \AssociazioneSemplice\FileKey::mode() ) {
 			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'La cifratura non è disponibile: manca la libreria sodium oppure la chiave non si apre su questo sito.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
@@ -135,9 +140,26 @@ final class TechActions {
 
 	/** Ricomincia con una chiave nuova (i file già cifrati con la vecchia restano illeggibili finché la vecchia non torna disponibile). */
 	public static function enc_newkey( array $p ): array {
+		if ( 'RICOMINCIA' !== strtoupper( trim( (string) ( $p['confirm_word'] ?? '' ) ) ) ) {
+			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Per ricominciare scrivi la parola RICOMINCIA nel campo di conferma.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
 		\AssociazioneSemplice\FileKey::start_new();
 		Audit::log( 'file_crypt.new_key', 'folder', 0 );
-		return array( Ui::url( 'asem-backup' ) . '#asem-cifratura', \AssociazioneSemplice\Texts::t( 'Creata una chiave nuova: da ora i file si salvano cifrati con quella.' ) );
+		return array( Ui::url( 'asem-backup' ) . '#asem-cifratura', \AssociazioneSemplice\Texts::t( 'Creata una chiave nuova. Ora scegli la frase di recupero: da quel momento i nuovi file si salvano cifrati con questa chiave.' ) );
+	}
+
+	/** «Scegli la frase di recupero»: crea la chiave (se manca) o aggiunge la frase a quella che c'è. */
+	public static function enc_setrecovery( array $p ): array {
+		\AssociazioneSemplice\FileKey::set_recovery( (string) ( $p['rphrase'] ?? '' ), (string) ( $p['rphrase2'] ?? '' ) );
+		Audit::log( 'file_crypt.recovery_set', 'folder', 0 );
+		return array( Ui::url( 'asem-backup' ) . '#asem-cifratura', \AssociazioneSemplice\Texts::t( 'Frase di recupero scelta. Scrivila su carta e tienila fuori dal sito: serve se i codici di sicurezza cambiano.' ) );
+	}
+
+	/** Chiave che non si apre più: con la frase di recupero si riapre, senza ricifrare i file. */
+	public static function enc_recoverphrase( array $p ): array {
+		$n = \AssociazioneSemplice\FileKey::recover_with_phrase( (string) ( $p['recovery_phrase'] ?? '' ) );
+		Audit::log( 'file_crypt.key_recovered', 'folder', 0, array( 'keys' => $n ) );
+		return array( Ui::url( 'asem-backup' ) . '#asem-cifratura', \AssociazioneSemplice\Texts::t( 'Chiave riaperta ({n}): i file cifrati tornano leggibili, senza averli cifrati di nuovo.', array( 'n' => $n ) ) );
 	}
 
 	/** Email di prova all'indirizzo di chi la chiede: dice subito se il server l'ha accettata. */

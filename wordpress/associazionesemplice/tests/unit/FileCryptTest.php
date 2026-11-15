@@ -232,4 +232,47 @@ final class FileCryptTest extends TestCase {
 		$this->assertNotSame( $a, FileCrypt::key_from_phrase( 'un\'altra frase', $salt, 2, 8192 * 8 ) );
 		$this->assertSame( FileCryptError::NO_SODIUM, $this->reason( function () { FileCrypt::key_from_phrase( 'x', 'sale corto', 2, 8192 * 8 ); } ) );
 	}
+
+	public function test_kdf_fallback_without_memory_works_and_is_described(): void {
+		FileCrypt::$kdf_force = 'pbkdf2';
+		try {
+			$this->assertSame( 'basic', FileCrypt::kdf_level() );
+			$m = FileCrypt::kdf_make( 'una frase di recupero lunga' );
+			$this->assertSame( 'pbkdf2-sha256', $m['kdf']['alg'] );
+			$this->assertSame( FileCrypt::PBKDF2_ITER, $m['kdf']['iter'] );
+			$this->assertSame( 32, strlen( $m['key'] ) );
+			// chi legge la copia ricava la stessa chiave dalla sola descrizione del metodo
+			$this->assertSame( $m['key'], FileCrypt::kdf_derive( 'una frase di recupero lunga', $m['kdf'] ) );
+			$this->assertNotSame( $m['key'], FileCrypt::kdf_derive( 'un\'altra frase', $m['kdf'] ) );
+			// e con la chiave così ricavata si avvolge e si riapre una chiave dei dati
+			$dek = random_bytes( 32 );
+			$this->assertSame( $dek, FileCrypt::unwrap_key( FileCrypt::wrap_key( $dek, $m['key'] ), $m['key'] ) );
+		} finally {
+			FileCrypt::$kdf_force = '';
+		}
+	}
+
+	public function test_kdf_light_argon_tier(): void {
+		if ( ! FileCrypt::pwhash_available() ) {
+			$this->markTestSkipped( 'Argon2id non disponibile' );
+		}
+		FileCrypt::$kdf_force = 'light';
+		try {
+			$m = FileCrypt::kdf_make( 'una frase di recupero lunga' );
+			$this->assertSame( 'argon2id13', $m['kdf']['alg'] );
+			$this->assertSame( 24 * FileCrypt::MB, $m['kdf']['mem'] );
+			$this->assertSame( $m['key'], FileCrypt::kdf_derive( 'una frase di recupero lunga', $m['kdf'] ) );
+		} finally {
+			FileCrypt::$kdf_force = '';
+		}
+	}
+
+	public function test_kdf_refuses_unknown_or_unsafe_parameters(): void {
+		$salt = base64_encode( random_bytes( 16 ) );
+		$this->assertSame( FileCryptError::FORMAT, $this->reason( function () use ( $salt ) { FileCrypt::kdf_derive( 'x', array( 'alg' => 'md5', 'salt' => $salt ) ); } ) );
+		$this->assertSame( FileCryptError::FORMAT, $this->reason( function () use ( $salt ) { FileCrypt::kdf_derive( 'x', array( 'alg' => 'pbkdf2-sha256', 'salt' => $salt, 'iter' => 1000 ) ); } ) );
+		$this->assertSame( FileCryptError::FORMAT, $this->reason( function () use ( $salt ) { FileCrypt::kdf_derive( 'x', array( 'alg' => 'pbkdf2-sha256', 'salt' => $salt, 'iter' => 900000000 ) ); } ) );
+		$this->assertSame( FileCryptError::FORMAT, $this->reason( function () { FileCrypt::kdf_derive( 'x', array( 'alg' => 'pbkdf2-sha256', 'salt' => 'corto', 'iter' => 600000 ) ); } ) );
+		$this->assertSame( FileCryptError::FORMAT, $this->reason( function () use ( $salt ) { FileCrypt::kdf_derive( 'x', array( 'alg' => 'argon2id13', 'salt' => $salt, 'ops' => 2, 'mem' => 1024 ) ); } ) );
+	}
 }

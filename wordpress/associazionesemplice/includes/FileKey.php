@@ -175,12 +175,19 @@ final class FileKey {
 		return FileCrypt::encrypt_field( 'asem-prova', $dek, $id, 'as-proof' );
 	}
 
-	/** Crea una chiave dei dati. Con $first lo fa una sola volta anche se due richieste arrivano insieme. */
-	private static function create( bool $first ): void {
+	/**
+	 * Crea una chiave dei dati. Con $first lo fa una sola volta anche se due richieste arrivano insieme.
+	 *
+	 * @param array|null $rec chiave di recupero e metodo con cui si ricava dalla frase: array( 'key' => ..., 'kdf' => ... )
+	 */
+	private static function create( bool $first, ?array $rec = null ): void {
 		$dek   = random_bytes( 32 );
 		$id    = FileCrypt::key_id( $dek );
 		$pref  = self::source();
 		$entry = array( 'w' => FileCrypt::wrap_key( $dek, self::masters()[ $pref ] ), 'by' => $pref, 'at' => time(), 'p' => self::proof( $dek, $id ) );
+		if ( null !== $rec ) {
+			$entry['r'] = array( 'w' => FileCrypt::wrap_key( $dek, $rec['key'] ), 'k' => $rec['kdf'] );
+		}
 		if ( $first ) {
 			add_option( self::OPT_KEYS, array( 'current' => $id, 'keys' => array( $id => $entry ) ), '', 'no' ); // se un'altra richiesta l'ha già creata, resta la sua
 		} else {
@@ -192,25 +199,27 @@ final class FileKey {
 		self::$cache = null;
 	}
 
-	/** C'è una chiave utilizzabile per cifrare? La crea se non esiste ancora. */
-	public static function ensure(): bool {
-		$l = self::load();
-		if ( 'none' === $l['state'] ) {
-			self::create( true );
-			$l = self::load();
-		}
-		return 'ok' === $l['state'];
+	/** La chiave in uso ha la frase di recupero? */
+	public static function has_recovery(): bool {
+		$o = self::option();
+		$k = $o['keys'][ $o['current'] ] ?? null;
+		return is_array( $k ) && ! empty( $k['r']['w'] ) && ! empty( $k['r']['k'] );
 	}
 
 	/**
-	 * Come si salvano i nuovi file: 'encrypt' (cifrati), 'plain' (manca la libreria sodium: in chiaro, con avviso) o 'blocked' (la chiave salvata non si
-	 * apre con la chiave principale di questo sito: i nuovi file non si salvano finché non si sistema).
+	 * Come si salvano i nuovi file: 'encrypt' (cifrati), 'plain' (manca la libreria sodium: in chiaro, con avviso), 'blocked' (la chiave salvata non si
+	 * apre con la chiave principale di questo sito: i nuovi file non si salvano finché non si sistema) o 'setup' (manca la frase di recupero: la chiave
+	 * si crea solo scegliendola, e i nuovi file non si salvano finché non c'è).
 	 */
 	public static function mode(): string {
 		if ( ! FileCrypt::available() ) {
 			return 'plain';
 		}
-		return self::ensure() ? 'encrypt' : 'blocked';
+		$st = self::load()['state'];
+		if ( 'mismatch' === $st ) {
+			return 'blocked';
+		}
+		return 'ok' === $st && self::has_recovery() ? 'encrypt' : 'setup';
 	}
 
 	/** Situazione senza creare nulla: nosodium, none, ok o mismatch. */
@@ -314,6 +323,106 @@ final class FileKey {
 		}
 	}
 
+	// ---------- Frase di recupero ----------
+
+	const RECOVERY_MIN = 12;
+
+	/** Controlla la frase di recupero. @return string vuoto se va bene, altrimenti il perché */
+	public static function recovery_error( string $phrase, string $again ): string {
+		if ( mb_strlen( $phrase ) < self::RECOVERY_MIN ) {
+			return Texts::t( 'La frase di recupero deve avere almeno {n} caratteri.', array( 'n' => self::RECOVERY_MIN ) );
+		}
+		if ( $phrase !== $again ) {
+			return Texts::t( 'Le due frasi di recupero non coincidono.' );
+		}
+		return '';
+	}
+
+	/**
+	 * Sceglie la frase di recupero: la chiave dei dati si avvolge una seconda volta, dentro il database, con una chiave ricavata dalla frase. Se non c'è
+	 * ancora nessuna chiave dei dati, la si crea qui (è l'unico modo: la cifratura parte solo dopo aver scelto la frase). Con una frase già scelta, la
+	 * sostituisce per le chiavi che si aprono su questo sito.
+	 *
+	 * @throws \InvalidArgumentException
+	 */
+	public static function set_recovery( string $phrase, string $again ): void {
+		if ( ! FileCrypt::available() ) {
+			throw new \InvalidArgumentException( Texts::t( 'Questo server non ha la libreria di cifratura (sodium).' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$err = self::recovery_error( $phrase, $again );
+		if ( '' !== $err ) {
+			throw new \InvalidArgumentException( $err ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$l = self::load();
+		if ( 'mismatch' === $l['state'] ) {
+			throw new \InvalidArgumentException( Texts::t( 'La chiave non si apre su questo sito: prima va sistemata (sezione «Sistemare la chiave»).' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		try {
+			$rec = FileCrypt::kdf_make( $phrase );
+		} catch ( FileCryptError $e ) {
+			throw new \InvalidArgumentException( Texts::t( 'La frase non si è potuta elaborare su questo server: riprova.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		if ( 'none' === $l['state'] ) {
+			self::create( true, $rec );
+			if ( ! self::has_recovery() ) { // un'altra richiesta aveva già creato la chiave: si aggiunge la frase a quella
+				self::$cache = null;
+				$l           = self::load();
+			} else {
+				return;
+			}
+		}
+		$o = self::option();
+		foreach ( $l['deks'] as $id => $dek ) {
+			$o['keys'][ $id ]['r'] = array( 'w' => FileCrypt::wrap_key( $dek, $rec['key'] ), 'k' => $rec['kdf'] );
+		}
+		update_option( self::OPT_KEYS, $o, false );
+		self::$cache = null;
+	}
+
+	/**
+	 * Le chiavi salvate non si aprono più (codici di sicurezza o costante cambiati): con la frase di recupero si riaprono e si avvolgono con la chiave
+	 * principale di adesso, senza ricifrare nessun file.
+	 *
+	 * @return int chiavi recuperate
+	 * @throws \InvalidArgumentException
+	 */
+	public static function recover_with_phrase( string $phrase ): int {
+		if ( ! FileCrypt::available() ) {
+			throw new \InvalidArgumentException( Texts::t( 'Questo server non ha la libreria di cifratura (sodium).' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$l     = self::load();
+		$o     = self::option();
+		$m     = self::masters();
+		$n     = 0;
+		$cache = array();
+		foreach ( $l['locked'] as $id ) {
+			$r = $o['keys'][ $id ]['r'] ?? null;
+			if ( ! is_array( $r ) || empty( $r['w'] ) || empty( $r['k'] ) || ! is_array( $r['k'] ) ) {
+				continue;
+			}
+			$ck = (string) wp_json_encode( $r['k'] );
+			try {
+				if ( ! isset( $cache[ $ck ] ) ) {
+					$cache[ $ck ] = FileCrypt::kdf_derive( $phrase, $r['k'] );
+				}
+			} catch ( FileCryptError $e ) {
+				continue;
+			}
+			$d = FileCrypt::unwrap_key( (string) $r['w'], $cache[ $ck ] );
+			if ( null !== $d && FileCrypt::key_id( $d ) === $id ) {
+				$o['keys'][ $id ]['w']  = FileCrypt::wrap_key( $d, $m[ self::source() ] );
+				$o['keys'][ $id ]['by'] = self::source();
+				$n++;
+			}
+		}
+		if ( 0 === $n ) {
+			throw new \InvalidArgumentException( Texts::t( 'Con questa frase la chiave non si apre: controlla di averla scritta proprio come l\'avevi scelta.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		update_option( self::OPT_KEYS, $o, false );
+		self::$cache = null;
+		return $n;
+	}
+
 	// ---------- Frase segreta della copia di sicurezza ----------
 
 	/** Controlla la frase scelta per una copia. @return string vuoto se va bene, altrimenti il perché */
@@ -346,12 +455,15 @@ final class FileKey {
 		$out = array( 'v' => 1, 'site' => self::site_id(), 'current' => $o['current'], 'keys' => array() );
 		$pk  = null;
 		if ( null !== $phrase && '' !== $phrase ) {
-			$salt = random_bytes( SODIUM_CRYPTO_PWHASH_SALTBYTES );
-			$pk   = FileCrypt::key_from_phrase( $phrase, $salt, self::KDF_OPS, self::KDF_MEM );
-			$out['kdf'] = array( 'alg' => 'argon2id13', 'salt' => base64_encode( $salt ), 'ops' => self::KDF_OPS, 'mem' => self::KDF_MEM );
+			$made       = FileCrypt::kdf_make( $phrase ); // il metodo (Argon2id o, con poca memoria, uno più leggero) si scrive nella copia
+			$pk         = $made['key'];
+			$out['kdf'] = $made['kdf'];
 		}
 		foreach ( $o['keys'] as $id => $k ) {
 			$e = array( 'm' => (string) ( $k['w'] ?? '' ), 'mb' => (string) ( $k['by'] ?? 'salt' ) );
+			if ( ! empty( $k['r']['w'] ) && ! empty( $k['r']['k'] ) ) {
+				$e['r'] = array( 'w' => (string) $k['r']['w'], 'k' => $k['r']['k'] ); // la frase di recupero del sito viaggia con la copia
+			}
 			if ( null !== $pk && isset( $l['deks'][ (int) $id ] ) ) {
 				$e['p'] = FileCrypt::wrap_key( $l['deks'][ (int) $id ], $pk );
 			}
@@ -405,7 +517,7 @@ final class FileKey {
 				}
 				if ( null === $pk ) {
 					try {
-						$pk = FileCrypt::key_from_phrase( $phrase, (string) base64_decode( (string) ( $b['kdf']['salt'] ?? '' ), true ), (int) ( $b['kdf']['ops'] ?? 0 ), (int) ( $b['kdf']['mem'] ?? 0 ) );
+						$pk = FileCrypt::kdf_derive( $phrase, (array) $b['kdf'] ); // legge dalla copia quale metodo si è usato
 					} catch ( FileCryptError $e ) {
 						throw new \InvalidArgumentException( Texts::t( 'La frase segreta non si può elaborare su questo server (manca la memoria o la libreria): il ripristino qui non è possibile.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 					}
@@ -431,6 +543,10 @@ final class FileKey {
 			$pref = self::source();
 			foreach ( $got as $id => $dek ) {
 				$o['keys'][ $id ] = array( 'w' => FileCrypt::wrap_key( $dek, $masters[ $pref ] ), 'by' => $pref, 'at' => time(), 'p' => self::proof( $dek, $id ) );
+				$r                = $b['keys'][ $id ]['r'] ?? null;
+				if ( is_array( $r ) && ! empty( $r['w'] ) && ! empty( $r['k'] ) && is_array( $r['k'] ) ) {
+					$o['keys'][ $id ]['r'] = array( 'w' => (string) $r['w'], 'k' => $r['k'] );
+				}
 			}
 			if ( 'ok' !== $l['state'] ) {
 				$cur          = (int) ( $b['current'] ?? 0 );

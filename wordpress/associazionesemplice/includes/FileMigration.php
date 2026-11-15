@@ -15,7 +15,7 @@ final class FileMigration {
 
 	const OPT      = 'asem_file_migration';
 	const HOOK     = 'asem_file_crypt_migrate';
-	const BATCH    = 25;
+	const BATCH    = 100;
 	const MAX_SECS = 15;
 	const EVERY    = 60; // secondi fra un lotto programmato e il successivo
 
@@ -53,6 +53,31 @@ final class FileMigration {
 			$out['encrypted'] += (int) $db->get_var( "SELECT COUNT(*) FROM $t WHERE $en IS NOT NULL" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- come sopra
 			foreach ( $s['fields'] as $col ) {
 				$out['fields'] += (int) $db->get_var( $db->prepare( "SELECT COUNT(*) FROM $t WHERE `$col` IS NOT NULL AND `$col` <> '' AND `$col` NOT LIKE %s", $db->esc_like( FileCrypt::FIELD_PREFIX ) . '%' ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared -- nomi di tabella e colonna fissi del plugin
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * I file che risultano ancora in chiaro (o non trovati sul disco), per l'elenco della pagina.
+	 *
+	 * @return array<int,array{key:string,id:int,stored:string,exists:bool}>
+	 */
+	public static function unencrypted( int $limit = 50 ): array {
+		$db  = Db::db();
+		$out = array();
+		$dir = Attachments::dir();
+		foreach ( PrivateFiles::sources() as $s ) {
+			$left = $limit - count( $out );
+			if ( $left <= 0 ) {
+				break;
+			}
+			$t    = '`' . Db::t( $s['table'] ) . '`';
+			$st   = '`' . $s['stored'] . '`';
+			$en   = '`' . $s['enc'] . '`';
+			$rows = $db->get_results( $db->prepare( "SELECT id, $st AS st FROM $t WHERE $en IS NULL AND $st IS NOT NULL AND $st <> '' ORDER BY id LIMIT %d", $left ), ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared -- nomi di tabella e colonna fissi del plugin
+			foreach ( $rows as $r ) {
+				$out[] = array( 'key' => (string) $s['key'], 'id' => (int) $r['id'], 'stored' => (string) $r['st'], 'exists' => is_file( $dir . '/' . basename( (string) $r['st'] ) ) );
 			}
 		}
 		return $out;

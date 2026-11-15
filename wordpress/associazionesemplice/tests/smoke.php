@@ -27,6 +27,9 @@ use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\ProSettings;
 use AssociazioneSemplice\Settings;
 define( 'ASEM_TESTING', true ); // abilita le scorciatoie dei test (siti «non locali», chiavi di prova): in produzione la costante non c'è
+if ( \AssociazioneSemplice\FileCrypt::available() ) { // la cifratura dei file parte solo dopo aver scelto la frase di recupero
+	\AssociazioneSemplice\FileKey::set_recovery( 'frase di recupero di prova', 'frase di recupero di prova' );
+}
 
 $GLOBALS['asem_warnings'] = array();
 set_error_handler(

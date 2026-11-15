@@ -25,6 +25,7 @@ final class BackupPage {
 				. '<p><label>' . esc_html( Texts::t( 'Frase segreta della copia' ) ) . '<br><input type="password" name="phrase" class="regular-text" autocomplete="new-password" minlength="' . (int) FileKey::PHRASE_MIN . '" required></label></p>'
 				. '<p><label>' . esc_html( Texts::t( 'Ripeti la frase segreta' ) ) . '<br><input type="password" name="phrase2" class="regular-text" autocomplete="new-password" minlength="' . (int) FileKey::PHRASE_MIN . '" required></label></p>'
 				. '<p><strong class="asem-warn">' . esc_html( Texts::t( 'Senza questa frase i documenti di questa copia non si possono più aprire: scrivila e conservala.' ) ) . '</strong></p>'
+				. ( '' !== FileCryptPanel::kdf_note() ? '<p class="description">' . esc_html( FileCryptPanel::kdf_note() ) . '</p>' : '' )
 				. '<p><button class="button button-primary" name="files" value="0">Scarica la copia dei dati</button> '
 				. '<button class="button" name="files" value="1">Scarica la copia con gli allegati (scontrini e fatture)</button></p>';
 			Ui::form_close();

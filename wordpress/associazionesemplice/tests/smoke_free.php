@@ -11,6 +11,9 @@ use AssociazioneSemplice\Fiscal;
 use AssociazioneSemplice\Plugin;
 use AssociazioneSemplice\Settings;
 
+if ( \AssociazioneSemplice\FileCrypt::available() ) { // la cifratura dei file parte solo dopo aver scelto la frase di recupero
+	\AssociazioneSemplice\FileKey::set_recovery( 'frase di recupero di prova', 'frase di recupero di prova' );
+}
 $GLOBALS['asem_warnings'] = array();
 set_error_handler(
 	function ( $no, $str, $file, $line ) {

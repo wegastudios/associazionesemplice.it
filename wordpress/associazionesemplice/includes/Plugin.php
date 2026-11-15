@@ -127,7 +127,7 @@ final class Plugin {
 	}
 
 	/** Campi delle password: non si ripuliscono (come fa WordPress), si usano solo per wp_set_password() o per cifrarli. */
-	const VERBATIM_FIELDS = array( 'password', 'password2', 'pass1', 'pass2', 'apple_password', 'phrase', 'phrase2', 'old_enc_const', 'old_auth_key', 'old_auth_salt' );
+	const VERBATIM_FIELDS = array( 'password', 'password2', 'pass1', 'pass2', 'apple_password', 'phrase', 'phrase2', 'old_enc_const', 'old_auth_key', 'old_auth_salt', 'rphrase', 'rphrase2', 'recovery_phrase' );
 
 	/**
 	 * I dati di un modulo ($_POST) senza le barre aggiunte da WordPress e già ripuliti: gli indirizzi (_back, *_url) con esc_url_raw(),

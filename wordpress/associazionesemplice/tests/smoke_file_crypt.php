@@ -114,6 +114,30 @@ $fc_ok( ! is_file( $fc_path2 ), 'cifratura: cancellare un documento cancella anc
 $fc_check = FileKey::check();
 $fc_ok( $fc_check['valid'] && 'ok' === $fc_check['state'] && 'encrypt' === FileKey::mode(), 'chiave: valida (blocco di prova) e i nuovi file si cifrano' );
 $fc_ok( false !== strpos( \AssociazioneSemplice\Admin\FileCryptPanel::status_line(), 'valida' ), 'chiave: lo stato «valida» si vede nelle pagine' );
+
+// ---------- Frase di recupero: obbligatoria prima di cifrare ----------
+$fc_rphrase = 'frase di recupero di prova';
+$fc_ok( FileKey::has_recovery(), 'recupero: la chiave ha la frase di recupero (scelta all\'inizio delle prove)' );
+$fc_opt_saved = get_option( FileKey::OPT_KEYS );
+$fc_opt_nor   = $fc_opt_saved;
+foreach ( $fc_opt_nor['keys'] as $fc_k => $fc_v ) {
+	unset( $fc_opt_nor['keys'][ $fc_k ]['r'] );
+}
+update_option( FileKey::OPT_KEYS, $fc_opt_nor, false );
+FileKey::reset();
+$fc_ok( 'setup' === FileKey::mode() && 'ok' === FileKey::state(), 'recupero: senza la frase di recupero la cifratura non è attiva (blocco gentile)' );
+$fc_gate = (string) asem_or_free_throws( function () use ( $fc_file, $fc_tmp, $fc_text ) { Attachments::save_file( $fc_file( 'x.pdf', $fc_tmp( $fc_text ) ) ); } );
+$fc_ok( false !== strpos( $fc_gate, 'prima va scelta la frase di recupero' ) && ! $fc_leak(), 'recupero: senza la frase di recupero i nuovi file non si salvano, con un messaggio che dice cosa fare' );
+$fc_ok( false !== strpos( \AssociazioneSemplice\Admin\FileCryptPanel::alerts_html(), 'Manca la frase di recupero' ), 'recupero: avviso all\'amministratore con il pulsante per sceglierla' );
+$fc_ok( 0 === FileMigration::run_batch()['done'], 'recupero: senza la frase di recupero la migrazione non parte' );
+$fc_ok( false !== strpos( (string) asem_or_free_throws( function () { FileKey::set_recovery( 'corta', 'corta' ); } ), 'almeno' ) && false !== strpos( (string) asem_or_free_throws( function () { FileKey::set_recovery( 'una frase abbastanza lunga', 'un\'altra frase lunga' ); } ), 'non coincidono' ), 'recupero: la frase deve essere lunga e ripetuta uguale' );
+FileKey::set_recovery( $fc_rphrase, $fc_rphrase );
+$fc_ok( 'encrypt' === FileKey::mode() && FileKey::has_recovery() && FileKey::check()['valid'], 'recupero: scelta la frase, la cifratura è di nuovo attiva e la chiave è valida' );
+$fc_ok( in_array( FileCrypt::kdf_level(), array( 'strong', 'light', 'basic' ), true ), 'recupero: il server dichiara il metodo con cui protegge la frase' );
+FileCrypt::$kdf_force = 'pbkdf2';
+$fc_ok( 'basic' === FileCrypt::kdf_level() && false !== strpos( \AssociazioneSemplice\Admin\FileCryptPanel::kdf_note(), 'metodo alternativo' ), 'recupero: con poca memoria la schermata spiega che si usa un metodo più leggero' );
+FileCrypt::$kdf_force = '';
+
 $fc_orig = wp_salt( 'auth' );
 $fc_salt = function ( $s, $scheme ) {
 	return 'auth' === $scheme ? 'altri-codici-' . $s : $s;
@@ -135,6 +159,18 @@ FileKey::reset();
 $fc_ok( 'mismatch' === FileKey::state(), 'chiave: tolto il cambio, la chiave avvolta con i codici nuovi non coincide più (come previsto)' );
 FileKey::recover( '', $fc_new, '' );
 $fc_ok( 'ok' === FileKey::state() && $fc_text === $fc_plain( $fc_path, $fc_row['file_stored'] ), 'chiave: rimessi i codici di prima tutto torna leggibile' );
+
+// codici di sicurezza cambiati e vecchi valori persi: si riapre tutto con la frase di recupero, senza ricifrare
+$fc_h0 = hash_file( 'sha256', $fc_path );
+add_filter( 'salt', $fc_salt, 10, 2 );
+FileKey::reset();
+$fc_ok( 'mismatch' === FileKey::state(), 'recupero: con i codici cambiati la chiave non si apre' );
+$fc_ok( false !== strpos( (string) asem_or_free_throws( function () { FileKey::recover_with_phrase( 'una frase sbagliata ma lunga' ); } ), 'Con questa frase la chiave non si apre' ), 'recupero: con una frase sbagliata la chiave non si riapre' );
+$fc_ok( FileKey::recover_with_phrase( $fc_rphrase ) >= 1 && 'ok' === FileKey::state() && FileKey::check()['valid'] && hash_file( 'sha256', $fc_path ) === $fc_h0 && $fc_text === $fc_plain( $fc_path, $fc_row['file_stored'] ), 'recupero: con la frase di recupero la chiave si riapre e i file si leggono, senza cifrarli di nuovo' );
+remove_filter( 'salt', $fc_salt, 10 );
+FileKey::reset();
+FileKey::recover( '', $fc_new, '' );
+$fc_ok( 'ok' === FileKey::state() && FileKey::has_recovery(), 'recupero: tornati ai codici di prima la frase di recupero c\'è ancora' );
 
 // ---------- Migrazione dei file già caricati ----------
 delete_option( FileMigration::OPT );
@@ -199,7 +235,7 @@ $fc_za->open( $fc_zip );
 $fc_keys = json_decode( (string) $fc_za->getFromName( 'chiavi.json' ), true );
 $fc_man  = json_decode( (string) $fc_za->getFromName( 'manifest.json' ), true );
 $fc_blob = (string) $fc_za->getFromName( 'allegati/' . $fc_row['file_stored'] );
-$fc_ok( ! empty( $fc_keys['keys'] ) && ! empty( $fc_keys['kdf']['salt'] ) && 'argon2id13' === $fc_keys['kdf']['alg'] && $fc_man['encrypted'] && $fc_man['phrase'], 'copia: contiene le chiavi avvolte con la chiave del sito e con la frase segreta (Argon2id, con il suo sale)' );
+$fc_ok( ! empty( $fc_keys['keys'] ) && ! empty( $fc_keys['kdf']['salt'] ) && in_array( $fc_keys['kdf']['alg'], array( 'argon2id13', 'pbkdf2-sha256' ), true ) && $fc_man['encrypted'] && $fc_man['phrase'], 'copia: contiene le chiavi avvolte con la chiave del sito e con la frase segreta (Argon2id, con il suo sale)' );
 $fc_one = reset( $fc_keys['keys'] );
 $fc_ok( ! empty( $fc_one['m'] ) && ! empty( $fc_one['p'] ) && false === strpos( (string) $fc_za->getFromName( 'chiavi.json' ), $fc_phrase ), 'copia: ogni chiave ha la versione per il sito e quella per la frase, e la frase non compare' );
 $fc_ok( "\x01" === substr( $fc_blob, 0, 1 ) && false === strpos( $fc_blob, $fc_marker ) && $fc_blob === file_get_contents( $fc_path ), 'copia: i file restano cifrati nello ZIP, identici a quelli sul disco' );
@@ -261,6 +297,29 @@ FileKey::recover( '', $fc_new, '' ); // si torna ai codici di prima
 $fc_ok( 'ok' === FileKey::state() && $fc_text === $fc_plain( $fc_path, $fc_row['file_stored'] ), 'altro sito: rimessi i codici di prima tutto resta leggibile' );
 wp_delete_file( $fc_zip );
 
+// copia fatta su un server con poca memoria: la frase funziona lo stesso, il metodo è scritto nella copia e il ripristino lo legge da lì
+FileCrypt::$kdf_force = 'pbkdf2';
+$fc_zip2 = Backup::export( true, null, $fc_phrase );
+FileCrypt::$kdf_force = '';
+$fc_za2 = new ZipArchive();
+$fc_za2->open( $fc_zip2 );
+$fc_keys2 = json_decode( (string) $fc_za2->getFromName( 'chiavi.json' ), true );
+$fc_za2->close();
+$fc_ok( 'pbkdf2-sha256' === $fc_keys2['kdf']['alg'] && (int) $fc_keys2['kdf']['iter'] >= 100000 && ! empty( $fc_keys2['kdf']['salt'] ), 'copia con poca memoria: il metodo alternativo e i suoi parametri sono scritti nel file delle chiavi' );
+add_filter( 'salt', $fc_salt, 10, 2 );
+delete_option( FileKey::OPT_KEYS );
+delete_option( FileKey::OPT_SITE );
+FileKey::reset();
+$fc_ok( 'none' === FileKey::state() && 'setup' === FileKey::mode(), 'altro sito: senza chiave la cifratura non parte da sola, serve scegliere la frase di recupero' );
+$fc_e3 = (string) asem_or_free_throws( function () use ( $fc_zip2 ) { Backup::restore( $fc_zip2, 'frase sbagliata ma lunga' ); } );
+$fc_r5 = Backup::restore( $fc_zip2, $fc_phrase );
+$fc_ok( false !== strpos( $fc_e3, 'non è quella giusta' ) && 0 === $fc_r5['bad'] && 'ok' === FileKey::state() && $fc_text === $fc_plain( $fc_path, $fc_row['file_stored'] ), 'copia con poca memoria: su un altro sito il ripristino con la frase riesce (e con quella sbagliata si ferma)' );
+$fc_ok( FileKey::has_recovery() && 'encrypt' === FileKey::mode(), 'ripristino: la frase di recupero del sito viaggia con la copia, la cifratura resta attiva' );
+remove_filter( 'salt', $fc_salt, 10 );
+FileKey::reset();
+FileKey::recover( '', $fc_new, '' );
+wp_delete_file( $fc_zip2 );
+
 // ---------- Costante ASEM_ENC_KEY: la chiave si avvolge di nuovo senza ricifrare i file ----------
 $fc_before = hash_file( 'sha256', $fc_path );
 if ( ! defined( 'ASEM_ENC_KEY' ) ) {
@@ -270,6 +329,32 @@ FileKey::reset();
 $fc_ok( 'const' === FileKey::source() && 'ok' === FileKey::state() && hash_file( 'sha256', $fc_path ) === $fc_before && $fc_text === $fc_plain( $fc_path, $fc_row['file_stored'] ), 'costante: con ASEM_ENC_KEY la chiave dei dati si avvolge di nuovo e i file non vengono toccati' );
 $fc_bk = FileKey::bundle( null );
 $fc_ok( 'const' === reset( $fc_bk['keys'] )['mb'] && ! FileKey::salts_weak(), 'costante: la chiave è avvolta con la costante e l\'avviso dei codici deboli non compare' );
+
+// ---------- Misura dei tempi: 100 file da 1 MB (si legge nei log), con il sito che resta usabile ----------
+$fc_blob1 = str_repeat( 'abcdefghijklmnopqrstuvwxyz012345', 32768 ); // 1 MiB
+$fc_bulk  = array();
+for ( $fc_i = 0; $fc_i < 100; $fc_i++ ) {
+	$fc_bulk[] = $fc_legacy( $fc_blob1 . $fc_i, hash( 'sha256', $fc_blob1 . $fc_i ) );
+}
+$fc_mid = PrivateFiles::prepare_read( $fc_dir . '/' . $fc_bulk[0]['stored'], $fc_bulk[0]['stored'], null, hash( 'sha256', $fc_bulk[0]['content'] ), 'doc' );
+$fc_ok( false === $fc_mid['enc'] && strlen( $fc_bulk[0]['content'] ) === $fc_mid['length'], 'tempi: finché un file non è stato cifrato si legge com\'è (il vecchio file vale fino alla sostituzione)' );
+$fc_t0 = microtime( true );
+FileMigration::start();
+$fc_loops = 1;
+while ( FileMigration::state()['running'] && $fc_loops < 50 ) {
+	FileMigration::run_batch();
+	$fc_loops++;
+}
+$fc_secs = microtime( true ) - $fc_t0;
+echo sprintf( "misura cifratura: 100 file da 1 MB in %.2f s (%.1f file/s), %d lotti da %d\n", $fc_secs, 100 / max( 0.001, $fc_secs ), $fc_loops, FileMigration::BATCH ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- messaggio di prova
+$fc_okall = true;
+foreach ( $fc_bulk as $fc_x ) {
+	$fc_okall = $fc_okall && 1 === (int) $fc_get( $fc_x )['enc_ver'] && FileCrypt::is_encrypted_file( $fc_dir . '/' . $fc_x['stored'] );
+	$wpdb->delete( Db::t( 'documents' ), array( 'id' => $fc_x['id'] ) );
+	wp_delete_file( $fc_dir . '/' . $fc_x['stored'] );
+}
+$fc_ok( $fc_okall && ! $fc_parts(), 'tempi: tutti i 100 file da 1 MB risultano cifrati, senza file temporanei' );
+$fc_ok( 100 === FileMigration::BATCH && 15 === FileMigration::MAX_SECS, 'tempi: il lotto è di 100 file con al massimo 15 secondi' );
 
 // ---------- Libreria sodium assente ----------
 FileCrypt::$disabled = true;
