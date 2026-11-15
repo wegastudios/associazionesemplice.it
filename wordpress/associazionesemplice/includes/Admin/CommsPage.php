@@ -33,7 +33,7 @@ final class CommsPage {
 		echo '<tr><th>Altri cookie del sito</th><td><textarea name="privacy_extra_cookies" rows="4" class="large-text" placeholder="_ga — statistiche anonime di Google Analytics">' . esc_textarea( (string) $s['privacy_extra_cookies'] ) . '</textarea>'
 			. '<p class="description">Il plugin dichiara da solo i suoi cookie. Se il sito ne usa altri (statistiche, mappe, video, negozio…), scrivili qui, uno per riga, con il nome e a cosa servono: compariranno nell\'informativa. Per sapere quali cookie usa davvero il tuo sito puoi servirti di uno scanner esterno. I cookie non tecnici richiedono il consenso dei visitatori.</p></td></tr>';
 		echo '<tr><th>Email per la privacy</th><td><input type="email" name="privacy_email" value="' . esc_attr( (string) $s['privacy_email'] ) . '" class="regular-text" placeholder="privacy@…">'
-			. '<p class="description">L\'indirizzo a cui scrivere per esercitare i diritti: compare nell\'informativa. Se lo lasci vuoto si usa la PEC dell\'ente.</p></td></tr>';
+			. '<p class="description">L\'indirizzo a cui scrivere per esercitare i diritti: compare nell\'informativa. Se lo lasci vuoto si usa l\'email della segreteria, poi la PEC dell\'ente.</p></td></tr>';
 		echo '<tr><th>Ex soci da anonimizzare</th><td>dopo <input type="number" min="1" max="30" name="privacy_retention_years" value="' . (int) $s['privacy_retention_years'] . '" style="width:70px"> anni di inattività<p class="description">Tempo oltre il quale proponi di togliere i dati personali di chi non partecipa più. Decidi tu caso per caso: i movimenti contabili restano.</p></td></tr>';
 		echo '</tbody></table>';
 

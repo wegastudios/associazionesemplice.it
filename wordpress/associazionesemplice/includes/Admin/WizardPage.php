@@ -84,6 +84,7 @@ final class WizardPage {
 		echo wp_kses( '<tr><th>Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?</th><td>' . EntityPage::fiscal_month_field( $s ) . '<p class="description">È l\'anno dei conti: prima nota, rendiconto e preventivo. Di solito inizia a gennaio, ma puoi scegliere un altro mese, anche diverso dall\'anno sociale. Sceglilo prima di chiudere il primo anno: dopo la prima chiusura non si può più cambiare. I Dati per il RUNTS restano al 31 dicembre in ogni caso.</p></td></tr>', Html::allowed() );
 		echo '<tr><th>Conferma</th><td><input type="hidden" name="months_present" value="1"><label><input type="checkbox" name="months_confirmed" value="1" required> Ho controllato i due mesi: sono quelli del mio ente.</label><p class="description">Vanno scelti per primi perché da questi mesi dipendono le tessere e i conti. Sono precompilati con gennaio: se va bene, basta la spunta.</p></td></tr>';
 		echo '<tr><th>Come si chiama</th><td><input type="text" name="association_name" value="' . esc_attr( (string) $s['association_name'] ) . '" class="regular-text"></td></tr>';
+		echo wp_kses( EntityPage::contact_rows( $s ), Html::allowed() ); // contatti della segreteria: obbligatori
 		do_action( 'asem_wizard_entity_rows', $s ); // le estensioni aggiungono qui le loro domande
 		echo '</tbody></table>';
 		echo wp_kses( self::yes_no( 'guests_enabled', 'Accettate ospiti, cioè persone che partecipano senza essere iscritte?', Settings::guests_enabled() ), Html::allowed() );

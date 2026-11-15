@@ -76,7 +76,8 @@ final class Wizard {
 			throw new \InvalidArgumentException( 'Prima di continuare conferma i due mesi: l\'inizio dell\'anno sociale e quello dell\'anno fiscale.' );
 		}
 
-		// 1. Ente
+		// 1. Ente (email e telefono della segreteria obbligatori: se mancano dal modulo valgono vuoti e la procedura non si completa)
+		$p += array( 'secretary_email' => '', 'secretary_phone' => '' );
 		$vals = EntityData::values( $p, false ); // nome, tipo, codice fiscale, sede, partita IVA: stesse regole della scheda «Dati e fiscalità»
 
 		if ( ! empty( $p['wpusers_present'] ) ) {

@@ -42,6 +42,10 @@ final class Ui {
 		echo wp_kses( '<div class="wrap asem asem-ui"><h1 class="wp-heading-inline">' . esc_html( $title ) . '</h1> ' . $actions_html . '<hr class="wp-header-end">', Html::allowed() );
 		echo wp_kses( Admin::tabs( isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '' ), Html::allowed() ); // phpcs:ignore WordPress.Security.NonceVerification
 		self::notices();
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+		if ( 'asem-wizard' !== $page ) { // promemoria fisso dei contatti della segreteria, in tutte le pagine del plugin (nei dati dell'ente senza pulsante)
+			echo wp_kses( \AssociazioneSemplice\MissingBand::html( $page ), Html::allowed() );
+		}
 	}
 
 	/** Piccolo script di una pagina, accodato con le funzioni di WordPress (parte nel piè di pagina, a pagina costruita). */

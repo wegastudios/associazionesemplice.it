@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '63'; // dalla 62 il verbale ha il numero salvato (number_year, number_seq); dalla 63 l'anno sociale parte a gennaio
+	const DB_VERSION        = '64'; // dalla 64 il pulsante WhatsApp è una scelta a parte; dalla 62 il verbale ha il numero salvato (number_year, number_seq); dalla 63 l'anno sociale parte a gennaio
 
 	public static function activate(): void {
 		self::create_tables();
@@ -42,6 +42,9 @@ final class Install {
 			}
 			if ( '' !== $old && version_compare( $old, '63', '<' ) ) {
 				self::migrate_social_year_month();
+			}
+			if ( '' !== $old && version_compare( $old, '64', '<' ) ) {
+				self::migrate_whatsapp_button();
 			}
 			if ( '' !== $old && version_compare( $old, '3', '<' ) ) {
 				// Dalla v3 il contributo di un'attività è `fee_cents` (per i corsi resta "al mese").
@@ -119,6 +122,20 @@ final class Install {
 		}
 		$saved                            = is_array( $saved ) ? $saved : array();
 		$saved['social_year_start_month'] = 1;
+		update_option( Settings::OPTION, $saved );
+		return true;
+	}
+
+	/**
+	 * Dalla v64 il pulsante WhatsApp è una scelta a parte (`whatsapp_button`): il telefono della segreteria è obbligatorio e può essere un fisso.
+	 * Chi aveva già un numero compilato (che prima accendeva il pulsante) lo tiene acceso. Si può rilanciare senza effetti. @return bool true se è stato acceso
+	 */
+	public static function migrate_whatsapp_button(): bool {
+		$saved = get_option( Settings::OPTION, array() );
+		if ( ! is_array( $saved ) || array_key_exists( 'whatsapp_button', $saved ) || '' === trim( (string) ( $saved['secretary_phone'] ?? '' ) ) ) {
+			return false;
+		}
+		$saved['whatsapp_button'] = 1;
 		update_option( Settings::OPTION, $saved );
 		return true;
 	}
