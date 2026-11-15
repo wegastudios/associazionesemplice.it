@@ -93,12 +93,15 @@ jobs:
           HOST: ${{ secrets.SAAS_SSH_HOST }}
           PORT: ${{ secrets.SAAS_SSH_PORT || '22' }}
           SSH_USER: ${{ secrets.SAAS_SSH_USER }}
+          TARGET: ${{ inputs.environment }}
         run: |
+          # La demo può stare nello stesso account della produzione: cartella propria, mai ~/saas.
+          DIR=saas; [ "$TARGET" = demo ] && DIR=saas-demo
           PKG="$(ls out/saas-*.tar.gz)"; NAME="$(basename "$PKG")"; SUM="$(cat "$PKG.sha256")"
           SSH=(ssh -i ~/.ssh/deploy -p "$PORT" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "$SSH_USER@$HOST")
-          "${SSH[@]}" 'mkdir -p ~/saas/incoming'
-          "${SSH[@]}" "cat > ~/saas/incoming/$NAME" < "$PKG"
-          "${SSH[@]}" "bash -s -- ~/saas/incoming/$NAME $SUM" < saas/deploy/remote.sh
+          "${SSH[@]}" "mkdir -p ~/$DIR/incoming"
+          "${SSH[@]}" "cat > ~/$DIR/incoming/$NAME" < "$PKG"
+          "${SSH[@]}" "SAAS_BASE=\"\$HOME/$DIR\" bash -s -- ~/$DIR/incoming/$NAME $SUM" < saas/deploy/remote.sh
       - name: Pulizia
         if: always()
         run: rm -f ~/.ssh/deploy
