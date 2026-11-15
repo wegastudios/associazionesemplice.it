@@ -8410,7 +8410,7 @@ asem_ok( false !== strpos( (string) $rf_try( $rf_a2, 500 ), 'a 4,00 €' ) && $r
 $rf_g = $rf_pay( 'stripe', 1000, array( 'review' => 1 ) );
 $rf_n0 = count( $rf_calls );
 $rf_phrase = array(
-	'perm'     => 'La chiave Stripe non ha il permesso di fare rimborsi: attiva «Refunds» in scrittura nelle sue autorizzazioni su Stripe.',
+	'perm'     => 'La chiave Stripe non ha il permesso di fare rimborsi: controlla le autorizzazioni della chiave su Stripe (serve poter scrivere i rimborsi).',
 );
 $rf_mode = 'perm';
 $rf_pm = (string) $rf_try( $rf_g, 500 );
