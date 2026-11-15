@@ -28,7 +28,7 @@ I dati dell'ente compaiono sulle **ricevute** e sul **modulo di adesione**. L'**
 
 ## Perché vedo una banda in alto?
 
-Finché manca qualche dato dell'ente, in cima a ogni pagina c'è una **banda fissa** (non si chiude): **«Mancano dei dati dell'associazione»**, con l'elenco di quello che manca. Chi amministra preme **«Completali ora»** e arriva alla **Configurazione guidata** (anche da **Altro → Configurazione guidata**), al passo **Dati dell'ente**. Chi non amministra legge **«Chiedi a chi amministra di completarli.»**. La banda sparisce da sola quando è tutto compilato.
+Finché manca qualche dato dell'ente, in cima a ogni pagina c'è una **banda fissa** (non si chiude): **«Mancano dei dati dell'associazione»**, con l'elenco di quello che manca. Chi amministra preme **«Completali ora»** e arriva alla **Configurazione guidata** (anche da **Altro → Configurazione guidata**), al passo **Dati dell'ente**. Chi non amministra legge **«Chiedi a chi amministra di completarli.»**. Se nell'elenco vedi **partita IVA**, **numero RUNTS** o **PEC** e l'associazione non li ha, basta mettere la spunta **«non ce l'ha»**. La banda sparisce da sola quando è tutto compilato.
 
 ## Dove trovi le cose
 
@@ -132,7 +132,7 @@ I soldi sono arrivati sul **conto Stripe o PayPal dell'associazione**, ma per qu
    **Non vedi «rimborsa»?** Serve il permesso **«Emettere rimborsi»**: chiedilo a chi amministra il gestionale.
 3. Dopo l'invio compare «Rimborso di X,XX € inviato al socio. Il socio è stato avvisato per email.» e sotto lo stato leggi **«restituiti X,XX €»**.
 
-   Il socio riceve un'email con oggetto «Rimborso del tuo pagamento» e il nome dell'associazione, con **importo**, **data del pagamento**, **motivo** e **tempi di accredito** (in genere pochi giorni lavorativi, fino a 10); in fondo ci sono i **contatti della segreteria** (email e telefono).  Se il socio non ha un'email, il gestionale te lo dice: «Il socio non ha un'email: avvisalo tu.».
+   Il socio riceve un'email con oggetto «Rimborso del tuo pagamento» e il nome dell'associazione, con **importo**, **data del pagamento**, **motivo** e **tempi di accredito** (in genere pochi giorni lavorativi, fino a 10); in fondo ci sono i **contatti della segreteria** (email e telefono), se li hai inseriti nei **Dati dell'ente**.  Se il socio non ha un'email, il gestionale te lo dice: «Il socio non ha un'email: avvisalo tu.».
 4. Stripe o PayPal di solito non restituiscono la loro commissione: chiedi al tuo commercialista se e come registrarla.
 5. Premi **«controllato»** accanto allo stato: serve solo a dire «ho visto e sistemato», non registra e non rimborsa nulla (il rimborso lo fa «rimborsa»). Lo vede chi ha il permesso di contabilità.
 
