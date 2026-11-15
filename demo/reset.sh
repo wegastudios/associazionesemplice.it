@@ -3,14 +3,43 @@
 # Da cron ogni notte alle 4. Nessun utente amministratore resta: quello d'installazione si toglie alla fine.
 set -euo pipefail
 export PATH="/usr/local/bin:/usr/bin:/bin:$PATH" # il cron ha un PATH ridotto: senza questo non trova wp (e php sarebbe quello CGI)
+DEMO="$HOME/public_html/demo"
+# File scritti durante l'uso della demo (allegati e copie di sicurezza del plugin in uploads/associazionesemplice-private, locandine e file caricati, aggiornamenti
+# lasciati a metà, cache, file temporanei del plugin). Percorsi sempre espliciti sotto $DEMO/wp-content: mai plugin, mu-plugin, temi, lingue né i file di provisioning.
+# Con «--elenco» si vede soltanto cosa verrebbe tolto, senza cancellare niente e senza toccare il database.
+svuota() { # svuota CARTELLA [argomenti di find]: toglie il contenuto, non la cartella
+	local dir="$1"; shift
+	[ -n "${DEMO:-}" ] || { echo "DEMO vuoto: mi fermo" >&2; exit 4; }
+	case "$dir" in "$DEMO"/wp-content/uploads|"$DEMO"/wp-content/upgrade|"$DEMO"/wp-content/cache) ;; *) echo "Percorso non ammesso: $dir" >&2; exit 4;; esac
+	[ -d "$dir" ] || return 0
+	if [ "${ELENCO:-0}" = 1 ]; then find "$dir" -mindepth 1 "$@" -print; else find "$dir" -mindepth 1 "$@" -delete 2>/dev/null || true; fi
+}
+svuota_temp() { # file temporanei del plugin nella cartella temporanea del server: ricevute (asem-<24 cifre esadecimali>) e pass Apple (asempk/asemm/asemo/asemw + 6), più vecchi di un'ora
+	local t="${TMPDIR:-/tmp}"
+	[ -d "$t" ] || return 0
+	local act=-delete; [ "${ELENCO:-0}" = 1 ] && act=-print
+	find "$t" -maxdepth 1 -user "$(id -un)" -mmin +60 \( -regextype posix-extended -regex "$t/asem-[0-9a-f]{24}" -o -regex "$t/asem(pk|m|o|w)[A-Za-z0-9]{6}" \) "$act" 2>/dev/null || true
+}
+svuota_file() {
+	svuota "$DEMO/wp-content/uploads"
+	svuota "$DEMO/wp-content/upgrade" ! -name index.php
+	svuota "$DEMO/wp-content/cache"
+	svuota_temp
+}
+if [ "${1:-}" = "--elenco" ]; then
+	ELENCO=1
+	echo "Verrebbe tolto (nessuna cancellazione):"
+	svuota_file
+	exit 0
+fi
 # Il reset cancella TUTTI i dati della demo: parte da solo alle 4 di notte (cron). A mano si rifiuta, a meno che non lo chieda esplicitamente l'utente (--forza).
 if [ "$(date +%H)" != "04" ] && [ "${1:-}" != "--forza" ]; then
 	echo "Rifiuto: il reset cancella tutti i dati della demo e parte da solo alle 4. Per forzarlo (solo su richiesta esplicita dell'utente): bash reset.sh --forza" >&2
 	exit 3
 fi
-cd "$HOME/public_html/demo"
+cd "$DEMO"
 wp db reset --yes >/dev/null
-find wp-content/uploads -mindepth 1 -delete 2>/dev/null || true # prima dei dati di prova: le locandine create da extra-data.php devono restare
+svuota_file # prima dei dati di prova: le locandine create da extra-data.php devono restare
 wp core install --url=https://associazionesemplice.it/demo --title="Demo di Associazione Semplice" --admin_user=setup_tmp --admin_password="$(openssl rand -hex 16)" --admin_email=info@associazionesemplice.it --skip-email >/dev/null
 wp option update blog_public 0 >/dev/null
 wp site switch-language it_IT >/dev/null 2>&1 || true
