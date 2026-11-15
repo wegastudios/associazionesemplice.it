@@ -437,7 +437,7 @@ final class ProData {
 			$vals['has_vat']             = $on ? 1 : 0;
 			$vals['no_vat']              = ( $on || empty( $p['no_vat'] ) ) ? 0 : 1; // «L'associazione non ha la partita IVA»: se c'è il numero non vale
 			if ( ! $on && empty( $p['no_vat'] ) && ( $full || array_key_exists( 'association_name', $p ) ) ) { // dato obbligatorio nei dati dell'ente e nella procedura
-				throw new \InvalidArgumentException( Texts::t( 'Indica la partita IVA oppure spunta «L\'associazione non ha la partita IVA».' ) );
+				throw new \InvalidArgumentException( Texts::t( 'Indica la partita IVA oppure spunta «L\'associazione non ha la partita IVA».' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			$vals['vat_number']          = $on ? $vat : '';
 			$vals['fiscal_regime']       = $txt( 'fiscal_regime' );
