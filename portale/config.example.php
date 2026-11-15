@@ -78,7 +78,7 @@ return array(
 	// Lista di argomenti con percorso assoluto, mai una riga libera. Vuoto = nessun tasto. Il reset cancella i dati della demo: parte solo da un clic con conferma.
 	'demo_reset' => array(
 		// 'plugin' => array( 'cmd' => array( '/bin/bash', '/home/UTENTE/demo-provision/reset.sh', '--forza' ), 'note' => 'Azzera WordPress, database e file della demo del plugin.' ),
-		// 'saas'   => array( 'cmd' => array( '/percorso/assoluto/dello/script', 'opzioni' ) ),
+		// 'saas'   => array( 'cmd' => array( '/bin/bash', '/home/UTENTE/saas-demo/reset.sh' ), 'requires' => '/home/UTENTE/saas-demo/current', 'note' => 'Azzera il database della demo del gestionale.' ), // «requires»: finché il percorso non esiste il tasto dice «non ancora installata»
 	),
 	// Proxy verso il SaaS: /saas/admin, /saas/staff, /saas/api e /saas/vai si servono dal gestionale restando su questo dominio. Spento = come prima (rinvio di /saas/admin a saas_admin_url).
 	'saas_proxy' => array( 'enabled' => false, 'upstream' => 'https://app.associazionesemplice.it' ),
