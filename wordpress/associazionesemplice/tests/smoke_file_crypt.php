@@ -256,6 +256,142 @@ foreach ( array( $fc_l3, $fc_l5 ) as $fc_x ) {
 $fc_leak_left = $fc_leak();
 $fc_ok( ! $fc_leak_left, 'migrazione: nessun contenuto in chiaro resta nella cartella riservata' );
 
+// ---------- Certificati medici già caricati: si cifrano da soli dopo l'aggiornamento (solo con il Pro) ----------
+$fc_audit_n = function ( string $action ) use ( $wpdb ): int {
+	return (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) . ' WHERE action = %s', $action ) );
+};
+if ( class_exists( '\\AssociazioneSemplice\\Certificates' ) && $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', Db::t( 'medical_certs' ) ) ) ) {
+	delete_option( FileMigration::CERT_OPT );
+	wp_clear_scheduled_hook( FileMigration::CERT_HOOK );
+	$fc_cert = function ( string $content, string $sha, string $doctor ) use ( $wpdb, $fc_dir ): array {
+		$stored = bin2hex( random_bytes( 16 ) );
+		file_put_contents( $fc_dir . '/' . $stored, $content );
+		$wpdb->insert( Db::t( 'medical_certs' ), array( 'person_id' => 1, 'kind' => 'other', 'issued_on' => '2026-01-01', 'expires_on' => '2027-01-01', 'doctor' => $doctor, 'file_name' => 'cert.pdf', 'file_stored' => $stored, 'file_sha256' => $sha, 'file_size' => strlen( $content ), 'created_at' => Db::now() ) );
+		return array( 'id' => (int) $wpdb->insert_id, 'stored' => $stored, 'content' => $content );
+	};
+	$fc_cget = function ( array $c ) use ( $wpdb ): array {
+		return (array) $wpdb->get_row( 'SELECT enc_ver, doctor, file_name FROM ' . Db::t( 'medical_certs' ) . ' WHERE id = ' . (int) $c['id'], ARRAY_A );
+	};
+	$fc_c1 = $fc_cert( "%PDF-cert1\n" . $fc_marker, hash( 'sha256', "%PDF-cert1\n" . $fc_marker ), 'Dott. Uno' );
+	$fc_c2 = $fc_cert( "%PDF-cert2\n" . $fc_marker, hash( 'sha256', "%PDF-cert2\n" . $fc_marker ), 'Dott. Due' ); // sarà cifrato ma la riga non verrà aggiornata (interruzione)
+	$fc_c3 = $fc_cert( "%PDF-cert3\n" . $fc_marker, hash( 'sha256', 'un altro contenuto' ), 'Dott. Tre' ); // il file non è più quello registrato
+	$fc_oth = $fc_legacy( "%PDF-altro\n" . $fc_marker, hash( 'sha256', "%PDF-altro\n" . $fc_marker ) ); // un documento comune già caricato: solo il pulsante lo cifra
+	$fc_plain_h = array();
+	foreach ( array( $fc_c1, $fc_c2, $fc_c3, $fc_oth ) as $fc_x ) {
+		$fc_plain_h[ $fc_x['stored'] ] = hash_file( 'sha256', $fc_dir . '/' . $fc_x['stored'] );
+	}
+
+	// senza sodium: i certificati restano in chiaro, avviso con il messaggio da inoltrare, nessun errore, nulla di programmato
+	$fc_nb = $fc_audit_n( 'file_crypt.certs_auto_blocked' );
+	FileCrypt::$disabled = true;
+	FileKey::reset();
+	FileMigration::auto_certs();
+	$fc_cs = FileMigration::state( FileMigration::CERT_OPT );
+	$fc_al = html_entity_decode( \AssociazioneSemplice\Admin\FileCryptPanel::cert_alerts_html(), ENT_QUOTES, 'UTF-8' );
+	$fc_ok( 'nosodium' === $fc_cs['status'] && ! $fc_cs['running'] && ! wp_next_scheduled( FileMigration::CERT_HOOK ), 'certificati automatici: senza sodium non parte nulla e lo stato lo ricorda' );
+	$fc_ok( false !== strpos( $fc_al, 'I certificati medici già caricati restano in chiaro' ) && false !== strpos( $fc_al, 'sodium' ), 'certificati automatici: senza sodium l\'amministratore vede l\'avviso (certificati in chiaro, serve sodium)' );
+	ob_start();
+	\AssociazioneSemplice\Admin\FileCryptPanel::render();
+	$fc_pnl = html_entity_decode( ob_get_clean(), ENT_QUOTES, 'UTF-8' );
+	$fc_ok( false !== strpos( $fc_pnl, 'asem-sodium-msg' ) && false !== strpos( $fc_pnl, 'certificati medici). Grazie.' ) && false !== strpos( $fc_pnl, 'restano in chiaro' ), 'certificati automatici: senza sodium il riquadro dà il messaggio da copiare e inoltrare a chi gestisce il sito' );
+	FileMigration::auto_certs();
+	$fc_ok( $fc_nb + 1 === $fc_audit_n( 'file_crypt.certs_auto_blocked' ), 'certificati automatici: il blocco entra nel registro azioni una volta sola' );
+	$fc_still = true;
+	foreach ( array( $fc_c1, $fc_c2, $fc_c3 ) as $fc_x ) {
+		$fc_still = $fc_still && hash_file( 'sha256', $fc_dir . '/' . $fc_x['stored'] ) === $fc_plain_h[ $fc_x['stored'] ] && null === $fc_cget( $fc_x )['enc_ver'];
+	}
+	$fc_ok( $fc_still, 'certificati automatici: senza sodium i file dei certificati sono rimasti in chiaro, identici' );
+	FileCrypt::$disabled = false;
+	FileKey::reset();
+
+	// chiave che non si apre: non si tocca nulla, l'avviso rimanda a «Sistemare la chiave»
+	add_filter( 'salt', $fc_salt, 10, 2 );
+	FileKey::reset();
+	FileMigration::auto_certs();
+	$fc_cs = FileMigration::state( FileMigration::CERT_OPT );
+	$fc_al = html_entity_decode( \AssociazioneSemplice\Admin\FileCryptPanel::cert_alerts_html(), ENT_QUOTES, 'UTF-8' );
+	$fc_still = true;
+	foreach ( array( $fc_c1, $fc_c2, $fc_c3 ) as $fc_x ) {
+		$fc_still = $fc_still && hash_file( 'sha256', $fc_dir . '/' . $fc_x['stored'] ) === $fc_plain_h[ $fc_x['stored'] ] && null === $fc_cget( $fc_x )['enc_ver'] && 'Dott.' === substr( (string) $fc_cget( $fc_x )['doctor'], 0, 5 );
+	}
+	$fc_ok( 'nokey' === $fc_cs['status'] && ! wp_next_scheduled( FileMigration::CERT_HOOK ) && $fc_still, 'certificati automatici: con la chiave che non si apre non parte nulla e non si tocca nessun file né campo' );
+	$fc_ok( false !== strpos( $fc_al, 'la chiave non si apre su questo sito' ) && false !== strpos( $fc_al, 'Sistemare la chiave' ), 'certificati automatici: con la chiave che non si apre l\'avviso rimanda a «Sistemare la chiave»' );
+	FileMigration::certs_cron();
+	$fc_ok( 'nokey' === FileMigration::state( FileMigration::CERT_OPT )['status'], 'certificati automatici: un lavoro programmato con la chiave che non si apre non cambia nulla' );
+	remove_filter( 'salt', $fc_salt, 10 );
+	FileKey::reset();
+	$fc_ok( 'ok' === FileKey::state(), 'certificati automatici: la chiave torna valida (prova)' );
+
+	// chiave a posto: parte da sola, solo i certificati, a lotti
+	$fc_ns = $fc_audit_n( 'file_crypt.certs_auto_started' );
+	FileMigration::auto_certs();
+	$fc_cs = FileMigration::state( FileMigration::CERT_OPT );
+	$fc_al = html_entity_decode( \AssociazioneSemplice\Admin\FileCryptPanel::cert_alerts_html(), ENT_QUOTES, 'UTF-8' );
+	$fc_ok( 'running' === $fc_cs['status'] && $fc_cs['running'] && false !== wp_next_scheduled( FileMigration::CERT_HOOK ) && $fc_ns + 1 === $fc_audit_n( 'file_crypt.certs_auto_started' ), 'certificati automatici: appena la chiave è valida parte da sola, programma il primo lotto e lo scrive nel registro azioni' );
+	$fc_ok( false !== strpos( $fc_al, 'La cifratura dei certificati medici è partita.' ) && false !== strpos( $fc_al, 'Cifratura dei file riservati' ), 'certificati automatici: l\'avviso dice che è partita e dove vedere lo stato' );
+	$fc_ok( null === $fc_cget( $fc_c1 )['enc_ver'] && hash_file( 'sha256', $fc_dir . '/' . $fc_c1['stored'] ) === $fc_plain_h[ $fc_c1['stored'] ], 'certificati automatici: la partenza non cifra nulla da sola, il lavoro lo fanno i lotti programmati' );
+
+	// interruzione: un lotto minuscolo, il lavoro programmato che va perso, un file cifrato ma con la riga non aggiornata
+	FileMigration::run_batch( 1, FileMigration::CERT_KEY );
+	$fc_cs = FileMigration::state( FileMigration::CERT_OPT );
+	$fc_al = html_entity_decode( \AssociazioneSemplice\Admin\FileCryptPanel::cert_alerts_html(), ENT_QUOTES, 'UTF-8' );
+	$fc_ok( 'running' === $fc_cs['status'] && $fc_cs['running'] && 1 === preg_match( '/in corso: restano \d+/', $fc_al ), 'certificati automatici: a lavoro iniziato l\'avviso dice «in corso: restano n»' );
+	wp_clear_scheduled_hook( FileMigration::CERT_HOOK );
+	FileMigration::auto_certs();
+	$fc_ok( false !== wp_next_scheduled( FileMigration::CERT_HOOK ), 'certificati automatici: se il lavoro programmato va perso, riparte da solo dal punto in cui era' );
+	$fc_e2 = FileMigration::encrypt_one( $fc_c2['stored'], hash( 'sha256', $fc_c2['content'] ) );
+	$fc_ok( 'ok' === $fc_e2['status'] && null === $fc_cget( $fc_c2 )['enc_ver'], 'certificati automatici: file cifrato ma riga non ancora aggiornata (come dopo un\'interruzione)' );
+	$fc_loops2 = 0;
+	while ( 'running' === FileMigration::state( FileMigration::CERT_OPT )['status'] && $fc_loops2 < 10 ) {
+		FileMigration::certs_cron();
+		$fc_loops2++;
+	}
+	$fc_cs = FileMigration::state( FileMigration::CERT_OPT );
+	$fc_ok( 'done' === $fc_cs['status'] && $fc_cs['finished'] > 0 && ! $fc_cs['running'], 'certificati automatici: a lotti finisce da solo' );
+	$fc_ok( 1 === (int) $fc_cget( $fc_c1 )['enc_ver'] && 1 === (int) $fc_cget( $fc_c2 )['enc_ver'] && $fc_c1['content'] === $fc_plain( $fc_dir . '/' . $fc_c1['stored'], $fc_c1['stored'] ) && $fc_c2['content'] === $fc_plain( $fc_dir . '/' . $fc_c2['stored'], $fc_c2['stored'] ), 'certificati automatici: nessuna perdita, i certificati si riaprono uguali (anche quello interrotto a metà)' );
+	$fc_ok( FileCrypt::is_field( (string) $fc_cget( $fc_c1 )['doctor'] ) && FileCrypt::is_field( (string) $fc_cget( $fc_c1 )['file_name'] ), 'certificati automatici: anche medico e nome del file sono cifrati' );
+	$fc_ok( null === $fc_cget( $fc_c3 )['enc_ver'] && hash_file( 'sha256', $fc_dir . '/' . $fc_c3['stored'] ) === $fc_plain_h[ $fc_c3['stored'] ] && $fc_cs['failed'] >= 1, 'certificati automatici: un certificato che non coincide con l\'impronta registrata resta in chiaro, intatto, e si conta come non riuscito' );
+	$fc_ok( null === $fc_get( $fc_oth )['enc_ver'] && hash_file( 'sha256', $fc_dir . '/' . $fc_oth['stored'] ) === $fc_plain_h[ $fc_oth['stored'] ], 'certificati automatici: gli altri file già caricati non vengono toccati finché non si preme il pulsante' );
+	$fc_al = html_entity_decode( \AssociazioneSemplice\Admin\FileCryptPanel::cert_alerts_html(), ENT_QUOTES, 'UTF-8' );
+	$fc_ok( false !== strpos( $fc_al, 'La cifratura dei certificati medici è finita, ma' ) && false !== strpos( $fc_al, 'non si sono potuti cifrare' ), 'certificati automatici: l\'avviso di fine dice quanti non si sono potuti cifrare' );
+	$fc_ok( $fc_ns + 1 === $fc_audit_n( 'file_crypt.certs_auto_started' ) && $fc_audit_n( 'file_crypt.certs_auto_finished' ) >= 1, 'certificati automatici: partenza e fine sono nel registro azioni' );
+	$fc_ok( ! $fc_parts(), 'certificati automatici: non restano file temporanei' );
+
+	// finito: non riparte, non si ricontrolla
+	wp_clear_scheduled_hook( FileMigration::CERT_HOOK );
+	FileMigration::auto_certs();
+	FileMigration::certs_cron();
+	$fc_ok( 'done' === FileMigration::state( FileMigration::CERT_OPT )['status'] && ! wp_next_scheduled( FileMigration::CERT_HOOK ) && $fc_ns + 1 === $fc_audit_n( 'file_crypt.certs_auto_started' ), 'certificati automatici: a lavoro finito non riparte e non programma più nulla' );
+	$fc_s = FileMigration::state( FileMigration::CERT_OPT );
+	$fc_s['finished'] = time() - ( FileMigration::CERT_NOTICE + 1 ) * DAY_IN_SECONDS;
+	update_option( FileMigration::CERT_OPT, $fc_s, true );
+	$fc_ok( '' === \AssociazioneSemplice\Admin\FileCryptPanel::cert_alerts_html(), 'certificati automatici: l\'avviso di fine si chiude da solo dopo due settimane' );
+
+	// il pulsante resta quello di prima: cifra gli altri file
+	FileMigration::start();
+	$fc_ok( 1 === (int) $fc_get( $fc_oth )['enc_ver'] && $fc_oth['content'] === $fc_plain( $fc_dir . '/' . $fc_oth['stored'], $fc_oth['stored'] ), 'certificati automatici: premendo «Cifra i file già caricati» si cifrano anche gli altri file' );
+
+	// senza nulla da cifrare: si chiude subito in silenzio e non riparte
+	foreach ( array( $fc_c1, $fc_c2, $fc_c3 ) as $fc_x ) {
+		$wpdb->delete( Db::t( 'medical_certs' ), array( 'id' => $fc_x['id'] ) );
+		wp_delete_file( $fc_dir . '/' . $fc_x['stored'] );
+	}
+	$wpdb->delete( Db::t( 'documents' ), array( 'id' => $fc_oth['id'] ) );
+	wp_delete_file( $fc_dir . '/' . $fc_oth['stored'] );
+	delete_option( FileMigration::CERT_OPT );
+	$fc_ns2 = $fc_audit_n( 'file_crypt.certs_auto_started' );
+	FileMigration::auto_certs();
+	$fc_cs = FileMigration::state( FileMigration::CERT_OPT );
+	$fc_ok( ( 'done' === $fc_cs['status'] || 'running' === $fc_cs['status'] ) && ( 'done' !== $fc_cs['status'] || ( 0 === $fc_cs['finished'] && $fc_ns2 === $fc_audit_n( 'file_crypt.certs_auto_started' ) && '' === \AssociazioneSemplice\Admin\FileCryptPanel::cert_alerts_html() ) ), 'certificati automatici: senza certificati da cifrare si chiude subito, in silenzio, senza programmare nulla' );
+	wp_clear_scheduled_hook( FileMigration::CERT_HOOK );
+	delete_option( FileMigration::CERT_OPT );
+} else {
+	delete_option( FileMigration::CERT_OPT );
+	FileMigration::auto_certs();
+	$fc_ok( '' === FileMigration::state( FileMigration::CERT_OPT )['status'] && ! wp_next_scheduled( FileMigration::CERT_HOOK ), 'certificati automatici: senza i certificati (edizione gratuita) non parte nulla' );
+	delete_option( FileMigration::CERT_OPT );
+}
+
 // ---------- Campi dei certificati nel database (solo con il Pro) ----------
 if ( class_exists( '\\AssociazioneSemplice\\Certificates' ) && $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', Db::t( 'medical_certs' ) ) ) ) {
 	$wpdb->insert( Db::t( 'medical_certs' ), array( 'person_id' => 1, 'kind' => 'other', 'issued_on' => '2026-01-01', 'expires_on' => '2027-01-01', 'doctor' => 'Dott. Esportazione', 'created_at' => Db::now() ) );

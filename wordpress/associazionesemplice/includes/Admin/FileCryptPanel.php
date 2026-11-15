@@ -23,12 +23,81 @@ final class FileCryptPanel {
 		echo wp_kses( self::alerts_html(), Html::allowed() );
 	}
 
+	/**
+	 * Cosa dire della cifratura automatica dei certificati medici già caricati (per gli avvisi e per il riquadro): tipo, titolo, testo, e se è un avviso che si può
+	 * chiudere. Null se non c'è nulla da dire (mai partita, finita da più di due settimane, o senza nulla da cifrare).
+	 *
+	 * @return array{type:string,key:string,days:int,title:string,body:string,link:string}|null link: «stato» o «sodium» o «chiave» (dove rimandare)
+	 */
+	public static function cert_parts(): ?array {
+		$s  = FileMigration::state( FileMigration::CERT_OPT );
+		$ex = Texts::t( 'Lo stato si vede in Impostazioni → Copia di sicurezza → «Cifratura dei file riservati».' );
+		if ( 'running' === $s['status'] ) {
+			if ( $s['done'] + $s['already'] + $s['failed'] + $s['missing'] <= 0 ) {
+				return array( 'type' => 'info', 'key' => '', 'days' => 0, 'link' => 'stato', 'body' => Texts::t( 'Si fa da sola, in background: non serve premere nulla.' ) . ' ' . $ex, 'title' => Texts::t( 'La cifratura dei certificati medici è partita.' ) );
+			}
+			return array( 'type' => 'info', 'key' => '', 'days' => 0, 'link' => 'stato', 'body' => Texts::t( 'Il lavoro prosegue da solo, un lotto al minuto.' ) . ' ' . $ex, 'title' => Texts::t( 'Cifratura dei certificati medici in corso: restano {n}.', array( 'n' => FileMigration::certs_left() ) ) );
+		}
+		if ( 'done' === $s['status'] && $s['finished'] > 0 ) {
+			if ( $s['failed'] > 0 || $s['missing'] > 0 ) {
+				return array( 'type' => 'warning', 'key' => 'cert-crypt-done', 'days' => 365, 'link' => 'stato', 'title' => Texts::t( 'La cifratura dei certificati medici è finita, ma {f} non si sono potuti cifrare e {m} non sono stati trovati sul disco.', array( 'f' => $s['failed'], 'm' => $s['missing'] ) ), 'body' => Texts::t( 'I certificati non cifrati sono rimasti dove stavano, in chiaro: l\'elenco è in Impostazioni → Copia di sicurezza → «Cifratura dei file riservati».' ) );
+			}
+			return array( 'type' => 'success', 'key' => 'cert-crypt-done', 'days' => 365, 'link' => 'stato', 'title' => Texts::t( 'La cifratura dei certificati medici è finita.' ), 'body' => Texts::t( 'Tutti i certificati già caricati sono ora cifrati sul disco.' ) . ' ' . $ex );
+		}
+		if ( 'nosodium' === $s['status'] ) {
+			return array( 'type' => 'error', 'key' => 'cert-crypt-nosodium', 'days' => 7, 'link' => 'sodium', 'title' => Texts::t( 'I certificati medici già caricati restano in chiaro: su questo server manca la libreria di cifratura (sodium).' ), 'body' => Texts::t( 'La cifratura parte da sola appena l\'estensione sodium di PHP è attiva. Va chiesto a chi gestisce il server o l\'hosting.' ) );
+		}
+		if ( 'nokey' === $s['status'] ) {
+			return array( 'type' => 'error', 'key' => 'cert-crypt-nokey', 'days' => 3, 'link' => 'chiave', 'title' => Texts::t( 'La cifratura dei certificati medici è ferma: la chiave non si apre su questo sito.' ), 'body' => Texts::t( 'I certificati già caricati restano in chiaro e non viene toccato nulla. Va sistemata la chiave (Impostazioni → Copia di sicurezza → «Cifratura dei file riservati» → «Sistemare la chiave»): poi la cifratura riparte da sola.' ) );
+		}
+		return null;
+	}
+
+	/** Avvisi sulla cifratura automatica dei certificati medici, per gli amministratori (Bacheca, Copia di sicurezza, Certificati). */
+	public static function cert_alerts_html(): string {
+		if ( ! current_user_can( Plugin::CAP ) ) {
+			return '';
+		}
+		$p = self::cert_parts();
+		if ( ! $p ) {
+			return '';
+		}
+		$s = FileMigration::state( FileMigration::CERT_OPT );
+		if ( 'done' === $s['status'] && time() > $s['finished'] + FileMigration::CERT_NOTICE * DAY_IN_SECONDS ) {
+			return ''; // l'avviso di fine si chiude da solo dopo due settimane (o prima, se chiuso con la X)
+		}
+		$labels = array(
+			'stato'  => Texts::t( 'Apri lo stato' ),
+			'sodium' => Texts::t( 'Vedi il messaggio da inoltrare' ),
+			'chiave' => Texts::t( 'Vedi cosa fare' ),
+		);
+		$inner = '<strong>' . esc_html( $p['title'] ) . '</strong> ' . esc_html( $p['body'] ) . ' <a href="' . esc_url( Ui::url( 'asem-backup' ) . '#asem-cifratura' ) . '">' . esc_html( $labels[ $p['link'] ] ) . '</a>';
+		if ( '' === $p['key'] ) {
+			return '<div class="notice notice-' . esc_attr( $p['type'] ) . ' inline"><p>' . $inner . '</p></div>';
+		}
+		return Dismiss::html( $p['key'], $p['type'], $inner, $p['days'] );
+	}
+
+	/** Avvisi della cifratura dei certificati, da mostrare in cima alla Bacheca. */
+	public static function cert_alerts(): void {
+		echo wp_kses( self::cert_alerts_html(), Html::allowed() );
+	}
+
+	/** Riquadro nella pagina Copia di sicurezza: lo stato della cifratura automatica dei certificati (senza chiusura, senza link). */
+	private static function certs_box(): void {
+		$p = self::cert_parts();
+		if ( ! $p ) {
+			return;
+		}
+		echo '<div class="notice notice-' . esc_attr( $p['type'] ) . ' inline"><p><strong>' . esc_html( $p['title'] ) . '</strong> ' . esc_html( $p['body'] ) . '</p></div>';
+	}
+
 	public static function alerts_html(): string {
 		if ( ! current_user_can( Plugin::CAP ) ) {
 			return '';
 		}
 		$url = Ui::url( 'asem-backup' ) . '#asem-cifratura';
-		$out = '';
+		$out = self::cert_alerts_html();
 		$st  = FileKey::state();
 		if ( 'nosodium' === $st ) {
 			$out .= Dismiss::html(
@@ -124,13 +193,15 @@ final class FileCryptPanel {
 
 		if ( ! FileCrypt::available() ) {
 			echo '<div class="notice notice-error inline"><p>' . esc_html( Texts::t( 'Questo server non ha la libreria di cifratura (sodium): la funzione non è attiva. I file si salvano in chiaro (con questo avviso) e i nuovi certificati medici non si possono caricare. Va chiesto a chi gestisce il server o l\'hosting di attivare l\'estensione sodium di PHP.' ) ) . '</p></div>';
+			self::certs_box();
 			self::forward_line();
-			self::mail_box( 'sodium', Texts::t( 'Buongiorno, sul nostro sito serve attivare l\'estensione sodium di PHP (cifratura dei documenti riservati). Grazie.' ) );
+			self::mail_box( 'sodium', Texts::t( 'Buongiorno, sul nostro sito serve attivare l\'estensione sodium di PHP (cifratura dei documenti riservati e dei certificati medici). Grazie.' ) );
 			return;
 		}
 
 		FileKey::mode(); // la chiave dei dati si crea da sola alla prima occasione
 		$c = FileKey::check();
+		self::certs_box();
 		if ( $c['valid'] ) {
 			echo '<div class="notice notice-success inline"><p><strong>' . esc_html( Texts::t( 'Chiave valida.' ) ) . '</strong> ' . esc_html( Texts::t( 'La chiave di cifratura è presente, coincide con quella usata per salvare i file e il blocco di prova si apre: i file cifrati si leggono.' ) ) . '</p></div>';
 		} elseif ( 'ok' === $c['state'] ) {
@@ -272,7 +343,7 @@ final class FileCryptPanel {
 			}
 		}
 		if ( ! $state['running'] && ( $n['pending'] > 0 ) && $can ) {
-			self::leftovers( $state, $back );
+			self::leftovers( $state['started'] > 0 ? $state : FileMigration::state( FileMigration::CERT_OPT ), $back ); // dopo la cifratura automatica dei certificati l'elenco dei rimasti in chiaro si vede anche senza aver premuto il pulsante
 		}
 	}
 

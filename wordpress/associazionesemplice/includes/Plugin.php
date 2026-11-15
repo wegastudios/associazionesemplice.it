@@ -69,10 +69,15 @@ final class Plugin {
 			'asem_purge_backups'          => array( 'hourly', 1200, 'Backup', 'purge_old', '' ),
 			'asem_private_folder_check'   => array( 'daily', 3000, 'PrivateFolder', 'cron', '' ),
 			'asem_file_crypt_migrate'     => array( '', 0, 'FileMigration', 'cron', '' ), // lotti programmati per cifrare i file già caricati (si programmano da soli, uno alla volta)
+			'asem_file_crypt_migrate_certs' => array( '', 0, 'FileMigration', 'certs_cron', '' ), // lotti dei soli certificati medici già caricati (partono da soli dopo l'aggiornamento)
+			'asem_file_crypt_certs_check' => array( 'hourly', 1000, 'FileMigration', 'auto_certs', '' ), // se la cifratura dei certificati si è fermata o è andata persa, riparte
 			'asem_purge_audit'            => array( 'daily', 1800, 'Audit', 'purge_old', '' ),
 			'asem_purge_member_sessions'  => array( 'daily', 2400, 'MemberSession', 'purge_expired', '' ),
 		);
 		$jobs = (array) apply_filters( 'asem_scheduled_jobs', $jobs ); // un'estensione aggiunge i suoi lavori periodici
+		if ( is_admin() ) {
+			add_action( 'admin_init', array( __NAMESPACE__ . '\\FileMigration', 'auto_certs' ) ); // dopo l'aggiornamento i certificati medici già caricati partono da soli
+		}
 		foreach ( $jobs as $hook => $j ) {
 			if ( '' !== $j[4] && ! Edition::installed( $j[4] ) ) {
 				continue;

@@ -19,11 +19,18 @@ final class FileMigration {
 	const MAX_SECS = 15;
 	const EVERY    = 60; // secondi fra un lotto programmato e il successivo
 
+	// Certificati medici (dati sulla salute): dopo l'aggiornamento si cifrano da soli, una volta, con lo stesso meccanismo a lotti ma con uno stato a parte.
+	const CERT_OPT    = 'asem_file_migration_certs';
+	const CERT_HOOK   = 'asem_file_crypt_migrate_certs';
+	const CERT_CHECK  = 'asem_file_crypt_certs_check'; // controllo orario: se qualcosa si è fermato o è andato perso, riparte
+	const CERT_KEY    = 'medical_certs';                // chiave della fonte (la voce la aggiunge chi gestisce i certificati)
+	const CERT_NOTICE = 14;                             // giorni in cui resta l'avviso di fine
+
 	// ---------- Stato ----------
 
 	/** @return array{running:bool,started:int,last:int,done:int,already:int,failed:int,missing:int,cursor:array} */
-	public static function state(): array {
-		$s = get_option( self::OPT );
+	public static function state( string $opt = self::OPT ): array {
+		$s = get_option( $opt );
 		$s = is_array( $s ) ? $s : array();
 		return array(
 			'running' => ! empty( $s['running'] ),
@@ -34,18 +41,24 @@ final class FileMigration {
 			'failed'  => (int) ( $s['failed'] ?? 0 ),
 			'missing' => (int) ( $s['missing'] ?? 0 ),
 			'cursor'  => isset( $s['cursor'] ) && is_array( $s['cursor'] ) ? $s['cursor'] : array(),
+			'status'  => (string) ( $s['status'] ?? '' ), // solo per i certificati: '', running, done, nosodium, nokey
+			'finished' => (int) ( $s['finished'] ?? 0 ),
+			'logged'  => (string) ( $s['logged'] ?? '' ), // ultimo blocco scritto nel registro (per non ripeterlo)
 		);
 	}
 
-	private static function save( array $s ): void {
-		update_option( self::OPT, $s, false );
+	private static function save( array $s, string $opt = self::OPT ): void {
+		update_option( $opt, $s, self::CERT_OPT === $opt ); // quello dei certificati si legge a ogni richiesta: resta caricato
 	}
 
 	/** Conteggi per la pagina: file ancora in chiaro e campi ancora in chiaro; file già cifrati. @return array{pending:int,fields:int,encrypted:int} */
-	public static function counts(): array {
+	public static function counts( ?string $only = null ): array {
 		$db  = Db::db();
 		$out = array( 'pending' => 0, 'fields' => 0, 'encrypted' => 0 );
 		foreach ( PrivateFiles::sources() as $s ) {
+			if ( null !== $only && (string) $s['key'] !== $only ) {
+				continue;
+			}
 			$t     = '`' . Db::t( $s['table'] ) . '`';
 			$st    = '`' . $s['stored'] . '`';
 			$en    = '`' . $s['enc'] . '`';
@@ -113,12 +126,111 @@ final class FileMigration {
 		}
 	}
 
+	// ---------- Certificati medici: partenza automatica ----------
+
+	/** Certificati ancora da cifrare (file in chiaro; se non ce ne sono, righe con campi in chiaro). */
+	public static function certs_left(): int {
+		$n = self::counts( self::CERT_KEY );
+		return $n['pending'] > 0 ? $n['pending'] : $n['fields'];
+	}
+
+	/**
+	 * Controllo per la cifratura automatica dei certificati medici già caricati (dati sulla salute): una volta sola, dopo l'aggiornamento, senza premere
+	 * nulla. Si chiama dalle pagine di amministrazione e da un controllo orario; a lavoro finito (o senza nulla da cifrare) costa la lettura di
+	 * un'opzione. Senza libreria o con la chiave che non si apre non tocca nulla e lo ricorda per l'avviso; appena il blocco cade, parte.
+	 */
+	public static function auto_certs(): void {
+		$s = self::state( self::CERT_OPT );
+		if ( 'done' === $s['status'] ) {
+			return;
+		}
+		if ( 'running' === $s['status'] ) {
+			if ( ! wp_next_scheduled( self::CERT_HOOK ) ) { // il lavoro programmato è andato perso: si riprende da dove era
+				self::schedule_certs();
+			}
+			return;
+		}
+		if ( ( 'nosodium' === $s['status'] && ! FileCrypt::available() ) || ( 'nokey' === $s['status'] && 'encrypt' !== FileKey::mode() ) ) {
+			return; // ancora bloccato: niente da fare finché non viene sistemato (l'avviso resta)
+		}
+		if ( '' === $s['status'] && (int) $s['last'] > time() ) {
+			return; // controllato da poco, nessuna fonte dei certificati: si riprova più tardi
+		}
+		$has = false;
+		foreach ( PrivateFiles::sources() as $src ) {
+			if ( self::CERT_KEY === (string) $src['key'] ) {
+				$has = true;
+			}
+		}
+		if ( ! $has ) { // i certificati non ci sono in questa edizione (o la loro parte è spenta): si riguarda fra un giorno
+			$s['last'] = time() + DAY_IN_SECONDS;
+			self::save( $s, self::CERT_OPT );
+			return;
+		}
+		if ( 0 === self::certs_left() ) {
+			$s['status']   = 'done'; // niente da cifrare: non si ricontrolla più (i nuovi certificati si cifrano già al caricamento)
+			$s['finished'] = 0;
+			self::save( $s, self::CERT_OPT );
+			return;
+		}
+		if ( ! FileCrypt::available() ) {
+			self::block_certs( $s, 'nosodium' );
+			return;
+		}
+		if ( 'encrypt' !== FileKey::mode() ) {
+			self::block_certs( $s, 'nokey' );
+			return;
+		}
+		self::save( array( 'running' => true, 'started' => time(), 'last' => 0, 'done' => 0, 'already' => 0, 'failed' => 0, 'missing' => 0, 'cursor' => array(), 'status' => 'running', 'finished' => 0, 'logged' => '' ), self::CERT_OPT );
+		Audit::log( 'file_crypt.certs_auto_started', 'folder', 0, array( 'left' => self::certs_left() ) );
+		self::schedule_certs( 30 );
+	}
+
+	/** Ricorda che la cifratura dei certificati è ferma (libreria assente o chiave che non si apre); lo scrive nel registro una volta sola. */
+	private static function block_certs( array $s, string $why ): void {
+		$s['status']  = $why;
+		$s['running'] = false;
+		if ( $s['logged'] !== $why ) {
+			Audit::log( 'file_crypt.certs_auto_blocked', 'folder', 0, array( 'reason' => $why ) );
+			$s['logged'] = $why;
+		}
+		self::save( $s, self::CERT_OPT );
+	}
+
+	public static function schedule_certs( int $in = self::EVERY ): void {
+		if ( ! wp_next_scheduled( self::CERT_HOOK ) ) {
+			wp_schedule_single_event( time() + $in, self::CERT_HOOK );
+		}
+	}
+
+	/** Lavoro programmato dei certificati: un lotto dei soli certificati, poi o se ne programma un altro o si chiude. */
+	public static function certs_cron(): void {
+		$s = self::state( self::CERT_OPT );
+		if ( 'running' !== $s['status'] ) {
+			return;
+		}
+		if ( 'encrypt' !== FileKey::mode() ) { // la chiave non si apre più o la libreria è sparita: si ferma, senza toccare nulla
+			self::block_certs( $s, FileCrypt::available() ? 'nokey' : 'nosodium' );
+			return;
+		}
+		$r = self::run_batch( self::BATCH, self::CERT_KEY );
+		$s = self::state( self::CERT_OPT );
+		if ( $r['busy'] || $s['running'] ) {
+			self::schedule_certs();
+			return;
+		}
+		$s['status']   = 'done';
+		$s['finished'] = time();
+		self::save( $s, self::CERT_OPT );
+		Audit::log( 'file_crypt.certs_auto_finished', 'folder', 0, array( 'done' => $s['done'] + $s['already'], 'failed' => $s['failed'], 'missing' => $s['missing'] ) );
+	}
+
 	/**
 	 * Un lotto di lavoro (al massimo BATCH righe e MAX_SECS secondi). Non lancia errori: chi non si può cifrare resta in chiaro e si conta.
 	 *
 	 * @return array{done:int,already:int,failed:int,missing:int,finished:bool,busy:bool}
 	 */
-	public static function run_batch( int $max = self::BATCH ): array {
+	public static function run_batch( int $max = self::BATCH, ?string $only = null ): array {
 		$res = array( 'done' => 0, 'already' => 0, 'failed' => 0, 'missing' => 0, 'finished' => false, 'busy' => false );
 		if ( 'encrypt' !== FileKey::mode() ) {
 			return $res; // senza libreria o con la chiave che non coincide non si tocca nulla
@@ -126,8 +238,8 @@ final class FileMigration {
 		try {
 			Db::with_lock(
 				'asem_file_migration',
-				function () use ( &$res, $max ): void {
-					$res = self::batch( $max );
+				function () use ( &$res, $max, $only ): void {
+					$res = self::batch( $max, $only );
 				},
 				0
 			);
@@ -137,14 +249,18 @@ final class FileMigration {
 		return $res;
 	}
 
-	private static function batch( int $max ): array {
+	private static function batch( int $max, ?string $only = null ): array {
 		$res = array( 'done' => 0, 'already' => 0, 'failed' => 0, 'missing' => 0, 'finished' => false, 'busy' => false );
-		$s   = self::state();
+		$opt = null === $only ? self::OPT : self::CERT_OPT; // il lavoro dei soli certificati ha il suo stato
+		$s   = self::state( $opt );
 		self::clean_partials();
 		$db    = Db::db();
 		$start = time();
 		$left  = $max;
 		foreach ( PrivateFiles::sources() as $src ) {
+			if ( null !== $only && (string) $src['key'] !== $only ) {
+				continue;
+			}
 			$t   = '`' . Db::t( $src['table'] ) . '`';
 			$key = (string) $src['key'];
 			// 1) campi di testo ancora in chiaro
@@ -194,6 +310,9 @@ final class FileMigration {
 		// finito quando in nessuna fonte restano righe dopo il cursore e nessun campo in chiaro
 		$more = false;
 		foreach ( PrivateFiles::sources() as $src ) {
+			if ( null !== $only && (string) $src['key'] !== $only ) {
+				continue;
+			}
 			$t = '`' . Db::t( $src['table'] ) . '`';
 			if ( (int) $db->get_var( $db->prepare( "SELECT COUNT(*) FROM $t WHERE `{$src['enc']}` IS NULL AND `{$src['stored']}` IS NOT NULL AND `{$src['stored']}` <> '' AND id > %d", (int) ( $s['cursor'][ (string) $src['key'] ] ?? 0 ) ) ) > 0 ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared -- nomi di tabella e colonna fissi del plugin
 				$more = true;
@@ -210,7 +329,7 @@ final class FileMigration {
 		$s['missing'] += $res['missing'];
 		$s['last']     = time();
 		$s['running']  = $more;
-		self::save( $s );
+		self::save( $s, $opt );
 		$res['finished'] = ! $more;
 		return $res;
 	}
