@@ -59,7 +59,7 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
                     <label :class="label"><span class="font-semibold">Comune</span><input v-model="form.steps.ente.city" :class="field" maxlength="120" /></label>
                     <label :class="label"><span class="font-semibold">Provincia (sigla)</span><input v-model="form.steps.ente.province" :class="field" maxlength="2" /></label>
                     <label :class="label"><span class="font-semibold">Email della segreteria (obbligatoria)</span><input v-model="form.steps.ente.email" type="email" required :class="field" /></label>
-                    <p class="text-sm text-muted sm:col-span-3">Email e telefono li leggono i soci nelle email e nell'informativa sulla privacy: usa un recapito che qualcuno controlla davvero. Senza, l'associazione non scrive ai soci.</p>
+                    <p class="text-sm text-muted sm:col-span-3">Email e telefono li leggono i soci nelle email, nell'area soci e nel modulo di adesione, accanto al consenso sulla privacy: usa un recapito che qualcuno controlla davvero. Senza, l'associazione non scrive ai soci.</p>
                     <label :class="label"><span class="font-semibold">PEC</span><input v-model="form.steps.ente.pec" type="email" :class="field" /></label>
                 </div>
             </section>

@@ -133,7 +133,7 @@ const showAccount = ref(false);
                 La prova è finita: puoi consultare i dati ma non modificarli né esportarli. Scegli un piano dal portale per tornare a lavorare.
             </p>
             <div v-if="org?.contacts_missing" class="mb-4 rounded-xl border border-warn bg-warn-soft p-3 text-sm font-semibold text-warn-ink" role="alert">
-                <template v-if="can('org.settings')">Mancano i contatti della segreteria (email e telefono): finché mancano, l'associazione non scrive ai soci (ricevute, rimborsi, accesso all'area soci). Li vedono anche nell'informativa sulla privacy.
+                <template v-if="can('org.settings')">Mancano i contatti della segreteria (email e telefono): finché mancano, l'associazione non scrive ai soci (ricevute, rimborsi, accesso all'area soci). Compaiono anche nel modulo di adesione, accanto al consenso sulla privacy.
                     <Link href="/gestionale/configurazione" class="underline">Inseriscili ora</Link></template>
                 <template v-else>Mancano i contatti della segreteria: chiedi a chi amministra di inserirli. Finché mancano, l'associazione non scrive ai soci.</template>
             </div>
