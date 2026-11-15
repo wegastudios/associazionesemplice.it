@@ -309,7 +309,7 @@ Il **PDF di una ricevuta si crea una volta sola**, quando viene emessa, e si sal
 
 Le ricevute emesse **prima di questo aggiornamento** si fissano **in automatico** dopo l'aggiornamento: per il loro PDF valgono i dati dell'emissione ma i **testi di oggi** (i tuoi testi personalizzati, le parole scelte per il tipo di ente, la grafica del programma). Quelle emesse da ora in poi restano identiche per sempre.
 
-Le ricevute emesse con versioni molto vecchie del plugin non si possono fissare: si scaricano ancora, ma il PDF è disegnato con i dati e i testi di oggi e potrebbe non essere identico all'originale. Conviene scaricarle e conservarle.
+Le ricevute emesse molto tempo fa, prima che il sito salvasse i dati, restano senza PDF fisso finché non le apri una volta: conviene aprirle (o scaricarle) per fissarle, soprattutto prima di una copia di sicurezza. Alla prima apertura il sito salva i dati di quel momento e fissa il PDF, che da lì non cambia più; fino ad allora possono cambiare e non sono nella copia di sicurezza. Quelle già annullate in questo stato non si possono più aprire.
 
 ## La pagina «Verifica delle ricevute»
 

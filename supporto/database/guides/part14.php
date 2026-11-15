@@ -132,10 +132,10 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-I **certificati medici**, i **documenti e le scansioni**, gli **allegati dei movimenti**, i **giustificativi dei rimborsi** e le **foto dell'inventario** si salvano **cifrati**. Si gestisce da **Impostazioni → Copia di sicurezza**, sezione «Cifratura dei file riservati».
+I **certificati medici**, i **documenti e le scansioni**, gli **allegati dei movimenti**, i **giustificativi dei rimborsi** e le **foto dell'inventario** si salvano **cifrati**; lo stesso vale per i **PDF delle ricevute** (emessi e «ANNULLATA»), che nella copia di sicurezza restano cifrati. Lo ZIP **«PDF dell'anno»** delle ricevute, invece, esce **non cifrato**: il programma avvisa «I PDF dello ZIP non sono cifrati e contengono dati personali (nome, codice fiscale, importi): conservalo con cura e cancellalo quando non ti serve più.» Si gestisce da **Impostazioni → Copia di sicurezza**, sezione «Cifratura dei file riservati».
 
 <!-- DA CONFERMARE (Luca decide): se i certificati medici già caricati si cifrano da soli. Oggi: no, si cifrano solo quando l'amministratore preme «Cifra i file già caricati». Aggiornare qui appena arriva la risposta. -->
-<!-- DA AGGIUNGERE quando la PR 3 del plugin è unita: i PDF delle ricevute nell'elenco dei file cifrati. -->
+<!-- DA RIVERIFICARE sul codice di main quando la PR 745 del plugin (cifratura dei PDF delle ricevute) è unita. -->
 
 ## File nuovi e file già caricati
 
@@ -148,7 +148,7 @@ Su alcuni server manca la libreria che serve a cifrare: il programma lo dice e t
 
 La frase serve a **riaprire i documenti** se il sito viene spostato o riparato, se i codici di sicurezza del sito cambiano e per **ripristinare una copia di sicurezza su un altro sito**. **Conservala fuori dal sito**, su carta o in un gestore di password: se perdi il sito, altrimenti non la ritrovi.
 
-- Nel **gratuito** è la **data e l'ora di attivazione** del plugin, e va scritta **esattamente come la vedi** (c'è il pulsante **«Stampa»**).
+- Nel **gratuito** è la **data e l'ora di attivazione** del plugin: «La frase è la data e l'ora di attivazione del plugin: {data}. Va scritta esattamente come la vedi qui, spazi e trattini compresi.» (c'è il pulsante **«Stampa»**).
 - Con la **licenza** è il **codice di licenza**, che ritrovi nell'area clienti di Associazione Semplice; il codice di licenza apre sempre i documenti.
 
 Dopo aver cambiato la frase, fai subito una **copia nuova**: quelle fatte prima si aprono con la frase di allora.
@@ -164,6 +164,9 @@ Scegli una **frase tua e lunga** (almeno quattro parole) con **«Cambia la frase
 *Per chi gestisce il sito:* la protezione più alta si ottiene con una frase propria e lunga e con la costante `ASEM_ENC_KEY` nel file `wp-config.php` (un testo lungo e casuale). Va conservata con cura: senza di essa e senza la frase i file non si aprono, a meno di avere il codice di licenza, che apre sempre. Se i codici `AUTH_KEY` e `AUTH_SALT` mancano o sono quelli di esempio, la chiave è più debole e il programma lo segnala.
 
 ## Se la chiave non si apre
+
+Nella pagina **«Verifica delle ricevute»** (vedi [Ricevute in PDF e attestazione annuale](guida:ricevute-in-pdf)) compare il conteggio **«File cifrati che la chiave non apre»**, con il rimando a **Impostazioni → Copia di sicurezza → «Cifratura dei file riservati»**.
+
 
 Se i codici di sicurezza sono cambiati o il database è stato copiato da un altro sito, il programma dice che la chiave non è valida su questo sito: i file cifrati non si leggono e i nuovi non si salvano finché non viene sistemata. Si usa la frase; per questo va conservata. Vedi anche [Copia di sicurezza e ripristino](guida:copia-di-sicurezza-e-ripristino).
 MD,
