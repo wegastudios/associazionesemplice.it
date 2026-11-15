@@ -32,7 +32,7 @@ final class BlockDExports {
 		nocache_headers();
 		header( 'Content-Type: text/csv; charset=utf-8' );
 		header( 'Content-Disposition: attachment; filename="' . preg_replace( '/[^A-Za-z0-9._-]+/', '_', $name ) . '"' );
-		echo $csv; // phpcs:ignore WordPress.Security.EscapeOutput -- file CSV, non HTML
+		\AssociazioneSemplice\Download::csv( $csv ); // con il BOM, per Excel
 		exit;
 	}
 

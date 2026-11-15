@@ -488,7 +488,7 @@ final class TextsEngine {
 		nocache_headers();
 		header( 'Content-Type: text/csv; charset=utf-8' );
 		header( 'Content-Disposition: attachment; filename="testi-associazionesemplice-' . gmdate( 'Y-m-d' ) . '.csv"' );
-		echo self::export_csv( $only ); // phpcs:ignore WordPress.Security.EscapeOutput
+		Download::bytes( self::export_csv( $only ) ); // già col BOM
 		exit;
 	}
 }
