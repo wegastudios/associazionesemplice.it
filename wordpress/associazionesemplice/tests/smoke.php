@@ -8176,7 +8176,7 @@ $rf_pay = function ( string $provider, int $cents, array $extra = array() ) use 
 		Db::t( 'payments' ),
 		array_merge(
 			array(
-				'public_id' => 'rf-' . $rf_n . '-' . wp_generate_uuid4(), 'provider' => $provider, 'status' => 'paid', 'amount_cents' => $cents, 'currency' => 'EUR',
+				'public_id' => 'rf' . $rf_n . '-' . substr( wp_generate_uuid4(), 0, 30 ), 'provider' => $provider, 'status' => 'paid', 'amount_cents' => $cents, 'currency' => 'EUR',
 				'payer_person_id' => $ap_paolo, 'payer_user_id' => 0,
 				'items' => wp_json_encode( array( array( 'type' => 'other', 'label' => 'Prova rimborso', 'person_id' => $ap_paolo, 'person_name' => 'Paolo Paga', 'amount_cents' => $cents ) ) ),
 				'provider_ref' => ( 'paypal' === $provider ? 'ORDRF' : 'cs_rf_' ) . $rf_n, 'provider_payment_id' => ( 'paypal' === $provider ? 'CAPRF' : 'pi_rf_' ) . $rf_n,
