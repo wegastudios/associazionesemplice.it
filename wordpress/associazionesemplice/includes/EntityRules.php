@@ -93,7 +93,7 @@ final class EntityRules {
 		if ( '' === $vat && empty( $d['no_vat'] ) ) {
 			$e[] = Texts::t( 'Indica la partita IVA oppure spunta «L\'associazione non ha la partita IVA».' );
 		} elseif ( '' !== $vat && ! Fiscal::is_valid_vat( $vat ) ) {
-			$e[] = Texts::t( 'La partita IVA non è valida: sono 11 cifre, l\'ultima è di controllo.' );
+			$e[] = Texts::t( 'La partita IVA non è valida: controlla le 11 cifre.' );
 		}
 		if ( '' === trim( (string) ( $d['runts_number'] ?? '' ) ) && empty( $d['no_runts'] ) ) {
 			$e[] = Texts::t( 'Indica il numero RUNTS (con la sezione) oppure spunta «L\'associazione non è iscritta al RUNTS».' );

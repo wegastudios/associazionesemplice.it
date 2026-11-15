@@ -2245,7 +2245,7 @@
   "L'associazione non ha la partita IVA" : "The association has no VAT number",
   "Partita IVA" : "VAT number",
   "11 cifre" : "11 digits",
-  "La partita IVA non è valida: sono 11 cifre, l'ultima è di controllo." : "The VAT number is not valid: it has 11 digits and the last one is a check digit.",
+  "La partita IVA non è valida: controlla le 11 cifre." : "The VAT number is not valid: check the 11 digits.",
   "Per applicare l'IVA indica la partita IVA." : "To apply VAT, enter the VAT number.",
   "Prima inserisci email e telefono della segreteria (Impostazioni › Ente): senza, la segreteria non può inviare messaggi ai soci." : "First enter the office email and phone (Settings › Entity): without them, the office cannot send messages to members.",
   "Intanto scarica la ricevuta e consegnala a mano." : "In the meantime, download the receipt and hand it over in person.",
