@@ -169,7 +169,7 @@ final class PayPalApi {
 		if ( false !== strpos( $flat, 'FULLY_REFUNDED' ) || false !== strpos( $flat, 'ALREADY_REFUNDED' ) ) {
 			return 'already';
 		}
-		if ( false !== strpos( $flat, 'INSUFFICIENT' ) || false !== strpos( $flat, 'NO_FUNDS' ) || false !== strpos( $flat, 'NOT_ENOUGH' ) ) {
+		if ( false !== strpos( $flat, 'INSUFFICIENT_FUNDS' ) || false !== strpos( $flat, 'NO_FUNDS' ) || false !== strpos( $flat, 'NOT_ENOUGH' ) ) {
 			return 'balance';
 		}
 		if ( false !== strpos( $flat, 'EXCEED' ) || false !== strpos( $flat, 'AMOUNT_GREATER' ) ) {
