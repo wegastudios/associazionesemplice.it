@@ -190,8 +190,8 @@ function reviewPayment(object $test, string $provider = 'stripe'): string
 }
 
 it('rimborsa un pagamento da controllare su Stripe, una parte alla volta, senza superare l\'incassato', function (): void {
-    $id = reviewPayment($this);
     Mail::fake();
+    $id = reviewPayment($this);
     Http::fake([
         'api.stripe.com/v1/checkout/sessions/*' => Http::response(['id' => 'cs_test_9', 'payment_intent' => 'pi_9']),
         'api.stripe.com/v1/refunds' => Http::response(['id' => 're_9']),
@@ -245,7 +245,7 @@ it('rimborsa e storna in un gesto solo un pagamento già registrato, e se il rim
     });
     $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()]);
 
-    Http::fake(['api.stripe.com/v1/checkout/sessions/*' => Http::response(['payment_intent' => 'pi_9']), 'api.stripe.com/v1/refunds' => Http::response(['error' => ['message' => 'no']], 500)]);
+    Http::fake(['api.stripe.com/v1/checkout/sessions/*' => Http::response(['payment_intent' => 'pi_9']), 'api.stripe.com/v1/refunds' => Http::sequence()->push(['error' => ['message' => 'no']], 500)->push(['id' => 're_9'])]);
     $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['reason' => 'Quota già pagata'])->assertSessionHasErrors('ledger');
     $this->orgContext()->run($this->org->id, function () use ($tessera): void {
         expect(app(MembershipService::class)->isActive($this->anna->id))->toBeTrue()
@@ -254,7 +254,6 @@ it('rimborsa e storna in un gesto solo un pagamento già registrato, e se il rim
     });
     Mail::assertNothingSent();
 
-    Http::fake(['api.stripe.com/v1/checkout/sessions/*' => Http::response(['payment_intent' => 'pi_9']), 'api.stripe.com/v1/refunds' => Http::response(['id' => 're_9'])]);
     $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['reason' => 'Quota già pagata'])->assertSessionHas('status');
     Http::assertSent(fn (HttpRequest $r): bool => str_ends_with($r->url(), '/v1/refunds') && (int) $r['amount'] === 2500);
     $this->orgContext()->run($this->org->id, function (): void {
