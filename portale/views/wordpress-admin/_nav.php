@@ -6,6 +6,7 @@ $sections = array(
 	'clienti'      => array( 'Clienti', array( 'licenze' => array( '/wordpress/admin/licenze', 'Licenze' ), 'clienti' => array( '/wordpress/admin/clienti', 'Clienti e domini' ), 'wega' => array( '/wordpress/admin/wega', 'Da Wega' ), 'staff' => array( '/wordpress/admin/staff', 'Staff e supporto' ) ) ),
 	'impostazioni' => array( 'Impostazioni', array( 'impostazioni' => array( '/wordpress/admin/impostazioni', 'Generali' ), 'pagamenti' => array( '/wordpress/admin/pagamenti', 'Pagamenti' ), 'email' => array( '/wordpress/admin/email', 'Email' ), 'registro' => array( '/wordpress/admin/registro', 'Registro' ), 'sicurezza' => array( '/wordpress/admin/sicurezza', 'Sicurezza' ) ) ),
 	'pagine'       => array( 'Pagine', array( 'legale' => array( '/wordpress/admin/legale', 'Privacy e cookie' ), 'cookie' => array( '/wordpress/admin/cookie', 'Script e consenso' ) ) ),
+	'demo'         => array( 'Demo', array( 'demo' => array( '/wordpress/admin/demo', 'Reset demo' ) ) ),
 );
 if ( Portale\Staff::SUPPORT === ( $role ?? "" ) ) {
 	unset( $sections["cruscotto"], $sections["piani"], $sections["impostazioni"], $sections["pagine"] );
@@ -20,7 +21,7 @@ if ( Portale\Plugin\StaffSso::enabled() && ! empty( $_SESSION['staff_sso'] ) ) {
 	unset( $sections['impostazioni'][1]['sicurezza'], $sections['clienti'][1]['sicurezza'] );
 }
 if ( Portale\Plugin\Admin::SALES === ( $role ?? '' ) ) {
-	unset( $sections['cruscotto'], $sections['impostazioni'], $sections['pagine'] );
+	unset( $sections['cruscotto'], $sections['impostazioni'], $sections['pagine'], $sections['demo'] );
 	unset( $sections['piani'][1]['versioni'], $sections['clienti'][1]['wega'], $sections['clienti'][1]['staff'] );
 }
 $current = isset( $sections["cruscotto"] ) ? "cruscotto" : "clienti";
