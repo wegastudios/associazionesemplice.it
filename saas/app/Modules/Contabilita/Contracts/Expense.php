@@ -17,5 +17,6 @@ final readonly class Expense
         public ?string $documentRef = null,
         public ?int $vatRate = null,
         public ?string $activityId = null,
+        public bool $reverseCharge = false,
     ) {}
 }

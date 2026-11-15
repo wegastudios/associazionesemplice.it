@@ -180,6 +180,9 @@ final readonly class LedgerService implements Ledger
             throw new LedgerError('Aliquota IVA non valida.');
         }
         $this->assertVat($expense->vatRate, '');
+        if ($expense->reverseCharge && ($expense->vatRate !== null || ! $this->fiscal->hasVat())) {
+            throw new LedgerError($this->fiscal->hasVat() ? 'Il reverse charge non ha un\'aliquota: scegli o l\'aliquota o il reverse charge.' : 'Senza partita IVA non si può applicare l\'IVA.');
+        }
         $this->assertPerson($expense->personId);
         $this->assertActivity($expense->activityId);
 
@@ -198,6 +201,7 @@ final readonly class LedgerService implements Ledger
                 'document_ref' => $expense->documentRef === null ? null : self::text($expense->documentRef, 80),
                 'vat_rate' => $expense->vatRate,
                 'vat_cents' => $expense->vatRate === null ? 0 : Vat::split($expense->amountCents, $expense->vatRate, true)['vat'],
+                'vat_reverse_charge' => $expense->reverseCharge,
             ]);
             $this->audit->record('ledger.expense', 'app.transactions', $id, ['cents' => $expense->amountCents]);
 

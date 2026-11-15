@@ -90,6 +90,8 @@ final readonly class LedgerController
                 'void_reason' => $t->void_reason,
                 'activity_id' => $t->activity_id,
                 'activity' => $t->activity_id !== null ? ($activityNames[$t->activity_id] ?? null) : null,
+                // Solo con la partita IVA: senza, un movimento è solo un importo e nessuna dicitura IVA compare.
+                'vat' => ! $this->fiscal->hasVat() ? null : ($t->vat_reverse_charge ? 'Reverse charge' : ($t->vat_rate === null ? null : OrgFiscal::label($t->vat_rate))),
             ])->values(),
             'next' => $page->nextPageUrl(),
             'prev' => $page->previousPageUrl(),
@@ -162,6 +164,7 @@ final readonly class LedgerController
 
         return $this->attempt(function () use ($data): string {
             $method = Input::optionalString($data, 'method');
+            $reverse = Input::raw($data, 'vat_rate') === 'reverse_charge';
             $rate = Vat::cleanRate(Input::raw($data, 'vat_rate'));
             $this->ledger->recordExpense(new Expense(
                 Input::string($data, 'date'),
@@ -174,6 +177,7 @@ final readonly class LedgerController
                 Input::optionalString($data, 'document_ref'),
                 $rate,
                 Input::optionalString($data, 'activity_id'),
+                $reverse,
             ));
 
             return 'Spesa registrata.';

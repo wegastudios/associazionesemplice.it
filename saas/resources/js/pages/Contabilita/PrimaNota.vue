@@ -46,8 +46,8 @@ const filter = (changes) => router.get('/gestionale/prima-nota', { anno: props.y
 const sendReceipt = (r) => router.post(`/gestionale/ricevute/${r.receipt_id}/invia`, {}, { preserveScroll: true });
 const setActivity = (r, id) => router.post(`/gestionale/prima-nota/${r.id}/attivita`, { activity_id: id || null }, { preserveScroll: true });
 
-// Con la partita IVA ogni incasso e spesa ha la sua aliquota: si propone «IVA esente» (0). Senza, nessuna scelta.
-const defaultRate = props.fiscal?.hasVat ? 0 : '';
+// Con la partita IVA ogni incasso e spesa ha la sua aliquota: si propone il 22%. Senza partita IVA nessuna scelta e nessuna dicitura IVA.
+const defaultRate = props.fiscal?.hasVat ? (props.fiscal.rates.includes(22) ? 22 : (props.fiscal.rates[0] ?? 0)) : '';
 // Prezzi «senza IVA»: sotto l'importo si vede subito quanto pagherà chi paga.
 const grossText = (amount, rate) => {
     const n = Number(String(amount ?? '').replace(/\./g, '').replace(',', '.'));
@@ -56,7 +56,8 @@ const grossText = (amount, rate) => {
     const cents = Math.round(n * 100);
     return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format((cents + Math.round(cents * r / 100)) / 100);
 };
-const rateOptions = computed(() => [{ value: 0, label: 'IVA esente' }, ...(props.fiscal?.rates ?? []).map((r) => ({ value: r, label: `IVA ${r}%` })), { value: 'none', label: 'Fuori campo IVA' }]);
+const rateOptions = computed(() => [...(props.fiscal?.rates ?? []).map((r) => ({ value: r, label: `IVA ${r}%` })), { value: 0, label: 'IVA esente' }, { value: 'none', label: 'Fuori campo IVA' }]);
+const expenseRateOptions = computed(() => [...rateOptions.value, { value: 'reverse_charge', label: 'Reverse charge' }]);
 const income = useForm({
     date: today,
     account_id: openAccounts.value[0]?.id ?? '',
@@ -158,7 +159,7 @@ const label = 'block space-y-1.5 text-sm';
                             <span :class="['grid size-10 shrink-0 place-items-center rounded-full', tints[kind(r)]]"><component :is="icons[kind(r)]" class="size-5" aria-hidden="true" /></span>
                             <span class="min-w-0 flex-1">
                                 <span class="line-clamp-2 font-semibold" :class="r.voided ? 'line-through' : ''">{{ r.description || r.type_label }}</span>
-                                <span class="caption block truncate">{{ r.category }} – {{ r.account }}<template v-if="r.activity"> – {{ r.activity }}</template></span>
+                                <span class="caption block truncate">{{ r.category }} – {{ r.account }}<template v-if="r.activity"> – {{ r.activity }}</template><template v-if="r.vat"> – {{ r.vat }}</template></span>
                             </span>
                             <span class="shrink-0 text-right">
                                 <span class="block font-bold tabular-nums" :class="[kind(r) === 'in' ? 'text-ok-ink' : '', r.voided ? 'line-through' : '']">{{ r.amount }}</span>
@@ -219,6 +220,7 @@ const label = 'block space-y-1.5 text-sm';
                 <dl class="mb-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
                     <dt class="text-muted">Conto</dt><dd class="font-semibold">{{ detail.account }}</dd>
                     <dt class="text-muted">Modalità</dt><dd class="font-semibold">{{ detail.method }}</dd>
+                    <template v-if="detail.vat"><dt class="text-muted">IVA</dt><dd class="font-semibold">{{ detail.vat }}</dd></template>
                     <template v-if="detail.activity"><dt class="text-muted">Attività</dt><dd class="font-semibold">{{ detail.activity }}</dd></template>
                     <template v-if="detail.voided"><dt class="text-muted">Stornato</dt><dd class="font-semibold">{{ detail.void_reason }}</dd></template>
                 </dl>
@@ -289,7 +291,7 @@ ${E//FORM/income}
                 </div>
                 <p v-if="expense.errors.amount" class="text-sm font-semibold text-danger">{{ expense.errors.amount }}</p>
                 <label v-if="fiscal?.hasVat" :class="label"><span class="font-semibold">Aliquota IVA della spesa</span>
-                    <select v-model="expense.vat_rate" class="field"><option v-for="o in rateOptions" :key="o.value" :value="o.value">{{ o.label }}</option></select></label>
+                    <select v-model="expense.vat_rate" class="field"><option v-for="o in expenseRateOptions" :key="o.value" :value="o.value">{{ o.label }}</option></select></label>
                 <p v-if="grossText(expense.amount, expense.vat_rate)" class="text-sm font-semibold">Totale con IVA: {{ grossText(expense.amount, expense.vat_rate) }}</p>
                 <label :class="label"><span class="font-semibold">Categoria</span>
                     <select v-model="expense.category_id" class="field"><option v-for="c in expenseCategories" :key="c.id" :value="c.id">{{ c.name }}</option></select></label>

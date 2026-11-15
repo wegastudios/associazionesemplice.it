@@ -120,3 +120,26 @@ it('sulla ricevuta l\'aliquota zero si chiama «IVA esente» e senza partita IVA
     $pdf = (string) $this->get("/gestionale/ricevute/{$with}.pdf")->assertOk()->getContent();
     expect($pdf)->toContain('IVA esente');
 });
+
+it('registra una spesa in reverse charge solo con la partita IVA, senza IVA esposta', function (): void {
+    $spesa = fn (bool $reverse, ?int $rate = null): Expense => new Expense(now()->toDateString(), $this->cash->id, $this->cost, 500, null, '', null, null, $rate, null, $reverse);
+    expect(fn () => $this->ledger->recordExpense($spesa(true)))->toThrow(LedgerError::class, 'senza partita IVA');
+
+    app(OrgSettings::class)->set('ente.vat', '12345678903');
+    $id = $this->ledger->recordExpense($spesa(true));
+    $tx = Transaction::query()->findOrFail($id);
+    expect((bool) $tx->vat_reverse_charge)->toBeTrue()->and($tx->vat_rate)->toBeNull()->and((int) $tx->vat_cents)->toBe(0);
+    expect(fn () => $this->ledger->recordExpense($spesa(true, 22)))->toThrow(LedgerError::class, 'reverse charge');
+});
+
+it('in prima nota senza partita IVA nessuna dicitura IVA, con la partita IVA la dicitura del movimento', function (): void {
+    $this->ledger->recordIncome(incomeWith($this->cash->id, $this->donation, null));
+    $this->orgContext()->leave();
+    $this->actingAs($this->owner)->get('/gestionale/prima-nota')->assertInertia(fn (Assert $page) => $page->where('fiscal.hasVat', false)->where('rows.0.vat', null));
+
+    $this->orgContext()->run($this->org->id, function (): void {
+        app(OrgSettings::class)->set('ente.vat', '12345678903');
+        app(Ledger::class)->recordIncome(incomeWith(Account::query()->where('type', 'cash')->sole()->id, Category::query()->where('kind', CategoryKind::Donation)->sole()->id, 22));
+    });
+    $this->get('/gestionale/prima-nota')->assertInertia(fn (Assert $page) => $page->where('fiscal.hasVat', true)->where('rows.0.vat', 'IVA 22%'));
+});
