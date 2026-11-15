@@ -10725,6 +10725,20 @@ $dp_audit = (string) $wpdb->get_var( $wpdb->prepare( 'SELECT details FROM ' . Db
 asem_ok( false !== strpos( $dp_audit, 'confirmed_gaps' ) && false !== strpos( $dp_audit, 'disavanzo di 160,00' ), 'disavanzo anno passato: la conferma resta nel registro delle azioni' );
 asem_ok( false === strpos( \AssociazioneSemplice\YearEndCheck::deficit_html(), $dp_title ) && ! array_key_exists( $dp_y, \AssociazioneSemplice\YearEndCheck::past_deficits() ), 'disavanzo anno passato: anno chiuso, nessun avviso' );
 
+// CSV scaricati: tutti col BOM UTF-8 (una volta sola), così Excel mostra bene gli accenti
+ob_start();
+\AssociazioneSemplice\Download::csv( "Città;Perché\r\n" );
+$bom_out = (string) ob_get_clean();
+asem_ok( 0 === strpos( $bom_out, "\xEF\xBB\xBFCitt" ) && 1 === substr_count( $bom_out, "\xEF\xBB\xBF" ), 'CSV: Download::csv antepone il BOM una sola volta' );
+foreach ( array( 'Admin\\BlockDExports', 'Admin\\WatchExports', 'Admin\\BlockCExports', 'Admin\\BlockFActions', 'Admin\\Exports', 'TextsEngine' ) as $bom_f ) {
+	if ( ! class_exists( '\\AssociazioneSemplice\\' . $bom_f ) ) {
+		continue; // classe non presente in questa edizione
+	}
+	$bom_src = (string) file_get_contents( (string) ( new ReflectionClass( '\\AssociazioneSemplice\\' . $bom_f ) )->getFileName() );
+	asem_ok( false === strpos( $bom_src, 'echo $csv;' ) && ( false !== strpos( $bom_src, 'Download::csv(' ) || false !== strpos( $bom_src, 'Download::bytes( self::export_csv' ) || false !== strpos( $bom_src, '"\xEF\xBB\xBF" . $csv' ) ), 'CSV: ' . $bom_f . ' invia il file con il BOM' );
+}
+asem_ok( 0 === strpos( \AssociazioneSemplice\TextsEngine::export_csv(), "\xEF\xBB\xBF" ) && 0 === strpos( \AssociazioneSemplice\Docs::csv( array( 'a' ), array() ), "\xEF\xBB\xBF" ), 'CSV: testi e documenti hanno già il BOM (non duplicato dall\'invio)' );
+
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Tutti i controlli sono passati.' );
