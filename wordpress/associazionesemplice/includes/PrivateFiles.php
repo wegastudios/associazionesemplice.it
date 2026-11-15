@@ -63,6 +63,20 @@ final class PrivateFiles {
 		FileKey::reset();
 	}
 
+	/**
+	 * Il percorso relativo alla cartella riservata di un file di una fonte, se il valore nel database è uno dei nostri. Di norma è un nome casuale (32 cifre
+	 * esadecimali); una fonte con file in sottocartelle (le ricevute) dà la sua regola nella voce `valid`.
+	 *
+	 * @param array|null $src voce di {@see sources()}
+	 * @return string vuoto se non è valido
+	 */
+	public static function rel_of( string $stored, ?array $src = null ): string {
+		if ( $src && ! empty( $src['valid'] ) && is_callable( $src['valid'] ) ) {
+			return call_user_func( $src['valid'], $stored ) ? $stored : '';
+		}
+		return AttachmentRules::stored_name( $stored );
+	}
+
 	/** nome sul disco => [enc, sha] di tutte le righe che hanno un file. */
 	public static function lookup_map(): array {
 		$db  = Db::db();

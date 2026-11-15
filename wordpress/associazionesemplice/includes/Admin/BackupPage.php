@@ -32,7 +32,7 @@ final class BackupPage {
 			. 'Gli utenti WordPress non fanno parte della copia: il ripristino è pensato per lo stesso sito.</p>';
 		Ui::form_open( 'asem_backup_restore', Ui::url( 'asem-backup' ), true );
 		echo '<p><input type="file" name="backup_file" accept=".zip" required></p>'
-			. '<p><label>' . esc_html( Texts::t( 'Frase della copia (serve solo se la copia viene da un altro sito)' ) ) . '<br><input type="password" name="phrase" class="regular-text" autocomplete="off"></label><br><span class="description">' . esc_html( Texts::t( 'Scrivi la frase: se non l\'hai cambiata, è il codice di licenza (o, nel plugin gratuito, la data e ora di attivazione) che avevi quando hai fatto la copia.' ) ) . '</span></p>'
+			. '<p><label>' . esc_html( Texts::t( 'Frase della copia (serve solo se la copia viene da un altro sito)' ) ) . '<br><input type="password" name="phrase" class="regular-text" autocomplete="off"></label><br><span class="description">' . esc_html( Texts::t( 'Scrivi la frase: se non l\'hai cambiata, è il codice di licenza (o, nel plugin gratuito, la data e ora di attivazione) che avevi quando hai fatto la copia. Va scritta esattamente com\'era, spazi e trattini compresi.' ) ) . '</span></p>'
 			. '<p><label><input type="checkbox" name="confirm" value="1" required> Ho capito: i dati attuali verranno sostituiti da quelli della copia.</label></p>'
 			. '<p><button class="button" data-confirm="Sostituire i dati attuali con quelli della copia?">Ripristina dalla copia</button></p>';
 		Ui::form_close();

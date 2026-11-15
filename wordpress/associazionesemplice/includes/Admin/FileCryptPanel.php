@@ -119,7 +119,7 @@ final class FileCryptPanel {
 		}
 		$back = Ui::url( 'asem-backup' ) . '#asem-cifratura';
 		echo '<h2 id="asem-cifratura">' . esc_html( Texts::t( 'Cifratura dei file riservati' ) ) . '</h2>';
-		echo '<p>' . esc_html( Texts::t( 'Certificati medici, documenti e scansioni, allegati dei movimenti, giustificativi dei rimborsi e foto dell\'inventario si salvano cifrati sul disco: chi si portasse via la sola cartella dei file, senza il database, non potrebbe leggerli. La chiave la gestisce il plugin da solo.' ) ) . '</p>';
+		echo '<p>' . esc_html( Texts::t( 'Certificati medici, documenti e scansioni, allegati dei movimenti, giustificativi dei rimborsi, foto dell\'inventario e PDF delle ricevute si salvano cifrati sul disco: chi si portasse via la sola cartella dei file, senza il database, non potrebbe leggerli. La chiave la gestisce il plugin da solo.' ) ) . '</p>';
 		echo '<p class="description">' . esc_html( Texts::t( 'Non protegge allo stesso modo da chi ha anche il database e il file wp-config.php: può aprire i file se conosce o indovina la frase (vedi sotto).' ) ) . '</p>';
 
 		if ( ! FileCrypt::available() ) {
@@ -158,13 +158,13 @@ final class FileCryptPanel {
 		echo '<p><strong>' . esc_html( self::phrase_line() ) . '</strong></p>';
 		if ( 'timestamp' === $kind ) {
 			echo '<p>' . esc_html( Texts::t( 'Conservala fuori dal sito (su carta o in un gestore di password): se perdi il sito, altrimenti non la ritrovi.' ) ) . ' ';
-			echo '<button type="button" class="button" id="asem-frase-stampa" data-text="' . esc_attr( Texts::t( 'Associazione Semplice: frase per riaprire i documenti riservati' ) . "\n\n" . FileKey::activated_at() . ' UTC' ) . '">' . esc_html( Texts::t( 'Stampa' ) ) . '</button></p>';
+			echo '<button type="button" class="button" id="asem-frase-stampa" data-text="' . esc_attr( Texts::t( 'Associazione Semplice: frase per riaprire i documenti riservati' ) . "\n\n" . FileKey::activated_at() . "\n\n" . Texts::t( 'Va scritta esattamente come la vedi qui, spazi e trattini compresi.' ) ) . '">' . esc_html( Texts::t( 'Stampa' ) ) . '</button></p>';
 			Ui::inline_js( 'document.getElementById("asem-frase-stampa").addEventListener("click",function(){var w=window.open("","_blank","width=520,height=360");if(!w){return;}var p=w.document.createElement("pre");p.style.fontSize="18px";p.textContent=this.getAttribute("data-text");w.document.body.appendChild(p);w.focus();w.print();});' );
 		}
 		if ( FileKey::phrase_changed_at() > (int) get_user_meta( get_current_user_id(), Backup::META_DOWNLOADED, true ) ) {
 			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html( Texts::t( 'Fai subito una copia nuova: quelle fatte prima si aprono con la frase di allora.' ) ) . '</strong> <a href="' . esc_url( Backup::download_link( true ) ) . '">' . esc_html( Texts::t( 'Scarica la copia con gli allegati' ) ) . '</a></p></div>';
 		}
-		echo '<p class="description">' . esc_html( Texts::t( 'Quanto protegge: chi si portasse via la sola cartella dei file non può leggerli. Chi ha anche il database e il file wp-config.php può aprirli se conosce o indovina la frase. La data di attivazione si indovina facilmente; il codice di licenza vale quanto il segreto del codice, che conosce anche Associazione Semplice e sta nelle email di acquisto.' ) ) . '</p>';
+		echo '<p class="description">' . esc_html( Texts::t( 'Quanto protegge: chi si portasse via la sola cartella dei file non può leggerli. Chi ha anche il database e il file wp-config.php può aprirli se conosce o indovina la frase. La data di attivazione si indovina facilmente; il codice di licenza vale quanto il segreto del codice, che conosce anche Associazione Semplice e sta nelle email di acquisto.' ) ) . ' ' . esc_html( Texts::t( 'Se queste parole non ti dicono nulla, chiedi a chi gestisce il sito.' ) ) . '</p>';
 		echo '<p class="description"><strong>' . esc_html( Texts::t( 'Per proteggere di più: una frase tua e lunga (almeno quattro parole) e la costante ASEM_ENC_KEY in wp-config.php.' ) ) . '</strong></p>';
 		echo '<details style="margin:1em 0"><summary>' . esc_html( Texts::t( 'Cambia la frase' ) ) . '</summary>';
 		echo '<p><strong>' . esc_html( Texts::t( 'Scegli una frase e conservala fuori dal sito (su carta o in un gestore di password): serve a riaprire i documenti se il sito viene spostato o riparato.' ) ) . '</strong></p>';
@@ -198,7 +198,7 @@ final class FileCryptPanel {
 				? Texts::t( 'Hai scelto una frase tua: conservala. Il codice di licenza apre comunque i documenti.' )
 				: Texts::t( 'Hai scelto una frase tua: conservala.' );
 		}
-		return Texts::t( 'La frase è la data e l\'ora di attivazione del plugin: {timestamp}. Conservala (è stampabile).', array( 'timestamp' => FileKey::activated_at() . ' UTC' ) );
+		return Texts::t( 'La frase è la data e l\'ora di attivazione del plugin: {timestamp}. Va scritta esattamente come la vedi qui, spazi e trattini compresi. Conservala (è stampabile).', array( 'timestamp' => FileKey::activated_at() ) );
 	}
 
 	/** Cosa protegge la copia di sicurezza, senza promettere più del vero. */
@@ -291,6 +291,8 @@ final class FileCryptPanel {
 			'items'         => Texts::t( 'Foto di un bene' ),
 			'medical_certs' => Texts::t( 'Certificato medico' ),
 			'refunds'       => Texts::t( 'Giustificativo di un rimborso' ),
+			'receipts'      => Texts::t( 'PDF di una ricevuta' ),
+			'receipts_void' => Texts::t( 'PDF di una ricevuta annullata' ),
 		);
 		echo '<table class="widefat striped" style="max-width:720px"><thead><tr><th>' . esc_html( Texts::t( 'Tipo' ) ) . '</th><th>' . esc_html( Texts::t( 'Numero' ) ) . '</th><th>' . esc_html( Texts::t( 'File sul disco' ) ) . '</th><th>' . esc_html( Texts::t( 'Stato' ) ) . '</th></tr></thead><tbody>';
 		foreach ( FileMigration::unencrypted( 50 ) as $r ) {
