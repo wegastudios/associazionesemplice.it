@@ -272,10 +272,8 @@ final class ProActions {
 	public static function broadcast_send( array $p ): array {
 		list( $g, $ref ) = MessagesPage::parse_audience( (string) ( $p['audience'] ?? '' ) );
 		$channels = isset( $p['channels'] ) ? array_map( 'sanitize_key', (array) $p['channels'] ) : array( 'email' );
-		if ( ! isset( $channels ) || in_array( 'email', $channels, true ) ) {
-			\AssociazioneSemplice\Contacts::assert_can_write(); // invio manuale: servono i contatti della segreteria
-		}
-		$id = \AssociazioneSemplice\Broadcasts::create( (string) ( $p['subject']?? '' ), (string) ( $p['body'] ?? '' ), $g, $ref, $channels );
+		\AssociazioneSemplice\Contacts::assert_can_write(); // testo scritto a mano e inviato dalla segreteria (email, SMS, notifiche): servono i suoi contatti
+		$id = \AssociazioneSemplice\Broadcasts::create( (string) ( $p['subject'] ?? '' ), (string) ( $p['body'] ?? '' ), $g, $ref, $channels );
 		$b  = \AssociazioneSemplice\Broadcasts::get( $id );
 		$sc = \AssociazioneSemplice\Sms::counts( $id );
 		$parts = array();
