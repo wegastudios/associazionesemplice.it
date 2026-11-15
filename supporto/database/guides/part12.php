@@ -168,7 +168,7 @@ Tutti i movimenti stanno nella **Prima nota**: l'elenco di entrate e uscite in o
 
 1. Dal pulsante **Nuovo** (o dalla **Prima nota**) scegli **«Registra un incasso»** o **«Registra una spesa»**.
 2. Scegli il **conto**, l'importo, la data e, se serve, l'**attività** collegata. Puoi dividere il movimento in più voci con **«Aggiungi un'altra voce»** e **«Togli questa voce»**.
-3. Salva. L'incasso dà la **ricevuta**; con **«Invia per email»** la mandi alla persona.
+3. Salva. L'incasso dà la **ricevuta**; con **«Invia per email»** la mandi alla persona. Se l'associazione ha la partita IVA, ogni voce ha anche la sua **aliquota IVA** (vedi [IVA: la pagina «Aspetto fiscale»](guida:gestionale-iva-e-aspetto-fiscale)).
 
 ### Perché non riesco a inviare la ricevuta per email?
 
@@ -183,6 +183,45 @@ In **Prima nota** filtra per **conto**, per **attività** e per periodo, poi **�
 Un movimento sbagliato non si cancella: si **storna** con **«Storna il movimento»**. Scrivi **perché**: il movimento resta in elenco ma non conta più.
 
 Per spostare soldi da un conto all'altro (per esempio contanti versati in banca) usa **Giroconto**: non è né un incasso né una spesa.
+MD,
+    ],
+    [
+        'topic' => 'gestionale', 'section' => 'Cassa e conti', 'slug' => 'gestionale-iva-e-aspetto-fiscale',
+        'title' => 'IVA: la pagina «Aspetto fiscale»',
+        'body' => <<<'MD'
+> Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
+
+Il gestionale si adatta a come l'associazione tratta l'IVA. Ci sono due casi, e dipendono da una sola cosa: **hai la partita IVA o no**.
+
+## Se non hai la partita IVA
+
+**L'IVA non c'è.** Incassi e spese si registrano con il loro importo, senza aliquote e senza diciture sull'IVA, anche sulle ricevute. In **Aspetto fiscale** trovi solo un promemoria.
+
+## Se hai la partita IVA
+
+Scrivila in **Altro → Configurazione guidata**, passo **Dati dell'ente** (vedi [Primo accesso e configurazione guidata](guida:gestionale-primo-accesso-e-configurazione-guidata)). Poi apri **Aspetto fiscale** (menu **Gestione**; la vedi se puoi cambiare le impostazioni) e scegli:
+
+- **«Aliquote IVA che usi»**: i numeri separati da virgola. Di partenza sono **22, 10, 5, 4**. **«IVA esente»** c'è sempre, anche se non la scrivi.
+- **«I prezzi che inserisci sono»**: **«finali, con l'IVA compresa»** (la scelta di partenza) oppure **«senza IVA: l'IVA si aggiunge»**. Con i prezzi senza IVA, sotto l'importo vedi subito **«Totale con IVA»**, cioè quanto pagherà chi paga.
+- **«Aliquota della quota associativa»**: **IVA esente** oppure una delle aliquote che hai scelto. Di partenza è **IVA esente**.
+
+Premi **«Salva»**.
+
+## In prima nota
+
+Con la partita IVA, ogni voce di incasso e ogni spesa ha la sua **aliquota IVA**: il gestionale propone il **22%** e tu scegli quella giusta. Le scelte sono le aliquote che hai indicato più:
+
+- **«IVA esente»**;
+- **«Fuori campo IVA»**, per ciò che non rientra nell'IVA;
+- **«Reverse charge»**, **solo sulle spese**: la spesa si registra **senza IVA esposta**. Non si può scegliere insieme a un'aliquota.
+
+L'IVA compare nel dettaglio del movimento e sulla **ricevuta**: per ogni aliquota vedi l'imponibile e l'IVA, e le voci esenti con la dicitura «IVA esente». Se provi a usare un'aliquota che non hai scelto in **Aspetto fiscale**, il gestionale ti dice che non è tra quelle scelte.
+
+## Cosa non c'è ancora
+
+L'IVA su attività, corsi ed eventi non è ancora disponibile: arriverà in un secondo momento.
+
+Se hai dubbi su quale aliquota usare, **chiedi al tuo commercialista**: il programma registra ciò che scegli, non decide al posto tuo.
 MD,
     ],
     [
