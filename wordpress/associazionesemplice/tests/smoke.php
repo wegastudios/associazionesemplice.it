@@ -1263,7 +1263,7 @@ asem_wizard( array( 'has_vat' => '1', 'vat_number' => 'IT 12345678903', 'fiscal_
 asem_ok( \AssociazioneSemplice\Fiscal::vat_applies() && '12345678903' === Settings::get( 'vat_number' ) && 10 === \AssociazioneSemplice\Fiscal::default_rate() && 'escl' === \AssociazioneSemplice\Fiscal::default_mode() && 22 === \AssociazioneSemplice\Fiscal::membership_rate() && 'Torino' === Settings::get( 'legal_city' ), 'procedura: partita IVA, aliquote e sede applicate' );
 asem_wizard( array( 'association_name' => 'Solo nome cambiato' ) );
 asem_ok( \AssociazioneSemplice\Fiscal::vat_applies() && '12345678903' === Settings::get( 'vat_number' ), 'procedura: se il passo non c\'è, la partita IVA già impostata non si tocca' );
-asem_wizard( array( 'has_vat' => '0', 'no_vat' => '1', 'vat_number' => '12345678903', 'vat_membership_rate' => '22' ) );
+asem_wizard( array( 'has_vat' => '0', 'no_vat' => '1', 'vat_number' => '', 'vat_membership_rate' => '22' ) );
 asem_ok( ! \AssociazioneSemplice\Fiscal::vat_applies() && '' === Settings::get( 'vat_number' ) && null === \AssociazioneSemplice\Fiscal::membership_rate(), 'procedura: senza partita IVA il numero e l\'aliquota delle quote si azzerano' );
 $wz_feat = array_intersect_key( Settings::all(), Admin\SettingsPage::all_features() ); // l'elenco delle funzioni spegne ciò che non è spuntato: si ripristina dopo il controllo
 Settings::update( array( 'fivepm_enabled' => 1 ) );
