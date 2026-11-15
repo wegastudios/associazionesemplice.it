@@ -2539,6 +2539,56 @@ Portale\Switches::load( $swdb );
 check( 'interruttori: valori non booleani o chiavi ignote non toccano la configurazione', true === Config::get( 'saas_v2.enabled' ) && false === Config::get( 'saas_v2.domain' ) );
 Config::set( 'saas_v2', array() );
 Http::$transport = $prevTransport;
+// Reset demo: lancia un comando fisso in background, un solo reset alla volta, esito leggibile. Qui solo comandi finti, mai un vero reset.
+if ( Portale\DemoReset::canRun() && is_executable( '/bin/sh' ) ) {
+	$drDir = sys_get_temp_dir() . '/portale-demo-reset-' . getmypid();
+	Config::set( 'demo_reset_dir', $drDir );
+	Config::set( 'demo_reset', array(
+		'plugin' => array( 'cmd' => array( '/bin/sh', '-c', 'echo prova-reset; exit 0' ), 'note' => 'finta' ),
+		'saas'   => array( 'cmd' => array( '/bin/sh', '-c', 'sleep 2; echo lento; exit 3' ) ),
+		'altra'  => array( 'cmd' => array( '/bin/sh', '-c', 'echo no' ) ),
+	) );
+	$drDb = testDb();
+	$drDb->migrate();
+	$wait = function ( string $key ) use ( $drDb ) {
+		for ( $i = 0; $i < 60; $i++ ) {
+			$s = Portale\DemoReset::status( $drDb, $key );
+			if ( ! $s['running'] ) {
+				return $s;
+			}
+			usleep( 200000 );
+		}
+		return Portale\DemoReset::status( $drDb, $key );
+	};
+	check( 'reset demo: si vedono solo le demo conosciute e con un comando valido', array( 'plugin', 'saas' ) === array_keys( Portale\DemoReset::targets() ) );
+	Config::set( 'demo_reset', array( 'plugin' => array( 'cmd' => array( 'bash', 'reset.sh' ) ), 'saas' => array( 'cmd' => array( '/bin/sh', '' ) ) ) );
+	check( 'reset demo: comando senza percorso assoluto o con argomento vuoto non è accettato', array() === Portale\DemoReset::targets() );
+	Config::set( 'demo_reset', array(
+		'plugin' => array( 'cmd' => array( '/bin/sh', '-c', 'echo prova-reset; exit 0' ), 'note' => 'finta' ),
+		'saas'   => array( 'cmd' => array( '/bin/sh', '-c', 'sleep 2; echo lento; exit 3' ) ),
+	) );
+	check( 'reset demo: una demo non collegata non parte', null !== throwsUser( function () use ( $drDb ) { Portale\DemoReset::start( $drDb, 'altra', 'staff@example.test' ); } ) );
+	Portale\DemoReset::start( $drDb, 'plugin', 'staff@example.test' );
+	$s = $wait( 'plugin' );
+	check( 'reset demo: il comando gira e l\'esito si legge (riuscito, chi l\'ha avviato, righe scritte)', ! $s['running'] && $s['last'] && 0 === $s['last']['exit'] && 'staff@example.test' === $s['last']['actor'] && false !== strpos( $s['log'], 'prova-reset' ) );
+	check( 'reset demo: avvio e fine sono nel registro delle azioni', 1 === (int) $drDb->one( "SELECT COUNT(*) AS n FROM audit WHERE action = 'demo_reset'" )['n'] && 1 === (int) $drDb->one( "SELECT COUNT(*) AS n FROM audit WHERE action = 'demo_reset_fine'" )['n'] );
+	Portale\DemoReset::status( $drDb, 'plugin' );
+	check( 'reset demo: l\'esito si registra una volta sola', 1 === (int) $drDb->one( "SELECT COUNT(*) AS n FROM audit WHERE action = 'demo_reset_fine'" )['n'] );
+	Portale\DemoReset::start( $drDb, 'saas', 'a@example.test' );
+	$dbl = throwsUser( function () use ( $drDb ) { Portale\DemoReset::start( $drDb, 'saas', 'b@example.test' ); } );
+	check( 'reset demo: un secondo avvio mentre il primo gira viene rifiutato', null !== $dbl && false !== strpos( $dbl, 'già un reset' ) );
+	$s = $wait( 'saas' );
+	check( 'reset demo: un errore dello script si vede (codice di uscita) e il blocco si toglie', ! $s['running'] && 3 === $s['last']['exit'] && false !== strpos( $s['log'], 'lento' ) );
+	Portale\DemoReset::start( $drDb, 'saas', 'a@example.test' );
+	check( 'reset demo: finito il primo, se ne può lanciare un altro', true );
+	$wait( 'saas' );
+	foreach ( (array) glob( $drDb ? $drDir . '/*' : '' ) as $f ) {
+		@unlink( $f );
+	}
+	@rmdir( $drDir );
+	Config::set( 'demo_reset', array() );
+	Config::set( 'demo_reset_dir', null );
+}
 Config::set( 'saas_public_keys', array() );
 echo $fails ? "\n$fails prove fallite\n" : "\nTutte le prove sono passate\n";
 exit( $fails ? 1 : 0 );
