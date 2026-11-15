@@ -695,12 +695,15 @@ final class PublicEvents {
 		if ( '' !== $where ) {
 			$h .= '<div><strong>Dove</strong><br>' . esc_html( $where ) . '<br><a href="' . esc_url( 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode( $where ), array( 'https' ) ) . '" target="_blank" rel="noopener noreferrer">Apri su Google Maps</a></div>';
 		}
-		$wa = Phone::whatsapp( $contact['phone'] ); // il telefono di questo evento, non per forza quello della segreteria
-		if ( '' !== $mail || '' !== $wa ) {
+		$tel = Phone::whatsapp( $contact['phone'] ); // il telefono di questo evento, non per forza quello della segreteria
+		$wa  = \AssociazioneSemplice\Contacts::whatsapp_allowed( $contact['phone'] ) ? $tel : ''; // il pulsante WhatsApp solo se acceso (se è il numero della segreteria) o se il numero è dell'evento
+		if ( '' !== $mail || '' !== $tel ) {
 			$h .= '<div><strong>Info e contatti</strong>';
 			if ( '' !== $wa ) {
 				$h .= '<br><a class="asemf-btn wp-element-button asemf-wa" href="' . esc_url( 'https://wa.me/' . $wa . '?text=' . rawurlencode( 'Ciao, vorrei informazioni su «' . (string) $a['name'] . '»' ), array( 'https' ) ) . '" target="_blank" rel="noopener noreferrer">💬 Scrivici su WhatsApp</a>';
-				$h .= '<br><a href="' . esc_url( 'tel:+' . $wa, array( 'tel' ) ) . '">' . esc_html( $contact['phone'] ) . '</a>';
+			}
+			if ( '' !== $tel ) {
+				$h .= '<br><a href="' . esc_url( 'tel:+' . $tel, array( 'tel' ) ) . '">' . esc_html( $contact['phone'] ) . '</a>';
 			}
 			if ( '' !== $mail ) {
 				$h .= '<br><a href="mailto:' . esc_attr( antispambot( $mail ) ) . '">' . esc_html( antispambot( $mail ) ) . '</a>';

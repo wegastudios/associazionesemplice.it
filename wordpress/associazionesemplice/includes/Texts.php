@@ -60,7 +60,20 @@ final class Texts {
 	public static function mail( $to, string $subject, string $message, $headers = '', $attachments = array() ): bool {
 		MailLog::begin();
 		$subject = self::plain( $subject );
-		$ok      = (bool) wp_mail( $to, $subject, self::plain( $message ), $headers, $attachments );
+		$message = self::plain( $message );
+		$line    = Contacts::line(); // contatti della segreteria: risposta alla segreteria e riga in calce (se mancano, nessuna delle due)
+		if ( '' !== $line ) {
+			$message .= "\n\n--\n" . $line;
+		}
+		$reply = Contacts::reply_to_header();
+		if ( '' !== $reply ) {
+			$list = is_array( $headers ) ? $headers : array_filter( array_map( 'trim', explode( "\n", str_replace( "\r\n", "\n", (string) $headers ) ) ) );
+			if ( ! preg_grep( '/^reply-to\s*:/i', $list ) ) {
+				$list[]  = $reply;
+				$headers = $list;
+			}
+		}
+		$ok      = (bool) wp_mail( $to, $subject, $message, $headers, $attachments );
 		MailLog::record( $to, $subject, $ok );
 		return $ok;
 	}

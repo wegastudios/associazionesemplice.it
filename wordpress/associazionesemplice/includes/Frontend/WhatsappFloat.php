@@ -15,22 +15,11 @@ final class WhatsappFloat {
 	public static function register(): void {
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'style' ) );
 		add_action( 'wp_footer', array( __CLASS__, 'render' ) );
-		add_action( 'admin_notices', array( __CLASS__, 'print_reminder' ) ); // promemoria con il collegamento alle impostazioni
 	}
 
-	/** Promemoria fisso in cima alle pagine del plugin finché non c'è il numero WhatsApp della segreteria (non si chiude: sparisce quando lo si imposta). */
-	public static function print_reminder(): void {
-		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
-		if ( 0 !== strpos( $page, 'asem' ) || ! current_user_can( \AssociazioneSemplice\Plugin::CAP ) || '' !== self::number() ) {
-			return;
-		}
-		echo '<div class="notice notice-warning"><p><strong>Imposta il WhatsApp della segreteria.</strong> Con il numero, sul sito compare un pulsante fisso «Scrivici su WhatsApp» e le pagine degli eventi lo mostrano accanto ai contatti. '
-			. '<a class="button button-primary" href="' . esc_url( admin_url( 'admin.php?page=asem-settings' ) ) . '">Imposta il numero</a></p></div>';
-	}
-
-	/** Numero per wa.me, vuoto se non c'è o non è valido. */
+	/** Numero per wa.me, vuoto se il pulsante è spento (impostazione a parte) o il telefono non è valido. */
 	private static function number(): string {
-		return Phone::whatsapp( (string) Settings::get( 'secretary_phone' ) );
+		return empty( Settings::get( 'whatsapp_button' ) ) ? '' : Phone::whatsapp( (string) Settings::get( 'secretary_phone' ) );
 	}
 
 	public static function style(): void {

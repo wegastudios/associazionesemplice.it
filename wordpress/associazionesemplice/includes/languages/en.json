@@ -2143,6 +2143,26 @@
   "Anno fiscale {anno} in disavanzo." : "Financial year {anno} is in deficit.",
   "L'anno fiscale {anno} è finito ma è ancora aperto e ha un disavanzo di {importo}: le uscite superano le entrate. Per sistemarlo, registra in Prima nota le entrate mancanti con una data dentro quell'anno. Se invece i conti sono giusti, controllali e poi chiudi l'anno." : "Financial year {anno} has ended but is still open and has a deficit of {importo}: expenses exceed income. To fix it, record the missing income in the cash book with a date inside that year. If the accounts are correct, check them and then close the year.",
   "Apri il rendiconto" : "Open the statement",
-  "Vai agli anni fiscali" : "Go to financial years"
+  "Vai agli anni fiscali" : "Go to financial years",
+  "Email della segreteria" : "Office email",
+  "Telefono della segreteria" : "Office phone",
+  "Li leggono i soci nelle email e nell'informativa sulla privacy: usa un recapito che qualcuno controlla davvero." : "Members read them in emails and in the privacy notice: use contact details that someone really monitors.",
+  "Indica l'email della segreteria." : "Enter the office email.",
+  "L'email della segreteria non è un indirizzo valido." : "The office email is not a valid address.",
+  "Indica il telefono della segreteria." : "Enter the office phone.",
+  "Indica un telefono valido per la segreteria (almeno 6 cifre; ammessi + - . ( ) e spazi)." : "Enter a valid office phone (at least 6 digits; + - . ( ) and spaces allowed).",
+  "Inseriscili ora" : "Enter them now",
+  "Mancano i contatti della segreteria (email e telefono): finché mancano, la segreteria non può inviare email ai soci (comunicazioni, avvisi e ricevute inviate a mano). Gli invii automatici, come il link di accesso, partono lo stesso. I contatti compaiono anche nell'informativa sulla privacy." : "The office contact details (email and phone) are missing: until they are entered, the office cannot send emails to members (messages, notices and receipts sent by hand). Automatic emails, such as the sign-in link, are still sent. The contact details also appear in the privacy notice.",
+  "Mancano i contatti della segreteria: chiedi a chi amministra di inserirli. Finché mancano, la segreteria non può inviare email ai soci." : "The office contact details are missing: ask an administrator to enter them. Until then, the office cannot send emails to members.",
+  "Prima inserisci email e telefono della segreteria (Impostazioni › Ente): senza, la segreteria non può inviare email ai soci." : "First enter the office email and phone (Settings › Entity): without them, the office cannot send emails to members.",
+  "Lezione modificata, ma i partecipanti NON sono stati avvisati: mancano email e telefono della segreteria (Impostazioni › Ente). Avvisali in un altro modo." : "Lesson changed, but the participants were NOT notified: the office email and phone are missing (Settings › Entity). Notify them another way.",
+  "Lezioni annullate, ma i partecipanti NON sono stati avvisati: mancano email e telefono della segreteria (Impostazioni › Ente). Avvisali in un altro modo." : "Lessons cancelled, but the participants were NOT notified: the office email and phone are missing (Settings › Entity). Notify them another way.",
+  "Lezione annullata, ma i partecipanti NON sono stati avvisati: mancano email e telefono della segreteria (Impostazioni › Ente). Avvisali in un altro modo." : "Lesson cancelled, but the participants were NOT notified: the office email and phone are missing (Settings › Entity). Notify them another way.",
+  "Intanto scarica la ricevuta e consegnala a mano." : "In the meantime, download the receipt and hand it over in person.",
+  "Segreteria: {email} · {telefono}" : "Office: {email} · {telefono}",
+  "Segreteria: {contatto}" : "Office: {contatto}",
+  "Per esercitare i tuoi diritti scrivi a {email} o chiama {telefono}." : "To exercise your rights write to {email} or call {telefono}.",
+  "Per esercitare i tuoi diritti scrivi a {email}." : "To exercise your rights write to {email}.",
+  "Per esercitare i tuoi diritti chiama {telefono}." : "To exercise your rights call {telefono}."
  }
 }

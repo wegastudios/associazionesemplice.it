@@ -625,6 +625,7 @@ final class Actions {
 		if ( ! \AssociazioneSemplice\Notices::can_send( $aid ) ) {
 			throw new \InvalidArgumentException( 'Non hai il permesso di inviare avvisi per questa attività.' );
 		}
+		\AssociazioneSemplice\Contacts::assert_can_write(); // invio manuale: servono i contatti della segreteria
 		$r = \AssociazioneSemplice\Notices::send( $aid, ! empty( $post['session_id'] ) ? (int) $post['session_id'] : null, (string) ( $post['subject'] ?? '' ), (string) ( $post['body'] ?? '' ) );
 		return 'Avviso inviato a ' . $r['recipients'] . ( 1 === $r['recipients'] ? ' persona' : ' persone' ) . ( $r['emailed'] < $r['recipients'] ? ' (' . ( $r['recipients'] - $r['emailed'] ) . ' email non inviate)' : '' ) . '.';
 	}
