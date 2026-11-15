@@ -116,7 +116,7 @@ final class YearEndCheck {
 		foreach ( self::past_deficits() as $year => $result ) {
 			$vars = array( 'anno' => FiscalYears::label( $year ), 'importo' => Money::format( abs( $result ) ) );
 			$out .= '<div class="notice notice-warning inline asem-yearend"><p><strong>' . esc_html( Texts::t( 'Anno fiscale {anno} in disavanzo.', $vars ) ) . '</strong> '
-				. esc_html( Texts::t( 'L\'anno fiscale {anno} è finito ma è ancora aperto e ha un disavanzo di {importo}: le uscite superano le entrate. Per sistemarlo, registra in Prima nota le entrate mancanti con una data dentro quell\'anno. Se invece i conti sono giusti, controllali e poi chiudi l\'anno.', $vars ) )
+				. esc_html( Texts::t( 'L\'anno fiscale {anno} è finito ma è ancora aperto e ha un disavanzo di {importo}: le uscite superano le entrate. Se mancano delle entrate, registrale in Prima nota con una data dentro quell\'anno. Se invece i conti sono giusti, controllali e poi chiudi l\'anno.', $vars ) )
 				. ' <a href="' . esc_url( Admin\Ui::url( 'asem-statement', array( 'year' => $year ) ) ) . '">' . esc_html( Texts::t( 'Apri il rendiconto' ) ) . '</a> · <a href="' . esc_url( Admin\Ui::url( 'asem-years' ) ) . '">' . esc_html( Texts::t( 'Vai agli anni fiscali' ) ) . '</a></p></div>';
 		}
 		return $out;
