@@ -191,17 +191,18 @@ function reviewPayment(object $test, string $provider = 'stripe'): string
 
 it('rimborsa un pagamento da controllare su Stripe, una parte alla volta, senza superare l\'incassato', function (): void {
     $id = reviewPayment($this);
+    Mail::fake();
     Http::fake([
         'api.stripe.com/v1/checkout/sessions/*' => Http::response(['id' => 'cs_test_9', 'payment_intent' => 'pi_9']),
         'api.stripe.com/v1/refunds' => Http::response(['id' => 're_9']),
     ]);
     $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()]);
 
-    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['amount' => '10,00'])->assertSessionHas('status');
+    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['amount' => '10,00', 'reason' => 'Quota già pagata'])->assertSessionHas('status');
     Http::assertSent(fn (HttpRequest $r): bool => str_ends_with($r->url(), '/v1/refunds') && $r['payment_intent'] === 'pi_9' && (int) $r['amount'] === 1000);
 
-    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['amount' => '20,00'])->assertSessionHasErrors('ledger');
-    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['amount' => '15,00'])->assertSessionHas('status');
+    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['amount' => '20,00', 'reason' => 'Quota già pagata'])->assertSessionHasErrors('ledger');
+    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['amount' => '15,00', 'reason' => 'Quota già pagata'])->assertSessionHas('status');
 
     $this->orgContext()->run($this->org->id, function () use ($id): void {
         $row = DB::table('app.online_payments')->where('id', $id)->first();
@@ -209,14 +210,15 @@ it('rimborsa un pagamento da controllare su Stripe, una parte alla volta, senza 
             ->and((string) $row->error)->toContain('Restituiti')
             ->and(DB::table('audit.log')->where('action', 'payment.refunded')->count())->toBe(2);
     });
-    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['amount' => '1,00'])->assertSessionHasErrors('ledger');
+    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['amount' => '1,00', 'reason' => 'Quota già pagata'])->assertSessionHasErrors('ledger');
+    Mail::assertSent(PaymentRefunded::class, 2);
 });
 
 it('non rimborsa pagamenti già registrati e rimborsa su PayPal l\'incasso giusto', function (): void {
     $id = reviewPayment($this, 'paypal');
     $this->orgContext()->run($this->org->id, fn () => DB::table('app.online_payments')->where('id', $id)->update(['status' => 'settled']));
     $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()]);
-    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['amount' => '5,00'])->assertSessionHasErrors('ledger');
+    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['amount' => '5,00', 'reason' => 'Quota già pagata'])->assertSessionHasErrors('ledger');
 
     $this->orgContext()->run($this->org->id, fn () => DB::table('app.online_payments')->where('id', $id)->update(['status' => 'review']));
     Http::fake([
@@ -224,6 +226,41 @@ it('non rimborsa pagamenti già registrati e rimborsa su PayPal l\'incasso giust
         'api-m.sandbox.paypal.com/v2/checkout/orders/ORD-9' => Http::response(['purchase_units' => [['payments' => ['captures' => [['id' => 'CAP-9', 'status' => 'COMPLETED']]]]]]),
         'api-m.sandbox.paypal.com/v2/payments/captures/CAP-9/refund' => Http::response(['id' => 'RF-9'], 201),
     ]);
-    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['amount' => '5,00'])->assertSessionHas('status');
+    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['amount' => '5,00', 'reason' => 'Quota già pagata'])->assertSessionHas('status');
     Http::assertSent(fn (HttpRequest $r): bool => str_ends_with($r->url(), '/captures/CAP-9/refund') && $r['amount']['value'] === '5.00');
+});
+
+it('rimborsa e storna in un gesto solo un pagamento già registrato, e se il rimborso fallisce non storna nulla', function (): void {
+    Mail::fake();
+    saveStripe($this);
+    [$id, $tessera] = $this->orgContext()->run($this->org->id, function (): array {
+        $r = app(MembershipService::class)->renewWithPayment($this->anna->id, $this->cash, 2500);
+        $id = (string) Illuminate\Support\Str::uuid7();
+        DB::table('app.online_payments')->insert([
+            'org_id' => $this->org->id, 'id' => $id, 'person_id' => $this->anna->id, 'provider' => 'stripe', 'status' => 'settled', 'amount_cents' => 2500, 'paid_cents' => 2500,
+            'items' => '[]', 'receipts' => json_encode([$r['receipt']]), 'provider_ref' => 'cs_test_9',
+        ]);
+
+        return [$id, $r['membership_id']];
+    });
+    $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()]);
+
+    Http::fake(['api.stripe.com/v1/checkout/sessions/*' => Http::response(['payment_intent' => 'pi_9']), 'api.stripe.com/v1/refunds' => Http::response(['error' => ['message' => 'no']], 500)]);
+    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['reason' => 'Quota già pagata'])->assertSessionHasErrors('ledger');
+    $this->orgContext()->run($this->org->id, function () use ($tessera): void {
+        expect(app(MembershipService::class)->isActive($this->anna->id))->toBeTrue()
+            ->and(DB::table('app.transactions')->whereNull('voided_at')->count())->toBe(1)
+            ->and($tessera)->not->toBe('');
+    });
+    Mail::assertNothingSent();
+
+    Http::fake(['api.stripe.com/v1/checkout/sessions/*' => Http::response(['payment_intent' => 'pi_9']), 'api.stripe.com/v1/refunds' => Http::response(['id' => 're_9'])]);
+    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['reason' => 'Quota già pagata'])->assertSessionHas('status');
+    Http::assertSent(fn (HttpRequest $r): bool => str_ends_with($r->url(), '/v1/refunds') && (int) $r['amount'] === 2500);
+    $this->orgContext()->run($this->org->id, function (): void {
+        expect(app(MembershipService::class)->isActive($this->anna->id))->toBeFalse()
+            ->and(DB::table('app.transactions')->whereNull('voided_at')->count())->toBe(0)
+            ->and((int) DB::table('app.online_payments')->value('refunded_cents'))->toBe(2500);
+    });
+    Mail::assertSent(PaymentRefunded::class, fn (PaymentRefunded $m): bool => $m->amount === '25,00 €' && $m->reason === 'Quota già pagata');
 });

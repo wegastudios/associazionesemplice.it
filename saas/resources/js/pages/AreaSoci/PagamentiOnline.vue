@@ -11,9 +11,16 @@ const form = useForm({
 const save = () => form.transform((d) => ({ ...d, account_id: d.account_id || null })).put('/gestionale/pagamenti-online', { preserveScroll: true, onSuccess: () => form.reset('stripe_secret', 'stripe_webhook', 'paypal_secret', 'forget') });
 const test = (p) => router.post(`/gestionale/pagamenti-online/prova/${p}`, {}, { preserveScroll: true });
 const reviewed = (p) => router.post(`/gestionale/pagamenti-online/${p.id}/controllato`, {}, { preserveScroll: true });
+const comma = (c) => (c / 100).toFixed(2).replace('.', ',');
+const askReason = () => window.prompt('Motivo del rimborso (lo leggerà il socio nell’email):');
 const refund = (p) => {
-    const amount = window.prompt(`Quanto restituire al socio (massimo ${(p.refundable / 100).toFixed(2).replace('.', ',')} €)? I soldi tornano sul suo metodo di pagamento e non si può annullare.${p.has_receipts ? ' Le voci già registrate in prima nota vanno stornate a parte.' : ''}`, p.has_receipts ? '' : (p.refundable / 100).toFixed(2).replace('.', ','));
-    if (amount) { router.post(`/gestionale/pagamenti-online/${p.id}/rimborso`, { amount }, { preserveScroll: true }); }
+    const amount = window.prompt(`Quanto restituire al socio (massimo ${comma(p.refundable)} €)? I soldi tornano sul suo metodo di pagamento e non si può annullare.${p.has_receipts ? ' Le voci già registrate in prima nota vanno stornate a parte, oppure usa «rimborsa e storna».' : ''}`, p.has_receipts ? '' : comma(p.refundable));
+    const reason = amount ? askReason() : null;
+    if (amount && reason) { router.post(`/gestionale/pagamenti-online/${p.id}/rimborso`, { amount, reason }, { preserveScroll: true }); }
+};
+const refundVoid = (p) => {    if (!window.confirm(`Restituire al socio tutto il pagamento e stornare in prima nota le sue ricevute? Le tessere collegate vengono annullate e i soldi tornano sul suo metodo di pagamento: non si può annullare. Se l’anno fiscale dell’incasso è chiuso non succede nulla.`)) { return; }
+    const reason = askReason();
+    if (reason) { router.post(`/gestionale/pagamenti-online/${p.id}/rimborso`, { reason }, { preserveScroll: true }); }
 };
 const field = 'field';
 const states = { created: 'avviato', pending: 'in attesa', settled: 'registrato', review: 'da controllare', failed: 'non riuscito', cancelled: 'annullato' };
@@ -75,6 +82,7 @@ const states = { created: 'avviato', pending: 'in attesa', settled: 'registrato'
                         <td class="whitespace-nowrap pr-3"><span :class="p.status === 'review' ? 'font-semibold text-danger' : ''">{{ states[p.status] ?? p.status }}</span>
                             <button v-if="p.status === 'review' && canAccounting" type="button" class="ml-2 text-accent hover:underline" @click="reviewed(p)">controllato</button></td>
                             <button v-if="p.status === 'review' && canRefund && p.refundable > 0" type="button" class="ml-2 text-accent hover:underline" @click="refund(p)">rimborsa</button>
+                            <button v-if="canRefund && p.voidable" type="button" class="ml-2 text-accent hover:underline" @click="refundVoid(p)">rimborsa e storna</button>
                             <p v-if="p.refunded !== '0,00 €' && p.refunded !== '0,00'" class="text-xs text-muted">restituiti {{ p.refunded }}</p>
                         <td>{{ p.receipts }}</td>
                     </tr>
