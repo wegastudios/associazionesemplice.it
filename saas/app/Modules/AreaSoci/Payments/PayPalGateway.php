@@ -109,6 +109,7 @@ final readonly class PayPalGateway
     {
         $get = $this->http->withToken($token)->acceptJson()->timeout(15)->get(self::base($live).'/v2/checkout/orders/'.rawurlencode($orderId));
         $order = $get->json();
+        /** @var array<string, mixed>|null $order */
         $capture = $get->successful() && is_array($order) ? self::captureId($order) : null;
         if ($capture === null) {
             throw new RuntimeException('PayPal: incasso non trovato, niente da rimborsare.');
