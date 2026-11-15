@@ -8288,6 +8288,7 @@ $ap_ps->mark_refunded( (int) $ap_rrow['id'] );
 asem_ok( 0 === (int) $ap_ps->get_by_public( $ap_rrow['public_id'] )['refund_due'], 'pagamenti online: rimborso segnato come fatto' );
 
 // ---------- Rimborso dei pagamenti online dal gateway (Stripe e PayPal) ----------
+Settings::update( array( 'secretary_email' => 'segreteria@example.org', 'secretary_phone' => '011 1234567' ) );
 Settings::update( array( 'payment_provider' => 'stripe_paypal', 'paypal_mode' => 'sandbox', 'paypal_client_id' => str_repeat( 'A', 40 ), 'paypal_client_secret' => str_repeat( 'b', 40 ) ) );
 $rf_calls = array();
 $rf_seen  = array();
@@ -8384,7 +8385,7 @@ asem_ok( 'stripe' === $rf_calls[0]['gw'] && '/v1/refunds' === substr( $rf_calls[
 asem_ok( 'pi_rf_1' === $rf_b['payment_intent'] && '300' === $rf_b['amount'] && $rf_p['public_id'] === $rf_b['metadata']['asem_payment'] && 'Bearer sk_test_51Smoke1' === $rf_calls[0]['auth'] && 'refund-' . $rf_p['public_id'] . '-0-300' === $rf_calls[0]['key'], 'rimborso Stripe: PaymentIntent, importo, chiave segreta e chiave di idempotenza' );
 asem_ok( $rf_snap === $rf_txs() && $rf_bal === $balance_of( 'Stripe' ), 'rimborso di un pagamento mai registrato: la prima nota non cambia' );
 $rf_m = $ap_mail_to( 'paolo.paga@example.com' );
-asem_ok( count( $ap_mails ) === $rf_mail + 1 && 0 === strpos( (string) $rf_m['subject'], 'Rimborso del tuo pagamento · ' ) && 0 === strpos( (string) $rf_m['message'], 'Ciao, abbiamo restituito 3,00 € del pagamento che hai fatto il ' ) && false !== strpos( (string) $rf_m['message'], 'Motivo: Motivo di prova.' ) && false !== strpos( (string) $rf_m['message'], 'fino a 10 a seconda della banca' ), 'rimborso: email al socio con importo, data e motivo' );
+asem_ok( count( $ap_mails ) === $rf_mail + 1 && 0 === strpos( (string) $rf_m['subject'], 'Rimborso del tuo pagamento · ' ) && 0 === strpos( (string) $rf_m['message'], 'Ciao, abbiamo restituito 3,00 € del pagamento che hai fatto il ' ) && false !== strpos( (string) $rf_m['message'], 'Motivo: Motivo di prova.' ) && false !== strpos( (string) $rf_m['message'], 'scrivi alla segreteria: segreteria@example.org, tel. 011 1234567. — ' ), 'rimborso: email al socio con importo, data e motivo' );
 asem_ok( false !== strpos( (string) $rf_try_noreason( $rf_a ), 'motivo' ) && 1 === count( $rf_calls ), 'rimborso: senza il motivo non parte nulla' );
 asem_ok( 'Restituiti 3,00 € al socio.' === $rf_row( $rf_a )['error'], 'rimborso: nel motivo del pagamento «Restituiti X,XX € al socio.»' );
 asem_ok( false !== strpos( (string) $rf_try( $rf_a, 300, 0 ), 'è cambiato' ) && 1 === count( $rf_calls ), 'rimborso: lo stesso invio ripetuto (doppio clic) non rimborsa due volte' );
@@ -8497,7 +8498,15 @@ $wpdb->update( Db::t( 'people' ), array( 'email' => null ), array( 'id' => $ap_p
 $rf_mn = count( $ap_mails );
 $rf_res = Admin\ProActions::payment_refund( array( 'id' => $rf_c, 'expected' => 500, 'amount' => '1,00', 'reason' => 'Resto', 'ack' => '1' ) );
 $wpdb->update( Db::t( 'people' ), array( 'email' => $rf_mail_email ), array( 'id' => $ap_paolo ) );
-asem_ok( count( $ap_mails ) === $rf_mn && false !== strpos( $rf_res[1], 'non ha un\'email' ) && 600 === (int) $rf_row( $rf_c )['refunded_cents'], 'rimborso: senza email del socio l\'email non parte e l\'esito lo dice (il rimborso è comunque partito)' );
+asem_ok( count( $ap_mails ) === $rf_mn && 'Rimborso di 1,00 € inviato al socio. Il socio non è stato avvisato per email (manca la sua email o i contatti della segreteria): avvisalo tu.' === $rf_res[1] && 600 === (int) $rf_row( $rf_c )['refunded_cents'], 'rimborso: senza email del socio l\'email non parte e l\'esito lo dice (il rimborso è comunque partito)' );
+
+// senza i contatti della segreteria il rimborso vale ma l'email non parte
+$rf_ct = $rf_pay( 'stripe', 1000, array( 'refund_due' => 1 ) );
+Settings::update( array( 'secretary_phone' => '' ) );
+$rf_mn = count( $ap_mails );
+$rf_res = Admin\ProActions::payment_refund( array( 'id' => $rf_ct, 'expected' => 0, 'amount' => '4,00', 'reason' => 'Prova contatti', 'ack' => '1' ) );
+Settings::update( array( 'secretary_phone' => '011 1234567' ) );
+asem_ok( count( $ap_mails ) === $rf_mn && 400 === (int) $rf_row( $rf_ct )['refunded_cents'] && 'Rimborso di 4,00 € inviato al socio. Il socio non è stato avvisato per email (manca la sua email o i contatti della segreteria): avvisalo tu.' === $rf_res[1], 'rimborso: senza i contatti della segreteria il rimborso parte, l\'email no e l\'esito lo dice' );
 
 // anno fiscale chiuso: il rimborso non scrive nella prima nota (nemmeno nei suoi anni chiusi)
 $rf_fy = \AssociazioneSemplice\FiscalYears::get( $fy_far );

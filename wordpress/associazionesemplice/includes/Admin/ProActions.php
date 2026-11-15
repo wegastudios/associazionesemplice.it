@@ -452,7 +452,7 @@ final class ProActions {
 		}
 		$r   = Plugin::payments()->refund( (int) ( $p['id'] ?? 0 ), $cents, (int) ( $p['expected'] ?? -1 ), (string) ( $p['reason'] ?? '' ) );
 		$msg = \AssociazioneSemplice\Texts::t( 'Rimborso di {importo} inviato al socio.', array( 'importo' => Money::format( $r['cents'] ) ) );
-		$msg .= ' ' . ( $r['mailed'] ? \AssociazioneSemplice\Texts::t( 'Il socio è stato avvisato per email.' ) : \AssociazioneSemplice\Texts::t( 'Il socio non ha un\'email: avvisalo tu.' ) );
+		$msg .= ' ' . ( $r['mailed'] ? \AssociazioneSemplice\Texts::t( 'Il socio è stato avvisato per email.' ) : \AssociazioneSemplice\Texts::t( 'Il socio non è stato avvisato per email (manca la sua email o i contatti della segreteria): avvisalo tu.' ) );
 		return array( Ui::url( 'asem-payments' ), $msg );
 	}
 

@@ -590,19 +590,21 @@ class PaymentService extends OfflinePayments {
 	/** Email al socio che ha pagato: gli diciamo quanto gli è stato restituito. Senza email non si manda nulla (il rimborso è già partito). */
 	private function send_refund_email( ?array $p, int $cents, string $reason ): bool {
 		$payer = $p ? Plugin::people()->get( (int) $p['payer_person_id'] ) : null;
-		if ( ! $p || ! $payer || empty( $payer['email'] ) ) {
+		if ( ! $p || ! $payer || empty( $payer['email'] ) || ! Contacts::complete() ) { // comunicazione scritta a mano: senza i contatti della segreteria l'email non parte (il rimborso vale lo stesso)
 			return false;
 		}
 		$assoc   = (string) Settings::get( 'association_name' );
 		$assoc   = '' !== $assoc ? $assoc : Texts::t( 'l\'associazione' );
 		$subject = Texts::t( 'Rimborso del tuo pagamento · {associazione}', array( 'associazione' => $assoc ) );
 		$body    = Texts::t(
-			'Ciao, abbiamo restituito {importo} del pagamento che hai fatto il {data} a {associazione}. Motivo: {motivo}. L\'accredito compare sul tuo metodo di pagamento in genere entro pochi giorni lavorativi, fino a 10 a seconda della banca o del metodo di pagamento. Se hai dubbi, scrivi alla segreteria. — {associazione}',
+			'Ciao, abbiamo restituito {importo} del pagamento che hai fatto il {data} a {associazione}. Motivo: {motivo}. L\'accredito compare sul tuo metodo di pagamento in genere entro pochi giorni lavorativi, fino a 10 a seconda della banca o del metodo di pagamento. Se hai dubbi, scrivi alla segreteria: {email}, tel. {telefono}. — {associazione}',
 			array(
 				'importo'      => Money::format( $cents ),
 				'data'         => ( new \DateTimeImmutable( (string) ( $p['paid_at'] ?: $p['created_at'] ) ) )->format( 'd/m/Y' ),
 				'associazione' => $assoc,
 				'motivo'       => $reason,
+				'email'        => Contacts::email(),
+				'telefono'     => Contacts::phone(),
 			)
 		);
 		return Texts::mail( $payer['email'], $subject, $body );
