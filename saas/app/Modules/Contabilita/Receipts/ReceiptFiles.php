@@ -147,8 +147,8 @@ final readonly class ReceiptFiles
         $identical = hash_equals($previous, $stored->sha256);
         $this->audit->record('receipt.rebuilt', 'app.receipts', $receiptId, [
             'previous_path' => is_string($row->path ?? null) ? $row->path : '',
-            'previous_sha256' => $previous,
-            'sha256' => $stored->sha256,
+            'previous_checksum' => $previous,
+            'checksum' => $stored->sha256,
             'identical' => $identical,
             'from_snapshot' => $snapshot !== null,
         ]);

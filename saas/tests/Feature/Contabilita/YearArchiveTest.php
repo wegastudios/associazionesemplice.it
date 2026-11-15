@@ -47,8 +47,8 @@ it('archivia l\'anno, toglie il file singolo e la ricevuta si scarica come prima
     $archive = $this->orgContext()->run($this->org->id, fn () => DB::table('app.year_archives')->sole());
     expect((int) $archive->file_count)->toBe(1)->and(Storage::disk('org_files')->exists($archive->path))->toBeTrue();
     $after = (string) $this->actingAs($this->owner)->get("/gestionale/ricevute/{$this->receipt}.pdf")->assertOk()->getContent();
-    expect($after)->toBe($before);
-
+    expect($after)->toBe($before)
+        ->and($this->orgContext()->run($this->org->id, fn () => DB::table('audit.log')->where('action', 'archive.created')->exists()))->toBeTrue();
     $this->actingAs($this->owner)->get('/gestionale/verifica-ricevute?anno='.$this->year)->assertInertia(fn ($page) => $page->where('rows.0.status', 'archived')->where('rows.0.label', 'In archivio'));
 });
 
