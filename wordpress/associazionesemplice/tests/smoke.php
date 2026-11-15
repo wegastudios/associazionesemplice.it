@@ -10111,6 +10111,35 @@ asem_ok( 'Voce 3: il socio ha già la tessera ' . $qd_y2 . '.' === $qd_msg2 && 0
 asem_ok( 1 === $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $qd_p, 'lines' => array( array( 'category_id' => $qd_cat, 'amount_cents' => 1000, 'social_year' => $qd_y2 ) ) ) ) && 1 === $qd_count(), 'una sola quota per anno nell\'incasso: registrata' );
 $wpdb->query( 'DELETE FROM ' . Db::t( 'transactions' ) . ' WHERE person_id = ' . (int) $qd_p );
 $wpdb->delete( Db::t( 'memberships' ), array( 'person_id' => $qd_p ) );
+// anno in omaggio: nuovo socio negli ultimi giorni della tessera (paga l'anno dopo, ha l'anno in corso in omaggio)
+$qo_sm = (int) Settings::get( 'social_year_start_month' );
+$qo_o  = Settings::all();
+$qo_o['social_year_start_month'] = ( (int) substr( $today, 5, 2 ) % 12 ) + 1;
+update_option( Settings::OPTION, $qo_o );
+$qo_p    = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Omaggio', 'last_name' => 'Doppio', 'email' => 'omaggio.doppio@example.com' ) );
+$qo_plan = $people->membership_plan( $qo_p, $today );
+$qo_pay  = (string) $qo_plan['year'];
+$qo_free = (string) $qo_plan['free'];
+$qo_cnt  = function () use ( $wpdb, $qo_p ) {
+	return (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . ' WHERE person_id = ' . (int) $qo_p ) + (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . (int) $qo_p );
+};
+$qo_rec = function ( array $lines ) use ( $ledger, $cash, $today, $qo_p ) {
+	return $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $qo_p, 'lines' => $lines ) );
+};
+asem_ok( '' !== $qo_free && $qo_free !== $qo_pay, 'omaggio: il nuovo socio paga ' . $qo_pay . ' e ha ' . $qo_free . ' in omaggio' );
+// riga 1 paga l'anno (e genera l'omaggio), riga 2 forzata sull'anno in omaggio: rifiutata prima di scrivere
+$qo_msg = (string) asem_throws( function () use ( $qo_rec, $qd_cat, $qo_free ) { $qo_rec( array( array( 'category_id' => $qd_cat, 'amount_cents' => 1000 ), array( 'category_id' => $qd_cat, 'amount_cents' => 1000, 'social_year' => $qo_free ) ) ); } );
+asem_ok( 'Voce 2: il socio ha già la tessera ' . $qo_free . '.' === $qo_msg && 0 === $qo_cnt(), 'omaggio: la seconda riga sull\'anno in omaggio è rifiutata, nessun movimento né tessera' );
+// ordine inverso: la riga forzata viene prima, l'omaggio non si duplica
+asem_ok( 2 === $qo_rec( array( array( 'category_id' => $qd_cat, 'amount_cents' => 1000, 'social_year' => $qo_free ), array( 'category_id' => $qd_cat, 'amount_cents' => 1000 ) ) ) && 2 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . (int) $qo_p . ' AND deleted_at IS NULL' ) && 1 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . (int) $qo_p . ' AND social_year = \'' . $qo_free . '\'' ), 'omaggio: se la riga forzata sull\'anno in omaggio viene prima, nessuna tessera doppia' );
+$wpdb->query( 'DELETE FROM ' . Db::t( 'transactions' ) . ' WHERE person_id = ' . (int) $qo_p );
+$wpdb->delete( Db::t( 'memberships' ), array( 'person_id' => $qo_p ) );
+// incasso normale con omaggio (una sola riga): tessere dell'anno pagato e dell'anno in omaggio
+asem_ok( 1 === $qo_rec( array( array( 'category_id' => $qd_cat, 'amount_cents' => 1000 ) ) ) && $people->has_membership( $qo_p, $qo_pay ) && $people->has_membership( $qo_p, $qo_free ), 'omaggio: l\'incasso normale (una sola riga) registra l\'anno pagato e quello in omaggio' );
+$wpdb->query( 'DELETE FROM ' . Db::t( 'transactions' ) . ' WHERE person_id = ' . (int) $qo_p );
+$wpdb->delete( Db::t( 'memberships' ), array( 'person_id' => $qo_p ) );
+$qo_o['social_year_start_month'] = $qo_sm;
+update_option( Settings::OPTION, $qo_o );
 
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
