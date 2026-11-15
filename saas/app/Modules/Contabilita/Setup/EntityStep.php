@@ -17,12 +17,12 @@ use App\Modules\Core\Contracts\SetupStep;
 final readonly class EntityStep implements SetupStep
 {
     public const KINDS = [
-        'asd' => 'Associazione sportiva dilettantistica (ASD)',
-        'aps' => 'Associazione di promozione sociale (APS)',
-        'odv' => 'Organizzazione di volontariato (ODV)',
-        'ets' => 'Altro ente del Terzo settore',
-        'circolo' => 'Circolo o associazione culturale',
-        'altro' => 'Altra associazione',
+        'asd' => 'ASD – associazione sportiva dilettantistica',
+        'aps' => 'APS – associazione di promozione sociale',
+        'odv' => 'ODV – organizzazione di volontariato',
+        'ets' => 'ETS – altro ente del Terzo settore',
+        'circolo' => 'Circolo',
+        'altro' => 'Altro',
     ];
 
     /** Regime fiscale (facoltativo): stessi codici ed etichette del plugin (Fiscal::regimes). */
