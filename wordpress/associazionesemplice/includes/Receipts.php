@@ -256,6 +256,30 @@ final class Receipts {
 		return $out;
 	}
 
+	/**
+	 * Una ricevuta emessa prima che si salvassero i dati (senza fotografia e senza PDF): fotografa ORA i dati vivi, poi ne fissa il PDF. I dati sono quelli
+	 * di oggi, non quelli dell'emissione. Le ricevute annullate o senza più righe di incasso si saltano (restano come sono).
+	 *
+	 * @param array $rec riga della ricevuta (tutte le colonne)
+	 * @return bool true se i dati sono stati fotografati e il PDF fissato
+	 */
+	public static function snapshot_today( array $rec ): bool {
+		if ( null !== ( $rec['voided_at'] ?? null ) || ! empty( $rec['data'] ) || ReceiptFiles::has( $rec, ReceiptFiles::ISSUED ) ) {
+			return false;
+		}
+		$key  = (string) $rec['receipt_key'];
+		$rows = self::rows( $key );
+		if ( ! $rows ) {
+			return false;
+		}
+		self::issued( $key, $rows ); // fotografa i dati vivi (il numero c'è già: non se ne assegna uno nuovo)
+		$cur = self::record( $key );
+		if ( ! $cur || null !== $cur['voided_at'] || ! self::data_of( $cur ) ) {
+			return false;
+		}
+		return (bool) self::fix_pdfs( $cur );
+	}
+
 	/** I dati fotografati ci sono e coincidono con l'impronta scritta all'emissione? (Senza impronta, per le ricevute più vecchie, basta che ci siano.) */
 	public static function data_intact( array $rec ): bool {
 		if ( ! self::data_of( $rec ) ) {

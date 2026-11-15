@@ -10799,6 +10799,41 @@ asem_ok( 0 === $pf_v['summary']['pending'] && 0 === $pf_v['summary']['altered'] 
 $pf_okp = asem_render( array( Admin\ReceiptCheckPage::class, 'render' ), 'Ricevute emesse', array( 'year' => $pf_fy ) );
 asem_ok( false !== strpos( $pf_okp, 'Scarica i PDF di questo anno fiscale' ) && false !== strpos( $pf_okp, 'contengono dati personali' ), 'ricevute PDF: la pagina di verifica si apre, offre l\'archivio ZIP e avvisa che contiene dati personali' );
 asem_ok( has_action( 'asem_reset_private_files', array( \AssociazioneSemplice\ReceiptFiles::class, 'delete_all' ) ) && has_filter( 'asem_backup_documents' ) && has_filter( 'asem_backup_restore_documents' ), 'ricevute PDF: azzeramento, copia di sicurezza e ripristino sono collegati' );
+// ricevute emesse prima che si salvassero i dati: «Fissa anche queste con i dati di oggi» (a lotti, solo le non annullate)
+foreach ( array( 5700, 5800, 5900 ) as $pf_c ) {
+	$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $pf_p, 'lines' => array( $pf_line( $pf_c, 'Offerta senza dati ' . $pf_c ) ) ) );
+}
+foreach ( \AssociazioneSemplice\Receipts::list_for_payer( $pf_p ) as $pf_r0 ) {
+	$pf_key[ (int) $pf_r0['cents'] ] = $pf_r0['key'];
+}
+$pf_nd_ids = array();
+foreach ( array( 5700, 5800, 5900 ) as $pf_c ) {
+	\AssociazioneSemplice\Receipts::build( $pf_key[ $pf_c ] );
+	$pf_o = \AssociazioneSemplice\Receipts::record( $pf_key[ $pf_c ] );
+	wp_delete_file( $pf_dir . '/' . $pf_o['pdf_path'] );
+	$wpdb->query( 'UPDATE ' . Db::t( 'receipts' ) . ' SET data = NULL, content_hash = NULL, pdf_path = NULL, pdf_sha256 = NULL, pdf_at = NULL, pdf_enc_ver = NULL WHERE id = ' . (int) $pf_o['id'] );
+	$pf_nd_ids[ $pf_c ] = (int) $pf_o['id'];
+}
+$wpdb->query( 'UPDATE ' . Db::t( 'receipts' ) . " SET voided_at = '" . Db::now() . "', void_reason = 'Prova' WHERE id = " . $pf_nd_ids[5900] ); // annullata: resta fuori
+$wpdb->update( Db::t( 'people' ), array( 'tax_code' => 'NVOCFS80A41H501X' ), array( 'id' => $pf_p ) ); // i dati vivi di oggi sono diversi da quelli dell'emissione
+$pf_n0 = \AssociazioneSemplice\ReceiptFiles::nodata_count( $pf_fy );
+$pf_nv = asem_render( array( Admin\ReceiptCheckPage::class, 'render' ), 'Fissa anche queste con i dati di oggi', array( 'year' => $pf_fy ) );
+asem_ok( 2 <= $pf_n0 && false !== strpos( $pf_nv, 'asem_receipt_nodata_fix' ) && false !== strpos( $pf_nv, 'quelli di oggi, non quelli dell' ) && false !== strpos( $pf_nv, 'data-confirm=' ) && false !== strpos( $pf_nv, '_wpnonce' ), 'ricevute senza dati: la pagina offre il pulsante, con conferma, nonce e l\'avvertenza «I dati sono quelli di oggi»' );
+$pf_b1 = \AssociazioneSemplice\ReceiptFiles::complete_nodata( $pf_fy, $pf_nd_ids[5700] - 1, 1 );
+$pf_k1 = \AssociazioneSemplice\Receipts::record( $pf_key[5700] );
+asem_ok( 1 === $pf_b1['done'] && 0 === $pf_b1['failed'] && true === $pf_b1['more'] && $pf_nd_ids[5700] === $pf_b1['last_id'] && \AssociazioneSemplice\Receipts::data_intact( $pf_k1 ) && hash( 'sha256', (string) $pf_k1['data'] ) === $pf_k1['content_hash'] && false !== strpos( (string) $pf_k1['data'], 'NVOCFS80A41H501X' ) && 'ok' === \AssociazioneSemplice\ReceiptFiles::state( $pf_k1, 'issued' ) && ( ! \AssociazioneSemplice\FileCrypt::available() || ( 1 === (int) $pf_k1['pdf_enc_ver'] && \AssociazioneSemplice\FileCrypt::is_encrypted_file( $pf_dir . '/' . $pf_k1['pdf_path'] ) ) ) && null === $pf_k1['voided_at'], 'ricevute senza dati: un lotto fotografa i dati di oggi e fissa il PDF cifrato' );
+$pf_nm = \AssociazioneSemplice\Receipts::record( $pf_key[5700] )['number'];
+asem_ok( (int) $pf_nm === (int) $pf_k1['number'] && \AssociazioneSemplice\Receipts::build( $pf_key[5700] )['pdf'] === asem_rf_content( $pf_k1['pdf_path'] ), 'ricevute senza dati: il numero resta quello emesso e il PDF servito è il file fissato' );
+$pf_msg = Admin\ReceiptCheckPage::fix_nodata( array( 'year' => $pf_fy ) );
+$pf_k2n = \AssociazioneSemplice\Receipts::record( $pf_key[5800] );
+$pf_k3  = \AssociazioneSemplice\Receipts::record( $pf_key[5900] );
+asem_ok( 'ok' === \AssociazioneSemplice\ReceiptFiles::state( $pf_k2n, 'issued' ) && \AssociazioneSemplice\Receipts::data_intact( $pf_k2n ) && false !== strpos( $pf_msg[1], 'Fissate con i dati di oggi' ) && 0 === \AssociazioneSemplice\ReceiptFiles::nodata_count( $pf_fy ), 'ricevute senza dati: l\'azione della pagina fissa le restanti e il conteggio si azzera' );
+asem_ok( 1 <= \AssociazioneSemplice\ReceiptFiles::nodata_voided_count( $pf_fy ) && false !== strpos( $pf_msg[1], 'rimaste sono ricevute annullate: restano come sono.' ) && false === strpos( $pf_msg[1], 'premi di nuovo' ), 'ricevute senza dati: se restano solo annullate lo dice, senza invitare a premere di nuovo' );
+asem_ok( empty( $pf_k3['data'] ) && null === $pf_k3['pdf_path'] && null !== $pf_k3['voided_at'] && 0 === \AssociazioneSemplice\ReceiptFiles::complete_nodata( $pf_fy, 0, 500 )['done'], 'ricevute senza dati: le annullate restano come sono (nessun dato, nessun PDF)' );
+asem_ok( in_array( 'receipt.nodata_fixed_today', array_column( \AssociazioneSemplice\Audit::recent( 30, 'receipt.' ), 'action' ), true ), 'ricevute senza dati: l\'operazione è nel registro azioni' );
+$wpdb->update( Db::t( 'people' ), array( 'tax_code' => 'FSSPIA80A41H501V' ), array( 'id' => $pf_p ) );
+$wpdb->query( 'UPDATE ' . Db::t( 'receipts' ) . ' SET voided_at = NULL, void_reason = NULL WHERE id = ' . $pf_nd_ids[5900] );
+\AssociazioneSemplice\Receipts::build( $pf_key[5900] ); // la prova è finita: anche questa torna con dati e PDF come le altre
 // la chiave non apre un file cifrato (chiave sconosciuta): stato «locked», non si rifà, la copia lo tiene com'è e nulla viene toccato
 $pf_orig = (string) file_get_contents( $pf_f );
 $pf_pl   = asem_rf_content( $pf_r['pdf_path'] );
