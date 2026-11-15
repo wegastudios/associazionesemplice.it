@@ -10100,6 +10100,17 @@ $qd_rec();
 asem_ok( $people->has_membership( $qd_p, $qd_year ), 'dopo l\'annullo la quota si può incassare di nuovo' );
 $wpdb->query( 'DELETE FROM ' . Db::t( 'transactions' ) . ' WHERE person_id = ' . (int) $qd_p );
 $wpdb->delete( Db::t( 'memberships' ), array( 'person_id' => $qd_p ) );
+// due quote dello stesso socio e dello stesso anno nello stesso incasso: la seconda è bloccata, non si scrive nulla
+$qd_two = function () use ( $ledger, $cash, $today, $qd_p, $qd_cat, $qd_other ) {
+	return $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $qd_p, 'lines' => array( array( 'category_id' => $qd_other, 'amount_cents' => 500 ), array( 'category_id' => $qd_cat, 'amount_cents' => 1000 ), array( 'category_id' => $qd_cat, 'amount_cents' => 1000 ) ) ) );
+};
+$qd_y2 = (string) $people->membership_plan( $qd_p, $today )['year'];
+$qd_msg2 = (string) asem_throws( $qd_two );
+asem_ok( 'Voce 3: il socio ha già la tessera ' . $qd_y2 . '.' === $qd_msg2 && 0 === $qd_count() && ! $people->has_membership( $qd_p, $qd_y2 ), 'doppia quota nello stesso incasso: la seconda è rifiutata, nessun movimento né tessera' );
+// una sola quota nell'incasso: registrata
+asem_ok( 1 === $ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'method' => 'cash', 'person_id' => $qd_p, 'lines' => array( array( 'category_id' => $qd_cat, 'amount_cents' => 1000, 'social_year' => $qd_y2 ) ) ) ) && 1 === $qd_count(), 'una sola quota per anno nell\'incasso: registrata' );
+$wpdb->query( 'DELETE FROM ' . Db::t( 'transactions' ) . ' WHERE person_id = ' . (int) $qd_p );
+$wpdb->delete( Db::t( 'memberships' ), array( 'person_id' => $qd_p ) );
 
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 

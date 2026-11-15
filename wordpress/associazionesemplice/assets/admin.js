@@ -503,7 +503,8 @@
 				row.appendChild(prev); row.appendChild(el('span', { text: monthLabel(l.month) })); row.appendChild(next);
 			}
 			if (l.kind === 'membership') {
-				row.appendChild(el('span', { 'class': 'description', text: l.note || 'tessera fino al ' + (D.yearEndText || '') }));
+				var dup = lines.some(function (o, j) { return j < i && o.kind === 'membership'; }); // l'Incasso è di una sola persona: una seconda quota nello stesso incasso è un doppione
+				row.appendChild(el('span', { 'class': 'description', text: dup ? '⚠ il socio ha già la tessera' + (ctx && ctx.membership ? ' ' + ctx.membership.year : '') + ': l\'incasso non verrà salvato finché c\'è questa voce' : (l.note || 'tessera fino al ' + (D.yearEndText || '')) }));
 			}
 			var amt = el('input', { type: 'text', name: n + '[amount]', inputmode: 'decimal', value: l.amount, size: '8', 'aria-label': 'Importo' });
 			var acc = el('span', { 'class': 'description asem-acc', text: '' });
@@ -580,7 +581,7 @@
 	function membershipLine(c) {
 		var plan = ctx && ctx.membership;
 		var until = (ctx && ctx.membership_until) || D.yearEndText || '';
-		var note = ctx && ctx.membership_has ? '⚠ il socio ha già la tessera ' + plan.year + ': la voce non verrà registrata' : plan ? 'tessera ' + plan.year + ' fino al ' + until + (plan.free ? ' · ' + plan.free + ' in omaggio' : '') : 'tessera fino al ' + until;
+		var note = ctx && ctx.membership_has ? '⚠ il socio ha già la tessera ' + plan.year + ': l\'incasso non verrà salvato finché c\'è questa voce' : plan ? 'tessera ' + plan.year + ' fino al ' + until + (plan.free ? ' · ' + plan.free + ' in omaggio' : '') : 'tessera fino al ' + until;
 		return { title: 'Quota associativa' + (plan ? ' ' + plan.year : ''), category: c.id, kind: 'membership', amount: plain(ctx && ctx.membership_fee != null ? ctx.membership_fee : D.membershipFee), note: note };
 	}
 	$('#asem-add-membership').addEventListener('click', function () {
