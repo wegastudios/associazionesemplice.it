@@ -8,6 +8,7 @@ use App\Modules\Core\Contracts\Ability;
 use App\Modules\Core\Contracts\CurrentOperator;
 use App\Modules\Core\Contracts\OrgContacts;
 use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Core\Contracts\OrgProfile;
 use App\Modules\Core\Models\User;
 use App\Modules\Portale\Contracts\Entitlements;
 use App\Modules\Portale\Contracts\LifecyclePolicy;
@@ -43,6 +44,8 @@ final class HandleInertiaRequests extends Middleware
                     // Per mostrare solo le sezioni permesse; i controlli veri restano nelle rotte.
                     // Contatti della segreteria mancanti: promemoria fisso in ogni pagina del gestionale.
                     'contacts_missing' => app(OrgContext::class)->current() !== null && ! app(OrgContacts::class)->complete(),
+                    // I dati obbligatori che mancano (anche i contatti): una sola banda li elenca.
+                    'data_missing' => app(OrgContext::class)->current() !== null ? app(OrgProfile::class)->missing() : [],
                     'read_only' => app(LifecyclePolicy::class)->readOnly($operator->orgId),
                     'can' => array_values(array_map(static fn (Ability $a): string => $a->value, array_filter(Ability::cases(), $operator->can(...)))),
                     // I pacchetti attivi, per le sezioni che ne dipendono (Risorse).

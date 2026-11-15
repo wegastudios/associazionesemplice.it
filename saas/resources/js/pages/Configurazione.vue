@@ -48,19 +48,26 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
                 <h2 id="s-ente" class="mb-3 text-lg font-bold">2. {{ title('ente') }}</h2>
                 <p v-if="form.errors['steps.ente']" class="mb-3 text-sm font-semibold text-danger" role="alert">{{ form.errors['steps.ente'] }}</p>
                 <div class="grid gap-4 sm:grid-cols-3">
-                    <label :class="[label, 'sm:col-span-2']"><span class="font-semibold">Forma dell'ente</span>
-                        <select v-model="form.steps.ente.kind" :class="field"><option value="">—</option><option v-for="k in by.ente.kinds" :key="k.value" :value="k.value">{{ k.label }}</option></select></label>
-                    <label :class="label"><span class="font-semibold">Numero RUNTS</span><input v-model="form.steps.ente.runts" :class="field" maxlength="30" /></label>
-                    <label :class="label"><span class="font-semibold">Codice fiscale</span><input v-model="form.steps.ente.tax_code" :class="field" maxlength="16" /></label>
-                    <label :class="label"><span class="font-semibold">Partita IVA (se c'è)</span><input v-model="form.steps.ente.vat" :class="field" maxlength="16" /></label>
-                    <label :class="label"><span class="font-semibold">Telefono della segreteria (obbligatorio)</span><input v-model="form.steps.ente.phone" type="tel" required :class="field" maxlength="30" /></label>
-                    <label :class="[label, 'sm:col-span-3']"><span class="font-semibold">Sede: indirizzo</span><input v-model="form.steps.ente.address" :class="field" maxlength="190" /></label>
-                    <label :class="label"><span class="font-semibold">CAP</span><input v-model="form.steps.ente.zip" inputmode="numeric" :class="field" maxlength="5" /></label>
-                    <label :class="label"><span class="font-semibold">Comune</span><input v-model="form.steps.ente.city" :class="field" maxlength="120" /></label>
-                    <label :class="label"><span class="font-semibold">Provincia (sigla)</span><input v-model="form.steps.ente.province" :class="field" maxlength="2" /></label>
+                    <label :class="[label, 'sm:col-span-2']"><span class="font-semibold">Forma dell'ente (obbligatoria)</span>
+                        <select v-model="form.steps.ente.kind" required :class="field"><option value="" disabled>Scegli la forma</option><option v-for="k in by.ente.kinds" :key="k.value" :value="k.value">{{ k.label }}</option></select></label>
+                    <label :class="label"><span class="font-semibold">Codice fiscale (obbligatorio)</span><input v-model="form.steps.ente.tax_code" required :class="field" maxlength="16" /></label>
+                    <label :class="[label, 'sm:col-span-2']"><span class="font-semibold">Legale rappresentante (obbligatorio)</span><input v-model="form.steps.ente.legal_rep" required :class="field" maxlength="120" autocomplete="name" />
+                        <span class="block text-sm text-muted">Nome e cognome di chi rappresenta l'associazione (di solito il presidente): serve per la privacy e le ricevute.</span></label>
+                    <label :class="[label, 'sm:col-span-3']"><span class="font-semibold">Sede legale: indirizzo (obbligatorio)</span><input v-model="form.steps.ente.address" required :class="field" maxlength="190" /></label>
+                    <label :class="label"><span class="font-semibold">CAP</span><input v-model="form.steps.ente.zip" required inputmode="numeric" :class="field" maxlength="5" /></label>
+                    <label :class="label"><span class="font-semibold">Comune</span><input v-model="form.steps.ente.city" required :class="field" maxlength="120" /></label>
+                    <label :class="label"><span class="font-semibold">Provincia (sigla)</span><input v-model="form.steps.ente.province" required :class="field" maxlength="2" /></label>
                     <label :class="label"><span class="font-semibold">Email della segreteria (obbligatoria)</span><input v-model="form.steps.ente.email" type="email" required :class="field" /></label>
+                    <label :class="label"><span class="font-semibold">Telefono della segreteria (obbligatorio)</span><input v-model="form.steps.ente.phone" type="tel" required :class="field" maxlength="30" /></label>
                     <p class="text-sm text-muted sm:col-span-3">Email e telefono li leggono i soci nelle email, nell'area soci e nel modulo di adesione, accanto al consenso sulla privacy: usa un recapito che qualcuno controlla davvero. Senza, l'associazione non scrive ai soci.</p>
-                    <label :class="label"><span class="font-semibold">PEC</span><input v-model="form.steps.ente.pec" type="email" :class="field" /></label>
+                    <div :class="label"><label class="block space-y-1"><span class="font-semibold">Partita IVA</span><input v-model="form.steps.ente.vat" :disabled="form.steps.ente.vat_none" :class="field" maxlength="16" /></label>
+                        <label class="flex items-center gap-2"><input v-model="form.steps.ente.vat_none" type="checkbox" /> L'associazione non ha la partita IVA</label></div>
+                    <div :class="label"><label class="block space-y-1"><span class="font-semibold">Numero RUNTS (con la sezione)</span><input v-model="form.steps.ente.runts" :disabled="form.steps.ente.runts_none" :class="field" maxlength="30" /></label>
+                        <label class="flex items-center gap-2"><input v-model="form.steps.ente.runts_none" type="checkbox" /> L'associazione non è iscritta al RUNTS</label></div>
+                    <div :class="label"><label class="block space-y-1"><span class="font-semibold">PEC</span><input v-model="form.steps.ente.pec" type="email" :disabled="form.steps.ente.pec_none" :class="field" /></label>
+                        <label class="flex items-center gap-2"><input v-model="form.steps.ente.pec_none" type="checkbox" /> L'associazione non ha una PEC</label></div>
+                    <label :class="label"><span class="font-semibold">Codice destinatario per la fattura elettronica (facoltativo)</span><input v-model="form.steps.ente.sdi" :class="field" maxlength="7" /></label>
+                    <label :class="label"><span class="font-semibold">Regime fiscale (facoltativo)</span><input v-model="form.steps.ente.tax_regime" :class="field" maxlength="60" /></label>
                 </div>
             </section>
 

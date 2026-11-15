@@ -108,6 +108,13 @@ final readonly class DemoEnvironment
             $this->settings->set(SetupWizard::STATUS, SetupWizard::DONE);
             $this->settings->set('ente.email', 'segreteria@polisportiva-demo.example');
             $this->settings->set('ente.phone', '06 1234567');
+            // Dati di fantasia: la demo non mostra il promemoria dei dati mancanti.
+            foreach (['tax_code' => '12345678903', 'legal_rep' => 'Mario Rossi', 'address' => 'Via Roma 1', 'zip' => '00100', 'city' => 'Roma', 'province' => 'RM'] as $k => $v) {
+                $this->settings->set('ente.'.$k, $v);
+            }
+            foreach (['vat_none', 'runts_none', 'pec_none'] as $k) {
+                $this->settings->set('ente.'.$k, true);
+            }
             $this->settings->set('ente.kind', 'aps'); // la pagina «Dati per il RUNTS» mostra così il minimo di soci
 
             $seeders = [];
