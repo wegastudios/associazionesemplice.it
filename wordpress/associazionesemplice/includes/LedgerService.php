@@ -309,7 +309,8 @@ class LedgerService {
 		}
 
 		// Validazione completa prima di scrivere
-		$prepared = array();
+		$prepared    = array();
+		$quota_years = array(); // quote già viste in questo incasso (stesso socio e stesso anno): la tessera nasce solo dopo, a movimento scritto
 		foreach ( $lines as $i => $l ) {
 			$n      = $i + 1;
 			// Ogni voce vale per un beneficiario: di norma chi paga, ma si può pagare per altri (familiari, ospiti, altri soci)
@@ -383,6 +384,11 @@ class LedgerService {
 				if ( Plugin::people()->has_membership( (int) $person['id'], $social_year ) ) {
 					throw new \InvalidArgumentException( "Voce $n: il socio ha già la tessera $social_year." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
+				$quota_key = (int) $person['id'] . '|' . $social_year;
+				if ( isset( $quota_years[ $quota_key ] ) ) {
+					throw new \InvalidArgumentException( "Voce $n: il socio ha già la tessera $social_year." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				}
+				$quota_years[ $quota_key ] = true;
 				$free_year   = $social_year === $plan['year'] ? $plan['free'] : null;
 			}
 			// IVA: esplicita se indicata, altrimenti quella della quota associativa o dell'attività (solo se l'ente applica l'IVA)
