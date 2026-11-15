@@ -7,67 +7,151 @@ namespace App\Modules\Core\Export;
 use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Core\Contracts\DataExport;
 use App\Modules\Core\Contracts\Operator;
+use App\Modules\Core\Contracts\ReadableExport;
 use Illuminate\Contracts\Container\Container;
 use RuntimeException;
+use Throwable;
 use ZipArchive;
 
 /**
- * Esportazione completa: i dati dell'associazione in un archivio ZIP di file CSV (uno per tabella, apribili in Excel),
- * con quello che l'operatore può vedere. La prima nota e l'anagrafica si ricaricano con gli import. Il file si crea in
- * una cartella privata e si cancella dopo lo scarico.
+ * Copia di sicurezza: un archivio ZIP con due parti. «Dati per il programma» (un file CSV per tabella, per riportare i
+ * dati nel plugin o nel gestionale) e «Documenti leggibili» (PDF e tabelle per anno fiscale, da consegnare). Contiene
+ * quello che l'operatore può vedere. I certificati medici in chiaro solo se chi scarica lo chiede e può vedere i dati
+ * sanitari. Si costruisce su disco, un file alla volta, in una cartella privata; l'archivio si cancella dopo lo scarico.
  */
 final readonly class FullExport
 {
+    public const DATA = 'Dati per il programma';
+
+    public const READABLE = 'Documenti leggibili';
+
+    public const CERTIFICATES = 'Certificati medici';
+
     public function __construct(
         private Container $container,
         private AuditLog $audit,
     ) {}
 
-    /** @return array{path: string, files: int} */
-    public function build(Operator $operator, string $orgName): array
+    /** Oltre questi file «pesanti» (ricevute, certificati) la copia di tutti gli anni insieme non si fa: si scarica un anno alla volta. */
+    public const MAX_HEAVY_FILES = 2500;
+
+    /**
+     * Con $year la copia ha i documenti leggibili di quell'anno fiscale soltanto (i dati per il programma ci sono sempre).
+     *
+     * @return array{path: string, files: int, certificates: int}
+     *
+     * @throws ExportTooLarge
+     */
+    public function build(Operator $operator, string $orgName, bool $withCertificates = false, ?int $year = null): array
     {
-        $files = [];
+        $heavy = 0;
+        foreach ($this->container->tagged(ReadableExport::TAG) as $part) {
+            $heavy += $part instanceof ReadableExport ? $part->weight($operator, $withCertificates, $year) : 0;
+        }
+        if ($year === null && $heavy > self::MAX_HEAVY_FILES) {
+            throw new ExportTooLarge('Questa associazione ha molti documenti: una copia unica rischia di non finire. Scegli un anno fiscale e scarica una copia per anno.');
+        }
+        @set_time_limit(900);
+        ignore_user_abort(false);
+
+        $data = [];
         foreach ($this->container->tagged(DataExport::TAG) as $part) {
             if ($part instanceof DataExport) {
-                $files += $part->files($operator);
+                $data += $part->files($operator);
             }
         }
-        ksort($files);
-        $files = ['LEGGIMI.txt' => self::readme($orgName, array_keys($files))] + $files;
+        ksort($data);
+
+        // Un'unica lista: nome nell'archivio => contenuto o chiusura che lo produce. Le chiusure si valutano in ordine.
+        $entries = [];
+        foreach ($data as $name => $content) {
+            $entries[self::DATA.'/'.$name] = $content;
+        }
+        foreach ($this->container->tagged(ReadableExport::TAG) as $part) {
+            if ($part instanceof ReadableExport) {
+                foreach ($part->files($operator, $withCertificates, $year) as $name => $producer) {
+                    $entries[self::READABLE.'/'.$name] = $producer;
+                }
+            }
+        }
 
         $dir = storage_path('app/tmp');
         if (! is_dir($dir) && ! mkdir($dir, 0700, true) && ! is_dir($dir)) {
             throw new RuntimeException('Cartella temporanea non disponibile.');
         }
-        $path = $dir.'/export-'.bin2hex(random_bytes(16)).'.zip';
+        $work = $dir.'/export-'.bin2hex(random_bytes(16));
+        if (! mkdir($work, 0700)) {
+            throw new RuntimeException('Cartella temporanea non disponibile.');
+        }
+        $path = $work.'.zip';
         $zip = new ZipArchive;
-        if ($zip->open($path, ZipArchive::CREATE | ZipArchive::EXCL) !== true) {
-            throw new RuntimeException('Archivio non disponibile.');
+        $count = 0;
+        $certificates = 0;
+        try {
+            if ($zip->open($path, ZipArchive::CREATE | ZipArchive::EXCL) !== true) {
+                throw new RuntimeException('Archivio non disponibile.');
+            }
+            // Ogni file passa dal disco: l'archivio li legge alla chiusura, in memoria non resta niente.
+            $tmp = [];
+            $n = 0;
+            foreach ($entries as $name => $content) {
+                $body = is_string($content) ? $content : $content();
+                if ($body === null) {
+                    continue;
+                }
+                $file = $work.'/'.(++$n);
+                file_put_contents($file, $body);
+                unset($body);
+                $zip->addFile($file, $name);
+                $tmp[] = $file;
+                $count++;
+                $certificates += str_starts_with($name, self::READABLE.'/'.self::CERTIFICATES.'/') ? 1 : 0;
+            }
+            $readme = self::readme($orgName, $withCertificates);
+            $zip->addFromString('LEGGIMI.txt', $readme);
+            $zip->close();
+            foreach ($tmp as $file) {
+                @unlink($file);
+            }
+        } catch (Throwable $e) {
+            @$zip->close();
+            @unlink($path);
+            throw $e;
+        } finally {
+            foreach (glob($work.'/*') ?: [] as $f) {
+                @unlink($f);
+            }
+            @rmdir($work);
         }
-        foreach ($files as $name => $content) {
-            $zip->addFromString($name, $content);
-        }
-        $zip->close();
         chmod($path, 0600);
-        $this->audit->record('export.full', null, null, ['files' => count($files)]);
+        $this->audit->record('backup.downloaded', null, null, ['files' => $count + 1, 'certificates' => $certificates]);
 
-        return ['path' => $path, 'files' => count($files)];
+        return ['path' => $path, 'files' => $count + 1, 'certificates' => $certificates];
     }
 
-    /** @param  list<string>  $names */
-    private static function readme(string $orgName, array $names): string
+    private static function readme(string $orgName, bool $withCertificates): string
     {
         return implode("\r\n", [
-            'Esportazione completa dei dati di '.$orgName,
+            'Copia di sicurezza di '.$orgName,
             'Creata il '.now()->format('d/m/Y').' alle '.now()->format('H:i').'.',
             '',
-            'Ogni file è una tabella in formato CSV (UTF-8, separatore punto e virgola): si apre con Excel o LibreOffice.',
-            'contabilita/prima-nota.csv e soci/anagrafica.csv si possono ricaricare con l\'import della prima nota e dei soci.',
-            'Contiene dati personali e, se presenti, sanitari: conservalo con cura e cancellalo quando non serve più.',
-            'I file allegati ai certificati medici non sono compresi: si scaricano dalla scheda della persona.',
+            'Contiene dati personali: conservala con cura e cancellala quando non serve più.',
             '',
-            'File:',
-            ...array_map(static fn (string $n): string => '- '.$n, $names),
+            'Come si aprono i file: I PDF si aprono con qualsiasi lettore PDF; le tabelle .csv con Excel, LibreOffice o simili (UTF-8, separatore punto e virgola).',
+            '',
+            'Cartelle:',
+            '',
+            '«'.self::DATA.'»',
+            'Tutti i dati dell\'associazione, un file CSV per ogni tabella (soci, tessere, prima nota, conti, attività, operatori, impostazioni, registro delle azioni).',
+            'Servono per riportare i dati nel plugin o nel gestionale Associazione Semplice: la prima nota e l\'anagrafica si ricaricano con gli import.',
+            '',
+            '«'.self::READABLE.'»',
+            'Una cartella per ogni anno fiscale con il rendiconto, la prima nota, il libro soci e le ricevute di quell\'anno. Gli anni chiusi sono com\'erano alla chiusura.',
+            'Servono per leggere, stampare e consegnare i documenti senza alcun programma (a un revisore, al commercialista, ai soci).',
+            '',
+            $withCertificates
+                ? 'In «'.self::CERTIFICATES.'» ci sono i certificati in chiaro: sono dati sulla salute, da conservare con cura e consegnare solo a chi ne ha titolo.'
+                : 'I certificati medici non sono in questa copia.',
             '',
         ]);
     }

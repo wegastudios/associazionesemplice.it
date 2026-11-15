@@ -99,7 +99,7 @@ const dateLabel = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'nume
 
                 <p v-if="canSetup" class="flex flex-wrap gap-x-5 gap-y-1 text-sm font-semibold">
                     <Link v-if="!setupPending" href="/gestionale/configurazione" class="text-accent hover:underline">Riapri la configurazione guidata</Link>
-                    <Link href="/gestionale/esportazione" class="text-accent hover:underline">Esportazione completa dei dati</Link>
+                    <Link href="/gestionale/esportazione" class="text-accent hover:underline">Copie di sicurezza</Link>
                 </p>
             </div>
         </div>

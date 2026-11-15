@@ -38,7 +38,7 @@ const groups = [
         { href: '/gestionale/operatori', label: 'Operatori e ruoli', icon: ShieldCheck, can: 'org.operators' },
         { href: '/gestionale/aspetto-fiscale', label: 'Aspetto fiscale', icon: Receipt, can: 'org.settings' },
         { href: '/gestionale/verifica-ricevute', label: 'Verifica delle ricevute', icon: Receipt, can: 'org.settings' },
-        { href: '/gestionale/esportazione', label: 'Esportazione dei dati', icon: Download, can: 'org.settings' },
+        { href: '/gestionale/esportazione', label: 'Copie di sicurezza', icon: Download, can: 'org.settings' },
         { href: '/gestionale/configurazione', label: 'Configurazione guidata', icon: Settings, can: 'org.settings' },
     ] },
 ];
