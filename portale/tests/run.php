@@ -2549,6 +2549,7 @@ if ( Portale\DemoReset::canRun() && is_executable( '/bin/sh' ) ) {
 		'altra'  => array( 'cmd' => array( '/bin/sh', '-c', 'echo no' ) ),
 	) );
 	$drDb = testDb();
+	$drDb->migrate();
 	$wait = function ( string $key ) use ( $drDb ) {
 		for ( $i = 0; $i < 60; $i++ ) {
 			$s = Portale\DemoReset::status( $drDb, $key );
