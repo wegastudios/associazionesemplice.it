@@ -8214,7 +8214,7 @@ asem_ok( 'stripe' === $rf_calls[0]['gw'] && '/v1/refunds' === substr( $rf_calls[
 asem_ok( 'pi_rf_1' === $rf_b['payment_intent'] && '300' === $rf_b['amount'] && $rf_p['public_id'] === $rf_b['metadata']['asem_payment'] && 'Bearer sk_test_51Smoke1' === $rf_calls[0]['auth'] && 'refund-' . $rf_p['public_id'] . '-0-300' === $rf_calls[0]['key'], 'rimborso Stripe: PaymentIntent, importo, chiave segreta e chiave di idempotenza' );
 asem_ok( $rf_snap === $rf_txs() && $rf_bal === $balance_of( 'Stripe' ), 'rimborso di un pagamento mai registrato: la prima nota non cambia' );
 $rf_m = $ap_mail_to( 'paolo.paga@example.com' );
-asem_ok( count( $ap_mails ) === $rf_mail + 1 && 0 === strpos( (string) $rf_m['subject'], 'Rimborso del tuo pagamento · ' ) && 0 === strpos( (string) $rf_m['message'], 'Ciao, abbiamo restituito 3,00 € del pagamento che hai fatto il ' ) && false !== strpos( (string) $rf_m['message'], 'Motivo: Motivo di prova.' ) && false !== strpos( (string) $rf_m['message'], 'entro 5-10 giorni lavorativi' ), 'rimborso: email al socio con importo, data e motivo' );
+asem_ok( count( $ap_mails ) === $rf_mail + 1 && 0 === strpos( (string) $rf_m['subject'], 'Rimborso del tuo pagamento · ' ) && 0 === strpos( (string) $rf_m['message'], 'Ciao, abbiamo restituito 3,00 € del pagamento che hai fatto il ' ) && false !== strpos( (string) $rf_m['message'], 'Motivo: Motivo di prova.' ) && false !== strpos( (string) $rf_m['message'], 'fino a 10 a seconda della banca' ), 'rimborso: email al socio con importo, data e motivo' );
 asem_ok( false !== strpos( (string) $rf_try_noreason( $rf_a ), 'motivo' ) && 1 === count( $rf_calls ), 'rimborso: senza il motivo non parte nulla' );
 asem_ok( 'Restituiti 3,00 € al socio.' === $rf_row( $rf_a )['error'], 'rimborso: nel motivo del pagamento «Restituiti X,XX € al socio.»' );
 asem_ok( false !== strpos( (string) $rf_try( $rf_a, 300, 0 ), 'è cambiato' ) && 1 === count( $rf_calls ), 'rimborso: lo stesso invio ripetuto (doppio clic) non rimborsa due volte' );
@@ -8243,7 +8243,7 @@ $rf_phrase = array(
 $rf_mode = 'perm';
 $rf_pm = (string) $rf_try( $rf_g, 500 );
 asem_ok( 0 === strpos( $rf_pm, $rf_phrase['perm'] ) && false !== strpos( $rf_pm, 'Messaggio del gestore:' ) && false !== strpos( $rf_pm, 'required permissions' ) && 0 === (int) $rf_row( $rf_g )['refunded_cents'], 'rimborso Stripe: chiave senza il permesso «Refunds» = frase chiara e nulla di registrato' );
-foreach ( array( 'already' => 'già stato rimborsato per intero', 'balance' => 'non c\'è abbastanza saldo', 'notfound' => 'non trova questo pagamento', 'weird' => 'non ha accettato il rimborso: Boh interno', 'down' => 'non risponde' ) as $rf_k => $rf_w ) {
+foreach ( array( 'already' => 'già stato rimborsato per intero', 'balance' => 'non c\'è abbastanza saldo', 'notfound' => 'non trova questo pagamento', 'weird' => 'Rimborso non riuscito: Stripe: Boh interno', 'down' => 'non risponde' ) as $rf_k => $rf_w ) {
 	$rf_mode = $rf_k;
 	$rf_msg  = (string) $rf_try( $rf_g, 500 );
 	asem_ok( false !== strpos( $rf_msg, $rf_w ) && 0 === (int) $rf_row( $rf_g )['refunded_cents'] && false === strpos( $rf_msg, 'Stripe:' ), 'rimborso Stripe: «' . $rf_k . '» = frase comprensibile (' . $rf_msg . ')' );
@@ -8302,8 +8302,16 @@ $wpdb->update( Db::t( 'people' ), array( 'application_status' => 'requested' ), 
 asem_ok( false !== strpos( (string) $rf_try( $rf_app, 500 ), 'ancora in esame' ), 'rimborso: la quota di una domanda ancora in esame non si rimborsa (prima si decide)' );
 $wpdb->update( Db::t( 'people' ), array( 'application_status' => null ), array( 'id' => $ap_paolo ) );
 
-// ruoli: solo l'amministratore (come la pagina); la segreteria e il dipendente no
-asem_ok( Plugin::CAP === Admin\Actions::required_cap( 'asem_payment_refund' ) && ! user_can( $sec_u, Admin\Actions::required_cap( 'asem_payment_refund' ) ) && user_can( 1, Admin\Actions::required_cap( 'asem_payment_refund' ) ), 'rimborso: l\'azione è riservata all\'amministratore (asem_manage), la segreteria no' );
+// ruoli: amministratore, segreteria e dipendente (asem_operate) rimborsano e vedono l'elenco; le chiavi dei gateway restano solo all'amministratore
+$rf_cap = Admin\Actions::required_cap( 'asem_payment_refund' );
+asem_ok( Plugin::CAP_OPS === $rf_cap && user_can( 1, $rf_cap ) && user_can( $sec_u, $rf_cap ) && get_role( Plugin::ROLE_EMPLOYEE )->has_cap( $rf_cap ) && ! get_role( 'subscriber' )->has_cap( $rf_cap ) && Plugin::CAP_OPS === Admin\Actions::required_cap( 'asem_payment_reviewed' ), 'rimborso: amministratore, segreteria e dipendente sì; chi non ha asem_operate no' );
+asem_ok( Plugin::CAP === Admin\Actions::required_cap( 'asem_save_payment_settings' ) && Plugin::CAP === Admin\Actions::required_cap( 'asem_test_gateway' ) && Plugin::CAP === Admin\Actions::required_cap( 'asem_satispay_connect' ) && ! user_can( $sec_u, Plugin::CAP ) && ! get_role( Plugin::ROLE_EMPLOYEE )->has_cap( Plugin::CAP ), 'pagamenti online: chiavi, prova di connessione e salvataggio restano solo all\'amministratore' );
+asem_ok( ! in_array( 'asem-payments', Admin\Admin::admin_only(), true ), 'pagamenti online: la pagina dell\'elenco non è riservata agli amministratori' );
+wp_set_current_user( $sec_u );
+$rf_sec = asem_render( array( Admin\PaymentsPage::class, 'render' ), 'asem_payment_refund' );
+asem_ok( false === strpos( $rf_sec, 'asem_save_payment_settings' ) && false === strpos( $rf_sec, 'asem_test_gateway' ) && false === strpos( $rf_sec, 'asem_satispay_connect' ) && false === strpos( $rf_sec, 'stripe_secret_key' ) && false === strpos( $rf_sec, 'paypal_client_secret' ) && false !== strpos( $rf_sec, 'asem_payment_reviewed' ), 'pagamenti online per la segreteria: elenco e pulsanti sì, impostazioni e chiavi né mostrate né inviabili' );
+asem_ok( 'Rimborso di 2,00 € inviato al socio. Il socio è stato avvisato per email.' === Admin\ProActions::payment_refund( array( 'id' => $rf_a2, 'expected' => 600, 'amount' => '2,00', 'reason' => 'Prova segreteria', 'ack' => '1' ) )[1] && 'payment.refunded' === $wpdb->get_var( 'SELECT action FROM ' . Db::t( 'audit_log' ) . ' ORDER BY id DESC LIMIT 1' ) && (int) $sec_u === (int) $wpdb->get_var( 'SELECT user_id FROM ' . Db::t( 'audit_log' ) . ' ORDER BY id DESC LIMIT 1' ), 'rimborso fatto dalla segreteria: parte e nel registro azioni risulta chi l\'ha fatto' );
+wp_set_current_user( 1 );
 asem_ok( false !== strpos( implode( ',', \AssociazioneSemplice\ProBoot::ACTIONS['payments'] ), 'asem_payment_refund' ), 'rimborso: l\'azione si blocca senza la funzione pagamenti' );
 
 // l'azione dell'amministrazione: importo scritto e spunta «non si può annullare»
@@ -8312,7 +8320,7 @@ $rf_n0 = count( $rf_calls );
 asem_ok( null !== asem_throws( function () use ( $rf_c ) { Admin\ProActions::payment_refund( array( 'id' => $rf_c, 'expected' => 0, 'amount' => '5,00' ) ); } ) && $rf_n0 === count( $rf_calls ), 'rimborso: senza la spunta «non si può annullare» non parte nulla' );
 asem_ok( null !== asem_throws( function () use ( $rf_c ) { Admin\ProActions::payment_refund( array( 'id' => $rf_c, 'expected' => 0, 'amount' => 'boh', 'reason' => 'x', 'ack' => '1' ) ); } ) && null !== asem_throws( function () use ( $rf_c ) { Admin\ProActions::payment_refund( array( 'id' => $rf_c, 'expected' => 0, 'amount' => '', 'reason' => 'x', 'ack' => '1' ) ); } ) && $rf_n0 === count( $rf_calls ), 'rimborso: importo non scritto o non valido rifiutato' );
 $rf_res = Admin\ProActions::payment_refund( array( 'id' => $rf_c, 'expected' => 0, 'amount' => '5,00', 'reason' => 'Doppio pagamento', 'ack' => '1' ) );
-asem_ok( 'Rimborso di 5,00 € inviato al socio.' === $rf_res[1] && 500 === (int) $rf_row( $rf_c )['refunded_cents'], 'rimborso: esito «Rimborso di 5,00 € inviato al socio.»' );
+asem_ok( 'Rimborso di 5,00 € inviato al socio. Il socio è stato avvisato per email.' === $rf_res[1] && 500 === (int) $rf_row( $rf_c )['refunded_cents'], 'rimborso: esito «Rimborso di 5,00 € inviato al socio.»' );
 $rf_mail_email = $wpdb->get_var( $wpdb->prepare( 'SELECT email FROM ' . Db::t( 'people' ) . ' WHERE id = %d', $ap_paolo ) );
 $wpdb->update( Db::t( 'people' ), array( 'email' => null ), array( 'id' => $ap_paolo ) );
 $rf_mn = count( $ap_mails );
@@ -8336,7 +8344,7 @@ if ( $rf_fy ) {
 $rf_open = $rf_pay( 'stripe', 1000, array( 'refund_due' => 1 ) );
 $rf_html = asem_render( array( Admin\PaymentsPage::class, 'render' ), 'asem_payment_refund' );
 asem_ok( false !== strpos( $rf_html, 'Quanto restituire al socio (massimo 10,00 €)? I soldi tornano sul suo metodo di pagamento e non si può annullare.' ) && false !== strpos( $rf_html, 'name="ack"' ) && false !== strpos( $rf_html, 'name="expected"' ), 'pagamenti online: modulo di rimborso con la domanda e la spunta' );
-asem_ok( false !== strpos( $rf_html, 'Rimborsato' ) && false !== strpos( $rf_html, 'restituiti 10,00 €' ) && false !== strpos( $rf_html, 'Rimborsato in parte' ) && false !== strpos( $rf_html, 'restituiti 6,00 €' ), 'pagamenti online: la pagina mostra «Rimborsato» e «restituiti X,XX €» (anche in parte)' );
+asem_ok( false !== strpos( $rf_html, 'Rimborsato' ) && false !== strpos( $rf_html, 'restituiti 10,00 €' ) && false !== strpos( $rf_html, 'Rimborsato in parte' ) && false !== strpos( $rf_html, 'restituiti 8,00 €' ), 'pagamenti online: la pagina mostra «Rimborsato» e «restituiti X,XX €» (anche in parte)' );
 asem_ok( false === strpos( $rf_html, 'si registrano come spesa' ) && false !== strpos( $rf_html, 'Rimborsa' ), 'pagamenti online: il testo di aiuto non dice più di rimborsare dal gateway e registrare una spesa' );
 Settings::update( array( 'payment_provider' => 'stripe' ) );
 $ap_ps->set_http( null );

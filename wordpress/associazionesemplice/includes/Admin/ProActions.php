@@ -36,7 +36,7 @@ final class ProActions {
 		'asem_check_payments' => array( 'check_payments', 'payments', false ),
 		'asem_payment_reviewed' => array( 'payment_reviewed', 'payments', false ),
 		'asem_payment_refunded' => array( 'payment_refunded', 'payments', false ),
-		'asem_payment_refund' => array( 'payment_refund', 'payments', true ), // restituisce soldi veri al socio e non si annulla: solo l'amministratore, come la pagina
+		'asem_payment_refund' => array( 'payment_refund', 'payments', false ), // come le altre azioni sull'elenco dei pagamenti (amministratore, segreteria, dipendente); le chiavi dei gateway restano solo all'amministratore
 		'asem_save_group_cash' => array( 'save_group_cash', 'funds', false ),
 		'asem_save_transfer' => array( 'save_transfer', 'funds', false ),
 		'asem_add_account' => array( 'add_account', 'funds', false ),
@@ -450,9 +450,7 @@ final class ProActions {
 		}
 		$r   = Plugin::payments()->refund( (int) ( $p['id'] ?? 0 ), $cents, (int) ( $p['expected'] ?? -1 ), (string) ( $p['reason'] ?? '' ) );
 		$msg = \AssociazioneSemplice\Texts::t( 'Rimborso di {importo} inviato al socio.', array( 'importo' => Money::format( $r['cents'] ) ) );
-		if ( ! $r['mailed'] ) {
-			$msg .= ' ' . \AssociazioneSemplice\Texts::t( 'Il socio non ha un\'email: avvisalo tu.' );
-		}
+		$msg .= ' ' . ( $r['mailed'] ? \AssociazioneSemplice\Texts::t( 'Il socio è stato avvisato per email.' ) : \AssociazioneSemplice\Texts::t( 'Il socio non ha un\'email: avvisalo tu.' ) );
 		return array( Ui::url( 'asem-payments' ), $msg );
 	}
 

@@ -508,7 +508,7 @@ class PaymentService extends OfflinePayments {
 			case 'amount':
 				return Texts::t( 'L\'importo è più di quello che {metodo} può ancora restituire su questo pagamento: controlla dal suo pannello se è già stato rimborsato in parte.', array( 'metodo' => $name ) );
 		}
-		return Texts::t( '{metodo} non ha accettato il rimborso: {dettaglio}', array( 'metodo' => $name, 'dettaglio' => mb_substr( $detail, 0, 160 ) ) );
+		return Texts::t( 'Rimborso non riuscito: {fornitore}', array( 'fornitore' => $name . ( '' !== $detail ? ': ' . mb_substr( $detail, 0, 160 ) : '' ) ) );
 	}
 
 	/**
@@ -536,7 +536,7 @@ class PaymentService extends OfflinePayments {
 		}
 		$reason = trim( $reason );
 		if ( '' === $reason ) {
-			throw new \InvalidArgumentException( Texts::t( 'Scrivi il motivo del rimborso: lo leggerà il socio nell\'email.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( Texts::t( 'Scrivi il motivo del rimborso: lo leggerà il socio.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( $cents < self::REFUND_MIN_CENTS || $cents > $info['remaining'] ) {
 			throw new \InvalidArgumentException( Texts::t( 'Importo non valido: si può restituire da {min} a {max}.', array( 'min' => Money::format( self::REFUND_MIN_CENTS ), 'max' => Money::format( $info['remaining'] ) ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
@@ -597,7 +597,7 @@ class PaymentService extends OfflinePayments {
 		$assoc   = '' !== $assoc ? $assoc : Texts::t( 'l\'associazione' );
 		$subject = Texts::t( 'Rimborso del tuo pagamento · {associazione}', array( 'associazione' => $assoc ) );
 		$body    = Texts::t(
-			'Ciao, abbiamo restituito {importo} del pagamento che hai fatto il {data} a {associazione}. Motivo: {motivo}. L\'accredito compare sul tuo metodo di pagamento in genere entro 5-10 giorni lavorativi, a seconda della banca o dell\'emittente della carta. Se hai dubbi, rispondi a questa email o scrivi alla segreteria. — {associazione}',
+			'Ciao, abbiamo restituito {importo} del pagamento che hai fatto il {data} a {associazione}. Motivo: {motivo}. L\'accredito compare sul tuo metodo di pagamento in genere entro pochi giorni lavorativi, fino a 10 a seconda della banca o del metodo di pagamento. Se hai dubbi, scrivi alla segreteria. — {associazione}',
 			array(
 				'importo'      => Money::format( $cents ),
 				'data'         => ( new \DateTimeImmutable( (string) ( $p['paid_at'] ?: $p['created_at'] ) ) )->format( 'd/m/Y' ),
