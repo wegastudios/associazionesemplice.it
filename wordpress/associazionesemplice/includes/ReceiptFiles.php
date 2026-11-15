@@ -21,6 +21,7 @@ final class ReceiptFiles {
 	const SUBDIR   = 'receipts';
 	const BATCH    = 100;
 	const CRON     = 'asem_receipt_pdfs_batch';
+	const FLAG     = 'asem_receipt_pdfs_backfill'; // assente = da fare, started = in corso, done = finito
 	const MAX_SIZE = 10485760; // 10 MB: una ricevuta pesa pochi KB, oltre non è un nostro PDF
 
 	const ISSUED = 'issued';
@@ -31,6 +32,7 @@ final class ReceiptFiles {
 
 	public static function register(): void {
 		add_action( 'asem_year_closed', array( __CLASS__, 'on_year_closed' ) );
+		add_action( 'plugins_loaded', array( __CLASS__, 'maybe_backfill' ), 20 ); // dopo l'aggiornamento dello schema (priorità 12)
 		add_action( self::CRON, array( __CLASS__, 'cron_batch' ), 10, 2 );
 		add_filter( 'asem_backup_documents', array( __CLASS__, 'backup_documents' ) );
 		add_filter( 'asem_backup_restore_documents', array( __CLASS__, 'restore_documents' ), 10, 3 );
@@ -271,9 +273,45 @@ final class ReceiptFiles {
 		}
 	}
 
-	/** Lavoro programmato: il lotto seguente. */
+	/**
+	 * Dopo l'aggiornamento: le ricevute già emesse si fissano subito, a lotti.
+	 * Il primo lotto parte all'aggiornamento, gli altri con un lavoro programmato (anno 0 = tutti gli anni) fino a esaurimento.
+	 */
+	public static function maybe_backfill(): void {
+		$flag = get_option( self::FLAG );
+		if ( 'done' === $flag || ! Edition::has( 'receipts' ) ) {
+			return;
+		}
+		try {
+			if ( false === $flag ) {
+				if ( 0 === self::pending_count( null ) ) {
+					update_option( self::FLAG, 'done', false );
+					return;
+				}
+				update_option( self::FLAG, 'started', false );
+				self::run_batch( 0, 0 );
+			} elseif ( ! self::has_scheduled_batch() ) {
+				wp_schedule_single_event( time() + 20, self::CRON, array( 0, 0 ) );
+			}
+		} catch ( \Throwable $e ) {
+			error_log( 'Associazione Semplice: PDF delle ricevute non fissati all\'aggiornamento: ' . $e->getMessage() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+		}
+	}
+
+	/** C'è già un lotto in coda (con qualunque cursore)? */
+	private static function has_scheduled_batch(): bool {
+		$crons = _get_cron_array();
+		foreach ( is_array( $crons ) ? $crons : array() as $hooks ) {
+			if ( is_array( $hooks ) && isset( $hooks[ self::CRON ] ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Lavoro programmato: il lotto seguente (anno 0 = tutti gli anni). */
 	public static function cron_batch( $year = 0, $after = 0 ): void {
-		if ( ! Edition::has( 'receipts' ) || (int) $year <= 0 ) {
+		if ( ! Edition::has( 'receipts' ) || (int) $year < 0 ) {
 			return;
 		}
 		try {
@@ -284,9 +322,12 @@ final class ReceiptFiles {
 	}
 
 	private static function run_batch( int $year, int $after ): void {
-		$r = self::complete( $year, $after );
+		$r = self::complete( $year > 0 ? $year : null, $after );
 		if ( $r['done'] || $r['failed'] ) {
 			Audit::log( 'receipt.pdfs_fixed', 'year', $year, array( 'done' => $r['done'], 'failed' => $r['failed'] ) );
+		}
+		if ( 0 === $year && ! $r['more'] ) {
+			update_option( self::FLAG, 'done', false );
 		}
 		if ( $r['more'] && ! wp_next_scheduled( self::CRON, array( $year, $r['last_id'] ) ) ) {
 			wp_schedule_single_event( time() + 20, self::CRON, array( $year, $r['last_id'] ) );

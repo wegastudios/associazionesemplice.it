@@ -78,6 +78,7 @@ final class ReceiptCheckPage {
 		$here  = Ui::url( 'asem-receipt-check', array( 'year' => $year ) );
 
 		echo '<p>' . esc_html( Texts::t( 'Ogni ricevuta emessa ha il suo PDF definitivo: si disegna una volta sola e si salva nella cartella riservata del sito, insieme alla sua impronta (SHA-256). Qui controlli che i file ci siano e che non siano cambiati. I PDF fanno parte della copia di sicurezza.' ) ) . '</p>';
+		echo '<p class="description">' . esc_html( Texts::t( 'I dati della ricevuta (nome, codice fiscale, importi, dati dell\'ente, piè di pagina, righe) sono sempre quelli salvati all\'emissione. Le ricevute emesse prima di questo aggiornamento si fissano in automatico dopo l\'aggiornamento: per il loro PDF valgono però i testi di oggi, cioè i tuoi testi personalizzati, le parole scelte per il tipo di ente (socio/iscritto, associazione/comitato) e la grafica del plugin di quel momento. Le ricevute emesse da ora in poi restano identiche per sempre.' ) ) . '</p>';
 		echo '<p>' . esc_html( Texts::t( 'Anno fiscale:' ) ) . ' ';
 		foreach ( $years as $y ) {
 			echo $y === $year

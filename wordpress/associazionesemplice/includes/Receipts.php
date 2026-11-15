@@ -1030,7 +1030,8 @@ final class Receipts {
 		try {
 			$r = self::build( $key );
 		} catch ( \InvalidArgumentException $e ) {
-			wp_die( esc_html( $e->getMessage() ), 404 );
+			// Il dettaglio tecnico lo vede solo la segreteria; il socio un avviso semplice.
+			wp_die( esc_html( current_user_can( Plugin::CAP_OPS ) ? $e->getMessage() : Texts::t( 'Questa ricevuta non è disponibile in questo momento. Avvisa la segreteria: la sistemano subito.' ) ), 404 );
 		}
 		self::send_pdf( $r['pdf'], $r['filename'] );
 	}
