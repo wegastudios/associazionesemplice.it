@@ -22,7 +22,7 @@ const bad = () => props.rows.some((r) => r.status === 'missing' || r.status === 
         <p v-if="page.props.errors?.ledger" class="mb-3 font-semibold text-danger" role="alert">{{ page.props.errors.ledger }}</p>
         <p v-if="bad()" class="mb-3 font-semibold text-danger" role="alert">Alcuni PDF non coincidono con quelli emessi. Finché non li sistemi, scaricare quelle ricevute dà un errore (non vengono mai rifatte di nascosto). Puoi rifarlo con «Rifai il PDF»: il file nuovo si crea dai dati salvati al momento dell'emissione, e l'operazione resta scritta nel registro azioni. Per le ricevute emesse prima di questo aggiornamento si rifà solo se risulta identico a quello emesso. Se non si riesce a rifarlo, scrivi all'assistenza di Associazione Semplice.</p>
         <div class="card mb-4 space-y-3 p-4 text-sm sm:p-5">
-            <label class="flex items-center gap-2"><span class="font-semibold">Esercizio</span>
+            <label class="flex items-center gap-2"><span class="font-semibold">Anno fiscale</span>
                 <select class="field w-auto" :value="year" @change="go($event.target.value)"><option v-for="y in years" :key="y.year" :value="y.year">{{ y.year }}</option></select></label>
             <div v-if="unfixed > 0" class="flex flex-wrap items-center gap-3"><span>{{ unfixed }} ricevute emesse prima di questo aggiornamento non hanno ancora il PDF fissato.</span>
                 <button type="button" class="btn btn-primary" @click="fix">Fissa i prossimi PDF</button></div>
@@ -38,7 +38,7 @@ const bad = () => props.rows.some((r) => r.status === 'missing' || r.status === 
                         <td class="p-3"><button v-if="r.status === 'missing' || r.status === 'altered'" type="button" class="btn" @click="rebuild(r)">Rifai il PDF</button>
                             <span v-else-if="r.status === 'voided'" class="text-muted">La ricevuta è stata annullata: il file emesso resta conservato ma non si scarica più.</span></td>
                     </tr>
-                    <tr v-if="!rows.length"><td class="p-3 text-muted" colspan="4">Nessuna ricevuta in questo esercizio.</td></tr>
+                    <tr v-if="!rows.length"><td class="p-3 text-muted" colspan="4">Nessuna ricevuta in questo anno fiscale.</td></tr>
                 </tbody>
             </table>
         </div>
