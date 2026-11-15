@@ -36,7 +36,7 @@ final readonly class OrgProfile
                 $missing[] = $label;
             }
         }
-        foreach (['vat' => 'partita IVA', 'runts' => 'numero RUNTS', 'pec' => 'PEC'] as $k => $label) {
+        foreach (['vat' => 'partita IVA (o la spunta «non ce l\'ha»)', 'runts' => 'numero RUNTS (o la spunta «non ce l\'ha»)', 'pec' => 'PEC (o la spunta «non ce l\'ha»)'] as $k => $label) {
             if (! $has($k) && ! $none($k)) {
                 $missing[] = $label;
             }

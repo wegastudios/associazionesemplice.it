@@ -52,7 +52,7 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
                         <select v-model="form.steps.ente.kind" required :class="field"><option value="" disabled>Scegli la forma</option><option v-for="k in by.ente.kinds" :key="k.value" :value="k.value">{{ k.label }}</option></select></label>
                     <label :class="label"><span class="font-semibold">Codice fiscale (obbligatorio)</span><input v-model="form.steps.ente.tax_code" required :class="field" maxlength="16" /></label>
                     <label :class="[label, 'sm:col-span-2']"><span class="font-semibold">Legale rappresentante (obbligatorio)</span><input v-model="form.steps.ente.legal_rep" required :class="field" maxlength="120" autocomplete="name" />
-                        <span class="block text-sm text-muted">Nome e cognome di chi rappresenta l'associazione (di solito il presidente): serve per la privacy e le ricevute.</span></label>
+                        <span class="block text-sm text-muted">Nome e cognome di chi rappresenta l'associazione, di solito il presidente. Compare nei dati esportati.</span></label>
                     <label :class="[label, 'sm:col-span-3']"><span class="font-semibold">Sede legale: indirizzo (obbligatorio)</span><input v-model="form.steps.ente.address" required :class="field" maxlength="190" /></label>
                     <label :class="label"><span class="font-semibold">CAP</span><input v-model="form.steps.ente.zip" required inputmode="numeric" :class="field" maxlength="5" /></label>
                     <label :class="label"><span class="font-semibold">Comune</span><input v-model="form.steps.ente.city" required :class="field" maxlength="120" /></label>
