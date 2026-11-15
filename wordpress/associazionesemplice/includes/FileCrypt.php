@@ -127,6 +127,12 @@ final class FileCrypt {
 	 * I metodi con cui si può ricavare una chiave da una frase su questo server, dal più robusto al più leggero: Argon2id con 64 MiB, Argon2id più leggero
 	 * (24 MiB, più giri) se la memoria non basta, e infine PBKDF2-SHA256 con molte iterazioni, che non usa memoria e funziona sempre.
 	 *
+	 * Perché questi numeri: il livello robusto (64 MiB × 2 giri) è il profilo «interattivo» di libsodium. Il livello leggero (24 MiB × 3 giri) è il minimo
+	 * che accettiamo con Argon2id: resta sopra i 19 MiB × 2 giri che OWASP indica come soglia minima, compensando la memoria con un giro in più. Le soglie
+	 * di memoria libera (96 e 48 MiB) lasciano a PHP e a WordPress il margine per lavorare: la derivazione prende la sua memoria in più rispetto a quella
+	 * già usata dalla richiesta. Sotto quelle soglie, o se Argon2id fallisce, si usa PBKDF2-SHA256 con 600.000 giri (indicazione OWASP per SHA-256), che non
+	 * usa memoria ma si indovina più facilmente con le schede grafiche: per questo la schermata raccomanda in quel caso una frase di almeno quattro parole.
+	 *
 	 * @return array[]
 	 */
 	public static function kdf_tiers(): array {

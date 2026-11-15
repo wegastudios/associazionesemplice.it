@@ -93,11 +93,17 @@ final class PrivateFiles {
 
 	/** Frase per chi prova a salvare mentre la chiave di questo sito non coincide con quella usata finora. */
 	public static function blocked_text(): string {
+		if ( ! current_user_can( Plugin::CAP ) ) {
+			return Texts::t( 'Il file non è stato salvato: la chiave di cifratura di questo sito non coincide con quella usata finora. Chiedi a chi amministra il sito di sistemarla in Impostazioni → Copia di sicurezza.' );
+		}
 		return Texts::t( 'Il file non è stato salvato: la chiave di cifratura di questo sito non coincide con quella usata finora. Apri Impostazioni → Copia di sicurezza → «Cifratura dei file riservati» per sistemarla.' );
 	}
 
 	/** Frase per chi prova a salvare prima di aver scelto la frase di recupero. */
 	public static function setup_text(): string {
+		if ( ! current_user_can( Plugin::CAP ) ) {
+			return Texts::t( 'Il file non è stato salvato: la cifratura dei file riservati non è ancora attiva. Chiedi a chi amministra il sito di attivarla in Impostazioni → Copia di sicurezza.' );
+		}
 		return Texts::t( 'Il file non è stato salvato: prima va scelta la frase di recupero. Apri Impostazioni → Copia di sicurezza → «Cifratura dei file riservati» e scegline una.' );
 	}
 

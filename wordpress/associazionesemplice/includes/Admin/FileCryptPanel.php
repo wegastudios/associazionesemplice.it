@@ -114,10 +114,10 @@ final class FileCryptPanel {
 	public static function kdf_note(): string {
 		$level = FileCrypt::kdf_level();
 		if ( 'light' === $level ) {
-			return Texts::t( 'Questo server ha poca memoria: la frase si protegge con un metodo più leggero, ancora sicuro se la frase è lunga.' );
+			return Texts::t( 'Questo server ha poca memoria: la frase si protegge con un metodo più leggero, sicuro solo se la frase è lunga: almeno quattro parole.' );
 		}
 		if ( 'basic' === $level ) {
-			return Texts::t( 'Questo server non può usare il metodo più robusto (poca memoria o libreria mancante): la frase si protegge con un metodo alternativo, sicuro solo se la frase è lunga (meglio se di almeno quattro parole).' );
+			return Texts::t( 'Questo server non può usare il metodo più robusto (poca memoria o libreria mancante): la frase si protegge con un metodo alternativo, sicuro solo se la frase è lunga: almeno quattro parole.' );
 		}
 		return '';
 	}
@@ -169,6 +169,7 @@ final class FileCryptPanel {
 		} else {
 			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html( Texts::t( 'Scegli la frase di recupero: finché non c\'è, i nuovi file riservati non si salvano.' ) ) . '</strong></p></div>';
 		}
+		echo '<p><strong>' . esc_html( Texts::t( 'Scegli una frase e conservala fuori dal sito (su carta o in un gestore di password): serve a riaprire i documenti se il sito viene spostato o riparato.' ) ) . '</strong></p>';
 		echo '<p>' . esc_html( Texts::t( 'La frase di recupero serve a riaprire i documenti se i codici di sicurezza del sito vengono cambiati. Scegli una frase lunga (almeno {n} caratteri), scrivila su carta e tienila fuori dal sito.', array( 'n' => FileKey::RECOVERY_MIN ) ) ) . '</p>';
 		echo '<p><strong>' . esc_html( Texts::t( 'Cosa non fare: non rigenerare i codici di sicurezza di wp-config.php e non cambiare ASEM_ENC_KEY senza aver prima segnato la frase di recupero.' ) ) . '</strong> '
 			. '<strong>' . esc_html( Texts::t( 'Cosa tenere da parte: la frase di recupero. Senza di essa, se quei valori cambiano, i documenti cifrati non si aprono più.' ) ) . '</strong></p>';
