@@ -18,7 +18,7 @@ const refund = (p) => {
     const reason = amount ? askReason() : null;
     if (amount && reason) { router.post(`/gestionale/pagamenti-online/${p.id}/rimborso`, { amount, reason }, { preserveScroll: true }); }
 };
-const refundVoid = (p) => {    if (!window.confirm(`Restituire al socio tutto il pagamento e stornare in prima nota le sue ricevute? Le tessere collegate vengono annullate e i soldi tornano sul suo metodo di pagamento: non si può annullare. Se l’anno fiscale dell’incasso è chiuso l’operazione non parte: né rimborso né storno.`)) { return; }
+const refundVoid = (p) => {    if (!window.confirm(`Restituire al socio tutto il pagamento e stornare in prima nota le sue ricevute? Le tessere collegate vengono annullate e i soldi tornano sul suo metodo di pagamento: non si può annullare. Se l’anno fiscale dell’incasso è chiuso l’operazione non parte: né rimborso né storno.${p.stays_note ? " " + p.stays_note : ""}`)) { return; }
     const reason = askReason();
     if (reason) { router.post(`/gestionale/pagamenti-online/${p.id}/rimborso`, { reason }, { preserveScroll: true }); }
 };

@@ -22,6 +22,8 @@ final class PaymentRefunded extends Mailable
         public readonly string $reason,
         public readonly ?string $contactEmail = null,
         public readonly ?string $contactPhone = null,
+        /** @var list<string> Che cosa resta valido dopo lo storno (prenotazione, iscrizione), una frase per riga in coda all'email. */
+        public readonly array $stays = [],
     ) {}
 
     public function envelope(): Envelope
