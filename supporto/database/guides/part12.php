@@ -280,7 +280,7 @@ Con la partita IVA, anche nella **scheda di una risorsa** (un salone, un campo, 
 
 Sotto il menu vedi come leggere gli importi: con i prezzi **senza IVA**, «Gli importi che scrivi sono senza IVA: chi paga vede l'importo con l'IVA aggiunta.»; con i prezzi **finali**, «Gli importi che scrivi sono finali, con l'IVA compresa.»
 
-Con i **prezzi senza IVA**, chi prenota vede e paga **il prezzo più l'IVA**, in elenco, nella griglia, nell'anteprima e nell'area dei soci. Per esempio, una sala a **50,00 €** con **IVA 22%**: chi prenota vede e paga **61,00 €**. Una prenotazione già fatta si incassa **con l'aliquota e l'importo di quando è stata creata**, anche se poi cambi l'IVA della risorsa. Le risorse che esistevano già restano **senza IVA** finché non le cambi tu. Se non sai quale voce scegliere, **chiedi al tuo commercialista**.
+Con i **prezzi senza IVA**, chi prenota vede e paga **il prezzo con l'IVA aggiunta**, in elenco, nella griglia, nell'anteprima e nell'area dei soci. Per esempio, una sala da **50,00 € l'ora** con **IVA 22%**: chi prenota vede **61,00 €**. Una prenotazione già fatta si incassa **con l'aliquota e l'importo di quando è stata creata**, anche se poi cambi l'IVA della risorsa. Le risorse che esistevano già restano **senza IVA** finché non le cambi tu. Se non sai quale voce scegliere, **chiedi al tuo commercialista**.
 
 Il gestionale ti avvisa se qualcosa non torna:
 
