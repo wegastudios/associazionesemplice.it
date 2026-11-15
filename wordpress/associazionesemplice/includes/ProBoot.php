@@ -62,7 +62,7 @@ final class ProBoot {
 
 	/** Azioni di amministrazione di ogni funzione: senza la funzione si bloccano. */
 	const ACTIONS = array(
-		'payments'   => array( 'asem_save_payment_settings', 'asem_test_gateway', 'asem_satispay_connect', 'asem_check_payments', 'asem_payment_reviewed', 'asem_payment_refunded' ),
+		'payments'   => array( 'asem_save_payment_settings', 'asem_test_gateway', 'asem_satispay_connect', 'asem_check_payments', 'asem_payment_reviewed', 'asem_payment_refunded', 'asem_payment_refund' ),
 		'watch'      => array( 'asem_expense_fund_attach', 'asem_expense_fund_undo', 'asem_watch_snapshot', 'asem_watch_csv', 'asem_discrepancy_approve', 'asem_discrepancy_revoke' ),
 		'funds'      => array( 'asem_save_group_cash', 'asem_save_transfer', 'asem_add_account', 'asem_update_account', 'asem_close_account', 'asem_reopen_account', 'asem_fund_create', 'asem_fund_deposit', 'asem_fund_release', 'asem_fund_settle' ),
 		'receipts'   => array( 'asem_receipt_email', 'asem_receipt_replace' ),
@@ -115,6 +115,7 @@ final class ProBoot {
 			10,
 			2
 		);
+		add_action( 'asem_tx_voided', array( PaymentService::class, 'on_tx_voided' ), 20, 2 ); // incasso online annullato: il pagamento si segna «da controllare» (da rimborsare?), senza rimborsare nulla
 		add_filter( 'asem_settings_defaults', array( ProSettings::class, 'defaults' ) );
 		add_filter( 'asem_settings_clean', array( ProSettings::class, 'clean' ), 10, 2 );
 		Admin\ProMenu::register(); // pagine, schede e permessi dell'amministrazione

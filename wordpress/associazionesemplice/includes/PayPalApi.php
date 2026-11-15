@@ -139,6 +139,54 @@ final class PayPalApi {
 		throw self::fail( $res, 'cattura' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 	}
 
+	/**
+	 * Rimborso (anche parziale) di una cattura: i soldi tornano sul conto PayPal del socio. Il PayPal-Request-Id rende l'invio idempotente
+	 * (la stessa richiesta ripetuta non rimborsa due volte). Non lancia eccezioni per le risposte di PayPal: le classifica.
+	 *
+	 * @return array ['ok' => bool, 'id' => id del rimborso, 'reason' => permission|key|already|not_found|balance|amount|other (se non ok), 'message' => testo del gestore]
+	 */
+	public static function refund( callable $http, bool $live, string $token, string $capture_id, int $cents, string $request_id, string $public_id ): array {
+		$res  = self::request(
+			$http,
+			'POST',
+			self::base( $live ) . '/v2/payments/captures/' . rawurlencode( $capture_id ) . '/refund',
+			array( 'Authorization' => 'Bearer ' . $token, 'Content-Type' => 'application/json', 'PayPal-Request-Id' => $request_id, 'Prefer' => 'return=representation' ),
+			self::json( array( 'amount' => array( 'currency_code' => 'EUR', 'value' => PaymentItems::decimal( $cents ) ), 'note_to_payer' => 'Rimborso', 'custom_id' => $public_id ) )
+		);
+		$d    = $res['data'];
+		if ( in_array( $res['code'], array( 200, 201 ), true ) && is_array( $d ) && ! empty( $d['id'] ) ) {
+			if ( in_array( (string) ( $d['status'] ?? '' ), array( 'FAILED', 'CANCELLED' ), true ) ) {
+				return array( 'ok' => false, 'id' => (string) $d['id'], 'reason' => 'other', 'message' => 'rimborso ' . (string) $d['status'] );
+			}
+			return array( 'ok' => true, 'id' => (string) $d['id'], 'reason' => '', 'message' => '' );
+		}
+		return array( 'ok' => false, 'id' => '', 'reason' => self::refund_reason( $res['code'], $d ), 'message' => is_array( $d ) ? (string) ( $d['message'] ?? ( $d['name'] ?? '' ) ) : '' );
+	}
+
+	/** Perché PayPal ha rifiutato il rimborso. @param mixed $data risposta già decodificata */
+	public static function refund_reason( int $code, $data ): string {
+		$flat = strtoupper( self::json( $data ) );
+		if ( false !== strpos( $flat, 'FULLY_REFUNDED' ) || false !== strpos( $flat, 'ALREADY_REFUNDED' ) ) {
+			return 'already';
+		}
+		if ( false !== strpos( $flat, 'INSUFFICIENT_FUNDS' ) || false !== strpos( $flat, 'NO_FUNDS' ) || false !== strpos( $flat, 'NOT_ENOUGH' ) ) {
+			return 'balance';
+		}
+		if ( false !== strpos( $flat, 'EXCEED' ) || false !== strpos( $flat, 'AMOUNT_GREATER' ) ) {
+			return 'amount';
+		}
+		if ( 404 === $code || false !== strpos( $flat, 'INVALID_RESOURCE_ID' ) || false !== strpos( $flat, 'RESOURCE_NOT_FOUND' ) ) {
+			return 'not_found';
+		}
+		if ( 403 === $code || false !== strpos( $flat, 'NOT_AUTHORIZED' ) || false !== strpos( $flat, 'PERMISSION_DENIED' ) ) {
+			return 'permission';
+		}
+		if ( 401 === $code ) {
+			return 'key';
+		}
+		return 'other';
+	}
+
 	public static function is_completed( array $order ): bool {
 		return 'COMPLETED' === ( $order['status'] ?? '' ) && self::captured_cents( $order ) > 0;
 	}
