@@ -211,6 +211,7 @@ it('rimborsa un pagamento da controllare su Stripe, una parte alla volta, senza 
             ->and(DB::table('audit.log')->where('action', 'payment.refunded')->count())->toBe(2);
     });
     $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['amount' => '1,00', 'reason' => 'Quota già pagata'])->assertSessionHasErrors('ledger');
+    expect(DB::table('audit.log')->where('action', 'payment.refund_mail_skipped')->pluck('details')->all())->toBe([]);
     Mail::assertSent(PaymentRefunded::class, 2);
 });
 
