@@ -112,7 +112,7 @@ final readonly class ReceiptFiles
         $doc = $this->pdf->build($receiptId);
         $sha = is_string($row->sha256 ?? null) ? $row->sha256 : '';
         if (! hash_equals($sha, hash('sha256', $doc['pdf']))) {
-            throw new ReceiptFileProblem('I dati della ricevuta sono cambiati dall\'emissione: il PDF non si può rifare uguale. Ripristinalo da una copia di sicurezza.', ReceiptFileProblem::CHANGED);
+            throw new ReceiptFileProblem('Il PDF rifatto non risulta identico a quello emesso (i dati o i testi sono cambiati): non è stato sostituito. Scrivi all\'assistenza di Associazione Semplice.', ReceiptFileProblem::CHANGED);
         }
         $stored = $this->store($doc['pdf'], is_string($row->original_name ?? null) ? $row->original_name : $doc['filename']);
         $this->connection()->table('app.receipt_files')->where('receipt_id', $receiptId)->update([
@@ -182,13 +182,13 @@ final readonly class ReceiptFiles
             if ($e->getMessage() === 'File inesistente.') {
                 throw new ReceiptFileProblem(self::missingText($number), ReceiptFileProblem::MISSING);
             }
-            throw new ReceiptFileProblem('Il PDF della ricevuta n. '.$number.' risulta diverso da quando è stato emesso: per sicurezza non viene scaricato. Un amministratore può controllarlo da «Verifica delle ricevute».', ReceiptFileProblem::ALTERED);
+            throw new ReceiptFileProblem('Il PDF della ricevuta n. '.$number.' risulta diverso da quando è stato emesso: per sicurezza non viene scaricato. Un amministratore può controllarlo da «Verifica delle ricevute»; se non si riesce a rifarlo, scrivi all\'assistenza di Associazione Semplice.', ReceiptFileProblem::ALTERED);
         }
     }
 
     private static function missingText(string $number): string
     {
-        return 'Il PDF della ricevuta n. '.$number.' non si trova più sul sito. Non viene rifatto in automatico: un amministratore può ripristinarlo da una copia di sicurezza oppure, da «Verifica delle ricevute», rigenerarlo dai dati salvati.';
+        return 'Il PDF della ricevuta n. '.$number.' non si trova più sul sito. Non viene rifatto in automatico: un amministratore può provare a rifarlo da «Verifica delle ricevute»; se non si riesce a rifarlo, scrivi all\'assistenza di Associazione Semplice.';
     }
 
     private function row(string $receiptId): ?object

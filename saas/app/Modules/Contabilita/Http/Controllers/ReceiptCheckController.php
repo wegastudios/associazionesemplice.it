@@ -55,6 +55,6 @@ final readonly class ReceiptCheckController
             throw ValidationException::withMessages(['ledger' => $e->getMessage()]);
         }
 
-        return back()->with('status', 'PDF rifatto dai dati salvati. L\'operazione è scritta nel registro delle azioni.');
+        return back()->with('status', 'PDF rifatto: risulta identico a quello emesso. L\'operazione è scritta nel registro delle azioni.');
     }
 }

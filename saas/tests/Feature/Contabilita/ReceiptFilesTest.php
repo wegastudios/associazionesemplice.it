@@ -6,6 +6,7 @@ use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Contabilita\Contracts\MemberReceipts;
 use App\Modules\Contabilita\Models\Account;
 use App\Modules\Contabilita\Receipts\ReceiptFiles;
+use App\Modules\Contabilita\Receipts\ReceiptPdf;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Services\MembershipService;
@@ -95,4 +96,15 @@ it('al socio con il file mancante dice di avvisare la segreteria', function (): 
         return '';
     });
     expect($msg)->toContain('Questa ricevuta non è disponibile in questo momento. Avvisa la segreteria');
+});
+
+it('il lavoro programmato scorre le associazioni e non trova niente da fissare', function (): void {
+    $this->artisan('saas:receipts:fix', ['org' => $this->org->id])->assertSuccessful();
+    expect($this->orgContext()->run($this->org->id, fn () => app(ReceiptFiles::class)->unfixedCount()))->toBe(0);
+});
+
+it('il PDF rifatto dagli stessi dati è identico byte per byte', function (): void {
+    $a = $this->orgContext()->run($this->org->id, fn () => app(ReceiptPdf::class)->build($this->receipt)['pdf']);
+    $b = $this->orgContext()->run($this->org->id, fn () => app(ReceiptPdf::class)->build($this->receipt)['pdf']);
+    expect($a)->toBe($b);
 });

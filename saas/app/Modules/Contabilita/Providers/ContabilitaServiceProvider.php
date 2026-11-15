@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Contabilita\Providers;
 
+use App\Modules\Contabilita\Console\FixReceiptsCommand;
 use App\Modules\Contabilita\Contracts\FiscalYearClosed;
 use App\Modules\Contabilita\Contracts\FiscalYearReopened;
 use App\Modules\Contabilita\Contracts\Ledger;
@@ -23,6 +24,7 @@ use App\Modules\Core\Contracts\DataExport;
 use App\Modules\Core\Contracts\HomeWidget;
 use App\Modules\Core\Contracts\OrgCreated;
 use App\Modules\Core\Contracts\SetupStep;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
@@ -43,6 +45,13 @@ final class ContabilitaServiceProvider extends ServiceProvider
         Event::listen(ReceiptIssued::class, FixReceiptFile::class);
         Event::listen(FiscalYearClosed::class, [StatementSnapshots::class, 'take']);
         Event::listen(FiscalYearReopened::class, [StatementSnapshots::class, 'supersede']);
+        if ($this->app->runningInConsole()) {
+            $this->commands([FixReceiptsCommand::class]);
+            // Le ricevute emesse prima delle ricevute definitive si fissano a lotti, un lotto per associazione a ogni giro.
+            $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
+                $schedule->command('saas:receipts:fix')->hourlyAt(23)->withoutOverlapping(50);
+            });
+        }
         $this->loadRoutesFrom(dirname(__DIR__).'/Http/routes.php');
     }
 }
