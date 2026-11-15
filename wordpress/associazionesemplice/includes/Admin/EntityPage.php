@@ -63,6 +63,12 @@ final class EntityPage {
 			. '<input type="text" name="legal_province" value="' . esc_attr( (string) $s['legal_province'] ) . '" size="4" maxlength="2" required placeholder="Prov." aria-label="Prov."></td></tr>';
 	}
 
+	/** Partita IVA: dato dell'ente (il calcolo dell'IVA è delle funzioni aggiuntive); se non ce l'ha, la casella. */
+	public static function vat_row( array $s ): string {
+		return '<tr><th><label for="asem-vat-number">' . esc_html( Texts::t( 'Partita IVA' ) ) . '</label></th><td><input type="text" id="asem-vat-number" name="vat_number" value="' . esc_attr( (string) $s['vat_number'] ) . '" class="regular-text" maxlength="13" placeholder="' . esc_attr( Texts::t( '11 cifre' ) ) . '" autocomplete="off">'
+			. self::none_box( 'no_vat', ! empty( $s['no_vat'] ), Texts::t( 'L\'associazione non ha la partita IVA' ) ) . '</td></tr>';
+	}
+
 	public static function runts_row( array $s ): string {
 		return '<tr><th><label for="asem-runts-number">' . esc_html( Texts::t( 'Numero RUNTS (con la sezione)' ) ) . '</label></th><td><input type="text" id="asem-runts-number" name="runts_number" value="' . esc_attr( (string) $s['runts_number'] ) . '" class="regular-text">'
 			. self::none_box( 'no_runts', ! empty( $s['no_runts'] ), Texts::t( 'L\'associazione non è iscritta al RUNTS' ) ) . '</td></tr>';
@@ -75,7 +81,7 @@ final class EntityPage {
 
 	/** Le righe dei dati obbligatori dell'ente nella configurazione guidata (nei dati dell'ente le stesse righe stanno nelle loro sezioni). */
 	public static function identity_rows( array $s ): string {
-		return self::name_row( $s ) . self::form_row( $s ) . self::tax_row( $s ) . self::seat_rows( $s ) . self::runts_row( $s ) . self::pec_row( $s );
+		return self::name_row( $s ) . self::form_row( $s ) . self::tax_row( $s ) . self::seat_rows( $s ) . self::vat_row( $s ) . self::runts_row( $s ) . self::pec_row( $s );
 	}
 
 	public static function render(): void {
@@ -89,7 +95,7 @@ final class EntityPage {
 		echo '<h2>Ente</h2><table class="form-table"><tbody>';
 		echo wp_kses( self::name_row( $s ) . self::form_row( $s ), Html::allowed() );
 		do_action( 'asem_entity_rows', $s ); // le estensioni aggiungono qui i loro campi
-		echo wp_kses( self::tax_row( $s ) . self::runts_row( $s ), Html::allowed() );
+		echo wp_kses( self::tax_row( $s ) . self::vat_row( $s ) . self::runts_row( $s ), Html::allowed() );
 		echo wp_kses( '<tr><th>Da che mese inizia il tuo anno sociale (tessere e attività)?</th><td><select name="social_year_start_month">' . Ui::options( Ui::MONTHS, (int) $s['social_year_start_month'] ) . '</select><p class="description">È l\'anno delle attività (corsi ed eventi, per esempio una stagione da settembre ad agosto) e anche della tessera: la tessera inizia lo stesso mese e dura un anno. Con gennaio la tessera vale da gennaio a dicembre. Le tessere già emesse non cambiano: il nuovo mese vale per le tessere nuove. Non dipende dall\'anno fiscale: possono iniziare in mesi diversi.</p></td></tr>', Html::allowed() );
 		echo wp_kses( '<tr><th>Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?</th><td>' . self::fiscal_month_field( $s ) . '<p class="description">È l\'anno dei conti: prima nota, rendiconto e preventivo. Di solito inizia a gennaio, ma puoi scegliere un altro mese, anche diverso dall\'anno sociale. Sceglilo prima di chiudere il primo anno: dopo la prima chiusura non si può più cambiare. I Dati per il RUNTS restano al 31 dicembre in ogni caso.</p></td></tr>', Html::allowed() );
 		echo '</tbody></table>';

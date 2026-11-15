@@ -65,13 +65,11 @@ final class ProWizard {
 		// 2. Partita IVA
 		WizardPage::step( 'Partita IVA', 'Senza partita IVA non compare nulla di fiscale.', '', 'ente' );
 		echo WizardPage::yes_no( 'has_vat', 'L\'ente ha la partita IVA?', ! empty( $s['has_vat'] ) ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<p data-if="has_vat=0"><label><input type="checkbox" name="no_vat" value="1"' . checked( ! empty( $s['no_vat'] ), true, false ) . ' required> ' . esc_html( \AssociazioneSemplice\Texts::t( 'L\'associazione non ha la partita IVA' ) ) . '</label></p>';
 		$rates = array();
 		foreach ( Fiscal::RATES as $r ) {
 			$rates[ $r ] = $r . '%';
 		}
 		echo '<div data-if="has_vat=1"><table class="form-table"><tbody>';
-		echo '<tr><th>Partita IVA</th><td><input type="text" name="vat_number" value="' . esc_attr( (string) $s['vat_number'] ) . '" class="regular-text" maxlength="13" placeholder="11 cifre"></td></tr>';
 		echo '<tr><th>Regime</th><td><select name="fiscal_regime">' . Ui::options( Fiscal::regimes(), (string) $s['fiscal_regime'] ) . '</select><p class="description">Nel regime forfettario l\'IVA non si applica.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '</tbody></table><details class="asem-wiz-more"><summary>Più dettagli: aliquote e importi</summary><table class="form-table"><tbody>';
 		echo '<tr><th>Aliquota proposta</th><td><select name="vat_default_rate">' . Ui::options( $rates, (int) $s['vat_default_rate'] ) . '</select></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput

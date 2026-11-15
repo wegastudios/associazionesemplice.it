@@ -77,7 +77,7 @@ final class Wizard {
 		}
 
 		// 1. Ente (email e telefono della segreteria obbligatori: se mancano dal modulo valgono vuoti e la procedura non si completa)
-		$p += array( 'association_name' => '', 'entity_form' => '', 'tax_code' => '', 'legal_address' => '', 'legal_zip' => '', 'legal_city' => '', 'legal_province' => '', 'runts_number' => '', 'pec' => '', 'secretary_email' => '', 'secretary_phone' => '' ); // dati obbligatori dell'ente (vedi EntityRules): se mancano dal modulo valgono vuoti
+		$p += array( 'association_name' => '', 'entity_form' => '', 'tax_code' => '', 'legal_address' => '', 'legal_zip' => '', 'legal_city' => '', 'legal_province' => '', 'vat_number' => '', 'runts_number' => '', 'pec' => '', 'secretary_email' => '', 'secretary_phone' => '' ); // dati obbligatori dell'ente (vedi EntityRules): se mancano dal modulo valgono vuoti
 		$vals = EntityData::values( $p, false ); // nome, tipo, codice fiscale, sede, partita IVA: stesse regole della scheda «Dati e fiscalità»
 
 		if ( ! empty( $p['wpusers_present'] ) ) {

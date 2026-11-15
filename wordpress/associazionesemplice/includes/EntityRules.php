@@ -5,7 +5,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Dati obbligatori dell'ente: forma, codice fiscale, sede, legale rappresentante, contatti della segreteria e, solo se esistono,
- * numero RUNTS e PEC (ognuno con la casella «non ce l'ha»; la partita IVA la aggiunge l'estensione con il filtro `asem_entity_missing_vat`).
+ * partita IVA, numero RUNTS e PEC (ognuno con la casella «non ce l'ha»).
  * Le stesse regole valgono nella configurazione guidata e in Impostazioni › Ente, anche lato server; ciò che manca compare nella banda fissa (MissingBand).
  */
 final class EntityRules {
@@ -89,6 +89,12 @@ final class EntityRules {
 		if ( ! self::province_valid( (string) ( $d['legal_province'] ?? '' ) ) ) {
 			$e[] = Texts::t( 'Indica la provincia della sede (sigla di 2 lettere).' );
 		}
+		$vat = trim( (string) ( $d['vat_number'] ?? '' ) );
+		if ( '' === $vat && empty( $d['no_vat'] ) ) {
+			$e[] = Texts::t( 'Indica la partita IVA oppure spunta «L\'associazione non ha la partita IVA».' );
+		} elseif ( '' !== $vat && ! Fiscal::is_valid_vat( $vat ) ) {
+			$e[] = Texts::t( 'La partita IVA non è valida: controlla le 11 cifre.' );
+		}
 		if ( '' === trim( (string) ( $d['runts_number'] ?? '' ) ) && empty( $d['no_runts'] ) ) {
 			$e[] = Texts::t( 'Indica il numero RUNTS (con la sezione) oppure spunta «L\'associazione non è iscritta al RUNTS».' );
 		}
@@ -150,7 +156,7 @@ final class EntityRules {
 		if ( '' === Contacts::phone() ) {
 			$add( 'phone', Texts::t( 'telefono della segreteria' ) );
 		}
-		if ( apply_filters( 'asem_entity_missing_vat', false ) ) { // la partita IVA è di un'estensione
+		if ( '' === trim( (string) $s['vat_number'] ) && empty( $s['no_vat'] ) ) {
 			$add( 'vat', Texts::t( 'partita IVA' ) );
 		}
 		if ( '' === trim( (string) $s['runts_number'] ) && empty( $s['no_runts'] ) ) {

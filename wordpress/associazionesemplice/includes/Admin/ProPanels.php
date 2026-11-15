@@ -121,10 +121,7 @@ final class ProPanels {
 		echo '<h2>Partita IVA</h2><table class="form-table"><tbody>';
 		echo '<tr><th>L\'ente ha la partita IVA</th><td><label><input type="checkbox" name="has_vat" value="1" id="asem-has-vat"' . checked( ! empty( $s['has_vat'] ), true, false ) . '> Sì</label>'
 			. '<p class="description">Senza partita IVA non compare nulla di fiscale: niente aliquote né importi IVA. Con la partita IVA, quote, attività, incassi e spese indicano se l\'importo è IVA compresa o esclusa e l\'aliquota. La gestione è volutamente essenziale: i quadri e le liquidazioni li completa il commercialista.</p></td></tr>';
-		echo '<tr><th>' . esc_html( \AssociazioneSemplice\Texts::t( 'Senza partita IVA' ) ) . '</th><td><label><input type="checkbox" name="no_vat" value="1"' . checked( ! empty( $s['no_vat'] ), true, false ) . '> ' . esc_html( \AssociazioneSemplice\Texts::t( 'L\'associazione non ha la partita IVA' ) ) . '</label>'
-			. '<p class="description">' . esc_html( \AssociazioneSemplice\Texts::t( 'È un dato obbligatorio: o indichi la partita IVA (accendendo «Sì» qui sopra) o spunti questa casella.' ) ) . '</p></td></tr>';
 		echo '</tbody></table><div id="asem-vat-block"><table class="form-table"><tbody>';
-		echo '<tr><th>Partita IVA</th><td><input type="text" name="vat_number" value="' . esc_attr( (string) $s['vat_number'] ) . '" class="regular-text" maxlength="13" placeholder="11 cifre"></td></tr>';
 		echo '<tr><th>Regime</th><td><select name="fiscal_regime">' . Ui::options( \AssociazioneSemplice\Fiscal::regimes(), (string) $s['fiscal_regime'] ) . '</select><p class="description">Nel regime forfettario l\'IVA non si applica: le voci restano senza aliquota.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		$rates = array();
 		foreach ( \AssociazioneSemplice\Fiscal::RATES as $r ) {

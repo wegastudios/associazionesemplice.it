@@ -93,6 +93,8 @@ final class Settings {
 			'runts_volunteers'        => 0,         // volontari iscritti nel registro dei volontari (numero inserito a mano: il programma non ha ancora il registro)
 			'runts_manual_year'       => 0,         // anno (31 dicembre) a cui si riferisce il numero dei volontari inserito a mano; 0 = non indicato
 			'pec'                     => '',        // PEC dell'ente
+			'vat_number'              => '',        // partita IVA dell'ente (11 cifre): è un dato dell'ente, anche senza le funzioni IVA
+			'no_vat'                  => 0,         // casella «L'associazione non ha la partita IVA»
 			'entity_form'             => '',        // forma dell'ente: '', 'asd', 'aps', 'odv', 'ets', 'circolo', 'altro' (vedi EntityRules); separata dalla sezione del RUNTS
 			'no_runts'                => 0,         // casella «L'associazione non è iscritta al RUNTS»
 			'no_pec'                  => 0,         // casella «L'associazione non ha una PEC»
@@ -241,6 +243,8 @@ final class Settings {
 		$clean['entity_form']             = in_array( (string) $clean['entity_form'], EntityRules::FORM_KEYS, true ) ? (string) $clean['entity_form'] : '';
 		$clean['no_runts']                = empty( $clean['no_runts'] ) ? 0 : 1;
 		$clean['no_pec']                  = empty( $clean['no_pec'] ) ? 0 : 1;
+		$clean['no_vat']                  = empty( $clean['no_vat'] ) ? 0 : 1;
+		$clean['vat_number']              = mb_substr( Fiscal::normalize_vat( (string) $clean['vat_number'] ), 0, 11 );
 		$clean['sdi_code']                = strtoupper( substr( preg_replace( '/[^A-Za-z0-9]/', '', (string) $clean['sdi_code'] ), 0, 7 ) );
 		$clean['modules']                 = Modules::sanitize( is_array( $clean['modules'] ) ? $clean['modules'] : array() );
 		$clean['guests_enabled']          = empty( $clean['guests_enabled'] ) ? 0 : 1;

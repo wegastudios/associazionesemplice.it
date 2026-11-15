@@ -23,7 +23,6 @@ final class ProData {
 		add_filter( 'asem_wizard_next', array( __CLASS__, 'wizard_next' ), 10, 2 );
 		add_filter( 'asem_activity_form_rows', array( __CLASS__, 'activity_form_rows' ), 10, 2 );
 		add_filter( 'asem_entity_values', array( __CLASS__, 'entity_values' ), 10, 3 );
-		add_filter( 'asem_entity_missing_vat', array( __CLASS__, 'vat_missing' ) );
 		add_filter( 'asem_guide_options', array( __CLASS__, 'guide_options' ) );
 		add_filter( 'asem_scheduled_jobs', array( __CLASS__, 'jobs' ) );
 		add_filter( 'asem_admin_post_classes', array( __CLASS__, 'admin_post_classes' ) );
@@ -401,14 +400,6 @@ final class ProData {
 		Db::db()->delete( Db::t( 'attendance' ), array( 'activity_id' => $activity_id, 'person_id' => $person_id ) );
 	}
 
-	/** La partita IVA manca (nell'elenco dei dati obbligatori dell'ente)? Manca se non c'è il numero e non è spuntato «L'associazione non ha la partita IVA». */
-	public static function vat_missing( $missing ): bool {
-		if ( ! Edition::has( 'vat' ) ) {
-			return (bool) $missing;
-		}
-		return empty( Settings::get( 'no_vat' ) ) && ( empty( Settings::get( 'has_vat' ) ) || '' === trim( (string) Settings::get( 'vat_number' ) ) );
-	}
-
 	/** Dati dell'ente delle funzioni aggiuntive: tipo di ente e termini, partita IVA e dati fiscali. */
 	public static function entity_values( array $vals, array $p, bool $full ): array {
 		$txt = function ( string $k ) use ( $p ): string {
@@ -431,16 +422,11 @@ final class ProData {
 		}
 		if ( $has( 'has_vat' ) ) { // la partita IVA e tutto ciò che ne dipende si legge insieme
 			$on = ! empty( $p['has_vat'] );
-			$vat = Fiscal::normalize_vat( $txt( 'vat_number' ) );
-			if ( $on && ! Fiscal::is_valid_vat( $vat ) ) {
-				throw new \InvalidArgumentException( 'La partita IVA non è valida: sono 11 cifre, l\'ultima è di controllo.' );
+			$vat = Fiscal::normalize_vat( (string) ( $vals['vat_number'] ?? Settings::get( 'vat_number' ) ) ); // la partita IVA è un dato dell'ente (core): qui serve solo per accendere l'IVA
+			if ( $on && '' === $vat ) {
+				throw new \InvalidArgumentException( Texts::t( 'Per applicare l\'IVA indica la partita IVA.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			$vals['has_vat']             = $on ? 1 : 0;
-			$vals['no_vat']              = ( $on || empty( $p['no_vat'] ) ) ? 0 : 1; // «L'associazione non ha la partita IVA»: se c'è il numero non vale
-			if ( ! $on && empty( $p['no_vat'] ) && ( $full || array_key_exists( 'association_name', $p ) ) ) { // dato obbligatorio nei dati dell'ente e nella procedura
-				throw new \InvalidArgumentException( Texts::t( 'Indica la partita IVA oppure spunta «L\'associazione non ha la partita IVA».' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
-			}
-			$vals['vat_number']          = $on ? $vat : '';
 			$vals['fiscal_regime']       = $txt( 'fiscal_regime' );
 			$vals['vat_default_rate']    = (int) ( $p['vat_default_rate'] ?? 22 );
 			$vals['vat_prices_mode']     = $txt( 'vat_prices_mode' );
