@@ -36,6 +36,7 @@ final class ProActions {
 		'asem_check_payments' => array( 'check_payments', 'payments', false ),
 		'asem_payment_reviewed' => array( 'payment_reviewed', 'payments', false ),
 		'asem_payment_refunded' => array( 'payment_refunded', 'payments', false ),
+		'asem_payment_refund' => array( 'payment_refund', 'payments', true ), // restituisce soldi veri al socio e non si annulla: solo l'amministratore, come la pagina
 		'asem_save_group_cash' => array( 'save_group_cash', 'funds', false ),
 		'asem_save_transfer' => array( 'save_transfer', 'funds', false ),
 		'asem_add_account' => array( 'add_account', 'funds', false ),
@@ -436,6 +437,23 @@ final class ProActions {
 	public static function payment_refunded( array $p ): array {
 		Plugin::payments()->mark_refunded( (int) $p['id'] );
 		return array( Ui::url( 'asem-payments' ), 'Rimborso segnato come fatto.' );
+	}
+
+	/** Rimborso (totale o parziale) di un pagamento Stripe o PayPal: importo scritto a mano e spunta «non si può annullare». */
+	public static function payment_refund( array $p ): array {
+		if ( empty( $p['ack'] ) ) {
+			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Per restituire i soldi spunta «Ho capito: il rimborso non si può annullare».' ) );
+		}
+		$cents = Money::parse( (string) ( $p['amount'] ?? '' ) );
+		if ( null === $cents || $cents <= 0 ) {
+			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Importo non valido.' ) );
+		}
+		$r   = Plugin::payments()->refund( (int) ( $p['id'] ?? 0 ), $cents, (int) ( $p['expected'] ?? -1 ), (string) ( $p['reason'] ?? '' ) );
+		$msg = \AssociazioneSemplice\Texts::t( 'Rimborso di {importo} inviato al socio.', array( 'importo' => Money::format( $r['cents'] ) ) );
+		if ( ! $r['mailed'] ) {
+			$msg .= ' ' . \AssociazioneSemplice\Texts::t( 'Il socio non ha un\'email: avvisalo tu.' );
+		}
+		return array( Ui::url( 'asem-payments' ), $msg );
 	}
 
 	public static function payment_reviewed( array $p ): array {

@@ -8116,6 +8116,229 @@ $ap_pp = asem_render( array( Admin\PaymentsPage::class, 'render' ), 'da rimborsa
 asem_ok( false !== strpos( $ap_pp, 'asem_payment_refunded' ), 'pagamenti online: la quota da rimborsare si vede e si segna come restituita' );
 $ap_ps->mark_refunded( (int) $ap_rrow['id'] );
 asem_ok( 0 === (int) $ap_ps->get_by_public( $ap_rrow['public_id'] )['refund_due'], 'pagamenti online: rimborso segnato come fatto' );
+
+// ---------- Rimborso dei pagamenti online dal gateway (Stripe e PayPal) ----------
+Settings::update( array( 'payment_provider' => 'stripe_paypal', 'paypal_mode' => 'sandbox', 'paypal_client_id' => str_repeat( 'A', 40 ), 'paypal_client_secret' => str_repeat( 'b', 40 ) ) );
+$rf_calls = array();
+$rf_seen  = array();
+$rf_mode  = 'ok';
+$rf_http  = function ( $method, $url, $headers, $body ) use ( &$rf_calls, &$rf_seen, &$rf_mode, $fake_gateway ) {
+	$stripe = false !== strpos( $url, 'api.stripe.com/v1/refunds' );
+	$paypal = false !== strpos( $url, '/v2/payments/captures/' ) && '/refund' === substr( $url, -7 );
+	if ( ! $stripe && ! $paypal ) {
+		return $fake_gateway( $method, $url, $headers, $body );
+	}
+	if ( 'down' === $rf_mode ) {
+		throw new \RuntimeException( 'timeout' );
+	}
+	$key        = (string) ( $headers['Idempotency-Key'] ?? ( $headers['PayPal-Request-Id'] ?? '' ) );
+	$rf_calls[] = array( 'gw' => $stripe ? 'stripe' : 'paypal', 'url' => $url, 'body' => (string) $body, 'key' => $key, 'auth' => (string) ( $headers['Authorization'] ?? '' ) );
+	if ( $stripe ) {
+		$errs = array(
+			'perm'     => array( 403, array( 'error' => array( 'type' => 'invalid_request_error', 'message' => "The provided key 'rk_test_***' does not have the required permissions for this endpoint on account 'acct_1'. Having the 'rak_charge_write' permission would allow this request to continue." ) ) ),
+			'already'  => array( 400, array( 'error' => array( 'code' => 'charge_already_refunded', 'message' => 'Charge ch_1 has already been refunded.' ) ) ),
+			'balance'  => array( 400, array( 'error' => array( 'code' => 'balance_insufficient', 'message' => 'Insufficient funds in your Stripe account.' ) ) ),
+			'notfound' => array( 404, array( 'error' => array( 'code' => 'resource_missing', 'message' => 'No such payment_intent' ) ) ),
+			'weird'    => array( 500, array( 'error' => array( 'message' => 'Boh interno' ) ) ),
+		);
+	} else {
+		$errs = array(
+			'perm'     => array( 403, array( 'name' => 'NOT_AUTHORIZED', 'message' => 'Authorization failed due to insufficient permissions.' ) ),
+			'already'  => array( 422, array( 'name' => 'UNPROCESSABLE_ENTITY', 'details' => array( array( 'issue' => 'CAPTURE_FULLY_REFUNDED' ) ) ) ),
+			'balance'  => array( 422, array( 'name' => 'UNPROCESSABLE_ENTITY', 'details' => array( array( 'issue' => 'INSUFFICIENT_FUNDS' ) ) ) ),
+			'notfound' => array( 404, array( 'name' => 'RESOURCE_NOT_FOUND', 'details' => array( array( 'issue' => 'INVALID_RESOURCE_ID' ) ) ) ),
+			'weird'    => array( 500, array( 'message' => 'Boh interno' ) ),
+		);
+	}
+	if ( isset( $errs[ $rf_mode ] ) ) {
+		return array( 'code' => $errs[ $rf_mode ][0], 'body' => wp_json_encode( $errs[ $rf_mode ][1] ) );
+	}
+	if ( ! isset( $rf_seen[ $key ] ) ) { // lo stesso invio con la stessa chiave dà lo stesso rimborso, senza rimborsare di nuovo
+		$rf_seen[ $key ] = ( $stripe ? 're_' : 'RF' ) . ( count( $rf_seen ) + 1 );
+	}
+	return $stripe
+		? array( 'code' => 200, 'body' => wp_json_encode( array( 'id' => $rf_seen[ $key ], 'status' => 'succeeded' ) ) )
+		: array( 'code' => 201, 'body' => wp_json_encode( array( 'id' => $rf_seen[ $key ], 'status' => 'COMPLETED' ) ) );
+};
+$ap_ps->set_http( $rf_http );
+$rf_n   = 0;
+$rf_pay = function ( string $provider, int $cents, array $extra = array() ) use ( $wpdb, $ap_paolo, &$rf_n ) {
+	++$rf_n;
+	$wpdb->insert(
+		Db::t( 'payments' ),
+		array_merge(
+			array(
+				'public_id' => 'rf-' . $rf_n . '-' . wp_generate_uuid4(), 'provider' => $provider, 'status' => 'paid', 'amount_cents' => $cents, 'currency' => 'EUR',
+				'payer_person_id' => $ap_paolo, 'payer_user_id' => 0,
+				'items' => wp_json_encode( array( array( 'type' => 'other', 'label' => 'Prova rimborso', 'person_id' => $ap_paolo, 'person_name' => 'Paolo Paga', 'amount_cents' => $cents ) ) ),
+				'provider_ref' => ( 'paypal' === $provider ? 'ORDRF' : 'cs_rf_' ) . $rf_n, 'provider_payment_id' => ( 'paypal' === $provider ? 'CAPRF' : 'pi_rf_' ) . $rf_n,
+				'created_at' => Db::now(), 'updated_at' => Db::now(), 'paid_at' => Db::now(),
+			),
+			$extra
+		)
+	);
+	return (int) $wpdb->insert_id;
+};
+$rf_row  = function ( int $id ) use ( $wpdb ) {
+	return $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . Db::t( 'payments' ) . ' WHERE id = %d', $id ), ARRAY_A );
+};
+$rf_txs  = function () use ( $wpdb ) { // fotografia della prima nota: se il rimborso la toccasse, cambierebbe
+	return md5( (string) wp_json_encode( $wpdb->get_results( 'SELECT * FROM ' . Db::t( 'transactions' ) . ' ORDER BY id', ARRAY_A ) ) );
+};
+$rf_try  = function ( int $id, int $cents, ?int $expected = null ) use ( $ap_ps, $rf_row ) {
+	return asem_throws( function () use ( $ap_ps, $id, $cents, $expected, $rf_row ) {
+		$ap_ps->refund( $id, $cents, null === $expected ? (int) $rf_row( $id )['refunded_cents'] : $expected, 'Motivo di prova' );
+	} );
+};
+$rf_try_noreason = function ( int $id ) use ( $ap_ps, $rf_row ) {
+	return asem_throws( function () use ( $ap_ps, $id, $rf_row ) {
+		$ap_ps->refund( $id, 100, (int) $rf_row( $id )['refunded_cents'], '  ' );
+	} );
+};
+$rf_snap = $rf_txs();
+$rf_bal  = $balance_of( 'Stripe' );
+$rf_mail = count( $ap_mails );
+
+// (a) pagamento mai registrato in prima nota («da rimborsare»): rimborso parziale, poi il resto
+$rf_a  = $rf_pay( 'stripe', 1000, array( 'refund_due' => 1, 'review' => 1, 'error' => 'Pagamento arrivato dopo il rifiuto della domanda: da rimborsare.' ) );
+$rf_ai = $ap_ps->refund_info( $rf_row( $rf_a ) );
+asem_ok( $rf_ai['ok'] && 'a' === $rf_ai['case'] && 1000 === $rf_ai['remaining'], 'rimborso: un pagamento mai registrato in prima nota si può restituire (caso a)' );
+asem_ok( false !== strpos( (string) $rf_try( $rf_a, 300, 5 ), 'è cambiato' ) && 0 === count( $rf_calls ), 'rimborso: se il pagamento è cambiato dopo che hai aperto la pagina non parte nulla' );
+asem_ok( false !== strpos( (string) $rf_try( $rf_a, 49 ), 'da 0,50 € a 10,00 €' ) && false !== strpos( (string) $rf_try( $rf_a, 0 ), 'da 0,50 €' ) && 0 === count( $rf_calls ), 'rimborso: sotto 0,50 € rifiutato' );
+asem_ok( false !== strpos( (string) $rf_try( $rf_a, 1001 ), 'a 10,00 €' ) && 0 === count( $rf_calls ), 'rimborso: oltre il pagato rifiutato' );
+$rf_r = $ap_ps->refund( $rf_a, 300, 0, 'Motivo di prova' );
+$rf_p = $rf_row( $rf_a );
+parse_str( $rf_calls[0]['body'], $rf_b );
+asem_ok( 300 === $rf_r['cents'] && ! $rf_r['full'] && 300 === (int) $rf_p['refunded_cents'] && 're_1' === $rf_p['refund_id'] && ! empty( $rf_p['refunded_at'] ) && 1 === (int) $rf_p['refund_due'], 'rimborso parziale Stripe: registrato sul pagamento, resta «da rimborsare» per il resto' );
+asem_ok( 'stripe' === $rf_calls[0]['gw'] && '/v1/refunds' === substr( $rf_calls[0]['url'], -11 ), 'rimborso Stripe: richiesta al gateway' );
+asem_ok( 'pi_rf_1' === $rf_b['payment_intent'] && '300' === $rf_b['amount'] && $rf_p['public_id'] === $rf_b['metadata']['asem_payment'] && 'Bearer sk_test_51Smoke1' === $rf_calls[0]['auth'] && 'refund-' . $rf_p['public_id'] . '-0-300' === $rf_calls[0]['key'], 'rimborso Stripe: PaymentIntent, importo, chiave segreta e chiave di idempotenza' );
+asem_ok( $rf_snap === $rf_txs() && $rf_bal === $balance_of( 'Stripe' ), 'rimborso di un pagamento mai registrato: la prima nota non cambia' );
+$rf_m = $ap_mail_to( 'paolo.paga@example.com' );
+asem_ok( count( $ap_mails ) === $rf_mail + 1 && 0 === strpos( (string) $rf_m['subject'], 'Rimborso del tuo pagamento · ' ) && 0 === strpos( (string) $rf_m['message'], 'Ciao, abbiamo restituito 3,00 € del pagamento che hai fatto il ' ) && false !== strpos( (string) $rf_m['message'], 'Motivo: Motivo di prova.' ) && false !== strpos( (string) $rf_m['message'], 'entro 5-10 giorni lavorativi' ), 'rimborso: email al socio con importo, data e motivo' );
+asem_ok( false !== strpos( (string) $rf_try_noreason( $rf_a ), 'motivo' ) && 1 === count( $rf_calls ), 'rimborso: senza il motivo non parte nulla' );
+asem_ok( 'Restituiti 3,00 € al socio.' === $rf_row( $rf_a )['error'], 'rimborso: nel motivo del pagamento «Restituiti X,XX € al socio.»' );
+asem_ok( false !== strpos( (string) $rf_try( $rf_a, 300, 0 ), 'è cambiato' ) && 1 === count( $rf_calls ), 'rimborso: lo stesso invio ripetuto (doppio clic) non rimborsa due volte' );
+$rf_r = $ap_ps->refund( $rf_a, 700, 300, 'Motivo di prova' );
+$rf_p = $rf_row( $rf_a );
+asem_ok( $rf_r['full'] && 1000 === (int) $rf_p['refunded_cents'] && 0 === (int) $rf_p['refund_due'] && 0 === (int) $rf_p['review'] && 'refund-' . $rf_p['public_id'] . '-300-700' === $rf_calls[1]['key'], 'rimborso del resto: pagamento restituito per intero, non più da rimborsare né da controllare' );
+asem_ok( false !== strpos( (string) $rf_try( $rf_a, 50 ), 'già stato restituito per intero' ) && 2 === count( $rf_calls ), 'rimborso: un pagamento già restituito per intero non si rimborsa di nuovo' );
+asem_ok( $rf_snap === $rf_txs() && $rf_bal === $balance_of( 'Stripe' ) && 'payment.refunded' === $wpdb->get_var( 'SELECT action FROM ' . Db::t( 'audit_log' ) . ' ORDER BY id DESC LIMIT 1' ), 'rimborso: nel registro azioni, nulla in prima nota' );
+
+// idempotenza della chiamata al gateway: stessa chiave = stesso rimborso
+$rf_x1 = \AssociazioneSemplice\StripeApi::refund( $rf_http, 'sk_test_51Smoke1', 'pi_x', 100, 'chiave-x', 'pub' );
+$rf_x2 = \AssociazioneSemplice\StripeApi::refund( $rf_http, 'sk_test_51Smoke1', 'pi_x', 100, 'chiave-x', 'pub' );
+asem_ok( $rf_x1['ok'] && $rf_x1['id'] === $rf_x2['id'], 'rimborso: stessa chiave di idempotenza, stesso rimborso' );
+
+// oltre il pagato dopo un parziale
+$rf_a2 = $rf_pay( 'stripe', 1000, array( 'refund_due' => 1 ) );
+$ap_ps->refund( $rf_a2, 600, 0, 'Motivo di prova' );
+asem_ok( false !== strpos( (string) $rf_try( $rf_a2, 500 ), 'a 4,00 €' ) && 3 === count( $rf_calls ), 'rimborso: dopo un parziale non si supera il pagato (si può restituire solo il resto)' );
+
+// errori del gateway, con frasi chiare
+$rf_g = $rf_pay( 'stripe', 1000, array( 'review' => 1 ) );
+$rf_n0 = count( $rf_calls );
+$rf_phrase = array(
+	'perm'     => 'La chiave Stripe non ha il permesso di fare rimborsi: attiva «Refunds» in scrittura nelle sue autorizzazioni su Stripe.',
+);
+$rf_mode = 'perm';
+$rf_pm = (string) $rf_try( $rf_g, 500 );
+asem_ok( 0 === strpos( $rf_pm, $rf_phrase['perm'] ) && false !== strpos( $rf_pm, 'Messaggio del gestore:' ) && false !== strpos( $rf_pm, 'required permissions' ) && 0 === (int) $rf_row( $rf_g )['refunded_cents'], 'rimborso Stripe: chiave senza il permesso «Refunds» = frase chiara e nulla di registrato' );
+foreach ( array( 'already' => 'già stato rimborsato per intero', 'balance' => 'non c\'è abbastanza saldo', 'notfound' => 'non trova questo pagamento', 'weird' => 'non ha accettato il rimborso: Boh interno', 'down' => 'non risponde' ) as $rf_k => $rf_w ) {
+	$rf_mode = $rf_k;
+	$rf_msg  = (string) $rf_try( $rf_g, 500 );
+	asem_ok( false !== strpos( $rf_msg, $rf_w ) && 0 === (int) $rf_row( $rf_g )['refunded_cents'] && false === strpos( $rf_msg, 'Stripe:' ), 'rimborso Stripe: «' . $rf_k . '» = frase comprensibile (' . $rf_msg . ')' );
+}
+$rf_mode = 'ok';
+asem_ok( 500 === $ap_ps->refund( $rf_g, 500, 0, 'Motivo di prova' )['cents'] && 500 === (int) $rf_row( $rf_g )['refunded_cents'], 'rimborso: dopo un errore di rete si può riprovare' );
+
+// PayPal
+$rf_pp = $rf_pay( 'paypal', 2000, array( 'refund_due' => 1 ) );
+$rf_n0 = count( $rf_calls );
+$rf_mode = 'perm';
+$rf_msg  = (string) $rf_try( $rf_pp, 500 );
+asem_ok( false !== strpos( $rf_msg, 'L\'app PayPal non ha il permesso di fare rimborsi' ) && false !== strpos( $rf_msg, 'developer.paypal.com' ) && 0 === (int) $rf_row( $rf_pp )['refunded_cents'], 'rimborso PayPal: app senza il permesso = frase che dice cosa attivare e dove' );
+foreach ( array( 'already' => 'già stato rimborsato per intero', 'balance' => 'non c\'è abbastanza saldo', 'notfound' => 'non trova questo pagamento', 'down' => 'non risponde' ) as $rf_k => $rf_w ) {
+	$rf_mode = $rf_k;
+	$rf_msg  = (string) $rf_try( $rf_pp, 500 );
+	asem_ok( false !== strpos( $rf_msg, $rf_w ) && 0 === (int) $rf_row( $rf_pp )['refunded_cents'], 'rimborso PayPal: «' . $rf_k . '» = frase comprensibile' );
+}
+$rf_mode = 'ok';
+$rf_r    = $ap_ps->refund( $rf_pp, 500, 0, 'Motivo di prova' );
+$rf_last = $rf_calls[ count( $rf_calls ) - 1 ];
+$rf_body = json_decode( $rf_last['body'], true );
+asem_ok( 'paypal' === $rf_last['gw'] && false !== strpos( $rf_last['url'], '/v2/payments/captures/CAPRF' . $rf_n . '/refund' ) && '5.00' === $rf_body['amount']['value'] && 'EUR' === $rf_body['amount']['currency_code'] && 'Bearer TOK' === $rf_last['auth'] && 0 === strpos( $rf_last['key'], 'refund-' ) && 500 === (int) $rf_row( $rf_pp )['refunded_cents'], 'rimborso parziale PayPal: cattura, importo in euro e PayPal-Request-Id' );
+$ap_ps->refund( $rf_pp, 1500, 500, 'Motivo di prova' );
+asem_ok( 2000 === (int) $rf_row( $rf_pp )['refunded_cents'] && 0 === (int) $rf_row( $rf_pp )['refund_due'], 'rimborso PayPal: il resto, restituito per intero' );
+
+// (b) incasso già annullato in prima nota; con incasso ancora valido non si rimborsa
+$rf_b1  = $rf_pay( 'stripe', 1500 );
+$rf_ref = (string) $rf_row( $rf_b1 )['provider_ref'];
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => $ledger->online_account( 'stripe' ), 'method' => 'stripe', 'person_id' => $ap_paolo, 'document_ref' => $rf_ref, 'lines' => array( array( 'category_id' => $ledger->category_id_of_kind( 'other_income' ), 'amount_cents' => 1500, 'description' => 'Pagamento online (Stripe)' ) ) ) );
+$rf_tx = array_map( 'intval', $wpdb->get_col( $wpdb->prepare( 'SELECT id FROM ' . Db::t( 'transactions' ) . ' WHERE document_ref = %s', $rf_ref ) ) );
+asem_ok( 1 === count( $rf_tx ), 'rimborso: l\'incasso del pagamento è in prima nota' );
+asem_ok( false !== strpos( (string) $rf_try( $rf_b1, 500 ), 'ancora registrato in prima nota' ) && ! $ap_ps->refund_info( $rf_row( $rf_b1 ) )['ok'], 'rimborso: con l\'incasso ancora valido in prima nota si rifiuta e dice di annullarlo prima' );
+$rf_page = asem_render( array( Admin\PaymentsPage::class, 'render' ), 'Prova rimborso' );
+asem_ok( 0 === (int) $rf_row( $rf_b1 )['review'], 'rimborso: finché l\'incasso è valido il pagamento non è «da controllare»' );
+$ledger->void( $rf_tx[0], 'Prova di annullo' );
+$rf_p = $rf_row( $rf_b1 );
+asem_ok( 1 === (int) $rf_p['review'] && false !== strpos( (string) $rf_p['error'], 'usa «Rimborsa»' ), 'annullo dell\'incasso online: il pagamento si segna «da controllare» con la domanda se rimborsare (nessun rimborso in automatico)' );
+asem_ok( 0 === (int) $rf_p['refunded_cents'] && $ap_ps->refund_info( $rf_p )['ok'] && 'b' === $ap_ps->refund_info( $rf_p )['case'], 'rimborso: con l\'incasso annullato il pagamento si può restituire (caso b)' );
+$rf_snap2 = $rf_txs();
+$rf_bal2  = $balance_of( 'Stripe' );
+$rf_n0    = count( $rf_calls );
+$ap_ps->refund( $rf_b1, 1500, 0, 'Motivo di prova' );
+$rf_p = $rf_row( $rf_b1 );
+asem_ok( $rf_n0 + 1 === count( $rf_calls ) && 1500 === (int) $rf_p['refunded_cents'] && 0 === (int) $rf_p['review'] && $rf_snap2 === $rf_txs() && $rf_bal2 === $balance_of( 'Stripe' ), 'rimborso con incasso annullato: restituito per intero e la prima nota non viene toccata né ricreata' );
+
+// metodi non rimborsabili da qui, pagamento non incassato, domanda ancora in esame
+foreach ( array( 'sumup' => 'SumUp', 'satispay' => 'Satispay', 'woocommerce' => 'WooCommerce' ) as $rf_k => $rf_w ) {
+	$rf_o = $rf_pay( $rf_k, 1000, array( 'refund_due' => 1 ) );
+	asem_ok( false !== strpos( (string) $rf_try( $rf_o, 500 ), $rf_w ) && $rf_n0 + 1 === count( $rf_calls ), 'rimborso: ' . $rf_w . ' non si rimborsa da qui (frase chiara, nessuna chiamata)' );
+}
+$rf_u = $rf_pay( 'stripe', 1000, array( 'status' => 'pending' ) );
+asem_ok( false !== strpos( (string) $rf_try( $rf_u, 500 ), 'non risulta incassato' ), 'rimborso: un pagamento non incassato non si rimborsa' );
+$rf_app = $rf_pay( 'stripe', 1000, array( 'items' => wp_json_encode( array( array( 'type' => 'application', 'person_id' => $ap_paolo, 'amount_cents' => 1000, 'label' => 'Quota' ) ) ) ) );
+$wpdb->update( Db::t( 'people' ), array( 'application_status' => 'requested' ), array( 'id' => $ap_paolo ) );
+asem_ok( false !== strpos( (string) $rf_try( $rf_app, 500 ), 'ancora in esame' ), 'rimborso: la quota di una domanda ancora in esame non si rimborsa (prima si decide)' );
+$wpdb->update( Db::t( 'people' ), array( 'application_status' => null ), array( 'id' => $ap_paolo ) );
+
+// ruoli: solo l'amministratore (come la pagina); la segreteria e il dipendente no
+asem_ok( Plugin::CAP === Admin\Actions::required_cap( 'asem_payment_refund' ) && ! user_can( $sec_u, Admin\Actions::required_cap( 'asem_payment_refund' ) ) && user_can( 1, Admin\Actions::required_cap( 'asem_payment_refund' ) ), 'rimborso: l\'azione è riservata all\'amministratore (asem_manage), la segreteria no' );
+asem_ok( false !== strpos( implode( ',', \AssociazioneSemplice\ProBoot::ACTIONS['payments'] ), 'asem_payment_refund' ), 'rimborso: l\'azione si blocca senza la funzione pagamenti' );
+
+// l'azione dell'amministrazione: importo scritto e spunta «non si può annullare»
+$rf_c  = $rf_pay( 'stripe', 1000, array( 'refund_due' => 1 ) );
+$rf_n0 = count( $rf_calls );
+asem_ok( null !== asem_throws( function () use ( $rf_c ) { Admin\ProActions::payment_refund( array( 'id' => $rf_c, 'expected' => 0, 'amount' => '5,00' ) ); } ) && $rf_n0 === count( $rf_calls ), 'rimborso: senza la spunta «non si può annullare» non parte nulla' );
+asem_ok( null !== asem_throws( function () use ( $rf_c ) { Admin\ProActions::payment_refund( array( 'id' => $rf_c, 'expected' => 0, 'amount' => 'boh', 'reason' => 'x', 'ack' => '1' ) ); } ) && null !== asem_throws( function () use ( $rf_c ) { Admin\ProActions::payment_refund( array( 'id' => $rf_c, 'expected' => 0, 'amount' => '', 'reason' => 'x', 'ack' => '1' ) ); } ) && $rf_n0 === count( $rf_calls ), 'rimborso: importo non scritto o non valido rifiutato' );
+$rf_res = Admin\ProActions::payment_refund( array( 'id' => $rf_c, 'expected' => 0, 'amount' => '5,00', 'reason' => 'Doppio pagamento', 'ack' => '1' ) );
+asem_ok( 'Rimborso di 5,00 € inviato al socio.' === $rf_res[1] && 500 === (int) $rf_row( $rf_c )['refunded_cents'], 'rimborso: esito «Rimborso di 5,00 € inviato al socio.»' );
+$rf_mail_email = $wpdb->get_var( $wpdb->prepare( 'SELECT email FROM ' . Db::t( 'people' ) . ' WHERE id = %d', $ap_paolo ) );
+$wpdb->update( Db::t( 'people' ), array( 'email' => null ), array( 'id' => $ap_paolo ) );
+$rf_mn = count( $ap_mails );
+$rf_res = Admin\ProActions::payment_refund( array( 'id' => $rf_c, 'expected' => 500, 'amount' => '1,00', 'reason' => 'Resto', 'ack' => '1' ) );
+$wpdb->update( Db::t( 'people' ), array( 'email' => $rf_mail_email ), array( 'id' => $ap_paolo ) );
+asem_ok( count( $ap_mails ) === $rf_mn && false !== strpos( $rf_res[1], 'non ha un\'email' ) && 600 === (int) $rf_row( $rf_c )['refunded_cents'], 'rimborso: senza email del socio l\'email non parte e l\'esito lo dice (il rimborso è comunque partito)' );
+
+// anno fiscale chiuso: il rimborso non scrive nella prima nota (nemmeno nei suoi anni chiusi)
+$rf_fy = \AssociazioneSemplice\FiscalYears::get( $fy_far );
+if ( $rf_fy ) {
+	$rf_d = $rf_pay( 'stripe', 1000, array( 'refund_due' => 1, 'paid_at' => $fy_far . '-06-20 10:00:00' ) );
+	$wpdb->update( Db::t( 'fiscal_years' ), array( 'status' => 'closed' ), array( 'year' => $fy_far ) );
+	$rf_snap3 = $rf_txs();
+	asem_ok( ! \AssociazioneSemplice\FiscalYears::is_open( $fy_far ), 'rimborso: anno fiscale chiuso (simulato)' );
+	$ap_ps->refund( $rf_d, 1000, 0, 'Motivo di prova' );
+	asem_ok( 1000 === (int) $rf_row( $rf_d )['refunded_cents'] && $rf_snap3 === $rf_txs() && ! \AssociazioneSemplice\FiscalYears::is_open( $fy_far ), 'rimborso di un pagamento di un anno chiuso: la prima nota e l\'anno chiuso non vengono toccati' );
+	$wpdb->update( Db::t( 'fiscal_years' ), array( 'status' => $rf_fy['status'] ), array( 'year' => $fy_far ) );
+}
+
+// la pagina: stato «Rimborsato / restituiti X,XX €», modulo «Rimborsa», testo di aiuto aggiornato
+$rf_open = $rf_pay( 'stripe', 1000, array( 'refund_due' => 1 ) );
+$rf_html = asem_render( array( Admin\PaymentsPage::class, 'render' ), 'asem_payment_refund' );
+asem_ok( false !== strpos( $rf_html, 'Quanto restituire al socio (massimo 10,00 €)? I soldi tornano sul suo metodo di pagamento e non si può annullare.' ) && false !== strpos( $rf_html, 'name="ack"' ) && false !== strpos( $rf_html, 'name="expected"' ), 'pagamenti online: modulo di rimborso con la domanda e la spunta' );
+asem_ok( false !== strpos( $rf_html, 'Rimborsato' ) && false !== strpos( $rf_html, 'restituiti 10,00 €' ) && false !== strpos( $rf_html, 'Rimborsato in parte' ) && false !== strpos( $rf_html, 'restituiti 6,00 €' ), 'pagamenti online: la pagina mostra «Rimborsato» e «restituiti X,XX €» (anche in parte)' );
+asem_ok( false === strpos( $rf_html, 'si registrano come spesa' ) && false !== strpos( $rf_html, 'Rimborsa' ), 'pagamenti online: il testo di aiuto non dice più di rimborsare dal gateway e registrare una spesa' );
+Settings::update( array( 'payment_provider' => 'stripe' ) );
 $ap_ps->set_http( null );
 Settings::update( array( 'payment_provider' => 'none', 'apply_pay_online' => 0, 'apply_enabled' => 0 ) );
 remove_filter( 'pre_wp_mail', $ap_hook, 10 );
