@@ -17,16 +17,19 @@ use App\Modules\Core\Contracts\SetupStep;
 final readonly class EntityStep implements SetupStep
 {
     public const KINDS = [
-        'asd' => 'Associazione sportiva dilettantistica (ASD)',
-        'aps' => 'Associazione di promozione sociale (APS)',
-        'odv' => 'Organizzazione di volontariato (ODV)',
-        'ets' => 'Altro ente del Terzo settore',
-        'circolo' => 'Circolo o associazione culturale',
-        'altro' => 'Altra associazione',
+        'asd' => 'ASD – associazione sportiva dilettantistica',
+        'aps' => 'APS – associazione di promozione sociale',
+        'odv' => 'ODV – organizzazione di volontariato',
+        'ets' => 'ETS – altro ente del Terzo settore',
+        'circolo' => 'Circolo',
+        'altro' => 'Altro',
     ];
 
     /** Campi di testo e lunghezza massima. */
-    private const TEXT = ['runts' => 30, 'address' => 190, 'zip' => 5, 'city' => 120, 'province' => 2, 'phone' => 30];
+    private const TEXT = ['runts' => 30, 'address' => 190, 'zip' => 5, 'city' => 120, 'province' => 2, 'phone' => 30, 'legal_rep' => 120, 'sdi' => 7];
+
+    /** Dati «solo se esistono»: la casella «non ce l'ha» al posto del valore. */
+    public const NONE = ['vat', 'runts', 'pec'];
 
     public function __construct(private OrgSettings $settings) {}
 
@@ -57,6 +60,9 @@ final readonly class EntityStep implements SetupStep
             $v = $this->settings->get('ente.'.$k);
             $values[$k] = is_string($v) ? $v : '';
         }
+        foreach (self::NONE as $k) {
+            $values[$k.'_none'] = $this->settings->get('ente.'.$k.'_none') === true;
+        }
 
         return ['values' => $values, 'kinds' => array_map(static fn (string $k, string $l): array => ['value' => $k, 'label' => $l], array_keys(self::KINDS), self::KINDS)];
     }
@@ -64,17 +70,54 @@ final readonly class EntityStep implements SetupStep
     public function errors(array $input): array
     {
         $t = static fn (string $k): string => is_scalar($input[$k] ?? null) ? trim((string) $input[$k]) : '';
+        $none = static fn (string $k): bool => filter_var($input[$k.'_none'] ?? false, FILTER_VALIDATE_BOOLEAN);
         $errors = [];
-        if ($t('kind') !== '' && ! array_key_exists($t('kind'), self::KINDS)) {
+        if ($t('kind') === '') {
+            $errors[] = 'Indica la forma dell\'ente.';
+        } elseif (! array_key_exists($t('kind'), self::KINDS)) {
             $errors[] = 'Forma dell\'ente non valida.';
         }
-        if ($t('tax_code') !== '' && ! Fiscal::isValidEntityTaxCode($t('tax_code'))) {
+        if ($t('tax_code') === '') {
+            $errors[] = 'Indica il codice fiscale dell\'ente.';
+        } elseif (! Fiscal::isValidEntityTaxCode($t('tax_code'))) {
             $errors[] = 'Il codice fiscale dell\'ente non è valido: controllalo (11 cifre, oppure 16 caratteri se è una persona fisica).';
         }
         if ($t('vat') !== '' && ! Fiscal::isValidVat($t('vat'))) {
             $errors[] = 'La partita IVA non è valida.';
         }
-        foreach (['email' => 'L\'email', 'pec' => 'La PEC'] as $k => $label) {
+        // Partita IVA, numero RUNTS e PEC: o il dato, o la casella «non ce l'ha».
+        foreach (['vat' => 'Indica la partita IVA oppure spunta «L\'associazione non ha la partita IVA».', 'runts' => 'Indica il numero RUNTS (con la sezione) oppure spunta «L\'associazione non è iscritta al RUNTS».', 'pec' => 'Indica la PEC oppure spunta «L\'associazione non ha una PEC».'] as $k => $msg) {
+            if ($t($k) === '' && ! $none($k)) {
+                $errors[] = $msg;
+            }
+        }
+        if ($t('address') === '') {
+            $errors[] = 'Indica l\'indirizzo della sede.';
+        }
+        if ($t('zip') === '') {
+            $errors[] = 'Indica il CAP della sede.';
+        }
+        if ($t('city') === '') {
+            $errors[] = 'Indica il comune della sede.';
+        }
+        if ($t('province') === '') {
+            $errors[] = 'Indica la provincia della sede (sigla di 2 lettere).';
+        }
+        if ($t('legal_rep') === '') {
+            $errors[] = 'Indica nome e cognome del legale rappresentante.';
+        }
+        if ($t('sdi') !== '' && preg_match('/^[A-Za-z0-9]{7}$/', $t('sdi')) !== 1) {
+            $errors[] = 'Il codice destinatario ha 7 caratteri (lettere e cifre).';
+        }
+        if ($t('email') === '') {
+            $errors[] = 'Indica l\'email della segreteria.';
+        }
+        if ($t('phone') === '') {
+            $errors[] = 'Indica il telefono della segreteria.';
+        } elseif (preg_match('/^[0-9+\-.()\/ ]+$/', $t('phone')) !== 1 || preg_match_all('/\d/', $t('phone')) < 6) {
+            $errors[] = 'Indica un telefono valido per la segreteria (almeno 6 cifre; ammessi + - . ( ) e spazi).';
+        }
+        foreach (['email' => 'L\'email della segreteria', 'pec' => 'La PEC'] as $k => $label) {
             if ($t($k) !== '' && (filter_var($t($k), FILTER_VALIDATE_EMAIL) === false || mb_strlen($t($k)) > 190)) {
                 $errors[] = "{$label} non è un indirizzo valido.";
             }
@@ -106,7 +149,12 @@ final readonly class EntityStep implements SetupStep
             'pec' => mb_strtolower($t('pec')),
         ];
         foreach (array_keys(self::TEXT) as $k) {
-            $values[$k] = $k === 'province' ? strtoupper($t($k)) : $t($k);
+            $values[$k] = in_array($k, ['province', 'sdi'], true) ? strtoupper($t($k)) : $t($k);
+        }
+        // «Non ce l'ha» vale solo se il dato è vuoto.
+        foreach (self::NONE as $k) {
+            $has = $k === 'vat' ? $values['vat'] !== '' : ($k === 'pec' ? $values['pec'] !== '' : $values['runts'] !== '');
+            $values[$k.'_none'] = ! $has && filter_var($input[$k.'_none'] ?? false, FILTER_VALIDATE_BOOLEAN);
         }
         foreach ($values as $k => $v) {
             $this->settings->set('ente.'.$k, $v === '' ? null : $v);

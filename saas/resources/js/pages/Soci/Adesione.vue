@@ -5,7 +5,7 @@ import FormField from '../../components/FormField.vue';
 import TextInput from '../../components/TextInput.vue';
 import PrimaryButton from '../../components/PrimaryButton.vue';
 
-const props = defineProps({ org: Object, sent: Boolean, needsRules: Boolean, types: Array, notices: Object, privacyUrl: String, rulesUrl: String });
+const props = defineProps({ org: Object, sent: Boolean, needsRules: Boolean, types: Array, notices: Object, privacyUrl: String, rulesUrl: String, contacts: Object });
 
 const form = useForm({
     first_name: '', last_name: '', birth_date: '', birth_place: '', tax_code: '', email: '', phone: '', address: '', type: props.types[0]?.value ?? '',
@@ -76,6 +76,7 @@ const submit = () => form.post(`/adesione/${props.org.slug}`, { preserveScroll: 
                 <label class="flex items-start gap-2"><input v-model="form.privacy_ok" type="checkbox" class="mt-1" /> <span>{{ notices.privacy }} <a v-if="privacyUrl" :href="privacyUrl" target="_blank" rel="noopener" class="font-semibold text-accent hover:underline">Leggi l'informativa</a> (obbligatorio)</span></label>
                 <label v-if="needsRules" class="flex items-start gap-2"><input v-model="form.rules_ok" type="checkbox" class="mt-1" /> <span>{{ notices.rules }} <a v-if="rulesUrl" :href="rulesUrl" target="_blank" rel="noopener" class="font-semibold text-accent hover:underline">Leggi il regolamento</a> (obbligatorio)</span></label>
                 <label class="flex items-start gap-2"><input v-model="form.images_ok" type="checkbox" class="mt-1" /> <span>{{ notices.images }} (facoltativo)</span></label>
+                <p v-if="contacts" class="caption">Per esercitare i tuoi diritti sui dati scrivi a {{ contacts.email }} o chiama {{ contacts.phone }}.</p>
             </fieldset>
 
             <div class="absolute -left-[9999px]" aria-hidden="true">

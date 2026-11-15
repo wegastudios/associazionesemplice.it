@@ -8,6 +8,7 @@ use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Ledger\FiscalYearService;
 use App\Modules\Contabilita\Models\Account;
 use App\Modules\Contabilita\Models\Category;
+use App\Modules\Core\Contracts\OrgProfile;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Core\Org\SetupWizard;
@@ -27,7 +28,7 @@ function setupInput(array $over = []): array
     $cash = test()->orgContext()->run(test()->org->id, fn () => Account::query()->where('type', 'cash')->sole()->id);
 
     return array_replace_recursive(['steps' => [
-        'ente' => ['kind' => 'aps', 'tax_code' => '12345678903', 'vat' => '', 'runts' => '12345', 'address' => 'Via Roma 1', 'zip' => '00100', 'city' => 'Roma', 'province' => 'rm', 'email' => 'Info@Alfa.example', 'pec' => '', 'phone' => ''],
+        'ente' => ['kind' => 'aps', 'tax_code' => '12345678903', 'vat' => '', 'vat_none' => true, 'legal_rep' => 'Mario Rossi', 'runts' => '12345', 'address' => 'Via Roma 1', 'zip' => '00100', 'city' => 'Roma', 'province' => 'rm', 'email' => 'Info@Alfa.example', 'pec' => '', 'pec_none' => true, 'phone' => '06 1234567'],
         'anno_sociale' => ['start_month' => 9],
         'anno_fiscale' => ['start_month' => 9],
         'tesseramento' => ['fee' => '25,00'],
@@ -106,4 +107,34 @@ it('chiede subito il mese dell\'anno sociale e dell\'anno fiscale e rifà l\'ann
         app(Ledger::class)->recordIncome(new Income($today->toDateString(), Account::query()->where('type', 'cash')->sole()->id, [new IncomeLine(Category::query()->where('kind', 'donation')->sole()->id, 1000)], null, null, false));
     });
     $this->post('/gestionale/configurazione', setupInput(['steps' => ['anno_fiscale' => ['start_month' => 3]]]))->assertSessionHasErrors('steps.anno_fiscale');
+});
+
+it('chiede email e telefono della segreteria e non salva senza', function (): void {
+    $this->actingAs($this->owner)->post('/gestionale/configurazione', setupInput(['steps' => ['ente' => ['email' => '', 'phone' => '']]]))
+        ->assertSessionHasErrors('steps.ente');
+    $this->post('/gestionale/configurazione', setupInput(['steps' => ['ente' => ['phone' => '12']]]))->assertSessionHasErrors('steps.ente');
+    $this->post('/gestionale/configurazione', setupInput(['steps' => ['ente' => ['email' => 'non-una-email']]]))->assertSessionHasErrors('steps.ente');
+    $this->orgContext()->run($this->org->id, fn () => expect(app(SetupWizard::class)->pending())->toBeTrue());
+});
+
+it('mostra il promemoria dei contatti finché mancano', function (): void {
+    $this->actingAs($this->owner)->post('/gestionale/configurazione', setupInput())->assertRedirect('/gestionale');
+    $this->get('/gestionale/configurazione')->assertInertia(fn (Assert $page) => $page->where('org.contacts_missing', false)->where('org.data_missing', []));
+
+    $this->orgContext()->run($this->org->id, fn () => app(OrgSettings::class)->set('ente.phone', null));
+    $this->get('/gestionale/configurazione')->assertInertia(fn (Assert $page) => $page->where('org.contacts_missing', true)->where('org.data_missing', ['telefono della segreteria']));
+});
+
+it('chiede tutti i dati fiscali, con la casella «non ce l\'ha» per partita IVA, RUNTS e PEC', function (): void {
+    $empty = ['kind' => '', 'tax_code' => '', 'legal_rep' => '', 'address' => '', 'zip' => '', 'city' => '', 'province' => '', 'vat' => '', 'vat_none' => false, 'runts' => '', 'runts_none' => false, 'pec' => '', 'pec_none' => false];
+    $this->actingAs($this->owner)->post('/gestionale/configurazione', setupInput(['steps' => ['ente' => $empty]]))->assertSessionHasErrors('steps.ente');
+    $this->orgContext()->run($this->org->id, fn () => expect(app(SetupWizard::class)->pending())->toBeTrue());
+
+    // Con le tre caselle e senza codice destinatario né regime (facoltativi) si salva.
+    $this->post('/gestionale/configurazione', setupInput(['steps' => ['ente' => ['runts' => '', 'runts_none' => true]]]))->assertRedirect('/gestionale');
+    $this->orgContext()->run($this->org->id, function (): void {
+        $s = app(OrgSettings::class);
+        expect($s->get('ente.legal_rep'))->toBe('Mario Rossi')->and($s->get('ente.vat_none'))->toBeTrue()->and($s->get('ente.runts_none'))->toBeTrue()
+            ->and(app(OrgProfile::class)->missing())->toBe([]);
+    });
 });

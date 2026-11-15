@@ -10,6 +10,7 @@ use App\Modules\AreaSoci\Services\MemberAccessError;
 use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Contracts\LedgerError;
+use App\Modules\Core\Contracts\OrgContacts;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\PayableDues;
 use App\Modules\Soci\Contracts\MemberProfiles;
@@ -352,8 +353,10 @@ final readonly class OnlinePayments
 
             return false;
         }
+        // L'avviso è una conseguenza automatica del rimborso: parte sempre; senza i contatti della segreteria esce senza indirizzo di risposta né riga contatti.
+        $contacts = $this->app->make(OrgContacts::class)->all();
         try {
-            $this->app->make(Mailer::class)->to($email)->send(new PaymentRefunded($orgName, self::euro($cents), date('d/m/Y', (int) strtotime($createdAt)), mb_substr($reason, 0, 200)));
+            $this->app->make(Mailer::class)->to($email)->send(new PaymentRefunded($orgName, self::euro($cents), date('d/m/Y', (int) strtotime($createdAt)), mb_substr($reason, 0, 200), $contacts['email'] ?? null, $contacts['phone'] ?? null));
             $this->audit->record('payment.refund_mail_sent', 'app.online_payments', $paymentId, []);
 
             return true;

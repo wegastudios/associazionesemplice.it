@@ -1002,12 +1002,16 @@ asem_ok( '' === trim( (string) ob_get_clean() ), 'contatti: compilati i due camp
 // invii manuali: senza contatti completi si rifiutano; le email automatiche partono comunque
 Settings::update( array( 'secretary_email' => '', 'secretary_phone' => '' ) );
 $ct_blk = (string) asem_throws( function () { \AssociazioneSemplice\Contacts::assert_can_write(); } );
-asem_ok( 'Prima inserisci email e telefono della segreteria (Impostazioni › Ente): senza, la segreteria non può inviare email ai soci.' === $ct_blk, 'contatti: invio manuale senza contatti rifiutato con la frase chiara' );
-asem_ok( 'Prima inserisci email e telefono della segreteria (Impostazioni › Ente): senza, la segreteria non può inviare email ai soci. Intanto scarica la ricevuta e consegnala a mano.' === (string) asem_throws( function () { \AssociazioneSemplice\Contacts::assert_can_write( true ); } ), 'contatti: per la ricevuta si aggiunge «scarica e consegna a mano»' );
+asem_ok( 'Prima inserisci email e telefono della segreteria (Impostazioni › Ente): senza, la segreteria non può inviare messaggi ai soci.' === $ct_blk, 'contatti: invio manuale senza contatti rifiutato con la frase chiara' );
+asem_ok( 'Prima inserisci email e telefono della segreteria (Impostazioni › Ente): senza, la segreteria non può inviare messaggi ai soci. Intanto scarica la ricevuta e consegnala a mano.' === (string) asem_throws( function () { \AssociazioneSemplice\Contacts::assert_can_write( true ); } ), 'contatti: per la ricevuta si aggiunge «scarica e consegna a mano»' );
 $ct_rb = new ReflectionMethod( Admin\ProActions::class, 'receipt_email' );
 asem_ok( 0 === strpos( (string) asem_throws( function () use ( $ct_rb ) { $ct_rb->invoke( null, array( 'key' => 'x' ) ); } ), 'Prima inserisci email e telefono' ), 'contatti: la ricevuta inviata a mano è bloccata senza contatti' );
 $ct_rb2 = new ReflectionMethod( Admin\ProActions::class, 'broadcast_send' );
 asem_ok( 0 === strpos( (string) asem_throws( function () use ( $ct_rb2 ) { $ct_rb2->invoke( null, array( 'audience' => 'members_all', 'subject' => 'Ciao', 'body' => 'Testo' ) ); } ), 'Prima inserisci email e telefono' ), 'contatti: le comunicazioni ai soci sono bloccate senza contatti' );
+$ct_sn = new ReflectionMethod( Admin\Actions::class, 'send_notice' );
+$ct_sn->setAccessible( true );
+asem_ok( 0 === strpos( (string) asem_throws( function () use ( $ct_sn ) { $ct_sn->invoke( null, array( 'activity_id' => 1, 'subject' => 'Avviso', 'body' => 'Scritto a mano' ) ); } ), 'Prima inserisci email e telefono' ), 'contatti: l\'avviso scritto a mano agli iscritti è bloccato senza contatti' );
+asem_ok( 0 === strpos( (string) asem_throws( function () use ( $ct_rb2 ) { $ct_rb2->invoke( null, array( 'audience' => 'members_all', 'subject' => 'Ciao', 'body' => 'Testo', 'channels' => array( 'sms' ) ) ); } ), 'Prima inserisci email e telefono' ), 'contatti: anche una comunicazione solo SMS, scritta a mano, è bloccata senza contatti' );
 $ct_auto = array();
 add_filter(
 	'pre_wp_mail',
@@ -4103,7 +4107,7 @@ asem_ok( null !== $le_has( $le_w[0] ) && null !== $le_has( $le_w[1] ) && null ==
 $le_act = new ReflectionMethod( Admin\Actions::class, 'lesson_exception' );
 $le_act->setAccessible( true );
 $le_res = $le_act->invoke( null, array( 'activity_id' => $once_c, 'date' => $le_w[0], 'note' => 'Prova', 'notify' => '1' ) );
-asem_ok( 'Lezione annullata, ma i partecipanti NON sono stati avvisati: mancano email e telefono della segreteria (Impostazioni › Ente). Avvisali in un altro modo.' === $le_res[1], 'lezioni: annullo con avviso senza contatti della segreteria dice che i partecipanti NON sono stati avvisati' );
+asem_ok( 0 === strpos( $le_res[1], 'Lezione annullata.' ) && false === strpos( $le_res[1], 'NON sono stati avvisati' ) && false === strpos( $le_res[1], 'Prima inserisci' ), 'lezioni: l\'avviso di annullo è generato dal programma e parte anche senza i contatti della segreteria' );
 \AssociazioneSemplice\LessonExceptions::restore( $once_c, $le_w[0] );
 // questa lezione e le successive: la prima resta, dalla seconda in poi (stesso giorno) sono annullate
 $le_end  = gmdate( 'Y-m-d', strtotime( $today . ' +70 days' ) );

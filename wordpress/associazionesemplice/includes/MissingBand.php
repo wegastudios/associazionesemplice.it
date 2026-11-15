@@ -25,8 +25,8 @@ final class MissingBand {
 		$text     = Texts::t( 'Mancano dei dati dell\'associazione: {elenco}.', array( 'elenco' => $list ) );
 		$other    = Texts::t( 'Mancano dei dati dell\'associazione: {elenco}. Chiedi a chi amministra di completarli.', array( 'elenco' => $list ) );
 		if ( $contacts ) { // il blocco degli invii manuali riguarda solo i contatti, non i dati fiscali
-			$text  .= ' ' . Texts::t( 'Finché mancano email e telefono della segreteria, la segreteria non può inviare email ai soci (comunicazioni, avvisi e ricevute inviate a mano). Gli invii automatici, come il link di accesso, partono lo stesso.' );
-			$other .= ' ' . Texts::t( 'Finché mancano email e telefono della segreteria, la segreteria non può inviare email ai soci.' );
+			$text  .= ' ' . Texts::t( 'Finché mancano email e telefono della segreteria, la segreteria non può inviare messaggi ai soci (comunicazioni, avvisi agli iscritti e ricevute inviate a mano). Gli invii automatici, come il link di accesso, partono lo stesso.' );
+			$other .= ' ' . Texts::t( 'Finché mancano email e telefono della segreteria, la segreteria non può inviare messaggi ai soci.' );
 		}
 		$people = array( array( 'url' => Admin\Ui::url( 'asem-people' ), 'button' => Texts::t( 'Indica il presidente' ) ) );
 		$only_p = array( 'president' ) === $keys; // se manca solo il presidente, il pulsante porta alle persone
