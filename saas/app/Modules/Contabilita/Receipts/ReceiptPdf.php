@@ -133,6 +133,12 @@ final readonly class ReceiptPdf
             $pdf->text(56, $y, 'di cui imponibile '.$rate.'%: '.Money::format($b['net']).' · IVA: '.Money::format($b['vat']), 10);
             $y += 14;
         }
+        // L'aliquota zero si chiama «IVA esente». Senza partita IVA nessuna riga ha aliquota: della ricevuta non compare l'IVA.
+        $exempt = array_sum(array_map(static fn (array $v): int => $v['vat_rate'] === 0 ? $v['amount'] : 0, $vatRows));
+        if ($exempt > 0) {
+            $pdf->text(56, $y, 'di cui IVA esente: '.Money::format($exempt), 10);
+            $y += 14;
+        }
         $y += 6;
         $pdf->text(56, $y, 'Pagato con: '.$methodLabel, 10);
         if ($str($first->document_ref ?? '') !== '') {

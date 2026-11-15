@@ -29,6 +29,7 @@ use Carbon\CarbonImmutable;
  * @property string|null $document_ref
  * @property int|null $vat_rate
  * @property int $vat_cents
+ * @property bool $vat_reverse_charge
  * @property CarbonImmutable|null $voided_at
  * @property string|null $void_reason
  * @property CarbonImmutable|null $created_at

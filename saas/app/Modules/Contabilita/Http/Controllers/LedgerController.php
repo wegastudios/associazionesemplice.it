@@ -19,6 +19,7 @@ use App\Modules\Contabilita\Models\Receipt;
 use App\Modules\Contabilita\Models\Transaction;
 use App\Modules\Contabilita\Rules\Vat;
 use App\Modules\Core\Contracts\Input;
+use App\Modules\Core\Contracts\OrgFiscal;
 use Closure;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -35,6 +36,7 @@ final readonly class LedgerController
         private Ledger $ledger,
         private FiscalYearService $years,
         private Activities $activities,
+        private OrgFiscal $fiscal,
     ) {}
 
     public function index(Request $request): Response
@@ -88,11 +90,15 @@ final readonly class LedgerController
                 'void_reason' => $t->void_reason,
                 'activity_id' => $t->activity_id,
                 'activity' => $t->activity_id !== null ? ($activityNames[$t->activity_id] ?? null) : null,
+                // Solo con la partita IVA: senza, un movimento è solo un importo e nessuna dicitura IVA compare.
+                'vat' => ! $this->fiscal->hasVat() ? null : ($t->vat_reverse_charge ? 'Reverse charge' : ($t->vat_rate === null ? null : OrgFiscal::label($t->vat_rate))),
             ])->values(),
             'next' => $page->nextPageUrl(),
             'prev' => $page->previousPageUrl(),
             'balances' => collect($this->ledger->balances())->map(fn (int $c): string => Money::format($c)),
             'canEdit' => $request->user()?->can('accounting.edit') ?? false,
+            // Aliquote scelte in Aspetto fiscale: senza partita IVA non c'è nessuna scelta.
+            'fiscal' => ['hasVat' => $this->fiscal->hasVat(), 'includesVat' => $this->fiscal->includesVat(), 'rates' => $this->fiscal->rates()],
         ]);
     }
 
@@ -117,12 +123,13 @@ final readonly class LedgerController
         return $this->attempt(function () use ($data): string {
             $lines = [];
             foreach (Input::rows($data, 'lines') as $i => $line) {
+                $rate = Vat::cleanRate(Input::raw($line, 'vat_rate'));
                 $lines[] = new IncomeLine(
                     Input::string($line, 'category_id'),
-                    self::cents(Input::raw($line, 'amount'), "lines.{$i}.amount"),
+                    $this->gross(self::cents(Input::raw($line, 'amount'), "lines.{$i}.amount"), $rate),
                     Input::optionalString($line, 'description') ?? '',
                     Input::optionalString($line, 'competence_month'),
-                    Vat::cleanRate(Input::raw($line, 'vat_rate')),
+                    $rate,
                 );
             }
             $method = Input::optionalString($data, 'method');
@@ -157,17 +164,20 @@ final readonly class LedgerController
 
         return $this->attempt(function () use ($data): string {
             $method = Input::optionalString($data, 'method');
+            $reverse = Input::raw($data, 'vat_rate') === 'reverse_charge';
+            $rate = Vat::cleanRate(Input::raw($data, 'vat_rate'));
             $this->ledger->recordExpense(new Expense(
                 Input::string($data, 'date'),
                 Input::string($data, 'account_id'),
                 Input::string($data, 'category_id'),
-                self::cents(Input::raw($data, 'amount'), 'amount'),
+                $this->gross(self::cents(Input::raw($data, 'amount'), 'amount'), $rate),
                 $method === null ? null : PaymentMethod::from($method),
                 Input::optionalString($data, 'description') ?? '',
                 null,
                 Input::optionalString($data, 'document_ref'),
-                Vat::cleanRate(Input::raw($data, 'vat_rate')),
+                $rate,
                 Input::optionalString($data, 'activity_id'),
+                $reverse,
             ));
 
             return 'Spesa registrata.';
@@ -226,6 +236,16 @@ final readonly class LedgerController
         } catch (LedgerError $e) {
             throw ValidationException::withMessages(['ledger' => $e->getMessage()]);
         }
+    }
+
+    /** Prezzi «senza IVA» (Aspetto fiscale): all'importo inserito si aggiunge l'IVA; altrimenti è già finale. */
+    private function gross(int $cents, ?int $rate): int
+    {
+        if ($rate === null || $rate === 0 || $this->fiscal->includesVat()) {
+            return $cents;
+        }
+
+        return $cents + (int) round($cents * $rate / 100);
     }
 
     private static function cents(mixed $value, string $field): int

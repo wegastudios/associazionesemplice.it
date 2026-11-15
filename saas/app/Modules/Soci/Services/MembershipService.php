@@ -11,6 +11,7 @@ use App\Modules\Contabilita\Contracts\IncomeLine;
 use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Contracts\PaymentMethod;
 use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Core\Contracts\OrgFiscal;
 use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Soci\Contracts\Members;
 use App\Modules\Soci\Contracts\PeopleError;
@@ -43,6 +44,7 @@ final readonly class MembershipService implements Members
         private Ledger $ledger,
         private AuditLog $audit,
         private Auth $auth,
+        private OrgFiscal $fiscal,
     ) {}
 
     public function startMonth(): int
@@ -175,7 +177,7 @@ final readonly class MembershipService implements Members
             $income = $this->ledger->recordIncome(new Income(
                 $date ?? now()->toDateString(),
                 $accountId,
-                [new IncomeLine($category, $amount, 'Quota associativa '.$year->label())],
+                [new IncomeLine($category, $amount, 'Quota associativa '.$year->label(), null, $this->fiscal->membershipRate())],
                 $method,
                 $person->id,
             ));
