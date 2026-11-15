@@ -65,6 +65,7 @@ final class ProWizard {
 		// 2. Partita IVA
 		WizardPage::step( 'Partita IVA', 'Senza partita IVA non compare nulla di fiscale.', '', 'ente' );
 		echo WizardPage::yes_no( 'has_vat', 'L\'ente ha la partita IVA?', ! empty( $s['has_vat'] ) ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<p data-if="has_vat=0"><label><input type="checkbox" name="no_vat" value="1"' . checked( ! empty( $s['no_vat'] ), true, false ) . ' required> ' . esc_html( \AssociazioneSemplice\Texts::t( 'L\'associazione non ha la partita IVA' ) ) . '</label></p>';
 		$rates = array();
 		foreach ( Fiscal::RATES as $r ) {
 			$rates[ $r ] = $r . '%';
@@ -77,7 +78,7 @@ final class ProWizard {
 		echo '<tr><th>Gli importi si inseriscono</th><td><select name="vat_prices_mode">' . Ui::options( array( Fiscal::INCLUDED => 'IVA compresa', Fiscal::EXCLUDED => 'IVA esclusa' ), (string) $s['vat_prices_mode'] ) . '</select><p class="description">Scelta iniziale: su ogni attività, incasso e spesa si può indicare diversamente.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		$mr = Fiscal::membership_rate();
 		echo '<tr><th>IVA sulle quote associative</th><td><select name="vat_membership_rate">' . Ui::options( Fiscal::rate_options(), null === $mr ? 'none' : (string) $mr ) . '</select><p class="description">Di norma le quote dei soci sono fuori campo IVA.</p></td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo '<tr><th>Codice destinatario (SDI)</th><td><input type="text" name="sdi_code" value="' . esc_attr( (string) $s['sdi_code'] ) . '" size="9" maxlength="7"> <span class="description">facoltativo</span></td></tr>';
+		echo '<tr><th>' . esc_html( \AssociazioneSemplice\Texts::t( 'Codice destinatario per la fattura elettronica (facoltativo)' ) ) . '</th><td><input type="text" name="sdi_code" value="' . esc_attr( (string) $s['sdi_code'] ) . '" size="9" maxlength="7"></td></tr>';
 		echo '</tbody></table></details></div>';
 		WizardPage::end_step();
 		}

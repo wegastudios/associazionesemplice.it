@@ -165,8 +165,9 @@ final class TechActions {
 	public static function save_entity( array $p ): array {
 		$vals = \AssociazioneSemplice\EntityData::values( $p, true );
 		Settings::update( $vals );
-		Audit::log( 'entity.saved', 'settings', 0, array( 'has_vat' => $vals['has_vat'] ) );
-		return array( Ui::url( 'asem-entity' ), 'Dati dell\'ente salvati.' );
+		Audit::log( 'entity.saved', 'settings', 0, array( 'has_vat' => $vals['has_vat'] ?? 0 ) );
+		$warn = \AssociazioneSemplice\EntityRules::mismatch_warning( (string) Settings::get( 'entity_form' ), (string) Settings::get( 'runts_section' ) );
+		return array( Ui::url( 'asem-entity' ), 'Dati dell\'ente salvati.' . ( '' !== $warn ? ' ' . $warn : '' ) );
 	}
 
 	/** Configurazione guidata: applica le scelte e porta dove serve ancora qualcosa (chiavi dei pagamenti, IBAN). */

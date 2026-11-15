@@ -65,9 +65,14 @@ function asem_throws( callable $f ): ?string {
 	return null;
 }
 
+/** Dati obbligatori dell'ente per la procedura guidata (denominazione, forma, codice fiscale, sede, «non ce l'ha» per RUNTS e PEC); la partita IVA ha la sua casella nei test che la toccano. */
+function asem_wz_entity(): array {
+	return array( 'association_name' => 'Associazione Prova', 'entity_form' => 'asd', 'tax_code' => '12345678903', 'legal_address' => 'Via Roma 1', 'legal_zip' => '20100', 'legal_city' => 'Milano', 'legal_province' => 'MI', 'no_runts' => '1', 'no_pec' => '1' );
+}
+
 /** Dati della procedura guidata con i due contatti obbligatori della segreteria (quelli indicati nel test hanno la precedenza). */
 function asem_wz_contacts( array $p ): array {
-	return array_merge( array( 'secretary_email' => 'segreteria@example.org', 'secretary_phone' => '011 1234567' ), $p );
+	return array_merge( asem_wz_entity(), array( 'secretary_email' => 'segreteria@example.org', 'secretary_phone' => '011 1234567' ), $p );
 }
 
 function asem_wizard( array $p ): array {
@@ -931,6 +936,7 @@ foreach ( array_map( 'intval', $wpdb->get_col( "SELECT ID FROM {$wpdb->posts} WH
 // Configurazione guidata
 $wz_ent = (string) Settings::get( 'entity_type' );
 $wz_mem = (string) Settings::get( 'member_term' );
+Settings::update( array( 'no_vat' => 1 ) ); // la partita IVA è un dato obbligatorio: nelle prove che non la toccano l'ente «non ce l'ha»
 $wz_old = array( 'association_name' => Settings::get( 'association_name' ), 'tax_code' => Settings::get( 'tax_code' ), 'payment_provider' => Settings::get( 'payment_provider' ), 'bank_enabled' => Settings::get( 'bank_enabled' ) );
 asem_ok( null !== asem_throws( function () { asem_wizard( array( 'entity_type' => 'astronave', 'member_term' => 'socio' ) ); } ) && null !== asem_throws( function () { asem_wizard( array( 'tax_code' => '123' ) ); } ) && null !== asem_throws( function () { asem_wizard( array( 'payment_choice' => 'bitcoin' ) ); } ), 'configurazione guidata: ente, codice fiscale e pagamento non validi si rifiutano' );
 asem_ok( null !== asem_throws( function () { asem_wizard( array( 'payment_choice' => 'woocommerce' ) ); } ) || \AssociazioneSemplice\WooBridge::active(), 'configurazione guidata: WooCommerce si sceglie solo se è attivo' );
@@ -956,29 +962,30 @@ ob_start();
 Admin\WizardPage::render();
 $ct_wz = (string) ob_get_clean();
 asem_ok( 1 === preg_match( '/<input[^>]*name="secretary_email"[^>]*required/', $ct_wz ) && 1 === preg_match( '/<input[^>]*name="secretary_phone"[^>]*required/', $ct_wz ) && false !== strpos( $ct_wz, 'Email della segreteria' ) && false !== strpos( $ct_wz, 'Telefono della segreteria' ), 'contatti: la procedura ha i due campi obbligatori' );
+$ct_pres = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Pia', 'last_name' => 'Presidente', 'email' => 'pia.presidente@example.com' ) );$people->set_membership( $ct_pres, Settings::membership_year()->label(), true );$people->set_board_role( $ct_pres, 'president' ); // il legale rappresentante: senza presidente la banda lo chiede
 // promemoria fisso: presente se manca anche uno solo dei due, sparisce se sono compilati
 Settings::update( array( 'secretary_email' => '', 'secretary_phone' => '' ) );
 ob_start();
 echo \AssociazioneSemplice\MissingBand::html();
 $ct_al = (string) ob_get_clean();
-asem_ok( false !== strpos( $ct_al, 'Mancano i contatti della segreteria (email e telefono): finché mancano' ) && false !== strpos( $ct_al, 'Inseriscili ora' ) && false !== strpos( $ct_al, 'page=asem-entity' ) && false === strpos( $ct_al, 'asem-dismiss' ), 'contatti: promemoria fisso con «Inseriscili ora», non chiudibile' );
+asem_ok( false !== strpos( html_entity_decode( $ct_al, ENT_QUOTES ), 'Mancano dei dati dell\'associazione: email della segreteria, telefono della segreteria. Finché mancano' ) && false !== strpos( $ct_al, 'Completali ora' ) && false !== strpos( $ct_al, 'page=asem-entity' ) && false === strpos( $ct_al, 'asem-dismiss' ), 'contatti: promemoria fisso con «Completali ora», non chiudibile' );
 $ct_get = $_GET;
 $_GET['page'] = 'asem-years';
 ob_start();
 Admin\Ui::header( 'Prova' );
 $ct_hd = (string) ob_get_clean();
-asem_ok( false !== strpos( $ct_hd, 'Mancano i contatti della segreteria' ) && false !== strpos( $ct_hd, 'Inseriscili ora' ), 'contatti: il promemoria compare in tutte le pagine del plugin' );
+asem_ok( false !== strpos( html_entity_decode( $ct_hd, ENT_QUOTES ), 'Mancano dei dati dell\'associazione: email della segreteria, telefono della segreteria.' ) && false !== strpos( $ct_hd, 'Completali ora' ), 'contatti: il promemoria compare in tutte le pagine del plugin' );
 $_GET = $ct_get;
 Settings::update( array( 'secretary_email' => 'segreteria@example.org' ) );
 ob_start();
 echo \AssociazioneSemplice\MissingBand::html();
-asem_ok( false !== strpos( (string) ob_get_clean(), 'Mancano i contatti' ), 'contatti: il promemoria resta finché manca il telefono' );
+asem_ok( false !== strpos( html_entity_decode( (string) ob_get_clean(), ENT_QUOTES ), 'Mancano dei dati dell\'associazione: telefono della segreteria.' ), 'contatti: il promemoria resta finché manca il telefono' );
 $_GET['page'] = 'asem-entity';
 ob_start();
 Admin\EntityPage::render();
 $ct_ent = (string) ob_get_clean();
 $_GET = $ct_get;
-asem_ok( false !== strpos( $ct_ent, 'Mancano i contatti della segreteria' ) && false === strpos( $ct_ent, 'Inseriscili ora' ) && 1 === preg_match( '/<input[^>]*name="secretary_email"[^>]*required/', $ct_ent ), 'contatti: in Dati dell\'ente il promemoria c\'è (senza pulsante) e i campi sono obbligatori' );
+asem_ok( false !== strpos( html_entity_decode( $ct_ent, ENT_QUOTES ), 'Mancano dei dati dell\'associazione: telefono della segreteria.' ) && false === strpos( $ct_ent, 'Completali ora' ) && 1 === preg_match( '/<input[^>]*name="secretary_email"[^>]*required/', $ct_ent ), 'contatti: in Dati dell\'ente il promemoria c\'è (senza pulsante) e i campi sono obbligatori' );
 $ct_sec  = wp_insert_user( array( 'user_login' => 'ct_segreteria', 'user_pass' => wp_generate_password(), 'user_email' => 'ct-seg@example.test', 'role' => \AssociazioneSemplice\Plugin::ROLE_SECRETARY ) );
 $ct_prev = get_current_user_id();
 wp_set_current_user( (int) $ct_sec );
@@ -987,7 +994,7 @@ echo \AssociazioneSemplice\MissingBand::html();
 $ct_al2 = (string) ob_get_clean();
 wp_set_current_user( $ct_prev );
 wp_delete_user( (int) $ct_sec );
-asem_ok( false !== strpos( $ct_al2, 'Mancano i contatti della segreteria: chiedi a chi amministra di inserirli.' ) && false === strpos( $ct_al2, 'Inseriscili ora' ), 'contatti: chi non modifica le impostazioni vede un altro testo, senza pulsante' );
+asem_ok( false !== strpos( html_entity_decode( $ct_al2, ENT_QUOTES ), 'Mancano dei dati dell\'associazione: telefono della segreteria. Chiedi a chi amministra di completarli.' ) && false === strpos( $ct_al2, 'Completali ora' ), 'contatti: chi non modifica le impostazioni vede un altro testo, senza pulsante' );
 Settings::update( array( 'secretary_phone' => '011 1234567' ) );
 ob_start();
 echo \AssociazioneSemplice\MissingBand::html();
@@ -1058,8 +1065,81 @@ add_filter(
 	}
 );
 $ct_band = \AssociazioneSemplice\MissingBand::html();
-asem_ok( 1 === substr_count( $ct_band, 'asem-missing-band' ) && false !== strpos( $ct_band, 'Mancano i contatti della segreteria' ) && false !== strpos( $ct_band, 'Manca la prova.' ) && false !== strpos( $ct_band, 'https://example.org/prova' ), 'banda fissa: una sola banda con l\'elenco di tutto ciò che manca' );
+asem_ok( 1 === substr_count( $ct_band, 'asem-missing-band' ) && false !== strpos( html_entity_decode( $ct_band, ENT_QUOTES ), 'Mancano dei dati dell\'associazione: email della segreteria, telefono della segreteria.' ) && false !== strpos( $ct_band, 'Manca la prova.' ) && false !== strpos( $ct_band, 'https://example.org/prova' ), 'banda fissa: una sola banda con l\'elenco di tutto ciò che manca' );
 remove_all_filters( 'asem_missing_items' );
+// Dati obbligatori dell'ente: banda unica con l'elenco, procedura e dati dell'ente anche lato server, caselle «non ce l'ha», forma e RUNTS
+$de_missing = function () {
+	return array_column( \AssociazioneSemplice\EntityRules::missing(), 'key' );
+};
+asem_wizard( array() ); // tutto compilato (le caselle «non ce l'ha» per RUNTS, PEC e partita IVA)
+asem_ok( array() === $de_missing(), 'dati ente: con tutto compilato e il presidente indicato non manca nulla' );
+asem_ok( '' === trim( \AssociazioneSemplice\MissingBand::html() ), 'dati ente: niente da completare, nessuna banda' );
+$de_err = function ( array $over, string $needle ) {
+	$msg = (string) asem_throws( function () use ( $over ) { asem_wizard( $over ); } );
+	return false !== strpos( $msg, $needle );
+};
+asem_ok( $de_err( array( 'association_name' => '' ), 'Indica la denominazione dell\'associazione.' ) && $de_err( array( 'entity_form' => '' ), 'Indica la forma dell\'ente.' ) && $de_err( array( 'entity_form' => 'astronave' ), 'Indica la forma dell\'ente.' ) && $de_err( array( 'tax_code' => '' ), 'Indica il codice fiscale dell\'ente.' ), 'dati ente: la procedura non si completa senza denominazione, forma dell\'ente e codice fiscale' );
+asem_ok( $de_err( array( 'legal_address' => '' ), 'Indica l\'indirizzo della sede.' ) && $de_err( array( 'legal_zip' => '' ), 'Indica il CAP della sede.' ) && $de_err( array( 'legal_zip' => '123' ), 'Il CAP ha 5 cifre.' ) && $de_err( array( 'legal_city' => '' ), 'Indica il comune della sede.' ) && $de_err( array( 'legal_province' => '' ), 'Indica la provincia della sede (sigla di 2 lettere).' ) && $de_err( array( 'legal_province' => 'MIL' ), 'Indica la provincia della sede (sigla di 2 lettere).' ), 'dati ente: la sede si indica per intero (CAP di 5 cifre, provincia di 2 lettere)' );
+asem_ok( $de_err( array( 'tax_code' => 'ABC' ), 'Il codice fiscale ha 11 cifre (oppure 16 caratteri se è una persona fisica).' ) && null === asem_throws( function () { asem_wizard( array( 'tax_code' => 'rssmra80a01h501u' ) ); } ) && null === asem_throws( function () { asem_wizard( array( 'tax_code' => '12345678901' ) ); } ), 'dati ente: codice fiscale di 11 cifre o 16 caratteri (formato, senza il controllo del carattere finale)' );
+asem_ok( $de_err( array( 'no_runts' => '', 'runts_number' => '' ), 'Indica il numero RUNTS (con la sezione) oppure spunta «L\'associazione non è iscritta al RUNTS».' ) && $de_err( array( 'no_pec' => '', 'pec' => '' ), 'Indica la PEC oppure spunta «L\'associazione non ha una PEC».' ), 'dati ente: numero RUNTS e PEC, o la casella «non ce l\'ha»' );
+$de_raw = (string) asem_throws( function () { \AssociazioneSemplice\Wizard::apply( array( 'join_mode' => 'invite' ) ); } );
+asem_ok( false !== strpos( $de_raw, 'Indica la forma dell\'ente.' ) && false !== strpos( $de_raw, 'Indica il codice fiscale dell\'ente.' ) && false !== strpos( $de_raw, 'Indica l\'indirizzo della sede.' ) && false !== strpos( $de_raw, 'Indica il numero RUNTS' ) && false !== strpos( $de_raw, 'Indica la PEC' ), 'dati ente: lato server la procedura non si completa nemmeno se i campi mancano del tutto dal modulo' );
+asem_wizard( array( 'runts_number' => 'A/123 sez. APS', 'no_runts' => '1', 'pec' => 'ente@pec.example.com', 'no_pec' => '1' ) );
+asem_ok( 0 === (int) Settings::get( 'no_runts' ) && 0 === (int) Settings::get( 'no_pec' ) && 'A/123 sez. APS' === Settings::get( 'runts_number' ) && 'ente@pec.example.com' === Settings::get( 'pec' ), 'dati ente: se il dato c\'è la casella «non ce l\'ha» non vale' );
+asem_wizard( array( 'no_runts' => '1', 'runts_number' => '', 'no_pec' => '1', 'pec' => '' ) );
+asem_ok( 1 === (int) Settings::get( 'no_runts' ) && 1 === (int) Settings::get( 'no_pec' ) && ! in_array( 'runts', $de_missing(), true ) && ! in_array( 'pec', $de_missing(), true ), 'dati ente: con la casella spuntata e il dato vuoto numero RUNTS e PEC non risultano mancanti' );
+asem_ok( true === \AssociazioneSemplice\EntityRules::sdi_valid( 'abc1234' ) && false === \AssociazioneSemplice\EntityRules::sdi_valid( 'abc12' ) && false !== strpos( (string) asem_throws( function () { asem_wizard( array( 'has_vat' => '0', 'no_vat' => '1', 'sdi_code' => 'ABC' ) ); } ), 'Il codice destinatario ha 7 caratteri (lettere e cifre).' ), 'dati ente: il codice destinatario è facoltativo ma ha 7 caratteri' );
+asem_wizard( array( 'has_vat' => '0', 'no_vat' => '1', 'sdi_code' => '' ) );
+// partita IVA (funzioni aggiuntive): il numero oppure la casella «non ce l'ha»
+asem_ok( false !== strpos( (string) asem_throws( function () { asem_wizard( array( 'has_vat' => '0' ) ); } ), 'Indica la partita IVA oppure spunta «L\'associazione non ha la partita IVA».' ), 'dati ente: la partita IVA è obbligatoria, o la casella «non ce l\'ha»' );
+Settings::update( array( 'no_vat' => 0, 'has_vat' => 0, 'vat_number' => '' ) );
+asem_ok( in_array( 'vat', $de_missing(), true ), 'dati ente: senza partita IVA e senza casella la partita IVA risulta mancante' );
+asem_wizard( array( 'has_vat' => '1', 'vat_number' => '12345678903' ) );
+asem_ok( ! in_array( 'vat', $de_missing(), true ) && 0 === (int) Settings::get( 'no_vat' ), 'dati ente: con la partita IVA indicata non manca' );
+asem_wizard( array( 'has_vat' => '0', 'no_vat' => '1' ) );
+asem_ok( ! in_array( 'vat', $de_missing(), true ), 'dati ente: con «non ha la partita IVA» spuntato non manca' );
+// forma dell'ente e sezione del RUNTS: separate, con precompilazione e avviso
+Settings::update( array( 'runts_section' => '' ) );
+asem_wizard( array( 'entity_form' => 'aps' ) );
+asem_ok( 'aps' === Settings::get( 'entity_form' ) && 'aps' === Settings::get( 'runts_section' ), 'forma dell\'ente: APS con la sezione RUNTS vuota la precompila' );
+asem_wizard( array( 'entity_form' => 'asd' ) );
+asem_ok( 'asd' === Settings::get( 'entity_form' ) && 'aps' === Settings::get( 'runts_section' ), 'forma dell\'ente: la forma e la sezione del RUNTS sono dati separati' );
+asem_ok( '' === \AssociazioneSemplice\EntityRules::mismatch_warning( 'asd', 'aps' ) && '' === \AssociazioneSemplice\EntityRules::mismatch_warning( 'aps', 'aps' ) && '' === \AssociazioneSemplice\EntityRules::mismatch_warning( 'odv', '' ), 'forma dell\'ente: nessun avviso se coerente, se la sezione manca o se la forma non è APS/ODV' );
+$de_ent  = array( 'entity_type' => $wz_ent, 'member_term' => $wz_mem, 'social_year_start_month' => '9' ); // gli altri campi della scheda, com'erano
+$de_save = Admin\TechActions::save_entity( array_merge( asem_wz_entity(), $de_ent, array( 'secretary_email' => 'segreteria@example.org', 'secretary_phone' => '011 1234567', 'no_vat' => '1', 'entity_form' => 'aps', 'runts_section' => 'odv' ) ) );
+asem_ok( false !== strpos( $de_save[1], 'Hai indicato APS come forma dell\'ente ma ODV come sezione del RUNTS: controlla quale delle due è giusta.' ) && 'odv' === Settings::get( 'runts_section' ), 'forma dell\'ente: forma APS e sezione ODV danno un avviso che non blocca (e non cambia la sezione)' );
+$_GET['page'] = 'asem-entity';
+ob_start();
+Admin\EntityPage::render();
+$de_page = (string) ob_get_clean();
+unset( $_GET['page'] );
+asem_ok( false !== strpos( html_entity_decode( $de_page, ENT_QUOTES ), 'Hai indicato APS come forma dell\'ente ma ODV come sezione del RUNTS' ) && 1 === preg_match( '/<select[^>]*name="entity_form"[^>]*required/', $de_page ) && false !== strpos( $de_page, 'name="no_runts"' ) && false !== strpos( $de_page, 'name="no_pec"' ) && false !== strpos( $de_page, 'ASD – associazione sportiva dilettantistica' ) && false !== strpos( $de_page, 'ETS – altro ente del Terzo settore' ), 'dati ente: la pagina mostra forma obbligatoria, caselle «non ce l\'ha» e l\'avviso' );
+asem_ok( false !== strpos( (string) asem_throws( function () use ( $de_ent ) { Admin\TechActions::save_entity( array_merge( asem_wz_entity(), $de_ent, array( 'secretary_email' => 'segreteria@example.org', 'secretary_phone' => '011 1234567', 'no_vat' => '1', 'entity_form' => '' ) ) ); } ), 'Indica la forma dell\'ente.' ), 'dati ente: anche nei dati dell\'ente la forma è obbligatoria' );
+// sito già installato: la sezione RUNTS propone la forma da confermare, senza compilarla da sola
+Settings::update( array( 'entity_form' => '', 'runts_section' => 'odv' ) );
+asem_ok( 'odv' === \AssociazioneSemplice\EntityRules::suggested_form( Settings::all() ) && '' === Settings::get( 'entity_form' ) && in_array( 'form', $de_missing(), true ), 'sito esistente: la forma si propone dalla sezione RUNTS ma resta da confermare (e risulta mancante)' );
+ob_start();
+Admin\EntityPage::render();
+$de_page2 = (string) ob_get_clean();
+asem_ok( 1 === preg_match( '/<option value="odv" selected/', $de_page2 ) && false !== strpos( $de_page2, 'Proposta in base alla sezione del RUNTS già indicata' ) && '' === Settings::get( 'entity_form' ), 'sito esistente: la forma proposta è preselezionata nel modulo ma non salvata' );
+// banda unica con l'elenco (ordine e nomi), senza il presidente
+$people->set_board_role( $ct_pres, null );
+Settings::update( array( 'entity_form' => '', 'tax_code' => '', 'legal_address' => '', 'secretary_email' => '', 'secretary_phone' => '', 'no_vat' => 0, 'has_vat' => 0, 'vat_number' => '', 'no_runts' => 0, 'runts_number' => '', 'no_pec' => 0, 'pec' => '' ) );
+$de_band = html_entity_decode( \AssociazioneSemplice\MissingBand::html(), ENT_QUOTES );
+asem_ok( 1 === substr_count( $de_band, 'asem-missing-band' ) && false !== strpos( $de_band, 'Mancano dei dati dell\'associazione: forma dell\'ente, codice fiscale, sede legale, legale rappresentante (indica il presidente tra le persone), email della segreteria, telefono della segreteria, partita IVA, numero RUNTS, PEC.' ) && false !== strpos( $de_band, 'Finché mancano email e telefono della segreteria' ) && false !== strpos( $de_band, 'Completali ora' ) && false !== strpos( $de_band, 'Indica il presidente' ) && false !== strpos( $de_band, 'page=asem-people' ), 'banda unica: una sola frase con l\'elenco nell\'ordine stabilito e i pulsanti per completare e per indicare il presidente' );
+Settings::update( array( 'entity_form' => 'asd', 'tax_code' => '12345678903', 'legal_address' => 'Via Roma 1', 'secretary_email' => 'segreteria@example.org', 'secretary_phone' => '011 1234567', 'no_vat' => 1, 'no_runts' => 1, 'no_pec' => 1 ) );
+$de_band2 = html_entity_decode( \AssociazioneSemplice\MissingBand::html(), ENT_QUOTES );
+asem_ok( false !== strpos( $de_band2, 'Mancano dei dati dell\'associazione: legale rappresentante (indica il presidente tra le persone).' ) && false === strpos( $de_band2, 'Finché mancano email' ) && false === strpos( $de_band2, 'Completali ora' ) && false !== strpos( $de_band2, 'Indica il presidente' ), 'banda unica: senza presidente la voce compare, senza la frase sul blocco degli invii e con il pulsante verso le persone' );
+$de_nosend = null === asem_throws( function () { \AssociazioneSemplice\Contacts::assert_can_write(); } );
+asem_ok( $de_nosend, 'banda unica: il blocco degli invii manuali dipende solo dai contatti, non dai dati fiscali' );
+Settings::update( array( 'tax_code' => '', 'legal_address' => '' ) );
+asem_ok( null === asem_throws( function () { \AssociazioneSemplice\Contacts::assert_can_write(); } ), 'banda unica: mancano codice fiscale e sede ma gli invii manuali restano permessi' );
+Settings::update( array( 'tax_code' => '12345678903', 'legal_address' => 'Via Roma 1' ) );
+$people->set_board_role( $ct_pres, 'president' );
+asem_ok( array() === $de_missing(), 'banda unica: con il presidente indicato e tutto il resto la banda sparisce' );
+$people->set_board_role( $ct_pres, null );
+Settings::update( array( 'runts_section' => '', 'entity_form' => 'asd', 'sdi_code' => '' ) );
+$people->delete( $ct_pres ); // il presidente di prova non resta: altri controlli sulle cariche partono da zero
 // WhatsApp: casella a parte, il telefono obbligatorio non accende il pulsante a tutti
 Settings::update( array( 'secretary_email' => 'segreteria@example.org', 'secretary_phone' => '333 1234567', 'whatsapp_button' => 0 ) );
 ob_start();
@@ -1174,7 +1254,7 @@ asem_wizard( array( 'has_vat' => '1', 'vat_number' => 'IT 12345678903', 'fiscal_
 asem_ok( \AssociazioneSemplice\Fiscal::vat_applies() && '12345678903' === Settings::get( 'vat_number' ) && 10 === \AssociazioneSemplice\Fiscal::default_rate() && 'escl' === \AssociazioneSemplice\Fiscal::default_mode() && 22 === \AssociazioneSemplice\Fiscal::membership_rate() && 'Torino' === Settings::get( 'legal_city' ), 'procedura: partita IVA, aliquote e sede applicate' );
 asem_wizard( array( 'association_name' => 'Solo nome cambiato' ) );
 asem_ok( \AssociazioneSemplice\Fiscal::vat_applies() && '12345678903' === Settings::get( 'vat_number' ), 'procedura: se il passo non c\'è, la partita IVA già impostata non si tocca' );
-asem_wizard( array( 'has_vat' => '0', 'vat_number' => '12345678903', 'vat_membership_rate' => '22' ) );
+asem_wizard( array( 'has_vat' => '0', 'no_vat' => '1', 'vat_number' => '12345678903', 'vat_membership_rate' => '22' ) );
 asem_ok( ! \AssociazioneSemplice\Fiscal::vat_applies() && '' === Settings::get( 'vat_number' ) && null === \AssociazioneSemplice\Fiscal::membership_rate(), 'procedura: senza partita IVA il numero e l\'aliquota delle quote si azzerano' );
 $wz_feat = array_intersect_key( Settings::all(), Admin\SettingsPage::all_features() ); // l'elenco delle funzioni spegne ciò che non è spuntato: si ripristina dopo il controllo
 Settings::update( array( 'fivepm_enabled' => 1 ) );
@@ -1285,9 +1365,9 @@ $wz_pos_pay = strpos( $wz_html3, 'Pagamenti dei soci' );
 asem_ok( false !== $wz_pos_pay && false !== strpos( substr( $wz_html3, max( 0, $wz_pos_pay - 200 ), 260 ), 'mod[ledger]=1' ), 'procedura: i pagamenti si chiedono solo se c\'è la prima nota' );
 Settings::update( array( 'fivepm_enabled' => 0, 'has_vat' => 0, 'vat_number' => '', 'vat_membership_rate' => '', 'vat_default_rate' => 22, 'vat_prices_mode' => 'incl', 'legal_address' => '', 'legal_zip' => '', 'legal_city' => '', 'legal_province' => '', 'pec' => '', 'association_name' => $wz_old['association_name'] ) );
 // dati dell'ente e partita IVA
-$en_base = array( 'association_name' => 'Ente Fiscale', 'entity_type' => $wz_ent, 'member_term' => $wz_mem, 'tax_code' => '12345678903', 'social_year_start_month' => '9', 'legal_address' => 'Via Roma 1', 'legal_zip' => '20100', 'legal_city' => 'Milano', 'legal_province' => 'MI', 'pec' => 'ente@pec.example.com', 'secretary_email' => 'segreteria@example.org', 'secretary_phone' => '011 1234567', 'vat_default_rate' => '22', 'vat_prices_mode' => 'incl', 'fiscal_regime' => 'ordinario' );
+$en_base = array( 'entity_form' => 'asd', 'no_runts' => '1', 'no_vat' => '1', 'association_name' => 'Ente Fiscale', 'entity_type' => $wz_ent, 'member_term' => $wz_mem, 'tax_code' => '12345678903', 'social_year_start_month' => '9', 'legal_address' => 'Via Roma 1', 'legal_zip' => '20100', 'legal_city' => 'Milano', 'legal_province' => 'MI', 'pec' => 'ente@pec.example.com', 'secretary_email' => 'segreteria@example.org', 'secretary_phone' => '011 1234567', 'vat_default_rate' => '22', 'vat_prices_mode' => 'incl', 'fiscal_regime' => 'ordinario' );
 asem_ok( ! \AssociazioneSemplice\Fiscal::vat_applies(), 'iva: senza partita IVA non si applica' );
-asem_ok( null !== asem_throws( function () use ( $en_base ) { Admin\TechActions::save_entity( array_merge( $en_base, array( 'has_vat' => '1', 'vat_number' => '12345678901' ) ) ); } ) && null !== asem_throws( function () use ( $en_base ) { Admin\TechActions::save_entity( array_merge( $en_base, array( 'tax_code' => '12345678901' ) ) ); } ) && null !== asem_throws( function () use ( $en_base ) { Admin\TechActions::save_entity( array_merge( $en_base, array( 'pec' => 'non-email' ) ) ); } ), 'dati ente: partita IVA, codice fiscale e PEC non validi si rifiutano' );
+asem_ok( null !== asem_throws( function () use ( $en_base ) { Admin\TechActions::save_entity( array_merge( $en_base, array( 'has_vat' => '1', 'vat_number' => '12345678901' ) ) ); } ) && null !== asem_throws( function () use ( $en_base ) { Admin\TechActions::save_entity( array_merge( $en_base, array( 'tax_code' => '123' ) ) ); } ) && null !== asem_throws( function () use ( $en_base ) { Admin\TechActions::save_entity( array_merge( $en_base, array( 'pec' => 'non-email' ) ) ); } ), 'dati ente: partita IVA, codice fiscale e PEC non validi si rifiutano' );
 Admin\TechActions::save_entity( array_merge( $en_base, array( 'has_vat' => '1', 'vat_number' => 'IT 12345678903', 'vat_default_rate' => '10', 'vat_prices_mode' => 'escl', 'sdi_code' => 'abcdefg' ) ) );
 asem_ok( \AssociazioneSemplice\Fiscal::vat_applies() && '12345678903' === Settings::get( 'vat_number' ) && 10 === \AssociazioneSemplice\Fiscal::default_rate() && 'escl' === \AssociazioneSemplice\Fiscal::default_mode() && 'ABCDEFG' === Settings::get( 'sdi_code' ) && 'Milano' === Settings::get( 'legal_city' ), 'dati ente: partita IVA, aliquota e modalità salvate' );
 Admin\TechActions::save_entity( array_merge( $en_base, array( 'has_vat' => '1', 'vat_number' => '12345678903', 'fiscal_regime' => 'forfettario' ) ) );

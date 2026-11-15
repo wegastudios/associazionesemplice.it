@@ -93,6 +93,9 @@ final class Settings {
 			'runts_volunteers'        => 0,         // volontari iscritti nel registro dei volontari (numero inserito a mano: il programma non ha ancora il registro)
 			'runts_manual_year'       => 0,         // anno (31 dicembre) a cui si riferisce il numero dei volontari inserito a mano; 0 = non indicato
 			'pec'                     => '',        // PEC dell'ente
+			'entity_form'             => '',        // forma dell'ente: '', 'asd', 'aps', 'odv', 'ets', 'circolo', 'altro' (vedi EntityRules); separata dalla sezione del RUNTS
+			'no_runts'                => 0,         // casella «L'associazione non è iscritta al RUNTS»
+			'no_pec'                  => 0,         // casella «L'associazione non ha una PEC»
 			'sdi_code'                => '',        // codice destinatario per la fatturazione elettronica
 			'modules'                 => array(),   // parti del gestionale usate (vedi Modules): vuoto = tutte, come prima della configurazione guidata
 			'join_mode'               => 'request', // chi non è in elenco: 'request' = può chiedere l'accesso alla segreteria; 'invite' = solo su presentazione
@@ -235,6 +238,9 @@ final class Settings {
 		foreach ( array( 'legal_address' => 160, 'legal_zip' => 10, 'legal_city' => 80, 'legal_province' => 40, 'runts_number' => 80, 'pec' => 120 ) as $k => $max ) {
 			$clean[ $k ] = mb_substr( trim( (string) $clean[ $k ] ), 0, $max );
 		}
+		$clean['entity_form']             = in_array( (string) $clean['entity_form'], EntityRules::FORM_KEYS, true ) ? (string) $clean['entity_form'] : '';
+		$clean['no_runts']                = empty( $clean['no_runts'] ) ? 0 : 1;
+		$clean['no_pec']                  = empty( $clean['no_pec'] ) ? 0 : 1;
 		$clean['sdi_code']                = strtoupper( substr( preg_replace( '/[^A-Za-z0-9]/', '', (string) $clean['sdi_code'] ), 0, 7 ) );
 		$clean['modules']                 = Modules::sanitize( is_array( $clean['modules'] ) ? $clean['modules'] : array() );
 		$clean['guests_enabled']          = empty( $clean['guests_enabled'] ) ? 0 : 1;
