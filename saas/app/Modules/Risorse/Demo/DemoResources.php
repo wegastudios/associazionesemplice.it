@@ -89,7 +89,7 @@ final readonly class DemoResources implements DemoSeeder
         foreach ($berths as $i => $berth) {
             $this->book($berth->id, ['person_id' => $people[($i + 2) * 9 % count($people)], 'date' => $year.'-09-01', 'to' => ($year + 1).'-08-31'], $cash, $i);
         }
-        $this->reservations->block($courts[0]->id, $today->modify('+3 days')->format('Y-m-d').' 08:00', $today->modify('+3 days')->format('Y-m-d').' 14:00', 'Manutenzione del fondo', null);
+        $this->reservations->block($courts[0]->id, $today->modify('+16 days')->format('Y-m-d').' 08:00', $today->modify('+16 days')->format('Y-m-d').' 14:00', 'Manutenzione del fondo', null);
     }
 
     /**
