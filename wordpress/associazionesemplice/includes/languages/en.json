@@ -2137,6 +2137,12 @@
   "Il rendiconto definitivo non è stato emesso (errore del database): la chiusura non è avvenuta. Riprova; se succede ancora scrivi all'assistenza." : "The final statement was not issued (database error): the year was not closed. Try again; if it happens again write to support.",
   "Il rendiconto definitivo non è stato emesso (errore del database): non è stato salvato nulla. Riprova; se succede ancora scrivi all'assistenza." : "The final statement was not issued (database error): nothing was saved. Try again; if it happens again write to support.",
   "Di questa chiusura non c'è un rendiconto definitivo." : "There is no final statement for this closure.",
-  "PDF del rendiconto (bozza)" : "Statement PDF (draft)"
+  "PDF del rendiconto (bozza)" : "Statement PDF (draft)",
+  "il risultato dell'anno fiscale è un disavanzo di {importo}: le uscite superano le entrate" : "the result for the financial year is a deficit of {importo}: expenses exceed income",
+  "chiudo anche se l'anno è in disavanzo di {importo}" : "I am closing even though the year is in deficit by {importo}",
+  "Anno fiscale {anno} in disavanzo." : "Financial year {anno} is in deficit.",
+  "L'anno fiscale {anno} è finito ma è ancora aperto e ha un disavanzo di {importo}: le uscite superano le entrate. Per sistemarlo, registra in Prima nota le entrate mancanti con una data dentro quell'anno. Se invece i conti sono giusti, controllali e poi chiudi l'anno." : "Financial year {anno} has ended but is still open and has a deficit of {importo}: expenses exceed income. To fix it, record the missing income in the cash book with a date inside that year. If the accounts are correct, check them and then close the year.",
+  "Apri il rendiconto" : "Open the statement",
+  "Vai agli anni fiscali" : "Go to financial years"
  }
 }

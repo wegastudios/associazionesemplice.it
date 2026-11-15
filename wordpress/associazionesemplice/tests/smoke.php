@@ -10179,6 +10179,52 @@ $wpdb->delete( Db::t( 'memberships' ), array( 'person_id' => $qo_p ) );
 $qo_o['social_year_start_month'] = $qo_sm;
 update_option( Settings::OPTION, $qo_o );
 
+// ---------- Anno fiscale passato ancora aperto in disavanzo: avviso fisso in Bacheca e conferma alla chiusura ----------
+wp_set_current_user( 1 );
+asem_ok( \AssociazioneSemplice\Edition::has( 'watch' ), 'disavanzo anno passato: la funzione Pro Fiscale c\'è' );
+$dp_y = max( 2000, min( 2001, (int) $wpdb->get_var( 'SELECT MIN(year) FROM ' . Db::t( 'fiscal_years' ) ) - 1 ) ); // un anno più vecchio di tutti: si può chiudere per primo
+asem_ok( null === \AssociazioneSemplice\FiscalYears::get( $dp_y ), 'disavanzo anno passato: l\'anno di prova non esiste ancora (' . $dp_y . ')' );
+\AssociazioneSemplice\FiscalYears::create( $dp_y );
+$dp_lbl  = \AssociazioneSemplice\FiscalYears::label( $dp_y );
+$dp_date = \AssociazioneSemplice\FiscalYears::range( $dp_y )[0];
+$dp_cash = $ledger->default_account_for( 'cash' );
+$dp_cost = $ledger->category_id_of_kind( 'general_cost' );
+$dp_exp  = function () use ( $ledger, $dp_cash, $dp_cost, $dp_date ) {
+	return $ledger->record_expense( array( 'date' => $dp_date, 'account_id' => (int) $dp_cash['id'], 'method' => 'cash', 'category_id' => $dp_cost, 'amount_cents' => 16000, 'description' => 'Spesa anno passato' ) );
+};
+$dp_title = 'Anno fiscale ' . $dp_lbl . ' in disavanzo.';
+$dp_tx = $dp_exp();
+asem_ok( -16000 === \AssociazioneSemplice\YearEndCheck::year_result( $dp_y ) && array_key_exists( $dp_y, \AssociazioneSemplice\YearEndCheck::past_deficits() ), 'disavanzo anno passato: l\'anno passato aperto con più uscite che entrate risulta in disavanzo' );
+$dp_html = \AssociazioneSemplice\YearEndCheck::deficit_html();
+asem_ok( false !== strpos( $dp_html, $dp_title ) && false !== strpos( $dp_html, 'disavanzo di 160,00 €' ) && false !== strpos( $dp_html, 'registra in Prima nota le entrate mancanti' ) && false !== strpos( $dp_html, 'asem-statement' ) && false === strpos( $dp_html, 'is-dismissible' ), 'disavanzo anno passato: avviso fisso (non chiudibile) con anno, importo e come sistemarlo' );
+asem_ok( 16 === has_action( 'asem_dashboard_alerts', array( \AssociazioneSemplice\YearEndCheck::class, 'deficit_show' ) ), 'disavanzo anno passato: l\'avviso è agganciato alla Bacheca' );
+asem_ok( ! array_key_exists( \AssociazioneSemplice\FiscalYears::current(), \AssociazioneSemplice\YearEndCheck::past_deficits() ), 'disavanzo anno passato: l\'anno in corso non c\'è (resta del controllo di bilancio)' );
+wp_set_current_user( $u_ord );
+asem_ok( '' === \AssociazioneSemplice\YearEndCheck::deficit_html(), 'disavanzo anno passato: chi non è amministrativo non vede l\'avviso' );
+wp_set_current_user( 1 );
+$dp_conf = \AssociazioneSemplice\YearEndCheck::close_confirm( array(), $dp_y );
+asem_ok( 1 === count( $dp_conf ) && false !== strpos( $dp_conf[0], 'il risultato dell\'anno fiscale è un disavanzo di 160,00 €: le uscite superano le entrate' ), 'disavanzo anno passato: la chiusura chiede conferma con l\'importo' );
+ob_start();
+\AssociazioneSemplice\YearEndCheck::close_form( $dp_y );
+$dp_form = ob_get_clean();
+asem_ok( false !== strpos( $dp_form, 'name="confirm_gaps"' ) && false !== strpos( $dp_form, 'chiudo anche se l' ) && false !== strpos( $dp_form, 'è in disavanzo di 160,00 €' ), 'disavanzo anno passato: nel modulo di chiusura c\'è la casella di conferma' );
+$dp_msg = (string) asem_throws( function () use ( $dp_y ) { \AssociazioneSemplice\FiscalYears::close( $dp_y ); } );
+asem_ok( false !== strpos( $dp_msg, 'si chiude solo con la tua conferma' ) && false !== strpos( $dp_msg, 'disavanzo di 160,00 €' ) && \AssociazioneSemplice\FiscalYears::is_open( $dp_y ), 'disavanzo anno passato: senza conferma l\'anno non si chiude (' . $dp_msg . ')' );
+// risultato a zero: nessun avviso e nessuna conferma
+$ledger->void( $dp_tx, 'prova' );
+asem_ok( 0 === \AssociazioneSemplice\YearEndCheck::year_result( $dp_y ) && false === strpos( \AssociazioneSemplice\YearEndCheck::deficit_html(), $dp_title ) && array() === \AssociazioneSemplice\YearEndCheck::close_confirm( array(), $dp_y ), 'disavanzo anno passato: con il risultato a zero niente avviso e niente conferma' );
+ob_start();
+\AssociazioneSemplice\YearEndCheck::close_form( $dp_y );
+asem_ok( '' === ob_get_clean(), 'disavanzo anno passato: con il risultato a zero niente casella di conferma' );
+// di nuovo in disavanzo: si chiude solo con la conferma, e resta scritto
+$dp_exp();
+asem_ok( false !== strpos( \AssociazioneSemplice\YearEndCheck::deficit_html(), $dp_title ), 'disavanzo anno passato: tornato in disavanzo l\'avviso ricompare' );
+\AssociazioneSemplice\FiscalYears::close( $dp_y, true );
+asem_ok( ! \AssociazioneSemplice\FiscalYears::is_open( $dp_y ), 'disavanzo anno passato: con la conferma l\'anno si chiude' );
+$dp_audit = (string) $wpdb->get_var( $wpdb->prepare( 'SELECT details FROM ' . Db::t( 'audit_log' ) . " WHERE action = 'year.closed' AND object_id = %d ORDER BY id DESC LIMIT 1", $dp_y ) );
+asem_ok( false !== strpos( $dp_audit, 'confirmed_gaps' ) && false !== strpos( $dp_audit, 'disavanzo di 160,00' ), 'disavanzo anno passato: la conferma resta nel registro delle azioni' );
+asem_ok( false === strpos( \AssociazioneSemplice\YearEndCheck::deficit_html(), $dp_title ) && ! array_key_exists( $dp_y, \AssociazioneSemplice\YearEndCheck::past_deficits() ), 'disavanzo anno passato: anno chiuso, nessun avviso' );
+
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Tutti i controlli sono passati.' );
