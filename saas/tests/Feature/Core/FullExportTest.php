@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Modules\Contabilita\Contracts\ReceiptIssued;
 use App\Modules\Contabilita\Ledger\FiscalYearService;
 use App\Modules\Contabilita\Models\Account;
+use App\Modules\Contabilita\Receipts\ReceiptFiles;
 use App\Modules\Core\Contracts\Operator;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Contracts\ReadableExport;
@@ -12,6 +14,7 @@ use App\Modules\Soci\Services\CertificateService;
 use App\Modules\Soci\Services\MembershipService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 // Dati di prova inventati.
@@ -117,10 +120,16 @@ it('non lascia l\'esportazione completa a segreteria e commercialista', function
 it('le ricevute non ancora fissate entrano nella copia (si fissano al momento)', function (): void {
     $owner = $this->createUser('own@example.com', twoFactor: true);
     $this->addOperator($this->org, $owner, OrgRole::Owner);
-    $this->orgContext()->run($this->org->id, fn () => DB::table('app.receipt_files')->delete());
+    // Senza l'evento di emissione la ricevuta resta «da fissare», come quelle emesse prima dell'aggiornamento.
+    Event::fake([ReceiptIssued::class]);
+    $this->orgContext()->run($this->org->id, function (): void {
+        $p = Person::create(['first_name' => 'Anna', 'last_name' => 'Verdi', 'tax_code' => 'VRDNNA85B41H501X', 'birth_date' => '1985-02-01']);
+        app(MembershipService::class)->renewWithPayment($p->id, Account::query()->sole()->id, 3000);
+        expect(app(ReceiptFiles::class)->unfixedCount())->toBe(1);
+    });
 
     $files = zipContents($this->actingAs($owner)->get('/gestionale/esportazione.zip')->assertOk()->baseResponse);
-    expect(array_filter(array_keys($files), fn (string $n): bool => str_contains($n, '/Ricevute/Ricevuta ')))->toHaveCount(1)
+    expect(array_filter(array_keys($files), fn (string $n): bool => str_contains($n, '/Ricevute/Ricevuta ')))->toHaveCount(2)
         ->and(array_keys($files))->not->toContain('Documenti leggibili/Anno fiscale '.now()->format('Y').'/Ricevute/Ricevute non incluse.txt');
 });
 
