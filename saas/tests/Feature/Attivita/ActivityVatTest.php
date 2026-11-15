@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Attivita\Models\Activity;
 use App\Modules\Attivita\Services\ActivityService;
-use AppModulesAttivitaServicesActivityVat;
+use App\Modules\Attivita\Services\ActivityVat;
 use App\Modules\Contabilita\Models\Account;
 use App\Modules\Contabilita\Models\Transaction;
 use App\Modules\Core\Contracts\OrgFiscal;
@@ -82,7 +82,7 @@ it('se l\'aliquota non è più in elenco l\'attività si comporta come senza IVA
     app(OrgSettings::class)->set('ente.vat', '12345678903');
     $yoga = vatCourse(22);
     app(OrgSettings::class)->set(OrgFiscal::RATES, '10');
-    expect(app(App\Modules\Attivita\Services\ActivityVat::class)->rate($yoga))->toBeNull();
+    expect(app(ActivityVat::class)->rate($yoga))->toBeNull();
 });
 
 it('la scheda salva «Con IVA» solo con la partita IVA e dalle aliquote scelte', function (): void {
