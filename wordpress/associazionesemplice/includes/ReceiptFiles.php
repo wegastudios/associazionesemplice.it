@@ -36,6 +36,9 @@ final class ReceiptFiles {
 	/** Condizione SQL: ricevute con i dati fotografati ma con un PDF ancora da fissare (emesso o annullato). */
 	const PENDING_SQL = "data IS NOT NULL AND data <> '' AND ( pdf_path IS NULL OR ( voided_at IS NOT NULL AND void_pdf_path IS NULL ) )";
 
+	/** Condizione SQL: ricevute emesse prima che si salvassero i dati (senza fotografia e senza PDF), non annullate. */
+	const NODATA_SQL = "( data IS NULL OR data = '' ) AND pdf_path IS NULL AND voided_at IS NULL";
+
 	public static function register(): void {
 		add_action( 'asem_year_closed', array( __CLASS__, 'on_year_closed' ) );
 		add_action( 'plugins_loaded', array( __CLASS__, 'maybe_backfill' ), 20 ); // dopo l'aggiornamento dello schema (priorità 12)
@@ -352,6 +355,43 @@ final class ReceiptFiles {
 		$db  = self::db();
 		$sql = 'SELECT COUNT(*) FROM ' . Db::t( 'receipts' ) . ' WHERE ' . self::PENDING_SQL;
 		return (int) ( null === $year ? $db->get_var( $sql ) : $db->get_var( $db->prepare( $sql . ' AND year = %d', $year ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- condizione costante interna
+	}
+
+	/** Quante ricevute non annullate sono state emesse prima che si salvassero i dati e non hanno il PDF (di un anno, o di tutti). */
+	public static function nodata_count( ?int $year = null ): int {
+		$db  = self::db();
+		$sql = 'SELECT COUNT(*) FROM ' . Db::t( 'receipts' ) . ' WHERE ' . self::NODATA_SQL;
+		return (int) ( null === $year ? $db->get_var( $sql ) : $db->get_var( $db->prepare( $sql . ' AND year = %d', $year ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- condizione costante interna
+	}
+
+	/**
+	 * Per le ricevute emesse prima che si salvassero i dati (le annullate restano fuori): fotografa i dati di OGGI e fissa il PDF, a lotti come {@see complete()}.
+	 * Azione esplicita di un amministratore: i dati non sono quelli dell'emissione.
+	 *
+	 * @return array{done:int,failed:int,last_id:int,more:bool}
+	 */
+	public static function complete_nodata( ?int $year = null, int $after_id = 0, int $limit = self::BATCH ): array {
+		$db     = self::db();
+		$limit  = max( 1, min( 500, $limit ) );
+		$sql    = 'SELECT * FROM ' . Db::t( 'receipts' ) . ' WHERE ' . self::NODATA_SQL . ' AND id > %d' . ( null === $year ? '' : ' AND year = %d' ) . ' ORDER BY id LIMIT %d';
+		$args   = null === $year ? array( $after_id, $limit ) : array( $after_id, $year, $limit );
+		$rows   = $db->get_results( $db->prepare( $sql, $args ), ARRAY_A ) ?: array(); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- condizione costante interna
+		$done   = 0;
+		$failed = 0;
+		$last   = $after_id;
+		foreach ( $rows as $r ) {
+			$last = (int) $r['id'];
+			try {
+				if ( Receipts::snapshot_today( $r ) ) {
+					$done++;
+				} else {
+					$failed++;
+				}
+			} catch ( \Throwable $e ) {
+				$failed++;
+			}
+		}
+		return array( 'done' => $done, 'failed' => $failed, 'last_id' => $last, 'more' => count( $rows ) >= $limit );
 	}
 
 	/**

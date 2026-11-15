@@ -110,6 +110,14 @@ final class ReceiptCheckPage {
 
 		if ( (int) $sum['nodata'] > 0 ) {
 			echo '<p class="description">' . esc_html( Texts::t( 'Queste ricevute non hanno i dati salvati: il loro PDF non è ancora stato fissato e non è nella copia di sicurezza. Aprire o scaricare la ricevuta una volta salva i suoi dati di quel momento e ne fissa il PDF; le ricevute già annullate in questo stato non si possono più aprire.' ) ) . '</p>';
+			if ( ReceiptFiles::nodata_count( $year ) > 0 ) {
+				echo '<div class="asem-card"><h2>' . esc_html( Texts::t( 'Fissa anche queste con i dati di oggi' ) ) . '</h2><p><strong>' . esc_html( Texts::t( 'I dati sono quelli di oggi, non quelli dell\'emissione.' ) ) . '</strong> ' . esc_html( Texts::t( 'Per ogni ricevuta si salvano il nome, il codice fiscale, gli importi e i dati dell\'ente come sono adesso e se ne fissa il PDF cifrato; da quel momento non cambia più. Le ricevute annullate restano come sono. Si procede a lotti di {n} ricevute: se ne restano, premi di nuovo. L\'operazione viene scritta nel registro azioni.', array( 'n' => ReceiptFiles::BATCH ) ) ) . '</p>';
+				Ui::form_open( 'asem_receipt_nodata_fix', $here, false, 'asem-inline' );
+				echo Ui::hidden( 'year', $year ) . Ui::hidden( 'after', $after ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Ui::hidden() protegge i valori
+				echo '<button class="button" data-confirm="' . esc_attr( Texts::t( 'Fissare queste ricevute con i dati di oggi? I dati sono quelli di oggi, non quelli dell\'emissione. Dopo il PDF non cambia più e l\'operazione viene scritta nel registro azioni.' ) ) . '">' . esc_html( Texts::t( 'Fissa anche queste con i dati di oggi' ) ) . '</button>';
+				Ui::form_close();
+				echo '</div>';
+			}
 		}
 
 		if ( (int) $sum['locked'] > 0 ) {
@@ -160,6 +168,23 @@ final class ReceiptCheckPage {
 		$msg  = Texts::t( 'Fissati i PDF di {n} ricevute.', array( 'n' => $r['done'] ) );
 		if ( $r['failed'] ) {
 			$msg .= ' ' . Texts::t( '{n} non si sono potuti fissare (controlla i permessi della cartella dei file riservati o i dati della ricevuta).', array( 'n' => $r['failed'] ) );
+		}
+		if ( $left > 0 && $r['more'] ) {
+			$msg .= ' ' . Texts::t( 'Ne restano ancora {n}: premi di nuovo.', array( 'n' => $left ) );
+		}
+		return array( Ui::url( 'asem-receipt-check', array( 'year' => $year, 'after' => $r['more'] ? $r['last_id'] : 0 ) ), $msg );
+	}
+
+	/** Azione «Fissa anche queste con i dati di oggi»: un lotto per volta, per le ricevute emesse prima che si salvassero i dati. */
+	public static function fix_nodata( array $p ): array {
+		$year  = max( 0, (int) ( $p['year'] ?? 0 ) );
+		$after = max( 0, (int) ( $p['after'] ?? 0 ) );
+		$r     = ReceiptFiles::complete_nodata( $year > 0 ? $year : null, $after );
+		Audit::log( 'receipt.nodata_fixed_today', 'year', $year, array( 'done' => $r['done'], 'failed' => $r['failed'], 'data_of_today' => 1 ) );
+		$left = ReceiptFiles::nodata_count( $year > 0 ? $year : null );
+		$msg  = Texts::t( 'Fissate con i dati di oggi {n} ricevute.', array( 'n' => $r['done'] ) );
+		if ( $r['failed'] ) {
+			$msg .= ' ' . Texts::t( '{n} non si sono potute fissare (hanno perso le righe di incasso o la cartella dei file riservati non è scrivibile).', array( 'n' => $r['failed'] ) );
 		}
 		if ( $left > 0 && $r['more'] ) {
 			$msg .= ' ' . Texts::t( 'Ne restano ancora {n}: premi di nuovo.', array( 'n' => $left ) );
