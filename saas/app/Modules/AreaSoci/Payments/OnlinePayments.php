@@ -47,7 +47,6 @@ final readonly class OnlinePayments
         private AuditLog $audit,
         private Ledger $ledger,
         private MemberProfiles $profiles,
-        private Mailer $mailer,
     ) {}
 
     public function settings(): ?PaymentSettings
@@ -351,8 +350,8 @@ final readonly class OnlinePayments
             return;
         }
         try {
-            $this->mailer->to($email)->send(new PaymentRefunded($orgName, self::euro($cents), date('d/m/Y', (int) strtotime($createdAt)), mb_substr($reason, 0, 200)));
-            $this->audit->record('payment.refund_mail_sent', 'app.online_payments', $paymentId, ['mailer' => $this->mailer::class]);
+            $this->app->make(Mailer::class)->to($email)->send(new PaymentRefunded($orgName, self::euro($cents), date('d/m/Y', (int) strtotime($createdAt)), mb_substr($reason, 0, 200)));
+            $this->audit->record('payment.refund_mail_sent', 'app.online_payments', $paymentId, []);
         } catch (Throwable $e) {
             $this->audit->record('payment.refund_mail_skipped', 'app.online_payments', $paymentId, ['why' => 'send_failed', 'error' => mb_substr($e->getMessage(), 0, 200)]);
         }

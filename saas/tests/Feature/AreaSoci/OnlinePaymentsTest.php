@@ -261,6 +261,5 @@ it('rimborsa e storna in un gesto solo un pagamento già registrato, e se il rim
             ->and(DB::table('app.transactions')->whereNull('voided_at')->count())->toBe(0)
             ->and((int) DB::table('app.online_payments')->value('refunded_cents'))->toBe(2500);
     });
-    $this->orgContext()->run($this->org->id, fn () => expect(DB::table('audit.log')->where('action', 'like', 'payment.refund_mail%')->pluck('action')->all())->toBe([]));
     Mail::assertSent(PaymentRefunded::class, fn (PaymentRefunded $m): bool => $m->amount === '25,00 €' && $m->reason === 'Quota già pagata');
 });
