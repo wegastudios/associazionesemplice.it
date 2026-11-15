@@ -36,6 +36,7 @@ const groups = [
     { label: 'Gestione', items: [
         { href: '/gestionale/abbonamento', label: 'Abbonamento e pacchetti', icon: CreditCard, can: 'org.subscription', external: true },
         { href: '/gestionale/operatori', label: 'Operatori e ruoli', icon: ShieldCheck, can: 'org.operators' },
+        { href: '/gestionale/aspetto-fiscale', label: 'Aspetto fiscale', icon: Receipt, can: 'org.settings' },
         { href: '/gestionale/esportazione', label: 'Esportazione dei dati', icon: Download, can: 'org.settings' },
         { href: '/gestionale/configurazione', label: 'Configurazione guidata', icon: Settings, can: 'org.settings' },
     ] },

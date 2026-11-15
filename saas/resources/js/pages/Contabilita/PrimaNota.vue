@@ -9,6 +9,7 @@ import Sheet from '../../components/ui/Sheet.vue';
 import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Download, Ellipsis, FileText, ListFilter, Upload, Wallet } from '../../components/ui/icons.js';
 
 const props = defineProps({
+    fiscal: Object,
     year: Number,
     years: Array,
     account: String,
@@ -45,6 +46,9 @@ const filter = (changes) => router.get('/gestionale/prima-nota', { anno: props.y
 const sendReceipt = (r) => router.post(`/gestionale/ricevute/${r.receipt_id}/invia`, {}, { preserveScroll: true });
 const setActivity = (r, id) => router.post(`/gestionale/prima-nota/${r.id}/attivita`, { activity_id: id || null }, { preserveScroll: true });
 
+// Con la partita IVA ogni incasso e spesa ha la sua aliquota: si propone «IVA esente» (0). Senza, nessuna scelta.
+const defaultRate = props.fiscal?.hasVat ? 0 : '';
+const rateOptions = computed(() => [{ value: 0, label: 'IVA esente' }, ...(props.fiscal?.rates ?? []).map((r) => ({ value: r, label: `IVA ${r}%` })), { value: 'none', label: 'Fuori campo IVA' }]);
 const income = useForm({
     date: today,
     account_id: openAccounts.value[0]?.id ?? '',
@@ -53,9 +57,9 @@ const income = useForm({
     person_id: '',
     document_ref: '',
     activity_id: '',
-    lines: [{ category_id: incomeCategories.value[0]?.id ?? '', amount: '', description: '', competence_month: '' }],
+    lines: [{ category_id: incomeCategories.value[0]?.id ?? '', amount: '', description: '', competence_month: '', vat_rate: defaultRate }],
 });
-const addLine = () => income.lines.push({ category_id: incomeCategories.value[0]?.id ?? '', amount: '', description: '', competence_month: '' });
+const addLine = () => income.lines.push({ category_id: incomeCategories.value[0]?.id ?? '', amount: '', description: '', competence_month: '', vat_rate: defaultRate });
 const removeLine = (i) => income.lines.splice(i, 1);
 
 const expense = useForm({
@@ -66,6 +70,7 @@ const expense = useForm({
     method: '',
     description: '',
     document_ref: '',
+    vat_rate: defaultRate,
     activity_id: '',
 });
 const transfer = useForm({
@@ -243,7 +248,8 @@ const label = 'block space-y-1.5 text-sm';
                 <fieldset v-for="(line, i) in income.lines" :key="i" class="space-y-3 rounded-xl border border-line p-3">
                     <legend class="px-1 text-sm font-semibold">{{ income.lines.length > 1 ? `Voce ${i + 1}` : 'Cosa incassi' }}</legend>
                     <select v-model="line.category_id" class="field" aria-label="Categoria"><option v-for="c in incomeCategories" :key="c.id" :value="c.id">{{ c.name }}</option></select>
-                    <input v-model="line.amount" inputmode="decimal" placeholder="Importo, es. 30,00" class="field" aria-label="Importo" required />
+                    <input v-model="line.amount" inputmode="decimal" :placeholder="fiscal?.hasVat && !fiscal.includesVat ? 'Importo senza IVA, es. 30,00' : 'Importo, es. 30,00'" class="field" aria-label="Importo" required />
+                    <select v-if="fiscal?.hasVat" v-model="line.vat_rate" class="field" aria-label="Aliquota IVA"><option v-for="o in rateOptions" :key="o.value" :value="o.value">{{ o.label }}</option></select>
                     <input v-model="line.description" placeholder="Descrizione (facoltativa)" class="field" aria-label="Descrizione" />
                     <label :class="label"><span class="caption">Mese di competenza (facoltativo)</span><input v-model="line.competence_month" type="month" class="field" /></label>
                     <button v-if="income.lines.length > 1" type="button" class="text-sm font-semibold text-danger" @click="removeLine(i)">Togli questa voce</button>
@@ -273,6 +279,8 @@ ${E//FORM/income}
                     <label :class="label"><span class="font-semibold">Importo</span><input v-model="expense.amount" inputmode="decimal" placeholder="es. 120,00" class="field" required /></label>
                 </div>
                 <p v-if="expense.errors.amount" class="text-sm font-semibold text-danger">{{ expense.errors.amount }}</p>
+                <label v-if="fiscal?.hasVat" :class="label"><span class="font-semibold">Aliquota IVA della spesa</span>
+                    <select v-model="expense.vat_rate" class="field"><option v-for="o in rateOptions" :key="o.value" :value="o.value">{{ o.label }}</option></select></label>
                 <label :class="label"><span class="font-semibold">Categoria</span>
                     <select v-model="expense.category_id" class="field"><option v-for="c in expenseCategories" :key="c.id" :value="c.id">{{ c.name }}</option></select></label>
                 <label :class="label"><span class="font-semibold">Da quale conto</span>

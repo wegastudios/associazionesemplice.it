@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Contabilita\Http\Controllers\AccountsController;
+use App\Modules\Contabilita\Http\Controllers\FiscalSettingsController;
 use App\Modules\Contabilita\Http\Controllers\LedgerController;
 use App\Modules\Contabilita\Http\Controllers\LedgerTransferController;
 use App\Modules\Contabilita\Http\Controllers\ReceiptsController;
@@ -31,6 +32,11 @@ Route::middleware(['web', 'auth', 'two-factor', 'operator'])->prefix('gestionale
         Route::post('/conti/{account}/commissione', [AccountsController::class, 'fee'])->whereUuid('account')->name('accounts.fee');
         Route::post('/conti/{account}/chiudi', [AccountsController::class, 'close'])->whereUuid('account')->name('accounts.close');
         Route::post('/conti/{account}/riapri', [AccountsController::class, 'reopen'])->whereUuid('account')->name('accounts.reopen');
+    });
+
+    Route::middleware('can:org.settings')->group(function (): void {
+        Route::get('/aspetto-fiscale', [FiscalSettingsController::class, 'show'])->name('fiscal.settings');
+        Route::put('/aspetto-fiscale', [FiscalSettingsController::class, 'update'])->name('fiscal.settings.update');
     });
 
     Route::middleware('can:accounting.close')->group(function (): void {

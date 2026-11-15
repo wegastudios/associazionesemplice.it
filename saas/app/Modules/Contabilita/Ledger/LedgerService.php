@@ -17,6 +17,7 @@ use App\Modules\Contabilita\Models\Account;
 use App\Modules\Contabilita\Rules\CollectionFee;
 use App\Modules\Contabilita\Rules\Vat;
 use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Core\Contracts\OrgFiscal;
 use Closure;
 use Illuminate\Contracts\Auth\Factory as Auth;
 use Illuminate\Database\ConnectionInterface;
@@ -36,7 +37,19 @@ final readonly class LedgerService implements Ledger
         private FiscalYearService $years,
         private AuditLog $audit,
         private Auth $auth,
+        private OrgFiscal $fiscal,
     ) {}
+
+    /** Senza partita IVA l'IVA non si applica mai; con la partita IVA solo le aliquote scelte nell'Aspetto fiscale (lo 0 è «IVA esente»). */
+    private function assertVat(?int $rate, string $prefix): void
+    {
+        if ($this->fiscal->allows($rate)) {
+            return;
+        }
+        throw new LedgerError($prefix.($this->fiscal->hasVat()
+            ? 'l\'aliquota IVA '.$rate.'% non è tra quelle scelte in Aspetto fiscale.'
+            : 'senza partita IVA non si può applicare l\'IVA.'));
+    }
 
     public function recordIncome(Income $income): array
     {
@@ -63,6 +76,7 @@ final readonly class LedgerService implements Ledger
             if ($line->vatRate !== null && ! Vat::isRate($line->vatRate)) {
                 throw new LedgerError("Voce {$n}: aliquota IVA non valida.");
             }
+            $this->assertVat($line->vatRate, "Voce {$n}: ");
             $lines[] = $line;
         }
 
@@ -165,6 +179,7 @@ final readonly class LedgerService implements Ledger
         if ($expense->vatRate !== null && ! Vat::isRate($expense->vatRate)) {
             throw new LedgerError('Aliquota IVA non valida.');
         }
+        $this->assertVat($expense->vatRate, '');
         $this->assertPerson($expense->personId);
         $this->assertActivity($expense->activityId);
 
