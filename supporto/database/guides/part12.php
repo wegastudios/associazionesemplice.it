@@ -174,6 +174,27 @@ Tutti i movimenti stanno nella **Prima nota**: l'elenco di entrate e uscite in o
 
 Se mancano l'**email** e il **telefono della segreteria**, il pulsante **«Invia per email»** non invia e compare: «Prima inserisci email e telefono della segreteria (Altro › Configurazione guidata › Dati dell'ente): senza, non puoi inviare la ricevuta per email. Intanto scarica la ricevuta e consegnala a mano.» Inseriscili nei **Dati dell'ente** e riprova (se non amministri, chiedilo a chi amministra). Lo stesso avviso, in forma diversa, c'è se chi ha pagato non ha un'email in anagrafica: in quel caso scarica la ricevuta e consegnala a mano. Gli invii **automatici**, come il link di accesso all'area soci e l'avviso di rimborso, partono comunque.
 
+### La ricevuta non cambia più
+
+Il **PDF di una ricevuta si crea una volta sola**, quando viene emessa, e non cambia più, nemmeno se poi cambiano i dati del socio o quelli dell'associazione. Quando la scarichi o la spedisci è sempre lo **stesso file**: il programma controlla che sia quello emesso.
+
+Le ricevute emesse **prima di questo aggiornamento** vengono fissate in automatico nelle ore successive (o subito, dalla pagina «Verifica delle ricevute»). Per quelle il PDF usa i testi e i dati di oggi; le ricevute emesse da ora in poi restano identiche per sempre.
+
+### Perché una ricevuta non si scarica?
+
+- **Se sei tu a scaricarla** e il file manca o non coincide con quello emesso, il gestionale non la rifà di nascosto e ti avvisa; un amministratore può controllare da **«Verifica delle ricevute»**, come spiegato qui sotto. Se non si riesce a rifarla, scrivi all'assistenza di Associazione Semplice.
+- **Se il socio la scarica dall'area soci** e c'è lo stesso problema, legge: «Questa ricevuta non è disponibile in questo momento. Avvisa la segreteria: {email}, tel. {telefono}.» con i contatti che hai inserito nei Dati dell'ente.
+- Una ricevuta **annullata** non si scarica più: il file emesso resta conservato, ma non è più disponibile.
+
+### La pagina «Verifica delle ricevute»
+
+La trovi in **Altro**, ed è **solo per gli amministratori**. Scegli l'**anno fiscale** e vedi l'elenco delle ricevute con il loro stato:
+
+- **«A posto»**: il file è quello emesso;
+- **«Da fissare»**: ricevuta emessa prima dell'aggiornamento, non ancora fissata; il pulsante **«Fissa i prossimi PDF»** le fissa a gruppi (se ne restano, premilo ancora);
+- **«Mancante»** e **«Alterato»**: il file non c'è più o non coincide con quello emesso; il pulsante **«Rifai il PDF»** lo rifà. Si rifà **solo se risulta identico a quello emesso**; altrimenti non cambia nulla e compare un messaggio che ti dice di scrivere all'assistenza di Associazione Semplice. L'operazione resta scritta nel registro azioni;
+- **«Annullata»**: «La ricevuta è stata annullata: il file emesso resta conservato ma non si scarica più.»
+
 ## Cercare e filtrare
 
 In **Prima nota** filtra per **conto**, per **attività** e per periodo, poi **«Mostra i movimenti»**. **«Esporta l'anno fiscale (CSV)»** scarica i movimenti; **«Importa da Excel o CSV»** li carica.
