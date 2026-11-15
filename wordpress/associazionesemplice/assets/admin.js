@@ -580,7 +580,7 @@
 	function membershipLine(c) {
 		var plan = ctx && ctx.membership;
 		var until = (ctx && ctx.membership_until) || D.yearEndText || '';
-		var note = plan ? 'tessera ' + plan.year + ' fino al ' + until + (plan.free ? ' · ' + plan.free + ' in omaggio' : '') : 'tessera fino al ' + until;
+		var note = ctx && ctx.membership_has ? '⚠ il socio ha già la tessera ' + plan.year + ': la voce non verrà registrata' : plan ? 'tessera ' + plan.year + ' fino al ' + until + (plan.free ? ' · ' + plan.free + ' in omaggio' : '') : 'tessera fino al ' + until;
 		return { title: 'Quota associativa' + (plan ? ' ' + plan.year : ''), category: c.id, kind: 'membership', amount: plain(ctx && ctx.membership_fee != null ? ctx.membership_fee : D.membershipFee), note: note };
 	}
 	$('#asem-add-membership').addEventListener('click', function () {
@@ -632,7 +632,7 @@
 		var mc = catByKind('membership');
 		if (!mc || !ctx || !ctx.person || autoPid === ctx.person.id) { return; }
 		autoPid = ctx.person.id;
-		if (ctx.needs_membership && !ctx.suspended && !ctx.is_guest && !ctx.is_founder && !lines.some(function (l) { return l.kind === 'membership'; })) { addLine(membershipLine(mc)); }
+		if (ctx.needs_membership && !ctx.membership_has && !ctx.suspended && !ctx.is_guest && !ctx.is_founder && !lines.some(function (l) { return l.kind === 'membership'; })) { addLine(membershipLine(mc)); }
 	}
 	/* Dal pulsante "Incassa": le voci dovute si inseriscono da sole, con gli importi mancanti */
 	function autofillDues() {

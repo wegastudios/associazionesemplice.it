@@ -104,6 +104,7 @@ final class IncomePage {
 				'bookings'         => $bookings,
 				'dues'             => $dues,
 				'membership'       => $m_plan,
+				'membership_has'   => Plugin::people()->has_membership( (int) $person['id'], $m_plan['year'] ),
 				'membership_until' => \AssociazioneSemplice\MembershipRules::from_label( $m_plan['year'], Settings::start_month() )->end()->format( 'd/m/Y' ),
 				'suspended'        => Plugin::people()->is_suspended( (int) $person['id'] ),
 				'membership_fee'   => $m_missing > 0 ? $m_missing : \AssociazioneSemplice\Levels::fee_for( $person ), // a rate: si precompila il residuo

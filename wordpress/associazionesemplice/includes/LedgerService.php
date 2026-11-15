@@ -380,6 +380,9 @@ class LedgerService {
 				if ( ! preg_match( '#^(19|20)\d{2}(/(19|20)\d{2})?$#', $social_year ) ) {
 					throw new \InvalidArgumentException( "Voce $n: anno della tessera non valido." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
+				if ( Plugin::people()->has_membership( (int) $person['id'], $social_year ) ) {
+					throw new \InvalidArgumentException( "Voce $n: il socio ha già la tessera $social_year." ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				}
 				$free_year   = $social_year === $plan['year'] ? $plan['free'] : null;
 			}
 			// IVA: esplicita se indicata, altrimenti quella della quota associativa o dell'attività (solo se l'ente applica l'IVA)
