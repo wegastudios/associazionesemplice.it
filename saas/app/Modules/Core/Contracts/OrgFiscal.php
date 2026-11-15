@@ -83,6 +83,6 @@ final readonly class OrgFiscal
         }
         rsort($out);
 
-        return array_values($out);
+        return $out;
     }
 }
