@@ -268,6 +268,7 @@ final readonly class OnlinePayments
 
         return array_values(array_filter(array_map(fn (object $r): ?array => $this->row($r), $q->get()->all())));
     }
+
     /**
      * Che cosa resta in piedi dopo uno storno: prenotazioni di risorse («r:») e iscrizioni ad attività o eventi
      * («m:», «e:», «b:»). Le quote associative no: lo storno annulla la tessera.
