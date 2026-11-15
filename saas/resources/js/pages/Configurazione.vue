@@ -67,7 +67,7 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
                     <div :class="label"><label class="block space-y-1"><span class="font-semibold">PEC</span><input v-model="form.steps.ente.pec" type="email" :disabled="form.steps.ente.pec_none" :class="field" /></label>
                         <label class="flex items-center gap-2"><input v-model="form.steps.ente.pec_none" type="checkbox" /> L'associazione non ha una PEC</label></div>
                     <label :class="label"><span class="font-semibold">Codice destinatario per la fattura elettronica (facoltativo)</span><input v-model="form.steps.ente.sdi" :class="field" maxlength="7" /></label>
-                    <label :class="label"><span class="font-semibold">Regime fiscale (facoltativo)</span><input v-model="form.steps.ente.tax_regime" :class="field" maxlength="60" /></label>
+                    <label :class="label"><span class="font-semibold">Regime fiscale (facoltativo)</span><select v-model="form.steps.ente.tax_regime" :class="field"><option value="">Non indicato</option><option v-for="r in by.ente.regimes" :key="r.value" :value="r.value">{{ r.label }}</option></select></label>
                 </div>
             </section>
 
