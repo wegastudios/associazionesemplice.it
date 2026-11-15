@@ -12,8 +12,8 @@ use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Contabilita\Receipts\ReceiptFiles;
 use App\Modules\Core\Contracts\ArchiveError;
 use App\Modules\Core\Contracts\OrgContext;
+use App\Modules\Core\Contracts\ReadableExport;
 use App\Modules\Core\Contracts\YearArchives;
-use App\Modules\Core\Export\FullExport;
 use Illuminate\Contracts\Auth\Factory as Auth;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
@@ -75,8 +75,8 @@ final readonly class ReceiptYearArchive implements YearArchives
         if ($info['state'] === 'archived') {
             throw new ArchiveError('L\'anno fiscale '.$year.' è già archiviato.');
         }
-        if ($info['files'] > FullExport::MAX_HEAVY_FILES) {
-            throw new ArchiveError('L\'anno fiscale '.$year.' ha troppe ricevute per un\'unica archiviazione (oltre '.number_format(FullExport::MAX_HEAVY_FILES, 0, ',', '.').'): non è stato archiviato e non è cambiato nulla. Scrivi all\'assistenza di Associazione Semplice.');
+        if ($info['files'] > ReadableExport::MAX_HEAVY_FILES) {
+            throw new ArchiveError('L\'anno fiscale '.$year.' ha troppe ricevute per un\'unica archiviazione (oltre '.number_format(ReadableExport::MAX_HEAVY_FILES, 0, ',', '.').'): non è stato archiviato e non è cambiato nulla. Scrivi all\'assistenza di Associazione Semplice.');
         }
         @set_time_limit(900);
         $orgId = $this->context->require()->id;
