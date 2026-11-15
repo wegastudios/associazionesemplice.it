@@ -6,6 +6,7 @@ namespace App\Modules\Contabilita\Receipts;
 
 use Illuminate\Mail\Attachment;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 
@@ -18,16 +19,18 @@ final class ReceiptMail extends Mailable
         public readonly string $holder,
         private readonly string $pdf,
         private readonly string $filename,
+        public readonly string $contactEmail,
+        public readonly string $contactPhone,
     ) {}
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'Ricevuta n. '.$this->number.' · '.$this->orgName);
+        return new Envelope(subject: 'Ricevuta n. '.$this->number.' · '.$this->orgName, replyTo: [new Address($this->contactEmail, $this->orgName)]);
     }
 
     public function content(): Content
     {
-        return new Content(htmlString: '<p>Ciao '.e($this->holder).',</p><p>in allegato la ricevuta n. '.e($this->number).'.</p><p>A presto,<br>'.e($this->orgName).'</p>');
+        return new Content(htmlString: '<p>Ciao '.e($this->holder).',</p><p>in allegato la ricevuta n. '.e($this->number).'.</p><p>A presto,<br>'.e($this->orgName).'<br>Segreteria: '.e($this->contactEmail).' · tel. '.e($this->contactPhone).'</p>');
     }
 
     /** @return list<Attachment> */

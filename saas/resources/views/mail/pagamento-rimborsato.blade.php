@@ -6,7 +6,8 @@ Motivo: {{ $reason }}
 
 L'accredito compare sul tuo metodo di pagamento in genere entro pochi giorni lavorativi, fino a 10 a seconda della banca o del metodo di pagamento.
 
-Se hai dubbi, scrivi alla segreteria.
+Se hai dubbi, scrivi alla segreteria: {{ $contactEmail }}, tel. {{ $contactPhone }}.
 
 —
 {{ $orgName }}
+Segreteria: {{ $contactEmail }} · tel. {{ $contactPhone }}

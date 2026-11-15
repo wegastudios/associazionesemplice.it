@@ -37,6 +37,8 @@ beforeEach(function (): void {
     $this->addOperator($this->org, $this->owner, OrgRole::Owner);
     [$this->anna, $this->cash, $this->yoga] = $this->orgContext()->run($this->org->id, function (): array {
         app(OrgSettings::class)->set(MembershipService::DEFAULT_FEE, 2500);
+        app(OrgSettings::class)->set('ente.email', 'segreteria@beta.example');
+        app(OrgSettings::class)->set('ente.phone', '06 1234567');
         $anna = Person::create(['first_name' => 'Anna', 'last_name' => 'Verdi', 'email' => 'anna@example.com']);
         $yoga = app(ActivityService::class)->save(null, ['name' => 'Yoga', 'kind' => 'course', 'social_year' => app(MembershipService::class)->socialYearLabel(),
             'billing' => 'monthly', 'fee_cents' => 3000, 'weekdays' => [1, 2, 3, 4, 5, 6, 7]]);
@@ -268,4 +270,19 @@ it('rimborsa e storna in un gesto solo un pagamento già registrato, e se il rim
             ->and((int) DB::table('app.online_payments')->value('refunded_cents'))->toBe(2500);
     });
     Mail::assertSent(PaymentRefunded::class, fn (PaymentRefunded $m): bool => $m->amount === '25,00 €' && $m->reason === 'Quota già pagata');
+});
+
+it('rimborsa anche senza i contatti della segreteria, ma non scrive al socio', function (): void {
+    Mail::fake();
+    $this->orgContext()->run($this->org->id, fn () => app(OrgSettings::class)->set('ente.email', null));
+    $id = reviewPayment($this);
+    Http::fake([
+        'api.stripe.com/v1/checkout/sessions/*' => Http::response(['id' => 'cs_test_9', 'payment_intent' => 'pi_9']),
+        'api.stripe.com/v1/refunds' => Http::response(['id' => 're_9']),
+    ]);
+    $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()]);
+
+    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['amount' => '10,00', 'reason' => 'Quota già pagata'])->assertSessionHas('status');
+    Mail::assertNothingSent();
+    $this->orgContext()->run($this->org->id, fn () => expect(DB::table('audit.log')->where('action', 'payment.refund_mail_skipped')->exists())->toBeTrue());
 });

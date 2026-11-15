@@ -8,6 +8,7 @@ use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Contabilita\Receipts\ReceiptMail;
 use App\Modules\Contabilita\Receipts\ReceiptPdf;
+use App\Modules\Core\Contracts\OrgContacts;
 use App\Modules\Core\Contracts\OrgContext;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Http\RedirectResponse;
@@ -23,6 +24,7 @@ final readonly class ReceiptsController
         private AuditLog $audit,
         private DatabaseManager $db,
         private OrgContext $context,
+        private OrgContacts $contacts,
     ) {}
 
     public function pdf(string $receipt): Response
@@ -51,8 +53,12 @@ final readonly class ReceiptsController
         if ($r['email'] === null) {
             throw ValidationException::withMessages(['ledger' => 'Chi ha pagato non ha un\'email in anagrafica: scarica la ricevuta e consegnala a mano.']);
         }
+        $contacts = $this->contacts->all();
+        if ($contacts === null) {
+            throw ValidationException::withMessages(['ledger' => 'Prima inserisci email e telefono della segreteria (Altro › Configurazione guidata › Dati dell\'ente): senza, l\'associazione non scrive ai soci. Intanto scarica la ricevuta e consegnala a mano.']);
+        }
         $org = $this->db->connection($this->context->require()->connection)->table('app.orgs')->value('name');
-        Mail::to($r['email'])->send(new ReceiptMail(is_string($org) ? $org : '', $r['number'], $r['holder'], $r['pdf'], $r['filename']));
+        Mail::to($r['email'])->send(new ReceiptMail(is_string($org) ? $org : '', $r['number'], $r['holder'], $r['pdf'], $r['filename'], $contacts['email'], $contacts['phone']));
         $this->audit->record('receipt.sent', 'app.receipts', $receipt, ['number' => $r['number']]);
 
         return back()->with('status', 'Ricevuta n. '.$r['number'].' mandata a '.$r['email'].'.');

@@ -10,3 +10,4 @@ Link e codice valgono {{ $minutes }} minuti e una volta sola. Se non hai chiesto
 
 —
 {{ $orgName }}
+Segreteria: {{ $contactEmail }} · tel. {{ $contactPhone }}

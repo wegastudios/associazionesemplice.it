@@ -6,6 +6,7 @@ namespace App\Modules\AreaSoci\Mail;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 
@@ -19,11 +20,13 @@ final class PaymentRefunded extends Mailable
         public readonly string $amount,
         public readonly string $paidOn,
         public readonly string $reason,
+        public readonly string $contactEmail,
+        public readonly string $contactPhone,
     ) {}
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'Rimborso del tuo pagamento · '.$this->orgName);
+        return new Envelope(subject: 'Rimborso del tuo pagamento · '.$this->orgName, replyTo: [new Address($this->contactEmail, $this->orgName)]);
     }
 
     public function content(): Content

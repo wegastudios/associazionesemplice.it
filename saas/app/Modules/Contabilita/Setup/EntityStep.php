@@ -74,7 +74,15 @@ final readonly class EntityStep implements SetupStep
         if ($t('vat') !== '' && ! Fiscal::isValidVat($t('vat'))) {
             $errors[] = 'La partita IVA non è valida.';
         }
-        foreach (['email' => 'L\'email', 'pec' => 'La PEC'] as $k => $label) {
+        if ($t('email') === '') {
+            $errors[] = 'Indica l\'email della segreteria.';
+        }
+        if ($t('phone') === '') {
+            $errors[] = 'Indica il telefono della segreteria.';
+        } elseif (preg_match('/^[0-9+\-.()\/ ]+$/', $t('phone')) !== 1 || preg_match_all('/\d/', $t('phone')) < 6) {
+            $errors[] = 'Indica un telefono valido per la segreteria (almeno 6 cifre; ammessi + - . ( ) e spazi).';
+        }
+        foreach (['email' => 'L\'email della segreteria', 'pec' => 'La PEC'] as $k => $label) {
             if ($t($k) !== '' && (filter_var($t($k), FILTER_VALIDATE_EMAIL) === false || mb_strlen($t($k)) > 190)) {
                 $errors[] = "{$label} non è un indirizzo valido.";
             }

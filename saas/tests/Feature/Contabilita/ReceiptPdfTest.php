@@ -61,8 +61,17 @@ it('intesta la ricevuta del minore al genitore, con la nota sulla detrazione', f
         ->toContain('RSSLCU14A01H501X')->toContain('Pagamento tracciato')->toContain('Contributo Judo');
 
     Mail::fake();
+    // Senza i contatti della segreteria non si scrive a nessuno.
+    $this->post("/gestionale/ricevute/{$receiptId}/invia")->assertSessionHasErrors('ledger');
+    Mail::assertNothingSent();
+
+    $this->orgContext()->run($this->org->id, function (): void {
+        app(OrgSettings::class)->set('ente.email', 'segreteria@alfa.example');
+        app(OrgSettings::class)->set('ente.phone', '06 1234567');
+    });
     $this->post("/gestionale/ricevute/{$receiptId}/invia")->assertSessionHas('status', 'Ricevuta n. 1/'.now()->format('Y').' mandata a anna@example.com.');
-    Mail::assertSent(ReceiptMail::class, fn (ReceiptMail $m): bool => $m->hasTo('anna@example.com') && count($m->attachments()) === 1);
+    Mail::assertSent(ReceiptMail::class, fn (ReceiptMail $m): bool => $m->hasTo('anna@example.com') && count($m->attachments()) === 1
+        && $m->hasReplyTo('segreteria@alfa.example') && $m->contactPhone === '06 1234567');
 });
 
 it('non dà le ricevute stornate né le manda senza email', function (): void {

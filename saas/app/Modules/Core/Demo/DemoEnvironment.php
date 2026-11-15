@@ -106,6 +106,8 @@ final readonly class DemoEnvironment
 
         $this->context->run($org->id, function () use ($org): void {
             $this->settings->set(SetupWizard::STATUS, SetupWizard::DONE);
+            $this->settings->set('ente.email', 'segreteria@polisportiva-demo.example');
+            $this->settings->set('ente.phone', '06 1234567');
             $this->settings->set('ente.kind', 'aps'); // la pagina «Dati per il RUNTS» mostra così il minimo di soci
 
             $seeders = [];

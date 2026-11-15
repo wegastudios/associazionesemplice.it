@@ -10,6 +10,7 @@ use App\Modules\AreaSoci\Services\MemberAccessError;
 use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Contracts\LedgerError;
+use App\Modules\Core\Contracts\OrgContacts;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\PayableDues;
 use App\Modules\Soci\Contracts\MemberProfiles;
@@ -352,8 +353,15 @@ final readonly class OnlinePayments
 
             return false;
         }
+        // Senza i contatti della segreteria l'associazione non comunica con i soci: il rimborso vale, l'email non parte.
+        $contacts = $this->app->make(OrgContacts::class)->all();
+        if ($contacts === null) {
+            $this->audit->record('payment.refund_mail_skipped', 'app.online_payments', $paymentId, ['why' => 'no_contacts']);
+
+            return false;
+        }
         try {
-            $this->app->make(Mailer::class)->to($email)->send(new PaymentRefunded($orgName, self::euro($cents), date('d/m/Y', (int) strtotime($createdAt)), mb_substr($reason, 0, 200)));
+            $this->app->make(Mailer::class)->to($email)->send(new PaymentRefunded($orgName, self::euro($cents), date('d/m/Y', (int) strtotime($createdAt)), mb_substr($reason, 0, 200), $contacts['email'], $contacts['phone']));
             $this->audit->record('payment.refund_mail_sent', 'app.online_payments', $paymentId, []);
 
             return true;

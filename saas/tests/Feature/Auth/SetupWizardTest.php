@@ -27,7 +27,7 @@ function setupInput(array $over = []): array
     $cash = test()->orgContext()->run(test()->org->id, fn () => Account::query()->where('type', 'cash')->sole()->id);
 
     return array_replace_recursive(['steps' => [
-        'ente' => ['kind' => 'aps', 'tax_code' => '12345678903', 'vat' => '', 'runts' => '12345', 'address' => 'Via Roma 1', 'zip' => '00100', 'city' => 'Roma', 'province' => 'rm', 'email' => 'Info@Alfa.example', 'pec' => '', 'phone' => ''],
+        'ente' => ['kind' => 'aps', 'tax_code' => '12345678903', 'vat' => '', 'runts' => '12345', 'address' => 'Via Roma 1', 'zip' => '00100', 'city' => 'Roma', 'province' => 'rm', 'email' => 'Info@Alfa.example', 'pec' => '', 'phone' => '06 1234567'],
         'anno_sociale' => ['start_month' => 9],
         'anno_fiscale' => ['start_month' => 9],
         'tesseramento' => ['fee' => '25,00'],
@@ -106,4 +106,20 @@ it('chiede subito il mese dell\'anno sociale e dell\'anno fiscale e rifà l\'ann
         app(Ledger::class)->recordIncome(new Income($today->toDateString(), Account::query()->where('type', 'cash')->sole()->id, [new IncomeLine(Category::query()->where('kind', 'donation')->sole()->id, 1000)], null, null, false));
     });
     $this->post('/gestionale/configurazione', setupInput(['steps' => ['anno_fiscale' => ['start_month' => 3]]]))->assertSessionHasErrors('steps.anno_fiscale');
+});
+
+it('chiede email e telefono della segreteria e non salva senza', function (): void {
+    $this->actingAs($this->owner)->post('/gestionale/configurazione', setupInput(['steps' => ['ente' => ['email' => '', 'phone' => '']]]))
+        ->assertSessionHasErrors('steps.ente');
+    $this->post('/gestionale/configurazione', setupInput(['steps' => ['ente' => ['phone' => '12']]]))->assertSessionHasErrors('steps.ente');
+    $this->post('/gestionale/configurazione', setupInput(['steps' => ['ente' => ['email' => 'non-una-email']]]))->assertSessionHasErrors('steps.ente');
+    $this->orgContext()->run($this->org->id, fn () => expect(app(SetupWizard::class)->pending())->toBeTrue());
+});
+
+it('mostra il promemoria dei contatti finché mancano', function (): void {
+    $this->actingAs($this->owner)->post('/gestionale/configurazione', setupInput())->assertRedirect('/gestionale');
+    $this->get('/gestionale/configurazione')->assertInertia(fn (Assert $page) => $page->where('org.contacts_missing', false));
+
+    $this->orgContext()->run($this->org->id, fn () => app(OrgSettings::class)->set('ente.phone', null));
+    $this->get('/gestionale/configurazione')->assertInertia(fn (Assert $page) => $page->where('org.contacts_missing', true));
 });
