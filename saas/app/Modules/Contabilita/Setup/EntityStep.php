@@ -25,16 +25,8 @@ final readonly class EntityStep implements SetupStep
         'altro' => 'Altro',
     ];
 
-    /** Regime fiscale (facoltativo): stessi codici ed etichette del plugin (Fiscal::regimes). */
-    public const REGIMES = [
-        'ordinario' => 'Regime ordinario',
-        'legge_398' => 'Legge 398/1991 (associazioni sportive e simili)',
-        'forfettario' => 'Regime forfettario (senza IVA)',
-        'altro' => 'Altro regime',
-    ];
-
     /** Campi di testo e lunghezza massima. */
-    private const TEXT = ['runts' => 30, 'address' => 190, 'zip' => 5, 'city' => 120, 'province' => 2, 'phone' => 30, 'legal_rep' => 120, 'sdi' => 7, 'tax_regime' => 60];
+    private const TEXT = ['runts' => 30, 'address' => 190, 'zip' => 5, 'city' => 120, 'province' => 2, 'phone' => 30, 'legal_rep' => 120, 'sdi' => 7];
 
     /** Dati «solo se esistono»: la casella «non ce l'ha» al posto del valore. */
     public const NONE = ['vat', 'runts', 'pec'];
@@ -72,9 +64,7 @@ final readonly class EntityStep implements SetupStep
             $values[$k.'_none'] = $this->settings->get('ente.'.$k.'_none') === true;
         }
 
-        $regimes = array_map(static fn (string $k, string $l): array => ['value' => $k, 'label' => $l], array_keys(self::REGIMES), self::REGIMES);
-
-        return ['values' => $values, 'regimes' => $regimes, 'kinds' => array_map(static fn (string $k, string $l): array => ['value' => $k, 'label' => $l], array_keys(self::KINDS), self::KINDS)];
+        return ['values' => $values, 'kinds' => array_map(static fn (string $k, string $l): array => ['value' => $k, 'label' => $l], array_keys(self::KINDS), self::KINDS)];
     }
 
     public function errors(array $input): array
@@ -115,9 +105,6 @@ final readonly class EntityStep implements SetupStep
         }
         if ($t('legal_rep') === '') {
             $errors[] = 'Indica nome e cognome del legale rappresentante.';
-        }
-        if ($t('tax_regime') !== '' && ! array_key_exists($t('tax_regime'), self::REGIMES)) {
-            $errors[] = 'Il regime fiscale non è valido.';
         }
         if ($t('sdi') !== '' && preg_match('/^[A-Za-z0-9]{7}$/', $t('sdi')) !== 1) {
             $errors[] = 'Il codice destinatario ha 7 caratteri (lettere e cifre).';

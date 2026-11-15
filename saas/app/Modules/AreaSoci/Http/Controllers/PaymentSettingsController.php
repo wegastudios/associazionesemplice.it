@@ -149,7 +149,7 @@ final readonly class PaymentSettingsController
             throw ValidationException::withMessages(['ledger' => $e->getMessage()]);
         }
 
-        $notice = $mailed ? 'Il socio è stato avvisato per email.' : 'Il socio non è stato avvisato per email (manca la sua email o i contatti della segreteria): avvisalo tu.';
+        $notice = $mailed ? 'Il socio è stato avvisato per email.' : 'Il socio non ha un\'email o l\'invio non è riuscito: avvisalo tu.';
 
         return back()->with('status', ($cents === null ? 'Rimborsato e stornato: ricevute e tessere annullate. ' : 'Rimborso di '.Money::format($cents).' inviato al socio. ').$notice);
     }

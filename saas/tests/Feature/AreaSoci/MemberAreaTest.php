@@ -202,11 +202,11 @@ it('lascia alla segreteria il link d\'accesso per chi non ha email', function ()
     $this->actingAs($op)->postJson('/gestionale/soci/'.$anna->id.'/area-soci/link')->assertForbidden();
 });
 
-it('senza i contatti della segreteria non parte nessuna email di accesso', function (): void {
+it('l\'email di accesso parte anche senza i contatti della segreteria, senza indirizzo di risposta', function (): void {
     $this->orgContext()->run($this->org->id, fn () => app(OrgSettings::class)->set('ente.phone', null));
     Mail::fake();
     $this->post($this->base.'/accesso', ['email' => 'mario@example.com'])->assertRedirect('/area/accesso')->assertSessionHas('member_login_message');
-    Mail::assertNothingSent();
+    Mail::assertSent(LoginLink::class, fn (LoginLink $m): bool => $m->hasTo('mario@example.com') && ! $m->hasReplyTo('segreteria@alfa.example') && $m->contactEmail === null);
 });
 
 it('l\'email di accesso ha la segreteria come indirizzo di risposta', function (): void {

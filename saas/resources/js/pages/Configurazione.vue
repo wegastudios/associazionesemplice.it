@@ -59,7 +59,7 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
                     <label :class="label"><span class="font-semibold">Provincia (sigla)</span><input v-model="form.steps.ente.province" required :class="field" maxlength="2" /></label>
                     <label :class="label"><span class="font-semibold">Email della segreteria (obbligatoria)</span><input v-model="form.steps.ente.email" type="email" required :class="field" /></label>
                     <label :class="label"><span class="font-semibold">Telefono della segreteria (obbligatorio)</span><input v-model="form.steps.ente.phone" type="tel" required :class="field" maxlength="30" /></label>
-                    <p class="text-sm text-muted sm:col-span-3">Email e telefono li leggono i soci nelle email, nell'area soci e nel modulo di adesione, accanto al consenso sulla privacy: usa un recapito che qualcuno controlla davvero. Senza, l'associazione non scrive ai soci.</p>
+                    <p class="text-sm text-muted sm:col-span-3">Email e telefono li leggono i soci nelle email, nell'area soci e nel modulo di adesione, accanto al consenso sulla privacy: usa un recapito che qualcuno controlla davvero. Senza, la segreteria non può inviare le ricevute per email. Gli invii automatici, come il link di accesso, partono lo stesso.</p>
                     <div :class="label"><label class="block space-y-1"><span class="font-semibold">Partita IVA</span><input v-model="form.steps.ente.vat" :disabled="form.steps.ente.vat_none" :class="field" maxlength="16" /></label>
                         <label class="flex items-center gap-2"><input v-model="form.steps.ente.vat_none" type="checkbox" /> L'associazione non ha la partita IVA</label></div>
                     <div :class="label"><label class="block space-y-1"><span class="font-semibold">Numero RUNTS (con la sezione)</span><input v-model="form.steps.ente.runts" :disabled="form.steps.ente.runts_none" :class="field" maxlength="30" /></label>
@@ -67,7 +67,6 @@ const title = (k) => props.steps.find((s) => s.key === k)?.title;
                     <div :class="label"><label class="block space-y-1"><span class="font-semibold">PEC</span><input v-model="form.steps.ente.pec" type="email" :disabled="form.steps.ente.pec_none" :class="field" /></label>
                         <label class="flex items-center gap-2"><input v-model="form.steps.ente.pec_none" type="checkbox" /> L'associazione non ha una PEC</label></div>
                     <label :class="label"><span class="font-semibold">Codice destinatario per la fattura elettronica (facoltativo)</span><input v-model="form.steps.ente.sdi" :class="field" maxlength="7" /></label>
-                    <label :class="label"><span class="font-semibold">Regime fiscale (facoltativo)</span><select v-model="form.steps.ente.tax_regime" :class="field"><option value="">Non indicato</option><option v-for="r in by.ente.regimes" :key="r.value" :value="r.value">{{ r.label }}</option></select></label>
                 </div>
             </section>
 

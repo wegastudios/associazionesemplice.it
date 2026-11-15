@@ -353,15 +353,10 @@ final readonly class OnlinePayments
 
             return false;
         }
-        // Senza i contatti della segreteria l'associazione non comunica con i soci: il rimborso vale, l'email non parte.
+        // L'avviso è una conseguenza automatica del rimborso: parte sempre; senza i contatti della segreteria esce senza indirizzo di risposta né riga contatti.
         $contacts = $this->app->make(OrgContacts::class)->all();
-        if ($contacts === null) {
-            $this->audit->record('payment.refund_mail_skipped', 'app.online_payments', $paymentId, ['why' => 'no_contacts']);
-
-            return false;
-        }
         try {
-            $this->app->make(Mailer::class)->to($email)->send(new PaymentRefunded($orgName, self::euro($cents), date('d/m/Y', (int) strtotime($createdAt)), mb_substr($reason, 0, 200), $contacts['email'], $contacts['phone']));
+            $this->app->make(Mailer::class)->to($email)->send(new PaymentRefunded($orgName, self::euro($cents), date('d/m/Y', (int) strtotime($createdAt)), mb_substr($reason, 0, 200), $contacts['email'] ?? null, $contacts['phone'] ?? null));
             $this->audit->record('payment.refund_mail_sent', 'app.online_payments', $paymentId, []);
 
             return true;

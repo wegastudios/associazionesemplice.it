@@ -49,13 +49,8 @@ final readonly class MemberAccess
         if ($this->profiles->loginCandidates($email) === []) {
             return;
         }
-        // Senza i contatti della segreteria l'associazione non scrive ai soci: nessuna email, e a chi chiede la risposta è la stessa.
+        // L'accesso è un invio automatico: parte sempre; senza i contatti della segreteria esce senza indirizzo di risposta né riga contatti.
         $contacts = $this->contacts->all();
-        if ($contacts === null) {
-            $this->audit->record('member.login_blocked', null, null, ['why' => 'no_contacts']);
-
-            return;
-        }
         $link = self::random();
         $code = (string) random_int(100000, 999999);
         $id = Str::uuid7()->toString();
@@ -63,7 +58,7 @@ final readonly class MemberAccess
             'org_id' => $this->org(), 'id' => $id, 'kind' => 'email', 'email' => $email, 'link_hash' => self::hash($link),
             'code_hash' => self::hash($id.':'.$code), 'expires_at' => now()->addMinutes(self::CODE_MINUTES),
         ]);
-        $this->mailer->to($email)->send(new LoginLink($orgName, rtrim($baseUrl, '/').'/area/entra/'.$link, $code, self::CODE_MINUTES, $contacts['email'], $contacts['phone']));
+        $this->mailer->to($email)->send(new LoginLink($orgName, rtrim($baseUrl, '/').'/area/entra/'.$link, $code, self::CODE_MINUTES, $contacts['email'] ?? null, $contacts['phone'] ?? null));
         $this->audit->record('member.login_requested', null, null, ['kind' => 'email']);
     }
 

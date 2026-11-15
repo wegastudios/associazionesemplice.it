@@ -272,7 +272,7 @@ it('rimborsa e storna in un gesto solo un pagamento già registrato, e se il rim
     Mail::assertSent(PaymentRefunded::class, fn (PaymentRefunded $m): bool => $m->amount === '25,00 €' && $m->reason === 'Quota già pagata');
 });
 
-it('rimborsa anche senza i contatti della segreteria, ma non scrive al socio', function (): void {
+it('rimborsa e avvisa il socio anche senza i contatti della segreteria, senza indirizzo di risposta', function (): void {
     Mail::fake();
     $this->orgContext()->run($this->org->id, fn () => app(OrgSettings::class)->set('ente.email', null));
     $id = reviewPayment($this);
@@ -283,6 +283,5 @@ it('rimborsa anche senza i contatti della segreteria, ma non scrive al socio', f
     $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()]);
 
     $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['amount' => '10,00', 'reason' => 'Quota già pagata'])->assertSessionHas('status');
-    Mail::assertNothingSent();
-    $this->orgContext()->run($this->org->id, fn () => expect(DB::table('audit.log')->where('action', 'payment.refund_mail_skipped')->exists())->toBeTrue());
+    Mail::assertSent(PaymentRefunded::class, fn (PaymentRefunded $m): bool => $m->contactEmail === null && ! $m->hasReplyTo('segreteria@beta.example'));
 });

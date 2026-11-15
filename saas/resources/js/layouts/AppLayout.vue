@@ -133,9 +133,9 @@ const showAccount = ref(false);
                 La prova è finita: puoi consultare i dati ma non modificarli né esportarli. Scegli un piano dal portale per tornare a lavorare.
             </p>
             <div v-if="org?.data_missing?.length" class="mb-4 rounded-xl border border-warn bg-warn-soft p-3 text-sm font-semibold text-warn-ink" role="alert">
-                <template v-if="can('org.settings')">Mancano dei dati dell'associazione: {{ org.data_missing.join(', ') }}.<template v-if="org.contacts_missing"> Finché mancano email e telefono della segreteria, l'associazione non scrive ai soci.</template>
+                <template v-if="can('org.settings')">Mancano dei dati dell'associazione: {{ org.data_missing.join(', ') }}.<template v-if="org.contacts_missing"> Finché mancano email e telefono della segreteria, non puoi inviare le ricevute per email. Gli invii automatici, come il link di accesso, partono lo stesso.</template>
                     <Link href="/gestionale/configurazione" class="underline">Completali ora</Link></template>
-                <template v-else>Mancano dei dati dell'associazione: {{ org.data_missing.join(', ') }}. Chiedi a chi amministra di completarli.<template v-if="org.contacts_missing"> Finché mancano email e telefono della segreteria, l'associazione non scrive ai soci.</template></template>
+                <template v-else>Mancano dei dati dell'associazione: {{ org.data_missing.join(', ') }}. Chiedi a chi amministra di completarli.<template v-if="org.contacts_missing"> Finché mancano email e telefono della segreteria, non puoi inviare le ricevute per email. Gli invii automatici, come il link di accesso, partono lo stesso.</template></template>
             </div>
             <FlashMessages />
             <slot />

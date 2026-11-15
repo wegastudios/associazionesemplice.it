@@ -20,13 +20,13 @@ final class PaymentRefunded extends Mailable
         public readonly string $amount,
         public readonly string $paidOn,
         public readonly string $reason,
-        public readonly string $contactEmail,
-        public readonly string $contactPhone,
+        public readonly ?string $contactEmail = null,
+        public readonly ?string $contactPhone = null,
     ) {}
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'Rimborso del tuo pagamento · '.$this->orgName, replyTo: [new Address($this->contactEmail, $this->orgName)]);
+        return new Envelope(subject: 'Rimborso del tuo pagamento · '.$this->orgName, replyTo: $this->contactEmail === null ? [] : [new Address($this->contactEmail, $this->orgName)]);
     }
 
     public function content(): Content
