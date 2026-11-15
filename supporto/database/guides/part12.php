@@ -191,7 +191,7 @@ MD,
         'body' => <<<'MD'
 > Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
 
-**Se la tua associazione non ha la partita IVA, questa pagina non ti serve.**
+**Se la tua associazione non ha la partita IVA, questa pagina non ti serve: incassi e spese si registrano con il loro importo e basta.**
 
 Per il gestionale conta una sola cosa: l'associazione ha la **partita IVA** o no.
 
@@ -217,13 +217,17 @@ Con la partita IVA, ogni voce di incasso e ogni spesa ha la sua **aliquota IVA**
 - **«Fuori campo IVA»**;
 - **«Reverse charge»**, **solo sulle spese**: la spesa si registra **senza IVA esposta**. Non si può scegliere insieme a un'aliquota.
 
-Quale voce usare per un movimento non lo decide il programma: **chiedi al tuo commercialista**.
+Se non sai quale voce usare, **chiedi al tuo commercialista**: il gestionale registra quella che scegli, non decide per te.
 
 L'IVA compare nel dettaglio del movimento. Sulla **ricevuta** in PDF vedi, per ogni aliquota, l'imponibile e l'IVA; con l'aliquota «IVA esente» la riga dice «di cui IVA esente». Se provi a usare un'aliquota che non hai scelto in **Aspetto fiscale**, il gestionale ti dice che non è tra quelle scelte.
 
 ## Se togli un'aliquota dall'elenco
 
-I movimenti già registrati restano com'erano: cambia solo ciò che puoi scegliere da quel momento in poi.
+Se togli un'aliquota dall'elenco, i movimenti già registrati con quella aliquota non cambiano. Se togli l'aliquota usata per la quota associativa, la pagina non si salva e ti dice: «Prima cambia l'aliquota della quota associativa: deve essere «IVA esente» o una di quelle dell'elenco. I movimenti già registrati restano come sono.»
+
+## Cosa non c'è ancora
+
+Per ora l'IVA si indica movimento per movimento in prima nota. Non si può ancora impostare su un'attività, un corso o un evento.
 MD,
     ],
     [
