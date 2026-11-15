@@ -68,6 +68,7 @@ final class Plugin {
 			'asem_send_reminders'         => array( 'daily', 600, 'Reminders', 'run', '' ),
 			'asem_purge_backups'          => array( 'hourly', 1200, 'Backup', 'purge_old', '' ),
 			'asem_private_folder_check'   => array( 'daily', 3000, 'PrivateFolder', 'cron', '' ),
+			'asem_file_crypt_migrate'     => array( '', 0, 'FileMigration', 'cron', '' ), // lotti programmati per cifrare i file già caricati (si programmano da soli, uno alla volta)
 			'asem_purge_audit'            => array( 'daily', 1800, 'Audit', 'purge_old', '' ),
 			'asem_purge_member_sessions'  => array( 'daily', 2400, 'MemberSession', 'purge_expired', '' ),
 		);
@@ -126,7 +127,7 @@ final class Plugin {
 	}
 
 	/** Campi delle password: non si ripuliscono (come fa WordPress), si usano solo per wp_set_password() o per cifrarli. */
-	const VERBATIM_FIELDS = array( 'password', 'password2', 'pass1', 'pass2', 'apple_password' );
+	const VERBATIM_FIELDS = array( 'password', 'password2', 'pass1', 'pass2', 'apple_password', 'phrase', 'phrase2', 'old_enc_const', 'old_auth_key', 'old_auth_salt', 'rphrase', 'rphrase2', 'recovery_phrase', 'file_phrase', 'file_phrase2' );
 
 	/**
 	 * I dati di un modulo ($_POST) senza le barre aggiunte da WordPress e già ripuliti: gli indirizzi (_back, *_url) con esc_url_raw(),

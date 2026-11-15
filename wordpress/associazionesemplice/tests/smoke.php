@@ -1301,7 +1301,7 @@ $wz_steps = preg_match_all( '/<section class="asem-wiz-step"/', $wz_html3 );
 asem_ok( $wz_steps <= 8, 'procedura: al massimo otto passi (' . $wz_steps . ')' );
 asem_ok( false !== strpos( $wz_html3, 'name="member_wp_users" value="0"' ) && false !== strpos( $wz_html3, 'name="wpusers_present"' ), 'procedura: la scelta su come entrano i soci è nel passo «Cosa ti serve», senza un passo in più' );
 asem_ok( false !== strpos( $wz_html3, 'Descrivi il tuo ente e scegli in 4 sezioni veloci i servizi che vuoi gestire' ) && 4 === preg_match_all( '/<li data-group="/', $wz_html3 ) && false !== strpos( $wz_html3, '>Ente<' ) && false !== strpos( $wz_html3, '>Gestione<' ) && false !== strpos( $wz_html3, '>Pagamenti<' ) && false !== strpos( $wz_html3, '>Aspetto<' ), 'procedura: indicatore di sezione (Ente, Gestione, Pagamenti, Aspetto) al posto del conteggio delle pagine' );
-asem_ok( 2 === preg_match_all( '/<section class="asem-wiz-step"[^>]*data-group="ente"/', $wz_html3 ) && (int) preg_match_all( '/<section class="asem-wiz-step"[^>]*data-group="pagamenti"/', $wz_html3 ) >= 2 && 1 === preg_match_all( '/<section class="asem-wiz-step"[^>]*data-group="gestione"/', $wz_html3 ) && 1 === preg_match_all( '/<section class="asem-wiz-step"[^>]*data-group="aspetto"/', $wz_html3 ) && 1 === preg_match_all( '/<section class="asem-wiz-step"[^>]*data-group="optional"/', $wz_html3 ) && false === strpos( $wz_html3, 'Passo "' ), 'procedura: l\'ente occupa tre schermate di una sola sezione, l\'elenco dei soci è facoltativo e non si conta' );
+asem_ok( 2 === preg_match_all( '/<section class="asem-wiz-step"[^>]*data-group="ente"/', $wz_html3 ) && (int) preg_match_all( '/<section class="asem-wiz-step"[^>]*data-group="pagamenti"/', $wz_html3 ) >= 2 && 1 === preg_match_all( '/<section class="asem-wiz-step"[^>]*data-group="gestione"/', $wz_html3 ) && (int) preg_match_all( '/<section class="asem-wiz-step"[^>]*data-group="aspetto"/', $wz_html3 ) >= 1 && 1 === preg_match_all( '/<section class="asem-wiz-step"[^>]*data-group="optional"/', $wz_html3 ) && false === strpos( $wz_html3, 'Passo "' ), 'procedura: l\'ente occupa tre schermate di una sola sezione, l\'elenco dei soci è facoltativo e non si conta' );
 asem_ok( 5 === (int) Settings::get( 'privacy_retention_years' ), 'anonimizzazione: di default 5 anni di inattività' );
 // pagina privacy preselezionata solo alla prima configurazione; nome dell'ente mancante segnalato in Bacheca; partecipanti dei corsi chiusi di default
 $pv_page = wp_insert_post( array( 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => 'Privacy di WordPress prova' ) );
@@ -2554,7 +2554,7 @@ asem_ok( false !== strpos( $res[1], '2 allegati' ) && 2 === count( $att ), 'spes
 $a0 = $att[0];
 asem_ok( 'application/pdf' === $a0['mime'] && 'scontrino.pdf' === $a0['original_name'] && preg_match( '/^[0-9a-f]{32}$/', $a0['stored_name'] ) && 64 === strlen( $a0['sha256'] ), 'allegato: tipo letto dal contenuto, nome sul disco casuale e senza estensione' );
 $path = Attachments::path_of( $a0 );
-asem_ok( is_file( $path ) && filesize( $path ) === (int) $a0['size_bytes'] && 0 === strpos( $path, Attachments::dir() ), 'il file sta nella cartella privata del plugin' );
+asem_ok( is_file( $path ) && ( filesize( $path ) === (int) $a0['size_bytes'] || ( 1 === (int) $a0['enc_ver'] && \AssociazioneSemplice\FileCrypt::is_encrypted_file( $path ) ) ) && 0 === strpos( $path, Attachments::dir() ), 'il file sta nella cartella privata del plugin' );
 asem_ok( is_file( Attachments::dir() . '/.htaccess' ) && false !== strpos( (string) file_get_contents( Attachments::dir() . '/.htaccess' ), 'Require all denied' ) && is_file( Attachments::dir() . '/index.php' ), 'cartella privata protetta (.htaccess e index)' );
 asem_ok( $media_before === (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'attachment'" ), 'niente nella libreria media: la galleria resta pulita' );
 $url = Attachments::url( (int) $a0['id'] );
@@ -10906,6 +10906,7 @@ foreach ( array( 'Admin\\BlockDExports', 'Admin\\WatchExports', 'Admin\\BlockCEx
 }
 asem_ok( 0 === strpos( \AssociazioneSemplice\TextsEngine::export_csv(), "\xEF\xBB\xBF" ) && 0 === strpos( \AssociazioneSemplice\Docs::csv( array( 'a' ), array() ), "\xEF\xBB\xBF" ), 'CSV: testi e documenti hanno già il BOM (non duplicato dall\'invio)' );
 
+require __DIR__ . '/smoke_file_crypt.php'; // cifratura dei file riservati
 require __DIR__ . '/smoke_private_folder.php'; // cartella dei file riservati: per ultima, definisce la costante ASEM_PRIVATE_DIR
 
 asem_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice/deprecation PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );

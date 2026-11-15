@@ -950,9 +950,12 @@ final class Actions {
 		if ( ! $f || UPLOAD_ERR_OK !== $f['error'] ) {
 			throw new \InvalidArgumentException( 'Scegli il file della copia da ripristinare.' );
 		}
-		$r = \AssociazioneSemplice\Backup::restore( $f['tmp_name'] );
+		$r = \AssociazioneSemplice\Backup::restore( $f['tmp_name'], (string) ( $p['phrase'] ?? '' ) );
 		$d    = (array) ( $r['documents'] ?? array() );
 		$docs = '';
+		if ( ! empty( $r['bad'] ) ) {
+			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: {n} file della copia non coincidono con la loro impronta (o non si aprono con la chiave) e non sono stati rimessi sul sito.', array( 'n' => (int) $r['bad'] ) );
+		}
 		if ( ! empty( $d['restored'] ) ) {
 			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Rimessi sul sito {n} PDF definitivi.', array( 'n' => (int) $d['restored'] ) );
 		}

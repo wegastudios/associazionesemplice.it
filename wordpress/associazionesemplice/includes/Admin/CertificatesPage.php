@@ -35,6 +35,8 @@ final class CertificatesPage {
 		$act    = Ui::get_int( 'activity' );
 		$all    = '1' === Ui::get_str( 'all' );
 		Ui::header( 'Certificati medici' );
+		FileCryptPanel::alerts(); // libreria di cifratura mancante, chiave che non si apre, codici di sicurezza deboli
+		echo wp_kses_post( FileCryptPanel::status_line() ); // «chiave valida» (blocco di prova)
 		echo '<p class="description">Il certificato medico sportivo dei soci: tipo, date di rilascio e di scadenza, medico o struttura e il file. È un dato sanitario: lo vede solo lo staff e il registro delle azioni ricorda soltanto che è stato aperto, mai cosa contiene. '
 			. 'Per ogni attività si può indicare che richiede il certificato (nel modulo dell\'attività): qui compaiono i suoi iscritti, con chi è scaduto, in scadenza o senza certificato.</p>';
 

@@ -90,7 +90,7 @@ final class PrivateFolderPanel {
 			return;
 		}
 		echo '<p>' . esc_html( Texts::t( 'Nella cartella predefinita ci sono ancora {n} file da portare nella nuova cartella. Si procede a lotti di {lotto} file: ogni file viene copiato, controllato con la sua impronta SHA-256 e solo dopo cancellato dalla vecchia posizione. Se ne restano, premi di nuovo.', array( 'n' => $left >= 5000 ? '5000+' : $left, 'lotto' => PrivateFolder::BATCH ) ) ) . '</p>';
-		echo '<p><strong>' . esc_html( Texts::t( 'Prima di spostare i file fai una copia di sicurezza.' ) ) . '</strong> <a href="' . esc_url( \AssociazioneSemplice\Backup::download_url( true ) ) . '">' . esc_html( Texts::t( 'Scarica la copia con gli allegati' ) ) . '</a></p>';
+		echo '<p><strong>' . esc_html( Texts::t( 'Prima di spostare i file fai una copia di sicurezza.' ) ) . '</strong> <a href="' . esc_url( \AssociazioneSemplice\Backup::download_link( true ) ) . '">' . esc_html( Texts::t( 'Scarica la copia con gli allegati' ) ) . '</a></p>';
 		Ui::form_open( 'asem_private_move', $back, false, 'asem-inline' );
 		echo '<button class="button button-primary" data-confirm="' . esc_attr( Texts::t( 'Spostare i file nella nuova cartella?' ) ) . '">' . esc_html( Texts::t( 'Sposta i file' ) ) . '</button>';
 		Ui::form_close();

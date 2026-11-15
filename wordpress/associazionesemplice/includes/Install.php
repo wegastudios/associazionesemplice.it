@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Install {
 
 	const DB_VERSION_OPTION = 'asem_db_version';
-	const DB_VERSION        = '64'; // dalla 64 il pulsante WhatsApp è una scelta a parte; dalla 62 il verbale ha il numero salvato (number_year, number_seq); dalla 63 l'anno sociale parte a gennaio
+	const DB_VERSION        = '65'; // dalla 65 i file riservati hanno l'impronta del contenuto e la versione della cifratura (enc_ver); dalla 64 il pulsante WhatsApp è una scelta a parte; dalla 62 il verbale ha il numero salvato (number_year, number_seq); dalla 63 l'anno sociale parte a gennaio
 
 	public static function activate(): void {
 		self::create_tables();
@@ -689,6 +689,7 @@ final class Install {
   mime varchar(60) NOT NULL,
   size_bytes bigint(20) unsigned NOT NULL,
   sha256 char(64) NOT NULL,
+  enc_ver tinyint(3) unsigned DEFAULT NULL,
   uploaded_by bigint(20) unsigned DEFAULT NULL,
   created_at datetime NOT NULL,
   removed_at datetime DEFAULT NULL,
@@ -788,6 +789,8 @@ final class Install {
   notes text,
   file_name varchar(190) DEFAULT NULL,
   file_stored varchar(64) DEFAULT NULL,
+  file_sha256 char(64) DEFAULT NULL,
+  enc_ver tinyint(3) unsigned DEFAULT NULL,
   created_at datetime NOT NULL,
   updated_at datetime NOT NULL,
   deleted_at datetime DEFAULT NULL,
@@ -822,6 +825,8 @@ final class Install {
   description varchar(255) NOT NULL DEFAULT '',
   file_name varchar(190) NOT NULL,
   file_stored varchar(64) NOT NULL,
+  file_sha256 char(64) DEFAULT NULL,
+  enc_ver tinyint(3) unsigned DEFAULT NULL,
   file_size bigint(20) unsigned NOT NULL DEFAULT 0,
   uploaded_by bigint(20) unsigned DEFAULT NULL,
   created_at datetime NOT NULL,

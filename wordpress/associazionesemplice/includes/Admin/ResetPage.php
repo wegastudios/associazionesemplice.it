@@ -51,7 +51,7 @@ final class ResetPage {
 		}
 		echo '<p>' . ( $users ? 'Vengono eliminati anche <strong>' . (int) $p['users'] . ' accessi di soci</strong> (utenti con il solo ruolo «Socio»).' : 'Gli accessi dei soci (utenti WordPress) non vengono toccati, ma resteranno senza una scheda collegata.' ) . '</p>';
 		echo '<p><strong>Prima di cancellare scarica una copia completa dei dati e conservala in un posto sicuro</strong> (è un file con i dati personali di soci e ospiti: trattala come tale). Sul sito non ne resta nessuna: nemmeno le copie salvate in precedenza, che verranno eliminate insieme ai dati.</p>';
-		echo '<p><a class="button button-primary" href="' . esc_url( Backup::download_url( true ) ) . '">Scarica la copia completa</a> ' . ( Backup::downloaded_recently() ? '<span style="color:#1a7f37">✔ Copia scaricata: puoi procedere.</span>' : '<span style="color:#b32d2e">Senza questo passaggio l\'azzeramento non parte.</span>' ) . '</p></div>';
+		echo '<p><a class="button button-primary" href="' . esc_url( Backup::download_link( true ) ) . '">Scarica la copia completa</a> ' . ( Backup::downloaded_recently() ? '<span style="color:#1a7f37">✔ Copia scaricata: puoi procedere.</span>' : '<span style="color:#b32d2e">Senza questo passaggio l\'azzeramento non parte.</span>' ) . '</p></div>';
 
 		echo '<h3>Conferma</h3>';
 		Ui::form_open( 'asem_reset_all', Ui::url( 'asem-reset', array( 'step' => 2, 'mode' => $mode, 'users' => $users ? 1 : 0 ) ) );

@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 final class ProSchema {
 
 	const VERSION_OPTION = 'asem_pro_db_version';
-	const VERSION        = '17'; // dalla 17 il PDF della ricevuta si fissa in un file della cartella privata, con la sua impronta (pdf_*, void_pdf_*); dalla 16 il pagamento online conserva il rimborso fatto dal gateway (refunded_cents, refund_id, refunded_at); dalla 15 la ricevuta sostitutiva (replaces_id); dalla 14 il rendiconto chiuso è fotografato (statement_snapshot); dalla 13 la ricevuta emessa conserva i suoi dati (data, content_hash) e l'eventuale annullo (voided_*)
+	const VERSION        = '18'; // dalla 18 certificati medici e rimborsi hanno l'impronta del file e la versione della cifratura (file_sha256, enc_ver) e medico e nome del file stanno cifrati (colonne di testo lungo); dalla 17 il PDF della ricevuta si fissa in un file della cartella privata, con la sua impronta (pdf_*, void_pdf_*); dalla 16 il pagamento online conserva il rimborso fatto dal gateway (refunded_cents, refund_id, refunded_at); dalla 15 la ricevuta sostitutiva (replaces_id); dalla 14 il rendiconto chiuso è fotografato (statement_snapshot); dalla 13 la ricevuta emessa conserva i suoi dati (data, content_hash) e l'eventuale annullo (voided_*)
 
 	public static function register(): void {
 		add_filter( 'asem_schema_tables', array( __CLASS__, 'tables' ), 10, 3 );
@@ -316,9 +316,11 @@ final class ProSchema {
   kind varchar(16) NOT NULL,
   issued_on date NOT NULL,
   expires_on date NOT NULL,
-  doctor varchar(190) DEFAULT NULL,
-  file_name varchar(190) DEFAULT NULL,
+  doctor text,
+  file_name text,
   file_stored varchar(80) DEFAULT NULL,
+  file_sha256 char(64) DEFAULT NULL,
+  enc_ver tinyint(3) unsigned DEFAULT NULL,
   file_size bigint(20) unsigned DEFAULT NULL,
   created_at datetime NOT NULL,
   deleted_at datetime DEFAULT NULL,
@@ -404,6 +406,8 @@ final class ProSchema {
   status varchar(10) NOT NULL DEFAULT 'requested',
   file_name varchar(190) DEFAULT NULL,
   file_stored varchar(64) DEFAULT NULL,
+  file_sha256 char(64) DEFAULT NULL,
+  enc_ver tinyint(3) unsigned DEFAULT NULL,
   decided_by bigint(20) unsigned DEFAULT NULL,
   decided_on date DEFAULT NULL,
   reject_reason varchar(255) DEFAULT NULL,

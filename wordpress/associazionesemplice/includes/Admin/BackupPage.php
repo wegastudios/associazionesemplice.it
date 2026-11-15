@@ -2,6 +2,8 @@
 namespace AssociazioneSemplice\Admin;
 
 use AssociazioneSemplice\Backup;
+use AssociazioneSemplice\FileKey;
+use AssociazioneSemplice\Texts;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -11,12 +13,16 @@ final class BackupPage {
 	public static function render(): void {
 		Ui::header( 'Copia di sicurezza' );
 		PrivateFolderPanel::alerts();
+		FileCryptPanel::alerts();
 		$last = Backup::last();
 		echo '<p>Scarica un file con <strong>tutti i dati</strong> del plugin (soci, attività, prima nota, fondi, ricevute, comunicazioni…) e le impostazioni. Conservalo in un posto sicuro, fuori dal sito. '
 			. 'Le chiavi segrete dei pagamenti online non sono incluse.</p>';
 		echo '<p>' . ( $last ? 'Ultima copia scaricata: <strong>' . esc_html( wp_date( 'd/m/Y H:i', $last ) ) . '</strong>' . ( time() - $last > 30 * DAY_IN_SECONDS ? ' <span class="asem-warn">(più di 30 giorni fa)</span>' : '' ) : '<span class="asem-warn">Nessuna copia scaricata finora.</span>' ) . '</p>';
 		echo '<p><a class="button button-primary" href="' . esc_url( Backup::download_url( false ) ) . '">Scarica la copia dei dati</a> '
 			. '<a class="button" href="' . esc_url( Backup::download_url( true ) ) . '">Scarica la copia con gli allegati (scontrini e fatture)</a></p>';
+		if ( FileKey::has_keys() ) {
+			echo '<p class="description">' . esc_html( FileCryptPanel::copy_note() ) . '</p>';
+		}
 		if ( ! class_exists( '\ZipArchive' ) ) {
 			echo '<div class="notice notice-error"><p>Questo server non ha l\'estensione zip di PHP: la copia non si può creare.</p></div>';
 		}
@@ -26,6 +32,7 @@ final class BackupPage {
 			. 'Gli utenti WordPress non fanno parte della copia: il ripristino è pensato per lo stesso sito.</p>';
 		Ui::form_open( 'asem_backup_restore', Ui::url( 'asem-backup' ), true );
 		echo '<p><input type="file" name="backup_file" accept=".zip" required></p>'
+			. '<p><label>' . esc_html( Texts::t( 'Frase della copia (serve solo se la copia viene da un altro sito)' ) ) . '<br><input type="password" name="phrase" class="regular-text" autocomplete="off"></label><br><span class="description">' . esc_html( Texts::t( 'Scrivi la frase: se non l\'hai cambiata, è il codice di licenza (o, nel plugin gratuito, la data e ora di attivazione) che avevi quando hai fatto la copia.' ) ) . '</span></p>'
 			. '<p><label><input type="checkbox" name="confirm" value="1" required> Ho capito: i dati attuali verranno sostituiti da quelli della copia.</label></p>'
 			. '<p><button class="button" data-confirm="Sostituire i dati attuali con quelli della copia?">Ripristina dalla copia</button></p>';
 		Ui::form_close();
@@ -38,6 +45,7 @@ final class BackupPage {
 			}
 			echo '</ul><p class="description">Si conservano al massimo ' . (int) \AssociazioneSemplice\Limits::get( 'backup_keep' ) . ' copie e solo per ' . (int) \AssociazioneSemplice\Limits::get( 'backup_hours' ) . ' ore, poi vengono cancellate da sole. Per tornare indietro scarica il file e ripristinalo da qui.</p>';
 		}
+		FileCryptPanel::render();
 		PrivateFolderPanel::render();
 		do_action( 'asem_backup_page_after' ); // un'estensione aggiunge i suoi riquadri (ad esempio la verifica dei PDF definitivi)
 		Ui::footer();
