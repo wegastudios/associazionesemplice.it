@@ -550,7 +550,7 @@ final class ReceiptFiles {
 				$n++;
 			}
 		}
-		$zip->addFromString( 'LEGGIMI.txt', "PDF definitivi delle ricevute dell'anno fiscale $year, così come sono stati emessi. Le impronte SHA-256 sono nel database del sito (e nelle copie di sicurezza).\nI PDF in questo archivio NON sono cifrati e contengono dati personali (nome, codice fiscale, importi): conservalo con cura e cancellalo quando non ti serve più.\n" );
+		$zip->addFromString( 'LEGGIMI.txt', "PDF definitivi delle ricevute dell'anno fiscale $year, così come sono stati emessi. Le impronte sono nel database del sito (e nelle copie di sicurezza).\nI PDF in questo archivio NON sono cifrati e contengono dati personali (nome, codice fiscale, importi): conservalo con cura e cancellalo quando non ti serve più.\n" );
 		$ok = $zip->close();
 		foreach ( $temp as $t ) {
 			wp_delete_file( $t );

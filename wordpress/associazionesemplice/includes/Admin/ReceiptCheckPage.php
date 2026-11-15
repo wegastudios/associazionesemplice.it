@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Verifica delle ricevute (solo amministratori): per ogni anno fiscale controlla che i PDF definitivi delle ricevute ci siano e che la loro impronta
- * SHA-256 coincida con quella scritta all'emissione (a posto, mancante, alterato), fissa quelli ancora da fissare (a lotti) e permette di scaricarli in un ZIP.
+ * sha256 coincida con quella scritta all'emissione (a posto, mancante, alterato), fissa quelli ancora da fissare (a lotti) e permette di scaricarli in un ZIP.
  */
 final class ReceiptCheckPage {
 
@@ -79,7 +79,7 @@ final class ReceiptCheckPage {
 		$after = max( 0, Ui::get_int( 'after' ) );
 		$here  = Ui::url( 'asem-receipt-check', array( 'year' => $year ) );
 
-		echo '<p>' . esc_html( Texts::t( 'Ogni ricevuta emessa ha il suo PDF definitivo: si disegna una volta sola e si salva nella cartella riservata del sito, insieme alla sua impronta (SHA-256). Qui controlli che i file ci siano e che non siano cambiati. I PDF fanno parte della copia di sicurezza.' ) ) . ' ' . esc_html( Texts::t( 'I PDF si salvano cifrati: per controllarli il sito li apre e confronta l\'impronta del contenuto con quella scritta all\'emissione.' ) ) . '</p>';
+		echo '<p>' . esc_html( Texts::t( 'Ogni ricevuta emessa ha il suo PDF definitivo: si disegna una volta sola e si salva nella cartella riservata del sito, insieme alla sua impronta. Qui controlli che i file ci siano e che non siano cambiati. I PDF fanno parte della copia di sicurezza.' ) ) . ' ' . esc_html( Texts::t( 'I PDF si salvano cifrati: per controllarli il sito li apre e confronta l\'impronta del contenuto con quella scritta all\'emissione.' ) ) . '</p>';
 		echo '<p class="description">' . esc_html( Texts::t( 'I dati della ricevuta (nome, codice fiscale, importi, dati dell\'ente, piè di pagina, righe) sono sempre quelli salvati all\'emissione. Le ricevute emesse prima di questo aggiornamento si fissano in automatico dopo l\'aggiornamento: per il loro PDF valgono però i testi di oggi, cioè i tuoi testi personalizzati, le parole scelte per il tipo di ente (socio/iscritto, associazione/comitato) e la grafica del plugin di quel momento. Le ricevute emesse da ora in poi restano identiche per sempre.' ) ) . '</p>';
 		echo '<p>' . esc_html( Texts::t( 'Anno fiscale:' ) ) . ' ';
 		foreach ( $years as $y ) {
@@ -106,6 +106,10 @@ final class ReceiptCheckPage {
 		}
 		if ( $bad ) {
 			echo '<div class="notice notice-error inline"><p>' . esc_html( Texts::t( 'Alcuni PDF non coincidono con quelli emessi. Finché non li sistemi, scaricare quelle ricevute dà un errore (non vengono mai rifatte di nascosto). Puoi ripristinare il file da una copia di sicurezza oppure rifarlo dai dati salvati: lo si fa solo se i dati sono intatti e l\'operazione resta scritta nel registro azioni.' ) ) . '</p></div>';
+		}
+
+		if ( (int) $sum['nodata'] > 0 ) {
+			echo '<p class="description">' . esc_html( Texts::t( 'Queste ricevute non hanno i dati salvati: il loro PDF non è ancora stato fissato e non è nella copia di sicurezza. Aprire o scaricare la ricevuta una volta salva i suoi dati di quel momento e ne fissa il PDF; le ricevute già annullate in questo stato non si possono più aprire.' ) ) . '</p>';
 		}
 
 		if ( (int) $sum['locked'] > 0 ) {
