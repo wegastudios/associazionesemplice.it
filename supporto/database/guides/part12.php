@@ -271,9 +271,22 @@ Il gestionale ti avvisa se qualcosa non torna:
 - se nei Dati dell'ente spunti «L'associazione non ha la partita IVA» e ci sono attività con l'IVA: «Hai N attività con l'IVA: senza partita IVA l'IVA non si applica più a nessuna. I movimenti già registrati non cambiano.»;
 - in scheda, un avviso rosso: «L'aliquota di questa attività non è più nell'elenco di Aspetto fiscale: scegline un'altra.» oppure «Senza partita IVA l'IVA non si applica: gli incassi di questa attività si registrano senza IVA.»
 
-## Cosa non c'è ancora
+## IVA su risorse e prenotazioni di spazi
 
-Non si può ancora impostare l'IVA sulle risorse e sulle prenotazioni di spazi.
+Con la partita IVA, anche nella **scheda di una risorsa** (un salone, un campo, un'aula…) trovi la casella **«Con IVA»**, che funziona come quella delle attività:
+
+- **senza la spunta**: «Senza la spunta, gli incassi di questa risorsa si registrano come «Fuori campo IVA».»;
+- **con la spunta**, scegli **«IVA esente»** oppure una delle aliquote che hai indicato in Aspetto fiscale («IVA 22%», «IVA 10%»…).
+
+Sotto il menu vedi come leggere gli importi: con i prezzi **senza IVA**, «Gli importi che scrivi sono senza IVA: chi paga vede l'importo con l'IVA aggiunta.»; con i prezzi **finali**, «Gli importi che scrivi sono finali, con l'IVA compresa.»
+
+Con i **prezzi senza IVA**, chi prenota vede e paga **il prezzo più l'IVA**. Una prenotazione già fatta si incassa **con l'aliquota e l'importo di quando è stata creata**, anche se poi cambi l'IVA della risorsa. Le risorse che esistevano già restano **senza IVA** finché non le cambi tu. Se non sai quale voce scegliere, **chiedi al tuo commercialista**.
+
+Il gestionale ti avvisa se qualcosa non torna:
+
+- se provi a togliere da Aspetto fiscale un'aliquota usata da qualche risorsa: «Alcune risorse usano l'aliquota X%: prima cambia l'IVA di quelle risorse, poi toglila dall'elenco.»;
+- se l'aliquota è usata da prenotazioni non ancora finite: «Alcune prenotazioni non ancora finite usano l'aliquota X%: togli l'aliquota dall'elenco quando saranno finite o annullate.»;
+- in scheda, un avviso rosso: «L'aliquota di questa risorsa non è più nell'elenco di Aspetto fiscale: scegline un'altra.» oppure «Senza partita IVA l'IVA non si applica: gli incassi di questa risorsa si registrano senza IVA.»
 MD,
     ],
     [
