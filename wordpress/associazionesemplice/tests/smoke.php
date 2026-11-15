@@ -10863,7 +10863,7 @@ $dp_title = 'Anno fiscale ' . $dp_lbl . ' in disavanzo.';
 $dp_tx = $dp_exp();
 asem_ok( -16000 === \AssociazioneSemplice\YearEndCheck::year_result( $dp_y ) && array_key_exists( $dp_y, \AssociazioneSemplice\YearEndCheck::past_deficits() ), 'disavanzo anno passato: l\'anno passato aperto con più uscite che entrate risulta in disavanzo' );
 $dp_html = \AssociazioneSemplice\YearEndCheck::deficit_html();
-asem_ok( false !== strpos( $dp_html, $dp_title ) && false !== strpos( $dp_html, 'disavanzo di 160,00 €' ) && false !== strpos( $dp_html, 'registra in Prima nota le entrate mancanti' ) && false !== strpos( $dp_html, 'asem-statement' ) && false === strpos( $dp_html, 'is-dismissible' ), 'disavanzo anno passato: avviso fisso (non chiudibile) con anno, importo e come sistemarlo' );
+asem_ok( false !== strpos( $dp_html, $dp_title ) && false !== strpos( $dp_html, 'disavanzo di 160,00 €' ) && false !== strpos( $dp_html, 'Se mancano delle entrate, registrale in Prima nota' ) && false !== strpos( $dp_html, 'asem-statement' ) && false === strpos( $dp_html, 'is-dismissible' ), 'disavanzo anno passato: avviso fisso (non chiudibile) con anno, importo e come sistemarlo' );
 asem_ok( 16 === has_action( 'asem_dashboard_alerts', array( \AssociazioneSemplice\YearEndCheck::class, 'deficit_show' ) ), 'disavanzo anno passato: l\'avviso è agganciato alla Bacheca' );
 asem_ok( ! array_key_exists( \AssociazioneSemplice\FiscalYears::current(), \AssociazioneSemplice\YearEndCheck::past_deficits() ), 'disavanzo anno passato: l\'anno in corso non c\'è (resta del controllo di bilancio)' );
 wp_set_current_user( $u_ord );

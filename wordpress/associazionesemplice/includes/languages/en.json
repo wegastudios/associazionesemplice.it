@@ -2242,7 +2242,7 @@
   "il risultato dell'anno fiscale è un disavanzo di {importo}: le uscite superano le entrate" : "the result for the financial year is a deficit of {importo}: expenses exceed income",
   "chiudo anche se l'anno è in disavanzo di {importo}" : "I am closing even though the year is in deficit by {importo}",
   "Anno fiscale {anno} in disavanzo." : "Financial year {anno} is in deficit.",
-  "L'anno fiscale {anno} è finito ma è ancora aperto e ha un disavanzo di {importo}: le uscite superano le entrate. Per sistemarlo, registra in Prima nota le entrate mancanti con una data dentro quell'anno. Se invece i conti sono giusti, controllali e poi chiudi l'anno." : "Financial year {anno} has ended but is still open and has a deficit of {importo}: expenses exceed income. To fix it, record the missing income in the cash book with a date inside that year. If the accounts are correct, check them and then close the year.",
+  "L'anno fiscale {anno} è finito ma è ancora aperto e ha un disavanzo di {importo}: le uscite superano le entrate. Se mancano delle entrate, registrale in Prima nota con una data dentro quell'anno. Se invece i conti sono giusti, controllali e poi chiudi l'anno." : "Financial year {anno} has ended but is still open and has a deficit of {importo}: expenses exceed income. If income is missing, record it in the cash book with a date inside that year. If the accounts are correct, check them and then close the year.",
   "Apri il rendiconto" : "Open the statement",
   "Vai agli anni fiscali" : "Go to financial years",
   "Email della segreteria" : "Office email",
