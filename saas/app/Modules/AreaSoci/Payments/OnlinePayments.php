@@ -39,10 +39,13 @@ final readonly class OnlinePayments
 
     /** Dopo «rimborsa e storna»: la voce non sparisce, torna da pagare. Frasi mostrate in gestionale (conferma ed esito). */
     public const STAYS_RESERVATION = 'La prenotazione resta valida e torna da pagare: se non serve più, annullala dalla scheda della risorsa.';
+
     public const STAYS_ENROLLMENT = "L'iscrizione resta e il contributo torna da pagare: se non serve più, togli l'iscrizione dalla scheda dell'attività.";
+
 
     /** Frasi dell'email al socio, in coda al rimborso. */
     public const MAIL_RESERVATION = 'La tua prenotazione resta attiva: se non ti serve più, avvisa la segreteria.';
+
     public const MAIL_ENROLLMENT = 'La tua iscrizione resta attiva: se non ti serve più, avvisa la segreteria.';
 
     public const MAX_PER_HOUR = 10;
