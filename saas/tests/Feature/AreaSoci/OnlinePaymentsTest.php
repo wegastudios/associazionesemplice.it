@@ -174,3 +174,56 @@ it('fa prenotare le risorse Web e le mette tra le voci da pagare', function (): 
     $res = (string) $this->orgContext()->run($this->org->id, fn () => DB::table('app.reservations')->value('id'));
     $member()->post($this->host.'/area/risorse/prenotazioni/'.$res.'/annulla')->assertSessionHas('status', 'Prenotazione annullata.');
 });
+
+function reviewPayment(object $test, string $provider = 'stripe'): string
+{
+    saveStripe($test);
+    $id = (string) Illuminate\Support\Str::uuid7();
+    $test->orgContext()->run($test->org->id, function () use ($test, $id, $provider): void {
+        DB::table('app.online_payments')->insert([
+            'org_id' => $test->org->id, 'id' => $id, 'person_id' => $test->anna->id, 'provider' => $provider, 'status' => 'review', 'amount_cents' => 2500, 'paid_cents' => 2500,
+            'items' => '[]', 'provider_ref' => $provider === 'stripe' ? 'cs_test_9' : 'ORD-9', 'error' => 'Quota associativa: Il socio ha già la tessera.',
+        ]);
+    });
+
+    return $id;
+}
+
+it('rimborsa un pagamento da controllare su Stripe, una parte alla volta, senza superare l\'incassato', function (): void {
+    $id = reviewPayment($this);
+    Http::fake([
+        'api.stripe.com/v1/checkout/sessions/*' => Http::response(['id' => 'cs_test_9', 'payment_intent' => 'pi_9']),
+        'api.stripe.com/v1/refunds' => Http::response(['id' => 're_9']),
+    ]);
+    $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()]);
+
+    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['amount' => '10,00'])->assertSessionHas('status');
+    Http::assertSent(fn (HttpRequest $r): bool => str_ends_with($r->url(), '/v1/refunds') && $r['payment_intent'] === 'pi_9' && (int) $r['amount'] === 1000);
+
+    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['amount' => '20,00'])->assertSessionHasErrors('ledger');
+    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['amount' => '15,00'])->assertSessionHas('status');
+
+    $this->orgContext()->run($this->org->id, function () use ($id): void {
+        $row = DB::table('app.online_payments')->where('id', $id)->first();
+        expect((int) $row->refunded_cents)->toBe(2500)
+            ->and((string) $row->error)->toContain('Restituiti')
+            ->and(DB::table('audit.log')->where('action', 'payment.refunded')->count())->toBe(2);
+    });
+    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['amount' => '1,00'])->assertSessionHasErrors('ledger');
+});
+
+it('non rimborsa pagamenti già registrati e rimborsa su PayPal l\'incasso giusto', function (): void {
+    $id = reviewPayment($this, 'paypal');
+    $this->orgContext()->run($this->org->id, fn () => DB::table('app.online_payments')->where('id', $id)->update(['status' => 'settled']));
+    $this->actingAs($this->owner)->withSession(['auth.password_confirmed_at' => time()]);
+    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['amount' => '5,00'])->assertSessionHasErrors('ledger');
+
+    $this->orgContext()->run($this->org->id, fn () => DB::table('app.online_payments')->where('id', $id)->update(['status' => 'review']));
+    Http::fake([
+        'api-m.sandbox.paypal.com/v1/oauth2/token' => Http::response(['access_token' => 'tok']),
+        'api-m.sandbox.paypal.com/v2/checkout/orders/ORD-9' => Http::response(['purchase_units' => [['payments' => ['captures' => [['id' => 'CAP-9', 'status' => 'COMPLETED']]]]]]),
+        'api-m.sandbox.paypal.com/v2/payments/captures/CAP-9/refund' => Http::response(['id' => 'RF-9'], 201),
+    ]);
+    $this->post("/gestionale/pagamenti-online/{$id}/rimborso", ['amount' => '5,00'])->assertSessionHas('status');
+    Http::assertSent(fn (HttpRequest $r): bool => str_ends_with($r->url(), '/captures/CAP-9/refund') && $r['amount']['value'] === '5.00');
+});

@@ -63,6 +63,26 @@ final readonly class StripeGateway
         return $this->call('GET', '/v1/checkout/sessions/'.rawurlencode($sessionId), $secret);
     }
 
+    /**
+     * Restituisce al socio parte (o tutto) di un pagamento: l'identificativo del rimborso.
+     * Con una chiave limitata serve il permesso di scrittura sui rimborsi.
+     */
+    public function refund(string $secret, string $sessionId, int $cents, string $idempotencyKey): string
+    {
+        $session = $this->retrieveSession($secret, $sessionId);
+        $intent = $session['payment_intent'] ?? null;
+        if (! is_string($intent) || $intent === '') {
+            throw new RuntimeException('Stripe: pagamento non trovato, niente da rimborsare.');
+        }
+        $d = $this->call('POST', '/v1/refunds', $secret, ['payment_intent' => $intent, 'amount' => $cents], ['Idempotency-Key' => $idempotencyKey]);
+        $id = $d['id'] ?? null;
+        if (! is_string($id)) {
+            throw new RuntimeException('Stripe: rimborso senza conferma.');
+        }
+
+        return $id;
+    }
+
     /** Prova delle chiavi: legge il saldo del conto. */
     public function test(string $secret): void
     {

@@ -104,6 +104,40 @@ final readonly class PayPalGateway
         throw self::fail($res, 'cattura');
     }
 
+    /** Restituisce al socio parte (o tutto) dell'incasso dell'ordine: l'identificativo del rimborso. */
+    public function refund(bool $live, string $token, string $orderId, int $cents, string $requestId): string
+    {
+        $get = $this->http->withToken($token)->acceptJson()->timeout(15)->get(self::base($live).'/v2/checkout/orders/'.rawurlencode($orderId));
+        $order = $get->json();
+        $capture = $get->successful() && is_array($order) ? self::captureId($order) : null;
+        if ($capture === null) {
+            throw new RuntimeException('PayPal: incasso non trovato, niente da rimborsare.');
+        }
+        $res = $this->http->withToken($token)->withHeaders(['PayPal-Request-Id' => $requestId])->acceptJson()->timeout(15)
+            ->post(self::base($live).'/v2/payments/captures/'.rawurlencode($capture).'/refund', ['amount' => ['value' => self::decimal($cents), 'currency_code' => 'EUR']]);
+        $id = $res->json('id');
+        if (! in_array($res->status(), [200, 201], true) || ! is_string($id)) {
+            throw self::fail($res, 'rimborso');
+        }
+
+        return $id;
+    }
+
+    /** @param  array<string, mixed>  $order */
+    public static function captureId(array $order): ?string
+    {
+        foreach (is_array($order['purchase_units'] ?? null) ? $order['purchase_units'] : [] as $u) {
+            $captures = is_array($u) && is_array($u['payments'] ?? null) && is_array($u['payments']['captures'] ?? null) ? $u['payments']['captures'] : [];
+            foreach ($captures as $c) {
+                if (is_array($c) && ($c['status'] ?? '') === 'COMPLETED' && is_string($c['id'] ?? null)) {
+                    return $c['id'];
+                }
+            }
+        }
+
+        return null;
+    }
+
     /** @param  array<string, mixed>  $order */
     public static function capturedCents(array $order): int
     {

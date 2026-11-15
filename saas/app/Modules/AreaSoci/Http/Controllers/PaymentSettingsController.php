@@ -57,9 +57,11 @@ final readonly class PaymentSettingsController
                 'id' => $p['id'], 'date' => date('d/m/Y H:i', (int) strtotime($p['created_at'])), 'person' => $names[$p['person_id']] ?? '', 'person_id' => $p['person_id'],
                 'provider' => $p['provider'] === 'stripe' ? 'Stripe' : 'PayPal', 'status' => $p['status'], 'amount' => Money::format($p['amount_cents']),
                 'items' => implode(', ', array_column($p['items'], 'label')), 'receipts' => implode(', ', $p['receipts']), 'error' => $p['error'],
+                'refundable' => $p['status'] === 'review' && $p['paid_cents'] !== null ? max(0, $p['paid_cents'] - $p['refunded_cents']) : 0, 'refunded' => Money::format($p['refunded_cents']), 'has_receipts' => $p['receipts'] !== [],
             ], $list),
             'canSettings' => $request->user()?->can('org.settings') ?? false,
             'canAccounting' => $request->user()?->can('accounting.edit') ?? false,
+            'canRefund' => $request->user()?->can('accounting.refund') ?? false,
         ]);
     }
 
@@ -129,5 +131,21 @@ final readonly class PaymentSettingsController
         }
 
         return back()->with('status', 'Pagamento segnato come controllato.');
+    }
+
+    public function refund(Request $request, string $payment): RedirectResponse
+    {
+        $data = Input::of($request->validate(['amount' => ['required', 'string', 'max:20']]));
+        $cents = Money::parse(Input::string($data, 'amount'));
+        if ($cents === null || $cents <= 0) {
+            throw ValidationException::withMessages(['amount' => 'Importo non valido.']);
+        }
+        try {
+            $this->payments->refund($payment, $cents);
+        } catch (MemberAccessError $e) {
+            throw ValidationException::withMessages(['ledger' => $e->getMessage()]);
+        }
+
+        return back()->with('status', 'Rimborso di '.Money::format($cents).' inviato al socio.');
     }
 }
