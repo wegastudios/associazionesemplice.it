@@ -11,6 +11,7 @@ use App\Modules\Core\Contracts\DemoScale;
 use App\Modules\Core\Contracts\DemoSeeder;
 use App\Modules\Core\Contracts\OrgContext;
 use Illuminate\Database\DatabaseManager;
+use Throwable;
 
 /**
  * Corsi ed eventi finti per la demo, nell'anno sociale in corso e nel precedente: iscritti, contributi incassati mese per
@@ -70,7 +71,7 @@ final readonly class DemoActivities implements DemoSeeder
                     $startIndex = ($k + $c) % 3;
                     try {
                         $this->activities->enroll($activity->id, $person, $months[$startIndex]);
-                    } catch (\Throwable) {
+                    } catch (Throwable) {
                         continue; // già iscritta: la scelta della persona può ripetersi
                     }
                     $byBank = $k % 3 === 0;
@@ -111,7 +112,7 @@ final readonly class DemoActivities implements DemoSeeder
                     $person = $people[($k * 5 + $e * 11 + $year) % count($people)];
                     try {
                         $this->activities->enroll($event->id, $person);
-                    } catch (\Throwable) {
+                    } catch (Throwable) {
                         continue;
                     }
                     if ($date <= now()->toDateString()) {

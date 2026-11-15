@@ -71,8 +71,8 @@ it('crea l\'associazione di fantasia, gli utenti pubblici per ruolo e i soci fin
     });
 });
 
+it('mostra il banner della demo solo dove è accesa', function (): void {
     config(['saas.demo.enabled' => true]);
-    config(['saas.demo.enabled' => true, 'saas.demo.people' => DemoMembers::COUNT]);
     $this->get('/accesso')->assertSee('demo con dati inventati', false);
 
     config(['saas.demo.enabled' => false]);
