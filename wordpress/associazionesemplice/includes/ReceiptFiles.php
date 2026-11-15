@@ -204,7 +204,7 @@ final class ReceiptFiles {
 				$in,
 				function ( string $d ) use ( &$buf ): void {
 					if ( strlen( $buf ) + strlen( $d ) > self::MAX_SIZE ) {
-						throw new FileCryptError( FileCryptError::FORMAT );
+						throw new FileCryptError( FileCryptError::FORMAT ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- codice di errore interno, non testo da mostrare
 					}
 					$buf .= $d;
 				},
