@@ -6,6 +6,7 @@ namespace App\Modules\AreaSoci\Mail;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 
@@ -19,11 +20,13 @@ final class LoginLink extends Mailable
         public readonly string $link,
         public readonly string $code,
         public readonly int $minutes,
+        public readonly ?string $contactEmail = null,
+        public readonly ?string $contactPhone = null,
     ) {}
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'Il tuo accesso all\'area soci · '.$this->orgName);
+        return new Envelope(subject: 'Il tuo accesso all\'area soci · '.$this->orgName, replyTo: $this->contactEmail === null ? [] : [new Address($this->contactEmail, $this->orgName)]);
     }
 
     public function content(): Content
