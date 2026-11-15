@@ -35,7 +35,16 @@ final readonly class SociReadableExport implements ReadableExport
         private AuditLog $audit,
     ) {}
 
-    public function files(Operator $operator, bool $withCertificates): array
+    public function weight(Operator $operator, bool $withCertificates, ?int $only = null): int
+    {
+        if (! $withCertificates || ! $operator->can(Ability::ViewHealth)) {
+            return 0;
+        }
+
+        return MedicalCertificate::query()->whereNotNull('file_path')->count();
+    }
+
+    public function files(Operator $operator, bool $withCertificates, ?int $only = null): array
     {
         if (! $operator->can(Ability::ViewPeople)) {
             return [];
@@ -44,6 +53,9 @@ final readonly class SociReadableExport implements ReadableExport
         $years = $this->db->connection($this->context->require()->connection)->table('app.fiscal_years')->orderBy('year')->pluck('year');
         foreach ($years as $y) {
             $year = is_numeric($y) ? (int) $y : 0;
+            if ($only !== null && $year !== $only) {
+                continue;
+            }
             $dir = 'Anno fiscale '.$year.'/';
             $out[$dir.'Libro soci.pdf'] = fn (): string => $this->book->pdf($this->snapshots->forYear($year)['rows'], $operator->orgName, '');
             $out[$dir.'Libro soci.csv'] = fn (): string => $this->book->csv($this->snapshots->forYear($year)['rows']);

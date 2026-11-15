@@ -18,5 +18,8 @@ interface ReadableExport
     /**
      * @return array<string, Closure(): (string|null)> percorso nella cartella dei documenti leggibili => contenuto
      */
-    public function files(Operator $operator, bool $withCertificates): array;
+    public function files(Operator $operator, bool $withCertificates, ?int $only = null): array;
+
+    /** Quanti file «pesanti» (ricevute, certificati) metterebbe nella copia: serve a non cominciare una copia che non finirebbe. */
+    public function weight(Operator $operator, bool $withCertificates, ?int $only = null): int;
 }

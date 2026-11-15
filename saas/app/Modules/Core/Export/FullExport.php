@@ -32,9 +32,28 @@ final readonly class FullExport
         private AuditLog $audit,
     ) {}
 
-    /** @return array{path: string, files: int, certificates: int} */
-    public function build(Operator $operator, string $orgName, bool $withCertificates = false): array
+    /** Oltre questi file «pesanti» (ricevute, certificati) la copia di tutti gli anni insieme non si fa: si scarica un anno alla volta. */
+    public const MAX_HEAVY_FILES = 2500;
+
+    /**
+     * Con $year la copia ha i documenti leggibili di quell'anno fiscale soltanto (i dati per il programma ci sono sempre).
+     *
+     * @return array{path: string, files: int, certificates: int}
+     *
+     * @throws ExportTooLarge
+     */
+    public function build(Operator $operator, string $orgName, bool $withCertificates = false, ?int $year = null): array
     {
+        $heavy = 0;
+        foreach ($this->container->tagged(ReadableExport::TAG) as $part) {
+            $heavy += $part instanceof ReadableExport ? $part->weight($operator, $withCertificates, $year) : 0;
+        }
+        if ($year === null && $heavy > self::MAX_HEAVY_FILES) {
+            throw new ExportTooLarge('Questa associazione ha molti documenti: una copia unica rischia di non finire. Scegli un anno fiscale e scarica una copia per anno.');
+        }
+        @set_time_limit(900);
+        ignore_user_abort(false);
+
         $data = [];
         foreach ($this->container->tagged(DataExport::TAG) as $part) {
             if ($part instanceof DataExport) {
@@ -50,7 +69,7 @@ final readonly class FullExport
         }
         foreach ($this->container->tagged(ReadableExport::TAG) as $part) {
             if ($part instanceof ReadableExport) {
-                foreach ($part->files($operator, $withCertificates) as $name => $producer) {
+                foreach ($part->files($operator, $withCertificates, $year) as $name => $producer) {
                     $entries[self::READABLE.'/'.$name] = $producer;
                 }
             }

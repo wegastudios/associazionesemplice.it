@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use App\Modules\Contabilita\Ledger\FiscalYearService;
 use App\Modules\Contabilita\Models\Account;
+use App\Modules\Core\Contracts\Operator;
 use App\Modules\Core\Contracts\OrgRole;
+use App\Modules\Core\Contracts\ReadableExport;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Services\CertificateService;
 use App\Modules\Soci\Services\MembershipService;
@@ -110,4 +112,48 @@ it('non lascia l\'esportazione completa a segreteria e commercialista', function
         $this->addOperator($this->org, $user, $role);
         $this->actingAs($user)->get('/gestionale/esportazione.zip')->assertForbidden();
     }
+});
+
+it('le ricevute non ancora fissate entrano nella copia (si fissano al momento)', function (): void {
+    $owner = $this->createUser('own@example.com', twoFactor: true);
+    $this->addOperator($this->org, $owner, OrgRole::Owner);
+    $this->orgContext()->run($this->org->id, fn () => DB::table('app.receipt_files')->delete());
+
+    $files = zipContents($this->actingAs($owner)->get('/gestionale/esportazione.zip')->assertOk()->baseResponse);
+    expect(array_filter(array_keys($files), fn (string $n): bool => str_contains($n, '/Ricevute/Ricevuta ')))->toHaveCount(1)
+        ->and(array_keys($files))->not->toContain('Documenti leggibili/Anno fiscale '.now()->format('Y').'/Ricevute/Ricevute non incluse.txt');
+});
+
+it('con un anno scelto mette solo i documenti leggibili di quell\'anno', function (): void {
+    $owner = $this->createUser('own@example.com', twoFactor: true);
+    $this->addOperator($this->org, $owner, OrgRole::Owner);
+    $year = (int) now()->format('Y');
+
+    $other = zipContents($this->actingAs($owner)->get('/gestionale/esportazione.zip?anno='.($year - 5))->assertOk()->baseResponse);
+    expect(array_filter(array_keys($other), fn (string $n): bool => str_starts_with($n, 'Documenti leggibili/')))->toBe([]);
+    $mine = zipContents($this->actingAs($owner)->get('/gestionale/esportazione.zip?anno='.$year)->assertOk()->baseResponse);
+    expect(array_keys($mine))->toContain('Documenti leggibili/Anno fiscale '.$year.'/Rendiconto.pdf');
+});
+
+it('oltre la soglia la copia di tutti gli anni non parte e spiega di sceglierne uno', function (): void {
+    $owner = $this->createUser('own@example.com', twoFactor: true);
+    $this->addOperator($this->org, $owner, OrgRole::Owner);
+    $heavy = new class implements ReadableExport
+    {
+        public function files(Operator $operator, bool $withCertificates, ?int $only = null): array
+        {
+            return [];
+        }
+
+        public function weight(Operator $operator, bool $withCertificates, ?int $only = null): int
+        {
+            return $only === null ? 100000 : 10;
+        }
+    };
+    app()->instance('test.heavy-export', $heavy);
+    app()->tag(['test.heavy-export'], ReadableExport::TAG);
+
+    $this->from('/gestionale/esportazione')->actingAs($owner)->get('/gestionale/esportazione.zip')
+        ->assertRedirect('/gestionale/esportazione')->assertSessionHasErrors(['export' => 'Questa associazione ha molti documenti: una copia unica rischia di non finire. Scegli un anno fiscale e scarica una copia per anno.']);
+    $this->actingAs($owner)->get('/gestionale/esportazione.zip?anno='.now()->format('Y'))->assertOk();
 });

@@ -34,13 +34,26 @@ final readonly class ContabilitaReadableExport implements ReadableExport
         private ReceiptFiles $receipts,
     ) {}
 
-    public function files(Operator $operator, bool $withCertificates): array
+    public function weight(Operator $operator, bool $withCertificates, ?int $year = null): int
+    {
+        if (! $operator->can(Ability::ViewAccounting)) {
+            return 0;
+        }
+
+        return (int) $this->db->connection($this->context->require()->connection)->table('app.receipts')->whereNull('voided_at')
+            ->when($year !== null, static fn ($q) => $q->where('year', $year))->count();
+    }
+
+    public function files(Operator $operator, bool $withCertificates, ?int $only = null): array
     {
         if (! $operator->can(Ability::ViewAccounting)) {
             return [];
         }
         $files = [];
         foreach ($this->years->all() as $y) {
+            if ($only !== null && $y['year'] !== $only) {
+                continue;
+            }
             $year = $y['year'];
             $dir = 'Anno fiscale '.$year.'/';
             $files[$dir.'Rendiconto.pdf'] = fn (): string => $this->statementPdf->render($this->snapshots->forYear($year)['statement'], $operator->orgName);
@@ -67,8 +80,8 @@ final readonly class ContabilitaReadableExport implements ReadableExport
             }
             // Ultimo file dell'anno: elenca le ricevute che non è stato possibile mettere nella copia.
             $files[$dir.'Ricevute/Ricevute non incluse.txt'] = static fn (): ?string => count($problems) === 0 ? null : implode("\r\n", [
-                'Queste ricevute non sono nella copia perché il loro PDF non è disponibile o non risulta uguale a quando è stato emesso.',
-                'Un amministratore può controllarle da «Verifica delle ricevute».',
+                'Queste ricevute non sono nella copia perché il loro PDF manca o risulta diverso da quando è stato emesso.',
+                'Controllale in Altro › Verifica delle ricevute.',
                 '',
                 ...$problems->getArrayCopy(),
                 '',
