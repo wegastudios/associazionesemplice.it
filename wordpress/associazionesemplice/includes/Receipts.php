@@ -284,7 +284,7 @@ final class Receipts {
 			throw new \InvalidArgumentException( Texts::t( 'Questa ricevuta non è annullata.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( ! self::data_intact( $rec ) || '' === (string) $rec['content_hash'] ) {
-			throw new \InvalidArgumentException( Texts::t( 'I dati salvati di questa ricevuta non coincidono con la loro impronta (o non ne hanno una): non rifaccio il PDF per non mostrare dati diversi da quelli emessi. Ripristina il file da una copia di sicurezza.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( Texts::t( 'I dati salvati di questa ricevuta non coincidono con la loro impronta (o non ne hanno una): il PDF non viene rifatto, per non mostrare dati diversi da quelli emessi. Ripristina il file da una copia di sicurezza.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$old = ReceiptFiles::replace( $rec, $kind, self::render( self::data_of( $rec ), ReceiptFiles::VOID === $kind ? $rec : null ) );
 		$new = self::record( (string) $rec['receipt_key'] );
@@ -756,7 +756,7 @@ final class Receipts {
 			$pdf = ReceiptFiles::read( $cur, $kind ); // file mancante o alterato: errore chiaro, mai un PDF rifatto in silenzio
 		} else { // non si è riusciti a salvare il file (permessi del disco): si serve il PDF disegnato dai dati fotografati, che sono quelli emessi
 			if ( $cur && ! self::data_intact( $cur ) ) {
-				throw new \InvalidArgumentException( Texts::t( 'I dati salvati della ricevuta n. {n} non coincidono con la loro impronta: per sicurezza non la mostro. Avvisa un amministratore.', array( 'n' => $label ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				throw new \InvalidArgumentException( Texts::t( 'I dati salvati della ricevuta n. {n} non coincidono con la loro impronta: per sicurezza non viene mostrata. Avvisa un amministratore.', array( 'n' => $label ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 			$pdf = self::render( $s, $voided ? $cur : $void );
 		}
@@ -1031,7 +1031,13 @@ final class Receipts {
 			$r = self::build( $key );
 		} catch ( \InvalidArgumentException $e ) {
 			// Il dettaglio tecnico lo vede solo la segreteria; il socio un avviso semplice.
-			wp_die( esc_html( current_user_can( Plugin::CAP_OPS ) ? $e->getMessage() : Texts::t( 'Questa ricevuta non è disponibile in questo momento. Avvisa la segreteria: la sistemano subito.' ) ), 404 );
+			$msg = $e->getMessage();
+			if ( ! current_user_can( Plugin::CAP_OPS ) ) {
+				$msg = Contacts::complete()
+					? Texts::t( 'Questa ricevuta non è disponibile in questo momento. Avvisa la segreteria: {email}, tel. {telefono}.', array( 'email' => Contacts::email(), 'telefono' => Contacts::phone() ) )
+					: Texts::t( 'Questa ricevuta non è disponibile in questo momento. Avvisa la segreteria.' );
+			}
+			wp_die( esc_html( $msg ), 404 );
 		}
 		self::send_pdf( $r['pdf'], $r['filename'] );
 	}

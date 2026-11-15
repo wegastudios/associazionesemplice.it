@@ -116,14 +116,14 @@ final class ReceiptFiles {
 		$label = (int) $rec['number'] . '/' . (int) $rec['year'];
 		$abs   = self::abs_path( (string) ( $rec[ $c[0] ] ?? '' ) );
 		if ( '' === $abs ) {
-			throw new \InvalidArgumentException( Texts::t( 'Il PDF della ricevuta n. {n} ha un percorso non valido: per sicurezza non lo apro. Avvisa un amministratore.', array( 'n' => $label ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( Texts::t( 'Il PDF della ricevuta n. {n} ha un percorso non valido: per sicurezza non viene aperto. Avvisa un amministratore.', array( 'n' => $label ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( ! is_file( $abs ) ) {
-			throw new \InvalidArgumentException( Texts::t( 'Il PDF della ricevuta n. {n} non si trova più sul sito (la cartella dei file riservati è stata svuotata o spostata). Non lo rifaccio in silenzio: un amministratore può ripristinarlo da una copia di sicurezza oppure, da «Verifica delle ricevute», rigenerarlo dai dati salvati.', array( 'n' => $label ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( Texts::t( 'Il PDF della ricevuta n. {n} non si trova più sul sito (la cartella dei file riservati è stata svuotata o spostata). Non viene rifatto in automatico: un amministratore può ripristinarlo da una copia di sicurezza oppure, da «Verifica delle ricevute», rigenerarlo dai dati salvati.', array( 'n' => $label ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$bytes = (string) file_get_contents( $abs ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- file privato nella cartella del plugin
 		if ( '' === $bytes || strlen( $bytes ) > self::MAX_SIZE || ! hash_equals( (string) ( $rec[ $c[1] ] ?? '' ), hash( 'sha256', $bytes ) ) ) {
-			throw new \InvalidArgumentException( Texts::t( 'Il PDF della ricevuta n. {n} risulta diverso da quando è stato emesso: per sicurezza non lo scarico. Un amministratore può controllarlo da «Verifica delle ricevute».', array( 'n' => $label ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			throw new \InvalidArgumentException( Texts::t( 'Il PDF della ricevuta n. {n} risulta diverso da quando è stato emesso: per sicurezza non viene scaricato. Un amministratore può controllarlo da «Verifica delle ricevute».', array( 'n' => $label ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		return $bytes;
 	}
