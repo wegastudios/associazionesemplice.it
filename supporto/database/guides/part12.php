@@ -191,15 +191,17 @@ MD,
         'body' => <<<'MD'
 > Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
 
-Il gestionale si adatta a come l'associazione tratta l'IVA. Ci sono due casi, e dipendono da una sola cosa: **hai la partita IVA o no**.
+**Se la tua associazione non ha la partita IVA, questa pagina non ti serve.**
+
+Per il gestionale conta una sola cosa: l'associazione ha la **partita IVA** o no.
 
 ## Se non hai la partita IVA
 
-**L'IVA non c'è.** Incassi e spese si registrano con il loro importo, senza aliquote e senza diciture sull'IVA, anche sulle ricevute. In **Aspetto fiscale** trovi solo un promemoria.
+**L'IVA non si applica**: incassi e spese si registrano con il loro importo, senza aliquote. Non compare nessuna dicitura sull'IVA, né in prima nota né sulle ricevute. In **Aspetto fiscale** trovi solo un promemoria: «Se l'associazione ha la partita IVA, indicala in Altro › Configurazione guidata › Dati dell'ente: qui compariranno le aliquote.»
 
 ## Se hai la partita IVA
 
-Scrivila in **Altro → Configurazione guidata**, passo **Dati dell'ente** (vedi [Primo accesso e configurazione guidata](guida:gestionale-primo-accesso-e-configurazione-guidata)). Poi apri **Aspetto fiscale** (menu **Gestione**; la vedi se puoi cambiare le impostazioni) e scegli:
+Scrivila in **Altro → Configurazione guidata**, passo **Dati dell'ente** (vedi [Primo accesso e configurazione guidata](guida:gestionale-primo-accesso-e-configurazione-guidata)). Poi apri **Altro → Gestione → Aspetto fiscale** (la vedi se puoi cambiare le impostazioni) e scegli:
 
 - **«Aliquote IVA che usi»**: i numeri separati da virgola. Di partenza sono **22, 10, 5, 4**. **«IVA esente»** c'è sempre, anche se non la scrivi.
 - **«I prezzi che inserisci sono»**: **«finali, con l'IVA compresa»** (la scelta di partenza) oppure **«senza IVA: l'IVA si aggiunge»**. Con i prezzi senza IVA, sotto l'importo vedi subito **«Totale con IVA»**, cioè quanto pagherà chi paga.
@@ -212,16 +214,16 @@ Premi **«Salva»**.
 Con la partita IVA, ogni voce di incasso e ogni spesa ha la sua **aliquota IVA**: il gestionale propone il **22%** e tu scegli quella giusta. Le scelte sono le aliquote che hai indicato più:
 
 - **«IVA esente»**;
-- **«Fuori campo IVA»**, per ciò che non rientra nell'IVA;
+- **«Fuori campo IVA»**;
 - **«Reverse charge»**, **solo sulle spese**: la spesa si registra **senza IVA esposta**. Non si può scegliere insieme a un'aliquota.
 
-L'IVA compare nel dettaglio del movimento e sulla **ricevuta**: per ogni aliquota vedi l'imponibile e l'IVA, e le voci esenti con la dicitura «IVA esente». Se provi a usare un'aliquota che non hai scelto in **Aspetto fiscale**, il gestionale ti dice che non è tra quelle scelte.
+Quale voce usare per un movimento non lo decide il programma: **chiedi al tuo commercialista**.
 
-## Cosa non c'è ancora
+L'IVA compare nel dettaglio del movimento. Sulla **ricevuta** in PDF vedi, per ogni aliquota, l'imponibile e l'IVA; con l'aliquota «IVA esente» la riga dice «di cui IVA esente». Se provi a usare un'aliquota che non hai scelto in **Aspetto fiscale**, il gestionale ti dice che non è tra quelle scelte.
 
-L'IVA su attività, corsi ed eventi non è ancora disponibile: arriverà in un secondo momento.
+## Se togli un'aliquota dall'elenco
 
-Se hai dubbi su quale aliquota usare, **chiedi al tuo commercialista**: il programma registra ciò che scegli, non decide al posto tuo.
+I movimenti già registrati restano com'erano: cambia solo ciò che puoi scegliere da quel momento in poi.
 MD,
     ],
     [
