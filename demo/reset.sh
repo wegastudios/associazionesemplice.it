@@ -50,6 +50,7 @@ bash "$HOME/demo-provision/update.sh"
 wp plugin activate associazionesemplice associazionesemplice-pro
 wp eval-file "$HOME/demo-provision/provision.php" --user=setup_tmp # come amministratore d'installazione: il plugin lascia collegare a un socio un utente con ruolo solo a un amministratore
 wp eval-file "$HOME/demo-provision/extra-data.php" --user=setup_tmp # dati di prova in più (soci in vari stati, certificati, prestiti, domande, assemblea): servono a valutare l'aspetto su ogni area
+wp eval-file "$HOME/demo-provision/molti-dati.php" --user=setup_tmp # molti dati inventati (soci, prima nota su due anni fiscali, corsi, eventi, risorse): esempio per chi valuta e prova di carico
 # Le pagine create dall'utente d'installazione passano all'amministratore del plugin prima di toglierlo (senza questo si cancellerebbero con lui).
 wp user delete setup_tmp --yes --reassign="$(wp user get amministratore --field=ID)" >/dev/null
 wp cache flush >/dev/null 2>&1 || true
