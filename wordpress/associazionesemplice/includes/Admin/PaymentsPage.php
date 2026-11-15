@@ -141,7 +141,7 @@ final class PaymentsPage {
 			. '<p><label>' . esc_html( Texts::t( 'Quanto restituire al socio (massimo {importo})? I soldi tornano sul suo metodo di pagamento e non si può annullare.', array( 'importo' => Money::format( $info['remaining'] ) ) ) )
 			. '<br><input type="text" name="amount" size="8" inputmode="decimal" placeholder="0,00" autocomplete="off" required> €</label></p>'
 			. '<p><label>' . esc_html( Texts::t( 'Motivo del rimborso (lo leggerà il socio nell\'email):' ) ) . '<br><input type="text" name="reason" class="regular-text" maxlength="200" required></label></p>'
-			. '<p class="description">' . esc_html( $why ) . ' ' . esc_html( Texts::t( 'Si può restituire da 0,50 € in su.' ) ) . '</p>'
+			. '<p class="description">' . esc_html( $why ) . ' ' . esc_html( Texts::t( 'Si può restituire da 0,50 € in su.' ) ) . ' ' . esc_html( Texts::t( 'Il rimborso restituisce solo i soldi: iscrizioni, prenotazioni e crediti collegati a questo pagamento restano come sono. Se vanno tolti, sistemali a mano.' ) ) . '</p>'
 			. '<p><label><input type="checkbox" name="ack" value="1" required> ' . esc_html( Texts::t( 'Ho capito: il rimborso non si può annullare' ) ) . '</label></p>'
 			. '<button class="button button-small button-primary">' . esc_html( Texts::t( 'Rimborsa' ) ) . '</button></form></details>';
 	}
@@ -210,7 +210,7 @@ final class PaymentsPage {
 		}
 		echo '</tbody></table>';
 		echo '<p class="description">I pagamenti riusciti sono già in <a href="' . esc_url( Ui::url( 'asem-ledger' ) ) . '">Prima nota</a> sul conto "Stripe" o "PayPal". '
-			. 'Le commissioni del gateway si registrano da sole come spesa stimata (se lo hai scelto più sopra); il trasferimento sul conto corrente (payout) si registra a mano con un giroconto. Un pagamento Stripe o PayPal si restituisce al socio da qui con «Rimborsa» (tutto o in parte, da 0,50 €): vale per i pagamenti mai entrati in prima nota e per quelli il cui incasso è già stato annullato; i soldi tornano sul metodo del socio, il rimborso non si può annullare e non scrive nulla in prima nota. Se l\'incasso è ancora in prima nota, annullalo prima da lì. Con gli altri metodi (SumUp, Satispay, negozio) il rimborso si fa dal pannello del gestore. I bonifici arrivati sul conto si registrano a mano da «Nuovo incasso».</p>';
+			. 'Le commissioni del gateway si registrano da sole come spesa stimata (se lo hai scelto più sopra); il trasferimento sul conto corrente (payout) si registra a mano con un giroconto. Un pagamento Stripe o PayPal si restituisce al socio da qui con «Rimborsa» (tutto o in parte, da 0,50 €): vale per i pagamenti mai entrati in prima nota e per quelli il cui incasso è già stato annullato; i soldi tornano sul metodo del socio, il rimborso non si può annullare e non scrive nulla in prima nota. Il rimborso restituisce solo i soldi: iscrizioni, prenotazioni e crediti collegati a questo pagamento restano come sono; se vanno tolti, sistemali a mano. Se hai già restituito i soldi dal pannello di Stripe o PayPal, non rimborsare di nuovo da qui: segna il pagamento con «Rimborsato». Se l\'incasso è ancora in prima nota, annullalo prima da lì. Con gli altri metodi (SumUp, Satispay, negozio) il rimborso si fa dal pannello del gestore. I bonifici arrivati sul conto si registrano a mano da «Nuovo incasso».</p>';
 		Ui::footer();
 	}
 }

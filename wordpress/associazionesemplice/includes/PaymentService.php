@@ -495,8 +495,8 @@ class PaymentService extends OfflinePayments {
 			case 'permission':
 				$tail = '' !== $detail ? ' ' . Texts::t( 'Messaggio del gestore: {dettaglio}', array( 'dettaglio' => mb_substr( $detail, 0, 160 ) ) ) : '';
 				return ( 'stripe' === $provider
-					? Texts::t( 'La chiave Stripe non ha il permesso di fare rimborsi: attiva «Refunds» in scrittura nelle sue autorizzazioni su Stripe.' )
-					: Texts::t( 'L\'app PayPal non ha il permesso di fare rimborsi: su developer.paypal.com apri la tua app, attiva la funzione dei pagamenti con i rimborsi («Accept payments») e controlla che l\'account PayPal possa rimborsare, poi riprova.' ) ) . $tail;
+					? Texts::t( 'La chiave Stripe non ha il permesso di fare rimborsi: controlla le autorizzazioni della chiave su Stripe (serve poter scrivere i rimborsi).' )
+					: Texts::t( 'L\'app PayPal non ha il permesso di fare rimborsi: controlla le autorizzazioni dell\'app su developer.paypal.com e che l\'account PayPal possa rimborsare, poi riprova.' ) ) . $tail;
 			case 'key':
 				return Texts::t( 'Le credenziali di {metodo} non sono valide: controllale in Impostazioni → Pagamenti online.', array( 'metodo' => $name ) );
 			case 'already':
@@ -590,14 +590,18 @@ class PaymentService extends OfflinePayments {
 	/** Email al socio che ha pagato: gli diciamo quanto gli è stato restituito. Senza email non si manda nulla (il rimborso è già partito). */
 	private function send_refund_email( ?array $p, int $cents, string $reason ): bool {
 		$payer = $p ? Plugin::people()->get( (int) $p['payer_person_id'] ) : null;
-		if ( ! $p || ! $payer || empty( $payer['email'] ) || ! Contacts::complete() ) { // comunicazione scritta a mano: senza i contatti della segreteria l'email non parte (il rimborso vale lo stesso)
+		if ( ! $p || ! $payer || empty( $payer['email'] ) ) {
 			return false;
 		}
 		$assoc   = (string) Settings::get( 'association_name' );
 		$assoc   = '' !== $assoc ? $assoc : Texts::t( 'l\'associazione' );
 		$subject = Texts::t( 'Rimborso del tuo pagamento · {associazione}', array( 'associazione' => $assoc ) );
+		$tpl     = 'Ciao, abbiamo restituito {importo} del pagamento che hai fatto il {data} a {associazione}. Motivo: {motivo}. L		$body    = Texts::t('accredito compare sul tuo metodo di pagamento in genere entro pochi giorni lavorativi, fino a 10 a seconda della banca o del metodo di pagamento. Se hai dubbi, scrivi alla segreteria. — {associazione}';
+		if ( Contacts::complete() ) { // con i contatti della segreteria la chiusa li riporta (e Texts::mail aggiunge il Reply-To); senza, resta la frase generica
+			$tpl = str_replace( 'scrivi alla segreteria. —', 'scrivi alla segreteria: {email}, tel. {telefono}. —', $tpl );
+		}
 		$body    = Texts::t(
-			'Ciao, abbiamo restituito {importo} del pagamento che hai fatto il {data} a {associazione}. Motivo: {motivo}. L\'accredito compare sul tuo metodo di pagamento in genere entro pochi giorni lavorativi, fino a 10 a seconda della banca o del metodo di pagamento. Se hai dubbi, scrivi alla segreteria: {email}, tel. {telefono}. — {associazione}',
+			$tpl,
 			array(
 				'importo'      => Money::format( $cents ),
 				'data'         => ( new \DateTimeImmutable( (string) ( $p['paid_at'] ?: $p['created_at'] ) ) )->format( 'd/m/Y' ),
@@ -643,6 +647,11 @@ class PaymentService extends OfflinePayments {
 
 	// ---------- Conferme ----------
 
+	/** Messaggio al socio a pagamento ricevuto: se il pagamento resta da controllare lo sa, senza dettagli. */
+	private function received_message( ?array $p ): string {
+		return $p && ! empty( $p['review'] ) ? Texts::t( 'Pagamento ricevuto: la segreteria lo sta controllando.' ) : 'Pagamento ricevuto: grazie!';
+	}
+
 	/** Ritorno del socio dalla pagina del gateway. @return string messaggio per l'utente */
 	public function handle_return( string $public_id, string $ret, int $user_id ): string {
 		$p = $this->get_by_public( $public_id );
@@ -650,12 +659,12 @@ class PaymentService extends OfflinePayments {
 			throw new \InvalidArgumentException( 'Pagamento non trovato.' );
 		}
 		if ( 'paid' === $p['status'] ) {
-			return 'Pagamento ricevuto: grazie!';
+			return $this->received_message( $p );
 		}
 		if ( 'cancel' === $ret ) {
 			if ( in_array( $p['status'], array( 'created', 'pending' ), true ) ) {
 				if ( $this->confirm_with_gateway( $p ) ) {
-					return 'Pagamento ricevuto: grazie!'; // il gateway risulta pagato anche se l'indirizzo era quello dell'annullo: non si perde un incasso
+					return $this->received_message( $this->get( (int) $p['id'] ) ); // il gateway risulta pagato anche se l'indirizzo era quello dell'annullo: non si perde un incasso
 				}
 				$this->update( (int) $p['id'], array( 'status' => 'cancelled' ) );
 			}
@@ -664,7 +673,7 @@ class PaymentService extends OfflinePayments {
 		$this->confirm_with_gateway( $p );
 		$p = $this->get( (int) $p['id'] );
 		if ( 'paid' === $p['status'] ) {
-			return 'Pagamento ricevuto: grazie!';
+			return $this->received_message( $p );
 		}
 		return 'Pagamento in attesa di conferma: appena il gestore del pagamento lo conferma, lo registriamo.';
 	}

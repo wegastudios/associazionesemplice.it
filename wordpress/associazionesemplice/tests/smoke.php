@@ -8498,15 +8498,20 @@ $wpdb->update( Db::t( 'people' ), array( 'email' => null ), array( 'id' => $ap_p
 $rf_mn = count( $ap_mails );
 $rf_res = Admin\ProActions::payment_refund( array( 'id' => $rf_c, 'expected' => 500, 'amount' => '1,00', 'reason' => 'Resto', 'ack' => '1' ) );
 $wpdb->update( Db::t( 'people' ), array( 'email' => $rf_mail_email ), array( 'id' => $ap_paolo ) );
-asem_ok( count( $ap_mails ) === $rf_mn && 'Rimborso di 1,00 € inviato al socio. Il socio non è stato avvisato per email (manca la sua email o i contatti della segreteria): avvisalo tu.' === $rf_res[1] && 600 === (int) $rf_row( $rf_c )['refunded_cents'], 'rimborso: senza email del socio l\'email non parte e l\'esito lo dice (il rimborso è comunque partito)' );
+asem_ok( count( $ap_mails ) === $rf_mn && 'Rimborso di 1,00 € inviato al socio. Il socio non ha un\'email o l\'invio non è riuscito: avvisalo tu.' === $rf_res[1] && 600 === (int) $rf_row( $rf_c )['refunded_cents'], 'rimborso: senza email del socio l\'email non parte e l\'esito lo dice (il rimborso è comunque partito)' );
 
-// senza i contatti della segreteria il rimborso vale ma l'email non parte
+// senza i contatti della segreteria l'email parte lo stesso
 $rf_ct = $rf_pay( 'stripe', 1000, array( 'refund_due' => 1 ) );
 Settings::update( array( 'secretary_phone' => '' ) );
 $rf_mn = count( $ap_mails );
 $rf_res = Admin\ProActions::payment_refund( array( 'id' => $rf_ct, 'expected' => 0, 'amount' => '4,00', 'reason' => 'Prova contatti', 'ack' => '1' ) );
 Settings::update( array( 'secretary_phone' => '011 1234567' ) );
-asem_ok( count( $ap_mails ) === $rf_mn && 400 === (int) $rf_row( $rf_ct )['refunded_cents'] && 'Rimborso di 4,00 € inviato al socio. Il socio non è stato avvisato per email (manca la sua email o i contatti della segreteria): avvisalo tu.' === $rf_res[1], 'rimborso: senza i contatti della segreteria il rimborso parte, l\'email no e l\'esito lo dice' );
+$rf_m2 = $ap_mail_to( 'paolo.paga@example.com' );
+asem_ok( count( $ap_mails ) === $rf_mn + 1 && 400 === (int) $rf_row( $rf_ct )['refunded_cents'] && 'Rimborso di 4,00 € inviato al socio. Il socio è stato avvisato per email.' === $rf_res[1] && false !== strpos( (string) $rf_m2['message'], 'Motivo: Prova contatti.' ) && false !== strpos( (string) $rf_m2['message'], 'scrivi alla segreteria. — ' ) && false === strpos( (string) $rf_m2['message'], 'tel.' ), 'rimborso: senza i contatti della segreteria l\'email parte lo stesso, con la chiusa senza indirizzo' );
+$rf_rv = $rf_pay( 'stripe', 1000, array( 'review' => 1, 'payer_user_id' => 4242 ) );
+$rf_ok = $rf_pay( 'stripe', 1000, array( 'payer_user_id' => 4242 ) );
+asem_ok( 'Pagamento ricevuto: la segreteria lo sta controllando.' === $ap_ps->handle_return( $rf_row( $rf_rv )['public_id'], 'ok', 4242 ) && 'Pagamento ricevuto: grazie!' === $ap_ps->handle_return( $rf_row( $rf_ok )['public_id'], 'ok', 4242 ), 'socio dopo il pagamento: «la segreteria lo sta controllando» solo se il pagamento resta da controllare' );
+asem_ok( false !== strpos( (string) $rf_try( $rf_ct, 700 ), 'Importo non valido: si può restituire da 0,50 € a 6,00 €' ), 'rimborso: un secondo rimborso oltre il pagato è rifiutato con la cifra massima' );
 
 // anno fiscale chiuso: il rimborso non scrive nella prima nota (nemmeno nei suoi anni chiusi)
 $rf_fy = \AssociazioneSemplice\FiscalYears::get( $fy_far );
