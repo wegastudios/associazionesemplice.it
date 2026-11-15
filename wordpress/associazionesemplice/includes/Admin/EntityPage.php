@@ -3,6 +3,7 @@ namespace AssociazioneSemplice\Admin;
 
 use AssociazioneSemplice\FiscalYears;
 use AssociazioneSemplice\Settings;
+use AssociazioneSemplice\Texts;
 use AssociazioneSemplice\Html;
 
 defined( 'ABSPATH' ) || exit;
@@ -17,6 +18,15 @@ final class EntityPage {
 			return '<select name="fiscal_start_month" disabled>' . Ui::options( Ui::MONTHS, $month ) . '</select> <span class="description">' . esc_html( FiscalYears::start_month_locked_message() ) . '</span>';
 		}
 		return '<select name="fiscal_start_month">' . Ui::options( Ui::MONTHS, $month ) . '</select>';
+	}
+
+	/** Le due righe obbligatorie dei contatti della segreteria (email e telefono): le stesse nella procedura guidata e nei dati dell'ente. */
+	public static function contact_rows( array $s ): string {
+		$mail = trim( (string) ( $s['secretary_email'] ?? '' ) );
+		$tel  = trim( (string) ( $s['secretary_phone'] ?? '' ) );
+		return '<tr id="asem-contacts"><th><label for="asem-secretary-email">' . esc_html( Texts::t( 'Email della segreteria' ) ) . ' *</label></th><td><input type="email" id="asem-secretary-email" name="secretary_email" value="' . esc_attr( $mail ) . '" class="regular-text" required autocomplete="off" placeholder="segreteria@…">'
+			. '<p class="description">' . esc_html( Texts::t( 'Li leggono i soci nelle email e nell\'informativa sulla privacy: usa un recapito che qualcuno controlla davvero.' ) ) . '</p></td></tr>'
+			. '<tr><th><label for="asem-secretary-phone">' . esc_html( Texts::t( 'Telefono della segreteria' ) ) . ' *</label></th><td><input type="tel" id="asem-secretary-phone" name="secretary_phone" value="' . esc_attr( $tel ) . '" class="regular-text" required maxlength="30" autocomplete="off" placeholder="+39 333 1234567"></td></tr>';
 	}
 
 	public static function render(): void {
@@ -45,6 +55,7 @@ final class EntityPage {
 		echo '<tr><th>Indirizzo</th><td><input type="text" name="legal_address" value="' . esc_attr( (string) $s['legal_address'] ) . '" class="regular-text"></td></tr>';
 		echo '<tr><th>CAP, comune, provincia</th><td><input type="text" name="legal_zip" value="' . esc_attr( (string) $s['legal_zip'] ) . '" size="6" placeholder="CAP"> <input type="text" name="legal_city" value="' . esc_attr( (string) $s['legal_city'] ) . '" placeholder="Comune"> <input type="text" name="legal_province" value="' . esc_attr( (string) $s['legal_province'] ) . '" size="4" placeholder="Prov."></td></tr>';
 		echo '<tr><th>PEC</th><td><input type="email" name="pec" value="' . esc_attr( (string) $s['pec'] ) . '" class="regular-text"></td></tr>';
+		echo wp_kses( self::contact_rows( $s ), Html::allowed() );
 		echo '</tbody></table>';
 		do_action( 'asem_entity_sections', $s ); // ... e qui le loro sezioni
 		submit_button( 'Salva' );

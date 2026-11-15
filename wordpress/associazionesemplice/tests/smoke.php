@@ -927,11 +927,117 @@ asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\Wizard::apply
 asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\Wizard::apply( array( 'payment_choice' => 'woocommerce' ) ); } ) || \AssociazioneSemplice\WooBridge::active(), 'configurazione guidata: WooCommerce si sceglie solo se è attivo' );
 $wz_done = \AssociazioneSemplice\Wizard::apply( array(
 	'entity_type' => $wz_ent, 'member_term' => $wz_mem, 'association_name' => 'Circolo Prova', 'tax_code' => '12345678903', 'social_year_start_month' => '9',
+	'secretary_email' => 'Segreteria@Example.org', 'secretary_phone' => '011 1234567',
 	'payment_choice' => 'stripe_paypal', 'bank_enabled' => '1', 'pages_present' => '1', 'pages' => array( 'calendario', 'inesistente' ),
 ) );
 asem_ok( 'Circolo Prova' === Settings::get( 'association_name' ) && '12345678903' === Settings::get( 'tax_code' ) && 'stripe_paypal' === Settings::get( 'payment_provider' ) && 1 === (int) Settings::get( 'bank_enabled' ) && $wz_ent === Settings::get( 'entity_type' ), 'configurazione guidata: ente e pagamenti applicati' );
 $wz_pages = \AssociazioneSemplice\Pages::existing();
 asem_ok( isset( $wz_pages['calendario'] ) && ! isset( $wz_pages['inesistente'] ) && 'members' === get_post_meta( $wz_pages['calendario'], '_asem_access', true ) && false !== strpos( implode( ' ', $wz_done ), 'Calendario' ), 'configurazione guidata: crea solo le pagine note, con l\'accesso giusto' );
+// Contatti della segreteria (email e telefono): obbligatori nella procedura, nei dati dell'ente e ricordati finché mancano
+asem_ok( 'segreteria@example.org' === Settings::get( 'secretary_email' ) && '011 1234567' === Settings::get( 'secretary_phone' ) && ! \AssociazioneSemplice\Contacts::missing() && \AssociazioneSemplice\Contacts::complete(), 'contatti: la procedura salva email (minuscola) e telefono della segreteria' );
+$ct_e1 = (string) asem_throws( function () { \AssociazioneSemplice\Wizard::apply( array( 'secretary_email' => '', 'secretary_phone' => '' ) ); } );
+asem_ok( false !== strpos( $ct_e1, 'Indica l\'email della segreteria.' ) && false !== strpos( $ct_e1, 'Indica il telefono della segreteria.' ), 'contatti: la procedura non si completa senza email e telefono (un errore per campo)' );
+$ct_e2 = (string) asem_throws( function () { \AssociazioneSemplice\Wizard::apply( array( 'secretary_email' => 'non-una-email', 'secretary_phone' => '12345' ) ); } );
+asem_ok( false !== strpos( $ct_e2, 'L\'email della segreteria non è un indirizzo valido.' ) && false !== strpos( $ct_e2, 'Indica un telefono valido per la segreteria (almeno 6 cifre; ammessi + - . ( ) e spazi).' ), 'contatti: email non valida e telefono con meno di 6 cifre si rifiutano' );
+asem_ok( null !== asem_throws( function () { \AssociazioneSemplice\Wizard::apply( array( 'secretary_email' => 'a@example.org', 'secretary_phone' => str_repeat( '1', 31 ) ) ); } ) && null !== asem_throws( function () { \AssociazioneSemplice\Wizard::apply( array( 'secretary_email' => 'a@example.org', 'secretary_phone' => '011 abc 123456' ) ); } ), 'contatti: telefono oltre 30 caratteri o con lettere rifiutato' );
+asem_ok( \AssociazioneSemplice\Contacts::phone_valid( '+39 (011) 123-45.67' ) && ! \AssociazioneSemplice\Contacts::phone_valid( '12345' ), 'contatti: sono ammessi + - . ( ) e spazi' );
+ob_start();
+Admin\WizardPage::render();
+$ct_wz = (string) ob_get_clean();
+asem_ok( 1 === preg_match( '/<input[^>]*name="secretary_email"[^>]*required/', $ct_wz ) && 1 === preg_match( '/<input[^>]*name="secretary_phone"[^>]*required/', $ct_wz ) && false !== strpos( $ct_wz, 'Email della segreteria' ) && false !== strpos( $ct_wz, 'Telefono della segreteria' ), 'contatti: la procedura ha i due campi obbligatori' );
+// promemoria fisso: presente se manca anche uno solo dei due, sparisce se sono compilati
+Settings::update( array( 'secretary_email' => '', 'secretary_phone' => '' ) );
+ob_start();
+echo \AssociazioneSemplice\Contacts::reminder_html();
+$ct_al = (string) ob_get_clean();
+asem_ok( false !== strpos( $ct_al, 'Mancano i contatti della segreteria (email e telefono): finché mancano' ) && false !== strpos( $ct_al, 'Inseriscili ora' ) && false !== strpos( $ct_al, 'page=asem-entity' ) && false === strpos( $ct_al, 'asem-dismiss' ), 'contatti: promemoria fisso con «Inseriscili ora», non chiudibile' );
+$ct_get = $_GET;
+$_GET['page'] = 'asem-years';
+ob_start();
+Admin\Ui::header( 'Prova' );
+$ct_hd = (string) ob_get_clean();
+asem_ok( false !== strpos( $ct_hd, 'Mancano i contatti della segreteria' ) && false !== strpos( $ct_hd, 'Inseriscili ora' ), 'contatti: il promemoria compare in tutte le pagine del plugin' );
+$_GET = $ct_get;
+Settings::update( array( 'secretary_email' => 'segreteria@example.org' ) );
+ob_start();
+echo \AssociazioneSemplice\Contacts::reminder_html();
+asem_ok( false !== strpos( (string) ob_get_clean(), 'Mancano i contatti' ), 'contatti: il promemoria resta finché manca il telefono' );
+$_GET['page'] = 'asem-entity';
+ob_start();
+Admin\EntityPage::render();
+$ct_ent = (string) ob_get_clean();
+$_GET = $ct_get;
+asem_ok( false !== strpos( $ct_ent, 'Mancano i contatti della segreteria' ) && false === strpos( $ct_ent, 'Inseriscili ora' ) && 1 === preg_match( '/<input[^>]*name="secretary_email"[^>]*required/', $ct_ent ), 'contatti: in Dati dell\'ente il promemoria c\'è (senza pulsante) e i campi sono obbligatori' );
+$ct_sec  = wp_insert_user( array( 'user_login' => 'ct_segreteria', 'user_pass' => wp_generate_password(), 'user_email' => 'ct-seg@example.test', 'role' => \AssociazioneSemplice\Plugin::ROLE_SECRETARY ) );
+$ct_prev = get_current_user_id();
+wp_set_current_user( (int) $ct_sec );
+ob_start();
+echo \AssociazioneSemplice\Contacts::reminder_html();
+$ct_al2 = (string) ob_get_clean();
+wp_set_current_user( $ct_prev );
+wp_delete_user( (int) $ct_sec );
+asem_ok( false !== strpos( $ct_al2, 'Mancano i contatti della segreteria: chiedi a chi amministra di inserirli.' ) && false === strpos( $ct_al2, 'Inseriscili ora' ), 'contatti: chi non modifica le impostazioni vede un altro testo, senza pulsante' );
+Settings::update( array( 'secretary_phone' => '011 1234567' ) );
+ob_start();
+echo \AssociazioneSemplice\Contacts::reminder_html();
+asem_ok( '' === trim( (string) ob_get_clean() ), 'contatti: compilati i due campi il promemoria sparisce' );
+// invii manuali: senza contatti completi si rifiutano; le email automatiche partono comunque
+Settings::update( array( 'secretary_email' => '', 'secretary_phone' => '' ) );
+$ct_blk = (string) asem_throws( function () { \AssociazioneSemplice\Contacts::assert_can_write(); } );
+asem_ok( 'Prima inserisci email e telefono della segreteria (Impostazioni › Ente): senza, l\'associazione non scrive ai soci.' === $ct_blk, 'contatti: invio manuale senza contatti rifiutato con la frase chiara' );
+asem_ok( 'Prima inserisci email e telefono della segreteria (Impostazioni › Ente): senza, l\'associazione non scrive ai soci. Intanto scarica la ricevuta e consegnala a mano.' === (string) asem_throws( function () { \AssociazioneSemplice\Contacts::assert_can_write( true ); } ), 'contatti: per la ricevuta si aggiunge «scarica e consegna a mano»' );
+$ct_rb = new ReflectionMethod( Admin\ProActions::class, 'receipt_email' );
+asem_ok( 0 === strpos( (string) asem_throws( function () use ( $ct_rb ) { $ct_rb->invoke( null, array( 'key' => 'x' ) ); } ), 'Prima inserisci email e telefono' ), 'contatti: la ricevuta inviata a mano è bloccata senza contatti' );
+$ct_rb2 = new ReflectionMethod( Admin\ProActions::class, 'broadcast_send' );
+asem_ok( 0 === strpos( (string) asem_throws( function () use ( $ct_rb2 ) { $ct_rb2->invoke( null, array( 'audience' => 'members_all', 'subject' => 'Ciao', 'body' => 'Testo' ) ); } ), 'Prima inserisci email e telefono' ), 'contatti: le comunicazioni ai soci sono bloccate senza contatti' );
+$ct_auto = array();
+add_filter(
+	'pre_wp_mail',
+	function ( $null, $atts ) use ( &$ct_auto ) {
+		$ct_auto[] = $atts;
+		return true;
+	},
+	10,
+	2
+);
+asem_ok( true === \AssociazioneSemplice\Texts::mail( 'socio@example.com', 'Accesso', 'Ecco il link.' ) && 1 === count( $ct_auto ), 'contatti: le email automatiche (accessi, conferme, promemoria) partono anche senza contatti' );
+remove_all_filters( 'pre_wp_mail' );
+Settings::update( array( 'secretary_email' => 'segreteria@example.org', 'secretary_phone' => '011 1234567' ) );
+asem_ok( null === asem_throws( function () { \AssociazioneSemplice\Contacts::assert_can_write(); } ), 'contatti: con i contatti completi gli invii manuali sono permessi' );
+// usi dei contatti: Reply-To e riga in calce, informativa, avviso nuove domande
+$ct_mail = array();
+add_filter(
+	'pre_wp_mail',
+	function ( $null, $atts ) use ( &$ct_mail ) {
+		$ct_mail[] = $atts;
+		return true;
+	},
+	10,
+	2
+);
+\AssociazioneSemplice\Texts::mail( 'socio@example.com', 'Prova contatti', 'Ciao.' );
+asem_ok( false !== stripos( implode( "\n", (array) $ct_mail[0]['headers'] ), 'Reply-To: segreteria@example.org' ) && "Ciao.\n\n--\nSegreteria: segreteria@example.org · 011 1234567" === $ct_mail[0]['message'], 'contatti: le email ai soci hanno Reply-To e la riga «Segreteria: …» in calce' );
+\AssociazioneSemplice\Texts::mail( 'socio@example.com', 'Prova contatti 2', 'Ciao.', array( 'Reply-To: altro@example.com' ) );
+asem_ok( 1 === count( preg_grep( '/^reply-to:/i', (array) $ct_mail[1]['headers'] ) ) && false !== stripos( implode( "\n", (array) $ct_mail[1]['headers'] ), 'altro@example.com' ), 'contatti: un Reply-To già indicato non si raddoppia' );
+Settings::update( array( 'secretary_email' => '', 'secretary_phone' => '' ) );
+\AssociazioneSemplice\Texts::mail( 'socio@example.com', 'Prova senza contatti', 'Ciao.' );
+asem_ok( 'Ciao.' === $ct_mail[2]['message'] && false === stripos( implode( "\n", (array) $ct_mail[2]['headers'] ), 'reply-to' ), 'contatti: senza contatti nessun Reply-To e nessuna riga in calce' );
+remove_all_filters( 'pre_wp_mail' );
+Settings::update( array( 'privacy_email' => '', 'pec' => 'ente@pec.example.com', 'secretary_email' => 'segreteria@example.org', 'secretary_phone' => '011 1234567', 'apply_email' => '' ) );
+asem_ok( 'segreteria@example.org' === \AssociazioneSemplice\PrivacyNotice::entity()['contact'], 'contatti: l\'informativa usa l\'email della segreteria prima della PEC' );
+Settings::update( array( 'privacy_email' => 'privacy@example.org' ) );
+asem_ok( 'privacy@example.org' === \AssociazioneSemplice\PrivacyNotice::entity()['contact'], 'contatti: l\'email per la privacy, se c\'è, ha la precedenza' );
+Settings::update( array( 'privacy_email' => '', 'secretary_email' => '' ) );
+asem_ok( 'ente@pec.example.com' === \AssociazioneSemplice\PrivacyNotice::entity()['contact'], 'contatti: senza email della segreteria l\'informativa torna alla PEC' );
+Settings::update( array( 'secretary_email' => 'segreteria@example.org' ) );
+asem_ok( 'segreteria@example.org' === \AssociazioneSemplice\Applications::notify_email(), 'contatti: l\'avviso delle nuove domande va alla segreteria prima che all\'email del sito' );
+Settings::update( array( 'apply_email' => 'domande@example.org' ) );
+asem_ok( 'domande@example.org' === \AssociazioneSemplice\Applications::notify_email(), 'contatti: l\'avviso dedicato alle domande ha la precedenza' );
+Settings::update( array( 'apply_email' => '', 'secretary_email' => '' ) );
+asem_ok( (string) get_option( 'admin_email' ) === \AssociazioneSemplice\Applications::notify_email(), 'contatti: senza email della segreteria l\'avviso va all\'email del sito' );
+Settings::update( array( 'secretary_email' => 'segreteria@example.org' ) );
+asem_ok( 'Per esercitare i tuoi diritti scrivi a segreteria@example.org o chiama 011 1234567.' === \AssociazioneSemplice\Contacts::rights_line() && 'Segreteria: segreteria@example.org · 011 1234567' === \AssociazioneSemplice\Contacts::line(), 'contatti: frasi per modulo di adesione e area soci' );
+Settings::update( array( 'pec' => '', 'secretary_email' => '', 'secretary_phone' => '' ) ); // come prima: i test seguenti non vedono i contatti
 \AssociazioneSemplice\Wizard::apply( array( 'pages_present' => '1', 'pages' => array( 'calendario' ) ) );
 asem_ok( count( \AssociazioneSemplice\Pages::existing() ) === count( $wz_pages ), 'configurazione guidata: le pagine esistenti non si duplicano' );
 \AssociazioneSemplice\Wizard::apply( array( 'pages_present' => '1', 'pages' => array( 'segreteria', 'tesoriere', 'ingressi' ) ) );
@@ -1138,7 +1244,7 @@ $wz_pos_pay = strpos( $wz_html3, 'Pagamenti dei soci' );
 asem_ok( false !== $wz_pos_pay && false !== strpos( substr( $wz_html3, max( 0, $wz_pos_pay - 200 ), 260 ), 'mod[ledger]=1' ), 'procedura: i pagamenti si chiedono solo se c\'è la prima nota' );
 Settings::update( array( 'fivepm_enabled' => 0, 'has_vat' => 0, 'vat_number' => '', 'vat_membership_rate' => '', 'vat_default_rate' => 22, 'vat_prices_mode' => 'incl', 'legal_address' => '', 'legal_zip' => '', 'legal_city' => '', 'legal_province' => '', 'pec' => '', 'association_name' => $wz_old['association_name'] ) );
 // dati dell'ente e partita IVA
-$en_base = array( 'association_name' => 'Ente Fiscale', 'entity_type' => $wz_ent, 'member_term' => $wz_mem, 'tax_code' => '12345678903', 'social_year_start_month' => '9', 'legal_address' => 'Via Roma 1', 'legal_zip' => '20100', 'legal_city' => 'Milano', 'legal_province' => 'MI', 'pec' => 'ente@pec.example.com', 'vat_default_rate' => '22', 'vat_prices_mode' => 'incl', 'fiscal_regime' => 'ordinario' );
+$en_base = array( 'association_name' => 'Ente Fiscale', 'entity_type' => $wz_ent, 'member_term' => $wz_mem, 'tax_code' => '12345678903', 'social_year_start_month' => '9', 'legal_address' => 'Via Roma 1', 'legal_zip' => '20100', 'legal_city' => 'Milano', 'legal_province' => 'MI', 'pec' => 'ente@pec.example.com', 'secretary_email' => 'segreteria@example.org', 'secretary_phone' => '011 1234567', 'vat_default_rate' => '22', 'vat_prices_mode' => 'incl', 'fiscal_regime' => 'ordinario' );
 asem_ok( ! \AssociazioneSemplice\Fiscal::vat_applies(), 'iva: senza partita IVA non si applica' );
 asem_ok( null !== asem_throws( function () use ( $en_base ) { Admin\TechActions::save_entity( array_merge( $en_base, array( 'has_vat' => '1', 'vat_number' => '12345678901' ) ) ); } ) && null !== asem_throws( function () use ( $en_base ) { Admin\TechActions::save_entity( array_merge( $en_base, array( 'tax_code' => '12345678901' ) ) ); } ) && null !== asem_throws( function () use ( $en_base ) { Admin\TechActions::save_entity( array_merge( $en_base, array( 'pec' => 'non-email' ) ) ); } ), 'dati ente: partita IVA, codice fiscale e PEC non validi si rifiutano' );
 Admin\TechActions::save_entity( array_merge( $en_base, array( 'has_vat' => '1', 'vat_number' => 'IT 12345678903', 'vat_default_rate' => '10', 'vat_prices_mode' => 'escl', 'sdi_code' => 'abcdefg' ) ) );
@@ -1146,6 +1252,8 @@ asem_ok( \AssociazioneSemplice\Fiscal::vat_applies() && '12345678903' === Settin
 Admin\TechActions::save_entity( array_merge( $en_base, array( 'has_vat' => '1', 'vat_number' => '12345678903', 'fiscal_regime' => 'forfettario' ) ) );
 asem_ok( ! \AssociazioneSemplice\Fiscal::vat_applies(), 'iva: in regime forfettario non si applica' );
 Admin\TechActions::save_entity( $en_base );
+asem_ok( 'segreteria@example.org' === Settings::get( 'secretary_email' ) && '011 1234567' === Settings::get( 'secretary_phone' ) && false !== strpos( (string) asem_throws( function () use ( $en_base ) { Admin\TechActions::save_entity( array_merge( $en_base, array( 'secretary_email' => '' ) ) ); } ), 'Indica l\'email della segreteria.' ) && false !== strpos( (string) asem_throws( function () use ( $en_base ) { Admin\TechActions::save_entity( array_merge( $en_base, array( 'secretary_phone' => '' ) ) ); } ), 'Indica il telefono della segreteria.' ), 'dati ente: email e telefono della segreteria si salvano e sono obbligatori' );
+Settings::update( array( 'secretary_email' => '', 'secretary_phone' => '' ) ); // i test seguenti partono senza contatti
 asem_ok( ! \AssociazioneSemplice\Fiscal::vat_applies() && '' === Settings::get( 'vat_number' ), 'dati ente: tolta la partita IVA, il numero si azzera' );
 ob_start();
 Admin\EntityPage::render();
@@ -3315,6 +3423,7 @@ $acts->cancel( $nc, $founder, $month );
 
 // invio dal volontario
 wp_set_current_user( $u_vol );
+Settings::update( array( 'secretary_email' => 'segreteria@example.org', 'secretary_phone' => '011 1234567' ) ); // gli avvisi sono invii manuali: servono i contatti della segreteria
 $msg = $front::do_notice( array( 'activity_id' => $nc, 'subject' => 'Cambio di orario', 'body' => "Stasera si comincia alle 19.\nPortate l'acqua." ) );
 asem_ok( false !== strpos( $msg, 'Avviso inviato a 3 persone' ) && 3 === count( $mails ), 'avvisi: il volontario invia e arriva una email a ciascun iscritto' );
 $one = $mails[0];
@@ -3366,6 +3475,7 @@ $det2 = $as( $u_tre, '[associazionesemplice_ingressi]' );
 unset( $_GET['asem_session'] );
 asem_ok( false !== strpos( $det2, 'Invia un avviso agli iscritti' ) && false !== strpos( $det2, 'a questa data' ), 'ingressi: sotto la lista dei prenotati il modulo dell\'avviso per quella data' );
 remove_all_filters( 'pre_wp_mail' );
+Settings::update( array( 'secretary_email' => '', 'secretary_phone' => '' ) );
 wp_set_current_user( 1 );
 
 // ---------- Soci senza email: attivazione dell'accesso con un link ----------
@@ -5715,6 +5825,7 @@ $bc_mail = array();
 asem_ok( 1 === count( $bc_mail ) && 0 === strpos( $bc_mail[0]['subject'], '[Prova] ' ), 'comunicazioni: la prova va solo all\'utente collegato' );
 // pagine e azioni
 $bc_send = new ReflectionMethod( Admin\ProActions::class, 'broadcast_send' );
+Settings::update( array( 'secretary_email' => 'segreteria@example.org', 'secretary_phone' => '011 1234567' ) ); // le comunicazioni sono invii manuali: servono i contatti della segreteria
 $bc_res  = $bc_send->invoke( null, array( 'audience' => 'activity:' . $acq, 'subject' => 'Dalla pagina', 'body' => 'Testo dalla pagina' ) );
 asem_ok( false !== strpos( $bc_res[1], 'Comunicazione avviata' ) && array( 'activity', $acq ) === Admin\MessagesPage::parse_audience( 'activity:' . $acq ) && array( 'members_all', 0 ) === Admin\MessagesPage::parse_audience( 'members_all' ), 'comunicazioni: invio dalla pagina' );
 asem_render( array( Admin\MessagesPage::class, 'render' ), 'Storico' );
@@ -5724,6 +5835,7 @@ wp_set_current_user( $sec_u );
 asem_ok( false !== strpos( Admin\Admin::tabs( 'asem-people' ), 'page=asem-messages' ), 'comunicazioni: la segreteria le vede' );
 wp_set_current_user( 1 );
 remove_all_filters( 'pre_wp_mail' );
+Settings::update( array( 'secretary_email' => '', 'secretary_phone' => '' ) );
 
 // ---------- Calendario nell'area soci ----------
 asem_ok( isset( \AssociazioneSemplice\Frontend\Shortcodes::views()['calendario'] ), 'sito: esiste la vista calendario' );

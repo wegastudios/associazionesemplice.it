@@ -34,6 +34,9 @@ final class PrivacyNotice {
 		$seat     = trim( $address . ( '' !== $address && '' !== $zip_city ? ', ' : '' ) . $zip_city );
 		$pec      = trim( (string) Settings::get( 'pec' ) );
 		$mail     = trim( (string) Settings::get( 'privacy_email' ) );
+		if ( '' === $mail ) {
+			$mail = Contacts::email(); // senza email per la privacy: la segreteria, poi la PEC
+		}
 		return array(
 			'name'    => self::or_todo( (string) Settings::get( 'association_name' ) ),
 			'tax'     => self::or_todo( (string) Settings::get( 'tax_code' ) ),
@@ -167,7 +170,7 @@ final class PrivacyNotice {
 				'Titolare del trattamento',
 				array(
 					$ent . ', codice fiscale ' . $e['tax'] . ', con sede legale in ' . $e['seat'] . ' (di seguito «l\'Associazione»), è il titolare del trattamento dei dati personali.',
-					'Per esercitare i propri diritti o per qualsiasi chiarimento: ' . implode( ' ', $reach ),
+					'Per esercitare i propri diritti o per qualsiasi chiarimento: ' . implode( ' ', $reach ) . ( '' !== Contacts::phone() ? ' Telefono: ' . Contacts::phone() . '.' : '' ),
 				),
 			),
 			array(

@@ -162,6 +162,7 @@ final class ProActions {
 	}
 
 	public static function receipt_email( array $p ): array {
+		\AssociazioneSemplice\Contacts::assert_can_write( true ); // invio manuale: servono i contatti della segreteria
 		\AssociazioneSemplice\Receipts::email( (string) ( $p['key'] ?? '' ) );
 		return array( $p['_back'] ?? Ui::url( 'asem-ledger' ), 'Ricevuta inviata per email.' );
 	}
@@ -271,7 +272,10 @@ final class ProActions {
 	public static function broadcast_send( array $p ): array {
 		list( $g, $ref ) = MessagesPage::parse_audience( (string) ( $p['audience'] ?? '' ) );
 		$channels = isset( $p['channels'] ) ? array_map( 'sanitize_key', (array) $p['channels'] ) : array( 'email' );
-		$id = \AssociazioneSemplice\Broadcasts::create( (string) ( $p['subject'] ?? '' ), (string) ( $p['body'] ?? '' ), $g, $ref, $channels );
+		if ( ! isset( $channels ) || in_array( 'email', $channels, true ) ) {
+			\AssociazioneSemplice\Contacts::assert_can_write(); // invio manuale: servono i contatti della segreteria
+		}
+		$id = \AssociazioneSemplice\Broadcasts::create( (string) ( $p['subject']?? '' ), (string) ( $p['body'] ?? '' ), $g, $ref, $channels );
 		$b  = \AssociazioneSemplice\Broadcasts::get( $id );
 		$sc = \AssociazioneSemplice\Sms::counts( $id );
 		$parts = array();

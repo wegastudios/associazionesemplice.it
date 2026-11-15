@@ -45,7 +45,10 @@ final class Applications {
 
 	public static function notify_email(): string {
 		$mail = trim( (string) Settings::get( 'apply_email' ) );
-		return is_email( $mail ) ? $mail : (string) get_option( 'admin_email' );
+		if ( is_email( $mail ) ) {
+			return $mail;
+		}
+		return '' !== Contacts::email() ? Contacts::email() : (string) get_option( 'admin_email' ); // senza avviso dedicato: la segreteria, solo in mancanza l'email del sito
 	}
 
 	// ---------- Lettura ----------

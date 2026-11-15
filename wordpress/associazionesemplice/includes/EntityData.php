@@ -61,6 +61,16 @@ final class EntityData {
 			}
 			$vals['pec'] = $pec;
 		}
+		if ( $has( 'secretary_email' ) || $has( 'secretary_phone' ) ) { // contatti della segreteria: obbligatori quando si salva la scheda dell'ente o si completa la procedura
+			$mail  = strtolower( trim( sanitize_text_field( (string) ( $p['secretary_email'] ?? '' ) ) ) );
+			$phone = trim( sanitize_text_field( (string) ( $p['secretary_phone'] ?? '' ) ) );
+			$errs  = Contacts::validate( $mail, $phone );
+			if ( $errs ) {
+				throw new \InvalidArgumentException( implode( ' ', $errs ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			}
+			$vals['secretary_email'] = $mail;
+			$vals['secretary_phone'] = $phone;
+		}
 		return (array) apply_filters( 'asem_entity_values', $vals, $p, $full ); // le estensioni leggono e controllano i loro campi
 	}
 }

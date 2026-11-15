@@ -1205,7 +1205,13 @@ final class Views {
 			$nav .= '</ul></nav>';
 		}
 		return '<div class="asemf-hello"><span>Ciao <strong>' . esc_html( $p['first_name'] ) . '</strong></span>' . MemberLoginPage::logout_button() . '</div><div class="asemf-layout' . ( '' === $nav ? ' asemf-nonav' : '' ) . '">' . $nav
-			. '<div class="asemf-area asemf-pane-' . esc_attr( $pane ) . '">' . self::pane_html( $pane, $p ) . '</div></div>';
+			. '<div class="asemf-area asemf-pane-' . esc_attr( $pane ) . '">' . self::pane_html( $pane, $p ) . '</div></div>' . self::contacts_footer();
+	}
+
+	/** In fondo all'area soci: «Segreteria: email · telefono» (niente se i contatti mancano). */
+	private static function contacts_footer(): string {
+		$line = \AssociazioneSemplice\Contacts::line();
+		return '' !== $line ? '<p class="asemf-small asemf-muted asemf-contacts">' . esc_html( $line ) . '</p>' : '';
 	}
 
 	public static function area( array $atts = array() ): string {
@@ -1231,7 +1237,7 @@ final class Views {
 						$html .= (string) apply_filters( 'asem_area_section', '', $s, $p ); // sezioni di un'estensione
 					}
 				}
-				return $html . '</div>';
+				return $html . '</div>' . self::contacts_footer();
 			},
 			'asemf-area-wrap'
 		);

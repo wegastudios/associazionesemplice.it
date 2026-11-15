@@ -710,6 +710,7 @@ final class Actions {
 		}
 		if ( ! empty( $p['notify'] ) && \AssociazioneSemplice\Notices::can_send( $id ) ) {
 			try {
+				\AssociazioneSemplice\Contacts::assert_can_write(); // invio manuale: servono i contatti della segreteria
 				$r    = \AssociazioneSemplice\Notices::send( $id, null, 'Cambio lezione: ' . ( $a ? $a['name'] : '' ), $text );
 				$msg .= ' Avviso inviato agli iscritti (' . (int) $r['recipients'] . ').';
 			} catch ( \InvalidArgumentException $e ) {
@@ -832,6 +833,7 @@ final class Actions {
 
 	private static function send_notice( array $p ): array {
 		$aid = (int) ( $p['activity_id'] ?? 0 );
+		\AssociazioneSemplice\Contacts::assert_can_write(); // invio manuale: servono i contatti della segreteria
 		$r   = \AssociazioneSemplice\Notices::send( $aid, ! empty( $p['session_id'] ) ? (int) $p['session_id'] : null, (string) ( $p['subject'] ?? '' ), (string) ( $p['body'] ?? '' ) );
 		return array( Ui::url( 'asem-activity', array( 'id' => $aid ) ), 'Avviso inviato a ' . $r['recipients'] . ' persone (' . $r['emailed'] . ' email inviate).' );
 	}
@@ -1240,7 +1242,6 @@ final class Actions {
 			$ente['apply_volunteer']  = ! empty( $p['apply_volunteer'] ) ? 1 : 0;
 			$ente['apply_pay_online'] = ! empty( $p['apply_pay_online'] ) ? 1 : 0;
 			$ente['apply_email']      = $txt( 'apply_email' );
-			$ente['secretary_phone']  = $txt( 'secretary_phone' );
 		}
 		if ( ! empty( $p['uninstall_present'] ) ) {
 			$ente['delete_on_uninstall'] = ! empty( $p['delete_on_uninstall'] ) ? 1 : 0;
