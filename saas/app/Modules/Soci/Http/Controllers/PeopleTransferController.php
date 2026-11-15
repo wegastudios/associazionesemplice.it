@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Soci\Http\Controllers;
 
+use App\Modules\Core\Contracts\DemoScale;
 use App\Modules\Soci\Contracts\MemberType;
 use App\Modules\Soci\Import\PeopleSheet;
 use App\Modules\Soci\Services\PeopleExportService;
@@ -35,6 +36,9 @@ final readonly class PeopleTransferController
     /** Anteprima (apply = false) o import vero dello stesso file. */
     public function import(Request $request): Response
     {
+        if (DemoScale::uploadsOff()) {
+            throw ValidationException::withMessages(['file' => DemoScale::UPLOADS_OFF]);
+        }
         $request->validate([
             'file' => ['required', 'file', 'max:5120', 'extensions:csv,txt,xlsx'],
             'default_type' => ['required', Rule::in(array_map(static fn (MemberType $t): string => $t->value, self::DEFAULT_TYPES))],

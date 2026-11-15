@@ -39,4 +39,13 @@ final class DemoScale
 
         return ($d > $today ? $today : $d)->format('Y-m-d');
     }
+
+    /** La frase a schermo e nell'errore, dove un visitatore si aspetta di poter caricare un file. */
+    public const UPLOADS_OFF = 'Nella demo il caricamento dei file è spento.';
+
+    /** Nella demo (mai in produzione) i visitatori non caricano file: è pubblica e i file finirebbero sul disco del server. */
+    public static function uploadsOff(): bool
+    {
+        return (bool) config('saas.demo.enabled') && ! app()->environment('production');
+    }
 }

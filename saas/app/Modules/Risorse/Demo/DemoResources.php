@@ -19,6 +19,8 @@ use Illuminate\Database\DatabaseManager;
  * Risorse finte per la demo: due campi e una sala a ore (IVA 22%), una sala a giornate, tre posti barca stagionali («IVA
  * esente»), con prenotazioni nelle ultime settimane (incassate, con ricevuta) e nelle prossime, e una chiusura per
  * manutenzione.
+ *
+ * @phpstan-import-type Booking from ReservationService
  */
 final readonly class DemoResources implements DemoSeeder
 {
@@ -90,7 +92,11 @@ final readonly class DemoResources implements DemoSeeder
         $this->reservations->block($courts[0]->id, $today->modify('+3 days')->format('Y-m-d').' 08:00', $today->modify('+3 days')->format('Y-m-d').' 14:00', 'Manutenzione del fondo', null);
     }
 
-    /** Prenota e, se c'è un conto, incassa. Una prenotazione che non si può fare (occupata, fuori orario) si salta. */
+    /**
+     * Prenota e, se c'è un conto, incassa. Una prenotazione che non si può fare (occupata, fuori orario) si salta.
+     *
+     * @param  Booking  $in
+     */
     private function book(string $resourceId, array $in, ?string $account, int $k): void
     {
         try {
@@ -100,7 +106,7 @@ final readonly class DemoResources implements DemoSeeder
                 if ($k % 4 === 0) {
                     return;
                 }
-                $this->reservations->collect($id, $account, min(substr((string) ($in['date'] ?? now()->toDateString()), 0, 10), now()->toDateString()), null, $k % 4 === 1 ? PaymentMethod::BankTransfer : PaymentMethod::Cash);
+                $this->reservations->collect($id, $account, min(substr($in['date'] ?? now()->toDateString(), 0, 10), now()->toDateString()), null, $k % 4 === 1 ? PaymentMethod::BankTransfer : PaymentMethod::Cash);
             }
         } catch (ResourceError) {
             return;

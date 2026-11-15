@@ -6,6 +6,7 @@ namespace App\Modules\Core\Http\Middleware;
 
 use App\Modules\Core\Contracts\Ability;
 use App\Modules\Core\Contracts\CurrentOperator;
+use App\Modules\Core\Contracts\DemoScale;
 use App\Modules\Core\Contracts\OrgContacts;
 use App\Modules\Core\Contracts\OrgContext;
 use App\Modules\Core\Contracts\OrgProfile;
@@ -30,6 +31,7 @@ final class HandleInertiaRequests extends Middleware
 
         return [
             ...parent::share($request),
+            'demo_uploads_off' => DemoScale::uploadsOff(),
             'auth' => [
                 'user' => $user instanceof User ? ['name' => $user->name, 'email' => $user->email, 'platform_admin' => $user->platform_admin] : null,
             ],
