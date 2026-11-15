@@ -132,17 +132,22 @@ MD,
         'body' => <<<'MD'
 > Disponibile in: Free, {piano_contabile}, {piano_fiscale}
 
-I **certificati medici**, i **documenti e le scansioni**, gli **allegati dei movimenti**, i **giustificativi dei rimborsi** e le **foto dell'inventario** si salvano **cifrati**; lo stesso vale per i **PDF delle ricevute** (emessi e «ANNULLATA»), che nella copia di sicurezza restano cifrati. Lo ZIP delle ricevute di un anno fiscale (**«Scarica i PDF di questo anno fiscale (ZIP)»**), invece, esce **non cifrato**: il programma avvisa «I PDF dello ZIP non sono cifrati e contengono dati personali (nome, codice fiscale, importi): conservalo con cura e cancellalo quando non ti serve più.» Si gestisce da **Impostazioni → Copia di sicurezza**, sezione «Cifratura dei file riservati».
+Nel **gratuito** si salvano **cifrati** i **documenti e le scansioni**, gli **allegati dei movimenti** e le **foto dell'inventario**. Con {piano_contabile} e {piano_fiscale} si cifrano anche i **certificati medici**, i **giustificativi dei rimborsi** e i **PDF delle ricevute** (emessi e «ANNULLATA»), che nella copia di sicurezza restano cifrati. Lo ZIP delle ricevute di un anno fiscale (**«Scarica i PDF di questo anno fiscale (ZIP)»**), invece, esce **non cifrato**: il programma avvisa «I PDF dello ZIP non sono cifrati e contengono dati personali (nome, codice fiscale, importi): conservalo con cura e cancellalo quando non ti serve più.» Si gestisce da **Impostazioni → Copia di sicurezza**, sezione «Cifratura dei file riservati».
 
-<!-- DECISO da Luca il 15/11/2026: i certificati medici già caricati si cifrano da soli. DA FARE prima della pubblicazione: la sessione plugin deve implementarlo e confermare il comportamento sul codice di main; poi riscrivere qui e togliere «Cifra i file già caricati» per i certificati. Il testo sotto descrive ancora il comportamento attuale. -->
+<!-- DECISO da Luca il 15/11/2026 («Sì, da soli»): nel Pro i certificati medici già caricati si cifrano da soli dopo l'aggiornamento. La PR del plugin è in costruzione: TENERE questo segnaposto finché l'Audit non scrive che è unita, poi inserire le frasi a schermo (avvisi «partita / in corso / finita», cosa succede senza la libreria di cifratura). Luca: non pubblicare il plugin finché questa parte non c'è. -->
 <!-- Verificato sul codice di main dopo la PR 745 del plugin (cifratura dei PDF delle ricevute). -->
 
 ## File nuovi e file già caricati
 
 - I **file nuovi** si salvano cifrati **subito**.
-- I **file già caricati** si cifrano quando l'**amministratore preme «Cifra i file già caricati»**. Prima di cominciare conviene fare una **copia di sicurezza con gli allegati** (il programma ti propone «Scarica la copia con gli allegati»). Da lì il lavoro prosegue da solo, a lotti, e puoi anche chiudere la pagina.
+- I **file già caricati** si cifrano quando l'**amministratore preme «Cifra i file già caricati»**. Con {piano_contabile} e {piano_fiscale} i **certificati medici** già caricati si cifrano **da soli** dopo l'aggiornamento; per gli altri file già caricati resta il pulsante. Prima di cominciare conviene fare una **copia di sicurezza con gli allegati** (il programma ti propone «Scarica la copia con gli allegati»). Da lì il lavoro prosegue da solo, a lotti, e puoi anche chiudere la pagina.
 
-Su alcuni server manca la libreria che serve a cifrare: il programma lo dice e ti dà un **messaggio pronto da inoltrare a chi gestisce il sito**. In quel caso i certificati medici non si possono caricare e gli altri file restano in chiaro, con un avviso.
+Su alcuni server manca la libreria che serve a cifrare: il programma lo dice e ti dà un **messaggio pronto da inoltrare a chi gestisce il sito**. In quel caso i certificati medici (con {piano_contabile} e {piano_fiscale}) non si possono caricare e gli altri file restano in chiaro, con un avviso.
+
+## Dopo l'aggiornamento
+
+- **Gratuito**: per i file già caricati premi **«Cifra i file già caricati»** in **Impostazioni → Copia di sicurezza**.
+- **Con {piano_contabile} e {piano_fiscale}**: i certificati medici già caricati vengono cifrati da soli; per gli altri file già caricati premi **«Cifra i file già caricati»**.
 
 ## La frase per riaprire i documenti
 

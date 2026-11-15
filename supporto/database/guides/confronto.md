@@ -167,7 +167,8 @@ Ecco, area per area, cosa trovi in ciascuna versione. **✓** significa incluso,
 | Testi personalizzabili, tipo di ente e termini | — | ✓ | ✓ |
 | Lingue aggiuntive (inglese incluso) | — | ✓ | ✓ |
 | Copia di sicurezza e ripristino | ✓ | ✓ | ✓ |
-| Cifratura dei file riservati (certificati medici, documenti e scansioni, allegati, giustificativi, foto), con la frase per riaprirli | ✓ | ✓ | ✓ |
+| Cifratura dei file riservati (documenti e scansioni, allegati dei movimenti, foto dell'inventario), con la frase per riaprirli | ✓ | ✓ | ✓ |
+| Cifratura anche di certificati medici, giustificativi dei rimborsi e PDF delle ricevute | — | ✓ | ✓ |
 | Controllo che la cartella dei file riservati non sia raggiungibile da internet | ✓ | ✓ | ✓ |
 | Azzeramento dei dati e registro delle azioni | ✓ | ✓ | ✓ |
 | Registro azioni con spazio occupato, «Libera spazio» e pulizia automatica | ✓ | ✓ | ✓ |
