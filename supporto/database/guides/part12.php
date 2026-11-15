@@ -280,11 +280,11 @@ Con la partita IVA, anche nella **scheda di una risorsa** (un salone, un campo, 
 
 Sotto il menu vedi come leggere gli importi: con i prezzi **senza IVA**, «Gli importi che scrivi sono senza IVA: chi paga vede l'importo con l'IVA aggiunta.»; con i prezzi **finali**, «Gli importi che scrivi sono finali, con l'IVA compresa.»
 
-Con i **prezzi senza IVA**, chi prenota vede e paga **il prezzo più l'IVA**. Una prenotazione già fatta si incassa **con l'aliquota e l'importo di quando è stata creata**, anche se poi cambi l'IVA della risorsa. Le risorse che esistevano già restano **senza IVA** finché non le cambi tu. Se non sai quale voce scegliere, **chiedi al tuo commercialista**.
+Con i **prezzi senza IVA**, chi prenota vede e paga **il prezzo più l'IVA**, in elenco, nella griglia, nell'anteprima e nell'area dei soci. Per esempio, una sala a **50,00 €** con **IVA 22%**: chi prenota vede e paga **61,00 €**. Una prenotazione già fatta si incassa **con l'aliquota e l'importo di quando è stata creata**, anche se poi cambi l'IVA della risorsa. Le risorse che esistevano già restano **senza IVA** finché non le cambi tu. Se non sai quale voce scegliere, **chiedi al tuo commercialista**.
 
 Il gestionale ti avvisa se qualcosa non torna:
 
-- se provi a togliere da Aspetto fiscale un'aliquota usata da qualche risorsa: «Alcune risorse usano l'aliquota X%: prima cambia l'IVA di quelle risorse, poi toglila dall'elenco.»;
+- se provi a togliere da Aspetto fiscale un'aliquota usata da qualche risorsa: «Alcune risorse usano l'aliquota X%: prima cambia l'IVA di quelle risorse, poi toglila dall'elenco.»; se sono usate anche da qualche attività, il messaggio dice «Alcune attività o risorse usano l'aliquota X%: prima cambia l'IVA di quelle attività o risorse, poi toglila dall'elenco.»;
 - se l'aliquota è usata da prenotazioni non ancora finite: «Alcune prenotazioni non ancora finite usano l'aliquota X%: togli l'aliquota dall'elenco quando saranno finite o annullate.»;
 - in scheda, un avviso rosso: «L'aliquota di questa risorsa non è più nell'elenco di Aspetto fiscale: scegline un'altra.» oppure «Senza partita IVA l'IVA non si applica: gli incassi di questa risorsa si registrano senza IVA.»
 MD,
