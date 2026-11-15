@@ -311,6 +311,7 @@ final readonly class OnlinePayments
 
             return ['person_id' => $p['person_id'], 'cents' => $cents, 'date' => $p['created_at']];
         });
+
         return $this->tellMember($paymentId, $sent['person_id'], $sent['cents'], $sent['date'], $reason, $orgName);
     }
 
