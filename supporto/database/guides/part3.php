@@ -262,7 +262,7 @@ La pagina ha un'impaginazione automatica. Per comporla come vuoi, inserisci nel 
 
 ## WhatsApp della segreteria
 
-In **Impostazioni** scrivi il **WhatsApp della segreteria**: sul sito compare un pulsante fisso **«Scrivici su WhatsApp»**. Finché il numero manca, in amministrazione trovi un promemoria.
+Il pulsante fisso **«Scrivici su WhatsApp»** usa il **telefono della segreteria** che hai indicato nei **Dati dell'ente** e compare sul sito **solo se accendi la casella «Pulsante WhatsApp»** (in **Impostazioni → Soci e quote**). Accendila solo se è un **cellulare su cui usate WhatsApp**: il telefono della segreteria, che è obbligatorio, può anche essere un fisso. Il pulsante compare anche sulle pagine degli eventi, accanto ai contatti. Un numero diverso, scelto per un singolo evento, resta com'era.
 
 ## Se arrivi da The Events Calendar
 

@@ -219,9 +219,9 @@ MD,
         'topic' => 'domande-frequenti', 'section' => 'Uso quotidiano', 'slug' => 'gestione-iva',
         'title' => 'Il plugin gestisce l\'IVA?',
         'body' => <<<'MD'
-Sì, a un livello minimo pensato per chi ha un commercialista che completa i quadri, con **{piano_fiscale}**. Se l'ente ha la partita IVA puoi indicare regime, aliquota e se gli importi sono IVA compresa o esclusa; ogni incasso e spesa registra aliquota e IVA contenuta, e l'esportazione per il commercialista le include.
+Sì, a un livello minimo pensato per chi ha un commercialista che completa i quadri, con **{piano_fiscale}**. Se l'ente ha la partita IVA puoi indicare l'aliquota e se gli importi sono IVA compresa o esclusa; ogni incasso e spesa registra aliquota e IVA contenuta, e l'esportazione per il commercialista le include.
 
-Senza partita IVA non compare nulla di fiscale. In regime forfettario l'IVA non si applica. Vedi [IVA su quote, attività, incassi e spese](guida:iva-su-quote-e-incassi).
+Senza partita IVA non compare nulla di fiscale. Vedi [IVA su quote, attività, incassi e spese](guida:iva-su-quote-e-incassi).
 MD,
     ],
     [
