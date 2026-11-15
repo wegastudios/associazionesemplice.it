@@ -16,7 +16,7 @@ use Inertia\Response;
 /** Verifica delle ricevute: per esercizio, quali PDF sono a posto, da fissare, mancanti o alterati. Solo amministratori. */
 final readonly class ReceiptCheckController
 {
-    private const LABELS = ['ok' => 'A posto', 'unfixed' => 'Da fissare', 'missing' => 'Mancante', 'altered' => 'Alterato', 'voided' => 'Annullata'];
+    private const LABELS = ['ok' => 'A posto', 'unfixed' => 'Da fissare', 'missing' => 'Mancante', 'altered' => 'Alterato', 'voided' => 'Annullata', 'archived' => 'In archivio'];
 
     public function __construct(
         private ReceiptFiles $files,

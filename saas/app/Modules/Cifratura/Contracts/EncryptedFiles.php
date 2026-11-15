@@ -17,6 +17,9 @@ interface EncryptedFiles
 
     public function read(string $orgId, StoredFile $file): string;
 
+    /** Decifra il file in $targetPath, a blocchi (senza caricarlo in memoria), controllando l'impronta. */
+    public function readToFile(string $orgId, StoredFile $file, string $targetPath): void;
+
     public function download(string $orgId, StoredFile $file): StreamedResponse;
 
     public function delete(string $orgId, StoredFile $file): void;
