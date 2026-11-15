@@ -25,7 +25,7 @@ use Throwable;
  *
  * @phpstan-import-type Due from PayableDues
  *
- * @phpstan-type Payment array{id: string, person_id: string, provider: string, status: string, amount_cents: int, paid_cents: int|null, items: list<Due>, receipts: list<string>, provider_ref: string|null, error: string|null, created_at: string}
+ * @phpstan-type Payment array{id: string, person_id: string, provider: string, status: string, amount_cents: int, paid_cents: int|null, items: list<Due>, receipts: list<string>, provider_ref: string|null, error: string|null, refunded_cents: int, created_at: string}
  */
 final readonly class OnlinePayments
 {
@@ -251,6 +251,42 @@ final readonly class OnlinePayments
         return array_values(array_filter(array_map(fn (object $r): ?array => $this->row($r), $q->get()->all())));
     }
 
+    /**
+     * Restituisce al socio un importo di un pagamento «da controllare» (per esempio una quota già pagata): l'ordine di
+     * rimborso parte verso Stripe o PayPal e resta nel registro. Non tocca la prima nota: le voci già registrate si
+     * stornano a parte. Si può rimborsare al massimo quanto è stato incassato meno quanto già restituito.
+     */
+    public function refund(string $paymentId, int $cents): void
+    {
+        $this->connection()->transaction(function () use ($paymentId, $cents): void {
+            $row = $this->table()->where('id', $paymentId)->lockForUpdate()->first();
+            $p = $row === null ? null : $this->find($paymentId);
+            if ($row === null || $p === null || $p['status'] !== 'review' || $p['provider_ref'] === null || $p['paid_cents'] === null) {
+                throw new MemberAccessError('Si rimborsano solo i pagamenti «da controllare» già incassati.');
+            }
+            $done = is_numeric($row->refunded_cents ?? null) ? (int) $row->refunded_cents : 0;
+            $left = $p['paid_cents'] - $done;
+            if ($cents < self::MIN_CENTS || $cents > $left) {
+                throw new MemberAccessError('Importo non valido: si può restituire da 0,50 € a '.self::euro(max(0, $left)).'.');
+            }
+            $settings = $this->settings() ?? throw new MemberAccessError('Mancano le impostazioni dei pagamenti online.');
+            $key = 'refund-'.$paymentId.'-'.$done.'-'.$cents;
+            try {
+                $refundId = $p['provider'] === 'stripe'
+                    ? $this->stripe->refund((string) $settings->stripe_secret, $p['provider_ref'], $cents, $key)
+                    : $this->paypal->refund($settings->paypal_live, $this->paypal->token($settings->paypal_live, (string) $settings->paypal_client_id, (string) $settings->paypal_secret), $p['provider_ref'], $cents, $key);
+            } catch (RuntimeException $e) {
+                throw new MemberAccessError('Rimborso non riuscito: '.$e->getMessage());
+            }
+            $note = 'Restituiti '.self::euro($cents).' al socio.';
+            $this->table()->where('id', $paymentId)->update([
+                'refunded_cents' => $done + $cents, 'refunded_at' => now(), 'updated_at' => now(),
+                'error' => mb_substr(trim(($p['error'] ?? '').' '.$note), 0, 1000),
+            ]);
+            $this->audit->record('payment.refunded', 'app.online_payments', $paymentId, ['cents' => $cents, 'provider' => $p['provider'], 'refund' => $refundId]);
+        });
+    }
+
     /** La segreteria ha controllato un pagamento «da controllare». */
     public function markReviewed(string $paymentId): void
     {
@@ -289,6 +325,7 @@ final readonly class OnlinePayments
             'amount_cents' => is_numeric($r->amount_cents ?? null) ? (int) $r->amount_cents : 0, 'paid_cents' => is_numeric($r->paid_cents ?? null) ? (int) $r->paid_cents : null,
             'items' => $clean, 'receipts' => array_values(array_filter(is_array($receipts) ? $receipts : [], is_string(...))),
             'provider_ref' => is_string($r->provider_ref ?? null) ? $r->provider_ref : null, 'error' => is_string($r->error ?? null) ? $r->error : null,
+            'refunded_cents' => is_numeric($r->refunded_cents ?? null) ? (int) $r->refunded_cents : 0,
             'created_at' => is_string($r->created_at ?? null) ? $r->created_at : '',
         ];
     }

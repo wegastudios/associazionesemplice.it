@@ -2,7 +2,7 @@
 import { Head, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '../../layouts/AppLayout.vue';
 
-const props = defineProps({ settings: Object, webhookUrl: String, accounts: Array, payments: Array, canSettings: Boolean, canAccounting: Boolean });
+const props = defineProps({ settings: Object, webhookUrl: String, accounts: Array, payments: Array, canSettings: Boolean, canAccounting: Boolean, canRefund: Boolean });
 const s = props.settings;
 const form = useForm({
     stripe_enabled: s.stripe_enabled, stripe_secret: '', stripe_webhook: '', paypal_enabled: s.paypal_enabled, paypal_client_id: s.paypal_client_id,
@@ -11,6 +11,10 @@ const form = useForm({
 const save = () => form.transform((d) => ({ ...d, account_id: d.account_id || null })).put('/gestionale/pagamenti-online', { preserveScroll: true, onSuccess: () => form.reset('stripe_secret', 'stripe_webhook', 'paypal_secret', 'forget') });
 const test = (p) => router.post(`/gestionale/pagamenti-online/prova/${p}`, {}, { preserveScroll: true });
 const reviewed = (p) => router.post(`/gestionale/pagamenti-online/${p.id}/controllato`, {}, { preserveScroll: true });
+const refund = (p) => {
+    const amount = window.prompt(`Quanto restituire al socio (massimo ${(p.refundable / 100).toFixed(2).replace('.', ',')} €)? I soldi tornano sul suo metodo di pagamento e non si può annullare.${p.has_receipts ? ' Le voci già registrate in prima nota vanno stornate a parte.' : ''}`, p.has_receipts ? '' : (p.refundable / 100).toFixed(2).replace('.', ','));
+    if (amount) { router.post(`/gestionale/pagamenti-online/${p.id}/rimborso`, { amount }, { preserveScroll: true }); }
+};
 const field = 'field';
 const states = { created: 'avviato', pending: 'in attesa', settled: 'registrato', review: 'da controllare', failed: 'non riuscito', cancelled: 'annullato' };
 </script>
@@ -70,6 +74,8 @@ const states = { created: 'avviato', pending: 'in attesa', settled: 'registrato'
                         <td class="whitespace-nowrap pr-3 tabular-nums">{{ p.amount }} <span class="text-muted">{{ p.provider }}</span></td>
                         <td class="whitespace-nowrap pr-3"><span :class="p.status === 'review' ? 'font-semibold text-danger' : ''">{{ states[p.status] ?? p.status }}</span>
                             <button v-if="p.status === 'review' && canAccounting" type="button" class="ml-2 text-accent hover:underline" @click="reviewed(p)">controllato</button></td>
+                            <button v-if="p.status === 'review' && canRefund && p.refundable > 0" type="button" class="ml-2 text-accent hover:underline" @click="refund(p)">rimborsa</button>
+                            <p v-if="p.refunded !== '0,00 €' && p.refunded !== '0,00'" class="text-xs text-muted">restituiti {{ p.refunded }}</p>
                         <td>{{ p.receipts }}</td>
                     </tr>
                 </tbody>
