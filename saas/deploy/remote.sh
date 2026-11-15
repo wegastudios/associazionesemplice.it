@@ -52,6 +52,11 @@ if ! "$PHP" artisan saas:health; then
     exit 1
 fi
 
+# Solo la demo: il portale lancia ~/saas-demo/reset.sh per azzerarla (comando fisso, aggiornato a ogni rilascio).
+if [ "$(basename "$BASE")" = "saas-demo" ] && [ -f "$RELEASE/deploy/demo-reset.sh" ]; then
+    install -m 755 "$RELEASE/deploy/demo-reset.sh" "$BASE/reset.sh"
+fi
+
 # Cron: un'unica riga, lo scheduler di Laravel fa il resto (code, backup, registro, portale).
 LINE="* * * * * cd $BASE/current && $PHP artisan schedule:run >> $BASE/shared/storage/logs/cron.log 2>&1"
 if command -v crontab >/dev/null; then
