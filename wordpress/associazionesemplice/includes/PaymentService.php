@@ -596,7 +596,7 @@ class PaymentService extends OfflinePayments {
 		$assoc   = (string) Settings::get( 'association_name' );
 		$assoc   = '' !== $assoc ? $assoc : Texts::t( 'l\'associazione' );
 		$subject = Texts::t( 'Rimborso del tuo pagamento · {associazione}', array( 'associazione' => $assoc ) );
-		$tpl     = 'Ciao, abbiamo restituito {importo} del pagamento che hai fatto il {data} a {associazione}. Motivo: {motivo}. L		$body    = Texts::t('accredito compare sul tuo metodo di pagamento in genere entro pochi giorni lavorativi, fino a 10 a seconda della banca o del metodo di pagamento. Se hai dubbi, scrivi alla segreteria. — {associazione}';
+		$tpl     = 'Ciao, abbiamo restituito {importo} del pagamento che hai fatto il {data} a {associazione}. Motivo: {motivo}. L\'accredito compare sul tuo metodo di pagamento in genere entro pochi giorni lavorativi, fino a 10 a seconda della banca o del metodo di pagamento. Se hai dubbi, scrivi alla segreteria. — {associazione}';
 		if ( Contacts::complete() ) { // con i contatti della segreteria la chiusa li riporta (e Texts::mail aggiunge il Reply-To); senza, resta la frase generica
 			$tpl = str_replace( 'scrivi alla segreteria. —', 'scrivi alla segreteria: {email}, tel. {telefono}. —', $tpl );
 		}
