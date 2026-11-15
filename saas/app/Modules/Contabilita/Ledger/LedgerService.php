@@ -12,6 +12,7 @@ use App\Modules\Contabilita\Contracts\Income;
 use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Contabilita\Contracts\PaymentMethod;
+use App\Modules\Contabilita\Contracts\ReceiptIssued;
 use App\Modules\Contabilita\Contracts\TxType;
 use App\Modules\Contabilita\Models\Account;
 use App\Modules\Contabilita\Rules\CollectionFee;
@@ -23,6 +24,7 @@ use Illuminate\Contracts\Auth\Factory as Auth;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 
 /**
@@ -80,7 +82,7 @@ final readonly class LedgerService implements Ledger
             $lines[] = $line;
         }
 
-        return $this->transaction(function () use ($income, $method, $lines): array {
+        $result = $this->transaction(function () use ($income, $method, $lines): array {
             $year = $this->years->yearFor($income->date);
             $receiptId = null;
             $receiptLabel = null;
@@ -134,6 +136,12 @@ final readonly class LedgerService implements Ledger
 
             return ['receipt_id' => $receiptId, 'receipt' => $receiptLabel, 'transactions' => $ids];
         });
+        // Il PDF della ricevuta si fissa alla emissione (se non riesce, si fissa poi da «Verifica delle ricevute»).
+        if ($result['receipt_id'] !== null) {
+            Event::dispatch(new ReceiptIssued($result['receipt_id']));
+        }
+
+        return $result;
     }
 
     /**

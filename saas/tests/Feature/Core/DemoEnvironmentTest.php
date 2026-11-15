@@ -33,7 +33,7 @@ it('crea l\'associazione di fantasia, gli utenti pubblici per ruolo e i soci fin
 
     $roles = DB::table('core.org_users as o')->join('core.users as u', 'u.id', '=', 'o.user_id')
         ->where('o.org_id', $org->id)->pluck('o.role', 'u.email')->all();
-    expect($roles)->toBe([
+    expect($roles)->toEqual([
         DemoEnvironment::email('titolare') => 'owner',
         DemoEnvironment::email('amministratore') => 'admin',
         DemoEnvironment::email('segreteria') => 'operator',

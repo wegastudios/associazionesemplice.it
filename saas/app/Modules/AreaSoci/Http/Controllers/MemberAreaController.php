@@ -9,6 +9,7 @@ use App\Modules\AreaSoci\Services\CurrentMember;
 use App\Modules\AreaSoci\Services\MemberPage;
 use App\Modules\Attivita\Contracts\ActivityError;
 use App\Modules\Attivita\Contracts\MemberActivities;
+use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Contabilita\Contracts\MemberReceipts;
 use App\Modules\Contabilita\Contracts\Money;
 use App\Modules\Core\Contracts\Input;
@@ -89,7 +90,11 @@ final readonly class MemberAreaController
 
     public function receipt(string $receipt): HttpResponse
     {
-        $doc = $this->receipts->pdf($receipt, $this->current->ids()) ?? abort(404);
+        try {
+            $doc = $this->receipts->pdf($receipt, $this->current->ids()) ?? abort(404);
+        } catch (LedgerError $e) {
+            return response($e->getMessage(), 409, ['Content-Type' => 'text/plain; charset=utf-8']);
+        }
 
         return response($doc['pdf'], 200, [
             'Content-Type' => 'application/pdf',
