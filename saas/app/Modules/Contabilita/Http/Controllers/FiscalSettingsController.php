@@ -48,7 +48,7 @@ final readonly class FiscalSettingsController
         }
         $membership = is_numeric($data['membership_rate'] ?? null) ? (int) $data['membership_rate'] : 0;
         if ($membership !== 0 && ! in_array($membership, $rates, true)) {
-            throw ValidationException::withMessages(['membership_rate' => 'L\'aliquota della quota associativa deve essere «IVA esente» o una di quelle dell\'elenco.']);
+            throw ValidationException::withMessages(['membership_rate' => 'Prima cambia l\'aliquota della quota associativa: deve essere «IVA esente» o una di quelle dell\'elenco. I movimenti già registrati restano come sono.']);
         }
         $this->settings->set(OrgFiscal::RATES, implode(',', $rates));
         $this->settings->set(OrgFiscal::INCLUDES_VAT, Input::bool($data, 'includes_vat', true));

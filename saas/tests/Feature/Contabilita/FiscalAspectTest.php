@@ -16,6 +16,7 @@ use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Soci\Models\Person;
 use App\Modules\Soci\Services\MembershipService;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
 // Aspetto fiscale: il «regime» è avere o no la partita IVA; senza, l'IVA non si applica mai.
@@ -95,4 +96,27 @@ it('con i prezzi senza IVA l\'importo inserito diventa finale aggiungendo l\'IVA
     ])->assertSessionHasNoErrors();
     $tx = $in(fn () => Transaction::query()->where('vat_rate', 22)->sole());
     expect((int) $tx->amount_cents)->toBe(12200)->and((int) $tx->vat_cents)->toBe(2200);
+});
+
+it('sulla ricevuta l\'aliquota zero si chiama «IVA esente» e senza partita IVA non compare nessuna IVA', function (): void {
+    $in = fn (callable $f): mixed => $this->orgContext()->run($this->org->id, $f);
+    $pay = function (string $tax): string {
+        $p = Person::create(['first_name' => 'Mario', 'last_name' => 'Rossi', 'email' => $tax.'@example.com', 'tax_code' => $tax, 'birth_date' => '1980-01-01']);
+        app(MembershipService::class)->renewWithPayment($p->id, Account::query()->where('type', 'cash')->sole()->id, 3000);
+
+        return (string) DB::table('app.receipts')->orderByDesc('created_at')->value('id');
+    };
+    $without = $pay('RSSMRA80A01H501U');
+    $this->orgContext()->leave();
+    $pdf = (string) $this->actingAs($this->owner)->get("/gestionale/ricevute/{$without}.pdf")->assertOk()->getContent();
+    expect($pdf)->not->toContain('IVA')->not->toContain('Fuori campo');
+
+    $with = $in(function () use ($pay): string {
+        app(OrgSettings::class)->set('ente.vat', '12345678903');
+
+        return $pay('VRDGPP75B10F205B');
+    });
+    $this->orgContext()->leave();
+    $pdf = (string) $this->get("/gestionale/ricevute/{$with}.pdf")->assertOk()->getContent();
+    expect($pdf)->toContain('IVA esente');
 });
