@@ -17,7 +17,7 @@ function asem_uninstall_site() {
 		return;
 	}
 
-	foreach ( array( 'asem_send_reminders', 'asem_release_holds', 'asem_event_requests', 'asem_broadcast_batch', 'asem_check_pending_payments', 'asem_purge_backups', 'asem_purge_audit', 'asem_purge_member_sessions' ) as $hook ) {
+	foreach ( array( 'asem_send_reminders', 'asem_release_holds', 'asem_event_requests', 'asem_broadcast_batch', 'asem_check_pending_payments', 'asem_purge_backups', 'asem_private_folder_check', 'asem_purge_audit', 'asem_purge_member_sessions' ) as $hook ) {
 		wp_clear_scheduled_hook( $hook );
 	}
 
@@ -49,11 +49,32 @@ function asem_uninstall_site() {
 	// Cartella privata (allegati e copie di sicurezza).
 	$upload = wp_upload_dir( null, false );
 	$dir    = rtrim( (string) $upload['basedir'], '/\\' ) . '/associazionesemplice-private';
-	if ( is_dir( $dir ) ) {
-		require_once ABSPATH . 'wp-admin/includes/file.php';
-		if ( WP_Filesystem() ) {
-			global $wp_filesystem;
+	require_once ABSPATH . 'wp-admin/includes/file.php';
+	if ( WP_Filesystem() ) {
+		global $wp_filesystem;
+		if ( is_dir( $dir ) ) {
 			$wp_filesystem->delete( $dir, true );
+		}
+		// Cartella indicata in wp-config.php (ASEM_PRIVATE_DIR): si tolgono solo le cose del plugin, mai l'intera cartella, che potrebbe servire ad altro.
+		if ( defined( 'ASEM_PRIVATE_DIR' ) && is_string( ASEM_PRIVATE_DIR ) && '' !== trim( ASEM_PRIVATE_DIR ) ) {
+			$custom = rtrim( trim( ASEM_PRIVATE_DIR ), '/\\' );
+			if ( is_multisite() ) {
+				$custom .= '/sito-' . get_current_blog_id();
+			}
+			if ( is_dir( $custom ) && '' !== $custom ) {
+				foreach ( (array) glob( $custom . '/*' ) as $item ) {
+					$name = basename( $item );
+					if ( is_dir( $item ) && in_array( $name, array( 'backups', 'receipts', 'controllo' ), true ) ) {
+						$wp_filesystem->delete( $item, true );
+					} elseif ( is_file( $item ) && ( 'index.php' === $name || preg_match( '/^[0-9a-f]{32}$/', $name ) ) ) {
+						wp_delete_file( $item );
+					}
+				}
+				wp_delete_file( $custom . '/.htaccess' );
+				if ( is_multisite() && ! glob( $custom . '/*' ) ) { // la sottocartella del sito, se è rimasta vuota
+					$wp_filesystem->rmdir( $custom );
+				}
+			}
 		}
 	}
 }

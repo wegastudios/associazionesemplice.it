@@ -446,6 +446,8 @@ $wpdb->delete( \AssociazioneSemplice\Db::t( 'fiscal_year_closures' ), array( 'ye
 $wpdb->delete( \AssociazioneSemplice\Db::t( 'fiscal_years' ), array( 'year' => $yc_y ) );
 
 free_ok( 'Voce 2: il socio ha già la tessera 2026/2027.' === \AssociazioneSemplice\Texts::t( 'Voce {n}: il socio ha già la tessera {anno}.', array( 'n' => 2, 'anno' => '2026/2027' ) ) && 'Nessun segnaposto qui.' === \AssociazioneSemplice\Texts::t( 'Nessun segnaposto qui.' ), 'messaggi con variabili: senza il Pro escono in italiano con i valori inseriti' );
+require __DIR__ . '/smoke_private_folder.php'; // cartella dei file riservati: per ultima, definisce la costante ASEM_PRIVATE_DIR
+
 free_ok( ! $GLOBALS['asem_warnings'], 'nessun warning/notice PHP dal plugin' .( $GLOBALS['asem_warnings'] ? ': ' . implode( ' | ', array_slice( $GLOBALS['asem_warnings'], 0, 5 ) ) : '' ) );
 
 WP_CLI::success( 'Edizione gratuita: tutti i controlli sono passati.' );

@@ -10,6 +10,7 @@ final class BackupPage {
 
 	public static function render(): void {
 		Ui::header( 'Copia di sicurezza' );
+		PrivateFolderPanel::alerts();
 		$last = Backup::last();
 		echo '<p>Scarica un file con <strong>tutti i dati</strong> del plugin (soci, attività, prima nota, fondi, ricevute, comunicazioni…) e le impostazioni. Conservalo in un posto sicuro, fuori dal sito. '
 			. 'Le chiavi segrete dei pagamenti online non sono incluse.</p>';
@@ -37,6 +38,7 @@ final class BackupPage {
 			}
 			echo '</ul><p class="description">Si conservano al massimo ' . (int) \AssociazioneSemplice\Limits::get( 'backup_keep' ) . ' copie e solo per ' . (int) \AssociazioneSemplice\Limits::get( 'backup_hours' ) . ' ore, poi vengono cancellate da sole. Per tornare indietro scarica il file e ripristinalo da qui.</p>';
 		}
+		PrivateFolderPanel::render();
 		do_action( 'asem_backup_page_after' ); // un'estensione aggiunge i suoi riquadri (ad esempio la verifica dei PDF definitivi)
 		Ui::footer();
 	}

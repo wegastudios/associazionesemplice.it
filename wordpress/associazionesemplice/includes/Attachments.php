@@ -21,9 +21,9 @@ final class Attachments {
 
 	// ---------- Cartella privata ----------
 
+	/** La cartella riservata in uso: quella indicata in wp-config.php (costante ASEM_PRIVATE_DIR) se utilizzabile, altrimenti quella dentro `uploads`. */
 	public static function dir(): string {
-		$u = wp_upload_dir( null, false );
-		return rtrim( (string) $u['basedir'], '/\\' ) . '/' . self::DIR_NAME;
+		return PrivateFolder::dir();
 	}
 
 	/** Crea (se manca) la cartella privata degli allegati e delle copie di sicurezza. */
@@ -40,9 +40,7 @@ final class Attachments {
 		if ( ! file_exists( $dir . '/.htaccess' ) && false === @file_put_contents( $dir . '/.htaccess', "Options -Indexes\n<IfModule mod_authz_core.c>\nRequire all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\nDeny from all\n</IfModule>\n" ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
 			error_log( 'Associazione Semplice: impossibile creare .htaccess nella cartella privata degli allegati (permessi).' ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		}
-		if ( ! file_exists( $dir . '/index.php' ) && false === @file_put_contents( $dir . '/index.php', "<?php\n// Silence is golden.\n" ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-			error_log( 'Associazione Semplice: impossibile creare index.php nella cartella privata degli allegati (permessi).' ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		}
+		PrivateFolder::protect( $dir ); // index.php vuoto: niente elenco dei file (anche nelle sottocartelle, che lo ricevono quando nascono)
 		return $dir;
 	}
 
