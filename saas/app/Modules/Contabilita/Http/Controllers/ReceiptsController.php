@@ -7,7 +7,8 @@ namespace App\Modules\Contabilita\Http\Controllers;
 use App\Modules\Audit\Contracts\AuditLog;
 use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Contabilita\Receipts\ReceiptMail;
-use App\Modules\Contabilita\Receipts\ReceiptPdf;
+use App\Modules\Contabilita\Receipts\ReceiptFileProblem;
+use App\Modules\Contabilita\Receipts\ReceiptFiles;
 use App\Modules\Core\Contracts\OrgContacts;
 use App\Modules\Core\Contracts\OrgContext;
 use Illuminate\Database\DatabaseManager;
@@ -20,7 +21,7 @@ use Illuminate\Validation\ValidationException;
 final readonly class ReceiptsController
 {
     public function __construct(
-        private ReceiptPdf $receipts,
+        private ReceiptFiles $receipts,
         private AuditLog $audit,
         private DatabaseManager $db,
         private OrgContext $context,
@@ -30,9 +31,11 @@ final readonly class ReceiptsController
     public function pdf(string $receipt): Response
     {
         try {
-            $r = $this->receipts->build($receipt);
+            $r = $this->receipts->document($receipt);
         } catch (LedgerError $e) {
             abort(404, $e->getMessage());
+        } catch (ReceiptFileProblem $e) {
+            return new Response($e->getMessage(), 409, ['Content-Type' => 'text/plain; charset=utf-8', 'Cache-Control' => 'no-store, private']);
         }
         $this->audit->record('receipt.pdf', 'app.receipts', $receipt, ['number' => $r['number']]);
 
@@ -46,8 +49,8 @@ final readonly class ReceiptsController
     public function send(string $receipt): RedirectResponse
     {
         try {
-            $r = $this->receipts->build($receipt);
-        } catch (LedgerError $e) {
+            $r = $this->receipts->document($receipt);
+        } catch (LedgerError|ReceiptFileProblem $e) {
             throw ValidationException::withMessages(['ledger' => $e->getMessage()]);
         }
         if ($r['email'] === null) {

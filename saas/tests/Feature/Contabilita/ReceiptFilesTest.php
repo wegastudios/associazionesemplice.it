@@ -1,0 +1,98 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Modules\Contabilita\Contracts\LedgerError;
+use App\Modules\Contabilita\Contracts\MemberReceipts;
+use App\Modules\Contabilita\Models\Account;
+use App\Modules\Contabilita\Receipts\ReceiptFiles;
+use App\Modules\Core\Contracts\OrgRole;
+use App\Modules\Soci\Models\Person;
+use App\Modules\Soci\Services\MembershipService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+
+// Ricevute definitive: il PDF si fissa all'emissione e da lì si serve sempre lo stesso file. Dati di prova inventati.
+beforeEach(function (): void {
+    $this->org = $this->createOrg('Polisportiva Alfa');
+    $this->owner = $this->createUser('own@example.com', twoFactor: true);
+    $this->addOperator($this->org, $this->owner, OrgRole::Owner);
+    $this->operator = $this->createUser('seg@example.com', twoFactor: true);
+    $this->addOperator($this->org, $this->operator, OrgRole::Operator);
+    $this->receipt = $this->orgContext()->run($this->org->id, function (): string {
+        $p = Person::create(['first_name' => 'Mario', 'last_name' => 'Rossi', 'tax_code' => 'RSSMRA80A01H501U', 'email' => 'mario@example.com', 'birth_date' => '1980-01-01']);
+        app(MembershipService::class)->renewWithPayment($p->id, Account::query()->sole()->id, 3000);
+        $this->person = $p->id;
+
+        return (string) DB::table('app.receipts')->value('id');
+    });
+});
+
+function receiptRow(string $org, string $receipt): object
+{
+    return test()->orgContext()->run($org, fn () => DB::table('app.receipt_files')->where('receipt_id', $receipt)->sole());
+}
+
+it('fissa il PDF alla emissione e serve sempre lo stesso file, anche se i dati cambiano dopo', function (): void {
+    $row = receiptRow($this->org->id, $this->receipt);
+    expect($row->source)->toBe('emissione')->and(strlen((string) $row->sha256))->toBe(64);
+
+    $first = (string) $this->actingAs($this->owner)->get("/gestionale/ricevute/{$this->receipt}.pdf")->assertOk()->getContent();
+    expect(hash('sha256', $first))->toBe($row->sha256)->and($first)->toContain('Mario Rossi');
+
+    $this->orgContext()->run($this->org->id, fn () => Person::query()->whereKey($this->person)->firstOrFail()->update(['first_name' => 'Marco']));
+    $again = (string) $this->actingAs($this->owner)->get("/gestionale/ricevute/{$this->receipt}.pdf")->assertOk()->getContent();
+    expect($again)->toBe($first)->and($again)->toContain('Mario Rossi')->not->toContain('Marco Rossi');
+});
+
+it('con il file mancante dà un errore chiaro e non lo rifà di nascosto', function (): void {
+    $row = receiptRow($this->org->id, $this->receipt);
+    Storage::disk('org_files')->delete($row->path);
+
+    $res = $this->actingAs($this->owner)->get("/gestionale/ricevute/{$this->receipt}.pdf")->assertStatus(409);
+    expect($res->getContent())->toContain('non si trova più sul sito')->toContain('Non viene rifatto in automatico');
+    expect($this->orgContext()->run($this->org->id, fn () => app(ReceiptFiles::class)->status($this->receipt)))->toBe('missing');
+});
+
+it('con il file alterato non lo scarica', function (): void {
+    $row = receiptRow($this->org->id, $this->receipt);
+    Storage::disk('org_files')->put($row->path, 'altro contenuto');
+
+    $res = $this->actingAs($this->owner)->get("/gestionale/ricevute/{$this->receipt}.pdf")->assertStatus(409);
+    expect($res->getContent())->toContain('risulta diverso da quando è stato emesso');
+    expect($this->orgContext()->run($this->org->id, fn () => app(ReceiptFiles::class)->status($this->receipt)))->toBe('altered');
+});
+
+it('l\'amministratore rifà il PDF solo se i dati sono intatti; altrimenti no', function (): void {
+    $row = receiptRow($this->org->id, $this->receipt);
+    Storage::disk('org_files')->delete($row->path);
+    $this->actingAs($this->owner)->post("/gestionale/verifica-ricevute/{$this->receipt}/rifai")->assertSessionHasNoErrors();
+    $this->actingAs($this->owner)->get("/gestionale/ricevute/{$this->receipt}.pdf")->assertOk();
+    expect(receiptRow($this->org->id, $this->receipt)->source)->toBe('rifatta');
+
+    // Dati cambiati dall'emissione: il PDF non si può rifare uguale.
+    $this->orgContext()->run($this->org->id, fn () => Person::query()->whereKey($this->person)->firstOrFail()->update(['first_name' => 'Marco']));
+    Storage::disk('org_files')->delete(receiptRow($this->org->id, $this->receipt)->path);
+    $this->actingAs($this->owner)->post("/gestionale/verifica-ricevute/{$this->receipt}/rifai")->assertSessionHasErrors('ledger');
+});
+
+it('la verifica è per gli amministratori e mostra lo stato delle ricevute', function (): void {
+    $this->actingAs($this->operator)->get('/gestionale/verifica-ricevute')->assertForbidden();
+    $this->actingAs($this->owner)->get('/gestionale/verifica-ricevute')->assertOk()
+        ->assertInertia(fn ($page) => $page->component('Contabilita/VerificaRicevute')->where('unfixed', 0)->where('rows.0.status', 'ok'));
+});
+
+it('al socio con il file mancante dice di avvisare la segreteria', function (): void {
+    $row = receiptRow($this->org->id, $this->receipt);
+    Storage::disk('org_files')->delete($row->path);
+    $msg = $this->orgContext()->run($this->org->id, function (): string {
+        try {
+            app(MemberReceipts::class)->pdf($this->receipt, [$this->person]);
+        } catch (LedgerError $e) {
+            return $e->getMessage();
+        }
+
+        return '';
+    });
+    expect($msg)->toContain('Questa ricevuta non è disponibile in questo momento. Avvisa la segreteria');
+});

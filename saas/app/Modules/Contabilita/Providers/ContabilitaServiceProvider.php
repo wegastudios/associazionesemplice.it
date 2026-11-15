@@ -8,10 +8,12 @@ use App\Modules\Contabilita\Contracts\FiscalYearClosed;
 use App\Modules\Contabilita\Contracts\FiscalYearReopened;
 use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Contracts\MemberReceipts;
+use App\Modules\Contabilita\Contracts\ReceiptIssued;
 use App\Modules\Contabilita\Export\ContabilitaDataExport;
 use App\Modules\Contabilita\Home\AccountingHome;
 use App\Modules\Contabilita\Ledger\LedgerService;
 use App\Modules\Contabilita\Ledger\StatementSnapshots;
+use App\Modules\Contabilita\Listeners\FixReceiptFile;
 use App\Modules\Contabilita\Listeners\SeedAccounting;
 use App\Modules\Contabilita\Receipts\MemberReceiptsService;
 use App\Modules\Contabilita\Setup\AccountsStep;
@@ -38,6 +40,7 @@ final class ContabilitaServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Event::listen(OrgCreated::class, SeedAccounting::class);
+        Event::listen(ReceiptIssued::class, FixReceiptFile::class);
         Event::listen(FiscalYearClosed::class, [StatementSnapshots::class, 'take']);
         Event::listen(FiscalYearReopened::class, [StatementSnapshots::class, 'supersede']);
         $this->loadRoutesFrom(dirname(__DIR__).'/Http/routes.php');

@@ -16,6 +16,8 @@ interface MemberReceipts
     /**
      * @param  list<string>  $personIds
      * @return array{pdf: string, filename: string}|null null se la ricevuta non è di queste persone o è annullata
+     *
+     * @throws LedgerError con la frase per il socio se il PDF salvato manca o è alterato
      */
     public function pdf(string $receiptId, array $personIds): ?array;
 }

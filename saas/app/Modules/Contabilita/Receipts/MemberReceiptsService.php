@@ -6,6 +6,7 @@ namespace App\Modules\Contabilita\Receipts;
 
 use App\Modules\Contabilita\Contracts\LedgerError;
 use App\Modules\Contabilita\Contracts\MemberReceipts;
+use App\Modules\Core\Contracts\OrgContacts;
 use App\Modules\Core\Contracts\OrgContext;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
@@ -17,7 +18,8 @@ final readonly class MemberReceiptsService implements MemberReceipts
     public function __construct(
         private DatabaseManager $db,
         private OrgContext $context,
-        private ReceiptPdf $pdf,
+        private ReceiptFiles $pdf,
+        private OrgContacts $contacts,
     ) {}
 
     public function forPeople(array $personIds): array
@@ -50,9 +52,12 @@ final readonly class MemberReceiptsService implements MemberReceipts
             return null;
         }
         try {
-            $doc = $this->pdf->build($receiptId);
+            $doc = $this->pdf->document($receiptId);
         } catch (LedgerError) {
             return null;
+        } catch (ReceiptFileProblem) {
+            $c = $this->contacts->all();
+            throw new LedgerError('Questa ricevuta non è disponibile in questo momento. Avvisa la segreteria'.($c === null ? '.' : ': '.$c['email'].', tel. '.$c['phone'].'.'));
         }
 
         return ['pdf' => $doc['pdf'], 'filename' => $doc['filename']];
