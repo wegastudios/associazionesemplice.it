@@ -110,20 +110,20 @@ Se il socio ha **già la tessera di quell'anno**, il gestionale non registra la 
 
 ## Se il socio ha già pagato online
 
-Se la quota era già presente quando arriva il **pagamento online** dall'area soci, la quota non viene registrata e il pagamento resta segnato **«da controllare»**. Il socio vede «Pagamento ricevuto, grazie! La segreteria sta registrando il pagamento». Se nello stesso pagamento ci sono altre voci (per esempio un'attività), quelle si registrano.
+Se la quota era già presente quando arriva il **pagamento online** dall'area soci, la quota non viene registrata e il pagamento resta segnato **«da controllare»**. Il socio vede «Pagamento ricevuto: la segreteria lo sta controllando.». Se nello stesso pagamento ci sono altre voci (per esempio un'attività), quelle si registrano.
 
 I soldi sono arrivati sul **conto Stripe o PayPal dell'associazione**, ma per quella quota non ci sono né movimento né ricevuta nel gestionale. **Cosa fare:**
 
 1. Apri **Pagamenti online**, sezione **«Pagamenti dei soci»**, e leggi il **motivo**, scritto in rosso sotto il nome nella colonna Voci.
-2. Se è la quota già pagata, premi **«rimborsa»** e scrivi **quanto restituire**: tutto o una parte (minimo **0,50 €**), anche in più volte. Ti chiede la **password**. I soldi tornano sul metodo di pagamento del socio: **il rimborso non si può annullare**.
+2. Se è la quota già pagata, premi **«rimborsa»** e scrivi **quanto restituire**: tutto o una parte (minimo **0,50 €**), anche in più volte. Ti chiede la **password** e il **motivo del rimborso**, che il socio leggerà nell'email. I soldi tornano sul metodo di pagamento del socio: **il rimborso non si può annullare**.
 
    Dopo l'invio compare «Rimborso di X,XX € inviato al socio.» e sotto lo stato leggi **«restituiti X,XX €»**.
 
    **Non vedi «rimborsa»?** Serve il permesso **«Emettere rimborsi»**: chiedilo a chi amministra il gestionale.
-3. Il rimborso si usa solo per i pagamenti **«da controllare»**. Se una voce era già stata registrata in **Prima nota**, va **stornata a parte**. Il gestionale **non manda un'email al socio**: avvisalo tu.
-
-   Il gestionale non scrive nulla in Prima nota per il rimborso. **Stripe o PayPal di solito non restituiscono la loro commissione**: chiedi al tuo commercialista se e come registrarla.
-4. Premi **«controllato»** accanto allo stato: serve solo a dire «ho visto e sistemato», non registra e non rimborsa nulla (il rimborso lo fa «rimborsa»). Lo vede chi ha il permesso di contabilità.
+3. **Il socio riceve un'email** con oggetto «Rimborso del tuo pagamento» e il nome dell'associazione. L'esito ti dice «Il socio è stato avvisato per email.»; se il socio non ha un'email, ti dice «Il socio non ha un'email: avvisalo tu.».
+4. Se il pagamento era **già stato registrato** in Prima nota, premi **«rimborsa e storna»**: restituisce **tutto il pagamento**, **storna le ricevute** in Prima nota e **annulla le tessere** collegate, in un gesto solo. Ti chiede la password e il motivo. Se l'anno fiscale dell'incasso è **chiuso**, non parte: né rimborso né storno. Se il rimborso non riesce, lo storno non resta. «rimborsa» da solo serve per i soldi **non registrati**.
+5. Stripe o PayPal di solito non restituiscono la loro commissione: chiedi al tuo commercialista se e come registrarla.
+6. Premi **«controllato»** accanto allo stato: serve solo a dire «ho visto e sistemato», non registra e non rimborsa nulla (il rimborso lo fa «rimborsa»). Lo vede chi ha il permesso di contabilità.
 
 ## Se l'importo pagato è diverso
 
