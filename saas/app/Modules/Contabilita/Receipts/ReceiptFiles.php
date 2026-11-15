@@ -13,6 +13,7 @@ use App\Modules\Core\Contracts\OrgContext;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
+use League\Flysystem\UnableToReadFile;
 use RuntimeException;
 
 /**
@@ -90,6 +91,8 @@ final readonly class ReceiptFiles
         }
         try {
             $this->files->read($this->context->require()->id, self::stored($row));
+        } catch (UnableToReadFile) {
+            return self::MISSING;
         } catch (DecryptionFailed $e) {
             return $e->getMessage() === 'File inesistente.' ? self::MISSING : self::ALTERED;
         }
@@ -173,12 +176,19 @@ final readonly class ReceiptFiles
     {
         try {
             return $this->files->read($this->context->require()->id, self::stored($row));
+        } catch (UnableToReadFile) {
+            throw new ReceiptFileProblem(self::missingText($number), ReceiptFileProblem::MISSING);
         } catch (DecryptionFailed $e) {
             if ($e->getMessage() === 'File inesistente.') {
-                throw new ReceiptFileProblem('Il PDF della ricevuta n. '.$number.' non si trova più sul sito. Non viene rifatto in automatico: un amministratore può ripristinarlo da una copia di sicurezza oppure, da «Verifica delle ricevute», rigenerarlo dai dati salvati.', ReceiptFileProblem::MISSING);
+                throw new ReceiptFileProblem(self::missingText($number), ReceiptFileProblem::MISSING);
             }
             throw new ReceiptFileProblem('Il PDF della ricevuta n. '.$number.' risulta diverso da quando è stato emesso: per sicurezza non viene scaricato. Un amministratore può controllarlo da «Verifica delle ricevute».', ReceiptFileProblem::ALTERED);
         }
+    }
+
+    private static function missingText(string $number): string
+    {
+        return 'Il PDF della ricevuta n. '.$number.' non si trova più sul sito. Non viene rifatto in automatico: un amministratore può ripristinarlo da una copia di sicurezza oppure, da «Verifica delle ricevute», rigenerarlo dai dati salvati.';
     }
 
     private function row(string $receiptId): ?object
@@ -199,8 +209,12 @@ final readonly class ReceiptFiles
 
     private function store(string $pdf, string $name): StoredFile
     {
-        $tmp = tempnam(sys_get_temp_dir(), 'rcp');
-        if ($tmp === false || file_put_contents($tmp, $pdf) === false) {
+        $dir = storage_path('app/tmp');
+        if (! is_dir($dir) && ! mkdir($dir, 0700, true) && ! is_dir($dir)) {
+            throw new RuntimeException('Cartella temporanea non disponibile.');
+        }
+        $tmp = $dir.'/rcp-'.bin2hex(random_bytes(16));
+        if (file_put_contents($tmp, $pdf) === false) {
             throw new RuntimeException('File temporaneo non disponibile.');
         }
         try {
