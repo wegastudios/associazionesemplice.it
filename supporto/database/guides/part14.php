@@ -134,7 +134,7 @@ MD,
 
 I **certificati medici**, i **documenti e le scansioni**, gli **allegati dei movimenti**, i **giustificativi dei rimborsi** e le **foto dell'inventario** si salvano **cifrati**; lo stesso vale per i **PDF delle ricevute** (emessi e «ANNULLATA»), che nella copia di sicurezza restano cifrati. Lo ZIP delle ricevute di un anno fiscale (**«Scarica i PDF di questo anno fiscale (ZIP)»**), invece, esce **non cifrato**: il programma avvisa «I PDF dello ZIP non sono cifrati e contengono dati personali (nome, codice fiscale, importi): conservalo con cura e cancellalo quando non ti serve più.» Si gestisce da **Impostazioni → Copia di sicurezza**, sezione «Cifratura dei file riservati».
 
-<!-- DA CONFERMARE (Luca decide): se i certificati medici già caricati si cifrano da soli. Oggi: no, si cifrano solo quando l'amministratore preme «Cifra i file già caricati». Aggiornare qui appena arriva la risposta. -->
+<!-- DECISO da Luca il 15/11/2026: i certificati medici già caricati si cifrano da soli. DA FARE prima della pubblicazione: la sessione plugin deve implementarlo e confermare il comportamento sul codice di main; poi riscrivere qui e togliere «Cifra i file già caricati» per i certificati. Il testo sotto descrive ancora il comportamento attuale. -->
 <!-- Verificato sul codice di main dopo la PR 745 del plugin (cifratura dei PDF delle ricevute). -->
 
 ## File nuovi e file già caricati
