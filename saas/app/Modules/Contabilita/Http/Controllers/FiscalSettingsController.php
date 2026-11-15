@@ -8,6 +8,7 @@ use App\Modules\Attivita\Contracts\Activities;
 use App\Modules\Core\Contracts\Input;
 use App\Modules\Core\Contracts\OrgFiscal;
 use App\Modules\Core\Contracts\OrgSettings;
+use App\Modules\Risorse\Contracts\ResourceBookings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -21,6 +22,7 @@ final readonly class FiscalSettingsController
         private OrgFiscal $fiscal,
         private OrgSettings $settings,
         private Activities $activities,
+        private ResourceBookings $resources,
     ) {}
 
     public function show(): Response
@@ -52,14 +54,49 @@ final readonly class FiscalSettingsController
         if ($membership !== 0 && ! in_array($membership, $rates, true)) {
             throw ValidationException::withMessages(['membership_rate' => 'Prima cambia l\'aliquota della quota associativa: deve essere «IVA esente» o una di quelle dell\'elenco. I movimenti già registrati restano come sono.']);
         }
-        $used = array_values(array_filter($this->activities->vatRatesInUse(), static fn (int $r): bool => ! in_array($r, $rates, true)));
-        if ($used !== []) {
-            throw ValidationException::withMessages(['rates' => 'Alcune attività usano l\'aliquota '.implode(', ', array_map(static fn (int $r): string => $r.'%', $used)).': prima cambia l\'IVA di quelle attività, poi toglila dall\'elenco.']);
+        $byActivities = self::outside($this->activities->vatRatesInUse(), $rates);
+        $byResources = self::outside($this->resources->vatRatesInUse(), $rates);
+        $byBookings = self::outside($this->resources->vatRatesInBookings(), $rates);
+        if ($byActivities !== [] || $byResources !== []) {
+            $used = array_values(array_unique([...$byActivities, ...$byResources]));
+            sort($used);
+            [$who, $those] = match (true) {
+                $byActivities !== [] && $byResources !== [] => ['attività o risorse', 'quelle attività o risorse'],
+                $byActivities !== [] => ['attività', 'quelle attività'],
+                default => ['risorse', 'quelle risorse'],
+            };
+            throw ValidationException::withMessages(['rates' => 'Alcune '.$who.' usano l\'aliquota '.self::percents($used).': prima cambia l\'IVA di '.$those.', poi toglila dall\'elenco.']);
+        }
+        if ($byBookings !== []) {
+            throw ValidationException::withMessages(['rates' => 'Alcune prenotazioni non ancora finite usano l\'aliquota '.self::percents($byBookings).': togli l\'aliquota dall\'elenco quando saranno finite o annullate.']);
         }
         $this->settings->set(OrgFiscal::RATES, implode(',', $rates));
         $this->settings->set(OrgFiscal::INCLUDES_VAT, Input::bool($data, 'includes_vat', true));
         $this->settings->set(OrgFiscal::MEMBERSHIP_RATE, $membership);
 
         return back()->with('status', 'Aspetto fiscale salvato.');
+    }
+
+    /**
+     * @param  list<int>  $used
+     * @param  list<int>  $rates
+     * @return list<int> le aliquote usate che non sono (più) in elenco
+     */
+    private static function outside(array $used, array $rates): array
+    {
+        $out = [];
+        foreach ($used as $r) {
+            if (! in_array($r, $rates, true)) {
+                $out[] = $r;
+            }
+        }
+
+        return $out;
+    }
+
+    /** @param  list<int>  $rates */
+    private static function percents(array $rates): string
+    {
+        return implode(', ', array_map(static fn (int $r): string => $r.'%', $rates));
     }
 }

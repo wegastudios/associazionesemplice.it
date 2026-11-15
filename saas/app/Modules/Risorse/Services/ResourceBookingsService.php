@@ -94,4 +94,39 @@ final readonly class ResourceBookingsService implements ResourceBookings
     {
         return is_string($v) ? $v : (is_scalar($v) ? (string) $v : '');
     }
+
+    public function withVatCount(): int
+    {
+        return Resource::query()->whereNull('archived_at')->whereNotNull('vat_rate')->count();
+    }
+
+    public function vatRatesInUse(): array
+    {
+        return self::rates(Resource::query()->where('vat_rate', '>', 0)->distinct()->pluck('vat_rate')->all());
+    }
+
+    public function vatRatesInBookings(): array
+    {
+        $now = ReservationService::now();
+
+        return self::rates(Reservation::query()->where('status', 'booked')->where('vat_rate', '>', 0)
+            ->where(static fn ($w) => $w->whereNull('ends_at')->orWhere('ends_at', '>', $now))->distinct()->pluck('vat_rate')->all());
+    }
+
+    /**
+     * @param  array<mixed>  $values
+     * @return list<int>
+     */
+    private static function rates(array $values): array
+    {
+        $rates = [];
+        foreach ($values as $r) {
+            if (is_numeric($r)) {
+                $rates[(int) $r] = (int) $r;
+            }
+        }
+        sort($rates);
+
+        return $rates;
+    }
 }

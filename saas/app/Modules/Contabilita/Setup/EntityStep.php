@@ -10,6 +10,7 @@ use App\Modules\Core\Contracts\Ability;
 use App\Modules\Core\Contracts\Operator;
 use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Core\Contracts\SetupStep;
+use App\Modules\Risorse\Contracts\ResourceBookings;
 
 /**
  * Dati dell'ente (dall'EntityData del plugin): forma, codice fiscale, partita IVA, RUNTS, sede e contatti. Servono a
@@ -32,7 +33,7 @@ final readonly class EntityStep implements SetupStep
     /** Dati «solo se esistono»: la casella «non ce l'ha» al posto del valore. */
     public const NONE = ['vat', 'runts', 'pec'];
 
-    public function __construct(private OrgSettings $settings, private Activities $activities) {}
+    public function __construct(private OrgSettings $settings, private Activities $activities, private ResourceBookings $resources) {}
 
     public function key(): string
     {
@@ -65,7 +66,7 @@ final readonly class EntityStep implements SetupStep
             $values[$k.'_none'] = $this->settings->get('ente.'.$k.'_none') === true;
         }
 
-        return ['vat_activities' => $this->activities->withVatCount(), 'values' => $values, 'kinds' => array_map(static fn (string $k, string $l): array => ['value' => $k, 'label' => $l], array_keys(self::KINDS), self::KINDS)];
+        return ['vat_activities' => $this->activities->withVatCount(), 'vat_resources' => $this->resources->withVatCount(), 'values' => $values, 'kinds' => array_map(static fn (string $k, string $l): array => ['value' => $k, 'label' => $l], array_keys(self::KINDS), self::KINDS)];
     }
 
     public function errors(array $input): array

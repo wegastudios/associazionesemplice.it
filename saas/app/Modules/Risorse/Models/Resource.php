@@ -31,6 +31,7 @@ use Carbon\CarbonImmutable;
  * @property list<array{days: string, from: string, to: string, fee_cents: int}> $rates
  * @property list<array{name: string, fee_cents: int}> $services
  * @property string|null $category_id
+ * @property int|null $vat_rate
  * @property CarbonImmutable|null $archived_at
  */
 final class Resource extends OrgModel
@@ -42,7 +43,7 @@ final class Resource extends OrgModel
     /** @var list<string> */
     protected $fillable = [
         'name', 'category', 'typology', 'description', 'open_time', 'close_time', 'slot_minutes', 'min_slots', 'max_slots',
-        'advance_days', 'fee_cents', 'nonmember_fee_cents', 'guests_max', 'guest_fee_cents', 'rates', 'services', 'category_id',
+        'advance_days', 'fee_cents', 'nonmember_fee_cents', 'guests_max', 'guest_fee_cents', 'rates', 'services', 'category_id', 'vat_rate',
     ];
 
     /** @return array<string, string> */
@@ -58,6 +59,7 @@ final class Resource extends OrgModel
             'nonmember_fee_cents' => 'integer',
             'guests_max' => 'integer',
             'guest_fee_cents' => 'integer',
+            'vat_rate' => 'integer',
             'rates' => 'array',
             'services' => 'array',
             'archived_at' => 'immutable_datetime',

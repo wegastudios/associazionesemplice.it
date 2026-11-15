@@ -37,20 +37,20 @@ final readonly class RisorseDataExport implements DataExport
             $names[$r->id] = $r->name;
             $rows[] = [$r->name, ResourceRules::categories()[$r->category] ?? $r->category, $r->typology->label(), (string) $r->open_time, (string) $r->close_time,
                 (string) $r->slot_minutes, Money::plain($r->fee_cents), $r->nonmember_fee_cents === null ? '' : Money::plain($r->nonmember_fee_cents),
-                ResourceRules::ratesText($r->rates), ResourceRules::servicesText($r->services), $r->archived_at !== null ? 'sì' : ''];
+                ResourceRules::ratesText($r->rates), ResourceRules::servicesText($r->services), $r->archived_at !== null ? 'sì' : '', self::vat($r->vat_rate)];
         }
-        $files = ['risorse/risorse.csv' => Csv::build(['Risorsa', 'Tipo', 'Si prenota', 'Apre', 'Chiude', 'Minuti a fascia', 'Tariffa', 'Tariffa non soci', 'Tariffe a fasce', 'Servizi', 'Archiviata'], $rows)];
+        $files = ['risorse/risorse.csv' => Csv::build(['Risorsa', 'Tipo', 'Si prenota', 'Apre', 'Chiude', 'Minuti a fascia', 'Tariffa', 'Tariffa non soci', 'Tariffe a fasce', 'Servizi', 'Archiviata', 'IVA'], $rows)];
 
         $c = $this->db->connection($this->context->require()->connection);
         $s = static fn (mixed $v): string => is_scalar($v) ? (string) $v : '';
         $rows = [];
         foreach ($c->table('app.reservations as r')->leftJoin('app.people as p', 'p.id', '=', 'r.person_id')->orderBy('r.starts_at')
-            ->get(['r.resource_id', 'r.kind', 'r.starts_at', 'r.ends_at', 'p.last_name', 'p.first_name', 'r.holder_name', 'r.member', 'r.fee_due_cents', 'r.status', 'r.note']) as $b) {
+            ->get(['r.resource_id', 'r.kind', 'r.starts_at', 'r.ends_at', 'p.last_name', 'p.first_name', 'r.holder_name', 'r.member', 'r.fee_due_cents', 'r.vat_rate', 'r.status', 'r.note']) as $b) {
             $rows[] = [$names[$s($b->resource_id ?? '')] ?? '', $b->kind === 'block' ? 'Blocco' : 'Prenotazione', $s($b->starts_at ?? ''), $s($b->ends_at ?? ''),
                 trim($s($b->last_name ?? '').' '.$s($b->first_name ?? '')) ?: $s($b->holder_name ?? ''), ($b->member ?? false) === true ? 'sì' : 'no',
-                Money::plain(is_numeric($b->fee_due_cents ?? null) ? (int) $b->fee_due_cents : 0), $b->status === 'cancelled' ? 'annullata' : 'attiva', $s($b->note ?? '')];
+                Money::plain(is_numeric($b->fee_due_cents ?? null) ? (int) $b->fee_due_cents : 0), self::vat(is_numeric($b->vat_rate ?? null) ? (int) $b->vat_rate : null), $b->status === 'cancelled' ? 'annullata' : 'attiva', $s($b->note ?? '')];
         }
-        $files['risorse/prenotazioni.csv'] = Csv::build(['Risorsa', 'Tipo', 'Inizio', 'Fine', 'Chi', 'Socio', 'Dovuto', 'Stato', 'Note'], $rows);
+        $files['risorse/prenotazioni.csv'] = Csv::build(['Risorsa', 'Tipo', 'Inizio', 'Fine', 'Chi', 'Socio', 'Dovuto', 'IVA', 'Stato', 'Note'], $rows);
 
         $rows = [];
         foreach ($c->table('app.resource_waitlist as w')->join('app.people as p', 'p.id', '=', 'w.person_id')->orderBy('w.created_at')
@@ -61,5 +61,11 @@ final readonly class RisorseDataExport implements DataExport
         $files['risorse/lista-d-attesa.csv'] = Csv::build(['Risorsa', 'Persona', 'Stato', 'Dal', 'Note'], $rows);
 
         return $files;
+    }
+
+    /** «IVA esente», «22%» o vuoto se la risorsa o la prenotazione è senza IVA. */
+    private static function vat(?int $rate): string
+    {
+        return $rate === null ? '' : ($rate === 0 ? 'IVA esente' : $rate.'%');
     }
 }
