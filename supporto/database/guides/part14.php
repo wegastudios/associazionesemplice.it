@@ -127,6 +127,29 @@ Crea un piccolo **file di prova, senza dati**, prova a scaricarlo dall'indirizzo
 MD,
     ],
     [
+        'topic' => 'domande-frequenti', 'section' => 'Licenza e dati', 'slug' => 'cosa-succede-ai-certificati-medici-dopo-l-aggiornamento',
+        'title' => 'Cosa succede ai certificati medici dopo l\'aggiornamento?',
+        'body' => <<<'MD'
+> Disponibile in: {piano_contabile}, {piano_fiscale}
+
+**Prima di aggiornare, fai una copia di sicurezza.** Dopo l'aggiornamento i certificati medici già caricati vengono **cifrati da soli**, senza premere nulla. Parte alla **prima visita di un amministratore** o **entro un'ora**, e prosegue a gruppi, **un gruppo al minuto**. Se si interrompe, riprende da dove era arrivata.
+
+Gli **altri file già caricati** (documenti, allegati, giustificativi, foto) si cifrano invece con il pulsante **«Cifra i file già caricati»**. Lo stato si vede in **Impostazioni → Copia di sicurezza → «Cifratura dei file riservati»**.
+
+L'amministratore vede questi avvisi (in **Bacheca**, **Copia di sicurezza** e **Certificati**):
+
+- **«La cifratura dei certificati medici è partita.»**: si fa da sola, non serve premere nulla.
+- **«Cifratura dei certificati medici in corso: restano …»** (con il numero).
+- **«La cifratura dei certificati medici è finita.»**: tutti i certificati già caricati sono ora cifrati sul disco.
+- **Finita con residui**: il programma dice quanti non si sono potuti cifrare e quanti non sono stati trovati sul disco. I certificati non cifrati sono rimasti dove stavano, in chiaro: l'elenco è in **Impostazioni → Copia di sicurezza → «Cifratura dei file riservati»**, dove c'è **«Riprova»**.
+- **Libreria mancante**: «I certificati medici già caricati restano in chiaro: su questo server manca la libreria di cifratura (sodium).» Premi **«Vedi il messaggio da inoltrare»** e mandalo a chi gestisce il sito; la cifratura riparte da sola quando la libreria c'è.
+- **Chiave non valida**: «La cifratura dei certificati medici è ferma: la chiave non si apre su questo sito.» Non viene toccato nulla; si sistema da **«Sistemare la chiave»** e poi riparte da sola.
+
+Vedi anche [Cifratura dei file riservati](guida:cifratura-dei-file-riservati).
+MD,
+    ],
+
+    [
         'topic' => 'installazione', 'section' => 'Manutenzione', 'slug' => 'cifratura-dei-file-riservati',
         'title' => 'Cifratura dei file riservati',
         'body' => <<<'MD'
@@ -134,13 +157,13 @@ MD,
 
 Nel **gratuito** si salvano **cifrati** i **documenti e le scansioni**, gli **allegati dei movimenti** e le **foto dell'inventario**. Con {piano_contabile} e {piano_fiscale} si cifrano anche i **certificati medici**, i **giustificativi dei rimborsi** e i **PDF delle ricevute** (emessi e «ANNULLATA»), che nella copia di sicurezza restano cifrati. Lo ZIP delle ricevute di un anno fiscale (**«Scarica i PDF di questo anno fiscale (ZIP)»**), invece, esce **non cifrato**: il programma avvisa «I PDF dello ZIP non sono cifrati e contengono dati personali (nome, codice fiscale, importi): conservalo con cura e cancellalo quando non ti serve più.» Si gestisce da **Impostazioni → Copia di sicurezza**, sezione «Cifratura dei file riservati».
 
-<!-- DECISO da Luca il 15/11/2026 («Sì, da soli»): nel Pro i certificati medici già caricati si cifrano da soli dopo l'aggiornamento. La PR del plugin è in costruzione: TENERE questo segnaposto finché l'Audit non scrive che è unita, poi inserire le frasi a schermo (avvisi «partita / in corso / finita», cosa succede senza la libreria di cifratura). Luca: non pubblicare il plugin finché questa parte non c'è. -->
+<!-- Certificati medici: frasi dall'Audit (PR 754 del plugin, approvata, in via di unione). RIVERIFICARE sul codice di main quando l'Audit scrive che è unita, soprattutto le prime due frasi degli avvisi. Luca: non pubblicare il plugin prima di questa parte. -->
 <!-- Verificato sul codice di main dopo la PR 745 del plugin (cifratura dei PDF delle ricevute). -->
 
 ## File nuovi e file già caricati
 
 - I **file nuovi** si salvano cifrati **subito**.
-- I **file già caricati** si cifrano quando l'**amministratore preme «Cifra i file già caricati»**. Con {piano_contabile} e {piano_fiscale} i **certificati medici** già caricati si cifrano **da soli** dopo l'aggiornamento; per gli altri file già caricati resta il pulsante. Prima di cominciare conviene fare una **copia di sicurezza con gli allegati** (il programma ti propone «Scarica la copia con gli allegati»). Da lì il lavoro prosegue da solo, a lotti, e puoi anche chiudere la pagina.
+- I **file già caricati** si cifrano quando l'**amministratore preme «Cifra i file già caricati»**. Con {piano_contabile} e {piano_fiscale} i **certificati medici** già caricati si cifrano **da soli** dopo l'aggiornamento; per gli altri file già caricati resta il pulsante. Dettagli e avvisi: [Cosa succede ai certificati medici dopo l'aggiornamento?](guida:cosa-succede-ai-certificati-medici-dopo-l-aggiornamento) Prima di cominciare conviene fare una **copia di sicurezza con gli allegati** (il programma ti propone «Scarica la copia con gli allegati»). Da lì il lavoro prosegue da solo, a lotti, e puoi anche chiudere la pagina.
 
 Su alcuni server manca la libreria che serve a cifrare: il programma lo dice e ti dà un **messaggio pronto da inoltrare a chi gestisce il sito**. In quel caso i certificati medici (con {piano_contabile} e {piano_fiscale}) non si possono caricare e gli altri file restano in chiaro, con un avviso.
 
