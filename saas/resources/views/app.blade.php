@@ -16,7 +16,7 @@
 <body class="min-h-full bg-surface text-ink antialiased">
     @if (config('saas.demo.enabled') && ! app()->environment('production'))
         <div role="status" style="background:#fff4c2;color:#4a3b00;padding:6px 12px;text-align:center;font:14px/1.4 system-ui,sans-serif">
-            Demo: i dati sono inventati e si cancellano ogni notte.
+            Questa è una demo con dati inventati: puoi provare tutto. I dati si cancellano ogni notte, non parte nessuna email e nessun pagamento è vero.
         </div>
     @endif
     @inertia

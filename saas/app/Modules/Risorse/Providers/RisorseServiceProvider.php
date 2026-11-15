@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Modules\Risorse\Providers;
 
 use App\Modules\Core\Contracts\DataExport;
+use App\Modules\Core\Contracts\DemoSeeder;
 use App\Modules\Core\Contracts\HomeWidget;
 use App\Modules\Core\Contracts\PayableDues;
 use App\Modules\Risorse\Contracts\MemberResources;
+use App\Modules\Risorse\Demo\DemoResources;
 use App\Modules\Risorse\Contracts\ResourceBookings;
 use App\Modules\Risorse\Export\RisorseDataExport;
 use App\Modules\Risorse\Home\ResourcesHome;
@@ -23,6 +25,7 @@ final class RisorseServiceProvider extends ServiceProvider
         $this->app->tag([ResourcesHome::class], HomeWidget::TAG);
         $this->app->tag([RisorseDataExport::class], DataExport::TAG);
         $this->app->tag([ReservationDues::class], PayableDues::TAG);
+        $this->app->tag([DemoResources::class], DemoSeeder::TAG);
         $this->app->bind(MemberResources::class, MemberResourcesService::class);
         $this->app->bind(ResourceBookings::class, ResourceBookingsService::class);
     }

@@ -52,7 +52,9 @@ return [
     'demo' => [
         'enabled' => (bool) env('SAAS_DEMO', false),
         'org_name' => 'Polisportiva Demo',
-        'org_slug' => 'polisportiva-demo',
+        'org_slug' => env('SAAS_DEMO_SLUG', 'polisportiva-demo'),
+        // Quante persone fisiche ha l'associazione dimostrativa: più sono, più il reset notturno dura (ricevute comprese).
+        'people' => env('SAAS_DEMO_PEOPLE', 400),
         // Password pubblica degli utenti di prova (titolare@, segreteria@, commercialista@ su mail_domain).
         'password' => env('SAAS_DEMO_PASSWORD', 'demo-demo-demo-2026'),
         'mail_domain' => env('SAAS_DEMO_MAIL_DOMAIN', 'demosaas.associazionesemplice.it'),
