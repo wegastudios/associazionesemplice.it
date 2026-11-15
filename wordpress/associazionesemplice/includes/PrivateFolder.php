@@ -290,7 +290,7 @@ final class PrivateFolder {
 			case PrivateFolderRules::EXPOSED:
 				return Texts::t( 'la cartella è raggiungibile da internet.' );
 			case PrivateFolderRules::CLOSED:
-				return Texts::t( 'un file di prova messo nella cartella non si scarica dall\'esterno: a posto.' );
+				return Texts::t( 'un file di prova messo nella cartella non si scarica dall\'indirizzo web del sito. Il controllo parte dal sito stesso: per la certezza chiedi conferma a chi gestisce il server.' );
 			case PrivateFolderRules::OUTSIDE:
 				return Texts::t( 'la cartella sta fuori dalla parte pubblica del sito e non ha un indirizzo web: non serve altro.' );
 		}

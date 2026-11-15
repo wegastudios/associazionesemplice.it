@@ -29,6 +29,7 @@ final class PrivateFolderPanel {
 
 		echo '<h2 id="asem-private-folder">' . esc_html( Texts::t( 'Cartella dei file riservati' ) ) . '</h2>';
 		echo '<p>' . esc_html( Texts::t( 'Ricevute, allegati dei movimenti, documenti e scansioni, giustificativi dei rimborsi, foto dell\'inventario, certificati medici e copie di sicurezza stanno in una cartella a parte. I file hanno nomi casuali e il sito li apre solo dopo aver controllato i permessi.' ) ) . '</p>';
+		echo '<p><strong>' . esc_html( Texts::t( 'Se queste parole non ti dicono nulla, premi «Controlla ora»: se il risultato è rosso, inoltra il messaggio qui sotto a chi gestisce il sito.' ) ) . '</strong></p>';
 		echo '<p>' . esc_html( Texts::t( 'Cartella in uso:' ) ) . ' <code>' . esc_html( $st['dir'] ) . '</code></p>';
 
 		if ( '' !== $st['error'] ) {
@@ -63,7 +64,11 @@ final class PrivateFolderPanel {
 		$outer = dirname( untrailingslashit( str_replace( '\\', '/', ABSPATH ) ) ) . '/asem-riservata';
 
 		echo '<details' . ( $open ? ' open' : '' ) . ' style="margin:1em 0"><summary><strong>' . esc_html( Texts::t( 'Cosa fare se la cartella è raggiungibile (o per metterla al sicuro)' ) ) . '</strong></summary>';
-		echo '<p>' . esc_html( Texts::t( 'Va chiesto a chi gestisce il server o l\'hosting del sito. Ci sono due strade, anche insieme.' ) ) . '</p>';
+		echo '<p><strong>' . esc_html( Texts::t( 'Messaggio pronto da copiare e inoltrare a chi gestisce il sito o l\'hosting:' ) ) . '</strong></p>';
+		echo '<p><textarea id="asem-private-msg" readonly rows="4" style="width:100%;max-width:640px">' . esc_textarea( Texts::t( 'Buongiorno, sul nostro sito la cartella {percorso} contiene documenti riservati e risulta raggiungibile da internet. Vi chiediamo di bloccare l\'accesso diretto a quella cartella oppure di aiutarci a spostarla fuori dalla parte pubblica del sito. Grazie.', array( 'percorso' => $st['dir'] ) ) ) . '</textarea><br>'
+			. '<button type="button" class="button" id="asem-private-copy" data-done="' . esc_attr( Texts::t( 'Messaggio copiato' ) ) . '">' . esc_html( Texts::t( 'Copia il messaggio' ) ) . '</button></p>';
+		Ui::inline_js( 'document.getElementById("asem-private-copy").addEventListener("click",function(){var t=document.getElementById("asem-private-msg");t.focus();t.select();try{if(navigator.clipboard){navigator.clipboard.writeText(t.value);}else{document.execCommand("copy");}this.textContent=this.getAttribute("data-done");}catch(e){}});' );
+		echo '<p><strong>' . esc_html( Texts::t( 'Istruzioni tecniche, per chi gestisce il server:' ) ) . '</strong> ' . esc_html( Texts::t( 'Ci sono due strade, anche insieme.' ) ) . '</p>';
 		echo '<p><strong>' . esc_html( Texts::t( '1. Bloccare l\'accesso diretto alla cartella.' ) ) . '</strong> ' . esc_html( Texts::t( 'Con nginx serve una regola come questa nella configurazione del sito:' ) ) . '</p>';
 		echo '<pre style="background:#f6f7f7;padding:8px;overflow:auto">' . esc_html( 'location ^~ ' . $path . " {\n\tdeny all;\n\treturn 403;\n}" ) . '</pre>';
 		echo '<p class="description">' . esc_html( Texts::t( 'Con Apache basta che il file .htaccess della cartella sia attivo (serve che sulla cartella uploads sia consentito AllowOverride). Dopo la modifica premi «Controlla ora».' ) ) . '</p>';
@@ -85,6 +90,7 @@ final class PrivateFolderPanel {
 			return;
 		}
 		echo '<p>' . esc_html( Texts::t( 'Nella cartella predefinita ci sono ancora {n} file da portare nella nuova cartella. Si procede a lotti di {lotto} file: ogni file viene copiato, controllato con la sua impronta SHA-256 e solo dopo cancellato dalla vecchia posizione. Se ne restano, premi di nuovo.', array( 'n' => $left >= 5000 ? '5000+' : $left, 'lotto' => PrivateFolder::BATCH ) ) ) . '</p>';
+		echo '<p><strong>' . esc_html( Texts::t( 'Prima di spostare i file fai una copia di sicurezza.' ) ) . '</strong> <a href="' . esc_url( \AssociazioneSemplice\Backup::download_url( true ) ) . '">' . esc_html( Texts::t( 'Scarica la copia con gli allegati' ) ) . '</a></p>';
 		Ui::form_open( 'asem_private_move', $back, false, 'asem-inline' );
 		echo '<button class="button button-primary" data-confirm="' . esc_attr( Texts::t( 'Spostare i file nella nuova cartella?' ) ) . '">' . esc_html( Texts::t( 'Sposta i file' ) ) . '</button>';
 		Ui::form_close();

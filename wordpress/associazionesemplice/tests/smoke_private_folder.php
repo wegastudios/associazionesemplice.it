@@ -88,6 +88,12 @@ wp_set_current_user( $pf_admin );
 $pf_panel = free_render_pf( array( \AssociazioneSemplice\Admin\BackupPage::class, 'render' ) );
 $pf_ok( false !== strpos( $pf_panel, 'Cartella dei file riservati' ) && false !== strpos( $pf_panel, 'Controlla ora' ) && false !== strpos( $pf_panel, 'location ^~ ' ) && false !== strpos( $pf_panel, 'ASEM_PRIVATE_DIR' ) && false !== strpos( $pf_panel, 'private-folder-exposed' ), 'pagina Copia di sicurezza: riquadro con esito, pulsante, regola nginx e riga per wp-config.php' );
 
+$pf_p1 = strpos( $pf_panel, 'Se queste parole non ti dicono nulla' );
+$pf_p2 = strpos( $pf_panel, 'Buongiorno, sul nostro sito la cartella ' . $pf_root );
+$pf_p3 = strpos( $pf_panel, 'location ^~ ' );
+$pf_p4 = strpos( $pf_panel, '.htaccess' );
+$pf_ok( false !== $pf_p1 && false !== $pf_p2 && false !== $pf_p3 && $pf_p1 < $pf_p4 && $pf_p2 < $pf_p3 && false !== strpos( $pf_panel, 'id="asem-private-copy"' ) && false !== strpos( $pf_panel, '<textarea' ), 'riquadro: la riga «se queste parole non ti dicono nulla» sta prima dei termini tecnici e il messaggio da inoltrare (con il percorso reale) prima delle istruzioni' );
+
 foreach ( array( 'closed', 'auth', 'redirect', 'fail', 'error' ) as $mode ) {
 	$r   = $pf_run( $mode );
 	$exp = 'closed' === $mode ? PrivateFolderRules::CLOSED : PrivateFolderRules::UNKNOWN;
@@ -169,7 +175,9 @@ $pf_pend = PrivateFolder::pending();
 $pf_ok( in_array( $pf_a, $pf_pend, true ) && in_array( 'backups/prova-spostamento.zip', $pf_pend, true ) && ! in_array( 'index.php', $pf_pend, true ) && ! in_array( '.htaccess', $pf_pend, true ), 'spostamento: l\'elenco dei file da portare non include i file di protezione' );
 file_put_contents( $pf_dir . '/' . $pf_c, 'contenuto diverso nella nuova cartella' ); // stesso nome, contenuto diverso: non si tocca nulla
 $pf_panel = free_render_pf( array( \AssociazioneSemplice\Admin\BackupPage::class, 'render' ) );
-$pf_ok( false !== strpos( $pf_panel, 'Sposta i file' ) && false !== strpos( $pf_panel, 'fuori dalla parte pubblica del sito e non ha un indirizzo web' ), 'spostamento: il riquadro mostra il pulsante «Sposta i file»' );
+$pf_ok( false !== strpos( $pf_panel, 'Prima di spostare i file fai una copia di sicurezza.' ) && strpos( $pf_panel, 'Prima di spostare i file' ) < strpos( $pf_panel, 'name="action" value="asem_private_move"' ), 'spostamento: prima del pulsante c\'è l\'invito a fare una copia di sicurezza, con il link' );
+$pf_ok( false !== strpos( PrivateFolder::outcome_text( array( 'state' => PrivateFolderRules::CLOSED ) ), 'dall\'indirizzo web del sito. Il controllo parte dal sito stesso' ), 'controllo cartella: l\'esito positivo non promette certezze' );
+$pf_ok( false !== strpos( $pf_panel, 'Sposta i file' ) &&false !== strpos( $pf_panel, 'fuori dalla parte pubblica del sito e non ha un indirizzo web' ), 'spostamento: il riquadro mostra il pulsante «Sposta i file»' );
 $pf_msg = \AssociazioneSemplice\Admin\TechActions::private_move( array() );
 for ( $pf_i = 0; $pf_i < 80 && count( PrivateFolder::pending() ) > 1; $pf_i++ ) { // altri file di prova già nella cartella predefinita: si portano tutti, a lotti
 	PrivateFolder::move_batch();
