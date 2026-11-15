@@ -19,10 +19,9 @@ final class FileKey {
 
 	const OPT_KEYS = 'asem_file_keys';
 	const OPT_SITE = 'asem_site_id';
+	const OPT_TS   = 'asem_activated_at';
+	const OPT_CHANGED = 'asem_file_phrase_changed';
 	const CONSTANT = 'ASEM_ENC_KEY';
-	const KDF_OPS  = 2;         // SODIUM_CRYPTO_PWHASH_OPSLIMIT_INTERACTIVE
-	const KDF_MEM  = 67108864;  // SODIUM_CRYPTO_PWHASH_MEMLIMIT_INTERACTIVE (64 MiB)
-	const PHRASE_MIN = 10;
 
 	/** @var array|null */
 	private static $cache = null;
@@ -101,12 +100,69 @@ final class FileKey {
 
 	// ---------- Chiavi dei dati ----------
 
+	/** @return array{current:int,keys:array,pm:string,lic:string} pm: 'auto' (frase automatica) o 'custom' (frase scelta); lic: impronta del codice di licenza con cui le chiavi sono avvolte */
 	private static function option(): array {
 		$o = get_option( self::OPT_KEYS );
 		if ( ! is_array( $o ) || empty( $o['keys'] ) || ! is_array( $o['keys'] ) ) {
-			return array( 'current' => 0, 'keys' => array() );
+			return array( 'current' => 0, 'keys' => array(), 'pm' => 'auto', 'lic' => '' );
 		}
-		return array( 'current' => (int) ( $o['current'] ?? 0 ), 'keys' => $o['keys'] );
+		return array(
+			'current' => (int) ( $o['current'] ?? 0 ),
+			'keys'    => $o['keys'],
+			'pm'      => 'custom' === ( $o['pm'] ?? '' ) ? 'custom' : 'auto',
+			'lic'     => (string) ( $o['lic'] ?? '' ),
+		);
+	}
+
+	// ---------- La frase in uso ----------
+
+	/** Data e ora (UTC) in cui il plugin è stato attivato su questo sito: è la frase predefinita nel plugin gratuito. */
+	public static function activated_at(): string {
+		$v = (string) get_option( self::OPT_TS, '' );
+		if ( 1 !== preg_match( '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $v ) ) {
+			$v = gmdate( 'Y-m-d H:i:s' );
+			add_option( self::OPT_TS, $v, '', 'no' );
+			$v = (string) get_option( self::OPT_TS, $v );
+		}
+		return $v;
+	}
+
+	/** Codice di licenza del sito, se c'è (lo fornisce l'edizione a pagamento con il filtro `asem_file_license_code`). */
+	public static function license_code(): string {
+		return trim( (string) apply_filters( 'asem_file_license_code', '' ) );
+	}
+
+	/** La frase automatica: il codice di licenza se c'è, altrimenti la data e l'ora di attivazione. */
+	private static function phrase_auto(): string {
+		$lic = self::license_code();
+		return '' !== $lic ? $lic : self::activated_at();
+	}
+
+	/** Quale frase è in uso: 'custom' (scelta dall'amministratore), 'license' (il codice di licenza) o 'timestamp' (data e ora di attivazione). */
+	public static function phrase_kind(): string {
+		if ( 'custom' === self::option()['pm'] ) {
+			return 'custom';
+		}
+		return '' !== self::license_code() ? 'license' : 'timestamp';
+	}
+
+	/** Quando la frase (o la licenza) è cambiata l'ultima volta: dopo di allora serve una copia nuova. */
+	public static function phrase_changed_at(): int {
+		return (int) get_option( self::OPT_CHANGED, 0 );
+	}
+
+	/** @param array{key:string,kdf:array} $rec @return array{w:string,k:array} */
+	private static function wrapped( string $dek, array $rec ): array {
+		return array( 'w' => FileCrypt::wrap_key( $dek, $rec['key'] ), 'k' => $rec['kdf'] );
+	}
+
+	/** Chiave e metodo ricavati da una frase, o null se non si riesce. */
+	private static function rec( string $text ): ?array {
+		try {
+			return FileCrypt::kdf_make( $text );
+		} catch ( FileCryptError $e ) {
+			return null;
+		}
 	}
 
 	/** Ci sono chiavi salvate (anche se su questo sito non si aprono)? */
@@ -162,6 +218,43 @@ final class FileKey {
 				$changed                = true;
 			}
 		}
+		// Le chiavi sono avvolte anche con la frase in uso e con il codice di licenza: si aggiornano quando la licenza compare, cambia o sparisce,
+		// o quando una chiave non ha ancora la sua frase (sito aggiornato, copia ripristinata).
+		if ( $out['deks'] ) {
+			$lic     = self::license_code();
+			$h       = '' === $lic ? '' : hash( 'sha256', 'asem-lic|' . $lic );
+			$lic_chg = $h !== (string) $o['lic'];
+			$auto    = null;
+			$licrec  = ( $lic_chg && '' !== $lic ) ? self::rec( $lic ) : null;
+			foreach ( $out['deks'] as $id => $dek ) {
+				$has_r = ! empty( $o['keys'][ $id ]['r']['w'] );
+				if ( ( 'custom' !== $o['pm'] && $lic_chg ) || ! $has_r ) {
+					$auto = $auto ?? self::rec( self::phrase_auto() );
+					if ( null !== $auto ) {
+						$o['keys'][ $id ]['r'] = self::wrapped( $dek, $auto );
+						if ( ! $has_r ) {
+							$o['pm'] = 'auto';
+						}
+						$changed = true;
+					}
+				}
+				if ( $lic_chg ) {
+					if ( null !== $licrec ) {
+						$o['keys'][ $id ]['l'] = self::wrapped( $dek, $licrec );
+					} else {
+						unset( $o['keys'][ $id ]['l'] );
+					}
+					$changed = true;
+				}
+			}
+			if ( $lic_chg && ( '' === $lic || null !== $licrec ) ) {
+				if ( 'x' !== (string) $o['lic'] ) {
+					update_option( self::OPT_CHANGED, time(), false ); // la licenza è cambiata davvero (non è un ripristino): le copie fatte prima vanno rifatte
+				}
+				$o['lic'] = $h;
+				$changed  = true;
+			}
+		}
 		if ( $changed ) {
 			update_option( self::OPT_KEYS, $o, false );
 		}
@@ -178,48 +271,55 @@ final class FileKey {
 	/**
 	 * Crea una chiave dei dati. Con $first lo fa una sola volta anche se due richieste arrivano insieme.
 	 *
-	 * @param array|null $rec chiave di recupero e metodo con cui si ricava dalla frase: array( 'key' => ..., 'kdf' => ... )
+	 * La nuova chiave è avvolta con la frase automatica (codice di licenza o data di attivazione) e, se c'è, anche con il codice di licenza.
 	 */
-	private static function create( bool $first, ?array $rec = null ): void {
+	private static function create( bool $first ): void {
 		$dek   = random_bytes( 32 );
 		$id    = FileCrypt::key_id( $dek );
 		$pref  = self::source();
 		$entry = array( 'w' => FileCrypt::wrap_key( $dek, self::masters()[ $pref ] ), 'by' => $pref, 'at' => time(), 'p' => self::proof( $dek, $id ) );
-		if ( null !== $rec ) {
-			$entry['r'] = array( 'w' => FileCrypt::wrap_key( $dek, $rec['key'] ), 'k' => $rec['kdf'] );
+		$auto  = self::rec( self::phrase_auto() );
+		if ( null !== $auto ) {
+			$entry['r'] = self::wrapped( $dek, $auto );
 		}
+		$lic    = self::license_code();
+		$licrec = '' !== $lic ? self::rec( $lic ) : null;
+		if ( null !== $licrec ) {
+			$entry['l'] = self::wrapped( $dek, $licrec );
+		}
+		$h = '' === $lic || null === $licrec ? '' : hash( 'sha256', 'asem-lic|' . $lic );
 		if ( $first ) {
-			add_option( self::OPT_KEYS, array( 'current' => $id, 'keys' => array( $id => $entry ) ), '', 'no' ); // se un'altra richiesta l'ha già creata, resta la sua
+			add_option( self::OPT_KEYS, array( 'current' => $id, 'keys' => array( $id => $entry ), 'pm' => 'auto', 'lic' => $h ), '', 'no' ); // se un'altra richiesta l'ha già creata, resta la sua
 		} else {
-			$o                 = self::option();
-			$o['keys'][ $id ]  = $entry;
-			$o['current']      = $id;
+			$o                = self::option();
+			$o['keys'][ $id ] = $entry;
+			$o['current']     = $id;
+			$o['pm']          = 'auto';
+			$o['lic']         = $h;
 			update_option( self::OPT_KEYS, $o, false );
 		}
 		self::$cache = null;
 	}
 
-	/** La chiave in uso ha la frase di recupero? */
-	public static function has_recovery(): bool {
-		$o = self::option();
-		$k = $o['keys'][ $o['current'] ] ?? null;
-		return is_array( $k ) && ! empty( $k['r']['w'] ) && ! empty( $k['r']['k'] );
+	/** Crea la chiave dei dati la prima volta che serve (nessuna scelta da fare: la frase è automatica). */
+	private static function ensure(): bool {
+		$l = self::load();
+		if ( 'none' === $l['state'] ) {
+			self::create( true );
+			$l = self::load();
+		}
+		return 'ok' === $l['state'];
 	}
 
 	/**
-	 * Come si salvano i nuovi file: 'encrypt' (cifrati), 'plain' (manca la libreria sodium: in chiaro, con avviso), 'blocked' (la chiave salvata non si
-	 * apre con la chiave principale di questo sito: i nuovi file non si salvano finché non si sistema) o 'setup' (manca la frase di recupero: la chiave
-	 * si crea solo scegliendola, e i nuovi file non si salvano finché non c'è).
+	 * Come si salvano i nuovi file: 'encrypt' (cifrati), 'plain' (manca la libreria sodium: in chiaro, con avviso) o 'blocked' (la chiave salvata non si
+	 * apre con la chiave principale di questo sito: i nuovi file non si salvano finché non si sistema).
 	 */
 	public static function mode(): string {
 		if ( ! FileCrypt::available() ) {
 			return 'plain';
 		}
-		$st = self::load()['state'];
-		if ( 'mismatch' === $st ) {
-			return 'blocked';
-		}
-		return 'ok' === $st && self::has_recovery() ? 'encrypt' : 'setup';
+		return self::ensure() ? 'encrypt' : 'blocked';
 	}
 
 	/** Situazione senza creare nulla: nosodium, none, ok o mismatch. */
@@ -323,29 +423,28 @@ final class FileKey {
 		}
 	}
 
-	// ---------- Frase di recupero ----------
+	// ---------- Frase scelta dall'amministratore ----------
 
 	const RECOVERY_MIN = 12;
 
-	/** Controlla la frase di recupero. @return string vuoto se va bene, altrimenti il perché */
+	/** Controlla una frase scelta. @return string vuoto se va bene, altrimenti il perché */
 	public static function recovery_error( string $phrase, string $again ): string {
 		if ( mb_strlen( $phrase ) < self::RECOVERY_MIN ) {
-			return Texts::t( 'La frase di recupero deve avere almeno {n} caratteri.', array( 'n' => self::RECOVERY_MIN ) );
+			return Texts::t( 'La frase deve avere almeno {n} caratteri.', array( 'n' => self::RECOVERY_MIN ) );
 		}
 		if ( $phrase !== $again ) {
-			return Texts::t( 'Le due frasi di recupero non coincidono.' );
+			return Texts::t( 'Le due frasi non coincidono.' );
 		}
 		return '';
 	}
 
 	/**
-	 * Sceglie la frase di recupero: la chiave dei dati si avvolge una seconda volta, dentro il database, con una chiave ricavata dalla frase. Se non c'è
-	 * ancora nessuna chiave dei dati, la si crea qui (è l'unico modo: la cifratura parte solo dopo aver scelto la frase). Con una frase già scelta, la
-	 * sostituisce per le chiavi che si aprono su questo sito.
+	 * Cambia la frase: da quel momento la chiave dei dati si apre con la frase scelta (e, se c'è, con il codice di licenza, che resta sempre valido).
+	 * Le copie di sicurezza fatte prima si aprono con la frase di allora.
 	 *
 	 * @throws \InvalidArgumentException
 	 */
-	public static function set_recovery( string $phrase, string $again ): void {
+	public static function set_custom_phrase( string $phrase, string $again ): void {
 		if ( ! FileCrypt::available() ) {
 			throw new \InvalidArgumentException( Texts::t( 'Questo server non ha la libreria di cifratura (sodium).' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
@@ -353,35 +452,43 @@ final class FileKey {
 		if ( '' !== $err ) {
 			throw new \InvalidArgumentException( $err ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
-		$l = self::load();
-		if ( 'mismatch' === $l['state'] ) {
+		if ( ! self::ensure() ) {
 			throw new \InvalidArgumentException( Texts::t( 'La chiave non si apre su questo sito: prima va sistemata (sezione «Sistemare la chiave»).' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
-		try {
-			$rec = FileCrypt::kdf_make( $phrase );
-		} catch ( FileCryptError $e ) {
+		$rec = self::rec( $phrase );
+		if ( null === $rec ) {
 			throw new \InvalidArgumentException( Texts::t( 'La frase non si è potuta elaborare su questo server: riprova.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
-		if ( 'none' === $l['state'] ) {
-			self::create( true, $rec );
-			if ( ! self::has_recovery() ) { // un'altra richiesta aveva già creato la chiave: si aggiunge la frase a quella
-				self::$cache = null;
-				$l           = self::load();
-			} else {
-				return;
-			}
+		self::rewrap_phrase( $rec, 'custom' );
+	}
+
+	/** Torna alla frase automatica (codice di licenza o data di attivazione). @throws \InvalidArgumentException */
+	public static function use_auto_phrase(): void {
+		if ( ! self::ensure() ) {
+			throw new \InvalidArgumentException( Texts::t( 'La chiave non si apre su questo sito: prima va sistemata (sezione «Sistemare la chiave»).' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
+		$rec = self::rec( self::phrase_auto() );
+		if ( null === $rec ) {
+			throw new \InvalidArgumentException( Texts::t( 'La frase non si è potuta elaborare su questo server: riprova.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		self::rewrap_phrase( $rec, 'auto' );
+	}
+
+	private static function rewrap_phrase( array $rec, string $pm ): void {
+		$l = self::load();
 		$o = self::option();
 		foreach ( $l['deks'] as $id => $dek ) {
-			$o['keys'][ $id ]['r'] = array( 'w' => FileCrypt::wrap_key( $dek, $rec['key'] ), 'k' => $rec['kdf'] );
+			$o['keys'][ $id ]['r'] = self::wrapped( $dek, $rec );
 		}
+		$o['pm'] = $pm;
 		update_option( self::OPT_KEYS, $o, false );
+		update_option( self::OPT_CHANGED, time(), false );
 		self::$cache = null;
 	}
 
 	/**
-	 * Le chiavi salvate non si aprono più (codici di sicurezza o costante cambiati): con la frase di recupero si riaprono e si avvolgono con la chiave
-	 * principale di adesso, senza ricifrare nessun file.
+	 * Le chiavi salvate non si aprono più (codici di sicurezza o costante cambiati): con la frase in uso, o con il codice di licenza, si riaprono e si
+	 * avvolgono con la chiave principale di adesso, senza ricifrare nessun file.
 	 *
 	 * @return int chiavi recuperate
 	 * @throws \InvalidArgumentException
@@ -390,26 +497,14 @@ final class FileKey {
 		if ( ! FileCrypt::available() ) {
 			throw new \InvalidArgumentException( Texts::t( 'Questo server non ha la libreria di cifratura (sodium).' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
-		$l     = self::load();
-		$o     = self::option();
-		$m     = self::masters();
-		$n     = 0;
-		$cache = array();
+		$phrase = trim( $phrase );
+		$l      = self::load();
+		$o      = self::option();
+		$m      = self::masters();
+		$n      = 0;
 		foreach ( $l['locked'] as $id ) {
-			$r = $o['keys'][ $id ]['r'] ?? null;
-			if ( ! is_array( $r ) || empty( $r['w'] ) || empty( $r['k'] ) || ! is_array( $r['k'] ) ) {
-				continue;
-			}
-			$ck = (string) wp_json_encode( $r['k'] );
-			try {
-				if ( ! isset( $cache[ $ck ] ) ) {
-					$cache[ $ck ] = FileCrypt::kdf_derive( $phrase, $r['k'] );
-				}
-			} catch ( FileCryptError $e ) {
-				continue;
-			}
-			$d = FileCrypt::unwrap_key( (string) $r['w'], $cache[ $ck ] );
-			if ( null !== $d && FileCrypt::key_id( $d ) === $id ) {
+			$d = self::open_by_phrase( $o['keys'][ $id ] ?? array(), $id, $phrase );
+			if ( null !== $d ) {
 				$o['keys'][ $id ]['w']  = FileCrypt::wrap_key( $d, $m[ self::source() ] );
 				$o['keys'][ $id ]['by'] = self::source();
 				$n++;
@@ -423,65 +518,68 @@ final class FileKey {
 		return $n;
 	}
 
-	// ---------- Frase segreta della copia di sicurezza ----------
-
-	/** Controlla la frase scelta per una copia. @return string vuoto se va bene, altrimenti il perché */
-	public static function phrase_error( string $phrase, string $again ): string {
-		if ( mb_strlen( $phrase ) < self::PHRASE_MIN ) {
-			return Texts::t( 'La frase segreta deve avere almeno {n} caratteri.', array( 'n' => self::PHRASE_MIN ) );
+	/**
+	 * Apre una chiave dei dati con una frase, provando l'avvolgimento della frase in uso e quello del codice di licenza.
+	 *
+	 * @param array $entry voce della chiave (o della copia)
+	 * @return string|null la chiave dei dati, o null se la frase non l'apre
+	 */
+	private static function open_by_phrase( array $entry, int $id, string $phrase, ?string &$via = null ): ?string {
+		if ( '' === $phrase ) {
+			return null;
 		}
-		if ( $phrase !== $again ) {
-			return Texts::t( 'Le due frasi segrete non coincidono.' );
+		foreach ( array( 'r', 'l' ) as $name ) {
+			$w = $entry[ $name ] ?? null;
+			if ( ! is_array( $w ) || empty( $w['w'] ) || empty( $w['k'] ) || ! is_array( $w['k'] ) ) {
+				continue;
+			}
+			try {
+				$pk = FileCrypt::kdf_derive( $phrase, $w['k'] );
+			} catch ( FileCryptError $e ) {
+				continue;
+			}
+			$d = FileCrypt::unwrap_key( (string) $w['w'], $pk );
+			if ( null !== $d && FileCrypt::key_id( $d ) === $id ) {
+				$via = $name;
+				return $d;
+			}
 		}
-		return '';
+		return null;
 	}
 
+	// ---------- Chiavi nella copia di sicurezza ----------
+
 	/**
-	 * Le chiavi per una copia di sicurezza: avvolte con la chiave principale di questo sito e, se c'è una frase, anche con la chiave ricavata dalla frase.
+	 * Le chiavi per una copia di sicurezza: avvolte con la chiave principale di questo sito, con la frase in uso e con il codice di licenza (se c'è).
 	 *
 	 * @return array vuoto se non ci sono chiavi
-	 * @throws FileCryptError
 	 */
-	public static function bundle( ?string $phrase ): array {
+	public static function bundle(): array {
 		$o = self::option();
 		if ( ! $o['keys'] ) {
 			return array();
 		}
-		$want = null !== $phrase && '' !== $phrase;
-		if ( $want && ! FileCrypt::available() ) {
-			throw new FileCryptError( FileCryptError::NO_SODIUM ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- solo un codice interno, mai mostrato così com'è
-		}
-		$l   = $want ? self::load() : array( 'deks' => array() );
-		$out = array( 'v' => 1, 'site' => self::site_id(), 'current' => $o['current'], 'keys' => array() );
-		$pk  = null;
-		if ( null !== $phrase && '' !== $phrase ) {
-			$made       = FileCrypt::kdf_make( $phrase ); // il metodo (Argon2id o, con poca memoria, uno più leggero) si scrive nella copia
-			$pk         = $made['key'];
-			$out['kdf'] = $made['kdf'];
-		}
+		self::load(); // allinea le frasi alla licenza di adesso prima di copiarle
+		$o   = self::option();
+		$out = array( 'v' => 1, 'site' => self::site_id(), 'current' => $o['current'], 'pm' => $o['pm'], 'keys' => array() );
 		foreach ( $o['keys'] as $id => $k ) {
 			$e = array( 'm' => (string) ( $k['w'] ?? '' ), 'mb' => (string) ( $k['by'] ?? 'salt' ) );
-			if ( ! empty( $k['r']['w'] ) && ! empty( $k['r']['k'] ) ) {
-				$e['r'] = array( 'w' => (string) $k['r']['w'], 'k' => $k['r']['k'] ); // la frase di recupero del sito viaggia con la copia
-			}
-			if ( null !== $pk && isset( $l['deks'][ (int) $id ] ) ) {
-				$e['p'] = FileCrypt::wrap_key( $l['deks'][ (int) $id ], $pk );
+			foreach ( array( 'r', 'l' ) as $name ) {
+				if ( ! empty( $k[ $name ]['w'] ) && ! empty( $k[ $name ]['k'] ) ) {
+					$e[ $name ] = array( 'w' => (string) $k[ $name ]['w'], 'k' => $k[ $name ]['k'] );
+				}
 			}
 			$out['keys'][ (int) $id ] = $e;
 		}
 		return $out;
 	}
 
-	/** La copia ha una frase segreta? */
-	public static function bundle_has_phrase( array $b ): bool {
-		return ! empty( $b['kdf'] ) && is_array( $b['kdf'] );
-	}
-
 	/**
 	 * Prima di un ripristino: ottiene le chiavi dei dati della copia (da questo sito, dalla chiave principale o dalla frase) e le aggiunge a quelle del
 	 * sito. Non cambia l'identificativo del sito: lo si adotta dopo, a ripristino riuscito, con {@see adopt_site()}.
 	 *
-	 * @param array $b copia di `chiavi.json`
+	 * @param array  $b      copia di `chiavi.json`
+	 * @param string $phrase la frase (o il codice di licenza) che aveva la copia, se serve
 	 * @return int[] identificativi delle chiavi della copia
 	 * @throws \InvalidArgumentException
 	 */
@@ -492,16 +590,18 @@ final class FileKey {
 		if ( 1 !== (int) ( $b['v'] ?? 0 ) || empty( $b['keys'] ) || ! is_array( $b['keys'] ) || 1 !== preg_match( '/^[0-9a-f]{16}$/', (string) ( $b['site'] ?? '' ) ) ) {
 			throw new \InvalidArgumentException( Texts::t( 'Le chiavi contenute nella copia non sono valide.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
+		$phrase  = trim( $phrase );
 		$l       = self::load();
 		$masters = self::masters();
-		$pk      = null;
 		$got     = array();
-		$no_phrase = false;
+		$via     = array();
+		$no_ph   = false;
 		foreach ( $b['keys'] as $id => $k ) {
 			$id = (int) $id;
 			if ( isset( $l['deks'][ $id ] ) ) {
 				continue; // già nota a questo sito
 			}
+			$k   = is_array( $k ) ? $k : array();
 			$dek = null;
 			foreach ( $masters as $mk ) {
 				$d = FileCrypt::unwrap_key( (string) ( $k['m'] ?? '' ), $mk );
@@ -510,44 +610,44 @@ final class FileKey {
 					break;
 				}
 			}
-			if ( null === $dek && ! empty( $k['p'] ) && self::bundle_has_phrase( $b ) ) {
+			if ( null === $dek ) {
+				if ( empty( $k['r']['w'] ) && empty( $k['l']['w'] ) ) {
+					throw new \InvalidArgumentException( Texts::t( 'La copia è cifrata con la chiave di un altro sito e non contiene una frase per riaprirla: qui non si può ripristinare.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				}
 				if ( '' === $phrase ) {
-					$no_phrase = true;
+					$no_ph = true;
 					continue;
 				}
-				if ( null === $pk ) {
-					try {
-						$pk = FileCrypt::kdf_derive( $phrase, (array) $b['kdf'] ); // legge dalla copia quale metodo si è usato
-					} catch ( FileCryptError $e ) {
-						throw new \InvalidArgumentException( Texts::t( 'La frase segreta non si può elaborare su questo server (manca la memoria o la libreria): il ripristino qui non è possibile.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
-					}
+				$v   = null;
+				$dek = self::open_by_phrase( $k, $id, $phrase, $v );
+				if ( null === $dek ) {
+					throw new \InvalidArgumentException( Texts::t( 'La frase non è quella giusta: nessun dato è stato cambiato.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 				}
-				$d = FileCrypt::unwrap_key( (string) $k['p'], $pk );
-				if ( null === $d || FileCrypt::key_id( $d ) !== $id ) {
-					throw new \InvalidArgumentException( Texts::t( 'La frase segreta non è quella giusta: nessun dato è stato cambiato.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
-				}
-				$dek = $d;
+				$via[ $id ] = $v;
 			}
-			if ( null === $dek && ! $no_phrase ) {
-				throw new \InvalidArgumentException( Texts::t( 'La copia è cifrata con la chiave di un altro sito e non contiene una frase segreta: qui non si può ripristinare.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
-			}
-			if ( null !== $dek ) {
-				$got[ $id ] = $dek;
-			}
+			$got[ $id ] = $dek;
 		}
-		if ( $no_phrase ) {
-			throw new \InvalidArgumentException( Texts::t( 'Questa copia è protetta da una frase segreta: scrivila nel campo «Frase segreta della copia» e riprova.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		if ( $no_ph ) {
+			throw new \InvalidArgumentException( Texts::t( 'Scrivi la frase: se non l\'hai cambiata, è il codice di licenza (o, nel plugin gratuito, la data e ora di attivazione) che avevi quando hai fatto la copia.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( $got ) {
 			$o    = self::option();
 			$pref = self::source();
+			$had  = (bool) $o['keys'];
 			foreach ( $got as $id => $dek ) {
-				$o['keys'][ $id ] = array( 'w' => FileCrypt::wrap_key( $dek, $masters[ $pref ] ), 'by' => $pref, 'at' => time(), 'p' => self::proof( $dek, $id ) );
-				$r                = $b['keys'][ $id ]['r'] ?? null;
-				if ( is_array( $r ) && ! empty( $r['w'] ) && ! empty( $r['k'] ) && is_array( $r['k'] ) ) {
-					$o['keys'][ $id ]['r'] = array( 'w' => (string) $r['w'], 'k' => $r['k'] );
+				$entry = array( 'w' => FileCrypt::wrap_key( $dek, $masters[ $pref ] ), 'by' => $pref, 'at' => time(), 'p' => self::proof( $dek, $id ) );
+				// Una frase scelta dall'amministratore (e riconosciuta dalla frase scritta) si porta con la chiave; altrimenti la chiave prende la frase automatica
+				// di questo sito e la licenza di questo sito (se ne occupa load()).
+				$r = $b['keys'][ $id ]['r'] ?? null;
+				if ( 'custom' === ( $b['pm'] ?? '' ) && 'r' === ( $via[ $id ] ?? '' ) && ( ! $had || 'custom' === $o['pm'] ) && is_array( $r ) && ! empty( $r['w'] ) && ! empty( $r['k'] ) && is_array( $r['k'] ) ) {
+					$entry['r'] = array( 'w' => (string) $r['w'], 'k' => $r['k'] );
+					if ( ! $had ) {
+						$o['pm'] = 'custom';
+					}
 				}
+				$o['keys'][ $id ] = $entry;
 			}
+			$o['lic'] = 'x'; // segnala a load() di avvolgere le chiavi con la licenza di questo sito
 			if ( 'ok' !== $l['state'] ) {
 				$cur          = (int) ( $b['current'] ?? 0 );
 				$o['current'] = isset( $got[ $cur ] ) ? $cur : (int) array_key_first( $got );

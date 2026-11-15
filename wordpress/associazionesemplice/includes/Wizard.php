@@ -76,6 +76,12 @@ final class Wizard {
 			throw new \InvalidArgumentException( 'Prima di continuare conferma i due mesi: l\'inizio dell\'anno sociale e quello dell\'anno fiscale.' );
 		}
 
+		// Frase per riaprire i documenti cifrati: facoltativa, se non si scrive nulla resta quella automatica
+		if ( isset( $p['file_phrase'] ) && '' !== (string) $p['file_phrase'] ) {
+			FileKey::set_custom_phrase( (string) $p['file_phrase'], (string) ( $p['file_phrase2'] ?? '' ) );
+			$done[] = 'Frase per riaprire i documenti cambiata: conservala fuori dal sito.';
+		}
+
 		// 1. Ente (email e telefono della segreteria obbligatori: se mancano dal modulo valgono vuoti e la procedura non si completa)
 		$p += array( 'association_name' => '', 'entity_form' => '', 'tax_code' => '', 'legal_address' => '', 'legal_zip' => '', 'legal_city' => '', 'legal_province' => '', 'vat_number' => '', 'runts_number' => '', 'pec' => '', 'secretary_email' => '', 'secretary_phone' => '' ); // dati obbligatori dell'ente (vedi EntityRules): se mancano dal modulo valgono vuoti
 		$vals = EntityData::values( $p, false ); // nome, tipo, codice fiscale, sede, partita IVA: stesse regole della scheda «Dati e fiscalità»

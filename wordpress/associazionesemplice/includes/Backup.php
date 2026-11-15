@@ -109,13 +109,12 @@ final class Backup {
 
 	/**
 	 * Crea la copia e ne restituisce il percorso (file temporaneo o, con $to, il file indicato).
-	 * I file riservati restano cifrati nella copia. Le loro chiavi vanno in `chiavi.json`, avvolte con la chiave principale di questo sito e, se c'è
-	 * una frase segreta, anche con la chiave ricavata dalla frase (così la copia si ripristina anche su un altro sito).
+	 * I file riservati restano cifrati nella copia. Le loro chiavi vanno in `chiavi.json`, avvolte con la chiave principale di questo sito, con la frase
+	 * in uso e con il codice di licenza (se c'è): così la copia si ripristina anche su un altro sito.
 	 *
-	 * @param string|null $phrase frase segreta scelta da chi scarica (null = la copia si ripristina solo su questo sito)
 	 * @throws \RuntimeException
 	 */
-	public static function export( bool $with_files = false, ?string $to = null, ?string $phrase = null ): string {
+	public static function export( bool $with_files = false, ?string $to = null ): string {
 		if ( ! class_exists( '\ZipArchive' ) ) {
 			throw new \RuntimeException( 'Questo server non può creare file ZIP (manca l\'estensione zip di PHP).' );
 		}
@@ -173,16 +172,7 @@ final class Backup {
 			}
 		}
 		$docs = self::documents( $zip ); // documenti definitivi di un'estensione (PDF già emessi): vanno sempre nella copia, con l'indice delle impronte
-		try {
-			$bundle = FileKey::bundle( $phrase );
-		} catch ( FileCryptError $e ) {
-			$zip->close();
-			wp_delete_file( $path );
-			foreach ( $tmp as $f ) {
-				wp_delete_file( $f );
-			}
-			throw new \RuntimeException( Texts::t( 'La frase segreta non si può elaborare su questo server (manca la memoria o la libreria di cifratura): la copia non è stata creata.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
-		}
+		$bundle = FileKey::bundle();
 		if ( $bundle ) {
 			$zip->addFromString( 'chiavi.json', (string) wp_json_encode( $bundle, JSON_PRETTY_PRINT ) );
 		}
@@ -193,12 +183,12 @@ final class Backup {
 				array(
 					'plugin' => 'associazionesemplice', 'version' => ASEM_VERSION, 'db_version' => (string) get_option( Install::DB_VERSION_OPTION, Install::DB_VERSION ), 'created_at' => Db::now(),
 					'site' => home_url(), 'prefix' => $db->prefix, 'tables' => $counts, 'attachments' => count( $files ), 'documents' => $docs,
-					'encrypted' => (bool) $bundle, 'phrase' => (bool) $bundle && FileKey::bundle_has_phrase( $bundle ),
+					'encrypted' => (bool) $bundle,
 				),
 				JSON_PRETTY_PRINT
 			)
 		);
-		$zip->addFromString( 'LEGGIMI.txt', "Copia di sicurezza di Associazione Semplice.\nContiene una tabella per file (tabelle/*.jsonl, una riga JSON per record), le impostazioni (impostazioni.json) e, se scelto, gli allegati. La cartella documenti/ contiene i PDF definitivi già emessi (ad esempio le ricevute) con l'indice delle loro impronte SHA-256 (documenti/indice.json).\nSi ripristina da Strumenti → Copia di sicurezza.\nI documenti riservati (certificati, allegati, scansioni) sono cifrati. Le loro chiavi sono in chiavi.json, protette dalla frase segreta scelta al momento del download: senza quella frase (o senza la chiave del sito di origine) i documenti di questa copia non si possono più aprire.\nLe chiavi segrete dei pagamenti online non sono incluse.\n" );
+		$zip->addFromString( 'LEGGIMI.txt', "Copia di sicurezza di Associazione Semplice.\nContiene una tabella per file (tabelle/*.jsonl, una riga JSON per record), le impostazioni (impostazioni.json) e, se scelto, gli allegati. La cartella documenti/ contiene i PDF definitivi già emessi (ad esempio le ricevute) con l'indice delle loro impronte SHA-256 (documenti/indice.json).\nSi ripristina da Strumenti → Copia di sicurezza.\nI documenti riservati (certificati, allegati, scansioni) sono cifrati. Le loro chiavi sono in chiavi.json, avvolte con la frase in uso sul sito (il codice di licenza, la data e ora di attivazione o la frase scelta) e con il codice di licenza: senza una di queste frasi (o senza la chiave del sito di origine) i documenti di questa copia non si possono più aprire.\nLe chiavi segrete dei pagamenti online non sono incluse.\n" );
 		$ok = $zip->close();
 		foreach ( $tmp as $f ) {
 			wp_delete_file( $f ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
@@ -299,7 +289,7 @@ final class Backup {
 	/**
 	 * Sostituisce i dati del plugin con quelli della copia. Prima salva una copia di sicurezza sul sito; il ripristino è tutto o niente.
 	 *
-	 * @param string $phrase frase segreta della copia (serve solo se la copia ne ha una e le sue chiavi non sono già note a questo sito)
+	 * @param string $phrase la frase della copia (il codice di licenza o la data di attivazione di allora, o la frase scelta): serve solo se le chiavi della copia non sono già note a questo sito
 	 * @return array tables, rows, files, bad (file non rimessi perché l'impronta non coincide), safety (nome del file di sicurezza)
 	 * @throws \InvalidArgumentException|\RuntimeException
 	 */
@@ -486,11 +476,10 @@ final class Backup {
 	}
 
 	/**
-	 * Dove mandare chi vuole una copia: il download diretto, oppure la pagina Copia di sicurezza se la copia chiede una frase segreta (la frase si scrive
-	 * in un modulo e non può viaggiare in un indirizzo).
+	 * Dove mandare chi vuole una copia: il download diretto.
 	 */
 	public static function download_link( bool $with_files ): string {
-		return FileKey::has_keys() ? Admin\Ui::url( 'asem-backup' ) . '#asem-copia' : self::download_url( $with_files );
+		return self::download_url( $with_files );
 	}
 
 	public static function saved_url( string $name ): string {
@@ -529,21 +518,8 @@ final class Backup {
 		}
 		check_admin_referer( 'asem_backup' );
 		$with   = isset( $_REQUEST['files'] ) && 1 === absint( $_REQUEST['files'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- nonce controllato sopra con check_admin_referer()
-		$phrase = null;
-		if ( FileKey::has_keys() ) { // ci sono documenti cifrati: la copia ha una frase segreta, scelta qui
-			$p    = Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification -- nonce controllato sopra con check_admin_referer()
-			$back = Admin\Ui::url( 'asem-backup' ) . '#asem-copia';
-			if ( ! isset( $p['phrase'] ) ) {
-				Admin\Ui::redirect( $back, '', Texts::t( 'Per scaricare la copia scegli prima la frase segreta: serve a riaprire i documenti cifrati.' ) );
-			}
-			$err = FileKey::phrase_error( (string) $p['phrase'], (string) ( $p['phrase2'] ?? '' ) );
-			if ( '' !== $err ) {
-				Admin\Ui::redirect( $back, '', $err );
-			}
-			$phrase = (string) $p['phrase'];
-		}
 		try {
-			$path = self::export( $with, null, $phrase );
+			$path = self::export( $with );
 		} catch ( \RuntimeException $e ) {
 			wp_die( esc_html( $e->getMessage() ), 500 );
 		}

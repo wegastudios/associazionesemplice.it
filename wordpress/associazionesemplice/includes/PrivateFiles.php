@@ -99,14 +99,6 @@ final class PrivateFiles {
 		return Texts::t( 'Il file non è stato salvato: la chiave di cifratura di questo sito non coincide con quella usata finora. Apri Impostazioni → Copia di sicurezza → «Cifratura dei file riservati» per sistemarla.' );
 	}
 
-	/** Frase per chi prova a salvare prima di aver scelto la frase di recupero. */
-	public static function setup_text(): string {
-		if ( ! current_user_can( Plugin::CAP ) ) {
-			return Texts::t( 'Il file non è stato salvato: la cifratura dei file riservati non è ancora attiva. Chiedi a chi amministra il sito di attivarla in Impostazioni → Copia di sicurezza.' );
-		}
-		return Texts::t( 'Il file non è stato salvato: prima va scelta la frase di recupero. Apri Impostazioni → Copia di sicurezza → «Cifratura dei file riservati» e scegline una.' );
-	}
-
 	/**
 	 * Cifra un file (di norma quello appena caricato) e lo mette nella cartella riservata con il nome indicato: scrive un file temporaneo e lo rinomina,
 	 * quindi il file in chiaro non resta mai sul disco. Con la libreria di cifratura assente non fa nulla e dà null: chi chiama decide cosa fare.
@@ -119,9 +111,6 @@ final class PrivateFiles {
 		$mode = FileKey::mode();
 		if ( 'blocked' === $mode ) {
 			throw new \InvalidArgumentException( self::blocked_text() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
-		}
-		if ( 'setup' === $mode ) {
-			throw new \InvalidArgumentException( self::setup_text() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		if ( 'encrypt' !== $mode ) {
 			if ( $strict ) {
@@ -239,7 +228,7 @@ final class PrivateFiles {
 			case FileCryptError::NO_SODIUM:
 				return Texts::t( 'questo server non ha la libreria di cifratura (sodium).' );
 			case FileCryptError::NO_KEY:
-				return Texts::t( 'la chiave di cifratura usata per salvarlo non è disponibile su questo sito (codici di sicurezza di wp-config.php o costante ASEM_ENC_KEY cambiati, o database copiato da un altro sito). Rimetti quelli di prima oppure ripristina una copia di sicurezza con la sua frase segreta.' );
+				return Texts::t( 'la chiave di cifratura usata per salvarlo non è disponibile su questo sito (codici di sicurezza di wp-config.php o costante ASEM_ENC_KEY cambiati, o database copiato da un altro sito). Rimetti quelli di prima oppure ripristina una copia di sicurezza con la sua frase.' );
 			case FileCryptError::AUTH:
 				return Texts::t( 'la chiave di questo sito non coincide con quella usata per salvarlo, oppure il file è stato modificato. Il sito non lo rifà in silenzio: rimetti la chiave di prima o ripristina una copia di sicurezza.' );
 			case FileCryptError::HASH:

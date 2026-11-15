@@ -31,6 +31,7 @@ final class TechActions {
 		'asem_enc_newkey'    => 'enc_newkey',
 		'asem_enc_setrecovery'    => 'enc_setrecovery',
 		'asem_enc_recoverphrase'  => 'enc_recoverphrase',
+		'asem_enc_autophrase'     => 'enc_autophrase',
 	);
 
 	public static function register(): void {
@@ -110,9 +111,6 @@ final class TechActions {
 	/** «Cifra i file già caricati»: parte il primo lotto e si programmano gli altri. */
 	public static function enc_start( array $p ): array {
 		$back = Ui::url( 'asem-backup' ) . '#asem-cifratura';
-		if ( 'setup' === \AssociazioneSemplice\FileKey::mode() ) {
-			throw new \InvalidArgumentException( \AssociazioneSemplice\PrivateFiles::setup_text() ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
-		}
 		if ( 'encrypt' !== \AssociazioneSemplice\FileKey::mode() ) {
 			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'La cifratura non è disponibile: manca la libreria sodium oppure la chiave non si apre su questo sito.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
@@ -145,14 +143,21 @@ final class TechActions {
 		}
 		\AssociazioneSemplice\FileKey::start_new();
 		Audit::log( 'file_crypt.new_key', 'folder', 0 );
-		return array( Ui::url( 'asem-backup' ) . '#asem-cifratura', \AssociazioneSemplice\Texts::t( 'Creata una chiave nuova. Ora scegli la frase di recupero: da quel momento i nuovi file si salvano cifrati con questa chiave.' ) );
+		return array( Ui::url( 'asem-backup' ) . '#asem-cifratura', \AssociazioneSemplice\Texts::t( 'Creata una chiave nuova: da ora i nuovi file si salvano cifrati con questa chiave.' ) );
 	}
 
-	/** «Scegli la frase di recupero»: crea la chiave (se manca) o aggiunge la frase a quella che c'è. */
+	/** «Cambia la frase»: da ora la chiave dei dati si apre con la frase scelta. */
 	public static function enc_setrecovery( array $p ): array {
-		\AssociazioneSemplice\FileKey::set_recovery( (string) ( $p['rphrase'] ?? '' ), (string) ( $p['rphrase2'] ?? '' ) );
-		Audit::log( 'file_crypt.recovery_set', 'folder', 0 );
-		return array( Ui::url( 'asem-backup' ) . '#asem-cifratura', \AssociazioneSemplice\Texts::t( 'Frase di recupero scelta. Scrivila su carta e tienila fuori dal sito: serve se i codici di sicurezza cambiano.' ) );
+		\AssociazioneSemplice\FileKey::set_custom_phrase( (string) ( $p['rphrase'] ?? '' ), (string) ( $p['rphrase2'] ?? '' ) );
+		Audit::log( 'file_crypt.phrase_changed', 'folder', 0 );
+		return array( Ui::url( 'asem-backup' ) . '#asem-cifratura', \AssociazioneSemplice\Texts::t( 'Frase cambiata. Conservala fuori dal sito. Fai subito una copia nuova: quelle fatte prima si aprono con la frase di allora.' ) );
+	}
+
+	/** «Torna alla frase automatica». */
+	public static function enc_autophrase( array $p ): array {
+		\AssociazioneSemplice\FileKey::use_auto_phrase();
+		Audit::log( 'file_crypt.phrase_auto', 'folder', 0 );
+		return array( Ui::url( 'asem-backup' ) . '#asem-cifratura', \AssociazioneSemplice\Texts::t( 'Tornata alla frase automatica. Fai subito una copia nuova: quelle fatte prima si aprono con la frase di allora.' ) );
 	}
 
 	/** Chiave che non si apre più: con la frase di recupero si riapre, senza ricifrare i file. */

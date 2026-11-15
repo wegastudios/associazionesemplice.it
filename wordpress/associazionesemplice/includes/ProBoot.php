@@ -105,6 +105,13 @@ final class ProBoot {
 		ProBlockD::register(); // assemblee, bilancio preventivo e rimborsi ai volontari
 		add_filter( 'asem_file_sources', array( Certificates::class, 'file_source' ) ); // file e campi dei certificati medici: si cifrano per primi
 		add_filter( 'asem_file_sources', array( Refunds::class, 'file_source' ) ); // giustificativi dei rimborsi
+		add_filter(
+			'asem_file_license_code', // il codice di licenza è anche la frase che riapre i documenti cifrati
+			function ( $code ) {
+				$key = License::key();
+				return '' !== $key ? $key : $code;
+			}
+		);
 		ProWatch::register(); // controllo di bilancio, spese attribuite ai fondi e inizio dell'anno fiscale (Pro Fiscale)
 		ProBlockE::register(); // SMS, newsletter, Satispay e Klarna
 		DocsPro::register();
