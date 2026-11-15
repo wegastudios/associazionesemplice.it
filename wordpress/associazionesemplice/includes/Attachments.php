@@ -114,16 +114,16 @@ final class Attachments {
 		$ids = array();
 		foreach ( $prepared as $f ) {
 			$stored = AttachmentRules::stored_name( bin2hex( random_bytes( 16 ) ) );
-			$target = self::store_file( $f, $dir, $stored );
-			if ( '' === $target ) {
+			$saved  = self::store_file( $f, $dir, $stored );
+			if ( null === $saved ) {
 				throw new \InvalidArgumentException( 'Impossibile salvare "' . $f['name'] . '".' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
-			chmod( $target, 0640 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod -- file privato dell'ente: lettura solo per il server
+			chmod( $saved['path'], 0640 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod -- file privato dell'ente: lettura solo per il server
 			self::db()->insert(
 				Db::t( 'attachments' ),
 				array(
 					'transaction_id' => $tx_id, 'original_name' => $f['name'], 'stored_name' => $stored, 'mime' => $f['mime'], 'size_bytes' => $f['size'],
-					'sha256' => $f['sha256'], 'uploaded_by' => get_current_user_id() ?: null, 'created_at' => Db::now(),
+					'sha256' => $saved['sha256'], 'enc_ver' => $saved['enc_ver'], 'uploaded_by' => get_current_user_id() ?: null, 'created_at' => Db::now(),
 				)
 			);
 			$id    = (int) self::db()->insert_id;
@@ -150,7 +150,9 @@ final class Attachments {
 	 * @param string $filename nome con cui il browser lo salva
 	 * @param bool   $inline   aprirlo nel browser invece di scaricarlo (solo i tipi che lo permettono)
 	 */
-	public static function stream( string $path, string $ext, string $filename, bool $inline = false ): void {
+	public static function stream( string $path, string $ext, string $filename, bool $inline = false, ?array $meta = null ): void {
+		$meta = (array) $meta; // enc_ver e sha256 (impronta del contenuto in chiaro) della riga, kind (cert, doc, att, photo, refund)
+		$read = PrivateFiles::prepare_read( $path, basename( $path ), $meta['enc_ver'] ?? null, (string) ( $meta['sha256'] ?? '' ), (string) ( $meta['kind'] ?? 'doc' ) );
 		while ( ob_get_level() ) {
 			ob_end_clean();
 		}
@@ -159,9 +161,23 @@ final class Attachments {
 		header( 'X-Content-Type-Options: nosniff' );
 		header( "Content-Security-Policy: default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox" );
 		header( 'Content-Disposition: ' . ( $inline && DocumentRules::is_inline( $ext ) ? 'inline' : 'attachment' ) . '; filename="' . preg_replace( '/[^A-Za-z0-9._-]+/', '_', $filename ) . '"' );
-		header( 'Content-Length: ' . (int) filesize( $path ) );
-		readfile( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile -- lettura in streaming di un file privato
-		exit;
+		header( 'Content-Length: ' . (int) $read['length'] ); // la lunghezza del contenuto in chiaro, non quella del file cifrato
+		PrivateFiles::send_body( $path, basename( $path ), $read['enc'] );
+	}
+
+	/** Intestazioni dell'apertura di un file e invio del contenuto (decifrato se serve): per chi manda un file con le sue intestazioni. */
+	public static function open_file( string $path, array $headers, ?array $meta ): void {
+		$meta = (array) $meta;
+		$read = PrivateFiles::prepare_read( $path, basename( $path ), $meta['enc_ver'] ?? null, (string) ( $meta['sha256'] ?? '' ), (string) ( $meta['kind'] ?? 'doc' ) );
+		while ( ob_get_level() ) {
+			ob_end_clean();
+		}
+		nocache_headers();
+		foreach ( $headers as $h ) {
+			header( $h );
+		}
+		header( 'Content-Length: ' . (int) $read['length'] );
+		PrivateFiles::send_body( $path, basename( $path ), $read['enc'] );
 	}
 
 	/** Tipo reale di un file (letto dal contenuto), '' se il server non sa leggerlo. */
@@ -170,21 +186,41 @@ final class Attachments {
 	}
 
 	/**
-	 * Salva nella cartella privata un file caricato (campo di un modulo) già controllato, con nome casuale e senza estensione.
+	 * Salva nella cartella privata un file caricato (campo di un modulo) già controllato, con nome casuale e senza estensione. Il file si salva cifrato
+	 * (se manca la libreria di cifratura, in chiaro: con $strict, per i dati sanitari, non si salva affatto).
 	 *
-	 * @param array $f name, tmp_name, size, mime
-	 * @return string nome con cui è salvato
+	 * @param array $f      name, tmp_name, size, mime
+	 * @param bool  $strict rifiuta il salvataggio in chiaro
+	 * @return array{stored:string,sha256:string,enc_ver:?int} nome con cui è salvato, impronta SHA-256 del contenuto in chiaro e versione della cifratura (null = in chiaro)
 	 * @throws \InvalidArgumentException
 	 */
-	public static function save_upload( array $f ): string {
+	public static function save_file( array $f, bool $strict = false ): array {
 		$dir    = self::ensure_dir();
 		$stored = AttachmentRules::stored_name( bin2hex( random_bytes( 16 ) ) );
-		$target = self::store_file( $f, $dir, $stored );
-		if ( '' === $target ) {
+		$saved  = self::store_file( $f, $dir, $stored, $strict );
+		if ( null === $saved ) {
 			throw new \InvalidArgumentException( 'Impossibile salvare "' . AttachmentRules::display_name( (string) $f['name'] ) . '".' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
-		chmod( $target, 0640 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod -- file privato dell'ente: lettura solo per il server
-		return $stored;
+		chmod( $saved['path'], 0640 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod -- file privato dell'ente: lettura solo per il server
+		return array( 'stored' => $stored, 'sha256' => $saved['sha256'], 'enc_ver' => $saved['enc_ver'] );
+	}
+
+	/**
+	 * Salva un file nella cartella riservata: cifrato (di norma) direttamente da quello caricato, senza lasciare il chiaro sul disco; in chiaro solo se manca
+	 * la libreria di cifratura.
+	 *
+	 * @return array{path:string,sha256:string,enc_ver:?int}|null null se non è riuscito
+	 */
+	private static function store_file( array $f, string $dir, string $stored, bool $strict = false ): ?array {
+		$enc = PrivateFiles::save_encrypted( (string) $f['tmp_name'], $dir, $stored, $strict );
+		if ( null !== $enc ) {
+			return array( 'path' => $enc['path'], 'sha256' => $enc['sha256'], 'enc_ver' => $enc['enc_ver'] );
+		}
+		$path = self::store_plain( $f, $dir, $stored );
+		if ( '' === $path ) {
+			return null;
+		}
+		return array( 'path' => $path, 'sha256' => (string) hash_file( 'sha256', $path ), 'enc_ver' => null );
 	}
 
 	/**
@@ -193,7 +229,7 @@ final class Attachments {
 	 *
 	 * @return string percorso del file salvato, '' se non è riuscito
 	 */
-	private static function store_file( array $f, string $dir, string $stored ): string {
+	private static function store_plain( array $f, string $dir, string $stored ): string {
 		if ( ! function_exists( 'wp_handle_upload' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 		}
@@ -344,17 +380,16 @@ final class Attachments {
 		if ( ! $a || $a['removed_at'] || '' === basename( $path ) || ! is_readable( $path ) ) {
 			wp_die( 'Allegato non trovato.', 404 );
 		}
-		while ( ob_get_level() ) {
-			ob_end_clean();
-		}
-		nocache_headers();
 		$name = AttachmentRules::display_name( $a['original_name'] );
-		header( 'Content-Type: ' . $a['mime'] );
-		header( 'X-Content-Type-Options: nosniff' );
-		header( "Content-Security-Policy: default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox" );
-		header( 'Content-Disposition: inline; filename="' . preg_replace( '/[^A-Za-z0-9._-]+/', '_', $name ) . '"; filename*=UTF-8\'\'' . rawurlencode( $name ) );
-		header( 'Content-Length: ' . (int) filesize( $path ) );
-		readfile( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile -- lettura/scrittura in streaming di file grandi
-		exit;
+		self::open_file(
+			$path,
+			array(
+				'Content-Type: ' . $a['mime'],
+				'X-Content-Type-Options: nosniff',
+				"Content-Security-Policy: default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox",
+				'Content-Disposition: inline; filename="' . preg_replace( '/[^A-Za-z0-9._-]+/', '_', $name ) . '"; filename*=UTF-8\'\'' . rawurlencode( $name ),
+			),
+			array( 'enc_ver' => $a['enc_ver'] ?? null, 'sha256' => (string) $a['sha256'], 'kind' => 'att' )
+		);
 	}
 }

@@ -49,7 +49,33 @@ final class Certificates {
 		}
 		Audit::log( 'medical.file_opened', 'medical_cert', $id ); // solo l'azione: niente nome, tipo o date
 		$ext = AttachmentRules::extension( (string) $c['file_name'] );
-		Attachments::stream( $path, $ext, 'certificato-' . (int) $id . ( '' !== $ext ? '.' . $ext : '' ) ); // il nome originale può contenere il nome della persona: non lo si rimanda
+		Attachments::stream( $path, $ext, 'certificato-' . (int) $id . ( '' !== $ext ? '.' . $ext : '' ), false, array( 'enc_ver' => $c['enc_ver'] ?? null, 'sha256' => (string) ( $c['file_sha256'] ?? '' ), 'kind' => 'cert' ) ); // il nome originale può contenere il nome della persona: non lo si rimanda
+	}
+
+	// ---------- Campi cifrati ----------
+
+	/** Nome della tabella per la cifratura dei campi (senza prefisso). */
+	const TABLE = 'medical_certs';
+
+	/** Voce per l'elenco dei file da cifrare ({@see PrivateFiles::sources()}): i certificati vengono per primi, con medico e nome del file. */
+	public static function file_source( array $sources ): array {
+		$sources[] = array( 'key' => 'medical_certs', 'table' => self::TABLE, 'stored' => 'file_stored', 'sha' => 'file_sha256', 'enc' => 'enc_ver', 'prio' => 10, 'fields' => array( 'doctor', 'file_name' ) );
+		return $sources;
+	}
+
+	/** Apre i campi cifrati di una riga (medico e nome del file). Se la chiave non c'è o non coincide i campi restano vuoti e la riga porta `enc_error`. */
+	public static function open_row( array $c ): array {
+		foreach ( array( 'doctor', 'file_name' ) as $col ) {
+			if ( isset( $c[ $col ] ) && FileCrypt::is_field( (string) $c[ $col ] ) ) {
+				try {
+					$c[ $col ] = PrivateFiles::field_decrypt( self::TABLE, $col, (int) $c['id'], (string) $c[ $col ] );
+				} catch ( FileCryptError $e ) {
+					$c[ $col ]     = '';
+					$c['enc_error'] = $e->reason;
+				}
+			}
+		}
+		return $c;
 	}
 
 	// ---------- Certificati ----------
@@ -59,17 +85,26 @@ final class Certificates {
 		if ( ! MemberQuery::find( $person_id ) ) {
 			throw new \InvalidArgumentException( 'Il certificato si registra per un socio attivo.' );
 		}
-		$d = CertificateRules::clean( $in );
+		$d      = CertificateRules::clean( $in );
+		$doctor = (string) $d['doctor'];
+		unset( $d['doctor'] ); // medico e nome del file si scrivono cifrati, dopo aver avuto il numero della riga
 		if ( $file ) {
-			$d['file_name']   = $file['name'];
-			$d['file_stored'] = Attachments::save_upload( $file );
+			$saved            = Attachments::save_file( $file, true ); // un certificato non si salva mai in chiaro: senza cifratura il caricamento è rifiutato
+			$d['file_stored'] = $saved['stored'];
+			$d['file_sha256'] = $saved['sha256'];
+			$d['enc_ver']     = $saved['enc_ver'];
 			$d['file_size']   = $file['size'];
 		}
 		if ( ! self::db()->insert( Db::t( 'medical_certs' ), $d + array( 'person_id' => $person_id, 'created_at' => Db::now() ) ) ) {
 			Attachments::delete_stored( (string) ( $d['file_stored'] ?? '' ) ); // niente file orfano nella cartella privata
 			throw new \InvalidArgumentException( 'Impossibile salvare il certificato (errore del database).' );
 		}
-		$id = (int) self::db()->insert_id;
+		$id  = (int) self::db()->insert_id;
+		$upd = array( 'doctor' => '' === $doctor ? null : PrivateFiles::field_encrypt( self::TABLE, 'doctor', $id, $doctor ) );
+		if ( $file ) {
+			$upd['file_name'] = PrivateFiles::field_encrypt( self::TABLE, 'file_name', $id, (string) $file['name'] );
+		}
+		self::db()->update( Db::t( 'medical_certs' ), $upd, array( 'id' => $id ) );
 		self::flush_counts();
 		Audit::log( 'medical.added', 'medical_cert', $id ); // solo l'azione
 		return $id;
@@ -89,12 +124,12 @@ final class Certificates {
 
 	public static function get( int $id ): ?array {
 		$r = self::db()->get_row( self::db()->prepare( 'SELECT * FROM ' . Db::t( 'medical_certs' ) . ' WHERE id = %d AND deleted_at IS NULL', $id ), ARRAY_A );
-		return $r ?: null;
+		return $r ? self::open_row( $r ) : null;
 	}
 
 	/** Certificati di una persona, dal più recente. @return array[] */
 	public static function for_person( int $person_id ): array {
-		return self::db()->get_results( self::db()->prepare( 'SELECT * FROM ' . Db::t( 'medical_certs' ) . ' WHERE person_id = %d AND deleted_at IS NULL ORDER BY expires_on DESC, id DESC', $person_id ), ARRAY_A ) ?: array();
+		return array_map( array( __CLASS__, 'open_row' ), self::db()->get_results( self::db()->prepare( 'SELECT * FROM ' . Db::t( 'medical_certs' ) . ' WHERE person_id = %d AND deleted_at IS NULL ORDER BY expires_on DESC, id DESC', $person_id ), ARRAY_A ) ?: array() );
 	}
 
 	/** Certificati di più persone. @return array<int,array[]> person_id => certificati */
@@ -107,7 +142,7 @@ final class Certificates {
 		$in  = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
 		$out = array();
 		foreach ( $db->get_results( $db->prepare( 'SELECT * FROM ' . Db::t( 'medical_certs' ) . " WHERE deleted_at IS NULL AND person_id IN ($in) ORDER BY expires_on DESC, id DESC", $ids ), ARRAY_A ) ?: array() as $c ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared -- i segnaposto sono %d, uno per id
-			$out[ (int) $c['person_id'] ][] = $c;
+			$out[ (int) $c['person_id'] ][] = self::open_row( $c );
 		}
 		return $out;
 	}

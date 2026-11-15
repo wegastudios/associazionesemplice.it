@@ -35,7 +35,7 @@ final class Inventory {
 		}
 		$ext  = AttachmentRules::extension( (string) $item['file_name'] );
 		$name = DocumentRules::download_name( (string) $item['name'], (string) $item['file_name'] );
-		Attachments::stream( $path, $ext, $name, true );
+		Attachments::stream( $path, $ext, $name, true, array( 'enc_ver' => $item['enc_ver'] ?? null, 'sha256' => (string) ( $item['file_sha256'] ?? '' ), 'kind' => 'photo' ) );
 	}
 
 	// ---------- Beni ----------
@@ -88,8 +88,11 @@ final class Inventory {
 			'notes'        => mb_substr( trim( sanitize_textarea_field( (string) ( $in['notes'] ?? '' ) ) ), 0, 3000 ),
 		);
 		if ( $file ) {
+			$saved            = Attachments::save_file( $file );
 			$d['file_name']   = $file['name'];
-			$d['file_stored'] = Attachments::save_upload( $file );
+			$d['file_stored'] = $saved['stored'];
+			$d['file_sha256'] = $saved['sha256'];
+			$d['enc_ver']     = $saved['enc_ver'];
 		}
 		$db = self::db();
 		if ( $id ) {

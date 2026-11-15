@@ -101,8 +101,11 @@ final class Refunds {
 			'updated_at'   => Db::now(),
 		);
 		if ( $file ) {
+			$saved              = Attachments::save_file( $file );
 			$row['file_name']   = $file['name'];
-			$row['file_stored'] = Attachments::save_upload( $file );
+			$row['file_stored'] = $saved['stored'];
+			$row['file_sha256'] = $saved['sha256'];
+			$row['enc_ver']     = $saved['enc_ver'];
 		}
 		if ( ! self::db()->insert( Db::t( 'refunds' ), $row ) ) {
 			throw new \InvalidArgumentException( 'Impossibile salvare la richiesta (errore del database).' );
@@ -301,7 +304,13 @@ final class Refunds {
 			wp_die( 'File non trovato.', 404 );
 		}
 		$ext = AttachmentRules::extension( (string) $r['file_name'] );
-		Attachments::stream( $path, $ext, 'rimborso-' . (int) $id . ( '' !== $ext ? '.' . $ext : '' ) );
+		Attachments::stream( $path, $ext, 'rimborso-' . (int) $id . ( '' !== $ext ? '.' . $ext : '' ), false, array( 'enc_ver' => $r['enc_ver'] ?? null, 'sha256' => (string) ( $r['file_sha256'] ?? '' ), 'kind' => 'refund' ) );
+	}
+
+	/** Voce per l'elenco dei file da cifrare ({@see PrivateFiles::sources()}): i giustificativi dei rimborsi. */
+	public static function file_source( array $sources ): array {
+		$sources[] = array( 'key' => 'refunds', 'table' => 'refunds', 'stored' => 'file_stored', 'sha' => 'file_sha256', 'enc' => 'enc_ver', 'prio' => 25, 'fields' => array() );
+		return $sources;
 	}
 
 	// ---------- Esportazione e privacy ----------
@@ -336,6 +345,6 @@ final class Refunds {
 				Attachments::delete_stored( (string) $r['file_stored'] );
 			}
 		}
-		$db->query( $db->prepare( 'UPDATE ' . Db::t( 'refunds' ) . " SET file_name = NULL, file_stored = NULL, description = 'Dato cancellato' WHERE person_id = %d", $person_id ) );
+		$db->query( $db->prepare( 'UPDATE ' . Db::t( 'refunds' ) . " SET file_name = NULL, file_stored = NULL, file_sha256 = NULL, enc_ver = NULL, description = 'Dato cancellato' WHERE person_id = %d", $person_id ) );
 	}
 }

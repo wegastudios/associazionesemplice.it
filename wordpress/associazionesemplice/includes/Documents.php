@@ -84,8 +84,11 @@ final class Documents {
 				throw new \InvalidArgumentException( 'Documento non trovato.' );
 			}
 			if ( $file ) {
+				$saved            = Attachments::save_file( $file );
 				$d['file_name']   = $file['name'];
-				$d['file_stored'] = Attachments::save_upload( $file );
+				$d['file_stored'] = $saved['stored'];
+				$d['file_sha256'] = $saved['sha256'];
+				$d['enc_ver']     = $saved['enc_ver'];
 				$d['file_size']   = $file['size'];
 			}
 			$db->update( Db::t( 'documents' ), $d + array( 'updated_at' => Db::now() ), array( 'id' => $id ) );
@@ -98,8 +101,11 @@ final class Documents {
 		if ( ! $file ) {
 			throw new \InvalidArgumentException( 'Scegli il file da caricare.' );
 		}
+		$saved            = Attachments::save_file( $file );
 		$d['file_name']   = $file['name'];
-		$d['file_stored'] = Attachments::save_upload( $file );
+		$d['file_stored'] = $saved['stored'];
+		$d['file_sha256'] = $saved['sha256'];
+		$d['enc_ver']     = $saved['enc_ver'];
 		$d['file_size']   = $file['size'];
 		if ( ! $db->insert( Db::t( 'documents' ), $d + array( 'uploaded_by' => $user_id, 'created_at' => Db::now(), 'updated_at' => Db::now() ) ) ) {
 			throw new \InvalidArgumentException( 'Impossibile salvare il documento (errore del database).' );
@@ -201,16 +207,15 @@ final class Documents {
 		$ext  = AttachmentRules::extension( (string) $doc['file_name'] );
 		$type = DocumentRules::SERVE_AS[ $ext ] ?? 'application/octet-stream';
 		$name = DocumentRules::download_name( (string) $doc['title'], (string) $doc['file_name'] );
-		while ( ob_get_level() ) {
-			ob_end_clean();
-		}
-		nocache_headers();
-		header( 'Content-Type: ' . $type );
-		header( 'X-Content-Type-Options: nosniff' );
-		header( "Content-Security-Policy: default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox" );
-		header( 'Content-Disposition: ' . ( DocumentRules::is_inline( $ext ) ? 'inline' : 'attachment' ) . '; filename="' . preg_replace( '/[^A-Za-z0-9._-]+/', '_', $name ) . '"; filename*=UTF-8\'\'' . rawurlencode( $name ) );
-		header( 'Content-Length: ' . (int) filesize( $path ) );
-		readfile( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile -- lettura in streaming di un file privato
-		exit;
+		Attachments::open_file(
+			$path,
+			array(
+				'Content-Type: ' . $type,
+				'X-Content-Type-Options: nosniff',
+				"Content-Security-Policy: default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox",
+				'Content-Disposition: ' . ( DocumentRules::is_inline( $ext ) ? 'inline' : 'attachment' ) . '; filename="' . preg_replace( '/[^A-Za-z0-9._-]+/', '_', $name ) . '"; filename*=UTF-8\'\'' . rawurlencode( $name ),
+			),
+			array( 'enc_ver' => $doc['enc_ver'] ?? null, 'sha256' => (string) ( $doc['file_sha256'] ?? '' ), 'kind' => 'doc' )
+		);
 	}
 }

@@ -103,6 +103,8 @@ final class ProBoot {
 		LevelVoting::register(); // diritto di voto per livello di socio
 		ProBlockC::register(); // certificati medici e affiliazioni agli enti
 		ProBlockD::register(); // assemblee, bilancio preventivo e rimborsi ai volontari
+		add_filter( 'asem_file_sources', array( Certificates::class, 'file_source' ) ); // file e campi dei certificati medici: si cifrano per primi
+		add_filter( 'asem_file_sources', array( Refunds::class, 'file_source' ) ); // giustificativi dei rimborsi
 		ProWatch::register(); // controllo di bilancio, spese attribuite ai fondi e inizio dell'anno fiscale (Pro Fiscale)
 		ProBlockE::register(); // SMS, newsletter, Satispay e Klarna
 		DocsPro::register();
