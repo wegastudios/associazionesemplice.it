@@ -179,7 +179,7 @@ function reviewPayment(object $test, string $provider = 'stripe'): string
 {
     saveStripe($test);
     $id = (string) Illuminate\Support\Str::uuid7();
-    $test->orgContext()->run($test->org->id, function () use ($test, $id, $provider): void {
+    (fn () => $this->orgContext())->call($test)->run($test->org->id, function () use ($test, $id, $provider): void {
         DB::table('app.online_payments')->insert([
             'org_id' => $test->org->id, 'id' => $id, 'person_id' => $test->anna->id, 'provider' => $provider, 'status' => 'review', 'amount_cents' => 2500, 'paid_cents' => 2500,
             'items' => '[]', 'provider_ref' => $provider === 'stripe' ? 'cs_test_9' : 'ORD-9', 'error' => 'Quota associativa: Il socio ha già la tessera.',
