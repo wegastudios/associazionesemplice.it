@@ -138,10 +138,10 @@ Gli **altri file già caricati** (documenti, allegati, giustificativi, foto) si 
 
 L'amministratore vede questi avvisi (in **Bacheca**, **Copia di sicurezza** e **Certificati**):
 
-- **«La cifratura dei certificati medici è partita.»**: si fa da sola, non serve premere nulla.
-- **«Cifratura dei certificati medici in corso: restano …»** (con il numero).
+- **«La cifratura dei certificati medici è partita.»**: «Si fa da sola, mentre usi il programma: non serve premere nulla.»
+- **«Cifratura dei certificati medici in corso: restano …»** (con il numero): «Il lavoro prosegue da solo, un lotto al minuto.»
 - **«La cifratura dei certificati medici è finita.»**: tutti i certificati già caricati sono ora cifrati sul disco.
-- **Finita con residui**: il programma dice quanti non si sono potuti cifrare e quanti non sono stati trovati sul disco. I certificati non cifrati sono rimasti dove stavano, in chiaro: l'elenco è in **Impostazioni → Copia di sicurezza → «Cifratura dei file riservati»**, dove c'è **«Riprova»**.
+- **Finita con residui**: il programma dice quanti non si sono potuti cifrare e quanti non sono stati trovati sul disco. I certificati non cifrati sono rimasti dove stavano, in chiaro: l'elenco è in **Impostazioni → Copia di sicurezza → «Cifratura dei file riservati»**. Apri l'elenco e premi **«Riprova»**; se il file non si trova, elimina il certificato dalla pagina **Certificati** e caricalo di nuovo, oppure ripristina una copia di sicurezza.
 - **Libreria mancante**: «I certificati medici già caricati restano in chiaro: su questo server manca la libreria di cifratura (sodium).» Premi **«Vedi il messaggio da inoltrare»** e mandalo a chi gestisce il sito; la cifratura riparte da sola quando la libreria c'è.
 - **Chiave non valida**: «La cifratura dei certificati medici è ferma: la chiave non si apre su questo sito.» Non viene toccato nulla; si sistema da **«Sistemare la chiave»** e poi riparte da sola.
 
@@ -157,7 +157,7 @@ MD,
 
 Nel **gratuito** si salvano **cifrati** i **documenti e le scansioni**, gli **allegati dei movimenti** e le **foto dell'inventario**. Con {piano_contabile} e {piano_fiscale} si cifrano anche i **certificati medici**, i **giustificativi dei rimborsi** e i **PDF delle ricevute** (emessi e «ANNULLATA»), che nella copia di sicurezza restano cifrati. Lo ZIP delle ricevute di un anno fiscale (**«Scarica i PDF di questo anno fiscale (ZIP)»**), invece, esce **non cifrato**: il programma avvisa «I PDF dello ZIP non sono cifrati e contengono dati personali (nome, codice fiscale, importi): conservalo con cura e cancellalo quando non ti serve più.» Si gestisce da **Impostazioni → Copia di sicurezza**, sezione «Cifratura dei file riservati».
 
-<!-- Certificati medici: frasi dall'Audit (PR 754 del plugin, approvata, in via di unione). RIVERIFICARE sul codice di main quando l'Audit scrive che è unita, soprattutto le prime due frasi degli avvisi. Luca: non pubblicare il plugin prima di questa parte. -->
+<!-- Certificati medici: frasi riverificate sul codice di main dopo la PR 754 del plugin (FileCryptPanel::cert_parts), 15/11/2026. -->
 <!-- Verificato sul codice di main dopo la PR 745 del plugin (cifratura dei PDF delle ricevute). -->
 
 ## File nuovi e file già caricati
