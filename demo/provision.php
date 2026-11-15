@@ -26,7 +26,7 @@ function demo_step( string $what, callable $fn ) {
 
 // 1. Impostazioni dell'ente e delle funzioni
 demo_step( 'ente e funzioni', function () {
-	Wizard::apply( array(
+	$set = array(
 		'association_name' => 'Associazione Demo APS',
 		'legal_address'    => 'Via della Prova 1',
 		'legal_zip'        => '00100',
@@ -37,8 +37,21 @@ demo_step( 'ente e funzioni', function () {
 		'membership_fee'   => '20,00',
 		'social_year_start_month' => 8, // anno sociale (tessere e attività) da agosto, scelto in modo esplicito
 		'fiscal_start_month'      => 9, // anno fiscale (bilancio e rendiconto) da settembre: l'anno scorso (set–ago) esiste, è aperto e si può chiudere in prova
-	) );
-	Wizard::mark( Wizard::DONE );
+	);
+	// Dalla 1.3.24 la procedura guidata pretende i dati fiscali e i contatti dell'ente: nella demo restano vuoti per scelta (si vede la «banda» che li chiede) e la procedura
+	// rifiuterebbe TUTTO, mesi compresi (il reset notturno ripartirebbe da gennaio e senza l'anno fiscale scorso). Se la procedura rifiuta, le stesse impostazioni si salvano direttamente.
+	try {
+		Wizard::apply( $set );
+		Wizard::mark( Wizard::DONE );
+	} catch ( \Throwable $e ) {
+		WP_CLI::log( '  (procedura guidata rifiutata: ' . wp_trim_words( $e->getMessage(), 8 ) . ' — salvo le impostazioni direttamente)' );
+		Settings::update( $set );
+	}
+} );
+
+// 1a. L'anno fiscale scorso esiste ed è aperto (set–ago): ci servono i movimenti dell'estate e il disavanzo di esempio
+demo_step( 'anno fiscale scorso', function () {
+	\AssociazioneSemplice\FiscalYears::ensure( \AssociazioneSemplice\FiscalYears::current() - 1 );
 } );
 
 // 1b. Pagine del sito e pagina iniziale
