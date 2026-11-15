@@ -417,6 +417,27 @@ Di partenza **non ci sono**. Se hai il permesso sui **dati sulla salute**, vedi 
 
 La copia contiene **dati personali**: conservala con cura. Resta traccia di chi la scarica.
 
+## L'archivio degli anni chiusi (facoltativo)
+
+Nella pagina **Copie di sicurezza**, il **titolare** e l'**amministratore** trovano la sezione **«Archivio degli anni chiusi»**. È una funzione **facoltativa**, per tenere in ordine gli anni vecchi: un anno fiscale chiuso si può archiviare, e le sue ricevute in PDF si raccolgono in **un solo file cifrato**, conservato nel gestionale, al posto dei file singoli. I dati restano dove sono: l'archivio contiene solo file. Per te non cambia nulla: le ricevute si scaricano come sempre. I **certificati medici non vanno in archivio**.
+
+Per ogni anno fiscale vedi uno di questi stati:
+
+- **«Da archiviare»**: c'è il pulsante **«Archivia l'anno»**.
+- **«Archiviato il» con la data**: c'è il pulsante **«Rimetti i file»**, per tornare indietro quando vuoi.
+- **«Non ancora: si archiviano solo gli anni fiscali prima dell'ultimo anno chiuso.»**
+
+I file singoli vengono tolti **solo dopo che l'archivio è stato controllato**: se qualcosa non torna, non cambia nulla.
+
+**Archiviare non sostituisce la copia di sicurezza.** Resta consigliato **«Scarica copia di sicurezza»**, e la copia contiene comunque **anche gli anni archiviati**.
+
+In **Altro → Verifica delle ricevute** le ricevute di un anno archiviato hanno lo stato **«In archivio»**. Per rifare il PDF di una ricevuta di un anno archiviato, devi prima **rimettere i file** di quell'anno.
+
+Se l'archiviazione non parte, il gestionale te ne dice il motivo. I due casi:
+
+- **Una ricevuta senza PDF valido** ferma l'archiviazione: il messaggio indica il numero della ricevuta, da controllare in **Altro → Verifica delle ricevute**.
+- **Un anno con oltre 2.500 ricevute** non si archivia: non cambia nulla e il programma ti dice di scrivere all'assistenza.
+
 ## Se cambi programma o chiudi l'abbonamento
 
 **Scarica la copia di sicurezza prima.** Quando la prova è finita o l'abbonamento non viene rinnovato, il gestionale si sospende: puoi consultare i dati ma **non modificarli né esportarli**. Per questo conviene fare la copia **prima della scadenza**. Nei **«Documenti leggibili»** trovi quello che serve da consegnare a chi subentra: rendiconto, prima nota, libro soci e ricevute di ogni anno fiscale.
