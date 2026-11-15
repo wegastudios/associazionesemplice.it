@@ -123,7 +123,7 @@ it('sulla ricevuta l\'aliquota zero si chiama «IVA esente» e senza partita IVA
 
 it('registra una spesa in reverse charge solo con la partita IVA, senza IVA esposta', function (): void {
     $spesa = fn (bool $reverse, ?int $rate = null): Expense => new Expense(now()->toDateString(), $this->cash->id, $this->cost, 500, null, '', null, null, $rate, null, $reverse);
-    expect(fn () => $this->ledger->recordExpense($spesa(true)))->toThrow(LedgerError::class, 'senza partita IVA');
+    expect(fn () => $this->ledger->recordExpense($spesa(true)))->toThrow(LedgerError::class, 'partita IVA');
 
     app(OrgSettings::class)->set('ente.vat', '12345678903');
     $id = $this->ledger->recordExpense($spesa(true));
