@@ -146,6 +146,15 @@ final class TextsEngine {
 		return array( $to, $back );
 	}
 
+	/**
+	 * Modello con segnaposto `{nome}` (vedi {@see Texts::t()}): traduzione esatta della frase intera (pacchetto della lingua o personalizzazione),
+	 * altrimenti il modello com'è. Un solo accesso alla tabella: nessun costo sulle altre frasi.
+	 */
+	public static function template( string $s ): string {
+		$map = self::effective();
+		return isset( $map[ $s ] ) ? (string) $map[ $s ] : $s;
+	}
+
 	/** Testo semplice (email, PDF, messaggi): sostituzione diretta. */
 	public static function plain( string $s, ?array $map = null ): string {
 		$own = null === $map; // senza una mappa data: anche tipo di ente e termini scelti

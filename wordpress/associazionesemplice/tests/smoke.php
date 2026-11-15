@@ -6278,10 +6278,47 @@ asem_ok( 'Membership fee: 10' === \AssociazioneSemplice\Texts::plain( 'Quota ass
 \AssociazioneSemplice\TextsEngine::save_overrides( array( 'Quota associativa' => 'Annual dues' ) );
 asem_ok( 'Annual dues' === \AssociazioneSemplice\Texts::plain( 'Quota associativa' ), 'lingue: le personalizzazioni vincono sulla traduzione' );
 \AssociazioneSemplice\TextsEngine::save_overrides( array() );
+// messaggi con variabili: il modello con i segnaposto si traduce prima di inserire i valori (Texts::t)
+asem_ok( 'Item 3: invalid amount.' === \AssociazioneSemplice\Texts::t( 'Voce {n}: importo non valido.', array( 'n' => 3 ) ) && 'Item 3: the member already has the 2026/2027 card.' === \AssociazioneSemplice\Texts::t( 'Voce {n}: il socio ha già la tessera {anno}.', array( 'n' => 3, 'anno' => '2026/2027' ) ), 'segnaposto: in inglese il modello è tradotto e i valori sono inseriti' );
+asem_ok( 'Item {anno}: invalid amount.' === \AssociazioneSemplice\Texts::t( 'Voce {n}: importo non valido.', array( 'n' => '{anno}', 'anno' => 'x' ) ), 'segnaposto: un valore che contiene un segnaposto non viene riespanso' );
+asem_ok( 'Frase mai tradotta 7 e {b}.' === \AssociazioneSemplice\Texts::t( 'Frase mai tradotta {a} e {b}.', array( 'a' => 7 ) ) && 'Nessun segnaposto in questa frase.' === \AssociazioneSemplice\Texts::t( 'Nessun segnaposto in questa frase.' ), 'segnaposto: una frase senza traduzione resta com\'è (con i valori inseriti)' );
+asem_ok( 'Invalid item.' === \AssociazioneSemplice\Texts::plain( 'Voce non valida.' ) && '<p>Item</p>' === \AssociazioneSemplice\Texts::html( '<p>Voce</p>' ) && 'Membership fee' === \AssociazioneSemplice\Texts::plain( 'Quota associativa' ) && '<p>Save</p>' === \AssociazioneSemplice\Texts::html( '<p>Salva</p>' ), 'segnaposto: le traduzioni già presenti non cambiano' );
+\AssociazioneSemplice\TextsEngine::save_overrides( array( 'Voce {n}: importo non valido.' => 'Riga {n}: cifra errata.' ) );
+asem_ok( 'Riga 4: cifra errata.' === \AssociazioneSemplice\Texts::t( 'Voce {n}: importo non valido.', array( 'n' => 4 ) ), 'segnaposto: la personalizzazione del modello vince sulla traduzione' );
+\AssociazioneSemplice\TextsEngine::save_overrides( array() );
+$lg_en_all = \AssociazioneSemplice\Languages::strings( 'en' );
+$lg_bad    = array();
+$lg_found  = 0;
+foreach ( array( 'includes/LedgerService.php', 'includes/Admin/IncomePage.php' ) as $lg_f ) {
+	preg_match_all( '/Texts::t\( \'((?:[^\'\\\\]|\\\\.)*)\'/', (string) file_get_contents( ASEM_DIR . $lg_f ), $lg_m );
+	foreach ( $lg_m[1] as $lg_tpl ) {
+		$lg_tpl = str_replace( "\\'", "'", $lg_tpl );
+		$lg_found++;
+		if ( ! isset( $lg_en_all[ $lg_tpl ] ) ) {
+			$lg_bad[] = $lg_tpl; // modello del codice senza traduzione inglese
+		}
+	}
+}
+asem_ok( $lg_found >= 19 && ! $lg_bad, 'segnaposto: ogni modello usato nel codice (Voce N di LedgerService, avviso della quota doppia) ha la traduzione inglese' . ( $lg_bad ? ': ' . implode( ' | ', $lg_bad ) : '' ) );
+$lg_ph = array();
+foreach ( $lg_en_all as $lg_o => $lg_t ) {
+	if ( false !== strpos( (string) $lg_o, '{' ) ) {
+		preg_match_all( '/\{[a-z_]+\}/', (string) $lg_o, $a1 );
+		preg_match_all( '/\{[a-z_]+\}/', (string) $lg_t, $a2 );
+		sort( $a1[0] );
+		sort( $a2[0] );
+		if ( $a1[0] !== $a2[0] ) {
+			$lg_ph[] = $lg_o;
+		}
+	}
+}
+asem_ok( ! $lg_ph, 'segnaposto: la traduzione ha gli stessi segnaposto dell\'originale' . ( $lg_ph ? ': ' . implode( ' | ', $lg_ph ) : '' ) );
+asem_ok( false !== strpos( (string) file_get_contents( ASEM_DIR . 'assets/admin.js' ), 'D.txt' ) && 3 === substr_count( (string) file_get_contents( ASEM_DIR . 'assets/admin.js' ), 'dupNote(' ), 'incasso: l\'avviso della quota doppia in admin.js usa il testo tradotto da PHP' );
 asem_render( array( Admin\TextsPage::class, 'render' ), 'Usa questa lingua' );
 Settings::update( array( 'language' => 'it' ) );
 \AssociazioneSemplice\Texts::flush();
 asem_ok( 'Quota associativa' === \AssociazioneSemplice\Texts::plain( 'Quota associativa' ) && '<p>Salva</p>' === \AssociazioneSemplice\Texts::html( '<p>Salva</p>' ), 'lingue: tornando all\'italiano i testi restano originali' );
+asem_ok( 'Voce 3: importo non valido.' === \AssociazioneSemplice\Texts::t( 'Voce {n}: importo non valido.', array( 'n' => 3 ) ) && 'Voce 5: il socio ha già la tessera 2026.' === \AssociazioneSemplice\Texts::t( 'Voce {n}: il socio ha già la tessera {anno}.', array( 'n' => 5, 'anno' => '2026' ) ), 'segnaposto: in italiano escono le frasi originali con i valori inseriti' );
 $lg_n = \AssociazioneSemplice\Languages::save_pack( 'fr', 'Français', array( 'Salva' => 'Enregistrer', 'Quota associativa' => 'Cotisation' ) );
 Settings::update( array( 'language' => 'fr' ) );
 \AssociazioneSemplice\Texts::flush();
