@@ -77,7 +77,7 @@ final class Wizard {
 		}
 
 		// 1. Ente (email e telefono della segreteria obbligatori: se mancano dal modulo valgono vuoti e la procedura non si completa)
-		$p += array( 'secretary_email' => '', 'secretary_phone' => '' );
+		$p += array( 'association_name' => '', 'entity_form' => '', 'tax_code' => '', 'legal_address' => '', 'legal_zip' => '', 'legal_city' => '', 'legal_province' => '', 'runts_number' => '', 'pec' => '', 'secretary_email' => '', 'secretary_phone' => '' ); // dati obbligatori dell'ente (vedi EntityRules): se mancano dal modulo valgono vuoti
 		$vals = EntityData::values( $p, false ); // nome, tipo, codice fiscale, sede, partita IVA: stesse regole della scheda «Dati e fiscalità»
 
 		if ( ! empty( $p['wpusers_present'] ) ) {
@@ -162,6 +162,10 @@ final class Wizard {
 		if ( $vals ) {
 			Settings::update( $vals );
 			$done[] = 'Impostazioni salvate.';
+			$warn   = EntityRules::mismatch_warning( (string) Settings::get( 'entity_form' ), (string) Settings::get( 'runts_section' ) );
+			if ( '' !== $warn ) {
+				$done[] = $warn;
+			}
 		}
 
 		$done = (array) apply_filters( 'asem_wizard_done', $done, $p ); // ... e riferisce cosa ha fatto

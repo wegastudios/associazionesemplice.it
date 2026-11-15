@@ -83,19 +83,15 @@ final class WizardPage {
 		echo wp_kses( '<tr><th>Da che mese inizia il tuo anno sociale (tessere e attività)?</th><td><select name="social_year_start_month">' . Ui::options( Ui::MONTHS, (int) $s['social_year_start_month'] ) . '</select><p class="description">È l\'anno delle attività (corsi ed eventi, per esempio una stagione da settembre ad agosto) e anche della tessera: la tessera inizia lo stesso mese e dura un anno. Con gennaio la tessera vale da gennaio a dicembre. Le tessere già emesse non cambiano: il nuovo mese vale per le tessere nuove. Non dipende dall\'anno fiscale: possono iniziare in mesi diversi.</p></td></tr>', Html::allowed() );
 		echo wp_kses( '<tr><th>Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?</th><td>' . EntityPage::fiscal_month_field( $s ) . '<p class="description">È l\'anno dei conti: prima nota, rendiconto e preventivo. Di solito inizia a gennaio, ma puoi scegliere un altro mese, anche diverso dall\'anno sociale. Sceglilo prima di chiudere il primo anno: dopo la prima chiusura non si può più cambiare. I Dati per il RUNTS restano al 31 dicembre in ogni caso.</p></td></tr>', Html::allowed() );
 		echo '<tr><th>Conferma</th><td><input type="hidden" name="months_present" value="1"><label><input type="checkbox" name="months_confirmed" value="1" required> Ho controllato i due mesi: sono quelli del mio ente.</label><p class="description">Vanno scelti per primi perché da questi mesi dipendono le tessere e i conti. Sono precompilati con gennaio: se va bene, basta la spunta.</p></td></tr>';
-		echo '<tr><th>Come si chiama</th><td><input type="text" name="association_name" value="' . esc_attr( (string) $s['association_name'] ) . '" class="regular-text"></td></tr>';
+		echo wp_kses( EntityPage::identity_rows( $s ), Html::allowed() ); // denominazione, forma, codice fiscale, sede, RUNTS e PEC: obbligatori
 		echo wp_kses( EntityPage::contact_rows( $s ), Html::allowed() ); // contatti della segreteria: obbligatori
 		do_action( 'asem_wizard_entity_rows', $s ); // le estensioni aggiungono qui le loro domande
+		do_action( 'asem_wizard_more_rows', $s ); // ... e quelle secondarie
 		echo '</tbody></table>';
 		echo wp_kses( self::yes_no( 'guests_enabled', 'Accettate ospiti, cioè persone che partecipano senza essere iscritte?', Settings::guests_enabled() ), Html::allowed() );
 		echo '<p class="asem-wiz-q"><strong>Chi può iscriversi</strong><br>'
 			. '<label><input type="radio" name="join_mode" value="request"' . checked( 'invite' !== $jm, true, false ) . '> Chiunque può chiedere di iscriversi</label> <span class="description">(la richiesta arriva alla segreteria, che approva; si apre la domanda online nella pagina «Diventa socio»)</span><br>'
 			. '<label><input type="radio" name="join_mode" value="invite"' . checked( 'invite' === $jm, true, false ) . '> Solo su presentazione</label> <span class="description">(le iscrizioni le fa la segreteria)</span></p>';
-		echo '<details class="asem-wiz-more"><summary>Più dettagli: codice fiscale e sede</summary><table class="form-table"><tbody>';
-		echo '<tr><th>Codice fiscale dell\'ente</th><td><input type="text" name="tax_code" value="' . esc_attr( (string) $s['tax_code'] ) . '" class="regular-text"></td></tr>';
-		do_action( 'asem_wizard_more_rows', $s ); // le estensioni aggiungono qui le loro domande secondarie (ad esempio l'inizio dell'anno fiscale)
-		echo '<tr><th>Sede</th><td><input type="text" name="legal_address" value="' . esc_attr( (string) $s['legal_address'] ) . '" class="regular-text" placeholder="Indirizzo"> <input type="text" name="legal_zip" value="' . esc_attr( (string) $s['legal_zip'] ) . '" size="6" placeholder="CAP"> <input type="text" name="legal_city" value="' . esc_attr( (string) $s['legal_city'] ) . '" placeholder="Comune"> <input type="text" name="legal_province" value="' . esc_attr( (string) $s['legal_province'] ) . '" size="4" placeholder="Prov."></td></tr>';
-		echo '</tbody></table></details>';
 		self::end_step();
 
 		do_action( 'asem_wizard_steps_entity', $s ); // le estensioni aggiungono qui i loro passi

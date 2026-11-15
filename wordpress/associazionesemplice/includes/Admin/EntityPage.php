@@ -1,6 +1,7 @@
 <?php
 namespace AssociazioneSemplice\Admin;
 
+use AssociazioneSemplice\EntityRules;
 use AssociazioneSemplice\FiscalYears;
 use AssociazioneSemplice\Settings;
 use AssociazioneSemplice\Texts;
@@ -29,15 +30,66 @@ final class EntityPage {
 			. '<tr><th><label for="asem-secretary-phone">' . esc_html( Texts::t( 'Telefono della segreteria' ) ) . ' *</label></th><td><input type="tel" id="asem-secretary-phone" name="secretary_phone" value="' . esc_attr( $tel ) . '" class="regular-text" required maxlength="30" autocomplete="off" placeholder="+39 333 1234567"></td></tr>';
 	}
 
+	/** Casella «non ce l'ha» (per i dati obbligatori solo se esistono): se il dato c'è non vale. */
+	private static function none_box( string $name, bool $on, string $label ): string {
+		return '<p><label><input type="checkbox" name="' . esc_attr( $name ) . '" value="1"' . checked( $on, true, false ) . '> ' . esc_html( $label ) . '</label></p>';
+	}
+
+	public static function name_row( array $s ): string {
+		return '<tr><th><label for="asem-association-name">' . esc_html( Texts::t( 'Denominazione' ) ) . ' *</label></th><td><input type="text" id="asem-association-name" name="association_name" value="' . esc_attr( (string) $s['association_name'] ) . '" class="regular-text" required></td></tr>';
+	}
+
+	/** Forma dell'ente: separata dalla sezione del RUNTS; con una sezione già indicata si propone la stessa forma, da confermare. */
+	public static function form_row( array $s ): string {
+		$cur  = (string) $s['entity_form'];
+		$sug  = EntityRules::suggested_form( $s );
+		$note = '';
+		if ( '' === $cur && '' !== $sug ) {
+			$cur  = $sug;
+			$note = '<p class="description">' . esc_html( Texts::t( 'Proposta in base alla sezione del RUNTS già indicata: controlla e conferma.' ) ) . '</p>';
+		}
+		return '<tr id="asem-entity-form"><th><label for="asem-entity-form-select">' . esc_html( Texts::t( 'Forma dell\'ente' ) ) . ' *</label></th><td><select id="asem-entity-form-select" name="entity_form" required>'
+			. Ui::options( EntityRules::forms(), $cur, Texts::t( '— scegli —' ) ) . '</select>' . $note . '</td></tr>';
+	}
+
+	public static function tax_row( array $s ): string {
+		return '<tr><th><label for="asem-tax-code">' . esc_html( Texts::t( 'Codice fiscale' ) ) . ' *</label></th><td><input type="text" id="asem-tax-code" name="tax_code" value="' . esc_attr( (string) $s['tax_code'] ) . '" class="regular-text" required maxlength="20" autocomplete="off"></td></tr>';
+	}
+
+	public static function seat_rows( array $s ): string {
+		return '<tr><th><label for="asem-legal-address">' . esc_html( Texts::t( 'Sede legale' ) ) . ' *</label></th><td><input type="text" id="asem-legal-address" name="legal_address" value="' . esc_attr( (string) $s['legal_address'] ) . '" class="regular-text" required placeholder="' . esc_attr( Texts::t( 'Indirizzo' ) ) . '"> '
+			. '<input type="text" name="legal_zip" value="' . esc_attr( (string) $s['legal_zip'] ) . '" size="6" maxlength="5" inputmode="numeric" required placeholder="CAP" aria-label="CAP"> '
+			. '<input type="text" name="legal_city" value="' . esc_attr( (string) $s['legal_city'] ) . '" required placeholder="' . esc_attr( Texts::t( 'Comune' ) ) . '" aria-label="' . esc_attr( Texts::t( 'Comune' ) ) . '"> '
+			. '<input type="text" name="legal_province" value="' . esc_attr( (string) $s['legal_province'] ) . '" size="4" maxlength="2" required placeholder="Prov." aria-label="Prov."></td></tr>';
+	}
+
+	public static function runts_row( array $s ): string {
+		return '<tr><th><label for="asem-runts-number">' . esc_html( Texts::t( 'Numero RUNTS (con la sezione)' ) ) . '</label></th><td><input type="text" id="asem-runts-number" name="runts_number" value="' . esc_attr( (string) $s['runts_number'] ) . '" class="regular-text">'
+			. self::none_box( 'no_runts', ! empty( $s['no_runts'] ), Texts::t( 'L\'associazione non è iscritta al RUNTS' ) ) . '</td></tr>';
+	}
+
+	public static function pec_row( array $s ): string {
+		return '<tr><th><label for="asem-pec">' . esc_html( Texts::t( 'PEC' ) ) . '</label></th><td><input type="email" id="asem-pec" name="pec" value="' . esc_attr( (string) $s['pec'] ) . '" class="regular-text">'
+			. self::none_box( 'no_pec', ! empty( $s['no_pec'] ), Texts::t( 'L\'associazione non ha una PEC' ) ) . '</td></tr>';
+	}
+
+	/** Le righe dei dati obbligatori dell'ente nella configurazione guidata (nei dati dell'ente le stesse righe stanno nelle loro sezioni). */
+	public static function identity_rows( array $s ): string {
+		return self::name_row( $s ) . self::form_row( $s ) . self::tax_row( $s ) . self::seat_rows( $s ) . self::runts_row( $s ) . self::pec_row( $s );
+	}
+
 	public static function render(): void {
 		$s = Settings::all();
 		Ui::header( (string) apply_filters( 'asem_entity_page_title', 'Dati dell\'ente' ) );
+		$warn = EntityRules::mismatch_warning( (string) $s['entity_form'], (string) $s['runts_section'] ); // avviso, non blocca nulla
+		if ( '' !== $warn ) {
+			echo '<div class="notice notice-warning inline"><p>' . esc_html( $warn ) . '</p></div>';
+		}
 		Ui::form_open( 'asem_save_entity', Ui::url( 'asem-entity' ) );
 		echo '<h2>Ente</h2><table class="form-table"><tbody>';
-		echo '<tr><th>Denominazione</th><td><input type="text" name="association_name" value="' . esc_attr( (string) $s['association_name'] ) . '" class="regular-text"></td></tr>';
+		echo wp_kses( self::name_row( $s ) . self::form_row( $s ), Html::allowed() );
 		do_action( 'asem_entity_rows', $s ); // le estensioni aggiungono qui i loro campi
-		echo '<tr><th>Codice fiscale</th><td><input type="text" name="tax_code" value="' . esc_attr( (string) $s['tax_code'] ) . '" class="regular-text"></td></tr>';
-		echo '<tr><th>Iscrizione (RUNTS, registro…)</th><td><input type="text" name="runts_number" value="' . esc_attr( (string) $s['runts_number'] ) . '" class="regular-text"></td></tr>';
+		echo wp_kses( self::tax_row( $s ) . self::runts_row( $s ), Html::allowed() );
 		echo wp_kses( '<tr><th>Da che mese inizia il tuo anno sociale (tessere e attività)?</th><td><select name="social_year_start_month">' . Ui::options( Ui::MONTHS, (int) $s['social_year_start_month'] ) . '</select><p class="description">È l\'anno delle attività (corsi ed eventi, per esempio una stagione da settembre ad agosto) e anche della tessera: la tessera inizia lo stesso mese e dura un anno. Con gennaio la tessera vale da gennaio a dicembre. Le tessere già emesse non cambiano: il nuovo mese vale per le tessere nuove. Non dipende dall\'anno fiscale: possono iniziare in mesi diversi.</p></td></tr>', Html::allowed() );
 		echo wp_kses( '<tr><th>Da che mese inizia il tuo anno fiscale (bilancio e rendiconto)?</th><td>' . self::fiscal_month_field( $s ) . '<p class="description">È l\'anno dei conti: prima nota, rendiconto e preventivo. Di solito inizia a gennaio, ma puoi scegliere un altro mese, anche diverso dall\'anno sociale. Sceglilo prima di chiudere il primo anno: dopo la prima chiusura non si può più cambiare. I Dati per il RUNTS restano al 31 dicembre in ogni caso.</p></td></tr>', Html::allowed() );
 		echo '</tbody></table>';
@@ -52,9 +104,8 @@ final class EntityPage {
 		echo '</tbody></table>';
 
 		echo '<h2>Sede e contatti</h2><table class="form-table"><tbody>';
-		echo '<tr><th>Indirizzo</th><td><input type="text" name="legal_address" value="' . esc_attr( (string) $s['legal_address'] ) . '" class="regular-text"></td></tr>';
-		echo '<tr><th>CAP, comune, provincia</th><td><input type="text" name="legal_zip" value="' . esc_attr( (string) $s['legal_zip'] ) . '" size="6" placeholder="CAP"> <input type="text" name="legal_city" value="' . esc_attr( (string) $s['legal_city'] ) . '" placeholder="Comune"> <input type="text" name="legal_province" value="' . esc_attr( (string) $s['legal_province'] ) . '" size="4" placeholder="Prov."></td></tr>';
-		echo '<tr><th>PEC</th><td><input type="email" name="pec" value="' . esc_attr( (string) $s['pec'] ) . '" class="regular-text"></td></tr>';
+		echo wp_kses( self::seat_rows( $s ), Html::allowed() );
+		echo wp_kses( self::pec_row( $s ), Html::allowed() );
 		echo wp_kses( self::contact_rows( $s ), Html::allowed() );
 		echo '</tbody></table>';
 		do_action( 'asem_entity_sections', $s ); // ... e qui le loro sezioni

@@ -137,6 +137,7 @@ final class ProSettings {
 			'wallet_google_key_pem'   => '',    // cifrata
 			'has_vat'                 => 0,         // l'ente ha la partita IVA: spento di default, senza non compaiono aliquote e importi IVA
 			'vat_number'              => '',        // partita IVA (11 cifre)
+			'no_vat'                  => 0,         // casella «L'associazione non ha la partita IVA» (dato obbligatorio dell'ente: o il numero o questa casella)
 			'vat_default_rate'        => 22,        // aliquota IVA proposta (%)
 			'vat_prices_mode'         => 'incl',    // importi inseriti IVA compresa ('incl') o esclusa ('escl')
 			'vat_membership_rate'     => '',        // aliquota IVA delle quote associative: vuoto = fuori campo IVA
@@ -173,6 +174,7 @@ final class ProSettings {
 			$clean[ $k ] = mb_substr( trim( (string) $clean[ $k ] ), 0, 200 );
 		}
 		$clean['has_vat']                 = empty( $clean['has_vat'] ) ? 0 : 1;
+		$clean['no_vat']                  = empty( $clean['no_vat'] ) ? 0 : 1;
 		$clean['vat_number']              = mb_substr( Fiscal::normalize_vat( (string) $clean['vat_number'] ), 0, 11 );
 		$clean['vat_default_rate']        = max( 0, min( 30, (int) $clean['vat_default_rate'] ) );
 		$clean['vat_membership_rate']     = null === Fiscal::clean_rate( $clean['vat_membership_rate'] ) ? '' : Fiscal::clean_rate( $clean['vat_membership_rate'] );

@@ -106,20 +106,6 @@ final class Contacts {
 		return '' !== $e ? 'Reply-To: ' . $e : '';
 	}
 
-	/** Voce della banda fissa (vedi MissingBand) se mancano email o telefono della segreteria, altrimenti null. */
-	public static function missing_item(): ?array {
-		if ( ! self::missing() ) {
-			return null;
-		}
-		return array(
-			'text'       => Texts::t( 'Mancano i contatti della segreteria (email e telefono): finché mancano, la segreteria non può inviare messaggi ai soci (comunicazioni, avvisi agli iscritti e ricevute inviate a mano). Gli invii automatici, come il link di accesso, partono lo stesso. I contatti compaiono anche nell\'informativa sulla privacy.' ),
-			'text_other' => Texts::t( 'Mancano i contatti della segreteria: chiedi a chi amministra di inserirli. Finché mancano, la segreteria non può inviare messaggi ai soci.' ),
-			'url'        => Admin\Ui::url( 'asem-entity' ) . '#asem-contacts',
-			'page'       => 'asem-entity',
-			'button'     => Texts::t( 'Inseriscili ora' ),
-		);
-	}
-
 	/**
 	 * Punto di controllo degli invii MANUALI (comunicazioni, avvisi, ricevute inviate dall'operatore): senza contatti completi non si scrive ai soci.
 	 * Le email automatiche (accessi, conferme, promemoria, ricevuta del pagamento online) partono comunque e non passano da qui.

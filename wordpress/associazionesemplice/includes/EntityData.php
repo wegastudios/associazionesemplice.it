@@ -5,7 +5,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Dati dell'ente (identità, sede, partita IVA) letti da un modulo e controllati: li usano la scheda «Dati e fiscalità»
- * e la configurazione guidata, così le regole sono una sola. Con $full = false si considera solo ciò che il modulo contiene.
+ * e la configurazione guidata, così le regole sono una sola. Con $full = false si considera solo ciò che il modulo contiene,
+ * tranne i dati obbligatori (vedi {@see EntityRules}): se il modulo porta la denominazione, tutti gli obbligatori si controllano.
  */
 final class EntityData {
 
@@ -23,18 +24,21 @@ final class EntityData {
 			return $full || array_key_exists( $k, $p );
 		};
 		$vals = array();
+		$errs = array();
 
 		foreach ( array( 'association_name', 'runts_number', 'legal_address', 'legal_zip', 'legal_city', 'legal_province' ) as $k ) {
 			if ( $has( $k ) ) {
 				$vals[ $k ] = $txt( $k );
 			}
 		}
+		if ( isset( $vals['legal_province'] ) ) {
+			$vals['legal_province'] = strtoupper( trim( $vals['legal_province'] ) );
+		}
 		if ( $has( 'tax_code' ) ) {
-			$cf = TaxCode::normalize( $txt( 'tax_code' ) );
-			if ( '' !== $cf && ! Fiscal::is_valid_entity_tax_code( $cf ) ) {
-				throw new \InvalidArgumentException( 'Il codice fiscale dell\'ente non è valido: controllalo (11 cifre, oppure 16 caratteri se è una persona fisica).' );
-			}
-			$vals['tax_code'] = $cf;
+			$vals['tax_code'] = TaxCode::normalize( $txt( 'tax_code' ) );
+		}
+		if ( $has( 'entity_form' ) ) {
+			$vals['entity_form'] = $txt( 'entity_form' );
 		}
 		if ( $has( 'runts_section' ) ) { // sezione del RUNTS e numero dei volontari inserito a mano, con l'anno a cui si riferisce
 			$sec = $txt( 'runts_section' );
@@ -57,20 +61,49 @@ final class EntityData {
 		if ( $has( 'pec' ) ) {
 			$pec = trim( $txt( 'pec' ) );
 			if ( '' !== $pec && ! is_email( $pec ) ) {
-				throw new \InvalidArgumentException( 'La PEC non è un indirizzo email valido.' );
+				$errs[] = 'La PEC non è un indirizzo email valido.';
 			}
 			$vals['pec'] = $pec;
+		}
+		if ( $has( 'sdi_code' ) ) { // codice destinatario per la fattura elettronica: facoltativo
+			$sdi = trim( $txt( 'sdi_code' ) );
+			if ( '' !== $sdi && ! EntityRules::sdi_valid( $sdi ) ) {
+				$errs[] = Texts::t( 'Il codice destinatario ha 7 caratteri (lettere e cifre).' );
+			}
+			$vals['sdi_code'] = strtoupper( $sdi );
+		}
+
+		if ( $full || array_key_exists( 'association_name', $p ) ) { // dati obbligatori: nella procedura guidata e nei dati dell'ente, anche lato server
+			$vals['no_runts'] = ! empty( $p['no_runts'] ) ? 1 : 0;
+			$vals['no_pec']   = ! empty( $p['no_pec'] ) ? 1 : 0;
+			if ( '' !== (string) ( $vals['runts_number'] ?? '' ) ) {
+				$vals['no_runts'] = 0; // il dato c'è: la casella «non ce l'ha» non vale
+			}
+			if ( '' !== (string) ( $vals['pec'] ?? '' ) ) {
+				$vals['no_pec'] = 0;
+			}
+			$errs = array_merge( $errs, array_diff( EntityRules::errors( $vals + array( 'association_name' => '' ) ), $errs ) );
+			$form = (string) ( $vals['entity_form'] ?? '' );
+			$sec  = (string) ( $vals['runts_section'] ?? Settings::get( 'runts_section' ) );
+			if ( in_array( $form, array( 'aps', 'odv' ), true ) && '' === $sec ) {
+				$vals['runts_section'] = $form; // forma APS/ODV e sezione vuota: la sezione si precompila
+			}
 		}
 		if ( $has( 'secretary_email' ) || $has( 'secretary_phone' ) ) { // contatti della segreteria: obbligatori quando si salva la scheda dell'ente o si completa la procedura
 			$mail  = strtolower( trim( sanitize_text_field( (string) ( $p['secretary_email'] ?? '' ) ) ) );
 			$phone = trim( sanitize_text_field( (string) ( $p['secretary_phone'] ?? '' ) ) );
-			$errs  = Contacts::validate( $mail, $phone );
-			if ( $errs ) {
-				throw new \InvalidArgumentException( implode( ' ', $errs ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
-			}
+			$errs  = array_merge( $errs, Contacts::validate( $mail, $phone ) );
 			$vals['secretary_email'] = $mail;
 			$vals['secretary_phone'] = $phone;
 		}
-		return (array) apply_filters( 'asem_entity_values', $vals, $p, $full ); // le estensioni leggono e controllano i loro campi
+		try {
+			$vals = (array) apply_filters( 'asem_entity_values', $vals, $p, $full ); // le estensioni leggono e controllano i loro campi
+		} catch ( \InvalidArgumentException $e ) {
+			$errs[] = $e->getMessage();
+		}
+		if ( $errs ) {
+			throw new \InvalidArgumentException( implode( ' ', $errs ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		return $vals;
 	}
 }
