@@ -5571,7 +5571,8 @@ add_filter(
 \AssociazioneSemplice\Texts::mail( 'a@example.com', 'Promemoria di prova', 'Corpo: Promemoria di prova.' );
 asem_ok( 1 === count( $tx_mail ) && 'Promemoria cambiato' === $tx_mail[0]['subject'] && 'Corpo: Promemoria cambiato.' === $tx_mail[0]['message'], 'testi: la sostituzione vale nelle email (oggetto e testo)' );
 remove_all_filters( 'pre_wp_mail' );
-$tx_pdf = \AssociazioneSemplice\Receipts::build( $rc_list[0]['key'] );
+$tx_pdf = array( 'pdf' => \AssociazioneSemplice\Receipts::render( \AssociazioneSemplice\Receipts::data_of( \AssociazioneSemplice\Receipts::record( $rc_list[0]['key'] ) ) ) ); // la ricevuta emessa ha il PDF fissato (non cambia con i testi): si prova il disegno dai dati fotografati
+asem_ok( false === strpos( \AssociazioneSemplice\Receipts::build( $rc_list[0]['key'] )['pdf'], 'RICEVUTA N. TEST' ), 'ricevute: il PDF già fissato non cambia se poi si personalizzano i testi' );
 asem_ok( false !== strpos( $tx_pdf['pdf'], 'RICEVUTA N. TEST' ) && false === strpos( $tx_pdf['pdf'], 'RICEVUTA DI PAGAMENTO' ) && null === \AssociazioneSemplice\Pdf::$filter, 'testi: la sostituzione vale nei PDF' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Texts::html( '<h3>Il mio profilo</h3><input placeholder="Il mio profilo">' ), '<h3>La mia scheda</h3><input placeholder="La mia scheda">' ), 'testi: in amministrazione la pagina passa dalla stessa sostituzione' );
 
@@ -5626,7 +5627,7 @@ $tm_front = $as( $u_f, '[associazionesemplice_ospiti]' );
 asem_ok( false !== strpos( $tm_def, 'senza essere soci' ) && false !== strpos( $tm_front, 'senza essere iscritti' ) && false === strpos( $tm_front, 'senza essere soci' ), 'ente e termini: l\'area soci si adatta ("soci" diventa "iscritti")' );
 \AssociazioneSemplice\Texts::mail( 'a@example.com', 'Tessera dell\'associazione', "Il socio dell'associazione. Area: https://example.org/area-soci/" );
 asem_ok( 1 === count( $tm_mail ) && 'Tessera del comitato' === $tm_mail[0]['subject'] && "L'iscritto del comitato. Area: https://example.org/area-soci/" === $tm_mail[0]['message'], 'ente e termini: email adattate (articoli giusti, indirizzi web intatti)' );
-$tm_pdf = \AssociazioneSemplice\Receipts::build( $rc_list[0]['key'] );
+$tm_pdf = array( 'pdf' => \AssociazioneSemplice\Receipts::render( \AssociazioneSemplice\Receipts::data_of( \AssociazioneSemplice\Receipts::record( $rc_list[0]['key'] ) ) ) ); // il PDF emesso è già fissato: si prova il disegno dai dati fotografati
 asem_ok( false !== strpos( $tm_pdf['pdf'], 'Per il comitato' ) && false === strpos( $tm_pdf['pdf'], 'Per l\'associazione' ), 'ente e termini: anche i PDF' );
 parse_str( (string) wp_parse_url( \AssociazioneSemplice\Flash::url( 'https://example.org/a/', 'asemf', 'Il socio è stato aggiunto all\'associazione.' ), PHP_URL_QUERY ), $tm_q );
 $tm_old = $_GET;
@@ -7665,6 +7666,18 @@ $za->close();
 asem_ok( 'associazionesemplice' === $man['plugin'] && (int) $man['tables']['asem_people'] === $ppl && count( $p_lines ) === $ppl && $has_att && 'Associazione di prova' === $settings_json['settings']['association_name'] && ! isset( $settings_json['settings']['stripe_secret_key'] ) && \AssociazioneSemplice\Backup::last() > 0, 'copia: il file contiene tabelle, impostazioni (senza chiavi segrete), allegati e indice' );
 asem_ok( ! isset( $settings_json['settings']['license_key'] ) && ! isset( $settings_json['options']['asem_card_salt'] ) && ! isset( $settings_json['options']['asem_ical_salt'] ), 'copia: chiave di licenza e sali dei QR/calendario restano sul sito, non finiscono nel file' );
 asem_ok( $man === \AssociazioneSemplice\Backup::inspect( $bk_zip ), 'copia: il file si riconosce come copia valida' );
+// PDF definitivi delle ricevute: stanno nella copia, con l'indice delle impronte
+$bk_rc = $wpdb->get_results( 'SELECT * FROM ' . Db::t( 'receipts' ) . ' WHERE pdf_path IS NOT NULL ORDER BY ( voided_at IS NULL ) DESC, id', ARRAY_A ); // prima le ricevute non annullate
+$zq    = new ZipArchive();
+$zq->open( $bk_zip );
+$bk_idx = json_decode( (string) $zq->getFromName( 'documenti/indice.json' ), true );
+$bk_in  = count( $bk_rc ) >= 2 && false !== $zq->locateName( 'documenti/' . $bk_rc[0]['pdf_path'] ) && $bk_rc[0]['pdf_sha256'] === hash( 'sha256', (string) $zq->getFromName( 'documenti/' . $bk_rc[0]['pdf_path'] ) );
+$zq->close();
+asem_ok( $bk_in && is_array( $bk_idx ) && (int) $man['documents'] === count( $bk_idx['files'] ) && $man['documents'] >= 2 && in_array( 'documenti/' . $bk_rc[0]['pdf_path'], array_column( $bk_idx['files'], 'name' ), true ), 'copia: i PDF definitivi delle ricevute sono nel file, con l\'indice delle impronte' );
+$bk_pa = Attachments::dir() . '/' . $bk_rc[0]['pdf_path'];
+$bk_pb = Attachments::dir() . '/' . $bk_rc[1]['pdf_path'];
+wp_delete_file( $bk_pa ); // un PDF perso e uno alterato dopo la copia
+file_put_contents( $bk_pb, 'alterato', FILE_APPEND );
 // file non validi
 $bad1 = wp_tempnam( 'asem-bad' );
 file_put_contents( $bad1, 'non è uno zip' );
@@ -7703,6 +7716,9 @@ $back_row = $wpdb->get_row( 'SELECT * FROM ' . Db::t( 'people' ) . " WHERE id = 
 asem_ok( $ppl === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) && $txn === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ) && $back_row === $victim_row && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) . " WHERE description = 'riga di prova da cancellare'" ), 'ripristino: i dati tornano esattamente come nella copia (anche i record cancellati e identici campo per campo)' );
 asem_ok( 'Associazione di prova' === Settings::get( 'association_name' ) && array() === \AssociazioneSemplice\TextsEngine::overrides() && Settings::has_secret( 'stripe_secret_key' ), 'ripristino: impostazioni e testi tornano come nella copia; le chiavi segrete del sito restano' );
 asem_ok( is_file( $bk_file ) && 'contenuto allegato' === file_get_contents( $bk_file ) && $res['files'] >= 1 && $res['rows'] > 0 && $res['tables'] === count( $man['tables'] ), 'ripristino: gli allegati tornano al loro posto' );
+$bk_ra = \AssociazioneSemplice\ReceiptFiles::state( \AssociazioneSemplice\Receipts::record( $bk_rc[0]['receipt_key'] ), 'issued' );
+$bk_rb = \AssociazioneSemplice\ReceiptFiles::state( \AssociazioneSemplice\Receipts::record( $bk_rc[1]['receipt_key'] ), 'issued' );
+asem_ok( $res['documents']['restored'] >= 2 && 'ok' === $bk_ra && 'ok' === $bk_rb && hash_file( 'sha256', $bk_pa ) === $bk_rc[0]['pdf_sha256'] && hash_file( 'sha256', $bk_pb ) === $bk_rc[1]['pdf_sha256'] && 1 === count( glob( $bk_pb . '.alterato-*' ) ?: array() ), 'ripristino: i PDF delle ricevute tornano al loro posto (perso e alterato), controllati con le impronte; l\'alterato resta da parte' );
 $saved = \AssociazioneSemplice\Backup::saved();
 asem_ok( count( $saved ) >= 1 && 0 === strpos( $saved[0]['name'], 'prima-del-ripristino-' ) && $res['safety'] === $saved[0]['name'], 'ripristino: prima viene salvata una copia dello stato precedente' );
 asem_ok( 1 === preg_match( '/^prima-del-ripristino-\d{8}-\d{6}-[0-9a-f]{16}\.zip$/', $saved[0]['name'] ), 'sicurezza: il nome della copia salvata non è indovinabile' );
@@ -7724,6 +7740,20 @@ $safety_man = json_decode( (string) $zs->getFromName( 'manifest.json' ), true );
 $zs->close();
 asem_ok( 'associazionesemplice' === $safety_man['plugin'], 'ripristino: la copia di sicurezza è a sua volta un file valido' );
 Settings::clear_secret( 'stripe_secret_key' );
+// una copia con un PDF manomesso: quel PDF non si rimette (l'impronta non coincide), il resto sì, e la ricevuta dà un errore chiaro
+$bk_tz = wp_tempnam( 'asem-bad' );
+copy( $bk_zip, $bk_tz );
+$zt = new ZipArchive();
+$zt->open( $bk_tz );
+$zt->addFromString( 'documenti/' . $bk_rc[0]['pdf_path'], '%PDF-1.4 manomesso' );
+$zt->close();
+wp_delete_file( $bk_pa );
+$res_t = \AssociazioneSemplice\Backup::restore( $bk_tz );
+wp_delete_file( $bk_tz );
+$bk_et = asem_throws( function () use ( $bk_rc ) { \AssociazioneSemplice\Receipts::build( $bk_rc[0]['receipt_key'] ); } );
+asem_ok( $res_t['documents']['bad'] >= 1 && ! is_file( $bk_pa ) && null !== $bk_et && false !== strpos( $bk_et, 'non si trova più' ) && 'ok' === \AssociazioneSemplice\ReceiptFiles::state( \AssociazioneSemplice\Receipts::record( $bk_rc[1]['receipt_key'] ), 'issued' ), 'ripristino: un PDF manomesso nella copia non si rimette; la ricevuta dà un errore chiaro e il resto torna a posto' );
+\AssociazioneSemplice\Receipts::regenerate_pdf( $bk_rc[0]['receipt_key'], 'issued' );
+asem_ok( is_file( $bk_pa ) && 0 === strpos( (string) file_get_contents( $bk_pa ), '%PDF-1.4' ) && 'ok' === \AssociazioneSemplice\ReceiptFiles::state( \AssociazioneSemplice\Receipts::record( $bk_rc[0]['receipt_key'] ), 'issued' ), 'ripristino: il PDF mancante si può rifare dai dati salvati (solo da un amministratore, con i dati intatti)' );
 // tutto o niente: una copia con una riga rovinata non cambia nulla
 $broken = wp_tempnam( 'asem-bad' );
 $zbk = new ZipArchive();
@@ -7746,6 +7776,7 @@ if ( is_file( $bk_file ) ) {
 }
 asem_ok( false !== strpos( \AssociazioneSemplice\Backup::download_url( true ), 'action=asem_backup' ) && ( \AssociazioneSemplice\Plugin::load_for_action( 'asem_backup' ) && has_action( 'admin_post_asem_backup' ) ) && Admin\Actions::required_cap( 'asem_backup_restore' ) === Plugin::CAP, 'copia: indirizzo di scarico con controllo e ripristino riservato agli amministratori' );
 asem_render( array( Admin\BackupPage::class, 'render' ), 'Ripristino' );
+asem_render( array( Admin\BackupPage::class, 'render' ), 'Ricevute: PDF definitivi' );
 
 // ---------- Azzeramento dei dati (ultimo: cancella tutto) ----------
 // un amministratore con una password nota (wp_set_current_user non ricarica l'utente già in uso: se ne crea uno nuovo)
@@ -7853,7 +7884,10 @@ $rs_saved0 = count( \AssociazioneSemplice\Backup::saved() );
 $rs_mu  = \AssociazioneSemplice\Reset::member_only_users();
 asem_ok( null !== asem_throws( function () use ( $rs_ok ) { Admin\TechActions::reset_all( $rs_ok ); } ) && (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) > 0, 'azzeramento: senza aver scaricato una copia non si cancella nulla' );
 \AssociazioneSemplice\Backup::mark_downloaded();
+$rs_pdfdir = Attachments::dir() . '/receipts';
+$rs_pdfhad = is_dir( $rs_pdfdir ) && ( glob( $rs_pdfdir . '/*/*.pdf' ) ?: array() );
 $rs_msg = Admin\TechActions::reset_all( $rs_ok );
+asem_ok( $rs_pdfhad && ! is_dir( $rs_pdfdir ), 'azzeramento: i PDF definitivi delle ricevute (dati personali) vanno via con i dati' );
 asem_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'people' ) ) && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'transactions' ) ) && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'activities' ) ) && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'bookings' ) ) && 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'receipts' ) ), 'azzeramento dei dati: soci, attività, prima nota, prenotazioni e ricevute cancellati' );
 asem_ok( (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'accounts' ) ) >= 2 && (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'categories' ) ) >= 8 && count( \AssociazioneSemplice\Levels::all() ) >= 2 && \AssociazioneSemplice\FiscalYears::is_open( \AssociazioneSemplice\FiscalYears::current() ), 'azzeramento dei dati: conti, voci, livelli e anno solare predefiniti ricreati' );
 asem_ok( 'Associazione da azzerare' === Settings::get( 'association_name' ) && (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'audit_log' ) ) >= $rs_audit0 && in_array( 'system.reset', array_column( Audit::recent( 5 ), 'action' ), true ), 'azzeramento dei dati: impostazioni e registro azioni restano, con la registrazione dell\'azzeramento' );
@@ -10601,6 +10635,134 @@ $wpdb->delete( Db::t( 'fiscal_years' ), array( 'year' => $rs_z ) );
 $wpdb->delete( $wpdb->usermeta, array( 'user_id' => (int) $rs_sec ) );
 $wpdb->delete( $wpdb->users, array( 'ID' => (int) $rs_sec ) );
 Settings::update( array( 'receipt_footer' => '' ) );
+
+// ---------- Ricevute: PDF definitivo salvato in un file della cartella privata, con la sua impronta ----------
+$pf_p   = $people->create( array( 'type' => 'ordinary', 'first_name' => 'Pia', 'last_name' => 'Fissata', 'email' => 'pia.fissata@example.com' ) );
+$wpdb->update( Db::t( 'people' ), array( 'tax_code' => 'FSSPIA80A41H501V' ), array( 'id' => $pf_p ) );
+$pf_cat  = $ledger->category_id_of_kind( 'donation' );
+$pf_line = function ( int $cents, string $what ) use ( $pf_cat ): array {
+	return array( 'category_id' => $pf_cat, 'amount_cents' => $cents, 'description' => $what );
+};
+$pf_tx = function ( int $cents ) use ( $wpdb, $pf_p ): int {
+	return (int) $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ' . Db::t( 'transactions' ) . ' WHERE person_id = %d AND amount_cents = %d AND voided_at IS NULL ORDER BY id DESC LIMIT 1', $pf_p, $cents ) );
+};
+foreach ( array( 5100, 5200, 5300, 5400 ) as $pf_c ) {
+	$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $pf_p, 'lines' => array( $pf_line( $pf_c, 'Offerta PDF ' . $pf_c ) ) ) );
+}
+$pf_key = array();
+foreach ( \AssociazioneSemplice\Receipts::list_for_payer( $pf_p ) as $pf_r0 ) {
+	$pf_key[ (int) $pf_r0['cents'] ] = $pf_r0['key'];
+}
+$pf_dir = Attachments::dir();
+// emissione: il PDF si disegna e si salva una volta sola
+$pf_a  = \AssociazioneSemplice\Receipts::build( $pf_key[5100] );
+$pf_r  = \AssociazioneSemplice\Receipts::record( $pf_key[5100] );
+$pf_f  = $pf_dir . '/' . $pf_r['pdf_path'];
+$pf_fy = (int) $pf_r['year'];
+asem_ok( \AssociazioneSemplice\ReceiptFiles::valid_path( (string) $pf_r['pdf_path'] ) && is_file( $pf_f ) && true === $pf_a['stored'] && hash_file( 'sha256', $pf_f ) === $pf_r['pdf_sha256'] && $pf_r['pdf_sha256'] === $pf_a['pdf_sha256'] && file_get_contents( $pf_f ) === $pf_a['pdf'] && null === $pf_r['void_pdf_path'] && ! empty( $pf_r['pdf_at'] ), 'ricevute PDF: all\'emissione il PDF è salvato in un file, con percorso e impronta nel database' );
+$pf_b = \AssociazioneSemplice\Receipts::build( $pf_key[5100] );
+asem_ok( $pf_b['pdf'] === $pf_a['pdf'] && $pf_b['pdf_sha256'] === $pf_a['pdf_sha256'] && \AssociazioneSemplice\Receipts::record( $pf_key[5100] )['pdf_at'] === $pf_r['pdf_at'] && false === \AssociazioneSemplice\ReceiptFiles::store( $pf_r, 'issued', '%PDF-1.4 altro' ) && hash_file( 'sha256', $pf_f ) === $pf_r['pdf_sha256'], 'ricevute PDF: ogni scarico successivo serve lo stesso file (stesso sha256) e un PDF già fissato non si riscrive' );
+asem_ok( 1 === preg_match( '#^receipts/' . $pf_fy . '/\d+-[0-9a-f]{20}\.pdf$#', (string) $pf_r['pdf_path'] ) && is_file( $pf_dir . '/.htaccess' ) && is_file( $pf_dir . '/index.php' ) && is_file( $pf_dir . '/receipts/index.php' ) && 0 === strpos( realpath( $pf_f ), realpath( $pf_dir ) ), 'ricevute PDF: nome non indovinabile, dentro la cartella privata con .htaccess e index.php' );
+asem_ok( ! \AssociazioneSemplice\ReceiptFiles::valid_path( '../wp-config.php' ) && '' === \AssociazioneSemplice\ReceiptFiles::abs_path( 'receipts/2026/../../x.pdf' ) && 'receipts/2026/12-' . str_repeat( 'a', 20 ) . '.pdf' === \AssociazioneSemplice\ReceiptFiles::rel_path( 2026, 12, 'issued', str_repeat( 'a', 20 ) ), 'ricevute PDF: un percorso fuori regola non arriva mai al disco' );
+// alterazione: rilevata, mai servito, mai rifatto in silenzio
+file_put_contents( $pf_f, 'x', FILE_APPEND );
+$pf_e   = asem_throws( function () use ( $pf_key ) { \AssociazioneSemplice\Receipts::build( $pf_key[5100] ); } );
+$pf_rec = \AssociazioneSemplice\Receipts::record( $pf_key[5100] );
+asem_ok( 'altered' === \AssociazioneSemplice\ReceiptFiles::state( $pf_rec, 'issued' ) && null !== $pf_e && false !== strpos( $pf_e, 'diverso' ) && null !== asem_throws( function () use ( $pf_key ) { \AssociazioneSemplice\Receipts::email( $pf_key[5100] ); } ) && 'x' === substr( (string) file_get_contents( $pf_f ), -1 ), 'ricevute PDF: un file alterato si rileva, non si scarica né si invia e non viene rifatto di nascosto' );
+$pf_v = \AssociazioneSemplice\ReceiptFiles::verify( $pf_fy );
+asem_ok( $pf_v['summary']['altered'] >= 1 && in_array( $pf_key[5100], array_column( $pf_v['problems'], 'key' ), true ), 'ricevute PDF: la verifica segnala il file alterato' );
+$pf_html = asem_render( array( Admin\ReceiptCheckPage::class, 'render' ), 'File diversi da quando sono stati emessi', array( 'year' => $pf_fy ) );
+asem_ok( false !== strpos( $pf_html, 'Rifai dai dati salvati' ) && false !== strpos( $pf_html, 'asem_receipt_pdf_regen' ), 'ricevute PDF: la pagina di verifica propone di rifarlo dai dati salvati' );
+\AssociazioneSemplice\Receipts::regenerate_pdf( $pf_key[5100], 'issued' );
+$pf_rec = \AssociazioneSemplice\Receipts::record( $pf_key[5100] );
+asem_ok( 'ok' === \AssociazioneSemplice\ReceiptFiles::state( $pf_rec, 'issued' ) && 0 === strpos( (string) file_get_contents( $pf_f ), '%PDF-1.4' ) && 1 === count( glob( $pf_f . '.alterato-*' ) ?: array() ) && in_array( 'receipt.pdf_regenerated', array_column( \AssociazioneSemplice\Audit::recent( 30, 'receipt.' ), 'action' ), true ) && \AssociazioneSemplice\Receipts::build( $pf_key[5100] )['pdf'] === file_get_contents( $pf_f ), 'ricevute PDF: rifatto dai dati salvati, il file alterato resta da parte e l\'operazione è nel registro' );
+asem_ok( null !== asem_throws( function () use ( $pf_key ) { \AssociazioneSemplice\Receipts::regenerate_pdf( $pf_key[5100], 'issued' ); } ), 'ricevute PDF: se il PDF è a posto non si rifà' );
+// file mancante (la demo svuota la cartella e il database no): errore chiaro, nessuna eccezione fatale
+\AssociazioneSemplice\Receipts::build( $pf_key[5200] );
+$pf_r2 = \AssociazioneSemplice\Receipts::record( $pf_key[5200] );
+$pf_f2 = $pf_dir . '/' . $pf_r2['pdf_path'];
+wp_delete_file( $pf_f2 );
+$pf_e2 = asem_throws( function () use ( $pf_key ) { \AssociazioneSemplice\Receipts::build( $pf_key[5200] ); } );
+asem_ok( 'missing' === \AssociazioneSemplice\ReceiptFiles::state( $pf_r2, 'issued' ) && null !== $pf_e2 && false !== strpos( $pf_e2, 'non si trova più' ) && ! is_file( $pf_f2 ) && \AssociazioneSemplice\Receipts::can_view( $pf_key[5200] ), 'ricevute PDF: file mancante, errore chiaro e nessun PDF rifatto in silenzio' );
+asem_render( array( Admin\ReceiptCheckPage::class, 'render' ), 'File mancanti', array( 'year' => $pf_fy ) );
+$pf_docs = \AssociazioneSemplice\ReceiptFiles::backup_documents( array() );
+asem_ok( in_array( 'documenti/' . $pf_r['pdf_path'], array_column( $pf_docs, 'name' ), true ) && ! in_array( 'documenti/' . $pf_r2['pdf_path'], array_column( $pf_docs, 'name' ), true ), 'ricevute PDF: la copia di sicurezza prende i PDF integri e ignora quelli mancanti senza fallire' );
+$pf_json = (string) $pf_r2['data'];
+$wpdb->update( Db::t( 'receipts' ), array( 'data' => $pf_json . ' ' ), array( 'id' => (int) $pf_r2['id'] ) ); // dati che non coincidono più con la loro impronta
+asem_ok( null !== asem_throws( function () use ( $pf_key ) { \AssociazioneSemplice\Receipts::regenerate_pdf( $pf_key[5200], 'issued' ); } ) && ! is_file( $pf_f2 ) && null !== asem_throws( function () use ( $pf_key ) { \AssociazioneSemplice\Receipts::build( $pf_key[5200] ); } ), 'ricevute PDF: se i dati non coincidono con la loro impronta il PDF non si rifà e la ricevuta non si mostra' );
+$wpdb->update( Db::t( 'receipts' ), array( 'data' => $pf_json ), array( 'id' => (int) $pf_r2['id'] ) );
+\AssociazioneSemplice\Receipts::regenerate_pdf( $pf_key[5200], 'issued' );
+asem_ok( is_file( $pf_f2 ) && 'ok' === \AssociazioneSemplice\ReceiptFiles::state( \AssociazioneSemplice\Receipts::record( $pf_key[5200] ), 'issued' ), 'ricevute PDF: con i dati intatti il PDF mancante si rifà dai dati salvati' );
+// annullata: ha il suo PDF, quello emesso resta com'era
+\AssociazioneSemplice\Receipts::build( $pf_key[5300] );
+$pf_r3 = \AssociazioneSemplice\Receipts::record( $pf_key[5300] );
+$ledger->void( $pf_tx( 5300 ), 'Errore PDF' );
+$pf_r3b = \AssociazioneSemplice\Receipts::record( $pf_key[5300] );
+$pf_v3  = \AssociazioneSemplice\Receipts::build( $pf_key[5300] );
+asem_ok( $pf_r3b['pdf_sha256'] === $pf_r3['pdf_sha256'] && $pf_r3b['pdf_path'] === $pf_r3['pdf_path'] && ! empty( $pf_r3b['void_pdf_path'] ) && $pf_r3b['void_pdf_path'] !== $pf_r3b['pdf_path'] && is_file( $pf_dir . '/' . $pf_r3b['void_pdf_path'] ) && true === $pf_v3['voided'] && false !== strpos( $pf_v3['pdf'], 'ANNULLATA' ) && false === strpos( (string) file_get_contents( $pf_dir . '/' . $pf_r3b['pdf_path'] ), 'ANNULLATA' ) && hash_file( 'sha256', $pf_dir . '/' . $pf_r3b['void_pdf_path'] ) === $pf_r3b['void_pdf_sha256'] && $pf_v3['pdf_sha256'] === $pf_r3b['void_pdf_sha256'], 'ricevute PDF: la ricevuta annullata ha il suo PDF fissato; quello emesso non cambia' );
+wp_delete_file( $pf_dir . '/' . $pf_r3b['void_pdf_path'] );
+$pf_vp  = \AssociazioneSemplice\ReceiptFiles::verify( $pf_fy )['problems'];
+$pf_vi  = array_search( $pf_key[5300], array_column( $pf_vp, 'key' ), true );
+asem_ok( null !== asem_throws( function () use ( $pf_key ) { \AssociazioneSemplice\Receipts::build( $pf_key[5300] ); } ) && false !== $pf_vi && 'missing' === $pf_vp[ $pf_vi ]['state'] && array( 'void' => 'missing' ) === $pf_vp[ $pf_vi ]['detail'], 'ricevute PDF: il PDF «annullata» mancante si segnala' );
+\AssociazioneSemplice\Receipts::regenerate_pdf( $pf_key[5300], 'void' );
+asem_ok( true === \AssociazioneSemplice\Receipts::build( $pf_key[5300] )['voided'] && false !== strpos( \AssociazioneSemplice\Receipts::build( $pf_key[5300] )['pdf'], 'ANNULLATA' ), 'ricevute PDF: il PDF «annullata» si rifà dai dati e dalla riga dell\'annullo' );
+// sostitutiva: nasce con il suo PDF
+$ledger->record_receipt( array( 'date' => $today, 'account_id' => (int) $cash['id'], 'person_id' => $pf_p, 'lines' => array( $pf_line( 5500, 'Voce A' ), $pf_line( 5600, 'Voce B' ) ) ) );
+$pf_k2 = '';
+foreach ( \AssociazioneSemplice\Receipts::list_for_payer( $pf_p ) as $pf_r0 ) {
+	if ( 11100 === (int) $pf_r0['cents'] ) {
+		$pf_k2 = $pf_r0['key'];
+	}
+}
+\AssociazioneSemplice\Receipts::build( $pf_k2 );
+$ledger->void( $pf_tx( 5500 ), 'Riga sbagliata PDF' );
+$pf_new = \AssociazioneSemplice\Receipts::issue_replacement( $pf_k2 );
+$pf_nr  = \AssociazioneSemplice\Receipts::record( $pf_new['key'] );
+$pf_nb  = \AssociazioneSemplice\Receipts::build( $pf_new['key'] );
+asem_ok( ! empty( $pf_nr['pdf_path'] ) && is_file( $pf_dir . '/' . $pf_nr['pdf_path'] ) && 'ok' === \AssociazioneSemplice\ReceiptFiles::state( $pf_nr, 'issued' ) && true === $pf_nb['stored'] && $pf_nb['pdf_sha256'] === $pf_nr['pdf_sha256'] && ! empty( \AssociazioneSemplice\Receipts::record( $pf_k2 )['void_pdf_path'] ), 'ricevute PDF: la sostitutiva e la ricevuta annullata hanno entrambe il PDF fissato' );
+// ricevute emesse prima (senza PDF fissato): si completano a lotti dai dati, senza cambiarli
+$pf_old = array();
+foreach ( array( 5100, 5200, 5400 ) as $pf_c ) {
+	\AssociazioneSemplice\Receipts::build( $pf_key[ $pf_c ] );
+	$pf_o = \AssociazioneSemplice\Receipts::record( $pf_key[ $pf_c ] );
+	wp_delete_file( $pf_dir . '/' . $pf_o['pdf_path'] );
+	$wpdb->query( 'UPDATE ' . Db::t( 'receipts' ) . ' SET pdf_path = NULL, pdf_sha256 = NULL, pdf_at = NULL WHERE id = ' . (int) $pf_o['id'] );
+	$pf_old[ $pf_c ] = array( 'id' => (int) $pf_o['id'], 'data' => (string) $pf_o['data'], 'hash' => (string) $pf_o['content_hash'] );
+}
+$pf_from = min( array_column( $pf_old, 'id' ) ) - 1;
+$pf_l1   = \AssociazioneSemplice\ReceiptFiles::complete( $pf_fy, $pf_from, 2 );
+$pf_l2   = \AssociazioneSemplice\ReceiptFiles::complete( $pf_fy, $pf_l1['last_id'], 2 );
+$pf_same = true;
+foreach ( $pf_old as $pf_c => $pf_o ) {
+	$pf_n    = \AssociazioneSemplice\Receipts::record( $pf_key[ $pf_c ] );
+	$pf_same = $pf_same && $pf_n['data'] === $pf_o['data'] && $pf_n['content_hash'] === $pf_o['hash'] && 'ok' === \AssociazioneSemplice\ReceiptFiles::state( $pf_n, 'issued' );
+}
+asem_ok( 2 === $pf_l1['done'] && true === $pf_l1['more'] && 1 === $pf_l2['done'] && false === $pf_l2['more'] && $pf_same && 0 === \AssociazioneSemplice\ReceiptFiles::pending_count( $pf_fy ), 'ricevute PDF: le già emesse si completano a lotti dai loro dati, che non cambiano' );
+$pf_sha = \AssociazioneSemplice\Receipts::record( $pf_key[5400] )['pdf_sha256'];
+$pf_l3  = \AssociazioneSemplice\ReceiptFiles::complete( $pf_fy, 0, 500 );
+asem_ok( 0 === $pf_l3['done'] && 0 === $pf_l3['failed'] && $pf_sha === \AssociazioneSemplice\Receipts::record( $pf_key[5400] )['pdf_sha256'], 'ricevute PDF: il completamento non riscrive mai un PDF già fissato' );
+// chiusura dell'anno fiscale: il primo lotto si fissa subito
+$wpdb->query( 'UPDATE ' . Db::t( 'receipts' ) . ' SET pdf_path = NULL, pdf_sha256 = NULL, pdf_at = NULL WHERE id = ' . (int) $pf_old[5400]['id'] );
+asem_ok( has_action( 'asem_year_closed', array( \AssociazioneSemplice\ReceiptFiles::class, 'on_year_closed' ) ) && 1 <= \AssociazioneSemplice\ReceiptFiles::pending_count( $pf_fy ), 'ricevute PDF: alla chiusura dell\'anno si fissano i PDF mancanti (azione agganciata)' );
+do_action( 'asem_year_closed', $pf_fy );
+asem_ok( 0 === \AssociazioneSemplice\ReceiptFiles::pending_count( $pf_fy ), 'ricevute PDF: la chiusura fissa i PDF ancora mancanti dell\'anno' );
+// verifica e archivio ZIP dell'anno
+$pf_v   = \AssociazioneSemplice\ReceiptFiles::verify( $pf_fy );
+$pf_num = (int) \AssociazioneSemplice\Receipts::record( $pf_key[5100] )['number'];
+$pf_zip = \AssociazioneSemplice\ReceiptFiles::zip_year( $pf_fy );
+$pf_zz  = new ZipArchive();
+$pf_zz->open( $pf_zip['path'] );
+$pf_zv  = false !== $pf_zz->locateName( sprintf( 'ricevute-%d/ricevuta-%d-%d.pdf', $pf_fy, $pf_num, $pf_fy ) ) && false !== $pf_zz->locateName( sprintf( 'ricevute-%d/ricevuta-%d-%d-annullata.pdf', $pf_fy, (int) \AssociazioneSemplice\Receipts::record( $pf_key[5300] )['number'], $pf_fy ) );
+$pf_zz->close();
+wp_delete_file( $pf_zip['path'] );
+asem_ok( 0 === $pf_v['summary']['pending'] && 0 === $pf_v['summary']['altered'] && $pf_zv && $pf_zip['count'] >= 5 && false !== strpos( \AssociazioneSemplice\Receipts::zip_url( $pf_fy ), 'action=asem_receipt_zip' ), 'ricevute PDF: la verifica dell\'anno è pulita e lo ZIP contiene i PDF emessi e quelli annullati' );
+$pf_okp = asem_render( array( Admin\ReceiptCheckPage::class, 'render' ), 'Ricevute emesse', array( 'year' => $pf_fy ) );
+asem_ok( false !== strpos( $pf_okp, 'Scarica i PDF di questo anno fiscale' ), 'ricevute PDF: la pagina di verifica si apre e offre l\'archivio ZIP' );
+asem_ok( has_action( 'asem_reset_private_files', array( \AssociazioneSemplice\ReceiptFiles::class, 'delete_all' ) ) && has_filter( 'asem_backup_documents' ) && has_filter( 'asem_backup_restore_documents' ), 'ricevute PDF: azzeramento, copia di sicurezza e ripristino sono collegati' );
+// pulizia
+$wpdb->query( 'DELETE FROM ' . Db::t( 'receipts' ) . ' WHERE replaces_id IS NOT NULL OR receipt_key IN (\'' . implode( '\',\'', array_map( 'esc_sql', array_merge( array_values( $pf_key ), array( $pf_k2 ) ) ) ) . '\')' );
+$wpdb->query( 'DELETE FROM ' . Db::t( 'transactions' ) . ' WHERE person_id = ' . (int) $pf_p );
+asem_ok( \AssociazioneSemplice\ReceiptFiles::delete_all() >= 1 && ! is_dir( $pf_dir . '/receipts' ), 'ricevute PDF: l\'azzeramento toglie dal disco i PDF delle ricevute' );
 
 // ---------- Quota associativa doppia: bloccata; annullo sicuro del doppione ----------
 Settings::update( array( 'limits' => array( 'membership_on_balance' => 0 ) ) );

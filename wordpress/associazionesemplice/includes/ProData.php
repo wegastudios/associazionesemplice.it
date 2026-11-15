@@ -237,6 +237,7 @@ final class ProData {
 		return $map + array(
 			'asem_receipt'      => 'Receipts',
 			'asem_statement'    => 'Receipts',
+			'asem_receipt_zip'  => 'Receipts',
 			'asem_export_texts' => 'TextsEngine',
 			'asem_wallet_apple' => 'Wallet',
 		);

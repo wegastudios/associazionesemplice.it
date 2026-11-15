@@ -37,6 +37,7 @@ final class BackupPage {
 			}
 			echo '</ul><p class="description">Si conservano al massimo ' . (int) \AssociazioneSemplice\Limits::get( 'backup_keep' ) . ' copie e solo per ' . (int) \AssociazioneSemplice\Limits::get( 'backup_hours' ) . ' ore, poi vengono cancellate da sole. Per tornare indietro scarica il file e ripristinalo da qui.</p>';
 		}
+		do_action( 'asem_backup_page_after' ); // un'estensione aggiunge i suoi riquadri (ad esempio la verifica dei PDF definitivi)
 		Ui::footer();
 	}
 }

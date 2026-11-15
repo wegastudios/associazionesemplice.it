@@ -155,18 +155,19 @@ final class Backup {
 				}
 			}
 		}
+		$docs = self::documents( $zip ); // documenti definitivi di un'estensione (PDF già emessi): vanno sempre nella copia, con l'indice delle impronte
 		$zip->addFromString( 'impostazioni.json', (string) wp_json_encode( self::settings_payload(), JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT ) );
 		$zip->addFromString(
 			'manifest.json',
 			(string) wp_json_encode(
 				array(
 					'plugin' => 'associazionesemplice', 'version' => ASEM_VERSION, 'db_version' => (string) get_option( Install::DB_VERSION_OPTION, Install::DB_VERSION ), 'created_at' => Db::now(),
-					'site' => home_url(), 'prefix' => $db->prefix, 'tables' => $counts, 'attachments' => count( $files ),
+					'site' => home_url(), 'prefix' => $db->prefix, 'tables' => $counts, 'attachments' => count( $files ), 'documents' => $docs,
 				),
 				JSON_PRETTY_PRINT
 			)
 		);
-		$zip->addFromString( 'LEGGIMI.txt', "Copia di sicurezza di Associazione Semplice.\nContiene una tabella per file (tabelle/*.jsonl, una riga JSON per record), le impostazioni (impostazioni.json) e, se scelto, gli allegati.\nSi ripristina da Strumenti → Copia di sicurezza, sullo stesso sito.\nLe chiavi segrete dei pagamenti online non sono incluse.\n" );
+		$zip->addFromString( 'LEGGIMI.txt', "Copia di sicurezza di Associazione Semplice.\nContiene una tabella per file (tabelle/*.jsonl, una riga JSON per record), le impostazioni (impostazioni.json) e, se scelto, gli allegati. La cartella documenti/ contiene i PDF definitivi già emessi (ad esempio le ricevute) con l'indice delle loro impronte SHA-256 (documenti/indice.json).\nSi ripristina da Strumenti → Copia di sicurezza, sullo stesso sito.\nLe chiavi segrete dei pagamenti online non sono incluse.\n" );
 		$ok = $zip->close();
 		foreach ( $tmp as $f ) {
 			wp_delete_file( $f ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
@@ -175,8 +176,33 @@ final class Backup {
 			throw new \RuntimeException( 'Creazione della copia non riuscita.' );
 		}
 		update_option( self::OPT_LAST, time(), false );
-		Audit::log( 'backup.created', 'settings', 0, array( 'tables' => count( $counts ), 'attachments' => count( $files ) ) );
+		Audit::log( 'backup.created', 'settings', 0, array( 'tables' => count( $counts ), 'attachments' => count( $files ), 'documents' => $docs ) );
 		return $path;
+	}
+
+	/**
+	 * Aggiunge allo ZIP i documenti definitivi che un'estensione dichiara con il filtro `asem_backup_documents` (elenco di name, path, sha256) e
+	 * scrive `documenti/indice.json` con i nomi e le impronte SHA-256. Solo nomi sotto `documenti/`, senza `..`, e solo file che esistono.
+	 *
+	 * @return int documenti aggiunti
+	 */
+	private static function documents( \ZipArchive $zip ): int {
+		$index = array();
+		foreach ( (array) apply_filters( 'asem_backup_documents', array() ) as $d ) {
+			if ( ! is_array( $d ) || ! isset( $d['name'], $d['path'] ) ) {
+				continue;
+			}
+			$name = (string) $d['name'];
+			if ( 1 !== preg_match( '#^documenti/[A-Za-z0-9/_.-]+$#', $name ) || false !== strpos( $name, '..' ) || 'documenti/indice.json' === $name || ! is_file( (string) $d['path'] ) ) {
+				continue;
+			}
+			$zip->addFile( (string) $d['path'], $name );
+			$index[] = array( 'name' => $name, 'sha256' => (string) ( $d['sha256'] ?? '' ) );
+		}
+		if ( $index ) {
+			$zip->addFromString( 'documenti/indice.json', (string) wp_json_encode( array( 'files' => $index ), JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT ) );
+		}
+		return count( $index );
 	}
 
 	// ---------- Ripristino ----------
@@ -338,11 +364,13 @@ final class Backup {
 				}
 			}
 		}
+		// documenti definitivi (PDF già emessi): un'estensione li rimette sul disco, controllando le impronte registrate nel database ripristinato
+		$documents = array_merge( array( 'restored' => 0, 'present' => 0, 'missing' => 0, 'bad' => 0 ), (array) apply_filters( 'asem_backup_restore_documents', array(), $zip, $m ) );
 		$zip->close();
 		Install::migrate_year_closures(); // una copia fatta prima della traccia delle chiusure: gli anni chiusi ne ricevono la riga (idempotente)
 		Texts::flush();
-		Audit::log( 'backup.restored', 'settings', 0, array( 'rows' => $rows_total, 'attachments' => $files ) );
-		return array( 'tables' => count( $m['tables'] ), 'rows' => $rows_total, 'files' => $files, 'safety' => basename( $safety ) );
+		Audit::log( 'backup.restored', 'settings', 0, array( 'rows' => $rows_total, 'attachments' => $files, 'documents' => $documents ) );
+		return array( 'tables' => count( $m['tables'] ), 'rows' => $rows_total, 'files' => $files, 'safety' => basename( $safety ), 'documents' => $documents );
 	}
 
 	// ---------- Download ----------

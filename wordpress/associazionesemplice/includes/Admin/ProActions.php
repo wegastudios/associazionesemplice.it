@@ -49,6 +49,8 @@ final class ProActions {
 		'asem_fund_settle' => array( 'fund_settle', 'funds', false ),
 		'asem_receipt_email' => array( 'receipt_email', 'receipts', false ),
 		'asem_receipt_replace' => array( 'receipt_replace', 'receipts', false ),
+		'asem_receipt_pdf_complete' => array( 'receipt_pdf_complete', 'receipts', true ),
+		'asem_receipt_pdf_regen' => array( 'receipt_pdf_regen', 'receipts', true ),
 		'asem_walk_in' => array( 'walk_in', 'door_sales', false ),
 		'asem_broadcast_send' => array( 'broadcast_send', 'broadcasts', false ),
 		'asem_broadcast_test' => array( 'broadcast_test', 'broadcasts', false ),
@@ -558,6 +560,16 @@ final class ProActions {
 		}
 		$n = \AssociazioneSemplice\StatementSnapshot::backfill();
 		return array( Ui::url( 'asem-years' ), 0 === $n ? 'Nessun rendiconto da emettere.' : ( 1 === $n ? 'Emesso il rendiconto definitivo di 1 anno fiscale già chiuso' : 'Emesso il rendiconto definitivo di ' . $n . ' anni fiscali già chiusi' ) . ': ricostruito dai dati di oggi, con numero e data di emissione.' );
+	}
+
+	/** Fissa a lotti i PDF definitivi delle ricevute che ancora non ce l'hanno. */
+	public static function receipt_pdf_complete( array $p ): array {
+		return ReceiptCheckPage::complete( $p );
+	}
+
+	/** Rifà dai dati salvati il PDF mancante o alterato di una ricevuta. */
+	public static function receipt_pdf_regen( array $p ): array {
+		return ReceiptCheckPage::regenerate( $p );
 	}
 
 	public static function save_woo( array $p ): array {

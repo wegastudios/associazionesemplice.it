@@ -951,7 +951,15 @@ final class Actions {
 			throw new \InvalidArgumentException( 'Scegli il file della copia da ripristinare.' );
 		}
 		$r = \AssociazioneSemplice\Backup::restore( $f['tmp_name'] );
-		return array( Ui::url( 'asem-backup' ), 'Ripristino completato: ' . $r['rows'] . ' record in ' . $r['tables'] . ' tabelle' . ( $r['files'] ? ', ' . $r['files'] . ' allegati' : '' ) . '. Copia di sicurezza dello stato precedente: ' . $r['safety'] . '.' );
+		$d    = (array) ( $r['documents'] ?? array() );
+		$docs = '';
+		if ( ! empty( $d['restored'] ) ) {
+			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Rimessi sul sito {n} PDF definitivi.', array( 'n' => (int) $d['restored'] ) );
+		}
+		if ( ! empty( $d['missing'] ) || ! empty( $d['bad'] ) ) {
+			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: {n} PDF definitivi non si sono potuti ritrovare o non coincidono con la loro impronta; controllali da «Verifica delle ricevute».', array( 'n' => (int) ( $d['missing'] ?? 0 ) + (int) ( $d['bad'] ?? 0 ) ) );
+		}
+		return array( Ui::url( 'asem-backup' ), 'Ripristino completato: ' . $r['rows'] . ' record in ' . $r['tables'] . ' tabelle' . ( $r['files'] ? ', ' . $r['files'] . ' allegati' : '' ) . '.' . $docs . ' Copia di sicurezza dello stato precedente: ' . $r['safety'] . '.' );
 	}
 
 

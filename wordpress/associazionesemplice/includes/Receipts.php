@@ -24,6 +24,7 @@ final class Receipts {
 			add_action( 'admin_post_' . $a, array( __CLASS__, $m ) );
 			add_action( 'admin_post_nopriv_' . $a, Csrf::nopriv( array( __CLASS__, $m ), array( Csrf::class, 'to_login' ) ) );
 		}
+		add_action( 'admin_post_asem_receipt_zip', array( __CLASS__, 'handle_zip' ) ); // solo amministratori, anche questo con nonce
 		add_action( 'asem_tx_voided', array( __CLASS__, 'on_void' ), 10, 2 ); // l'annullo di un incasso annulla anche la ricevuta già emessa (resta traccia, non si cancella)
 	}
 
@@ -214,8 +215,81 @@ final class Receipts {
 		if ( $n ) {
 			$rec = self::record( $key );
 			Audit::log( 'receipt.voided', 'receipt', $rec ? (int) $rec['id'] : 0, array( 'number' => $rec ? $rec['number'] . '/' . $rec['year'] : '' ) );
+			try { // il PDF «ANNULLATA» si fissa subito (con il suo, già fissato all'emissione, che resta com'è); se non riesce lo si fissa alla prima lettura o col completamento
+				if ( $rec ) {
+					self::fix_pdfs( $rec );
+				}
+			} catch ( \Throwable $e ) {
+				error_log( 'Associazione Semplice: PDF della ricevuta annullata non fissato: ' . $e->getMessage() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			}
 		}
 		return (bool) $n;
+	}
+
+	// ---------- PDF definitivi ----------
+
+	/**
+	 * Fissa i PDF che mancano di una ricevuta emessa (quello emesso e, se è annullata, quello «ANNULLATA») dai dati fotografati, senza cambiarli.
+	 * Un PDF già fissato non si tocca mai. Se l'impronta dei dati non coincide con quella registrata all'emissione non si fissa nulla.
+	 *
+	 * @param array $rec riga della ricevuta (tutte le colonne)
+	 * @return string[] tipi fissati ora (ReceiptFiles::ISSUED, ReceiptFiles::VOID)
+	 */
+	public static function fix_pdfs( array $rec ): array {
+		$out  = array();
+		$need = array();
+		if ( ! ReceiptFiles::has( $rec, ReceiptFiles::ISSUED ) ) {
+			$need[] = ReceiptFiles::ISSUED;
+		}
+		if ( null !== ( $rec['voided_at'] ?? null ) && ! ReceiptFiles::has( $rec, ReceiptFiles::VOID ) ) {
+			$need[] = ReceiptFiles::VOID;
+		}
+		if ( ! $need || ! self::data_intact( $rec ) ) {
+			return $out;
+		}
+		$data = self::data_of( $rec );
+		foreach ( $need as $kind ) {
+			if ( ReceiptFiles::store( $rec, $kind, self::render( $data, ReceiptFiles::VOID === $kind ? $rec : null ) ) ) {
+				$out[] = $kind;
+			}
+		}
+		return $out;
+	}
+
+	/** I dati fotografati ci sono e coincidono con l'impronta scritta all'emissione? (Senza impronta, per le ricevute più vecchie, basta che ci siano.) */
+	public static function data_intact( array $rec ): bool {
+		if ( ! self::data_of( $rec ) ) {
+			return false;
+		}
+		$hash = (string) ( $rec['content_hash'] ?? '' );
+		return '' === $hash || hash_equals( $hash, hash( 'sha256', (string) $rec['data'] ) );
+	}
+
+	/**
+	 * Rifà il PDF mancante o alterato di una ricevuta, SOLO dai dati fotografati e solo se la loro impronta coincide (azione esplicita di un amministratore).
+	 * Il file alterato resta accanto, messo da parte; l'operazione è scritta nel registro azioni con le due impronte.
+	 *
+	 * @param string $kind ReceiptFiles::ISSUED o ReceiptFiles::VOID
+	 * @throws \InvalidArgumentException
+	 */
+	public static function regenerate_pdf( string $key, string $kind ): void {
+		$rec = self::record( self::clean_key( $key ) );
+		if ( ! $rec || ! in_array( $kind, ReceiptFiles::kinds(), true ) || ! ReceiptFiles::has( $rec, $kind ) ) {
+			throw new \InvalidArgumentException( Texts::t( 'Questa ricevuta non ha un PDF fissato da rifare.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		if ( ! in_array( ReceiptFiles::state( $rec, $kind ), array( 'missing', 'altered' ), true ) ) {
+			throw new \InvalidArgumentException( Texts::t( 'Il PDF di questa ricevuta è a posto: non serve rifarlo.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		if ( ReceiptFiles::VOID === $kind && null === $rec['voided_at'] ) {
+			throw new \InvalidArgumentException( Texts::t( 'Questa ricevuta non è annullata.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		if ( ! self::data_intact( $rec ) || '' === (string) $rec['content_hash'] ) {
+			throw new \InvalidArgumentException( Texts::t( 'I dati salvati di questa ricevuta non coincidono con la loro impronta (o non ne hanno una): il PDF non viene rifatto, per non mostrare dati diversi da quelli emessi. Ripristina il file da una copia di sicurezza.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$old = ReceiptFiles::replace( $rec, $kind, self::render( self::data_of( $rec ), ReceiptFiles::VOID === $kind ? $rec : null ) );
+		$new = self::record( (string) $rec['receipt_key'] );
+		$c   = ReceiptFiles::columns( $kind );
+		Audit::log( 'receipt.pdf_regenerated', 'receipt', (int) $rec['id'], array( 'number' => $rec['number'] . '/' . $rec['year'], 'kind' => $kind, 'old_sha256' => $old, 'new_sha256' => $new ? (string) $new[ $c[1] ] : '' ) );
 	}
 
 	/** Azione `asem_tx_voided`: la ricevuta emessa per l'incasso annullato risulta annullata. */
@@ -358,6 +432,13 @@ final class Receipts {
 		$db->query( $db->prepare( 'UPDATE ' . Db::t( 'receipts' ) . " SET data = %s, content_hash = %s WHERE receipt_key = %s AND (data IS NULL OR data = '')", $json, hash( 'sha256', $json ), $nkey ) );
 		$new = self::record( $nkey );
 		Audit::log( 'receipt.replacement_issued', 'receipt', $new ? (int) $new['id'] : 0, array( 'number' => $num['number'] . '/' . $num['year'], 'replaces' => $old['number'] . '/' . $old['year'] ) );
+		try { // la sostitutiva è un documento nuovo: il suo PDF si fissa subito
+			if ( $new ) {
+				self::fix_pdfs( $new );
+			}
+		} catch ( \Throwable $e ) {
+			error_log( 'Associazione Semplice: PDF della ricevuta sostitutiva non fissato: ' . $e->getMessage() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+		}
 		return array( 'key' => $nkey, 'number' => $num['number'] . '/' . $num['year'], 'replaces' => $old['number'] . '/' . $old['year'] );
 	}
 
@@ -659,12 +740,31 @@ final class Receipts {
 		$label = $s['number'] . '/' . $s['year'];
 		$payer = $s['payer_id'] ? Plugin::people()->get( (int) $s['payer_id'] ) : null;
 		$who   = '' !== (string) $s['payer_last'] ? Text::normalize( $s['payer_last'] ) : 'ricevuta';
-		$out   = array( 'pdf' => self::render( $s, $void ), 'filename' => 'ricevuta-' . $s['number'] . '-' . $s['year'] . ( $void ? '-annullata' : '' ) . '-' . preg_replace( '/[^a-z0-9]/', '', $who ) . '.pdf', 'number' => $label, 'payer' => $payer, 'hash' => $hash, 'voided' => (bool) $void );
-		return $out;
+		// Il PDF è definitivo: si fissa alla prima emissione (o all'annullo) e da lì si serve sempre il file salvato, controllandone l'impronta.
+		$cur = self::record( $key );
+		if ( $cur ) {
+			try {
+				self::fix_pdfs( $cur );
+			} catch ( \Throwable $e ) {
+				error_log( 'Associazione Semplice: PDF della ricevuta non fissato: ' . $e->getMessage() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			}
+			$cur = self::record( $key );
+		}
+		$voided = $cur && null !== $cur['voided_at'];
+		$kind   = $voided ? ReceiptFiles::VOID : ReceiptFiles::ISSUED;
+		if ( $cur && ReceiptFiles::has( $cur, $kind ) ) {
+			$pdf = ReceiptFiles::read( $cur, $kind ); // file mancante o alterato: errore chiaro, mai un PDF rifatto in silenzio
+		} else { // non si è riusciti a salvare il file (permessi del disco): si serve il PDF disegnato dai dati fotografati, che sono quelli emessi
+			if ( $cur && ! self::data_intact( $cur ) ) {
+				throw new \InvalidArgumentException( Texts::t( 'I dati salvati della ricevuta n. {n} non coincidono con la loro impronta: per sicurezza non viene mostrata. Avvisa un amministratore.', array( 'n' => $label ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			}
+			$pdf = self::render( $s, $voided ? $cur : $void );
+		}
+		return array( 'pdf' => $pdf, 'filename' => 'ricevuta-' . $s['number'] . '-' . $s['year'] . ( $voided || $void ? '-annullata' : '' ) . '-' . preg_replace( '/[^a-z0-9]/', '', $who ) . '.pdf', 'number' => $label, 'payer' => $payer, 'hash' => $hash, 'voided' => $voided || (bool) $void, 'pdf_sha256' => hash( 'sha256', $pdf ), 'stored' => (bool) ( $cur && ReceiptFiles::has( $cur, $kind ) ) );
 	}
 
 	/** Disegna il PDF della ricevuta dai soli dati fotografati (e, se annullata, dalla riga dell'annullo: data e motivo). */
-	private static function render( array $s, ?array $void = null ): string {
+	public static function render( array $s, ?array $void = null ): string {
 		$label  = $s['number'] . '/' . $s['year'];
 		$date   = (string) $s['date'];
 		Pdf::$filter = array( Texts::class, 'plain' ); // testi personalizzati nel PDF
@@ -930,9 +1030,53 @@ final class Receipts {
 		try {
 			$r = self::build( $key );
 		} catch ( \InvalidArgumentException $e ) {
-			wp_die( esc_html( $e->getMessage() ), 404 );
+			// Il dettaglio tecnico lo vede solo la segreteria; il socio un avviso semplice.
+			$msg = $e->getMessage();
+			if ( ! current_user_can( Plugin::CAP_OPS ) ) {
+				$msg = Contacts::complete()
+					? Texts::t( 'Questa ricevuta non è disponibile in questo momento. Avvisa la segreteria: {email}, tel. {telefono}.', array( 'email' => Contacts::email(), 'telefono' => Contacts::phone() ) )
+					: Texts::t( 'Questa ricevuta non è disponibile in questo momento. Avvisa la segreteria.' );
+			}
+			wp_die( esc_html( $msg ), 404 );
 		}
 		self::send_pdf( $r['pdf'], $r['filename'] );
+	}
+
+	public static function zip_url( int $year ): string {
+		return wp_nonce_url( add_query_arg( array( 'action' => 'asem_receipt_zip', 'year' => $year ), admin_url( 'admin-post.php' ) ), 'asem_receipt_zip_' . $year );
+	}
+
+	/** Scarico dei PDF fissati di un anno fiscale in un file ZIP (solo amministratori). */
+	public static function handle_zip(): void {
+		$year = isset( $_GET['year'] ) ? absint( $_GET['year'] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- nonce controllato sotto
+		if ( ! current_user_can( Plugin::CAP ) || ! Edition::has( 'receipts' ) ) {
+			wp_die( 'Non autorizzato.', 403 );
+		}
+		check_admin_referer( 'asem_receipt_zip_' . $year );
+		try {
+			$z = ReceiptFiles::zip_year( $year );
+		} catch ( \RuntimeException $e ) {
+			wp_die( esc_html( $e->getMessage() ), 500 );
+		}
+		ignore_user_abort( true );
+		register_shutdown_function(
+			function () use ( $z ) {
+				if ( is_file( $z['path'] ) ) {
+					wp_delete_file( $z['path'] );
+				}
+			}
+		);
+		while ( ob_get_level() ) {
+			ob_end_clean();
+		}
+		nocache_headers();
+		header( 'Content-Type: application/zip' );
+		header( 'X-Content-Type-Options: nosniff' );
+		header( 'Content-Disposition: attachment; filename="ricevute-' . $year . '.zip"' );
+		header( 'Content-Length: ' . filesize( $z['path'] ) );
+		readfile( $z['path'] ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile -- lettura in streaming di un file temporaneo
+		wp_delete_file( $z['path'] );
+		exit;
 	}
 
 	public static function handle_statement(): void {
