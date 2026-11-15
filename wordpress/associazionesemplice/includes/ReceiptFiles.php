@@ -151,11 +151,7 @@ final class ReceiptFiles {
 		if ( ! is_dir( $dir ) && ! wp_mkdir_p( $dir ) ) {
 			return false;
 		}
-		foreach ( array( $dir, dirname( $dir ) ) as $d ) {
-			if ( ! file_exists( $d . '/index.php' ) ) {
-				@file_put_contents( $d . '/index.php', "<?php\n// Silence is golden.\n" ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-			}
-		}
+		PrivateFolder::protect( $dir ); // index.php nella cartella dell'anno, in receipts e nella radice riservata
 		return true;
 	}
 

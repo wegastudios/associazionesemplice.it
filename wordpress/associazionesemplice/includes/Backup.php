@@ -33,6 +33,7 @@ final class Backup {
 		if ( ! is_dir( $dir ) && ! wp_mkdir_p( $dir ) ) {
 			throw new \RuntimeException( 'Impossibile creare la cartella delle copie di sicurezza: controlla i permessi di wp-content/uploads.' );
 		}
+		PrivateFolder::protect( $dir ); // anche la sottocartella delle copie: niente elenco dei file
 		return $dir;
 	}
 

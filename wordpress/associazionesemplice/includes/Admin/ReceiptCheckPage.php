@@ -135,7 +135,7 @@ final class ReceiptCheckPage {
 		}
 
 		echo '<p><a class="button" href="' . esc_url( Receipts::zip_url( $year ) ) . '">' . esc_html( Texts::t( 'Scarica i PDF di questo anno fiscale (ZIP)' ) ) . '</a></p>';
-		echo '<p class="description">' . esc_html( Texts::t( 'Ogni PDF pesa pochi KB e sta nella cartella riservata del sito (wp-content/uploads/associazionesemplice-private/receipts), la stessa degli allegati: non è raggiungibile da internet. Conserva sempre anche una copia di sicurezza fuori dal sito.' ) ) . '</p>';
+		echo '<p class="description">' . esc_html( Texts::t( 'Ogni PDF pesa pochi KB e sta nella cartella riservata del sito ({cartella}/receipts), la stessa degli allegati. Se la cartella risultasse raggiungibile da internet, la pagina Copia di sicurezza lo segnala. Conserva sempre anche una copia di sicurezza fuori dal sito.', array( 'cartella' => \AssociazioneSemplice\Attachments::dir() ) ) ) . '</p>';
 		Ui::footer();
 	}
 

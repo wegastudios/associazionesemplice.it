@@ -23,6 +23,8 @@ final class TechActions {
 		'asem_reset_all'   => 'reset_all',
 		'asem_wizard_save' => 'wizard_save',
 		'asem_wizard_skip' => 'wizard_skip',
+		'asem_private_check' => 'private_check',
+		'asem_private_move'  => 'private_move',
 	);
 
 	public static function register(): void {
@@ -49,6 +51,39 @@ final class TechActions {
 		}
 	}
 
+
+	/** «Controlla ora» della cartella dei file riservati: una prova dall'esterno, al massimo una ogni dieci secondi. */
+	public static function private_check( array $p ): array {
+		$back = Ui::url( 'asem-backup' ) . '#asem-private-folder';
+		if ( get_transient( 'asem_private_check_busy' ) ) {
+			return array( $back, \AssociazioneSemplice\Texts::t( 'Un controllo è appena stato fatto: attendi qualche secondo e riprova.' ) );
+		}
+		set_transient( 'asem_private_check_busy', 1, 10 );
+		$r = \AssociazioneSemplice\PrivateFolder::check();
+		return array( $back, \AssociazioneSemplice\Texts::t( 'Controllo eseguito. Esito:' ) . ' ' . \AssociazioneSemplice\PrivateFolder::outcome_text( $r ) );
+	}
+
+	/** «Sposta i file»: un lotto di file dalla cartella predefinita a quella indicata in wp-config.php. */
+	public static function private_move( array $p ): array {
+		$back = Ui::url( 'asem-backup' ) . '#asem-private-folder';
+		$st   = \AssociazioneSemplice\PrivateFolder::status();
+		if ( ! $st['custom'] ) {
+			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Nessuna nuova cartella in uso: indica prima il percorso in wp-config.php.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+		}
+		$r = \AssociazioneSemplice\PrivateFolder::move_batch();
+		Audit::log( 'private_folder.moved', 'folder', 0, array( 'moved' => $r['moved'], 'failed' => $r['failed'], 'conflict' => $r['conflict'] ) );
+		$msg = \AssociazioneSemplice\Texts::t( 'Spostati {n} file.', array( 'n' => $r['moved'] ) );
+		if ( $r['failed'] ) {
+			$msg .= ' ' . \AssociazioneSemplice\Texts::t( '{n} non si sono potuti spostare (controlla i permessi): sono rimasti dove stavano.', array( 'n' => $r['failed'] ) );
+		}
+		if ( $r['conflict'] ) {
+			$msg .= ' ' . \AssociazioneSemplice\Texts::t( '{n} esistono già nella nuova cartella con un contenuto diverso: sono rimasti dove stavano e vanno controllati a mano.', array( 'n' => $r['conflict'] ) );
+		}
+		if ( $r['left'] > $r['conflict'] + $r['failed'] ) {
+			$msg .= ' ' . \AssociazioneSemplice\Texts::t( 'Ne restano ancora {n}: premi di nuovo.', array( 'n' => $r['left'] ) );
+		}
+		return array( $back, $msg );
+	}
 
 	/** Email di prova all'indirizzo di chi la chiede: dice subito se il server l'ha accettata. */
 	public static function mail_test( array $p ): array {
