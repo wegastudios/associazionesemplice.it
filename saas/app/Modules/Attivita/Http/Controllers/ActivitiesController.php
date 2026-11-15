@@ -193,6 +193,7 @@ final readonly class ActivitiesController
                 'billing' => $activity->billing->value,
                 'fee' => Money::plain($activity->fee_cents),
                 'guest_fee' => $activity->guest_fee_cents === null ? '' : Money::plain($activity->guest_fee_cents),
+                'vat_warning' => self::vatWarning($activity->vat_rate, $this->fiscal),
                 'with_vat' => $activity->vat_rate !== null,
                 'vat_rate' => $activity->vat_rate ?? 0,
                 'instructor_person_id' => $activity->instructor_person_id,
@@ -321,6 +322,19 @@ final readonly class ActivitiesController
             'occupy_on_booking' => (bool) ($data['occupy_on_booking'] ?? false),
             'vat_rate' => $vatRate,
         ];
+    }
+
+    /** Un'attività con IVA che non si può più applicare non deve incassare in silenzio senza IVA: la scheda lo dice. */
+    private static function vatWarning(?int $rate, OrgFiscal $fiscal): ?string
+    {
+        if ($rate === null) {
+            return null;
+        }
+        if (! $fiscal->hasVat()) {
+            return 'Senza partita IVA l\'IVA non si applica: gli incassi di questa attività si registrano senza IVA.';
+        }
+
+        return $fiscal->allows($rate) ? null : 'L\'aliquota di questa attività non è più nell\'elenco di Aspetto fiscale: scegline un\'altra.';
     }
 
     private static function cents(?string $value, bool $optional, string $field = 'amount'): ?int

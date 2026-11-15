@@ -72,10 +72,15 @@ final readonly class ActivityService implements Activities
         return Activity::query()->whereIn('id', $ids)->get(['id', 'name'])->mapWithKeys(static fn (Activity $a): array => [$a->id => $a->name])->all();
     }
 
+    public function withVatCount(): int
+    {
+        return Activity::query()->whereNull('archived_at')->whereNotNull('vat_rate')->count();
+    }
+
     public function vatRatesInUse(): array
     {
         $rates = [];
-        foreach (Activity::query()->whereNull('archived_at')->where('vat_rate', '>', 0)->distinct()->pluck('vat_rate') as $r) {
+        foreach (Activity::query()->where('vat_rate', '>', 0)->distinct()->pluck('vat_rate') as $r) {
             if (is_numeric($r)) {
                 $rates[] = (int) $r;
             }

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Attivita\Contracts\Activities;
 use App\Modules\Attivita\Models\Activity;
 use App\Modules\Attivita\Services\ActivityService;
 use App\Modules\Attivita\Services\ActivityVat;
@@ -11,6 +12,7 @@ use App\Modules\Core\Contracts\OrgFiscal;
 use App\Modules\Core\Contracts\OrgRole;
 use App\Modules\Core\Contracts\OrgSettings;
 use App\Modules\Soci\Models\Person;
+use Inertia\Testing\AssertableInertia as Assert;
 
 // IVA di corsi ed eventi: solo con la partita IVA; le attività esistenti restano senza IVA.
 beforeEach(function (): void {
@@ -103,4 +105,13 @@ it('non si toglie da Aspetto fiscale un\'aliquota usata da un\'attività', funct
     $this->actingAs($this->owner)
         ->put('/gestionale/aspetto-fiscale', ['rates' => '22', 'includes_vat' => true, 'membership_rate' => 0])
         ->assertSessionHasErrors('rates');
+});
+
+it('la scheda avvisa se l\'IVA dell\'attività non si può più applicare e i Dati dell\'ente contano le attività con IVA', function (): void {
+    app(OrgSettings::class)->set('ente.vat', '12345678903');
+    $yoga = vatCourse(22);
+    expect(app(Activities::class)->withVatCount())->toBe(1);
+    app(OrgSettings::class)->set('ente.vat', '');
+    $this->orgContext()->leave();
+    $this->actingAs($this->owner)->get("/gestionale/attivita/{$yoga->id}")->assertInertia(fn (Assert $page) => $page->where('activity.vat_warning', 'Senza partita IVA l\'IVA non si applica: gli incassi di questa attività si registrano senza IVA.'));
 });

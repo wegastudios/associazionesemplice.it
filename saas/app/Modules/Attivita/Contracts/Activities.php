@@ -16,6 +16,9 @@ interface Activities
      */
     public function names(array $ids): array;
 
-    /** @return list<int> le aliquote IVA (1–30) usate da attività non archiviate, per non toglierle da «Aspetto fiscale» */
+    /** @return list<int> le aliquote IVA (1–30) usate da attività (anche archiviate), per non toglierle da «Aspetto fiscale» */
     public function vatRatesInUse(): array;
+
+    /** Attività non archiviate con «Con IVA» (anche «IVA esente»): serve ad avvisare chi toglie la partita IVA. */
+    public function withVatCount(): int;
 }

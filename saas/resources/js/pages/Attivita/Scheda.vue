@@ -81,8 +81,10 @@ const label = 'space-y-1 text-sm';
                 <label v-if="isCourse" :class="label"><span class="font-semibold">Contributo</span><select v-model="form.billing" :class="field"><option v-for="b in billings" :key="b.value" :value="b.value">{{ b.label }}</option></select></label>
                 <label :class="label"><span class="font-semibold">Importo per i soci</span><input v-model="form.fee" inputmode="decimal" placeholder="0 = gratuita" :class="field" /></label>
                 <label :class="label"><span class="font-semibold">Importo per gli ospiti</span><input v-model="form.guest_fee" inputmode="decimal" placeholder="vuoto = come i soci" :class="field" /></label>
+                <p v-if="activity?.vat_warning" class="font-semibold text-danger sm:col-span-3" role="alert">{{ activity.vat_warning }}</p>
                 <div v-if="fiscal?.hasVat" :class="[label, 'sm:col-span-3']">
                     <label class="flex items-center gap-2"><input v-model="form.with_vat" type="checkbox" /> <span class="font-semibold">Con IVA</span></label>
+                    <span v-if="!form.with_vat" class="text-muted">Senza la spunta, gli incassi di questa attività si registrano come «Fuori campo IVA».</span>
                     <select v-if="form.with_vat" v-model.number="form.vat_rate" :class="field">
                         <option :value="0">IVA esente</option>
                         <option v-for="r in fiscal.rates" :key="r" :value="r">IVA {{ r }}%</option>
