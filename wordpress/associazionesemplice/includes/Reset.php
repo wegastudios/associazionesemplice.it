@@ -118,6 +118,8 @@ final class Reset {
 			}
 		}
 
+		do_action( 'asem_reset_private_files' ); // un'estensione toglie i suoi file riservati (ad esempio i PDF definitivi delle ricevute, che sono dati personali)
+
 		// Ruoli e riferimenti alle persone che non ci sono più.
 		foreach ( array( Access::TREASURER_META, Access::STAFF_META ) as $meta ) {
 			delete_metadata( 'user', 0, $meta, '', true );

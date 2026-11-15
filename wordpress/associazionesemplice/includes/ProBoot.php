@@ -42,7 +42,7 @@ final class ProBoot {
 	const PAGES = array(
 		'payments'   => array( 'asem-payments' ),
 		'funds'      => array( 'asem-accounts', 'asem-transfer', 'asem-group' ),
-		'receipts'   => array( 'asem-receipt-replace' ),
+		'receipts'   => array( 'asem-receipt-replace', 'asem-receipt-check' ),
 		'reports'    => array( 'asem-reports' ),
 		'fiscal'     => array( 'asem-accounting', 'asem-statement', 'asem-acct' ),
 		'watch'      => array( 'asem-watch' ),
@@ -65,7 +65,7 @@ final class ProBoot {
 		'payments'   => array( 'asem_save_payment_settings', 'asem_test_gateway', 'asem_satispay_connect', 'asem_check_payments', 'asem_payment_reviewed', 'asem_payment_refunded' ),
 		'watch'      => array( 'asem_expense_fund_attach', 'asem_expense_fund_undo', 'asem_watch_snapshot', 'asem_watch_csv', 'asem_discrepancy_approve', 'asem_discrepancy_revoke' ),
 		'funds'      => array( 'asem_save_group_cash', 'asem_save_transfer', 'asem_add_account', 'asem_update_account', 'asem_close_account', 'asem_reopen_account', 'asem_fund_create', 'asem_fund_deposit', 'asem_fund_release', 'asem_fund_settle' ),
-		'receipts'   => array( 'asem_receipt_email', 'asem_receipt_replace' ),
+		'receipts'   => array( 'asem_receipt_email', 'asem_receipt_replace', 'asem_receipt_pdf_complete', 'asem_receipt_pdf_regen' ),
 		'door_sales' => array( 'asem_walk_in' ),
 		'broadcasts' => array( 'asem_broadcast_send', 'asem_broadcast_test', 'asem_broadcast_retry' ),
 		'wallet'     => array( 'asem_save_wallet_apple', 'asem_save_wallet_google', 'asem_wallet_clear' ),
@@ -107,6 +107,8 @@ final class ProBoot {
 		ProBlockE::register(); // SMS, newsletter, Satispay e Klarna
 		DocsPro::register();
 		StatementSnapshot::register(); // rendiconto fotografato alla chiusura di un anno fiscale e PDF emesso
+		ReceiptFiles::register(); // PDF definitivi delle ricevute: file nella cartella privata, copia di sicurezza, lotti alla chiusura dell'anno
+		Admin\ReceiptCheckPage::register(); // verifica delle impronte, nelle pagine Copia di sicurezza e Anni fiscali
 		add_action( // l'annullo di un incasso annulla subito la ricevuta emessa (Receipts::register() parte solo sulle richieste di scarico, non su quelle di annullo)
 			'asem_tx_voided',
 			function ( $tx_id, $reason = '' ) {

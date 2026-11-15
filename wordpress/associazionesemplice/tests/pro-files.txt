@@ -139,3 +139,5 @@ FundReconciliation.php
 YearEndCheck.php
 Discrepancies.php
 Admin/ReceiptReplacePage.php
+Admin/ReceiptCheckPage.php
+ReceiptFiles.php

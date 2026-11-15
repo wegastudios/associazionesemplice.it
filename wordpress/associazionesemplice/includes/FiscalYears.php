@@ -320,6 +320,7 @@ final class FiscalYears {
 				Audit::log( 'year.closed', 'year', $year, $gaps ? array( 'confirmed_gaps' => $gaps ) : array() );
 			}
 		);
+		do_action( 'asem_year_closed', $year ); // a chiusura avvenuta (fuori dalla transazione): un'estensione fissa i documenti dell'anno, a lotti, senza poter bloccare la chiusura
 	}
 
 	/**
