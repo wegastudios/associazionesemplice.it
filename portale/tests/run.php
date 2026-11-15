@@ -2567,6 +2567,14 @@ if ( Portale\DemoReset::canRun() && is_executable( '/bin/sh' ) ) {
 		'plugin' => array( 'cmd' => array( '/bin/sh', '-c', 'echo prova-reset; exit 0' ), 'note' => 'finta' ),
 		'saas'   => array( 'cmd' => array( '/bin/sh', '-c', 'sleep 2; echo lento; exit 3' ) ),
 	) );
+	Config::set( 'demo_reset', array( 'plugin' => array( 'cmd' => array( '/bin/sh', '-c', 'echo no' ), 'requires' => $drDir . '/non-esiste' ) ) );
+	$drReq = Portale\DemoReset::targets();
+	$drMsg = throwsUser( function () use ( $drDb ) { Portale\DemoReset::start( $drDb, 'plugin', 'staff@example.test' ); } );
+	check( 'reset demo: se la demo non è ancora installata il tasto non parte e lo dice', false === $drReq['plugin']['installed'] && null !== $drMsg && false !== strpos( $drMsg, 'non ancora installata' ) && ! is_file( $drDir . '/plugin.lock' ) );
+	Config::set( 'demo_reset', array(
+		'plugin' => array( 'cmd' => array( '/bin/sh', '-c', 'echo prova-reset; exit 0' ), 'note' => 'finta' ),
+		'saas'   => array( 'cmd' => array( '/bin/sh', '-c', 'sleep 2; echo lento; exit 3' ) ),
+	) );
 	check( 'reset demo: una demo non collegata non parte', null !== throwsUser( function () use ( $drDb ) { Portale\DemoReset::start( $drDb, 'altra', 'staff@example.test' ); } ) );
 	Portale\DemoReset::start( $drDb, 'plugin', 'staff@example.test' );
 	$s = $wait( 'plugin' );

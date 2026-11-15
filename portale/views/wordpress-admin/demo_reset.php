@@ -16,7 +16,9 @@ $when = function ( int $t ): string { return $t > 0 ? gmdate( 'd/m/Y H:i', $t ) 
 		<h2 style="margin-top:0"><?php echo e( $r['label'] ); ?></h2>
 		<?php if ( '' !== $r['note'] ) : ?><p class="muted small"><?php echo e( $r['note'] ); ?></p><?php endif; ?>
 		<p>
-		<?php if ( $r['running'] ) : ?>
+		<?php if ( ! $r['installed'] ) : ?>
+			<span class="badge">Non ancora installata</span> <?php echo e( $r['label'] ); ?> non c'è ancora sul server: il tasto si accende quando sarà installata.
+		<?php elseif ( $r['running'] ) : ?>
 			<span class="badge">In corso…</span> la pagina si aggiorna da sola.
 		<?php elseif ( $r['last'] ) : ?>
 			Ultimo reset: <span class="badge"><?php echo 0 === (int) $r['last']['exit'] ? 'riuscito' : 'con errore (codice ' . (int) $r['last']['exit'] . ')'; ?></span>
@@ -29,7 +31,7 @@ $when = function ( int $t ): string { return $t > 0 ? gmdate( 'd/m/Y H:i', $t ) 
 		<form method="post" action="/wordpress/admin/demo/<?php echo e( $k ); ?>" class="demo-reset-form" data-name="<?php echo e( $r['label'] ); ?>">
 			<input type="hidden" name="csrf" value="<?php echo e( $csrf ); ?>">
 			<label style="display:block;margin:10px 0"><input type="checkbox" name="confirm" value="1" required> Ho capito: cancella tutti i dati inseriti nella demo e non si può annullare.</label>
-			<button class="btn" type="submit"<?php echo ( $r['running'] || ! $can_run ) ? ' disabled' : ''; ?>>Azzera la <?php echo e( strtolower( $r['label'] ) ); ?></button>
+			<button class="btn" type="submit"<?php echo ( $r['running'] || ! $can_run || ! $r['installed'] ) ? ' disabled' : ''; ?>>Azzera la <?php echo e( strtolower( $r['label'] ) ); ?></button>
 		</form>
 	</div>
 	<?php endforeach; ?>
@@ -37,7 +39,7 @@ $when = function ( int $t ): string { return $t > 0 ? gmdate( 'd/m/Y H:i', $t ) 
 <script>
 document.querySelectorAll('.demo-reset-form').forEach(function (f) {
 	f.addEventListener('submit', function (ev) {
-		if (!window.confirm('Azzerare davvero: ' + f.getAttribute('data-name') + '? Cancella tutti i dati inseriti e non si può annullare.')) { ev.preventDefault(); return; }
+		if (!window.confirm('Azzerare davvero: ' + f.getAttribute('data-name') + '? Cancella tutti i dati inseriti e non si può annullare. Chi è dentro la demo in questo momento perde la sessione.')) { ev.preventDefault(); return; }
 		var b = f.querySelector('button'); if (b) { setTimeout(function () { b.disabled = true; }, 0); } // un solo clic: il secondo non parte
 	});
 });

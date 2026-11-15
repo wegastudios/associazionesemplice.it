@@ -27,7 +27,14 @@ final class DemoReset {
 			if ( ! isset( self::TARGETS[ $key ] ) || ! self::validCmd( $cmd ) ) {
 				continue;
 			}
-			$out[ $key ] = array( 'label' => self::TARGETS[ $key ], 'cmd' => array_values( $cmd ), 'note' => (string) ( $t['note'] ?? '' ) );
+			$req         = (string) ( $t['requires'] ?? '' );
+			$out[ $key ] = array(
+				'label'     => self::TARGETS[ $key ],
+				'cmd'       => array_values( $cmd ),
+				'note'      => (string) ( $t['note'] ?? '' ),
+				'requires'  => $req,
+				'installed' => '' === $req || file_exists( $req ), // la demo c'è già sul server? (es. la cartella «current» del gestionale demo)
+			);
 		}
 		return $out;
 	}
@@ -116,6 +123,9 @@ final class DemoReset {
 		$t = self::targets();
 		if ( ! isset( $t[ $key ] ) ) {
 			throw new UserError( 'Questa demo non è collegata al portale.' );
+		}
+		if ( ! $t[ $key ]['installed'] ) {
+			throw new UserError( $t[ $key ]['label'] . ' non ancora installata: non c\'è niente da azzerare.' );
 		}
 		if ( ! self::canRun() ) {
 			throw new UserError( 'Il server non permette al portale di lanciare comandi: il reset non parte.' );
