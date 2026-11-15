@@ -10167,8 +10167,9 @@ asem_ok( '' !== $qo_free && $qo_free !== $qo_pay, 'omaggio: il nuovo socio paga 
 // riga 1 paga l'anno (e genera l'omaggio), riga 2 forzata sull'anno in omaggio: rifiutata prima di scrivere
 $qo_msg = (string) asem_throws( function () use ( $qo_rec, $qd_cat, $qo_free ) { $qo_rec( array( array( 'category_id' => $qd_cat, 'amount_cents' => 1000 ), array( 'category_id' => $qd_cat, 'amount_cents' => 1000, 'social_year' => $qo_free ) ) ); } );
 asem_ok( 'Voce 2: il socio ha già la tessera ' . $qo_free . '.' === $qo_msg && 0 === $qo_cnt(), 'omaggio: la seconda riga sull\'anno in omaggio è rifiutata, nessun movimento né tessera' );
-// ordine inverso: la riga forzata viene prima, l'omaggio non si duplica
-asem_ok( 2 === $qo_rec( array( array( 'category_id' => $qd_cat, 'amount_cents' => 1000, 'social_year' => $qo_free ), array( 'category_id' => $qd_cat, 'amount_cents' => 1000 ) ) ) && 2 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . (int) $qo_p . ' AND deleted_at IS NULL' ) && 1 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'memberships' ) . ' WHERE person_id = ' . (int) $qo_p . ' AND social_year = \'' . $qo_free . '\'' ), 'omaggio: se la riga forzata sull\'anno in omaggio viene prima, nessuna tessera doppia' );
+// ordine inverso: la riga forzata sull'anno in omaggio viene prima, la riga che lo darebbe in omaggio (la 2) è rifiutata prima di scrivere
+$qo_msg_r = (string) asem_throws( function () use ( $qo_rec, $qd_cat, $qo_free ) { $qo_rec( array( array( 'category_id' => $qd_cat, 'amount_cents' => 1000, 'social_year' => $qo_free ), array( 'category_id' => $qd_cat, 'amount_cents' => 1000 ) ) ); } );
+asem_ok( 'Voce 2: il socio ha già la tessera ' . $qo_free . '.' === $qo_msg_r && 0 === $qo_cnt(), 'omaggio: anche nell\'ordine inverso l\'incasso è rifiutato, nessun movimento né tessera' );
 $wpdb->query( 'DELETE FROM ' . Db::t( 'transactions' ) . ' WHERE person_id = ' . (int) $qo_p );
 $wpdb->delete( Db::t( 'memberships' ), array( 'person_id' => $qo_p ) );
 // incasso normale con omaggio (una sola riga): tessere dell'anno pagato e dell'anno in omaggio
