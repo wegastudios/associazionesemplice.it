@@ -86,6 +86,18 @@ final readonly class SecretStreamFiles implements EncryptedFiles
         return $out;
     }
 
+    public function readToFile(string $orgId, StoredFile $file, string $targetPath): void
+    {
+        $out = fopen($targetPath, 'wb') ?: throw new RuntimeException('File di destinazione non scrivibile.');
+        try {
+            $this->decrypt($orgId, $file, static function (string $chunk) use ($out): void {
+                fwrite($out, $chunk);
+            });
+        } finally {
+            fclose($out);
+        }
+    }
+
     public function download(string $orgId, StoredFile $file): StreamedResponse
     {
         $this->assertOwned($orgId, $file);
