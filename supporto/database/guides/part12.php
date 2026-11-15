@@ -102,7 +102,13 @@ MD,
         'body' => <<<'MD'
 > Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
 
-Dalla scheda del socio, nella parte **Tesseramento**, premi **«Incassa e rinnova»**: l'incasso va in **prima nota** con la ricevuta, e la tessera viene rinnovata. Se **storni** quell'incasso, la tessera non vale più.
+Dalla scheda del socio, nella parte **Tesseramento**, premi **«Incassa e rinnova»**: l'incasso va in **prima nota** con la ricevuta, e la tessera viene rinnovata. Se **storni** quell'incasso, la tessera non vale più; dopo lo storno puoi ripetere la quota.
+
+## Se il socio ha già la tessera
+
+Se il socio ha **già la tessera di quell'anno**, il gestionale non registra la quota una seconda volta e ti dice **«Il socio ha già la tessera {anno}.»**. Dalla scheda del socio si ferma tutto: nessun incasso, nessuna ricevuta, nessuna tessera. Lo stesso vale per il **pagamento online** dall'area soci: la quota già presente non viene registrata e il pagamento resta segnato **«da verificare»** per la segreteria, con il motivo scritto. Se nello stesso pagamento ci sono altre voci (per esempio un'attività), quelle si registrano.
+
+L'anno della tessera lo decide il programma, non il socio.
 
 - **Tessera senza incasso**: se rinnovi senza un pagamento (per esempio una tessera regalata), scrivi il **motivo** e premi **«Registra la tessera»**.
 - **Socio fondatore**: la tessera è sempre rinnovata.
