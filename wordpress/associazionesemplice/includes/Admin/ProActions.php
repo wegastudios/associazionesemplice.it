@@ -442,11 +442,11 @@ final class ProActions {
 	/** Rimborso (totale o parziale) di un pagamento Stripe o PayPal: importo scritto a mano e spunta «non si può annullare». */
 	public static function payment_refund( array $p ): array {
 		if ( empty( $p['ack'] ) ) {
-			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Per restituire i soldi spunta «Ho capito: il rimborso non si può annullare».' ) );
+			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Per restituire i soldi spunta «Ho capito: il rimborso non si può annullare».' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$cents = Money::parse( (string) ( $p['amount'] ?? '' ) );
 		if ( null === $cents || $cents <= 0 ) {
-			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Importo non valido.' ) );
+			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'Importo non valido.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$r   = Plugin::payments()->refund( (int) ( $p['id'] ?? 0 ), $cents, (int) ( $p['expected'] ?? -1 ), (string) ( $p['reason'] ?? '' ) );
 		$msg = \AssociazioneSemplice\Texts::t( 'Rimborso di {importo} inviato al socio.', array( 'importo' => Money::format( $r['cents'] ) ) );

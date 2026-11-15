@@ -524,7 +524,7 @@ class PaymentService extends OfflinePayments {
 	public function refund( int $id, int $cents, int $expected, string $reason ): array {
 		$p = $this->get( $id );
 		if ( ! $p ) {
-			throw new \InvalidArgumentException( Texts::t( 'Pagamento non trovato.' ) );
+			throw new \InvalidArgumentException( Texts::t( 'Pagamento non trovato.' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		$info = $this->refund_info( $p );
 		if ( ! $info['ok'] ) {

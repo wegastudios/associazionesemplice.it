@@ -160,7 +160,7 @@ final class PaymentsPage {
 		}
 		echo '<h2>Pagamenti ricevuti</h2>';
 		if ( ! $svc->enabled() ) {
-			echo '<div class="notice notice-info inline"><p>I pagamenti online non sono attivi: scegli Stripe, PayPal o entrambi e inserisci le chiavi' . ( $admin ? ' qui sopra' : ' (le imposta un amministratore)' ) . '. Nel frattempo i soci possono pagare in sede o, se lo attivi, con il bonifico.</p></div>';
+			echo '<div class="notice notice-info inline"><p>I pagamenti online non sono attivi: scegli Stripe, PayPal o entrambi e inserisci le chiavi' . ( $admin ? ' qui sopra' : ' (le imposta un amministratore)' ) . '. Nel frattempo i soci possono pagare in sede o, se lo attivi, con il bonifico.</p></div>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		}
 		echo '<form method="get" class="asem-filters"><input type="hidden" name="page" value="asem-payments"><select name="status">' . Ui::options( self::STATUS, $status, 'Tutti gli stati' ) . '</select> ' // phpcs:ignore WordPress.Security.EscapeOutput
 			. '<label><input type="checkbox" name="review" value="1"' . checked( $review, true, false ) . '> Solo da controllare</label> <button class="button">Filtra</button></form>';

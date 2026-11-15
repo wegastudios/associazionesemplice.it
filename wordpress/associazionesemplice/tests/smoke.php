@@ -1691,12 +1691,15 @@ $fake      = function ( $method, $url, $headers, $body ) use ( &$http_seen ) {
 };
 $g = Gateways::test( 'stripe', ProSettings::payment_config(), $fake );
 asem_ok( $g['ok'] && 'Bearer sk_test_51Abc1234' === $http_seen[2]['Authorization'], 'prova Stripe: usa la chiave salvata (rete simulata)' );
+$ps_prev = get_current_user_id();
+wp_set_current_user( 1 ); // le chiavi dei gateway si vedono (mascherate) solo all'amministratore
 ob_start();
 Admin\PaymentsPage::render();
 $settings_html = ob_get_clean();
 ob_start();
 Admin\SettingsPage::render();
 $general_html = ob_get_clean();
+wp_set_current_user( $ps_prev );
 asem_ok( false === strpos( $settings_html, 'sk_test_51Abc1234' ) && false !== strpos( $settings_html, '••••1234' ) && false === strpos( $settings_html, 'whsec_abc1234' ), 'impostazioni: la chiave segreta non viene mai stampata, solo la maschera' );
 asem_ok( false !== strpos( $settings_html, 'Verifica connessione Stripe' ) && false !== strpos( $settings_html, 'WooCommerce (negozio del sito)' ) && false !== strpos( $general_html, 'Termine predefinito per annullare' ) && false === strpos( $general_html, 'Verifica connessione Stripe' ), 'impostazioni: i pagamenti stanno nella loro scheda, le cancellazioni nel generale' );
 Settings::update( array( 'payment_provider' => 'paypal', 'paypal_mode' => 'sandbox', 'paypal_client_id' => str_repeat( 'A', 40 ), 'paypal_client_secret' => str_repeat( 'b', 40 ) ) );
@@ -1762,9 +1765,12 @@ $opt                         = get_option( 'asem_settings' );
 $opt['stripe_secret_key']    = Secrets::encrypt( 'sk_test_ALTRO', 'sale-di-un-altro-sito' );
 update_option( 'asem_settings', $opt );
 asem_ok( Settings::has_secret( 'stripe_secret_key' ) && Settings::secret_unreadable( 'stripe_secret_key' ) && '' === Settings::secret( 'stripe_secret_key' ), 'chiave cifrata da un altro sito: segnalata come non leggibile' );
+$ps_prev = get_current_user_id();
+wp_set_current_user( 1 );
 ob_start();
 Admin\PaymentsPage::render();
 $h = ob_get_clean();
+wp_set_current_user( $ps_prev );
 ob_start();
 Admin\SettingsPage::render();
 $h_general = ob_get_clean();
@@ -8763,7 +8769,10 @@ $ps->create_checkout( $pmp, $u_pm, array( "b:$be_s2:$pm" ), home_url( '/area/' )
 $be_row2 = $latest();
 asem_ok( 'ok' === ( $ps->handle_return( $be_row2['public_id'], 'cancel', $u_pm ) ? 'ok' : '' ) && 'cancelled' === $ps->get_by_public( $be_row2['public_id'] )['status'], 'Satispay: se la persona annulla, il pagamento risulta annullato' );
 $be_html = \AssociazioneSemplice\Admin\PaymentsPage::class;
+$be_prev = get_current_user_id();
+wp_set_current_user( 1 );
 asem_render( array( $be_html, 'render' ), 'Collega Satispay' );
+wp_set_current_user( $be_prev );
 Settings::update( array( 'payment_provider' => 'stripe_satispay' ) );
 asem_ok( array( 'stripe', 'satispay' ) === \AssociazioneSemplice\PaymentConfig::gateways_of( (string) Settings::get( 'payment_provider' ) ) && in_array( 'satispay', $ps->providers(), true ), 'Satispay: insieme a Stripe tra le scelte' );
 
