@@ -338,7 +338,11 @@ final class FileKey {
 		if ( ! $o['keys'] ) {
 			return array();
 		}
-		$l   = self::load();
+		$want = null !== $phrase && '' !== $phrase;
+		if ( $want && ! FileCrypt::available() ) {
+			throw new FileCryptError( FileCryptError::NO_SODIUM ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- solo un codice interno, mai mostrato così com'è
+		}
+		$l   = $want ? self::load() : array( 'deks' => array() );
 		$out = array( 'v' => 1, 'site' => self::site_id(), 'current' => $o['current'], 'keys' => array() );
 		$pk  = null;
 		if ( null !== $phrase && '' !== $phrase ) {

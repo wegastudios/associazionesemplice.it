@@ -163,7 +163,7 @@ final class PrivateFiles {
 	public static function verify( string $path, string $rel, string $sha = '' ): array {
 		$r = FileCrypt::decrypt_file( $path, null, self::key_for(), self::ad( $rel ) );
 		if ( '' !== $sha && ! hash_equals( strtolower( $sha ), $r['sha256'] ) ) {
-			throw new FileCryptError( FileCryptError::HASH );
+			throw new FileCryptError( FileCryptError::HASH ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- solo un codice interno, mai mostrato così com'è
 		}
 		return array( 'bytes' => $r['bytes'], 'sha256' => $r['sha256'] );
 	}
