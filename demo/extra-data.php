@@ -613,3 +613,34 @@ extra_step( 'richieste di iscrizione al corso', function () {
 	}
 	remove_filter( 'pre_wp_mail', $mute );
 } );
+
+// Anno fiscale scorso (con l'inizio a settembre esiste già, aperto, e nella demo si può chiudere in prova): due entrate a mano e, se serve, un contributo
+// perché il rendiconto sia sempre in pareggio o avanzo. Le date seguono l'anno fiscale, non il calendario di oggi. Ultimo passo: le spese ci sono già tutte.
+extra_step( 'entrate anno fiscale scorso', function () {
+	$prev = \AssociazioneSemplice\FiscalYears::current() - 1;
+	$r    = \AssociazioneSemplice\FiscalYears::range( $prev );
+	$when = function ( int $months ) use ( $r ): string { // un giorno scelto dentro l'anno fiscale scorso, mai oltre la sua fine
+		$d = ( new \DateTimeImmutable( $r[0] ) )->modify( '+' . $months . ' months +13 days' )->format( 'Y-m-d' );
+		return $d > $r[1] ? $r[1] : $d;
+	};
+	$ledger = Plugin::ledger();
+	$cat    = $ledger->category_id_of_kind( 'donation' );
+	$cash   = $ledger->default_account_for( 'cash' );
+	$bank   = $ledger->default_account_for( 'bank' );
+	if ( ! $cat || ! $cash || ! $bank ) {
+		throw new \RuntimeException( 'mancano categoria o conti' );
+	}
+	$add = function ( string $date, int $cents, string $text, array $acc, string $method ) use ( $ledger, $cat ): void {
+		$ledger->record_receipt( array( 'date' => $date, 'account_id' => (int) $acc['id'], 'method' => $method, 'lines' => array( array( 'category_id' => $cat, 'amount_cents' => $cents, 'description' => $text ) ) ) );
+	};
+	$add( $when( 8 ), 20000, 'Erogazione liberale', $bank, 'bank_transfer' );
+	$add( $when( 6 ), 10000, 'Offerta alla cena di raccolta fondi', $cash, 'cash' );
+	$d = \AssociazioneSemplice\Statement::live( $prev );
+	if ( (int) $d['result']['cur'] < 0 ) {
+		$add( $when( 10 ), (int) ceil( -(int) $d['result']['cur'] / 100 ) * 100, 'Contributo straordinario', $bank, 'bank_transfer' );
+		$d = \AssociazioneSemplice\Statement::live( $prev );
+	}
+	if ( (int) $d['result']['cur'] < 0 || (int) $d['closing_total'] < 0 ) {
+		throw new \RuntimeException( 'rendiconto in disavanzo o cassa negativa' );
+	}
+} );
