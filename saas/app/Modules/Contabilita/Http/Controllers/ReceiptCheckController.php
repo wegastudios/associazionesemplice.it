@@ -50,11 +50,13 @@ final readonly class ReceiptCheckController
     public function rebuild(string $receipt): RedirectResponse
     {
         try {
-            $this->files->rebuild($receipt);
+            $identical = $this->files->rebuild($receipt);
         } catch (ReceiptFileProblem $e) {
             throw ValidationException::withMessages(['ledger' => $e->getMessage()]);
         }
 
-        return back()->with('status', 'PDF rifatto. L\'operazione è scritta nel registro delle azioni.');
+        return back()->with('status', $identical
+            ? 'PDF rifatto: risulta identico a quello emesso. L\'operazione è scritta nel registro delle azioni.'
+            : 'PDF rifatto con i dati dell\'emissione. Non è identico al file emesso perché nel frattempo sono cambiati i testi o la grafica del programma. L\'operazione è scritta nel registro delle azioni.');
     }
 }

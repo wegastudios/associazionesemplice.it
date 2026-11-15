@@ -109,12 +109,12 @@ final readonly class ReceiptFiles
     }
 
     /**
-     * Rifà il PDF dai dati attuali, solo se è identico a quello emesso (stessa impronta): altrimenti i dati sono
-     * cambiati dall'emissione e non si rifà. Il file diverso resta dov'è, messo da parte.
+     * Rifà il PDF dai dati fotografati all'emissione (senza fotografia: dai dati attuali, solo se identico). Ritorna se
+     * il file nuovo è identico a quello emesso; l'impronta vecchia e la nuova restano nel registro azioni.
      *
      * @throws ReceiptFileProblem
      */
-    public function rebuild(string $receiptId): void
+    public function rebuild(string $receiptId): bool
     {
         $row = $this->row($receiptId) ?? throw new ReceiptFileProblem('Questa ricevuta non ha ancora un PDF fissato.', ReceiptFileProblem::MISSING);
         $snapshot = $this->snapshotOf($row);
@@ -133,7 +133,17 @@ final readonly class ReceiptFiles
         $this->connection()->table('app.receipt_files')->where('receipt_id', $receiptId)->update([
             'path' => $stored->path, 'size_bytes' => $stored->size, 'sha256' => $stored->sha256, 'source' => 'rifatta', 'fixed_at' => now(),
         ]);
-        $this->audit->record('receipt.rebuilt', 'app.receipts', $receiptId, ['previous_path' => is_string($row->path ?? null) ? $row->path : '', 'sha256' => $stored->sha256]);
+        $previous = is_string($row->sha256 ?? null) ? $row->sha256 : '';
+        $identical = hash_equals($previous, $stored->sha256);
+        $this->audit->record('receipt.rebuilt', 'app.receipts', $receiptId, [
+            'previous_path' => is_string($row->path ?? null) ? $row->path : '',
+            'previous_sha256' => $previous,
+            'sha256' => $stored->sha256,
+            'identical' => $identical,
+            'from_snapshot' => $snapshot !== null,
+        ]);
+
+        return $identical;
     }
 
     /**

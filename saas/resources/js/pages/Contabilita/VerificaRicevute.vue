@@ -7,7 +7,7 @@ const page = usePage();
 const go = (y) => router.get('/gestionale/verifica-ricevute', { anno: y }, { preserveState: true });
 const fix = () => router.post('/gestionale/verifica-ricevute/fissa', {}, { preserveScroll: true });
 const rebuild = (r) => {
-    if (window.confirm('Rifare questo PDF? Si rifà dai dati salvati al momento dell\'emissione, anche se nel frattempo il socio o l\'ente sono cambiati. Per le ricevute emesse prima di questo aggiornamento si rifà solo se risulta identico a quello emesso; altrimenti non cambia nulla. L\'operazione viene scritta nel registro azioni.')) {
+    if (window.confirm('Rifare questo PDF? Si rifà dai dati salvati al momento dell\'emissione, anche se nel frattempo il socio o l\'associazione sono cambiati. Per le ricevute emesse prima di questo aggiornamento si rifà solo se risulta identico a quello emesso; altrimenti non cambia nulla. L\'operazione viene scritta nel registro azioni.')) {
         router.post(`/gestionale/verifica-ricevute/${r.id}/rifai`, {}, { preserveScroll: true });
     }
 };
@@ -18,7 +18,7 @@ const bad = () => props.rows.some((r) => r.status === 'missing' || r.status === 
     <Head title="Verifica delle ricevute" />
     <AppLayout>
         <h1 class="mb-1 text-2xl font-bold">Verifica delle ricevute</h1>
-        <p class="mb-4 text-sm text-muted">Il PDF di ogni ricevuta si crea una volta sola, all'emissione, e si salva con la sua impronta: si scarica e si spedisce sempre lo stesso file. Insieme al PDF si conservano, cifrati, i dati della ricevuta (ente, nome, codice fiscale, righe e aliquote), così il PDF si può rifare uguale anche se poi i dati cambiano.</p>
+        <p class="mb-4 text-sm text-muted">Il PDF di ogni ricevuta si crea una volta sola, all'emissione, e si salva con la sua impronta: si scarica e si spedisce sempre lo stesso file. Insieme al PDF si conservano, cifrati, i dati della ricevuta (associazione, nome, codice fiscale, righe e aliquote), così il PDF si può rifare con gli stessi dati anche se poi il socio o l'associazione cambiano.</p>
         <p v-if="page.props.errors?.ledger" class="mb-3 font-semibold text-danger" role="alert">{{ page.props.errors.ledger }}</p>
         <p v-if="bad()" class="mb-3 font-semibold text-danger" role="alert">Alcuni PDF non coincidono con quelli emessi. Finché non li sistemi, scaricare quelle ricevute dà un errore (non vengono mai rifatte di nascosto). Puoi rifarlo con «Rifai il PDF»: il file nuovo si crea dai dati salvati al momento dell'emissione, e l'operazione resta scritta nel registro azioni. Per le ricevute emesse prima di questo aggiornamento si rifà solo se risulta identico a quello emesso. Se non si riesce a rifarlo, scrivi all'assistenza di Associazione Semplice.</p>
         <div class="card mb-4 space-y-3 p-4 text-sm sm:p-5">
