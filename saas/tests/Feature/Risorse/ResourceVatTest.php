@@ -80,6 +80,7 @@ it('con i prezzi senza IVA chi prenota paga prezzo più IVA, in anteprima e nel 
     app(OrgSettings::class)->set(OrgFiscal::INCLUDES_VAT, false);
     $court = vatCourt(22);
     $in = ['holder_name' => 'Torneo Beta', 'date' => $this->day, 'start' => '10:00', 'units' => 1];
+    $s = app(ReservationService::class);
     expect($s->quote($court->id, $in))->toBe(1220);
     $id = $s->book($court->id, $in, null)[0];
     $tx = vatCollect($id);
