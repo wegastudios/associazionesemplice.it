@@ -178,7 +178,9 @@ Se mancano l'**email** e il **telefono della segreteria**, il pulsante **«Invia
 
 Il **PDF di una ricevuta si crea una volta sola**, quando viene emessa, e non cambia più, nemmeno se poi cambiano i dati del socio o quelli dell'associazione. Quando la scarichi o la spedisci è sempre lo **stesso file**: il programma controlla che sia quello emesso.
 
-Le ricevute emesse **prima di questo aggiornamento** vengono fissate in automatico nelle ore successive (o subito, dalla pagina «Verifica delle ricevute»). Per quelle il PDF usa i testi e i dati di oggi; le ricevute emesse da ora in poi restano identiche per sempre.
+Le ricevute emesse **prima di questo aggiornamento** vengono fissate in automatico nelle ore successive (o subito, dalla pagina «Verifica delle ricevute»). Per quelle il PDF usa i testi di oggi e i dati di oggi, e non hanno i dati salvati; le ricevute emesse da ora in poi restano identiche per sempre.
+
+Quindi ci sono due tipi di ricevuta: le **nuove** (emesse da questo aggiornamento in poi), che si possono sempre rifare con i dati giusti, e le **vecchie**, che si rifanno solo se nulla è cambiato.
 
 ### Perché una ricevuta non si scarica?
 
@@ -188,11 +190,14 @@ Le ricevute emesse **prima di questo aggiornamento** vengono fissate in automati
 
 ### La pagina «Verifica delle ricevute»
 
-La trovi in **Altro**, ed è **solo per gli amministratori**. Scegli l'**anno fiscale** e vedi l'elenco delle ricevute con il loro stato:
+La trovi in **Altro**, ed è **solo per gli amministratori**. Scegli l'**«Anno fiscale»** e vedi l'elenco delle ricevute con il loro stato:
 
 - **«A posto»**: il file è quello emesso;
 - **«Da fissare»**: ricevuta emessa prima dell'aggiornamento, non ancora fissata; il pulsante **«Fissa i prossimi PDF»** le fissa a gruppi (se ne restano, premilo ancora);
-- **«Mancante»** e **«Alterato»**: il file non c'è più o non coincide con quello emesso; il pulsante **«Rifai il PDF»** lo rifà. Si rifà **solo se risulta identico a quello emesso**; altrimenti non cambia nulla e compare un messaggio che ti dice di scrivere all'assistenza di Associazione Semplice. L'operazione resta scritta nel registro azioni;
+- **«Mancante»** e **«Alterato»**: il file non c'è più o non coincide con quello emesso; il pulsante **«Rifai il PDF»** lo rifà. Prima ti chiede conferma: «Rifare questo PDF? Si rifà dai dati salvati al momento dell'emissione, anche se nel frattempo il socio o l'associazione sono cambiati. Per le ricevute emesse prima di questo aggiornamento si rifà solo se risulta identico a quello emesso; altrimenti non cambia nulla. L'operazione viene scritta nel registro azioni.»
+  - **Ricevute nuove**: il file si rifà dai dati salvati al momento dell'emissione, anche se nel frattempo il socio o l'associazione sono cambiati. Gli esiti possibili sono due: «PDF rifatto: risulta identico a quello emesso.» oppure «PDF rifatto con i dati dell'emissione. Non è identico al file emesso perché nel frattempo sono cambiati i testi o la grafica del programma.»
+  - **Ricevute vecchie**: si rifà **solo se risulta identico a quello emesso**; altrimenti non cambia nulla e compare un messaggio che ti dice di scrivere all'assistenza di Associazione Semplice.
+  - In ogni caso l'operazione resta scritta nel registro azioni;
 - **«Annullata»**: «La ricevuta è stata annullata: il file emesso resta conservato ma non si scarica più.»
 
 ## Cercare e filtrare
