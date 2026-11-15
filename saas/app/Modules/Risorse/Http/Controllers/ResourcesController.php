@@ -8,12 +8,14 @@ use App\Modules\Contabilita\Contracts\Ledger;
 use App\Modules\Contabilita\Contracts\Money;
 use App\Modules\Contabilita\Contracts\PaymentMethod;
 use App\Modules\Core\Contracts\Input;
+use App\Modules\Core\Contracts\OrgFiscal;
 use App\Modules\Risorse\Contracts\ResourceError;
 use App\Modules\Risorse\Contracts\Typology;
 use App\Modules\Risorse\Models\Resource;
 use App\Modules\Risorse\Rules\ResourceRules;
 use App\Modules\Risorse\Services\ReservationService;
 use App\Modules\Risorse\Services\ResourceService;
+use App\Modules\Risorse\Services\ResourceVat;
 use Closure;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,6 +31,8 @@ final readonly class ResourcesController
         private ResourceService $resources,
         private ReservationService $reservations,
         private Ledger $ledger,
+        private OrgFiscal $fiscal,
+        private ResourceVat $vat,
     ) {}
 
     public function index(Request $request): Response
@@ -48,7 +52,7 @@ final readonly class ResourcesController
         return Inertia::render('Risorse/Elenco', [
             'archived' => $archived,
             'limits' => array_values(array_map(static fn (string $k, array $l): array => $l + ['value' => $k], array_keys($this->resources->limits()), $this->resources->limits())),
-            'rows' => array_map(static function (Resource $r) use ($busy, $now): array {
+            'rows' => array_map(function (Resource $r) use ($busy, $now): array {
                 $today = $busy[$r->id] ?? [];
                 $holder = null;
                 foreach ($today as $b) {
@@ -59,7 +63,7 @@ final readonly class ResourcesController
 
                 return [
                     'id' => $r->id, 'name' => $r->name, 'category' => ResourceRules::categories()[$r->category] ?? $r->category,
-                    'typology' => $r->typology->label(), 'fee' => Money::format($r->fee_cents).match ($r->typology) {
+                    'typology' => $r->typology->label(), 'fee' => Money::format($this->vat->gross($r, $r->fee_cents)).match ($r->typology) {
                         Typology::Hourly => ' a fascia', Typology::Daily => ' al giorno', Typology::Seasonal => ' a stagione',
                     },
                     'today' => $r->typology === Typology::Seasonal ? ($holder ?? 'libera') : (count($today) === 0 ? 'nessuna prenotazione oggi' : count($today).(count($today) === 1 ? ' prenotazione oggi' : ' prenotazioni oggi')),
@@ -134,7 +138,7 @@ final readonly class ResourcesController
                 }
                 $grid[] = ['start' => $slot['start'], 'end' => $slot['end'], 'busy' => $taken !== null,
                     'label' => $taken === null ? 'libera' : ($taken['kind'] === 'block' ? 'bloccata'.($taken['note'] !== null ? ': '.$taken['note'] : '') : (string) $taken['who']),
-                    'price' => Money::format(ResourceRules::bandFee($r->rules(), $s))];
+                    'price' => Money::format($this->vat->gross($r, ResourceRules::bandFee($r->rules(), $s)))];
             }
         }
 
@@ -147,6 +151,7 @@ final readonly class ResourcesController
                 'guests_max' => $r->guests_max, 'guest_fee' => Money::plain($r->guest_fee_cents), 'rates' => ResourceRules::ratesText($r->rates),
                 'services' => ResourceRules::servicesText($r->services), 'service_list' => array_map(static fn (array $s): array => ['name' => $s['name'], 'label' => $s['name'].' ('.Money::format($s['fee_cents']).')'], $r->services),
                 'category_id' => $r->category_id, 'archived' => $r->archived_at !== null,
+                'with_vat' => $r->vat_rate !== null, 'vat_rate' => $r->vat_rate ?? 0, 'vat_warning' => self::vatWarning($r->vat_rate, $this->fiscal),
                 'upcoming' => array_map(fn (array $b): array => $this->row($b, $r), $this->reservations->upcoming($r->id)),
                 'waitlist' => $r->typology === Typology::Seasonal ? $this->reservations->waitlist($r->id) : [],
             ],
@@ -157,6 +162,7 @@ final readonly class ResourcesController
             'incomeCategories' => $this->ledger->incomeCategories(),
             'accounts' => $this->ledger->openAccounts(),
             'methods' => array_map(static fn (PaymentMethod $m): array => ['value' => $m->value, 'label' => $m->label()], PaymentMethod::cases()),
+            'fiscal' => ['hasVat' => $this->fiscal->hasVat(), 'includesVat' => $this->fiscal->includesVat(), 'rates' => $this->fiscal->rates()],
             'today' => substr(ReservationService::now(), 0, 10),
             'canEdit' => $request->user()?->can('people.edit') ?? false,
             'canAccounting' => $request->user()?->can('accounting.edit') ?? false,
@@ -205,9 +211,22 @@ final readonly class ResourcesController
             'rates' => ['nullable', 'string', 'max:2000'],
             'services' => ['nullable', 'string', 'max:2000'],
             'category_id' => ['nullable', 'uuid'],
+            'with_vat' => ['boolean'],
+            'vat_rate' => ['nullable', 'integer', 'min:0', 'max:30'],
         ]));
+        $vatRate = null;
+        if (Input::bool($data, 'with_vat', false)) {
+            $vatRate = is_numeric($data['vat_rate'] ?? null) ? (int) $data['vat_rate'] : 0;
+            if (! $this->fiscal->hasVat()) {
+                throw ValidationException::withMessages(['with_vat' => 'Senza partita IVA l\'IVA non si applica.']);
+            }
+            if (! $this->fiscal->allows($vatRate)) {
+                throw ValidationException::withMessages(['vat_rate' => 'Scegli «IVA esente» o una delle aliquote indicate in Aspetto fiscale.']);
+            }
+        }
 
         return [
+            'vat_rate' => $vatRate,
             'name' => Input::string($data, 'name'),
             'category' => Input::string($data, 'category'),
             'typology' => Input::string($data, 'typology'),
@@ -226,6 +245,19 @@ final readonly class ResourcesController
             'services' => Input::optionalString($data, 'services') ?? '',
             'category_id' => Input::optionalString($data, 'category_id'),
         ];
+    }
+
+    /** Una risorsa con IVA che non si può più applicare non deve incassare in silenzio senza IVA: la scheda lo dice. */
+    private static function vatWarning(?int $rate, OrgFiscal $fiscal): ?string
+    {
+        if ($rate === null) {
+            return null;
+        }
+        if (! $fiscal->hasVat()) {
+            return 'Senza partita IVA l\'IVA non si applica: gli incassi di questa risorsa si registrano senza IVA.';
+        }
+
+        return $fiscal->allows($rate) ? null : 'L\'aliquota di questa risorsa non è più nell\'elenco di Aspetto fiscale: scegline un\'altra.';
     }
 
     public static function cents(?string $value, string $field): ?int

@@ -31,4 +31,21 @@ interface ResourceBookings
      * @throws ResourceError se sulla risorsa di arrivo uno di loro si sovrappone a qualcosa
      */
     public function move(array $ids, string $toResourceId): void;
+
+    /** Risorse non archiviate con l'IVA impostata (anche «IVA esente»). */
+    public function withVatCount(): int;
+
+    /**
+     * Aliquote maggiori di zero impostate sulle risorse (anche archiviate).
+     *
+     * @return list<int>
+     */
+    public function vatRatesInUse(): array;
+
+    /**
+     * Aliquote maggiori di zero delle prenotazioni non annullate e non ancora finite: all'incasso userebbero quelle.
+     *
+     * @return list<int>
+     */
+    public function vatRatesInBookings(): array;
 }

@@ -6,7 +6,7 @@ import PersonPicker from '../../components/PersonPicker.vue';
 
 const props = defineProps({
     resource: Object, date: String, grid: Array, categories: Array, typologies: Array, incomeCategories: Array, accounts: Array, methods: Array,
-    today: String, canEdit: Boolean, canAccounting: Boolean,
+    today: String, canEdit: Boolean, canAccounting: Boolean, fiscal: Object,
 });
 
 const r = props.resource ?? {};
@@ -14,9 +14,9 @@ const form = useForm({
     name: r.name ?? '', category: r.category ?? 'court', typology: r.typology ?? 'hourly', description: r.description ?? '',
     open_time: r.open_time ?? '08:00', close_time: r.close_time ?? '22:00', slot_minutes: r.slot_minutes ?? 60, min_slots: r.min_slots ?? 1,
     max_slots: r.max_slots ?? 2, advance_days: r.advance_days ?? 14, fee: r.fee ?? '', nonmember_fee: r.nonmember_fee ?? '',
-    guests_max: r.guests_max ?? 0, guest_fee: r.guest_fee ?? '', rates: r.rates ?? '', services: r.services ?? '', category_id: r.category_id ?? '',
+    guests_max: r.guests_max ?? 0, guest_fee: r.guest_fee ?? '', rates: r.rates ?? '', services: r.services ?? '', category_id: r.category_id ?? '', with_vat: r.with_vat ?? false, vat_rate: r.vat_rate ?? 0,
 });
-const clean = (d) => ({ ...d, category_id: d.category_id || null });
+const clean = (d) => ({ ...d, category_id: d.category_id || null, vat_rate: d.with_vat ? d.vat_rate : null });
 const save = () => (props.resource
     ? form.transform(clean).put(`/gestionale/risorse/${props.resource.id}`, { preserveScroll: true })
     : form.transform(clean).post('/gestionale/risorse'));
@@ -244,6 +244,18 @@ const label = 'space-y-1 text-sm';
                     <label :class="label"><span class="font-semibold">Supplemento per ospite</span><input v-model="form.guest_fee" inputmode="decimal" :class="field" /></label>
                 </template>
                 <label :class="label"><span class="font-semibold">Voce di entrata</span><select v-model="form.category_id" :class="field"><option value="">Altre entrate</option><option v-for="c in incomeCategories" :key="c.id" :value="c.id">{{ c.name }}</option></select></label>
+                <p v-if="resource?.vat_warning" class="font-semibold text-danger sm:col-span-3" role="alert">{{ resource.vat_warning }}</p>
+                <div v-if="fiscal?.hasVat" :class="[label, 'sm:col-span-3']">
+                    <label class="flex items-center gap-2"><input v-model="form.with_vat" type="checkbox" /> <span class="font-semibold">Con IVA</span></label>
+                    <span v-if="!form.with_vat" class="text-muted">Senza la spunta, gli incassi di questa risorsa si registrano come «Fuori campo IVA».</span>
+                    <select v-if="form.with_vat" v-model.number="form.vat_rate" :class="field">
+                        <option :value="0">IVA esente</option>
+                        <option v-for="x in fiscal.rates" :key="x" :value="x">IVA {{ x }}%</option>
+                    </select>
+                    <span v-if="form.errors.vat_rate || form.errors.with_vat" class="block font-semibold text-danger" role="alert">{{ form.errors.vat_rate || form.errors.with_vat }}</span>
+                    <span v-if="form.with_vat && !fiscal.includesVat && form.vat_rate > 0" class="text-muted">Gli importi che scrivi sono senza IVA: chi paga vede l'importo con l'IVA aggiunta.</span>
+                    <span v-else-if="form.with_vat" class="text-muted">Gli importi che scrivi sono finali, con l'IVA compresa.</span>
+                </div>
                 <label v-if="hourly" :class="[label, 'sm:col-span-3']"><span class="font-semibold">Tariffe a fasce</span>
                     <textarea v-model="form.rates" rows="2" :class="field" placeholder="feriali 18:00-22:00 15,00&#10;weekend 08:00-22:00 20" />
                     <span class="text-muted">Una per riga: giorni (tutti, feriali, weekend), orario, prezzo a fascia per i soci. Fuori dalle fasce vale la tariffa soci.</span></label>
