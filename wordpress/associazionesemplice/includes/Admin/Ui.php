@@ -44,7 +44,7 @@ final class Ui {
 		self::notices();
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
 		if ( 'asem-wizard' !== $page ) { // promemoria fisso dei contatti della segreteria, in tutte le pagine del plugin (nei dati dell'ente senza pulsante)
-			echo wp_kses( \AssociazioneSemplice\Contacts::reminder_html( 'asem-entity' !== $page ), Html::allowed() );
+			echo wp_kses( \AssociazioneSemplice\MissingBand::html( $page ), Html::allowed() );
 		}
 	}
 

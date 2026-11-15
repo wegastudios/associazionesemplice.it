@@ -1241,7 +1241,10 @@ final class Actions {
 			$ente['apply_enabled']    = ! empty( $p['apply_enabled'] ) ? 1 : 0;
 			$ente['apply_volunteer']  = ! empty( $p['apply_volunteer'] ) ? 1 : 0;
 			$ente['apply_pay_online'] = ! empty( $p['apply_pay_online'] ) ? 1 : 0;
-			$ente['apply_email']      = $txt( 'apply_email' );
+			if ( array_key_exists( 'apply_email', $p ) ) { // il campo si vede solo se ha già un valore (eccezione facoltativa)
+				$ente['apply_email'] = $txt( 'apply_email' );
+			}
+			$ente['whatsapp_button']  = ! empty( $p['whatsapp_button'] ) ? 1 : 0;
 		}
 		if ( ! empty( $p['uninstall_present'] ) ) {
 			$ente['delete_on_uninstall'] = ! empty( $p['delete_on_uninstall'] ) ? 1 : 0;

@@ -948,7 +948,7 @@ asem_ok( 1 === preg_match( '/<input[^>]*name="secretary_email"[^>]*required/', $
 // promemoria fisso: presente se manca anche uno solo dei due, sparisce se sono compilati
 Settings::update( array( 'secretary_email' => '', 'secretary_phone' => '' ) );
 ob_start();
-echo \AssociazioneSemplice\Contacts::reminder_html();
+echo \AssociazioneSemplice\MissingBand::html();
 $ct_al = (string) ob_get_clean();
 asem_ok( false !== strpos( $ct_al, 'Mancano i contatti della segreteria (email e telefono): finché mancano' ) && false !== strpos( $ct_al, 'Inseriscili ora' ) && false !== strpos( $ct_al, 'page=asem-entity' ) && false === strpos( $ct_al, 'asem-dismiss' ), 'contatti: promemoria fisso con «Inseriscili ora», non chiudibile' );
 $ct_get = $_GET;
@@ -960,7 +960,7 @@ asem_ok( false !== strpos( $ct_hd, 'Mancano i contatti della segreteria' ) && fa
 $_GET = $ct_get;
 Settings::update( array( 'secretary_email' => 'segreteria@example.org' ) );
 ob_start();
-echo \AssociazioneSemplice\Contacts::reminder_html();
+echo \AssociazioneSemplice\MissingBand::html();
 asem_ok( false !== strpos( (string) ob_get_clean(), 'Mancano i contatti' ), 'contatti: il promemoria resta finché manca il telefono' );
 $_GET['page'] = 'asem-entity';
 ob_start();
@@ -972,14 +972,14 @@ $ct_sec  = wp_insert_user( array( 'user_login' => 'ct_segreteria', 'user_pass' =
 $ct_prev = get_current_user_id();
 wp_set_current_user( (int) $ct_sec );
 ob_start();
-echo \AssociazioneSemplice\Contacts::reminder_html();
+echo \AssociazioneSemplice\MissingBand::html();
 $ct_al2 = (string) ob_get_clean();
 wp_set_current_user( $ct_prev );
 wp_delete_user( (int) $ct_sec );
 asem_ok( false !== strpos( $ct_al2, 'Mancano i contatti della segreteria: chiedi a chi amministra di inserirli.' ) && false === strpos( $ct_al2, 'Inseriscili ora' ), 'contatti: chi non modifica le impostazioni vede un altro testo, senza pulsante' );
 Settings::update( array( 'secretary_phone' => '011 1234567' ) );
 ob_start();
-echo \AssociazioneSemplice\Contacts::reminder_html();
+echo \AssociazioneSemplice\MissingBand::html();
 asem_ok( '' === trim( (string) ob_get_clean() ), 'contatti: compilati i due campi il promemoria sparisce' );
 // invii manuali: senza contatti completi si rifiutano; le email automatiche partono comunque
 Settings::update( array( 'secretary_email' => '', 'secretary_phone' => '' ) );
@@ -1037,7 +1037,37 @@ Settings::update( array( 'apply_email' => '', 'secretary_email' => '' ) );
 asem_ok( (string) get_option( 'admin_email' ) === \AssociazioneSemplice\Applications::notify_email(), 'contatti: senza email della segreteria l\'avviso va all\'email del sito' );
 Settings::update( array( 'secretary_email' => 'segreteria@example.org' ) );
 asem_ok( 'Per esercitare i tuoi diritti scrivi a segreteria@example.org o chiama 011 1234567.' === \AssociazioneSemplice\Contacts::rights_line() && 'Segreteria: segreteria@example.org · 011 1234567' === \AssociazioneSemplice\Contacts::line(), 'contatti: frasi per modulo di adesione e area soci' );
-Settings::update( array( 'pec' => '', 'secretary_email' => '', 'secretary_phone' => '' ) ); // come prima: i test seguenti non vedono i contatti
+// una sola banda fissa, estendibile con altre voci
+Settings::update( array( 'secretary_email' => '', 'secretary_phone' => '' ) );
+add_filter(
+	'asem_missing_items',
+	function ( $items ) {
+		$items[] = array( 'text' => 'Manca la prova.', 'text_other' => 'Manca la prova (altri).', 'url' => 'https://example.org/prova', 'page' => 'asem-prova', 'button' => 'Vai' );
+		return $items;
+	}
+);
+$ct_band = \AssociazioneSemplice\MissingBand::html();
+asem_ok( 1 === substr_count( $ct_band, 'asem-missing-band' ) && false !== strpos( $ct_band, 'Mancano i contatti della segreteria' ) && false !== strpos( $ct_band, 'Manca la prova.' ) && false !== strpos( $ct_band, 'https://example.org/prova' ), 'banda fissa: una sola banda con l\'elenco di tutto ciò che manca' );
+remove_all_filters( 'asem_missing_items' );
+// WhatsApp: casella a parte, il telefono obbligatorio non accende il pulsante a tutti
+Settings::update( array( 'secretary_email' => 'segreteria@example.org', 'secretary_phone' => '333 1234567', 'whatsapp_button' => 0 ) );
+ob_start();
+\AssociazioneSemplice\Frontend\WhatsappFloat::render();
+asem_ok( '' === (string) ob_get_clean() && ! \AssociazioneSemplice\Contacts::whatsapp_allowed( '333 1234567' ) && \AssociazioneSemplice\Contacts::whatsapp_allowed( '340 7654321' ), 'WhatsApp: con il telefono ma senza la casella il pulsante non compare (un numero scelto per un evento resta com\'era)' );
+Settings::update( array( 'whatsapp_button' => 1 ) );
+ob_start();
+\AssociazioneSemplice\Frontend\WhatsappFloat::render();
+asem_ok( false !== strpos( (string) ob_get_clean(), 'wa.me/393331234567' ), 'WhatsApp: con la casella accesa il pulsante compare' );
+$ct_opt = get_option( Settings::OPTION );
+unset( $ct_opt['whatsapp_button'] );
+update_option( Settings::OPTION, $ct_opt );
+asem_ok( true === \AssociazioneSemplice\Install::migrate_whatsapp_button() && 1 === (int) Settings::get( 'whatsapp_button' ) && false === \AssociazioneSemplice\Install::migrate_whatsapp_button(), 'WhatsApp: chi aveva già il numero tiene il pulsante acceso dopo l\'aggiornamento' );
+$ct_opt = get_option( Settings::OPTION );
+unset( $ct_opt['whatsapp_button'] );
+$ct_opt['secretary_phone'] = '';
+update_option( Settings::OPTION, $ct_opt );
+asem_ok( false === \AssociazioneSemplice\Install::migrate_whatsapp_button() && 0 === (int) Settings::get( 'whatsapp_button' ), 'WhatsApp: senza numero la migrazione non accende nulla' );
+Settings::update( array( 'pec' => '', 'secretary_email' => '', 'secretary_phone' => '', 'whatsapp_button' => 0 ) ); // come prima: i test seguenti non vedono i contatti
 \AssociazioneSemplice\Wizard::apply( array( 'pages_present' => '1', 'pages' => array( 'calendario' ) ) );
 asem_ok( count( \AssociazioneSemplice\Pages::existing() ) === count( $wz_pages ), 'configurazione guidata: le pagine esistenti non si duplicano' );
 \AssociazioneSemplice\Wizard::apply( array( 'pages_present' => '1', 'pages' => array( 'segreteria', 'tesoriere', 'ingressi' ) ) );
@@ -3356,7 +3386,7 @@ asem_ok( false !== strpos( $det, 'partecipazione come ospite' ) && false !== str
 asem_ok( false === strpos( $det, '333 5555552' ) && false === strpos( $det, 'wa.me' ), 'lista prenotati all\'ingresso: nessun cellulare mostrato a chi gestisce l\'evento' );
 $set_html = asem_render( array( Admin\SettingsPage::class, 'render' ), 'Ospiti: soglia di segnalazione' );
 asem_ok( 4 === substr_count( $set_html, 'class="asem-section asem-card"' ) && 1 === substr_count( $set_html, 'asem-card" open' ), 'impostazioni: quattro sezioni richiudibili, solo la prima aperta' );
-foreach ( array( 'membership_fee', 'cancel_policy_default', 'apply_email', 'gate_message' ) as $set_field ) {
+foreach ( array( 'membership_fee', 'cancel_policy_default', 'whatsapp_button', 'gate_message' ) as $set_field ) {
 	$set_pos = strpos( $set_html, 'name="' . $set_field . '"' );
 	asem_ok( false !== $set_pos && substr_count( substr( $set_html, 0, $set_pos ), '<form' ) > substr_count( substr( $set_html, 0, $set_pos ), '</form' ), 'impostazioni: il campo ' . $set_field . ' resta dentro il modulo' );
 }
@@ -9539,7 +9569,7 @@ asem_ok( false === strpos( \AssociazioneSemplice\Frontend\Views::event_booking( 
 $er_list = \AssociazioneSemplice\Frontend\Views::activities( array( 'tipo' => 'evento', 'anno' => $sy_label ) );
 asem_ok( false !== strpos( $er_list, 'Dettagli' ) && false !== strpos( $er_list, (string) \AssociazioneSemplice\PublicEvents::page_url( $er_a ) ), 'elenco attività: le schede portano alla pagina pubblica dell\'evento' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::member_login_url(), '/' ), 'accesso per prenotarsi: indirizzo di accesso disponibile' );
-Settings::update( array( 'secretary_phone' => '333 1234567' ) );
+Settings::update( array( 'secretary_phone' => '333 1234567', 'whatsapp_button' => 1 ) );
 ob_start();
 \AssociazioneSemplice\Frontend\WhatsappFloat::render();
 $wa_html = (string) ob_get_clean();
@@ -9553,7 +9583,7 @@ ob_start();
 \AssociazioneSemplice\Frontend\WhatsappFloat::render();
 asem_ok( '' === (string) ob_get_clean(), 'WhatsApp: senza numero valido il pulsante non compare' );
 // Contatti per le informazioni di ogni evento: di default chi crea l'evento e il telefono della segreteria, modificabili per evento.
-Settings::update( array( 'secretary_phone' => '333 1234567' ) );
+Settings::update( array( 'secretary_phone' => '333 1234567', 'whatsapp_button' => 1 ) );
 $ct_prev = get_current_user_id();
 $ct_uid  = wp_insert_user( array( 'user_login' => 'ct_creatore', 'user_pass' => wp_generate_password(), 'user_email' => 'creatore@example.com', 'role' => 'administrator' ) );
 wp_set_current_user( (int) $ct_uid );
@@ -9595,7 +9625,7 @@ $er::course_member_request( $ct_aid, $er_gid );
 $ct_last = $er_mails[ count( $er_mails ) - 1 ];
 asem_ok( count( $er_mails ) > $ct_n && array( $ct_office, 'esterno@example.com' ) === (array) $ct_last['to'], 'avvisi richieste: la richiesta di iscrizione a un corso arriva a segreteria e contatto' );
 wp_set_current_user( $ct_prev );
-Settings::update( array( 'secretary_phone' => '' ) );
+Settings::update( array( 'secretary_phone' => '', 'whatsapp_button' => 0 ) );
 remove_filter( 'pre_wp_mail', $er_hook, 10 );
 Settings::update( array( 'guest_max_events' => 2 ) );
 

@@ -102,7 +102,8 @@ final class Settings {
 			'apply_volunteer'         => 0,         // nella domanda si può chiedere anche di essere «socio e volontario»
 			'apply_pay_online'        => 0,         // nella domanda si può pagare subito la quota online (se c'è un metodo di pagamento attivo)
 			'apply_email'             => '',        // a chi arriva l'avviso di una nuova domanda (vuoto = l'indirizzo del sito)
-			'secretary_email'         => '',        // email della segreteria (obbligatoria): risposta e riga in calce alle email ai soci, informativa privacy
+			'whatsapp_button'         => 0,         // pulsante fisso «Scrivici su WhatsApp» sul sito (a parte dal telefono, che può essere un fisso)
+			'secretary_email'         => '',       // email della segreteria (obbligatoria): risposta e riga in calce alle email ai soci, informativa privacy
 			'secretary_phone'         => '',        // telefono della segreteria (obbligatorio, anche WhatsApp se è un cellulare), mostrato nelle email, nell'area soci e sulle pagine degli eventi
 			'delete_on_uninstall'     => 0,         // all'eliminazione del plugin da WordPress si cancellano anche i dati (di default restano)
 			'limits'                  => array(),   // limiti e soglie personalizzati (vedi Limits): vuoto = valori predefiniti
@@ -244,7 +245,8 @@ final class Settings {
 		$clean['apply_volunteer']         = empty( $clean['apply_volunteer'] ) ? 0 : 1;
 		$clean['apply_pay_online']        = empty( $clean['apply_pay_online'] ) ? 0 : 1;
 		$clean['apply_email']             = is_email( trim( (string) $clean['apply_email'] ) ) ? strtolower( trim( (string) $clean['apply_email'] ) ) : '';
-		$clean['secretary_email']         = is_email( trim( (string) $clean['secretary_email'] ) ) ? strtolower( trim( (string) $clean['secretary_email'] ) ) : '';
+		$clean['whatsapp_button']         = empty( $clean['whatsapp_button'] ) ? 0 : 1;
+		$clean['secretary_email']        = is_email( trim( (string) $clean['secretary_email'] ) ) ? strtolower( trim( (string) $clean['secretary_email'] ) ) : '';
 		$clean['secretary_phone']         = Contacts::phone_valid( (string) $clean['secretary_phone'] ) ? trim( (string) $clean['secretary_phone'] ) : '';
 		$clean['limits']                  = Limits::sanitize( is_array( $clean['limits'] ) ? $clean['limits'] : array() );
 		$clean['bank_enabled']            = empty( $clean['bank_enabled'] ) ? 0 : 1;

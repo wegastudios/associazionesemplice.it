@@ -28,6 +28,17 @@ final class Contacts {
 		return '' !== $raw && mb_strlen( $raw ) <= self::MAX_PHONE && 1 === preg_match( '/^[0-9+\-.()\s]+$/', $raw ) && strlen( (string) preg_replace( '/\D+/', '', $raw ) ) >= self::MIN_DIGITS;
 	}
 
+	/**
+	 * Il pulsante WhatsApp si può mostrare per questo telefono? Se è il telefono della segreteria, solo con la casella «Pulsante WhatsApp» accesa
+	 * (il telefono obbligatorio può essere un fisso); un numero diverso, scelto per un evento, resta com'era.
+	 */
+	public static function whatsapp_allowed( string $phone ): bool {
+		if ( '' === Phone::key( $phone ) || Phone::key( $phone ) !== Phone::key( (string) Settings::get( 'secretary_phone' ) ) ) {
+			return true;
+		}
+		return ! empty( Settings::get( 'whatsapp_button' ) );
+	}
+
 	/** Ci sono sia l'email sia il telefono della segreteria (validi)? Unico punto di controllo: nessuna email viene bloccata se mancano (per ora). */
 	public static function complete(): bool {
 		return '' !== self::email() && '' !== self::phone();
@@ -95,11 +106,18 @@ final class Contacts {
 		return '' !== $e ? 'Reply-To: ' . $e : '';
 	}
 
-	/** Testo del promemoria: per chi modifica le impostazioni e per gli altri. */
-	public static function reminder_text( bool $can_edit ): string {
-		return $can_edit
-			? Texts::t( 'Mancano i contatti della segreteria (email e telefono): finché mancano, l\'associazione non scrive ai soci (comunicazioni e ricevute inviate a mano). Li vedono anche nell\'informativa sulla privacy.' )
-			: Texts::t( 'Mancano i contatti della segreteria: chiedi a chi amministra di inserirli. Finché mancano, l\'associazione non scrive ai soci.' );
+	/** Voce della banda fissa (vedi MissingBand) se mancano email o telefono della segreteria, altrimenti null. */
+	public static function missing_item(): ?array {
+		if ( ! self::missing() ) {
+			return null;
+		}
+		return array(
+			'text'       => Texts::t( 'Mancano i contatti della segreteria (email e telefono): finché mancano, l\'associazione non scrive ai soci (comunicazioni e ricevute inviate a mano). Li vedono anche nell\'informativa sulla privacy.' ),
+			'text_other' => Texts::t( 'Mancano i contatti della segreteria: chiedi a chi amministra di inserirli. Finché mancano, l\'associazione non scrive ai soci.' ),
+			'url'        => Admin\Ui::url( 'asem-entity' ) . '#asem-contacts',
+			'page'       => 'asem-entity',
+			'button'     => Texts::t( 'Inseriscili ora' ),
+		);
 	}
 
 	/**
@@ -117,26 +135,6 @@ final class Contacts {
 			$msg .= ' ' . Texts::t( 'Intanto scarica la ricevuta e consegnala a mano.' );
 		}
 		throw new \InvalidArgumentException( $msg ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
-	}
-
-	/**
-	 * Promemoria fisso (non si chiude) finché manca un contatto; vuoto se non serve o se chi guarda non usa il gestionale.
-	 *
-	 * @param bool $button con il pulsante «Inseriscili ora» (solo per chi può modificare le impostazioni)
-	 */
-	public static function reminder_html( bool $button = true ): string {
-		if ( ! self::missing() ) {
-			return '';
-		}
-		$can = current_user_can( Plugin::CAP );
-		if ( ! $can && ! current_user_can( Plugin::CAP_OPS ) ) {
-			return '';
-		}
-		$html = '<div class="notice notice-warning inline asem-contacts-reminder"><p>' . esc_html( self::reminder_text( $can ) );
-		if ( $can && $button ) {
-			$html .= ' <a class="button" href="' . esc_url( Admin\Ui::url( 'asem-entity' ) . '#asem-contacts' ) . '">' . esc_html( Texts::t( 'Inseriscili ora' ) ) . '</a>';
-		}
-		return $html . '</p></div>';
 	}
 
 }
