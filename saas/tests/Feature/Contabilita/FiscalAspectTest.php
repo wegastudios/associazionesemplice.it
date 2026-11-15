@@ -71,24 +71,28 @@ it('la quota associativa è IVA esente con la partita IVA, a scelta, e fuori cam
 });
 
 it('la pagina Aspetto fiscale salva aliquote, prezzi e quota; senza partita IVA non c\'è nulla da impostare', function (): void {
+    $in = fn (callable $f): mixed => $this->orgContext()->run($this->org->id, $f);
+    $this->orgContext()->leave();
     $this->actingAs($this->owner)->get('/gestionale/aspetto-fiscale')->assertOk()->assertInertia(fn (Assert $page) => $page->component('Contabilita/AspettoFiscale')->where('hasVat', false));
     $this->put('/gestionale/aspetto-fiscale', ['rates' => '22', 'includes_vat' => true, 'membership_rate' => 0])->assertSessionHasErrors('rates');
 
-    app(OrgSettings::class)->set('ente.vat', '12345678903');
+    $in(fn () => app(OrgSettings::class)->set('ente.vat', '12345678903'));
     $this->put('/gestionale/aspetto-fiscale', ['rates' => '22, 10, 5, x', 'includes_vat' => false, 'membership_rate' => 5])->assertSessionHasNoErrors();
-    expect(app(OrgFiscal::class)->rates())->toBe([22, 10, 5])->and(app(OrgFiscal::class)->includesVat())->toBeFalse()->and(app(OrgFiscal::class)->membershipRate())->toBe(5);
+    $in(fn () => expect(app(OrgFiscal::class)->rates())->toBe([22, 10, 5])->and(app(OrgFiscal::class)->includesVat())->toBeFalse()->and(app(OrgFiscal::class)->membershipRate())->toBe(5));
     $this->put('/gestionale/aspetto-fiscale', ['rates' => '22', 'includes_vat' => true, 'membership_rate' => 5])->assertSessionHasErrors('membership_rate');
     $this->put('/gestionale/aspetto-fiscale', ['rates' => 'abc', 'includes_vat' => true, 'membership_rate' => 0])->assertSessionHasErrors('rates');
 });
 
 it('con i prezzi senza IVA l\'importo inserito diventa finale aggiungendo l\'IVA', function (): void {
+    $in = fn (callable $f): mixed => $this->orgContext()->run($this->org->id, $f);
     app(OrgSettings::class)->set('ente.vat', '12345678903');
     app(OrgSettings::class)->set(OrgFiscal::INCLUDES_VAT, false);
+    $this->orgContext()->leave();
 
     $this->actingAs($this->owner)->post('/gestionale/prima-nota/incassi', [
         'date' => now()->toDateString(), 'account_id' => $this->cash->id, 'receipt' => false,
         'lines' => [['category_id' => $this->donation, 'amount' => '100,00', 'vat_rate' => '22']],
     ])->assertSessionHasNoErrors();
-    $tx = Transaction::query()->where('vat_rate', 22)->sole();
+    $tx = $in(fn () => Transaction::query()->where('vat_rate', 22)->sole());
     expect((int) $tx->amount_cents)->toBe(12200)->and((int) $tx->vat_cents)->toBe(2200);
 });
