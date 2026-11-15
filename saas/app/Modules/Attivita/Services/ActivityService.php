@@ -50,6 +50,7 @@ final readonly class ActivityService implements Activities
         private Members $members,
         private ResourceBookings $resources,
         private ActivityOccupancy $occupancy,
+        private ActivityVat $vat,
     ) {}
 
     public function options(): array
@@ -69,6 +70,19 @@ final readonly class ActivityService implements Activities
         }
 
         return Activity::query()->whereIn('id', $ids)->get(['id', 'name'])->mapWithKeys(static fn (Activity $a): array => [$a->id => $a->name])->all();
+    }
+
+    public function vatRatesInUse(): array
+    {
+        $rates = [];
+        foreach (Activity::query()->whereNull('archived_at')->where('vat_rate', '>', 0)->distinct()->pluck('vat_rate') as $r) {
+            if (is_numeric($r)) {
+                $rates[] = (int) $r;
+            }
+        }
+        sort($rates);
+
+        return $rates;
     }
 
     /**
@@ -377,7 +391,7 @@ final readonly class ActivityService implements Activities
             if ($p === null) {
                 continue;
             }
-            $fee = Pricing::feeFor($activity->fee_cents, $activity->guest_fee_cents, $p['type'] === MemberType::Guest->value);
+            $fee = $this->vat->gross($activity, Pricing::feeFor($activity->fee_cents, $activity->guest_fee_cents, $p['type'] === MemberType::Guest->value));
             $out[] = [
                 'person_id' => $e->person_id,
                 'name' => $p['name'],
@@ -430,14 +444,14 @@ final readonly class ActivityService implements Activities
                 if ($cents <= 0) {
                     throw new ActivityError('Indica l\'importo.');
                 }
-                $lines[] = new IncomeLine($category, $cents, 'Contributo '.$activity->name.' '.self::monthLabel($m), $m);
+                $lines[] = new IncomeLine($category, $cents, 'Contributo '.$activity->name.' '.self::monthLabel($m), $m, $this->vat->rate($activity));
             }
         } else {
             $cents = $amountCents ?? Pricing::remaining($row['summary']['total_due'] > 0 ? $row['summary']['total_due'] : $row['fee'], $row['summary']['total_paid']);
             if ($cents <= 0) {
                 throw new ActivityError('Non c\'è niente da incassare: indica l\'importo.');
             }
-            $lines[] = new IncomeLine($category, $cents, 'Contributo '.$activity->name, $row['start_month']);
+            $lines[] = new IncomeLine($category, $cents, 'Contributo '.$activity->name, $row['start_month'], $this->vat->rate($activity));
         }
 
         return $this->ledger->recordIncome(new Income($date, $accountId, $lines, $method, $personId, true, null, $activity->id))['receipt'];

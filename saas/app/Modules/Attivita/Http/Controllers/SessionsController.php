@@ -7,6 +7,7 @@ namespace App\Modules\Attivita\Http\Controllers;
 use App\Modules\Attivita\Contracts\ActivityError;
 use App\Modules\Attivita\Rules\CalendarView;
 use App\Modules\Attivita\Services\ActivityService;
+use App\Modules\Attivita\Services\ActivityVat;
 use App\Modules\Attivita\Services\AttendanceService;
 use App\Modules\Attivita\Services\SessionService;
 use App\Modules\Contabilita\Contracts\Ledger;
@@ -32,6 +33,7 @@ final readonly class SessionsController
         private SessionService $sessions,
         private AttendanceService $attendance,
         private Ledger $ledger,
+        private ActivityVat $vat,
     ) {}
 
     public function addDates(Request $request, string $activity): RedirectResponse
@@ -78,8 +80,8 @@ final readonly class SessionsController
                 'due_label' => Money::format(max(0, $b['fee'] - $b['paid'])),
             ]), $this->sessions->bookings($s->id)),
             'waitlist' => $this->sessions->waitlist($s->id),
-            'priceLists' => array_map(static fn (array $l): array => ['key' => $l['key'], 'label' => $l['label'].' ('.Money::format($l['cents']).($l['entries'] > 1 ? ', '.$l['entries'].' ingressi' : '').')'], $a->price_lists),
-            'fee' => Money::format($a->fee_cents),
+            'priceLists' => array_map(fn (array $l): array => ['key' => $l['key'], 'label' => $l['label'].' ('.Money::format($this->vat->gross($a, $l['cents'])).($l['entries'] > 1 ? ', '.$l['entries'].' ingressi' : '').')'], $a->price_lists),
+            'fee' => Money::format($this->vat->gross($a, $a->fee_cents)),
             'accounts' => $this->ledger->openAccounts(),
             'methods' => array_map(static fn (PaymentMethod $m): array => ['value' => $m->value, 'label' => $m->label()], PaymentMethod::cases()),
             'today' => now()->toDateString(),

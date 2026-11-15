@@ -5,7 +5,7 @@ import AppLayout from '../../layouts/AppLayout.vue';
 import PersonPicker from '../../components/PersonPicker.vue';
 
 const props = defineProps({
-    activity: Object, resources: Array, kinds: Array, billings: Array, years: Array, accounts: Array, methods: Array, canEdit: Boolean, canAccounting: Boolean,
+    activity: Object, resources: Array, kinds: Array, billings: Array, years: Array, accounts: Array, methods: Array, canEdit: Boolean, canAccounting: Boolean, fiscal: Object,
 });
 
 const a = props.activity ?? {};
@@ -14,12 +14,13 @@ const form = useForm({
     name: a.name ?? '', kind: a.kind ?? 'course', social_year: a.social_year ?? props.years[0], billing: a.billing ?? 'monthly',
     fee: a.fee ?? '', guest_fee: a.guest_fee ?? '', instructor_person_id: a.instructor_person_id ?? '', weekdays: a.weekdays ?? [],
     starts_on: a.starts_on ?? '', ends_on: a.ends_on ?? '', location: a.location ?? '', notes: a.notes ?? '', price_lists: a.price_lists ?? '',
+    with_vat: a.with_vat ?? false, vat_rate: a.vat_rate ?? 0,
     resource: a.resource ?? '', occupy_on_booking: a.occupy_on_booking ?? false, move_conflicts: false,
 });
 // Cambio di risorsa con sovrapposizioni: o si lascia tutto com'è, o si spostano gli slot occupati sulla risorsa che si libera.
 const keepResource = () => { form.resource = a.resource ?? ''; form.clearErrors(); };
 const saveMoving = () => { form.move_conflicts = true; save(); form.move_conflicts = false; };
-const clean = (d) => ({ ...d, instructor_person_id: d.instructor_person_id || null, starts_on: d.starts_on || null, ends_on: d.ends_on || null });
+const clean = (d) => ({ ...d, vat_rate: d.with_vat ? d.vat_rate : null, instructor_person_id: d.instructor_person_id || null, starts_on: d.starts_on || null, ends_on: d.ends_on || null });
 const save = () => (props.activity
     ? form.transform(clean).put(`/gestionale/attivita/${props.activity.id}`, { preserveScroll: true })
     : form.transform(clean).post('/gestionale/attivita'));
@@ -80,6 +81,16 @@ const label = 'space-y-1 text-sm';
                 <label v-if="isCourse" :class="label"><span class="font-semibold">Contributo</span><select v-model="form.billing" :class="field"><option v-for="b in billings" :key="b.value" :value="b.value">{{ b.label }}</option></select></label>
                 <label :class="label"><span class="font-semibold">Importo per i soci</span><input v-model="form.fee" inputmode="decimal" placeholder="0 = gratuita" :class="field" /></label>
                 <label :class="label"><span class="font-semibold">Importo per gli ospiti</span><input v-model="form.guest_fee" inputmode="decimal" placeholder="vuoto = come i soci" :class="field" /></label>
+                <div v-if="fiscal?.hasVat" :class="[label, 'sm:col-span-3']">
+                    <label class="flex items-center gap-2"><input v-model="form.with_vat" type="checkbox" /> <span class="font-semibold">Con IVA</span></label>
+                    <select v-if="form.with_vat" v-model.number="form.vat_rate" :class="field">
+                        <option :value="0">IVA esente</option>
+                        <option v-for="r in fiscal.rates" :key="r" :value="r">IVA {{ r }}%</option>
+                    </select>
+                    <span v-if="form.errors.vat_rate || form.errors.with_vat" class="block font-semibold text-danger" role="alert">{{ form.errors.vat_rate || form.errors.with_vat }}</span>
+                    <span v-if="form.with_vat && !fiscal.includesVat && form.vat_rate > 0" class="text-muted">Gli importi che scrivi sono senza IVA: chi paga vede l'importo con l'IVA aggiunta.</span>
+                    <span v-else-if="form.with_vat" class="text-muted">Gli importi che scrivi sono finali, con l'IVA compresa.</span>
+                </div>
                 <label v-if="!isBookable" :class="label"><span class="font-semibold">{{ isCourse ? 'Inizio' : 'Data' }}</span><input v-model="form.starts_on" type="date" :class="field" :required="!isCourse" /></label>
                 <label v-if="isCourse" :class="label"><span class="font-semibold">Fine</span><input v-model="form.ends_on" type="date" :class="field" /></label>
                 <div v-if="isCourse" :class="[label, 'sm:col-span-2']">

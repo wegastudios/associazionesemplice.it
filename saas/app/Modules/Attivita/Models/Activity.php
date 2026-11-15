@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
  * @property Billing $billing
  * @property int $fee_cents
  * @property int|null $guest_fee_cents
+ * @property int|null $vat_rate
  * @property string|null $instructor_person_id
  * @property list<int> $weekdays
  * @property CarbonImmutable|null $starts_on
@@ -42,7 +43,7 @@ final class Activity extends OrgModel
     /** @var list<string> */
     protected $fillable = [
         'name', 'kind', 'social_year', 'billing', 'fee_cents', 'guest_fee_cents', 'instructor_person_id', 'weekdays',
-        'starts_on', 'ends_on', 'location', 'notes', 'price_lists', 'resource_id', 'no_resource', 'occupy_on_booking',
+        'starts_on', 'ends_on', 'location', 'notes', 'price_lists', 'resource_id', 'no_resource', 'occupy_on_booking', 'vat_rate',
     ];
 
     /** @return array<string, string> */
@@ -53,6 +54,7 @@ final class Activity extends OrgModel
             'billing' => Billing::class,
             'fee_cents' => 'integer',
             'guest_fee_cents' => 'integer',
+            'vat_rate' => 'integer',
             'starts_on' => 'immutable_date',
             'ends_on' => 'immutable_date',
             'archived_at' => 'immutable_datetime',

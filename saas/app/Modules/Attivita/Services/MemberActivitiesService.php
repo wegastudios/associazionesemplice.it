@@ -24,6 +24,7 @@ final readonly class MemberActivitiesService implements MemberActivities
         private OrgContext $context,
         private ActivityService $activities,
         private SessionService $sessions,
+        private ActivityVat $vat,
     ) {}
 
     public function enrollments(array $personIds): array
@@ -87,7 +88,7 @@ final readonly class MemberActivitiesService implements MemberActivities
                 'session_id' => $s->id, 'activity_id' => $a->id, 'activity' => $a->name, 'date' => $s->session_date->format('Y-m-d'),
                 'start' => $s->start_time, 'end' => $s->end_time, 'location' => $s->location ?? $a->location, 'capacity' => $s->capacity,
                 'free' => SessionRules::free($s->capacity, $taken[$s->id] ?? 0), 'booking_id' => $b instanceof SessionBooking ? $b->id : null,
-                'waiting' => in_array($s->id, $waiting, true), 'fee' => $b instanceof SessionBooking ? $b->fee_due_cents : $a->fee_cents,
+                'waiting' => in_array($s->id, $waiting, true), 'fee' => $b instanceof SessionBooking ? $b->fee_due_cents : $this->vat->gross($a, $a->fee_cents),
                 'paid' => $b instanceof SessionBooking ? ($paid[$b->id] ?? 0) : 0,
                 'cancellable' => $b instanceof SessionBooking && $b->package_of === null && $b->package_entries <= 1 && $b->price_list === null
                     && ! isset($paid[$b->id]) && $s->session_date->format('Y-m-d') > $today,

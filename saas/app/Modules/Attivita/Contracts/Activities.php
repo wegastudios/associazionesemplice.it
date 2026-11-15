@@ -15,4 +15,7 @@ interface Activities
      * @return array<string, string> id => nome
      */
     public function names(array $ids): array;
+
+    /** @return list<int> le aliquote IVA (1–30) usate da attività non archiviate, per non toglierle da «Aspetto fiscale» */
+    public function vatRatesInUse(): array;
 }

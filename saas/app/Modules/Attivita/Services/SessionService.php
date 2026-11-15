@@ -41,6 +41,7 @@ final readonly class SessionService
         private AuditLog $audit,
         private ResourceBookings $resources,
         private ActivityOccupancy $occupancy,
+        private ActivityVat $vat,
     ) {}
 
     /**
@@ -447,7 +448,7 @@ final readonly class SessionService
         $description = mb_substr('Contributo '.$activity->name.' '.$s->session_date->format('d/m/Y').($list !== null ? ' · '.$list['label'] : ''), 0, 255);
 
         return $this->connection()->transaction(function () use ($b, $s, $activity, $accountId, $date, $cents, $method, $category, $description): ?string {
-            $out = $this->ledger->recordIncome(new Income($date, $accountId, [new IncomeLine($category, $cents, $description, $s->session_date->format('Y-m'))], $method, $b->person_id, true, null, $activity->id));
+            $out = $this->ledger->recordIncome(new Income($date, $accountId, [new IncomeLine($category, $cents, $description, $s->session_date->format('Y-m'), $this->vat->rate($activity))], $method, $b->person_id, true, null, $activity->id));
             foreach ($out['transactions'] as $tx) {
                 $this->connection()->table('app.booking_payments')->insert(['org_id' => $this->context->require()->id, 'transaction_id' => $tx, 'booking_id' => $b->id]);
             }
@@ -497,10 +498,10 @@ final readonly class SessionService
         if ($priceList !== null && $priceList !== '') {
             $l = SessionRules::findList($activity->price_lists, $priceList) ?? throw new ActivityError('Listino non trovato per questa attività.');
 
-            return ['fee_due_cents' => $l['cents'], 'price_list' => $l['key'], 'package_entries' => $l['entries'] > 1 ? $l['entries'] : 0, 'package_of' => null];
+            return ['fee_due_cents' => $this->vat->gross($activity, $l['cents']), 'price_list' => $l['key'], 'package_entries' => $l['entries'] > 1 ? $l['entries'] : 0, 'package_of' => null];
         }
 
-        return ['fee_due_cents' => Pricing::feeFor($activity->fee_cents, $activity->guest_fee_cents, $person['type'] === MemberType::Guest->value),
+        return ['fee_due_cents' => $this->vat->gross($activity, Pricing::feeFor($activity->fee_cents, $activity->guest_fee_cents, $person['type'] === MemberType::Guest->value)),
             'price_list' => null, 'package_entries' => 0, 'package_of' => null];
     }
 
