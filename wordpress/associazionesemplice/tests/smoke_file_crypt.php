@@ -757,11 +757,27 @@ $fc_r2 = Backup::restore( $fc_tz );
 $fc_ok( $fc_r2['bad'] >= 1 && $fc_text === $fc_plain( $fc_path, $fc_row['file_stored'] ), 'ripristino: un file della copia che non coincide con la sua impronta non viene rimesso e si segnala; quello sul sito resta intatto' );
 wp_delete_file( $fc_tz );
 
-// le copie «prima-del-ripristino» restano utilizzabili
-$fc_saved = Backup::saved();
-$fc_ok( ! empty( $fc_saved ), 'ripristino: sul sito ci sono le copie fatte prima dei ripristini' );
-$fc_r3 = Backup::restore( Backup::dir() . '/' . $fc_saved[0]['name'] );
-$fc_ok( 0 === $fc_r3['bad'] && $fc_text === $fc_plain( $fc_path, $fc_row['file_stored'] ), 'ripristino: una copia «prima-del-ripristino» si ripristina con la chiave del sito, senza frase' );
+// la copia fatta prima di un ripristino non resta sul disco; una copia dello stesso sito si ripristina con la chiave del sito, senza frase
+$fc_ok( array() === ( glob( Backup::dir() . '/prima-del-ripristino-*.zip' ) ?: array() ), 'ripristino: dopo i ripristini non resta nessuna copia «prima-del-ripristino» (tabelle in chiaro e chiavi)' );
+$fc_same = Backup::dir() . '/prova-stesso-sito.zip';
+Backup::export( true, $fc_same );
+$fc_r3 = Backup::restore( $fc_same );
+wp_delete_file( $fc_same );
+// frasi del pannello e del LEGGIMI (F6): dicono il vero su chi apre cosa
+$fc_rm  = new \ReflectionMethod( Backup::class, 'readme' );
+$fc_rm->setAccessible( true );
+$fc_read0 = (string) $fc_rm->invoke( null, 0 );
+$fc_read3 = (string) $fc_rm->invoke( null, 3 );
+$fc_ok( false === strpos( $fc_read0, 'file sono inclusi in chiaro' ) && false !== strpos( $fc_read3, "3 file sono inclusi in chiaro perché non erano ancora cifrati.\n" ), 'LEGGIMI: la riga sui file in chiaro compare solo se ce ne sono, con il numero' );
+$fc_ok( false === strpos( $fc_read0, 'attivazione' ) && false !== strpos( $fc_read0, 'non è la data di installazione del plugin' ), 'LEGGIMI: la frase automatica è la data di creazione della chiave, non quella di installazione' );
+$fc_ts = \AssociazioneSemplice\Admin\FileCryptPanel::timestamp_text( '2026-11-16 10:00:00' );
+$fc_ok( false !== strpos( $fc_ts, 'in cui è stata creata la chiave dei file, in UTC: 2026-11-16 10:00:00. Non è la data di installazione del plugin. Va scritta esattamente così' ) && false === strpos( $fc_ts, 'attivazione del plugin' ), 'pannello: la frase automatica dice che è il momento in cui è nata la chiave' );
+$fc_pc = \AssociazioneSemplice\Admin\FileCryptPanel::phrase_changed_text();
+$fc_ok( 0 === strpos( $fc_pc, 'Hai cambiato la frase. Le copie fatte prima si aprono ancora con la frase di allora' ) && false !== strpos( $fc_pc, 'la chiave dei file non cambia' ) && false === strpos( $fc_pc, 'Fai subito una copia nuova' ), 'pannello: dopo il cambio frase non si promette che una copia nuova renda inutili le vecchie' );
+$fc_co = \AssociazioneSemplice\Admin\FileCryptPanel::copy_open_text();
+$fc_ok( false !== strpos( $fc_co, 'tratta la copia come un dato riservato' ) && false === strpos( $fc_co, 'per sbaglio' ), 'pannello: la copia con gli allegati è un dato riservato' );
+$fc_ok( '' !==\AssociazioneSemplice\Texts::t( 'Questa protezione serve se qualcuno porta via la cartella dei file. Non sostituisce la sicurezza del sito e del suo database.' ), 'pannello: riga semplice iniziale' );
+$fc_ok( 0 === $fc_r3['bad'] && $fc_text === $fc_plain( $fc_path, $fc_row['file_stored'] ), 'ripristino: una copia dello stesso sito si ripristina con la chiave del sito, senza frase' );
 
 // ripristino su un altro sito: chiave principale diversa, nessuna chiave salvata
 add_filter( 'salt', $fc_salt, 10, 2 );

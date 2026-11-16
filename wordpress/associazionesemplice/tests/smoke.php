@@ -7805,9 +7805,10 @@ asem_ok( is_file( $bk_file ) && 'contenuto allegato' === file_get_contents( $bk_
 $bk_ra = \AssociazioneSemplice\ReceiptFiles::state( \AssociazioneSemplice\Receipts::record( $bk_rc[0]['receipt_key'] ), 'issued' );
 $bk_rb = \AssociazioneSemplice\ReceiptFiles::state( \AssociazioneSemplice\Receipts::record( $bk_rc[1]['receipt_key'] ), 'issued' );
 asem_ok( $res['documents']['restored'] >= 2 && 'ok' === $bk_ra && 'ok' === $bk_rb && hash( 'sha256', asem_rf_content( $bk_rc[0]['pdf_path'] ) ) === $bk_rc[0]['pdf_sha256'] && hash( 'sha256', asem_rf_content( $bk_rc[1]['pdf_path'] ) ) === $bk_rc[1]['pdf_sha256'] && 1 === count( glob( $bk_pb . '.alterato-*' ) ?: array() ), 'ripristino: i PDF delle ricevute tornano al loro posto (perso e alterato), controllati con le impronte; l\'alterato resta da parte' );
-$saved = \AssociazioneSemplice\Backup::saved();
-asem_ok( count( $saved ) >= 1 && 0 === strpos( $saved[0]['name'], 'prima-del-ripristino-' ) && $res['safety'] === $saved[0]['name'], 'ripristino: prima viene salvata una copia dello stato precedente' );
-asem_ok( 1 === preg_match( '/^prima-del-ripristino-\d{8}-\d{6}-[0-9a-f]{16}\.zip$/', $saved[0]['name'] ), 'sicurezza: il nome della copia salvata non è indovinabile' );
+$bk_left = function (): array {
+	return glob( \AssociazioneSemplice\Backup::dir() . '/prima-del-ripristino-*.zip' ) ?: array();
+};
+asem_ok( 1 === preg_match( '/^prima-del-ripristino-\d{8}-\d{6}-[0-9a-f]{16}\.zip$/', $res['safety'] ) && ! is_file( \AssociazioneSemplice\Backup::dir() . '/' . $res['safety'] ) && array() === $bk_left(), 'ripristino: la copia dello stato precedente (con le tabelle in chiaro) serve solo durante il ripristino, ha un nome non indovinabile e si cancella appena il ripristino è riuscito' );
 // le copie salvate sul sito scadono da sole
 $bk_old = \AssociazioneSemplice\Backup::dir() . '/prima-del-ripristino-20200102-000000-0123456789abcdef.zip';
 file_put_contents( $bk_old, 'x' );
@@ -7820,11 +7821,6 @@ $bk_legacy = \AssociazioneSemplice\Backup::dir() . '/prima-del-ripristino-202001
 copy( $bk_zip, $bk_legacy );
 $bk_names = array_column( \AssociazioneSemplice\Backup::saved(), 'name' );
 asem_ok( ! file_exists( $bk_legacy ) && ! in_array( 'prima-del-ripristino-20200101-000000.zip', $bk_names, true ) && 1 === count( preg_grep( '/^prima-del-ripristino-20200101-000000-[0-9a-f]{16}\.zip$/', $bk_names ) ), 'sicurezza: le copie con il vecchio nome prevedibile vengono rinominate' );
-$zs = new ZipArchive();
-$zs->open( \AssociazioneSemplice\Backup::dir() . '/' . $saved[0]['name'] );
-$safety_man = json_decode( (string) $zs->getFromName( 'manifest.json' ), true );
-$zs->close();
-asem_ok( 'associazionesemplice' === $safety_man['plugin'], 'ripristino: la copia di sicurezza è a sua volta un file valido' );
 Settings::clear_secret( 'stripe_secret_key' );
 // una copia con un PDF manomesso: quel PDF non si rimette (l'impronta non coincide), il resto sì, e la ricevuta dà un errore chiaro
 $bk_tz = wp_tempnam( 'asem-bad' );

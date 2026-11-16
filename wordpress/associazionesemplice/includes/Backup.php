@@ -185,20 +185,21 @@ final class Backup {
 			$hashes[ 'tabelle/' . $name . '.jsonl' ] = (string) hash_file( 'sha256', $f );
 			$zip->addFile( $f, 'tabelle/' . $name . '.jsonl' );
 		}
+		$plain_files = 0; // allegati che entrano nella copia in chiaro perché non erano ancora cifrati (o salvati senza sodium)
 		$files = array();
 		if ( $with_files ) {
 			foreach ( glob( Attachments::dir() . '/*' ) ?: array() as $f ) {
 				if ( is_file( $f ) && preg_match( '/^[0-9a-f]{32}$/', basename( $f ) ) ) {
 					$hashes[ 'allegati/' . basename( $f ) ] = (string) hash_file( 'sha256', $f );
 					$zip->addFile( $f, 'allegati/' . basename( $f ) );
-					$files[] = basename( $f );
+					$files[] = basename( $f ); $plain_files += FileCrypt::is_encrypted_file( $f ) ? 0 : 1;
 				}
 			}
 			foreach ( PrivateFolder::left_behind() as $f ) { // file rimasti nella vecchia cartella a spostamento non finito: vanno nella copia anche loro
 				if ( ! in_array( basename( $f ), $files, true ) ) {
 					$hashes[ 'allegati/' . basename( $f ) ] = (string) hash_file( 'sha256', $f );
 					$zip->addFile( $f, 'allegati/' . basename( $f ) );
-					$files[] = basename( $f );
+					$files[] = basename( $f ); $plain_files += FileCrypt::is_encrypted_file( $f ) ? 0 : 1;
 				}
 			}
 		}
@@ -212,7 +213,7 @@ final class Backup {
 			$add( 'chiavi.json', (string) wp_json_encode( $bundle, JSON_PRETTY_PRINT ) );
 		}
 		$add( 'impostazioni.json', (string) wp_json_encode( self::settings_payload(), JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT ) );
-		$add( 'LEGGIMI.txt', self::readme() );
+		$add( 'LEGGIMI.txt', self::readme( $plain_files ) );
 		$key      = BackupSeal::key( wp_salt( 'auth' ) );
 		$manifest = array(
 			'plugin' => 'associazionesemplice', 'version' => ASEM_VERSION, 'db_version' => (string) get_option( Install::DB_VERSION_OPTION, Install::DB_VERSION ), 'created_at' => Db::now(),
@@ -238,15 +239,16 @@ final class Backup {
 	}
 
 	/** Il LEGGIMI che sta dentro ogni copia. */
-	private static function readme(): string {
+	private static function readme( int $plain_files = 0 ): string {
+		$plain_line = $plain_files > 0 ? str_replace( '{n}', (string) $plain_files, "{n} file sono inclusi in chiaro perché non erano ancora cifrati.\n" ) : ''; // il LEGGIMI della copia è un testo fisso in italiano, come il resto del file
 		return "Copia di sicurezza di Associazione Semplice.\n"
 			. "Contiene una tabella per file (tabelle/*.jsonl, una riga JSON per record), le impostazioni (impostazioni.json) e, se scelto, gli allegati. La cartella documenti/ contiene i PDF definitivi già emessi (ad esempio le ricevute) con l'indice delle loro impronte SHA-256 (documenti/indice.json).\n"
 			. "Il manifest (manifest.json) elenca l'impronta SHA-256 di ogni file della copia ed è firmato con i codici di sicurezza del sito che l'ha fatta. Sullo stesso sito una copia modificata dopo essere stata fatta viene rifiutata; su un altro sito il ripristino chiede una conferma scritta e la password dell'amministratore, e resta scritto nel registro delle azioni.\n"
 			. "Si ripristina da Strumenti → Copia di sicurezza.\n"
 			. "I dati in chiaro (soci, prima nota e tutte le altre tabelle) si ripristinano sempre, anche senza la frase e anche su un server senza la libreria sodium.\n"
-			. "I documenti riservati (certificati, allegati, scansioni) sono cifrati quando il sito li ha cifrati; i file non ancora cifrati, o salvati su un server senza sodium, e i campi di testo che sul sito non si potevano cifrare (il manifest ne conta il numero in «plain_fields») stanno nella copia in chiaro. Le chiavi dei documenti cifrati sono in chiavi.json, avvolte con la chiave del sito, con la frase in uso (il codice di licenza, la data e ora di attivazione o la frase scelta) e con il codice di licenza. Senza la chiave del sito di origine e senza una di queste frasi i documenti cifrati si rimettono sul sito ma restano chiusi: il ripristino dice quanti sono e si aprono più tardi con «Riapri la chiave con la frase».\n"
+			. "I documenti riservati (certificati, allegati, scansioni) sono cifrati quando il sito li ha cifrati; i campi di testo che sul sito non si potevano cifrare (il manifest ne conta il numero in «plain_fields») stanno nella copia in chiaro. Le chiavi dei documenti cifrati sono in chiavi.json, avvolte con la chiave del sito, con la frase in uso (il codice di licenza, la data e l'ora in cui è stata creata la chiave dei file, in UTC, oppure la frase scelta; la frase non è la data di installazione del plugin) e con il codice di licenza. Senza la chiave del sito di origine e senza una di queste frasi i documenti cifrati si rimettono sul sito ma restano chiusi: il ripristino dice quanti sono e si aprono più tardi con «Riapri la chiave con la frase».\n"
 			. "Il file contiene anche le impronte delle password dei soci e le notifiche push: il ripristino non le rimette (i soci rientrano con il link ricevuto per e-mail). Non vengono ripristinati nemmeno il registro delle azioni e gli utenti WordPress.\n"
-			. "Le chiavi segrete dei pagamenti online non sono incluse.\n";
+			. $plain_line . "Le chiavi segrete dei pagamenti online non sono incluse.\n";
 	}
 
 	/**
@@ -561,6 +563,7 @@ final class Backup {
 			$db->query( 'COMMIT' );
 		} catch ( \Throwable $e ) {
 			$db->query( 'ROLLBACK' );
+				wp_delete_file( $safety ); // nulla è cambiato: la copia con le tabelle in chiaro non serve a nessuno
 			throw new \RuntimeException( $e->getMessage() . ' Nessun dato è stato cambiato.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
 		// Chiavi dei documenti e identificativo del sito: solo ora che i dati sono al loro posto (una riga nel registro azioni dice che cosa si è adottato).
@@ -641,6 +644,7 @@ final class Backup {
 				'documents'         => $documents,
 			)
 		);
+		wp_delete_file( $safety ); // ripristino riuscito: la copia con le tabelle in chiaro e le chiavi non resta sul disco (quelle che restassero per un'interruzione le toglie la pulizia oraria)
 		return array(
 			'tables'        => count( $names ),
 			'rows'          => $rows_total,

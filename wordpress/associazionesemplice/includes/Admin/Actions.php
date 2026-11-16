@@ -986,7 +986,7 @@ final class Actions {
 		if ( ! empty( $d['missing'] ) || ! empty( $d['bad'] ) ) {
 			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: {n} PDF definitivi non si sono potuti ritrovare o non coincidono con la loro impronta; controllali da «Verifica delle ricevute».', array( 'n' => (int) ( $d['missing'] ?? 0 ) + (int) ( $d['bad'] ?? 0 ) ) );
 		}
-		return array( Ui::url( 'asem-backup' ), 'Ripristino completato: ' . $r['rows'] . ' record in ' . $r['tables'] . ' tabelle' . ( $r['files'] ? ', ' . $r['files'] . ' allegati' : '' ) . '.' . $docs . ' Copia di sicurezza dello stato precedente: ' . $r['safety'] . '.' );
+		return array( Ui::url( 'asem-backup' ), 'Ripristino completato: ' . $r['rows'] . ' record in ' . $r['tables'] . ' tabelle' . ( $r['files'] ? ', ' . $r['files'] . ' allegati' : '' ) . '.' . $docs . ' Lo stato precedente non è stato conservato sul sito: se ti serve, scarica una copia prima di ripristinare.' );
 	}
 
 
