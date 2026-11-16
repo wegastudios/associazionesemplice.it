@@ -911,8 +911,16 @@ final class Resources {
 		if ( 1 !== (int) $done ) {
 			throw new \InvalidArgumentException( 'Prenotazione non trovata.' );
 		}
+		try {
+			self::refund_credits( $r ); // pagata in crediti: i crediti tornano al socio
+		} catch ( \Throwable $e ) {
+			$now = self::reservation( $reservation_id );
+			if ( $now && (int) $now['credits_paid'] > 0 ) { // il riaccredito non è avvenuto: la prenotazione torna com'era, così si può riprovare
+				self::db()->update( Db::t( 'reservations' ), array( 'status' => 'booked', 'cancelled_at' => null ), array( 'id' => $reservation_id ) );
+			}
+			throw $e;
+		}
 		Audit::log( 'reservation.cancelled', 'resource', (int) $r['resource_id'], array( 'reservation' => $reservation_id, 'kind' => $r['kind'] ) );
-		self::refund_credits( $r ); // pagata in crediti: i crediti tornano al socio
 		if ( ResourceRules::KIND_ASSIGN === $r['kind'] ) {
 			self::notify_waitlist( (int) $r['resource_id'] ); // si è liberato un posto: avviso il primo della lista d'attesa
 		}
