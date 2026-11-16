@@ -3,6 +3,11 @@
 # Si lancia da solo a ogni pubblicazione (portale/release.sh) e a ogni azzeramento notturno. Prima il gratuito, poi il Pro (stesso livello di compatibilità).
 set -euo pipefail
 export PATH="/usr/local/bin:/usr/bin:/bin:$PATH" # il cron ha un PATH ridotto: senza questo non trova wp (e php sarebbe quello CGI)
+# Non si aggiorna mentre la demo viene azzerata (e viceversa): se un azzeramento è in corso si aspetta, fino a 10 minuti. Lanciato da reset.sh non aspetta (il blocco lo ha già reset.sh).
+if [ -z "${ASEM_DEMO_LOCKED:-}" ]; then
+	exec 8>"$HOME/demo-provision/.demo.lock"
+	flock -w "${ASEM_LOCK_WAIT:-600}" 8 || { echo "Un azzeramento della demo è ancora in corso: non aggiorno ora (riprova fra qualche minuto)." >&2; exit 5; }
+fi
 cd "$HOME/public_html/demo"
 R="$HOME/portale/data/releases"
 latest() { ls "$R/$1"/*.zip 2>/dev/null | sed 's|.*/||; s|\.zip$||' | sort -V | tail -1; }
