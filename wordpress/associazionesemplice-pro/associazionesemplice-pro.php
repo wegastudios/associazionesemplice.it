@@ -3,6 +3,7 @@
  * Plugin Name:       Associazione Semplice Pro
  * Description:       Funzioni avanzate per Associazione Semplice: pagamenti online, conti e fondi, contabilità e report, registri, comunicazioni, app e Wallet. Richiede Associazione Semplice.
  * Plugin URI:        https://associazionesemplice.it
+ * Update URI:        https://associazionesemplice.it/
  * Version:           1.3.12
  * Requires at least: 6.0
  * Requires PHP:      7.4

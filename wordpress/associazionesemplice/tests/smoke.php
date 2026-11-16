@@ -4981,8 +4981,23 @@ if ( defined( 'ASEM_PRO_VERSION' ) ) { // l'avviso riguarda solo il Pro (il grat
 \AssociazioneSemplice\LicenseClient::set_local_override( false );
 Settings::update( array( 'license_key' => 'ASEM-TEST-KEY' ) );
 update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'pro' => array( 'version' => '99.0.0', 'url' => 'https://associazionesemplice.it/scarica/pro/99.0.0' ) ), false );
+$upd_local0 = function () { return true; }; // qui si prova il ripiego a mano: l'aggiornamento diretto non è disponibile
+add_filter( 'asem_portal_is_local', $upd_local0 );
 $upd_html = Admin\UpdateNotice::html();
+remove_filter( 'asem_portal_is_local', $upd_local0 );
 asem_ok( false !== strpos( $upd_html, '99.0.0' ) && false !== strpos( $upd_html, 'asem-dismissible' ) && false !== strpos( $upd_html, 'https://associazionesemplice.it/scarica/pro/99.0.0' ), 'aggiornamenti: avviso chiudibile con la nuova versione e il link di scarico' );
+if ( class_exists( '\AssociazioneSemplice\Updater' ) ) { // pacchetto del portale: con l'aggiornamento diretto attivo l'avviso porta a Bacheca → Aggiornamenti
+	$upd_local = function () { return false; };
+	add_filter( 'asem_portal_is_local', $upd_local );
+	$upd_core = Admin\UpdateNotice::html();
+	asem_ok( false !== strpos( $upd_core, 'update-core.php' ) && false === strpos( $upd_core, 'scarica/pro/99.0.0' ) && false === strpos( $upd_core, 'Plugin → Aggiungi nuovo' ), 'aggiornamenti: con l\'aggiornamento diretto attivo l\'avviso porta a Bacheca → Aggiornamenti' );
+	remove_filter( 'asem_portal_is_local', $upd_local );
+	$upd_local = function () { return true; };
+	add_filter( 'asem_portal_is_local', $upd_local );
+	$upd_manual = Admin\UpdateNotice::html();
+	asem_ok( false === strpos( $upd_manual, 'update-core.php' ) && false !== strpos( $upd_manual, 'Plugin → Aggiungi nuovo' ), 'aggiornamenti: sito locale, il caricamento manuale resta il ripiego' );
+	remove_filter( 'asem_portal_is_local', $upd_local );
+}
 update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'pro' => array( 'version' => ASEM_PRO_VERSION, 'url' => '' ) ), false );
 asem_ok( '' === Admin\UpdateNotice::html(), 'aggiornamenti: nessun avviso se la versione è l\'ultima' );
 update_option( \AssociazioneSemplice\UpdateCheck::OPT, array( 'checked_at' => Db::now(), 'error' => '', 'pro' => array( 'version' => '99.0.0', 'url' => '' ) ), false );
