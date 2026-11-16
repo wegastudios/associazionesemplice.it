@@ -8498,6 +8498,8 @@ $rf_http  = function ( $method, $url, $headers, $body ) use ( &$rf_calls, &$rf_s
 			'already'  => array( 400, array( 'error' => array( 'code' => 'charge_already_refunded', 'message' => 'Charge ch_1 has already been refunded.' ) ) ),
 			'balance'  => array( 400, array( 'error' => array( 'code' => 'balance_insufficient', 'message' => 'Insufficient funds in your Stripe account.' ) ) ),
 			'notfound' => array( 404, array( 'error' => array( 'code' => 'resource_missing', 'message' => 'No such payment_intent' ) ) ),
+			'e503'     => array( 503, array( 'error' => array( 'message' => 'Service Unavailable' ) ) ),
+			'e429'     => array( 429, array( 'error' => array( 'type' => 'rate_limit_error', 'message' => 'Too many requests' ) ) ),
 			'weird'    => array( 500, array( 'error' => array( 'message' => 'Boh interno' ) ) ),
 		);
 	} else {
@@ -8506,8 +8508,16 @@ $rf_http  = function ( $method, $url, $headers, $body ) use ( &$rf_calls, &$rf_s
 			'already'  => array( 422, array( 'name' => 'UNPROCESSABLE_ENTITY', 'details' => array( array( 'issue' => 'CAPTURE_FULLY_REFUNDED' ) ) ) ),
 			'balance'  => array( 422, array( 'name' => 'UNPROCESSABLE_ENTITY', 'details' => array( array( 'issue' => 'INSUFFICIENT_FUNDS' ) ) ) ),
 			'notfound' => array( 404, array( 'name' => 'RESOURCE_NOT_FOUND', 'details' => array( array( 'issue' => 'INVALID_RESOURCE_ID' ) ) ) ),
+			'e503'     => array( 503, array( 'message' => 'Service Unavailable' ) ),
+			'e429'     => array( 429, array( 'name' => 'RATE_LIMIT_REACHED' ) ),
 			'weird'    => array( 500, array( 'message' => 'Boh interno' ) ),
 		);
+	}
+	if ( 'garbage' === $rf_mode ) { // risposta illeggibile: né un rimborso né un errore riconoscibile
+		return array( 'code' => 200, 'body' => '<html>gateway</html>' );
+	}
+	if ( 'empty' === $rf_mode ) {
+		return array( 'code' => 502, 'body' => '' );
 	}
 	if ( isset( $errs[ $rf_mode ] ) ) {
 		return array( 'code' => $errs[ $rf_mode ][0], 'body' => wp_json_encode( $errs[ $rf_mode ][1] ) );
@@ -8753,6 +8763,29 @@ $rf_mode = 'balance';
 $rf_try( $rf_k5, 500 );
 $rf_mode = 'ok';
 asem_ok( 0 === (int) $rf_row( $rf_k5 )['refund_pending_cents'] && 500 === $ap_ps->refund( $rf_k5, 500, 0, 'Motivo di prova' )['cents'], 'rimborso: se il gestore rifiuta con certezza non resta nessun tentativo in sospeso' );
+
+// risposte del gestore senza esito certo (errore del server, troppe richieste, risposta illeggibile): il rimborso può essere partito, il tentativo non si libera
+foreach ( array( 'stripe' => array( 'e503', 'e429', 'garbage', 'empty' ), 'paypal' => array( 'e503', 'e429' ) ) as $rf_prov => $rf_modes ) {
+	foreach ( $rf_modes as $rf_m ) {
+		$rf_u1  = $rf_pay( $rf_prov, 1000, array( 'refund_due' => 1 ) );
+		$rf_n0  = count( $rf_calls );
+		$rf_mode = $rf_m;
+		$rf_msg = (string) $rf_try( $rf_u1, 500 );
+		$rf_mode = 'ok';
+		$rf_p   = $rf_row( $rf_u1 );
+		asem_ok( 500 === (int) $rf_p['refund_pending_cents'] && 1 === (int) $rf_p['review'] && 0 === (int) $rf_p['refunded_cents'] && false !== strpos( $rf_msg, 'lo stesso importo' ), 'rimborso ' . $rf_prov . ' «' . $rf_m . '»: il tentativo resta salvato e il pagamento «da controllare»' );
+		$rf_n1 = count( $rf_calls );
+		asem_ok( false !== strpos( (string) $rf_try( $rf_u1, 600 ), 'solo lo stesso importo' ) && $rf_n1 === count( $rf_calls ), 'rimborso ' . $rf_prov . ' «' . $rf_m . '»: un importo diverso non parte' );
+		$ap_ps->refund( $rf_u1, 500, 0, 'Motivo di prova' );
+		asem_ok( 500 === (int) $rf_row( $rf_u1 )['refunded_cents'] && 0 === (int) $rf_row( $rf_u1 )['refund_pending_cents'] && 'refund-' . $rf_p['public_id'] . '-0-500' === substr( $rf_calls[ count( $rf_calls ) - 1 ]['key'], 0, strlen( 'refund-' . $rf_p['public_id'] . '-0-500' ) ), 'rimborso ' . $rf_prov . ' «' . $rf_m . '»: lo stesso importo si ripete con la stessa chiave' );
+	}
+}
+// rifiuto certo con errore riconosciuto (4xx): il tentativo si libera e un altro importo può partire
+$rf_u2   = $rf_pay( 'stripe', 1000, array( 'refund_due' => 1 ) );
+$rf_mode = 'perm';
+$rf_try( $rf_u2, 500 );
+$rf_mode = 'ok';
+asem_ok( 0 === (int) $rf_row( $rf_u2 )['refund_pending_cents'] && 600 === $ap_ps->refund( $rf_u2, 600, 0, 'Motivo di prova' )['cents'], 'rimborso: un 4xx riconosciuto (chiave senza permesso) libera il tentativo e un altro importo può partire' );
 
 // anno fiscale chiuso: il rimborso non scrive nella prima nota (nemmeno nei suoi anni chiusi)
 $rf_fy = \AssociazioneSemplice\FiscalYears::get( $fy_far );
