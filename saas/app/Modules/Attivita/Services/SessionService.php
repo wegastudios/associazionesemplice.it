@@ -454,7 +454,7 @@ final readonly class SessionService
             $to = is_string($guardianId) ? $c->table('app.people')->where('id', $guardianId)->first(['first_name', 'email']) : null;
         }
         $email = $to !== null && is_string($to->email ?? null) ? $to->email : '';
-        if (filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+        if ($to === null || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
             return 'no_email';
         }
 
