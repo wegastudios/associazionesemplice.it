@@ -43,9 +43,9 @@ final readonly class OnlinePayments
     public const STAYS_ENROLLMENT = "L'iscrizione resta e il contributo torna da pagare: se non serve più, togli l'iscrizione dalla scheda dell'attività.";
 
     /** Frasi dell'email al socio, in coda al rimborso. */
-    public const MAIL_RESERVATION = 'La tua prenotazione resta attiva: se non ti serve più, avvisa la segreteria.';
+    public const MAIL_RESERVATION = 'La tua prenotazione resta attiva e risulta da pagare: se non ti serve più, avvisa la segreteria.';
 
-    public const MAIL_ENROLLMENT = 'La tua iscrizione resta attiva: se non ti serve più, avvisa la segreteria.';
+    public const MAIL_ENROLLMENT = 'La tua iscrizione resta attiva e il contributo risulta da pagare: se non ti serve più, avvisa la segreteria.';
 
     public const MAX_PER_HOUR = 10;
 
