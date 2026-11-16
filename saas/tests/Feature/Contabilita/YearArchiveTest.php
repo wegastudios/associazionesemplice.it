@@ -219,7 +219,7 @@ it('«Rifai» su un PDF sano non fa niente e lo dice', function (): void {
     expect(archiveRow($this->org->id, $this->receipt)->sha256)->toBe($before->sha256);
 });
 
-it('con l\'archivio rovinato ricostruisce le ricevute dai dati dell'emissione', function (): void {
+it('con l\'archivio rovinato ricostruisce le ricevute dai dati dell\'emissione', function (): void {
     $before = (string) $this->actingAs($this->owner)->get("/gestionale/ricevute/{$this->receipt}.pdf")->assertOk()->getContent();
     $this->actingAs($this->owner)->post("/gestionale/archivio/{$this->year}")->assertSessionHasNoErrors();
     $archive = $this->orgContext()->run($this->org->id, fn () => DB::table('app.year_archives')->sole());
@@ -243,7 +243,7 @@ it('con l\'archivio rovinato ricostruisce le ricevute dai dati dell'emissione', 
     expect((string) $this->actingAs($this->owner)->get("/gestionale/ricevute/{$this->receipt}.pdf")->assertOk()->getContent())->toBe($before);
 });
 
-it('senza i dati salvati all'emissione la ricostruzione non cambia niente e lo dice', function (): void {
+it('senza i dati salvati all\'emissione la ricostruzione non cambia niente e lo dice', function (): void {
     $this->actingAs($this->owner)->post("/gestionale/archivio/{$this->year}")->assertSessionHasNoErrors();
     $archive = $this->orgContext()->run($this->org->id, fn () => DB::table('app.year_archives')->sole());
     Storage::disk('org_files')->put($archive->path, 'archivio rovinato');
