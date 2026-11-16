@@ -290,7 +290,7 @@ La trovi in **Altro**, ed è **solo per gli amministratori**. Scegli l'**«Anno 
 
 ## Cercare e filtrare
 
-In **Prima nota** filtra per **conto**, per **attività** e per periodo, poi **«Mostra i movimenti»**. **«Esporta l'anno fiscale (CSV)»** scarica i movimenti; **«Importa da Excel o CSV»** li carica.
+In **Prima nota** filtra per **conto**, per **attività** e per periodo, poi **«Mostra i movimenti»**. **«Esporta l'anno fiscale (CSV)»** scarica i movimenti; **«Importa da Excel o CSV»** li carica: vedi [Importare la prima nota da Excel o CSV](guida:gestionale-importare-la-prima-nota).
 
 ## Correggere un errore
 
@@ -375,6 +375,64 @@ Il gestionale ti avvisa se qualcosa non torna:
 - se provi a togliere da Aspetto fiscale un'aliquota usata da qualche risorsa: «Alcune risorse usano l'aliquota X%: prima cambia l'IVA di quelle risorse, poi toglila dall'elenco.»; se sono usate anche da qualche attività, il messaggio dice «Alcune attività o risorse usano l'aliquota X%: prima cambia l'IVA di quelle attività o risorse, poi toglila dall'elenco.»;
 - se l'aliquota è usata da prenotazioni non ancora finite: «Alcune prenotazioni non ancora finite usano l'aliquota X%: togli l'aliquota dall'elenco quando saranno finite o annullate.»;
 - in scheda, un avviso rosso: «L'aliquota di questa risorsa non è più nell'elenco di Aspetto fiscale: scegline un'altra.» oppure «Senza partita IVA l'IVA non si applica: gli incassi di questa risorsa si registrano senza IVA.»
+MD,
+    ],
+    [
+        'topic' => 'gestionale', 'section' => 'Cassa e conti', 'slug' => 'gestionale-importare-la-prima-nota',
+        'title' => 'Importare la prima nota da Excel o CSV',
+        'body' => <<<'MD'
+> Vale per il **gestionale online**. Disponibile in: {piano_piccola}, {piano_media}, {piano_grande}
+
+Se finora hai tenuto la contabilità in un foglio Excel, non devi riscriverla: la carichi da un file e il gestionale registra i movimenti in **Prima nota**. **Prima vedi sempre l'anteprima: nulla si salva finché non confermi.**
+
+**Chi può farlo:** chi ha il permesso **«Registrare in prima nota»** (titolare, amministratori e operatori; si assegna in **Operatori e ruoli**).
+
+## Come si fa
+
+1. In **Prima nota** apri il pulsante con i **tre puntini** (**«Altri strumenti»**) e scegli **«Importa da Excel o CSV»**.
+2. Scegli il **file**: `.xlsx` o `.csv`, al massimo **5 MB** e **10.000 movimenti** (se sono di più, dividilo in più file).
+3. Se nel file ci sono righe **senza il conto**, scegli il **«Conto per le righe senza conto»**. Se non lo scegli, quelle righe risultano errori.
+4. Premi **«Mostra l'anteprima»**.
+5. Controlla l'anteprima e premi **«Importa N movimenti»**. A fine importazione trovi **«Import completato»** con quanti movimenti sono stati registrati e il collegamento **«Vai alla prima nota»**.
+
+## Come deve essere fatto il file
+
+Nella **prima riga** ci sono i nomi delle colonne. Servono:
+
+- **Data**;
+- **Importo**, oppure **Entrata** e **Uscita** in due colonne separate.
+
+Sono facoltative: **Tipo, Conto, Modalità, Voce, Attività, N. tessera, Persona, Descrizione, Competenza, Riferimento**. Il programma riconosce anche i nomi simili (per esempio «Causale» per la voce o «Socio» per la persona).
+
+- Le **date** vanno bene come `15/01/2025` o `2025-01-15`; gli importi come `1.234,56` o `1234.56`.
+- Con la sola colonna **Importo**, un importo negativo è una **uscita**, uno positivo un'**entrata** (oppure usa la colonna **Tipo**).
+- Le righe vuote o quelle di totale (senza data e senza importo) vengono ignorate.
+- **Il file che esporti da Prima nota con «Esporta l'anno fiscale (CSV)» si ricarica così com'è.**
+
+## Cosa succede con i dati del file
+
+- **Conti**: se un conto non esiste, **si crea** (con saldo iniziale zero). L'anteprima ti dice quali conti nuovi nascono.
+- **Voci, persone, attività**: se il nome non si riconosce, il movimento si importa lo stesso con una **voce generica**, oppure **senza persona** o **senza attività**; nella colonna **Note** dell'anteprima vedi l'avviso. Con **N. tessera** o **Persona** il movimento si collega alla scheda del socio.
+- **Modalità** non riconosciuta: si usa «Altro».
+- **Doppioni**: un movimento uguale a uno già in prima nota (stessa data, conto, importo, descrizione e riferimento) **viene saltato**. Puoi quindi ricaricare lo stesso file senza duplicare i movimenti.
+- **Giroconti**: due righe con la **stessa data e lo stesso importo**, una in uscita da un conto e una in entrata su un altro, diventano **un giroconto**. Se manca la riga corrispondente, quella riga **non si importa**: registrala da **Giroconto tra conti**.
+- **Ricevute**: **non se ne emettono**. I movimenti importati sono storici, come se li avessi registrati a mano senza ricevuta.
+
+## L'anteprima
+
+In alto vedi i conteggi: **movimenti nuovi, giroconti, doppioni, saltati, con errori**, il periodo coperto e il totale di entrate e uscite. Sotto, riga per riga, l'**esito** (nuovo, giroconto, doppione, saltato, errore) e le note. Le righe con errori **non si importano**: correggile nel file e ricaricalo; i doppioni verranno saltati e si aggiungerà solo il resto.
+
+Se una riga viene rifiutata durante l'importazione, le altre si registrano comunque e il motivo compare sotto **«Righe non importate»**.
+
+## Prima di importare anni passati
+
+Se il file tocca un **anno fiscale già chiuso**, quell'anno non accetta nuovi movimenti: [riaprilo](guida:aprire-e-chiudere-gli-anni-solari) prima di importare. Controlla anche i **saldi iniziali** dei conti: l'importazione registra i movimenti ma non cambia il saldo di partenza, quindi se importi anni passati verifica che i saldi attuali tornino con la tua banca e la tua cassa.
+
+## Correggere un'importazione sbagliata
+
+I movimenti importati si correggono come gli altri: non si cancellano, si **stornano uno per uno** dalla Prima nota (vedi [Registrare un incasso e una spesa](guida:gestionale-registrare-un-incasso-e-una-spesa)). L'importazione viene scritta nel **registro azioni**.
+
+**Nella demo il caricamento dei file è spento**: l'importazione si prova sul gestionale vero.
 MD,
     ],
     [
