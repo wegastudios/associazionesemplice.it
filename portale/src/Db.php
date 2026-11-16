@@ -12,6 +12,8 @@ final class Db {
 
 	/** @var bool */
 	private $pg = false;
+	/** true = le ALTER non riuscite non si scrivono nel registro (migrazione all'avvio di ogni pagina: ripeterebbe le stesse righe a ogni richiesta); le scrive bin/migrate.php. */
+	private $quiet = false;
 
 	public function __construct( \PDO $pdo ) {
 		$this->pdo = $pdo;
@@ -103,7 +105,12 @@ final class Db {
 	/** Migrazione all'avvio di pagine e cron: si salta se l'utente non ha il permesso di cambiare la struttura (lo fa bin/migrate.php). */
 	public function migrateOnStart(): void {
 		if ( $this->mayMigrate() ) {
-			$this->migrate();
+			$this->quiet = true;
+			try {
+				$this->migrate();
+			} finally {
+				$this->quiet = false;
+			}
 		}
 	}
 
@@ -217,7 +224,7 @@ final class Db {
 					throw $e;
 				}
 				// «Esiste già» è normale; ogni altro motivo (permessi, tipo) finisce nel registro invece di sparire: una colonna mancante rompe i lavori più avanti.
-				if ( false === stripos( $e->getMessage(), 'already exists' ) && false === stripos( $e->getMessage(), 'duplicate column' ) ) {
+				if ( ! $this->quiet && false === stripos( $e->getMessage(), 'already exists' ) && false === stripos( $e->getMessage(), 'duplicate column' ) ) {
 					error_log( '[portale] migrazione non riuscita: ' . substr( preg_replace( '/\s+/', ' ', $sql ), 0, 90 ) . ' → ' . $e->getMessage() );
 				}
 			}
