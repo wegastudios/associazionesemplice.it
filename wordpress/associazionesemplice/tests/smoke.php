@@ -11481,6 +11481,7 @@ asem_ok( ! get_option( \AssociazioneSemplice\Employees::OPT_AREAS_SEEN ), 'perme
 Admin\EmployeesPage::save( array( 'user_id' => $em_uid, 'perm' => array( 'courses' ) ) );
 asem_ok( array( 'people', 'health', 'events', 'collect', 'expenses', 'refunds', 'funds', 'comms' ) === \AssociazioneSemplice\Employees::denied_for( $em_uid ), 'permessi per area: il modulo toglie le aree attive non spuntate e lascia com\'erano quelle «in arrivo»' );
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'comms', 'courses' ) );
+add_filter( 'wp_die_handler', $em_die ); // le porte chiuse tornano a lanciare l'eccezione della prova
 // certificati medici: senza «Certificati medici» il dipendente vede solo gli iscritti alle attività che può gestire, scrive nel registro a ogni apertura, non modifica niente
 wp_set_current_user( 1 );
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'health' ) );
@@ -11503,6 +11504,7 @@ asem_ok( null !== $em_blocked( 'admin.php', array( 'page' => 'asem-medical' ) ),
 wp_set_current_user( 1 );
 \AssociazioneSemplice\Employees::reset_cache();
 asem_ok( ! $CE::limited() && 2 === count( $CE::rows() ), 'amministratore: i certificati restano tutti visibili' );
+remove_filter( 'wp_die_handler', $em_die );
 asem_ok( \AssociazioneSemplice\Employees::areas_review_pending( 1, true ) && ! \AssociazioneSemplice\Employees::areas_review_pending( $em_uid, true ) && ! \AssociazioneSemplice\Employees::areas_review_pending( 0, true ), 'permessi per area: l\'avviso in Bacheca è solo per chi ha titolo' );
 \AssociazioneSemplice\Employees::mark_areas_seen( $em_uid, true );
 asem_ok( \AssociazioneSemplice\Employees::areas_review_pending( 1, true ), 'permessi per area: aprire la pagina senza titolo non toglie l\'avviso' );

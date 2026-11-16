@@ -139,7 +139,7 @@ final class EmployeeRulesTest extends TestCase {
 		$this->assertSame( 'funds', EmployeeRules::blocked_by( array( 'funds' ), EmployeeRules::doc_need( 'statement' ) ), 'rendiconto' );
 		$this->assertNull( EmployeeRules::blocked_by( array( 'collect', 'expenses', 'refunds' ), EmployeeRules::doc_need( 'statement' ) ) );
 		$this->assertNull( EmployeeRules::doc_need( 'minute' ), 'gli altri documenti restano fissi' );
-		$this->assertNull( EmployeeRules::doc_need( 'book' ) );
+		$this->assertNull( EmployeeRules::doc_need( 'privacy' ) );
 		$by = array(
 			'collect' => array( 'asem_res_pay', 'asem_check_payments', 'asem_payment_reviewed' ),
 			'refunds' => array( 'asem_payment_refund', 'asem_payment_refunded' ),
