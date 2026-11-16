@@ -41,12 +41,14 @@ final class Certificates {
 		if ( ! self::limited() ) {
 			return $ids;
 		}
+		$me = Access::person_for_user( get_current_user_id() ); // la persona collegata all'utente: serve a riconoscere le attività di cui è istruttore
+		$me = $me ? (int) $me['id'] : 0;
 		return array_values(
 			array_filter(
 				$ids,
-				function ( $id ) {
+				function ( $id ) use ( $me ) {
 					$a = Plugin::activities()->get( (int) $id );
-					return $a && Employees::activity_allowed( $a );
+					return $a && Employees::activity_allowed( $a ) && EmployeeRules::instructor_in_scope( (int) $a['instructor_person_id'], $me );
 				}
 			)
 		);

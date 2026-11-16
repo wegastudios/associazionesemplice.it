@@ -95,6 +95,7 @@ final class EmployeesPage {
 				. '<label>Ultimo giorno <input type="date" name="to" value="' . esc_attr( (string) $e['to'] ) . '"></label> '
 				. '<span class="description">Facoltativi: senza date è in servizio. Fuori dal periodo non può usare il gestionale e non conta tra i lavoratori del RUNTS.</span></p>';
 			echo '<fieldset><legend><strong>Permessi</strong> <span class="description">(togli la spunta alle aree che non gli servono)</span></legend>';
+			echo '<p class="description">' . esc_html( \AssociazioneSemplice\Texts::t( 'Chi ha l\'area Corsi o Eventi vede i certificati degli iscritti alle attività di cui è istruttore e di quelle senza istruttore.' ) ) . '</p>';
 			foreach ( EmployeeRules::labels() as $key => $label ) {
 				$soon = in_array( $key, EmployeeRules::pending_keys(), true ); // l'area non ha ancora i suoi controlli: spunta disattivata
 				echo '<p style="margin:2px 0"><label><input type="checkbox" name="perm[]" value="' . esc_attr( $key ) . '"' . checked( ! in_array( $key, $e['denied'], true ), true, false ) . ( $soon ? ' disabled' : '' ) . '> ' . esc_html( $label ) . ( $soon ? ' <span class="description">' . esc_html( \AssociazioneSemplice\Texts::t( '(in arrivo)' ) ) . '</span>' : '' ) . '</label></p>';
