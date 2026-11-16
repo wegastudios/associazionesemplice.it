@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Core\Auth\TwoFactorEmailResetNotification;
 use App\Modules\Core\Auth\TwoFactorResetNoticeNotification;
+use App\Modules\Core\Http\Controllers\TwoFactorEmailResetController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
@@ -72,16 +73,54 @@ it('senza la password giusta non parte nessuna email', function (): void {
     expect($user->fresh()?->hasConfirmedTwoFactor())->toBeTrue();
 });
 
-it('manda al massimo tre link all\'ora per account', function (): void {
+it('manda al massimo 2 link al giorno e 6 al mese per utente, poi dice di scrivere al supporto', function (): void {
     Notification::fake();
-    RateLimiter::clear('2fa-reset-mail|x');
     $user = $this->createUser('anna@example.com', twoFactor: true);
-    RateLimiter::clear('2fa-reset-mail|'.$user->id);
+    foreach (TwoFactorEmailResetController::KEYS as $prefix) {
+        RateLimiter::clear($prefix.$user->id);
+    }
     $this->post('/accesso', ['email' => 'anna@example.com', 'password' => $this::PASSWORD]);
 
-    foreach (range(1, 4) as $ignored) {
-        $this->post('/verifica-accesso/recupero-email');
-    }
+    $this->post('/verifica-accesso/recupero-email')->assertSessionDoesntHaveErrors();
+    $this->post('/verifica-accesso/recupero-email')->assertSessionDoesntHaveErrors();
+    $this->post('/verifica-accesso/recupero-email')->assertSessionHasErrors(['reset' => 'Hai già chiesto troppi link: scrivi al supporto di Associazione Semplice per sbloccare l\'accesso.']);
+    Notification::assertSentToTimes($user, TwoFactorEmailResetNotification::class, 2);
 
+    // Passato il giorno restano i 6 al mese (2 già usati più 3 pregressi: la sesta richiesta passa, la settima no).
+    foreach (range(1, 3) as $ignored) {
+        RateLimiter::hit(TwoFactorEmailResetController::KEYS[1].$user->id, 30 * 86_400);
+    }
+    RateLimiter::clear(TwoFactorEmailResetController::KEYS[0].$user->id);
+    $this->post('/verifica-accesso/recupero-email')->assertSessionDoesntHaveErrors();
+    RateLimiter::clear(TwoFactorEmailResetController::KEYS[0].$user->id);
+    $this->post('/verifica-accesso/recupero-email')->assertSessionHasErrors('reset');
     Notification::assertSentToTimes($user, TwoFactorEmailResetNotification::class, 3);
+});
+
+it('il link vale 15 minuti', function (): void {
+    Notification::fake();
+    $user = $this->createUser('anna@example.com', twoFactor: true);
+    $this->post('/accesso', ['email' => 'anna@example.com', 'password' => $this::PASSWORD]);
+    $this->post('/verifica-accesso/recupero-email');
+    $link = resetLink($this, $user);
+
+    $this->travel(16)->minutes();
+    $this->get($link)->assertSessionHasErrors('email');
+    expect($user->fresh()?->hasConfirmedTwoFactor())->toBeTrue();
+});
+
+it('lo sblocco del supporto toglie la verifica, azzera i conteggi e avvisa la persona', function (): void {
+    Notification::fake();
+    $user = $this->createUser('anna@example.com', twoFactor: true);
+    RateLimiter::hit(TwoFactorEmailResetController::KEYS[0].$user->id, 86_400);
+    RateLimiter::hit(TwoFactorEmailResetController::KEYS[0].$user->id, 86_400);
+
+    $this->artisan('saas:user:reset-2fa', ['email' => 'ANNA@example.com'])->assertSuccessful();
+
+    expect($user->fresh()?->hasConfirmedTwoFactor())->toBeFalse()
+        ->and(RateLimiter::attempts(TwoFactorEmailResetController::KEYS[0].$user->id))->toBe(0)
+        ->and(DB::table('core.security_events')->where('user_id', $user->id)->where('event', 'two_factor.reset_by_support')->exists())->toBeTrue();
+    Notification::assertSentTo($user, TwoFactorResetNoticeNotification::class, fn (TwoFactorResetNoticeNotification $n): bool => $n->bySupport);
+
+    $this->artisan('saas:user:reset-2fa', ['email' => 'nessuno@example.com'])->assertFailed();
 });

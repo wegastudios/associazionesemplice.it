@@ -46,6 +46,7 @@ const submit = () => form.post('/verifica-accesso', { onFinish: () => form.reset
             {{ useRecovery ? 'Usa il codice dell\'app' : 'Non hai il telefono? Usa un codice di recupero' }}
         </button>
         <StatusMessage :message="status" class="mt-4" />
+        <p v-if="reset.errors.reset" class="mt-4 text-sm font-semibold text-danger" role="alert">{{ reset.errors.reset }}</p>
         <button type="button" class="mt-4 w-full text-center text-sm text-muted hover:underline" :disabled="reset.processing" @click="resetByEmail">
             Ho perso il telefono e i codici di recupero
         </button>

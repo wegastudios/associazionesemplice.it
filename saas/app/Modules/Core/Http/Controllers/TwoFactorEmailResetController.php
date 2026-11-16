@@ -18,14 +18,19 @@ use Illuminate\Support\Str;
 
 /**
  * Chi ha perso il telefono e i codici di recupero toglie da sé la verifica in due passaggi: si parte dalla schermata del
- * codice (quindi con la password già giusta), arriva un link all'indirizzo dell'account, valido 60 minuti e una volta
- * sola. Aprendolo la verifica si toglie; al prossimo accesso va riattivata subito, col telefono nuovo.
+ * codice (quindi con la password già giusta), arriva un link all'indirizzo dell'account, valido 15 minuti e una volta
+ * sola; al massimo 2 richieste al giorno e 6 al mese per utente (oltre, lo sblocca il supporto) e 5 all'ora per indirizzo. Aprendolo la verifica si toglie; al prossimo accesso va riattivata subito, col telefono nuovo.
  */
 final readonly class TwoFactorEmailResetController
 {
-    private const LINK_MINUTES = 60;
+    private const LINK_MINUTES = 15;
 
-    private const MAX_REQUESTS = 3;
+    /** Richieste per utente: al massimo 2 al giorno e 6 al mese; oltre, lo sblocco lo fa il supporto. */
+    private const MAX_PER_DAY = 2;
+
+    private const MAX_PER_MONTH = 6;
+
+    public const KEYS = ['2fa-reset-mail-day|', '2fa-reset-mail-month|'];
 
     public function __construct(private SecurityLog $log, private DemoEnvironment $demo) {}
 
@@ -34,16 +39,18 @@ final readonly class TwoFactorEmailResetController
         $id = $request->session()->get('login.id');
         $user = is_string($id) || is_int($id) ? User::query()->find($id) : null;
         // La stessa risposta in ogni caso: niente si capisce da fuori.
-        $reply = back()->with('status', 'Se serve, ti abbiamo scritto all\'indirizzo del tuo account: apri il link entro 60 minuti.');
+        $reply = back()->with('status', 'Se serve, ti abbiamo scritto all\'indirizzo del tuo account: apri il link entro 15 minuti.');
         if (! $user instanceof User || ! $user->hasConfirmedTwoFactor() || $this->demo->enabled()) {
             return $reply;
         }
 
-        $key = '2fa-reset-mail|'.$user->id;
-        if (RateLimiter::tooManyAttempts($key, self::MAX_REQUESTS)) {
-            return $reply;
+        // Chi è qui ha già la password giusta: può leggere che il limite è finito.
+        [$day, $month] = [self::KEYS[0].$user->id, self::KEYS[1].$user->id];
+        if (RateLimiter::tooManyAttempts($day, self::MAX_PER_DAY) || RateLimiter::tooManyAttempts($month, self::MAX_PER_MONTH)) {
+            return back()->withErrors(['reset' => 'Hai già chiesto troppi link: scrivi al supporto di Associazione Semplice per sbloccare l\'accesso.']);
         }
-        RateLimiter::hit($key, 3600);
+        RateLimiter::hit($day, 86_400);
+        RateLimiter::hit($month, 30 * 86_400);
 
         $nonce = Str::random(40);
         Cache::put('2fa-reset:'.hash('sha256', $nonce), (string) $user->id, now()->addMinutes(self::LINK_MINUTES));
