@@ -207,6 +207,33 @@ final class FileCrypt {
 		throw new FileCryptError( FileCryptError::FORMAT );
 	}
 
+	/**
+	 * Il profilo di derivazione letto da una copia di sicurezza è uno di quelli che il plugin produce (vedi {@see kdf_tiers()})? Argon2id con 64 MiB e
+	 * 2 giri, Argon2id con 24 MiB e 3 giri, PBKDF2-SHA256 con 600.000 giri, e un sale di 16 byte. Qualunque altro (anche se {@see kdf_derive()} lo
+	 * tollererebbe) viene da un file che il plugin non ha scritto e non si esegue: potrebbe chiedere fino a 1 GiB di memoria e molti minuti.
+	 *
+	 * @param mixed $kdf
+	 */
+	public static function kdf_accepted( $kdf ): bool {
+		if ( ! is_array( $kdf ) ) {
+			return false;
+		}
+		$salt = base64_decode( (string) ( $kdf['salt'] ?? '' ), true );
+		if ( false === $salt || 16 !== strlen( $salt ) ) {
+			return false;
+		}
+		$alg = $kdf['alg'] ?? '';
+		if ( 'pbkdf2-sha256' === $alg ) {
+			return self::PBKDF2_ITER === ( $kdf['iter'] ?? null );
+		}
+		if ( 'argon2id13' === $alg ) {
+			$ops = $kdf['ops'] ?? null;
+			$mem = $kdf['mem'] ?? null;
+			return ( 2 === $ops && 64 * self::MB === $mem ) || ( 3 === $ops && 24 * self::MB === $mem );
+		}
+		return false;
+	}
+
 	// ---------- Dati associati ----------
 
 	public static function ad_file( string $site, string $rel ): string {
