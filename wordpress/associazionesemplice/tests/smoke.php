@@ -8883,6 +8883,25 @@ $ap_dup2 = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, arra
 $ap_dup3 = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'email' => 'altra.email@example.com' ) ) );
 asem_ok( 'ok' === $ap_dup3['status'] && 1 === \AssociazioneSemplice\Applications::pending_count(), 'domanda: lo stesso codice fiscale già in coda ha la stessa risposta e non crea nulla' );
 asem_ok( 'ok' === $ap_dup1['status'] && 'ok' === $ap_dup2['status'] && 1 === \AssociazioneSemplice\Applications::pending_count() && count( $ap_mails ) === $ap_n, 'domanda: doppioni e email di soci esistenti hanno la stessa risposta e non creano nulla' );
+// tempi di risposta uguali: dal modulo pubblico le email sono in coda; doppione e domanda nuova hanno la stessa risposta e lavoro simile
+\AssociazioneSemplice\ResponseMail::defer( true );
+$tr_n   = count( $ap_mails );
+$tr_q   = $wpdb->num_queries;
+$tr_new = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'first_name' => 'Tina', 'last_name' => 'Tempi', 'email' => 'tina.tempi@example.com', 'tax_code' => 'RSSMRA79A07H501S' ) ) );
+$tr_dn  = $wpdb->num_queries - $tr_q;
+asem_ok( 'ok' === $tr_new['status'] && count( $ap_mails ) === $tr_n && 2 === \AssociazioneSemplice\ResponseMail::pending(), 'tempi di risposta: la domanda nuova mette in coda le due email e non le manda nella richiesta' );
+\AssociazioneSemplice\ResponseMail::flush();
+asem_ok( count( $ap_mails ) === $tr_n + 2 && 0 === \AssociazioneSemplice\ResponseMail::pending() && null !== $ap_mail_to( 'tina.tempi@example.com' ), 'tempi di risposta: a risposta consegnata le due email partono' );
+$tr_q   = $wpdb->num_queries;
+$tr_dup = \AssociazioneSemplice\Applications::submit( array_merge( $ap_in, array( 'first_name' => 'Tina', 'last_name' => 'Tempi', 'email' => 'tina.tempi@example.com', 'tax_code' => 'RSSMRA79A07H501S' ) ) );
+$tr_dd  = $wpdb->num_queries - $tr_q;
+asem_ok( $tr_dup === $tr_new && 0 === \AssociazioneSemplice\ResponseMail::pending() && count( $ap_mails ) === $tr_n + 2, 'tempi di risposta: la domanda già presente ha la stessa risposta, nessuna email e nessuna riga in più' );
+WP_CLI::log( 'tempi di risposta: richieste al database per la domanda, nuova ' . $tr_dn . ', doppione ' . $tr_dd );
+asem_ok( abs( $tr_dn - $tr_dd ) <= 2, 'tempi di risposta: il doppione fa sul database lo stesso lavoro (controlli e scritture finte) di una domanda nuova' );
+\AssociazioneSemplice\ResponseMail::defer( false );
+$tr_id = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ' . Db::t( 'people' ) . ' WHERE tax_code = %s', 'RSSMRA79A07H501S' ) );
+\AssociazioneSemplice\Applications::reject( $tr_id ); // la prova non lascia domande in coda
+asem_ok( 1 === \AssociazioneSemplice\Applications::pending_count(), 'tempi di risposta: tolta la domanda di prova resta quella di prima' );
 asem_ok( 'emailed' !== \AssociazioneSemplice\Frontend\FirstAccess::submit( 'Aldo Adesioni', 'aldo.adesioni@example.com', '333 1010101' ) && ! get_user_by( 'email', 'aldo.adesioni@example.com' ), 'domanda: con il «Primo accesso» chi non è ancora approvato non entra' );
 $ap_html = asem_render( array( Admin\DashboardPage::class, 'render' ), 'Domande di adesione' );
 asem_ok( false !== strpos( $ap_html, 'Aldo Adesioni' ) && false !== strpos( $ap_html, 'asem_application_approve' ) && false !== strpos( $ap_html, 'asem_application_reject' ), 'dashboard: la domanda con Approva e Rifiuta' );
@@ -8961,6 +8980,8 @@ $ap_post = function ( array $data ) use ( $AP ) {
 	$_SERVER['REQUEST_METHOD'] = 'POST';
 	$_POST                     = wp_slash( $data );
 	$html                      = $AP::form_html();
+	\AssociazioneSemplice\ResponseMail::flush(); // fine della richiesta: le email in coda partono e la coda torna spenta come nella richiesta successiva
+	\AssociazioneSemplice\ResponseMail::defer( false );
 	$_SERVER                   = $old_s;
 	$_POST                     = $old_p;
 	return $html;
@@ -10634,6 +10655,35 @@ asem_ok( MemberLogin::request( $pw_addr ) && count( $ml_mail ) === $df_n, 'sicur
 MemberLogin::send_queued();
 MemberLogin::defer( false );
 asem_ok( count( $ml_mail ) === $df_n + 1, 'sicurezza: a risposta consegnata l\'email parte' );
+// tempi di risposta uguali: stessa coda per il «Primo accesso», limite per indirizzo ancora valido, indirizzo noto e ignoto fanno lo stesso lavoro
+delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
+\AssociazioneSemplice\ResponseMail::defer( true );
+$tr_n = count( $ml_mail );
+asem_ok( \AssociazioneSemplice\Frontend\FirstAccess::request( $pw_addr ) && count( $ml_mail ) === $tr_n && 1 === \AssociazioneSemplice\ResponseMail::pending(), 'tempi di risposta: il «Primo accesso» mette l\'email in coda e non la manda nella richiesta' );
+\AssociazioneSemplice\ResponseMail::flush();
+asem_ok( 1 === count( $ml_mail ) - $tr_n && 0 === \AssociazioneSemplice\ResponseMail::pending(), 'tempi di risposta: a risposta consegnata l\'email del «Primo accesso» parte' );
+delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
+$tr_lim = (int) \AssociazioneSemplice\Limits::get( 'first_access_per_email' );
+for ( $tr_i = 0; $tr_i < $tr_lim + 3; $tr_i++ ) {
+	MemberLogin::request( $pw_addr );
+}
+asem_ok( $tr_lim === \AssociazioneSemplice\ResponseMail::pending(), 'tempi di risposta: il limite di email per indirizzo vale anche con la coda (' . $tr_lim . ')' );
+\AssociazioneSemplice\ResponseMail::flush();
+asem_ok( $tr_lim === count( $ml_mail ) - $tr_n - 1, 'tempi di risposta: partono solo le email entro il limite' );
+$tr_known = null;
+$tr_other = null;
+delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
+$tr_q = $wpdb->num_queries;
+MemberLogin::request( $pw_addr );
+$tr_known = $wpdb->num_queries - $tr_q;
+$tr_q = $wpdb->num_queries;
+MemberLogin::request( 'sconosciuto.tempi@example.org' );
+$tr_other = $wpdb->num_queries - $tr_q;
+\AssociazioneSemplice\ResponseMail::flush();
+WP_CLI::log( 'tempi di risposta: richieste al database, indirizzo noto ' . $tr_known . ', ignoto ' . $tr_other );
+asem_ok( abs( $tr_known - $tr_other ) <= 1, 'tempi di risposta: indirizzo di un socio e indirizzo ignoto fanno lo stesso lavoro sul database' );
+\AssociazioneSemplice\ResponseMail::defer( false );
+delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
 // chi riceve più email non perde il primo link, ma le richieste valide sono al massimo 3
 $cf_addr = 'codici.prova@example.org';
 $cf_p    = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Codici', 'last_name' => 'Prova', 'email' => $cf_addr ) );
