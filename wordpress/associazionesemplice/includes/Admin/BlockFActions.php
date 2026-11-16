@@ -35,7 +35,7 @@ final class BlockFActions {
 					} catch ( \InvalidArgumentException $e ) {
 						Ui::redirect( $back, '', $e->getMessage() );
 					} catch ( \Throwable $e ) {
-						Ui::redirect( $back, '', 'Errore imprevisto: ' . $e->getMessage() );
+						Ui::redirect( $back, '', \AssociazioneSemplice\UnexpectedError::report( $e ) );
 					}
 				}
 			);
