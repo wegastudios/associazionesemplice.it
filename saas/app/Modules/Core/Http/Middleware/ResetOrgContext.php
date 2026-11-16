@@ -12,6 +12,7 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Prima middleware di ogni richiesta: parte sempre senza associazione e la azzera alla fine, così una
  * connessione riusata non porta mai con sé l'associazione della richiesta precedente.
+ * L'azzeramento finale è uno solo (nel `finally`): niente secondo passaggio dopo la risposta.
  * L'associazione la imposta poi chi riconosce l'utente o il dominio.
  */
 final readonly class ResetOrgContext
@@ -28,10 +29,5 @@ final readonly class ResetOrgContext
         } finally {
             $this->context->leave();
         }
-    }
-
-    public function terminate(Request $request, Response $response): void
-    {
-        $this->context->leave();
     }
 }
