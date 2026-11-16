@@ -293,7 +293,7 @@ Chi non è socio compila un **modulo breve** e riceve una email con un collegame
 
 **Richieste non confermate:** se il non socio non conferma l'email **entro 24 ore**, la richiesta **si cancella da sola**.
 
-**Se il codice fiscale è già in anagrafica con dati diversi**, la segreteria riceve un'email **«Richiesta di partecipazione da verificare: …»**. Se i dati sono della **stessa persona**, la approva e si usa la scheda che c'è già; altrimenti la **rifiuta**.
+**Se il codice fiscale è già in anagrafica**, chi chiede **non vede né il nome né lo stato della persona**: la richiesta passa alla segreteria. **Se il codice fiscale è già in anagrafica con dati diversi**, la segreteria riceve un'email **«Richiesta di partecipazione da verificare: …»**. Se i dati sono della **stessa persona**, la approva e si usa la scheda che c'è già; altrimenti la **rifiuta**.
 
 ## I tetti alle richieste
 
