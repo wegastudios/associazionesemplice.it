@@ -65,6 +65,108 @@ final class UpdaterTest extends TestCase {
 		$this->assertSame( 'k', $r['kid'] );
 	}
 
+	private const NOW = 1800000000;
+
+	/** @return array [chiavi, risposta v2 firmata (come da parse), chiave segreta] */
+	private function v2( array $over = array(), string $tag = 'asem-pkg-v2' ): array {
+		$pair = sodium_crypto_sign_keypair();
+		$sk   = sodium_crypto_sign_secretkey( $pair );
+		$keys = array( 'k2' => $this->b64( sodium_crypto_sign_publickey( $pair ) ) );
+		$r    = $over + array( 'product' => 'pro', 'version' => '1.5.0', 'sha256' => hash( 'sha256', 'zip' ), 'signed_at' => self::NOW - 60, 'min_version' => '1.4', 'kid_v2' => 'k2' );
+		$msg  = $tag . '|' . $r['product'] . '|' . $r['version'] . '|' . $r['sha256'] . '|' . $r['signed_at'] . '|' . $r['min_version'];
+		$r   += array( 'signature_v2' => $this->b64( sodium_crypto_sign_detached( $msg, $sk ) ) );
+		$r['v2'] = true;
+		return array( $keys, $r, $sk );
+	}
+
+	private function verdict( array $keys, array $r, array $seen = array() ): string {
+		return U::v2_verdict( $r['product'] ?? 'pro', $r, $keys, $seen, self::NOW );
+	}
+
+	public function test_valid_v2_is_accepted(): void {
+		list( $keys, $r ) = $this->v2();
+		$this->assertSame( '', $this->verdict( $keys, $r ) );
+		$this->assertTrue( U::verify_signature_v2( 'pro', '1.5.0', $r['sha256'], $r['signed_at'], '1.4', 'k2', $r['signature_v2'], $keys ) );
+	}
+
+	public function test_v2_with_wrong_prefix_or_v1_signature_is_rejected(): void {
+		list( $keys, $r ) = $this->v2( array(), 'asem-pkg-v1' );
+		$this->assertSame( 'invalid', $this->verdict( $keys, $r ), 'prefisso sbagliato' );
+		$sha  = hash( 'sha256', 'zip' );
+		$pair = sodium_crypto_sign_keypair();
+		$keys = array( 'k2' => $this->b64( sodium_crypto_sign_publickey( $pair ) ) );
+		$sig1 = $this->b64( sodium_crypto_sign_detached( 'pro|1.5.0|' . $sha, sodium_crypto_sign_secretkey( $pair ) ) );
+		$r    = array( 'v2' => true, 'product' => 'pro', 'version' => '1.5.0', 'sha256' => $sha, 'signed_at' => self::NOW, 'min_version' => '1.4', 'kid_v2' => 'k2', 'signature_v2' => $sig1 );
+		$this->assertSame( 'invalid', $this->verdict( $keys, $r ), 'firma v1 usata come v2' );
+	}
+
+	public function test_v2_unknown_kid_partial_fields_and_changed_data_are_rejected(): void {
+		list( $keys, $r ) = $this->v2();
+		$this->assertSame( 'invalid', $this->verdict( $keys, array( 'kid_v2' => 'ignoto' ) + $r ), 'kid_v2 ignoto' );
+		foreach ( array( 'signature_v2' => '', 'kid_v2' => '', 'signed_at' => 0, 'min_version' => '' ) as $k => $empty ) {
+			$this->assertSame( 'invalid', $this->verdict( $keys, array( $k => $empty ) + $r ), "campo v2 mancante: $k" );
+		}
+		$this->assertSame( 'invalid', $this->verdict( $keys, array( 'sha256' => hash( 'sha256', 'altro' ) ) + $r ), 'sha256 diverso' );
+		$this->assertSame( 'invalid', $this->verdict( $keys, array( 'version' => '1.5.1' ) + $r ), 'versione diversa' );
+		$this->assertSame( 'invalid', $this->verdict( $keys, array( 'signed_at' => $r['signed_at'] + 1 ) + $r ), 'data diversa' );
+		$this->assertSame( 'invalid', $this->verdict( $keys, array( 'product' => 'free' ) + $r ), 'prodotto diverso' );
+		$this->assertSame( 'invalid', $this->verdict( $keys, array( 'min_version' => '1.3' ) + $r ), 'soglia diversa' );
+	}
+
+	public function test_parse_reads_v2_fields_and_flags_partial_ones(): void {
+		$r = U::parse( '{"version":"1.2","update":true,"signature_v2":"s","kid_v2":"k","signed_at":1700000000,"min_version":"1.1"}' );
+		$this->assertTrue( $r['v2'] );
+		$this->assertSame( array( 's', 'k', 1700000000, '1.1' ), array( $r['signature_v2'], $r['kid_v2'], $r['signed_at'], $r['min_version'] ) );
+		$this->assertTrue( U::parse( '{"version":"1.2","kid_v2":"k"}' )['v2'], 'anche un solo campo' );
+		$p = U::parse( '{"version":"1.2","signed_at":"1700000000","min_version":5}' );
+		$this->assertTrue( $p['v2'] );
+		$this->assertSame( 0, $p['signed_at'], 'solo interi' );
+		$this->assertSame( '', $p['min_version'] );
+		$this->assertFalse( U::parse( '{"version":"1.2","signature":"s","kid":"k","signature_v2":null}' )['v2'], 'campi nulli = non dichiarati' );
+	}
+
+	public function test_min_version_above_version_is_rejected(): void {
+		list( $keys, $r ) = $this->v2( array( 'min_version' => '1.6' ) );
+		$this->assertSame( 'min', $this->verdict( $keys, $r ) );
+		list( $keys, $r ) = $this->v2( array( 'min_version' => 'abc' ) );
+		$this->assertSame( 'invalid', $this->verdict( $keys, $r ), 'formato non valido' );
+		list( $keys, $r ) = $this->v2( array( 'min_version' => '1.5.0' ) );
+		$this->assertSame( '', $this->verdict( $keys, $r ), 'soglia uguale alla versione' );
+	}
+
+	public function test_version_below_highest_seen_is_rejected_but_same_version_is_allowed(): void {
+		list( $keys, $r ) = $this->v2();
+		$this->assertSame( 'rollback', $this->verdict( $keys, $r, array( 'version' => '1.5.1', 'min_version' => '1.4' ) ) );
+		$this->assertSame( '', $this->verdict( $keys, $r, array( 'version' => '1.5.0', 'min_version' => '1.4' ) ), 'stessa versione ripubblicata' );
+		$this->assertSame( '', $this->verdict( $keys, $r, array( 'version' => '1.4.9' ) ) );
+		$this->assertSame( 'min', $this->verdict( $keys, $r, array( 'min_version' => '1.5.1' ) ), 'sotto la soglia già vista' );
+	}
+
+	public function test_future_signature_is_rejected_beyond_one_day(): void {
+		list( $keys, $r ) = $this->v2( array( 'signed_at' => self::NOW + 86400 ) );
+		$this->assertSame( '', $this->verdict( $keys, $r ), 'esattamente un giorno: ammesso' );
+		list( $keys, $r ) = $this->v2( array( 'signed_at' => self::NOW + 86401 ) );
+		$this->assertSame( 'future', $this->verdict( $keys, $r ) );
+	}
+
+	public function test_package_without_v2_fields_behaves_as_before(): void {
+		$r = U::parse( '{"version":"1.2","update":true,"sha256":"' . hash( 'sha256', 'zip' ) . '","signature":"s","kid":"k"}' );
+		$this->assertFalse( $r['v2'] );
+		$this->assertSame( '', U::v2_verdict( 'pro', $r, array(), array( 'version' => '9.9', 'min_version' => '9.0' ), self::NOW ), 'nessuna regola nuova' );
+	}
+
+	public function test_stored_thresholds_never_go_down(): void {
+		$a = U::seen_after( array(), '1.5.0', '1.4' );
+		$this->assertSame( array( 'version' => '1.5.0', 'min_version' => '1.4' ), $a );
+		$b = U::seen_after( $a, '1.5.0', '1.4' );
+		$this->assertSame( $a, $b, 'stessa versione' );
+		$c = U::seen_after( $a, '1.4.2', '1.2' );
+		$this->assertSame( $a, $c, 'non scendono' );
+		$d = U::seen_after( $a, '1.6', '1.5' );
+		$this->assertSame( array( 'version' => '1.6', 'min_version' => '1.5' ), $d );
+		$this->assertSame( array( 'version' => '1.6', 'min_version' => '1.5' ), U::seen_after( $d, '1.5.5', '1.0' ) );
+	}
+
 	public function test_changelog_becomes_safe_html_and_ignores_other_lines(): void {
 		$r = U::parse( '{"version":"1.2.19","changelog":"## 1.2.19\n- Anni solari nel gratuito.\n- <b>x</b>\n\nTesto libero\n## 1.2.18\n- Listini."}' );
 		$html = U::changelog_html( $r['changelog'] );

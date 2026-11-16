@@ -2618,6 +2618,10 @@
   "Stripe segnala una contestazione sul pagamento ({motivo}): controlla dal pannello di Stripe." : "Stripe reports a dispute on the payment ({motivo}): check it in the Stripe dashboard.",
   "Pagamenti online da controllare:" : "Online payments to check:",
   "Apri i pagamenti" : "Open the payments",
-  "Incasso registrato, ma un passo successivo non è riuscito ({voce}): controlla il pagamento." : "Payment recorded, but a later step did not complete ({voce}): please check the payment."
+  "Incasso registrato, ma un passo successivo non è riuscito ({voce}): controlla il pagamento." : "Payment recorded, but a later step did not complete ({voce}): please check the payment.",
+  "Il pacchetto offerto dal portale non ha una firma valida: non è stato installato. Scaricalo dall'area clienti e scrivici." : "The package offered by the portal does not have a valid signature: it was not installed. Download it from the customer area and write to us.",
+  "La versione offerta dal portale è sotto la soglia minima ammessa: non è stata installata." : "The version offered by the portal is below the minimum allowed: it was not installed.",
+  "La versione offerta dal portale è più vecchia di una già vista: non è stata installata." : "The version offered by the portal is older than one already seen: it was not installed.",
+  "La firma del pacchetto ha una data nel futuro: non è stato installato. Controlla data e ora del server." : "The package signature is dated in the future: it was not installed. Check the server date and time."
  }
 }
