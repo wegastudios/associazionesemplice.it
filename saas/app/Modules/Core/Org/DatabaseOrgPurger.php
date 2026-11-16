@@ -45,7 +45,7 @@ final readonly class DatabaseOrgPurger implements OrgPurger
             $data->select("SELECT set_config('app.org_id', ?, true)", [$orgId]);
             // Autorizza, in questa sola transazione, la cancellazione dei movimenti di questa associazione.
             $data->select("SELECT set_config('app.purging', ?, true)", [$orgId]);
-            $rows =$this->deleteAuditRows($data, $orgId) + $this->deleteDataRows($data, $orgId);
+            $rows = $this->deleteAuditRows($data, $orgId) + $this->deleteDataRows($data, $orgId);
         });
 
         $owner->transaction(function () use ($owner, $orgId, &$users): void {
