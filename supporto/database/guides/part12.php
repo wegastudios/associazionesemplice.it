@@ -840,11 +840,15 @@ Se trovi un codice che non è in elenco, scrivi al supporto: te lo spieghiamo.
 
 **Per trovare chi ha toccato un dato**: nel foglio filtra la colonna **Azione** (per esempio `ledger.voided`) o ordina per **Quando**.
 
+## Per quanto tempo si conserva
+
+Il registro conserva le azioni **dell'anno in corso e di tutto l'anno precedente**. Si conta l'**anno solare** (da gennaio a dicembre), non l'anno fiscale. **Il 1° gennaio** si cancellano le azioni più vecchie: per esempio il 1° gennaio 2028 si cancellano quelle del 2026. Quindi le azioni restano **da uno a due anni**. **Se ti servono per più tempo**, scarica prima l'esportazione e conservala tu.
+
 ## Il sigillo
 
 Ogni riga ha un **sigillo** (una sequenza di lettere e numeri) che dipende anche dalla riga precedente: sono **legate a catena**. Se qualcuno cancellasse o cambiasse una riga, la catena **non tornerebbe più** e il controllo se ne accorge. **Ogni notte** il gestionale controlla da solo che la catena sia intatta. Per te significa che **il registro non si può correggere di nascosto**, nemmeno da chi lavora nel gestionale.
 
-Le azioni vengono scritte **in automatico**: nessuno può aggiungere, togliere o modificare righe a mano.
+Le azioni vengono scritte **in automatico**: nessuno può aggiungere, togliere o modificare righe a mano. Anche quando le righe più vecchie vengono cancellate il 1° gennaio, il controllo della catena continua a funzionare sulle righe rimaste.
 MD,
     ],
     [
