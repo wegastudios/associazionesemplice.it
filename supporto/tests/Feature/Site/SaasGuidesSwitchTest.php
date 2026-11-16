@@ -5,6 +5,9 @@ namespace Tests\Feature\Site;
 use App\Models\Article;
 use App\Models\Topic;
 use App\Support\SaasGuides;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Tests\SiteTestCase;
 
 class SaasGuidesSwitchTest extends SiteTestCase
@@ -44,7 +47,7 @@ class SaasGuidesSwitchTest extends SiteTestCase
         $this->actingAs($this->admin())->get('/argomenti/gestionale')->assertOk();
         $this->actingAs($this->admin())->get('/articoli/'.$saas->id)->assertOk();
 
-        $this->post('/esci');
+        Auth::logout();
         SaasGuides::set(true);
         $this->get('/')->assertOk()->assertSee('Gestionale');
         $this->get('/articoli/'.$saas->id)->assertOk();
@@ -63,5 +66,40 @@ class SaasGuidesSwitchTest extends SiteTestCase
         $this->actingAs($admin)->post('/admin/argomenti/guide-gestionale', ['on' => '0']);
         $this->assertFalse(SaasGuides::enabled());
         $this->assertDatabaseHas('audit_logs', ['action' => 'admin.saas_guides_toggled']);
+    }
+
+    public function test_plugin_guides_switch_is_on_by_default_and_can_be_hidden(): void
+    {
+        [$plugin] = $this->guides();
+
+        $this->get('/articoli/'.$plugin->id)->assertOk();
+        $this->actingAs($this->admin())->post('/admin/argomenti/guide-gestionale', ['product' => 'plugin', 'on' => '0'])->assertSessionHas('ok');
+        $this->assertFalse(SaasGuides::enabled('plugin'));
+        $this->assertFalse(SaasGuides::enabled('saas'));
+        $this->get('/articoli/'.$plugin->id)->assertOk();
+
+        Auth::logout();
+        $this->get('/articoli/'.$plugin->id)->assertRedirect('/');
+        $this->get('/')->assertOk()->assertDontSee('Soci');
+    }
+
+    public function test_saas_guides_follow_the_portal_when_it_is_configured(): void
+    {
+        [, $saas] = $this->guides();
+        SaasGuides::set(true);
+        config(['support.portal_status_url' => 'https://portale.test/stato']);
+
+        Http::fake(['portale.test/*' => Http::sequence()->push(['saas_sale' => false])->push(['saas_sale' => true])->push('', 500)]);
+        Cache::forget('portal-saas-sale');
+        $this->get('/articoli/'.$saas->id)->assertRedirect('/');
+
+        Cache::forget('portal-saas-sale');
+        $this->get('/articoli/'.$saas->id)->assertOk();
+
+        // Portale non raggiungibile: vale l'interruttore locale
+        Cache::forget('portal-saas-sale');
+        Http::fake(['portale.test/*' => Http::response('', 500)]);
+        SaasGuides::set(false);
+        $this->get('/articoli/'.$saas->id)->assertRedirect('/');
     }
 }
