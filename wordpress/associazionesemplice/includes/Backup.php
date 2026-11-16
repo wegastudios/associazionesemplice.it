@@ -16,6 +16,22 @@ final class Backup {
 	const CHUNK      = 1000;
 	const MAX_ENTRY  = 1073741824; // 1 GB per file dentro lo zip
 
+	/** Quanti campi di testo dell'ultima copia sono usciti in chiaro perché sul sito non si potevano cifrare (si mostra nella pagina «Copia di sicurezza»). */
+	const OPT_PLAIN = 'asem_backup_plain';
+
+	/** Le frasi da scrivere per ripristinare: una per le copie di questo sito, una per quelle fatte altrove. */
+	const RESTORE_PHRASE       = 'RIPRISTINA';
+	const RESTORE_PHRASE_OTHER = 'RIPRISTINA DA ALTRO SITO';
+
+	/** Tabelle che il ripristino non riscrive: il registro azioni è la memoria di ciò che è successo (anche del ripristino stesso). */
+	const NOT_RESTORED = array( 'asem_audit_log', 'asem_member_auth', 'asem_push_subs', 'asem_member_sessions', 'asem_member_challenges' );
+
+	/** Tabelle con le password, le sessioni e le notifiche dei soci: legate alle persone di QUESTO sito, dopo un ripristino si svuotano e i soci rientrano con il link. */
+	const MEMBER_ACCESS = array( 'asem_member_auth', 'asem_member_sessions', 'asem_member_challenges', 'asem_push_subs' );
+
+	/** Solo per le prove: tetti più bassi di quelli predefiniti (vedi {@see BackupSeal::limits()}). @var array<string,int> */
+	public static $test_limits = array();
+
 	public static function register(): void {
 		add_action( 'admin_post_asem_backup', array( __CLASS__, 'handle_download' ) );
 		add_action( 'admin_post_asem_backup_saved', array( __CLASS__, 'handle_saved' ) );
@@ -129,7 +145,9 @@ final class Backup {
 		}
 		$tmp    = array();
 		$counts = array();
-		$fields = array(); // colonne di testo che nel database stanno cifrate: nella copia non escono mai in chiaro
+		$hashes = array(); // impronta SHA-256 di ogni voce dello ZIP (tranne il manifest): finisce nel manifest, che poi si firma
+		$plain  = array(); // «tabella.colonna» => quanti campi sono usciti in chiaro perché sul sito non si potevano cifrare
+		$fields = array(); // colonne di testo che nel database stanno cifrate: nella copia escono cifrate; se non si possono cifrare escono com'è, e si contano
 		foreach ( PrivateFiles::sources() as $src ) {
 			foreach ( $src['fields'] as $col ) {
 				$fields[ 'asem_' . $src['table'] ][] = (string) $col;
@@ -147,11 +165,15 @@ final class Backup {
 					break;
 				}
 				foreach ( $rows as $r ) {
-					foreach ( $fields[ $name ] ?? array() as $col ) { // un campo ancora in chiaro (non ancora cifrato sul sito) si cifra ora; se non si può, non esce
+					foreach ( $fields[ $name ] ?? array() as $col ) { // un campo ancora in chiaro (non ancora cifrato sul sito) si cifra ora
 						$v = (string) ( $r[ $col ] ?? '' );
 						if ( '' !== $v && ! FileCrypt::is_field( $v ) ) {
-							$e         = PrivateFiles::field_encrypt( substr( $name, 5 ), $col, (int) $r['id'], $v );
-							$r[ $col ] = $e !== $v ? $e : null;
+							$e = PrivateFiles::field_encrypt( substr( $name, 5 ), $col, (int) $r['id'], $v );
+							if ( $e !== $v ) {
+								$r[ $col ] = $e;
+							} else { // non si può cifrare (senza sodium, o con la chiave che non si apre): il valore NON sparisce dalla copia, esce com'è e si conta
+								$plain[ $name . '.' . $col ] = ( $plain[ $name . '.' . $col ] ?? 0 ) + 1;
+							}
 						}
 					}
 					fwrite( $h, wp_json_encode( $r, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . "\n" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- lettura/scrittura in streaming di file grandi
@@ -160,41 +182,48 @@ final class Backup {
 			}
 			fclose( $h ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- lettura/scrittura in streaming di file grandi
 			$counts[ $name ] = $n;
+			$hashes[ 'tabelle/' . $name . '.jsonl' ] = (string) hash_file( 'sha256', $f );
 			$zip->addFile( $f, 'tabelle/' . $name . '.jsonl' );
 		}
 		$files = array();
 		if ( $with_files ) {
 			foreach ( glob( Attachments::dir() . '/*' ) ?: array() as $f ) {
 				if ( is_file( $f ) && preg_match( '/^[0-9a-f]{32}$/', basename( $f ) ) ) {
+					$hashes[ 'allegati/' . basename( $f ) ] = (string) hash_file( 'sha256', $f );
 					$zip->addFile( $f, 'allegati/' . basename( $f ) );
 					$files[] = basename( $f );
 				}
 			}
 			foreach ( PrivateFolder::left_behind() as $f ) { // file rimasti nella vecchia cartella a spostamento non finito: vanno nella copia anche loro
 				if ( ! in_array( basename( $f ), $files, true ) ) {
+					$hashes[ 'allegati/' . basename( $f ) ] = (string) hash_file( 'sha256', $f );
 					$zip->addFile( $f, 'allegati/' . basename( $f ) );
 					$files[] = basename( $f );
 				}
 			}
 		}
-		$docs = self::documents( $zip ); // documenti definitivi di un'estensione (PDF già emessi): vanno sempre nella copia, con l'indice delle impronte
+		$docs = self::documents( $zip, $hashes ); // documenti definitivi di un'estensione (PDF già emessi): vanno sempre nella copia, con l'indice delle impronte
 		$bundle = FileKey::bundle();
+		$add    = function ( string $name, string $body ) use ( $zip, &$hashes ): void { // una voce scritta da qui: se ne tiene l'impronta
+			$hashes[ $name ] = hash( 'sha256', $body );
+			$zip->addFromString( $name, $body );
+		};
 		if ( $bundle ) {
-			$zip->addFromString( 'chiavi.json', (string) wp_json_encode( $bundle, JSON_PRETTY_PRINT ) );
+			$add( 'chiavi.json', (string) wp_json_encode( $bundle, JSON_PRETTY_PRINT ) );
 		}
-		$zip->addFromString( 'impostazioni.json', (string) wp_json_encode( self::settings_payload(), JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT ) );
-		$zip->addFromString(
-			'manifest.json',
-			(string) wp_json_encode(
-				array(
-					'plugin' => 'associazionesemplice', 'version' => ASEM_VERSION, 'db_version' => (string) get_option( Install::DB_VERSION_OPTION, Install::DB_VERSION ), 'created_at' => Db::now(),
-					'site' => home_url(), 'prefix' => $db->prefix, 'tables' => $counts, 'attachments' => count( $files ), 'documents' => $docs,
-					'encrypted' => (bool) $bundle,
-				),
-				JSON_PRETTY_PRINT
-			)
+		$add( 'impostazioni.json', (string) wp_json_encode( self::settings_payload(), JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT ) );
+		$add( 'LEGGIMI.txt', self::readme() );
+		$key      = BackupSeal::key( wp_salt( 'auth' ) );
+		$manifest = array(
+			'plugin' => 'associazionesemplice', 'version' => ASEM_VERSION, 'db_version' => (string) get_option( Install::DB_VERSION_OPTION, Install::DB_VERSION ), 'created_at' => Db::now(),
+			'site' => home_url(), 'prefix' => $db->prefix, 'tables' => $counts, 'attachments' => count( $files ), 'documents' => $docs,
+			'encrypted' => (bool) $bundle,
+			'plain_fields' => $plain, // campi di testo che sul sito non si potevano cifrare e sono nelle tabelle in chiaro (per tabella.colonna)
+			'entries' => $hashes,     // impronta SHA-256 di ogni voce dello ZIP (il manifest escluso)
+			'kfp' => BackupSeal::fingerprint( $key ), // impronta dei codici di sicurezza che hanno firmato (non li rivela)
 		);
-		$zip->addFromString( 'LEGGIMI.txt', "Copia di sicurezza di Associazione Semplice.\nContiene una tabella per file (tabelle/*.jsonl, una riga JSON per record), le impostazioni (impostazioni.json) e, se scelto, gli allegati. La cartella documenti/ contiene i PDF definitivi già emessi (ad esempio le ricevute) con l'indice delle loro impronte SHA-256 (documenti/indice.json).\nSi ripristina da Strumenti → Copia di sicurezza.\nI documenti riservati (certificati, allegati, scansioni) sono cifrati. Le loro chiavi sono in chiavi.json, avvolte con la frase in uso sul sito (il codice di licenza, la data e ora di attivazione o la frase scelta) e con il codice di licenza: senza una di queste frasi (o senza la chiave del sito di origine) i documenti di questa copia non si possono più aprire.\nLe chiavi segrete dei pagamenti online non sono incluse.\n" );
+		$manifest['sig'] = BackupSeal::signature( $manifest, $key ); // HMAC-SHA256 di tutto il manifest
+		$zip->addFromString( 'manifest.json', (string) wp_json_encode( $manifest, JSON_PRETTY_PRINT ) );
 		$ok = $zip->close();
 		foreach ( $tmp as $f ) {
 			wp_delete_file( $f ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
@@ -203,8 +232,21 @@ final class Backup {
 			throw new \RuntimeException( 'Creazione della copia non riuscita.' );
 		}
 		update_option( self::OPT_LAST, time(), false );
-		Audit::log( 'backup.created', 'settings', 0, array( 'tables' => count( $counts ), 'attachments' => count( $files ), 'documents' => $docs ) );
+		update_option( self::OPT_PLAIN, array_sum( $plain ), false );
+		Audit::log( 'backup.created', 'settings', 0, array( 'tables' => count( $counts ), 'attachments' => count( $files ), 'documents' => $docs, 'plain_fields' => array_sum( $plain ) ) );
 		return $path;
+	}
+
+	/** Il LEGGIMI che sta dentro ogni copia. */
+	private static function readme(): string {
+		return "Copia di sicurezza di Associazione Semplice.\n"
+			. "Contiene una tabella per file (tabelle/*.jsonl, una riga JSON per record), le impostazioni (impostazioni.json) e, se scelto, gli allegati. La cartella documenti/ contiene i PDF definitivi già emessi (ad esempio le ricevute) con l'indice delle loro impronte SHA-256 (documenti/indice.json).\n"
+			. "Il manifest (manifest.json) elenca l'impronta SHA-256 di ogni file della copia ed è firmato con i codici di sicurezza del sito che l'ha fatta. Sullo stesso sito una copia modificata dopo essere stata fatta viene rifiutata; su un altro sito il ripristino chiede una conferma scritta e la password dell'amministratore, e resta scritto nel registro delle azioni.\n"
+			. "Si ripristina da Strumenti → Copia di sicurezza.\n"
+			. "I dati in chiaro (soci, prima nota e tutte le altre tabelle) si ripristinano sempre, anche senza la frase e anche su un server senza la libreria sodium.\n"
+			. "I documenti riservati (certificati, allegati, scansioni) sono cifrati quando il sito li ha cifrati; i file non ancora cifrati, o salvati su un server senza sodium, e i campi di testo che sul sito non si potevano cifrare (il manifest ne conta il numero in «plain_fields») stanno nella copia in chiaro. Le chiavi dei documenti cifrati sono in chiavi.json, avvolte con la chiave del sito, con la frase in uso (il codice di licenza, la data e ora di attivazione o la frase scelta) e con il codice di licenza. Senza la chiave del sito di origine e senza una di queste frasi i documenti cifrati si rimettono sul sito ma restano chiusi: il ripristino dice quanti sono e si aprono più tardi con «Riapri la chiave con la frase».\n"
+			. "Il file contiene anche le impronte delle password dei soci e le notifiche push: il ripristino non le rimette (i soci rientrano con il link ricevuto per e-mail). Non vengono ripristinati nemmeno il registro delle azioni e gli utenti WordPress.\n"
+			. "Le chiavi segrete dei pagamenti online non sono incluse.\n";
 	}
 
 	/**
@@ -213,7 +255,7 @@ final class Backup {
 	 *
 	 * @return int documenti aggiunti
 	 */
-	private static function documents( \ZipArchive $zip ): int {
+	private static function documents( \ZipArchive $zip, array &$hashes ): int {
 		$index = array();
 		foreach ( (array) apply_filters( 'asem_backup_documents', array() ) as $d ) {
 			if ( ! is_array( $d ) || ! isset( $d['name'], $d['path'] ) ) {
@@ -224,6 +266,7 @@ final class Backup {
 				continue;
 			}
 			$zip->addFile( (string) $d['path'], $name );
+			$hashes[ $name ] = (string) hash_file( 'sha256', (string) $d['path'] );
 			$entry   = array( 'name' => $name, 'sha256' => (string) ( $d['sha256'] ?? '' ) );
 			if ( ! empty( $d['file_sha256'] ) ) {
 				$entry['file_sha256'] = (string) $d['file_sha256']; // impronta del file così com'è nello ZIP (cifrato); «sha256» è quella del contenuto in chiaro
@@ -231,15 +274,51 @@ final class Backup {
 			$index[] = $entry;
 		}
 		if ( $index ) {
-			$zip->addFromString( 'documenti/indice.json', (string) wp_json_encode( array( 'files' => $index ), JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT ) );
+			$body = (string) wp_json_encode( array( 'files' => $index ), JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT );
+			$hashes['documenti/indice.json'] = hash( 'sha256', $body );
+			$zip->addFromString( 'documenti/indice.json', $body );
 		}
 		return count( $index );
 	}
 
 	// ---------- Ripristino ----------
 
-	/** Controlla il file e ne legge l'indice. @throws \InvalidArgumentException */
-	public static function inspect( string $zip_path ): array {
+	/**
+	 * Le parole con cui si dice che una copia viene da un altro sito: che cosa sostituirà, che cosa non tocca e che cosa serve per procedere.
+	 * Si mostra a chi prova a ripristinarla senza la conferma scritta.
+	 */
+	public static function other_site_text(): string {
+		return Texts::t( 'Questa copia non è stata fatta su questo sito. Ripristinala solo se è tua e sai da dove viene: sostituirà i dati attuali.' )
+			. ' ' . Texts::t( 'Verranno sostituiti: tutte le tabelle del plugin (soci, prima nota, attività, ricevute, fondi e le altre), le impostazioni e i testi personalizzati, gli allegati e i PDF delle ricevute citati dai dati della copia, le chiavi dei documenti riservati e l\'identificativo del sito che li lega.' )
+			. ' ' . Texts::t( 'Verranno cancellate, senza essere ripristinate dalla copia: le password dei soci, le loro sessioni e le notifiche push di adesso (i soci rientrano con il link che ricevono).' )
+			. ' ' . Texts::t( 'Non verranno toccati: il registro delle azioni, gli utenti WordPress, le chiavi segrete dei pagamenti e il codice di licenza di questo sito.' )
+			. ' ' . Texts::t( 'Per procedere scrivi «{frase}» nel campo di conferma e la tua password; l\'operazione resta scritta nel registro delle azioni.', array( 'frase' => self::RESTORE_PHRASE_OTHER ) );
+	}
+
+	/** Una copia rifiutata: lascia una riga nel registro azioni (con il solo motivo) e restituisce l'errore da lanciare. */
+	private static function refusal( string $code, string $message ): \InvalidArgumentException {
+		Audit::log( 'backup.restore_refused', 'settings', 0, array( 'reason' => $code ) );
+		return new \InvalidArgumentException( $message ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- testo fisso del plugin, mostrato solo dopo esc_html
+	}
+
+	/** Il messaggio per una copia che supera i tetti (vedi {@see BackupSeal::sizes()}). */
+	private static function limit_message( string $problem ): string {
+		if ( 'attachments' === $problem ) {
+			return Texts::t( 'La copia contiene troppi allegati per essere ripristinata da qui. Non è stato cambiato nulla.' );
+		}
+		if ( 'entries' === $problem ) {
+			return Texts::t( 'La copia contiene troppi file per essere ripristinata da qui. Non è stato cambiato nulla.' );
+		}
+		return Texts::t( 'La copia è troppo grande per essere ripristinata da qui: una sua voce o il totale superano i limiti. Non è stato cambiato nulla.' );
+	}
+
+	/**
+	 * Controlla il file e ne legge l'indice. Dice anche da dove viene: $origin diventa «same» (fatta da questo sito: firma e impronte coincidono) oppure
+	 * «other» (fatta con altri codici di sicurezza, o senza firma: la firma qui non si può verificare e il ripristino vuole una conferma scritta).
+	 *
+	 * @throws \InvalidArgumentException
+	 */
+	public static function inspect( string $zip_path, ?string &$origin = null ): array {
 		if ( ! class_exists( '\ZipArchive' ) ) {
 			throw new \InvalidArgumentException( 'Questo server non può leggere file ZIP.' );
 		}
@@ -247,29 +326,67 @@ final class Backup {
 		if ( true !== $zip->open( $zip_path ) ) {
 			throw new \InvalidArgumentException( 'Il file non è una copia di sicurezza valida.' );
 		}
-		$raw = $zip->getFromName( 'manifest.json' );
-		$m   = $raw ? json_decode( $raw, true ) : null;
-		if ( ! is_array( $m ) || 'associazionesemplice' !== ( $m['plugin'] ?? '' ) || empty( $m['tables'] ) ) {
+		try {
+			return self::check( $zip, $origin );
+		} finally {
 			$zip->close();
+		}
+	}
+
+	/** I controlli di inspect() su uno ZIP già aperto. @throws \InvalidArgumentException */
+	private static function check( \ZipArchive $zip, ?string &$origin = null ): array {
+		$limits = BackupSeal::limits( self::$test_limits );
+		$st     = $zip->statName( 'manifest.json' );
+		if ( $st && (int) $st['size'] > $limits['small'] ) {
+			throw self::refusal( 'size', self::limit_message( 'entry' ) );
+		}
+		$raw = $st ? $zip->getFromName( 'manifest.json' ) : false;
+		$m   = $raw ? json_decode( $raw, true ) : null;
+		if ( ! is_array( $m ) || 'associazionesemplice' !== ( $m['plugin'] ?? '' ) || empty( $m['tables'] ) || ! is_array( $m['tables'] ) ) {
 			throw new \InvalidArgumentException( 'Il file non è una copia di sicurezza di Associazione Semplice.' );
 		}
 		if ( (int) ( $m['db_version'] ?? 0 ) > (int) Install::DB_VERSION ) {
-			$zip->close();
 			throw new \InvalidArgumentException( 'La copia è stata fatta con una versione più recente del plugin: aggiorna prima il plugin.' );
 		}
 		$known = self::tables();
 		foreach ( array_keys( $m['tables'] ) as $t ) {
-			if ( ! preg_match( '/^asem_[a-z_]+$/', (string) $t ) || ! in_array( $t, $known, true ) ) {
-				$zip->close();
-				throw new \InvalidArgumentException( 'La copia contiene una tabella sconosciuta (' . esc_html( (string) $t ) . ').' );
-			}
-			$st = $zip->statName( 'tabelle/' . $t . '.jsonl' );
-			if ( ! $st || (int) $st['size'] > self::MAX_ENTRY ) {
-				$zip->close();
-				throw new \InvalidArgumentException( 'La copia è incompleta: manca la tabella ' . $t . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			if ( ! preg_match( '/^asem_[a-z_]+$/', (string) $t ) || ( ! in_array( $t, $known, true ) && ! in_array( $t, self::NOT_RESTORED, true ) ) ) {
+				throw new \InvalidArgumentException( 'La copia contiene una tabella sconosciuta (' . esc_html( (string) $t ) . ').' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 			}
 		}
-		$zip->close();
+		$sz = BackupSeal::sizes( $zip, self::$test_limits ); // dimensioni dichiarate: i tetti si controllano prima di leggere una sola voce
+		if ( '' !== $sz['problem'] ) {
+			throw self::refusal( $sz['problem'], self::limit_message( $sz['problem'] ) );
+		}
+		foreach ( array_keys( $m['tables'] ) as $t ) {
+			if ( ! isset( $sz['sizes'][ 'tabelle/' . $t . '.jsonl' ] ) ) {
+				throw new \InvalidArgumentException( 'La copia è incompleta: manca la tabella ' . esc_html( (string) $t ) . '.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+			}
+		}
+		// Impronte e firma. Con i codici di sicurezza di questo sito la copia deve essere intatta e la firma valida; con altri codici la firma non si può
+		// verificare (la copia viene da un altro sito, o non è firmata) e le impronte servono solo a scoprire un file danneggiato o cambiato.
+		$mine   = BackupSeal::key( wp_salt( 'auth' ) );
+		$listed = isset( $m['entries'] ) && is_array( $m['entries'] ) ? $m['entries'] : null;
+		$int    = '';
+		if ( null !== $listed ) {
+			$actual = BackupSeal::hashes( $zip, $sz['sizes'] );
+			$int    = null === $actual ? 'changed' : BackupSeal::compare( $listed, $actual );
+		}
+		$modified = Texts::t( 'La copia è stata modificata dopo essere stata fatta, oppure è danneggiata: il suo contenuto non coincide con l\'elenco con cui è stata firmata. Non è stato cambiato nulla.' );
+		if ( is_string( $m['kfp'] ?? null ) && hash_equals( BackupSeal::fingerprint( $mine ), $m['kfp'] ) ) { // stessi codici di sicurezza: è una copia di questo sito
+			if ( null === $listed || '' !== $int ) {
+				throw self::refusal( 'modified', $modified );
+			}
+			if ( ! is_string( $m['sig'] ?? null ) || ! hash_equals( BackupSeal::signature( $m, $mine ), $m['sig'] ) ) {
+				throw self::refusal( 'signature', Texts::t( 'La firma di questa copia non è valida: la copia è stata modificata, oppure non è stata firmata da questo sito. Non è stato cambiato nulla.' ) );
+			}
+			$origin = 'same';
+			return $m;
+		}
+		if ( null !== $listed && '' !== $int ) {
+			throw self::refusal( 'modified', $modified );
+		}
+		$origin = 'other';
 		return $m;
 	}
 
@@ -296,29 +413,90 @@ final class Backup {
 		}
 	}
 
+	/** Una voce JSON piccola dello ZIP, letta e controllata PRIMA di toccare i dati. @return array|null null se la voce non c'è */
+	private static function read_json( \ZipArchive $zip, string $name, string $what ): ?array {
+		$st = $zip->statName( $name );
+		if ( ! $st ) {
+			return null;
+		}
+		if ( (int) $st['size'] > BackupSeal::limits( self::$test_limits )['small'] ) {
+			throw self::refusal( 'size', self::limit_message( 'entry' ) );
+		}
+		$raw = $zip->getFromName( $name );
+		$v   = false === $raw ? null : json_decode( $raw, true );
+		if ( ! is_array( $v ) ) {
+			$msg = 'keys' === $what ? Texts::t( 'Le chiavi contenute nella copia non sono valide.' ) : ( 'index' === $what ? Texts::t( 'La copia è danneggiata: l\'indice dei documenti non si legge. Non è stato cambiato nulla.' ) : Texts::t( 'La copia è danneggiata: le impostazioni non si leggono. Non è stato cambiato nulla.' ) );
+			throw self::refusal( 'unreadable_' . $what, $msg );
+		}
+		return $v;
+	}
+
 	/**
-	 * Sostituisce i dati del plugin con quelli della copia. Prima salva una copia di sicurezza sul sito; il ripristino è tutto o niente.
+	 * Sostituisce i dati del plugin con quelli della copia. Prima salva una copia di sicurezza sul sito; il ripristino è tutto o niente per i dati.
 	 *
-	 * @param string $phrase la frase della copia (il codice di licenza o la data di attivazione di allora, o la frase scelta): serve solo se le chiavi della copia non sono già note a questo sito
-	 * @return array tables, rows, files, bad (file non rimessi perché l'impronta non coincide), safety (nome del file di sicurezza)
+	 * Un solo ripristino alla volta (blocco del database con nome per sito). Le copie fatte da questo sito si ripristinano se firma e impronte sono
+	 * valide; quelle fatte altrove (o senza firma) solo con $other_site_ok. Non si riscrivono il registro azioni, le password dei soci e le notifiche
+	 * push (tabelle con le persone di questo sito: si svuotano e i soci rientrano con il link). Le chiavi dei documenti cifrati e l'identificativo del
+	 * sito si adottano DOPO il COMMIT, con una riga nel registro azioni.
+	 *
+	 * @param string $phrase        la frase della copia (il codice di licenza o la data di attivazione di allora, o la frase scelta): serve solo per aprire le chiavi che questo sito non conosce; senza, quelle chiavi si adottano chiuse
+	 * @param bool   $other_site_ok chi ripristina ha confermato per iscritto una copia fatta su un altro sito
+	 * @return array tables, rows, files, bad (file non rimessi perché l'impronta non coincide), skipped (file che nessuna riga cita), closed (documenti rimessi ma chiusi), keys_closed, members_reset (righe di accessi dei soci cancellate), origin, safety, documents
 	 * @throws \InvalidArgumentException|\RuntimeException
 	 */
-	public static function restore( string $zip_path, string $phrase = '' ): array {
-		$m = self::inspect( $zip_path );
+	public static function restore( string $zip_path, string $phrase = '', bool $other_site_ok = false ): array {
+		return Db::with_lock(
+			'asem_backup_restore',
+			function () use ( $zip_path, $phrase, $other_site_ok ): array {
+				return self::restore_locked( $zip_path, $phrase, $other_site_ok );
+			},
+			0,
+			true
+		);
+	}
+
+	private static function restore_locked( string $zip_path, string $phrase, bool $other_site_ok ): array {
+		if ( ! class_exists( '\ZipArchive' ) ) {
+			throw new \InvalidArgumentException( 'Questo server non può leggere file ZIP.' );
+		}
+		$zip = new \ZipArchive();
+		if ( true !== $zip->open( $zip_path ) ) {
+			throw new \InvalidArgumentException( 'Il file non è una copia di sicurezza valida.' );
+		}
+		try {
+			$origin = '';
+			$m      = self::check( $zip, $origin );
+			if ( 'other' === $origin && ! $other_site_ok ) {
+				throw self::refusal( 'other_site', self::other_site_text() );
+			}
+			return self::restore_open( $zip, $m, $origin, $phrase );
+		} finally {
+			$zip->close();
+		}
+	}
+
+	private static function restore_open( \ZipArchive $zip, array $m, string $origin, string $phrase ): array {
 		if ( function_exists( 'set_time_limit' ) ) {
 			@set_time_limit( 0 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, Squiz.PHP.DiscouragedFunctions.Discouraged -- lettura/scrittura in streaming di file grandi
 		}
-		// Le chiavi dei file cifrati: prima di toccare qualsiasi dato, così una frase sbagliata ferma tutto senza cambiare nulla.
-		$bundle = array();
-		$zk     = new \ZipArchive();
-		if ( true === $zk->open( $zip_path ) ) {
-			$raw    = $zk->getFromName( 'chiavi.json' );
-			$bundle = $raw ? (array) json_decode( $raw, true ) : array();
-			$zk->close();
+		// Prima di toccare qualsiasi dato: si leggono e si controllano le voci piccole (chiavi, impostazioni, indice dei PDF) e si prepara l'adozione delle
+		// chiavi, così un file rovinato o una frase sbagliata fermano tutto senza cambiare nulla. Le chiavi si scrivono dopo il COMMIT.
+		$bundle   = self::read_json( $zip, 'chiavi.json', 'keys' );
+		$settings = self::read_json( $zip, 'impostazioni.json', 'settings' );
+		$index    = self::read_json( $zip, 'documenti/indice.json', 'index' );
+		if ( null !== $index ) {
+			$list = $index['files'] ?? array();
+			if ( ! is_array( $list ) || count( $list ) > BackupSeal::limits( self::$test_limits )['attachments'] ) {
+				throw self::refusal( 'unreadable_index', Texts::t( 'La copia è danneggiata: l\'indice dei documenti non si legge. Non è stato cambiato nulla.' ) );
+			}
+			foreach ( $list as $f ) {
+				if ( ! is_array( $f ) ) {
+					throw self::refusal( 'unreadable_index', Texts::t( 'La copia è danneggiata: l\'indice dei documenti non si legge. Non è stato cambiato nulla.' ) );
+				}
+			}
 		}
-		if ( $bundle ) {
-			FileKey::adopt_keys( $bundle, $phrase ); // lancia InvalidArgumentException con il motivo
-		}
+		$plan = null !== $bundle ? FileKey::plan_adopt( $bundle, $phrase ) : null; // lancia InvalidArgumentException con il motivo, senza scrivere nulla
+
 		$dir    = self::ensure_dir();
 		$safety = $dir . '/prima-del-ripristino-' . gmdate( 'Ymd-His' ) . '-' . bin2hex( random_bytes( 8 ) ) . '.zip'; // nome non indovinabile: la cartella potrebbe essere raggiungibile da web (nginx ignora .htaccess)
 		self::export( true, $safety );
@@ -326,13 +504,19 @@ final class Backup {
 		foreach ( array_slice( $old, Limits::get( 'backup_keep' ) ) as $o ) {
 			wp_delete_file( $dir . '/' . $o['name'] ); // phpcs:ignore WordPress.PHP.NoSilencedErrors
 		}
-		$db  = Db::db();
-		$zip = new \ZipArchive();
-		$zip->open( $zip_path );
-		$rows_total = 0;
+		$db         = Db::db();
+		$names      = array_values( array_diff( array_keys( $m['tables'] ), self::NOT_RESTORED ) );
+		$wipe       = array();
+		foreach ( self::MEMBER_ACCESS as $t ) {
+			if ( $db->get_var( $db->prepare( 'SHOW TABLES LIKE %s', $db->esc_like( $db->prefix . $t ) ) ) ) {
+				$wipe[] = $t;
+			}
+		}
+		$rows_total    = 0;
+		$members_reset = 0;
 		$db->query( 'START TRANSACTION' );
 		try {
-			foreach ( array_keys( $m['tables'] ) as $name ) {
+			foreach ( $names as $name ) {
 				$tbl  = $db->prefix . $name;
 				$cols = self::columns( $tbl );
 				$db->query( "DELETE FROM `$tbl`" ); // phpcs:ignore WordPress.DB.PreparedSQL
@@ -366,18 +550,31 @@ final class Backup {
 					self::insert_rows( $tbl, $use, $batch );
 				}
 			}
+			foreach ( $wipe as $t ) { // gli accessi dei soci erano legati alle persone di prima: dopo il ripristino i soci rientrano con il link
+				$tbl = $db->prefix . $t;
+				$n   = $db->query( "DELETE FROM `$tbl`" ); // phpcs:ignore WordPress.DB.PreparedSQL
+				if ( false === $n ) {
+					throw new \RuntimeException( 'Errore del database durante il ripristino: ' . $db->last_error ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
+				}
+				$members_reset += (int) $n;
+			}
 			$db->query( 'COMMIT' );
 		} catch ( \Throwable $e ) {
 			$db->query( 'ROLLBACK' );
-			$zip->close();
 			throw new \RuntimeException( $e->getMessage() . ' Nessun dato è stato cambiato.' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- messaggio interno, mostrato solo dopo esc_html
 		}
-		if ( $bundle ) {
-			FileKey::adopt_site( (string) ( $bundle['site'] ?? '' ) ); // i file della copia sono legati all'identificativo del sito di origine
+		// Chiavi dei documenti e identificativo del sito: solo ora che i dati sono al loro posto (una riga nel registro azioni dice che cosa si è adottato).
+		$keys = array( 'open' => 0, 'closed' => 0, 'site_changed' => false, 'failed' => false );
+		if ( $plan ) {
+			try {
+				$keys = array_merge( $keys, FileKey::commit_adopt( $plan ) );
+			} catch ( \InvalidArgumentException $e ) { // un'altra operazione sulle chiavi tiene il blocco: i dati sono a posto, le chiavi no
+				$keys['failed'] = true;
+				Audit::log( 'backup.keys_adopt_failed', 'folder', 0 );
+			}
 		}
 		// impostazioni (le chiavi segrete restano quelle del sito) e opzioni collegate
-		$raw = $zip->getFromName( 'impostazioni.json' );
-		$p   = $raw ? json_decode( $raw, true ) : null;
+		$p = $settings;
 		if ( is_array( $p ) ) {
 			$new = is_array( $p['settings'] ?? null ) ? $p['settings'] : array();
 			foreach ( Settings::secret_keys() as $k ) {
@@ -396,52 +593,93 @@ final class Backup {
 				}
 			}
 		}
-		// allegati
-		$files = 0;
-		$bad   = 0;
+		// allegati: solo quelli che una riga dei dati ripristinati cita (con la loro impronta), a pezzi su un temporaneo
+		$files   = 0;
+		$bad     = 0;
+		$skipped = 0;
+		$closed  = 0;
 		if ( ! empty( $m['attachments'] ) ) {
 			Attachments::prepare_dir();
 			$map = PrivateFiles::lookup_map(); // impronta e cifratura registrate nel database appena ripristinato
 			for ( $i = 0; $i < $zip->numFiles; $i++ ) {
 				$name = (string) $zip->getNameIndex( $i );
 				if ( preg_match( '#^allegati/([0-9a-f]{32})$#', $name, $mm ) ) {
-					if ( self::restore_file( $zip, $name, $mm[1], $map[ $mm[1] ] ?? null ) ) {
-						$files++;
-					} else {
+					if ( ! isset( $map[ $mm[1] ] ) ) {
+						$skipped++; // nessuna riga lo cita: non si rimette sul disco
+						continue;
+					}
+					$res = self::restore_file( $zip, $name, $mm[1], $map[ $mm[1] ] );
+					if ( 'bad' === $res ) {
 						$bad++;
+					} else {
+						$files++;
+						if ( 'closed' === $res ) {
+							$closed++;
+						}
 					}
 				}
 			}
 		}
 		// documenti definitivi (PDF già emessi): un'estensione li rimette sul disco, controllando le impronte registrate nel database ripristinato
-		$documents = array_merge( array( 'restored' => 0, 'present' => 0, 'missing' => 0, 'bad' => 0 ), (array) apply_filters( 'asem_backup_restore_documents', array(), $zip, $m ) );
-		$zip->close();
+		$documents = array_merge( array( 'restored' => 0, 'present' => 0, 'missing' => 0, 'bad' => 0, 'closed' => 0 ), (array) apply_filters( 'asem_backup_restore_documents', array(), $zip, $m, $index ) );
 		Install::migrate_year_closures(); // una copia fatta prima della traccia delle chiusure: gli anni chiusi ne ricevono la riga (idempotente)
 		Texts::flush();
-		Audit::log( 'backup.restored', 'settings', 0, array( 'rows' => $rows_total, 'attachments' => $files, 'attachments_bad' => $bad, 'documents' => $documents ) );
-		return array( 'tables' => count( $m['tables'] ), 'rows' => $rows_total, 'files' => $files, 'bad' => $bad, 'safety' => basename( $safety ), 'documents' => $documents );
+		$closed_all = $closed + (int) $documents['closed'];
+		Audit::log(
+			'backup.restored',
+			'settings',
+			0,
+			array(
+				'origin'            => $origin,
+				'rows'              => $rows_total,
+				'attachments'       => $files,
+				'attachments_bad'   => $bad,
+				'attachments_skipped' => $skipped,
+				'documents_closed'  => $closed_all,
+				'keys_closed'       => (int) $keys['closed'],
+				'members_reset'     => $members_reset,
+				'documents'         => $documents,
+			)
+		);
+		return array(
+			'tables'        => count( $names ),
+			'rows'          => $rows_total,
+			'files'         => $files,
+			'bad'           => $bad,
+			'skipped'       => $skipped,
+			'closed'        => $closed_all,
+			'keys_closed'   => (int) $keys['closed'],
+			'keys_failed'   => (bool) $keys['failed'],
+			'members_reset' => $members_reset,
+			'origin'        => $origin,
+			'safety'        => basename( $safety ),
+			'documents'     => $documents,
+		);
 	}
 
 	/**
 	 * Rimette sul disco un file della copia, a pezzi (mai intero in memoria), in un file temporaneo; ne controlla l'impronta (per i file cifrati si apre
-	 * e si confronta il contenuto) e solo se coincide lo rinomina al suo posto.
+	 * e si confronta il contenuto) e solo se coincide lo rinomina al suo posto. Un file cifrato la cui chiave su questo sito non c'è (copia fatta altrove,
+	 * rimessa senza frase, o server senza sodium) non si può aprire: si rimette lo stesso, chiuso (l'impronta del file com'è nello ZIP è già stata
+	 * controllata con quella del manifest).
 	 *
-	 * @param array|null $info [versione cifratura, impronta] registrati nel database, null se nessuna riga lo riguarda
-	 * @return bool false se non si è potuto leggere o l'impronta non coincide (il file non viene rimesso)
+	 * @param array $info [versione cifratura, impronta] registrati nel database
+	 * @return string ok, closed (rimesso ma chiuso) o bad (non letto o impronta diversa: il file non viene rimesso)
 	 */
-	private static function restore_file( \ZipArchive $zip, string $entry, string $stored, ?array $info ): bool {
+	private static function restore_file( \ZipArchive $zip, string $entry, string $stored, array $info ): string {
 		$in = $zip->getStream( $entry );
 		if ( ! $in ) {
-			return false;
+			return 'bad';
 		}
 		$final = Attachments::dir() . '/' . $stored;
 		$tmp   = $final . '.part-' . bin2hex( random_bytes( 4 ) );
 		$out   = fopen( $tmp, 'xb' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- lettura/scrittura in streaming di file grandi
 		if ( ! $out ) {
 			fclose( $in ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- lettura/scrittura in streaming di file grandi
-			return false;
+			return 'bad';
 		}
-		$ok = true;
+		$ok     = true;
+		$closed = false;
 		while ( ! feof( $in ) ) {
 			$d = fread( $in, 1048576 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fread -- lettura/scrittura in streaming di file grandi
 			if ( false === $d ) {
@@ -455,7 +693,7 @@ final class Backup {
 		}
 		fclose( $in ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- lettura/scrittura in streaming di file grandi
 		fclose( $out ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- lettura/scrittura in streaming di file grandi
-		if ( $ok && null !== $info ) {
+		if ( $ok ) {
 			$sha = strtolower( (string) $info[1] );
 			try {
 				if ( PrivateFiles::is_enc( $tmp, $stored, $info[0] ) ) {
@@ -464,19 +702,23 @@ final class Backup {
 					$ok = false;
 				}
 			} catch ( FileCryptError $e ) {
-				$ok = false;
+				if ( in_array( $e->reason, array( FileCryptError::NO_KEY, FileCryptError::NO_SODIUM ), true ) ) {
+					$closed = true; // la chiave non c'è ancora: il file si rimette chiuso
+				} else {
+					$ok = false;
+				}
 			}
 		}
 		if ( ! $ok ) {
 			wp_delete_file( $tmp );
-			return false;
+			return 'bad';
 		}
 		chmod( $tmp, 0640 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_chmod -- file privato dell'ente: lettura solo per il server
 		if ( ! rename( $tmp, $final ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename -- lettura/scrittura in streaming di file grandi
 			wp_delete_file( $tmp );
-			return false;
+			return 'bad';
 		}
-		return true;
+		return $closed ? 'closed' : 'ok';
 	}
 
 	// ---------- Download ----------

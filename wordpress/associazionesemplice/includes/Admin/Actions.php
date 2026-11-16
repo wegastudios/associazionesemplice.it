@@ -943,16 +943,40 @@ final class Actions {
 	}
 
 	private static function backup_restore( array $p ): array {
+		// Come per l'azzeramento: spunta, frase scritta e password di chi opera, controllate prima di guardare il file.
 		if ( empty( $p['confirm'] ) ) {
 			throw new \InvalidArgumentException( 'Spunta la casella di conferma per ripristinare.' );
+		}
+		$written = trim( (string) ( $p['confirm_text'] ?? '' ) );
+		if ( ! in_array( $written, array( \AssociazioneSemplice\Backup::RESTORE_PHRASE, \AssociazioneSemplice\Backup::RESTORE_PHRASE_OTHER ), true ) ) {
+			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'La frase scritta non corrisponde: non è stato cambiato nulla.' ) );
+		}
+		$user = wp_get_current_user();
+		if ( ! $user || ! $user->exists() || '' === (string) ( $p['password'] ?? '' ) || ! wp_check_password( (string) $p['password'], $user->user_pass, $user->ID ) ) {
+			throw new \InvalidArgumentException( \AssociazioneSemplice\Texts::t( 'La password non è corretta: non è stato cambiato nulla.' ) );
 		}
 		$f = self::uploaded_file( 'backup_file' );
 		if ( ! $f || UPLOAD_ERR_OK !== $f['error'] ) {
 			throw new \InvalidArgumentException( 'Scegli il file della copia da ripristinare.' );
 		}
-		$r = \AssociazioneSemplice\Backup::restore( $f['tmp_name'], (string) ( $p['phrase'] ?? '' ) );
+		$r = \AssociazioneSemplice\Backup::restore( $f['tmp_name'], (string) ( $p['phrase'] ?? '' ), \AssociazioneSemplice\Backup::RESTORE_PHRASE_OTHER === $written );
 		$d    = (array) ( $r['documents'] ?? array() );
 		$docs = '';
+		if ( 'other' === ( $r['origin'] ?? '' ) ) {
+			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'La copia era stata fatta su un altro sito: l\'hai ripristinata con la tua conferma e questo resta scritto nel registro delle azioni.' );
+		}
+		if ( ! empty( $r['skipped'] ) ) {
+			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: {n} file della copia non sono citati dai dati e non sono stati rimessi sul sito.', array( 'n' => (int) $r['skipped'] ) );
+		}
+		if ( ! empty( $r['closed'] ) ) {
+			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: {n} documenti riservati sono sul sito ma restano chiusi: si aprono quando riapri la chiave con la frase della copia («Riapri la chiave con la frase», qui in Copia di sicurezza).', array( 'n' => (int) $r['closed'] ) );
+		}
+		if ( ! empty( $r['keys_failed'] ) ) {
+			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: le chiavi dei documenti riservati non si sono potute rimettere sul sito (un\'altra operazione era in corso): rifai il ripristino della stessa copia.' );
+		}
+		if ( ! empty( $r['members_reset'] ) ) {
+			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Le password dei soci e le notifiche non fanno parte del ripristino: i soci rientrano con il link che ricevono.' );
+		}
 		if ( ! empty( $r['bad'] ) ) {
 			$docs .= ' ' . \AssociazioneSemplice\Texts::t( 'Attenzione: {n} file della copia non coincidono con la loro impronta (o non si aprono con la chiave) e non sono stati rimessi sul sito.', array( 'n' => (int) $r['bad'] ) );
 		}
