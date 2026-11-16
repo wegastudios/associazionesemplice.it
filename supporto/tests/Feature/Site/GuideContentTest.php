@@ -67,6 +67,7 @@ class GuideContentTest extends SiteTestCase
     public function test_every_article_page_renders(): void
     {
         $this->seedGuides();
+        \App\Support\SaasGuides::set(true);
 
         foreach (Article::all() as $article) {
             $this->get('/articoli/'.$article->id)->assertOk();
