@@ -21,7 +21,7 @@ final class BackupPage {
 		Ui::form_open( 'asem_backup', Ui::url( 'asem-backup' ) );
 		echo '<p><label>' . esc_html( Texts::t( 'La tua password di amministratore' ) ) . '<br><input type="password" name="password" class="regular-text" autocomplete="current-password" required></label><br><span class="description">' . esc_html( Texts::t( 'Per scaricare la copia scrivi la tua password.' ) ) . '</span></p>'
 			. '<p><button type="submit" name="files" value="0" class="button button-primary">Scarica la copia dei dati</button> '
-			. '<button type="submit" name="files" value="1" class="button">Scarica la copia con gli allegati (scontrini e fatture)</button></p>';
+			. '<button type="submit" name="files" value="1" class="button">Scarica la copia con gli allegati (scontrini, fatture e altri documenti)</button></p>';
 		Ui::form_close();
 		if ( FileKey::has_keys() ) {
 			echo '<p class="description">' . esc_html( FileCryptPanel::copy_note() ) . '</p>';
@@ -37,7 +37,7 @@ final class BackupPage {
 
 		echo '<h2>Ripristino</h2><p class="description">Ripristina una copia scaricata da questo sito: <strong>i dati attuali del plugin vengono sostituiti</strong> da quelli della copia. '
 			. 'Prima del ripristino il sito salva da solo una copia dello stato attuale (qui sotto), e se qualcosa non va non viene cambiato nulla. '
-			. esc_html( Texts::t( 'Una copia modificata dopo essere stata fatta viene rifiutata. Il registro delle azioni, gli utenti WordPress, le password dei soci e le notifiche non fanno parte del ripristino: i soci rientrano con il link che ricevono.' ) ) . '</p>'
+			. esc_html( Texts::t( 'Una copia modificata dopo essere stata fatta viene rifiutata. Il registro delle azioni, gli utenti WordPress, le sessioni aperte dei soci e le notifiche non fanno parte del ripristino. Le password dei soci tornano, e ogni socio dovrà scegliere una nuova password al primo accesso.' ) ) . '</p>'
 			. '<p class="description">' . esc_html( Texts::t( 'Una copia fatta su un altro sito (o senza firma) si ripristina solo con una conferma in più, e il ripristino resta scritto nel registro delle azioni.' ) ) . '</p>';
 		Ui::form_open( 'asem_backup_restore', Ui::url( 'asem-backup' ), true );
 		echo '<p><input type="file" name="backup_file" accept=".zip" required></p>'

@@ -61,13 +61,10 @@ final class MemberLogin {
 		return gmdate( 'Y-m-d H:i:s' );
 	}
 
-	/** Stato della password di un socio: «ok» (scelta), «none» (non l'ha ancora scelta), «reset» (ha chiesto il recupero e deve sceglierne una nuova). */
+	/** Stato della password di un socio: «ok» (scelta), «none» (non l'ha ancora scelta), «reset» (ha chiesto il recupero e deve sceglierne una nuova), «restored» (la password arriva da una copia ripristinata: ne sceglie una nuova prima di tutto). */
 	public static function password_state( int $person_id ): string {
 		$r = Db::db()->get_row( Db::db()->prepare( 'SELECT pass_hash, must_reset FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = %d', $person_id ), ARRAY_A );
-		if ( ! $r || '' === (string) $r['pass_hash'] ) {
-			return 'none';
-		}
-		return (int) $r['must_reset'] ? 'reset' : 'ok';
+		return MemberPassword::state( $r ? (string) $r['pass_hash'] : '', $r ? (int) $r['must_reset'] : 0 );
 	}
 
 	/** Dopo il recupero della password: prima di navigare il socio deve sceglierne una nuova. */
@@ -75,7 +72,7 @@ final class MemberLogin {
 		$db  = Db::db();
 		$tbl = Db::t( 'member_auth' );
 		if ( $db->get_var( $db->prepare( "SELECT COUNT(*) FROM $tbl WHERE person_id = %d", $person_id ) ) ) {
-			$db->update( $tbl, array( 'must_reset' => 1 ), array( 'person_id' => $person_id ) );
+			$db->query( $db->prepare( "UPDATE $tbl SET must_reset = %d WHERE person_id = %d AND must_reset <> %d", 1, $person_id, MemberPassword::RESTORED ) ); // il segno del ripristino non si abbassa a «recupero»
 			return;
 		}
 		$p = Plugin::people()->get( $person_id );
@@ -247,7 +244,7 @@ final class MemberLogin {
 			}
 			return null;
 		}
-		$upd = array( 'failed_count' => 0, 'locked_until' => null, 'must_reset' => 0 ); // ha dimostrato di conoscere la password: un recupero lasciato a metà non la blocca
+		$upd = array( 'failed_count' => 0, 'locked_until' => null, 'must_reset' => MemberPassword::marker_after_login( (int) $auth['must_reset'] ) ); // ha dimostrato di conoscere la password: un recupero lasciato a metà non la blocca; dopo un ripristino invece il cambio resta obbligatorio
 		if ( MemberPassword::needs_rehash( $hash ) ) {
 			$upd['pass_hash'] = MemberPassword::make( $password );
 		}
@@ -295,7 +292,8 @@ final class MemberLogin {
 		if ( $taken ) {
 			return 'Non è possibile impostare la password per questo accesso. Scrivi alla segreteria.';
 		}
-		$hash = MemberPassword::make( $password );
+		$hash     = MemberPassword::make( $password );
+		$restored = MemberPassword::RESTORED === (int) $db->get_var( $db->prepare( "SELECT must_reset FROM $tbl WHERE person_id = %d", $person_id ) );
 		if ( $db->get_var( $db->prepare( "SELECT COUNT(*) FROM $tbl WHERE person_id = %d", $person_id ) ) ) {
 			$db->update( $tbl, array( 'login_email' => $email, 'pass_hash' => $hash, 'must_reset' => 0, 'failed_count' => 0, 'locked_until' => null ), array( 'person_id' => $person_id ) );
 		} else {
@@ -303,6 +301,9 @@ final class MemberLogin {
 		}
 		MemberSession::destroy_others( $person_id ); // cambiata la password, gli altri dispositivi devono rientrare
 		Audit::log( 'member.password_set', 'person', $person_id );
+		if ( $restored ) { // il cambio obbligatorio dopo il ripristino è fatto: resta scritto, senza nessun dato della password
+			Audit::log( 'member.password_changed_after_restore', 'person', $person_id );
+		}
 		return '';
 	}
 }

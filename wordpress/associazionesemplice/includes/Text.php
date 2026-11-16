@@ -19,6 +19,18 @@ final class Text {
 		return (string) preg_replace( '/[^a-z0-9]/', '', $s );
 	}
 
+	/** Testo semplice: senza tag (e senza il contenuto di script e stili), senza spazi ai bordi. Per i dati che entrano da import e ripristino. */
+	public static function plain( string $s ): string {
+		if ( false === strpos( $s, '<' ) ) {
+			return trim( $s );
+		}
+		// Solo i tag veri: «<» seguito da lettera, «/» o «!» e chiuso da «>» (più il contenuto di script e stili). Un «<» qualunque («<10 anni», «<3», «a<b», «x <= y») resta com'è.
+		$s = (string) ( preg_replace( '@<(script|style)\b[^>]*>.*?</\1\s*>@isu', '', $s ) ?? $s );
+		$s = (string) ( preg_replace( '@<!--.*?-->@su', '', $s ) ?? $s );
+		$s = (string) ( preg_replace( '@</?[A-Za-z][^<>]*>|<![^<>]*>@u', '', $s ) ?? $s );
+		return trim( $s );
+	}
+
 	/** Minuscolo con supporto UTF-8, per confronti senza maiuscole/minuscole. */
 	public static function lower( string $s ): string {
 		return function_exists( 'mb_strtolower' ) ? mb_strtolower( $s, 'UTF-8' ) : strtolower( $s );

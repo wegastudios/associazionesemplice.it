@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\Site;
 
 use App\Http\Controllers\Controller;
 use App\Models\Topic;
+use App\Support\SaasGuides;
 use App\Support\Slug;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,7 +16,17 @@ class TopicController extends Controller
 {
     public function index(): View
     {
-        return view('admin.site.topics', ['topics' => Topic::query()->orderBy('sort')->orderBy('name')->with('sections')->get()]);
+        return view('admin.site.topics', ['topics' => Topic::query()->orderBy('sort')->orderBy('name')->with('sections')->get(), 'saasGuides' => SaasGuides::enabled()]);
+    }
+
+    /** Accende o spegne le guide del gestionale per il pubblico (lo staff le vede sempre). */
+    public function saasGuides(Request $request, \App\Services\AuditLogger $audit): RedirectResponse
+    {
+        $on = $request->boolean('on');
+        SaasGuides::set($on);
+        $audit->record('admin.saas_guides_toggled', null, ['visible' => $on], \App\Support\Actor::user($request->user()->id));
+
+        return back()->with('ok', $on ? 'Le guide del gestionale ora sono visibili a tutti.' : 'Le guide del gestionale ora sono nascoste al pubblico.');
     }
 
     public function store(Request $request): RedirectResponse

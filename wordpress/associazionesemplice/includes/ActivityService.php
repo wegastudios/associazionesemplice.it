@@ -256,7 +256,7 @@ class ActivityService {
 			$guest = (int) $in['guest_fee_cents'];
 		}
 		return array(
-			'name'                 => trim( (string) ( $in['name'] ?? '' ) ),
+			'name'                 => Text::plain( (string) ( $in['name'] ?? '' ) ),
 			'social_year'          => trim( (string) ( $in['social_year'] ?? '' ) ),
 			'kind'                 => (string) ( $in['kind'] ?? ActivityKind::COURSE ),
 			'instructor_person_id' => ! empty( $in['instructor_person_id'] ) ? (int) $in['instructor_person_id'] : null,
@@ -276,12 +276,12 @@ class ActivityService {
 			'billing'              => isset( $in['billing'] ) && in_array( $in['billing'], array( 'once', 'quarterly' ), true ) ? (string) $in['billing'] : 'monthly',
 			'lesson_start'        => $weekly ? $weekly[0]['start'] : null,
 			'lesson_end'          => $weekly ? $weekly[0]['end'] : null,
-			'location'            => isset( $in['location'] ) && '' !== trim( (string) $in['location'] ) ? mb_substr( trim( (string) $in['location'] ), 0, 190 ) : null,
+			'location'            => isset( $in['location'] ) && '' !== Text::plain( (string) $in['location'] ) ? mb_substr( Text::plain( (string) $in['location'] ), 0, 190 ) : null,
 			'starts_on'           => self::clean_date( $in['starts_on'] ?? '' ),
 			'ends_on'             => self::clean_date( $in['ends_on'] ?? '' ),
 			'fund_mode'            => isset( $in['fund_mode'] ) && in_array( (string) $in['fund_mode'], array( FundShare::FIXED, FundShare::PERCENT ), true ) ? (string) $in['fund_mode'] : FundShare::NONE,
 			'fund_value'           => max( 0, (int) ( $in['fund_value'] ?? 0 ) ),
-			'notes'                => isset( $in['notes'] ) && '' !== trim( (string) $in['notes'] ) ? trim( (string) $in['notes'] ) : null,
+			'notes'                => isset( $in['notes'] ) && '' !== Text::plain( (string) $in['notes'] ) ? Text::plain( (string) $in['notes'] ) : null,
 		);
 	}
 
