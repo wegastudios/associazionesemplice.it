@@ -28,6 +28,8 @@ final class EventRequests {
 	const MAX_SEATS = 10;
 	const MESSAGE   = 'Richiesta ricevuta. Ti abbiamo scritto un\'email: apri il link che contiene entro 24 ore per confermare l\'indirizzo (controlla anche la posta indesiderata).';
 	const ALREADY   = 'Hai già confermato questa richiesta: ti abbiamo scritto un\'email con le informazioni.';
+	/** Esito di una richiesta che la segreteria deve esaminare: lo stesso per qualunque motivo (approvazione prevista, dati da verificare, codice fiscale già in anagrafica). */
+	const REVIEW    = 'Email confermata. La segreteria esamina la richiesta e ti scrive appena è approvata.';
 	/** Stato transitorio: la richiesta è in lavorazione (presa atomica); chi non la ottiene non fa nulla. */
 	const WORKING   = 'processing';
 	/** Dopo quanto una richiesta rimasta «in lavorazione» (lavoro interrotto) torna alla segreteria. */
@@ -436,7 +438,7 @@ final class EventRequests {
 				'Richiesta di partecipazione da approvare: ' . $a['name'] . self::assoc_suffix(),
 				'È arrivata una richiesta di partecipazione a «' . $a['name'] . '» (' . (int) $row['seats'] . ' posti).' . "\n\nApprovala o rifiutala dalla scheda dell'attività: " . admin_url( 'admin.php?page=asem-activity&id=' . (int) $a['id'] )
 			);
-			return array( 'ok' => true, 'message' => 'Email confermata. La segreteria esamina la richiesta e ti scrive appena è approvata.' );
+			return array( 'ok' => true, 'message' => self::REVIEW );
 		}
 		return self::process( self::row( (int) $row['id'] ) ?: $row, 'new', false );
 	}
@@ -603,7 +605,7 @@ final class EventRequests {
 		foreach ( $list as $i => $p ) {
 			$found = self::db()->get_row( self::db()->prepare( 'SELECT * FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND tax_code = %s LIMIT 1', $p['tax_code'] ), ARRAY_A );
 			if ( $found && MemberType::GUEST !== $found['type'] ) {
-				return self::fail( $row, 'rejected', "Tra le persone indicate c'è chi risulta già socio: i soci prenotano dal proprio accesso al sito (area soci). Per qualsiasi dubbio scrivi alla segreteria." );
+				return self::member_tax_code( $row, $a, $found, $prev, $reviewed );
 			}
 			if ( $found && ! $reviewed && ! EventRequestRules::same_person( $found, $p ) ) {
 				$differs[] = trim( $found['first_name'] . ' ' . $found['last_name'] );
@@ -667,12 +669,47 @@ final class EventRequests {
 	private static function hold_for_office( array $row, array $activity, array $names ): array {
 		self::set( (int) $row['id'], array( 'status' => 'approval' ) );
 		Audit::log( 'event_request.held', 'activity', (int) $activity['id'], array( 'seats' => (int) $row['seats'] ) ); // niente dati personali nel registro
+		self::review_notice( $row, $activity );
 		Texts::mail(
 			self::staff_recipients( (int) $activity['id'] ),
 			'Richiesta di partecipazione da verificare: ' . $activity['name'] . self::assoc_suffix(),
 			'È arrivata una richiesta di partecipazione a «' . $activity['name'] . '» (' . (int) $row['seats'] . " posti) con un codice fiscale già presente in anagrafica ma con nome, cognome o data di nascita diversi dalla scheda esistente (" . implode( ', ', $names ) . ").\n\nNon è stata prenotata. Se i dati sono della stessa persona approvala (si userà la scheda esistente), altrimenti rifiutala: " . admin_url( 'admin.php?page=asem-activity&id=' . (int) $activity['id'] )
 		);
-		return array( 'ok' => true, 'message' => 'Email confermata. La segreteria esamina la richiesta e ti scrive appena è approvata.' );
+		return array( 'ok' => true, 'message' => self::REVIEW );
+	}
+
+	/** A chi ha chiesto: la richiesta è confermata e la segreteria risponde (lo stesso testo per qualunque motivo, senza dettagli). */
+	private static function review_notice( array $row, array $activity ): void {
+		$to = self::recipient( $row );
+		if ( '' !== $to ) {
+			Texts::mail( $to, 'Richiesta ricevuta: ' . $activity['name'] . self::assoc_suffix(), 'Abbiamo confermato la tua richiesta per «' . $activity['name'] . "». La segreteria la esamina e ti scrive appena è approvata.\n\nPer qualsiasi dubbio scrivi alla segreteria (" . Applications::notify_email() . ').' );
+		}
+	}
+
+	/**
+	 * Il codice fiscale indicato è quello di un socio: chi ha chiesto non viene a saperlo (stesso esito di una richiesta da esaminare, nessun
+	 * messaggio che lo dica) e la richiesta non si prenota come ospite. La segreteria riceve l'avviso preciso con il nome del socio (email, scheda
+	 * dell'attività, registro). Se è la segreteria stessa ad approvare, la richiesta resta in attesa e legge il motivo.
+	 *
+	 * @param array  $member scheda del socio con quel codice fiscale
+	 * @param string $prev   stato di partenza (new o approval)
+	 * @return array{ok:bool,message:string}
+	 */
+	private static function member_tax_code( array $row, array $activity, array $member, string $prev, bool $reviewed ): array {
+		$name = trim( $member['first_name'] . ' ' . $member['last_name'] );
+		if ( $reviewed ) {
+			self::set( (int) $row['id'], array( 'status' => $prev ) );
+			return array( 'ok' => false, 'message' => 'Il codice fiscale indicato è quello del socio ' . $name . ': non si può prenotare come ospite. Rifiuta la richiesta, oppure prenota il socio dalla sua area.' );
+		}
+		self::set( (int) $row['id'], array( 'status' => 'approval' ) );
+		Audit::log( 'event_request.member_tax_code', 'activity', (int) $activity['id'], array( 'person_id' => (int) $member['id'], 'name' => $name ) );
+		Texts::mail(
+			self::staff_recipients( (int) $activity['id'] ),
+			'Richiesta di partecipazione da verificare: ' . $activity['name'] . self::assoc_suffix(),
+			'È arrivata una richiesta di partecipazione a «' . $activity['name'] . '» (' . (int) $row['seats'] . ' posti) con il codice fiscale del socio ' . $name . ".\n\nNon è stata prenotata e a chi l'ha inviata non è stato detto il motivo. Rifiutala, oppure contatta il socio: i soci prenotano dalla propria area. " . admin_url( 'admin.php?page=asem-activity&id=' . (int) $activity['id'] )
+		);
+		self::review_notice( $row, $activity );
+		return array( 'ok' => true, 'message' => self::REVIEW );
 	}
 
 	/** Registra un ospite senza socio ospitante (la prenotazione online non lo richiede). */
@@ -892,7 +929,7 @@ final class EventRequests {
 		}
 		$found = self::db()->get_row( self::db()->prepare( 'SELECT * FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND tax_code = %s LIMIT 1', $p['tax_code'] ), ARRAY_A );
 		if ( $found && MemberType::GUEST !== $found['type'] ) {
-			return self::fail( $row, 'rejected', "Risulti già socio: i soci chiedono l'iscrizione al corso dal proprio accesso al sito (area soci). Per qualsiasi dubbio scrivi alla segreteria." );
+			return self::member_tax_code( $row, $a, $found, $prev, true ); // approva la segreteria: la richiesta resta in attesa e lei legge il perché
 		}
 		try {
 			$pid = $found ? (int) $found['id'] : self::new_guest( $p, ! empty( $data['image_ok'] ), (string) $row['email'] );
@@ -927,10 +964,13 @@ final class EventRequests {
 				$r['names'][] = $mp ? trim( $mp['first_name'] . ' ' . $mp['last_name'] ) . ' (socio)' : 'Socio';
 			}
 			$r['differs'] = array(); // schede esistenti con lo stesso codice fiscale ma altri dati: approvando si userebbe quella scheda
+			$r['members'] = array(); // soci con lo stesso codice fiscale: non si può prenotare come ospite
 			foreach ( is_array( $d ) && ! empty( $d['people'] ) ? $d['people'] : array() as $p ) {
 				$r['names'][] = trim( $p['first_name'] . ' ' . $p['last_name'] );
-				$card         = self::db()->get_row( self::db()->prepare( 'SELECT first_name, last_name, birth_date FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND tax_code = %s LIMIT 1', (string) ( $p['tax_code'] ?? '' ) ), ARRAY_A );
-				if ( $card && ! EventRequestRules::same_person( $card, $p ) ) {
+				$card         = self::db()->get_row( self::db()->prepare( 'SELECT first_name, last_name, birth_date, type FROM ' . Db::t( 'people' ) . ' WHERE deleted_at IS NULL AND tax_code = %s LIMIT 1', (string) ( $p['tax_code'] ?? '' ) ), ARRAY_A );
+				if ( $card && MemberType::GUEST !== $card['type'] ) {
+					$r['members'][] = trim( $card['first_name'] . ' ' . $card['last_name'] );
+				} elseif ( $card && ! EventRequestRules::same_person( $card, $p ) ) {
 					$r['differs'][] = trim( $card['first_name'] . ' ' . $card['last_name'] );
 				}
 			}
@@ -1038,7 +1078,8 @@ final class EventRequests {
 			. ( $course ? 'Persone che hanno chiesto l\'iscrizione al corso (i non soci dopo aver confermato l\'email). Approvando si iscrivono dal mese corrente; chi non è socio è registrato come ospite e deve pagare in anticipo con bonifico entro il termine.' : 'Persone che hanno chiesto un posto dalla pagina pubblica e confermato l\'email. Approvando si registrano come ospiti e si prenotano.' ) . '</p><ul>';
 		foreach ( $rows as $r ) {
 			$h .= '<li><strong>' . esc_html( implode( ', ', $r['names'] ) ) . '</strong> <span class="description">(' . ( $course ? '' : (int) $r['seats'] . ' posti, ' ) . esc_html( mysql2date( 'd/m H:i', $r['created_at'] ) ) . ')</span> '
-				. self::admin_form( 'asem_event_request_approve', (int) $r['id'], $back, 'Approva' ) . ' ' . self::admin_form( 'asem_event_request_reject', (int) $r['id'], $back, 'Rifiuta' )
+				. ( $r['members'] ? '' : self::admin_form( 'asem_event_request_approve', (int) $r['id'], $back, 'Approva' ) . ' ' ) . self::admin_form( 'asem_event_request_reject', (int) $r['id'], $back, 'Rifiuta' )
+				. ( $r['members'] ? '<br><span class="description">' . esc_html( 'Attenzione: il codice fiscale è quello del socio ' . implode( ', ', $r['members'] ) . ': non si può prenotare come ospite. Rifiuta la richiesta (chi l\'ha inviata riceve il solito messaggio) o contatta il socio.' ) . '</span>' : '' )
 				. ( $r['differs'] ? '<br><span class="description">' . esc_html( 'Attenzione: il codice fiscale è già in anagrafica con altri dati (' . implode( ', ', $r['differs'] ) . '). Approvando si usa la scheda esistente.' ) . '</span>' : '' ) . '</li>';
 		}
 		return $h . '</ul></div>';

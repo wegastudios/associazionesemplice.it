@@ -10651,8 +10651,31 @@ asem_ok( $acts->has_active_booking( $er_sid( $er_c ), (int) $er_el['id'] ), 'lim
 $people->create( array( 'type' => 'ordinary', 'first_name' => 'Gilda', 'last_name' => 'Socia', 'email' => 'gilda.socia.er@example.com', 'tax_code' => 'GLLPLA88H50L219H' ) );
 $er_in_m = array_merge( $er_in, array( 'first_name' => 'Gilda', 'last_name' => 'Socia', 'email' => 'gverdi.test@example.com', 'tax_code' => 'GLLPLA88H50L219H', 'birth_date' => '1988-06-10' ) );
 $er::create( $er_in_m, $acts->get( $er_a ), $er_o );
-$er_mc = $er::confirm( $er_get( 'gverdi.test@example.com' ) );
-asem_ok( ! $er_mc['ok'] && false !== strpos( $er_mc['message'], 'già socio' ), 'richiesta posto: chi è già socio è mandato al proprio accesso' );
+$er_mails_m  = count( $er_mails );
+$er_mc       = $er::confirm( $er_get( 'gverdi.test@example.com' ) );
+$er_mrow     = $wpdb->get_row( "SELECT * FROM $er_tbl WHERE email = 'gverdi.test@example.com'", ARRAY_A );
+$er_to_req   = '';
+$er_to_staff = '';
+foreach ( array_slice( $er_mails, $er_mails_m ) as $m ) {
+	$to = is_array( $m['to'] ) ? implode( ',', $m['to'] ) : (string) $m['to'];
+	if ( false !== strpos( $to, 'gverdi.test@example.com' ) ) {
+		$er_to_req .= $m['subject'] . ' ' . $m['message'];
+	} else {
+		$er_to_staff .= $m['subject'] . ' ' . $m['message'];
+	}
+}
+asem_ok( $er_mc['ok'] && $er::REVIEW === $er_mc['message'] && false === stripos( $er_mc['message'], 'socio' ) && 'approval' === $er_mrow['status'] && ! $acts->has_active_booking( $er_sid( $er_a ), (int) $wpdb->get_var( "SELECT id FROM $er_ppl WHERE tax_code = 'GLLPLA88H50L219H'" ) ), 'richiesta posto: con il codice fiscale di un socio chi scrive legge l\'esito neutro (la segreteria risponde) e non si prenota' );
+asem_ok( '' !== $er_to_req && false === stripos( $er_to_req, 'già socio' ) && false === stripos( $er_to_req, 'Gilda' ) && false !== stripos( $er_to_req, 'La segreteria la esamina' ), 'richiesta posto: l\'email a chi scrive non dice che il codice fiscale è di un socio' );
+asem_ok( false !== strpos( $er_to_staff, 'Gilda Socia' ) && false !== strpos( $er_to_staff, 'da verificare' ), 'richiesta posto: la segreteria riceve l\'avviso preciso con il nome del socio' );
+asem_ok( 1 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . \AssociazioneSemplice\Db::t( 'audit_log' ) . " WHERE action = 'event_request.member_tax_code' AND details LIKE '%Gilda Socia%'" ), 'richiesta posto: il registro riporta il nome del socio' );
+$er_mbox = $er::admin_box( $er_a, 'http://example.test/' );
+asem_ok( false !== strpos( $er_mbox, 'è quello del socio Gilda Socia' ) && false === strpos( $er_mbox, 'asem_event_request_approve' ) && false !== strpos( $er_mbox, 'asem_event_request_reject' ), 'richiesta posto: la scheda dell\'attività avverte del socio e non offre «Approva»' );
+$er_mmsg = (string) asem_throws( function () use ( $er, $er_mrow ) { $er::approve( (int) $er_mrow['id'] ); } );
+asem_ok( false !== strpos( $er_mmsg, 'Gilda Socia' ) && 'approval' === $wpdb->get_var( $wpdb->prepare( "SELECT status FROM $er_tbl WHERE id = %d", (int) $er_mrow['id'] ) ), 'richiesta posto: approvare comunque lo dice alla segreteria e la richiesta resta in attesa' );
+$er_mails_r = count( $er_mails );
+$er::reject( (int) $er_mrow['id'] );
+$er_rej = (string) end( $er_mails )['message'];
+asem_ok( 'rejected' === $wpdb->get_var( $wpdb->prepare( "SELECT status FROM $er_tbl WHERE id = %d", (int) $er_mrow['id'] ) ) && count( $er_mails ) > $er_mails_r && false === stripos( $er_rej, 'già socio' ) && false === stripos( $er_rej, 'Gilda' ), 'richiesta posto: il rifiuto della segreteria non nomina nessun socio' );
 // Scadenza del pagamento.
 $er_in_n = array_merge( $er_in, array( 'first_name' => 'Nora', 'last_name' => 'Pagamenti', 'email' => 'nora.pagamenti@example.com', 'tax_code' => 'NRIMRC92D15F205P', 'birth_date' => '1992-04-15' ) );
 $er::create( $er_in_n, $acts->get( $er_a ), $er_o );
@@ -10754,6 +10777,21 @@ $wpdb->update( $er_tbl, array( 'deadline' => wp_date( 'Y-m-d H:i:s', time() - 72
 $er::run();
 asem_ok( ! in_array( $er_course, $acts->active_activity_ids( (int) $er_nr['id'] ), true ) && 'expired' === $wpdb->get_var( $wpdb->prepare( "SELECT status FROM $er_tbl WHERE id = %d", $er_crid ) ), 'iscrizione corso: senza ricevuta entro il termine l\'iscrizione del non socio è annullata' );
 asem_ok( in_array( $er_course, $acts->active_activity_ids( $er_gid ), true ), 'iscrizione corso: l\'iscrizione del socio non si tocca' );
+// Corso, codice fiscale di un socio: la segreteria vede il motivo, chi ha chiesto non riceve nulla che nomini un socio.
+$er_gm = array_merge( $er_in_n, array( 'first_name' => 'Gilda', 'last_name' => 'Socia', 'email' => 'gcorso.test@example.com', 'tax_code' => 'GLLPLA88H50L219H', 'birth_date' => '1988-06-10' ) );
+$er::course_create( $er_gm, $er_ca );
+$er_gm_n = count( $er_mails );
+$er_gmc  = $er::confirm( $er_get( 'gcorso.test@example.com' ) );
+$er_gmid = (int) $wpdb->get_var( "SELECT id FROM $er_tbl WHERE email = 'gcorso.test@example.com'" );
+$er_gmsg = (string) asem_throws( function () use ( $er, $er_gmid ) { $er::approve( $er_gmid ); } );
+$er_gmail = '';
+foreach ( array_slice( $er_mails, $er_gm_n ) as $m ) {
+	if ( false !== strpos( is_array( $m['to'] ) ? implode( ',', $m['to'] ) : (string) $m['to'], 'gcorso.test@example.com' ) ) {
+		$er_gmail .= $m['message'];
+	}
+}
+asem_ok( $er_gmc['ok'] && 'approval' === $wpdb->get_var( $wpdb->prepare( "SELECT status FROM $er_tbl WHERE id = %d", $er_gmid ) ) && false !== strpos( $er_gmsg, 'Gilda Socia' ) && '' === $er_gmail, 'iscrizione corso: con il codice fiscale di un socio la richiesta resta in attesa, la segreteria legge il motivo e a chi ha chiesto non scrive nessuno' );
+$er::reject( $er_gmid );
 // Richiesta di partecipazione di un socio (evento con approvazione): in ordine di arrivo, decide la segreteria.
 $er_gid = (int) $wpdb->get_var( "SELECT id FROM $er_ppl WHERE tax_code = 'GLLPLA88H50L219H'" );
 asem_ok( null !== asem_throws( function () use ( $er, $er_sid, $er_a, $er_gid ) { $er::member_request( $er_sid( $er_a ), $er_gid ); } ), 'richiesta socio: un evento senza approvazione si prenota direttamente' );
