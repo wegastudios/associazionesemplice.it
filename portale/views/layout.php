@@ -8,7 +8,8 @@ $band   = $market ? \Portale\Site::band( $path ) : null;
 $bar    = $market ? \Portale\Site::bar( $path ) : array();
 $home   = rtrim( (string) \Portale\Config::get( 'base_url', '' ), '/' ) . '/'; // il logo riporta sempre alla home del dominio principale
 $area   = $logged ? '/account' : '/accedi';
-$items  = array( array( 'Funzioni', '/funzioni' ), array( 'Gestionale online', '/saas' ), array( 'Domande', '/domande' ), array( 'Supporto', $support_href ) );
+$sale   = \Portale\SaasSale::on(); // gestionale in vendita? (spento: niente voci del gestionale nei menu)
+$items  = array_values( array_filter( array( array( 'Funzioni', '/funzioni' ), $sale ? array( 'Gestionale online', '/saas' ) : null, array( 'Domande', '/domande' ), array( 'Supporto', $support_href ) ) ) );
 $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 ?><!doctype html>
 <html lang="it">
@@ -36,7 +37,7 @@ $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 	<details class="menu">
 		<summary aria-label="Menu"><?php echo icon( 'menu' ); ?><span>Menu</span></summary>
 		<div class="menu-panel">
-			<a href="/funzioni">Funzioni</a><a href="/saas">Gestionale online</a><a href="/prova">Prova la demo</a><a href="/prezzi">Prezzi</a><a href="/confronto">Confronto versioni</a><a href="/domande">Domande</a><a href="<?php echo e( $support_href ); ?>">Supporto</a>
+			<a href="/funzioni">Funzioni</a><?php if ( $sale ) : ?><a href="/saas">Gestionale online</a><?php endif; ?><a href="/prova">Prova la demo</a><a href="/prezzi">Prezzi</a><a href="/confronto">Confronto versioni</a><a href="/domande">Domande</a><a href="<?php echo e( $support_href ); ?>">Supporto</a>
 			<?php if ( ! empty( $_SESSION['staff'] ) ) : ?><a href="/wordpress/admin">Gestione</a><?php endif; ?>
 			<a class="menu-area" href="<?php echo e( $area ); ?>"><?php echo icon( 'user' ); ?><?php echo $logged ? 'Il mio account' : 'Accedi'; ?></a>
 		</div>
@@ -55,7 +56,7 @@ $v      = (string) @filemtime( __DIR__ . '/../public/assets/portale.css' );
 <?php endif; ?></main>
 <footer class="site-footer"><div class="wrap">
 	<div>© <?php echo date( 'Y' ); ?> Associazione Semplice<?php $fl = Portale\Legal::footerLine(); echo '' !== $fl ? '<br><small>' . e( $fl ) . '</small>' : ''; ?></div>
-	<div><a href="/free">Licenza gratuita</a><a href="/saas">Gestionale online</a><a href="/wordpress">Plugin WordPress</a><a href="/plugin">Il plugin</a><a href="/confronto">Confronto versioni</a><a href="<?php echo e( $support_href ); ?>">Supporto</a><a href="<?php echo e( $area ); ?>"><?php echo $logged ? 'Il mio account' : 'Accedi'; ?></a><a href="/privacy">Privacy</a><a href="/termini">Termini</a><a href="/cookie">Cookie</a><?php if ( \Portale\Tracking::banner() ) : ?><a href="#" data-cc-open>Preferenze cookie</a><?php endif; ?></div>
+	<div><a href="/free">Licenza gratuita</a><?php if ( $sale ) : ?><a href="/saas">Gestionale online</a><?php endif; ?><a href="/wordpress">Plugin WordPress</a><a href="/plugin">Il plugin</a><a href="/confronto">Confronto versioni</a><a href="<?php echo e( $support_href ); ?>">Supporto</a><a href="<?php echo e( $area ); ?>"><?php echo $logged ? 'Il mio account' : 'Accedi'; ?></a><a href="/privacy">Privacy</a><a href="/termini">Termini</a><a href="/cookie">Cookie</a><?php if ( \Portale\Tracking::banner() ) : ?><a href="#" data-cc-open>Preferenze cookie</a><?php endif; ?></div>
 </div></footer>
 <?php if ( $bar ) : ?>
 <nav class="bar" aria-label="Scorciatoie"><a class="btn" href="<?php echo e( $bar[0][1] ); ?>"><?php echo e( $bar[0][0] ); ?></a><a class="btn alt" href="<?php echo e( $bar[1][1] ); ?>"><?php echo e( $bar[1][0] ); ?></a></nav>
