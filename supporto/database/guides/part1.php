@@ -116,7 +116,7 @@ Associazione Semplice Pro è un plugin a parte, che si aggiunge a quello gratuit
 
 Dopo il controllo compaiono nel menu le funzioni incluse nel tuo piano.
 
-## Aggiornare
+$1Quando esce una nuova versione compare in Bacheca l'avviso «È disponibile la versione …». Se gli **aggiornamenti diretti** sono attivi, l'avviso dice **«Installalo da Bacheca → Aggiornamenti: i dati restano.»** e ha il pulsante **«Vai agli aggiornamenti»**: l'aggiornamento si installa da lì, come per gli altri plugin. Altrimenti l'avviso ti porta a scaricare il pacchetto dall'area clienti, da caricare in **Plugin → Aggiungi nuovo**: i dati restano.
 
 Il plugin gratuito e Pro hanno numeri di versione diversi, ma **vanno aggiornati insieme**: con un plugin gratuito vecchio, il Pro nuovo si sospende e mostra un avviso. Aggiorna prima il gratuito, poi Pro; se il sito segnala che i due non sono compatibili, aggiorna entrambi all'ultima versione.
 
@@ -135,8 +135,12 @@ La copia di sicurezza è un file ZIP con tutti i dati del plugin: soci, attivit�
 
 1. Vai in **Strumenti → Copia di sicurezza**.
 2. Scegli se includere gli allegati.
-3. Premi il pulsante per creare la copia e scarica il file.
+3. Scrivi la **tua password di amministratore** e premi il pulsante per creare la copia: **senza password non si scarica nulla**. Se è sbagliata compare «La password non è corretta: non è stato scaricato nulla.»
 4. Conservalo in un posto sicuro, fuori dal sito.
+
+La password serve **anche per scaricare le copie salvate prima dei ripristini** (le trovi sotto «Copie di sicurezza fatte prima dei ripristini»): scrivi la password e premi il nome della copia. Un vecchio indirizzo diretto di scarico non scarica più nulla: ti riporta alla pagina, dove scrivi la password.
+
+**Dopo 5 password sbagliate in 15 minuti** il plugin si ferma per qualche minuto e non controlla nemmeno più la password: compare «Troppi tentativi: riprova tra qualche minuto.» Il blocco vale **insieme per scarico, ripristino e azzeramento dei dati**; con la password giusta il conteggio riparte da zero.
 
 Se l'ultima copia ha più di 30 giorni, la Bacheca te lo ricorda.
 
@@ -170,7 +174,7 @@ Serve, per esempio, dopo le prove prima di iniziare davvero. Solo gli amministra
 
 ## Prima di cominciare
 
-Il sito non conserva copie dei dati cancellati, per rispetto della privacy. Prima di azzerare devi **scaricare una copia completa con gli allegati** (vale poco tempo): senza lo scarico l'azzeramento non parte. Conservala tu.
+Il sito non conserva copie dei dati cancellati, per rispetto della privacy. Prima di azzerare devi **scaricare una copia completa con gli allegati** (vale poco tempo), scrivendo la tua password di amministratore: senza lo scarico l'azzeramento non parte. Conservala tu.
 
 ## Cosa fare
 
@@ -182,6 +186,8 @@ Il sito non conserva copie dei dati cancellati, per rispetto della privacy. Prim
 4. Nel riepilogo conferma con la spunta, scrivi la frase **AZZERA TUTTO** e inserisci la tua password.
 
 La numerazione riparte da 1. L'operazione resta nel registro azioni.
+
+Anche qui, **dopo 5 password sbagliate in 15 minuti** compare «Troppi tentativi: riprova tra qualche minuto.» e per un po' la password non si controlla (il blocco è lo stesso del ripristino e dello scarico della copia).
 MD,
     ],
     [
