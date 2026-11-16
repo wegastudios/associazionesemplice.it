@@ -32,6 +32,16 @@ final class PaymentItemsTest extends TestCase {
 		}
 	}
 
+	public function test_public_id_is_random_uuid_v4(): void {
+		$seen = array();
+		for ( $n = 0; $n < 200; $n++ ) {
+			$id = I::new_public_id();
+			$this->assertMatchesRegularExpression( '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/', $id );
+			$seen[ $id ] = true;
+		}
+		$this->assertCount( 200, $seen );
+	}
+
 	public function test_total_grouping_and_decimal(): void {
 		$items = $this->items();
 		$this->assertSame( 3800, I::total( $items ) );
