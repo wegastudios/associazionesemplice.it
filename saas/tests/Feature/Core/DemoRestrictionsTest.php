@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Core\Contracts\DemoScale;
+use Illuminate\Support\Facades\Route;
 
 dataset('scritture della demo', [
     'password' => ['put', '/user/password'],
@@ -45,4 +46,21 @@ it('fuori dalla demo non cambia nulla', function (): void {
 
     $this->actingAs($user)->put('/gestionale/profilo/email', ['email' => 'nuova@example.com', 'password' => $this::PASSWORD])->assertSessionHasNoErrors();
     expect($user->refresh()->email)->toBe('nuova@example.com');
+});
+
+it('nella demo una rotta di scrittura mai vista viene rifiutata, una sotto un\'azione permessa passa', function (): void {
+    config(['saas.demo.enabled' => true]);
+    Route::middleware('web')->group(function (): void {
+        Route::post('/gestionale/inventata-domani', fn () => response('fatto'));
+        Route::post('/gestionale/configurazione/passo-nuovo', fn () => response('fatto'));
+        Route::post('/gestionale/soci/azione-nuova', fn () => response('fatto'));
+        Route::post('/area/azione-del-socio', fn () => response('fatto'));
+        Route::get('/gestionale/inventata-domani', fn () => response('letto'));
+    });
+
+    $this->post('/gestionale/inventata-domani')->assertSessionHasErrors(['ledger' => DemoScale::CHANGE_OFF]);
+    $this->post('/gestionale/configurazione/passo-nuovo')->assertSessionHasErrors(['ledger' => DemoScale::CHANGE_OFF]);
+    $this->get('/gestionale/inventata-domani')->assertOk()->assertSee('letto');
+    $this->post('/gestionale/soci/azione-nuova')->assertOk()->assertSee('fatto');
+    $this->post('/area/azione-del-socio')->assertOk()->assertSee('fatto');
 });
