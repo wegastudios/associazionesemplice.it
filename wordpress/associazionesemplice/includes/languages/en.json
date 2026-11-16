@@ -2609,6 +2609,7 @@
   "Per confermare la richiesta tocca il pulsante." : "To confirm your request, tap the button.",
   "La pagina è scaduta: riapri il link che hai ricevuto per email." : "The page has expired: open the link you received by email again.",
   "Conferma della richiesta" : "Confirm your request",
-  "Conferma" : "Confirm"
+  "Conferma" : "Confirm",
+  "Troppi tentativi: riprova tra qualche minuto." : "Too many attempts: try again in a few minutes."
  }
 }
