@@ -203,4 +203,18 @@ Nella pagina **«Verifica delle ricevute»** (vedi [Ricevute in PDF e attestazio
 Se i codici di sicurezza sono cambiati o il database è stato copiato da un altro sito, il programma dice che la chiave non è valida su questo sito: i file cifrati non si leggono e i nuovi non si salvano finché non viene sistemata. Si usa la frase; per questo va conservata. Vedi anche [Copia di sicurezza e ripristino](guida:copia-di-sicurezza-e-ripristino).
 MD,
     ],
+    [
+        'topic' => 'domande-frequenti', 'section' => 'Licenza e dati', 'slug' => 'compare-errore-imprevisto-con-un-codice',
+        'title' => 'Compare «Errore imprevisto» con un codice: cosa faccio?',
+        'body' => <<<'MD'
+> Disponibile in: Free, {piano_contabile}, {piano_fiscale}
+
+Se nel pannello compare **«Errore imprevisto (codice …)»**, qualcosa non è andato come doveva e il plugin non ha potuto finire l'operazione.
+
+1. **Riprova** una volta: a volte era solo un problema momentaneo.
+2. **Se si ripete**, scrivi al supporto di Associazione Semplice **indicando il codice** che vedi nel messaggio. Con quel codice ritroviamo subito che cosa è successo.
+
+Dì anche **che cosa stavi facendo** (per esempio «registravo un incasso»).
+MD,
+    ],
 ];

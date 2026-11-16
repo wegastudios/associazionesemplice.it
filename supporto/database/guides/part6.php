@@ -176,7 +176,7 @@ MD,
         'body' => <<<'MD'
 Sì, con **Pro** (Contabile o Fiscale): i pagamenti online funzionano con **Stripe**, **PayPal**, **SumUp** (anche insieme) o, in alternativa, con **WooCommerce**. Il socio paga dall'area soci e l'incasso entra da solo in prima nota, con la ricevuta.
 
-Nel **plugin gratuito** puoi comunque indicare le coordinate del bonifico, registrare a mano contanti e bonifici e ricevere **donazioni** con un modulo che porta alla pagina di PayPal. Vedi [Attivare i pagamenti online](guida:attivare-stripe-o-paypal).
+$1 che le modificano solo gli amministratori: ogni modifica, anche con un ripristino di copia, è scritta nel registro azioni (con l'IBAN mascherato) e avvisata per email a tutti gli amministratori; registrare a mano contanti e bonifici e ricevere **donazioni** con un modulo che porta alla pagina di PayPal. Vedi [Attivare i pagamenti online](guida:attivare-stripe-o-paypal).
 MD,
     ],
     [
