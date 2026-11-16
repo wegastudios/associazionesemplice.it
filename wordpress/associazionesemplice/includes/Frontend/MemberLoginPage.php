@@ -8,6 +8,7 @@ use AssociazioneSemplice\Limits;
 use AssociazioneSemplice\MemberLogin;
 use AssociazioneSemplice\MemberSession;
 use AssociazioneSemplice\Plugin;
+use AssociazioneSemplice\PreSession;
 use AssociazioneSemplice\SessionToken;
 use AssociazioneSemplice\Settings;
 
@@ -25,6 +26,7 @@ final class MemberLoginPage {
 	const SENT    = 'Se l\'email è di un socio ti abbiamo scritto: apri il link che trovi nell\'email (controlla anche la posta indesiderata).';
 	const FAIL    = 'Email, codice o password non corretti. Controlla e riprova, oppure premi «Mandami un link» per entrare senza password.';
 	const BLOCKED = 'Troppi tentativi da questa connessione. Aspetta un\'ora e riprova, oppure chiedi aiuto alla segreteria.';
+	const NOT_FROM_PAGE = 'Il modulo deve partire dalla pagina di accesso, oppure è scaduto: ricarica la pagina e riprova.';
 
 	public static function register(): void {
 		add_action( 'template_redirect', array( __CLASS__, 'handle' ), 1 );
@@ -48,6 +50,49 @@ final class MemberLoginPage {
 	private static function post( string $k ): string {
 		$d = Plugin::post_data(); // phpcs:ignore WordPress.Security.NonceVerification -- il controllo è in handle()
 		return isset( $d[ $k ] ) && is_string( $d[ $k ] ) ? trim( $d[ $k ] ) : '';
+	}
+
+	/** Il cookie di pre-sessione ricevuto con questa richiesta (vuoto se manca o non è valido). */
+	private static function pre_cookie(): string {
+		$c = isset( $_COOKIE[ PreSession::COOKIE ] ) ? sanitize_text_field( wp_unslash( $_COOKIE[ PreSession::COOKIE ] ) ) : '';
+		return PreSession::valid( $c, time() ) ? $c : '';
+	}
+
+	/** Il modulo arriva dal browser che ha aperto la pagina di accesso? (il segno si ricava dal cookie di pre-sessione) */
+	public static function from_login_page( string $given ): bool {
+		return PreSession::check( $given, self::pre_cookie(), 'member_login', MemberSession::secret(), time() );
+	}
+
+	/** Dà il cookie di pre-sessione a chi non lo ha (solo sulle pagine di accesso, che non si salvano in cache). Vero se il cookie c'è. */
+	public static function ensure_pre_session(): bool {
+		if ( '' !== self::pre_cookie() ) {
+			return true;
+		}
+		if ( headers_sent() ) {
+			return false;
+		}
+		Views::no_cache(); // la pagina che dà il cookie non finisce nella cache di pagina
+		$value = PreSession::make( time() );
+		setcookie(
+			PreSession::COOKIE,
+			$value,
+			array(
+				'expires'  => time() + PreSession::TTL,
+				'path'     => defined( 'COOKIEPATH' ) && COOKIEPATH ? COOKIEPATH : '/',
+				'domain'   => defined( 'COOKIE_DOMAIN' ) && COOKIE_DOMAIN ? COOKIE_DOMAIN : '',
+				'secure'   => is_ssl(),
+				'httponly' => true,
+				'samesite' => 'Lax',
+			)
+		);
+		$_COOKIE[ PreSession::COOKIE ] = $value;
+		return true;
+	}
+
+	/** Campo nascosto del modulo di accesso: il segno derivato dal cookie di pre-sessione (vuoto se il cookie non c'è). */
+	private static function guard_field(): string {
+		$c = self::pre_cookie();
+		return '<input type="hidden" name="_asem_nonce" value="' . esc_attr( '' !== $c ? PreSession::token( $c, 'member_login', MemberSession::secret() ) : '' ) . '">';
 	}
 
 	/** Troppi tentativi dalla stessa connessione? Conta ogni invio. */
@@ -120,8 +165,8 @@ final class MemberLoginPage {
 						}
 					}
 				}
-			} elseif ( ! wp_verify_nonce( self::post( '_asem_nonce' ), 'asem_member_login' ) ) {
-				$err = 'Sessione scaduta: riprova.';
+			} elseif ( ! self::from_login_page( self::post( '_asem_nonce' ) ) ) {
+				$err = self::NOT_FROM_PAGE;
 			} elseif ( self::throttled() ) {
 				$err = self::BLOCKED;
 			} elseif ( 'request' === $do || 'recover' === $do ) {
@@ -142,6 +187,10 @@ final class MemberLoginPage {
 			}
 		}
 
+		Views::no_cache(); // pagina di accesso: mai in cache, con o senza cookie
+		if ( ! MemberSession::current() ) {
+			self::ensure_pre_session(); // il cookie si dà qui: dopo aver controllato l'invio ricevuto e prima di scrivere la pagina
+		}
 		CardVerify::send_headers();
 		header( 'Cache-Control: no-store, max-age=0' );
 		CardVerify::output( self::page( $token, $msg, $err, $step, $mail, $back ) );
@@ -173,7 +222,7 @@ final class MemberLoginPage {
 
 	private static function form( string $do, string $inner, string $button, bool $csrf = false, string $back = '' ): string {
 		list( , $btn ) = self::style();
-		$guard = $csrf ? '<input type="hidden" name="_csrf" value="' . esc_attr( MemberSession::csrf( 'account' ) ) . '">' : wp_nonce_field( 'asem_member_login', '_asem_nonce', false, false );
+		$guard = $csrf ? '<input type="hidden" name="_csrf" value="' . esc_attr( MemberSession::csrf( 'account' ) ) . '">' : self::guard_field();
 		return '<form method="post" action="' . esc_url( self::url() ) . '"><input type="hidden" name="asem_ml_do" value="' . esc_attr( $do ) . '">' . $guard
 			. ( '' !== $back ? '<input type="hidden" name="_back" value="' . esc_url( $back ) . '">' : '' ) . $inner
 			. '<button type="submit" style="' . $btn . '">' . esc_html( $button ) . '</button></form>';
@@ -191,10 +240,14 @@ final class MemberLoginPage {
 
 	/** Modulo email e password per l'area riservata (quando non si è entrati): quello predefinito dei soci senza utente WordPress. */
 	public static function inline_login( string $back ): string {
-		$f = '<p><label>Email<br><input type="email" name="email" required autocomplete="username" class="asemf-input"></label></p>'
+		Views::no_cache(); // il modulo porta il cookie e il segno di chi lo apre: la pagina non va conservata
+		if ( ! self::ensure_pre_session() ) { // niente cookie di pre-sessione (la pagina è già partita): si passa dalla pagina di accesso, che lo dà
+			return '<p><a class="asemf-btn wp-element-button" href="' . esc_url( add_query_arg( '_back', rawurlencode( $back ), self::url() ) ) . '">Accedi</a></p>';
+		}
+		$f ='<p><label>Email<br><input type="email" name="email" required autocomplete="username" class="asemf-input"></label></p>'
 			. '<p><label>Password<br><input type="password" name="password" required autocomplete="current-password" class="asemf-input"></label></p>';
 		return '<form class="asemf-form" method="post" action="' . esc_url( self::url() ) . '"><input type="hidden" name="asem_ml_do" value="password_login">'
-			. wp_nonce_field( 'asem_member_login', '_asem_nonce', false, false ) . '<input type="hidden" name="_back" value="' . esc_url( $back ) . '">' . $f
+			. self::guard_field() . '<input type="hidden" name="_back" value="' . esc_url( $back ) . '">' . $f
 			. '<button type="submit" class="asemf-btn wp-element-button">Accedi</button></form>';
 	}
 
@@ -239,7 +292,7 @@ final class MemberLoginPage {
 		}
 		if ( '' !== $token && SessionToken::is_well_formed( $token ) ) { // il link apre solo la conferma: i programmi che aprono i link delle email non lo consumano
 			$body .= '<div class="n">Entra</div><p>Premi il pulsante per entrare.</p>'
-				. '<form method="post" action="' . esc_url( add_query_arg( 'asem_ml', $token, home_url( '/' ) ) ) . '"><input type="hidden" name="asem_ml_do" value="token">' . wp_nonce_field( 'asem_member_login', '_asem_nonce', false, false )
+				. '<form method="post" action="' . esc_url( add_query_arg( 'asem_ml', $token, home_url( '/' ) ) ) . '"><input type="hidden" name="asem_ml_do" value="token">' . self::guard_field()
 				. '<button type="submit" style="' . self::style()[1] . '">Entra</button></form>';
 			return CardVerify::layout( 'Accesso', Assets::accent( '#2271b1' ), $body );
 		}
@@ -273,7 +326,7 @@ final class MemberLoginPage {
 		list( $input, $btn ) = self::style();
 		$main = str_replace( 'width:100%;', '', $btn ) . ';flex:1 1 200px;min-height:48px';
 		$alt  = str_replace( 'width:100%;', '', $btn ) . ';flex:1 1 200px;min-height:48px;background:#fff;color:' . Assets::accent( '#2271b1' ) . ';border:2px solid ' . Assets::accent( '#2271b1' );
-		return '<form method="post" action="' . esc_url( self::url() ) . '">' . wp_nonce_field( 'asem_member_login', '_asem_nonce', false, false )
+		return '<form method="post" action="' . esc_url( self::url() ) . '">' . self::guard_field()
 			. ( '' !== $back ? '<input type="hidden" name="_back" value="' . esc_url( $back ) . '">' : '' )
 			. self::field( 'Email', 'email', 'email', 'username', $mail )
 			. '<label>Password<input style="' . $input . '" type="password" name="password" autocomplete="current-password"></label>'

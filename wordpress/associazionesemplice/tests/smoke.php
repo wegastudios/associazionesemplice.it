@@ -10107,6 +10107,41 @@ $ms_fake->setValue( null, null );
 MemberSession::flush();
 asem_ok( null !== MemberSession::session_person() && 'ok' === MemberLogin::password_state( $pw_p ), 'recupero: dopo la nuova password si naviga' );
 asem_ok( null === MemberLogin::login_with_password( $pw_addr, 'Prima password 1' ) && $pw_p === MemberLogin::login_with_password( $pw_addr, 'Seconda password 2' ), 'password: vale solo l\'ultima' );
+// Accesso dei soci: il modulo vale solo dal browser che ha aperto la pagina di accesso (cookie di pre-sessione)
+$ps_cls   = \AssociazioneSemplice\Frontend\MemberLoginPage::class;
+$ps_name  = \AssociazioneSemplice\PreSession::COOKIE;
+$ps_guard = function ( string $html ): string {
+	return 1 === preg_match( '/name="_asem_nonce" value="([a-f0-9]*)"/', $html, $m ) ? $m[1] : 'MANCA';
+};
+unset( $_COOKIE[ $ps_name ], $_COOKIE[ $pw_cookie ] ); // da visitatore non collegato
+$ms_fake->setValue( null, null );
+asem_ok( '' === $ps_guard( $ps_cls::page( '', '', '', '', '' ) ) && ! $ps_cls::from_login_page( '' ), 'accesso soci: senza cookie di pre-sessione il modulo non ha il segno e l\'invio è rifiutato' );
+$_COOKIE[ $ps_name ] = \AssociazioneSemplice\PreSession::make( time() );
+$ps_page  = $ps_cls::page( '', '', '', '', '' );
+$ps_sign  = $ps_guard( $ps_page );
+asem_ok( 64 === strlen( $ps_sign ) && $ps_cls::from_login_page( $ps_sign ), 'accesso soci: con il cookie giusto l\'invio dalla pagina di accesso è accettato' );
+asem_ok( $ps_sign === $ps_guard( $ps_cls::page( SessionToken::generate(), '', '', '', '' ) ) && false !== strpos( $ps_cls::page( SessionToken::generate(), '', '', '', '' ), 'value="token"' ), 'accesso soci: anche il modulo «Entra» del link porta il segno del cookie' );
+asem_ok( $ps_sign === $ps_guard( $ps_cls::page( '', '', '', 'code', 'socio@example.org' ) ) && $ps_sign === $ps_guard( $ps_cls::page( '', '', '', 'reset', '' ) ), 'accesso soci: i moduli del codice e del recupero portano lo stesso segno' );
+$_COOKIE[ $ps_name ] = \AssociazioneSemplice\PreSession::make( time() ); // un altro browser
+asem_ok( ! $ps_cls::from_login_page( $ps_sign ), 'accesso soci: l\'invio col segno di un altro cookie è rifiutato' );
+unset( $_COOKIE[ $ps_name ] );
+asem_ok( ! $ps_cls::from_login_page( $ps_sign ), 'accesso soci: l\'invio senza cookie è rifiutato anche con un segno copiato dalla pagina' );
+$_COOKIE[ $ps_name ] = ( time() - 3 * HOUR_IN_SECONDS ) . '.' . SessionToken::generate();
+asem_ok( ! $ps_cls::from_login_page( \AssociazioneSemplice\PreSession::token( $_COOKIE[ $ps_name ], 'member_login', MemberSession::secret() ) ), 'accesso soci: un cookie scaduto non vale' );
+asem_ok( false !== strpos( $ps_cls::NOT_FROM_PAGE, 'pagina di accesso' ) && false === stripos( $ps_cls::NOT_FROM_PAGE, 'nonce' ), 'accesso soci: il messaggio di rifiuto è chiaro e neutro' );
+delete_transient( 'asem_ml_m_' . md5( $pw_addr ) );
+MemberLogin::request( $pw_addr );
+list( $ps_tok ) = $ml_pull();
+asem_ok( $pw_p === MemberLogin::login_with_token( $ps_tok ) && null === MemberLogin::login_with_token( $ps_tok ), 'accesso soci: il link resta monouso' );
+$ms_fake->setValue( null, null );
+$_COOKIE[ $ps_name ] = \AssociazioneSemplice\PreSession::make( time() );
+unset( $_COOKIE[ $pw_cookie ] );
+asem_ok( false !== strpos( $ps_cls::inline_login( 'https://example.org/area/' ), 'name="password"' ) && 64 === strlen( $ps_guard( $ps_cls::inline_login( 'https://example.org/area/' ) ) ), 'accesso soci: il modulo email e password dell\'area soci porta il segno del cookie' );
+$ps_src = (string) file_get_contents( ASEM_DIR . 'includes/Frontend/MemberLoginPage.php' );
+preg_match( '/function inline_login\( string \$back \): string \{\s*Views::no_cache\(\);/', $ps_src, $ps_m1 );
+preg_match( '/headers_sent\(\) \) \{\s*return false;\s*\}\s*Views::no_cache\(\);[^\r\n]*\s*\$value = PreSession::make/', $ps_src, $ps_m2 );
+asem_ok( defined( 'DONOTCACHEPAGE' ) && $ps_m1 && $ps_m2, 'accesso soci: le pagine con il modulo di accesso non finiscono nella cache di pagina (inline_login ed emissione del cookie chiamano no_cache)' );
+asem_ok( false !== strpos( (string) file_get_contents( ASEM_DIR . 'includes/Frontend/MemberLoginPage.php' ), 'from_login_page( self::post( \'_asem_nonce\' ) )' ) && false === strpos( (string) file_get_contents( ASEM_DIR . 'includes/Frontend/MemberLoginPage.php' ), 'wp_verify_nonce' ), 'accesso soci: l\'invio dei moduli di accesso passa dal controllo del cookie' );
 asem_ok( false !== strpos( \AssociazioneSemplice\Frontend\Views::login_prompt(), 'name="password"' ) && false !== strpos( \AssociazioneSemplice\Frontend\Views::login_prompt(), 'Password dimenticata' ), 'password: il modulo dell\'area soci è email e password, con il recupero' );
 unset( $_COOKIE[ $pw_cookie ] );
 $ms_fake->setValue( null, null );
