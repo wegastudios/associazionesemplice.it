@@ -740,7 +740,7 @@ Cose da sapere:
 
 ## La verifica in due passaggi
 
-A ogni accesso, oltre alla password, serve un **codice di 6 cifre** generato da un'app sul telefono (per esempio Google Authenticator, Microsoft Authenticator o 1Password). Protegge i dati dei soci anche se qualcuno scopre la tua password. **Per lavorare nel gestionale può essere obbligatoria**: in quel caso la pagina te lo dice e non puoi disattivarla.
+A ogni accesso, oltre alla password, serve un **codice di 6 cifre** generato da un'app sul telefono (per esempio Google Authenticator, Microsoft Authenticator o 1Password). Protegge i dati dei soci anche se qualcuno scopre la tua password. **Per chi lavora nel gestionale è obbligatoria**: se il gestionale ti chiede di attivarla, **non puoi continuare finché non l'hai attivata**, e poi **non puoi più disattivarla**.
 
 **Attivarla:**
 
@@ -754,9 +754,9 @@ A ogni accesso, oltre alla password, serve un **codice di 6 cifre** generato da 
 **Gestirla** (dal profilo, **«Gestisci»**):
 
 - **«Genera nuovi codici di recupero»**: i vecchi **non valgono più**;
-- **«Disattiva la verifica»**: per entrare basterà la password. Se la verifica è obbligatoria, questo pulsante non c'è.
+- Per chi lavora nel gestionale **non c'è nessun pulsante per disattivarla**: è obbligatoria.
 
-**Se perdi il telefono e i codici di recupero**, scrivi al supporto di Associazione Semplice: non puoi entrare da solo.
+**Conserva i codici di recupero in un posto sicuro: se perdi il telefono e anche i codici, non puoi più entrare.**
 
 ## I dispositivi collegati
 
