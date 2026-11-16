@@ -39,7 +39,13 @@ final class EmployeesPage {
 		$uid = (int) ( $p['user_id'] ?? 0 );
 		Employees::set_period( $uid, array( 'from' => (string) ( $p['from'] ?? '' ), 'to' => (string) ( $p['to'] ?? '' ) ) );
 		$given = array_map( 'strval', (array) ( $p['perm'] ?? array() ) ); // le caselle spuntate sono i permessi che il dipendente ha
-		Employees::set_denied( $uid, array_values( array_diff( EmployeeRules::keys(), $given ) ) );
+		$denied = array_diff( EmployeeRules::enforced_keys(), $given );
+		foreach ( Employees::denied_for( $uid ) as $kept ) { // le aree «in arrivo» non hanno la spunta attiva: restano come sono
+			if ( in_array( $kept, EmployeeRules::pending_keys(), true ) ) {
+				$denied[] = $kept;
+			}
+		}
+		Employees::set_denied( $uid, array_values( $denied ) );
 		return array( Ui::url( 'asem-employees' ), 'Dipendente aggiornato.' );
 	}
 
@@ -90,7 +96,8 @@ final class EmployeesPage {
 				. '<span class="description">Facoltativi: senza date è in servizio. Fuori dal periodo non può usare il gestionale e non conta tra i lavoratori del RUNTS.</span></p>';
 			echo '<fieldset><legend><strong>Permessi</strong> <span class="description">(togli la spunta alle aree che non gli servono)</span></legend>';
 			foreach ( EmployeeRules::labels() as $key => $label ) {
-				echo '<p style="margin:2px 0"><label><input type="checkbox" name="perm[]" value="' . esc_attr( $key ) . '"' . checked( ! in_array( $key, $e['denied'], true ), true, false ) . '> ' . esc_html( $label ) . '</label></p>';
+				$soon = in_array( $key, EmployeeRules::pending_keys(), true ); // l'area non ha ancora i suoi controlli: spunta disattivata
+				echo '<p style="margin:2px 0"><label><input type="checkbox" name="perm[]" value="' . esc_attr( $key ) . '"' . checked( ! in_array( $key, $e['denied'], true ), true, false ) . ( $soon ? ' disabled' : '' ) . '> ' . esc_html( $label ) . ( $soon ? ' <span class="description">' . esc_html( \AssociazioneSemplice\Texts::t( '(in arrivo)' ) ) . '</span>' : '' ) . '</label></p>';
 			}
 			echo '</fieldset><p><button class="button button-primary">Salva</button></p>';
 			Ui::form_close();

@@ -2640,6 +2640,7 @@
   "Un amministratore di WordPress non si può togliere né limitare dal plugin." : "A WordPress administrator cannot be removed or limited from the plugin.",
   "Rivedi i permessi dei dipendenti: ora si danno per area." : "Review your employees' permissions: they are now given by area.",
   "Apri i dipendenti" : "Open employees",
+  "(in arrivo)" : "(coming soon)",
   "Non puoi togliere l'accesso al ruolo con cui stai operando: te lo toglieresti da solo. Chiedi a un amministratore." : "You cannot remove access from the role you are working with: you would lock yourself out. Ask an administrator."
  }
 }

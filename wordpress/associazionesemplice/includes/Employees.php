@@ -118,17 +118,22 @@ final class Employees {
 
 	const OPT_AREAS_SEEN = 'asem_employee_areas_seen'; // segno «visto»: qualcuno con titolo ha aperto la pagina dei dipendenti dopo il passaggio ai permessi per area
 
-	/** Va mostrato in Bacheca l'avviso «rivedi i permessi dei dipendenti»? Solo a chi ha titolo, solo se esistono dipendenti, finché la pagina non è stata aperta una volta. */
-	public static function areas_review_pending( int $user_id ): bool {
-		if ( ! self::can_manage( $user_id ) || get_option( self::OPT_AREAS_SEEN ) ) {
+	/**
+	 * Va mostrato in Bacheca l'avviso «rivedi i permessi dei dipendenti»? Solo quando tutte le aree hanno le loro porte attive, solo a chi ha titolo,
+	 * solo se esistono dipendenti, finché la pagina non è stata aperta una volta. Il segno «visto» si salva solo a porte tutte attive: prima non c'è niente da rivedere.
+	 *
+	 * @param bool|null $ready tutte le aree hanno i controlli (null = lo dice EmployeeRules; serve alle prove)
+	 */
+	public static function areas_review_pending( int $user_id, ?bool $ready = null ): bool {
+		if ( ! ( $ready ?? array() === EmployeeRules::pending_keys() ) || ! self::can_manage( $user_id ) || get_option( self::OPT_AREAS_SEEN ) ) {
 			return false;
 		}
 		return (bool) get_users( array( 'role' => Plugin::ROLE_EMPLOYEE, 'number' => 1, 'fields' => 'ID' ) );
 	}
 
 	/** Chi ha titolo ha aperto la pagina dei dipendenti: l'avviso non si mostra più. */
-	public static function mark_areas_seen( int $user_id ): void {
-		if ( self::can_manage( $user_id ) && ! get_option( self::OPT_AREAS_SEEN ) ) {
+	public static function mark_areas_seen( int $user_id, ?bool $ready = null ): void {
+		if ( ( $ready ?? array() === EmployeeRules::pending_keys() ) && self::can_manage( $user_id ) && ! get_option( self::OPT_AREAS_SEEN ) ) {
 			update_option( self::OPT_AREAS_SEEN, 1, false );
 		}
 	}

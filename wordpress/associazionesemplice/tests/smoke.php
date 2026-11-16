@@ -11468,11 +11468,18 @@ asem_ok( null === $em_blocked( 'admin.php', array( 'page' => 'asem-people' ) ) &
 asem_ok( ! empty( Audit::recent( 1, 'employee.permission_removed' ) ), 'dipendente: togliere un\'area nuova resta nel registro azioni' );
 // avviso in Bacheca: fisso, solo a chi ha titolo, solo se esistono dipendenti, finché la pagina dei dipendenti non è stata aperta
 delete_option( \AssociazioneSemplice\Employees::OPT_AREAS_SEEN );
-asem_ok( \AssociazioneSemplice\Employees::areas_review_pending( 1 ) && ! \AssociazioneSemplice\Employees::areas_review_pending( $em_uid ) && ! \AssociazioneSemplice\Employees::areas_review_pending( 0 ), 'permessi per area: l\'avviso in Bacheca è solo per chi ha titolo' );
-\AssociazioneSemplice\Employees::mark_areas_seen( $em_uid );
-asem_ok( \AssociazioneSemplice\Employees::areas_review_pending( 1 ), 'permessi per area: aprire la pagina senza titolo non toglie l\'avviso' );
+asem_ok( ! \AssociazioneSemplice\Employees::areas_review_pending( 1 ) && ( array() !== \AssociazioneSemplice\EmployeeRules::pending_keys() ), 'permessi per area: finché le porte di tutte le aree non sono attive l\'avviso non compare' );
 \AssociazioneSemplice\Employees::mark_areas_seen( 1 );
-asem_ok( ! \AssociazioneSemplice\Employees::areas_review_pending( 1 ), 'permessi per area: aperta la pagina dei dipendenti, l\'avviso sparisce' );
+asem_ok( ! get_option( \AssociazioneSemplice\Employees::OPT_AREAS_SEEN ), 'permessi per area: aprire la pagina prima delle porte non segna l\'avviso come visto' );
+// salvataggio dalla pagina: le aree «in arrivo» non cambiano, quelle attive seguono le spunte
+Admin\EmployeesPage::save( array( 'user_id' => $em_uid, 'perm' => array( 'courses' ) ) );
+asem_ok( array( 'people', 'events', 'collect', 'expenses', 'refunds', 'funds' ) === \AssociazioneSemplice\Employees::denied_for( $em_uid ), 'permessi per area: il modulo toglie le aree attive non spuntate e lascia com\'erano quelle «in arrivo»' );
+\AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'people', 'courses' ) );
+asem_ok( \AssociazioneSemplice\Employees::areas_review_pending( 1, true ) && ! \AssociazioneSemplice\Employees::areas_review_pending( $em_uid, true ) && ! \AssociazioneSemplice\Employees::areas_review_pending( 0, true ), 'permessi per area: l\'avviso in Bacheca è solo per chi ha titolo' );
+\AssociazioneSemplice\Employees::mark_areas_seen( $em_uid, true );
+asem_ok( \AssociazioneSemplice\Employees::areas_review_pending( 1, true ), 'permessi per area: aprire la pagina senza titolo non toglie l\'avviso' );
+\AssociazioneSemplice\Employees::mark_areas_seen( 1, true );
+asem_ok( ! \AssociazioneSemplice\Employees::areas_review_pending( 1, true ), 'permessi per area: aperta la pagina dei dipendenti, l\'avviso sparisce' );
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array() );
 $em_try = function ( int $who ) use ( $em_uid ) {
 	wp_set_current_user( $who );
