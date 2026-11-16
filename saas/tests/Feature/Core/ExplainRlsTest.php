@@ -67,5 +67,5 @@ it('stampa i piani di esecuzione con la policy RLS attuale e con quella proposta
         $owner->statement("ALTER POLICY org_isolation ON app.people USING ({$original})");
     }
 
-    throw new RuntimeException("\nPIANI_RLS_INIZIO\n{$report}\nPIANI_RLS_FINE\n".$backup);
+    throw new RuntimeException("\nPIANI_RLS_INIZIO\n{$report}\nPIANI_RLS_FINE\n");
 });
