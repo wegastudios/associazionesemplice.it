@@ -11533,6 +11533,7 @@ asem_ok( array() === Admin\PersonSearch::find( 'Ce' ) && array() === Admin\Perso
 $em_hit = Admin\PersonSearch::find( 'Cecilia Certa' );
 asem_ok( 1 === count( $em_hit ) && (int) $bc_a === (int) $em_hit[0]['id'] && array( 'id', 'label', 'quota', 'type' ) === ( function ( $a ) { sort( $a ); return $a; } )( array_keys( $em_hit[0] ) ), 'ricerca minima: di ogni persona solo id, nome con tessera, tipo e quota' );
 asem_ok( array() === Admin\PersonSearch::find( 'cecilia.certa@example.com' ) && array() === Admin\PersonSearch::find( 'RSSMRA85T50A562W' ), 'ricerca minima: non si cerca per email né codice fiscale' );
+asem_ok( array() === Admin\PersonSearch::find( 'cecilia.c' ) && array() === Admin\PersonSearch::find( 'cecilia@' ) && array() === Admin\PersonSearch::find( 'RSSMRA85' ), 'ricerca minima: un pezzo di email o di codice fiscale non trova nessuno' );
 asem_ok( null === $em_blocked( 'admin-post.php', array( 'action' => 'asem_person_search' ) ), 'ricerca minima: la porta è aperta a chi ha incassi, corsi o eventi' );
 wp_set_current_user( 1 );
 \AssociazioneSemplice\Employees::set_denied( $em_uid, array( 'people', 'collect', 'courses', 'events', 'expenses', 'refunds' ) );

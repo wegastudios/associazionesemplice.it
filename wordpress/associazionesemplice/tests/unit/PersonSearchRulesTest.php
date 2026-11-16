@@ -43,6 +43,24 @@ final class PersonSearchRulesTest extends TestCase {
 		$this->assertSame( array(), $this->results( 'RSSMRA85T50A562W' ) );
 	}
 
+	public function test_a_match_only_on_email_or_tax_code_is_discarded_even_if_the_search_returned_it(): void {
+		// la ricerca in anagrafica può portare anche chi corrisponde solo per email o codice fiscale: qui vengono scartati
+		$people = array(
+			array( 'id' => 1, 'type' => 'ordinary', 'first_name' => 'Mario', 'last_name' => 'Rossi', 'card_number' => '1', 'email' => 'luigi.verdi@example.com', 'tax_code' => 'VRDLGU80A01H501X', 'phone' => '3331234567' ),
+			array( 'id' => 2, 'type' => 'ordinary', 'first_name' => 'Anna', 'last_name' => 'Bianchi', 'card_number' => '2', 'email' => 'mario@example.com', 'tax_code' => 'BNCNNA80A41H501Z' ),
+		);
+		$run = function ( string $q ) use ( $people ): array {
+			return PersonSearchRules::results( $people, PersonSearchRules::clean( $q ), '2026-11-16', function (): bool { return true; }, function ( array $p ): string { return $p['first_name']; } );
+		};
+		$this->assertSame( array(), $run( 'mario@' ) );
+		$this->assertSame( array(), $run( 'luigi.verdi' ) );
+		$this->assertSame( array(), $run( 'VRDLGU' ) );
+		$this->assertSame( array(), $run( 'BNCNNA80' ) );
+		$this->assertSame( array(), $run( '333123' ) );
+		$this->assertCount( 1, $run( 'Mario' ) );
+		$this->assertSame( 1, $run( 'Mario' )[0]['id'] );
+	}
+
 	public function test_only_the_minimum_fields_are_returned(): void {
 		$r = $this->results( 'Luigi' );
 		$this->assertSame( array( 'id', 'label', 'quota', 'type' ), $this->sorted_keys( $r[0] ) );
