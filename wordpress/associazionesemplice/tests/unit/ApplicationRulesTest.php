@@ -111,4 +111,90 @@ final class ApplicationRulesTest extends TestCase {
 		$r = $this->check( $this->minor( array( 'email' => 'luigi@example.com' ) ) );
 		$this->assertSame( 'luigi@example.com', $r['data']['email'] );
 	}
+
+	/** @return array<string,array{0:string}> */
+	public static function real_names(): array {
+		return array(
+			'semplice'           => array( 'Mario' ),
+			'apostrofo'          => array( "D'Angelo" ),
+			'apostrofo tipografico' => array( "D\u{2019}Angelo" ),
+			'cognome doppio'     => array( 'De Luca-Rossi' ),
+			'cedilla'            => array( 'Çelik' ),
+			'dieresi'            => array( 'Zoë' ),
+			'dieresi scomposta'  => array( "Zoe\u{0308}" ),
+			'vietnamita'         => array( 'Nguyễn' ),
+			'nome doppio'        => array( 'Maria Grazia' ),
+			'accenti'            => array( 'Niccolò Müller' ),
+			'altro alfabeto'     => array( 'Ιωάννης' ),
+			'una lettera'        => array( 'Å' ),
+			'trattino lungo'     => array( "Anne\u{2010}Marie" ),
+		);
+	}
+
+	/** @dataProvider real_names */
+	public function test_real_names_are_accepted( string $name ): void {
+		$clean = ApplicationRules::clean_name( $name );
+		$this->assertNotSame( '', $clean, $name );
+		$r = $this->check( $this->adult( array( 'first_name' => $name, 'last_name' => $name ) ) );
+		$this->assertSame( array(), $r['errors'], $name );
+	}
+
+	public function test_name_is_normalised(): void {
+		$this->assertSame( 'Maria Grazia', ApplicationRules::clean_name( "  Maria   Grazia  " ) );
+		if ( class_exists( 'Normalizer' ) ) {
+			$this->assertSame( "Zo\u{00EB}", ApplicationRules::clean_name( "Zoe\u{0308}" ), 'forma composta' );
+		}
+		$this->assertSame( 60, mb_strlen( ApplicationRules::clean_name( str_repeat( 'a', 60 ) ), 'UTF-8' ) );
+	}
+
+	/** @return array<string,array{0:string}> */
+	public static function bad_names(): array {
+		return array(
+			'link'               => array( 'Visita http://example.com' ),
+			'email'              => array( 'a@example.com' ),
+			'cifre'              => array( 'Mario2' ),
+			'simboli'            => array( 'Mario!!!' ),
+			'parentesi'          => array( 'Mario (ufficio)' ),
+			'a capo'             => array( "Mario\nBcc: x@example.com" ),
+			'ritorno'            => array( "Mario\rRossi" ),
+			'tabulazione e nul'  => array( "Ma\t\0rio" ),
+			'invisibile'         => array( "Ma\u{200B}rio" ),
+			'troppo lungo'       => array( str_repeat( 'a', 61 ) ),
+			'frase lunga'        => array( 'Gentile cliente il suo ordine e stato sospeso richiami subito' ),
+			'solo trattini'      => array( '---' ),
+			'inizia con trattino' => array( '-Mario' ),
+			'apostrofi doppi'    => array( "D''Angelo" ),
+			'vuoto'              => array( '' ),
+			'solo spazi'         => array( '   ' ),
+			'utf8 rotto'         => array( "Mar\xC3io" ),
+		);
+	}
+
+	/** @dataProvider bad_names */
+	public function test_bad_names_are_refused( string $name ): void {
+		$this->assertSame( '', ApplicationRules::clean_name( $name ), 'clean_name' );
+		if ( '' === trim( $name ) ) {
+			return; // il nome vuoto ha il suo errore («Scrivi nome e cognome»)
+		}
+		$r = $this->check( $this->adult( array( 'first_name' => $name ) ) );
+		$this->assertContains( ApplicationRules::NAME_ERROR, $r['errors'], 'nome' );
+		$r = $this->check( $this->adult( array( 'last_name' => $name ) ) );
+		$this->assertContains( ApplicationRules::NAME_ERROR, $r['errors'], 'cognome' );
+	}
+
+	public function test_the_guardian_name_has_the_same_rule(): void {
+		$r = $this->check( $this->minor( array( 'guardian_first_name' => 'Anna <b>', 'guardian_last_name' => "Verdi\nX" ) ) );
+		$this->assertContains( ApplicationRules::NAME_ERROR, $r['errors'] );
+		$r = $this->check( $this->minor( array( 'guardian_first_name' => "Anna Maria", 'guardian_last_name' => "D'Este" ) ) );
+		$this->assertSame( array(), $r['errors'] );
+		$this->assertSame( "D'Este", $r['data']['guardian']['last_name'] );
+	}
+
+	public function test_mail_name_is_a_single_clean_line(): void {
+		$out = ApplicationRules::mail_name( "Mario\r\nRossi\t\x00" );
+		$this->assertSame( 'Mario Rossi', $out );
+		$this->assertStringNotContainsString( "\n", ApplicationRules::mail_name( "a\nb\rc" ) );
+		$this->assertSame( 60, mb_strlen( ApplicationRules::mail_name( str_repeat( 'é', 200 ) ), 'UTF-8' ) );
+		$this->assertSame( '', ApplicationRules::mail_name( "\n\r" ) );
+	}
 }

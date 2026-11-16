@@ -171,7 +171,7 @@ final class Applications {
 	}
 
 	private static function mail_secretary( array $d, bool $minor ): void {
-		$who  = trim( $d['first_name'] . ' ' . $d['last_name'] );
+		$who  = ApplicationRules::mail_name( $d['first_name'] ) . ' ' . ApplicationRules::mail_name( $d['last_name'] );
 		$text = "È arrivata una nuova domanda di adesione.\n\n" . $who . ' (' . ( $minor ? 'minorenne, con un genitore indicato' : MemberType::label( $d['type'] ) ) . ")\n\n"
 			. 'Approvala o rifiutala dalla Bacheca: ' . admin_url( 'admin.php?page=asem' );
 		ResponseMail::send( self::notify_email(), 'Nuova domanda di adesione' . self::assoc_suffix(), $text );
@@ -180,9 +180,9 @@ final class Applications {
 	/** Conferma a chi ha chiesto di iscriversi (per un minore, al genitore): cosa succede adesso e come pagare la quota. */
 	private static function mail_applicant( int $id, array $d, bool $minor ): void {
 		$to   = $minor ? $d['guardian']['email'] : $d['email'];
-		$name = $minor ? $d['guardian']['first_name'] : $d['first_name'];
+		$name = ApplicationRules::mail_name( $minor ? $d['guardian']['first_name'] : $d['first_name'] );
 		$fee  = self::fee_cents( $d['type'] );
-		$text = 'Ciao ' . $name . ",\n\nabbiamo ricevuto la domanda di adesione" . ( $minor ? ' di ' . $d['first_name'] : '' ) . ". La segreteria la guarda e ti scrive appena è approvata.\n\n";
+		$text = 'Ciao ' . $name . ",\n\nabbiamo ricevuto la domanda di adesione" . ( $minor ? ' di ' . ApplicationRules::mail_name( $d['first_name'] ) : '' ) . ". La segreteria la guarda e ti scrive appena è approvata.\n\n";
 		if ( $fee > 0 ) {
 			if ( self::online_payment() ) {
 				$text .= 'La quota associativa è di ' . Money::format( $fee ) . '. Se vuoi puoi pagarla subito online da questo link (vale ' . self::PAY_DAYS . " giorni):\n" . self::pay_url( $id ) . "\n\nSe la domanda non venisse accettata, la quota ti viene restituita.\n\n";
@@ -343,9 +343,9 @@ final class Applications {
 			$pay = "\n\nLa tessera diventa valida appena versi la quota associativa di " . Money::format( $due ) . ': in sede, alla segreteria' . ( Plugin::payments()->enabled() ? ', oppure online dall\'area riservata (voce «Pagamenti»)' : '' ) . '.';
 		}
 		if ( $guardian ) {
-			$text = 'Ciao ' . $guardian['first_name'] . ",\n\nla domanda di adesione di " . $person['first_name'] . ' ' . $person['last_name'] . ' è stata approvata: la tessera è la n. ' . $person['card_number'] . ".\n\n";
+			$text = 'Ciao ' . ApplicationRules::mail_name( (string) $guardian['first_name'] ) . ",\n\nla domanda di adesione di " . ApplicationRules::mail_name( (string) $person['first_name'] ) . ' ' . ApplicationRules::mail_name( (string) $person['last_name'] ) . ' è stata approvata: la tessera è la n. ' . $person['card_number'] . ".\n\n";
 			if ( ! $linked ) { // genitore già in anagrafica: il collegamento nasce quando conferma dal link dell'altra email
-				$text .= $person['first_name'] . ' compare nella tua area riservata dopo che hai confermato dal link che ti abbiamo mandato con un\'altra email.' . "\n";
+				$text .= ApplicationRules::mail_name( (string) $person['first_name'] ) . ' compare nella tua area riservata dopo che hai confermato dal link che ti abbiamo mandato con un\'altra email.' . "\n";
 			} elseif ( empty( $guardian['wp_user_id'] ) ) {
 				$text .= 'Da genitore o tutore segui ' . $person['first_name'] . ' dalla tua area riservata (tessera, prenotazioni, pagamenti). Scegli la tua password da questo link (vale ' . $days . "):\n" . Frontend\Activation::url( (int) $guardian['id'] ) . "\n";
 			} else {
@@ -354,7 +354,7 @@ final class Applications {
 			$text .= $pay;
 			$to = (string) $guardian['email'];
 		} else {
-			$text = 'Ciao ' . $person['first_name'] . ",\n\nla tua domanda di adesione" . $of . ' è stata approvata: la tua tessera è la n. ' . $person['card_number'] . ".\n\nScegli la tua password da questo link (vale " . $days . "):\n" . Frontend\Activation::url( (int) $person['id'] )
+			$text = 'Ciao ' . ApplicationRules::mail_name( (string) $person['first_name'] ) . ",\n\nla tua domanda di adesione" . $of . ' è stata approvata: la tua tessera è la n. ' . $person['card_number'] . ".\n\nScegli la tua password da questo link (vale " . $days . "):\n" . Frontend\Activation::url( (int) $person['id'] )
 				. "\n\nSe il link scade, dal sito vai su «Primo accesso» e ne ricevi uno nuovo." . $pay;
 			$to = (string) $person['email'];
 		}
@@ -377,7 +377,7 @@ final class Applications {
 		}
 		$gd     = self::guardian_data( $row );
 		$to     = $gd ? (string) $gd['email'] : (string) $row['email'];
-		$name   = $gd ? (string) $gd['first_name'] : (string) $row['first_name'];
+		$name   = ApplicationRules::mail_name( $gd ? (string) $gd['first_name'] : (string) $row['first_name'] );
 		$refund = Plugin::payments()->application_refund_due( $id );
 		if ( $refund > 0 ) { // il nome serve a riconoscere il pagamento da restituire; il resto si cancella
 			self::db()->update(
@@ -390,7 +390,7 @@ final class Applications {
 		}
 		Audit::log( 'application.rejected', 'person', $id, array( 'refund' => $refund ) );
 		if ( '' !== $to && is_email( $to ) ) {
-			$text = 'Ciao ' . $name . ",\n\npurtroppo la domanda di adesione" . ( $gd ? ' di ' . $row['first_name'] : '' ) . ' non è stata accettata.'
+			$text = 'Ciao ' . $name . ",\n\npurtroppo la domanda di adesione" . ( $gd ? ' di ' . ApplicationRules::mail_name( (string) $row['first_name'] ) : '' ) . ' non è stata accettata.'
 				. ( $refund > 0 ? "\n\nLa quota che hai pagato online ti sarà restituita." : '' ) . "\n\nPer chiarimenti rivolgiti alla segreteria.";
 			Texts::mail( $to, 'Domanda di adesione' . self::assoc_suffix(), $text );
 		}
