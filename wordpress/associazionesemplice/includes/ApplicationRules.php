@@ -11,6 +11,40 @@ final class ApplicationRules {
 
 	const MAX_AGE = 110;
 
+	const NAME_MAX   = 60; // caratteri per nome o per cognome
+	const NAME_ERROR = 'Nome non valido: usa solo lettere, spazi, apostrofi e trattini.';
+
+	/**
+	 * Nome o cognome dei moduli pubblici: solo lettere (anche con accento, di qualunque alfabeto), spazi, apostrofi (anche tipografici) e trattini,
+	 * da 1 a NAME_MAX caratteri, che inizia con una lettera; spazi doppi ridotti a uno. Niente a capo, cifre, simboli, indirizzi o link.
+	 *
+	 * @return string il nome pulito, oppure '' se non è valido
+	 */
+	public static function clean_name( string $name ): string {
+		if ( 1 === preg_match( '/[\p{C}]/u', $name ) || ! mb_check_encoding( $name, 'UTF-8' ) ) { // controlli, a capo, caratteri invisibili
+			return '';
+		}
+		if ( class_exists( 'Normalizer' ) ) {
+			$norm = \Normalizer::normalize( $name, \Normalizer::FORM_C );
+			$name = false === $norm ? $name : $norm;
+		}
+		$name = trim( (string) preg_replace( '/\s+/u', ' ', $name ) );
+		$len  = mb_strlen( $name, 'UTF-8' );
+		if ( $len < 1 || $len > self::NAME_MAX ) {
+			return '';
+		}
+		if ( 1 !== preg_match( "/^\\p{L}[\\p{L}\\p{M}' \\x{2018}\\x{2019}\\x{02BC}\\x{2010}\\x{2011}-]*$/u", $name ) || 1 === preg_match( "/['\\x{2018}\\x{2019}\\x{02BC}\\x{2010}\\x{2011}-]{2}/u", $name ) ) {
+			return '';
+		}
+		return $name;
+	}
+
+	/** Un nome (anche già salvato) da scrivere in un'email o in un avviso: una sola riga, senza caratteri di controllo, non oltre NAME_MAX. */
+	public static function mail_name( string $name ): string {
+		$name = (string) preg_replace( '/[\p{C}\s]+/u', ' ', $name );
+		return trim( mb_substr( trim( $name ), 0, self::NAME_MAX, 'UTF-8' ) );
+	}
+
 	/**
 	 * @param array    $in          dati del modulo: first_name, last_name, email, phone, tax_code, birth_date, type, rules_ok, privacy_ok, guardian_ok, guardian_first_name, guardian_last_name, guardian_email, guardian_phone, guardian_tax_code
 	 * @param string   $today       oggi (AAAA-MM-GG)
@@ -41,10 +75,14 @@ final class ApplicationRules {
 		);
 		if ( '' === $data['first_name'] || '' === $data['last_name'] ) {
 			$errors[] = 'Scrivi nome e cognome.';
-		}
-		foreach ( array( 'first_name' => 'Il nome', 'last_name' => 'Il cognome' ) as $k => $label ) {
-			if ( mb_strlen( $data[ $k ], 'UTF-8' ) > 120 ) {
-				$errors[] = $label . ' è troppo lungo.';
+		} else {
+			foreach ( array( 'first_name', 'last_name' ) as $k ) {
+				$clean = self::clean_name( $data[ $k ] );
+				if ( '' === $clean ) {
+					$errors[] = self::NAME_ERROR;
+				} else {
+					$data[ $k ] = $clean;
+				}
 			}
 		}
 		$birth = Age::parse( $t( 'birth_date' ) );
@@ -89,6 +127,15 @@ final class ApplicationRules {
 			}
 			if ( '' === $g['first_name'] || '' === $g['last_name'] ) {
 				$errors[] = 'Chi ha meno di 18 anni si iscrive con un genitore o tutore: scrivi il suo nome e cognome.';
+			} else {
+				foreach ( array( 'first_name', 'last_name' ) as $k ) {
+					$clean = self::clean_name( $g[ $k ] );
+					if ( '' === $clean ) {
+						$errors[] = self::NAME_ERROR;
+					} else {
+						$g[ $k ] = $clean;
+					}
+				}
 			}
 			if ( '' === $g['email'] || ! filter_var( $g['email'], FILTER_VALIDATE_EMAIL ) ) {
 				$errors[] = 'Scrivi l\'email del genitore o tutore.';
