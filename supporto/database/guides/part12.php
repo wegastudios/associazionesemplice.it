@@ -727,7 +727,7 @@ Cose da sapere:
 - In fondo alla pagina c'è il **«Riepilogo del mese»**: per ogni persona un pallino pieno (presente) o vuoto (assente) per ogni lezione e il totale, per esempio «7/9».
 - Ogni registrazione resta scritta nel **registro azioni**.
 
-Chi può registrare le presenze: titolare, amministratori e operatori **che gestiscono i corsi**. Chi può solo vedere i soci vede l'elenco e il riepilogo, ma **non può modificare** nulla.
+Per **registrare le presenze** servono **due caselle insieme** in **Operatori e ruoli**: **«Modificare l'anagrafica, tesseramento, attività»** e **«Gestire i corsi»**. Valgono **anche per gli eventi**: «Gestire gli eventi» da solo non basta. Per **vedere** il registro e il riepilogo basta **«Vedere l'anagrafica»**: chi ha solo quella casella non può modificare nulla.
 
 Per creare le attività e iscrivere le persone vedi [Creare un corso o un evento](guida:gestionale-creare-un-corso-o-un-evento).
 MD,
