@@ -707,13 +707,22 @@ final class Resources {
 		if ( $credits < 1 || ! $r['person_id'] ) {
 			return;
 		}
-		Credits::refund( (int) $r['person_id'], $credits, 'Annullata la prenotazione del ' . substr( (string) $r['starts_at'], 0, 16 ), 'reservation', (int) $r['id'] );
+		// Chi arriva per primo prende i crediti: la riga si azzera solo se vale ancora il numero letto, e solo allora si riaccredita (due annulli insieme non danno i crediti due volte).
+		$claimed = self::db()->query( self::db()->prepare( 'UPDATE ' . Db::t( 'reservations' ) . ' SET credits_paid = 0 WHERE id = %d AND credits_paid = %d', (int) $r['id'], $credits ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- tabella interna, valori preparati
+		if ( 1 !== (int) $claimed ) {
+			return;
+		}
+		try {
+			Credits::refund( (int) $r['person_id'], $credits, 'Annullata la prenotazione del ' . substr( (string) $r['starts_at'], 0, 16 ), 'reservation', (int) $r['id'] );
+		} catch ( \Throwable $e ) {
+			self::db()->update( Db::t( 'reservations' ), array( 'credits_paid' => $credits ), array( 'id' => (int) $r['id'] ) ); // il riaccredito non è riuscito: la prenotazione resta pagata in crediti
+			throw $e;
+		}
 		$res = self::get( (int) $r['resource_id'] );
 		$sh  = $res ? self::fund_share( $res, (int) $r['fee_due_cents'] ) : 0; // la quota accantonata alla spesa dei crediti torna disponibile
 		if ( $sh > 0 ) {
 			Plugin::funds()->take_back( (int) $res['fund_id'], $sh, Db::today(), 'Prenotazione annullata: crediti riaccreditati («' . $res['name'] . '»)' );
 		}
-		self::db()->update( Db::t( 'reservations' ), array( 'credits_paid' => 0 ), array( 'id' => (int) $r['id'] ) );
 	}
 
 	/** La prenotazione è ancora valida (non annullata né liberata)? */
@@ -897,9 +906,21 @@ final class Resources {
 				throw new \InvalidArgumentException( $c['message'] );
 			}
 		}
-		self::db()->update( Db::t( 'reservations' ), array( 'status' => 'cancelled', 'cancelled_at' => Db::now() ), array( 'id' => $reservation_id ) );
+		// L'annullo vale per una richiesta sola: lo stato cambia solo se è ancora «booked», le altre richieste arrivate insieme si fermano qui.
+		$done = self::db()->query( self::db()->prepare( 'UPDATE ' . Db::t( 'reservations' ) . " SET status = 'cancelled', cancelled_at = %s WHERE id = %d AND status = 'booked'", Db::now(), $reservation_id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- tabella interna, valori preparati
+		if ( 1 !== (int) $done ) {
+			throw new \InvalidArgumentException( 'Prenotazione non trovata.' );
+		}
+		try {
+			self::refund_credits( $r ); // pagata in crediti: i crediti tornano al socio
+		} catch ( \Throwable $e ) {
+			$now = self::reservation( $reservation_id );
+			if ( $now && (int) $now['credits_paid'] > 0 ) { // il riaccredito non è avvenuto: la prenotazione torna com'era, così si può riprovare
+				self::db()->update( Db::t( 'reservations' ), array( 'status' => 'booked', 'cancelled_at' => null ), array( 'id' => $reservation_id ) );
+			}
+			throw $e;
+		}
 		Audit::log( 'reservation.cancelled', 'resource', (int) $r['resource_id'], array( 'reservation' => $reservation_id, 'kind' => $r['kind'] ) );
-		self::refund_credits( $r ); // pagata in crediti: i crediti tornano al socio
 		if ( ResourceRules::KIND_ASSIGN === $r['kind'] ) {
 			self::notify_waitlist( (int) $r['resource_id'] ); // si è liberato un posto: avviso il primo della lista d'attesa
 		}

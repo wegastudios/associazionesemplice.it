@@ -7060,6 +7060,46 @@ $RS::cancel( $cr_b, true );
 asem_ok( $cr_b0 === $CR::balance( $cr_m ) && 0 === (int) $RS::reservation( $cr_b )['credits_paid'], 'crediti: annullando la prenotazione i crediti tornano al socio' );
 $cr_b2 = $RS::book_slot( $cr_res, $cr_m2, $cr_day, '12:00', 1 );
 asem_ok( null !== asem_throws( function () use ( $RS, $cr_b2, $cr_m2 ) { $RS::pay_with_credits( $cr_b2, $cr_m2 ); } ) && 0 === (int) $RS::reservation( $cr_b2 )['credits_paid'], 'crediti: senza crediti sufficienti la prenotazione non risulta pagata' );
+// annullo che arriva insieme a un altro: i crediti tornano una volta sola
+$cr_b3   = $RS::book_slot( $cr_res, $cr_m, $cr_day, '14:00', 1 );
+$cr_bal0 = $CR::balance( $cr_m );
+$RS::pay_with_credits( $cr_b3, $cr_m );
+$cr_stale = $RS::reservation( $cr_b3 ); // la riga come l'ha letta chi arriva secondo
+asem_ok( (int) $cr_stale['credits_paid'] > 0 && $CR::balance( $cr_m ) < $cr_bal0, 'crediti: la prenotazione di prova è pagata in crediti' );
+$cr_raced = false;
+$cr_race  = function ( $q ) use ( &$cr_raced, $RS, $cr_b3 ) {
+	if ( ! $cr_raced && 0 === stripos( ltrim( (string) $q ), 'UPDATE' ) && false !== strpos( $q, 'reservations' ) && false !== strpos( $q, "'cancelled'" ) ) {
+		$cr_raced = true;
+		$RS::cancel( $cr_b3, true ); // l'altra richiesta conclude l'annullo proprio prima della nostra scrittura
+	}
+	return $q;
+};
+add_filter( 'query', $cr_race );
+$cr_msg2 = asem_throws( function () use ( $RS, $cr_b3 ) { $RS::cancel( $cr_b3, true ); } );
+remove_filter( 'query', $cr_race );
+asem_ok( $cr_raced && null !== $cr_msg2, 'crediti: il secondo annullo della stessa prenotazione è rifiutato' );
+asem_ok( $cr_bal0 === $CR::balance( $cr_m ), 'crediti: con due annulli insieme i crediti tornano una volta sola' );
+asem_ok( 1 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Db::t( 'credit_entries' ) . " WHERE person_id = %d AND kind = 'refund' AND ref_type = 'reservation' AND ref_id = %d", $cr_m, $cr_b3 ) ), 'crediti: un solo movimento di rimborso per la prenotazione' );
+$cr_refund = new ReflectionMethod( $RS, 'refund_credits' );
+$cr_refund->setAccessible( true );
+$cr_refund->invoke( null, $cr_stale ); // una copia vecchia della riga non riaccredita di nuovo
+asem_ok( $cr_bal0 === $CR::balance( $cr_m ) && 0 === (int) $RS::reservation( $cr_b3 )['credits_paid'], 'crediti: nemmeno rieseguendo il rimborso con la riga letta prima' );
+// riaccredito che fallisce: la prenotazione resta prenotata, i crediti come prima, e si può riprovare
+$cr_b4   = $RS::book_slot( $cr_res, $cr_m, $cr_day, '16:00', 1 );
+$RS::pay_with_credits( $cr_b4, $cr_m );
+$cr_bal4 = $CR::balance( $cr_m ); // dopo la spesa
+$cr_paid4 = (int) $RS::reservation( $cr_b4 )['credits_paid'];
+$cr_fail = function ( $q ) {
+	return 0 === stripos( ltrim( (string) $q ), 'INSERT' ) && false !== strpos( $q, 'credit_entries' ) ? '' : $q; // la scrittura del rimborso non riesce
+};
+add_filter( 'query', $cr_fail );
+$cr_msg4 = asem_throws( function () use ( $RS, $cr_b4 ) { $RS::cancel( $cr_b4, true ); } );
+remove_filter( 'query', $cr_fail );
+$cr_row4 = $RS::reservation( $cr_b4 );
+asem_ok( null !== $cr_msg4, 'crediti: se il riaccredito non riesce l\'annullo è rifiutato' );
+asem_ok( 'booked' === $cr_row4['status'] && $cr_paid4 === (int) $cr_row4['credits_paid'] && $cr_bal4 === $CR::balance( $cr_m ), 'crediti: riaccredito fallito, la prenotazione resta prenotata e pagata in crediti' );
+$RS::cancel( $cr_b4, true );
+asem_ok( 'cancelled' === $RS::reservation( $cr_b4 )['status'] && $cr_bal4 + $cr_paid4 === $CR::balance( $cr_m ), 'crediti: dopo il fallimento un nuovo annullo funziona e i crediti tornano' );
 // addebito dal vivo con il QR
 $cr_ch = $CR::create_charge( $cr_m2, 5, 'Ingresso serata', null );
 asem_ok( 24 === strlen( $cr_ch['code'] ) && 'ok' === $CR::charge_status( $cr_ch['id'], 1 )['state'] && $CR::can_charge( 1 ), 'crediti: lo staff crea un addebito valido con un codice casuale' );
@@ -9643,6 +9683,49 @@ MemberSession::start( $ms_p );
 MemberSession::forget_person( $ms_p );
 asem_ok( 0 === (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_sessions' ) . ' WHERE person_id = ' . $ms_p ) + (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Db::t( 'member_auth' ) . ' WHERE person_id = ' . $ms_p ), 'accesso proprio: eliminando la persona spariscono sessioni e password' );
 asem_ok( wp_next_scheduled( 'asem_purge_member_sessions' ) > 0, 'accesso proprio: pulizia giornaliera programmata' );
+
+// ---------- Cache di pagina: pagine con sessione socio valida e contenuti riservati ----------
+$nc_hits  = 0;
+$nc_cb    = function () use ( &$nc_hits ) {
+	++$nc_hits;
+};
+add_action( 'litespeed_control_set_nocache', $nc_cb );
+$nc_count = function ( callable $f ) use ( &$nc_hits ): int {
+	$nc_hits = 0;
+	$f();
+	return $nc_hits;
+};
+$nc_early = function ( int $post_id ) {
+	$GLOBALS['wp_the_query'] = $GLOBALS['wp_query'] = new WP_Query( array( 'p' => $post_id, 'post_type' => 'any', 'post_status' => 'publish' ) );
+	\AssociazioneSemplice\Frontend\Restrict::early_no_cache();
+};
+wp_set_current_user( 0 );
+unset( $_COOKIE[ MemberSession::COOKIE ] );
+$ms_fake->setValue( null, null );
+asem_ok( 0 === $nc_count( function () use ( $nc_early, $p_pub ) { $nc_early( $p_pub ); } ), 'cache: una pagina pubblica vista da un anonimo resta salvabile in cache' );
+asem_ok( 0 === $nc_count( function () use ( $show, $p_pub ) { $show( $p_pub, 0 ); } ), 'cache: il contenuto pubblico non segnala «non in cache»' );
+asem_ok( $nc_count( function () use ( $nc_early, $p_mem ) { $nc_early( $p_mem ); } ) > 0, 'cache: una pagina riservata non si salva nemmeno per un anonimo (prima di disegnarla)' );
+asem_ok( $nc_count( function () use ( $show, $p_mem ) { $show( $p_mem, 0 ); } ) > 0, 'cache: il riquadro «contenuto riservato» mostrato a un anonimo non si salva' );
+asem_ok( $nc_count( function () use ( $show, $p_mem, $u_f ) { $show( $p_mem, $u_f ); } ) > 0, 'cache: il contenuto riservato mostrato a chi può leggerlo non si salva' );
+asem_ok( $nc_count( function () use ( $show, $p_yoga, $u_ord ) { $show( $p_yoga, $u_ord ); } ) > 0, 'cache: nemmeno il contenuto riservato a una attività' );
+asem_ok( $nc_count( function () use ( $p_mem ) { get_the_excerpt( $p_mem ); } ) > 0 && 0 === $nc_count( function () use ( $p_pub ) { get_the_excerpt( $p_pub ); } ), 'cache: il riassunto di un contenuto riservato non si salva, quello pubblico sì' );
+wp_set_current_user( 0 );
+asem_ok( $nc_count( function () { do_shortcode( '[associazionesemplice_riservato accesso="soci"]x[/associazionesemplice_riservato]' ); } ) > 0, 'cache: una parte riservata di pagina non si salva' );
+$nc_p = (int) Plugin::people()->create( array( 'type' => 'ordinary', 'first_name' => 'Cache', 'last_name' => 'Prova' ) );
+$wpdb->insert( Db::t( 'member_auth' ), array( 'person_id' => $nc_p, 'login_email' => 'cache.prova@example.org', 'pass_hash' => MemberPassword::make( 'una password lunga' ), 'created_at' => gmdate( 'Y-m-d H:i:s' ) ) );
+$_COOKIE[ MemberSession::COOKIE ] = SessionToken::generate(); // cookie ben formato ma di nessuna sessione
+$ms_fake->setValue( null, null );
+asem_ok( 0 === $nc_count( function () use ( $nc_early, $p_pub ) { $nc_early( $p_pub ); } ), 'cache: un cookie senza sessione dietro non toglie la pagina dalla cache' );
+MemberSession::start( $nc_p );
+asem_ok( $nc_count( function () use ( $nc_early, $p_pub ) { $nc_early( $p_pub ); } ) > 0, 'cache: con una sessione socio valida la pagina, anche pubblica, non si salva' );
+MemberSession::destroy_all( $nc_p );
+$ms_fake->setValue( null, null );
+asem_ok( 0 === $nc_count( function () use ( $nc_early, $p_pub ) { $nc_early( $p_pub ); } ), 'cache: chiusa la sessione la pagina pubblica torna salvabile' );
+remove_action( 'litespeed_control_set_nocache', $nc_cb );
+MemberSession::forget_person( $nc_p );
+unset( $_COOKIE[ MemberSession::COOKIE ] );
+$ms_fake->setValue( null, null );
+wp_reset_query();
 
 // ---------- Accesso proprio: link, codice e password ----------
 use AssociazioneSemplice\MemberLogin;
