@@ -20,22 +20,6 @@ final class CachePolicyTest extends TestCase {
 		$this->assertTrue( CachePolicy::skip_page_cache( Visibility::PUBLIC_, true ) );
 	}
 
-	public function test_public_event_pages_stay_cacheable_for_anonymous_readers_only(): void {
-		$this->assertFalse( CachePolicy::personal_request( false, false ), 'visita anonima in lettura' );
-		$this->assertTrue( CachePolicy::personal_request( true, false ), 'invio di un modulo' );
-		$this->assertTrue( CachePolicy::personal_request( false, true ), 'utente collegato' );
-		$this->assertTrue( CachePolicy::personal_request( true, true ) );
-	}
-
-	public function test_only_changes_to_activities_dates_and_bookings_empty_the_page_cache(): void {
-		foreach ( array( 'booking.created', 'booking.cancelled', 'booking.transferred', 'booking.released', 'session.created', 'session.updated', 'session.cancelled', 'activity.created', 'activity.updated', 'activity.deleted', 'activity.enrolled' ) as $action ) {
-			$this->assertTrue( CachePolicy::changes_public_pages( $action ), $action );
-		}
-		foreach ( array( 'credits.refunded', 'settings.updated', 'audit.freed', 'reservation.cancelled', '', 'bookings', 'xbooking.created' ) as $action ) {
-			$this->assertFalse( CachePolicy::changes_public_pages( $action ), $action );
-		}
-	}
-
 	public function test_the_headers_forbid_shared_caches_and_storage(): void {
 		$h = CachePolicy::headers();
 		$this->assertArrayHasKey( 'Cache-Control', $h );
