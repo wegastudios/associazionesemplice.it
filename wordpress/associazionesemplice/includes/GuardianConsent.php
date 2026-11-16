@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
  * Conferma del genitore di un minore già in anagrafica.
  *
  * Quando una domanda di adesione di un minore indica come genitore o tutore una persona che esiste già (stessa email), all'approvazione il
- * collegamento si crea ma i consensi (regolamento, informativa privacy, liberatoria immagini) NON vengono attribuiti a lei: serve prima che li
+ * collegamento col minore e i consensi (regolamento, informativa privacy, liberatoria immagini) NON vengono attribuiti a lei: serve prima che li
  * confermi. All'indirizzo già registrato per lei arriva un link a tempo, monouso; la pagina del link mostra un pulsante «Confermo» (il solo
  * aprire il link non conferma nulla). Il token è casuale e nel database c'è solo la sua impronta. Finché non conferma, la scheda del minore
  * lo dice alla segreteria, che può rimandare il messaggio.
@@ -170,8 +170,13 @@ final class GuardianConsent {
 		}
 		$p  = $r['person'];
 		$by = (int) $r['marker']['guardian'];
-		if ( ! in_array( $by, array_map( 'intval', array_column( Guardians::of( (int) $p['id'] ), 'id' ) ), true ) ) {
-			return array( 'ok' => false, 'message' => 'Il collegamento con il minore non esiste più: scrivi alla segreteria.' );
+		$linked = in_array( $by, array_map( 'intval', array_column( Guardians::of( (int) $p['id'] ), 'id' ) ), true );
+		if ( ! $linked ) { // il collegamento con il minore nasce ora, alla conferma
+			try {
+				Guardians::link( (int) $p['id'], $by );
+			} catch ( \InvalidArgumentException $e ) {
+				return array( 'ok' => false, 'message' => 'Non è stato possibile collegarti al minore: scrivi alla segreteria.' );
+			}
 		}
 		$upd = array( 'privacy_consent_by' => $by, 'image_consent_by' => $by, 'application_data' => null, 'updated_at' => Db::now() );
 		if ( Regulation::enabled() ) {

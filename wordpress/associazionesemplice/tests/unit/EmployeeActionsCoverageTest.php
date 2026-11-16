@@ -12,7 +12,7 @@ final class EmployeeActionsCoverageTest extends TestCase {
 	const DYNAMIC = array( 'asem_export', 'asem_doc', 'asem_quick_cash' );
 
 	/** File dove le chiavi «asem_*» sono campi di dati o parametri di indirizzo, non azioni. */
-	const NOT_ACTION_FILES = array( 'WpAllImport.php', 'PaymentService.php', 'WooBridge.php', 'SatispayRules.php', 'StripeApi.php', 'PublicEvents.php', 'RowClean.php' );
+	const NOT_ACTION_FILES = array( 'WpAllImport.php', 'PaymentService.php', 'WooBridge.php', 'SatispayRules.php', 'StripeApi.php', 'PublicEvents.php' );
 
 	/**
 	 * Motivo => azioni. Qui entra solo ciò che non dipende da nessuno dei sei permessi rimovibili.

@@ -539,7 +539,7 @@ final class PeoplePage {
 		$gc = \AssociazioneSemplice\GuardianConsent::pending( $p );
 		if ( $gc ) { // genitore già in anagrafica: i consensi dati a nome del minore non sono ancora attribuiti a lui
 			$gp = Plugin::people()->get( (int) $gc['guardian'] );
-			echo wp_kses( '<p class="asem-warn"><strong>In attesa della conferma del genitore</strong>' . ( $gp ? ' (<a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $gp['id'] ) ) ) . '">' . esc_html( $gp['first_name'] . ' ' . $gp['last_name'] ) . '</a>)' : '' ) . ': regolamento, privacy e immagini non sono ancora attribuiti a lui. Email inviata il ' . esc_html( mysql2date( 'd/m/Y', $gc['sent'] ) ) . ( $gc['expired'] ? '; il link è scaduto' : '' ) . '.</p>', Html::allowed() );
+			echo wp_kses( '<p class="asem-warn"><strong>In attesa della conferma del genitore</strong>' . ( $gp ? ' (<a href="' . esc_url( Ui::url( 'asem-person', array( 'id' => $gp['id'] ) ) ) . '">' . esc_html( $gp['first_name'] . ' ' . $gp['last_name'] ) . '</a>)' : '' ) . ': Il genitore non ha ancora confermato: il collegamento si crea quando conferma; regolamento, privacy e immagini non sono ancora attribuiti a lui. Email inviata il ' . esc_html( mysql2date( 'd/m/Y', $gc['sent'] ) ) . ( $gc['expired'] ? '; il link è scaduto' : '' ) . '.</p>', Html::allowed() );
 			Ui::form_open( 'asem_guardian_consent_resend', Ui::url( 'asem-person', array( 'id' => $id ) ), false, 'asem-inline' );
 			echo wp_kses( Ui::hidden( 'id', $id ) . '<button class="button">Rimanda l\'email di conferma</button>', Html::allowed() );
 			Ui::form_close();

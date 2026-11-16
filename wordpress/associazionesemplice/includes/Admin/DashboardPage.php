@@ -188,6 +188,9 @@ final class DashboardPage {
 				$g = $a['guardian'];
 				echo '<br><span class="description">Genitore/tutore: <strong>' . esc_html( trim( $g['first_name'] . ' ' . $g['last_name'] ) ) . '</strong> · ' . esc_html( (string) $g['email'] ) . ' · ' . esc_html( (string) $g['phone'] ) . ' · ha accettato regolamento e privacy a nome del minore</span>';
 			}
+			if ( $minor && ! empty( $a['guardian']['email'] ) && \AssociazioneSemplice\Plugin::people()->find_by_email( strtolower( (string) $a['guardian']['email'] ), (int) $a['id'] ) ) {
+				echo '<br><span class="description"><strong>Il genitore è già in anagrafica e non ha ancora confermato</strong>: se approvi, gli arriva un\'email e il collegamento con il minore si crea quando conferma.</span>';
+			}
 			if ( $a['fee_cents'] > 0 ) {
 				echo wp_kses( '<br><span class="description">Quota ' . Ui::money( (int) $a['fee_cents'] ) . ' — ' . ( $a['paid'] ? '<strong>pagata online</strong> (' . Ui::money( (int) $a['paid']['cents'] ) . ')' : 'da pagare in sede' ) . '</span>', Html::allowed() );
 			}

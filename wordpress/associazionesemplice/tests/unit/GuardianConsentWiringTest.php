@@ -20,6 +20,9 @@ final class GuardianConsentWiringTest extends TestCase {
 		$this->assertLessThan( $else, (int) strpos( $body, '$confirm = true;' ) );
 		$this->assertGreaterThan( $else, (int) strpos( $body, "'image_consent_by' =>" ) );
 		$this->assertStringContainsString( 'GuardianConsent::begin(', $body );
+		$this->assertSame( 1, substr_count( $body, 'Guardians::link(' ) );
+		$this->assertGreaterThan( $else, (int) strpos( $body, 'Guardians::link(' ), 'il collegamento col minore si crea subito solo per un genitore nuovo' );
+		$this->assertStringContainsString( 'Guardians::link(', $this->src( 'GuardianConsent.php' ), 'alla conferma' );
 	}
 
 	public function test_link_is_random_hashed_single_use_and_needs_a_post_with_a_nonce(): void {
