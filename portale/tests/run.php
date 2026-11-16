@@ -1099,6 +1099,52 @@ if ( class_exists( 'ZipArchive' ) && function_exists( 'sodium_crypto_sign_keypai
 	check( 'sostituzione: impronta, firma e file nuovi, stesso numero', $now1['sha256'] === hash_file( 'sha256', $z1b ) && $sig1b === $now1['signature'] && $rep['sha256'] === $now1['sha256'] && hash_file( 'sha256', $rzdir . '/1.0.1.zip' ) === $now1['sha256'] );
 	check( 'sostituzione: il vecchio zip resta conservato e non è scaricabile', is_file( $rzdir . '/1.0.1.zip.' . substr( $oldsha, 0, 8 ) . '.replaced' ) && hash_file( 'sha256', $rzdir . '/1.0.1.zip.' . substr( $oldsha, 0, 8 ) . '.replaced' ) === $oldsha );
 	check( 'sostituzione: registrata nell\'audit', null !== $gdb->one( "SELECT 1 AS x FROM audit WHERE action = 'release.replace'" ) );
+	// Firma v2 («asem-pkg-v2|…|signed_at|min_version»), con una seconda chiave (kid_v2) diversa da quella della v1
+	$kp2 = sodium_crypto_sign_keypair();
+	$sk2 = sodium_crypto_sign_secretkey( $kp2 );
+	Config::set( 'package_keys', array( 'k-test' => $b64u( sodium_crypto_sign_publickey( $kp ) ), 'k-v2' => $b64u( sodium_crypto_sign_publickey( $kp2 ) ) ) );
+	$sha5 = '';
+	$sv2  = function ( $zf, $ver, $at, $min, $key = null ) use ( $b64u, $sk2 ) {
+		return $b64u( sodium_crypto_sign_detached( Portale\Releases::signedMessageV2( 'pro', $ver, hash_file( 'sha256', $zf ), $at, $min ), $key ?? $sk2 ) );
+	};
+	$sv1  = function ( $zf, $ver ) use ( $b64u, $sk ) {
+		return $b64u( sodium_crypto_sign_detached( Portale\Releases::signedMessage( 'pro', $ver, hash_file( 'sha256', $zf ) ), $sk ) );
+	};
+	check( 'firma v2: messaggio esatto con prefisso asem-pkg-v2 e campi separati da |', 'asem-pkg-v2|pro|1.2.3|' . str_repeat( 'a', 64 ) . '|1700000000|1.2' === Portale\Releases::signedMessageV2( 'pro', '1.2.3', strtoupper( str_repeat( 'a', 64 ) ), 1700000000, '1.2' ) );
+	check( 'firma v2: una release senza campi v2 non li ha nella risposta', ! array_key_exists( 'signature_v2', json_decode( Portale\PluginUpdates::check( $gdb, $gpx, str_replace( 'chiave-firma-prova', 'chiave-firma-prova3', $req ), '8.8.1.3', 1800000000 )[1], true ) ) );
+	$z5  = $mkz( '1.0.5' );
+	$at5 = 1799999000;
+	$ok5 = array( 'signature_v2' => $sv2( $z5, '1.0.5', $at5, '1.0.2' ), 'kid_v2' => 'k-v2', 'signed_at' => $at5, 'min_version' => '1.0.2' );
+	check( 'firma v2: una v1 non vale come v2', null !== throwsUser( function () use ( $gdb, $z5, $sv1, $ok5 ) { Portale\Releases::add( $gdb, 'pro', $z5, '', 'test', 1800000000, $sv1( $z5, '1.0.5' ), 'k-test', array_merge( $ok5, array( 'signature_v2' => $sv1( $z5, '1.0.5' ), 'kid_v2' => 'k-test' ) ) ); } ) );
+	check( 'firma v2: min_version cambiata dopo la firma rifiutata', null !== throwsUser( function () use ( $gdb, $z5, $sv1, $ok5 ) { Portale\Releases::add( $gdb, 'pro', $z5, '', 'test', 1800000000, $sv1( $z5, '1.0.5' ), 'k-test', array_merge( $ok5, array( 'min_version' => '1.0.3' ) ) ); } ) );
+	check( 'firma v2: chiave kid_v2 sconosciuta rifiutata', null !== throwsUser( function () use ( $gdb, $z5, $sv1, $ok5 ) { Portale\Releases::add( $gdb, 'pro', $z5, '', 'test', 1800000000, $sv1( $z5, '1.0.5' ), 'k-test', array_merge( $ok5, array( 'kid_v2' => 'k-altra' ) ) ); } ) );
+	check( 'firma v2: campi incompleti rifiutati', null !== throwsUser( function () use ( $gdb, $z5, $sv1, $ok5 ) { $x = $ok5; unset( $x['signed_at'] ); Portale\Releases::add( $gdb, 'pro', $z5, '', 'test', 1800000000, $sv1( $z5, '1.0.5' ), 'k-test', $x ); } ) );
+	$zmin = $mkz( '1.0.6' );
+	check( 'firma v2: min_version oltre la versione rifiutata', null !== throwsUser( function () use ( $gdb, $zmin, $sv1, $sv2 ) { Portale\Releases::add( $gdb, 'pro', $zmin, '', 'test', 1800000000, $sv1( $zmin, '1.0.6' ), 'k-test', array( 'signature_v2' => $sv2( $zmin, '1.0.6', 1799999000, '1.0.7' ), 'kid_v2' => 'k-v2', 'signed_at' => 1799999000, 'min_version' => '1.0.7' ) ); } ) );
+	check( 'firma v2: min_version in formato non valido rifiutata', null !== throwsUser( function () use ( $gdb, $zmin, $sv1, $sv2 ) { Portale\Releases::add( $gdb, 'pro', $zmin, '', 'test', 1800000000, $sv1( $zmin, '1.0.6' ), 'k-test', array( 'signature_v2' => $sv2( $zmin, '1.0.6', 1799999000, 'x' ), 'kid_v2' => 'k-v2', 'signed_at' => 1799999000, 'min_version' => 'x' ) ); } ) );
+	check( 'firma v2: signed_at nel futuro (oltre un giorno) rifiutato', null !== throwsUser( function () use ( $gdb, $zmin, $sv1, $sv2 ) { Portale\Releases::add( $gdb, 'pro', $zmin, '', 'test', 1800000000, $sv1( $zmin, '1.0.6' ), 'k-test', array( 'signature_v2' => $sv2( $zmin, '1.0.6', 1800200000, '1.0.2' ), 'kid_v2' => 'k-v2', 'signed_at' => 1800200000, 'min_version' => '1.0.2' ) ); } ) );
+	check( 'firma v2: la v2 senza la v1 rifiutata', null !== throwsUser( function () use ( $gdb, $zmin, $sv2 ) { Portale\Releases::add( $gdb, 'pro', $zmin, '', 'test', 1800000000, null, null, array( 'signature_v2' => $sv2( $zmin, '1.0.6', 1799999000, '1.0.2' ), 'kid_v2' => 'k-v2', 'signed_at' => 1799999000, 'min_version' => '1.0.2' ) ); } ) );
+	check( 'firma v2: nessuna versione rimasta a metà dopo i rifiuti', null === Portale\Releases::get( $gdb, 'pro', '1.0.6' ) && null === Portale\Releases::get( $gdb, 'pro', '1.0.5' ) );
+	$rw5 = Portale\Releases::add( $gdb, 'pro', $z5, '', 'test', 1800000000, $sv1( $z5, '1.0.5' ), 'k-test', $ok5 );
+	$d5  = Portale\Releases::get( $gdb, 'pro', '1.0.5' );
+	check( 'firma v2: registrata con chiave, data e versione minima', $ok5['signature_v2'] === $d5['signature_v2'] && 'k-v2' === $d5['kid_v2'] && $at5 === (int) $d5['signed_at'] && '1.0.2' === $d5['min_version'] && $rw5['min_version'] === '1.0.2' );
+	check( 'firma v2: versione minima dell\'ultima release letta per il valore predefinito', '1.0.2' === Portale\Releases::latestMinVersion( $gdb, 'pro' ) );
+	$g5 = json_decode( Portale\PluginUpdates::check( $gdb, $gpx, str_replace( 'chiave-firma-prova', 'chiave-firma-prova4', $req ), '8.8.1.4', 1800000000 )[1], true );
+	check( 'firma v2: la risposta ha signature_v2, kid_v2, signed_at (intero) e min_version; firma e kid v1 invariati', '1.0.5' === $g5['version'] && $ok5['signature_v2'] === $g5['signature_v2'] && 'k-v2' === $g5['kid_v2'] && $at5 === $g5['signed_at'] && '1.0.2' === $g5['min_version'] && $sv1( $z5, '1.0.5' ) === $g5['signature'] && 'k-test' === $g5['kid'] );
+	check( 'firma v2: la firma della risposta si verifica con la chiave pubblica', Portale\Releases::verifyV2( 'pro', '1.0.5', $g5['sha256'], $g5['signed_at'], $g5['min_version'], $g5['signature_v2'], $g5['kid_v2'] ) && Portale\Releases::verify( 'pro', '1.0.5', $g5['sha256'], $g5['signature'], $g5['kid'] ) );
+	check( 'firma v2: la firma v2 non vale come v1', ! Portale\Releases::verify( 'pro', '1.0.5', $g5['sha256'], $g5['signature_v2'], $g5['kid_v2'] ) );
+	// Sostituzione: senza nuova v2 la vecchia (sull'impronta vecchia) si toglie; con una nuova, nuovo signed_at
+	$z5b = $mkz( '1.0.5' );
+	$zz5 = new ZipArchive();
+	$zz5->open( $z5b );
+	$zz5->addFromString( 'associazionesemplice-pro/extra.txt', 'cambiato' );
+	$zz5->close();
+	Portale\Releases::replace( $gdb, 'pro', $z5b, '', 'test', $sv1( $z5b, '1.0.5' ), 'k-test' );
+	$d5b = Portale\Releases::get( $gdb, 'pro', '1.0.5' );
+	check( 'firma v2: sostituendo senza v2 i campi v2 vecchi spariscono', empty( $d5b['signature_v2'] ) && empty( $d5b['signed_at'] ) && empty( $d5b['min_version'] ) );
+	$tn = time() - 10; // sign() e replace() controllano la data con l'orologio vero
+	Portale\Releases::sign( $gdb, 'pro', '1.0.5', $sv1( $z5b, '1.0.5' ), 'k-test', 'test', array( 'signature_v2' => $sv2( $z5b, '1.0.5', $tn, '1.0.2' ), 'kid_v2' => 'k-v2', 'signed_at' => $tn, 'min_version' => '1.0.2' ) );
+	check( 'firma v2: firmando di nuovo c\'è il nuovo signed_at', $tn === (int) Portale\Releases::get( $gdb, 'pro', '1.0.5' )['signed_at'] );
 	Config::set( 'package_keys', Portale\Releases::SIGNING_KEYS );
 }
 
