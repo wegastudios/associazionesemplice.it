@@ -159,6 +159,9 @@ final class Employees {
 		if ( 'asem_export' === $action ) {
 			return EmployeeRules::export_need( sanitize_key( (string) $req['what'] ) );
 		}
+		if ( 'asem_doc' === $action ) {
+			return EmployeeRules::doc_need( sanitize_key( (string) $req['what'] ) );
+		}
 		if ( 'asem_quick_cash' === $action ) { // la «cassa rapida» registra un incasso o una spesa secondo la categoria scelta
 			return array( 'all' => array( self::quick_cash_is_expense( (int) ( $req['category_id'] ?? 0 ) ) ? EmployeeRules::EXPENSES : EmployeeRules::COLLECT ) );
 		}

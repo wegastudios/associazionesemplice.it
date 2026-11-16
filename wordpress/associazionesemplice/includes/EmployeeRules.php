@@ -83,6 +83,8 @@ final class EmployeeRules {
 			'asem-accounting' => array( 'all' => array( self::FUNDS ) ),
 			'asem-reports'    => array( 'all' => array( self::FUNDS ) ),
 			'asem-statement'  => array( 'all' => array( self::FUNDS ) ),
+			'asem-fivepm'     => array( 'all' => array( self::FUNDS ) ),
+			'asem-budget'     => array( 'all' => array( self::FUNDS ) ),
 		);
 		return $map[ $slug ] ?? null;
 	}
@@ -113,14 +115,16 @@ final class EmployeeRules {
 					$map[ $a ] = $need;
 				}
 			};
-			$add( array( 'asem_save_income', 'asem_walk_in', 'asem_save_group_cash', 'asem_credit_sell', 'asem_receipt_email' ), array( 'all' => array( self::COLLECT ) ) );
+			$add( array( 'asem_save_income', 'asem_walk_in', 'asem_save_group_cash', 'asem_credit_sell', 'asem_check_payments', 'asem_payment_reviewed', 'asem_res_pay', 'asem_receipt_email' ), array( 'all' => array( self::COLLECT ) ) );
 			$add( array( 'asem_person_context', 'asem_quick_person' ), array( 'any' => array( self::COLLECT, self::COURSES, self::EVENTS ) ) );
 			$add( array( 'asem_save_expense', 'asem_expense_fund_attach', 'asem_expense_fund_undo' ), array( 'all' => array( self::EXPENSES ) ) );
-			$add( array( 'asem_refund_request', 'asem_refund_approve', 'asem_refund_reject', 'asem_refund_cancel', 'asem_refund_pay', 'asem_refunds_csv', 'asem_refund_file' ), array( 'all' => array( self::REFUNDS ) ) );
+			$add( array( 'asem_refund_request', 'asem_refund_approve', 'asem_refund_reject', 'asem_refund_cancel', 'asem_refund_pay', 'asem_refunds_csv', 'asem_refund_file', 'asem_payment_refund', 'asem_payment_refunded' ), array( 'all' => array( self::REFUNDS ) ) );
 			$add(
 				array(
 					'asem_save_transfer', 'asem_add_account', 'asem_update_account', 'asem_close_account', 'asem_reopen_account', 'asem_fund_create', 'asem_fund_deposit',
 					'asem_fund_release', 'asem_fund_settle', 'asem_receipt_replace', 'asem_watch_snapshot', 'asem_discrepancy_approve', 'asem_discrepancy_revoke', 'asem_watch_csv', 'asem_cash_count',
+					'asem_void_tx', 'asem_credit_adjust', 'asem_fivepm_add', 'asem_fivepm_settings', 'asem_fivepm_report', 'asem_fivepm_delete', 'asem_statement_notes', 'asem_statement_backfill',
+					'asem_import_apply', 'asem_import_preview', 'asem_import_undo', 'asem_budget_save', 'asem_budget_lines', 'asem_budget_copy', 'asem_budget_approve', 'asem_budget_reopen', 'asem_budget_delete', 'asem_budget_csv',
 				),
 				array( 'all' => array( self::FUNDS ) )
 			);
@@ -131,7 +135,12 @@ final class EmployeeRules {
 
 	/** Cosa serve per un'esportazione dell'azione «asem_export» (parametro «what»). @return array{all?:string[],any?:string[]}|null */
 	public static function export_need( string $what ): ?array {
-		return in_array( $what, array( 'ledger', 'period' ), true ) ? array( 'all' => array( self::FUNDS ) ) : null;
+		return in_array( $what, array( 'ledger', 'period', 'social' ), true ) ? array( 'all' => array( self::FUNDS ) ) : null;
+	}
+
+	/** Cosa serve per un documento dell'azione «asem_doc» (parametro «what»): il rendiconto mostra incassi e costi, come fondi, casse e conti. @return array{all?:string[],any?:string[]}|null */
+	public static function doc_need( string $what ): ?array {
+		return 'statement' === $what ? array( 'all' => array( self::FUNDS ) ) : null;
 	}
 
 	/** Un'attività di questo tipo (course, event, recurring) dipende da quale permesso? */
