@@ -11485,7 +11485,7 @@ foreach ( $em_keys as $em_k ) {
 	asem_ok( array( $em_k ) === \AssociazioneSemplice\Employees::denied_for( $em_uid ), "dipendente: tolto solo $em_k" );
 	foreach ( $em_cases[ $em_k ] as $em_i => $em_c ) {
 		$em_msg = $em_blocked( $em_c[0], $em_c[1] );
-		asem_ok( null !== $em_msg && false !== strpos( $em_msg, \AssociazioneSemplice\EmployeeRules::label( $em_k ) ), "dipendente senza $em_k: la porta $em_i si chiude con un messaggio che dice quale permesso manca" );
+		asem_ok( null !== $em_msg && false !== strpos( $em_msg, esc_html( \AssociazioneSemplice\EmployeeRules::label( $em_k ) ) ), "dipendente senza $em_k: la porta $em_i si chiude con un messaggio che dice quale permesso manca" );
 	}
 	foreach ( array_diff( $em_keys, array( $em_k ) ) as $em_o ) { // le porte degli altri permessi restano aperte
 		foreach ( $em_cases[ $em_o ] as $em_i => $em_c ) {
